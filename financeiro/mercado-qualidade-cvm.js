@@ -19,15 +19,14 @@ const preflight = require('./mercado-preflight');
 const parser = require('./investimentos-parser');
 const piloto = require('./mercado-piloto-cvm');
 
-const REGRAS_VERSAO = 1;
+const REGRAS_VERSAO = 2;
 const FONTE_CADASTRO = 'https://dados.cvm.gov.br/dados/cia_aberta/CAD/DADOS/cad_cia_aberta.csv';
 const SCHEMA = 'fin_pilot_cvm_dfp_2025';
 const LIMITE_CADASTRO = 8 * 1024 * 1024;
 const TIMEOUT_MS = 60_000;
 const AMOSTRAS_MAX = 50;
 
-const QUALITY_SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS fin_quality_runs (
+const QUALITY_SCHEMA_STATEMENTS = [`CREATE TABLE IF NOT EXISTS fin_quality_runs (
   id text PRIMARY KEY,
   job_id text NOT NULL REFERENCES fin_market_jobs(id),
   parser_versao integer NOT NULL,
@@ -43,15 +42,13 @@ CREATE TABLE IF NOT EXISTS fin_quality_runs (
   criado_em timestamptz NOT NULL DEFAULT now(),
   concluido_em timestamptz,
   atualizado_em timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS fin_quality_metrics (
+)`, `CREATE TABLE IF NOT EXISTS fin_quality_metrics (
   run_id text NOT NULL REFERENCES fin_quality_runs(id) ON DELETE CASCADE,
   regra text NOT NULL,
   escopo text NOT NULL DEFAULT '',
   valor jsonb NOT NULL,
   PRIMARY KEY (run_id, regra, escopo)
-);
-CREATE TABLE IF NOT EXISTS fin_quality_findings (
+)`, `CREATE TABLE IF NOT EXISTS fin_quality_findings (
   run_id text NOT NULL REFERENCES fin_quality_runs(id) ON DELETE CASCADE,
   regra text NOT NULL,
   gravidade text NOT NULL CHECK (gravidade IN ('BLOQUEADOR','ALERTA')),
@@ -60,8 +57,12 @@ CREATE TABLE IF NOT EXISTS fin_quality_findings (
   amostras jsonb NOT NULL DEFAULT '[]'::jsonb,
   detalhes jsonb NOT NULL DEFAULT '{}'::jsonb,
   PRIMARY KEY (run_id, regra, gravidade, agrupador)
-);
-`;
+)`];
+const QUALITY_SCHEMA_SQL = `${QUALITY_SCHEMA_STATEMENTS.join(';\n')};`;
+
+async function migrarQualidade(pool) {
+  for (const sql of QUALITY_SCHEMA_STATEMENTS) await pool.query(sql);
+}
 
 function configAmbiente(env = process.env) {
   if (String(env.FINANCE_INV_CVM_QUALITY || '').toLowerCase() !== 'on') {
@@ -390,7 +391,7 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
     await lock.query(`CREATE SCHEMA IF NOT EXISTS ${SCHEMA}`);
     pool = new PoolClass({ connectionString, max: 1 });
     await pool.query(`SET search_path TO ${SCHEMA}`);
-    await pool.query(QUALITY_SCHEMA_SQL);
+    await migrarQualidade(pool);
     const jobs = await pool.query(`SELECT j.* FROM fin_market_jobs j
       WHERE j.status='concluida' AND j.conjunto='cvm_dfp_2025'
         AND EXISTS (SELECT 1 FROM fin_market_particoes p WHERE p.job_id=j.id AND p.parser_versao=$1)
@@ -468,6 +469,10 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
     ];
     await persistirResultado(pool, runId, metricas, achados, resultado, resumo);
     logger.log(`[finance-market-quality-cvm] OK idempotente=nao resultado=${resultado} duracao=${resumo.duracao_ms}ms registros=${registros} particoes=${resumo.particoes} identidades=${resumo.identidades} cadastro=${resumo.cadastroRegistros} bloqueadores=${resumo.bloqueadores} alertas=${resumo.alertas} regras=${resumo.regrasComAchado} balancos=${resumo.balancosComparados}/${resumo.balancosDivergentes} cadastro_sha=${resumo.cadastroSha}`);
+    const resumoRegras = achados.listar()
+      .map(a => `${a.regra}:${a.gravidade}:${a.quantidade}`)
+      .join(',');
+    logger.log(`[finance-market-quality-cvm] ACHADOS ${resumoRegras || 'nenhum'}`);
     return { ok: true, idempotente: false, resultado, ...resumo };
   } catch (e) {
     if (pool && runId) {
@@ -498,6 +503,7 @@ if (require.main === module) executar().catch(e => {
 
 module.exports = {
   REGRAS_VERSAO, FONTE_CADASTRO, SCHEMA, LIMITE_CADASTRO, QUALITY_SCHEMA_SQL,
+  QUALITY_SCHEMA_STATEMENTS, migrarQualidade,
   configAmbiente, somenteDigitos, codigoCvm, textoComparavel, dataIsoValida,
   decimalEscala10, categoriaFormulario, Achados, baixarCadastro, indexarCadastro,
   chaveNatural, analisarFato, auditarParticao, compararCadastros, reconciliarBalancos,

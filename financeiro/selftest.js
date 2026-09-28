@@ -1475,6 +1475,16 @@ teste('investimentos: auditoria CVM exige armação, parser off e persiste só q
   assert.match(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /fin_quality_metrics/);
   assert.match(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /fin_quality_findings/);
   assert.doesNotMatch(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /saldo|ordem_financeira|razao/i);
+  assert.strictEqual(mercadoQualidadeCvm.REGRAS_VERSAO, 2);
+});
+
+testeAsync('investimentos: migração da qualidade executa cada tabela separadamente', async () => {
+  const chamadas = [];
+  await mercadoQualidadeCvm.migrarQualidade({ query: async sql => { chamadas.push(sql); } });
+  assert.strictEqual(chamadas.length, 3);
+  assert.match(chamadas[0], /fin_quality_runs/);
+  assert.match(chamadas[1], /fin_quality_metrics/);
+  assert.match(chamadas[2], /fin_quality_findings/);
 });
 
 teste('investimentos: regras CVM tratam datas, decimais e demonstrações sem float', () => {
