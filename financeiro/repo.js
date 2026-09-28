@@ -1053,14 +1053,17 @@ const desativarPosicaoInvestimentos = (id) => {
   return posicaoInvestimentos(id);
 };
 
-const ativarRelatoriosInvestimentos = ({ destinatarioId, hora = '15:00' }) => {
+const ativarRelatoriosInvestimentos = ({ destinatarioId, hora = '15:00', declaracaoVersao }) => {
   garantirConfigInvestimentos();
   exec(`UPDATE fin_inv_config SET relatorios_diarios_ativos = 1,
           relatorio_diario_hora = :hora, timezone = 'America/Sao_Paulo',
           relatorio_diario_destinatario_id = :destinatario,
           relatorios_ativados_em = :agora, relatorios_ativados_por = :por,
+          declaracao_uso_pessoal_versao = :declaracao,
+          declaracao_uso_pessoal_em = :agora, declaracao_uso_pessoal_por = :por,
           atualizado_em = :agora WHERE tenant_id = :tenant`, {
-    hora, destinatario: destinatarioId, agora: nowISO(), por: tenancy.userAtual(),
+    hora, destinatario: destinatarioId, declaracao: declaracaoVersao,
+    agora: nowISO(), por: tenancy.userAtual(),
   });
   return configInvestimentos();
 };

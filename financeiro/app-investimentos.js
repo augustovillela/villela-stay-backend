@@ -32,8 +32,17 @@ window.FInvestimentos = {
       <div class="card" style="margin-bottom:14px;border-left:4px solid ${r.agenda && r.agenda.relatoriosDiariosAtivos ? '#159A78' : '#d89b20'}">
         <div class="sub" style="text-transform:uppercase;letter-spacing:.08em">Parecer privado diário</div>
         <h3 style="margin:4px 0 8px">Todos os dias às 15:00 · America/Sao_Paulo</h3>
-        <p>Estado: <b>${r.agenda && r.agenda.relatoriosDiariosAtivos ? 'ativo' : 'aguardando ativação protegida por MFA'}</b> · Segunda análise por IA: <b>${r.pareceres && r.pareceres.habilitados ? 'habilitável' : 'bloqueada pelos portões de conformidade'}</b>.</p>
+        <p>Estado: <b>${r.agenda && r.agenda.relatoriosDiariosAtivos ? 'ativo' : 'aguardando ativação protegida por MFA'}</b> · Segunda análise por IA: <b>${r.pareceres && r.pareceres.habilitados ? 'habilitada para uso pessoal' : 'bloqueada'}</b>.</p>
         <p class="sub">A edição só publica “comprar”, “manter”, “reduzir”, “vender” ou “evitar” quando dados válidos e os dois motores convergem. Ausência de dado resulta em “não conclusivo”.</p>
+        ${r.agenda && r.agenda.relatoriosDiariosAtivos
+          ? `<p class="sub">Uso pessoal declarado em ${F.esc(F.dt(r.agenda.declaracaoUsoPessoalEm))} · versão ${F.esc(r.agenda.declaracaoUsoPessoalVersao || 'não registrada')}.</p>`
+          : `<div class="aviso" style="margin:10px 0">
+              <label style="display:flex;gap:8px;align-items:flex-start">
+                <input id="f-inv-aceite-pessoal" type="checkbox" style="width:auto;margin-top:3px">
+                <span>${F.esc((r.pareceres.declaracaoUsoPessoal || {}).texto || '')}</span>
+              </label>
+              <p class="sub" style="margin:8px 0 0">Esta declaração não representa parecer jurídico nem autorização regulatória.</p>
+            </div>`}
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           ${r.agenda && r.agenda.relatoriosDiariosAtivos
             ? '<button id="f-inv-gerar" class="btn">Gerar edição agora</button>'
@@ -129,12 +138,18 @@ window.FInvestimentos = {
     const msg = F.el('f-inv-acao-msg');
     const ativar = F.el('f-inv-ativar');
     if (ativar) ativar.onclick = async () => {
+      const aceite = !!(F.el('f-inv-aceite-pessoal') && F.el('f-inv-aceite-pessoal').checked);
+      if (!aceite) { msg.textContent = 'Confirme a declaração de uso pessoal antes de ativar.'; return; }
       const codigo = prompt('Código do segundo fator (6 dígitos):', '');
       if (!codigo) return;
       msg.textContent = 'Ativando…';
       try {
         await F.api('POST', F.url('/investimentos/relatorios/ativar'),
-          { motivo: 'Relatórios privados diários solicitados e aprovados pelo CEO' }, { mfa: codigo });
+          {
+            motivo: 'Relatórios privados diários solicitados pelo CEO para uso pessoal exclusivo',
+            aceiteUsoPessoal: true,
+            declaracaoVersao: (r.pareceres.declaracaoUsoPessoal || {}).versao,
+          }, { mfa: codigo });
         msg.textContent = 'Relatórios ativados para todos os dias às 15:00.';
         await this.render(F);
       } catch (e) { msg.textContent = e.message; }

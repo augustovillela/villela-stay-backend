@@ -729,21 +729,18 @@ teste('investimentos: flag e concessão nominal são duas travas independentes',
   assert.strictEqual(depois.pareceres.motivo, 'pareceres_desligados');
 });
 
-teste('investimentos: parecer interno exige flag própria e validação jurídica', () => {
+teste('investimentos: parecer interno exige flag própria e expõe declaração de uso pessoal', () => {
   process.env.FINANCE_INV_RECOMENDACOES = 'on';
   process.env.FINANCE_INV_PARECER_JURIDICO = 'pendente';
-  const pendente = naA(() => investimentos.estado(contaA, repo.usuarioPorId(usuarioCeo.id)));
-  assert.strictEqual(pendente.recomendacoesAtivas, false);
-  assert.strictEqual(pendente.pareceres.motivo, 'parecer_juridico_pendente');
-
-  process.env.FINANCE_INV_PARECER_JURIDICO = 'aprovado';
   const aprovado = naA(() => investimentos.estado(contaA, repo.usuarioPorId(usuarioCeo.id)));
   assert.strictEqual(aprovado.recomendacoesAtivas, true);
   assert.strictEqual(aprovado.fase, 'pareceres_privados');
   assert.strictEqual(aprovado.execucaoAtiva, false);
+  assert.strictEqual(aprovado.pareceres.declaracaoUsoPessoal.versao, 'uso_pessoal_ceo_v1');
+  assert.match(aprovado.pareceres.declaracaoUsoPessoal.texto, /exclusivamente por mim/i);
+  assert.strictEqual(Object.hasOwn(aprovado.pareceres, 'parecerJuridicoAprovado'), false);
 
   process.env.FINANCE_INV_RECOMENDACOES = 'off';
-  process.env.FINANCE_INV_PARECER_JURIDICO = 'pendente';
 });
 
 teste('investimentos: concessão cria a política mínima v2 sem inventar valores', () => {
@@ -921,20 +918,37 @@ testeAsync('investimentos: metadado CVM não é promovido a evidência decisóri
     /não possui contrato de evidência/i);
 });
 
-teste('investimentos: relatório diário exige os portões e MFA para ativar', () => {
+teste('investimentos: relatório diário exige MFA e declaração pessoal versionada para ativar', () => {
   process.env.FINANCE_INVESTIMENTOS = 'on';
   process.env.FINANCE_INV_RECOMENDACOES = 'on';
-  process.env.FINANCE_INV_PARECER_JURIDICO = 'aprovado';
   const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
   assert.throws(() => tenancy.comTenant({
     tenantId: contaA.id, userId: usuario.id, perfil: usuario.perfil, mfa: false,
-  }, () => relatoriosInvestimentos.ativar(contaA, usuario, { motivo: 'teste' })), /segundo fator/i);
+  }, () => relatoriosInvestimentos.ativar(contaA, usuario, {
+    motivo: 'teste', aceiteUsoPessoal: true, declaracaoVersao: 'uso_pessoal_ceo_v1',
+  })), /segundo fator/i);
+  assert.throws(() => tenancy.comTenant({
+    tenantId: contaA.id, userId: usuario.id, perfil: usuario.perfil, mfa: true,
+  }, () => relatoriosInvestimentos.ativar(contaA, usuario, {
+    motivo: 'teste sem aceite', aceiteUsoPessoal: false, declaracaoVersao: 'uso_pessoal_ceo_v1',
+  })), /declaração de uso pessoal/i);
+  assert.throws(() => tenancy.comTenant({
+    tenantId: contaA.id, userId: usuario.id, perfil: usuario.perfil, mfa: true,
+  }, () => relatoriosInvestimentos.ativar(contaA, usuario, {
+    motivo: 'teste com versão adulterada', aceiteUsoPessoal: true, declaracaoVersao: 'outra',
+  })), /declaração de uso pessoal/i);
   const ativada = tenancy.comTenant({
     tenantId: contaA.id, userId: usuario.id, perfil: usuario.perfil, mfa: true,
-  }, () => relatoriosInvestimentos.ativar(contaA, usuario, { motivo: 'aprovação de teste' }));
+  }, () => relatoriosInvestimentos.ativar(contaA, usuario, {
+    motivo: 'aprovação de teste', aceiteUsoPessoal: true,
+    declaracaoVersao: 'uso_pessoal_ceo_v1',
+  }));
   assert.strictEqual(ativada.ativos, true);
   assert.strictEqual(ativada.hora, '15:00');
   assert.strictEqual(ativada.timezone, 'America/Sao_Paulo');
+  assert.strictEqual(ativada.declaracaoUsoPessoalVersao, 'uso_pessoal_ceo_v1');
+  assert.ok(ativada.declaracaoUsoPessoalEm);
+  assert.strictEqual(ativada.declaracaoUsoPessoalPor, usuario.id);
 });
 
 teste('investimentos: carteira qualitativa não exige valor nem quantidade', () => {

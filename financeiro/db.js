@@ -471,6 +471,22 @@ const MIGRACOES = [
         END;`);
     },
   },
+  {
+    // A ativação registra a declaração pessoal do titular. Isto não
+    // representa parecer jurídico nem autorização regulatória.
+    nome: 'fin-0017-investimentos-declaracao-uso-pessoal',
+    aplicar() {
+      if (!temColuna('fin_inv_config', 'declaracao_uso_pessoal_versao')) {
+        db.exec("ALTER TABLE fin_inv_config ADD COLUMN declaracao_uso_pessoal_versao TEXT NOT NULL DEFAULT ''");
+      }
+      if (!temColuna('fin_inv_config', 'declaracao_uso_pessoal_em')) {
+        db.exec("ALTER TABLE fin_inv_config ADD COLUMN declaracao_uso_pessoal_em TEXT NOT NULL DEFAULT ''");
+      }
+      if (!temColuna('fin_inv_config', 'declaracao_uso_pessoal_por')) {
+        db.exec("ALTER TABLE fin_inv_config ADD COLUMN declaracao_uso_pessoal_por TEXT NOT NULL DEFAULT ''");
+      }
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

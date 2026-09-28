@@ -5,7 +5,8 @@
 // interna, módulo Enterprise privado e concessão nominal ao proprietário.
 // Ela não executa ordem, lance, alavancagem nem lançamento contábil.
 // Pareceres privados do CEO têm um portão próprio, independente da flag
-// geral, e só abrem depois do registro da validação jurídica.
+// geral, e só abrem para o titular nominal. A ativação exige uma declaração
+// versionada de uso pessoal, conferida no servidor e registrada na auditoria.
 // =====================================================================
 'use strict';
 const { j } = require('./db');
@@ -28,20 +29,21 @@ class ErroDeAcessoInvestimentos extends Error {
 const ligado = () => String(process.env.FINANCE_INVESTIMENTOS || '').toLowerCase() === 'on';
 const pareceresSolicitados = () =>
   String(process.env.FINANCE_INV_RECOMENDACOES || '').toLowerCase() === 'on';
-const parecerJuridicoAprovado = () =>
-  String(process.env.FINANCE_INV_PARECER_JURIDICO || '').toLowerCase() === 'aprovado';
+const DECLARACAO_USO_PESSOAL_VERSAO = 'uso_pessoal_ceo_v1';
+const DECLARACAO_USO_PESSOAL_TEXTO = 'Declaro que estes relatórios serão usados exclusivamente por mim, CEO do Grupo Villela, como apoio decisório pessoal; não serão oferecidos a clientes ou terceiros e não autorizam ordens, lances ou operações financeiras.';
 
 function estadoPareceres(disponivel) {
   const solicitados = pareceresSolicitados();
-  const juridico = parecerJuridicoAprovado();
   let motivo = '';
   if (!disponivel) motivo = 'acesso_ceo_indisponivel';
   else if (!solicitados) motivo = 'pareceres_desligados';
-  else if (!juridico) motivo = 'parecer_juridico_pendente';
   return {
-    habilitados: disponivel && solicitados && juridico,
+    habilitados: disponivel && solicitados,
     solicitados,
-    parecerJuridicoAprovado: juridico,
+    declaracaoUsoPessoal: {
+      versao: DECLARACAO_USO_PESSOAL_VERSAO,
+      texto: DECLARACAO_USO_PESSOAL_TEXTO,
+    },
     motivo,
   };
 }
@@ -182,10 +184,13 @@ function resumo(tenant, usuario) {
       relatoriosDiariosAtivos: configuracao.relatorios_diarios_ativos === 1,
       relatorioDiarioHora: configuracao.relatorio_diario_hora || '15:00',
       relatorioDiarioUltimoDia: configuracao.relatorio_diario_ultimo_dia || '',
+      declaracaoUsoPessoalVersao: configuracao.declaracao_uso_pessoal_versao || '',
+      declaracaoUsoPessoalEm: configuracao.declaracao_uso_pessoal_em || '',
+      declaracaoUsoPessoalPor: configuracao.declaracao_uso_pessoal_por || '',
     } : null,
     proximoPasso: acesso.recomendacoesAtivas
       ? 'Homologar fontes e motores antes de publicar o primeiro parecer privado.'
-      : 'Registrar a validação jurídica e manter cada fonte desativada até a respectiva homologação.',
+      : 'Ativar os pareceres privados e manter cada fonte desativada até a respectiva homologação.',
   };
 }
 
@@ -230,6 +235,7 @@ function cobertura(tenant, usuario) {
 }
 
 module.exports = {
-  ErroDeAcessoInvestimentos, ligado, pareceresSolicitados, parecerJuridicoAprovado,
+  ErroDeAcessoInvestimentos, ligado, pareceresSolicitados,
+  DECLARACAO_USO_PESSOAL_VERSAO, DECLARACAO_USO_PESSOAL_TEXTO,
   estadoPareceres, estado, exigir, conceder, revogar, mandatos, fontes, cobertura, resumo,
 };

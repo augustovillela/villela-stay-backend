@@ -75,18 +75,34 @@ function desativarPosicao(tenant, usuario, id) {
   return { ok: true };
 }
 
-function ativar(tenant, usuario, { motivo = '' } = {}) {
+function ativar(tenant, usuario, { motivo = '', aceiteUsoPessoal = false, declaracaoVersao = '' } = {}) {
   const estado = acesso.exigir(tenant, usuario);
   if (!tenancy.mfaVerificado()) throw new ErroRelatorioInvestimentos('Confirme a ativação com seu segundo fator.', 403);
   if (!estado.pareceres.habilitados) {
-    throw new ErroRelatorioInvestimentos('Os pareceres privados dependem das flags de habilitação e da validação jurídica registrada.', 409, estado.pareceres);
+    throw new ErroRelatorioInvestimentos('Os pareceres privados não estão habilitados para este usuário.', 409, estado.pareceres);
+  }
+  if (aceiteUsoPessoal !== true || declaracaoVersao !== acesso.DECLARACAO_USO_PESSOAL_VERSAO) {
+    throw new ErroRelatorioInvestimentos('Confirme a declaração de uso pessoal exclusivo do CEO.', 400, {
+      declaracaoVersao: acesso.DECLARACAO_USO_PESSOAL_VERSAO,
+    });
   }
   const justificativa = String(motivo || '').trim();
   if (!justificativa) throw new ErroRelatorioInvestimentos('Registre o motivo da ativação.', 400);
-  const config = repo.ativarRelatoriosInvestimentos({ destinatarioId: usuario.id, hora: HORA });
+  const config = repo.ativarRelatoriosInvestimentos({
+    destinatarioId: usuario.id,
+    hora: HORA,
+    declaracaoVersao: acesso.DECLARACAO_USO_PESSOAL_VERSAO,
+  });
   auditoria.registrar('investimento.relatorios_diarios_ativar', {
     objetoTipo: 'usuario', objetoId: usuario.id, motivo: justificativa,
-    detalhe: { hora: HORA, timezone: TZ, somenteCeo: true, operacoes: false },
+    detalhe: {
+      hora: HORA, timezone: TZ, somenteCeo: true, operacoes: false,
+      declaracaoUsoPessoal: {
+        versao: acesso.DECLARACAO_USO_PESSOAL_VERSAO,
+        texto: acesso.DECLARACAO_USO_PESSOAL_TEXTO,
+      },
+      parecerJuridicoDeclarado: false,
+    },
   });
   return apresentarConfig(config);
 }
@@ -99,6 +115,9 @@ function apresentarConfig(c) {
     ultimoDia: c.relatorio_diario_ultimo_dia || '',
     destinatarioId: c.relatorio_diario_destinatario_id || '',
     ativadosEm: c.relatorios_ativados_em || '',
+    declaracaoUsoPessoalVersao: c.declaracao_uso_pessoal_versao || '',
+    declaracaoUsoPessoalEm: c.declaracao_uso_pessoal_em || '',
+    declaracaoUsoPessoalPor: c.declaracao_uso_pessoal_por || '',
   } : { ativos: false, hora: HORA, timezone: TZ, ultimoDia: '', destinatarioId: '', ativadosEm: '' };
 }
 
