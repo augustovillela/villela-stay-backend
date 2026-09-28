@@ -529,9 +529,9 @@ async function rodar({ t, secao, req, assert, PROFESSORES }) {
     // O texto da tela é parte do contrato honesto (Q5). Se sumir, o
     // produto passa a prometer com o silêncio o que decidiu não fazer.
     const r = await req('GET', '/music/escolas.js', { cru: true });
-    assert.ok(/NAO contam como falta/.test(r.texto), 'aula sem chamada não pode virar falta na tela');
-    assert.ok(/correcao com autor e data/.test(r.texto), 'a tela tem de dizer de onde vem a nota');
-    assert.ok(/So entra musica que e sua/.test(r.texto), 'a trava do acervo precisa aparecer na tela');
+    assert.ok(/NÃO contam como falta/.test(r.texto), 'aula sem chamada não pode virar falta na tela');
+    assert.ok(/correção com autor e data/.test(r.texto), 'a tela tem de dizer de onde vem a nota');
+    assert.ok(/Só entra música que é sua/.test(r.texto), 'a trava do acervo precisa aparecer na tela');
     assert.ok(/LGPD, art. 14/.test(r.texto), 'a matrícula de menor tem de explicar o responsável');
   });
 

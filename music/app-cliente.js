@@ -16,8 +16,10 @@
 // depois de responder — por isso não existe "resposta certa" em lugar
 // nenhum deste arquivo.
 //
-// ⚠️ Este arquivo é ASCII de propósito. Caractere fora do plano básico
-// (o glifo da clave de sol, por exemplo) entra como escape `\u{...}`.
+// ⚠️ Acentos do português são permitidos neste arquivo. Só caractere
+// fora do plano básico (emoji, o glifo da clave de sol...) entra como
+// escape `\u{...}` — ele foi ASCII puro até 28/09/2026, quando a tela
+// aparecia sem til, circunflexo e cedilha.
 // Foi assim que virou depois de um script de edição truncar o arquivo
 // ao falhar na codificação de um par surrogado — e `node --check` passar
 // no arquivo vazio, porque arquivo vazio é JavaScript válido.
@@ -62,7 +64,7 @@ const JS = `
     }).catch(function (e) {
       // Rede caida nao e erro do servidor. Dizer "falhou" sem dizer o que
       // falhou e o que faz o usuario achar que o produto quebrou.
-      if (e instanceof TypeError) throw new Error('Nao consegui falar com o servidor. Verifique a conexao.');
+      if (e instanceof TypeError) throw new Error('Não consegui falar com o servidor. Verifique a conexão.');
       throw e;
     });
   }
@@ -121,13 +123,14 @@ const JS = `
     estudar: '\u{1F4DA}', cifras: '\u{1F3B8}', praticar: '\u{1F3AF}', biblioteca: '\u{1F4D6}',
     repertorios: '\u{1F5C2}\u{FE0F}', tarefas: '\u{1F4DD}', progresso: '\u{1F4C8}',
     minhas_turmas: '\u{1F465}', professor: '\u{1F9D1}\u{200D}\u{1F3EB}', escola: '\u{1F3EB}', conta: '\u{1F464}',
+    cursos: '\u{1F393}',
   };
 
   // ---- navegacao -------------------------------------------------
   var ABAS = [
     ['estudar', 'Estudar'], ['cifras', 'Cifras'], ['praticar', 'Praticar'],
     ['biblioteca', 'Biblioteca'], ['repertorios', 'Repertórios'],
-    ['tarefas', 'Tarefas'], ['progresso', 'Meu progresso'],
+    ['tarefas', 'Tarefas'], ['progresso', 'Meu progresso'], ['cursos', 'Cursos'],
     ['minhas_turmas', 'Minhas turmas'], ['professor', 'Professor'], ['escola', 'Escola'],
     ['conta', 'Minha conta'],
   ];
@@ -150,8 +153,16 @@ const JS = `
       }));
     });
   }
+  // A aba vai para o endereço (#praticar, #tarefas...): F5 e link copiado
+  // reabrem nela. As Cifras cuidam do proprio endereço (#cifras/acordes,
+  // #cifra=ID), por isso aqui só se garante o prefixo.
+  function gravarAba(aba) {
+    var h = '#' + aba;
+    if (aba === 'cifras' && /^#(cifras|cifra=|musica=|banda=|setlist=|convite=|vivo=)/.test(location.hash)) return;
+    try { if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h); } catch (_) {}
+  }
   function ir(aba) {
-    estado.aba = aba; pintarMenu(); carregando();
+    estado.aba = aba; gravarAba(aba); pintarMenu(); carregando();
     var telas = {
       estudar: verEstudar, praticar: verPraticar, tarefas: verTarefas,
       progresso: verProgresso, professor: verProfessor,
@@ -165,7 +176,7 @@ const JS = `
       // Escola e turma vivem em /music/escolas.js — a Fase 3 inteira.
       escola: function () { window.MusiqueEscolas.verEscolas(); },
       minhas_turmas: function () { window.MusiqueEscolas.verMinhasTurmas(); },
-      conta: verConta,
+      conta: verConta, cursos: verCursos,
     };
     (telas[aba] || verEstudar)();
   }
@@ -180,37 +191,37 @@ const JS = `
 
       var seq = d.estatisticas.sequencia_dias;
       c.appendChild(el('div', { class: 'kpis', html:
-        cartao(seq, seq === 1 ? 'dia seguido' : 'dias seguidos', seq ? 'continue amanha para nao zerar' : 'comece hoje', '\u{1F525}') +
-        cartao(d.estatisticas.minutos_praticados, 'minutos em 30 dias', d.estatisticas.sessoes + ' sessao(oes)', '\u{23F1}\u{FE0F}') +
-        cartao(d.estatisticas.tentativas, 'exercicios feitos', d.estatisticas.acertos + ' certos', '\u{2705}') +
+        cartao(seq, seq === 1 ? 'dia seguido' : 'dias seguidos', seq ? 'continue amanhã para não zerar' : 'comece hoje', '\u{1F525}') +
+        cartao(d.estatisticas.minutos_praticados, 'minutos em 30 dias', d.estatisticas.sessoes + ' sessão(ões)', '\u{23F1}\u{FE0F}') +
+        cartao(d.estatisticas.tentativas, 'exercícios feitos', d.estatisticas.acertos + ' certos', '\u{2705}') +
         cartao(d.tarefas, 'tarefa(s) do professor', d.tarefas ? 'veja em Tarefas' : 'nenhuma pendente', '\u{1F4DD}')
       }));
 
       if (!d.calibracao.calibrado) {
         c.appendChild(el('div', { class: 'alerta', html:
           '<b>Calibre o microfone.</b> ' + esc(d.calibracao.motivo) +
-          ' Sem isso, exercicios de canto, afinacao e ritmo continuam funcionando, mas o resultado sai como ' +
-          '<b>indicacao</b>, nao como nota. <button class="btn peq" id="b-calibrar">Calibrar agora</button>' }));
+          ' Sem isso, exercícios de canto, afinação e ritmo continuam funcionando, mas o resultado sai como ' +
+          '<b>indicação</b>, não como nota. <button class="btn peq" id="b-calibrar">Calibrar agora</button>' }));
         $('#b-calibrar').onclick = calibrar;
       }
 
       if (d.revisar_hoje.length) {
-        c.appendChild(el('h2', { txt: 'Para revisar hoje' }));
+        c.appendChild(el('h2', { txt: '\u{1F501} Para revisar hoje' }));
         c.appendChild(el('p', { class: 'sub', txt:
-          'A revisao volta no intervalo em que voce tende a esquecer - e o que faz o estudo render mais do que repetir tudo todo dia.' }));
+          'A revisão volta no intervalo em que você tende a esquecer - é o que faz o estudo render mais do que repetir tudo todo dia.' }));
         var lista = el('div', { class: 'grade' });
         d.revisar_hoje.forEach(function (r) {
           var tipo = r.tipos[0], v = familiaDe(r.familia);
           lista.appendChild(el('button', {
             class: 'item com-ico', onclick: function () { praticarTipo(tipo); },
             style: 'border-left:4px solid ' + v.cor,
-            html: '<div class="topo-item">' + icone(v) + '<b>' + esc(nomeFamilia(r.familia)) + '</b></div><span>nivel ' + r.nivel + ' - toque para praticar</span>',
+            html: '<div class="topo-item">' + icone(v) + '<b>' + esc(nomeFamilia(r.familia)) + '</b></div><span>nível ' + r.nivel + ' - toque para praticar</span>',
           }));
         });
         c.appendChild(lista);
       }
 
-      c.appendChild(el('h2', { txt: 'Trilhas' }));
+      c.appendChild(el('h2', { txt: '\u{1F9ED} Trilhas' }));
       var g = el('div', { class: 'grade' });
       d.trilhas.forEach(function (t) {
         var pc = t.progresso.total ? Math.round(100 * t.progresso.item_atual / t.progresso.total) : 0;
@@ -229,7 +240,7 @@ const JS = `
             '<span>' + esc(t.descricao) + '</span>' +
             (passos ? '<div class="passos">' + passos + '</div>' : '') +
             '<div class="barra"><i style="width:' + pc + '%;background:' + v.cor + '"></i></div>' +
-            '<span class="peq">' + (t.progresso.concluida_em ? '\u{1F3C6} concluida' : t.progresso.item_atual + ' de ' + t.progresso.total + ' etapas') + '</span>',
+            '<span class="peq">' + (t.progresso.concluida_em ? '\u{1F3C6} concluída' : t.progresso.item_atual + ' de ' + t.progresso.total + ' etapas') + '</span>',
         }));
       });
       c.appendChild(g);
@@ -251,8 +262,8 @@ const JS = `
       var todos = ligados.concat((r.cursos || []).map(function (x) { return { curso: x, motivo: '' }; }))
         .filter(function (x) { if (vistos[x.curso.slug]) return false; vistos[x.curso.slug] = 1; return true; });
       if (!todos.length) return;
-      c.appendChild(el('h2', { txt: 'Cursos na Academia Villela' }));
-      c.appendChild(el('p', { class: 'sub', txt: 'Os cursos ficam na Academia, que tem conta propria. Abrem em outra aba.' }));
+      c.appendChild(el('h2', { txt: '\u{1F393} Cursos na Academia Villela' }));
+      c.appendChild(el('p', { class: 'sub', txt: 'Os cursos ficam na Academia, que tem conta própria. Abrem em outra aba.' }));
       var g = el('div', { class: 'grade' });
       todos.forEach(function (x) {
         var a = el('a', { class: 'item com-ico', href: x.curso.url, target: '_blank', rel: 'noopener',
@@ -267,25 +278,59 @@ const JS = `
   }
 
   // =================================================================
+  // CURSOS: os cursos de música publicados na Academia Villela (ADR-0011:
+  // o curso é o elo entre os dois sistemas). Compra e aulas ficam lá, com
+  // a conta de lá; aqui o Musique mostra, indica e liga à trilha.
+  // =================================================================
+  function verCursos() {
+    Promise.all([api('GET', '/cursos'), api('GET', '/estudo').catch(function () { return { trilhas: [] }; })]).then(function (rs) {
+      var c = $('#corpo'); c.innerHTML = '';
+      c.appendChild(el('h2', { txt: '\u{1F393} Cursos de música' }));
+      c.appendChild(el('p', { class: 'sub', txt: 'Cursos em vídeo da Academia Villela, escolhidos para quem estuda no Musique. ' +
+        'A compra e as aulas acontecem na Academia, que tem conta própria; os links abrem em outra aba.' }));
+      var ligados = {};
+      (rs[1].trilhas || []).forEach(function (t) { if (t.curso_academia) ligados[t.curso_academia.slug] = t.titulo; });
+      var cursos = rs[0].cursos || [];
+      if (!cursos.length) {
+        c.appendChild(el('div', { class: 'card vazio-card', html:
+          '<div class="vazio-ico">\u{1F393}</div><h3>Nenhum curso de música publicado ainda</h3>' +
+          '<p class="sub">Assim que a Academia publicar um curso na categoria Música, ele aparece aqui, com a trilha do Musique que ele complementa.</p>' +
+          '<a class="btn sec" href="https://academia.villelastay.com.br/academy" target="_blank" rel="noopener">Conhecer a Academia Villela</a>' }));
+        return;
+      }
+      var g = el('div', { class: 'grade' });
+      cursos.forEach(function (k) {
+        var preco = k.preco_centavos ? 'R$ ' + (k.preco_centavos / 100).toFixed(2).replace('.', ',') : '';
+        g.appendChild(el('a', { class: 'item com-ico', href: k.url, target: '_blank', rel: 'noopener', style: 'border-left:4px solid #C9A227',
+          html: '<div class="topo-item">' + icone({ ico: '\u{1F393}', fundo: '#FDF6E3', cor: '#8A6D12' }) + '<b>' + esc(k.titulo) + '</b></div>' +
+            (k.subtitulo ? '<span>' + esc(k.subtitulo) + '</span>' : '') +
+            (ligados[k.slug] ? '<span class="chip">\u{1F9ED} complementa a trilha ' + esc(ligados[k.slug]) + '</span>' : '') +
+            '<span class="peq">' + [k.produtor ? 'com ' + esc(k.produtor) : '', preco].filter(Boolean).join(' · ') + '</span>' }));
+      });
+      c.appendChild(g);
+    }).catch(function (e) { $('#corpo').innerHTML = ''; erro(e.message); });
+  }
+
+  // =================================================================
   // MINHA CONTA (ADR-0011): conta propria do Musique
   // =================================================================
   function verConta() {
     api('GET', '/conta').then(function (d) {
       var c = $('#corpo'); c.innerHTML = '';
-      c.appendChild(el('h2', { txt: 'Minha conta' }));
+      c.appendChild(el('h2', { txt: '\u{1F464} Minha conta' }));
       c.appendChild(el('p', { class: 'sub', txt: d.conta.nome + ' - ' + d.conta.email }));
 
       var em = el('div', { class: 'cartao-conta' });
       if (d.conta.email_verificado) {
-        em.innerHTML = '<h3>E-mail</h3><p class="sub">Confirmado. Voce pode receber convites de banda, professor e escola.</p>';
+        em.innerHTML = '<h3>\u{2709}\u{FE0F} E-mail</h3><p class="sub">Confirmado. Você pode receber convites de banda, professor e escola.</p>';
       } else {
-        em.innerHTML = '<h3>Confirme o seu e-mail</h3><p class="sub">Enviamos um link para ' + esc(d.conta.email) +
-          '. Enquanto nao confirmar, ninguem consegue te convidar para banda, tarefa ou escola.</p>' +
+        em.innerHTML = '<h3>\u{2709}\u{FE0F} Confirme o seu e-mail</h3><p class="sub">Enviamos um link para ' + esc(d.conta.email) +
+          '. Enquanto não confirmar, ninguém consegue te convidar para banda, tarefa ou escola.</p>' +
           '<button class="btn peq" id="em-reenviar">Mandar o link de novo</button>';
       }
       c.appendChild(em);
       if ($('#em-reenviar')) $('#em-reenviar').onclick = function () {
-        api('POST', '/conta/reenviar-verificacao').then(function () { aviso('Link enviado. Confira tambem a caixa de spam.'); })
+        api('POST', '/conta/reenviar-verificacao').then(function () { aviso('Link enviado. Confira também a caixa de spam.'); })
           .catch(function (e) { erro(e.message); });
       };
 
@@ -294,29 +339,29 @@ const JS = `
       pintar2fa(fa, d.dois_fatores);
 
       var fs = el('div', { class: 'cartao-conta' });
-      fs.innerHTML = '<h3>Trocar a senha</h3>' +
+      fs.innerHTML = '<h3>\u{1F511} Trocar a senha</h3>' +
         '<label>Senha atual<input type="password" id="ct-atual" autocomplete="current-password"></label>' +
         '<label>Senha nova (8 ou mais caracteres)<input type="password" id="ct-nova" autocomplete="new-password"></label>' +
         '<button class="btn peq" id="ct-trocar">Trocar a senha</button>';
       c.appendChild(fs);
       $('#ct-trocar').onclick = function () {
         api('POST', '/conta/senha', { senha_atual: $('#ct-atual').value, senha_nova: $('#ct-nova').value })
-          .then(function () { $('#ct-atual').value = ''; $('#ct-nova').value = ''; aviso('Senha trocada. As outras sessoes abertas foram encerradas.'); })
+          .then(function () { $('#ct-atual').value = ''; $('#ct-nova').value = ''; aviso('Senha trocada. As outras sessões abertas foram encerradas.'); })
           .catch(function (e) { erro(e.message); });
       };
 
       if (d.academia.disponivel) {
         var ac = el('div', { class: 'cartao-conta' });
         if (d.academia.vinculada) {
-          ac.innerHTML = '<h3>Professor pela Academia</h3><p class="sub">Sua conta de produtor da Academia esta vinculada' +
-            (d.academia.produtor ? ' e aprovada: a area de Professor esta liberada.' : ', mas o perfil de produtor nao esta aprovado agora.') + '</p>' +
-            '<button class="btn peq sec" id="ac-desv">Desfazer o vinculo</button>';
+          ac.innerHTML = '<h3>\u{1F393} Professor pela Academia</h3><p class="sub">Sua conta de produtor da Academia está vinculada' +
+            (d.academia.produtor ? ' e aprovada: a área de Professor está liberada.' : ', mas o perfil de produtor não está aprovado agora.') + '</p>' +
+            '<button class="btn peq sec" id="ac-desv">Desfazer o vínculo</button>';
         } else {
-          ac.innerHTML = '<h3>Da aula e vende curso na Academia?</h3>' +
-            '<p class="sub">Vincule a sua conta de PRODUTOR da Academia para liberar a area de Professor. A senha e conferida la e nao fica guardada aqui. Para estudar, nao precisa.</p>' +
+          ac.innerHTML = '<h3>\u{1F393} Dá aula e vende curso na Academia?</h3>' +
+            '<p class="sub">Vincule a sua conta de PRODUTOR da Academia para liberar a área de Professor. A senha é conferida lá e não fica guardada aqui. Para estudar, não precisa.</p>' +
             '<label>E-mail da Academia<input type="email" id="ac-email"></label>' +
             '<label>Senha da Academia<input type="password" id="ac-senha" autocomplete="off"></label>' +
-            '<label>Codigo do autenticador (so se usar na Academia)<input type="text" id="ac-cod" inputmode="numeric" autocomplete="off"></label>' +
+            '<label>Código do autenticador (só se usar na Academia)<input type="text" id="ac-cod" inputmode="numeric" autocomplete="off"></label>' +
             '<button class="btn peq" id="ac-vinc">Vincular</button>';
         }
         c.appendChild(ac);
@@ -329,7 +374,7 @@ const JS = `
         };
       }
 
-      var sair = el('button', { class: 'btn sec', txt: 'Sair do Musique', onclick: function () {
+      var sair = el('button', { class: 'btn sec', txt: '\u{1F6AA} Sair do Musique', onclick: function () {
         fetch('/music/api/conta/sair', { method: 'POST' }).then(function () { location.href = '/music'; });
       } });
       c.appendChild(el('div', { class: 'cartao-conta' }, [sair]));
@@ -339,34 +384,34 @@ const JS = `
   // Duas etapas: opcional, recomendada para professor e escola.
   function pintar2fa(caixa, df) {
     if (df.ativo) {
-      caixa.innerHTML = '<h3>Verificacao em duas etapas: ligada</h3>' +
-        '<p class="sub">Ao entrar, alem da senha, o Musique pede o codigo do aplicativo autenticador. Codigos de recuperacao ainda validos: <b>' + df.codigos_restantes + '</b>.</p>' +
+      caixa.innerHTML = '<h3>\u{1F6E1}\u{FE0F} Verificação em duas etapas: ligada</h3>' +
+        '<p class="sub">Ao entrar, além da senha, o Musique pede o código do aplicativo autenticador. Códigos de recuperação ainda válidos: <b>' + df.codigos_restantes + '</b>.</p>' +
         '<label>Senha<input type="password" id="fa-senha" autocomplete="current-password"></label>' +
-        '<label>Codigo do aplicativo (ou de recuperacao)<input type="text" id="fa-cod" inputmode="numeric" autocomplete="one-time-code"></label>' +
+        '<label>Código do aplicativo (ou de recuperação)<input type="text" id="fa-cod" inputmode="numeric" autocomplete="one-time-code"></label>' +
         '<button class="btn peq sec" id="fa-desligar">Desligar</button>';
       $('#fa-desligar').onclick = function () {
         api('POST', '/conta/2fa/desativar', { senha: $('#fa-senha').value, codigo: $('#fa-cod').value })
-          .then(function () { aviso('Verificacao em duas etapas desligada.'); verConta(); }).catch(function (e) { erro(e.message); });
+          .then(function () { aviso('Verificação em duas etapas desligada.'); verConta(); }).catch(function (e) { erro(e.message); });
       };
       return;
     }
-    caixa.innerHTML = '<h3>Verificacao em duas etapas</h3>' +
-      '<p class="sub">Opcional. Protege a conta mesmo que alguem descubra a sua senha. Voce vai precisar de um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, 1Password...).</p>' +
+    caixa.innerHTML = '<h3>\u{1F6E1}\u{FE0F} Verificação em duas etapas</h3>' +
+      '<p class="sub">Opcional. Protege a conta mesmo que alguém descubra a sua senha. Você vai precisar de um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, 1Password...).</p>' +
       '<label>Senha atual, para ligar<input type="password" id="fa-senha" autocomplete="current-password"></label>' +
       '<button class="btn peq" id="fa-iniciar">Ligar</button>';
     $('#fa-iniciar').onclick = function () {
       api('POST', '/conta/2fa/iniciar', { senha: $('#fa-senha').value }).then(function (r) {
         caixa.innerHTML = '<h3>Leia o QR no aplicativo autenticador</h3>' +
           '<div class="qr-2fa">' + r.qr_svg + '</div>' +
-          '<p class="sub">Sem camera? Digite esta chave no aplicativo: <code>' + esc(r.segredo) + '</code></p>' +
-          '<label>Codigo de 6 digitos que apareceu no aplicativo<input type="text" id="fa-cod" inputmode="numeric" autocomplete="one-time-code"></label>' +
+          '<p class="sub">Sem câmera? Digite esta chave no aplicativo: <code>' + esc(r.segredo) + '</code></p>' +
+          '<label>Código de 6 dígitos que apareceu no aplicativo<input type="text" id="fa-cod" inputmode="numeric" autocomplete="one-time-code"></label>' +
           '<button class="btn peq" id="fa-ativar">Confirmar e ligar</button>';
         $('#fa-ativar').onclick = function () {
           api('POST', '/conta/2fa/ativar', { codigo: $('#fa-cod').value }).then(function (r2) {
-            caixa.innerHTML = '<h3>Ligada. Guarde os codigos de recuperacao</h3>' +
-              '<p class="sub">Cada codigo abre a conta UMA vez se voce perder o celular. Guarde num lugar seguro: eles nao aparecem de novo.</p>' +
+            caixa.innerHTML = '<h3>Ligada. Guarde os códigos de recuperação</h3>' +
+              '<p class="sub">Cada código abre a conta UMA vez se você perder o celular. Guarde num lugar seguro: eles não aparecem de novo.</p>' +
               '<pre class="codigos-rec">' + r2.codigos_recuperacao.map(esc).join('<br>') + '</pre>' +
-              '<button class="btn peq" id="fa-ok">Ja guardei</button>';
+              '<button class="btn peq" id="fa-ok">Já guardei</button>';
             $('#fa-ok').onclick = verConta;
           }).catch(function (e) { erro(e.message); });
         };
@@ -380,7 +425,7 @@ const JS = `
       if (d.conta.email_verificado || $('#faixa-email')) return;
       var f = el('div', { class: 'alerta', id: 'faixa-email', html:
         '<b>Confirme o seu e-mail.</b> Enviamos um link para ' + esc(d.conta.email) +
-        '. Sem isso, ninguem consegue te convidar para banda, tarefa ou escola. <button class="btn peq" id="fx-conta">Ver em Minha conta</button>' });
+        '. Sem isso, ninguém consegue te convidar para banda, tarefa ou escola. <button class="btn peq" id="fx-conta">Ver em Minha conta</button>' });
       var m = $('#menu'); m.parentNode.insertBefore(f, m);
       $('#fx-conta').onclick = function () { ir('conta'); };
     }).catch(function () {});
@@ -393,7 +438,7 @@ const JS = `
   }
   function nomeFamilia(f) {
     return ({ intervalo: 'Intervalos', acorde: 'Acordes', escala: 'Escalas', leitura: 'Leitura',
-      ritmo: 'Ritmo', afinacao: 'Afinacao', ditado: 'Ditado', harmonia: 'Harmonia',
+      ritmo: 'Ritmo', afinacao: 'Afinação', ditado: 'Ditado', harmonia: 'Harmonia',
       melodia: 'Melodia' })[f] || f;
   }
 
@@ -409,22 +454,22 @@ const JS = `
   // =================================================================
   function calibrar() {
     var c = $('#corpo'); c.innerHTML = '';
-    c.appendChild(el('h2', { txt: 'Calibrar o microfone' }));
+    c.appendChild(el('h2', { txt: '\u{1F399}\u{FE0F} Calibrar o microfone' }));
     c.appendChild(el('p', { class: 'sub', txt:
-      'Fique em silencio por 3 segundos. Vou medir o ruido do seu ambiente para saber se da para medir o seu som com confianca.' }));
-    var estadoTxt = el('div', { class: 'alerta', txt: 'Pronto para comecar.' });
+      'Fique em silêncio por 3 segundos. Vou medir o ruído do seu ambiente para saber se dá para medir o seu som com confiança.' }));
+    var estadoTxt = el('div', { class: 'alerta', txt: 'Pronto para começar.' });
     c.appendChild(estadoTxt);
     var b = el('button', { class: 'btn', txt: 'Medir agora' });
     c.appendChild(b);
     b.onclick = function () {
       b.disabled = true;
-      estadoTxt.textContent = 'Medindo... fique em silencio.';
+      estadoTxt.textContent = 'Medindo... fique em silêncio.';
       A.medirRuido(3000).then(function (r) {
         return api('POST', '/calibracao', { ruido_db: r.db });
       }).then(function (d) {
         estadoTxt.className = 'alerta ' + (d.calibracao.microfone_ok ? 'bom' : 'ruim');
         estadoTxt.textContent = d.calibracao.microfone_ok
-          ? 'Pronto: ruido de ' + d.calibracao.ruido_db + ' dB. Seus exercicios com microfone podem valer nota.'
+          ? 'Pronto: ruído de ' + d.calibracao.ruido_db + ' dB. Seus exercícios com microfone podem valer nota.'
           : d.calibracao.aviso;
         b.disabled = false; b.textContent = 'Medir de novo';
       }).catch(function (e) {
@@ -441,8 +486,8 @@ const JS = `
     api('GET', '/exercicios/tipos').then(function (d) {
       estado.tipos = d.tipos;
       var c = $('#corpo'); c.innerHTML = '';
-      c.appendChild(el('h2', { txt: 'Praticar' }));
-      c.appendChild(el('p', { class: 'sub', txt: 'Escolha o que treinar. O nivel se ajusta ao seu desempenho.' }));
+      c.appendChild(el('h2', { txt: '\u{1F3AF} Praticar' }));
+      c.appendChild(el('p', { class: 'sub', txt: 'Escolha o que treinar. O nível se ajusta ao seu desempenho.' }));
       var g = el('div', { class: 'grade' });
       d.tipos.forEach(function (t) {
         var v = familiaDe(t.familia || t.id);
@@ -451,7 +496,7 @@ const JS = `
           style: 'border-left:4px solid ' + v.cor,
           html: '<div class="topo-item">' + icone(v) + '<b>' + esc(t.pt) + '</b></div><span>' + esc(t.contrato.mede) + '</span>' +
             (t.mic ? '<span class="chip">precisa de microfone</span>' : '') +
-            (t.contrato.pode_valer_nota ? '' : '<span class="chip alerta">so indicacao</span>'),
+            (t.contrato.pode_valer_nota ? '' : '<span class="chip alerta">só indicação</span>'),
         }));
       });
       c.appendChild(g);
@@ -476,7 +521,7 @@ const JS = `
 
     c.appendChild(el('div', { class: 'cabec-ex', html:
       '<span class="chip" style="background:' + familiaDe(it.familia).fundo + ';color:' + familiaDe(it.familia).cor + '">' +
-      familiaDe(it.familia).ico + ' ' + esc(nomeFamilia(it.familia)) + ' - nivel ' + it.nivel + '</span>' }));
+      familiaDe(it.familia).ico + ' ' + esc(nomeFamilia(it.familia)) + ' - nível ' + it.nivel + '</span>' }));
     c.appendChild(el('h2', { class: 'enunciado', txt: it.enunciado }));
     if (it.dica) c.appendChild(el('p', { class: 'sub', txt: it.dica }));
 
@@ -486,8 +531,8 @@ const JS = `
       '<b>O que vai ser medido</b><p>' + esc(ct.mede) + '</p>' +
       '<p class="peq">' + esc(ct.tolerancia_texto) + '</p>' +
       '<p class="peq">' + (ct.pode_valer_nota
-        ? 'Este exercicio pode valer nota.'
-        : 'Este exercicio vale como treino, nao como nota.') +
+        ? 'Este exercício pode valer nota.'
+        : 'Este exercício vale como treino, não como nota.') +
       (ct.aviso_calibracao ? ' <b>' + esc(ct.aviso_calibracao) + '</b>' : '') + '</p>' }));
 
     if (it.tocar) {
@@ -620,28 +665,28 @@ const JS = `
       .forEach(function (b) { b.disabled = true; });
 
     var classe = r.acerto ? 'bom' : 'ruim';
-    var titulo = r.acerto ? 'Acertou' : 'Ainda nao';
+    var titulo = r.acerto ? 'Acertou' : 'Ainda não';
     var html = '<div class="alerta ' + classe + '"><b>' + titulo + '</b><p>' + esc(r.explicacao) + '</p></div>';
 
     if (!r.vale_nota) {
-      html += '<div class="alerta"><b>Isto foi uma indicacao, nao uma nota.</b><ul>' +
+      html += '<div class="alerta"><b>Isto foi uma indicação, não uma nota.</b><ul>' +
         (r.ressalvas || []).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
     }
     html += '<details class="criterio"><summary>Como foi medido</summary>' +
       '<p>' + esc(r.criterio) + '</p>' +
       '<pre>' + esc(JSON.stringify(r.medida, null, 1)) + '</pre>' +
-      '<p class="peq">Confianca da medida: ' + Math.round(r.confianca * 100) + '%</p></details>';
+      '<p class="peq">Confiança da medida: ' + Math.round(r.confianca * 100) + '%</p></details>';
     if (r.proxima_revisao_dias > 0) {
       html += '<p class="peq">Volto a te perguntar isto em ' + r.proxima_revisao_dias + ' dia(s).</p>';
     }
     alvo.innerHTML = html;
 
     var acoes = el('div', { class: 'linha', style: 'margin-top:14px' });
-    acoes.appendChild(el('button', { class: 'btn', txt: 'Proximo',
+    acoes.appendChild(el('button', { class: 'btn', txt: 'Próximo',
       onclick: function () { estado.trilhaSlug = null; praticarTipo(estado.item.tipo); } }));
     acoes.appendChild(el('button', { class: 'btn sec', txt: 'Parar por hoje', onclick: encerrarSessao }));
     if (!r.acerto) {
-      acoes.appendChild(el('button', { class: 'btn sec', txt: 'Discordo da correcao',
+      acoes.appendChild(el('button', { class: 'btn sec', txt: 'Discordo da correção',
         onclick: function () { contestar(r.tentativa_id); } }));
     }
     alvo.appendChild(acoes);
@@ -655,10 +700,10 @@ const JS = `
   }
 
   function contestar(tentativaId) {
-    var motivo = prompt('O que voce acha que ficou errado na correcao?');
+    var motivo = prompt('O que você acha que ficou errado na correção?');
     if (!motivo) return;
     api('POST', '/contestacoes', { tentativa_id: tentativaId, motivo: motivo })
-      .then(function () { aviso('Contestacao registrada. Um professor vai revisar.'); })
+      .then(function () { aviso('Contestação registrada. Um professor vai revisar.'); })
       .catch(function (e) { erro(e.message); });
   }
 
@@ -668,10 +713,10 @@ const JS = `
   function verTarefas() {
     api('GET', '/tarefas').then(function (d) {
       var c = $('#corpo'); c.innerHTML = '';
-      c.appendChild(el('h2', { txt: 'Tarefas do professor' }));
+      c.appendChild(el('h2', { txt: '\u{1F4DD} Tarefas do professor' }));
       if (!d.tarefas.length) {
         c.appendChild(el('p', { class: 'vazio', txt:
-          'Nenhuma tarefa por enquanto. Tarefas aparecem aqui quando um professor atribui uma a voce.' }));
+          'Nenhuma tarefa por enquanto. Tarefas aparecem aqui quando um professor atribui uma a você.' }));
         return;
       }
       d.tarefas.forEach(function (t) { c.appendChild(cartaoTarefa(t)); });
@@ -683,8 +728,11 @@ const JS = `
     var box = el('div', { class: 'card' });
     var estados = { enviada: 'enviada, aguardando o professor', avaliada: 'avaliada',
       devolvida: 'o professor pediu para refazer' };
-    box.innerHTML = '<h3>' + esc(t.titulo) + '</h3>' +
-      (t.prazo ? '<span class="chip">ate ' + esc(t.prazo) + '</span>' : '') +
+    var VIS = { enviada: ['\u{23F3}', '#B45309'], avaliada: ['\u{2705}', '#15803D'], devolvida: ['\u{1F501}', '#BE123C'] };
+    var vis = VIS[sub && sub.status] || ['\u{1F195}', '#0369A1'];
+    box.style.borderLeft = '4px solid ' + vis[1];
+    box.innerHTML = '<h3>' + vis[0] + ' ' + esc(t.titulo) + '</h3>' +
+      (t.prazo ? '<span class="chip">até ' + esc(t.prazo) + '</span>' : '') +
       '<p>' + esc(t.descricao || '') + '</p>' +
       (t.instrucoes ? '<p class="sub">' + esc(t.instrucoes) + '</p>' : '') +
       (sub ? '<p class="peq">Estado: <b>' + esc(estados[sub.status] || sub.status) + '</b></p>' : '');
@@ -699,12 +747,12 @@ const JS = `
 
   function envioUI(t, sub) {
     var caixa = el('div', { class: 'envio' });
-    var txt = el('textarea', { rows: '2', placeholder: 'Um comentario para o professor (opcional)' });
+    var txt = el('textarea', { rows: '2', placeholder: 'Um comentário para o professor (opcional)' });
     if (sub && sub.texto) txt.value = sub.texto;
     caixa.appendChild(txt);
 
     var mediaId = (sub && sub.media_id) || '';
-    var info = el('div', { class: 'micinfo', txt: mediaId ? 'gravacao enviada' : '' });
+    var info = el('div', { class: 'micinfo', txt: mediaId ? 'gravação enviada' : '' });
     var bGravar = el('button', { class: 'btn sec', txt: t.exige_audio ? 'Gravar' : 'Gravar (opcional)' });
     var bEnviar = el('button', { class: 'btn', txt: sub ? 'Reenviar' : 'Enviar' });
     var pararGravacao = null;
@@ -715,7 +763,7 @@ const JS = `
       bGravar.textContent = 'Parar';
       gravarArquivo(info, function (fn) { pararGravacao = fn; }).then(function (id) {
         mediaId = id; pararGravacao = null;
-        info.textContent = 'Gravacao pronta.';
+        info.textContent = 'Gravação pronta.';
         bGravar.textContent = 'Regravar';
       }).catch(function (e) {
         pararGravacao = null;
@@ -766,26 +814,26 @@ const JS = `
       });
     }).catch(function (e) {
       throw new Error(e && e.name === 'NotAllowedError'
-        ? 'A permissao do microfone foi negada.' : (e.message || 'Nao consegui gravar.'));
+        ? 'A permissão do microfone foi negada.' : (e.message || 'Não consegui gravar.'));
     });
   }
 
   function verFeedback(submissaoId) {
     api('GET', '/submissoes/' + submissaoId).then(function (d) {
       var c = $('#corpo'); c.innerHTML = '';
-      c.appendChild(el('h2', { txt: 'Retorno do professor' }));
+      c.appendChild(el('h2', { txt: '\u{1F4AC} Retorno do professor' }));
       d.feedbacks.forEach(function (f) {
         c.appendChild(el('div', { class: 'card', html:
           (f.nota != null ? '<div class="nota">' + esc(f.nota) + '</div>' : '') +
           '<p>' + esc(f.texto || '') + '</p>' +
-          '<p class="peq">' + (f.origem === 'revisao' ? 'revisao de contestacao' : 'professor') +
+          '<p class="peq">' + (f.origem === 'revisao' ? 'revisão de contestação' : 'professor') +
           ' - ' + esc((f.criado_em || '').slice(0, 10)) + '</p>' }));
       });
       c.appendChild(el('button', { class: 'btn sec', txt: 'Discordo da nota', onclick: function () {
-        var motivo = prompt('Explique por que voce discorda:');
+        var motivo = prompt('Explique por que você discorda:');
         if (!motivo) return;
         api('POST', '/contestacoes', { submissao_id: submissaoId, motivo: motivo })
-          .then(function () { aviso('Contestacao registrada.'); })
+          .then(function () { aviso('Contestação registrada.'); })
           .catch(function (e) { erro(e.message); });
       } }));
       c.appendChild(el('button', { class: 'btn', txt: 'Voltar', onclick: verTarefas }));
@@ -799,36 +847,38 @@ const JS = `
     Promise.all([api('GET', '/estatisticas?dias=90'), api('GET', '/historico?n=30')]).then(function (rs) {
       var e = rs[0].estatisticas, h = rs[1].tentativas;
       var c = $('#corpo'); c.innerHTML = '';
-      c.appendChild(el('h2', { txt: 'Meu progresso' }));
+      c.appendChild(el('h2', { txt: '\u{1F4C8} Meu progresso' }));
       c.appendChild(el('div', { class: 'kpis', html:
-        cartao(e.tentativas, 'exercicios em 90 dias', '') +
-        cartao(e.acertos, 'acertos', e.tentativas ? Math.round(100 * e.acertos / e.tentativas) + '%' : '') +
-        cartao(e.valeram_nota, 'valeram nota', (e.tentativas - e.valeram_nota) + ' foram indicacao') +
-        cartao(e.minutos_praticados, 'minutos de pratica', '')
+        cartao(e.tentativas, 'exercícios em 90 dias', '', '\u{1F3AF}') +
+        cartao(e.acertos, 'acertos', e.tentativas ? Math.round(100 * e.acertos / e.tentativas) + '%' : '', '\u{2705}') +
+        cartao(e.valeram_nota, 'valeram nota', (e.tentativas - e.valeram_nota) + ' foram indicação', '\u{1F3C5}') +
+        cartao(e.minutos_praticados, 'minutos de prática', '', '\u{23F1}\u{FE0F}')
       }));
 
       var fams = Object.keys(e.por_familia);
       if (fams.length) {
-        c.appendChild(el('h3', { txt: 'Por habilidade' }));
+        c.appendChild(el('h3', { txt: '\u{1F9E9} Por habilidade' }));
         var tab = el('table', { class: 'tab' });
-        tab.innerHTML = '<thead><tr><th>Habilidade</th><th>Nivel</th><th>Acertos</th><th>Valeram nota</th></tr></thead><tbody>' +
+        tab.innerHTML = '<thead><tr><th>Habilidade</th><th>Nível</th><th>Acertos</th><th>Valeram nota</th></tr></thead><tbody>' +
           fams.map(function (f) {
             var x = e.por_familia[f];
-            return '<tr><td>' + esc(nomeFamilia(f)) + '</td><td>' + x.nivel + '</td><td>' +
+            var v = familiaDe(f), pc = x.total ? Math.round(100 * x.acertos / x.total) : 0;
+            return '<tr><td><span class="ico-mini" style="background:' + v.fundo + '">' + v.ico + '</span> ' + esc(nomeFamilia(f)) + '</td><td>' + x.nivel + '</td><td>' +
+              '<div class="barra" style="max-width:140px"><i style="width:' + pc + '%;background:' + v.cor + '"></i></div>' +
               x.acertos + '/' + x.total + '</td><td>' + x.com_nota + '</td></tr>';
           }).join('') + '</tbody>';
         c.appendChild(tab);
       }
 
-      c.appendChild(el('h3', { txt: 'Ultimos exercicios' }));
+      c.appendChild(el('h3', { txt: '\u{1F558} Últimos exercícios' }));
       if (!h.length) { c.appendChild(el('p', { class: 'vazio', txt: 'Nada por aqui ainda.' })); return; }
       var t2 = el('table', { class: 'tab' });
-      t2.innerHTML = '<thead><tr><th>Quando</th><th>Exercicio</th><th>Resultado</th></tr></thead><tbody>' +
+      t2.innerHTML = '<thead><tr><th>Quando</th><th>Exercício</th><th>Resultado</th></tr></thead><tbody>' +
         h.map(function (x) {
           return '<tr><td>' + esc((x.criado_em || '').slice(0, 10)) + '</td>' +
             '<td>' + esc(x.enunciado) + '</td>' +
-            '<td>' + (x.acerto ? 'certo' : 'errado') +
-            (x.vale_nota ? '' : ' <span class="chip alerta">indicacao</span>') + '</td></tr>';
+            '<td>' + (x.acerto ? '\u{2705} certo' : '\u{274C} errado') +
+            (x.vale_nota ? '' : ' <span class="chip alerta">indicação</span>') + '</td></tr>';
         }).join('') + '</tbody>';
       c.appendChild(t2);
     }).catch(function (e) { erro(e.message); });
@@ -840,14 +890,14 @@ const JS = `
   function verProfessor() {
     api('GET', '/prof/tarefas').then(function (d) {
       var c = $('#corpo'); c.innerHTML = '';
-      c.appendChild(el('h2', { txt: 'Minhas tarefas' }));
+      c.appendChild(el('h2', { txt: '\u{1F9D1}\u{200D}\u{1F3EB} Minhas tarefas' }));
       if (d.contestacoes_abertas) {
         c.appendChild(el('div', { class: 'alerta', html:
-          '<b>' + d.contestacoes_abertas + ' contestacao(oes) esperando voce.</b> ' +
+          '<b>' + d.contestacoes_abertas + ' contestação(ões) esperando você.</b> ' +
           '<button class="btn peq" id="b-cont">Ver</button>' }));
         $('#b-cont').onclick = verContestacoes;
       }
-      c.appendChild(el('button', { class: 'btn', txt: 'Nova tarefa', onclick: novaTarefa }));
+      c.appendChild(el('button', { class: 'btn', txt: '\u{2795} Nova tarefa', onclick: novaTarefa }));
 
       if (!d.tarefas.length) {
         c.appendChild(el('p', { class: 'vazio', txt: 'Nenhuma tarefa ativa.' }));
@@ -873,19 +923,19 @@ const JS = `
 
   function novaTarefa() {
     var c = $('#corpo'); c.innerHTML = '';
-    c.appendChild(el('h2', { txt: 'Nova tarefa' }));
-    var tit = el('input', { type: 'text', placeholder: 'Titulo (ex.: Escala de do em duas oitavas)' });
-    var desc = el('textarea', { rows: '2', placeholder: 'Descricao curta' });
-    var inst = el('textarea', { rows: '3', placeholder: 'Instrucoes para o aluno' });
+    c.appendChild(el('h2', { txt: '\u{2795} Nova tarefa' }));
+    var tit = el('input', { type: 'text', placeholder: 'Título (ex.: Escala de dó em duas oitavas)' });
+    var desc = el('textarea', { rows: '2', placeholder: 'Descrição curta' });
+    var inst = el('textarea', { rows: '3', placeholder: 'Instruções para o aluno' });
     var nota = el('input', { type: 'number', value: '10', min: '1', max: '100', step: '0.5' });
     var audio = el('input', { type: 'checkbox' }); audio.checked = true;
     var prazo = el('input', { type: 'date' });
-    c.appendChild(campo('Titulo', tit));
-    c.appendChild(campo('Descricao', desc));
-    c.appendChild(campo('Instrucoes', inst));
-    c.appendChild(campo('Nota maxima', nota));
+    c.appendChild(campo('Título', tit));
+    c.appendChild(campo('Descrição', desc));
+    c.appendChild(campo('Instruções', inst));
+    c.appendChild(campo('Nota máxima', nota));
     c.appendChild(campo('Prazo', prazo));
-    c.appendChild(el('label', { class: 'check' }, [audio, el('span', { txt: ' exige gravacao de audio' })]));
+    c.appendChild(el('label', { class: 'check' }, [audio, el('span', { txt: ' exige gravação de áudio' })]));
     c.appendChild(el('button', { class: 'btn', txt: 'Criar', onclick: function () {
       api('POST', '/prof/tarefas', { titulo: tit.value, descricao: desc.value, instrucoes: inst.value,
         nota_maxima: Number(nota.value), prazo: prazo.value, exige_audio: audio.checked })
@@ -899,16 +949,16 @@ const JS = `
   }
 
   function atribuir(t) {
-    var emails = prompt('E-mails dos alunos, separados por virgula:');
+    var emails = prompt('E-mails dos alunos, separados por vírgula:');
     if (!emails) return;
     api('POST', '/prof/tarefas/' + t.id + '/alunos', { emails: emails.split(/[,;\\s]+/).filter(Boolean) })
       .then(function (d) {
         // "Atribui 3 de 4" e informacao que o professor PRECISA ver -
         // errar um e-mail e comum, e o silencio faria o aluno sumir.
-        var msg = d.atribuidos + ' aluno(s) atribuido(s).';
+        var msg = d.atribuidos + ' aluno(s) atribuído(s).';
         if (d.nao_encontrados && d.nao_encontrados.length) {
-          msg += ' Nao achei conta para: ' + d.nao_encontrados.join(', ') +
-            '. Confira o e-mail, ou peca para a pessoa criar a conta primeiro.';
+          msg += ' Não achei conta para: ' + d.nao_encontrados.join(', ') +
+            '. Confira o e-mail, ou peça para a pessoa criar a conta primeiro.';
         }
         verProfessor();
         setTimeout(function () { aviso(msg); }, 60);
@@ -916,7 +966,7 @@ const JS = `
   }
 
   function arquivar(t) {
-    if (!confirm('Arquivar "' + t.titulo + '"?\\n\\nVoce deixa de ver os envios desta tarefa. Os alunos continuam vendo o proprio trabalho e a nota.')) return;
+    if (!confirm('Arquivar "' + t.titulo + '"?\\n\\nVocê deixa de ver os envios desta tarefa. Os alunos continuam vendo o próprio trabalho e a nota.')) return;
     api('POST', '/prof/tarefas/' + t.id + '/arquivar', {}).then(verProfessor).catch(function (e) { erro(e.message); });
   }
 
@@ -928,11 +978,11 @@ const JS = `
       d.submissoes.forEach(function (sub) {
         var box = el('div', { class: 'card' });
         box.innerHTML = '<p class="peq">' + esc((sub.enviada_em || '').slice(0, 16).replace('T', ' ')) +
-          ' - ' + esc(sub.status) + '</p><p>' + esc(sub.texto || '(sem comentario)') + '</p>';
+          ' - ' + esc(sub.status) + '</p><p>' + esc(sub.texto || '(sem comentário)') + '</p>';
         if (sub.media_id) {
-          box.appendChild(el('button', { class: 'btn sec', txt: 'Ouvir a gravacao', onclick: function () {
+          box.appendChild(el('button', { class: 'btn sec', txt: 'Ouvir a gravação', onclick: function () {
             api('GET', '/midias/' + sub.media_id).then(function (m) {
-              if (!m.url) return erro('A gravacao ainda esta sendo processada. Tente em instantes.');
+              if (!m.url) return erro('A gravação ainda está sendo processada. Tente em instantes.');
               box.appendChild(el('audio', { controls: 'controls', src: m.url }));
             }).catch(function (e) { erro(e.message); });
           } }));
@@ -964,7 +1014,7 @@ const JS = `
   function verContestacoes() {
     api('GET', '/prof/contestacoes').then(function (d) {
       var c = $('#corpo'); c.innerHTML = '';
-      c.appendChild(el('h2', { txt: 'Contestacoes' }));
+      c.appendChild(el('h2', { txt: '\u{2696}\u{FE0F} Contestações' }));
       if (!d.contestacoes.length) c.appendChild(el('p', { class: 'vazio', txt: 'Nenhuma aberta.' }));
       d.contestacoes.forEach(function (x) {
         var box = el('div', { class: 'card', html: '<p>' + esc(x.motivo) + '</p><p class="peq">' +
@@ -1000,13 +1050,24 @@ const JS = `
   // ---- boot ------------------------------------------------------
   // "Minha conta" no topo da pagina e um link para #conta: com o app ja
   // aberto, so o hashchange percebe o clique.
+  function abaDoHash() {
+    var h = String(location.hash || '').replace(/^#/, '');
+    if (/^(cifras|cifra=|musica=|banda=|setlist=|convite=|vivo=)/.test(h)) return 'cifras';
+    return ABAS.some(function (a) { return a[0] === h; }) ? h : '';
+  }
   function porHash() {
-    if (location.hash !== '#conta') return false;
-    history.replaceState(null, '', location.pathname + location.search);
-    ir('conta'); return true;
+    var a = abaDoHash();
+    if (!a || a === estado.aba) return false;
+    if (a === 'cifras') { estado.aba = 'cifras'; pintarMenu(); if (window.MusiqueCifras) window.MusiqueCifras.abrir(); return true; }
+    ir(a); return true;
   }
   window.addEventListener('hashchange', porHash);
-  if (!porHash()) ir('estudar');
+  var inicial = abaDoHash();
+  if (inicial === 'cifras') { estado.aba = 'cifras'; pintarMenu(); carregando(); }  // as Cifras abrem sozinhas pelo endereço
+  else ir(inicial || 'estudar');
+  // Professor, escola e turmas só aparecem no menu para quem tem o papel:
+  // vindo direto por F5, o papel ainda não foi lido — busca e repinta.
+  if (inicial && inicial !== 'estudar') api('GET', '/estudo').then(function (d) { estado.eu = d; pintarMenu(); }).catch(function () {});
   faixaEmail();
 })();
 `;

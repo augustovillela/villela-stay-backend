@@ -245,6 +245,19 @@
     C.corpo().appendChild(C.esqueleto(3));
     try { fn(arg, extra); } catch (e) { C.limpar().appendChild(C.estadoErro(e)); }
     try { global.scrollTo(0, 0); } catch (_) { /* sem janela (teste) */ }
+    C.gravarNoEndereco(tela, arg);
+  };
+
+  // O endereço da página guarda ONDE a pessoa está, para o F5 (e o link
+  // copiado) reabrir no mesmo lugar: #cifras/acordes, #cifra=ID, #setlist=ID…
+  // replaceState, e não pushState: não enche o "voltar" do navegador.
+  var COM_ID = { cifra: 'cifra', musica: 'musica', banda: 'banda', setlist: 'setlist' };
+  C.gravarNoEndereco = function (tela, arg) {
+    var h;
+    if (COM_ID[tela] && arg && typeof arg === 'string') h = '#' + COM_ID[tela] + '=' + arg;
+    else if (TELAS.some(function (t) { return t[0] === tela; })) h = tela === 'inicio' ? '#cifras' : '#cifras/' + tela;
+    else return;                               // editor, prévia, convite, maestro: telas de passagem
+    try { if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h); } catch (_) { /* teste */ }
   };
 
   /** Entrada pela aba "Cifras" do app. */
@@ -268,6 +281,8 @@
 
   function rotearHash() {
     var h = String(location.hash || '').replace(/^#/, '');
+    var sub = h.match(/^cifras\/([a-z_]+)$/);
+    if (sub && C.telas[sub[1]]) { C.ir(sub[1]); return true; }
     var m = h.match(/^(cifra|musica|banda|convite|vivo|setlist)=([\w-]+)/);
     if (!m) return false;
     history.replaceState(null, '', location.pathname + location.search);
@@ -280,7 +295,7 @@
   // Quem chega por link direto (#cifra=..., #convite=...) cai nas Cifras.
   function entradaDireta() {
     if (/^#(cifra|musica|banda|convite|vivo|setlist)=/.test(location.hash) && U.ir) U.ir('cifras');
-    else if (location.hash === '#cifras' && U.ir) { history.replaceState(null, '', location.pathname + location.search); U.ir('cifras'); }
+    else if (/^#cifras(\/[a-z_]+)?$/.test(location.hash) && U.ir) U.ir('cifras');
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', entradaDireta); else setTimeout(entradaDireta, 0);
   setTimeout(function () { C.sincronizar(); }, 1500);

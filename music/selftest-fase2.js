@@ -663,7 +663,7 @@ async function rodar({ t, secao, req, assert }) {
     const b = await req('GET', '/music/biblioteca.js', { cru: true });
     assert.ok(/wakeLock/.test(b.texto), 'celular que apaga no meio do refrão é pior que não ter app');
     assert.ok(/localStorage/.test(b.texto), 'o setlist tem de caber no aparelho');
-    assert.ok(/copia guardada neste aparelho/.test(b.texto),
+    assert.ok(/cópia guardada neste aparelho/.test(b.texto),
       'cache silencioso faz o músico subir no palco com setlist velho');
     assert.ok(/addEventListener\('keydown'/.test(b.texto), 'no palco não dá para mirar em botão pequeno');
     const pag = await req('GET', '/music/app', { cru: true });

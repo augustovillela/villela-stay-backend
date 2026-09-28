@@ -318,6 +318,11 @@ async function rodar({ t, secao, req, assert, contas, CONTAS, EMAILS, ACAD, CURS
     const js = (await req('GET', '/music/app.js', { cru: true })).texto;
     new Function('window', 'document', js);
     assert.ok(js.includes('/conta/2fa/iniciar') && js.includes('faixa-email'));
+    // F5 fica na guia: a aba vai para o endereço e o boot lê de volta.
+    assert.ok(js.includes('function gravarAba') && js.includes('function abaDoHash'), 'o app grava e lê a aba no endereço');
+    assert.ok(js.includes('verCursos') && js.includes("'cursos'"), 'a guia Cursos existe');
+    const cf = (await req('GET', '/music/cifras.js', { cru: true })).texto;
+    assert.ok(cf.includes('gravarNoEndereco') && cf.includes('#cifras/'), 'as Cifras guardam a tela no endereço');
   });
 
   await t('staff lista as contas do Musique (sem hash de senha)', async () => {

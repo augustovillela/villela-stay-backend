@@ -88,6 +88,10 @@ p.vazio{color:var(--suave);padding:24px 0}
 .item b{font-size:16px}
 .item span{font-size:14px;color:var(--suave)}
 .topo-item{display:flex;align-items:center;gap:10px}
+.ico-mini{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;font-size:13px;vertical-align:middle}
+.vazio-card{text-align:center;padding:30px 20px}
+.vazio-card .vazio-ico{font-size:46px;line-height:1;margin-bottom:8px}
+.card{transition:box-shadow .15s ease}
 @keyframes mq-surgir{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .grade>.item,.kpis>.kpi,.card{animation:mq-surgir .32s ease both}
 .grade>.item:nth-child(2),.kpis>.kpi:nth-child(2){animation-delay:40ms}
