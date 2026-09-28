@@ -53,6 +53,7 @@ const workerInvestimentos = require('./investimentos-worker');
 const parserInvestimentos = require('./investimentos-parser');
 const mercadoWorker = require('./mercado-worker');
 const mercadoPreflight = require('./mercado-preflight');
+const mercadoE2e = require('./mercado-e2e');
 const mercadoDb = require('./investimentos-mercado-db');
 const storageS3 = require('../storage-s3');
 const investimentos = require('./investimentos-acesso');
@@ -1251,6 +1252,63 @@ teste('investimentos: banco compartilhado contém somente catálogo técnico de 
   assert.doesNotMatch(mercadoDb.SCHEMA_SQL, /saldo|posi[cç][aã]o|raz[aã]o|ordem_financeira/i);
   delete process.env.FINANCE_INV_PARSE_WORKER;
   assert.strictEqual(mercadoWorker.ligado(), false);
+});
+
+teste('investimentos: plano E2E usa somente schema e prefixo descartáveis', () => {
+  const id = '0123456789abcdef01234567';
+  const plano = mercadoE2e.planejar(id);
+  assert.strictEqual(plano.schema, `fin_e2e_${id}`);
+  assert.strictEqual(plano.prefixo, `financeiro/investimentos/__e2e__/${id}/`);
+  assert.ok(plano.objetoBruto.startsWith(plano.prefixo));
+  assert.ok(plano.prefixoNormalizado.startsWith(plano.prefixo));
+  assert.strictEqual(mercadoE2e.validarPlano(plano), true);
+  const staging = mercadoE2e.diretorioTrabalho(process.env.DATA_DIR, plano.schema);
+  assert.strictEqual(path.dirname(staging), path.resolve(process.env.DATA_DIR));
+  assert.throws(() => mercadoE2e.diretorioTrabalho(path.parse(process.cwd()).root, plano.schema), /amplo demais/i);
+  assert.throws(() => mercadoE2e.planejar('../producao'), /inválido/i);
+});
+
+teste('investimentos: ensaio E2E exige armação explícita e parser residente off', () => {
+  const base = {
+    FINANCE_MARKET_DATABASE_URL: 'postgresql://interno/teste',
+    FINANCE_S3_ENDPOINT: 'https://conta.r2.cloudflarestorage.com',
+    FINANCE_S3_BUCKET: 'bucket', FINANCE_S3_KEY: 'key', FINANCE_S3_SECRET: 'secret',
+    FINANCE_S3_REGION: 'auto',
+  };
+  assert.throws(() => mercadoE2e.validarAmbiente({ ...base, FINANCE_INV_PARSE_WORKER: 'off' }), /FINANCE_INV_E2E=on/);
+  assert.throws(() => mercadoE2e.validarAmbiente({
+    ...base, FINANCE_INV_E2E: 'on', FINANCE_INV_PARSE_WORKER: 'on',
+  }), /precisa permanecer off/);
+  assert.doesNotThrow(() => mercadoE2e.validarAmbiente({
+    ...base, FINANCE_INV_E2E: 'on', FINANCE_INV_PARSE_WORKER: 'off',
+  }));
+});
+
+testeAsync('investimentos: limpeza E2E recusa qualquer objeto fora do prefixo da execução', async () => {
+  const plano = mercadoE2e.planejar('fedcba987654321001234567');
+  let chamou = false;
+  await assert.rejects(() => mercadoE2e.removerObjeto(
+    { endpoint: 'https://r2.test', bucket: 'b', key: 'k', secret: 's', region: 'auto' },
+    'financeiro/investimentos/mercado/oficial.zip', plano.prefixo,
+    async () => { chamou = true; return { ok: true, status: 204 }; }, storageS3,
+  ), /fora do prefixo E2E/i);
+  assert.strictEqual(chamou, false);
+});
+
+testeAsync('investimentos: ZIP sintético E2E é válido e contém um único fato', async () => {
+  const dir = fs.mkdtempSync(path.join(process.env.DATA_DIR, 'e2e-sintetico-'));
+  const arquivo = path.join(dir, 'sintetico.zip');
+  fs.writeFileSync(arquivo, mercadoE2e.zipSintetico());
+  const fatos = [];
+  const resumo = await parserInvestimentos.processarArquivo(arquivo, {
+    formato: 'zip', jurisdicao: 'BR', conjunto: 'cvm_e2e_sintetico',
+  }, {
+    onIdentidade: async () => {}, onRegistro: async x => fatos.push(x),
+    onEntradaConcluida: async () => {},
+  });
+  assert.strictEqual(resumo.registros, 1);
+  assert.strictEqual(fatos.length, 1);
+  assert.strictEqual(fatos[0].tipo, 'fato');
 });
 
 testeAsync('investimentos: preflight usa SELECT 1 e lista somente um metadado no bucket', async () => {
