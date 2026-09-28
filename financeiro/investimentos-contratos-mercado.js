@@ -79,7 +79,9 @@ function objetoCsv(cabecalho, linha) {
 function identidadeCvm(linha) {
   const cnpj = String(linha.CNPJ_CIA || '').replace(/\D/g, '');
   const codigo = String(linha.CD_CVM || '').trim();
-  const nome = String(linha.DENOM_SOCIAL || '').trim();
+  // O cadastro diário usa DENOM_SOCIAL; DFP/ITR usam DENOM_CIA.
+  // São nomes oficiais de layouts distintos da própria CVM.
+  const nome = String(linha.DENOM_SOCIAL || linha.DENOM_CIA || '').trim();
   if (cnpj.length !== 14 || !/^\d+$/.test(codigo) || !nome) throw new ErroContratoMercado('Cadastro CVM sem identidade oficial completa.');
   return {
     classe: 'acoes_brasil', subclasse: 'companhia_aberta', nome, emissor: nome, pais: 'BR',

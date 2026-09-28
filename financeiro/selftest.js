@@ -52,6 +52,7 @@ const evidenciasInvestimentos = require('./investimentos-evidencias');
 const ingestaoInvestimentos = require('./investimentos-ingestao');
 const workerInvestimentos = require('./investimentos-worker');
 const parserInvestimentos = require('./investimentos-parser');
+const contratosMercado = require('./investimentos-contratos-mercado');
 const mercadoWorker = require('./mercado-worker');
 const mercadoPreflight = require('./mercado-preflight');
 const mercadoE2e = require('./mercado-e2e');
@@ -1342,6 +1343,14 @@ teste('investimentos: piloto CVM fixa DFP 2025, limite e quarentena por hash', (
   assert.ok(plano.prefixoNormalizado.startsWith(mercadoPilotoCvm.PREFIXO_RAIZ));
   assert.throws(() => mercadoPilotoCvm.validarMeta({ ...meta, tamanhoBytes: mercadoPilotoCvm.LIMITE_COMPACTADO + 1 }), /excede o limite/i);
   assert.throws(() => mercadoPilotoCvm.planoVersao('../producao'), /SHA-256/i);
+});
+
+teste('investimentos: contrato CVM aceita os nomes oficiais distintos do cadastro e da DFP', () => {
+  const base = { CNPJ_CIA: '33.000.167/0001-01', CD_CVM: '9512' };
+  assert.strictEqual(contratosMercado.identidadeCvm({ ...base, DENOM_SOCIAL: 'Cadastro S.A.' }).nome, 'Cadastro S.A.');
+  assert.strictEqual(contratosMercado.identidadeCvm({ ...base, DENOM_CIA: 'DFP S.A.' }).nome, 'DFP S.A.');
+  assert.throws(() => contratosMercado.identidadeCvm(base), /identidade oficial completa/i);
+  assert.strictEqual(parserInvestimentos.PARSER_VERSAO, 2);
 });
 
 testeAsync('investimentos: piloto CVM sonda e baixa somente a mesma versão oficial', async () => {

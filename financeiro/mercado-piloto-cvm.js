@@ -16,6 +16,7 @@ const storagePadrao = require('../storage-s3');
 const preflight = require('./mercado-preflight');
 const mercadoDbModulo = require('./investimentos-mercado-db');
 const mercadoWorker = require('./mercado-worker');
+const mercadoParser = require('./investimentos-parser');
 
 const FONTE_URL = 'https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip';
 const CONJUNTO = 'cvm_dfp_2025';
@@ -279,7 +280,7 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
     const db = new mercadoDbModulo.MercadoDb({ pool });
     await db.migrar();
 
-    const chaveIdempotencia = `cvm-dfp-2025:${versao}`;
+    const chaveIdempotencia = `cvm-dfp-2025:${versao}:parser-${mercadoParser.PARSER_VERSAO}`;
     const existente = await pool.query('SELECT * FROM fin_market_jobs WHERE chave_idempotencia=$1', [chaveIdempotencia]);
     if (existente.rows[0]) {
       if (existente.rows[0].status !== 'concluida') {
@@ -297,7 +298,7 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
       logger.log(`[finance-market-pilot-cvm] OK idempotente=sim versao=${versao.slice(0, 12)} registros=${resumo.registros} identidades=${resumo.identidades} particoes=${resumo.particoes}`);
       return { ok: true, idempotente: true, versao: versao.slice(0, 12), ...resumo };
     }
-    const incompleto = await pool.query("SELECT id FROM fin_market_jobs WHERE status <> 'concluida' LIMIT 1");
+    const incompleto = await pool.query("SELECT id FROM fin_market_jobs WHERE status IN ('aguardando','processando') LIMIT 1");
     if (incompleto.rows[0]) {
       throw new Error('Existe tentativa anterior incompleta na quarentena; revise-a antes de uma nova versão.');
     }
@@ -312,8 +313,8 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
     }
     if (!existenteR2) await enviarMultipart(configS3, plano.objetoBruto, arquivo, download.bytes, storage, fetchImpl);
 
-    const jobId = `pilot-cvm-dfp-2025-${versao.slice(0, 24)}`;
-    const tenantRef = `pilot:cvm_dfp_2025:${versao}`;
+    const jobId = `pilot-cvm-dfp-2025-p${mercadoParser.PARSER_VERSAO}-${versao.slice(0, 24)}`;
+    const tenantRef = `pilot:cvm_dfp_2025:p${mercadoParser.PARSER_VERSAO}:${versao}`;
     await db.enfileirar({
       id: jobId, tenantRef, cargaRef: chaveIdempotencia, fonte: 'cvm_dados_abertos',
       conjunto: CONJUNTO, jurisdicao: 'BR', formato: 'zip', objetoChave: plano.objetoBruto,
