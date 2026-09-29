@@ -18,6 +18,11 @@
 //      seria ensinar o contrário do que a teoria diz.
 // =====================================================================
 'use strict';
+// Núcleo canônico de teoria (grafia, escalas, acordes, pauta): ADR-0013.
+const LAB = {
+  N: require('./laboratorio/nucleo/notas'), E: require('./laboratorio/nucleo/escalas'),
+  A: require('./laboratorio/nucleo/acordes'), P: require('./laboratorio/nucleo/pauta'),
+};
 
 // ---------------------------------------------------------------------
 // Notas
@@ -99,11 +104,11 @@ function midiDe(entrada) {
   return (n.oitava + 1) * 12 + n.pc;
 }
 
-const freqDeMidi = (midi, { la4 = LA4_HZ } = {}) => la4 * Math.pow(2, (Number(midi) - 69) / 12);
-const midiDeFreq = (hz, { la4 = LA4_HZ } = {}) => 69 + 12 * Math.log2(Number(hz) / la4);
+const freqDeMidi = (midi, { la4 = LA4_HZ } = {}) => LAB.N.freqDeMidi(midi, la4);
+const midiDeFreq = (hz, { la4 = LA4_HZ } = {}) => LAB.N.midiDeFreq(hz, la4);
 
 /** Diferença em cents. 100 cents = 1 semitom. Positivo = mais agudo. */
-const centsEntre = (hz, hzRef) => 1200 * Math.log2(Number(hz) / Number(hzRef));
+const centsEntre = (hz, hzRef) => LAB.N.centsEntre(hz, hzRef);
 
 /** A nota mais próxima de uma frequência, e o quanto está desafinada. */
 function notaDeFreq(hz, { la4 = LA4_HZ } = {}) {
@@ -156,20 +161,15 @@ function lerIntervalo(entrada) {
 // ---------------------------------------------------------------------
 // Escalas
 // ---------------------------------------------------------------------
-const ESCALAS = {
-  maior: { pt: 'maior', graus: [0, 2, 4, 5, 7, 9, 11] },
-  menor_natural: { pt: 'menor natural', graus: [0, 2, 3, 5, 7, 8, 10] },
-  menor_harmonica: { pt: 'menor harmônica', graus: [0, 2, 3, 5, 7, 8, 11] },
-  menor_melodica: { pt: 'menor melódica', graus: [0, 2, 3, 5, 7, 9, 11] },
-  dorico: { pt: 'dórico', graus: [0, 2, 3, 5, 7, 9, 10] },
-  frigio: { pt: 'frígio', graus: [0, 1, 3, 5, 7, 8, 10] },
-  lidio: { pt: 'lídio', graus: [0, 2, 4, 6, 7, 9, 11] },
-  mixolidio: { pt: 'mixolídio', graus: [0, 2, 4, 5, 7, 9, 10] },
-  locrio: { pt: 'lócrio', graus: [0, 1, 3, 5, 6, 8, 10] },
-  pentatonica_maior: { pt: 'pentatônica maior', graus: [0, 2, 4, 7, 9] },
-  pentatonica_menor: { pt: 'pentatônica menor', graus: [0, 3, 5, 7, 10] },
-  blues: { pt: 'blues', graus: [0, 3, 5, 6, 7, 10] },
-};
+// Os INTERVALOS de cada escala vêm do núcleo do Laboratório (ADR-0013):
+// uma teoria só na casa. Aqui ficam só as chaves e os rótulos que os
+// exercícios da Academia Musical já usam.
+const ESCALAS_LAB = { maior: "maior", menor_natural: "menor-natural", menor_harmonica: "menor-harmonica", menor_melodica: "menor-melodica",
+  dorico: "dorico", frigio: "frigio", lidio: "lidio", mixolidio: "mixolidio", locrio: "locrio",
+  pentatonica_maior: "pentatonica-maior", pentatonica_menor: "pentatonica-menor", blues: "blues-menor" };
+const ROTULO_ESCALA = { blues: "blues" };
+const ESCALAS = Object.fromEntries(Object.entries(ESCALAS_LAB).map(([k, id]) =>
+  [k, { pt: ROTULO_ESCALA[k] || LAB.E.porId(id).nome, graus: LAB.E.semitons(id), lab: id }]));
 
 /** Pitch classes da escala. Tônica aceita cifra ou português. */
 function escala(tonica, tipo = 'maior') {
@@ -182,20 +182,14 @@ function escala(tonica, tipo = 'maior') {
 // ---------------------------------------------------------------------
 // Acordes
 // ---------------------------------------------------------------------
-const ACORDES = {
-  maior: { sufixo: '', pt: 'maior', graus: [0, 4, 7] },
-  menor: { sufixo: 'm', pt: 'menor', graus: [0, 3, 7] },
-  diminuto: { sufixo: 'dim', pt: 'diminuto', graus: [0, 3, 6] },
-  aumentado: { sufixo: 'aug', pt: 'aumentado', graus: [0, 4, 8] },
-  sus2: { sufixo: 'sus2', pt: 'suspenso de segunda', graus: [0, 2, 7] },
-  sus4: { sufixo: 'sus4', pt: 'suspenso de quarta', graus: [0, 5, 7] },
-  maior7: { sufixo: '7M', pt: 'maior com sétima maior', graus: [0, 4, 7, 11] },
-  dominante7: { sufixo: '7', pt: 'com sétima (dominante)', graus: [0, 4, 7, 10] },
-  menor7: { sufixo: 'm7', pt: 'menor com sétima', graus: [0, 3, 7, 10] },
-  meio_diminuto: { sufixo: 'm7(b5)', pt: 'meio-diminuto', graus: [0, 3, 6, 10] },
-  diminuto7: { sufixo: 'dim7', pt: 'diminuto com sétima', graus: [0, 3, 6, 9] },
-  sexta: { sufixo: '6', pt: 'com sexta', graus: [0, 4, 7, 9] },
-};
+// Idem para os acordes: fórmula do núcleo; sufixo e rótulo legados.
+const ACORDES_LAB = [
+  ["maior", "maior", "", "maior"], ["menor", "menor", "m", "menor"], ["diminuto", "dim", "dim", "diminuto"], ["aumentado", "aum", "aug", "aumentado"],
+  ["sus2", "sus2", "sus2", "suspenso de segunda"], ["sus4", "sus4", "sus4", "suspenso de quarta"],
+  ["maior7", "7M", "7M", "maior com sétima maior"], ["dominante7", "7", "7", "com sétima (dominante)"], ["menor7", "m7", "m7", "menor com sétima"],
+  ["meio_diminuto", "m7b5", "m7(b5)", "meio-diminuto"], ["diminuto7", "dim7", "dim7", "diminuto com sétima"], ["sexta", "6", "6", "com sexta"],
+];
+const ACORDES = Object.fromEntries(ACORDES_LAB.map(([k, id, sufixo, pt]) => [k, { sufixo, pt, graus: LAB.A.semitons(id), lab: id }]));
 
 function acorde(fundamental, tipo = 'maior') {
   const f = lerNota(fundamental);
@@ -274,37 +268,20 @@ function grauDiatonico(midi) {
  * `y` cresce para BAIXO (coordenada de tela).
  */
 function posicaoNaPauta(midi, clave = 'sol', { bemol = false } = {}) {
-  if (clave !== 'sol') return null;                 // outras claves: fase futura
-  const base = grauDiatonico(midiDe(PAUTA.clave_sol_base));   // mi4 = 2
-  // A LINHA VEM DA GRAFIA, não da altura. Fá# e Solb soam igual e ficam
-  // em linhas DIFERENTES: fá# na do fá, solb na do sol. Derivar a linha
-  // só da classe de altura poria solb na linha do fá — que é o mesmo
-  // som escrito errado, e num exercício de leitura isso é o defeito.
-  const alterado = nomeCifra(((midi % 12) + 12) % 12).length > 1;
-  const passo = alterado && bemol ? grauDiatonico(midi + 1) : grauDiatonico(midi);
-  const y = PAUTA.linha_de_baixo - (passo - base) * (PAUTA.espaco / 2);
-
-  // Suplementares aparecem de duas em duas posições (só sobre linhas),
-  // da pauta até a nota.
-  const suplementares = [];
-  for (let l = PAUTA.linha_de_baixo + PAUTA.espaco; l <= y; l += PAUTA.espaco) suplementares.push(l);
-  const topo = PAUTA.linha_de_baixo - 4 * PAUTA.espaco;        // fá5
-  for (let l = topo - PAUTA.espaco; l >= y; l -= PAUTA.espaco) suplementares.push(l);
-
-  // ⚠️ O ACIDENTE VAI JUNTO, e não é enfeite. Nota alterada ocupa a MESMA
-  // linha da natural — só o sinal antes dela diz que é fá# e não fá.
-  // Desenhar a cabeça sem o acidente faz o aluno ler "fá", responder
-  // "fá" e ser reprovado pelo gabarito "fá sustenido". Já aconteceu.
-  const acidente = alterado ? (bemol ? 'b' : '#') : '';
-
+  if (!LAB.P.clave(clave)) return null;
+  // A LINHA VEM DA GRAFIA, não da altura (fá# e solb soam igual e ficam em
+  // linhas diferentes) — a grafia e a geometria são as do núcleo, testadas
+  // linha por linha nas quatro claves.
+  const n = LAB.N.deMidi(Math.round(Number(midi)), { bemol });
+  const p = LAB.P.posicao(n, clave);
+  const y = (pos) => PAUTA.linha_de_baixo - pos * (PAUTA.espaco / 2);
+  const acidente = n.alt > 0 ? '#' : n.alt < 0 ? 'b' : '';
   return {
-    passo, y, acidente,
+    passo: LAB.N.passo(n) - LAB.N.passo('C4'), y: y(p.posicao), acidente,
     acidente_glifo: acidente === '#' ? '♯' : acidente === 'b' ? '♭' : '',
     linhas: [0, 1, 2, 3, 4].map((i) => PAUTA.linha_de_baixo - i * PAUTA.espaco),
-    suplementares,
-    // `true` quando a cabeça fica exatamente sobre uma linha (útil para o
-    // desenho e para conferir a geometria de fora)
-    sobre_linha: (PAUTA.linha_de_baixo - y) % PAUTA.espaco === 0,
+    suplementares: p.suplementares.map(y),
+    sobre_linha: p.sobreLinha,
   };
 }
 

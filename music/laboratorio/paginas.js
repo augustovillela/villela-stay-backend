@@ -15,8 +15,8 @@ const ACESSO = require('./acesso');
 // ------------------------------------------------------------------
 // Arquivos do cliente: núcleo (isomórfico) + app + estilo
 // ------------------------------------------------------------------
-const NUCLEO_ARQS = ['notas', 'intervalos', 'escalas', 'acordes', 'tonalidades', 'ritmo', 'pauta', 'instrumentos', 'acustica', 'desenho', 'exercicios'];
-const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'criar', 'praticar', 'ensinar'];
+const NUCLEO_ARQS = ['notas', 'intervalos', 'escalas', 'acordes', 'tonalidades', 'ritmo', 'pauta', 'instrumentos', 'acustica', 'motivos', 'desenho', 'exercicios'];
+const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'criar', 'novas', 'praticar', 'ensinar'];
 let _cache = {};
 function arquivo(chave, fn) { if (!_cache[chave] || process.env.NODE_ENV === 'development') _cache[chave] = fn(); return _cache[chave]; }
 const ler = (...p) => fs.readFileSync(path.join(__dirname, ...p), 'utf8');
@@ -55,11 +55,36 @@ function registrar(app, { opcional, contextoDe }) {
 <a class="lab-caminho" href="/music/explorar"><span class="lab-caminho-ico" aria-hidden="true">⚡</span><strong>Usar agora</strong><span>Afinar, contar BPM, ver um acorde, transpor. Abre direto, sem cadastro.</span></a>
 <a class="lab-caminho" href="/music/aprender"><span class="lab-caminho-ico" aria-hidden="true">📘</span><strong>Aprender passo a passo</strong><span>Uma trilha na ordem certa, do som ao campo harmônico, com prática em cada lição.</span></a>
 <a class="lab-caminho" href="/music/explorar/laboratorio"><span class="lab-caminho-ico" aria-hidden="true">🧪</span><strong>Experimentar livre</strong><span>Tônica, escala e acorde num lugar só: tudo muda junto.</span></a></section>
+<section class="lab-comecar" aria-labelledby="comecar-t"><h2 id="comecar-t">Por onde começar?</h2>
+<p>Três perguntas, e o Musique mostra o caminho que combina com você. Dá para mudar quando quiser.</p>
+<form id="lab-perfil" class="lab-controles">
+  <div class="lab-campo"><label for="pf-nivel">Seu nível</label><select id="pf-nivel" name="nivel"><option value="comecando">Estou começando</option><option value="toco">Já toco ou canto</option><option value="avancado">Avançado / estudo teoria</option></select></div>
+  <div class="lab-campo"><label for="pf-inst">Seu instrumento</label><select id="pf-inst" name="instrumento"><option value="violao">Violão</option><option value="guitarra">Guitarra</option><option value="teclado">Teclado ou piano</option><option value="voz">Voz</option><option value="baixo">Contrabaixo</option><option value="cavaquinho">Cavaquinho</option><option value="ukulele">Ukulele</option><option value="violao-7">Violão de 7 cordas</option><option value="outro">Outro</option></select></div>
+  <div class="lab-campo"><label for="pf-obj">O que você quer agora?</label><select id="pf-obj" name="objetivo"><option value="teoria">Aprender teoria do zero</option><option value="tocar">Tocar músicas e resolver dúvidas</option><option value="ouvido">Treinar o ouvido e a leitura</option><option value="compor">Compor e experimentar</option><option value="ensinar">Dar aula</option></select></div>
+  <button class="btn" type="submit">Mostrar o meu caminho</button>
+</form>
+<div id="lab-recomendacao" class="lab-recomendacao" aria-live="polite"></div></section>
 <section aria-labelledby="amb"><h2 id="amb">Ambientes</h2>${cartoes(CAT.AMBIENTES.map((a) => ({ ...a, url: a.url })))}</section>
 <section aria-labelledby="dest"><h2 id="dest">Mais usados</h2>${cartoes(destaque.map((s) => { const x = f(s); return { nome: x.nome, icone: x.icone, resumo: x.resumo, url: `/music/${x.ambiente}/${x.slug}` }; }))}
 <p>E ainda: <a href="/music/ferramentas">afinador, metrônomo e gerador de tons</a>.</p></section>
 <section class="lab-nota-convencao"><p>🔓 Ferramentas, referências e demonstrações são abertas. A trilha completa, o progresso guardado, a revisão espaçada e as atividades de professor fazem parte da <a href="/music">assinatura do Musique</a>.</p></section>`;
     pagina(res, { titulo: 'Laboratório Musical — teoria musical visual, interativa e em português | Musique', descricao: 'Escalas, acordes, intervalos, tonalidades, pauta, piano, braço do violão e círculo de quintas — para ver, ouvir e praticar. Ferramentas abertas, em português.', caminho: '/music/laboratorio', corpo, ferramenta: 'hub' });
+  });
+
+  // ---- pontes vindas das Cifras: acorde e tom por texto de cifra ----
+  app.get('/music/laboratorio/acorde', (req, res) => {
+    const txt = String(req.query.c || '').slice(0, 30);
+    const a = A.ler(txt);
+    if (!a) return res.redirect('/music/buscar?q=' + encodeURIComponent('acorde ' + txt));
+    // mantém a grafia da cifra (A# continua A#); a página aponta o canonical
+    res.redirect(CAT.urlAcorde(Math.abs(a.fundamental.alt) <= 1 ? a.fundamental : TE.fundamentalCanonica(a.fundamental, a.id), a.id));
+  });
+  app.get('/music/laboratorio/tom', (req, res) => {
+    const txt = String(req.query.t || '').trim().slice(0, 12);
+    const m = txt.match(/^(.+?)(m)?$/);
+    const t = m && N.ler(m[1]);
+    if (!t || t.oitava != null) return res.redirect('/music/referencia/tonalidades');
+    res.redirect(CAT.urlTom(N.semOitava(t), m[2] ? 'menor' : 'maior'));
   });
 
   // --------------------------------------------------------- ambientes
@@ -127,7 +152,7 @@ ${l.refs && l.refs.length ? `<details class="lab-det"><summary>Para ler mais</su
     if (b.t === 'visual') return visual(b.v);
     if (b.t === 'ouvir') {
       const seq = Array.isArray(b.midis[0]);
-      return `<p class="lab-ouvir-bloco">${seq ? `<button type="button" class="lab-ouvir" data-sequencia="${esc(JSON.stringify(b.midis))}"><span aria-hidden="true">▶</span> ${esc(b.rotulo)}</button>` : ouvir(b.midis, { rotulo: b.rotulo, modo: b.modo })}</p>`;
+      return `<p class="lab-ouvir-bloco">${seq ? `<button type="button" class="lab-ouvir" data-sequencia="${esc(JSON.stringify(b.midis))}"><span aria-hidden="true">▶</span> ${esc(b.rotulo)}</button>` : ouvir(b.midis, { rotulo: b.rotulo, modo: b.modo, dur: b.dur, vel: b.vel, passo: b.passo })}</p>`;
     }
     if (b.t === 'ferramenta') { const f = CAT.FERRAMENTAS.find((x) => x.slug === b.slug); return f ? `<p class="lab-ferr-link"><a href="/music/${f.ambiente}/${f.slug}"><span aria-hidden="true">${esc(f.icone)}</span> Experimente: ${esc(f.nome)}</a> — ${esc(f.resumo)}</p>` : ''; }
     if (b.t === 'praticar') { const x = X.TIPOS[b.tipo]; return x ? `<div class="lab-mini-pratica" data-tipo="${esc(b.tipo)}" data-nivel="${esc(b.nivel || 1)}"><p><strong>Pratique:</strong> ${esc(x.nome)} (${esc(x.niveis[(b.nivel || 1) - 1])}) — <a href="/music/praticar/${esc(b.tipo)}?nivel=${esc(b.nivel || 1)}">abrir o exercício</a></p></div>` : ''; }
@@ -151,7 +176,7 @@ ${Object.keys(porHab).map((h) => `<section><h2>${esc(NOMES[h] || h)}</h2>${carto
     const ctx = ctxDe(req);
     const completo = ACESSO.pode('pratica-completa', ctx).ok;
     const nivel = Math.max(1, Math.min(x.niveis.length, Number(req.query.nivel) || 1));
-    const estado = { tipo: req.params.tipo, nivel, niveis: x.niveis, completo, demo: completo ? 0 : ACESSO.DEMO_QUESTOES, auditivo: !!x.auditivo, logado: ctx.logado };
+    const estado = { tipo: req.params.tipo, nivel, niveis: x.niveis, params: x.params || null, completo, demo: completo ? 0 : ACESSO.DEMO_QUESTOES, auditivo: !!x.auditivo, logado: ctx.logado };
     const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Praticar · ${esc(x.habilidade)}</p><h1>${esc(x.nome)}</h1>
 ${x.auditivo ? '<p class="lab-nota-convencao">👂 Esta habilidade é auditiva: a questão é só o som. Depois de responder, você pode ver as notas no teclado. Use fone ou caixa em volume confortável.</p>' : ''}
 ${!completo ? `<p class="lab-nota-convencao">Modo demonstração: ${ACESSO.DEMO_QUESTOES} questões, sem histórico. ${ctx.logado ? '<a href="/music/app#conta">Assine</a>' : '<a href="/music/entrar">Entre ou comece o teste grátis</a>'} para guardar o progresso e ter revisão espaçada.</p>` : ''}</header>

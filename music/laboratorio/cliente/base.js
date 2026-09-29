@@ -118,7 +118,7 @@
       if (b.dataset.hz) return C.Som.tocarHz([Number(b.dataset.hz)], { dur: 1.6 });
       if (b.dataset.sequencia) return C.Som.sequencia(JSON.parse(b.dataset.sequencia), { dur: 1.1 });
       var ms = JSON.parse(b.dataset.midis || '[]');
-      C.Som.tocar(ms, { modo: b.dataset.modo || 'melodico' });
+      C.Som.tocar(ms, { modo: b.dataset.modo || 'melodico', dur: b.dataset.dur ? Number(b.dataset.dur) : undefined, passo: b.dataset.passo ? Number(b.dataset.passo) : undefined, vel: b.dataset.vel ? Number(b.dataset.vel) : undefined });
     } catch (e) { C.aviso('Não consegui tocar: ' + e.message, 'erro'); }
   });
 
@@ -154,15 +154,32 @@
     }).catch(function () { /* sem conta: o botão fica, e explica ao clicar */ });
   }
 
+  // ---- modo aula: tela cheia, letra e desenhos grandes, para projetar ----
+  function botaoAula() {
+    var m = C.$('.lab-migalhas');
+    if (!m || !(C.$('#lab-ferramenta') || C.$('.lab-licao') || C.$('.lab-fig'))) return;
+    var b = C.el('button', { type: 'button', class: 'lab-fav', 'aria-pressed': 'false', txt: '⛶ Modo aula' });
+    var alternar = function (on) {
+      d.body.classList.toggle('lab-aula', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.textContent = on ? '✕ Sair do modo aula' : '⛶ Modo aula';
+      try { if (on && d.documentElement.requestFullscreen) d.documentElement.requestFullscreen(); else if (!on && d.fullscreenElement) d.exitFullscreen(); } catch (_) { /* sem tela cheia: só amplia */ }
+    };
+    b.onclick = function () { alternar(!d.body.classList.contains('lab-aula')); };
+    d.addEventListener('fullscreenchange', function () { if (!d.fullscreenElement && d.body.classList.contains('lab-aula')) alternar(false); });
+    m.appendChild(b);
+  }
+
   d.addEventListener('DOMContentLoaded', function () {
     buscaViva();
     botaoFavorito();
+    botaoAula();
     var main = C.$('#lab-main');
     if (!main) return;
     var slug = main.getAttribute('data-ferramenta');
     var estado = {};
     try { estado = JSON.parse(main.getAttribute('data-estado') || '{}'); } catch (_) { estado = {}; }
     C.estado = estado;
+    if (C.antesDeMontar) C.antesDeMontar(estado);
     var alvo = C.$('#lab-ferramenta');
     var f = C.ferramentas[slug];
     if (f && alvo) {

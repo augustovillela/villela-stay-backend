@@ -36,8 +36,63 @@
     return null;
   }
 
+  /**
+   * Entradas que não são "escolher uma opção":
+   *   · sequencia-piano: toca N notas no teclado (a melodia lida);
+   *   · toque: toca o ritmo num botão grande (ou Espaço);
+   *   · braco: marca casas no braço e confere.
+   */
+  function entradaEspecial(q, area, responder) {
+    if (q.entrada === 'sequencia-piano') {
+      var tocadas = [];
+      var lista = el('p', { class: 'lab-info', 'aria-live': 'polite', txt: 'Toque ' + q.tamanho + ' notas.' });
+      var t = q.teclado || { de: 55, ate: 84 };
+      var box = el('div', { class: 'lab-svgbox lab-q-visual', html: D.piano({ de: t.de, ate: t.ate, interativo: true, rotulos: 'nenhum', titulo: 'Teclado para responder' }) });
+      var pintar = function () { lista.textContent = tocadas.length ? tocadas.map(function (m) { return C.nomeNota(N.deMidi(m)); }).join(' – ') + (tocadas.length < q.tamanho ? '  (' + (q.tamanho - tocadas.length) + ' a tocar)' : '') : 'Toque ' + q.tamanho + ' notas.'; };
+      var tocar = function (m) { if (tocadas.length >= q.tamanho) return; C.Som.tocar([m], { dur: 0.5 }); tocadas.push(m); pintar(); if (tocadas.length === q.tamanho) setTimeout(function () { responder(tocadas.join(',')); }, 350); };
+      box.addEventListener('click', function (e) { var k = e.target.closest('[data-midi]'); if (k) tocar(Number(k.dataset.midi)); });
+      box.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset && e.target.dataset.midi) { e.preventDefault(); tocar(Number(e.target.dataset.midi)); } });
+      area.appendChild(box); area.appendChild(lista);
+      area.appendChild(el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn sec', txt: 'Apagar a última', onclick: function () { tocadas.pop(); pintar(); } })]));
+    }
+    if (q.entrada === 'toque') {
+      var toques = [], inicioT = null;
+      var info = el('p', { class: 'lab-info', 'aria-live': 'polite', txt: 'Ouça (com a contagem) e toque o ritmo aqui. Espaço também vale.' });
+      var botao = el('button', { type: 'button', class: 'lab-botao-toque', txt: 'Toque o ritmo' });
+      var marcar = function () { var agora = performance.now(); if (inicioT == null) inicioT = agora; toques.push(Math.round(agora - inicioT)); C.Som.bateria.caixa(C.Som.audio().currentTime + 0.001, 0.6); info.textContent = toques.length + ' toque(s).'; };
+      botao.addEventListener('pointerdown', function (e) { e.preventDefault(); marcar(); });
+      var tecla = function (e) { if (e.key === ' ' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) { e.preventDefault(); marcar(); } };
+      d.addEventListener('keydown', tecla);
+      area.appendChild(botao); area.appendChild(info);
+      area.appendChild(el('div', { class: 'lab-acoes' }, [
+        el('button', { type: 'button', class: 'btn', txt: 'Conferir', onclick: function () { d.removeEventListener('keydown', tecla); responder(toques.join(',')); } }),
+        el('button', { type: 'button', class: 'btn sec', txt: 'Recomeçar', onclick: function () { toques = []; inicioT = null; info.textContent = 'Toque de novo.'; } })]));
+    }
+    if (q.entrada === 'braco') {
+      var v = q.visual, af = INS.afinacao(v.instrumento || 'violao', 'padrao'), sel = {};
+      var bx = el('div', { class: 'lab-svgbox lab-q-visual lab-rola' });
+      var desenhar = function () {
+        var dest = Object.keys(sel).map(function (k) { var p = k.split(':'); return { corda: Number(p[0]), casa: Number(p[1]), rotulo: '●', tipo: 'nota' }; });
+        bx.innerHTML = D.braco({ afinacao: af, casas: v.casas, destaques: dest, interativo: true, titulo: 'Marque as casas' });
+      };
+      bx.addEventListener('click', function (e) { var c = e.target.closest('[data-corda]'); if (!c) return; var k = c.dataset.corda + ':' + c.dataset.casa; if (sel[k]) delete sel[k]; else { sel[k] = Number(c.dataset.midi); C.Som.tocar([Number(c.dataset.midi)], { modo: 'dedilhado', dur: 0.8 }); } desenhar(); });
+      desenhar();
+      area.appendChild(bx);
+      area.appendChild(el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn', txt: 'Conferir', onclick: function () { responder(Object.keys(sel).map(function (k) { return N.mod(sel[k], 12); }).join(',')); } }),
+        el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { sel = {}; desenhar(); } })]));
+    }
+  }
+
   function tocarQuestao(q) {
     if (!q.audio) return;
+    if (q.audio.sequencia) return C.Som.sequencia(q.audio.sequencia, { dur: q.audio.dur || 1 });
+    if (q.audio.ritmo) {
+      // 4 tempos de contagem e depois o ritmo, no relógio do áudio
+      var a = C.Som.audio(), t0 = a.currentTime + 0.1, tempo = 60 / q.audio.bpm, sem = tempo / 4;
+      for (var k = 0; k < 4; k++) C.Som.bateria.clique(t0 + k * tempo, 0.7, k === 0);
+      q.audio.ritmo.forEach(function (p) { C.Som.bateria.caixa(t0 + 4 * tempo + p * sem, 0.8); });
+      return;
+    }
     if (q.audio.modo === 'harmonico' && !q.audio.arpejo) C.Som.tocar(q.audio.midis, { modo: 'harmonico', dur: 1.6 });
     else if (q.audio.arpejo) { C.Som.tocar(q.audio.midis, { dur: 0.45 }); setTimeout(function () { C.Som.tocar(q.audio.midis, { modo: 'harmonico', dur: 1.4 }); }, q.audio.midis.length * 450 + 150); }
     else C.Som.tocar(q.audio.midis, { dur: 0.7 });
@@ -79,8 +134,9 @@
       C.limpar(area);
       var t0 = Date.now(); respondendo = false;
       area.appendChild(el('p', { class: 'lab-q-enunciado', tabindex: '-1', txt: q.enunciado }));
-      var vis = visualDe(q, function (m) { responder(String(m)); });
+      var vis = q.entrada === 'braco' ? null : visualDe(q, function (m) { responder(String(m)); });
       if (vis) area.appendChild(vis);
+      entradaEspecial(q, area, function (v) { responder(v); });
       if (q.audio) {
         area.appendChild(el('button', { type: 'button', class: 'btn sec lab-q-ouvir', txt: q.auditivo ? '🔊 Ouvir de novo' : '▶ Ouvir', onclick: function () { tocarQuestao(q); } }));
         if (q.auditivo) tocarQuestao(q);
@@ -105,8 +161,8 @@
         if (respondendo) return; respondendo = true;
         d.removeEventListener('keydown', teclas);
         var ms = Date.now() - t0;
-        var local = q.resposta != null ? X.corrigir(X.gerar(q.tipo, { nivel: q.nivel, semente: q.semente }), valor) : null;
-        var p = (o.corrigirNoServidor || o.gravar) ? C.api('POST', '/music/api/lab/responder', { tipo: q.tipo, nivel: q.nivel, semente: q.semente, resposta: valor, ms: ms, sessao: o.sessao || '' })
+        var local = q.resposta != null ? X.corrigir(X.gerar(q.tipo, { nivel: q.nivel, semente: q.semente, params: q.params }), valor) : null;
+        var p = (o.corrigirNoServidor || o.gravar) ? C.api('POST', '/music/api/lab/responder', { tipo: q.tipo, nivel: q.nivel, semente: q.semente, params: q.params || {}, resposta: valor, ms: ms, sessao: o.sessao || '' })
           .catch(function (e) { if (local) { if (e.status === 402 || e.status === 401) C.aviso('O progresso não foi guardado: ' + e.message); return local; } throw e; }) : Promise.resolve(local);
         p.then(function (c) { mostrarFeedback(c, valor, ms); }).catch(function (e) { fb.textContent = 'Não consegui corrigir: ' + e.message; respondendo = false; });
       }
@@ -123,6 +179,7 @@
         fb.className = 'lab-feedback ' + (c.certo ? 'ok' : 'nao');
         fb.appendChild(el('p', { class: 'lab-fb-t' }, [el('strong', { txt: c.certo ? '✓ Certo!' : '✗ Não foi dessa vez.' }), c.certo ? '' : ' Você respondeu ' + c.recebido + '; o certo é ' + c.esperado + '.']));
         if (!o.jogo || !c.certo) fb.appendChild(el('p', { txt: c.explicacao }));
+        if (c.mostrar && c.mostrar.tipo === 'ritmo') fb.appendChild(el('div', { class: 'lab-svgbox', html: D.ritmo({ compasso: c.mostrar.compasso, figuras: c.mostrar.figuras, completo: true, descricao: 'O ritmo certo' }) }));
         if (c.mostrar && c.mostrar.tipo === 'piano') {
           var dd = {}; c.mostrar.midis.forEach(function (m) { dd[m] = { rotulo: C.nomeNota(N.deMidi(m)), tipo: 'nota' }; });
           fb.appendChild(el('details', { class: 'lab-det' }, [el('summary', { txt: 'Ver no teclado' }), el('div', { class: 'lab-svgbox', html: D.piano({ de: Math.min.apply(null, c.mostrar.midis) - 5, ate: Math.max.apply(null, c.mostrar.midis) + 5, destaques: dd, titulo: 'As notas tocadas' }) })]));
@@ -148,17 +205,24 @@
   F.praticar = function (alvo, st) {
     if (st.atividade) return atividade(alvo, st);
     var nivel = st.nivel || 1;
+    var params = C.lerLocal('params:' + st.tipo, {});
+    var ROT = { clave: 'Clave', extensao: 'Extensão', instrumento: 'Instrumento' };
+    var ROT_V = { sol: 'sol', fa: 'fá', do3: 'dó (3ª linha)', do4: 'dó (4ª linha)', pauta: 'só dentro da pauta', suplementares: 'com linhas suplementares',
+      violao: 'violão', ukulele: 'ukulele', cavaquinho: 'cavaquinho', baixo: 'contrabaixo' };
     function inicio() {
       C.limpar(alvo);
       var sel = C.select('lab-nivel', 'Nível', st.niveis.map(function (n, k) { return { valor: k + 1, rotulo: (k + 1) + ' — ' + n }; }), nivel, function (v) { nivel = Number(v); });
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [sel, el('button', { type: 'button', class: 'btn', txt: st.demo ? 'Começar (' + st.demo + ' questões)' : 'Começar', onclick: comecar })]));
+      var extras = Object.keys(st.params || {}).map(function (k) {
+        return C.select('lab-p-' + k, ROT[k] || k, [{ valor: '', rotulo: 'variar' }].concat(st.params[k].map(function (v) { return { valor: v, rotulo: ROT_V[v] || v }; })), params[k] || '', function (v) { if (v) params[k] = v; else delete params[k]; C.guardar('params:' + st.tipo, params); });
+      });
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [sel].concat(extras).concat([el('button', { type: 'button', class: 'btn', txt: st.demo ? 'Começar (' + st.demo + ' questões)' : 'Começar', onclick: comecar })])));
       if (st.completo) {
         C.api('GET', '/music/api/lab/nivel/' + st.tipo).then(function (r) { if (r.nivel && r.nivel !== nivel) { nivel = r.nivel; var s = C.$('#lab-nivel'); if (s) s.value = String(nivel); alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Nível sugerido pelo seu histórico: ' + nivel + '.' })); } }).catch(function () { /* sem histórico */ });
       }
     }
     function comecar() {
       executar({ alvo: alvo, total: st.demo || 10, gravar: st.completo,
-        fonte: function () { return X.publica(X.gerar(st.tipo, { nivel: nivel, semente: Math.floor(Math.random() * 1e9) })); },
+        fonte: function () { return X.publica(X.gerar(st.tipo, { nivel: nivel, semente: Math.floor(Math.random() * 1e9), params: params })); },
         aoFim: function (res, area) {
           area.appendChild(el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn', txt: 'Outra sessão', onclick: comecar }), el('button', { type: 'button', class: 'btn sec', txt: 'Mudar o nível', onclick: inicio })]));
           if (st.demo) area.appendChild(el('p', { class: 'lab-nota-convencao' }, ['Gostou? Na assinatura, o Musique guarda o seu progresso, sobe o nível sozinho e agenda revisões das habilidades em que você erra. ', el('a', { href: st.logado ? '/music/app#conta' : '/music/entrar', txt: st.logado ? 'Assinar' : 'Começar o teste grátis' })]));

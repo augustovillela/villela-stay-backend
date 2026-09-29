@@ -45,15 +45,53 @@
 
   var FREQ = function (m) { return 440 * Math.pow(2, (m - 69) / 12); };
 
-  /** Uma voz com envelope. timbre: piano | seno | orgao | pluck. */
+  // ---- Cordas por MODELO FÍSICO (Karplus-Strong): um ruído curto circula
+  // numa "corda" de comprimento 1/f e perde brilho a cada volta — é como
+  // a corda real decai. Sem amostras gravadas (nada a licenciar); é
+  // síntese, e a interface diz isso. Buffer em cache por nota e timbre.
+  var CORDAS_T = {
+    nylon: { perda: 0.994, brilho: 0.35, ganho: 0.5 },
+    aco: { perda: 0.9975, brilho: 0.75, ganho: 0.45 },
+    eletrica: { perda: 0.9985, brilho: 0.6, ganho: 0.35, distorcer: true },
+  };
+  var cacheCorda = {};
+  function bufferCorda(f, tipo, dur) {
+    var a = audio(), k = tipo + ':' + Math.round(f * 10) + ':' + dur;
+    if (cacheCorda[k]) return cacheCorda[k];
+    var cfg = CORDAS_T[tipo], sr = a.sampleRate, n = Math.floor(sr * dur), N = Math.max(2, Math.round(sr / f));
+    var b = a.createBuffer(1, n, sr), y = b.getChannelData(0), ant = 0;
+    for (var i = 0; i < N && i < n; i++) { var r = Math.random() * 2 - 1; ant = ant + cfg.brilho * (r - ant); y[i] = ant; }
+    for (var j = N; j < n; j++) y[j] = cfg.perda * 0.5 * (y[j - N] + y[j - N + 1 < j ? j - N + 1 : j - N]);
+    var keys = Object.keys(cacheCorda); if (keys.length > 120) delete cacheCorda[keys[0]];
+    cacheCorda[k] = b; return b;
+  }
+  var curvaDist = null;
+  function corda(f, quando, dur, o) {
+    var a = audio(), cfg = CORDAS_T[o.timbre], t = Math.max(quando, a.currentTime);
+    var s = a.createBufferSource(); s.buffer = bufferCorda(f, o.timbre, Math.min(3, Math.max(0.6, dur + 0.4)));
+    var g = a.createGain(); var v = (o.vel == null ? 0.5 : o.vel * 2) * cfg.ganho;
+    g.gain.setValueAtTime(v, t); g.gain.setValueAtTime(v, t + Math.max(0.05, dur)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
+    var saida = g;
+    if (cfg.distorcer) {
+      if (!curvaDist) { curvaDist = new Float32Array(1024); for (var i = 0; i < 1024; i++) { var x = i / 512 - 1; curvaDist[i] = Math.tanh(3.5 * x) * 0.6; } }
+      var ws = a.createWaveShaper(); ws.curve = curvaDist; g.connect(ws); saida = ws;
+    }
+    s.connect(g); saida.connect(mestre); s.start(t); s.stop(t + dur + 0.3); registrar(s);
+  }
+
+  /** Uma voz com envelope. timbre: piano | seno | orgao | pluck | malete | nylon | aco | eletrica. */
   function voz(f, quando, dur, o) {
     o = o || {};
+    if (!o.timbre && C.Som && C.Som.timbre) o.timbre = C.Som.timbre;
+    if (CORDAS_T[o.timbre]) return corda(f, quando, dur, o);
     var a = audio();
     var g = a.createGain();
     var pico = (o.vel == null ? 0.22 : o.vel);
     var t = Math.max(quando, a.currentTime);
     var timbre = o.timbre || 'piano';
-    var parciais = timbre === 'seno' ? [[1, 1]] : timbre === 'orgao' ? [[1, 1], [2, 0.5], [3, 0.3], [4, 0.2]] : timbre === 'pluck' ? [[1, 1], [2, 0.45], [3, 0.25], [5, 0.1]] : [[1, 1], [2, 0.38], [3, 0.14], [4, 0.08]];
+    var parciais = timbre === 'seno' ? [[1, 1]] : timbre === 'orgao' ? [[1, 1], [2, 0.5], [3, 0.3], [4, 0.2]] : timbre === 'pluck' ? [[1, 1], [2, 0.45], [3, 0.25], [5, 0.1]]
+      : timbre === 'malete' ? [[1, 1], [3.93, 0.3], [9.2, 0.08]] : [[1, 1], [2, 0.38], [3, 0.14], [4, 0.08]];
+    if (timbre === 'malete') dur = Math.min(dur, 0.9);
     var soma = parciais.reduce(function (x, p) { return x + p[1]; }, 0);
     var decai = timbre === 'orgao' || timbre === 'seno' ? false : true;
     g.gain.setValueAtTime(0.0001, t);
@@ -77,10 +115,10 @@
     var a = audio(); var t0 = a.currentTime + 0.05;
     var ms = (midis || []).filter(function (m) { return m != null; });
     if (o.modo === 'harmonico') { ms.forEach(function (m) { voz(FREQ(m), t0, o.dur || 1.6, { vel: 0.5 / Math.max(2, ms.length), timbre: o.timbre }); }); return (o.dur || 1.6); }
-    if (o.modo === 'dedilhado') { ms.forEach(function (m, i) { voz(FREQ(m), t0 + i * 0.045, (o.dur || 1.8) - i * 0.045, { vel: 0.45 / Math.max(2, ms.length), timbre: 'pluck' }); }); return o.dur || 1.8; }
-    var dur = o.dur || 0.5;
-    ms.forEach(function (m, i) { voz(FREQ(m), t0 + i * dur, dur * 0.95, { timbre: o.timbre }); });
-    return ms.length * dur;
+    if (o.modo === 'dedilhado') { ms.forEach(function (m, i) { voz(FREQ(m), t0 + i * 0.045, (o.dur || 1.8) - i * 0.045, { vel: 0.45 / Math.max(2, ms.length), timbre: o.timbre || (C.Som.timbre && CORDAS_T[C.Som.timbre] ? C.Som.timbre : 'pluck') }); }); return o.dur || 1.8; }
+    var dur = o.dur || 0.5, passo = o.passo || dur;
+    ms.forEach(function (m, i) { voz(FREQ(m), t0 + i * passo, dur * 0.95, { timbre: o.timbre, vel: o.vel }); });
+    return ms.length * passo;
   }
   function tocarHz(hzs, o) { var a = audio(); var t0 = a.currentTime + 0.05; hzs.forEach(function (f) { voz(f, t0, (o && o.dur) || 1.5, { timbre: 'seno', vel: 0.25 / hzs.length }); }); }
   /** Sequência de acordes (listas de MIDI). */
@@ -148,8 +186,15 @@
     if (C.Som.aoParar) C.Som.aoParar();
   }
 
-  C.Som = { audio: audio, voz: voz, tocar: tocar, tocarHz: tocarHz, sequencia: sequencia, bateria: BATERIA, agendador: agendador, ruido: ruido,
+  var TIMBRES = [{ id: '', nome: 'piano' }, { id: 'nylon', nome: 'violão de nylon (sintetizado)' }, { id: 'aco', nome: 'violão de aço (sintetizado)' },
+    { id: 'eletrica', nome: 'guitarra elétrica (sintetizada)' }, { id: 'orgao', nome: 'órgão' }, { id: 'malete', nome: 'xilofone' }, { id: 'seno', nome: 'onda pura' }];
+  C.Som = { timbre: C.lerLocal('timbre', ''), TIMBRES: TIMBRES, audio: audio, voz: voz, tocar: tocar, tocarHz: tocarHz, sequencia: sequencia, bateria: BATERIA, agendador: agendador, ruido: ruido,
     parar: pararTudo, analisador: function () { audio(); return analisador; }, saida: function () { audio(); return mestre; }, FREQ: FREQ, registrar: registrar };
+
+  /** Seletor de timbre (vale para todas as ferramentas; fica neste aparelho). */
+  C.selTimbre = function () {
+    return C.select('lab-timbre', 'Timbre', TIMBRES.map(function (t) { return { valor: t.id, rotulo: t.nome }; }), C.Som.timbre, function (v) { C.Som.timbre = v; C.guardar('timbre', v); C.Som.tocar([60, 64, 67], { modo: 'dedilhado', dur: 1.2 }); });
+  };
 
   d.addEventListener('DOMContentLoaded', function () {
     var p = C.$('#lab-parar'); if (p) p.onclick = pararTudo;

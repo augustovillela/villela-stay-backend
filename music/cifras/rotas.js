@@ -38,9 +38,13 @@ const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</
 // na ordem de dependência. É o que dá transposição instantânea e palco
 // sem rede no navegador.
 const MOTOR_ARQS = ['nota', 'acorde', 'harmonia', 'documento', 'instrumentos', 'audio', 'comandos'];
+const NUCLEO_LAB = ['notas', 'intervalos', 'escalas', 'acordes', 'tonalidades'];
 let _motor = null;
 function motorJs() {
-  if (!_motor) _motor = MOTOR_ARQS.map((n) => fs.readFileSync(path.join(__dirname, 'motor', n + '.js'), 'utf8')).join('\n;\n');
+  // O núcleo de teoria do Laboratório vai NA FRENTE: o motor das cifras tira
+  // dele a grafia pelo tom e o campo harmônico (uma teoria só na casa).
+  if (!_motor) _motor = NUCLEO_LAB.map((n) => fs.readFileSync(path.join(__dirname, '..', 'laboratorio', 'nucleo', n + '.js'), 'utf8'))
+    .concat(MOTOR_ARQS.map((n) => fs.readFileSync(path.join(__dirname, 'motor', n + '.js'), 'utf8'))).join('\n;\n');
   return _motor;
 }
 

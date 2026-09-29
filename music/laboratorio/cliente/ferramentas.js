@@ -204,7 +204,7 @@
         C.selAcorde(st.acorde, function (v) { st.acorde = v; if (v) st.escala = ''; render(); }, true),
         C.select('lab-rot', 'Mostrar', [{ valor: 'nome', rotulo: 'nome da nota' }, { valor: 'intervalo', rotulo: 'intervalo' }, { valor: 'grau', rotulo: 'grau' }], st.rotulo, function (v) { st.rotulo = v; render(); }),
         C.select('lab-casas', 'Casas', [{ valor: 12, rotulo: '12' }, { valor: 15, rotulo: '15' }, { valor: 19, rotulo: '19' }, { valor: 22, rotulo: '22' }], st.casas, function (v) { st.casas = Number(v); render(); }),
-        C.selNotacao(render),
+        C.selNotacao(render), C.selTimbre(),
         el('label', { class: 'lab-check' }, [el('input', { type: 'checkbox', checked: st.canhoto ? true : null, onchange: function (e) { st.canhoto = e.target.checked; render(); } }), ' canhoto']),
       ]));
       if (st.afinacao === 'personalizada' && st.afinPers && !INS.afinacaoPersonalizada(st.afinPers, st.instrumento)) alvo.appendChild(el('p', { class: 'lab-erro', txt: 'A afinação precisa ter uma nota por corda (' + INS.afinacao(st.instrumento, 'padrao').notas.length + ').' }));
@@ -402,4 +402,59 @@
 
   // hub: nada a montar além da busca (feita na base)
   F.hub = function () {};
+
+  // ------------------------------------------------------------------
+  // "Por onde começar?": nível + instrumento + objetivo → um caminho.
+  // Fica neste aparelho; para quem tem conta, também na conta.
+  // ------------------------------------------------------------------
+  var CORDAS_IDS = ['violao', 'guitarra', 'baixo', 'ukulele', 'cavaquinho', 'violao-7'];
+  function recomendar(p) {
+    var inst = CORDAS_IDS.indexOf(p.instrumento) >= 0 ? p.instrumento : '';
+    var ferrInst = p.instrumento === 'teclado' ? { nome: 'Piano virtual', url: '/music/criar/piano-virtual' }
+      : p.instrumento === 'voz' ? { nome: 'Extensão vocal', url: '/music/criar/extensao-vocal' }
+      : inst ? { nome: 'Braço do ' + INS.instrumento(inst).nome, url: '/music/explorar/braco?i=' + inst } : { nome: 'Piano e notas', url: '/music/explorar/piano' };
+    var afinar = p.instrumento === 'voz' ? { nome: 'Afinador (voz)', url: '/music/ferramentas' } : inst ? { nome: 'Afinador do ' + INS.instrumento(inst).nome, url: '/music/criar/afinador-cordas?i=' + inst } : { nome: 'Afinador', url: '/music/ferramentas' };
+    var r;
+    if (p.objetivo === 'ensinar') r = { caminho: 'Ensinar', motivo: 'Monte atividades a partir dos exercícios, atribua à turma e acompanhe por habilidade.', itens: [{ nome: 'Área do professor', url: '/music/ensinar' }, { nome: 'Todos os exercícios', url: '/music/praticar' }, { nome: 'Trilha de lições (para indicar aos alunos)', url: '/music/aprender' }] };
+    else if (p.objetivo === 'compor') r = { caminho: 'Laboratório integrado + Criar', motivo: 'Experimente livre: tônica, escala e acorde num lugar só, e ferramentas para montar ideias.', itens: [{ nome: 'Laboratório integrado', url: '/music/explorar/laboratorio' + (inst ? '?i=' + inst : '') }, { nome: 'Laboratório de progressões', url: '/music/criar/progressoes' }, { nome: 'Mini máquina musical', url: '/music/criar/mini-maquina' }, { nome: 'Motivos: variar e inverter', url: '/music/criar/motivos' }] };
+    else if (p.objetivo === 'tocar') r = { caminho: 'Usar agora', motivo: 'Ferramentas que resolvem na hora, já no seu instrumento — cada uma leva à lição do assunto.', itens: [ferrInst, afinar, { nome: 'Transpositor de acordes', url: '/music/criar/transpositor' }, { nome: 'Identificador de acordes', url: '/music/explorar/identificar-acorde' }, { nome: 'Metrônomo que acelera', url: '/music/criar/metronomo-progressivo' }] };
+    else if (p.objetivo === 'ouvido') r = { caminho: 'Praticar + Jogar', motivo: 'Treino curto e frequente: leitura, intervalos e acordes de ouvido, com explicação de cada erro.', itens: p.nivel === 'comecando'
+      ? [{ nome: 'Nota na pauta', url: '/music/praticar/nota-na-pauta' }, { nome: 'Nota no teclado', url: '/music/praticar/nota-no-teclado' }, { nome: 'Intervalos de ouvido', url: '/music/praticar/intervalo-ouvido' }, { nome: 'Desafio do dia', url: '/music/jogar/desafio-diario' }]
+      : [{ nome: 'Leitura à primeira vista', url: '/music/praticar/leitura-primeira-vista' }, { nome: 'Ditado rítmico', url: '/music/praticar/ditado-ritmico' }, { nome: 'Cadências de ouvido', url: '/music/praticar/cadencia-ouvido' }, { nome: 'Ditado a duas vozes', url: '/music/praticar/ditado-duas-vozes' }] };
+    else if (p.nivel === 'avancado') r = { caminho: 'Aprender (aprofundamento)', motivo: 'Vá direto às lições avançadas e use as referências como consulta.', itens: [{ nome: 'Harmonia popular: MPB, blues e jazz', url: '/music/aprender/harmonia-popular' }, { nome: 'Empréstimo modal e modulação', url: '/music/aprender/emprestimo-e-modulacao' }, { nome: 'Contraponto', url: '/music/aprender/contraponto' }, { nome: 'Os 7 modos lado a lado', url: '/music/explorar/comparar-modos' }] };
+    else if (p.nivel === 'toco') r = { caminho: 'Aprender, a partir dos intervalos', motivo: 'Quem já toca costuma pular o básico: comece pelos intervalos e siga até o campo harmônico.', itens: [{ nome: 'Intervalos: número e qualidade', url: '/music/aprender/intervalos' }, { nome: 'Campo harmônico e funções', url: '/music/aprender/campo-harmonico' }, ferrInst, { nome: 'Exercícios de campo harmônico', url: '/music/praticar/campo-grau' }] };
+    else r = { caminho: 'Aprender passo a passo', motivo: 'A trilha na ordem certa, do som ao campo harmônico. Cada lição termina num exercício.', itens: [{ nome: 'Lição 1: Som, altura e nota', url: '/music/aprender/som-e-nota' }, { nome: 'A trilha completa', url: '/music/aprender' }, ferrInst, afinar] };
+    return r;
+  }
+  function mostrarRecomendacao(p, alvo) {
+    var r = recomendar(p);
+    C.limpar(alvo).appendChild(el('div', { class: 'lab-resumo' }, [el('h3', { txt: 'O seu caminho: ' + r.caminho }), el('p', { txt: r.motivo }),
+      el('ul', { class: 'lab-chips' }, r.itens.map(function (x, i) { return el('li', {}, [el('a', { href: x.url, txt: (i === 0 ? '→ ' : '') + x.nome })]); }))]));
+  }
+  d.addEventListener('DOMContentLoaded', function () {
+    var f = C.$('#lab-perfil'), out = C.$('#lab-recomendacao');
+    if (!f || !out) return;
+    var salvo = C.lerLocal('perfil', null);
+    var preencher = function (p) { ['nivel', 'instrumento', 'objetivo'].forEach(function (k) { if (p[k] && f.elements[k]) f.elements[k].value = p[k]; }); mostrarRecomendacao(p, out); };
+    if (salvo) preencher(salvo);
+    C.api('GET', '/music/api/lab/perfil').then(function (r) { if (r.perfil) { C.guardar('perfil', r.perfil); preencher(r.perfil); } }).catch(function () { /* sem conta: fica no aparelho */ });
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var p = { nivel: f.elements.nivel.value, instrumento: f.elements.instrumento.value, objetivo: f.elements.objetivo.value };
+      C.guardar('perfil', p);
+      if (CORDAS_IDS.indexOf(p.instrumento) >= 0) C.guardar('instrumento', p.instrumento);
+      mostrarRecomendacao(p, out);
+      C.api('POST', '/music/api/lab/perfil', p).catch(function () { /* sem conta ou sem assinatura: fica no aparelho */ });
+      var h = C.$('h3', out); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
+    });
+  });
+
+  // o instrumento do perfil vira o padrão das ferramentas (a URL manda, se tiver)
+  C.antesDeMontar = function (estado) {
+    var main = C.$('#lab-main'), f = main && main.getAttribute('data-ferramenta');
+    if (['braco', 'laboratorio', 'afinador-cordas'].indexOf(f) < 0) return;     // só onde o instrumento conta
+    var inst = C.lerLocal('instrumento', '');
+    if (inst && !/[?&]i=/.test(location.search) && CORDAS_IDS.indexOf(inst) >= 0 && (!estado.instrumento || estado.instrumento === 'violao')) estado.instrumento = inst;
+  };
+  C.recomendar = recomendar;
 })(window, document);

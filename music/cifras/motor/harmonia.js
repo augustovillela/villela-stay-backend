@@ -10,15 +10,30 @@
 // se diz a letra seria apresentar palpite como fato.
 // =====================================================================
 (function (raiz, fabrica) {
-  if (typeof module === 'object' && module.exports) module.exports = fabrica(require('./nota'), require('./acorde'));
-  else (raiz.MusiqueMotor = raiz.MusiqueMotor || {}).harmonia = fabrica(raiz.MusiqueMotor.nota, raiz.MusiqueMotor.acorde);
-})(typeof self !== 'undefined' ? self : this, function (N, A) {
+  if (typeof module === 'object' && module.exports) module.exports = fabrica(require('./nota'), require('./acorde'), require('../../laboratorio/nucleo/tonalidades'));
+  else (raiz.MusiqueMotor = raiz.MusiqueMotor || {}).harmonia = fabrica(raiz.MusiqueMotor.nota, raiz.MusiqueMotor.acorde, raiz.MusiqueLab && raiz.MusiqueLab.tonalidades);
+})(typeof self !== 'undefined' ? self : this, function (N, A, LT) {
   'use strict';
 
   // Campo harmônico: grau (semitons da tônica) → qualidade esperada.
-  var CAMPO_MAIOR = { 0: 'maior', 2: 'menor', 4: 'menor', 5: 'maior', 7: 'maior', 9: 'menor', 11: 'dim' };
+  // Derivados do NÚCLEO do Laboratório (tríades empilhadas na escala), com
+  // a tabela como reserva quando ele não está carregado.
+  var TIPO_LAB = { maior: 'maior', menor: 'menor', dim: 'dim' };
+  var PC_LETRA = [0, 2, 4, 5, 7, 9, 11];
+  function campoDoNucleo(modo, variantes) {
+    var out = {};
+    variantes.forEach(function (v) {
+      (LT.campo('C', modo, { variante: v }) || []).forEach(function (g) {
+        var st = (PC_LETRA[g.fundamental.li] + g.fundamental.alt + 12) % 12;
+        var tp = TIPO_LAB[g.acorde]; if (!tp) return;
+        if (out[st] === undefined) out[st] = tp; else if (out[st] !== tp && !Array.isArray(out[st])) out[st] = [out[st], tp];
+      });
+    });
+    return out;
+  }
+  var CAMPO_MAIOR = LT ? campoDoNucleo('maior', ['natural']) : { 0: 'maior', 2: 'menor', 4: 'menor', 5: 'maior', 7: 'maior', 9: 'menor', 11: 'dim' };
   // Menor: natural + harmônica (V maior e vii° são tão comuns quanto v e VII).
-  var CAMPO_MENOR = { 0: 'menor', 2: 'dim', 3: 'maior', 5: 'menor', 7: ['menor', 'maior'], 8: 'maior', 10: 'maior', 11: 'dim' };
+  var CAMPO_MENOR = LT ? campoDoNucleo('menor', ['natural', 'harmonica']) : { 0: 'menor', 2: 'dim', 3: 'maior', 5: 'menor', 7: ['menor', 'maior'], 8: 'maior', 10: 'maior', 11: 'dim' };
 
   function tipoBasico(ac) {
     var q = ac.qualidade;

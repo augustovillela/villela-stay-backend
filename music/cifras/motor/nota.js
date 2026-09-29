@@ -9,9 +9,11 @@
 // internacional e latina, com a enarmonia decidida pelo tom.
 // =====================================================================
 (function (raiz, fabrica) {
-  if (typeof module === 'object' && module.exports) module.exports = fabrica();
-  else (raiz.MusiqueMotor = raiz.MusiqueMotor || {}).nota = fabrica();
-})(typeof self !== 'undefined' ? self : this, function () {
+  // A grafia pelo tom vem do NÚCLEO do Laboratório (armadura contada na
+  // escala) — uma teoria só na casa. Sem ele carregado, vale a tabela.
+  if (typeof module === 'object' && module.exports) module.exports = fabrica(require('../../laboratorio/nucleo/tonalidades'), require('../../laboratorio/nucleo/notas'));
+  else (raiz.MusiqueMotor = raiz.MusiqueMotor || {}).nota = fabrica(raiz.MusiqueLab && raiz.MusiqueLab.tonalidades, raiz.MusiqueLab && raiz.MusiqueLab.notas);
+})(typeof self !== 'undefined' ? self : this, function (LT, LN) {
   'use strict';
 
   var SUSTENIDO = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -107,7 +109,18 @@
   // ---------------------------------------------------------------
   // Tons maiores escritos com bemol: F Bb Eb Ab Db Gb (Gb x F#: empate,
   // decide a preferência do usuário; por padrão, bemol até 6 acidentes).
-  var MAIOR_COM_BEMOL = { 5: true, 10: true, 3: true, 8: true, 1: true, 6: true };
+  var MAIOR_COM_BEMOL = (function () {
+    if (!LT || !LN) return { 5: true, 10: true, 3: true, 8: true, 1: true, 6: true };
+    // para cada tônica, a grafia usual com MENOS acidentes; empate (fá#/solb) = bemol
+    var out = {};
+    for (var pc = 0; pc < 12; pc++) {
+      var cands = LT.MAIORES.map(LN.ler).filter(function (t) { return LN.pc(t) === pc; })
+        .map(function (t) { return LT.armadura(t, 'maior').quantidade; })
+        .sort(function (a, b) { return (Math.abs(a) - Math.abs(b)) || (a - b); });
+      if (cands.length && cands[0] < 0) out[pc] = true;
+    }
+    return out;
+  })();
 
   /**
    * Deve-se escrever com bemol neste tom?

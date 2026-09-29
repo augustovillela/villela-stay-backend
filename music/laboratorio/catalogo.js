@@ -54,6 +54,16 @@
     { slug: 'progressoes', ambiente: 'criar', nome: 'Laboratório de progressões', icone: '🎶', resumo: 'Escolha o tom e os graus; ouça com condução de vozes e veja as funções.', publico: true, termos: 'progressao harmonica sequencia de acordes ii v i campo harmonico' },
     { slug: 'arpejador', ambiente: 'criar', nome: 'Arpejador', icone: '🌊', resumo: 'Qualquer acorde em arpejo: subindo, descendo, alternado, em várias oitavas.', publico: true, termos: 'arpejo arpeggiator' },
     { slug: 'polirritmos', ambiente: 'criar', nome: 'Polirritmos e rudimentos', icone: '🔀', resumo: '3 contra 2, 4 contra 3 e os rudimentos de caixa, tocados e desenhados.', publico: true, termos: 'polirritmo paradiddle rudimentos subdivisao' },
+    { slug: 'comparar-modos', ambiente: 'explorar', nome: 'Os 7 modos lado a lado', icone: '🎚️', resumo: 'Os sete modos na mesma tônica, com os graus que mudam em relação ao maior marcados.', publico: true, termos: 'modos gregos comparar dorico frigio lidio mixolidio eolio locrio' },
+    { slug: 'piano-isomorfico', ambiente: 'explorar', nome: 'Teclado isomórfico', icone: '⬡', resumo: 'Hexágonos em que todo acorde e toda escala têm o mesmo desenho em qualquer tom.', publico: true, termos: 'isomorfico wicki hayden hexagonal teclado' },
+    { slug: 'serie-dodecafonica', ambiente: 'explorar', nome: 'Série de doze sons e matriz', icone: '🔢', resumo: 'Monte uma série e veja as 48 formas: original, inversão, retrógrado e retrógrado da inversão.', publico: true, termos: 'dodecafonismo serialismo matriz serie 12 sons' },
+    { slug: 'afinador-cordas', ambiente: 'criar', nome: 'Afinador de violão, ukulele e cavaquinho', icone: '🎸', resumo: 'Corda por corda, com a nota de referência para ouvir. Microfone só com a sua permissão, desligado ao sair.', publico: true, termos: 'afinador violao guitarra ukulele cavaquinho baixo afinar corda' },
+    { slug: 'extensao-vocal', ambiente: 'criar', nome: 'Extensão vocal', icone: '🎤', resumo: 'Cante a nota mais grave e a mais aguda confortáveis e veja a sua extensão. Não é classificação de voz.', publico: true, termos: 'extensao vocal tessitura voz cantar microfone' },
+    { slug: 'metronomo-progressivo', ambiente: 'criar', nome: 'Metrônomo que acelera', icone: '📈', resumo: 'Começa devagar e sobe o andamento a cada tantos compassos, até a meta.', publico: true, termos: 'metronomo progressivo acelerar speed trainer' },
+    { slug: 'mini-maquina', ambiente: 'criar', nome: 'Mini máquina musical', icone: '🎛️', resumo: 'Bateria, baixo, acordes e melodia juntos, num loop de 4 compassos que você monta.', publico: true, termos: 'mini music machine loop groove bateria baixo acordes melodia' },
+    { slug: 'motivos', ambiente: 'criar', nome: 'Motivos: variar e inverter', icone: '🔄', resumo: 'Transposição, inversão e retrógrado de uma ideia melódica, na pauta e no som.', publico: true, termos: 'motivo inversao retrogrado variacao composicao' },
+    { slug: 'xilofone', ambiente: 'criar', nome: 'Xilofone', icone: '🪘', resumo: 'Lâminas coloridas para tocar com o dedo ou o mouse — cor e nome em cada uma.', publico: true, termos: 'xilofone metalofone lamina' },
+    { slug: 'gerador-de-bumbo', ambiente: 'criar', nome: 'Gerador de bumbo', icone: '🥁', resumo: 'Desenhe o som do bumbo: altura, queda, duração e ataque. Veja como o envelope faz o timbre.', publico: true, termos: 'kick drum generator bumbo sintetizar envelope' },
     { slug: 'batimentos', ambiente: 'criar', nome: 'Batimentos e ruído', icone: '🔊', resumo: 'Duas frequências próximas "batem": ouça a afinação acontecer. Com volume seguro.', publico: true, termos: 'gerador de ruido batimento afinacao ruido branco rosa' },
   ];
 
@@ -75,6 +85,7 @@
     { slug: 'extensoes', nome: 'Extensão dos instrumentos e vozes', icone: '📏', resumo: 'Da nota mais grave à mais aguda; transpositores explicados.', termos: 'extensao instrumentos transpositores tessitura vozes' },
     { slug: 'frequencias', nome: 'Frequência das notas', icone: '🔢', resumo: 'Hz de cada nota com lá4 = 440 Hz (ou outra referência).', termos: 'frequencia das notas hz tabela' },
     { slug: 'temperamento', nome: 'Temperamento igual × afinação justa', icone: '⚖️', resumo: 'Por que a terça do piano é "desafinada" de propósito.', termos: 'temperamento igual afinacao justa cents' },
+    { slug: 'solfejo', nome: 'Solfejo: dó fixo e dó móvel', icone: '🎶', resumo: 'Cantar com nomes de notas: o dó fixo e o dó móvel (graus), com as sílabas alteradas.', termos: 'solfejo solfege do movel do fixo silabas' },
     { slug: 'ritmo-e-groove', nome: 'Síncope, swing, shuffle e subdivisões', icone: '💃', resumo: 'Onde o ritmo sai do tempo — e volta.', termos: 'sincope contratempo swing shuffle groove subdivisao' },
   ];
 

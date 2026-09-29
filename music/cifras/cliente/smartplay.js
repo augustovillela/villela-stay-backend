@@ -481,7 +481,8 @@
       }
       pop.appendChild(el('div', { class: 'cf-pop-acoes' }, [
         C.botao('▶ Ouvir', function () { if (o.tocar) o.tocar(acorde); }, 'sec peq'),
-        C.botao('Mais formas', function () { fecharPop(); C.ir('acordes', acorde); }, 'sec peq')]));
+        C.botao('Mais formas', function () { fecharPop(); C.ir('acordes', acorde); }, 'sec peq'),
+        C.botao('🧪 Laboratório', function () { fecharPop(); global.open('/music/laboratorio/acorde?c=' + encodeURIComponent(acorde), '_blank', 'noopener'); }, 'sec peq')]));
     }
     document.body.appendChild(pop);
     var r = alvo.getBoundingClientRect(), w = pop.offsetWidth || 260, h = pop.offsetHeight || 200;

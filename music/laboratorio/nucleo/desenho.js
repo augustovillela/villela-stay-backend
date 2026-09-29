@@ -91,7 +91,10 @@
     o = o || {};
     var clave = o.clave || 'sol';
     var S = 10, H2 = S / 2;
-    var itens = (o.notas || []).map(function (x) { var n = N.ler(x.nota || x); var p = n ? P.posicao(n, clave) : null; return p ? { n: n, p: p, rotulo: x.rotulo, tipo: x.tipo } : null; }).filter(Boolean);
+    // o.colunas: [[nota, nota], ...] — várias vozes, uma coluna por tempo
+    var fonte = o.colunas ? [].concat.apply([], o.colunas.map(function (cc, ci) { return cc.map(function (n) { return { nota: n, col: ci }; }); })) : (o.notas || []);
+    var itens = fonte.map(function (x, k) { var n = N.ler(x.nota || x); var p = n ? P.posicao(n, clave) : null; return p ? { n: n, p: p, rotulo: x.rotulo, tipo: x.tipo, col: x.col != null ? x.col : k } : null; }).filter(Boolean);
+    var nCol = o.colunas ? o.colunas.length : itens.length;
     var ps = itens.map(function (x) { return x.p.posicao; });
     var pmax = Math.max.apply(null, [8].concat(ps)), pmin = Math.min.apply(null, [0].concat(ps));
     var topo = 14 + (pmax - 8) * H2 + 12;
@@ -99,7 +102,7 @@
     var arm = o.armadura ? (P.armadura(o.armadura, clave) || []) : [];
     var xNotas = 52 + arm.length * 10 + 14;
     var passoX = o.acorde ? 0 : 38;
-    var largura = Math.max(o.largura || 0, xNotas + (o.acorde ? 60 : Math.max(1, itens.length) * passoX + 20));
+    var largura = Math.max(o.largura || 0, xNotas + (o.acorde ? 60 : Math.max(1, nCol) * passoX + 20));
     var temRot = itens.some(function (x) { return x.rotulo; });
     var altura = yLinha(pmin) + 22 + (temRot ? 18 : 0);
     var c = '';
@@ -112,8 +115,10 @@
     var descr = [];
     var ultimoPos = null;
     itens.forEach(function (it, i) {
-      var x = xNotas + i * passoX + 14;
-      if (o.acorde && ultimoPos != null && it.p.posicao - ultimoPos === 1) x += 13;   // segunda no acorde: cabeça ao lado
+      var x = xNotas + (o.acorde ? 0 : it.col * passoX) + 14;
+      // segunda no mesmo tempo: cabeça ao lado
+      var mesmaCol = i > 0 && (o.acorde || itens[i - 1].col === it.col);
+      if (mesmaCol && ultimoPos != null && Math.abs(it.p.posicao - ultimoPos) === 1) x += 13;
       ultimoPos = it.p.posicao;
       var y = yLinha(it.p.posicao);
       it.p.suplementares.forEach(function (sp) { c += '<line class="p-sup" x1="' + num(x - 11) + '" x2="' + num(x + 11) + '" y1="' + num(yLinha(sp)) + '" y2="' + num(yLinha(sp)) + '"></line>'; });
@@ -308,7 +313,8 @@
     c += '<text class="p-formula" x="' + x + '" y="38" text-anchor="middle">' + esc(comp[0]) + '</text><text class="p-formula" x="' + x + '" y="58" text-anchor="middle">' + esc(comp[1]) + '</text>';
     var xx = 46;
     (o.figuras || []).forEach(function (f) { c += f.pausa ? pausaSvg(f.figura, xx, y) : figuraSvg(f.figura, xx, y + 5, f.pontos); xx += 34; });
-    c += '<rect class="p-falta" x="' + (xx - 8) + '" y="18" width="28" height="44" rx="4"></rect><text class="p-falta-t" x="' + (xx + 6) + '" y="46" text-anchor="middle">?</text>';
+    if (!o.completo) c += '<rect class="p-falta" x="' + (xx - 8) + '" y="18" width="28" height="44" rx="4"></rect><text class="p-falta-t" x="' + (xx + 6) + '" y="46" text-anchor="middle">?</text>';
+    else xx -= 30;
     c += '<line class="p-barra" x1="' + (xx + 30) + '" x2="' + (xx + 30) + '" y1="20" y2="60"></line>';
     return raizSvg('lab-pauta lab-ritmo', xx + 40, 80, 'Compasso ' + (o.compasso || ''), o.descricao || 'Compasso incompleto', false, c, 1.6);
   }

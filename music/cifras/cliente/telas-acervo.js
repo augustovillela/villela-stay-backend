@@ -526,7 +526,7 @@
       mais.appendChild(C.botao('Palco', function () { C.palcoUmaMusica(estado); }, 'sec peq'));
       mais.appendChild(sel([['', 'Mais…'], ['exibicao', 'Exibição'], ['historico', 'Histórico de versões'], ['praticar', 'Praticar'], ['comentarios', 'Comentários e notas'],
         ['exportar', 'Exportar / imprimir'], ['compartilhar', 'Link e QR Code'], ['arranjo', 'Arranjos'], ['setlist', 'Adicionar a setlist'], ['original', 'Ver original importado'],
-        ['avaliar', 'Avaliar / propor correção']].concat(C.temIA('revisar_harmonia') ? [['ia_harmonia', 'IA: revisar harmonia']] : []).concat(C.temIA('guia_instrumento') ? [['ia_guia', 'IA: guia do instrumento']] : []),
+        ['avaliar', 'Avaliar / propor correção'], ['graus', 'Análise em graus (Laboratório)']].concat(C.temIA('revisar_harmonia') ? [['ia_harmonia', 'IA: revisar harmonia']] : []).concat(C.temIA('guia_instrumento') ? [['ia_guia', 'IA: guia do instrumento']] : []),
       '', function (x) { abrirPainel(x); }, 'Mais ações'));
       ferr.appendChild(mais);
     }
@@ -603,6 +603,41 @@
   // PAINÉIS da visualização
   // =================================================================
   C.paineis = {};
+
+  // Análise da música inteira em GRAUS, no tom em que ela soa. Usa a
+  // mesma função harmônica do detalhe do acorde (harmonia.grau), para as
+  // duas telas nunca discordarem.
+  C.paineis.graus = function (p, estado) {
+    var r = estado.r || {};
+    var acs = M.documento.acordesEmOrdem(r.doc || { secoes: [] });
+    p.appendChild(el('h3', { txt: 'Análise em graus' }));
+    if (!acs.length) { p.appendChild(el('p', { class: 'm', txt: 'Esta cifra não tem acordes para analisar.' })); return; }
+    var tom = r.tom_soando ? M.nota.lerTom(r.tom_soando) : null;
+    if (!tom) { var dt = M.harmonia.detectarTom(acs)[0]; tom = dt ? dt.tom : null; }
+    if (!tom) { p.appendChild(el('p', { class: 'm', txt: 'Não consegui determinar o tom desta cifra.' })); return; }
+    var nomeTom = M.nota.escreverTom(tom);
+    var vistos = {}, ordem = [], seq = [];
+    acs.forEach(function (t) {
+      var ac = M.acorde.ler(t);
+      var g = ac && ac.reconhecido ? M.harmonia.grau(ac, tom) : null;
+      seq.push(g ? g.texto : '?');
+      if (!vistos[t]) { vistos[t] = { t: t, g: g, n: 0 }; ordem.push(vistos[t]); }
+      vistos[t].n++;
+    });
+    var dentro = ordem.filter(function (x) { return x.g && x.g.diatonico; }).reduce(function (a, x) { return a + x.n; }, 0);
+    p.appendChild(el('p', {}, ['Tom: ', el('b', { txt: nomeTom }), ' · ' + Math.round(100 * dentro / acs.length) + '% dos acordes estão no campo harmônico. ',
+      el('a', { href: '/music/laboratorio/tom?t=' + encodeURIComponent(nomeTom), target: '_blank', rel: 'noopener', txt: 'Ver o tom no Laboratório →' })]));
+    p.appendChild(el('p', { class: 'm', txt: 'Sequência: ' + seq.slice(0, 96).join(' · ') + (seq.length > 96 ? ' …' : '') }));
+    var tab = el('table', { class: 'cf-tabela' }, [el('thead', {}, [el('tr', {}, ['Acorde', 'Grau', 'Função', 'Vezes', ''].map(function (c) { return el('th', { txt: c }); }))]),
+      el('tbody', {}, ordem.map(function (x) {
+        return el('tr', {}, [el('td', {}, [el('b', { txt: x.t })]), el('td', { txt: x.g ? x.g.texto : '?' }), el('td', { txt: x.g ? (x.g.funcao || '') : 'não reconhecido' }), el('td', { txt: String(x.n) }),
+          el('td', {}, [el('a', { href: '/music/laboratorio/acorde?c=' + encodeURIComponent(x.t), target: '_blank', rel: 'noopener', txt: 'Laboratório' })])]);
+      }))]);
+    p.appendChild(el('div', { style: 'overflow-x:auto' }, [tab]));
+    var fora = ordem.filter(function (x) { return x.g && !x.g.diatonico; });
+    if (fora.length) p.appendChild(el('p', { class: 'm', txt: 'Fora do campo: ' + fora.map(function (x) { return x.t + ' (' + x.g.texto + ')'; }).join(', ') + '. Costumam ser dominantes secundárias, empréstimos do tom menor ou passagens cromáticas — veja a lição de empréstimo modal no Laboratório.' }));
+  };
+
   C.paineis.exibicao = function (p, estado, x) {
     var v = x.v;
     p.appendChild(el('h3', { txt: 'Exibição' }));

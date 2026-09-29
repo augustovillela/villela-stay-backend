@@ -47,3 +47,12 @@ CREATE TABLE IF NOT EXISTS lab_atividades (
   atualizado_em TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS ix_lab_atividades_prof ON lab_atividades(professor, status);
+
+-- "Por onde começar?": nível, instrumento e objetivo da pessoa.
+CREATE TABLE IF NOT EXISTS lab_perfil (
+  usuario       TEXT PRIMARY KEY,
+  nivel         TEXT NOT NULL DEFAULT '',
+  instrumento   TEXT NOT NULL DEFAULT '',
+  objetivo      TEXT NOT NULL DEFAULT '',
+  atualizado_em TEXT NOT NULL DEFAULT ''
+);

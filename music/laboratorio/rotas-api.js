@@ -20,23 +20,39 @@ const s = (v, max = 200) => String(v == null ? '' : v).trim().slice(0, max);
 const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => res.status(e.status || 400).json({ erro: e.message }));
 const erro = (status, msg) => Object.assign(new Error(msg), { status });
 
-function registrarApi(app, { requireUsuario, ehDocente, buscarContaPorEmail, buscarContaPorId }) {
+// Atividades prontas: pontos de partida curados; o professor ajusta antes de atribuir.
+const BIBLIOTECA = [
+  { titulo: 'Leitura na clave de sol — notas naturais', tipos: ['nota-na-pauta'], nivel: 1, questoes: 12, params: { clave: 'sol', extensao: 'pauta' } },
+  { titulo: 'Leitura na clave de fá — com suplementares', tipos: ['nota-na-pauta'], nivel: 2, questoes: 12, params: { clave: 'fa', extensao: 'suplementares' } },
+  { titulo: 'Clave de dó (viola e violoncelo)', tipos: ['nota-na-pauta'], nivel: 1, questoes: 10, params: { clave: 'do3' } },
+  { titulo: 'Intervalos essenciais — ler e construir', tipos: ['intervalo-identificar', 'intervalo-construir'], nivel: 1, questoes: 10 },
+  { titulo: 'Ouvido: intervalos e acordes', tipos: ['intervalo-ouvido', 'acorde-ouvido'], nivel: 1, questoes: 10 },
+  { titulo: 'Tríades e campo harmônico', tipos: ['acorde-identificar', 'campo-grau'], nivel: 1, questoes: 10 },
+  { titulo: 'Armaduras até 3 acidentes', tipos: ['armadura-identificar'], nivel: 1, questoes: 10 },
+  { titulo: 'Ritmo: completar e ditar', tipos: ['ritmo-completar', 'ditado-ritmico'], nivel: 1, questoes: 8 },
+  { titulo: 'Leitura à primeira vista — iniciante', tipos: ['leitura-primeira-vista'], nivel: 1, questoes: 6 },
+  { titulo: 'Escala maior no braço do violão', tipos: ['escala-no-braco'], nivel: 1, questoes: 5, params: { instrumento: 'violao' } },
+  { titulo: 'Cadências e transposição', tipos: ['cadencia-ouvido', 'transposicao'], nivel: 2, questoes: 8 },
+  { titulo: 'Percepção avançada: duas vozes e cadências', tipos: ['ditado-duas-vozes', 'cadencia-ouvido'], nivel: 2, questoes: 8 },
+];
+
+function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPorEmail, buscarContaPorId }) {
   const academia = require('../academia');
   const B = '/music/api/lab';
   app.use(B, (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
   /** Corrige de novo, grava e agenda a revisão. */
-  function gravarResposta(usuario, { tipo, nivel, semente, resposta, ms = 0, sessao = '' }) {
+  function gravarResposta(usuario, { tipo, nivel, semente, params = {}, resposta, ms = 0, sessao = '' }) {
     if (!X.TIPOS[tipo]) throw erro(400, 'Exercício desconhecido.');
     if (semente == null || semente === '') throw erro(400, 'Falta a semente da questão.');
-    const q = X.gerar(tipo, { nivel, semente });
-    const c = X.corrigir(q, resposta);
+    const q = X.gerar(tipo, { nivel, semente, params: params && typeof params === 'object' ? params : {} });   // gerar() só aceita os parâmetros declarados
+    const c = X.corrigir(q, String(resposta == null ? '' : resposta).slice(0, 2000));
     const familia = 'lab:' + q.habilidade;
     db.prepare(`INSERT INTO tentativas (id, usuario, tipo, familia, nivel, semente, modo, enunciado, esperado, resposta,
                 acerto, confianca, vale_nota, medida, criterio, tolerancia, explicacao, ressalvas, sessao_id, trilha_id, ms_gasto, criado_em)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,'{}',?,'{}',?,'[]',?,'',?,?)`)
       .run(novoId(), usuario, 'lab:' + tipo, familia, q.nivel, String(semente), q.mede, s(q.enunciado, 500),
-        JSON.stringify({ resposta: q.resposta, versao: q.versao }), JSON.stringify({ resposta: s(resposta, 60) }),
+        JSON.stringify({ resposta: q.resposta, versao: q.versao, params: q.params }), JSON.stringify({ resposta: s(resposta, 400) }),
         c.certo ? 1 : 0, 1, 'mede ' + q.mede, s(c.explicacao, 1000), s(sessao, 60), Math.max(0, Math.min(600000, Number(ms) || 0)), nowISO());
     const rev = academia.Pratica.atualizarRevisao(usuario, familia, q.nivel, { acerto: c.certo, confianca: 1, vale_nota: false });
     return { ...c, proxima_revisao_dias: rev.revisar_em_dias };
@@ -50,7 +66,7 @@ function registrarApi(app, { requireUsuario, ehDocente, buscarContaPorEmail, bus
       const at = Atividades.porId(sessao.split(':')[1]);
       if (!at || !academia.Tarefas.temAluno(at.tarefa_id, req.usuario.id)) throw erro(403, 'Esta atividade não foi atribuída a você.');
     }
-    res.json(gravarResposta(req.usuario.id, { tipo: s(b.tipo, 40), nivel: Number(b.nivel) || 1, semente: b.semente, resposta: b.resposta, ms: b.ms, sessao }));
+    res.json(gravarResposta(req.usuario.id, { tipo: s(b.tipo, 40), nivel: Number(b.nivel) || 1, semente: b.semente, params: b.params, resposta: b.resposta, ms: b.ms, sessao }));
   }));
 
   /** Progresso por exercício e por habilidade; erros recentes; revisão. */
@@ -84,6 +100,21 @@ function registrarApi(app, { requireUsuario, ehDocente, buscarContaPorEmail, bus
     if (!t) throw erro(404, 'Exercício desconhecido.');
     const n = academia.Pratica.nivelSugerido(req.usuario.id, 'lab:' + t.habilidade, 1);
     res.json({ nivel: Math.min(t.niveis.length, n) });
+  }));
+
+  // ---- perfil ("por onde começar?") ----
+  const PERFIL = { nivel: ['comecando', 'toco', 'avancado'], instrumento: ['violao', 'guitarra', 'teclado', 'voz', 'baixo', 'cavaquinho', 'ukulele', 'violao-7', 'outro'], objetivo: ['teoria', 'tocar', 'ouvido', 'compor', 'ensinar'] };
+  app.get(B + '/perfil', requireUsuario, h(async (req, res) => {
+    const p = db.prepare('SELECT nivel, instrumento, objetivo FROM lab_perfil WHERE usuario = ?').get(req.usuario.id);
+    res.json({ perfil: p || null });
+  }));
+  app.post(B + '/perfil', requireUsuario, h(async (req, res) => {
+    const b = req.body || {};
+    const v = {}; Object.keys(PERFIL).forEach((k) => { if (!PERFIL[k].includes(b[k])) throw erro(400, 'Valor inválido: ' + k); v[k] = b[k]; });
+    db.prepare(`INSERT INTO lab_perfil (usuario, nivel, instrumento, objetivo, atualizado_em) VALUES (?,?,?,?,?)
+                ON CONFLICT(usuario) DO UPDATE SET nivel = excluded.nivel, instrumento = excluded.instrumento, objetivo = excluded.objetivo, atualizado_em = excluded.atualizado_em`)
+      .run(req.usuario.id, v.nivel, v.instrumento, v.objetivo, nowISO());
+    res.json({ ok: true });
   }));
 
   // ---- favoritos ----
@@ -131,6 +162,7 @@ function registrarApi(app, { requireUsuario, ehDocente, buscarContaPorEmail, bus
       revisao: db.prepare("SELECT * FROM agenda_revisao WHERE usuario = ? AND familia LIKE 'lab:%'").all(u),
       favoritos: db.prepare('SELECT * FROM lab_favoritos WHERE usuario = ?').all(u),
       jogos: db.prepare('SELECT * FROM lab_jogos WHERE usuario = ?').all(u),
+      perfil: db.prepare('SELECT * FROM lab_perfil WHERE usuario = ?').get(u) || null,
       atividades_criadas: db.prepare('SELECT id, titulo, config, criado_em FROM lab_atividades WHERE professor = ?').all(u),
     };
     res.set('Content-Disposition', 'attachment; filename="musique-laboratorio-meus-dados.json"').json(corpo);
@@ -142,6 +174,7 @@ function registrarApi(app, { requireUsuario, ehDocente, buscarContaPorEmail, bus
     db.prepare("DELETE FROM agenda_revisao WHERE usuario = ? AND familia LIKE 'lab:%'").run(u);
     db.prepare('DELETE FROM lab_favoritos WHERE usuario = ?').run(u);
     db.prepare('DELETE FROM lab_jogos WHERE usuario = ?').run(u);
+    db.prepare('DELETE FROM lab_perfil WHERE usuario = ?').run(u);
     res.json({ ok: true, tentativas_excluidas: n });
   }));
 
@@ -165,6 +198,8 @@ function registrarApi(app, { requireUsuario, ehDocente, buscarContaPorEmail, bus
       semente_fixa: b.semente_fixa !== false,
       semente: Math.floor(Math.random() * 1e9),
       tempo_s: Math.max(0, Math.min(3600, Number(b.tempo_s) || 0)),
+      // parâmetros por exercício (ex.: clave e extensão); gerar() só aceita os declarados
+      params: b.params && typeof b.params === 'object' ? JSON.parse(JSON.stringify(b.params)) : {},
     };
   }
   /** As questões da atividade (iguais para todos quando `semente_fixa`). */
@@ -175,7 +210,7 @@ function registrarApi(app, { requireUsuario, ehDocente, buscarContaPorEmail, bus
     for (let i = 0; i < c.questoes; i++) {
       const tipo = c.tipos[i % c.tipos.length];
       const sem = base + ':' + i;
-      out.push(X.publica(X.gerar(tipo, { nivel: Math.min(c.nivel, X.TIPOS[tipo].niveis.length), semente: sem })));
+      out.push(X.publica(X.gerar(tipo, { nivel: Math.min(c.nivel, X.TIPOS[tipo].niveis.length), semente: sem, params: c.params || {} })));
     }
     return out;
   }
@@ -204,7 +239,72 @@ function registrarApi(app, { requireUsuario, ehDocente, buscarContaPorEmail, bus
                 VALUES (?,?,?,?,?,?, 'ativa', ?, ?)`).run(id, req.usuario.id, tarefa.id, titulo, JSON.stringify(c), X.VERSAO, nowISO(), nowISO());
     const emails = (Array.isArray(b.emails) ? b.emails : String(b.emails || '').split(/[\s,;]+/)).filter(Boolean).slice(0, 200);
     const atrib = emails.length ? academia.Tarefas.atribuirPorEmail(req.usuario.id, tarefa.id, emails, buscarContaPorEmail) : { atribuidos: 0, nao_encontrados: [] };
+    if (b.turma_id) atrib.atribuidos += atribuirTurma(req.usuario, tarefa.id, s(b.turma_id, 40));
     res.json({ ok: true, id, tarefa_id: tarefa.id, ...atrib, link: `/music/atividade/${id}` });
+  }));
+
+  // ---- turma inteira: pelo PORTÃO das organizações (ADR-0007) ----
+  // Nada de consulta direta às tabelas de escola aqui: o portão diz quais
+  // turmas a pessoa alcança e quem está matriculado nelas.
+  function minhasTurmas(u) {
+    const O = require('../organizacoes');
+    const out = [];
+    O.Organizacoes.doUsuario(u.id).trabalho.forEach((org) => {
+      let ts = [];
+      try { ts = O.Turmas.daOrganizacao(u.id, org.id); } catch (_) { ts = []; }
+      ts.forEach((t) => out.push({ id: t.id, nome: t.nome, escola: org.nome, alunos: t.alunos }));
+    });
+    return out;
+  }
+  function atribuirTurma(u, tarefaId, turmaId) {
+    const O = require('../organizacoes');
+    if (!minhasTurmas(u).some((t) => t.id === turmaId)) throw erro(403, 'Esta turma não é sua.');
+    const det = O.Turmas.detalhe(u.id, turmaId);
+    const alunos = (det.alunos || []).map((m) => m.aluno).filter(Boolean);
+    return alunos.length ? academia.Tarefas.atribuir(u.id, tarefaId, alunos) : 0;
+  }
+  app.get(B + '/turmas', requireUsuario, h(async (req, res) => {
+    exigeDocente(req);
+    res.json({ turmas: minhasTurmas(req.usuario) });
+  }));
+  app.post(B + '/atividades/:id/turma', requireUsuario, h(async (req, res) => {
+    exigeDocente(req);
+    const at = Atividades.porId(req.params.id);
+    if (!at || at.professor !== req.usuario.id) throw erro(404, 'Atividade não encontrada.');
+    res.json({ atribuidos: atribuirTurma(req.usuario, at.tarefa_id, s((req.body || {}).turma_id, 40)) });
+  }));
+
+  // ---- atividades prontas (curadas pela casa; o professor ajusta) ----
+  app.get(B + '/biblioteca', requireUsuario, h(async (req, res) => {
+    exigeDocente(req);
+    res.json({ atividades: BIBLIOTECA });
+  }));
+
+  // ---- versão para imprimir (o navegador salva em PDF) ----
+  app.get('/music/atividade/:id/imprimir', opcional || ((q, r, n) => n()), h(async (req, res) => {
+    const H = require('./html');
+    if (!req.usuario) return res.redirect('/music/entrar?voltar=' + encodeURIComponent(req.originalUrl.slice(0, 80)));
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Só o professor imprime a atividade.');
+    const at = Atividades.porId(req.params.id);
+    if (!at || at.professor !== req.usuario.id) return H.naoAchou(res, 'esta atividade');
+    const qs = questoesDa(at, 'impressao');
+    const letras = 'abcdefgh';
+    const visual = (q) => {
+      const v = q.visual || {};
+      if (v.tipo === 'pauta') return H.D.pauta({ clave: v.clave, acorde: v.acorde, armadura: v.armadura || 0, notas: v.notas || [], titulo: 'Questão' });
+      if (v.tipo === 'ritmo') return H.D.ritmo({ compasso: v.compasso, figuras: v.figuras });
+      if (v.tipo === 'braco') return H.D.braco({ afinacao: require('./nucleo/instrumentos').afinacao(v.instrumento || 'violao', 'padrao'), casas: v.casas || 7, destaques: v.destaques || [] });
+      if (v.tipo === 'piano') return H.D.piano({ de: v.de || 48, ate: v.ate || 71, rotulos: 'nenhum' });
+      return '';
+    };
+    const corpo = `<div class="lab-impressao"><header class="lab-cab"><h1>${H.esc(at.titulo)}</h1>
+<p>Nome: ______________________________ &nbsp; Data: ____/____/______</p>
+<button type="button" class="btn lab-nao-imprime" onclick="window.print()">Imprimir ou salvar em PDF</button></header>
+<ol class="lab-imp-questoes">${qs.map((q) => `<li><p><strong>${H.esc(q.enunciado)}</strong>${q.auditivo ? ' <em>(questão de ouvido: o professor toca)</em>' : ''}</p>${visual(q)}
+${q.opcoes ? `<ol class="lab-imp-opcoes" type="a">${q.opcoes.map((o) => `<li>${H.esc(o.rotulo)}</li>`).join('')}</ol>` : '<p class="lab-imp-linha">Resposta: ________________________________</p>'}</li>`).join('')}</ol>
+${req.query.gabarito === '1' ? `<section class="lab-imp-gabarito"><h2>Gabarito</h2><ol>${qs.map((q) => { const cheia = X.gerar(q.tipo, { nivel: q.nivel, semente: q.semente, params: q.params }); const i = (cheia.opcoes || []).findIndex((o) => o.valor === cheia.resposta); return `<li>${i >= 0 ? letras[i] + ') ' + H.esc(cheia.opcoes[i].rotulo) : H.esc(X.corrigir(cheia, cheia.resposta).esperado)}</li>`; }).join('')}</ol></section>` : `<p class="lab-nao-imprime"><a href="?gabarito=1">Versão com gabarito</a></p>`}
+</div>`;
+    H.pagina(res, { titulo: at.titulo + ' — para imprimir', caminho: '/music/atividade', corpo, indexar: false });
   }));
 
   app.get(B + '/atividades', requireUsuario, h(async (req, res) => {
@@ -252,7 +352,7 @@ function registrarApi(app, { requireUsuario, ehDocente, buscarContaPorEmail, bus
     res.json({ titulo: at.titulo, config: JSON.parse(at.config), questoes: questoesDa(at, req.usuario.id).map((q) => ({ ...q, resposta: undefined })), sessao: 'atv:' + at.id });
   }));
 
-  return { Atividades };
+  return { Atividades, BIBLIOTECA };
 }
 
 module.exports = { registrarApi };

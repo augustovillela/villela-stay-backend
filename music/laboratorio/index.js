@@ -15,7 +15,7 @@ function montar(app, { requireUsuario, opcional, ehDocente, buscarContaPorEmail,
   const acessoDaConta = (id) => require('../assinatura').acessoDaConta(id);
   const contextoDe = (req) => ACESSO.contexto({ usuario: req.usuario || null, acessoDaConta, ehDocente });
 
-  registrarApi(app, { requireUsuario, ehDocente, buscarContaPorEmail, buscarContaPorId });
+  registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPorEmail, buscarContaPorId });
   paginas.registrar(app, { opcional, contextoDe });
 
   // A atividade do professor: exige conta (e o aluno precisa estar na

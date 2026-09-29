@@ -77,7 +77,7 @@
         C.aviso(n ? n + ' entrada(s) MIDI conectada(s).' : 'Nenhum teclado MIDI encontrado.');
       }).catch(function () { C.aviso('O acesso ao MIDI foi negado.'); });
     } });
-    alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(pintar), midiBtn]));
+    alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(pintar), C.selTimbre(), midiBtn]));
     alvo.appendChild(box); alvo.appendChild(acordeTxt); alvo.appendChild(info);
     pintar();
   };
@@ -287,6 +287,11 @@
           el('button', { type: 'button', class: 'btn', txt: '▶ Ouvir (condução de vozes)', onclick: function () { var a = C.Som.audio(), dur = 60 / bpm * 2; vozes.forEach(function (v, i) { v.forEach(function (n) { C.Som.voz(C.Som.FREQ(N.midi(n)), a.currentTime + 0.05 + i * dur, dur * 0.95, { vel: 0.14 }); }); C.Som.voz(C.Som.FREQ(N.midi(N.comOitava(acs[i].fundamental, 2))), a.currentTime + 0.05 + i * dur, dur * 0.95, { vel: 0.18 }); }); historico.unshift(seqTxt); historico = historico.filter(function (x, k) { return historico.indexOf(x) === k; }).slice(0, 8); C.guardar('progressoes-hist', historico); } }),
           el('button', { type: 'button', class: 'btn sec', txt: 'Desfazer', onclick: function () { graus.pop(); render(); } }),
           el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { graus = []; render(); } }),
+          el('button', { type: 'button', class: 'btn sec', txt: 'Exportar ChordPro', onclick: function () {
+            var cp = '{title: Progressão em ' + T.nome(t, modo) + '}\n{key: ' + N.nome(t, { oitava: false }) + (modo === 'menor' ? 'm' : '') + '}\n'
+              + '{comment: ' + acs.map(function (g) { return g.romano; }).join(' – ') + '}\n' + acs.map(function (g) { return '[' + g.simbolo + ']'; }).join(' ') + '\n';
+            exportar(st, 'progressao-' + N.slug(t) + '.cho', 'text/plain', cp);
+          } }),
           el('a', { href: '/music/criar/transpositor', txt: 'Transpor →' })])]));
       alvo.appendChild(el('ul', { class: 'lab-lista-pos' }, vozes.map(function (v, i) { return el('li', { txt: acs[i].simbolo + ': ' + v.map(function (n) { return rot(n) + n.oitava; }).join(' ') }); })));
       if (historico.length) alvo.appendChild(el('details', { class: 'lab-det' }, [el('summary', { txt: 'Tocadas recentemente' }), el('ul', {}, historico.map(function (h) { return el('li', { txt: h }); }))]));

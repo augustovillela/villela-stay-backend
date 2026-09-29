@@ -161,7 +161,7 @@ async function rodar({ t, secao, req, assert }) {
     assert.deepEqual(P.armadura(7, 'sol').map((x) => x.posicao), [8, 5, 9, 6, 3, 7, 4]);
     assert.deepEqual(P.armadura(-7, 'sol').map((x) => x.posicao), [4, 7, 3, 6, 2, 5, 1]);
     assert.deepEqual(P.armadura(-3, 'fa').map((x) => x.posicao), [2, 5, 1]);
-    assert.equal(P.armadura(2, 'do4'), null, 'armadura na clave de tenor: não validada, não desenha');
+    assert.deepEqual(P.armadura(2, 'do4').map((x) => x.posicao), [2, 6], 'tenor: fá# na 2ª linha, dó# na 4ª');
     assert.equal(P.nomeDaPosicao(2), '2ª linha'); assert.equal(P.nomeDaPosicao(-2), '1ª linha suplementar inferior'); assert.equal(P.nomeDaPosicao(9), 'espaço acima da pauta');
     for (let p = -6; p <= 14; p++) ['sol', 'fa', 'do3', 'do4'].forEach((c) => assert.equal(pos(P.naturalNaPosicao(p, c), c), p, `${c} ${p}`));
   });
@@ -193,7 +193,7 @@ async function rodar({ t, secao, req, assert }) {
     X.LISTA.forEach((x) => { for (let nv = 1; nv <= x.niveis.length; nv++) for (let s = 0; s < 60; s++) {
       const q = X.gerar(x.id, { nivel: nv, semente: s });
       assert.deepEqual(X.publica(q), X.publica(X.gerar(x.id, { nivel: nv, semente: s })), x.id);
-      if (q.entrada !== 'piano') assert.ok(q.opcoes.some((o) => o.valor === q.resposta) && new Set(q.opcoes.map((o) => o.valor)).size === q.opcoes.length, x.id + ' opções');
+      if (q.opcoes) assert.ok(q.opcoes.some((o) => o.valor === q.resposta) && new Set(q.opcoes.map((o) => o.valor)).size === q.opcoes.length, x.id + ' opções');
       assert.ok(X.corrigir(q, q.resposta).certo, x.id); assert.equal(q.versao, X.VERSAO); n++;
     } });
     assert.ok(n > 1500);
@@ -218,6 +218,13 @@ async function rodar({ t, secao, req, assert }) {
       'campo-grau': (q) => { const m = q.enunciado.match(/^Em (.+) (maior|menor), qual é o acorde do (\d)º grau/); const acs = T.realizar(N.ler(m[1]), m[2], [Number(m[3])], { tetrades: q.nivel === 2 }); return acs[0].simbolo === q.resposta; },
       'ritmo-completar': (q) => { const v = q.visual; const [f, p] = [q.resposta.replace('.', ''), q.resposta.endsWith('.') ? 1 : 0]; return v.figuras.length > 0 && R.iguais(R.soma(R.somaDuracoes(v.figuras.map((x) => R.duracao(x.figura, { pontos: x.pontos }))), R.duracao(f, { pontos: p })), R.compasso(v.compasso).capacidade); },
       'nota-no-braco': (q) => { const d = q.visual.destaques[0]; return N.mod(INS.afinacao(q.visual.instrumento, 'padrao').midi[d.corda] + d.casa, 12) === Number(q.resposta); },
+      'leitura-primeira-vista': (q) => JSON.stringify(q.visual.notas.map((x) => N.midi(x.nota))) === JSON.stringify(q.resposta.split(',').map(Number))
+        && q.visual.armadura === T.armadura(N.ler(q.enunciado.match(/\((.+) maior\)/)[1]), 'maior').quantidade,
+      'ditado-ritmico': (q) => { const t = q.resposta.split(',').map(Number); const sem = 60000 / q.bpm / 4; return JSON.stringify(t.map((x) => Math.round(x / sem))) === JSON.stringify(q.audio.ritmo) && q.audio.ritmo[0] === 0 && R.iguais(R.somaDuracoes(q.mostrar.figuras.map((f) => R.duracao(f.figura, { pontos: f.pontos }))), R.fr(1, 1)); },
+      'ditado-duas-vozes': (q) => { const [a, b] = q.resposta.split('|').map((x) => x.split('.').map(Number)); return a.length === q.audio.sequencia.length && b.length === a.length && q.audio.sequencia.every((c) => c[0] < c[1]); },
+      'cadencia-ouvido': (q) => { const c = T.CADENCIAS.find((x) => x.id === q.resposta); return !!c && q.audio.sequencia.length === 3 && q.opcoes.some((o) => o.valor === q.resposta); },
+      'transposicao': (q) => { const m = q.enunciado.match(/^Transponha (.+) de (.+) maior para (.+) maior\.$/); const de = m[1].split(' ').map(A.ler), para = q.resposta.split(' ').map(A.ler); const semi = N.mod(N.pc(N.ler(m[3])) - N.pc(N.ler(m[2])), 12); return de.length === para.length && de.every((x, i) => N.mod(N.pc(x.fundamental) + semi, 12) === N.pc(para[i].fundamental) && x.id === para[i].id); },
+      'escala-no-braco': (q) => { const m = q.enunciado.match(/notas de (.+?) (maior|menor natural|pentatônica maior|pentatônica menor|dórico|mixolídio) \(/); const e = E.CATALOGO.find((x) => x.nome === m[2]); return E.notas(N.ler(m[1]), e.id).map(N.pc).sort((a, b) => a - b).join(',') === q.resposta; },
     };
     assert.deepEqual(Object.keys(verif).sort(), X.LISTA.map((x) => x.id).sort(), 'todo tipo de exercício tem verificação independente');
     let n = 0;
@@ -421,6 +428,120 @@ async function rodar({ t, secao, req, assert }) {
       const pr = await req('GET', '/music/praticar/nota-na-pauta', { headers: ck, cru: true });
       assert.match(pr.texto, /Modo demonstração/);
     } finally { require('../repo').Config.set('assinatura', cfg); }
+  });
+
+  secao('Laboratório · 2ª entrega: exercícios, ferramentas, professor, Cifras e teoria única');
+
+  await t('EXERCÍCIOS NOVOS: leitura aceita qualquer oitava; ritmo tolera ±40 ms mas não um toque a mais; braço confere o CONJUNTO de notas; clave e extensão escolhidas valem', async () => {
+    const l = X.gerar('leitura-primeira-vista', { nivel: 1, semente: 3 });
+    assert.ok(X.corrigir(l, l.resposta.split(',').map((m) => Number(m) - 12).join(',')).certo, 'uma oitava abaixo vale (violão lê assim)');
+    const errada = l.resposta.split(',').map(Number); errada[1] += 1;
+    const cl = X.corrigir(l, errada.join(',')); assert.ok(!cl.certo && /A melodia era/.test(cl.explicacao));
+    const r = X.gerar('ditado-ritmico', { nivel: 2, semente: 5 });
+    const t0 = r.resposta.split(',').map(Number);
+    assert.ok(X.corrigir(r, t0.map((x, i) => x + 500 + (i % 2 ? 35 : -35)).join(',')).certo, 'desvio de 35 ms passa');
+    assert.ok(!X.corrigir(r, t0.concat([t0[t0.length - 1] + 400]).join(',')).certo, 'um toque a mais não passa');
+    const b = X.gerar('escala-no-braco', { nivel: 1, semente: 2 });
+    const cb = X.corrigir(b, b.resposta.split(',').slice(1).join(','));
+    assert.ok(!cb.certo && /Faltaram/.test(cb.explicacao));
+    const q = X.gerar('nota-na-pauta', { nivel: 1, semente: 9, params: { clave: 'do4', extensao: 'pauta', lixo: 'x' } });
+    assert.equal(q.visual.clave, 'do4'); assert.deepEqual(q.params, { clave: 'do4', extensao: 'pauta' }, 'parâmetro não declarado é descartado');
+    const p = P.posicao(q.visual.notas[0].nota, 'do4').posicao; assert.ok(p >= 0 && p <= 8, 'extensão "pauta" fica dentro das 5 linhas');
+    const semP = X.gerar('nota-na-pauta', { nivel: 1, semente: 9 });
+    assert.equal(semP.resposta, X.gerar('nota-na-pauta', { nivel: 1, semente: 9, params: {} }).resposta, 'sem parâmetro, a questão antiga continua a mesma');
+  });
+
+  await t('NÚCLEO: armadura na clave de tenor (sustenidos a partir da 2ª linha), motivos com grafia e matriz dodecafônica', async () => {
+    assert.deepEqual(P.armadura(7, 'do4').map((x) => x.posicao), [2, 6, 3, 7, 4, 8, 5]);
+    assert.deepEqual(P.armadura(-7, 'do4').map((x) => x.posicao), [5, 8, 4, 7, 3, 6, 2]);
+    const Mo = require('./nucleo/motivos');
+    const mot = Mo.lerMotivo('C4 E4 G4');
+    assert.equal(Mo.inverter(mot).map((n) => N.nome(n)).join(' '), 'C4 Ab3 F3', 'terça maior que sobe vira terça maior que desce');
+    assert.equal(Mo.transpor(mot, '5J').map((n) => N.nome(n)).join(' '), 'G4 B4 D5');
+    assert.equal(Mo.retrogradoInverso(mot).map((n) => N.nome(n)).join(' '), 'F3 Ab3 C4');
+    const s = [0, 11, 7, 8, 3, 1, 2, 10, 6, 5, 4, 9], mz = Mo.matriz(s);
+    assert.deepEqual(mz.linhas[0], s); assert.equal(mz.P[0], 'P0');
+    mz.linhas.forEach((l) => assert.equal(new Set(l).size, 12));
+    for (let c = 0; c < 12; c++) assert.equal(new Set(mz.linhas.map((l) => l[c])).size, 12, 'cada coluna também tem as 12');
+    assert.equal(Mo.matriz([0, 1, 2]), null); assert.equal(Mo.serieValida([0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), false);
+  });
+
+  await t('TEORIA ÚNICA: teoria.js e o motor das Cifras tiram escalas, acordes, pauta, grafia pelo tom e campo harmônico do núcleo — com o mesmo resultado de antes', async () => {
+    const TE = require('../teoria');
+    assert.deepEqual(TE.escala('D', 'dorico'), [2, 4, 5, 7, 9, 11, 0]);
+    assert.deepEqual(TE.ESCALAS.blues.graus, [0, 3, 5, 6, 7, 10]); assert.equal(TE.ESCALAS.menor_harmonica.lab, 'menor-harmonica');
+    assert.deepEqual(TE.ACORDES.diminuto7.graus, [0, 3, 6, 9]); assert.equal(TE.ACORDES.meio_diminuto.sufixo, 'm7(b5)');
+    const p = TE.posicaoNaPauta(61, 'sol', { bemol: true }); assert.equal(p.acidente, 'b'); assert.equal(p.y, 128 + 7, 'ré♭4 no espaço do ré, logo abaixo da pauta');
+    assert.equal(TE.posicaoNaPauta(48, 'fa').y, 128 - 3 * 7, 'dó3 na clave de fá (antes: não existia)');
+    const H = require('../cifras/motor/harmonia'), CN = require('../cifras/motor/nota');
+    assert.deepEqual(H.CAMPO_MAIOR, { 0: 'maior', 2: 'menor', 4: 'menor', 5: 'maior', 7: 'maior', 9: 'menor', 11: 'dim' });
+    assert.deepEqual(H.CAMPO_MENOR, { 0: 'menor', 2: 'dim', 3: 'maior', 5: 'menor', 7: ['menor', 'maior'], 8: 'maior', 10: 'maior', 11: 'dim' });
+    const bem = []; for (let pc = 0; pc < 12; pc++) bem.push(CN.usarBemol({ pc, menor: false }) ? 1 : 0);
+    assert.equal(bem.join(''), '010101101010', 'mesma grafia pelo tom (derivada da armadura do núcleo)');
+    const js = await req('GET', '/music/motor-cifras.js', { cru: true });
+    assert.ok(js.texto.indexOf('MusiqueLab') >= 0 && js.texto.indexOf('MusiqueLab') < js.texto.indexOf('MusiqueMotor'), 'o núcleo vai na frente no pacote das Cifras');
+    new vm.Script(js.texto);
+  });
+
+  await t('POR ONDE COMEÇAR: perfil validado, guardado por pessoa e na exportação LGPD; recomendação cobre as combinações', async () => {
+    const hub = await req('GET', '/music/laboratorio', { cru: true }); assert.match(hub.texto, /Por onde começar\?/); assert.match(hub.texto, /id="lab-perfil"/);
+    assert.equal((await req('POST', '/music/api/lab/perfil', { como: 'ana', corpo: { nivel: 'x', instrumento: 'violao', objetivo: 'teoria' } })).status, 400);
+    assert.equal((await req('POST', '/music/api/lab/perfil', { como: 'ana', corpo: { nivel: 'toco', instrumento: 'cavaquinho', objetivo: 'tocar' } })).status, 200);
+    assert.equal((await req('GET', '/music/api/lab/perfil', { como: 'ana' })).json.perfil.instrumento, 'cavaquinho');
+    assert.equal((await req('GET', '/music/api/lab/perfil', { como: 'bruno' })).json.perfil, null);
+    assert.ok(JSON.parse((await req('GET', '/music/api/lab/meus-dados', { como: 'ana', cru: true })).texto).perfil);
+    const cli = PG.clienteJs(); const ctx = { window: {}, document: { addEventListener() {}, querySelector() { return null; } } };
+    assert.match(cli, /function recomendar\(p\)/);
+    // a recomendação existe para toda combinação (5 objetivos × 3 níveis) e aponta para páginas que existem
+    const urls = new Set(PG.urlsDoSitemap().map((x) => x.url));
+    const rec = cli.slice(cli.indexOf('function recomendar(p)'));
+    [...rec.matchAll(/url: '(\/music\/[a-z0-9/-]+)/g)].map((m) => m[1]).forEach((u) => assert.ok(urls.has(u) || u === '/music/ferramentas' || u === '/music/criar/afinador-cordas?i=' || /\/music\/explorar\/braco$/.test(u), 'recomendação aponta para página inexistente: ' + u));
+    void ctx;
+  });
+
+  await t('PROFESSOR: turma inteira pelo portão das escolas; atividades prontas; parâmetros valem na atividade; impressão só para o dono, com gabarito opcional', async () => {
+    const tur = await req('GET', '/music/api/lab/turmas', { como: 'bruno' });
+    assert.equal(tur.status, 200);
+    const bib = await req('GET', '/music/api/lab/biblioteca', { como: 'prof' });
+    assert.ok(bib.json.atividades.length >= 10); bib.json.atividades.forEach((a) => a.tipos.forEach((tp) => assert.ok(X.TIPOS[tp], a.titulo)));
+    const c = await req('POST', '/music/api/lab/atividades', { como: 'prof', corpo: { titulo: 'Clave de dó', tipos: ['nota-na-pauta'], nivel: 1, questoes: 4, params: { clave: 'do3' }, emails: 'ana@t' } });
+    assert.equal(c.status, 200);
+    const qs = await req('GET', `/music/api/lab/atividades/${c.json.id}/questoes`, { como: 'ana' });
+    assert.ok(qs.json.questoes.every((q) => q.visual.clave === 'do3'), 'o parâmetro do professor vale para o aluno');
+    const q0 = qs.json.questoes[0];
+    const certa = X.gerar(q0.tipo, { nivel: q0.nivel, semente: q0.semente, params: q0.params }).resposta;
+    assert.equal((await req('POST', '/music/api/lab/responder', { como: 'ana', corpo: { tipo: q0.tipo, nivel: q0.nivel, semente: q0.semente, params: q0.params, resposta: certa, sessao: qs.json.sessao } })).json.certo, true, 'o servidor regenera COM os parâmetros');
+    const imp = await req('GET', `/music/atividade/${c.json.id}/imprimir`, { como: 'prof', cru: true });
+    assert.equal(imp.status, 200); assert.match(imp.texto, /window\.print/); assert.ok(!/Gabarito/.test(imp.texto.replace(/Versão com gabarito/, '')));
+    const gab = await req('GET', `/music/atividade/${c.json.id}/imprimir?gabarito=1`, { como: 'prof', cru: true }); assert.match(gab.texto, /<h2>Gabarito<\/h2>/);
+    assert.notEqual((await req('GET', `/music/atividade/${c.json.id}/imprimir`, { como: 'ana', cru: true })).status, 200, 'aluno não imprime o gabarito do professor');
+    assert.equal((await req('GET', `/music/atividade/${c.json.id}/imprimir`, { cru: true })).status, 302, 'sem conta, vai para a entrada');
+    assert.equal((await req('POST', `/music/api/lab/atividades/${c.json.id}/turma`, { como: 'prof', corpo: { turma_id: 'turma-de-outro' } })).status, 403, 'turma que não é sua é recusada');
+    const rotas = require('fs').readFileSync(require('path').join(__dirname, 'rotas-api.js'), 'utf8');
+    assert.ok(!/FROM (turmas|matriculas|org_membros|organizacoes)\b/.test(rotas), 'nada de consulta direta às tabelas de escola (ADR-0007)');
+  });
+
+  await t('CIFRAS ↔ LABORATÓRIO: acorde e tom da cifra abrem a página certa; a cifra tem o painel de análise em graus e o botão no detalhe do acorde', async () => {
+    const a = await req('GET', '/music/laboratorio/acorde?c=' + encodeURIComponent('Bbm7(b5)'), { cru: true });
+    assert.equal(a.status, 302); assert.equal(a.headers.get('location'), '/music/acordes/si-bemol/m7b5');
+    assert.equal((await req('GET', '/music/laboratorio/acorde?c=' + encodeURIComponent('A#7'), { cru: true })).headers.get('location'), '/music/acordes/la-sustenido/7', 'mantém a grafia da cifra');
+    assert.match((await req('GET', '/music/laboratorio/acorde?c=xyz', { cru: true })).headers.get('location'), /^\/music\/buscar/);
+    assert.equal((await req('GET', '/music/laboratorio/tom?t=Em', { cru: true })).headers.get('location'), '/music/tonalidades/mi-menor');
+    assert.equal((await req('GET', '/music/laboratorio/tom?t=Bb', { cru: true })).headers.get('location'), '/music/tonalidades/si-bemol-maior');
+    const cif = (await req('GET', '/music/cifras.js', { cru: true })).texto;
+    assert.match(cif, /C\.paineis\.graus = function/); assert.match(cif, /\/music\/laboratorio\/acorde\?c=/); assert.match(cif, /'graus', 'Análise em graus/);
+  });
+
+  await t('PÁGINAS NOVAS abrem: 10 ferramentas, 9 lições, solfejo; lições com duas vozes e progressões tocáveis', async () => {
+    const novas = ['explorar/comparar-modos', 'explorar/piano-isomorfico', 'explorar/serie-dodecafonica', 'criar/afinador-cordas', 'criar/extensao-vocal', 'criar/metronomo-progressivo',
+      'criar/mini-maquina', 'criar/motivos', 'criar/xilofone', 'criar/gerador-de-bumbo', 'referencia/solfejo'];
+    for (const u of novas) { const r = await req('GET', '/music/' + u, { cru: true }); assert.equal(r.status, 200, u); }
+    assert.equal(L.LICOES.length, 24);
+    for (const l of L.LICOES.slice(15)) { const r = await req('GET', '/music/aprender/' + l.slug, { como: 'ana', cru: true }); assert.equal(r.status, 200, l.slug); assert.ok(!/undefined|NaN/.test(r.texto.replace(/<script[\s\S]*?<\/script>/g, '')), l.slug); }
+    const hp = await req('GET', '/music/aprender/harmonia-popular', { como: 'ana', cru: true }); assert.match(hp.texto, /data-sequencia=/); assert.match(hp.texto, /Db7/);
+    const cp = await req('GET', '/music/aprender/contraponto', { como: 'ana', cru: true }); assert.match(cp.texto, /class="lab-svg lab-pauta"/);
+    const X2 = X.LISTA.map((x) => x.id); ['leitura-primeira-vista', 'ditado-ritmico', 'ditado-duas-vozes', 'cadencia-ouvido', 'transposicao', 'escala-no-braco'].forEach((id) => assert.ok(X2.includes(id), id));
+    assert.match(PG.clienteJs(), /Modo aula/);
   });
 
   await t('COBERTURA: toda ferramenta, jogo, referência e lição do catálogo tem página; toda lição aponta para exercício existente', async () => {

@@ -23,11 +23,12 @@
       sustenidos: ['F3', 'C3', 'G3', 'D3', 'A2', 'E3', 'B2'], bemois: ['B2', 'E3', 'A2', 'D3', 'G2', 'C3', 'F2'] },
     do3: { nome: 'clave de dó na 3ª linha (contralto)', en: 'alto clef', linhaDeBaixo: 'F3', glifo: '𝄡', referencia: 'dó4 na 3ª linha',
       sustenidos: ['F4', 'C4', 'G4', 'D4', 'A3', 'E4', 'B3'], bemois: ['B3', 'E4', 'A3', 'D4', 'G3', 'C4', 'F3'] },
-    // Tenor: a posição das notas é certa; a da ARMADURA na clave de tenor
-    // segue um desenho próprio que não foi validado — fica sem armadura
-    // até a revisão (LABORATORIO-COBERTURA.md).
+    // Tenor: os SUSTENIDOS têm desenho próprio. Seguindo o zigue-zague das
+    // outras claves, o fá♯ cairia acima da pauta; por isso, na clave de
+    // tenor, o 1º sustenido vai na 2ª linha (fá3) e o desenho sobe em
+    // quinta e desce em quarta. Os bemóis seguem o desenho de sempre.
     do4: { nome: 'clave de dó na 4ª linha (tenor)', en: 'tenor clef', linhaDeBaixo: 'D3', glifo: '𝄡', referencia: 'dó4 na 4ª linha',
-      sustenidos: null, bemois: null },
+      sustenidos: ['F3', 'C4', 'G3', 'D4', 'A3', 'E4', 'B3'], bemois: ['B3', 'E4', 'A3', 'D4', 'G3', 'C4', 'F3'] },
   };
 
   function clave(id) { return CLAVES[id] || null; }

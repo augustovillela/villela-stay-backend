@@ -75,6 +75,20 @@ ${tab(['Progressão', 'Estilos', 'Em dó (ou lá menor)', 'Nota'], T.PROGRESSOES
     + tab(['Intervalo', 'Razão justa', 'Justa (cents)', 'Igual (cents)', 'Diferença'], AC.comparacaoTemperamento().map((x) => [esc(x.nome), esc(x.razao), String(x.cents_justo).replace('.', ','), x.cents_igual, (x.diferenca > 0 ? '+' : '') + String(x.diferenca).replace('.', ',')]))
     + '<p>A terça maior temperada é cerca de 14 cents mais aguda que a justa — é por isso que coros e quartetos de cordas afinam as terças "por ouvido", mais baixas que o piano. <a href="/music/criar/batimentos">Ouça os batimentos</a>.</p>',
 
+  'solfejo': () => {
+    const t = N.ler('G');
+    const ns = E.notas(N.comOitava(t, 4), 'maior');
+    const MOVEL = ['dó', 'ré', 'mi', 'fá', 'sol', 'lá', 'si'];
+    return `<p><strong>Solfejar</strong> é cantar dizendo o nome das notas. Há duas escolas, e as duas são legítimas:</p>
+<ul><li><strong>Dó fixo</strong>: a sílaba é o nome da nota. Sol é sempre "sol", em qualquer tom. É o sistema mais comum no Brasil e na Europa latina, e treina a leitura.</li>
+<li><strong>Dó móvel</strong>: a sílaba é o <em>grau</em>. A tônica é sempre "dó", seja qual for a tonalidade. Treina o ouvido relativo: a sensível é sempre "si", subindo para "dó".</li></ul>
+${tab(['Grau', 'Nota em sol maior', 'Dó fixo', 'Dó móvel', 'Ouvir'], ns.map((n, i) => [String(i + 1), esc(pt(n)), esc(pt(n)), esc(MOVEL[i]), ouvir([N.midi(n)], { classe: 'mini' })]), 'Sol maior nos dois sistemas')}
+<h2>Sílabas alteradas (dó móvel)</h2>
+<p>Para as notas cromáticas, muda a vogal: subindo, <strong>di, ri, fi, si, li</strong> (♯1, ♯2, ♯4, ♯5, ♯6); descendo, <strong>ra, me, se, le, te</strong> (♭2, ♭3, ♭5, ♭6, ♭7). No tom menor há duas convenções: menor com base em "lá" (relativa) ou em "dó" (com me, le e te).</p>
+<p>${ouvir(ns.concat([N.comOitava(t, 5)]).map(N.midi), { rotulo: 'Cantar junto: a escala de sol maior' })}</p>
+<p><a href="/music/aprender/escala-maior">Lição: a escala maior</a> · <a href="/music/praticar/intervalo-ouvido">Praticar intervalos de ouvido</a></p>`;
+  },
+
   'ritmo-e-groove': () => `<ul><li><strong>Síncope</strong>: ataque num tempo (ou parte) fraco que se prolonga pelo forte — o acento se desloca.</li>
 <li><strong>Contratempo</strong>: ataque na parte fraca, com a parte forte em silêncio.</li>
 <li><strong>Swing</strong>: colcheias desiguais, longa-curta (aproximadamente 2:1, como numa tercina), com acento na curta.</li>

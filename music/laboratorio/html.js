@@ -24,8 +24,8 @@ const ptO = (n) => N.nome(n, { notacao: 'pt', glifo: true });
 const cif = (n) => N.nome(n, { glifo: true, oitava: false });
 
 /** Botão de ouvir: o cliente toca (o servidor só descreve). */
-function ouvir(midis, { rotulo = 'Ouvir', modo = 'melodico', classe = '' } = {}) {
-  return `<button type="button" class="lab-ouvir ${esc(classe)}" data-midis="${esc(JSON.stringify(midis))}" data-modo="${esc(modo)}"><span aria-hidden="true">▶</span> ${esc(rotulo)}</button>`;
+function ouvir(midis, { rotulo = 'Ouvir', modo = 'melodico', classe = '', dur = null, vel = null, passo = null } = {}) {
+  return `<button type="button" class="lab-ouvir ${esc(classe)}" data-midis="${esc(JSON.stringify(midis))}" data-modo="${esc(modo)}"${dur ? ` data-dur="${esc(dur)}"` : ''}${vel ? ` data-vel="${esc(vel)}"` : ''}${passo ? ` data-passo="${esc(passo)}"` : ''}><span aria-hidden="true">▶</span> ${esc(rotulo)}</button>`;
 }
 
 const SUBNAV = () => `<nav class="lab-sub" aria-label="Laboratório Musical"><div class="wrap">
@@ -123,6 +123,25 @@ function visual(v) {
     return `<figure class="lab-fig">${pautaDe(ns, { acorde: true })}${pianoDe(ns, { raiz: v.fundamental })}
       <figcaption>${esc(A.simbolo(v.fundamental, v.acorde))} — ${esc(ns.map(pt).join(', '))} ${ouvir(ns.map(N.midi), { modo: 'harmonico' })}
       <a href="${CAT.urlAcorde(N.ler(v.fundamental), v.acorde)}">Abrir o acorde</a></figcaption></figure>`;
+  }
+  if (v.tipo === 'vozes') {
+    const cols = v.colunas.map((c) => c.map(N.ler));
+    return `<figure class="lab-fig">${D.pauta({ clave: v.clave || 'sol', armadura: v.armadura || 0, colunas: v.colunas, titulo: v.titulo || 'Duas vozes' })}
+      <figcaption>${v.legenda ? esc(v.legenda) + ' ' : ''}<button type="button" class="lab-ouvir" data-sequencia="${esc(JSON.stringify(cols.map((c) => c.map(N.midi))))}"><span aria-hidden="true">▶</span> Ouvir</button></figcaption></figure>`;
+  }
+  if (v.tipo === 'progressao') {
+    const acs = v.simbolos.map((s) => ({ s, a: A.ler(s) }));
+    let ant = null;
+    const seq = acs.map(({ a }) => {
+      if (!a) return [];
+      const c = A.conduzir(ant, a.fundamental, a.id);
+      const ns = c ? c.notas : A.notas(N.comOitava(a.fundamental, 4), a.id);
+      ant = ns;
+      const baixo = a.baixo || a.fundamental;
+      return [N.midi(N.comOitava(baixo, 2))].concat(ns.map(N.midi));
+    });
+    return `<figure class="lab-fig lab-prog"><p class="lab-prog-acordes">${acs.map(({ s, a }, i) => (a ? `<a href="${CAT.urlAcorde(a.fundamental, a.id)}">${esc(s)}</a>` : esc(s)) + (v.graus ? ` <small>${esc(v.graus[i] || '')}</small>` : '')).join(' → ')}</p>
+      <figcaption>${v.legenda ? esc(v.legenda) + ' ' : ''}<button type="button" class="lab-ouvir" data-sequencia="${esc(JSON.stringify(seq))}"><span aria-hidden="true">▶</span> Ouvir</button></figcaption></figure>`;
   }
   if (v.tipo === 'campo') return tabelaCampo(N.ler(v.tonica), v.modo, { tetrades: v.tetrades });
   if (v.tipo === 'circulo-quintas') return `<figure class="lab-fig lab-fig-circ">${circuloDeQuintas({})}</figure>`;
