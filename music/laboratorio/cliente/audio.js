@@ -51,6 +51,7 @@
   // síntese, e a interface diz isso. Buffer em cache por nota e timbre.
   var CORDAS_T = {
     nylon: { perda: 0.994, brilho: 0.35, ganho: 1.0 },
+    bandolim: { perda: 0.993, brilho: 0.9, ganho: 0.8, duplo: true },   // par de cordas: duas, levemente desafinadas entre si
     aco: { perda: 0.9975, brilho: 0.75, ganho: 0.85 },
     eletrica: { perda: 0.9985, brilho: 0.6, ganho: 0.7, distorcer: true },
   };
@@ -77,6 +78,7 @@
       var ws = a.createWaveShaper(); ws.curve = curvaDist; g.connect(ws); saida = ws;
     }
     s.connect(g); saida.connect(mestre); s.start(t); s.stop(t + dur + 0.3); registrar(s);
+    if (cfg.duplo) { var s2 = a.createBufferSource(); s2.buffer = s.buffer; s2.playbackRate.value = 1.0018; s2.connect(g); s2.start(t + 0.004); s2.stop(t + dur + 0.3); registrar(s2); }
   }
 
   /** Uma voz com envelope. timbre: piano | seno | orgao | pluck | malete | nylon | aco | eletrica. */
@@ -84,6 +86,7 @@
     o = o || {};
     if (!o.timbre && C.Som && C.Som.timbre) o.timbre = C.Som.timbre;
     if (CORDAS_T[o.timbre]) return corda(f, quando, dur, o);
+    if (SOPRO_T[o.timbre]) return sopro(f, quando, dur, o);
     var a = audio();
     var g = a.createGain();
     var pico = (o.vel == null ? 0.22 : o.vel);
@@ -107,6 +110,40 @@
       os.start(t); os.stop(t + dur + 0.15);
       registrar(os);
     });
+  }
+
+  // ---- Sopros por síntese aditiva: receita de harmônicos, ataque mais
+  // lento que o do piano (o sopro "entra"), som sustentado e vibrato leve
+  // onde o instrumento costuma ter. Sintetizado, não gravado.
+  var SOPRO_T = {
+    metal: { parc: [[1, 1], [2, 0.85], [3, 0.7], [4, 0.55], [5, 0.42], [6, 0.3], [7, 0.2], [8, 0.14]], ataque: 0.05, vib: 0, ganho: 0.8 },   // trompete, trombone
+    flauta: { parc: [[1, 1], [2, 0.22], [3, 0.07]], ataque: 0.09, vib: 7, ganho: 1, sopro: 0.03 },                                          // flauta transversal
+    doce: { parc: [[1, 1], [2, 0.1], [3, 0.18], [4, 0.04]], ataque: 0.035, vib: 0, ganho: 1, sopro: 0.02 },                                  // flauta doce
+    palheta: { parc: [[1, 1], [2, 0.65], [3, 0.55], [4, 0.35], [5, 0.3], [6, 0.18], [7, 0.12]], ataque: 0.03, vib: 4, ganho: 0.75 },         // gaita
+  };
+  function sopro(f, quando, dur, o) {
+    var a = audio(), cfg = SOPRO_T[o.timbre], t = Math.max(quando, a.currentTime);
+    var pico = (o.vel == null ? 0.22 : o.vel) * cfg.ganho;
+    var g = a.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(pico, t + cfg.ataque);
+    g.gain.setValueAtTime(pico * 0.85, t + Math.max(cfg.ataque + 0.02, dur - 0.03));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.1);
+    g.connect(mestre);
+    var soma = cfg.parc.reduce(function (x, p) { return x + p[1]; }, 0);
+    var lfo = null, lfoG = null;
+    if (cfg.vib) { lfo = a.createOscillator(); lfo.frequency.value = 5.2; lfoG = a.createGain(); lfoG.gain.setValueAtTime(0, t); lfoG.gain.linearRampToValueAtTime(cfg.vib, t + 0.35); lfo.connect(lfoG); lfo.start(t); lfo.stop(t + dur + 0.15); registrar(lfo); }
+    cfg.parc.forEach(function (p) {
+      var os = a.createOscillator(), pg = a.createGain();
+      os.type = 'sine'; os.frequency.value = f * p[0]; pg.gain.value = p[1] / soma;
+      if (lfoG) lfoG.connect(os.detune);
+      os.connect(pg); pg.connect(g); os.start(t); os.stop(t + dur + 0.15); registrar(os);
+    });
+    if (cfg.sopro) {   // um fio de ar, filtrado perto da nota
+      var n = ruido(), bp = a.createBiquadFilter(), ng = a.createGain();
+      bp.type = 'bandpass'; bp.frequency.value = f * 2; bp.Q.value = 2; ng.gain.setValueAtTime(0.0001, t); ng.gain.exponentialRampToValueAtTime(cfg.sopro * (o.vel == null ? 1 : o.vel / 0.22), t + 0.05); ng.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      n.loop = true; n.connect(bp); bp.connect(ng); ng.connect(mestre); n.start(t); n.stop(t + dur + 0.05); registrar(n);
+    }
   }
 
   /** Toca MIDIs: melodico (um após o outro), harmonico (juntos), dedilhado. */
@@ -140,6 +177,12 @@
       var o = a.createOscillator(); var og = a.createGain(); o.frequency.value = 190; og.gain.setValueAtTime(0.3 * v, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.1); o.connect(og); og.connect(mestre); o.start(t); o.stop(t + 0.12); registrar(o); },
     chimbal: function (t, v) { var a = audio(); var n = ruido(); var f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000; var g = a.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25 * v, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05); n.connect(f); f.connect(g); g.connect(mestre); n.start(t); n.stop(t + 0.07); registrar(n); },
     palma: function (t, v) { var a = audio(); [0, 0.011, 0.022].forEach(function (dt) { var n = ruido(); var f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1500; var g = a.createGain(); g.gain.setValueAtTime(0.0001, t + dt); g.gain.exponentialRampToValueAtTime(0.35 * v, t + dt + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + dt + 0.09); n.connect(f); f.connect(g); g.connect(mestre); n.start(t + dt); n.stop(t + dt + 0.1); registrar(n); }); },
+    tom: function (t, v) { var a = audio(); var o = a.createOscillator(); var g = a.createGain(); o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(62, t + 0.25); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.75 * v, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55); o.connect(g); g.connect(mestre); o.start(t); o.stop(t + 0.6); registrar(o); },
+    aro: function (t, v) { var a = audio(); var n = ruido(); var f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 3; var g = a.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.6 * v, t + 0.001); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045); n.connect(f); f.connect(g); g.connect(mestre); n.start(t); n.stop(t + 0.06); registrar(n);
+      var o = a.createOscillator(); var og = a.createGain(); o.frequency.value = 820; og.gain.setValueAtTime(0.25 * v, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.03); o.connect(og); og.connect(mestre); o.start(t); o.stop(t + 0.04); registrar(o); },
+    aberto: function (t, v) { var a = audio(); var n = ruido(); var f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 6500; var g = a.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22 * v, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32); n.connect(f); f.connect(g); g.connect(mestre); n.start(t); n.stop(t + 0.34); registrar(n); },
+    agogo: function (t, v) { var a = audio(); [[800, 1], [1203, 0.5]].forEach(function (p) { var o = a.createOscillator(); var g = a.createGain(); o.type = 'square'; o.frequency.value = p[0]; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.07 * v * p[1], t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28); var bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = p[0]; o.connect(bp); bp.connect(g); g.connect(mestre); o.start(t); o.stop(t + 0.3); registrar(o); }); },
+    ganza: function (t, v) { var a = audio(); var n = ruido(); var f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 5500; f.Q.value = 0.8; var g = a.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16 * v, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07); n.connect(f); f.connect(g); g.connect(mestre); n.start(t); n.stop(t + 0.08); registrar(n); },
     clique: function (t, v, forte) { var a = audio(); var o = a.createOscillator(); var g = a.createGain(); o.frequency.value = forte ? 1760 : 1200; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4 * v, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04); o.connect(g); g.connect(mestre); o.start(t); o.stop(t + 0.05); registrar(o); },
   };
 
@@ -187,7 +230,8 @@
   }
 
   var TIMBRES = [{ id: '', nome: 'piano' }, { id: 'nylon', nome: 'violão de nylon (sintetizado)' }, { id: 'aco', nome: 'violão de aço (sintetizado)' },
-    { id: 'eletrica', nome: 'guitarra elétrica (sintetizada)' }, { id: 'orgao', nome: 'órgão' }, { id: 'malete', nome: 'xilofone' }, { id: 'seno', nome: 'onda pura' }];
+    { id: 'eletrica', nome: 'guitarra elétrica (sintetizada)' }, { id: 'bandolim', nome: 'bandolim (sintetizado)' },
+    { id: 'metal', nome: 'trompete / trombone (sintetizado)' }, { id: 'flauta', nome: 'flauta transversal (sintetizada)' }, { id: 'doce', nome: 'flauta doce (sintetizada)' }, { id: 'palheta', nome: 'gaita / harmônica (sintetizada)' }, { id: 'orgao', nome: 'órgão' }, { id: 'malete', nome: 'xilofone' }, { id: 'seno', nome: 'onda pura' }];
   C.Som = { timbre: C.lerLocal('timbre', ''), TIMBRES: TIMBRES, audio: audio, voz: voz, tocar: tocar, tocarHz: tocarHz, sequencia: sequencia, bateria: BATERIA, agendador: agendador, ruido: ruido,
     parar: pararTudo, analisador: function () { audio(); return analisador; }, saida: function () { audio(); return mestre; }, FREQ: FREQ, registrar: registrar };
 

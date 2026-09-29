@@ -94,7 +94,7 @@ ${tab(['Grau', 'Nota em sol maior', 'Dó fixo', 'Dó móvel', 'Ouvir'], ns.map((
 <li><strong>Swing</strong>: colcheias desiguais, longa-curta (aproximadamente 2:1, como numa tercina), com acento na curta.</li>
 <li><strong>Shuffle</strong>: o swing aplicado à levada inteira, comum no blues.</li>
 <li><strong>Subdivisão</strong>: dividir o tempo em 2, 3, 4 ou 6 partes; sentir a subdivisão é o que estabiliza o pulso.</li></ul>
-<h2>Rudimentos de caixa</h2>${tab(['Rudimento', 'Mãos (D = direita, E = esquerda)', 'Inglês'], R.RUDIMENTOS.map((r) => [esc(r.nome), `<code>${esc(r.padrao)}</code>`, `<span lang="en">${esc(r.en)}</span>`]))}
+<h2>Os 40 rudimentos de bateria</h2><p>Lista internacional da Percussive Arts Society. D = direita, E = esquerda; minúsculas antes do golpe = notas de enfeite (flam, drag); &gt; = acento; ~ = pressionado.</p>${tab(['Nº', 'Rudimento', 'Mãos', 'Inglês'], R.RUDIMENTOS.map((r) => [String(r.n), esc(r.nome), `<code>${esc(r.padrao)}</code>`, `<span lang="en">${esc(r.en)}</span>`]))}
 <p><a href="/music/criar/batidas">Fazedor de batidas (com swing)</a> · <a href="/music/criar/polirritmos">Polirritmos e rudimentos</a> · <a href="/music/jogar/mantenha-o-pulso">Mantenha o pulso</a></p>`,
 
   'cheat-sheet': () => `<div class="lab-cheat">

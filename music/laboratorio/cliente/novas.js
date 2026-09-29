@@ -60,36 +60,64 @@
   // Afinador por corda
   // ------------------------------------------------------------------
   F['afinador-cordas'] = function (alvo, st) {
+    // cordas (violão, ukulele, cavaquinho, bandolim…) e sopros (trompete,
+    // trombone, flautas, gaita). Nas cordas, o alvo é a corda mais próxima;
+    // nos sopros, a nota temperada mais próxima (e a nota de referência).
     var inst = st.instrumento && INS.CORDAS[st.instrumento] ? st.instrumento : 'violao', afin = 'padrao';
     var mic = null, suave = [];
     var painel = el('div', { class: 'lab-afinador', 'aria-live': 'polite' });
+    var TIMBRE_CORDA = { violao: 'nylon', 'violao-7': 'nylon', guitarra: 'eletrica', bandolim: 'bandolim', cavaquinho: 'aco', ukulele: 'nylon', baixo: '' };
+    function ehSopro() { return /^sopro:/.test(inst); }
+    function alvoAtual() {
+      if (ehSopro()) {
+        var s = INS.sopro(inst.slice(6));
+        return { sopro: s, notas: s.notas.map(function (x) { return N.ler(x.soa); }), midi: s.notas.map(function (x) { return N.midi(x.soa); }), escritas: s.notas.map(function (x) { return x.escrita ? N.ler(x.escrita) : null; }), timbre: s.timbre };
+      }
+      var af = INS.afinacao(inst, afin);
+      return { notas: af.notas, midi: af.midi, timbre: TIMBRE_CORDA[inst] || '' };
+    }
     function render() {
       C.limpar(alvo);
-      var ins = INS.instrumento(inst), af = INS.afinacao(inst, afin);
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [
-        C.select('lab-inst', 'Instrumento', Object.keys(INS.CORDAS).filter(function (k) { return k !== 'guitarra'; }).map(function (k) { return { valor: k, rotulo: INS.CORDAS[k].nome }; }), inst, function (v) { inst = v; afin = 'padrao'; render(); }),
-        C.select('lab-afin', 'Afinação', Object.keys(ins.afinacoes).map(function (k) { return { valor: k, rotulo: ins.afinacoes[k].nome }; }), afin, function (v) { afin = v; render(); }),
-        el('button', { type: 'button', class: 'btn', txt: mic && mic.ligado() ? 'Desligar o microfone' : 'Ligar o microfone', onclick: alternar })]));
-      alvo.appendChild(el('div', { class: 'lab-cordas' }, af.notas.map(function (n, i) {
-        return el('button', { type: 'button', class: 'lab-corda', 'data-i': i, onclick: function () { C.Som.tocar([af.midi[i]], { modo: 'dedilhado', dur: 2.5 }); } },
-          [el('strong', { txt: (af.notas.length - i) + 'ª' }), ' ' + rot(n) + n.oitava, el('small', { txt: ' ouvir' })]);
-      }).reverse()));
+      var opcoes = Object.keys(INS.CORDAS).filter(function (k) { return k !== 'guitarra'; }).map(function (k) { return { valor: k, rotulo: INS.CORDAS[k].nome }; })
+        .concat(INS.SOPROS.map(function (s) { return { valor: 'sopro:' + s.id, rotulo: s.nome }; }));
+      var ctl = [C.select('lab-inst', 'Instrumento', opcoes, inst, function (v) { inst = v; afin = 'padrao'; if (mic) mic.desligar(); render(); })];
+      if (!ehSopro()) { var ins = INS.instrumento(inst); ctl.push(C.select('lab-afin', 'Afinação', Object.keys(ins.afinacoes).map(function (k) { return { valor: k, rotulo: ins.afinacoes[k].nome }; }), afin, function (v) { afin = v; render(); })); }
+      ctl.push(el('button', { type: 'button', class: 'btn', txt: mic && mic.ligado() ? 'Desligar o microfone' : 'Ligar o microfone', onclick: alternar }));
+      alvo.appendChild(el('div', { class: 'lab-controles' }, ctl));
+      var a = alvoAtual();
+      if (a.sopro) {
+        if (a.sopro.transpositor) alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Instrumento transpositor: ' + a.sopro.transpositor + '. Os botões mostram a nota escrita na partitura dele e tocam o som real.' }));
+        if (a.sopro.id === 'gaita') alvo.appendChild(el('p', { class: 'lab-dica', txt: 'A gaita diatônica não se afina pelo músico (as palhetas são fixas): use as notas para conferir e para tocar junto.' }));
+      }
+      alvo.appendChild(el('div', { class: 'lab-cordas' }, a.notas.map(function (n, i) {
+        var nomeEscrito = a.escritas && a.escritas[i] ? ' (escrita: ' + rot(a.escritas[i]) + a.escritas[i].oitava + ')' : '';
+        return el('button', { type: 'button', class: 'lab-corda', 'data-i': i, onclick: function () { C.Som.tocar([a.midi[i]], a.sopro ? { dur: 2.2, timbre: a.timbre } : { modo: 'dedilhado', dur: 2.5, timbre: a.timbre || undefined }); } },
+          [a.sopro ? '' : el('strong', { txt: (a.notas.length - i) + 'ª ' }), rot(n) + n.oitava + nomeEscrito, el('small', { txt: ' ouvir' })]);
+      })[a.sopro ? 'slice' : 'reverse']()));
       alvo.appendChild(painel);
-      if (!mic || !mic.ligado()) C.limpar(painel).appendChild(el('p', { class: 'lab-dica', txt: 'Toque uma corda de cada vez, perto do microfone. Os botões tocam a nota de referência. O áudio não sai do seu aparelho.' }));
+      if (!mic || !mic.ligado()) C.limpar(painel).appendChild(el('p', { class: 'lab-dica', txt: (a.sopro ? 'Toque uma nota longa, perto do microfone.' : 'Toque uma corda de cada vez, perto do microfone.') + ' Os botões tocam a nota de referência. O áudio não sai do seu aparelho.' }));
     }
     function alternar() {
       if (mic && mic.ligado()) { mic.desligar(); render(); return; }
-      var af = INS.afinacao(inst, afin);
+      var a = alvoAtual();
       mic = microfone(function (r) {
         if (!(r.hz > 0) || r.confianca < 0.85) return;
         suave.push(r.hz); if (suave.length > 5) suave.shift();
-        var hz = suave.slice().sort(function (a, b) { return a - b; })[Math.floor(suave.length / 2)];
-        var mais = 0, dist = Infinity;
-        af.midi.forEach(function (m, i) { var dd = Math.abs(N.centsEntre(hz, N.freqDeMidi(m))); if (dd < dist) { dist = dd; mais = i; } });
-        var cents = Math.round(N.centsEntre(hz, N.freqDeMidi(af.midi[mais])));
+        var hz = suave.slice().sort(function (x, y) { return x - y; })[Math.floor(suave.length / 2)];
         C.limpar(painel);
-        var n = af.notas[mais];
-        painel.appendChild(el('p', { class: 'lab-grande', txt: (af.notas.length - mais) + 'ª corda · ' + rot(n) + n.oitava }));
+        if (a.sopro) {
+          var d = N.deFreq(hz, { bemol: true });
+          painel.appendChild(el('p', { class: 'lab-grande', txt: rot(d.nota) + d.nota.oitava + (a.sopro.transpositor ? ' (som real)' : '') }));
+          painel.appendChild(medidor(d.cents));
+          painel.appendChild(el('p', { class: 'lab-info', txt: Math.abs(d.cents) <= 5 ? '✓ Afinado (' + (d.cents >= 0 ? '+' : '') + d.cents + ' cents)' : (d.cents > 0 ? 'Alto: +' + d.cents + ' cents (puxe a bomba de afinação / afaste o bocal)' : 'Baixo: ' + d.cents + ' cents (empurre a bomba / encaixe mais o bocal)') }));
+          C.$$('.lab-corda', alvo).forEach(function (b) { b.classList.toggle('on', a.midi[Number(b.dataset.i)] === d.midi); });
+          return;
+        }
+        var mais = 0, dist = Infinity;
+        a.midi.forEach(function (m, i) { var dd = Math.abs(N.centsEntre(hz, N.freqDeMidi(m))); if (dd < dist) { dist = dd; mais = i; } });
+        var cents = Math.round(N.centsEntre(hz, N.freqDeMidi(a.midi[mais])));
+        var n = a.notas[mais];
+        painel.appendChild(el('p', { class: 'lab-grande', txt: (a.notas.length - mais) + 'ª corda · ' + rot(n) + n.oitava }));
         painel.appendChild(medidor(cents));
         painel.appendChild(el('p', { class: 'lab-info', txt: Math.abs(cents) <= 5 ? '✓ Afinada (' + (cents >= 0 ? '+' : '') + cents + ' cents)' : (cents > 0 ? 'Alta: afrouxe um pouco (+' + cents + ' cents)' : 'Baixa: aperte um pouco (' + cents + ' cents)') + (Math.abs(cents) > 50 ? ' — longe; confira se é esta corda' : '') }));
         C.$$('.lab-corda', alvo).forEach(function (b) { b.classList.toggle('on', Number(b.dataset.i) === mais); });
@@ -186,11 +214,13 @@
   // ------------------------------------------------------------------
   // Mini máquina musical: bateria + baixo + acordes + melodia
   // ------------------------------------------------------------------
-  var BAT = { 'pop': { bumbo: [0, 8, 10], caixa: [4, 12], chimbal: [0, 2, 4, 6, 8, 10, 12, 14] }, 'rock': { bumbo: [0, 6, 8], caixa: [4, 12], chimbal: [0, 2, 4, 6, 8, 10, 12, 14] },
-    'bossa (referência)': { bumbo: [0, 6, 8, 14], caixa: [0, 3, 6, 10, 12], chimbal: [0, 2, 4, 6, 8, 10, 12, 14] }, 'balada': { bumbo: [0, 10], caixa: [8], chimbal: [0, 4, 8, 12] } };
+  var CORDA_OU_SOPRO = function (t) { return ['nylon', 'aco', 'eletrica', 'bandolim', 'metal', 'flauta', 'doce', 'palheta'].indexOf(t) >= 0; };
   F['mini-maquina'] = function (alvo, st) {
     var cfg = C.lerLocal('mini-maquina', { tonica: 'do', prog: 'pop', bat: 'pop', bpm: 96, baixo: true, acordes: true, melodia: true, bateria: true, notas: {} });
     var ag = null, atual = -1;
+    // a batida vem do núcleo (os mesmos padrões do fazedor de batidas)
+    function pad() { return L.batidas.porId(cfg.bat) || L.batidas.porId('pop'); }
+    function np() { return pad().passos; }
     var grade = el('div', { class: 'lab-grade-passos', role: 'grid', 'aria-label': 'Melodia (pentatônica do tom)' });
     var cab = el('p', { class: 'lab-info', 'aria-live': 'polite' });
     function acordes() {
@@ -202,8 +232,9 @@
       C.limpar(grade);
       escalaMel().forEach(function (n, li) {
         var linha = el('div', { class: 'lab-linha-passos', role: 'row' }, [el('span', { class: 'lab-rot-faixa', role: 'rowheader', txt: rot(n) + n.oitava })]);
-        for (var i = 0; i < 16; i++) (function (i) {
-          linha.appendChild(el('button', { type: 'button', role: 'gridcell', class: 'lab-passo' + (i % 4 === 0 ? ' tempo' : '') + (i === atual % 16 ? ' agora' : ''), 'aria-pressed': cfg.notas[i] === li ? 'true' : 'false', 'aria-label': rot(n) + ', passo ' + (i + 1),
+        linha.style.gridTemplateColumns = '78px repeat(' + np() + ',minmax(26px,1fr))';
+        for (var i = 0; i < np(); i++) (function (i) {
+          linha.appendChild(el('button', { type: 'button', role: 'gridcell', class: 'lab-passo' + (i % pad().porTempo === 0 ? ' tempo' : '') + (i === atual % np() ? ' agora' : ''), 'aria-pressed': cfg.notas[i] === li ? 'true' : 'false', 'aria-label': rot(n) + ', passo ' + (i + 1),
             onclick: function () { if (cfg.notas[i] === li) delete cfg.notas[i]; else { cfg.notas[i] = li; C.Som.tocar([N.midi(n)], { dur: 0.3 }); } C.guardar('mini-maquina', cfg); pintarGrade(); } }));
         })(i);
         grade.appendChild(linha);
@@ -214,28 +245,38 @@
       var acs = acordes(), mel = escalaMel(), vozes = [], ant = null;
       acs.forEach(function (g) { var c = A.conduzir(ant, g.fundamental, g.acorde); vozes.push(c ? c.notas : A.notas(N.comOitava(g.fundamental, 4), g.acorde)); ant = vozes[vozes.length - 1]; });
       var dur = function () { return 60 / cfg.bpm / 4; };
-      ag = C.Som.agendador({ bpm: cfg.bpm, porTempo: 4, passos: 64,
+      var P = pad(), N1 = P.passos, meio = Math.round(N1 / 2), acordesEm = [0, Math.round(N1 * 0.375), Math.round(N1 * 0.75)];
+      ag = C.Som.agendador({ bpm: cfg.bpm, porTempo: P.porTempo, passos: N1 * 4,
         aoPasso: function (i, q) {
-          var c = Math.floor(i / 16), p = i % 16, g = acs[c], b = BAT[cfg.bat] || BAT.pop;
-          if (cfg.bateria) ['bumbo', 'caixa', 'chimbal'].forEach(function (k) { if (b[k].indexOf(p) >= 0) C.Som.bateria[k](q, p % 4 === 0 ? 0.9 : 0.6); });
-          if (cfg.baixo && (p === 0 || p === 8 || p === 14)) C.Som.voz(C.Som.FREQ(N.midi(N.comOitava(g.fundamental, 2)) + (p === 14 ? 7 : 0)), q, dur() * (p === 14 ? 1.8 : 6), { vel: 0.3, timbre: 'pluck' });
-          if (cfg.acordes && (p === 0 || p === 6 || p === 12)) vozes[c].forEach(function (n) { C.Som.voz(C.Som.FREQ(N.midi(n)), q, dur() * 5, { vel: 0.07, timbre: 'orgao' }); });
-          if (cfg.melodia && cfg.notas[p] != null && mel[cfg.notas[p]]) C.Som.voz(C.Som.FREQ(N.midi(mel[cfg.notas[p]])), q, dur() * 1.8, { vel: 0.2, timbre: 'malete' });
+          var c = Math.floor(i / N1), p = i % N1, g = acs[c], b = P.f;
+          if (cfg.bateria) Object.keys(b).forEach(function (k) { if (b[k].indexOf(p) >= 0) C.Som.bateria[k](q, p % P.porTempo === 0 ? 0.9 : 0.6); });
+          var pega = N1 - 2;   // nota de passagem do baixo antes do próximo compasso
+          if (cfg.baixo && (p === 0 || p === meio || p === pega)) C.Som.voz(C.Som.FREQ(N.midi(N.comOitava(g.fundamental, 2)) + (p === pega ? 7 : 0)), q, dur() * (p === pega ? 1.8 : 5), { vel: 0.3, timbre: 'pluck' });
+          if (cfg.acordes && acordesEm.indexOf(p) >= 0) vozes[c].forEach(function (n) { C.Som.voz(C.Som.FREQ(N.midi(n)), q, dur() * 4, { vel: CORDA_OU_SOPRO(cfg.timAc) ? 0.1 : 0.07, timbre: cfg.timAc || 'orgao' }); });
+          if (cfg.melodia && cfg.notas[p] != null && mel[cfg.notas[p]]) C.Som.voz(C.Som.FREQ(N.midi(mel[cfg.notas[p]])), q, dur() * 1.8, { vel: 0.2, timbre: cfg.timMel || 'malete' });
         },
-        visual: function (i) { atual = i; if (i < 0) return; var c = Math.floor(i / 16); cab.textContent = 'Compasso ' + (c + 1) + ' de 4 · ' + acs[c].simbolo + ' (' + acs[c].romano + ')'; C.$$('.lab-linha-passos', grade).forEach(function (row) { C.$$('.lab-passo', row).forEach(function (bt, k) { bt.classList.toggle('agora', k === i % 16); }); }); } });
+        visual: function (i) { atual = i; if (i < 0) return; var c = Math.floor(i / np()); cab.textContent = 'Compasso ' + (c + 1) + ' de 4 · ' + acs[c].simbolo + ' (' + acs[c].romano + ')'; C.$$('.lab-linha-passos', grade).forEach(function (row) { C.$$('.lab-passo', row).forEach(function (bt, k) { bt.classList.toggle('agora', k === i % np()); }); }); } });
       botao.textContent = '■ Parar';
     }
     C.Som.aoParar = function () { ag = null; botao.textContent = '▶ Tocar'; };
     var botao = el('button', { type: 'button', class: 'btn', txt: '▶ Tocar', onclick: tocar });
+    function selBatida() {
+      var B = L.batidas;
+      var s = el('select', { id: 'mm-bat' }, B.GRUPOS.map(function (g) { return el('optgroup', { label: g.nome }, B.PADROES.filter(function (p) { return p.grupo === g.id; }).map(function (p) { return el('option', { value: p.id, selected: p.id === pad().id ? true : null, txt: p.nome + ' · ' + p.compasso }); })); }));
+      s.onchange = function () { cfg.bat = s.value; var p = pad(); cfg.bpm = p.bpm; var bi = C.$('#mm-bpm'); if (bi) bi.value = p.bpm; Object.keys(cfg.notas).forEach(function (k) { if (Number(k) >= p.passos) delete cfg.notas[k]; }); pintarGrade(); reiniciar(); };
+      return el('div', { class: 'lab-campo lab-campo-largo' }, [el('label', { for: 'mm-bat', txt: 'Batida (' + B.PADROES.length + ' padrões)' }), s]);
+    }
     function reiniciar() { C.guardar('mini-maquina', cfg); if (ag) { ag.parar(); ag = null; tocar(); } cab.textContent = acordes().map(function (g) { return g.simbolo; }).join(' → '); }
     var chk = function (k, r) { return el('label', { class: 'lab-check' }, [el('input', { type: 'checkbox', checked: cfg[k] ? true : null, onchange: function (e) { cfg[k] = e.target.checked; C.guardar('mini-maquina', cfg); } }), ' ' + r]); };
     alvo.appendChild(el('div', { class: 'lab-controles' }, [botao,
       C.selTonica(cfg.tonica, function (v) { cfg.tonica = v; pintarGrade(); reiniciar(); }),
       C.select('mm-prog', 'Progressão', T.PROGRESSOES.filter(function (p) { return p.graus.length <= 4; }).map(function (p) { return { valor: p.id, rotulo: p.nome }; }), cfg.prog, function (v) { cfg.prog = v; pintarGrade(); reiniciar(); }),
-      C.select('mm-bat', 'Batida', Object.keys(BAT).map(function (k) { return { valor: k, rotulo: k }; }), cfg.bat, function (v) { cfg.bat = v; reiniciar(); }),
+      selBatida(),
       numero('mm-bpm', 'BPM', cfg.bpm, 50, 180, function (v) { cfg.bpm = v; C.guardar('mini-maquina', cfg); if (ag) ag.bpm(v); }),
+      C.select('mm-tmel', 'Timbre da melodia', C.Som.TIMBRES.map(function (t) { return { valor: t.id || 'piano', rotulo: t.nome }; }), cfg.timMel || 'malete', function (v) { cfg.timMel = v; C.guardar('mini-maquina', cfg); }),
+      C.select('mm-tac', 'Timbre dos acordes', C.Som.TIMBRES.map(function (t) { return { valor: t.id || 'piano', rotulo: t.nome }; }), cfg.timAc || 'orgao', function (v) { cfg.timAc = v; C.guardar('mini-maquina', cfg); }),
       chk('bateria', 'bateria'), chk('baixo', 'baixo'), chk('acordes', 'acordes'), chk('melodia', 'melodia'),
-      el('button', { type: 'button', class: 'btn sec', txt: 'Melodia aleatória', onclick: function () { var r = L.exercicios.prng(Date.now()); cfg.notas = {}; var at = 4; for (var i = 0; i < 16; i++) if (r() < 0.55) { at = Math.max(0, Math.min(9, at + Math.round((r() - 0.5) * 3))); cfg.notas[i] = at; } C.guardar('mini-maquina', cfg); pintarGrade(); } })]));
+      el('button', { type: 'button', class: 'btn sec', txt: 'Melodia aleatória', onclick: function () { var r = L.exercicios.prng(Date.now()); cfg.notas = {}; var at = 4; for (var i = 0; i < np(); i++) if (r() < 0.55) { at = Math.max(0, Math.min(9, at + Math.round((r() - 0.5) * 3))); cfg.notas[i] = at; } C.guardar('mini-maquina', cfg); pintarGrade(); } })]));
     alvo.appendChild(cab); alvo.appendChild(grade);
     alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Quatro compassos em loop, um acorde por compasso. A melodia usa a pentatônica do tom: quase tudo encaixa sobre os acordes.' }));
     pintarGrade(); reiniciar();

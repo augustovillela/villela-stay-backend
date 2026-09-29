@@ -21,9 +21,9 @@
   }
 
   // ---- MIDI: arquivo padrão (formato 0), escrito à mão, sem biblioteca ----
-  function midiArquivo(eventos, bpm) {
+  function midiArquivo(eventos, bpm, porTempo) {
     // eventos: [{ t: passos, dur: passos, midi, canal, vel }], 4 passos por semínima, 480 ppq
-    var ppq = 480, porPasso = ppq / 4;
+    var ppq = 480, porPasso = ppq / (porTempo || 4);
     var ev = [];
     eventos.forEach(function (e) { ev.push({ t: e.t * porPasso, b: [0x90 | (e.canal || 0), e.midi, e.vel || 90] }); ev.push({ t: (e.t + (e.dur || 1)) * porPasso - 1, b: [0x80 | (e.canal || 0), e.midi, 0] }); });
     ev.sort(function (a, b) { return a.t - b.t; });
@@ -160,56 +160,73 @@
   };
 
   // ------------------------------------------------------------------
-  // Fazedor de batidas (16 passos)
+  // Fazedor de batidas: padrões do Brasil, das Américas e da Europa
+  // (núcleo `batidas`), 9 sons, compassos de 4/4, 3/4, 2/4 e 6/8–12/8.
   // ------------------------------------------------------------------
-  var PADROES = {
-    'rock básico': { bumbo: [0, 8, 10], caixa: [4, 12], chimbal: [0, 2, 4, 6, 8, 10, 12, 14], palma: [] },
-    'pop': { bumbo: [0, 6, 8], caixa: [4, 12], chimbal: [0, 2, 4, 6, 8, 10, 12, 14], palma: [4, 12] },
-    'funk (semicolcheias)': { bumbo: [0, 3, 10], caixa: [4, 12, 7, 15], chimbal: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], palma: [] },
-    'reggae (one drop)': { bumbo: [8], caixa: [8], chimbal: [2, 6, 10, 14], palma: [] },
-    'baião (referência)': { bumbo: [0, 3, 8], caixa: [], chimbal: [0, 2, 4, 6, 8, 10, 12, 14], palma: [4, 12] },
-    'shuffle (use swing)': { bumbo: [0, 8], caixa: [4, 12], chimbal: [0, 2, 4, 6, 8, 10, 12, 14], palma: [] },
-  };
-  var FAIXAS = [['bumbo', 'Bumbo'], ['caixa', 'Caixa'], ['chimbal', 'Chimbal'], ['palma', 'Palma']];
-
   F.batidas = function (alvo, st) {
-    var grade = C.lerLocal('batidas', null) || { bumbo: [], caixa: [], chimbal: [], palma: [] };
-    var bpm = st.bpm || 100, swing = 0, ag = null, atual = -1;
-    var tabela = el('div', { class: 'lab-grade-passos', role: 'grid', 'aria-label': 'Grade de 16 passos' });
+    var B = L.batidas, FAIXAS = B.FAIXAS;
+    var vazio = function () { var g = {}; FAIXAS.forEach(function (f) { g[f.id] = []; }); return g; };
+    var salvo = C.lerLocal('batidas2', null);
+    var grade = salvo && salvo.grade ? salvo.grade : vazio();
+    var passos = salvo && salvo.passos ? salvo.passos : 16, porTempo = salvo && salvo.porTempo ? salvo.porTempo : 4, nomePadrao = salvo && salvo.nome ? salvo.nome : '';
+    FAIXAS.forEach(function (f) { if (!grade[f.id]) grade[f.id] = []; });
+    var bpm = st.bpm || 100, swing = 0, ag = null;
+    var tabela = el('div', { class: 'lab-grade-passos', role: 'grid', 'aria-label': 'Grade de passos' });
+    var info = el('p', { class: 'lab-info', 'aria-live': 'polite' });
+    function guardar() { C.guardar('batidas2', { grade: grade, passos: passos, porTempo: porTempo, nome: nomePadrao }); }
     function tem(f, i) { return grade[f].indexOf(i) >= 0; }
     function pintar() {
       C.limpar(tabela);
+      info.textContent = (nomePadrao ? nomePadrao + ' · ' : '') + passos + ' passos, ' + porTempo + ' por tempo' + (porTempo === 3 ? ' (colcheias em compasso composto)' : ' (semicolcheias)');
       FAIXAS.forEach(function (fx) {
-        var linha = el('div', { class: 'lab-linha-passos', role: 'row' }, [el('span', { class: 'lab-rot-faixa', role: 'rowheader', txt: fx[1] })]);
-        for (var i = 0; i < 16; i++) (function (i) {
-          linha.appendChild(el('button', { type: 'button', role: 'gridcell', class: 'lab-passo' + (i % 4 === 0 ? ' tempo' : '') + (i === atual ? ' agora' : ''), 'aria-pressed': tem(fx[0], i) ? 'true' : 'false', 'aria-label': fx[1] + ', passo ' + (i + 1),
-            onclick: function () { var k = grade[fx[0]].indexOf(i); if (k >= 0) grade[fx[0]].splice(k, 1); else { grade[fx[0]].push(i); C.Som.bateria[fx[0]](C.Som.audio().currentTime + 0.01, 0.8); } C.guardar('batidas', grade); pintar(); } }));
+        var linha = el('div', { class: 'lab-linha-passos', role: 'row', style: 'grid-template-columns:118px repeat(' + passos + ',minmax(26px,1fr))' }, [el('span', { class: 'lab-rot-faixa', role: 'rowheader', txt: fx.nome })]);
+        for (var i = 0; i < passos; i++) (function (i) {
+          linha.appendChild(el('button', { type: 'button', role: 'gridcell', class: 'lab-passo' + (i % porTempo === 0 ? ' tempo' : ''), 'aria-pressed': tem(fx.id, i) ? 'true' : 'false', 'aria-label': fx.nome + ', passo ' + (i + 1),
+            onclick: function () { var k = grade[fx.id].indexOf(i); if (k >= 0) grade[fx.id].splice(k, 1); else { grade[fx.id].push(i); C.Som.bateria[fx.id](C.Som.audio().currentTime + 0.01, 0.8); } guardar(); pintar(); } }));
         })(i);
         tabela.appendChild(linha);
       });
     }
     function tocar() {
       if (ag) { ag.parar(); ag = null; botao.textContent = '▶ Tocar'; return; }
-      ag = C.Som.agendador({ bpm: bpm, porTempo: 4, passos: 16, swing: swing,
-        aoPasso: function (i, q) { FAIXAS.forEach(function (fx) { if (tem(fx[0], i)) C.Som.bateria[fx[0]](q, i % 4 === 0 ? 1 : 0.75); }); },
-        visual: function (i) { atual = i; C.$$('.lab-passo', tabela).forEach(function (b, k) { b.classList.toggle('agora', k % 16 === i); }); } });
+      ag = C.Som.agendador({ bpm: bpm, porTempo: porTempo, passos: passos, swing: porTempo === 4 ? swing : 0,
+        aoPasso: function (i, q) { FAIXAS.forEach(function (fx) { if (tem(fx.id, i)) C.Som.bateria[fx.id](q, i % porTempo === 0 ? 1 : 0.75); }); },
+        visual: function (i) { C.$$('.lab-linha-passos', tabela).forEach(function (row) { C.$$('.lab-passo', row).forEach(function (b, k) { b.classList.toggle('agora', k === i); }); }); } });
       botao.textContent = '■ Parar';
     }
+    function reiniciar() { if (ag) { ag.parar(); ag = null; tocar(); } }
     C.Som.aoParar = function () { ag = null; botao.textContent = '▶ Tocar'; };
     var botao = el('button', { type: 'button', class: 'btn', txt: '▶ Tocar', onclick: tocar });
+    var bpmIn = el('input', { id: 'lab-bpm', type: 'number', min: 40, max: 240, value: bpm, oninput: function () { var v = Number(bpmIn.value); if (v >= 40 && v <= 240) { bpm = v; if (ag) ag.bpm(v); } } });
     var sw = el('input', { id: 'lab-swing', type: 'range', min: 0, max: 66, value: 0, oninput: function () { swing = Number(sw.value) / 100; lsw.textContent = sw.value === '0' ? 'reto' : sw.value + '%'; if (ag) ag.swing(swing); } });
     var lsw = el('span', { txt: 'reto' });
-    alvo.appendChild(el('div', { class: 'lab-controles' }, [botao, campoNum('lab-bpm', 'BPM', bpm, 40, 240, function (v) { bpm = v; if (ag) ag.bpm(v); }),
-      el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-swing', txt: 'Swing' }), sw, lsw]),
-      C.select('lab-padrao', 'Padrão pronto', [{ valor: '', rotulo: '— escolher —' }].concat(Object.keys(PADROES).map(function (k) { return { valor: k, rotulo: k }; })), '', function (v) { if (!v) return; grade = JSON.parse(JSON.stringify(PADROES[v])); C.guardar('batidas', grade); pintar(); }),
-      el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { grade = { bumbo: [], caixa: [], chimbal: [], palma: [] }; C.guardar('batidas', grade); pintar(); } }),
+    // seletor com grupos (Básicos, Brasil, Américas, Europa)
+    var selP = el('select', { id: 'lab-padrao' }, [el('option', { value: '', txt: '— escolher (' + B.PADROES.length + ' padrões) —' })].concat(B.GRUPOS.map(function (g) {
+      return el('optgroup', { label: g.nome }, B.PADROES.filter(function (p) { return p.grupo === g.id; }).map(function (p) { return el('option', { value: p.id, txt: p.nome + ' · ' + p.compasso }); }));
+    })));
+    selP.onchange = function () {
+      var p = B.porId(selP.value); if (!p) return;
+      grade = vazio(); Object.keys(p.f).forEach(function (k) { grade[k] = p.f[k].slice(); });
+      passos = p.passos; porTempo = p.porTempo; nomePadrao = p.nome; bpm = p.bpm; bpmIn.value = bpm; selCiclo.value = passos + ':' + porTempo;
+      guardar(); pintar(); reiniciar();
+    };
+    var selCiclo = el('select', { id: 'lab-ciclo' }, [['16:4', '4/4 (16 semicolcheias)'], ['12:4', '3/4 (12 semicolcheias)'], ['8:4', '2/4 (8 semicolcheias)'], ['12:3', '12/8 ou 2×6/8 (12 colcheias)']].map(function (o) { return el('option', { value: o[0], txt: o[1] }); }));
+    selCiclo.value = passos + ':' + porTempo;
+    selCiclo.onchange = function () { var p = selCiclo.value.split(':').map(Number); passos = p[0]; porTempo = p[1]; FAIXAS.forEach(function (f) { grade[f.id] = grade[f.id].filter(function (i) { return i < passos; }); }); nomePadrao = ''; guardar(); pintar(); reiniciar(); };
+    alvo.appendChild(el('div', { class: 'lab-controles' }, [botao,
+      el('div', { class: 'lab-campo lab-campo-largo' }, [el('label', { for: 'lab-padrao', txt: 'Padrão pronto' }), selP]),
+      el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-bpm', txt: 'BPM' }), bpmIn]),
+      el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-swing', txt: 'Swing (4/4)' }), sw, lsw]),
+      el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-ciclo', txt: 'Compasso' }), selCiclo]),
+      el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { grade = vazio(); nomePadrao = ''; guardar(); pintar(); } }),
       el('button', { type: 'button', class: 'btn sec', txt: 'Exportar MIDI', onclick: function () {
-        var MAP = { bumbo: 36, caixa: 38, chimbal: 42, palma: 39 }, ev = [];
-        for (var rep = 0; rep < 4; rep++) FAIXAS.forEach(function (fx) { grade[fx[0]].forEach(function (i) { ev.push({ t: rep * 16 + i, dur: 1, midi: MAP[fx[0]], canal: 9 }); }); });
-        exportar(st, 'musique-batida.mid', 'audio/midi', midiArquivo(ev, bpm));
+        var ev = [];
+        for (var rep = 0; rep < 4; rep++) FAIXAS.forEach(function (fx) { grade[fx.id].forEach(function (i) { ev.push({ t: rep * passos + i, dur: 1, midi: fx.midi, canal: 9 }); }); });
+        exportar(st, 'musique-batida.mid', 'audio/midi', midiArquivo(ev, bpm, porTempo));
       } })]));
+    alvo.appendChild(info);
     alvo.appendChild(tabela);
-    alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada linha é um som; cada coluna, uma semicolcheia (4 por tempo). Os padrões prontos são referências simplificadas de cada estilo, não transcrições. O MIDI exportado usa o canal 10 (percussão).' }));
+    alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada linha é um som; cada coluna, um passo. Os padrões prontos são referências simplificadas de cada estilo (cada um tem muitas variações regionais), não transcrições de gravação. O MIDI exportado usa o canal 10 (percussão).' }));
     pintar();
   };
 
@@ -361,18 +378,47 @@
     alvo.appendChild(el('div', { class: 'lab-controles' }, [botao, num('lab-pa', 'Voz aguda (clique)', a, function (x) { a = x; }), num('lab-pb', 'Voz grave (bumbo)', b, function (x) { b = x; }), campoNum('lab-bpm', 'BPM (da voz grave)', bpm, 30, 160, function (v) { bpm = v; if (ag) ag.bpm(v); })]));
     alvo.appendChild(vis); desenhar(-1);
     alvo.appendChild(el('p', { class: 'lab-dica', txt: 'As duas vozes começam juntas e só voltam a coincidir no início do ciclo (mmc dos dois números). Bata a voz grave com o pé e a aguda com a mão.' }));
-    alvo.appendChild(el('h2', { txt: 'Rudimentos' }));
+    alvo.appendChild(el('h2', { txt: 'Os 40 rudimentos de bateria' }));
+    alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Lista internacional (Percussive Arts Society), na numeração oficial. D = mão direita, E = esquerda; letras minúsculas antes do golpe são as notas de enfeite (1 = flam, 2 = drag), tocadas pela outra mão; ">" é acento e "~" é golpe pressionado (buzz). Aqui tudo toca numa grade uniforme; nos rudimentos em tercina, a escrita na partitura é outra.' }));
     var rudInfo = el('p', { class: 'lab-grande-rud', 'aria-live': 'polite' });
-    alvo.appendChild(el('div', { class: 'lab-chips-bot' }, R.RUDIMENTOS.map(function (r) {
-      return el('button', { type: 'button', class: 'btn sec', txt: r.nome, onclick: function () {
-        if (rud) rud.parar();
-        var maos = r.padrao.split(' ');
-        rudInfo.textContent = r.nome + ': ' + r.padrao;
-        rud = C.Som.agendador({ bpm: 80, porTempo: 4, passos: maos.length, aoPasso: function (i, q) { var ac = (r.acentos || []).indexOf(i) >= 0; if (maos[i] === 'D') C.Som.bateria.caixa(q, ac ? 1 : 0.55); else C.Som.bateria.caixa(q, ac ? 0.95 : 0.45); },
-          visual: function (i) { if (i >= 0) rudInfo.innerHTML = D.esc(r.nome) + ': ' + maos.map(function (m, k) { return k === i ? '<mark>' + m + '</mark>' : m; }).join(' '); } });
-      } });
-    })));
+    var rudBpm = 70, rudAtual = null;
+    var bpmR = el('input', { id: 'lab-rud-bpm', type: 'number', min: 30, max: 200, value: rudBpm, oninput: function () { var v = Number(bpmR.value); if (v >= 30 && v <= 200) { rudBpm = v; if (rud) rud.bpm(v); } } });
+    var pararRud = el('button', { type: 'button', class: 'btn sec', txt: '■ Parar rudimento', onclick: function () { if (rud) { rud.parar(); rud = null; } } });
+    function tocarRud(r) {
+      if (rud) rud.parar();
+      rudAtual = r;
+      var gs = R.golpes(r.padrao);
+      var desenhar = function (i) {
+        rudInfo.innerHTML = '<strong>' + r.n + '. ' + D.esc(r.nome) + '</strong> <small>(' + D.esc(r.en) + ')</small><br>' + gs.map(function (g, k) {
+          var t = D.esc(g.texto); return k === i ? '<mark>' + t + '</mark>' : t;
+        }).join(' ');
+      };
+      desenhar(-1);
+      rud = C.Som.agendador({ bpm: rudBpm, porTempo: 4, passos: gs.length,
+        aoPasso: function (i, q) {
+          var g = gs[i], forte = g.acento ? 1 : 0.5;
+          // notas de enfeite: logo antes do golpe, mais fracas, pela outra mão
+          for (var k = g.apojaturas; k >= 1; k--) C.Som.bateria.caixa(q - k * 0.035, 0.22);
+          if (g.pressionado) { for (var b = 0; b < 5; b++) C.Som.bateria.caixa(q + b * 0.022, forte * (1 - b * 0.15)); }
+          else C.Som.bateria.caixa(q, forte);
+        },
+        visual: function (i) { if (i >= 0 && rudAtual === r) desenhar(i); } });
+    }
+    var sel = el('select', { id: 'lab-rud' }, [el('option', { value: '', txt: '— escolher um dos 40 —' })].concat(
+      ['rulos de toque simples', 'rulos de múltiplos quiques', 'rulos de toque duplo', 'diddles', 'flams', 'drags'].map(function (grupo) {
+        return el('optgroup', { label: grupo }, R.RUDIMENTOS.filter(function (r) { return r.grupo === grupo; }).map(function (r) { return el('option', { value: r.id, txt: r.n + '. ' + r.nome }); }));
+      })));
+    sel.onchange = function () { var r = R.RUDIMENTOS.filter(function (x) { return x.id === sel.value; })[0]; if (r) tocarRud(r); };
+    alvo.appendChild(el('div', { class: 'lab-controles' }, [el('div', { class: 'lab-campo lab-campo-largo' }, [el('label', { for: 'lab-rud', txt: 'Rudimento' }), sel]),
+      el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-rud-bpm', txt: 'BPM' }), bpmR]), pararRud]));
     alvo.appendChild(rudInfo);
+    var tab = el('table', { class: 'lab-tabela lab-rud-tab' }, [el('caption', { txt: 'Os 40 rudimentos — toque em um para ouvir' }),
+      el('thead', {}, [el('tr', {}, ['Nº', 'Rudimento', 'Mãos', 'Grupo'].map(function (c) { return el('th', { scope: 'col', txt: c }); }))]),
+      el('tbody', {}, R.RUDIMENTOS.map(function (r) {
+        return el('tr', {}, [el('th', { scope: 'row', txt: String(r.n) }), el('td', {}, [el('button', { type: 'button', class: 'lab-link-botao', txt: r.nome, onclick: function () { sel.value = r.id; tocarRud(r); rudInfo.scrollIntoView({ block: 'nearest' }); } }), el('br'), el('small', { lang: 'en', txt: r.en })]),
+          el('td', {}, [el('code', { txt: r.padrao })]), el('td', { txt: r.grupo })]);
+      }))]);
+    alvo.appendChild(el('div', { class: 'lab-tabela-rolagem' }, [tab]));
   };
 
   // ------------------------------------------------------------------

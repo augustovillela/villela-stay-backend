@@ -544,6 +544,30 @@ async function rodar({ t, secao, req, assert }) {
     assert.match(PG.clienteJs(), /Modo aula/);
   });
 
+  await t('BATIDAS E RUDIMENTOS: 56 padrões (Brasil, Américas, Europa) válidos em 4/4, 3/4 e 12/8; os 40 rudimentos na numeração oficial, todos legíveis', async () => {
+    const B = require('./nucleo/batidas');
+    assert.ok(B.PADROES.length >= 50); assert.ok(B.PADROES.every(B.validar), 'passos dentro do ciclo e faixas conhecidas');
+    assert.equal(new Set(B.PADROES.map((p) => p.id)).size, B.PADROES.length, 'sem id repetido');
+    ['brasil', 'americas', 'europa'].forEach((g) => assert.ok(B.PADROES.filter((p) => p.grupo === g).length >= 10, g));
+    ['samba', 'bossa-nova', 'baiao', 'xote', 'frevo', 'maracatu', 'ijexa', 'funk-carioca', 'jazz', 'reggaeton', 'salsa', 'house', 'valsa', 'jig'].forEach((id) => assert.ok(B.porId(id), id));
+    assert.deepEqual([B.porId('valsa').passos, B.porId('valsa').porTempo], [12, 4]); assert.deepEqual([B.porId('shuffle').passos, B.porId('shuffle').porTempo], [12, 3]);
+    B.PADROES.forEach((p) => assert.ok(Object.values(p.f).some((a) => a.length), p.id + ' toca alguma coisa'));
+    assert.equal(R.RUDIMENTOS.length, 40); R.RUDIMENTOS.forEach((r, i) => { assert.equal(r.n, i + 1); assert.ok(R.golpes(r.padrao).every(Boolean), r.nome); });
+    assert.equal(R.RUDIMENTOS[15].en, 'single paradiddle'); assert.equal(R.RUDIMENTOS[39].en, 'triple ratamacue');
+    const fl = R.golpes('eD> dE'); assert.deepEqual([fl[0].apojaturas, fl[0].acento, fl[1].mao], [1, true, 'E']);
+    const cli = PG.clienteJs(); assert.match(cli, /L\.batidas/); assert.match(cli, /R\.golpes\(r\.padrao\)/);
+    assert.match((await req('GET', '/music/referencia/ritmo-e-groove', { cru: true })).texto, /triple ratamacue/);
+  });
+
+  await t('INSTRUMENTOS NOVOS: bandolim (pares em sol-ré-lá-mi) e sopros com nota de referência; timbres sintetizados disponíveis em todas as ferramentas', async () => {
+    assert.deepEqual(INS.afinacao('bandolim', 'padrao').midi, [55, 62, 69, 76]);
+    ['trompete', 'trombone', 'flauta-doce', 'flauta', 'gaita'].forEach((id) => { const s = INS.sopro(id); assert.ok(s && s.notas.length && s.notas.every((x) => N.midi(x.soa) != null), id); });
+    assert.equal(I.entre(INS.sopro('trompete').notas[0].escrita, INS.sopro('trompete').notas[0].soa).curto, '2M', 'trompete em si♭ soa 2ª maior abaixo');
+    const cli = PG.clienteJs();
+    ['bandolim', 'metal', 'flauta', 'doce', 'palheta'].forEach((t) => assert.ok(cli.includes("id: '" + t + "'"), 'timbre ' + t));
+    assert.match(cli, /'sopro:' \+ s\.id/); assert.match(cli, /Timbre da melodia/);
+  });
+
   await t('CABEÇALHO ÚNICO: o mesmo menu (Laboratório, Cifras, Ferramentas) em todas as páginas públicas, inclusive as das Cifras, com a seção atual marcada', async () => {
     const casos = [['/music', ''], ['/music/laboratorio', 'Laboratório'], ['/music/escalas/re/dorico', 'Laboratório'], ['/music/ferramentas', 'Ferramentas'],
       ['/music/cifras-publicas', 'Cifras'], ['/music/p/nao-existe', 'Cifras'], ['/music/termos', '']];

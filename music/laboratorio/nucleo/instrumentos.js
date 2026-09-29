@@ -52,7 +52,24 @@
       padrao: { nome: 'padrão (ré sol si ré)', notas: ['D4', 'G4', 'B4', 'D5'] },
       natural: { nome: 'natural (ré sol si mi)', notas: ['D4', 'G4', 'B4', 'E5'] },
     } },
+    // bandolim: 4 PARES de cordas afinados em uníssono, em quintas como o violino
+    bandolim: { nome: 'bandolim', casas: 17, afinacoes: {
+      padrao: { nome: 'padrão (sol ré lá mi, em pares)', notas: ['G3', 'D4', 'A4', 'E5'] },
+    } },
   };
+
+  // Sopros: notas de REFERÊNCIA para afinar (altura real, lá4 = 440 Hz).
+  // Nos transpositores, "escrita" é a nota como aparece na partitura dele.
+  // A gaita diatônica não se afina pelo músico (as palhetas são fixas): as
+  // notas servem para CONFERIR e para tocar junto.
+  var SOPROS = [
+    { id: 'trompete', nome: 'trompete em si♭', timbre: 'metal', transpositor: 'soa uma 2ª maior abaixo do escrito', notas: [{ soa: 'Bb3', escrita: 'C4' }, { soa: 'F4', escrita: 'G4' }, { soa: 'Bb4', escrita: 'C5' }] },
+    { id: 'trombone', nome: 'trombone', timbre: 'metal', notas: [{ soa: 'Bb2' }, { soa: 'F3' }, { soa: 'Bb3' }] },
+    { id: 'flauta-doce', nome: 'flauta doce soprano', timbre: 'doce', transpositor: 'soa uma oitava acima do escrito', notas: [{ soa: 'C5', escrita: 'C4' }, { soa: 'A5', escrita: 'A4' }, { soa: 'C6', escrita: 'C5' }] },
+    { id: 'flauta', nome: 'flauta transversal', timbre: 'flauta', notas: [{ soa: 'A4' }, { soa: 'Bb4' }, { soa: 'C5' }] },
+    { id: 'gaita', nome: 'gaita (harmônica diatônica em dó)', timbre: 'palheta', notas: [{ soa: 'C4' }, { soa: 'E4' }, { soa: 'G4' }, { soa: 'C5' }, { soa: 'D4' }, { soa: 'B4' }] },
+  ];
+  function sopro(id) { for (var i = 0; i < SOPROS.length; i++) if (SOPROS[i].id === id) return SOPROS[i]; return null; }
   CORDAS.guitarra.afinacoes = CORDAS.violao.afinacoes;
 
   function instrumento(id) { return CORDAS[id] || null; }
@@ -149,7 +166,7 @@
   }
 
   return {
-    CORDAS: CORDAS, VOZES: VOZES, instrumento: instrumento, afinacao: afinacao, afinacaoPersonalizada: afinacaoPersonalizada,
+    CORDAS: CORDAS, VOZES: VOZES, SOPROS: SOPROS, sopro: sopro, instrumento: instrumento, afinacao: afinacao, afinacaoPersonalizada: afinacaoPersonalizada,
     midiNaCasa: midiNaCasa, posicoes: posicoes, extensaoDeCordas: extensaoDeCordas, extensoes: extensoes,
   };
 });

@@ -315,3 +315,5 @@
 .lab-aula .lab-fig-circ svg{max-width:640px}
 .lab-aula .lab-opcao{font-size:24px;min-height:70px}
 .lab-aula .lab-q-enunciado{font-size:32px}
+.lab-link-botao{background:none;border:0;padding:0;color:var(--navy);font:600 15px Inter,sans-serif;text-decoration:underline;cursor:pointer;text-align:left}
+.lab-rud-tab code{font-size:14px;white-space:nowrap}

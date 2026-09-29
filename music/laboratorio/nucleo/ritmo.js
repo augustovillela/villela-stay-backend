@@ -133,14 +133,66 @@
   }
 
   // Rudimentos (mão direita D, esquerda E; acento em maiúscula no desenho).
+  // Os 40 rudimentos internacionais (lista da Percussive Arts Society),
+  // na numeração oficial. Notação: D = mão direita, E = esquerda;
+  // minúsculas ANTES do golpe = notas de apojatura (1 = flam, 2 = drag),
+  // tocadas pela outra mão; ">" = acento; "~" = golpe pressionado (buzz).
+  // A grade é uniforme — nos rudimentos em tercina, a figura escrita é
+  // outra, mas a sequência de mãos e ornamentos é esta.
   var RUDIMENTOS = [
-    { id: 'toque-simples', nome: 'toque simples alternado', en: 'single stroke roll', padrao: 'D E D E D E D E' },
-    { id: 'toque-duplo', nome: 'toque duplo', en: 'double stroke roll', padrao: 'D D E E D D E E' },
-    { id: 'paradiddle', nome: 'paradiddle simples', en: 'single paradiddle', padrao: 'D E D D E D E E', acentos: [0, 4] },
-    { id: 'paradiddle-duplo', nome: 'paradiddle duplo', en: 'double paradiddle', padrao: 'D E D E D D E D E D E E', acentos: [0, 6] },
-    { id: 'paradiddle-diddle', nome: 'paradiddle-diddle', en: 'paradiddle-diddle', padrao: 'D E D D E E', acentos: [0] },
-    { id: 'toque-triplo', nome: 'toque triplo', en: 'triple stroke roll', padrao: 'D D D E E E' },
+    { n: 1, id: 'toque-simples', grupo: 'rulos de toque simples', nome: 'rulo de toque simples', en: 'single stroke roll', padrao: 'D E D E D E D E' },
+    { n: 2, id: 'toque-simples-4', grupo: 'rulos de toque simples', nome: 'toque simples de quatro', en: 'single stroke four', padrao: 'D E D E> E D E D>' },
+    { n: 3, id: 'toque-simples-7', grupo: 'rulos de toque simples', nome: 'toque simples de sete', en: 'single stroke seven', padrao: 'D E D E D E D>' },
+    { n: 4, id: 'rulo-pressionado', grupo: 'rulos de múltiplos quiques', nome: 'rulo pressionado (buzz)', en: 'multiple bounce roll', padrao: 'D~ E~ D~ E~ D~ E~ D~ E~' },
+    { n: 5, id: 'toque-triplo', grupo: 'rulos de múltiplos quiques', nome: 'rulo de toque triplo', en: 'triple stroke roll', padrao: 'D D D E E E' },
+    { n: 6, id: 'toque-duplo', grupo: 'rulos de toque duplo', nome: 'rulo de toque duplo aberto', en: 'double stroke open roll', padrao: 'D D E E D D E E' },
+    { n: 7, id: 'rulo-5', grupo: 'rulos de toque duplo', nome: 'rulo de 5 toques', en: 'five stroke roll', padrao: 'D D E E D> E E D D E>' },
+    { n: 8, id: 'rulo-6', grupo: 'rulos de toque duplo', nome: 'rulo de 6 toques', en: 'six stroke roll', padrao: 'D> E E D D E>' },
+    { n: 9, id: 'rulo-7', grupo: 'rulos de toque duplo', nome: 'rulo de 7 toques', en: 'seven stroke roll', padrao: 'D D E E D D E>' },
+    { n: 10, id: 'rulo-9', grupo: 'rulos de toque duplo', nome: 'rulo de 9 toques', en: 'nine stroke roll', padrao: 'D D E E D D E E D>' },
+    { n: 11, id: 'rulo-10', grupo: 'rulos de toque duplo', nome: 'rulo de 10 toques', en: 'ten stroke roll', padrao: 'D D E E D D E E D> E>' },
+    { n: 12, id: 'rulo-11', grupo: 'rulos de toque duplo', nome: 'rulo de 11 toques', en: 'eleven stroke roll', padrao: 'D D E E D D E E D D E>' },
+    { n: 13, id: 'rulo-13', grupo: 'rulos de toque duplo', nome: 'rulo de 13 toques', en: 'thirteen stroke roll', padrao: 'D D E E D D E E D D E E D>' },
+    { n: 14, id: 'rulo-15', grupo: 'rulos de toque duplo', nome: 'rulo de 15 toques', en: 'fifteen stroke roll', padrao: 'D D E E D D E E D D E E D D E>' },
+    { n: 15, id: 'rulo-17', grupo: 'rulos de toque duplo', nome: 'rulo de 17 toques', en: 'seventeen stroke roll', padrao: 'D D E E D D E E D D E E D D E E D>' },
+    { n: 16, id: 'paradiddle', grupo: 'diddles', nome: 'paradiddle simples', en: 'single paradiddle', padrao: 'D> E D D E> D E E' },
+    { n: 17, id: 'paradiddle-duplo', grupo: 'diddles', nome: 'paradiddle duplo', en: 'double paradiddle', padrao: 'D> E D E D D E> D E D E E' },
+    { n: 18, id: 'paradiddle-triplo', grupo: 'diddles', nome: 'paradiddle triplo', en: 'triple paradiddle', padrao: 'D> E D E D E D D E> D E D E D E E' },
+    { n: 19, id: 'paradiddle-diddle', grupo: 'diddles', nome: 'paradiddle-diddle', en: 'single paradiddle-diddle', padrao: 'D> E D D E E' },
+    { n: 20, id: 'flam', grupo: 'flams', nome: 'flam', en: 'flam', padrao: 'eD dE' },
+    { n: 21, id: 'flam-acentuado', grupo: 'flams', nome: 'flam acentuado', en: 'flam accent', padrao: 'eD> E D dE> D E' },
+    { n: 22, id: 'flam-tap', grupo: 'flams', nome: 'flam tap', en: 'flam tap', padrao: 'eD> D dE> E' },
+    { n: 23, id: 'flamacue', grupo: 'flams', nome: 'flamacue', en: 'flamacue', padrao: 'eD E> D E eD' },
+    { n: 24, id: 'flam-paradiddle', grupo: 'flams', nome: 'flam paradiddle', en: 'flam paradiddle', padrao: 'eD> E D D dE> D E E' },
+    { n: 25, id: 'flammed-mill', grupo: 'flams', nome: 'flam mill simples', en: 'single flammed mill', padrao: 'eD> D E D dE> E D E' },
+    { n: 26, id: 'flam-paradiddle-diddle', grupo: 'flams', nome: 'flam paradiddle-diddle', en: 'flam paradiddle-diddle', padrao: 'eD> E D D E E' },
+    { n: 27, id: 'pataflafla', grupo: 'flams', nome: 'pataflafla', en: 'pataflafla', padrao: 'eD E D dE dE D E eD' },
+    { n: 28, id: 'swiss-army', grupo: 'flams', nome: 'tercina suíça', en: 'Swiss army triplet', padrao: 'eD D E eD D E' },
+    { n: 29, id: 'flam-tap-invertido', grupo: 'flams', nome: 'flam tap invertido', en: 'inverted flam tap', padrao: 'eD E dE D' },
+    { n: 30, id: 'flam-drag', grupo: 'flams', nome: 'flam drag', en: 'flam drag', padrao: 'eD> eeE D dE> ddD E' },
+    { n: 31, id: 'drag', grupo: 'drags', nome: 'drag (ruff)', en: 'drag', padrao: 'eeD ddE' },
+    { n: 32, id: 'drag-tap', grupo: 'drags', nome: 'drag tap simples', en: 'single drag tap', padrao: 'eeD> E ddE> D' },
+    { n: 33, id: 'drag-tap-duplo', grupo: 'drags', nome: 'drag tap duplo', en: 'double drag tap', padrao: 'eeD eeD> E ddE ddE> D' },
+    { n: 34, id: 'lesson-25', grupo: 'drags', nome: 'Lesson 25', en: 'lesson 25', padrao: 'eeD E D> ddE D E>' },
+    { n: 35, id: 'dragadiddle', grupo: 'drags', nome: 'dragadiddle simples', en: 'single dragadiddle', padrao: 'eeD> E D D ddE> D E E' },
+    { n: 36, id: 'drag-paradiddle-1', grupo: 'drags', nome: 'drag paradiddle nº 1', en: 'drag paradiddle #1', padrao: 'D> eeD E D D E> ddE D E E' },
+    { n: 37, id: 'drag-paradiddle-2', grupo: 'drags', nome: 'drag paradiddle nº 2', en: 'drag paradiddle #2', padrao: 'D> eeD eeD E D D' },
+    { n: 38, id: 'ratamacue', grupo: 'drags', nome: 'ratamacue simples', en: 'single ratamacue', padrao: 'eeD E D E>' },
+    { n: 39, id: 'ratamacue-duplo', grupo: 'drags', nome: 'ratamacue duplo', en: 'double ratamacue', padrao: 'eeD eeD E D E>' },
+    { n: 40, id: 'ratamacue-triplo', grupo: 'drags', nome: 'ratamacue triplo', en: 'triple ratamacue', padrao: 'eeD eeD eeD E D E>' },
   ];
+
+  /**
+   * Lê a notação de um rudimento: [{ mao: 'D'|'E', acento, apojaturas
+   * (quantas notas de enfeite antes, da outra mão), pressionado }].
+   */
+  function golpes(padrao) {
+    return String(padrao || '').trim().split(/\s+/).filter(Boolean).map(function (tok) {
+      var m = tok.match(/^([de]*)([DE])(>?)(~?)(>?)$/);
+      if (!m) return null;
+      return { mao: m[2], acento: !!(m[3] || m[5]), apojaturas: m[1].length, pressionado: !!m[4], texto: tok };
+    });
+  }
 
   /** Grade de polirritmo a:b — onde cada voz bate, numa grade de mmc passos. */
   function polirritmo(a, b) {
@@ -160,6 +212,6 @@
     fr: fr, soma: soma, sub: sub, mult: mult, comparar: comparar, iguais: iguais, texto: texto, valor: valor, mmc: mmc,
     FIGURAS: FIGURAS, FIG: FIG, duracao: duracao, somaDuracoes: somaDuracoes, compasso: compasso,
     conferirCompasso: conferirCompasso, ms: ms, bpmDeToques: bpmDeToques, desvioDoPulso: desvioDoPulso,
-    RUDIMENTOS: RUDIMENTOS, polirritmo: polirritmo, swing: swing,
+    RUDIMENTOS: RUDIMENTOS, golpes: golpes, polirritmo: polirritmo, swing: swing,
   };
 });
