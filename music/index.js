@@ -46,6 +46,7 @@ function montar(app, injected = {}) {
   repo.semear();
   storage.configurar({ segredo: jwtSecret });
   semearRegistryIA();
+  garantirLinhasIA();
   // Currículo em código, semeado por upsert: trilha é conteúdo
   // pedagógico, não configuração — muda por revisão e deploy, com
   // histórico no git.
@@ -176,6 +177,23 @@ function semearRegistryIA() {
       + 'Decisão Q6: não anunciar geração de música. Linha existe para deixar o vazio visível.',
   });
   return true;
+}
+
+/**
+ * Capability que chegou DEPOIS da primeira semeadura: o registry de
+ * produção já existe, então `semearRegistryIA` não roda de novo. Entra
+ * aqui, idempotente e DESLIGADA — ligar continua sendo decisão comercial
+ * no painel do staff (nunca religa quem o staff já mexeu).
+ */
+function garantirLinhasIA() {
+  const novas = [
+    { capability: 'tutor.acompanhar', provider: 'anthropic', model: 'claude-haiku-4-5', creditos: 1, custoEstimadoCentavos: 1, promptVersao: 'v1',
+      observacao: 'Tutor de braço (29/09/2026): conversa sobre a rodada medida por código; ligar é decisão comercial' },
+  ];
+  for (const l of novas) {
+    if (router.registry().some((x) => x.capability === l.capability)) continue;
+    router.definirProvedor({ ...l, ativo: 0, prioridade: 5 });
+  }
 }
 
 module.exports = { montar, repo, direitos, fila, storage, router, academia };

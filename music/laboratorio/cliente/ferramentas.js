@@ -407,17 +407,18 @@
   // "Por onde começar?": nível + instrumento + objetivo → um caminho.
   // Fica neste aparelho; para quem tem conta, também na conta.
   // ------------------------------------------------------------------
-  var CORDAS_IDS = ['violao', 'guitarra', 'baixo', 'ukulele', 'cavaquinho', 'violao-7'];
+  var CORDAS_IDS = ['violao', 'guitarra', 'baixo', 'ukulele', 'cavaquinho', 'violao-7', 'bandolim'];
   function recomendar(p) {
     var inst = CORDAS_IDS.indexOf(p.instrumento) >= 0 ? p.instrumento : '';
     var ferrInst = p.instrumento === 'teclado' ? { nome: 'Piano virtual', url: '/music/criar/piano-virtual' }
       : p.instrumento === 'voz' ? { nome: 'Extensão vocal', url: '/music/criar/extensao-vocal' }
       : inst ? { nome: 'Braço do ' + INS.instrumento(inst).nome, url: '/music/explorar/braco?i=' + inst } : { nome: 'Piano e notas', url: '/music/explorar/piano' };
+    var tutor = inst ? { nome: 'Tutor de braço: escalas e desenhos com correção', url: '/music/tutor-braco?i=' + inst } : null;
     var afinar = p.instrumento === 'voz' ? { nome: 'Afinador (voz)', url: '/music/ferramentas' } : inst ? { nome: 'Afinador do ' + INS.instrumento(inst).nome, url: '/music/criar/afinador-cordas?i=' + inst } : { nome: 'Afinador', url: '/music/ferramentas' };
     var r;
     if (p.objetivo === 'ensinar') r = { caminho: 'Ensinar', motivo: 'Monte atividades a partir dos exercícios, atribua à turma e acompanhe por habilidade.', itens: [{ nome: 'Área do professor', url: '/music/ensinar' }, { nome: 'Todos os exercícios', url: '/music/praticar' }, { nome: 'Trilha de lições (para indicar aos alunos)', url: '/music/aprender' }] };
     else if (p.objetivo === 'compor') r = { caminho: 'Laboratório integrado + Criar', motivo: 'Experimente livre: tônica, escala e acorde num lugar só, e ferramentas para montar ideias.', itens: [{ nome: 'Laboratório integrado', url: '/music/explorar/laboratorio' + (inst ? '?i=' + inst : '') }, { nome: 'Laboratório de progressões', url: '/music/criar/progressoes' }, { nome: 'Mini máquina musical', url: '/music/criar/mini-maquina' }, { nome: 'Motivos: variar e inverter', url: '/music/criar/motivos' }] };
-    else if (p.objetivo === 'tocar') r = { caminho: 'Usar agora', motivo: 'Ferramentas que resolvem na hora, já no seu instrumento — cada uma leva à lição do assunto.', itens: [ferrInst, afinar, { nome: 'Transpositor de acordes', url: '/music/criar/transpositor' }, { nome: 'Identificador de acordes', url: '/music/explorar/identificar-acorde' }, { nome: 'Metrônomo que acelera', url: '/music/criar/metronomo-progressivo' }] };
+    else if (p.objetivo === 'tocar') r = { caminho: 'Usar agora', motivo: 'Ferramentas que resolvem na hora, já no seu instrumento — cada uma leva à lição do assunto.', itens: [tutor, ferrInst, afinar, { nome: 'Transpositor de acordes', url: '/music/criar/transpositor' }, { nome: 'Identificador de acordes', url: '/music/explorar/identificar-acorde' }, { nome: 'Metrônomo que acelera', url: '/music/criar/metronomo-progressivo' }].filter(Boolean) };
     else if (p.objetivo === 'ouvido') r = { caminho: 'Praticar + Jogar', motivo: 'Treino curto e frequente: leitura, intervalos e acordes de ouvido, com explicação de cada erro.', itens: p.nivel === 'comecando'
       ? [{ nome: 'Nota na pauta', url: '/music/praticar/nota-na-pauta' }, { nome: 'Nota no teclado', url: '/music/praticar/nota-no-teclado' }, { nome: 'Intervalos de ouvido', url: '/music/praticar/intervalo-ouvido' }, { nome: 'Desafio do dia', url: '/music/jogar/desafio-diario' }]
       : [{ nome: 'Leitura à primeira vista', url: '/music/praticar/leitura-primeira-vista' }, { nome: 'Ditado rítmico', url: '/music/praticar/ditado-ritmico' }, { nome: 'Cadências de ouvido', url: '/music/praticar/cadencia-ouvido' }, { nome: 'Ditado a duas vozes', url: '/music/praticar/ditado-duas-vozes' }] };

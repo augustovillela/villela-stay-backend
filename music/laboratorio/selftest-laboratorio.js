@@ -591,6 +591,165 @@ async function rodar({ t, secao, req, assert }) {
     const clientes = PG.clienteJs();
     CAT.FERRAMENTAS.forEach((f) => assert.ok(clientes.includes("F['" + f.slug + "']") || clientes.includes('F.' + f.slug.replace(/-/g, '_') + ' ') || clientes.includes('F.' + f.slug + ' '), 'ferramenta sem implementação no cliente: ' + f.slug));
   });
+
+  secao('Laboratório · Tutor de braço: exercícios clássicos, escuta e tutor');
+
+  await t('TUTOR · ORÁCULO: todo passo de todo exercício é a nota que a corda+casa dá, está na escala/acorde, cabe na posição e o dedo é plausível', async () => {
+    const DG = require('./nucleo/digitacoes');
+    const INSTS = ['violao', 'guitarra', 'baixo', 'violao-7', 'ukulele', 'cavaquinho', 'bandolim'];
+    const ESCS = ['maior', 'menor-natural', 'menor-harmonica', 'dorico', 'mixolidio', 'blues-menor', 'pentatonica-menor', 'pentatonica-maior'];
+    let n = 0;
+    for (const inst of INSTS) for (const pc of [0, 2, 4, 5, 7, 9, 10]) {
+      const ton = N.deClasse(pc);
+      for (const tipo of ['escala', 'pentatonica', 'arpejo']) for (const esc of (tipo === 'pentatonica' ? ['pentatonica-menor', 'pentatonica-maior'] : tipo === 'arpejo' ? ['-'] : ESCS)) {
+        const base = { instrumento: inst, tipo, tonica: ton, escala: esc, acorde: 'm7', ordem: 'sobe' };
+        const nDes = DG.montar(base).desenhos.length;
+        assert.ok(nDes >= 1, inst + ' ' + tipo + ' ' + esc + ' tem desenhos');
+        for (let d = 1; d <= nDes; d++) {
+          const r = DG.montar({ ...base, desenho: d });
+          const pcs = new Set((tipo === 'arpejo' ? A.notas(ton, 'm7') : E.notas(ton, esc)).map((x) => N.pc(x)));
+          assert.ok(r.passos.length >= (tipo === 'arpejo' ? 3 : pcs.size), r.titulo + ' tem notas');
+          const graves = Math.min(...r.afinacao.midi), cordaGrave = r.afinacao.midi.indexOf(graves);
+          r.passos.forEach((p, i) => {
+            n++;
+            assert.equal(p.midi, r.afinacao.midi[p.corda] + p.casa, r.titulo + ' passo ' + i + ': midi = corda solta + casa');
+            assert.ok(pcs.has(((p.midi % 12) + 12) % 12), r.titulo + ' passo ' + i + ' fora do conjunto');
+            assert.equal(N.midi(p.nota), p.midi, r.titulo + ' passo ' + i + ': a grafia soa a mesma altura');
+            const ini = r.posicao <= 1 ? 0 : (p.corda === cordaGrave ? r.posicao : r.posicao - 1);
+            assert.ok(p.casa >= ini && p.casa <= (r.posicao <= 1 ? 4 : r.posicao + DG.ALCANCE), r.titulo + ' passo ' + i + ' fora da posição (casa ' + p.casa + ')');
+            assert.ok(p.dedo >= 0 && p.dedo <= 4 && (p.dedo === 0) === (p.casa === 0), r.titulo + ' dedo ' + p.dedo + ' na casa ' + p.casa);
+            if (i > 0) assert.ok(p.midi > r.passos[i - 1].midi, r.titulo + ': "só subindo" sobe sempre');
+          });
+          if (tipo !== 'arpejo' && !['ukulele', 'cavaquinho', 'bandolim'].includes(inst)) {
+            const vistos = new Set(r.passos.map((p) => p.midi % 12));
+            pcs.forEach((x) => assert.ok(vistos.has(x), r.titulo + ' (' + inst + '): a posição tem todas as notas da escala'));
+          }
+          // numa corda, dedos nunca invertem a ordem das casas
+          const porCorda = {}; r.passos.forEach((p) => (porCorda[p.corda] = porCorda[p.corda] || []).push(p));
+          Object.values(porCorda).forEach((ps) => ps.forEach((p, j) => { if (j && p.casa > 0 && ps[j - 1].casa > 0) assert.ok(p.dedo > ps[j - 1].dedo, r.titulo + ': dedo sobe com a casa na mesma corda'); }));
+        }
+      }
+    }
+    assert.ok(n > 20000, 'varredura grande (' + n + ' passos)');
+  });
+
+  await t('TUTOR · DESENHOS CLÁSSICOS: lá pentatônica menor nas casas 5-8-10-12-15, desenho 1 na tônica; 3 por corda e cromático corretos; ordens de estudo', async () => {
+    const DG = require('./nucleo/digitacoes');
+    const casas = (r) => r.passos.map((p) => (r.afinacao.midi.length - p.corda) + ':' + p.casa).join(' ');
+    const am = (d) => DG.montar({ instrumento: 'violao', tipo: 'pentatonica', tonica: N.ler('A'), escala: 'pentatonica-menor', desenho: d, ordem: 'sobe' });
+    assert.deepEqual(am(1).desenhos.map((x) => x.casa), [5, 8, 10, 12, 15]);
+    assert.equal(casas(am(1)), '6:5 6:8 5:5 5:7 4:5 4:7 3:5 3:7 2:5 2:8 1:5 1:8', 'desenho 1 (o "box" da casa 5)');
+    assert.equal(casas(am(2)), '6:8 6:10 5:7 5:10 4:7 4:10 3:7 3:9 2:8 2:10 1:8 1:10');
+    assert.equal(casas(am(5)), '6:15 6:17 5:15 5:17 4:14 4:17 3:14 3:17 2:15 2:17 1:15 1:17', 'o indicador estica para o mi da casa 14');
+    assert.equal(am(1).passos.map((p) => p.dedo).join(''), '141313131414');
+    assert.equal(DG.montar({ instrumento: 'ukulele', tipo: 'pentatonica', tonica: N.ler('A'), escala: 'pentatonica-menor' }).desenhos.every((x) => x.casa + DG.ALCANCE <= 15), true, 'no ukulele o desenho cabe nas 15 casas');
+    const g3 = DG.montar({ instrumento: 'violao', tipo: 'tres-por-corda', tonica: N.ler('G'), escala: 'maior', ordem: 'sobe' });
+    assert.equal(g3.passos.length, 18);
+    assert.equal(g3.passos.map((p) => N.nome(p.nota, { oitava: false })).join(' '), 'G A B C D E F# G A B C D E F# G A B C', 'sol maior 3 por corda, com fá♯ grafado');
+    for (let c = 0; c < 6; c++) assert.equal(g3.passos.filter((p) => p.corda === c).length, 3, 'corda ' + c + ' tem 3 notas');
+    assert.equal(DG.montar({ instrumento: 'ukulele', tipo: 'tres-por-corda', tonica: N.ler('C'), escala: 'maior' }).passos.length, 0, 'reentrante não tem 3 por corda');
+    Object.keys(DG.CROMATICOS).forEach((v) => {
+      const cr = DG.montar({ instrumento: 'baixo', tipo: 'cromatico', posicao: 5, variante: v, ordem: 'sobe' });
+      assert.equal(cr.passos.length, 16);
+      cr.passos.forEach((p) => { assert.equal(p.casa, 5 + p.dedo - 1, 'um dedo por casa'); assert.equal(p.midi, cr.afinacao.midi[p.corda] + p.casa); });
+      assert.equal(cr.passos.slice(0, 4).map((p) => p.dedo).join(''), v);
+    });
+    const a = [1, 2, 3, 4, 5];
+    assert.deepEqual(DG.ordenar(a, 'sobe-desce'), [1, 2, 3, 4, 5, 4, 3, 2, 1]);
+    assert.deepEqual(DG.ordenar(a, 'tercas'), [1, 3, 2, 4, 3, 5]);
+    assert.deepEqual(DG.ordenar(a, 'grupos-3'), [1, 2, 3, 2, 3, 4, 3, 4, 5]);
+    assert.deepEqual(DG.ordenar(a, 'grupos-4'), [1, 2, 3, 4, 2, 3, 4, 5]);
+    ['sobe-desce', 'tercas', 'grupos-3', 'grupos-4'].forEach((o) => { const r = DG.montar({ instrumento: 'guitarra', tipo: 'escala', tonica: N.ler('E'), escala: 'dorico', ordem: o }); for (let i = 1; i < r.passos.length; i++) assert.notEqual(r.passos[i].midi, r.passos[i - 1].midi, o + ': nunca a mesma nota duas vezes seguidas (o tutor não separaria)'); });
+  });
+
+  await t('TUTOR · ESCUTA E AVALIAÇÃO: rodada limpa com atraso de microfone = 100%; nota errada aponta corda, casa e dedo; oitava do detector não pune; acelerar é percebido', async () => {
+    const TU = require('./nucleo/tutor');
+    const DG = require('./nucleo/digitacoes');
+    const ex = DG.montar({ instrumento: 'violao', tipo: 'pentatonica', tonica: N.ler('A'), escala: 'pentatonica-menor', ordem: 'sobe' });
+    const passo = 0.25;
+    const esp = ex.passos.map((p, i) => ({ t: i * passo, midi: p.midi, corda: p.corda, casa: p.casa, dedo: p.dedo }));
+    const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+    function tocar(f) {   // f(i) -> { midi, atraso }
+      const q = [];
+      esp.forEach((e, i) => { const x = f(i, e); if (!x) return; for (let k = 0; k < 12; k++) q.push({ t: e.t + x.atraso + k * 0.016, hz: hz(x.midi), conf: 0.95 }); });
+      return q.sort((a, b) => a.t - b.t);
+    }
+    const limpo = TU.avaliar(esp, TU.segmentar(tocar((i, e) => ({ midi: e.midi, atraso: 0.14 + (i % 2 ? 0.008 : -0.006) }))), { passo_s: passo });
+    assert.equal(limpo.precisao, 100); assert.ok(limpo.desvio_medio_ms <= 10, 'o atraso fixo do microfone não conta como erro'); assert.ok(Math.abs(limpo.latencia_ms - 140) <= 15);
+    assert.equal(TU.proximoBpm(limpo, 80).bpm, 86, 'limpo e no tempo: sobe');
+    const umErro = TU.avaliar(esp, TU.segmentar(tocar((i, e) => ({ midi: i === 6 ? e.midi + 1 : e.midi, atraso: 0.1 }))), { passo_s: passo });
+    assert.equal(umErro.certos, esp.length - 1); assert.equal(umErro.itens[6].semitons, 1);
+    const fala = TU.orientar(umErro, { nCordas: 6, bpm: 80 }).falas.join(' ');
+    assert.match(fala, /nota 7 \(3ª corda, casa 5, dedo 1\) saiu meio tom acima/);
+    const oit = TU.avaliar(esp, TU.segmentar(tocar((i, e) => ({ midi: i === 2 ? e.midi + 12 : e.midi, atraso: 0.1 }))), { passo_s: passo });
+    assert.equal(oit.precisao, 100); assert.equal(oit.oitavas, 1);
+    const falta = TU.avaliar(esp, TU.segmentar(tocar((i, e) => (i % 3 === 0 ? null : { midi: e.midi, atraso: 0.1 }))), { passo_s: passo });
+    assert.equal(falta.faltaram, 4); assert.ok(falta.precisao < 70); assert.ok(TU.proximoBpm(falta, 80).bpm < 80, 'impreciso: desce');
+    const corre = TU.avaliar(esp, TU.segmentar(tocar((i, e) => ({ midi: e.midi, atraso: 0.1 - i * 0.012 }))), { passo_s: passo });
+    assert.ok(corre.deriva_ms < -40, 'deriva negativa = correndo (' + corre.deriva_ms + ')');
+    assert.match(TU.orientar(corre, { bpm: 80 }).falas.join(' '), /acelerando/);
+    const mudo = TU.avaliar(esp, [], { passo_s: passo });
+    assert.equal(mudo.precisao, 0); assert.match(TU.orientar(mudo, {}).falas[0], /Não ouvi/);
+    assert.deepEqual(TU.orientar(umErro, { bpm: 80, semente: 3 }), TU.orientar(umErro, { bpm: 80, semente: 3 }), 'mesma rodada, mesma fala');
+    assert.deepEqual(TU.segmentar([{ t: 0, hz: 440, conf: 0.95 }, { t: 0.02, hz: 440, conf: 0.95 }]), [], 'estalo de 20 ms não vira nota');
+  });
+
+  await t('TUTOR · PÁGINA E API: abre sem conta (demonstração), marca só com assinatura, melhor BPM só com rodada limpa, LGPD, e a IA nasce desligada e invisível', async () => {
+    const TB = require('./tutor-braco');
+    const anon = await req('GET', '/music/tutor-braco?i=baixo&x=cromatico', { cru: true });
+    assert.equal(anon.status, 200); assert.match(anon.texto, /Tutor de braço/); assert.match(anon.texto, /3 rodadas com o tutor por visita/);
+    assert.match(anon.texto, /data-ferramenta="tutor-braco"/); assert.match(anon.texto, /&quot;instrumento&quot;:&quot;baixo&quot;|"instrumento":"baixo"/);
+    assert.ok(!/undefined|NaN/.test(anon.texto.replace(/<script[\s\S]*?<\/script>/g, '')));
+    assert.equal(TB.estadoDaUrl({ i: 'harpa', x: 'x', bpm: '9999', t: '<script>' }).instrumento, 'violao');
+    assert.equal(TB.estadoDaUrl({ bpm: '9999' }).bpm, 300); assert.equal(TB.estadoDaUrl({ t: '<b>' }).tonica, 'la');
+    const ass = await req('GET', '/music/tutor-braco', { como: 'ana', cru: true });
+    assert.ok(!/rodadas com o tutor por visita/.test(ass.texto), 'assinante não vê o limite de demonstração');
+    assert.ok((await req('GET', '/music/praticar', { cru: true })).texto.includes('href="/music/tutor-braco"'), 'cartão em Praticar');
+    assert.ok((await req('GET', '/music/laboratorio', { cru: true })).texto.includes('href="/music/tutor-braco"'), 'destaque no hub');
+    assert.ok(PG.urlsDoSitemap().some((x) => x.url === '/music/tutor-braco'));
+    assert.ok(CAT.buscar('pentatônica desenhos', { licoes: L.LICOES }).some((x) => x.url === '/music/tutor-braco'), 'a busca acha o tutor');
+    const nucleo = PG.nucleoJs(); assert.ok(nucleo.includes('L.digitacoes = fabrica'), 'digitações no pacote do núcleo'); assert.ok(nucleo.includes('.tutor = fabrica'), 'tutor no pacote do núcleo');
+    assert.ok(PG.clienteJs().includes("C.ferramentas['tutor-braco']"));
+
+    const B = '/music/api/lab/tutor';
+    assert.equal((await req('POST', B + '/sessao', { corpo: { exercicio: 'violao|x', bpm: 80, precisao: 100 } })).status, 401);
+    assert.equal((await req('POST', B + '/sessao', { como: 'ana', corpo: { exercicio: '<x>', bpm: 80, precisao: 100 } })).status, 400);
+    const k = 'violao|padrao|pentatonica|la|pentatonica-menor|1|sobe-desce';
+    const s1 = await req('POST', B + '/sessao', { como: 'ana', corpo: { exercicio: k, titulo: 'lá pentatônica', bpm: 80, precisao: 97, desvio_ms: 20 } });
+    assert.equal(s1.json.melhor_bpm, 80); assert.equal(s1.json.recorde, true);
+    const s2 = await req('POST', B + '/sessao', { como: 'ana', corpo: { exercicio: k, bpm: 100, precisao: 70, desvio_ms: 90 } });
+    assert.equal(s2.json.melhor_bpm, 80, 'rodada suja não vira marca'); assert.equal(s2.json.rodadas, 2);
+    assert.equal((await req('GET', B + '/historico', { como: 'bruno' })).json.exercicios.length, 0, 'a marca da Ana não aparece para o Bruno');
+    assert.equal((await req('GET', B + '/historico', { como: 'ana' })).json.exercicios[0].ultimo_bpm, 100);
+    const exp = JSON.parse((await req('GET', '/music/api/lab/meus-dados', { como: 'ana', cru: true })).texto);
+    assert.equal(exp.tutor_de_braco.length, 1, 'a marca entra na exportação LGPD');
+    await req('POST', '/music/api/lab/meus-dados/excluir', { como: 'ana', corpo: { confirmacao: 'EXCLUIR' } });
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM lab_tutor WHERE usuario = 'u-ana'").get().n, 0, 'e sai na exclusão');
+
+    const router = require('../ia/router');
+    const linha = router.registry().find((x) => x.capability === 'tutor.acompanhar');
+    assert.ok(linha, 'a capability tem linha no registry'); assert.equal(linha.ativo, 0, 'e nasce DESLIGADA');
+    assert.equal((await req('GET', B + '/ia')).json.disponivel, false);
+    assert.equal((await req('POST', B + '/conversa', { como: 'ana', corpo: { pergunta: 'oi' } })).status, 404, 'sem provedor, sem conversa');
+    assert.match((await req('GET', '/music/tutor-braco', { como: 'ana', cru: true })).texto, /&quot;ia&quot;:false|"ia":false/);
+    let recebido = null;
+    router.injetarParaTeste('anthropic', async ({ entrada }) => { recebido = entrada; return { resposta: 'Relaxe o polegar.', dica: 'Devagar.', exercicio_sugerido: '' }; });
+    router.definirProvedor({ capability: 'tutor.acompanhar', provider: 'anthropic', model: linha.model, ativo: 1, creditos: 1, custoEstimadoCentavos: 1, promptVersao: 'v1' });
+    try {
+      assert.equal((await req('POST', B + '/conversa', { corpo: { pergunta: 'oi' } })).status, 401);
+      const c = await req('POST', B + '/conversa', { como: 'ana', corpo: { pergunta: 'Por que erro na troca de corda?', titulo: 'lá', instrumento: 'violao', bpm: 80, npt: 2, audio: 'AAAA',
+        resultado: { total: 12, certos: 10, precisao: 83, erros: [{ nota: 7, corda: 3, casa: 5, dedo: 1, semitons: 1 }], lixo: 'x' } } });
+      assert.equal(c.status, 200); assert.equal(c.json.resposta, 'Relaxe o polegar.');
+      assert.deepEqual(Object.keys(recebido).sort(), ['exercicio', 'orientacao_automatica', 'pergunta', 'ultima_rodada'], 'a IA recebe só campos conhecidos (nada de áudio)');
+      assert.ok(!('lixo' in recebido.ultima_rodada));
+      assert.match((await req('GET', '/music/tutor-braco', { como: 'ana', cru: true })).texto, /&quot;ia&quot;:true|"ia":true/);
+      assert.match((await req('GET', '/music/tutor-braco', { cru: true })).texto, /&quot;ia&quot;:false|"ia":false/, 'sem assinatura, sem conversa');
+    } finally {
+      router.definirProvedor({ capability: 'tutor.acompanhar', provider: 'anthropic', model: linha.model, ativo: 0, creditos: 1, custoEstimadoCentavos: 1, promptVersao: 'v1' });
+      router.injetarParaTeste('anthropic', null);
+    }
+    assert.ok(require('fs').readFileSync(require('path').join(__dirname, '..', 'ia', 'adapters', 'anthropic.js'), 'utf8').includes("'tutor.acompanhar'"), 'o adapter tem o prompt do tutor');
+  });
 }
 
 module.exports = { rodar };

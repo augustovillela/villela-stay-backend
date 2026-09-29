@@ -28,6 +28,9 @@ const CAPABILITIES = [
   // trouxe. Transcrever/estruturar, nunca compor (ver o adapter).
   'cifra.ler_imagem', 'cifra.interpretar', 'cifra.metadados', 'cifra.revisar_harmonia',
   'cifra.comando', 'cifra.resumir_mudancas', 'cifra.guia_instrumento',
+  // Tutor de braço (29/09/2026): CONVERSA sobre a rodada que o código
+  // mediu. Não mede, não corrige, não dá nota.
+  'tutor.acompanhar',
 ];
 
 const ADAPTERS = {

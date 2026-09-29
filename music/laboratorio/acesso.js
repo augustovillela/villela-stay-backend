@@ -24,12 +24,14 @@ const CAPACIDADES = {
   'licoes-introdutorias': { requer: 'nada', nome: 'Primeiras lições da trilha (amostra)' },
   'pratica-demo':        { requer: 'nada', nome: 'Exercícios em demonstração (sessão curta, sem histórico)' },
   'jogos-demo':          { requer: 'nada', nome: 'Jogos em demonstração (recorde só neste aparelho)' },
+  'tutor-demo':          { requer: 'nada', nome: 'Tutor de braço: demonstração animada e 3 rodadas com o tutor por visita' },
   'licoes-completas':    { requer: 'assinatura', nome: 'Trilha completa de lições' },
   'pratica-completa':    { requer: 'assinatura', nome: 'Sessões completas, todos os níveis e repetição espaçada' },
   'progresso':           { requer: 'assinatura', nome: 'Progresso, histórico e domínio por habilidade' },
   'favoritos':           { requer: 'assinatura', nome: 'Favoritos sincronizados' },
   'jogos-historico':     { requer: 'assinatura', nome: 'Desafio do dia com histórico e melhores marcas na nuvem' },
   'exportar':            { requer: 'assinatura', nome: 'Exportar criações (MIDI, JSON)' },
+  'tutor-completo':      { requer: 'assinatura', nome: 'Tutor de braço: rodadas ilimitadas, marca por exercício e conversa com o tutor' },
   'ensinar':             { requer: 'docente', nome: 'Atividades, atribuição e relatórios do professor' },
 };
 
