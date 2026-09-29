@@ -750,6 +750,104 @@ async function rodar({ t, secao, req, assert }) {
     }
     assert.ok(require('fs').readFileSync(require('path').join(__dirname, '..', 'ia', 'adapters', 'anthropic.js'), 'utf8').includes("'tutor.acompanhar'"), 'o adapter tem o prompt do tutor');
   });
+
+  secao('Laboratório · Transcrever música: tom, andamento, acordes e melodia de um áudio');
+
+  await t('TRANSCRIÇÃO · FFT: bate com a DFT direta (a base de tudo)', async () => {
+    const TR = require('./nucleo/transcricao');
+    const n = 64, re = new Float64Array(n), im = new Float64Array(n), x = [];
+    const rnd = require('./nucleo/sintetico-transcricao').rng(11);
+    for (let i = 0; i < n; i++) { x.push(rnd() * 2 - 1); re[i] = x[i]; }
+    TR.fft(re, im);
+    for (let k = 0; k < n; k++) {
+      let r = 0, m = 0; for (let j = 0; j < n; j++) { r += x[j] * Math.cos(-2 * Math.PI * k * j / n); m += x[j] * Math.sin(-2 * Math.PI * k * j / n); }
+      assert.ok(Math.abs(r - re[k]) < 1e-9 && Math.abs(m - im[k]) < 1e-9, 'bin ' + k);
+    }
+  });
+
+  await t('TRANSCRIÇÃO · ORÁCULO: músicas sintetizadas da partitura (baixo, acordes, bateria, melodia) voltam com o tom, o BPM, os acordes de cada compasso e a melodia', async () => {
+    const TR = require('./nucleo/transcricao');
+    const S = require('./nucleo/sintetico-transcricao');
+    const casos = [
+      { acordes: ['C', 'G', 'Am', 'F'], bpm: 100, tom: 'C' },
+      { acordes: ['Am', 'Dm', 'E7', 'Am'], bpm: 84, tom: 'Am' },
+      { acordes: ['G', 'Em', 'C', 'D'], bpm: 128, intro: 1.3, tom: 'G' },
+      { acordes: ['F', 'Bb', 'C7', 'F'], bpm: 72, tom: 'F' },
+      { acordes: ['D', 'A', 'Bm', 'G'], bpm: 150, tom: 'D' },
+      { acordes: ['Eb', 'Cm', 'Ab', 'Bb7'], bpm: 92, tom: 'Eb' },
+      { acordes: ['E', 'C#m', 'A', 'B'], bpm: 116, tom: 'E' },
+      { acordes: ['C', 'F', 'G7', 'C'], bpm: 66, tom: 'C' },
+      { acordes: ['D', 'G', 'A7', 'D'], bpm: 120, compasso: 3, tom: 'D' },
+      { acordes: ['C', 'Am', 'Dm', 'G7'], bpm: 96, bateria: false, tom: 'C' },
+      { acordes: ['Bb', 'Gm', 'Eb', 'F'], bpm: 110, ruido: 0.12, tom: 'Bb' },
+      // dente de serra (metais, cordas): o 7º harmônico não pode transformar C em C7
+      { acordes: ['C', 'G', 'Am', 'F'], bpm: 100, serra: true, tom: 'C' },
+      { acordes: ['Am', 'Dm', 'E7', 'Am'], bpm: 100, serra: true, tom: 'Am' },
+    ];
+    let comps = 0, certos = 0, mel = 0, melT = 0;
+    for (const c of casos) {
+      const m = S.musica({ ...c, repeticoes: 2 });
+      if (c.ruido) { const rnd = S.rng(3); for (let i = 0; i < m.amostras.length; i++) m.amostras[i] += c.ruido * (rnd() * 2 - 1); }
+      const r = S.transcrever(TR, m.amostras, m.taxa, { compasso: c.compasso || 4 });
+      const rot = c.acordes.join(' ') + ' @' + c.bpm;
+      assert.equal(r.tom.cifra, c.tom, rot + ': tom');
+      assert.ok(Math.abs(r.bpm - c.bpm) <= 2, rot + ': BPM ' + r.bpm);
+      assert.equal(r.compassos.length, m.esperado.acordes.length, rot + ': nº de compassos (' + TR.cifraTexto(r) + ')');
+      r.compassos.forEach((cp, i) => { comps++; if (cp.acordes.length === 1 && cp.acordes[0].acorde && cp.acordes[0].acorde.simbolo === m.esperado.acordes[i]) certos++; });
+      m.esperado.melodia.forEach((e) => { melT++; if (r.melodia.some((n) => Math.abs(n.t - e.t) < 0.12 && (n.midi - e.midi) % 12 === 0)) mel++; });
+    }
+    assert.equal(certos, comps, 'todos os compassos com o acorde certo (' + certos + '/' + comps + ')');
+    assert.ok(mel / melT >= 0.88, 'melodia: ' + mel + '/' + melT + ' notas certas no tempo certo');
+  });
+
+  await t('TRANSCRIÇÃO · GRAFIA e ESCOPO: fá maior escreve si♭ (não lá♯); sol maior, fá♯; 4 minutos em poucos segundos; silêncio não inventa acorde', async () => {
+    const TR = require('./nucleo/transcricao');
+    const S = require('./nucleo/sintetico-transcricao');
+    const fa = TR.grafiaDoTom(5, 'maior'), sol = TR.grafiaDoTom(7, 'maior'), lam = TR.grafiaDoTom(9, 'menor');
+    assert.equal(N.nome(fa[10]), 'Bb'); assert.equal(N.nome(sol[6]), 'F#'); assert.equal(N.nome(lam[8]), 'G#', 'lá menor: sol♯ da harmônica');
+    const longa = S.musica({ acordes: ['C', 'G', 'Am', 'F', 'Dm', 'G7', 'Em', 'Am'], bpm: 100, repeticoes: 12 });
+    const t0 = Date.now(); const r = S.transcrever(TR, longa.amostras, longa.taxa);
+    assert.ok(Date.now() - t0 < 20000, '4 minutos analisados em ' + (Date.now() - t0) + ' ms');
+    assert.equal(r.compassos.filter((c, i) => c.acordes.length === 1 && c.acordes[0].acorde.simbolo === longa.esperado.acordes[i]).length, 96);
+    const mudo = S.transcrever(TR, new Float32Array(22050 * 5), 22050);
+    assert.equal(mudo.compassos.length, 0, 'silêncio: nenhum compasso'); assert.equal(mudo.melodia.length, 0);
+    assert.match(TR.cifraTexto(r).split('\n')[0], /^\| C \| G \| Am \| F \|$/);
+    // o trecho acima segura o processo alguns segundos: deixa o servidor fechar as conexões
+    // ociosas ANTES do próximo pedido (senão o fetch reutiliza um soquete já fechado)
+    await new Promise((ok) => setTimeout(ok, 200));
+  });
+
+  await t('TRANSCREVER · PÁGINA: abre sem conta (1º minuto), NÃO tem campo de link nem rota que receba áudio, entra no hub, em Praticar, na busca e no sitemap', async () => {
+    const r = await req('GET', '/music/transcrever', { cru: true });
+    assert.equal(r.status, 200); assert.match(r.texto, /Transcrever música/); assert.match(r.texto, /primeiro minuto/);
+    assert.match(r.texto, /não baixa vídeo nem áudio de site nenhum/); assert.match(r.texto, /data-ferramenta="transcrever"/);
+    assert.ok(!/type="url"/.test(r.texto), 'sem campo de link: o Musique não baixa do YouTube (decisão de 29/09/2026)');
+    assert.ok(!/undefined|NaN/.test(r.texto.replace(/<script[\s\S]*?<\/script>/g, '')));
+    const ass = await req('GET', '/music/transcrever', { como: 'ana', cru: true });
+    assert.ok(!/transcreve o primeiro minuto/.test(ass.texto), 'assinante: música inteira');
+    for (const u of ['/music/api/lab/transcrever', '/music/api/transcrever']) assert.equal((await req('POST', u, { como: 'ana', corpo: { url: 'https://youtube.com/watch?v=x' } })).status >= 400, true, u + ' não existe');
+    assert.ok((await req('GET', '/music/laboratorio', { cru: true })).texto.includes('href="/music/transcrever"'));
+    assert.ok((await req('GET', '/music/praticar', { cru: true })).texto.includes('href="/music/transcrever"'));
+    assert.ok(PG.urlsDoSitemap().some((x) => x.url === '/music/transcrever'));
+    assert.ok(CAT.buscar('tirar música de ouvido', { licoes: L.LICOES }).some((x) => x.url === '/music/transcrever'));
+    assert.ok(PG.nucleoJs().includes('L.transcricao = fabrica'), 'núcleo no pacote');
+    const cli = PG.clienteJs();
+    assert.ok(cli.includes("C.ferramentas['transcrever']")); assert.ok(cli.includes('C.midiArquivo = midiArquivo'), 'MIDI reaproveitado do Criar');
+    assert.ok(cli.includes('getDisplayMedia') && cli.includes('createScriptProcessor'), 'escuta da aba segue funcionando com a aba em segundo plano');
+    assert.ok(!/fetch\([^)]*transcre/.test(cli), 'o cliente não envia o áudio a lugar nenhum');
+    assert.ok(ACESSO.pode('transcrever-demo', { logado: false }).ok && !ACESSO.pode('transcrever-completo', { logado: false }).ok);
+    // toda classe que o cliente do Tutor e da Transcrição usa tem regra no CSS
+    // (a folha de estilo da transcrição chegou a não ser gravada e a página
+    // saiu sem grade — os testes de conteúdo não viam)
+    const css = require('fs').readFileSync(require('path').join(__dirname, 'cliente', 'estilo.css'), 'utf8');
+    const ESTRUTURAIS = ['lab-tr-entrada', 'lab-tr-res', 'lab-tutor-ctl', 'lab-tutor-hist'];
+    ['transcrever.js', 'tutor.js'].forEach((arq) => {
+      const js = require('fs').readFileSync(require('path').join(__dirname, 'cliente', arq), 'utf8');
+      const cls = new Set();
+      for (const m of js.matchAll(/class: '([^']+)'/g)) m[1].split(/ +/).forEach((c) => { if (/^lab-(tr|tutor)-/.test(c)) cls.add(c); });
+      cls.forEach((c) => assert.ok(ESTRUTURAIS.includes(c) || new RegExp('[.]' + c + '(?![a-z-])').test(css), arq + ': a classe .' + c + ' não tem regra no estilo'));
+    });
+  });
 }
 
 module.exports = { rodar };

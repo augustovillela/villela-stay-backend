@@ -15,8 +15,8 @@ const ACESSO = require('./acesso');
 // ------------------------------------------------------------------
 // Arquivos do cliente: núcleo (isomórfico) + app + estilo
 // ------------------------------------------------------------------
-const NUCLEO_ARQS = ['notas', 'intervalos', 'escalas', 'acordes', 'tonalidades', 'ritmo', 'pauta', 'instrumentos', 'acustica', 'motivos', 'batidas', 'desenho', 'exercicios', 'digitacoes', 'tutor'];
-const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'criar', 'novas', 'praticar', 'ensinar', 'tutor'];
+const NUCLEO_ARQS = ['notas', 'intervalos', 'escalas', 'acordes', 'tonalidades', 'ritmo', 'pauta', 'instrumentos', 'acustica', 'motivos', 'batidas', 'desenho', 'exercicios', 'digitacoes', 'tutor', 'transcricao'];
+const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'criar', 'novas', 'praticar', 'ensinar', 'tutor', 'transcrever'];
 let _cache = {};
 function arquivo(chave, fn) { if (!_cache[chave] || process.env.NODE_ENV === 'development') _cache[chave] = fn(); return _cache[chave]; }
 const ler = (...p) => fs.readFileSync(path.join(__dirname, ...p), 'utf8');
@@ -56,6 +56,7 @@ function registrar(app, { opcional, contextoDe }) {
 <a class="lab-caminho" href="/music/aprender"><span class="lab-caminho-ico" aria-hidden="true">📘</span><strong>Aprender passo a passo</strong><span>Uma trilha na ordem certa, do som ao campo harmônico, com prática em cada lição.</span></a>
 <a class="lab-caminho" href="/music/explorar/laboratorio"><span class="lab-caminho-ico" aria-hidden="true">🧪</span><strong>Experimentar livre</strong><span>Tônica, escala e acorde num lugar só: tudo muda junto.</span></a></section>
 <p class="lab-destaque-tutor"><a href="/music/tutor-braco"><span aria-hidden="true">🎸</span> <strong>Novo: Tutor de braço</strong> — escalas e desenhos no seu instrumento de cordas, com um tutor que toca, escuta e corrige nota e tempo.</a></p>
+<p class="lab-destaque-tutor"><a href="/music/transcrever"><span aria-hidden="true">🎧</span> <strong>Novo: Transcrever música</strong> — acordes por compasso, tom, andamento e melodia de um arquivo de áudio ou do que toca numa aba (YouTube incluso).</a></p>
 <section class="lab-comecar" aria-labelledby="comecar-t"><h2 id="comecar-t">Por onde começar?</h2>
 <p>Três perguntas, e o Musique mostra o caminho que combina com você. Dá para mudar quando quiser.</p>
 <form id="lab-perfil" class="lab-controles">
@@ -166,7 +167,7 @@ ${l.refs && l.refs.length ? `<details class="lab-det"><summary>Para ler mais</su
     X.LISTA.forEach((x) => { (porHab[x.habilidade] = porHab[x.habilidade] || []).push(x); });
     const NOMES = { leitura: 'Leitura', intervalos: 'Intervalos', percepcao: 'Percepção (ouvido)', acordes: 'Acordes', escalas: 'Escalas', tonalidades: 'Tonalidades', teclado: 'Teclado', harmonia: 'Harmonia', ritmo: 'Ritmo', instrumentos: 'Instrumentos' };
     const corpo = `<header class="lab-cab"><h1>Praticar</h1><p class="lab-lead">Exercícios gerados na hora, com explicação de cada erro. Sem conta, você faz sessões de demonstração de ${ACESSO.DEMO_QUESTOES} questões; assinantes guardam o progresso, sobem de nível sozinhos e recebem revisão espaçada.</p></header>
-<section><h2>Técnica no instrumento</h2>${cartoes([{ nome: 'Tutor de braço', icone: '🎸', resumo: 'Escalas, desenhos, arpejos e cromático no violão, guitarra, baixo, ukulele, cavaquinho e bandolim — o tutor mostra, toca, escuta e corrige.', url: '/music/tutor-braco' }])}</section>
+<section><h2>Técnica no instrumento</h2>${cartoes([{ nome: 'Tutor de braço', icone: '🎸', resumo: 'Escalas, desenhos, arpejos e cromático no violão, guitarra, baixo, ukulele, cavaquinho e bandolim — o tutor mostra, toca, escuta e corrige.', url: '/music/tutor-braco' }, { nome: 'Transcrever música', icone: '🎧', resumo: 'Acordes por compasso, tom, BPM e melodia de um áudio ou de uma aba — para tirar a música e tocar junto.', url: '/music/transcrever' }])}</section>
 ${Object.keys(porHab).map((h) => `<section><h2>${esc(NOMES[h] || h)}</h2>${cartoes(porHab[h].map((x) => ({ nome: x.nome, icone: x.auditivo ? '👂' : '✏️', resumo: x.niveis.join(' · '), url: '/music/praticar/' + x.id })))}</section>`).join('')}
 <p><a href="/music/jogar">Prefere contra o relógio? Veja os jogos →</a></p>`;
     pagina(res, { titulo: 'Exercícios de teoria musical e percepção — Musique', descricao: 'Leitura de notas, intervalos, acordes, escalas, armaduras, campo harmônico, ritmo e percepção auditiva, com explicação de cada erro.', caminho: '/music/praticar', corpo, trilha: [['Praticar']] });
@@ -342,7 +343,7 @@ function relacionados(slug) {
 
 /** URLs públicas e CANÔNICAS para o sitemap (nunca as enarmônicas). */
 function urlsDoSitemap() {
-  const u = ['/laboratorio', '/aprender', '/explorar', '/criar', '/praticar', '/tutor-braco', '/jogar', '/referencia', '/ensinar', '/escalas', '/acordes', '/intervalos', '/notas'].map((x) => '/music' + x);
+  const u = ['/laboratorio', '/aprender', '/explorar', '/criar', '/praticar', '/tutor-braco', '/transcrever', '/jogar', '/referencia', '/ensinar', '/escalas', '/acordes', '/intervalos', '/notas'].map((x) => '/music' + x);
   CAT.FERRAMENTAS.forEach((f) => u.push(`/music/${f.ambiente}/${f.slug}`));
   CAT.REFERENCIAS.forEach((r) => u.push('/music/referencia/' + r.slug));
   CAT.JOGOS.forEach((j) => u.push('/music/jogar/' + j.slug));

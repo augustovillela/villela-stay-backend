@@ -40,6 +40,8 @@
     return new Uint8Array(cab.concat(mt, trilha));
   }
 
+  C.midiArquivo = midiArquivo;   // também usado pela transcrição
+
   // ------------------------------------------------------------------
   // Piano virtual: mouse, toque, teclado do computador; MIDI opcional
   // ------------------------------------------------------------------
