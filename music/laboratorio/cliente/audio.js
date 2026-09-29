@@ -50,9 +50,9 @@
   // a corda real decai. Sem amostras gravadas (nada a licenciar); é
   // síntese, e a interface diz isso. Buffer em cache por nota e timbre.
   var CORDAS_T = {
-    nylon: { perda: 0.994, brilho: 0.35, ganho: 0.5 },
-    aco: { perda: 0.9975, brilho: 0.75, ganho: 0.45 },
-    eletrica: { perda: 0.9985, brilho: 0.6, ganho: 0.35, distorcer: true },
+    nylon: { perda: 0.994, brilho: 0.35, ganho: 1.0 },
+    aco: { perda: 0.9975, brilho: 0.75, ganho: 0.85 },
+    eletrica: { perda: 0.9985, brilho: 0.6, ganho: 0.7, distorcer: true },
   };
   var cacheCorda = {};
   function bufferCorda(f, tipo, dur) {

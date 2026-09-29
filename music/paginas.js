@@ -247,6 +247,38 @@ const tagsPwa = () => {
   } catch (_) { return ''; }
 };
 
+// ---------------------------------------------------------------------
+// CABEÇALHO ÚNICO do Musique. Toda página pública usa ESTE — inclusive as
+// das Cifras, que montam o próprio HTML. Estilo autocontido (classe
+// própria), para funcionar em qualquer página sem depender do CSS dela.
+// ---------------------------------------------------------------------
+const CSS_TOPO = `.mq-topo{background:#1B2A4A;color:#fff}.mq-topo *{box-sizing:border-box}
+.mq-topo .mq-w{max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;gap:16px;flex-wrap:wrap}
+.mq-topo a{color:#fff;text-decoration:none}
+.mq-marca{font:600 22px Lora,Georgia,'Times New Roman',serif;letter-spacing:.02em}
+.mq-marca small{display:block;font:500 11px Inter,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#C9C9C9}
+.mq-topo nav{display:flex;gap:8px;flex-wrap:wrap}
+.mq-topo nav a{border:1px solid rgba(255,255,255,.5);border-radius:999px;padding:10px 20px;font:600 15px Inter,system-ui,sans-serif;line-height:1.2}
+.mq-topo nav a:hover{background:rgba(255,255,255,.12)}
+.mq-topo nav a[aria-current="page"]{background:#fff;color:#1B2A4A;border-color:#fff}
+@media (max-width:620px){.mq-topo nav a{padding:8px 14px;font-size:14px}}`;
+const LAB_SECOES = /^\/music\/(laboratorio|aprender|explorar|praticar|jogar|criar|referencia|escalas|acordes|tonalidades|intervalos|notas|ensinar|buscar|atividade)(\/|$)/;
+function secaoDe(caminho) {
+  const c = String(caminho || '');
+  if (LAB_SECOES.test(c)) return 'laboratorio';
+  if (/^\/music\/(cifras-publicas|p\/|c\/)/.test(c)) return 'cifras';
+  if (/^\/music\/ferramentas/.test(c)) return 'ferramentas';
+  return '';
+}
+function cabecalho({ noApp = false, atual = '' } = {}) {
+  const item = (id, url, txt) => `<a href="${url}"${atual === id ? ' aria-current="page"' : ''}>${txt}</a>`;
+  return `<style>${CSS_TOPO}</style><header class="mq-topo"><div class="mq-w">
+  <a class="mq-marca" href="/music">Musique<small>por Villela Music</small></a>
+  <nav aria-label="Musique">${item('laboratorio', '/music/laboratorio', 'Laboratório')} ${item('cifras', '/music/cifras-publicas', 'Cifras')} ${item('ferramentas', '/music/ferramentas', 'Ferramentas')}
+       ${noApp ? '<a href="/music/app#conta">Minha conta</a>' : '<a href="/music/entrar">Entrar</a>'}</nav>
+</div></header>`;
+}
+
 const layout = (titulo, corpo, { descricao = '', caminho = '/music', noApp = false } = {}) => `<!doctype html>
 <html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -275,11 +307,7 @@ ${tagsPwa()}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
 <style>${CSS}</style></head><body>
-<header class="topo"><div class="wrap">
-  <a class="marca" href="/music">Musique<small>por Villela Music</small></a>
-  <nav><a class="btn claro" href="/music/laboratorio">Laboratório</a> <a class="btn claro" href="/music/cifras-publicas">Cifras</a> <a class="btn claro" href="/music/ferramentas">Ferramentas</a>
-       ${noApp ? '<a class="btn claro" href="/music/app#conta">Minha conta</a>' : '<a class="btn claro" href="/music/entrar">Entrar</a>'}</nav>
-</div></header>
+${cabecalho({ noApp, atual: secaoDe(caminho) })}
 ${corpo}
 <footer><div class="wrap">
   <p><strong>Musique</strong> · por Villela Music — uma empresa do Grupo Villela Stay ·
@@ -519,4 +547,4 @@ function registrarPaginas(app) {
 // `layout` e `CSS` são exportados para as outras páginas do módulo
 // (ferramentas, app) usarem a MESMA casca — cabeçalho, rodapé e
 // tokens do grupo em um lugar só.
-module.exports = { registrarPaginas, layout, CSS, esc };
+module.exports = { registrarPaginas, layout, CSS, esc, cabecalho, secaoDe };

@@ -21,6 +21,9 @@ const ia = require('./ia');
 const { Importar } = require('./importar');
 const { Bandas, Tarefas, Comentarios, Notificacoes, biblioteca } = require('./bandas');
 const { Setlists } = require('./setlists');
+// Cabeçalho ÚNICO do Musique (o mesmo das outras páginas). Carregado na hora
+// do uso para não criar dependência circular na montagem.
+const cabecalho = (o) => require('../paginas').cabecalho(o);
 const { Vivo } = require('./vivo');
 const { Exportar } = require('./exportar');
 const { Comunidade } = require('./comunidade');
@@ -444,14 +447,12 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
 <title>Cifras públicas · Musique</title><link rel="icon" type="image/svg+xml" href="/assets/brand/musique/simbolo-v.svg"><link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/grupo-villela/favicon-192.png"><link rel="apple-touch-icon" href="/assets/brand/grupo-villela/favicon-192.png"><meta name="description" content="Cifras que os músicos do Musique abriram para todo mundo: transponha, toque e estude.">
 <link rel="canonical" href="${HOST}/music/cifras-publicas">
 <style>:root{--navy:#1B2A4A;--ice:#F8F9FA;--graphite:#1F2933;--suave:#5B6478;--gold:#C9A227}body{margin:0;background:var(--ice);color:var(--graphite);font:16px/1.5 Inter,system-ui,sans-serif}
-header{background:var(--navy);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px}header a{color:#fff;text-decoration:none}
-header .m{font-family:Georgia,serif;font-size:20px}header .b{border:1px solid #fff;border-radius:999px;padding:6px 14px;font-size:14px}
 main{max-width:980px;margin:0 auto;padding:22px 16px}h1{font-family:Georgia,serif;margin:0 0 4px}p.s{color:var(--suave)}
 form{display:flex;gap:8px;margin:14px 0 18px}input{flex:1;border:1px solid #D6DCE5;border-radius:10px;padding:10px 12px;font:16px inherit}button{border:0;background:var(--navy);color:#fff;border-radius:10px;padding:10px 16px;font-weight:600}
 .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}.cp{display:flex;flex-direction:column;gap:4px;background:#fff;border:1px solid #E4E7EC;border-left:4px solid var(--gold);border-radius:12px;padding:12px 14px;color:inherit;text-decoration:none}
 .cp:hover{border-color:var(--navy)}.cp span{color:var(--suave);font-size:14px}.v{color:var(--suave);padding:30px 0}
 .cta{margin-top:26px;background:#fff;border:1px solid #E4E7EC;border-radius:14px;padding:16px}</style></head><body>
-<header><a class="m" href="/music">Musique</a><a class="b" href="/music/entrar#criar">Teste grátis</a></header>
+${cabecalho({ atual: 'cifras' })}
 <main><h1>Cifras públicas</h1><p class="s">Cifras que os músicos do Musique abriram para todo mundo.</p>
 <form method="get"><input name="q" value="${esc(q)}" placeholder="Buscar por música ou artista" aria-label="Buscar"><button>Buscar</button></form>
 ${itens ? `<div class="g">${itens}</div>` : `<p class="v">${q ? 'Nada encontrado para essa busca.' : 'Ainda não há cifras públicas. Quando um músico abrir uma cifra para todos, ela aparece aqui.'}</p>`}
@@ -464,7 +465,7 @@ ${itens ? `<div class="g">${itens}</div>` : `<p class="v">${q ? 'Nada encontrado
     const c = v.pode ? db.prepare("SELECT * FROM cifras WHERE obra_id = ? AND removido_em = '' ORDER BY qualidade DESC, atualizado_em DESC LIMIT 1").get(obra.id) : null;
     if (!obra || !v.pode || v.removida || !c) {
       return res.status(404).set('Content-Type', 'text/html; charset=utf-8')
-        .send(`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>Musique</title><body style="font:16px system-ui;padding:40px;color:#1F2933"><h1 style="font-family:Georgia">Musique</h1><p>Esta cifra não é pública (ou não existe mais).</p><p><a href="/music/cifras-publicas">Ver as cifras públicas</a></p>`);
+        .send(`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>Musique</title><body style="margin:0;font:16px system-ui;color:#1F2933">${cabecalho({ atual: 'cifras' })}<div style="padding:32px 20px;max-width:900px;margin:0 auto"><p>Esta cifra não é pública (ou não existe mais).</p><p><a href="/music/cifras-publicas">Ver as cifras públicas</a></p></div>`);
     }
     const { diagramasDe } = require('./exportar');
     const doc = JSON.parse(c.documento);
@@ -483,7 +484,7 @@ ${itens ? `<div class="g">${itens}</div>` : `<p class="v">${q ? 'Nada encontrado
     try { d = Exportar.abrirLink(req.params.token); }
     catch (e) {
       return res.status(e.status || 404).set('Content-Type', 'text/html; charset=utf-8')
-        .send(`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>Musique</title><body style="font:16px system-ui;padding:40px;color:#1F2933"><h1 style="font-family:Georgia">Musique</h1><p>${esc(e.message)}</p><p><a href="/music">Conhecer a Musique</a></p>`);
+        .send(`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>Musique</title><body style="margin:0;font:16px system-ui;color:#1F2933">${cabecalho({ atual: 'cifras' })}<div style="padding:32px 20px;max-width:900px;margin:0 auto"><p>${esc(e.message)}</p><p><a href="/music">Conhecer a Musique</a></p></div>`);
     }
     res.set('Content-Type', 'text/html; charset=utf-8').set('X-Robots-Tag', 'noindex').send(paginaPublica(d));
   });
@@ -550,12 +551,11 @@ function paginaPublica(d, o = {}) {
 <meta name="robots" content="${o.indexar ? 'index,follow' : 'noindex,nofollow'}"><link rel="icon" type="image/svg+xml" href="/assets/brand/musique/simbolo-v.svg"><link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/grupo-villela/favicon-192.png"><link rel="apple-touch-icon" href="/assets/brand/grupo-villela/favicon-192.png"><title>${esc(d.titulo)}${d.artista ? ' — ' + esc(d.artista) : ''} · cifra · Musique</title>
 ${o.canonical ? `<link rel="canonical" href="${esc(o.canonical)}">` : ''}<meta name="description" content="${esc(o.descricao || ('Cifra de ' + d.titulo + ' no Musique.'))}">
 <style>:root{--navy:#1B2A4A;--ice:#F8F9FA;--graphite:#1F2933;--suave:#5B6478}body{margin:0;background:var(--ice);color:var(--graphite);font:16px/1.5 Inter,system-ui,sans-serif}
-header{background:var(--navy);color:#fff;padding:14px 18px}header a{color:#fff;text-decoration:none;font-family:Georgia,serif;font-size:20px}
 main{max-width:900px;margin:0 auto;padding:20px 16px}h1{font-family:Georgia,serif;margin:0 0 4px}p.s{color:var(--suave);margin:0 0 16px}
 .cifra{background:#fff;border:1px solid #E4E7EC;border-radius:14px;padding:16px;font:15px/1.35 ui-monospace,Menlo,monospace;overflow-x:auto;white-space:pre}
 .dg{display:inline-block;background:#fff;border:1px solid #E4E7EC;border-radius:8px;padding:4px 8px;margin:0 6px 6px 0;font:13px ui-monospace,monospace}
 footer{color:var(--suave);font-size:13px;padding:20px 16px;text-align:center}</style></head><body>
-<header><a href="/music">Musique</a></header><main><h1>${esc(d.titulo)}</h1>
+${cabecalho({ atual: 'cifras' })}<main><h1>${esc(d.titulo)}</h1>
 <p class="s">${esc([d.artista, d.data, d.evento, d.local, d.opcoes && d.opcoes.tom ? 'tom: ' + d.opcoes.tom : ''].filter(Boolean).join(' · '))}</p>
 ${diag ? '<div>' + diag + '</div>' : ''}${d.tipo === 'cifra' ? '<div class="cifra">' + corpo + '</div>' : corpo}
 </main><footer>${o.rodape || 'Compartilhado pela Musique · por Villela Music — link com validade.'}</footer></body></html>`;

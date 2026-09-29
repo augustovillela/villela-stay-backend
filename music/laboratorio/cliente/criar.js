@@ -242,13 +242,13 @@
     function tocar() {
       if (ag) { ag.parar(); ag = null; botao.textContent = '▶ Tocar'; return; }
       var ls = linhas();
-      ag = C.Som.agendador({ bpm: bpm, porTempo: 4, passos: 16, aoPasso: function (i, q) { if (passos[i] != null && ls[passos[i]]) C.Som.voz(C.Som.FREQ(N.midi(ls[passos[i]])), q, 60 / bpm / 4 * 0.9, { timbre: 'pluck', vel: 0.25 }); },
+      ag = C.Som.agendador({ bpm: bpm, porTempo: 4, passos: 16, aoPasso: function (i, q) { if (passos[i] != null && ls[passos[i]]) C.Som.voz(C.Som.FREQ(N.midi(ls[passos[i]])), q, 60 / bpm / 4 * 0.9, { timbre: C.Som.timbre || 'pluck', vel: 0.25 }); },
         visual: function (i) { C.$$('.lab-linha-passos', grade).forEach(function (row) { C.$$('.lab-passo', row).forEach(function (b, k) { b.classList.toggle('agora', k === i); }); }); } });
       botao.textContent = '■ Parar';
     }
     C.Som.aoParar = function () { ag = null; botao.textContent = '▶ Tocar'; };
     var botao = el('button', { type: 'button', class: 'btn', txt: '▶ Tocar', onclick: tocar });
-    alvo.appendChild(el('div', { class: 'lab-controles' }, [botao, C.selTonica(st.tonica, function (v) { st.tonica = v; pintar(); }), C.selEscala(st.escala, function (v) { st.escala = v; passos = {}; pintar(); }),
+    alvo.appendChild(el('div', { class: 'lab-controles' }, [botao, C.selTonica(st.tonica, function (v) { st.tonica = v; pintar(); }), C.selEscala(st.escala, function (v) { st.escala = v; passos = {}; pintar(); }), C.selTimbre(),
       campoNum('lab-bpm', 'BPM', bpm, 40, 240, function (v) { bpm = v; if (ag) ag.bpm(v); }),
       el('button', { type: 'button', class: 'btn sec', txt: 'Ideia aleatória', onclick: function () { var r = X.prng(Date.now()); var n = linhas().length; passos = {}; var at = Math.floor(n / 2); for (var i = 0; i < 16; i++) { if (r() < 0.7) { at = Math.max(0, Math.min(n - 1, at + Math.round((r() - 0.5) * 3))); passos[i] = at; } } C.guardar('seq', passos); pintar(); } }),
       el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { passos = {}; C.guardar('seq', passos); pintar(); } }),
@@ -271,7 +271,7 @@
         C.select('lab-modo', 'Modo', [{ valor: 'maior', rotulo: 'maior' }, { valor: 'menor', rotulo: 'menor' }], modo, function (v) { st.modo = v; render(); }),
         el('label', { class: 'lab-check' }, [el('input', { type: 'checkbox', checked: tetrades ? true : null, onchange: function (e) { tetrades = e.target.checked; render(); } }), ' com sétimas']),
         C.select('lab-pronta', 'Progressão pronta', [{ valor: '', rotulo: '— escolher —' }].concat(T.PROGRESSOES.filter(function (p) { return (p.modo || 'maior') === modo; }).map(function (p) { return { valor: p.id, rotulo: p.nome + ' (' + p.genero + ')' }; })), '', function (v) { var p = T.PROGRESSOES.filter(function (x) { return x.id === v; })[0]; if (p) { graus = p.graus.slice(); render(); } }),
-        campoNum('lab-bpm', 'BPM', bpm, 30, 200, function (v) { bpm = v; })]));
+        campoNum('lab-bpm', 'BPM', bpm, 30, 200, function (v) { bpm = v; }), C.selTimbre()]));
       alvo.appendChild(el('p', { txt: 'Toque nos graus para montar a sequência:' }));
       alvo.appendChild(el('div', { class: 'lab-graus' }, campo.map(function (g) {
         return el('button', { type: 'button', class: 'lab-grau lab-func-' + g.funcao, onclick: function () { graus.push(g.grau); if (graus.length > 16) graus.shift(); C.Som.tocar(A.notas(naOitava(g.fundamental, 3), g.acorde).map(N.midi), { modo: 'harmonico', dur: 0.9 }); render(); } },
@@ -319,14 +319,14 @@
     function tocar() {
       if (ag) { ag.parar(); ag = null; botao.textContent = '▶ Tocar'; return; }
       var ms = notasArp();
-      ag = C.Som.agendador({ bpm: bpm, porTempo: 4, passos: ms.length, aoPasso: function (i, q) { C.Som.voz(C.Som.FREQ(ms[i]), q, 60 / bpm / 4 * 1.6, { timbre: 'pluck', vel: 0.22 }); } });
+      ag = C.Som.agendador({ bpm: bpm, porTempo: 4, passos: ms.length, aoPasso: function (i, q) { C.Som.voz(C.Som.FREQ(ms[i]), q, 60 / bpm / 4 * 1.6, { timbre: C.Som.timbre || 'pluck', vel: 0.22 }); } });
       botao.textContent = '■ Parar';
     }
     C.Som.aoParar = function () { ag = null; botao.textContent = '▶ Tocar'; };
     var botao = el('button', { type: 'button', class: 'btn', txt: '▶ Tocar', onclick: tocar });
     function reiniciar() { if (ag) { ag.parar(); ag = null; tocar(); } info.textContent = notasArp().map(function (m) { return rot(N.deMidi(m)); }).join(' '); C.gravarUrl(st); }
     var info = el('p', { class: 'lab-info', 'aria-live': 'polite' });
-    alvo.appendChild(el('div', { class: 'lab-controles' }, [botao, C.selTonica(st.tonica, function (v) { st.tonica = v; reiniciar(); }), C.selAcorde(st.acorde, function (v) { st.acorde = v; reiniciar(); }),
+    alvo.appendChild(el('div', { class: 'lab-controles' }, [botao, C.selTonica(st.tonica, function (v) { st.tonica = v; reiniciar(); }), C.selAcorde(st.acorde, function (v) { st.acorde = v; reiniciar(); }), C.selTimbre(),
       C.select('lab-pad', 'Padrão', [{ valor: 'sobe', rotulo: 'subindo' }, { valor: 'desce', rotulo: 'descendo' }, { valor: 'sobe-desce', rotulo: 'sobe e desce' }, { valor: 'alternado', rotulo: 'alternado (fora para dentro)' }], padrao, function (v) { padrao = v; reiniciar(); }),
       C.select('lab-oit', 'Oitavas', [{ valor: 1, rotulo: '1' }, { valor: 2, rotulo: '2' }, { valor: 3, rotulo: '3' }], oitavas, function (v) { oitavas = Number(v); reiniciar(); }),
       campoNum('lab-bpm', 'BPM', bpm, 40, 220, function (v) { bpm = v; if (ag) ag.bpm(v); })]));

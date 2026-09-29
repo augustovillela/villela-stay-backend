@@ -83,7 +83,7 @@
         st.tipo === 'acorde' ? C.selAcorde(st.acorde, function (v) { st.acorde = v; render(); }) : C.selEscala(st.escala, function (v) { st.escala = v; render(); }),
         C.select('lab-inst', 'Instrumento', Object.keys(INS.CORDAS).map(function (k) { return { valor: k, rotulo: INS.CORDAS[k].nome }; }), st.instrumento, function (v) { st.instrumento = v; st.afinacao = 'padrao'; render(); }),
         C.select('lab-clave', 'Clave', [{ valor: 'sol', rotulo: 'sol' }, { valor: 'fa', rotulo: 'fá' }, { valor: 'do3', rotulo: 'dó (3ª linha)' }, { valor: 'do4', rotulo: 'dó (4ª linha)' }], st.clave, function (v) { st.clave = v; render(); }),
-        C.selNotacao(render),
+        C.selNotacao(render), C.selTimbre(),
         el('label', { class: 'lab-check' }, [el('input', { type: 'checkbox', checked: st.canhoto ? true : null, onchange: function (e) { st.canhoto = e.target.checked; render(); } }), ' canhoto']),
       ]);
       alvo.appendChild(ctrl);
@@ -135,7 +135,7 @@
         C.selTonica(st.tonica, function (v) { st.tonica = v; render(); }),
         C.selEscala(st.escala, function (v) { st.escala = v; if (v) st.acorde = ''; render(); }, true),
         C.selAcorde(st.acorde, function (v) { st.acorde = v; if (v) st.escala = ''; render(); }, true),
-        C.selNotacao(render),
+        C.selNotacao(render), C.selTimbre(),
       ]));
       var ns = (st.escala || st.acorde) ? notasDe(st) : [];
       alvo.appendChild(el('figure', { class: 'lab-fig' }, [pianoInterativo(ns, naOitava(t), 36, 84, function (m) {
@@ -337,7 +337,7 @@
       var dd = {}; pcs.forEach(function (p) { dd[60 + p] = { rotulo: rot(N.deClasse(p)), tipo: 'nota' }; });
       var box = svg(D.piano({ de: 60, ate: 71, destaques: dd, interativo: true, notacao: C.notacao, titulo: 'Marque as notas' }));
       box.addEventListener('click', function (e) { var k = e.target.closest('[data-midi]'); if (!k) return; var p = Number(k.dataset.midi) % 12; var i = pcs.indexOf(p); if (i >= 0) pcs.splice(i, 1); else { pcs.push(p); C.Som.tocar([60 + p], { dur: 0.5 }); } render(); });
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(render), el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { pcs = []; render(); } })]));
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(render), C.selTimbre(), el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { pcs = []; render(); } })]));
       alvo.appendChild(el('figure', { class: 'lab-fig' }, [box]));
       var r = pcs.length >= 3 ? E.identificar(pcs) : [];
       var ex = r.filter(function (x) { return x.exata; }), contem = r.filter(function (x) { return !x.exata; }).slice(0, 12);

@@ -544,6 +544,18 @@ async function rodar({ t, secao, req, assert }) {
     assert.match(PG.clienteJs(), /Modo aula/);
   });
 
+  await t('CABEÇALHO ÚNICO: o mesmo menu (Laboratório, Cifras, Ferramentas) em todas as páginas públicas, inclusive as das Cifras, com a seção atual marcada', async () => {
+    const casos = [['/music', ''], ['/music/laboratorio', 'Laboratório'], ['/music/escalas/re/dorico', 'Laboratório'], ['/music/ferramentas', 'Ferramentas'],
+      ['/music/cifras-publicas', 'Cifras'], ['/music/p/nao-existe', 'Cifras'], ['/music/termos', '']];
+    for (const [u, atual] of casos) {
+      const r = await req('GET', u, { cru: true });
+      assert.equal((r.texto.match(/class="mq-topo"/g) || []).length, 1, u + ' tem o cabeçalho (uma vez)');
+      ['/music/laboratorio', '/music/cifras-publicas', '/music/ferramentas'].forEach((l) => assert.ok(r.texto.includes('href="' + l + '"'), u + ' → ' + l));
+      const m = r.texto.match(/aria-current="page">([^<]+)</);
+      assert.equal(m ? m[1] : '', atual, u + ': seção marcada');
+    }
+  });
+
   await t('COBERTURA: toda ferramenta, jogo, referência e lição do catálogo tem página; toda lição aponta para exercício existente', async () => {
     L.LICOES.forEach((l) => {
       l.blocos.filter((b) => b.t === 'praticar').forEach((b) => assert.ok(X.TIPOS[b.tipo], l.slug + ' → ' + b.tipo));
