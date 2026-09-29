@@ -317,3 +317,8 @@
 .lab-aula .lab-q-enunciado{font-size:32px}
 .lab-link-botao{background:none;border:0;padding:0;color:var(--navy);font:600 15px Inter,sans-serif;text-decoration:underline;cursor:pointer;text-align:left}
 .lab-rud-tab code{font-size:14px;white-space:nowrap}
+.lab-rolagem-topo{overflow-x:auto;overflow-y:hidden;height:16px;margin:6px 0 0}
+.lab-rolagem-topo > div{height:1px}
+.lab-rolagem-topo[hidden]{display:none}
+.lab-atlas th[scope="row"],.lab-atlas thead th:first-child{position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 0 var(--borda)}
+.lab-atlas thead th:first-child{background:var(--ice)}

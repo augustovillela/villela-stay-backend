@@ -169,7 +169,31 @@
     m.appendChild(b);
   }
 
+  // ---- barra de rolagem também EM CIMA das tabelas largas (atlas) ----
+  // Uma faixa fina acima da tabela, do mesmo comprimento, rola junto com a
+  // de baixo: dá para ir para os lados sem descer até o fim da tabela.
+  function barraDeCima() {
+    C.$$('.lab-tabela-rolagem').forEach(function (caixa) {
+      if (caixa.previousElementSibling && caixa.previousElementSibling.classList.contains('lab-rolagem-topo')) return;
+      var topo = C.el('div', { class: 'lab-rolagem-topo', 'aria-hidden': 'true' }, [C.el('div')]);
+      caixa.parentNode.insertBefore(topo, caixa);
+      var ajustar = function () {
+        topo.firstChild.style.width = caixa.scrollWidth + 'px';
+        topo.hidden = caixa.scrollWidth <= caixa.clientWidth + 1;
+      };
+      var mexendo = false;
+      topo.addEventListener('scroll', function () { if (mexendo) return; mexendo = true; caixa.scrollLeft = topo.scrollLeft; mexendo = false; });
+      caixa.addEventListener('scroll', function () { if (mexendo) return; mexendo = true; topo.scrollLeft = caixa.scrollLeft; mexendo = false; });
+      ajustar();
+      w.addEventListener('resize', ajustar);
+    });
+  }
+  C.barraDeCima = barraDeCima;
+
   d.addEventListener('DOMContentLoaded', function () {
+    barraDeCima();
+    // tabelas que as ferramentas montam depois (matriz, relatórios) também ganham a barra
+    if (w.MutationObserver && C.$('#lab-main')) { var tmo = null; new MutationObserver(function () { clearTimeout(tmo); tmo = setTimeout(barraDeCima, 120); }).observe(C.$('#lab-main'), { childList: true, subtree: true }); }
     buscaViva();
     botaoFavorito();
     botaoAula();
