@@ -194,6 +194,32 @@ function garantirLinhasIA() {
     if (router.registry().some((x) => x.capability === l.capability)) continue;
     router.definirProvedor({ ...l, ativo: 0, prioridade: 5 });
   }
+  aplicarDecisoesIA();
 }
 
-module.exports = { montar, repo, direitos, fila, storage, router, academia };
+/**
+ * Decisões de LIGAR uma capability tomadas pelo Augusto, com data. Cada
+ * uma é aplicada UMA única vez (fica marcada em `config.ia_decisoes`): se
+ * o staff desligar depois, o próximo deploy NÃO religa — a última palavra
+ * continua sendo do painel. Linha ligada sem ANTHROPIC_API_KEY não aparece
+ * na tela (`router.disponivel`).
+ */
+const DECISOES_IA = [
+  { nome: 'tutor.acompanhar-ligar-2026-09-30', capability: 'tutor.acompanhar', ativo: 1,
+    motivo: 'Augusto autorizou ligar a conversa do Tutor de braço, com teto de 10 perguntas por pessoa por dia (30/09/2026).' },
+];
+function aplicarDecisoesIA() {
+  const feitas = repo.Config.get('ia_decisoes', {}) || {};
+  let mudou = false;
+  for (const d of DECISOES_IA) {
+    if (feitas[d.nome]) continue;
+    const linhas = router.registry().filter((x) => x.capability === d.capability);
+    if (!linhas.length) continue;
+    linhas.forEach((l) => router.definirProvedor({ capability: l.capability, provider: l.provider, model: l.model, prioridade: l.prioridade,
+      ativo: d.ativo, creditos: l.creditos, custoEstimadoCentavos: l.custo_estimado_centavos, promptVersao: l.prompt_versao, observacao: d.motivo }));
+    feitas[d.nome] = new Date().toISOString(); mudou = true;
+  }
+  if (mudou) repo.Config.set('ia_decisoes', feitas);
+}
+
+module.exports = { montar, repo, direitos, fila, storage, router, academia, garantirLinhasIA, DECISOES_IA };

@@ -694,7 +694,7 @@ async function rodar({ t, secao, req, assert }) {
     assert.deepEqual(TU.segmentar([{ t: 0, hz: 440, conf: 0.95 }, { t: 0.02, hz: 440, conf: 0.95 }]), [], 'estalo de 20 ms não vira nota');
   });
 
-  await t('TUTOR · PÁGINA E API: abre sem conta (demonstração), marca só com assinatura, melhor BPM só com rodada limpa, LGPD, e a IA nasce desligada e invisível', async () => {
+  await t('TUTOR · PÁGINA E API: abre sem conta (demonstração), marca só com assinatura, melhor BPM só com rodada limpa, LGPD, IA ligada por decisão registrada (uma vez só) e teto de 10 perguntas por dia', async () => {
     const TB = require('./tutor-braco');
     const anon = await req('GET', '/music/tutor-braco?i=baixo&x=cromatico', { cru: true });
     assert.equal(anon.status, 200); assert.match(anon.texto, /Tutor de braço/); assert.match(anon.texto, /3 rodadas com o tutor por visita/);
@@ -728,7 +728,12 @@ async function rodar({ t, secao, req, assert }) {
 
     const router = require('../ia/router');
     const linha = router.registry().find((x) => x.capability === 'tutor.acompanhar');
-    assert.ok(linha, 'a capability tem linha no registry'); assert.equal(linha.ativo, 0, 'e nasce DESLIGADA');
+    assert.ok(linha, 'a capability tem linha no registry'); assert.equal(linha.ativo, 1, 'LIGADA pela decisão do Augusto de 30/09/2026');
+    assert.ok(require('../repo').Config.get('ia_decisoes', {})['tutor.acompanhar-ligar-2026-09-30'], 'a decisão fica registrada');
+    // o staff desliga: o próximo boot NÃO religa (a decisão vale uma vez só)
+    router.definirProvedor({ capability: 'tutor.acompanhar', provider: linha.provider, model: linha.model, ativo: 0, creditos: 1, custoEstimadoCentavos: 1, promptVersao: 'v1' });
+    require('../index').garantirLinhasIA();
+    assert.equal(router.registry().find((x) => x.capability === 'tutor.acompanhar').ativo, 0, 'desligada no staff continua desligada depois do deploy');
     assert.equal((await req('GET', B + '/ia')).json.disponivel, false);
     assert.equal((await req('POST', B + '/conversa', { como: 'ana', corpo: { pergunta: 'oi' } })).status, 404, 'sem provedor, sem conversa');
     assert.match((await req('GET', '/music/tutor-braco', { como: 'ana', cru: true })).texto, /&quot;ia&quot;:false|"ia":false/);
@@ -744,6 +749,15 @@ async function rodar({ t, secao, req, assert }) {
       assert.ok(!('lixo' in recebido.ultima_rodada));
       assert.match((await req('GET', '/music/tutor-braco', { como: 'ana', cru: true })).texto, /&quot;ia&quot;:true|"ia":true/);
       assert.match((await req('GET', '/music/tutor-braco', { cru: true })).texto, /&quot;ia&quot;:false|"ia":false/, 'sem assinatura, sem conversa');
+      assert.match((await req('GET', '/music/tutor-braco', { como: 'ana', cru: true })).texto, /até 10 perguntas por dia/);
+      // TETO: 10 perguntas por pessoa por dia; a 11ª é recusada (e a do Bruno segue)
+      assert.equal(TB.LIMITE_CONVERSAS_DIA, 10);
+      const hoje = new Date().toISOString();
+      const jaFeitas = db.prepare("SELECT COUNT(*) AS n FROM ia_usos WHERE usuario = 'u-ana' AND capability = 'tutor.acompanhar' AND criado_em >= ?").get(hoje.slice(0, 10)).n;
+      for (let k = jaFeitas; k < 10; k++) db.prepare("INSERT INTO ia_usos (id, usuario, capability, provider, creditos, custo_centavos, ok, erro, criado_em) VALUES (?, 'u-ana', 'tutor.acompanhar', 'anthropic', 1, 1, 1, '', ?)").run('teste-teto-' + k, hoje);
+      const onze = await req('POST', B + '/conversa', { como: 'ana', corpo: { pergunta: 'mais uma?' } });
+      assert.equal(onze.status, 429, 'a 11ª pergunta do dia é recusada'); assert.match(onze.json.erro, /limite de 10 perguntas/);
+      assert.equal((await req('POST', B + '/conversa', { como: 'bruno', corpo: { pergunta: 'oi' } })).status, 200, 'o teto é por pessoa');
     } finally {
       router.definirProvedor({ capability: 'tutor.acompanhar', provider: 'anthropic', model: linha.model, ativo: 0, creditos: 1, custoEstimadoCentavos: 1, promptVersao: 'v1' });
       router.injetarParaTeste('anthropic', null);

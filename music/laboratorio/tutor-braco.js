@@ -13,6 +13,9 @@
 //     partir dos números que o código mediu — nunca mede nem dá nota;
 //   · sem provedor ativo, o botão de conversa nem aparece.
 //
+// LIGADA em 30/09/2026 por decisão do Augusto (ver `DECISOES_IA` em
+// music/index.js), com teto de 10 perguntas por pessoa por dia.
+//
 // Acesso (acesso.js): demonstração e 3 rodadas com o tutor são abertas;
 // rodadas ilimitadas, marca guardada e conversa são da assinatura.
 // =====================================================================
@@ -27,7 +30,7 @@ const ACESSO = require('./acesso');
 const CAPACIDADE_IA = 'tutor.acompanhar';
 const RODADAS_DEMO = 3;
 const INSTRUMENTOS = ['violao', 'guitarra', 'baixo', 'violao-7', 'ukulele', 'cavaquinho', 'bandolim'];
-const LIMITE_CONVERSAS_DIA = 40;   // teto por pessoa: a conversa custa por chamada
+const LIMITE_CONVERSAS_DIA = 10;   // teto por pessoa e por dia (decisão do Augusto, 30/09/2026): a conversa custa por chamada
 
 const s = (v, max = 200) => String(v == null ? '' : v).trim().slice(0, max);
 const n = (v, min, max, pad) => { const x = Math.round(Number(v)); return Number.isFinite(x) ? Math.max(min, Math.min(max, x)) : pad; };
@@ -73,7 +76,8 @@ ${completo ? '' : `<p class="lab-nota-convencao">Sem assinatura: demonstração 
 <li>O som do microfone é analisado <strong>no seu aparelho</strong> e não é gravado nem enviado. Para o servidor vai só o resultado (andamento e porcentagem), e só se você tiver conta.</li>
 <li>Ele ouve <strong>uma nota por vez</strong>: toque cada nota separada, sem deixar a anterior soando por cima. Sem fone de ouvido, o clique do metrônomo sai baixo de propósito.</li>
 <li>O tempo é medido em relação ao seu próprio atraso médio (o microfone de cada aparelho tem o seu): conta se você está regular, correndo ou atrasando.</li>
-<li>É indicação de treino, não nota. Quem avalia é o professor.</li></ul></section>`;
+<li>É indicação de treino, não nota. Quem avalia é o professor.</li>
+${estado.ia ? `<li>“Pergunte ao tutor” usa IA a partir dos números da sua última rodada (nunca do áudio): até ${LIMITE_CONVERSAS_DIA} perguntas por dia.</li>` : ''}</ul></section>`;
     H.pagina(res, { titulo: 'Tutor de braço — escalas, desenhos e arpejos com correção pelo microfone | Musique',
       descricao: 'Exercícios clássicos de escala por posição, pentatônica nos 5 desenhos, 3 notas por corda, arpejos e cromático para violão, guitarra, baixo, ukulele, cavaquinho e bandolim, com demonstração animada e tutor que escuta e corrige nota e tempo.',
       caminho: '/music/tutor-braco', corpo, ferramenta: 'tutor-braco', estado, trilha: [['Praticar', '/music/praticar'], ['Tutor de braço']] });
@@ -146,4 +150,4 @@ ${completo ? '' : `<p class="lab-nota-convencao">Sem assinatura: demonstração 
 const dadosDe = (u) => db.prepare('SELECT * FROM lab_tutor WHERE usuario = ?').all(u);
 const excluirDe = (u) => db.prepare('DELETE FROM lab_tutor WHERE usuario = ?').run(u).changes;
 
-module.exports = { registrar, estadoDaUrl, dadosDe, excluirDe, CAPACIDADE_IA, RODADAS_DEMO, INSTRUMENTOS };
+module.exports = { registrar, estadoDaUrl, dadosDe, excluirDe, CAPACIDADE_IA, RODADAS_DEMO, INSTRUMENTOS, LIMITE_CONVERSAS_DIA };
