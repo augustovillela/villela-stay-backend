@@ -19,6 +19,7 @@ function montar(app, { requireUsuario, opcional, ehDocente, buscarContaPorEmail,
   paginas.registrar(app, { opcional, contextoDe });
   require('./tutor-braco').registrar(app, { requireUsuario, opcional, contextoDe });
   require('./transcrever').registrar(app, { opcional, contextoDe });
+  require('./separar').registrar(app, { opcional, contextoDe });
 
   // A atividade do professor: exige conta (e o aluno precisa estar na
   // tarefa — a API confere). Fica fora do índice.

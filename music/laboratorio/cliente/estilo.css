@@ -398,3 +398,20 @@
 .lab-tr-notas{font-size:14px;color:var(--suave);word-break:break-word}
 .lab-tr-res .lab-tutor-acoes a.btn{text-decoration:none}
 @media (max-width:560px){.lab-tr-cifra{grid-template-columns:repeat(2,minmax(0,1fr))}.lab-tr-agora{font-size:34px}}
+
+/* ---- Separar trilhas ---- */
+.lab-sep-mixer{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:14px 16px;margin:0 0 14px}
+.lab-sep-mixer[hidden]{display:none}
+.lab-sep-transporte{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 12px}
+.lab-sep-transporte input[type=range]{flex:1 1 200px;min-width:0}
+.lab-sep-tempo{font:600 14px Inter,sans-serif;color:var(--suave);min-width:90px;text-align:right}
+.lab-sep-receitas{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px}
+.lab-sep-linhas{display:flex;flex-direction:column;gap:6px;margin:0 0 12px}
+.lab-sep-linha{display:grid;grid-template-columns:minmax(110px,1.2fr) auto auto minmax(80px,2fr) auto;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--borda);border-radius:10px}
+.lab-sep-linha.calada{opacity:.55;background:var(--ice)}
+.lab-sep-nome{font:600 15px Inter,sans-serif}
+.lab-sep-bt{border:1px solid var(--borda);background:#fff;border-radius:999px;padding:6px 10px;font:600 13px Inter,sans-serif;cursor:pointer;color:var(--navy);min-height:36px}
+.lab-sep-bt.dentro{background:#E6F5EC;border-color:#1E8E5A;color:#14603C}
+.lab-sep-bt.fora{background:#FBE9E7;border-color:#C0392B;color:#8E2A20}
+.lab-sep-bt.solo{background:#FFF6D6;border-color:#E0A800}
+@media (max-width:560px){.lab-sep-linha{grid-template-columns:1fr auto auto auto}.lab-sep-linha input[type=range]{grid-column:1 / -1;order:5}}

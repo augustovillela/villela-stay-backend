@@ -862,6 +862,75 @@ async function rodar({ t, secao, req, assert }) {
       cls.forEach((c) => assert.ok(ESTRUTURAIS.includes(c) || new RegExp('[.]' + c + '(?![a-z-])').test(css), arq + ': a classe .' + c + ' não tem regra no estilo'));
     });
   });
+
+  secao('Laboratório · Separar trilhas (IA no navegador): trechos, soma, mixer, WAV e página isolada');
+
+  await t('SEPARAR · SOMA EXATA: com um modelo falso de resposta conhecida, os trechos sobrepostos se juntam sem emenda em qualquer duração (curta, exata, longa)', async () => {
+    const SP = require('./nucleo/separacao');
+    const coef = [0.1, 0.2, 0.3, 0.15, 0.15, 0.1];
+    const falso = (mix) => { const o = new Float32Array(6 * 2 * SP.TRECHO); for (let f = 0; f < 6; f++) for (let c = 0; c < 2; c++) for (let k = 0; k < SP.TRECHO; k++) o[(f * 2 + c) * SP.TRECHO + k] = mix[c * SP.TRECHO + k] * coef[f] * (c ? -1 : 1); return o; };
+    for (const total of [1000, SP.TRECHO, SP.TRECHO + 1, 400000, SP.TAXA * 65 + 123]) {
+      const L = new Float32Array(total).map((_, i) => Math.sin(i * 0.01)), R = new Float32Array(total).map((_, i) => Math.cos(i * 0.013));
+      let chamadas = 0, progresso = 0;
+      const st = await SP.separar(L, R, (m) => { chamadas++; return falso(m); }, (i, n) => { progresso = i / n; });
+      assert.equal(chamadas, SP.plano(total).length); assert.equal(progresso, 1);
+      let e = 0;
+      for (let k = 0; k < total; k++) { let s = 0; for (let f = 0; f < 6; f++) s += st[f][0][k]; e = Math.max(e, Math.abs(s - L[k]), Math.abs(st[3][1][k] + R[k] * 0.15)); }
+      assert.ok(e < 1e-5, total + ' amostras: erro ' + e);
+    }
+    const p = SP.plano(SP.TAXA * 60);
+    assert.ok(p.every((t, i) => i === 0 || t.ini < p[i - 1].fim), 'trechos se sobrepõem'); assert.equal(p[p.length - 1].fim, SP.TAXA * 60, 'o último vai até o fim');
+    assert.ok(Array.from(SP.janela()).every((x) => x > 0), 'janela nunca zera (a divisão pelo peso vale nas pontas)');
+  });
+
+  await t('SEPARAR · MIXER e WAV: solo vence mudo; receitas tiram só o que dizem (karaokê = sem voz); WAV com cabeçalho certo e sem estourar', async () => {
+    const SP = require('./nucleo/separacao');
+    assert.deepEqual(SP.FONTES.map((f) => f.id), ['drums', 'bass', 'other', 'vocals', 'guitar', 'piano'], 'ordem da saída do modelo');
+    const base = () => SP.FONTES.map(() => ({ mudo: false, solo: false, volume: 1 }));
+    const e = base(); e[3].mudo = true; assert.deepEqual(SP.ganhosEfetivos(e), [1, 1, 1, 0, 1, 1]);
+    const s = base(); s[0].solo = true; s[1].solo = true; s[1].volume = 0.5; assert.deepEqual(SP.ganhosEfetivos(s), [1, 0.5, 0, 0, 0, 0]);
+    const rec = (id) => SP.RECEITAS.find((r) => r.id === id).ganhos;
+    assert.deepEqual(rec('sem-voz'), [1, 1, 1, 0, 1, 1]); assert.deepEqual(rec('sem-bateria'), [0, 1, 1, 1, 1, 1]); assert.deepEqual(rec('cozinha'), [1, 1, 0, 0, 0, 0]);
+    SP.RECEITAS.forEach((r) => assert.equal(r.ganhos.length, 6, r.id));
+    const um = (v) => [new Float32Array(4).fill(v), new Float32Array(4).fill(-v)];
+    const fontes = [um(0.1), um(0.2), um(0.3), um(0.4), um(0.5), um(0.6)];
+    const [ml, mr] = SP.mixar(fontes, [1, 0, 0, 1, 0, 0]);
+    assert.ok(Math.abs(ml[0] - 0.5) < 1e-6 && Math.abs(mr[2] + 0.5) < 1e-6);
+    const w = SP.wav(new Float32Array([0, 2, -2]), new Float32Array([0.5, 0, 0]), 44100);
+    const dv = new DataView(w.buffer);
+    assert.equal(String.fromCharCode(...w.slice(0, 4)), 'RIFF'); assert.equal(String.fromCharCode(...w.slice(8, 12)), 'WAVE');
+    assert.equal(dv.getUint16(22, true), 2); assert.equal(dv.getUint32(24, true), 44100); assert.equal(dv.getUint32(40, true), 12); assert.equal(w.length, 56);
+    assert.ok(dv.getInt16(48, true) <= 32767 && dv.getInt16(52, true) >= -32767 && dv.getInt16(48, true) > 32000, 'pico normalizado, sem estourar');
+  });
+
+  await t('SEPARAR · PÁGINA: abre sem conta (1º minuto), isolada (COOP/COEP) só ela e o worker, modelo fixado num commit com MIT, sem rota que receba áudio', async () => {
+    const SP = require('./nucleo/separacao');
+    const r = await req('GET', '/music/separar', { cru: true });
+    assert.equal(r.status, 200); assert.match(r.texto, /Separar trilhas/); assert.match(r.texto, /primeiro minuto/); assert.match(r.texto, /data-ferramenta="separar"/);
+    assert.match(r.texto, /Nada sai do seu aparelho/);
+    assert.equal(r.headers.get('cross-origin-opener-policy'), 'same-origin'); assert.equal(r.headers.get('cross-origin-embedder-policy'), 'credentialless');
+    const outra = await req('GET', '/music/transcrever', { cru: true });
+    assert.equal(outra.headers.get('cross-origin-embedder-policy'), null, 'o isolamento não vaza para as outras páginas');
+    const wk = await req('GET', '/music/separar-worker.js', { cru: true });
+    assert.equal(wk.status, 200); assert.equal(wk.headers.get('cross-origin-embedder-policy'), 'credentialless'); new vm.Script(wk.texto);
+    assert.match(wk.texto, /ORT_VERSAO = '\d+\.\d+\.\d+'/, 'onnxruntime-web com versão FIXA'); assert.ok(wk.texto.includes("'https://cdn.jsdelivr.net/npm/onnxruntime-web@' + ORT_VERSAO"), 'no CDN permitido (jsDelivr)');
+    assert.match(SP.MODELO.url, /^https:\/\/huggingface\.co\/[^/]+\/[^/]+\/resolve\/[0-9a-f]{40}\//, 'modelo fixado num COMMIT (não em "main")');
+    assert.match(SP.MODELO.nome, /MIT/);
+    assert.ok(!(await req('GET', '/music/separar', { como: 'ana', cru: true })).texto.includes('separa o primeiro minuto'), 'assinante: música inteira');
+    for (const u of ['/music/api/lab/separar', '/music/api/separar']) assert.ok((await req('POST', u, { como: 'ana', corpo: { audio: 'x' } })).status >= 400, u + ' não existe: o áudio não sobe');
+    assert.ok(!/fetch\([^)]*separar/.test(PG.clienteJs()), 'o cliente não envia áudio');
+    assert.ok((await req('GET', '/music/laboratorio', { cru: true })).texto.includes('href="/music/separar"'));
+    assert.ok((await req('GET', '/music/praticar', { cru: true })).texto.includes('href="/music/separar"'));
+    assert.ok(PG.urlsDoSitemap().some((x) => x.url === '/music/separar'));
+    assert.ok(CAT.buscar('tirar a voz karaoke', { licoes: L.LICOES }).some((x) => x.url === '/music/separar'));
+    assert.ok(PG.nucleoJs().includes('.separacao = fabrica'), 'núcleo no pacote (o worker importa o mesmo pacote)');
+    assert.ok(PG.clienteJs().includes("C.ferramentas['separar']"));
+    assert.ok(ACESSO.pode('separar-demo', { logado: false }).ok && !ACESSO.pode('separar-completo', { logado: false }).ok);
+    const css = require('fs').readFileSync(require('path').join(__dirname, 'cliente', 'estilo.css'), 'utf8');
+    const js = require('fs').readFileSync(require('path').join(__dirname, 'cliente', 'separar.js'), 'utf8');
+    const cls = new Set(); for (const m of js.matchAll(/class: '([^']+)'/g)) m[1].split(/ +/).forEach((c) => { if (/^lab-sep-/.test(c)) cls.add(c); });
+    cls.forEach((c) => assert.ok(c === 'lab-sep-entrada' || new RegExp('[.]' + c + '(?![a-z-])').test(css), 'separar.js: a classe .' + c + ' não tem regra no estilo'));
+  });
 }
 
 module.exports = { rodar };
