@@ -26,6 +26,13 @@ const S = require('./nucleo/separacao');
 const DEMO_SEGUNDOS = 60;
 const MAX_MINUTOS = 8;   // 6 trilhas estéreo em memória: ~120 MB por minuto de música
 
+// ⚠️ SUSPENSA em 30/09/2026: na primeira separação real (Augusto, notebook
+// com Intel Iris Xe INTEGRADA), o computador congelou e precisou ser
+// reiniciado à força (Kernel-Power 41). A placa integrada desenha a tela e
+// divide a memória com o sistema: um trecho do modelo a ocupava por 25–45 s.
+// Volta só com o fluxo em etapas e as travas de aparelho (ver a doc).
+const SUSPENSA = true;
+
 function isolar(res) {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
@@ -33,12 +40,20 @@ function isolar(res) {
 
 function registrar(app, { opcional, contextoDe }) {
   app.get('/music/separar-worker.js', (req, res) => {
+    if (SUSPENSA) return res.status(503).set('Cache-Control', 'no-store').type('text/plain').send('Separação de trilhas temporariamente fora do ar.');
     isolar(res);
     res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'no-cache')
       .send(fs.readFileSync(path.join(__dirname, 'cliente', 'separar-worker.js'), 'utf8'));
   });
 
   app.get('/music/separar', opcional, (req, res) => {
+    if (SUSPENSA) {
+      return H.pagina(res, { titulo: 'Separar trilhas — em ajuste | Musique', descricao: 'A separação de trilhas está em ajuste e volta em breve.', caminho: '/music/separar', indexar: false,
+        corpo: '<header class="lab-cab"><p class="lab-cab-tipo">Laboratório · treinar com a banda</p><h1><span aria-hidden="true">🎚️</span> Separar trilhas</h1>'
+          + '<p class="lab-lead">A separação de trilhas está <strong>em ajuste</strong> e volta em breve.</p>'
+          + '<p class="lab-nota-convencao">Em alguns computadores com placa de vídeo integrada a separação sobrecarregava o aparelho. Estamos refazendo-a em etapas, com um teste do aparelho antes de separar. Enquanto isso, <a href="/music/transcrever">transcreva os acordes de uma música</a> ou use o <a href="/music/tutor-braco">Tutor de braço</a>.</p></header>',
+        trilha: [['Laboratório', '/music/laboratorio'], ['Separar trilhas']] });
+    }
     const ctx = contextoDe(req);
     const completo = ACESSO.pode('separar-completo', ctx).ok;
     const estado = { completo, logado: ctx.logado, demo_s: completo ? 0 : DEMO_SEGUNDOS, max_min: MAX_MINUTOS, exportar: ACESSO.pode('exportar', ctx).ok, modelo_mb: Math.round(S.MODELO.bytes / 1e6) };
@@ -60,4 +75,4 @@ ${completo ? '' : `<p class="lab-nota-convencao">Sem assinatura, o Musique separ
   });
 }
 
-module.exports = { registrar, DEMO_SEGUNDOS, MAX_MINUTOS };
+module.exports = { registrar, DEMO_SEGUNDOS, MAX_MINUTOS, SUSPENSA };

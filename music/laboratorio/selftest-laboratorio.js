@@ -903,7 +903,18 @@ async function rodar({ t, secao, req, assert }) {
     assert.ok(dv.getInt16(48, true) <= 32767 && dv.getInt16(52, true) >= -32767 && dv.getInt16(48, true) > 32000, 'pico normalizado, sem estourar');
   });
 
-  await t('SEPARAR · PÁGINA: abre sem conta (1º minuto), isolada (COOP/COEP) só ela e o worker, modelo fixado num commit com MIT, sem rota que receba áudio', async () => {
+  await t('SEPARAR · SUSPENSA (30/09/2026, travou o PC do Augusto): a página avisa, não monta a ferramenta, o worker dá 503 e ela sai do hub, de Praticar e do sitemap', async () => {
+    const SPG = require('./separar');
+    assert.equal(SPG.SUSPENSA, true);
+    const r = await req('GET', '/music/separar', { cru: true });
+    assert.equal(r.status, 200); assert.match(r.texto, /em ajuste/); assert.ok(!/data-ferramenta="separar"/.test(r.texto), 'sem a ferramenta');
+    assert.equal((await req('GET', '/music/separar-worker.js', { cru: true })).status, 503);
+    assert.ok(!(await req('GET', '/music/laboratorio', { cru: true })).texto.includes('href="/music/separar"'));
+    assert.ok(!(await req('GET', '/music/praticar', { cru: true })).texto.includes('href="/music/separar"'));
+    assert.ok(!PG.urlsDoSitemap().some((x) => x.url === '/music/separar'));
+  });
+
+  if (!require('./separar').SUSPENSA) await t('SEPARAR · PÁGINA: abre sem conta (1º minuto), isolada (COOP/COEP) só ela e o worker, modelo fixado num commit com MIT, sem rota que receba áudio', async () => {
     const SP = require('./nucleo/separacao');
     const r = await req('GET', '/music/separar', { cru: true });
     assert.equal(r.status, 200); assert.match(r.texto, /Separar trilhas/); assert.match(r.texto, /primeiro minuto/); assert.match(r.texto, /data-ferramenta="separar"/);
