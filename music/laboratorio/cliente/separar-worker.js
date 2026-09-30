@@ -1,13 +1,15 @@
 // =====================================================================
-// Musique · Laboratório — WORKER da separação de trilhas (30/09/2026).
+// Musique · Laboratório — WORKER da separação de trilhas.
 //
-// Roda fora da tela (a página não congela). Mensagens:
-//   ← { tipo: 'preparar' }                 baixa (ou lê do cache) e carrega o modelo
-//   ← { tipo: 'separar', esq, dir }        separa (Float32Array a 44,1 kHz)
-//   → { tipo: 'baixando', feito, total } · { tipo: 'pronto', motor }
-//   → { tipo: 'progresso', i, n, ms }     · { tipo: 'fonte', f, esq, dir } (×6)
-//   → { tipo: 'fim' } · { tipo: 'erro', msg }
-// O modelo fica no Cache Storage do navegador: baixa UMA vez por aparelho.
+// Etapas SEPARADAS (refeito em 30/09/2026, depois de congelar um notebook
+// com placa integrada — ver `aparelho()` em nucleo/separacao.js):
+//   ← { tipo: 'preparar', motor, threads }  baixa (ou lê do cache) e carrega
+//   ← { tipo: 'testar', esq, dir }           separa UM trecho de 7,8 s e mede
+//   ← { tipo: 'separar', esq, dir, pausaMs } separa a música, com folga entre trechos
+//   → baixando · pronto {motor, threads} · teste {ms, fontes} · progresso · fonte (×6) · fim · erro
+// O motor (placa de vídeo ou processador) é decidido pela PÁGINA, antes.
+// "Parar" é `worker.terminate()` na página: corta na hora, sem depender
+// deste código.
 // =====================================================================
 /* global importScripts, ort, MusiqueLab */
 'use strict';
@@ -17,10 +19,9 @@ importScripts(ORT_BASE + 'ort.webgpu.min.js');
 importScripts('/music/laboratorio-nucleo.js');
 var S = MusiqueLab.separacao;
 var CACHE = 'musique-modelos-v1';
-var sessao = null, motor = '';
+var sessao = null, motor = '', threads = 1;
 
 ort.env.wasm.wasmPaths = ORT_BASE;
-ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, (self.navigator && navigator.hardwareConcurrency) || 2) : 1;
 
 function avisar(m, transf) { self.postMessage(m, transf || []); }
 
@@ -41,38 +42,51 @@ async function lerModelo() {
   }
   buf = buf.subarray(0, feito);
   if (feito !== S.MODELO.bytes) throw new Error('O modelo chegou incompleto (' + feito + ' de ' + S.MODELO.bytes + ' bytes). Tente de novo.');
-  if (cache) { try { await cache.put(url, new Response(buf.slice(), { headers: { 'Content-Type': 'application/octet-stream' } })); } catch (_) { /* sem espaço: baixa de novo da próxima vez */ } }
+  if (cache) { try { await cache.put(url, new Response(buf, { headers: { 'Content-Type': 'application/octet-stream' } })); } catch (_) { /* sem espaço: baixa de novo da próxima vez */ } }
   avisar({ tipo: 'baixando', feito: feito, total: total });
   return buf;
 }
 
-async function preparar() {
-  if (sessao) return avisar({ tipo: 'pronto', motor: motor });
+async function preparar(m) {
+  if (sessao) return avisar({ tipo: 'pronto', motor: motor, threads: threads });
+  motor = m.motor === 'webgpu' ? 'webgpu' : 'wasm';
+  threads = Math.max(1, Math.min(4, Number(m.threads) || 1));
+  ort.env.wasm.numThreads = self.crossOriginIsolated ? threads : 1;
+  threads = ort.env.wasm.numThreads;
   var bytes = await lerModelo();
-  var tentativas = [];
-  if (self.navigator && navigator.gpu) tentativas.push('webgpu');
-  tentativas.push('wasm');
-  var ultimoErro = null;
-  for (var i = 0; i < tentativas.length; i++) {
-    try {
-      sessao = await ort.InferenceSession.create(bytes, { executionProviders: [tentativas[i]], graphOptimizationLevel: 'basic', enableCpuMemArena: false, enableMemPattern: false });
-      motor = tentativas[i];
-      break;
-    } catch (e) { ultimoErro = e; sessao = null; }
+  try {
+    sessao = await ort.InferenceSession.create(bytes, { executionProviders: [motor], graphOptimizationLevel: 'basic', enableCpuMemArena: false, enableMemPattern: false });
+  } catch (e) {
+    if (motor !== 'webgpu') throw new Error('Este navegador não conseguiu carregar o modelo: ' + (e.message || e));
+    motor = 'wasm'; ort.env.wasm.numThreads = self.crossOriginIsolated ? threads : 1;   // placa recusou: processador
+    sessao = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'], graphOptimizationLevel: 'basic', enableCpuMemArena: false, enableMemPattern: false });
   }
-  if (!sessao) throw new Error('Este navegador não conseguiu carregar o modelo' + (ultimoErro ? ': ' + (ultimoErro.message || ultimoErro) : '') + '.');
-  avisar({ tipo: 'pronto', motor: motor });
+  bytes = null;
+  avisar({ tipo: 'pronto', motor: motor, threads: threads });
 }
 
-async function separar(esq, dir) {
-  if (!sessao) await preparar();
-  var t0 = Date.now();
-  var fontes = await S.separar(esq, dir, async function (mix) {
-    var feeds = {}; feeds[S.MODELO.entrada] = new ort.Tensor('float32', mix, [1, 2, S.TRECHO]);
-    var r = await sessao.run(feeds);
+function rodarModelo(mix) {
+  var feeds = {}; feeds[S.MODELO.entrada] = new ort.Tensor('float32', mix, [1, 2, S.TRECHO]);
+  return sessao.run(feeds).then(function (r) {
     var st = r[S.MODELO.saida] || r[sessao.outputNames[0]];
-    return st.getData ? await st.getData() : st.data;
-  }, function (i, n) { avisar({ tipo: 'progresso', i: i, n: n, ms: Date.now() - t0 }); });
+    return st.getData ? st.getData() : st.data;
+  });
+}
+
+async function testar(m) {
+  if (!sessao) throw new Error('O modelo ainda não foi carregado.');
+  var t0 = Date.now();
+  var fontes = await S.separar(m.esq, m.dir, rodarModelo);
+  var ms = Date.now() - t0, transf = [];
+  fontes.forEach(function (fc) { transf.push(fc[0].buffer, fc[1].buffer); });
+  avisar({ tipo: 'teste', ms: ms, fontes: fontes }, transf);
+}
+
+async function separar(m) {
+  if (!sessao) throw new Error('O modelo ainda não foi carregado.');
+  var t0 = Date.now();
+  var fontes = await S.separar(m.esq, m.dir, rodarModelo, function (i, n) { avisar({ tipo: 'progresso', i: i, n: n, ms: Date.now() - t0 }); }, { pausaMs: m.pausaMs || 0 });
+  m.esq = m.dir = null;
   // uma fonte por vez, TRANSFERIDA (sem cópia): o pico de memória cai
   for (var f = 0; f < fontes.length; f++) {
     var L = fontes[f][0], R = fontes[f][1]; fontes[f] = null;
@@ -83,6 +97,6 @@ async function separar(esq, dir) {
 
 self.onmessage = function (ev) {
   var m = ev.data || {};
-  var p = m.tipo === 'preparar' ? preparar() : m.tipo === 'separar' ? separar(m.esq, m.dir) : Promise.resolve();
+  var p = m.tipo === 'preparar' ? preparar(m) : m.tipo === 'testar' ? testar(m) : m.tipo === 'separar' ? separar(m) : Promise.resolve();
   p.catch(function (e) { avisar({ tipo: 'erro', msg: (e && e.message) || String(e) }); });
 };

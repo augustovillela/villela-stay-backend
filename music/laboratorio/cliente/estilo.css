@@ -415,3 +415,17 @@
 .lab-sep-bt.fora{background:#FBE9E7;border-color:#C0392B;color:#8E2A20}
 .lab-sep-bt.solo{background:#FFF6D6;border-color:#E0A800}
 @media (max-width:560px){.lab-sep-linha{grid-template-columns:1fr auto auto auto}.lab-sep-linha input[type=range]{grid-column:1 / -1;order:5}}
+
+/* ---- Separar trilhas: etapas ---- */
+.lab-sep-passos{list-style:none;padding:0;margin:0 0 12px;display:flex;flex-wrap:wrap;gap:6px}
+.lab-sep-passo{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--borda);border-radius:999px;background:#fff;font:600 14px Inter,sans-serif;color:var(--suave)}
+.lab-sep-passo span{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ice);font-size:12px}
+.lab-sep-passo.atual{border-color:var(--navy);color:var(--navy)}
+.lab-sep-passo.atual span{background:var(--navy);color:#fff}
+.lab-sep-passo.feito{color:#14603C;border-color:#1E8E5A}
+.lab-sep-passo.feito span{background:#1E8E5A;color:#fff}
+.lab-sep-etapa{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:14px 16px;margin:0 0 14px}
+.lab-sep-etapa h2{margin-top:0}
+.lab-sep-info{margin:8px 0}
+.lab-sep-fatos{padding-left:20px;margin:6px 0 10px}
+.lab-sep-fatos li{margin:3px 0}

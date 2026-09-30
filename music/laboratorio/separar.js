@@ -24,14 +24,14 @@ const ACESSO = require('./acesso');
 const S = require('./nucleo/separacao');
 
 const DEMO_SEGUNDOS = 60;
-const MAX_MINUTOS = 8;   // 6 trilhas estéreo em memória: ~120 MB por minuto de música
+const MAX_MINUTOS = 5;   // igual a separacao.LIMITES.maxMinutos (o aparelho pode baixar para 2)
 
 // ⚠️ SUSPENSA em 30/09/2026: na primeira separação real (Augusto, notebook
 // com Intel Iris Xe INTEGRADA), o computador congelou e precisou ser
 // reiniciado à força (Kernel-Power 41). A placa integrada desenha a tela e
 // divide a memória com o sistema: um trecho do modelo a ocupava por 25–45 s.
 // Volta só com o fluxo em etapas e as travas de aparelho (ver a doc).
-const SUSPENSA = true;
+const SUSPENSA = false;   // reaberta 30/09/2026 com as etapas e as travas de aparelho
 
 function isolar(res) {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
@@ -64,8 +64,10 @@ ${completo ? '' : `<p class="lab-nota-convencao">Sem assinatura, o Musique separ
 <noscript><p class="lab-nota-convencao">A separação roda no seu navegador e precisa de JavaScript.</p></noscript>
 <section class="lab-bloco"><h2>Como funciona e o que esperar</h2><ul>
 <li><strong>Nada sai do seu aparelho.</strong> A separação é feita por uma inteligência artificial aberta (HT-Demucs, da Meta) que roda aqui mesmo, no navegador. O Musique não recebe nem guarda a música.</li>
+<li><strong>Em etapas:</strong> primeiro o arquivo, depois o Musique verifica o computador, prepara o modelo, faz um <strong>teste de 8 segundos</strong> e mostra quanto a música inteira vai levar — só então separa, se você quiser.</li>
+<li><strong>Cuidado com o aparelho:</strong> placa de vídeo integrada (a mais comum em notebooks) não é usada — a separação roda no processador, com metade dos núcleos e uma pausa entre os trechos, para o computador continuar respondendo. No celular, a separação não é oferecida.</li>
 <li><strong>Na primeira vez</strong> o navegador baixa o modelo (cerca de ${estado.modelo_mb} MB) e o guarda; nas próximas, começa na hora. No celular, prefira o Wi-Fi.</li>
-<li><strong>Tempo:</strong> depende muito do aparelho — de menos de um minuto a vários minutos por minuto de música. A barra mostra quanto falta. Num computador com placa de vídeo dedicada é bem mais rápido; celular antigo pode não dar conta.</li>
+<li><strong>Tempo:</strong> no processador de um notebook comum, dezenas de minutos por música; com placa de vídeo dedicada, bem menos. O teste de 8 segundos diz o número do seu computador antes de começar.</li>
 <li><strong>Seis trilhas:</strong> voz, bateria, baixo, guitarra/violão, piano e “outros” — sopros, cordas, teclados e efeitos saem juntos nessa última.</li>
 <li><strong>Qualidade:</strong> costuma ser muito boa em voz, bateria e baixo; guitarra e piano às vezes deixam um resto nas outras trilhas. É ferramenta de estudo: use com músicas que você pode usar para estudar.</li></ul></section>`;
     isolar(res);

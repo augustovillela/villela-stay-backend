@@ -70,9 +70,12 @@
    * Separa `esq`/`dir` (Float32Array, 44,1 kHz). `modelo(mixPlano)` recebe
    * Float32Array [2 × TRECHO] (canal a canal) e devolve (ou promete)
    * Float32Array [6 × 2 × TRECHO]. Devolve [fonte][canal] Float32Array.
-   * `aoProgresso(i, n)` a cada trecho.
+   * `aoProgresso(i, n)` a cada trecho. o.pausaMs: folga ENTRE trechos
+   * (o aparelho respira: a tela e o resto do sistema seguem respondendo).
+   * o.parar(): se devolver true, a separação para no próximo trecho.
    */
-  function separar(esq, dir, modelo, aoProgresso) {
+  function separar(esq, dir, modelo, aoProgresso, o) {
+    o = o || {};
     var total = esq.length, p = plano(total), w = janela(), nF = FONTES.length;
     var saida = FONTES.map(function () { return [new Float32Array(total), new Float32Array(total)]; });
     var peso = new Float32Array(total), i = 0;
@@ -81,6 +84,7 @@
         for (var f = 0; f < nF; f++) for (var c = 0; c < 2; c++) { var s = saida[f][c]; for (var k = 0; k < total; k++) if (peso[k] > 0) s[k] /= peso[k]; }
         return Promise.resolve(saida);
       }
+      if (o.parar && o.parar()) return Promise.reject(Object.assign(new Error('Separação interrompida.'), { parado: true }));
       var t = p[i], len = t.fim - t.ini, mix = new Float32Array(2 * TRECHO);
       mix.set(esq.subarray(t.ini, t.fim), 0); mix.set(dir.subarray(t.ini, t.fim), TRECHO);
       return Promise.resolve(modelo(mix)).then(function (st) {
@@ -92,7 +96,8 @@
           for (var f = 0; f < nF; f++) for (var c = 0; c < 2; c++) saida[f][c][t.ini + k] += st[(f * 2 + c) * TRECHO + k] * wk;
         }
         i++; if (aoProgresso) aoProgresso(i, p.length);
-        return passo();
+        if (!o.pausaMs || i >= p.length) return passo();
+        return new Promise(function (ok) { setTimeout(ok, o.pausaMs); }).then(passo);
       });
     }
     return passo();
@@ -123,6 +128,56 @@
     return new Uint8Array(ab);
   }
 
-  return { TAXA: TAXA, TRECHO: TRECHO, SOBRE: SOBRE, PASSO: PASSO, FONTES: FONTES, MODELO: MODELO, RECEITAS: RECEITAS,
+  // -------------------------------------------------------------------
+  // APARELHO (lição de 30/09/2026: a separação congelou um notebook com
+  // Intel Iris Xe INTEGRADA — a placa que desenha a tela ficava ocupada
+  // 25–45 s por trecho). Placa de vídeo só quando é das que aguentam;
+  // em todo o resto, processador com METADE dos núcleos (o PC segue
+  // respondendo). Pura: recebe o que o navegador informa e decide.
+  // -------------------------------------------------------------------
+  var LIMITES = { maxMinutos: 5, minMemoriaGB: 4, pausaCpuMs: 300, pausaGpuMs: 150, gpuMaxMsTrecho: 8000 };
+
+  /**
+   * a: { gpu: { vendor, architecture, description } | null, nucleos,
+   *      memoriaGB (navigator.deviceMemory, pode faltar), celular, isolado }
+   * Devolve { pode, motor ('webgpu'|'wasm'), threads, maxMinutos, pausaMs,
+   *           placa: 'dedicada'|'integrada'|'nenhuma', motivo, avisos[] }.
+   */
+  function aparelho(a) {
+    a = a || {};
+    var g = a.gpu, v = String(g && g.vendor || '').toLowerCase(), arq = String(g && g.architecture || '').toLowerCase(), desc = String(g && g.description || '').toLowerCase();
+    var placa = 'nenhuma';
+    if (g) {
+      var intelDedicada = v === 'intel' && (/xe-hpg|xe2-hpg|alchemist|battlemage/.test(arq) || /\barc\b/.test(desc));
+      var amdDedicada = v === 'amd' && /radeon (rx|pro)|\brx ?\d{3,4}/.test(desc) && !/graphics$|vega \d+ graphics|radeon\(tm\) graphics/.test(desc);
+      placa = v === 'nvidia' || v === 'apple' || intelDedicada || amdDedicada ? 'dedicada' : 'integrada';
+    }
+    var memoria = Number(a.memoriaGB) || 0, nucleos = Math.max(1, Number(a.nucleos) || 2), avisos = [];
+    var r = { pode: true, motor: 'wasm', threads: a.isolado ? Math.max(1, Math.min(4, Math.floor(nucleos / 2))) : 1, maxMinutos: LIMITES.maxMinutos, pausaMs: LIMITES.pausaCpuMs, placa: placa, motivo: '', avisos: avisos };
+    if (a.celular) { r.pode = false; r.motivo = 'No celular a separação é pesada demais: use um computador.'; return r; }
+    if (memoria && memoria < LIMITES.minMemoriaGB) { r.pode = false; r.motivo = 'Este aparelho tem pouca memória (' + memoria + ' GB) para separar trilhas com segurança.'; return r; }
+    if (placa === 'dedicada') { r.motor = 'webgpu'; r.pausaMs = LIMITES.pausaGpuMs; }
+    else {
+      if (placa === 'integrada') avisos.push('A placa de vídeo deste computador é integrada (divide a memória e desenha a tela): a separação roda no processador, com metade dos núcleos, para o computador continuar respondendo.');
+      if (r.threads === 1) avisos.push('Sem o isolamento de página, o processador trabalha com um núcleo só: fica lento, mas seguro.');
+      avisos.push('No processador é lento: a etapa de teste mostra quanto a música inteira vai levar.');
+    }
+    if (memoria && memoria < 8) { r.maxMinutos = 2; avisos.push('Com ' + memoria + ' GB de memória, o limite é de 2 minutos de música.'); }
+    return r;
+  }
+
+  /** Quantos trechos, e quanto tempo levaria a música inteira. */
+  function estimar(totalAmostras, msPorTrecho, pausaMs) {
+    var n = plano(totalAmostras).length;
+    return { trechos: n, ms: n * msPorTrecho + Math.max(0, n - 1) * (pausaMs || 0) };
+  }
+
+  /** O trecho de TESTE: 7,8 s perto de 1/3 da música (costuma ter todos os instrumentos). */
+  function trechoDeTeste(totalAmostras) {
+    var ini = Math.max(0, Math.min(totalAmostras - TRECHO, Math.floor(totalAmostras / 3)));
+    return { ini: ini, fim: Math.min(totalAmostras, ini + TRECHO) };
+  }
+
+  return { LIMITES: LIMITES, aparelho: aparelho, estimar: estimar, trechoDeTeste: trechoDeTeste, TAXA: TAXA, TRECHO: TRECHO, SOBRE: SOBRE, PASSO: PASSO, FONTES: FONTES, MODELO: MODELO, RECEITAS: RECEITAS,
     plano: plano, janela: janela, separar: separar, mixar: mixar, ganhosEfetivos: ganhosEfetivos, wav: wav };
 });

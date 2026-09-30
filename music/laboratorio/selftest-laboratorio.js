@@ -903,15 +903,45 @@ async function rodar({ t, secao, req, assert }) {
     assert.ok(dv.getInt16(48, true) <= 32767 && dv.getInt16(52, true) >= -32767 && dv.getInt16(48, true) > 32000, 'pico normalizado, sem estourar');
   });
 
-  await t('SEPARAR · SUSPENSA (30/09/2026, travou o PC do Augusto): a página avisa, não monta a ferramenta, o worker dá 503 e ela sai do hub, de Praticar e do sitemap', async () => {
-    const SPG = require('./separar');
-    assert.equal(SPG.SUSPENSA, true);
+  if (require('./separar').SUSPENSA) await t('SEPARAR · SUSPENSA (30/09/2026, travou o PC do Augusto): a página avisa, não monta a ferramenta, o worker dá 503 e ela sai do hub, de Praticar e do sitemap', async () => {
     const r = await req('GET', '/music/separar', { cru: true });
     assert.equal(r.status, 200); assert.match(r.texto, /em ajuste/); assert.ok(!/data-ferramenta="separar"/.test(r.texto), 'sem a ferramenta');
     assert.equal((await req('GET', '/music/separar-worker.js', { cru: true })).status, 503);
     assert.ok(!(await req('GET', '/music/laboratorio', { cru: true })).texto.includes('href="/music/separar"'));
     assert.ok(!(await req('GET', '/music/praticar', { cru: true })).texto.includes('href="/music/separar"'));
     assert.ok(!PG.urlsDoSitemap().some((x) => x.url === '/music/separar'));
+  });
+
+  await t('SEPARAR · APARELHO (lição de 30/09/2026): placa integrada NUNCA usa a placa — processador com metade dos núcleos; celular e pouca memória são recusados; limite de minutos', async () => {
+    const SP = require('./nucleo/separacao');
+    const c = (x) => SP.aparelho(x);
+    const iris = c({ gpu: { vendor: 'intel', architecture: 'gen-12lp', description: '' }, nucleos: 8, memoriaGB: 8, isolado: true });
+    assert.equal(iris.motor, 'wasm', 'o notebook do Augusto (Iris Xe) roda no processador'); assert.equal(iris.placa, 'integrada'); assert.equal(iris.threads, 4); assert.equal(iris.maxMinutos, 5);
+    assert.ok(iris.avisos.some((a) => /integrada/.test(a)));
+    assert.equal(c({ gpu: { vendor: 'amd', architecture: 'rdna-2', description: 'AMD Radeon(TM) Graphics' }, nucleos: 8, memoriaGB: 8, isolado: true }).motor, 'wasm', 'APU da AMD é integrada');
+    assert.equal(c({ gpu: { vendor: 'nvidia', architecture: 'ampere' }, nucleos: 12, memoriaGB: 8, isolado: true }).motor, 'webgpu');
+    assert.equal(c({ gpu: { vendor: 'amd', architecture: 'rdna-3', description: 'AMD Radeon RX 7600' }, nucleos: 8, memoriaGB: 8, isolado: true }).motor, 'webgpu');
+    assert.equal(c({ gpu: { vendor: 'intel', architecture: 'xe-hpg', description: 'Intel Arc A770' }, nucleos: 8, memoriaGB: 8, isolado: true }).motor, 'webgpu', 'Intel Arc é dedicada');
+    assert.equal(c({ gpu: null, nucleos: 8, memoriaGB: 8, isolado: false }).threads, 1, 'sem isolamento, um núcleo só');
+    assert.equal(c({ gpu: null, nucleos: 16, memoriaGB: 8, isolado: true }).threads, 4, 'no máximo 4 núcleos');
+    assert.equal(c({ celular: true, nucleos: 8, memoriaGB: 8 }).pode, false);
+    assert.equal(c({ gpu: null, nucleos: 4, memoriaGB: 2 }).pode, false);
+    assert.equal(c({ gpu: null, nucleos: 4, memoriaGB: 4, isolado: true }).maxMinutos, 2, 'com 4 GB, 2 minutos');
+    const e = SP.estimar(SP.TAXA * 240, 40000, 300); assert.equal(e.trechos, SP.plano(SP.TAXA * 240).length); assert.equal(e.ms, e.trechos * 40000 + (e.trechos - 1) * 300);
+    const tt = SP.trechoDeTeste(SP.TAXA * 240); assert.equal(tt.fim - tt.ini, SP.TRECHO); assert.ok(tt.ini > 0);
+    const curta = SP.trechoDeTeste(1000); assert.deepEqual([curta.ini, curta.fim], [0, 1000], 'música mais curta que o trecho: usa ela toda');
+  });
+
+  await t('SEPARAR · FOLGA E PARADA: com pausaMs o próximo trecho espera; parar() interrompe antes do trecho seguinte (sem rodar o modelo de novo)', async () => {
+    const SP = require('./nucleo/separacao');
+    const L = new Float32Array(SP.TRECHO * 3), R = new Float32Array(SP.TRECHO * 3);
+    const zero = () => new Float32Array(6 * 2 * SP.TRECHO);
+    const t0 = Date.now(); let n = 0;
+    await SP.separar(L, R, () => { n++; return zero(); }, null, { pausaMs: 60 });
+    assert.ok(Date.now() - t0 >= 60 * (n - 1) - 5, 'as pausas entre ' + n + ' trechos aconteceram');
+    let chamadas = 0, pedido = false;
+    const r = await SP.separar(L, R, () => { chamadas++; pedido = true; return zero(); }, null, { parar: () => pedido }).then(() => 'terminou', (e) => e.parado ? 'parou' : e.message);
+    assert.equal(r, 'parou'); assert.equal(chamadas, 1, 'depois do pedido, nenhum trecho a mais');
   });
 
   if (!require('./separar').SUSPENSA) await t('SEPARAR · PÁGINA: abre sem conta (1º minuto), isolada (COOP/COEP) só ela e o worker, modelo fixado num commit com MIT, sem rota que receba áudio', async () => {
