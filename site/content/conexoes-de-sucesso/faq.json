@@ -1,0 +1,562 @@
+{
+ "01-boas-vindas": [
+  [
+   "O curso Conexões de Sucesso promete renda rápida ou emprego garantido?",
+   "Não. O curso começa justamente dizendo o que ele não é: não promete renda rápida, não ensina fórmula de enriquecimento e não garante emprego. O que ele oferece é menos sedutor e mais durável: um método para construir três coisas que continuam valendo quando quase tudo foi automatizado. São elas o critério para decidir bem, ter gente que escuta e confia em você e a capacidade de ser dono de um resultado e responder por ele. O método dá trabalho, cobra ação fora da tela e não entrega resultado em uma semana, mas não perde valor quando a próxima ferramenta da moda aparecer."
+  ],
+  [
+   "Por que está mais difícil conseguir o primeiro emprego hoje?",
+   "Porque as tarefas que serviam de porta de entrada para quem tinha 18 ou 20 anos passaram a ser feitas por software, com qualidade suficiente e quase de graça: organizar planilha, escrever texto padrão, atender chamado simples, separar documentos, traduzir material, fazer o primeiro rascunho. O resultado não é uma onda de demissões. O jovem simplesmente deixa de ser contratado, e isso é pior, porque não aparece em estatística nenhuma e ninguém lhe deve explicação. Ao mesmo tempo, a mesma tecnologia virou uma alavanca: com boas ferramentas, um jovem faz o trabalho de uma equipe pequena, desde que saiba onde apoiar."
+  ],
+  [
+   "Posso usar inteligência artificial para fazer as tarefas do curso?",
+   "Pode, e deve, com uma regra: use, declare que usou e confira antes de assumir o resultado como seu. A inteligência artificial não é proibida no curso; ela é usada de forma aberta e verificada. O motivo é simples: uma máquina fluente às vezes responde errado com a mesma fluência com que acerta, e quem não tem critério próprio assina embaixo do erro. As outras duas regras de funcionamento são seguir a ordem das fases, porque pular etapa dá ilusão de progresso, e fazer as 21 tarefas fora da tela. Quem só assiste às aulas terá visto um curso; quem faz as tarefas terá construído um ano."
+  ]
+ ],
+ "02-como-estudar": [
+  [
+   "Quanto tempo leva para fazer o curso Conexões de Sucesso?",
+   "A recomendação é assistir a uma aula a cada dois dias e fazer a tarefa do módulo dentro da mesma semana. Nesse ritmo, o curso leva de 10 a 14 semanas. O acesso não expira, então dá para pausar numa semana de prova, viagem ou trabalho pesado e voltar depois. O que não funciona é acelerar pulando as tarefas: maratonar o curso num fim de semana é como assistir a um tutorial de skate inteiro sem subir no skate. Você entende tudo e não sabe fazer nada. Prazo sem data no calendário é só intenção, por isso a sugestão é marcar logo as datas de fim de cada bloco de módulos."
+  ],
+  [
+   "O que vale mais no currículo: certificado ou portfólio?",
+   "O portfólio. O certificado do curso é emitido quando você conclui todas as aulas e tem código verificável, mas ele prova a conclusão, não a execução das tarefas. O mercado costuma olhar o que você conseguiu fazer, e não o papel. Por isso o curso foi desenhado para terminar em coisas concretas que outra pessoa pode ver e usar: um dossiê de verificação, um pitch gravado, uma automação rodando, uma venda comprovada, um contrato próprio, um projeto entregue. Conhecimento lido some da memória em meses; uma entrega feita continua lá e vira prova do que você sabe fazer. A diferença entre os dois caminhos aparece com o tempo."
+  ],
+  [
+   "E se eu tentar uma tarefa do curso e der errado?",
+   "Vale do mesmo jeito, desde que você registre e analise o que aconteceu. Essa é a primeira regra do Caderno de Exercícios: tarefa tentada e malsucedida vale integralmente; o que não vale é a tarefa não tentada. Se você tentou vender e ninguém comprou, cumpriu a tarefa, desde que tenha anotado as objeções. O rigor está no processo, não no resultado comercial. As tarefas acontecem fora da tela, quase sempre com outra pessoa, prazo ou consequência real, e por isso dão frio na barriga. Para medir a qualidade do que entregou, o caderno traz uma régua com cinco critérios: rigor, execução, realidade, comunicação e autonomia."
+  ]
+ ],
+ "03-o-primeiro-degrau": [
+  [
+   "A inteligência artificial vai acabar com os empregos para jovens?",
+   "O efeito mais visível não é desemprego em massa, e sim a porta de entrada se estreitando. As tarefas simples que serviam para formar iniciantes, como organizar planilha ou redigir texto padrão, passaram a ser feitas por software quase de graça. A empresa deixa de precisar de alguém barato para executar e passa a precisar de alguém competente para conferir o resultado, e conferir exige critério, que o iniciante ainda não tem. Por isso o jovem não é demitido: deixa de ser contratado. Se você mandou 50 currículos e recebeu silêncio, o problema não é você; é a geometria do mercado que mudou."
+  ],
+  [
+   "Qual a diferença entre conhecimento codificado e conhecimento tácito?",
+   "Conhecimento codificado é o que cabe no papel: fórmulas, procedimentos, definições e regras de um manual ou apostila. Conhecimento tácito só se adquire fazendo: perceber pelo tom de voz que o cliente está mentindo, saber quando insistir e quando recuar, sentir que um contrato tem problema antes de conseguir dizer qual. Os modelos de linguagem foram treinados sobretudo no primeiro tipo. Por isso a máquina amplia o profissional experiente, feito de conhecimento tácito, e substitui o recém-formado, que tem principalmente o conhecimento codificado que a escola ensinou. Não é conspiração; é geometria."
+  ],
+  [
+   "Se a IA faz quase tudo, ainda vale a pena estudar?",
+   "Vale, e mais do que antes. Concluir que não adianta estudar é o raciocínio mais perigoso para quem está começando. A automação não acaba com a necessidade de competência; ela aumenta a competência mínima exigida para entrar. Quem para de estudar por medo entrega a vaga a quem continuou. Para orientar o que estudar, faça duas perguntas diante de qualquer escolha: uma IA faz isso melhor, mais rápido e mais barato que um iniciante? Se sim, o que sobra de humano nessa atividade? O que sobra quase sempre envolve decidir, escolher um critério ou responder pela consequência, e é ali que estão o emprego e o dinheiro."
+  ]
+ ],
+ "04-evidencia-dos-dois-lados": [
+  [
+   "O que dizem os estudos sobre IA e emprego de jovens?",
+   "Há sinais nos dois sentidos. Um estudo de Stanford encontrou queda em torno de 13% no emprego de jovens de 22 a 25 anos nas ocupações mais expostas à IA. A PwC analisou mais de 1 bilhão de anúncios de vaga em 27 países e viu vagas de entrada pedindo julgamento e liderança. No Brasil, o FGV Ibre achou emprego e renda menores para jovens de 18 a 29 anos nas ocupações expostas. Do outro lado, economistas do Federal Reserve de Nova York notaram que a queda começou antes das ferramentas, e estudos amplos não acham aumento sistemático de desemprego entre os expostos. As leituras divergem sobre causa e tamanho, não sobre a direção."
+  ],
+  [
+   "Como decidir quando dois estudos sérios dizem coisas diferentes?",
+   "A resposta errada é escolher a leitura que agrada: quem tem medo guarda só os números assustadores, e quem quer se tranquilizar guarda só os outros. A postura recomendada é planejar contra o cenário medido e construir opcionalidade contra o cenário duro. Em português claro: não entre em pânico, mas também não aposte que tudo volta ao normal. Opcionalidade é ter mais de uma saída, como guardar uma vida extra no jogo. Na prática, significa estudar e construir coisas que valem nos dois cenários, em vez de apostar tudo numa previsão."
+  ],
+  [
+   "Como saber o que é confiável numa discussão polêmica?",
+   "Procure o que os dois lados aceitam sem discutir. Quando fontes que divergem concordam em algum ponto, esse ponto merece bastante confiança e vira o seu ponto de partida. O que elas disputam é o que precisa ser investigado. Na discussão sobre IA e emprego, por exemplo, ninguém nega que a exigência para entrar no mercado subiu; a briga é sobre a causa e o tamanho. A técnica serve para qualquer debate: uma briga política no grupo da família, duas lojas falando bem e mal do mesmo celular. E vale desconfiar de si mesmo quando você só guardou os números que confirmam o que já sentia."
+  ]
+ ],
+ "05-tres-territorios": [
+  [
+   "Quais habilidades a inteligência artificial não substitui?",
+   "Quando executar ficou barato, o valor migrou para três territórios que a máquina não ocupa. O primeiro é o julgamento: formular o problema certo, escolher o critério e decidir com informação incompleta, incluindo perceber quando a resposta está errada. O segundo é distribuição e confiança: ter quem escute você e quem acredite no que você diz. O terceiro é propriedade e responsabilidade: ser dono do resultado, assumir o risco, operar no mundo físico e responder pela consequência. Uma máquina não assina contrato nem responde a processo. Você não precisa ser o melhor do mundo em nenhum deles, mas ser sólido nos três é raro, e por isso valioso."
+  ],
+  [
+   "Ter muitos seguidores é o mesmo que ter influência profissional?",
+   "Não. Distribuição não quer dizer ter seguidores; quer dizer ter quem confie em você. Mil seguidores indiferentes valem menos do que 20 profissionais que respondem a sua mensagem em uma hora. O número de seguidores é fácil de medir e por isso parece importante, mas o que move negócios é a confiança. Ela não pode ser automatizada nem comprada com velocidade: se acumula devagar, sobrevive à troca de tecnologia e rende juros compostos por décadas. Como a IA baratiou a produção de conteúdo, a atenção ficou mais escassa, e o gargalo passou a ser ser encontrado e ser acreditado."
+  ],
+  [
+   "Quais profissões estão mais protegidas da automação?",
+   "As que estão ancoradas no mundo real e exigem alguém responsável pelo resultado. Hospitalidade, saúde, construção, manutenção, energia, logística, agro, ofícios técnicos e atividades que pedem licença estão mais protegidas do que se costuma achar. Muita profissão tratada como plano B pode estar entre as mais seguras dos próximos anos. O motivo é que uma máquina não recebe um hóspede de madrugada, não conserta o cano estourado nem olha alguém nos olhos e diz que resolve. O valor ali não está só em executar a tarefa, mas em existir alguém que responde por ela."
+  ]
+ ],
+ "06-o-que-envelheceu": [
+  [
+   "Ainda vale a pena aprender a programar?",
+   "Programação continua valiosa, mas deixou de ser uma porta de entrada segura: a contratação de desenvolvedor júnior foi das que mais sentiram o aperto. O que permanece essencial é a alfabetização lógica, que é saber descrever um processo com precisão suficiente para que uma máquina o execute e conseguir avaliar se ela executou direito. Com a inteligência artificial vale algo parecido: para quase todo jovem, o que importa não é a teoria acadêmica, e sim operar com critério, dando contexto, organizando o pedido, conferindo o resultado e assumindo a responsabilidade pelo que entrega."
+  ],
+  [
+   "Como saber se uma habilidade vai continuar valendo no futuro?",
+   "Use o teste dos 10 anos: aquilo que você quer aprender vai continuar existindo com esse nome daqui a uma década? Se sim, aprenda. Se não, procure a competência que está por baixo. Em vez de só aprender a mexer num aplicativo de edição, aprenda a contar uma história em imagens: o aplicativo muda de nome, a história fica. Foi esse o erro com podcast e curso on-line, que são veículos e não competências. A habilidade real por trás deles é construir audiência e sustentar uma conversa interessante. Plataformas e ferramentas mudam rápido; as competências que elas exigem mudam devagar."
+  ],
+  [
+   "Mudar de opinião é sinal de fraqueza?",
+   "Não. Mudar de opinião diante de evidência nova é o único sinal confiável de que alguém está pensando de verdade. Uma lista de habilidades escrita para durar uma década pode envelhecer em dois anos, e a conclusão não é parar de planejar, mas revisar. A sugestão é marcar uma data por ano para reler o seu plano e perguntar o que envelheceu, porque planos são hipóteses que precisam de manutenção. O erro comum é tratar a revisão como derrota e, por orgulho, defender uma posição vencida. Quando o mundo muda rápido, a teimosia custa mais caro do que admitir o engano."
+  ]
+ ],
+ "07-anatomia-de-uma-afirmacao": [
+  [
+   "Como identificar fake news se o texto parece bem escrito?",
+   "A fluência de um texto deixou de dizer qualquer coisa sobre se ele é verdadeiro. Antes, mentir bem custava talento e tempo; hoje qualquer pessoa gera em segundos um texto, uma foto ou um vídeo falso e convincente. E a desinformação nem precisa de má-fé: basta repassar no grupo aquilo que uma ferramenta entregou com cara de verdade. Por isso, em vez de avaliar a qualidade da escrita, pergunte de que material cada pedaço é feito: qual parte é verificável, qual é salto lógico e qual é gosto pessoal disfarçado de conclusão. Depois de umas 20 repetições, isso vira automático."
+  ],
+  [
+   "Qual a diferença entre fato, inferência, opinião e juízo de valor?",
+   "Fato é o que pode, em princípio, ser verificado: existe um lugar aonde ir para conferir. Inferência é a conclusão que alguém tira do fato, e costuma aparecer com um porquê que o fato não trazia. Opinião é a preferência de quem fala, como dizer que uma política é boa. Juízo de valor é a régua moral aplicada às pessoas, como afirmar que quem discorda age de má-fé. O problema é que essas quatro camadas vêm coladas na mesma frase, como se tivessem o mesmo peso, e em poucos passos um dado verificável vira uma acusação sem que ninguém avise que o terreno mudou."
+  ],
+  [
+   "Pensamento crítico é duvidar de tudo?",
+   "Não. Duvidar de tudo é outra forma de preguiça, e leva direto à teoria da conspiração: quem duvida de tudo não precisa pensar em nada. Pensamento crítico é calibrar a confiança pela qualidade da evidência: acreditar bastante no que está bem estabelecido, pouco no que está mal sustentado e ficar à vontade para dizer que não sabe. Um cuidado importante é verificar justamente o que agrada você. A manchete que irrita já é desmontada de graça; é na notícia que confirma o que você já pensava que a guarda baixa, e é por ali que a bobagem entra."
+  ]
+ ],
+ "08-cinco-falacias": [
+  [
+   "Quais são as falácias mais comuns no dia a dia?",
+   "Cinco falácias cobrem a maior parte do que aparece na vida real. Correlação apresentada como causa: duas coisas acontecem juntas e alguém conclui que uma causou a outra. Apelo à autoridade fora de contexto: alguém competente numa área opinando em outra. Falso dilema: o assunto aparece com duas saídas quando existem várias. Generalização apressada: dois casos de sucesso viram regra. E ataque à pessoa: em vez de responder ao argumento, desqualifica-se quem o fez. Falácia é um defeito de raciocínio com forma de argumento bom, e não chega com placa de aviso; por isso vale passar as cinco também pelo seu próprio raciocínio."
+  ],
+  [
+   "O que é viés do sobrevivente?",
+   "É o efeito de enxergar só quem deu certo e tirar daí uma regra. Você conhece os dois que enriqueceram com um negócio na internet ou largaram a faculdade e prosperaram porque eles dão entrevista, gravam vídeo e vendem curso. Os 500 que tentaram a mesma coisa e quebraram voltaram a trabalhar em silêncio e não viram conteúdo. O feed mostra quem sobreviveu, porque quem sobreviveu tem história para contar, e quase toda a literatura de sucesso financeiro sofre disso. É a falácia que mais destrói o patrimônio de jovens. Diante de casos de sucesso, pergunte: quantos tentaram, e onde estão os que não conseguiram?"
+  ],
+  [
+   "Correlação é a mesma coisa que causa?",
+   "Não. Duas coisas podem subir juntas sem que uma cause a outra. O exemplo clássico: consumo de sorvete e afogamentos aumentam ao mesmo tempo, mas sorvete não afoga ninguém; no calor, mais gente toma sorvete e mais gente entra na água. Há uma terceira variável por trás. Em outro caso, quem faz cursinho passa mais no vestibular, mas também costuma ter mais tempo livre e uma família que pode pagar. Para desarmar essa falácia, pergunte se existe algo por trás explicando os dois fenômenos e se a causa pode ser o inverso do que dizem."
+  ]
+ ],
+ "09-ler-um-numero": [
+  [
+   "Como saber se uma notícia com número é enganosa?",
+   "Faça cinco perguntas. De onde veio: instituto com método publicado ou enquete de rede social? Quem pagou: não é acusação, mas estudo de quem tem interesse pede leitura mais cuidadosa. Comparado a quê: aumento de 50% sobre uma base de 2 clientes é passar para 3. Percentual ou absoluto: dobrar o risco pode ser ir de 1 para 2 casos em 1 milhão. Que período: começar a comparação no pior ou no melhor mês muda toda a história. Com essas perguntas, quase toda manchete com número vira uma lista de coisas a conferir em poucos minutos. Um número não é prova; é uma afirmação vestida de prova."
+  ],
+  [
+   "Como perceber um gráfico manipulado?",
+   "Olhe primeiro o eixo vertical. Se ele não começa no zero e ninguém avisou, uma diferença de 2% pode virar uma montanha. Isso é legítimo em alguns contextos técnicos, quando vem declarado, mas desonesto na maioria dos usos comuns. Repare também no recorte de tempo: um período que começa e termina em datas estranhas costuma ter sido escolhido para produzir o efeito que você está vendo. As mesmas regras valem para quando você produzir gráficos num trabalho ou num relatório de estágio: um gráfico honesto passa uma mensagem que se entende em cinco segundos. Uma reputação construída em anos se perde num gráfico manipulado."
+  ],
+  [
+   "Posso confiar em números e dados que a IA me dá?",
+   "Não sem conferir. A inteligência artificial pode inventar um dado e entregá-lo com a mesma segurança de um dado correto. Um humano que não sabe costuma hesitar ou mudar o tom; um modelo de linguagem produz o erro com a mesma fluência do acerto. Números, datas, nomes e referências são justamente os pontos em que a invenção é mais frequente. A regra é simples: número vindo de máquina não existe até ser conferido na fonte. Peça também o caminho, e não só o resultado: a pergunta como você chegou nisso expõe o raciocínio e mostra onde ele quebrou."
+  ]
+ ],
+ "10-steelman-e-decisao": [
+  [
+   "O que é steelman e para que serve?",
+   "Steelman, algo como homem de aço, é reconstruir o argumento de quem pensa diferente na versão mais forte possível, às vezes mais forte do que a própria pessoa apresentou, e só então responder. É o oposto do espantalho, que simplifica a posição do outro até ela ficar ridícula e ataca a caricatura. A prática deixa suas posições mais sólidas, porque elas são testadas contra a melhor objeção, e às vezes revela que o outro lado tem razão. A regra de bolso: você só está autorizado a discordar depois de defender a posição contrária tão bem que quem a defende reconheceria a descrição como justa."
+  ],
+  [
+   "Como tomar uma decisão importante sem ter todas as informações?",
+   "Três ferramentas ajudam. Primeiro, separe o reversível do irreversível: o que tem volta, como um estágio ou um curso que dá para trancar, se decide rápido; o que não tem, como dívida longa ou contrato com multa alta, merece calma, conselho e cenário pessimista. Segundo, olhe o custo do erro, e não só a chance de dar certo: duas opções com a mesma probabilidade podem ter tombos de tamanhos muito diferentes. Terceiro, faça o teste mais barato antes de se comprometer, como gravar dez vídeos com o celular antes de comprar equipamento. O teste não decide por você, mas tira a decisão do escuro."
+  ],
+  [
+   "Como usar a IA para testar se meu argumento é bom?",
+   "Peça a ela a versão mais forte da posição contrária à sua. A máquina é boa nisso porque não tem apego às suas ideias, e você tem. O pedido pode ser simples: diga no que acredita e por quais motivos, e peça o melhor argumento possível contra você, sem ironia, apontando onde o seu raciocínio está mais fraco. Se não conseguir responder ao que ela levantar, sua posição não estava pronta. Mas leia a resposta com a mesma lupa usada para qualquer texto: separe fato de inferência, procure falácias e desconfie de números sem fonte, porque a máquina também erra e inventa."
+  ]
+ ],
+ "11-as-seis-regras-da-escrita": [
+  [
+   "Por que aprender a escrever se a IA escreve por mim?",
+   "Porque escrever não é transcrever um pensamento pronto: é o processo pelo qual o pensamento fica pronto. É no meio do parágrafo que você descobre que a ideia tinha um buraco. Se você entrega a confusão para a máquina embelezar, ela devolve um texto bonito com o mesmo buraco escondido, e você perde o alarme. Além disso, quem não sabe escrever não sabe avaliar o que a máquina escreveu: acha tudo ótimo porque está bem formatado e assina embaixo do que não entende. Quem sabe escrever encontra em minutos o parágrafo que não diz nada e a conclusão que não sai dos dados."
+  ],
+  [
+   "Como escrever um texto mais claro e direto?",
+   "Seis regras resolvem a maior parte dos problemas. Frase curta: corte em duas a que passa de três linhas. Voz ativa: a diretoria decidiu vale mais do que a decisão foi tomada pela diretoria. Verbo forte no lugar do rodeio: fazer uma análise é analisar. Corte o advérbio: essencial é mais forte do que extremamente importante. Conclusão primeiro: se a pessoa ler só a primeira frase, ela já sabe o que você quer? E, por fim, corte 20% do texto depois de pronto, tirando repetições e aquecimentos. Nenhuma regra exige talento ou palavra difícil, só decisão. E leia em voz alta antes de enviar: o que trava na boca está mal escrito."
+  ],
+  [
+   "Como usar ferramentas de IA para escrever sem perder a habilidade?",
+   "O segredo está na ordem. A ordem que atrofia é pedir o texto, ajustar e enviar: você nunca formulou o pensamento, só aprovou o de outro. A ordem que desenvolve é escrever você o rascunho, mesmo bagunçado, depois pedir crítica, e não substituição, com perguntas como onde este texto está confuso ou o que um leitor desconfiado contestaria, e então reescrever. Assim a máquina vira editora severa, nunca autora. Ao longo de anos, essa é a diferença entre quem sabe pensar e quem só sabe pedir. E, quando o texto for majoritariamente da máquina, declare: você precisa conseguir defender cada frase que assina."
+  ]
+ ],
+ "12-os-tres-textos": [
+  [
+   "Como escrever um e-mail profissional?",
+   "Comece pelo assunto, que deve descrever o conteúdo. Nada de Olá ou Dúvida; algo como orçamento do projeto e prazo. Quem recebe dezenas de e-mails decide o que abrir pelo assunto, e é por ele que o e-mail será achado na busca depois. No corpo, a primeira frase traz o pedido, o meio traz o contexto mínimo para decidir, não a história inteira, e o fim traz o prazo ou o próximo passo, em no máximo quatro parágrafos. Corte o preâmbulo do tipo espero que esteja tudo bem, porque ele ocupa a linha mais valiosa. Ser cordial é ser claro e não desperdiçar o tempo de quem lê."
+  ],
+  [
+   "Como cobrar um cliente que não pagou sem parecer chato?",
+   "Cobrar o que é seu não é constrangedor; é parte do trabalho, e quem não cobra trabalhou de graça. Uma boa mensagem de cobrança cabe em três frases. Primeiro, o fato objetivo, sem adjetivo nem acusação, dizendo que a nota venceu e o pagamento ainda não consta. Depois, uma oferta de facilitação, como reenviar o boleto. Por fim, o próximo passo com data, por exemplo propor uma ligação na manhã seguinte. Evite pedir desculpas por incomodar ou dizer que sabe que a pessoa está ocupada: isso enfraquece a cobrança e, curiosamente, deixa quem recebe mais desconfortável."
+  ],
+  [
+   "Como pedir ajuda ou mentoria a alguém que não conheço?",
+   "Use cinco partes: quem você é, em uma linha; como chegou até a pessoa, citando algo específico que ela fez; o que você quer, de forma específica e pequena; por que escolheu essa pessoa; e uma saída fácil no final. Elogio genérico serve para qualquer um e não convence ninguém. Pedir 20 minutos para entender a rotina de uma profissão funciona muito melhor do que pedir orientação de carreira, porque a pessoa sabe quanto vai custar. Dizer que entende se não der tira o peso do não, e quem não se sente encurralado fica mais à vontade para dizer sim."
+  ]
+ ],
+ "13-narrativa-que-prende": [
+  [
+   "Como contar uma história que prende a atenção?",
+   "Use quatro elementos na ordem: situação, como as coisas estavam; tensão, o que quebrou o equilíbrio; ação, o que foi feito; e resultado, o que mudou e o que se aprendeu. A tensão é o motor: sem ela, você tem só uma descrição, e ninguém se impressiona com o que você fez sem saber qual problema enfrentava. O cérebro guarda histórias muito melhor do que listas, por isso a turma lembra da apresentação que contou uma história, e não da que leu tópicos. Narrativa não precisa ser longa, precisa estar na ordem certa. Até um relatório de projeto cabe em quatro frases, uma para cada elemento."
+  ],
+  [
+   "Como responder “me fale sobre você” numa entrevista de emprego?",
+   "Troque a cronologia pela narrativa. Quase todo candidato responde com uma lista de datas, nasci, estudei, trabalhei, que informa mas não mostra quem você é nem o que faz quando as coisas apertam. A narrativa segue o caminho eu era assim, aconteceu isto, fiz aquilo, hoje sou assim. Por exemplo: você editava vídeo por diversão, a loja onde trabalhava precisava divulgar uma promoção sem verba, você fez os vídeos num fim de semana e ali entendeu o que queria fazer. A última parte liga a história à vaga. Quem responde assim é lembrado ao fim de um dia de entrevistas."
+  ],
+  [
+   "Posso aumentar um pouco a história para impressionar?",
+   "Não. Narrativa organiza a verdade, não a substitui. No momento em que você inventa a tensão ou infla o resultado, deixou de comunicar e passou a mentir, e isso destrói valor muito mais rápido do que constrói. Há também um motivo prático: quem ouve uma boa história faz perguntas sobre ela, e a segunda pergunta derruba uma tensão inventada. E a história não precisa ter final feliz: se o projeto não deu certo, troque o resultado por não funcionou, e eu aprendi isto. Se você acha que não tem história, pergunte o que foi difícil no último ano, o que deu errado e você consertou ou o que resolveu sem ninguém pedir."
+  ]
+ ],
+ "14-falar-de-pe": [
+  [
+   "Como perder o medo de falar em público?",
+   "O medo diminui por repetição, não por convencimento. Use exposição gradual: fale primeiro para 3 pessoas, depois para 15, depois para 50, em vez de estrear diante de 200. Decore só o começo e o fim, e improvise o meio, porque decorar a fala inteira faz um esquecimento derrubar tudo. Dê o nome certo à ativação: coração acelerado e mãos frias são quase iguais à empolgação, e dizer a si mesmo estou empolgado ajuda de verdade. Coloque o foco em quem ouve, porque o nervosismo se alimenta de pensar em si mesmo. E lembre que quase todo mundo na plateia sabe como você se sente e está torcendo por você."
+  ],
+  [
+   "Como montar uma apresentação curta de três minutos?",
+   "Divida em quatro partes. Nos primeiros 15 segundos, a fisgada: uma pergunta, um número inesperado ou uma cena concreta, nunca bom, eu vou falar sobre. Nos 30 seguintes, a tensão: por que aquilo importa e para quem. Depois, 90 segundos de corpo com no máximo três pontos, que é o limite do que alguém guarda de uma fala curta. Nos últimos 30, o fechamento: volte à fisgada e diga o que você quer que aconteça agora, terminando num pedido ou numa imagem. Prepare a fala inteira antes dos slides; slide feito primeiro vira muleta. No corpo, use pausa, olhar para uma pessoa por frase, pés plantados e respiração baixa."
+  ],
+  [
+   "O que fazer quando fazem uma pergunta difícil depois da apresentação?",
+   "Ouça até o fim, mesmo com vontade de responder antes. Depois reformule a pergunta para confirmar que entendeu: isso dá tempo para pensar e desarma o tom, porque mostra que você levou a pergunta a sério. Responda exatamente o que foi perguntado, porque desviar é percebido na hora e custa mais do que uma resposta fraca. Se não souber, diga que não sabe, que vai verificar e responde até amanhã, e cumpra. Um não sei bem colocado aumenta a credibilidade, enquanto uma resposta inventada, quando descoberta, destrói tudo o que você disse. E explique o raciocínio sem se justificar com ansiedade."
+  ]
+ ],
+ "15-ler-livros": [
+  [
+   "Por que ler livros se a IA resume qualquer livro em segundos?",
+   "Porque o resumo entrega a conclusão e a leitura entrega o processo mental de chegar até ela. O enredo de Crime e Castigo cabe numa linha, mas as 400 páginas colocam você dentro da cabeça de alguém que se convence de que tem direito de fazer algo indefensável. Anos depois, quando alguém montar uma justificativa elaborada para algo errado, você reconhece o padrão. Isso é repertório, a matéria-prima do julgamento. A leitura longa também treina a atenção, que está ficando rara, melhora a sua própria escrita e, pela ficção, deixa você viver por dentro a experiência de muitas outras pessoas."
+  ],
+  [
+   "Como criar o hábito de ler livros?",
+   "Quatro regras sustentam o hábito. Tenha meta de tempo, não de quantidade: 30 minutos por dia rendem mais em dois anos do que prometer 50 livros por ano. Abandone o livro ruim sem culpa: se não engatou em 50 páginas, largue, porque terminar por obrigação destrói o hábito. Anote uma frase por capítulo com as suas palavras, já que reformular obriga a compreender. E alterne ficção e não ficção: a primeira treina repertório humano, a segunda treina modelo de mundo. O bônus é reler: um livro lido aos 17 e relido aos 25 parece outro, porque você mudou."
+  ],
+  [
+   "Como usar a IA para estudar um livro sem trapacear?",
+   "O problema não é usar a máquina na leitura, é usá-la no lugar da leitura. A regra é simples: se o uso acontece antes ou no lugar de ler, atrofia; se acontece durante ou depois, amplifica. Bons usos: discutir com ela o capítulo difícil que você acabou de ler e pedir que aponte o que passou batido, pedir o contexto histórico de uma obra antes de começar e pedir outros títulos que dialoguem com o livro. O uso mais subaproveitado é pedir que a ferramenta faça perguntas a você sobre o livro, em vez de dar respostas prontas."
+  ]
+ ],
+ "16-idioma-para-participar": [
+  [
+   "Vale a pena aprender inglês se existe tradutor automático?",
+   "Vale, mas por outro motivo. A tradução automática resolveu o consumo: dá para ler um artigo ou assistir a uma palestra legendada sem falar a língua. Ela não resolveu a participação. Negociação, entrevista, reunião e conversa de corredor acontecem ao vivo e não toleram o atraso do tradutor, e é nelas que se fecha negócio e se recebe convite. Além disso, confiança não atravessa tradução: humor e hesitação se perdem, e a conversa traduzida passa informação, não pessoa. Uma segunda língua também ensina outro jeito de organizar problemas, e fluência real ainda é diferencial forte no Brasil."
+  ],
+  [
+   "Qual a melhor forma de aprender inglês sozinho hoje?",
+   "Fale desde o primeiro dia, porque ninguém fica pronto estudando só gramática. A inteligência artificial é uma parceira de conversa infinita e sem julgamento: dá para conversar por voz, errar e repetir a mesma frase várias vezes sem constranger ninguém. Peça a correção depois da conversa, não durante, para não matar a fluência. Mas não abandone o humano: gente real fala rápido, tem sotaque e interrompe. A combinação é máquina para volume e humano para realidade. Viva parte da vida no idioma, com as séries, canais e jogos que você já escolheria, priorizando ouvir. E pense em tempo: 30 minutos por dia superam um intensivo de três meses."
+  ],
+  [
+   "Preciso falar inglês fluente para trabalhar remoto para fora?",
+   "Você não precisa emigrar nem ter sotaque perfeito, mas precisa conseguir sustentar uma reunião de uma hora sem travar. Fluência funcional em inglês ainda é de uma minoria estreita no Brasil, e isso vale dinheiro: um jovem competente que fala a língua disputa vagas e clientes com orçamento em moeda forte. O erro mais comum é esperar estar pronto para começar a falar. Isso nunca acontece, e o adiamento vira permanente. Quem trava por vergonha de errar leva anos a mais do que quem erra em voz alta desde a segunda semana."
+  ]
+ ],
+ "17-atencao-e-trabalho-profundo": [
+  [
+   "Como parar de se distrair com o celular?",
+   "Primeiro, entenda que não é uma disputa de força de vontade: os aplicativos são projetados por equipes profissionais para aumentar o tempo que você passa neles, com rolagem infinita, vídeo automático e bolinha vermelha. A saída é não entrar no ringue. Crie atrito: tire da tela inicial os apps que mais roubam tempo, saia da conta e deixe o celular em outro cômodo durante o estudo, porque o impulso passa se não for atendido em dois segundos. Desligue as notificações que não vêm de pessoas. E não olhe o telefone na primeira hora do dia, para não começar o dia reagindo à agenda dos outros."
+  ],
+  [
+   "O que é trabalho profundo?",
+   "Trabalho profundo é o que exige concentração sem interrupção e produz valor difícil de copiar: estudar algo difícil, escrever, resolver um problema complexo, projetar alguma coisa. Trabalho raso é logística, como responder mensagem, organizar e agendar: necessário, mas não constrói nada, e a máquina já faz boa parte dele. O erro quase universal é deixar o raso ocupar as melhores horas, porque ele é fácil e dá sensação de produtividade. Você termina o dia exausto, com a caixa de entrada limpa e sem ter avançado no que importa. Ocupado não é o mesmo que produtivo."
+  ],
+  [
+   "Como estudar com mais foco e render mais?",
+   "Reserve duas horas de trabalho profundo por dia, no seu melhor horário, antes de qualquer tarefa rasa. Sustentado por um ano, isso rende mais do que muitas horas picotadas. Antes do bloco, decida uma única tarefa concreta, como resolver a lista de física, e não apenas estudar. Celular em outro cômodo, notificações desligadas e nada de trocar de tarefa até o fim; se vier a vontade de checar algo, anote num papel ao lado. Para descobrir seu melhor horário, observe a si mesmo por duas semanas. O segredo é mudar o ambiente, não a personalidade, porque o ambiente continua funcionando quando você está cansado."
+  ]
+ ],
+ "18-sistema-minimo-e-resiliencia": [
+  [
+   "Como ser produtivo sem depender de motivação?",
+   "Motivação oscila; sistema funciona também nos dias ruins. Um sistema mínimo tem quatro peças. Captura: um único lugar para anotar tudo o que precisa ser feito, em vez de compromissos espalhados e na cabeça. Planejamento semanal: 30 minutos no mesmo dia e hora para escolher as três coisas que importam na semana. Uma coisa por dia: a tarefa que faz o dia valer a pena, feita primeiro. E revisão do que falhou, sem julgamento moral: item que volta por quatro semanas ou deve ser apagado ou quebrado em partes menores, como trocar estudar matemática por fazer 10 exercícios de porcentagem na terça."
+  ],
+  [
+   "Como lidar com críticas e fracassos sem se abalar?",
+   "O que define o estrago de uma crítica é a interpretação. Este trabalho ficou ruim é uma informação que mostra o que corrigir; eu sou ruim é uma sentença que só paralisa. Três práticas ajudam. Peça crítica específica: qual foi a parte mais fraca disso produz mais informação do que o que você achou. Separe o momento de ouvir do de decidir, deixando um dia de distância, porque nem toda crítica está certa. E registre o que deu certo, já que a memória guarda o fracasso e apaga o acerto. Se a sobrecarga ou o desânimo não passam, procurar ajuda profissional é uma decisão inteligente."
+  ],
+  [
+   "Dormir menos para estudar mais vale a pena?",
+   "Na maior parte das vezes, não. Dormir pouco é déficit, não dedicação: ele cobra juros em atenção, humor e memória, e nenhuma técnica de produtividade compensa sono insuficiente crônico. Entre estudar mais uma hora e dormir mais uma hora, dormir costuma vencer. O corpo funciona como infraestrutura de desempenho: movimento regular melhora atenção, humor e sono, e alimentação e hidratação afetam a energia de forma direta. Energético e cafeína em excesso emprestam energia do dia seguinte com juros altos, e o álcool piora a qualidade do sono. Para necessidades específicas, o caminho é procurar um profissional de saúde."
+  ]
+ ],
+ "19-o-que-a-ia-e": [
+  [
+   "Como funciona a inteligência artificial que escreve textos?",
+   "Por trás dessas ferramentas há um modelo de linguagem: um sistema treinado sobre uma quantidade imensa de texto para prever qual continuação é mais plausível, dado tudo o que veio antes. Ele não sabe as coisas como uma pessoa sabe e não consulta um banco de fatos verificados; produz a sequência de palavras mais coerente com o padrão que aprendeu. Por isso é excelente onde há padrão forte, como reescrever com clareza, organizar ideias, traduzir e resumir. Para usá-lo bem, você não precisa de matemática, mas de um modelo mental correto, como quem aprende a dirigir sem saber projetar o motor."
+  ],
+  [
+   "Por que o ChatGPT e outras IAs inventam informações?",
+   "Porque, onde não há padrão forte, como um número específico, o nome de uma decisão judicial, uma data pouco conhecida ou a referência de um artigo, o modelo produz mesmo assim a continuação mais plausível, e plausível não é verdadeiro. Isso se chama alucinação. Ele não está mentindo no sentido humano; está fazendo aquilo para que foi treinado. Pior: não existe um mecanismo confiável de dúvida embutido, então o tom é igualmente seguro no acerto e no erro. A referência inventada parece tão boa quanto a verdadeira, e a fluência deixou de indicar confiabilidade. É como o ponto cego do carro: está em todo modelo."
+  ],
+  [
+   "Como tirar respostas melhores da inteligência artificial?",
+   "Dê contexto. A máquina só sabe o que você contou, mais o que aprendeu no treinamento: não conhece o seu negócio, os seus números, as suas restrições nem o que foi combinado ontem. O que você não contar ela preenche com o genérico, ou com o inventado. Um pedido genérico devolve algo genérico; o mesmo pedido com a situação, os limites e os problemas anteriores devolve algo de outra ordem de grandeza. Mesmo assim, trate o bom resultado como ponto de partida. Quem assina deve conferir tudo o que for específico, como número, nome, data e citação, e desconfiar do tom seguro, que não prova nada."
+  ]
+ ],
+ "20-prompt-estruturado": [
+  [
+   "Como escrever um bom prompt para a IA?",
+   "Use cinco elementos. Função: quem a máquina deve ser, por exemplo um analista financeiro de pequenos negócios, o que define as lentes da resposta. Objetivo: a decisão que você precisa tomar e para quem é a resposta. Contexto: os dados reais, como números, época, concorrência e restrições; é onde quase todo mundo falha. Regras: não invente números que eu não forneci, pergunte se faltar informação e defina o formato da saída. Tarefa: o pedido específico, começando por um verbo claro como liste, compare ou monte. A qualidade do que sai depende do enquadramento do que entra, não de pedir por favor."
+  ],
+  [
+   "Como usar a IA para estudar para uma prova?",
+   "A mesma estrutura de prompt serve para estudar. Defina a função, como um professor paciente de matemática do ensino médio. Diga o objetivo, por exemplo estar seguro para a prova de sexta. Dê o contexto: você entende as contas, mas trava quando o problema vem escrito em forma de texto. Coloque regras: não dê a resposta pronta, faça perguntas e mostre onde você errou. E a tarefa: montar 10 problemas em ordem crescente de dificuldade, um de cada vez. Assim a ferramenta trabalha como treinadora, e não como quem faz o dever por você."
+  ],
+  [
+   "Por que a primeira resposta da IA costuma ser genérica?",
+   "Porque a primeira resposta é quase sempre a versão mediana do assunto. As boas aparecem na terceira ou quarta rodada, depois que você dá mais contexto, contesta, pede alternativas e aponta o que não serviu, com frases como isso está genérico, meu público é outro, ou você esqueceu que eu trabalho sozinho. Quem para na primeira usa só uma fração da ferramenta e conclui que ela é limitada. Duas técnicas ajudam: dar dois exemplos bons e dois ruins do que você quer, que comunicam o tom melhor que qualquer adjetivo, e pedir que ela analise passo a passo antes de responder, para você poder auditar o caminho."
+  ]
+ ],
+ "21-verificacao-e-responsabilidade": [
+  [
+   "Quem é responsável por um erro cometido pela IA?",
+   "Quem assinou. A frase a inteligência artificial escreveu não funciona como defesa no trabalho, na faculdade nem na Justiça. Já houve advogados punidos por citar decisões que não existiam, estudantes reprovados por bibliografia inventada e empresas constrangidas por dados fabricados. Em todos os casos, a ferramenta fez o que sempre faz, produzir o plausível, e faltou alguém fazer a parte humana. O advogado não errou por usar a ferramenta, e sim por não abrir a decisão que citou. A regra não tem exceção: você responde por tudo o que entrega, independentemente de quem produziu."
+  ],
+  [
+   "Como verificar se uma resposta da IA está correta?",
+   "Siga cinco passos. Um: confira número, nome, data, lei e citação na fonte primária, sempre. Dois: se a máquina cita uma fonte, abra a fonte e veja se ela existe e diz aquilo; a alucinação mais perigosa é a fonte real citada dizendo o que não diz. Três: pergunte como ela chegou naquilo, para expor o caminho. Quatro: peça que argumente contra a própria resposta; se a contestação for mais forte, havia um problema. Cinco: aplique o teste do especialista, perguntando se um profissional experiente da área concordaria. Se você não consegue responder, não tem condição de assinar sozinho."
+  ],
+  [
+   "Que informações não devo colocar no ChatGPT ou em outras IAs?",
+   "Numa ferramenta de uso geral, nunca coloque dados pessoais de terceiros, como nome com CPF, endereço, telefone ou dado de saúde; informação sob sigilo profissional; segredo comercial de outra pessoa ou empresa; senhas e credenciais; ou documento protegido por acordo de confidencialidade. Há duas razões: a LGPD responsabiliza quem trata dado pessoal sem base legal, e você não controla o que acontece com aquilo depois. O caminho é anonimizar: troque nomes por códigos como cliente 1 e cliente 2, remova telefone e documento e, se preciso, use valores proporcionais. A máquina precisa da estrutura do problema, não da identidade das pessoas."
+  ]
+ ],
+ "22-automacao": [
+  [
+   "Como começar a automatizar tarefas repetitivas?",
+   "Comece escrevendo o passo a passo do processo com detalhe suficiente para um estranho executar igual. Isso revela três coisas: você não sabia exatamente o que fazia, existem exceções nunca formalizadas e há passos inúteis. Depois, use o vocabulário básico. Gatilho é o que dispara, como um horário ou um formulário preenchido. Condição é a bifurcação, se isto, então aquilo. Ação é o que é feito, como enviar ou gravar. Exceção é o que acontece quando algo dá errado. Somando variável, um valor que muda, e repetição, fazer o mesmo para cada item, você consegue conversar com qualquer sistema ou programador."
+  ],
+  [
+   "Quando vale a pena automatizar uma tarefa?",
+   "Compensa quando a tarefa é frequente, repetitiva, tem regra clara, o erro é detectável e o volume justifica o tempo de construção. Não compensa quando é rara, exige julgamento a cada caso, a regra muda toda hora ou manter custa mais do que economiza. Faça a conta: tempo de construção dividido pelo tempo economizado por semana dá as semanas até o retorno. Seis horas para economizar cinco minutos por semana levam 72 semanas para empatar. Duas armadilhas: automatizar um processo ruim, que só espalha a bagunça em escala, e escolher a ferramenta antes do processo. Simplifique primeiro e comece pelo que dói."
+  ],
+  [
+   "Por que uma automação falha sem ninguém perceber?",
+   "Porque não tratou as exceções. O iniciante pensa só no caso feliz; o profissional pergunta antes o que acontece se o formulário chegar sem telefone, se a data vier em branco ou se o serviço estiver fora do ar. Automação sem exceção falha em silêncio, e o erro se acumula por semanas até alguém notar. Para evitar isso, teste com dados feios, como campo vazio, acento, valor negativo e nomes escritos de jeitos diferentes. Crie um aviso de falha, documente em cinco linhas o que ela faz e o que fazer se parar, e desligue a automação que ninguém usa mais."
+  ]
+ ],
+ "23-dados-e-decisao": [
+  [
+   "Qual a diferença entre indicador de resultado e indicador de esforço?",
+   "Indicador de resultado mede o que já aconteceu, como a receita do mês ou o número de vendas: chega tarde e não diz o que fazer. Indicador de esforço mede o que você controla, como contatos feitos ou propostas enviadas: chega cedo e permite agir. Quem acompanha só resultado descobre o problema quando já não dá para corrigir; quem acompanha só esforço se ilude com atividade que não vende. O par certo é um indicador de resultado e dois ou três de esforço. Quem vende brigadeiro na escola, olhando só a venda, descobre na sexta que a semana foi ruim; olhando as ofertas, percebe na terça e ainda corrige."
+  ],
+  [
+   "O que é métrica de vaidade?",
+   "É o número que sobe e faz você se sentir bem sem mudar nada, como seguidores, visualizações e curtidas. Métrica de decisão é o número que, quando muda, faz você agir diferente. O teste é simples: se este indicador cair pela metade, eu mudaria alguma coisa? Se a resposta for não, é vaidade. E não precisa de muitos números: o erro comum é montar um painel com dezenas de indicadores, sentir-se organizado e não mudar nada. Três indicadores acompanhados toda semana valem mais do que vinte olhados de vez em quando."
+  ],
+  [
+   "Como transformar dados em uma recomendação útil?",
+   "Uma recomendação útil tem quatro elementos. Primeiro, o que os dados mostram, numa frase sem jargão, como a ocupação de terça e quarta está 30 pontos abaixo do resto da semana. Segundo, por que isso importa, em dinheiro. Terceiro, o que fazer, de forma específica e executável: melhorar a divulgação não é ação; criar uma tarifa de meio de semana com desconto definido é. Quarto, como saber se funcionou, com prazo, dizendo antes qual resultado provaria que a proposta estava errada. É esse último elemento que distingue o profissional e torna alguém confiável. Ter o dado não é o trabalho; transformá-lo em decisão é."
+  ]
+ ],
+ "24-vender-e-perguntar": [
+  [
+   "Como aprender a vender se eu sou tímido?",
+   "Vender bem não é falar bem; é perguntar melhor do que falar. O bom vendedor descobre se existe encaixe entre um problema e uma solução e conduz a conversa até a decisão, e metade do trabalho é dizer com honestidade que algo não serve para aquela pessoa. A imagem do vendedor insistente descreve o mau vendedor. O trabalho começa com perguntas e escuta: anotar, não interromper, repetir com suas palavras para confirmar e ficar em silêncio depois que o outro parou de falar, porque a informação mais valiosa costuma vir nos segundos seguintes. É a habilidade que funciona em qualquer setor, economia e idade."
+  ],
+  [
+   "Que perguntas fazer para entender a necessidade de um cliente?",
+   "Use quatro camadas de pergunta. Situação: como as coisas funcionam hoje, por exemplo como o salão marca os horários. Problema: onde dói, o que mais incomoda e o que costuma dar errado. Implicação: quanto essa dor custa, como quantas horas ficam vazias por mês quando a cliente falta. Valor: como seria se o problema estivesse resolvido. A implicação é a etapa mais pulada e a mais importante: quando você calcula o problema pelo cliente, soa como argumento de venda; quando ele mesmo faz a conta, vira convicção. Só depois do diagnóstico apresente algo, e apresente pouco, só o que responde ao que ele disse."
+  ],
+  [
+   "Qual o erro mais comum de quem está começando a vender?",
+   "Apresentar a solução antes de entender o problema. O erro nasce da ansiedade de provar que sabe: a pessoa fala dez minutos, o cliente desliga mentalmente no segundo e a proposta responde a uma dor que não existia. Outro erro é despejar todos os recursos de uma vez; sete funcionalidades para um único problema diluem a solução, e falar do que não foi pedido prova que você não ouviu. O caminho é diagnosticar antes, com perguntas, e depois apresentar exatamente o que responde ao que foi dito. Essa sequência serve também para vender uma ideia ao chefe, um projeto ao professor ou você mesmo numa entrevista."
+  ]
+ ],
+ "25-as-cinco-objecoes": [
+  [
+   "Como responder quando o cliente diz que está caro?",
+   "Não baixe o preço no primeiro empurrão: isso ensina que o seu primeiro número era falso, e o cliente vai pedir desconto de novo. A objeção de preço quase nunca é sobre o valor absoluto, e sim sobre o valor percebido ser menor que o preço pedido. A resposta é reancorar no custo do problema que o próprio cliente dimensionou no diagnóstico. Se a dona do salão já disse que perde oito horas por mês com faltas, o seu preço passa a ser comparado com essas horas, e não com zero. Por isso o diagnóstico é tão importante: quem pulou essa etapa não tem a que reancorar e só pode descontar."
+  ],
+  [
+   "Quais são as objeções mais comuns em uma venda?",
+   "Quase toda objeção é variação de cinco. Preço, o está caro, que se responde reancorando no custo do problema. Prazo, o agora não é o momento: se for verdade, combine uma data de retomada e cumpra; se for desculpa, pergunte se faria caso fosse o momento certo. Confiança, o não sei se você dá conta, que se responde com prova, como caso anterior, demonstração ou um teste pequeno de baixo risco, nunca com adjetivo. Prioridade, o tenho coisas mais urgentes, que pede voltar ao diagnóstico e perguntar o que acontece se nada mudar em seis meses. E autoridade, o preciso falar com meu sócio, que se evita perguntando logo no início quem mais decide."
+  ],
+  [
+   "Como lidar com um não em vendas sem desanimar?",
+   "Entenda que o não faz parte da conta. Todo vendedor experiente conhece a própria taxa de conversão: se 2 em cada 10 conversas viram venda, ele sabe que precisa de 10 conversas. Assim, cada recusa vira um passo previsível, não um veredito sobre você. Não leve para o pessoal, porque o não quase sempre é sobre momento, orçamento ou prioridade. Pergunte o que pesou na decisão e ouça sem argumentar. E preserve a relação: o não de hoje pode ser o sim de um ano e meio adiante. No acompanhamento, cada contato deve entregar algo útil, e não só cobrar resposta, com uma mensagem final que encerra com dignidade."
+  ]
+ ],
+ "26-negociacao": [
+  [
+   "Como negociar salário ou o valor de um freela?",
+   "Antes de tudo, saiba qual é a sua melhor alternativa se não houver acordo: outra vaga, continuar onde está, um freela que já paga parte das contas. Quem não sabe negocia com medo, e o medo aparece na voz e na pressa; quem tem alternativa negocia com serenidade, que já é poder de barganha. Muitas vezes a melhor preparação é aumentar as opções, porque duas propostas mudam a conversa. Depois, cuide da âncora: se você tem fundamento, diga o primeiro número; se não tem, deixe o outro falar primeiro perguntando quanto costumam pagar. Nunca ancore num valor que não consegue justificar."
+  ],
+  [
+   "O que é ancoragem em uma negociação?",
+   "É o efeito de o primeiro número mencionado condicionar toda a conversa seguinte, e ele funciona até com quem sabe que funciona. Se o vendedor de um celular usado abre com um valor alto, sua contraproposta passa a girar em torno daquele número. Por isso, quando você tem informação suficiente, vale ancorar primeiro, com fundamento. Quando não tem, faça o outro falar, perguntando qual valor ele tinha pensado; às vezes o número dele é maior do que o que você ia pedir. A regra de ouro é nunca ancorar num valor que não consegue justificar, porque a justificativa será pedida e a credibilidade cai na hora."
+  ],
+  [
+   "Qual a diferença entre persuasão e manipulação?",
+   "Persuasão é ajudar alguém a enxergar com clareza uma decisão boa para essa pessoa, com informação verdadeira e respeitando a autonomia dela. Manipulação é levar alguém a uma decisão que não tomaria se soubesse o que você sabe, usando urgência falsa, escassez inventada, omissão relevante ou pressão emocional, como o anúncio de só restam três unidades com estoque cheio. O teste é um só: se o cliente soubesse tudo o que você sabe, ainda compraria? Se não, é manipulação, qualquer que seja a técnica. Além de antiética, ela destrói valor: cliente enganado não volta e fala mal, e em mercado pequeno todo mundo conhece todo mundo."
+  ]
+ ],
+ "27-trabalhar-em-publico": [
+  [
+   "Como montar um portfólio sem ter experiência profissional?",
+   "Comece com o que você já faz e mostre o trabalho enquanto ele acontece, no nível em que você está. Todo problema que resolveu ou erro que entendeu é material, e o critério é ser verdadeiro e útil a quem está um passo atrás. Uma peça de portfólio cabe em quatro parágrafos: o problema, o que você fez, o resultado e o que aprendeu, incluindo o que deu errado. Quem só publica sucesso parece propaganda; quem conta onde errou parece alguém de verdade. Um jovem que documenta como organizou o estoque de uma padaria é mais interessante do que alguém com currículo genérico: o primeiro demonstra, o segundo só declara."
+  ],
+  [
+   "Por que é importante ter um nicho ou recorte profissional?",
+   "Porque quem tenta ser genérico para não perder oportunidade acaba lembrado para nada. Posicionamento é escolher um recorte específico o bastante para que alguém pense em você quando aquele problema aparecer: não sou de marketing, mas ajudo pousadas pequenas a depender menos de plataformas de reserva. Ninguém indica generalista, porque não há gatilho de memória; todo mundo indica especialista, porque o gatilho é o problema. O recorte não é permanente: você o escolhe para os próximos dois anos e ajusta conforme aprende. E vale lembrar: otimize por confiança, não por número de seguidores."
+  ],
+  [
+   "Vale a pena produzir conteúdo se a internet já tem conteúdo demais?",
+   "Vale, porque o gargalo mudou. Quando produzir era caro, quem produzia tinha vantagem; agora que produzir é quase de graça e muito conteúdo é gerado por máquina, sem rosto, o escasso é atenção e credibilidade: quem é essa pessoa, ela existe, já fez isso antes, alguém confia nela? O que conta não é o formato, e sim a reputação por trás dele. Reputação não pode ser automatizada, compõe juros e sobrevive à troca de tecnologia. Tenha também um lugar seu na internet, fora das plataformas, um perfil profissional decente e, antes de qualquer seleção, procure o próprio nome e limpe o que envergonha."
+  ]
+ ],
+ "28-rede-de-contatos": [
+  [
+   "Como fazer networking sendo jovem e sem experiência?",
+   "Rede não é ter muitos contatos ou seguidores; é o número de pessoas que, ao ouvir seu nome, lembram de uma vez em que você foi útil. Ela se constrói por acúmulo dessas interações, não distribuindo cartão em evento. Mesmo sem experiência, você tem o que oferecer: tempo, atenção, uma informação que a pessoa não viu, a apresentação entre duas pessoas que deveriam se conhecer, um aviso educado sobre um link quebrado no site dela. Quem só aparece pedindo é lembrado como custo; quem aparece dando é lembrado como pessoa. E cuidado com pontes queimadas: o colega de hoje pode ser quem lê o seu currículo amanhã."
+  ],
+  [
+   "Como mandar mensagem para um profissional que não conheço?",
+   "Use cinco partes: quem você é, em uma linha; como chegou até a pessoa, citando algo específico que ela fez; o pedido exato e pequeno; por que ela em particular; e uma saída fácil. Algo como: sou estudante, li sua entrevista sobre o setor, teria 20 minutos para três perguntas? Se não der, entendo. A mensagem vaga, de quem quer trocar uma ideia e pede um tempinho, quase nunca é respondida, não por falta de generosidade, mas porque não diz quanto vai custar nem o que preparar. O pedido específico e pequeno é respondido com uma frequência que surpreende quem nunca tentou."
+  ],
+  [
+   "O que fazer depois de uma conversa de networking?",
+   "Agradeça em até 24 horas dizendo o que especificamente foi útil, e não só obrigado pelo papo. Isso custa cinco minutos e prova que você prestou atenção. Depois, cerca de três meses mais tarde, faça um segundo contato contando o que você fez com o conselho e qual foi o resultado. Esse retorno é raríssimo, e é ele que transforma uma conversa em relacionamento, porque mostra que o tempo da pessoa não foi desperdiçado. Para se manter visível, escolha um formato que consiga sustentar por dois anos; texto costuma ser o melhor começo, por ser barato e mostrar bem o raciocínio."
+  ]
+ ],
+ "29-juros-compostos": [
+  [
+   "O que são juros compostos e por que começar cedo faz diferença?",
+   "Nos juros simples, o dinheiro cresce em linha reta. Nos compostos, o rendimento de um ano entra na conta e passa a render junto no ano seguinte, e o crescimento vira curva, como uma bola de neve que junta mais neve a cada volta. Por isso o tempo importa mais do que o valor: quem começa aos 20 guardando pouco pode terminar com mais do que quem começa aos 35 guardando três vezes mais por mês, só por ter mais anos de composição. O problema é que, nos primeiros anos, guardar parece inútil, e é aí que a maioria desiste. O que conta agora é o hábito, não o valor."
+  ],
+  [
+   "Pagar o mínimo da fatura do cartão é uma boa ideia?",
+   "Não. Pagar o mínimo é entrar no rotativo do cartão, uma das modalidades de crédito mais caras do Brasil, junto com o cheque especial. Os juros compostos funcionam nos dois sentidos: a mesma curva que faz o dinheiro guardado crescer faz a dívida explodir, e uma dívida dessas pode dobrar em prazos curtíssimos. Ninguém cai na armadilha de uma vez; cai um mínimo de cada vez, com a fatura voltando maior a cada mês. Se você não consegue pagar a fatura inteira, o problema é de gasto, e se resolve cortando, não financiando. O cartão é útil como meio de pagamento, com a fatura paga integralmente."
+  ],
+  [
+   "Devo investir ou quitar minhas dívidas primeiro?",
+   "Quite primeiro a dívida cara. Quitar uma dívida que cobra determinada taxa equivale a um investimento com aquele rendimento, sem risco e sem imposto, e nenhuma aplicação legal e segura rende o que o rotativo e o cheque especial cobram. Estudar investimentos com dívida cara em aberto é tentar encher um balde furado com uma colher: primeiro se tapa o furo, depois se enche o balde. Vale também desconfiar do parcelamento sem juros, que costuma ter juros embutidos; pergunte sempre o preço à vista. Isto são conceitos gerais, não recomendação para o seu caso; com valores relevantes, procure um profissional habilitado."
+  ]
+ ],
+ "30-orcamento-e-reserva": [
+  [
+   "Como começar a controlar meus gastos?",
+   "Antes de cortar, meça. Registre todos os gastos por 30 dias, no celular, numa planilha ou num caderno, incluindo o salgado do intervalo e o aplicativo de transporte. Faça isso sem julgar e sem tentar economizar, porque cortar no segundo dia faz o registro mostrar uma semana de exceção, e não a sua vida real. No 30º dia, some por categoria. A surpresa quase nunca está nos gastos grandes, e sim nos pequenos e repetidos, como lanche diário, taxa de entrega e assinatura esquecida. Depois de medir, defina uma taxa de poupança em porcentagem, automatize a separação no dia em que o dinheiro entra e corte primeiro os gastos recorrentes."
+  ],
+  [
+   "Para que serve uma reserva de emergência?",
+   "A reserva não existe para render; existe para impedir uma decisão ruim sob pressão. É o dinheiro que cobre alguns meses das suas despesas essenciais, guardado em aplicação de baixíssimo risco e liquidez imediata, ou seja, que vira dinheiro na mão rápido e sem prejuízo. Sem ela, um celular quebrado, um problema de saúde ou um mês sem trabalho empurram você para o crédito caro ou para resgatar um investimento de longo prazo no pior momento. Quem tem renda previsível precisa de menos meses; quem é autônomo ou tem renda variável, de mais. Para quem começa cedo, com poucas despesas fixas, o valor é pequeno."
+  ],
+  [
+   "Como saber se um investimento é golpe?",
+   "Use o triângulo risco, liquidez e retorno. Toda aplicação se descreve por essas três variáveis, e elas nunca vêm juntas: retorno alto vem com risco alto, prazo longo ou os dois, e segurança e liquidez custam rendimento. Por isso, quando alguém oferece retorno alto, segurança garantida e resgate a qualquer momento, só há duas possibilidades: a pessoa não entende do que está falando ou está mentindo. Você nem precisa entender a estratégia anunciada; basta perguntar qual lado do triângulo aquela oferta sacrifica. Se a resposta for nenhum, já sabe o que precisa. Isto é um critério geral, não recomendação de investimento."
+  ]
+ ],
+ "31-golpes-e-formalizacao": [
+  [
+   "Quais são os sinais de um golpe financeiro ou pirâmide?",
+   "Os disfarces mudam, mas a estrutura se repete em seis sinais. Rendimento fixo e alto, sem variação. Pressão de tempo, com oportunidade que fecha hoje e vagas limitadas. Recrutamento, quando você ganha mais trazendo gente, a assinatura da pirâmide. Opacidade, sem explicação clara de onde vem o dinheiro, escondida atrás de estratégia proprietária. Prova social encenada, com fotos de carros e viagens no lugar de demonstrativos auditados. E dificuldade de saída: tirar o dinheiro é sempre mais difícil do que colocar, embora no começo funcione justamente para você contar aos outros. Golpe não pega só desatento; pega gente inteligente que confia em quem indicou."
+  ],
+  [
+   "Como me proteger de golpes de investimento?",
+   "Três hábitos ajudam. Primeiro, verifique o registro da empresa na CVM, a Comissão de Valores Mobiliários, e no Banco Central antes de qualquer coisa; se ela não estiver lá, você já tem a resposta. Segundo, desconfie de indicação de conhecido, porque é assim que esses esquemas se espalham: quem indica geralmente também foi enganado e acredita de verdade, e por isso convence. Terceiro, a regra de ouro: não coloque dinheiro em nada que você não consiga explicar em três frases a outra pessoa, dizendo onde ele fica, por que rende e como sai. Se a explicação trava, a falta de clareza é deles, não sua."
+  ],
+  [
+   "Vale a pena abrir MEI para trabalhar como freelancer?",
+   "Para a maior parte dos jovens que prestam serviço, o MEI é a porta de entrada da formalização: cadastro de empresa simplificado, contribuição mensal fixa, emissão de nota, limite de faturamento anual e uma lista restrita de atividades permitidas. Trabalhar sem nota e sem contrato parece mais simples, mas cria três problemas: você não comprova renda para alugar ou conseguir crédito, fica sem proteção previdenciária em caso de acidente, doença ou maternidade e tem muito mais dificuldade para cobrar quem não pagou. Limites, valores e regras mudam com frequência, então confirme no Portal do Empreendedor e na Receita Federal, e considere uma conversa com um contador."
+  ]
+ ],
+ "32-as-sete-ideias": [
+  [
+   "Quais são as principais lições dos livros de finanças pessoais?",
+   "Sete ideias aparecem, com nomes diferentes, em praticamente todos os autores sérios. Pague-se primeiro: separe uma parte da renda antes de gastar. Ativo é o que põe dinheiro no seu bolso, e passivo é o que tira. Comportamento vence conhecimento técnico: paciência e consistência pesam mais que inteligência. Margem de segurança: nunca opere no limite do que os cálculos permitem. Riqueza é o que você não vê, porque é o que não foi gasto. Renda vem de resolver problemas. E círculo de competência com horizonte longo: saiba onde seu conhecimento termina e avalie decisões em anos, não em meses."
+  ],
+  [
+   "Pai Rico, Pai Pobre ainda vale a pena ler?",
+   "A contribuição útil do livro de Robert Kiyosaki é a distinção prática entre ativo e passivo pelo fluxo de caixa: ativo traz dinheiro para você, passivo tira. Isso explica por que um carro ou um imóvel de uso próprio financiado parece riqueza e, na prática, tira dinheiro do bolso todo mês, e por que tanta gente com renda alta tem patrimônio baixo. Mas a ressalva é grande: o livro é forte no diagnóstico e fraco na prescrição. As histórias têm veracidade discutida, o desprezo por quem escolhe emprego formal é injusto e o incentivo a se endividar agressivamente para investir já destruiu muito patrimônio. Fique com a distinção e desconfie do resto."
+  ],
+  [
+   "Os livros de sucesso financeiro contam toda a verdade?",
+   "Não. Há três limites que eles costumam esconder. O primeiro é a sorte: quase todo livro de sucesso é escrito por quem deu certo, olhando para trás, o viés do sobrevivente em estado puro; os princípios melhoram suas chances, mas não garantem resultado. O segundo é o ponto de partida: quem começa sem dívida na família, com casa e sem sustentar ninguém joga outro jogo, e quem parte de mais longe tem mais mérito em cada avanço e precisa de mais paciência. O terceiro é que dinheiro é meio, não fim: serve para comprar autonomia, e quem persegue o número sem saber para quê costuma descobrir que não era aquilo."
+  ]
+ ],
+ "33-como-um-negocio-ganha-dinheiro": [
+  [
+   "Como entender se um negócio é bom ou não?",
+   "Todo negócio, do carrinho de pipoca à empresa gigante, se explica por seis peças. Faça seis perguntas: que problema ele resolve, quem paga e quem decide, por onde o cliente chega, como o dinheiro entra, quanto custa existir e o que impede alguém de copiar. A proposta de valor é o problema resolvido, não o produto: uma pousada vende a viagem funcionar, não o quarto. Quem paga e quem decide nem sempre coincidem, como na escola de inglês em que o aluno avalia e a família paga. E o ativo-chave pode ser marca, localização ou a confiança do bairro, algo que ninguém copia em um mês."
+  ],
+  [
+   "Quais são os principais modelos de receita de uma empresa?",
+   "Há quatro modelos principais. Venda única: o caixa entra rápido, mas o esforço comercial recomeça a cada venda. Recorrência, como assinatura ou mensalidade: o caixa fica previsível, o esforço se concentra em manter o cliente, e é o modelo que mais valoriza uma empresa. Intermediação: você conecta duas pontas e fica com uma parcela, o que escala bem, mas cria dependência de quem detém o cliente. Licenciamento: você constrói uma vez e cobra pelo uso muitas vezes, mas precisa de algo realmente diferenciado. Duas academias na mesma rua, uma de plano mensal e outra de aula avulsa, vivem lógicas econômicas completamente diferentes."
+  ],
+  [
+   "É arriscado vender só por plataformas e aplicativos?",
+   "É. Quando a plataforma detém o cliente, ela detém o poder de definir o preço, e a comissão tende a subir com o tempo. Quem depende inteiramente de um intermediário está, na prática, alugando o próprio negócio. O padrão aparece na pousada que só vende por site de reserva, no motorista que só trabalha por aplicativo, no criador que só existe numa rede social e no vendedor que só vende no marketplace. Por isso, construir um canal próprio em paralelo não é só questão de margem, é questão de sobrevivência. Vale reconhecer esse desenho cedo, antes de construir tudo em terreno de outra pessoa."
+  ]
+ ],
+ "34-margem-e-preco": [
+  [
+   "Como calcular o ponto de equilíbrio de um pequeno negócio?",
+   "Primeiro separe os custos. Custo variável cresce com a venda, como matéria-prima, embalagem e taxa de cartão. Custo fixo chega todo mês de qualquer jeito, como aluguel e sistema. A margem de contribuição é o preço menos o custo variável, e o ponto de equilíbrio é o custo fixo dividido por essa margem. No exemplo do brigadeiro vendido a R$ 5, com R$ 2 de custo variável, sobram R$ 3 por unidade; com R$ 600 de custo fixo por mês, são 200 brigadeiros para empatar. O 201º é o primeiro que coloca dinheiro no bolso. Com esse número, você para de sentir e começa a contar."
+  ],
+  [
+   "Como definir o preço de um produto ou serviço?",
+   "Há três jeitos. Por custo: somar o custo e acrescentar uma margem, o que é seguro, mas ignora quanto o cliente pagaria e costuma deixar dinheiro na mesa. Por concorrência: olhar o mercado e se posicionar, útil como referência, mas perigoso como método, porque você pode copiar o preço de quem está perdendo dinheiro. Por valor percebido: quanto vale, para o cliente, o problema resolvido, a abordagem mais rentável e a mais difícil, porque exige entender o cliente de verdade. Lembre também que preço comunica: preço muito baixo gera desconfiança sobre a qualidade e atrai quem vai embora no primeiro desconto maior."
+  ],
+  [
+   "Dar desconto ajuda a vender mais e ganhar mais?",
+   "Muitas vezes, não. O desconto come o lucro, não o preço. Se você vende por R$ 100 e sobram R$ 20 depois de pagar tudo, um desconto de R$ 10 não tira 10% do ganho: tira metade, porque os custos continuam os mesmos. Faça essa conta antes de negociar. O raciocínio inverso também vale: aumentar o preço reduz volume, mas pode aumentar o lucro, porque, se um aumento de 10% fizer perder 10% dos clientes, a receita fica parecida e você gasta e trabalha menos. E não esqueça que lucro não é caixa: vender a prazo e pagar fornecedor à vista pode quebrar um negócio lucrativo no papel."
+  ]
+ ],
+ "35-os-sete-pontos-do-contrato": [
+  [
+   "O que devo ler em um contrato antes de assinar?",
+   "Localize sete pontos. Objeto: o que exatamente está sendo contratado, com escopo e limite, porque objeto vago gera a maior parte dos conflitos. Preço e pagamento: valor, prazo, o que acontece se atrasar e quem paga impostos e taxas. Prazo e renovação: atenção à renovação automática. Rescisão: quem pode encerrar, com que aviso e com que custo. Multa: quanto custa descumprir para cada lado. Responsabilidade: quem responde pelo quê e até quanto. E foro: onde se discute em caso de conflito. Achando os sete, você já está à frente da maioria dos adultos. É orientação geral, não consultoria para o seu caso."
+  ],
+  [
+   "Quais cláusulas de contrato são perigosas?",
+   "Algumas cláusulas merecem lupa sempre que aparecem. Exclusividade sem contrapartida, quando você promete trabalhar só para aquela empresa e ela não promete nada. Não concorrência ampla, que impede você de atuar no próprio ramo por anos ou em qualquer lugar. Cessão total e definitiva de direitos autorais, quando o razoável seria uma licença de uso, algo que pega muito designer, fotógrafo e criador de conteúdo. E qualquer cláusula que permita a um lado só mudar os termos essenciais quando quiser. Também vale desconfiar de multa que pune só um dos lados e de foro em outra cidade, que pode encarecer demais a sua defesa."
+  ],
+  [
+   "Quando preciso de um advogado para revisar um contrato?",
+   "Sempre que for contrato de sociedade, documento com valor relevante para o seu patrimônio, cláusula de não concorrência ou exclusividade, cessão de direitos autorais, locação comercial ou qualquer situação em que você seja fiador ou avalista; ser fiador é a forma mais comum de um jovem herdar a dívida de outra pessoa. Provavelmente vale para o primeiro modelo que você vai usar muitas vezes, como o contrato padrão do seu freela. Para contratos de pequeno valor e baixo risco, ler os sete pontos costuma bastar. Duas regras de ouro: o que não está escrito não existe, e nunca assine sob pressão de tempo nem só porque confia na pessoa."
+  ]
+ ],
+ "36-formalizacao-lgpd-e-ia": [
+  [
+   "A LGPD vale para quem tem um negócio pequeno ou trabalha sozinho?",
+   "Vale. Se você usa nome, telefone ou foto de clientes para trabalhar, mesmo numa lista no celular, já está tratando dado pessoal, não importa o tamanho do que faz. A lei pede cinco cuidados. Ter uma base legal, que pode ser consentimento, execução de contrato, obrigação legal ou legítimo interesse. Respeitar a finalidade: o telefone dado para combinar a entrega de um bolo não autoriza incluir a pessoa numa lista de promoções. Coletar só o mínimo necessário, sem pedir CPF sem razão. Guardar com segurança e apagar quando não precisar mais. E responder ao titular, que pode pedir acesso, correção e exclusão."
+  ],
+  [
+   "Quais direitos do consumidor preciso respeitar ao vender pela internet?",
+   "Se você vende para pessoa física, o Código de Defesa do Consumidor se aplica, e desconhecer a lei não isenta. Quem compra fora do estabelecimento, pela internet ou telefone, tem direito de arrependimento dentro de um prazo legal contado do recebimento, sem precisar justificar. Produto ou serviço com defeito tem prazo para reclamação e obrigação de solução; sem solução no prazo, o consumidor escolhe entre troca, devolução do valor ou abatimento. A publicidade vincula: o que você prometeu no anúncio vira parte do contrato. E a informação precisa ser clara, com prazo de envio e frete mostrados antes do pagamento. É orientação geral; confirme as regras vigentes."
+  ],
+  [
+   "Posso usar textos e imagens gerados por IA no meu trabalho?",
+   "Pode, mas a responsabilidade é de quem entrega: se o texto que você assinou tem erro, dado falso ou informação inventada, o problema é seu. Pedir à ferramenta algo no estilo de alguém ou reproduzir material protegido não transforma aquilo em obra sua; usar personagem, marca, letra de música ou texto alheio sem autorização continua sendo infração. A autoria de conteúdo gerado por máquina é questão aberta, e em vários países obra sem contribuição criativa humana relevante tem proteção limitada. Não coloque dados de clientes em ferramenta de terceiro, declare o uso quando for relevante e nunca gere imagem ou voz de pessoa real sem autorização."
+  ]
+ ],
+ "37-execucao-e-retrospectiva": [
+  [
+   "Como tirar um projeto do papel?",
+   "Transforme o desejo em plano. Escreva a entrega final numa frase verificável, como ter 10 clientes pagantes até uma data, e não melhorar o marketing. Quebre em três a cinco marcos, que são estados alcançados, como site no ar com a página de preços, e não atividades. Identifique o caminho crítico, a sequência que define o prazo total, e estime com margem: some 50% à primeira estimativa, porque toda previsão humana é otimista. Depois, mantenha um ponto de controle semanal de 30 minutos perguntando o que foi entregue, o que travou e o que muda no plano, com sinais de alerta definidos antes."
+  ],
+  [
+   "O que delegar para a IA e o que fazer eu mesmo?",
+   "A máquina faz bem o primeiro rascunho, pesquisa ampla, síntese de material longo, tradução, geração de alternativas, código de rotina e organização de dados bagunçados. Faz mal o julgamento sobre o caso específico, a decisão com consequência real e tudo o que depende de conhecer as pessoas ou exige responsabilidade. Outra pessoa faz bem o que pede presença, relacionamento, ofício físico e contexto local. E você faz o que define o resultado: escolher o problema, definir o critério, decidir, verificar e responder. O erro caro é delegar à máquina justamente a parte que você deveria fazer para aprender; delegue a execução repetitiva e guarde a decisão."
+  ],
+  [
+   "Como fazer uma retrospectiva de projeto?",
+   "Use três colunas. Manter: o que funcionou e deve se repetir. Mudar: o que funcionou em parte e precisa de ajuste. Parar: o que não funcionou e não deve voltar. Seja específico, porque dizer que a comunicação foi ruim não gera ação, enquanto não avisei o cliente do atraso até três dias depois de saber gera. Olhe o processo, não a pessoa: pergunte o que no jeito de fazer permitiu o problema, e não de quem foi a culpa. Numa formatura, por exemplo, manter a planilha visível de quem pagou, mudar a confirmação do som e parar de decidir em grupo de 100 pessoas. Guarde as retrospectivas: elas viram portfólio."
+  ]
+ ],
+ "38-plano-de-doze-meses": [
+  [
+   "Como montar um plano de desenvolvimento pessoal para o próximo ano?",
+   "Divida o ano em quatro trimestres, cada um dependendo do anterior, na ordem pensar, operar, vender e empreender. No primeiro, a fundação: método de pensamento, escrita, leitura diária e uma rotina pessoal. No segundo, as ferramentas: um assistente de IA documentado, uma automação real e um painel de indicadores. No terceiro, o mercado: diagnósticos com clientes, uma venda conduzida até o fim, portfólio público, rede de contatos e plano financeiro. No quarto, a empresa: modelo econômico, contrato próprio e um projeto entregue com retrospectiva. A regra que atravessa tudo: cada trimestre termina em algo que outra pessoa pode ver, usar ou confirmar."
+  ],
+  [
+   "Por que eu perco a motivação poucos dias depois de começar algo?",
+   "Porque inspiração sem cronograma não muda nada: você sai de um vídeo ou palestra querendo mudar tudo e, dias depois, a vida está igual. O entusiasmo acaba, mais ou menos por volta do quadragésimo dia, e quem calibrou o plano por ele abandona tudo. O erro mais comum é tentar fazer tudo em três meses, no embalo. Prefira o ritmo que você sustenta num mês ruim, de prova, doença, briga em casa ou trabalho apertado: se o plano sobrevive a esse mês, sobrevive ao ano. E prenda cada etapa a uma entrega concreta, porque quem executou mostra, e quem só assistiu conta."
+  ],
+  [
+   "Com que frequência devo revisar meus planos e objetivos?",
+   "Pelo menos uma vez por ano, com data marcada. Ao fim de um ciclo de 12 meses, reúna em um só lugar tudo o que você entregou, olhe com honestidade, releia o plano, veja o que envelheceu e escreva o plano do ano seguinte. Essa revisão anual, sustentada por uma década, é provavelmente o hábito mais poderoso que se pode criar, porque é o único que não envelhece. As ferramentas vão mudar e os números também; o hábito de parar, conferir e corrigir a rota continua valendo. Ao longo do ano, um ponto de controle semanal ajuda a perceber atrasos antes que fiquem sem conserto."
+  ]
+ ],
+ "39-portfolio-de-treze-ativos": [
+  [
+   "Como montar um portfólio profissional que chame atenção?",
+   "Mostre coisas verificáveis, que alguém de fora consiga conferir: o empregador assiste ao pitch, o cliente usa a automação, o sócio refaz a conta. Escreva cada peça em quatro parágrafos: problema, ação, resultado com número e aprendizado. Mostre o processo, com prints e reações reais, e não só o produto final. Inclua o que deu errado, porque quem só publica sucesso parece propaganda. Quantifique: reduzi de 40 para 6 minutos diz mais do que melhorei o processo. E organize por problema resolvido, não por data, com títulos como ajudei uma loja pequena a parar de perder pedido, para quem lê achar em segundos o que interessa."
+  ],
+  [
+   "Preciso de um site próprio ou basta ter redes sociais?",
+   "Tenha um endereço seu na internet, que não pertença a nenhuma plataforma, mesmo que seja uma única página. Plataformas mudam regra, cortam alcance e às vezes somem, e quem só existe dentro delas está construindo em terreno alugado. Use as redes para levar gente até você, mas a sua casa é sua. A página não precisa ser sofisticada: seu nome, seu recorte profissional em uma frase, as peças organizadas e um jeito de entrar em contato, cabendo numa tela de celular. O que pesa não é o design, e sim o que está escrito em cada peça. Envie o link às pessoas da sua rede de contatos."
+  ],
+  [
+   "Como mostrar meu trabalho se acho que ainda não está bom o suficiente?",
+   "Não espere se sentir pronto, porque ninguém se sente. Você enxerga os remendos: a madrugada em que algo quebrou, o cliente que não respondeu, a planilha refeita três vezes. Quem está de fora vê outra coisa. A grande maioria das pessoas, de qualquer idade, não tem um dossiê de verificação, um pitch gravado, uma automação rodando, uma venda comprovada ou um contrato revisado para mostrar. E os erros contam a seu favor quando bem contados: explicar o que quebrou e como você corrigiu convence mais do que qualquer autoelogio. Dizer que aprende rápido ninguém consegue testar; uma peça que funciona é prova."
+  ]
+ ],
+ "40-o-que-fica": [
+  [
+   "Quais habilidades vão valer mais no futuro do trabalho?",
+   "O que sobra de valor é sempre o que envolve decidir, escolher critério ou responder pela consequência; tudo o mais é ocupação temporária e tende a ser automatizado antes do que se imagina. As regras de entrada no mercado mudaram e os degraus iniciais desapareceram, mas o outro lado é extraordinário: um jovem, sozinho e com uma conexão de internet, pode pesquisar como analista, produzir como uma equipe e atender clientes em vários idiomas. Essa alavanca precisa de um ponto de apoio: critério para saber que problema vale resolver, distribuição para que alguém saiba que você existe e disposição para ser responsável pelo resultado."
+  ],
+  [
+   "Errar é ruim para a carreira?",
+   "Errar faz parte; o que importa é errar pequeno e cedo. Você vai escolher curso errado, cliente errado ou sócio errado e investir tempo em coisas que se revelarão inúteis, e isso é o custo normal de agir num ambiente incerto. Quem constrói trajetórias interessantes não erra menos: erra mais barato, aprende mais rápido e continua. Errar barato é testar antes de apostar alto, como conversar com cinco clientes antes de alugar uma loja, fazer o primeiro serviço para um conhecido antes de imprimir mil cartões ou começar com um plano feito em uma hora, em vez de esperar o plano perfeito por seis meses."
+  ],
+  [
+   "Qual é o verdadeiro objetivo de ganhar dinheiro?",
+   "Dinheiro é meio, não fim. Riqueza serve para comprar autonomia: escolher o que fazer, com quem conviver, onde estar e quando parar. Quem chega aos 40 anos com patrimônio e sem saber para quê venceu a corrida errada, porque acumulação sem propósito não sustenta ninguém. Junto com essa ideia, duas outras convicções resistem ao tempo. Mudar de opinião é saúde: revise suas certezas uma vez por ano, porque teimosia custa mais caro do que erro. E reputação compõe juros: cada prazo cumprido, cada cobrança honesta e cada não sei dito na hora certa se acumulam e abrem portas que nenhum currículo abriria."
+  ]
+ ]
+}

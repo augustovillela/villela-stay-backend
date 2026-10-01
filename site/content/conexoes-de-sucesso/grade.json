@@ -1,0 +1,327 @@
+{
+ "titulo": "Conexões de Sucesso",
+ "subtitulo": "Formação para o mundo real: o que os jovens precisam aprender agora que as máquinas já sabem as respostas",
+ "total": 40,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "Boas-vindas: o que este curso é e o que não é",
+   "sub": "O que o curso promete e o que ele deliberadamente não promete, por que ele existe e as três regras que fazem dele um treino, e não uma série para maratonar.",
+   "capitulos": "Prefácio à segunda edição e Como usar este livro",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "Como estudar: as 21 tarefas, os quizzes e o certificado",
+   "sub": "O ritmo sugerido, as 21 tarefas do caderno, a régua de autoavaliação, os quizzes, o que o certificado atesta e a regra para usar inteligência artificial no curso.",
+   "capitulos": "Como usar este livro e Prefácio à segunda edição",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "O primeiro degrau foi serrado",
+   "sub": "Por que a escada da carreira perdeu o primeiro degrau, a diferença entre conhecimento codificado e tácito e as duas perguntas que você deve fazer diante de qualquer escolha.",
+   "capitulos": "Parte I, cap. 1",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "A evidência dos dois lados",
+   "sub": "Os estudos que sustentam a tese do primeiro degrau, os que a contestam e o que fazer quando duas leituras sérias não coincidem: planejar contra o cenário medido e construir opcionalidade.",
+   "capitulos": "Parte I, cap. 1 (1.1) e Prefácio à segunda edição",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "Os três territórios que a máquina não ocupa",
+   "sub": "Julgamento, distribuição e propriedade: para onde o valor migrou quando executar ficou barato, por que é preciso ser sólido nos três e como descobrir qual é o seu mais fraco.",
+   "capitulos": "Parte I, cap. 2",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "O que envelheceu: uma revisão honesta",
+   "sub": "A lista de 10 habilidades de 2024 revisada item por item: o que se manteve, o que mudou de lugar, o que saiu, o que faltava e as duas lições que valem mais do que a lista corrigida.",
+   "capitulos": "Parte I, cap. 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "A anatomia de uma afirmação",
+   "sub": "Produzir uma mentira convincente ficou barato. Como separar fato, inferência, opinião e juízo de valor em qualquer frase, com três perguntas que viram hábito.",
+   "capitulos": "Parte II, cap. 4",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "As cinco falácias que você encontra toda semana",
+   "sub": "Correlação como causa, autoridade fora de contexto, falso dilema, generalização apressada e ataque à pessoa: como reconhecer cada uma vestida de conversa normal e a pergunta que a desarma.",
+   "capitulos": "Parte II, cap. 4 (4.2)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "Ler um número sem ser enganado por ele",
+   "sub": "Cinco perguntas que desmontam quase todo número que circula, o truque do eixo que não começa no zero, as regras do gráfico honesto e por que número vindo de máquina só existe depois de conferido.",
+   "capitulos": "Parte II, cap. 4 (4.3 e 4.4) e Parte III, cap. 12 (12.5)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "Steelman e decisão sob incerteza",
+   "sub": "Reconstruir o argumento do outro na versão mais forte antes de responder, usar a máquina para argumentar contra você e três ferramentas para decidir quando a informação é incompleta.",
+   "capitulos": "Parte II, cap. 4 (4.4, 4.5 e 4.6)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "Escrever para ser entendido: as seis regras",
+   "sub": "Escrever é o processo pelo qual o pensamento fica pronto. As seis regras que fazem um texto ser entendido na primeira leitura, e como usar a máquina sem atrofiar.",
+   "capitulos": "Parte II, cap. 5 — Domínio do vernáculo (5.1, 5.2, 5.4 e 5.5)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "Os três textos que todo jovem precisa escrever",
+   "sub": "E-mail profissional, mensagem de cobrança e pedido de ajuda: os três textos que você vai escrever toda semana pelo resto da vida, e que ninguém ensinou na escola.",
+   "capitulos": "Parte II, cap. 5 — Domínio do vernáculo (5.3)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "Narrativa: a estrutura que prende",
+   "sub": "Por que uma boa ideia mal comunicada é indistinguível de uma ideia ruim, e os quatro elementos que fazem qualquer informação ser lembrada: situação, tensão, ação e resultado.",
+   "capitulos": "Parte II, cap. 6 — Narrativa e oratória (abertura e 6.1)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Falar de pé: presença, medo e perguntas hostis",
+   "sub": "A estrutura da fala de três minutos, as quatro coisas do corpo que importam, o que fazer com o medo e como responder a uma pergunta hostil sem perder o eixo.",
+   "capitulos": "Parte II, cap. 6 — Narrativa e oratória (6.2 a 6.5)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "Ler livros na era do resumo instantâneo",
+   "sub": "Se a máquina resume qualquer livro em trinta segundos, por que ler? Porque o resumo entrega a conclusão e a leitura entrega o processo mental de chegar até ela.",
+   "capitulos": "Parte II, cap. 7 — Ler livros: o repertório que a máquina não te dá",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "Idioma: participar, não consumir",
+   "sub": "A tradução automática resolveu o consumo, não a participação. As quatro razões para aprender inglês que sobrevivem à tradução, e como aprender com as ferramentas de hoje.",
+   "capitulos": "Parte II, cap. 8 — Língua estrangeira na era da tradução automática",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Atenção e trabalho profundo",
+   "sub": "Atenção não é disputa de força de vontade: é um adversário profissional e financiado. As três medidas que tiram você do ringue e a regra das duas horas de trabalho profundo.",
+   "capitulos": "Parte II, cap. 9 — Autogestão (9.1 e 9.2)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "Sistema mínimo, corpo e resiliência",
+   "sub": "Motivação oscila; sistema funciona também nos dias ruins. As quatro peças do sistema mínimo, o corpo como infraestrutura e como separar o trabalho da identidade.",
+   "capitulos": "Parte II, cap. 9 — Autogestão (9.3 a 9.5)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "O que a IA é — e por que ela erra com confiança",
+   "sub": "O que a inteligência artificial é por dentro, na medida certa para operá-la: por que ela é tão boa, por que inventa, por que erra com confiança e por que o contexto muda tudo.",
+   "capitulos": "Parte III, cap. 10 — Inteligência artificial: da pergunta ao sistema (abertura e 10.1)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "Prompt estruturado: Função, Objetivo, Contexto, Regras, Tarefa",
+   "sub": "Função, Objetivo, Contexto, Regras e Tarefa: os cinco elementos do prompt estruturado, com exemplos de antes e depois, duas técnicas extras e o erro de aceitar a primeira resposta.",
+   "capitulos": "Parte III, cap. 10 — Inteligência artificial: da pergunta ao sistema (10.2)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "Verificação, dados sensíveis e responsabilidade",
+   "sub": "\"A inteligência artificial escreveu\" não defende ninguém. O protocolo de verificação em cinco passos, o que nunca entra num prompt e como usar a máquina sem se atrofiar.",
+   "capitulos": "Parte III, cap. 10 — Inteligência artificial: da pergunta ao sistema (10.3 a 10.6)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "Automação: gatilho, condição, ação, exceção",
+   "sub": "Mapear um processo antes de automatizá-lo: as três descobertas de quem escreve o próprio passo a passo, os quatro conceitos, a conta do retorno e a exceção tratada primeiro.",
+   "capitulos": "Parte III, cap. 11 — Automação e pensamento computacional",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "Dados e decisão: do número à recomendação",
+   "sub": "Planilha bem estruturada, indicadores de resultado e de esforço, o vocabulário mínimo de negócio e a recomendação em quatro elementos: a passagem de quem opina para quem administra.",
+   "capitulos": "Parte III, cap. 12 — Dados e decisão: ler números sem ser enganado por eles",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "Vender é perguntar melhor do que falar",
+   "sub": "Por que quem sabe vender nunca fica sem opção, as quatro camadas de pergunta do diagnóstico e os sinais da escuta de verdade, antes de apresentar qualquer coisa.",
+   "capitulos": "Parte IV, cap. 13 — Vendas e negociação (abertura e 13.1)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 25,
+   "titulo": "As cinco objeções universais",
+   "sub": "Preço, prazo, confiança, prioridade e autoridade: a resposta própria de cada objeção, o que fazer com o não e como acompanhar uma proposta sem ser inconveniente.",
+   "capitulos": "Parte IV, cap. 13 — Vendas e negociação (13.2, 13.5 e 13.6)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 26,
+   "titulo": "Negociação: alternativa, âncora, concessão e ampliação",
+   "sub": "Os quatro conceitos que resolvem a maior parte das negociações da sua vida, e o teste único que separa persuasão de manipulação.",
+   "capitulos": "Parte IV, cap. 13 — Vendas e negociação (13.3 e 13.4)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 27,
+   "titulo": "Trabalhar em público e escolher um recorte",
+   "sub": "Por que o gargalo migrou da produção para a atenção e a credibilidade, como montar uma peça de portfólio e como escolher um recorte estreito o bastante para ser lembrado.",
+   "capitulos": "Parte IV, cap. 14 — Reputação, rede e trabalho em público (14.1 a 14.4)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 28,
+   "titulo": "Rede: como se constrói de verdade",
+   "sub": "Rede se constrói por acúmulo de interações em que você foi útil. A mensagem de abordagem em cinco partes, dar antes de pedir, o que fazer depois da conversa e a entrega da fase 6.",
+   "capitulos": "Parte IV, cap. 14 — Reputação, rede e trabalho em público (14.5 e 14.6)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 29,
+   "titulo": "Juros compostos, tempo e dívida cara",
+   "sub": "A única coisa sobre dinheiro que, aprendida cedo, muda o resultado de uma vida inteira: o tempo vale mais que o valor, e a mesma curva que faz o dinheiro crescer faz a dívida explodir.",
+   "capitulos": "Parte IV, cap. 15 — Educação financeira (abertura, 15.1 e 15.2)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 30,
+   "titulo": "Orçamento, reserva e o triângulo risco-liquidez-retorno",
+   "sub": "Medir antes de cortar: 30 dias de registro, as três decisões depois de medir, a reserva de emergência e o triângulo que explica o mercado financeiro e denuncia golpes.",
+   "capitulos": "Parte IV, cap. 15 — Educação financeira (15.3, 15.4, 15.5 e 15.9)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 31,
+   "titulo": "Golpes, formalização e imposto",
+   "sub": "Os seis sinais que denunciam um golpe seja qual for o disfarce da vez, três hábitos de proteção e o básico de formalização e imposto para quem começa a receber.",
+   "capitulos": "Parte IV, cap. 15 (15.5, 15.6 e 15.8) e Parte V, cap. 18 (18.2)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 32,
+   "titulo": "As sete ideias que sobrevivem",
+   "sub": "As sete ideias de finanças pessoais que aparecem, com nomes diferentes, em praticamente todos os autores sérios, com o crédito a quem formulou e as ressalvas que os livros não fazem.",
+   "capitulos": "Parte IV, cap. 16 (16.1 a 16.8) e cap. 15 (Na prática)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 33,
+   "titulo": "Como um negócio ganha dinheiro",
+   "sub": "As seis peças que explicam qualquer negócio, os quatro modelos de receita, o risco de depender de plataforma e a conta que separa negócio saudável de negócio que cresce rumo ao fim.",
+   "capitulos": "Parte V, cap. 17 (17.1, 17.2 e 17.5)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 34,
+   "titulo": "Margem, ponto de equilíbrio e precificação",
+   "sub": "Faturamento não é ganho: custo variável, custo fixo, margem de contribuição, ponto de equilíbrio, lucro contra caixa e as três observações sobre preço que valem dinheiro.",
+   "capitulos": "Parte V, cap. 17 (17.3 a 17.6)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 35,
+   "titulo": "Contrato: as sete coisas que você lê antes de assinar",
+   "sub": "Os sete pontos que se localizam em qualquer contrato antes de assinar, as cláusulas que pedem atenção redobrada, a regra de ouro e o critério de quando procurar um advogado.",
+   "capitulos": "Parte V, cap. 18 (abertura, 18.1 e 18.6)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 36,
+   "titulo": "Formalização, LGPD e IA: o jurídico que ninguém ensina",
+   "sub": "Por que sair da informalidade, a LGPD em cinco pontos de linguagem simples, o básico do direito do consumidor e a responsabilidade sobre o que a inteligência artificial produz.",
+   "capitulos": "Parte V, cap. 18 (18.2 a 18.5)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 37,
+   "titulo": "Execução: do objetivo à retrospectiva",
+   "sub": "Como as coisas saem do papel: entrega verificável, marcos, caminho crítico, estimativa com margem, delegação, ritmo semanal, corte de escopo, entrega bem feita e retrospectiva em três colunas.",
+   "capitulos": "Parte V, cap. 19 (19.1 a 19.5)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 38,
+   "titulo": "O plano de doze meses",
+   "sub": "O plano de 12 meses, trimestre a trimestre, com uma regra atravessando tudo: cada trimestre termina em algo que existe fora da sua cabeça.",
+   "capitulos": "Parte VI, cap. 20",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 39,
+   "titulo": "Montando seu portfólio de treze ativos",
+   "sub": "Como organizar os treze ativos construídos no curso num portfólio que um empregador, um cliente ou um sócio consiga ver, conferir e entender em poucos minutos.",
+   "capitulos": "Parte VI, cap. 20 (o balanço do décimo terceiro mês) e Parte V, cap. 19.5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 40,
+   "titulo": "Encerramento: o que fica",
+   "sub": "A frase que resume o curso inteiro, as três convicções que resistiram à revisão, o jeito certo de errar e a última missão, que começa lá na primeira aula.",
+   "capitulos": "Parte VI, cap. 21 e Apêndices A e B",
+   "gravada": true,
+   "tem_artigo": true
+  }
+ ]
+}

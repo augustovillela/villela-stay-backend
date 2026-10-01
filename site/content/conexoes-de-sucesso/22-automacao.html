@@ -1,0 +1,84 @@
+<!--META {"arquivo": "22-automacao", "modulo": "22", "titulo": "Automação: gatilho, condição, ação, exceção", "subtitulo": "Mapear um processo antes de automatizá-lo: as três descobertas de quem escreve o próprio passo a passo, os quatro conceitos, a conta do retorno e a exceção tratada primeiro.", "meta": "<span>Augusto Villela</span><span>Leitura de 6 min</span><span>Aula 22 de 40</span><span>Livro: Parte III, cap. 11 — Automação e pensamento computacional</span>", "descricao": "Mapear um processo antes de automatizá-lo: as três descobertas de quem escreve o próprio passo a passo, os quatro conceitos, a conta do retorno e a exceção tratada primeiro.", "gravada": true, "resumo_html": "<ul>\n<li>Antes da ferramenta, escreva o passo a passo.</li>\n<li>Você vai descobrir regras que não existiam, exceções esquecidas e passos inúteis.</li>\n<li>Gatilho, condição, ação e exceção cobrem quase toda automação. Trate a exceção antes do caso feliz. Faça a conta do retorno antes de construir. Nunca automatize um processo ruim.</li>\n</ul>", "aplicar_html": "<ol><li><strong>Missão:</strong> encontre um processo manual real (em casa, na escola, no comércio do bairro, no negócio de um parente), peça autorização, mapeie em gatilho, condições, ações e exceções, automatize e depois quebre de propósito para ver o que acontece (Tarefa 15 do caderno).</li><li>Escreva o passo a passo de algo que você faz no automático, com detalhe suficiente para um estranho executar igual. Marque as decisões que eram intuição, as exceções que você nunca tinha formalizado e os passos inúteis.</li><li>Antes de construir, faça a conta do retorno: tempo de construção dividido pelo tempo economizado por semana. Se passar de 26 semanas, simplifique o processo ou escolha outro.</li></ol>", "indice": ["Três descobertas desconfortáveis", "Gatilho, condição e ação", "A exceção vem primeiro", "Variável e repetição", "Onde automatizar compensa", "As duas armadilhas", "Automação é como planta", "Vale aprender a programar?", "A missão: automatizar e quebrar de propósito"]} -->
+<aside class="editorial-note"><strong>Como usar este artigo:</strong> ele acompanha a videoaula e reproduz, por escrito, o raciocínio apresentado em cada cena. Leia como orientação de método. Confirme regras de plataforma, legislação, preços e condições nas fontes oficiais vigentes antes de aplicar. A decisão continua humana.</aside>
+
+<p>Antes de qualquer ferramenta, existe um exercício que muda a cabeça de quem faz: pegar algo que você faz no automático e escrever o passo a passo com detalhe suficiente para que um estranho, sem contexto nenhum, execute igual.</p>
+<p>Pode ser algo bem simples: organizar os arquivos da escola, responder um tipo de mensagem, fechar o caixa do dia na lanchonete de um parente. Esta aula parte desse exercício e chega ao vocabulário que permite conversar com qualquer sistema ou com qualquer programador.</p>
+<h2>Três descobertas desconfortáveis</h2>
+<p class="lead">Escrever o próprio passo a passo revela três coisas, e nenhuma delas é agradável.</p>
+<ul class="pontos"><li>Você não sabia o que fazia</li><li>Existem exceções que você nunca formalizou</li><li>O processo tem passos inúteis</li></ul>
+<p><strong>Primeira: você não sabia o que fazia.</strong> Metade das decisões era tomada por intuição, sem regra explícita. Escrever obriga a decidir a regra.</p>
+<p><strong>Segunda: existem exceções que você nunca formalizou.</strong> "Se o cliente for antigo, eu faço diferente." O que é ser antigo? Seis meses? Três compras? A máquina exige que você responda. A intuição permitia não responder.</p>
+<p><strong>Terceira: o processo tem passos inúteis.</strong> Sempre. Herdados de uma situação que já não existe. Esse exercício, sozinho, já melhora qualquer operação, mesmo que nada seja automatizado depois.</p>
+<h2>Gatilho, condição e ação</h2>
+<p class="lead">Quatro conceitos cobrem quase toda automação prática, e nenhum exige matemática.</p>
+<ul class="pontos"><li>Gatilho: o que dispara</li><li>Condição: a bifurcação, se isto, então aquilo</li><li>Ação: o que efetivamente é feito</li></ul>
+<p><strong>Gatilho</strong> é o que dispara: um horário, a chegada de uma mensagem, o preenchimento de um formulário, a mudança de um campo numa planilha. <strong>Condição</strong> é a bifurcação: se isto, faça aquilo; senão, faça outra coisa. Toda automação real é uma árvore de condições. <strong>Ação</strong> é o que efetivamente é feito: enviar, gravar, calcular, mover, avisar.</p>
+<p>Imagine a confeitaria de uma tia, que recebe encomendas por um formulário. Gatilho: chegou uma encomenda nova. Condição: se a entrega é para daqui a menos de 2 dias, é urgente; senão, é normal. Ação: se é urgente, avisa a tia na hora; se é normal, grava na planilha da semana e manda ao cliente uma confirmação.</p>
+<h2>A exceção vem primeiro</h2>
+<p class="lead">O iniciante ignora a exceção; o profissional trata dela antes do caso feliz.</p>
+<ul class="pontos"><li>E se o formulário chegar sem telefone?</li><li>E se a data vier em branco ou o serviço estiver fora do ar?</li><li>Automação sem exceção falha em silêncio</li></ul>
+<p>O quarto conceito é o mais importante: <strong>exceção</strong>, o que acontece quando algo dá errado. O que ocorre se o formulário chegar sem telefone? Se a data vier em branco? Se a planilha estiver fora do ar?</p>
+<p>Automação sem tratamento de exceção falha em silêncio, que é a pior forma de falhar, porque ninguém percebe. O erro se acumula por semanas antes de alguém notar, e aí o estrago já está feito. Na confeitaria, seria a tia descobrindo, no sábado, que três encomendas nunca entraram na planilha.</p>
+<div class="transicao"><span class="rot">Na fala do professor</span><p>Este é o item que o iniciante ignora e o profissional trata primeiro. Automação sem tratamento de exceção falha em silêncio. É a pior forma de falhar, porque ninguém percebe.</p></div>
+<h2>Variável e repetição</h2>
+<p class="lead">Com variável e repetição, o vocabulário fica completo.</p>
+<ul class="pontos"><li>Variável: um valor que muda, como o nome de cada cliente</li><li>Repetição: fazer o mesmo para cada item de uma lista</li><li>Com seis palavras você conversa com qualquer sistema</li></ul>
+<p>Junte aos quatro conceitos a <strong>variável</strong>, que é um valor que muda, como o nome de cada cliente, e a <strong>repetição</strong>, que é fazer o mesmo para cada item de uma lista. Pronto: você tem o vocabulário completo para conversar com qualquer sistema ou com qualquer programador.</p>
+<p>Na confeitaria, ficaria assim: toda noite, às 8, para cada encomenda que vence amanhã, mande ao cliente uma mensagem com o nome dele e o horário da retirada. O horário das 8 é o gatilho. "Para cada encomenda" é a repetição. O nome do cliente é a variável. E, se a encomenda não tiver telefone, a exceção avisa a tia, em vez de simplesmente pular aquele cliente.</p>
+<h2>Onde automatizar compensa</h2>
+<p class="lead">Nem toda tarefa merece automação, e a conta é simples.</p>
+<ul class="pontos"><li>Compensa: frequente, repetitiva, com regra clara, erro detectável e volume</li><li>Não compensa: rara, exige julgamento, regra muda, manter custa mais</li><li>Construção ÷ economia semanal = semanas até o retorno</li></ul>
+<p>Compensa quando a tarefa é frequente, repetitiva, tem regra clara, o erro é detectável e o volume justifica o tempo de construção. Não compensa quando acontece raramente, exige julgamento a cada caso, a regra muda toda hora ou o custo de manter supera o tempo economizado.</p>
+<p>Faça a conta antes: tempo de construção dividido pelo tempo economizado por semana dá o número de semanas até o retorno. Se der mais de 6 meses, pense duas vezes. Um exemplo: 6 horas são 360 minutos; divididos por 5 minutos economizados por semana, dão 72 semanas. Quase um ano e meio só para empatar.</p>
+<div class="transicao"><span class="rot">Na fala do professor</span><p>Eu já vi gente passar seis horas automatizando algo que levava cinco minutos por semana, e se sentir produtiva fazendo isso. Faça a conta antes.</p></div>
+<h2>As duas armadilhas</h2>
+<p class="lead">Automação amplifica o que existe, inclusive a bagunça.</p>
+<ul class="pontos"><li>Automatizar um processo ruim gera confusão em escala</li><li>Primeiro simplifique, depois automatize</li><li>Comece pelo processo que dói, não pela ferramenta</li></ul>
+<p>A armadilha maior é automatizar um processo ruim. Automação amplifica o que existe: se o processo é confuso, você vai ter confusão em escala, e mais rápido. Primeiro simplifique. Depois automatize.</p>
+<p>A outra é o erro de quem começa: escolher a ferramenta antes do processo. A pessoa escolhe a plataforma, assiste a tutoriais e só depois procura o que automatizar. Acaba automatizando o que é fácil, não o que importa. Comece sempre pelo processo que dói.</p>
+<h2>Automação é como planta</h2>
+<p class="lead">Depois de plantada, ela precisa de cuidado.</p>
+<ul class="pontos"><li>Teste com os dados feios, não só com o caso limpo</li><li>Construa aviso de falha e documente em 5 linhas</li><li>Saiba desligar o que ninguém usa mais</li></ul>
+<p>Teste com os dados feios: campo em branco, acento, valor negativo, data invertida, o mesmo nome escrito de três jeitos. O caso limpo sempre funciona.</p>
+<p>Construa um aviso de falha: toda automação deve avisar quando não conseguir executar. Documente em 5 linhas o que ela faz, o que dispara, onde grava, o que fazer se parar e quem mexeu por último, porque você vai esquecer em 3 meses. Garantido.</p>
+<p>E saiba desligar. Automação que ninguém usa mais e continua rodando é passivo, não ativo: consome recurso, gera dado inútil e um dia quebra alguma coisa.</p>
+<h2>Vale aprender a programar?</h2>
+<p class="lead">Programar continua valioso, mas deixou de ser porta de entrada garantida.</p>
+<ul class="pontos"><li>Quer trabalhar com tecnologia: vale muito, com portfólio público</li><li>Outra área: o suficiente para automatizar o próprio trabalho</li><li>Não gosta: não force; aprenda pensamento computacional</li></ul>
+<p>A contratação de programador iniciante foi das que mais sentiram o aperto, justamente porque escrever código de rotina é uma das tarefas em que os modelos são mais competentes. O que permanece indispensável é a competência desta aula: descrever um processo com precisão e avaliar se a máquina executou direito. Isso tem nome, <strong>pensamento computacional</strong>, e serve para qualquer carreira.</p>
+<p>Resposta honesta, em três cenários. Se você quer trabalhar com tecnologia, vale muito, mas o mercado vai cobrar mais cedo o que antes se aprendia no primeiro emprego: construa projetos reais e públicos desde o começo, porque portfólio verificável abre mais porta do que certificado. Se você quer trabalhar em outra área, aprenda o suficiente para automatizar o próprio trabalho, entender uma planilha complexa e conversar de igual para igual com quem programa; são semanas de estudo, não anos.</p>
+<p>E, se você não gosta, não force. Aprenda a descrever processo, condição e exceção, e use ferramentas de automação visual, que hoje resolvem a maior parte dos casos sem escrever código. A competência é o raciocínio, não a sintaxe.</p>
+<h2>A missão: automatizar e quebrar de propósito</h2>
+<p class="lead">Automação que você nunca viu falhar é automação que você não conhece.</p>
+<ul class="pontos"><li>Um processo manual real, com autorização de quem o executa</li><li>Mapeado em gatilho, condições, ações e exceções</li><li>Quebrado de propósito depois de rodar</li></ul>
+<p>Encontre um processo manual real: na sua casa, na escola, no comércio do bairro, no negócio de um parente. Peça autorização. Mapeie em gatilho, condições, ações e exceções. E automatize, com a ferramenta que você tiver à mão.</p>
+<p>Depois quebre de propósito e veja o que acontece: apague um campo, mande um dado errado, desligue algo no meio do caminho. Registre o que aconteceu no caderno, na Tarefa 15.</p>
+<div class="transicao"><span class="rot">Na fala do professor</span><p>Depois quebre de propósito e veja o que acontece. Apague um campo, mande um dado errado, desligue algo no meio do caminho. Automação que você nunca viu falhar é automação que você não conhece.</p></div>
+
+<section class="apoio"><h2>Material de apoio</h2>
+<h3>O fluxo de uma automação (cap. 11)</h3>
+<pre>                         ┌── SE ──→ AÇÃO ──┬──→ deu certo: fim
+                         │                 └──→ deu errado: EXCEÇÃO
+GATILHO ──→ CONDIÇÃO ────┤
+                         │                 ┌──→ deu certo: fim
+                         └── SENÃO → AÇÃO ─┴──→ deu errado: EXCEÇÃO
+     └───── VARIÁVEL e REPETIÇÃO atravessam todo o fluxo ───────────┘</pre>
+<h3>Os quatro conceitos que bastam (cap. 11)</h3>
+<ul class="check"><li><strong>Gatilho.</strong> O que dispara. Um horário, a chegada de uma mensagem, o preenchimento de um formulário, a mudança de um campo.</li><li><strong>Condição.</strong> A bifurcação. Se isto, faça aquilo; senão, faça outra coisa. Toda automação real é uma árvore de condições.</li><li><strong>Ação.</strong> O que efetivamente é feito. Enviar, gravar, calcular, mover, avisar.</li><li><strong>Exceção.</strong> O que acontece quando algo dá errado. Este é o item que iniciantes ignoram e profissionais tratam primeiro. O que ocorre se o arquivo não chegar? Se o dado vier em branco? Se o serviço estiver fora do ar? Automação sem tratamento de exceção falha em silêncio — que é a pior forma de falhar, porque ninguém percebe.</li><li>Adicione <strong>variável</strong> (um valor que muda) e <strong>repetição</strong> (fazer o mesmo para cada item de uma lista) e você tem o vocabulário completo para conversar com qualquer sistema ou com qualquer programador.</li></ul>
+<h3>Onde automatizar compensa — e onde não (cap. 11)</h3>
+<p><strong>Compensa quando:</strong> a tarefa é frequente, é repetitiva, tem regra clara, o erro é detectável e o volume justifica o tempo de construção.</p>
+<p><strong>Não compensa quando:</strong> acontece raramente, exige julgamento a cada caso, a regra muda toda hora, ou o custo de manter a automação supera o tempo economizado.</p>
+<p><strong>A conta:</strong> tempo de construção dividido por tempo economizado por semana dá o número de semanas até o retorno. Acima de seis meses, pense duas vezes. (Exemplo da aula: 6 horas para economizar 5 minutos por semana = 360 ÷ 5 = 72 semanas.)</p>
+<p><strong>A armadilha maior:</strong> automatizar um processo ruim. Automação amplifica o que existe. Se o processo é confuso, você terá confusão em escala e mais rápido. Primeiro simplifique; depois automatize.</p>
+<h3>Colocar em produção e manter (cap. 11)</h3>
+<ul class="check"><li><strong>Teste com dados reais, incluindo os feios.</strong> O caso limpo sempre funciona. Teste com o campo em branco, com acento, com valor negativo, com data invertida, com o nome escrito de três formas diferentes.</li><li><strong>Construa aviso de falha.</strong> Toda automação deve avisar quando não conseguir executar. Falha silenciosa é a que mais custa caro, porque o erro se acumula por semanas antes de alguém notar.</li><li><strong>Documente em cinco linhas.</strong> O que faz, o que dispara, onde grava, o que fazer se parar, quem mexeu por último. Você vai esquecer em três meses. Garantido.</li><li><strong>Saiba desligar.</strong> Automação que não é mais usada e continua rodando é passivo — consome recurso, gera dado inútil e um dia quebra alguma coisa. Revisar e desligar o que não serve mais é parte do trabalho.</li></ul>
+<h3>Erro comum (cap. 11)</h3>
+<p>Começar pela ferramenta em vez do processo. A pessoa escolhe a plataforma, assiste a tutoriais, e só depois procura o que automatizar — e acaba automatizando o que é fácil, não o que importa. Comece sempre pelo processo que dói.</p>
+<h3>Tarefa 15 — Automação de processo real (Caderno de Exercícios)</h3>
+<p><strong>Objetivo.</strong> Descrever um processo com precisão suficiente para uma máquina executar — e tratar a exceção antes do caso feliz.</p>
+<p><strong>Mapa do processo.</strong> Liste as etapas do processo, uma por linha.</p>
+<p><strong>Elementos a descrever:</strong> Gatilho — o que dispara · Condição 1 — se isto, então aquilo · Condição 2 · Ação — o que é efetivamente feito · Exceção A — e se o dado vier vazio? · Exceção B — e se o serviço estiver fora do ar? · Aviso de falha — quem é notificado, e como.</p>
+<p><strong>Conta do retorno.</strong> Tempo de construção: ____ h · Tempo economizado por semana: ____ h · Semanas até o retorno: ____</p>
+<p><strong>Registro.</strong> Usuário real que usa isto: ____________ · O que aconteceu quando eu quebrei de propósito: ____________</p>
+</section>
+<p class="fontes"><strong>No livro:</strong> Parte III, cap. 11 — Automação e pensamento computacional.</p>

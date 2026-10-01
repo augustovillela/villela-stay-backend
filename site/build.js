@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v18'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v19'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -30,6 +30,8 @@ let CG_PATHS = [];                      // rotas da série ChatGPT (só PT)
 let CG_LLMS = '';
 let LC_PATHS = [];                      // rotas da série O Locador Inteligente (só PT)
 let LC_LLMS = '';                       // seção da série O Locador Inteligente no llms.txt
+let CS_PATHS = [];                      // rotas da série Conexões de Sucesso (só PT)
+let CS_LLMS = '';                       // seção da série Conexões de Sucesso no llms.txt
 //                       // seção da série ChatGPT no llms.txt
 // Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
@@ -3947,6 +3949,7 @@ let capArtigos = [];
 let cjArtigos = [];
 let cgArtigos = [];
 let lcArtigos = [];
+let csArtigos = [];
 let capCss = '';
 const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
 const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
@@ -5004,6 +5007,267 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     console.log(`Blog O Locador Inteligente: hub + ${lcNoAr} de ${lcTotal} artigos (${lcComVideo} com vídeo) + ${lcApoio.length} material(is) de apoio`);
   }
 
+  // ---- Série "Conexões de Sucesso — Formação para o Mundo Real" (curso para jovens de 15 a 24 anos): mesmo padrão da série O Locador Inteligente ----
+  // Anúncios: só o LIVRO (2ª edição, na Livraria) e o CURSO (na Academy). O Villela Stay Manager
+  // fica de fora de propósito: é sistema de hospedagem e o público aqui é jovem.
+  // O visual jovem (Fredoka, roxo/rosa, caixa MISSÃO) vem do artigo.css da série, todo sob .cap.
+  const CS_DIR = path.join(__dirname, 'content', 'conexoes-de-sucesso');
+  const CS_LIVRO = 'https://livros.villelastay.com.br/livros/conexoes-de-sucesso?utm_source=villelastay&utm_medium=blog-conexoes';
+  const CS_CURSO = 'https://academia.villelastay.com.br/academy/cursos/conexoes-de-sucesso-formacao-para-o-mundo-real?utm_source=villelastay&utm_medium=blog-conexoes';
+  const csDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(CS_DIR)) {
+    const csCss = fs.readFileSync(path.join(CS_DIR, 'artigo.css'), 'utf8');
+    const csLe = n => JSON.parse(fs.readFileSync(path.join(CS_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const csGrade = csLe('grade.json');
+    let csFaq = {}, csApoio = [];
+    try { csFaq = csLe('faq.json'); } catch (e) { console.warn('[conexoes] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { csApoio = csLe('apoio.json'); } catch (e) { console.warn('[conexoes] sem apoio.json — hub sairá sem material de apoio'); }
+
+    csArtigos = fs.readdirSync(CS_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(CS_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[conexoes] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpo = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? csDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `conexoes-de-sucesso-${chave}`;
+      return {
+        ...meta, chave, slug,
+        tituloTexto: csDestexto(meta.titulo), subtituloTexto: csDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => csDestexto(t)),
+        faq: csFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const csComArtigo = csGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of csArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[conexoes] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!csComArtigo.includes(a.n)) throw new Error(`[conexoes] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (csArtigos.length !== csComArtigo.length) throw new Error(`[conexoes] grade diz ${csComArtigo.length} aulas com artigo, mas há ${csArtigos.length} artigos exportados`);
+    const csSemFaq = csArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (csSemFaq.length) console.warn(`[conexoes] SEM perguntas frequentes: ${csSemFaq.join(', ')} — escrever em content/conexoes-de-sucesso/faq.json`);
+
+    const csAnuncio = (qual, min = false) => qual === 'livro'
+      ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${CS_LIVRO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">📘</span>
+          <span class="cap-ad-txt"><strong>Livro Conexões de Sucesso — 2ª edição</strong><span>O que os jovens precisam aprender agora que as máquinas já sabem as respostas: pensamento crítico, escrita, comunicação, IA, dinheiro e trabalho. Revista, ampliada e reescrita. Digital e impresso.</span></span>
+          <span class="cap-ad-btn">Ver na Livraria →</span></a>`
+      : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${CS_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎮</span>
+          <span class="cap-ad-txt"><strong>Curso Conexões de Sucesso — Formação para o Mundo Real</strong><span>${csGrade.total} videoaulas animadas, como um jogo de 10 fases, com 21 missões fora da tela, quizzes e certificado, na Villela Academy.</span></span>
+          <span class="cap-ad-btn">Ver o curso →</span></a>`;
+    const CS_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(csAnuncio('livro', true))},${JSON.stringify(csAnuncio('curso', true))}];`);
+    const CS_CSS = `${csCss}${CAP_CSS_EXTRA}
+.cap-ad-curso{background:linear-gradient(135deg,#4C1D95,#DB2777)}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#EDE9FE;color:#5B21B6}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Fredoka,Inter,sans-serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Fredoka,Inter,sans-serif;color:var(--navy);margin:34px 0 12px}`;
+
+    const csTotal = csGrade.total;
+    const csLinhaGrade = (aula, atual) => {
+      const art = csArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'conexoes-de-sucesso'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'conexoes-de-sucesso', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of csArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = csArtigos[iArt - 1], prox = csArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-01', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/conexoes-de-sucesso/#serie` },
+        articleSection: 'Conexões de Sucesso', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'Conexões de Sucesso (2ª edição)', author: { '@type': 'Person', name: 'Augusto Villela' }, url: CS_LIVRO },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Conexões de Sucesso', item: `${SITE_URL}/conexoes-de-sucesso/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/conexoes-de-sucesso/">Conexões de Sucesso</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${csTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${csAnuncio('livro', true)}${csAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar — a aula em vídeo, os quizzes e as missões estão no curso, e o método completo, no livro.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o texto completo está no <a href="${CS_LIVRO}">livro</a> e no <a href="${CS_CURSO}">curso</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${csAnuncio('curso')}${csAnuncio('livro')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/conexoes-de-sucesso/"><span class="rot">☰ Índice</span><span class="tit">${csArtigos.length === 1 ? 'O artigo publicado' : `Os ${csArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${csGrade.aulas.map(g => csLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Conexões de Sucesso — Formação para o Mundo Real</strong>, de Augusto Villela.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog Conexões de Sucesso`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CS_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${CS_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of csApoio) {
+      const cam = `/conexoes-de-sucesso/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/conexoes-de-sucesso/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'conexoes-de-sucesso', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — Conexões de Sucesso | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série Conexões de Sucesso, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>Conexões de Sucesso</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/conexoes-de-sucesso/">Conexões de Sucesso</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${csAnuncio('livro')}${csAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${CS_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /conexoes-de-sucesso/
+    const csCards = csArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado">artigo no ar · videoaula em produção</span>'}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const csApoioCards = csApoio.map(d => `
+  <a class="cap-card" href="/conexoes-de-sucesso/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const csNoAr = csArtigos.length;
+    const csHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/conexoes-de-sucesso/#serie`,
+      name: 'Conexões de Sucesso — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: csArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `Conexões de Sucesso — ${csNoAr} ${csNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: csNoAr,
+      itemListElement: csArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'conexoes-de-sucesso', 'index.html'), layout(
+      'Conexões de Sucesso — Formação para o Mundo Real: a série do curso | Villela Stay',
+      `A série Conexões de Sucesso — Formação para o Mundo Real, de Augusto Villela, para jovens de 15 a 24 anos: pensamento crítico, escrita, comunicação, inteligência artificial, vendas, dinheiro, negócio e plano de carreira. ${csNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>Conexões de Sucesso <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Formação para o Mundo Real</span></h1>
+    <p>${esc(csGrade.subtitulo)}. São ${csTotal} artigos, um para cada videoaula do curso. Cada artigo abre com resumo e perguntas frequentes e fecha com uma missão; o método inteiro está no livro e no curso.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Conexões de Sucesso</span></nav>
+  <div class="cap-faixa">${csAnuncio('livro')}${csAnuncio('curso')}</div>
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${csTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${csGrade.aulas.map(g => csLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${csCards}</div>
+  ${csApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${csApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${csAnuncio('curso')}${csAnuncio('livro')}</div>
+</div>`,
+      { caminho: '/conexoes-de-sucesso/', semIdiomas: true, extraHead: `<style>${CS_CSS}</style>` + csHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    CS_PATHS = ['/conexoes-de-sucesso/', ...csArtigos.map(a => a.caminho), ...csApoio.map(d => `/conexoes-de-sucesso/apoio/${d.chave}.html`)];
+    CS_LLMS = `## Blog: Conexões de Sucesso — Formação para o Mundo Real (${csNoAr} artigos, em português)
+
+Série do livro *Conexões de Sucesso* (2ª edição), de Augusto Villela, para jovens de 15 a 24 anos:
+o que aprender agora que as máquinas já sabem as respostas — pensamento crítico e evidência,
+escrita e comunicação, leitura, idioma, atenção, inteligência artificial com verificação, vendas e
+negociação, rede de contatos, dinheiro e juros compostos, como um negócio ganha dinheiro, contrato,
+formalização e LGPD, e um plano de doze meses.
+Índice da série: ${SITE_URL}/conexoes-de-sucesso/
+Livro completo: ${CS_LIVRO.split('?')[0]} · Curso on-line: ${CS_CURSO.split('?')[0]}
+
+${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog Conexões de Sucesso: hub + ${csNoAr} de ${csTotal} artigos + ${csApoio.length} material(is) de apoio`);
+  }
+
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
     ...['01-central-atualizacao-normativa.html', '02-diretorio-pesquisa-juridica.html', '03-atualizacoes-tecnologicas.html'].map(f => `/claude-juridico/recursos/${f}`)];
   // llms.txt: o assistente que "lê e não renderiza" recebe título + resumo de cada artigo.
@@ -5098,6 +5362,18 @@ const lcCardsHub = LANG !== 'pt' || !lcArtigos.length ? '' : `
     </div>
   </a>`;
 
+// Série Conexões de Sucesso (curso para jovens de 15 a 24 anos). Card com a capa do curso.
+const csCardsHub = LANG !== 'pt' || !csArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/conexoes-de-sucesso/">
+    <div class="blog-card-img">${img('/blog-img/conexoes-de-sucesso-1.jpg', { alt: 'Capa do curso Conexões de Sucesso — Formação para o mundo real: o autor em ilustração, de punho erguido, ao lado da capa do livro, em que um jovem de mochila caminha por uma estrada rumo à cidade', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">🎮 Série · Jovens e carreira</span>
+      <h3>Conexões de Sucesso — Formação para o Mundo Real</h3>
+      <p>Para jovens de 15 a 24 anos: o que aprender agora que as máquinas já sabem as respostas — pensar com evidência, escrever, falar, usar IA com responsabilidade, vender, cuidar do dinheiro e montar um plano de doze meses.</p>
+      <span class="blog-card-leia">Ver os ${csArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
 // ---- busca do blog ----
 // O hub mostra 16 cards, mas o blog já tem quase cem textos: os 13 do Diário e os das três
 // séries, que moram nos hubs próprios. Procurar só nos cards seria inútil — o índice cobre
@@ -5110,6 +5386,7 @@ const buscaItens = [
     ...cjArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '⚖️ Claude AI na Prática Jurídica', u: a.caminho, n: `Cap. ${a.capitulo}` })),
     ...cgArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '💬 ChatGPT AI na Prática', u: a.caminho, n: `Aula ${a.n}` })),
     ...lcArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🏡 O Locador Inteligente', u: a.caminho, n: `Aula ${a.n}` })),
+    ...csArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🎮 Conexões de Sucesso', u: a.caminho, n: `Aula ${a.n}` })),
   ] : []),
 ];
 
@@ -5222,6 +5499,7 @@ const blogLd = {
         { '@type': 'Blog', '@id': `${SITE_URL}/claude-juridico/#serie`, name: 'Claude AI na Prática Jurídica — a série', url: `${SITE_URL}/claude-juridico/` },
         ...(cgArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/chatgpt/#serie`, name: 'ChatGPT AI na Prática — a série', url: `${SITE_URL}/chatgpt/` }] : []),
         ...(lcArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/locador/#serie`, name: 'O Locador Inteligente na era da IA — a série', url: `${SITE_URL}/locador/` }] : []),
+        ...(csArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/conexoes-de-sucesso/#serie`, name: 'Conexões de Sucesso — a série', url: `${SITE_URL}/conexoes-de-sucesso/` }] : []),
       ]
     : undefined,
 };
@@ -5242,7 +5520,7 @@ const blogHub = layout(
 </section>
 ${buscaHtml}
 <section class="grade-wrap">
-  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${blogCardsHub}</div>
+  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
@@ -5675,7 +5953,7 @@ const SALTO = String.fromCharCode(10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
-${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
+${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 
@@ -5775,6 +6053,7 @@ eles é feita por API, disponível nos planos superiores.
 ${CAP_LLMS}
 ${CG_LLMS}
 ${LC_LLMS}
+${CS_LLMS}
 ## Livros e cursos do autor
 
 Vitrine conjunta dos três acervos (livros, cursos e sistemas), com links diretos

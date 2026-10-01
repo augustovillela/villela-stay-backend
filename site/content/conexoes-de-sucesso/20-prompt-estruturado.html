@@ -1,0 +1,71 @@
+<!--META {"arquivo": "20-prompt-estruturado", "modulo": "20", "titulo": "Prompt estruturado: Função, Objetivo, Contexto, Regras, Tarefa", "subtitulo": "Função, Objetivo, Contexto, Regras e Tarefa: os cinco elementos do prompt estruturado, com exemplos de antes e depois, duas técnicas extras e o erro de aceitar a primeira resposta.", "meta": "<span>Augusto Villela</span><span>Leitura de 5 min</span><span>Aula 20 de 40</span><span>Livro: Parte III, cap. 10 — Inteligência artificial: da pergunta ao sistema (10.2)</span>", "descricao": "Função, Objetivo, Contexto, Regras e Tarefa: os cinco elementos do prompt estruturado, com exemplos de antes e depois, duas técnicas extras e o erro de aceitar a primeira resposta.", "gravada": true, "resumo_html": "<ul>\n<li>A qualidade do que sai depende do enquadramento do que entra.</li>\n<li>Cinco elementos resolvem quase qualquer pedido: Função, Objetivo, Contexto, Regras e Tarefa. O Contexto é onde quase todo mundo falha.</li>\n<li>A regra “pergunte se faltar informação” transforma a máquina em interlocutora. Dê exemplos e peça o raciocínio. Não aceite a primeira resposta.</li>\n</ul>", "aplicar_html": "<ol><li><strong>Missão da aula:</strong> escolha uma tarefa que você repete toda semana (responder um tipo de mensagem, montar um resumo de aula, revisar um texto, organizar a agenda do grupo). Escreva um prompt completo com os cinco elementos — Função, Objetivo, Contexto, Regras e Tarefa — e rode. Refine em pelo menos 3 rodadas, contestando o que vier, e guarde a versão final: na próxima aula ela vira um assistente.</li><li>Pegue o último pedido de uma linha que você fez a uma ferramenta de IA e reescreva com os cinco elementos. Compare as duas respostas lado a lado.</li><li>No próximo pedido de texto, cole dois exemplos que você considera bons e dois que considera ruins, diga qual é qual e acrescente “analise passo a passo antes de responder”.</li></ol>", "indice": ["Função: quem a máquina deve ser", "Objetivo: o que precisa acontecer, e para quem", "Contexto: os dados reais", "Regras: limites e formato", "Tarefa: o pedido específico", "A mesma estrutura para estudar", "Dar exemplos e pedir o raciocínio", "Não aceite a primeira resposta"]} -->
+<aside class="editorial-note"><strong>Como usar este artigo:</strong> ele acompanha a videoaula e reproduz, por escrito, o raciocínio apresentado em cada cena. Leia como orientação de método. Confirme regras de plataforma, legislação, preços e condições nas fontes oficiais vigentes antes de aplicar. A decisão continua humana.</aside>
+
+<p>A diferença entre alguém que ganha R$ 2 mil por mês e alguém que ganha R$ 20 mil usando a mesma ferramenta não está na ferramenta. Está em cinco elementos que quase ninguém usa.</p>
+<p>A qualidade do que sai é quase inteiramente função da qualidade do que entra. E qualidade do que entra não quer dizer educação nem gramática; não adianta pedir por favor e caprichar na vírgula. Quer dizer <strong>enquadramento</strong>. Se você contratasse um consultor e mandasse um e-mail de uma linha, receberia um relatório genérico. A máquina não é diferente: ela não tem como saber o que você não contou.</p>
+<h2>Função: quem a máquina deve ser</h2>
+<p class="lead">A função define o vocabulário, a profundidade e o que a máquina vai considerar relevante.</p>
+<ul class="pontos"><li>“Você é um analista financeiro que avalia pequenos negócios de hospedagem”</li><li>Um analista olha margem e risco</li><li>Um redator, diante do mesmo pedido, olha o anúncio</li></ul>
+<p>Para mostrar os cinco elementos, o exemplo vem do mundo da hospedagem: alguém que precisa decidir se aumenta o preço da diária. O primeiro elemento é a <strong>Função</strong>: “Você é um analista financeiro que avalia pequenos negócios de hospedagem.”</p>
+<p>Isso não é enfeite. Um analista financeiro vai olhar margem e risco. Um redator de publicidade, diante do mesmo pedido, vai olhar o anúncio. Ao definir quem a máquina deve ser, você escolhe as lentes com que ela vai ler o seu problema.</p>
+<h2>Objetivo: o que precisa acontecer, e para quem</h2>
+<p class="lead">Um objetivo tem uma decisão no fim; um tema solto produz uma aula genérica que você não pediu.</p>
+<ul class="pontos"><li>“Preciso decidir se aumento o preço da diária em 10%”</li><li>“Fale sobre precificação” não é objetivo</li><li>O “para quem” muda o tom e o detalhe</li></ul>
+<p>O segundo elemento é o <strong>Objetivo</strong>: “Preciso decidir se aumento o preço da diária em 10%.” Compare com “fale sobre precificação”. O primeiro tem uma decisão no fim; o segundo é uma aula genérica.</p>
+<p>E o “para quem” também pesa. Se a resposta é para você decidir sozinho, ou para você apresentar ao dono do negócio, o tom e o nível de detalhe mudam.</p>
+<h2>Contexto: os dados reais</h2>
+<p class="lead">É aqui que praticamente todo mundo falha, e é o que mais separa um resultado inútil de um útil.</p>
+<ul class="pontos"><li>Ocupação, custo, época do ano, concorrência, restrições</li><li>A máquina só sabe o que você conta</li><li>O contexto é você contando</li></ul>
+<p>O terceiro elemento é o <strong>Contexto</strong>. No exemplo: “A ocupação média do último mês foi de 60%. O custo de limpeza é fixo por reserva. Os três concorrentes mais parecidos cobram um pouco abaixo de mim. Estamos entrando na baixa temporada. E eu não posso perder os hóspedes que voltam todo ano.”</p>
+<p>A aula anterior mostrou que a máquina só sabe o que você conta e preenche o resto com o genérico ou com o inventado. O contexto é exatamente o antídoto: é você contando.</p>
+<div class="transicao"><span class="rot">Na fala do professor</span><p>É aqui que praticamente todo mundo falha. E é o que mais separa um resultado inútil de um resultado útil. A máquina só sabe o que você conta. O contexto é você contando.</p></div>
+<h2>Regras: limites e formato</h2>
+<p class="lead">Três regras fixas que valem para quase todo pedido.</p>
+<ul class="pontos"><li>Não invente números que eu não forneci</li><li>Se faltar informação, pergunte antes de responder</li><li>Defina o formato da saída</li></ul>
+<p>O quarto elemento são as <strong>Regras</strong>. Três delas valem sempre: não invente números que eu não forneci; se faltar informação, pergunte antes de responder; e o formato da saída que você quer, seja uma página, uma tabela ou três tópicos.</p>
+<p>A segunda regra é surpreendentemente eficaz. Ela transforma um gerador de respostas num interlocutor. Em vez de preencher a lacuna com algo plausível, que é exatamente o que a aula anterior mostrou que ela faz, a máquina para e te pergunta.</p>
+<h2>Tarefa: o pedido específico</h2>
+<p class="lead">A tarefa começa por um verbo claro: liste, compare, reescreva, monte.</p>
+<ul class="pontos"><li>“Liste os três principais riscos e o indicador para os próximos 60 dias”</li><li>Sem verbo claro, a máquina escolhe por você</li><li>E quase sempre escolhe o mais genérico</li></ul>
+<p>O quinto elemento é a <strong>Tarefa</strong>: “Liste os três principais riscos dessa decisão e o indicador que eu deveria acompanhar nos próximos 60 dias.”</p>
+<p>Juntas, as cinco peças viram um único pedido (o texto completo está no material de apoio). Compare com o pedido típico: “como aumentar o faturamento do meu negócio?”. A diferença de resultado é de outra ordem de grandeza, e ela não veio da ferramenta. Veio da cabeça de quem perguntou. É por isso que a fase 2, de pensar com método, vem antes desta.</p>
+<div class="transicao"><span class="rot">Na fala do professor</span><p>A diferença de resultado é de outra ordem de grandeza. E ela não veio da ferramenta. Veio da cabeça de quem perguntou.</p></div>
+<h2>A mesma estrutura para estudar</h2>
+<p class="lead">Os cinco elementos não são só para negócio: servem para a prova de sexta-feira.</p>
+<ul class="pontos"><li>Função: um professor paciente de matemática</li><li>Regras: não me dê a resposta pronta</li><li>Tarefa: 10 problemas em ordem crescente, um de cada vez</li></ul>
+<p>Quer estudar para uma prova? Função: um professor paciente de matemática do ensino médio. Objetivo: preciso estar seguro para a prova de sexta-feira. Contexto: entendo as contas, mas travo quando o problema vem escrito em forma de texto. Regras: não me dê a resposta pronta, me faça perguntas e, se eu errar, mostre onde. Tarefa: monte 10 problemas em ordem crescente de dificuldade, um de cada vez.</p>
+<p>É a mesma estrutura, com outra vida dentro.</p>
+<h2>Dar exemplos e pedir o raciocínio</h2>
+<p class="lead">Duas técnicas extras que valem muito.</p>
+<ul class="pontos"><li>Dois exemplos bons e dois ruins comunicam o padrão</li><li>“Analise passo a passo antes de responder”</li><li>Não se audita uma conclusão isolada; audita-se um caminho</li></ul>
+<p><strong>Dê exemplos.</strong> “Escreva de forma profissional” não significa nada; dois exemplos significam tudo. Se você quer legendas para o perfil da loja de um amigo, cole duas legendas que deram certo e duas que achou forçadas, e diga qual é qual. A máquina entende o tom em segundos, coisa que nenhum adjetivo consegue explicar.</p>
+<p><strong>Peça o raciocínio antes da conclusão.</strong> “Analise passo a passo antes de responder” melhora bastante o resultado em problemas com lógica e, mais importante, deixa visível o ponto exato onde o raciocínio quebrou, quando quebra. Você não consegue auditar uma conclusão isolada. Consegue auditar um caminho.</p>
+<h2>Não aceite a primeira resposta</h2>
+<p class="lead">A primeira resposta é quase sempre a versão genérica e mediana do assunto.</p>
+<ul class="pontos"><li>As boas aparecem na 3ª ou 4ª rodada</li><li>Contestar com crítica específica</li><li>Quem para na primeira usa 10% da ferramenta</li></ul>
+<p>As respostas boas aparecem na terceira ou quarta rodada, depois que você deu mais contexto, contestou, pediu alternativas e apontou o que não serviu. “Isso está genérico, o meu público é outro.” “Essa ideia não cabe no meu orçamento, me dê outra.” “Você esqueceu que eu trabalho sozinho.” Quem para na primeira está usando 10% da ferramenta e concluindo que ela é limitada.</p>
+<p>Contestar não é ser grosseiro com a máquina. É fazer o que um bom chefe faz com um estagiário talentoso: dizer com clareza o que serviu, o que não serviu e por quê. Quanto mais específica a sua crítica, melhor a próxima versão.</p>
+
+<section class="apoio"><h2>Material de apoio</h2>
+<h3>Os cinco elementos (livro, 10.2)</h3>
+<ul class="check"><li><strong>Função.</strong> Quem a máquina deve ser. “Você é um analista financeiro que avalia pequenos negócios de hospedagem.”</li><li><strong>Objetivo.</strong> O que precisa acontecer, e para quem. “Preciso decidir se aumento o preço da diária em dez por cento.”</li><li><strong>Contexto.</strong> Os dados reais. Ocupação, custo, sazonalidade, concorrência, restrições. É aqui que a maioria falha, e é o que mais diferencia um resultado inútil de um resultado útil.</li><li><strong>Regras.</strong> Limites e formato. “Não invente números que eu não forneci. Se faltar informação, pergunte antes de responder. Responda em no máximo uma página.”</li><li><strong>Tarefa.</strong> O pedido específico. “Liste os três riscos principais dessa decisão e o indicador que eu deveria acompanhar nos próximos sessenta dias.”</li></ul>
+<h3>Antes: o pedido típico</h3>
+<pre>Como aumentar o faturamento do meu negócio?</pre>
+<h3>Depois: o prompt com os cinco elementos</h3>
+<pre>Você é um analista financeiro que avalia pequenos negócios de hospedagem.
+Preciso decidir se aumento o preço da diária em dez por cento.
+A ocupação do último mês foi de sessenta por cento, os concorrentes cobram um pouco abaixo de mim, estamos entrando na baixa temporada e eu não posso perder os hóspedes que voltam.
+Não invente números que eu não forneci, pergunte se faltar informação e responda em uma página.
+Liste os três principais riscos dessa decisão e o indicador que eu deveria acompanhar nos próximos sessenta dias.</pre>
+<h3>A mesma estrutura para estudar (exemplo da aula)</h3>
+<pre>Função: você é um professor paciente de matemática do ensino médio.
+Objetivo: eu preciso estar seguro para a prova de sexta-feira.
+Contexto: eu entendo as contas, mas travo quando o problema vem escrito em forma de texto.
+Regras: não me dê a resposta pronta, me faça perguntas, e se eu errar, mostre onde.
+Tarefa: monte dez problemas em ordem crescente de dificuldade, um de cada vez.</pre>
+<h3>Duas técnicas adicionais e o erro comum (livro, 10.2 e cap. 10)</h3>
+<ul class="check"><li><strong>Dê exemplos.</strong> Mostrar dois textos que você considera bons e dois que considera ruins comunica padrão melhor do que qualquer adjetivo.</li><li><strong>Peça o raciocínio antes da conclusão.</strong> “Analise passo a passo antes de responder” melhora sensivelmente o resultado em problemas com lógica, e — mais importante — deixa visível o ponto exato onde o raciocínio quebrou, quando quebra.</li><li><strong>Erro comum:</strong> aceitar a primeira resposta. Ela é quase sempre a versão genérica e mediana do assunto. As respostas boas aparecem na terceira ou quarta rodada, depois de você ter dado contexto, contestado, pedido alternativas e apontado o que não serviu. Quem para na primeira está usando dez por cento da ferramenta.</li></ul>
+<h3>Caderno de Exercícios — Modelo de prompt estruturado (Tarefa 14)</h3>
+<ul class="check"><li><strong>Função</strong> — quem a máquina deve ser</li><li><strong>Objetivo</strong> — o que precisa acontecer, e para quem</li><li><strong>Contexto</strong> — os dados reais: números, restrições, histórico</li><li><strong>Regras</strong> — não inventar dados; perguntar se faltar informação; formato de saída</li><li><strong>Tarefa</strong> — o pedido específico</li><li>O teste em dez rodadas e a documentação do assistente (o restante da Tarefa 14) ficam para a aula 5.3.</li></ul>
+</section>
+<p class="fontes"><strong>No livro:</strong> Parte III, cap. 10 — Inteligência artificial: da pergunta ao sistema (10.2).</p>
