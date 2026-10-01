@@ -243,8 +243,12 @@ const FONTES = [
     // os cursos de cada aluno (matrícula ativa).
     cursos: () => dbDe('academy').prepare(
       "SELECT id, titulo FROM products WHERE tipo = 'curso' AND status IN ('publicado','aprovado') ORDER BY titulo").all(),
+    // Quem TEM o curso: aluno com matrícula ativa OU o produtor dono dele. Sem o dono,
+    // as dicas de um curso não apareciam para o próprio autor (01/10/2026: o Augusto abriu
+    // "O Locador Inteligente" e não viu nenhuma — ele é produtor, não aluno).
     cursosDoUsuario: (ref) => dbDe('academy').prepare(
-      "SELECT product_id id FROM enrollments WHERE user_id = ? AND status = 'ativa'").all(String(ref)).map((r) => r.id),
+      `SELECT product_id id FROM enrollments WHERE user_id = ? AND status = 'ativa'
+       UNION SELECT id FROM products WHERE producer_id = ? AND status IN ('publicado', 'aprovado')`).all(String(ref), String(ref)).map((r) => r.id),
     // O sino da Academy já existe (e espelha em push): o comunicado entra nele.
     nativo: (ref, c) => require('../academy/emails').Notificacoes.criar(ref, c.titulo, c.corpo.slice(0, 500), c.link_url || '/academy/app'),
   },

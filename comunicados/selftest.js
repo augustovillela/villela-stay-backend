@@ -752,6 +752,12 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     assert.ok(!deOutro.includes('Dica do Curso de Teste'), 'quem NÃO tem o curso não pode ver');
     assert.ok(deOutro.length >= 5, 'as dicas do sistema continuam valendo para todos');
 
+    // O PRODUTOR vê as dicas do próprio curso mesmo sem matrícula nele (a1 é dono de p2, matriculado só em p1).
+    acad.prepare("INSERT INTO products (id, producer_id, tipo, titulo, slug, status, criado_em) VALUES ('p2', 'a1', 'curso', 'Curso do Produtor', 'curso-produtor', 'publicado', ?)").run(agora);
+    com.dicas.criar({ produto: 'academy', curso_id: 'p2', titulo: 'Dica do Curso do Produtor', corpo: 'x', passos: ['passo'] });
+    assert.ok(com.dicas.doUsuario('academy', 'a1').itens.map((d) => d.titulo).includes('Dica do Curso do Produtor'), 'o produtor devia ver a dica do próprio curso');
+    assert.ok(!com.dicas.doUsuario('academy', 'a2').itens.map((d) => d.titulo).includes('Dica do Curso do Produtor'), 'quem não é aluno nem produtor não vê');
+
     // Sorteio: esgota tudo sem repetir, e a prioridade (ordem < 100) vem antes.
     com.dicas.criar({ produto: 'academy', titulo: 'Boas-vindas', corpo: 'primeira', ordem: 1 });
     const vistas = [];
