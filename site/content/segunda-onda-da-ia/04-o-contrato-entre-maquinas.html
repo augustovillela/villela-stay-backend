@@ -1,0 +1,282 @@
+<!--META {"arquivo": "04-o-contrato-entre-maquinas", "modulo": "04", "titulo": "O contrato entre máquinas", "subtitulo": "APIs, JSON, schema, webhooks, assinatura e idempotência: como um sistema diz não ao pedido absurdo e diz não uma vez só ao pedido repetido.", "meta": "<span>Augusto Villela</span><span>Leitura de 10 min</span><span>Aula 4 de 25</span><span>Livro: Capítulo 7 (e demonstração do laboratório do capítulo 51)</span>", "descricao": "APIs, JSON, schema, webhooks, assinatura e idempotência: como um sistema diz não ao pedido absurdo e diz não uma vez só ao pedido repetido.", "gravada": true, "resumo_html": "<ul>\n<li>Entre componentes, vale o que está escrito num contrato que a máquina confere.</li>\n<li>O JSON dá a gramática, o schema diz o que é válido, e a saída estruturada do provedor ajuda a cumprir o formato, mas o seu validador confere o que ela não garante.</li>\n<li>Forma garantida não é conteúdo verdadeiro: o formato pode vir certo e o número errado.</li>\n<li>No webhook, a assinatura prova que quem mandou conhece o segredo, e uma chave estável de idempotência impede que o mesmo pedido vire duas notas.</li>\n</ul>", "aplicar_html": "<ol><li>Pegue uma automação ou um formulário que você já usa e imagine o mesmo envio chegando duas vezes. O que muda no mundo? E qual identificador, nessa mensagem, continua igual num reenvio? Se você não achar nenhum, achou o seu primeiro risco.</li><li>Escreva, em linguagem comum, o regulamento da ficha de um pedido que você recebe com frequência: que campos não podem faltar, que limites cada número tem, que valores são permitidos e que campo a mais você recusaria.</li><li>Pelo caminho Aplicado do capítulo 7, abra o schema do laboratório 51 num validador de JSON Schema que aceite a versão 2020-12 e teste as três saídas da aplicação guiada (boa, zero e sobra), digitadas à mão e sem nenhum dado real de cliente.</li></ol>", "indice": ["Nenhum dos erros era do modelo", "A API, um balcão de repartição", "JSON: a ficha de campos com nome fixo", "O schema: o contrato que sabe dizer não", "Forma garantida não é conteúdo verdadeiro", "Consulta periódica ou webhook", "A assinatura: o lacre de cera", "A campainha que toca duas vezes: idempotência", "A chave que não pode mudar", "Nove chamadas contra o porteiro", "A ordem das perguntas do porteiro", "Idempotência que sobrevive à queda"]} -->
+<aside class="editorial-note"><strong>Como usar este artigo:</strong> ele acompanha a videoaula e reproduz, por escrito, o raciocínio apresentado em cada cena. Leia como orientação de método. Confirme regras de plataforma, legislação, preços e condições nas fontes oficiais vigentes antes de aplicar. A decisão continua humana.</aside>
+
+<p>São 6h40 de uma segunda-feira em Goiânia. O WhatsApp da distribuidora de Caio Menezes recebe a primeira mensagem do dia, do Sacolão Real: <em>“Bom dia, Caio! Para amanhã: 40 kg de tomate, 30 kg de batata e 2 caixas de banana.”</em> Até as nove, chegam mais trinta, por WhatsApp, e-mail, pela planilha dos restaurantes e por um formulário simples no site.</p>
+<p>Caio passou anos digitando esses pedidos numa planilha. Agora tem um cenário de automação que recebe a mensagem, pede a um modelo que extraia o pedido e manda o resultado direto para o faturamento, sem a tela de conferência que a aula 2 recomendava. Funcionou por três semanas. Numa quarta-feira, um cliente recebeu duas notas fiscais pelo mesmo pedido. Na quinta, um pedido entrou com “banana: 0 kg” e foi faturado assim.</p>
+<h2>Nenhum dos erros era do modelo</h2>
+<p class="lead">Os dois erros eram de contrato: faltava dizer, de um jeito que a máquina conferisse, o que um pedido pode ser.</p>
+<ul class="pontos"><li>Faltava dizer o que um pedido pode e não pode ser</li><li>Faltava dizer o que fazer quando a mesma mensagem chega duas vezes</li><li>Entre dois sistemas, a gentileza não serve; serve o contrato</li></ul>
+<p>Lia Sato, que ajuda Caio aos sábados, olhou os dois erros e disse que nenhum deles era do modelo. Eram de contrato: faltava dizer, por escrito e de um jeito que a máquina conferisse, o que um pedido pode e não pode ser, e o que fazer quando a mesma mensagem chega duas vezes.</p>
+<p>Na escada, a aula continua no degrau do <strong>harness</strong>, agora olhando as ligações entre as peças: o fio entre a automação e o faturamento. É ali que um sistema gentil, que aceita tudo o que chega, vira prejuízo.</p>
+<div class="transicao"><span class="rot">Na fala do professor</span><p>Entre dois sistemas, a gentileza não serve. Serve o contrato.</p></div>
+<h2>A API, um balcão de repartição</h2>
+<p class="lead">Quando um programa pede algo a outro, há guichê, formulário e senha definidos antes.</p>
+<ul class="pontos"><li>Endpoint é o guichê; método diz a intenção; corpo é o formulário</li><li>Chave ou token é a senha, que mora fora do código</li><li>O balcão entende formulário mal preenchido; a API, não</li></ul>
+<p>Uma <strong>API</strong> (interface de programação de aplicações) é a forma combinada de um programa pedir algo a outro. A analogia fixa do curso é o balcão de repartição: há um guichê para cada assunto, um formulário para cada pedido e uma senha que prova quem você é. O <em>endpoint</em> é o guichê, um endereço como <code>https://exemplo.com/webhook/pedidos</code>; o <em>método</em> diz a intenção (<code>GET</code> lê, <code>POST</code> cria ou envia, <code>PUT</code> e <code>PATCH</code> alteram, <code>DELETE</code> remove); o <em>corpo</em> é o formulário preenchido; a <em>chave</em> é a senha, que mora em variável de ambiente ou cofre, nunca no código; e o <em>status</em> é o número de três dígitos que diz como o pedido terminou.</p>
+<p>A analogia tem um limite, e ele é o ponto da aula: o funcionário do balcão entende um formulário mal preenchido. A API, não. Um campo com nome errado não é “quase certo”; é erro.</p>
+<p>Os códigos de status se leem pela centena: <code>2xx</code> deu certo, <code>4xx</code> o erro é de quem pediu, <code>5xx</code> o erro é de quem responde. A diferença importa na hora de repetir: tentar de novo um <code>4xx</code> igual dá o mesmo erro; um <code>5xx</code> pode passar na segunda vez.</p>
+<h2>JSON: a ficha de campos com nome fixo</h2>
+<p class="lead">Número é número, texto é texto, e vazio é diferente de zero.</p>
+<ul class="pontos"><li>Seis tipos de valor e nenhuma ambiguidade</li><li><code>"40"</code> entre aspas é texto, e somar texto dá errado</li><li>Preço, frete e desconto ficam fora do JSON, onde o cliente não alcança</li></ul>
+<p>O formulário, quase sempre, vem num formato de texto chamado <strong>JSON</strong>: uma ficha de campos com nome fixo em que as máquinas trocam dados. Tem só seis tipos de valor: objeto, lista, texto, número, booleano e nulo. O nulo quer dizer “sem valor”, e é diferente de zero.</p>
+<p>A mensagem do Sacolão Real, depois da extração pelo modelo, vira uma ficha com <code>cliente</code>, <code>itens</code>, <code>entrega</code>, <code>confianca</code> e <code>duvidas</code>. Cada campo tem tipo e regra combinada: o produto vem sem acento e no singular, para o catálogo não ter dois produtos para a mesma fruta; a entrega só aceita <code>"hoje"</code>, <code>"amanha"</code> ou <code>"a_combinar"</code>; e a <code>confianca</code> é uma estimativa do próprio modelo, não uma probabilidade medida, que serve como sinal a mais e nunca como única trava.</p>
+<p>O que <strong>não</strong> está no JSON também é decisão: preço, frete e desconto moram nas regras do sistema, onde o texto do cliente não alcança. O pedido em JSON e a leitura campo a campo estão no material de apoio.</p>
+<h2>O schema: o contrato que sabe dizer não</h2>
+<p class="lead">Uma ficha bem preenchida pode estar errada: banana, zero quilo, é JSON perfeito e pedido absurdo.</p>
+<ul class="pontos"><li>O schema é o regulamento da ficha</li><li>Diz o que não pode faltar, cerca os números e recusa campo não previsto</li><li>O sistema não conserta a ficha sozinho: ela vai para uma pessoa</li></ul>
+<p>Para recusar o pedido absurdo, existe um segundo documento: o regulamento da ficha. Em inglês, <strong>schema</strong>. Um JSON Schema é um documento, também em JSON, que descreve o que um JSON válido pode conter; a especificação vigente é a 2020-12. No schema de Caio, <code>required</code> diz o que não pode faltar, <code>minimum</code> e <code>maximum</code> cercam o peso (de 0,1 a 5.000 kg) e <code>additionalProperties: false</code> recusa campo não previsto.</p>
+<p>Com esse contrato, o pedido de quinta-feira teria parado com uma mensagem dizendo <strong>onde</strong> estava o erro, algo como <code>$.itens[2].kg: menor que 0.1</code>. E o sistema não “conserta” o JSON sozinho: o pedido vai para revisão manual.</p>
+<p>Recusar campo não previsto parece burocracia. Não é. Sem essa regra, um <code>"kgs"</code> digitado errado passaria calado, e um modelo poderia acrescentar um desconto que ninguém autorizou.</p>
+<h2>Forma garantida não é conteúdo verdadeiro</h2>
+<p class="lead">A saída estruturada do provedor ajuda a cumprir o formato; a conferência continua do seu lado.</p>
+<ul class="pontos"><li>Os grandes provedores restringem a geração ao formato do schema</li><li>O mesmo schema pode ser respeitado por um provedor e ignorado por outro</li><li>Uma ficha impecável pode dizer 40 kg de tomate quando o cliente pediu 4</li></ul>
+<p>Os três grandes provedores de modelos oferecem <strong>saída estruturada</strong>: você envia o schema junto com o pedido, e o provedor restringe a geração para que a resposta siga aquele formato. É uma ajuda real. Não é uma garantia de conteúdo.</p>
+<p>Segundo a documentação consultada em 28/09/2026, os provedores diferem no que aceitam: o <code>"minimum": 0.1</code> do schema de Caio seria deixado de fora pela restrição de geração de um provedor e respeitado pela de outro. O mesmo schema pode passar num e falhar noutro. O quadro com os detalhes de cada provedor está no material de apoio.</p>
+<p>A conclusão prática não depende de fornecedor: use a saída estruturada para diminuir erro de formato e valide sempre do seu lado, com o seu schema completo.</p>
+<h2>Consulta periódica ou webhook</h2>
+<p class="lead">Ligar para a transportadora a cada hora ou esperar a campainha.</p>
+<ul class="pontos"><li>Consulta periódica: simples, tolera o receptor desligado, mas atrasa</li><li>Webhook: um sistema avisa o outro na hora, chamando um endereço combinado</li><li>O webhook cria dois problemas: provar quem tocou e a campainha tocada duas vezes</li></ul>
+<p>Há duas formas de um sistema saber que algo aconteceu em outro. Na <strong>consulta periódica</strong> (<em>polling</em>), ele pergunta de tempos em tempos: “chegou pedido novo?”. No <strong>webhook</strong>, o outro sistema avisa na hora, fazendo uma chamada para um endereço combinado. É o carteiro que toca a campainha quando a encomenda chega.</p>
+<p>O webhook é imediato, mas exige um endereço sempre disponível e cria dois problemas que a consulta não tem: provar quem tocou a campainha e lidar com a campainha tocada duas vezes. Plataformas de automação como Make e n8n emitem e recebem webhooks. No desenho de Caio, o cenário percebe a mensagem nova e faz um <code>POST</code> para o receptor dele, que extrai, confere e registra o pedido.</p>
+<h2>A assinatura: o lacre de cera</h2>
+<p class="lead">Os dois lados conhecem um segredo que nunca viaja; mudou uma vírgula, a assinatura não confere.</p>
+<ul class="pontos"><li>O endereço do webhook acaba conhecido, em log, print ou suporte</li><li>Assinatura HMAC: o emissor calcula, o receptor recalcula e compara</li><li>Carimbo de tempo e chave vão dentro do que é assinado</li></ul>
+<p>Um endereço de webhook acaba conhecido. Se qualquer um puder chamá-lo, qualquer um cria pedido. A defesa padrão é a assinatura <strong>HMAC</strong> (código de autenticação de mensagem baseado em hash): os dois lados conhecem um segredo que nunca viaja; quem envia calcula uma assinatura sobre o que manda, e quem recebe recalcula e compara. É como um lacre de cera com o selo de um anel que só os dois têm: mudou um byte no caminho, o lacre racha.</p>
+<p>Três decisões estão no código do laboratório. O carimbo de tempo e a chave de idempotência vão dentro da assinatura, senão quem capturasse uma chamada trocaria só um dos dois e a reenviaria. O receptor recusa carimbo com mais de 300 segundos de diferença, o que barra o reenvio de chamada antiga. E a comparação é feita em tempo constante, para que o tempo de resposta não revele a assinatura aos pedaços.</p>
+<h2>A campainha que toca duas vezes: idempotência</h2>
+<p class="lead">Reenviar é bom; o erro é quem recebe tratar o reenvio como pedido novo.</p>
+<ul class="pontos"><li>O faturamento demorou, a automação não recebeu a confirmação e reenviou</li><li>Se esta chamada chegar duas vezes, o mundo muda duas vezes?</li><li>Idempotência: fazer duas vezes tem o mesmo efeito que fazer uma</li></ul>
+<p>Na quarta-feira de Caio, o sistema de faturamento demorou a responder, a plataforma de automação não recebeu confirmação a tempo e reenviou a chamada. Os dois envios foram processados. Duas notas. Plataformas reenviam, e é bom que reenviem: é o que impede um pedido de se perder numa queda de rede.</p>
+<p>Uma operação é <strong>idempotente</strong> quando fazê-la duas vezes tem o mesmo efeito que fazê-la uma. A técnica é a <strong>chave de idempotência</strong>: o emissor manda, num cabeçalho, um identificador que é o mesmo em todos os reenvios da mesma mensagem. O receptor grava a chave num livro antes de processar; se ela já existe, devolve a resposta guardada da primeira vez. A documentação da Stripe, referência comum no assunto, descreve o mesmo desenho: guardar o status e o corpo da primeira resposta e tratar como erro a mesma chave com conteúdo diferente.</p>
+<div class="transicao"><span class="rot">Na fala do professor</span><p>Se esta chamada chegar duas vezes, o mundo muda duas vezes?</p></div>
+<h2>A chave que não pode mudar</h2>
+<p class="lead">O erro mais frequente não está no receptor; está no emissor.</p>
+<ul class="pontos"><li>Chave nova a cada tentativa: a proteção não protege nada</li><li>A chave vem de algo que não muda, como o id da mensagem no canal</li><li>A idempotência protege o seu banco, não a sua conta na plataforma</li></ul>
+<p>Se o cenário gera um número aleatório novo a cada execução, cada reenvio chega com chave diferente, e o porteiro deixa passar duas cópias. A chave deve vir de algo que não muda no reenvio, como o identificador da mensagem no canal de origem.</p>
+<p>E há um limite: a idempotência protege o seu banco de dados, não a sua conta na plataforma de automação. Cada reenvio também consome crédito lá. Por isso o receptor responde com códigos que dizem ao cenário o que fazer: <code>202</code> segue; <code>401</code> e <code>422</code> alertam uma pessoa e <strong>não</strong> reenviam igual, porque dariam o mesmo erro; <code>500</code> reenvia com a <strong>mesma</strong> chave, com espera crescente e limite de tentativas; <code>503</code> reenvia depois da espera que o cabeçalho <code>Retry-After</code> pede.</p>
+<h2>Nove chamadas contra o porteiro</h2>
+<p class="lead">Antes de ligar qualquer coisa de verdade, Lia quis mostrar a Caio o que acontece quando dá errado, nove vezes seguidas.</p>
+<ul class="pontos"><li>Um receptor de pedidos e um simulador da plataforma, inclusive dos erros</li><li>Modelo simulado: sem chave, sem internet, sem custo</li><li>Nove chamadas, quatro pedidos gravados, uma fatura</li></ul>
+<p>“Se eu não vou ler o código”, perguntou Caio, “como eu sei que isso funciona?” A resposta de Lia é o laboratório 51: um receptor de webhook que confere assinatura, recusa chamada antiga, não duplica pedido, valida o JSON e usa o modelo só para ler o texto livre, e um simulador que faz com o receptor o que a plataforma faria, inclusive os erros. Tudo com um modelo simulado, que não entende nada e não precisa entender. As saídas reproduzidas no material vêm de uma execução real em 29 de setembro de 2026.</p>
+<p>O primeiro envelope é um pedido normal: entra, vira pedido e é faturado. O segundo é o mesmo envelope, reenviado: o porteiro devolve o mesmo identificador e a resposta guardada, e nada duplica. Um envelope com o segredo errado é barrado. Uma chamada de dez minutos atrás também, porque o horário vai dentro da assinatura. E a chamada capturada, reenviada com outra chave, é barrada porque a chave também vai dentro da assinatura: trocar a chave racha o lacre.</p>
+<p>Caio lê a saída como lê um extrato. Nove chamadas chegaram; quatro viraram pedido. As que não viraram foram barradas antes de gastar qualquer coisa. Das quatro, uma foi faturada direto, duas esperam uma pessoa e uma foi recusada por regra. O que acontece com os pedidos que esperam decisão fica para a aula 21.</p>
+<h2>A ordem das perguntas do porteiro</h2>
+<p class="lead">Cada verificação barra o que a seguinte não deveria ver.</p>
+<ul class="pontos"><li>Primeiro o que é barato: tamanho e tipo</li><li>Assinatura antes de anotar a chave no livro</li><li>Chave antes do modelo: o reenvio não gasta nada</li></ul>
+<p>A ordem é: tamanho, tipo, assinatura, carimbo, chave, contrato, modelo, regras. Tamanho e tipo custam uma comparação, e um corpo de 1 MB nunca chega a ser lido. A assinatura vem antes da chave porque, se a chave fosse gravada antes, um estranho poderia encher o livro de números falsos, ou “reservar” o número de um pedido verdadeiro que ainda nem chegou. Só quem conhece o segredo escreve no banco.</p>
+<p>A chave vem antes do contrato e do modelo: o reenvio recebe a resposta guardada sem passar de novo pelo modelo, e não gasta token. E o modelo vem por último, porque é a etapa mais cara e a única probabilística; quando é chamado, tudo o que regra fixa podia barrar já foi barrado.</p>
+<p>O código de sucesso é <code>202</code>, não <code>201</code>: “recebi e registrei” é diferente de “concluí”, porque o pedido pode estar na fila, esperando Caio.</p>
+<h2>Idempotência que sobrevive à queda</h2>
+<p class="lead">Um teste derruba o porteiro, sobe outro com o mesmo livro e reenvia a mesma chamada.</p>
+<ul class="pontos"><li>Precisa sair o mesmo identificador e um pedido só</li><li>Se o livro morasse na memória do programa, o teste falharia</li><li>Segunda barreira: a chave é única no próprio banco</li></ul>
+<p>O teste <code>test_idempotencia_sobrevive_ao_reinicio_do_receptor</code> envia o pedido do Sacolão, derruba o servidor, sobe outro processo com o mesmo banco e reenvia a mesma chamada. Precisa dar o mesmo identificador e um pedido só. Com as chaves num dicionário em memória, falharia.</p>
+<p>Há uma segunda barreira: a chave é <code>UNIQUE</code> na tabela de pedidos, e o <code>pedido_id</code> na de faturas; uma cópia que escapasse seria recusada pelo banco. A mesma lógica protege a fila: a mudança de estado só acontece se o pedido ainda estiver aguardando aprovação, e por isso, se duas pessoas decidirem o mesmo pedido ao mesmo tempo, a segunda decisão não sobrescreve a primeira.</p>
+
+<section class="apoio"><h2>Material de apoio</h2>
+<h3>A gramática de qualquer API (cap. 7)</h3>
+<ul class="check"><li><strong>Endpoint</strong> é o guichê: um endereço como <code>https://exemplo.com/webhook/pedidos</code>.</li><li><strong>Método</strong> diz a intenção. <code>GET</code> lê, <code>POST</code> cria ou envia, <code>PUT</code> e <code>PATCH</code> alteram, <code>DELETE</code> remove.</li><li><strong>Corpo</strong> é o formulário preenchido, quase sempre em JSON.</li><li><strong>Chave</strong> ou <strong>token</strong> é a senha do balcão. Mora em variável de ambiente ou cofre de credenciais, nunca no código.</li><li><strong>Status</strong> é o código da resposta, um número de três dígitos que diz como o pedido terminou.</li></ul>
+<h3>Os códigos de status lidos pela centena (cap. 7)</h3>
+<table class="tab"><thead><tr><th>Família</th><th>Significado</th><th>Exemplos</th></tr></thead><tbody><tr><td><code>2xx</code></td><td>deu certo</td><td><code>200</code> ok, <code>201</code> criado, <code>202</code> recebido para processar</td></tr><tr><td><code>4xx</code></td><td>o erro é de quem pediu</td><td><code>400</code> pedido malformado, <code>401</code> sem autorização, <code>404</code> não existe, <code>409</code> conflito, <code>422</code> conteúdo fora do contrato, <code>429</code> pedidos demais</td></tr><tr><td><code>5xx</code></td><td>o erro é de quem responde</td><td><code>500</code> falha interna, <code>503</code> indisponível</td></tr></tbody></table>
+<h3>Por que a centena importa na hora de repetir</h3>
+<p>Tentar de novo um <code>4xx</code> igual dá o mesmo erro; um <code>5xx</code> pode passar na segunda vez.</p>
+<h3>Os seis tipos de valor do JSON (cap. 7)</h3>
+<table class="tab"><thead><tr><th>Tipo</th><th>Como aparece</th><th>Exemplo</th></tr></thead><tbody><tr><td>objeto</td><td>chaves <code>{ }</code>, pares nome: valor</td><td><code>{"produto": "tomate", "kg": 40}</code></td></tr><tr><td>lista</td><td>colchetes <code>[ ]</code>, valores em ordem</td><td><code>["hoje", "amanha"]</code></td></tr><tr><td>texto</td><td>entre aspas duplas</td><td><code>"Sacolão Real"</code></td></tr><tr><td>número</td><td>sem aspas, ponto como decimal</td><td><code>40.0</code></td></tr><tr><td>booleano</td><td><code>true</code> ou <code>false</code></td><td><code>true</code></td></tr><tr><td>nulo</td><td><code>null</code> — "sem valor", diferente de zero</td><td><code>null</code></td></tr></tbody></table>
+<h3>O pedido do Caio em JSON (cap. 7)</h3>
+<pre>{
+  &quot;cliente&quot;: &quot;Sacolão Real&quot;,
+  &quot;itens&quot;: [
+    { &quot;produto&quot;: &quot;tomate&quot;, &quot;kg&quot;: 40.0 },
+    { &quot;produto&quot;: &quot;batata&quot;, &quot;kg&quot;: 30.0 },
+    { &quot;produto&quot;: &quot;banana&quot;, &quot;kg&quot;: 40.0 }
+  ],
+  &quot;entrega&quot;: &quot;amanha&quot;,
+  &quot;confianca&quot;: 0.95,
+  &quot;duvidas&quot;: []
+}</pre>
+<h3>Por dentro do JSON: o pedido do Caio, campo a campo</h3>
+<ul class="check"><li><code>{ ... }</code> — o pedido inteiro é um <strong>objeto</strong>: um conjunto de campos com nome.</li><li><code>"cliente"</code> — <strong>texto</strong>. É o nome lido na mensagem, não o cadastro. Quem confere o cadastro são as regras do sistema, depois.</li><li><code>"itens"</code> — <strong>lista</strong> de objetos. A ordem não tem significado aqui, mas a lista precisa ter pelo menos um item.</li><li><code>"produto"</code> — <strong>texto</strong>, sem acento e no singular, por combinação ("banana", não "Bananas"). Combinar a grafia evita que o catálogo tenha dois produtos para a mesma fruta.</li><li><code>"kg"</code> — <strong>número</strong>, sem aspas. <code>"40"</code> entre aspas seria texto, e somar texto dá errado. As duas caixas de banana viraram <code>40.0</code> porque a instrução do modelo diz que uma caixa são 20 kg.</li><li><code>"entrega"</code> — <strong>texto</strong> com valores fechados: <code>"hoje"</code>, <code>"amanha"</code> ou <code>"a_combinar"</code>. Lista fechada impede "depois de amanhã, se der".</li><li><code>"confianca"</code> — <strong>número</strong> entre 0 e 1: o quanto o modelo diz ter certeza da leitura. Atenção: é uma estimativa do próprio modelo, não uma probabilidade medida. Serve como sinal a mais, nunca como única trava.</li><li><code>"duvidas"</code> — <strong>lista</strong> de textos, vazia aqui. Quando a mensagem diz "umas 30 kg", a dúvida vai para cá, e é isso que a pessoa lê na fila de aprovação.</li><li>O que <strong>não</strong> está no JSON também é decisão: preço, frete e desconto. Eles moram nas regras do sistema, onde o texto do cliente não alcança.</li></ul>
+<h3>O schema que barraria a banana de zero quilo (cap. 7)</h3>
+<p>Um JSON bem formado pode estar errado. <code>{"produto": "banana", "kg": 0}</code> é JSON perfeito e pedido absurdo. Para recusá-lo, é preciso um <strong>JSON Schema</strong>: um documento, também em JSON, que descreve o que um JSON válido pode conter. A especificação vigente do JSON Schema é a 2020-12.</p>
+<p>O trecho abaixo é um trecho, não um JSON completo: o valor de <code>items</code> dentro da propriedade <code>itens</code>. <code>items</code>, em inglês, é a palavra do JSON Schema que descreve cada elemento de uma lista.</p>
+<h3>Trecho do schema: cada item do pedido</h3>
+<pre>&quot;items&quot;: {
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;required&quot;: [&quot;produto&quot;, &quot;kg&quot;],
+  &quot;additionalProperties&quot;: false,
+  &quot;properties&quot;: {
+    &quot;produto&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;minLength&quot;: 2 },
+    &quot;kg&quot;:      { &quot;type&quot;: &quot;number&quot;, &quot;minimum&quot;: 0.1, &quot;maximum&quot;: 5000 }
+  }
+}</pre>
+<h3>O que cada palavra do schema faz</h3>
+<p><code>required</code> diz o que não pode faltar. <code>additionalProperties: false</code> recusa campo não previsto: sem ele, um <code>"kgs"</code> digitado errado passaria calado. <code>minimum</code> e <code>maximum</code> cercam o número. Com esse contrato, o pedido de quinta-feira teria parado com uma mensagem que diz <strong>onde</strong> está o erro:</p>
+<h3>Uso do validador do núcleo: ler_json_do_modelo e ContratoViolado</h3>
+<pre># 04_laboratorios/codigo/nucleo/contratos.py — uso
+from nucleo.contratos import ler_json_do_modelo, ContratoViolado
+
+try:
+    pedido = ler_json_do_modelo(texto_do_modelo, ESQUEMA_EXTRACAO)
+except ContratoViolado as e:
+    print(e.erros)   # [&#x27;$.itens[2].kg: menor que 0.1&#x27;]
+    # o pedido vai para revisão manual; o sistema não &quot;conserta&quot; o JSON sozinho</pre>
+<h3>Nota sobre o validador</h3>
+<p>O validador do núcleo implementa um subconjunto pequeno do JSON Schema, de propósito, para você ler o mecanismo. Em produção, use um validador completo; o raciocínio é o mesmo.</p>
+<h3>📅 Dado volátil: saídas estruturadas por provedor (documentação consultada em 28/09/2026)</h3>
+<ul class="check"><li><strong>OpenAI:</strong> na Responses API, <code>text.format</code> com <code>type: "json_schema"</code> e <code>strict: true</code>; o modo <code>strict</code> vale também para argumentos de ferramentas. Exige todos os campos em <code>required</code> e <code>additionalProperties: false</code>. Recusa por segurança volta num campo <code>refusal</code> separado. O antigo "JSON mode" só garante JSON válido, não aderência ao schema.</li><li><strong>Anthropic:</strong> recurso em disponibilidade geral (GA, fora de prévia) em duas formas, <em>JSON outputs</em> via <code>output_config.format</code> (o antigo <code>output_format</code> está depreciado) e <em>strict tool use</em>. Não aceita schema recursivo, <code>$ref</code> externo, restrições numéricas (<code>minimum</code>/<code>maximum</code>) nem de tamanho de texto. A primeira chamada com um schema novo tem latência extra.</li><li><strong>Google Gemini:</strong> aceita JSON Schema pelo parâmetro <code>response_json_schema</code>, incluindo <code>anyOf</code>, <code>$ref</code> recursivo e <code>minimum</code>/<code>maximum</code>; propriedades não suportadas são ignoradas. A documentação marca a API <code>generateContent</code> como "Legacy" e aponta para a nova Interactions API, com nomes de parâmetro diferentes.</li><li><strong>A lição:</strong> o <code>"minimum": 0.1</code> do schema do Caio seria <strong>deixado de fora</strong> pela restrição de geração de um provedor e respeitado pela de outro. O mesmo schema pode passar num e falhar noutro. Use a saída estruturada para diminuir erro de formato e <strong>valide sempre do seu lado</strong>, com o seu schema completo.</li></ul>
+<h3>Consulta periódica × webhook (cap. 7)</h3>
+<table class="tab"><thead><tr><th></th><th>Consulta periódica (<em>polling</em>)</th><th>Webhook</th></tr></thead><tbody><tr><td>Como funciona</td><td>o sistema pergunta de tempos em tempos: "chegou pedido novo?"</td><td>o outro sistema avisa na hora, com uma chamada HTTP para um endereço combinado</td></tr><tr><td>Vantagem</td><td>simples; tolera o receptor desligado</td><td>imediato</td></tr><tr><td>Custo</td><td>atrasa e gasta chamadas à toa</td><td>exige um endereço sempre disponível</td></tr><tr><td>Problemas novos</td><td>—</td><td>provar quem tocou a campainha; lidar com a campainha tocada duas vezes</td></tr></tbody></table>
+<h3>Assinatura HMAC: o trecho de seguranca.py (Engenharia, cap. 7)</h3>
+<pre># lab51_automacao/seguranca.py (trecho)
+def assinar(corpo: bytes, carimbo: int, segredo: str, *, chave: str) -&gt; str:
+    # carimbo e chave de idempotência entram DENTRO do que é assinado
+    mensagem = str(carimbo).encode(&quot;ascii&quot;) + b&quot;.&quot; + chave.encode(&quot;utf-8&quot;) + b&quot;.&quot; + corpo
+    resumo = hmac.new(segredo.encode(&quot;utf-8&quot;), mensagem, hashlib.sha256).hexdigest()
+    return f&quot;sha256={resumo}&quot;
+
+def assinatura_confere(corpo, carimbo_texto, assinatura, segredo, *, chave) -&gt; bool:
+    ...
+    esperada = assinar(corpo, carimbo, segredo, chave=chave or &quot;&quot;).encode(&quot;ascii&quot;)
+    # comparação em tempo constante: &#x27;==&#x27; para no primeiro caractere diferente
+    return hmac.compare_digest(esperada, assinatura.strip().encode(&quot;utf-8&quot;, &quot;replace&quot;))</pre>
+<h3>As três decisões do trecho de assinatura</h3>
+<ul class="check"><li>O <strong>carimbo de tempo</strong> e a <strong>chave de idempotência</strong> vão dentro da assinatura; senão, quem capturasse uma chamada trocaria só um dos dois e a reenviaria.</li><li>O receptor recusa carimbo com mais de <strong>300 segundos</strong> de diferença, o que barra o reenvio de chamada antiga.</li><li>A <strong>comparação em tempo constante</strong> evita que o tempo de resposta revele a assinatura aos pedaços.</li></ul>
+<h3>Idempotência: o trecho de loja.py (cap. 7)</h3>
+<pre># lab51_automacao/loja.py (trecho) — INSERT OR IGNORE é atômico:
+# se duas cópias chegam juntas, só uma consegue gravar a chave
+cur = con.execute(
+    &quot;INSERT OR IGNORE INTO idempotencia (chave, hash_corpo, criado_em) VALUES (?, ?, ?)&quot;,
+    (chave, hash_corpo, time.time()))
+if cur.rowcount == 1:
+    return &quot;nova&quot;, None          # ninguém processou: siga
+# senão: &quot;repetida&quot; (devolva a resposta guardada), &quot;em_andamento&quot; ou
+# &quot;conflito&quot; (mesma chave, corpo diferente: erro de quem enviou)</pre>
+<h3>Os quatro estados da chave e a referência da Stripe</h3>
+<ul class="check"><li><code>nova</code> — ninguém processou: siga.</li><li><code>repetida</code> — devolva a resposta guardada.</li><li><code>em_andamento</code> — a primeira cópia ainda está sendo processada.</li><li><code>conflito</code> — mesma chave, corpo diferente: erro de quem enviou.</li><li>A documentação da Stripe, referência comum no assunto, descreve o mesmo desenho: guardar o status e o corpo da primeira resposta e tratar como erro a mesma chave com parâmetros diferentes.</li></ul>
+<h3>Armadilha comum: a chave que muda a cada tentativa (cap. 7)</h3>
+<p>O erro mais frequente não está no receptor; está no emissor. Se o cenário gera um número aleatório novo a cada execução, cada reenvio chega com chave diferente e a idempotência não protege nada. A chave deve vir de algo que não muda no reenvio, como o identificador da mensagem no canal de origem. E repare num limite: <strong>a idempotência protege o seu banco de dados, não a sua conta na plataforma</strong>. Cada reenvio também consome crédito lá.</p>
+<h3>O que cada código de resposta manda o cenário fazer (cap. 7)</h3>
+<table class="tab"><thead><tr><th>Código do receptor</th><th>Significado</th><th>O que o cenário faz</th></tr></thead><tbody><tr><td><code>202</code></td><td>recebido e registrado</td><td>segue</td></tr><tr><td><code>401</code></td><td>assinatura errada</td><td>alerta uma pessoa; <strong>não</strong> reenvia igual</td></tr><tr><td><code>422</code></td><td>JSON fora do contrato</td><td>alerta uma pessoa; <strong>não</strong> reenvia igual</td></tr><tr><td><code>500</code></td><td>falha interna</td><td>reenvia com a <strong>mesma</strong> chave, espera crescente e limite de tentativas</td></tr><tr><td><code>503</code></td><td>ainda em processamento</td><td>reenvia depois da espera que o cabeçalho <code>Retry-After</code> pede</td></tr></tbody></table>
+<h3>Aplicação guiada: validar três saídas de modelo (Aplicado e Engenharia, cap. 7)</h3>
+<p><strong>Caminho Engenharia.</strong> A partir de <code>04_laboratorios\codigo</code>, abra o Python e valide três saídas com o schema do laboratório 51:</p>
+<h3>Código da aplicação guiada</h3>
+<pre>import json
+from nucleo.contratos import validar
+from lab51_automacao.pedidos import ESQUEMA_EXTRACAO   # o schema do capítulo
+
+boa = {&quot;cliente&quot;: &quot;Sacolão Real&quot;, &quot;itens&quot;: [{&quot;produto&quot;: &quot;tomate&quot;, &quot;kg&quot;: 40}],
+       &quot;entrega&quot;: &quot;amanha&quot;, &quot;confianca&quot;: 0.9, &quot;duvidas&quot;: []}
+zero = {**boa, &quot;itens&quot;: [{&quot;produto&quot;: &quot;banana&quot;, &quot;kg&quot;: 0}]}
+sobra = {**boa, &quot;desconto&quot;: 0.1}
+
+for nome, saida in [(&quot;boa&quot;, boa), (&quot;zero&quot;, zero), (&quot;sobra&quot;, sobra)]:
+    print(nome, validar(saida, ESQUEMA_EXTRACAO) or &quot;válida&quot;)</pre>
+<h3>Caminho Aplicado e resultado esperado</h3>
+<p><strong>Caminho Aplicado.</strong> Abra o arquivo <code>04_laboratorios\exemplos_json\lab51_esquema_extracao.json</code>, cole o schema num validador online de JSON Schema que aceite a versão 2020-12 e teste as mesmas três saídas, digitadas à mão.</p>
+<p><strong>⚠️ Nunca cole num validador online um JSON com dado real de cliente.</strong></p>
+<p><strong>O que você deve ver:</strong> a primeira passa; a segunda falha em <code>$.itens[0].kg</code>, por ser menor que 0,1; a terceira falha por campo não previsto, <code>desconto</code>. Se a terceira passou, o schema que você usou não tem <code>additionalProperties: false</code>, e é exatamente essa ausência que deixaria um modelo inventar um desconto que ninguém autorizou.</p>
+<h3>Desafio prático do cap. 7: o schema da matrícula de Beatriz</h3>
+<p>Beatriz Rocha, coordenadora pedagógica de uma rede de três escolas em Recife, quer que o formulário de matrícula alimente o sistema da secretaria por webhook. Escreva o JSON Schema de uma matrícula com: nome do estudante, data de nascimento, unidade (uma das três), série (lista fechada), responsáveis (de um a três, cada um com nome e telefone) e necessidades de apoio (texto opcional).</p>
+<p>Depois responda: que campo você recusaria se viesse a mais? Qual chave de idempotência usaria para que a família que clica duas vezes em “enviar” não gere duas matrículas? E qual desses campos é dado pessoal sensível, que não deveria viajar para um modelo sem necessidade (o capítulo 9 volta a isso)?</p>
+<h3>Laboratório 51 (demonstração): objetivo e pré-requisitos</h3>
+<p><strong>Objetivo.</strong> Ver, sem ler código, um receptor de pedidos que confere assinatura, recusa chamada antiga, não duplica pedido, valida o JSON e usa o modelo só para ler o texto livre, enfrentando nove chamadas, cada uma com um problema diferente. O laboratório mora em <code>04_laboratorios\codigo\lab51_automacao\</code>.</p>
+<p><strong>Dois caminhos.</strong> O caminho de Caio (quem não executa): leia a aplicação guiada (as nove linhas e o que cada uma significa) e pule as seções marcadas Engenharia. O caminho de Lia (quem executa): rode cada comando e compare com as saídas reproduzidas aqui, que vieram de uma execução real em 29 de setembro de 2026.</p>
+<p><strong>Pré-requisitos.</strong> Python 3.12 e nada mais. O receptor usa só a biblioteca padrão (<code>http.server</code>, <code>hmac</code>, <code>hashlib</code>, <code>sqlite3</code>, <code>json</code>). Uma conta no Make, no n8n, no Zapier ou no Pipedream é opcional.</p>
+<p><strong>Custo.</strong> Zero no modo simulado: roda na sua máquina, sem chave e sem rede externa.</p>
+<p><strong>Pastas.</strong> Um arquivo por responsabilidade: <code>seguranca.py</code> (HMAC e carimbo), <code>loja.py</code> (SQLite), <code>pedidos.py</code> (contratos, instrução e regras), <code>receptor.py</code> (HTTP e ordem das verificações), <code>aprovacao.py</code> (fila), <code>simulador_make.py</code> (a plataforma) e <code>dados/</code>. Schemas em <code>04_laboratorios\exemplos_json\lab51_*.json</code>. Os dados de exemplo são inventados (quatro clientes e dez produtos com preço fictício); as regras de valor do pedido e a fila de aprovação são tratadas na aula 21.</p>
+<p>Todos os comandos partem de <code>04_laboratorios\codigo\lab51_automacao</code>. No Windows, se os acentos saírem quebrados, rode antes <code>$env:PYTHONIOENCODING="utf-8"</code> no PowerShell.</p>
+<h3>Etapa 1: rodar o roteiro completo</h3>
+<p>O simulador sobe um receptor temporário numa porta livre e dispara nove chamadas, cada uma com um problema diferente.</p>
+<h3>Comando da etapa 1</h3>
+<pre>python simulador_make.py</pre>
+<h3>Saída real da etapa 1 (execução de 29/09/2026; os identificadores PED-... mudam a cada vez)</h3>
+<pre>1. pedido normal                         → HTTP 202  faturado id=PED-92C2C9C8
+2. reenvio da MESMA chamada              → HTTP 202  faturado id=PED-92C2C9C8 (resposta guardada, nada foi duplicado)
+3. assinatura com segredo errado         → HTTP 401  assinatura inválida
+4. chamada antiga reenviada (10 min)     → HTTP 401  carimbo fora da janela (possível reenvio de chamada antiga)
+5. payload inválido                      → HTTP 422  payload inválido
+                                           · $: falta o campo obrigatório &#x27;mensagem&#x27;
+                                           · $: falta o campo obrigatório &#x27;enviado_em&#x27;
+                                           · $.origem: valor &#x27;telegram&#x27; fora da lista permitida [&#x27;whatsapp&#x27;, &#x27;email&#x27;, &#x27;formulario&#x27;]
+6. pedido acima de R$ 5 mil              → HTTP 202  aguardando_aprovacao id=PED-9DFF6C14
+                                           · acima de R$ 5.000,00
+7. mensagem vaga (baixa confiança)       → HTTP 202  aguardando_aprovacao id=PED-435AA7B4
+                                           · baixa confiança do modelo (0,55)
+8. abaixo do pedido mínimo               → HTTP 202  recusado id=PED-6F5FAF97
+                                           · abaixo do pedido mínimo de R$ 200,00
+9. chamada capturada, outra chave        → HTTP 401  assinatura inválida
+
+Fila de aprovação (2 pedidos) — decisão: nao
+Aprovados: 0 · Negados: 2
+Pedidos gravados: 4 · Faturas emitidas: 1
+Eventos na trilha de auditoria: 11</pre>
+<h3>O que cada linha significa</h3>
+<table class="tab"><thead><tr><th>Linha</th><th>Chamada</th><th>Resposta</th><th>O que mostra</th></tr></thead><tbody><tr><td>1</td><td>pedido normal</td><td>202, faturado</td><td>o caminho feliz: entra, vira pedido e é faturado</td></tr><tr><td>2</td><td>reenvio da mesma chamada</td><td>202, mesmo id</td><td>idempotência: resposta guardada, nada duplicado</td></tr><tr><td>3</td><td>segredo errado</td><td>401</td><td>a assinatura barra quem não conhece o segredo</td></tr><tr><td>4</td><td>chamada antiga (10 min)</td><td>401</td><td>o carimbo vai dentro da assinatura; fora da janela de 300 s é recusado</td></tr><tr><td>5</td><td>payload inválido</td><td>422</td><td>o contrato de entrada diz <strong>onde</strong> está cada erro</td></tr><tr><td>6</td><td>pedido acima de R$ 5 mil</td><td>202, aguardando aprovação</td><td>parou na fila, com o motivo</td></tr><tr><td>7</td><td>mensagem vaga</td><td>202, aguardando aprovação</td><td>baixa confiança do modelo (0,55) manda para a fila</td></tr><tr><td>8</td><td>abaixo do pedido mínimo</td><td>202, recusado</td><td>recusado por regra fixa</td></tr><tr><td>9</td><td>chamada capturada, outra chave</td><td>401</td><td>a chave vai assinada: trocar a chave racha o lacre</td></tr></tbody></table>
+<h3>O que você deve ver na etapa 1</h3>
+<p>As linhas 1 e 2 com o <strong>mesmo identificador</strong> de pedido. As linhas 3 e 4 com 401, e a 5 com 422 e uma lista de erros que diz <strong>onde</strong> está cada problema. As linhas 6 e 7 na fila, cada uma com o seu motivo. A 8 recusada. A 9 com 401: a chamada capturada volta com outra chave e a assinatura não confere. No resumo, quatro pedidos gravados e uma fatura só. A fila foi negada por padrão, e por isso só existe uma fatura.</p>
+<h3>Etapas 2 e 3</h3>
+<ul class="check"><li><strong>Etapa 2 — decidir a fila de outro jeito.</strong> Rode <code>python simulador_make.py --decidir sim</code>. <em>O que você deve ver:</em> as mesmas nove linhas e, no fim, <code>Aprovados: 2 · Negados: 0</code> e <code>Faturas emitidas: 3</code>. Com <code>--decidir terminal</code>, o programa pergunta pedido a pedido.</li><li><strong>Etapa 3 — receptor e simulador em processos separados.</strong> Num terminal, <code>python receptor.py --porta 8051</code>; noutro, <code>python simulador_make.py --url http://127.0.0.1:8051</code>. <em>O que você deve ver:</em> o primeiro terminal informa a pasta do banco e avisa que usa o segredo de <strong>teste</strong>, que só é aceito em 127.0.0.1; o segundo mostra as mesmas nove linhas. A fila desse receptor se decide com <code>python aprovacao.py --banco &lt;pasta informada&gt;/pedidos.db</code>.</li></ul>
+<h3>A ordem das verificações do receptor (Engenharia, cap. 51)</h3>
+<p>A ordem das perguntas do receptor não é estética: cada verificação barra o que a seguinte não deveria ver. A sequência completa é tamanho, tipo, assinatura, carimbo, chave, contrato, modelo e regras. O trecho abaixo é do método <code>tratar</code>, em <code>receptor.py</code>:</p>
+<h3>Trecho do método tratar (receptor.py)</h3>
+<pre>if len(corpo) &gt; TAMANHO_MAXIMO:
+    return 413, {&quot;erro&quot;: &quot;corpo grande demais&quot;}, {}
+if &quot;application/json&quot; not in cab.get(&quot;content-type&quot;, &quot;&quot;):
+    return 415, {&quot;erro&quot;: &quot;envie Content-Type: application/json&quot;}, {}
+
+# A chave de idempotência entra no que é assinado (carimbo.chave.corpo).
+chave = cab.get(&quot;x-chave-idempotencia&quot;, &quot;&quot;).strip()
+if not assinatura_confere(corpo, cab.get(&quot;x-carimbo&quot;), cab.get(&quot;x-assinatura&quot;), self._segredo,
+                          chave=chave):
+    log(&quot;receptor&quot;, &quot;recusar_chamada&quot;, ROTA_PEDIDOS, &quot;assinatura_invalida&quot;)
+    return 401, {&quot;erro&quot;: &quot;assinatura inválida&quot;}, {}
+if not carimbo_dentro_da_janela(cab.get(&quot;x-carimbo&quot;), self.relogio()):
+    log(&quot;receptor&quot;, &quot;recusar_chamada&quot;, ROTA_PEDIDOS, &quot;carimbo_fora_da_janela&quot;)
+    return 401, {&quot;erro&quot;: &quot;carimbo fora da janela (possível reenvio de chamada antiga)&quot;}, {}
+
+if not chave_valida(chave):
+    return 400, {&quot;erro&quot;: &quot;envie X-Chave-Idempotencia (8 a 100 caracteres: letras, números, - ou _)&quot;}, {}
+hash_corpo = hashlib.sha256(corpo).hexdigest()
+situacao, guardada = self.loja.reservar_chave(chave, hash_corpo)
+if situacao == &quot;repetida&quot;:
+    log(&quot;receptor&quot;, &quot;devolver_resposta_guardada&quot;, chave, &quot;duplicata_ignorada&quot;)
+    return guardada[&quot;status&quot;], guardada[&quot;corpo&quot;], {&quot;X-Idempotencia&quot;: &quot;repetida&quot;}</pre>
+<h3>As quatro escolhas que explicam a sequência</h3>
+<ul class="check"><li><strong>Primeiro o que é barato.</strong> Tamanho e tipo custam uma comparação; um corpo de 1 MB nunca chega a ser lido.</li><li><strong>Assinatura antes da chave de idempotência.</strong> Se a chave fosse gravada antes, um estranho poderia encher o banco de chaves falsas, ou "reservar" a chave de um pedido legítimo que ainda não chegou. Só quem conhece o segredo escreve no banco, e a chave vai assinada junto com o carimbo e o corpo: uma chamada capturada não volta com outra chave.</li><li><strong>Chave antes do contrato e do modelo.</strong> O reenvio recebe a resposta guardada sem passar de novo pelo modelo, e não gasta token.</li><li><strong>O modelo por último.</strong> É a etapa mais cara e a única probabilística; quando é chamado, tudo o que regra fixa podia barrar já foi barrado.</li></ul>
+<h3>O 202 e a liberação da chave no 500</h3>
+<p>O código de sucesso é <strong>202</strong>, não 201. "Recebi e registrei" é diferente de "concluí": o pedido pode estar na fila, esperando Caio.</p>
+<p>Se o processamento quebra no meio com uma falha inesperada, o receptor <strong>libera a chave</strong> e devolve 500 (escolha deste laboratório: a Stripe guarda até a resposta de erro). É o único caso em que a mesma chave pode ser processada de novo, e é o caso em que a plataforma deve reenviar. Sem essa liberação, a chave ficaria reservada para sempre com uma resposta vazia. Se a cópia chega enquanto a primeira ainda processa, recebe 503 com <code>Retry-After</code>, e o cenário reenvia; o 409 fica só para a chave usada com outro conteúdo.</p>
+<h3>Idempotência que sobrevive à queda (Engenharia, cap. 51)</h3>
+<p>O teste <code>test_idempotencia_sobrevive_ao_reinicio_do_receptor</code> envia o pedido do Sacolão, <strong>derruba o servidor</strong>, sobe outro processo com o mesmo banco e reenvia a mesma chamada: precisa dar o mesmo identificador e um pedido só. Com as chaves num dicionário em memória, falharia.</p>
+<p>Há uma segunda barreira: a chave é <code>UNIQUE</code> na tabela de pedidos, e o <code>pedido_id</code> na de faturas; uma cópia que escapasse seria recusada pelo banco.</p>
+<p>A mesma lógica protege a fila. Em <code>aprovacao.py</code>, a mudança de estado só acontece se o pedido ainda estiver <code>aguardando_aprovacao</code>:</p>
+<h3>Mudança de estado condicional na fila (aprovacao.py)</h3>
+<pre>novo_estado = &quot;faturado&quot; if aprovado else &quot;negado&quot;
+# Muda o estado SÓ se ainda estava aguardando: se outra pessoa já decidiu, respeita.
+if not loja.mudar_estado(pedido[&quot;id&quot;], &quot;aguardando_aprovacao&quot;, novo_estado):
+    continue
+loja.registrar_decisao(pedido[&quot;id&quot;], aprovado, quem)
+if aprovado:
+    loja.faturar(pedido[&quot;id&quot;], pedido[&quot;total_centavos&quot;])</pre>
+<h3>Por que a mudança condicional importa</h3>
+<p>Se Caio e a funcionária abrirem a fila ao mesmo tempo e decidirem o mesmo pedido, a segunda decisão não sobrescreve a primeira.</p>
+<h3>Critérios de teste: a bateria do laboratório 51</h3>
+<p>A bateria roda a partir de <code>04_laboratorios</code>:</p>
+<h3>Comando da bateria de testes</h3>
+<pre>python -m unittest testes.test_lab51_automacao -v</pre>
+<h3>Resultado esperado da bateria</h3>
+<p>Na execução de 29/09/2026, <code>Ran 30 tests in 3.062s</code> e <code>OK</code>. Os nomes dos testes são os critérios, escritos como frase: <code>test_assinatura_errada_da_401_e_nao_cria_pedido</code>, <code>test_reenvio_duplicado_gera_um_pedido_so</code>, <code>test_aprovacao_negada_nao_fatura</code>.</p>
+<h3>Quando algo dá errado (cap. 51)</h3>
+<table class="tab"><thead><tr><th>Sintoma</th><th>Causa provável</th><th>O que fazer</th></tr></thead><tbody><tr><td>toda chamada dá 401 "assinatura inválida"</td><td>segredo diferente nos dois lados, ou corpo reformatado depois de assinado</td><td>assine exatamente os bytes que serão enviados</td></tr><tr><td>401 "carimbo fora da janela" com assinatura certa</td><td>relógio desacertado, ou carimbo em milissegundos</td><td>sincronize o relógio; use segundos</td></tr><tr><td>pedidos duplicados mesmo com a chave</td><td>a chave muda a cada reenvio</td><td>derive a chave do id da mensagem de origem</td></tr><tr><td>503 "ainda em processamento" em rajada</td><td>a plataforma reenvia antes de a primeira chamada terminar</td><td>respeite o <code>Retry-After</code></td></tr></tbody></table>
+<h3>Armadilha comum: consertar o 401 desligando a assinatura (cap. 51)</h3>
+<p>O 401 da primeira semana costuma ter causa boba: um passo reformata o corpo depois da assinatura. A tentação é comentar a verificação "só até descobrir", e ninguém se lembra de religar. <strong>Corrija o emissor, nunca o porteiro</strong>; a contagem de 401 por dia mostra quando a correção funcionou.</p>
+<h3>Rollback, encerramento e limpeza (cap. 51)</h3>
+<p><strong>Rollback.</strong> O laboratório não estorna fatura: no sistema real, estorno é outra operação, com a própria aprovação. Regra que deu errado volta pela versão anterior de <code>pedidos.py</code> no Git. Receptor fora do ar não exige rollback: a plataforma reenvia com a mesma chave, e nada duplica.</p>
+<p><strong>Encerramento e limpeza.</strong> <code>Ctrl+C</code> encerra o receptor; simulador e testes apagam a pasta temporária sozinhos. Se você montou um cenário de teste numa plataforma, desative-o para ele não consumir créditos.</p>
+<h3>Teste de aprendizagem (cap. 7)</h3>
+<ul class="check"><li>Um pedido chega com <code>"kg": "40"</code>. É JSON válido? Passa no schema do Caio? Por que isso importa para a soma do faturamento?</li><li>Seu provedor de modelo garante saída estruturada. Um colega diz que, então, o validador do seu lado é redundante. Dê dois motivos concretos para mantê-lo.</li><li>O receptor devolveu <code>422</code> para uma chamada. O cenário deve reenviá-la? E se tivesse devolvido <code>503</code>?</li><li>Por que a chave de idempotência não pode ser gerada na hora em que o cenário monta a chamada?</li></ul>
+<h3>Teste de aprendizagem (cap. 51)</h3>
+<ul class="check"><li>Um colega propõe gravar a chave de idempotência logo no início, antes de conferir a assinatura, "para economizar tempo". Descreva um abuso que essa mudança permite.</li><li>A linha 7 do simulador mostra um pedido na fila por baixa confiança. Com um modelo real, a mesma mensagem sai com confiança 0,85 e é faturada. O sistema errou? O que você mediria antes de responder?</li><li>O receptor devolveu 500 para um pedido. O que acontece com a chave dele, e o que o cenário deve fazer em seguida?</li><li>Caio quer que a funcionária aprove a fila pelo celular, com o mesmo login que o cenário usa para chamar o receptor. O que você responde, e que teste escreveria?</li></ul>
+<h3>Referências</h3>
+<ul class="check"><li>ANTHROPIC. <em>Structured outputs</em>. Claude Docs. Disponível em: https://platform.claude.com/docs/en/build-with-claude/structured-outputs. Acesso em: 28 set. 2026.</li><li>GOOGLE. <em>Structured outputs</em>. Gemini API. Disponível em: https://ai.google.dev/gemini-api/docs/structured-output. Acesso em: 28 set. 2026.</li><li>GOOGLE. <em>Structured outputs — Generate Content API (Legacy)</em>. Gemini API. Disponível em: https://ai.google.dev/gemini-api/docs/generate-content/structured-output. Acesso em: 28 set. 2026.</li><li>JSON SCHEMA. <em>Specification</em>. Disponível em: https://json-schema.org/specification. Acesso em: 28 set. 2026.</li><li>OPENAI. <em>Structured Outputs</em>. OpenAI API Docs. Disponível em: https://developers.openai.com/api/docs/guides/structured-outputs. Acesso em: 28 set. 2026.</li><li>STRIPE. <em>Idempotent requests</em>. Stripe API Reference. Disponível em: https://docs.stripe.com/api/idempotent_requests. Acesso em: 28 set. 2026.</li></ul>
+</section>
+<p class="fontes"><strong>No livro:</strong> Capítulo 7 (e demonstração do laboratório do capítulo 51).</p>

@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v20'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v21'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -32,6 +32,8 @@ let LC_PATHS = [];                      // rotas da série O Locador Inteligente
 let LC_LLMS = '';                       // seção da série O Locador Inteligente no llms.txt
 let CS_PATHS = [];                      // rotas da série Conexões de Sucesso (só PT)
 let CS_LLMS = '';                       // seção da série Conexões de Sucesso no llms.txt
+let SO_PATHS = [];                      // rotas da série A Segunda Onda da IA (só PT)
+let SO_LLMS = '';                       // seção da série A Segunda Onda da IA no llms.txt
 //                       // seção da série ChatGPT no llms.txt
 // Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
@@ -3950,6 +3952,7 @@ let cjArtigos = [];
 let cgArtigos = [];
 let lcArtigos = [];
 let csArtigos = [];
+let soArtigos = [];
 let capCss = '';
 const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
 const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
@@ -5270,6 +5273,271 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     console.log(`Blog Conexões de Sucesso: hub + ${csNoAr} de ${csTotal} artigos + ${csApoio.length} material(is) de apoio`);
   }
 
+  // ---- Série "A Segunda Onda da IA" (curso sobre sistemas de IA: agentes, RAG, grafos, automação, governança): mesmo padrão da série Conexões de Sucesso ----
+  // Publicada em 01/10/2026 com o LIVRO ainda não lançado na Livraria e o CURSO em rascunho na
+  // Academy. Por isso os anúncios são GENÉRICOS (vitrine da Livraria e marketplace da Academy, os
+  // mesmos destinos da série Claude AI na Prática): link para página de venda que ainda não existe
+  // daria 404. Ao lançar, trocar SO_LIVRO/SO_CURSO pelas páginas do livro e do curso e os textos.
+  // O artigo.css é o mesmo da série O Locador Inteligente, todo sob .cap.
+  const SO_DIR = path.join(__dirname, 'content', 'segunda-onda-da-ia');
+  const SO_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-segunda-onda';
+  const SO_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-segunda-onda';
+  const soDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(SO_DIR)) {
+    const soCss = fs.readFileSync(path.join(SO_DIR, 'artigo.css'), 'utf8');
+    const soLe = n => JSON.parse(fs.readFileSync(path.join(SO_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const soGrade = soLe('grade.json');
+    let soFaq = {}, soApoio = [];
+    try { soFaq = soLe('faq.json'); } catch (e) { console.warn('[segunda-onda] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { soApoio = soLe('apoio.json'); } catch (e) { console.warn('[segunda-onda] sem apoio.json — hub sairá sem material de apoio'); }
+
+    soArtigos = fs.readdirSync(SO_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(SO_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[segunda-onda] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpo = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? soDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `segunda-onda-da-ia-${chave}`;
+      return {
+        ...meta, chave, slug,
+        tituloTexto: soDestexto(meta.titulo), subtituloTexto: soDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => soDestexto(t)),
+        faq: soFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const soComArtigo = soGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of soArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[segunda-onda] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!soComArtigo.includes(a.n)) throw new Error(`[segunda-onda] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (soArtigos.length !== soComArtigo.length) throw new Error(`[segunda-onda] grade diz ${soComArtigo.length} aulas com artigo, mas há ${soArtigos.length} artigos exportados`);
+    const soSemFaq = soArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (soSemFaq.length) console.warn(`[segunda-onda] SEM perguntas frequentes: ${soSemFaq.join(', ')} — escrever em content/segunda-onda-da-ia/faq.json`);
+
+    const soAnuncio = (qual, min = false) => qual === 'livro'
+      ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${SO_LIVRO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">📘</span>
+          <span class="cap-ad-txt"><strong>Livros de Augusto Villela</strong><span>A série sobre inteligência artificial aplicada ao trabalho — Claude AI na Prática, ChatGPT AI na Prática e outros —, em versão digital e impressa, na Livraria Villela.</span></span>
+          <span class="cap-ad-btn">Ver na Livraria →</span></a>`
+      : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${SO_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Cursos na Villela Academy</strong><span>Videoaulas de inteligência artificial aplicada ao trabalho, com artigo e material de apoio em cada aula. Conheça os cursos disponíveis.</span></span>
+          <span class="cap-ad-btn">Ver os cursos →</span></a>`;
+    const SO_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(soAnuncio('livro', true))},${JSON.stringify(soAnuncio('curso', true))}];`);
+    const SO_CSS = `${soCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}`;
+
+    const soTotal = soGrade.total;
+    const soLinhaGrade = (aula, atual) => {
+      const art = soArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'segunda-onda-da-ia'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'segunda-onda-da-ia', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of soArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = soArtigos[iArt - 1], prox = soArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-01', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/segunda-onda-da-ia/#serie` },
+        articleSection: 'A Segunda Onda da IA', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'A Segunda Onda da IA', author: { '@type': 'Person', name: 'Augusto Villela' } },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'A Segunda Onda da IA', item: `${SITE_URL}/segunda-onda-da-ia/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/segunda-onda-da-ia/">A Segunda Onda da IA</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${soTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${soAnuncio('livro', true)}${soAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar — a aula em vídeo e o material de apoio ficam no curso, e o método completo, no livro.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o método completo está nos <a href="${SO_LIVRO}">livros</a> e nos <a href="${SO_CURSO}">cursos</a> do autor.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${soAnuncio('curso')}${soAnuncio('livro')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/segunda-onda-da-ia/"><span class="rot">☰ Índice</span><span class="tit">${soArtigos.length === 1 ? 'O artigo publicado' : `Os ${soArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${soGrade.aulas.map(g => soLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>A Segunda Onda da IA</strong>, de Augusto Villela.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog A Segunda Onda da IA`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${SO_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${SO_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of soApoio) {
+      const cam = `/segunda-onda-da-ia/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/segunda-onda-da-ia/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'segunda-onda-da-ia', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — A Segunda Onda da IA | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série A Segunda Onda da IA, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>A Segunda Onda da IA</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/segunda-onda-da-ia/">A Segunda Onda da IA</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${soAnuncio('livro')}${soAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${SO_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /segunda-onda-da-ia/
+    const soCards = soArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado">artigo no ar · videoaula em produção</span>'}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const soApoioCards = soApoio.map(d => `
+  <a class="cap-card" href="/segunda-onda-da-ia/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const soNoAr = soArtigos.length;
+    const soHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/segunda-onda-da-ia/#serie`,
+      name: 'A Segunda Onda da IA — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: soArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `A Segunda Onda da IA — ${soNoAr} ${soNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: soNoAr,
+      itemListElement: soArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'segunda-onda-da-ia', 'index.html'), layout(
+      'A Segunda Onda da IA: a série do curso | Villela Stay',
+      `A série A Segunda Onda da IA, de Augusto Villela: do usuário ao arquiteto — como projetar, operar e governar sistemas de inteligência artificial, com contexto, ferramentas, agentes, busca por sentido, aprovação humana, custo, segurança e implantação. ${soNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>A Segunda Onda da IA <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Do usuário ao arquiteto</span></h1>
+    <p>${esc(soGrade.subtitulo)}. São ${soTotal} artigos, um para cada videoaula do curso. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>A Segunda Onda da IA</span></nav>
+  <div class="cap-faixa">${soAnuncio('livro')}${soAnuncio('curso')}</div>
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${soTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${soGrade.aulas.map(g => soLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${soCards}</div>
+  ${soApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${soApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${soAnuncio('curso')}${soAnuncio('livro')}</div>
+</div>`,
+      { caminho: '/segunda-onda-da-ia/', semIdiomas: true, extraHead: `<style>${SO_CSS}</style>` + soHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    SO_PATHS = ['/segunda-onda-da-ia/', ...soArtigos.map(a => a.caminho), ...soApoio.map(d => `/segunda-onda-da-ia/apoio/${d.chave}.html`)];
+    SO_LLMS = `## Blog: A Segunda Onda da IA (${soNoAr} artigos, em português)
+
+Série do curso *A Segunda Onda da IA — do usuário ao arquiteto*, de Augusto Villela: como sair da
+conversa com o chatbot e projetar, operar e governar sistemas de inteligência artificial — o teto da
+conversa, sistemas compostos, contratos entre máquinas (API, schema, webhook, idempotência),
+contexto, ferramentas com permissão, busca por sentido (RAG), verificação e avaliação, agentes,
+laços e grafos, aprovação humana, reversão, custo e registro, segurança contra injeção de
+instruções, privacidade e implantação.
+Índice da série: ${SITE_URL}/segunda-onda-da-ia/
+Livros do autor: ${SO_LIVRO.split('?')[0]} · Cursos on-line: ${SO_CURSO.split('?')[0]}
+
+${soArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog A Segunda Onda da IA: hub + ${soNoAr} de ${soTotal} artigos + ${soApoio.length} material(is) de apoio`);
+  }
+
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
     ...['01-central-atualizacao-normativa.html', '02-diretorio-pesquisa-juridica.html', '03-atualizacoes-tecnologicas.html'].map(f => `/claude-juridico/recursos/${f}`)];
   // llms.txt: o assistente que "lê e não renderiza" recebe título + resumo de cada artigo.
@@ -5376,6 +5644,18 @@ const csCardsHub = LANG !== 'pt' || !csArtigos.length ? '' : `
     </div>
   </a>`;
 
+// Série A Segunda Onda da IA (sistemas de IA: agentes, RAG, grafos, automação e governança). Card com a capa do curso.
+const soCardsHub = LANG !== 'pt' || !soArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/segunda-onda-da-ia/">
+    <div class="blog-card-img">${img('/blog-img/segunda-onda-da-ia-1.jpg', { alt: 'Capa do curso A Segunda Onda da IA: o título em letras brancas e douradas sobre fundo azul-marinho, uma escada de cinco degraus — prompt, contexto, harness, laço e grafo — e seis pessoas ilustradas lado a lado', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">🌊 Série · Sistemas de IA</span>
+      <h3>A Segunda Onda da IA</h3>
+      <p>Do usuário ao arquiteto: como projetar, operar e governar sistemas de inteligência artificial — contexto, ferramentas, agentes, busca por sentido, aprovação humana, custo, segurança e implantação.</p>
+      <span class="blog-card-leia">Ver os ${soArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
 // ---- busca do blog ----
 // O hub mostra 16 cards, mas o blog já tem quase cem textos: os 13 do Diário e os das três
 // séries, que moram nos hubs próprios. Procurar só nos cards seria inútil — o índice cobre
@@ -5389,6 +5669,7 @@ const buscaItens = [
     ...cgArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '💬 ChatGPT AI na Prática', u: a.caminho, n: `Aula ${a.n}` })),
     ...lcArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🏡 O Locador Inteligente', u: a.caminho, n: `Aula ${a.n}` })),
     ...csArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🎮 Conexões de Sucesso', u: a.caminho, n: `Aula ${a.n}` })),
+    ...soArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🌊 A Segunda Onda da IA', u: a.caminho, n: `Aula ${a.n}` })),
   ] : []),
 ];
 
@@ -5502,6 +5783,7 @@ const blogLd = {
         ...(cgArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/chatgpt/#serie`, name: 'ChatGPT AI na Prática — a série', url: `${SITE_URL}/chatgpt/` }] : []),
         ...(lcArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/locador/#serie`, name: 'O Locador Inteligente na era da IA — a série', url: `${SITE_URL}/locador/` }] : []),
         ...(csArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/conexoes-de-sucesso/#serie`, name: 'Conexões de Sucesso — a série', url: `${SITE_URL}/conexoes-de-sucesso/` }] : []),
+        ...(soArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/segunda-onda-da-ia/#serie`, name: 'A Segunda Onda da IA — a série', url: `${SITE_URL}/segunda-onda-da-ia/` }] : []),
       ]
     : undefined,
 };
@@ -5522,7 +5804,7 @@ const blogHub = layout(
 </section>
 ${buscaHtml}
 <section class="grade-wrap">
-  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${blogCardsHub}</div>
+  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
@@ -5955,7 +6237,7 @@ const SALTO = String.fromCharCode(10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
-${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
+${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 
@@ -6056,6 +6338,7 @@ ${CAP_LLMS}
 ${CG_LLMS}
 ${LC_LLMS}
 ${CS_LLMS}
+${SO_LLMS}
 ## Livros e cursos do autor
 
 Vitrine conjunta dos três acervos (livros, cursos e sistemas), com links diretos

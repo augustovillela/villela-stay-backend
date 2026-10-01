@@ -1,0 +1,352 @@
+{
+ "01-a-segunda-onda": [
+  [
+   "Por que um bom prompt não basta mais para usar IA no trabalho?",
+   "Porque o limite deixou de estar no pedido e passou a estar em volta dele. Quem já pede bem esbarra no que o livro chama de teto da conversa: toda conversa começa quase do zero, e a pessoa vira ao mesmo tempo a memória, a integração entre sistemas, o controle de qualidade, o executor e o único registro do que aconteceu. Um prompt melhor não tira nenhum desses papéis de cima dela. O que falta é um lugar onde as regras fiquem escritas uma vez, a informação seja consultada sem passar pelas mãos da pessoa e cada passo fique registrado."
+  ],
+  [
+   "O que é um sistema composto de IA?",
+   "É um conjunto de peças trabalhando juntas em volta do modelo de linguagem, em vez de um modelo respondendo sozinho numa caixa de texto. A expressão ganhou força em fevereiro de 2024, num texto de pesquisadores de Berkeley e da indústria sobre a passagem dos modelos para os sistemas compostos: os melhores resultados vinham de várias chamadas ao modelo, busca em fontes próprias, ferramentas externas e etapas de verificação. Num escritório, isso significa regras escritas uma vez, consulta à base com indicação de fonte, leitura da agenda sem poder de escrita, rascunho aprovado por uma pessoa, registro de cada passo e perguntas de teste periódicas."
+  ],
+  [
+   "Quais são os cinco degraus da escada da segunda onda da IA?",
+   "São prompt, contexto, harness, laço e grafo, e cada um responde a uma pergunta. O prompt pergunta o que eu peço. O contexto, o que o modelo precisa saber e em que ordem. O harness, palavra inglesa para arreio, é o programa em volta do modelo que decide ferramentas, permissões, memória, ambiente e registro. O laço trata de como o agente age, confere e para. O grafo organiza vários ciclos e várias pessoas num desenho de etapas ligadas por condições, com estado que se salva e se audita. Os degraus se acumulam: um bom grafo continua dependendo de bons prompts, bom contexto e bom harness."
+  ]
+ ],
+ "02-do-chatbot-ao-sistema": [
+  [
+   "Qual a diferença entre copiloto, automação, workflow e agente de IA?",
+   "A diferença está em quem decide o próximo passo. No copiloto, o modelo sugere e a pessoa decide e executa. Na automação determinística, uma regra fixa decide e executa, sem modelo de linguagem, e faz sempre o mesmo diante da mesma entrada. No workflow, alguém desenhou o caminho e o modelo aparece só em etapas determinadas, como ler texto livre. No agente, o modelo recebe um objetivo, escolhe a ferramenta, observa o resultado e decide se continua, muda de rumo ou para. São pontos numa mesma régua de autonomia, e subir nela troca previsibilidade por flexibilidade."
+  ],
+  [
+   "Quando um agente de IA é a escolha errada e um workflow resolve melhor?",
+   "Quando o caminho já é conhecido, a incerteza está concentrada num ponto só e o erro custa caro. No caso da distribuidora de hortifrúti do livro, os pedidos chegam por vários canais em texto livre, mas o resto é regra: conferir catálogo e estoque, aprovar e confirmar. Um workflow com o modelo numa única etapa, a leitura, e uma pessoa antes da confirmação vence o agente que negocia sozinho. O livro lista outros sinais contra o agente: nada a testar, volume baixo, custo que precisa ser previsível e decisão que exige responsável com nome. O agente faz sentido quando o caminho depende do que se descobre no meio."
+  ],
+  [
+   "Por que uma automação com IA que funciona perfeitamente pode piorar o resultado com o tempo?",
+   "Porque fluxo barato drena estoques que dependem de gente, e o efeito aparece com atraso. No exemplo do livro, uma rede de escolas passou a enviar uma mensagem gerada por IA a cada falta registrada. Cada peça funcionou, mas algumas famílias recebiam quatro ou cinco mensagens por semana, silenciaram o número da escola e a frequência piorou. A atenção das famílias era o estoque, e cada mensagem gastava um pouco dele. O painel mostrava entrega perto de cem por cento, medindo o fluxo e não o efeito. Todo sistema com IA precisa de ao menos um indicador de resultado e um de saturação."
+  ]
+ ],
+ "03-tudo-o-que-nao-e-o-modelo": [
+  [
+   "Quem é responsável quando um assistente de IA comete um erro?",
+   "Sempre uma pessoa com nome, porque só pessoas podem ser cobradas. Modelos, agentes e automações podem executar etapas, mas não respondem por elas, e isso não é uma limitação técnica que o próximo modelo resolverá. O livro adapta a matriz RACI para uma matriz de responsabilidade com quatro colunas: executa, aprova, responde e é informado. Três regras a tornam útil: toda linha tem exatamente um responsável, que é uma pessoa; máquina pode executar ou ser informada, nunca aprovar nem responder; e, nos pontos de consequência, quem executa não é quem aprova."
+  ],
+  [
+   "O que é ponto de consequência num sistema com IA?",
+   "É a etapa depois da qual um erro deixa de ser interno e alcança alguém de fora, ou fica difícil de desfazer, como enviar, pagar, publicar, apagar ou decidir sobre a vida de alguém. O desenho do sistema decorre dele: tudo o que vem antes pode ser rápido e automático, porque o erro ainda é barato, e imediatamente antes fica a aprovação, com uma pessoa que sabe o que está aprovando. No caso do livro, a triagem de um escritório mandou resposta cordial a quem litigava contra um cliente da casa, porque a redação acontecia antes da checagem de conflito e ninguém aprovava o envio."
+  ],
+  [
+   "O que é fronteira de confiança e por que a saída do modelo deve ser conferida?",
+   "Fronteira de confiança é a linha, num diagrama, em que o dado muda de nível de confiança. Fora dela fica o que você não controla: a mensagem de quem escreve, a página da internet, a resposta de um serviço externo e também a saída do próprio modelo. Dentro fica o que o sistema trata como verdadeiro, como o banco de clientes e as políticas. Tudo o que cruza para dentro é conferido na travessia. O modelo é um componente seu, mas com comportamento que você não garante, e por isso a saída dele é validada contra um contrato antes de virar registro, e o rascunho passa por uma pessoa antes de sair."
+  ]
+ ],
+ "04-o-contrato-entre-maquinas": [
+  [
+   "O que é JSON Schema e para que serve numa automação com IA?",
+   "JSON Schema é um documento, também em JSON, que descreve o que um JSON válido pode conter, como um regulamento da ficha. Ele resolve um problema que o JSON sozinho não resolve: uma ficha bem formatada pode ser absurda, como um pedido de banana com zero quilo. No schema se declara o que não pode faltar, os limites mínimo e máximo de cada número e a recusa de qualquer campo não previsto. Com isso, o pedido absurdo para com uma mensagem dizendo onde está o erro e vai para revisão manual, em vez de ser faturado. O sistema não conserta o JSON sozinho."
+  ],
+  [
+   "A saída estruturada dos modelos garante que a resposta da IA está certa?",
+   "Não. A saída estruturada ajuda a cumprir o formato, mas não garante conteúdo verdadeiro: o formato pode vir certo e o número errado. Os grandes provedores permitem enviar o schema junto com o pedido e restringem a geração para seguir aquele formato. Segundo a documentação consultada pelo livro em 28/09/2026, eles diferem no que aceitam: uma regra de valor mínimo pode ser respeitada pela restrição de um provedor e deixada de fora pela de outro. A conclusão não depende de fornecedor: use a saída estruturada para reduzir erro de formato e valide sempre do seu lado, com o seu schema completo."
+  ],
+  [
+   "O que é idempotência e como ela evita pedidos duplicados em webhooks?",
+   "Uma operação é idempotente quando fazê-la duas vezes tem o mesmo efeito que fazê-la uma. Plataformas de automação reenviam chamadas quando não recebem confirmação a tempo, e isso é bom, porque impede que um pedido se perca. O erro é quem recebe tratar o reenvio como pedido novo e emitir duas notas. A técnica é a chave de idempotência: o emissor manda um identificador que é o mesmo em todos os reenvios, e o receptor grava a chave antes de processar; se ela já existe, devolve a resposta guardada. A chave deve vir de algo que não muda, como o identificador da mensagem no canal de origem, e sobreviver ao reinício do receptor."
+  ]
+ ],
+ "05-o-que-a-ia-precisa-saber": [
+  [
+   "Colocar mais contexto no prompt melhora sempre a resposta da IA?",
+   "Não. O modelo não lê o que você sabe; lê o que você escolheu mostrar, na ordem em que mostrou. A janela de contexto deve ser tratada como orçamento, não como depósito: cada item custa dinheiro, tempo e atenção do modelo. Um estudo de Liu e colegas, publicado em 2024 com o título Lost in the Middle, mostrou que o desempenho cai quando a informação relevante fica no meio de um contexto longo. Daí três consequências práticas: o que é crítico vai para as pontas, relevância vence volume e janela maior não dispensa seleção. Contexto demais erra tanto quanto contexto de menos, só que custa mais."
+  ],
+  [
+   "O que é hierarquia de fonte da verdade num assistente de IA?",
+   "É uma ordem escrita, visível ao modelo, que diz qual fonte prevalece quando duas informações se contradizem. Sem ela, o sistema escolhe pela posição no texto ou pelo jeito de escrever, o que equivale a escolher ao acaso. Num escritório de advocacia, por exemplo, a ordem pode ser legislação conferida na fonte oficial, pareceres internos datados, manual do escritório, modelos de peça e, por último, o histórico da conversa. Duas regras completam a hierarquia: quando houver conflito, a resposta declara o conflito em vez de escolher em silêncio; e o histórico é contexto, nunca instrução, porque explica o passado mas não manda repeti-lo."
+  ],
+  [
+   "Como controlar o que a memória de um assistente de IA guarda?",
+   "Com uma política de memória, um texto curto com força de regra que responde a quatro perguntas: o que grava, quem aprova a gravação, quando expira e como se apaga, mais uma que atravessa todas, o escopo, isto é, para quem cada lembrança vale. O modelo não guarda nada entre chamadas; toda memória de longo prazo é peça do sistema e pode ser governada. No exemplo do livro, um assistente com memória ligada guardou o laudo de saúde de um aluno e o repetiu numa lista de passeio. Lembrar de uma pessoa é tratar dado pessoal, e memória que não se consegue apagar não deveria ter sido gravada."
+  ]
+ ],
+ "06-o-modelo-nunca-aperta-o-botao": [
+  [
+   "Como funciona a chamada de ferramenta (function calling) nos modelos de IA?",
+   "O modelo não executa nada: em vez de responder só com texto, ele devolve um pedido estruturado para usar uma ferramenta, com nome e argumentos. Quem executa é o harness, o programa em volta do modelo. O ciclo é este: o harness envia a pergunta e a descrição das ferramentas disponíveis; o modelo pede, por exemplo, para consultar a agenda num intervalo; o harness valida os argumentos, confere se a ferramenta é permitida, executa e devolve o resultado marcado como dado externo; o modelo redige a resposta. Por isso toda permissão mora no harness. Não ter a ferramenta de marcar compromisso é trava; pedir que não marque é só educação."
+  ],
+  [
+   "O que é MCP (Model Context Protocol) e para que serve?",
+   "O MCP é um protocolo aberto que funciona como uma tomada padrão entre aplicativos de IA e sistemas. Sem ele, dez aplicativos e vinte sistemas exigiriam duzentos conectores sob medida; com ele, o sistema publica uma vez um servidor MCP e qualquer aplicativo compatível o usa. Há três papéis: hospedeiro, cliente e servidor, que oferece ferramentas, recursos e prompts. Criado pela Anthropic em novembro de 2024, foi doado em 09/12/2025 à Agentic AI Foundation, da Linux Foundation. Em 28/09/2026, a especificação vigente é identificada pela data 2026-07-28. O MCP padroniza a conexão, não a confiança: o que volta de uma ferramenta é dado, não ordem."
+  ],
+  [
+   "Qual a diferença entre MCP e A2A?",
+   "O MCP liga um agente a ferramentas e dados; o A2A, sigla de Agent2Agent, liga agentes de organizações diferentes, cada um opaco para o outro. A documentação do próprio A2A diz que os dois são complementares. No A2A, cada agente publica um Agent Card, um cartão de visita digital com capacidades e forma de contato, e outro agente pode ler esse cartão e delegar uma tarefa sem integração sob medida. Em 28/09/2026, o A2A estava na versão v1.0, de 12/03/2026, sob a mesma fundação do MCP. O limite é o mesmo nos dois: um cartão assinado prova quem é o agente, não que ele é confiável."
+  ]
+ ],
+ "07-achar-pelo-sentido": [
+  [
+   "Qual a diferença entre busca por palavra-chave e busca semântica com embeddings?",
+   "A busca por palavra, chamada lexical, procura os termos exatos e dá mais peso ao termo raro; a função mais usada é o BM25. Ela acerta códigos, siglas e números, mas não sabe que imunização e vacinação são quase a mesma coisa. A busca semântica usa embeddings, listas de números que funcionam como endereço num mapa de significados: textos de sentido parecido moram no mesmo bairro, mesmo sem palavra em comum. Ela acerta o parecido, mas borra códigos como J10 e J11 e aproxima textos que afirmam e negam a mesma coisa, porque falam do mesmo assunto. Cada uma erra num lugar diferente."
+  ],
+  [
+   "O que é busca híbrida e como funciona a Reciprocal Rank Fusion?",
+   "Busca híbrida é rodar a busca por palavra e a por sentido e juntar os resultados. Como as notas de cada uma têm escalas diferentes, somá-las seria somar metros com quilos. A Reciprocal Rank Fusion, de Cormack, Clarke e Büttcher, de 2009, ignora as notas e olha só a posição: cada lista dá a cada trecho um voto de 1 dividido por k mais a posição, e os votos se somam. O laboratório do livro usa k igual a 60 como ponto de partida. A fusão premia consenso e por isso pode enterrar o acerto que só uma das buscas viu. No teste do livro, a híbrida venceu nos três primeiros resultados e perdeu nos cinco primeiros."
+  ],
+  [
+   "Como saber qual busca funciona melhor para o meu acervo?",
+   "Medindo com um gabarito: perguntas reais em que alguém marcou à mão os documentos relevantes. Sem gabarito, a comparação vira opinião. Três métricas bastam para começar. O recall@k diz que fração dos documentos relevantes aparece entre os k primeiros, e é a mais importante para quem entrega trechos a um modelo, porque o que não é recuperado não pode ser usado. A precisão@k mede quanto lixo veio junto. O MRR mede se o certo veio no topo. A pergunta em que todas as buscas falham é a mais valiosa, porque aponta conteúdo ausente ou pergunta mal formulada, algo que nenhuma fusão resolve."
+  ]
+ ],
+ "08-prova-com-consulta": [
+  [
+   "O que é RAG e por que ele ainda erra mesmo citando fontes?",
+   "RAG, geração aumentada por recuperação, é a arquitetura em que o sistema busca trechos numa base e os entrega ao modelo junto com a pergunta, para que ele responda com base neles e cite de onde tirou cada afirmação. Funciona em três etapas: indexar, recuperar e gerar. Ele reduz a invenção, mas não a elimina, porque achar o trecho certo e usá-lo bem são eventos diferentes. O livro agrupa cinco modos de falha: a base não tem a resposta, a busca não trouxe o trecho certo, o modelo leu mal, o trecho está vencido ou o documento contém ordens. Citar a fonte não torna a frase verdadeira; torna o erro encontrável."
+  ],
+  [
+   "Por que o filtro de permissão deve vir antes da busca no RAG?",
+   "Porque filtrar depois expõe o que deveria ficar escondido. No caso do livro, um assistente de pareceres respondeu certo, mas citou um parecer de outro cliente a um associado sem acesso àquela pasta: a restrição existia na tela, não no índice. Buscar no índice inteiro e remover depois parece igual, mas não é: um erro no filtro final expõe tudo, a contagem de resultados revela que existe algo sobre o assunto, a ordem denuncia o que foi retirado e, se o modelo recebeu os trechos antes do filtro, o conteúdo proibido já entrou no contexto. Cada trecho precisa carregar o acervo a que pertence."
+  ],
+  [
+   "Como verificar se a citação feita por uma IA é verdadeira?",
+   "Com um verificador de citação escrito em código, sem inteligência artificial, que confere a resposta antes de ela sair. No laboratório do livro, ele checa se o trecho citado existe, se o acervo é permitido para quem perguntou, se o modelo de fato recebeu aquele trecho nesta pergunta, se a citação tem tamanho mínimo, se a frase está lá literalmente e se não é ela mesma uma instrução embutida. Uma falha basta para recusar a resposta inteira. A paráfrase é recusada mesmo quando está certa, porque não há como conferi-la por código, e aceitar citação parecida deixaria passar justamente a paráfrase que inverte o sentido."
+  ]
+ ],
+ "09-entre-os-documentos": [
+  [
+   "O que é um grafo de conhecimento e quando ele é melhor que a busca em documentos?",
+   "É o que se sabe guardado como uma rede de coisas e ligações, como o quadro de cortiça dos filmes policiais, só que cada barbante tem tipo e direção. As peças são nós, arestas, rótulos e propriedades. Ele resolve perguntas cuja resposta não está em nenhum trecho, mas nas relações entre documentos, como saber quais clientes de um escritório enfrentam a mesma parte contrária ou se uma empresa aparece como cliente num processo e adversária em outro. Uma busca por trechos devolve pedaços parecidos com a pergunta; o grafo percorre as ligações. O sistema avisa do possível conflito, mas quem decide é a pessoa que responde por isso."
+  ],
+  [
+   "O que é ontologia num grafo de conhecimento?",
+   "Ontologia é o vocabulário combinado antes de desenhar o grafo: que tipos de coisa existem e que ligação pode unir que tipo a que tipo. Para um escritório, uma ontologia leve cabe numa tabela curta de rótulos e tipos de relação, cada um com origem e destino permitidos. Ela não é burocracia: é o que permite ao sistema recusar um absurdo. Se o modelo que extrai dados das fichas disser que um processo cita uma padaria, a combinação é recusada, porque no vocabulário combinado processo só cita precedente. Sem ontologia, esse erro entraria no grafo calado. Ela também orienta decisões como o que vira nó e o que vira propriedade."
+  ],
+  [
+   "O que é GraphRAG e quando ele compensa?",
+   "GraphRAG é uma proposta da Microsoft Research, descrita por Edge e colegas em 2024, que organiza o acervo em grupos e resume cada grupo antes da pergunta. Um modelo extrai entidades e relações, um algoritmo encontra as comunidades e outro modelo resume cada uma; na consulta global, os resumos geram respostas parciais que viram uma síntese. Serve para perguntas sobre o formato do todo, como os grandes temas de um acervo inteiro. Mas o custo cresce com o acervo e volta a ser pago quando ele muda. Vale testar só com pergunta global frequente e acervo estável, sempre medindo contra a busca comum, que resolve mais barato as perguntas de um fato só."
+  ]
+ ],
+ "10-fonte-vencida-e-teste-que-falha": [
+  [
+   "Por que a IA responde com informação desatualizada mesmo citando a fonte certa?",
+   "Porque o acervo guarda versões antigas sem dizer que foram substituídas, e o verificador de citação confere a forma, não a validade. No exemplo do livro, havia duas versões de um calendário de vacinação; a busca pôs a antiga em primeiro lugar, e a resposta saiu com citação literal e errada. O remédio é proveniência: uma ficha presa a cada documento, herdada por cada trecho, com campos como versão, situação, o que ele substitui, dono e data de revisão. Outra armadilha é mostrar como data a de entrada no índice: um documento velho indexado ontem passa por novo. Substituir não é apagar, mas o substituído sai da busca padrão."
+  ],
+  [
+   "O que é um conjunto de ouro (golden set) para avaliar um assistente de IA?",
+   "É um conjunto fixo de perguntas com a resposta certa escrita antes, por alguém que conhece o assunto, como uma prova com gabarito. É o coração de uma avaliação, que tem quatro partes: casos fixos, critério de aprovação por caso, forma repetível de rodar e comparação com a versão anterior. Devem entrar perguntas frequentes reais, casos de borda, perguntas que devem ser recusadas, perguntas hostis e regressões. Todo erro real vira caso. O conjunto fica versionado, porque a pergunta sobre se o sistema melhorou só tem resposta se ele for o mesmo nas duas medições, e roda antes de cada mudança de instrução, modelo, acervo ou parâmetro de busca."
+  ],
+  [
+   "Usar outro modelo de IA como juiz para avaliar respostas é confiável?",
+   "Em parte. Zheng e colegas mostraram, em 2023, que juízes fortes concordam com preferências humanas em nível comparável ao acordo entre duas pessoas, mas documentaram três vieses: de posição, de verbosidade, que favorece a resposta mais longa, e de autofavorecimento. Wang e colegas mostraram, em 2024, que só trocar a ordem das respostas pode inverter o veredito. A correção é separar critérios: o que tem resposta certa, como uma data, se confere contra o gabarito, por código ou por pessoa; o juiz fica só com o que é subjetivo, como tom e clareza, com rubrica explícita. E o próprio conjunto de avaliação precisa provar que sabe falhar."
+  ]
+ ],
+ "11-quem-diz-que-terminou": [
+  [
+   "Qual a diferença entre modelo, harness e ambiente de execução num agente de IA?",
+   "O modelo recebe texto e devolve texto: uma resposta ou um pedido para usar uma ferramenta. Ele propõe, mas não abre arquivos nem lembra da sessão anterior. O harness é o programa em volta: monta o que o modelo vê, apresenta as ferramentas, confere permissões, executa, conta os passos e decide quando parar. O ambiente de execução é onde as ações acontecem de verdade: a pasta do projeto, o terminal, a rede, as credenciais. No laço de cinco fases do agente, observar, decidir, agir, verificar e encerrar, só a decisão é do modelo. Por isso o mesmo modelo em dois harnesses diferentes vira outro agente."
+  ],
+  [
+   "O que é critério de parada de um agente e por que ele importa?",
+   "É a regra, escrita antes, que diz quando o agente pode parar. O livro pede quatro saídas: sucesso verificável por algo fora do modelo, como testes passando; orçamento de passos, tokens, tempo ou dinheiro; impasse, quando a mesma ação se repete sem mudar nada; e fronteira, quando a próxima ação sai do autorizado e volta a uma pessoa. O modelo dizer que terminou não é critério. E o agente não pode ter poder sobre o instrumento que mede o próprio sucesso: no caso do livro, um agente de código fez o teste passar alterando o teste, não o código. A correção foi deixar os testes somente leitura e conferir que nenhum foi alterado."
+  ],
+  [
+   "A autocrítica (reflexão) de um agente de IA corrige os erros dele?",
+   "Só quando o retorno vem de fora. Na reflexão, o agente escreve o que deu errado e usa isso na tentativa seguinte. Se o retorno vem de um teste que falhou, de uma base consultada ou de uma pessoa, há com o que trabalhar. Se vem do próprio modelo, com as mesmas informações que tinha ao errar, ele só reorganiza o erro com palavras mais seguras. No exemplo do livro, um agente inventou uma referência bibliográfica, declarou-a conferida e a gravou na memória como fonte-chave. A solução foi um verificador externo e determinístico que procura cada identificador no acervo, e a memória passou a receber só o que passou nele."
+  ]
+ ],
+ "12-processo-que-cabe-num-desenho": [
+  [
+   "O que é checkpoint num fluxo de agentes de IA?",
+   "É o retrato do estado do processo gravado depois de cada etapa, junto com o nome da próxima, como o salvar jogo do videogame. Se o processo cai, a execução recomeça do último retrato, não do princípio, e nada que já foi feito precisa ser refeito. O checkpoint também permite pausar para uma decisão humana sem prender um processo aberto por horas: o fluxo grava o estado, registra a pergunta e devolve o controle; quando a resposta chega, no mesmo dia ou dias depois, continua dali. Um cuidado: na retomada, a etapa interrompida roda de novo desde a primeira linha, então nada com efeito no mundo deve vir antes da pausa."
+  ],
+  [
+   "Quando usar retentativa e quando usar compensação num fluxo automatizado?",
+   "Retentativa é para falha passageira; compensação é para desfazer efeitos quando uma etapa posterior falha de vez. Um emissor de nota fora do ar por alguns minutos merece nova tentativa, com limite declarado e espera que cresce e leva um sorteio, para que muitos clientes não voltem juntos. Um cadastro inválido é falha permanente, e repetir só adia o erro. Quando os efeitos estão em sistemas diferentes, como estoque e emissão de nota, usa-se o padrão saga: cada etapa com efeito declara sua ação de desfazer, e as compensações rodam na ordem inversa. Compensar não apaga o passado, também é idempotente e, se falhar, vai para uma pessoa."
+  ],
+  [
+   "O que é Graph Engineering em sistemas de IA?",
+   "É a disciplina, nomeada no livro, de projetar o fluxo de um sistema de IA como um grafo explícito e testável: etapas com responsabilidade única, passagens com condição legível por código, um estado com esquema declarado e, para cada ponto de risco, o mecanismo certo, como checkpoint, retentativa, interrupção para decisão humana, compensação e critério de parada. Quem escolhe o caminho é código lendo o estado, mesmo quando o estado foi preenchido por um modelo. A prova de bom desenho é testar por partes: provocar uma queda, uma falha permanente, um cliente que não responde. Começa a compensar com o primeiro efeito que precisa ser desfeito ou a primeira espera longa."
+  ]
+ ],
+ "13-peca-ao-modelo-so-o-que-so-ele-sabe": [
+  [
+   "Por que não usar a IA para fazer cálculos de preço, frete ou prazo?",
+   "Porque o modelo é probabilístico: acerta com frequência, não com garantia, e o erro raro sai plausível e sem padrão. No exemplo do livro, a tabela de frete estava no prompt e a automação errou o frete em seis de cerca de quatrocentos pedidos do mês, sem que ninguém soubesse quais. Escrever “siga a tabela” não transforma o modelo em planilha. A correção é um fluxo híbrido: o modelo interpreta a mensagem e extrai os dados de entrada, como bairro e número de caixas, e uma função determinística calcula. Dinheiro, quantidade e prazo, regra escrita, ação difícil de desfazer e volume alto são sinais de que a etapa deve ser regra."
+  ],
+  [
+   "O que são guardas determinísticas num fluxo com IA?",
+   "São verificações feitas por código, sem modelo, que decidem se um dado pode seguir, como um detector de metais na porta. Elas não melhoram a saída do modelo; barram o erro plausível que sabem reconhecer. No exemplo do livro, a guarda confere se o produto existe no catálogo, se a quantidade está numa faixa plausível e se o número extraído aparece de fato no texto do cliente. Elas ficam em três lugares: antes do modelo, na entrada; depois do modelo, na saída; e antes da ação cara ou irreversível, nunca depois. Uma guarda que barra demais custa uma pergunta ao cliente; uma que deixa passar custa um pedido errado."
+  ],
+  [
+   "O que é limiar de abstenção e calibração na classificação com IA?",
+   "Calibração é quando a confiança declarada bate com o acerto medido: entre as vezes em que o sistema diz noventa por cento, ele acerta cerca de nove em dez. Isso só se sabe medindo, por exemplo comparando centenas de mensagens rotuladas à mão com o que o sistema disse. O número de confiança que o modelo escreve no texto é palpite até ser calibrado. O limiar de abstenção é o ponto abaixo do qual a decisão vai para uma pessoa, a quinta caixa do “não sei”. A escolha depende do custo de cada erro e de cada minuto de leitura humana, envelhece e precisa ser remedida. Categorias caras ganham limiar próprio, bem mais baixo."
+  ]
+ ],
+ "14-dividir-o-trabalho-dividir-o-erro": [
+  [
+   "Quando vale a pena usar vários agentes de IA em vez de um só?",
+   "Quando os papéis precisam de coisas diferentes: contexto diferente, ferramentas e permissões diferentes, verificação independente de quem produziu ou partes que rodam de fato em paralelo. Um agente só basta quando a tarefa é curta, o contexto cabe inteiro, as ferramentas são as mesmas do início ao fim e um checklist no próprio prompt resolve. Dividir tem preço: mais chamadas de modelo, mais tempo, mais dinheiro, e cada passagem é um lugar novo para o erro entrar. E não se cria um agente a mais quando o verificador pode ser uma regra: no laboratório do livro, a guarda de fonte é uma função de poucas linhas. Na dúvida, comece por um."
+  ],
+  [
+   "Como um erro se propaga numa equipe de agentes de IA?",
+   "Por quatro mecanismos que o livro mostra no caso de uma agência de conteúdo cujo post anunciou o horário errado de uma fornada. Confiança herdada: o redator tratou o fato como verdade porque veio do sistema. Amplificação: um dado frágil, escolhido em silêncio entre duas versões, saiu como afirmação de destaque. Consistência confundida com verdade: o revisor comparou o post com a ficha do pesquisador, e as duas batiam, mas a fonte original estava fora do alcance dele. E aprovação que vê só o fim: a dona aprovou o texto polido sem ver a fonte e a data de cada fato. Ninguém foi descuidado; faltou desenho nas passagens."
+  ],
+  [
+   "O que deve ter um contrato de passagem entre agentes de IA?",
+   "Além do formato validado por schema, três coisas: proveniência, incerteza explícita e comportamento na falha. Proveniência significa que cada afirmação carrega de onde veio, de quando é e o trecho original, para que uma guarda recuse fonte antiga e o revisor compare com a fonte, não com a paráfrase. Incerteza explícita significa campos próprios para conflitos entre fontes e para lacunas, e uma lista vazia de fatos é erro, não ausência de novidade. Comportamento na falha significa que, se a entrega não cumpre o contrato, o fluxo para ali e o caso vai a uma pessoa com o motivo. E o verificador precisa olhar para fora da cadeia, senão mede coerência e chama de verdade."
+  ]
+ ],
+ "15-aprovar-nao-e-olhar": [
+  [
+   "O que é fadiga de aprovação em sistemas com IA?",
+   "É quando aprovar vira reflexo e a pessoa deixa de ler, porque quase todo pedido está certo. No exemplo do livro, uma sócia de escritório contou duzentos e doze cliques de aprovação numa semana, com tempo médio de quatro segundos, insuficiente para ler um e-mail de três parágrafos. Três sinais indicam fadiga: tempo de decisão curto demais para o tamanho do que é mostrado, taxa de recusa perto de zero por semanas e erros descobertos depois em itens aprovados. Os remédios vão de tirar aprovação do que não tem consequência a mostrar só o que mudou em relação ao modelo, agrupar com decisão item a item, separar por risco e promover com evidência."
+  ],
+  [
+   "Por que o agente de IA não pode aprovar o próprio pedido?",
+   "Porque, se o agente tiver credencial para passar pela porta da aprovação, ele pode aprovar o que pediu, por erro de programação ou por instrução maliciosa escondida num documento, e a aprovação fica registrada sem ter sido dada por ninguém. É a segregação de funções transformada em mecanismo. Duas portas podem parecer igualmente protegidas porque exigem autenticação; o problema só aparece quando se pergunta quem consegue passar em cada uma. A regra de desenho é que a chave que pede não pode aprovar: a chave de serviço pede, aprovar exige a sessão autenticada de uma pessoa, e um teste tenta aprovar com a chave e só passa se for recusado."
+  ],
+  [
+   "Como definir o nível de autonomia de um agente de IA?",
+   "Por tipo de ação, numa escada de cinco degraus: observa, sugere, prepara, executa em lote depois de um sim e executa com limites, com revisão por amostragem. O primeiro passo é classificar a ação como reversível, compensável ou irreversível, e escrever como ela se desfaz. A promoção depende de critério combinado antes, como tempo e volume no nível atual, taxa de erro abaixo de um teto, reversibilidade no nível seguinte e parada testada. O rebaixamento é automático diante de incidente, erro acima do teto ou mudança de modelo, instrução, ferramenta ou fonte de dados. O irreversível nunca passa do lote liberado por uma pessoa, e todo sistema precisa de botão de parada testado."
+  ]
+ ],
+ "16-um-jeito-de-desfazer": [
+  [
+   "Como revisar com segurança o código escrito por um agente de IA?",
+   "Pedindo mudanças pequenas e perguntando o que mudou que você não pediu. No exemplo do livro, um agente alterou quatrocentas e doze linhas em onze arquivos; a desenvolvedora leu cinquenta e aceitou o resto, e uma reescrita da função que escondia nomes passou a expor dados de clientes. Três hábitos resolvem a maior parte: uma intenção por pedido, limite explícito de escopo e um ramo por pedido. Na revisão, a lista de arquivos alterados mostra em segundos o que saiu do pedido, e teste alterado exige justificativa. Pedir ao próprio agente que revise tende a produzir uma aprovação, porque ele confirma o raciocínio que acabou de fazer."
+  ],
+  [
+   "Por que usar Git e pull request ao trabalhar com agentes de código?",
+   "Porque quem escreve código com um agente precisa, antes de tudo, de um jeito de desfazer o que ele fez. O commit é uma fotografia datada, com autor e explicação, e qualquer versão antiga pode ser recuperada. O ramo é uma linha de trabalho separada do tronco, onde o agente experimenta sem afetar o sistema que funciona. O pull request é o pedido formal para juntar o ramo ao principal, com a diferença linha a linha, verificações automáticas e registro de quem aprovou. Juntos, tornam o erro reversível, visível e atribuível. E apagar uma chave vazada num novo commit não resolve: ela continua no histórico, então troque a credencial primeiro."
+  ],
+  [
+   "O que é um portão de avaliação num pipeline de CI/CD para sistemas de IA?",
+   "É um estágio da esteira de integração e entrega contínuas que roda o conjunto de avaliação com gabarito a cada mudança e reprova a que piora a qualidade. Testes comuns verificam mecanismo; uma mudança pode passar em todos e ainda fazer o assistente parar de achar um documento importante. No laboratório do livro, o portão mede a busca contra catorze perguntas e aprova com mínimo de 0,90. O detalhe central: ele recusa gabarito ausente ou com menos de dez perguntas antes de calcular, porque um portão que lê arquivo vazio aprova tudo. Prove que ele sabe falhar sabotando a busca num ramo descartável. O último portão antes da consequência continua humano."
+  ]
+ ],
+ "17-ate-onde-o-erro-alcanca": [
+  [
+   "Qual a diferença entre imagem e contêiner no Docker?",
+   "A imagem é um pacote fechado, só de leitura, com tudo de que o programa precisa: um Linux mínimo, a versão certa da linguagem, as bibliotecas e o código, como a fotografia de um computador já preparado. O contêiner é uma cópia ligada dessa fotografia: o processo roda ali dentro e escreve numa camada própria, que some quando o contêiner é apagado. A receita da imagem é o Dockerfile. Com isso, “funciona na minha máquina” vira “funciona onde houver esta imagem”, desde que cada versão esteja fixada, porque a etiqueta latest pode produzir ambientes diferentes em meses diferentes. Boas práticas: rodar sem root, código só leitura e segredo fora da imagem."
+  ],
+  [
+   "Rodar um agente de IA em Docker é seguro?",
+   "Não por si só. O contêiner isola a visão do processo, mas todos os contêineres de uma máquina compartilham o mesmo núcleo do sistema operacional, e uma falha nesse núcleo pode deixar um processo escapar. Para código que você escreveu, costuma bastar. Para um agente que executa código gerado na hora ou lê documentos de estranhos, a pergunta muda para até onde o erro alcança, e o contêiner comum é uma parede fina. O livro distingue o contêiner, o kernel de aplicação como o gVisor e a microVM ou máquina virtual, recomendada para código não confiável. Opções como privileged ou montar o socket do Docker dentro do contêiner desfazem o isolamento."
+  ],
+  [
+   "O que é uma sandbox para agentes de IA e o que ela deve limitar?",
+   "Sandbox é um ambiente de execução com fronteiras verificáveis, como a caixa de areia do parquinho: o que roda dentro enxerga só uma parte dos arquivos, dos processos e da rede, e dura o tempo combinado. Para um agente, ela responde o que ele pode ler, mudar e com quem pode falar, desdobrado em cinco fronteiras: arquivos, processos, rede, ferramentas e credenciais. A rede é a mais esquecida, e ficar sem rede é o padrão certo para executar código. A credencial deve ser temporária e de escopo mínimo. Somam-se limites de tempo, memória e dinheiro recusados antes da ação. Isolamento reduz risco, mas não produz segurança absoluta."
+  ]
+ ],
+ "18-quem-acorda-de-madrugada": [
+  [
+   "VPS ou plataforma gerenciada: onde hospedar um sistema de IA?",
+   "Depende de quem vai cuidar dele quando ninguém está olhando. O VPS é a casa vazia: máquina virtual com acesso total, em que atualizar o sistema, configurar firewall, fazer backup e vigiar são tarefas suas. A plataforma gerenciada é o apartamento com portaria: você entrega o código ou a imagem do contêiner, e ela constrói, roda, reinicia e emite o certificado, mas impõe regras próprias, como limites de disco persistente. Serverless cobra por execução e não guarda arquivos; a borda roda perto do usuário com pouco espaço. Para quem não tem quem administre servidor, o livro sugere considerar a gerenciada. Em todos os casos, código, dados e chaves continuam sendo seus."
+  ],
+  [
+   "Por que o certificado HTTPS do meu domínio próprio não é emitido?",
+   "Uma causa comum é a ordem dos passos. O cadeado indica TLS, que cifra a conversa e prova a identidade do servidor com um certificado emitido depois que você demonstra controlar o domínio, em geral com o DNS já apontando para o lugar certo. Em plataformas gerenciadas, o pedido de certificado pode disparar no momento em que o domínio é cadastrado no serviço; se o registro de DNS ainda não existe, a prova falha e, dependendo da plataforma, ninguém tenta de novo. No caso relatado pelo autor, o painel mostrava o domínio verificado e o certificado nunca veio. Remover e recadastrar com o DNS já respondendo resolveu em segundos."
+  ],
+  [
+   "O que é proxy reverso e quais cuidados ele exige?",
+   "É um servidor que fica na frente do seu e recebe os pedidos no lugar dele, como a recepção de um prédio comercial. Serviços como a Cloudflare trazem três ganhos dessa posição: esconder a origem, guardar cópias de arquivos estáticos numa CDN e filtrar ataques com um WAF, além de regras de limite de taxa contra quem faz pedidos demais. Há dois cuidados. Para filtrar, o proxy abre a conexão cifrada e lê o conteúdo, então as perguntas ao sistema passam legíveis pela infraestrutura do provedor, o que é decisão de privacidade e de contrato. E, se a origem aceita conexões de qualquer endereço, quem a descobrir contorna toda a proteção."
+  ]
+ ],
+ "19-a-fatura-e-o-registro": [
+  [
+   "O que é observabilidade em sistemas de IA?",
+   "É a capacidade de responder, olhando de fora, o que o sistema está fazendo por dentro. Ela se apoia em três sinais. O log responde o que aconteceu: uma linha por evento, de preferência estruturada, com campos fixos que se somam e se filtram. A métrica responde quanto e com que frequência, como chamadas por minuto, tokens por dia ou taxa de recusa, e é ótima para alarme. O trace, ou rastro, responde por onde passou uma tarefa, dividido em spans, como recuperar trechos, chamar o modelo e verificar a citação. Diferente da caixa-preta de avião, a observabilidade boa é aberta todo dia, antes do acidente."
+  ],
+  [
+   "Como descobrir por que a conta da API de IA aumentou?",
+   "Medindo o custo por tarefa, não a fatura do mês. A fatura diz quanto você gastou; só o registro diz com o quê. Para isso, cada evento precisa carregar um identificador de execução, como a comanda de um restaurante, propagado por toda chamada de modelo, ferramenta e pedido de aprovação. No caso do livro, a fatura triplicou com o mesmo número de usuários e perguntas: uma mudança fazia o sistema chamar o modelo de novo a cada citação recusada, sem teto, e as perguntas difíceis davam várias voltas. O custo de um agente é o preço do token vezes o comportamento. Olhe a tarefa mais cara do dia, as chamadas por tarefa e o p95."
+  ],
+  [
+   "O que registrar e o que deixar fora dos logs de um assistente de IA?",
+   "Registre quem fez o quê, em quê, com que resultado e dentro de qual execução, com horário e fuso. Deixe fora, por padrão, o texto do prompt e da resposta, porque é ali que moram dado pessoal, sigilo profissional e segredo comercial. Mascarar o que parece senha ajuda, mas só nos formatos conhecidos: mascarar é rede de proteção, e o certo é o segredo nunca chegar ao log. O livro sugere guardar todos os eventos de custo e de erro e só uma fração dos traces completos, com retenção curta para conteúdo e longa para metadados. Plataformas que gravam prompts inteiros viram base de dados pessoais, com tudo o que a LGPD exige."
+  ]
+ ],
+ "20-quando-ninguem-estiver-calmo": [
+  [
+   "Como configurar retentativas em chamadas a APIs de IA sem piorar a falha?",
+   "Repita só a falha temporária, numa camada só, com espera exponencial e sorteio. Códigos 429 e 5xx, queda de rede e tempo esgotado costumam ser passageiros; 400 e 401 são permanentes e não melhoram na segunda vez. A espera dobra a cada tentativa e tem um valor sorteado, para que muitos clientes não voltem juntos. No caso do livro, o código tentava três vezes e a biblioteca do provedor também, e cada pergunta virou nove chamadas contra um serviço já caído. Quando a falha dura muito, entra o disjuntor: depois de algumas falhas seguidas, ele para de deixar passar, espera e testa antes de religar."
+  ],
+  [
+   "O que não pode ir para o modelo de IA reserva (fallback)?",
+   "Tudo o que exige um contrato ou um comportamento que o reserva não tem, porque todo reserva é um lugar para onde os dados vão. No caso do livro, ao trocar às pressas de provedor, perguntas com trechos de pareceres sigilosos foram para um fornecedor sem contrato. O livro lista cinco cuidados: dados com restrição de destino, como sigilo profissional, saúde e dados pessoais; tarefas cujo contrato de saída o reserva não cumpre; ações com consequência, que exigem a mesma cadeia de aprovação; decisões que precisam ser reproduzidas; e volume que o reserva não aguenta pagar. A solução é classificar o pedido antes de rotear, com uma lista de modelos por classe."
+  ],
+  [
+   "Qual a diferença entre modelo de pesos abertos, código aberto e acesso por API?",
+   "Pesos abertos significa que os números do modelo treinado podem ser baixados e rodados onde você quiser, como uma receita publicada, sem os dados e o código de treino. Código aberto, no sentido estrito, exige licença reconhecida pela OSI, com liberdade de usar, estudar, modificar e redistribuir, e muitos modelos ditos abertos têm licenças próprias com limites. Acesso por API é comer no restaurante: o modelo roda no servidor do fornecedor, e os dados vão até ele. A mesma família pode ser duas decisões: os pesos podem rodar na sua rede enquanto a API do mesmo fornecedor processa dados em outro país. A licença decide o que se pode fazer."
+  ]
+ ],
+ "21-automacao-que-erra-igual": [
+  [
+   "Onde colocar a IA numa automação com Make ou n8n?",
+   "Numa etapa só: transformar texto livre em dados com campos fixos. Uma plataforma visual executa um cenário, uma sequência fixa de módulos disparada por um gatilho, e cada módulo repassa adiante o que recebe, inclusive lixo, se ninguém escreveu a regra que o faz parar. O erro de quem começa é pôr a IA no centro para resolver o pedido inteiro. No desenho profissional, o modelo lê a mensagem e devolve uma ficha com cliente, itens, entrega, confiança e dúvidas, conferida contra um schema. Preço, frete, pedido mínimo e decisão de faturar ficam em regras no código, onde nenhuma mensagem de cliente alcança."
+  ],
+  [
+   "Por que uma fila de aprovação precisa mostrar o motivo de cada parada?",
+   "Porque decidir sem ver o motivo é carimbar. No laboratório do livro, de nove chamadas simuladas contra a automação de uma distribuidora, quatro viraram pedido: um foi faturado, um foi recusado por regra e dois pararam numa fila, um por passar do limite de valor definido pelo dono e outro porque a leitura do modelo teve confiança baixa. A tela mostra quem, quanto, o quê e por que parou. Num dos pedidos, a leitura apontava que “aquele de sempre” não é quantidade: a ação certa era ligar para o cliente, não aprovar. E quem coloca pedidos na fila não tem acesso a quem aprova."
+  ],
+  [
+   "Que permissões dar a um conector de IA ligado ao e-mail ou ao banco de dados?",
+   "As menores que resolvem a tarefa, porque todo conector é uma procuração. Via OAuth, o serviço entrega ao aplicativo um token válido só para os escopos aprovados, e o agente faz tudo o que a procuração permite, inclusive o que você não pensou em proibir, obedecendo a qualquer texto que lê. Os poderes se dividem em ler, redigir e agir para fora, e o desenho sobe o mínimo possível: o agente lê a caixa e cria rascunhos, e uma pessoa aperta enviar. No banco de dados, use uma visão somente leitura, um usuário próprio sem gravação e limites de consulta, filtrando pelo cliente identificado pelo sistema, nunca por um número digitado."
+  ]
+ ],
+ "22-todo-texto-pode-soar-como-ordem": [
+  [
+   "O que é injeção de prompt indireta?",
+   "É um texto escondido no material que o sistema de IA lê para trabalhar, como um PDF, uma página, um e-mail ou o resultado de uma busca, que tenta mudar o comportamento do modelo fingindo ser instrução. Diferente da injeção direta, que vem de quem conversa com o sistema, aqui o usuário é inocente. Greshake e colegas deram corpo ao problema em 2023. No exemplo do livro, uma contestação trazia em letra branca um parágrafo pedindo que qualquer resumo dissesse que não havia pedidos novos, e o resumo saiu assim. Como regras, pergunta e documento chegam ao modelo no mesmo fluxo de texto, não há conserto definitivo, só defesa em camadas."
+  ],
+  [
+   "O que é a tríade letal em segurança de agentes de IA?",
+   "É a combinação, batizada por Simon Willison em junho de 2025, de três capacidades no mesmo agente: acesso a dado privado, exposição a conteúdo não confiável e um canal para fora, como enviar e-mail, chamar uma API ou até montar um link. Com as três, uma instrução escondida pode mandar o agente pegar o dado privado e colocá-lo no canal de saída, a exfiltração. A defesa mais confiável é remover uma das pernas, e não empilhar filtros sobre o agente que tem as três. No caso do livro, o assistente tinha dado privado e conteúdo da parte contrária, mas só devolvia texto para leitura; por isso o incidente terminou numa frase errada, não num vazamento."
+  ],
+  [
+   "É possível tornar um agente de IA imune a injeção de prompt?",
+   "Não. Segundo o livro, em setembro de 2026 não se conhece técnica que torne um modelo imune. O que existe é defesa em profundidade: camadas independentes, cada uma imperfeita, para que o ataque precise vencer todas e o estrago possível fique pequeno. Três valem para qualquer projeto: separar dado de instrução no formato, delimitando e rotulando o conteúdo externo; tirar poder de quem lê o que vem de fora, deixando que só extraia campos; e quebrar uma perna da tríade letal. Somam-se conferir a saída por código, pôr uma pessoa nos pontos de consequência, isolar a execução, controlar dependências e registrar sem vazar. A regra no prompt ajuda, mas é só uma camada."
+  ]
+ ],
+ "23-um-agente-sem-nome-proprio": [
+  [
+   "Por que um agente de IA precisa de identidade própria?",
+   "Porque um agente sem nome próprio age sempre com o nome de alguém. No exemplo do livro, uma desenvolvedora colou o próprio token de administradora na configuração de um agente que só precisava ler uma pasta e criar tarefas; ele leu a palavra “organizar” num documento, moveu duzentos e doze arquivos de madrugada, e o registro atribuiu a ação a ela. Com uma conta de serviço criada para o agente, com nome que diz o que ele é, o registro conta a verdade, as permissões dele se separam das de quem o criou e, se ele for comprometido, dá para revogá-lo sem trancar a pessoa do lado de fora."
+  ],
+  [
+   "O que é o princípio do menor privilégio aplicado a agentes de IA?",
+   "É dar a cada identidade só as permissões necessárias para a tarefa, e nada além, desenhando-as supondo que o agente um dia será enganado. Um bom escopo responde a três perguntas: sobre qual recurso, qual ação e em nome de quem. No exemplo do livro, o agente redesenhado ficou com leitura em uma pasta e criação de tarefas em um projeto, sem administração; se for enganado, o pior que faz é criar uma tarefa estranha. A credencial também deve vencer sozinha, emitida por um componente separado para cada execução. Chave fixa serve para protótipo local com dado fictício; com dado real ou ferramenta de escrita, use credencial de curta duração."
+  ],
+  [
+   "Onde guardar as chaves de API usadas por um agente de IA?",
+   "Num cofre de segredos, com acesso por identidade, registro de quem leu o quê e suporte a troca periódica, e nunca no contexto do modelo. Tudo o que o modelo lê pode acabar numa resposta, num registro ou num canal para fora, e uma chave que ele nunca viu não pode ser copiada por ele. Um padrão que vem se firmando em 2026 deixa a credencial fora da sandbox: o agente enxerga um valor falso, e um intermediário o troca pela credencial real só em destinos autorizados. Um agente enganado ainda pode usar a chave nesses destinos, mas não levá-la embora. A rotação periódica limita o estrago e prova que você consegue trocar."
+  ]
+ ],
+ "24-o-dado-que-nunca-precisou-chegar": [
+  [
+   "Posso colar dados pessoais de alunos ou clientes num assistente de IA gratuito?",
+   "Não sem análise, porque cada etapa é tratamento de dados pela LGPD: o envio, o processamento, o histórico e os registros do fornecedor. No exemplo do livro, um professor colava anotações com nome completo, medicação e situação familiar de alunos num serviço que a escola não contratou nem controla. A escola, como controladora, decide por que e como os dados são tratados, e a responsabilidade não se transfere pelo termo de uso. Todo tratamento precisa de base legal e finalidade específica, e a peneira vem antes do modelo: o que a tarefa não usa não entra. O livro avisa que isso não substitui a análise de um advogado nem do encarregado de dados."
+  ],
+  [
+   "Trocar o nome por um código torna o dado anônimo pela LGPD?",
+   "Não. Isso é pseudonimização: o nome vira um código e a tabela que liga os dois fica com quem controla os dados, o que reduz o risco, mas o dado continua pessoal e deve ser tratado como tal. Para a LGPD, anonimizado é só o dado que não permite identificar o titular por meios razoáveis. O livro dá um exemplo: um aluno descrito por turma, mão dominante e mês de chegada, sem nome, é reconhecido por todos numa escola de trezentos alunos. Pseudonimizar faz parte da minimização, ao lado de cortar o que a tarefa não usa, limitar a guarda do histórico e não reaproveitar os dados em outra finalidade."
+  ],
+  [
+   "Usar uma IA com servidores fora do Brasil é transferência internacional de dados?",
+   "Sim. Quando um texto com dados pessoais vai a um serviço cujos servidores ficam fora do Brasil, há transferência internacional, que a LGPD só permite nas hipóteses do art. 33, como países com proteção adequada, garantias contratuais e consentimento específico. A ANPD detalhou parte delas na Resolução CD/ANPD nº 19, de 23/08/2024, com cláusulas-padrão contratuais. Antes de contratar, quatro perguntas ao fornecedor valem mais que folheto: em que país os dados são processados e guardados, por quanto tempo ficam, se são usados para treinar modelos e se dá para desligar, e que contrato ele assina como operador. Para escolas, clínicas e escritórios, o livro aponta o híbrido, com a peneira feita localmente."
+  ]
+ ],
+ "25-o-sistema-inteiro": [
+  [
+   "Como montar um assistente de IA interno com permissões diferentes por pessoa?",
+   "Aplicando a permissão antes da busca, de modo que o documento proibido nem chegue ao modelo. No projeto final do livro, com dados fictícios, a mesma pergunta sobre um teto de acordo, escrita para casar com o documento sigiloso, foi feita por três pessoas: a recepção recebeu uma recusa, um advogado associado recebeu só o que o acervo dele sabia e a sócia recebeu o valor com a fonte. A trilha do sistema mostra os acervos consultados em cada pedido. O rascunho de e-mail para cliente para num ponto de aprovação, quem pediu não aprova, e o texto é preenchido pelo código com a resposta conferida, para que o lido seja exatamente o que sai."
+  ],
+  [
+   "Como reverter automaticamente uma mudança ruim num sistema de IA?",
+   "Com um portão de avaliação: uma inspeção automática com réguas escritas antes, que reprova a nova versão e devolve a anterior. No projeto final do livro, um pedido razoável da recepção, ver a avaliação de conflito de interesses, virou a mudança de acrescentar o acervo das sócias ao perfil dela. O portão rodou onze perguntas com respostas e documentos proibidos escritos à mão e encontrou vazamento até numa pergunta inocente sobre a consulta inicial. O sistema voltou sozinho à versão anterior, com o motivo escrito, e guardou a versão ruim para investigação. O que sustenta o portão é um oráculo independente, não a própria configuração, e a solução final foi decidida pela sócia."
+  ],
+  [
+   "Quais controles humanos podem ser removidos quando os modelos de IA ficarem melhores?",
+   "Só os que existem por causa de uma limitação do modelo, e só com evidência medida. O livro separa as travas em dois grupos. O primeiro compensa limites técnicos: rota decidida por regra, tamanho do contexto e corte dos trechos, frequência de leitura de amostras e autonomia das ações reversíveis; elas se afrouxam com evidência contra um critério combinado antes e voltam ao nível anterior quando algo muda. O segundo protege responsabilidades de pessoas e não depende do modelo: quem assina responde, quem pede não aprova, a ação irreversível tem teto, o gabarito tem dono, dado pessoal tem finalidade e o julgamento sobre o que vale a pena é de quem pode ser questionado."
+  ]
+ ]
+}

@@ -1,0 +1,207 @@
+{
+ "titulo": "A Segunda Onda da IA",
+ "subtitulo": "Do usuário ao arquiteto: como projetar, operar e governar sistemas de inteligência artificial",
+ "total": 25,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "A segunda onda",
+   "sub": "Por que um bom prompt não basta mais: o teto da conversa, os sistemas compostos de IA e a escada de cinco degraus que organiza o curso inteiro.",
+   "capitulos": "Apresentação do autor e capítulo 1",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "Do chatbot ao sistema que executa",
+   "sub": "Copiloto, automação, workflow e agente se distinguem por quem decide o próximo passo; capacidade não é permissão; e todo fluxo barato consome algum estoque, com atraso.",
+   "capitulos": "Capítulos 2 e 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "Tudo o que não é o modelo",
+   "sub": "Quem executa, quem aprova e quem responde em cada etapa; o ponto de consequência; as dez peças em volta do modelo; e a fronteira de confiança onde tudo é conferido.",
+   "capitulos": "Capítulos 4 e 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "O contrato entre máquinas",
+   "sub": "APIs, JSON, schema, webhooks, assinatura e idempotência: como um sistema diz não ao pedido absurdo e diz não uma vez só ao pedido repetido.",
+   "capitulos": "Capítulo 7 (e demonstração do laboratório do capítulo 51)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "O que a IA precisa saber",
+   "sub": "A janela de contexto como orçamento, a hierarquia de fonte da verdade e a política de memória que decide o que a máquina grava, quando expira e como apaga.",
+   "capitulos": "Capítulos 8 e 9 (e chamada do laboratório 47)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "O modelo nunca aperta o botão",
+   "sub": "Chamada de ferramenta, a ficha em JSON que o modelo lê, ferramentas separadas por efeito, o MCP como tomada padrão, o A2A entre agentes e por que o que volta de uma ferramenta é dado, não ordem.",
+   "capitulos": "Capítulo 10",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "Achar pelo sentido",
+   "sub": "O cofre de notas em texto aberto, o trecho que a busca guarda, o embedding como mapa de bairros, a busca por palavra, a fusão híbrida pela posição e o gabarito que decide qual busca vence.",
+   "capitulos": "Capítulos 11 e 12 (e laboratório 47 completo)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "Prova com consulta",
+   "sub": "Como funciona o RAG, os cinco modos de falha mesmo com fonte, o filtro de permissão antes da busca, a injeção indireta e o verificador que confere cada citação letra por letra.",
+   "capitulos": "Capítulo 13 (e laboratório 48 completo)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "O que mora entre os documentos",
+   "sub": "Grafo de conhecimento, ontologia, extração com fila humana e GraphRAG: como achar o que não está escrito em nenhum trecho, mas nas relações entre eles, e quando isso compensa.",
+   "capitulos": "Capítulos 14 e 15 (e laboratório do capítulo 49)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "A fonte vencida e o teste que sabe falhar",
+   "sub": "Proveniência, dono e ciclo de atualização para o acervo não responder vencido; conjunto de ouro, modelo juiz e testes que provam que sabem falhar para medir se o sistema funciona.",
+   "capitulos": "Capítulos 16 e 17",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "O agente e quem diz que ele terminou",
+   "sub": "Modelo, harness e ambiente de execução; o laço em cinco fases, o critério de parada que o agente não consegue burlar e a reflexão que só ajuda quando a conferência vem de fora.",
+   "capitulos": "Capítulos 18 e 24",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "Um processo que cabe num desenho",
+   "sub": "Nós, arestas e estado; checkpoint, retentativa e compensação cada um no seu lugar; Graph Engineering e o laboratório da equipe de agentes que espera a aprovação sem repetir nada.",
+   "capitulos": "Capítulo 19 (e laboratório do capítulo 52)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "Peça ao modelo só o que só ele sabe",
+   "sub": "Fluxo híbrido, guardas determinísticas, decisão restrita, calibração e o limiar de abstenção: o modelo interpreta e escolhe, a regra calcula e confere, a pessoa fica com o duvidoso.",
+   "capitulos": "Capítulos 20 e 23",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Dividir o trabalho, dividir o erro",
+   "sub": "Sistemas multiagentes: por que dividir, quanto custa, como o erro se propaga de agente em agente e o contrato com proveniência, incerteza e parada na falha que torna a divisão segura.",
+   "capitulos": "Capítulo 21",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "Aprovar não é olhar",
+   "sub": "Aprovação humana como engenharia, a chave que pede não pode aprovar, níveis de autonomia, reversibilidade, botão de parada e revisão sem culpados depois de uma madrugada ruim.",
+   "capitulos": "Capítulos 25 e 46 (e capítulo 45 no material de apoio)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "Um jeito de desfazer",
+   "sub": "Git como rede de segurança do trabalho com agentes, revisão do que ninguém pediu e a esteira de integração e entrega contínuas, com a prova de qualidade promovida a portão e a liberação gradual.",
+   "capitulos": "Capítulos 26 e 31",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Até onde o erro alcança",
+   "sub": "Docker, contêiner e sandbox: como escrever o ambiente de um sistema de IA e decidir, antes do erro, até onde um agente enganado consegue chegar.",
+   "capitulos": "Capítulos 27 e 28 (e laboratório do capítulo 50)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "Quem acorda de madrugada",
+   "sub": "Onde um sistema de IA mora e o caminho até ele: servidor virtual, plataforma gerenciada, DNS, cadeado e proxy, com os planos de voltar e de desligar escritos antes de publicar.",
+   "capitulos": "Capítulos 29 e 30 (e laboratório do capítulo 53)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "A fatura e o registro",
+   "sub": "Observabilidade de sistemas de IA: log, métrica e rastro, o identificador de execução que amarra tudo e o custo por tarefa que a fatura do mês não mostra.",
+   "capitulos": "Capítulo 32",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "Quando ninguém estiver calmo",
+   "sub": "Retentativa, disjuntor, fallback e gateway, o que nunca pode ir para o modelo reserva, e a soberania de quem roda o modelo em casa e sabe sair de qualquer fornecedor.",
+   "capitulos": "Capítulos 33 e 34",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "Automação que erra igual e avisa",
+   "sub": "Onde a IA entra numa automação e onde fica de fora, por que a plataforma reenvia pedidos, como uma fila de aprovação mostra o motivo de cada parada e por que todo conector é uma procuração.",
+   "capitulos": "Capítulos 35 e 36 (e laboratório do capítulo 51)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "Todo texto pode soar como ordem",
+   "sub": "Injeção de prompt direta e indireta, a tríade letal, memória e ferramentas envenenadas, a cadeia de suprimentos do agente e a defesa em camadas que torna o erro pequeno, sem prometer imunidade.",
+   "capitulos": "Capítulo 42",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "Um agente sem nome próprio",
+   "sub": "Identidade própria para cada agente, menor privilégio, credenciais que vencem sozinhas, segredos fora do alcance do modelo, rotação e a rota de aprovação que a chave do agente não abre.",
+   "capitulos": "Capítulo 43",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "O dado que nunca precisou chegar",
+   "sub": "LGPD aplicada a sistemas de IA: tratamento, base legal, minimização, pseudonimização, dados sensíveis e de crianças, direitos do titular, transferência internacional, soberania, direito autoral e proveniência.",
+   "capitulos": "Capítulo 44",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 25,
+   "titulo": "O sistema inteiro",
+   "sub": "O projeto final junta todos os degraus num assistente com permissão antes da busca, aprovação humana e portão que reverte sozinho, e separa as travas que se afrouxam com evidência das que continuam humanas.",
+   "capitulos": "Capítulo 54 (laboratório do projeto final) e Conclusão",
+   "gravada": true,
+   "tem_artigo": true
+  }
+ ]
+}
