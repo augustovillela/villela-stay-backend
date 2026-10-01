@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v17'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v18'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -27,7 +27,10 @@ const BLOG_I18N = require('./content/blog-i18n'); // traduções EN/ES por slug 
 let CAP_PATHS = [];                     // rotas das séries Claude (só PT), preenchidas no loop
 let CAP_LLMS = '';                      // seções das séries Claude no llms.txt
 let CG_PATHS = [];                      // rotas da série ChatGPT (só PT)
-let CG_LLMS = '';                       // seção da série ChatGPT no llms.txt
+let CG_LLMS = '';
+let LC_PATHS = [];                      // rotas da série O Locador Inteligente (só PT)
+let LC_LLMS = '';                       // seção da série O Locador Inteligente no llms.txt
+//                       // seção da série ChatGPT no llms.txt
 // Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
 // `conferirCobertura` é a trava que impede um produto novo da home de ficar de
@@ -3943,6 +3946,7 @@ const capHojeISO = new Date().toISOString().slice(0, 10);
 let capArtigos = [];
 let cjArtigos = [];
 let cgArtigos = [];
+let lcArtigos = [];
 let capCss = '';
 const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
 const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
@@ -4698,6 +4702,308 @@ ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoi
     console.log(`Blog ChatGPT AI na Prática: hub + ${cgNoAr} de ${cgTotal} artigos (${cgComVideo} com vídeo) + ${cgApoio.length} material(is) de apoio`);
   }
 
+  // ---- Série "O Locador Inteligente na era da IA" (curso de hospedagens): mesmo padrão da série de 20/09/2026, com o anúncio do Villela Stay Manager ----
+  // Decisão do Augusto em 20/09/2026 (revista no mesmo dia): a porta é o MATERIAL,
+  // não o vídeo — o artigo vai ao blog assim que fica pronto, com a videoaula ainda
+  // em produção. São TRÊS estados, e o selo diz qual: artigo + vídeo no ar, artigo no
+  // ar com vídeo em produção, e aula ainda sem material. `grade.json` traz as 22 e o
+  // estado de cada uma: um índice que listasse as 22 como prontas mentiria por
+  // omissão. Mesmo padrão editorial e a mesma proteção de leitura das séries Claude.
+  const LC_DIR = path.join(__dirname, 'content', 'o-locador-inteligente');
+  const LC_LIVRO = 'https://livros.villelastay.com.br/livros/o-locador-inteligente-na-era-da-ia?utm_source=villelastay&utm_medium=blog-locador';
+  const LC_CURSO = 'https://academia.villelastay.com.br/academy/cursos/o-locador-inteligente-na-era-da-inteligencia-artificial?utm_source=villelastay&utm_medium=blog-locador';
+  const LC_MANAGER = 'https://manager.villelastay.com.br/?utm_source=villelastay&utm_medium=blog-locador';
+  const lcDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(LC_DIR)) {
+    const lcCss = fs.readFileSync(path.join(LC_DIR, 'artigo.css'), 'utf8');
+    const lcLe = n => JSON.parse(fs.readFileSync(path.join(LC_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const lcGrade = lcLe('grade.json');
+    let lcFaq = {}, lcApoio = [];
+    try { lcFaq = lcLe('faq.json'); } catch (e) { console.warn('[locador] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { lcApoio = lcLe('apoio.json'); } catch (e) { console.warn('[locador] sem apoio.json — hub sairá sem material de apoio'); }
+
+    lcArtigos = fs.readdirSync(LC_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(LC_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[locador] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpo = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? lcDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `locador-${chave}`;
+      return {
+        ...meta, chave, slug,
+        tituloTexto: lcDestexto(meta.titulo), subtituloTexto: lcDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        // o índice público vem do "Mapa da aula" do próprio artigo, não dos <h2> agrupados
+        indice: (meta.indice || []).map(t => lcDestexto(t)),
+        faq: lcFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar. O que se cobra agora é MATERIAL — corpo,
+    // resumo e índice —, não vídeo. Falhar aqui é melhor que descobrir em produção.
+    const lcComArtigo = lcGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of lcArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[locador] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!lcComArtigo.includes(a.n)) throw new Error(`[locador] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (lcArtigos.length !== lcComArtigo.length) throw new Error(`[locador] grade diz ${lcComArtigo.length} aulas com artigo, mas há ${lcArtigos.length} artigos exportados`);
+    // FAQ é escrita à mão a cada aula nova. Não derruba o build (resumo e índice
+    // já sustentam a camada pública), mas grita o nome de quem ficou sem.
+    const lcSemFaq = lcArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (lcSemFaq.length) console.warn(`[locador] SEM perguntas frequentes: ${lcSemFaq.join(', ')} — escrever em content/o-locador-inteligente/faq.json`);
+
+    const lcAnuncio = (qual, min = false) => qual === 'livro'
+      ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${LC_LIVRO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">📘</span>
+          <span class="cap-ad-txt"><strong>Livro O Locador Inteligente na era da IA</strong><span>Claude AI na Prática para Hospedagens: 50 capítulos, mais de cem prompts, checklists e a arquitetura de uma operação com agentes. Digital e impresso.</span></span>
+          <span class="cap-ad-btn">Ver na Livraria →</span></a>`
+      : qual === 'curso'
+      ? `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${LC_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso O Locador Inteligente</strong><span>${lcGrade.total} videoaulas animadas, cada uma com artigo e material de apoio em PDF, na Villela Academy.</span></span>
+          <span class="cap-ad-btn">Ver o curso →</span></a>`
+      : `<a class="cap-ad cap-ad-manager${min ? ' cap-ad-min' : ''}" href="${LC_MANAGER}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🏨</span>
+          <span class="cap-ad-txt"><strong>Villela Stay Manager</strong><span>O sistema de gestão para anfitriões e administradores: reservas, limpezas, manutenção e financeiro em um só painel.</span></span>
+          <span class="cap-ad-btn">Conhecer o sistema →</span></a>`;
+    const LC_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(lcAnuncio('livro', true))},${JSON.stringify(lcAnuncio('curso', true))},${JSON.stringify(lcAnuncio('manager', true))}];`);
+    const LC_CSS = `${lcCss}${CAP_CSS_EXTRA}
+.cap-ad-manager{background:linear-gradient(135deg,#0E7490,#0b4f63)}
+.cap-ad-manager .cap-ad-btn{background:#e0b15a;color:#1c1a17}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+/* O selo vai para a própria linha, mas DENTRO da coluna do título: ao lado, ele espremia
+   o título em duas ou três palavras por linha.
+   ⚠️ Nada de flex-wrap aqui. Com wrap, o flex prefere EMPURRAR o título para a linha de
+   baixo a encolhê-lo — e o número ficava sozinho numa linha só dele, que foi o que deixou
+   este índice feio ao lado do da série Claude. Sem wrap, o min-width zero deixa o título
+   encolher e quebrar por dentro: número e texto na MESMA linha, como em /claude/. */
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Lora,Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Lora,Georgia,serif;color:var(--navy);margin:34px 0 12px}
+.cg-doc dl{margin:0}
+.cg-doc dt{font-weight:700;color:var(--accent2);margin:18px 0 2px}
+.cg-doc dd{margin:0 0 6px;padding:0}
+.cg-doc blockquote{margin:22px 0;padding:16px 20px;border-left:5px solid var(--gold);background:#fff;border-radius:0 12px 12px 0}
+.cg-doc blockquote p{margin:0 0 6px}
+.cg-doc cite{display:block;font-size:14px;color:var(--muted);font-style:normal}
+.cg-doc .editorial-note{margin:0 0 26px;padding:16px 20px;background:#f2ede4;border-radius:12px;font-size:15px;line-height:1.55}`;
+
+    const lcTotal = lcGrade.total;
+    // <details> e índice do hub: as 22 da grade. Quem já está no ar vira link; o
+    // resto é texto, com o aviso de que a aula ainda não foi gravada.
+    // O selo só aparece onde ACRESCENTA informação: a videoaula publicada é a exceção, não a
+    // regra. Repetir "videoaula em produção" em nove linhas seguidas virava ruído e escondia o
+    // que o leitor procura, que é o título. Quem ainda não está no ar já se distingue por ser
+    // cinza e não ter link — o aviso vai uma vez só, na nota acima da lista.
+    const lcLinhaGrade = (aula, atual) => {
+      const art = lcArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      const selo = aula.gravada ? '<span class="cg-estado no-ar">com videoaula</span>' : '';
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}${selo}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'locador'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'locador', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of lcArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = lcArtigos[iArt - 1], prox = lcArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-01', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/locador/#serie` },
+        articleSection: 'O Locador Inteligente na era da IA', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'O Locador Inteligente na era da Inteligência Artificial', author: { '@type': 'Person', name: 'Augusto Villela' }, url: LC_LIVRO },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'O Locador Inteligente', item: `${SITE_URL}/locador/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/locador/">O Locador Inteligente</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${lcTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${lcAnuncio('livro', true)}${lcAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar — a aula em vídeo e a apresentação estão no curso, e o método completo, no livro.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o texto completo está no <a href="${LC_LIVRO}">livro</a> e no <a href="${LC_CURSO}">curso</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${lcAnuncio('curso')}${lcAnuncio('livro')}</div>
+  <div class="cap-faixa">${lcAnuncio('manager')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/locador/"><span class="rot">☰ Índice</span><span class="tit">${lcArtigos.length === 1 ? 'O artigo publicado' : `Os ${lcArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${lcGrade.aulas.map(g => lcLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>O Locador Inteligente na era da IA</strong>, de Augusto Villela.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog O Locador Inteligente`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${LC_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${LC_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio do curso: glossário e frases. Vai em HTML aberto — é
+    // material de REFERÊNCIA, não o desenvolvimento da aula (esse continua na
+    // camada protegida). O aviso de atribuição das frases vem do próprio arquivo.
+    for (const doc of lcApoio) {
+      const cam = `/locador/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/locador/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'locador', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — O Locador Inteligente | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série O Locador Inteligente, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>O Locador Inteligente</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/locador/">O Locador Inteligente</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${lcAnuncio('livro')}${lcAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${LC_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /locador/
+    const lcCards = lcArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado">artigo no ar · videoaula em produção</span>'}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const lcApoioCards = lcApoio.map(d => `
+  <a class="cap-card" href="/locador/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const lcNoAr = lcArtigos.length;
+    const lcComVideo = lcArtigos.filter(a => a.gravada).length;
+    const lcHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/locador/#serie`,
+      name: 'O Locador Inteligente na era da IA — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: lcArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      // A lista traz SÓ o que existe: ItemList com 22 itens para 2 artigos no ar
+      // seria prometer ao buscador uma página que ainda não nasceu.
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `O Locador Inteligente — ${lcNoAr} ${lcNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: lcNoAr,
+      itemListElement: lcArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'locador', 'index.html'), layout(
+      'O Locador Inteligente na era da IA — a série do curso | Villela Stay',
+      `A série O Locador Inteligente na era da Inteligência Artificial (Claude AI na Prática para Hospedagens), de Augusto Villela: como operar uma hospedagem por temporada com processo, dados e IA — canais, preço, reservas, limpeza, manutenção, agentes e sistemas. ${lcNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>O Locador Inteligente <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">na era da Inteligência Artificial · Claude AI na Prática para Hospedagens</span></h1>
+    <p>${esc(lcGrade.subtitulo)}. São ${lcTotal} artigos, um para cada videoaula do curso. Cada artigo abre com resumo e perguntas frequentes; o método inteiro está no livro e no curso, e o sistema que põe isso em prática é o Villela Stay Manager.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>O Locador Inteligente</span></nav>
+  <div class="cap-faixa">${lcAnuncio('livro')}${lcAnuncio('curso')}</div>
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${lcTotal} aulas da grade. Em preto e com link, ${lcNoAr === 1 ? 'a que já está no ar' : `as ${lcNoAr} que já estão no ar`}; o selo marca ${lcComVideo === 1 ? 'a que já tem videoaula publicada' : `as ${lcComVideo} que já têm videoaula publicada`}. Em cinza, as que ainda estão em produção.</p>
+    <ol class="cap-sumario-lista">${lcGrade.aulas.map(g => lcLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${lcCards}</div>
+  ${lcApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login. O mesmo material vai em PDF junto da primeira aula, para quem faz o <a href="${LC_CURSO}" target="_blank" rel="noopener">curso</a>.</p><div class="cap-grade">${lcApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${lcAnuncio('curso')}${lcAnuncio('livro')}</div>
+  <div class="cap-faixa">${lcAnuncio('manager')}</div>
+</div>`,
+      { caminho: '/locador/', semIdiomas: true, extraHead: `<style>${LC_CSS}</style>` + lcHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    LC_PATHS = ['/locador/', ...lcArtigos.map(a => a.caminho), ...lcApoio.map(d => `/locador/apoio/${d.chave}.html`)];
+    LC_LLMS = `## Blog: O Locador Inteligente na era da IA (${lcNoAr} artigos, em português)
+
+Série do livro *O Locador Inteligente na era da Inteligência Artificial — Claude AI na Prática para
+Hospedagens*, de Augusto Villela: como operar uma hospedagem por temporada com processo, dados e
+inteligência artificial — fonte única da verdade, canais de venda, anúncio, preço, reservas, cotação,
+fraude, avaliações, check-in, concierge, limpeza, manutenção, agentes com permissão de leitura e sistemas próprios.
+Índice da série: ${SITE_URL}/locador/
+Livro completo: ${LC_LIVRO.split('?')[0]} · Curso on-line: ${LC_CURSO.split('?')[0]} · Sistema de gestão: https://manager.villelastay.com.br
+
+${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog O Locador Inteligente: hub + ${lcNoAr} de ${lcTotal} artigos (${lcComVideo} com vídeo) + ${lcApoio.length} material(is) de apoio`);
+  }
+
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
     ...['01-central-atualizacao-normativa.html', '02-diretorio-pesquisa-juridica.html', '03-atualizacoes-tecnologicas.html'].map(f => `/claude-juridico/recursos/${f}`)];
   // llms.txt: o assistente que "lê e não renderiza" recebe título + resumo de cada artigo.
@@ -4780,6 +5086,18 @@ const cgCardsHub = LANG !== 'pt' || !cgArtigos.length ? '' : `
     </div>
   </a>`;
 
+// Série O Locador Inteligente (curso de hospedagens com Claude). Card com a capa do livro.
+const lcCardsHub = LANG !== 'pt' || !lcArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/locador/">
+    <div class="blog-card-img">${img('/blog-img/o-locador-inteligente-1.jpg', { alt: 'Capa do livro O Locador Inteligente na era da Inteligência Artificial: uma casa com uma chave dentro de um globo, cercada de ícones de calendário, cama, avaliação, conversa, wi-fi e gráfico', width: 1920, height: 1072, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">🏡 Série · Hospedagem com IA</span>
+      <h3>O Locador Inteligente na era da IA</h3>
+      <p>Claude AI na Prática para Hospedagens: como operar aluguel por temporada com processo, dados e inteligência artificial — canais, preço, reservas, limpeza, agentes e sistemas, com os casos reais de uma operação em Brasília.</p>
+      <span class="blog-card-leia">Ver os ${lcArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
 // ---- busca do blog ----
 // O hub mostra 16 cards, mas o blog já tem quase cem textos: os 13 do Diário e os das três
 // séries, que moram nos hubs próprios. Procurar só nos cards seria inútil — o índice cobre
@@ -4791,6 +5109,7 @@ const buscaItens = [
     ...capArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🤖 Claude AI na Prática', u: a.caminho, n: a.modulo })),
     ...cjArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '⚖️ Claude AI na Prática Jurídica', u: a.caminho, n: `Cap. ${a.capitulo}` })),
     ...cgArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '💬 ChatGPT AI na Prática', u: a.caminho, n: `Aula ${a.n}` })),
+    ...lcArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🏡 O Locador Inteligente', u: a.caminho, n: `Aula ${a.n}` })),
   ] : []),
 ];
 
@@ -4902,6 +5221,7 @@ const blogLd = {
         { '@type': 'Blog', '@id': `${SITE_URL}/claude/#serie`, name: 'Claude AI na Prática — a série', url: `${SITE_URL}/claude/` },
         { '@type': 'Blog', '@id': `${SITE_URL}/claude-juridico/#serie`, name: 'Claude AI na Prática Jurídica — a série', url: `${SITE_URL}/claude-juridico/` },
         ...(cgArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/chatgpt/#serie`, name: 'ChatGPT AI na Prática — a série', url: `${SITE_URL}/chatgpt/` }] : []),
+        ...(lcArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/locador/#serie`, name: 'O Locador Inteligente na era da IA — a série', url: `${SITE_URL}/locador/` }] : []),
       ]
     : undefined,
 };
@@ -4922,7 +5242,7 @@ const blogHub = layout(
 </section>
 ${buscaHtml}
 <section class="grade-wrap">
-  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${blogCardsHub}</div>
+  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
@@ -5355,7 +5675,7 @@ const SALTO = String.fromCharCode(10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
-${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
+${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 
@@ -5454,6 +5774,7 @@ eles é feita por API, disponível nos planos superiores.
 
 ${CAP_LLMS}
 ${CG_LLMS}
+${LC_LLMS}
 ## Livros e cursos do autor
 
 Vitrine conjunta dos três acervos (livros, cursos e sistemas), com links diretos

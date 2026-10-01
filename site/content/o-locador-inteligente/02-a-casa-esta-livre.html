@@ -1,0 +1,185 @@
+<!--META {"arquivo": "02-a-casa-esta-livre", "modulo": "02", "titulo": "A casa está livre? O que a máquina sabe, o que ela inventa e como travar a invenção", "subtitulo": "Por que um modelo de linguagem erra com confiança, as quatro funções que se pedem à máquina e a trava anti-invenção que entra em todo prompt de disponibilidade, preço e regra.", "meta": "<span>Augusto Villela</span><span>Leitura de 7 min</span><span>Aula 2 de 24</span><span>Livro: Capítulos 3 e 4</span>", "descricao": "Por que um modelo de linguagem erra com confiança, as quatro funções que se pedem à máquina e a trava anti-invenção que entra em todo prompt de disponibilidade, preço e regra.", "gravada": true, "resumo_html": "<ul>\n<li>A máquina não sabe o que não viu. Quando não sabe, completa com o que parece mais provável, com a mesma elegância de quando acerta.</li>\n<li>Quem sabe se a casa está livre é o seu sistema de reservas; a máquina só redige em cima do que ele informou.</li>\n</ul>", "aplicar_html": "<ol><li>Pegue a última mensagem de hóspede que você respondeu na mão. Monte o prompt de atendimento do material com os seus dados reais, rode e compare com o que você escreveu. Depois rode de novo, sem a trava, com uma data que não existe no seu calendário, e veja a máquina afirmar uma disponibilidade falsa.</li><li>Abra um Project e coloque nele três documentos: a regra da casa de uma propriedade, a sua política de cancelamento e o seu tom de voz com o hóspede. Faça uma pergunta cuja resposta dependa dos três.</li><li>Passe o seu prompt mais usado pelo checklist do prompt profissional e, se você já o usou três vezes, salve-o com nome e versão.</li></ol>", "indice": ["Por que a resposta errada veio tão segura", "Um recém-contratado brilhante e sem pasta", "Assistente, consultor, operador, agente", "Prompt é documento de requisitos", "A trava anti-invenção", "Os dois blocos que a hospedagem exige", "Do prompt à Skill", "O risco de quem já confia"]} -->
+<aside class="editorial-note"><strong>Como usar este artigo:</strong> ele acompanha a videoaula e reproduz, por escrito, o raciocínio apresentado em cada cena. Leia como orientação de método. Confirme regras de plataforma, legislação, preços e condições nas fontes oficiais vigentes antes de aplicar. A decisão continua humana.</aside>
+
+<p>Um anfitrião que eu conheço testou inteligência artificial pela primeira vez de um jeito que resume o problema inteiro. Ele perguntou: a casa está livre no feriado de setembro? A resposta veio completa, cordial, absolutamente convincente. Sim, estava livre. E ainda sugeriu um pacote de três noites.</p>
+<p>A casa não estava livre. Estava reservada havia dois meses.</p>
+<p>O modelo não mentiu por má-fé. Ele não tinha como saber, porque ninguém tinha mostrado o calendário a ele. Esta aula parte daí: a máquina não sabe o que não viu, e erra com confiança. Por isso disponibilidade, preço e regra da casa nunca saem do modelo. Saem do seu sistema. E todo pedido que toca nesses assuntos leva uma trava que manda a máquina parar e dizer: <strong>falta dado</strong>.</p>
+<h2>Por que a resposta errada veio tão segura</h2>
+<p class="lead">Diante de uma pergunta sem informação, o modelo produz a continuação mais plausível, e a mais plausível de "a casa está livre?" é "sim".</p>
+<ul class="pontos"><li>O modelo não tinha o calendário</li><li>Sem dado, ele completa com o que parece provável</li><li>Um texto errado sai tão bem escrito quanto um certo</li></ul>
+<p>Se você entender por que aquela resposta aconteceu, entende o resto. Um modelo de linguagem foi treinado para produzir a continuação mais plausível de um texto. Quando a pergunta chega sem a informação necessária, ele faz exatamente isso. E a continuação mais plausível de "a casa está livre no feriado?" é "sim, está".</p>
+<p>O agravante é que não existe sinal visual de dúvida. Um texto errado sai tão bem escrito quanto um certo, com a mesma cordialidade e a mesma segurança. É por isso que a conferência é parte do processo, e não um luxo.</p>
+<h2>Um recém-contratado brilhante e sem pasta</h2>
+<p class="lead">Pense no Claude como um profissional competente, rápido e bem redigido, que não sabe nada sobre a sua empresa.</p>
+<ul class="pontos"><li>Sabe tudo sobre o mundo em geral e nada sobre o seu mundo</li><li>Não conhece suas casas, seu preço de Réveillon nem seu calendário</li><li>O humano diria "deixa eu conferir"; o modelo tende a preencher a lacuna</li></ul>
+<p>A comparação mais útil que conheço é a do profissional recém-contratado: extremamente competente, muito rápido, com ótima redação e raciocínio, e com absolutamente nenhuma informação sobre a sua empresa. Ele não sabe o nome das suas casas, não sabe o seu preço de Réveillon, não viu o seu calendário e não conhece a sua política de cancelamento.</p>
+<p>Contratar esse profissional e não lhe dar informação nenhuma produz o que produziria com um humano nas mesmas condições: respostas educadas e erradas. A diferença é que o humano diria "não sei, deixa eu conferir". O modelo, se ninguém mandar, tende a preencher a lacuna.</p>
+<p>Daí a regra que atravessa o curso: <strong>disponibilidade, preço e regra da casa não saem do modelo. Saem do seu sistema. O modelo apenas redige em cima do que o sistema informou.</strong></p>
+<h2>Assistente, consultor, operador, agente</h2>
+<p class="lead">As quatro funções que se pedem à máquina são degraus de responsabilidade, e cada uma carrega mais risco que a anterior.</p>
+<ul class="pontos"><li>Assistente redige; consultor analisa e recomenda</li><li>Operador executa; agente age com autonomia limitada</li><li>Não pule degraus</li></ul>
+<p><strong>Assistente</strong>: você traz o material e ele devolve pronto, como a descrição de um anúncio ou uma tradução. O risco é baixo, porque você lê tudo antes de usar. <strong>Consultor</strong>: analisa e recomenda, como explicar por que a ocupação de terça caiu ou onde o custo cresceu. O risco aqui é a premissa inventada, a análise perfeita em cima de um número que ninguém forneceu.</p>
+<p><strong>Operador</strong>: executa dentro de parâmetros, como montar a escala de limpeza a partir do calendário ou gerar o contrato a partir da ficha. A máquina faz, e uma escala errada manda gente para a casa errada. <strong>Agente</strong>: age com autonomia limitada, inclusive quando você não pediu nada. É onde está o maior ganho e o maior risco.</p>
+<p>A regra é uma só: não pule degraus. Quem monta um agente antes de ter o procedimento escrito está automatizando uma coisa que não existe.</p>
+<div class="transicao"><span class="rot">Na fala do professor</span><p>Na minha operação, todos os agentes seguem a mesma regra: consulta é livre, escrita pede confirmação. Um agente pode ler o calendário inteiro, cruzar com o financeiro e me dizer que uma casa está com ocupação abaixo da média. Ele não pode alterar um preço. Levei tempo para aceitar que essa fronteira não é timidez. É justamente porque a escrita é travada que eu posso deixar a leitura completamente solta.</p></div>
+<h2>Prompt é documento de requisitos</h2>
+<p class="lead">Diante de um pedido vago, a máquina devolve a média do mercado, e a média é o que não converte.</p>
+<ul class="pontos"><li>"Faça um anúncio para a minha casa" gera texto genérico</li><li>Tamanho, bairro, suítes, público e diferenciais reais geram anúncio utilizável</li><li>A diferença não é criatividade, é especificação</li></ul>
+<p>Faça o teste: escreva "faça um anúncio para a minha casa". Vai sair um texto sobre uma casa aconchegante em localização privilegiada, com todo o conforto que você merece. Não serve para nada. Não porque a máquina seja ruim, mas porque, diante de um pedido vago, ela produz a média do que existe no mundo. E a média, num mercado com milhões de anúncios, é exatamente o que não converte.</p>
+<p>Compare com um pedido que diz o tamanho da casa, o bairro, quantas suítes, para quem ela é, quais são os diferenciais reais, o tom e o limite de palavras, e que termina assim: não invente comodidade que eu não listei. Esse pedido produz um anúncio utilizável. Os dois estão no material de apoio, lado a lado.</p>
+<p><strong>Prompt profissional é documento de requisitos, não pergunta.</strong></p>
+<h2>A trava anti-invenção</h2>
+<p class="lead">Um bloco de texto que entra em todo prompt sobre disponibilidade, preço ou política, e que dá à máquina uma saída explícita quando falta dado.</p>
+<ul class="pontos"><li>Use só os dados colados, vindos do sistema de reservas</li><li>Nunca afirme data, valor ou regra que não esteja ali</li><li>Quando faltar dado, pare e escreva "FALTA DADO"</li></ul>
+<p>O erro que mais custa caro numa hospedagem não é um texto feio. É informação inventada: disponibilidade que não existe, preço que não é o seu, regra que você nunca escreveu. Um anúncio mal escrito custa uma reserva. Uma disponibilidade inventada custa uma reserva confirmada em cima de outra, um hóspede sem lugar para dormir e uma avaliação que fica pública para sempre.</p>
+<p>A trava diz três coisas: use só os dados que eu colei, vindos do sistema de reservas; nunca afirme data, valor ou regra que não esteja ali; e, quando faltar dado, pare e escreva "FALTA DADO", seguido do que falta. O bloco completo, pronto para copiar, está no material de apoio.</p>
+<p>A última parte é a que faz a trava funcionar. Proibir não basta: se você só diz o que a máquina não pode fazer e não oferece outra saída, o caminho da invenção continua sendo a única rota. Quando você diz o que fazer na falta de dado, ela ganha uma saída explícita. <strong>Uma resposta incompleta é melhor do que uma resposta inventada.</strong> São doze linhas que evitam o pior dia do seu ano.</p>
+<h2>Os dois blocos que a hospedagem exige</h2>
+<p class="lead">Além da trava, todo prompt de operação precisa dizer como se reconhece uma saída boa e quando a máquina deve chamar você.</p>
+<ul class="pontos"><li>Critério de sucesso: "consigo enviar sem editar"</li><li>Escalonamento humano: reclamação, reembolso e assunto jurídico voltam para você</li><li>O que a casa não tem: a linha que mais melhora anúncio</li></ul>
+<p>O primeiro é o <strong>critério de sucesso</strong>: como saber que a saída presta. "Eu consigo enviar sem editar" é um critério. "Ficar bom" não é.</p>
+<p>O segundo é o <strong>critério de escalonamento humano</strong>: em que situação a máquina para e chama você. Se a mensagem tem reclamação, pedido de reembolso ou assunto jurídico, ela não responde; devolve para você com um resumo. Numa operação em que o hóspede está dentro da sua casa, isso não é opcional.</p>
+<p>E existe uma linha que, sozinha, melhora qualquer anúncio: <em>o que a casa não tem</em>. Expectativa desalinhada é a causa mais comum de avaliação ruim, e ela nasce no anúncio, não na estadia.</p>
+<h2>Do prompt à Skill</h2>
+<p class="lead">Prompt usado três vezes virou procedimento, e procedimento se guarda, se nomeia e se melhora.</p>
+<ul class="pontos"><li>O prompt de cotação salvo com os dados fixos vira Skill</li><li>Qualquer pessoa da equipe dispara e obtém o mesmo resultado</li><li>A qualidade deixa de depender de quem está no teclado</li></ul>
+<p>Se você usou o mesmo prompt três vezes, ele não é mais um prompt: é um procedimento. E procedimento se guarda, se nomeia e se melhora, em vez de ser digitado de novo toda vez.</p>
+<p>É assim que se sobe o segundo degrau da escada. Você escreve um bom prompt de cotação: degrau 1, Prompt. Salva esse prompt com os dados fixos da empresa e passa a usá-lo sempre: degrau 2, Skill. Define que toda consulta nova passa por ele, seguido de conferência e envio: degrau 3, Workflow. Faz isso disparar sozinho quando chega uma consulta: degrau 4, Automação.</p>
+<div class="transicao"><span class="rot">Na fala do professor</span><p>Na minha operação, os prompts que eu mais uso viraram procedimentos com nome: cotação, contrato de hóspede, agenda de limpeza. Qualquer pessoa da equipe dispara e obtém o mesmo resultado, com as mesmas travas, sem depender de saber escrever prompt. É assim que a qualidade deixa de depender de quem está no teclado.</p></div>
+<h2>O risco de quem já confia</h2>
+<p class="lead">Depois de vinte respostas boas você para de conferir, e é aí que a vigésima primeira sai errada.</p>
+<ul class="pontos"><li>A trava não sai do prompt nunca</li><li>Ela garante que a máquina não invente</li><li>Não garante que o seu dado esteja atualizado</li></ul>
+<p>O risco que ninguém espera aparece justamente porque funciona. Depois de vinte respostas boas, você para de conferir. E é exatamente aí que a vigésima primeira sai errada. Por isso a trava não sai do prompt nunca, nem quando você já confia.</p>
+<p>E ela tem um limite que vale conhecer. A trava garante que a máquina não invente; não garante que o seu dado esteja atualizado. Fonte velha produz erro legítimo, e esse é o assunto das próximas aulas.</p>
+
+<section class="apoio"><h2>Material de apoio</h2>
+<h3>A trava anti-invenção (copie e cole, literalmente)</h3>
+<pre>DADOS AUTORIZADOS: use exclusivamente os dados que eu colar abaixo, vindos do sistema de reservas. Eles são a única fonte de verdade sobre disponibilidade, tarifa, taxas e política.
+
+PROIBIÇÕES ABSOLUTAS:
+- Nunca afirme que uma data está disponível ou indisponível se ela não constar nos dados colados.
+- Nunca calcule, estime, arredonde ou sugira um valor de diária, taxa ou desconto que não esteja nos dados colados.
+- Nunca enuncie regra da casa, política de cancelamento ou condição de pagamento que não esteja nos dados colados.
+- Não preencha lacuna com média de mercado, com o que é usual no setor nem com o que você viu em conversas anteriores.
+QUANDO FALTAR DADO: pare, escreva exatamente &quot;FALTA DADO:&quot; seguido do que falta, e não produza a resposta ao hóspede. Uma resposta incompleta é preferível a uma resposta inventada.</pre>
+<h3>Pedido vago × pedido especificado</h3>
+<p><strong>Pedido vago:</strong> "Faça um anúncio para a minha casa." Produz um texto genérico sobre uma casa aconchegante em localização privilegiada, com todo o conforto que você merece.</p>
+<p><strong>Pedido especificado:</strong></p>
+<h3>Prompt de anúncio especificado</h3>
+<pre>Você é redator de hospedagens de alto padrão. Escreva a descrição do anúncio de uma casa de 400 m² no Lago Sul, em Brasília, com piscina aquecida, quatro suítes e churrasqueira, para até doze pessoas. O público são famílias de alta renda em feriados prolongados e grupos que vêm à cidade para formatura e casamento. Diferenciais reais: estacionamento para seis carros e área de convivência coberta — não invente comodidade que eu não listei. Tom elegante e direto, sem adjetivo de corretor. Português brasileiro. Máximo 180 palavras, com os dois primeiros períodos carregando os diferenciais, porque é o que aparece antes do &quot;leia mais&quot;.</pre>
+<h3>Prompt pronto 1 — Atendimento a uma consulta</h3>
+<pre>FUNÇÃO: atendente de reservas de uma administradora de hospedagem por temporada.
+OBJETIVO: responder a consulta de forma que ela avance para reserva, sem prometer nada que o sistema não confirme.
+CONTEXTO DA EMPRESA: [nome] · [cidade/bairro] · [propriedades e capacidade]
+POLÍTICAS: [cancelamento] · [horários de check-in e check-out] · [taxas]
+DADOS AUTORIZADOS (do sistema de reservas):
+[colar disponibilidade e tarifas do período consultado]
+MENSAGEM DO HÓSPEDE:
+[colar]
+REGRAS:
+- Aplicar a trava anti-invenção (disponibilidade, preço e política só dos dados acima).
+- Se faltar data, número de hóspedes ou finalidade da viagem, perguntar — no máximo duas perguntas, na mesma mensagem.
+- Não oferecer desconto. Desconto é decisão minha.
+- Se houver menção a evento, festa, número de visitantes ou pet, sinalizar para mim antes de responder.
+ESTILO: cordial, direto, primeira pessoa do plural, português brasileiro. Sem formalidade excessiva e sem emoji.
+FORMATO: mensagem pronta para WhatsApp, até 90 palavras, com uma pergunta de fechamento ao final.
+ESCALONAMENTO: se a mensagem contiver reclamação, pedido de reembolso, ameaça ou qualquer assunto jurídico, não responda — devolva para mim com um resumo em duas linhas.</pre>
+<h3>Prompt pronto 2 — Criação de anúncio</h3>
+<pre>FUNÇÃO: redator de anúncios de hospedagem, especialista em conversão.
+OBJETIVO: escrever título e descrição para o canal [canal].
+FICHA DA PROPRIEDADE (fonte única — não acrescente nada):
+tipo: [ ] · capacidade real: [ ] · quartos e camas: [ ] · banheiros: [ ]
+comodidades verificadas: [lista]
+o que a casa NÃO tem: [lista — isto é tão importante quanto o resto]
+localização (sem endereço exato): [ ]
+público-alvo: [ ]
+diferenciais reais: [até três]
+REGRAS:
+- Nenhuma comodidade que não esteja na lista verificada.
+- Nenhuma promessa de proximidade (&quot;a 5 minutos de&quot;) sem eu ter informado a distância.
+- Capacidade anunciada = capacidade real com conforto, nunca o máximo que cabe.
+- Adaptar ao formato do canal indicado, não traduzir literalmente de outro canal.
+FORMATO: título de até [N] caracteres + descrição de até [N] palavras, com os diferenciais nos dois primeiros períodos.
+CRITÉRIO DE SUCESSO: um hóspede que ler isto e chegar na casa não tem nenhuma surpresa.</pre>
+<h3>Prompt pronto 3 — Apoio à decisão de preço</h3>
+<pre>FUNÇÃO: revenue manager de aluguel por temporada.
+OBJETIVO: recomendar a tarifa para [período], com justificativa.
+DADOS AUTORIZADOS:
+- tarifa-base e mínima aceitável: [ ]
+- ocupação já confirmada no período: [ ]
+- mesmo período no ano anterior (ocupação e diária média): [ ]
+- eventos na cidade no período: [ ] (se não informado, considere que não sei)
+- estadia mínima atual: [ ]
+- concorrentes comparáveis, se eu tiver colado: [ ]
+REGRAS:
+- Não buscar preço de mercado, não estimar demanda por conhecimento geral, não inventar evento. Trabalhe só com o que está acima.
+- Nunca recomendar abaixo da tarifa mínima.
+- Apresentar sempre três cenários: conservador, provável e agressivo.
+- A recomendação é uma sugestão. A alteração no canal é feita por mim.
+FORMATO: tabela com os três cenários (tarifa, estadia mínima, ocupação esperada) e até cinco linhas de justificativa.</pre>
+<h3>Prompt pronto 4 — Resposta a reclamação</h3>
+<pre>FUNÇÃO: gerente de hospitalidade experiente em recuperação de hóspede insatisfeito.
+OBJETIVO: preparar UM RASCUNHO de resposta para eu revisar. Você não envia nada.
+FATOS APURADOS (só isto é verdade):
+[o que de fato aconteceu, com datas e o que já foi feito]
+RECLAMAÇÃO DO HÓSPEDE:
+[colar]
+REGRAS:
+- Reconhecer o problema real sem se desculpar por algo que não ocorreu.
+- Não admitir responsabilidade jurídica, não oferecer reembolso, desconto nem compensação — isso é decisão minha e entra depois.
+- Não usar frase de manual (&quot;lamentamos o ocorrido e prezamos pela sua satisfação&quot;).
+- Se a reclamação envolver dano físico, segurança, saúde ou ameaça de ação judicial, não redija resposta: escreva &quot;ESCALONAR&quot; e resuma o risco em três linhas.
+ESTILO: humano, específico, curto. Cite o fato concreto, diga o que foi feito e o que será feito, com prazo.
+FORMATO: até 120 palavras.</pre>
+<h3>Prompt pronto 5 — Análise financeira do mês</h3>
+<pre>FUNÇÃO: controller de uma administradora de hospedagem.
+OBJETIVO: explicar o resultado do mês e apontar as três coisas que merecem ação.
+DADOS AUTORIZADOS: [colar o extrato de reservas e o de despesas]
+CONVENÇÕES OBRIGATÓRIAS:
+- Faturamento é reconhecido por check-in (competência), pelo valor total da reserva. Nunca calcule tarifa × noites.
+- Líquido = faturamento menos comissão do canal.
+- Ocupação = noites ocupadas ÷ noites disponíveis.
+REGRAS:
+- Se um lançamento estiver ambíguo, liste em &quot;a conferir&quot; em vez de classificar no chute.
+- Não compare com &quot;média do setor&quot;. Compare com os meus meses anteriores, se eu colei.
+FORMATO: (1) tabela por propriedade com faturamento, líquido e ocupação;
+(2) três achados em ordem de impacto financeiro, cada um com o número que o sustenta;
+(3) lista &quot;a conferir&quot;.</pre>
+<h3>Os dois blocos da hospedagem</h3>
+<p>A estrutura de sete blocos (função, objetivo, contexto, regras, estilo, formato e tarefa) é a do curso <em>Claude AI na Prática</em>; aqui fica só como referência. A operação de hospedagem exige mais dois:</p>
+<p><strong>Critério de sucesso</strong> — como saber que a saída presta. "Eu consigo enviar sem editar" é um critério; "ficar bom" não é.</p>
+<p><strong>Critério de escalonamento humano</strong> — em que situação a máquina deve parar e chamar você. Numa operação em que o hóspede está dentro da sua casa, este bloco não é opcional.</p>
+<h3>As quatro funções</h3>
+<ul class="check"><li><strong>Assistente</strong> — Você faz: traz o material e revisa. A máquina faz: redige. No livro: Parte I.</li><li><strong>Consultor</strong> — Você faz: fornece os números. A máquina faz: analisa e recomenda. No livro: Partes III e V.</li><li><strong>Operador</strong> — Você faz: define o procedimento. A máquina faz: executa e devolve para conferência. No livro: Partes VII e VIII.</li><li><strong>Agente</strong> — Você faz: define escopo e limites. A máquina faz: monitora, decide e age. No livro: Parte X.</li></ul>
+<h3>Os limites — o que a máquina não faz</h3>
+<ul class="check"><li><strong>Ela não sabe o que não viu.</strong> Sem acesso ao seu calendário, ela não conhece sua disponibilidade. Sem o seu sistema de preços, não sabe sua tarifa. Sem os seus documentos, não conhece sua política.</li><li><strong>Ela pode errar com confiança.</strong> Um texto errado sai tão bem escrito quanto um certo. Não existe sinal visual de dúvida. É por isso que conferência é parte do processo, não um luxo.</li><li><strong>Ela não tem responsabilidade.</strong> Se um parecer estiver errado, quem responde é você. Isso vale com força especial para contrato, tributo, dado pessoal e qualquer coisa que envolva a segurança física de um hóspede.</li><li><strong>Ela não substitui presença.</strong> Hóspede trancado do lado de fora à meia-noite precisa de alguém que atenda o telefone e vá até lá.</li><li><strong>Ela não conhece o seu município.</strong> Regra condominial, exigência de cadastro, alíquota local — tudo isso varia, e o modelo tenderá a dar a resposta genérica.</li></ul>
+<h3>Onde a supervisão humana é obrigatória</h3>
+<ul class="check"><li><strong>Dinheiro</strong> — cobrança, reembolso, desconto, repasse ao proprietário.</li><li><strong>Calendário</strong> — bloquear, desbloquear, alterar ou cancelar reserva.</li><li><strong>Preço</strong> — qualquer alteração publicada em canal de venda.</li><li><strong>Mensagem a pessoa real</strong> — hóspede, proprietário, técnico, funcionário.</li><li><strong>Documento com efeito jurídico</strong> — contrato, notificação, rescisão.</li><li><strong>Dado pessoal de terceiro</strong> — o que se coleta, onde fica, por quanto tempo.</li><li>O padrão é sempre o mesmo: a máquina prepara, o humano aprova, a ação acontece.</li></ul>
+<h3>Engenharia de contexto: o que realmente melhora o resultado</h3>
+<ul class="check"><li><strong>Declare o óbvio.</strong> O que é evidente para você não é para a máquina. Que o check-in é às 15 h, que a casa não aceita festa, que o preço do Réveillon é intencionalmente alto e não um erro.</li><li><strong>Prefira baixa criatividade.</strong> Em tarefa empresarial, invenção é defeito. Peça explicitamente texto conservador, que siga o que foi informado. Criatividade tem lugar em campanha de marketing, não em cotação.</li><li><strong>Dê exemplos do que você quer.</strong> Dois exemplos de mensagens que você mesmo escreveu e aprovou valem mais do que dez linhas descrevendo o tom.</li><li><strong>Restrinja o formato.</strong> Limite de palavras, estrutura fixa, campos obrigatórios. Saída livre é saída que você vai ter que editar.</li><li><strong>Antecipe a ambiguidade.</strong> Se existe uma pergunta que o hóspede sempre faz de um jeito confuso, diga como interpretá-la. "Quando o hóspede escreve 'de sexta a domingo', entenda duas noites e confirme."</li><li><strong>Separe fato de opinião na saída.</strong> Peça que a máquina marque o que é dado fornecido e o que é inferência dela. Isso muda a qualidade da sua conferência.</li></ul>
+<h3>Da conversa ao degrau</h3>
+<p><em>Você escreve um bom prompt de cotação.</em> → Degrau 1: <strong>Prompt</strong>.</p>
+<p><em>Você salva esse prompt com os dados fixos da sua empresa já dentro, e passa a usá-lo sempre.</em> → Degrau 2: <strong>Skill</strong>.</p>
+<p><em>Você define que toda consulta nova passa por esse procedimento, seguido de conferência e envio.</em> → Degrau 3: <strong>Workflow</strong>.</p>
+<p><em>Você faz isso disparar sozinho quando chega uma consulta.</em> → Degrau 4: <strong>Automação</strong>.</p>
+<p>A atitude que interessa é tratar seus prompts como ativos: guardados, nomeados, versionados e melhorados — não digitados de novo toda vez.</p>
+<h3>Referência: ambientes, contexto e classes de modelo</h3>
+<p>Detalhados no curso <em>Claude AI na Prática</em>; aqui, o essencial para a hospedagem.</p>
+<p><strong>Ambientes:</strong> conversa avulsa (uma tarefa, sem memória do que veio antes), Projects (instruções permanentes e documentos anexados, onde a maior parte da operação deve viver) e Claude Code (lê e escreve arquivos, roda comandos e constrói software).</p>
+<p><strong>Contexto, base de conhecimento e memória:</strong> contexto é o que a máquina tem à mão nesta conversa; base de conhecimento é o material permanente do Project; memória é a lembrança de preferências entre sessões. Regra de negócio mora em arquivo, não em memória.</p>
+<p><strong>Classes de modelo:</strong> rápida e econômica, equilibrada e avançada. Use a classe mais barata que resolve, e suba quando o resultado não for confiável. Nomes, limites e recursos por plano mudam: confira na documentação oficial da Anthropic.</p>
+<h3>Riscos e limites</h3>
+<ul class="check"><li><strong>Prompt sem trava</strong> em assunto de disponibilidade ou preço: o risco número um.</li><li><strong>Contexto colado com dado pessoal</strong> de hóspede em ferramenta não controlada.</li><li><strong>Prompt bom com dado velho</strong>: a trava garante que ele não invente, não que o seu extrato esteja atualizado. Fonte desatualizada produz erro legítimo.</li><li><strong>Confiança crescente</strong>: depois de vinte respostas boas, você para de conferir. É exatamente quando a vigésima primeira sai errada.</li></ul>
+<h3>Checklist de fundamentos</h3>
+<ul class="check"><li>Sei dizer, em uma frase, qual das quatro funções estou pedindo em cada tarefa?</li><li>As informações que a máquina precisa consultar estão em algum lugar, ou só na minha cabeça?</li><li>Existe alguma tarefa em que eu já confiei numa resposta sem conferir a fonte?</li><li>Meu trabalho recorrente está num Project, ou eu reexplico a empresa toda semana?</li><li>Eu sei quais decisões, na minha operação, nunca podem ser tomadas sem mim?</li></ul>
+<h3>Checklist do prompt profissional</h3>
+<ul class="check"><li>Tem função, objetivo, contexto, regras, estilo, formato e tarefa?</li><li>Tem critério de sucesso verificável?</li><li>Tem critério de escalonamento humano?</li><li>Se toca em disponibilidade, preço ou política, tem a trava anti-invenção?</li><li>Diz o que fazer quando faltar dado?</li><li>As proibições estão escritas, e não apenas subentendidas?</li><li>Formato tem limite de tamanho?</li><li>Se eu usar isto três vezes, ele já está salvo em algum lugar?</li></ul>
+<h3>Indicadores</h3>
+<p><strong>Correções por falta de informação</strong> — quantas vezes por semana você teve que corrigir uma resposta por falta de informação, e não por falta de qualidade. Se o número é alto, o problema não é o prompt: é a organização.</p>
+<p><strong>Taxa de aproveitamento sem edição</strong> — de cada dez saídas, quantas você envia sem mexer. Abaixo de seis, o prompt está incompleto, não a máquina.</p>
+<p><strong>Número de escalonamentos por semana</strong> — se for zero, desconfie: significa que a trava não está pegando nada, e alguma coisa está passando.</p>
+<h3>Não automatize isto</h3>
+<p><strong>A primeira mensagem de uma reclamação séria.</strong> Hóspede irritado percebe resposta automática em duas linhas, e o custo de errar o tom aí é uma avaliação pública. Use a máquina para preparar o rascunho e para lembrar você dos fatos; mande você.</p>
+<p><strong>O envio da primeira resposta a um lead de evento de alto valor.</strong> A máquina prepara a cotação com os números certos; a conversa que fecha um casamento de trezentas pessoas é sua.</p>
+</section>
+<p class="fontes"><strong>No livro:</strong> Capítulos 3 e 4.</p>

@@ -1,0 +1,338 @@
+{
+ "01-a-quinta-feira-de-dezembro": [
+  [
+   "Por que o anfitrião de temporada perde dinheiro mesmo sem errar?",
+   "Porque adia. Quando tudo depende de alguém lembrar, a pessoa resolve primeiro o que é rápido e concreto: o atraso do hóspede, a piscina turva, a avaliação que acabou de sair. A decisão que exige pensar, como uma cotação de Réveillon que vale várias vezes a diária normal, vai para a fila, e é justamente a que mais rende. Com uma casa, isso cabe na memória. Com várias casas, vários anúncios e equipe, não cabe, e o resultado não é um colapso, é erosão: uma cobrança esquecida, uma limpeza não confirmada, uma resposta que demorou seis horas e virou reserva perdida."
+  ],
+  [
+   "Qual a diferença entre usar IA de vez em quando e operar com IA na hospedagem?",
+   "Usar de vez em quando é abrir uma conversa quando surge um problema, colar um texto e copiar a resposta. Ajuda a escrever melhor, mas lembrar, conferir e coordenar continua com você, e quando você viaja tudo para. Operar muda três coisas. O contexto é permanente, então a máquina não precisa ser reapresentada à empresa a cada vez. O trabalho começa por evento, como uma reserva nova, a véspera de um check-in ou uma fatura vencida. E as decisões perigosas têm freio explícito: o que a máquina faz sozinha, o que prepara para aprovação e o que não pode tocar. Nada disso exige programação; exige organização."
+  ],
+  [
+   "O que a inteligência artificial pode e não pode fazer numa operação de aluguel por temporada?",
+   "Ela não limpa, não conserta e não substitui a presença: a casa continua sendo limpa por gente, o técnico continua consertando o que quebra e o hóspede continua ligando de madrugada. O que muda é tudo que é leitura, redação, conferência, cálculo, classificação, lembrança e coordenação, que somam a maior parte do dia de quem administra. Duas regras valem desde o começo. A máquina não decide dinheiro, calendário nem conversa com gente sem você: automação prepara, humano manda. E disponibilidade, preço e regra da casa nunca saem do modelo de linguagem; saem do sistema de reservas, e o modelo só redige em cima do que o sistema informou."
+  ]
+ ],
+ "02-a-casa-esta-livre": [
+  [
+   "Por que a IA responde que a casa está livre quando ela já está reservada?",
+   "Porque o modelo de linguagem não viu o calendário. Ele foi treinado para produzir a continuação mais plausível de um texto e, sem informação, a continuação mais plausível de “a casa está livre no feriado?” é “sim”. Não há má-fé, e também não há sinal visual de dúvida: a resposta errada sai tão cordial e segura quanto a certa. Pense nele como um profissional recém-contratado, competente e rápido, que não sabe nada da sua empresa. O humano diria “deixa eu conferir”; o modelo tende a preencher a lacuna. Por isso disponibilidade, preço e regra da casa precisam vir do sistema de reservas, e o modelo só redige em cima disso."
+  ],
+  [
+   "Como impedir que a IA invente preço ou disponibilidade nas respostas aos hóspedes?",
+   "Com uma trava anti-invenção, um bloco fixo que entra em todo prompt sobre disponibilidade, preço ou política. Ela diz três coisas: use só os dados colados, vindos do sistema de reservas; nunca afirme data, valor ou regra que não esteja ali; e, quando faltar dado, pare e escreva “FALTA DADO” seguido do que falta. A última parte é a que faz funcionar, porque só proibir deixa a invenção como única saída. A trava nunca sai do prompt, nem depois de vinte respostas boas, que é quando se para de conferir. E ela tem limite: garante que a máquina não invente, mas não garante que o seu dado esteja atualizado."
+  ],
+  [
+   "Como escrever um prompt bom para criar o anúncio de uma casa de temporada?",
+   "Tratando o prompt como documento de requisitos, não como pergunta. “Faça um anúncio para a minha casa” devolve a média do mercado, a casa aconchegante em localização privilegiada, e a média é o que não converte. O pedido útil informa tamanho, bairro, número de suítes, público, diferenciais reais, tom e limite de palavras, e termina com “não invente comodidade que eu não listei”. Vale incluir também o que a casa não tem, porque expectativa desalinhada é a causa mais comum de avaliação ruim. E todo prompt de operação deve trazer um critério de sucesso, como “consigo enviar sem editar”, e dizer quando a máquina deve devolver o assunto para você."
+  ]
+ ],
+ "03-processo-sem-dono": [
+  [
+   "Por que mapear os processos antes de automatizar uma hospedagem?",
+   "Porque os incidentes quase nunca acontecem dentro de uma tarefa conhecida; acontecem nos cruzamentos entre tarefas e nos processos que ninguém assumiu. Automatizar um processo que você não sabe descrever é a forma mais cara de descobrir que ele estava errado. Uma administradora de temporada opera sete jornadas ao mesmo tempo: proprietário, lead, reserva, hóspede, equipe operacional, financeiro e manutenção, cada uma com seu ritmo. Desenhar uma linha única do anúncio ao check-out esconde o problema. O mapa não gera receita direta, mas gera as decisões que geram: o que automatizar, quem contratar e onde está o vazamento."
+  ],
+  [
+   "Quem deve ser responsável por cada tarefa numa operação de aluguel por temporada?",
+   "Cada processo precisa de exatamente uma pessoa que executa. Se tem dois donos, tem zero: cada um conta com o outro, e uma consulta pode ficar dezoito horas parada até o cliente fechar em outro lugar. A matriz completa tem quatro papéis: quem executa, quem aprova, quem é consultado e quem é informado. Quando há dinheiro envolvido, quem aprova não deve ser quem executa. Numa operação pequena, a mesma pessoa pode acumular vários papéis; o que não pode é um papel ficar vazio. Os cruzamentos entre jornadas, como a reserva das dez da noite para o dia seguinte, precisam ser escritos como processo próprio, com dono."
+  ],
+  [
+   "Quais tarefas da hospedagem automatizar primeiro?",
+   "Use quatro critérios, nesta ordem: frequência, custo do erro, regularidade e clareza da fonte. Os dois primeiros pesam mais, porque uma tarefa diária vale trinta vezes mais que uma mensal e uma limpeza não confirmada custa uma estadia inteira. Na tabela de processos, olhe a coluna do gatilho: toda etapa que hoje depende de alguém lembrar, e que poderia começar por uma data ou por um evento, é candidata imediata. Para quase toda hospedagem, a primeira onda inclui a escala de limpeza a partir do calendário, a régua de mensagens ao hóspede, a conferência diária de sincronização entre canais e o lembrete de manutenção preventiva."
+  ]
+ ],
+ "04-uma-informacao-um-lugar": [
+  [
+   "Por que o hóspede recebe respostas diferentes sobre a mesma regra da casa?",
+   "Porque existe mais de uma fonte para a mesma informação. A memória do atendimento, a resposta do dono e um anúncio preenchido anos atrás podem dizer coisas diferentes sobre aceitar pet, e cada pessoa consulta a que tem à mão. O princípio da fonte única resolve: para cada informação existe exatamente um lugar onde ela é verdadeira, e os outros são cópia; cópia que diverge é erro, não alternativa. Com IA, o problema cresce. Uma máquina que lê três documentos contraditórios não erra de vez em quando: responde errado hóspede atrás de hóspede, sempre com texto seguro e convincente."
+  ],
+  [
+   "Onde deve ficar cada informação de uma hospedagem: sistema de reservas, regras ou anúncio?",
+   "A hierarquia tem três níveis que mandam. O sistema de reservas manda no dado vivo: disponibilidade, tarifa publicada, reserva e dado do hóspede. O documento de regras de negócio manda na política: cancelamento, taxas, capacidade, pet e horários. O cadastro mestre de cada propriedade manda nas características físicas: quartos, camas, comodidades e o que a casa não tem. Os anúncios nas plataformas não mandam em nada; são saída, não fonte, e se divergem do cadastro estão errados. Vale escrever essa hierarquia num arquivo visível, porque ela decide sem discussão quando duas informações se contradizem e indica qual lugar precisa ser corrigido."
+  ],
+  [
+   "Que documentos posso colocar na base de conhecimento da IA da minha hospedagem?",
+   "Entram o cadastro das propriedades, as regras da casa, as políticas, os procedimentos e o manual do hóspede. Não entram documento de hóspede, telefone de terceiro, contrato assinado com dado pessoal, senha de fechadura ou de wi-fi e credencial de sistema. Há o motivo legal, a LGPD, e o prático: o que entra numa base de conhecimento tende a sair em alguma resposta. Um critério simples ajuda: se um funcionário novo não poderia ler aquilo no primeiro dia, não entra. E todo documento de regra deve levar a data da última revisão e um histórico de mudanças, porque documento desatualizado com cara de oficial é pior do que nenhum."
+  ]
+ ],
+ "05-padrao-escrito": [
+  [
+   "Por que a limpeza da casa de temporada varia de uma faxineira para outra?",
+   "Quando o resultado varia entre pessoas, o problema quase sempre está no procedimento, não na pessoa. Sem padrão escrito, cada profissional adivinha o seu: uma troca as toalhas mesmo quando parecem limpas, a outra não; uma confere o papel higiênico de reserva, a outra segue em frente. As duas podem ser boas e honestas e entregar resultados diferentes, achando que estão certas. Padrão que não está escrito é só o hábito de quem trabalha naquele dia. Antes de qualquer conversa sobre capricho, a pergunta é o que foi escrito, ou deixado de escrever, sobre aquela tarefa."
+  ],
+  [
+   "Qual a diferença entre POP e checklist de limpeza?",
+   "O POP, procedimento operacional padrão, ensina a fazer; o checklist prova que foi feito. O POP descreve a tarefa para que duas pessoas cheguem ao mesmo resultado, e o campo decisivo é o critério de pronto: “banheiro limpo” não serve, mas espelho sem marca, sabonete acima da metade e toalhas dobradas no padrão serve, porque outra pessoa confere sem perguntar nada. O checklist é preenchido a cada execução, segue o trajeto físico de quem limpa, tem itens verificáveis por terceiros e pede foto onde o erro é caro. Acima de vinte itens, passa a ser preenchido no automático e deixa de provar qualquer coisa."
+  ],
+  [
+   "Como usar os dados de checklist e foto sem vigiar a equipe de limpeza?",
+   "Usando o dado para melhorar o processo, não para monitorar a pessoa. Indicador é por unidade e por processo: se a preparação de uma casa demora mais que o previsto, talvez a janela esteja mal dimensionada, falte equipamento ou o procedimento tenha um passo inútil. Quando o dado vira cobrança, a equipe passa a registrar o que você quer ver e para de contar problema. A IA serve para consolidar inspeções e achar o item que falha em casas diferentes, com pessoas diferentes, sinal de procedimento mal escrito, e não para ranquear gente. Uma inspeção semanal sorteada, feita por quem não executou e sobre o procedimento, completa o controle."
+  ]
+ ],
+ "06-casa-pronta": [
+  [
+   "Em que investir primeiro numa casa de aluguel por temporada?",
+   "Na ordem inversa da intuição. Primeiro, o que gera reclamação quando falha: água quente com pressão, climatização adequada, internet estável em todos os quartos, cama e colchão de qualidade. Depois, o que causa atrito no uso: luz para ler e cozinhar, tomada ao lado da cama, cabide de verdade, faca que corta. Só então o que encanta, como piscina, vista e decoração. O terceiro nível traz o hóspede, o primeiro traz a avaliação e o segundo evita que ele lembre de você por um motivo bobo. O hóspede não avalia o que você comprou; avalia o que usou, e um chuveiro ruim aparece nas avaliações bem mais que uma mesa bonita."
+  ],
+  [
+   "Quantos jogos de cama e banho preciso por cama no aluguel por temporada?",
+   "Enxoval se compra pelo giro, não pelo número de camas. O mínimo operacional são três jogos por cama: um em uso, um limpo pronto e um na lavanderia. Em unidade de giro alto, quatro. Quem compra dois descobre o problema num dia de virada com a lavanderia atrasada. A cor deve ser branca, porque lava junto, aguenta alvejante e passa de uma casa para outra; peça colorida vira estoque morto quando a companheira estraga. Compre para durar, já que o enxoval de hospedagem é lavado muito mais que o doméstico, e registre a data de entrada de cada lote para aposentar a peça puída antes que ela vire reclamação."
+  ],
+  [
+   "O que fazer antes de publicar o anúncio de uma casa nova de temporada?",
+   "Seguir uma ordem, porque a primeira reserva costuma chegar antes de a casa estar pronta e uma estreia com quatro estrelas fica no anúncio por anos. Primeiro a papelada: autorização para anunciar, convenção do condomínio, seguro e contas no nome de quem opera. Depois a vistoria com fotos datadas e teste de tudo que liga, a preparação física, o cadastro e só então as fotos e a publicação. Alguém deve passar uma noite de teste seguindo o percurso do hóspede, o que costuma revelar de cinco a dez problemas que a vistoria não pega. Um preço de entrada mais baixo ajuda, desde que tenha data de saída escrita."
+  ]
+ ],
+ "07-nenhum-canal": [
+  [
+   "Vale a pena depender só do Airbnb ou do Booking?",
+   "As plataformas emprestam público, reputação e tráfego, e cobram por isso, o que é um bom acordo para quem começa. O problema aparece quando o negócio amadurece: você não é dono da relação com o hóspede, não controla as regras e não controla a sua presença, que pode sofrer suspensão ou perder posição na busca. A comissão se avalia pela aritmética: sobre a reserva que só existiu por causa da plataforma, é bom negócio; sobre o hóspede que viria de qualquer jeito, é custo. Um alarme útil: quando uma casa passa de 60% das reservas num canal só, você tem um sócio, não um fornecedor."
+  ],
+  [
+   "Como evitar overbooking quando vendo a casa inteira e os quartos separados?",
+   "Esse é o caso dos anúncios interligados, a causa mais traiçoeira de overbooking. Para a plataforma e para o channel manager, a casa inteira e cada quarto são anúncios independentes, então a sincronização funciona e a mesma noite é vendida duas vezes mesmo assim. A defesa tem três camadas. No cadastro, cada anúncio precisa saber quais outros ele bloqueia. O bloqueio vale nas duas direções: ocupar a casa inteira bloqueia os quartos e ocupar um quarto bloqueia a casa. E a conferência é diária, porque o espelhamento falha em silêncio. As outras duas causas são a falha de sincronização entre canais e a data segurada de cabeça, sem bloqueio no sistema."
+  ],
+  [
+   "O que o site próprio de uma hospedagem precisa ter para gerar reservas diretas?",
+   "Precisa responder três perguntas: tem vaga nas minhas datas, quanto custa e posso confiar. A página inicial começa com um seletor de datas visível; cada casa tem sua página com fotos na ordem certa e preço para as datas escolhidas; a confiança vem de avaliações verdadeiras, dados da empresa visíveis, política de cancelamento clara e contato humano. Site sem CNPJ e sem telefone perde reserva para a desconfiança. Disponibilidade digitada à mão no site não pode existir, porque gera overbooking no seu próprio canal. Para quem escolheu datas e parou, vale uma mensagem curta de retomada poucas horas depois, com no máximo duas tentativas e escassez só quando for verdadeira."
+  ]
+ ],
+ "08-quinze-segundos": [
+  [
+   "Por que meu anúncio de temporada tem visualizações e não gera reservas?",
+   "Porque o anúncio é uma sequência de cinco decisões que o hóspede toma em cerca de quinze segundos: parar de rolar, abrir, continuar olhando, ler e, por fim, perguntar ou reservar. A maior parte da desistência acontece na terceira, decidida pelas cinco primeiras fotos. Uma foto de corredor nessa posição basta para a pessoa ir ao próximo resultado, e desistência não gera mensagem. A descrição só é lida por uma minoria que já está interessada; ela tira dúvida, não convence. Por isso, antes de reescrever o texto, descubra em qual das cinco decisões o hóspede está indo embora."
+  ],
+  [
+   "Qual a ordem ideal das fotos no anúncio de uma casa de temporada?",
+   "A foto principal mostra o maior diferencial da casa, não a fachada nem a sala: se tem piscina, é a piscina; se tem vista, é a vista. As cinco primeiras, juntas, contam a casa inteira: o diferencial, a área social, a cozinha, o quarto principal e o segundo maior atrativo, sem corredor, escada ou porta fechada. Da sexta em diante vale o percurso: quartos, banheiros, área externa e entorno. Legendar as fotos ajuda, porque muito hóspede lê a legenda e não lê a descrição. E evite a foto que promete mais do que a casa entrega: ela ganha o clique e perde a estrela."
+  ],
+  [
+   "Devo anunciar a capacidade máxima da casa para atrair mais hóspedes?",
+   "Não. Se a casa acomoda dez com conforto e doze apertados, anuncie dez. Anunciar o máximo aumenta alcance e ticket, mas o resultado previsível é gente demais para os banheiros, falta de toalha, falta de lugar à mesa e uma avaliação pública sobre isso. Informe também a composição: quantos quartos, que camas em cada um e quantos banheiros, porque grupo de amigos e família com criança fazem contas diferentes. A mesma honestidade vale para comodidades e para o que é desagradável, como rua de acesso difícil ou wi-fi fraco no anexo: quem se importa não reserva, quem reserva não reclama, e a média de avaliações melhora."
+  ]
+ ],
+ "09-canais-de-venda": [
+  [
+   "Existe segredo para aparecer melhor no algoritmo do Airbnb?",
+   "Não há segredo divulgável. Os critérios de ordenação da busca são da plataforma e ela não os publica em detalhe, então quem afirma um peso exato, como “responder em menos de uma hora aumenta o posicionamento em 30%”, está inventando. Ajuda classificar cada dica em três gavetas: critério oficial, publicado pela plataforma, confiável mas mutável; boa prática observada, que permite agir sabendo que é inferência; e hipótese, que não deve virar processo. O que não muda é o modelo de negócio: a plataforma ganha com transação concluída, então tende a favorecer o anúncio que converte, está disponível de verdade, responde rápido e não dá problema."
+  ],
+  [
+   "Que planos tarifários usar no Booking para uma casa de temporada?",
+   "O Booking mantém a gramática de hotel: em vez de um preço, você publica planos. O flexível tem cancelamento grátis até uma data; o não reembolsável é mais barato e troca desconto por certeza; o de estadia longa reduz o preço por noite a partir de certo número de noites, diluindo o custo de limpeza. O plano flexível deve cobrar um prêmio pela opção de desistir, porque você segura um estoque perecível que pode voltar vazio. Publicar só o flexível, ao mesmo preço de outro canal, dá essa opção de graça. Detalhes de planos, comissão e pagamento mudam, então confira no painel de parceiros."
+  ],
+  [
+   "Vale a pena anunciar a casa na Vrbo, na Expedia ou na Decolar?",
+   "Depende do produto. Vrbo e Expedia, do mesmo grupo, atendem sobretudo famílias e grupos que querem a casa inteira e planejam com meses de antecedência; antes de entrar, confira se você tem casa inteira, se ela acomoda grupo com conforto (banheiros, convivência, mesa, estacionamento) e se consegue operar mais um canal. Quarto ou flat pequeno não combina com esse público. A Decolar alcança o viajante latino-americano, e ali a regra é reescrever o anúncio em espanhol, não traduzir: churrasqueira, chuveiro elétrico e quadra não têm equivalente direto. Em qualquer caso, só entre em canal que sincroniza automaticamente e compare canais pelo resultado líquido."
+  ]
+ ],
+ "10-sistemas-e-auditoria": [
+  [
+   "Qual a diferença entre PMS, channel manager e CRM na hospedagem?",
+   "O PMS, ou sistema de reservas, é o miolo da operação: guarda imóveis, reservas, hóspedes, tarifas, calendário, financeiro e tarefas, e é a fonte da verdade sobre o que está vendido e por quanto. O channel manager é a ponte entre esse sistema e as plataformas: envia disponibilidade e tarifa, recebe reservas e bloqueia os outros canais quando um vende; sua função crítica é impedir que a mesma noite seja vendida duas vezes. O CRM cuida de quem ainda não reservou, enquanto o PMS cuida de quem reservou. Muitos produtos juntam os dois primeiros; poucos fazem CRM de verdade."
+  ],
+  [
+   "O que perguntar antes de contratar um sistema de gestão para aluguel por temporada?",
+   "A primeira pergunta é se você consegue tirar os seus dados completos quando quiser e se existe API, a porta por onde outro sistema conversa com ele. Sem API e sem exportação decente, o sistema é uma prisão: não dá para construir nada em cima nem sair sem perder histórico. Em seguida, quais canais ele integra de forma direta e quais só por arquivo de calendário compartilhado. A integração direta propaga em minutos; o arquivo de calendário é lido de tempos em tempos, com atraso que pode chegar a horas. Para imóvel de baixa demanda isso serve, mas em alta demanda é overbooking esperando acontecer."
+  ],
+  [
+   "Como conferir se a sincronização de calendários entre Airbnb e Booking está funcionando?",
+   "Com uma auditoria diária construída para duvidar, e não para confirmar. Toda manhã ela compara os calendários de todos os canais entre si e com o sistema de reservas nos próximos 90 dias, confere as tarifas publicadas, sobretudo em datas de alto valor, e verifica se os anúncios interligados se bloqueiam nas duas direções. Ela precisa falhar alto: se não conseguir ler um canal, o relatório abre com “fonte indisponível” e se declara parcial. Uma rotina que só checa se consegue ler o calendário pode dar verde por dias com calendários divergentes. E a auditoria detecta e classifica, mas não corrige: quem decide a correção é uma pessoa."
+  ]
+ ],
+ "11-gestao-de-receita": [
+  [
+   "Ocupação alta significa que a casa de temporada está dando lucro?",
+   "Não necessariamente. Cada estadia tem custo de limpeza, enxoval, consumo, desgaste e atendimento, e encher a casa com diária baixa aumenta esses custos sem melhorar o resultado. A conta que resolve é a receita por noite disponível, o RevPAR: receita de hospedagem dividida por todas as noites que a casa podia vender, ou diária média vezes ocupação. Uma casa com 60% de ocupação a R$ 1.000 rende R$ 600 por noite disponível; com 90% a R$ 600, rende R$ 540, e ainda com mais limpeza e desgaste. Como o preço não tem custo marginal, subir a diária cai quase inteiro no resultado."
+  ],
+  [
+   "Como precificar Réveillon, Carnaval e feriados no aluguel por temporada?",
+   "Datas especiais concentram o maior ganho e o maior descuido. O calendário delas, incluindo os eventos da sua cidade, como formaturas, congressos, festivais e concursos, deve ser montado com meses de antecedência, não na véspera. Três regras ajudam: preço bem acima da média, porque a demanda permite; estadia mínima mais longa, para a data escassa não ser gasta com uma noite só; e nenhuma pressa, já que data de alta demanda sem venda a dois meses não é necessariamente erro de preço. Mantenha uma tarifa mínima, porque um desconto automático de última hora mal calibrado pode liquidar numa madrugada um Réveillon que vale várias vezes a diária."
+  ],
+  [
+   "Posso deixar a IA alterar os preços da hospedagem automaticamente?",
+   "Para recomendar, sim; para publicar, não. A IA funciona bem como consultora: monta o calendário de datas especiais, faz a revisão semanal e aponta onde está enchendo rápido e onde há buraco. Duas travas valem. A tarifa vigente e a ocupação vêm do sistema, não da cabeça do modelo, e ele não estima demanda por conta própria. E a publicação é humana, porque um erro de preço é vendido em minutos e vira reserva a honrar. Uma tarifa de Réveillon intencionalmente alta pode parecer erro de digitação para uma análise automática; se a correção sugerida fosse aplicada sozinha, a data mais valiosa do ano se perderia."
+  ]
+ ],
+ "12-metricas-e-financas": [
+  [
+   "Por que o faturamento do sistema não bate com a soma das minhas reservas?",
+   "Geralmente porque são duas medidas diferentes com o mesmo nome. A tela de contas a receber costuma mostrar o que entrou no caixa no mês; a soma por reserva mostra o que foi vendido e consumido no mês. Uma reserva de outubro paga em agosto aparece em meses diferentes em cada visão. Por isso as convenções precisam estar escritas: receita por check-in (competência), pelo valor total da reserva com taxas e descontos, nunca tarifa vezes noites; bruto e líquido com nomes distintos, sendo o líquido o bruto menos a comissão do canal. Cada relatório declara no cabeçalho qual convenção usa, e o caixa vira outro relatório."
+  ],
+  [
+   "Como saber se cada imóvel da operação de temporada dá lucro?",
+   "Fazendo o financeiro por imóvel, mês a mês, e não pelo consolidado. Um demonstrativo de resultado por unidade desce da receita bruta até o resultado, e a margem de contribuição (receita líquida menos custos variáveis) é a leitura central: se ela é negativa, cada reserva nova piora a situação, e o problema é preço ou custo, não falta de hóspede. Custos comuns, como sistema e equipe fixa, entram com critério de rateio escrito e estável. Calcule também o lucro por reserva, que revela quando estadia curta com taxa de limpeza baixa dá prejuízo. Uma casa com reservas e boa avaliação pode ser a pior do portfólio."
+  ],
+  [
+   "Taxa de limpeza e caução contam como receita da hospedagem?",
+   "Não como lucro. A taxa de limpeza é reembolso de custo: se você a trata como receita e não lança o custo da limpeza, o resultado fica inflado. A caução é dinheiro de terceiro que fica com você por um tempo e deve aparecer separada, em conta própria para isso; caso contrário, você comemora um mês que não existiu. A sobra de um mês bom também não é lucro inteiro em cidade sazonal, porque precisa sustentar os meses fracos. Por isso convém provisionar parte da receita para manutenção e para reposição de enxoval, louça e eletrodomésticos, já que o desgaste é contínuo e a despesa chega de uma vez."
+  ]
+ ],
+ "13-o-hospede-ja-pago": [
+  [
+   "Por que uma hospedagem precisa de CRM se já tem sistema de reservas?",
+   "Porque cuidam de coisas diferentes. O sistema de reservas cuida da reserva, do fechamento ao check-out, e responde “quem está hospedado?”. O CRM cuida das pessoas antes, entre e depois das reservas, e responde “com quem eu deveria estar falando?”. Quem perguntou o preço e sumiu, quem pediu uma data ocupada ou quem pediu cotação de evento e não voltou não existe no sistema de reservas; fica perdido no WhatsApp. Cada uma dessas pessoas já custou comissão, anúncio ou atendimento para chegar até você. Para começar, basta que toda pessoa vire um registro com origem, datas pretendidas, número de pessoas e finalidade; uma planilha disciplinada já resolve."
+  ],
+  [
+   "Como organizar os interessados que chegam pelo WhatsApp e não fecham reserva?",
+   "Separe o contato, que é a pessoa, da oportunidade, que é cada pedido dela, com datas, unidade, número de hóspedes, finalidade, valor cotado e estágio. Cinco estágios bastam: novo, qualificado, cotado, em negociação, e ganho ou perdido. A regra que faz o funil funcionar é que todo contato aberto tenha uma próxima ação com data; se não houver, registre o motivo e feche. O motivo da perda deve usar categorias fechadas, como preço, data indisponível, capacidade, demora na resposta, escolheu outro, sumiu e fora do perfil. Data indisponível recorrente pode indicar preço baixo, e capacidade revela demanda que a casa não atende."
+  ],
+  [
+   "O que fazer depois do check-out para o hóspede voltar a reservar?",
+   "Aproveitar as 48 horas seguintes, quando a experiência está fresca. Registre quem veio, quando, em qual casa, com quantas pessoas e para quê, e marque a data de voltar a falar conforme a finalidade: quem veio para formatura volta na próxima, quem veio a trabalho volta a trabalho. Uma pesquisa privada curta, com a pergunta “o que faltou?”, traz informação útil sem custar reputação. A mensagem de agradecimento não vende nada, e quem teve problema recebe contato pessoal, nunca mensagem automática. O convite para o canal direto só vale quando a origem permite, porque o contato de quem veio por plataforma não é seu para usar como quiser."
+  ]
+ ],
+ "14-cotacao-nao-e-resposta": [
+  [
+   "Como responder quando o hóspede pergunta só quanto custa a casa?",
+   "Não com um número. Se o valor for alto, a pessoa some sem dizer por quê; se for baixo, você fecha barato e pode descobrir no check-in que eram muito mais pessoas e uma festa. Antes de cotar, faça quatro perguntas, que cabem em duas mensagens: quantas pessoas, com idades e crianças; quais as datas e se há flexibilidade; qual a finalidade da viagem; e se haverá visitantes que não dormem na casa. As duas últimas são as menos feitas e as que mais rendem, porque mudam preço, regras, caução e contrato, e revelam o evento que a pessoa não ia mencionar."
+  ],
+  [
+   "Como montar uma cotação de aluguel por temporada que converte?",
+   "Em quatro partes. Primeiro, uma linha que mostra que você entendeu o pedido: datas, número de pessoas, crianças, motivo da viagem. Depois, a proposta concreta, com unidade, datas, hóspedes, o que está e o que não está incluído e o valor total, nunca a diária com taxas somadas depois, o que dá sensação de armadilha. Em seguida, uma frase de cena ligada à finalidade, descrevendo o uso da casa em vez de adjetivos como “aconchegante”. Por fim, o passo seguinte com prazo real, por exemplo segurar as datas até quinta. Prazo verdadeiro cria decisão; prazo inventado destrói confiança."
+  ],
+  [
+   "O que responder quando o hóspede diz que está caro ou pede desconto?",
+   "Diante de “está caro”, descubra com o que a pessoa está comparando antes de mexer no preço. Se for uma casa menor ou um hotel, mostre o que muda, como o custo por pessoa, a cozinha e não precisar de dois quartos. Nunca baixe o preço na primeira objeção, porque você ensina que ele é negociável. Desconto se concede em troca de algo: estadia mais longa, data menos disputada, pagamento à vista ou flexibilidade de datas. Desconto sem contrapartida ensina o mercado a pedir. Para “vou pensar”, combine o retorno, como procurar a pessoa na quarta, e registre isso como próxima ação."
+  ]
+ ],
+ "15-o-domingo": [
+  [
+   "Como identificar tentativa de golpe em reserva de casa de temporada?",
+   "Pela soma de sinais, não por um isolado. Pressa desproporcional, nenhuma pergunta sobre a casa, valor alto e arranjo de pagamento incomum, como cartão de terceiro ou pagamento dividido em transações, aparecem às vezes em reservas honestas, mas juntos mudam a conta: perder uma reserva boa custa menos que aceitar uma ruim. Um golpe clássico é pagar acima do valor e pedir a diferença de volta por outro meio; a regra que o elimina é nunca devolver por meio diferente do que recebeu. Confira o documento do titular contra o nome de quem pagou e lembre que não há obrigação de aceitar uma reserva. A pressa faz parte do golpe."
+  ],
+  [
+   "Como cobrar sinal, saldo e caução numa reserva direta de temporada?",
+   "O sinal é um percentual do total pago na confirmação e é o que efetivamente reserva a data; sem ele há só intenção. O saldo vem antes do check-in, com prazo definido, em geral alguns dias antes. A caução, indicada para grupo, evento e casa de alto valor, pode ser pré-autorização no cartão ou valor devolvido após a vistoria de saída, e o contrato precisa dizer o valor, o prazo de devolução e o que autoriza a retenção. Tudo isso por escrito, antes do pagamento, incluindo o que acontece em caso de cancelamento ou dano. Dado de cartão você não guarda: quem guarda é o provedor de pagamento."
+  ],
+  [
+   "Como se defender de um chargeback em aluguel por temporada?",
+   "A defesa se ganha antes de a contestação chegar, com documentação. Valem o contrato ou termo aceito, com a identificação de quem contratou, o registro da conversa em que a reserva foi acordada, a evidência de que a estadia aconteceu e a política de cancelamento aceita no ato da reserva. Reserva fechada só por áudio de WhatsApp é reserva sem defesa. Para valores altos, contrato e identificação sem exceção; quem tenta fraude não quer deixar rastro documentado. A IA pode montar o dossiê de defesa e apontar o que falta, mas não cobra, não estorna, não decide reembolso e não rotula ninguém como fraudador."
+  ]
+ ],
+ "16-tres-criticas": [
+  [
+   "Como pedir avaliação ao hóspede sem violar as regras das plataformas?",
+   "Peça sempre, em toda estadia, logo depois da saída, porque a maioria dos satisfeitos não avalia por conta própria e a dos insatisfeitos avalia; não pedir deixa a amostra enviesada contra você. Faça o pedido de forma simples, sem roteiro e sem pedir cinco estrelas, o que é constrangedor e pode ser tratado como manipulação. Nunca condicione a nada: desconto em troca de avaliação positiva viola a política de praticamente todos os canais. Se houve problema e você resolveu bem, peça depois de resolvido, reconhecendo o que aconteceu; quem teve o problema tratado com atenção costuma avaliar melhor."
+  ],
+  [
+   "Como responder a uma avaliação negativa no Airbnb ou no Booking?",
+   "Lembre que o destinatário real é o próximo hóspede, que está lendo para decidir. Para crítica procedente, reconheça o fato e diga o que foi feito, com dado concreto, como a troca de um aquecedor na semana seguinte; desculpas repetidas fazem o problema parecer maior. Para crítica injusta, fatos e serenidade, sem ironia e sem corrigir a pessoa em público. Se houver acusação grave, ameaça ou dado pessoal, não responda de improviso, pois pode ser caso de advogado. Em qualquer situação, nunca revele informação do hóspede. A IA pode preparar o rascunho, mas a publicação deve ser humana, porque o texto é público e permanente."
+  ],
+  [
+   "Como usar as avaliações dos hóspedes para melhorar a hospedagem?",
+   "Lendo em conjunto, não uma a uma. Agrupe as avaliações de um período por assunto concreto, como chuveiro, barulho, internet, limpeza e chegada, e classifique cada assunto em três caixas: físico, que se resolve com manutenção ou compra; processo, que pede procedimento escrito e treinamento; e expectativa, que se corrige no anúncio e quase sempre é a mais barata. Ordene pelo impacto, que combina número de menções e queda de nota, e dê data e responsável ao primeiro item. Depois verifique se as menções pararam, sem concluir nada com poucas estadias: três estadias sem reclamação não provam que a correção funcionou."
+  ]
+ ],
+ "17-reserva-e-documento": [
+  [
+   "Em que momento a data deixa de estar disponível para outro hóspede?",
+   "Quando o sinal é pago, e essa regra precisa estar escrita. Antes disso, a data pode ser segurada, mas com bloqueio no sistema, prazo de validade e uma pessoa responsável por soltá-la. Data segurada sem prazo é data perdida por educação: você não cobra resposta e a casa fica parada esperando alguém que já foi embora. Dá para dizer isso ao hóspede sem constrangimento, algo como “posso segurar até quinta-feira; depois disso, a data volta a ficar disponível”. É honesto, cria decisão e evita que duas pessoas achem que têm a mesma data."
+  ],
+  [
+   "O que precisa constar na mensagem de confirmação de reserva de temporada?",
+   "A confirmação é o documento mais importante da jornada e deve trazer sempre as mesmas oito informações. Entre elas estão a unidade e as datas, com os horários de entrada e saída; o valor total, o que já foi pago e o que falta, com prazo; e a política de cancelamento, na formulação exata que vale. Quase todo conflito de estadia é uma expectativa que ninguém alinhou por escrito. Aceita pelo hóspede, essa confirmação também sustenta a sua defesa numa contestação de pagamento e vale mais que dez áudios. Antes dela, a reserva precisa estar registrada no sistema e bloqueada em todos os canais."
+  ],
+  [
+   "Que mensagens enviar ao hóspede entre a reserva e o check-in?",
+   "Uma régua com quatro momentos ligados ao check-in: a confirmação, que fecha o combinado; a mensagem de preparação, uma semana antes; as instruções de chegada, dois ou três dias antes; e um lembrete curto na véspera. Em reservas muito antecipadas, cabe um contato intermediário cerca de um mês antes, com alguma utilidade. Cada mensagem tem uma finalidade só, porque mensagem sem conteúdo ensina o hóspede a não ler. As instruções de chegada são a exceção à regra da mensagem curta: longas e organizadas, dizem onde é, como entrar e a que horas, depois estacionamento, o essencial da casa e quem chamar. A automação só envia se enxerga o estado da reserva."
+  ]
+ ],
+ "18-o-que-nunca-vira-texto": [
+  [
+   "Como enviar a senha da fechadura ao hóspede com segurança?",
+   "Dado de acesso, como senha de fechadura, código de portão, local do cofre e senha do wi-fi, não deve viver na base de conhecimento, entrar em mensagem automática nem ficar em conversa que a equipe toda lê. A solução de raiz é a senha por estadia: um código próprio por hóspede, que vale só no período dele e expira sozinho. O que for fixo, como código mestre e senha de manutenção, se troca periodicamente, e nunca se usa a mesma senha em várias unidades. A IA pode preparar a mensagem de chegada com um marcador no lugar da senha; quem insere e envia é uma pessoa, no dia, para a reserva conferida."
+  ],
+  [
+   "Qual o melhor modelo de check-in para aluguel por temporada?",
+   "Não existe modelo certo, e sim o compatível com a sua operação. O presencial oferece a melhor experiência e permite conferir documento e alinhar regras pessoalmente, mas custa tempo e não escala. O autoatendimento, com fechadura digital ou cofre de chave, funciona a qualquer hora, mas exige que tudo esteja perfeito, porque não há ninguém para consertar na hora. A portaria, comum em prédio e condomínio, depende de terceiros e pede combinado prévio e lista atualizada. Qualquer que seja o modelo, ele precisa de um plano B escrito para bateria fraca, portão travado ou chegada de madrugada."
+  ],
+  [
+   "Como tratar os dados pessoais dos hóspedes conforme a LGPD?",
+   "A adequação de cada caso é conversa para profissional habilitado, mas algumas práticas cobrem boa parte do risco. Colete o mínimo: se o motivo para pedir um dado é “pode ser útil”, não peça. Colete antes da chegada, identificando sempre o titular responsável. Restrinja o acesso: a equipe de limpeza não precisa do nome do hóspede, só do horário em que a unidade vaga. Defina e cumpra um prazo de descarte para documentos. Os vazamentos costumam vir de descuido, como documento esquecido numa conversa ou acesso não revogado de quem saiu. E câmera, só na área externa e declarada; dentro da casa, nunca."
+  ]
+ ],
+ "19-concierge-inteligente": [
+  [
+   "O que um concierge virtual pode responder sozinho ao hóspede?",
+   "O que é informação. A maior parte do volume são dúvidas sobre a casa, como o funcionamento do ar-condicionado, a localização do disjuntor ou das toalhas extras, respondidas a partir do manual da unidade. Entram também a informação operacional, como horário e procedimento de saída e regras da casa, e a recomendação local, desde que venha de uma lista curada por você, não da imaginação do modelo. Pedidos de serviço adicional previstos no catálogo cabem, com preço e disponibilidade a confirmar. O ganho principal não é custo, é tempo de resposta. E cada pergunta que se repete mostra um pedaço do manual que está faltando."
+  ],
+  [
+   "Quando o atendimento automático ao hóspede deve passar a conversa para uma pessoa?",
+   "Sempre que houver situação, e não informação: segurança, saúde, emergência, problema físico em andamento como vazamento ou fechadura travada, reclamação, dinheiro, alteração de reserva e assuntos com vizinho ou condomínio. O escalonamento precisa de gatilhos por assunto, como fogo, gás, vazamento e “não consigo entrar”, verificados antes de qualquer resposta; um agente que responde primeiro e avalia depois acaba sendo educado numa emergência. O hóspede deve poder pedir uma pessoa a qualquer momento, o contexto vai junto para ninguém repetir tudo e há plantão definido, inclusive de madrugada. A mesma dúvida repetida pela terceira vez também escala."
+  ],
+  [
+   "Um assistente de IA pode prometer prazo de conserto ao hóspede?",
+   "Não. O prazo de reparo depende de técnico disponível, e prazo prometido e não cumprido irrita mais que o defeito original. O agente pode oferecer a checagem simples prevista no manual, como verificar o disjuntor, e oferecer abrir o chamado, mas não aciona técnico por conta própria e não diz “amanhã às nove”. Também não envia dado de acesso, mesmo que ele esteja numa fonte, não altera reserva e não oferece desconto, reembolso ou compensação. Toda conversa fica registrada com o que foi respondido e de qual fonte saiu, para que a operação aprenda e possa se defender."
+  ]
+ ],
+ "20-a-confirmacao-de-volta": [
+  [
+   "Como saber se a casa foi realmente limpa antes da chegada do hóspede?",
+   "Exigindo a confirmação de volta. Saber que a mensagem foi enviada à equipe não é saber que o trabalho foi feito, e o modo de falha mais comum não é a limpeza malfeita, é a limpeza que ninguém confirmou. O fechamento da tarefa deve trazer foto com hora do quarto, do banheiro, da cozinha e da área externa, além de quem fez, quando terminou e o que ficou pendente. A evidência serve para conferir o procedimento e também protege a equipe de acusação injusta. Um painel que compara o esperado com o confirmado deve marcar como crítica toda unidade com entrada nas próximas três horas e sem confirmação."
+  ],
+  [
+   "Quanto tempo deixar entre o check-out e o check-in numa casa de temporada?",
+   "Depende da unidade, por isso a pergunta certa é quanto tempo existe e o que cabe nele. Com check-out às 11h e check-in às 15h, há quatro horas para limpar, lavar, preparar e conferir uma casa que pode ter recebido doze pessoas. Meça o tempo real de preparação de cada unidade, cronometrado numa saída de casa cheia, e registre no cadastro. Defina uma janela mínima por unidade: uma suíte pequena pode virar em duas horas, e uma casa grande depois de um grupo pode pedir o dia inteiro. Saída e entrada no mesmo dia, na mesma unidade, é o maior risco e deve ser vista com antecedência."
+  ],
+  [
+   "Qual a ordem certa da limpeza entre um hóspede e outro?",
+   "O procedimento tem nove passos, da retirada do enxoval usado até a evidência e a confirmação, e dois merecem atenção. O primeiro é verificar danos e faltas antes de limpar, porque dano encontrado depois da limpeza não tem prova de quando aconteceu: a casa limpa apaga a evidência. O segundo é a preparação final, que separa limpeza de hospitalidade: climatização ligada com tempo de esfriar ou aquecer, luzes, cheiro, manual à vista e água disponível. No fim, fotos com hora e a confirmação de quem fez. Quando uma unidade aparece sem confirmação, a conversa com a equipe começa pela pergunta, não pela cobrança."
+  ]
+ ],
+ "21-manutencao-e-estoque": [
+  [
+   "Como organizar a manutenção preventiva de uma casa de temporada?",
+   "Com duas coisas que quase sempre faltam: data e calendário. Para cada equipamento, registre a periodicidade da revisão e a data da última execução; sem isso não há plano, só intenção. Depois encontre a janela sem hóspede e bloqueie no calendário, porque manutenção apenas anotada é cancelada no dia em que entra uma reserva naquela data. A preventiva custa uma fração da corretiva, mas o argumento principal é outro: ela não acontece com hóspede dentro. Um ar-condicionado que queima numa terça com a casa vazia é despesa; num sábado de casa cheia, é emergência, técnico de plantão caro e avaliação ruim."
+  ],
+  [
+   "Quando vale a pena trocar um equipamento em vez de consertar de novo?",
+   "O histórico por equipamento responde. Todo chamado, preventivo ou corretivo, deve gerar registro; quando o mesmo ar-condicionado chega ao terceiro chamado no ano, três aborrecimentos soltos viram uma conta óbvia, e trocar sai mais barato do que continuar consertando. Sem histórico essa conta nunca é feita, e você paga o conserto pela quarta vez. O mesmo registro serve para prestar contas ao proprietário e para decidir investimentos. Um agente pode cruzar vencimentos com o calendário, propor janelas sem hóspede e montar a solicitação ao técnico, mas acionar o técnico e autorizar a despesa continuam sendo decisões humanas."
+  ],
+  [
+   "Como controlar o consumo de água, energia e enxoval numa hospedagem?",
+   "Medindo por unidade e por noite ocupada, não pelo total. O consumo absoluto sobe em mês cheio e cai em mês vazio, e assim esconde justamente o que importa, como um vazamento numa casa que gasta proporcionalmente mais água que as outras. Consumo fora do padrão deve ser sinalizado, não ajustado em silêncio, porque pode ser desvio, lançamento errado ou um grupo que ficou mais tempo. No enxoval, parta de três jogos por cama, mas faça a conta pelo ciclo da lavanderia, registre a data de entrada de cada lote e tenha um critério escrito para aposentar peças, com destino definido, para que a peça gasta não volte para a cama."
+  ]
+ ],
+ "22-governanca-dos-agentes": [
+  [
+   "Como dar acesso aos dados da hospedagem a um agente de IA com segurança?",
+   "Separando identificação de operação e estreitando a porta. A maior parte do trabalho precisa saber que existe uma estadia, não quem é a pessoa: a limpeza precisa do horário em que a casa vaga, não do nome do hóspede. O agente entra na matriz de permissões como alguém da equipe, mas com acesso mais estreito que o da pessoa que ele ajuda, porque trabalha rápido e não hesita. Sempre que possível, dê acesso somente de leitura. Escrever “não altere nada” na instrução não basta: se a credencial permite escrever, a trava vira só um pedido. Revise a cada três meses quem tem acesso a quê."
+  ],
+  [
+   "Que decisões nunca devem ser automáticas numa hospedagem que usa IA?",
+   "As três que mais importam são dinheiro que sai ou deixa de entrar, qualquer mexida no calendário e mensagem para pessoa real. O padrão é sempre o mesmo: a máquina prepara e apresenta, você aprova, e só então a ação acontece. Uma cotação pronta esperando o seu “pode enviar” preserva quase todo o ganho e todo o controle. A lista do que a máquina faz sozinha deve ser generosa: ler, calcular, classificar, resumir, montar rascunhos, cruzar dados, gerar relatórios internos e avisar você. Se for restrita demais, ninguém usa o sistema, e o processo volta a ser contornado pelo WhatsApp, sem controle e sem registro."
+  ],
+  [
+   "Quais são os níveis de autonomia de um agente de IA na hospedagem?",
+   "São quatro, de zero a três. No nível zero, o agente consulta e responde quando você pergunta. No um, monitora e avisa quando algo foge do padrão, sem agir. No dois, onde vive a maioria, prepara o trabalho pronto para sua aprovação. No três, age sozinho num espaço estreito e reversível, como enviar uma mensagem de texto fixo já aprovado ou registrar um chamado. Não existe nível quatro: dinheiro, calendário, preço publicado e documento jurídico pedem aprovação humana sempre. Suba um agente de nível só depois de ele trabalhar bem no anterior, e garanta que alguém saiba desligá-lo a qualquer momento."
+  ]
+ ],
+ "23-construir-sistemas-proprios": [
+  [
+   "Dá para criar sistemas próprios para a hospedagem com o Claude Code sem ser programador?",
+   "Dá, porque programar passou a exigir mais descrever bem o que se quer do que escrever código: no Claude Code, a máquina lê e escreve os arquivos do projeto, executa comandos, testa e explica o que fez. Vale a pena construir o que ninguém vai vender, a regra que só a sua operação tem, como a interligação entre anúncios, a convenção de faturamento ou a prestação de contas ao proprietário. Não construa sistema de reservas, channel manager nem meio de pagamento, que são produtos maduros. E lembre que conseguir construir não é o mesmo que conseguir manter: se ninguém vai manter, não construa."
+  ],
+  [
+   "Qual o primeiro sistema que vale a pena construir para uma operação de temporada?",
+   "O painel do dia: uma tela no celular com as chegadas de hoje e a informação de se a limpeza de cada uma foi confirmada, só leitura, sem gráfico, histórico ou configuração. Ele é feio e muda a operação na primeira semana, enquanto o aplicativo do hóspede, mais bonito, vem depois. O critério é construir antes o que roda todo dia, o que custa caro quando falha e o que tem fonte de dados confiável. O primeiro projeto não deve mexer em dinheiro nem em calendário, e sua saída precisa caber numa frase. Depois vêm a auditoria de sincronização, a escala de limpeza com confirmação e a régua de mensagens."
+  ],
+  [
+   "Qual a diferença entre protótipo e sistema em produção?",
+   "O protótipo funciona na sua máquina, com seus dados, quando tudo dá certo, e serve para saber se a ideia presta. Produção é quando a operação depende do sistema, e aí ele precisa de cópia de segurança testada, aviso quando falha, caminho manual para quando cair e um responsável. O teste é perguntar o que acontece se ele quebrar às onze da noite de um sábado; se a resposta for que a operação para e ninguém sabe o que fazer, ainda é aposta. Desde o protótipo, senha e chave nunca ficam no código, porque credencial que entra no histórico de versões continua lá mesmo depois de apagada."
+  ]
+ ],
+ "24-plano-de-implantacao": [
+  [
+   "Por onde começar a usar IA numa operação de aluguel por temporada?",
+   "Por um diagnóstico honesto: doze perguntas de sim ou não, como se alguém conseguiria operar sem você por dez dias e se a limpeza de amanhã está confirmada por quem vai executar. Com menos de quatro sins, a prioridade é organização, não tecnologia. Entre quatro e oito, há processo e falta sistema. Acima de oito, a fronteira é escala. Depois siga cinco verbos, nesta ordem: saber antes de comunicar, confirmar antes de automatizar, conferir antes de crescer, preparar antes de enviar e medir antes de otimizar. Escrever mensagens bonitas, por onde quase todo mundo começa, não está na lista."
+  ],
+  [
+   "Como implantar automação numa hospedagem em 90 dias?",
+   "Com um objetivo por mês. Nos primeiros trinta dias, parar de perder: cadastro de todas as casas com as interligações, anúncios conferidos contra ele, limpeza confirmada, conferência manual dos calendários e convenções financeiras escritas. Do dia 31 ao 60, parar de lembrar: contexto permanente para o Claude, primeiras Skills como cotação e escala de limpeza, mensagens antes e depois da estadia e um CRM mínimo. Do dia 61 ao 90, parar de descobrir tarde: painel do dia, auditoria diária de sincronização, calendário de datas especiais, plano de preventiva e os primeiros agentes, com ficha completa e desligamento seguro."
+  ],
+  [
+   "Quais os erros mais comuns ao implantar IA na gestão de hospedagens?",
+   "Três se repetem mais: começar pelo bonito em vez do crítico, dar autonomia de escrita à máquina cedo demais e afrouxar a supervisão com o tempo, este o mais provável, porque acontece devagar e ninguém percebe. Outro erro é não medir antes de começar: o maior retorno é o erro evitado, como o overbooking que não aconteceu, e ele fica invisível sem uma linha de base. A equipe também decide o resultado. Explique o porquê, comece pelo que ajuda quem executa, introduza uma coisa por vez e ouça. Uma equipe que entende que a confirmação a protege de acusação injusta confirma."
+  ]
+ ]
+}

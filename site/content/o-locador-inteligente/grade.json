@@ -1,0 +1,199 @@
+{
+ "titulo": "Claude AI na Prática para Hospedagens",
+ "subtitulo": "Como operar uma hospedagem por temporada com processo, dados e inteligência artificial",
+ "total": 24,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "A quinta-feira de dezembro: de anfitrião artesanal a empresa que opera com processo",
+   "sub": "Por que o anfitrião artesanal perde dinheiro adiando, e não errando, e por que o remédio é trocar memória por processo antes de pôr a máquina para trabalhar.",
+   "capitulos": "Apresentação e capítulo 1",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "A casa está livre? O que a máquina sabe, o que ela inventa e como travar a invenção",
+   "sub": "Por que um modelo de linguagem erra com confiança, as quatro funções que se pedem à máquina e a trava anti-invenção que entra em todo prompt de disponibilidade, preço e regra.",
+   "capitulos": "Capítulos 3 e 4",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "Processo sem dono: mapear a empresa antes de automatizar",
+   "sub": "As sete jornadas de uma administradora, os cruzamentos onde os incidentes moram, a coluna do gatilho que revela o que automatizar e a máquina como entrevistadora de processos.",
+   "capitulos": "Capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "Uma informação, um lugar: fonte única da verdade e base de conhecimento",
+   "sub": "A hierarquia da fonte única da verdade, o cadastro mestre de cada propriedade, o que a máquina pode e não pode ler, e a auditoria que encontra as contradições que você não sabe que tem.",
+   "capitulos": "Capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "Padrão escrito, equipe que confia",
+   "sub": "POP com critério de pronto, checklist que prova, treinamento que transmite, a Skill que executa o procedimento e o dado usado para melhorar o processo, não para vigiar pessoas.",
+   "capitulos": "Capítulos 7 e 38",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "A casa pronta antes do anúncio",
+   "sub": "Onde colocar o dinheiro (do que gera reclamação ao que encanta), enxoval e cozinha, a implantação em seis blocos, a noite de teste e o lançamento com data de saída.",
+   "capitulos": "Capítulos 10 e 11",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "Não depender de nenhum canal",
+   "sub": "Plataformas e canal direto, a conta da comissão, o alarme dos 60%, o overbooking dos anúncios interligados, o site que converte e a retomada da reserva abandonada.",
+   "capitulos": "Capítulos 13 e 19",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "Quinze segundos",
+   "sub": "O anúncio como sequência de cinco decisões do hóspede: a ordem das fotos, o título, a capacidade honesta, o desagradável dito no anúncio e a auditoria em vinte pontos com o Claude.",
+   "capitulos": "Capítulo 14",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "Uma lógica, várias vitrines",
+   "sub": "Airbnb, Booking, Vrbo/Expedia e Decolar: o fato sai sempre do mesmo cadastro, o que muda é o jeito de contar para cada público.",
+   "capitulos": "Capítulos 15 a 18",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "O semáforo verde",
+   "sub": "Sistema de reservas, channel manager e CRM, a auditoria diária que duvida em vez de confirmar, o painel do dia e o procedimento para crises.",
+   "capitulos": "Capítulos 20 e 39",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "A casa cheia trabalhando de graça",
+   "sub": "Revenue management na prática: receita por noite disponível, os ajustes sobre a tarifa-base, datas especiais, estadia mínima, taxas e a regra de que quem publica o preço é você.",
+   "capitulos": "Capítulo 21",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "Números por imóvel",
+   "sub": "As três convenções que acabam com a discussão sobre números, as métricas lidas em pares, o resultado por imóvel e a conciliação que não fecha à força.",
+   "capitulos": "Capítulos 22 e 40",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "O hóspede que você já pagou para ter",
+   "sub": "Quem quase reservou e quem já foi embora custaram dinheiro para chegar até você. Como registrar, retomar e trazer de volta essas pessoas.",
+   "capitulos": "Capítulos 23 e 34",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Cotação não é resposta",
+   "sub": "Antes do preço vem uma conversa curta: quatro perguntas que protegem o ticket e o imóvel, a cotação em quatro partes e o que fazer com cada objeção.",
+   "capitulos": "Capítulo 24",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "O domingo: pagamentos, cancelamentos e fraude",
+   "sub": "Fraude se reconhece pela soma dos sinais, e a defesa mais barata é documental: sinal, saldo, caução, contrato e identificação antes do dinheiro.",
+   "capitulos": "Capítulo 25",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "Três críticas são um relatório",
+   "sub": "Avaliação lida uma a uma gera ansiedade; lida em conjunto, é o relatório de manutenção mais barato da operação. Pedir, responder, diagnosticar e fidelizar.",
+   "capitulos": "Capítulo 29 (e o diagnóstico de avaliações do Capítulo 15)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Reserva é documento",
+   "sub": "As nove etapas da consulta à confirmação, a mensagem que evita conflito e a régua de comunicação entre a confirmação e a chegada.",
+   "capitulos": "Capítulos 30 e 31",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "O que nunca vira texto",
+   "sub": "Check-in, dados de acesso e dados pessoais do hóspede: o que abre a porta e o que expõe uma pessoa não circula em texto solto.",
+   "capitulos": "Capítulos 32 e 42",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "Onze e quarenta da noite",
+   "sub": "O concierge que resolve o que é informação e escala rápido o que é situação: divisão, gatilhos, plantão e a ordem certa de verificar antes de responder.",
+   "capitulos": "Capítulo 33",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "A confirmação de volta",
+   "sub": "Limpeza, preparação e giro da hospedagem: a janela entre estadias, a ordem do trabalho, a evidência e a confirmação que transforma pedido em fato.",
+   "capitulos": "Capítulo 35",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "O que quebra e o que some",
+   "sub": "Manutenção preventiva contra o calendário, histórico por equipamento, enxoval e estoque que somem devagar, consumo por noite ocupada e informação de acessibilidade.",
+   "capitulos": "Capítulos 36, 37 e 43",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "Leem tudo, não escrevem nada",
+   "sub": "Separar identificação de operação, permissões mais estreitas para agentes, as decisões que nunca são automáticas, a escala de autonomia de 0 a 3 e o interruptor de cada agente.",
+   "capitulos": "Capítulos 8, 46 e 48",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "O software que ninguém vai te vender",
+   "sub": "Construir com o Claude Code a camada que só a sua operação tem: o que fazer primeiro, o que não construir, como pedir e a diferença entre protótipo e produção.",
+   "capitulos": "Capítulos 45 e 49",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "Uma coisa de cada vez",
+   "sub": "O diagnóstico das doze perguntas, os cinco verbos do que automatizar primeiro, o plano de 30, 60 e 90 dias, os erros de implantação e o ciclo da empresa que aprende.",
+   "capitulos": "Capítulo 50",
+   "gravada": true,
+   "tem_artigo": true
+  }
+ ]
+}
