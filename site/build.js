@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v19'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v20'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -5085,6 +5085,8 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     const CS_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(csAnuncio('livro', true))},${JSON.stringify(csAnuncio('curso', true))}];`);
     const CS_CSS = `${csCss}${CAP_CSS_EXTRA}
 .cap-ad-curso{background:linear-gradient(135deg,#4C1D95,#DB2777)}
+.cap-hero .cap-trilha a{color:#E9D5FF}
+.cap-hero .cap-trilha a:hover{color:#fff}
 .cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
 .cap-card .cg-estado{margin-left:6px}
 .cg-estado.no-ar{background:#EDE9FE;color:#5B21B6}
