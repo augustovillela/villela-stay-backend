@@ -89,6 +89,12 @@ if (fs.existsSync(path.join(__dirname, 'src', 'og-home.jpg'))) fs.copyFileSync(p
 // estático não serve (dava 404) e é uma prancha de manual de marca, não um cartão.
 const TEM_OG_PRODUTOS = fs.existsSync(path.join(__dirname, 'src', 'og-produtos.jpg'));
 if (TEM_OG_PRODUTOS) fs.copyFileSync(path.join(__dirname, 'src', 'og-produtos.jpg'), path.join(DIST, 'og-produtos.jpg'));
+// /eleicao — colinha das Eleições 2026 (página autocontida, fotos embutidas). Fora do sitemap.
+if (fs.existsSync(path.join(__dirname, 'src', 'eleicao', 'index.html'))) {
+  fs.mkdirSync(path.join(DIST, 'eleicao'), { recursive: true });
+  fs.copyFileSync(path.join(__dirname, 'src', 'eleicao', 'index.html'), path.join(DIST, 'eleicao', 'index.html'));
+  fs.copyFileSync(path.join(__dirname, 'src', 'eleicao', 'index.html'), path.join(DIST, 'eleicao.html'));
+}
 // Marca oficial: lockup V-Portal (símbolo negativo sobre o topo navy) + wordmark Lora/Inter
 const MARCA = `<a class="marca" href="/"><img class="logo-v" src="/assets/brand/villela-stay/logo-negativo.svg" width="56" height="56" alt="Villela Stay — Hospedagens Inteligentes" fetchpriority="high"><span class="marca-txt">Villela<span class="marca-desc">Stay</span></span></a>`;
 // Função (não const string) para traduzir por idioma — é avaliada dentro do loop, quando t() já existe.
