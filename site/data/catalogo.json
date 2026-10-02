@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-02T13:20:27.759Z",
+  "coletadoEm": "2026-10-02T15:31:53.829Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -203,7 +203,7 @@
       "titulo": "A Segunda Onda da IA",
       "resumo": "25 videoaulas animadas, de cerca de dez minutos, para quem já usa ChatGPT, Claude ou Gemini e quer o próximo patamar: projetar, operar e governar sistemas de inteligência artificial. Cada aula traz o artigo em PDF, com o código, as tabelas e os laboratórios do livro.",
       "capa": "https://academia.villelastay.com.br/academy/capa/oDHHVDjOm_tp?v=p1Cmybjp6UF9",
-      "preco": 29700,
+      "preco": 14500,
       "url": "https://academia.villelastay.com.br/academy/cursos/a-segunda-onda-da-ia"
     },
     {
@@ -211,7 +211,7 @@
       "titulo": "Conexões de Sucesso — Formação para o Mundo Real",
       "resumo": "Formação de 40 aulas para jovens de 15 a 25 anos: pensar com método, comunicar, operar IA com critério, vender, entender dinheiro e ser dono de um resultado. Com 21 tarefas de consequência real e um plano de 12 meses.",
       "capa": "https://academia.villelastay.com.br/academy/capa/C__iYGeLK16q?v=hxbpXzaIpizp",
-      "preco": 19700,
+      "preco": 9500,
       "url": "https://academia.villelastay.com.br/academy/cursos/conexoes-de-sucesso-formacao-para-o-mundo-real"
     },
     {
@@ -219,7 +219,7 @@
       "titulo": "O Locador Inteligente na era da Inteligência Artificial",
       "resumo": "24 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF — com prompts e checklists — para tirar a sua hospedagem por temporada da operação artesanal e operar com processo, dados e inteligência artificial. Baseado no livro do autor.",
       "capa": "https://academia.villelastay.com.br/academy/capa/oFKpJl1z4mUg?v=dSr7Bk3zNWi6",
-      "preco": 19700,
+      "preco": 12500,
       "url": "https://academia.villelastay.com.br/academy/cursos/o-locador-inteligente-na-era-da-inteligencia-artificial"
     },
     {
@@ -227,24 +227,24 @@
       "titulo": "ChatGPT AI na Prática",
       "resumo": "22 aulas em vídeo, com artigo e apresentação de cada uma: do prompt que funciona ao ChatGPT operando a sua empresa por Codex, agentes e automações. Baseado no livro ChatGPT AI na Prática, com os casos reais da Villela Stay.",
       "capa": "https://academia.villelastay.com.br/academy/capa/E0_QNGzSvT9s?v=XaFnrMRAbWgM",
-      "preco": 25900,
+      "preco": 8500,
       "url": "https://academia.villelastay.com.br/academy/cursos/chatgpt-ai-na-pratica"
-    },
-    {
-      "slug": "claude-ai-na-pratica",
-      "titulo": "Claude AI na Prática",
-      "resumo": "22 módulos, aulas em vídeo, 22 artigos e 22 apresentações: do primeiro prompt ao time de agentes que opera a sua empresa. Baseado no livro Claude AI na Prática, com os casos reais da Villela Stay.",
-      "capa": "https://academia.villelastay.com.br/academy/capa/kRkjahncniMF?v=db_1sznG_WxD",
-      "preco": 29000,
-      "url": "https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica"
     },
     {
       "slug": "claude-ai-na-pratica-juridica",
       "titulo": "Claude AI na Prática Jurídica",
       "resumo": "22 aulas para advogados: prompts e contexto jurídico, controle de qualidade, processos, bases de conhecimento, agentes, publicações e prazos, peças, provas, contratos, negociação e a implantação do escritório operado por IA. Videoaulas + artigo e slides de cada aula.",
       "capa": "https://academia.villelastay.com.br/academy/capa/rfWHmnoCD005?v=wb8_T987heIG",
-      "preco": 35000,
+      "preco": 13500,
       "url": "https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica-juridica"
+    },
+    {
+      "slug": "claude-ai-na-pratica",
+      "titulo": "Claude AI na Prática",
+      "resumo": "22 módulos, aulas em vídeo, 22 artigos e 22 apresentações: do primeiro prompt ao time de agentes que opera a sua empresa. Baseado no livro Claude AI na Prática, com os casos reais da Villela Stay.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/kRkjahncniMF?v=db_1sznG_WxD",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica"
     }
   ]
 }
