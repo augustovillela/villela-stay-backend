@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-09-26T07:47:36.270Z",
+  "coletadoEm": "2026-10-02T13:20:27.759Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -158,6 +158,19 @@
       "url": "https://livros.villelastay.com.br/livros/o-locador-inteligente"
     },
     {
+      "slug": "o-locador-inteligente-na-era-da-ia",
+      "titulo": "O Locador Inteligente na era da Inteligência Artificial",
+      "subtitulo": "Claude AI na Prática para Hospedagens",
+      "resumo": "Claude AI na Prática para Hospedagens: 50 capítulos que mostram como sair da operação artesanal e montar uma empresa de hospedagem assistida por inteligência artificial — sem perder o controle sobre dinheiro, calendário e a conversa com o hóspede.",
+      "categoria": "Tecnologia e IA",
+      "capa": "https://livros.villelastay.com.br/assets/livros/o-locador-inteligente-na-era-da-ia.jpg",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 14900,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/o-locador-inteligente-na-era-da-ia"
+    },
+    {
       "slug": "pilotagem-de-drones-na-pratica-dji-mini-3",
       "titulo": "Pilotagem de Drones na Prática - DJI Mini 3",
       "subtitulo": "Do primeiro voo à filmagem profissional com DJI Mini 3 - Segurança, legislação e operações em Brasília",
@@ -185,6 +198,30 @@
     }
   ],
   "cursos": [
+    {
+      "slug": "a-segunda-onda-da-ia",
+      "titulo": "A Segunda Onda da IA",
+      "resumo": "25 videoaulas animadas, de cerca de dez minutos, para quem já usa ChatGPT, Claude ou Gemini e quer o próximo patamar: projetar, operar e governar sistemas de inteligência artificial. Cada aula traz o artigo em PDF, com o código, as tabelas e os laboratórios do livro.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/oDHHVDjOm_tp?v=p1Cmybjp6UF9",
+      "preco": 29700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/a-segunda-onda-da-ia"
+    },
+    {
+      "slug": "conexoes-de-sucesso-formacao-para-o-mundo-real",
+      "titulo": "Conexões de Sucesso — Formação para o Mundo Real",
+      "resumo": "Formação de 40 aulas para jovens de 15 a 25 anos: pensar com método, comunicar, operar IA com critério, vender, entender dinheiro e ser dono de um resultado. Com 21 tarefas de consequência real e um plano de 12 meses.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/C__iYGeLK16q?v=hxbpXzaIpizp",
+      "preco": 19700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/conexoes-de-sucesso-formacao-para-o-mundo-real"
+    },
+    {
+      "slug": "o-locador-inteligente-na-era-da-inteligencia-artificial",
+      "titulo": "O Locador Inteligente na era da Inteligência Artificial",
+      "resumo": "24 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF — com prompts e checklists — para tirar a sua hospedagem por temporada da operação artesanal e operar com processo, dados e inteligência artificial. Baseado no livro do autor.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/oFKpJl1z4mUg?v=dSr7Bk3zNWi6",
+      "preco": 19700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/o-locador-inteligente-na-era-da-inteligencia-artificial"
+    },
     {
       "slug": "chatgpt-ai-na-pratica",
       "titulo": "ChatGPT AI na Prática",

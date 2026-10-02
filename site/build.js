@@ -2797,12 +2797,12 @@ conferirCobertura(PRODUTOS_GRUPO);
   ].map(o => `<script type="application/ld+json">${JSON.stringify(o)}</script>`).join('\n');
 
   const paginaSistemas = layout(
-    t('Sistemas de gestão do Grupo Villela Stay — CRM, jurídico, documentos, hospedagem, projetos',
-      'Grupo Villela Stay management software — CRM, legal, documents, hospitality, projects',
-      'Sistemas de gestión del Grupo Villela Stay — CRM, jurídico, documentos, alojamiento, proyectos'),
-    t(`${SISTEMAS.length} sistemas brasileiros de gestão em nuvem — CRM, software jurídico, gestão documental com IA, gestão de hospedagem, projetos e eventos, cursos online e conteúdo visual 360°. A partir de R$ 79 por mês, 14 dias grátis sem cartão.`,
-      `${SISTEMAS.length} Brazilian cloud management systems — CRM, legal software, AI document management, hospitality management, projects and events, online courses and 360° visual content. From R$79 a month, 14 days free, no card required.`,
-      `${SISTEMAS.length} sistemas brasileños de gestión en la nube — CRM, software jurídico, gestión documental con IA, gestión de alojamiento, proyectos y eventos, cursos online y contenido visual 360°. Desde R$ 79 al mes, 14 días gratis sin tarjeta.`),
+    t('Sistemas de gestão do Grupo Villela Stay — CRM, jurídico, documentos, hospedagem, projetos, música',
+      'Grupo Villela Stay management software — CRM, legal, documents, hospitality, projects, music',
+      'Sistemas de gestión del Grupo Villela Stay — CRM, jurídico, documentos, alojamiento, proyectos, música'),
+    t(`${SISTEMAS.length} sistemas brasileiros de gestão em nuvem — CRM, software jurídico, gestão documental com IA, gestão de hospedagem, projetos e eventos, cursos online, conteúdo visual 360° e academia musical com cifras. A partir de R$ 79 por mês, 14 dias grátis sem cartão.`,
+      `${SISTEMAS.length} Brazilian cloud management systems — CRM, legal software, AI document management, hospitality management, projects and events, online courses, 360° visual content and a music academy with chord charts. From R$79 a month, 14 days free, no card required.`,
+      `${SISTEMAS.length} sistemas brasileños de gestión en la nube — CRM, software jurídico, gestión documental con IA, gestión de alojamiento, proyectos y eventos, cursos online, contenido visual 360° y academia musical con cifrados. Desde R$ 79 al mes, 14 días gratis sin tarjeta.`),
     `
 <section class="sx-hero">
   <div class="sx-wrap">
@@ -2811,9 +2811,9 @@ conferirCobertura(PRODUTOS_GRUPO);
              'Management software that already runs <em>a real business</em>.',
              'Sistemas de gestión que ya operan <em>un negocio de verdad</em>.')}</h1>
     <p class="sx-lead">${t(
-      `${SISTEMAS.length} sistemas em nuvem para CRM, jurídico, documentos, hospedagem, projetos, cursos e conteúdo visual — mais ${EM_DESENVOLVIMENTO.length} já no ar, terminando de nascer. Nenhum deles foi feito para vender: cada um resolveu primeiro um problema da nossa própria operação, e só depois virou produto.`,
-      `${SISTEMAS.length} cloud systems for CRM, legal, documents, hospitality, projects, courses and visual content — plus ${EM_DESENVOLVIMENTO.length} already live, still being born. None of them was built to be sold: each one first solved a problem in our own operation, and only then became a product.`,
-      `${SISTEMAS.length} sistemas en la nube para CRM, jurídico, documentos, alojamiento, proyectos, cursos y contenido visual — más ${EM_DESENVOLVIMENTO.length} ya en el aire, terminando de nacer. Ninguno fue hecho para vender: cada uno resolvió primero un problema de nuestra propia operación, y solo después se volvió producto.`)}</p>
+      `${SISTEMAS.length} sistemas em nuvem para CRM, jurídico, documentos, hospedagem, projetos, cursos, conteúdo visual e música — mais ${EM_DESENVOLVIMENTO.length} já no ar, terminando de nascer. Nenhum deles foi feito para vender: cada um resolveu primeiro um problema da nossa própria operação, e só depois virou produto.`,
+      `${SISTEMAS.length} cloud systems for CRM, legal, documents, hospitality, projects, courses, visual content and music — plus ${EM_DESENVOLVIMENTO.length} already live, still being born. None of them was built to be sold: each one first solved a problem in our own operation, and only then became a product.`,
+      `${SISTEMAS.length} sistemas en la nube para CRM, jurídico, documentos, alojamiento, proyectos, cursos, contenido visual y música — más ${EM_DESENVOLVIMENTO.length} ya en el aire, terminando de nacer. Ninguno fue hecho para vender: cada uno resolvió primero un problema de nuestra propia operación, y solo después se volvió producto.`)}</p>
     <div class="sx-hero-ctas">
       <a class="sx-btn sx-btn-ouro" href="#catalogo">${t('Ver os sistemas', 'See the systems', 'Ver los sistemas')}</a>
       <a class="sx-btn sx-btn-fantasma" href="#demonstracao">${t('Ver funcionando', 'See it working', 'Verlo funcionando')}</a>
@@ -3285,7 +3285,7 @@ ${blocos}
         'How to move past improvised use of ChatGPT, Claude and Gemini and get to prompts that work, knowledge organised into projects, GPTs and Skills, agents that run a task end to end, automations with Make and n8n, MCP, connectors and APIs — with token and credit economy. It is the subject of most of what we publish, because it is what reorganised our own company.',
         'Cómo salir del uso improvisado de ChatGPT, Claude y Gemini y llegar a prompts que funcionan, organización del conocimiento en proyectos, GPTs y Skills, agentes que ejecutan tareas de principio a fin, automatizaciones con Make y n8n, MCP, conectores y APIs — con ahorro de tokens y créditos. Es el tema de la mayor parte de lo que publicamos.'),
       livros: ['chatgpt-ai-na-pratica', 'chatgpt-ai-na-pratica-guia-visual', 'claude-ai-na-pratica', 'google-ai-na-pratica', 'como-ser-superprodutivo-com-ia'],
-      cursos: ['chatgpt-ai-na-pratica', 'claude-ai-na-pratica'], sistemas: [] },
+      cursos: ['chatgpt-ai-na-pratica', 'claude-ai-na-pratica', 'a-segunda-onda-da-ia'], sistemas: [] },
 
     { id: 'ia-juridica',
       nome: t('IA para advogados e escritórios de advocacia', 'AI for lawyers and law firms', 'IA para abogados y despachos'),
@@ -3307,7 +3307,7 @@ ${blocos}
       texto: t('Como os algoritmos do Airbnb e do Booking decidem quem aparece, precificação por demanda, taxa de ocupação, avaliações, operação de limpeza e enxoval, e o sistema de gestão de hospedagem que nasceu das nossas quatro casas no Lago Sul.',
         'How the Airbnb and Booking algorithms decide who shows up, demand-based pricing, occupancy rate, reviews, cleaning and linen operations, and the hospitality management system born from our four houses in Brasília.',
         'Cómo los algoritmos de Airbnb y Booking deciden quién aparece, precios por demanda, tasa de ocupación, reseñas, operación de limpieza y ropa de cama, y el sistema de gestión de alojamiento nacido de nuestras cuatro casas.'),
-      livros: ['o-locador-inteligente'], cursos: [], sistemas: ['manager'] },
+      livros: ['o-locador-inteligente', 'o-locador-inteligente-na-era-da-ia'], cursos: ['o-locador-inteligente-na-era-da-inteligencia-artificial'], sistemas: ['manager'] },
 
     { id: 'negocios',
       nome: t('Negócios, marketing, finanças pessoais e produtos digitais', 'Business, marketing, personal finance and digital products', 'Negocios, marketing, finanzas personales y productos digitales'),
@@ -3315,7 +3315,7 @@ ${blocos}
         'Marketing in the age of algorithms, building a network, financial education and getting out of debt, and the path for turning knowledge into an online course — from content to first sale. Includes the platforms for selling courses, products and renting items.',
         'Marketing en la era de los algoritmos, construcción de red, educación financiera y salida de las deudas, y el camino de quien quiere convertir conocimiento en curso online — del contenido a la primera venta.'),
       livros: ['suas-definicoes-de-marketing', 'de-repente-rico', 'conexoes-de-sucesso', 'faca-um-curso-online-em-15-passos'],
-      cursos: [], sistemas: ['vitrine', 'closet'] },
+      cursos: ['conexoes-de-sucesso-formacao-para-o-mundo-real'], sistemas: ['vitrine', 'closet'] },
 
     { id: 'imagem',
       nome: t('Drones, vídeo e imagem aérea', 'Drones, video and aerial imagery', 'Drones, vídeo e imagen aérea'),
