@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v22'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v23'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -5274,14 +5274,14 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   }
 
   // ---- Série "A Segunda Onda da IA" (curso sobre sistemas de IA: agentes, RAG, grafos, automação, governança): mesmo padrão da série Conexões de Sucesso ----
-  // Publicada em 01/10/2026 com o LIVRO ainda não lançado na Livraria e o CURSO em rascunho na
-  // Academy. Por isso os anúncios são GENÉRICOS (vitrine da Livraria e marketplace da Academy, os
-  // mesmos destinos da série Claude AI na Prática): link para página de venda que ainda não existe
-  // daria 404. Ao lançar, trocar SO_LIVRO/SO_CURSO pelas páginas do livro e do curso e os textos.
+  // Publicada em 01/10/2026 com anúncios genéricos (livro e curso ainda não públicos). Em 02/10/2026,
+  // com o CURSO publicado na Academy, SO_CURSO passou a apontar para a página do curso (aprovado pelo
+  // Augusto). O LIVRO segue não lançado: SO_LIVRO continua na vitrine da Livraria — link para página de
+  // venda que não existe daria 404. Ao lançar o livro, trocar SO_LIVRO e o texto do anúncio do livro.
   // O artigo.css é o mesmo da série O Locador Inteligente, todo sob .cap.
   const SO_DIR = path.join(__dirname, 'content', 'segunda-onda-da-ia');
   const SO_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-segunda-onda';
-  const SO_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-segunda-onda';
+  const SO_CURSO = 'https://academia.villelastay.com.br/academy/cursos/a-segunda-onda-da-ia?utm_source=villelastay&utm_medium=blog-segunda-onda';
   const soDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
@@ -5348,8 +5348,8 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
           <span class="cap-ad-btn">Ver na Livraria →</span></a>`
       : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${SO_CURSO}" target="_blank" rel="noopener">
           <span class="cap-ad-icone">🎓</span>
-          <span class="cap-ad-txt"><strong>Cursos na Villela Academy</strong><span>Videoaulas de inteligência artificial aplicada ao trabalho, com artigo e material de apoio em cada aula. Conheça os cursos disponíveis.</span></span>
-          <span class="cap-ad-btn">Ver os cursos →</span></a>`;
+          <span class="cap-ad-txt"><strong>Curso A Segunda Onda da IA — 25 videoaulas animadas</strong><span>Cada aula em vídeo, com PDF, Tutor, quiz, caderno de trabalho, jornada e audiobook, na Villela Academy.</span></span>
+          <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
     const SO_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(soAnuncio('livro', true))},${JSON.stringify(soAnuncio('curso', true))}];`);
     const SO_CSS = `${soCss}${CAP_CSS_EXTRA}
 .cap-hero .cap-trilha a{color:#e8d3a6}
@@ -5424,7 +5424,7 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   </section>
   <div class="cap-progresso"><i id="cap-prog"></i></div>
   <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar — a aula em vídeo e o material de apoio ficam no curso, e o método completo, no livro.</p>
-  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o método completo está nos <a href="${SO_LIVRO}">livros</a> e nos <a href="${SO_CURSO}">cursos</a> do autor.</div></noscript>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o método completo está nos <a href="${SO_LIVRO}">livros</a> e no <a href="${SO_CURSO}">curso A Segunda Onda da IA</a>.</div></noscript>
   <div class="cap-corpo" id="cap-corpo"></div>
   <nav class="cap-nav" aria-label="Partes do artigo">
     <button type="button" id="cap-ant">← Anterior</button>
@@ -5533,7 +5533,7 @@ contexto, ferramentas com permissão, busca por sentido (RAG), verificação e a
 laços e grafos, aprovação humana, reversão, custo e registro, segurança contra injeção de
 instruções, privacidade e implantação.
 Índice da série: ${SITE_URL}/segunda-onda-da-ia/
-Livros do autor: ${SO_LIVRO.split('?')[0]} · Cursos on-line: ${SO_CURSO.split('?')[0]}
+Livros do autor: ${SO_LIVRO.split('?')[0]} · Curso on-line (25 videoaulas): ${SO_CURSO.split('?')[0]}
 
 ${soArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
 `;
