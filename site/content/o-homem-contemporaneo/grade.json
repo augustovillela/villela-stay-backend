@@ -1,0 +1,207 @@
+{
+ "titulo": "O Homem Contemporâneo",
+ "subtitulo": "Princípios para viver no século XXI",
+ "total": 25,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "O cérebro fora do lugar",
+   "sub": "Seu sistema nervoso foi calibrado para a escassez e opera na abundância: os selos de evidência do curso, o desajuste evolutivo, o que a dopamina de fato faz, por que a recompensa imprevisível prende, a manchete perpétua e por que a saída é desenho de ambiente, não força de vontade.",
+   "capitulos": "Antes de começar + Capítulo 1",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "Atenção, o recurso escasso",
+   "sub": "Um jornal acaba, um feed não: como a economia da atenção captura o seu tempo, por que atenção se alterna em vez de se dividir, o custo do dia fragmentado, o que é sólido e o que é folclore na fadiga decisória, por onde vaza a sua capacidade e como protegê-la com arquitetura, automação e regras pessoais.",
+   "capitulos": "Capítulos 5 e 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "Pensar sobre o próprio pensamento",
+   "sub": "Metacognição na prática: a ilusão de fluência e o teste de explicação, a calibração por previsões com probabilidade e prazo, o diário de decisões de sete campos, separar processo de resultado, os vieses que a mente repete e por que só processo, não intenção, corrige o erro.",
+   "capitulos": "Capítulos 3 e 4",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "Como o cérebro aprende de verdade",
+   "sub": "O que a neuroplasticidade promete e o que ela entrega: o mito das dez mil horas, as condições que fazem a prática mudar o cérebro, o papel do sono, os exageros do mercado e as técnicas de estudo com melhor evidência, que parecem piores enquanto você usa e funcionam melhor no resultado.",
+   "capitulos": "Capítulos 2 e 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "Lentes para decidir",
+   "sub": "Modelo mental não é verdade, é lente: primeiros princípios, inversão, segunda ordem, custo de oportunidade e círculo de competência. E de onde vêm as lentes — o perfil em T, a interseção de três campos e a curiosidade que tem problema e deixa registro.",
+   "capitulos": "Capítulos 8 e 9",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "Aprender com IA sem parar de pensar",
+   "sub": "A IA pode ser o melhor professor particular que você já teve e a máquina mais eficiente para fingir que você aprendeu. Três papéis úteis, as regras de verificação contra a alucinação, o risco silencioso da dependência e para onde migra o valor quando a explicação fica de graça.",
+   "capitulos": "Capítulo 10",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "Emoções que se treinam",
+   "sub": "Lidar com emoções não é dom, é um conjunto de habilidades que se treinam: nomear com precisão, regular sem suprimir, alargar a janela entre o estímulo e a resposta e entender o outro sem se afogar nele. Com o que funciona, o que não funciona e um protocolo para conversas difíceis.",
+   "capitulos": "Capítulo 11",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "Hábitos e motivação",
+   "sub": "A gente não age porque está motivado; fica motivado porque agiu. Como o hábito se forma por repetição num contexto estável, as alavancas que funcionam (quando e onde, versão mínima, atrito), como largar um hábito, as três necessidades da motivação e por que disciplina é arquitetura, não músculo.",
+   "capitulos": "Capítulos 12 e 13",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "Gente, incentivos e o espelho",
+   "sub": "O comportamento das pessoas segue incentivos, grupo e reputação muito mais do que intenções. E o espelho que você usa para enxergar a si mesmo é pior do que parece: autoconhecimento confiável vem de registro, olhar de fora e instrumentos que medem de verdade.",
+   "capitulos": "Capítulos 14 e 15",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "Sono e recuperação",
+   "sub": "O cansaço que você não sente é o mais caro. O que o sono faz pela memória e pela decisão, o protocolo sem graça que mais rende, por que o estresse não é o vilão e como programar carga e folga como um treinador.",
+   "capitulos": "Capítulos 16 e 19",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "Mover, comer e durar",
+   "sub": "O que funciona para o corpo é conhecido, chato e barato. Sair do zero no movimento, com força; comer comida de verdade, com poucos ultraprocessados; e construir reserva funcional agora para viver bem por mais tempo.",
+   "capitulos": "Capítulos 17, 18 e 20",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "Para quê? Propósito por protótipos",
+   "sub": "Acelerar na direção errada é pior do que não acelerar. Sucesso, dinheiro e liberdade para quê; os três enganos sobre propósito; e como construir a resposta testando, com protótipos pequenos e reversíveis.",
+   "capitulos": "Capítulos 21 e 25",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "Sabedoria antiga e o que nos excede",
+   "sub": "José e os sete anos, a prudência de Provérbios, o trabalho com limite, a palavra que vale e a soberba que precede a ruína: princípios bíblicos lidos como sabedoria prática. Depois, o que nos excede: reverência, gratidão específica, silêncio e a aritmética dos encontros que restam.",
+   "capitulos": "Capítulos 22 e 23",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Filosofias práticas e a arte de subtrair",
+   "sub": "O Epicuro de verdade comia pão, água e queijo. Estoicismo, Aristóteles e epicurismo lidos no original pedem critério, não motivação. E o minimalismo leva esse critério para a casa, a tela e a agenda: tudo o que você possui, mantém ou assume cobra manutenção.",
+   "capitulos": "Capítulos 24 e 26",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "Liberdade, antifragilidade e opções",
+   "sub": "A taça de cristal quebra; o músculo, com carga e descanso, volta mais forte. Liberdade é uma estrutura em três peças: saber de que liberdade se fala, parar de ser frágil e manter portas abertas sem fazer delas desculpa para nunca se comprometer.",
+   "capitulos": "Capítulos 27, 28 e 29",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "O dinheiro: comportamento, matemática e proteção",
+   "sub": "Conteúdo educacional, não é recomendação de investimento. Riqueza visível é despesa; patrimônio não aparece. Resultado com dinheiro depende mais de comportamento que de técnica, a matemática cabe em seis variáveis, e quem decide se você chega é a proteção: reserva de 6 meses, seguro e diversificação de verdade.",
+   "capitulos": "Capítulos 30, 31 e 32",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Patrimônio, não renda",
+   "sub": "Renda é o que passa, patrimônio é o que fica. As quatro palavras que quase ninguém separa, a independência como razão e não como valor, a escada de sete degraus, as três alavancas na ordem certa, a política de investimento de uma página e o problema que o dinheiro não resolve.",
+   "capitulos": "Capítulos 33 e 34",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "Do emprego ao ativo",
+   "sub": "Trabalho gera renda que para quando você para; ativo gera fluxo que continua. O teste da ausência, as seis posições econômicas, o que mudou no trabalho, a escada de valor, os três testes de um ativo, as sete famílias e de onde tirar o tempo para construir o primeiro.",
+   "capitulos": "Capítulos 35, 47 e 48",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "Vender o que você sabe",
+   "sub": "O que você sabe não vale nada até ser embalado. Os formatos e suas trocas, o problema específico, caro e recorrente, o hábito de registrar, criatividade como volume de tentativas, nichos e os mil fãs, a cadeia da atenção à recorrência e por que quem vive dentro de uma plataforma é inquilino.",
+   "capitulos": "Capítulos 36, 37 e 38",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "Marca e comunicação",
+   "sub": "Conhecimento não comunicado não tem valor econômico. Marca como multiplicação de competência, reputação, confiança e distribuição; posicionamento como exclusão; constância modesta; clareza, narrativa e objeção antecipada; negociação por interesses; e o teste que separa persuasão de manipulação.",
+   "capitulos": "Capítulos 39 e 40",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "A revolução cognitiva e o profissional aumentado",
+   "sub": "A IA barateia o trabalho intelectual e o valor migra para o que continua humano. Tarefas, não profissões; as três posturas; os três jeitos de trabalhar; o agente que executa; os limites da “equipe de IA”; e a palavra-código contra o golpe de voz.",
+   "capitulos": "Capítulos 41 a 46 e 53",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "Documentar e alavancar",
+   "sub": "O que você sabe só vira alavanca quando sai da cabeça e vira registro. As alavancas com e sem permissão, o ciclo do conhecimento ao ativo, a sequência documentar, simplificar, delegar e supervisionar, e a tecnologia e a mídia trabalhando sobre o que você escreveu.",
+   "capitulos": "Capítulos 49, 59, 50, 51 e 52",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "Onde pôr a força",
+   "sub": "Raramente falta força; falta pô-la no lugar certo. O princípio 80/20 com honestidade, o pensamento sistêmico e a regra do gargalo, a prioridade no singular e os jeitos de dizer não.",
+   "capitulos": "Capítulos 54, 55 e 57",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "Sistema, não meta",
+   "sub": "Metas dão direção; sistemas executam. Por que a meta falha como mecanismo, como convertê-la em comportamento, os ciclos de execução e a hora semanal, a lei de Goodhart e a revisão escrita do que não se mede.",
+   "capitulos": "Capítulos 56, 58 e 60",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 25,
+   "titulo": "Tempo, ruína e legado",
+   "sub": "As cinco camadas do curso, a regra que não se negocia, o teste dos dez cenários, as estações da vida, as formas de legado e a instrução final: três coisas por noventa dias. Com os planos de 90 dias e de 12 meses e as leituras recomendadas.",
+   "capitulos": "Capítulos 61 a 64, Epílogo e Apêndices A, B e E",
+   "gravada": true,
+   "tem_artigo": true
+  }
+ ]
+}
