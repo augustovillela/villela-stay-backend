@@ -6,7 +6,7 @@
 // relatório executivo do admin. Guardrails: nunca inventa dados, avisa
 // quando falta informação, saída é SUGESTÃO (aplicar é ação do humano).
 // Todo uso é logado em ai_usage_logs; limite diário por usuário
-// (platform_settings.ia.consultas_dia, padrão 30).
+// (platform_settings.ia.consultas_dia, padrão 5 desde 03/10/2026; o bloqueio também é registrado, status "limite").
 // =====================================================================
 'use strict';
 const { db, nowISO, novoId, j } = require('./db');
