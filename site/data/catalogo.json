@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-03T09:33:22.158Z",
+  "coletadoEm": "2026-10-03T16:54:33.080Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -198,6 +198,14 @@
     }
   ],
   "cursos": [
+    {
+      "slug": "o-homem-contemporaneo",
+      "titulo": "O Homem Contemporâneo",
+      "resumo": "25 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF e uma prática de 21 dias, para organizar mente, corpo, valores, dinheiro e trabalho num sistema só. Baseado no livro do autor.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/n0gEBhqq8Iac?v=5cTZJt1HfXtA",
+      "preco": 14500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/o-homem-contemporaneo"
+    },
     {
       "slug": "google-ai-na-pratica",
       "titulo": "Google AI na Prática",

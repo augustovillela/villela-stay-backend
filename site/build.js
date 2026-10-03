@@ -3333,7 +3333,7 @@ ${blocos}
       texto: t('O que um pai reúne para os filhos sobre domínio de si, lucidez e propósito — e as plataformas de aprendizagem criativa para crianças, de estudo de música e de cozinha, que nasceram da mesma pergunta: como se aprende de verdade.',
         'What a father gathers for his children about self-mastery, clarity and purpose — and the platforms for creative learning for children, music study and cooking, born from the same question: how do people really learn.',
         'Lo que un padre reúne para sus hijos sobre dominio de sí, lucidez y propósito — y las plataformas de aprendizaje creativo para niños, estudio de música y cocina.'),
-      livros: ['o-homem-essencial'], cursos: [], sistemas: ['kids', 'music', 'cozinhe'] }
+      livros: ['o-homem-essencial'], cursos: ['o-homem-contemporaneo'], sistemas: ['kids', 'music', 'cozinhe'] }
   ];
 
   // A trava: produto fora de todo assunto não some da página — some da BUSCA, que é
