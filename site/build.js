@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v23'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v24'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -34,6 +34,8 @@ let CS_PATHS = [];                      // rotas da série Conexões de Sucesso 
 let CS_LLMS = '';                       // seção da série Conexões de Sucesso no llms.txt
 let SO_PATHS = [];                      // rotas da série A Segunda Onda da IA (só PT)
 let SO_LLMS = '';                       // seção da série A Segunda Onda da IA no llms.txt
+let GA_PATHS = [];                      // rotas da série Google AI na Prática (só PT)
+let GA_LLMS = '';                       // seção da série Google AI na Prática no llms.txt
 //                       // seção da série ChatGPT no llms.txt
 // Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
@@ -3959,6 +3961,7 @@ let cgArtigos = [];
 let lcArtigos = [];
 let csArtigos = [];
 let soArtigos = [];
+let gaArtigos = [];
 let capCss = '';
 const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
 const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
@@ -5546,6 +5549,271 @@ ${soArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     console.log(`Blog A Segunda Onda da IA: hub + ${soNoAr} de ${soTotal} artigos + ${soApoio.length} material(is) de apoio`);
   }
 
+  // ---- Série "Google AI na Prática" (curso animado de 25 aulas: Gemini e o ecossistema Google no dia a dia, no estudo e no trabalho): mesmo padrão da série Google AI na Prática ----
+  // Publicada em 03/10/2026, com o livro já na Livraria e o curso publicado na Academy (produto
+  // aurLkdbxXuyH): os dois anúncios apontam para as páginas de venda próprias. O artigo.css é o
+  // mesmo das séries anteriores, todo sob .cap.
+  const GA_DIR = path.join(__dirname, 'content', 'google-ai-na-pratica');
+  const GA_LIVRO = 'https://livros.villelastay.com.br/livros/google-ai-na-pratica?utm_source=villelastay&utm_medium=blog-google-ai';
+  const GA_CURSO = 'https://academia.villelastay.com.br/academy/cursos/google-ai-na-pratica?utm_source=villelastay&utm_medium=blog-google-ai';
+  const gaDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(GA_DIR)) {
+    const gaCss = fs.readFileSync(path.join(GA_DIR, 'artigo.css'), 'utf8');
+    const gaLe = n => JSON.parse(fs.readFileSync(path.join(GA_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const gaGrade = gaLe('grade.json');
+    let gaFaq = {}, gaApoio = [];
+    try { gaFaq = gaLe('faq.json'); } catch (e) { console.warn('[google-ai] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { gaApoio = gaLe('apoio.json'); } catch (e) { console.warn('[google-ai] sem apoio.json — hub sairá sem material de apoio'); }
+
+    gaArtigos = fs.readdirSync(GA_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(GA_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[google-ai] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpo = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? gaDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `google-ai-${chave}`;
+      return {
+        ...meta, chave, slug,
+        tituloTexto: gaDestexto(meta.titulo), subtituloTexto: gaDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => gaDestexto(t)),
+        faq: gaFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const gaComArtigo = gaGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of gaArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[google-ai] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!gaComArtigo.includes(a.n)) throw new Error(`[google-ai] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (gaArtigos.length !== gaComArtigo.length) throw new Error(`[google-ai] grade diz ${gaComArtigo.length} aulas com artigo, mas há ${gaArtigos.length} artigos exportados`);
+    const gaSemFaq = gaArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (gaSemFaq.length) console.warn(`[google-ai] SEM perguntas frequentes: ${gaSemFaq.join(', ')} — escrever em content/google-ai-na-pratica/faq.json`);
+
+    const gaAnuncio = (qual, min = false) => qual === 'livro'
+      ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${GA_LIVRO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">📘</span>
+          <span class="cap-ad-txt"><strong>Livro Google AI na Prática</strong><span>Para o dia a dia, o estudo e o trabalho: o Gemini e o ecossistema Google com método, com prompts e checklists. Digital e impresso, na Livraria Villela.</span></span>
+          <span class="cap-ad-btn">Ver na Livraria →</span></a>`
+      : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${GA_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso Google AI na Prática — 25 videoaulas animadas</strong><span>Cada aula em vídeo, com o artigo em PDF, prompts e checklists para usar no dia a dia, na Villela Academy.</span></span>
+          <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
+    const GA_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(gaAnuncio('livro', true))},${JSON.stringify(gaAnuncio('curso', true))}];`);
+    const GA_CSS = `${gaCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo de fonte (support.google.com/...) não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}`;
+
+    const gaTotal = gaGrade.total;
+    const gaLinhaGrade = (aula, atual) => {
+      const art = gaArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'google-ai'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'google-ai', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of gaArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = gaArtigos[iArt - 1], prox = gaArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-03', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/google-ai/#serie` },
+        articleSection: 'Google AI na Prática', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'Google AI na Prática', author: { '@type': 'Person', name: 'Augusto Villela' }, url: GA_LIVRO },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Google AI na Prática', item: `${SITE_URL}/google-ai/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/google-ai/">Google AI na Prática</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${gaTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${gaAnuncio('livro', true)}${gaAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar — a aula em vídeo e o material de apoio ficam no curso, e o método completo, no livro.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o método completo está no <a href="${GA_LIVRO}">livro</a> e no <a href="${GA_CURSO}">curso Google AI na Prática</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${gaAnuncio('curso')}${gaAnuncio('livro')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/google-ai/"><span class="rot">☰ Índice</span><span class="tit">${gaArtigos.length === 1 ? 'O artigo publicado' : `Os ${gaArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${gaGrade.aulas.map(g => gaLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Google AI na Prática</strong>, de Augusto Villela.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog Google AI na Prática`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${GA_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${GA_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of gaApoio) {
+      const cam = `/google-ai/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/google-ai/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'google-ai', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — Google AI na Prática | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série Google AI na Prática, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>Google AI na Prática</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/google-ai/">Google AI na Prática</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${gaAnuncio('livro')}${gaAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${GA_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /google-ai/
+    const gaCards = gaArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado">artigo no ar · videoaula em produção</span>'}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const gaApoioCards = gaApoio.map(d => `
+  <a class="cap-card" href="/google-ai/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const gaNoAr = gaArtigos.length;
+    const gaHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/google-ai/#serie`,
+      name: 'Google AI na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: gaArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `Google AI na Prática — ${gaNoAr} ${gaNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: gaNoAr,
+      itemListElement: gaArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'google-ai', 'index.html'), layout(
+      'Google AI na Prática: a série do curso | Villela Stay',
+      `A série Google AI na Prática, de Augusto Villela: o Gemini e o ecossistema Google com método, para o dia a dia, o estudo e o trabalho — pedir bem, privacidade, escrita, pesquisa com fontes, NotebookLM, IA criativa, SynthID, agentes e um plano de trinta dias. ${gaNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>Google AI na Prática <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Gemini e o ecossistema Google, com método</span></h1>
+    <p>${esc(gaGrade.subtitulo)}. São ${gaTotal} artigos, um para cada videoaula do curso. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Google AI na Prática</span></nav>
+  <div class="cap-faixa">${gaAnuncio('livro')}${gaAnuncio('curso')}</div>
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${gaTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${gaGrade.aulas.map(g => gaLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${gaCards}</div>
+  ${gaApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${gaApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${gaAnuncio('curso')}${gaAnuncio('livro')}</div>
+</div>`,
+      { caminho: '/google-ai/', semIdiomas: true, extraHead: `<style>${GA_CSS}</style>` + gaHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    GA_PATHS = ['/google-ai/', ...gaArtigos.map(a => a.caminho), ...gaApoio.map(d => `/google-ai/apoio/${d.chave}.html`)];
+    GA_LLMS = `## Blog: Google AI na Prática (${gaNoAr} artigos, em português)
+
+Série do livro e do curso *Google AI na Prática — para o dia a dia, o estudo e o trabalho*, de Augusto
+Villela: o Gemini e o ecossistema Google usados com método — a diferença entre a IA que responde e a
+que age, o mapa dos produtos, como o modelo erra, pedir e iterar, privacidade, conversa por voz,
+escrita, planejamento, pesquisa aprofundada, busca com IA, estudo com as próprias fontes, pesquisa
+defensável, educação, imagem, vídeo, som, SynthID e publicação, agentes e um plano de trinta dias.
+Índice da série: ${SITE_URL}/google-ai/
+Livro completo: ${GA_LIVRO.split('?')[0]} · Curso on-line (25 videoaulas): ${GA_CURSO.split('?')[0]}
+
+${gaArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog Google AI na Prática: hub + ${gaNoAr} de ${gaTotal} artigos + ${gaApoio.length} material(is) de apoio`);
+  }
+
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
     ...['01-central-atualizacao-normativa.html', '02-diretorio-pesquisa-juridica.html', '03-atualizacoes-tecnologicas.html'].map(f => `/claude-juridico/recursos/${f}`)];
   // llms.txt: o assistente que "lê e não renderiza" recebe título + resumo de cada artigo.
@@ -5664,6 +5932,18 @@ const soCardsHub = LANG !== 'pt' || !soArtigos.length ? '' : `
     </div>
   </a>`;
 
+// Série Google AI na Prática (Gemini e o ecossistema Google no dia a dia, no estudo e no trabalho). Card com a capa do curso.
+const gaCardsHub = LANG !== 'pt' || !gaArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/google-ai/">
+    <div class="blog-card-img">${img('/blog-img/google-ai-na-pratica-1.jpg', { alt: 'Capa do curso Google AI na Prática — para o dia a dia, o estudo e o trabalho: o título em letras brancas e douradas sobre fundo azul-marinho, ao lado da capa do livro, em que faixas de luz azul, vermelha, amarela e verde correm por uma estrada até um portal luminoso', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">✨ Série · Google AI</span>
+      <h3>Google AI na Prática</h3>
+      <p>Para o dia a dia, o estudo e o trabalho: o Gemini e o ecossistema Google usados com método — pedir bem, proteger os dados, pesquisar com fontes, estudar, criar imagem, vídeo e som, e delegar a agentes com limites.</p>
+      <span class="blog-card-leia">Ver os ${gaArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
 // ---- busca do blog ----
 // O hub mostra 16 cards, mas o blog já tem quase cem textos: os 13 do Diário e os das três
 // séries, que moram nos hubs próprios. Procurar só nos cards seria inútil — o índice cobre
@@ -5678,6 +5958,7 @@ const buscaItens = [
     ...lcArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🏡 O Locador Inteligente', u: a.caminho, n: `Aula ${a.n}` })),
     ...csArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🎮 Conexões de Sucesso', u: a.caminho, n: `Aula ${a.n}` })),
     ...soArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🌊 A Segunda Onda da IA', u: a.caminho, n: `Aula ${a.n}` })),
+    ...gaArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '✨ Google AI na Prática', u: a.caminho, n: `Aula ${a.n}` })),
   ] : []),
 ];
 
@@ -5792,6 +6073,7 @@ const blogLd = {
         ...(lcArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/locador/#serie`, name: 'O Locador Inteligente na era da IA — a série', url: `${SITE_URL}/locador/` }] : []),
         ...(csArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/conexoes-de-sucesso/#serie`, name: 'Conexões de Sucesso — a série', url: `${SITE_URL}/conexoes-de-sucesso/` }] : []),
         ...(soArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/segunda-onda-da-ia/#serie`, name: 'A Segunda Onda da IA — a série', url: `${SITE_URL}/segunda-onda-da-ia/` }] : []),
+        ...(gaArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/google-ai/#serie`, name: 'Google AI na Prática — a série', url: `${SITE_URL}/google-ai/` }] : []),
       ]
     : undefined,
 };
@@ -5812,7 +6094,7 @@ const blogHub = layout(
 </section>
 ${buscaHtml}
 <section class="grade-wrap">
-  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${blogCardsHub}</div>
+  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${gaCardsHub}${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
@@ -6245,7 +6527,7 @@ const SALTO = String.fromCharCode(10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
-${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
+${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${GA_PATHS.length ? SALTO : ''}${GA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/google-ai/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 
@@ -6347,6 +6629,7 @@ ${CG_LLMS}
 ${LC_LLMS}
 ${CS_LLMS}
 ${SO_LLMS}
+${GA_LLMS}
 ## Livros e cursos do autor
 
 Vitrine conjunta dos três acervos (livros, cursos e sistemas), com links diretos

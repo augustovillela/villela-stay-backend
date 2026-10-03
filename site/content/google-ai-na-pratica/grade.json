@@ -1,0 +1,207 @@
+{
+ "titulo": "Google AI na Prática",
+ "subtitulo": "Para o dia a dia, o estudo e o trabalho",
+ "total": 25,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "Da IA que responde à IA que age",
+   "sub": "A diferença entre IA, modelo, modelo de linguagem e agente, os cinco papéis que a IA ocupa no trabalho, as três proteções para quando ela passa a agir e as três perguntas que decidem onde cada tarefa entra.",
+   "capitulos": "Capítulo 1",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "O mapa da família Google AI",
+   "sub": "Anúncio não é lançamento, as sete gavetas em que cabe todo nome do Google, por que o número da versão não é escada, como descobrir o que a sua conta alcança e como usar o aplicativo Gemini com contexto.",
+   "capitulos": "Capítulos 2 e 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "Como a IA generativa funciona",
+   "sub": "O modelo estima a próxima palavra: por isso é ótimo em reescrever e organizar e frágil em número, data e citação. Token, janela de contexto e ancoragem, por que às vezes demora e custa mais, e três perguntas para prever o erro antes dele.",
+   "capitulos": "Capítulo 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "Pedir bem e conversar até acertar",
+   "sub": "Prompt é instrução de trabalho, não senha mágica: as partes de um bom pedido, o que funciona e o que é folclore, o ciclo tentativa, diagnóstico e pedido melhor, a higiene de conversa e as três camadas de confiança.",
+   "capitulos": "Capítulos 4 e 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "Privacidade e uso responsável",
+   "sub": "O que acontece com o que você cola numa conversa, a regra de três perguntas antes de colar, o que nunca entra, três riscos que quase ninguém explica e a hora de procurar um profissional.",
+   "capitulos": "Capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "Gemini Live: voz, câmera e tela",
+   "sub": "A conversa falada com interrupção, os três jeitos de entrar nela, onde ela brilha, onde ela não funciona e o cuidado com tudo o que a câmera e a tela mostram.",
+   "capitulos": "Capítulo 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "Escrever, resumir e comunicar",
+   "sub": "Como usar a IA para destravar o texto sem entregar a ela a sua voz: o pedido invertido, os sinais de texto de máquina, o e-mail difícil, o resumo com finalidade, a tradução com contexto e quando não usar.",
+   "capitulos": "Capítulo 9",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "Planejar a vida, viagens e projetos",
+   "sub": "As cinco restrições que transformam desejo em roteiro, a ordem certa de pedir, a pesquisa de voos e hotéis do Gemini e onde ela para, e o mesmo método aplicado a mudança, obra, festa e estudo.",
+   "capitulos": "Capítulo 10",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "Deep Research, Canvas e Gems",
+   "sub": "A pesquisa que demora de propósito e volta com fontes, o espaço de escrita que não some na conversa e o assistente que você monta uma vez e já sabe as suas regras.",
+   "capitulos": "Capítulo 11",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "A IA que conhece você e mora onde você já está",
+   "sub": "Personal Intelligence ligada app por app e de olhos abertos, o Gemini dentro do e-mail, dos documentos e das planilhas, a conta que você tem e o Google Fotos como arquivo de documentos.",
+   "capitulos": "Capítulos 12, 16 e 17 (Google Fotos)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "O briefing do dia e a semana organizada",
+   "sub": "Montar hoje, com o que já está na sua conta, o briefing matinal que o Daily Brief promete, e organizar uma semana inteira com medição, triagem, planejamento na sexta e o fechamento do dia em três linhas.",
+   "capitulos": "Capítulos 13 e 43",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "Gemini Spark: delegar com limites",
+   "sub": "O agente pessoal que trabalha em segundo plano, as três palavras que importam (permissão, aprovação e interrupção), a primeira tarefa segura, o documento de limites e a semana de observação.",
+   "capitulos": "Capítulos 14 e 46",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "AI Search: resposta com fonte",
+   "sub": "Os resultados de sempre, o AI Overviews e o AI Mode na mesma tela, a nova caixa de busca, a regra da fonte em dois passos e a pergunta de controle antes de repassar qualquer resumo gerado.",
+   "capitulos": "Capítulo 15",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Estudar com as suas fontes",
+   "sub": "O Gemini Notebook, antigo NotebookLM, responde só com o material que você entregou e mostra o trecho de origem. Como montar o caderno, a armadilha do app Gemini, o panorama com a lacuna, os testes com distratores plausíveis e o registro de erros que torna o caderno adaptativo.",
+   "capitulos": "Capítulos 18, 19 e 40",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "Pesquisa que você consegue defender",
+   "sub": "As cinco etapas da pesquisa e as três que continuam suas, a pergunta recortada com país, os níveis de fonte, o fluxo AI Mode, Deep Research e Gemini Notebook, o dossiê rastreável, a verificação fora e a hora de parar.",
+   "capitulos": "Capítulos 20 e 39",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "Professores, alunos e a IA",
+   "sub": "A linha entre uso legítimo e fraude, as duas perguntas de controle, por que o detector de IA não resolve, os formatos de avaliação que exigem presença, a declaração de uso, o professor que diferencia e o estudante que explica de volta, com dado de aluno fora de qualquer prompt.",
+   "capitulos": "Capítulo 21",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Dirigir a IA criativa e criar imagens",
+   "sub": "Briefing de cinco linhas, referência no lugar do adjetivo, edição de imagem por conversa no Nano Banana, a hora de parar, Nano Banana ou Imagen e as regras de direito que valem para todo o módulo de criação.",
+   "capitulos": "Capítulos 22, 23 e 24",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "Vídeo generativo: tomada por tomada",
+   "sub": "Veo, Gemini Omni e Google Flow: por que se gera tomada e não filme, imagem primeiro e vídeo depois, um movimento de câmera por tomada, edição que preserva a cena e as regras para não queimar créditos.",
+   "capitulos": "Capítulos 25, 26 e 27",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "Som, música e voz",
+   "sub": "Por que o som é metade do vídeo, como pedir trilha ao Lyria com decisões e na duração exata, a regra da locução, as três famílias de voz do Google e a linha que não se cruza com a voz de outra pessoa.",
+   "capitulos": "Capítulo 28",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "SynthID e publicação responsável",
+   "sub": "Como o SynthID marca o que a IA do Google gera, por que “não detectei” não prova nada, o C2PA como a outra metade da procedência, quando declarar o que é gerado e os limites com rosto e voz de pessoas reais.",
+   "capitulos": "Capítulo 29",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "De usuário a operador",
+   "sub": "A diferença entre usar um aplicativo e construir com o modelo, o método que torna o erro barato, a menor coisa útil para começar, o AI Studio e sua condição de uso, a chave de API e o que são tokens.",
+   "capitulos": "Capítulos 30, 31 e 32",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "Agentes por dentro",
+   "sub": "O que faz de um agente um agente, por que ele custa caro e erra de um jeito próprio, o que são MCP, A2A e ADK, como desenhar as permissões antes de ele existir e os quatro conceitos do Antigravity.",
+   "capitulos": "Capítulos 34 e 35",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "O que dura e onde roda",
+   "sub": "As ferramentas que sumiram entre o plano e a redação do livro, as perguntas de dependência antes de construir, quando rodar um modelo aberto no próprio computador e como separar pesquisa de produto nas manchetes do DeepMind.",
+   "capitulos": "Capítulos 33, 36 e 38",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "Dois projetos reais: campanha e automação",
+   "sub": "Uma campanha de duas semanas que responde à objeção do cliente e o desenho de uma automação responsável, os dois a partir de uma empresa real de hospedagem por temporada, com o mesmo método: olhar a realidade antes de pedir à máquina.",
+   "capitulos": "Capítulos 41 e 45",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 25,
+   "titulo": "Seu plano de trinta dias",
+   "sub": "As três ideias que ficam quando as ferramentas mudam, o plano de quatro semanas com uma entrega por semana, os dias de revisão e as perguntas que continuam valendo quando os nomes dos produtos mudarem.",
+   "capitulos": "Capítulos 47, 48 e 50",
+   "gravada": true,
+   "tem_artigo": true
+  }
+ ]
+}
