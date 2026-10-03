@@ -52,7 +52,8 @@ function logRun(userId, agente, { modelo, usage, status, detalhe }) {
 
 function limiteDia() {
   const cfg = repo.Config.obter('ia', {});
-  return Math.max(1, parseInt(cfg.consultas_dia, 10) || 30);
+  // 5/dia por aluno (assinante e cortesia igual) — decisão do Augusto em 03/10/2026, para medir com o tempo
+  return Math.max(1, parseInt(cfg.consultas_dia, 10) || 5);
 }
 function usadasHoje(userId) {
   return db.prepare("SELECT COUNT(*) n FROM ai_usage_logs WHERE user_id = ? AND quando >= ? AND status = 'ok'")
@@ -61,7 +62,7 @@ function usadasHoje(userId) {
 
 async function executar(userId, agente, prompt) {
   if (!ativo()) throw new Error('IA indisponível: ANTHROPIC_API_KEY não configurada no servidor.');
-  if (usadasHoje(userId) >= limiteDia()) { const e = new Error(`Limite diário de IA atingido (${limiteDia()} consultas). Tente amanhã.`); e.status = 429; throw e; }
+  if (usadasHoje(userId) >= limiteDia()) { const e = new Error(`Você atingiu o limite da sua assinatura: ${limiteDia()} perguntas por dia ao Tutor e às ferramentas de IA. A contagem recomeça amanhã (às 21h, horário de Brasília). Enquanto isso, o quiz, o caderno, os prompts e o material da aula continuam liberados.`); e.status = 429; throw e; }
   if (_mock) { const r = await _mock({ agente, prompt }); logRun(userId, agente, { modelo: 'mock', usage: r.usage || { input_tokens: 10, output_tokens: 10 }, status: 'ok' }); return r.json; }
   if (!_client) { const Anthropic = require('@anthropic-ai/sdk'); _client = new Anthropic(); }
   let ultimoErro = null;

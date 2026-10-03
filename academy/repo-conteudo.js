@@ -1009,10 +1009,10 @@ const SalesPages = {
     const limpo = {
       headline: s(secoes.headline, 200), subheadline: s(secoes.subheadline, 300),
       video_url: s(secoes.video_url, 300), promessa: s(secoes.promessa, 1000),
-      beneficios: lista(secoes.beneficios, 12).map(x => s(x, 200)).filter(Boolean),
+      beneficios: lista(secoes.beneficios, 12).map(x => s(x, 300)).filter(Boolean),
       para_quem: lista(secoes.para_quem, 10).map(x => s(x, 200)).filter(Boolean),
       aprender: lista(secoes.aprender, 15).map(x => s(x, 200)).filter(Boolean),
-      bonus: lista(secoes.bonus, 8).map(x => s(x, 200)).filter(Boolean),
+      bonus: lista(secoes.bonus, 8).map(x => s(x, 300)).filter(Boolean),
       depoimentos: lista(secoes.depoimentos, 10).map(x => ({ nome: s(x && x.nome, 80), texto: s(x && x.texto, 500) })).filter(x => x.texto),
       faq: lista(secoes.faq, 12).map(x => ({ p: s(x && x.p, 200), r: s(x && x.r, 800) })).filter(x => x.p && x.r),
       garantia_texto: s(secoes.garantia_texto, 500),

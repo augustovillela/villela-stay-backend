@@ -1129,7 +1129,9 @@ async function main() {
   });
   await t('status da IA + estruturar curso e APLICAR cria módulos/aulas rascunho', async () => {
     const st = await req('GET', '/academy/api/ia/status', { jar: 'maria' });
-    assert.equal(st.st, 200); assert.ok(st.json.ativo); assert.equal(st.json.limite_dia, 30);
+    assert.equal(st.st, 200); assert.ok(st.json.ativo); assert.equal(st.json.limite_dia, 5, 'padrão de 5/dia (decisão de 03/10/2026)');
+    // a bateria faz mais de 5 chamadas de IA com o mesmo usuário: sobe a cota só dentro do teste
+    await req('POST', '/staff/api/academy/config', { corpo: { chave: 'ia', valor: { consultas_dia: 30 } } });
     const novo = await req('POST', '/academy/api/produtor/produtos', { jar: 'maria', corpo: { titulo: 'Curso via IA', tipo: 'curso', preco_centavos: 5000 } });
     const nid = novo.json.produto.id;
     const r = await req('POST', '/academy/api/ia/produtor/estruturar', { jar: 'maria', corpo: { product_id: nid, tema: 'gestão' } });
