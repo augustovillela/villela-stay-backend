@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-02T15:31:53.829Z",
+  "coletadoEm": "2026-10-03T09:33:22.158Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -198,6 +198,14 @@
     }
   ],
   "cursos": [
+    {
+      "slug": "google-ai-na-pratica",
+      "titulo": "Google AI na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF — com prompts e checklists — para usar o Gemini e o ecossistema de inteligência artificial do Google com método, no dia a dia, no estudo e no trabalho. Baseado no livro do autor.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/aurLkdbxXuyH?v=QQpT4gWDckmD",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/google-ai-na-pratica"
+    },
     {
       "slug": "a-segunda-onda-da-ia",
       "titulo": "A Segunda Onda da IA",

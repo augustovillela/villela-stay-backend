@@ -3287,7 +3287,7 @@ ${blocos}
         'How to move past improvised use of ChatGPT, Claude and Gemini and get to prompts that work, knowledge organised into projects, GPTs and Skills, agents that run a task end to end, automations with Make and n8n, MCP, connectors and APIs — with token and credit economy. It is the subject of most of what we publish, because it is what reorganised our own company.',
         'Cómo salir del uso improvisado de ChatGPT, Claude y Gemini y llegar a prompts que funcionan, organización del conocimiento en proyectos, GPTs y Skills, agentes que ejecutan tareas de principio a fin, automatizaciones con Make y n8n, MCP, conectores y APIs — con ahorro de tokens y créditos. Es el tema de la mayor parte de lo que publicamos.'),
       livros: ['chatgpt-ai-na-pratica', 'chatgpt-ai-na-pratica-guia-visual', 'claude-ai-na-pratica', 'google-ai-na-pratica', 'como-ser-superprodutivo-com-ia'],
-      cursos: ['chatgpt-ai-na-pratica', 'claude-ai-na-pratica', 'a-segunda-onda-da-ia'], sistemas: [] },
+      cursos: ['chatgpt-ai-na-pratica', 'claude-ai-na-pratica', 'google-ai-na-pratica', 'a-segunda-onda-da-ia'], sistemas: [] },
 
     { id: 'ia-juridica',
       nome: t('IA para advogados e escritórios de advocacia', 'AI for lawyers and law firms', 'IA para abogados y despachos'),
