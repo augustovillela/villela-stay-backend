@@ -62,7 +62,10 @@ function usadasHoje(userId) {
 
 async function executar(userId, agente, prompt) {
   if (!ativo()) throw new Error('IA indisponível: ANTHROPIC_API_KEY não configurada no servidor.');
-  if (usadasHoje(userId) >= limiteDia()) { const e = new Error(`Você atingiu o limite da sua assinatura: ${limiteDia()} perguntas por dia ao Tutor e às ferramentas de IA. A contagem recomeça amanhã (às 21h, horário de Brasília). Enquanto isso, o quiz, o caderno, os prompts e o material da aula continuam liberados.`); e.status = 429; throw e; }
+  if (usadasHoje(userId) >= limiteDia()) {
+    // registra o BLOQUEIO (sem custo) para o relatório de uso medir quem bate no limite; usadasHoje só conta 'ok'
+    logRun(userId, agente, { modelo: '-', status: 'limite', detalhe: `limite ${limiteDia()}/dia` });
+    const e = new Error(`Você atingiu o limite da sua assinatura: ${limiteDia()} perguntas por dia ao Tutor e às ferramentas de IA. A contagem recomeça amanhã (às 21h, horário de Brasília). Enquanto isso, o quiz, o caderno, os prompts e o material da aula continuam liberados.`); e.status = 429; throw e; }
   if (_mock) { const r = await _mock({ agente, prompt }); logRun(userId, agente, { modelo: 'mock', usage: r.usage || { input_tokens: 10, output_tokens: 10 }, status: 'ok' }); return r.json; }
   if (!_client) { const Anthropic = require('@anthropic-ai/sdk'); _client = new Anthropic(); }
   let ultimoErro = null;
@@ -212,6 +215,34 @@ const Logs = {
   custoTotal() {
     const r = db.prepare('SELECT COALESCE(SUM(custo_centavos_usd),0) c, COUNT(*) n FROM ai_usage_logs').get();
     return { consultas: r.n, custo_centavos_usd: r.c };
+  },
+  // Relatório por aluno (pedido do Augusto em 03/10/2026, para decidir o limite diário com números):
+  // perguntas atendidas, bloqueios pelo limite, dias em que bateu no limite, tokens e custo em USD
+  // calculado dos tokens (o custo_centavos_usd gravado arredonda cada chamada para centavos).
+  porUsuario(dias) {
+    const d = Math.min(Math.max(parseInt(dias, 10) || 30, 1), 366);
+    const desde = new Date(Date.now() - d * 864e5).toISOString();
+    const linhas = db.prepare(`SELECT l.user_id, u.nome, u.email, l.agente, l.modelo, l.status, l.input_tokens, l.output_tokens,
+        substr(l.quando, 1, 10) dia FROM ai_usage_logs l LEFT JOIN users u ON u.id = l.user_id WHERE l.quando >= ?`).all(desde);
+    const por = {};
+    for (const r of linhas) {
+      const k = r.user_id || '?';
+      const x = por[k] || (por[k] = { user_id: k, nome: r.nome || '', email: r.email || '', perguntas: 0, bloqueios: 0, erros: 0,
+        dias_ativos: new Set(), dias_no_limite: new Set(), input_tokens: 0, output_tokens: 0, custo_usd: 0, por_agente: {} });
+      if (r.status === 'ok') { x.perguntas++; x.dias_ativos.add(r.dia); x.por_agente[r.agente] = (x.por_agente[r.agente] || 0) + 1; }
+      else if (r.status === 'limite') { x.bloqueios++; x.dias_no_limite.add(r.dia); }
+      else x.erros++;
+      const p = PRECOS[r.modelo] || { in: 3, out: 15 };
+      x.input_tokens += r.input_tokens || 0; x.output_tokens += r.output_tokens || 0;
+      x.custo_usd += ((r.input_tokens || 0) * p.in + (r.output_tokens || 0) * p.out) / 1e6;
+    }
+    const alunos = Object.values(por).map(x => ({ ...x, dias_ativos: x.dias_ativos.size, dias_no_limite: x.dias_no_limite.size,
+      custo_usd: Math.round(x.custo_usd * 10000) / 10000 })).sort((a, b) => b.custo_usd - a.custo_usd);
+    const soma = (f) => alunos.reduce((t, a) => t + a[f], 0);
+    return { dias: d, desde, limite_dia: limiteDia(), alunos, total: {
+      alunos: alunos.length, perguntas: soma('perguntas'), bloqueios: soma('bloqueios'),
+      alunos_que_bateram_limite: alunos.filter(a => a.bloqueios > 0).length,
+      custo_usd: Math.round(soma('custo_usd') * 100) / 100 } };
   },
 };
 

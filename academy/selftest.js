@@ -1171,6 +1171,14 @@ async function main() {
     assert.equal((await req('POST', '/academy/api/ia/aluno/perguntar', { jar: 'ana', corpo: { product_id: prodId, pergunta: 'mais uma' } })).st, 200);
     const r = await req('POST', '/academy/api/ia/aluno/perguntar', { jar: 'ana', corpo: { product_id: prodId, pergunta: 'estourou?' } });
     assert.equal(r.st, 429);
+    assert.ok(/limite da sua assinatura/.test(r.json.erro || ''), 'o aviso ao aluno fala do limite da assinatura');
+    // o bloqueio fica registrado e aparece no relatório por aluno (sem custo)
+    const uso = await req('GET', '/staff/api/academy/ia-uso?dias=7');
+    assert.equal(uso.st, 200);
+    assert.equal(uso.json.limite_dia, 2);
+    const anaUso = uso.json.alunos.find(a => a.bloqueios > 0);
+    assert.ok(anaUso && anaUso.dias_no_limite === 1 && anaUso.perguntas >= 2, 'ana aparece com 1 dia no limite');
+    assert.ok(uso.json.total.alunos_que_bateram_limite >= 1);
     await req('POST', '/staff/api/academy/config', { corpo: { chave: 'ia', valor: { consultas_dia: 30 } } });
   });
 
