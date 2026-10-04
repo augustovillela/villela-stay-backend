@@ -1,0 +1,199 @@
+{
+ "titulo": "O Homem Essencial",
+ "subtitulo": "Caráter, domínio de si e o que realmente importa",
+ "total": 24,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "Quem você quer ser",
+   "sub": "O caráter como combate, não como lista de proibições: as quatro virtudes cardeais num bilhete de bolso, a virtude como hábito, os pequenos gestos, o cargo que tira a máscara, o patrimônio que ninguém confisca e a humildade que abre a porta para o resto.",
+   "capitulos": "Prólogo e Capítulo 1",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "Viver sem mentiras",
+   "sub": "A mentira resolve um problema momentâneo e cria uma dívida permanente com a verdade. As três frentes da verdade: não mentir, não viver uma vida emprestada e pensar por conta própria — com Soljenítsin, a dissonância cognitiva, a exceção da cortesia, Ivan Ilitch, Kierkegaard, Arendt e Mill.",
+   "capitulos": "Capítulo 2",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "A força do bom",
+   "sub": "Ser bom não é ser inofensivo. Primeiro forte, depois bom: a justa medida da raiva em Aristóteles, a grandeza de alma, a recusa de descer de Marco Aurélio, o limite sem culpa, a dignidade no silêncio, as brigas do seu tamanho e a generosidade que não cobra a volta.",
+   "capitulos": "Capítulo 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "Os dias iguais e os dez segundos",
+   "sub": "A disciplina constrói a casa, e o controle das emoções guarda a porta. A repetição que esculpe o cérebro, a motivação que vem depois da ação, o difícil que você escolhe; e, nos dez segundos, a demora de Sêneca, a ação oposta, a cabeça de Kipling e o sofrimento que só existe na imaginação.",
+   "capitulos": "Capítulos 4 e 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "A cidadela interior",
+   "sub": "A paz não é uma circunstância, é uma decisão. As duas colunas de Epicteto, a atenção como moeda que não se imprime, a temperança dos três balcões, o pêndulo do desejo e o exame noturno que fecha o dia.",
+   "capitulos": "Capítulo 6 (e o desejo e a temperança do Capítulo 5)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "O corpo que lhe foi confiado",
+   "sub": "O corpo é dádiva e dever, não vitrine. Juvenal no sentido original, o corpo confiado, as quatro descobertas da ciência — força, sono, sobriedade e a conversa entre mente e corpo — e a libertação de não haver segredo.",
+   "capitulos": "Capítulo 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "A mente é um jardim",
+   "sub": "Guarde a porta da mente, porque o que entra planta. O que você consome, o que diz a si mesmo e a quem dá ouvidos; o porteiro que confere o dono da frase; e a escola que nunca termina.",
+   "capitulos": "Capítulo 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "A mesa em que você se senta",
+   "sub": "A companhia não é cenário da vida, é causa. Quatro tradições que descobriram a mesma lei, o contágio em rede, podar sem desprezar, as três amizades de Aristóteles, a multidão que pede a sua consciência e o estudo de Harvard sobre os vínculos.",
+   "capitulos": "Capítulo 9",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "O não que preserva",
+   "sub": "Pertencer sem desaparecer: a fronteira entre o que é seu e o que é dos outros, a opinião alheia devolvida sem abrir, o falso self, a generosidade que vira tributo, o não como guardião do sim — e a diferença entre limite e muro.",
+   "capitulos": "Capítulo 10",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "Como tratar as pessoas",
+   "sub": "O caráter se vê em como você trata quem não pode fazer nada por você: a reciprocidade sem contabilidade, o teste do garçom, a conversa olho no olho, a firmeza calma, a discrição, a inveja que se vence trocando a régua e a gentileza como linguagem de segurança.",
+   "capitulos": "Capítulo 11 (+ “Seja luz” e “Respeito sem medo”, do capítulo 9)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "Quem forma alguém",
+   "sub": "O contrato silencioso de quem forma outra pessoa — filho, aluno, estagiário, time: prover, proteger e preparar; o sustento como piso e a presença como o que conta; o exemplo como único método; a expectativa que vira profecia; segurar e soltar; e honrar a própria origem.",
+   "capitulos": "Capítulo 12 + “honrar a origem”, do capítulo 13",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "A aliança administrada",
+   "sub": "O amor que dura não é um sentimento que acontece, é uma aliança que se administra: os quatro venenos que Gottman encontrou no laboratório, o reparo rápido, a escolha de quem caminha ao seu lado, o desejo que não descansa e os dois estranhos que decidem se traduzir.",
+   "capitulos": "Capítulo 13",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "Competência antes da paixão",
+   "sub": "A paixão não vem antes da competência, vem depois: mudar de rota não é fracassar, a excelência é constância entediante, o sistema segura os dias sem vontade, o foco virou a moeda mais valiosa — e o trabalho é virtude até virar templo.",
+   "capitulos": "Capítulo 14",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Dinheiro: servo, não senhor",
+   "sub": "O dinheiro é um servo excelente e um senhor terrível, e quem decide qual dos dois ele vai ser é você: a medida certa da riqueza, três armadilhas, as engrenagens que trabalham sozinhas, a defesa antes do ataque e a peneira contra a superstição. Conteúdo educacional, não recomendação de investimento.",
+   "capitulos": "Capítulo 15",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "Os dois lados da mesa",
+   "sub": "Quatro verdades do trabalho com pessoas: liderar é servir (sem falsa gentileza e sem crueldade), o jogo real por baixo do organograma, vender é servir e a confiança vem antes, e quem empreende carrega a incerteza dos outros. No fim, pelo que as pessoas pagam: resultado, status legítimo ou alívio.",
+   "capitulos": "Capítulo 16",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "Quando tudo der errado",
+   "sub": "Na adversidade real, antes do como, vem o porquê. O obstáculo como matéria-prima, o erro como informação, o justo que cai sete vezes, a pressão como privilégio, o ponto em vez do placar e os dois impostores de Kipling — e o limite honesto que nenhuma técnica atravessa.",
+   "capitulos": "Capítulo 17",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Pensar sem ser enganado",
+   "sub": "Aprender a pensar é atrasar o julgamento o tempo suficiente para ver. Com Olavo de Carvalho como guia — e sob a régua que ele mesmo ensinou —, as ferramentas contra o engano: informação, opinião e conhecimento, o “não sei” de Sócrates, a hierarquia dos saberes, as quatro perguntas, a linguagem, a discussão honesta, a inveja e a pergunta “a quem interessa?”.",
+   "capitulos": "Capítulo 19 (com trechos do capítulo 18)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "O homem e a cidade: liberdade e responsabilidade",
+   "sub": "A liberdade transfere a conta para o seu nome. Sartre, Fromm e Dostoiévski sobre o medo de ser livre; Sowell sobre a mentalidade de vítima e quem decide sem pagar; Acton, Reagan, Thatcher e Rand; e, na praça, o casaco do estádio, a tirania da maioria, a crítica ao socialismo com Hayek, a militância de dois pesos, Burke e a vítima no centro.",
+   "capitulos": "Capítulo 18 (núcleo) e capítulo 20",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "A mentira que contamos a nós mesmos",
+   "sub": "Libertação não é ausência de vínculos; é saída da mentira. O fingimento que engana o próprio ator, a verdade que liberta e dói, a última das liberdades de Frankl, o tamanho real das coisas, o perdão como quem solta a ponta da corrente — e a régua que separa pessoa, comportamento, ideia e política nos temas em que o nosso tempo aprendeu a mentir com elegância.",
+   "capitulos": "Capítulo 21",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "Hoje é o milagre",
+   "sub": "A felicidade adiada é uma armadilha com engrenagem interna. O futuro é uma ideia, o contentamento é habilidade treinável, a improbabilidade de existir, os luxos sem etiqueta, a gratidão que não é conformismo, os três “ainda bem” para o revés — e o filtro contra a gratidão de mercado.",
+   "capitulos": "Capítulo 22",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "Para que você foi feito",
+   "sub": "Duas perguntas que o mundo finge serem a mesma. Frankl e o porquê que sustenta o como, a vida como dom e não como acaso, o bem feito em segredo, Freud sentado à mesa e a peneira que separa o mistério legítimo do pseudomistério.",
+   "capitulos": "Capítulo 23",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "A morte como conselheira",
+   "sub": "Lembrar da morte para ordenar a vida: os dois velórios, Ivan Ilitch e a vida sem autoria, o memento mori de Sêneca e Marco Aurélio, o último homem de Nietzsche e o pêndulo de Schopenhauer — e por que o bom conselho é viver cada dia como um dos poucos, não como o último.",
+   "capitulos": "Capítulo 24",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "Grandes pensadores do nosso tempo",
+   "sub": "Contra a era da desonestidade intelectual, dois pensadores do nosso tempo: Olavo de Carvalho (a verdade como necessidade pessoal, os quatro discursos, a paralaxe cognitiva, a recusa da politização total) e Jordan Peterson (responsabilidade, significado, ordem e caos, as 12 regras). A mesma lição no centro: o seu juízo e a sua vida são responsabilidade sua.",
+   "capitulos": "Capítulo 25",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "O que fica",
+   "sub": "As duas contabilidades de uma vida, o legado como formação e não como herança, a vela que acende outra sem se apagar, o que a morte não leva e os oito conselhos que fecham o curso.",
+   "capitulos": "Capítulo 26 e Epílogo",
+   "gravada": true,
+   "tem_artigo": true
+  }
+ ]
+}

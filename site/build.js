@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v25'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v26'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -38,6 +38,8 @@ let GA_PATHS = [];                      // rotas da série Google AI na Prática
 let GA_LLMS = '';                       // seção da série Google AI na Prática no llms.txt
 let HO_PATHS = [];                      // rotas da série O Homem Contemporâneo (só PT)
 let HO_LLMS = '';                       // seção da série O Homem Contemporâneo no llms.txt
+let HE_PATHS = [];                      // rotas da série O Homem Essencial (só PT)
+let HE_LLMS = '';                       // seção da série O Homem Essencial no llms.txt
 //                       // seção da série ChatGPT no llms.txt
 // Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
@@ -3965,6 +3967,7 @@ let csArtigos = [];
 let soArtigos = [];
 let gaArtigos = [];
 let hoArtigos = [];
+let heArtigos = [];
 let capCss = '';
 const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
 const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
@@ -6093,6 +6096,287 @@ ${hoArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     console.log(`Blog O Homem Contemporâneo: hub + ${hoNoAr} de ${hoTotal} artigos + ${hoApoio.length} material(is) de apoio`);
   }
 
+  // ---- Série "O Homem Essencial" (curso animado de 24 aulas: caráter, domínio de si e o que realmente importa): mesmo padrão da série O Homem Contemporâneo ----
+  // Publicada em 04/10/2026 (autorização do Augusto). Livro e curso à venda: os anúncios alternam o livro
+  // (Livraria) e o curso (Academy), como na série Google AI. As convicções do autor (política, fé, autores
+  // citados) ficam como no livro, por decisão dele. O artigo.css é o mesmo das séries anteriores, todo sob .cap.
+  const HE_DIR = path.join(__dirname, 'content', 'o-homem-essencial');
+  const HE_LIVRO = 'https://livros.villelastay.com.br/livros/o-homem-essencial?utm_source=villelastay&utm_medium=blog-homem-essencial';
+  const HE_CURSO = 'https://academia.villelastay.com.br/academy/cursos/o-homem-essencial?utm_source=villelastay&utm_medium=blog-homem-essencial';
+  const heDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(HE_DIR)) {
+    const heCss = fs.readFileSync(path.join(HE_DIR, 'artigo.css'), 'utf8');
+    const heLe = n => JSON.parse(fs.readFileSync(path.join(HE_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const heGrade = heLe('grade.json');
+    let heFaq = {}, heApoio = [];
+    try { heFaq = heLe('faq.json'); } catch (e) { console.warn('[homem-essencial] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { heApoio = heLe('apoio.json'); } catch (e) { console.warn('[homem-essencial] sem apoio.json — hub sairá sem material de apoio'); }
+
+    heArtigos = fs.readdirSync(HE_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(HE_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[homem-essencial] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpoBruto = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
+      // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
+      const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
+        const tam = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+        if (tam(dentro) <= 9000) return m0;
+        const blocos = [];
+        for (const pedaco of dentro.split(/(?=<h3>)/)) {
+          const ult = blocos[blocos.length - 1];
+          if (ult !== undefined && tam(ult) + tam(pedaco) <= 7000) blocos[blocos.length - 1] = ult + pedaco;
+          else blocos.push(pedaco);
+        }
+        return blocos.map((b, k) => `<section class="apoio"><h2>Material de apoio${k ? ' (continuação)' : ''}</h2>${b}</section>`).join(String.fromCharCode(10));
+      });
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? heDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `homem-essencial-${chave}`;
+      return {
+        ...meta, chave, slug,
+        tituloTexto: heDestexto(meta.titulo), subtituloTexto: heDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => heDestexto(t)),
+        faq: heFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const heComArtigo = heGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of heArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[homem-essencial] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!heComArtigo.includes(a.n)) throw new Error(`[homem-essencial] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (heArtigos.length !== heComArtigo.length) throw new Error(`[homem-essencial] grade diz ${heComArtigo.length} aulas com artigo, mas há ${heArtigos.length} artigos exportados`);
+    const heSemFaq = heArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (heSemFaq.length) console.warn(`[homem-essencial] SEM perguntas frequentes: ${heSemFaq.join(', ')} — escrever em content/o-homem-essencial/faq.json`);
+
+    const heAnuncio = (qual, min = false) => qual === 'livro'
+      ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${HE_LIVRO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">📘</span>
+          <span class="cap-ad-txt"><strong>Livro O Homem Essencial</strong><span>Uma carta de pai para os filhos: caráter, domínio de si e o que realmente importa, com os grandes pensadores pelo nome. Na Livraria Villela.</span></span>
+          <span class="cap-ad-btn">Ver na Livraria →</span></a>`
+      : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${HE_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso O Homem Essencial — 24 videoaulas animadas</strong><span>Caráter, domínio de si e sentido: cada aula em vídeo, com o artigo em PDF e práticas de 21 dias para aplicar na sua vida, na Villela Academy.</span></span>
+          <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
+    const HE_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(heAnuncio('livro', true))},${JSON.stringify(heAnuncio('curso', true))}];`);
+    const HE_CSS = `${heCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}`;
+
+    const heTotal = heGrade.total;
+    const heLinhaGrade = (aula, atual) => {
+      const art = heArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'homem-essencial'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'homem-essencial', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of heArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = heArtigos[iArt - 1], prox = heArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-04', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/homem-essencial/#serie` },
+        articleSection: 'O Homem Essencial', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'O Homem Essencial — Uma carta de pai para os filhos', author: { '@type': 'Person', name: 'Augusto Villela' }, url: HE_LIVRO.split('?')[0] },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'O Homem Essencial', item: `${SITE_URL}/homem-essencial/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/homem-essencial/">O Homem Essencial</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${heTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${heAnuncio('livro', true)}${heAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar — a aula em vídeo, o artigo em PDF e as práticas ficam no curso.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o texto completo está no <a href="${HE_LIVRO}">livro</a> e a aula em vídeo, no <a href="${HE_CURSO}">curso O Homem Essencial</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${heAnuncio('curso')}${heAnuncio('livro')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/homem-essencial/"><span class="rot">☰ Índice</span><span class="tit">${heArtigos.length === 1 ? 'O artigo publicado' : `Os ${heArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${heGrade.aulas.map(g => heLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>O Homem Essencial</strong>, de Augusto Villela.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog O Homem Essencial`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${HE_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${HE_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of heApoio) {
+      const cam = `/homem-essencial/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/homem-essencial/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'homem-essencial', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — O Homem Essencial | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série O Homem Essencial, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>O Homem Essencial</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/homem-essencial/">O Homem Essencial</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${heAnuncio('livro')}${heAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${HE_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /homem-essencial/
+    const heCards = heArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado">artigo no ar · videoaula em produção</span>'}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const heApoioCards = heApoio.map(d => `
+  <a class="cap-card" href="/homem-essencial/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const heNoAr = heArtigos.length;
+    const heHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/homem-essencial/#serie`,
+      name: 'O Homem Essencial — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: heArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `O Homem Essencial — ${heNoAr} ${heNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: heNoAr,
+      itemListElement: heArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'homem-essencial', 'index.html'), layout(
+      'O Homem Essencial: a série do curso | Villela Stay',
+      `A série O Homem Essencial, de Augusto Villela: caráter, domínio de si e o que realmente importa — as virtudes, a verdade, a força do bom, disciplina, corpo e mente, amizades, limites, como tratar as pessoas, família, trabalho, dinheiro, adversidade, pensamento crítico, a cidade, propósito, a morte e o legado. ${heNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>O Homem Essencial <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Caráter, domínio de si e o que realmente importa</span></h1>
+    <p>Os grandes pensadores, pelo nome, a serviço de uma vida com caráter. São ${heTotal} artigos, um para cada videoaula do curso. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>O Homem Essencial</span></nav>
+  <div class="cap-faixa">${heAnuncio('livro')}${heAnuncio('curso')}</div>
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${heTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${heGrade.aulas.map(g => heLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${heCards}</div>
+  ${heApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${heApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${heAnuncio('curso')}${heAnuncio('livro')}</div>
+</div>`,
+      { caminho: '/homem-essencial/', semIdiomas: true, extraHead: `<style>${HE_CSS}</style>` + heHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    HE_PATHS = ['/homem-essencial/', ...heArtigos.map(a => a.caminho), ...heApoio.map(d => `/homem-essencial/apoio/${d.chave}.html`)];
+    HE_LLMS = `## Blog: O Homem Essencial (${heNoAr} artigos, em português)
+
+Série do livro e do curso *O Homem Essencial — Uma carta de pai para os filhos*, de Augusto Villela:
+caráter, domínio de si e o que realmente importa, com os grandes pensadores citados pelo nome —
+as quatro virtudes cardeais, viver sem mentiras, a força do bom, disciplina e rotina, a cidadela
+interior, o corpo, a mente, as amizades, o não que preserva, como tratar as pessoas, quem forma
+alguém, a aliança do casamento, competência antes da paixão, dinheiro como servo, os dois lados da
+mesa, a adversidade, pensar sem ser enganado, o homem e a cidade, o autoengano, o presente, o
+propósito, a morte como conselheira, pensadores do nosso tempo e o legado. A série expõe as
+convicções do autor (morais, políticas e religiosas) como estão no livro.
+Índice da série: ${SITE_URL}/homem-essencial/
+Livro: ${HE_LIVRO.split('?')[0]} · Curso on-line (24 videoaulas): ${HE_CURSO.split('?')[0]}
+
+${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog O Homem Essencial: hub + ${heNoAr} de ${heTotal} artigos + ${heApoio.length} material(is) de apoio`);
+  }
+
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
     ...['01-central-atualizacao-normativa.html', '02-diretorio-pesquisa-juridica.html', '03-atualizacoes-tecnologicas.html'].map(f => `/claude-juridico/recursos/${f}`)];
   // llms.txt: o assistente que "lê e não renderiza" recebe título + resumo de cada artigo.
@@ -6235,6 +6519,18 @@ const hoCardsHub = LANG !== 'pt' || !hoArtigos.length ? '' : `
     </div>
   </a>`;
 
+// Série O Homem Essencial (caráter e vida interior). Card com a capa do curso.
+const heCardsHub = LANG !== 'pt' || !heArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/homem-essencial/">
+    <div class="blog-card-img">${img('/blog-img/o-homem-essencial-1.jpg', { alt: 'Capa do curso O Homem Essencial — caráter, domínio de si e sentido: o título em letras brancas e douradas sobre fundo azul-marinho, ao lado da capa do livro com moldura dourada', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">⚖️ Série · Caráter e vida interior</span>
+      <h3>O Homem Essencial</h3>
+      <p>Caráter, domínio de si e o que realmente importa: as virtudes, a verdade, a força do bom, o corpo e a mente, as pessoas, o trabalho, o dinheiro, a cidade e a morte como conselheira — com os grandes pensadores pelo nome.</p>
+      <span class="blog-card-leia">Ver os ${heArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
 // ---- busca do blog ----
 // O hub mostra 16 cards, mas o blog já tem quase cem textos: os 13 do Diário e os das três
 // séries, que moram nos hubs próprios. Procurar só nos cards seria inútil — o índice cobre
@@ -6251,6 +6547,7 @@ const buscaItens = [
     ...soArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🌊 A Segunda Onda da IA', u: a.caminho, n: `Aula ${a.n}` })),
     ...gaArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '✨ Google AI na Prática', u: a.caminho, n: `Aula ${a.n}` })),
     ...hoArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🧭 O Homem Contemporâneo', u: a.caminho, n: `Aula ${a.n}` })),
+    ...heArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '⚖️ O Homem Essencial', u: a.caminho, n: `Aula ${a.n}` })),
   ] : []),
 ];
 
@@ -6367,6 +6664,7 @@ const blogLd = {
         ...(soArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/segunda-onda-da-ia/#serie`, name: 'A Segunda Onda da IA — a série', url: `${SITE_URL}/segunda-onda-da-ia/` }] : []),
         ...(gaArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/google-ai/#serie`, name: 'Google AI na Prática — a série', url: `${SITE_URL}/google-ai/` }] : []),
         ...(hoArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/homem-contemporaneo/#serie`, name: 'O Homem Contemporâneo — a série', url: `${SITE_URL}/homem-contemporaneo/` }] : []),
+        ...(heArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/homem-essencial/#serie`, name: 'O Homem Essencial — a série', url: `${SITE_URL}/homem-essencial/` }] : []),
       ]
     : undefined,
 };
@@ -6387,7 +6685,7 @@ const blogHub = layout(
 </section>
 ${buscaHtml}
 <section class="grade-wrap">
-  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${gaCardsHub}${hoCardsHub}${blogCardsHub}</div>
+  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${gaCardsHub}${hoCardsHub}${heCardsHub}${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
@@ -6820,7 +7118,7 @@ const SALTO = String.fromCharCode(10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
-${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${GA_PATHS.length ? SALTO : ''}${GA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/google-ai/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HO_PATHS.length ? SALTO : ''}${HO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-contemporaneo/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
+${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${GA_PATHS.length ? SALTO : ''}${GA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/google-ai/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HO_PATHS.length ? SALTO : ''}${HO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-contemporaneo/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HE_PATHS.length ? SALTO : ''}${HE_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-essencial/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 
@@ -6924,6 +7222,7 @@ ${CS_LLMS}
 ${SO_LLMS}
 ${GA_LLMS}
 ${HO_LLMS}
+${HE_LLMS}
 ## Livros e cursos do autor
 
 Vitrine conjunta dos três acervos (livros, cursos e sistemas), com links diretos
