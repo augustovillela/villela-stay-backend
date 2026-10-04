@@ -3394,7 +3394,7 @@ ${blocos}
        'Yes. Every book in the bookstore has a free preview on its own page, and the first lesson of each Academy course is open.',
        'Sí. Cada libro de la librería tiene una muestra para hojear en su propia página, y la primera clase de cada curso de la Academy está abierta.')],
     [t('Os cursos têm mensalidade?', 'Do the courses have a monthly fee?', '¿Los cursos tienen mensualidad?'),
-     t('Não. O curso é compra única, com acesso vitalício ao conteúdo e às atualizações da mesma edição. Quem cobra assinatura mensal são os sistemas de gestão, que é outra coisa.',
+     t('Não. O curso é compra única, com acesso de 1 ano a partir da compra, incluindo as atualizações publicadas nesse período. Quem cobra assinatura mensal são os sistemas de gestão, que é outra coisa.',
        'No. A course is a one-time purchase with lifetime access to the content and to updates of the same edition. The monthly subscription applies to the management software, which is a different thing.',
        'No. El curso es compra única, con acceso de por vida al contenido y a las actualizaciones de la misma edición. La suscripción mensual es de los sistemas de gestión, que es otra cosa.')],
     [t('Os sistemas têm teste grátis?', 'Is there a free trial for the software?', '¿Los sistemas tienen prueba gratis?'),
@@ -3528,7 +3528,7 @@ ${blocos}
              'The video courses, born from the books',
              'Los cursos en vídeo, nacidos de los libros')}</h2>
     <p class="tx-sub">${t(
-      'Cada aula tem videoaula, artigo em PDF, apresentação e um resumo visual de uma página. Compra única, acesso vitalício, sem mensalidade — e a primeira aula de cada curso é aberta para você conferir antes.',
+      'Cada aula tem videoaula, artigo em PDF, apresentação e um resumo visual de uma página. Compra única, acesso de 1 ano, sem mensalidade — e a primeira aula de cada curso é aberta para você conferir antes.',
       'Every lesson has a video, a PDF article, the slide deck and a one-page visual summary. One-time purchase, lifetime access, no subscription — and the first lesson of each course is open so you can check before buying.',
       'Cada clase tiene videoclase, artículo en PDF, presentación y un resumen visual de una página. Compra única, acceso de por vida, sin mensualidad — y la primera clase de cada curso está abierta para que la veas antes.')}</p>
     <div class="tx-grade-cursos">${blocosCursos}</div>
@@ -7236,7 +7236,7 @@ ${CATALOGO.livros.map(b => `- [${b.titulo}](${b.url}): ${cortar(b.resumo || b.su
 
 Cursos em vídeo — ${CATALOGO.cursos.length} cursos na Villela Academy
 (https://academia.villelastay.com.br/academy/marketplace), compra única, acesso
-vitalício, com videoaula, artigo em PDF e apresentação de cada aula:
+de 1 ano, com videoaula, artigo em PDF e apresentação de cada aula:
 
 ${CATALOGO.cursos.map(c => `- [${c.titulo}](${c.url}): ${cortar(c.resumo, 260)}` +
   (c.preco ? ` R$ ${(c.preco / 100).toFixed(2).replace('.', ',')}.` : '')).join('\n')}

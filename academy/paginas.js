@@ -101,7 +101,7 @@ function landingHTML() {
     <div class="hero"><div class="wrap">
       <span class="badge">Escola online do Grupo Villela Stay</span>
       <h1>Formação profissional que cabe na sua semana.</h1>
-      <p><b>Aprenda, aplique e transforme</b> — cursos com aula em vídeo, artigo em PDF e material para usar no trabalho. Com certificado de validação pública e acesso vitalício.</p>
+      <p><b>Aprenda, aplique e transforme</b> — cursos com aula em vídeo, artigo em PDF e material para usar no trabalho. Com certificado de validação pública e acesso de 1 ano.</p>
       <p style="margin-top:26px"><a class="btn" href="#cursos">Ver os cursos</a>
       &nbsp;<a class="btn g" href="/academy/app#cadastro">Criar conta grátis</a>
       &nbsp;<a class="btn o" href="/academy/app">Já sou aluno</a></p>
@@ -361,7 +361,7 @@ function cursoHTML(slug) {
   if (resumo.total_materiais) inclui.push(['baixar', `${resumo.total_materiais} materiais para baixar`]);
   inclui.push(['chapeu', 'Certificado com validação pública']);
   if (gote.ativo) inclui.push(['relogio', `${lib.promessa(gote)}, a partir da sua matrícula`]);
-  inclui.push(['relogio', ehClube ? 'Acesso enquanto a assinatura estiver ativa' : 'Acesso vitalício, no computador e no celular']);
+  inclui.push(['relogio', ehClube ? 'Acesso enquanto a assinatura estiver ativa' : 'Acesso por 1 ano, no computador e no celular']);
   if (p.garantia_dias) inclui.push(['escudo', `Garantia de ${p.garantia_dias} dias`]);
 
   const chips = [
