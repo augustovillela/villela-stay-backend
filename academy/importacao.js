@@ -257,7 +257,7 @@ async function importarCurso(dados = {}, { garantirProdutor = false, quem = 'imp
       modulos: arvore.length,
       aulas: arvore.reduce((n, m) => n + m.aulas.length, 0),
       aulas_degustacao: arvore.reduce((n, m) => n + m.aulas.filter(a => a.gratuita).length, 0),
-      duracao_total_min: Math.round(arvore.reduce((n, m) => n + m.aulas.reduce((x, a) => x + (a.duracao_seg || 0), 0), 0) / 60),
+      duracao_total_min: Math.round(arvore.reduce((n, m) => n + m.aulas.reduce((x, a) => x + ct.duracaoDeVideo(a), 0), 0) / 60), // só vídeo
       status: final.status,
     },
     estrutura: arvore.map(m => ({ titulo: m.titulo, ordem: m.ordem, aulas: m.aulas.length })),

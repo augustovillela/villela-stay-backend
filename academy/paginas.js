@@ -173,7 +173,7 @@ function appHTML() {
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy"><div class="cx">
     <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${marca({ escuro: false, altura: 30 })} <span class="tag">painel</span></h2>
     <div id="app"><p class="sub">Carregando…</p></div></div>
-    <script src="/academy/jornada.js?v=2"></script><script src="/academy/ecossistema.js?v=3"></script><script src="/academy/aluno.js?v=7"></script><script src="/academy/app.js?v=10"></script><script>bootAcademy();</script><script src="/academy/comunicados.js" data-cor="#D97706" data-sino="nao" defer></script></body></html>`;
+    <script src="/academy/jornada.js?v=3"></script><script src="/academy/ecossistema.js?v=3"></script><script src="/academy/aluno.js?v=8"></script><script src="/academy/app.js?v=10"></script><script>bootAcademy();</script><script src="/academy/comunicados.js" data-cor="#D97706" data-sino="nao" defer></script></body></html>`;
 }
 
 // ==================== FASE 3 — vitrine pública (SEO/OG) ====================
@@ -408,7 +408,7 @@ function cursoHTML(slug) {
         <span class="qt">${m.aulas.length} conteúdo${m.aulas.length > 1 ? 's' : ''}${m.duracao_seg ? ' · ' + durSeg(m.duracao_seg) : ''}</span></summary>
       <div class="aulas">${m.aulas.map(a => `<div class="aula">${svgI(ICO_AULA[a.tipo] || 'doc', 17)}
         <span>${esc(a.titulo)}${a.materiais ? `<span class="pv-fino"> · ${a.materiais} ${a.materiais > 1 ? 'materiais' : 'material'}</span>` : ''}${a.gratuita ? '<span class="free">degustação grátis</span>' : ''}</span>
-        ${a.duracao_seg ? `<span class="dur">${durSeg(a.duracao_seg)}</span>` : ''}</div>`).join('')}</div>
+        ${a.duracao_seg && a.tipo === 'video' ? `<span class="dur">${durSeg(a.duracao_seg)}</span>` : ''}</div>`).join('')}</div>
     </details>`).join('')}</div>` : '';
 
   const depoimentos = (sp.depoimentos || []).concat(reviews.map(r => ({ nome: r.nome, texto: r.texto, nota: r.nota })));

@@ -215,7 +215,8 @@
     function pintarEstudio() {
       var d = C.d, p = d.produto, pr = d.progresso || { pct: 0, concluidas: 0, total_aulas: 0 };
       var totalSeg = 0;
-      C.aulas.forEach(function (x) { totalSeg += Number(x.a.duracao_seg || 0); });
+      // só vídeo conta (mesma regra de Marketplace.resumoConteudo): PDF/texto/áudio não somam
+      C.aulas.forEach(function (x) { if (x.a.tipo === 'video') totalSeg += Number(x.a.duracao_seg || 0); });
       var h = '<div class="al">' +
         '<a href="#" class="al-volta" id="al-volta">' + ico('esq', 16) + ' Minha biblioteca</a>' +
         '<div class="est-cab"><p class="al-rotulo">' + esc(D.TIPOS_PROD[p.tipo] ? D.TIPOS_PROD[p.tipo].replace(/^\S+\s/, '') : p.tipo) + '</p>' +
@@ -279,7 +280,7 @@
               (FMT[a.formato] ? '<span class="marca fmt">' + FMT[a.formato] + '</span>' : '') +
               (a.trava && a.trava.rotulo ? '<span class="marca trava">' + esc(a.trava.rotulo) + '</span>' : '') +
               ((a.materiais || []).length ? ' <span class="al-fino">· ' + a.materiais.length + (a.materiais.length > 1 ? ' materiais' : ' material') + '</span>' : '') +
-              '</span>' + (a.duracao_seg ? '<span class="dur">' + dur(a.duracao_seg) + '</span>' : '') + '</button>' +
+              '</span>' + (a.duracao_seg && a.tipo === 'video' ? '<span class="dur">' + dur(a.duracao_seg) + '</span>' : '') + '</button>' +
               (a.liberada && (a.materiais || []).length ? '<div class="aula-mats">' + a.materiais.map(function (m, km) {
                 var t = icoMaterial(m);
                 return '<button class="aula-mat" data-i="' + k + '" data-m="' + km + '" title="' + esc(m.nome) + '">' + ico(t[1], 14) +

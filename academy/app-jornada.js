@@ -383,6 +383,7 @@
     }
 
     // ================= FERRAMENTAS: Prompt Builder e gerador de agentes =================
+    // as chaves (1º item) espelham academy/ferramentas.js (CAMPOS) — o curso troca só o 3º item (exemplo)
     var PB = [
       ['funcao', 'Função — quem a IA deve ser', 'Ex.: copywriter de hospedagens de luxo; assistente jurídico de um escritório de família'],
       ['objetivo', 'Objetivo — o que você quer', 'Ex.: criar um anúncio para WhatsApp que gere pedidos de orçamento'],
@@ -446,11 +447,15 @@
     }
     function ferramenta(alvo, tipo) {
       var campos = tipo === 'agente' ? AG : PB, montar = tipo === 'agente' ? montarAgente : montarPrompt;
+      // exemplos do CURSO (products.config.ferramentas, via painel): trocam só o
+      // texto de exemplo do campo — campos, prompt montado e IA não mudam
+      var exCurso = ((J.painel || {}).ferramentas || {})[tipo === 'agente' ? 'agente' : 'prompt'] || {};
+      var dica = function (c) { return typeof exCurso[c[0]] === 'string' && exCurso[c[0]] ? exCurso[c[0]] : c[2]; };
       var salvo = {}; try { salvo = JSON.parse(pref(tipo) || '{}') || {}; } catch (e) { salvo = {}; }
       alvo.innerHTML = '<div class="jr-ferr"><div class="jr-form">' + campos.map(function (c) {
         var longo = /contexto|regras|exemplo|fontes|rotina|categorias|alertas|confirmar|nunca/.test(c[0]);
-        return '<label><b>' + esc(c[1]) + '</b>' + (longo ? '<textarea rows="3" data-c="' + c[0] + '" placeholder="' + esc(c[2]) + '">' + esc(salvo[c[0]] || '') + '</textarea>'
-          : '<input data-c="' + c[0] + '" placeholder="' + esc(c[2]) + '" value="' + esc(salvo[c[0]] || '') + '">') + '</label>';
+        return '<label><b>' + esc(c[1]) + '</b>' + (longo ? '<textarea rows="3" data-c="' + c[0] + '" placeholder="' + esc(dica(c)) + '">' + esc(salvo[c[0]] || '') + '</textarea>'
+          : '<input data-c="' + c[0] + '" placeholder="' + esc(dica(c)) + '" value="' + esc(salvo[c[0]] || '') + '">') + '</label>';
       }).join('') + '<button class="al-bt peq fan" id="jr-f-limpa">Limpar campos</button></div>' +
         '<div class="jr-saida"><div class="cd-prompt-cab"><b>' + (tipo === 'agente' ? 'Prompt master do agente' : 'Seu prompt') + '</b>' +
         '<span><button class="al-bt peq fan" id="jr-f-copia">Copiar</button> <button class="al-bt peq" id="jr-f-ia">✨ Lapidar com IA</button></span></div>' +

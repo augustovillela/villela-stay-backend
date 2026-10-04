@@ -576,6 +576,8 @@ function painel(usuario, produto) {
     desafio: diasTot ? { total: diasTot, feitos: diasFeitos, titulo: secs.desafio.dados.titulo } : null,
     simulacoes: sims.length ? { total: sims.length, feitas: simFeitas } : null,
     recursos: secs.recursos ? { total: secs.recursos.dados.itens.length } : null,
+    // exemplos (placeholders) das Ferramentas deste curso — {} usa o padrão do app
+    ferramentas: require('./ferramentas').doProduto(produto),
   };
 }
 

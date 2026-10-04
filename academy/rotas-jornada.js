@@ -10,6 +10,7 @@ const ct = require('./repo-conteudo');
 const ia = require('./ia');
 const jr = require('./jornada');
 const imp = require('./importacao');
+const fe = require('./ferramentas');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const h = (fn) => (req, res) => {
@@ -123,6 +124,24 @@ function registrarRotasJornadaStaff(app, { requirePublishOrAdmin, requireAuth, r
     const r = jr.definirStatus(produto, b);
     aud(req, 'jornada.status', produto.id, JSON.stringify(r));
     res.json({ ok: true, alterados: r, resumo: jr.resumo(produto.id) });
+  }));
+  // ---- exemplos das Ferramentas (Prompt Builder e gerador de agentes) POR CURSO ----
+  // Grava SÓ products.config.ferramentas (o resto do config — gotejamento — fica).
+  // Corpo: { produtor_email, produto_id, ferramentas: { prompt: {...}, agente: {...} } | null }.
+  // O GET devolve exatamente o objeto que o painel da jornada entrega ao app.
+  app.post('/staff/api/academy/ferramentas', ...PA, h((req, res) => {
+    const b = req.body || {};
+    const { produto } = imp.produtorDono(b);
+    if (!('ferramentas' in b)) throw new Error('Informe "ferramentas" (objeto, ou null para voltar ao padrão).');
+    const { ferramentas, ignorados } = fe.normalizar(b.ferramentas);
+    const gravado = ct.Produtos.definirFerramentas(produto.id, ferramentas);
+    aud(req, gravado ? 'ferramentas.exemplos' : 'ferramentas.padrao', produto.id,
+      gravado ? Object.entries(gravado).map(([g, v]) => `${g}: ${Object.keys(v).length} campo(s)`).join('; ') : 'voltou ao padrão');
+    res.json({ ok: true, ferramentas: fe.doProduto(ct.Produtos.obter(produto.id)), ignorados });
+  }));
+  app.get('/staff/api/academy/ferramentas', ...PA, h((req, res) => {
+    const { produto } = imp.produtorDono(req.query || {});
+    res.json({ ok: true, produto: { id: produto.id, titulo: produto.titulo }, ferramentas: fe.doProduto(produto), campos: fe.CAMPOS });
   }));
   app.get('/staff/api/academy/jornada/resumo', ...PA, h((req, res) => {
     const { produto } = imp.produtorDono(req.query || {});

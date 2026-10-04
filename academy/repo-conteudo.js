@@ -19,6 +19,10 @@ const ARQUIVOS_DIR = storage.ARQUIVOS_DIR; // privado; NUNCA servido estático
 
 const TIPOS_PRODUTO = ['curso', 'ebook', 'pdf', 'audio', 'pacote', 'mentoria', 'clube'];
 const TIPOS_AULA = ['video', 'texto', 'pdf', 'audio', 'arquivo', 'link'];
+// Só vídeo conta na duração do curso (página de venda, JSON-LD, app do aluno).
+// Áudio fica de fora: na Academy o áudio é a versão ouvida das videoaulas
+// (audiobook) — somá-lo contaria o mesmo conteúdo duas vezes.
+const duracaoDeVideo = (a) => (a && a.tipo === 'video' ? Math.max(0, Number(a.duracao_seg) || 0) : 0);
 // o slug é a chave (URL, banco, filtro) e NÃO muda; CAT_ROT é só o rótulo de tela, com acento
 const CATEGORIAS = ['negocios', 'marketing', 'vendas', 'tecnologia', 'inteligencia-artificial',
   'direito', 'gestao-documental', 'aluguel-temporada', 'hospedagem', 'gastronomia', 'eventos',
@@ -220,6 +224,17 @@ const Produtos = {
     const config = lib.paraConfig(p.config, entrada || {});
     db.prepare('UPDATE products SET config = ?, atualizado_em = ? WHERE id = ?').run(j.str(config), nowISO(), id);
     return lib.normalizar(config);
+  },
+
+  // exemplos do Prompt Builder / gerador de agentes deste curso (já normalizados
+  // por ferramentas.normalizar). null apaga e o app volta ao padrão.
+  definirFerramentas(id, ferramentas) {
+    const p = this.obter(id);
+    if (!p) throw new Error('Produto não encontrado.');
+    const config = { ...(p.config && typeof p.config === 'object' ? p.config : {}) };
+    if (ferramentas) config.ferramentas = ferramentas; else delete config.ferramentas;
+    db.prepare('UPDATE products SET config = ?, atualizado_em = ? WHERE id = ?').run(j.str(config), nowISO(), id);
+    return config.ferramentas || null;
   },
 
   // transição editorial validada por papel (produtor|admin)
@@ -982,15 +997,20 @@ const Marketplace = {
       titulo: a.titulo, tipo: a.tipo, duracao_seg: a.duracao_seg || 0,
       gratuita: !!a.gratuita, materiais: porAula.get(a.id) || 0,
     });
+    // duração do curso = soma dos VÍDEOS (videoaula e revisão animada são
+    // tipo 'video'). PDF, texto, áudio, arquivo e link NÃO contam: o "Artigo
+    // da aula" em PDF carrega 600–900 s de leitura estimada e inflava o total
+    // (decisão do Augusto, 04/10/2026). Ver duracaoDeVideo().
+    const segVideo = (lista) => lista.reduce((n, a) => n + duracaoDeVideo(a), 0);
     return {
       total_aulas: aulas.length,
       total_videos: aulas.filter(a => a.tipo === 'video').length,
-      total_seg: aulas.reduce((n, a) => n + (a.duracao_seg || 0), 0),
+      total_seg: segVideo(aulas),
       total_materiais: mats.reduce((n, x) => n + x.n, 0),
       modulos: modulos.map(m => ({
         titulo: m.titulo,
         aulas: aulas.filter(a => a.module_id === m.id).map(nAula),
-        duracao_seg: aulas.filter(a => a.module_id === m.id).reduce((n, a) => n + (a.duracao_seg || 0), 0),
+        duracao_seg: segVideo(aulas.filter(a => a.module_id === m.id)),
         // módulo só de Villela Express é biblioteca bônus, não aula da grade
         extra: aulas.some(a => a.module_id === m.id) && aulas.filter(a => a.module_id === m.id).every(a => a.formato === 'express'),
       })),
@@ -1078,7 +1098,7 @@ const Denuncias = {
 };
 
 module.exports = {
-  TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, CAT_ROT, catRotulo, Categorias, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
+  TIPOS_PRODUTO, TIPOS_AULA, duracaoDeVideo, CATEGORIAS, CAT_ROT, catRotulo, Categorias, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
   Produtos, Conteudo, Midia, MateriaisCurso, Matriculas, Cortesia, Progresso, Liberacao, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
   temAcesso, Clube, Audiobook,

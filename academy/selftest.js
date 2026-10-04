@@ -1598,6 +1598,30 @@ async function main() {
     assert.equal(vis.json.estrutura[0].aulas[0].duracao_seg, 600);
   });
 
+  await t('duração do curso = soma só dos VÍDEOS (PDF de 900 s e áudio não inflam o total)', async () => {
+    const corpo = CURSO();
+    corpo.produto.titulo = 'Curso Duracao So Video';
+    corpo.modulos = [
+      { titulo: 'Aula 1', aulas: [
+        { titulo: 'Videoaula', tipo: 'video', duracao_seg: 600 },
+        { titulo: 'Artigo da aula', tipo: 'pdf', duracao_seg: 900 },
+        { titulo: 'Revisão animada', tipo: 'video', duracao_seg: 120 },
+      ] },
+      { titulo: 'Aula 2', aulas: [
+        { titulo: 'Artigo da aula', tipo: 'pdf', duracao_seg: 700 },
+        { titulo: 'Áudio da aula', tipo: 'audio', duracao_seg: 300 },
+        { titulo: 'Leitura', tipo: 'texto', duracao_seg: 200 },
+      ] },
+    ];
+    const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.resumo.duracao_total_min, 12, 'resumo da importação: 600 + 120 s de vídeo');
+    const resumo = require('./repo-conteudo').Marketplace.resumoConteudo(r.json.produto.id);
+    assert.equal(resumo.total_seg, 720, 'total do curso = só os vídeos');
+    assert.deepEqual(resumo.modulos.map(m => m.duracao_seg), [720, 0], 'módulo só com PDF/áudio/texto soma zero');
+    assert.equal(resumo.modulos[1].aulas[0].duracao_seg, 700, 'a duração do item continua gravada (só não soma)');
+  });
+
   await t('importar de novo ATUALIZA e não duplica', async () => {
     const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: CURSO() });
     assert.equal(r.st, 200, r.texto);
@@ -2160,6 +2184,46 @@ async function main() {
     assert.equal(pub.st, 200, pub.texto);
     assert.equal((await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'caio' })).json.acesso, false, 'quem não comprou não tem jornada');
     assert.equal((await req('GET', `/academy/api/aluno/cursos/${impId}/lab`, { jar: 'caio' })).st, 403);
+  });
+
+  await t('ferramentas: cada curso grava os SEUS exemplos (placeholders) e o app recebe pelo painel', async () => {
+    const fe = require('./ferramentas');
+    // as chaves do app (PB/AG) e as do servidor não podem divergir
+    const fonte = require('fs').readFileSync(require('path').join(__dirname, 'app-jornada.js'), 'utf8');
+    const chaves = (nome) => {
+      const bloco = fonte.split(`var ${nome} = [`)[1].split('];')[0];
+      return [...bloco.matchAll(/^\s*\['(\w+)'/gm)].map(m => m[1]);
+    };
+    assert.deepEqual(chaves('PB'), fe.CAMPOS.prompt, 'campos do Prompt Builder');
+    assert.deepEqual(chaves('AG'), fe.CAMPOS.agente, 'campos do gerador de agentes');
+    assert.ok(fonte.includes('esc(dica(c))'), 'o exemplo do curso entra (escapado) no placeholder');
+
+    let p = (await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'olga' })).json;
+    assert.deepEqual(p.ferramentas, {}, 'sem config → app usa o padrão');
+    await req('POST', '/staff/api/academy/gotejamento', { semUser: true, chave: true, corpo: EST({ ativo: true, aulas_por_periodo: 2, periodo_dias: 7 }) });
+    const corpo = EST({ ferramentas: {
+      prompt: { funcao: 'Ex.: assistente jurídico de família', objetivo: '  Ex.: minuta de alimentos  ', inventado: 'x' },
+      agente: { nome: 'Ex.: Agente de prazos', nunca: 'Ex.: nunca protocola sozinho' },
+      outro: {},
+    } });
+    assert.equal((await req('POST', '/staff/api/academy/ferramentas', { semUser: true, corpo })).st, 401, 'sem chave não grava');
+    const r = await req('POST', '/staff/api/academy/ferramentas', { semUser: true, chave: true, corpo });
+    assert.equal(r.st, 200, r.texto);
+    assert.deepEqual(r.json.ignorados.sort(), ['outro', 'prompt.inventado']);
+    assert.equal(r.json.ferramentas.prompt.objetivo, 'Ex.: minuta de alimentos');
+    p = (await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'olga' })).json;
+    assert.deepEqual(p.ferramentas, r.json.ferramentas, 'o painel do aluno entrega os exemplos do curso');
+    const g = await req('GET', `/staff/api/academy/ferramentas?produtor_email=${encodeURIComponent(MARIA.email)}&produto_id=${impId}`, { semUser: true, chave: true });
+    assert.deepEqual(g.json.ferramentas, r.json.ferramentas, 'o GET do staff devolve o mesmo objeto');
+    const cfg = require('./repo-conteudo').Produtos.obter(impId).config;
+    assert.equal(cfg.gotejamento.periodo_dias, 7, 'gravar exemplos não apaga o resto do config');
+    assert.equal((await req('POST', '/staff/api/academy/ferramentas', { semUser: true, chave: true,
+      corpo: EST({ ferramentas: { prompt: { funcao: ['não', 'texto'] } } }) })).st, 400, 'só texto');
+    const z = await req('POST', '/staff/api/academy/ferramentas', { semUser: true, chave: true, corpo: EST({ ferramentas: null }) });
+    assert.deepEqual(z.json.ferramentas, {}, 'null volta ao padrão');
+    const cfg2 = require('./repo-conteudo').Produtos.obter(impId).config;
+    assert.ok(!('ferramentas' in cfg2) && cfg2.gotejamento, 'apaga só a chave ferramentas');
+    await req('POST', '/staff/api/academy/gotejamento', { semUser: true, chave: true, corpo: EST({ ativo: false }) });
   });
 
   await t('diagnóstico: sem gabarito no navegador, corrige no servidor, dá nível e trilha; é feito uma vez só', async () => {
