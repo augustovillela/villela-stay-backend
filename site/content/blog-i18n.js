@@ -390,7 +390,7 @@ ${h.fig(3, { legenda: 'La vegetación del Cerrado: apariencia rústica, biodiver
       titulo: 'People of Brasília: who dreamed, built and sang the capital | Villela Stay',
       descricao: 'JK, Niemeyer, Lúcio Costa, Burle Marx, Athos Bulcão, Renato Russo and Cassia Eller: the people who made Brasília — and who give the Villela Stay houses their names.',
       h1: 'Brasília has a first and last name',
-      dek: 'Behind the most planned city in the world there are people of flesh, bone and courage. Meet those who dreamed, drew, built and sang the capital — and why each of our houses carries one of these names.',
+      dek: 'Behind the most planned city in the world there are people of flesh, bone and courage. Meet those who dreamed, drew, built and sang the capital — and why several of our houses and suites carry one of these names.',
       casasTitulo: 'Stay in a living tribute',
       casasTexto: "Each Villela Stay house and suite carries the name of someone who made Brasília. Gathering your group at Gran Villela, Villa Kubitschek or Villa Catetinho is sleeping inside the city's history — with all of today's comfort.",
       isca: { titulo: 'Proposal for groups and themed events', texto: 'Gathering a group or hosting an event in Brasília? Download the presentation of the houses for groups and events — and talk to us for a tailor-made proposal.', botao: 'Download the group proposal' },
@@ -426,17 +426,17 @@ ${h.fig(2, { legenda: 'Oscar Niemeyer, the architect of the curves that became t
 ${h.fig(3, { legenda: 'Athos Bulcão tiles: the artist who dressed the city in colour and rhythm.' })}
 
 <h2>The soundtrack: the Capital of Rock</h2>
-<p>After the founders came the voices. In the 1980s, the planned and silent city exploded in sound: <strong>Renato Russo</strong> and Legião Urbana, Capital Inicial, Plebe Rude, Raimundos and the young <strong>Cassia Eller</strong>. The restlessness of a generation raised among superblocks became some of the greatest anthems of Brazilian rock. That's why, at Villela Stay, the <strong>Flat do Renato Russo</strong> and the <strong>Suíte da Cassia Eller</strong> keep that memory.</p>
+<p>After the founders came the voices. In the 1980s, the planned and silent city exploded in sound: <strong>Renato Russo</strong> and Legião Urbana, Capital Inicial, Plebe Rude, Raimundos and the young <strong>Cassia Eller</strong>. The restlessness of a generation raised among superblocks became some of the greatest anthems of Brazilian rock. That's why, at Villela Stay, the <strong>Flat do Renato Russo</strong> and the <strong>Flat da Cassia Eller</strong> keep that memory.</p>
 
 <h2>Sleep inside history</h2>
-<p>It's no coincidence that each of our stays carries one of these names. It's a form of tribute — and of invitation. Gathering your group in a house called Kubitschek, Catetinho or Gran Villela is taking part, for a few days, in this story that is still being written.</p>
+<p>It's no coincidence that several of our houses and suites carry one of these names. It's a form of tribute — and of invitation. Gathering your group in a house called Kubitschek, Catetinho or Gran Villela is taking part, for a few days, in this story that is still being written.</p>
 `,
     },
     es: {
       titulo: 'Personalidades de Brasília: quién soñó, construyó y cantó la capital | Villela Stay',
       descricao: 'JK, Niemeyer, Lúcio Costa, Burle Marx, Athos Bulcão, Renato Russo y Cassia Eller: las personalidades que hicieron Brasília — y que dan nombre a las casas de Villela Stay.',
       h1: 'Brasília tiene nombre y apellido',
-      dek: 'Detrás de la ciudad más planificada del mundo hay personas de carne, hueso y coraje. Conoce a quienes soñaron, dibujaron, construyeron y cantaron la capital — y por qué cada casa nuestra lleva uno de estos nombres.',
+      dek: 'Detrás de la ciudad más planificada del mundo hay personas de carne, hueso y coraje. Conoce a quienes soñaron, dibujaron, construyeron y cantaron la capital — y por qué varias de nuestras casas y suites llevan uno de estos nombres.',
       casasTitulo: 'Alójate en un homenaje vivo',
       casasTexto: 'Cada casa y suite de Villela Stay lleva el nombre de quien hizo Brasília. Reunir a tu grupo en la Gran Villela, la Villa Kubitschek o la Villa Catetinho es dormir dentro de la historia de la ciudad — con todo el confort de hoy.',
       isca: { titulo: 'Propuesta para grupos y eventos temáticos', texto: '¿Vas a reunir un grupo o hacer un evento en Brasília? Descarga la presentación de las casas para grupos y eventos — y habla con nosotros para una propuesta a medida.', botao: 'Descargar la propuesta para grupos' },
@@ -472,10 +472,10 @@ ${h.fig(2, { legenda: 'Oscar Niemeyer, el arquitecto de las curvas que se volvie
 ${h.fig(3, { legenda: 'Azulejos de Athos Bulcão: el artista que vistió la ciudad de color y ritmo.' })}
 
 <h2>La banda sonora: la Capital del Rock</h2>
-<p>Después de los fundadores, vinieron las voces. En los años 1980, la ciudad planificada y silenciosa explotó en sonido: <strong>Renato Russo</strong> y Legião Urbana, Capital Inicial, Plebe Rude, Raimundos y la joven <strong>Cassia Eller</strong>. La inquietud de una generación criada entre supercuadras se volvió algunos de los mayores himnos del rock brasileño. Por eso, en Villela Stay, el <strong>Flat do Renato Russo</strong> y la <strong>Suíte da Cassia Eller</strong> guardan esa memoria.</p>
+<p>Después de los fundadores, vinieron las voces. En los años 1980, la ciudad planificada y silenciosa explotó en sonido: <strong>Renato Russo</strong> y Legião Urbana, Capital Inicial, Plebe Rude, Raimundos y la joven <strong>Cassia Eller</strong>. La inquietud de una generación criada entre supercuadras se volvió algunos de los mayores himnos del rock brasileño. Por eso, en Villela Stay, el <strong>Flat do Renato Russo</strong> y el <strong>Flat da Cassia Eller</strong> guardan esa memoria.</p>
 
 <h2>Duerme dentro de la historia</h2>
-<p>No es casualidad que cada alojamiento nuestro lleve uno de estos nombres. Es una forma de homenaje — y de invitación. Reunir a tu grupo en una casa que se llama Kubitschek, Catetinho o Gran Villela es formar parte, por unos días, de esa historia que todavía se está escribiendo.</p>
+<p>No es casualidad que varias de nuestras casas y suites lleven uno de estos nombres. Es una forma de homenaje — y de invitación. Reunir a tu grupo en una casa que se llama Kubitschek, Catetinho o Gran Villela es formar parte, por unos días, de esa historia que todavía se está escribiendo.</p>
 `,
     },
   },
@@ -1252,12 +1252,12 @@ ${h.fig(1, { legenda: 'El hallazgo que se publicó, bajo el foco — y, en la os
   'quantas-vezes-pedir-para-refazer': {
     en: {
       titulo: 'How many times can you ask for it to be redone? The cost no spreadsheet shows | Villela Stay',
-      descricao: 'The social ceiling on revisions, the tax you pay in tact, the time of day that changes a doctor&rsquo;s decision, and what all of it really costs — with the numbers on turnover, presenteeism and payroll, and where artificial intelligence solves it and where it does not.',
+      descricao: 'The social ceiling on revisions, the tax you pay in tact, the time of day that changes a doctor’s decision, and what all of it really costs — with the numbers on turnover, presenteeism and payroll, and where artificial intelligence solves it and where it does not.',
       h1: 'How many times can you ask for it to be redone?',
       dek: 'The third time is already awkward; the fourth is a risk. That invisible ceiling quietly lowers the quality of everything you hire — and it is only part of what coordinating human beings costs. This is the full calculation, with what AI changes and what it does not.',
       faq: [
-        { q: 'What does an employee really cost in Brazil?', a: 'Salary is the smallest part of the bill. Adding employer social security, the FGTS severance fund, provisions for holidays and the thirteenth salary, termination penalties and benefits, total cost usually lands between 70% and 100% above gross pay. And that is only payroll. Outside it sit HR, occupational health and safety, the whistleblowing channel, training, staff parties, bonuses, prizes and management time — which nobody records anywhere, but which is paid in the manager&rsquo;s hours.' },
-        { q: 'What does it cost to lose an employee?', a: 'According to Gallup, replacing someone costs between 50% and 200% of the annual salary for the role, depending on seniority — and voluntary turnover consumes roughly one trillion dollars a year in the United States alone. The bulk is not recruitment: it is the open vacancy, the six to twelve months until the replacement performs like the person who left, the knowledge that walked out of the door, and the manager&rsquo;s time diverted into hiring.' },
+        { q: 'What does an employee really cost in Brazil?', a: 'Salary is the smallest part of the bill. Adding employer social security, the FGTS severance fund, provisions for holidays and the thirteenth salary, termination penalties and benefits, total cost usually lands between 70% and 100% above gross pay. And that is only payroll. Outside it sit HR, occupational health and safety, the whistleblowing channel, training, staff parties, bonuses, prizes and management time — which nobody records anywhere, but which is paid in the manager’s hours.' },
+        { q: 'What does it cost to lose an employee?', a: 'According to Gallup, replacing someone costs between 50% and 200% of the annual salary for the role, depending on seniority — and voluntary turnover consumes roughly one trillion dollars a year in the United States alone. The bulk is not recruitment: it is the open vacancy, the six to twelve months until the replacement performs like the person who left, the knowledge that walked out of the door, and the manager’s time diverted into hiring.' },
         { q: 'What is presenteeism and why does it cost more than absence?', a: 'Presenteeism is being present without performing — ill, exhausted, worried, disengaged. Estimates collected by the Harvard Business Review put the cost at around 150 billion dollars a year in the United States. Per day, absence costs more, because output is zero. In aggregate, presenteeism costs more, because it happens far more often and nobody measures it: it shows up in no report, since the person clocked in.' },
         { q: 'Does the time of day really change the quality of a professional decision?', a: 'It does, and it has been measured in high-level professionals deciding serious things. A study published in JAMA Network Open in 2019 found that primary care physicians ordered mammograms in 63.7% of 8 a.m. appointments and in 47.8% of 5 p.m. appointments; for colorectal cancer screening, the rate fell from 36.5% to 23.4%. Another study, in JAMA Internal Medicine in 2014, found inappropriate antibiotic prescribing rising as the clinic session wore on. It is not laziness: it is decision fatigue, and it affects everyone.' },
         { q: 'How many times can you ask for work to be redone without giving offence?', a: 'There is no legal number, and that is precisely the problem: the limit is social and everyone feels their own. In practice the first revision is normal, the second is accepted with effort, the third carries awkwardness and the fourth tends to be read as persecution — regardless of whether the work is good. The effect is that a great deal is delivered and accepted at the "good enough" level, not because anyone settled for that quality, but because insisting was expensive for the relationship.' },
@@ -1988,41 +1988,43 @@ ${h.fig(1, { legenda: 'La misma pieza, rehecha cuantas veces haga falta — y na
 
   <details class="faq-item">
     <summary>Request for school support and adaptation</summary>
-    <div class="faq-resp tea-minuta">To the Management of [SCHOOL]
-  Subject: Request for a school support professional, AEE and adaptations — student with Autism Spectrum Disorder
+    <p class="faq-resp">This request has to be filed with the school in Portuguese, which is why the template below is in Portuguese. It asks for a school support professional throughout the school shift, specialised educational support (AEE) in a Resource Room, an individualised plan with adaptations and the class-size adjustment, with a written reply within 10 days and a protocol number.</p>
+    <div class="faq-resp tea-minuta">À Direção da [ESCOLA]
+Assunto: Requerimento de profissional de apoio escolar, AEE e adaptações — estudante com Transtorno do Espectro Autista
 
-  I, [NAME], legal guardian of [STUDENT'S NAME], enrolled in [CLASS/YEAR], hereby request, on the basis of art. 1, § 2, and art. 3, sole paragraph, of Law 12.764/2012, arts. 27, 28 and 30 of Law 13.146/2015 and Decree 7.611/2011:
+Eu, [NOME], responsável legal por [NOME DO ESTUDANTE], matriculado(a) em [TURMA/ANO], venho requerer, com fundamento no art. 1º, § 2º, e no art. 3º, parágrafo único, da Lei 12.764/2012, nos arts. 27, 28 e 30 da Lei 13.146/2015 e no Decreto 7.611/2011:
 
-  1. Provision of a school support professional throughout the entire school shift, according to the need attested in the attached medical report;
-  2. Specialised Educational Support (Atendimento Educacional Especializado) in a Resource Room, in the opposite shift;
-  3. Preparation of an individualised support plan, with adaptation of methodology, materials and assessment, with the family's participation;
-  4. Compliance with the class-size adjustment provided for in the Enrolment Strategy (Estratégia de Matrícula) in force.
+1. Disponibilização de profissional de apoio escolar durante todo o turno, conforme necessidade atestada no relatório médico anexo;
+2. Atendimento Educacional Especializado em Sala de Recursos, no contraturno;
+3. Elaboração de plano de atendimento individualizado, com adaptação de metodologia, material e avaliação, com participação da família;
+4. Observância da modulação de turma prevista na Estratégia de Matrícula vigente.
 
-  I note that, as the Supreme Federal Court decided in ADI 5357, charging the family any additional amount for accessibility or support is prohibited. I further note that the unjustified refusal of enrolment exposes the manager to the fine under art. 7 of Law 12.764/2012 and that denying reasonable accommodation without just cause constitutes the crime under art. 88 of Law 13.146/2015.
+Registro que, conforme decidiu o Supremo Tribunal Federal na ADI 5357, é vedada a cobrança de qualquer valor adicional da família a título de acessibilidade ou apoio. Registro ainda que a recusa injustificada de matrícula sujeita o gestor à multa do art. 7º da Lei 12.764/2012 e que negar adaptação razoável sem justa causa configura o crime do art. 88 da Lei 13.146/2015.
 
-  I request a written reply within 10 (ten) days and ask for the protocol number of this request.
+Requeiro resposta escrita no prazo de 10 (dez) dias e solicito o número de protocolo deste requerimento.
 
-  Brasília-DF, [DATE].
-  [NAME AND SIGNATURE] — [CPF] — [TELEPHONE]
-  Attachments: medical report, CIPTEA, therapy reports.</div>
+Brasília-DF, [DATA].
+[NOME E ASSINATURA] — [CPF] — [TELEFONE]
+Anexos: laudo médico, CIPTEA, relatórios terapêuticos.</div>
   </details>
 
   <details class="faq-item">
     <summary>Request for therapies to the health plan</summary>
-    <div class="faq-resp tea-minuta">To the Operator [HEALTH PLAN]
-  Subject: Authorisation of multidisciplinary treatment for a beneficiary with ASD — with no limit on sessions
+    <p class="faq-resp">This request has to be submitted to the health plan in Portuguese, which is why the template below is in Portuguese. It asks for full authorisation of the multidisciplinary treatment prescribed in the medical report, with no cap on the number of sessions, within the ANS maximum waiting times, or full payment or reimbursement with a provider of your choice if the network has none, with a written, reasoned reply and a protocol number.</p>
+    <div class="faq-resp tea-minuta">À Operadora [PLANO DE SAÚDE]
+Assunto: Autorização de tratamento multidisciplinar para beneficiário com TEA — sem limitação de sessões
 
-  I, [NAME], legal guardian of the beneficiary [NAME], membership card no. [NUMBER], request full authorisation of the treatment prescribed in the attached medical report, namely: [NO.] weekly hours of behavioural intervention (ABA), [NO.] weekly sessions of speech therapy, [NO.] of occupational therapy and [NO.] of psychology.
+Eu, [NOME], responsável legal pelo beneficiário [NOME], carteira nº [NÚMERO], requeiro autorização integral do tratamento prescrito no relatório médico anexo, a saber: [Nº] horas semanais de intervenção comportamental (ABA), [Nº] sessões semanais de fonoaudiologia, [Nº] de terapia ocupacional e [Nº] de psicologia.
 
-  I base this request on art. 1, I, of Law 9.656/1998 and on ANS Normative Resolutions no. 469/2021 and no. 539/2022, which removed the operator's power to set a numerical cap on sessions, transferring to the qualified health professional the definition of therapeutic intensity. The Superior Court of Justice consolidated this understanding in Tema 1.295, declaring illegal the limitation of the number of multidisciplinary therapy sessions for people with ASD.
+Fundamento o pedido no art. 1º, I, da Lei 9.656/1998 e nas Resoluções Normativas ANS nº 469/2021 e nº 539/2022, que afastaram a competência da operadora para fixar teto numérico de sessões, transferindo ao profissional de saúde habilitado a definição da intensidade terapêutica. O Superior Tribunal de Justiça consolidou o entendimento no Tema 1.295, declarando ilegal a limitação do número de sessões de terapias multidisciplinares para pessoas com TEA.
 
-  I request compliance with the maximum waiting times of RN 259/2011 and, should there be no qualified provider in the accredited network, full payment or reimbursement with a provider of my own choice.
+Requeiro o cumprimento dos prazos máximos da RN 259/2011 e, caso não haja prestador habilitado na rede credenciada, o custeio ou reembolso integral em prestador de livre escolha.
 
-  I ask for a written, reasoned reply and the protocol number of this request.
+Solicito resposta escrita e fundamentada e o número de protocolo deste requerimento.
 
-  Brasília-DF, [DATE].
-  [NAME AND SIGNATURE] — [CPF] — [TELEPHONE]
-  Attachments: medical report with ICD code and prescription of weekly frequency, diagnostic report, CIPTEA.</div>
+Brasília-DF, [DATA].
+[NOME E ASSINATURA] — [CPF] — [TELEFONE]
+Anexos: relatório médico com CID e prescrição de frequência semanal, laudo, CIPTEA.</div>
   </details>
 
   <h2>Where to go, in Brasília</h2>
@@ -2165,41 +2167,43 @@ ${h.fig(1, { legenda: 'La misma pieza, rehecha cuantas veces haga falta — y na
 
   <details class="faq-item">
     <summary>Solicitud de apoyo escolar y adaptación</summary>
-    <div class="faq-resp tea-minuta">A la Dirección de [ESCUELA]
-  Asunto: Solicitud de profesional de apoyo escolar, AEE y adaptaciones — estudiante con Trastorno del Espectro Autista
+    <p class="faq-resp">Esta solicitud debe presentarse a la escuela en portugués; por eso el modelo de abajo está en portugués. Pide un profesional de apoyo escolar durante todo el turno, atención educativa especializada (AEE) en Sala de Recursos, un plan individualizado con adaptaciones y el ajuste del tamaño del grupo, con respuesta escrita en 10 días y número de protocolo.</p>
+    <div class="faq-resp tea-minuta">À Direção da [ESCOLA]
+Assunto: Requerimento de profissional de apoio escolar, AEE e adaptações — estudante com Transtorno do Espectro Autista
 
-  Yo, [NOMBRE], responsable legal de [NOMBRE DEL ESTUDIANTE], matriculado(a) en [GRUPO/AÑO], vengo a solicitar, con fundamento en el art. 1, § 2, y en el art. 3, párrafo único, de la Ley 12.764/2012, en los arts. 27, 28 y 30 de la Ley 13.146/2015 y en el Decreto 7.611/2011:
+Eu, [NOME], responsável legal por [NOME DO ESTUDANTE], matriculado(a) em [TURMA/ANO], venho requerer, com fundamento no art. 1º, § 2º, e no art. 3º, parágrafo único, da Lei 12.764/2012, nos arts. 27, 28 e 30 da Lei 13.146/2015 e no Decreto 7.611/2011:
 
-  1. Disponibilidad de un profesional de apoyo escolar durante todo el turno, conforme a la necesidad certificada en el informe médico adjunto;
-  2. Atención Educativa Especializada (Atendimento Educacional Especializado) en Sala de Recursos, en el turno opuesto;
-  3. Elaboración de un plan de atención individualizado, con adaptación de metodología, material y evaluación, con participación de la familia;
-  4. Observancia del ajuste del tamaño del grupo previsto en la Estrategia de Matrícula (Estratégia de Matrícula) vigente.
+1. Disponibilização de profissional de apoio escolar durante todo o turno, conforme necessidade atestada no relatório médico anexo;
+2. Atendimento Educacional Especializado em Sala de Recursos, no contraturno;
+3. Elaboração de plano de atendimento individualizado, com adaptação de metodologia, material e avaliação, com participação da família;
+4. Observância da modulação de turma prevista na Estratégia de Matrícula vigente.
 
-  Dejo constancia de que, conforme decidió el Supremo Tribunal Federal en la ADI 5357, está prohibido cobrar a la familia cualquier valor adicional por concepto de accesibilidad o apoyo. Dejo constancia además de que el rechazo injustificado de la matrícula expone al gestor a la multa del art. 7 de la Ley 12.764/2012 y de que negar un ajuste razonable sin causa justificada configura el delito del art. 88 de la Ley 13.146/2015.
+Registro que, conforme decidiu o Supremo Tribunal Federal na ADI 5357, é vedada a cobrança de qualquer valor adicional da família a título de acessibilidade ou apoio. Registro ainda que a recusa injustificada de matrícula sujeita o gestor à multa do art. 7º da Lei 12.764/2012 e que negar adaptação razoável sem justa causa configura o crime do art. 88 da Lei 13.146/2015.
 
-  Solicito respuesta escrita en el plazo de 10 (diez) días y pido el número de protocolo de esta solicitud.
+Requeiro resposta escrita no prazo de 10 (dez) dias e solicito o número de protocolo deste requerimento.
 
-  Brasília-DF, [FECHA].
-  [NOMBRE Y FIRMA] — [CPF] — [TELÉFONO]
-  Anexos: informe médico, CIPTEA, informes terapéuticos.</div>
+Brasília-DF, [DATA].
+[NOME E ASSINATURA] — [CPF] — [TELEFONE]
+Anexos: laudo médico, CIPTEA, relatórios terapêuticos.</div>
   </details>
 
   <details class="faq-item">
     <summary>Solicitud de terapias al plan de salud</summary>
-    <div class="faq-resp tea-minuta">A la Operadora [PLAN DE SALUD]
-  Asunto: Autorización de tratamiento multidisciplinario para beneficiario con TEA — sin limitación de sesiones
+    <p class="faq-resp">Esta solicitud debe presentarse al plan de salud en portugués; por eso el modelo de abajo está en portugués. Pide la autorización integral del tratamiento multidisciplinario prescrito en el informe médico, sin tope de sesiones, dentro de los plazos máximos de la ANS, o el pago o reembolso integral con un prestador de libre elección si la red no tiene uno, con respuesta escrita y fundamentada y número de protocolo.</p>
+    <div class="faq-resp tea-minuta">À Operadora [PLANO DE SAÚDE]
+Assunto: Autorização de tratamento multidisciplinar para beneficiário com TEA — sem limitação de sessões
 
-  Yo, [NOMBRE], responsable legal del beneficiario [NOMBRE], credencial n.º [NÚMERO], solicito la autorización integral del tratamiento prescrito en el informe médico adjunto, a saber: [N.º] horas semanales de intervención conductual (ABA), [N.º] sesiones semanales de fonoaudiología, [N.º] de terapia ocupacional y [N.º] de psicología.
+Eu, [NOME], responsável legal pelo beneficiário [NOME], carteira nº [NÚMERO], requeiro autorização integral do tratamento prescrito no relatório médico anexo, a saber: [Nº] horas semanais de intervenção comportamental (ABA), [Nº] sessões semanais de fonoaudiologia, [Nº] de terapia ocupacional e [Nº] de psicologia.
 
-  Fundamento el pedido en el art. 1, I, de la Ley 9.656/1998 y en las Resoluciones Normativas ANS n.º 469/2021 y n.º 539/2022, que apartaron la competencia de la operadora para fijar un tope numérico de sesiones, transfiriendo al profesional de salud habilitado la definición de la intensidad terapéutica. El Superior Tribunal de Justicia consolidó ese entendimiento en el Tema 1.295, declarando ilegal la limitación del número de sesiones de terapias multidisciplinarias para personas con TEA.
+Fundamento o pedido no art. 1º, I, da Lei 9.656/1998 e nas Resoluções Normativas ANS nº 469/2021 e nº 539/2022, que afastaram a competência da operadora para fixar teto numérico de sessões, transferindo ao profissional de saúde habilitado a definição da intensidade terapêutica. O Superior Tribunal de Justiça consolidou o entendimento no Tema 1.295, declarando ilegal a limitação do número de sessões de terapias multidisciplinares para pessoas com TEA.
 
-  Solicito el cumplimiento de los plazos máximos de la RN 259/2011 y, en caso de que no haya un prestador habilitado en la red acreditada, el pago o reembolso integral con un prestador de libre elección.
+Requeiro o cumprimento dos prazos máximos da RN 259/2011 e, caso não haja prestador habilitado na rede credenciada, o custeio ou reembolso integral em prestador de livre escolha.
 
-  Pido respuesta escrita y fundamentada y el número de protocolo de esta solicitud.
+Solicito resposta escrita e fundamentada e o número de protocolo deste requerimento.
 
-  Brasília-DF, [FECHA].
-  [NOMBRE Y FIRMA] — [CPF] — [TELÉFONO]
-  Anexos: informe médico con CIE y prescripción de frecuencia semanal, informe diagnóstico, CIPTEA.</div>
+Brasília-DF, [DATA].
+[NOME E ASSINATURA] — [CPF] — [TELEFONE]
+Anexos: relatório médico com CID e prescrição de frequência semanal, laudo, CIPTEA.</div>
   </details>
 
   <h2>Adónde ir, en Brasilia</h2>

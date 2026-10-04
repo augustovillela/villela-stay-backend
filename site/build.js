@@ -311,7 +311,7 @@ function fichaUnidade(l) {
 }
 
 function layout(titulo, descricao, corpo, opts = {}) {
-  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/assets/brand/villela-stay/og-image.png`, ogType = 'website', lang = HTML_LANG[LANG], semIdiomas = false } = opts;
+  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/assets/brand/villela-stay/og-image.png`, ogType = 'website', lang = HTML_LANG[LANG], semIdiomas = false, ogLargura = 1200, ogAltura = 630 } = opts;
   const ogLocale = lang === 'en' ? 'en_US' : (lang === 'es' ? 'es_ES' : 'pt_BR');
   const urlAtual = `${SITE_URL}${LANG === 'pt' ? '' : '/' + LANG}${caminho}`;
   // Organization injetada em toda página (âncora de identidade @id reutilizada nos schemas locais)
@@ -361,8 +361,8 @@ ${semIdiomas ? '' : hreflangTags(caminho)}
 <meta property="og:image:alt" content="${esc(titulo)}">
 <!-- Sem largura e altura o WhatsApp corta o cartão: ele decide o recorte antes de
      baixar a imagem. Todos os cartões do site são 1200x630 (padrão da casa). -->
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image:width" content="${ogLargura}">
+<meta property="og:image:height" content="${ogAltura}">
 <meta property="og:locale" content="${ogLocale}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(titulo)}">
@@ -455,7 +455,7 @@ ${corpo}
   <div class="creditos">${t('Fotos dos pontos turísticos', 'Landmark photos', 'Fotos de los puntos turísticos')}: krishna naudin, Cayambe, Matheusgf, Portal da Copa, Marinelson Almeida ${t('e', 'and', 'y')} Rose Ramalho, via Wikimedia Commons (${t('licenças', 'licenses', 'licencias')} CC BY / CC BY-SA). ${t('Ilustrações do blog: Villela Stay (imagens originais, geradas por IA).', 'Blog illustrations: Villela Stay (original AI-generated images).', 'Ilustraciones del blog: Villela Stay (imágenes originales, generadas por IA).')}</div>
 </footer>
 <a class="wa-flutuante" href="${waLink(t('Olá! Vim pelo site da Villela Stay.', 'Hi! I came from the Villela Stay website.', '¡Hola! Vengo del sitio de Villela Stay.'))}" aria-label="${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}">💬</a>
-<script>window.addEventListener('load', function(){ try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer) + '&q=' + encodeURIComponent(location.search) + '&l=' + encodeURIComponent(navigator.language || ''), { keepalive: true }); } catch (e) {} });
+<script>window.addEventListener('load', function(){ try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer) + '&q=' + encodeURIComponent(location.search) + '&l=' + encodeURIComponent(navigator.language || ''), { keepalive: true }).catch(function(){}); } catch (e) {} });
 /* Origem da visita guardada no início da sessão: o referrer e os utm_* só
    existem na primeira página. Sem isto, um lead preenchido na terceira página
    chegaria como "Direto" e a conta de qual canal traz cliente ficaria errada. */
@@ -3717,6 +3717,22 @@ if (fs.existsSync(BLOG_IMG_SRC)) {
 }
 fs.mkdirSync(path.join(DIST, 'blog'), { recursive: true });
 
+// Imagem de uma série do blog (src/blog/<serie>-1.jpg, a mesma do card em /blog.html), pronta
+// para espalhar em dois lugares: `.ld` no BlogPosting (o Google pede `image` para o resultado
+// de artigo) e `.og` nas opções do layout (cartão social com a medida REAL do arquivo).
+// Sem o arquivo, os dois vêm vazios e a página segue com o cartão padrão do site.
+const serieImagemCache = {};
+function serieImagem(serie) {
+  if (!serieImagemCache[serie]) {
+    const arq = `${serie}-1.jpg`;
+    const abs = path.join(BLOG_IMG_SRC, arq);
+    const d = fs.existsSync(abs) ? dimensoesArquivo(abs) : null;
+    const url = `${SITE_URL}/blog-img/${arq}`;
+    serieImagemCache[serie] = d ? { ld: { image: url }, og: { ogImage: url, ogLargura: d.w, ogAltura: d.h } } : { ld: {}, og: {} };
+  }
+  return serieImagemCache[serie];
+}
+
 // Copia os PDFs das iscas (lead magnets) para dist/iscas/
 const ISCAS_SRC = path.join(__dirname, 'src', 'iscas');
 if (fs.existsSync(ISCAS_SRC)) {
@@ -3756,7 +3772,8 @@ function blogCardImg(a) {
     const abs = path.join(BLOG_IMG_SRC, item.file);
     if (fs.existsSync(abs)) {
       const d = dimensoesArquivo(abs) || { w: 1600, h: 1067 };
-      return img('/blog-img/' + item.file, { alt: a.h1, width: d.w, height: d.h, sizes: '(max-width: 640px) 100vw, 400px' });
+      // alt no idioma da página: `a` chega em português (é o artigo-fonte), o h1 traduzido vem do i18n.
+      return img('/blog-img/' + item.file, { alt: tradArtigo(a).h1, width: d.w, height: d.h, sizes: '(max-width: 640px) 100vw, 400px' });
     }
   }
   return `<div class="blog-card-arte tema-${a.slug}" aria-hidden="true">${BLOG_HERO_SVG}</div>`;
@@ -3981,6 +3998,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   const ENTS = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ldquo: '“', rdquo: '”', lsquo: '‘', rsquo: '’', mdash: '—', ndash: '–', hellip: '…' };
   const destexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   capArtigos = fs.readdirSync(CAP_DIR).filter(f => /\.html$/.test(f)).sort().map(f => {
@@ -4159,7 +4177,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     const ant = capArtigos[iArt - 1], prox = capArtigos[iArt + 1];
     const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
     const lds = [{
-      '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+      '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('claude-ai-na-pratica').ld,
       abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR', datePublished: '2026-09-16', dateModified: capHojeISO,
       author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
       isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog` },
@@ -4216,7 +4234,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
     const html = layout(`${a.tituloTexto} | Blog Claude AI na Prática`, a.descricao, corpo, {
-      caminho: a.caminho, semIdiomas: true, ogType: 'article',
+      caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('claude-ai-na-pratica').og,
       extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${capCss}${CAP_CSS_EXTRA}</style>`
         + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
     }).replace('</body>', `<script>${CAP_JS}</script>\n</body>`);
@@ -4244,7 +4262,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     name: 'Claude AI na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
     blogPost: capArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
   }, {
-    '@context': 'https://schema.org', '@type': 'ItemList', name: 'Claude AI na Prática — 22 artigos',
+    '@context': 'https://schema.org', '@type': 'ItemList', name: 'Claude AI na Prática — 22 artigos', numberOfItems: capArtigos.length,
     itemListElement: capArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
   }];
   fs.writeFileSync(path.join(od, 'claude', 'index.html'), layout(
@@ -4265,7 +4283,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   <div class="cap-grade">${capCards}</div>
   <div class="cap-faixa">${capAnuncio('curso')}${capAnuncio('livro')}</div>
 </div>`,
-    { caminho: '/claude/', semIdiomas: true, extraHead: `<style>${capCss}${CAP_CSS_EXTRA}</style>` + hubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    { caminho: '/claude/', semIdiomas: true, ...serieImagem('claude-ai-na-pratica').og, extraHead: `<style>${capCss}${CAP_CSS_EXTRA}</style>` + hubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
   ));
 
   // ---- Série "Claude AI na Prática Jurídica": 52 capítulos + 3 núcleos ----
@@ -4276,7 +4294,16 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   const CJ_CURSO = 'https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica-juridica?utm_source=villelastay&utm_medium=blog-claude-juridico';
   const cjDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  // Os 3 recursos complementares (páginas abertas em /claude-juridico/recursos/). Ficam aqui
+  // fora porque o hub, o gerador das páginas e o llms.txt leem a mesma lista.
+  const CJ_RECURSOS = [
+    ['01-central-atualizacao-normativa.html', 'Central de atualização normativa', 'Normas, fontes oficiais e datas de verificação.'],
+    ['02-diretorio-pesquisa-juridica.html', 'Diretório de pesquisa jurídica', 'Atalhos para pesquisa legislativa, jurisprudencial e institucional.'],
+    ['03-atualizacoes-tecnologicas.html', 'Atualizações tecnológicas', 'Ferramentas e recursos sujeitos a mudança, reunidos para manutenção.'],
+  ];
 
   if (fs.existsSync(CJ_DIR)) {
     cjArtigos = fs.readdirSync(CJ_DIR).filter(f => /\.html$/.test(f)).sort().map(f => {
@@ -4331,7 +4358,9 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 .cj-sumario-parte:first-of-type{margin-top:4px}
 .cj-sumario-parte a{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
 .cj-sumario-parte a:hover{border-bottom-color:var(--accent)}
-.cj-sumario-parte span{font-weight:400;font-size:13px;color:#8b8378}.cj-recursos{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#eef5f3}.cj-recursos h2{margin-top:0}.cj-recursos .cap-grade{padding:0}`;
+.cj-sumario-parte span{font-weight:400;font-size:13px;color:#8b8378}.cj-recursos{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#eef5f3}.cj-recursos h2{margin-top:0}.cj-recursos .cap-grade{padding:0}
+/* Bloco de prompt para copiar (cap. 51): quebra a linha dentro do bloco, sem rolagem lateral. */
+.cap-corpo pre{white-space:pre-wrap;overflow-wrap:anywhere}`;
 
     fs.mkdirSync(path.join(od, 'claude-juridico'), { recursive: true });
     for (const [iArt, a] of cjArtigos.entries()) {
@@ -4339,7 +4368,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
       const ant = cjArtigos[iArt - 1], prox = cjArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('claude-ai-na-pratica-juridica').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR', datePublished: '2026-09-16', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
         isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/claude-juridico/#serie` },
@@ -4382,7 +4411,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 </div>`;
       fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), layout(
         `${a.tituloTexto} | Claude AI na Prática Jurídica`, a.descricao, corpo,
-        { caminho: a.caminho, semIdiomas: true, ogType: 'article', extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CJ_CSS}</style>` + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+        { caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('claude-ai-na-pratica-juridica').og, extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CJ_CSS}</style>` + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
       ).replace('</body>', `<script>${CJ_JS}</script>\n</body>`));
     }
 
@@ -4407,28 +4436,68 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
         <ol class="cap-sumario-lista">${itens.map(o => `<li><a href="${o.caminho}"><b>${o.capitulo}</b> <span class="tx">${esc(o.tituloTexto)}</span></a></li>`).join('')}</ol>`;
       }).join('')}
     </section>`;
-    const recursos = [
-      ['01-central-atualizacao-normativa.html', 'Central de atualização normativa', 'Normas, fontes oficiais e datas de verificação.'],
-      ['02-diretorio-pesquisa-juridica.html', 'Diretório de pesquisa jurídica', 'Atalhos para pesquisa legislativa, jurisprudencial e institucional.'],
-      ['03-atualizacoes-tecnologicas.html', 'Atualizações tecnológicas', 'Ferramentas e recursos sujeitos a mudança, reunidos para manutenção.'],
-    ];
+    const recursos = CJ_RECURSOS;
     const recursosOrigem = path.join(CJ_DIR, 'recursos');
     const recursosDestino = path.join(od, 'claude-juridico', 'recursos');
     fs.mkdirSync(recursosDestino, { recursive: true });
-    for (const [arq] of recursos) fs.copyFileSync(path.join(recursosOrigem, arq), path.join(recursosDestino, arq));
+    // Os recursos chegam como HTML avulso (documento inteiro, com CSS próprio). Copiados como
+    // estavam, saíam sem description, canonical, cartão social, cabeçalho do site nem caminho
+    // de volta. Aqui o miolo entra no layout do site. O CSS deles é global (body, header, a,
+    // .card…) e brigaria com o do site — o `.card` daqui é outro —, então é escopado: toda
+    // regra passa a valer só dentro de `.cj-rec` e as classes ganham o prefixo `cjr-`.
+    const cjRecEscopo = css => css
+      .replace(/\.([a-z][\w-]*)/gi, '.cjr-$1')
+      .replace(/(^|[{}])([^{}@]+)\{/g, (m, antes, sel) => antes + sel.split(',').map(x => {
+        x = x.trim().replace(/^main\b/, '.cjr-main');
+        return /^(:root|html|body)$/.test(x) ? '.cj-rec' : `.cj-rec ${x}`;
+      }).join(',') + '{');
+    for (const [i, [arq, titulo, desc]] of recursos.entries()) {
+      const raw = fs.readFileSync(path.join(recursosOrigem, arq), 'utf8');
+      const css = (raw.match(/<style>([\s\S]*?)<\/style>/) || [])[1];
+      const miolo = (raw.match(/<body>([\s\S]*?)<\/body>/) || [])[1];
+      if (!css || !miolo) throw new Error(`[claude-juridico] recurso ${arq} sem <style> ou <body>: não dá para pôr no layout do site`);
+      if (/N[úÚ]CLEO HTML/i.test(miolo)) throw new Error(`[claude-juridico] recurso ${arq} ainda mostra o rótulo interno "Núcleo HTML"`);
+      const tituloDoc = cjDestexto((raw.match(/<h1>([\s\S]*?)<\/h1>/) || [])[1] || titulo);
+      const chamada = cjDestexto((miolo.match(/<\/h1>\s*<p>([\s\S]*?)<\/p>/) || [])[1] || desc);
+      const cam = `/claude-juridico/recursos/${arq}`;
+      const corpoRec = miolo
+        .replace(/<main>/, '<div class="main">').replace(/<\/main>/, '</div>')
+        .replace(/class="([^"]+)"/g, (m, c) => `class="${c.trim().split(/\s+/).map(x => 'cjr-' + x).join(' ')}"`);
+      const volta = '<nav class="cj-rec-volta" aria-label="Voltar à série"><a href="/claude-juridico/">← Claude AI na Prática Jurídica</a></nav>';
+      const ldRec = [{
+        '@context': 'https://schema.org', '@type': 'WebPage', name: tituloDoc, description: chamada, url: `${SITE_URL}${cam}`,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/claude-juridico/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Claude AI na Prática Jurídica', item: `${SITE_URL}/claude-juridico/` },
+          { '@type': 'ListItem', position: 4, name: tituloDoc, item: `${SITE_URL}${cam}` },
+        ]
+      }];
+      fs.writeFileSync(path.join(recursosDestino, arq), layout(
+        `${tituloDoc} | Claude AI na Prática Jurídica`,
+        `${chamada} Recurso ${i + 1} da série Claude AI na Prática Jurídica, de Augusto Villela.`,
+        `${volta}<div class="cj-rec">${corpoRec}</div>${volta}`,
+        { caminho: cam, semIdiomas: true, ...serieImagem('claude-ai-na-pratica-juridica').og,
+          extraHead: `<style>.cj-rec-volta{max-width:1080px;margin:0 auto;padding:16px 24px;font:600 15px/1.4 Inter,"Segoe UI",system-ui,sans-serif}.cj-rec-volta a{color:#1f5f6b;text-decoration:none}.cj-rec-volta a:hover{text-decoration:underline}${cjRecEscopo(css)}</style>`
+            + ldRec.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      ));
+    }
     const recursosHtml = recursos.map(([arq, titulo, desc]) => `<a class="cap-card" href="/claude-juridico/recursos/${arq}"><span class="n">Núcleo complementar</span><h3>${esc(titulo)}</h3><p>${esc(desc)}</p><span class="min">Abrir recurso →</span></a>`).join('');
     const cjHubLd = [{
       '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/claude-juridico/#serie`, name: 'Claude AI na Prática Jurídica — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
       blogPost: cjArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
     }, {
-      '@context': 'https://schema.org', '@type': 'ItemList', name: 'Claude AI na Prática Jurídica — 52 artigos',
+      '@context': 'https://schema.org', '@type': 'ItemList', name: 'Claude AI na Prática Jurídica — 52 artigos', numberOfItems: cjArtigos.length,
       itemListElement: cjArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
     }];
     fs.writeFileSync(path.join(od, 'claude-juridico', 'index.html'), layout(
       'Claude AI na Prática Jurídica — 52 artigos para advogados | Villela Stay',
-      'Os 52 capítulos do livro Claude AI na Prática Jurídica, de Augusto Villela: IA aplicada à advocacia, prompts, ética, contencioso, contratos, pesquisa, gestão, compliance e sistemas.',
-      `<div class="cap"><section class="cap-hub-hero"><h1>Claude AI na Prática Jurídica</h1><p>Os 52 capítulos do livro em formato híbrido para leitura online — conteúdo jurídico, síntese editorial e aplicação prática para advogados, gestores e escritórios.</p></section><nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Claude AI na Prática Jurídica</span></nav><div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('curso')}${cjAnuncio('sistema')}</div>${cjSumarioHub}${cjPartesHtml}<section class="cj-recursos"><h2>Centrais complementares</h2><p>Conteúdo vivo para atualização normativa, pesquisa jurídica e tecnologia.</p><div class="cap-grade">${recursosHtml}</div></section><div class="cap-faixa">${cjAnuncio('curso')}${cjAnuncio('sistema')}${cjAnuncio('livro')}</div></div>`,
-      { caminho: '/claude-juridico/', semIdiomas: true, extraHead: `<style>${CJ_CSS}</style>` + cjHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      'Os 50 capítulos do livro Claude AI na Prática Jurídica, de Augusto Villela, e 2 extras: IA aplicada à advocacia, prompts, ética, contencioso, contratos, pesquisa, gestão, compliance e sistemas.',
+      `<div class="cap"><section class="cap-hub-hero"><h1>Claude AI na Prática Jurídica</h1><p>Os 50 capítulos do livro e 2 extras, em formato híbrido para leitura online — conteúdo jurídico, síntese editorial e aplicação prática para advogados, gestores e escritórios.</p></section><nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Claude AI na Prática Jurídica</span></nav><div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('curso')}${cjAnuncio('sistema')}</div>${cjSumarioHub}${cjPartesHtml}<section class="cj-recursos"><h2>Centrais complementares</h2><p>Conteúdo vivo para atualização normativa, pesquisa jurídica e tecnologia.</p><div class="cap-grade">${recursosHtml}</div></section><div class="cap-faixa">${cjAnuncio('curso')}${cjAnuncio('sistema')}${cjAnuncio('livro')}</div></div>`,
+      { caminho: '/claude-juridico/', semIdiomas: true, ...serieImagem('claude-ai-na-pratica-juridica').og, extraHead: `<style>${CJ_CSS}</style>` + cjHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
   }
 
@@ -4445,6 +4514,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   const CG_CURSO = 'https://academia.villelastay.com.br/academy/cursos/chatgpt-ai-na-pratica?utm_source=villelastay&utm_medium=blog-chatgpt';
   const cgDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   if (fs.existsSync(CG_DIR)) {
@@ -4506,14 +4576,21 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     const cgSemFaq = cgArtigos.filter(a => !a.faq.length).map(a => a.chave);
     if (cgSemFaq.length) console.warn(`[chatgpt] SEM perguntas frequentes: ${cgSemFaq.join(', ')} — escrever em content/chatgpt-na-pratica/faq.json`);
 
+    // A faixa do curso dizia "os outros em produção", e o leitor entendia que essas aulas não
+    // tinham vídeo nenhum. Têm: a Revisão animada está em todas; o que ainda chega aula a aula
+    // é a videoaula com o professor (`gravada`). Sem prometer data.
+    const cgGravadas = cgArtigos.filter(a => a.gravada);
+    const cgVideoProf = cgGravadas.length === cgArtigos.length ? 'em todas'
+      : cgGravadas.length > 1 && cgGravadas.every((a, i) => a.n === i + 1) ? `nas aulas 1 a ${cgGravadas.length}`
+      : cgGravadas.length === 1 ? `na aula ${cgGravadas[0].n}` : `em ${cgGravadas.length} aulas`;
     const cgAnuncio = (qual, min = false) => qual === 'livro'
       ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${CG_LIVRO}" target="_blank" rel="noopener">
           <span class="cap-ad-icone">📗</span>
-          <span class="cap-ad-txt"><strong>Livro ChatGPT AI na Prática</strong><span>O manual completo: prompts, Projetos, GPTs, Skills, Codex, agentes e automações. Digital e impresso.</span></span>
+          <span class="cap-ad-txt"><strong>Livro ChatGPT AI na Prática</strong><span>Parte I do manual: prompts, Projetos, GPTs, Skills, Codex, agentes e automações. Digital e impresso.</span></span>
           <span class="cap-ad-btn">Ver na Livraria →</span></a>`
       : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${CG_CURSO}" target="_blank" rel="noopener">
           <span class="cap-ad-icone">🎓</span>
-          <span class="cap-ad-txt"><strong>Curso ChatGPT AI na Prática</strong><span>${cgArtigos.length} dos ${cgGrade.total} módulos já no ar, com artigo e apresentação; ${cgArtigos.filter(a => a.gravada).length} deles com a videoaula publicada e os outros em produção.</span></span>
+          <span class="cap-ad-txt"><strong>Curso ChatGPT AI na Prática</strong><span>${cgArtigos.length === cgGrade.total ? `As ${cgGrade.total} aulas` : `${cgArtigos.length} das ${cgGrade.total} aulas`} já no ar, com artigo, apresentação e Revisão animada em vídeo; a videoaula com o professor está ${cgVideoProf}.</span></span>
           <span class="cap-ad-btn">Ver o curso →</span></a>`;
     const CG_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(cgAnuncio('livro', true))},${JSON.stringify(cgAnuncio('curso', true))}];`);
     const CG_CSS = `${cgCss}${CAP_CSS_EXTRA}
@@ -4570,7 +4647,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
       const ant = cgArtigos[iArt - 1], prox = cgArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('chatgpt-ai-na-pratica').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-09-20', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -4628,7 +4705,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
       const html = layout(`${a.tituloTexto} | Blog ChatGPT AI na Prática`, a.descricao, corpo, {
-        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('chatgpt-ai-na-pratica').og,
         extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CG_CSS}</style>`
           + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
       }).replace('</body>', `<script>${CG_JS}</script>\n</body>`);
@@ -4700,18 +4777,18 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   <div class="cap-faixa">${cgAnuncio('livro')}${cgAnuncio('curso')}</div>
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
-    <p>As ${cgTotal} aulas da grade. Em preto e com link, ${cgNoAr === 1 ? 'a que já está no ar' : `as ${cgNoAr} que já estão no ar`}; o selo marca ${cgComVideo === 1 ? 'a que já tem videoaula publicada' : `as ${cgComVideo} que já têm videoaula publicada`}. Em cinza, as que ainda estão em produção.</p>
+    <p>As ${cgTotal} aulas da grade. Em preto e com link, ${cgNoAr === 1 ? 'a que já está no ar' : `as ${cgNoAr} que já estão no ar`}; o selo marca ${cgComVideo === 1 ? 'a que já tem videoaula publicada' : `as ${cgComVideo} que já têm videoaula publicada`}.${cgNoAr < cgTotal ? ' Em cinza, as que ainda estão em produção.' : ''}</p>
     <ol class="cap-sumario-lista">${cgGrade.aulas.map(g => cgLinhaGrade(g)).join('')}</ol>
   </section>
   <div class="cap-grade">${cgCards}</div>
   ${cgApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login. O mesmo material vai em PDF junto da primeira aula, para quem faz o <a href="${CG_CURSO}" target="_blank" rel="noopener">curso</a>.</p><div class="cap-grade">${cgApoioCards}</div></section>` : ''}
   <div class="cap-faixa">${cgAnuncio('curso')}${cgAnuncio('livro')}</div>
 </div>`,
-      { caminho: '/chatgpt/', semIdiomas: true, extraHead: `<style>${CG_CSS}</style>` + cgHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      { caminho: '/chatgpt/', semIdiomas: true, ...serieImagem('chatgpt-ai-na-pratica').og, extraHead: `<style>${CG_CSS}</style>` + cgHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
     CG_PATHS = ['/chatgpt/', ...cgArtigos.map(a => a.caminho), ...cgApoio.map(d => `/chatgpt/apoio/${d.chave}.html`)];
-    CG_LLMS = `## Blog: ChatGPT AI na Prática (${cgNoAr} de ${cgTotal} artigos no ar, em português)
+    CG_LLMS = `## Blog: ChatGPT AI na Prática (${cgNoAr === cgTotal ? `${cgNoAr} artigos` : `${cgNoAr} de ${cgTotal} artigos no ar`}, em português)
 
 Série do livro *ChatGPT AI na Prática*, de Augusto Villela — o ecossistema da OpenAI
 aplicado ao trabalho: os modos Chat, Work e Codex, prompts que funcionam, engenharia de
@@ -4740,6 +4817,7 @@ ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoi
   const LC_MANAGER = 'https://manager.villelastay.com.br/?utm_source=villelastay&utm_medium=blog-locador';
   const lcDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   if (fs.existsSync(LC_DIR)) {
@@ -4872,7 +4950,7 @@ ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoi
       const ant = lcArtigos[iArt - 1], prox = lcArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('o-locador-inteligente').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-01', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -4931,7 +5009,7 @@ ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoi
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
       const html = layout(`${a.tituloTexto} | Blog O Locador Inteligente`, a.descricao, corpo, {
-        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('o-locador-inteligente').og,
         extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${LC_CSS}</style>`
           + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
       }).replace('</body>', `<script>${LC_JS}</script>\n</body>`);
@@ -5003,7 +5081,7 @@ ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoi
   <div class="cap-faixa">${lcAnuncio('livro')}${lcAnuncio('curso')}</div>
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
-    <p>As ${lcTotal} aulas da grade. Em preto e com link, ${lcNoAr === 1 ? 'a que já está no ar' : `as ${lcNoAr} que já estão no ar`}; o selo marca ${lcComVideo === 1 ? 'a que já tem videoaula publicada' : `as ${lcComVideo} que já têm videoaula publicada`}. Em cinza, as que ainda estão em produção.</p>
+    <p>${lcNoAr === lcTotal && lcComVideo === lcTotal ? `As ${lcTotal} aulas da grade, todas já no ar e com videoaula publicada.` : `As ${lcTotal} aulas da grade. Em preto e com link, ${lcNoAr === 1 ? 'a que já está no ar' : `as ${lcNoAr} que já estão no ar`}; o selo marca ${lcComVideo === 1 ? 'a que já tem videoaula publicada' : `as ${lcComVideo} que já têm videoaula publicada`}.${lcNoAr < lcTotal ? ' Em cinza, as que ainda estão em produção.' : ''}`}</p>
     <ol class="cap-sumario-lista">${lcGrade.aulas.map(g => lcLinhaGrade(g)).join('')}</ol>
   </section>
   <div class="cap-grade">${lcCards}</div>
@@ -5011,7 +5089,7 @@ ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoi
   <div class="cap-faixa">${lcAnuncio('curso')}${lcAnuncio('livro')}</div>
   <div class="cap-faixa">${lcAnuncio('manager')}</div>
 </div>`,
-      { caminho: '/locador/', semIdiomas: true, extraHead: `<style>${LC_CSS}</style>` + lcHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      { caminho: '/locador/', semIdiomas: true, ...serieImagem('o-locador-inteligente').og, extraHead: `<style>${LC_CSS}</style>` + lcHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
     LC_PATHS = ['/locador/', ...lcArtigos.map(a => a.caminho), ...lcApoio.map(d => `/locador/apoio/${d.chave}.html`)];
@@ -5029,7 +5107,7 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     console.log(`Blog O Locador Inteligente: hub + ${lcNoAr} de ${lcTotal} artigos (${lcComVideo} com vídeo) + ${lcApoio.length} material(is) de apoio`);
   }
 
-  // ---- Série "Conexões de Sucesso — Formação para o Mundo Real" (curso para jovens de 15 a 24 anos): mesmo padrão da série O Locador Inteligente ----
+  // ---- Série "Conexões de Sucesso — Formação para o Mundo Real" (curso para jovens de 15 a 25 anos): mesmo padrão da série O Locador Inteligente ----
   // Anúncios: só o LIVRO (2ª edição, na Livraria) e o CURSO (na Academy). O Villela Stay Manager
   // fica de fora de propósito: é sistema de hospedagem e o público aqui é jovem.
   // O visual jovem (Fredoka, roxo/rosa, caixa MISSÃO) vem do artigo.css da série, todo sob .cap.
@@ -5038,6 +5116,7 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   const CS_CURSO = 'https://academia.villelastay.com.br/academy/cursos/conexoes-de-sucesso-formacao-para-o-mundo-real?utm_source=villelastay&utm_medium=blog-conexoes';
   const csDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   if (fs.existsSync(CS_DIR)) {
@@ -5141,7 +5220,7 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const ant = csArtigos[iArt - 1], prox = csArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('conexoes-de-sucesso').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-01', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -5199,7 +5278,7 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
       const html = layout(`${a.tituloTexto} | Blog Conexões de Sucesso`, a.descricao, corpo, {
-        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('conexoes-de-sucesso').og,
         extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CS_CSS}</style>`
           + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
       }).replace('</body>', `<script>${CS_JS}</script>\n</body>`);
@@ -5255,7 +5334,7 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     }];
     fs.writeFileSync(path.join(od, 'conexoes-de-sucesso', 'index.html'), layout(
       'Conexões de Sucesso — Formação para o Mundo Real: a série do curso | Villela Stay',
-      `A série Conexões de Sucesso — Formação para o Mundo Real, de Augusto Villela, para jovens de 15 a 24 anos: pensamento crítico, escrita, comunicação, inteligência artificial, vendas, dinheiro, negócio e plano de carreira. ${csNoAr} artigos no ar.`,
+      `A série Conexões de Sucesso — Formação para o Mundo Real, de Augusto Villela, para jovens de 15 a 25 anos: pensamento crítico, escrita, comunicação, inteligência artificial, vendas, dinheiro, negócio e plano de carreira. ${csNoAr} artigos no ar.`,
       `
 <div class="cap">
   <section class="cap-hub-hero">
@@ -5273,13 +5352,13 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   ${csApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${csApoioCards}</div></section>` : ''}
   <div class="cap-faixa">${csAnuncio('curso')}${csAnuncio('livro')}</div>
 </div>`,
-      { caminho: '/conexoes-de-sucesso/', semIdiomas: true, extraHead: `<style>${CS_CSS}</style>` + csHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      { caminho: '/conexoes-de-sucesso/', semIdiomas: true, ...serieImagem('conexoes-de-sucesso').og, extraHead: `<style>${CS_CSS}</style>` + csHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
     CS_PATHS = ['/conexoes-de-sucesso/', ...csArtigos.map(a => a.caminho), ...csApoio.map(d => `/conexoes-de-sucesso/apoio/${d.chave}.html`)];
     CS_LLMS = `## Blog: Conexões de Sucesso — Formação para o Mundo Real (${csNoAr} artigos, em português)
 
-Série do livro *Conexões de Sucesso* (2ª edição), de Augusto Villela, para jovens de 15 a 24 anos:
+Série do livro *Conexões de Sucesso* (2ª edição), de Augusto Villela, para jovens de 15 a 25 anos:
 o que aprender agora que as máquinas já sabem as respostas — pensamento crítico e evidência,
 escrita e comunicação, leitura, idioma, atenção, inteligência artificial com verificação, vendas e
 negociação, rede de contatos, dinheiro e juros compostos, como um negócio ganha dinheiro, contrato,
@@ -5303,6 +5382,7 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   const SO_CURSO = 'https://academia.villelastay.com.br/academy/cursos/a-segunda-onda-da-ia?utm_source=villelastay&utm_medium=blog-segunda-onda';
   const soDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   if (fs.existsSync(SO_DIR)) {
@@ -5407,7 +5487,7 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const ant = soArtigos[iArt - 1], prox = soArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('segunda-onda-da-ia').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-01', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -5465,7 +5545,7 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
       const html = layout(`${a.tituloTexto} | Blog A Segunda Onda da IA`, a.descricao, corpo, {
-        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('segunda-onda-da-ia').og,
         extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${SO_CSS}</style>`
           + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
       }).replace('</body>', `<script>${SO_JS}</script>\n</body>`);
@@ -5539,7 +5619,7 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   ${soApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${soApoioCards}</div></section>` : ''}
   <div class="cap-faixa">${soAnuncio('curso')}${soAnuncio('livro')}</div>
 </div>`,
-      { caminho: '/segunda-onda-da-ia/', semIdiomas: true, extraHead: `<style>${SO_CSS}</style>` + soHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      { caminho: '/segunda-onda-da-ia/', semIdiomas: true, ...serieImagem('segunda-onda-da-ia').og, extraHead: `<style>${SO_CSS}</style>` + soHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
     SO_PATHS = ['/segunda-onda-da-ia/', ...soArtigos.map(a => a.caminho), ...soApoio.map(d => `/segunda-onda-da-ia/apoio/${d.chave}.html`)];
@@ -5568,6 +5648,7 @@ ${soArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   const GA_CURSO = 'https://academia.villelastay.com.br/academy/cursos/google-ai-na-pratica?utm_source=villelastay&utm_medium=blog-google-ai';
   const gaDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   if (fs.existsSync(GA_DIR)) {
@@ -5673,7 +5754,7 @@ ${soArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const ant = gaArtigos[iArt - 1], prox = gaArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('google-ai-na-pratica').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-03', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -5731,7 +5812,7 @@ ${soArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
       const html = layout(`${a.tituloTexto} | Blog Google AI na Prática`, a.descricao, corpo, {
-        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('google-ai-na-pratica').og,
         extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${GA_CSS}</style>`
           + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
       }).replace('</body>', `<script>${GA_JS}</script>\n</body>`);
@@ -5805,7 +5886,7 @@ ${soArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   ${gaApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${gaApoioCards}</div></section>` : ''}
   <div class="cap-faixa">${gaAnuncio('curso')}${gaAnuncio('livro')}</div>
 </div>`,
-      { caminho: '/google-ai/', semIdiomas: true, extraHead: `<style>${GA_CSS}</style>` + gaHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      { caminho: '/google-ai/', semIdiomas: true, ...serieImagem('google-ai-na-pratica').og, extraHead: `<style>${GA_CSS}</style>` + gaHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
     GA_PATHS = ['/google-ai/', ...gaArtigos.map(a => a.caminho), ...gaApoio.map(d => `/google-ai/apoio/${d.chave}.html`)];
@@ -5832,6 +5913,7 @@ ${gaArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   const HO_CURSO = 'https://academia.villelastay.com.br/academy/cursos/o-homem-contemporaneo?utm_source=villelastay&utm_medium=blog-homem-contemporaneo';
   const hoDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   if (fs.existsSync(HO_DIR)) {
@@ -5911,6 +5993,8 @@ ${gaArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     const HO_CSS = `${hoCss}${CAP_CSS_EXTRA}
 .cap-hero .cap-trilha a{color:#e8d3a6}
 .cap-hero .cap-trilha a:hover{color:#fff}
+/* Aviso de impressão: esta série não tem livro na Livraria, então só o curso é citado. */
+@media print{body:after{content:"Este conteúdo é exibido apenas no navegador. Leia em villelastay.com.br/blog — e encontre o texto completo no curso (academia.villelastay.com.br)."}}
 /* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
 /* Endereço longo não quebra sozinho e alargava a página no celular. */
 @media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
@@ -5946,7 +6030,7 @@ ${gaArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const ant = hoArtigos[iArt - 1], prox = hoArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('o-homem-contemporaneo').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-03', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -6004,7 +6088,7 @@ ${gaArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
       const html = layout(`${a.tituloTexto} | Blog O Homem Contemporâneo`, a.descricao, corpo, {
-        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('o-homem-contemporaneo').og,
         extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${HO_CSS}</style>`
           + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
       }).replace('</body>', `<script>${HO_JS}</script>\n</body>`);
@@ -6059,7 +6143,7 @@ ${gaArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       itemListElement: hoArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
     }];
     fs.writeFileSync(path.join(od, 'homem-contemporaneo', 'index.html'), layout(
-      'O Homem Contemporâneo: a série do curso | Villela Stay',
+      'O Homem Contemporâneo: a série do curso | Blog O Homem Contemporâneo',
       `A série O Homem Contemporâneo, de Augusto Villela: princípios para viver no século XXI — atenção, aprendizado, decisão, emoções, hábitos, sono e corpo, propósito, filosofias práticas, dinheiro, trabalho, comunicação, IA como ferramenta, execução e legado. ${hoNoAr} artigos no ar.`,
       `
 <div class="cap">
@@ -6078,7 +6162,7 @@ ${gaArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   ${hoApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${hoApoioCards}</div></section>` : ''}
   <div class="cap-faixa">${hoAnuncio('curso')}</div>
 </div>`,
-      { caminho: '/homem-contemporaneo/', semIdiomas: true, extraHead: `<style>${HO_CSS}</style>` + hoHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      { caminho: '/homem-contemporaneo/', semIdiomas: true, ...serieImagem('o-homem-contemporaneo').og, extraHead: `<style>${HO_CSS}</style>` + hoHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
     HO_PATHS = ['/homem-contemporaneo/', ...hoArtigos.map(a => a.caminho), ...hoApoio.map(d => `/homem-contemporaneo/apoio/${d.chave}.html`)];
@@ -6109,6 +6193,7 @@ ${hoArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   const HE_CURSO = 'https://academia.villelastay.com.br/academy/cursos/o-homem-essencial?utm_source=villelastay&utm_medium=blog-homem-essencial';
   const heDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   if (fs.existsSync(HE_DIR)) {
@@ -6227,7 +6312,7 @@ ${hoArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const ant = heArtigos[iArt - 1], prox = heArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('o-homem-essencial').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-04', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -6285,7 +6370,7 @@ ${hoArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
       const html = layout(`${a.tituloTexto} | Blog O Homem Essencial`, a.descricao, corpo, {
-        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('o-homem-essencial').og,
         extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${HE_CSS}</style>`
           + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
       }).replace('</body>', `<script>${HE_JS}</script>\n</body>`);
@@ -6340,7 +6425,7 @@ ${hoArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       itemListElement: heArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
     }];
     fs.writeFileSync(path.join(od, 'homem-essencial', 'index.html'), layout(
-      'O Homem Essencial: a série do curso | Villela Stay',
+      'O Homem Essencial: a série do curso | Blog O Homem Essencial',
       `A série O Homem Essencial, de Augusto Villela: caráter, domínio de si e o que realmente importa — as virtudes, a verdade, a força do bom, disciplina, corpo e mente, amizades, limites, como tratar as pessoas, família, trabalho, dinheiro, adversidade, pensamento crítico, a cidade, propósito, a morte e o legado. ${heNoAr} artigos no ar.`,
       `
 <div class="cap">
@@ -6359,7 +6444,7 @@ ${hoArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   ${heApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${heApoioCards}</div></section>` : ''}
   <div class="cap-faixa">${heAnuncio('curso')}${heAnuncio('livro')}</div>
 </div>`,
-      { caminho: '/homem-essencial/', semIdiomas: true, extraHead: `<style>${HE_CSS}</style>` + heHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      { caminho: '/homem-essencial/', semIdiomas: true, ...serieImagem('o-homem-essencial').og, extraHead: `<style>${HE_CSS}</style>` + heHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
     HE_PATHS = ['/homem-essencial/', ...heArtigos.map(a => a.caminho), ...heApoio.map(d => `/homem-essencial/apoio/${d.chave}.html`)];
@@ -6403,6 +6488,9 @@ ${SITE_URL}/claude-juridico/
 Livro completo: ${CJ_LIVRO.split('?')[0]} · Curso on-line: ${CJ_CURSO.split('?')[0]} · Sistema jurídico: ${CJ_SISTEMA.split('?')[0]}
 
 ${cjArtigos.map(a => `- [Capítulo ${a.capitulo}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+
+Recursos complementares da série (páginas abertas):
+${CJ_RECURSOS.map(([arq, titulo, desc]) => `- [${titulo}](${SITE_URL}/claude-juridico/recursos/${arq}): ${desc}`).join('\n')}
 `;
   console.log(`Blog Claude AI na Prática: hub + ${capArtigos.length} artigos em /blog/ (+${capArtigos.length} redirecionamentos de /claude/)`);
   console.log(`Blog Claude AI na Prática Jurídica: hub + ${cjArtigos.length} artigos + 3 núcleos`);
@@ -6459,7 +6547,7 @@ const cgCardsHub = LANG !== 'pt' || !cgArtigos.length ? '' : `
       <span class="tema-tag tema-chatgpt">💬 Série · ChatGPT</span>
       <h3>ChatGPT AI na Prática</h3>
       <p>O ecossistema da OpenAI aplicado ao trabalho: os modos Chat, Work e Codex, prompts que funcionam, engenharia de contexto, Projetos, agentes e automações — com os casos reais de uma empresa operada por IA.</p>
-      <span class="blog-card-leia">${cgArtigos.length === 1 ? 'Ver o artigo no ar' : `Ver os ${cgArtigos.length} artigos no ar`} →</span>
+      <span class="blog-card-leia">${cgArtigos.length === 1 ? 'Ver o artigo' : `Ver os ${cgArtigos.length} artigos`} →</span>
     </div>
   </a>`;
 
@@ -6475,14 +6563,14 @@ const lcCardsHub = LANG !== 'pt' || !lcArtigos.length ? '' : `
     </div>
   </a>`;
 
-// Série Conexões de Sucesso (curso para jovens de 15 a 24 anos). Card com a capa do curso.
+// Série Conexões de Sucesso (curso para jovens de 15 a 25 anos). Card com a capa do curso.
 const csCardsHub = LANG !== 'pt' || !csArtigos.length ? '' : `
   <a class="blog-card blog-card-serie" href="/conexoes-de-sucesso/">
     <div class="blog-card-img">${img('/blog-img/conexoes-de-sucesso-1.jpg', { alt: 'Capa do curso Conexões de Sucesso — Formação para o mundo real: o autor em ilustração, de punho erguido, ao lado da capa do livro, em que um jovem de mochila caminha por uma estrada rumo à cidade', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
     <div class="blog-card-info">
       <span class="tema-tag tema-chatgpt">🎮 Série · Jovens e carreira</span>
       <h3>Conexões de Sucesso — Formação para o Mundo Real</h3>
-      <p>Para jovens de 15 a 24 anos: o que aprender agora que as máquinas já sabem as respostas — pensar com evidência, escrever, falar, usar IA com responsabilidade, vender, cuidar do dinheiro e montar um plano de doze meses.</p>
+      <p>Para jovens de 15 a 25 anos: o que aprender agora que as máquinas já sabem as respostas — pensar com evidência, escrever, falar, usar IA com responsabilidade, vender, cuidar do dinheiro e montar um plano de doze meses.</p>
       <span class="blog-card-leia">Ver os ${csArtigos.length} artigos →</span>
     </div>
   </a>`;
@@ -7218,6 +7306,15 @@ eles é feita por API, disponível nos planos superiores.
   eventos corporativos nas casas do Lago Sul.
 - [Perguntas frequentes](${SITE_URL}/faq.html)
 - [Tour virtual 360°](${SITE_URL}/tour.html)
+
+## Blog: Diário de Brasília e artigos (${BLOG.length} artigos, em português)
+
+Artigos avulsos do blog da Villela Stay — Brasília, hospedagem profissional, gestão e
+inteligência artificial aplicada ao trabalho. Página do blog, com estes artigos e as
+séries abaixo: ${SITE_URL}/blog.html (os artigos avulsos também existem em inglês,
+${SITE_URL}/en/blog.html, e em espanhol, ${SITE_URL}/es/blog.html).
+
+${BLOG.map(a => `- [${a.h1}](${SITE_URL}/blog/${a.slug}.html): ${cortar(a.dek || a.descricao, 240)}`).join('\n')}
 
 ${CAP_LLMS}
 ${CG_LLMS}

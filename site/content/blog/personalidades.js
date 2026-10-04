@@ -6,7 +6,7 @@ module.exports = {
   titulo: 'Personalidades de Brasília: quem sonhou, construiu e cantou a capital | Villela Stay',
   descricao: 'JK, Niemeyer, Lúcio Costa, Burle Marx, Athos Bulcão, Renato Russo e Cassia Eller: as personalidades que fizeram Brasília — e que dão nome às casas da Villela Stay.',
   h1: 'Brasília tem nome e sobrenome',
-  dek: 'Por trás da cidade mais planejada do mundo há pessoas de carne, osso e coragem. Conheça quem sonhou, desenhou, construiu e cantou a capital — e por que cada casa nossa leva um desses nomes.',
+  dek: 'Por trás da cidade mais planejada do mundo há pessoas de carne, osso e coragem. Conheça quem sonhou, desenhou, construiu e cantou a capital — e por que várias das nossas casas e suítes levam um desses nomes.',
   atualizado: '2026-06-17',
   leituraMin: 8,
   keywords: ['personalidades de brasília', 'juscelino kubitschek', 'oscar niemeyer', 'renato russo', 'cassia eller', 'história de brasília'],
@@ -52,9 +52,9 @@ ${h.fig(2, { legenda: 'Oscar Niemeyer, o arquiteto das curvas que viraram o sím
 ${h.fig(3, { legenda: 'Azulejos de Athos Bulcão: o artista que vestiu a cidade de cor e ritmo.' })}
 
 <h2>A trilha sonora: a Capital do Rock</h2>
-<p>Depois dos fundadores, vieram as vozes. Nos anos 1980, a cidade planejada e silenciosa explodiu em som: <strong>Renato Russo</strong> e a Legião Urbana, Capital Inicial, Plebe Rude, Raimundos e a jovem <strong>Cassia Eller</strong>. A inquietação de uma geração criada entre superquadras virou alguns dos maiores hinos do rock brasileiro. Por isso, na Villela Stay, o <strong>Flat do Renato Russo</strong> e a <strong>Suíte da Cassia Eller</strong> guardam essa memória.</p>
+<p>Depois dos fundadores, vieram as vozes. Nos anos 1980, a cidade planejada e silenciosa explodiu em som: <strong>Renato Russo</strong> e a Legião Urbana, Capital Inicial, Plebe Rude, Raimundos e a jovem <strong>Cassia Eller</strong>. A inquietação de uma geração criada entre superquadras virou alguns dos maiores hinos do rock brasileiro. Por isso, na Villela Stay, o <strong>Flat do Renato Russo</strong> e o <strong>Flat da Cassia Eller</strong> guardam essa memória.</p>
 
 <h2>Durma dentro da história</h2>
-<p>Não é coincidência que cada hospedagem nossa leve um desses nomes. É uma forma de homenagem — e de convite. Reunir o seu grupo numa casa que se chama Kubitschek, Catetinho ou Gran Villela é fazer parte, por alguns dias, dessa história que ainda está sendo escrita.</p>
+<p>Não é coincidência que várias das nossas casas e suítes levem um desses nomes. É uma forma de homenagem — e de convite. Reunir o seu grupo numa casa que se chama Kubitschek, Catetinho ou Gran Villela é fazer parte, por alguns dias, dessa história que ainda está sendo escrita.</p>
 `,
 };

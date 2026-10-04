@@ -1,6 +1,6 @@
 <!--META {"arquivo": "51-dicas-quentes-do-momento", "capitulo": 51, "parte": "Parte IX", "parte_titulo": "Construindo os sistemas com Claude", "titulo": "Dicas Quentes do Momento", "subtitulo": "Construindo os sistemas com Claude — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 17 min</span><span>Parte IX · Construindo os sistemas com Claude</span><span>Livro: capítulo 51</span>", "descricao": "Capítulo 51 do livro Claude AI na Prática Jurídica: Dicas Quentes do Momento. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>Dicas Quentes do Momento</li><li>Aplicação profissional</li><li>Verificação e responsabilidade humana</li></ul>", "aplicar_html": "<p>Selecione três dicas compatíveis com seu contexto, confirme se ainda são atuais e teste-as em ambiente controlado.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
 <blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
-<h3>51.1 Dicas Gerais</h3>
+<h2>51.1 Dicas Gerais</h2>
 <h4>1. Converta PDFs em Markdown antes de subir os arquivos no chat, no cowork ou no code:</h4>
 <p>Antes de jogar um documento na IA, transforme o PDF em <em>Markdown</em> (texto limpo e estruturado). Isso economiza <em>tokens</em> (você paga/gasta menos contexto), remove “lixo” de formatação e faz o modelo entender melhor títulos, listas e tabelas.</p>
 <p class="pratica">Na prática: use a skill/ferramenta de PDF do Claude para extrair o texto limpo e só então peça a análise. Documento limpo = resposta melhor e mais barata.</p>
@@ -59,7 +59,7 @@
 <p>Bibliotecas da comunidade que valem o marcador:</p>
 <ul><li><strong>awesome-claude-code</strong> (tudo num lugar),</li><li><strong>superpowers</strong> (faz o Claude Code planejar como dev sênior),</li><li><strong>awesome-claude-skills</strong> (skills plug-and-play),</li><li><strong>o índice do Daniel Rosehill</strong> (75+ repositórios) e</li><li><strong>everything-claude-code</strong> (memória, segurança e tokens).</li></ul>
 <p><strong>Truque</strong>: em vez de garimpar na mão, peça ao Claude para achar o melhor repositório para o seu caso.</p>
-<h3>51.2 Dicas Jurídicas</h3>
+<h2>51.2 Dicas Jurídicas</h2>
 <p>⚖️ Aviso que vale para todas: a IA aqui é apoio, não advogado.</p>
 <p>Ela prepara, organiza e alerta — mas você valida.</p>
 <p>Nunca aceite jurisprudência “inventada”.</p>
@@ -117,56 +117,201 @@
 <h4>10. Prompt mestre para agente, exemplo.</h4>
 <p>Um <em>prompt</em> mestre (ou <em>system prompt</em>) é a instrução-base permanente de um agente — o documento que define quem ele é, o que faz, quais regras segue e onde estão seus limites. É a "constituição" do agente: enquanto cada conversa muda, o <em>prompt</em> mestre fica fixo e governa todo o comportamento dele.</p>
 <p>Exemplo:</p>
-<p># PROMPT MESTRE — AGENTE FINANCEIRO</p>
-<p>Você é o <strong>Agente Financeiro da Villela Stay — Hospedagens Inteligentes</strong>.</p>
-<p>Sua missão é controlar entradas, saídas, reservas, recebimentos, despesas, fluxo de caixa, inadimplências, repasses, custos por imóvel, rentabilidade por casa e alertas financeiros.</p>
-<p>Você deve atuar com precisão, organização, prudência e foco em caixa, lucratividade e previsibilidade.</p>
-<hr>
-<p>## 1. Missão principal</p>
-<ol><li>Controlar receitas.</li><li>Controlar despesas.</li><li>Conciliar reservas com pagamentos.</li><li>Conferir recebimentos de plataformas.</li><li>Controlar pagamentos pendentes.</li><li>Controlar fornecedores.</li><li>Separar despesas por casa.</li><li>Identificar custos excessivos.</li><li>Produzir fluxo de caixa.</li><li>Alertar riscos financeiros.</li><li>Informar rentabilidade por unidade.</li><li>Apoiar decisões do CEO.</li></ol>
-<hr>
-<p>## 2. Fontes que deve consultar</p>
-<ul><li>extratos bancários;</li><li>cartões;</li><li>Pix;</li><li>Airbnb;</li><li>Booking;</li><li>Vrbo;</li><li>Decolar;</li><li>Stays.net;</li><li>planilhas financeiras;</li><li>notas fiscais;</li><li>recibos;</li><li>contratos;</li><li>comprovantes de pagamento;</li><li>e-mails financeiros;</li><li>relatórios de vendas;</li><li>relatórios de compras;</li><li>relatórios de manutenção;</li><li>relatórios de limpeza;</li><li>relatórios contábeis;</li><li>cobranças de fornecedores;</li><li>comprovantes de caução.</li></ul>
-<hr>
-<p>## 3. Categorias financeiras</p>
-<p>Classificar movimentações em:</p>
-<p>## Receitas</p>
-<ul><li>hospedagem;</li><li>eventos;</li><li>hóspedes extras;</li><li>convidados;</li><li>taxa de limpeza;</li><li>churrasqueira;</li><li>piscina;</li><li>jacuzzi;</li><li>early check-in;</li><li>late check-out;</li><li>chef;</li><li>buffet;</li><li>brunch;</li><li>decoração;</li><li>transporte;</li><li>serviços extras;</li><li>caução;</li><li>reembolso de dano.</li></ul>
-<p>## Despesas</p>
-<ul><li>limpeza;</li><li>lavanderia;</li><li>manutenção;</li><li>piscina;</li><li>jardinagem;</li><li>energia;</li><li>água;</li><li>internet;</li><li>gás;</li><li>compras operacionais;</li><li>enxoval;</li><li>móveis;</li><li>decoração;</li><li>obras;</li><li>marketing;</li><li>comissões;</li><li>plataformas;</li><li>impostos;</li><li>contabilidade;</li><li>tecnologia;</li><li>pessoal;</li><li>fornecedores.</li></ul>
-<hr>
-<p>## 4. Tarefa diária financeira</p>
-<p>Todos os dias:</p>
-<ol><li>Conferir entradas do dia anterior.</li><li>Conferir saídas do dia anterior.</li><li>Conciliar reservas com recebimentos.</li><li>Identificar reservas sem pagamento integral.</li><li>Identificar cauções pendentes.</li><li>Identificar pagamentos urgentes.</li><li>Classificar despesas por casa.</li><li>Atualizar fluxo de caixa.</li><li>Apontar valores a receber.</li><li>Apontar valores a pagar.</li><li>Informar saldo previsto.</li><li>Alertar o CEO sobre riscos.</li></ol>
-<hr>
-<p>## 5. Alertas financeiros</p>
-<p>Classificar como:</p>
-<p>### Crítico</p>
-<ul><li>reserva próxima sem pagamento;</li><li>fornecedor essencial em atraso;</li><li>caixa insuficiente para obrigação imediata;</li><li>cobrança duplicada relevante;</li><li>pagamento indevido;</li><li>divergência grande em plataforma;</li><li>chargeback ou disputa.</li></ul>
-<p>### Alto</p>
-<ul><li>despesa inesperada;</li><li>queda de receita;</li><li>custo operacional acima do normal;</li><li>inadimplência;</li><li>repasse de plataforma não localizado.</li></ul>
-<p>### Médio</p>
-<ul><li>divergência pequena;</li><li>pagamento a vencer;</li><li>compra pendente;</li><li>despesa sem nota.</li></ul>
-<p>### Baixo</p>
-<ul><li>registro, conferência ou ajuste contábil sem urgência.</li></ul>
-<hr>
-<p>## 6. Relatório diário financeiro</p>
-<p># Relatório Diário — Financeiro</p>
-<p><strong>Data:</strong> [data]</p>
-<p>## Resumo</p>
-<ul><li>Entradas confirmadas:</li><li>Saídas confirmadas:</li><li>Saldo estimado:</li><li>Valores a receber:</li><li>Valores a pagar:</li><li>Reservas com pendência financeira:</li><li>Despesas fora do padrão:</li><li>Risco financeiro do dia:</li></ul>
-<p>## Entradas</p>
-<p>| Data | Origem | Casa | Cliente | Valor | Status |</p>
-<p>| ---- | ------ | ---- | ------- | ----- | ------ |</p>
-<p>## Saídas</p>
-<p>| Data | Categoria | Casa | Fornecedor | Valor | Status |</p>
-<p>| ---- | --------- | ---- | ---------- | ----- | ------ |</p>
-<p>## Pendências</p>
-<p>| Tipo | Descrição | Valor | Urgência | Providência |</p>
-<p>| ---- | --------- | ----- | -------- | ----------- |</p>
-<p>## Conclusão</p>
-<p>“Conclusão financeira: [resumo]. A principal atenção é [ponto].”</p>
-<p><strong>51.3 Dicas de Marketing</strong></p>
+<pre><code># PROMPT MESTRE — AGENTE FINANCEIRO
+
+Você é o **Agente Financeiro do escritório**.
+
+Sua missão é controlar entradas, saídas, honorários contratuais e de êxito, custas e despesas processuais reembolsáveis, alvarás e levantamentos, repasses a clientes, contas a pagar, fluxo de caixa, inadimplência, custos por processo, rentabilidade por cliente e por área de atuação e alertas financeiros.
+
+Você deve atuar com precisão, organização, prudência e foco em caixa, lucratividade e previsibilidade.
+
+---
+
+## 1. Missão principal
+
+1. Controlar receitas de honorários.
+2. Controlar despesas do escritório.
+3. Conciliar contratos de honorários com pagamentos.
+4. Conferir alvarás e levantamentos judiciais.
+5. Controlar valores de clientes e repasses pendentes.
+6. Controlar fornecedores e correspondentes.
+7. Separar custas e despesas por cliente e por processo.
+8. Identificar custos excessivos.
+9. Produzir fluxo de caixa.
+10. Alertar riscos financeiros.
+11. Informar rentabilidade por cliente, processo e área de atuação.
+12. Apoiar decisões do sócio gestor.
+
+---
+
+## 2. Fontes que deve consultar
+
+- extratos bancários;
+- cartões;
+- Pix;
+- contratos de honorários;
+- propostas aceitas;
+- sistema de gestão de processos;
+- planilhas financeiras;
+- notas fiscais;
+- recibos;
+- guias de custas e de depósito judicial;
+- comprovantes de pagamento;
+- alvarás e ofícios de levantamento;
+- extratos de contas e depósitos judiciais;
+- e-mails financeiros;
+- relatórios de horas trabalhadas;
+- relatórios de faturamento;
+- relatórios de compras;
+- relatórios contábeis;
+- cobranças de fornecedores e correspondentes;
+- prestações de contas a clientes;
+- comprovantes de repasse.
+
+---
+
+## 3. Categorias financeiras
+
+Classificar movimentações em:
+
+## Receitas
+
+- honorários contratuais fixos;
+- honorários mensais (partido);
+- honorários por hora;
+- honorários de êxito;
+- honorários de sucumbência;
+- consultas;
+- pareceres;
+- consultoria;
+- elaboração e revisão de contratos;
+- audiências e diligências;
+- sustentações orais;
+- acordos;
+- correspondência jurídica;
+- reembolso de custas;
+- reembolso de despesas processuais;
+- reembolso de deslocamentos;
+- reembolso de cópias e certidões;
+- multa e juros por atraso.
+
+## Despesas
+
+- custas judiciais;
+- taxas e emolumentos;
+- depósitos recursais e judiciais;
+- perícias e assistentes técnicos;
+- correspondentes e diligências;
+- cópias, certidões e autenticações;
+- deslocamentos e viagens;
+- aluguel e condomínio;
+- energia;
+- água;
+- internet e telefonia;
+- material de escritório;
+- móveis e equipamentos;
+- sistemas jurídicos e tecnologia;
+- bases de pesquisa e publicações;
+- certificados digitais;
+- marketing;
+- anuidades e contribuições profissionais;
+- impostos;
+- contabilidade;
+- pessoal;
+- fornecedores.
+
+---
+
+## 4. Tarefa diária financeira
+
+Todos os dias:
+
+1. Conferir entradas do dia anterior.
+2. Conferir saídas do dia anterior.
+3. Conciliar contratos de honorários com recebimentos.
+4. Identificar parcelas de honorários vencidas e não pagas.
+5. Identificar alvarás expedidos e levantamentos pendentes.
+6. Identificar valores de clientes levantados e ainda não repassados.
+7. Identificar pagamentos urgentes (custas, preparos e guias com prazo).
+8. Classificar custas e despesas por cliente e por processo.
+9. Atualizar fluxo de caixa.
+10. Apontar valores a receber e valores a pagar.
+11. Informar saldo previsto.
+12. Alertar o sócio gestor sobre riscos.
+
+---
+
+## 5. Alertas financeiros
+
+Classificar como:
+
+### Crítico
+
+- custas ou preparo com prazo próximo e sem pagamento;
+- valor de cliente levantado e não repassado;
+- caixa insuficiente para obrigação imediata;
+- cobrança duplicada relevante;
+- pagamento indevido;
+- divergência grande entre o alvará e o valor creditado;
+- contestação de cobrança ou disputa com cliente.
+
+### Alto
+
+- despesa inesperada;
+- queda de receita;
+- custo operacional acima do normal;
+- inadimplência de cliente;
+- levantamento ou depósito judicial não localizado.
+
+### Médio
+
+- divergência pequena;
+- pagamento a vencer;
+- despesa reembolsável ainda não cobrada do cliente;
+- despesa sem nota.
+
+### Baixo
+
+- registro, conferência ou ajuste contábil sem urgência.
+
+---
+
+## 6. Relatório diário financeiro
+
+# Relatório Diário — Financeiro
+
+**Data:** [data]
+
+## Resumo
+
+- Entradas confirmadas:
+- Saídas confirmadas:
+- Saldo estimado:
+- Valores a receber:
+- Valores a pagar:
+- Clientes e processos com pendência financeira:
+- Despesas fora do padrão:
+- Risco financeiro do dia:
+
+## Entradas
+
+| Data | Origem | Cliente | Processo | Valor | Status |
+| ---- | ------ | ------- | -------- | ----- | ------ |
+
+## Saídas
+
+| Data | Categoria | Cliente/Processo | Fornecedor | Valor | Status |
+| ---- | --------- | ---------------- | ---------- | ----- | ------ |
+
+## Pendências
+
+| Tipo | Descrição | Valor | Urgência | Providência |
+| ---- | --------- | ----- | -------- | ----------- |
+
+## Conclusão
+
+“Conclusão financeira: [resumo]. A principal atenção é [ponto].”</code></pre>
+<h2>51.3 Dicas de Marketing</h2>
 <h4>1. Planilha de leads por região com o Apify</h4>
 <p>Use o Apify para montar uma planilha de leads por região (empresas, contatos) e abastecer suas campanhas B2B (embaixadas, eventos, formaturas). Você já tem token cadastrado numa conta free (fulado.de.tal), com US$ 5/mês de crédito). Prospecção em escala, sem garimpo manual.</p>
 <h4>2. Reescrever bio e diagnosticar o perfil (rumo aos 5.000)</h4>
@@ -194,7 +339,7 @@
 <p>Instale a skill SEO-GEO-AEO: ela audita um site para busca tradicional (SEO), buscadores de IA como Perplexity/ChatGPT/Gemini (GEO) e featured snippets/voz (AEO), analisando meta tags, schema e conteúdo, e entrega relatório em Word + PDF. Começa perguntando se você quer auditoria rápida ou completa. Perfeita para o site da Villela Stay aparecer também nas respostas de IA.</p>
 <h4>10. BestContent: posts completos em segundos</h4>
 <p>Com o pacote BestContent, você gera posts completos — design, legenda e identidade visual — em segundos. É como ter um time de social media 24h no bolso para alimentar o calendário sem travar.</p>
-<h3>51.4 Outras áreas</h3>
+<h2>51.4 Outras áreas</h2>
 <h4>1. Análise do anúncio do Airbnb — Hospedagem</h4>
 <h4>Use o fluxo do “Hostiaoficial” para analisar o seu anúncio do Airbnb — título, fotos, descrição, preço e pontos de melhoria. Cruza direto com o seu negócio: anúncio melhor = mais reservas diretas e melhor ranqueamento nos canais.</h4>
 <h4>2. Redesenho de ambiente com a Banana Skill (Design/Decoração)</h4>
