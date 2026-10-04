@@ -215,6 +215,13 @@
   function irPara(id) {
     ABA = MAPA_VIEWS[id] ? id : 'aluno';
     SEQ++;
+    // Trocar de aba sai do curso: o post-it de dicas volta a só sortear as gerais.
+    try {
+      if (document.documentElement.hasAttribute('data-vs-curso')) {
+        document.documentElement.removeAttribute('data-vs-curso');
+        window.dispatchEvent(new CustomEvent('vs:contexto'));
+      }
+    } catch (e) { /* sem o widget, nada a fazer */ }
     Array.prototype.forEach.call(document.querySelectorAll('#ac-nav [data-nav]'), function (b) {
       if (b.getAttribute('data-nav') === ABA) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');

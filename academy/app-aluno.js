@@ -69,9 +69,22 @@
       try { if (v === undefined) return localStorage.getItem('al-' + k); localStorage.setItem('al-' + k, v); } catch (e) { return null; }
     }
 
+    // Diz ao widget de comunicados (post-it "você sabia?") qual curso está
+    // aberto: com curso, ele sorteia as dicas gerais + as DESTE curso; sem,
+    // só as gerais. Contrato: <html data-vs-curso> + evento "vs:contexto".
+    function marcarCursoAberto(pid) {
+      try {
+        var raiz = document.documentElement, atual = raiz.getAttribute('data-vs-curso') || '';
+        if (String(pid || '') === atual) return;
+        if (pid) raiz.setAttribute('data-vs-curso', String(pid)); else raiz.removeAttribute('data-vs-curso');
+        window.dispatchEvent(new CustomEvent('vs:contexto'));
+      } catch (e) { /* sem o widget, nada a fazer */ }
+    }
+
     // ================= BIBLIOTECA =================
     function biblioteca() {
       limparTutor();
+      marcarCursoAberto('');
       document.body.classList.remove('aluno-amplo');
       api('GET', '/aluno/biblioteca').then(function (d) {
         var cursos = d.cursos || [];
@@ -164,6 +177,7 @@
       if (!C || C.pid !== pid) limparTutor();
       api('GET', '/aluno/cursos/' + pid).then(function (d) {
         C = estadoDoCurso(pid, d);
+        marcarCursoAberto(pid);
         var aulas = C.aulas;
         carregarInterativo(pid);
         document.body.classList.add('aluno-amplo');
@@ -1115,6 +1129,7 @@
         if (AB.audio) { AB.audio.pause(); AB.audio.removeAttribute('src'); AB.audio.load(); }
       }
       AB.pid = C.pid; AB.produto = C.d.produto; AB.faixas = C.d.audiobook; AB.matriculado = C.d.matriculado;
+      marcarCursoAberto(C.pid);
       document.body.classList.remove('aluno-amplo');
       pintarAudiobook();
       if (AB.i < 0) { // retoma o último capítulo ouvido; senão, o primeiro liberado

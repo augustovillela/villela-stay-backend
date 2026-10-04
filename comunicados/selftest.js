@@ -746,17 +746,18 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     com.dicas.criar({ produto: 'academy', curso_id: 'p1', titulo: 'Dica do Curso de Teste', corpo: 'x', passos: ['passo'] });
     assert.throws(() => com.dicas.criar({ produto: 'academy', curso_id: 'nao-existe', titulo: 'x', corpo: 'y' }), /Curso desconhecido/);
 
-    const doAluno = com.dicas.doUsuario('academy', 'a1').itens.map((d) => d.titulo);
-    const deOutro = com.dicas.doUsuario('academy', 'a2').itens.map((d) => d.titulo);
-    assert.ok(doAluno.includes('Dica do Curso de Teste'), 'quem tem o curso devia ver');
-    assert.ok(!deOutro.includes('Dica do Curso de Teste'), 'quem NÃO tem o curso não pode ver');
+    const doAluno = com.dicas.doUsuario('academy', 'a1', 'p1').itens.map((d) => d.titulo);
+    const deOutro = com.dicas.doUsuario('academy', 'a2', 'p1').itens.map((d) => d.titulo);
+    assert.ok(doAluno.includes('Dica do Curso de Teste'), 'quem tem o curso devia ver (dentro do curso)');
+    assert.ok(!deOutro.includes('Dica do Curso de Teste'), 'quem NÃO tem o curso não pode ver, nem mandando ?curso=');
     assert.ok(deOutro.length >= 5, 'as dicas do sistema continuam valendo para todos');
+    assert.ok(!com.dicas.doUsuario('academy', 'a1').itens.some((d) => d.titulo === 'Dica do Curso de Teste'), 'fora do curso, só as gerais');
 
     // O PRODUTOR vê as dicas do próprio curso mesmo sem matrícula nele (a1 é dono de p2, matriculado só em p1).
     acad.prepare("INSERT INTO products (id, producer_id, tipo, titulo, slug, status, criado_em) VALUES ('p2', 'a1', 'curso', 'Curso do Produtor', 'curso-produtor', 'publicado', ?)").run(agora);
     com.dicas.criar({ produto: 'academy', curso_id: 'p2', titulo: 'Dica do Curso do Produtor', corpo: 'x', passos: ['passo'] });
-    assert.ok(com.dicas.doUsuario('academy', 'a1').itens.map((d) => d.titulo).includes('Dica do Curso do Produtor'), 'o produtor devia ver a dica do próprio curso');
-    assert.ok(!com.dicas.doUsuario('academy', 'a2').itens.map((d) => d.titulo).includes('Dica do Curso do Produtor'), 'quem não é aluno nem produtor não vê');
+    assert.ok(com.dicas.doUsuario('academy', 'a1', 'p2').itens.map((d) => d.titulo).includes('Dica do Curso do Produtor'), 'o produtor devia ver a dica do próprio curso');
+    assert.ok(!com.dicas.doUsuario('academy', 'a2', 'p2').itens.map((d) => d.titulo).includes('Dica do Curso do Produtor'), 'quem não é aluno nem produtor não vê');
 
     // Sorteio: esgota tudo sem repetir, e a prioridade (ordem < 100) vem antes.
     com.dicas.criar({ produto: 'academy', titulo: 'Boas-vindas', corpo: 'primeira', ordem: 1 });
@@ -765,6 +766,43 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     assert.equal(vistas[0], 'Boas-vindas', 'dica de prioridade tinha de vir primeiro');
     assert.equal(new Set(vistas).size, vistas.length, 'sorteio repetiu dica');
     assert.equal(com.dicas.proxima('academy', 'a2'), null, 'acabaram as dicas: o post-it para');
+  });
+
+  await t('dicas por curso: dono de 2 cursos, com o curso A aberto, NUNCA recebe dica do B (o defeito do Homem Essencial)', async () => {
+    // a1 é dono de p2 e matriculado em p1 (teste anterior). Dono também de p3.
+    acad.prepare("INSERT INTO products (id, producer_id, tipo, titulo, slug, status, criado_em) VALUES ('p3', 'a1', 'curso', 'Curso B', 'curso-b', 'publicado', ?)").run(agora);
+    for (let i = 0; i < 6; i++) com.dicas.criar({ produto: 'academy', curso_id: 'p3', titulo: 'Dica do Curso B ' + i, corpo: 'b', passos: ['passo'] });
+    for (let i = 0; i < 3; i++) com.dicas.criar({ produto: 'academy', curso_id: 'p2', titulo: 'Dica do Curso A ' + i, corpo: 'a', passos: ['passo'] });
+    acad.prepare('INSERT INTO sessions (id, user_id, criada_em, expira_em) VALUES (?, ?, ?, ?)').run('jti-a1-dicas', 'a1', agora, new Date(Date.now() + 864e5).toISOString());
+    const ck = 'academy_sess=' + jwt.sign({ uid: 'a1', jti: 'jti-a1-dicas' }, SEGREDO);
+    const daB = new Set(com.dicas.listar('academy').filter((d) => d.curso_id === 'p3').map((d) => d.id));
+    const daA = new Set(com.dicas.listar('academy').filter((d) => d.curso_id === 'p2').map((d) => d.id));
+    const vistas = [];
+    for (let i = 0; i < 40; i++) {
+      const d = (await req('GET', '/academy/api/comunicados/dicas/proxima?curso=p2', { cookie: ck })).json.dica;
+      if (!d) break;
+      vistas.push(d.id);
+    }
+    assert.ok(vistas.length > 0, 'devia ter dica para mostrar');
+    assert.ok(!vistas.some((id) => daB.has(id)), 'com o curso A aberto veio dica do curso B');
+    assert.ok(vistas.some((id) => daA.has(id)), 'as dicas do curso A deviam aparecer dentro dele');
+    assert.ok(vistas.every((id) => daA.has(id) || !com.dicas.obter(id).curso_id), 'só gerais ou do curso A');
+    assert.equal(new Set(vistas).size, vistas.length, 'repetiu dica');
+    // A aba, com o curso A aberto: gerais + A, nunca B; as do curso vêm primeiro.
+    const aba = (await req('GET', '/academy/api/comunicados/dicas?curso=p2', { cookie: ck })).json;
+    assert.equal(aba.curso, 'p2');
+    assert.ok(!aba.itens.some((d) => daB.has(d.id)), 'a aba mostrou dica do curso B');
+    assert.ok(aba.itens[0].do_curso, 'as do curso aberto vêm primeiro');
+    // Fora de curso: só as gerais (e a aba avisa).
+    const fora = (await req('GET', '/academy/api/comunicados/dicas', { cookie: ck })).json;
+    assert.equal(fora.curso, '');
+    assert.ok(fora.tem_cursos && fora.itens.every((d) => !d.do_curso), 'fora de curso só as gerais');
+    // Curso que não é dele (nem matrícula nem produção) é ignorado: só as gerais.
+    acad.prepare("INSERT INTO products (id, producer_id, tipo, titulo, slug, status, criado_em) VALUES ('p4', 'a2', 'curso', 'Curso alheio', 'curso-alheio', 'publicado', ?)").run(agora);
+    com.dicas.criar({ produto: 'academy', curso_id: 'p4', titulo: 'Dica do curso alheio', corpo: 'x', passos: ['passo'] });
+    const alheio = (await req('GET', '/academy/api/comunicados/dicas?curso=p4', { cookie: ck })).json;
+    assert.equal(alheio.curso, '', 'curso alheio não pode valer');
+    assert.ok(!alheio.itens.some((d) => d.titulo === 'Dica do curso alheio'));
   });
 
   await t('hóspedes: entram como público, com os segmentos da Área do Hóspede', async () => {
