@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-03T16:54:33.080Z",
+  "coletadoEm": "2026-10-04T12:27:29.940Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -198,6 +198,14 @@
     }
   ],
   "cursos": [
+    {
+      "slug": "o-homem-essencial",
+      "titulo": "O Homem Essencial",
+      "resumo": "24 videoaulas animadas sobre caráter, domínio de si, relações, trabalho, lucidez e sentido — com os grandes pensadores pelo nome, o artigo de cada aula em PDF e uma prática de 21 dias. Baseado no livro do autor.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/_0Lm3CGHBZZi?v=Q8UQTUJkGMck",
+      "preco": 14500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/o-homem-essencial"
+    },
     {
       "slug": "o-homem-contemporaneo",
       "titulo": "O Homem Contemporâneo",
