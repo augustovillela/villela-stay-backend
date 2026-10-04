@@ -3969,8 +3969,8 @@ let gaArtigos = [];
 let hoArtigos = [];
 let heArtigos = [];
 let capCss = '';
-const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
-const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
+const CAP_LIVRO = 'https://livros.villelastay.com.br/livros/claude-ai-na-pratica?utm_source=villelastay&utm_medium=blog-claude';
+const CAP_CURSO = 'https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica?utm_source=villelastay&utm_medium=blog-claude';
 
 if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   capCss = fs.readFileSync(path.join(CAP_DIR, 'artigo.css'), 'utf8');
@@ -4034,6 +4034,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
         <span class="cap-ad-btn">Ver na Academy →</span></a>`;
 
   const CAP_CSS_EXTRA = `
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code{overflow-wrap:anywhere;word-break:break-word}}
 .cap-trilha{font-size:14px;letter-spacing:.02em;color:#d9d2c5;margin:0 0 14px}
 .cap-trilha a{color:#f0ad8c;text-decoration:none}
 .cap-trilha a:hover{text-decoration:underline}
@@ -4134,7 +4135,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   var ads=[${JSON.stringify(capAnuncio('livro', true))},${JSON.stringify(capAnuncio('curso', true))}];
   function mostrar(k,rolar){
     i=Math.max(0,Math.min(n-1,k));
-    corpo.innerHTML='<p class="cap-secao-tit">Parte '+(i+1)+' de '+n+'</p>'+S[i].h+(i<n-1?ads[i%2]:'');
+    corpo.innerHTML='<p class="cap-secao-tit">Parte '+(i+1)+' de '+n+'</p>'+S[i].h+(i<n-1?ads[i%ads.length]:'');
     bAnt.disabled=i===0; bProx.textContent=i===n-1?'Fim do artigo':'Continuar lendo →'; bProx.disabled=i===n-1;
     Array.prototype.forEach.call(passos.children,function(b,j){b.classList.toggle('on',j===i)});
     prog.style.width=((i+1)/n*100)+'%';
@@ -4272,6 +4273,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   const CJ_DIR = path.join(__dirname, 'content', 'claude-ai-na-pratica-juridica');
   const CJ_LIVRO = 'https://livros.villelastay.com.br/livros/claude-ai-na-pratica-juridica?utm_source=villelastay&utm_medium=blog-claude-juridico';
   const CJ_SISTEMA = 'https://juridico.villelastay.com.br/juridico?utm_source=villelastay&utm_medium=blog-claude-juridico';
+  const CJ_CURSO = 'https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica-juridica?utm_source=villelastay&utm_medium=blog-claude-juridico';
   const cjDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
@@ -4314,8 +4316,10 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 
     const cjAnuncio = qual => qual === 'livro'
       ? `<a class="cap-ad cap-ad-livro" href="${CJ_LIVRO}" target="_blank" rel="noopener"><span class="cap-ad-icone">⚖️</span><span class="cap-ad-txt"><strong>Livro Claude AI na Prática Jurídica</strong><span>Manual para criar agentes, automações e sistemas inteligentes para advogados e escritórios.</span></span><span class="cap-ad-btn">Ver na Livraria →</span></a>`
+      : qual === 'curso'
+      ? `<a class="cap-ad cap-ad-curso" href="${CJ_CURSO}" target="_blank" rel="noopener"><span class="cap-ad-icone">🎓</span><span class="cap-ad-txt"><strong>Curso on-line Claude AI na Prática Jurídica</strong><span>22 aulas em vídeo, com artigo e material de apoio — da engenharia de contexto aos agentes do escritório.</span></span><span class="cap-ad-btn">Ver na Academy →</span></a>`
       : `<a class="cap-ad cap-ad-curso" href="${CJ_SISTEMA}" target="_blank" rel="noopener"><span class="cap-ad-icone">🏛️</span><span class="cap-ad-txt"><strong>Villela Legal</strong><span>Os sistemas descritos no livro implementados em uma plataforma jurídica com supervisão humana.</span></span><span class="cap-ad-btn">Conhecer o sistema →</span></a>`;
-    const CJ_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(cjAnuncio('livro'))},${JSON.stringify(cjAnuncio('sistema'))}];`);
+    const CJ_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(cjAnuncio('livro'))},${JSON.stringify(cjAnuncio('curso'))},${JSON.stringify(cjAnuncio('sistema'))}];`);
     const CJ_CSS = `${capCss}${CAP_CSS_EXTRA}
 .cj-parte{max-width:1080px;margin:34px auto 12px;padding:0 20px;scroll-margin-top:90px}.cj-parte h2{font:700 25px/1.25 Lora,Georgia,serif;color:#0f1a2b;margin:0 0 5px}.cj-parte p{color:#675f56;margin:0 0 16px}
 /* Índice da série. O título fica na MESMA linha do número: o min-width zero deixa o texto
@@ -4356,7 +4360,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/claude-juridico/">Claude AI na Prática Jurídica</a> <span aria-hidden="true">›</span> <span>Capítulo ${a.capitulo} de ${cjArtigos.length}</span></nav>
     <h1>${esc(a.tituloTexto)}</h1><p class="sub">${esc(a.subtituloTexto)}</p><div class="meta">${a.meta}</div>
   </div></header>
-  <div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('sistema')}</div>
+  <div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('curso')}${cjAnuncio('sistema')}</div>
   <section class="cap-publico">
     <div class="cap-resumo"><h2>Resumo do capítulo</h2>${a.resumo_html}</div>
     ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
@@ -4366,7 +4370,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   <noscript><div class="cap-nojs">O desenvolvimento deste artigo precisa de JavaScript. O resumo permanece disponível; o conteúdo completo também está no <a href="${CJ_LIVRO}">livro</a>.</div></noscript>
   <div class="cap-corpo" id="cap-corpo"></div>
   <nav class="cap-nav" aria-label="Partes do artigo"><button type="button" id="cap-ant">← Anterior</button><div class="cap-passos" id="cap-passos"></div><button type="button" id="cap-prox" class="prim">Continuar lendo →</button></nav>
-  <div class="cap-faixa">${cjAnuncio('sistema')}${cjAnuncio('livro')}</div>
+  <div class="cap-faixa">${cjAnuncio('curso')}${cjAnuncio('sistema')}${cjAnuncio('livro')}</div>
   <nav class="cap-irmaos" aria-label="Outros capítulos da série">
     ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Capítulo ${ant.capitulo}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
     <a class="cap-irmao cap-irmao-indice" href="/claude-juridico/"><span class="rot">☰ Índice</span><span class="tit">Os ${cjArtigos.length} capítulos</span></a>
@@ -4423,7 +4427,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     fs.writeFileSync(path.join(od, 'claude-juridico', 'index.html'), layout(
       'Claude AI na Prática Jurídica — 52 artigos para advogados | Villela Stay',
       'Os 52 capítulos do livro Claude AI na Prática Jurídica, de Augusto Villela: IA aplicada à advocacia, prompts, ética, contencioso, contratos, pesquisa, gestão, compliance e sistemas.',
-      `<div class="cap"><section class="cap-hub-hero"><h1>Claude AI na Prática Jurídica</h1><p>Os 52 capítulos do livro em formato híbrido para leitura online — conteúdo jurídico, síntese editorial e aplicação prática para advogados, gestores e escritórios.</p></section><nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Claude AI na Prática Jurídica</span></nav><div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('sistema')}</div>${cjSumarioHub}${cjPartesHtml}<section class="cj-recursos"><h2>Centrais complementares</h2><p>Conteúdo vivo para atualização normativa, pesquisa jurídica e tecnologia.</p><div class="cap-grade">${recursosHtml}</div></section><div class="cap-faixa">${cjAnuncio('sistema')}${cjAnuncio('livro')}</div></div>`,
+      `<div class="cap"><section class="cap-hub-hero"><h1>Claude AI na Prática Jurídica</h1><p>Os 52 capítulos do livro em formato híbrido para leitura online — conteúdo jurídico, síntese editorial e aplicação prática para advogados, gestores e escritórios.</p></section><nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Claude AI na Prática Jurídica</span></nav><div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('curso')}${cjAnuncio('sistema')}</div>${cjSumarioHub}${cjPartesHtml}<section class="cj-recursos"><h2>Centrais complementares</h2><p>Conteúdo vivo para atualização normativa, pesquisa jurídica e tecnologia.</p><div class="cap-grade">${recursosHtml}</div></section><div class="cap-faixa">${cjAnuncio('curso')}${cjAnuncio('sistema')}${cjAnuncio('livro')}</div></div>`,
       { caminho: '/claude-juridico/', semIdiomas: true, extraHead: `<style>${CJ_CSS}</style>` + cjHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
   }
@@ -6396,7 +6400,7 @@ Série do livro *Claude AI na Prática Jurídica*, de Augusto Villela — uso re
 inteligência artificial na advocacia, do prompt à operação completa do escritório: ética,
 sigilo, pesquisa, contencioso, contratos, gestão, compliance e sistemas. Índice da série:
 ${SITE_URL}/claude-juridico/
-Livro completo: ${CJ_LIVRO.split('?')[0]} · Sistema jurídico: ${CJ_SISTEMA.split('?')[0]}
+Livro completo: ${CJ_LIVRO.split('?')[0]} · Curso on-line: ${CJ_CURSO.split('?')[0]} · Sistema jurídico: ${CJ_SISTEMA.split('?')[0]}
 
 ${cjArtigos.map(a => `- [Capítulo ${a.capitulo}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
 `;

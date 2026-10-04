@@ -1501,4 +1501,720 @@ ${h.fig(1, { legenda: 'La misma pieza, rehecha cuantas veces haga falta — y na
 `,
     },
   },
+  'autismo-passo-a-passo': {
+    en: {
+      titulo: 'Autism in Brasília: your rights step by step, from the first week onwards | Villela Stay',
+      descricao: 'A practical guide for families of autistic children in Brazil’s Federal District: 15 steps in the right order, from BPC and CIPTEA to therapy and school.',
+      h1: 'Just received an autism diagnosis? Start here, one step at a time.',
+      dek: 'You do not need to understand the law. You need paperwork, receipt numbers and persistence — and that is done one step at a time, in the right order. This is the roadmap for families in Brazil’s Federal District, from what can be done in a week to what you prepare for age 18.',
+      faq: [
+        { q: 'Will I have to quit my job to look after my autistic child?', a: 'Not necessarily. If you are a public servant, you are entitled to reduced working hours with no cut in pay and no need to make up the hours later — the Supremo Tribunal Federal (STF, Brazil’s Supreme Court) has ruled, in Tema 1.097, that this applies at all three levels of government. If you are a private-sector employee under the CLT (Brazil’s labour code), no statute expressly guarantees the same, and the route is to negotiate your hours with the company and the union. It is also worth remembering that, as therapy progresses, the routine usually demands fewer hours of supervision.' },
+        { q: 'Can my autistic child attend a mainstream school?', a: 'Yes, and it is the child’s right, not a favour from the school. No school, public or private, may refuse enrolment: a refusal exposes the administrator to a fine of 3 to 20 minimum monthly wages, under article 7 of Lei 12.764/2012. No private school may charge an extra fee for a support professional or for accessibility — the Supreme Court settled that in ADI 5357. A smaller class, a support professional and adapted materials are obligations of the institution.' },
+        { q: 'What if I cannot afford the therapies?', a: 'There are two routes, both free for the family. If you have private health insurance, the plan is required to cover the therapies with no limit on the number of sessions — the Superior Tribunal de Justiça (STJ, Brazil’s top court for non-constitutional matters) consolidated this in Tema 1.295, in March 2026, and a complaint to the ANS (the health-plan regulator) on 0800 701 9656 usually unblocks things within days. If you have no plan, the SUS (Brazil’s public health system) has a specialised network in the Federal District (CAPSi, COMPP, CER II in Taguatinga and CEAL-LP), with entry through the UBS (the local public clinic) for your address. Delays happen, and excessive delay is a matter for the Defensoria Pública do DF (the Public Defender’s Office).' },
+        { q: 'The INSS denied the BPC. What now?', a: 'A denial is a common stage, not the end. You have 30 days to appeal to the Conselho de Recursos da Previdência Social (the social security appeals board), free of charge, through the Meu INSS app itself — many benefits are granted precisely on that second review. If it fails again, you can file a claim at the Juizado Especial Federal (the federal small-claims court), and the Defensoria Pública do DF takes the case at no charge. Be wary of anyone who charges to "get" you the BPC: the application is free and the family does it on a mobile phone.' },
+        { q: 'When I am no longer here, who will take care of my child?', a: 'That fear has a concrete answer. A child with an intellectual or mental disability receives a lifelong survivor’s pension (pensão por morte) when an insured father or mother dies, without the cut-off at age 21 that applies to other children — but this only exists if at least one of the parents is insured with the INSS. Someone who looks after the home and has no income of their own can enrol by paying 5% of the minimum wage, R$ 81,05 a month in 2026. The BPC, on its own, leaves nothing to anyone: it ends with the person who receives it. Over time, you add to this a life insurance policy with your child as beneficiary and a will that protects their share.' },
+        { q: 'Do I need to hire a lawyer to get these benefits?', a: 'To get started, no. Almost everything is settled by app, counter and form: the BPC is requested on Meu INSS, the CIPTEA is issued online, the complaint against the health plan is a phone call, and the school is dealt with through a formally filed written request and, if necessary, a complaint to the Ministério Público (the public prosecutor’s office). A lawyer comes in if there is a lawsuit — and, if you cannot afford one, the Defensoria Pública do DF does it for free.' },
+      ],
+      corpo: (h) => `
+  <p class="artigo-lead">This text is for anyone who has just received a diagnosis of Autism Spectrum Disorder and is staring at a mountain of acronyms — BPC, CIPTEA, CadÚnico, AEE, ABA — with no idea where to grab hold. The short answer is: <strong>grab one end only</strong>. There is an order, and it saves months.</p>
+
+  <div class="tea-aviso">
+    <p><strong>Three truths to start with a lighter load.</strong></p>
+    <p><strong>1. None of these rights expires.</strong> There is no deadline you have missed. Start today, in March or next year — everything still stands. You are not late.</p>
+    <p><strong>2. The hardest part is behind you.</strong> The diagnosis exists and it is on paper. That was what held everything up. The rest is queues, forms and stamps: tiring, but it is no longer discovery, it is just the road.</p>
+    <p><strong>3. Only two things run on a clock.</strong> The BPC (a monthly benefit for people with disabilities on low income) is paid from the day you apply, not from the day it is granted — applying early is worth money. And school enrolment follows the calendar of the Secretaria de Educação (the Education Department). Everything else can wait at no cost.</p>
+  </div>
+
+  <p>One remark before the steps, because it spares you frustration: <strong>the "level" on the diagnostic report is not the passport it appears to be</strong>. Support levels 1, 2 and 3 come from the DSM-5, a clinical manual — and no Brazilian law grants a benefit by level. What the INSS (the social security agency), the school and the health plan assess is function: what the child can and cannot do alone, and what barriers that creates. A report that says only "F84.0, level 2" is a weak report. That is why step 1 is what it is.</p>
+
+  <h2>This week: gather the paperwork</h2>
+  <p>None of these steps costs money and three of them can be done on your phone. They exist so that, next month, you do not hear "a document is missing" at any counter.</p>
+
+  <div class="tea-passo">
+    <span class="tea-num">01</span>
+    <h3>Ask the doctor for a fuller report</h3>
+    <p>This is the step that decides all the others. The INSS, the health plan and the school do not read the diagnosis: they read the <strong>description of daily life</strong>. A report that carries only the disease code is the most common reason an application is denied.</p>
+    <p class="tea-fala">“Doctor, I am going to file applications with the INSS and with the school. Could you write a report that states: that the impairment is long-term, with effects lasting more than two years; what he cannot do alone in hygiene, eating and communication; what barriers this creates at school; and how many hours a week of each therapy he needs — without limiting the number of sessions?”</p>
+    <p><strong>If the doctor resists:</strong> explain that this is not a whim of yours, it is what the forms require. Reports from the speech therapist, the occupational therapist and the psychologist count as additional evidence.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">02</span>
+    <h3>Get his CPF and his Cartão do SUS</h3>
+    <p>A child needs their own CPF (taxpayer ID number) to enter the Cadastro Único and the INSS, and the Cartão SUS (public health system card) to move along the queue in the public network. Many people find out it is missing right at the moment of the appointment.</p>
+    <p><strong>Where:</strong> CPF on the Receita Federal (federal revenue service) website or at a notary office; Cartão SUS at the UBS (the local public clinic) nearest your home or through the Meu SUS Digital app. Take the birth certificate and your own photo ID. It is issued on the spot.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">03</span>
+    <h3>Issue the autism ID card — the CIPTEA</h3>
+    <p>It is the card the Federal District Government recognises at the counter, created by Lei Distrital 6.642/2020. It is valid for five years, it is free and it guarantees priority service in any queue. More importantly: it is what later waives the diagnostic report when you apply for the parking permit.</p>
+    <p><strong>Where:</strong> on the website of the Secretaria da Pessoa com Deficiência (the Department for People with Disabilities), <strong>sepd.df.gov.br</strong>, under Cadastro da Pessoa com Deficiência. The printed copy, with lanyard, is requested afterwards at the Central office in the 112 Sul Metro Station.</p>
+    <p><strong>While you are at it:</strong> ask for the sunflower lanyard too (Lei 14.624/2023), the national symbol for disabilities that cannot be seen from the outside. At the airport, the bank and the supermarket queue, it saves you from explaining everything all over again each time.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">04</span>
+    <h3>Book the Cadastro Único at the CRAS</h3>
+    <p>Book it <strong>today</strong>, even if the appointment is only three weeks away — the queue at the CRAS (the local social assistance centre) is what delays everything else. The Cadastro Único (CadÚnico, the federal registry for social programmes) is not a benefit: it is the key to four of them (the BPC, the electricity bill discount, the low-cost INSS contribution and the Federal District Government’s home-ownership programme).</p>
+    <p><strong>Where:</strong> the CRAS in your administrative region, through <strong>sedes.df.gov.br</strong>.</p>
+  </div>
+
+  <h2>This month: file the applications</h2>
+  <p>Here the steps run <strong>at the same time</strong>. Do not wait for the INSS to answer before approaching the school, nor for the health plan before going to the CRAS. Each one moves at its own pace, at different counters.</p>
+
+  <div class="tea-passo">
+    <span class="tea-num">05</span>
+    <h3>Complete the Cadastro Único on the appointed day</h3>
+    <p>One hour of service that unlocks months of benefits. The detail most often lost is a single field: the child must be registered <strong>as a person with a disability</strong>. That field is what makes the electricity bill drop on its own, without you asking for anything.</p>
+    <p><strong>Take:</strong> ID for every person living in the household, proof of address, the diagnostic report and proof of income for whoever works.</p>
+    <p class="tea-fala">“I would like to register in the Cadastro Único. I have a son with a disability and I am going to apply for the BPC. Please record his disability in the registration and give me the receipt with the Folha Resumo.”</p>
+    <p><strong>Do not leave without the Folha Resumo.</strong> It is the summary sheet the INSS will ask for, and going back to the CRAS just to fetch it costs another whole morning.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">06</span>
+    <h3>Apply for the BPC through the Meu INSS app</h3>
+    <p>It is one minimum monthly wage — <strong>R$ 1.621,00</strong> in 2026 — paid for as long as the requirements are met. There is an income condition, and it is the only hard question in this roadmap.</p>
+    <p><strong>The sum:</strong> add up everything that comes into the household each month and divide by the number of people living there. If it comes to <strong>R$ 405,25 per person</strong> or less (a quarter of the minimum wage), the application stands a good chance. If it comes to a little more, apply anyway: article 20-B of Lei 8.742/93 requires that what the disability costs every month be taken into account.</p>
+    <p><strong>Where:</strong> the Meu INSS app or by phone on 135, under "Benefício Assistencial à Pessoa com Deficiência". You do not need to go to a branch, you do not need a lawyer, you do not need to pay anyone. Attach the diagnostic report, other reports, prescriptions and receipts for spending on nappies, medication, transport and therapies.</p>
+    <p><strong>Apply early, even if in doubt.</strong> The benefit counts from the date of the application, not from the date it is granted. Each month you wait to file is a month that does not come back.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">07</span>
+    <h3>Open the path to therapy</h3>
+    <p>In money terms, this is the most valuable step of all — intensive private care costs from R$ 5 thousand to R$ 15 thousand a month. And, unlike the BPC, it <strong>does not depend on your income</strong>.</p>
+    <p><strong>With private health insurance:</strong> the plan cannot limit the number of sessions. Resoluções Normativas 469/2021 and 539/2022 of the ANS (the health-plan regulator) took away the insurer’s power to set a cap, and the STJ (Superior Court of Justice) consolidated that understanding in Tema 1.295, in March 2026. File in writing, with the doctor’s prescription, and keep the receipt number. The deadlines are 10 working days for a speech therapist, psychologist or occupational therapist, and 14 working days for a specialist doctor.</p>
+    <p><strong>Through the SUS:</strong> always start at the UBS for your address — it is the UBS that refers you to the regulation service, which allocates cases to the specialised services: CAPSi, COMPP, CER II in Taguatinga and CEAL-LP.</p>
+    <p class="tea-fala">“I would like to open a case for my son, who is autistic, and be referred to the regulation service. Could you give me the referral number, please?”</p>
+    <p><strong>If the plan refuses, limits or misses the deadline:</strong> call <strong>0800 701 9656</strong> and file a complaint with the ANS. It is free, takes fifteen minutes and resolves most cases without a lawsuit.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">08</span>
+    <h3>Take a written request to the school</h3>
+    <p>A corridor conversation with the coordinators counts for nothing later. What counts is a formally filed document. And the law here is firm: refusing to enrol an autistic child brings a fine on the administrator, and denying an accommodation without just cause is a crime (article 88 of Lei 13.146/2015).</p>
+    <p><strong>Ask for:</strong> a support professional in the classroom for the whole school session; specialised educational support (AEE) in the Sala de Recursos (resource room), outside regular class hours; a class with a reduced number of pupils; and a written individual plan, drawn up with you. In the Federal District’s public schools, classroom support is delivered through the Educador Social Voluntário programme.</p>
+    <p><strong>A private school cannot charge extra.</strong> Not one cent for support or accessibility — a "mediator fee" does not legally exist.</p>
+    <p class="tea-fala">“I have brought a written request, in two copies. Please file it and return one copy to me with the stamp, the number and the date.”</p>
+    <p><strong>If they refuse or stall:</strong> take the case to the Ministério Público do DF (the public prosecutor’s office), through <strong>mpdft.mp.br</strong>. It is free, needs no lawyer and is usually the fastest route there is for school matters.</p>
+  </div>
+
+  <h2>Over the next three months: reap and protect yourself</h2>
+
+  <div class="tea-passo">
+    <span class="tea-num">09</span>
+    <h3>Free pass on public transport — for you as well</h3>
+    <p>Free travel on the Federal District’s public transport. The detail most people miss: when the doctor justifies that he needs a companion, the card comes with <strong>16 fares a day</strong> — eight for him and eight for you. Anyone who takes a child to therapy three times a week feels it in their pocket.</p>
+    <p><strong>Where:</strong> the BRB Mobilidade desk at the 112 Sul Metro Station, phone (61) 3120-9500. Take the diagnostic report, RG (ID card) and CPF, proof of address, proof of income and a 3×4 photo. <strong>Mind the form:</strong> free travel for the companion is only granted if the doctor fills in and justifies that specific field.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">10</span>
+    <h3>Parking permit, from your phone</h3>
+    <p>It seems minor until the day of a meltdown in the car park of a packed shopping centre. Pulling up close to the door changes the whole outing.</p>
+    <p><strong>Where:</strong> the Detran-DF Digital app or the Detran (traffic department) Portal de Serviços. Anyone who already holds the CIPTEA <strong>does not need to present a diagnostic report</strong> — which is why step 3 comes before this one. The review takes up to two working days and you print it at home, on A4 paper.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">11</span>
+    <h3>Go to the INSS assessment — and tell the whole truth</h3>
+    <p>There are two assessments: one with a medical examiner and one with a social worker. And here is the advice that changes outcomes the most: <strong>we tend to show our child’s best day</strong>. It is a mother’s pride, it is natural — and it gets the application denied. Describe the ordinary day and the bad day.</p>
+    <p><strong>Tell them:</strong> how many hours a day he needs someone with him; what he does not do alone (bathing, eating, dressing, crossing the street); what the meltdowns are like and what triggers them; who in the family stopped working because of this; how much goes out each month on medication, therapy, nappies and transport. Take the folder full — it weighs in your favour.</p>
+    <p><strong>If they deny it, do not lose heart:</strong> you have 30 days to appeal, free of charge, through Meu INSS itself.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">12</span>
+    <h3>Reduce your working hours, if you are a public servant</h3>
+    <p>A public servant with a child with a disability is entitled to <strong>work fewer hours, without losing pay and without having to make them up later</strong>. It is not a favour from your manager: it is article 98, §§ 2 and 3, of Lei 8.112/90, and the Supreme Court has ruled in Tema 1.097 that it applies at all three levels — federal, district and municipal. Apply in writing to the human resources department, with the diagnostic report attached.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">13</span>
+    <h3>The R$ 81,05 that protects his future</h3>
+    <p>If you look after the home and have no income of your own, you can enrol with the INSS by paying <strong>5% of the minimum wage — R$ 81,05 a month</strong>, under code 1929. It looks like very little and it is, probably, the most important decision on this entire page.</p>
+    <p>A child with a disability receives a <strong>survivor’s pension (pensão por morte) for the rest of their life</strong> when an insured father or mother dies — without the cut-off at age 21 that applies to other children. But this only exists if at least one of you is insured with the INSS. The BPC, on its own, leaves nothing to anyone: it ends with the person who receives it. And the two coexist — contributing does not interfere with his BPC.</p>
+    <p><strong>Keep the reports from now on.</strong> That pension requires proving, down the line, that the disability already existed before age 21. Anyone who throws away today’s medical records discovers the problem thirty years from now, when it can no longer be redone.</p>
+  </div>
+
+  <h2>When you have breath to spare</h2>
+
+  <div class="tea-passo">
+    <span class="tea-num">14</span>
+    <h3>Sign up for the Federal District Government’s home-ownership programme</h3>
+    <p>The Morar Bem programme, run by Codhab (the district housing company), reserves 8% of its units for people with disabilities and gives 1,500 points in the registry. It requires five years of residence in the Federal District and not owning property here. Registration is free and stays valid — doing it early can only help.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">15</span>
+    <h3>Put together the folder of his life</h3>
+    <p>One physical folder and one on your phone, with everything photographed: dated diagnostic and medical reports, therapists’ reports including the old ones, every receipt number, invoices for therapy, medication, nappies and transport, and the school report cards. It looks like bureaucracy and it is care — it is what spares you from starting from scratch with every application, every change of school, every INSS review.</p>
+  </div>
+
+  <h2>What is <em>not</em> urgent</h2>
+  <p>Half the despair comes from thinking everything was due yesterday. It was not. These four things come up in every conversation about autism and none of them needs you right now:</p>
+  <ul class="artigo-lista">
+    <li><strong>Buying a car with tax exemption.</strong> The right exists (IPI, ICMS and IPVA), it is worth having and there is no hurry — it only makes sense when there is money for the purchase. And the rules on value and time limits change, so you check them the week you buy, not before.</li>
+    <li><strong>Legal incapacity or guardianship (interdição or curatela).</strong> It is only discussed close to age 18 and today it is an exceptional measure. Before it there is supported decision-making (tomada de decisão apoiada), which is far less heavy.</li>
+    <li><strong>A will and life insurance.</strong> Important, yes — for a year when the dust has settled.</li>
+    <li><strong>Hiring a lawyer now.</strong> Almost everything here is settled by app, counter and form. A lawyer comes in if there is a lawsuit, and the Defensoria Pública do DF (the Public Defender’s Office) does it for free.</li>
+  </ul>
+
+  <h2>Phone numbers to keep</h2>
+  <ul class="artigo-lista">
+    <li><strong>INSS</strong> — BPC, appeals and the R$ 81,05 payment slip: 135 or the Meu INSS app</li>
+    <li><strong>ANS</strong> — the plan refused or limited therapy: 0800 701 9656</li>
+    <li><strong>BRB Mobilidade</strong> — free pass, 112 Sul Station: (61) 3120-9500</li>
+    <li><strong>SEPD-DF</strong> — CIPTEA and Cadastro da Pessoa com Deficiência: sepd.df.gov.br</li>
+    <li><strong>Saúde do DF</strong> — UBS, CAPSi, COMPP and the ombudsman: 160 or saude.df.gov.br</li>
+    <li><strong>CRAS</strong> — Cadastro Único: sedes.df.gov.br</li>
+    <li><strong>MPDFT</strong> — the school refused enrolment or support: mpdft.mp.br</li>
+    <li><strong>Defensoria Pública do DF</strong> — free lawyer: defensoria.df.gov.br</li>
+  </ul>
+
+  <p>If at any point you need the legal basis for each of these steps — the articles, the benefit tables and request templates ready to file —, it is in the companion document: <a href="/en/blog/autismo-direitos-df.html">the complete map of the rights of people with ASD in the Federal District →</a></p>
+
+  <div class="tea-aviso tea-aviso-fim">
+    <p><strong>About this guide.</strong> Written on 14 September 2026, with rules and figures checked on that date (2026 minimum wage: R$ 1.621,00). It is preliminary guidance in the public interest: it helps you get started, but it does not replace a lawyer registered with the OAB (the Brazilian Bar) or a medical assessment. Amounts, caps and deadlines change — confirm with the official source before any decision involving money.</p>
+  </div>
+  `,
+    },
+    es: {
+      titulo: 'Autismo en Brasilia: el paso a paso de los derechos, desde la primera semana | Villela Stay',
+      descricao: 'Guía práctica para familias con un niño autista en el Distrito Federal de Brasil: 15 pasos en orden, del BPC y la CIPTEA a terapias, escuela y transporte.',
+      h1: '¿Recibiste el diagnóstico de autismo? Empieza por aquí, un paso a la vez.',
+      dek: 'No necesitas entender de leyes. Necesitas papeles, número de trámite e insistencia — y eso se hace un paso a la vez, en el orden correcto. Esta es la hoja de ruta para familias del Distrito Federal de Brasil, desde lo que sale en una semana hasta lo que se prepara para los 18 años.',
+      faq: [
+        { q: '¿Voy a tener que dejar mi empleo para cuidar a mi hijo autista?', a: 'No necesariamente. Si eres servidora pública, existe el derecho a una jornada reducida sin recorte de salario y sin tener que compensar las horas después — el Supremo Tribunal Federal (STF, la corte suprema de Brasil) ya decidió, en el Tema 1.097, que vale para los tres niveles de gobierno. Si eres empleada del sector privado bajo la CLT (la ley laboral brasileña), no hay ley expresa que garantice lo mismo, y el camino es negociar el horario con la empresa y el sindicato. Vale recordar también que, a medida que la terapia avanza, la rutina suele exigir menos horas de supervisión.' },
+        { q: '¿Mi hijo autista puede estudiar en una escuela común?', a: 'Puede, y es un derecho suyo, no una concesión de la escuela. Ninguna escuela, pública o privada, puede rechazar la matrícula: el rechazo expone al director a una multa de 3 a 20 salarios mínimos, por el artículo 7 de la Lei 12.764/2012. Ninguna escuela privada puede cobrar un cargo extra por profesional de apoyo o accesibilidad — el Supremo lo decidió en la ADI 5357. Grupo reducido, profesional de apoyo y adaptación de materiales son obligaciones de la institución.' },
+        { q: '¿Y si no tengo dinero para pagar las terapias?', a: 'Hay dos caminos, ambos gratuitos para la familia. Si hay seguro de salud privado, está obligado a cubrir las terapias sin límite de sesiones — el Superior Tribunal de Justiça (STJ, el tribunal superior para materias no constitucionales) lo consolidó en el Tema 1.295, en marzo de 2026, y el reclamo ante la ANS (el regulador de los seguros de salud) por el 0800 701 9656 suele destrabar el caso en días. Si no hay seguro, el SUS (el sistema público de salud de Brasil) tiene una red especializada en el Distrito Federal (CAPSi, COMPP, CER II de Taguatinga y CEAL-LP), con entrada por la UBS (el centro de salud público del barrio) de tu domicilio. Las demoras ocurren, y la demora excesiva es un caso para la Defensoria Pública do DF (la defensoría pública).' },
+        { q: 'El INSS negó el BPC. ¿Y ahora?', a: 'La negativa es una etapa común, no es el final. Tienes 30 días para apelar ante el Conselho de Recursos da Previdência Social (el consejo de apelaciones de la seguridad social), gratis, desde la propia aplicación Meu INSS — muchas concesiones salen justamente en ese segundo análisis. Si vuelve a caer, cabe una demanda en el Juizado Especial Federal (el juzgado federal de pequeñas causas), y la Defensoria Pública do DF interviene sin cobrar. Desconfía de quien cobra por "conseguir" el BPC: la solicitud es gratuita y la propia familia la hace desde el celular.' },
+        { q: 'Cuando yo ya no esté, ¿quién cuidará a mi hijo?', a: 'Ese miedo tiene una respuesta concreta. Un hijo con discapacidad intelectual o mental recibe una pensión por fallecimiento (pensão por morte) vitalicia cuando muere el padre o la madre asegurados, sin el corte a los 21 años que rige para los demás hijos — pero eso solo existe si al menos uno de los padres está asegurado en el INSS. Quien cuida la casa y no tiene ingresos propios puede afiliarse pagando el 5% del salario mínimo, R$ 81,05 al mes en 2026. El BPC, por sí solo, no le deja nada a nadie: se termina junto con quien lo recibe. Con el tiempo, se suman a eso un seguro de vida con el hijo como beneficiario y un testamento que proteja su parte.' },
+        { q: '¿Necesito contratar un abogado para conseguir estos beneficios?', a: 'Para empezar, no. Casi todo se resuelve con aplicación, ventanilla y formulario: el BPC se pide en Meu INSS, la CIPTEA sale en línea, el reclamo contra el seguro de salud es una llamada telefónica, y lo de la escuela se resuelve con una solicitud por escrito presentada formalmente y, si hace falta, una denuncia ante el Ministério Público (la fiscalía). El abogado entra si hay una demanda judicial — y, si no hay cómo pagarlo, la Defensoria Pública do DF lo hace gratis.' },
+      ],
+      corpo: (h) => `
+  <p class="artigo-lead">Este texto es para quien acaba de recibir un diagnóstico de Trastorno del Espectro Autista y está mirando una montaña de siglas — BPC, CIPTEA, CadÚnico, AEE, ABA — sin saber por dónde agarrarla. La respuesta corta es: <strong>agárrala por una sola punta</strong>. Existe un orden, y ahorra meses.</p>
+
+  <div class="tea-aviso">
+    <p><strong>Tres verdades para empezar más liviana.</strong></p>
+    <p><strong>1. Ninguno de estos derechos vence.</strong> No existe un plazo que hayas perdido. Empezar hoy, en marzo o el año que viene — todo sigue valiendo. No vas atrasada.</p>
+    <p><strong>2. La parte más difícil ya pasó.</strong> El diagnóstico existe y está en papel. Era lo que trababa todo. El resto es fila, formulario y sello: cansa, pero ya no es descubrimiento, es solo camino.</p>
+    <p><strong>3. Solo dos cosas tienen reloj.</strong> El BPC (un beneficio mensual para personas con discapacidad de bajos ingresos) se paga desde el día en que lo pides, no desde el día en que sale — pedirlo temprano vale dinero. Y la matrícula escolar sigue el calendario de la Secretaria de Educação (la secretaría de educación). Todo lo demás puede esperar sin perjuicio.</p>
+  </div>
+
+  <p>Una observación antes de los pasos, porque evita frustración: <strong>el "grado" del informe diagnóstico no es el pasaporte que parece ser</strong>. Los niveles de apoyo 1, 2 y 3 vienen del DSM-5, un manual clínico — y ninguna ley brasileña concede un beneficio por grado. Lo que el INSS (el instituto de seguridad social), la escuela y el seguro de salud evalúan es la función: qué logra y qué no logra hacer el niño solo, y qué barreras crea eso. Un informe que dice apenas "F84.0, nivel 2" es un informe débil. Por eso el paso 1 es el que es.</p>
+
+  <h2>Esta semana: juntar los papeles</h2>
+  <p>Ninguno de estos pasos cuesta dinero y tres de ellos se resuelven desde el celular. Existen para que, el mes que viene, no escuches "falta un documento" en ninguna ventanilla.</p>
+
+  <div class="tea-passo">
+    <span class="tea-num">01</span>
+    <h3>Pedirle al médico un informe más completo</h3>
+    <p>Este es el paso que decide todos los demás. El INSS, el seguro de salud y la escuela no leen el diagnóstico: leen la <strong>descripción del día a día</strong>. Un informe que solo trae el código de la enfermedad es el motivo más común de solicitud negada.</p>
+    <p class="tea-fala">“Doctor(a), voy a presentar una solicitud ante el INSS y ante la escuela. ¿Podría hacer un informe que diga: que el impedimento es de largo plazo, con efectos por más de dos años; qué no logra hacer solo en la higiene, la alimentación y la comunicación; qué barreras crea eso en la escuela; y cuántas horas por semana de cada terapia necesita — sin limitar el número de sesiones?”</p>
+    <p><strong>Si el médico se resiste:</strong> explícale que no es un capricho tuyo, es lo que exigen los formularios. Los informes de la fonoaudióloga, de la terapeuta ocupacional y de la psicóloga suman como prueba.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">02</span>
+    <h3>Sacar su CPF y el Cartão do SUS</h3>
+    <p>El niño necesita un CPF (número de identificación fiscal) propio para entrar al Cadastro Único y al INSS, y el Cartão SUS (la tarjeta del sistema público de salud) para avanzar en la fila de la red pública. Mucha gente descubre que falta justo en el momento de la atención.</p>
+    <p><strong>Dónde:</strong> el CPF en el sitio de la Receita Federal (la agencia tributaria) o en una notaría; el Cartão SUS en la UBS (el centro de salud público del barrio) más cercana a tu casa o por la aplicación Meu SUS Digital. Lleva el acta de nacimiento y tu documento con foto. Sale en el momento.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">03</span>
+    <h3>Emitir el carné del autismo — la CIPTEA</h3>
+    <p>Es el carné que el Gobierno del Distrito Federal reconoce en la ventanilla, creado por la Lei Distrital 6.642/2020. Vale cinco años, es gratuito y garantiza atención prioritaria en cualquier fila. Más importante: es lo que después exime del informe diagnóstico, a la hora de pedir la credencial de estacionamiento.</p>
+    <p><strong>Dónde:</strong> en el sitio de la Secretaria da Pessoa com Deficiência (la secretaría de la persona con discapacidad), <strong>sepd.df.gov.br</strong>, en el Cadastro da Pessoa com Deficiência. La versión impresa, con cordón, se pide después en la Central de la Estación de Metro de la 112 Sul.</p>
+    <p><strong>Aprovecha:</strong> pide también el cordón de girasoles (Lei 14.624/2023), símbolo nacional de las discapacidades que no se ven por fuera. En el aeropuerto, el banco y la fila del supermercado, evita que tengas que explicar todo de nuevo cada vez.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">04</span>
+    <h3>Agendar el Cadastro Único en el CRAS</h3>
+    <p>Agéndalo <strong>hoy</strong>, aunque la atención sea recién dentro de tres semanas — la fila del CRAS (el centro local de asistencia social) es lo que atrasa todo lo demás. El Cadastro Único (CadÚnico, el registro federal de programas sociales) no es un beneficio: es la llave de cuatro de ellos (el BPC, la cuenta de luz, la contribución económica al INSS y el programa de vivienda propia del Gobierno del Distrito Federal).</p>
+    <p><strong>Dónde:</strong> el CRAS de tu región administrativa, por <strong>sedes.df.gov.br</strong>.</p>
+  </div>
+
+  <h2>Este mes: presentar las solicitudes</h2>
+  <p>Aquí los pasos corren <strong>al mismo tiempo</strong>. No esperes la respuesta del INSS para ir a la escuela, ni al seguro de salud para ir al CRAS. Cada uno avanza a su ritmo, en ventanillas distintas.</p>
+
+  <div class="tea-passo">
+    <span class="tea-num">05</span>
+    <h3>Hacer el Cadastro Único, el día agendado</h3>
+    <p>Una hora de atención que destraba meses de beneficio. El detalle que más se pierde es un campo: el niño tiene que quedar registrado <strong>como persona con discapacidad</strong>. Es ese campo el que hace que la cuenta de luz baje sola, sin que pidas nada.</p>
+    <p><strong>Lleva:</strong> documento de todas las personas que viven en la casa, comprobante de domicilio, el informe diagnóstico y comprobante de ingresos de quien trabaja.</p>
+    <p class="tea-fala">“Quiero hacer el Cadastro Único. Tengo un hijo con discapacidad y voy a pedir el BPC. Por favor, registre su discapacidad en el registro y entrégueme el comprobante con la Folha Resumo.”</p>
+    <p><strong>No salgas sin la Folha Resumo.</strong> Es la hoja de resumen que el INSS va a pedir, y volver al CRAS solo para buscarla cuesta otra mañana entera.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">06</span>
+    <h3>Pedir el BPC por la aplicación Meu INSS</h3>
+    <p>Es un salario mínimo al mes — <strong>R$ 1.621,00</strong> en 2026 — que se paga mientras duren los requisitos. Existe una condición de ingresos, y es la única pregunta difícil de esta hoja de ruta.</p>
+    <p><strong>La cuenta:</strong> suma todo lo que entra a la casa por mes y divídelo entre el número de personas que viven allí. Si da hasta <strong>R$ 405,25 por persona</strong> (un cuarto del salario mínimo), la solicitud tiene buenas posibilidades. Si da un poco más, pídelo de todos modos: el artículo 20-B de la Lei 8.742/93 manda tomar en cuenta cuánto cuesta la discapacidad todos los meses.</p>
+    <p><strong>Dónde:</strong> la aplicación Meu INSS o el teléfono 135, en "Benefício Assistencial à Pessoa com Deficiência". No hace falta ir a una agencia, no hace falta abogado, no hace falta pagarle a nadie. Adjunta el informe diagnóstico, los demás informes, recetas y comprobantes de gasto en pañales, medicamentos, transporte y terapias.</p>
+    <p><strong>Pídelo temprano, aun con dudas.</strong> El beneficio cuenta desde la fecha de la solicitud, no desde la fecha en que sale. Cada mes de espera para presentarla es un mes que no vuelve.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">07</span>
+    <h3>Abrir el camino de las terapias</h3>
+    <p>En dinero, este es el paso más valioso de todos — un acompañamiento intensivo particular cuesta de R$ 5 mil a R$ 15 mil por mes. Y, a diferencia del BPC, <strong>no depende de tus ingresos</strong>.</p>
+    <p><strong>Con seguro de salud privado:</strong> el seguro no puede limitar el número de sesiones. Las Resoluções Normativas 469/2021 y 539/2022 de la ANS (el regulador de los seguros de salud) le quitaron a la operadora el poder de fijar un tope, y el STJ (Superior Tribunal de Justiça) consolidó ese criterio en el Tema 1.295, en marzo de 2026. Preséntalo por escrito, con la prescripción del médico, y guarda el número de trámite. Los plazos son de 10 días hábiles para fonoaudióloga, psicóloga o terapeuta ocupacional, y de 14 días hábiles para médico especialista.</p>
+    <p><strong>Por el SUS:</strong> empieza siempre por la UBS de tu domicilio — es ella la que deriva a la regulación, que distribuye hacia los servicios especializados: CAPSi, COMPP, CER II de Taguatinga y CEAL-LP.</p>
+    <p class="tea-fala">“Quiero abrir el caso de mi hijo, que tiene autismo, y ser derivada a la regulación. ¿Me puede dar el número de la derivación, por favor?”</p>
+    <p><strong>Si el seguro niega, limita o se pasa del plazo:</strong> llama al <strong>0800 701 9656</strong> y abre un reclamo ante la ANS. Es gratis, lleva quince minutos y resuelve la mayor parte de los casos sin juicio.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">08</span>
+    <h3>Llevar una solicitud por escrito a la escuela</h3>
+    <p>Una charla de pasillo con la coordinación no vale nada después. Lo que vale es un papel presentado formalmente. Y la ley aquí es firme: rechazar la matrícula de un niño autista le da multa al director, y negar una adaptación sin causa justificada es delito (artículo 88 de la Lei 13.146/2015).</p>
+    <p><strong>Pide:</strong> profesional de apoyo en el aula durante todo el turno; atención educativa especializada (AEE) en la Sala de Recursos, en el contraturno; grupo con número reducido de alumnos; y un plan individual por escrito, hecho contigo. En la red pública del Distrito Federal, el apoyo en el aula se presta a través del programa Educador Social Voluntário.</p>
+    <p><strong>La escuela privada no puede cobrar de más.</strong> Ni un centavo por apoyo o accesibilidad — la "tasa de mediador" no existe legalmente.</p>
+    <p class="tea-fala">“Traje una solicitud por escrito, en dos copias. Les pido que la registren y me devuelvan una copia con el sello, el número y la fecha.”</p>
+    <p><strong>Si la rechazan o dan largas:</strong> lleva el caso al Ministério Público do DF (la fiscalía), por <strong>mpdft.mp.br</strong>. Es gratuito, no requiere abogado y suele ser el camino más rápido que existe para asuntos de escuela.</p>
+  </div>
+
+  <h2>En los próximos tres meses: cosechar y protegerte</h2>
+
+  <div class="tea-passo">
+    <span class="tea-num">09</span>
+    <h3>Pase libre en el transporte — y para ti también</h3>
+    <p>Gratuidad en el transporte público del Distrito Federal. El detalle que más gente pierde: cuando el médico justifica que él necesita acompañante, la tarjeta sale con <strong>16 pasajes por día</strong> — ocho de él y ocho tuyos. Quien lleva al niño a terapia tres veces por semana lo siente en el bolsillo.</p>
+    <p><strong>Dónde:</strong> el puesto de BRB Mobilidade en la Estación de Metro de la 112 Sul, teléfono (61) 3120-9500. Lleva el informe diagnóstico, RG (documento de identidad) y CPF, comprobante de domicilio, comprobante de ingresos y una foto 3×4. <strong>Atención al formulario:</strong> la gratuidad del acompañante solo sale si el médico completa y justifica ese campo específico.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">10</span>
+    <h3>Credencial de estacionamiento, desde el celular</h3>
+    <p>Parece poca cosa hasta el día de una crisis en el estacionamiento de un centro comercial lleno. Estacionar cerca de la puerta cambia el paseo entero.</p>
+    <p><strong>Dónde:</strong> la aplicación Detran-DF Digital o el Portal de Serviços del Detran (el departamento de tránsito). Quien ya tiene la CIPTEA <strong>no necesita presentar informe diagnóstico</strong> — por eso el paso 3 viene antes que este. El análisis lleva hasta dos días hábiles y la imprimes en casa, en papel A4.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">11</span>
+    <h3>Ir a la evaluación del INSS — y contar la verdad entera</h3>
+    <p>Son dos evaluaciones: una con médico perito y otra con trabajadora social. Y aquí va el consejo que más cambia el resultado: <strong>una tiende a mostrar el mejor día del hijo</strong>. Es orgullo de madre, es natural — y hace que la solicitud sea negada. Describe el día común y el día malo.</p>
+    <p><strong>Cuenta:</strong> cuántas horas por día necesita a alguien a su lado; qué no hace solo (bañarse, comer, vestirse, cruzar la calle); cómo son las crisis y qué las provoca; quién de la familia dejó de trabajar por eso; cuánto sale por mes entre medicamento, terapia, pañal y transporte. Lleva la carpeta llena — pesa a favor.</p>
+    <p><strong>Si la niegan, no te desanimes:</strong> son 30 días para apelar, gratis, desde el propio Meu INSS.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">12</span>
+    <h3>Reducir la jornada en el trabajo, si eres servidora pública</h3>
+    <p>La servidora pública con un hijo con discapacidad tiene derecho a <strong>trabajar menos horas, sin perder salario y sin tener que compensar después</strong>. No es un favor de la jefatura: es el artículo 98, §§ 2 y 3, de la Lei 8.112/90, y el Supremo ya decidió en el Tema 1.097 que vale para los tres niveles — federal, distrital y municipal. Pídelo por escrito en el área de gestión de personas, con el informe diagnóstico adjunto.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">13</span>
+    <h3>Los R$ 81,05 que protegen su futuro</h3>
+    <p>Si cuidas la casa y no tienes ingresos propios, puedes afiliarte al INSS pagando <strong>el 5% del salario mínimo — R$ 81,05 al mes</strong>, en el código 1929. Parece poca cosa y es, probablemente, la decisión más importante de toda esta página.</p>
+    <p>Un hijo con discapacidad recibe una <strong>pensión por fallecimiento (pensão por morte) por el resto de su vida</strong> cuando muere el padre o la madre asegurados — sin el corte a los 21 años que rige para los demás hijos. Pero eso solo existe si al menos uno de ustedes está asegurado en el INSS. El BPC, por sí solo, no le deja nada a nadie: se termina junto con quien lo recibe. Y los dos conviven — contribuir no afecta el BPC de él.</p>
+    <p><strong>Guarda los informes desde ahora.</strong> Esa pensión exige probar, más adelante, que la discapacidad ya existía antes de los 21 años. Quien tira la historia clínica de hoy descubre el problema dentro de treinta años, cuando ya no se puede rehacer.</p>
+  </div>
+
+  <h2>Cuando te quede aliento</h2>
+
+  <div class="tea-passo">
+    <span class="tea-num">14</span>
+    <h3>Inscribirse en el programa de vivienda propia del Gobierno del Distrito Federal</h3>
+    <p>El programa Morar Bem, de la Codhab (la compañía de vivienda del distrito), reserva el 8% de las unidades para personas con discapacidad y da 1.500 puntos en el registro. Exige cinco años viviendo en el Distrito Federal y no ser dueño de un inmueble aquí. La inscripción es gratuita y queda vigente — hacerla temprano solo ayuda.</p>
+  </div>
+
+  <div class="tea-passo">
+    <span class="tea-num">15</span>
+    <h3>Armar la carpeta de su vida</h3>
+    <p>Una carpeta física y una en el celular, con todo fotografiado: informes diagnósticos y médicos con fecha, informes de las terapeutas aunque sean antiguos, todos los números de trámite, facturas de terapia, medicamento, pañal y transporte, y los boletines de la escuela. Parece burocracia y es cariño — es lo que te ahorra empezar de cero en cada solicitud, en cada cambio de escuela, en cada revisión del INSS.</p>
+  </div>
+
+  <h2>Lo que <em>no</em> es urgente</h2>
+  <p>La mitad de la desesperación viene de creer que todo es para ayer. No lo es. Estas cuatro cosas aparecen en toda conversación sobre autismo y ninguna te necesita ahora:</p>
+  <ul class="artigo-lista">
+    <li><strong>Comprar un auto con exención.</strong> El derecho existe (IPI, ICMS e IPVA), vale la pena y no tiene apuro — solo tiene sentido cuando haya dinero para la compra. Y las reglas de valor y de plazo cambian, así que se verifican la semana de comprar, no antes.</li>
+    <li><strong>Interdicción o curatela.</strong> Solo se discute cerca de los 18 años y hoy es una medida excepcional. Antes de ella existe la toma de decisión con apoyo (tomada de decisão apoiada), mucho menos pesada.</li>
+    <li><strong>Testamento y seguro de vida.</strong> Importantes, sí — para un año en que el polvo se haya asentado.</li>
+    <li><strong>Contratar un abogado ahora.</strong> Casi todo aquí se resuelve con aplicación, ventanilla y formulario. El abogado entra si hay una demanda judicial, y la Defensoria Pública do DF (la defensoría pública) lo hace gratis.</li>
+  </ul>
+
+  <h2>Teléfonos para guardar</h2>
+  <ul class="artigo-lista">
+    <li><strong>INSS</strong> — BPC, apelación y la boleta de los R$ 81,05: 135 o la aplicación Meu INSS</li>
+    <li><strong>ANS</strong> — el seguro negó o limitó la terapia: 0800 701 9656</li>
+    <li><strong>BRB Mobilidade</strong> — pase libre, Estación 112 Sul: (61) 3120-9500</li>
+    <li><strong>SEPD-DF</strong> — CIPTEA y Cadastro da Pessoa com Deficiência: sepd.df.gov.br</li>
+    <li><strong>Saúde do DF</strong> — UBS, CAPSi, COMPP y defensoría del usuario: 160 o saude.df.gov.br</li>
+    <li><strong>CRAS</strong> — Cadastro Único: sedes.df.gov.br</li>
+    <li><strong>MPDFT</strong> — la escuela rechazó la matrícula o el apoyo: mpdft.mp.br</li>
+    <li><strong>Defensoria Pública do DF</strong> — abogado gratuito: defensoria.df.gov.br</li>
+  </ul>
+
+  <p>Si en algún momento necesitas la base legal de cada uno de estos pasos — los artículos, las tablas de beneficios y modelos de solicitud listos para presentar —, está en el documento compañero: <a href="/es/blog/autismo-direitos-df.html">el mapa completo de los derechos de la persona con TEA en el Distrito Federal →</a></p>
+
+  <div class="tea-aviso tea-aviso-fim">
+    <p><strong>Sobre esta guía.</strong> Escrita el 14 de septiembre de 2026, con reglas y valores verificados en esa fecha (salario mínimo de 2026: R$ 1.621,00). Es una orientación preliminar de utilidad pública: ayuda a empezar, pero no sustituye a un abogado inscrito en la OAB (el colegio de abogados de Brasil) ni a una evaluación médica. Valores, topes y plazos cambian — confirma en la fuente oficial antes de cualquier decisión que involucre dinero.</p>
+  </div>
+  `,
+    },
+  },
+  'autismo-direitos-df': {
+    en: {
+      titulo: 'Rights of autistic people in Brazil’s Federal District: the complete map with legal basis | Villela Stay',
+      descricao: 'Every benefit Brazilian law guarantees autistic people and their families in the Federal District: income, health, education, taxes, transport and housing.',
+      h1: 'The complete map of the rights of autistic people in Brazil’s Federal District',
+      dek: 'Benefit by benefit, with the legal basis, who delivers it, whether there is an income test and what to do when it is denied. Includes two ready-made request templates to file with the school and with the health plan.',
+      faq: [
+        { q: 'Is autism considered a disability for legal purposes?', a: 'Yes. Article 1, § 2, of Law 12.764/2012 — the Berenice Piana Law — establishes that a person with Autism Spectrum Disorder is considered a person with a disability for all legal purposes. It is not a partial equivalence: it is the gateway to the Statute of Persons with Disabilities (Law 13.146/2015) and to the UN Convention on the Rights of Persons with Disabilities, which in Brazil has the status of a constitutional amendment.' },
+        { q: 'Is the BPC a social security benefit?', a: 'No. The BPC (Benefício de Prestação Continuada, a monthly cash benefit) is social assistance, provided for in article 203, V, of the Constitution. It requires no contributions and, for that very reason, it carries no thirteenth salary, generates no survivor’s pension for anyone, cannot be combined with another Social Security benefit and cannot be inherited. It is subsistence income, not insurance. Real integration into the social security system happens through other routes: the child as the dependant of an insured person, the caregiver as a low-income optional contributor, and the beneficiary themselves as a future insured person with retirement after a reduced contribution period.' },
+        { q: 'What is the maximum income to receive the BPC in 2026?', a: 'Per capita family income must be equal to or below one quarter of the minimum wage — R$ 405,25 in 2026, with the minimum wage at R$ 1.621,00. The family group living under the same roof is what counts. When income is slightly above that, article 20-B of Law 8.742/93, inserted by Law 14.176/2021, allows other elements of vulnerability to be considered, above all the permanent spending caused by the disability — this is the argument that supports a court claim in those cases.' },
+        { q: 'Can the health plan limit therapy sessions for autism?', a: 'It cannot. Normative Resolutions 469/2021 and 539/2022 of the ANS (the federal health-plan regulator) took away the operator’s power to set a numerical cap on sessions, transferring to the qualified health professional the definition of therapeutic intensity. In March 2026, the STJ (Superior Court of Justice) ruled on Tema 1.295, declaring illegal any clause or rule that limits multidisciplinary therapy sessions for people with ASD. The ABA method, speech therapy, occupational therapy and psychology have mandatory coverage when prescribed.' },
+        { q: 'Can a private school charge an extra fee for an autistic student?', a: 'No. The Supreme Federal Court (STF) decided in ADI 5357 that it is unconstitutional to charge additional amounts of any kind, in monthly fees, annual fees or enrolment fees, for providing support professionals or adaptations to students with disabilities. The cost is part of the institution’s expenses. Refusing enrolment exposes the school manager to the fine of 3 to 20 minimum wages under article 7 of Law 12.764/2012, and denying reasonable accommodation without just cause constitutes the crime set out in article 88 of Law 13.146/2015.' },
+        { q: 'Is a public servant with an autistic child entitled to reduced working hours?', a: 'Yes. Article 98, §§ 2 and 3, of Law 8.112/90 guarantees a special schedule to the public servant who has a spouse, child or dependant with a disability, regardless of making up the hours and with no reduction in pay. The STF established in Tema 1.097 that this rule also applies to state, Federal District and municipal servants, even where local law does not provide for it.' },
+      ],
+      corpo: (h) => `
+  <p class="artigo-lead">This document is the legal reference: benefit by benefit, with the article of law, the responsible body and what to do when it is denied. If what you are looking for is <em>where to start</em>, one step at a time and with what to say at each counter, begin with the practical guide: <a href="/en/blog/autismo-passo-a-passo.html">the step-by-step for the family →</a></p>
+
+  <div class="tea-aviso">
+    <p><strong>Nature of this text.</strong> Preliminary legal guidance, of public interest, prepared on 14 September 2026 from official sources. It does not replace a lawyer registered with the OAB (the Brazilian Bar) or a medical assessment. Amounts, caps and deadlines change frequently — especially the vehicle exemption limits and the minimum wage. Confirm with the official source before any financial decision.</p>
+  </div>
+
+  <h2>The key that opens every door</h2>
+  <p>Article 1, § 2, of Law 12.764/2012 (the Berenice Piana Law) establishes that a person with ASD (Autism Spectrum Disorder — TEA, in Portuguese) is <strong>considered a person with a disability for all legal purposes</strong>. It is neither a partial nor a symbolic equivalence: it is the gateway to the Statute of Persons with Disabilities (Law 13.146/2015) and to the UN Convention on the Rights of Persons with Disabilities, which in Brazil has the status of a constitutional amendment.</p>
+  <p>Practical consequence: whenever a civil servant, a school or a health plan says "that benefit is for disabled people, not for autistic people", the answer fits in one line — and it is the line that should be written in the request.</p>
+
+  <div class="tea-aviso tea-aviso-atencao">
+    <p><strong>The "level" on the medical report is not the passport it appears to be.</strong> Support levels 1, 2 and 3 come from the DSM-5, a clinical manual. No Brazilian law grants a benefit by level. What the agencies assess is <strong>function</strong>: what the person can and cannot do on their own, and what barriers that creates. A report that says only "F84.0, level 2" is a weak report; one that describes the support routine is a strong report.</p>
+  </div>
+
+  <h2>What the medical report needs to contain</h2>
+  <p>Most INSS (the national social security institute) rejections and health plan refusals are born of an insufficient report. The ideal document includes:</p>
+  <ul class="artigo-lista">
+    <li><strong>Diagnosis with ICD-10 code</strong> (F84.0 or related) and the date on which it was established</li>
+    <li><strong>Support level</strong> under the DSM-5, with the clinical justification — not just the number</li>
+    <li><strong>Functional description</strong>: communication, interaction, behaviour, autonomy in hygiene, eating and getting around; what requires continuous supervision</li>
+    <li><strong>Long-term impairment</strong>, in the wording of article 20, § 2, of Law 8.742/93 — lasting in nature, with effects for a period longer than two years</li>
+    <li><strong>Concrete barriers</strong> to school and social participation on equal terms</li>
+    <li><strong>Therapeutic prescription with weekly frequency</strong>: how many hours of each therapy, with no cap on sessions</li>
+    <li><strong>Need for a companion</strong> at school and on transport, where applicable</li>
+  </ul>
+
+  <h2>Income, taxes and daily life</h2>
+  <div class="tea-tabela">
+  <table>
+    <thead><tr><th>Benefit</th><th>Legal basis</th><th>Income-tested?</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td><strong>BPC/LOAS</strong> (monthly social assistance benefit) — R$ 1.621/month</td><td>Federal Constitution art. 203, V · Law 8.742/93</td><td>Yes, up to R$ 405,25 per capita</td><td>Reviewed every 2 years; keep the CadÚnico (the federal registry for social programmes) alive</td></tr>
+      <tr><td><strong>Auxílio-inclusão</strong> (inclusion allowance) — R$ 810,50</td><td>Law 14.176/2021 · Decree 12.534/2025</td><td>Yes</td><td>Only after having received the BPC and on starting work, earning up to 2 minimum wages</td></tr>
+      <tr><td><strong>Social electricity tariff</strong></td><td>Law 15.235/2025</td><td>Yes</td><td>100% on the first 80 kWh; automatic for those who receive the BPC</td></tr>
+      <tr><td><strong>Bolsa Família</strong></td><td>Law 14.601/2023</td><td>Yes</td><td>Whoever receives the BPC is excluded from the family income calculation</td></tr>
+      <tr><td><strong>IPI and ICMS exemption</strong> (federal and state taxes) on vehicle purchase</td><td>Law 8.989/95 · ICMS Agreement (Convênio) 38/12</td><td>No</td><td>In the name of the person with ASD, through their legal representative; cap and waiting period change — check</td></tr>
+      <tr><td><strong>IPVA exemption in the Federal District</strong> (annual vehicle tax)</td><td>Federal District IPVA legislation</td><td>No</td><td>2026 taxable value up to R$ 168.278,58; Detran-DF (traffic department) report signed by two doctors</td></tr>
+      <tr><td><strong>Medical expense deduction on income tax</strong></td><td>Law 9.250/95, art. 8</td><td>No</td><td>No cap, including the dependant’s therapies, with a receipt from a qualified professional</td></tr>
+      <tr><td><strong>Passe Livre Especial do DF</strong> (free local public transport pass)</td><td>Federal District legislation · SEPD/BRB</td><td>No</td><td>16 daily rides when a companion is approved</td></tr>
+      <tr><td><strong>Interstate free pass</strong></td><td>Law 8.899/94</td><td>Yes</td><td>Road, rail and waterway travel between states</td></tr>
+      <tr><td><strong>Parking permit</strong></td><td>Brazilian Traffic Code (CTB) · Detran-DF regulation</td><td>No</td><td>Digital and with no medical report for holders of the CIPTEA; reviewed in 2 business days</td></tr>
+      <tr><td><strong>Priority service</strong> and the sunflower lanyard</td><td>Law 10.048/2000 · LBI art. 9 · Law 14.624/2023</td><td>No</td><td>Priority extends to the companion</td></tr>
+      <tr><td><strong>Morar Bem / Codhab</strong></td><td>Federal District Government (GDF) housing programme</td><td>Yes, up to 12 minimum wages</td><td>8% of the units and 1,500 points; requires 5 years of residence in the Federal District</td></tr>
+      <tr><td><strong>CIPTEA</strong> (official ID card for persons with ASD)</td><td>Law 13.977/2020 · Federal District Law 6.642/2020</td><td>No</td><td>Free of charge, valid for 5 years, issued by SEPD-DF</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Health and education</h2>
+  <div class="tea-tabela">
+  <table>
+    <thead><tr><th>Right</th><th>Legal basis</th><th>Who delivers it</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Therapies with no session limit</strong></td><td>ANS Normative Resolutions 469/2021 and 539/2022 · STJ Tema 1.295</td><td>Health plan</td><td>Intensity is defined by whoever prescribes, not by the operator</td></tr>
+      <tr><td><strong>Maximum waiting times for care</strong></td><td>ANS Normative Resolution 259/2011</td><td>Health plan</td><td>10 business days for speech therapy, psychology and occupational therapy; 14 for a medical specialist</td></tr>
+      <tr><td><strong>Out-of-network reimbursement</strong></td><td>Law 9.656/98</td><td>Health plan</td><td>Applies when the accredited network has no qualified provider</td></tr>
+      <tr><td><strong>Specialised network</strong> — CAPSi, COMPP, CER II</td><td>Law 12.764, art. 3 · SUS</td><td>SES-DF (Federal District health department)</td><td>Entry is mandatory through the UBS (primary care clinic), with referral to the regulation system</td></tr>
+      <tr><td><strong>Medication</strong></td><td>Law 12.764, art. 3, III</td><td>SUS (the public health system)</td><td>Including drugs outside the standard list, upon technical justification</td></tr>
+      <tr><td><strong>Mandatory enrolment</strong></td><td>Law 12.764, art. 7</td><td>Public or private school</td><td>Refusal results in a fine of 3 to 20 minimum wages for the school manager</td></tr>
+      <tr><td><strong>School support professional</strong></td><td>Law 12.764, art. 3, sole paragraph · LBI art. 28, § 1</td><td>School</td><td>A cost of the institution; passing it on to the family is unconstitutional (ADI 5357)</td></tr>
+      <tr><td><strong>AEE in a Resource Room</strong> (specialised educational support)</td><td>Decree 7.611/2011</td><td>SEEDF (Federal District education department)</td><td>In the opposite school shift, complementary to regular schooling</td></tr>
+      <tr><td><strong>Reduced class size</strong></td><td>SEEDF Enrolment Strategy (Estratégia de Matrícula)</td><td>SEEDF</td><td>Class size is adjusted when there is a student with ASD</td></tr>
+      <tr><td><strong>Reasonable accommodation</strong></td><td>LBI art. 28 · art. 88 (crime)</td><td>School</td><td>Denying it without just cause is a crime, punishable by imprisonment</td></tr>
+      <tr><td><strong>Reduced working hours for public servants</strong></td><td>Law 8.112/90, art. 98, §§ 2 and 3 · STF Tema 1.097</td><td>Employing agency</td><td>No making up of hours and no reduction in pay; covers all three levels of government</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>The social security part, which almost every family gets wrong</h2>
+  <p><strong>The BPC is not social security.</strong> It is social assistance — article 203, V, of the Constitution. It requires no contribution at all and, for that very reason, it carries no thirteenth salary, generates no survivor’s pension for anyone, cannot be combined with another Social Security benefit and cannot be inherited. It is subsistence income, not insurance.</p>
+  <p>Truly integrating the person with ASD into the social security system is done through three routes, and none of them depends on the person working today.</p>
+
+  <div class="tea-tabela">
+  <table>
+    <thead><tr><th>Route</th><th>How it works</th><th>What it requires now</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>As a dependant</strong><br><small>Law 8.213/91, art. 16, I and art. 77, § 2, II</small></td>
+        <td>A child with an intellectual, mental or severe disability receives a <strong>lifelong survivor’s pension</strong> on the death of the insured father or mother, without the cut-off at age 21. Dependency is presumed.</td>
+        <td>That at least one of the parents is insured with the INSS, and that the disability is <strong>documented before the age of 21</strong>.</td>
+      </tr>
+      <tr>
+        <td><strong>The caregiver as an insured person</strong><br><small>Plano de Custeio (social security funding law) · code 1929</small></td>
+        <td>Whoever is dedicated to domestic work in their own home, with no income of their own, in a family earning up to two minimum wages and with an up-to-date CadÚnico, contributes <strong>5% of the minimum wage — R$ 81,05</strong> in 2026. It gives retirement by age, incapacity benefit and leaves a survivor’s pension.</td>
+        <td>CadÚnico up to date and payment by the 15th of the following month. It does not give retirement by length of contribution unless the rate is topped up.</td>
+      </tr>
+      <tr>
+        <td><strong>As a future insured person</strong><br><small>Complementary Law (LC) 142/2013 · Law 14.176/2021</small></td>
+        <td>A person with a disability retires with a <strong>reduced contribution period</strong>, according to the degree determined in a biopsychosocial assessment. And the <strong>auxílio-inclusão</strong> (R$ 810,50 in 2026) allows someone who was receiving the BPC to work earning up to two minimum wages: the BPC is suspended and the allowance takes its place, added to the salary.</td>
+        <td>Nothing today. When the person starts working, keeping the BPC history and the CadÚnico in good standing is what qualifies them for the auxílio-inclusão.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p><strong>The decision that is worth money:</strong> the BPC solves the present, but it dies with the beneficiary and protects no one. The R$ 81,05 a month under code 1929 costs 5% of a minimum wage and builds a lifelong pension for someone who will probably outlive their parents. The BPC and the caregiver’s contribution <strong>are not mutually exclusive</strong>.</p>
+
+  <h2>When they say no</h2>
+  <p>A denial is a common stage of the procedure, not the end of it. Every door has a cheap appeal before the expensive one.</p>
+  <ul class="artigo-lista">
+    <li><strong>The INSS denied the BPC</strong> — appeal to the Conselho de Recursos da Previdência Social (the Social Security appeals board) within 30 days, free of charge, through Meu INSS. After that, the Juizado Especial Federal (federal small claims court), where a lawyer is not required for claims up to 60 minimum wages, although one is strongly recommended.</li>
+    <li><strong>The health plan denied or limited coverage</strong> — a NIP (preliminary mediation notice) at the ANS on 0800 701 9656, which usually settles things within days. Next, a lawsuit with a request for urgent interim relief.</li>
+    <li><strong>The school refused enrolment or support</strong> — a complaint to the MPDFT (the Federal District public prosecutor’s office) and, in the public school system, to the Regional de Ensino (regional education office). Free and fast.</li>
+    <li><strong>The SUS took longer than reasonable</strong> — the SES-DF ombudsman (Ouvidoria) and, after that, the Defensoria Pública do DF (public defender’s office).</li>
+    <li><strong>In any administrative procedure</strong> — request priority processing (Law 12.008/2009).</li>
+  </ul>
+
+  <h2>Two ready-made requests</h2>
+  <p>Filing in writing and demanding a protocol number is what turns a conversation at the counter into evidence. Adapt the square brackets.</p>
+
+  <details class="faq-item">
+    <summary>Request for school support and adaptation</summary>
+    <div class="faq-resp tea-minuta">To the Management of [SCHOOL]
+  Subject: Request for a school support professional, AEE and adaptations — student with Autism Spectrum Disorder
+
+  I, [NAME], legal guardian of [STUDENT'S NAME], enrolled in [CLASS/YEAR], hereby request, on the basis of art. 1, § 2, and art. 3, sole paragraph, of Law 12.764/2012, arts. 27, 28 and 30 of Law 13.146/2015 and Decree 7.611/2011:
+
+  1. Provision of a school support professional throughout the entire school shift, according to the need attested in the attached medical report;
+  2. Specialised Educational Support (Atendimento Educacional Especializado) in a Resource Room, in the opposite shift;
+  3. Preparation of an individualised support plan, with adaptation of methodology, materials and assessment, with the family's participation;
+  4. Compliance with the class-size adjustment provided for in the Enrolment Strategy (Estratégia de Matrícula) in force.
+
+  I note that, as the Supreme Federal Court decided in ADI 5357, charging the family any additional amount for accessibility or support is prohibited. I further note that the unjustified refusal of enrolment exposes the manager to the fine under art. 7 of Law 12.764/2012 and that denying reasonable accommodation without just cause constitutes the crime under art. 88 of Law 13.146/2015.
+
+  I request a written reply within 10 (ten) days and ask for the protocol number of this request.
+
+  Brasília-DF, [DATE].
+  [NAME AND SIGNATURE] — [CPF] — [TELEPHONE]
+  Attachments: medical report, CIPTEA, therapy reports.</div>
+  </details>
+
+  <details class="faq-item">
+    <summary>Request for therapies to the health plan</summary>
+    <div class="faq-resp tea-minuta">To the Operator [HEALTH PLAN]
+  Subject: Authorisation of multidisciplinary treatment for a beneficiary with ASD — with no limit on sessions
+
+  I, [NAME], legal guardian of the beneficiary [NAME], membership card no. [NUMBER], request full authorisation of the treatment prescribed in the attached medical report, namely: [NO.] weekly hours of behavioural intervention (ABA), [NO.] weekly sessions of speech therapy, [NO.] of occupational therapy and [NO.] of psychology.
+
+  I base this request on art. 1, I, of Law 9.656/1998 and on ANS Normative Resolutions no. 469/2021 and no. 539/2022, which removed the operator's power to set a numerical cap on sessions, transferring to the qualified health professional the definition of therapeutic intensity. The Superior Court of Justice consolidated this understanding in Tema 1.295, declaring illegal the limitation of the number of multidisciplinary therapy sessions for people with ASD.
+
+  I request compliance with the maximum waiting times of RN 259/2011 and, should there be no qualified provider in the accredited network, full payment or reimbursement with a provider of my own choice.
+
+  I ask for a written, reasoned reply and the protocol number of this request.
+
+  Brasília-DF, [DATE].
+  [NAME AND SIGNATURE] — [CPF] — [TELEPHONE]
+  Attachments: medical report with ICD code and prescription of weekly frequency, diagnostic report, CIPTEA.</div>
+  </details>
+
+  <h2>Where to go, in Brasília</h2>
+  <ul class="artigo-lista">
+    <li><strong>SEPD-DF</strong> — CIPTEA and the Register of Persons with Disabilities, at sepd.df.gov.br; service centre at the 112 Sul Metro Station</li>
+    <li><strong>BRB Mobilidade</strong> — Passe Livre Especial, service desk at the 112 Sul Station, (61) 3120-9500</li>
+    <li><strong>INSS</strong> — BPC application and appeal, through Meu INSS or by calling 135</li>
+    <li><strong>CRAS</strong> (social assistance centre) — Cadastro Único, at sedes.df.gov.br</li>
+    <li><strong>SES-DF</strong> — your local UBS, CAPSi, COMPP, CER II Taguatinga and CEAL-LP; ombudsman on 160</li>
+    <li><strong>ANS</strong> — complaints against a health plan, 0800 701 9656</li>
+    <li><strong>MPDFT</strong> — mpdft.mp.br · <strong>Defensoria Pública do DF</strong> — defensoria.df.gov.br</li>
+  </ul>
+
+  <p>To carry all of this out in the right order, with what to bring and what to say at each window, see the practical guide: <a href="/en/blog/autismo-passo-a-passo.html">Got the diagnosis report? Start here, one step at a time →</a></p>
+  `,
+    },
+    es: {
+      titulo: 'Derechos de la persona con autismo en el Distrito Federal de Brasil: el mapa completo con base legal | Villela Stay',
+      descricao: 'Los beneficios que la ley brasileña garantiza a las personas con autismo y a sus familias en el Distrito Federal: renta, salud, educación, impuestos y más.',
+      h1: 'El mapa completo de los derechos de quien tiene autismo en el Distrito Federal de Brasil',
+      dek: 'Beneficio por beneficio, con la base legal, quién lo entrega, si hay prueba de ingresos y qué hacer cuando lo niegan. Incluye dos modelos de solicitud listos para presentar en la escuela y en el plan de salud.',
+      faq: [
+        { q: '¿El autismo se considera discapacidad a efectos legales?', a: 'Sí. El artículo 1, § 2, de la Ley 12.764/2012 — la Ley Berenice Piana — establece que la persona con Trastorno del Espectro Autista es considerada persona con discapacidad para todos los efectos legales. No es una equiparación parcial: es la puerta de entrada al Estatuto de la Persona con Discapacidad (Ley 13.146/2015) y a la Convención de la ONU sobre los Derechos de las Personas con Discapacidad, que en Brasil tiene rango de enmienda constitucional.' },
+        { q: '¿El BPC es un beneficio previsional?', a: 'No. El BPC (Benefício de Prestação Continuada, una prestación mensual en dinero) es asistencia social, prevista en el artículo 203, V, de la Constitución. No exige aportes y, por eso mismo, no genera aguinaldo (décimo tercer salario), no genera pensión por fallecimiento para nadie, no se acumula con otro beneficio de la Previsión Social y no es heredable. Es renta de subsistencia, no seguro. La verdadera integración previsional se hace por otros caminos: el hijo como dependiente de un asegurado, el cuidador como asegurado facultativo de bajos ingresos, y el propio beneficiario como futuro asegurado con jubilación de tiempo reducido.' },
+        { q: '¿Cuál es el ingreso máximo para recibir el BPC en 2026?', a: 'El ingreso familiar per cápita debe ser igual o inferior a un cuarto del salario mínimo — R$ 405,25 en 2026, con el mínimo en R$ 1.621,00. Se considera el grupo familiar que vive bajo el mismo techo. Cuando el ingreso queda un poco por encima, el artículo 20-B de la Ley 8.742/93, incorporado por la Ley 14.176/2021, autoriza a considerar otros elementos de vulnerabilidad, sobre todo el gasto permanente derivado de la discapacidad — es la tesis que sostiene la demanda judicial en esos casos.' },
+        { q: '¿El plan de salud puede limitar las sesiones de terapia para autismo?', a: 'No puede. Las Resoluciones Normativas 469/2021 y 539/2022 de la ANS (el regulador federal de los planes de salud) le quitaron a la operadora la competencia para fijar un tope numérico de sesiones, transfiriendo al profesional de salud habilitado la definición de la intensidad terapéutica. En marzo de 2026, el STJ (Superior Tribunal de Justicia) juzgó el Tema 1.295 declarando ilegal la cláusula o norma que limite las sesiones de terapia multidisciplinaria para personas con TEA. El método ABA, la fonoaudiología, la terapia ocupacional y la psicología tienen cobertura obligatoria cuando son prescritos.' },
+        { q: '¿Una escuela privada puede cobrar un cargo extra por un alumno autista?', a: 'No. El Supremo Tribunal Federal (STF) decidió en la ADI 5357 que es inconstitucional el cobro de valores adicionales de cualquier naturaleza, en mensualidades, anualidades o matrículas, por proporcionar profesionales de apoyo o adaptaciones a alumnos con discapacidad. El costo forma parte de los gastos de la institución. Rechazar la matrícula expone al gestor a la multa de 3 a 20 salarios mínimos del artículo 7 de la Ley 12.764/2012, y negar un ajuste razonable sin causa justificada configura el delito del artículo 88 de la Ley 13.146/2015.' },
+        { q: '¿Un funcionario público con un hijo autista tiene derecho a jornada reducida?', a: 'Sí. El artículo 98, §§ 2 y 3, de la Ley 8.112/90 garantiza horario especial al funcionario que tenga cónyuge, hijo o dependiente con discapacidad, independientemente de compensación de horario y sin reducción de la remuneración. El STF fijó en el Tema 1.097 que esa regla se aplica también a los funcionarios estaduales, distritales y municipales, incluso sin previsión en la ley local.' },
+      ],
+      corpo: (h) => `
+  <p class="artigo-lead">Este documento es la referencia jurídica: beneficio por beneficio, con el artículo de ley, el organismo responsable y qué hacer cuando lo niegan. Si lo que buscas es <em>por dónde empezar</em>, con un paso a la vez y qué decir en cada mostrador, comienza por la guía práctica: <a href="/es/blog/autismo-passo-a-passo.html">el paso a paso para la familia →</a></p>
+
+  <div class="tea-aviso">
+    <p><strong>Naturaleza de este texto.</strong> Orientación jurídica preliminar, de utilidad pública, elaborada el 14 de septiembre de 2026 a partir de fuentes oficiales. No sustituye a un abogado inscrito en la OAB (el colegio de abogados de Brasil) ni a una evaluación médica. Los valores, topes y plazos cambian con frecuencia — en especial los límites de exención de vehículos y el salario mínimo. Confirma en la fuente oficial antes de cualquier decisión financiera.</p>
+  </div>
+
+  <h2>La llave que abre todas las puertas</h2>
+  <p>El artículo 1, § 2, de la Ley 12.764/2012 (Ley Berenice Piana) establece que la persona con TEA (Trastorno del Espectro Autista) es <strong>considerada persona con discapacidad para todos los efectos legales</strong>. No es una equiparación parcial ni simbólica: es la puerta de entrada al Estatuto de la Persona con Discapacidad (Ley 13.146/2015) y a la Convención de la ONU sobre los Derechos de las Personas con Discapacidad, que en Brasil tiene rango de enmienda constitucional.</p>
+  <p>Consecuencia práctica: siempre que un funcionario, una escuela o un plan de salud diga "ese beneficio es para personas con discapacidad, no para autistas", la respuesta cabe en una línea — y es la línea que debe escribirse en la solicitud.</p>
+
+  <div class="tea-aviso tea-aviso-atencao">
+    <p><strong>El "grado" del informe médico no es el pasaporte que parece ser.</strong> Los niveles de apoyo 1, 2 y 3 vienen del DSM-5, un manual clínico. Ninguna ley brasileña concede un beneficio por grado. Lo que los organismos evalúan es la <strong>función</strong>: qué puede y qué no puede hacer la persona por sí sola, y qué barreras crea eso. Un informe que dice apenas "F84.0, nivel 2" es un informe débil; uno que describe la rutina de apoyo es un informe fuerte.</p>
+  </div>
+
+  <h2>Qué debe contener el informe médico</h2>
+  <p>La mayoría de los rechazos del INSS (el instituto nacional de seguridad social) y de las negativas de los planes de salud nace de un informe insuficiente. El documento ideal incluye:</p>
+  <ul class="artigo-lista">
+    <li><strong>Diagnóstico con CIE-10</strong> (F84.0 o relacionado) y la fecha en que fue establecido</li>
+    <li><strong>Nivel de apoyo</strong> según el DSM-5, con la justificación clínica — no solo el número</li>
+    <li><strong>Descripción funcional</strong>: comunicación, interacción, comportamiento, autonomía en higiene, alimentación y desplazamiento; qué exige supervisión continua</li>
+    <li><strong>Impedimento de largo plazo</strong>, en la expresión del artículo 20, § 2, de la Ley 8.742/93 — de naturaleza duradera, con efectos por un plazo superior a dos años</li>
+    <li><strong>Barreras concretas</strong> a la participación escolar y social en igualdad de condiciones</li>
+    <li><strong>Prescripción terapéutica con frecuencia semanal</strong>: cuántas horas de cada terapia, sin tope de sesiones</li>
+    <li><strong>Necesidad de acompañante</strong> en la escuela y en el transporte, si corresponde</li>
+  </ul>
+
+  <h2>Ingresos, impuestos y vida diaria</h2>
+  <div class="tea-tabela">
+  <table>
+    <thead><tr><th>Beneficio</th><th>Base legal</th><th>¿Evalúa ingresos?</th><th>Observación</th></tr></thead>
+    <tbody>
+      <tr><td><strong>BPC/LOAS</strong> (prestación mensual de asistencia social) — R$ 1.621/mes</td><td>Constitución Federal art. 203, V · Ley 8.742/93</td><td>Sí, hasta R$ 405,25 per cápita</td><td>Revisión cada 2 años; mantener vivo el CadÚnico (el registro federal para programas sociales)</td></tr>
+      <tr><td><strong>Auxílio-inclusão</strong> (subsidio de inclusión) — R$ 810,50</td><td>Ley 14.176/2021 · Decreto 12.534/2025</td><td>Sí</td><td>Solo después de haber tenido BPC y al empezar a trabajar, ganando hasta 2 salarios mínimos</td></tr>
+      <tr><td><strong>Tarifa social de energía</strong></td><td>Ley 15.235/2025</td><td>Sí</td><td>100% en los primeros 80 kWh; automática para quien recibe BPC</td></tr>
+      <tr><td><strong>Bolsa Família</strong></td><td>Ley 14.601/2023</td><td>Sí</td><td>Quien recibe BPC queda excluido del cálculo del ingreso familiar</td></tr>
+      <tr><td><strong>Exención de IPI e ICMS</strong> (impuestos federal y estadual) en la compra de vehículo</td><td>Ley 8.989/95 · Convenio ICMS 38/12</td><td>No</td><td>A nombre de la persona con TEA, representada; el tope y el período de carencia cambian — verificar</td></tr>
+      <tr><td><strong>Exención de IPVA en el Distrito Federal</strong> (impuesto anual sobre vehículos)</td><td>Legislación distrital del IPVA</td><td>No</td><td>Base de cálculo 2026 hasta R$ 168.278,58; informe del Detran-DF (departamento de tránsito) firmado por dos médicos</td></tr>
+      <tr><td><strong>Deducción de gastos médicos en el impuesto a la renta</strong></td><td>Ley 9.250/95, art. 8</td><td>No</td><td>Sin tope, incluidas las terapias del dependiente, con recibo de profesional habilitado</td></tr>
+      <tr><td><strong>Passe Livre Especial do DF</strong> (pase gratuito de transporte público local)</td><td>Legislación distrital · SEPD/BRB</td><td>No</td><td>16 accesos diarios cuando se aprueba el acompañante</td></tr>
+      <tr><td><strong>Pase libre interestadual</strong></td><td>Ley 8.899/94</td><td>Sí</td><td>Viajes por carretera, ferrocarril y vía acuática entre estados</td></tr>
+      <tr><td><strong>Credencial de estacionamiento</strong></td><td>Código de Tránsito Brasileño (CTB) · reglamentación del Detran-DF</td><td>No</td><td>Digital y sin informe médico para quien tiene CIPTEA; análisis en 2 días hábiles</td></tr>
+      <tr><td><strong>Atención prioritaria</strong> y cordón de girasol</td><td>Ley 10.048/2000 · LBI art. 9 · Ley 14.624/2023</td><td>No</td><td>La prioridad se extiende al acompañante</td></tr>
+      <tr><td><strong>Morar Bem / Codhab</strong></td><td>Programa habitacional del Gobierno del Distrito Federal (GDF)</td><td>Sí, hasta 12 salarios mínimos</td><td>8% de las unidades y 1.500 puntos; exige 5 años de residencia en el Distrito Federal</td></tr>
+      <tr><td><strong>CIPTEA</strong> (credencial oficial de identificación de la persona con TEA)</td><td>Ley 13.977/2020 · Ley Distrital 6.642/2020</td><td>No</td><td>Gratuita, validez de 5 años, emitida por la SEPD-DF</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Salud y educación</h2>
+  <div class="tea-tabela">
+  <table>
+    <thead><tr><th>Derecho</th><th>Base legal</th><th>Quién lo entrega</th><th>Observación</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Terapias sin límite de sesiones</strong></td><td>RN ANS 469/2021 y 539/2022 · STJ Tema 1.295</td><td>Plan de salud</td><td>Quien define la intensidad es quien prescribe, no la operadora</td></tr>
+      <tr><td><strong>Plazos máximos de atención</strong></td><td>RN ANS 259/2011</td><td>Plan de salud</td><td>10 días hábiles para fonoaudiología, psicología y terapia ocupacional; 14 para médico especialista</td></tr>
+      <tr><td><strong>Reembolso fuera de la red</strong></td><td>Ley 9.656/98</td><td>Plan de salud</td><td>Procede cuando la red acreditada no tiene un prestador habilitado</td></tr>
+      <tr><td><strong>Red especializada</strong> — CAPSi, COMPP, CER II</td><td>Ley 12.764, art. 3 · SUS</td><td>SES-DF (secretaría de salud del Distrito Federal)</td><td>Ingreso obligatorio por la UBS (unidad básica de salud), con derivación al sistema de regulación</td></tr>
+      <tr><td><strong>Medicamentos</strong></td><td>Ley 12.764, art. 3, III</td><td>SUS (el sistema público de salud)</td><td>Incluso fuera de la lista estandarizada, mediante justificación técnica</td></tr>
+      <tr><td><strong>Matrícula obligatoria</strong></td><td>Ley 12.764, art. 7</td><td>Escuela pública o privada</td><td>El rechazo genera multa de 3 a 20 salarios mínimos para el gestor</td></tr>
+      <tr><td><strong>Profesional de apoyo escolar</strong></td><td>Ley 12.764, art. 3, párrafo único · LBI art. 28, § 1</td><td>Escuela</td><td>Costo de la institución; trasladarlo a la familia es inconstitucional (ADI 5357)</td></tr>
+      <tr><td><strong>AEE en Sala de Recursos</strong> (atención educativa especializada)</td><td>Decreto 7.611/2011</td><td>SEEDF (secretaría de educación del Distrito Federal)</td><td>En el turno opuesto, complementaria a la enseñanza regular</td></tr>
+      <tr><td><strong>Grupo reducido</strong></td><td>Estrategia de Matrícula (Estratégia de Matrícula) de la SEEDF</td><td>SEEDF</td><td>Se ajusta el tamaño del grupo cuando hay un estudiante con TEA</td></tr>
+      <tr><td><strong>Ajuste razonable</strong></td><td>LBI art. 28 · art. 88 (delito)</td><td>Escuela</td><td>Negarlo sin causa justificada es delito, con pena de reclusión</td></tr>
+      <tr><td><strong>Jornada reducida del funcionario público</strong></td><td>Ley 8.112/90, art. 98, §§ 2 y 3 · STF Tema 1.097</td><td>Organismo empleador</td><td>Sin compensación y sin reducción de la remuneración; alcanza a los tres niveles de gobierno</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>La parte previsional, que casi toda familia entiende mal</h2>
+  <p><strong>El BPC no es previsión social.</strong> Es asistencia social — artículo 203, V, de la Constitución. No exige ningún aporte y, por eso mismo, no genera aguinaldo (décimo tercer salario), no genera pensión por fallecimiento para nadie, no se acumula con otro beneficio de la Previsión Social y no es heredable. Es renta de subsistencia, no seguro.</p>
+  <p>Integrar de verdad a la persona con TEA al sistema previsional se hace por tres caminos, y ninguno de ellos depende de que ella trabaje hoy.</p>
+
+  <div class="tea-tabela">
+  <table>
+    <thead><tr><th>Camino</th><th>Cómo funciona</th><th>Qué exige ahora</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Como dependiente</strong><br><small>Ley 8.213/91, art. 16, I y art. 77, § 2, II</small></td>
+        <td>El hijo con discapacidad intelectual, mental o grave recibe <strong>pensión por fallecimiento vitalicia</strong> al fallecer el padre o la madre asegurados, sin el corte de los 21 años. La dependencia se presume.</td>
+        <td>Que al menos uno de los padres sea asegurado del INSS, y que la discapacidad esté <strong>documentada antes de los 21 años</strong>.</td>
+      </tr>
+      <tr>
+        <td><strong>El cuidador como asegurado</strong><br><small>Plano de Custeio (ley de financiamiento de la seguridad social) · código 1929</small></td>
+        <td>Quien se dedica al trabajo doméstico en su propia casa, sin ingresos propios, en una familia de hasta dos salarios mínimos y con el CadÚnico actualizado, aporta el <strong>5% del mínimo — R$ 81,05</strong> en 2026. Da jubilación por edad, subsidio por incapacidad y deja pensión por fallecimiento.</td>
+        <td>CadÚnico al día y pago hasta el día 15 del mes siguiente. No da jubilación por tiempo de aporte sin complementar la alícuota.</td>
+      </tr>
+      <tr>
+        <td><strong>Como futuro asegurado</strong><br><small>Ley Complementaria (LC) 142/2013 · Ley 14.176/2021</small></td>
+        <td>La persona con discapacidad se jubila con <strong>tiempo de aporte reducido</strong>, según el grado determinado en una evaluación biopsicosocial. Y el <strong>auxílio-inclusão</strong> (R$ 810,50 en 2026) permite que quien recibía BPC trabaje ganando hasta dos salarios mínimos: el BPC se suspende y el subsidio entra en su lugar, sumado al salario.</td>
+        <td>Nada hoy. Cuando empiece a trabajar, mantener en regla el historial del BPC y el CadÚnico es lo que habilita el auxílio-inclusão.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p><strong>La decisión que vale dinero:</strong> el BPC resuelve el presente, pero muere con el beneficiario y no protege a nadie. Los R$ 81,05 mensuales del código 1929 cuestan el 5% de un salario mínimo y construyen una pensión vitalicia para alguien que probablemente sobrevivirá a sus padres. El BPC y el aporte del cuidador <strong>no se excluyen</strong>.</p>
+
+  <h2>Cuando lo nieguen</h2>
+  <p>La negativa es una etapa común del procedimiento, no su final. Cada puerta tiene un recurso barato antes del recurso caro.</p>
+  <ul class="artigo-lista">
+    <li><strong>El INSS negó el BPC</strong> — recurso ante el Conselho de Recursos da Previdência Social (el consejo de recursos de la seguridad social) en 30 días, gratuito, por Meu INSS. Después, el Juizado Especial Federal (juzgado federal de pequeñas causas), donde hasta 60 salarios mínimos no se exige abogado, aunque sea muy recomendable.</li>
+    <li><strong>El plan de salud negó o limitó</strong> — una NIP (notificación de intermediación preliminar) en la ANS por el 0800 701 9656, que suele resolver en días. A continuación, demanda con medida cautelar de urgencia.</li>
+    <li><strong>La escuela rechazó la matrícula o el apoyo</strong> — denuncia ante el MPDFT (el ministerio público del Distrito Federal) y, en la red pública, ante la Regional de Ensino (la oficina regional de educación). Gratuito y rápido.</li>
+    <li><strong>El SUS demoró más de lo razonable</strong> — la Ouvidoria (defensoría del usuario) de la SES-DF y, después, la Defensoria Pública do DF (defensoría pública).</li>
+    <li><strong>En cualquier procedimiento administrativo</strong> — solicitar prioridad de tramitación (Ley 12.008/2009).</li>
+  </ul>
+
+  <h2>Dos solicitudes listas</h2>
+  <p>Presentar por escrito y exigir número de protocolo es lo que transforma una conversación de mostrador en prueba. Adapta los corchetes.</p>
+
+  <details class="faq-item">
+    <summary>Solicitud de apoyo escolar y adaptación</summary>
+    <div class="faq-resp tea-minuta">A la Dirección de [ESCUELA]
+  Asunto: Solicitud de profesional de apoyo escolar, AEE y adaptaciones — estudiante con Trastorno del Espectro Autista
+
+  Yo, [NOMBRE], responsable legal de [NOMBRE DEL ESTUDIANTE], matriculado(a) en [GRUPO/AÑO], vengo a solicitar, con fundamento en el art. 1, § 2, y en el art. 3, párrafo único, de la Ley 12.764/2012, en los arts. 27, 28 y 30 de la Ley 13.146/2015 y en el Decreto 7.611/2011:
+
+  1. Disponibilidad de un profesional de apoyo escolar durante todo el turno, conforme a la necesidad certificada en el informe médico adjunto;
+  2. Atención Educativa Especializada (Atendimento Educacional Especializado) en Sala de Recursos, en el turno opuesto;
+  3. Elaboración de un plan de atención individualizado, con adaptación de metodología, material y evaluación, con participación de la familia;
+  4. Observancia del ajuste del tamaño del grupo previsto en la Estrategia de Matrícula (Estratégia de Matrícula) vigente.
+
+  Dejo constancia de que, conforme decidió el Supremo Tribunal Federal en la ADI 5357, está prohibido cobrar a la familia cualquier valor adicional por concepto de accesibilidad o apoyo. Dejo constancia además de que el rechazo injustificado de la matrícula expone al gestor a la multa del art. 7 de la Ley 12.764/2012 y de que negar un ajuste razonable sin causa justificada configura el delito del art. 88 de la Ley 13.146/2015.
+
+  Solicito respuesta escrita en el plazo de 10 (diez) días y pido el número de protocolo de esta solicitud.
+
+  Brasília-DF, [FECHA].
+  [NOMBRE Y FIRMA] — [CPF] — [TELÉFONO]
+  Anexos: informe médico, CIPTEA, informes terapéuticos.</div>
+  </details>
+
+  <details class="faq-item">
+    <summary>Solicitud de terapias al plan de salud</summary>
+    <div class="faq-resp tea-minuta">A la Operadora [PLAN DE SALUD]
+  Asunto: Autorización de tratamiento multidisciplinario para beneficiario con TEA — sin limitación de sesiones
+
+  Yo, [NOMBRE], responsable legal del beneficiario [NOMBRE], credencial n.º [NÚMERO], solicito la autorización integral del tratamiento prescrito en el informe médico adjunto, a saber: [N.º] horas semanales de intervención conductual (ABA), [N.º] sesiones semanales de fonoaudiología, [N.º] de terapia ocupacional y [N.º] de psicología.
+
+  Fundamento el pedido en el art. 1, I, de la Ley 9.656/1998 y en las Resoluciones Normativas ANS n.º 469/2021 y n.º 539/2022, que apartaron la competencia de la operadora para fijar un tope numérico de sesiones, transfiriendo al profesional de salud habilitado la definición de la intensidad terapéutica. El Superior Tribunal de Justicia consolidó ese entendimiento en el Tema 1.295, declarando ilegal la limitación del número de sesiones de terapias multidisciplinarias para personas con TEA.
+
+  Solicito el cumplimiento de los plazos máximos de la RN 259/2011 y, en caso de que no haya un prestador habilitado en la red acreditada, el pago o reembolso integral con un prestador de libre elección.
+
+  Pido respuesta escrita y fundamentada y el número de protocolo de esta solicitud.
+
+  Brasília-DF, [FECHA].
+  [NOMBRE Y FIRMA] — [CPF] — [TELÉFONO]
+  Anexos: informe médico con CIE y prescripción de frecuencia semanal, informe diagnóstico, CIPTEA.</div>
+  </details>
+
+  <h2>Adónde ir, en Brasilia</h2>
+  <ul class="artigo-lista">
+    <li><strong>SEPD-DF</strong> — CIPTEA y Registro de la Persona con Discapacidad, por sepd.df.gov.br; central de atención en la Estación de Metro de la 112 Sul</li>
+    <li><strong>BRB Mobilidade</strong> — Passe Livre Especial, puesto de la Estación 112 Sul, (61) 3120-9500</li>
+    <li><strong>INSS</strong> — solicitud y recurso del BPC, por Meu INSS o por el teléfono 135</li>
+    <li><strong>CRAS</strong> (centro de asistencia social) — Cadastro Único, por sedes.df.gov.br</li>
+    <li><strong>SES-DF</strong> — UBS de referencia, CAPSi, COMPP, CER II Taguatinga y CEAL-LP; ouvidoria en el 160</li>
+    <li><strong>ANS</strong> — reclamo contra el plan de salud, 0800 701 9656</li>
+    <li><strong>MPDFT</strong> — mpdft.mp.br · <strong>Defensoria Pública do DF</strong> — defensoria.df.gov.br</li>
+  </ul>
+
+  <p>Para ejecutar todo esto en el orden correcto, con qué llevar y qué decir en cada ventanilla, mira la guía práctica: <a href="/es/blog/autismo-passo-a-passo.html">¿Recibiste el informe? Empieza por aquí, un paso a la vez →</a></p>
+  `,
+    },
+  },
 };
