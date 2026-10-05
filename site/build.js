@@ -4739,7 +4739,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     // hub da série: /chatgpt/
     const cgCards = cgArtigos.map(a => `
   <a class="cap-card" href="${a.caminho}">
-    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado">artigo no ar · videoaula em produção</span>'}</span>
+    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado no-ar">artigo e revisão animada no ar</span>'}</span>
     <h3>${esc(a.tituloTexto)}</h3>
     <p>${esc(a.subtituloTexto)}</p>
     <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
@@ -4771,7 +4771,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 <div class="cap">
   <section class="cap-hub-hero">
     <h1>ChatGPT AI na Prática</h1>
-    <p>${esc(cgGrade.subtitulo)}. A série acompanha o curso e cresce a cada material pronto: hoje ${cgNoAr === 1 ? 'há 1 artigo no ar' : `há ${cgNoAr} artigos no ar`}, dos ${cgTotal} da grade — ${cgComVideo} com a videoaula publicada e os demais com o vídeo em produção. Cada artigo abre com resumo e perguntas frequentes; o método inteiro está no livro e no curso.</p>
+    <p>${esc(cgGrade.subtitulo)}. A série acompanha o curso e cresce a cada material pronto: hoje ${cgNoAr === 1 ? 'há 1 artigo no ar' : `há ${cgNoAr} artigos no ar`}, dos ${cgTotal} da grade — todos com a Revisão animada em vídeo no curso, e ${cgComVideo} também com a videoaula do professor. Cada artigo abre com resumo e perguntas frequentes; o método inteiro está no livro e no curso.</p>
   </section>
   <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>ChatGPT AI na Prática</span></nav>
   <div class="cap-faixa">${cgAnuncio('livro')}${cgAnuncio('curso')}</div>
@@ -4794,11 +4794,11 @@ Série do livro *ChatGPT AI na Prática*, de Augusto Villela — o ecossistema d
 aplicado ao trabalho: os modos Chat, Work e Codex, prompts que funcionam, engenharia de
 contexto, Projetos, GPTs, Skills, MCP, Codex, agentes e automações. A série acompanha o
 curso e cresce a cada material pronto: hoje ${cgNoAr === 1 ? 'há 1 artigo publicado' : `há ${cgNoAr} artigos publicados`} dos ${cgTotal} da grade,
-${cgComVideo} deles com a videoaula já publicada e os demais com o vídeo em produção.
+todos com a Revisão animada em vídeo no curso, e ${cgComVideo} também com a videoaula do professor.
 Índice da série: ${SITE_URL}/chatgpt/
 Livro completo: ${CG_LIVRO.split('?')[0]} · Curso on-line: ${CG_CURSO.split('?')[0]}
 
-${cgArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}${a.gravada ? '' : ' (artigo no ar; videoaula em produção)'}`).join('\n')}
+${cgArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
 ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoio/${d.chave}.html): material de referência aberto da série.`).join('\n')}
 `;
     console.log(`Blog ChatGPT AI na Prática: hub + ${cgNoAr} de ${cgTotal} artigos (${cgComVideo} com vídeo) + ${cgApoio.length} material(is) de apoio`);
