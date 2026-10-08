@@ -855,9 +855,11 @@ const Cortesia = {
       WHERE u.cortesia = 1
          OR EXISTS (SELECT 1 FROM enrollments e WHERE e.user_id = u.id AND e.origem = 'cortesia')
       ORDER BY u.criado_em DESC LIMIT 500`).all()
-      .map(r => ({ id: r.id, nome: r.nome, email: r.email, criado_em: r.criado_em,
-        produtos_liberados: r.produtos_liberados, ativo: r.cortesia === 1,
-        status: r.cortesia === 1 ? 'ativo' : 'revogado' }));
+      // ATIVO = acesso total (flag) OU ao menos um curso de cortesia ativo. A cortesia que o
+      // produtor dá por curso não liga o flag: só pelo flag, ela aparecia como "revogada".
+      .map(r => { const ativo = r.cortesia === 1 || r.produtos_liberados > 0; return { id: r.id, nome: r.nome, email: r.email, criado_em: r.criado_em,
+        produtos_liberados: r.produtos_liberados, total: r.cortesia === 1, ativo,
+        status: ativo ? 'ativo' : 'revogado' }; });
   },
 };
 

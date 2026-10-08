@@ -31,7 +31,7 @@ function cortesiaLinha(p, a) {
   const nome = a.nome || a.email || a.email_contato || a.id;
   const email = a.email_dono || a.email_contato || a.email || '';
   const revogado = cortesiaRevogado(a);
-  const extra = (a.produtos_liberados != null) ? `<span class="obs"> · ${esc(String(a.produtos_liberados))} produto(s)</span>` : '';
+  const extra = (a.produtos_liberados != null) ? `<span class="obs"> · ${a.total ? 'acesso total · ' : ''}${esc(String(a.produtos_liberados))} produto(s)</span>` : '';
   const plano = a.plano_nome || a.plano || '';
   return `<tr>
     <td><b>${esc(nome)}</b>${extra}${email ? `<br><span class="obs">${esc(email)}</span>` : ''}</td>
@@ -49,11 +49,15 @@ function cortesiaLinha(p, a) {
 // Liga revogar / reativar / copiar link dentro de `raiz`; `recarregar` redesenha a lista.
 function cortesiaLigar(raiz, recarregar) {
   raiz.querySelectorAll('.ct-revogar').forEach(b => b.onclick = async () => {
-    if (!confirm('Revogar este acesso de cortesia? A pessoa perde o acesso imediatamente (reversível pelo botão reativar).')) return;
+    if (!confirm(b.dataset.pref === 'academy'
+      ? 'Revogar TODAS as cortesias desta pessoa na Academy (inclusive as dadas por curso na área do produtor)? Compras e assinaturas ficam intactas.'
+      : 'Revogar este acesso de cortesia? A pessoa perde o acesso imediatamente (reversível pelo botão reativar).')) return;
     try { await api('POST', `/${b.dataset.pref}/cortesia/${encodeURIComponent(b.dataset.id)}/revogar`); recarregar(); }
     catch (e) { alert(e.message); }
   });
   raiz.querySelectorAll('.ct-reativar').forEach(b => b.onclick = async () => {
+    // na Academy, reativar por aqui concede TUDO (não só os cursos que a pessoa tinha)
+    if (b.dataset.pref === 'academy' && !confirm('Reativar por aqui libera TODOS os cursos publicados para esta pessoa. Para liberar um curso só, use a área do produtor. Continuar?')) return;
     try { await api('POST', `/${b.dataset.pref}/cortesia/${encodeURIComponent(b.dataset.id)}/reativar`); recarregar(); }
     catch (e) { alert(e.message); }
   });

@@ -1282,6 +1282,12 @@ async function main() {
     // aparece na listagem, marcado como cortesia ativo
     const item = (await req('GET', '/staff/api/academy/cortesia')).json.acessos.find(a => a.id === uid);
     assert.ok(item && item.produtos_liberados >= 1 && item.ativo === true, 'listado como cortesia ativo');
+    assert.equal(item.total, true, 'cortesia do staff = acesso total');
+    // cortesia POR CURSO (a que o produtor dá): sem o flag, mas ATIVA — não pode aparecer como revogada
+    const porCurso = ct.Cortesia.acharOuCriarUsuario({ nome: 'Por Curso', email: 'porcurso@selftest.br' }).usuario;
+    ct.Matriculas.criar(pagoId, porCurso.email, 'produtor', 'cortesia');
+    const itemPC = (await req('GET', '/staff/api/academy/cortesia')).json.acessos.find(x => x.id === porCurso.id);
+    assert.ok(itemPC && itemPC.ativo === true && itemPC.status === 'ativo' && itemPC.total === false && itemPC.produtos_liberados === 1, 'cortesia por curso listada como ativa');
     // o link definir-senha realmente define a senha e permite login
     const tok = decodeURIComponent(c.json.acesso.definir_senha_url.split('token=')[1]);
     assert.equal((await req('POST', '/academy/api/senha/redefinir', { corpo: { token: tok, senha: 'senha-cortesia-1' } })).st, 200);
