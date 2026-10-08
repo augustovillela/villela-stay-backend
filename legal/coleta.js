@@ -17,7 +17,7 @@
 // Tudo logado em integration_logs; disparo manual pelas rotas.
 // =====================================================================
 'use strict';
-const { db, nowISO, comTenant, listarTenants } = require('./db');
+const { db, nowISO, comTenant, listarTenants, tenantAtual, TENANT_PADRAO } = require('./db');
 const repo = require('./repo');
 const llm = require('./llm');
 const ia = require('./ia');
@@ -191,7 +191,8 @@ function oabsDaEquipe() {
     const numero = (s2.replace(/\./g, '').match(/(\d{3,6})/) || [])[1];
     if (uf && numero) lista.push({ nome: u.nome, numero, uf });
   }
-  if (process.env.LEGAL_OAB && process.env.LEGAL_OAB_UF) {
+  // a OAB do ambiente é a do escritório interno: nunca entra na coleta de um assinante
+  if (tenantAtual() === TENANT_PADRAO && process.env.LEGAL_OAB && process.env.LEGAL_OAB_UF) {
     lista.push({ nome: 'env', numero: String(process.env.LEGAL_OAB).replace(/\D/g, ''), uf: process.env.LEGAL_OAB_UF.toUpperCase() });
   }
   const vistos = new Set();

@@ -917,6 +917,21 @@ async function rodar() {
     assert.equal(lst.st, 200);
     assert.equal(lst.json.clientes.length, 0, 'B deveria começar SEM clientes (banco próprio)');
   });
+  await t('sigilo: alerta de escritório assinante NÃO vai ao WhatsApp do dono da plataforma; a OAB do ambiente não entra na coleta dele', async () => {
+    const dbm = require('./db'), notifM = require('./notificacoes'), coletaM = require('./coleta');
+    const antes = enviados.alertas.length;
+    await dbm.comTenant(B, () => notifM.notificarEquipe({ titulo: 'Mensagem de cliente no portal', corpo: 'Fulano: texto sigiloso', whatsapp: true }));
+    assert.equal(enviados.alertas.length, antes, 'alerta do escritório B vazou para o WhatsApp do dono');
+    assert.ok(dbm.comTenant(B, () => notifM.Notificacoes.daEquipe(5)).some(n => n.titulo === 'Mensagem de cliente no portal'), 'o sino do escritório B recebe');
+    await dbm.comTenant(dbm.TENANT_PADRAO, () => notifM.notificarEquipe({ titulo: 'interno', corpo: 'x', whatsapp: true }));
+    assert.equal(enviados.alertas.length, antes + 1, 'o escritório interno continua alertando');
+    const oabAntes = [process.env.LEGAL_OAB, process.env.LEGAL_OAB_UF];
+    process.env.LEGAL_OAB = '99999'; process.env.LEGAL_OAB_UF = 'DF';
+    try {
+      assert.ok(!dbm.comTenant(B, () => coletaM.oabsDaEquipe()).some(o => o.numero === '99999'), 'OAB do ambiente entrou na coleta do assinante');
+      assert.ok(dbm.comTenant(dbm.TENANT_PADRAO, () => coletaM.oabsDaEquipe()).some(o => o.numero === '99999'), 'no interno a OAB do ambiente vale');
+    } finally { if (oabAntes[0] == null) delete process.env.LEGAL_OAB; else process.env.LEGAL_OAB = oabAntes[0]; if (oabAntes[1] == null) delete process.env.LEGAL_OAB_UF; else process.env.LEGAL_OAB_UF = oabAntes[1]; }
+  });
   await t('isolamento: cliente criado em B não aparece no escritório interno (e vice-versa)', async () => {
     const c = await req('POST', '/staff/api/legal/clientes', { tenant: B, corpo: { nome: 'Cliente do B', email: 'b@b.com', tipo_cliente: 'ativo' } });
     assert.equal(c.st, 200); bCliId = c.json.cliente.id;
