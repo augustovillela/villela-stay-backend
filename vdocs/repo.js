@@ -417,7 +417,13 @@ function listarTenantsPlataforma() {
   });
 }
 
+// ids dos tenants criados como cortesia (a tabela não guarda a origem; a auditoria guarda)
+function tenantsNascidosCortesia() {
+  return new Set(db.prepare("SELECT DISTINCT tenant_id FROM audit_logs WHERE acao = 'tenant.cortesia_criar'").all().map(r => r.tenant_id));
+}
+
 module.exports = {
+  tenantsNascidosCortesia,
   s, emailNorm, emailOK, periodoAtual,
   semearPlanos, listarPlanos, planoPorSlug, atualizarPlano,
   auditar, listarAuditoria,

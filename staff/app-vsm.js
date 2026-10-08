@@ -16,7 +16,7 @@ const VSM = {
   async abrir() { VSM.render(); },
   abas() {
     return [['painel', '📊 Painel'], ['tenants', '🏨 Operações'], ['planos', '💳 Planos'],
-      ['custo', '💰 Custo/cliente'], ['tickets', '🎧 Suporte'], ['leads', '📩 Leads'], ['logs', '📜 Logs']];
+      ['custo', '💰 Custo/cliente'], ['cortesia', '🎟️ Cortesia'], ['tickets', '🎧 Suporte'], ['leads', '📩 Leads'], ['logs', '📜 Logs']];
   },
   render() {
     const abas = VSM.abas().map(([id, r]) => `<button class="btn ${VSM.tab === id ? '' : 'secund'} peq" onclick="VSM.ir('${id}')">${r}</button>`).join(' ');
@@ -27,7 +27,7 @@ const VSM = {
   ir(t) { VSM.tab = t; VSM.render(); },
   body() { return document.getElementById('vsm-body'); },
   async pintar() {
-    try { await ({ painel: VSM.vPainel, tenants: VSM.vTenants, planos: VSM.vPlanos, custo: VSM.vCusto, tickets: VSM.vTickets, leads: VSM.vLeads, logs: VSM.vLogs }[VSM.tab])(); }
+    try { await ({ painel: VSM.vPainel, tenants: VSM.vTenants, planos: VSM.vPlanos, custo: VSM.vCusto, cortesia: VSM.vCortesia, tickets: VSM.vTickets, leads: VSM.vLeads, logs: VSM.vLogs }[VSM.tab])(); }
     catch (e) { VSM.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
 
@@ -91,6 +91,7 @@ const VSM = {
         <button class="btn secund peq" onclick="VSM.statusTenant('${id}','ativa')">Ativar</button>
         <button class="btn secund peq" onclick="VSM.statusTenant('${id}','suspensa')">Suspender</button>
         <button class="btn secund peq" onclick="VSM.statusTenant('${id}','cancelada')">Cancelar</button>
+        ${t.status === 'cortesia' ? '' : `<button class="btn secund peq" onclick="VSM.darCortesia('${id}')">🎟️ Dar cortesia</button>`}
         <button class="btn secund peq" onclick="VSM.marcarPago('${id}')">💵 Marcar pago</button>
         <button class="btn secund peq" onclick="VSM.linkAcesso('${id}')">🔑 Link de acesso</button>
       </p><p id="vsm-tn-msg" class="sub"></p></div>
@@ -142,6 +143,13 @@ const VSM = {
       m.innerHTML = `🔗 Link p/ ${esc(r.email)} definir a senha (validade ${esc(r.validade)}):<br><b>${esc(r.url)}</b>`;
       try { await navigator.clipboard.writeText(r.url); m.innerHTML += '<br>✅ copiado'; } catch (_) {}
     } catch (e) { alert(e.message); }
+  },
+
+  // -------------------------------------------------------- CORTESIA (componente comum: app-cortesia.js)
+  async vCortesia() { await cortesiaPainel(VSM.body(), 'vsm'); },
+  async darCortesia(id) {
+    if (!confirm('Dar cortesia a esta conta? Ela passa a ter acesso sem cobrança e sem prazo, no plano em que está.\n\nSe houver assinatura ativa no Mercado Pago, cancele-a antes — a cortesia não interrompe a cobrança.')) return;
+    try { await VSM.api('POST', `/tenants/${id}/status`, { status: 'cortesia', detalhe: 'cortesia concedida' }); VSM.verTenant(id); } catch (e) { alert(e.message); }
   },
 
   // -------------------------------------------------------- PLANOS

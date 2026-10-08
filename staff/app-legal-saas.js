@@ -16,7 +16,7 @@ const LS = {
   async abrir() { LS.render(); },
   abas() {
     return [['painel', '📊 Painel'], ['tenants', '🏢 Escritórios'], ['planos', '💳 Planos'],
-      ['custo', '💰 Custo/cliente'], ['tickets', '🎧 Suporte'], ['leads', '📩 Leads'], ['logs', '📜 Logs']];
+      ['custo', '💰 Custo/cliente'], ['cortesia', '🎟️ Cortesia'], ['tickets', '🎧 Suporte'], ['leads', '📩 Leads'], ['logs', '📜 Logs']];
   },
   render() {
     const abas = LS.abas().map(([id, r]) => `<button class="btn ${LS.tab === id ? '' : 'secund'} peq" onclick="LS.ir('${id}')">${r}</button>`).join(' ');
@@ -27,7 +27,7 @@ const LS = {
   ir(t) { LS.tab = t; LS.render(); },
   body() { return document.getElementById('ls-body'); },
   async pintar() {
-    try { await ({ painel: LS.vPainel, tenants: LS.vTenants, planos: LS.vPlanos, custo: LS.vCusto, tickets: LS.vTickets, leads: LS.vLeads, logs: LS.vLogs }[LS.tab])(); }
+    try { await ({ painel: LS.vPainel, tenants: LS.vTenants, planos: LS.vPlanos, custo: LS.vCusto, cortesia: LS.vCortesia, tickets: LS.vTickets, leads: LS.vLeads, logs: LS.vLogs }[LS.tab])(); }
     catch (e) { LS.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
 
@@ -91,6 +91,7 @@ const LS = {
         <button class="btn secund peq" onclick="LS.statusTenant('${id}','ativa')">Ativar</button>
         <button class="btn secund peq" onclick="LS.statusTenant('${id}','suspensa')">Suspender</button>
         <button class="btn secund peq" onclick="LS.statusTenant('${id}','cancelada')">Cancelar</button>
+        ${t.status === 'cortesia' ? '' : `<button class="btn secund peq" onclick="LS.darCortesia('${id}')">🎟️ Dar cortesia</button>`}
         <button class="btn secund peq" onclick="LS.marcarPago('${id}')">💵 Marcar pago</button>
         <button class="btn secund peq" onclick="LS.linkAcesso('${id}')">🔑 Link de acesso</button>
       </p><p id="ls-tn-msg" class="sub"></p></div>
@@ -142,6 +143,13 @@ const LS = {
       m.innerHTML = `🔗 Link p/ ${esc(r.email)} definir a senha (validade ${esc(r.validade)}):<br><b>${esc(r.url)}</b>`;
       try { await navigator.clipboard.writeText(r.url); m.innerHTML += '<br>✅ copiado'; } catch (_) {}
     } catch (e) { alert(e.message); }
+  },
+
+  // -------------------------------------------------------- CORTESIA (componente comum: app-cortesia.js)
+  async vCortesia() { await cortesiaPainel(LS.body(), 'legal-saas'); },
+  async darCortesia(id) {
+    if (!confirm('Dar cortesia a esta conta? Ela passa a ter acesso sem cobrança e sem prazo, no plano em que está.\n\nSe houver assinatura ativa no Mercado Pago, cancele-a antes — a cortesia não interrompe a cobrança.')) return;
+    try { await LS.api('POST', `/tenants/${id}/status`, { status: 'cortesia', detalhe: 'cortesia concedida' }); LS.verTenant(id); } catch (e) { alert(e.message); }
   },
 
   // -------------------------------------------------------- PLANOS

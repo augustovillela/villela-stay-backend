@@ -145,12 +145,14 @@ function hidratarPlano(p) {
 // =====================================================================
 const DIAS_TRIAL = parseInt(process.env.LEGALSAAS_TRIAL_DIAS, 10) || 14;
 const Tenants = {
-  listar({ status = '', busca = '', limite = 200 } = {}) {
+  listar({ status = '', busca = '', limite = 200, cortesia = false } = {}) {
     let sql = `SELECT t.*, p.nome AS plano_nome, p.preco_centavos,
       (SELECT status FROM subscriptions sb WHERE sb.tenant_id = t.id ORDER BY criado_em DESC LIMIT 1) AS sub_status
       FROM tenants t LEFT JOIN plans p ON p.id = t.plan_id`;
     const where = [], args = [];
     if (status) { where.push('t.status = ?'); args.push(status); }
+    // cortesias: as vigentes E as revogadas (senão a revogada some da lista e não dá para reativar)
+    if (cortesia) where.push("(t.status = 'cortesia' OR (t.origem = 'cortesia' AND t.status IN ('suspensa','cancelada')))");
     if (busca) { where.push('(t.nome LIKE ? OR t.cnpj LIKE ? OR t.email_contato LIKE ?)'); const b = `%${busca}%`; args.push(b, b, b); }
     if (where.length) sql += ' WHERE ' + where.join(' AND ');
     sql += ' ORDER BY t.criado_em DESC LIMIT ?'; args.push(Math.min(Number(limite) || 200, 500));
@@ -185,6 +187,7 @@ const Tenants = {
     if (!nome) throw new Error('Informe o nome do escritório.');
     const email = s(d.email_contato || d.email, 120).toLowerCase();
     if (!email || !email.includes('@')) throw new Error('Informe um e-mail de contato válido.');
+    if (db.prepare('SELECT 1 FROM tenant_users WHERE lower(email) = ?').get(email)) throw new Error('Este e-mail já tem conta neste sistema.');
     // cortesia/beta: acesso vitalício sem cobrança (plano cheio, sem expiração) — só o dono revoga
     const ehCortesia = d.status_inicial === 'cortesia';
     const plano = ehCortesia

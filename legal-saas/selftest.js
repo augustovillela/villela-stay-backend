@@ -174,6 +174,36 @@ async function rodar() {
     await req('POST', '/juridico/api/lead', { corpo: { nome: 'Lead X', escritorio: 'Escr X', email: 'x@x.br' } });
     assert.ok((await req('GET', '/staff/api/legal-saas/leads')).json.leads.some(l => l.email === 'x@x.br'));
   });
+  await t('cortesia: cria sem cobrança, revogada segue na lista e reativa', async () => {
+    assert.equal((await req('POST', '/staff/api/legal-saas/cortesia', { user: 'op', corpo: { email: 'c@cortesia.br' } })).st, 403);
+    const r = await req('POST', '/staff/api/legal-saas/cortesia', { corpo: { nome: 'Cortesia Adv', email: 'c@cortesia.br' } });
+    assert.equal(r.st, 200);
+    const cid = r.json.tenant.id;
+    assert.equal(r.json.tenant.status, 'cortesia');
+    assert.equal(r.json.tenant.trial_expira_em, '');
+    assert.equal(r.json.tenant.entitlements.acesso_liberado, true);
+    assert.ok(/\/juridico\/definir-senha\?token=/.test(r.json.acesso.definir_senha_url));
+    // e-mail repetido: 400 com mensagem (era "Erro 500" mudo — o erro síncrono escapava do wrapper)
+    const dup = await req('POST', '/staff/api/legal-saas/cortesia', { corpo: { nome: 'Outro', email: 'C@cortesia.br' } });
+    assert.equal(dup.st, 400); assert.ok(/já tem conta/.test(dup.json.erro));
+    const lista = async () => (await req('GET', '/staff/api/legal-saas/cortesia')).json.acessos;
+    assert.ok((await lista()).some(a => a.id === cid));
+    assert.ok(!(await lista()).some(a => a.id === tid), 'escritório pagante não é cortesia');
+    // o ciclo de vida (trial/dunning) não toca em cortesia
+    await req('POST', '/staff/api/legal-saas/ciclo-diario');
+    assert.equal(saas.repo.Tenants.obter(cid).status, 'cortesia');
+    // revogar bloqueia o acesso, mas o acesso CONTINUA na lista (senão não há como reativar)
+    const rev = await req('POST', `/staff/api/legal-saas/cortesia/${cid}/revogar`);
+    assert.equal(rev.json.tenant.entitlements.acesso_liberado, false);
+    assert.equal((await lista()).find(a => a.id === cid).status, 'suspensa');
+    const rea = await req('POST', `/staff/api/legal-saas/cortesia/${cid}/reativar`);
+    assert.equal(rea.json.tenant.status, 'cortesia');
+    assert.equal(rea.json.tenant.entitlements.acesso_liberado, true);
+    // conta existente vira cortesia pelo status (botão "Dar cortesia") e entra na lista
+    await req('POST', `/staff/api/legal-saas/tenants/${tid}/status`, { corpo: { status: 'cortesia' } });
+    assert.ok((await lista()).some(a => a.id === tid));
+    await req('POST', `/staff/api/legal-saas/tenants/${tid}/status`, { corpo: { status: 'ativa' } });
+  });
   await t('auditoria administrativa registrada', async () => {
     assert.ok((await req('GET', '/staff/api/legal-saas/auditoria')).json.eventos.some(e => e.acao === 'tenant.criar'));
   });

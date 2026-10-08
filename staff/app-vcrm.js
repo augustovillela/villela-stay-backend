@@ -15,12 +15,15 @@ async function renderVcrm() {
         <button class="btn secund" id="vc-importar">⬆ Importar CRM legado → tenant villela-stay</button>
        </div>
        <div id="vc-cards" class="cards"></div>
+       <details class="cr-box" id="vc-cortesia-box"><summary class="cr-sum">🎟️ Assinaturas de cortesia</summary><div id="vc-cortesia" style="margin-top:12px"></div></details>
        <div id="vc-corpo"><p class="vazio">Carregando…</p></div>`;
   $('#vc-importar').onclick = async () => {
     if (!confirm('Importar contatos.json (CRM legado do staff) para o tenant "villela-stay"? Duplicados são mesclados.')) return;
     try { const r = await api('POST', '/vcrm/importar-legado', { tenant_slug: 'villela-stay' }); alert(`✅ ${r.criados} criados, ${r.existentes} mesclados, ${r.oportunidades} oportunidade(s).`); vcrmCarregar(); }
     catch (e) { alert(e.message + (/(não existe)/.test(e.message) ? '\n\nCrie primeiro a empresa com slug villela-stay no formulário abaixo.' : '')); }
   };
+  // componente comum (app-cortesia.js); ao criar/revogar, a lista de empresas abaixo se atualiza
+  cortesiaPainel($('#vc-cortesia'), 'crm', vcrmCarregar);
   vcrmCarregar();
 }
 
@@ -36,12 +39,12 @@ async function vcrmCarregar() {
 
     const linhaT = (t) => `<tr>
       <td><b>${esc(t.nome)}</b><br><span class="obs">${esc(t.slug)} · ${esc(t.email_contato)}</span></td>
-      <td><span class="badge ${t.status === 'ativa' ? 'st-feito' : t.status === 'trial' ? 'st-pendente' : 'st-erro'}">${esc(t.status)}</span></td>
+      <td><span class="badge ${t.status === 'ativa' || t.status === 'cortesia' ? 'st-feito' : t.status === 'trial' ? 'st-pendente' : 'st-erro'}">${esc(t.status)}</span></td>
       <td>${esc(t.plano_nome || '—')}</td>
       <td>
         <button class="btn peq secund vc-link" data-id="${esc(t.id)}">🔑 Link acesso</button>
         <select class="peq vc-status" data-id="${esc(t.id)}" style="width:auto">
-          ${['', 'trial', 'ativa', 'inadimplente', 'suspensa', 'cancelada'].map(st => `<option value="${st}" ${st === '' ? 'selected' : ''}>${st || 'status…'}</option>`).join('')}
+          ${['', 'trial', 'ativa', 'cortesia', 'inadimplente', 'suspensa', 'cancelada'].map(st => `<option value="${st}" ${st === '' ? 'selected' : ''}>${st || 'status…'}</option>`).join('')}
         </select>
         <select class="peq vc-plano" data-id="${esc(t.id)}" style="width:auto">
           <option value="">plano…</option>${['trial', 'starter', 'professional', 'business', 'enterprise'].map(p => `<option>${p}</option>`).join('')}

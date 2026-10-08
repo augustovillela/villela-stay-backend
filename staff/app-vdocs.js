@@ -15,7 +15,7 @@ const VD = {
 
   abrir(tab) { if (tab) VD.tab = tab; VD.render(); },
   render() {
-    const abas = [['visao', '📊 Visão'], ['receita', '💰 Receita'], ['tenants', '🏢 Empresas'], ['planos', '📦 Planos'], ['leads', '📥 Leads'], ['auditoria', '📜 Auditoria'], ['saude', '🩺 Saúde']]
+    const abas = [['visao', '📊 Visão'], ['receita', '💰 Receita'], ['tenants', '🏢 Empresas'], ['planos', '📦 Planos'], ['cortesia', '🎟️ Cortesia'], ['leads', '📥 Leads'], ['auditoria', '📜 Auditoria'], ['saude', '🩺 Saúde']]
       .map(([id, rot]) => `<button class="btn ${VD.tab === id ? '' : 'secund'} peq" onclick="VD.ir('${id}')">${rot}</button>`).join(' ');
     conteudo().innerHTML = cabecalho('🗂️ Villela Docs Intelligence', 'Administração da plataforma SaaS de gestão documental. Produto: <a href="/vdocs" target="_blank">/vdocs</a> · painel do cliente: <a href="/vdocs/app" target="_blank">/vdocs/app</a>.')
       + `<div class="card" style="display:flex;flex-wrap:wrap;gap:.4rem">${abas}</div><div id="vd-body"><p class="sub">Carregando…</p></div>`;
@@ -25,7 +25,7 @@ const VD = {
   body() { return document.getElementById('vd-body'); },
   async pintar() {
     try {
-      const v = { visao: VD.vVisao, receita: VD.vReceita, tenants: VD.vTenants, planos: VD.vPlanos, leads: VD.vLeads, auditoria: VD.vAuditoria, saude: VD.vSaude }[VD.tab];
+      const v = { visao: VD.vVisao, receita: VD.vReceita, tenants: VD.vTenants, planos: VD.vPlanos, cortesia: VD.vCortesia, leads: VD.vLeads, auditoria: VD.vAuditoria, saude: VD.vSaude }[VD.tab];
       if (v) await v();
     } catch (e) { VD.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
@@ -40,6 +40,9 @@ const VD = {
       ${kpi('Usuários', r.usuarios_total)}${kpi('Leads novos', r.leads_novos)}</div>
       <div class="aviso">🧭 Fase 1 (fundação SaaS). Documentos, OCR, busca, IA e workflows chegam nas próximas fases — ver <code>backend/vdocs/README.md</code>.</div>`;
   },
+
+  // componente comum: app-cortesia.js
+  async vCortesia() { await cortesiaPainel(VD.body(), 'vdocs'); },
 
   async vReceita() {
     const r = await VD.api('GET', '/receita');
@@ -85,7 +88,7 @@ const VD = {
     const acao = (rot, status, cls) => `<button class="btn ${cls || 'secund'} peq" onclick="VD.mudarStatus('${t.id}','${status}')">${rot}</button>`;
     document.getElementById('vd-det').innerHTML = `<div class="card"><h3 style="margin-top:0">${esc(t.nome)} ${VD.chip(t.status)}</h3>
       <p class="sub">Plano: <b>${esc(d.plano ? d.plano.nome : '—')}</b> · uso do mês: ${Object.entries(d.uso).map(([k, v]) => `${esc(k)}=${v}`).join(' · ')}</p>
-      <p>${t.status === 'suspensa' ? acao('▶ Reativar', 'ativa') : acao('⏸ Suspender', 'suspensa', 'alerta')} ${acao('✖ Cancelar', 'cancelada', 'alerta')}
+      <p>${t.status === 'suspensa' ? acao('▶ Reativar', 'ativa') : acao('⏸ Suspender', 'suspensa', 'alerta')} ${acao('✖ Cancelar', 'cancelada', 'alerta')} ${t.status === 'cortesia' ? '' : acao('🎟️ Dar cortesia', 'cortesia')}
       Plano: <select id="vd-plano"><option value="">— trocar —</option>${['starter', 'professional', 'business', 'enterprise'].map(p => `<option value="${p}">${p}</option>`).join('')}</select>
       <button class="btn peq" onclick="VD.mudarPlano('${t.id}')">Aplicar</button></p>
       <b>Usuários</b><table class="tabela"><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Status</th></tr>
@@ -94,7 +97,7 @@ const VD = {
       ${d.auditoria.slice(0, 15).map(a => `<tr><td>${VD.dt(a.criado_em)}</td><td>${esc(a.usuario_nome)}</td><td>${esc(a.acao)}</td></tr>`).join('')}</table></div>`;
   },
   async mudarStatus(id, status) {
-    if (!confirm(`Confirmar mudança de status para "${status}"? A empresa ${status === 'suspensa' || status === 'cancelada' ? 'PERDERÁ o acesso' : 'voltará a acessar'}.`)) return;
+    if (!confirm(`Confirmar mudança de status para "${status}"? A empresa ${status === 'suspensa' || status === 'cancelada' ? 'PERDERÁ o acesso' : status === 'cortesia' ? 'passa a acessar SEM cobrança e sem prazo (se houver assinatura no Mercado Pago, cancele-a antes)' : 'voltará a acessar'}.`)) return;
     await VD.api('PATCH', '/tenants/' + id, { status });
     VD.vTenants();
   },
