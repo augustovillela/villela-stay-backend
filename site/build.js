@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v27'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v28'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -3316,6 +3316,15 @@ ${blocos}
         'How the Airbnb and Booking algorithms decide who shows up, demand-based pricing, occupancy rate, reviews, cleaning and linen operations, and the hospitality management system born from our four houses in Brasília.',
         'Cómo los algoritmos de Airbnb y Booking deciden quién aparece, precios por demanda, tasa de ocupación, reseñas, operación de limpieza y ropa de cama, y el sistema de gestión de alojamiento nacido de nuestras cuatro casas.'),
       livros: ['o-locador-inteligente', 'o-locador-inteligente-na-era-da-ia'], cursos: ['o-locador-inteligente-na-era-da-inteligencia-artificial'], sistemas: ['manager'] },
+
+    // Coleção Viver de Chácara (Augusto, 08/10/2026): os próximos títulos (paisagismo, pedreiro, decoração,
+    // contêineres, irrigação, horta, pintura, elétrica, hidráulica, hospedagem) entram aqui, no campo cursos/livros.
+    { id: 'chacara',
+      nome: t('Chácara, casa de campo e manutenção da propriedade', 'Country house and property maintenance', 'Casa de campo y mantenimiento de la propiedad'),
+      texto: t('Como cuidar de uma chácara com método: piscina limpa e segura, rotina de manutenção, o que dá para fazer com as próprias mãos, o que contratar e como conferir o serviço de quem você contrata. É a coleção Viver de Chácara, para quem mora, descansa ou recebe hóspedes em uma propriedade rural.',
+        'How to look after a country property with method: a clean and safe pool, a maintenance routine, what you can do yourself, what to hire out and how to check the work you pay for. This is the Viver de Chácara collection, for those who live, rest or host guests on a rural property.',
+        'Cómo cuidar una casa de campo con método: piscina limpia y segura, rutina de mantenimiento, qué se puede hacer con las propias manos, qué contratar y cómo revisar el servicio contratado. Es la colección Viver de Chácara, para quien vive, descansa o recibe huéspedes en una propiedad rural.'),
+      livros: [], cursos: ['piscineiro-na-pratica'], sistemas: [] },
 
     { id: 'negocios',
       nome: t('Negócios, marketing, finanças pessoais e produtos digitais', 'Business, marketing, personal finance and digital products', 'Negocios, marketing, finanzas personales y productos digitales'),

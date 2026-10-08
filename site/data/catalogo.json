@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-04T12:27:29.940Z",
+  "coletadoEm": "2026-10-08T17:51:17.456Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -199,12 +199,12 @@
   ],
   "cursos": [
     {
-      "slug": "o-homem-essencial",
-      "titulo": "O Homem Essencial",
-      "resumo": "24 videoaulas animadas sobre caráter, domínio de si, relações, trabalho, lucidez e sentido — com os grandes pensadores pelo nome, o artigo de cada aula em PDF e uma prática de 21 dias. Baseado no livro do autor.",
-      "capa": "https://academia.villelastay.com.br/academy/capa/_0Lm3CGHBZZi?v=Q8UQTUJkGMck",
-      "preco": 14500,
-      "url": "https://academia.villelastay.com.br/academy/cursos/o-homem-essencial"
+      "slug": "piscineiro-na-pratica",
+      "titulo": "Piscineiro na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF, com checklists e roteiros, para cuidar de uma piscina de chácara com método e segurança, ou para saber avaliar o serviço de quem você contrata. Coleção Viver de Chácara.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/rjjBZd0gMLqR?v=_8uEI2z2asDM",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/piscineiro-na-pratica"
     },
     {
       "slug": "o-homem-contemporaneo",
@@ -215,12 +215,20 @@
       "url": "https://academia.villelastay.com.br/academy/cursos/o-homem-contemporaneo"
     },
     {
-      "slug": "google-ai-na-pratica",
-      "titulo": "Google AI na Prática",
-      "resumo": "25 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF — com prompts e checklists — para usar o Gemini e o ecossistema de inteligência artificial do Google com método, no dia a dia, no estudo e no trabalho. Baseado no livro do autor.",
-      "capa": "https://academia.villelastay.com.br/academy/capa/aurLkdbxXuyH?v=QQpT4gWDckmD",
-      "preco": 8500,
-      "url": "https://academia.villelastay.com.br/academy/cursos/google-ai-na-pratica"
+      "slug": "o-homem-essencial",
+      "titulo": "O Homem Essencial",
+      "resumo": "24 videoaulas animadas sobre caráter, domínio de si, relações, trabalho, lucidez e sentido — com os grandes pensadores pelo nome, o artigo de cada aula em PDF e uma prática de 21 dias. Baseado no livro do autor.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/_0Lm3CGHBZZi?v=Q8UQTUJkGMck",
+      "preco": 14500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/o-homem-essencial"
+    },
+    {
+      "slug": "conexoes-de-sucesso-formacao-para-o-mundo-real",
+      "titulo": "Conexões de Sucesso — Formação para o Mundo Real",
+      "resumo": "Formação de 40 aulas para jovens de 15 a 25 anos: pensar com método, comunicar, operar IA com critério, vender, entender dinheiro e ser dono de um resultado. Com 21 tarefas de consequência real e um plano de 12 meses.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/C__iYGeLK16q?v=hxbpXzaIpizp",
+      "preco": 9500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/conexoes-de-sucesso-formacao-para-o-mundo-real"
     },
     {
       "slug": "a-segunda-onda-da-ia",
@@ -231,12 +239,20 @@
       "url": "https://academia.villelastay.com.br/academy/cursos/a-segunda-onda-da-ia"
     },
     {
-      "slug": "conexoes-de-sucesso-formacao-para-o-mundo-real",
-      "titulo": "Conexões de Sucesso — Formação para o Mundo Real",
-      "resumo": "Formação de 40 aulas para jovens de 15 a 25 anos: pensar com método, comunicar, operar IA com critério, vender, entender dinheiro e ser dono de um resultado. Com 21 tarefas de consequência real e um plano de 12 meses.",
-      "capa": "https://academia.villelastay.com.br/academy/capa/C__iYGeLK16q?v=hxbpXzaIpizp",
-      "preco": 9500,
-      "url": "https://academia.villelastay.com.br/academy/cursos/conexoes-de-sucesso-formacao-para-o-mundo-real"
+      "slug": "google-ai-na-pratica",
+      "titulo": "Google AI na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF — com prompts e checklists — para usar o Gemini e o ecossistema de inteligência artificial do Google com método, no dia a dia, no estudo e no trabalho. Baseado no livro do autor.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/aurLkdbxXuyH?v=QQpT4gWDckmD",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/google-ai-na-pratica"
+    },
+    {
+      "slug": "claude-ai-na-pratica-juridica",
+      "titulo": "Claude AI na Prática Jurídica",
+      "resumo": "22 aulas para advogados: prompts e contexto jurídico, controle de qualidade, processos, bases de conhecimento, agentes, publicações e prazos, peças, provas, contratos, negociação e a implantação do escritório operado por IA. Videoaulas + artigo e slides de cada aula.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/rfWHmnoCD005?v=wb8_T987heIG",
+      "preco": 13500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica-juridica"
     },
     {
       "slug": "o-locador-inteligente-na-era-da-inteligencia-artificial",
@@ -253,14 +269,6 @@
       "capa": "https://academia.villelastay.com.br/academy/capa/E0_QNGzSvT9s?v=XaFnrMRAbWgM",
       "preco": 8500,
       "url": "https://academia.villelastay.com.br/academy/cursos/chatgpt-ai-na-pratica"
-    },
-    {
-      "slug": "claude-ai-na-pratica-juridica",
-      "titulo": "Claude AI na Prática Jurídica",
-      "resumo": "22 aulas para advogados: prompts e contexto jurídico, controle de qualidade, processos, bases de conhecimento, agentes, publicações e prazos, peças, provas, contratos, negociação e a implantação do escritório operado por IA. Videoaulas + artigo e slides de cada aula.",
-      "capa": "https://academia.villelastay.com.br/academy/capa/rfWHmnoCD005?v=wb8_T987heIG",
-      "preco": 13500,
-      "url": "https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica-juridica"
     },
     {
       "slug": "claude-ai-na-pratica",
