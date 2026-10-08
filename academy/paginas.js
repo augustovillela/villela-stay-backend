@@ -96,7 +96,7 @@ function landingHTML() {
     <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=1"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
     <header class="top"><div class="wrap">
       ${marca({ escuro: true, altura: 150 })}
-      <nav><a class="esconde" href="/academy#cursos">Cursos</a><a class="esconde" href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/academy/app#cadastro">Criar conta grátis</a></nav>
+      <nav><a class="esconde" href="/academy#cursos">Cursos</a><a class="esconde" href="/academy/marketplace">Marketplace</a><a class="esconde" href="https://villelastay.com.br/campanhas/cursos/">Conteúdo dos cursos</a><a href="/academy/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/academy/app#cadastro">Criar conta grátis</a></nav>
     </div></header>
     <div class="hero"><div class="wrap">
       <span class="badge">Escola online do Grupo Villela Stay</span>
@@ -203,7 +203,7 @@ function shellPublico({ titulo, descricao, url, corpo, imagem, jsonld }) {
     ${HEAD_MARCA}
     <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=1"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
     .estrela{color:var(--villela-gold)}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
-    <div class="top"><div class="wrap" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${marca({ escuro: true, altura: 28 })}<span style="flex:1"></span><a href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a></div></div>
+    <div class="top"><div class="wrap" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${marca({ escuro: true, altura: 28 })}<span style="flex:1"></span><a href="/academy/marketplace">Marketplace</a><a href="https://villelastay.com.br/campanhas/cursos/">Conteúdo dos cursos</a><a href="/academy/app">Entrar</a></div></div>
     ${corpo}
     <footer>Villela Academy · Aprenda, aplique e transforme<br>
       <span style="opacity:.9">📲 Disponível como app para o seu celular — <a href="/academy/ajuda/manual" style="color:var(--villela-gold)">abra o painel e instale</a></span><br>
