@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}</style>
+<title>Claude AI na Prática Jurídica: material para criativos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Material de apoio para marketing · outubro de 2026</p>
+    <h1>Claude AI na Prática Jurídica</h1>
+    <p class="lead">Tudo o que o curso ensina a advogados e profissionais do Direito, aula por aula, pronto para virar apresentação e criativo. O conteúdo abaixo foi tirado dos roteiros das 22 videoaulas e da página de venda no ar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 22 aulas</a>
+  <a href="#metodos">Métodos com nome</a>
+  <a href="#casos">Histórias reais</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Objeções</a>
+  <a href="#cuidados">Cuidados na comunicação</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados que podem ser citados como estão.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>Claude AI na Prática Jurídica</dd></div>
+    <div><dt>Subtítulo</dt><dd>O escritório de advocacia operado com inteligência artificial: método, sistemas e responsabilidade</dd></div>
+    <div><dt>Autor e professor</dt><dd>Augusto Villela</dd></div>
+    <div><dt>Formato</dt><dd>22 videoaulas, todas disponíveis</dd></div>
+    <div><dt>Em áudio</dt><dd>Audiobook com 22 capítulos, 4h40 no total</dd></div>
+    <div><dt>Preço</dt><dd>R$ 135,00 (conferido na página em 08/10/2026)</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, com reembolso</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica-juridica">academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica-juridica</a></p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">Se o criativo só puder dizer uma coisa, é esta.</p>
+  <p class="thesis">A inteligência artificial já entrou no seu escritório. A pergunta é se ela entrou com método.</p>
+  <p>O curso não vende a IA que substitui o advogado nem o prompt que faz a petição sozinho. Ele ensina o advogado a usar o Claude, a inteligência artificial da Anthropic, com controle de qualidade: a máquina fica com volume, repetição e estrutura; o advogado fica com estratégia, interpretação, relação com o cliente e responsabilidade.</p>
+  <h3>Os três mecanismos de segurança que atravessam todas as aulas</h3>
+  <ul>
+    <li><strong>Verificação na fonte oficial.</strong> Lei consolidada, inteiro teor do julgado e andamento no tribunal.</li>
+    <li><strong>Revisão humana significativa.</strong> Um profissional competente lê, compreende e assume o conteúdo.</li>
+    <li><strong>Trilha de auditoria.</strong> Meses depois ainda dá para reconstruir de onde vieram fatos, fontes e conclusões.</li>
+  </ul>
+  <h3>A promessa, em uma frase</h3>
+  <p>Do prompt jurídico ao escritório operado por IA, com o protocolo de qualidade que separa produtividade de risco profissional.</p>
+  <h3>Quatro mensagens que sustentam qualquer peça</h3>
+  <ul>
+    <li><strong>Advocacia aumentada, não automática.</strong> A IA amplia a capacidade do advogado; não troca o profissional pela máquina.</li>
+    <li><strong>Resposta plausível não é fonte.</strong> Tudo que a IA diz sobre lei, precedente, data e número é hipótese a conferir.</li>
+    <li><strong>Processo antes de automação.</strong> Automatizar um processo confuso só produz confusão com mais velocidade.</li>
+    <li><strong>Tecnologia que o cliente percebe.</strong> Resposta mais rápida, andamento explicado e aviso antes da cobrança viram confiança e indicação.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso, com pequenos ajustes de corte, que funcionam como chamada.</p>
+
+  <p class="block-title">Fundamentos · aulas 1 a 4</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>Apresentação do curso</h3>
+    <ul>
+      <li>Por que o Direito pede um curso próprio: um erro jurídico não pesa como um erro comum de produtividade. Citação inventada compromete a peça, documento no lugar errado viola sigilo, prazo mal contado custa um direito.</li>
+      <li>Onde o Claude ajuda de verdade: ler autos volumosos, montar cronologia, comparar versões de contrato, apontar lacunas documentais, preparar primeira minuta, classificar publicações.</li>
+      <li>Os três mecanismos de segurança do curso.</li>
+      <li>Como o sistema gera valor que o cliente enxerga, e não só economia interna.</li>
+      <li>Construir ou contratar: as duas escolhas são legítimas, e o método importa mais do que a ferramenta.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A inteligência artificial pode ampliar muito a capacidade do advogado, desde que o advogado continue no comando.</q><q>A tecnologia organiza, compara e sugere. A validação jurídica permanece humana.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>A nova advocacia aumentada por IA</h3>
+    <ul>
+      <li>Digitalizar não foi transformar: saímos do papel para o PDF e continuamos trabalhando do mesmo jeito.</li>
+      <li>As quatro categorias de tarefas: mecânica, leitura e estrutura, produção com julgamento, responsabilidade. Cada uma pede um nível diferente de autonomia e de revisão.</li>
+      <li>Por onde começar: onde o risco é menor (administrativo), depois o operacional jurídico, por último o apoio intelectual.</li>
+      <li>A escada de autonomia: assistente, copiloto, operador, agente.</li>
+      <li>Três movimentos do mercado: o trabalho operacional encolhe, o serviço padronizado barateia, o julgamento se valoriza.</li>
+      <li>Como um modelo de linguagem lida com texto jurídico: forte em forma, síntese e reorganização; irregular quando tenta lembrar lei, precedente, data e número.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você conseguiria defender aquele conteúdo sem o computador?</q><q>Autonomia sem processo não é eficiência. É apenas risco acelerado.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Prompts e contexto jurídico profissional</h3>
+    <ul>
+      <li>Os seis blocos do prompt jurídico: função, objetivo, contexto, fontes, regras e formato. E o defeito previsível que aparece quando falta cada um.</li>
+      <li>Três informações que mudam tudo: área do Direito, jurisdição e data de corte.</li>
+      <li>Rastreabilidade: cada afirmação com a origem entre colchetes (autos e folha, anexo e página, a verificar, inferência).</li>
+      <li>O método em quatro tempos: diagnóstico, estrutura, elaboração e revisão em conversa nova.</li>
+      <li>As três camadas de contexto: o escritório, o cliente e o caso.</li>
+      <li>As cinco camadas que não se misturam: fato provado, fato alegado, documento, argumento e conclusão.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma boa resposta começa antes da pergunta.</q><q>Nunca converta alegação em fato.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Controle de qualidade, ética e sigilo</h3>
+    <ul>
+      <li>O protocolo de verificação por tipo de fonte: lei, precedente, súmula, doutrina.</li>
+      <li>A hierarquia de confiabilidade: texto oficial e inteiro teor no topo; internet sem fonte e memória do modelo na base.</li>
+      <li>Ementa, inteiro teor e interpretação são três coisas diferentes.</li>
+      <li>Matriz de fatos e provas, revisão adversarial em contexto limpo, checklist humano com nome, data e assinatura, e trilha de auditoria.</li>
+      <li>O protocolo antialucinação, em oito regras.</li>
+      <li>Sigilo: o que perguntar ao fornecedor, a classificação do material por risco, minimização, pseudonimização e anonimização.</li>
+      <li>Os quatro atributos da revisão humana que não é carimbo: competência, acesso às fontes, tempo e autoridade para rejeitar.</li>
+      <li>A política interna de uso de IA do escritório.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Texto convincente nunca substitui fonte oficial.</q><q>Quem assina lê, confere e responde.</q></div>
+  </div></article>
+
+  <p class="block-title">A arquitetura do escritório · aulas 5 a 7</p>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>Mapeando processos e organizando dados jurídicos</h3>
+    <ul>
+      <li>As três zonas do escritório: front office, área jurídica e back office. Onde começar e onde a aprovação humana precisa ser mais forte.</li>
+      <li>A jornada completa do cliente em uma folha.</li>
+      <li>A matriz frequência × decisão: o que automatizar, o que apoiar e o que manter humano.</li>
+      <li>Gargalo, risco e retrabalho: três defeitos parecidos que pedem soluções diferentes.</li>
+      <li>O POP (procedimento operacional padrão) como especificação do sistema, e o atalho de gravar quem executa a tarefa.</li>
+      <li>As cinco entidades que o escritório costuma misturar: contato, cliente, parte, processo e assunto.</li>
+      <li>Cadastro único, árvore de pastas, nome de arquivo, metadados, dicionário de dados e retenção.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Não automatize aquilo que o escritório ainda não consegue explicar.</q><q>Sete sistemas iniciados ao mesmo tempo costumam terminar como sete projetos pela metade.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>Bases de conhecimento, RAG, skills e agentes</h3>
+    <ul>
+      <li>Projetos do Claude separados por sigilo, nunca por conveniência.</li>
+      <li>Como transformar a experiência que está na cabeça das pessoas em conhecimento do escritório.</li>
+      <li>As quatro bibliotecas: peças, cláusulas, jurisprudência interna e pareceres.</li>
+      <li>O que é RAG, em linguagem de advogado, e por que toda resposta precisa mostrar a origem.</li>
+      <li>A escada prompt, template, skill, workflow e agente, e como escolher o degrau certo.</li>
+      <li>Os agentes do escritório (publicações e prazos, pesquisa, atendimento, financeiro e supervisor) e os três blocos de autonomia: o que fazem sozinhos, o que exige aprovação e o que nunca se automatiza.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma base pequena e curada quase sempre vence uma base enorme e automática.</q><q>Log verde mostra que o programa rodou. Somente o teste do resultado mostra que o trabalho aconteceu.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>Claude Code, integrações e governança tecnológica</h3>
+    <ul>
+      <li>Os quatro conceitos técnicos que bastam ao advogado: banco de dados, API, autenticação e log. Sem programar.</li>
+      <li>Claude Code: descrever em português o que se quer e acompanhar a construção por partes.</li>
+      <li>APIs de tribunais e fornecedores, MCP e conectores: cada conexão é um caminho por onde os dados circulam.</li>
+      <li>Fonte oficial de cada dado entre CRM, sistema processual e financeiro.</li>
+      <li>Governança que cabe em escritório pequeno: perfis de acesso, ambientes separados, versões e logs, aprovações obrigatórias, inventário de automações, ficha de fornecedores e plano de contingência.</li>
+      <li>O sucesso falso: o painel fica verde e o trabalho não aconteceu.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O advogado não precisa aprender sintaxe. Ele precisa saber especificar.</q><q>Integração segura precisa falhar de forma visível, nunca silenciosa.</q></div>
+  </div></article>
+
+  <p class="block-title">Cliente e mercado · aulas 8 e 9</p>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>Marketing jurídico ético e sistema de conteúdo</h3>
+    <ul>
+      <li>A linha entre informar e captar indevidamente, com o Provimento 205/2021 da OAB como referência.</li>
+      <li>Onde a automação de prospecção atravessa o limite ético sem ninguém perceber.</li>
+      <li>A linguagem vedada: preço como chamariz, promessa de êxito, superlativo, urgência, medo.</li>
+      <li>Conteúdo educativo como caminho, e a função de cada canal.</li>
+      <li>O checklist de conformidade e a skill de revisão ética antes de publicar.</li>
+      <li>Calendário sustentável, produção em quatro etapas, SEO jurídico e busca por IA, reaproveitamento e arquivo de versões.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O conteúdo informa quem procura ou persegue quem não procurou?</q><q>O escritório informa sem perseguir e educa sem prometer.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>Da captação ao portal do cliente</h3>
+    <ul>
+      <li>O formulário inteligente que transforma “preciso de um advogado” em informação útil.</li>
+      <li>Urgência antes da fila: citação, audiência marcada, prazo em curso, prescrição próxima.</li>
+      <li>Triagem sem parecer automático: coletar e organizar pode; orientar exige advogado.</li>
+      <li>CRM jurídico: os oito estágios do relacionamento, próxima ação com data, motivos de perda.</li>
+      <li>O que pode ser mensagem automática, o que exige aprovação e o que nunca sai sozinho.</li>
+      <li>Conflito de interesses verificado antes de ouvir a história. Identificação, poderes e escopo.</li>
+      <li>O portal do cliente: seguro, com andamento traduzido para linguagem simples, pendências, documentos e financeiro.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ninguém deve descobrir uma notícia ruim por meio de uma notificação automática.</q><q>Dizer não com rapidez costuma preservar mais confiança do que deixar alguém esperando.</q></div>
+  </div></article>
+
+  <p class="block-title">Contencioso · aulas 10 a 13</p>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>Publicações, prazos e gestão de processos</h3>
+    <ul>
+      <li>Duas fontes independentes de publicações e captura diária em horário fixo.</li>
+      <li>Identificação sem vínculo forçado: na dúvida, a publicação vai para uma pessoa.</li>
+      <li>Prazo calculado pela máquina é sempre preliminar. Só vira definitivo com advogado, fonte oficial e registro de quem conferiu.</li>
+      <li>Data-limite, data-alvo interna e quem elabora, revisa e protocola.</li>
+      <li>Alertas que sobem de nível quando o trabalho não anda.</li>
+      <li>Relatório diário, cadastro conferido, fases padronizadas, memória da estratégia, custas, correspondentes e encerramento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Zero publicações não é um dia tranquilo. É um resultado suspeito.</q><q>O sistema organiza e alerta. A pessoa confere e assume a responsabilidade.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>Leitura de processos e elaboração de peças</h3>
+    <ul>
+      <li>Antes de qualquer resumo: arquivo completo, pesquisável e com o mapa entre página do PDF e folha dos autos.</li>
+      <li>Cronologia e índice de peças de um processo de milhares de páginas.</li>
+      <li>Resumo das alegações parte por parte, sempre com atribuição.</li>
+      <li>A matriz de pedidos, fundamentos e provas.</li>
+      <li>O que foi mencionado e não está nos autos.</li>
+      <li>A peça em etapas verificáveis: fatos separados dos fundamentos, uso controlado de modelos, pesquisa conferida antes da citação, revisão adversarial, anexos, versões e protocolo.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Alegação continua sendo alegação.</q><q>O fato de um parágrafo estar bem escrito não prova que ele pertence àquela peça.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Estratégia processual, provas e documentos</h3>
+    <ul>
+      <li>Objetivo jurídico e objetivo do cliente não são a mesma coisa.</li>
+      <li>O mapa dos desfechos realistas, em dinheiro, tempo e risco.</li>
+      <li>Por que não pedir à IA um percentual de chance de vitória: risco se classifica com critério, não com número inventado.</li>
+      <li>Teses principais e subsidiárias, e o custo de sustentar a tese fraca ao lado da forte.</li>
+      <li>A árvore de decisão do processo e o registro de cada escolha estratégica.</li>
+      <li>Matriz de provas, provas digitais, áudios e transcrições, laudos, cadeia de custódia e caça a contradições.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Estratégia não é acumular possibilidades. É selecionar.</q><q>Um processo pode terminar com vitória jurídica e ainda produzir um cliente insatisfeito.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>Audiências, recursos, acordos e encerramento</h3>
+    <ul>
+      <li>O roteiro único da audiência, incluindo a linha que quase ninguém escreve: o que não pode ser dito.</li>
+      <li>A IA no papel do advogado adversário e do julgador, antes do ato.</li>
+      <li>Transcrição, admissões e contradições com o minuto exato da gravação.</li>
+      <li>Sustentação oral em duas versões, a completa e a curta.</li>
+      <li>Leitura da decisão pedido por pedido e a matriz recursal. Não recorrer também é decisão, e fica documentada.</li>
+      <li>Execução acompanhada até o dinheiro, acordo com obrigações monitoradas e encerramento que vira aprendizado do escritório.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A transcrição ajuda a navegar. A gravação continua sendo a fonte.</q><q>Compromisso sem tarefa tende a desaparecer.</q></div>
+  </div></article>
+
+  <p class="block-title">Consultivo, contratos e negociação · aulas 14 a 16</p>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Atendimento consultivo e pareceres jurídicos</h3>
+    <ul>
+      <li>Toda consulta abre um registro, mesmo a de cinco minutos.</li>
+      <li>Do relato do cliente à pergunta jurídica delimitada e confirmada.</li>
+      <li>Fatos, documentos e premissas, cada um com a sua origem.</li>
+      <li>Norma vigente e mudança já anunciada, mapa de riscos e alternativas comparáveis, incluindo a de não fazer nada.</li>
+      <li>Parecer, nota técnica ou memorando: escopo positivo e negativo, premissas numeradas, divergência explícita, argumentos contrários e grau de confiança qualitativo.</li>
+      <li>Como o registro revela o consultivo que o escritório entrega sem cobrar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Entendi que a pergunta é esta. É isso mesmo?</q><q>Uma resposta que termina apenas com a palavra “depende” deixa o trabalho pela metade.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>Sistema de contratos</h3>
+    <ul>
+      <li>As sete etapas do ciclo de vida do contrato, da solicitação à renovação.</li>
+      <li>A biblioteca de cláusulas em três níveis: posição ideal, posição de negociação e limite inaceitável.</li>
+      <li>A matriz de riscos contratuais e a comparação com o padrão do cliente.</li>
+      <li>Comparação de versões que destaca o que muda risco, não só o que muda palavra.</li>
+      <li>Memória da negociação, alçadas de aprovação e assinatura da versão certa.</li>
+      <li>Depois da assinatura: cada obrigação com data vira item monitorado. Duas ofertas nascem daí, a revisão em 24 ou 48 horas e a gestão mensal da carteira de contratos.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um documento assinado e arquivado não encerra o trabalho. Ele inaugura uma agenda.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>Negociação, conciliação, mediação e arbitragem</h3>
+    <ul>
+      <li>O documento único de preparação.</li>
+      <li>Posição é o que a parte diz que quer; interesse é o porquê.</li>
+      <li>Mapa da contraparte: o que sabemos, o que inferimos e o que falta descobrir.</li>
+      <li>A alternativa sem acordo em quatro dimensões (tempo, custo, chance e desgaste) e a faixa de decisão.</li>
+      <li>Simulação da contraparte com IA e teste de cada argumento.</li>
+      <li>Propostas com mais de uma variável, registro das rodadas, minuta de acordo e a extensão da quitação.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Negociar bem não depende de improviso. O resultado nasce da preparação.</q><q>Recusar acordo bom por otimismo e aceitar acordo ruim por cansaço: as duas decisões que o método evita.</q></div>
+  </div></article>
+
+  <p class="block-title">Empresarial, pesquisa e arquivo · aulas 17 a 21</p>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Consultoria empresarial e monitoramento regulatório</h3>
+    <ul>
+      <li>O dossiê vivo da empresa cliente: operação, estrutura societária, licenças e órgãos fiscalizadores.</li>
+      <li>A matriz de obrigações legais e as cinco perguntas que ela responde.</li>
+      <li>Monitoramento normativo em quatro etapas, com escala por setor e entrega personalizada.</li>
+      <li>O relatório de impacto que um executivo consegue ler e aprovar.</li>
+      <li>Diligência jurídica com IA: todo achado conferido no documento original.</li>
+      <li>Calendário societário e painel de riscos para levar à diretoria.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma consultoria jurídica realmente valiosa não espera o problema chegar.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>Sistema de pesquisa de jurisprudência</h3>
+    <ul>
+      <li>A pesquisa começa por uma pergunta jurídica completa, não por palavra solta.</li>
+      <li>Plano de busca separado do resultado: sugestão da IA nunca entra como precedente.</li>
+      <li>Hierarquia dos precedentes e inteiro teor obrigatório.</li>
+      <li>Razão de decidir, distinção entre os casos e checagem de atualidade perto do uso.</li>
+      <li>Jurisprudência contrária sempre no relatório.</li>
+      <li>O relatório auditável, que também registra o que não foi encontrado.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Tema não é pergunta.</q><q>Uma lista de acórdãos sem hierarquia é apenas volume.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>Sistema de pesquisa legislativa</h3>
+    <ul>
+      <li>Espécie normativa, hierarquia e competência territorial.</li>
+      <li>Texto original e texto consolidado: a redação que vale depende da data do fato.</li>
+      <li>Vigência, vacância, revogação e suspensão de eficácia.</li>
+      <li>A cadeia de alterações de uma norma e os atos infralegais onde mora o procedimento.</li>
+      <li>Projetos de lei e normas futuras com o estado sempre visível.</li>
+      <li>Monitoramento permanente, base normativa interna e ficha normativa. O fluxo em seis etapas e os erros que bloqueiam a liberação.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Publicação não significa vigência imediata.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>Doutrina, fontes e referências jurídicas</h3>
+    <ul>
+      <li>Doutrina explica e persuade, mas não vincula.</li>
+      <li>Fonte primária e fonte secundária: o comentário serve para achar o original.</li>
+      <li>Como a IA inventa citação bibliográfica: autor real, obra real, edição inexistente, página aleatória.</li>
+      <li>O teste de cinco perguntas da referência e o rastro de quem conferiu.</li>
+      <li>Direito autoral: ter acesso à obra não é ter direito de reproduzi-la, muito menos de enviá-la a uma ferramenta.</li>
+      <li>Fichamentos, mapa de controvérsias, banco de autores e padrão bibliográfico.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A pressão do prazo não transforma uma referência provável em uma referência segura.</q><q>Um argumento próprio bem construído é mais seguro do que uma autoridade que ninguém conseguiu verificar.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>Sistema de documentos e arquivo jurídico</h3>
+    <ul>
+      <li>Dossiê digital do cliente separado da pasta do processo.</li>
+      <li>Estrutura padrão de pastas e cópias integrais dos autos em marcos definidos.</li>
+      <li>Entrada automática de documentos, com fila humana quando a confiança é baixa.</li>
+      <li>OCR conferido, controle de versões e guarda dos originais em papel.</li>
+      <li>Compartilhamento com prazo e destinatário, e backup que foi testado.</li>
+      <li>Tabela de temporalidade, eliminação segura e auditoria periódica.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O backup nunca testado é apenas uma promessa.</q><q>Cada documento precisa ter lugar, estado, responsável e prazo.</q></div>
+  </div></article>
+
+  <p class="block-title">Implantação · aula 22</p>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>Implantação e o escritório operado por IA</h3>
+    <ul>
+      <li>Prova de conceito em dias, antes do projeto.</li>
+      <li>Piloto com o procedimento manual rodando em paralelo.</li>
+      <li>Testar o caso torto: a pergunta é se o sistema avisa quando não sabe.</li>
+      <li>Seis testes de segurança e treinamento do fluxo, não do botão.</li>
+      <li>Implantação gradual, com plano de volta.</li>
+      <li>Construir a vantagem competitiva e contratar a infraestrutura.</li>
+      <li>A orquestração de agentes com um supervisor que confere o resultado, e os três relatórios do início do dia.</li>
+      <li>A ordem de implantação conforme o porte do escritório e como medir o retorno de verdade.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Tecnologia sem método apenas acelera a desorganização.</q><q>Um fluxo funcionando muda a operação e conquista a equipe. Sete fluxos pela metade apenas multiplicam desconfiança.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Os métodos com nome</h2>
+  <p class="sub">Ferramentas de raciocínio que o aluno leva para o escritório. Rendem bem em carrossel e em slide, porque têm número e nome.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Método</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>Os 3 mecanismos de segurança</td><td>Fonte oficial, revisão humana significativa e trilha de auditoria.</td><td class="aula">1</td></tr>
+      <tr><td>As 4 categorias de tarefas</td><td>Mecânica, leitura e estrutura, produção com julgamento, responsabilidade.</td><td class="aula">2</td></tr>
+      <tr><td>A escada de autonomia</td><td>Assistente, copiloto, operador, agente.</td><td class="aula">2</td></tr>
+      <tr><td>Os 6 blocos do prompt jurídico</td><td>Função, objetivo, contexto, fontes, regras e formato.</td><td class="aula">3</td></tr>
+      <tr><td>O método em 4 tempos</td><td>Diagnóstico, estrutura, elaboração e revisão.</td><td class="aula">3</td></tr>
+      <tr><td>As 3 camadas de contexto</td><td>Escritório, cliente e caso.</td><td class="aula">3</td></tr>
+      <tr><td>As 5 camadas da análise</td><td>Fato provado, fato alegado, documento, argumento e conclusão.</td><td class="aula">3</td></tr>
+      <tr><td>Protocolo antialucinação</td><td>Oito regras, da fonte fornecida à assinatura de quem responde.</td><td class="aula">4</td></tr>
+      <tr><td>Hierarquia de confiabilidade</td><td>Do texto oficial à memória do modelo.</td><td class="aula">4</td></tr>
+      <tr><td>Os 4 atributos da revisão</td><td>Competência, acesso às fontes, tempo e autoridade para rejeitar.</td><td class="aula">4</td></tr>
+      <tr><td>Matriz frequência × decisão</td><td>O que automatizar, apoiar ou manter humano.</td><td class="aula">5</td></tr>
+      <tr><td>POP</td><td>O procedimento escrito que vira fluxograma, checklist e matriz de responsáveis.</td><td class="aula">5</td></tr>
+      <tr><td>As 5 entidades</td><td>Contato, cliente, parte, processo e assunto.</td><td class="aula">5</td></tr>
+      <tr><td>Prompt, template, skill, workflow, agente</td><td>Cinco níveis de automação e quando usar cada um.</td><td class="aula">6</td></tr>
+      <tr><td>Os 3 blocos de autonomia do agente</td><td>Faz sozinho, exige aprovação, nunca automatiza.</td><td class="aula">6</td></tr>
+      <tr><td>Os 8 estágios do relacionamento</td><td>Do contato recebido ao ex-cliente que volta e indica.</td><td class="aula">9</td></tr>
+      <tr><td>Prazo preliminar e prazo confirmado</td><td>A máquina estima; o advogado confirma na fonte oficial.</td><td class="aula">10</td></tr>
+      <tr><td>Matriz de pedidos, fundamentos e provas</td><td>O que foi pedido, sustentado, provado e decidido.</td><td class="aula">11</td></tr>
+      <tr><td>Árvore de decisão do processo</td><td>Opções, consequências e quem decide em cada momento.</td><td class="aula">12</td></tr>
+      <tr><td>Matriz recursal</td><td>Recurso, prazo, custo, chance e objetivo do cliente na mesma tabela.</td><td class="aula">13</td></tr>
+      <tr><td>Biblioteca de cláusulas em 3 níveis</td><td>Ideal, negociável e inaceitável.</td><td class="aula">15</td></tr>
+      <tr><td>Faixa de decisão do acordo</td><td>Acima disso o acordo vence; abaixo, seguir pode ser racional.</td><td class="aula">16</td></tr>
+      <tr><td>Pesquisa em 2 fases</td><td>Plano de busca separado do que foi localizado e conferido.</td><td class="aula">18</td></tr>
+      <tr><td>Teste da referência</td><td>Cinco perguntas antes de citar doutrina.</td><td class="aula">20</td></tr>
+      <tr><td>Teste sintético de ponta a ponta</td><td>Um caso conhecido atravessa o fluxo todo dia para provar que ele funciona.</td><td class="aula">6, 7 e 22</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Histórias reais do escritório-modelo</h2>
+  <p class="sub">O curso usa um escritório real, com tudo anonimizado, e conta os erros que aconteceram. São o melhor material para gancho de vídeo e de carrossel.</p>
+  <div class="cases">
+    <div class="case"><h3>O dia em que zero publicações parecia um dia tranquilo</h3><p>A coleta automática passou a devolver zero publicações porque o servidor tinha sido bloqueado pela fonte. O programa leu o vazio como um dia normal. A regra que ficou: resultado vazio é suspeita e dispara conferência manual. Aulas 7 e 10.</p></div>
+    <div class="case"><h3>O painel verde que não fazia nada</h3><p>Uma ferramenta recebia os envios, devolvia mensagem de sucesso e não fazia nada com eles. A regra que ficou: auditoria não confia no log de execução, confere se o resultado chegou ao destino. Aula 7.</p></div>
+    <div class="case"><h3>Dezoito julgados valeram mais do que milhares de ementas</h3><p>A base de jurisprudência começou com 18 julgados já usados em peças reais, com inteiro teor lido. Em um ano passou de cem e era consultada todos os dias. A tentativa anterior, de importar milhares de ementas, virou um depósito em que ninguém confiava. Aula 6.</p></div>
+    <div class="case"><h3>O contrato que se renovou sozinho</h3><p>Vigência de doze meses, renovação automática e aviso de não renovação com noventa dias. O cliente decide sair no décimo primeiro mês e descobre que o prazo passou. Um alerta teria resolvido. Aula 15.</p></div>
+    <div class="case"><h3>As três simulações do curso</h3><p>Situações ramificadas que o aluno resolve na plataforma: o acórdão que ninguém conhecia, o lead das 22h no WhatsApp e o prazo que a IA calculou.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">Itens da página de venda. Os números podem ser citados.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula com o autor apresentando o tema.</li>
+        <li>Artigo da aula em PDF: a videoaula por escrito, com mapa, síntese e três tarefas para aplicar no mesmo dia.</li>
+        <li>Slides em PDF e apresentação editável (.pptx) para treinar a equipe. São 22 apresentações.</li>
+        <li>Quiz comentado, com a explicação de cada alternativa.</li>
+        <li>Caderno de trabalho: Aprendi, Pratiquei, Apliquei.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li><strong>Tutor Villela.</strong> A IA do curso responde só com o conteúdo das aulas e do livro, cita a origem e leva ao minuto exato do vídeo. Se a resposta não está no curso, ele diz que não encontrou.</li>
+        <li>Biblioteca com 27 prompts prontos.</li>
+        <li>Audiobook: as 22 aulas em áudio, 4h40, para ouvir no carro ou no fone com a tela bloqueada. O primeiro capítulo fica aberto como amostra.</li>
+        <li>Jornada do aluno: níveis, XP, 9 selos de competência e medalhas; diagnóstico inicial e teste final de 20 questões.</li>
+        <li>Villela Lab com 5 missões e projeto final.</li>
+        <li>Desafio 21 dias: IA no escritório.</li>
+        <li>Prompt Builder, gerador de agentes, as folhas “Prompt jurídico profissional” e “Protocolo antialucinação” e 4 templates (precedente, agente de prazos, consultivo e política de IA).</li>
+        <li>Acesso aos 52 artigos do livro no blog.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Advogados e escritórios que já usam IA como chat e querem sair do improviso.</li>
+        <li>Sócios e gestores que precisam decidir o que automatizar, o que apoiar e o que manter humano.</li>
+        <li>Controladoria jurídica, estagiários e equipe administrativa que operam prazos, publicações, contratos e atendimento.</li>
+        <li>Departamentos jurídicos de empresas que querem organizar consultivo, contratos e compliance.</li>
+        <li>Quem prefere responsabilidade a mágica.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura o prompt que faz a petição sozinho. No curso a peça sai de um fluxo verificável, com o advogado no comando.</li>
+      </ul>
+      <h3>A dor por porte de escritório (aula 22)</h3>
+      <ul>
+        <li><strong>Individual:</strong> não perder prazo nem cliente por demora.</li>
+        <li><strong>Pequeno:</strong> montar a sequência publicações, processos, documentos, portal e controladoria.</li>
+        <li><strong>Médio:</strong> padronizar equipes que fazem a mesma tarefa de jeitos diferentes.</li>
+        <li><strong>Grande:</strong> governança, segregação, auditoria e sistemas que conversem.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Objeções e respostas</h2>
+  <p class="sub">Das perguntas frequentes da página de venda.</p>
+  <h3>Preciso saber programar?</h3>
+  <p>Não. O curso foi feito para advogados. A aula 7 explica os quatro conceitos técnicos que bastam e mostra o Claude Code para quem descreve o que quer em português.</p>
+  <h3>O curso ensina a fazer petição com IA?</h3>
+  <p>Ensina o fluxo em etapas verificáveis (aula 11): diagnóstico dos autos, fatos separados dos fundamentos, uso controlado de modelos, referências conferidas no inteiro teor, revisão adversarial e protocolo. A peça continua sendo do advogado.</p>
+  <h3>E a ética e o sigilo?</h3>
+  <p>São o assunto da aula 4 e atravessam todas as outras. O marketing da aula 8 segue as regras da OAB.</p>
+  <h3>O conteúdo fica desatualizado?</h3>
+  <p>Ferramentas mudam rápido; método, não. O curso ensina fonte, contexto, verificação e governança, e insiste que norma e jurisprudência se conferem sempre na fonte oficial vigente.</p>
+  <h3>Qual a diferença para o curso Claude AI na Prática?</h3>
+  <p>Aquele é o curso geral, para qualquer empresa. Este parte dos problemas do escritório de advocacia: prazos, peças, provas, contratos, sigilo e OAB. Um não pressupõe o outro.</p>
+  <h3>Dá para ouvir em vez de assistir?</h3>
+  <p>Sim. O audiobook toca no player do site, com a tela bloqueada, no fone e no carro. Não há download.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias. Se o curso não for para a pessoa, ela pede o reembolso dentro do prazo.</p>
+</section>
+
+<section id="cuidados">
+  <h2>Cuidados na comunicação</h2>
+  <p class="sub">Para o criativo não prometer o que o curso faz questão de não prometer.</p>
+  <div class="care">
+    <h3>Evitar</h3>
+    <ul>
+      <li>“A IA faz a petição por você”, “advogue sem esforço”, “substitua o estagiário” ou qualquer ideia de que a máquina decide. O curso ensina o contrário.</li>
+      <li>Promessa de resultado em causa, de ganho financeiro garantido ou de número de horas economizadas. O curso não dá esses números.</li>
+      <li>“Acesso vitalício”. Não está na oferta.</li>
+      <li>Dar a entender que o curso é oficial, certificado ou parceiro da Anthropic. O Claude é o produto que o curso ensina a usar; evite o logotipo deles como se fosse selo.</li>
+      <li>Depoimentos de alunos. A página de venda ainda não tem nenhum, então não há o que citar.</li>
+      <li>Tom de medo ou urgência artificial. O público é de advogados e o próprio curso (aula 8) trata esse repertório como inadequado.</li>
+    </ul>
+  </div>
+  <p style="margin-top:14px">O preço e os itens incluídos mudam. Antes de fechar uma peça com valor, confira na página do curso.</p>
+</section>
+
+<footer>
+  Fonte: roteiros das 22 videoaulas e página de venda do curso na Villela Academy. Grupo Villela Stay.
+</footer>
+
+</div>
+</body>
+</html>
