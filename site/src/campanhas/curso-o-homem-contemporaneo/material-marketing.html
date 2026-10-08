@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}</style>
+<title>O Homem Contemporâneo: material para criativos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Material de apoio para marketing · outubro de 2026</p>
+    <h1>O Homem Contemporâneo</h1>
+    <p class="lead">Tudo o que o curso ensina sobre mente, corpo, sentido, dinheiro, trabalho e tempo, aula por aula, pronto para virar apresentação e criativo. O conteúdo abaixo foi tirado dos roteiros das 25 videoaulas e da página de venda no ar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 25 aulas</a>
+  <a href="#conceitos">Ideias e conceitos com nome</a>
+  <a href="#casos">Histórias e experimentos</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Objeções</a>
+  <a href="#cuidados">Cuidados na comunicação</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados que podem ser citados como estão.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>O Homem Contemporâneo</dd></div>
+    <div><dt>Chamada da página</dt><dd>Organize a sua vida num sistema só, com princípios que você consegue pôr à prova</dd></div>
+    <div><dt>Livro de origem</dt><dd>O Homem Contemporâneo: Princípios para viver no século XXI, do mesmo autor</dd></div>
+    <div><dt>Autor</dt><dd>Augusto Villela (na página, o curso aparece assinado como Villela Academy)</dd></div>
+    <div><dt>Categoria</dt><dd>Desenvolvimento pessoal</dd></div>
+    <div><dt>Formato</dt><dd>25 videoaulas animadas, de cerca de 9 minutos cada. Total de 3 h 53 min</dd></div>
+    <div><dt>Em cada aula</dt><dd>Artigo em PDF e uma prática de 21 dias</dd></div>
+    <div><dt>Em áudio</dt><dd>Audiobook com 25 capítulos</dd></div>
+    <div><dt>Aula grátis</dt><dd>A aula 1 inteira: videoaula e artigo em PDF</dd></div>
+    <div><dt>Preço</dt><dd>R$ 145,00 (conferido na página em 08/10/2026). Pix ou cartão</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, incondicional, com reembolso integral</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Certificado</dt><dd>Certificado da Villela Academy</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/o-homem-contemporaneo">academia.villelastay.com.br/academy/cursos/o-homem-contemporaneo</a></p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">Se o criativo só puder dizer uma coisa, é esta.</p>
+  <p class="thesis">O século XXI não pede que você saiba mais. Pede que você entenda como as peças se encaixam.</p>
+  <p>O curso junta num sistema só o que as pessoas costumam estudar em cursos separados. A atenção decide o que você aprende. O sono decide como você pensa. Os valores decidem para onde vai o dinheiro. E o dinheiro decide quanta liberdade você tem para escolher o trabalho. As 25 aulas percorrem essas peças na ordem em que uma depende da outra.</p>
+  <h3>O que diferencia este curso de um curso comum de desenvolvimento pessoal</h3>
+  <ul>
+    <li><strong>O grau de prova vem escrito.</strong> Cada tema recebe um selo, de A a D: evidência científica, modelo útil, tradição de sabedoria ou sistema sem validação. O aluno sabe quanto peso dar a cada conselho.</li>
+    <li><strong>Ambiente no lugar de força de vontade.</strong> A saída proposta em quase todas as aulas é mexer na estrutura: atrito, regras decididas de cabeça fria, agenda, rotina.</li>
+    <li><strong>Prática de 21 dias em cada aula.</strong> O prazo é de experimento: tempo para coletar dados sobre si mesmo. O curso avisa que não é promessa de cérebro novo.</li>
+    <li><strong>Honestidade sobre os limites.</strong> O curso corrige mitos populares, diz quando a pesquisa é fraca e manda procurar médico ou profissional quando o assunto pede.</li>
+  </ul>
+  <h3>A promessa, em uma frase</h3>
+  <p>Ao terminar, o aluno terá mexido no ambiente em vez de brigar com a força de vontade, aberto um diário de decisões, protegido o sono, feito as contas da reserva, dado embalagem ao que sabe, trocado metas por sistemas e escolhido três coisas para manter pelos próximos noventa dias.</p>
+  <h3>Cinco mensagens que sustentam qualquer peça</h3>
+  <ul>
+    <li><strong>Seu cérebro não está quebrado. Está fora do ambiente para o qual foi calibrado.</strong> O problema moderno de autocontrole é um mecanismo útil na escassez operando na abundância.</li>
+    <li><strong>Estrutura vence força de vontade.</strong> Quem precisa resistir dez vezes por dia já perdeu, por desenho.</li>
+    <li><strong>Nem todo conselho tem o mesmo peso de prova.</strong> Fingir que tem seria desonesto.</li>
+    <li><strong>Renda é o que passa. Patrimônio é o que fica.</strong> E o que transforma trabalho em ativo quase sempre é sistema.</li>
+    <li><strong>Tudo isso é meio.</strong> O objetivo declarado na última aula é construir uma vida que valha a pena viver, com estrutura para não depender de sorte.</li>
+  </ul>
+  <h3>O curso visto de cima: cinco camadas (aula 25)</h3>
+  <p>Base (corpo, emoção, relações), capacidade (aprender e decidir), ativos, liberdade e sentido. Constrói-se de baixo para cima e decide-se de cima para baixo.</p>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso, com pequenos ajustes de corte, que funcionam como chamada. Cada aula termina com uma tarefa, quase sempre um experimento de 21 dias.</p>
+
+  <p class="block-title">Mente e aprendizagem · aulas 1 a 6</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>O cérebro fora do lugar</h3>
+    <ul>
+      <li>Os quatro selos de prova que acompanham o curso inteiro: A, evidência científica; B, modelos e heurísticas; C, filosofia, ética e espiritualidade; D, sistemas interpretativos sem validação científica consolidada.</li>
+      <li>A hipótese do desajuste evolutivo, tratada como um bom modelo e não como história comprovada: um mecanismo útil na escassez vira problema na abundância. Comida calórica, busca por novidade, vigilância a ameaças.</li>
+      <li>Dopamina não é a molécula do prazer. Ela sinaliza erro de previsão de recompensa. Querer e gostar são coisas diferentes, e isso explica o “querer sem gostar” da vida digital.</li>
+      <li>O gesto de puxar a tela para atualizar funciona como o caça-níqueis: recompensa imprevisível segura mais do que recompensa fixa.</li>
+      <li>Ameaça contínua sem resolução é a receita do estresse crônico. A tarefa de hoje, para muita gente, é criar dificuldade voluntária e útil e cortar o desconforto que não constrói nada.</li>
+      <li>Três princípios: mude o contexto em vez de disputar com o mecanismo; troque recompensa imediata por recompensa visível; reintroduza escassez por escolha.</li>
+      <li>Dois cuidados: “detox de dopamina” não existe, e o cérebro ancestral não serve de desculpa.</li>
+      <li>Tarefa: celular fora do quarto e nenhuma tela na primeira meia hora do dia, com uma linha por noite sobre humor e foco.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A alavanca mais eficiente não é força de vontade. É desenho de ambiente.</q><q>Escassez projetada é liberdade, não punição.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>Atenção, o recurso escasso</h3>
+    <ul>
+      <li>Informação sobra; o que ficou escasso é a capacidade de prestar atenção. Plataforma gratuita vende o seu tempo. O curso descreve isso como incentivo, sem acusação moral.</li>
+      <li>Os três mecanismos da captura: recompensa imprevisível, curtidas e comparação, fluxo infinito.</li>
+      <li>Atenção se alterna, e cada troca deixa resíduo. A olhada de quinze segundos no celular custa muito mais do que quinze segundos.</li>
+      <li>Um dia picado em blocos de dez minutos nunca chega ao trabalho profundo. A pessoa trabalha oito horas e produz o equivalente a duas, sem nenhuma preguiça.</li>
+      <li>Três peças de arquitetura: bloco protegido no mesmo horário, notificações desligadas por padrão com o teste da interrupção, mensagens em lotes.</li>
+      <li>O que é sólido e o que é folclore: a carga cognitiva se sustenta; a ideia da força de vontade como tanque que esvazia não se confirmou nas replicações.</li>
+      <li>Por onde vaza a capacidade de decidir: decisões triviais repetidas, pendências não anotadas e ambiguidade. As ferramentas são rotina, padrões e automação.</li>
+      <li>Regras pessoais como pré-compromisso. Tarefa: desligar todas as notificações e escrever três regras, uma de dinheiro, uma de agenda e uma de comunicação.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Isto está sendo pago por mim, ou por alguém que quer algo de mim?</q><q>Uma regra é uma decisão tomada em estado bom, aplicada em estado ruim.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Pensar sobre o próprio pensamento</h3>
+    <ul>
+      <li>Metacognição: saber como você está pensando. Uma das competências com maior efeito prático por esforço, e quase ninguém ensina.</li>
+      <li>Ilusão de fluência: entender enquanto lê e não conseguir explicar depois. O teste é fechar o material e explicar em voz alta, do zero.</li>
+      <li>Calibração: trocar “acho que fecha” por uma previsão com probabilidade e prazo, registrar e conferir. O que ensina é o padrão de vinte previsões, não o caso isolado.</li>
+      <li>O diário de decisões de sete campos, cinco minutos por decisão relevante. Dois campos em destaque: o que me faria mudar de ideia, e o meu estado na hora de decidir.</li>
+      <li>Separar processo de resultado. Resultado bom pode vir de processo ruim, e o contrário também.</li>
+      <li>Três vieses onde mais dói, cada um com antídoto: ancoragem, confirmação e custo afundado. O catálogo completo, com treze, está no material.</li>
+      <li>Saber o nome do viés não elimina o viés. O que funciona é mudar o processo: critérios escritos antes, checklist e pre-mortem.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Reconhecer não é recuperar.</q><q>Sem registro, a experiência não ensina. Só acumula versões convenientes.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Como o cérebro aprende de verdade</h3>
+    <ul>
+      <li>O mito das dez mil horas: era a média de um estudo com violinistas e virou regra universal. O jeito de praticar importa mais do que o total de horas.</li>
+      <li>O cérebro muda com o uso a vida inteira, para o bom e para o ruim. O que você repete se consolida, inclusive ruminar e conferir o celular.</li>
+      <li>As condições da prática que constrói: atenção focada, dificuldade logo acima do que você já sabe, erro com retorno rápido e sono para consolidar.</li>
+      <li>Onde o discurso popular exagera: jogos de treino cerebral, “usamos só um pedacinho do cérebro” e estilos de aprendizagem.</li>
+      <li>O paradoxo do estudo: as técnicas que funcionam parecem piores enquanto você usa. São as dificuldades desejáveis.</li>
+      <li>Três técnicas com evidência robusta: recuperação ativa (a página em branco), repetição espaçada e ensinar para aprender.</li>
+      <li>O que não funciona e todo mundo faz: reler, sublinhar, vídeo em velocidade dupla.</li>
+      <li>Amarrar o estudo a um resultado observável e terminar com um artefato: documento, modelo, checklist ou aula.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem treina muito e dorme pouco está serrando o galho onde se apoia.</q><q>Escolha método pelo resultado medido, nunca pela sensação.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>Lentes para decidir</h3>
+    <ul>
+      <li>Modelo mental é lente, não verdade. Quem só tem uma lente enxerga torto. A saída é dominar poucos modelos, de áreas diferentes.</li>
+      <li>Primeiros princípios: trocar “como se faz isso?” por “o que precisa acontecer?”. O exemplo da aula é a casa de temporada que talvez não precise de recepção.</li>
+      <li>Inversão: perguntar o que garantiria o fracasso e evitar. Ninguém sabe ao certo como ficar rico, mas todo mundo sabe como ficar pobre.</li>
+      <li>Segunda ordem: perguntar “e depois?”. Baixar o preço enche a casa e atrai um público que danifica mais e avalia pior.</li>
+      <li>Custo de oportunidade: o custo real de uma escolha é a melhor alternativa deixada para trás.</li>
+      <li>Círculo de competência: a borda importa mais do que o tamanho.</li>
+      <li>Perfil em T e vantagem de interseção: profundidade em um ou dois campos, fluência em vários. Curiosidade rende quando tem um problema e um registro.</li>
+      <li>Tarefa: passar a decisão pendente mais importante por inversão, segunda ordem e custo de oportunidade.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O momento em que você se apaixona por uma lente é o momento em que ela começa a te cegar.</q><q>Em nicho de interseção, bom em três coisas bate excelente em uma.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>Aprender com IA sem parar de pensar</h3>
+    <ul>
+      <li>A IA derrubou o custo do professor particular: sempre disponível, paciente e com correção em segundos.</li>
+      <li>Três papéis úteis: tutor socrático (uma pergunta por vez), avaliador crítico contra critérios que você escreve, e adversário que monta o melhor argumento contra a sua ideia.</li>
+      <li>Primeiro perigo, a alucinação: texto plausível não é texto verdadeiro. Toda referência verificável se confere na fonte original.</li>
+      <li>Calibrar a conferência pelo custo do erro e desconfiar do número exato sem fonte.</li>
+      <li>Nunca pedir o que você não consegue avaliar.</li>
+      <li>Segundo perigo, a dependência: o que não se pratica enfraquece, e o texto da IA tende à média bem articulada.</li>
+      <li>Três regras de defesa: o primeiro rascunho é meu; treinar à mão as habilidades que formam o meu valor; saber explicar tudo o que eu assino.</li>
+      <li>Tarefa: pedir à IA cinco referências sobre um tema que você domina e contar quantas existem de verdade.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você está usando a IA para pensar melhor, ou para não pensar?</q><q>A IA não aumenta o seu círculo de competência. Ela só faz ele parecer maior.</q></div>
+  </div></article>
+
+  <p class="block-title">Emoções, hábitos e gente · aulas 7 a 9</p>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>Emoções que se treinam</h3>
+    <ul>
+      <li>Lidar com emoções é um conjunto de habilidades treináveis. O curso separa o que a pesquisa sustenta do exagero comercial em torno de “inteligência emocional”.</li>
+      <li>Nomear: quem distingue frustração de decepção, e ressentimento de vergonha, regula melhor o que sente.</li>
+      <li>Regular sem suprimir. Funcionam: reavaliar a leitura do fato, descrever a cena em terceira pessoa e dar um intervalo antes de responder.</li>
+      <li>Funcionam pior: suprimir, ruminar e extravasar a raiva.</li>
+      <li>Alargar a janela entre estímulo e resposta com corpo cuidado e regras de cabeça fria. E-mail duro dorme no rascunho.</li>
+      <li>Empatia são três coisas: entender o outro, sentir junto e compaixão. A terceira é a que dá para sustentar.</li>
+      <li>Dois hábitos que resolvem muito atrito: perguntar antes de presumir e ouvir com o objetivo de repetir.</li>
+      <li>Conversa difícil começa pelo fato, não pela interpretação, e nunca por mensagem de texto. O protocolo de seis passos está no material.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Emoção com nome é emoção com diagnóstico.</q><q>Muito do que se chama de problema de caráter é problema de sono e de agenda.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>Hábitos e motivação</h3>
+    <ul>
+      <li>A regra dos dez minutos para o dia sem vontade, e a regra de nunca falhar duas vezes seguidas.</li>
+      <li>A motivação vem depois da ação. Sentir que avançou é um dos maiores combustíveis do engajamento.</li>
+      <li>Hábito é comportamento repetido em contexto estável. O tempo para formar varia muito de pessoa para pessoa e de hábito para hábito.</li>
+      <li>Três alavancas: dizer quando e onde, começar pela versão mínima e mexer no atrito nos dois sentidos.</li>
+      <li>A identidade vem depois: você age, repete, e ela se atualiza com a prova do que você faz.</li>
+      <li>Para acabar com um hábito, trocar em vez de só tirar. Dependência química, apostas e compulsões pedem ajuda profissional.</li>
+      <li>Quando falta tração, quase sempre falta autonomia, competência ou vínculo.</li>
+      <li>Antes de concluir que perdeu a motivação, conferir sono, movimento e convívio. Apatia que não passa é assunto de profissional de saúde.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A gente não age porque está motivado. A gente fica motivado porque agiu.</q><q>Disciplina que funciona é arquitetura, não músculo.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>Gente, incentivos e o espelho</h3>
+    <ul>
+      <li>As pessoas seguem incentivos e grupo muito mais do que intenções. Diante de um problema, perguntar como aquela pessoa é recompensada e punida.</li>
+      <li>Reciprocidade: dar primeiro constrói relações profissionais duradouras. O mesmo mecanismo pode ser usado contra você.</li>
+      <li>O círculo define o que parece normal. Trocar de círculo muda mais do que trocar de método.</li>
+      <li>Comparação: escolher de propósito com quem se compara, e comparar com a própria trajetória.</li>
+      <li>Reputação leva anos para construir e se perde em um episódio.</li>
+      <li>Você é um observador ruim de si mesmo. Perguntar “o quê” rende mais do que perguntar “por quê”.</li>
+      <li>Testes de personalidade: o Big Five tem a melhor base. MBTI, eneagrama, Human Design e astrologia servem como espelho e conversa, não como diagnóstico para contratar, casar ou assinar contrato.</li>
+      <li>Tarefa: fazer a mesma pergunta específica sobre o seu comportamento a três pessoas que não precisam mais te agradar, e ouvir sem se defender.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Olhe os incentivos antes de olhar o caráter.</q><q>Um comentário é opinião. Três pessoas dizendo a mesma coisa é dado.</q></div>
+  </div></article>
+
+  <p class="block-title">Corpo · aulas 10 e 11</p>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>Sono e recuperação</h3>
+    <ul>
+      <li>Quando o desempenho cai por falta de sono, a autoavaliação não cai junto. O problema é invisível para quem o tem.</li>
+      <li>O sono estabiliza o que foi aprendido no dia. A falta dele derruba atenção, controle de impulso e avaliação de risco.</li>
+      <li>Regularidade e continuidade pesam tanto quanto a duração. O álcool ajuda a apagar e estraga a arquitetura do sono.</li>
+      <li>O protocolo sem graça que mais rende: hora fixa de acordar, luz natural cedo e última hora do dia calma, com as pendências no papel.</li>
+      <li>O estresse não é o vilão. Estresse agudo com recuperação fortalece; estresse crônico sem folga destrói.</li>
+      <li>Recuperação de verdade: sono, movimento, respiração lenta, convívio e desligar a cabeça do trabalho. Feed no sofá e férias com o trabalho aberto não contam.</li>
+      <li>Pensar como treinador: carga e folga alternadas no dia, na semana, no mês e no ano.</li>
+      <li>A aula avisa que não é orientação médica e manda procurar um profissional diante de insônia persistente ou sinais de esgotamento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O cansaço que você não sente é o mais caro.</q><q>Estudar bem e dormir mal é pagar pelo insumo e jogar fora parte do produto.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>Mover, comer e durar</h3>
+    <ul>
+      <li>O que funciona para o corpo é conhecido, chato e barato. O objetivo é viver bem por mais tempo.</li>
+      <li>O maior ganho do exercício está no começo da curva: sair do sedentarismo para alguma atividade regular.</li>
+      <li>Fôlego e força em destaque. A força é a mais esquecida e a que define a velhice, e o treino funciona em qualquer idade.</li>
+      <li>No primeiro ano, só a adesão importa: começar pelo mínimo ridículo, em dias fixos e no mesmo lugar.</li>
+      <li>Nutrição com humildade: é o campo em que a confiança do público é alta e a evidência é fraca. O núcleo que se sustenta é o padrão alimentar e a redução de ultraprocessados.</li>
+      <li>Olhar menos para a balança, desconfiar do guru com um único inimigo e aprender a cozinhar.</li>
+      <li>Lifespan e healthspan: quanto se vive e quanto se vive com saúde e autonomia.</li>
+      <li>O teste dos oitenta e cinco: escrever o que você quer conseguir fazer nessa idade e construir reserva agora. A aula avisa que não é orientação médica.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O treino ótimo que você não faz tem eficácia zero.</q><q>Você não precisa de um regime heroico. Precisa sair do zero e não voltar.</q></div>
+  </div></article>
+
+  <p class="block-title">Sentido · aulas 12 a 14</p>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Para quê? Propósito por protótipos</h3>
+    <ul>
+      <li>O teste: se você dobrasse a sua produtividade amanhã, o que exatamente melhoraria na sua vida?</li>
+      <li>Sucesso emprestado: bater a meta e sentir vazio é ter alcançado o objetivo de outra pessoa.</li>
+      <li>Dinheiro é um meio excelente e um fim terrível. Bem usado, compra segurança, opções e tempo.</li>
+      <li>A liberdade tem um vazio no centro. Quem se aposenta sem projeto sofre por falta de projeto, não de dinheiro.</li>
+      <li>Três enganos sobre propósito: que é uma profissão, que se encontra olhando para dentro e que precisa ser grandioso.</li>
+      <li>Uma definição que dá para conferir: direção, contribuição e coerência.</li>
+      <li>Coerência se mede comparando agenda e extrato dos últimos noventa dias com os valores declarados.</li>
+      <li>O caminho prático: inventário de três listas e protótipos pequenos, baratos e reversíveis.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você não descobre que ama ensinar pensando nisso. Descobre dando três aulas.</q><q>Construa o conteúdo da liberdade antes de conquistá-la.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>Sabedoria antiga e o que nos excede</h3>
+    <ul>
+      <li>Princípios bíblicos lidos como sabedoria prática, que servem a quem crê e a quem não crê. Sem descartar por preconceito e sem transformar o texto em manual de enriquecimento.</li>
+      <li>Prudência como gestão de risco, e o cálculo do custo antes de construir como análise de viabilidade.</li>
+      <li>Trabalho com dignidade e com limite: o descanso semanal é mandamento, não prêmio por produtividade.</li>
+      <li>Palavra que vale reduz o custo de fazer negócio. Soberba antes da ruína, conselho antes do plano.</li>
+      <li>Riqueza sem as duas deformações: a tradição não condena a riqueza e não promete prosperidade a quem tem fé. O que sobra é sóbrio: dívida é servidão e o ganho lento vence a pressa.</li>
+      <li>Generosidade discreta, e perdão como libertação de quem perdoa. Perdoar não é voltar a confiar nem abrir mão de reparação.</li>
+      <li>Três práticas para o que nos excede: expor-se ao que é vasto, gratidão específica e silêncio.</li>
+      <li>A conta dos encontros que restam com as pessoas mais importantes, e dez minutos de silêncio por dia como tarefa.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O descanso não é o que sobra depois do trabalho. É um limite imposto ao trabalho.</q><q>Você não precisa de fé para aproveitá-la. E quem tem fé não precisa vesti-la de ciência para que tenha valor.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Filosofias práticas e a arte de subtrair</h3>
+    <ul>
+      <li>Filosofia prática dá critério, que fica. Autoajuda dá motivação, que passa.</li>
+      <li>Estoicismo: separar o que está sob o seu controle do que não está. A versão de rede social errou ao transformá-lo em manual de frieza.</li>
+      <li>Aristóteles: virtude é hábito, o meio entre os extremos é calibragem, e só a amizade por virtude dura.</li>
+      <li>Epicuro de verdade vivia com simplicidade. A ferramenta dele é separar desejos necessários de desejos vãos, que não se satisfazem nunca.</li>
+      <li>Escolher uma tradição como base, conforme o problema principal, e ler o original.</li>
+      <li>Minimalismo sem estética: pagar manutenção só pelo que produz valor. O efeito Diderot explica por que a casa enche sozinha.</li>
+      <li>As dimensões que mais custam e menos aparecem: digital, compromissos e social.</li>
+      <li>Como subtrair: cortar por categoria, usar quarentena, uma entrada exige uma saída. E a ressalva: reserva e estepe são excesso que protege.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Estoico não é quem não sente. É quem não é governado pelo que sente.</q><q>Tudo o que você possui, mantém ou assume cobra manutenção.</q></div>
+  </div></article>
+
+  <p class="block-title">Liberdade e dinheiro · aulas 15 a 17</p>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>Liberdade, antifragilidade e opções</h3>
+    <ul>
+      <li>Liberdade é estrutura. O livro a decompõe em sete dimensões; a aula destaca a financeira, a profissional e a emocional.</li>
+      <li>Liberdade profissional se mede pelo poder de dizer não. Muita gente sai do emprego para ser livre e acaba com cinco chefes.</li>
+      <li>A ordem sugerida: começar pela liberdade emocional e por uma reserva de seis meses de custo de vida. Sem isso, não dá para recusar nada.</li>
+      <li>Quatro categorias: o frágil quebra, o robusto resiste, o resiliente volta ao que era, o antifrágil melhora com o estresse. Sempre com dose e recuperação.</li>
+      <li>A fragilidade aparece na pergunta “o que acontece se?”: se o maior cliente sair, se a plataforma mudar a regra, se você ficar seis meses sem trabalhar.</li>
+      <li>Três ferramentas para deixar de ser cristal: redundância, apostas assimétricas e via negativa.</li>
+      <li>Opções vêm de mais de uma fonte de renda, da reserva e da rede de relações. Mas todo compromisso profundo é uma renúncia a opções.</li>
+      <li>Tarefa: mapear a concentração de receita e recusar uma coisa que você aceita e não quer.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um cliente que responde por mais de trinta por cento do seu faturamento é um chefe com outro nome.</q><q>Quem passa a vida mantendo portas abertas nunca atravessa nenhuma.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>O dinheiro: comportamento, matemática e proteção</h3>
+    <ul>
+      <li>O que se vê é despesa; o que não se vê é riqueza. Por isso tanta gente parece rica e não tem patrimônio.</li>
+      <li>Resultado com dinheiro depende mais de comportamento do que de técnica. Três mecanismos que custam caro: comparação social, inflação de estilo de vida e pânico.</li>
+      <li>A defesa é estrutura: decidir antes o destino de todo aumento de renda e automatizar.</li>
+      <li>A variável mais importante é a taxa de poupança, porque acelera o acúmulo e diminui o alvo ao mesmo tempo.</li>
+      <li>Juro composto cresce em curva e trabalha contra você na dívida cara. A regra de 72 aparece só para entender a conta.</li>
+      <li>Três camadas de proteção: reserva de emergência de seis meses do custo de vida essencial, seguro para o que você não pode pagar e diversificação de verdade.</li>
+      <li>A pergunta antes de qualquer decisão financeira relevante: se isto der errado da pior forma, eu continuo no jogo?</li>
+      <li>Tarefa: anotar todos os gastos e chegar a três números, custo de vida mensal, patrimônio líquido e quanto da renda você poupa. A aula avisa que é conteúdo educacional, não recomendação de investimento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Riqueza não é o que aparece. É o que fica.</q><q>Reserva é seguro em forma de dinheiro.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Patrimônio, não renda</h3>
+    <ul>
+      <li>Renda alta com despesa alta é só um fluxo maior passando pelo mesmo cano.</li>
+      <li>Quatro palavras que quase ninguém separa: renda, patrimônio, riqueza e independência financeira.</li>
+      <li>Independência é uma razão: a renda dos ativos comparada ao custo de vida essencial. Reduzir despesa vale tanto quanto aumentar patrimônio.</li>
+      <li>A escada de sete degraus, da sobrevivência à folga e além. O ganho de bem-estar está concentrado nos primeiros.</li>
+      <li>Três alavancas, nesta ordem: reduzir despesa recorrente, aumentar a renda e, por último, buscar retorno.</li>
+      <li>A sequência no tempo: fundação, capacidade e só então ativos. Sem promessa de prazo.</li>
+      <li>Retorno alto com risco baixo: ou você não entendeu o risco, ou ele está escondido, ou é fraude.</li>
+      <li>Uma política de investimento de uma página, escrita em estado calmo, com a lista do que você não faz. A aula avisa que é conteúdo educacional, não recomendação de investimento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Renda é o que passa. Patrimônio é o que fica.</q><q>Se você não entende de onde vem o retorno, você é o retorno.</q></div>
+  </div></article>
+
+  <p class="block-title">Trabalho, marca e inteligência artificial · aulas 18 a 22</p>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>Do emprego ao ativo</h3>
+    <ul>
+      <li>O teste da ausência: se você desaparecer por trinta dias, o que acontece com a sua renda?</li>
+      <li>Trabalho gera renda, que para quando você para. Ativo gera fluxo, que continua.</li>
+      <li>O autônomo muitas vezes trocou um chefe por vários. O empreendedor cuja empresa para quando ele viaja criou um emprego ruim.</li>
+      <li>A escada de valor: vender tempo, vender resultado, vender um sistema. O salto mais difícil exige documentar.</li>
+      <li>Três testes de um ativo: ausência, escala e transferência.</li>
+      <li>Aluguel de temporada como exemplo: operado de cabeça é quase um emprego; com processo, equipe e atendimento automatizado vira ativo. A variável é sistema.</li>
+      <li>Para quem tem competência e pouco capital: começar pelos ativos intelectuais e pela mídia, com a reputação desde o primeiro dia.</li>
+      <li>De onde vem o tempo: cinco horas por semana, durante um ano, são duzentas e sessenta horas. E o emprego pode ser a melhor plataforma para começar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Se você desaparecer por trinta dias, o que acontece com a sua renda?</q><q>O ano foi produtivo. Só não foi construtivo.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>Vender o que você sabe</h3>
+    <ul>
+      <li>Seguidor é acesso emprestado pela plataforma. Uma lista de pessoas que confiam em você é relação, e relação é o ativo.</li>
+      <li>Empacotar é transformar o que está na cabeça em algo que se transfere. Três formatos em destaque: livro, consultoria e metodologia.</li>
+      <li>Começar pelo problema, não pelo formato. O bom problema é específico, caro e recorrente, e você o resolve melhor que a média.</li>
+      <li>Registrar o que fez enquanto faz: uns quinze minutos por projeto.</li>
+      <li>Criatividade é combinação e volume de tentativas baratas.</li>
+      <li>Vale mais ser o melhor num nicho pequeno do que médio num mercado grande. Comunidade é o ativo mais difícil de copiar.</li>
+      <li>A cadeia: atenção, confiança, relação, venda e recorrência. O elo decisivo é a confiança.</li>
+      <li>Usar a plataforma para ser descoberto e levar a relação para um canal seu, com consentimento. Honestidade custosa constrói confiança.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O que você sabe não vale nada enquanto não for embalado.</q><q>Atenção é abundante e barata. Confiança é escassa e caríssima.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>Marca e comunicação</h3>
+    <ul>
+      <li>Conhecimento não comunicado não tem valor econômico. Quem sabe mais e explica pior perde para quem sabe menos e explica melhor.</li>
+      <li>Marca é multiplicação de fatores, como competência, confiança e alcance. Um fator perto de zero anula os outros.</li>
+      <li>Posicionamento é exclusão. O exercício de três linhas: eu ajudo quem, a conseguir o quê, por meio de qual método.</li>
+      <li>Constância modesta vence intensidade seguida de sumiço. E há caminhos para quem detesta se expor: marca por obra, por rede ou institucional.</li>
+      <li>Clareza antes de persuasão: começar pela conclusão, uma ideia por frase, cortar um quinto do texto.</li>
+      <li>Em histórias, o protagonista é o cliente. Em argumentos, antecipar a objeção mais forte.</li>
+      <li>Negociar por interesses, não por posições. O pedido de desconto pode ser um problema de prazo. A reserva financeira também é ferramenta de negociação.</li>
+      <li>O teste que separa persuasão de manipulação: você ficaria confortável se o outro soubesse exatamente o que você está fazendo?</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A sua marca é o que dizem de você quando você não está na sala.</q><q>Se a técnica só funciona escondida, é manipulação.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>A revolução cognitiva e o profissional aumentado</h3>
+    <ul>
+      <li>A IA como um estagiário muito culto, rápido, que às vezes inventa com segurança e não responde por nada. Você nunca entrega a ele a decisão final.</li>
+      <li>Cada onda de tecnologia barateia uma etapa e o valor migra para o que continua escasso: julgamento, gosto e confiança.</li>
+      <li>A IA automatiza tarefas, não profissões. O que exige corpo, presença e responsabilidade fica.</li>
+      <li>Três posturas: negação, pânico e adaptação informada. Só a terceira dá retorno em qualquer cenário.</li>
+      <li>Três jeitos de trabalhar: sozinho, com IA, e com IA e sistemas. A diferença entre o segundo e o terceiro é trabalho de estruturação.</li>
+      <li>Assistente responde, agente executa. Duas regras: o primeiro agente não age para fora, e nada irreversível acontece sem aprovação humana.</li>
+      <li>A “equipe de IA” dita com honestidade: uma camada de execução rápida, às vezes errada com confiança, inteiramente sob a sua responsabilidade.</li>
+      <li>Contra o golpe de voz falsa: uma palavra-código combinada com a família e confirmação por outro canal.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A ferramenta todo mundo tem. A vantagem está no que você constrói em volta dela.</q><q>O assistente responde. O agente executa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>Documentar e alavancar</h3>
+    <ul>
+      <li>Explicar numa reunião atinge uma pessoa. Escrever o mesmo conteúdo atinge quem ler hoje e daqui a cinco anos.</li>
+      <li>Alavancas que pedem permissão (capital e pessoas) e alavancas que não pedem (código e mídia). Quem tem pouco capital começa pelas segundas.</li>
+      <li>Alavancagem amplifica o que existe, inclusive o erro.</li>
+      <li>Documentar custa quinze minutos por projeto. Depois de três ou quatro casos, o padrão aparece e vira o embrião do método.</li>
+      <li>A ordem certa: documentar, simplificar, delegar ou automatizar, supervisionar. Cada atalho tem um preço previsível.</li>
+      <li>Num procedimento, a parte mais valiosa são os critérios de decisão. Na delegação, deixar claro o grau de autonomia.</li>
+      <li>Tecnologia sem ser programador: usar bem o que já paga e conectar ferramentas. Todo fluxo precisa de alerta de falha e de um jeito manual.</li>
+      <li>Mídia: durabilidade vale mais que alcance. Um texto por mês, por cinco anos, são sessenta peças.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O que você sabe só vira alavanca quando sai da sua cabeça e vira registro.</q><q>Automatizar um processo ruim é multiplicar defeito.</q></div>
+  </div></article>
+
+  <p class="block-title">Execução e legado · aulas 23 a 25</p>
+
+  <article class="lesson"><div class="n">23</div><div class="body">
+    <h3>Onde pôr a força</h3>
+    <ul>
+      <li>Raramente falta força. Falta pôr a força no lugar certo. Três lentes: concentração, gargalo e prioridade.</li>
+      <li>O 80/20 com honestidade: muita coisa é desigual, mas a proporção varia. A pergunta útil é onde está a concentração, e ela se responde medindo.</li>
+      <li>Os cuidados: clientes pequenos têm funções invisíveis, a regra aplicada a pessoas costuma ser cruel e errada, e ela só olha para trás.</li>
+      <li>Se o problema volta com pessoas diferentes, a causa está no desenho. Trocar “quem errou?” por “o que torna esse erro provável?”.</li>
+      <li>A regra do gargalo: a capacidade do sistema é a capacidade do gargalo. Resolvido, ele se move. Em negócio pequeno, muitas vezes é o dono.</li>
+      <li>Prioridade no singular. O importante que não é urgente só acontece se estiver na agenda, com horário.</li>
+      <li>Três jeitos de dizer não: o simples, o por política e o retroativo.</li>
+      <li>Tarefa: nenhum sim imediato a pedido relevante durante 21 dias.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Se tudo é prioridade, nada é.</q><q>Urgência grita e importância sussurra.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">24</div><div class="body">
+    <h3>Sistema, não meta</h3>
+    <ul>
+      <li>Não existe meta possível para ser um bom pai. Existe sistema: jantar sem telas, sábado de manhã com os filhos.</li>
+      <li>Meta escolhe a direção; quem executa é o sistema. A aula não diz que meta não serve, e cita a pesquisa que a sustenta.</li>
+      <li>Converter meta em sistema: quais comportamentos causam o resultado, qual a versão mínima e em que horário.</li>
+      <li>Os ciclos: o ano dá a direção, o trimestre dá o projeto, a semana distribui as horas e o dia executa.</li>
+      <li>Se o aluno adotar uma única prática do curso, que seja a hora semanal de revisão.</li>
+      <li>Lista não é agenda. Construção antes de comunicação. Toda frente aberta precisa de uma próxima ação com verbo.</li>
+      <li>A lei de Goodhart: quando uma medida vira meta, deixa de ser boa medida. A defesa é medir em pares que se equilibram.</li>
+      <li>O que mais importa resiste ao número. Para isso, uma revisão escrita de uma página por trimestre.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma hora. Ela reorganiza as outras cento e sessenta e sete.</q><q>A diferença entre lista e agenda é a diferença entre desejo e compromisso.</q></div>
+    <p style="margin-top:10px">A frase “Você não sobe ao nível das suas metas. Você cai ao nível dos seus sistemas.” aparece na aula atribuída ao escritor James Clear. Se usar, mantenha o crédito.</p>
+  </div></article>
+
+  <article class="lesson"><div class="n">25</div><div class="body">
+    <h3>Tempo, ruína e legado</h3>
+    <ul>
+      <li>Numa sequência de multiplicações, um único zero apaga tudo. Evitar a catástrofe vale mais do que otimizar o retorno.</li>
+      <li>O curso em cinco camadas: base, capacidade, ativos, liberdade e sentido. Quase todo sintoma tem a causa uma ou duas camadas abaixo.</li>
+      <li>Ruína não é só financeira: saúde, reputação e tempo com quem a gente ama quase não têm volta, e são os menos protegidos.</li>
+      <li>Decisões de ganho pequeno e perda enorme se decidem por regra. A pergunta: e se eu não puder trabalhar por seis meses a partir de amanhã?</li>
+      <li>As estações da vida mudam o conselho certo: aos vinte e cinco, aos quarenta e aos sessenta.</li>
+      <li>Priorizar o que compõe (saúde, competência, reputação, vínculos) e gastar de propósito no que tem prazo de validade.</li>
+      <li>Legado em três formas: pessoas, obra e patrimônio com estrutura. E dois exercícios por escrito sobre o que diriam de você.</li>
+      <li>A instrução final: escolher três coisas, uma da base, uma da capacidade e uma da construção, por noventa dias, com registro visível. Sem garantia de resultado.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Sobreviva. Nenhuma exposição pode ser capaz de tirar você do jogo.</q><q>Entender sem mudar a estrutura não é aprendizado. É passatempo culto.</q></div>
+  </div></article>
+</section>
+
+<section id="conceitos">
+  <h2>Ideias e conceitos com nome</h2>
+  <p class="sub">Ferramentas de raciocínio que o aluno leva para a vida. Rendem bem em carrossel e em slide, porque têm número e nome.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Ideia</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>Os 4 selos de prova</td><td>A, evidência científica; B, modelos e heurísticas; C, filosofia, ética e espiritualidade; D, sistemas sem validação científica consolidada.</td><td class="aula">1</td></tr>
+      <tr><td>Querer sem gostar</td><td>Abrir o aplicativo dezenas de vezes por dia sem prazer real: o resultado esperado de recompensa imprevisível.</td><td class="aula">1</td></tr>
+      <tr><td>Desenho de ambiente</td><td>Mais atrito onde o impulso sai caro, menos atrito onde o valor é alto.</td><td class="aula">1 e 8</td></tr>
+      <tr><td>Resíduo de atenção</td><td>Depois de trocar de tarefa, parte da cabeça continua presa na anterior.</td><td class="aula">2</td></tr>
+      <tr><td>Teste da interrupção</td><td>Só reativar a notificação que passa na pergunta: se isto chegar, preciso interromper o que estou fazendo?</td><td class="aula">2</td></tr>
+      <tr><td>Regra pessoal</td><td>Uma decisão tomada em estado bom, aplicada em estado ruim.</td><td class="aula">2</td></tr>
+      <tr><td>Ilusão de fluência</td><td>Confundir a facilidade de ler com o domínio do conteúdo.</td><td class="aula">3</td></tr>
+      <tr><td>Diário de decisões</td><td>Sete campos, cinco minutos, só para decisões relevantes.</td><td class="aula">3</td></tr>
+      <tr><td>Pre-mortem</td><td>Imaginar que o projeto fracassou daqui a um ano e perguntar por quê.</td><td class="aula">3</td></tr>
+      <tr><td>Dificuldades desejáveis</td><td>Condições que pioram o desempenho na hora e melhoram a retenção depois.</td><td class="aula">4</td></tr>
+      <tr><td>A página em branco</td><td>Sem dica nenhuma, escrever tudo o que sabe sobre o tema e marcar as lacunas.</td><td class="aula">4</td></tr>
+      <tr><td>As 5 lentes</td><td>Primeiros princípios, inversão, segunda ordem, custo de oportunidade e círculo de competência.</td><td class="aula">5</td></tr>
+      <tr><td>Perfil em T</td><td>Uma haste de profundidade real e uma barra de fluência em vários campos.</td><td class="aula">5</td></tr>
+      <tr><td>Os 3 papéis da IA</td><td>Tutor socrático, avaliador crítico e adversário.</td><td class="aula">6</td></tr>
+      <tr><td>As 3 regras de defesa</td><td>O primeiro rascunho é meu; treino à mão o que forma o meu valor; sei explicar tudo o que assino.</td><td class="aula">6</td></tr>
+      <tr><td>Granularidade emocional</td><td>Fazer distinções finas entre o que se sente, para regular melhor.</td><td class="aula">7</td></tr>
+      <tr><td>Os 3 tipos de empatia</td><td>Cognitiva, afetiva e compaixão.</td><td class="aula">7</td></tr>
+      <tr><td>Regra dos dez minutos</td><td>Começar por dez minutos; se a vontade não vier, parar sem culpa.</td><td class="aula">8</td></tr>
+      <tr><td>Regra dos dois</td><td>Nunca falhar duas vezes seguidas; no dia seguinte, ao menos a versão mínima.</td><td class="aula">8</td></tr>
+      <tr><td>Carga e folga</td><td>Alternar esforço e recuperação no dia, na semana, no mês e no ano.</td><td class="aula">10</td></tr>
+      <tr><td>Teste dos oitenta e cinco</td><td>Escrever o que quer conseguir fazer aos 85 e construir reserva funcional agora.</td><td class="aula">11</td></tr>
+      <tr><td>Direção, contribuição, coerência</td><td>As três partes de um propósito que dá para conferir.</td><td class="aula">12</td></tr>
+      <tr><td>Protótipos de propósito</td><td>Experimentos pequenos, baratos e reversíveis, com data de começo e de fim.</td><td class="aula">12</td></tr>
+      <tr><td>A conta dos encontros</td><td>Anos que restam vezes encontros por ano, para as pessoas mais importantes.</td><td class="aula">13</td></tr>
+      <tr><td>O que é meu e o que não é</td><td>A separação estoica entre o que está sob o seu controle e o resto.</td><td class="aula">14</td></tr>
+      <tr><td>Uma entrada, uma saída</td><td>Entrou um item ou um compromisso, sai outro.</td><td class="aula">14</td></tr>
+      <tr><td>Cristal ou músculo</td><td>Frágil, robusto, resiliente e antifrágil: quatro respostas ao mesmo golpe.</td><td class="aula">15</td></tr>
+      <tr><td>Mapa de concentração</td><td>Quanto da receita vem do maior cliente e da maior plataforma.</td><td class="aula">15</td></tr>
+      <tr><td>As 3 camadas de proteção</td><td>Reserva de emergência, seguro e diversificação de verdade.</td><td class="aula">16</td></tr>
+      <tr><td>A escada de 7 degraus</td><td>Da sobrevivência à independência, com o maior alívio nos primeiros degraus.</td><td class="aula">17</td></tr>
+      <tr><td>Os 3 testes de um ativo</td><td>Ausência, escala e transferência.</td><td class="aula">18</td></tr>
+      <tr><td>Específico, caro e recorrente</td><td>As três marcas do problema que vale embalar e vender.</td><td class="aula">19</td></tr>
+      <tr><td>Honestidade custosa</td><td>Dizer o que vai contra o seu interesse imediato: “esse produto não é para você”.</td><td class="aula">19</td></tr>
+      <tr><td>Posicionamento em 3 linhas</td><td>Eu ajudo quem, a conseguir o quê, por meio de qual método.</td><td class="aula">20</td></tr>
+      <tr><td>Teste da transparência</td><td>A técnica continua funcionando se o outro souber o que você está fazendo?</td><td class="aula">20</td></tr>
+      <tr><td>O estagiário culto</td><td>A imagem da IA: sabe muito, entrega rápido, às vezes inventa e não responde por nada.</td><td class="aula">21</td></tr>
+      <tr><td>Palavra-código</td><td>Combinada com a família, contra o golpe de voz falsa pedindo dinheiro.</td><td class="aula">21</td></tr>
+      <tr><td>Documentar, simplificar, delegar, supervisionar</td><td>A ordem que não se inverte.</td><td class="aula">22</td></tr>
+      <tr><td>Regra do gargalo</td><td>Melhorar qualquer etapa que não seja o gargalo não aumenta o resultado.</td><td class="aula">23</td></tr>
+      <tr><td>Os jeitos de dizer não</td><td>Simples, por política e retroativo, mais dois no material.</td><td class="aula">23</td></tr>
+      <tr><td>A hora semanal</td><td>Uma hora, no mesmo horário, para esvaziar, revisar, decidir e pôr na agenda.</td><td class="aula">24</td></tr>
+      <tr><td>Lei de Goodhart</td><td>Quando uma medida vira meta, ela deixa de ser uma boa medida.</td><td class="aula">24</td></tr>
+      <tr><td>As 5 camadas</td><td>Base, capacidade, ativos, liberdade e sentido.</td><td class="aula">25</td></tr>
+      <tr><td>Três coisas por noventa dias</td><td>Uma da base, uma da capacidade e uma da construção, com registro visível.</td><td class="aula">25</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Histórias, experimentos e cenas das aulas</h2>
+  <p class="sub">O curso não conta casos de alunos nem de clientes. O que ele tem, e rende gancho de vídeo e de carrossel, são experimentos citados nas aulas e cenas criadas para explicar uma ideia. Cada cartão diz qual é qual.</p>
+  <div class="cases">
+    <div class="case"><h3>Os advogados e os precedentes que nunca existiram</h3><p>Fato citado na aula: em vários países, advogados foram punidos por entregar ao juiz petições com decisões inventadas pela inteligência artificial que usaram para escrever. O texto parecia impecável. A aula não cita nomes nem processos. Aula 6.</p></div>
+    <div class="case"><h3>O mesmo perfil de personalidade para todo mundo</h3><p>Experimento citado: o psicólogo Bertram Forer entregou um perfil a cada participante, e todos o acharam muito preciso. Era o mesmo texto para todos. Serve para explicar por que descrições vagas e lisonjeiras parecem feitas sob medida. Aula 9.</p></div>
+    <div class="case"><h3>A sala em que todos erram de propósito</h3><p>Experimento citado: Solomon Asch pôs um participante entre pessoas combinadas para dar a resposta errada a uma pergunta óbvia. Muita gente negou o que via para acompanhar a maioria. Aula 9.</p></div>
+    <div class="case"><h3>Seis horas de sono por duas semanas</h3><p>Estudos citados: quem passou a dormir seis horas por noite acumulou déficits comparáveis aos de uma privação aguda, e não percebeu o tamanho do prejuízo. É a origem da frase sobre o cansaço que não se sente. Aula 10.</p></div>
+    <div class="case"><h3>Sozinho com os próprios pensamentos</h3><p>Experimento citado, que a aula manda ler com cautela: pessoas deixadas numa sala sem estímulo preferiram se dar um choque elétrico leve a ficar quietas. Aula 13.</p></div>
+    <div class="case"><h3>José e os sete anos de fartura</h3><p>A história do Gênesis lida como o argumento mais antigo para a reserva de emergência: guardar parte da colheita dos anos bons, porque a escassez vem. Aula 13.</p></div>
+    <div class="case"><h3>Sessenta encontros</h3><p>Conta feita na aula, apresentada como hipótese e não como estatística: pais com 75 anos, seis visitas por ano, uma suposição de mais dez anos. O número que aparece costuma ser pequeno o bastante para mudar a agenda. Aula 13.</p></div>
+    <div class="case"><h3>A casa de temporada que recusava reservas</h3><p>Cena criada pela aula: o dono investe em fotos e anúncios, a procura sobe e a receita não sai do lugar. O gargalo era a janela de limpeza entre um hóspede e o seguinte. Aula 23.</p></div>
+    <div class="case"><h3>Duzentos mil seguidores ou duas mil pessoas numa lista</h3><p>Cena criada pela aula: a rede muda o algoritmo e o alcance do primeiro criador despenca. O segundo manda o e-mail da semana e as pessoas abrem. Aula 19.</p></div>
+    <div class="case"><h3>O zero no meio da conta</h3><p>Imagem da última aula: trinta anos de bons resultados multiplicados, e um único zero no meio. O resultado é zero. Aula 25.</p></div>
+    <div class="case"><h3>As cinco simulações do curso</h3><p>Situações ramificadas que o aluno resolve na plataforma: o aumento e o carro novo, o convite que pede um não, o hábito que falhou dois dias, a mensagem que pareceu desprezo e a proposta “garantida”.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">Itens da página de venda. Os números podem ser citados.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula animada, de cerca de 9 minutos.</li>
+        <li>Artigo da aula em PDF: a videoaula inteira por escrito, com as práticas, as tabelas e os protocolos do livro, a síntese e três tarefas.</li>
+        <li>Uma prática de 21 dias, mais duas tarefas curtas para aplicar no mesmo dia.</li>
+        <li>Quiz comentado, com a explicação de cada alternativa.</li>
+        <li>Caderno de trabalho imprimível: Aprendi, Pratiquei, Apliquei.</li>
+        <li>Tutor Villela: a IA do curso responde só com o conteúdo das aulas e do livro, cita a origem e leva ao minuto exato do vídeo. Se a resposta não está no curso, ele diz que não encontrou.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li>Biblioteca de 33 prompts para estudar, refletir e decidir com a IA, organizados por tema, todos com a trava contra números, nomes e fontes inventados.</li>
+        <li>Audiobook: as 25 aulas em áudio, no player do site, com a tela bloqueada, no fone e no carro. O primeiro capítulo fica aberto como amostra.</li>
+        <li>Jornada do aluno: níveis, XP, 9 selos e medalhas; diagnóstico e teste final de 20 questões.</li>
+        <li>Villela Lab com 6 missões e o projeto final “Seu plano de 90 dias”.</li>
+        <li>Desafio 21 dias e 5 simulações.</li>
+        <li>Prompt Builder, gerador de agentes, as folhas de consulta “O prompt do homem contemporâneo” e “Protocolo anti-alucinação para decisões pessoais” e 9 modelos prontos, do diário de decisões ao painel de dez números.</li>
+        <li>Os planos de 90 dias e de 12 meses do livro e as leituras recomendadas, no material da última aula.</li>
+        <li>Certificado da Villela Academy.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Quem sente que tem informação demais e direção de menos.</li>
+        <li>Quem quer organizar mente, corpo, dinheiro e trabalho num sistema só, em vez de em cursos separados.</li>
+        <li>Profissionais que querem passar de vender tempo a construir algo que continue quando não estão lá.</li>
+        <li>Quem quer usar a inteligência artificial para aprender e decidir sem parar de pensar.</li>
+        <li>Quem prefere saber o grau de prova de cada conselho antes de segui-lo.</li>
+        <li>Quem está começando a carreira e quem já tem estrada e quer rever as escolhas.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura fórmula rápida. Aqui se ensina princípio e prática.</li>
+      </ul>
+      <h3>O conselho muda com a idade (aulas 12, 15 e 25)</h3>
+      <ul>
+        <li><strong>Aos 25:</strong> explorar caminhos e acumular competência é uma direção legítima.</li>
+        <li><strong>Aos 40:</strong> concentrar e construir algo que dure. O recurso mais escasso costuma ser o tempo.</li>
+        <li><strong>Aos 60:</strong> transmitir. O horizonte encurta e o risco grande deixa de ser sensato.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Objeções e respostas</h2>
+  <p class="sub">Das perguntas frequentes da página de venda.</p>
+  <h3>Posso assistir antes de comprar?</h3>
+  <p>Pode. A aula 1 inteira é gratuita: a videoaula e o artigo em PDF.</p>
+  <h3>É mais um curso de autoajuda?</h3>
+  <p>O curso diz, em cada tema, que tipo de conhecimento o aluno está recebendo: evidência científica, modelo útil, tradição de sabedoria ou sistema sem validação. E avisa que não é para quem procura fórmula rápida.</p>
+  <h3>Preciso entender de tecnologia?</h3>
+  <p>Não. É um curso de desenvolvimento pessoal. Duas aulas tratam de inteligência artificial, a 6 e a 21, e as duas falam de método e de cuidado, sem exigir nada técnico.</p>
+  <h3>O curso é orientação médica ou financeira?</h3>
+  <p>Não. É conteúdo educacional. As aulas de sono, movimento e alimentação mandam conversar com o médico quem tem condição de saúde. As aulas de dinheiro não indicam produto financeiro, taxa ou alocação.</p>
+  <h3>Há conteúdo religioso?</h3>
+  <p>A aula 13 lê princípios bíblicos como sabedoria prática, ao lado de reverência, gratidão e silêncio, com respeito e sem pregação. Nada no curso exige fé para ser útil.</p>
+  <h3>Preciso ter lido o livro?</h3>
+  <p>Não. O curso é baseado no livro do mesmo autor, e os artigos em PDF trazem as práticas, as tabelas e os protocolos dele. Dá para acompanhar tudo só com o curso.</p>
+  <h3>Não tenho tempo para assistir. Dá para ouvir?</h3>
+  <p>Sim. As aulas têm cerca de nove minutos, e o audiobook toca no player do site com a tela bloqueada, no fone e no carro. Não há download.</p>
+  <h3>Por quanto tempo tenho acesso?</h3>
+  <p>Um ano a partir da compra, incluindo as atualizações e as aulas novas publicadas nesse período.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias, incondicional. Se o curso não servir, a pessoa pede o reembolso integral dentro do prazo, sem justificativa.</p>
+</section>
+
+<section id="cuidados">
+  <h2>Cuidados na comunicação</h2>
+  <p class="sub">Para o criativo não prometer o que o curso faz questão de não prometer.</p>
+  <div class="care">
+    <h3>Evitar</h3>
+    <ul>
+      <li>Promessa de transformação garantida: “mude de vida em 21 dias”, “reprograme o seu cérebro”, “o método definitivo”. A última aula diz com todas as letras que não há garantia de resultado, e a aula 4 avisa que 21 dias é prazo de experimento, não promessa de cérebro novo nem de hábito formado.</li>
+      <li>Linguagem de coach e de fórmula rápida: “desbloqueie”, “destrave o seu potencial”, “o segredo dos bem-sucedidos”. A página de venda diz que o curso não é para quem procura fórmula rápida.</li>
+      <li>Qualquer tom de conselho médico, psicológico ou nutricional: “cure a insônia”, “vença a ansiedade”, “a dieta certa”. As aulas 8, 10 e 11 dizem que não são orientação médica e que depressão, esgotamento e compulsões são assunto de profissional de saúde.</li>
+      <li>Promessa de ganho financeiro: “fique rico”, “alcance a independência financeira”, “renda passiva”. As aulas 16 a 18 avisam que são conteúdo educacional, não recomendação de investimento, e a aula 18 corrige a própria ideia de renda passiva.</li>
+      <li>Usar os números de exemplo como promessa. A regra de 72 com seis por cento, as vinte e cinco vezes o gasto anual, os trinta por cento de poupança e os sessenta encontros aparecem nas aulas como ilustração ou ordem de grandeza, com essa ressalva dita.</li>
+      <li>Jargão que o curso desmonta: “detox de dopamina”, “a molécula do prazer”, “dez mil horas”, “sou visual”, estoicismo como frieza, “tenha uma equipe inteira de IA”.</li>
+      <li>Apresentar o curso como religioso ou como antirreligioso. A aula 13 trata a fé com respeito e sem pregação.</li>
+      <li>Ironizar quem usa astrologia, MBTI ou eneagrama. A aula 9 os trata com serenidade, como espelho e conversa, e só recusa o uso como diagnóstico.</li>
+      <li>Prometer acesso sem prazo. A oferta no ar é de 1 ano de acesso.</li>
+      <li>Depoimentos de alunos e números de alunos. A página de venda não tem nenhum, então não há o que citar.</li>
+      <li>Atribuir ao curso frases que as aulas creditam a outros autores. O curso cita pesquisadores e escritores pelo nome; se a peça usar uma dessas ideias, mantenha o crédito.</li>
+      <li>Vender o curso como curso “para homens”. O título é o do livro; a página de venda fala em “quem”, sem recorte de gênero.</li>
+    </ul>
+  </div>
+  <p style="margin-top:14px">O preço e os itens incluídos mudam. Antes de fechar uma peça com valor, confira na página do curso.</p>
+</section>
+
+<footer>
+  Fonte: roteiros das 25 videoaulas e página de venda do curso na Villela Academy. Grupo Villela Stay.
+</footer>
+
+</div>
+</body>
+</html>

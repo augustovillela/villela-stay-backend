@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}</style>
+<title>Claude AI na Prática: material para criativos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Material de apoio para marketing · outubro de 2026</p>
+    <h1>Claude AI na Prática</h1>
+    <p class="lead">Tudo o que o curso ensina a empresários e profissionais liberais, aula por aula, pronto para virar apresentação e criativo. O conteúdo abaixo foi tirado dos roteiros das 22 aulas e da página de venda no ar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 22 aulas</a>
+  <a href="#metodos">Métodos com nome</a>
+  <a href="#casos">Casos e exemplos</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Objeções</a>
+  <a href="#cuidados">Cuidados na comunicação</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados que podem ser citados como estão.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>Claude AI na Prática</dd></div>
+    <div><dt>Chamada da página</dt><dd>Pare de conversar com a IA. Comece a operar a sua empresa com ela.</dd></div>
+    <div><dt>Autor e professor</dt><dd>Augusto Villela, advogado e empreendedor</dd></div>
+    <div><dt>Formato</dt><dd>22 módulos, todos com videoaula, artigo e apresentação</dd></div>
+    <div><dt>Tamanho</dt><dd>57 vídeos, 7 h 20 min de conteúdo, 96 materiais</dd></div>
+    <div><dt>Em áudio</dt><dd>Audiobook com 24 capítulos, 3h23 no total</dd></div>
+    <div><dt>Preço</dt><dd>R$ 85,00 (conferido na página em 08/10/2026)</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, com reembolso</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Certificado</dt><dd>Certificado da Villela Academy</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica">academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica</a></p>
+  <p>O curso nasceu do livro Claude AI na Prática, do mesmo autor. Além dos 22 módulos, a página lista o Villela Express: 10 vídeos curtos de consulta rápida, com menos de um minuto cada.</p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">Se o criativo só puder dizer uma coisa, é esta.</p>
+  <p class="thesis">A inteligência artificial amplifica o que encontra. Tanto a ordem quanto o caos. Por isso, antes de automatizar, organize.</p>
+  <p>O curso ensina a usar o Claude como profissional, e não como um chat. O aluno sai do pedido solto e aprende a dar função, objetivo, contexto e regra. Depois organiza o conhecimento da empresa, conecta o Claude às ferramentas e monta um time de agentes por área. Em todas as aulas, a decisão que importa continua com a pessoa.</p>
+  <h3>As duas lições que o próprio curso declara no encerramento</h3>
+  <ul>
+    <li><strong>O diferencial está em quem organiza.</strong> Processo confuso vira confusão mais rápida. Arquivo bagunçado vira resposta baseada em pedaço de informação. Regra que não está escrita, a máquina inventa.</li>
+    <li><strong>A tecnologia não substitui o julgamento.</strong> Os agentes preparam, organizam e alertam. As decisões que importam continuam sendo do dono do negócio.</li>
+  </ul>
+  <h3>A promessa, em uma frase</h3>
+  <p>Do primeiro prompt ao time de agentes que opera a empresa, com o método que o autor usa na própria operação.</p>
+  <h3>Quatro mensagens que sustentam qualquer peça</h3>
+  <ul>
+    <li><strong>Contratar a IA, em vez de perguntar a ela.</strong> O usuário avançado cria funções, cargos, regras e fluxos. O iniciante pede, corrige e repete.</li>
+    <li><strong>Primeiro organizar, depois automatizar.</strong> A frase volta em quase todas as aulas, de propósito.</li>
+    <li><strong>Confie, mas confira.</strong> Leitura e análise são livres. O que toca uma pessoa real, um número real ou dinheiro real passa por confirmação humana.</li>
+    <li><strong>O que é real e o que é folclore.</strong> O curso desmonta os “comandos secretos” da internet e avisa quando uma informação tem prazo de validade curto.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso, com pequenos ajustes de corte, que funcionam como chamada. A numeração segue os 22 módulos da página de venda.</p>
+
+  <p class="block-title">Fundamentos · aulas 1 a 4</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>Fundamentos: o que é o Claude e como ele pensa</h3>
+    <ul>
+      <li>De onde o Claude veio e a prioridade com que foi construído: segurança e uso responsável. Ele prefere a precisão à eloquência e prefere recusar a inventar.</li>
+      <li>Onde ele ganhou espaço: nas áreas em que o erro custa caro, como direito, finanças e saúde.</li>
+      <li>A família de modelos explicada como uma equipe: Haiku é o estagiário genial, Sonnet é o profissional do dia a dia, Opus é o sócio sênior.</li>
+      <li>O erro nos dois sentidos: modelo caro em tarefa boba é desperdício; modelo fraco em tarefa complexa vira vaivém de correção e sai mais caro.</li>
+      <li>Como o Claude “pensa”: reconhece padrão, organiza contexto e prevê linguagem. Sem mágica e sem intuição. O que muda o resultado é o contexto.</li>
+      <li>O comando ruim (“faça um anúncio”) comparado ao comando profissional, com papel, público, canal e tom.</li>
+      <li>As quatro funções que a IA pode exercer no trabalho: assistente, consultor, operador e agente. É uma escada, e a maioria para no primeiro degrau.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>ChatGPT impressiona, Claude trabalha.</q><q>Você está pagando um sócio sênior para carimbar papel.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>Prompts que funcionam de verdade</h3>
+    <ul>
+      <li>Os sete blocos do prompt profissional: função, objetivo, contexto, regras, estilo, formato e tarefa. Sem eles, a IA preenche as lacunas com suposição.</li>
+      <li>O exemplo do concierge: escrever um prompt de empresa é escrever um cargo. As regras funcionam como trava (“nunca inventar disponibilidade”).</li>
+      <li>Persona: uma linha de texto que faz a IA puxar o repertório de um especialista. E o limite dela: não vira parecer, não dispensa conferência.</li>
+      <li>Engenharia de contexto: o que fica em cima da “mesa de trabalho” do Claude (pergunta, histórico, arquivos, instruções do Projeto, memória).</li>
+      <li>RAG em linguagem simples: o assistente que traz as três páginas que interessam em vez de carregar a biblioteca inteira.</li>
+      <li>A regra de ouro: a eficácia vem da exatidão das restrições, e não do número de palavras.</li>
+      <li>Workflow: quebrar o objetivo em etapas e transformar um pedido em processo que se repete. Diferença entre workflow e agente, e por que começar pelo workflow.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Num prompt de empresa, as regras valem mais do que o pedido.</q><q>Persona não é diploma.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Créditos, tokens e economia</h3>
+    <ul>
+      <li>O que é token e por que ele define três coisas: custo, limite (a janela de contexto) e velocidade.</li>
+      <li>A primeira economia: o modelo certo para cada tarefa. O teste prático: eu chamaria um estagiário, um analista ou um sócio?</li>
+      <li>O maior erro do iniciante: usar a IA como buscador e repetir o contexto em toda conversa.</li>
+      <li>As três camadas que acabam com a repetição: Projetos, Skills reutilizáveis e modelos de prompt com campos fixos.</li>
+      <li>A diferença entre Skill e script, com a Skill de cotação da empresa do autor mostrada por inteiro: identidade, objetivo, regras, estilo, fluxo e limites.</li>
+      <li>Três hábitos: enviar só o trecho necessário, usar o Claude como supervisor e não como digitador, separar as conversas por área e pedir resumo quando ficarem longas.</li>
+      <li>O documento de calibração, enviado no início de cada conversa nova.</li>
+      <li>Converter o documento em Markdown antes de subir, e o alerta de não usar conversor online com arquivo sensível.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Skill pensa, script executa.</q><q>O iniciante usa a inteligência artificial como chat, o avançado usa como sistema operacional intelectual.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Organização do conhecimento: Projetos, artefatos, Skills e manuais</h3>
+    <ul>
+      <li>Projetos: a “sala” onde toda conversa já nasce sabendo o contexto. O ganho é triplo: menos repetição, menos erro e menos consumo de crédito.</li>
+      <li>Conhecimento como ativo vivo, com responsável e revisão mensal. Projeto parado passa a responder com confiança uma informação errada.</li>
+      <li>Artefatos: o painel separado onde o Claude cria documento, código, página, aplicativo simples, diagrama ou tabela, e onde se edita por conversa.</li>
+      <li>Os seis elementos de uma boa Skill: identidade, regras, estilo, fluxo operacional, limites e padrões de resposta.</li>
+      <li>O bloco de limites como desenho de alçada, do mesmo jeito que se faz com um funcionário novo.</li>
+      <li>Começar por uma Skill só: a tarefa mais repetida da semana, usada por sete dias e ajustada.</li>
+      <li>Manuais e checklists como rede de segurança: registram a lição aprendida, obrigam a confirmar a etapa crítica e criam um idioma comum entre as áreas.</li>
+      <li>O manual escrito para a equipe humana vira a base de conhecimento do Claude. O esforço rende duas vezes.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Sem base estruturada, mesmo o melhor modelo opera no escuro.</q><q>Documento parado é documento que mente.</q></div>
+  </div></article>
+
+  <p class="block-title">Da conversa à ação · aulas 5 a 7</p>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>Claude Code: quando a IA sai da janela de conversa e passa a agir</h3>
+    <ul>
+      <li>O que é o Claude Code e por que não é preciso saber programar: a pessoa descreve o objetivo em português e ele implementa, mostrando antes o que vai fazer.</li>
+      <li>Vibe coding: criar software conversando, no papel de diretor. Muda a barreira técnica. A necessidade de clareza continua.</li>
+      <li>A habilidade que passa a valer: descrever bem. Escopo, restrições, o que entra, o que deve sair, sequências e pontos de decisão.</li>
+      <li>Git e GitHub explicados pelo problema do “contrato final dois”: histórico de versões e a possibilidade de voltar à versão estável quando uma automação quebra.</li>
+      <li>Instalação passo a passo, com o aviso de que os comandos mudam e a fonte oficial é a documentação.</li>
+      <li>O arquivo CLAUDE.md: as instruções permanentes do projeto, com regras, contexto do negócio e o que nunca pode ser feito sem perguntar.</li>
+      <li>Permissões e o método: começar pequeno, por tarefa reversível, e ir subindo a régua.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Velocidade sem freio é só acidente mais rápido.</q><q>Comece pelo que, se der errado, não custa nada.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>MCP, conectores e APIs: o que faz a IA agir nos seus sistemas</h3>
+    <ul>
+      <li>MCP como “o USB-C das inteligências artificiais”: um padrão aberto que conecta o Claude a ferramentas, sistemas e dados.</li>
+      <li>Tool use: a diferença entre responder com o que está na conversa e consultar o calendário, o CRM e os preços antes de responder.</li>
+      <li>O detalhe que derruba mito: o Claude pede, e quem executa é o sistema do usuário. Por isso um agente local precisa da máquina ligada.</li>
+      <li>Claude no navegador ou Claude Desktop: quando cada um resolve.</li>
+      <li>API explicada como um garçom entre softwares, e as quatro palavras que bastam: endpoint, request, response e JSON.</li>
+      <li>As seis etapas por trás de quase toda automação: cliente, canal, webhook, plataforma de automação, API do Claude e banco de dados.</li>
+      <li>A divisão de papéis: o Claude é a inteligência e a plataforma de automação é o executor. Confundir os dois é o erro mais comum de quem começa.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Sem MCP, o Claude conversa. Com MCP, ele conversa, executa ações e acessa sistemas.</q><q>Uma é opinião. A outra é fato.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>Construindo Skills e fluxos automáticos</h3>
+    <ul>
+      <li>O que uma Skill exige: instruções com objetivos, limites e critério de sucesso, mais os metadados (público, frequência, tipo de informação, nível de autorização).</li>
+      <li>Quem escreve a Skill é quem domina o processo. Não precisa passar pela área de tecnologia.</li>
+      <li>O método: executar a tarefa à mão umas três vezes, anotando cada decisão. O que foi anotado é a Skill.</li>
+      <li>Por onde começar: a tarefa que mais se repete e que mais dói quando é feita mal. Em negócio pequeno, costuma ser o atendimento.</li>
+      <li>Auditoria: uma Skill não avisa quando começa a errar. Revisão trimestral das críticas, anual das demais, e teste com caso real antigo.</li>
+      <li>Make ou n8n: o primeiro para começar simples e rápido; o segundo para quem quer personalização e os dados na própria infraestrutura.</li>
+      <li>Os quatro princípios de um fluxo seguro: isolar os fluxos sensíveis, limitar permissões por função, criar pontos de verificação e projetar com modularidade.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O conhecimento sai da cabeça de quem faz e vira sistema.</q><q>A automação bem-sucedida não é a que faz mais rápido. É a que faz as coisas certas, com consistência e sem risco.</q></div>
+  </div></article>
+
+  <p class="block-title">Agentes e automações · aulas 8 e 9</p>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>O time de agentes: montando o organograma da sua empresa</h3>
+    <ul>
+      <li>O que é um agente empresarial e o medo que a aula desarma logo no início: agentes ampliam a capacidade operacional, não substituem pessoas.</li>
+      <li>Doze agentes, um por um, com o que cada um faz e onde cada um para: comercial, financeiro, administrativo, operacional, marketing, recursos humanos, concierge, jurídico, arquitetura e engenharia, compras e estoque, CEO e tecnologia.</li>
+      <li>Comercial: lead, follow-up e a classificação por temperatura (frio, morno, quente). Tratar os três do mesmo jeito é o erro clássico.</li>
+      <li>Financeiro: começa em modo de leitura, com controle de acesso, criptografia, registro auditável e validação humana no que movimenta valor.</li>
+      <li>Marketing: escalar sem escalar a equipe, desde que a voz esteja definida antes.</li>
+      <li>Concierge: a diferença entre agente e chatbot de “aperte um, aperte dois”.</li>
+      <li>Jurídico: a alucinação se administra com conferência. Nunca protocolar o que não foi lido inteiro.</li>
+      <li>O fluxo com todos coordenados e a ordem de prioridade para retorno rápido: comercial, atendimento, marketing, financeiro, operações, concierge, recursos humanos e jurídico.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem sabe explicar o próprio negócio, consegue automatizá-lo. Quem não sabe, vai automatizar a própria confusão.</q><q>Volume sem voz é ruído.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>Automações avançadas: e-mail, WhatsApp e Instagram</h3>
+    <ul>
+      <li>A automação mudou de natureza: da resposta fixa para um sistema que interpreta contexto, decide e coordena o processo.</li>
+      <li>E-mail: começar pela leitura. A IA resume, classifica a prioridade e aponta o que exige ação, sem responder, arquivar nem apagar.</li>
+      <li>WhatsApp: atendimento com a API oficial do WhatsApp Business. Método não autorizado gera bloqueio do número.</li>
+      <li>A hora de transferir para um humano: reclamação séria, cliente nervoso, negociação delicada, exceção à regra. A saída fica escrita na Skill.</li>
+      <li>Instagram: as mensagens diretas como canal de atendimento, com a origem do contato registrada. Responder rápido ajuda a venda e o alcance.</li>
+      <li>Naturalidade: escrever as respostas do agente no jeito de falar do dono, sem linguagem de manual.</li>
+      <li>Gatilho e camada de decisão: as duas peças de um fluxo que se adapta.</li>
+      <li>Governança: testar com volume pequeno e controlado antes de abrir para todos.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Automação boa é aquela que o cliente não percebe. Automação ruim é aquela que o cliente percebe e não consegue escapar.</q><q>A velocidade não corrige o erro. Ela multiplica.</q></div>
+  </div></article>
+
+  <p class="block-title">A empresa operada por IA · aulas 10 a 14</p>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>Organização digital: pastas, nomes e bases de conhecimento</h3>
+    <ul>
+      <li>Documento espalhado, nome inconsistente e versão confusa fazem o agente trabalhar com contexto fragmentado.</li>
+      <li>Os seis princípios da estrutura de pastas: separação por área, subdivisão consistente, padronização temporal, caminho curto, permissão por função e separação entre arquivo ativo e arquivo morto.</li>
+      <li>Como migrar sem desistir: criar a estrutura nova para o que for novo e puxar o material antigo aos poucos.</li>
+      <li>A convenção de nome com quatro elementos: tipo, cliente, data e versão.</li>
+      <li>A data no formato ano, mês, dia: os arquivos se ordenam sozinhos em qualquer sistema.</li>
+      <li>O próprio Claude renomeia, elimina duplicata e reorganiza conforme o padrão definido.</li>
+      <li>Bases de conhecimento: o que entra nelas e como transformam o que está preso na cabeça das pessoas em patrimônio da empresa.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Nenhuma ferramenta organiza uma bagunça sozinha. Ela só te dá uma bagunça sincronizada em todos os dispositivos.</q><q>Empresa organizada, resultado poderoso. Empresa bagunçada, bagunça em alta velocidade.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>A empresa operada por inteligência artificial</h3>
+    <ul>
+      <li>O que o termo significa de verdade: agentes integrados aos processos centrais, e não automações isoladas na periferia.</li>
+      <li>A divisão de trabalho: a IA fica com o repetitivo, o operacional e o analítico; as pessoas ficam com estratégia, criatividade, relacionamento e decisão complexa.</li>
+      <li>O diferencial competitivo que isso gera: velocidade operacional.</li>
+      <li>As quatro perguntas do mapeamento: quais tarefas existem, quem responde por cada uma, que informações circulam e quais regras decidem.</li>
+      <li>O que o mapeamento revela: gargalo, repetição e dependência de pessoas específicas.</li>
+      <li>Rotinas em três frequências: diárias, semanais e mensais. E a diferença entre uma rotina inteligente e um simples agendamento.</li>
+      <li>Agentes que colaboram exigem cinco itens de governança: responsabilidades, permissões, prioridades, limites de autonomia e auditoria.</li>
+      <li>A sequência madura em sete etapas: organizar processos, estruturar informações, padronizar, construir bases de conhecimento, automatizar gradualmente, integrar agentes e escalar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Enquanto isso não está mapeado, não é um processo da empresa. É um favor que alguém faz.</q><q>A automação amplia a capacidade operacional, mas não substitui a visão empresarial.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Make, n8n e webhooks: a caixa de ferramentas</h3>
+    <ul>
+      <li>Make: plataforma visual de automação, com cenários e módulos. Indicada para pequena e média empresa, automação rápida e protótipo.</li>
+      <li>A divisão de papéis repetida com clareza: o Claude pensa, o Make executa.</li>
+      <li>n8n: mais técnico, código aberto, pode ser instalado no próprio servidor. Dá mais controle, mais privacidade e menor custo quando o volume cresce.</li>
+      <li>O critério de escolha: se o fluxo trafega dado sensível, a privacidade pesa mais do que a facilidade.</li>
+      <li>Webhook: o sistema avisa na hora em que algo acontece, em vez de alguém ficar perguntando de minuto em minuto.</li>
+      <li>API e webhook convivem: o webhook avisa, a automação usa a API para buscar os detalhes.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O Claude pensa. O Make ou o n8n executam. A API conecta. E o webhook dispara.</q><q>Em vez de você perguntar, o sistema avisa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>Claude Cowork: do consultor que recomenda ao colaborador que faz</h3>
+    <ul>
+      <li>O que muda com o Cowork: o Claude planeja, executa e entrega a tarefa no computador, dentro da pasta autorizada.</li>
+      <li>Chat, Code ou Cowork: três perguntas para escolher. E a progressão recomendada, começando pelo Chat.</li>
+      <li>Três cuidados ao delegar: começar por pasta de trabalho e nunca pela de originais, dizer o que não pode ser tocado e conferir a primeira entrega inteira.</li>
+      <li>Skills no Cowork: procedimentos da empresa escritos em linguagem natural, acionados quando fazem sentido.</li>
+      <li>Plugins: pacotes prontos por área. O conselho é instalar um por vez, conforme a necessidade real.</li>
+      <li>As três camadas de conexão: conectores nativos, MCP personalizado e a extensão no Chrome. Conector é acesso: autorizar um de cada vez e desligar o que não se usa mais.</li>
+      <li>Tarefas agendadas: descrever a rotina uma vez e deixar rodar no horário. Exige computador ligado e aplicativo aberto.</li>
+      <li>Vibe working: produzir entregas profissionais descrevendo o resultado desejado.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Se o Chat é o consultor que recomenda, o Cowork é o colaborador que faz.</q><q>Não basta usar o Cowork. É preciso projetar como ele vai trabalhar.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Segurança e governança</h3>
+    <ul>
+      <li>A premissa: quanto mais integrada a empresa, maior o impacto de uma falha.</li>
+      <li>Pilar 1, controle de acesso: nem todo colaborador, e nem todo agente, deve acessar tudo.</li>
+      <li>Pilar 2, proteção de dados: criptografia, autenticação em dois fatores, backup, monitoramento e segmentação de acesso. Dado pessoal de terceiro não é da empresa; ela é a guardiã.</li>
+      <li>Pilar 3, auditoria contínua: registrar o que cada agente executou, decidiu e acessou.</li>
+      <li>Pilar 4, limites de autonomia: aprovação humana, validação automática, ponto de verificação e mecanismo de reversão.</li>
+      <li>Pilar 5, políticas e conformidade: proteção de dados desde a concepção, e não como remendo.</li>
+      <li>A pergunta antes de dar autonomia a um agente: se ele fizer isso mil vezes por engano, eu consigo desfazer?</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Segurança não é obstáculo à inovação. É a maturidade operacional que separa empresas vulneráveis de empresas resilientes.</q><q>É muito melhor aprender pela aula do que pela experiência.</q></div>
+  </div></article>
+
+  <p class="block-title">Setores e superfícies · aulas 15 e 16</p>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>Setores, a nova profissão e o mapa das plataformas</h3>
+    <ul>
+      <li>Hotelaria: o fluxo completo da consulta ao manual digital da casa, comparado ao modo tradicional. A tecnologia resolve a operação; a hospitalidade continua com as pessoas.</li>
+      <li>Advocacia: análise contratual, petição-base, revisão, organização documental e pesquisa, sem substituir a responsabilidade nem a estratégia.</li>
+      <li>Arquitetura e engenharia: briefing, memorial descritivo, orçamento e lista de materiais. Responsabilidade técnica não se delega a software.</li>
+      <li>Imobiliárias: SDR automático, marketing imobiliário e operação integrada com CRM e WhatsApp.</li>
+      <li>O denominador comum dos setores: todos vivem de documento, prazo e relacionamento.</li>
+      <li>Marketing e vendas: o vendedor passa a supervisionar agentes e a cuidar do relacionamento.</li>
+      <li>A profissão de AI Operator: quem coordena agentes, cria fluxos e supervisiona automações.</li>
+      <li>O mapa das plataformas e o guia de escolha por objetivo, com o aviso de que a lista muda rápido.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Eu vou ser a pessoa que a comanda ou a pessoa que ela substitui?</q><q>Ela cuida do fluxo para que vocês possam cuidar das pessoas.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>As cinco superfícies do Claude</h3>
+    <ul>
+      <li>A virada de chave: tratar o Claude como um profissional júnior muito rápido, que precisa de contexto e direção.</li>
+      <li>As cinco superfícies: Chat, Cowork, Code, Design e Agentes. A ordem recomendada começa pelo Chat.</li>
+      <li>Três práticas do Chat: dar papel e contexto, anexar o arquivo inteiro em vez de colar texto solto e iterar a partir do primeiro rascunho.</li>
+      <li>Quatro recursos que a maioria nunca liga: Projetos, Memória, Conectores e Artefatos.</li>
+      <li>O sistema de quatro pastas do Cowork: sobre mim, projetos e modelos em somente leitura; saídas é a única em que o Claude escreve.</li>
+      <li>Design: artefatos, imagens com IA e skills de design. O Claude descreve, o gerador de imagem finaliza.</li>
+      <li>Agentes e o laço agêntico: definir a tarefa e o critério de pronto, para que ele só pare quando alcançar o objetivo.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Para a maioria das pessoas, oitenta por cento do valor aparece no Chat.</q><q>Cinco linhas bem escritas sobre você valem mais do que cem prompts repetidos.</q></div>
+  </div></article>
+
+  <p class="block-title">Dicas práticas · aulas 17 a 20</p>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Dicas quentes gerais</h3>
+    <ul>
+      <li>PDF em Markdown antes da análise: um PDF é o desenho de uma página; o Markdown entrega a estrutura pronta.</li>
+      <li>Os “códigos secretos” da internet traduzidos com honestidade: são instruções em texto que mudam o estilo da resposta. O “modo deus” não existe.</li>
+      <li>As duas primeiras Skills a instalar: a de brainstorming e a que ajuda a criar as próprias Skills.</li>
+      <li>Instalar um pacote, usar por uma semana e só então instalar o próximo.</li>
+      <li>O Loop: o Claude só para quando bate a meta definida. O segredo é um critério de pronto verificável. Consome mais token, então vale onde a qualidade compensa.</li>
+      <li>Cinco conexões MCP para conhecer, com os cuidados de cada uma. Raspagem de dados dentro dos termos de cada site.</li>
+      <li>Texto com cara de IA: as skills de humanização ajudam no acabamento, mas não substituem ter uma voz definida.</li>
+      <li>O caminho do iniciante em cinco passos: plano pago e Claude no computador, Projetos, Conectores, Skills e Cowork. Mais três ajustes, a começar por ligar a memória.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Documento limpo, resposta melhor e mais barata.</q><q>Sem memória, é como um funcionário genial com amnésia diária.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>Dicas jurídicas</h3>
+    <ul>
+      <li>O aviso que vale para a aula inteira: a IA é apoio, não é advogado. Ela prepara, organiza e alerta; o profissional valida.</li>
+      <li>Três regras: nunca aceitar jurisprudência inventada, conferir sempre na fonte oficial e conferir prazo no sistema oficial.</li>
+      <li>A contestação por etapas, em seis passos dentro do mesmo prompt: analisar, achar fragilidades, mapear teses, confrontar documentos, estruturar e só então redigir.</li>
+      <li>O princípio que serve para qualquer área: separar análise de produção.</li>
+      <li>Pesquisa com o NotebookLM e fonte fechada: a ferramenta só usa os acórdãos que o advogado subiu. O mesmo método gera a linha do tempo do processo.</li>
+      <li>O fluxo assistido no sistema processual: o Claude prepara e insere a manifestação e para antes da assinatura.</li>
+      <li>Análise de contrato com o plugin jurídico do Cowork, comparando com o modelo da casa para ver o que mudou e o que sumiu.</li>
+      <li>Requerimento de provas por etapas, revisão da própria petição por blocos e o prompt mestre de um agente em seis blocos.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem pede “faça a contestação” recebe texto. Quem conduz por etapas recebe estratégia.</q><q>Ele para antes de assinar. A decisão final é sempre sua.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>Dicas de marketing</h3>
+    <ul>
+      <li>Lista de leads por região para prospecção entre empresas, com três regras: dado corporativo e não pessoal, saída fácil e respeito imediato a quem pediu para sair.</li>
+      <li>Três prompts para o Instagram: reescrever a bio (o que você faz, para quem e o que vende), analisar os números e roteirizar na própria voz a estrutura do que funcionou na concorrência.</li>
+      <li>Auditoria do perfil com pedido explícito de crítica honesta.</li>
+      <li>Agendamento com o Metricool conectado ao Claude e o método de produzir em bloco: um dia por mês.</li>
+      <li>Foto profissional via JSON em quatro passos, com a ressalva de usar com parcimônia na foto de perfil.</li>
+      <li>O kit de sete prompts semanais: dor para gancho, ideia viral, roteiro de Reels, prova social, carrossel, multiplicação e chamada para ação.</li>
+      <li>SEO, GEO e AEO: ser encontrado no buscador, na resposta da IA e na busca por voz.</li>
+      <li>A ordem recomendada: definir a voz, arrumar a bio, produzir em bloco e agendar, auditar e só então escalar a prospecção.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Lista não é estratégia.</q><q>A estrutura é gramática. O conteúdo é autoria.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>Outras áreas: anúncio, ambiente e higiene digital</h3>
+    <ul>
+      <li>Analisar o próprio anúncio em três passos: isoladamente, contra três concorrentes diretos e pela perspectiva de quem compra.</li>
+      <li>O que derruba a conversão é a dúvida que ficou sem resposta. A IA encontra essas lacunas porque lê sem o conhecimento prévio do dono.</li>
+      <li>Redesenhar um ambiente a partir de uma foto para estudar a reforma antes de gastar com a obra.</li>
+      <li>O uso comercial do redesenho: mostrar o potencial de um espaço vazio. A regra ética é deixar claro que a imagem é um conceito.</li>
+      <li>Higiene digital: cancelar assinaturas de e-mail com o Cowork, confirmando cada cancelamento.</li>
+      <li>Como lidar com lançamentos: tratar como novidade a testar e partir sempre de um problema real.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem parte do problema constrói operação. Quem parte da ferramenta coleciona assinatura que não usa.</q><q>Cada dúvida que fica é um clique que vai para o concorrente que respondeu.</q></div>
+  </div></article>
+
+  <p class="block-title">Fechamento · aulas 21 e 22</p>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>Os arquivos que mudam o jogo</h3>
+    <ul>
+      <li>Os três arquivos de identidade: sobre mim (quem você é), perfil de voz (como você fala) e o que eu não sou (o que você nunca faria).</li>
+      <li>O terceiro arquivo é o que quase ninguém escreve e o mais poderoso, porque define a fronteira.</li>
+      <li>Onde eles moram: as quatro pastas do Cowork, com três em somente leitura e uma de saídas.</li>
+      <li>Instruções globais: regras persistentes que valem para toda tarefa.</li>
+      <li>A regra mais importante da operação do autor: leitura e análise são livres; o que toca uma pessoa real, muda um número real ou gasta dinheiro real pede confirmação.</li>
+      <li>O prompt de entrevista: o Claude faz perguntas de esclarecimento antes de começar, e as respostas voltam para as pastas pessoais.</li>
+      <li>Conectores e plugins como as duas camadas finais. O efeito do conjunto: cada tarefa nova começa a oitenta por cento do caminho.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O um por cento que melhor usa o Claude quase não escreve prompts.</q><q>Com essas práticas, você para de se repetir.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>Encerramento: a única lição que importa</h3>
+    <ul>
+      <li>A recapitulação do caminho: do que é o Claude aos arquivos que mudam o jogo.</li>
+      <li>A lição central: o diferencial está em quem aprende a organizar a tecnologia. Antes de automatizar, organize. Antes de pedir mais, estruture melhor.</li>
+      <li>A segunda lição: a tecnologia não substitui o julgamento. Confie, mas confira.</li>
+      <li>A postura do autor diante da mudança: esperança e trabalho, sem ignorar os riscos.</li>
+      <li>Três movimentos para começar: escolher uma superfície (provavelmente o Chat), montar os três arquivos de identidade e resolver um problema real por semana.</li>
+      <li>A trajetória do autor: começou pedindo ajuste de texto no site e hoje opera a empresa com um time de agentes. Entre uma coisa e outra, constância e organização.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você não será substituído pela inteligência artificial. Você será substituído por quem a usa melhor do que você.</q><q>Quem domina essa disciplina não compra uma ferramenta. Constrói um sistema que trabalha por si.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Os métodos com nome</h2>
+  <p class="sub">Ferramentas de raciocínio que o aluno leva para a empresa. Rendem bem em carrossel e em slide, porque têm número e nome.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Método</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>A equipe de modelos</td><td>Haiku é o estagiário, Sonnet é o profissional do dia a dia, Opus é o sócio sênior.</td><td class="aula">1 e 3</td></tr>
+      <tr><td>As 4 funções da IA</td><td>Assistente, consultor, operador e agente.</td><td class="aula">1</td></tr>
+      <tr><td>Os 7 blocos do prompt</td><td>Função, objetivo, contexto, regras, estilo, formato e tarefa.</td><td class="aula">2</td></tr>
+      <tr><td>Persona</td><td>Uma linha que transforma o Claude em especialista. Melhora o rascunho, não dispensa a conferência.</td><td class="aula">2</td></tr>
+      <tr><td>Engenharia de contexto</td><td>Organizar contexto, conhecimento, memória e fluxos em vez de caprichar na frase.</td><td class="aula">2</td></tr>
+      <tr><td>Workflow em etapas</td><td>O objetivo quebrado em passos que podem ser repetidos.</td><td class="aula">2</td></tr>
+      <tr><td>Teste do estagiário, analista ou sócio</td><td>Quem eu chamaria para essa tarefa? A resposta indica o modelo.</td><td class="aula">3</td></tr>
+      <tr><td>As 3 camadas de economia</td><td>Projetos, Skills reutilizáveis e modelos de prompt.</td><td class="aula">3</td></tr>
+      <tr><td>Skill pensa, script executa</td><td>Instrução em linguagem natural de um lado, código literal do outro.</td><td class="aula">3</td></tr>
+      <tr><td>Documento de calibração</td><td>Perfil, regras de resposta e formatos preferidos, enviados no início da conversa.</td><td class="aula">3</td></tr>
+      <tr><td>Os 6 elementos da Skill</td><td>Identidade, regras, estilo, fluxo operacional, limites e padrões de resposta.</td><td class="aula">4</td></tr>
+      <tr><td>Rede de segurança</td><td>Manuais e checklists que registram lições, confirmam etapas críticas e criam idioma comum.</td><td class="aula">4</td></tr>
+      <tr><td>Vibe coding</td><td>Criar software descrevendo o objetivo, no papel de diretor.</td><td class="aula">5</td></tr>
+      <tr><td>CLAUDE.md</td><td>O arquivo de instruções permanentes na raiz do projeto.</td><td class="aula">5</td></tr>
+      <tr><td>As 5 peças da automação</td><td>MCP, tool use, Claude Desktop, API e webhook.</td><td class="aula">6</td></tr>
+      <tr><td>As 6 etapas de uma automação</td><td>Cliente, canal, webhook, plataforma de automação, API do Claude e banco de dados.</td><td class="aula">6</td></tr>
+      <tr><td>As 4 palavras da API</td><td>Endpoint, request, response e JSON.</td><td class="aula">6</td></tr>
+      <tr><td>Três execuções à mão</td><td>Fazer a tarefa três vezes anotando cada decisão. O que foi anotado é a Skill.</td><td class="aula">7</td></tr>
+      <tr><td>Auditoria de Skills</td><td>Analisar desempenho, validar contra fonte confiável e mapear falhas, com registro de cada modificação.</td><td class="aula">7</td></tr>
+      <tr><td>Os 4 princípios do fluxo seguro</td><td>Isolar o sensível, limitar permissões, criar pontos de verificação e projetar com modularidade.</td><td class="aula">7</td></tr>
+      <tr><td>O time de 12 agentes</td><td>O organograma por área, com o que cada um faz e onde cada um para.</td><td class="aula">8</td></tr>
+      <tr><td>Temperatura do lead</td><td>Frio, morno e quente, cada um com uma abordagem.</td><td class="aula">8</td></tr>
+      <tr><td>Modo de leitura primeiro</td><td>O agente lê, classifica e alerta antes de ganhar permissão para agir.</td><td class="aula">8 e 9</td></tr>
+      <tr><td>Os 6 princípios das pastas</td><td>Área, subdivisão, tempo, caminho curto, permissão e arquivo morto.</td><td class="aula">10</td></tr>
+      <tr><td>Convenção de nome</td><td>Tipo, cliente, data e versão, com a data em ano, mês, dia.</td><td class="aula">10</td></tr>
+      <tr><td>As 4 perguntas do mapeamento</td><td>Tarefas, responsáveis, informações e regras que decidem.</td><td class="aula">11</td></tr>
+      <tr><td>A sequência madura em 7 etapas</td><td>Organizar, estruturar, padronizar, construir bases, automatizar, integrar e escalar.</td><td class="aula">11</td></tr>
+      <tr><td>Make ou n8n</td><td>Simplicidade para começar ou controle e dados na própria infraestrutura.</td><td class="aula">7 e 12</td></tr>
+      <tr><td>Chat, Code ou Cowork</td><td>Três perguntas para escolher a superfície certa.</td><td class="aula">13</td></tr>
+      <tr><td>As 3 camadas de conexão</td><td>Conectores nativos, MCP personalizado e extensão no Chrome.</td><td class="aula">13</td></tr>
+      <tr><td>Vibe working</td><td>Produzir entregas profissionais descrevendo o resultado desejado.</td><td class="aula">13</td></tr>
+      <tr><td>Os 5 pilares da governança</td><td>Controle de acesso, proteção de dados, auditoria, limites de autonomia e conformidade.</td><td class="aula">14</td></tr>
+      <tr><td>Teste das mil vezes</td><td>Se o agente errar mil vezes, dá para desfazer? Se não, exige confirmação humana.</td><td class="aula">14</td></tr>
+      <tr><td>As 5 superfícies do Claude</td><td>Chat, Cowork, Code, Design e Agentes.</td><td class="aula">16</td></tr>
+      <tr><td>O sistema de 4 pastas</td><td>Sobre mim, projetos, modelos e saídas. Só a última recebe escrita.</td><td class="aula">16 e 21</td></tr>
+      <tr><td>Loop com critério de pronto</td><td>O Claude repete o ciclo até bater uma meta verificável.</td><td class="aula">16 e 17</td></tr>
+      <tr><td>O caminho de 5 passos</td><td>Plano pago e Claude no computador, Projetos, Conectores, Skills e Cowork.</td><td class="aula">17</td></tr>
+      <tr><td>Contestação por etapas</td><td>Seis passos, da análise da petição à redação.</td><td class="aula">18</td></tr>
+      <tr><td>Fonte fechada</td><td>Pesquisa só com os acórdãos que o advogado carregou.</td><td class="aula">18</td></tr>
+      <tr><td>Prompt mestre em 6 blocos</td><td>Missão, fontes, categorias, tarefa diária, níveis de alerta e formato do relatório.</td><td class="aula">18</td></tr>
+      <tr><td>Foto via JSON</td><td>Referência, ficha técnica gerada pelo Claude, gerador de imagem e resultado.</td><td class="aula">19</td></tr>
+      <tr><td>Os 7 prompts semanais</td><td>Gancho, ideia, roteiro, prova social, carrossel, multiplicação e chamada para ação.</td><td class="aula">19</td></tr>
+      <tr><td>SEO, GEO e AEO</td><td>Busca tradicional, buscadores de IA e respostas diretas ou por voz.</td><td class="aula">19</td></tr>
+      <tr><td>Os 3 arquivos de identidade</td><td>Sobre mim, perfil de voz e o que eu não sou.</td><td class="aula">21</td></tr>
+      <tr><td>Prompt de entrevista</td><td>O Claude pergunta antes de agir.</td><td class="aula">21</td></tr>
+      <tr><td>Os 3 movimentos para começar</td><td>Uma superfície, os arquivos de identidade e um problema real por semana.</td><td class="aula">22</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Casos da empresa do autor e exemplos das aulas</h2>
+  <p class="sub">O curso usa a Villela Stay, a empresa de hospedagem por temporada do próprio autor, como exemplo em todas as aulas. Os três primeiros itens são relatos do que ele faz. Os demais são situações que as aulas usam para ilustrar um ponto e servem de gancho para vídeo e carrossel.</p>
+  <div class="cases">
+    <div class="case"><h3>De ajuste de texto no site a um time de agentes</h3><p>O autor é advogado e não programa. Conta que começou pedindo ao Claude Code um ajuste de texto no site. Hoje a ferramenta constrói e mantém o site, o portal da equipe, o CRM, as automações de WhatsApp e os agentes. A lição: ninguém pula essa escada. Aulas 5 e 22.</p></div>
+    <div class="case"><h3>A Skill de cotação que sabe onde parar</h3><p>A Skill de reservas nunca inventa disponibilidade, sempre pergunta datas e número de hóspedes e consulta o calendário real. Cancelamento, desconto acima de dez por cento e evento com mais de vinte pessoas voltam para o dono antes de qualquer confirmação. Um funcionário inteiro descrito sem uma linha de código. Aulas 3 e 4.</p></div>
+    <div class="case"><h3>O relatório que chega antes de abrir o computador</h3><p>O agente CEO acompanha a ocupação por casa, compara os canais de venda e gera um relatório executivo diário. Nas palavras da aula, é a coisa mais próxima de ter um sócio que já leu tudo antes de você. Aula 8.</p></div>
+    <div class="case"><h3>Três cotações erradas ou trezentas</h3><p>Com a regra de preço errada, sem automação se erram três cotações por dia. Com automação, trezentas, todas iguais, rápidas e confiantes. Daí a recomendação de testar com dez clientes e conferir um por um. Aula 9.</p></div>
+    <div class="case"><h3>A casa que ainda não foi confirmada como limpa</h3><p>O valor do agente operacional está em perceber, às onze da manhã, que a casa com check-in às quinze horas ainda não foi confirmada como limpa. Um aviso que evita o problema que estraga uma avaliação. Aula 8.</p></div>
+    <div class="case"><h3>A compra de sexta à noite</h3><p>O agente de compras prevê o consumo do fim de semana e avisa na terça o que comprar até quinta. O que ele evita é a compra emergencial, feita às pressas e pagando mais caro. Aula 8.</p></div>
+    <div class="case"><h3>Contrato final, contrato final dois, contrato final agora vai</h3><p>A pasta que todo mundo tem serve de porta de entrada para duas aulas: o controle de versões no Claude Code e a convenção de nome de arquivo com a data em ano, mês, dia. Aulas 5 e 10.</p></div>
+    <div class="case"><h3>Oitenta arquivos</h3><p>No Chat, a pessoa pergunta como organizar oitenta arquivos, recebe um método e passa a tarde organizando. No Cowork, a pasta organizada e o índice vêm prontos. Aula 13.</p></div>
+    <div class="case"><h3>As três simulações do curso</h3><p>Situações que o aluno resolve na plataforma, listadas na página de venda: o agente financeiro no primeiro mês, a reclamação no WhatsApp automático e o Cowork na pasta de originais.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">Itens da página de venda. Os números podem ser citados.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada módulo</h3>
+      <ul>
+        <li>Videoaula com o autor apresentando o tema.</li>
+        <li>Artigo de leitura em PDF, reescrito a partir do livro, com resumo em cinco linhas e três tarefas para aplicar hoje. São 22 artigos.</li>
+        <li>Apresentação em PDF e versão interativa em HTML, com as notas do apresentador. São 22 apresentações.</li>
+        <li>Quiz comentado, com a explicação de cada alternativa.</li>
+        <li>Caderno de trabalho: Aprendi, Pratiquei, Apliquei.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li><strong>Tutor Villela.</strong> A IA do curso responde só com o conteúdo das aulas e do livro, cita a origem e leva ao minuto exato do vídeo. Se a resposta não está no curso, ele diz que não encontrou.</li>
+        <li>Livro Claude AI na Prática em PDF.</li>
+        <li>Biblioteca com 28 prompts prontos.</li>
+        <li>Modelos para copiar: o prompt de sete blocos, a Skill de cotação completa, o esqueleto do CLAUDE.md, o prompt mestre de um agente e os três arquivos de identidade.</li>
+        <li>Audiobook: 24 capítulos em áudio, 3h23, para ouvir no carro ou no fone com a tela bloqueada. O primeiro capítulo fica aberto como amostra.</li>
+        <li>Jornada do aluno: níveis, XP, 9 selos de competência e medalhas; diagnóstico inicial e teste final de 20 questões.</li>
+        <li>Villela Lab com 5 missões e projeto final.</li>
+        <li>Desafio IA de 21 dias e 3 simulações de situações reais.</li>
+        <li>Prompt Builder, gerador de agentes, as folhas de consulta “Claude AI Cheat Sheet” e “Agentes e automações” e 4 templates (prompt master, identidade, Cowork e calibração).</li>
+        <li>Villela Express: 10 vídeos curtos de consulta rápida.</li>
+        <li>Certificado da Villela Academy.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Empresários e profissionais liberais que querem aplicar IA no dia a dia da própria operação.</li>
+        <li>Advogados, arquitetos, corretores, anfitriões e gente de marketing que vive de documento, prazo e relacionamento.</li>
+        <li>Quem já usa o Claude como chat e quer sair do primeiro degrau: Projetos, Skills, Code, Cowork e agentes.</li>
+        <li>Quem vai coordenar automações e agentes na empresa, a função que o curso chama de AI Operator.</li>
+        <li>Quem prefere método a mágica.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura promessa de dinheiro fácil ou “comando secreto”. No curso, o que vale é organização.</li>
+      </ul>
+      <h3>Os setores que o curso trata (aula 15)</h3>
+      <ul>
+        <li><strong>Hotelaria:</strong> atendimento, reserva, concierge e check-in digital.</li>
+        <li><strong>Advocacia:</strong> análise contratual, organização documental e pesquisa, com revisão humana.</li>
+        <li><strong>Arquitetura e engenharia:</strong> briefing, memorial, orçamento e lista de materiais.</li>
+        <li><strong>Imobiliárias:</strong> qualificação de leads, anúncio e acompanhamento.</li>
+        <li><strong>Marketing e vendas:</strong> conteúdo, funil e atendimento.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Objeções e respostas</h2>
+  <p class="sub">Das perguntas frequentes da página de venda.</p>
+  <h3>Preciso saber programar?</h3>
+  <p>Não. O curso foi feito para empresários e profissionais liberais. O autor é advogado, não programador, e o módulo 5 mostra como o Claude Code funciona para quem descreve o que quer em português.</p>
+  <h3>O curso ensina a criar agentes e Skills?</h3>
+  <p>Sim. O módulo 7 ensina a criar, aplicar e auditar Skills. O módulo 8 apresenta o time de agentes de uma empresa, agente por agente. O módulo 18 traz o prompt mestre de um agente. Os módulos 9, 11 e 13 mostram automações, rotinas e o Cowork.</p>
+  <h3>Serve para a minha área?</h3>
+  <p>O módulo 15 cobre hotelaria, advocacia, arquitetura, imobiliárias e marketing. Os módulos 17 a 20 trazem dicas por área. O método vale para qualquer negócio que viva de documento, prazo e relacionamento.</p>
+  <h3>O conteúdo fica desatualizado?</h3>
+  <p>Ferramentas de IA mudam rápido. Por isso o curso ensina método (contexto, organização, governança) e sinaliza, nos módulos de dicas, o que tem prazo de validade curto. A orientação das aulas é conferir sempre a lista de modelos e recursos dentro da própria conta.</p>
+  <h3>Quantas aulas o curso tem?</h3>
+  <p>São 22 módulos, todos em vídeo. Cada módulo tem a videoaula, um artigo em PDF, uma apresentação em PDF e a versão interativa em HTML, além de um quiz e do caderno de trabalho.</p>
+  <h3>Dá para ouvir em vez de assistir?</h3>
+  <p>Sim. O audiobook toca no player do site, com a tela do celular bloqueada, no fone e no carro. Não há download.</p>
+  <h3>Por quanto tempo tenho acesso?</h3>
+  <p>O acesso é de 1 ano a partir da compra, incluindo as atualizações e as aulas novas publicadas nesse período.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias. Se o curso não for para a pessoa, ela pede o reembolso dentro do prazo.</p>
+</section>
+
+<section id="cuidados">
+  <h2>Cuidados na comunicação</h2>
+  <p class="sub">Para o criativo não prometer o que o curso faz questão de não prometer.</p>
+  <div class="care">
+    <h3>Evitar</h3>
+    <ul>
+      <li>“Comando secreto”, “modo deus”, “destrave o poder oculto do Claude”. A aula 17 existe para desmontar essa ideia, e a página de venda diz que o curso não é para quem procura isso.</li>
+      <li>Promessa de dinheiro fácil, de faturamento ou de número de horas economizadas. O curso não dá esses números como resultado do aluno.</li>
+      <li>“Empresa no piloto automático”, “a IA faz tudo sozinha”, “demita a equipe”. As aulas dizem o contrário: agentes ampliam a capacidade e a decisão continua humana. A aula 6 explica que o Claude pede e quem executa é o sistema do usuário, com a máquina ligada.</li>
+      <li>“Monte seu time de agentes em uma semana.” O curso ensina uma ordem (Chat, depois Cowork, depois Code e agentes) e avisa que quem pula etapa costuma desistir.</li>
+      <li>Vender as dicas jurídicas como substituto de advogado. A aula 18 abre dizendo que a IA é apoio, que jurisprudência se confere na fonte oficial e que a assinatura é do profissional.</li>
+      <li>Automação de WhatsApp “mais fácil e mais barata” por caminho não oficial. A aula 9 ensina a API oficial e avisa que o atalho gera bloqueio do número.</li>
+      <li>Prospecção em massa. A aula 19 defende lista curta, mensagem específica e respeito a quem pede para sair.</li>
+      <li>Imagem gerada por IA apresentada como foto real. A aula 20 trata isso como propaganda enganosa e pede que a imagem seja identificada como conceito.</li>
+      <li>Nomes de modelos, preços de planos e listas de ferramentas como verdade permanente. As aulas avisam que isso muda rápido.</li>
+      <li>“Acesso vitalício”. A oferta é de 1 ano de acesso.</li>
+      <li>Dar a entender que o curso é oficial, certificado ou parceiro da Anthropic. O Claude é o produto que o curso ensina a usar; evite o logotipo deles como se fosse selo. O certificado é da Villela Academy.</li>
+      <li>Depoimentos de alunos. A página de venda ainda não tem nenhum, então não há o que citar.</li>
+      <li>Tom de medo. O autor diz no encerramento que encara a mudança com esperança e com trabalho.</li>
+    </ul>
+  </div>
+  <p style="margin-top:14px">O preço e os itens incluídos mudam. Antes de fechar uma peça com valor, confira na página do curso.</p>
+</section>
+
+<footer>
+  Fonte: roteiros das 22 aulas e página de venda do curso na Villela Academy. Grupo Villela Stay.
+</footer>
+
+</div>
+</body>
+</html>

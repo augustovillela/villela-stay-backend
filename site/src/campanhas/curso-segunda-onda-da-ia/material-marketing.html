@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}</style>
+<title>A Segunda Onda da IA: material para criativos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Material de apoio para marketing · outubro de 2026</p>
+    <h1>A Segunda Onda da IA</h1>
+    <p class="lead">Tudo o que o curso ensina a quem já usa inteligência artificial e quer montar sistemas com ela, aula por aula, pronto para virar apresentação e criativo. O conteúdo abaixo foi tirado do texto narrado das 25 videoaulas animadas e da página de venda no ar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 25 aulas</a>
+  <a href="#metodos">Métodos com nome</a>
+  <a href="#casos">Histórias do curso</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Objeções</a>
+  <a href="#cuidados">Cuidados na comunicação</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados que podem ser citados como estão.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>A Segunda Onda da IA</dd></div>
+    <div><dt>Subtítulo</dt><dd>Agentes, RAG, automação, segurança e implantação: do usuário ao arquiteto de sistemas de IA</dd></div>
+    <div><dt>Autor</dt><dd>Augusto Villela, autor do livro de mesmo nome</dd></div>
+    <div><dt>Formato</dt><dd>25 videoaulas animadas, de cerca de dez minutos, todas disponíveis</dd></div>
+    <div><dt>Duração</dt><dd>4 h 17 min de vídeo</dd></div>
+    <div><dt>Em áudio</dt><dd>Audiobook com 25 capítulos, 4h17 no total</dd></div>
+    <div><dt>Preço</dt><dd>R$ 145,00 (conferido na página em 08/10/2026)</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, incondicional, com reembolso integral</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Certificado</dt><dd>Certificado da Villela Academy</dd></div>
+    <div><dt>Degustação</dt><dd>Aula 1 aberta, com o artigo da aula</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/a-segunda-onda-da-ia">academia.villelastay.com.br/academy/cursos/a-segunda-onda-da-ia</a></p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">Se o criativo só puder dizer uma coisa, é esta.</p>
+  <p class="thesis">Você já sabe usar IA. Agora aprenda a montar o sistema.</p>
+  <p>Quem aprendeu o básico chega ao mesmo lugar: cola o mesmo contexto dezenas de vezes por semana, copia dado de um sistema para outro com as próprias mãos e relê tudo porque não sabe se a resposta é confiável. O curso chama isso de uma conversa fazendo o trabalho de um sistema. A segunda onda da inteligência artificial é aprender a montar esse sistema: projetar, operar e governar o que existe em volta do modelo.</p>
+  <h3>O mapa do curso: a escada de cinco degraus</h3>
+  <ul>
+    <li><strong>Prompt.</strong> O que eu peço? Continua valendo, mas não basta mais.</li>
+    <li><strong>Contexto.</strong> O que o modelo precisa saber, em que ordem, e qual informação vence quando duas se contradizem.</li>
+    <li><strong>Harness.</strong> O “arreio”: o programa em volta do modelo, que decide ferramentas, permissões, memória e registro.</li>
+    <li><strong>Laço.</strong> Como o agente age, confere e para.</li>
+    <li><strong>Grafo.</strong> O fluxo desenhado em etapas, com pontos em que uma pessoa decide, que se pode salvar, retomar e auditar.</li>
+  </ul>
+  <p>Os degraus se acumulam. Um bom grafo continua dependendo de bons prompts. Toda aula diz em que degrau está.</p>
+  <h3>A promessa, em uma frase</h3>
+  <p>Ao terminar, o aluno sabe desenhar uma aplicação de IA em que toda ação tem um autor e toda consequência tem um dono.</p>
+  <h3>Quatro mensagens que sustentam qualquer peça</h3>
+  <ul>
+    <li><strong>O sistema é quase tudo o que não é o modelo.</strong> Modelo melhor ajuda, mas o resultado vem das peças em volta dele.</li>
+    <li><strong>Máquinas executam, só pessoas respondem.</strong> Antes de enviar, pagar, publicar ou apagar, alguém com nome aprova.</li>
+    <li><strong>Trava é mecanismo, pedido é só pedido.</strong> Escrever “nunca faça isso” na instrução não protege. A credencial que não consegue fazer, sim.</li>
+    <li><strong>Só vale o que foi medido.</strong> Impressão não é medida, e um teste só serve depois que alguém o viu falhar.</li>
+  </ul>
+  <h3>Como o curso ensina</h3>
+  <p>Ninguém precisa programar. Cada conceito difícil chega primeiro como uma história, depois como uma imagem do dia a dia e só então com o nome técnico. Seis personagens fictícios acompanham o curso inteiro, cada um com um problema bem real.</p>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso, com pequenos ajustes de corte, que funcionam como chamada.</p>
+
+  <p class="block-title">A virada e a arquitetura · aulas 1 a 4</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>A segunda onda</h3>
+    <ul>
+      <li>O teto da conversa: em volta da caixa de texto, a pessoa faz cinco papéis ao mesmo tempo. É a memória, a integração, o controle de qualidade, quem executa e o único registro.</li>
+      <li>Dois desses papéis, conferir e decidir enviar, devem continuar humanos. O problema é os cinco caírem na mesma pessoa, o tempo todo, por falta de estrutura.</li>
+      <li>A segunda onda não é um modelo mais inteligente. É um sistema composto, em que a IA deixa de ser uma janela e vira uma peça dentro de uma máquina maior.</li>
+      <li>A escada de cinco degraus que organiza o curso: prompt, contexto, harness, laço e grafo.</li>
+      <li>O mesmo modelo, com dois “arreios” diferentes, se comporta como dois sistemas diferentes.</li>
+      <li>Dois princípios que voltam em quase toda aula: começar pequeno e de forma reversível, e ter alguém com nome assinando nos pontos de consequência.</li>
+      <li>Para quem é: quem já usa ChatGPT, Claude ou Gemini, sabe pedir bem e sabe que a máquina erra com confiança.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A primeira onda ensinou a perguntar. A segunda ensina a construir o lugar onde as perguntas trabalham.</q><q>Ela está usando uma conversa para fazer o trabalho de um sistema.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>Do chatbot ao sistema que executa</h3>
+    <ul>
+      <li>Nem tudo que é vendido como agente é agente. A pergunta útil: quem decide o próximo passo, e quem age no mundo?</li>
+      <li>As quatro categorias: copiloto, automação de regra fixa, workflow (a receita, com o modelo numa etapa só) e agente (o cozinheiro que recebe o objetivo e a chave da despensa).</li>
+      <li>Começar pela solução mais simples que funcione. Quando o caminho é conhecido e o erro custa caro, o workflow com uma etapa de IA e uma tela de conferência ganha do agente.</li>
+      <li>Capacidade é o que a ferramenta alcança. Permissão é o que você decide que ela pode fazer. A trava de verdade é a credencial que só lê.</li>
+      <li>Os dois olhares antes de automatizar: para dentro da tarefa, atrás das decisões que ninguém escreveu, e para fora, ao longo do tempo.</li>
+      <li>Todo fluxo barato consome algum estoque, como atenção, confiança ou tempo de revisão, e o efeito aparece com atraso.</li>
+      <li>O painel que mede atividade em vez de resultado parece sucesso enquanto o problema cresce.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Antes de perguntar o que a inteligência artificial consegue fazer, pergunte o que ela pode fazer sem você.</q><q>Quem só enxerga os passos automatiza o erro; quem só enxerga o todo não automatiza nada.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Tudo o que não é o modelo</h3>
+    <ul>
+      <li>Os quatro tipos de executor: automação, modelo, agente e pessoa. Os três primeiros executam. Só a pessoa responde.</li>
+      <li>A matriz de responsabilidade: para cada etapa, quem executa, quem aprova e quem responde. Modelo, agente e automação nunca aparecem em “aprova” nem em “responde”.</li>
+      <li>O ponto de consequência: a etapa depois da qual o erro alcança alguém de fora ou fica difícil de desfazer. A aprovação fica imediatamente antes dele.</li>
+      <li>A folha da Lia: um sistema desenhado com dez peças, em que a caixa do modelo ocupa menos de um décimo.</li>
+      <li>Onde pôr o modelo: só onde a incerteza é tolerável. O que tem resposta certa verificável vira regra ou consulta exata.</li>
+      <li>A fronteira de confiança: tudo o que entra é conferido na travessia, inclusive a saída do próprio modelo.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Num sistema bem desenhado, toda ação tem um autor e toda consequência tem um dono.</q><q>Modelos, agentes e automações podem executar. Só pessoas podem responder.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>O contrato entre máquinas</h3>
+    <ul>
+      <li>API explicada como uma repartição pública: um guichê para cada assunto, um formulário para cada pedido e uma senha.</li>
+      <li>JSON é a ficha com campos de nome fixo. O schema é o regulamento da ficha, o contrato que sabe dizer não.</li>
+      <li>Recusar campo não previsto impede, por exemplo, um desconto que ninguém autorizou de passar calado.</li>
+      <li>Forma garantida não é conteúdo verdadeiro: a ficha pode vir impecável com o número errado. A conferência fica sempre do lado de quem recebe.</li>
+      <li>Webhook é a campainha que avisa na hora. Cria dois problemas: provar quem tocou (a assinatura, como um lacre de cera) e lidar com a campainha tocada duas vezes.</li>
+      <li>Idempotência: fazer duas vezes tem o mesmo efeito que fazer uma. A técnica do número que não muda, anotado num livro antes de processar.</li>
+      <li>A demonstração: nove chamadas de teste, com um modelo simulado, mostram o que acontece quando dá errado.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Entre dois sistemas, a gentileza não serve. Serve o contrato.</q><q>Se esta chamada chegar duas vezes, o mundo muda duas vezes?</q></div>
+  </div></article>
+
+  <p class="block-title">Contexto, ferramentas e conhecimento · aulas 5 a 10</p>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>O que a IA precisa saber</h3>
+    <ul>
+      <li>Contexto demais erra tanto quanto contexto de menos, e custa mais.</li>
+      <li>A janela de contexto é um orçamento, e não um depósito. Cada item custa dinheiro, tempo e atenção.</li>
+      <li>“Perdido no meio”: o que é crítico vai para as pontas. Regras invioláveis no começo, tarefa e formato no fim.</li>
+      <li>Engenharia de contexto: decidir o que entra, em que ordem e qual fonte vence. O livro separa o contexto em seis camadas.</li>
+      <li>A hierarquia de fonte da verdade, escrita. Quando há conflito, a resposta diz que há conflito. O histórico é contexto, nunca instrução.</li>
+      <li>Memória de trabalho (a mesa) e memória de longo prazo (o arquivo da sala). O modelo em si não guarda nada entre uma chamada e outra.</li>
+      <li>A política de memória em três perguntas: o que pode ser gravado, quando expira e como se apaga.</li>
+      <li>Memória envenenada: nenhuma lembrança muda uma regra, e nada que veio de fora vira memória sem uma pessoa confirmar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O modelo não lê o que você sabe. Lê o que você escolheu mostrar, na ordem em que mostrou.</q><q>Lembrar é fácil para uma máquina. Difícil é saber o que ela não deveria ter guardado.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>O modelo nunca aperta o botão</h3>
+    <ul>
+      <li>Chamada de ferramenta (function calling): o modelo fica atrás de um vidro e passa um bilhete. Quem executa é o programa em volta dele.</li>
+      <li>Toda permissão mora no harness. Não ter a ferramenta de marcar compromisso é uma trava. Escrever “não marque” é um pedido educado.</li>
+      <li>A ficha da ferramenta se escreve como para um estagiário muito literal: o que faz, quando não usar e o que não devolve.</li>
+      <li>Separar ferramentas por efeito: uma que só lê, uma que faz rascunho e uma que age no mundo, esta com aprovação a cada uso.</li>
+      <li>MCP, o padrão aberto que funciona como a tomada da casa: o sistema publica um servidor uma vez e qualquer aplicativo compatível usa.</li>
+      <li>O que volta de uma ferramenta é dado, nunca comando. O exemplo do título de reunião que tenta dar ordens ao assistente.</li>
+      <li>Envenenamento de ferramenta: servidor de terceiros se lê por inteiro antes de instalar, com a versão fixada.</li>
+      <li>A2A, o padrão de agente para agente: o cartão prova quem é o agente, não que ele é confiável.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O modelo nunca aperta o botão. Ele pede, e alguém decide se o botão existe.</q><q>O MCP padroniza a conexão, não a confiança.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>Achar pelo sentido</h3>
+    <ul>
+      <li>Conhecimento em texto aberto (Markdown), com fonte e data em cada nota. O que só você consegue abrir não serve a agente nenhum.</li>
+      <li>O trecho (chunk): cortar pela estrutura do texto, com sobreposição, e cada trecho leva a ficha do documento.</li>
+      <li>Embedding e busca vetorial: o endereço de um texto num mapa de significados. Acha “imunização” quando você digitou “vacinação”.</li>
+      <li>Os limites do mapa: perto não é certo, e código, sigla e número ficam borrados.</li>
+      <li>A busca por palavra (lexical) é o bibliotecário com lupa, que dá mais peso ao termo raro.</li>
+      <li>Busca híbrida: junta as duas pela posição. Premia o consenso e pode enterrar o acerto que só uma viu.</li>
+      <li>Nenhuma busca vence sempre. Quem decide é um gabarito com as suas perguntas, medido em três contas.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Achar a coisa certa é uma pergunta com duas metades: a palavra exata e o que ela quer dizer.</q><q>Sem gabarito, a medição vira opinião.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>Prova com consulta</h3>
+    <ul>
+      <li>RAG explicado como prova com consulta, em três etapas: indexar, recuperar e gerar com citação.</li>
+      <li>O RAG reduz a invenção, mas não a elimina. Achar o trecho certo e usar o trecho certo são dois eventos diferentes.</li>
+      <li>Os cinco modos de falha, cada um com o seu sintoma: a base não tem, o trecho certo ficou de fora, veio e foi mal usado, está vencido, ou dá ordens.</li>
+      <li>O filtro de permissão vem antes da busca, nunca depois. Buscar em tudo e esconder depois não é a mesma coisa.</li>
+      <li>Injeção indireta de prompt: um documento recuperado traz uma ordem disfarçada de conteúdo. A defesa é em camadas.</li>
+      <li>O verificador de citação: um fiscal em código, sem IA, que confere a frase letra por letra no trecho de origem.</li>
+      <li>O teste negativo só vale com a contraprova, que mostra que “o cão de guarda late”.</li>
+      <li>A decisão humana mais importante do sistema: quem marca a que acervo pertence cada documento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Citar a fonte não torna a frase verdadeira. Torna o erro encontrável.</q><q>A resposta era correta. E era uma quebra de sigilo.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>O que mora entre os documentos</h3>
+    <ul>
+      <li>Há fatos que não estão escritos em lugar nenhum: estão nas relações. Uma busca por trechos não os encontra.</li>
+      <li>Grafo de conhecimento: o quadro de cortiça dos filmes policiais, em que cada barbante tem tipo e direção.</li>
+      <li>A ontologia é o vocabulário combinado. No exemplo, seis tipos de coisa e sete tipos de ligação. É o que permite recusar um absurdo.</li>
+      <li>A extração feita por modelo tem trava: formulário fixo, grau de confiança e fila de revisão humana para o que é duvidoso.</li>
+      <li>O grafo avisa, não decide. No caso do conflito de interesses, quem examina e assina é a sócia.</li>
+      <li>Grafo precisa de dono, de rotina e da data da última atualização em cada resposta.</li>
+      <li>GraphRAG, para perguntas sobre o acervo inteiro. É caro, e só se paga com pergunta global frequente sobre acervo estável.</li>
+      <li>No laboratório, uma decisão humana de uma linha, numa fila de revisão, mudou o que o sistema diz sobre o acervo inteiro.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Alguns fatos moram dentro dos documentos. Outros moram entre eles.</q><q>Um grafo desatualizado é pior que nenhum, porque mente com autoridade.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>A fonte vencida e o teste que sabe falhar</h3>
+    <ul>
+      <li>Um sistema de recuperação é tão bom quanto o que foi posto dentro dele. A resposta pode sair bem citada e errada.</li>
+      <li>Proveniência: a ficha presa a cada documento, com origem, data, versão, dono e quem pode ver.</li>
+      <li>Guardar duas datas com nomes diferentes: a do documento e a de entrada no índice.</li>
+      <li>As três doenças do acervo: duplicata, conflito e obsolescência. Cuidar do acervo vira rotina com dia marcado.</li>
+      <li>Um dono por área, e a regra de que substituir não é apagar.</li>
+      <li>Avaliação (eval) e conjunto de ouro: casos fixos com gabarito, comparados com a versão anterior. Todo erro real vira um caso novo.</li>
+      <li>O modelo juiz erra de jeitos conhecidos, como preferir a resposta mais longa. Fato se confere contra gabarito. O juiz fica só com tom e clareza.</li>
+      <li>Teste de regressão: depois de escrever o teste, desfazer a correção e rodar de novo. Se continuar verde, o teste está errado.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um documento sem data responde com a mesma segurança no dia em que venceu.</q><q>Um teste só vale se você já o viu falhar.</q></div>
+  </div></article>
+
+  <p class="block-title">Agentes, fluxos e supervisão humana · aulas 11 a 15</p>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>O agente e quem diz que ele terminou</h3>
+    <ul>
+      <li>As três peças de um agente: o modelo que propõe, o harness que decide e o ambiente onde as coisas acontecem.</li>
+      <li>Trocar o modelo por um mais inteligente não resolve um problema de permissão ou de sinal de sucesso.</li>
+      <li>Critério de parada: a regra escrita antes da primeira execução. O modelo dizer que terminou não é critério.</li>
+      <li>O agente não pode ter poder sobre o instrumento que mede o próprio sucesso. É “o agente que conserta o termômetro”.</li>
+      <li>A memória do projeto mora em arquivos que o harness obriga a manter, fora do modelo.</li>
+      <li>Reflexão e autocrítica só ajudam quando o retorno vem de fora. Senão, o agente reorganiza o erro com palavras mais seguras.</li>
+      <li>O verificador externo sem modelo: conferir se uma referência existe custa quase nada e elimina o erro mais caro.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um agente é tão confiável quanto o instrumento que diz a ele que terminou.</q><q>Pensar de novo sobre um erro só ajuda quando alguém de fora diz que era um erro.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Um processo que cabe num desenho</h3>
+    <ul>
+      <li>Quando a ordem das etapas é conhecida, ela vai para o desenho. O modelo entra só onde interpretar texto é inevitável.</li>
+      <li>Nós, arestas e estado: a ficha de pedido que passa de mesa em mesa. O que não está no estado não existe para a etapa seguinte.</li>
+      <li>Quem escolhe o caminho é código lendo o estado, mesmo quando o estado foi preenchido por um modelo.</li>
+      <li>Checkpoint, o “salvar jogo”: permite cair, esperar uma aprovação por horas ou dias e voltar sem repetir nada.</li>
+      <li>Nada com efeito no mundo vem antes de uma pausa, porque na retomada a etapa recomeça da primeira linha.</li>
+      <li>Retentativa só para falha passageira, com o número de tentativas declarado por etapa.</li>
+      <li>Compensação: cada etapa que mexe no mundo declara o seu desfazer. E o efeito mais fácil de desfazer vem primeiro.</li>
+      <li>O livro chama esse jeito de projetar de Graph Engineering, e avisa que nem todo fluxo precisa disso.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um processo que não cabe num desenho também não cabe num agente.</q><q>Um fluxo que sabe parar, esperar e desfazer vale mais que um fluxo que sabe correr.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>Peça ao modelo só o que só ele sabe</h3>
+    <ul>
+      <li>A calculadora e o atendente: passo determinístico e passo probabilístico. O fluxo híbrido põe cada passo no tipo certo.</li>
+      <li>Dinheiro, quantidade e prazo são da regra, nunca do modelo. O erro plausível é o pior, porque passa despercebido.</li>
+      <li>Escrever “siga a tabela” nas instruções não transforma o modelo em planilha. O erro raro não aparece em teste pequeno.</li>
+      <li>A guarda: uma verificação por código, sem modelo, que decide se um dado pode seguir. Como um detector de metais na porta.</li>
+      <li>Decisão restrita: o modelo só pode devolver uma resposta de uma lista fechada, de preferência com o grau de certeza.</li>
+      <li>Calibração: a relação, medida, entre a confiança que o sistema declara e o que ele acerta.</li>
+      <li>O limiar de abstenção: abaixo dele, a mensagem vai para uma pessoa. E as categorias não custam o mesmo.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Peça ao modelo o que só ele sabe fazer. O resto, peça a uma regra.</q><q>Quem só pode responder dentro de quatro caixas precisa, antes de tudo, de uma quinta: “não sei”.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Dividir o trabalho, dividir o erro</h3>
+    <ul>
+      <li>Quando vários agentes fazem sentido: papéis com contexto, ferramentas ou permissões diferentes, ou verificação independente de quem produziu.</li>
+      <li>A conta chega: mais chamadas, mais tempo e dinheiro, e cada passagem de mão é um lugar novo para o erro entrar.</li>
+      <li>Os três mecanismos da cadeia: confiança herdada, amplificação (o telefone sem fio com a voz cada vez mais firme) e consistência que não é verdade.</li>
+      <li>O contrato entre agentes carrega três coisas a mais: a fonte e a data de cada afirmação, a dúvida explícita (conflitos e lacunas) e o que fazer na falha.</li>
+      <li>Quem verifica precisa olhar para fora da cadeia: a fonte original, uma regra ou uma pessoa.</li>
+      <li>A tela de quem aprova mostra, ao lado do texto, a fonte e a data de cada fato.</li>
+      <li>Um agente ou vários? Na dúvida, comece por um. E nenhum agente a mais quando o verificador pode ser uma regra.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Dividir o trabalho entre agentes também divide o erro. E às vezes o multiplica.</q><q>Um revisor que só recebe o que o agente anterior produziu mede a coerência da cadeia, nunca a verdade dela.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>Aprovar não é olhar</h3>
+    <ul>
+      <li>Aprovação humana como engenharia: no lugar certo, mostrando a coisa certa, dada pela pessoa certa.</li>
+      <li>Pôr aprovação em todos os passos parece mais seguro e é o contrário. Dilui a atenção nos que importam.</li>
+      <li>A tela que informa: o que vai acontecer, o que mudou e, numa palavra destacada, se dá para desfazer.</li>
+      <li>Fadiga de aprovação e os remédios: tirar aprovação do que não tem consequência, mostrar a diferença e agrupar em lote, com cada item decidido um por um.</li>
+      <li>A chave que pede não pode aprovar. E autorização é clique numa sessão, nunca senha digitada num canal de mensagem.</li>
+      <li>As três classes de ação: reversível, compensável e irreversível.</li>
+      <li>Autonomia por degraus: promoção com evidência e critério combinado antes, rebaixamento automático. Ação irreversível nunca é promovida a executar sozinha.</li>
+      <li>O botão de parada de verdade, o teste dos cinco minutos, conter antes de entender e a revisão sem culpados.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Aprovar não é olhar. É saber o que se está deixando acontecer.</q><q>Autonomia se empresta com recibo e se toma de volta sem discussão.</q></div>
+  </div></article>
+
+  <p class="block-title">Código, ambiente e operação · aulas 16 a 20</p>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>Um jeito de desfazer</h3>
+    <ul>
+      <li>Git para quem não programa: a fotografia (commit), o ramo e o pedido para juntar (pull request).</li>
+      <li>Juntas, as três peças tornam o erro do agente reversível, visível e atribuível.</li>
+      <li>Revisão tem teto humano. Mudança pequena se revisa. Mudança grande se aprova sem ler.</li>
+      <li>O remédio está no pedido: uma intenção por vez, um limite dito em voz alta e um ramo por pedido.</li>
+      <li>A pergunta da revisão profissional: o que mudou que eu não pedi? Algum teste foi alterado? Algum arquivo fora do pedido foi tocado?</li>
+      <li>A esteira de integração e entrega contínuas: inspetores que olham uma coisa só e têm autoridade para parar a linha.</li>
+      <li>A avaliação com gabarito promovida a portão. Para saber se ele funciona, estrague a busca de propósito e veja se fica vermelho.</li>
+      <li>Liberação gradual (canário) e a alavanca para voltar à última versão boa.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem escreve código com um agente precisa, antes de tudo, de um jeito de desfazer o que ele fez.</q><q>Um agente que escreve código depressa precisa de uma esteira que duvide dele na mesma velocidade.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Até onde o erro alcança</h3>
+    <ul>
+      <li>“Na minha máquina funciona”: um programa roda dentro de um ambiente, e o ambiente também precisa ser escrito.</li>
+      <li>Docker, imagem e contêiner: a fotografia de um computador já arrumado, com cada versão fixada.</li>
+      <li>O contêiner isola a visão do processo, não o núcleo do sistema. Para um agente, é uma parede fina.</li>
+      <li>Três perguntas para quem contrata um sistema: a versão está fixada? Roda como administrador? Onde ficam a chave e os dados?</li>
+      <li>Sandbox, a caixa de areia, responde a três perguntas: o que o agente pode ler, o que pode mudar e para onde pode falar.</li>
+      <li>A fronteira mais esquecida é a da rede. E o agente recebe credencial temporária, nunca a chave mestra.</li>
+      <li>O laboratório roda o mesmo agente duas vezes, permissivo e isolado, diante de uma ordem escondida numa planilha.</li>
+      <li>Aprovação humana e permissão mínima são duas travas independentes. Isolamento reduz risco, não produz segurança absoluta.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A pergunta de segurança não é: o agente vai errar? É: quando errar, até onde o erro alcança?</q><q>Um agente se conhece pelo que ele não consegue fazer no dia em que for enganado.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>Quem acorda de madrugada</h3>
+    <ul>
+      <li>As opções de hospedagem como imóveis: o terreno com casa vazia (servidor virtual), o apartamento com portaria (plataforma gerenciada), o hotel e o quiosque.</li>
+      <li>Responsabilidade compartilhada: três coisas nunca mudam de dono, que são o seu código, os seus dados e as suas chaves.</li>
+      <li>A escolha depende de quem vai operar numa semana ruim. Não existe resposta universal.</li>
+      <li>Os três formatos de trabalho: o balcão, a esteira de bastidor e o despertador. Cada um é vigiado separadamente.</li>
+      <li>O caminho até o sistema: o nome (DNS), o cadeado (TLS e certificado) e o intermediário na frente (proxy reverso).</li>
+      <li>O proxy lê a conversa para filtrar. Para dado sigiloso, isso é uma decisão de privacidade e de contrato.</li>
+      <li>“Está no ar” só vale depois de conferido na ponta. Quando painel e ponta divergem, vale a ponta.</li>
+      <li>O plano de desligar um sistema se escreve antes do plano de ligá-lo.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Colocar um sistema no ar é escolher quem acorda de madrugada quando ele cai.</q><q>O painel diz o que foi configurado. O teste na ponta mostra o que está acontecendo.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>A fatura e o registro</h3>
+    <ul>
+      <li>Observabilidade: responder, olhando de fora, o que o sistema está fazendo por dentro.</li>
+      <li>Os três sinais: o log diz o que aconteceu, a métrica diz quanto, o rastro (trace) diz por onde.</li>
+      <li>O identificador de execução, como a comanda do restaurante, amarra todos os eventos de uma tarefa.</li>
+      <li>O número que importa é o custo por tarefa, e não a fatura do mês.</li>
+      <li>A média esconde a ponta. Olhar sempre a tarefa mais cara do dia, o número de chamadas por tarefa e o percentil 95.</li>
+      <li>Zero num dia normal pede desconfiança. Um bom alarme dispara também quando o número fica bom demais.</li>
+      <li>O que o registro não guarda: o texto da pergunta e o da resposta ficam de fora por padrão. Rastro completo vira base de dados pessoais.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A fatura diz quanto você gastou. Só o registro diz com o quê.</q><q>O custo de um agente não é o preço do token. É o preço do token vezes o comportamento.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>Quando ninguém estiver calmo</h3>
+    <ul>
+      <li>Falha que passa e falha que fica. Só a primeira merece nova tentativa.</li>
+      <li>Retentativa com espera crescente e sorteada, e numa camada só. Três tentativas vezes três viram nove.</li>
+      <li>O disjuntor: depois de falhas demais, para de insistir e testa de tempos em tempos.</li>
+      <li>Fallback, o plano B. A resposta carrega o nome do modelo que respondeu.</li>
+      <li>Todo reserva é um lugar para onde os dados vão. Classificar o pedido antes: público, sigiloso ou ação.</li>
+      <li>Degradação graciosa: perder uma função sem perder a confiança.</li>
+      <li>Gateway de IA: o ponto que mede tudo também vê tudo. Instalar com versão fixada e tratar como um cofre.</li>
+      <li>Pesos abertos, código aberto e acesso por API são três decisões diferentes. O modelo local, o caminho híbrido e a estratégia de saída ensaiada.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Resiliência é decidir com calma o que o sistema fará quando ninguém estiver calmo.</q><q>Soberania não é ter tudo em casa. É saber sair de qualquer casa.</q></div>
+  </div></article>
+
+  <p class="block-title">Automação, segurança e privacidade · aulas 21 a 24</p>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>Automação que erra igual e avisa</h3>
+    <ul>
+      <li>Plataformas de automação sem código: a linha de envase. O passo que recebe lixo repassa o lixo adiante, calado.</li>
+      <li>A caixinha de IA é a parte fácil. O erro de quem começa é pôr a IA no centro.</li>
+      <li>A IA tem uma tarefa só: transformar texto livre numa ficha com campos fixos. Preço, frete e total ficam em regras que nenhuma mensagem alcança.</li>
+      <li>A nota de confiança que o modelo dá à própria leitura é um sinal a mais, nunca a única trava.</li>
+      <li>Regras de fila: acima do limite definido pelo dono, ou na dúvida, decide uma pessoa. E a tela mostra o motivo de cada parada.</li>
+      <li>Todo conector é uma procuração. O escopo é o recorte do que o aplicativo pode fazer na sua conta.</li>
+      <li>Os três degraus de poder: ler, redigir e agir para fora. Um e-mail enviado não se “desenvia”.</li>
+      <li>No banco de dados, o agente usa uma visão somente leitura. A trava mora no banco, não na instrução.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma automação boa não é a que nunca erra. É a que erra do mesmo jeito duas vezes e avisa na primeira.</q><q>Todo conector é uma procuração. O agente faz exatamente o que ela permite, inclusive o que você não pensou em proibir.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>Todo texto pode soar como ordem</h3>
+    <ul>
+      <li>Injeção de prompt, direta e indireta. Na indireta, o ataque vem dentro do material que o sistema lê, e o usuário nem sabe.</li>
+      <li>A razão é estrutural: regras, pergunta e documento chegam ao modelo pelo mesmo canal, como um único fluxo de texto.</li>
+      <li>A regra “nunca obedeça a instruções dentro dos documentos” ajuda, mas não resolve. É uma camada entre várias.</li>
+      <li>A tríade letal: acesso a dado privado, exposição a conteúdo de estranhos e um canal para fora. A defesa confiável é remover uma das três pernas.</li>
+      <li>Envenenamento de memória: o ataque que fica guardado e aparece semanas depois.</li>
+      <li>Envenenamento de ferramenta e cadeia de suprimentos: o que você instala roda com as suas credenciais.</li>
+      <li>A saída de outro agente é conteúdo não confiável, mesmo que o outro agente seja seu.</li>
+      <li>Nenhuma técnica conhecida torna um modelo imune. O que existe é defesa em camadas, para o erro ficar pequeno e visível.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Para um modelo de linguagem, qualquer texto que ele lê pode soar como uma ordem.</q><q>Você não controla o que os estranhos escrevem. Controla o que o seu agente consegue fazer depois de ler.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">23</div><div class="body">
+    <h3>Um agente sem nome próprio</h3>
+    <ul>
+      <li>Autenticação responde “quem é você?”. Autorização responde “o que você pode fazer?”. Um sistema pode acertar a primeira e errar a segunda.</li>
+      <li>A conta de serviço: o crachá de prestador do agente, com nome próprio. O registro passa a dizer a verdade sobre quem agiu.</li>
+      <li>Menor privilégio. Um bom escopo responde a três perguntas: sobre qual recurso, qual ação e em nome de quem.</li>
+      <li>As permissões de um agente se desenham supondo que, algum dia, ele vai ser enganado.</li>
+      <li>Token de curta duração: se vazar, o prejuízo tem data para acabar.</li>
+      <li>O cofre de segredos. O segredo não passa pelo contexto do modelo: uma chave que ele nunca viu não pode ser copiada por ele.</li>
+      <li>Rotação de credenciais, também para provar que você consegue trocar.</li>
+      <li>A rota que pede e a rota que aprova usam credenciais diferentes, e um teste prova isso.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um agente sem nome próprio age sempre com o nome de alguém.</q><q>Se você não der um crachá ao agente, ele vai usar o seu.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">24</div><div class="body">
+    <h3>O dado que nunca precisou chegar</h3>
+    <ul>
+      <li>As perguntas que vêm antes da ferramenta: que dados entram, para quê, com que justificativa legal, para onde vão, quem vê, por quanto tempo ficam e como se apaga.</li>
+      <li>A LGPD vale para cada etapa do uso de IA. A responsabilidade é de quem decide como os dados são tratados, e não se transfere pelo termo de uso de um serviço.</li>
+      <li>Minimização, a peneira antes do modelo: o que a tarefa não usa não entra.</li>
+      <li>Pseudonimização: o nome vira código, e a tabela fica em casa. Tirar o nome não é anonimizar.</li>
+      <li>Dado sensível, como o de saúde, e dado de criança e adolescente pedem cuidado redobrado.</li>
+      <li>Para apagar, é preciso saber onde o dado mora: documento, índice de busca, memória do agente, histórico do fornecedor e registros.</li>
+      <li>Transferência internacional e as perguntas ao fornecedor: em que país, por quanto tempo, e se os dados treinam modelos.</li>
+      <li>Soberania de dados e proveniência. E a regra prudente: quem revisa e assina o texto responde por ele.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O dado mais bem protegido é o que o sistema nunca precisou receber.</q><q>Escolher a ferramenta é a última decisão, não a primeira.</q></div>
+  </div></article>
+
+  <p class="block-title">Fechamento · aula 25</p>
+
+  <article class="lesson"><div class="n">25</div><div class="body">
+    <h3>O sistema inteiro</h3>
+    <ul>
+      <li>O projeto final junta as peças num assistente de escritório, a partir de três exigências que não são técnicas. Cada uma vira um teste que reprova o sistema.</li>
+      <li>A mesma pergunta, feita por três pessoas, recebe três respostas. A permissão é conferida antes da busca.</li>
+      <li>Nada sai sem aprovação, e quem pede não aprova o próprio pedido. O e-mail é preenchido por código, e o que a sócia lê é exatamente o que sai.</li>
+      <li>O portão de avaliação: uma mudança de uma linha reprova em onze perguntas com gabarito, e a versão anterior volta sozinha.</li>
+      <li>O sistema lista, por escrito, o que ele não faz.</li>
+      <li>Os dois grupos de travas: as que compensam um limite do modelo, e se afrouxam com evidência, e as que protegem uma responsabilidade, e não dependem do modelo.</li>
+      <li>As três coisas para levar do curso: ler um sistema pela fronteira de confiança e pelo ponto de consequência; dar a toda decisão dono, registro e caminho de volta; dizer por escrito o que o sistema não faz.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Juntar as peças é a parte fácil. A difícil é dizer, de cada uma, quem responde por ela.</q><q>Os modelos vão mudar de nome muitas vezes. A pergunta sobre quem responde pelo resultado, não.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Os métodos com nome</h2>
+  <p class="sub">Conceitos e ferramentas de raciocínio que o aluno leva para o trabalho. Rendem bem em carrossel e em slide, porque têm número, nome e uma imagem do dia a dia.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Método</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>A escada de 5 degraus</td><td>Prompt, contexto, harness, laço e grafo. Os degraus se acumulam.</td><td class="aula">1</td></tr>
+      <tr><td>O teto da conversa</td><td>Os cinco chapéus de quem usa só o chat: memória, integração, qualidade, execução e registro.</td><td class="aula">1</td></tr>
+      <tr><td>As 4 categorias de sistema</td><td>Copiloto, automação de regra fixa, workflow e agente.</td><td class="aula">2</td></tr>
+      <tr><td>Capacidade × permissão</td><td>O que a ferramenta alcança e o que você decide que ela pode fazer.</td><td class="aula">2</td></tr>
+      <tr><td>Estoque, laço e atraso</td><td>O olhar ao longo do tempo: o que o fluxo barato consome sem avisar.</td><td class="aula">2</td></tr>
+      <tr><td>Matriz de responsabilidade</td><td>Quem executa, quem aprova e quem responde, etapa por etapa.</td><td class="aula">3</td></tr>
+      <tr><td>Ponto de consequência</td><td>A etapa em que o erro sai do sistema: enviar, pagar, publicar, apagar.</td><td class="aula">3 e 15</td></tr>
+      <tr><td>Fronteira de confiança</td><td>A linha em que o dado é conferido antes de ser tratado como verdadeiro.</td><td class="aula">3</td></tr>
+      <tr><td>Schema</td><td>O contrato da ficha, que sabe dizer não.</td><td class="aula">4</td></tr>
+      <tr><td>Idempotência</td><td>Fazer duas vezes tem o mesmo efeito que fazer uma.</td><td class="aula">4 e 12</td></tr>
+      <tr><td>Janela como orçamento</td><td>Cada item do contexto custa dinheiro, tempo e atenção.</td><td class="aula">5</td></tr>
+      <tr><td>Hierarquia de fonte da verdade</td><td>A ordem escrita que diz qual fonte prevalece em caso de conflito.</td><td class="aula">5</td></tr>
+      <tr><td>Política de memória</td><td>O que grava, quando expira e como apaga.</td><td class="aula">5</td></tr>
+      <tr><td>Ferramentas por efeito</td><td>Uma que lê, uma que rascunha e uma que age, com permissões diferentes.</td><td class="aula">6</td></tr>
+      <tr><td>Busca híbrida com gabarito</td><td>Palavra e sentido juntos, escolhidos por medição.</td><td class="aula">7</td></tr>
+      <tr><td>Os 5 modos de falha do RAG</td><td>A base não tem, ficou de fora, foi mal usado, está vencido, dá ordens.</td><td class="aula">8</td></tr>
+      <tr><td>Filtro antes da busca</td><td>A permissão se aplica antes de recuperar, nunca depois.</td><td class="aula">8 e 25</td></tr>
+      <tr><td>Verificador de citação</td><td>Código que confere a citação letra por letra.</td><td class="aula">8</td></tr>
+      <tr><td>Teste negativo com contraprova</td><td>Provar que o proibido não acontece e que o teste sabe acusar.</td><td class="aula">8</td></tr>
+      <tr><td>Ontologia</td><td>O vocabulário combinado de coisas e ligações do grafo de conhecimento.</td><td class="aula">9</td></tr>
+      <tr><td>Proveniência</td><td>A ficha de origem, data, versão e dono de cada documento.</td><td class="aula">10 e 24</td></tr>
+      <tr><td>Conjunto de ouro</td><td>Casos fixos com gabarito para comparar versões.</td><td class="aula">10</td></tr>
+      <tr><td>O teste que sabe falhar</td><td>Desfazer a correção e ver o teste ficar vermelho.</td><td class="aula">10 e 16</td></tr>
+      <tr><td>Critério de parada</td><td>A regra, escrita antes, que diz quando o agente pode parar.</td><td class="aula">11</td></tr>
+      <tr><td>Checkpoint, retentativa e compensação</td><td>Salvar, tentar de novo e desfazer: os três mecanismos do fluxo.</td><td class="aula">12</td></tr>
+      <tr><td>Fluxo híbrido e guarda</td><td>O modelo interpreta, a regra calcula e um código confere.</td><td class="aula">13</td></tr>
+      <tr><td>Calibração e limiar de abstenção</td><td>Medir a confiança declarada e dar ao sistema a saída “não sei”.</td><td class="aula">13</td></tr>
+      <tr><td>Contrato entre agentes</td><td>Fonte, data, dúvida explícita e parada na falha.</td><td class="aula">14</td></tr>
+      <tr><td>A chave que pede não aprova</td><td>Pedido e aprovação em mãos e credenciais diferentes.</td><td class="aula">15 e 23</td></tr>
+      <tr><td>Níveis de autonomia</td><td>Uma escada por tipo de ação, com promoção por evidência.</td><td class="aula">15</td></tr>
+      <tr><td>Botão de parada</td><td>O disjuntor geral, testado: qualquer pessoa de plantão aciona.</td><td class="aula">15</td></tr>
+      <tr><td>Portão de avaliação</td><td>A inspeção automática com régua escrita antes da mudança.</td><td class="aula">16 e 25</td></tr>
+      <tr><td>As 3 perguntas da sandbox</td><td>O que o agente pode ler, mudar e para onde pode falar.</td><td class="aula">17</td></tr>
+      <tr><td>Responsabilidade compartilhada</td><td>Código, dados e chaves são sempre seus.</td><td class="aula">18</td></tr>
+      <tr><td>Log, métrica e rastro</td><td>Os três sinais da observabilidade, unidos por um identificador.</td><td class="aula">19</td></tr>
+      <tr><td>Disjuntor e fallback</td><td>Parar de insistir e ter um reserva com regra sobre dados.</td><td class="aula">20</td></tr>
+      <tr><td>Os 3 degraus do conector</td><td>Ler, redigir e agir para fora.</td><td class="aula">21</td></tr>
+      <tr><td>Tríade letal</td><td>Dado privado, conteúdo de estranhos e canal para fora.</td><td class="aula">22</td></tr>
+      <tr><td>Menor privilégio</td><td>Só as permissões que a tarefa exige, com prazo curto.</td><td class="aula">23</td></tr>
+      <tr><td>Minimização e pseudonimização</td><td>A peneira antes do modelo e o nome trocado por código.</td><td class="aula">24</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Histórias do curso: personagens fictícios, problemas reais</h2>
+  <p class="sub">Cada aula abre com uma cena. Os seis personagens foram criados no livro para ensinar e o próprio curso avisa disso. São o melhor material para gancho de vídeo e de carrossel, desde que apresentados como histórias do curso.</p>
+  <div class="cases">
+    <div class="case"><h3>Quarenta e uma colagens numa semana</h3><p>Helena, sócia de um escritório de advocacia, contou quantas vezes colou o mesmo parágrafo de contexto na conversa em uma semana. Foram quarenta e uma. O prompt dela era bom. O problema era outro. Aula 1.</p></div>
+    <div class="case"><h3>A mensagem que ninguém mais lia</h3><p>Uma rede de escolas passou a mandar uma mensagem automática a cada falta. As famílias silenciaram o número. Entre as mensagens ignoradas estava a única que importava. Nenhuma peça falhou. Aula 2.</p></div>
+    <div class="case"><h3>Banana, zero quilo, e duas notas pelo mesmo pedido</h3><p>A automação de uma distribuidora de hortifrúti mandava o pedido direto para o faturamento. Um cliente recebeu duas notas fiscais, e um pedido de zero quilo foi faturado. Nenhum dos erros era do modelo. Aula 4.</p></div>
+    <div class="case"><h3>O laudo que o assistente lembrou</h3><p>Um assistente com memória ligada guardou uma informação de saúde de um aluno e a devolveu, semanas depois, a outra pessoa, numa lista de ideias de passeio. Ninguém tinha mandado guardar. Aula 5.</p></div>
+    <div class="case"><h3>A resposta correta que era uma quebra de sigilo</h3><p>O assistente de pareceres citou, com fonte e tudo, um parecer feito para outro cliente. A restrição de acesso existia só na tela de pastas, não na busca. Aula 8.</p></div>
+    <div class="case"><h3>O agente que consertou o termômetro</h3><p>Pediram ao agente de código que corrigisse o teste que falhava. Onze minutos depois, o painel ficou verde. Ele não tinha mexido no cálculo. Tinha mudado o teste. Aula 11.</p></div>
+    <div class="case"><h3>Sessenta caixas reservadas para um pedido de trinta</h3><p>A automação caiu no meio, foi reiniciada e recomeçou do princípio. O estoque ficou reservado em dobro, e uma venda foi recusada com o tomate na câmara fria. Aula 12.</p></div>
+    <div class="case"><h3>Seis fretes errados em quatrocentos</h3><p>O modelo calculava o frete a partir da tabela nas instruções. Acertou quase todos e errou seis, com valores plausíveis. Ninguém soube quais até o fechamento do mês. Aula 13.</p></div>
+    <div class="case"><h3>A fornada das cinco</h3><p>Três agentes e uma pessoa aprovaram um post com o horário errado. O erro nasceu no primeiro, virou premissa do segundo e foi confirmado pelo terceiro. Aula 14.</p></div>
+    <div class="case"><h3>Duzentos e doze cliques, quatro segundos cada</h3><p>O sistema tinha aprovação humana no papel. Na prática, tinha um carimbo. Depois do redesenho das telas: cinquenta e três decisões, dezenove segundos em média e seis recusas. Aula 15.</p></div>
+    <div class="case"><h3>Duas e catorze da madrugada</h3><p>O sistema de gestão ficou lento, o agente reenviou os pedidos, e ninguém de plantão sabia como pausá-lo. A única senha estava com alguém que dormia. Aula 15.</p></div>
+    <div class="case"><h3>A fatura que triplicou</h3><p>Mesmo número de pessoas, mesmo número de perguntas, o triplo do custo. A causa era um laço sem teto, achado em meia hora de leitura do registro. Aula 19.</p></div>
+    <div class="case"><h3>O parágrafo em letra branca</h3><p>Um PDF trazia, invisível na página, um texto dirigido a sistemas automáticos de leitura. O resumo do assistente saiu dizendo que não havia nada a fazer. Aula 22.</p></div>
+    <div class="case"><h3>Três e doze da madrugada de domingo</h3><p>Duzentos e doze documentos mudaram de pasta. O registro acusava a desenvolvedora, que estava dormindo. O agente usava a credencial dela. Aula 23.</p></div>
+    <div class="case"><h3>Os casos reais da central do autor</h3><p>Em algumas aulas o autor conta, em primeira pessoa, lições da central de automação da própria empresa: o teste que passava com o código certo e com o errado (aula 10), o serviço que dizia “ok” enquanto outro rodava código antigo e o certificado que nunca veio (aula 18). Sempre como lição de arquitetura, nunca como vitrine.</p></div>
+    <div class="case"><h3>As três simulações da plataforma</h3><p>Situações que o aluno resolve na jornada do curso: o agente que encantou na demonstração, o parágrafo em letra branca e duas e catorze da madrugada.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">Itens da página de venda. Os números podem ser citados.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula animada, de cerca de dez minutos.</li>
+        <li>Artigo da aula em PDF: a videoaula inteira por escrito, com o código, as tabelas, os checklists e os laboratórios do livro. São mais de quinhentas páginas no total.</li>
+        <li>Três tarefas práticas, para aplicar no mesmo dia.</li>
+        <li>Quiz com a explicação de cada alternativa.</li>
+        <li>Caderno de trabalho imprimível: Aprendi, Pratiquei, Apliquei.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li><strong>Tutor Villela.</strong> A IA do curso responde só com o conteúdo das aulas e do livro, cita a origem e leva ao minuto exato do vídeo. Se a resposta não está no curso, ele diz que não encontrou.</li>
+        <li>Biblioteca com 30 prompts do curso, pronta para copiar.</li>
+        <li>Audiobook: as 25 aulas em áudio, 4h17, para ouvir no carro ou no fone com a tela bloqueada. O primeiro capítulo fica aberto como amostra.</li>
+        <li>Jornada do aluno: níveis, XP, selos de competência e medalhas; diagnóstico inicial e teste final.</li>
+        <li>Villela Lab com missões e projeto final.</li>
+        <li>Desafio de 21 dias.</li>
+        <li>Simulações de situações reais.</li>
+        <li>Prompt Builder, gerador de agentes e as folhas de consulta “O prompt do arquiteto de sistemas de IA” e “Protocolo anti-alucinação para sistemas de IA”.</li>
+        <li>Certificado da Villela Academy.</li>
+      </ul>
+    </div>
+  </div>
+  <p>Os laboratórios do livro, que aparecem nos PDFs, rodam com um modelo simulado, sem custo e sem chave.</p>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Quem já usa ChatGPT, Claude ou Gemini no dia a dia e sente que a conversa não dá mais conta.</li>
+        <li>Profissionais e gestores que vão contratar, encomendar ou supervisionar sistemas de IA.</li>
+        <li>Quem quer montar automações e agentes com segurança, mesmo sem ser programador.</li>
+        <li>Desenvolvedores iniciantes que querem a visão de arquitetura e governança.</li>
+      </ul>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Iniciantes. O curso parte do básico já sabido e não explica o que é um prompt.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Os seis personagens, para o público se reconhecer</h3>
+      <ul>
+        <li><strong>Helena:</strong> sócia de um escritório de advocacia de oito pessoas. Sigilo, aprovação e responsabilidade.</li>
+        <li><strong>Caio:</strong> dono de uma distribuidora de hortifrúti. Pedidos por WhatsApp, automação e faturamento.</li>
+        <li><strong>Beatriz:</strong> gestora de uma rede de três escolas. Comunicação com famílias e dados de crianças.</li>
+        <li><strong>Rodrigo:</strong> doutorando em saúde coletiva. Pesquisa, acervo e citação conferida.</li>
+        <li><strong>Lia:</strong> desenvolvedora júnior. É quem constrói os sistemas.</li>
+        <li><strong>Joana:</strong> dona de uma agência de conteúdo. Equipe de agentes e aprovação de posts.</li>
+      </ul>
+      <p>São personagens fictícios do livro. Servem para mostrar a variedade de quem o curso atende, e não como clientes ou alunos.</p>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Objeções e respostas</h2>
+  <p class="sub">Das perguntas frequentes da página de venda. A resposta sobre desatualização vem das aulas.</p>
+  <h3>Preciso saber programar?</h3>
+  <p>Não. Cada conceito difícil chega primeiro como uma história, depois como uma imagem do dia a dia e só então com o nome técnico. O código e os laboratórios estão no PDF de cada aula para quem quiser ir além.</p>
+  <h3>É para iniciante?</h3>
+  <p>Não. O curso parte do princípio de que a pessoa já usa ChatGPT, Claude ou Gemini no básico. Ele ensina a projetar, operar e governar o sistema em volta do modelo.</p>
+  <h3>O curso já está completo?</h3>
+  <p>Sim. As 25 videoaulas animadas estão no ar, cada uma com o artigo em PDF, quiz e caderno de trabalho, e o audiobook com os 25 capítulos.</p>
+  <h3>O conteúdo fica desatualizado quando sair um modelo novo?</h3>
+  <p>O curso ensina a arquitetura em volta do modelo: contexto, permissões, avaliação, aprovação e registro. A última aula fecha com esta ideia: os modelos vão mudar de nome muitas vezes; a pergunta sobre quem responde pelo resultado, não. Quando cita um produto ou padrão, o curso diz a data da consulta.</p>
+  <h3>Tem relação com o livro?</h3>
+  <p>Sim. É baseado no livro A Segunda Onda da IA, de Augusto Villela, o quarto da série, que aprofunda os livros sobre Claude, ChatGPT e Google AI.</p>
+  <h3>O que é o Tutor Villela?</h3>
+  <p>É o tutor de IA do curso. Responde usando só o conteúdo das aulas e do livro, cita de onde tirou cada resposta e leva ao minuto exato do vídeo. Se a resposta não estiver no curso, diz que não encontrou.</p>
+  <h3>Dá para ouvir em vez de assistir?</h3>
+  <p>Sim. O audiobook toca no player do site, com a tela bloqueada, no fone e no carro. Não há download.</p>
+  <h3>Por quanto tempo tenho acesso?</h3>
+  <p>Um ano a partir da compra, incluindo as atualizações e as aulas novas publicadas nesse período.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias, incondicional. Se o curso não servir para o trabalho da pessoa, ela pede o reembolso integral dentro do prazo, sem justificativa.</p>
+</section>
+
+<section id="cuidados">
+  <h2>Cuidados na comunicação</h2>
+  <p class="sub">Para o criativo não prometer o que o curso faz questão de não prometer.</p>
+  <div class="care">
+    <h3>Evitar</h3>
+    <ul>
+      <li>“Agentes que trabalham sozinhos”, “automatize tudo”, “tire o humano do processo”. O curso ensina o contrário: aprovação com nome antes de enviar, pagar, publicar ou apagar, e autonomia concedida aos poucos, com evidência.</li>
+      <li>Prometer sistema “à prova de erro”, “seguro” ou “imune a ataques”. A aula 22 diz que não se conhece técnica que torne um modelo imune a injeção de prompt, e a aula 17 diz que isolamento reduz risco, mas não produz segurança absoluta.</li>
+      <li>“Acabe com a alucinação” ou “IA que não erra”. A aula 8 afirma que o RAG reduz a invenção, mas não a elimina.</li>
+      <li>Apresentar o curso como de programação ou como curso para iniciantes. Ninguém precisa programar para acompanhar, e o curso não explica o que é um prompt.</li>
+      <li>Promessa de economia, de redução de custo ou de horas poupadas. O curso ensina a medir o custo por tarefa, mas não dá número de ganho.</li>
+      <li>Tratar a aula 24 (LGPD) ou a aula 5 como orientação jurídica. O próprio curso avisa que a aula não substitui a análise de um advogado nem da pessoa responsável pelos dados.</li>
+      <li>Usar os personagens como se fossem clientes, alunos ou depoimentos. Helena, Caio, Beatriz, Rodrigo, Lia e Joana são fictícios, e os números das histórias (41 colagens, 212 cliques, 6 fretes errados) pertencem às histórias. Não são estatística de mercado.</li>
+      <li>Citar resultados de laboratório como desempenho real. Os laboratórios usam modelo simulado e acervos fictícios, e o curso diz isso.</li>
+      <li>Dar a entender parceria, certificação ou endosso de empresas citadas nas aulas, como Anthropic, OpenAI, Google, Make, Docker ou Render. Elas aparecem como exemplo, com a data da consulta. Evite logotipos como se fossem selo.</li>
+      <li>Vender o curso como recomendação de uma ferramenta específica. As aulas repetem que o produto importa menos que a ideia.</li>
+      <li>“Acesso vitalício”. A oferta é de 1 ano de acesso.</li>
+      <li>Depoimentos de alunos. A página de venda não tem nenhum, então não há o que citar.</li>
+      <li>Tom de medo ou alarmismo com segurança e privacidade. O curso trata esses temas com método e faz questão da “leitura sem alarmismo”.</li>
+    </ul>
+  </div>
+  <p style="margin-top:14px">O preço e os itens incluídos mudam. Antes de fechar uma peça com valor, confira na página do curso.</p>
+</section>
+
+<footer>
+  Fonte: texto narrado das 25 videoaulas animadas e página de venda do curso na Villela Academy. Grupo Villela Stay.
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}</style>
+<title>Conexões de Sucesso — Formação para o Mundo Real: material para criativos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Material de apoio para marketing · outubro de 2026</p>
+    <h1>Conexões de Sucesso — Formação para o Mundo Real</h1>
+    <p class="lead">Tudo o que o curso ensina a jovens de 15 a 25 anos, aula por aula, pronto para virar apresentação e criativo. O conteúdo abaixo foi tirado dos roteiros das 40 videoaulas e da página de venda no ar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 40 aulas</a>
+  <a href="#metodos">Métodos com nome</a>
+  <a href="#casos">Ganchos das aulas</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Objeções</a>
+  <a href="#cuidados">Cuidados na comunicação</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados que podem ser citados como estão.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>Conexões de Sucesso — Formação para o Mundo Real</dd></div>
+    <div><dt>Chamada da página</dt><dd>O primeiro degrau da carreira foi serrado. Aprenda a pular.</dd></div>
+    <div><dt>Quem ensina</dt><dd>Augusto Villela, autor do livro Conexões de Sucesso. Na página, o curso é assinado pela Villela Academy</dd></div>
+    <div><dt>Formato</dt><dd>40 videoaulas animadas, de cerca de 8 minutos, em um jogo de 10 fases</dd></div>
+    <div><dt>Duração</dt><dd>5h28 de vídeo</dd></div>
+    <div><dt>Em áudio</dt><dd>Audiobook com 40 capítulos, 5h28 no total</dd></div>
+    <div><dt>Prática</dt><dd>21 tarefas fora da tela e um plano de 12 meses</dd></div>
+    <div><dt>Ritmo sugerido</dt><dd>10 a 14 semanas</dd></div>
+    <div><dt>Preço</dt><dd>R$ 95,00, compra única (conferido na página em 08/10/2026)</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, incondicional, com reembolso integral</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/conexoes-de-sucesso-formacao-para-o-mundo-real">academia.villelastay.com.br/academy/cursos/conexoes-de-sucesso-formacao-para-o-mundo-real</a></p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">Se o criativo só puder dizer uma coisa, é esta.</p>
+  <p class="thesis">O primeiro degrau da carreira foi serrado. O jovem de hoje não está sendo demitido. Ele está sendo não contratado.</p>
+  <p>As tarefas que serviam de porta de entrada (organizar planilha, escrever texto padrão, atender chamado simples, fazer o primeiro rascunho) hoje são feitas por software, quase de graça. A empresa passou a precisar de quem verifica, e verificar exige critério. O curso ensina o jovem a construir cedo o que continua valendo quando a execução ficou barata.</p>
+  <h3>Os três territórios que atravessam todas as fases</h3>
+  <ul>
+    <li><strong>Julgamento.</strong> Formular o problema certo, escolher o critério e decidir com informação incompleta. Inclui perceber quando a resposta da máquina está errada.</li>
+    <li><strong>Distribuição e confiança.</strong> Ter quem escute e ter quem acredite. Reputação e rede.</li>
+    <li><strong>Propriedade e responsabilidade.</strong> Ser dono do resultado: assumir o risco, cumprir o contrato, responder pela consequência.</li>
+  </ul>
+  <h3>A promessa, como está na página</h3>
+  <p>Em 10 a 14 semanas, o aluno sai com treze coisas que existem no mundo, e não com um boletim. A página fecha a promessa assim: “Não prometo renda rápida. Prometo método.”</p>
+  <h3>Quatro mensagens que sustentam qualquer peça</h3>
+  <ul>
+    <li><strong>A régua de entrada subiu.</strong> A vaga diz júnior no título e pede julgamento na descrição. O curso mostra os dados e também a leitura contrária.</li>
+    <li><strong>A mesma tecnologia que serrou o degrau encostou uma escada mais acima.</strong> Um jovem com as ferramentas certas e critério faz hoje o que exigia uma equipe pequena.</li>
+    <li><strong>Portfólio, e não apenas certificado.</strong> Cada fase termina em uma entrega que outra pessoa pode ver, usar ou conferir.</li>
+    <li><strong>IA usada, declarada e verificada.</strong> O curso não proíbe a máquina. Ensina a usar, dizer que usou e conferir antes de assinar.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso, com pequenos ajustes de corte, que funcionam como chamada. Na margem vai a ordem da aula no curso, de 01 a 40. No título vai o número que aparece na plataforma (fase e aula).</p>
+
+  <p class="block-title">Fase 0 · Comece por aqui · aulas 0.1 e 0.2</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>0.1 Boas-vindas: o que este curso é e o que não é</h3>
+    <ul>
+      <li>O que o curso não promete: renda rápida, fórmula de enriquecimento, emprego garantido.</li>
+      <li>O que ele constrói: critério para decidir, gente que escuta e confia, e a capacidade de ser dono de um resultado.</li>
+      <li>A origem: um livro de 2024 com dez conselhos, que o autor precisou reescrever pela metade dois anos depois.</li>
+      <li>As três regras de funcionamento: 10 módulos em ordem deliberada (pensar, operar ferramentas, vender, empreender), 21 tarefas fora da tela e IA usada de forma declarada e verificada.</li>
+      <li>Primeira missão: escrever qual profissão o aluno imagina seguir, e por quê. A folha volta na última aula.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Este curso não promete renda rápida. Não ensina fórmula de enriquecimento. Não garante emprego.</q><q>Quem assistir a tudo e não fizer nenhuma tarefa terá assistido a um curso. Quem fizer, terá construído um ano.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>0.2 Como estudar: as 21 tarefas, os quizzes e o certificado</h3>
+    <ul>
+      <li>O ritmo sugerido: uma aula a cada dois dias e a tarefa do módulo dentro da semana.</li>
+      <li>Tarefa tentada e malsucedida vale, desde que registrada e analisada. O que não vale é a tarefa não tentada.</li>
+      <li>A régua de autoavaliação em cinco critérios: rigor, execução, realidade, comunicação e autonomia.</li>
+      <li>O quiz serve para o aluno descobrir o que não entendeu. O certificado atesta a conclusão das aulas, não a execução das tarefas.</li>
+      <li>Entrega da fase: um compromisso assinado, com quatro datas no calendário.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Prazo sem data no calendário é intenção. E intenção não constrói nada.</q><q>Esconder que usou é falta de ética. Usar sem verificar é falta de técnica.</q></div>
+  </div></article>
+
+  <p class="block-title">Fase 1 · O novo mapa · aulas 1.1 a 1.4</p>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>1.1 O primeiro degrau foi serrado</h3>
+    <ul>
+      <li>Por que a escada da carreira funcionava: a tarefa simples era barata de errar e cara de executar. Era o preço que a empresa pagava para formar alguém.</li>
+      <li>O que mudou: o custo de executar foi a quase zero. Sobrou a necessidade de quem verifica.</li>
+      <li>Conhecimento codificado e conhecimento tácito: por que a máquina amplia o veterano e substitui o iniciante.</li>
+      <li>As duas perguntas para qualquer escolha: a IA faz isso melhor que um iniciante? Se sim, o que sobra de humano?</li>
+      <li>O erro comum: concluir que não adianta estudar. A automação aumenta a competência mínima para entrar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O primeiro degrau não foi encurtado. Foi serrado.</q><q>Você manda cinquenta currículos, recebe silêncio, e conclui que o problema é você. Não é você. É a geometria do mercado que mudou.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>1.2 A evidência dos dois lados</h3>
+    <ul>
+      <li>A favor da tese: estudo de Stanford, levantamento da PwC em anúncios de vaga, pesquisas com empregadores e trabalho do FGV Ibre com dados da PNAD Contínua.</li>
+      <li>Contra a tese: economistas do Federal Reserve de Nova York notaram que a queda começou antes das ferramentas. Estudos amplos não acham aumento sistemático de desemprego entre os expostos.</li>
+      <li>A postura: planejar contra o cenário medido e construir opcionalidade contra o cenário duro.</li>
+      <li>A técnica para a vida: o que os dois lados de um debate aceitam sem discutir é o ponto mais sólido. Aqui, que a régua de entrada subiu.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem não aprende a pesar os dois lados acaba acreditando no último vídeo que viu.</q><q>A vaga diz júnior no título, mas pede coisa de sênior na descrição.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>1.3 Os três territórios que a máquina não ocupa</h3>
+    <ul>
+      <li>Julgamento: a qualidade do que sai da IA depende do enquadramento de quem pergunta. Contexto é sempre local.</li>
+      <li>Distribuição e confiança: a IA baixou o custo de produzir e aumentou o valor de ser ouvido. Distribuição é ter quem confie, não ter seguidores.</li>
+      <li>Propriedade e responsabilidade: uma máquina não assina contrato nem responde por erro. Trabalho ancorado no mundo real está mais protegido do que se pensa.</li>
+      <li>Por que os três juntos: cada território sozinho produz um tipo de fracasso conhecido.</li>
+      <li>O teste rápido de zero a dez e a missão: a coluna mais vazia vira a prioridade do ano.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Dinheiro não some. Ele muda de endereço.</q><q>Mil seguidores indiferentes valem menos do que vinte profissionais que respondem a sua mensagem em uma hora.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>1.4 O que envelheceu: uma revisão honesta</h3>
+    <ul>
+      <li>O autor revisa, item por item, a própria lista de dez habilidades de 2024.</li>
+      <li>O que ficou mais forte: dominar o idioma (escrever virou pensar com precisão), ler livros, educação financeira e falar em público.</li>
+      <li>O que mudou de lugar: marketing digital, inteligência artificial, programação e inglês.</li>
+      <li>O que saiu: criar cursos on-line e fazer podcasts. O erro foi confundir ferramenta com habilidade.</li>
+      <li>O teste para o plano de estudo: isso vai existir com esse nome daqui a dez anos? Se não, aprenda a competência que está por baixo.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Eu confundi o veículo com a estrada.</q><q>Quando o mundo muda rápido, a teimosia custa muito mais caro do que o erro.</q></div>
+  </div></article>
+
+  <p class="block-title">Fase 2 · Pensar com método · aulas 2.1 a 2.4</p>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>2.1 A anatomia de uma afirmação</h3>
+    <ul>
+      <li>O custo de produzir uma mentira convincente foi a zero. Texto bem escrito deixou de ser sinal de quem sabe.</li>
+      <li>As quatro camadas de qualquer afirmação: fato, inferência, opinião e juízo de valor.</li>
+      <li>As três perguntas do treino: qual parte é verificável, qual é salto lógico, qual é gosto pessoal disfarçado de conclusão.</li>
+      <li>Pensamento crítico é calibrar a confiança pela qualidade da evidência. Duvidar de tudo é outra forma de preguiça.</li>
+      <li>Missão: desmontar três manchetes com que o aluno concordou sem pensar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Hoje a fluência de um texto não diz nada sobre se ele é verdadeiro.</q><q>Verificar o que nos desagrada todo mundo faz de graça. O exercício difícil é verificar o que já nos agrada.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>2.2 As cinco falácias que você encontra toda semana</h3>
+    <ul>
+      <li>Correlação apresentada como causa, com o exemplo do sorvete e dos afogamentos.</li>
+      <li>Apelo à autoridade fora de contexto: a pessoa tem competência neste assunto e interesse neste resultado?</li>
+      <li>Falso dilema: quais são as outras saídas?</li>
+      <li>Generalização apressada e viés do sobrevivente: quantos tentaram, e onde estão os que não conseguiram?</li>
+      <li>Ataque à pessoa. E o alvo principal da fase: o próprio raciocínio do aluno.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ninguém escreve o livro de quem fez tudo certo e não deu certo.</q><q>Detectar falácia no discurso dos outros é fácil e prazeroso. Detectar na própria cabeça é difícil e desagradável.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>2.3 Ler um número sem ser enganado por ele</h3>
+    <ul>
+      <li>As cinco perguntas para qualquer número: de onde veio, quem pagou, comparado a quê, percentual ou absoluto, que período.</li>
+      <li>O sinal visual: eixo vertical que não começa no zero amplia a variação.</li>
+      <li>As regras do gráfico honesto, para quando o aluno for quem produz o número.</li>
+      <li>A IA inventa número com o mesmo tom de segurança do dado correto. Peça o caminho, não só o resultado.</li>
+      <li>Missão: levar uma estatística da semana até a fonte primária e escrever meia página.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um número não é uma prova. É uma afirmação vestida de prova.</q><q>Número vindo de máquina não existe até ser conferido na fonte.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>2.4 Steelman e decisão sob incerteza</h3>
+    <ul>
+      <li>Espantalho e steelman: reconstruir o argumento contrário na versão mais forte antes de responder.</li>
+      <li>Um uso pouco comum da IA: pedir que ela argumente contra você.</li>
+      <li>Decisão reversível se toma rápido. Decisão irreversível pede lentidão, conselho e cenário pessimista.</li>
+      <li>Perguntar pelo custo do erro, e não só pela chance de dar certo.</li>
+      <li>Fazer o teste mais barato possível antes de se comprometer. Entrega da fase: o dossiê de verificação.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quando alguém te apressa justo na decisão que não tem volta, a pressa é a informação mais importante da conversa.</q><q>Quase toda decisão grande admite uma versão pequena e barata que ensina oitenta por cento do que você precisa saber.</q></div>
+  </div></article>
+
+  <p class="block-title">Fase 3 · Comunicar · aulas 3.1 a 3.4</p>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>3.1 Escrever para ser entendido: as seis regras</h3>
+    <ul>
+      <li>Por que escrever se a máquina escreve: escrever é o processo pelo qual o pensamento fica pronto.</li>
+      <li>As seis regras: frase curta, voz ativa, verbo forte, cortar advérbio, conclusão primeiro e cortar vinte por cento.</li>
+      <li>A ordem que desenvolve: o aluno faz o rascunho, pede crítica à máquina e reescreve.</li>
+      <li>Ler em voz alta antes de enviar.</li>
+      <li>Texto complicado não é texto inteligente.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A frase confusa quase nunca é problema de redação. É problema de pensamento.</q><q>A máquina vira editora severa, nunca autora.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>3.2 Os três textos que todo jovem precisa escrever</h3>
+    <ul>
+      <li>O e-mail profissional: assunto que descreve o conteúdo, pedido na primeira frase, prazo ou próximo passo no fim.</li>
+      <li>A mensagem de cobrança em três partes: fato objetivo, oferta de facilitação e próximo passo com data. Sem pedir desculpa por cobrar.</li>
+      <li>O pedido de ajuda em cinco partes: quem você é, como chegou até a pessoa, o que quer (pequeno e específico), por que ela e uma saída fácil.</li>
+      <li>O princípio dos três: facilitar o trabalho de quem lê.</li>
+      <li>Missão: escrever os três para destinatários reais e enviar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você passou doze anos aprendendo a escrever redação de vestibular. Vai usar isso uma vez.</q><q>Cobrar com clareza é parte do trabalho, tanto quanto entregar.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>3.3 Narrativa: a estrutura que prende</h3>
+    <ul>
+      <li>O cérebro guarda histórias, não listas.</li>
+      <li>Os quatro elementos da narrativa mínima: situação, tensão, ação e resultado. A tensão é o motor.</li>
+      <li>O relatório de projeto contado em quatro frases, em vez de uma lista de atividades.</li>
+      <li>“Me fale sobre você”: cronologia é lista com datas. Narrativa mostra o que a pessoa faz quando as coisas apertam.</li>
+      <li>O cuidado ético: inventar a tensão ou inflar o resultado é mentir.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma boa ideia mal comunicada é, na prática, indistinguível de uma ideia ruim.</q><q>Narrativa organiza a verdade. Não substitui a verdade.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>3.4 Falar de pé: presença, medo e perguntas hostis</h3>
+    <ul>
+      <li>A fala de três minutos: fisgada, tensão, corpo com no máximo três pontos e fechamento.</li>
+      <li>O corpo em quatro coisas: pausa, olhar, pés plantados e respiração baixa.</li>
+      <li>O medo: exposição gradual, decorar começo e fim, dar outro nome à ativação e focar em quem ouve.</li>
+      <li>A pergunta hostil: ouvir até o fim, reformular, responder o que foi perguntado e dizer “não sei” quando não souber.</li>
+      <li>Entrega da fase: o pitch de três minutos gravado, depois de apresentado ao vivo a três pessoas de fora da família.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A gravação treina. A plateia ensina.</q><q>Uma resposta inventada, quando descoberta, destrói a credibilidade de tudo o mais que você disse.</q></div>
+  </div></article>
+
+  <p class="block-title">Fase 4 · Repertório e autogestão · aulas 4.1 a 4.4</p>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>4.1 Ler livros na era do resumo instantâneo</h3>
+    <ul>
+      <li>O resumo entrega a conclusão. A leitura entrega o caminho até ela, e é o caminho que treina a cabeça.</li>
+      <li>Três benefícios sem substituto: atenção longa, o próprio modelo de linguagem e a experiência vivida através de outra pessoa.</li>
+      <li>Um repertório de partida organizado por finalidade, sem leitura obrigatória.</li>
+      <li>Como ler: meta de tempo, largar o livro ruim sem culpa, uma frase por capítulo, alternar ficção e não ficção, reler.</li>
+      <li>IA na leitura: antes ou no lugar, atrofia. Durante ou depois, amplifica.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O resumo entrega conclusões. A leitura entrega o processo mental de chegar até elas.</q><q>Há mais livros bons do que tempo de vida.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>4.2 Idioma: participar, não consumir</h3>
+    <ul>
+      <li>A tradução automática resolveu o consumo. Não resolveu a participação ao vivo: negociação, entrevista, reunião, conversa de corredor.</li>
+      <li>Confiança não atravessa camada de tradução.</li>
+      <li>Pensar em outra língua dá uma segunda maneira de organizar problemas.</li>
+      <li>Fluência real segue sendo diferencial no Brasil e abre o trabalho remoto pago em moeda forte.</li>
+      <li>Como aprender hoje: falar desde o primeiro dia, usar a IA como parceira de conversa e manter trinta minutos por dia.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem depende de tradução participa da versão gravada do mundo. Quem fala a língua participa da versão ao vivo.</q><q>Máquina para volume, humano para realidade.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>4.3 Atenção e trabalho profundo</h3>
+    <ul>
+      <li>Os aplicativos são desenhados para prender a atenção. A saída é mudar o ambiente, não resistir mais.</li>
+      <li>Três medidas: atrito deliberado, notificações desligadas por padrão e a regra da primeira hora sem telefone.</li>
+      <li>Trabalho profundo e trabalho raso. O erro quase universal é dar ao raso as melhores horas.</li>
+      <li>A regra: duas horas de trabalho profundo por dia, no melhor horário, antes de qualquer trabalho raso.</li>
+      <li>Missão: medir por uma semana os minutos reais de trabalho profundo, sem tentar melhorar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você está enfrentando um adversário profissional com armas de amador.</q><q>Quem começa reagindo passa o dia reagindo.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>4.4 Sistema mínimo, corpo e resiliência</h3>
+    <ul>
+      <li>O sistema mínimo em quatro peças: captura em um lugar só, planejamento semanal com três prioridades, uma coisa por dia e revisão do que falhou.</li>
+      <li>O corpo como infraestrutura: sono, movimento, alimentação e substâncias. Sem prescrição individual.</li>
+      <li>Resiliência: separar “este trabalho ficou ruim” de “eu sou ruim”. Pedir crítica específica e registrar o que deu certo.</li>
+      <li>Reconhecer o próprio limite e procurar ajuda profissional é decisão inteligente.</li>
+      <li>Entrega da fase: o protocolo de 30 dias, com no máximo quatro itens e adesão medida.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Motivação é um estado emocional que oscila. E você não pode contar com ela.</q><q>Um sistema que você cumpre em setenta por cento vale muito mais do que um sistema perfeito abandonado na segunda semana.</q></div>
+  </div></article>
+
+  <p class="block-title">Fase 5 · Operar máquinas · aulas 5.1 a 5.5</p>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>5.1 O que a IA é — e por que ela erra com confiança</h3>
+    <ul>
+      <li>Aprender a dirigir, e não engenharia de motores: o modelo mental certo, sem matemática.</li>
+      <li>Um modelo de linguagem prevê a continuação mais plausível. Ele não consulta um banco de fatos.</li>
+      <li>Quatro consequências: por que é tão bom, por que inventa, por que erra com confiança e por que o contexto muda tudo.</li>
+      <li>Três atitudes de quem assina: conferir o que for específico, desconfiar do tom seguro e dar contexto.</li>
+      <li>Missão: provocar erros de propósito em um assunto que o aluno domina.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Plausível não é verdadeiro.</q><q>A fluência deixou de ser indicador de confiabilidade.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>5.2 Prompt estruturado: Função, Objetivo, Contexto, Regras, Tarefa</h3>
+    <ul>
+      <li>Os cinco elementos do prompt, montados em um exemplo de precificação de diária e em outro de estudo para prova.</li>
+      <li>As três regras fixas: não invente números, pergunte se faltar informação e responda no formato pedido.</li>
+      <li>Duas técnicas extras: dar exemplos bons e ruins, e pedir o raciocínio antes da conclusão.</li>
+      <li>O erro mais comum: aceitar a primeira resposta. As boas aparecem na terceira ou quarta rodada.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem para na primeira está usando dez por cento da ferramenta e concluindo que ela é limitada.</q><q>Você não consegue auditar uma conclusão isolada. Consegue auditar um caminho.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>5.3 Verificação, dados sensíveis e responsabilidade</h3>
+    <ul>
+      <li>O protocolo de verificação em cinco passos, da fonte primária ao teste do especialista.</li>
+      <li>A alucinação mais perigosa: a fonte real citada dizendo o que ela não diz.</li>
+      <li>O que nunca entra em ferramenta de uso geral: dado pessoal de terceiros, sigilo, senhas. Anonimize antes.</li>
+      <li>Do uso avulso aos assistentes especializados e aos agentes: a competência passa a ser especificar, supervisionar e responder.</li>
+      <li>Três regras de higiene: tentar antes de perguntar, usar como parceiro de treino e manter um domínio da vida sem máquina.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você responde por tudo o que entrega, independentemente de quem produziu.</q><q>O perigo real não é a máquina tomar o seu emprego. É você entregar a ela justamente a parte do trabalho que faria você crescer.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>5.4 Automação: gatilho, condição, ação, exceção</h3>
+    <ul>
+      <li>O exercício de escrever o passo a passo de uma tarefa, e as três descobertas que ele traz.</li>
+      <li>Os quatro conceitos: gatilho, condição, ação e exceção. Mais variável e repetição.</li>
+      <li>A conta do retorno: tempo de construção dividido pelo tempo economizado por semana.</li>
+      <li>Duas armadilhas: automatizar um processo ruim e escolher a ferramenta antes do processo.</li>
+      <li>Programar: o que permanece é descrever um processo com precisão e avaliar se a máquina executou direito.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Automação sem tratamento de exceção falha em silêncio.</q><q>Automação que você nunca viu falhar é automação que você não conhece.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">23</div><div class="body">
+    <h3>5.5 Dados e decisão: do número à recomendação</h3>
+    <ul>
+      <li>A planilha bem estruturada e a limpeza do dado, que consome a maior parte do tempo.</li>
+      <li>Indicador de resultado chega tarde. Indicador de esforço chega cedo e dá para agir.</li>
+      <li>Métrica de vaidade e métrica de decisão: se o número cair pela metade, eu mudaria alguma coisa?</li>
+      <li>A recomendação em quatro elementos: o que os dados mostram, quanto vale em dinheiro, o que fazer e como saber se funcionou, com prazo.</li>
+      <li>Entrega da fase: assistente de IA com limites declarados, automação testada e painel com recomendação apresentada ao dono.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ter o dado não é o trabalho. O trabalho é transformar o dado numa decisão que alguém consiga executar.</q><q>Três indicadores acompanhados toda semana valem mais do que vinte olhados uma vez.</q></div>
+  </div></article>
+
+  <p class="block-title">Fase 6 · Mercado · aulas 6.1 a 6.5</p>
+
+  <article class="lesson"><div class="n">24</div><div class="body">
+    <h3>6.1 Vender é perguntar melhor do que falar</h3>
+    <ul>
+      <li>O bom vendedor descobre se existe encaixe entre um problema e uma solução. Metade do trabalho é dizer “isso não é para você”.</li>
+      <li>As quatro camadas de pergunta do diagnóstico: situação, problema, implicação e valor.</li>
+      <li>A implicação é a etapa que quase todo mundo pula. O cliente compra quando ele mesmo dimensiona o problema.</li>
+      <li>Apresentar pouco: só o que responde ao que foi dito.</li>
+      <li>Os sinais da escuta: anotar, não interromper, repetir com as próprias palavras e ficar em silêncio.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem sabe vender nunca fica sem opção.</q><q>Quem nunca diz não, não tem um sim que valha alguma coisa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">25</div><div class="body">
+    <h3>6.2 As cinco objeções universais</h3>
+    <ul>
+      <li>Preço: reancorar no custo do problema. Nunca baixar no primeiro empurrão.</li>
+      <li>Prazo, confiança, prioridade e autoridade: a resposta própria de cada uma.</li>
+      <li>Confiança se responde com prova: um caso, uma demonstração, uma garantia ou um teste pequeno.</li>
+      <li>Três posturas diante do não: não levar para o pessoal, perguntar por quê e preservar a relação.</li>
+      <li>O acompanhamento: cada contato entrega algo. No fim, uma mensagem que encerra com dignidade.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Toda objeção que você vai ouvir na vida é uma variação de cinco.</q><q>O não de hoje é frequentemente o sim de dezoito meses adiante.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">26</div><div class="body">
+    <h3>6.3 Negociação: alternativa, âncora, concessão e ampliação</h3>
+    <ul>
+      <li>A melhor alternativa: saber o que fazer se não houver acordo. Muitas vezes a negociação começa por construir a alternativa.</li>
+      <li>Ancoragem: o primeiro número condiciona a conversa. Ancore só no que consegue justificar.</li>
+      <li>Concessão recíproca: toda concessão vem com contrapartida, mesmo pequena.</li>
+      <li>Ampliar antes de dividir: pôr na mesa prazo, escopo, forma de pagamento e outras variáveis além do preço.</li>
+      <li>Persuasão e manipulação, com um teste só: se o cliente soubesse tudo o que você sabe, ainda compraria?</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Concessão gratuita não gera gratidão. Gera expectativa de mais concessões.</q><q>Serenidade é, em si mesma, poder de barganha.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">27</div><div class="body">
+    <h3>6.4 Trabalhar em público e escolher um recorte</h3>
+    <ul>
+      <li>Quando produzir ficou quase gratuito, o gargalo passou para atenção e credibilidade.</li>
+      <li>Reputação: não se automatiza, compõe juros e sobrevive à troca de tecnologia.</li>
+      <li>A peça de portfólio em quatro parágrafos: problema, o que eu fiz, resultado e o que aprendi, incluindo o que deu errado.</li>
+      <li>Posicionamento: um recorte específico, válido por dois anos. “Eu ajudo quem a resolver o quê.”</li>
+      <li>Três cuidados: ter um endereço próprio na internet, um perfil profissional decente e limpar o passado digital.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem só publica sucesso é lido como propaganda. Quem conta onde errou é lido como alguém de verdade.</q><q>Ninguém indica um generalista, porque não há gatilho de memória.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">28</div><div class="body">
+    <h3>6.5 Rede: como se constrói de verdade</h3>
+    <ul>
+      <li>Rede é o número de pessoas que lembram de uma vez em que você foi útil.</li>
+      <li>A mensagem de aproximação em cinco partes, com pedido pequeno e saída fácil.</li>
+      <li>Dar antes de pedir: tempo, atenção, uma informação, uma apresentação, uma correção educada.</li>
+      <li>Depois da conversa: agradecimento específico em 24 horas e, três meses depois, contar o que fez com o conselho.</li>
+      <li>Entrega da fase: uma venda real conduzida do diagnóstico ao fechamento, com as objeções registradas, e um portfólio público.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem só aparece pedindo é lembrado como custo. Quem aparece dando é lembrado como pessoa.</q><q>A pessoa maltratada hoje é quem decide sobre você daqui a oito anos.</q></div>
+  </div></article>
+
+  <p class="block-title">Fase 7 · Dinheiro · aulas 7.1 a 7.4</p>
+
+  <article class="lesson"><div class="n">29</div><div class="body">
+    <h3>7.1 Juros compostos, tempo e dívida cara</h3>
+    <ul>
+      <li>Juros compostos crescem em curva. Por isso o tempo importa mais que o valor guardado.</li>
+      <li>A composição também vale para a dívida: rotativo do cartão e cheque especial.</li>
+      <li>Três regras: nunca pagar o mínimo da fatura, quitar dívida cara antes de investir e perguntar sempre o preço à vista.</li>
+      <li>Cartão de crédito como meio de pagamento, e não como crédito.</li>
+      <li>A ressalva do autor: são conceitos e critérios, não recomendação de investimento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O ativo mais valioso que você tem hoje não é dinheiro. É tempo.</q><q>Ninguém cai nessa armadilha de uma vez. Cai um mínimo de cada vez.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">30</div><div class="body">
+    <h3>7.2 Orçamento, reserva e o triângulo risco-liquidez-retorno</h3>
+    <ul>
+      <li>Medir primeiro: trinta dias de registro de gastos, sem julgar e sem tentar melhorar.</li>
+      <li>Três decisões: taxa de poupança em vez de valor fixo, separação automática no dia do recebimento e corte do gasto recorrente.</li>
+      <li>A reserva de emergência vem antes de qualquer investimento sofisticado.</li>
+      <li>O triângulo: retorno, risco e liquidez. Ninguém obtém os três ao mesmo tempo.</li>
+      <li>O detector de golpes: retorno alto, segurança garantida e resgate na hora não existem juntos.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem espera sobrar nunca vê sobrar.</q><q>A reserva não existe para render. Existe para impedir que você tome uma decisão ruim sob pressão.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">31</div><div class="body">
+    <h3>7.3 Golpes, formalização e imposto</h3>
+    <ul>
+      <li>Os seis sinais de golpe: rendimento fixo e alto, pressão de tempo, recrutamento, opacidade, prova social encenada e dificuldade de saída.</li>
+      <li>Três hábitos de proteção: conferir registro na CVM e no Banco Central, desconfiar de indicação de conhecido e só investir no que se explica em três frases.</li>
+      <li>Os três problemas da informalidade: não comprovar renda, não ter proteção previdenciária e não conseguir cobrar.</li>
+      <li>Os regimes em uma frase cada: CLT, autônomo, MEI e microempresa no Simples.</li>
+      <li>Regras e limites mudam. O curso manda conferir na fonte oficial.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Não invista em nada que você não consiga explicar em três frases a outra pessoa.</q><q>Os disfarces mudam a cada dois anos. A estrutura por baixo é sempre a mesma.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">32</div><div class="body">
+    <h3>7.4 As sete ideias que sobrevivem</h3>
+    <ul>
+      <li>As sete ideias que resistem nos livros sérios de finanças: pague-se primeiro; ativo é o que põe dinheiro no bolso; comportamento vence conhecimento técnico; margem de segurança; riqueza é o que você não vê; renda vem da capacidade de resolver problemas; círculo de competência e horizonte longo.</li>
+      <li>Cada ideia vem com o crédito a quem formulou e com a ressalva que o livro original não faz.</li>
+      <li>Três limites honestos: sorte importa, ponto de partida importa e dinheiro é meio.</li>
+      <li>Entrega da fase: o plano financeiro de 24 meses, com as premissas escritas.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Gente brilhante quebra o tempo todo. Gente comum, disciplinada por trinta anos, chega.</q><q>Sete ideias aplicadas superficialmente não mudam nada. Uma aplicada com rigor muda o resto.</q></div>
+  </div></article>
+
+  <p class="block-title">Fase 8 · Ser dono · aulas 8.1 a 8.5</p>
+
+  <article class="lesson"><div class="n">33</div><div class="body">
+    <h3>8.1 Como um negócio ganha dinheiro</h3>
+    <ul>
+      <li>Os seis elementos de qualquer negócio: proposta de valor, cliente, canal, receita, estrutura de custo e ativo-chave.</li>
+      <li>Quem paga e quem decide nem sempre são a mesma pessoa.</li>
+      <li>Os modelos de receita: venda única, recorrência, intermediação e licenciamento.</li>
+      <li>Plataformas: quem detém o cliente define o preço. Canal próprio é questão de sobrevivência.</li>
+      <li>Custo de aquisição e valor do cliente ao longo do tempo: o teste de saúde do negócio.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma pousada não vende quarto. Ela vende a viagem funcionar.</q><q>Quem depende inteiramente de um intermediário está alugando o próprio negócio.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">34</div><div class="body">
+    <h3>8.2 Margem, ponto de equilíbrio e precificação</h3>
+    <ul>
+      <li>Quatro conceitos: custo variável, custo fixo, margem de contribuição e ponto de equilíbrio.</li>
+      <li>Lucro não é caixa: a empresa pode dar lucro no papel e quebrar por falta de dinheiro.</li>
+      <li>Três formas de precificar: por custo, por concorrência e por valor percebido.</li>
+      <li>Com margem de vinte por cento, um desconto de dez por cento leva metade do lucro.</li>
+      <li>Escrever o cenário em que dá errado antes de começar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Lucro é conceito contábil. Caixa é o que paga a conta na sexta-feira.</q><q>Você para de sentir e começa a contar.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">35</div><div class="body">
+    <h3>8.3 Contrato: as sete coisas que você lê antes de assinar</h3>
+    <ul>
+      <li>Os sete pontos: objeto, preço e pagamento, prazo e renovação, rescisão, multa, responsabilidade e foro.</li>
+      <li>A rescisão é a cláusula mais importante e a menos lida.</li>
+      <li>Quatro cláusulas de atenção redobrada: exclusividade sem contrapartida, não concorrência ampla, cessão total de direitos autorais e alteração por um lado só.</li>
+      <li>Quando procurar advogado, com um cuidado especial para aval e fiança.</li>
+      <li>Nunca assinar sob pressão de tempo. O aviso do autor: é orientação geral, não consultoria.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O que não está escrito não existe.</q><q>Confiança e contrato não se substituem. Se completam.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">36</div><div class="body">
+    <h3>8.4 Formalização, LGPD e IA: o jurídico que ninguém ensina</h3>
+    <ul>
+      <li>Por que formalizar: comprovar renda, ter proteção previdenciária e conseguir cobrar.</li>
+      <li>LGPD em cinco pontos: base legal, finalidade específica, mínimo necessário, segurança e prazo, direitos do titular.</li>
+      <li>Código de Defesa do Consumidor: arrependimento, defeito, publicidade que vincula e informação clara.</li>
+      <li>IA e direito: a responsabilidade é de quem entrega; conteúdo de terceiros continua protegido; imagem e voz de pessoa real só com autorização.</li>
+      <li>Missão: redigir o próprio contrato de prestação de serviço e levar a alguém com formação jurídica para revisar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Saber a hora de pedir ajuda é, em si, um exercício de julgamento.</q><q>Não existe defesa que comece com ‘a inteligência artificial escreveu’.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">37</div><div class="body">
+    <h3>8.5 Execução: do objetivo à retrospectiva</h3>
+    <ul>
+      <li>Do objetivo ao plano: entrega final em frase verificável, três a cinco marcos, dependências e estimativa com margem.</li>
+      <li>Delegar: o que a máquina faz bem, o que faz mal, o que outra pessoa faz e o que fica com você.</li>
+      <li>Ritmo: ponto de controle semanal e sinal de alerta definido antes. Cortar escopo é decisão legítima.</li>
+      <li>A retrospectiva em três colunas: manter, mudar e parar.</li>
+      <li>Entrega da fase: o modelo econômico com ponto de equilíbrio e o contrato próprio revisado.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Entregar menos, completo e bem, quase sempre supera entregar tudo pela metade.</q><q>Plano perfeito é a forma mais respeitável de adiar, porque parece trabalho.</q></div>
+  </div></article>
+
+  <p class="block-title">Fase 9 · Seu plano · aulas 9.1 a 9.3</p>
+
+  <article class="lesson"><div class="n">38</div><div class="body">
+    <h3>9.1 O plano de doze meses</h3>
+    <ul>
+      <li>A regra do ano: cada trimestre termina em algo que existe fora da cabeça do aluno.</li>
+      <li>Os quatro trimestres: Fundação, Ferramentas, Mercado e Empresa, mês a mês.</li>
+      <li>O décimo terceiro mês: reunir tudo, reler o plano e escrever o do ano seguinte.</li>
+      <li>O erro comum: tentar fazer tudo em três meses, no embalo do entusiasmo.</li>
+      <li>Missão: marcar no calendário as quatro datas de entrega, com o nome de cada uma.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um curso que termina em inspiração não muda nada. Este termina em cronograma.</q><q>Prefira o ritmo que você sustenta em um mês ruim.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">39</div><div class="body">
+    <h3>9.2 Montando seu portfólio de treze ativos</h3>
+    <ul>
+      <li>O inventário dos treze ativos, todos verificáveis por alguém de fora.</li>
+      <li>Como apresentar cada um: problema, ação, resultado e aprendizado.</li>
+      <li>Três cuidados: mostrar o processo, incluir o que deu errado e quantificar.</li>
+      <li>Onde mora: um endereço próprio na internet, organizado por problema resolvido.</li>
+      <li>Não esperar se sentir pronto para mostrar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Número específico é o sinal mais barato de honestidade que existe.</q><q>Portfólio sem ninguém para ver é diário. Portfólio com rede é vitrine.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">40</div><div class="body">
+    <h3>9.3 Encerramento: o que fica</h3>
+    <ul>
+      <li>A frase que resume o curso: o que sobra de valor envolve decidir, escolher critério ou responder por consequência.</li>
+      <li>Três convicções: mudar de opinião é saúde intelectual, reputação é o ativo que mais rende e dinheiro é meio.</li>
+      <li>Sobre o erro: quem constrói trajetória interessante erra mais barato, aprende mais rápido e continua.</li>
+      <li>Última missão: voltar à folha da primeira aula e escrever ao lado o que pensa hoje.</li>
+      <li>O certificado atesta que o aluno assistiu. O que o mercado pergunta é o que ele fez.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Erre pequeno. Erre cedo. Registre o que aprendeu. E continue.</q><q>O futuro não pertence a quem tem as respostas. A máquina tem todas elas, e de graça.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Os métodos com nome</h2>
+  <p class="sub">Ferramentas de raciocínio que o aluno leva para a vida. Rendem bem em carrossel e em slide, porque têm número e nome. A coluna Aula usa a numeração da plataforma.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Método</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>A régua de 5 critérios</td><td>Rigor, execução, realidade, comunicação e autonomia, para o aluno avaliar a própria tarefa.</td><td class="aula">0.2</td></tr>
+      <tr><td>As 2 perguntas de toda escolha</td><td>A IA faz isso melhor que um iniciante? Se sim, o que sobra de humano?</td><td class="aula">1.1</td></tr>
+      <tr><td>Os 3 territórios</td><td>Julgamento, distribuição e confiança, propriedade e responsabilidade.</td><td class="aula">1.3</td></tr>
+      <tr><td>Teste dos dez anos</td><td>Isso vai existir com esse nome daqui a dez anos? Se não, aprenda a competência por baixo.</td><td class="aula">1.4</td></tr>
+      <tr><td>As 4 camadas da afirmação</td><td>Fato, inferência, opinião e juízo de valor.</td><td class="aula">2.1</td></tr>
+      <tr><td>As 5 falácias</td><td>Correlação como causa, autoridade fora de contexto, falso dilema, generalização apressada e ataque à pessoa.</td><td class="aula">2.2</td></tr>
+      <tr><td>As 5 perguntas do número</td><td>De onde veio, quem pagou, comparado a quê, percentual ou absoluto, que período.</td><td class="aula">2.3</td></tr>
+      <tr><td>Steelman</td><td>Defender a posição contrária na versão mais forte antes de discordar.</td><td class="aula">2.4</td></tr>
+      <tr><td>Reversível ou irreversível</td><td>Reversível se decide rápido. Irreversível pede lentidão, conselho e cenário pessimista.</td><td class="aula">2.4</td></tr>
+      <tr><td>As 6 regras da escrita clara</td><td>Frase curta, voz ativa, verbo forte, sem advérbio, conclusão primeiro, cortar 20%.</td><td class="aula">3.1</td></tr>
+      <tr><td>A cobrança em 3 partes</td><td>Fato objetivo, oferta de facilitação e próximo passo com data.</td><td class="aula">3.2</td></tr>
+      <tr><td>O pedido em 5 partes</td><td>Quem você é, como chegou até a pessoa, o que quer, por que ela e uma saída fácil.</td><td class="aula">3.2 e 6.5</td></tr>
+      <tr><td>Narrativa mínima</td><td>Situação, tensão, ação e resultado.</td><td class="aula">3.3</td></tr>
+      <tr><td>A fala de 3 minutos</td><td>Fisgada, tensão, corpo com até três pontos e fechamento.</td><td class="aula">3.4</td></tr>
+      <tr><td>Trabalho profundo e raso</td><td>Duas horas de concentração por dia, antes de qualquer logística.</td><td class="aula">4.3</td></tr>
+      <tr><td>Sistema mínimo</td><td>Captura, planejamento semanal, uma coisa por dia e revisão do que falhou.</td><td class="aula">4.4</td></tr>
+      <tr><td>Protocolo de 30 dias</td><td>Até quatro itens na parede, um xis por dia e adesão calculada no fim.</td><td class="aula">4.4</td></tr>
+      <tr><td>Prompt em 5 elementos</td><td>Função, Objetivo, Contexto, Regras e Tarefa.</td><td class="aula">5.2</td></tr>
+      <tr><td>Verificação em 5 passos</td><td>Fonte primária, abrir a fonte citada, pedir o caminho, pedir a posição contrária e teste do especialista.</td><td class="aula">5.3</td></tr>
+      <tr><td>Gatilho, condição, ação, exceção</td><td>O vocabulário que descreve quase toda automação.</td><td class="aula">5.4</td></tr>
+      <tr><td>Recomendação em 4 elementos</td><td>O que os dados mostram, quanto vale, o que fazer e como saber se funcionou.</td><td class="aula">5.5</td></tr>
+      <tr><td>As 4 camadas de pergunta</td><td>Situação, problema, implicação e valor.</td><td class="aula">6.1</td></tr>
+      <tr><td>As 5 objeções universais</td><td>Preço, prazo, confiança, prioridade e autoridade.</td><td class="aula">6.2</td></tr>
+      <tr><td>Os 4 conceitos da negociação</td><td>Melhor alternativa, ancoragem, concessão recíproca e ampliar antes de dividir.</td><td class="aula">6.3</td></tr>
+      <tr><td>Peça de portfólio</td><td>Problema, o que eu fiz, resultado e o que aprendi.</td><td class="aula">6.4 e 9.2</td></tr>
+      <tr><td>As 3 regras da dívida</td><td>Não pagar o mínimo, quitar dívida cara antes de investir, perguntar o preço à vista.</td><td class="aula">7.1</td></tr>
+      <tr><td>O triângulo</td><td>Risco, liquidez e retorno. Nunca os três ao mesmo tempo.</td><td class="aula">7.2</td></tr>
+      <tr><td>Os 6 sinais de golpe</td><td>Rendimento fixo e alto, pressa, recrutamento, opacidade, prova social encenada e saída difícil.</td><td class="aula">7.3</td></tr>
+      <tr><td>As 7 ideias que sobrevivem</td><td>O que continua verdadeiro nos livros de finanças, com as ressalvas.</td><td class="aula">7.4</td></tr>
+      <tr><td>Os 6 elementos do negócio</td><td>Proposta de valor, cliente, canal, receita, custo e ativo-chave.</td><td class="aula">8.1</td></tr>
+      <tr><td>Ponto de equilíbrio</td><td>Custo fixo dividido pela margem de contribuição de cada venda.</td><td class="aula">8.2</td></tr>
+      <tr><td>Os 7 pontos do contrato</td><td>Objeto, preço, prazo e renovação, rescisão, multa, responsabilidade e foro.</td><td class="aula">8.3</td></tr>
+      <tr><td>LGPD em 5 pontos</td><td>Base legal, finalidade, mínimo necessário, segurança e prazo, direitos do titular.</td><td class="aula">8.4</td></tr>
+      <tr><td>Retrospectiva em 3 colunas</td><td>Manter, mudar e parar.</td><td class="aula">8.5</td></tr>
+      <tr><td>Plano de 12 meses</td><td>Quatro trimestres, cada um com uma entrega datada, e a revisão do 13º mês.</td><td class="aula">9.1</td></tr>
+      <tr><td>Os 13 ativos</td><td>O que o aluno tem para mostrar ao fim do plano.</td><td class="aula">9.2</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Ganchos tirados das aulas</h2>
+  <p class="sub">O curso não tem casos de alunos nem histórias de clientes. O que ele tem são a revisão que o autor faz do próprio livro e exemplos didáticos do mundo do jovem. Os exemplos são ilustrações: não apresente como caso real.</p>
+  <div class="cases">
+    <div class="case"><h3>O autor que reescreveu metade do próprio livro</h3><p>Em 2024 ele publicou dez conselhos para jovens, pensando que durariam uma década. Duraram dois anos. No curso ele revisa a lista item por item e diz onde errou, incluindo ter esquecido vendas e contrato. Aulas 0.1 e 1.4.</p></div>
+    <div class="case"><h3>A aula que apresenta a evidência contra a própria tese</h3><p>Depois de afirmar que o primeiro degrau foi serrado, o curso mostra os estudos a favor e os argumentos contrários. A conclusão é o ponto em que os dois lados concordam: a régua de entrada subiu. Aula 1.2.</p></div>
+    <div class="case"><h3>“A inteligência artificial escreveu” não é defesa</h3><p>O curso lembra que já há advogados punidos por levar à Justiça decisões inventadas por máquina e estudantes reprovados por bibliografia que não existe. O erro foi da máquina. A responsabilidade foi de quem assinou. Aulas 2.3 e 5.3.</p></div>
+    <div class="case"><h3>A dona do salão que faz a própria conta</h3><p>Exemplo da aula de vendas. Se o vendedor diz que ela perde dinheiro com cliente que falta, ela se defende. Se ela mesma calcula as horas paradas no mês, quem convenceu foi ela. Aulas 6.1 e 6.2.</p></div>
+    <div class="case"><h3>O desconto que leva metade do lucro</h3><p>Vende por cem, sobram vinte. Com dez de desconto, vende por noventa e sobram dez. É a conta que o curso pede antes de qualquer negociação de preço. Aula 8.2.</p></div>
+    <div class="case"><h3>Seis horas para economizar cinco minutos</h3><p>A conta da automação que não compensa: seis horas de construção para poupar cinco minutos por semana levam setenta e duas semanas para empatar. Aula 5.4.</p></div>
+    <div class="case"><h3>O celular na cozinha</h3><p>O curso trata a distração como projeto de quem desenha os aplicativos. A resposta é atrito: se o celular estivesse em outro cômodo, você levantaria para buscar? Quase nunca. Aula 4.3.</p></div>
+    <div class="case"><h3>O jovem da padaria</h3><p>Exemplo de peça de portfólio: a planilha de estoque que só funcionou quando foi cortada para três colunas. A parte do que deu errado é a que faz o leitor acreditar. Aula 6.4.</p></div>
+    <div class="case"><h3>As duas folhas</h3><p>Na primeira aula o aluno escreve que profissão imagina seguir, e por quê. Na última, relê a folha e escreve ao lado o que pensa agora. Aulas 0.1 e 9.3.</p></div>
+    <div class="case"><h3>As cinco simulações do curso</h3><p>A página de venda lista cinco simulações que o aluno resolve na plataforma. Os temas não aparecem na página. Confira os títulos dentro do curso antes de citar.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">Itens da página de venda. Os números podem ser citados.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula animada, no formato de um jogo de 10 fases.</li>
+        <li>Artigo da aula em PDF: a videoaula inteira por escrito, com a missão da aula. São 40 artigos.</li>
+        <li>Quiz comentado, com a explicação de cada alternativa.</li>
+        <li>Caderno de trabalho: Aprendi, Pratiquei, Apliquei.</li>
+      </ul>
+      <h3>As dez entregas, uma por fase</h3>
+      <ul>
+        <li>Compromisso assinado.</li>
+        <li>Auditoria da profissão pretendida.</li>
+        <li>Dossiê de verificação com fontes primárias.</li>
+        <li>Pitch de 3 minutos gravado.</li>
+        <li>Protocolo de 30 dias.</li>
+        <li>Assistente de IA, automação e painel de indicadores.</li>
+        <li>Uma venda real e um portfólio público.</li>
+        <li>Plano financeiro de 24 meses.</li>
+        <li>Modelo econômico e contrato próprio.</li>
+        <li>Plano de 12 meses com as datas no calendário.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li><strong>Tutor Villela.</strong> A IA do curso responde só com o conteúdo das aulas e do livro, cita a origem e leva ao minuto exato do vídeo. Se a resposta não está no curso, ele diz que não encontrou.</li>
+        <li>Biblioteca com 60 prompts prontos.</li>
+        <li>Audiobook: as 40 aulas em áudio, 5h28, para ouvir no carro ou no fone com a tela bloqueada. O primeiro capítulo fica aberto como amostra.</li>
+        <li>Jornada do aluno: níveis de Explorador a Mestre, XP, 9 selos e medalhas; diagnóstico inicial e teste final de 20 questões.</li>
+        <li>Villela Lab com 5 missões e projeto final.</li>
+        <li>Desafio de 21 dias e 5 simulações.</li>
+        <li>Prompt Builder, as folhas “O prompt do jovem profissional” e “Protocolo anti-alucinação para estudar e trabalhar” e 5 templates (prompt, pitch, negócio, finanças e retrospectiva).</li>
+        <li>E-book completo Conexões de Sucesso, 2ª edição, com 21 capítulos em PDF.</li>
+        <li>Caderno de Exercícios com as 21 tarefas, modelos e checklists, e banco de 90 questões com gabarito e justificativa.</li>
+        <li>Plano de 12 meses com as quatro datas de entrega.</li>
+        <li>Certificado de conclusão com código verificável publicamente.</li>
+        <li>Suporte pelo canal da plataforma.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Quem tem entre 15 e 25 anos e está decidindo o que fazer da vida.</li>
+        <li>Quem está no ensino médio ou nos primeiros anos da faculdade e sente que a escola não prepara para o mercado real.</li>
+        <li>Pai, mãe ou professor que quer material sério para um jovem.</li>
+        <li>Quem está em transição de carreira e percebeu que a régua subiu.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura fórmula de enriquecimento rápido.</li>
+        <li>Quem quer um curso de ferramenta específica.</li>
+        <li>Quem não pretende executar nenhuma tarefa fora do vídeo.</li>
+      </ul>
+      <h3>Dois públicos, duas conversas</h3>
+      <ul>
+        <li><strong>O jovem:</strong> manda currículo e recebe silêncio. O curso explica o motivo e dá o que fazer a respeito.</li>
+        <li><strong>O adulto que compra para um jovem:</strong> o autor escreveu o livro como pai, preocupado com um mercado que já não sabia descrever. A aula 0.2 sugere ler e discutir capítulos junto com o jovem.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Objeções e respostas</h2>
+  <p class="sub">Das perguntas frequentes da página de venda e do que as aulas dizem.</p>
+  <h3>Preciso saber alguma coisa antes?</h3>
+  <p>Não. O curso começa do zero. A ordem dos módulos é deliberada e cada um se apoia no anterior.</p>
+  <h3>Quanto tempo leva?</h3>
+  <p>Entre 10 e 14 semanas no ritmo sugerido: uma aula a cada dois dias, com a tarefa do módulo dentro da semana. O aluno pode ir no próprio tempo dentro do período de acesso.</p>
+  <h3>Por quanto tempo tenho acesso?</h3>
+  <p>Um ano a partir da compra, incluindo as atualizações e as aulas novas publicadas nesse período.</p>
+  <h3>Serve para quem tem mais de 25 anos?</h3>
+  <p>Sim. O conteúdo foi escrito para jovens, mas os módulos de mercado, dinheiro e negócio servem a quem está em transição de carreira.</p>
+  <h3>Preciso pagar ferramentas de inteligência artificial?</h3>
+  <p>Não. As práticas do Módulo 5 funcionam com as versões gratuitas das ferramentas disponíveis.</p>
+  <h3>É mais um curso de IA?</h3>
+  <p>Não. Só uma das dez fases trata de operar máquinas, e ela ensina um modelo mental que vale para qualquer ferramenta. As outras tratam de pensar, comunicar, vender, cuidar do dinheiro e entender negócio e contrato.</p>
+  <h3>O certificado vale alguma coisa?</h3>
+  <p>É um certificado de conclusão com código verificável publicamente. Ele atesta que o aluno concluiu o curso. O que pesa no mercado é o portfólio construído nas 21 tarefas.</p>
+  <h3>E se eu tentar uma tarefa e der errado?</h3>
+  <p>Vale do mesmo jeito, desde que registrada e analisada. Na tarefa de venda, por exemplo, o entregável é o registro das objeções, e não a venda.</p>
+  <h3>Tem suporte?</h3>
+  <p>Sim. As dúvidas vão pelo canal de suporte da plataforma e são respondidas no próprio chamado. Dentro das aulas há também o Tutor Villela.</p>
+  <h3>Dá para ouvir em vez de assistir?</h3>
+  <p>Sim. O audiobook toca no player do site, com a tela bloqueada, no fone e no carro. Não há download.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias de garantia incondicional, com reembolso integral pedido pelo próprio painel.</p>
+</section>
+
+<section id="cuidados">
+  <h2>Cuidados na comunicação</h2>
+  <p class="sub">Para o criativo não prometer o que o curso faz questão de não prometer.</p>
+  <div class="care">
+    <h3>Evitar</h3>
+    <ul>
+      <li>Promessa de renda, de emprego ou de enriquecimento. A primeira aula abre negando as três, e a página de venda repete: “Não prometo renda rápida. Prometo método.”</li>
+      <li>Usar como promessa a comparação de salários que abre a aula 5.2 (dois mil e vinte mil reais). No curso é um gancho sobre saber perguntar, não um resultado esperado.</li>
+      <li>Dar a entender que o aluno “sai com” os treze ativos só por assistir. Eles dependem de fazer as 21 tarefas, que acontecem fora da tela. Também não garanta que a venda da fase 6 vai acontecer: o próprio curso aceita a tentativa registrada.</li>
+      <li>Vender o certificado como passaporte para o mercado. O curso diz que ele atesta a conclusão das aulas, e nada além disso.</li>
+      <li>Tom de pânico sobre a IA acabar com os empregos. O curso afirma que o desemprego em massa não aconteceu e apresenta a leitura contrária. Se citar os dados da aula 1.2 (por exemplo, a queda em torno de 13% do estudo de Stanford), cite a fonte e não trate como caso fechado.</li>
+      <li>Apresentar a fase do dinheiro como dica de investimento. O autor avisa que não é consultor de investimentos e que são conceitos e critérios. Nada de “aprenda a investir” ou “onde colocar seu dinheiro”.</li>
+      <li>Apresentar as aulas de contrato, LGPD e formalização como consultoria jurídica ou contábil. O curso diz que é orientação geral e manda conferir regras e limites na fonte oficial.</li>
+      <li>“Acesso vitalício” ou “acesso que não expira”. A oferta no ar é de 1 ano de acesso.</li>
+      <li>Depoimentos de alunos. A página de venda não tem nenhum, então não há o que citar. Os exemplos das aulas (salão, padaria, confeitaria, brigadeiro) são ilustrações, não casos.</li>
+      <li>Chamar de curso de ChatGPT, de prompt ou de qualquer ferramenta. A página diz que não é curso de ferramenta específica.</li>
+      <li>Usar os nomes dos autores citados na aula 7.4 ou das instituições da aula 1.2 como se endossassem o curso.</li>
+      <li>Prometer que “a IA faz por você”. O curso ensina o contrário: tentar antes de perguntar, verificar e responder pelo que entrega.</li>
+      <li>Urgência falsa e escassez inventada. A aula 6.3 classifica isso como manipulação, e a 7.3 lista a pressão de tempo como sinal de golpe.</li>
+    </ul>
+  </div>
+  <p style="margin-top:14px">O preço e os itens incluídos mudam. Antes de fechar uma peça com valor, confira na página do curso.</p>
+</section>
+
+<footer>
+  Fonte: roteiros das 40 videoaulas e página de venda do curso na Villela Academy. Grupo Villela Stay.
+</footer>
+
+</div>
+</body>
+</html>

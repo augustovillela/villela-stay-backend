@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}</style>
+<title>O Homem Essencial: material para criativos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Material de apoio para marketing · outubro de 2026</p>
+    <h1>O Homem Essencial</h1>
+    <p class="lead">Tudo o que o curso ensina sobre caráter, domínio de si, relações, trabalho, dinheiro, lucidez, fé, morte e legado, aula por aula, pronto para virar apresentação e criativo. O conteúdo abaixo foi tirado dos roteiros das 24 videoaulas e da página de venda no ar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 24 aulas</a>
+  <a href="#metodos">Ideias com nome</a>
+  <a href="#casos">Cenas que rendem gancho</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Objeções</a>
+  <a href="#cuidados">Cuidados na comunicação</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados que podem ser citados como estão.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>O Homem Essencial</dd></div>
+    <div><dt>Chamada da página</dt><dd>Caráter, domínio de si e o que realmente importa, com os grandes pensadores chamados pelo nome</dd></div>
+    <div><dt>Categoria</dt><dd>Desenvolvimento Pessoal</dd></div>
+    <div><dt>Formato</dt><dd>24 videoaulas animadas, 3 h 42 min de conteúdo, todas disponíveis</dd></div>
+    <div><dt>Em áudio</dt><dd>Audiobook com 24 capítulos</dd></div>
+    <div><dt>Preço</dt><dd>R$ 145,00 (conferido na página em 08/10/2026)</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, incondicional, com reembolso integral</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra</dd></div>
+    <div><dt>Degustação</dt><dd>Aula 1 gratuita, com vídeo e artigo em PDF</dd></div>
+    <div><dt>Origem</dt><dd>Baseado no livro O Homem Essencial, do mesmo autor</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/o-homem-essencial">academia.villelastay.com.br/academy/cursos/o-homem-essencial</a></p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">Se o criativo só puder dizer uma coisa, é esta.</p>
+  <p class="thesis">A escola ensina quase tudo, menos o que decide uma vida.</p>
+  <p>O curso percorre as perguntas que ficam de fora de qualquer currículo: quem você é quando ninguém está olhando, como governa a própria raiva e o próprio desejo, à mesa de quem se senta, como trata quem não pode lhe devolver nada, o que faz quando tudo dá errado e para que foi feito. Faz isso na companhia de quem pensou nelas antes, e chama cada pensador pelo nome.</p>
+  <h3>O método que atravessa todas as aulas</h3>
+  <ul>
+    <li><strong>Pensador com nome.</strong> Sêneca, Epicteto, Marco Aurélio, Aristóteles, Tolstói, Schopenhauer, Viktor Frankl, Hannah Arendt, Soljenítsin, Thomas Sowell, Olavo de Carvalho, Jordan Peterson e outros. O aluno sai sabendo quem disse o quê.</li>
+    <li><strong>Fonte conferida.</strong> O curso para para checar de onde vem cada frase e descarta citação famosa que é falsa. Frase sem dono confirmado aparece como “atribuída a”.</li>
+    <li><strong>Prática de 21 dias.</strong> Toda aula termina num experimento de 21 dias, concreto e pequeno.</li>
+    <li><strong>Convicção declarada.</strong> O autor diz o que pensa sobre política, fé e liberdade, com respeito e sem suavizar. E pede que o aluno discorde e examine.</li>
+  </ul>
+  <h3>A promessa, em uma frase</h3>
+  <p>Caráter, domínio de si e o que realmente importa, com os grandes pensadores chamados pelo nome. Sobre a prática de 21 dias, a página acrescenta: “O que ela vai mudar depende do que você fizer com ela.”</p>
+  <h3>Quatro mensagens que sustentam qualquer peça</h3>
+  <ul>
+    <li><strong>Caráter é hábito, não dom.</strong> Ninguém nasce justo como nasce alto. O caráter se faz todo dia, até virar segunda natureza.</li>
+    <li><strong>Governe-se primeiro.</strong> Nada do que se constrói lá fora se sustenta sem mandar em si mesmo aqui dentro.</li>
+    <li><strong>Pense por conta própria.</strong> Verifique a fonte até dos mestres, inclusive a do professor.</li>
+    <li><strong>Não é sobre você.</strong> A vida ganha sentido quando serve a algo maior do que o próprio conforto.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso, com pequenos ajustes de corte, que funcionam como chamada. Os blocos seguem a sequência descrita na página de venda.</p>
+
+  <p class="block-title">A fundação do caráter · aulas 1 a 3</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>Quem você quer ser</h3>
+    <ul>
+      <li>A pergunta que sustenta as outras: não o que você quer ter nem o que quer fazer, e sim quem você quer ser.</li>
+      <li>Os três pedidos de quem ensina: não terminar tudo de uma vez, discordar, e reparar no método de conferir a fonte de cada frase.</li>
+      <li>As quatro virtudes cardeais (sabedoria, justiça, coragem e temperança) e por que uma segura a outra.</li>
+      <li>O bilhete de bolso: diante de uma escolha difícil, quatro perguntas. É sábio? É justo? É corajoso? É moderado?</li>
+      <li>Virtude é hábito adquirido, na lição de Aristóteles. E a frase “somos aquilo que fazemos repetidamente” é de Will Durant, não dele.</li>
+      <li>O caráter aparece nos pequenos gestos e o poder só tira a máscara do que já estava ali.</li>
+      <li>Construir primeiro o que ninguém confisca: caráter, saber e disciplina. E a humildade como medida exata, com Sócrates e o efeito Dunning-Kruger.</li>
+      <li>Prática de 21 dias: as quatro perguntas no bolso e um gesto básico diário, como chegar no horário.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ninguém se arruína de uma vez. A pessoa desaba aos poucos, por um ‘só desta vez’ repetido com frequência.</q><q>Construa primeiro aquilo que ninguém pode confiscar.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>Viver sem mentiras</h3>
+    <ul>
+      <li>A mentira pequena, dita para agradar, cria uma dívida com a verdade e costuma fazer uma segunda vítima.</li>
+      <li>Três frentes: não mentir, não viver uma vida emprestada e pensar por conta própria.</li>
+      <li>O piso de Soljenítsin: antes de dizer toda a verdade, parar de dizer o que você sabe ser falso.</li>
+      <li>Dissonância cognitiva: o desconforto é o alarme. Corrige-se a conduta, não a crença.</li>
+      <li>A exceção da cortesia: verdade no conteúdo, cuidado na forma. E a frase “nem toda verdade precisa ser dita” não é de Einstein.</li>
+      <li>A pergunta de Ivan Ilitch, de Tolstói, e o aviso de Kierkegaard sobre se esconder na multidão. O “eu sou assim mesmo” como imitação barata de autenticidade.</li>
+      <li>Hannah Arendt e a banalidade do mal: a consciência é intransferível. O imbecil coletivo, de Olavo de Carvalho, e a defesa da discordância em John Stuart Mill.</li>
+      <li>Prática de 21 dias: nenhuma mentira, nem pequena, e uma linha por noite sobre onde quase mentiu.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A mentira pode resolver um problema momentâneo, mas cria uma dívida permanente com a verdade.</q><q>Apague o incêndio, nunca o alarme.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>A força do bom</h3>
+    <ul>
+      <li>Ser bom e ser inofensivo são coisas diferentes. Bondade tem peso quando recusou uma opção.</li>
+      <li>A ordem proposta: primeiro forte, depois bom. A leitura é de Jordan Peterson, e a raiz está em Aristóteles.</li>
+      <li>A justa medida da raiva: irritar-se com as coisas certas, na medida certa, na hora certa. Quem não se indigna com nada também erra.</li>
+      <li>A magnanimidade, a grandeza de alma de quem não se agita com o que é pequeno.</li>
+      <li>Marco Aurélio: a melhor resposta ao homem mau é não se tornar igual a ele.</li>
+      <li>Três desdobramentos práticos: o limite sem culpa, a dignidade no silêncio (que não é silêncio covarde) e escolher brigas do seu tamanho.</li>
+      <li>A outra metade: a generosidade vem primeiro, e generosidade que cobra a volta vira negociação.</li>
+      <li>Prática de 21 dias: a pergunta “isto é caça de leão ou de rato?” e um gesto diário de generosidade sem cobrança.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um cão que nunca pôde morder não é manso. É só um cão sem dentes.</q><q>Gentil por padrão, firme quando a justiça exige.</q></div>
+  </div></article>
+
+  <p class="block-title">O domínio de si · aulas 4 a 7</p>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Os dias iguais e os dez segundos</h3>
+    <ul>
+      <li>Dois tempos: os dias iguais, em que a disciplina constrói, e os dez segundos, em que a emoção pode derrubar tudo.</li>
+      <li>A repetição molda o cérebro (Donald Hebb, Carla Shatz, os taxistas de Londres). Não existe dia neutro: você está sempre treinando alguma coisa.</li>
+      <li>A motivação chega depois da ação. Quem vai longe monta um sistema que funciona nos dias sem ânimo.</li>
+      <li>“Escolha o seu difícil”: os dois caminhos custam caro, e só um constrói.</li>
+      <li>A demora de Sêneca contra a ira: adiar, porque o primeiro ímpeto mente. E a ação oposta, de Marsha Linehan.</li>
+      <li>Controlar não é reprimir. Dar nome à emoção antes de agir transforma a raiva em informação.</li>
+      <li>O medo do que ainda não aconteceu: “sofremos mais vezes na imaginação do que na realidade”, de Sêneca.</li>
+      <li>Prática de 21 dias: nenhuma mensagem enviada com raiva e os primeiros cinco minutos nos dias sem ânimo.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Motivação não é o motor. É o passageiro.</q><q>Sinta tudo, decida frio.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>A cidadela interior</h3>
+    <ul>
+      <li>A cidadela é a última torre do castelo. Dentro de cada pessoa há uma que ninguém toma sem licença. A prática é de Marco Aurélio e o nome é de Pierre Hadot.</li>
+      <li>As duas colunas de Epicteto: o que depende de você e o que não depende. Quase todo sofrimento vem de gastar energia na segunda.</li>
+      <li>A ofensa é um som. Quem a transforma em ferida é o juízo, e o juízo mora na coluna que é sua.</li>
+      <li>A paz como decisão. Às vezes ter paz vale mais do que ter razão.</li>
+      <li>A atenção é a moeda que você não imprime (Csikszentmihalyi, Herbert Simon). E o quarto de Pascal, de onde todo mundo foge.</li>
+      <li>A temperança dos três balcões: a mesa, o copo e a tela. O teste é “você consegue parar?”.</li>
+      <li>O pêndulo de Schopenhauer entre a dor e o tédio, e a esteira hedônica. O remédio é escolher poucos desejos que valham a vida.</li>
+      <li>O exame noturno, costume de Pitágoras e de Sêneca. Prática de 21 dias: cinco minutos de tribunal, com três perguntas.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A paz não é uma circunstância. É uma decisão.</q><q>Serenidade não é resignação. É economia.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>O corpo que lhe foi confiado</h3>
+    <ul>
+      <li>O corpo como fundação da casa: ninguém vê, e é ele que decide se o resto fica de pé.</li>
+      <li>“Mente sã em corpo são” no sentido original de Juvenal: uma lição sobre o que vale a pena pedir, e não um slogan de academia.</li>
+      <li>Força: músculo é poupança, depositada aos vinte para sacar aos oitenta.</li>
+      <li>Sono: cortar o sono para render mais é tomar empréstimo a juros contra si mesmo.</li>
+      <li>Sobriedade como vantagem de quem constrói.</li>
+      <li>Mente e corpo conversam nos dois sentidos. E o limite honesto: dizer que pensar positivo cura doença é crueldade, e cuidar do pensamento nunca dispensa o médico.</li>
+      <li>O corpo não é só seu: há gente que depende da sua energia e da sua presença.</li>
+      <li>Não há segredo: dormir, mover o corpo, comer comida de verdade, manter-se sóbrio, conviver com quem se ama. A aula avisa que é conteúdo educacional, não orientação médica.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Músculo é poupança. Deposita-se aos vinte para sacar aos oitenta.</q><q>O segredo é não ter segredo.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>A mente é um jardim</h3>
+    <ul>
+      <li>As duas leis do jardim: o bom se planta com esforço, o mato cresce de graça. Você não escolhe cada pensamento, escolhe qual rega.</li>
+      <li>A dieta mental: música, feed, conversa, notícia e companhia viram matéria do caráter. O critério é se aquilo engrandece ou diminui.</li>
+      <li>A voz de dentro prescreve. Trocar o pensamento automático por um mais exato, como na terapia cognitivo-comportamental de Beck e Ellis.</li>
+      <li>O aviso sobre a PNL: empresta o prestígio da neurociência sem ter as evidências dela.</li>
+      <li>O porteiro da mente. Você está sendo formado o tempo todo, e a pergunta é por quem.</li>
+      <li>Conferir o dono da frase antes de compartilhar: aproveita-se a ideia e corrige-se a etiqueta.</li>
+      <li>A escola que nunca termina: ler livros inteiros, aprender ensinando e explicar simples. O professor conta como estuda com inteligência artificial.</li>
+      <li>Prática de 21 dias: proteger o primeiro e o último minuto do dia e reescrever um pensamento duro de forma mais exata.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O bom se planta com esforço. O ruim cresce de graça.</q><q>Frase bonita sem dono é suspeita.</q></div>
+  </div></article>
+
+  <p class="block-title">O homem e os outros · aulas 8 a 12</p>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>A mesa em que você se senta</h3>
+    <ul>
+      <li>A companhia é causa, e não cenário. Quem se senta ao seu lado governa você por fora, devagar.</li>
+      <li>Quatro tradições chegam ao mesmo lugar: Provérbios, Menandro, Sêneca e Jim Rohn. O número cinco da frase de Rohn não tem base científica.</li>
+      <li>Hábitos e humor se propagam pela rede: você herda os amigos dos seus amigos.</li>
+      <li>Podar sem desprezar: reconhecer padrão, e não descartar alguém num dia ruim.</li>
+      <li>As três amizades de Aristóteles: de utilidade, de prazer e de virtude.</li>
+      <li>A multidão e o perigo de entregar a consciência a ela.</li>
+      <li>O estudo de Harvard que acompanha as mesmas pessoas desde 1938: o que melhor prevê uma velhice saudável e feliz é a qualidade das relações.</li>
+      <li>Prática de 21 dias: listar as mesas em que mais se senta e fazer um depósito por semana numa amizade de virtude.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A companhia não é cenário da vida. É causa.</q><q>O amigo de quarenta anos você teve de fazer aos vinte.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>O não que preserva</h3>
+    <ul>
+      <li>A pergunta da aula: quanto de você está disposto a apagar para continuar sendo bem-vindo?</li>
+      <li>A opinião dos outros não depende de você. Do amigo que quer o seu bem, ouça tudo. De quem fala para diminuir, devolva o pacote sem abrir.</li>
+      <li>Pertencer não pode custar o eu: a congruência, de Carl Rogers, e o falso self, de Winnicott.</li>
+      <li>O “medo com sobrenome bonito”: falar baixo e chamar de educação, engolir a opinião e chamar de paciência.</li>
+      <li>A ajuda que vira tributo, em três atos: gratidão, expectativa e cobrança.</li>
+      <li>O não é o guardião do sim. Aprovação é moeda fraca e respeito é moeda forte.</li>
+      <li>Limite não é muro. Três gestos: não à coisa e sim à pessoa, o não sem bula, e não ignorar o primeiro desrespeito.</li>
+      <li>Prática de 21 dias: anotar um sim dado sem querer e trocar um deles por um não curto por semana.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma casa sem paredes não é mais acolhedora. É só uma casa onde ninguém consegue morar.</q><q>‘Não vou poder’ é uma frase completa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>Como tratar as pessoas</h3>
+    <ul>
+      <li>O teste do garçom: o caráter se mede em como alguém trata quem não pode fazer nada por ele.</li>
+      <li>Quem dá primeiro cria laço (Marcel Mauss, Robert Cialdini), desde que não haja contabilidade.</li>
+      <li>As pessoas retribuem como você as fez sentir, e não o favor contado.</li>
+      <li>A ordem certa: tratar bem porque é certo. As portas que se abrem depois são consequência.</li>
+      <li>A conversa olho no olho, com Dale Carnegie usado com ressalva: técnica a serviço da sinceridade, nunca no lugar dela.</li>
+      <li>Cortar as expressões que pedem desculpa por existir. A presença inteira, sem celular, como presente raro.</li>
+      <li>A firmeza calma e os três silêncios. A discrição de Baltasar Gracián.</li>
+      <li>A inveja se vence trocando a régua. E respeito não é medo: a gentileza é uma linguagem de segurança.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Como você trata quem não tem nada a oferecer em troca é a única fotografia honesta de quem você é.</q><q>O favor que vem com fatura anexada não gera gratidão. Gera dívida.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>Quem forma alguém</h3>
+    <ul>
+      <li>Vale para quem forma um filho, um aluno, um estagiário, um atleta ou uma equipe.</li>
+      <li>Os três verbos do contrato: prover, proteger e preparar. O apego como base segura, na teoria de John Bowlby.</li>
+      <li>O sustento é o piso, nunca o teto. Quem você forma não merece as sobras do dia.</li>
+      <li>O umbral: um gesto na porta para trocar o adulto cansado pelo adulto presente.</li>
+      <li>A gentileza começa em casa, que é o tribunal mais exigente do caráter.</li>
+      <li>O exemplo é o único método. E a expectativa vira clima: o efeito Pigmalião, contado com a ressalva de que é real e moderado. Elogiar o esforço, e não o talento, como ensina Carol Dweck.</li>
+      <li>Segurança primeiro, exigência depois, liberdade por último. Segurar e soltar: o arco e a flecha, de Khalil Gibran.</li>
+      <li>Honrar a própria origem sem dar razão em tudo. O curso separa a intuição da pseudociência das constelações familiares.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você não ensina o que diz. Ensina o que é.</q><q>Solta-se a direção, nunca o vínculo.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>A aliança administrada</h3>
+    <ul>
+      <li>O amor que dura é uma aliança que se administra. A paixão inaugura e a amizade sustenta.</li>
+      <li>As pesquisas de John Gottman com casais: o que separa os que duram é o jeito de brigar, e não a ausência de conflito.</li>
+      <li>Os quatro venenos: a crítica que ataca a pessoa, a defensividade, o muro de silêncio e o desprezo, que é o mais grave.</li>
+      <li>O reparo rápido: estender a ponte de volta antes que a mágoa endureça.</li>
+      <li>A escolha de quem caminha ao lado: olhar o caráter, como a pessoa trata os outros e como reage a um não. Ciúme excessivo não é afeto e controle não é cuidado.</li>
+      <li>Homens e mulheres têm a mesma dignidade, e a aula trata das diferenças como o autor as vê, sem hierarquia entre os sexos.</li>
+      <li>O alerta de Schopenhauer: quem não governa o próprio desejo será infeliz solteiro e casado.</li>
+      <li>Prática de 21 dias: reparar antes de dormir e uma conversa semanal a dois que não seja sobre logística.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Reparo rápido, desprezo nunca.</q><q>Um casamento não morre de uma facada. Morre de mil alfinetadas não reparadas.</q></div>
+  </div></article>
+
+  <p class="block-title">O trabalho e o dinheiro · aulas 13 a 16</p>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>Competência antes da paixão</h3>
+    <ul>
+      <li>Mudar de rota não é fracassar. O professor conta as próprias mudanças de profissão e os negócios que não deram certo.</li>
+      <li>“Siga a sua paixão” inverte a ordem. Para Cal Newport, a paixão é ponto de chegada: nasce do domínio.</li>
+      <li>O primeiro dever do adulto é se sustentar e sustentar quem depende dele.</li>
+      <li>Excelência é constância entediante. A prática deliberada, de Anders Ericsson.</li>
+      <li>Sistema para os dias sem vontade: o profissional não negocia com o próprio humor.</li>
+      <li>O foco como moeda rara (trabalho profundo) e a lei de Pareto: achar o quinto do esforço que gera quase todo o resultado.</li>
+      <li>Emprego é o que sustenta, obra é o que fica. O exemplo de Einstein no escritório de patentes.</li>
+      <li>O freio: diligência é virtude, idolatria ao trabalho é doença (Byung-Chul Han). O descanso faz parte do treino.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A paixão não vem antes da competência. Vem depois.</q><q>O dom é a semente. A disciplina é o cultivo. A grandeza é o fruto.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Dinheiro: servo, não senhor</h3>
+    <ul>
+      <li>A mesma soma liberta um e escraviza outro. O que decide é quem senta na cabeceira.</li>
+      <li>Riqueza é meio, na distinção de Aristóteles. A medida do sucesso financeiro é o grau de liberdade que o saldo sustenta.</li>
+      <li>O conceito de riqueza do professor: renda maior do que as necessidades da família.</li>
+      <li>Três armadilhas: o romantismo da pobreza, a mentalidade da escassez e o mamonismo, a adoração do número.</li>
+      <li>Pagar-se primeiro, a regra de O Homem Mais Rico da Babilônia: separar a sua parte no dia em que o dinheiro entra.</li>
+      <li>Guardar de propósito e com método. A piada da Ferrari mostra que só deixar de gastar não basta.</li>
+      <li>Riqueza é o que você não vê (Morgan Housel). A defesa vem antes do ataque: crédito só para o que produz, e arriscar apenas o que se pode perder.</li>
+      <li>A peneira da superstição financeira: pensar orienta, e é a ação que constrói. A aula avisa que é conteúdo educacional, não recomendação de investimento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O dinheiro é um servo excelente e um senhor terrível.</q><q>Enriqueça para ter paz, não para impressionar ninguém.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>Os dois lados da mesa</h3>
+    <ul>
+      <li>A conversa adiada cobra juros: a orientação simples de hoje vira ressentimento e prejuízo.</li>
+      <li>Liderar é servir e aceitar o ônus (Peter Drucker). A falsa gentileza que esconde de alguém a verdade sobre o próprio trabalho.</li>
+      <li>O equilíbrio de Kim Scott: importar-se de verdade e desafiar diretamente. Elogiar em público e corrigir a sós.</li>
+      <li>O mapa por baixo do organograma, com o aviso de Maquiavel contra a ingenuidade. Entender o jogo não obriga a jogar sujo.</li>
+      <li>A empresa é um contrato e a família é uma aliança. Confundir os dois fere dos dois lados.</li>
+      <li>Vender é servir, e a confiança vem antes da venda: o ethos de Aristóteles.</li>
+      <li>Quem empreende carrega a incerteza que os outros evitam (Cantillon). A troca voluntária que serve aos dois lados (Adam Smith).</li>
+      <li>Pelo que as pessoas pagam: um resultado, um status legítimo ou um alívio.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O contrato se honra. A aliança se ama.</q><q>A prosperidade é o rastro do valor que você produz para os outros.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>Quando tudo der errado</h3>
+    <ul>
+      <li>A adversidade real, que não é a catástrofe ensaiada às três da manhã.</li>
+      <li>Antes do como, o porquê: a frase de Nietzsche que Viktor Frankl levou dos campos de concentração.</li>
+      <li>O obstáculo como matéria-prima, em Marco Aurélio. Com a ressalva de que sofrer não basta: alguém precisa erguer a pedra.</li>
+      <li>O erro lido como informação, e não como veredicto (Carol Dweck). Contar o próprio tombo em vez de escondê-lo.</li>
+      <li>“O justo cai sete vezes e se levanta”: levantar é resiliência, entender por que caiu é inteligência.</li>
+      <li>Pressão é privilégio, frase popularizada por Billie Jean King. Sem romantizar o esgotamento.</li>
+      <li>Voltar ao ponto, e não ao placar. Triunfo e desastre como dois impostores, no poema “Se”, de Kipling.</li>
+      <li>O limite honesto: para o luto não há técnica. E se a dor não passa, a aula manda procurar ajuda profissional.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A pedra que fecha uma estrada pode ser a mesma pedra que constrói uma ponte.</q><q>Não carregue o mês inteiro numa manhã.</q></div>
+  </div></article>
+
+  <p class="block-title">A lucidez · aulas 17 a 19</p>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Pensar sem ser enganado</h3>
+    <ul>
+      <li>Quem quer enganar precisa que você julgue antes de olhar. Pensar é atrasar o julgamento o tempo suficiente para ver.</li>
+      <li>O guia da aula é Olavo de Carvalho, apresentado com a ressalva de que foi polêmico e contestado. O professor aplica a ele a régua que ele mesmo ensinava.</li>
+      <li>Informação não é opinião, e opinião não é conhecimento. A pergunta que desmonta o blefe: “como você sabe disso?”.</li>
+      <li>O “não sei” de Sócrates e as três frases que o vaidoso não consegue dizer.</li>
+      <li>A hierarquia dos saberes e a diferença entre ciência e cientificismo.</li>
+      <li>As quatro perguntas antes de comprar uma ideia: como sei isso? De onde veio? O que significa exatamente? Que fato provaria que estou errado?</li>
+      <li>Os truques da linguagem (eufemismo, rótulo e abstração) e a defesa de traduzir para o concreto. Fortalecer o argumento do outro antes de criticar.</li>
+      <li>“A quem interessa?” como higiene, sem cair no fatalismo conspiratório. E a regra para a inteligência artificial: usar a máquina, nunca entregar a ela o juízo.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um mestre de verdade é o que ensina você a não precisar dele.</q><q>Acumular informação não produz conhecimento. Do mesmo jeito que empilhar tijolos não produz uma casa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>O homem e a cidade: liberdade e responsabilidade</h3>
+    <ul>
+      <li>A liberdade transfere a conta para o seu nome. O medo dela em Sartre, Erich Fromm e Dostoiévski.</li>
+      <li>Thomas Sowell como pilar: a mentalidade de vítima aleija por dentro. A aula separa ser vítima, que é um fato, de vitimismo, que é identidade e desculpa.</li>
+      <li>É fácil persistir no erro quando o custo é pago pelos outros. Lord Acton, Reagan, Thatcher e Ayn Rand entram com as posições do autor sobre Estado e riqueza.</li>
+      <li>A correção que a aula faz questão de fazer: honrar quem produz não é desprezar quem precisa. A crítica é ao sistema que prende na dependência, e não ao pobre nem à caridade.</li>
+      <li>A democracia é preciosa e frágil, e a maioria não decide o que é certo (Tocqueville).</li>
+      <li>A crítica do autor ao socialismo, com Olavo de Carvalho e Hayek.</li>
+      <li>Contra a militância e a moral de dois pesos: um princípio só vale se puder ser aplicado contra o próprio grupo. Reforma em vez de revolução, com Burke.</li>
+      <li>Áreas que a política não deve colonizar: família, fé, trabalho, amizade e estudo. A aula não diz em quem votar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quando você não tiver mais a quem culpar, aí você começou a ser homem.</q><q>Se só funciona contra o adversário, não é princípio. É uniforme.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>A mentira que contamos a nós mesmos</h3>
+    <ul>
+      <li>A camada mais funda da verdade: não mentir para si mesmo. Libertação como saída da mentira, na tese de Olavo de Carvalho.</li>
+      <li>Os carcereiros de verdade (medo, vaidade, ressentimento e fome de aprovação) viajam na mala.</li>
+      <li>O fingimento: a personagem tão convincente que engana o próprio ator.</li>
+      <li>A última das liberdades, de Viktor Frankl: escolher a própria atitude diante do que acontece.</li>
+      <li>A verdade devolve o tamanho real das coisas.</li>
+      <li>O perdão que solta a corrente. Perdoar não é dizer que não doeu nem voltar a se expor, e a justiça segue o curso dela.</li>
+      <li>A régua para discordar: não confundir a pessoa, o comportamento, a ideia e a política.</li>
+      <li>O autor diz o que pensa sobre a vida antes do nascimento, homens e mulheres, identidade e pobreza, apresentando como convicção pessoal e com respeito inegociável pelas pessoas.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A mentira mais perigosa que você vai contar na vida não vai ser para o mundo. Vai ser para o espelho.</q><q>A corrente tem duas pontas, e uma delas está na sua mão.</q></div>
+  </div></article>
+
+  <p class="block-title">O essencial · aulas 20 a 24</p>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>Hoje é o milagre</h3>
+    <ul>
+      <li>A imagem do homem de 85 anos que recebe um dia de volta. Você é esse homem, e o dia é hoje.</li>
+      <li>A felicidade adiada é um contrato que nunca se cumpre: a linha de chegada anda junto com o corredor.</li>
+      <li>Contentamento é habilidade treinável. O experimento de Robert Emmons sobre gratidão, com efeitos descritos como reais e modestos.</li>
+      <li>A convergência entre o apóstolo Paulo, Epicuro e a psicologia.</li>
+      <li>A improbabilidade de existir, com Richard Dawkins, e a bifurcação: assombro sem destinatário ou gratidão com destinatário, que é a fé do autor.</li>
+      <li>Os luxos sem etiqueta: água quente, trajeto curto, voltar para casa em segurança.</li>
+      <li>Gratidão não é conformismo. Os três “ainda bem” para o revés.</li>
+      <li>O filtro: o universo não é um caixa eletrônico que responde a pensamentos. A aula avisa que gratidão não substitui tratamento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você nunca vai pisar no amanhã. Sempre que chegar lá, vai ser hoje.</q><q>O problema fica do mesmo tamanho. Muda o seu tamanho diante dele.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>Para que você foi feito</h3>
+    <ul>
+      <li>Duas perguntas que o mundo finge serem a mesma: o que eu quero da vida e para que eu fui feito.</li>
+      <li>Viktor Frankl nos campos de concentração: resistia quem tinha um porquê. A felicidade acontece de lado, quando se persegue algo maior.</li>
+      <li>O autor diz no que crê, que a vida tem autor e é dom, e apresenta isso como convite. Quem não tem fé é convidado a ficar com os bons ensinamentos de cada tradição.</li>
+      <li>O bem feito em segredo, do Sermão da Montanha, contra a virtude fotografada.</li>
+      <li>A objeção mais forte contra a fé, a de Freud, sentada à mesa e respondida.</li>
+      <li>A peneira entre o mistério legítimo e o pseudomistério de “energia” e “vibração”. A pergunta-teste: isso me pede algo, ou só me promete?</li>
+      <li>Você não é os seus problemas. E “o essencial é invisível aos olhos”, de Saint-Exupéry, de onde vem o nome do curso.</li>
+      <li>Prática de 21 dias: um bem por semana que ninguém vá saber.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Não é sobre você.</q><q>Uma fé que nunca foi perguntada não é forte. É só nova.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>A morte como conselheira</h3>
+    <ul>
+      <li>A morte virá num dia comum, e o mundo não vai parar. Saber disso como fato muda o hoje.</li>
+      <li>As pendências que a morte súbita deixa: a conversa pela metade, o pedido de desculpas que não foi feito.</li>
+      <li>Ivan Ilitch, de Tolstói: a vida “mais simples, mais comum e mais terrível”. O erro é entregar-se ao roteiro sem autoria, e não o roteiro.</li>
+      <li>O memento mori de Sêneca e Marco Aurélio como higiene mental. O esquecimento futuro tira a autoridade da plateia.</li>
+      <li>O último homem, de Nietzsche: a vida morna. O professor toma o diagnóstico e recusa o remédio.</li>
+      <li>O pêndulo de Schopenhauer e a corrida dos ratos, que as notificações industrializaram.</li>
+      <li>A correção ao clichê: viver cada dia como um dos poucos que se tem, e não como se fosse o último.</li>
+      <li>Prática de 21 dias: a pergunta de Ivan e contar os jantares com quem se ama.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A morte é a única conselheira que nunca mente e nunca bajula.</q><q>Viva cada dia como se fosse um dos poucos que você tem.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">23</div><div class="body">
+    <h3>Grandes pensadores do nosso tempo</h3>
+    <ul>
+      <li>A desonestidade intelectual: distorcer, omitir ou manipular para defender uma posição que se sabe frágil.</li>
+      <li>Dois pensadores apresentados como figuras que polarizam: Olavo de Carvalho e Jordan Peterson. A aula manda ler os dois conferindo a fonte, inclusive a deles.</li>
+      <li>De Olavo: a verdade como necessidade pessoal e a recusa de terceirizar a consciência. Ler os clássicos contra o provincianismo do presente.</li>
+      <li>A teoria dos quatro discursos (poético, retórico, dialético e lógico), para um discurso não se passar por outro.</li>
+      <li>A paralaxe cognitiva: a distância entre a teoria de alguém e a própria vida. A recusa da politização total da vida, e a vocação.</li>
+      <li>De Peterson: a responsabilidade individual, o propósito que permite suportar o sofrimento, e a dupla ordem e caos.</li>
+      <li>Três das doze regras: dizer a verdade ou pelo menos não mentir, comparar-se com quem você foi ontem, e presumir que o outro sabe algo que você não sabe.</li>
+      <li>Prática de 21 dias: arrumar o quarto, literalmente, e uma linha por noite comparando-se com o dia anterior.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Pensar por conta própria não é rejeitar todo mestre. É tornar-se responsável pelas razões do que você acredita.</q><q>O seu juízo é responsabilidade sua. A sua vida também.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">24</div><div class="body">
+    <h3>O que fica</h3>
+    <ul>
+      <li>As duas contabilidades de uma vida: as virtudes do currículo e as virtudes do elogio fúnebre, na formulação de David Brooks.</li>
+      <li>Legado é formação, não herança. Bens se gastam e se dividem. O que atravessa gerações é o caráter e o método de viver.</li>
+      <li>Deixar olhos, e não respostas: o curso quis ensinar como pensar, e não o que pensar.</li>
+      <li>A vela que acende outra não perde nada. Sucesso é quantas chamas a sua passagem deixou acesas.</li>
+      <li>Método, não muleta: patrimônio sem formação estraga quem o recebe.</li>
+      <li>Viver de um jeito que a saudade seja habitável.</li>
+      <li>O que a morte não leva, com Henry Scott Holland e Agostinho. O luto é real, e chorar não é falta de fé.</li>
+      <li>Os oito conselhos que fecham o curso e a última prática de 21 dias: o teste do elogio fúnebre, com uma correção por dia.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A primeira coluna impressiona. Só a segunda define.</q><q>Quem deixa respostas protege alguém por um dia. Quem deixa lucidez protege por uma vida.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Ideias e conceitos com nome</h2>
+  <p class="sub">Ferramentas de pensamento que o aluno leva para a vida. Rendem bem em carrossel e em slide, porque têm nome e, muitas vezes, número.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Ideia</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>As 4 perguntas cardeais</td><td>É sábio? É justo? É corajoso? É moderado? O bilhete de bolso antes das decisões que pesam.</td><td class="aula">1</td></tr>
+      <tr><td>O que ninguém confisca</td><td>Caráter, saber e disciplina, construídos antes de dinheiro, cargo e reputação.</td><td class="aula">1</td></tr>
+      <tr><td>O piso de Soljenítsin</td><td>Antes de dizer toda a verdade, parar de dizer o que se sabe ser falso.</td><td class="aula">2</td></tr>
+      <tr><td>A exceção da cortesia</td><td>Verdade no conteúdo, cuidado na forma.</td><td class="aula">2</td></tr>
+      <tr><td>Primeiro forte, depois bom</td><td>Tornar-se capaz e, depois, ser gentil por escolha.</td><td class="aula">3</td></tr>
+      <tr><td>Leão ou rato?</td><td>A pergunta antes de entrar numa discussão: a briga é do seu tamanho?</td><td class="aula">3</td></tr>
+      <tr><td>A demora de Sêneca</td><td>Adiar a resposta, porque o primeiro ímpeto mente.</td><td class="aula">4</td></tr>
+      <tr><td>Ação oposta</td><td>Fazer o contrário do que a emoção manda quando ela não serve (Marsha Linehan).</td><td class="aula">4</td></tr>
+      <tr><td>Sinta tudo, decida frio</td><td>A regra de quatro palavras para as emoções.</td><td class="aula">4</td></tr>
+      <tr><td>As 2 colunas de Epicteto</td><td>O que depende de você e o que não depende.</td><td class="aula">5</td></tr>
+      <tr><td>A cidadela interior</td><td>Quatro paredes (as colunas, a paz decidida, a atenção governada e o desejo lúcido) e um portão, o exame de si.</td><td class="aula">5</td></tr>
+      <tr><td>Os 3 balcões</td><td>A mesa, o copo e a tela. O teste: “você consegue parar?”.</td><td class="aula">5</td></tr>
+      <tr><td>O exame noturno</td><td>O que fiz bem, onde falhei, que desculpa contei a mim mesmo hoje.</td><td class="aula">5</td></tr>
+      <tr><td>O pêndulo de Schopenhauer</td><td>A vida oscila entre a falta e o tédio. Enxergar o pêndulo é o remédio.</td><td class="aula">5 e 22</td></tr>
+      <tr><td>Músculo é poupança</td><td>Deposita-se cedo para sacar na velhice.</td><td class="aula">6</td></tr>
+      <tr><td>Dieta mental</td><td>A mente é feita do que consome. O critério é engrandecer ou diminuir.</td><td class="aula">7</td></tr>
+      <tr><td>O porteiro da mente</td><td>Escolher o que entra e conferir o dono de cada frase.</td><td class="aula">7</td></tr>
+      <tr><td>As 3 amizades de Aristóteles</td><td>De utilidade, de prazer e de virtude.</td><td class="aula">8</td></tr>
+      <tr><td>Podar sem desprezar</td><td>Afastar-se de um padrão que rebaixa, sem drama e sem descartar alguém num dia ruim.</td><td class="aula">8</td></tr>
+      <tr><td>O não é o guardião do sim</td><td>Cada não bem colocado protege um sim que importa.</td><td class="aula">9</td></tr>
+      <tr><td>Limite não é muro</td><td>Firmeza com vínculo. Não à coisa, sim à pessoa.</td><td class="aula">9</td></tr>
+      <tr><td>O teste do garçom</td><td>O caráter aparece em como se trata quem não pode retribuir.</td><td class="aula">10</td></tr>
+      <tr><td>Firmeza calma</td><td>O caminho entre a bondade explorável e a agressividade. Começa por três silêncios.</td><td class="aula">10</td></tr>
+      <tr><td>Prover, proteger, preparar</td><td>Os três verbos de quem forma alguém.</td><td class="aula">11</td></tr>
+      <tr><td>O umbral</td><td>O gesto na porta de casa para chegar presente.</td><td class="aula">11</td></tr>
+      <tr><td>Segurança, exigência, liberdade</td><td>A ordem certa ao formar alguém.</td><td class="aula">11</td></tr>
+      <tr><td>Os 4 venenos de Gottman</td><td>Crítica, defensividade, muro de silêncio e desprezo.</td><td class="aula">12</td></tr>
+      <tr><td>Reparo rápido</td><td>Reaproximar-se logo depois da briga, antes que a mágoa endureça.</td><td class="aula">12</td></tr>
+      <tr><td>Competência antes da paixão</td><td>A paixão é fruto do domínio, e não a semente.</td><td class="aula">13</td></tr>
+      <tr><td>Emprego e obra</td><td>Emprego é o que sustenta. Obra é o que fica.</td><td class="aula">13</td></tr>
+      <tr><td>Pagar-se primeiro</td><td>Separar a sua parte no dia em que o dinheiro entra, antes de qualquer conta.</td><td class="aula">14</td></tr>
+      <tr><td>As 3 armadilhas do dinheiro</td><td>Romantismo da pobreza, mentalidade da escassez e mamonismo.</td><td class="aula">14</td></tr>
+      <tr><td>Defesa antes do ataque</td><td>Não perder vem primeiro. Arriscar só o que se pode perder.</td><td class="aula">14</td></tr>
+      <tr><td>Contrato e aliança</td><td>A empresa é contrato. A família é aliança.</td><td class="aula">15</td></tr>
+      <tr><td>Resultado, status legítimo, alívio</td><td>As três coisas pelas quais as pessoas pagam.</td><td class="aula">15</td></tr>
+      <tr><td>O porquê antes do como</td><td>Quem sabe por que atravessa aguenta quase qualquer como.</td><td class="aula">16 e 21</td></tr>
+      <tr><td>O ponto, não o placar</td><td>No aperto, voltar ao próximo gesto pequeno.</td><td class="aula">16</td></tr>
+      <tr><td>Os 2 impostores</td><td>O triunfo e o desastre, que mentem sobre o seu valor (Kipling).</td><td class="aula">16</td></tr>
+      <tr><td>Informação, opinião, conhecimento</td><td>Três coisas que se costuma misturar.</td><td class="aula">17 e 23</td></tr>
+      <tr><td>As 4 perguntas contra o engano</td><td>Como sei? De onde veio? O que significa? Que fato provaria que estou errado?</td><td class="aula">17</td></tr>
+      <tr><td>Vítima e vitimismo</td><td>Um descreve um fato. O outro é identidade permanente e desculpa para não agir.</td><td class="aula">18</td></tr>
+      <tr><td>O princípio contra os seus</td><td>Um princípio ético só vale se puder ser aplicado contra o próprio grupo.</td><td class="aula">18</td></tr>
+      <tr><td>Pessoa, comportamento, ideia, política</td><td>Quatro coisas que não se confundem ao discordar de alguém.</td><td class="aula">19</td></tr>
+      <tr><td>Soltar a ponta da corrente</td><td>O perdão como liberdade de quem perdoa, sem negar a justiça.</td><td class="aula">19</td></tr>
+      <tr><td>Os 3 “ainda bem”</td><td>Não foi pior, eu tinha isto, disto eu aprendo.</td><td class="aula">20</td></tr>
+      <tr><td>Luxos sem etiqueta</td><td>O que não aparece em extrato e é riqueza.</td><td class="aula">20</td></tr>
+      <tr><td>Não é sobre você</td><td>O sentido está em servir a algo maior. A frase é de Rick Warren.</td><td class="aula">21</td></tr>
+      <tr><td>A peneira do sagrado</td><td>“Isso me pede algo, ou só me promete?”</td><td class="aula">21</td></tr>
+      <tr><td>Memento mori</td><td>Lembrar da morte para ordenar a vida, na dose de uma pitada de sal.</td><td class="aula">22</td></tr>
+      <tr><td>A pergunta de Ivan Ilitch</td><td>A vida que eu levo é minha, ou é a que esperam de mim?</td><td class="aula">2 e 22</td></tr>
+      <tr><td>O último homem</td><td>O sujeito confortável que desistiu de querer algo grande (Nietzsche).</td><td class="aula">22</td></tr>
+      <tr><td>Os 4 discursos</td><td>Poético, retórico, dialético e lógico.</td><td class="aula">23</td></tr>
+      <tr><td>Paralaxe cognitiva</td><td>A distância entre a teoria de alguém e a vida real dessa pessoa.</td><td class="aula">23</td></tr>
+      <tr><td>Ordem e caos</td><td>Viver bem é caminhar na fronteira entre os dois (Jordan Peterson).</td><td class="aula">23</td></tr>
+      <tr><td>As 2 contabilidades</td><td>A do currículo e a do elogio fúnebre.</td><td class="aula">24</td></tr>
+      <tr><td>Os 8 conselhos finais</td><td>Verdade, governo de si, mesa, família, obra, pedra, lucidez e sentido.</td><td class="aula">24</td></tr>
+      <tr><td>Experimento de 21 dias</td><td>A prática curta e diária que fecha cada aula.</td><td class="aula">todas</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Cenas e imagens das aulas que rendem gancho</h2>
+  <p class="sub">Este curso não trabalha com casos de alunos nem com histórias de bastidor. Cada aula abre com uma imagem, uma parábola ou um personagem da literatura e da história. São o melhor material para abertura de vídeo e de carrossel.</p>
+  <div class="cases">
+    <div class="case"><h3>A lista lida de trás para a frente</h3><p>A preguiça mata a prosperidade, o medo mata o primeiro passo. Lida ao contrário, a lista de derrotas vira receita: a ação mata a dúvida, o aprendizado mata a arrogância. Aula 1.</p></div>
+    <div class="case"><h3>O cão sem dentes e o cão grande</h3><p>O cão que nunca pôde morder não é manso. Manso é o cão de mandíbula pesada que deixa a criança puxar a orelha. A imagem resume “primeiro forte, depois bom”. Aula 3.</p></div>
+    <div class="case"><h3>A parede de um mês e os dez segundos</h3><p>Um mês erguendo uma parede, tijolo por tijolo. Numa noite, uma provocação, e em dez segundos ela vem abaixo. Aula 4.</p></div>
+    <div class="case"><h3>A última torre do castelo</h3><p>Quando as muralhas caíam, os defensores subiam à cidadela. Enquanto ela resistisse, a guerra não estava perdida. Aula 5.</p></div>
+    <div class="case"><h3>O homem que se senta à mesma mesa</h3><p>No começo discorda de metade do que ouve. Em cinco anos repete as frases que o incomodavam, sem que ninguém o tenha convencido. Aula 8.</p></div>
+    <div class="case"><h3>O garçom</h3><p>Encantador com quem paga a conta, seco com o rapaz que traz a água. Em cinco minutos dá para ver quem a pessoa é. Aula 10.</p></div>
+    <div class="case"><h3>O casal no laboratório</h3><p>Uma conversa gravada sobre um assunto em que os dois discordam. Anos depois, os pesquisadores voltam para saber se continuam juntos. É a porta de entrada para os quatro venenos de Gottman. Aula 12.</p></div>
+    <div class="case"><h3>As mudanças de rota do professor</h3><p>Ele conta que começou em duas engenharias, foi para o Direito e advogou por muitos anos, abriu três negócios que não deram certo e se encontrou na hospedagem. Chama os fracassos de um MBA pago com dinheiro, trabalho e frustração. Aula 13.</p></div>
+    <div class="case"><h3>O dinheiro na cabeceira</h3><p>O dinheiro foi chamado para casa como empregado, sentou na cabeceira da mesa e virou dono. Aula 14.</p></div>
+    <div class="case"><h3>A chave no bolso</h3><p>O homem que passou anos odiando o carcereiro descobre que a porta nunca esteve trancada por fora. Aula 19.</p></div>
+    <div class="case"><h3>O dia devolvido</h3><p>Um homem de 85 anos recebe de volta um único dia no corpo que você tem hoje. O que ele faria com a sua manhã? A aula usa a cena como imagem, sem autor confirmado. Aula 20.</p></div>
+    <div class="case"><h3>Viktor Frankl e Ivan Ilitch</h3><p>Um psiquiatra real, que sobreviveu aos campos de concentração e viu que resistia quem tinha um porquê. E um juiz de ficção, de Tolstói, que fez tudo certo e nunca fez nada de seu. Aulas 16, 21 e 22.</p></div>
+    <div class="case"><h3>A vela que acende outra</h3><p>A primeira não perde nada, e agora há duas luzes onde havia uma. É a imagem do legado que fecha o curso. Aula 24.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">Itens da página de venda. Os números podem ser citados.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula animada.</li>
+        <li>Artigo da aula em PDF: a videoaula inteira por escrito, com a síntese, três tarefas e o material de apoio do livro.</li>
+        <li>Uma prática de 21 dias, mais duas tarefas curtas para aplicar no mesmo dia.</li>
+        <li>Quiz comentado, com a explicação de cada alternativa.</li>
+        <li>Caderno de trabalho imprimível: Aprendi, Pratiquei, Apliquei.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li><strong>Tutor Villela.</strong> A IA do curso responde só com o conteúdo das aulas e do livro, cita a origem e leva ao minuto exato do vídeo. Se a resposta não está no curso, ele diz que não encontrou.</li>
+        <li>Biblioteca de 29 prompts para estudar, refletir e decidir com a IA, a partir de um esqueleto que proíbe a IA de decidir pelo aluno e de inventar números, nomes ou citações.</li>
+        <li>Audiobook: as 24 aulas em áudio, para ouvir no carro ou no fone com o celular bloqueado. O primeiro capítulo fica aberto como amostra.</li>
+        <li>Jornada do aluno: níveis, XP, 9 selos e medalhas; diagnóstico e teste final de 20 questões.</li>
+        <li>Villela Lab com 6 missões e o projeto final “Seu código pessoal”.</li>
+        <li>Desafio 21 dias e 5 simulações.</li>
+        <li>Prompt Builder, gerador de agentes, as folhas “O prompt do homem essencial” e “Protocolo anti-alucinação para decisões pessoais” e 8 modelos prontos, das quatro perguntas cardeais à carta das duas contabilidades.</li>
+        <li>Os oito conselhos do epílogo do livro, no material da última aula.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Homens e mulheres adultos que querem pensar o próprio caráter com seriedade.</li>
+        <li>Quem quer conhecer os grandes pensadores pelo nome, no que cada um disse, aplicado à vida comum.</li>
+        <li>Quem forma ou lidera alguém (filho, aluno, estagiário, equipe) e quer rever o próprio exemplo.</li>
+        <li>Quem atravessa uma fase difícil e quer critério para separar o que depende de si do que não depende.</li>
+        <li>Quem prefere um autor que diz o que pensa sobre política e fé, com respeito, a um curso que finge não ter opinião.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura fórmula rápida.</li>
+        <li>Quem procura conteúdo neutro. O curso tem convicções e as diz.</li>
+      </ul>
+      <h3>Sobre o título</h3>
+      <ul>
+        <li>O título fala do homem porque o livro foi escrito assim. A página de venda diz que o curso é para homens e mulheres adultos.</li>
+        <li>O nome vem da frase de Saint-Exupéry citada na aula 21: “o essencial é invisível aos olhos”.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Objeções e respostas</h2>
+  <p class="sub">Das perguntas frequentes da página de venda.</p>
+  <h3>É um curso só para homens?</h3>
+  <p>Não. É para homens e mulheres adultos. Algumas aulas, como a do casamento, tratam de diferenças entre homens e mulheres do jeito que o autor as vê. Caráter, domínio de si, limites, trabalho, dinheiro, crise, fé e legado valem para qualquer adulto.</p>
+  <h3>O curso tem posições políticas e religiosas?</h3>
+  <p>Tem, e não as esconde. A aula 18 trata de liberdade e responsabilidade, com crítica à mentalidade de vítima e ao socialismo. A aula 21 apresenta a fé do autor como convite e traz a objeção de Freud. A aula 23 é dedicada a Olavo de Carvalho e Jordan Peterson. A página diz que não é preciso concordar: o curso ensina a examinar, inclusive o que ele mesmo diz.</p>
+  <h3>Posso assistir antes de comprar?</h3>
+  <p>Sim. A aula 1 inteira é gratuita, com a videoaula e o artigo em PDF.</p>
+  <h3>É orientação médica ou financeira?</h3>
+  <p>Não. É conteúdo educacional. A aula do corpo manda conversar com o médico. A aula do dinheiro não indica produto financeiro nem recomenda investimento.</p>
+  <h3>Preciso ter lido o livro?</h3>
+  <p>Não. O curso é baseado no livro O Homem Essencial, e os artigos em PDF trazem o material de apoio dele. Dá para acompanhar tudo só com o curso.</p>
+  <h3>Quais pensadores aparecem?</h3>
+  <p>Sêneca, Epicteto, Marco Aurélio, Aristóteles e Sócrates; Tolstói, Dostoiévski, Kierkegaard, Nietzsche e Schopenhauer; Viktor Frankl, Hannah Arendt, Soljenítsin e Freud; Thomas Sowell, Hayek, Burke, Thatcher, Reagan e Ayn Rand; e, numa aula inteira, Olavo de Carvalho e Jordan Peterson.</p>
+  <h3>Dá para ouvir em vez de assistir?</h3>
+  <p>Sim. O audiobook toca no player do site, com a tela do celular bloqueada, no fone e no carro. Não há download.</p>
+  <h3>Por quanto tempo tenho acesso?</h3>
+  <p>Um ano a partir da compra, incluindo as atualizações e as aulas novas publicadas nesse período.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias, incondicional. Se o curso não servir, a pessoa pede o reembolso integral dentro do prazo, sem justificativa.</p>
+</section>
+
+<section id="cuidados">
+  <h2>Cuidados na comunicação</h2>
+  <p class="sub">Para o criativo não prometer o que o curso faz questão de não prometer.</p>
+  <div class="care">
+    <h3>Evitar</h3>
+    <ul>
+      <li>Expor a família do autor. O livro nasceu como texto pessoal, e o curso foi refeito na voz de um professor falando com o aluno. Não usar nome, idade, foto, história nem qualquer dado de filhos ou familiares, e não vender o curso como “carta de um pai”. Os exemplos das aulas são contados como casos genéricos e devem continuar assim.</li>
+      <li>Promessa de transformação garantida: “mude de vida em 21 dias”, “torne-se outro homem”. A própria página diz que o resultado depende do que a pessoa fizer com a prática.</li>
+      <li>Linguagem de coach e de pensamento positivo: “desbloqueie”, “reprograme a mente”, “atraia abundância”, “o universo conspira”. O curso critica isso de forma explícita nas aulas 7, 14, 20 e 21.</li>
+      <li>Qualquer tom de conselho médico, psicológico ou financeiro. As aulas avisam que são conteúdo educacional e mandam procurar o médico ou um profissional habilitado. Nada de “cure a ansiedade”, “vença a depressão”, “emagreça” ou “fique rico”.</li>
+      <li>Vender “masculinidade” agressiva, do tipo macho alfa ou “pare de ser bonzinho”. A aula 9 chama isso de masculinidade barata, e a página diz que o curso é para homens e mulheres.</li>
+      <li>Transformar as aulas 18, 19 e 23 em peça partidária ou em provocação. As posições são do autor, ditas como convicção e com respeito por quem discorda, e a aula 18 não diz em quem votar. Também não esconder que o curso tem posições: a página as declara.</li>
+      <li>Atacar pessoas ou grupos nos criativos. A aula 19 pede que não se confunda pessoa, comportamento, ideia e política, e trata o respeito às pessoas como inegociável.</li>
+      <li>Tratar Olavo de Carvalho e Jordan Peterson como autoridade incontestável. O curso os apresenta como figuras que polarizam e manda conferir a fonte, inclusive a deles.</li>
+      <li>Frase de efeito com autor errado. O curso corrige atribuições falsas a Aristóteles, Einstein, Lincoln, Freud e outros. Citar pensador só com a frase conferida na aula, e usar “atribuída a” quando a aula usa.</li>
+      <li>Prometer cura do luto ou fórmula para a dor. A aula 16 diz que para o luto não há técnica.</li>
+      <li>“Acesso vitalício”. O acesso é de 1 ano.</li>
+      <li>Depoimentos de alunos. A página de venda não tem nenhum, então não há o que citar.</li>
+    </ul>
+  </div>
+  <p style="margin-top:14px">O preço e os itens incluídos mudam. Antes de fechar uma peça com valor, confira na página do curso.</p>
+</section>
+
+<footer>
+  Fonte: roteiros das 24 videoaulas e página de venda do curso na Villela Academy. Grupo Villela Stay.
+</footer>
+
+</div>
+</body>
+</html>

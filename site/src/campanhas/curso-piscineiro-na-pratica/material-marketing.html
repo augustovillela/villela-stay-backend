@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}</style>
+<title>Piscineiro na Prática: material para criativos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Material de apoio para marketing · outubro de 2026</p>
+    <h1>Piscineiro na Prática</h1>
+    <p class="lead">Tudo o que o curso ensina a quem cuida de uma piscina de chácara, ou paga alguém para cuidar, aula por aula, pronto para virar apresentação e criativo. O conteúdo abaixo foi tirado dos roteiros das 25 videoaulas e da página de venda no ar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 25 aulas</a>
+  <a href="#metodos">Procedimentos com nome</a>
+  <a href="#casos">Cenas e ganchos</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Objeções</a>
+  <a href="#cuidados">Cuidados na comunicação</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados que podem ser citados como estão.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>Piscineiro na Prática</dd></div>
+    <div><dt>Chamada da página</dt><dd>A piscina da chácara pronta, toda semana, sem susto</dd></div>
+    <div><dt>Coleção</dt><dd>Viver de Chácara (é o primeiro curso da coleção)</dd></div>
+    <div><dt>Quem ensina</dt><dd>Villela Academy (a página não nomeia professor)</dd></div>
+    <div><dt>Formato</dt><dd>25 videoaulas animadas, de cerca de 9 minutos cada</dd></div>
+    <div><dt>Duração em vídeo</dt><dd>3 h 35 min</dd></div>
+    <div><dt>Em cada aula</dt><dd>Artigo em PDF, com checklists e roteiros</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Certificado</dt><dd>Certificado da Villela Academy, ao concluir todas as aulas</dd></div>
+    <div><dt>Preço</dt><dd>R$ 85,00 (conferido na página em 08/10/2026)</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, incondicional, com reembolso</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/piscineiro-na-pratica">academia.villelastay.com.br/academy/cursos/piscineiro-na-pratica</a></p>
+  <p>Na página, a aula 2 (Segurança química e leitura de rótulos) aparece aberta como degustação grátis, com vídeo e artigo.</p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">Se o criativo só puder dizer uma coisa, é esta.</p>
+  <p class="thesis">A piscina é um circuito, não é um tanque. Quando a água para de circular, ela começa a se estragar.</p>
+  <p>O curso fala da piscina de chácara, que vive uma vida que os manuais não descrevem: fica dias sem ninguém por perto, debaixo de árvore, ao lado de estrada de terra, e de repente recebe a família inteira ou um grupo de hóspedes. A piscina verde da sexta-feira raramente é um mistério de química. Quase sempre é um circuito que parou, e ninguém estava lá para ver.</p>
+  <h3>O método, nas palavras da página de venda</h3>
+  <ul>
+    <li><strong>Entender o circuito da água.</strong> De onde ela sai, por onde passa e por que se estraga quando para.</li>
+    <li><strong>Trabalhar com segurança.</strong> A segurança vem antes de qualquer produto.</li>
+    <li><strong>Medir antes de tratar.</strong> Você não trata o que não mede.</li>
+    <li><strong>Corrigir aos poucos.</strong> Aplicar uma parte, deixar circular e medir de novo.</li>
+    <li><strong>Registrar.</strong> Sem registro você tem impressões. Com registro você tem histórico.</li>
+    <li><strong>Saber a hora de chamar um profissional habilitado.</strong> Quem cuida observa, mede e relata. Não desmonta.</li>
+  </ul>
+  <h3>A promessa, em uma frase</h3>
+  <p>Sem fórmula secreta e sem produto milagroso: você termina com o plano de operação da sua piscina escrito, pronto para entregar a quem cuida dela.</p>
+  <h3>Quatro mensagens que sustentam qualquer peça</h3>
+  <ul>
+    <li><strong>Nada funciona em água parada.</strong> Antes da química vem a física: sem circulação, o melhor produto não chega a todos os cantos.</li>
+    <li><strong>Primeiro o número, depois o produto.</strong> Toda dose é dada para cada mil litros. Quem não sabe o volume está chutando.</li>
+    <li><strong>A ordem certa poupa trabalho e produto.</strong> Na limpeza, nove passos. Na água, alcalinidade, pH e cloro.</li>
+    <li><strong>Interdição não se negocia.</strong> Liberar a piscina é uma decisão, tomada por teste, com nome e hora.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso, com pequenos ajustes de corte, que funcionam como chamada. Os títulos são os publicados na Villela Academy. O agrupamento em blocos é deste material.</p>
+
+  <p class="block-title">Fundamentos e segurança · aulas 1 a 5</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>Função do piscineiro e anatomia da piscina</h3>
+    <ul>
+      <li>A tese do curso inteiro: a água sai do tanque, passa por uma bomba, atravessa um filtro e volta. Quase todo problema de piscina é um problema nesse circuito.</li>
+      <li>O caminho da água, peça por peça: tanque, skimmer, ralo de fundo, bocal de aspiração, pré-filtro, bomba, filtro, válvula seletora, retornos e casa de máquinas.</li>
+      <li>O ralo de fundo é o ponto mais perigoso da piscina. Tampa quebrada, solta ou faltando: ninguém entra na água até a troca, feita por técnico.</li>
+      <li>Por que a piscina de chácara é diferente: árvore, poeira de estrada de chão, chuva forte e, principalmente, uso concentrado e casa fechada.</li>
+      <li>A Chácara-Modelo, a piscina fictícia usada do começo ao fim: retangular, 8 m por 4 m, de 1,10 m a 1,50 m de profundidade, 41.600 litros.</li>
+      <li>As quatro frentes do trabalho: limpeza física, circulação e filtração, tratamento da água e vigilância. A quarta separa quem cuida de quem apenas limpa.</li>
+      <li>Para quem contrata: ao fim de cada visita, pedir por escrito o que foi medido, o que foi colocado na água e o que chamou atenção.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A piscina é um circuito, não é um tanque.</q><q>Uma piscina avisa antes de dar problema, e o aviso só serve a quem anotou como ela estava na semana anterior.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>Segurança química e leitura de rótulos</h3>
+    <ul>
+      <li>Produto de piscina não é produto de limpeza comum. Vários são oxidantes fortes ou ácidos, e os acidentes graves acontecem fora da água.</li>
+      <li>As quatro famílias: cloros, ácidos, alcalinos e auxiliares.</li>
+      <li>As regras que não têm exceção. As três que mais evitam acidente: nunca misturar dois produtos (nem dois cloros diferentes), cloro e ácido nunca se encontram fora da piscina, e uma medida limpa e seca para cada produto.</li>
+      <li>Embalagem original, fechada, com rótulo. Nada de pote de sorvete nem de garrafa de refrigerante.</li>
+      <li>O que procurar no rótulo: substância ativa e concentração, dose para cada mil litros e o que fazer em caso de acidente. E a ficha de dados de segurança, que o fabricante é obrigado a fornecer.</li>
+      <li>O depósito: seco, ventilado, à sombra e trancado. Longe de combustível, óleo, fertilizante, tinta e solvente. Ácidos de um lado, cloros do outro, nada no chão, estoque pequeno.</li>
+      <li>Proteção ao manusear (óculos fechados, luvas, calçado fechado), cuidados no transporte e o essencial do que fazer se der errado. Telefones de emergência escritos na porta do depósito.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Os acidentes graves acontecem no depósito, no balde e no porta-malas.</q><q>Um frasco sem identificação, num depósito, é um acidente esperando a vez.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Segurança elétrica, hidráulica e dos banhistas</h3>
+    <ul>
+      <li>Três riscos matam: afogamento, sucção e choque elétrico. Em dois deles o conserto não é de quem cuida da piscina. O papel é reconhecer, desligar, avisar e fechar.</li>
+      <li>Afogamento: criança pequena se afoga em silêncio. O que funciona, em ordem de eficácia: barreira física, um adulto designado olhando e a regra da casa, escrita e à vista.</li>
+      <li>A capa térmica comum, de bolhas, não é proteção contra afogamento.</li>
+      <li>Sucção: a bomba puxa pelo ralo de fundo com força para prender uma pessoa. A Lei 14.327, de 2022, tornou obrigatórios os dispositivos de segurança e atribui a responsabilidade a quem é dono ou administra a piscina. Quem avalia e instala é o técnico.</li>
+      <li>Toda pessoa que frequenta a casa precisa saber onde se desliga a bomba.</li>
+      <li>Choque: instalação é serviço de eletricista habilitado. Nada de extensão comum ou aparelho na tomada à beira da piscina. Formigamento na água: sai todo mundo e desliga-se a energia.</li>
+      <li>Quem cuida da piscina tem autoridade para fechá-la: fundo que não se vê, água verde, tempo de espera do produto, trovoada, defeito na tampa do ralo, suspeita elétrica. Interditar é pôr barreira e aviso.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Na dúvida, feche a piscina.</q><q>Interditar por excesso de cuidado custa um dia de banho. O contrário pode custar muito mais.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Volume, vazão, circulação e filtração</h3>
+    <ul>
+      <li>Desligar a bomba para economizar energia está na lista dos erros comuns: a economia da luz vai parar no depósito, em produto.</li>
+      <li>As três medidas do circuito: volume, vazão e tempo de um ciclo.</li>
+      <li>Volume é área da superfície vezes profundidade média. Na Chácara-Modelo: 8 × 4 × 1,30 = 41,6 m³, ou 41.600 litros.</li>
+      <li>A vazão está na etiqueta da bomba e do filtro. Usa-se a menor das duas. Na Chácara-Modelo, 7 m³ por hora.</li>
+      <li>Tempo de um ciclo é o volume dividido pela vazão: cerca de seis horas na Chácara-Modelo. É o mínimo teórico, não a receita de horas por dia. Quem define o tempo de filtração é o técnico de piscina, com o eletricista.</li>
+      <li>Alga vira problema quando encontra três condições juntas: pouco cloro livre, água parada e sol.</li>
+      <li>Para a casa que fica fechada, um temporizador no quadro resolve mais do que qualquer produto. Quem instala é o eletricista.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Nada funciona em água parada.</q><q>O circuito anda no ritmo da peça mais lenta.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>Fundamentos do equilíbrio e da desinfecção</h3>
+    <ul>
+      <li>Toda a química da piscina responde a duas perguntas diferentes: a água está desinfetada? A água está equilibrada? O equilíbrio vem primeiro.</li>
+      <li>Os cinco parâmetros: pH, alcalinidade total, cloro, ácido cianúrico (estabilizante) e dureza cálcica. A aula explica o que cada um faz. As faixas ficam na ficha da aula.</li>
+      <li>pH alto tira a força do cloro. Colocar mais cloro quando o problema é o pH alto é um erro que se repete.</li>
+      <li>A imagem do barco e da âncora: o pH é a posição do barco, a alcalinidade é a âncora.</li>
+      <li>Cloro livre, cloro combinado e cloro total. O cheiro forte e os olhos vermelhos vêm do cloro combinado, que já reagiu e quase não desinfeta.</li>
+      <li>O estabilizante funciona como protetor solar do cloro e tem dois lados. Quem usa só cloro com estabilizante, por anos, acumula sem perceber.</li>
+      <li>Água de poço costuma ter dureza muito diferente da água tratada da cidade.</li>
+      <li>Duas regras de trabalho: alcalinidade, pH e cloro, nessa ordem, e sempre aos poucos. A ducha antes de entrar é a medida mais barata de todo o tratamento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Cheiro forte de cloro não é cloro demais. É cloro gasto.</q><q>O tratamento químico não substitui a limpeza. Ele termina o que a limpeza começou.</q></div>
+  </div></article>
+
+  <p class="block-title">Equipamentos, acessórios e produtos · aulas 6 a 8</p>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>Equipamentos da casa de máquinas</h3>
+    <ul>
+      <li>Quem compra uma chácara herda a piscina sem herdar a informação. Levantar essa informação é o primeiro serviço.</li>
+      <li>Bomba: anotar os dados da etiqueta e seguir três cuidados. Nunca trabalhar a seco, pré-filtro limpo com a tampa bem fechada, motor seco e ventilado.</li>
+      <li>A casa de máquinas não pode virar depósito de produto: o vapor de cloro corrói motor e quadro.</li>
+      <li>Filtro de areia: a areia é própria para isso, e a troca da carga é serviço de técnico, no intervalo que o fabricante indica.</li>
+      <li>As três leituras do manômetro: pressão normal (filtro recém-lavado), pressão subindo (filtro saturado) e pressão abaixo do normal (a água não está chegando).</li>
+      <li>Escrever a pressão normal a caneta no próprio filtro. Sem a referência, o ponteiro marca e não diz nada.</li>
+      <li>Válvula seletora: ler o que está escrito em cada posição e só mudar a alavanca com a bomba desligada.</li>
+      <li>Uma etiqueta em cada registro, o temporizador como aliado da casa fechada e o quadro elétrico que não se abre.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O manômetro é o painel da piscina.</q><q>Operar filtro sem ele é dirigir sem painel.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>Acessórios de limpeza e instrumentos de teste</h3>
+    <ul>
+      <li>O robô reduz o trabalho repetitivo e não substitui a visita: não mede, não trata, não escova os cantos e não percebe o que está errado.</li>
+      <li>O indispensável são seis peças: cabo telescópico, peneira (rasa e tipo saco), escova, aspirador manual, mangueira flutuante e estojo de teste.</li>
+      <li>Quem manda na compra é o revestimento. Cerdas de náilon para vinil e fibra. Escova de aço só em alvenaria.</li>
+      <li>O confortável: limpa-bordas, adaptador de aspiração, termômetro e capa. O improviso (rodo de pia, vassoura de casa) sai caro.</li>
+      <li>Três tipos de instrumento de teste: fita, estojo de reagentes e medidor digital, com os pontos fortes e os limites de cada um.</li>
+      <li>Para começar, um estojo de reagentes que meça pH, cloro livre e alcalinidade total resolve a rotina.</li>
+      <li>Cuidados com o estojo: conferir se mede cloro livre, guardar à sombra e fora do depósito de produtos, respeitar a validade.</li>
+      <li>A aparência engana: água cristalina pode estar sem desinfetante nenhum.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você não trata o que não mede.</q><q>Reagente vencido dá resultado errado com toda a aparência de certo.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>Produtos: funções, compatibilidades e armazenamento</h3>
+    <ul>
+      <li>Quase toda embalagem de produto de piscina faz uma de cinco coisas: desinfeta, sobe um parâmetro, desce um parâmetro, junta sujeira ou previne alga.</li>
+      <li>Escolher pela função e pela substância. O nome da substância ativa fica na letra pequena do rótulo.</li>
+      <li>Os cloros não são todos iguais. Tipos diferentes nunca se misturam, e a regra da casa é ter um só tipo de desinfetante em uso na rotina.</li>
+      <li>Os ajustadores são quatro e bastam: elevador de alcalinidade, elevador de pH, redutor e elevador de dureza. Um produto de cada vez, com a bomba ligada e o intervalo do rótulo.</li>
+      <li>Clarificante e floculante são produtos de correção. Piscina que precisa de clarificante toda semana tem um problema de filtração ou de equilíbrio.</li>
+      <li>Algicida de manutenção é auxiliar preventivo. Não desinfeta e não substitui o cloro.</li>
+      <li>A embalagem “três em um” parece economia e tira o controle do que se acumula na água. Para aprender e diagnosticar, função única.</li>
+      <li>Estoque pequeno, que cabe em uma prateleira, e a data de abertura escrita em cada embalagem.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>É a substância, e não a marca, que diz o que o produto é.</q><q>Quem entende isso sai da loja com cinco ou seis itens. Quem não entende sai com quinze, e o que sobra vence no depósito.</q></div>
+  </div></article>
+
+  <p class="block-title">Inspeção, volume e plano · aulas 9 e 10</p>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>Como inspecionar e registrar uma piscina</h3>
+    <ul>
+      <li>Inspecionar é olhar com método, sempre na mesma ordem, de fora para dentro: entorno, tanque e casa de máquinas.</li>
+      <li>No entorno: portão, cerca ou capa de proteção, piso da borda, galhos sobre a água e para onde corre a água da chuva. Enxurrada na piscina é problema de drenagem.</li>
+      <li>No tanque, a tampa do ralo de fundo é o primeiro item, sempre. Depois o nível (perto da metade da abertura do skimmer), o fundo visível, a mão na parede, o revestimento e a linha d'água.</li>
+      <li>A casa de máquinas se inspeciona em dois tempos: com a bomba desligada e com a bomba ligada.</li>
+      <li>A marca do nível: fita adesiva ou lápis de cera na altura da água, com a data. Na visita seguinte ela mostra quanto a piscina perdeu.</li>
+      <li>O caderno da piscina: data e hora, quem fez, o que foi medido, o que foi colocado na água, o que foi feito, a pressão do filtro, o nível e o que chamou atenção.</li>
+      <li>O caderno fica na casa. Se o histórico vai embora com o prestador, o próximo começa do zero.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Sem registro você tem impressões. Com registro você tem histórico.</q><q>O caderno pertence à piscina. Ele não pertence ao piscineiro.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>Como calcular volume e planejar a rotina</h3>
+    <ul>
+      <li>O erro mais comum de quem calcula volume: usar a profundidade da parede, e não a da água.</li>
+      <li>Medir com trena e haste, do fundo até a linha d'água, no raso e no fundo. Fórmulas para piscina redonda, oval e de formato livre no material da aula.</li>
+      <li>Conferir o resultado com o projeto ou o manual e anotar o volume na porta do depósito e na primeira página do caderno.</li>
+      <li>Do rótulo para a sua piscina: a dose do rótulo vezes o volume em milhares de litros. O curso não diz dose nenhuma, de propósito.</li>
+      <li>Medir, não estimar: balança de cozinha e copo medidor usados só para a piscina. E a conta feita uma vez só, escrita na própria embalagem.</li>
+      <li>Plano é a resposta a quatro perguntas: o que se faz, com que frequência, quem faz e o que acontece quando essa pessoa não está.</li>
+      <li>Escrever o que cada pessoa pode e não pode fazer, quando a piscina fecha e quem tem autoridade para fechar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Primeiro o número, depois o produto.</q><q>A maior parte das piscinas verdes nasce de uma ausência que ninguém cobriu.</q></div>
+  </div></article>
+
+  <p class="block-title">A visita: limpeza física · aulas 11 a 15</p>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>Peneiração, escovação e limpeza de bordas</h3>
+    <ul>
+      <li>Tudo o que fica na água consome o desinfetante. Quem trata a água antes de tirar as folhas gasta cloro com as folhas.</li>
+      <li>Antes de pôr a mão na água: tampa do ralo, nível, comparação com a marca e o céu. Com trovoada na região não se trabalha.</li>
+      <li>Peneira: a favor do vento, em movimento longo e lento. Folha assentada sai com a peneira tipo saco, antes do aspirador.</li>
+      <li>Bater a peneira longe da borda e contra o vento.</li>
+      <li>Escova: paredes de cima para baixo, em faixas que se sobrepõem, depois o fundo, do raso para o fundo. Insistir em cantos, degraus e na parede que fica na sombra.</li>
+      <li>Escovar com a bomba ligada, em filtrar, e dar tempo para a sujeira assentar antes de aspirar.</li>
+      <li>Borda: esponja e produto próprio. Detergente e limpador de banheiro não entram. O entorno se varre para fora.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Cada folha que fica é cloro que some.</q><q>Água transparente não quer dizer parede limpa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Aspiração e escolha do modo de operação</h3>
+    <ul>
+      <li>A aspiração tem dois erros clássicos, e os dois nascem da pressa: na montagem e no movimento.</li>
+      <li>Encher a mangueira de água antes de ligá-la ao bocal. Mangueira com ar tira a sucção da bomba.</li>
+      <li>Concentrar a sucção no aspirador pelos registros e reparar como eles estavam, porque no fim voltam à posição normal.</li>
+      <li>O movimento: passadas longas, retas e sobrepostas, como quem corta grama.</li>
+      <li>Se a sucção cair, três suspeitos: pré-filtro cheio, mangueira dobrada ou solta e filtro saturado.</li>
+      <li>Aspirar filtrando (rotina, sem perder água) ou aspirar drenando (muita sujeira fina, alga morta, material decantado). A pergunta que decide: o que tem no fundo?</li>
+      <li>Ao drenar: começar com o nível alto e nunca deixar a água chegar à boca do skimmer. Baixar um pouco o nível faz parte do serviço. Esvaziar a piscina é decisão para profissional habilitado.</li>
+      <li>Antes de sair, olhar os retornos com a bomba ligada. Esquecer a válvula em drenar estraga um serviço bem-feito.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Aspirar depressa é aspirar duas vezes.</q><q>Devagar é o caminho mais curto.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>Válvulas, bomba e filtro sem erros</h3>
+    <ul>
+      <li>Girar a alavanca com a bomba ligada danifica a vedação interna da válvula. O sintoma aparece semanas depois: a piscina perde nível sem explicação.</li>
+      <li>Os dois cestos, sempre com a bomba desligada: o do skimmer e o do pré-filtro.</li>
+      <li>O detalhe que quase todo mundo pula: limpar o anel de vedação e o lugar onde a tampa assenta. Um grão de areia ali é entrada de ar.</li>
+      <li>As seis posições da válvula seletora: filtrar, retrolavar, enxaguar, drenar, recircular e fechar. Nunca ligar a bomba com a válvula fechada.</li>
+      <li>O gesto é sempre igual: bomba desligada, alavanca pressionada até o fim, giro e encaixe conferido.</li>
+      <li>A conferência de saída da casa de máquinas: válvula em filtrar, registros na posição normal, tampa do pré-filtro fechada.</li>
+      <li>Quando parar e chamar um profissional: válvula que vaza para o esgoto em filtrar, areia voltando pelos retornos, bomba que não recupera a sucção.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A válvula só se move com a bomba desligada.</q><q>Primeiro o botão da bomba, depois a alavanca.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Retrolavagem, enxágue e reposição de água</h3>
+    <ul>
+      <li>O mito “lavar o filtro suja a piscina” nasce de uma lavagem feita pela metade: faltou o enxágue.</li>
+      <li>A decisão de lavar sai da leitura do manômetro, com a bomba ligada e a válvula em filtrar, comparada com a pressão normal. A medida de quanto acima é a hora de lavar está no manual do filtro.</li>
+      <li>Segundo sinal de filtro saturado: retornos fracos com o pré-filtro limpo.</li>
+      <li>Lavar por calendário, toda semana, desperdiça água tratada e piora a filtração.</li>
+      <li>A lógica da sequência: toda vez que a alavanca muda de lugar, a bomba está desligada. Retrolavar até o visor mostrar água limpa, enxaguar e voltar a filtrar.</li>
+      <li>Anotar a pressão antes e depois. Se ela não volta ao normal, a areia pode estar aglomerada ou gasta, e a troca é de profissional habilitado.</li>
+      <li>Repor água com quatro cuidados: não ir embora com a mangueira aberta, manter a ponta fora da água, medir tudo de novo depois de reposição grande e refazer a marca do nível.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Lava-se o filtro quando o manômetro pede, não quando o calendário manda.</q><q>Areia um pouco suja filtra melhor do que areia recém-lavada.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>Rotina completa de uma visita profissional</h3>
+    <ul>
+      <li>A visita inteira em nove passos, contados em três grupos de três.</li>
+      <li>Chegada: segurança e nível, peneira, cestos.</li>
+      <li>Trabalho pesado: escovar, aspirar e limpar a borda.</li>
+      <li>Fechamento: filtro, reposição e conferência.</li>
+      <li>O porquê da ordem: quem lava o filtro antes de aspirar suja o filtro limpo, e quem trata a água antes de tirar as folhas gasta cloro com as folhas.</li>
+      <li>O nono passo, conferir e anotar, é o mais fácil de pular. Uma volta inteira na piscina antes de guardar o material.</li>
+      <li>A prova final da visita: vinte minutos depois de terminar, com a bomba filtrando, olhar o fundo de novo.</li>
+      <li>Só depois da limpeza física vêm a medição e o tratamento da água.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A ordem é o que deixa atenção livre para observar.</q><q>Quem aspira antes de escovar aspira duas vezes.</q></div>
+  </div></article>
+
+  <p class="block-title">Tratamento da água · aulas 16 a 18</p>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>Coleta, testes e interpretação dos resultados</h3>
+    <ul>
+      <li>Tratar água é um ciclo de quatro tempos: medir, interpretar, corrigir e medir de novo. O erro mais comum é pular o segundo e o quarto.</li>
+      <li>A amostra precisa ser a piscina: bomba ligada há algum tempo, longe dos retornos e do skimmer, abaixo da superfície, com o frasco de boca para baixo até a altura do cotovelo.</li>
+      <li>Mesmo ponto e mesmo horário, sempre que possível. É isso que torna o resultado de hoje comparável ao da semana passada.</li>
+      <li>No teste, a bula do estojo manda. Tubo cheio até a marca, gotas contadas com o frasco na vertical, leitura no tempo indicado, contra fundo branco, sem óculos escuros.</li>
+      <li>Testar tudo antes de corrigir qualquer coisa: cloro livre, pH e alcalinidade total, com os valores no caderno.</li>
+      <li>Ler o conjunto, e não cada número sozinho. Três retratos: alcalinidade baixa com pH instável; pH alto com cloro na faixa e água sem vida; cloro livre que some em poucas horas.</li>
+      <li>O olho não substitui o teste. Quando os resultados não fazem sentido juntos, leva-se uma amostra a uma loja especializada ou a um laboratório.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O teste mede o que está no tubo.</q><q>Os resultados conversam entre si.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Ajustes de equilíbrio conforme produto e sistema</h3>
+    <ul>
+      <li>Quem tenta chegar ao valor certo de uma vez passa do ponto e começa a corrigir a própria correção. É assim que nasce o estoque de dez produtos diferentes.</li>
+      <li>A ordem e o motivo: os produtos que mexem na alcalinidade também mexem no pH. Acertar o pH primeiro é trabalho dobrado.</li>
+      <li>A lógica de aplicar qualquer produto: proteção, bomba ligada, ninguém na piscina, dose do rótulo aplicada ao volume.</li>
+      <li>Não se aplica tudo de uma vez. Aplica-se uma parte da quantidade calculada, deixa-se circular pelo tempo do rótulo e mede-se de novo.</li>
+      <li>Não despejar produto concentrado dentro do skimmer, a menos que o rótulo indique.</li>
+      <li>Um produto de cada vez. Entre um e outro, o tempo de circulação do rótulo.</li>
+      <li>O pH que não fica no lugar é quase sempre sintoma da alcalinidade.</li>
+      <li>Anotar o que a piscina respondeu, e não só o que foi colocado. Em poucas semanas existe a tabela de resposta daquela piscina.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Alcalinidade, depois pH, depois cloro, e sempre aos poucos.</q><q>Cada passo termina com um teste, não com uma certeza.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>Desinfecção de rotina e tratamento corretivo</h3>
+    <ul>
+      <li>A desinfecção tem dois regimes, o de todo dia e o de correção. Nenhum dos dois obedece ao relógio de quem está com pressa.</li>
+      <li>O objetivo da rotina é manter o cloro livre na faixa sempre, e não chegar ao cloro certo uma vez por semana.</li>
+      <li>Três formas de alimentar a piscina com cloro: aplicação manual a cada visita, flutuador ou dosador com pastilha de dissolução lenta, e gerador de cloro a partir de sal ou dosador automático.</li>
+      <li>No dosador só entra o tipo de cloro para o qual ele foi feito.</li>
+      <li>O sol consome cloro. A aplicação no fim da tarde rende mais do que a do meio do dia.</li>
+      <li>Tratamento corretivo (supercloração ou choque): quando se justifica e a lógica de fazer. Equilibrar primeiro, escovar antes, aplicar no fim da tarde, bomba filtrando pelo tempo do rótulo.</li>
+      <li>Durante o tratamento corretivo a piscina fica interditada, com barreira e aviso. A liberação se confirma com teste, não com relógio.</li>
+      <li>Planejar a troca de hóspedes da piscina como se planeja a da roupa de cama: no calendário, antes de aceitar a reserva seguinte.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A piscina precisa de cloro na quarta-feira, e não só no dia da visita.</q><q>Quem libera porque já passou bastante tempo está apostando com a pele dos outros.</q></div>
+  </div></article>
+
+  <p class="block-title">Problemas e diagnóstico · aulas 19 e 20</p>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>Água verde, turva, espuma, manchas e odores</h3>
+    <ul>
+      <li>O método vale para qualquer problema e tem seis passos: interditar, olhar o circuito, medir, tratar a causa, acompanhar e descobrir por que aconteceu.</li>
+      <li>Água verde: primeiro a parte física, depois alcalinidade e pH, a escova, e só então o tratamento corretivo, com a bomba ligada sem parar. Recuperar leva dias.</li>
+      <li>Desligar a bomba “para o produto agir” é um erro muito comum. Água parada é tudo o que a alga quer.</li>
+      <li>Esvaziar tudo raramente é o caminho e nunca é decisão para tomar sozinho. Fibra pode flutuar ou trincar, e a manta de vinil encolhe e enruga.</li>
+      <li>Água turva: se o fundo da parte mais funda não está nítido, a piscina está interditada. Depois, perguntas em ordem. Clarificante entra depois de resolvida a causa.</li>
+      <li>Espuma e cheiro forte: as causas conhecidas e a prevenção, que começa pela ducha antes de entrar.</li>
+      <li>Manchas: a cor ajuda a investigar. Mancha de metal não se trata com choque. E não se ataca mancha com ácido, palha de aço ou lixa por conta própria.</li>
+      <li>Quando parar: se a água não responde a um tratamento bem-feito, repetido duas vezes, chama-se assistência.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Diagnóstico antes do remédio.</q><q>A cor da água é a pergunta, não a resposta.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>Diagnóstico inicial de vazão, pressão, vazamentos e impactos do ambiente rural</h3>
+    <ul>
+      <li>O limite do ofício: o piscineiro não abre motor, não mexe em fiação e não desmonta a válvula. Um bom diagnóstico de campo poupa metade da visita do técnico.</li>
+      <li>Um minuto por visita na casa de máquinas, com a bomba ligada: ouvir, olhar e cheirar. Cheiro de queimado: desliga e chama o eletricista.</li>
+      <li>Baixa vazão: o manômetro divide o problema em dois. Pressão abaixo do normal, o obstáculo está antes da bomba. Pressão acima, está depois.</li>
+      <li>Bolha no visor do pré-filtro é entrada de ar. O que cabe a quem cuida e o que é de técnico. Ferramenta em conexão colada, não.</li>
+      <li>Bomba que não puxa água: desligar. Se não pegou na segunda tentativa, fica desligada até o técnico chegar.</li>
+      <li>Os ruídos também falam: ronco com estalos, chiado agudo e zumbido sem girar.</li>
+      <li>O teste do balde separa evaporação de vazamento, sem abrir nada. Repetido com a bomba desligada, aponta onde procurar.</li>
+      <li>O clima da chácara entra no diagnóstico: chuva forte, calor, folha, poeira e os bichos na casa de máquinas. E como fazer uma chamada bem-feita ao técnico.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem cuida da piscina observa, mede e relata. Não desmonta.</q><q>Muita bomba é trocada quando o problema era uma tampa de pré-filtro mal fechada.</q></div>
+  </div></article>
+
+  <p class="block-title">Planos, custos e hóspedes · aulas 21 a 23</p>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>Planos diário, semanal, mensal e sazonal</h3>
+    <ul>
+      <li>Diário, semanal, mensal e sazonal são quatro camadas do mesmo plano. Na mais espaçada ficam as revisões do técnico e do eletricista.</li>
+      <li>A mesma piscina pede planos diferentes conforme a casa é usada. Quatro regimes: uso contínuo, fim de semana, alta temporada com hóspedes e casa fechada por semanas.</li>
+      <li>Casa de fim de semana: o ponto crítico é a semana vazia, e não o sábado. Três momentos: antes da chegada, durante o uso e depois da saída.</li>
+      <li>Alta temporada: mais presença. Entre um hóspede e outro, a piscina entra na preparação da casa, com hora marcada.</li>
+      <li>Dar um cloro pouco antes da chegada do hóspede não é preparação. É a situação em que a piscina deveria estar interditada.</li>
+      <li>Casa fechada: o objetivo é impedir que a piscina se perca. Roteiro de fechamento, visita periódica combinada e reabertura com alguns dias de antecedência.</li>
+      <li>Um nome ao lado de cada tarefa, com substituto. Dois testes do plano: o da ausência e o do limite.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Combinar quer dizer dia marcado, pessoa certa e tarefa dita.</q><q>Sem ninguém no meio da semana, a bomba no temporizador é o que mantém a água viva.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>Estoque, custos, orçamento e contrato</h3>
+    <ul>
+      <li>Comparar dois cloros pelo custo por dose, e não pelo preço do pote.</li>
+      <li>O custo de uma piscina tem cinco parcelas: produtos, água, energia, mão de obra e reserva para manutenção. Quase todo mundo conta só a primeira.</li>
+      <li>A marca do nível mede a água perdida. Na Chácara-Modelo, cada centímetro de nível são 320 litros.</li>
+      <li>Onde o custo cai de verdade (limpeza física caprichada, capa, lavar o filtro quando o manômetro pede) e onde só parece cair (desligar a bomba).</li>
+      <li>Estoque: ponto de pedido calculado com um mês de caderno e uma folha de controle na porta do depósito.</li>
+      <li>Três modelos: fazer tudo, contratar tudo ou dividir. O dividido é o mais comum em chácara e o que mais depende do plano escrito.</li>
+      <li>Para quem contrata: o que pedir por escrito na proposta, as duas armadilhas do preço menor e três perguntas a cada candidato.</li>
+      <li>Para quem presta o serviço: os quatro pedaços do custo de uma visita, o peso do deslocamento em área rural, agrupar clientes da mesma região e combinar o serviço extra antes.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O preço que importa é o de tratar a sua piscina uma vez, e não o do pote.</q><q>Quem cobra só o tempo na beira da piscina trabalha de graça na estrada.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">23</div><div class="body">
+    <h3>Relatório ao proprietário, preparação para hóspedes e liberação segura</h3>
+    <ul>
+      <li>Piscina cristalina no dia da chegada e verde quinze dias depois é sinal de um serviço que trata o sintoma na véspera.</li>
+      <li>O relatório da visita: curto, sempre no mesmo formato, entregue no dia. A última linha não pode faltar: liberada ou interditada, e até quando.</li>
+      <li>Para o dono, o relatório permite conferir o serviço sem ficar ao lado. Para quem presta o serviço, é o que mantém o cliente.</li>
+      <li>A preparação para hóspedes começa com dias de antecedência. Regras à vista, depósito e casa de máquinas trancados. O hóspede não trata a água.</li>
+      <li>Depois de um evento: limpeza, tratamento corretivo, filtração contínua e nova medição no dia seguinte. Vidro quebrado na borda interdita a piscina.</li>
+      <li>Contaminação da água: todos fora e piscina interditada até o procedimento próprio terminar.</li>
+      <li>A liberação só vale com todos os itens da lista marcados. A pressão chega sempre com a mesma frase: os hóspedes já chegaram.</li>
+      <li>Dizer já no anúncio que a piscina pode ser fechada por segurança. O hóspede que leu antes aceita a placa. O surpreendido pede reembolso.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Interdição não se negocia.</q><q>O que você compra, quando paga por esse cuidado, é a água de quarta-feira, quando ninguém está olhando.</q></div>
+  </div></article>
+
+  <p class="block-title">Projeto final · aulas 24 e 25</p>
+
+  <article class="lesson"><div class="n">24</div><div class="body">
+    <h3>Desenvolvimento do plano de manutenção da piscina da Chácara-Modelo</h3>
+    <ul>
+      <li>O projeto final: um documento que permita a alguém que nunca viu a piscina cuidar dela por um mês, com segurança, sem telefonar para o dono.</li>
+      <li>Pode ser feito com a Chácara-Modelo, com a piscina do aluno ou com as duas.</li>
+      <li>As cinco partes: ficha técnica, rotina, estoque, orçamento e protocolo de emergência.</li>
+      <li>A rotina cobre pelo menos dois regimes de uso, com frequência, responsável e substituto em cada tarefa, e o limite do que cada pessoa pode fazer.</li>
+      <li>O protocolo de emergência cabe em uma página, para ficar afixado.</li>
+      <li>O documento precisa poder ser lido de pé, na beira da piscina.</li>
+      <li>Conferência final: nenhuma dose sem referência ao rótulo, nenhum procedimento que mande misturar produtos, e a tampa do ralo como primeiro item de toda visita.</li>
+      <li>O teste do estranho: entregar o plano a alguém de fora e pedir que explique o que faria na próxima sexta-feira.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Plano que ninguém abre não cuida de piscina nenhuma.</q><q>Ele está pronto quando funciona na mão de quem nunca viu a piscina.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">25</div><div class="body">
+    <h3>Avaliação de caso e plano de evolução profissional</h3>
+    <ul>
+      <li>O caso que fecha o curso: três semanas de casa fechada, temporizador desarmado no segundo dia, duas chuvas fortes, água verde-escura na quinta e hóspedes no sábado.</li>
+      <li>Não existe resposta que garanta a piscina pronta no sábado. O caso avalia a ordem das decisões, e não dose de memória.</li>
+      <li>Quatro respostas: o que fazer na quinta, na sexta e no sábado; o critério de liberação e quem decide; o que dizer ao hóspede, e quando; o que muda na rotina.</li>
+      <li>Avisar o hóspede cedo, por escrito, com o motivo e a previsão, sem prometer o que não se controla.</li>
+      <li>Um segundo exercício: o cronograma de quatro semanas da Chácara-Modelo. Cronograma com um dia sem responsável está errado.</li>
+      <li>Depois do curso: reler o caderno a cada três meses e responder a três perguntas sobre o plano.</li>
+      <li>Evoluir no trabalho é medir, anotar, reler e corrigir a rotina, e reconhecer o próprio limite, indicando o técnico e o eletricista.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um plano não se termina. Revisa-se.</q><q>Recuperar água verde leva dias, e não horas.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Procedimentos e regras com nome</h2>
+  <p class="sub">Rotinas, listas e testes que o aluno leva para a beira da piscina. Rendem bem em carrossel e em slide, porque têm número e nome.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Procedimento</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>O circuito da água</td><td>A água sai do tanque, passa pela bomba, atravessa o filtro e volta.</td><td class="aula">1</td></tr>
+      <tr><td>As 4 frentes do trabalho</td><td>Limpeza física, circulação e filtração, tratamento da água e vigilância.</td><td class="aula">1</td></tr>
+      <tr><td>As 3 coisas a pedir após a visita</td><td>O que foi medido, o que foi colocado na água e o que chamou atenção.</td><td class="aula">1</td></tr>
+      <tr><td>As 7 regras sem exceção</td><td>As regras de segurança com produtos. A primeira: nunca misture dois produtos.</td><td class="aula">2</td></tr>
+      <tr><td>As 4 famílias de produtos</td><td>Cloros, ácidos, alcalinos e auxiliares.</td><td class="aula">2</td></tr>
+      <tr><td>As 5 informações do rótulo</td><td>Substância ativa, dose e emergência resolvem a maior parte das dúvidas.</td><td class="aula">2</td></tr>
+      <tr><td>Os 3 riscos que matam</td><td>Afogamento, sucção e choque elétrico.</td><td class="aula">3</td></tr>
+      <tr><td>Os 3 degraus contra o afogamento</td><td>Barreira física, adulto designado olhando e regra da casa.</td><td class="aula">3</td></tr>
+      <tr><td>Desliga, avisa, interdita</td><td>O que cabe a quem cuida diante de qualquer sinal elétrico.</td><td class="aula">3</td></tr>
+      <tr><td>As 3 medidas do circuito</td><td>Volume, vazão e tempo de um ciclo.</td><td class="aula">4</td></tr>
+      <tr><td>As 3 condições da alga</td><td>Pouco cloro livre, água parada e sol.</td><td class="aula">4</td></tr>
+      <tr><td>As 2 perguntas da química</td><td>A água está desinfetada? A água está equilibrada?</td><td class="aula">5</td></tr>
+      <tr><td>Os 5 parâmetros</td><td>pH, alcalinidade total, cloro, estabilizante e dureza cálcica.</td><td class="aula">5</td></tr>
+      <tr><td>A ordem de correção</td><td>Alcalinidade, depois pH, depois cloro, e sempre aos poucos.</td><td class="aula">5 e 17</td></tr>
+      <tr><td>As 3 leituras do manômetro</td><td>Pressão normal, pressão subindo e pressão abaixo do normal.</td><td class="aula">6</td></tr>
+      <tr><td>A pressão normal a caneta</td><td>A leitura do filtro recém-lavado, escrita no próprio filtro.</td><td class="aula">6</td></tr>
+      <tr><td>As 6 peças indispensáveis</td><td>Cabo, peneira, escova, aspirador manual, mangueira flutuante e estojo de teste.</td><td class="aula">7</td></tr>
+      <tr><td>As 5 funções dos produtos</td><td>Desinfetar, subir, descer, juntar sujeira e prevenir alga.</td><td class="aula">8</td></tr>
+      <tr><td>Inventário em 4 colunas</td><td>Produto, substância, função e situação.</td><td class="aula">8</td></tr>
+      <tr><td>Inspeção em 3 zonas</td><td>Entorno, tanque e casa de máquinas, sempre nessa ordem.</td><td class="aula">9</td></tr>
+      <tr><td>A marca do nível</td><td>Fita ou lápis de cera na altura da água, com a data.</td><td class="aula">9</td></tr>
+      <tr><td>O caderno da piscina</td><td>O registro de cada visita, que fica na propriedade.</td><td class="aula">9</td></tr>
+      <tr><td>Do rótulo para a sua piscina</td><td>Dose do rótulo vezes o volume em milhares de litros.</td><td class="aula">10</td></tr>
+      <tr><td>As 4 perguntas do plano</td><td>O quê, com que frequência, quem faz e quem faz na falta.</td><td class="aula">10 e 21</td></tr>
+      <tr><td>A visita em 9 passos</td><td>Segurança e nível, peneira, cestos, escova, aspiração, borda, filtro, reposição, conferir e anotar.</td><td class="aula">11 a 15</td></tr>
+      <tr><td>Filtrando ou drenando</td><td>Os dois modos de aspirar e a pergunta que decide entre eles.</td><td class="aula">12</td></tr>
+      <tr><td>As 6 posições da válvula</td><td>Filtrar, retrolavar, enxaguar, drenar, recircular e fechar.</td><td class="aula">13</td></tr>
+      <tr><td>Retrolavagem com enxágue</td><td>Onze passos, com a bomba desligada a cada mudança da alavanca.</td><td class="aula">14</td></tr>
+      <tr><td>A prova dos 20 minutos</td><td>Olhar o fundo de novo depois de terminar, com a bomba filtrando.</td><td class="aula">15</td></tr>
+      <tr><td>O ciclo de 4 tempos</td><td>Medir, interpretar, corrigir e medir de novo.</td><td class="aula">16 e 17</td></tr>
+      <tr><td>Os retratos da água</td><td>A leitura dos resultados em conjunto, e não um por um.</td><td class="aula">16</td></tr>
+      <tr><td>A tabela de resposta</td><td>O que foi aplicado e o que a água respondeu, lado a lado.</td><td class="aula">17</td></tr>
+      <tr><td>Tratamento corretivo</td><td>A dose alta para o que a rotina não vence, com a piscina interditada.</td><td class="aula">18</td></tr>
+      <tr><td>A lista de liberação</td><td>Condições que precisam valer ao mesmo tempo. Faltou uma, a piscina continua fechada.</td><td class="aula">18 e 23</td></tr>
+      <tr><td>Diagnóstico em 6 passos</td><td>Interditar, olhar o circuito, medir, tratar a causa, acompanhar e mudar a rotina.</td><td class="aula">19</td></tr>
+      <tr><td>O minuto da casa de máquinas</td><td>Ouvir, olhar e cheirar, a cada visita, com a bomba ligada.</td><td class="aula">20</td></tr>
+      <tr><td>O teste do balde</td><td>Um balde no degrau separa evaporação de vazamento.</td><td class="aula">20</td></tr>
+      <tr><td>Os 4 regimes de uso</td><td>Uso contínuo, fim de semana, alta temporada com hóspedes e casa fechada.</td><td class="aula">21</td></tr>
+      <tr><td>Teste da ausência e do limite</td><td>Quem assume se o responsável faltar, e quem pode fechar a piscina.</td><td class="aula">21</td></tr>
+      <tr><td>As 5 parcelas do custo</td><td>Produtos, água, energia, mão de obra e reserva para manutenção.</td><td class="aula">22</td></tr>
+      <tr><td>Custo por dose</td><td>O preço de tratar a piscina uma vez, e não o do pote.</td><td class="aula">22</td></tr>
+      <tr><td>Ponto de pedido</td><td>Consumo do mês mais uma margem para o imprevisto.</td><td class="aula">22</td></tr>
+      <tr><td>O relatório da visita</td><td>Formato fixo, que termina em “liberada ou interditada, e até quando”.</td><td class="aula">23</td></tr>
+      <tr><td>Os 5 entregáveis do plano</td><td>Ficha técnica, rotina, estoque, orçamento e protocolo de emergência.</td><td class="aula">24</td></tr>
+      <tr><td>O teste do estranho</td><td>O plano funciona na mão de quem nunca viu a piscina?</td><td class="aula">24</td></tr>
+      <tr><td>A revisão de 3 meses</td><td>Três perguntas para reler o caderno e corrigir o plano.</td><td class="aula">25</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Cenas e ganchos das aulas</h2>
+  <p class="sub">O curso não conta casos de clientes reais. Cada aula abre com uma cena do dia a dia, e os exemplos usam a Chácara-Modelo, uma piscina fictícia. São o melhor material para gancho de vídeo e de carrossel, desde que não sejam apresentados como histórias reais nem como depoimentos.</p>
+  <div class="cases">
+    <div class="case"><h3>Sexta-feira, e a piscina está verde</h3><p>Você chega à chácara depois de uma semana fora e vai olhar a piscina. Quase todo mundo reage do mesmo jeito: pega o que tiver de produto e joga na água. O curso propõe outra reação: perguntar o que aconteceu com a água enquanto não havia ninguém ali. Aula 1.</p></div>
+    <div class="case"><h3>O produto de piscina no carrinho do supermercado</h3><p>Ele fica na mesma prateleira do amaciante e do sabão em pó, em embalagem colorida. A cena diz, sem dizer, que é um produto de limpeza como outro qualquer. E não é. Aula 2.</p></div>
+    <div class="case"><h3>A capa de bolhas que parece proteção</h3><p>Da varanda, alguém vê a piscina coberta e pensa que ela está segura. A capa térmica não é barreira contra afogamento. Aula 3.</p></div>
+    <div class="case"><h3>A conta de luz e a bomba desligada</h3><p>O dono desliga a bomba durante a semana para economizar. Semanas depois está comprando produto, e a água continua ruim. Aula 4.</p></div>
+    <div class="case"><h3>O cheiro forte de cloro</h3><p>Olho ardendo, toalha com cheiro, e todo mundo pensa que a piscina está bem tratada. É o engano mais comum sobre piscina: aquilo é cloro gasto. Aula 5.</p></div>
+    <div class="case"><h3>O número escrito a caneta no filtro</h3><p>Parece rabisco de obra. É a anotação mais útil da casa de máquinas: a pressão normal daquela piscina. Aula 6.</p></div>
+    <div class="case"><h3>Nove embalagens para uma piscina só</h3><p>Na Chácara-Modelo, alguém tirou tudo da prateleira e contou: três cloros diferentes, dois algicidas, um clarificante vencido, um redutor de pH e dois frascos sem rótulo. Aula 8.</p></div>
+    <div class="case"><h3>A válvula girada com a bomba ligada</h3><p>Parece que deu certo. Semanas depois a piscina começa a perder nível, sem rachadura e sem cano molhado, e ninguém liga uma coisa à outra. Aula 13.</p></div>
+    <div class="case"><h3>“Lavar o filtro suja a piscina”</h3><p>Muita gente diz isso com convicção, porque viu acontecer. A lavagem não estava errada. Faltou o enxágue. Aula 14.</p></div>
+    <div class="case"><h3>O tubo enchido na frente do retorno</h3><p>O teste deu cloro ótimo. Dois dias depois a água perde o brilho. A amostra era a água mais bem tratada da piscina, e não dizia nada sobre o resto. Aula 16.</p></div>
+    <div class="case"><h3>Saída às onze, entrada às três</h3><p>Um grupo grande vai embora e o próximo hóspede chega no mesmo dia. O tratamento forte tem duas partes, aplicar e esperar. A segunda não cabe nesse intervalo. Aula 18.</p></div>
+    <div class="case"><h3>O balde no degrau</h3><p>Um balde comum, duas marcas e um dia de espera. Sem ferramenta e sem quebrar um piso, uma impressão vira medida. Aula 20.</p></div>
+    <div class="case"><h3>As férias do caseiro</h3><p>Ele avisou com antecedência e ficou tudo certo. Só que ninguém perguntou quem ia olhar a piscina naquelas semanas. Não houve descuido de ninguém. Houve uma ausência que ninguém cobriu. Aula 21.</p></div>
+    <div class="case"><h3>Dois potes de cloro na prateleira da loja</h3><p>A mão vai no mais barato. Em casa, o rótulo mostra que a dose é maior, e cada tratamento saiu mais caro. Aula 22.</p></div>
+    <div class="case"><h3>Três semanas de casa fechada e hóspedes no sábado</h3><p>O caso final do curso, com a Chácara-Modelo: temporizador desarmado, duas chuvas fortes, água verde-escura na quinta-feira. O curso avisa logo que não existe resposta que garanta a piscina pronta no sábado. Aula 25.</p></div>
+    <div class="case"><h3>As simulações de decisão</h3><p>A página de venda cita cinco simulações na plataforma, entre elas: piscina verde com hóspedes chegando, tampa do ralo solta e propostas de piscineiro.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">Itens da página de venda. Os números podem ser citados.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula animada, de cerca de nove minutos: a água percorrendo o circuito, a alavanca da válvula em cada posição, o ponteiro do manômetro e o tubo de teste mudando de cor.</li>
+        <li>Artigo da aula em PDF, com os checklists e os passos.</li>
+        <li>Quiz comentado, com a explicação de cada alternativa. São 125 questões no curso.</li>
+        <li>Caderno de trabalho: o que aprendi, o que pratiquei, as três tarefas da aula e o resultado esperado.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li><strong>Tutor Villela.</strong> O assistente de inteligência artificial do curso responde com base no conteúdo das aulas e indica o minuto do vídeo em que o assunto aparece. Não substitui o rótulo do produto, a norma técnica nem o profissional habilitado.</li>
+        <li>Jornada com 9 selos de competência, níveis de Explorador a Mestre e medalhas.</li>
+        <li>Diagnóstico inicial e teste final, de 20 questões.</li>
+        <li>Villela Lab: 6 missões práticas na própria piscina e o projeto final, o plano de operação completo.</li>
+        <li>Desafio de 21 dias: uma ação curta por dia, começando pela segurança.</li>
+        <li>5 simulações de decisão.</li>
+        <li>9 modelos e resumos para imprimir, entre eles as sete regras, a visita em nove passos, a ficha de registro, o relatório e o plano.</li>
+        <li>Audiobook do curso, para ouvir no carro ou no fone, com a tela bloqueada.</li>
+        <li>Certificado da Villela Academy ao concluir todas as aulas.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Dono de chácara que cuida da própria piscina e quer parar de tratar no susto.</li>
+        <li>Quem paga um piscineiro e não sabe avaliar se o serviço está sendo bem-feito.</li>
+        <li>Caseiro que executa a rotina e precisa de um passo a passo claro.</li>
+        <li>Anfitrião de temporada, para quem piscina interditada é diária devolvida.</li>
+        <li>Quem quer começar a trabalhar com manutenção de piscinas na região.</li>
+      </ul>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura fórmula secreta, produto milagroso ou uma tabela de doses pronta. No curso, a dose é sempre a do rótulo.</li>
+        <li>Quem espera sair habilitado para eletricidade, conserto de bomba ou esvaziamento de piscina. Isso continua sendo serviço de profissional habilitado.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>O que cada perfil leva (das aulas)</h3>
+      <ul>
+        <li><strong>Dono que cuida:</strong> o circuito, o volume anotado, a ordem da visita e a ordem de correção da água.</li>
+        <li><strong>Dono que contrata:</strong> o que pedir na proposta, três perguntas a fazer a cada candidato e o relatório que permite conferir o serviço sem ficar ao lado (aulas 22 e 23).</li>
+        <li><strong>Caseiro:</strong> a sequência dos nove passos e um plano que diz por escrito o que ele faz, o que não faz e quando chama (aulas 10, 15 e 21).</li>
+        <li><strong>Anfitrião de temporada:</strong> preparação com dias de antecedência, lista de liberação e a interdição comunicada por escrito ao hóspede (aulas 18 e 23).</li>
+        <li><strong>Quem presta o serviço:</strong> formação do preço da visita, o peso do deslocamento em área rural e o relatório que mantém o cliente (aulas 22 e 23).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Objeções e respostas</h2>
+  <p class="sub">Das perguntas frequentes da página de venda.</p>
+  <h3>Preciso ter experiência com piscina?</h3>
+  <p>Não. O curso começa pelo circuito da água e pela segurança, antes de qualquer produto. É preciso ter acesso a uma piscina para praticar, um estojo de teste simples e os acessórios básicos de limpeza. Quem não tem piscina acompanha os exemplos com a Chácara-Modelo.</p>
+  <h3>O curso diz quanto de cada produto eu devo colocar?</h3>
+  <p>Não, e isso é de propósito. Produtos de mesma função têm concentrações diferentes, então a dose que vale é sempre a do rótulo. O curso ensina a calcular o volume, a transformar a dose do rótulo na quantidade certa, a aplicar em parte e a medir de novo.</p>
+  <h3>Este curso me habilita como piscineiro profissional?</h3>
+  <p>O curso é educacional e não equivale a formação profissional regulamentada, licença ou responsabilidade técnica. Ele ensina método, rotina e critério, e mostra quando chamar o profissional habilitado.</p>
+  <h3>As aulas são filmadas na piscina?</h3>
+  <p>São videoaulas animadas, de cerca de nove minutos cada. Cada aula vem com o artigo em PDF, com os checklists e os passos.</p>
+  <h3>Serve para piscina de vinil e de fibra?</h3>
+  <p>Serve. O método é o mesmo, e o curso aponta o que muda em cada revestimento: a escova e o aspirador adequados, o cuidado com produto concentrado e o que cada material não tolera. Piscina de vinil ou de fibra não se esvazia por conta própria.</p>
+  <h3>Eu só contrato o serviço. O curso serve para mim?</h3>
+  <p>Serve. O aluno aprende o que pedir numa proposta, como comparar duas propostas pelo que entregam, as quatro verificações rápidas do serviço e por que o registro das visitas deve ficar na propriedade.</p>
+  <h3>Por quanto tempo tenho acesso? Tem certificado?</h3>
+  <p>O acesso é de 1 ano a partir da compra. Ao concluir todas as aulas, o aluno recebe o Certificado da Villela Academy, que atesta a conclusão do curso e não é habilitação profissional.</p>
+  <h3>O que é a coleção Viver de Chácara?</h3>
+  <p>É a coleção de livros e cursos sobre como cuidar, melhorar e rentabilizar uma chácara. O Piscineiro na Prática é o primeiro curso. Segundo a página, os próximos tratam de paisagismo, alvenaria, decoração, construção com contêineres e hospedagem por temporada, entre outros.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias, incondicional. A pessoa assiste às aulas, faz as tarefas e, se o curso não servir, pede o reembolso dentro do prazo.</p>
+</section>
+
+<section id="cuidados">
+  <h2>Cuidados na comunicação</h2>
+  <p class="sub">Para o criativo não prometer o que o curso faz questão de não prometer.</p>
+  <div class="care">
+    <h3>Evitar</h3>
+    <ul>
+      <li>Qualquer dose, faixa de pH, cloro ou alcalinidade, tempo de filtração ou tempo de espera em número. O curso não diz esses números nas aulas, de propósito: manda ao rótulo, à ficha da aula, ao manual do equipamento e à norma técnica. Os únicos números que podem ser citados são os da Chácara-Modelo, e sempre como exemplo.</li>
+      <li>“Piscina verde azul em um dia”, “pronta para o banho na mesma tarde” ou qualquer promessa de prazo. O curso diz que recuperar água verde leva dias e que quem promete o contrário conta com a sorte ou com excesso de produto.</li>
+      <li>“Fórmula secreta”, “produto milagroso” ou recomendação de marca. O curso ensina a escolher pela função e pela substância.</li>
+      <li>Imagem ou texto que mostre dois produtos sendo misturados, produto fora da embalagem original ou manuseio sem óculos e luvas. A primeira regra de segurança do curso é nunca misturar.</li>
+      <li>Dar a entender que o curso dispensa o rótulo do produto, a ficha de segurança, a norma técnica ou a orientação do fabricante.</li>
+      <li>“Faça você mesmo” para eletricidade, conserto de bomba, dispositivos de sucção, troca de areia do filtro, vazamento ou esvaziamento da piscina. Nesses pontos o curso ensina a observar, relatar e chamar o profissional habilitado.</li>
+      <li>“Formação de piscineiro”, “habilitação”, “curso profissionalizante” ou certificado como licença. O curso é educacional, e o certificado atesta só a conclusão.</li>
+      <li>Promessa de renda, de número de clientes ou de ganho como piscineiro. A aula 22 ensina a formar o preço de uma visita e não promete faturamento.</li>
+      <li>Promessa de economia em reais ou em percentual. A aula de custos não diz nenhum valor em dinheiro.</li>
+      <li>“Piscina sempre liberada” ou “nunca mais interdite”. O curso defende o contrário: na dúvida, fecha-se a piscina, e a interdição não se negocia.</li>
+      <li>Tom de medo ou cena de pessoa em perigo ao falar de afogamento, sucção e choque. As aulas tratam o assunto em tom sério, sem dramatizar, mostrando o objeto e a regra.</li>
+      <li>Apresentar a Chácara-Modelo e as cenas de abertura como casos reais. São exemplos fictícios do curso.</li>
+      <li>“Acesso vitalício”. O acesso é de 1 ano a partir da compra.</li>
+      <li>Depoimentos de alunos. A página de venda não tem nenhum, então não há o que citar.</li>
+      <li>Dizer que as aulas são filmadas à beira da piscina. São videoaulas animadas.</li>
+      <li>Vender o curso como dependente da Gestão do Viver de Chácara. As aulas citam o sistema e repetem que tudo funciona com caderno e caneta.</li>
+      <li>Anunciar como disponíveis os outros títulos e cursos da coleção. A página fala deles como próximos.</li>
+    </ul>
+  </div>
+  <p style="margin-top:14px">O preço e os itens incluídos mudam. Antes de fechar uma peça com valor, confira na página do curso.</p>
+</section>
+
+<footer>
+  Fonte: roteiros das 25 videoaulas e página de venda do curso na Villela Academy. Coleção Viver de Chácara. Villela Academy, uma empresa do Grupo Villela Stay.
+</footer>
+
+</div>
+</body>
+</html>

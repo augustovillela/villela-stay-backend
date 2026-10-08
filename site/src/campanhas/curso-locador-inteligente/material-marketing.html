@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}</style>
+<title>O Locador Inteligente na era da Inteligência Artificial: material para criativos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Material de apoio para marketing · outubro de 2026</p>
+    <h1>O Locador Inteligente na era da Inteligência Artificial</h1>
+    <p class="lead">Tudo o que o curso ensina a quem aluga imóvel por temporada, aula por aula, pronto para virar apresentação e criativo. O conteúdo abaixo foi tirado do texto falado das 24 videoaulas e da página de venda no ar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 24 aulas</a>
+  <a href="#metodos">Métodos com nome</a>
+  <a href="#casos">Histórias das aulas</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Objeções</a>
+  <a href="#cuidados">Cuidados na comunicação</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados que podem ser citados como estão.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>O Locador Inteligente na era da Inteligência Artificial</dd></div>
+    <div><dt>Chamada da página</dt><dd>Pare de administrar hospedagem de memória</dd></div>
+    <div><dt>Autor e professor</dt><dd>Augusto Villela (a página assina como Villela Academy)</dd></div>
+    <div><dt>Formato</dt><dd>24 videoaulas animadas, de cerca de 9 minutos, todas disponíveis</dd></div>
+    <div><dt>Duração</dt><dd>3 h 41 min de vídeo</dd></div>
+    <div><dt>Em áudio</dt><dd>Audiobook com 24 capítulos, 3h41 no total</dd></div>
+    <div><dt>Preço</dt><dd>R$ 125,00, compra única (conferido na página em 08/10/2026)</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, incondicional, com reembolso integral</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Certificado</dt><dd>Certificado da Villela Academy</dd></div>
+    <div><dt>Amostra</dt><dd>Aula 1 aberta como degustação grátis</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/o-locador-inteligente-na-era-da-inteligencia-artificial">academia.villelastay.com.br/academy/cursos/o-locador-inteligente-na-era-da-inteligencia-artificial</a></p>
+  <p>O curso é baseado no livro do mesmo autor, <em>O Locador Inteligente na era da Inteligência Artificial: Claude AI na Prática para Hospedagens</em>, disponível na Livraria Villela.</p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">Se o criativo só puder dizer uma coisa, é esta.</p>
+  <p class="thesis">O problema do aluguel por temporada não é conseguir a primeira reserva. É a vigésima.</p>
+  <p>Uma casa cabe na memória de uma pessoa. Várias casas, vários anúncios, vários canais, equipe de limpeza, manutenção e hóspede escrevendo às onze da noite não cabem. Quando não cabem, o que acontece é uma erosão: a cobrança esquecida, a limpeza que ninguém confirmou, a resposta que demorou seis horas e virou reserva perdida. O curso ensina a trocar memória por processo e só depois colocar a inteligência artificial para trabalhar em cima dele.</p>
+  <h3>As duas travas que atravessam todas as aulas</h3>
+  <ul>
+    <li><strong>Automação prepara, humano manda.</strong> A máquina não decide dinheiro, calendário nem conversa com gente sem o dono. Ela lê, confere, calcula e deixa o rascunho pronto para aprovar.</li>
+    <li><strong>Disponibilidade, preço e regra da casa nunca saem do modelo de linguagem.</strong> Saem do sistema de reservas. O modelo só redige em cima do que o sistema informou, e todo prompt leva a trava anti-invenção.</li>
+  </ul>
+  <h3>A promessa, como está na página de venda</h3>
+  <p>24 videoaulas animadas para tirar o seu aluguel por temporada da operação artesanal e operar com processo, dados e inteligência artificial, sem perder o controle sobre dinheiro, calendário e a conversa com o hóspede.</p>
+  <h3>Cinco mensagens que sustentam qualquer peça</h3>
+  <ul>
+    <li><strong>Você não perde dinheiro porque erra. Perde porque adia.</strong> Tudo depende de alguém lembrar, e a decisão que vale dinheiro é a que fica para depois.</li>
+    <li><strong>O imóvel é o cenário. O produto é a estadia.</strong> Quase tudo que forma a experiência do hóspede é processo, e processo dá para padronizar, delegar e automatizar.</li>
+    <li><strong>A máquina não sabe o que não viu.</strong> Sem o calendário na frente, ela responde que a casa está livre com a mesma elegância de quando acerta.</li>
+    <li><strong>Processo antes de automação.</strong> Automatizar uma bagunça produz uma bagunça mais rápida.</li>
+    <li><strong>A tecnologia não substitui a operação.</strong> Ela tira a memória humana do caminho crítico. Hospitalidade continua sendo um negócio de gente.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso, com pequenos ajustes de corte, que funcionam como chamada.</p>
+
+  <p class="block-title">Fundamentos: processo antes da máquina · aulas 1 a 5</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>A quinta-feira de dezembro: de anfitrião artesanal a empresa que opera com processo</h3>
+    <ul>
+      <li>Por que o anfitrião artesanal perde dinheiro: quatro avisos chegam no mesmo minuto e a única decisão que vale dinheiro (a consulta do Réveillon) é a que espera.</li>
+      <li>O giro mental mais lucrativo: quem pensa “tenho uma casa boa” compete por metro quadrado; quem pensa “vendo uma estadia” compete pela mensagem na hora certa e pelo problema resolvido antes da reclamação.</li>
+      <li>O ponto de virada: aparece na terceira unidade, ou na segunda quando fica em outro endereço. As decisões não somam, se multiplicam. Antes dele, esforço resolve. Depois, só adia.</li>
+      <li>Os sintomas de processo que só existe na cabeça de alguém: informação da casa em três lugares, preço de feriado decidido na véspera, limpeza combinada por mensagem solta.</li>
+      <li>Usar IA de vez em quando ou operar com IA. Operar muda três pontos: contexto permanente, trabalho que começa por evento e freio explícito nas decisões perigosas. Nenhum exige programação.</li>
+      <li>Informação antes de comunicação: o gargalo não é escrever mensagem bonita, é saber quem chega, quem sai e o que precisa de limpeza.</li>
+      <li>A escada de sete degraus, que é o mapa do curso, e os dois avisos para começar honesto.</li>
+      <li>Tarefa: o teste de maturidade, com doze perguntas de sim ou não.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>É assim que o anfitrião artesanal perde dinheiro. Não errando. Adiando.</q><q>Inteligência artificial não troca lâmpada.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>A casa está livre? O que a máquina sabe, o que ela inventa e como travar a invenção</h3>
+    <ul>
+      <li>Por que a resposta errada vem tão segura: diante de uma pergunta sem informação, o modelo produz a continuação mais plausível. E um texto errado sai tão bem escrito quanto um certo.</li>
+      <li>O Claude como um recém-contratado brilhante e sem pasta: sabe tudo sobre o mundo em geral e nada sobre a sua empresa.</li>
+      <li>As quatro funções que se pedem à máquina, cada uma com mais responsabilidade: assistente, consultor, operador e agente. A regra é não pular degraus.</li>
+      <li>Prompt profissional é documento de requisitos, não pergunta. Pedido vago produz a média do que existe no mundo, e a média não converte.</li>
+      <li>A trava anti-invenção: usar só os dados colados do sistema de reservas, nunca afirmar data, valor ou regra que não esteja ali e, na falta, parar e escrever “falta dado”. Proibir não basta; é preciso dar a saída.</li>
+      <li>Os dois blocos que a hospedagem exige no prompt: critério de sucesso (“consigo enviar sem editar”) e critério de escalonamento humano (reclamação, reembolso e assunto jurídico voltam para o dono).</li>
+      <li>A linha que melhora qualquer anúncio: o que a casa não tem.</li>
+      <li>Do prompt à Skill: o prompt usado três vezes vira procedimento com nome. E o risco de quem já confia e para de conferir.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A máquina não sabe o que não viu, e erra com confiança.</q><q>Uma resposta incompleta é melhor do que uma resposta inventada.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Processo sem dono: mapear a empresa antes de automatizar</h3>
+    <ul>
+      <li>A reserva perdida porque duas pessoas acharam que a outra ia responder. Não houve preguiça nem falta de ferramenta. Houve um processo sem dono.</li>
+      <li>Uma administradora de temporada opera sete fluxos ao mesmo tempo, as sete jornadas, cada uma com gente e ritmo diferentes.</li>
+      <li>A jornada da reserva, onde o overbooking nasce: o ponto de falha típico é o bloqueio que não se propagou para os outros canais.</li>
+      <li>Os incidentes sérios moram nos cruzamentos entre as jornadas. O conserto é escrever o cruzamento como processo próprio, com dono.</li>
+      <li>Cada processo tem exatamente uma pessoa que executa.</li>
+      <li>A coluna do gatilho: alguém lembra, uma data chega ou um evento acontece. Toda etapa cujo gatilho é “alguém lembra” é candidata imediata à automação.</li>
+      <li>O que automatizar primeiro: frequência e custo do erro pesam mais. Escala de limpeza, régua de mensagens e lembrete de preventiva saem na primeira onda. Mensagem bonita fica fora do topo.</li>
+      <li>A máquina como entrevistadora de processos: uma pergunta por vez, primeiro o retrato, depois a crítica. E por que não pedir a ela um mapa pronto.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Cada processo tem exatamente uma pessoa que executa. Se tiver dois, tem zero.</q><q>Processo sem dono não aparece em lugar nenhum até o dia em que custa dinheiro.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Uma informação, um lugar: fonte única da verdade e base de conhecimento</h3>
+    <ul>
+      <li>O hóspede que perguntou do cachorro e recebeu três respostas em dois dias. Ninguém errou: havia três fontes.</li>
+      <li>Uma máquina que lê três fontes contraditórias produz confusão em escala, e com cara de autoridade. Por isso o assunto vem antes de qualquer automação.</li>
+      <li>Os três degraus de verdade: sistema de reservas (dado vivo), documento de regras de negócio (política) e cadastro mestre das propriedades (características físicas).</li>
+      <li>Anúncio é saída, não fonte. Se diverge do cadastro, o anúncio está errado.</li>
+      <li>O cadastro mestre de cada propriedade e os dois campos que valem ouro: capacidade confortável e máxima, e propriedades interligadas.</li>
+      <li>O que a máquina pode ler e o que nunca: fora documento de hóspede, telefone de terceiro, contrato com dado pessoal, senha e credencial. A regra do funcionário novo no primeiro dia.</li>
+      <li>A fonte precisa continuar verdadeira: data da última revisão e histórico de mudanças em todo documento de regra.</li>
+      <li>A máquina como auditora: três listas (contradições, lacunas e ambiguidades). Ela aponta e não corrige. Qual regra vale é decisão do dono.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Para cada informação, existe um único lugar onde ela é verdadeira.</q><q>Três respostas sobre o mesmo cachorro não são falha de atendimento. São falha de fonte.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>Padrão escrito, equipe que confia</h3>
+    <ul>
+      <li>As duas faxineiras excelentes e as avaliações que oscilavam: cada uma tinha adivinhado um padrão, porque ninguém tinha dito qual era.</li>
+      <li>Quando o resultado varia entre pessoas, o problema quase sempre é do procedimento, não da pessoa.</li>
+      <li>O POP (procedimento operacional padrão) cabe numa página e tem seis campos. O que separa um POP de uma lista de desejos é o critério de pronto, que outra pessoa confere sem perguntar nada.</li>
+      <li>Checklist não é POP: o POP ensina a fazer, o checklist prova que foi feito. Segue o trajeto físico de quem limpa e pede foto onde o erro custa caro. Acima de vinte itens, vira automático.</li>
+      <li>Treinar não é entregar documento: fazer junto, depois com conferência, depois sozinho com foto. Quem executa não é quem inspeciona.</li>
+      <li>Tarefa, aviso e regra não vão para o mesmo lugar. Regra comunicada só no grupo de WhatsApp vale duas semanas.</li>
+      <li>Do POP à Skill, com três traços: caso de risco explícito, falhar alto e preparar sem enviar. Se o procedimento não está escrito, não automatize.</li>
+      <li>Dado serve para melhorar o processo, não para vigiar pessoas: indicador por unidade e por processo, e inspeção sorteada de uma unidade por semana.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Padrão que não está escrito não é padrão. É o hábito de quem está trabalhando naquele dia.</q><q>Se duas pessoas boas entregam resultados diferentes, olhe primeiro para o que você escreveu.</q></div>
+  </div></article>
+
+  <p class="block-title">A casa e as vitrines · aulas 6 a 9</p>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>A casa pronta antes do anúncio</h3>
+    <ul>
+      <li>A mesa de jantar bonita que nunca apareceu em avaliação e o chuveiro que apareceu em quatro.</li>
+      <li>Os três níveis do investimento: o que gera reclamação quando falha (água quente, climatização, internet, cama), o que causa atrito no uso e o que encanta. A ordem certa é a inversa da intuição.</li>
+      <li>Enxoval se compra pelo giro: três jogos por cama é o mínimo. E branco, sempre.</li>
+      <li>A cozinha é onde o hóspede julga. Café, açúcar, sal, azeite e temperos custam quase nada e pesam na primeira hora.</li>
+      <li>A primeira reserva chega antes de a casa estar pronta, e o comentário sobre acabamento fica no anúncio.</li>
+      <li>Implantação em ordem: papelada, vistoria com foto e data, preparação física, foto só depois, cadastro e publicação por último.</li>
+      <li>A noite de teste: alguém dorme na casa seguindo o percurso do hóspede antes do primeiro check-in.</li>
+      <li>Lançamento com preço de entrada e data de saída escrita, começando por um canal só. O papel do Claude aqui é organizar, comparar e lembrar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O hóspede não avalia o que você comprou. Avalia o que ele usou.</q><q>O terceiro nível traz o hóspede. O primeiro traz a avaliação.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>Não depender de nenhum canal</h3>
+    <ul>
+      <li>O anúncio suspenso por três dias e a conta que todo anfitrião deveria fazer antes de precisar: se o principal canal suspender amanhã, o que sobra?</li>
+      <li>O acordo com as plataformas é bom: elas emprestam público, reputação e tráfego. O limite aparece depois: a relação, as regras e a presença não são suas.</li>
+      <li>A comissão é aritmética, não emoção: sobre a reserva que não existiria sem a plataforma, é excelente negócio; sobre o hóspede que voltaria de qualquer jeito, é custo.</li>
+      <li>O alarme dos 60%: quando uma casa passa disso num canal só, o canal virou sócio.</li>
+      <li>Overbooking e suas três causas: falha de sincronização, data segurada de cabeça e anúncios interligados (o mesmo espaço vendido de mais de uma forma). O bloqueio precisa valer nas duas direções.</li>
+      <li>Canal direto é existir: o site responde três perguntas (tem vaga, quanto custa, posso confiar) e nunca tem disponibilidade digitada à mão.</li>
+      <li>A retomada da reserva abandonada: mensagem curta, escassez só quando é verdadeira e limite de duas tentativas.</li>
+      <li>A pergunta de três minutos ao fornecedor sobre o módulo de hospedagem do Google.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Distribuição não é estar em todo lugar. É não depender de nenhum.</q><q>Quando uma casa passa de sessenta por cento das reservas num canal só, você tem um sócio, não um fornecedor.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>Quinze segundos</h3>
+    <ul>
+      <li>O anúncio que recebia visualização e não convertia: o problema estava na terceira foto, a do corredor.</li>
+      <li>Anúncio é uma sequência de cinco decisões do hóspede: parar de rolar, abrir, continuar olhando, ler e perguntar ou reservar. Cada pedaço do anúncio serve a uma delas.</li>
+      <li>A sequência de fotos: a principal mostra o maior diferencial, as cinco primeiras contam a casa inteira. A foto que promete mais do que a casa entrega ganha o clique e perde a estrela.</li>
+      <li>Legendar as fotos: muito hóspede lê a legenda e não lê a descrição.</li>
+      <li>O título diz o que é, para quem e o diferencial. Superlativo genérico e palavra vaga não diferenciam ninguém.</li>
+      <li>Capacidade honesta: se acomoda dez com conforto e doze apertados, anuncie dez. Comodidade marcada com verdade.</li>
+      <li>Dizer o desagradável no próprio anúncio: quem se importa não reserva, e quem reserva não reclama.</li>
+      <li>O Claude como auditor, não redator: a auditoria em vinte pontos contra o cadastro. A que mais rendeu não mudou uma palavra; reordenou fotos e marcou comodidades esquecidas.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ninguém reserva uma casa por causa do corredor.</q><q>A informação ruim que você omite no anúncio vira reclamação na avaliação.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>Uma lógica, várias vitrines</h3>
+    <ul>
+      <li>Não existe segredo de algoritmo. Quem afirma um peso exato da busca está inventando, porque a plataforma não divulga em detalhe.</li>
+      <li>As três gavetas de toda dica sobre plataforma: critério oficial, boa prática observada e hipótese. A maior parte do que circula é hipótese vendida como critério oficial.</li>
+      <li>O que não muda é o modelo de negócio: a plataforma ganha com transação concluída e bem-sucedida. O que melhora a experiência real do hóspede tende a melhorar o posicionamento.</li>
+      <li>A velocidade vem do preparo: rascunho pronto, com disponibilidade e valor conferidos no sistema. O envio continua com o dono.</li>
+      <li>Booking: a gramática do hotel. Escrever para conferência, publicar planos tarifários e entender que o plano flexível cobra um prêmio pela opção de desistir.</li>
+      <li>Vrbo e Expedia: o público de família e grupo pergunta “cabemos todos?”. Distribuição dos quartos, banheiros e estacionamento com número. Três checagens antes de entrar.</li>
+      <li>Decolar: reescrever, não traduzir. O glossário de português para espanhol vira um ativo.</li>
+      <li>Duas regras antes de abrir vitrine nova: não entrar em canal que não sincroniza automaticamente e comparar canais pelo resultado líquido, não pela comissão.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O fato sai sempre do mesmo cadastro. O que muda é o jeito de contar.</q><q>A resposta pública não é para quem escreveu. É para o próximo hóspede, que lê.</q></div>
+  </div></article>
+
+  <p class="block-title">Sistemas, preço e números · aulas 10 a 12</p>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>O semáforo verde</h3>
+    <ul>
+      <li>Quatro manhãs de “tudo certo” com os calendários divergentes: a rotina conferia se conseguia ler o calendário, não se os calendários concordavam.</li>
+      <li>Três sistemas e o que cada um faz: sistema de reservas (PMS), channel manager e CRM, que é o que mais falta.</li>
+      <li>A primeira pergunta ao fornecedor: consigo tirar os meus dados, completos, quando quiser? Existe API?</li>
+      <li>Uma auditoria diária construída para duvidar: compara os calendários de todos os canais entre si e com o sistema, confere tarifas e o bloqueio dos anúncios interligados.</li>
+      <li>Falhar alto: se uma fonte não pôde ser lida, o relatório abre com “fonte indisponível” e se declara parcial.</li>
+      <li>O painel das sete da manhã, com cinco perguntas, incluindo a que quase ninguém faz: alguma automação falhou?</li>
+      <li>Duas defesas: sinal de vida de toda rotina e teste do resultado, não da conexão.</li>
+      <li>Crise com procedimento escrito antes (hóspede trancado, vazamento, overbooking). A auditoria detecta e classifica; não corrige calendário sozinha.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma automação que reporta sucesso não é a mesma coisa que um sistema funcionando.</q><q>Ausência de erro não é evidência de acerto.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>A casa cheia trabalhando de graça</h3>
+    <ul>
+      <li>Noventa por cento de ocupação a preço baixo demais não é sucesso. Cada estadia tem custo de limpeza, enxoval e desgaste.</li>
+      <li>O número que resolve a briga entre ocupação e diária: receita por noite disponível (diária média vezes ocupação), com a conta do exemplo feita na aula.</li>
+      <li>Preço não tem custo marginal: subir a diária cai quase inteiro no resultado.</li>
+      <li>A tarifa é o resultado de ajustes sobre uma base com duas âncoras: custo variável por noite e tarifa mínima aceitável.</li>
+      <li>Estoque perecível e datas especiais: o calendário se monta com meses de antecedência. Três regras para a data escassa: preço acima da média, estadia mínima mais longa e nenhuma pressa.</li>
+      <li>Estadia mínima como ferramenta de receita, com permissão de estadia menor nos buracos entre reservas.</li>
+      <li>O hóspede compara o total. Taxa de limpeza cobre o custo real da limpeza, e toda taxa aparece no anúncio antes da reserva.</li>
+      <li>O Claude como consultor de preço, com os números vindos do sistema. A recomendação é automática; a publicação é humana.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Noventa por cento de ocupação a um preço baixo demais não é sucesso. É uma casa cheia trabalhando de graça.</q><q>Sem piso, todo algoritmo tende a zero.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Números por imóvel</h3>
+    <ul>
+      <li>A tarde perdida conferindo dois números que estavam os dois certos: um era caixa, o outro era competência.</li>
+      <li>As três convenções que precisam estar escritas: quando a receita é reconhecida (no check-in, pelo valor total da reserva), bruto ou líquido, e o que entra em noites disponíveis.</li>
+      <li>Nunca calcular faturamento como tarifa vezes noites: o número sai sempre otimista.</li>
+      <li>Métrica isolada engana; em par, diagnostica. Ocupação alta com diária baixa quase sempre é preço abaixo do que devia.</li>
+      <li>Lucro por reserva e custo de aquisição de cada canal entram na conta, não só a comissão.</li>
+      <li>Anúncio interligado conta uma vez só, e a comparação é com o mesmo período do ano anterior.</li>
+      <li>O resultado de cada unidade: uma casa ruim dentro de um portfólio bom é invisível até separar as contas.</li>
+      <li>Dinheiro que parece receita e não é (taxa de limpeza, caução, sobra do mês bom), provisões e a conciliação que lista a divergência em vez de fechar à força.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A maior parte das discussões sobre números numa operação não é sobre os números. É sobre definições.</q><q>Uma conciliação que sempre fecha não está conciliando. Está escondendo.</q></div>
+  </div></article>
+
+  <p class="block-title">Venda, dinheiro e reputação · aulas 13 a 16</p>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>O hóspede que você já pagou para ter</h3>
+    <ul>
+      <li>O sistema de reservas sabe tudo sobre quem reservou e nada sobre quem quase reservou. Essas pessoas já custaram comissão, anúncio e tempo de atendimento.</li>
+      <li>Toda pessoa que fala com você vira um registro: origem, datas, número de pessoas e finalidade. Planilha disciplinada ganha de software caro mal alimentado.</li>
+      <li>O campo mais valioso é o motivo da perda. Data indisponível é informação de produto, não perda comercial.</li>
+      <li>Todo contato em aberto tem uma próxima ação, com data. Sem isso, registra o motivo e fecha.</li>
+      <li>O cancelamento de uma data boa vira lista de quem já quis aquela data. O agente prepara a lista e o rascunho; nada sai sozinho, e nunca em massa.</li>
+      <li>As 48 horas depois da saída: saída tardia como decisão operacional, desgaste separado de dano e item esquecido devolvido com facilidade.</li>
+      <li>A pesquisa privada com a pergunta “o que faltou?”. Quem teve problema recebe uma pessoa, nunca mensagem automática.</li>
+      <li>A segunda reserva do mesmo hóspede é a mais barata que existe, e só acontece se alguém anotou a primeira. O cuidado com o contato de quem veio por plataforma.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O seu sistema de reservas sabe tudo sobre quem reservou. Não sabe nada sobre quem quase reservou.</q><q>Registro sem ação vira cemitério de nomes.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Cotação não é resposta</h3>
+    <ul>
+      <li>Responder “quanto custa?” com um número é o erro comercial mais comum do setor. Se for alto, a pessoa some. Se for baixo, você fecha barato o que valia mais.</li>
+      <li>Quatro perguntas que cabem em duas mensagens: quantas pessoas, quais datas, a finalidade e se haverá visitante que não dorme na casa.</li>
+      <li>Finalidade e visitantes protegem o imóvel: é assim que se percebe o evento disfarçado de estadia.</li>
+      <li>A cotação em quatro partes: a linha que mostra que você entendeu, o valor total (não a diária), uma frase de cena e o passo seguinte com prazo real.</li>
+      <li>Casa se vende com cena, não com adjetivo. Uma frase de cena por cotação basta.</li>
+      <li>As objeções: “está caro” (descobrir com o que a pessoa compara), “vou pensar” (combinar o retorno) e “faz um desconto?” (desconto se concede por algo).</li>
+      <li>O prompt de cotação: data e valor saem do sistema. Se a finalidade indica evento ou há visitantes, ele não cota e manda escalar.</li>
+      <li>Evento é outro trilho: contrato próprio, caução, regras específicas e proposta em documento formal.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma cotação não é uma resposta. É o resultado de uma conversa curta que precisa acontecer antes.</q><q>Prazo verdadeiro cria decisão. Prazo inventado destrói confiança.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>O domingo: pagamentos, cancelamentos e fraude</h3>
+    <ul>
+      <li>A mensagem de domingo: pressa desproporcional, nenhuma pergunta sobre a casa, valor alto e arranjo de pagamento fora do comum. Nenhum sinal sozinho condena; a combinação é que importa.</li>
+      <li>Pagamento pela plataforma ou direto: a escolha é proporcional ao valor. Reserva direta de valor alto merece contrato, identificação e caução.</li>
+      <li>O arranjo que protege os dois lados: sinal na confirmação, saldo antes do check-in e caução para grupo, evento e casa de alto valor. Tudo por escrito, antes do pagamento.</li>
+      <li>Pix e cartão, cada um com seu risco. E a linha que não se cruza: você não guarda dado de cartão.</li>
+      <li>Cancelamento sem improviso: a diferença entre sinal e saldo dita com todas as letras, e nenhuma exceção aberta no impulso.</li>
+      <li>A contestação de cartão (chargeback) se ganha antes, com documentação: contrato aceito, conversa do acordo e prova da estadia.</li>
+      <li>O golpe da diferença e a regra que o mata: nunca devolver por meio diferente do recebido.</li>
+      <li>A fronteira mais rígida do curso: a máquina não cobra, não estorna, não decide reembolso e não classifica ninguém como fraudador. Ela levanta o fato; o julgamento é humano.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Sem sinal, não há reserva. Há intenção.</q><q>Fraude não se reconhece por um sinal. Se reconhece pela soma.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>Três críticas são um relatório</h3>
+    <ul>
+      <li>A palavra “chuveiro” apareceu pela quarta vez em dois meses, em duas unidades. Lida uma a uma, a avaliação gera ansiedade. Lida em conjunto, é relatório de manutenção.</li>
+      <li>Reputação é assimétrica: cai em semanas e sobe em meses.</li>
+      <li>Pedir avaliação sempre, de forma simples, sem sugerir o que escrever e sem condicionar a nada. Se houve problema bem resolvido, pedir depois de resolvido.</li>
+      <li>A resposta pública é para o próximo hóspede: como responder a elogio, a crítica procedente e a crítica injusta. Nunca revelar informação do hóspede.</li>
+      <li>O diagnóstico em três caixas: físico (manutenção ou compra), processo (procedimento e treinamento) e expectativa (anúncio).</li>
+      <li>Expectativa é o conserto que não custa nada: a casa está certa, o anúncio é que prometeu outra coisa.</li>
+      <li>Ordenar pelo impacto, fechar o ciclo e respeitar a regra da amostra insuficiente antes de comemorar a correção.</li>
+      <li>Quando a nota já caiu, o caminho sem atalho. E o hóspede que volta: lembrar da sazonalidade dele vale mais que desconto.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma crítica é uma opinião. Três críticas sobre a mesma coisa são um relatório de manutenção que você recebeu de graça.</q><q>Reputação cai em semanas e sobe em meses.</q></div>
+  </div></article>
+
+  <p class="block-title">A estadia, da reserva à manutenção · aulas 17 a 21</p>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Reserva é documento</h3>
+    <ul>
+      <li>A reserva que existe só como sequência de áudios e “combinados” não se reconstrói quando o hóspede contesta.</li>
+      <li>As nove etapas da consulta à confirmação. A nona, o registro com bloqueio em todos os canais, é a que mais se esquece. É assim que nasce o overbooking feito à mão.</li>
+      <li>O ponto de não retorno: a data deixa de ser vendável quando o sinal é pago. Antes disso, segura-se com bloqueio, prazo e responsável por soltar.</li>
+      <li>O canal muda a mensagem, não o processo.</li>
+      <li>A mensagem de confirmação com oito informações, sempre as mesmas. Aceita pelo hóspede, é também a base da defesa numa contestação.</li>
+      <li>Contrato por padrão, não por exceção: quando o custo de gerar caiu, o uso subiu.</li>
+      <li>A régua de comunicação em quatro momentos entre a confirmação e a chegada, cada mensagem com uma finalidade só.</li>
+      <li>As instruções de chegada, o único lugar em que o curso recomenda mensagem longa. E a automação que só envia se souber o estado da reserva.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma reserva bem fechada é um documento, não uma conversa.</q><q>Uma data segurada sem prazo é uma data perdida por educação.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>O que nunca vira texto</h3>
+    <ul>
+      <li>O momento mais frágil da operação dura cinco minutos: a pessoa na porta, com malas. É também o ponto de maior risco de segurança.</li>
+      <li>Três modelos de check-in (alguém recebe, o hóspede entra sozinho, portaria). Qualquer um precisa de plano B escrito.</li>
+      <li>A regra que não se negocia: senha de fechadura, código de portão, local do cofre e senha do wi-fi não vivem na base de conhecimento nem em mensagem automática.</li>
+      <li>Senha por estadia, que expira sozinha. Registro de quem tem acesso a quê. Nunca a mesma senha em várias unidades.</li>
+      <li>O Claude prepara, mas não transmite: a mensagem de chegada vem com um marcador no lugar da senha, e uma pessoa envia.</li>
+      <li>Dados pessoais do hóspede: coletar o mínimo, restringir o acesso e definir prazo de descarte. A adequação à LGPD de cada caso é conversa para um profissional.</li>
+      <li>Onde os dados vazam de verdade: a conversa antiga, a pasta com acesso amplo, o acesso de quem saiu.</li>
+      <li>Câmeras (só área externa e sempre declaradas; dentro da casa, nunca) e seguro (a apólice residencial comum pode não cobrir temporada; ler as exclusões).</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Nenhuma casa bonita compensa vinte minutos na calçada.</q><q>Tem informação que abre a porta e informação que expõe uma pessoa. Nenhuma das duas vira texto solto.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>Onze e quarenta da noite</h3>
+    <ul>
+      <li>O ar-condicionado parou às 23h40. Duas respostas possíveis: a automática “no próximo dia útil” ou a que já traz o disjuntor com foto e promete uma ligação em cinco minutos.</li>
+      <li>Concierge inteligente resolve o que dá para resolver e escala rápido o que não dá. A qualidade se mede pela segunda parte.</li>
+      <li>O que se resolve sem gente: dúvidas sobre a casa, informação operacional e recomendação local saída de uma lista curada.</li>
+      <li>O que precisa de gente: segurança, saúde, emergência, problema físico em andamento, reclamação e dinheiro.</li>
+      <li>As quatro exigências do escalonamento: gatilho por assunto, pedir uma pessoa a qualquer momento, contexto que vai junto e plantão definido.</li>
+      <li>A ordem importa: verificar se é caso de escalar antes de tentar responder.</li>
+      <li>O que o agente não faz nunca: enviar dado de acesso, oferecer desconto, prometer prazo de reparo.</li>
+      <li>Hóspede estrangeiro (regras já traduzidas e revisadas), o aplicativo que só vem depois do manual e os dois números para medir.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A máquina resolve o que é informação e para no que é situação.</q><q>Escalar para ninguém não é escalar.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>A confirmação de volta</h3>
+    <ul>
+      <li>É quando o hóspede abre a porta que você descobre se a casa foi limpa. O modo de falha mais comum é a limpeza que ninguém confirmou.</li>
+      <li>O giro é uma janela. Três decisões: medir o tempo real de preparação de cada unidade, definir a janela mínima por unidade e tratar a virada como caso especial.</li>
+      <li>A ordem do trabalho em nove passos. Dois em destaque: verificar danos e faltas antes de limpar e a preparação final com climatização.</li>
+      <li>Evidência com foto e hora, que também protege a equipe de acusação injusta. E a confirmação: quem fez, quando terminou, o que ficou pendente.</li>
+      <li>Dois modos de falha: a reserva das dez da noite que não chega à escala e a unidade sem responsável.</li>
+      <li>Não confirmado não é o mesmo que não feito. Tratar como igual faz a equipe parar de confirmar.</li>
+      <li>Onde o Claude entra: a agenda do dia, que não monta lista pela metade, e o painel de confirmação.</li>
+      <li>O que não automatizar: a cobrança da equipe e a redistribuição da escala quando alguém falta.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Saber que a mensagem foi enviada não é saber que o trabalho foi feito.</q><q>Mensagem enviada é pedido. Confirmação é fato.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>O que quebra e o que some</h3>
+    <ul>
+      <li>A teoria das janelas quebradas dentro da casa de temporada: hóspede que percebe descuido cuida menos e reclama mais.</li>
+      <li>Corretiva e preventiva. O principal motivo da preventiva é que ela não acontece com hóspede dentro.</li>
+      <li>As duas armadilhas da preventiva: sem registro de data não existe plano, e manutenção agendada sem bloqueio no calendário é cancelada pela próxima reserva.</li>
+      <li>O histórico por equipamento mostra quando trocar sai mais barato do que consertar pela quarta vez.</li>
+      <li>Propriedade inteligente tem um critério só: resolve um problema operacional real?</li>
+      <li>O agente cruza vencimento com calendário e prepara a solicitação. Nada dispara para um técnico sem confirmação do dono.</li>
+      <li>O que some devagar: enxoval, papel, produto de limpeza, cápsula de café. A conta do enxoval é pelo tempo que a peça leva para voltar limpa.</li>
+      <li>Consumo fora do padrão é informação, e a conta certa de água e energia é por noite ocupada. Informação exata de acessibilidade já é um serviço.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Estoque em hospedagem não é assunto de almoxarifado. É assunto de experiência do hóspede.</q><q>Consumo absoluto é ruído. Consumo por noite ocupada é informação.</q></div>
+  </div></article>
+
+  <p class="block-title">Agentes, sistemas próprios e implantação · aulas 22 a 24</p>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>Leem tudo, não escrevem nada</h3>
+    <ul>
+      <li>O proprietário que pediu o relatório das outras casas: um agente com acesso ao financeiro teria mandado, porque ninguém tinha escrito que não podia.</li>
+      <li>Separar identificação de operação: a maior parte do trabalho do dia não precisa saber quem é a pessoa, só que existe uma estadia.</li>
+      <li>O agente entra na matriz de permissões como uma pessoa da equipe, com permissões mais estreitas do que as de quem ele ajuda.</li>
+      <li>A máquina que “corrige” o que era intenção, como a tarifa de Réveillon tratada como erro de digitação.</li>
+      <li>As decisões que nunca são automáticas. As três que mais importam: dinheiro que sai ou deixa de entrar, qualquer mexida no calendário e mensagem para pessoa real.</li>
+      <li>A escala de autonomia de zero a três. Não existe nível quatro.</li>
+      <li>Pedir para não fazer e impedir de fazer são coisas diferentes: instrução em texto é mais frágil que permissão negada. Sempre que der, acesso só de leitura.</li>
+      <li>Uma tarefa, um dono. Todo agente com interruptor. E supervisão diária.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Consulta é livre. Escrita pede confirmação.</q><q>Automação sem supervisão não é autonomia. É abandono.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">23</div><div class="body">
+    <h3>O software que ninguém vai te vender</h3>
+    <ul>
+      <li>O autor não é programador e opera sobre sistemas que construiu. Programar passou a exigir descrever bem o que se quer.</li>
+      <li>O software que nenhum fornecedor constrói: a regra que só a sua operação tem (interligação de anúncios, forma de contar o faturamento, prestação de contas).</li>
+      <li>A ordem: o feio e crítico primeiro. O painel do dia, só de leitura, vem antes do aplicativo bonito.</li>
+      <li>O primeiro projeto só lê. Não mexe em dinheiro nem em calendário.</li>
+      <li>O que não construir: sistema de reservas, channel manager, meio de pagamento e o que o seu sistema já faz.</li>
+      <li>Como pedir: descrever o problema e não a solução, uma coisa por vez, testar cedo com dados reais e mandar a máquina listar o que entendeu antes de escrever.</li>
+      <li>Protótipo não é produção: a pergunta é o que acontece quando quebrar às onze da noite de um sábado. Credencial nunca dentro do código.</li>
+      <li>Monitorar antes de acrescentar recurso. E a decisão de negócio quando alguém pede para usar o que você construiu.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Conseguir construir não é o mesmo que conseguir manter.</q><q>A maior parte do software errado não é mal escrito. É bem escrito para o problema errado.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">24</div><div class="body">
+    <h3>Uma coisa de cada vez</h3>
+    <ul>
+      <li>Se tentar fazer tudo, não faz nada. Uma coisa de cada vez, na ordem certa, terminando cada uma antes da seguinte.</li>
+      <li>Onde você está: as doze perguntas de sim ou não e as três faixas de leitura (menos de quatro, entre quatro e oito, mais de oito).</li>
+      <li>Os cinco verbos, nesta ordem: saber antes de comunicar, confirmar antes de automatizar, conferir antes de crescer, preparar antes de enviar e medir antes de otimizar.</li>
+      <li>O plano de 90 dias pelo objetivo de cada mês: parar de perder, parar de lembrar e parar de descobrir tarde.</li>
+      <li>O retorno que ninguém vê é o erro evitado. Por isso se mede a linha de base antes de começar.</li>
+      <li>Três erros de implantação: começar pelo bonito, dar autonomia de escrita cedo demais e afrouxar a supervisão com o tempo.</li>
+      <li>A equipe: explicar o porquê e começar pelo que ajuda a equipe.</li>
+      <li>Construir, contratar ou os dois, com o critério “se não tem quem mantenha, não construa”. O que não muda e o hábito da empresa que aprende.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A tecnologia não substitui a operação. Ela tira a memória humana do caminho crítico.</q><q>Hospitalidade continua sendo um negócio de gente, com tecnologia por trás.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Os métodos com nome</h2>
+  <p class="sub">Ferramentas de raciocínio que o aluno leva para a operação. Rendem bem em carrossel e em slide, porque têm número e nome.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Método</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>A escada de sete degraus</td><td>Prompt, Skill, workflow, automação, agente, sistema e empresa multiagente. Cada degrau funciona sozinho.</td><td class="aula">1</td></tr>
+      <tr><td>Teste de maturidade</td><td>Doze perguntas de sim ou não, respondidas no começo e de novo noventa dias depois.</td><td class="aula">1 e 24</td></tr>
+      <tr><td>As 4 funções da máquina</td><td>Assistente, consultor, operador e agente, com responsabilidade crescente.</td><td class="aula">2</td></tr>
+      <tr><td>Trava anti-invenção</td><td>Só os dados do sistema; nunca afirmar o que não está ali; na falta, parar e escrever “falta dado”.</td><td class="aula">2</td></tr>
+      <tr><td>Os 2 blocos da hospedagem</td><td>Critério de sucesso e critério de escalonamento humano em todo prompt.</td><td class="aula">2</td></tr>
+      <tr><td>As 7 jornadas</td><td>Os sete fluxos que uma administradora opera ao mesmo tempo, e os cruzamentos entre eles.</td><td class="aula">3</td></tr>
+      <tr><td>Os 3 gatilhos</td><td>Alguém lembra, uma data chega, um evento acontece.</td><td class="aula">3</td></tr>
+      <tr><td>Entrevista de processos</td><td>A máquina pergunta uma coisa por vez: primeiro o retrato, depois a crítica.</td><td class="aula">3</td></tr>
+      <tr><td>Fonte única da verdade</td><td>Sistema de reservas, regras de negócio e cadastro mestre. Anúncio é saída.</td><td class="aula">4</td></tr>
+      <tr><td>Regra do funcionário novo</td><td>Se não pudesse ser lido por um funcionário novo no primeiro dia, não entra na base.</td><td class="aula">4</td></tr>
+      <tr><td>Auditoria de contradições</td><td>Três listas: contradições, lacunas e ambiguidades. Aponta e não corrige.</td><td class="aula">4</td></tr>
+      <tr><td>POP com critério de pronto</td><td>O procedimento de uma página que outra pessoa consegue conferir sem perguntar.</td><td class="aula">5</td></tr>
+      <tr><td>Os 3 níveis do investimento</td><td>O que gera reclamação, o que causa atrito e o que encanta.</td><td class="aula">6</td></tr>
+      <tr><td>Três jogos por cama</td><td>Um em uso, um limpo pronto e um na lavanderia.</td><td class="aula">6 e 21</td></tr>
+      <tr><td>A noite de teste</td><td>Dormir na casa como hóspede antes do primeiro check-in.</td><td class="aula">6</td></tr>
+      <tr><td>O alarme dos 60%</td><td>Acima disso num canal só, a casa depende dele.</td><td class="aula">7</td></tr>
+      <tr><td>As 3 causas do overbooking</td><td>Falha de sincronização, data segurada de cabeça e anúncios interligados.</td><td class="aula">7</td></tr>
+      <tr><td>As 5 decisões do hóspede</td><td>Parar de rolar, abrir, continuar olhando, ler e perguntar ou reservar.</td><td class="aula">8</td></tr>
+      <tr><td>Auditoria de anúncio em 20 pontos</td><td>O Claude confere o anúncio contra o cadastro. Não reescreve, aponta.</td><td class="aula">8</td></tr>
+      <tr><td>As 3 gavetas</td><td>Critério oficial, boa prática observada e hipótese.</td><td class="aula">9</td></tr>
+      <tr><td>Falhar alto</td><td>Fonte que não pôde ser lida vira alerta no topo, nunca “tudo certo”.</td><td class="aula">5 e 10</td></tr>
+      <tr><td>Sinal de vida</td><td>Toda rotina avisa que executou. A falta do aviso já é alerta.</td><td class="aula">10</td></tr>
+      <tr><td>Receita por noite disponível</td><td>Diária média vezes ocupação, no lugar da ocupação sozinha.</td><td class="aula">11</td></tr>
+      <tr><td>As 3 regras da data escassa</td><td>Preço acima da média, estadia mínima mais longa e nenhuma pressa.</td><td class="aula">11</td></tr>
+      <tr><td>As 3 convenções</td><td>Quando a receita é reconhecida, bruto ou líquido, e o que conta como noite disponível.</td><td class="aula">12</td></tr>
+      <tr><td>Resultado por imóvel</td><td>O demonstrativo de cada unidade, mês a mês, com o custo real de manutenção.</td><td class="aula">12</td></tr>
+      <tr><td>Próxima ação, com data</td><td>Todo contato em aberto tem uma. Sem ela, registra o motivo da perda e fecha.</td><td class="aula">13</td></tr>
+      <tr><td>As 4 perguntas da qualificação</td><td>Pessoas, datas, finalidade e visitantes que não dormem na casa.</td><td class="aula">14</td></tr>
+      <tr><td>A cotação em 4 partes</td><td>Entendimento, valor total, frase de cena e passo seguinte com prazo real.</td><td class="aula">14</td></tr>
+      <tr><td>Sinal, saldo e caução</td><td>O arranjo de pagamento da reserva direta, por escrito e antes do dinheiro.</td><td class="aula">15</td></tr>
+      <tr><td>A soma dos sinais</td><td>Fraude se reconhece pela combinação, nunca por um sinal isolado.</td><td class="aula">15</td></tr>
+      <tr><td>As 3 caixas</td><td>Físico, processo e expectativa: cada reclamação tem um dono diferente.</td><td class="aula">16</td></tr>
+      <tr><td>As 9 etapas da reserva</td><td>Da consulta ao registro com bloqueio em todos os canais.</td><td class="aula">17</td></tr>
+      <tr><td>A régua em 4 momentos</td><td>Confirmação, uma semana antes, dois ou três dias antes e véspera.</td><td class="aula">17</td></tr>
+      <tr><td>Senha por estadia</td><td>Código próprio de cada hóspede, que expira sozinho.</td><td class="aula">18</td></tr>
+      <tr><td>As 4 exigências do escalonamento</td><td>Gatilho por assunto, pedir uma pessoa, contexto junto e plantão definido.</td><td class="aula">19</td></tr>
+      <tr><td>Informação e situação</td><td>A máquina resolve a primeira e para na segunda.</td><td class="aula">19</td></tr>
+      <tr><td>A confirmação de volta</td><td>Quem fez, quando terminou e o que ficou pendente, com foto e hora.</td><td class="aula">20</td></tr>
+      <tr><td>Consumo por noite ocupada</td><td>A conta que revela o vazamento que o valor absoluto esconde.</td><td class="aula">21</td></tr>
+      <tr><td>Escala de autonomia de 0 a 3</td><td>Consulta, monitora, prepara e age em espaço estreito e reversível. Não há nível 4.</td><td class="aula">22</td></tr>
+      <tr><td>Os 5 verbos</td><td>Saber, confirmar, conferir, preparar e medir, nesta ordem.</td><td class="aula">24</td></tr>
+      <tr><td>Plano de 30, 60 e 90 dias</td><td>Parar de perder, parar de lembrar e parar de descobrir tarde.</td><td class="aula">24</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Histórias que o autor conta nas aulas</h2>
+  <p class="sub">Quase toda aula abre com um erro ou um susto da operação do próprio autor, contado em primeira pessoa. São o melhor material para gancho de vídeo e de carrossel.</p>
+  <div class="cases">
+    <div class="case"><h3>A quinta-feira de dezembro</h3><p>Quatro da tarde. O hóspede vai atrasar, a piscina ficou turva, sai uma avaliação de três estrelas e chega uma consulta para o Réveillon. Cada item se resolve em dez minutos. O que fica para depois é o Réveillon, a única decisão que vale dinheiro. A aula conta a mesma tarde de novo, numa operação com processo. Aula 1.</p></div>
+    <div class="case"><h3>“A casa está livre no feriado?”</h3><p>Um anfitrião testou a IA com essa pergunta. A resposta veio cordial e convincente: sim, e ainda sugeriu um pacote de três noites. A casa estava reservada havia dois meses. Ninguém tinha mostrado o calendário à máquina. Aula 2.</p></div>
+    <div class="case"><h3>A reserva que duas pessoas acharam que a outra ia responder</h3><p>A consulta chegou num sábado, pelo canal direto, e ficou dezoito horas parada. Era uma reserva de nove mil reais. Quando a resposta saiu, o grupo já tinha fechado em outro lugar. Aula 3.</p></div>
+    <div class="case"><h3>Três respostas sobre o mesmo cachorro</h3><p>O atendimento disse que sim, com taxa. O dono disse que naquela casa não. O anúncio dizia “aceita pets”, preenchido dois anos antes. Ninguém errou. Havia três fontes. Aula 4.</p></div>
+    <div class="case"><h3>Duas faxineiras excelentes, avaliações que oscilavam</h3><p>Uma trocava as toalhas do banheiro social mesmo quando pareciam limpas. A outra, não. Nenhuma estava errada: cada uma tinha adivinhado um padrão que ninguém escreveu. Aula 5.</p></div>
+    <div class="case"><h3>A mesa bonita e o chuveiro</h3><p>A mesa de jantar de madeira maciça nunca apareceu em avaliação nenhuma. O chuveiro apareceu em quatro. Aula 6.</p></div>
+    <div class="case"><h3>Três dias com o anúncio suspenso</h3><p>Um problema de verificação que levava dois minutos para resolver e três dias para alguém olhar. Não houve prejuízo permanente. Houve uma noite fazendo conta de quanto da receita dependia de um único lugar. Aula 7.</p></div>
+    <div class="case"><h3>O hóspede que perguntou se havia um site</h3><p>Na terceira estadia na mesma casa, ele quis saber onde reservar direto na próxima. Não havia site. Ele continuou reservando pela plataforma, com comissão sobre um hóspede que já era da casa. Aula 7.</p></div>
+    <div class="case"><h3>A terceira foto era do corredor</h3><p>Semanas mexendo no texto de um anúncio que recebia visualização e não convertia. O problema estava na ordem das fotos. Aula 8.</p></div>
+    <div class="case"><h3>Quatro manhãs de semáforo verde</h3><p>A rotina avisava que a sincronização estava correta. Ela conferia se conseguia ler o calendário, não se os calendários concordavam. E eles divergiam em uma das casas. Ninguém reservou a data divergente, e por isso a história não terminou em desastre. Aulas 10 e 23.</p></div>
+    <div class="case"><h3>Noventa por cento de ocupação, com orgulho</h3><p>O anfitrião não sabia a diária média de cabeça. Foi olhar e voltou desanimado. Aula 11.</p></div>
+    <div class="case"><h3>O Réveillon que a máquina achou que era erro de digitação</h3><p>Uma tarifa de Réveillon que vale várias vezes a diária normal, de propósito. Mais de uma análise automática sugeriu “corrigir”. Se a recomendação fosse aplicada sozinha, a data mais valiosa do ano estaria perdida. Aulas 11 e 22.</p></div>
+    <div class="case"><h3>A casa que parecia ir bem</h3><p>Recebia reservas, tinha boa avaliação, o calendário enchia. No resultado por imóvel, com o custo real de manutenção, era a pior do portfólio. Aula 12.</p></div>
+    <div class="case"><h3>O domingo</h3><p>Grupo grande, casa cara, alta temporada, pressa. A pessoa pagava tudo adiantado, sem perguntar nada sobre a casa. Só quis saber se podia usar cartão de terceiro e dividir em duas transações. O autor não fechou, e admite que pode ter perdido um cliente legítimo. Aula 15.</p></div>
+    <div class="case"><h3>“Chuveiro”, pela quarta vez</h3><p>Uma avaliação de quatro estrelas pareceu injusta. Agrupadas por assunto, as avaliações mostraram a mesma palavra quatro vezes em dois meses, em duas unidades. Aula 16.</p></div>
+    <div class="case"><h3>Onze e quarenta da noite</h3><p>“O ar-condicionado do quarto principal parou.” Uma resposta automática promete contato no próximo dia útil. A outra já manda a foto do disjuntor e avisa que alguém liga em cinco minutos. Aula 19.</p></div>
+    <div class="case"><h3>O vazamento que o mês cheio escondia</h3><p>Uma unidade gastava muito mais água que as outras, proporcionalmente. A conta absoluta não mostrava. A conta por noite ocupada mostrou. Aula 21.</p></div>
+    <div class="case"><h3>O proprietário que pediu os números das outras casas</h3><p>Ele só queria comparar. Os dados eram de outros proprietários. A pergunta que ficou: um agente com acesso ao financeiro teria mandado? Aula 22.</p></div>
+    <div class="case"><h3>As cinco simulações do curso</h3><p>A página de venda lista “5 simulações de casos reais” na jornada do aluno. Os títulos de cada uma não aparecem na página; se a peça for citá-los, confira na plataforma.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">Itens da página de venda. Os números podem ser citados.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula animada, de cerca de 9 minutos.</li>
+        <li>Artigo da aula em PDF: a videoaula inteira por escrito, com os prompts e checklists do livro. São 24 materiais para baixar.</li>
+        <li>Três tarefas práticas ao fim de cada aula, para aplicar no mesmo dia.</li>
+        <li>Quiz comentado, com a explicação de cada alternativa.</li>
+        <li>Caderno de trabalho: Aprendi, Pratiquei, Apliquei.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li><strong>Tutor Villela.</strong> A IA do curso responde só com o conteúdo das aulas e do livro, cita a origem e leva ao minuto exato do vídeo. Se a resposta não está no curso, ele diz que não encontrou.</li>
+        <li>Biblioteca com 118 prompts do curso.</li>
+        <li>Audiobook: as 24 aulas em áudio, 3h41, para ouvir no carro ou no fone com a tela bloqueada. O primeiro capítulo fica aberto como amostra.</li>
+        <li>Jornada do aluno: níveis, XP, 9 selos e medalhas; diagnóstico e teste final de 20 questões.</li>
+        <li>Villela Lab com 5 missões e projeto final.</li>
+        <li>Desafio 21 dias: IA na hospedagem.</li>
+        <li>5 simulações de casos reais.</li>
+        <li>Prompt Builder, gerador de agentes e as folhas de consulta “O prompt do locador profissional” e “Protocolo anti-alucinação da hospedagem”.</li>
+        <li>Certificado da Villela Academy.</li>
+        <li>Acesso por 1 ano, no computador e no celular, incluindo as atualizações e as aulas novas publicadas nesse período.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Anfitrião que anuncia o próprio imóvel e já sente que a operação não cabe na cabeça.</li>
+        <li>Coanfitrião e administrador de imóveis de terceiros.</li>
+        <li>Empresas de aluguel por temporada, pousadas, flats e apart-hotéis.</li>
+        <li>Quem quer usar inteligência artificial na hospedagem com segurança.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura truque de algoritmo. Aqui se ensina método, e a aula 9 diz com todas as letras que não existe segredo de algoritmo.</li>
+      </ul>
+      <h3>A dor por tamanho de operação (aulas 1 e 24)</h3>
+      <ul>
+        <li><strong>Um imóvel:</strong> o primeiro ganho vem de organizar o que hoje depende da memória.</li>
+        <li><strong>Dois imóveis:</strong> provavelmente para no terceiro degrau da escada e já ganha o dia.</li>
+        <li><strong>A partir da terceira unidade:</strong> chega o ponto de virada. Esforço deixa de resolver e passa só a adiar.</li>
+        <li><strong>Administradora com dezenas de unidades:</strong> precisa chegar ao fim da escada, com agentes e sistemas.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Objeções e respostas</h2>
+  <p class="sub">Das perguntas frequentes e da garantia da página de venda, mais uma pergunta que as próprias aulas respondem.</p>
+  <h3>O curso já está completo?</h3>
+  <p>Sim. As 24 videoaulas estão no ar, cada uma com o artigo da aula em PDF, quiz e caderno de trabalho, e o audiobook com os 24 capítulos.</p>
+  <h3>Preciso saber programar?</h3>
+  <p>Não. O curso ensina método: processo, fonte única da verdade, prompt com trava anti-invenção e agentes com permissão. A aula 23, sobre construir sistemas próprios, mostra o que vale construir e o que não vale, sem exigir que o aluno programe.</p>
+  <h3>Serve para quem tem um imóvel só?</h3>
+  <p>Serve. O primeiro ganho vem de organizar o que hoje depende da memória. A partir da terceira unidade, isso deixa de ser conforto e passa a ser condição para não perder dinheiro.</p>
+  <h3>A IA vai responder o hóspede e mexer no preço sozinha?</h3>
+  <p>Não é o que o curso ensina. A regra que atravessa as aulas é “automação prepara, humano manda”: a máquina lê, confere e deixa o rascunho pronto; dinheiro, calendário, preço publicado e mensagem para pessoa real passam pela aprovação do dono (aulas 1, 11 e 22).</p>
+  <h3>O que é o Tutor Villela?</h3>
+  <p>É o tutor de IA do curso. Responde às dúvidas usando só o conteúdo das aulas e do livro, cita de onde tirou cada resposta e leva ao minuto exato do vídeo. Se a resposta não estiver no curso, ele diz que não encontrou.</p>
+  <h3>O curso tem relação com o livro?</h3>
+  <p>Sim. É baseado no livro <em>O Locador Inteligente na era da Inteligência Artificial: Claude AI na Prática para Hospedagens</em>, do mesmo autor, disponível na Livraria Villela.</p>
+  <h3>Dá para ouvir em vez de assistir?</h3>
+  <p>Sim. O audiobook tem 24 capítulos, 3h41 no total, e toca no player do site com a tela do celular bloqueada, no fone e no carro. O primeiro capítulo fica aberto como amostra. Não há download.</p>
+  <h3>Por quanto tempo tenho acesso?</h3>
+  <p>O acesso é de 1 ano a partir da compra, incluindo as atualizações e as aulas novas publicadas nesse período.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias, incondicional. Se o curso não servir para a operação da pessoa, ela pede o reembolso integral dentro do prazo, sem justificativa.</p>
+</section>
+
+<section id="cuidados">
+  <h2>Cuidados na comunicação</h2>
+  <p class="sub">Para o criativo não prometer o que o curso faz questão de não prometer.</p>
+  <div class="care">
+    <h3>Evitar</h3>
+    <ul>
+      <li>Promessa de ocupação, de renda, de faturamento ou de “casa sempre cheia”. O curso não dá esses números e ensina o contrário na aula 11: casa cheia a preço baixo é “uma casa cheia trabalhando de graça”.</li>
+      <li>Promessa de nota, de selo ou de posição na busca do Airbnb, do Booking ou de qualquer plataforma. A aula 9 afirma que não existe segredo de algoritmo e que quem cita um peso exato está inventando.</li>
+      <li>“A IA atende o hóspede por você”, “piloto automático”, “deixe o robô cuidar do preço”. No curso a máquina prepara e o dono aprova. Dinheiro, calendário, preço publicado e mensagem a pessoa real nunca são automáticos.</li>
+      <li>“Reduza a equipe” ou “substitua a faxineira, o atendente”. A aula 22 diz que o ganho não é cortar equipe, e a aula 5 trata dado como forma de melhorar o processo, não de vigiar pessoas.</li>
+      <li>“Crie o seu aplicativo sem esforço”. A aula 23 avisa que conseguir construir não é o mesmo que conseguir manter, e manda começar por um painel simples, só de leitura.</li>
+      <li>Promessa de proteção total contra fraude, overbooking ou vazamento. O curso ensina a reduzir risco com processo e documento, e manda procurar profissional para LGPD e corretor para seguro (aula 18).</li>
+      <li>Urgência falsa e escassez inventada na própria peça. O curso condena prazo inventado (aulas 7 e 14); o anúncio do curso não pode fazer o que a aula ensina a não fazer.</li>
+      <li>“Acesso vitalício”. A oferta é de 1 ano de acesso.</li>
+      <li>Dar a entender que o curso é oficial, certificado ou parceiro da Anthropic, do Airbnb, do Booking, da Vrbo, da Expedia, da Decolar ou do Google. São produtos e canais que o curso ensina a usar; evite os logotipos como se fossem selo.</li>
+      <li>Depoimentos de alunos. A página de venda não tem nenhum, então não há o que citar.</li>
+      <li>Números da operação do autor além dos que ele mesmo diz nas aulas, e qualquer nome de hóspede, proprietário ou funcionário. As histórias das aulas são contadas sem nomes; mantenha assim.</li>
+    </ul>
+  </div>
+  <p style="margin-top:14px">O preço e os itens incluídos mudam. Antes de fechar uma peça com valor, confira na página do curso.</p>
+</section>
+
+<footer>
+  Fonte: texto falado das 24 videoaulas (transcrições), material de cada aula e página de venda do curso na Villela Academy. Grupo Villela Stay.
+</footer>
+
+</div>
+</body>
+</html>

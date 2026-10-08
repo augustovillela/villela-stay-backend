@@ -1,0 +1,756 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}</style>
+<title>Google AI na Prática: material para criativos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Material de apoio para marketing · outubro de 2026</p>
+    <h1>Google AI na Prática</h1>
+    <p class="lead">Tudo o que o curso ensina sobre o Gemini e o ecossistema de inteligência artificial do Google, aula por aula, pronto para virar apresentação e criativo. O conteúdo abaixo foi tirado dos roteiros das 25 videoaulas e da página de venda no ar. Curso independente, sem vínculo com o Google.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 25 aulas</a>
+  <a href="#metodos">Métodos com nome</a>
+  <a href="#casos">Histórias e casos</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Objeções</a>
+  <a href="#cuidados">Cuidados na comunicação</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados que podem ser citados como estão.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>Google AI na Prática</dd></div>
+    <div><dt>Chamada da página</dt><dd>Use a inteligência artificial do Google com método, não com palpite</dd></div>
+    <div><dt>Autor</dt><dd>Augusto Villela</dd></div>
+    <div><dt>Formato</dt><dd>25 videoaulas animadas, de cerca de 9 minutos, todas no ar</dd></div>
+    <div><dt>Duração</dt><dd>3h44 de vídeo no total</dd></div>
+    <div><dt>Em áudio</dt><dd>Audiobook com 25 capítulos, 3h44 no total</dd></div>
+    <div><dt>Preço</dt><dd>R$ 85,00, compra única (conferido na página em 08/10/2026)</dd></div>
+    <div><dt>Pagamento</dt><dd>Pix com liberação imediata ou cartão</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, incondicional, com reembolso integral</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Para experimentar</dt><dd>A aula 1 inteira é gratuita: videoaula e artigo em PDF</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/google-ai-na-pratica">academia.villelastay.com.br/academy/cursos/google-ai-na-pratica</a></p>
+  <p>O curso é baseado no livro <strong>Google AI na Prática: para o dia a dia, o estudo e o trabalho</strong>, do mesmo autor, à venda na Livraria Villela.</p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">Se o criativo só puder dizer uma coisa, é esta.</p>
+  <p class="thesis">O nome do botão muda todo mês. O método não. O difícil é saber o que delegar, o que conferir e o que nunca sai da sua mão.</p>
+  <p>O curso não é uma lista de truques nem um tour de botões. Ele ensina o conceito, que dura, e deixa versão, preço e disponibilidade no artigo em PDF de cada aula, com a data em que foram verificados. O fio do curso é a passagem da IA que responde para a IA que age, e o que precisa estar no lugar antes de dar esse passo.</p>
+  <h3>As três ideias que o autor quer que fiquem (aula 25)</h3>
+  <ul>
+    <li><strong>Plausível não é verdadeiro.</strong> A resposta soa certa porque foi treinada para parecer certa. Verificar é método.</li>
+    <li><strong>Anúncio não é lançamento.</strong> E o que está disponível lá fora não está, automaticamente, disponível aqui.</li>
+    <li><strong>Quanto mais irreversível a ação, mais humano precisa haver na frente dela.</strong> Enviar, publicar, comprar, apagar, pagar.</li>
+  </ul>
+  <h3>A promessa, em uma frase</h3>
+  <p>25 videoaulas animadas para usar o Gemini e o ecossistema de IA do Google no dia a dia, no estudo e no trabalho, sabendo o que delegar, o que conferir e o que nunca sai da sua mão.</p>
+  <h3>Quatro mensagens que sustentam qualquer peça</h3>
+  <ul>
+    <li><strong>Método, não palpite.</strong> Pedido bom é instrução de trabalho. Funciona o que acrescenta informação.</li>
+    <li><strong>Resposta com fonte.</strong> Uma resposta gerada vale o quanto você consegue chegar à fonte dela.</li>
+    <li><strong>Privacidade antes de colar.</strong> O que entra numa conversa deixa de ser só seu. Decide-se antes, com três perguntas.</li>
+    <li><strong>Delegar com limites.</strong> Permissão mínima, aprovação humana no que não volta atrás e um plano B escrito.</li>
+  </ul>
+  <h3>O que o aluno sabe fazer ao terminar (página de venda)</h3>
+  <ul>
+    <li>Separar anúncio de lançamento e descobrir o que a própria conta alcança hoje.</li>
+    <li>Pedir bem, conversar até acertar e prever onde a IA erra.</li>
+    <li>Proteger o que não pode ser colado numa conversa.</li>
+    <li>Estudar e pesquisar com as próprias fontes.</li>
+    <li>Criar imagem, vídeo, som e voz com publicação responsável.</li>
+    <li>Delegar a um agente com permissão e aprovação.</li>
+    <li>Montar um plano de trinta dias com uma entrega por semana.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso, com pequenos ajustes de corte, que funcionam como chamada.</p>
+
+  <p class="block-title">Fundamentos · aulas 1 a 5</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>Da IA que responde à IA que age</h3>
+    <ul>
+      <li>A pergunta mudou: deixou de ser o que a IA sabe responder e passou a ser o que você deixa que ela faça.</li>
+      <li>Três palavras que não são a mesma coisa: inteligência artificial (o campo), modelo (o sistema treinado) e modelo de linguagem. E a analogia que resolve a confusão: o modelo é o motor, o produto é o carro.</li>
+      <li>O modelo pensa e gera; o agente recebe um objetivo, decide etapas, usa ferramentas e confere o resultado.</li>
+      <li>Os cinco papéis da IA no trabalho: assistente, pesquisador, analista, operador e agente. O risco sobe a cada degrau, e a maturidade está em escolher o papel certo para cada tarefa.</li>
+      <li>Quando a IA só responde, o custo do erro é o seu tempo. Quando ela age, e-mail enviado, arquivo sobrescrito e compra feita não voltam.</li>
+      <li>As três proteções: permissão explícita, aprovação para o que é irreversível e alternativa manual.</li>
+      <li>As três perguntas antes de delegar: o que eu quero de volta? O que pode dar errado, e isso volta atrás? Eu saberia perceber o erro?</li>
+      <li>Quando nenhum degrau serve: decisão que é sua e ponto, e casos em que o custo do erro é a saúde, o dinheiro ou a liberdade de alguém.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quanto mais irreversível a ação, mais humano precisa haver na frente dela.</q><q>Rascunhar um e-mail, a máquina faz sozinha. Mandar, eu mando.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>O mapa da família Google AI</h3>
+    <ul>
+      <li>A régua para qualquer novidade: anúncio não é lançamento, palco não é disponibilidade, e disponível nos Estados Unidos não quer dizer disponível no Brasil.</li>
+      <li>As sete gavetas. Todo nome novo cai em uma: modelo, aplicativo, recurso, agente, ferramenta de quem constrói, serviço para empresas ou experimento.</li>
+      <li>O número da versão não é escada. Flash e Pro são linhas paralelas; escolhe-se pelo que a tarefa pede: qualidade, velocidade e custo.</li>
+      <li>Como saber o que a sua conta alcança hoje: olhar o seletor de modelo, testar um recurso e anotar com a data.</li>
+      <li>Para boa parte de quem faz o curso, o plano gratuito basta. A regra para subir: bater no limite duas semanas seguidas, fazendo algo que importa.</li>
+      <li>Uma conversa por assunto, com o material dentro, em vez de uma pergunta solta por conversa.</li>
+      <li>Dois recursos da tela que quase ninguém usa: o clipe de anexo e a conversa temporária.</li>
+      <li>Cada gaveta tem uma política de dados diferente. Antes de colocar dado sensível, saiba em qual você está.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Nome de produto é roupa. Aprenda o corpo por baixo.</q><q>O plano certo é o mais barato que resolve o seu problema. Quase nunca é o mais caro.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Como a IA generativa funciona</h3>
+    <ul>
+      <li>Um modelo de linguagem faz uma coisa só: estima a próxima palavra. Ele compõe a resposta; não consulta uma tabela.</li>
+      <li>A imagem do músico de jazz que ouviu dez mil discos: toca um solo convincente e responde um número exato com a mesma segurança, podendo estar errado.</li>
+      <li>Onde ela é ótima: reescrever, resumir, traduzir, explicar de várias maneiras e organizar o material que você deu.</li>
+      <li>Onde ela é frágil: número exato, data exata, citação literal, contagem e fato muito recente. E em admitir que não sabe, o que tem nome: alucinação.</li>
+      <li>Três palavras para a vida: token, janela de contexto (quando a mesa enche, o começo cai) e ancoragem (amarrar a resposta a uma fonte que dá para conferir).</li>
+      <li>Por que às vezes demora e custa mais: tamanho do que você mandou, esforço de raciocínio e ferramentas.</li>
+      <li>Os três filtros de dez segundos antes de aceitar uma resposta: é composição ou consulta? É recente? É raro?</li>
+      <li>Não usar modelo de linguagem como calculadora, banco de dados ou contador. E abrir o arquivo antes de anexar, para ver o que vai junto.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A IA não sabe. Ela estima muito bem.</q><q>Plausível não é verdadeiro.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Pedir bem e conversar até acertar</h3>
+    <ul>
+      <li>O pedido de uma linha recebe a média do que o modelo já viu, que é a definição de genérico. O pedido que funciona é mais restrito.</li>
+      <li>Quando o resultado decepciona, a causa quase sempre é uma parte do pedido que não foi escrita. As duas que mais faltam: o formato e as regras.</li>
+      <li>Dois reforços para tarefa séria: exemplos do que você considera bom e um critério de sucesso que dá para conferir.</li>
+      <li>Comandos mágicos: funciona o que acrescenta informação; prometer gorjeta ou dizer que é muito importante é folclore.</li>
+      <li>Persona muda o registro, não a competência. E você não precisa descrever o que pode mostrar: fotografe, anexe, grave.</li>
+      <li>O ciclo em três passos: tentativa, diagnóstico e pedido melhor. Dar nome ao defeito (genérico, prolixo, inventou) antes de pedir de novo.</li>
+      <li>Higiene de conversa: recomeçar quando o rumo se perde e guardar o pedido que funcionou.</li>
+      <li>As três camadas de confiança: resposta plausível, fonte citada e fato confirmado. Só a terceira serve para decisão.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Cada coisa que você não declara é uma decisão que outra pessoa toma por você.</q><q>A primeira resposta quase nunca é a resposta. É a primeira versão dela.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>Privacidade e uso responsável</h3>
+    <ul>
+      <li>O que acontece com o que você escreve, segundo o que o próprio Google publica: as conversas ficam guardadas na conta, o prazo pode ser encurtado e uma parte passa por revisores humanos.</li>
+      <li>Apagar o histórico apaga o que está ligado à conta. Não apaga o que já saiu de lá para revisão.</li>
+      <li>A regra das três perguntas antes de colar: tem dado de outra pessoa aqui? Isso precisa mesmo estar aqui? Se vazasse, quem se machucaria?</li>
+      <li>O truque de trinta segundos: trocar o nome por um marcador (aluno um, cliente, paciente) e repor à mão depois. É o que a LGPD chama de minimização.</li>
+      <li>O que não entra nunca: senha, chave de acesso, token e código de verificação; documento de identidade e cartão; dado de criança e adolescente; segredo profissional.</li>
+      <li>A instrução escondida em arquivo de terceiro: antes de soltar uma ferramenta com permissões num material que você não produziu, abra e leia.</li>
+      <li>Rosto e voz de pessoa real não entram em nada gerado sem autorização.</li>
+      <li>Em saúde, direito, finanças e engenharia, a IA é ótima para entender e péssima para decidir.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O que você cola numa conversa deixa de ser só seu.</q><q>Trate a conversa como um e-mail que pode ser lido por um desconhecido daqui a dois anos. Não como um diário.</q></div>
+  </div></article>
+
+  <p class="block-title">O Gemini no dia a dia · aulas 6 a 13</p>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>Gemini Live: voz, câmera e tela</h3>
+    <ul>
+      <li>O Gemini Live é uma conversa falada contínua, com ida e volta. Não é ditado: dá para interromper no meio.</li>
+      <li>Três jeitos de entrar na conversa: a voz, a câmera (o mais útil e o menos conhecido) e a tela do celular.</li>
+      <li>Onde ele brilha: mãos ocupadas, estudar em voz alta, praticar idioma, consertar coisas e ensaiar uma entrevista ou uma conversa difícil.</li>
+      <li>O uso que o autor considera o mais transformador: acessibilidade. A pessoa com baixa visão aponta a câmera para a bula e ouve a dose.</li>
+      <li>Onde não funciona, segundo a ajuda oficial: não está no navegador do computador, os Gems não funcionam com ele e existe idade mínima.</li>
+      <li>Como falar: frase inteira com contexto, não telegrama de buscador. E avisar quando precisar de um minuto para pensar.</li>
+      <li>O Live resolve na hora e é ruim para guardar. O que precisa ficar registrado passa para o texto.</li>
+      <li>A câmera vê o quadro inteiro e a tela compartilhada mostra abas e notificações. Antes de incluir outra pessoa, peça permissão.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A melhor interface é a que não exige as suas mãos.</q><q>Para ela, isso não é comodidade. É autonomia.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>Escrever, resumir e comunicar</h3>
+    <ul>
+      <li>A regra da voz: peça estrutura e diagnóstico; escreva as frases você. Depois peça crítica, não reescrita, e leia em voz alta.</li>
+      <li>O atalho para quando o rascunho pronto é necessário: colar dois ou três textos seus e pedir que escreva como eles.</li>
+      <li>Os sinais de texto com cara de máquina, como a abertura que não diz nada e as palavras que você nunca usa falando. O problema é a acumulação.</li>
+      <li>E-mail difícil: dar o problema, dizer o que você não pode dizer e pedir duas versões, uma mais firme e uma mais conciliadora.</li>
+      <li>Resumo com finalidade: dizer para que serve. E a pergunta mais valiosa: o que neste documento pode me prejudicar?</li>
+      <li>Tradução: dizer o destino, avisar o que não se traduz e pedir a tradução de volta como controle de qualidade.</li>
+      <li>Adequação de tom: o mesmo conteúdo para públicos diferentes, tarefa em que a máquina é excelente porque reformula em vez de descobrir.</li>
+      <li>Quando não usar: mensagem de afeto, documento que vai ser assinado e texto que você precisa saber defender.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A inteligência artificial escreve rápido. Você escreve como você. Não troque a segunda coisa pela primeira.</q><q>Se você não falaria assim, ninguém deveria ler assim.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>Planejar a vida, viagens e projetos</h3>
+    <ul>
+      <li>As cinco restrições de qualquer plano: dinheiro com número, tempo real, as pessoas com as suas limitações, o inegociável de cada um e o que já está decidido.</li>
+      <li>O teste do pedido: ele deve ser desconfortavelmente específico.</li>
+      <li>A ordem certa: pedir a estrutura antes do roteiro (divisão do orçamento, quantos destinos cabem).</li>
+      <li>No roteiro, no máximo uma atividade principal por dia. Depois, a versão com trinta por cento a menos e o plano B para chuva e para falta de dinheiro.</li>
+      <li>Para voos e hotéis o Gemini consulta dados reais do Google. Mas não reserva, não cancela e não faz check-in.</li>
+      <li>Preço de passagem muda em horas. Todo número do roteiro se confere na fonte antes de virar compromisso.</li>
+      <li>O método serve para qualquer projeto com prazo, dinheiro e pessoas: mudança, obra pequena, festa, meta de estudo.</li>
+      <li>Cuidados: exigência legal de viagem se confere no consulado e na companhia; documento de viagem não entra na conversa; o roteiro é o mapa da sua ausência.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Plano sem restrição é lista de desejos.</q><q>O Gemini pesquisa. Quem decide e paga é você.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>Deep Research, Canvas e Gems</h3>
+    <ul>
+      <li>Três recursos que estão na mesma tela da conversa e resolvem problemas diferentes.</li>
+      <li>Deep Research: a pesquisa que leva minutos e volta com relatório e fontes. Usa-se para decidir uma coisa, não para saber uma coisa.</li>
+      <li>O detalhe que quase ninguém percebe: o plano de pesquisa aparece antes e pode ser editado. Cortar e acrescentar ali evita um relatório errado.</li>
+      <li>Acrescentar Gmail e Drive como fonte é uma escolha de privacidade. O relatório exportado leva junto o que veio da sua caixa.</li>
+      <li>Canvas: o texto mora num painel ao lado e as mudanças acontecem no próprio documento. Serve para texto com várias revisões.</li>
+      <li>Gem: o assistente que você configura uma vez, com instruções permanentes e arquivos de consulta, e que já sabe as suas regras.</li>
+      <li>Regras do Gem: só vale para o que se repete, um Gem para cada tipo de tarefa, e cuidado com arquivo sensível que fica disponível o tempo todo.</li>
+      <li>Os três juntos: o Gem define quem trabalha, o Deep Research levanta o material, o Canvas produz o documento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A conversa é a porta de entrada, não a casa inteira.</q><q>Dez segundos ali economizam dez minutos de relatório errado.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>A IA que conhece você e mora onde você já está</h3>
+    <ul>
+      <li>Personal Intelligence: o Gemini passa a responder com o que está na sua conta, como e-mail, fotos, histórico de busca e vídeos.</li>
+      <li>Como a permissão funciona: vem desligada, é app por app e pode ser desligada e revisada quando você quiser.</li>
+      <li>O método de um app por vez: começar pelo menos sensível, depois as fotos, o e-mail por último. Revisar depois de um mês.</li>
+      <li>Quem deve pensar duas vezes: quem tem dever de sigilo, quem usa a conta pessoal para trabalhar e quem divide a conta ou o aparelho.</li>
+      <li>A IA dentro do e-mail, dos documentos, das planilhas e do Drive: se o material já está no aplicativo, trabalhe no aplicativo.</li>
+      <li>Na planilha, pedir a fórmula em português e depois pedir que ela seja explicada. Aí você aprende, em vez de só colar.</li>
+      <li>Saber que conta você tem: pessoal, de empresa ou de escola. Na conta da empresa quem decide é o administrador, e o dado é da empresa.</li>
+      <li>O ganho mais rápido de todos: procurar nas fotos por descrição. A sua biblioteca de fotos é o seu arquivo de documentos.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Deixar que ela conheça o que é seu é uma decisão, não um clique.</q><q>Ligo um app quando tenho um problema concreto que ele resolve, não porque a tela ofereceu.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>O briefing do dia e a semana organizada</h3>
+    <ul>
+      <li>O Google mostrou um recurso de resumo do dia que não estava disponível aqui quando o livro foi escrito. A aula ensina a montar o seu, hoje, com o que a conta já tem.</li>
+      <li>As quatro perguntas do briefing: o que é inadiável hoje, quem espera resposta minha, o que eu decidi ontem que faria hoje e o que posso ignorar sem culpa.</li>
+      <li>Três níveis: o Gem em que você cola só assuntos e remetentes; a pergunta direta, para quem ligou o e-mail; e o fechamento do dia em três linhas.</li>
+      <li>Três cuidados para o briefing sobreviver: definir por escrito o que é urgente para você, escolher um gatilho e ajustar na sexta.</li>
+      <li>Colar assunto e remetente, nunca o corpo do e-mail, e usar só o primeiro nome das pessoas.</li>
+      <li>A semana começa no domingo, com três números de antes. Sem medir, nada prova coisa alguma.</li>
+      <li>Um segundo Gem só para a caixa de entrada: ele classifica e não responde. Triar não é zerar.</li>
+      <li>O planejamento da sexta: três coisas para a semana seguinte. Não vinte.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O briefing da manhã é feito na noite anterior.</q><q>Produtividade não é fazer mais coisas. É terminar a semana sabendo que as coisas certas foram feitas.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Gemini Spark: delegar com limites</h3>
+    <ul>
+      <li>O Gemini Spark é um agente pessoal que executa tarefas em segundo plano: organiza arquivos, cria e atualiza planilhas e monitora um assunto para avisar.</li>
+      <li>Ele só funciona num plano pago. Quem não assina faz a aula no papel e leva a competência, que é a parte que não envelhece.</li>
+      <li>Permissão: autorizar o mínimo para a tarefa. Uma pasta, não o Drive inteiro.</li>
+      <li>Aprovação: nunca desligar a confirmação para o que não volta atrás. O risco real é comportamental: afrouxa-se uma permissão por vez, cada uma com um bom motivo.</li>
+      <li>Interrupção: saber onde ver o que ele faz, como interromper e como desfazer.</li>
+      <li>Os três critérios da primeira tarefa: reversível, sem envio e sem dinheiro. O melhor começo é um agente que vigia e avisa.</li>
+      <li>O documento de limites, escrito antes: o que ele faz sozinho, o que mostra antes, o que nunca faz e como se desfaz. E o teste do estagiário.</li>
+      <li>Rodar a primeira vez olhando, conferir o caminho e não só o resultado, manter um registro e ampliar uma permissão de cada vez.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Delegar é diferente de pedir. Quem delega escreve os limites antes.</q><q>Um agente com acesso a uma pasta erra dentro de uma pasta.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>AI Search: resposta com fonte</h3>
+    <ul>
+      <li>A Busca deixou de devolver só links e passou a devolver respostas. Na mesma página convivem a lista de links, o resumo gerado no topo e o modo de conversa.</li>
+      <li>O resumo traz as fontes ao lado. Quase ninguém clica.</li>
+      <li>No modo de conversa: frase inteira com contexto, dizer o país e refinar quando o assunto é sério.</li>
+      <li>A caixa de busca aceita foto, print, arquivo e até as abas abertas do navegador.</li>
+      <li>O método em dois passos: toda resposta gerada tem fonte, clique; para o que importa, vá à fonte primária.</li>
+      <li>A pergunta de controle antes de repassar: se me perguntarem quem disse isso, eu sei responder?</li>
+      <li>Onde o resumo não serve: decisão médica, jurídica ou financeira; o que muda por hora; e como prova.</li>
+      <li>A busca é o registro mais revelador sobre uma pessoa. Assunto sensível pede janela anônima.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um resumo sobre um documento não é o documento.</q><q>Lei se lê no site oficial. Preço se lê na loja. Bula se lê na bula.</q></div>
+  </div></article>
+
+  <p class="block-title">Estudo e pesquisa · aulas 14 a 16</p>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Estudar com as suas fontes</h3>
+    <ul>
+      <li>O Gemini Notebook, antes chamado NotebookLM, responde só com o que você entregou e mostra o trecho de onde tirou cada resposta. Essa restrição é o produto.</li>
+      <li>A armadilha: o mesmo caderno aberto pelo aplicativo Gemini pode trazer a web junto, sem aviso. Para prova, trabalho ou contrato, trabalhe dentro do Notebook.</li>
+      <li>Escolher o material antes: de cinco a dez fontes boas, um caderno por assunto, e uma fonte difícil de propósito.</li>
+      <li>A fonte muda: o PDF escaneado que a máquina não lê, não dá erro e nunca aparece em resposta nenhuma.</li>
+      <li>Pedir primeiro o panorama: o que o material cobre, onde as fontes divergem e o que não está lá.</li>
+      <li>Do mesmo material saem guia de estudo, cartões, testes e resumo em áudio, para o tempo morto do dia.</li>
+      <li>Nos testes, exigir alternativas erradas plausíveis. E conferir as citações.</li>
+      <li>O caderno que se adapta: explicar de volta com as suas palavras, registrar os erros e subir esse registro como fonte nova. Marcar as revisões na agenda.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem estuda com a IA aprende mais rápido. Quem estuda pela IA não aprende.</q><q>Se a resposta certa está num documento que você já tem, é Notebook. Se está no mundo, é Busca ou Deep Research.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>Pesquisa que você consegue defender</h3>
+    <ul>
+      <li>Pesquisa séria tem cinco etapas. A IA acelera duas: ler as fontes e juntar o que dizem. Fazer a pergunta, escolher as fontes e verificar continuam suas.</li>
+      <li>Toda pergunta que envolve regra, preço ou prática precisa de país e de data.</li>
+      <li>Antes de começar, escrever qual resposta faria você mudar de ideia. Sem isso, é busca de confirmação.</li>
+      <li>Fonte tem nível, da primária oficial à opinião, e a IA apresenta todas com a mesma segurança.</li>
+      <li>O fluxo: modo de conversa da Busca para o vocabulário, Deep Research para o levantamento com o plano editado, e Gemini Notebook para afirmar só com as fontes escolhidas.</li>
+      <li>O dossiê em que cada afirmação vem marcada: está escrito na fonte, é dedução ou não consta. Com os blocos do que o material não responde e das divergências.</li>
+      <li>Verificar fora, na fonte, as três afirmações em que a decisão se apoia. Não perguntar de novo à mesma IA.</li>
+      <li>Saber parar. E lembrar que pesquisa prepara a conversa com o profissional; não substitui.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Notícia sobre um documento não é o documento.</q><q>Um relatório que você não consegue defender não é pesquisa. É opinião com aparência de trabalho.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>Professores, alunos e a IA</h3>
+    <ul>
+      <li>A linha entre uso legítimo e fraude passa por quem fez o trabalho de pensar, não por usou ou não usou.</li>
+      <li>A pergunta de controle do aluno: eu conseguiria defender isso numa conversa de cinco minutos, sem consultar nada?</li>
+      <li>Por que detector de texto de IA não resolve: acusa inocentes, erra mais com certos alunos, perde a corrida a cada geração de modelos e responde à pergunta errada.</li>
+      <li>Avaliações que exigem presença: defesa oral de cinco minutos, avaliar o processo e usar o material da sala como fonte obrigatória.</li>
+      <li>A declaração de uso: o aluno conta o que pediu, o que aproveitou e o que descartou, e por quê.</li>
+      <li>O professor a seu favor: diferenciar a mesma explicação em três níveis, gerar variações da prova e planejar a partir do objetivo de aprendizagem.</li>
+      <li>Dado de aluno não entra. Trocar o nome por aluno um, aluno dois resolve praticamente tudo.</li>
+      <li>O que a IA não faz nem na mão do professor: decidir a nota, acusar e substituir a aula.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A pergunta não é se o aluno vai usar IA. É se ele vai aprender alguma coisa usando.</q><q>Não se combate cola com detector. Combate-se com avaliação que exige presença.</q></div>
+  </div></article>
+
+  <p class="block-title">Criação · aulas 17 a 20</p>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Dirigir a IA criativa e criar imagens</h3>
+    <ul>
+      <li>A diferença entre encomendar e dirigir. Quem não dirige recebe a média.</li>
+      <li>O briefing de cinco linhas antes de abrir a ferramenta. As três que mais pesam: para quem é, onde vai aparecer e o que a pessoa precisa sentir ou fazer.</li>
+      <li>Referência vale mais que adjetivo. Sem imagem de referência, trocar a impressão por decisões: fundo liso, uma cor só, luz de fim de tarde entrando de lado.</li>
+      <li>As decisões embutidas em toda imagem: enquadramento, ponto de vista, luz, fundo e cor.</li>
+      <li>Gerar imagem é conversa, não loteria. Três regras: uma mudança por vez; corrija, não recomece; diga o defeito, não o desejo.</li>
+      <li>Saber parar: quando a peça já resolve o objetivo do briefing ou quando as tentativas ficam diferentes, e não melhores.</li>
+      <li>Texto dentro da imagem: pedir a imagem sem texto e escrever por cima num editor. Acento e cedilha são onde a geração mais erra.</li>
+      <li>A primeira peça aprovada vira referência de estilo das seguintes. E as regras de direito: pessoa real autoriza, marca alheia não entra, criança não entra.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Referência vale mais que adjetivo.</q><q>Uma imagem boa é sorte. Três imagens que parecem da mesma marca é trabalho.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>Vídeo generativo: tomada por tomada</h3>
+    <ul>
+      <li>O vídeo sai em tomadas curtas, de poucos segundos. Uma peça de trinta segundos se monta.</li>
+      <li>O modelo de vídeo do Google gera efeito sonoro, som ambiente e fala junto com a imagem.</li>
+      <li>O vídeo gerado não fica guardado para sempre no servidor. Baixe o que prestar no mesmo dia.</li>
+      <li>Imagem primeiro, vídeo depois: aprovar a imagem e usá-la como primeiro quadro. Errar uma imagem custa segundos; errar um vídeo custa minutos.</li>
+      <li>As decisões de cada tomada que mais mudam o resultado: o que se move, a luz e o som. E um movimento de câmera por tomada.</li>
+      <li>As quatro tomadas com função: estabelecer, aproximar, mostrar o detalhe e fechar.</li>
+      <li>Editar por conversa: dizer o que muda e o que não pode mudar, e pedir a lista de tudo o que mudou.</li>
+      <li>No estúdio que funciona por créditos: conferir o custo antes de gerar, rascunhar no modelo barato e aprovar a imagem antes do vídeo.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você não gera um filme. Você gera tomadas, e monta.</q><q>Sorte não é método.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>Som, música e voz</h3>
+    <ul>
+      <li>Som é metade de um vídeo. O teste: assistir sem som e depois só ouvir.</li>
+      <li>A trilha pode ser pedida no tamanho exato da peça, e a faixa já termina no lugar certo.</li>
+      <li>Pedir trilha com decisões, não com adjetivos: a função, a instrumentação e a duração exata.</li>
+      <li>A trilha não pode competir com a voz de quem fala. Com locução, pedir fundo sem vocais e sem melodia forte.</li>
+      <li>Quando não gerar: ler os termos de uso comercial antes de monetizar, considerar trilha licenciada e nunca pedir no estilo de uma canção famosa.</li>
+      <li>A trilha entra no briefing, junto com a luz e o enquadramento, e não como última etapa.</li>
+      <li>A linha da voz: clonar a própria é decisão sua; a de outra pessoa exige autorização explícita por escrito; fazer alguém dizer o que não disse não tem versão aceitável.</li>
+      <li>Voz é biometria, dado sensível na LGPD. Nunca usar áudio de terceiro como referência sem permissão, declarar a voz sintética e guardar a autorização.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A imagem mostra. O som diz o que sentir sobre o que ela mostra.</q><q>Voz é biometria. Ela identifica uma pessoa como uma impressão digital identifica.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>SynthID e publicação responsável</h3>
+    <ul>
+      <li>A pergunta certa deixa de ser se a máquina fez e passa a ser: eu consigo provar o que isto é?</li>
+      <li>SynthID: a marca d'água invisível embutida no conteúdo gerado pela IA do Google. O que o aluno criou nas aulas anteriores já sai marcado.</li>
+      <li>Como verificar: subir a imagem no aplicativo do Gemini e perguntar.</li>
+      <li>A limitação que muda tudo: o verificador só reconhece conteúdo marcado com SynthID. Um sim é prova forte; um não detectei não prova nada.</li>
+      <li>C2PA, a certidão de origem do arquivo: abrangente e frágil, enquanto o SynthID é resistente e limitado. Verificação séria olha os dois.</li>
+      <li>Declarar o que foi gerado protege quem declara. A regra: se alguém pode achar que aquilo aconteceu, diga que não aconteceu.</li>
+      <li>Rosto de pessoa real exige autorização escrita. Fazer alguém dizer ou fazer o que não fez não tem versão aceitável.</li>
+      <li>A verificação não é perícia e não serve para desmascarar ninguém em público. E quem cria guarda os originais.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A ferramenta serve para confirmar. Não serve para inocentar.</q><q>Se alguém pode achar que aquilo aconteceu, diga que não aconteceu.</q></div>
+  </div></article>
+
+  <p class="block-title">Para quem quer construir (panorama) · aulas 21 a 23</p>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>De usuário a operador</h3>
+    <ul>
+      <li>O aviso do autor: este módulo é um panorama. Ninguém sai programador, e dá para pular sem culpa.</li>
+      <li>Usar é pedir; construir é decidir. Quando você constrói, o teto sobe e o chão desaparece.</li>
+      <li>Começar pequeno e reversível, em quatro movimentos: mudanças pequenas, ponto de retorno (o save do videogame), olhar o que mudou e saber parar.</li>
+      <li>A menor coisa útil: um problema seu e real, que cabe em uns dez minutos de trabalho manual e não manda nada para ninguém nem gasta dinheiro.</li>
+      <li>O AI Studio como porta de entrada: abre no navegador, é de graça, e você descreve em português o que quer.</li>
+      <li>No uso gratuito o conteúdo pode ser usado para melhorar os produtos e lido por revisores. Por isso, construir com dados de mentira.</li>
+      <li>A chave de API identifica quem pede e quem paga. Nunca aparece em print, nunca é colada numa conversa e fica guardada num cofre do computador.</li>
+      <li>O modelo cobra por token, e numa conversa longa cada nova pergunta reenvia o histórico inteiro.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma chave de API é a chave da sua casa, não o seu endereço.</q><q>O difícil nunca é consertar. É descobrir o que consertar.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>Agentes por dentro</h3>
+    <ul>
+      <li>O que um agente tem: objetivo, ferramentas, memória de trabalho e permissões. E um laço: planeja, executa, olha o resultado e repete.</li>
+      <li>O laço explica o custo: cada volta é uma chamada nova ao modelo. Por isso se define um teto de gasto antes de ligar.</li>
+      <li>O laço explica o jeito de errar: o agente erra e constrói em cima do erro. A aprovação humana fica antes do que não tem volta, não no fim.</li>
+      <li>O ambiente isolado protege o seu computador, não os seus dados.</li>
+      <li>Três siglas em imagens: MCP é a tomada padronizada, A2A é o idioma comum entre agentes e ADK é a caixa de ferramentas de quem constrói.</li>
+      <li>Desenhar as permissões no papel antes de existir o agente. Descrever a tarefa com verbo faz a lista de acessos encolher.</li>
+      <li>Menor privilégio: cada permissão precisa de uma justificativa ligada à tarefa. E, se os passos são sempre os mesmos, um programa comum resolve melhor.</li>
+      <li>Projeto, subagentes, vigias no caminho e trabalho numa cópia. Primeiro supervisionar o agente acordado; só depois agendar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um agente não é uma IA mais inteligente. É uma IA com permissão, ferramentas e um laço.</q><q>Sem permissão bem desenhada, você não tem um agente. Tem um problema.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">23</div><div class="body">
+    <h3>O que dura e onde roda</h3>
+    <ul>
+      <li>Duas perguntas antes de construir: o que vai continuar existindo? E onde, exatamente, a coisa roda?</li>
+      <li>O teste de dependência: qual é o meu custo de troca? Eu consigo exportar? Existe um plano B que eu saberia executar?</li>
+      <li>Tamanho do fabricante não é garantia. E ausência de fonte não é prova de ausência do produto.</li>
+      <li>Modelos abertos que rodam na sua máquina, sem internet e sem enviar nada. O que isso não quer dizer: não é de graça e não tem a mesma qualidade.</li>
+      <li>Quando compensa rodar local: quando o dado não pode sair, sem internet confiável, ou em volume enorme de tarefa simples.</li>
+      <li>Rodar local não resolve privacidade sozinho. Privacidade é uma corrente.</li>
+      <li>Três gavetas para o que sai do laboratório: pesquisa, produto e plataforma. Avalie a ferramenta, não a marca.</li>
+      <li>As perguntas diante de qualquer manchete: é artigo, demonstração ou produto? Quem pode usar hoje? O que exatamente foi medido?</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Prototipe em qualquer coisa; construa o que importa sobre o que você consegue levar embora.</q><q>Entusiasmo com pesquisa, decisão com produto.</q></div>
+  </div></article>
+
+  <p class="block-title">Projetos e próximo passo · aulas 24 e 25</p>
+
+  <article class="lesson"><div class="n">24</div><div class="body">
+    <h3>Dois projetos reais: campanha e automação</h3>
+    <ul>
+      <li>O autor usa a própria empresa, a Villela Stay, como exemplo. Os dois projetos começam olhando a realidade antes de pedir qualquer coisa à máquina.</li>
+      <li>Campanha: trocar o público por uma pessoa, com a objeção que impede a compra. Campanha boa responde à objeção.</li>
+      <li>A mensagem única, em uma frase, e a pesquisa que quase ninguém faz: o que os concorrentes prometem, do que as pessoas reclamam e que datas da cidade mexem com a procura.</li>
+      <li>Calendário de duas semanas com dias de prova, de objeção e de ajuda. A oferta aparece pouco.</li>
+      <li>Para o que o cliente vai receber, foto real. IA para ilustração, fundo e composição. Foto e depoimento de cliente só com autorização registrada.</li>
+      <li>Medir sem se enganar: um número ligado a dinheiro, com o valor de antes anotado. Curtida não é resultado.</li>
+      <li>Automação: descrever o processo como ele é, com a coluna do que dá errado. Automatizar uma etapa só, de alta repetição, baixo risco e erro visível rápido.</li>
+      <li>O que fica de fora por escrito, as três métricas (duas de resultado e uma de segurança), a alternativa manual e a revisão em trinta dias.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Campanha não é um monte de posts bonitos. É uma promessa, repetida, para uma pessoa específica.</q><q>Automatizar o processo errado é fazer a coisa errada mais rápido, com mais consistência, e sem ninguém percebendo.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">25</div><div class="body">
+    <h3>Seu plano de trinta dias</h3>
+    <ul>
+      <li>A regra do plano: uma entrega por semana, não cinco, no tempo que você tem de verdade. E escolher a tarefa mais repetitiva, não a mais interessante.</li>
+      <li>Semana 1: um Gem funcionando com as suas regras, depois do inventário do que a conta alcança e da decisão sobre o histórico.</li>
+      <li>Semana 2: uma semana organizada e medida, com briefing, triagem, uma pesquisa profunda e um caderno de fontes. É a que mais rende para a maioria.</li>
+      <li>Semana 3: três peças com a mesma identidade, com procedência conferida e declaração do que foi gerado.</li>
+      <li>Semana 4: escolher um caminho. Construir a menor coisa útil ou consolidar um projeto do começo ao fim. Pular a parte técnica é escolha legítima.</li>
+      <li>Dias 29 e 30: revisar o que ficou, inclusive as permissões dadas e esquecidas, e escolher um só problema para os próximos trinta dias.</li>
+      <li>As perguntas que continuam valendo quando os nomes mudarem: de onde veio essa resposta? O que acontece se ela estiver errada? Eu saberia refazer à mão?</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você não precisa dominar tudo amanhã. Precisa resolver um problema real por semana.</q><q>A inteligência artificial amplifica o que encontra. Tanto a ordem quanto o caos.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Os métodos com nome</h2>
+  <p class="sub">Ferramentas de raciocínio que o aluno leva para a rotina. Rendem bem em carrossel e em slide, porque têm número e nome.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Método</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>Os 5 papéis da IA</td><td>Assistente, pesquisador, analista, operador e agente.</td><td class="aula">1</td></tr>
+      <tr><td>As 3 proteções</td><td>Permissão explícita, aprovação para o irreversível e alternativa manual.</td><td class="aula">1</td></tr>
+      <tr><td>As 3 perguntas antes de delegar</td><td>O que eu quero de volta? Isso volta atrás? Eu saberia perceber o erro?</td><td class="aula">1</td></tr>
+      <tr><td>A linha de autonomia</td><td>Meia página: o que o assistente faz sozinho, o que mostra antes e o que nunca faz.</td><td class="aula">1</td></tr>
+      <tr><td>As 7 gavetas</td><td>Modelo, aplicativo, recurso, agente, construção, empresas e experimento.</td><td class="aula">2</td></tr>
+      <tr><td>A folha de acesso</td><td>O que eu tenho hoje e o que ouvi falar e não tenho, com a data no topo.</td><td class="aula">2 e 25</td></tr>
+      <tr><td>A regra das duas semanas</td><td>Só subir de plano ao bater no limite duas semanas seguidas, em algo que importa.</td><td class="aula">2</td></tr>
+      <tr><td>Os 3 filtros da resposta</td><td>É composição ou consulta? É recente? É raro?</td><td class="aula">3</td></tr>
+      <tr><td>Tentativa, diagnóstico, pedido melhor</td><td>Dar nome ao defeito antes de pedir de novo. Nunca escrever só “melhore”.</td><td class="aula">4</td></tr>
+      <tr><td>As 3 camadas de confiança</td><td>Resposta plausível, fonte citada e fato confirmado.</td><td class="aula">4</td></tr>
+      <tr><td>As 3 perguntas antes de colar</td><td>É de outra pessoa? Precisa estar aqui? Se vazasse, quem se machucaria?</td><td class="aula">5</td></tr>
+      <tr><td>A regra da voz</td><td>Pedir estrutura e crítica; escrever as frases; ler em voz alta.</td><td class="aula">7</td></tr>
+      <tr><td>A tradução de volta</td><td>Pedir que traduza de volta sem olhar o original, para achar o problema.</td><td class="aula">7</td></tr>
+      <tr><td>As 5 restrições do plano</td><td>Dinheiro com número, tempo real, pessoas, o inegociável e o que já está decidido.</td><td class="aula">8</td></tr>
+      <tr><td>Gem, Deep Research e Canvas</td><td>Quem trabalha, quem levanta o material e onde o documento é produzido.</td><td class="aula">9</td></tr>
+      <tr><td>Um app por vez</td><td>Ligar a inteligência pessoal do menos sensível ao e-mail, com revisão em um mês.</td><td class="aula">10</td></tr>
+      <tr><td>As 4 perguntas do briefing</td><td>O inadiável, quem espera por mim, o que decidi ontem e o que posso ignorar.</td><td class="aula">11</td></tr>
+      <tr><td>Os 3 números do domingo</td><td>Tempo até saber o que fazer, aberturas da caixa sem resposta e esquecimentos.</td><td class="aula">11</td></tr>
+      <tr><td>Permissão, aprovação, interrupção</td><td>As três palavras de quem delega a um agente.</td><td class="aula">12</td></tr>
+      <tr><td>Documento de limites e teste do estagiário</td><td>Uma pessoa nova, no primeiro dia, saberia o que fazer com ele?</td><td class="aula">12</td></tr>
+      <tr><td>“Quem disse isso?”</td><td>A pergunta de controle antes de repassar um resumo gerado.</td><td class="aula">13</td></tr>
+      <tr><td>O caderno que se adapta</td><td>Explicar de volta, registrar os erros e subir o registro como fonte nova.</td><td class="aula">14</td></tr>
+      <tr><td>O dossiê marcado</td><td>Cada afirmação: está escrito, é dedução ou não consta.</td><td class="aula">15</td></tr>
+      <tr><td>A declaração de uso</td><td>O aluno conta o que pediu à IA, o que aproveitou e o que descartou.</td><td class="aula">16</td></tr>
+      <tr><td>O briefing de 5 linhas</td><td>Escrito no papel antes de abrir qualquer ferramenta de criação.</td><td class="aula">17</td></tr>
+      <tr><td>As 4 tomadas</td><td>Estabelecer, aproximar, detalhe e fechar. Imagem primeiro, vídeo depois.</td><td class="aula">18</td></tr>
+      <tr><td>A linha da voz</td><td>A sua, a de outra pessoa com autorização escrita, e o que não tem versão aceitável.</td><td class="aula">19</td></tr>
+      <tr><td>Confirmado × não detectado</td><td>O SynthID confirma, mas não inocenta.</td><td class="aula">20</td></tr>
+      <tr><td>Pequeno e reversível</td><td>Mudança pequena, ponto de retorno, olhar o que mudou e saber parar.</td><td class="aula">21</td></tr>
+      <tr><td>A menor coisa útil</td><td>O critério de três partes para o primeiro projeto.</td><td class="aula">21</td></tr>
+      <tr><td>Menor privilégio</td><td>Tarefa descrita com verbo e cada permissão com justificativa.</td><td class="aula">22</td></tr>
+      <tr><td>O teste de dependência</td><td>Custo de troca, exportação e plano B.</td><td class="aula">23</td></tr>
+      <tr><td>Local por obrigação, nuvem por padrão</td><td>Quando compensa rodar um modelo na própria máquina.</td><td class="aula">23</td></tr>
+      <tr><td>A mensagem única</td><td>O que a pessoa deve acreditar no fim da campanha, em uma frase.</td><td class="aula">24</td></tr>
+      <tr><td>O mapa do que dá errado</td><td>O processo como ele é: quem faz, o que produz, quanto leva e o que dá errado.</td><td class="aula">24</td></tr>
+      <tr><td>O plano de 30 dias</td><td>Uma entrega por semana e um só problema para o mês seguinte.</td><td class="aula">25</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Histórias e casos do curso</h2>
+  <p class="sub">O curso ensina por histórias. A maior parte acompanha personagens do livro, que voltam em várias aulas. Há também casos reais da escrita do livro e dois projetos da empresa do autor. Personagem não é aluno: não vira depoimento.</p>
+  <div class="cases">
+    <div class="case"><h3>Marina, a tradutora que só perguntava e recebia</h3><p>Três anos usando IA do mesmo jeito: perguntar, copiar e colar. Ela escreve “melhore”, recebe outro parágrafo igual e termina o texto sozinha à meia-noite. Passa quarenta minutos caçando um orçamento na caixa de entrada. E assina um contrato depois de ler uma resposta convincente que descrevia outro mercado, não o brasileiro. Aulas 1, 2, 4, 7, 10 e 15.</p></div>
+    <div class="case"><h3>Cláudia, a professora e a ata colada inteira</h3><p>Ela cola a ata do conselho de classe com nomes e notas de alunos para pedir um resumo. Recebe um e-mail impecável que não parece dela. Repassa um resumo da Busca e não sabe responder quem disse aquilo. E testa um detector de IA com um texto que ela mesma escreveu à mão: o detector acusa oitenta e sete por cento. Aulas 5, 7, 13, 14 e 16.</p></div>
+    <div class="case"><h3>Rafael e o número de artigos da lei</h3><p>O estudante pergunta quantos artigos tem uma lei, anota o número no caderno e descobre uma semana depois que estava errado. Usou uma ferramenta de estimativa para obter um dado exato. Aula 3.</p></div>
+    <div class="case"><h3>A família Nogueira na estrada e nas férias</h3><p>Uma luz laranja acende no painel a quatrocentos quilômetros de casa, e o pai resolve apontando a câmera e perguntando em voz alta. Depois, o roteiro lindo de sete dias no Nordeste que ignorava um menino de nove anos e o orçamento da família. Aulas 6 e 8.</p></div>
+    <div class="case"><h3>Regina e a samambaia bonita e inútil</h3><p>A dona da loja de plantas recebe uma imagem que podia ser de qualquer floricultura. Aprende a dirigir e sai com três peças da mesma identidade em uma tarde. Monta o vídeo da vitrine em quatro tomadas. E ouve da filha que ele parece vídeo de banco, porque faltava a música. Na aula 12, é ela quem decide o que delega ao agente e o que fica com ela. Aulas 12, 17, 18 e 19.</p></div>
+    <div class="case"><h3>O modelo anunciado no palco que ficou no “em breve”</h3><p>Caso real da escrita do livro. O modelo topo de linha foi anunciado num grande evento com previsão para o mês seguinte. Meses depois, quando o livro foi fechado, a página oficial ainda mostrava o selo de “em breve”. É de onde sai a régua do curso: anúncio não é lançamento. O próprio roteiro avisa que isso pode ter mudado. Aulas 2 e 25.</p></div>
+    <div class="case"><h3>As ferramentas que saíram do ar durante a escrita</h3><p>Caso real. O livro previa um capítulo sobre três ferramentas de construção. Entre planejar e escrever, duas saíram do ar. A terceira parecia ter sumido, e a varredura final mostrou que estava viva. Duas lições: tamanho do fabricante não é garantia, e ausência de fonte não prova ausência do produto. Aula 23.</p></div>
+    <div class="case"><h3>A Villela Stay: a campanha e a preparação das casas</h3><p>Dois projetos da empresa do autor, de hospedagem por temporada em Brasília. Na campanha, a objeção do grupo grande: e se não couber todo mundo, e se a casa não for como nas fotos? Na automação, a preparação das casas entre uma reserva e outra: a escala e a mensagem são montadas automaticamente, e o envio à equipe passa por aprovação humana. Aula 24.</p></div>
+    <div class="case"><h3>A foto do político no grupo da família</h3><p>Metade acredita, metade diz que é IA, e ninguém consegue provar nada. É a cena que abre a aula sobre procedência e a diferença entre confirmado e não detectado. Aula 20.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">Itens da página de venda. Os números podem ser citados.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula animada, de cerca de nove minutos.</li>
+        <li>Artigo da aula em PDF: a videoaula inteira por escrito, com os prompts e checklists do livro e os quadros datados de versão, plano e disponibilidade.</li>
+        <li>Três tarefas práticas ao fim de cada aula, para aplicar no mesmo dia.</li>
+        <li>Quiz comentado, com a explicação de cada alternativa.</li>
+        <li>Caderno de trabalho imprimível: Aprendi, Pratiquei, Apliquei.</li>
+        <li>Tutor Villela na aula, para tirar dúvidas.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li><strong>Tutor Villela.</strong> A IA do curso responde só com o conteúdo das aulas e do livro, cita a origem e leva ao minuto exato do vídeo. Se a resposta não está no curso, ele diz que não encontrou.</li>
+        <li>Biblioteca de 148 prompts: os 100 do apêndice do livro e os prompts de cada capítulo, prontos para copiar.</li>
+        <li>Audiobook: as 25 aulas em áudio, 3h44, para ouvir no carro ou no fone com o celular bloqueado. O primeiro capítulo fica aberto como amostra.</li>
+        <li>Jornada do aluno: níveis, XP, 9 selos e medalhas; diagnóstico e teste final de 20 questões.</li>
+        <li>Villela Lab com 5 missões e projeto final.</li>
+        <li>Desafio de 21 dias “Do usuário ao arquiteto”.</li>
+        <li>5 simulações.</li>
+        <li>Prompt Builder, gerador de agentes, as folhas de consulta “O prompt do usuário de Google AI” e “Protocolo anti-alucinação no Gemini”, templates e os checklists do livro.</li>
+        <li>Certificado da Villela Academy.</li>
+        <li>Acesso por 1 ano, no computador e no celular, incluindo as atualizações e as aulas novas publicadas nesse período.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Quem usa ou quer usar o Gemini e as ferramentas de IA do Google no dia a dia.</li>
+        <li>Estudantes, professores e pesquisadores que precisam de resposta com fonte.</li>
+        <li>Profissionais e pequenos negócios que querem ganhar tempo sem perder o controle.</li>
+        <li>Quem cria conteúdo e quer produzir imagem, vídeo e áudio com responsabilidade.</li>
+        <li>Quem quer entender agentes e a API antes de decidir construir alguma coisa.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura lista de truques. Aqui se ensina método.</li>
+        <li>Quem quer sair programador. O módulo de construção é um panorama, e o próprio autor diz isso na aula 21.</li>
+      </ul>
+      <h3>A porta de entrada de cada público</h3>
+      <ul>
+        <li><strong>Quem está começando:</strong> aulas 1 a 5, com o plano gratuito como ponto de partida (aula 2).</li>
+        <li><strong>Quem trabalha sozinho ou tem negócio pequeno:</strong> rotina e delegação (aulas 10 a 12) e os dois projetos da aula 24.</li>
+        <li><strong>Estudantes e professores:</strong> aulas 14 a 16.</li>
+        <li><strong>Quem cria conteúdo:</strong> aulas 17 a 20.</li>
+        <li><strong>Curiosos de agentes e API:</strong> aulas 21 a 23, sem exigir programação.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Objeções e respostas</h2>
+  <p class="sub">Das perguntas frequentes da página de venda.</p>
+  <h3>É um curso oficial do Google?</h3>
+  <p>Não. É um curso independente, do autor Augusto Villela, sem vínculo, patrocínio ou endosso do Google. Os nomes de produtos aparecem só para identificar as ferramentas de que o curso trata.</p>
+  <h3>Preciso assinar um plano pago do Google?</h3>
+  <p>Não é pré-requisito. A aula 2 ensina a descobrir o que a sua conta alcança hoje. Alguns recursos dependem do plano, do aparelho e do país, e o artigo de cada aula traz esse quadro com a data em que foi verificado.</p>
+  <h3>E quando os produtos mudarem de nome ou de versão?</h3>
+  <p>O curso foi feito para isso. Na videoaula fica o conceito, que dura. Versão, preço e disponibilidade ficam no artigo em PDF, datados. A última aula termina com as perguntas que continuam valendo quando os nomes mudarem.</p>
+  <h3>Preciso saber programar?</h3>
+  <p>Não. Os módulos de fundamentos, dia a dia, estudo e criação não pedem nada técnico. O módulo para quem quer construir é um panorama: explica AI Studio, chave de API, tokens e agentes no conceito.</p>
+  <h3>O curso já está completo?</h3>
+  <p>Sim. As 25 videoaulas estão no ar, de cerca de nove minutos cada, 3h44 no total, cada uma com o artigo em PDF.</p>
+  <h3>Posso assistir antes de comprar?</h3>
+  <p>Pode. A aula 1 inteira é gratuita: a videoaula e o artigo em PDF.</p>
+  <h3>Dá para ouvir em vez de assistir?</h3>
+  <p>Sim. O audiobook toca no player do site, com a tela do celular bloqueada, no fone e pelo volante do carro. O primeiro capítulo fica aberto como amostra. Não há download.</p>
+  <h3>O curso tem relação com o livro?</h3>
+  <p>Sim. É baseado no livro Google AI na Prática: para o dia a dia, o estudo e o trabalho, do mesmo autor, à venda na Livraria Villela (livros.villelastay.com.br).</p>
+  <h3>Por quanto tempo tenho acesso?</h3>
+  <p>Um ano a partir da compra, incluindo as atualizações e as aulas novas publicadas nesse período.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias, incondicional. Se o curso não servir, a pessoa pede o reembolso integral dentro do prazo, sem justificativa.</p>
+</section>
+
+<section id="cuidados">
+  <h2>Cuidados na comunicação</h2>
+  <p class="sub">Para o criativo não prometer o que o curso faz questão de não prometer.</p>
+  <div class="care">
+    <h3>Evitar</h3>
+    <ul>
+      <li>Qualquer ideia de curso oficial, parceiro, endossado ou certificado pelo Google. O certificado é da Villela Academy. Não usar logotipo do Google ou do Gemini como se fosse selo, e manter a frase “curso independente, sem vínculo com o Google” por perto.</li>
+      <li>Prometer acesso sem prazo ou “para sempre”. A oferta é de 1 ano a partir da compra.</li>
+      <li>“Prompts secretos”, “comandos mágicos”, “os truques que ninguém conta”. A aula 4 chama isso de folclore, e a página de venda diz que o curso não é para quem procura lista de truques.</li>
+      <li>Prometer que um recurso está disponível para todo mundo. Vários dependem de plano, aparelho e país. O agente da aula 12 só funciona em plano pago, e o recurso de resumo do dia da aula 11 não estava disponível no Brasil quando o livro foi escrito.</li>
+      <li>Citar em peça número de versão de modelo, preço de plano do Google ou data de chegada ao Brasil. O curso tira isso da videoaula de propósito e deixa no PDF, com data. Em criativo, isso envelhece e pode ficar falso.</li>
+      <li>“A IA escreve por você”, “nunca mais escreva um e-mail”, “deixe o agente fazer tudo”. O curso ensina o contrário: as frases são suas, e o que não volta atrás passa por aprovação humana.</li>
+      <li>Sugerir que a IA decide em saúde, direito, finanças ou engenharia. A aula 5 diz que ali ela é ótima para entender e péssima para decidir.</li>
+      <li>“Descubra quem usou IA” ou qualquer promessa de detector. A aula 16 explica por que detector não resolve, e a aula 20 diz que a verificação confirma, mas não inocenta.</li>
+      <li>“Vire programador” ou “crie o seu sistema”. O módulo de construção é um panorama e não pede programação.</li>
+      <li>Promessa de horas economizadas, de ganho financeiro ou de resultado de campanha. O curso não dá esses números; ele manda o aluno medir o antes e o depois (aulas 11 e 24).</li>
+      <li>Depoimentos de alunos. A página de venda não tem nenhum. Marina, Cláudia, Rafael, Regina e os Nogueira são personagens do livro e não podem aparecer como alunos ou clientes reais.</li>
+      <li>Tom de medo de ficar para trás. A aula 2 diz que ansiedade de ficar de fora é péssimo critério de compra.</li>
+    </ul>
+  </div>
+  <div class="care" style="margin-top:14px">
+    <h3>Coerência com o que o curso ensina</h3>
+    <ul>
+      <li>Criativo com imagem, vídeo ou voz gerados por IA: declarar quando alguém puder achar que aquilo aconteceu (aula 20).</li>
+      <li>Rosto e voz de pessoa real só com autorização por escrito. Isso inclui a voz do autor (aulas 19 e 20).</li>
+      <li>Marca de outra empresa não entra na imagem, nem no fundo (aula 17).</li>
+      <li>Texto dentro de imagem gerada: escrever por cima num editor, para não errar acento (aula 17).</li>
+    </ul>
+  </div>
+  <p style="margin-top:14px">O preço e os itens incluídos mudam. Antes de fechar uma peça com valor, confira na página do curso.</p>
+</section>
+
+<footer>
+  Fonte: roteiros das 25 videoaulas e página de venda do curso na Villela Academy. Curso independente, sem vínculo com o Google. Grupo Villela Stay.
+</footer>
+
+</div>
+</body>
+</html>

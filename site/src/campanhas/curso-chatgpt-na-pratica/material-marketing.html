@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}</style>
+<title>ChatGPT AI na Prática: material para criativos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Material de apoio para marketing · outubro de 2026</p>
+    <h1>ChatGPT AI na Prática</h1>
+    <p class="lead">Tudo o que o curso ensina a quem já usa o ChatGPT e quer transformá-lo em ambiente de trabalho, aula por aula, pronto para virar apresentação e criativo. O conteúdo abaixo foi tirado dos roteiros das 22 aulas e da página de venda no ar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 22 aulas</a>
+  <a href="#metodos">Métodos com nome</a>
+  <a href="#casos">Histórias das aulas</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Objeções</a>
+  <a href="#cuidados">Cuidados na comunicação</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados que podem ser citados como estão.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>ChatGPT AI na Prática</dd></div>
+    <div><dt>Subtítulo</dt><dd>O ecossistema da OpenAI aplicado ao trabalho: prompts, Projetos, Codex, agentes, automações e ChatGPT Work</dd></div>
+    <div><dt>Autor e professor</dt><dd>Augusto Villela</dd></div>
+    <div><dt>Formato</dt><dd>22 aulas, todas com vídeo, artigo em PDF e apresentação</dd></div>
+    <div><dt>Tamanho</dt><dd>29 vídeos, 6 h 51 min de conteúdo, 125 materiais para baixar</dd></div>
+    <div><dt>Preço</dt><dd>R$ 85,00 (conferido na página em 08/10/2026)</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, incondicional, com reembolso integral</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Certificado</dt><dd>Certificado da Villela Academy</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/chatgpt-ai-na-pratica">academia.villelastay.com.br/academy/cursos/chatgpt-ai-na-pratica</a></p>
+  <p>Sobre os vídeos: toda aula tem a revisão animada. As aulas 1 a 7 têm também a videoaula com o professor. As videoaulas com o professor das aulas 8 a 22 entram ao longo das próximas semanas, sem custo a mais para quem já comprou. A aula 1 é degustação grátis na página.</p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">Se o criativo só puder dizer uma coisa, é esta.</p>
+  <p class="thesis">Pare de usar o ChatGPT como caixa de perguntas.</p>
+  <p>Quase todo mundo digita, recebe a resposta, copia, cola em outro lugar, e a história acaba ali. O curso mostra a outra coisa que o ChatGPT virou: um ambiente de trabalho com três modos. O Chat resolve o que está na frente. O Work entrega o arquivo pronto depois de várias etapas. O Codex constrói e mantém sistema. Em volta disso, o curso ensina a guardar contexto, ligar o ChatGPT aos sistemas da empresa e montar agentes, sempre com revisão humana onde há consequência.</p>
+  <h3>Os três fios que atravessam todas as aulas</h3>
+  <ul>
+    <li><strong>Método, e não tela decorada.</strong> Nome de modelo, preço, tela e limite mudam a cada poucos meses. O curso ensina como organizar, decidir e aplicar.</li>
+    <li><strong>Organizar antes de automatizar.</strong> A inteligência artificial amplifica o que encontra, tanto a ordem quanto a bagunça.</li>
+    <li><strong>A IA prepara, a pessoa confere.</strong> Dinheiro, dado pessoal, contrato e comunicação externa passam por aprovação humana.</li>
+  </ul>
+  <h3>A promessa, em uma frase</h3>
+  <p>Do prompt que funciona ao ChatGPT operando a empresa por Codex, agentes e automações, com a governança que impede que isso vire prejuízo.</p>
+  <h3>Quatro mensagens que sustentam qualquer peça</h3>
+  <ul>
+    <li><strong>A tarefa certa no modo certo.</strong> Se o resultado esperado é uma resposta, Chat. Se é um arquivo, Work. Se é um sistema funcionando, Codex.</li>
+    <li><strong>Engenharia de contexto vale mais que prompt criativo.</strong> A eficácia vem da exatidão das restrições, e não do número de palavras.</li>
+    <li><strong>Estruturar o trabalho para conversar menos.</strong> O trabalho pesado acontece uma vez e o resto é reutilização.</li>
+    <li><strong>Exemplos de quem opera assim.</strong> O autor é advogado e empreendedor e usa na Villela Stay, hospedagem por temporada em Brasília, a mesma esteira de agentes e automações que ensina.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso, com pequenos ajustes de corte, que funcionam como chamada.</p>
+
+  <p class="block-title">Fundamentos · aulas 1 a 4</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>O ecossistema do ChatGPT: Chat, Work e Codex</h3>
+    <ul>
+      <li>O ChatGPT trabalha com texto, imagem, voz, arquivo, dado e pesquisa na internet. Conforme o plano, cria documento, planilha, apresentação e site, executa código e aciona ferramentas conectadas.</li>
+      <li>Os seis papéis: assistente, pesquisador, analista, criador, operador e coordenador de agentes. Quase ninguém usa mais do que o primeiro.</li>
+      <li>Os três modos: Chat para conversa e tarefa rápida, Work para trabalho longo que termina em arquivo, Codex para software.</li>
+      <li>A escada: a pergunta vira Projeto, o Projeto ganha instruções permanentes, as instruções ganham ferramentas conectadas, e isso vira um agente.</li>
+      <li>A escolha do modelo é escolha de esforço de raciocínio. Use o mais simples que dá conta e decida por qualidade, latência, custo e risco, nunca por nome de modelo.</li>
+      <li>Para a empresa, o ganho está em sair da conversa isolada e construir uma camada operacional: contexto guardado, padrão escrito, execução sem repetir a instrução.</li>
+      <li>Modo Voz como ferramenta de trabalho: a diferença para o Ditado, as três experiências (Live, Avançada e Padrão), onde falar rende mais que digitar.</li>
+      <li>Os limites do Modo Voz: privacidade dos clipes, Controles de dados e a necessidade de confirmar informação médica, jurídica, financeira e datas.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A pergunta certa deixou de ser o que eu pergunto, e passou a ser em qual modo essa tarefa deveria estar.</q><q>Use o modelo mais simples que execute bem a tarefa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>Prompts que funcionam: função, regras e contexto</h3>
+    <ul>
+      <li>Como o ChatGPT interpreta um pedido: ele reconhece padrões e responde ao que recebeu. A informação que você não deu, ele supõe, e a suposição chega com cara de resposta certa.</li>
+      <li>O mesmo pedido de anúncio escrito de dois jeitos: o genérico e o profissional, com função, público, canal, limite de palavras e fecho.</li>
+      <li>Tratar o ChatGPT como profissional orientado, e não como buscador: função, objetivo, regras, fontes, formato e critério de aprovação.</li>
+      <li>Onde a supervisão é obrigatória: dinheiro, dados pessoais, contrato, comunicação externa e qualquer decisão que gere consequência.</li>
+      <li>Os sete blocos do prompt profissional: função, objetivo, contexto, regras, estilo, formato e tarefa. Bloco que falta vira suposição.</li>
+      <li>Persona: escolher o especialista que existe de verdade no seu trabalho. Persona genérica devolve resposta genérica.</li>
+      <li>Engenharia de contexto em três atitudes: declarar o óbvio, definir o critério de sucesso e antecipar a ambiguidade.</li>
+      <li>Workflow em seis etapas no lugar do pedido único, e a diferença entre workflow (caminho previsível) e agente (mais autonomia, mais governança).</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O ChatGPT não substitui o pensamento. Ele amplia a capacidade de quem aprendeu a pensar.</q><q>A inteligência artificial prepara, a pessoa confere, a pessoa envia.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Tokens, janela de contexto e o documento de calibração</h3>
+    <ul>
+      <li>Três cenas com a mesma causa: o documento de duzentas páginas que volta genérico, a conversa longa que esquece o combinado e o limite do plano que acaba sem aviso.</li>
+      <li>Token é a unidade com que a IA lê e escreve. Entrada e saída somam, e isso define custo, quanto cabe e velocidade.</li>
+      <li>Janela de contexto tem teto. Conversa enorme perde foco. A saída é trabalhar em etapas e usar o resumo de continuidade.</li>
+      <li>Nível de raciocínio certo para cada tarefa: errar para mais desperdiça limite, errar para menos gera retrabalho.</li>
+      <li>Mandar a tarefa para a superfície certa e enviar só o trecho necessário, em vez do arquivo inteiro.</li>
+      <li>Geração aumentada por recuperação: a IA consulta uma base antes de responder. A qualidade depende da base, e isso não é treinar o modelo.</li>
+      <li>Cuidar das conversas: separar por área, não recomeçar conversa importante, resumir em vez de abandonar.</li>
+      <li>O documento de calibração em cinco blocos (perfil, regras, formatos, critérios e contexto do negócio) e a conversão de documentos para Markdown antes de subir.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Como eu estruturo melhor o meu trabalho para precisar conversar menos?</q><q>Texto longo à toa custa à toa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Projetos, Canvas e Skills: o conhecimento organizado</h3>
+    <ul>
+      <li>Seis definições que quase todo mundo mistura: Projeto, contexto, Skill, template, plugin e script.</li>
+      <li>Skill ou script: se exige julgamento, é Skill. Se tem que dar exatamente o mesmo resultado toda vez, é script.</li>
+      <li>Uma Skill de verdade, a de cotação de hospedagem, em seis blocos: identidade, objetivo, regras, estilo, fluxo e limites.</li>
+      <li>Um Projeto para cada negócio, livro, cliente ou iniciativa contínua. Em assunto sigiloso, memória limitada ao projeto.</li>
+      <li>Canvas como bancada de edição: alterar um trecho, comparar e restaurar versões. O arquivo final sai do Work.</li>
+      <li>GPT ou Skill: identidade própria pede GPT, procedimento padronizado pede Skill, especialista com vários procedimentos pede os dois.</li>
+      <li>Pastas em seis princípios e nome de arquivo por data, tipo, cliente e versão, com o ano na frente.</li>
+      <li>A base de conhecimento da empresa como produto vivo, com responsável, versão e data de revisão.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Empresa organizada multiplica resultado; empresa bagunçada multiplica a bagunça, e mais rápido.</q><q>O padrão é seu. O braçal é dele.</q></div>
+  </div></article>
+
+  <p class="block-title">Conexões e agentes · aulas 5 a 7</p>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>MCP, APIs e webhooks: a IA fora da janela de chat</h3>
+    <ul>
+      <li>O protocolo de contexto de modelo (MCP) explicado pela tomada de três pinos: sem ele o ChatGPT só conversa, com ele acessa sistemas e executa ações.</li>
+      <li>Uso de ferramentas: a IA consulta calendário, cadastro e tabela de preço em sequência e devolve a resposta pronta para a pessoa conferir e enviar.</li>
+      <li>Plugins, aplicativos, Skills e protocolo: o que cada um cuida.</li>
+      <li>Permissão mínima, pela imagem da chave de casa, e as três perguntas antes de aceitar qualquer conexão. Mais a quarta: revisar o que já está concedido.</li>
+      <li>A interface de programação (API) transforma a IA em infraestrutura. O modelo interpreta, as automações executam.</li>
+      <li>Vocabulário de integração sem código: endereço da função, pedido, resposta, formato estruturado e chave de acesso.</li>
+      <li>Gatilho em tempo real (webhook), pela imagem do porteiro que avisa quando a encomenda chega.</li>
+      <li>A regra que não se negocia: ação externa, pagamento, exclusão e comunicação sensível com aprovação humana, registro e tratamento de falha.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Dê só a permissão que a tarefa precisa.</q><q>O modelo interpreta; as interfaces de programação e as automações executam.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>Make, n8n e a governança das conexões</h3>
+    <ul>
+      <li>A divisão de trabalho: o ChatGPT é a camada de inteligência e a plataforma de automação é o orquestrador.</li>
+      <li>Make: cenário, módulo e gatilho. O primeiro fluxo clássico leva a resposta de um formulário para uma planilha.</li>
+      <li>Executar uma vez antes de ativar. Cenário com dois campos trocados não dá erro: roda liso e suja a base.</li>
+      <li>n8n: workflow e nó, código aberto, instalável em servidor próprio. Quando escolher cada uma das duas.</li>
+      <li>O e-mail como primeiro fluxo recomendado: ler a mensagem, identificar a intenção, registrar o lead, classificar a prioridade e criar tarefa.</li>
+      <li>O que cobrar de cada conexão: autenticação segura, menor privilégio, registros, tratamento de erro e revogação de acesso.</li>
+      <li>Os cinco controles de governança: acesso por função, proteção de dados, auditoria contínua, limite de autonomia e política escrita, com adequação à lei de proteção de dados desde a concepção.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Automação que ninguém controla não é produtividade: é risco rodando sozinho.</q><q>Conexão que você não sabe como desligar é conexão que você não controla.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>GPTs, Skills e os agentes de cada área da empresa</h3>
+    <ul>
+      <li>Três camadas que se encaixam: o assistente responde, a Skill padroniza, o agente executa.</li>
+      <li>As sete peças de um assistente bem construído: nome, descrição, instruções, exemplos, arquivos de conhecimento, capacidades necessárias e limites.</li>
+      <li>A ordem certa: apertar as instruções, testar com caso real e só depois ligar a ferramenta.</li>
+      <li>Auditar é provocar com seis entradas: comum, caso extremo, informação incompleta, instrução maliciosa, falha de ferramenta e ação que exige aprovação.</li>
+      <li>Registro de versão: o que mudou, quem alterou, por quê, quais testes passaram e o resultado no uso real.</li>
+      <li>O agente comercial: lead frio, morno e quente, e o acompanhamento de quem perguntou e sumiu.</li>
+      <li>Os agentes por área: concierge, financeiro, administrativo, compras, operacional, tecnologia, arquitetura e engenharia, inteligência estratégica, marketing, recursos humanos e jurídico.</li>
+      <li>Por onde começar: comercial, marketing, financeiro e operacional. Um de cada vez.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ferramenta em cima de regra frouxa só faz o erro chegar mais rápido.</q><q>Monte um, prove que funciona, e vá para o próximo.</q></div>
+  </div></article>
+
+  <p class="block-title">Codex · aulas 8 a 11</p>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>Codex: programar conversando, com Git por baixo</h3>
+    <ul>
+      <li>Uma aula para quem não programa: o Codex é o agente de desenvolvimento da OpenAI, que lê o projeto, edita arquivos, executa comandos e roda testes com a sua autorização.</li>
+      <li>Não é preciso dominar sintaxe. É preciso especificar: objetivo, limites, ambiente, testes e critério de conclusão.</li>
+      <li>As quatro portas de entrada: aplicativo do ChatGPT, extensão no editor de código, nuvem e linha de comando.</li>
+      <li>Aberto dentro de uma pasta, ele enxerga os arquivos e o histórico: deixa de achar e passa a saber.</li>
+      <li>O fluxo profissional em seis passos: planejar, criar ponto de retorno, executar, testar, revisar o que mudou e só então aceitar.</li>
+      <li>Descrever, ler, decidir: os três movimentos de quem não programa. E o diff, a lista do que mudou, com as três saídas possíveis.</li>
+      <li>Vibe coding sem ilusão: descrever o resultado não elimina arquitetura, teste, segurança nem manutenção.</li>
+      <li>Git e GitHub: o histórico que deixa toda mudança identificada, comparada, auditada, revertida e documentada. E o branch para testar sem afetar o principal.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ele não fala sobre o seu trabalho. Ele mexe no seu trabalho.</q><q>Cinto se afivela antes de o carro andar, não depois da batida.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>Instalação do Codex e a chave que não pode vazar</h3>
+    <ul>
+      <li>Os três pré-requisitos: sistema operacional comum, Git e Node na versão de suporte de longo prazo, baixados só dos sites oficiais.</li>
+      <li>Antes da rota técnica, conferir na documentação oficial se existe instalador pronto para o seu sistema.</li>
+      <li>A linha de instalação explicada pedaço por pedaço, incluindo como reconhecer o pacote oficial e não um sósia.</li>
+      <li>A única armadilha real: abrir o terminal na pasta certa. O Codex trabalha na pasta em que foi chamado.</li>
+      <li>Login pelo navegador, porque senha se digita no site oficial e nunca na tela do terminal.</li>
+      <li>Assinatura do ChatGPT para quase todo mundo. Chave de API para uso programático, cobrado por consumo.</li>
+      <li>Onde a chave nunca vai: arquivo público, prompt, print e repositório. Onde ela mora: variável de ambiente ou cofre de segredos.</li>
+      <li>Se a chave foi parar no lugar errado: revogar, gerar outra e guardar a nova do jeito certo.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma chave de API é a chave da sua casa, não o seu endereço.</q><q>Chave que vazou não volta a ser secreta.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>Comandos do Codex e o AGENTS.md do projeto</h3>
+    <ul>
+      <li>Comando com barra é ordem para o programa, e não conversa com a IA. São seis que importam: ajuda, status, modelo, permissões, revisão e servidores conectados.</li>
+      <li>O status como painel de instrumentos: modelo, permissão, pasta e conta antes de qualquer pedido sério.</li>
+      <li>Esforço de raciocínio: médio no dia a dia, alto para problema de desenho, baixo para tarefa mecânica.</li>
+      <li>Permissões: começar pelo modo mais restritivo e afrouxar depois de entender o comportamento.</li>
+      <li>O comando de revisão sempre, porque criar e revisar são tarefas diferentes.</li>
+      <li>O AGENTS.md como manual operacional do projeto, em seis seções: arquitetura, comandos de teste, padrões de código, limites, estrutura de pastas e critérios de conclusão.</li>
+      <li>Configuração do usuário e configuração local do projeto. Antes de rodar o Codex numa pasta baixada de terceiros, ler os arquivos de instrução que vieram nela.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Limite escrito é limite cumprido; limite que ficou só na sua cabeça, não.</q><q>É um funcionário excelente com amnésia diária: brilhante em cada tarefa, incapaz de lembrar da anterior.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>Mudanças pequenas, diff revisado e integração de sistemas</h3>
+    <ul>
+      <li>A tentação de pedir a obra inteira de uma vez, e por que mudança grande demais para ser revisada é mudança que ninguém controla.</li>
+      <li>O ciclo de quatro movimentos: pedir pouco, criar ponto de retorno, examinar o que mudou e rodar os testes.</li>
+      <li>Ler o diff sem saber programar: olhar o tamanho e o alcance. Pediu uma cor e mudaram quinze arquivos, algo saiu do rumo.</li>
+      <li>Se o projeto não tem testes, pedir ao Codex que escreva.</li>
+      <li>O pedido completo em oito partes: objetivo, escopo, entradas, saídas, restrições, critérios de aceitação, testes e situações de falha.</li>
+      <li>Para mudança importante, pedir o plano antes da execução, ler, corrigir e só então autorizar.</li>
+      <li>Integração: onde alguém olha uma tela e digita em outra, falta integração. Os três territórios são comunicação, gestão e operação.</li>
+      <li>Três hábitos contra o emaranhado: componentes reutilizáveis, testes e observabilidade.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Se o pedido não cabe numa frase, ele não é um pedido. São cinco.</q><q>Plano errado se conserta com uma frase, e execução errada, com uma tarde.</q></div>
+  </div></article>
+
+  <p class="block-title">Atendimento por WhatsApp e Instagram · aulas 12 a 14</p>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Atendimento por WhatsApp: Cloud API, templates e aprovação humana</h3>
+    <ul>
+      <li>Usar a porta oficial, a API do WhatsApp Business. Solução que automatiza o número pessoal descumpre a política da Meta e gera bloqueio.</li>
+      <li>O caminho da mensagem: WhatsApp, API oficial, gatilho, porta de entrada do sistema, fila, Make, orquestrador, agentes, validação e resposta.</li>
+      <li>Quem faz o quê: a IA interpreta e redige, o Make transporta, o backend guarda regra e permissão, o banco guarda o estado verdadeiro do negócio.</li>
+      <li>Os seis cenários: recebimento, classificação e roteamento, execução por ferramentas, envio, rotinas programadas e monitoramento.</li>
+      <li>A IA pede e uma camada determinística executa. Lista fechada de ações permitidas e cinco perguntas antes de cada ação.</li>
+      <li>A janela de 24 horas: dentro dela, texto livre. Fora dela, modelo de mensagem aprovado pela Meta.</li>
+      <li>As três travas: modelo aprovado (utilidade, marketing e autenticação), consentimento registrado e a lista do que o agente nunca decide sozinho.</li>
+      <li>Como começar: cinco agentes, e não quinze. Um fluxo inteiro antes de dois pela metade.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A inteligência artificial não executa nada. Ela pede.</q><q>O prompt não pode ser a única proteção.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>Direct do Instagram: contexto do story e pontuação de leads</h3>
+    <ul>
+      <li>No direct, a mensagem chega grudada num story, num anúncio ou numa publicação. Jogar esse contexto fora devolve ao cliente o trabalho da máquina.</li>
+      <li>O que o sistema recebe pela porta oficial da Meta, e o limite: nada de raspagem de tela, senha guardada, extensão não oficial ou automação fingindo ser gente.</li>
+      <li>Cadastrar o contexto de cada story na hora da publicação: campanha, produto, oferta, preço de referência, validade e chamada para ação.</li>
+      <li>Com a referência na mão, a resposta confirma o assunto, explica do que o preço depende e pergunta só o que falta.</li>
+      <li>Os agentes do direct: orquestrador, comercial com coleta progressiva, reservas, concierge e pós-venda.</li>
+      <li>A régua de zero a cem em cinco níveis: curiosidade, interesse inicial, lead qualificado, lead quente e pronto para fechar.</li>
+      <li>A IA sugere a classificação e o sistema calcula a nota, com pesos combinados antes. Data indisponível não reduz a pontuação.</li>
+      <li>Contato provisório, bloco de origem e as etapas do funil, cada uma com a próxima ação definida.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A inteligência artificial lê o que a pessoa quis dizer. A aritmética é sua.</q><q>Etapa sem próxima ação é lead parado com nome bonito.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Instagram no Make: CRM, transferência humana e painel</h3>
+    <ul>
+      <li>Seis cenários no lugar de um fluxo gigante: receber, resolver o contexto, classificar, atualizar o cadastro, responder e transferir.</li>
+      <li>O pacote de contexto: quem procura é o cenário, quem interpreta é a IA.</li>
+      <li>Cada mensagem que importa vira uma atividade no cadastro, com origem, intenção, nível e próxima ação.</li>
+      <li>Duas travas na resposta: só informar valor que veio do sistema e nunca responder disponibilidade de cabeça.</li>
+      <li>A janela de 24 horas do Instagram e a troca de canal com consentimento. Quem escreveu no Instagram não autorizou o WhatsApp.</li>
+      <li>As dez situações em que a automação para e chama uma pessoa, e como transferir entregando tudo o que já foi dito.</li>
+      <li>Controles contra resposta duplicada e contra dois atendentes ao mesmo tempo. Dado sensível não entra no texto que vai para o modelo.</li>
+      <li>O painel que serve, em três blocos (fluxo, conversão e saúde), e a origem colada no contato até a venda. Ordem de construção em quatro etapas, com atendimento humano primeiro.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Transferir bem é entregar a conversa com tudo o que já foi dito.</q><q>Volume não é resultado.</q></div>
+  </div></article>
+
+  <p class="block-title">ChatGPT Work · aulas 15 a 17</p>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>ChatGPT Work: do objetivo ao entregável</h3>
+    <ul>
+      <li>Entregável é a informação já embalada no formato em que precisa chegar: o relatório, a planilha, a apresentação.</li>
+      <li>O Work troca a lógica de responder pela de produzir: recebe um objetivo, planeja as etapas, trabalha no ambiente disponível e entrega um resultado que pode ser revisado.</li>
+      <li>A regra de três segundos para escolher o modo: resposta, arquivo ou sistema funcionando.</li>
+      <li>Os três passos de uso: descrever o objetivo, acrescentar arquivos e contexto, definir o formato de saída.</li>
+      <li>No navegador e no celular, o Work roda na nuvem e só enxerga o que foi enviado. No aplicativo de computador, usa também recursos locais autorizados.</li>
+      <li>O pedido em quatro verbos: analise, consolide, explique as variações e entregue.</li>
+      <li>Pedir o resumo executivo com todas as letras: a primeira página, escrita para quem não vai ler o resto.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O Work não devolve conversa. Ele devolve uma coisa pronta.</q><q>A distância entre os dois pedidos são umas quarenta palavras. A distância entre os dois resultados é a sua tarde.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>Projetos, Skills, Apps e arquivos editáveis no Work</h3>
+    <ul>
+      <li>O Projeto guarda três camadas: arquivos, conversas e instruções permanentes. A terceira é a mais subestimada.</li>
+      <li>No Work, a instrução permanente chega aplicada no arquivo. É ela que faz o entregável sair no padrão da casa.</li>
+      <li>Memória apenas do projeto: conferir se está ativa antes de subir o primeiro arquivo de assunto sigiloso.</li>
+      <li>No Work, a Skill termina num arquivo salvo no lugar certo. Ela não dá informação nova à IA: dá o seu método.</li>
+      <li>Apps ligam a IA a outros sistemas. Dar o mínimo de permissão e testar uma semana em modo de leitura antes de permitir ação.</li>
+      <li>Skill, Plugin e App juntos criam uma capacidade empresarial sem programar toda a integração do zero.</li>
+      <li>Editável é a palavra-chave: planilha viva com fórmulas, apresentação com slides separados, documento que se corrige.</li>
+      <li>Sites e aplicativos leves como protótipo antes da obra.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ler é reversível. Agir, muitas vezes, não é.</q><q>Se a Skill é uma receita, o Plugin é o livro de receitas, com os utensílios inclusos.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Tarefas agendadas, workspaces e vibe working</h3>
+    <ul>
+      <li>A tarefa agendada inverte a iniciativa: o ChatGPT age no horário marcado e procura você quando tem algo a dizer.</li>
+      <li>Os três usos: lembrete, briefing recorrente e monitoramento, que é o mais valioso e o menos usado.</li>
+      <li>O critério de relevância escrito com números. Um monitoramento que avisa sobre tudo equivale a não ter monitoramento.</li>
+      <li>A tarefa que quebra em silêncio: a defesa é a conferência mensal ou o sinal de vida mesmo sem novidade.</li>
+      <li>Workspace: a área compartilhada da empresa, com administração única, que evita o conhecimento preso na conta pessoal de cada um.</li>
+      <li>O que o administrador controla: modelos, Plugins, Apps e Skills, acesso, compartilhamento e retenção.</li>
+      <li>Agentes de workspace por área, publicados para a equipe, com horário ou acionados por integração.</li>
+      <li>Vibe working: produzir descrevendo resultado, critérios e fontes. A habilidade central passa a ser especificar, supervisionar e revisar.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Rodar com sucesso e fazer o trabalho não são a mesma coisa.</q><q>Não basta pedir uma entrega, tem que projetar como ela vai ser produzida, conferida e atualizada.</q></div>
+  </div></article>
+
+  <p class="block-title">Empresa, ferramentas e próximo passo · aulas 18 a 22</p>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>Empresas operadas por IA: hotelaria, direito, imobiliário e marketing</h3>
+    <ul>
+      <li>Empresa que usa IA tem automações soltas. Empresa operada por IA tem agentes ligados aos processos centrais.</li>
+      <li>O mapa de quatro colunas: tarefas, responsáveis, informações e regras de decisão. Ele mostra gargalos, repetições e dependência de pessoas específicas.</li>
+      <li>Rotinas diárias, semanais e mensais, cada uma com objetivo, dados, o que se automatiza e os limites que exigem intervenção humana.</li>
+      <li>Como os agentes passam o bastão: comercial, financeiro, operacional, administrativo e pós-venda. E a governança que impede o enxame.</li>
+      <li>A sequência madura em sete passos: organizar, estruturar as informações, padronizar, construir as bases, automatizar aos poucos, integrar e só então escalar.</li>
+      <li>Hotelaria por dentro: resposta a qualquer hora, calendário, proposta, cadastro, Pix, limpeza e manual digital da casa.</li>
+      <li>Direito por dentro: seis frentes de ganho. A IA prepara e alguém assina. Ela não assume a responsabilidade profissional, a verificação das fontes nem a interpretação estratégica.</li>
+      <li>Arquitetura e engenharia, imobiliário, vendas e marketing: o mesmo desenho, com conferência de profissional habilitado e revisão humana.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A inteligência artificial amplifica o que já existe.</q><q>Na hospedagem, velocidade de resposta é praticamente taxa de conversão.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>As Skills que valem instalar e os repositórios confiáveis</h3>
+    <ul>
+      <li>Skill é software: pode trazer script executável e arquivo auxiliar. Merece a mesma desconfiança de qualquer programa baixado da internet.</li>
+      <li>As sete conferências antes de instalar: ler o arquivo de instruções, abrir a pasta de scripts, ver se pede chave de API, quem mantém, atualização e licença, estrear sem documento confidencial e dar acesso mínimo.</li>
+      <li>Descarte direto: Skill que promete eliminar as limitações do modelo, pacote que pede senha ou chave sem justificativa, script que não explica o que faz.</li>
+      <li>Instalar coleção inteira piora o resultado. Skills duplicadas dão duas chances de a pior ser escolhida.</li>
+      <li>A hierarquia das fontes: primeiro o repositório oficial, depois os diretórios da comunidade, que servem para descobrir e não para instalar em massa.</li>
+      <li>Três perguntas antes de instalar: é uma tarefa que eu já repito? Eu entendo o que ela faz? Eu consigo desinstalar?</li>
+      <li>O kit inicial de sete Skills: criar e revisar Skills, PDF, documentos profissionais, planilhas, visualização de dados, conversão entre formatos e planejamento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Popularidade é sinal de utilidade, não é laudo de segurança.</q><q>Duas Skills que você domina valem mais do que vinte que você coleciona.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>Laço agêntico, coleta de dados e memória do ChatGPT</h3>
+    <ul>
+      <li>Laço agêntico: o ciclo em que a IA escolhe a ferramenta, lê o resultado e repete até bater a meta que você definiu.</li>
+      <li>O critério de pronto na forma “considere concluído quando”. Tem que ser verificável com sim ou não.</li>
+      <li>Agente no computador depende da máquina ligada. Nuvem só depois que o agente estiver maduro, testado e confiável.</li>
+      <li>Coleta de dados em volume com extensão de navegador, em cinco passos: abrir, extrair, exportar, enviar ao ChatGPT e pedir a análise.</li>
+      <li>Os cuidados: perfil separado do navegador, termos do site, direito autoral e proteção de dados.</li>
+      <li>Combinações que se apoiam em Skills não oficiais servem para experimento, e não para rotina da empresa.</li>
+      <li>Memória ligada de propósito no dia a dia, com o exercício de pedir um resumo do que o ChatGPT já sabe de você e corrigir.</li>
+      <li>O roteiro para quem começa: plano adequado com o aplicativo de computador, Projetos, Conectores, Skills e, por último, o Work.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ele para porque você não disse onde era para chegar.</q><q>Poder tecnicamente não é poder juridicamente.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>As plataformas de IA e as cinco superfícies do ChatGPT</h3>
+    <ul>
+      <li>Por que combinar plataformas: cada uma tem um ponto forte, elas evoluem em ritmos diferentes e depender de um fornecedor só é risco.</li>
+      <li>O mapa por tipo de tarefa: uso geral, texto longo e segunda opinião, pesquisa, programação, imagem, vídeo e voz.</li>
+      <li>Numa decisão importante, rodar a mesma pergunta em duas plataformas. Onde divergem está o ponto que precisa de gente olhando.</li>
+      <li>O critério que quase ninguém usa: onde o seu arquivo já mora.</li>
+      <li>A automação como camada que costura as plataformas: Make e n8n, APIs, Plugins e Apps, e o protocolo de contexto de modelo.</li>
+      <li>Três perguntas para decidir: qual é a tarefa, onde os meus dados já moram e se eu consigo sair.</li>
+      <li>As cinco superfícies do ChatGPT e as boas práticas de cada uma: Chat; Work; Codex; Canvas, dados, imagens e Sites; GPTs, Skills, Plugins e agentes.</li>
+      <li>Cada rotina automatizada precisa de responsável, registro, limite e caminho de escalonamento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O processo é seu. A interface é alugada.</q><q>Sem fonte na tela, não é pesquisa. É chute bem escrito.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>AI Operator e empresas AI-native: o próximo passo</h3>
+    <ul>
+      <li>A IA passou de responder para operar. Se a máquina executa, alguém precisa configurar, vigiar e corrigir.</li>
+      <li>O operador de inteligência artificial: configura agentes, cria fluxos, integra ferramentas, supervisiona, acompanha resultados e corrige falhas.</li>
+      <li>O que define o operador: entender processo, pessoas e objetivo de negócio. Conhecer a casa pesa mais do que saber programar.</li>
+      <li>Empresas nativas em IA: concebidas desde o começo com os agentes integrados à operação e coordenados com as equipes humanas.</li>
+      <li>O freio: estratégia, criatividade, liderança, responsabilidade ética e decisão complexa continuam humanas.</li>
+      <li>O líder que constrói: descreve a necessidade, estrutura as regras, testa uma primeira versão e aperfeiçoa com o uso real. O ganho é autonomia estratégica.</li>
+      <li>A ressalva: sistema complexo, segurança, proteção de dados e escala continuam exigindo profissional especializado.</li>
+      <li>Como começar: escolher uma superfície, montar o documento de calibração e resolver um problema real por semana.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O diferencial nunca esteve na tecnologia. Está em quem aprende a organizá-la.</q><q>Confie, mas confira.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Os métodos com nome</h2>
+  <p class="sub">Ferramentas de raciocínio que o aluno leva para o trabalho. Rendem bem em carrossel e em slide, porque têm número e nome.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Método</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>Os 3 modos</td><td>Chat para resposta, Work para arquivo, Codex para sistema.</td><td class="aula">1 e 15</td></tr>
+      <tr><td>Os 6 papéis do ChatGPT</td><td>Assistente, pesquisador, analista, criador, operador e coordenador.</td><td class="aula">1</td></tr>
+      <tr><td>Os 4 critérios de escolha</td><td>Qualidade, latência, custo e risco. Nunca o nome do modelo.</td><td class="aula">1</td></tr>
+      <tr><td>Os 7 blocos do prompt</td><td>Função, objetivo, contexto, regras, estilo, formato e tarefa.</td><td class="aula">2</td></tr>
+      <tr><td>Engenharia de contexto</td><td>Declarar o óbvio, definir o critério de sucesso e antecipar a ambiguidade.</td><td class="aula">2</td></tr>
+      <tr><td>Workflow de 6 etapas</td><td>A tarefa em sequência, com cada etapa corrigida antes da seguinte.</td><td class="aula">2</td></tr>
+      <tr><td>Resumo de continuidade</td><td>Resumir contexto, decisões, pendências e regras antes de seguir numa conversa longa.</td><td class="aula">3</td></tr>
+      <tr><td>Documento de calibração</td><td>Cinco blocos: perfil, regras, formatos, critérios e contexto do negócio.</td><td class="aula">3</td></tr>
+      <tr><td>Skill em 6 blocos</td><td>Identidade, objetivo, regras, estilo, fluxo e limites.</td><td class="aula">4</td></tr>
+      <tr><td>Data, tipo, cliente e versão</td><td>A convenção de nome de arquivo, com o ano na frente.</td><td class="aula">4</td></tr>
+      <tr><td>As 3 perguntas da conexão</td><td>O que a ferramenta precisa fazer, o que pede além disso e quem mais entra por essa porta.</td><td class="aula">5</td></tr>
+      <tr><td>Os 5 controles de governança</td><td>Acesso por função, proteção de dados, auditoria contínua, limite de autonomia e política escrita.</td><td class="aula">6</td></tr>
+      <tr><td>As 7 peças do assistente</td><td>Nome, descrição, instruções, exemplos, conhecimento, capacidades e limites.</td><td class="aula">7</td></tr>
+      <tr><td>As 6 entradas de teste</td><td>Comum, extrema, incompleta, maliciosa, falha de ferramenta e ação que exige aprovação.</td><td class="aula">7</td></tr>
+      <tr><td>Fluxo profissional do Codex</td><td>Planejar, ponto de retorno, executar, testar, revisar e aceitar.</td><td class="aula">8</td></tr>
+      <tr><td>Descrever, ler, decidir</td><td>Os três movimentos de quem trabalha com o Codex sem programar.</td><td class="aula">8</td></tr>
+      <tr><td>Endereço ou chave?</td><td>A pergunta antes de colar qualquer coisa num chat, documento ou tela.</td><td class="aula">9</td></tr>
+      <tr><td>AGENTS.md em 6 seções</td><td>Arquitetura, testes, padrões, limites, pastas e critérios de conclusão.</td><td class="aula">10</td></tr>
+      <tr><td>O ciclo de 4 movimentos</td><td>Mudança pequena, ponto de retorno, diff lido e teste rodado.</td><td class="aula">11</td></tr>
+      <tr><td>O pedido em 8 partes</td><td>Objetivo, escopo, entradas, saídas, restrições, aceitação, testes e falhas.</td><td class="aula">11</td></tr>
+      <tr><td>Plano antes da execução</td><td>Pedir o plano, ler, corrigir e só então autorizar.</td><td class="aula">11</td></tr>
+      <tr><td>A IA pede, o código executa</td><td>Lista fechada de ações e cinco perguntas antes de cada uma.</td><td class="aula">12</td></tr>
+      <tr><td>As 3 travas do WhatsApp</td><td>Modelo aprovado, consentimento registrado e lista do que exige aprovação humana.</td><td class="aula">12</td></tr>
+      <tr><td>Régua de leads de 0 a 100</td><td>Cinco níveis, da curiosidade ao pronto para fechar, com pesos combinados antes.</td><td class="aula">13</td></tr>
+      <tr><td>As 10 situações de transferência</td><td>Quando a automação para e chama uma pessoa.</td><td class="aula">14</td></tr>
+      <tr><td>O painel em 3 blocos</td><td>Fluxo, conversão e saúde.</td><td class="aula">14</td></tr>
+      <tr><td>O pedido em 4 verbos</td><td>Analise, consolide, explique as variações e entregue.</td><td class="aula">15</td></tr>
+      <tr><td>Uma semana em modo de leitura</td><td>O teste de um App antes de dar permissão de ação.</td><td class="aula">16</td></tr>
+      <tr><td>Sinal de vida</td><td>A tarefa agendada avisa que conferiu, mesmo quando não há novidade.</td><td class="aula">17</td></tr>
+      <tr><td>Vibe working</td><td>Resultado desejado, critérios e fontes.</td><td class="aula">17</td></tr>
+      <tr><td>Mapa de 4 colunas</td><td>Tarefas, responsáveis, informações e regras de decisão.</td><td class="aula">18</td></tr>
+      <tr><td>A sequência de 7 passos</td><td>Organizar, estruturar, padronizar, construir bases, automatizar, integrar e escalar.</td><td class="aula">18</td></tr>
+      <tr><td>As 7 conferências da Skill</td><td>O exame de uma Skill de terceiro antes de instalar.</td><td class="aula">19</td></tr>
+      <tr><td>Kit inicial de 7 Skills</td><td>Ler, escrever, calcular, mostrar, converter e planejar.</td><td class="aula">19</td></tr>
+      <tr><td>Considere concluído quando</td><td>O critério de pronto que faz o laço agêntico funcionar.</td><td class="aula">20</td></tr>
+      <tr><td>As 3 perguntas da plataforma</td><td>Qual é a tarefa, onde os dados moram e se dá para sair.</td><td class="aula">21</td></tr>
+      <tr><td>As 5 superfícies</td><td>Chat; Work; Codex; Canvas, dados, imagens e Sites; GPTs, Skills, Plugins e agentes.</td><td class="aula">21</td></tr>
+      <tr><td>Os 3 passos para começar</td><td>Uma superfície, o documento de calibração e um problema real por semana.</td><td class="aula">22</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Histórias e tropeços contados nas aulas</h2>
+  <p class="sub">O autor conta os próprios erros e os casos que mais vê em empresas. São o melhor material para gancho de vídeo e de carrossel. Em cada um está indicado se é caso dele ou cena descrita na aula.</p>
+  <div class="cases">
+    <div class="case"><h3>A conversa de semanas que esqueceu a regra</h3><p>Caso do autor. Uma conversa longa sobre a precificação das casas passou a ignorar uma regra combinada no terceiro dia. A ferramenta não tinha piorado: a conversa ficou grande demais para caber na janela de contexto. Aula 3.</p></div>
+    <div class="case"><h3>O assistente que inventou uma diária</h3><p>Caso do autor. Instruções de cinco linhas, calendário e tabela de preços ligados logo em seguida. O hóspede pediu uma data fora da tabela e o assistente chutou. O erro estava na regra que faltava. Aula 7.</p></div>
+    <div class="case"><h3>O cenário que ficou rodando com a conta de quem saiu</h3><p>Cena que o autor diz ser a que mais vê. Alguém monta uma automação num sábado, com a conta de e-mail da empresa. Seis meses depois a pessoa saiu, o cenário continua mandando mensagem e ninguém sabe que ele existe. Aula 6.</p></div>
+    <div class="case"><h3>Tudo certo todo dia, com a fonte fora do ar havia uma semana</h3><p>Caso do autor. Uma rotina reportava sucesso diariamente enquanto a fonte de dados estava parada. Daí a lição de observabilidade e, na aula 17, o sinal de vida. Aulas 11 e 17.</p></div>
+    <div class="case"><h3>Oitocentas mensagens e um número perdido</h3><p>Cena descrita na aula. Uma lista de contatos antigos, um disparo de promoção para quem nunca pediu nada, e os bloqueios começam em dois dias. Não existe botão de desfazer. Aula 12.</p></div>
+    <div class="case"><h3>“Qual o preço?” e a resposta “preço de quê?”</h3><p>Cena descrita na aula. Três stories no mesmo dia, uma pergunta de três palavras e um atendimento que jogou fora o contexto que tinha na mão. Aula 13.</p></div>
+    <div class="case"><h3>O story engraçado e o story que traz reserva</h3><p>Caso do autor. Com a origem colada no contato até a venda, a lista dos stories com mais reação e a dos que trouxeram reserva quase nunca são a mesma. Aula 14.</p></div>
+    <div class="case"><h3>O relatório que passou a chegar antes da reunião</h3><p>Caso do autor. O relatório de segunda era montado na manhã da reunião. Como tarefa agendada no domingo à noite, ele não ficou melhor: ficou antes, e isso mudou a reunião. Aula 17.</p></div>
+    <div class="case"><h3>Dez ou doze Skills numa tarde, nenhuma usada na semana</h3><p>Caso do autor. O que funcionou foi instalar duas e usar cada uma num caso real antes da terceira. Aula 19.</p></div>
+    <div class="case"><h3>O agente não estava no céu, estava na mesa</h3><p>Caso do autor. Um agente no computador mandava um resumo toda manhã. Ele viajou, desligou a máquina e nada mais aconteceu. Aula 20.</p></div>
+    <div class="case"><h3>A regra que só o dono conhecia</h3><p>Caso do autor. A casa maior da Villela Stay é formada por duas casas menores: reservar a maior ocupa as duas, e o contrário também vale. Quem conhecia a regra era ele, e não um programador. Ele descreveu, o assistente de programação escreveu e ele testou com as reservas de verdade. Aula 22.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">Itens da página de venda. Os números podem ser citados.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Vídeo: a revisão animada em todas as aulas e, nas aulas 1 a 7, também a videoaula com o professor.</li>
+        <li>Artigo da aula em PDF: a videoaula inteira por escrito, com mapa da aula, síntese e três tarefas para aplicar no mesmo dia.</li>
+        <li>Apresentação da aula em PDF e em arquivo editável (.pptx).</li>
+        <li>Quiz com a explicação de cada alternativa.</li>
+        <li>Caderno de trabalho imprimível: Aprendi, Pratiquei, Apliquei.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li><strong>Tutor Villela.</strong> A IA do curso responde só com o conteúdo das aulas e do livro, cita a origem e leva ao minuto exato do vídeo. Se a resposta não está no curso, ele diz que não encontrou.</li>
+        <li>Biblioteca com 23 prompts do curso, pronta para copiar.</li>
+        <li>Glossário do curso com 52 verbetes.</li>
+        <li>Coletânea de frases para reflexão.</li>
+        <li>Audiobook: cada videoaula também em áudio, para ouvir no carro ou no fone com o celular bloqueado. O primeiro capítulo fica aberto como amostra. Os capítulos entram à medida que as videoaulas são gravadas.</li>
+        <li>Certificado da Villela Academy.</li>
+        <li>Acesso por 1 ano, incluindo as atualizações e as aulas novas publicadas nesse período.</li>
+      </ul>
+    </div>
+  </div>
+  <p>O curso é baseado no livro ChatGPT AI na Prática, do mesmo autor.</p>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Profissional liberal que perde hora em tarefa repetitiva.</li>
+        <li>Dono de empresa pequena que quer operar com estrutura de empresa grande.</li>
+        <li>Advogado, contador, corretor e consultor que trabalham com documento e prazo.</li>
+        <li>Quem já usa o ChatGPT no plano gratuito e desconfia que está usando 10% dele.</li>
+        <li>Quem tentou automatizar antes e desistiu no meio.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura prompt mágico. Aqui se ensina método.</li>
+      </ul>
+      <h3>A dor de cada um, nas palavras das aulas</h3>
+      <ul>
+        <li><strong>Quem conversa com o ChatGPT todo dia:</strong> reescrever quem é, o que a empresa faz e as regras da casa a cada conversa nova (aula 4).</li>
+        <li><strong>Quem atende cliente:</strong> a mensagem das onze da noite de sábado e o lead que esfria esperando resposta (aulas 12 e 18).</li>
+        <li><strong>Quem faz relatório:</strong> abrir cinco arquivos, copiar, colar e refazer o gráfico toda segunda (aula 15).</li>
+        <li><strong>Quem tem equipe:</strong> quatro pessoas, quatro propostas com jeito diferente, e o conhecimento que vai embora com quem sai (aulas 16 e 17).</li>
+        <li><strong>Quem não programa:</strong> depender da fila da tecnologia para testar uma ideia (aulas 8 e 22).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Objeções e respostas</h2>
+  <p class="sub">Das perguntas frequentes da página de venda.</p>
+  <h3>O curso já está completo?</h3>
+  <p>Sim. As 22 aulas estão disponíveis em artigo (PDF) e apresentação, com quiz e caderno de trabalho, e todas têm vídeo: a revisão animada. As aulas 1 a 7 têm também a videoaula com o professor. As das aulas 8 a 22 entram ao longo das próximas semanas, sem custo a mais para quem já comprou.</p>
+  <h3>Preciso saber programar?</h3>
+  <p>Não. A maior parte do curso não tem uma linha de código. O bloco do Codex existe para quem não programa entender o que é possível pedir e, principalmente, o que conferir antes de aceitar.</p>
+  <h3>Preciso pagar o ChatGPT para acompanhar?</h3>
+  <p>Não para começar. Boa parte do método funciona no plano gratuito. Alguns recursos mostrados, como o Work e limites maiores de raciocínio, dependem de plano pago da OpenAI. O curso deixa claro, em cada aula, o que exige o quê.</p>
+  <h3>As aulas não vão ficar desatualizadas?</h3>
+  <p>Nome de modelo, tela e limite mudam a cada poucos meses. Por isso o curso ensina método: como organizar, decidir e aplicar. Onde a tela importa, o curso mostra a lógica, e não o clique decorado.</p>
+  <h3>Quanto tempo leva?</h3>
+  <p>São 22 aulas de 12 a 15 minutos, com três tarefas ao fim de cada uma. Dá para assistir em uma semana e aplicar em um mês. A recomendação é fazer as tarefas.</p>
+  <h3>Por quanto tempo tenho acesso?</h3>
+  <p>O acesso é de 1 ano a partir da compra, incluindo as atualizações e as aulas novas publicadas nesse período.</p>
+  <h3>Os exemplos são reais?</h3>
+  <p>São. O autor opera a Villela Stay, hospedagem por temporada em Brasília, com a mesma esteira de agentes e automações que ensina. Os casos vêm dessa operação e do escritório de advocacia.</p>
+  <h3>O que é o Tutor Villela?</h3>
+  <p>É o tutor de IA do curso. Responde às dúvidas usando só o conteúdo das aulas e do livro, cita de onde tirou cada resposta e leva ao minuto exato do vídeo. Se a resposta não estiver no curso, ele diz que não encontrou.</p>
+  <h3>Dá para ouvir em vez de assistir?</h3>
+  <p>Sim. O audiobook toca no player do próprio site, com a tela do celular bloqueada, no fone e no carro. O primeiro capítulo fica aberto como amostra. Não há download. Os capítulos entram à medida que as videoaulas são gravadas.</p>
+  <h3>E se não for para mim?</h3>
+  <p>São 7 dias de garantia incondicional. Se o curso não servir, a pessoa pede o reembolso integral dentro do prazo, sem justificativa.</p>
+</section>
+
+<section id="cuidados">
+  <h2>Cuidados na comunicação</h2>
+  <p class="sub">Para o criativo não prometer o que o curso faz questão de não prometer.</p>
+  <div class="care">
+    <h3>Evitar</h3>
+    <ul>
+      <li>“Prompt mágico”, “comando secreto” ou “os prompts que fazem tudo”. A página de venda diz que o curso não é para quem procura isso, e as aulas repetem que o resultado vem de organizar processo, dado, permissão e critério.</li>
+      <li>“A IA faz sozinha”, “empresa no piloto automático” ou “substitua a equipe”. O curso ensina o contrário: a IA prepara, a pessoa confere, e automação boa é a que sabe onde parar e chamar gente.</li>
+      <li>Promessa de faturamento, de número de horas economizadas ou de conversão garantida. O curso não dá esses números.</li>
+      <li>“Aprenda a programar” ou “crie qualquer sistema sem saber nada”. O bloco do Codex é para quem não programa aprender a especificar e conferir. A aula 8 avisa que descrever o resultado não elimina teste, segurança nem manutenção, e a aula 22 mantém o especialista onde o risco é alto.</li>
+      <li>“Automatize o seu WhatsApp pessoal”, disparo em massa ou raspagem do Instagram. As aulas 12 e 13 ensinam só a porta oficial da Meta, com consentimento, e tratam os atalhos como risco de bloqueio.</li>
+      <li>“Tudo funciona no plano gratuito”. Boa parte do método funciona, mas o Work e limites maiores dependem de plano pago da OpenAI.</li>
+      <li>“22 videoaulas com o professor”. Hoje todas as aulas têm a revisão animada e só as aulas 1 a 7 têm também a videoaula com o professor. Dizer “22 aulas, todas com vídeo” está correto.</li>
+      <li>Vender o curso como atualização de telas, modelos ou novidades da semana. Ele promete método, que sobrevive às versões.</li>
+      <li>“Acesso vitalício”. O acesso anunciado é de 1 ano.</li>
+      <li>Dar a entender que o curso é oficial, certificado ou parceiro da OpenAI, da Meta ou das outras empresas citadas. O ChatGPT é o produto que o curso ensina a usar; evite logotipos de terceiros como se fossem selo. O certificado é da Villela Academy.</li>
+      <li>Atacar outras plataformas. A aula 21 compara ferramentas pelo que cada uma faz bem e recomenda combinar, sem eleger vencedora.</li>
+      <li>Depoimentos de alunos. A página de venda não tem nenhum, então não há o que citar.</li>
+      <li>Tom de medo. O autor reconhece os riscos e diz encarar a mudança com esperança e trabalho. A frase sobre ser substituído por quem usa melhor a IA é do curso, mas pede contexto e não deve virar ameaça.</li>
+    </ul>
+  </div>
+  <p style="margin-top:14px">O preço e os itens incluídos mudam. Antes de fechar uma peça com valor, confira na página do curso.</p>
+</section>
+
+<footer>
+  Fonte: roteiros das 22 aulas e página de venda do curso na Villela Academy. Grupo Villela Stay.
+</footer>
+
+</div>
+</body>
+</html>
