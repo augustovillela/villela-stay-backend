@@ -6568,7 +6568,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
 
     const piAnuncio = (qual, min = false) => `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${PI_CURSO}" target="_blank" rel="noopener">
           <span class="cap-ad-icone">🎓</span>
-          <span class="cap-ad-txt"><strong>Curso Piscineiro na Prática — coleção Viver de Chácara</strong><span>Operação, limpeza e manutenção de piscinas em chácaras e hospedagens, em 25 aulas na Villela Academy. Cada aula traz o artigo em PDF; as videoaulas animadas entram no ar aula a aula.</span></span>
+          <span class="cap-ad-txt"><strong>Curso Piscineiro na Prática — coleção Viver de Chácara</strong><span>Operação, limpeza e manutenção de piscinas em chácaras e hospedagens, em 25 aulas na Villela Academy. Cada aula traz o artigo em PDF; as videoaulas animadas entram no ar aula a aula. Certificado da Villela Academy ao concluir.</span></span>
           <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
     const PI_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(piAnuncio('curso', true))},${JSON.stringify(piAnuncio('curso', true))}];`);
     const PI_CSS = `${piCss}${CAP_CSS_EXTRA}

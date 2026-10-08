@@ -1549,7 +1549,8 @@ async function main() {
     assert.ok(r.texto.includes('pv-compra'), 'cartão de compra');
     assert.ok(r.texto.includes('pv-curr'), 'currículo em sanfona');
     assert.ok(r.texto.includes('/academy/publico.css'), 'CSS das páginas públicas');
-    assert.ok(/Certificado com validação pública/.test(r.texto), 'o que o aluno leva');
+    assert.ok(/Certificado da Villela Academy/.test(r.texto), 'o que o aluno leva');
+    assert.ok(!/validação pública/i.test(r.texto), 'a página não fala mais em "validação pública" (Augusto, 08/10/2026)');
   });
   await t('landing mostra o catálogo (site comercial sem curso na home não vende)', async () => {
     const r = await req('GET', '/academy');

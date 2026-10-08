@@ -77,7 +77,7 @@
     var itens = [
       'Aulas em vídeo com material para baixar e usar no trabalho',
       'Seu progresso salvo, do celular ao computador',
-      'Certificado com código de validação pública',
+      'Certificado da Villela Academy',
       'Acesso de 1 ano ao que você comprar',
     ];
     var tick = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';

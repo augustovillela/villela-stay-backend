@@ -81,7 +81,7 @@ function landingHTML() {
   const passos = [
     ['Escolha a sua formação', 'Cursos com currículo aberto: você vê módulo a módulo, a duração e os materiais antes de comprar.'],
     ['Estude no seu ritmo', 'Aula em vídeo, artigo em PDF e apresentação da aula, com o seu progresso salvo a cada aula.'],
-    ['Aplique e comprove', 'Materiais para usar no trabalho e certificado com código de validação pública ao concluir.'],
+    ['Aplique e comprove', 'Materiais para usar no trabalho e certificado da Villela Academy ao concluir.'],
   ];
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Villela Academy — cursos online e produtos digitais</title>
@@ -101,7 +101,7 @@ function landingHTML() {
     <div class="hero"><div class="wrap">
       <span class="badge">Escola online do Grupo Villela Stay</span>
       <h1>Formação profissional que cabe na sua semana.</h1>
-      <p><b>Aprenda, aplique e transforme</b> — cursos com aula em vídeo, artigo em PDF e material para usar no trabalho. Com certificado de validação pública e acesso de 1 ano.</p>
+      <p><b>Aprenda, aplique e transforme</b> — cursos com aula em vídeo, artigo em PDF e material para usar no trabalho. Com certificado da Villela Academy e acesso de 1 ano.</p>
       <p style="margin-top:26px"><a class="btn" href="#cursos">Ver os cursos</a>
       &nbsp;<a class="btn g" href="/academy/app#cadastro">Criar conta grátis</a>
       &nbsp;<a class="btn o" href="/academy/app">Já sou aluno</a></p>
@@ -263,7 +263,7 @@ function marketplaceHTML({ q, categoria }) {
   </div></div>`;
   return shellPublico({
     titulo: categoria ? `Cursos de ${ct.catRotulo(categoria)}` : 'Cursos online, e-books e mentorias',
-    descricao: 'Cursos online, e-books e mentorias da Villela Academy: currículo aberto, material para baixar e certificado com validação pública. '
+    descricao: 'Cursos online, e-books e mentorias da Villela Academy: currículo aberto, material para baixar e certificado da Villela Academy. '
       + (categoria ? `Área: ${ct.catRotulo(categoria)}.` : 'Veja o catálogo completo por área.'),
     url: '/academy/marketplace' + (categoria ? `?categoria=${encodeURIComponent(categoria)}` : ''),
     corpo,
@@ -359,7 +359,7 @@ function cursoHTML(slug) {
   const naoVideo = resumo.total_aulas - resumo.total_videos;
   if (naoVideo > 0) inclui.push(['doc', `${naoVideo} conteúdo${naoVideo > 1 ? 's' : ''} de leitura e prática`]);
   if (resumo.total_materiais) inclui.push(['baixar', `${resumo.total_materiais} materiais para baixar`]);
-  inclui.push(['chapeu', 'Certificado com validação pública']);
+  inclui.push(['chapeu', 'Certificado da Villela Academy']);
   if (gote.ativo) inclui.push(['relogio', `${lib.promessa(gote)}, a partir da sua matrícula`]);
   inclui.push(['relogio', ehClube ? 'Acesso enquanto a assinatura estiver ativa' : 'Acesso por 1 ano, no computador e no celular']);
   if (p.garantia_dias) inclui.push(['escudo', `Garantia de ${p.garantia_dias} dias`]);

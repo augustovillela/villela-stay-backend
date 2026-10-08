@@ -34,7 +34,7 @@ const ROBOS = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-U
 const PRODUTOS = [
   {
     subs: ['academia.', 'academy.', 'cursos.'], prefixo: '/academy', nome: 'Villela Academy',
-    resumo: 'Marketplace brasileiro de cursos online e produtos digitais: o produtor publica de graça e paga comissão só quando vende; o aluno estuda com vídeo, material para baixar e certificado com validação pública.',
+    resumo: 'Marketplace brasileiro de cursos online e produtos digitais: o produtor publica de graça e paga comissão só quando vende; o aluno estuda com vídeo, material para baixar e certificado da Villela Academy.',
     publicas: ['', '/ajuda', '/ajuda/faq', '/ajuda/manual', '/marketplace', '/termos', '/privacidade', '/reembolso', '/termos-produtor', '/termos-afiliado'],
     privadas: ['/app', '/api', '/checkout', '/media-s'],
   },
