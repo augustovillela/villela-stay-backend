@@ -1,0 +1,207 @@
+{
+ "titulo": "Piscineiro na Prática",
+ "subtitulo": "Operação, limpeza e manutenção de piscinas em chácaras e hospedagens",
+ "total": 25,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "Função do piscineiro e anatomia da piscina",
+   "sub": "O caminho que a água faz do tanque ao filtro e de volta, o que muda na piscina de chácara e as quatro frentes do trabalho de quem cuida dela.",
+   "capitulos": "Capítulo 1 e Apresentação",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "Segurança química e leitura de rótulos",
+   "sub": "As famílias de produtos, as regras sem exceção, o que procurar no rótulo e como organizar depósito, proteção e transporte.",
+   "capitulos": "Capítulo 2",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "Segurança elétrica, hidráulica e dos banhistas",
+   "sub": "Os três riscos que matam numa piscina (afogamento, sucção e choque elétrico) e os critérios para fechar a piscina sem hesitar.",
+   "capitulos": "Capítulo 2",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "Volume, vazão, circulação e filtração",
+   "sub": "As três medidas que descrevem o circuito da piscina (volume, vazão e tempo de um ciclo) e por que nada funciona em água parada.",
+   "capitulos": "Capítulos 3 e 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "Fundamentos do equilíbrio e da desinfecção",
+   "sub": "Os cinco parâmetros da água, o que cada um faz, como um segura o outro e por que a ordem de trabalho é alcalinidade, pH e cloro.",
+   "capitulos": "Capítulo 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "Equipamentos da casa de máquinas",
+   "sub": "Bomba, filtro, manômetro, válvula seletora, registros e temporizador: o que saber de cada peça para operar e para falar com a assistência.",
+   "capitulos": "Capítulos 4 e 1",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "Acessórios de limpeza e instrumentos de teste",
+   "sub": "O conjunto indispensável para limpar, escolhido pelo revestimento da piscina, e o instrumento de teste que mostra o que o olho não vê.",
+   "capitulos": "Capítulo 4",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "Produtos: funções, compatibilidades e armazenamento",
+   "sub": "Como escolher um produto de piscina pela função e pela substância, manter um só cloro na rotina e guardar um estoque pequeno e separado.",
+   "capitulos": "Capítulos 4 e 2",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "Como inspecionar e registrar uma piscina",
+   "sub": "A inspeção em ordem fixa, do entorno à casa de máquinas, a marca do nível na parede e o caderno que transforma impressão em histórico.",
+   "capitulos": "Capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "Como calcular volume e planejar a rotina",
+   "sub": "O volume medido na água, a conta que leva a dose do rótulo à sua piscina e o plano escrito com tarefa, frequência, responsável e substituto.",
+   "capitulos": "Capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "Peneiração, escovação e limpeza de bordas",
+   "sub": "Os quatro primeiros gestos da visita: conferir segurança e nível, peneirar, escovar e limpar a borda, na ordem que poupa cloro e retrabalho.",
+   "capitulos": "Capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "Aspiração e escolha do modo de operação",
+   "sub": "A montagem do aspirador sem ar na mangueira, o movimento lento e a escolha entre aspirar filtrando ou drenando, com os cuidados de cada modo.",
+   "capitulos": "Capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "Válvulas, bomba e filtro sem erros",
+   "sub": "Os dois cestos, as seis posições da válvula seletora e a regra que não tem exceção: a alavanca só se move com a bomba desligada.",
+   "capitulos": "Capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Retrolavagem, enxágue e reposição de água",
+   "sub": "Lavar o filtro quando o manômetro pede, fazer a sequência inteira com o enxágue e repor a água com quatro cuidados.",
+   "capitulos": "Capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "Rotina completa de uma visita profissional",
+   "sub": "Os nove passos da visita em três grupos de três, a conferência antes de guardar o material, o que anotar e a prova dos vinte minutos.",
+   "capitulos": "Capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "Coleta, testes e interpretação dos resultados",
+   "sub": "Colher uma amostra que representa a piscina, testar do jeito que a bula manda e ler os resultados juntos, como um retrato.",
+   "capitulos": "Capítulo 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Ajustes de equilíbrio conforme produto e sistema",
+   "sub": "A ordem de correção (alcalinidade, pH, cloro), o gesto de aplicar qualquer produto em parte e a tabela de resposta que só a sua piscina pode dar.",
+   "capitulos": "Capítulos 7 e 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "Desinfecção de rotina e tratamento corretivo",
+   "sub": "Como manter cloro na água nos dias em que ninguém aparece, quando o tratamento corretivo se justifica e por que a piscina só reabre pelo teste.",
+   "capitulos": "Capítulo 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "Água verde, turva, espuma, manchas e odores",
+   "sub": "O método de diagnóstico antes do remédio aplicado à água verde, à água turva, à espuma, ao cheiro forte e às manchas, com a hora de parar.",
+   "capitulos": "Capítulo 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "Diagnóstico inicial de vazão, pressão, vazamentos e impactos do ambiente rural",
+   "sub": "O que observar, medir e relatar na casa de máquinas, o teste do balde para confirmar perda de água e o que o clima da chácara muda na rotina.",
+   "capitulos": "Capítulos 9 e 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "Planos diário, semanal, mensal e sazonal",
+   "sub": "As quatro camadas do plano, os quatro regimes de uso da casa, o fechamento e a reabertura, e quem assume a piscina quando o responsável não está.",
+   "capitulos": "Capítulos 5 e 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "Estoque, custos, orçamento e contrato",
+   "sub": "As cinco parcelas do custo mensal da piscina, onde ele cai de verdade, o ponto de pedido do estoque e o que perguntar e cobrar numa proposta de serviço.",
+   "capitulos": "Capítulo 10",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "Relatório ao proprietário, preparação para hóspedes e liberação segura",
+   "sub": "O relatório da visita e sua última linha, a preparação da piscina para hóspedes com dias de antecedência e a liberação por teste, com nome e hora.",
+   "capitulos": "Capítulos 8 e 10 e elementos finais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "Desenvolvimento do plano de manutenção da piscina da Chácara-Modelo",
+   "sub": "O projeto final do curso: um plano de operação em cinco partes que funcione na mão de quem nunca viu a piscina.",
+   "capitulos": "Capítulo 11",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 25,
+   "titulo": "Avaliação de caso e plano de evolução profissional",
+   "sub": "O caso das três semanas de casa fechada, resolvido pela ordem das decisões, e a revisão do plano a cada três meses como caminho de evolução.",
+   "capitulos": "Capítulos 8 e 11 e elementos finais",
+   "gravada": true,
+   "tem_artigo": true
+  }
+ ]
+}
