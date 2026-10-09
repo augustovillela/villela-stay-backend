@@ -46,12 +46,12 @@
         var partes = i.codigo.split('.'), disc = itens[partes.slice(0, 2).join('.')];
         (i.competencias || []).forEach(function (k) {
           if (mm[k.codigo]) return;
-          mm[k.codigo] = { item: i.codigo, disciplina: disc && disc !== i ? partes.slice(0, 2).join('.') + ' ' + disc.texto : 'Programa',
+          mm[k.codigo] = { item: i.codigo, cod: disc && disc !== i ? partes.slice(0, 2).join('.') : '', disciplina: disc && disc !== i ? partes.slice(0, 2).join('.') + ' ' + disc.texto : 'Programa',
             titulo: titulo[k.codigo] || i.texto };
         });
       });
       (p.competencias || []).forEach(function (c) {
-        if (!mm[c.codigo]) mm[c.codigo] = { item: '', disciplina: 'Método de estudo', titulo: titulo[c.codigo] || c.resultado };
+        if (!mm[c.codigo]) mm[c.codigo] = { item: '', cod: '', disciplina: 'Método de estudo', titulo: titulo[c.codigo] || c.resultado };
       });
       E._mm = mm; E._mmDe = p;
       return mm;
@@ -203,14 +203,15 @@
       if (disc != null) return lerDisciplina(alvo, disc);
       var p = E.painel, mm = materias(), grupos = [], por = {};
       p.unidades.forEach(function (u) {
-        var m = mm[(u.competencias || [])[0]] || { disciplina: 'Método de estudo', item: '' };
-        var cod = m.item ? m.item.split('.').slice(0, 2).join('.') : '_metodo';
+        var m = mm[(u.competencias || [])[0]] || { disciplina: 'Método de estudo', item: '', cod: '' };
+        var cod = m.cod || '_metodo'; // o mesmo agrupamento do servidor: sem disciplina-mãe no programa, a aula fica no grupo geral
         var g = por[cod];
         if (!g) { g = por[cod] = { cod: cod, nome: m.disciplina, aulas: [] }; grupos.push(g); }
         g.aulas.push({ u: u, item: m.item });
       });
       alvo.innerHTML = '<div class="jr-caixa"><h3>Aulas</h3><p class="al-sub">' + p.unidades.length + ' aulas em ' + grupos.length + ' disciplinas, na ordem do edital. ' +
-        '<b>Abrir a aula</b> leva à aula ativa (desafio, explicação, prática e os resumos de 50, 25 e 10 %). <b>Mapa mental</b> abre o mapa da aula pronto para imprimir ou salvar em PDF. <b>Ler a disciplina</b> junta a teoria em texto corrido, para ler de uma vez, imprimir ou salvar em PDF.</p></div>' +
+        '<b>Abrir a aula</b> leva à aula ativa (desafio, explicação, prática e os resumos de 50, 25 e 10 %). <b>Mapa mental</b> abre o mapa da aula pronto para imprimir ou salvar em PDF. <b>Ler a disciplina</b> junta a teoria em texto corrido, para ler de uma vez, grifar com marca-texto, imprimir ou salvar em PDF.</p>' +
+        '<div class="es-linha"><button class="al-bt peq fan" id="es-au-mt">🖍️ Minhas marcações</button></div></div>' +
         grupos.map(function (g, n) {
           return '<details class="es-acervo"' + (n === 0 ? ' open' : '') + '><summary><b>' + esc(g.nome) + '</b><span class="al-fino"> · ' + g.aulas.length + ' aula(s)</span></summary>' +
             '<div class="es-linha"><button class="al-bt peq" data-ler="' + esc(g.cod) + '">📄 Ler a disciplina (texto corrido / PDF)</button></div>' +
@@ -223,31 +224,194 @@
         }).join('');
       cada(alvo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
       cada(alvo, '[data-ler]', function (b) { b.onclick = function () { lerDisciplina(alvo, b.getAttribute('data-ler')); }; });
+      if (el('es-au-mt')) el('es-au-mt').onclick = function () { minhasMarcacoes(alvo); };
       cada(alvo, '[data-mapa]', function (b) { b.onclick = function () { abrirMapa(b.getAttribute('data-mapa'), window.open('', '_blank')); }; });
     }
-    function lerDisciplina(alvo, cod) {
+    // ---- MARCA-TEXTO na leitura: o que o aluno grifa fica salvo na conta dele ----
+    // A marcação é ancorada no texto CRU do bloco (aula, bloco, início, fim). Por
+    // isso cada parágrafo carrega `data-o` — a posição onde ele começa no texto
+    // cru — e o HTML não pode ter nada além do texto, <br> e <mark>, senão a conta
+    // do deslocamento a partir da seleção sai errada.
+    var COR_MARCA = { amarelo: 'Amarelo', verde: 'Verde', azul: 'Azul', rosa: 'Rosa' };
+    function textoMarcado(cru, marcas) {
+      cru = String(cru || '');
+      var pars = [], re = /\n{2,}/g, ini = 0, m;
+      while ((m = re.exec(cru))) { pars.push([ini, m.index]); ini = m.index + m[0].length; }
+      pars.push([ini, cru.length]);
+      return pars.map(function (p) {
+        var a = p[0], z = p[1], cortes = [a, z];
+        marcas.forEach(function (k) { if (k.inicio > a && k.inicio < z) cortes.push(k.inicio); if (k.fim > a && k.fim < z) cortes.push(k.fim); });
+        cortes.sort(function (x, y) { return x - y; });
+        var h = '';
+        for (var i = 0; i < cortes.length - 1; i++) {
+          var x = cortes[i], y = cortes[i + 1];
+          if (y <= x) continue;
+          var dona = null;
+          marcas.forEach(function (k) { if (k.inicio <= x && k.fim >= y) dona = k; }); // a mais recente por cima
+          var t = esc(cru.slice(x, y)).replace(/\n/g, '<br>');
+          h += dona ? '<mark class="mt-' + esc(dona.cor) + (dona.nota ? ' nota' : '') + '" data-mt="' + esc(dona.id) + '"' + (dona.nota ? ' title="' + esc(dona.nota) + '"' : '') + '>' + t + '</mark>' : t;
+        }
+        return '<p data-o="' + a + '">' + h + '</p>';
+      }).join('');
+    }
+    // posição no texto cru de um ponto (nó, deslocamento) da seleção, dentro do bloco
+    function posicaoCrua(bloco, no, des) {
+      var p = no.nodeType === 1 ? no : no.parentNode;
+      while (p && p !== bloco && !(p.getAttribute && p.getAttribute('data-o') != null)) p = p.parentNode;
+      if (!p || p === bloco) return null;
+      var total = Number(p.getAttribute('data-o')), achou = false;
+      function tam(x) { if (x.nodeType === 3) return x.nodeValue.length; if (x.nodeName === 'BR') return 1; var n = 0; for (var c = x.firstChild; c; c = c.nextSibling) n += tam(c); return n; }
+      (function anda(x) {
+        if (achou) return;
+        if (x === no) {
+          if (x.nodeType === 3) total += des; else { var c = x.firstChild; for (var i = 0; i < des && c; i++, c = c.nextSibling) total += tam(c); }
+          achou = true; return;
+        }
+        if (x.nodeType === 3) { total += x.nodeValue.length; return; }
+        if (x.nodeName === 'BR') { total += 1; return; }
+        for (var f = x.firstChild; f && !achou; f = f.nextSibling) anda(f);
+      })(p);
+      return achou ? total : null;
+    }
+    function blocoDe(no) { var x = no && (no.nodeType === 1 ? no : no.parentNode); while (x && !(x.classList && x.classList.contains('es-ler-bl'))) x = x.parentNode; return x || null; }
+
+    function lerDisciplina(alvo, cod, irPara) {
       alvo.innerHTML = '<p class="al-sub">Carregando a leitura…</p>';
-      api('GET', base() + '/leitura?disciplina=' + encodeURIComponent(cod)).then(function (r) {
+      Promise.all([api('GET', base() + '/leitura?disciplina=' + encodeURIComponent(cod)), api('GET', base() + '/marcacoes')]).then(function (rs) {
+        var r = rs[0], marcas = rs[1].marcacoes.filter(function (k) { return !k.solta; }), crus = {};
+        function doBloco(un, n) { return marcas.filter(function (k) { return k.unidade === un && k.bloco === n; }); }
         var corpo = '<h1>' + esc(r.nome) + '</h1><p class="es-ler-sub">' + esc(r.escopo) + ' · ' + r.aulas.length + ' aulas</p>' +
           r.aulas.map(function (a) {
             return '<section><h2>' + esc(a.titulo) + '</h2>' +
               (a.itens.length ? '<p class="es-ler-item">' + a.itens.map(function (i) { return '<b>' + esc(i.codigo) + '</b> ' + esc(i.texto); }).join(' · ') + '</p>' : '') +
-              a.blocos.map(function (b) { return (NOME_BLOCO[b.tipo] ? '<h3>' + NOME_BLOCO[b.tipo] + (b.titulo ? ' — ' + esc(b.titulo) : '') + '</h3>' : (b.titulo ? '<h3>' + esc(b.titulo) + '</h3>' : '')) + texto(b.texto); }).join('') +
+              a.blocos.map(function (b) {
+                crus[a.codigo + '|' + b.n] = b.texto;
+                return (NOME_BLOCO[b.tipo] ? '<h3>' + NOME_BLOCO[b.tipo] + (b.titulo ? ' — ' + esc(b.titulo) : '') + '</h3>' : (b.titulo ? '<h3>' + esc(b.titulo) + '</h3>' : '')) +
+                  '<div class="es-ler-bl" data-un="' + esc(a.codigo) + '" data-bl="' + b.n + '">' + textoMarcado(b.texto, doBloco(a.codigo, b.n)) + '</div>';
+              }).join('') +
               (a.fontes.length ? '<p class="es-ler-fontes"><b>Fontes:</b> ' + a.fontes.map(function (f) { return esc(f.titulo); }).join('; ') + '</p>' : '') + '</section>';
           }).join('');
         alvo.innerHTML = '<div class="jr-caixa"><div class="es-linha"><button class="al-bt peq fan" id="es-ler-volta">← Todas as aulas</button>' +
-          '<button class="al-bt peq" id="es-ler-pdf">🖨️ Imprimir ou salvar em PDF</button></div></div><article class="es-ler">' + corpo + '</article>';
-        el('es-ler-volta').onclick = function () { aulas(alvo); };
+          '<button class="al-bt peq fan" id="es-ler-mt">🖍️ Minhas marcações</button>' +
+          '<button class="al-bt peq" id="es-ler-pdf">🖨️ Imprimir ou salvar em PDF</button></div>' +
+          '<p class="al-fino">🖍️ Para grifar, selecione um trecho do texto e escolha a cor. As marcações ficam salvas na sua conta; toque numa marcação para anotar, trocar a cor ou apagar.</p></div>' +
+          '<article class="es-ler" id="es-ler-art">' + corpo + '</article><div class="es-mt-barra" id="es-mt" hidden></div>';
+        var art = el('es-ler-art'), barra = el('es-mt');
+        el('es-ler-volta').onclick = function () { fechar(); aulas(alvo); };
+        el('es-ler-mt').onclick = function () { fechar(); minhasMarcacoes(alvo); };
         el('es-ler-pdf').onclick = function () {
           var w = window.open('', '_blank');
           if (!w) return;
           w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(r.nome) + '</title><style>' +
-            'body{font:12pt/1.55 Georgia,serif;color:#111;max-width:720px;margin:24px auto;padding:0 20px}h1{font-size:22pt;margin:0 0 4px}h2{font-size:15pt;margin:28px 0 4px;page-break-after:avoid}' +
+            '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:12pt/1.55 Georgia,serif;color:#111;max-width:720px;margin:24px auto;padding:0 20px}h1{font-size:22pt;margin:0 0 4px}h2{font-size:15pt;margin:28px 0 4px;page-break-after:avoid}' +
             'h3{font-size:12pt;margin:16px 0 4px}p{margin:0 0 9px;text-align:justify}.es-ler-sub,.es-ler-item,.es-ler-fontes{font-size:10pt;color:#444;text-align:left}section{page-break-inside:auto}' +
-            '</style></head><body>' + corpo + '</body></html>');
+            'mark{color:inherit;border-radius:2px}.mt-amarelo{background:#fff3a3}.mt-verde{background:#c9f2d0}.mt-azul{background:#cfe6ff}.mt-rosa{background:#ffd3e2}' +
+            '</style></head><body>' + art.innerHTML + '</body></html>'); // sai com os grifos
           w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
         };
+
+        function fechar() { barra.hidden = true; barra.innerHTML = ''; }
+        function redesenha(un, n) {
+          var b = art.querySelector('.es-ler-bl[data-un="' + un + '"][data-bl="' + n + '"]');
+          if (b) b.innerHTML = textoMarcado(crus[un + '|' + n], doBloco(un, n));
+        }
+        function mostrarBarra(ret, html) {
+          barra.innerHTML = html; barra.hidden = false;
+          var larg = barra.offsetWidth || 240, alt = barra.offsetHeight || 44;
+          var x = Math.max(8, Math.min(window.innerWidth - larg - 8, ret.left + ret.width / 2 - larg / 2));
+          var y = ret.top - alt - 8; if (y < 8) y = ret.bottom + 8;
+          barra.style.left = x + 'px'; barra.style.top = y + 'px';
+        }
+        function cores(sel) {
+          return Object.keys(COR_MARCA).map(function (c) { return '<button class="mt-cor mt-' + c + (c === sel ? ' on' : '') + '" data-cor="' + c + '" title="' + COR_MARCA[c] + '" aria-label="Marcar em ' + COR_MARCA[c].toLowerCase() + '"></button>'; }).join('');
+        }
+        // seleção nova → barra de cores
+        function aoSelecionar() {
+          var s = window.getSelection();
+          if (!s || s.isCollapsed || !s.rangeCount) return;
+          var g = s.getRangeAt(0), bl = blocoDe(g.startContainer);
+          if (!bl || !art.contains(bl)) return;
+          var un = bl.getAttribute('data-un'), n = Number(bl.getAttribute('data-bl')), cru = crus[un + '|' + n];
+          var ini = posicaoCrua(bl, g.startContainer, g.startOffset);
+          // seleção que atravessa para outro trecho fica só com a parte deste
+          var fim = blocoDe(g.endContainer) === bl ? posicaoCrua(bl, g.endContainer, g.endOffset) : cru.length;
+          if (ini == null || fim == null) return;
+          while (ini < fim && /\s/.test(cru.charAt(ini))) ini++;
+          while (fim > ini && /\s/.test(cru.charAt(fim - 1))) fim--;
+          if (fim - ini < 2) return;
+          mostrarBarra(g.getBoundingClientRect(), '<span class="al-fino">Grifar:</span>' + cores(''));
+          cada(barra, '[data-cor]', function (b) {
+            b.onmousedown = function (e) { e.preventDefault(); }; // não desfaz a seleção antes do clique
+            b.onclick = function () {
+              api('POST', base() + '/marcacoes', { unidade: un, bloco: n, inicio: ini, fim: fim, cor: b.getAttribute('data-cor') }).then(function (x) {
+                marcas.push(x.marcacao); window.getSelection().removeAllRanges(); fechar(); redesenha(un, n);
+              }).catch(function (e) { barra.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+            };
+          });
+        }
+        art.addEventListener('mouseup', function () { setTimeout(aoSelecionar, 10); });
+        art.addEventListener('touchend', function () { setTimeout(aoSelecionar, 250); });
+        // toque numa marcação existente → anotar, trocar a cor, apagar
+        art.addEventListener('click', function (e) {
+          var mk = e.target.closest ? e.target.closest('mark[data-mt]') : null;
+          var s = window.getSelection();
+          if (!mk || (s && !s.isCollapsed)) return;
+          var k = marcas.filter(function (x) { return x.id === mk.getAttribute('data-mt'); })[0];
+          if (!k) return;
+          mostrarBarra(mk.getBoundingClientRect(), cores(k.cor) + '<input id="es-mt-nota" maxlength="500" placeholder="Anotação (opcional)" value="' + esc(k.nota || '') + '">' +
+            '<button class="al-bt peq" id="es-mt-ok">Salvar</button><button class="al-bt peq fan" id="es-mt-del">Apagar</button>');
+          function salvar(cor) {
+            api('PUT', base() + '/marcacoes/' + k.id, { cor: cor || k.cor, nota: el('es-mt-nota').value }).then(function (x) {
+              k.cor = x.marcacao.cor; k.nota = x.marcacao.nota; fechar(); redesenha(k.unidade, k.bloco);
+            }).catch(function (er) { barra.innerHTML = '<span class="es-msg-erro">' + esc(er.message) + '</span>'; });
+          }
+          cada(barra, '[data-cor]', function (b) { b.onclick = function () { salvar(b.getAttribute('data-cor')); }; });
+          el('es-mt-ok').onclick = function () { salvar(); };
+          el('es-mt-nota').onkeydown = function (ev) { if (ev.key === 'Enter') salvar(); };
+          el('es-mt-del').onclick = function () {
+            api('DELETE', base() + '/marcacoes/' + k.id).then(function () {
+              marcas.splice(marcas.indexOf(k), 1); fechar(); redesenha(k.unidade, k.bloco);
+            }).catch(function (er) { barra.innerHTML = '<span class="es-msg-erro">' + esc(er.message) + '</span>'; });
+          };
+        });
+        document.addEventListener('mousedown', function (e) { if (barra.isConnected && !barra.hidden && !barra.contains(e.target) && !(e.target.closest && e.target.closest('mark[data-mt]'))) fechar(); });
+        window.addEventListener('scroll', function () { if (barra.isConnected && !barra.hidden && !barra.querySelector('input')) fechar(); }, { passive: true });
+
+        if (irPara) {
+          var destino = art.querySelector('mark[data-mt="' + irPara + '"]');
+          if (destino) { destino.scrollIntoView({ block: 'center' }); destino.classList.add('pisca'); return; }
+        }
         window.scrollTo(0, 0);
+      }).catch(function (e) { falha(alvo, e); });
+    }
+
+    // ---- rever: tudo o que foi grifado, por aula, com a anotação ----
+    function minhasMarcacoes(alvo) {
+      alvo.innerHTML = '<p class="al-sub">Carregando as marcações…</p>';
+      api('GET', base() + '/marcacoes').then(function (r) {
+        var mm = materias(), comp = {}, grupos = [], por = {};
+        (E.painel.unidades || []).forEach(function (u) { comp[u.codigo] = (u.competencias || [])[0]; });
+        r.marcacoes.forEach(function (k) {
+          var g = por[k.unidade];
+          if (!g) { g = por[k.unidade] = { un: k.unidade, titulo: k.titulo || k.unidade, marcas: [] }; grupos.push(g); }
+          g.marcas.push(k);
+        });
+        function disc(un) { var m = mm[comp[un]]; return (m && m.cod) || '_metodo'; }
+        alvo.innerHTML = '<div class="jr-caixa"><p class="al-rotulo">Para rever</p><h3>Minhas marcações</h3>' +
+          '<p class="al-sub">' + (r.marcacoes.length ? r.marcacoes.length + ' trecho(s) grifado(s) em ' + grupos.length + ' aula(s).' : 'Você ainda não grifou nada. Abra uma disciplina em "Ler a disciplina", selecione um trecho e escolha a cor.') + '</p>' +
+          '<div class="es-linha"><button class="al-bt peq fan" id="es-mm-volta">← Todas as aulas</button></div></div>' +
+          grupos.map(function (g) {
+            return '<div class="jr-caixa"><h4>' + esc(g.titulo) + '</h4>' + g.marcas.map(function (k) {
+              return '<div class="es-mm"><blockquote class="mt-' + esc(k.cor) + '">' + esc(k.texto) + '</blockquote>' +
+                (k.nota ? '<p class="es-mm-nota">✎ ' + esc(k.nota) + '</p>' : '') +
+                '<p class="al-fino">' + dataBR(String(k.criado_em).slice(0, 10)) + (k.solta ? ' · <b>a aula foi reescrita e este trecho mudou de lugar</b>' : '') + ' · ' +
+                (k.solta ? '' : '<button class="es-link" data-ir="' + esc(k.id) + '" data-un="' + esc(k.unidade) + '">ver no texto</button> · ') +
+                '<button class="es-link" data-del="' + esc(k.id) + '">apagar</button></p></div>';
+            }).join('') + '</div>';
+          }).join('');
+        el('es-mm-volta').onclick = function () { aulas(alvo); };
+        cada(alvo, '[data-ir]', function (b) { b.onclick = function () { lerDisciplina(alvo, disc(b.getAttribute('data-un')), b.getAttribute('data-ir')); }; });
+        cada(alvo, '[data-del]', function (b) { b.onclick = function () { api('DELETE', base() + '/marcacoes/' + b.getAttribute('data-del')).then(function () { minhasMarcacoes(alvo); }).catch(function (e) { falha(alvo, e); }); }; });
       }).catch(function (e) { falha(alvo, e); });
     }
 

@@ -184,3 +184,17 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-ler-sub,.es-ler-item,.es-ler-fontes{font:400 .9rem/1.45 Inter,system-ui,sans-serif;color:#5a6478}
 @media(max-width:640px){.es-ler{padding:18px 16px}.es-aula-linha{flex-direction:column;align-items:flex-start}}
 .es-aula-bts{display:flex;gap:8px;align-items:center;flex-shrink:0}
+/* marca-texto na leitura */
+.es-ler mark,.es-mm blockquote{color:inherit;border-radius:3px}
+.es-ler mark{cursor:pointer;padding:1px 0}
+.es-ler mark.nota{border-bottom:2px dotted rgba(20,35,70,.55)}
+.es-ler mark.pisca{outline:3px solid var(--al-ambar);outline-offset:2px}
+.mt-amarelo{background:#fff3a3}.mt-verde{background:#c9f2d0}.mt-azul{background:#cfe6ff}.mt-rosa{background:#ffd3e2}
+.es-mt-barra{position:fixed;z-index:60;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:min(92vw,520px);background:#fff;border:1px solid rgba(20,35,70,.18);border-radius:12px;padding:8px 10px;box-shadow:0 8px 24px rgba(20,35,70,.2)}
+.es-mt-barra[hidden]{display:none}
+.es-mt-barra input{flex:1 1 180px;min-width:140px;padding:6px 8px;border:1px solid rgba(20,35,70,.25);border-radius:8px;font:inherit}
+.mt-cor{width:28px;height:28px;border-radius:50%;border:2px solid rgba(20,35,70,.25);cursor:pointer;padding:0}
+.mt-cor.on{border-color:var(--al-navy);box-shadow:0 0 0 2px #fff inset}
+.es-mm{padding:10px 0;border-top:1px solid rgba(20,35,70,.08)}
+.es-mm blockquote{margin:0 0 6px;padding:8px 12px;font:400 1rem/1.55 'Lora',Georgia,serif;white-space:pre-wrap}
+.es-mm-nota{margin:0 0 4px;font-style:italic}

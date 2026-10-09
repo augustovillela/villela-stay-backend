@@ -450,6 +450,47 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(htmlDoMapa('Aula', 'texto sem itens'), '', 'sem árvore não há mapa');
   });
 
+  await t('estudo: marca-texto — o grifo é do aluno, recortado pelo servidor, e sobrevive à reescrita da aula', async () => {
+    const idx = (await req('GET', `${esc}/leitura`, { jar: 'olga' })).json.disciplinas[0];
+    const l = (await req('GET', `${esc}/leitura?disciplina=${encodeURIComponent(idx.codigo || '_metodo')}`, { jar: 'olga' })).json;
+    const aula = l.aulas.find(x => x.blocos.length), bl = aula.blocos[0];
+    assert.ok(Number.isInteger(bl.n), 'o bloco de leitura vem com o endereço dele na aula');
+    const fora = await req('POST', `${esc}/marcacoes`, { jar: 'olga', corpo: { unidade: aula.codigo, bloco: bl.n, inicio: 0, fim: bl.texto.length + 5, cor: 'amarelo' } });
+    assert.equal(fora.st, 400, 'seleção maior que o texto não entra');
+    assert.equal((await req('POST', `${esc}/marcacoes`, { jar: 'olga', corpo: { unidade: aula.codigo, bloco: bl.n, inicio: 0, fim: 5, cor: 'roxo' } })).st, 400);
+    const fim = Math.min(12, bl.texto.length);
+    const m = await req('POST', `${esc}/marcacoes`, { jar: 'olga', corpo: { unidade: aula.codigo, bloco: bl.n, inicio: 2, fim, cor: 'verde', texto: 'INVENTADO' } });
+    assert.equal(m.st, 200, m.texto);
+    assert.equal(m.json.marcacao.texto, bl.texto.slice(2, fim), 'o trecho é o do servidor, não o que o cliente disser');
+    const id = m.json.marcacao.id;
+    const ed = await req('PUT', `${esc}/marcacoes/${id}`, { jar: 'olga', corpo: { cor: 'rosa', nota: 'cai em prova' } });
+    assert.deepEqual([ed.json.marcacao.cor, ed.json.marcacao.nota], ['rosa', 'cai em prova'], ed.texto);
+    const minhas = (await req('GET', `${esc}/marcacoes`, { jar: 'olga' })).json.marcacoes;
+    assert.deepEqual([minhas.length, minhas[0].solta, minhas[0].titulo], [1, false, aula.titulo]);
+    assert.equal((await req('GET', `${esc}/marcacoes`, { jar: 'maria' })).json.marcacoes.length, 0, 'a dona do curso não lê o grifo da aluna');
+    assert.equal((await req('DELETE', `${esc}/marcacoes/${id}`, { jar: 'maria' })).st, 404, 'nem apaga');
+    // a aula muda: o trecho é reencontrado onde estiver; se sumir, a marcação fica solta, não some
+    db.prepare('UPDATE est_marcacoes SET inicio = inicio + 3, fim = fim + 3 WHERE id = ?').run(id);
+    const re = (await req('GET', `${esc}/marcacoes`, { jar: 'olga' })).json.marcacoes[0];
+    assert.equal(bl.texto.slice(re.inicio, re.fim), re.texto, 'posição corrigida pelo trecho guardado');
+    db.prepare("UPDATE est_marcacoes SET texto = 'frase que não existe mais na aula' WHERE id = ?").run(id);
+    assert.equal((await req('GET', `${esc}/marcacoes`, { jar: 'olga' })).json.marcacoes[0].solta, true);
+    assert.equal((await req('DELETE', `${esc}/marcacoes/${id}`, { jar: 'olga' })).st, 200);
+    assert.equal((await req('GET', `${esc}/marcacoes`, { jar: 'olga' })).json.marcacoes.length, 0);
+    // a tela: o texto marcado devolve exatamente o texto cru, e a posição de cada parágrafo bate
+    const tela = require('fs').readFileSync(require('path').join(__dirname, '..', 'app-estudo.js'), 'utf8');
+    const ini = tela.indexOf('function textoMarcado'), fimF = tela.indexOf('// posição no texto cru de um ponto');
+    const textoMarcado = new Function('esc', tela.slice(ini, fimF) + ';return textoMarcado;')(x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;'));
+    const cru = ['Primeiro parágrafo', 'com duas linhas.', '', 'Segundo, com <tag> e fim.'].join('\n');
+    const html = textoMarcado(cru, [{ id: 'a', inicio: cru.indexOf('parágrafo'), fim: cru.indexOf('com dua') + 7, cor: 'amarelo', nota: '' }, { id: 'b', inicio: cru.indexOf('<tag'), fim: cru.indexOf('<tag') + 4, cor: 'azul', nota: 'n' }]);
+    const pars = [...html.matchAll(/<p data-o="(\d+)">/g)].map(x => Number(x[1]));
+    assert.deepEqual(pars, [0, cru.indexOf('Segundo')], 'cada parágrafo sabe onde começa no texto cru');
+    const devolta = html.replace(/<\/p><p[^>]*>/g, '\n\n').replace(/<br>/g, '\n').replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&amp;/g, '&');
+    assert.equal(devolta, cru, 'tirando as tags, sobra o texto cru — é isso que mantém a conta da seleção certa');
+    assert.ok(/<mark class="mt-amarelo" data-mt="a">parágrafo<br>com dua<\/mark>/.test(html), html);
+    assert.ok(/<mark class="mt-azul nota" data-mt="b" title="n">&lt;tag<\/mark>/.test(html), html);
+  });
+
   await t('estudo: cards — a sessão diz os limites do dia; o acervo inteiro é só do revisor e não agenda nada', async () => {
     const c = (await req('GET', `${esc}/cards`, { jar: 'olga' })).json;
     assert.deepEqual([c.limites.novos_dia, c.limites.revisoes_dia, c.revisor], [5, 20, false], 'a tela explica "Card 1 de 5" com estes números');

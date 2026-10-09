@@ -599,6 +599,26 @@ const MIGRACOES = [
             PRIMARY KEY (user_id, questao_id)
           );`,
   },
+  {
+    // Marca-texto da leitura: o trecho que o aluno grifou, com cor e anotação. Âncora no texto cru do
+    // bloco (aula, bloco, início, fim) + o próprio trecho, para reencontrá-lo se a aula for reescrita.
+    nome: 'estudo-marcacoes-2026-10-09',
+    sql: `CREATE TABLE IF NOT EXISTS est_marcacoes (
+            id             TEXT PRIMARY KEY,
+            user_id        TEXT NOT NULL REFERENCES users(id),
+            escopo_id      TEXT NOT NULL REFERENCES est_escopos(id),
+            unidade        TEXT NOT NULL,
+            bloco          INTEGER NOT NULL,
+            inicio         INTEGER NOT NULL,
+            fim            INTEGER NOT NULL,
+            texto          TEXT NOT NULL,
+            cor            TEXT NOT NULL,
+            nota           TEXT DEFAULT '',
+            versao_unidade INTEGER DEFAULT 1,
+            criado_em      TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_marcacoes_aluno ON est_marcacoes (user_id, escopo_id);`,
+  },
 ];
 
 for (const m of MIGRACOES) {

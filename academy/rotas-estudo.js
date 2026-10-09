@@ -36,6 +36,10 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
 
   // ---- aula ativa ----
   app.get(`${base}/leitura`, ...AL, h((req, res) => { semCache(res); res.json(al.leitura(...a(req), String(req.query.disciplina || ''))); }));
+  app.get(`${base}/marcacoes`, ...AL, h((req, res) => { semCache(res); res.json(al.marcacoes(...a(req))); }));
+  app.post(`${base}/marcacoes`, ...AL, h((req, res) => { res.json(al.marcar(...a(req), b(req))); }));
+  app.put(`${base}/marcacoes/:id`, ...AL, h((req, res) => { res.json(al.editarMarcacao(...a(req), req.params.id, b(req))); }));
+  app.delete(`${base}/marcacoes/:id`, ...AL, h((req, res) => { res.json(al.removerMarcacao(...a(req), req.params.id)); }));
   app.get(`${base}/unidades/:unidade`, ...AL, h((req, res) => { semCache(res); res.json(al.unidade(...a(req), req.params.unidade, { nivel: String(req.query.nivel || '100') })); }));
   app.post(`${base}/unidades/:unidade/blocos/:n/solucao`, ...AL, h((req, res) => { res.json(al.solucaoDoBloco(...a(req), req.params.unidade, req.params.n, b(req).tentativa)); }));
 

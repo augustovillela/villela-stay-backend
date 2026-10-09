@@ -248,7 +248,7 @@ function leitura(usuario, produto, slugEscopo, disciplina = '') {
   for (const u of R.unidades(c.escopo.id, c.vis)) {
     const d = disc(u);
     if (!por[d]) grupos.push(por[d] = { codigo: d, nome: d ? itens.get(d) : 'Método de estudo', aulas: [] });
-    const blocos = u.blocos.filter(b => BLOCOS_DE_LEITURA.includes(b.tipo) && b.texto);
+    const blocos = u.blocos.map((b, n) => ({ ...b, n })).filter(b => BLOCOS_DE_LEITURA.includes(b.tipo) && b.texto); // `n` é o endereço do bloco na aula: a marcação aponta para ele
     por[d].aulas.push({ u, blocos, caracteres: blocos.reduce((n, b) => n + b.texto.length, 0) });
   }
   if (!disciplina) {
@@ -258,7 +258,69 @@ function leitura(usuario, produto, slugEscopo, disciplina = '') {
   if (!g) throw erro('Disciplina não encontrada neste percurso.', 404);
   return { codigo: g.codigo, nome: g.nome, escopo: c.escopo.titulo,
     aulas: g.aulas.map(({ u, blocos }) => ({ codigo: u.codigo, titulo: u.titulo, itens: u.itens.map(i => ({ codigo: i, texto: itens.get(i) || '' })), versao: u.versao, status: u.status,
-      blocos: blocos.map(b => ({ tipo: b.tipo, titulo: b.titulo, texto: b.texto })), fontes: u.fontes })) };
+      blocos: blocos.map(b => ({ n: b.n, tipo: b.tipo, titulo: b.titulo, texto: b.texto })), fontes: u.fontes })) };
+}
+
+// ---------------------------------------------------------------------
+// MARCA-TEXTO — o que o aluno grifa na leitura, para rever depois. É dele:
+// ninguém mais vê. A âncora é o texto cru do bloco (aula, bloco, início, fim)
+// e o trecho vai guardado junto: se a aula for reescrita, a marcação é
+// reencontrada pelo trecho; se o trecho sumiu, ela não é apagada — aparece na
+// lista como "solta", com o texto que ele tinha marcado.
+// ---------------------------------------------------------------------
+const CORES_MARCA = ['amarelo', 'verde', 'azul', 'rosa'];
+const MAX_MARCA = 3000, MAX_MARCAS_POR_ESCOPO = 5000;
+const marcaPublica = (m, extra = {}) => ({ id: m.id, unidade: m.unidade, bloco: m.bloco, inicio: m.inicio, fim: m.fim, texto: m.texto, cor: m.cor, nota: m.nota || '', criado_em: m.criado_em, solta: false, ...extra });
+function marcacoes(usuario, produto, slugEscopo) {
+  const c = abrir(usuario, produto, slugEscopo);
+  const us = new Map(R.unidades(c.escopo.id, c.vis).map(u => [u.codigo, u]));
+  const linhas = db.prepare('SELECT * FROM est_marcacoes WHERE user_id = ? AND escopo_id = ? ORDER BY criado_em').all(usuario.id, c.escopo.id);
+  const ordem = new Map([...us.keys()].map((k, i) => [k, i]));
+  return { cores: CORES_MARCA, marcacoes: linhas.map(m => {
+    const u = us.get(m.unidade), b = u && u.blocos[m.bloco];
+    let { inicio, fim } = m, solta = !b || !BLOCOS_DE_LEITURA.includes(b.tipo);
+    if (!solta && b.texto.slice(inicio, fim) !== m.texto) {
+      const i = b.texto.indexOf(m.texto);
+      if (i < 0) solta = true; else { inicio = i; fim = i + m.texto.length; }
+    }
+    return marcaPublica(m, { inicio, fim, solta, titulo: u ? u.titulo : '' });
+  }).sort((a, b) => (ordem.get(a.unidade) ?? 1e9) - (ordem.get(b.unidade) ?? 1e9) || a.bloco - b.bloco || a.inicio - b.inicio) };
+}
+function marcar(usuario, produto, slugEscopo, d = {}) {
+  const c = abrir(usuario, produto, slugEscopo);
+  const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(d.unidade));
+  if (!u) throw erro('Aula não encontrada.', 404);
+  const n = Number(d.bloco), b = Number.isInteger(n) ? u.blocos[n] : null;
+  if (!b || !BLOCOS_DE_LEITURA.includes(b.tipo)) throw erro('Trecho não encontrado nesta aula.', 404);
+  const inicio = Number(d.inicio), fim = Number(d.fim);
+  if (!Number.isInteger(inicio) || !Number.isInteger(fim) || inicio < 0 || fim <= inicio || fim > b.texto.length) throw erro('A seleção não cabe neste trecho.');
+  if (fim - inicio > MAX_MARCA) throw erro(`Marque até ${MAX_MARCA} caracteres por vez.`);
+  if (!CORES_MARCA.includes(d.cor)) throw erro(`cor deve ser ${CORES_MARCA.join('|')}.`);
+  if (db.prepare('SELECT COUNT(*) n FROM est_marcacoes WHERE user_id = ? AND escopo_id = ?').get(usuario.id, c.escopo.id).n >= MAX_MARCAS_POR_ESCOPO) throw erro('Você chegou ao limite de marcações deste percurso. Apague as que não usa mais.', 409);
+  // o trecho é recortado AQUI, do texto do servidor: o cliente manda só as posições
+  const m = { id: novoId(), unidade: u.codigo, bloco: n, inicio, fim, texto: b.texto.slice(inicio, fim), cor: d.cor, nota: s(d.nota, 500), criado_em: nowISO() };
+  db.prepare('INSERT INTO est_marcacoes (id, user_id, escopo_id, unidade, bloco, inicio, fim, texto, cor, nota, versao_unidade, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(m.id, usuario.id, c.escopo.id, m.unidade, m.bloco, m.inicio, m.fim, m.texto, m.cor, m.nota, u.versao, m.criado_em);
+  return { ok: true, marcacao: marcaPublica(m, { titulo: u.titulo }) };
+}
+function marcacaoDoAluno(usuario, c, id) {
+  const m = db.prepare('SELECT * FROM est_marcacoes WHERE id = ? AND user_id = ? AND escopo_id = ?').get(s(id, 40), usuario.id, c.escopo.id);
+  if (!m) throw erro('Marcação não encontrada.', 404);
+  return m;
+}
+function editarMarcacao(usuario, produto, slugEscopo, id, d = {}) {
+  const c = abrir(usuario, produto, slugEscopo);
+  const m = marcacaoDoAluno(usuario, c, id);
+  const cor = d.cor == null ? m.cor : d.cor;
+  if (!CORES_MARCA.includes(cor)) throw erro(`cor deve ser ${CORES_MARCA.join('|')}.`);
+  const nota = d.nota == null ? m.nota : s(d.nota, 500);
+  db.prepare('UPDATE est_marcacoes SET cor = ?, nota = ? WHERE id = ?').run(cor, nota, m.id);
+  return { ok: true, marcacao: marcaPublica({ ...m, cor, nota }) };
+}
+function removerMarcacao(usuario, produto, slugEscopo, id) {
+  const c = abrir(usuario, produto, slugEscopo);
+  db.prepare('DELETE FROM est_marcacoes WHERE id = ?').run(marcacaoDoAluno(usuario, c, id).id);
+  return { ok: true };
 }
 function solucaoDoBloco(usuario, produto, slugEscopo, codigo, n, tentativa) {
   const c = abrir(usuario, produto, slugEscopo);
@@ -594,7 +656,7 @@ function obterPlano(usuario, produto, slugEscopo) {
 }
 
 module.exports = {
-  contexto, escopos, painel, unidade, leitura, solucaoDoBloco, praticar, pedirPista, responder, erros, anotar,
+  contexto, escopos, painel, unidade, leitura, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, pedirPista, responder, erros, anotar,
   cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,
 };
