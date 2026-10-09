@@ -1,0 +1,207 @@
+{
+ "titulo": "Pedreiro Completo na Prática",
+ "subtitulo": "Alvenaria, revestimentos, áreas externas e pequenos reparos",
+ "total": 25,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "Funções do pedreiro e sequência de uma obra",
+   "sub": "O que o pedreiro faz, as dez etapas da reforma do depósito, a leitura do local e a tabela que separa o que você faz, contrata ou só fiscaliza.",
+   "capitulos": "Capítulo 1 e elementos iniciais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "Segurança, EPIs, organização e descarte",
+   "sub": "Primeiro se arruma o canteiro, depois se veste o equipamento: a proteção de cada tarefa, os limites do seu serviço e o destino do entulho.",
+   "capitulos": "Capítulo 2 e elementos iniciais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "Medição, nível, prumo, alinhamento e esquadro",
+   "sub": "A trena, as contas de área, de volume e de regra de três, e as quatro conferências que respondem ao que o olho não responde.",
+   "capitulos": "Capítulo 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "Leitura básica de plantas, cortes e detalhes",
+   "sub": "Vale a cota, e cada vista mostra o que as outras escondem: o depósito em planta, em corte e em elevação, e o detalhe da face acabada.",
+   "capitulos": "Capítulo 3 e capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "Estrutura versus vedação: o que nunca alterar sem projeto",
+   "sub": "O que sustenta a casa não se mexe: o caminho das cargas, as cinco perguntas do porte e o que pedir antes de qualquer alteração.",
+   "capitulos": "Capítulo 1, capítulo 3 e capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "Ferramentas essenciais e uso correto",
+   "sub": "Os cinco grupos de ferramentas de alvenaria e revestimento, as regras da ferramenta elétrica e as três máquinas que ficam com o contratado.",
+   "capitulos": "Capítulo 4 e capítulo 2",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "Cimentos, agregados, argamassas e concretos",
+   "sub": "Comprar pela função lendo o saco: cimento, cal, areia, água e aditivos, o que é traço, por que a água a mais enfraquece e o princípio da cura.",
+   "capitulos": "Capítulo 4 e capítulo 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "Blocos, tijolos e materiais de revestimento",
+   "sub": "As peças da parede, as argamassas pelo serviço, o que a caixa da placa informa, colante, rejunte e selante, e como receber e guardar o material.",
+   "capitulos": "Capítulo 4",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "Visita técnica, diagnóstico e marcação",
+   "sub": "A visita em três partes, as duas anotações do ralo, a pergunta que é de profissional habilitado e a marcação da parede nova no piso do depósito.",
+   "capitulos": "Capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "Quantitativos, logística e preparação do serviço",
+   "sub": "As contas da reforma do depósito, dos blocos ao rodapé, a ordem de entrega, as dez etapas no calendário e os três testes do plano.",
+   "capitulos": "Capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "Preparação da base e primeira fiada",
+   "sub": "A confirmação do piso, a base limpa, firme e nivelada, os quatro passos da locação e a argamassa de assentamento, lida na embalagem.",
+   "capitulos": "Capítulo 6 e capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "Elevação, amarração, prumo e alinhamento",
+   "sub": "Juntas desencontradas, escantilhão e linha, as quatro conferências de cada fiada, a regra das fiadas de cima e o painel de treino.",
+   "capitulos": "Capítulo 6, com trechos do capítulo 5 e do capítulo 2",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "Vãos, vergas, contravergas e encontros",
+   "sub": "O vão nasce com a parede; a verga e a ligação com as paredes existentes são do contratado, e a conferência, antes do revestimento, é sua.",
+   "capitulos": "Capítulo 6, com trechos do capítulo 5 e do capítulo 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Passagens de instalações e compatibilização",
+   "sub": "O que se resolve antes de fechar a parede: o topo junto à laje, o que passa por dentro e a ordem em que cada profissional entra.",
+   "capitulos": "Capítulo 6, capítulo 3 e capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "Conferência e correção da alvenaria",
+   "sub": "A parede pronta se confere em cinco pontos, antes do revestimento: a que você fez e a que você contratou.",
+   "capitulos": "Capítulo 6 e capítulo 9",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "Chapisco, emboço, reboco e cura",
+   "sub": "As três camadas da parede nova, o trabalho de cada uma, as taliscas e as mestras, a espessura de referência e a cura sem secar depressa.",
+   "capitulos": "Capítulo 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Contrapiso, caimentos e regularização",
+   "sub": "O caimento se resolve na camada de baixo: o contrapiso da sala A, a soleira, a base pequena de concreto simples e o caminho intertravado.",
+   "capitulos": "Capítulo 7 e capítulo 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "Paginação e assentamento cerâmico",
+   "sub": "A conta e o desenho do piso da sala A antes da compra e da argamassa: 39 placas, o lugar de cada corte, os cinco gestos do assentamento e o rodapé.",
+   "capitulos": "Capítulo 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "Rejuntamento, selagem e acabamento",
+   "sub": "O prazo do rejunte, os três tipos de junta, os encontros que levam selante e os critérios para conferir um piso e uma parede prontos.",
+   "capitulos": "Capítulo 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "Umidade, impermeabilização, áreas externas e pequenos reparos",
+   "sub": "De onde vem a água, como afastá-la, o que é contratado na impermeabilização, os reparos de superfície e os cinco sinais que mandam parar.",
+   "capitulos": "Capítulo 3, capítulo 7 e capítulo 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "Controle de qualidade e prevenção de retrabalho",
+   "sub": "Descrever um defeito sem dar nome à causa, registrar antes de reparar e inspecionar cada etapa com a mesma lista, da parede à entrega técnica.",
+   "capitulos": "Capítulo 9",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "Orçamento, produtividade e formação de preço",
+   "sub": "O orçamento da reforma em quantidades, perdas e horas de referência, com a coluna de preço em branco e a forma do preço em quatro parcelas.",
+   "capitulos": "Capítulo 10 e capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "Proposta, medição, entrega e garantia",
+   "sub": "O combinado no papel: as seis perguntas da proposta, a medição por etapa conferida, o aditivo, o diário, a ficha de aceite e a garantia do serviço.",
+   "capitulos": "Capítulo 10, capítulo 7 e elementos finais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "Execução acompanhada do módulo da Chácara-Modelo",
+   "sub": "A reforma do depósito percorrida pelas dez etapas, com quem executa cada uma e o que se confere antes da seguinte, e o projeto final em dez páginas.",
+   "capitulos": "Capítulo 11 e elementos finais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 25,
+   "titulo": "Avaliação prática e plano de desenvolvimento profissional",
+   "sub": "A rubrica de seis critérios para avaliar o próprio projeto, os três caminhos da prática, como escolher um curso de formação e o plano de uma página.",
+   "capitulos": "Capítulo 11, capítulo 10, elementos iniciais e elementos finais",
+   "gravada": true,
+   "tem_artigo": true
+  }
+ ]
+}
