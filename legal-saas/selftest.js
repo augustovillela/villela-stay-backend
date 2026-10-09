@@ -166,6 +166,19 @@ async function rodar() {
     assert.ok(r.json.trials_vencidos >= 1);
     assert.equal(saas.repo.Tenants.obter(nova.json.tenant.id).status, 'inadimplente');
   });
+  await t('equipe do escritório pela API: só admin gerencia; link de senha funciona', async () => {
+    // "dra@beta.br" é a assinante logada no jar (signup feito acima)
+    const lista = await req('GET', '/juridico/api/usuarios', { cookies: true });
+    assert.equal(lista.st, 200); assert.equal(lista.json.admin, true); assert.equal(lista.json.usuarios.length, 1);
+    const novo = await req('POST', '/juridico/api/usuarios', { cookies: true, corpo: { nome: 'Estagiária', email: 'estag@beta.br', papel: 'usuario' } });
+    assert.equal(novo.st, 200);
+    assert.ok(/\/juridico\/definir-senha\?token=/.test(novo.json.definir_senha_url));
+    const tok = new URL(novo.json.definir_senha_url).searchParams.get('token');
+    assert.equal((await req('POST', '/juridico/api/definir-senha', { corpo: { token: tok, senha: 'SenhaEstag1' } })).st, 200);
+    assert.equal((await req('POST', '/juridico/api/usuarios', { cookies: true, corpo: { email: 'estag@beta.br' } })).st, 400);
+    assert.equal((await req('PATCH', '/juridico/api/usuarios/' + lista.json.eu, { cookies: true, corpo: { ativo: false } })).st, 400, 'não desativa a si mesmo');
+    assert.equal((await req('GET', '/juridico/api/usuarios')).st, 401, 'sem sessão não lista');
+  });
   await t('login assinante errado 5x → 429', async () => {
     for (let i = 0; i < 5; i++) await req('POST', '/juridico/api/login', { corpo: { email: 'dra@beta.br', senha: 'errada' } });
     assert.equal((await req('POST', '/juridico/api/login', { corpo: { email: 'dra@beta.br', senha: 'SenhaForte1' } })).st, 429);
@@ -203,6 +216,23 @@ async function rodar() {
     await req('POST', `/staff/api/legal-saas/tenants/${tid}/status`, { corpo: { status: 'cortesia' } });
     assert.ok((await lista()).some(a => a.id === tid));
     await req('POST', `/staff/api/legal-saas/tenants/${tid}/status`, { corpo: { status: 'ativa' } });
+  });
+  await t('equipe do escritório: admin convida, limite do plano vale, último admin não sai', async () => {
+    const repo = saas.repo;
+    const esc = repo.Tenants.criar({ nome: 'Equipe Adv', email: 'dona@equipe.br', plano: 'essencial' }, 'teste'); // essencial: 2 usuários
+    const dona = esc.usuarios[0];
+    const id2 = repo.Tenants.addUsuario(esc.id, { nome: 'Colega', email: 'Colega@Equipe.br', papel: 'usuario' });
+    assert.equal(repo.Tenants.usuarios(esc.id).find(u => u.id === id2).papel, 'usuario');
+    assert.deepEqual(repo.Tenants.usuariosPorSlug(esc.slug).map(u => u.email).sort(), ['colega@equipe.br', 'dona@equipe.br']);
+    assert.throws(() => repo.Tenants.addUsuario(esc.id, { email: 'terceiro@equipe.br' }), /Seu plano permite 2/);
+    assert.throws(() => repo.Tenants.addUsuario(esc.id, { email: 'colega@equipe.br' }), /já tem conta/);
+    assert.throws(() => repo.Tenants.mudarUsuario(esc.id, dona.id, { ativo: false }), /ao menos um administrador/);
+    assert.throws(() => repo.Tenants.mudarUsuario(tid, id2, { ativo: false }), /não encontrado/, 'usuário de outro escritório não é alcançado');
+    repo.Tenants.mudarUsuario(esc.id, id2, { ativo: false });
+    assert.equal(repo.Tenants.usuariosPorSlug(esc.slug).length, 1, 'desativado some da Equipe do jurídico');
+    assert.equal(repo.Tenants.usuarioAssinante(id2), null, 'desativado perde a sessão');
+    repo.Tenants.addUsuario(esc.id, { email: 'terceiro@equipe.br' }); // a vaga liberou
+    assert.throws(() => repo.Tenants.mudarUsuario(esc.id, id2, { ativo: true }), /Sem vaga/);
   });
   await t('auditoria administrativa registrada', async () => {
     assert.ok((await req('GET', '/staff/api/legal-saas/auditoria')).json.eventos.some(e => e.acao === 'tenant.criar'));

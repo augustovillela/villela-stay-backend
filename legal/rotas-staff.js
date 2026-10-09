@@ -509,6 +509,29 @@ function registrarRotasStaff(app, deps) {
   app.get('/staff/api/legal/buscas/:id', requireAuth, pode('ver_processos'), h((req, res) => {
     res.json({ busca: tribunais.obter(req.params.id) });
   }));
+
+  // ---- COLETA DIÁRIA DO DJEN PELO RUNNER (multi-tenant) -------------------
+  // Mesmo desenho das buscas: o servidor diz QUAIS OABs consultar (as da equipe
+  // de cada escritório, lidas por dentro) e o runner devolve as comunicações
+  // cruas para o tenant que recebeu. Sem isto, só o escritório interno tinha
+  // publicação automática — a do assinante nunca chegava.
+  app.get('/staff/api/legal/djen/oabs-todos', requirePublishOrSession, soRunner, pode('gerir_publicacoes'), h((req, res) => {
+    const out = [];
+    for (const tid of dbmod.listarTenants()) {
+      dbmod.comTenant(tid, () => {
+        const oabs = coleta.oabsDaEquipe().map(o => ({ numero: o.numero, uf: o.uf }));
+        if (oabs.length) out.push({ tenant: tid, oabs });
+      });
+    }
+    res.json({ escritorios: out, tenants: dbmod.listarTenants().length });
+  }));
+  app.post('/staff/api/legal/djen/tenant/:tenant/comunicacoes', requirePublishOrSession, soRunner, pode('gerir_publicacoes'), ha(async (req, res) => {
+    const alvo = dbmod.listarTenants().find(x => x === String(req.params.tenant));
+    if (!alvo) return res.status(404).json({ erro: 'Escritório não encontrado.' });
+    const b = req.body || {};
+    const r = await dbmod.comTenant(alvo, () => coleta.receberDoRunner({ oab: b.oab, publicacoes: b.publicacoes || [], erro: b.erro || '', periodo: b.periodo || '' }));
+    res.json({ ok: true, tenant: alvo, ...r });
+  }));
   app.post('/staff/api/legal/buscas', requireAuth, pode('criar_processos'), ha(async (req, res) => {
     const b = tribunais.criar(req.body || {}, quemFez(req));
     auditar(req, 'busca.criar', 'court_searches', b.id, `${b.modo}="${b.termo}" em ${b.tribunais.length || 'todos'} tribunal(is)`);

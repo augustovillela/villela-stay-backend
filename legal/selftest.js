@@ -72,7 +72,12 @@ function fakeAssinante(req) {
     podeModulo: (m) => modulos.includes(m),
   };
 }
-legal.montarAssinante(app, { express, assinanteDeReq: fakeAssinante, jwtSecret: 'segredo-teste' });
+// usuários do escritório 'esc-eq1' (em produção vêm do legal-saas; o id casa com 'assinante:' + uid)
+const usuariosDoTenant = (tenant) => tenant !== 'esc-eq1' ? [] : [
+  { id: 'assinante:eq1', nome: 'Dona do Escritório', email: 'eq1@esc.com', papel: 'admin', areas: ['juridico'], ativo: true },
+  { id: 'assinante:eq2', nome: 'Advogado Dois', email: 'eq2@esc.com', papel: 'membro', areas: ['juridico'], ativo: true },
+];
+legal.montarAssinante(app, { express, assinanteDeReq: fakeAssinante, jwtSecret: 'segredo-teste', usuariosDoTenant });
 
 // ---- mini harness ----
 let BASE = '', ok = 0, falhas = [];
@@ -1088,6 +1093,59 @@ async function rodar() {
     // isolamento: o interno não vê a busca nem o processo do assinante
     const staff = await req('GET', '/staff/api/legal/buscas');
     assert.ok(!staff.json.buscas.some(x => x.termo === 'Cliente do Escritorio B'), 'busca do assinante é isolada');
+  });
+
+  await t('equipe do assinante: lista os usuários do PRÓPRIO escritório, atribui perfil e OAB', async () => {
+    const dona = { uid: 'eq1', slug: 'eq1' }, adv = { uid: 'eq2', slug: 'eq1', papel: 'usuario' };
+    const eq = await req('GET', '/juridico/api/legal/equipe', { fake: dona });
+    assert.equal(eq.st, 200);
+    assert.deepEqual(eq.json.usuariosPortal.map(u => u.id).sort(), ['assinante:eq1', 'assinante:eq2']);
+    // antes do perfil, o 2º usuário só lê
+    assert.equal((await req('GET', '/juridico/api/legal/eu', { fake: adv })).json.perfil, 'visualizador');
+    // a dona registra a própria OAB e dá perfil ao colega
+    assert.equal((await req('POST', '/juridico/api/legal/equipe', { fake: dona, corpo: { id: 'assinante:eq1', role_id: 'socio_admin', oab: 'OAB/SP 55.555' } })).st, 200);
+    assert.equal((await req('POST', '/juridico/api/legal/equipe', { fake: dona, corpo: { id: 'assinante:eq2', role_id: 'adv_pleno', oab: '' } })).st, 200);
+    const eu2 = await req('GET', '/juridico/api/legal/eu', { fake: adv });
+    assert.equal(eu2.json.perfil, 'adv_pleno', 'o perfil atribuído vale no login do 2º usuário');
+    assert.equal(eu2.json.permissoes.gerir_usuarios, false);
+    assert.equal((await req('GET', '/juridico/api/legal/eu', { fake: dona })).json.perfil, 'super_admin', 'a dona segue com tudo');
+    // isolamento: outro escritório não enxerga nem alcança essas pessoas
+    const outro = { uid: 'eqx', slug: 'eqx' };
+    assert.equal((await req('GET', '/juridico/api/legal/equipe', { fake: outro })).json.usuariosPortal.length, 0);
+    assert.equal((await req('POST', '/juridico/api/legal/equipe', { fake: outro, corpo: { id: 'assinante:eq2', role_id: 'adv_pleno' } })).st, 404);
+    assert.ok(!(await req('GET', '/staff/api/legal/equipe')).json.membros.some(m => m.id === 'assinante:eq1'), 'o interno não vê a equipe do assinante');
+  });
+
+  await t('runner do DJEN: entrega as publicações do dia NO ESCRITÓRIO dono da OAB', async () => {
+    const dona = { uid: 'eq1', slug: 'eq1' };
+    // só o runner (PUBLISH_KEY): sessão do staff e sessão de assinante recebem 403
+    assert.equal((await req('GET', '/staff/api/legal/djen/oabs-todos')).st, 403);
+    assert.equal((await req('GET', '/juridico/api/legal/djen/oabs-todos', { fake: dona })).st, 403);
+    const lista = await req('GET', '/staff/api/legal/djen/oabs-todos', { chave: true });
+    assert.equal(lista.st, 200);
+    const meu = lista.json.escritorios.find(e => e.tenant === 'esc-eq1');
+    assert.deepEqual(meu && meu.oabs, [{ numero: '55555', uf: 'SP' }], 'a OAB cadastrada na Equipe entra na lista do runner');
+    const alertasAntes = enviados.alertas.length;
+    const corpo = { oab: { numero: '55555', uf: 'SP' }, periodo: '2026-10-05 a 2026-10-08', publicacoes: [
+      { data_publicacao: '2026-10-07', orgao: 'TJSP - 1a Vara', texto: '1000222-33.2026.8.26.0100 - Intimacao: prazo de 15 dias.', tem_prazo: true, payload_raw: { id: 1, tipo: 'Intimacao' } },
+      { data_publicacao: '2026-10-08', orgao: 'TJSP - 2a Vara', texto: '1000444-55.2026.8.26.0100 - Despacho.', tem_prazo: false, payload_raw: { id: 2, tipo: 'Despacho' } },
+    ] };
+    const r1 = await req('POST', '/staff/api/legal/djen/tenant/esc-eq1/comunicacoes', { chave: true, corpo });
+    assert.equal(r1.st, 200); assert.equal(r1.json.novas, 2); assert.equal(r1.json.tenant, 'esc-eq1');
+    // rodar de novo não duplica
+    assert.equal((await req('POST', '/staff/api/legal/djen/tenant/esc-eq1/comunicacoes', { chave: true, corpo })).json.novas, 0);
+    // caiu no banco do assinante, não no do interno; e não foi para o WhatsApp do dono da plataforma
+    const dele = await req('GET', '/juridico/api/legal/publicacoes', { fake: dona });
+    assert.equal(dele.json.publicacoes.filter(p => /1000222-33|1000444-55/.test(p.texto)).length, 2);
+    assert.ok(dele.json.publicacoes.every(p => !p.match_por || p.match_por === 'oab:SP55555'));
+    const interno = await req('GET', '/staff/api/legal/publicacoes');
+    assert.ok(!interno.json.publicacoes.some(p => /1000222-33|1000444-55/.test(p.texto)), 'publicação do assinante não aparece no interno');
+    assert.equal(enviados.alertas.length, alertasAntes, 'publicação do assinante não aciona o WhatsApp do dono');
+    // OAB que não é da equipe daquele escritório é recusada; escritório inexistente → 404
+    assert.equal((await req('POST', '/staff/api/legal/djen/tenant/esc-eq1/comunicacoes', { chave: true, corpo: { oab: { numero: '12003', uf: 'DF' }, publicacoes: corpo.publicacoes } })).st, 400);
+    assert.equal((await req('POST', '/staff/api/legal/djen/tenant/nao-existe/comunicacoes', { chave: true, corpo })).st, 404);
+    // falha do DJEN vira log de erro no escritório, sem derrubar nada
+    assert.equal((await req('POST', '/staff/api/legal/djen/tenant/esc-eq1/comunicacoes', { chave: true, corpo: { oab: corpo.oab, erro: 'timeout' } })).json.erro, true);
   });
 
   await t('runner da plataforma: enxerga busca pendente de TODOS os escritórios', async () => {

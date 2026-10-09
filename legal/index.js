@@ -77,6 +77,7 @@ function montar(app, injected = {}) {
 //  - assinanteDeReq(req) -> null | {
 //       uid, tenantSlug, tenantId, papel, nome, email,
 //       acessoLiberado: bool, podeModulo: (modulo)=>bool }
+//  - usuariosDoTenant(tenantSlug) -> [{ id, nome, email, papel, areas, ativo }] (tela Equipe)
 //    (montado no server.js usando o cookie jur_saas + repo do legal-saas)
 // =====================================================================
 const PREFIXO_ASSINANTE = '/juridico/api/legal';
@@ -103,7 +104,7 @@ const SEGMENTO_MODULO = {
 };
 
 function montarAssinante(app, injected = {}) {
-  const { express, assinanteDeReq, jwtSecret } = injected;
+  const { express, assinanteDeReq, jwtSecret, usuariosDoTenant } = injected;
   if (!express || typeof assinanteDeReq !== 'function') {
     throw new Error('legal.montarAssinante: faltam deps (express, assinanteDeReq).');
   }
@@ -150,7 +151,9 @@ function montarAssinante(app, injected = {}) {
   registrarRotasStaff(proxyApp, {
     repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, peticionar, tribunais, jwtSecret,
     requireAuth: passa, requireAdmin: passa, requirePublishOrSession: passa,
-    lerUsuarios: () => [], // gestão de equipe do escritório fica no painel do assinante (fora desta ponte)
+    // Tela Equipe: os "usuários do portal" do assinante são os usuários do PRÓPRIO escritório
+    // (criados no painel /juridico/app). O tenant vem do contexto da requisição, nunca do cliente.
+    lerUsuarios: () => { try { return typeof usuariosDoTenant === 'function' ? (usuariosDoTenant(dbmod.tenantAtual()) || []) : []; } catch (_) { return []; } },
   });
 
   console.log(`[legal] Ponte do assinante montada em ${PREFIXO_ASSINANTE}/* (sessão jur_saas → banco do escritório, gating por plano).`);

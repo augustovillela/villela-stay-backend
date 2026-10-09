@@ -247,11 +247,49 @@ const Tenants = {
     db.prepare('INSERT INTO workspaces (id, tenant_id, nome, slug, criado_em) VALUES (?,?,?,?,?)').run(id, s(tenantId, 40), s(nome, 120) || 'Workspace', slugify(nome || 'ws'), nowISO());
     return id;
   },
+  // ---- usuários do escritório (equipe do assinante) ----
+  usuarios(tenantId) {
+    return db.prepare(`SELECT id, nome, email, papel, ativo, ultimo_login, criado_em, (senha_hash IS NOT NULL AND senha_hash != '') AS tem_senha
+      FROM tenant_users WHERE tenant_id = ? ORDER BY criado_em`).all(s(tenantId, 40));
+  },
+  // usuários ATIVOS pelo slug do escritório — a ponte do núcleo jurídico usa para a tela Equipe
+  usuariosPorSlug(slug) {
+    return db.prepare(`SELECT u.id, u.nome, u.email, u.papel FROM tenant_users u JOIN tenants t ON t.id = u.tenant_id
+      WHERE t.slug = ? AND u.ativo = 1 ORDER BY u.criado_em`).all(s(slug, 120));
+  },
+  // vagas: limite `advogados` do plano (0 = ilimitado) × usuários ativos
+  vagasUsuarios(tenantId) {
+    const e = entitlements(tenantId);
+    const limite = Number((e && e.limites && e.limites.advogados) || 0);
+    const ativos = db.prepare('SELECT COUNT(*) n FROM tenant_users WHERE tenant_id = ? AND ativo = 1').get(s(tenantId, 40)).n;
+    return { limite, ativos, livre: limite === 0 || ativos < limite };
+  },
   addUsuario(tenantId, d) {
+    const email = s(d.email, 120).toLowerCase();
+    if (!email || !email.includes('@')) throw new Error('Informe um e-mail válido.');
+    if (db.prepare('SELECT 1 FROM tenant_users WHERE lower(email) = ?').get(email)) throw new Error('Este e-mail já tem conta neste sistema.');
+    const v = Tenants.vagasUsuarios(tenantId);
+    if (!v.livre) throw new Error(`Seu plano permite ${v.limite} usuário(s) e todos estão em uso. Desative alguém ou mude de plano.`);
     const id = novoId();
     db.prepare('INSERT INTO tenant_users (id, tenant_id, nome, email, papel, ativo, criado_em) VALUES (?,?,?,?,?,1,?)')
-      .run(id, s(tenantId, 40), s(d.nome, 120), s(d.email, 120).toLowerCase(), d.papel === 'usuario' ? 'usuario' : 'admin', nowISO());
+      .run(id, s(tenantId, 40), s(d.nome, 120) || email, email, d.papel === 'admin' ? 'admin' : 'usuario', nowISO());
+    evento(tenantId, 'usuario.criado', email, { papel: d.papel === 'admin' ? 'admin' : 'usuario' });
     return id;
+  },
+  // ativa/desativa ou muda o papel; nunca deixa o escritório sem administrador ativo
+  mudarUsuario(tenantId, uid, d) {
+    const u = db.prepare('SELECT * FROM tenant_users WHERE id = ? AND tenant_id = ?').get(s(uid, 40), s(tenantId, 40));
+    if (!u) throw new Error('Usuário não encontrado.');
+    const ativo = d.ativo == null ? u.ativo : (d.ativo ? 1 : 0);
+    const papel = d.papel == null ? u.papel : (d.papel === 'admin' ? 'admin' : 'usuario');
+    if (u.papel === 'admin' && u.ativo === 1 && (ativo === 0 || papel !== 'admin')) {
+      const outros = db.prepare("SELECT COUNT(*) n FROM tenant_users WHERE tenant_id = ? AND papel = 'admin' AND ativo = 1 AND id != ?").get(u.tenant_id, u.id).n;
+      if (!outros) throw new Error('O escritório precisa de ao menos um administrador ativo.');
+    }
+    if (ativo === 1 && u.ativo === 0 && !Tenants.vagasUsuarios(tenantId).livre) throw new Error('Sem vaga no plano para reativar este usuário.');
+    db.prepare('UPDATE tenant_users SET ativo = ?, papel = ? WHERE id = ?').run(ativo, papel, u.id);
+    evento(tenantId, 'usuario.alterado', u.email, { ativo: !!ativo, papel });
+    return db.prepare('SELECT id, nome, email, papel, ativo FROM tenant_users WHERE id = ?').get(u.id);
   },
 };
 

@@ -345,7 +345,7 @@ function appHTML() {
       const ent=me.entitlements;
       const alerta=!(ent&&ent.acesso_liberado)?'<div class="aviso">⚠️ Sua conta está <b>'+esc(me.escritorio.status)+'</b>. Regularize a cobrança para reativar o acesso.</div>':(me.escritorio.status==='trial'?'<div class="aviso">🎁 Você está no <b>período de teste</b> até '+dt(ent.trial_expira_em)+'. Assine para continuar sem interrupção.</div>':'');
       app.innerHTML='<div class="card"><h3>'+esc(me.escritorio.nome)+' <span class="tag">'+esc(ent.plano||'—')+'</span></h3>'+alerta
-        +'<div class="menu"><button class="btn g" onclick="vPlano()">💳 Plano</button><button class="btn g" onclick="vUso()">📊 Uso</button><button class="btn g" onclick="vSup()">🎧 Suporte</button>'
+        +'<div class="menu"><button class="btn g" onclick="vPlano()">💳 Plano</button><button class="btn g" onclick="vUso()">📊 Uso</button><button class="btn g" onclick="vEquipe()">👥 Equipe</button><button class="btn g" onclick="vSup()">🎧 Suporte</button>'
         +((ent&&ent.acesso_liberado)?'<a class="btn" href="/juridico/app/juridico" style="text-decoration:none">⚖️ Meu Jurídico</a>':'')
         +'<button class="btn g" id="pwa-btn" style="display:none" title="Instalar o Villela Legal como app no celular">📲 Instalar app</button>'
         +'<button class="btn g" id="push-btn" style="display:none" title="Notificações no celular">🔔 Avisos</button></div>'
@@ -373,6 +373,31 @@ function appHTML() {
         +'<h3 style="margin-top:12px">Abrir chamado</h3><input id="tk-a" placeholder="Assunto"><textarea id="tk-t" rows="3" placeholder="Descreva sua dúvida"></textarea><button class="btn" onclick="abrirTk()">Enviar</button></div>';}
     window.vSup=vSup;
     async function abrirTk(){const a=document.getElementById('tk-a').value,t=document.getElementById('tk-t').value;if(!a||!t)return;await api('POST','/tickets',{assunto:a,texto:t});vSup();}window.abrirTk=abrirTk;
+    // ---- EQUIPE do escritório: convidar, reenviar link, desativar ----
+    async function vEquipe(novo){const d=await api('GET','/usuarios');
+      const vagas=d.vagas.limite===0?'usuários ilimitados no seu plano':(d.vagas.ativos+' de '+d.vagas.limite+' usuário(s) do plano em uso');
+      const linha=u=>'<div class="lin"><b>'+esc(u.nome||u.email)+'</b> <span class="tag">'+(u.papel==='admin'?'administrador':'usuário')+'</span>'
+        +(u.ativo?'':' <span class="tag">desativado</span>')+(u.tem_senha?'':' <span class="tag">ainda não definiu a senha</span>')
+        +'<br><span class="sub">'+esc(u.email)+(u.ultimo_login?' · último acesso '+dt(u.ultimo_login):'')+'</span>'
+        +(d.admin?'<br><button class="btn g" style="padding:6px 14px" data-eq="link" data-id="'+esc(u.id)+'">🔑 Link de acesso</button>'
+          +(u.id===d.eu?'':' <button class="btn g" style="padding:6px 14px" data-eq="'+(u.ativo?'desativar':'ativar')+'" data-id="'+esc(u.id)+'">'+(u.ativo?'Desativar':'Reativar')+'</button>'):'')+'</div>';
+      c().innerHTML='<div class="card"><h3>Equipe do escritório</h3><p class="sub">'+esc(vagas)+'</p>'
+        +(novo?'<div class="aviso">✅ Usuário criado. Envie este link para <b>'+esc(novo.email)+'</b> definir a senha (vale '+esc(novo.validade)+'):<br><input readonly id="eq-link" value="'+esc(novo.url)+'" onclick="this.select()"></div>':'')
+        +d.usuarios.map(linha).join('')
+        +(d.admin?'<h3 style="margin-top:14px">Adicionar pessoa</h3><input id="eq-nome" placeholder="Nome"><input id="eq-email" type="email" placeholder="E-mail">'
+          +'<select id="eq-papel"><option value="usuario">Usuário (o perfil jurídico você define em Meu Jurídico → Equipe)</option><option value="admin">Administrador (acesso total e cobrança)</option></select>'
+          +'<button class="btn" id="eq-add">Adicionar</button><p id="eq-msg" class="erro"></p>'
+          +'<p class="sub">Depois de adicionar, abra <b>⚖️ Meu Jurídico → Equipe</b> para dar o perfil (advogado, estagiário…) e registrar a <b>OAB</b> de cada um — inclusive a sua. É a OAB que traz as publicações do DJEN automaticamente.</p>'
+          :'<p class="sub">Só o administrador do escritório adiciona ou desativa pessoas.</p>')+'</div>';
+      const add=document.getElementById('eq-add');
+      if(add)add.onclick=async()=>{const m=document.getElementById('eq-msg');m.textContent='';const email=document.getElementById('eq-email').value.trim();
+        try{const r=await api('POST','/usuarios',{nome:document.getElementById('eq-nome').value.trim(),email:email,papel:document.getElementById('eq-papel').value});
+          vEquipe({email:email,url:r.definir_senha_url,validade:r.validade_link})}catch(e){m.textContent=e.message}};
+      c().querySelectorAll('[data-eq]').forEach(b=>b.onclick=async()=>{const id=b.getAttribute('data-id'),ac=b.getAttribute('data-eq');
+        try{if(ac==='link'){const r=await api('POST','/usuarios/'+encodeURIComponent(id)+'/link');vEquipe({email:r.email,url:r.definir_senha_url,validade:r.validade_link});return}
+          if(ac==='desativar'&&!confirm('Desativar este usuário? Ele perde o acesso na hora.'))return;
+          await api('PATCH','/usuarios/'+encodeURIComponent(id),{ativo:ac==='ativar'});vEquipe()}catch(e){alert(e.message)}});}
+    window.vEquipe=vEquipe;
     // ---- notificações push do painel (PWA) — avisos de ticket/conta no celular ----
     function pushOk(){return ('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window)}
     function b64ParaU8(b){const pad='='.repeat((4-b.length%4)%4);const s=(b+pad).replace(/-/g,'+').replace(/_/g,'/');const raw=atob(s);const a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a}

@@ -17,7 +17,7 @@ const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
   const seguro = process.env.NODE_ENV !== 'development';
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0].trim();
-  const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
+  const h = (fn) => (req, res) => Promise.resolve().then(() => fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
 
   // rate limit login
   const tentativas = new Map();
@@ -126,6 +126,31 @@ function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
     if (req.assinante.papel !== 'admin') return res.status(403).json({ erro: 'Apenas admin.' });
     const id = repo.Tenants.addWorkspace(req.assinante.tenant_id, s((req.body || {}).nome, 120));
     res.json({ ok: true, id });
+  }));
+
+  // ---- EQUIPE do escritório: o administrador convida, desativa e reenvia o link ----
+  // O perfil jurídico (advogado, estagiário…) e a OAB de cada um ficam em
+  // ⚖️ Meu Jurídico → Equipe, a MESMA tela do escritório interno.
+  const BASE = (process.env.LEGAL_SAAS_BASE_URL || 'https://juridico.villelastay.com.br').replace(/\/+$/, '');
+  const soAdmin = (req, res, next) => req.assinante.papel === 'admin' ? next() : res.status(403).json({ erro: 'Apenas o administrador do escritório gerencia a equipe.' });
+  const linkSenha = (uid) => `${BASE}/juridico/definir-senha?token=${jwt.sign({ tipo: 'legalsaas-setup', uid }, jwtSecret, { expiresIn: '30d' })}`;
+  app.get('/juridico/api/usuarios', requireAssinante, h(async (req, res) => {
+    res.json({ usuarios: repo.Tenants.usuarios(req.assinante.tenant_id), vagas: repo.Tenants.vagasUsuarios(req.assinante.tenant_id), eu: req.assinante.id, admin: req.assinante.papel === 'admin' });
+  }));
+  app.post('/juridico/api/usuarios', requireAssinante, soAdmin, h(async (req, res) => {
+    const b = req.body || {};
+    const id = repo.Tenants.addUsuario(req.assinante.tenant_id, { nome: s(b.nome, 120), email: s(b.email, 120), papel: b.papel });
+    res.json({ ok: true, id, definir_senha_url: linkSenha(id), validade_link: '30 dias' });
+  }));
+  app.post('/juridico/api/usuarios/:id/link', requireAssinante, soAdmin, h(async (req, res) => {
+    const u = repo.Tenants.usuarios(req.assinante.tenant_id).find(x => x.id === req.params.id);
+    if (!u) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+    res.json({ ok: true, email: u.email, definir_senha_url: linkSenha(u.id), validade_link: '30 dias' });
+  }));
+  app.patch('/juridico/api/usuarios/:id', requireAssinante, soAdmin, h(async (req, res) => {
+    const b = req.body || {};
+    if (req.params.id === req.assinante.id && b.ativo === false) return res.status(400).json({ erro: 'Você não pode desativar o próprio acesso.' });
+    res.json({ ok: true, usuario: repo.Tenants.mudarUsuario(req.assinante.tenant_id, req.params.id, { ativo: b.ativo, papel: b.papel }) });
   }));
 
   return { requireAssinante, COOKIE };
