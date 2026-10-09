@@ -251,7 +251,14 @@
       pars.push([ini, cru.length]);
       return pars.map(function (p) {
         var a = p[0], z = p[1], txt = cru.slice(a, z), sub = ehSubtitulo(txt), fortes = [], cortes = [a, z], x;
-        if (!sub) { RE_NORMA.lastIndex = 0; while ((x = RE_NORMA.exec(txt))) fortes.push([a + x.index, a + x.index + x[0].length]); }
+        if (!sub) {
+          // título de seção colado no parágrafo ("2. Efeitos. O primeiro efeito…") também é título
+          var colado = /^\d+(?:\.\d+)*[.)]\s+[^.\n]{2,70}\.(?=\s)/.exec(txt);
+          var apos = colado ? colado[0].length : 0;
+          if (colado) fortes.push([a, a + apos]);
+          RE_NORMA.lastIndex = apos;
+          while ((x = RE_NORMA.exec(txt))) fortes.push([a + x.index, a + x.index + x[0].length]);
+        }
         fortes.forEach(function (f) { cortes.push(f[0], f[1]); });
         marcas.forEach(function (k) { if (k.inicio > a && k.inicio < z) cortes.push(k.inicio); if (k.fim > a && k.fim < z) cortes.push(k.fim); });
         cortes.sort(function (i, j) { return i - j; });

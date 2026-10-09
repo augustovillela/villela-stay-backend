@@ -496,6 +496,7 @@ async function rodar({ t, req, EST, impId }) {
     assert.deepEqual([...h2.matchAll(/<b>([^<]+)<\/b>/g)].map(x => x[1]), ['art. 7º', 'Súmula 308', 'Tema 1046'], 'negrito só nas referências');
     assert.ok(/<p data-o="\d+">Texto comum, sem citação nenhuma\.<\/p>/.test(h2), 'parágrafo comum sai sem negrito');
     assert.equal(h2.replace(/<\/p><p[^>]*>/g, '\n\n').replace(/<[^>]+>/g, ''), corrido, 'e o texto continua sendo o cru');
+    assert.ok(textoMarcado('2. Efeitos. O primeiro efeito é a releitura.', []).startsWith('<p data-o="0"><b>2. Efeitos.</b> O primeiro'), 'título de seção colado no parágrafo também ganha destaque');
     // um grifo que atravessa a referência não a quebra nem a perde
     const h3 = textoMarcado(corrido, [{ id: 'z', inicio: corrido.indexOf('no art'), fim: corrido.indexOf('XXIX'), cor: 'verde', nota: '' }]);
     assert.ok(/<mark class="mt-verde" data-mt="z">no <\/mark><mark class="mt-verde" data-mt="z"><b>art\. 7º<\/b><\/mark>/.test(h3), h3);
