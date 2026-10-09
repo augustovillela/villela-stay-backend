@@ -111,7 +111,7 @@
         if (depois) depois();
       }).catch(function (e) { falha(el('es-corpo'), e); });
     }
-    var ABAS = [['hoje', 'Hoje'], ['aulas', 'Aulas'], ['mapas', 'Mapas'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
+    var ABAS = [['hoje', 'Hoje'], ['aulas', 'Aulas'], ['mapas', 'Mapas'], ['cobrado', 'Mais cobrado'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
     function abas() {
       el('es-abas').innerHTML = ABAS.map(function (x) { return '<button data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('');
       cada(el('es-abas'), 'button', function (b) { b.onclick = function () { ir(b.getAttribute('data-a')); }; });
@@ -122,7 +122,7 @@
       cada(el('es-abas'), 'button', function (b) { b.classList.toggle('on', b.getAttribute('data-a') === aba); });
       var alvo = el('es-corpo');
       alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
-      ({ hoje: hoje, aulas: aulas, mapas: mapas, programa: programa, praticar: praticar, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
+      ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, praticar: praticar, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
     }
 
     // ================= HOJE: a próxima tarefa e os três eixos =================
@@ -595,6 +595,53 @@
       }).catch(function (e) { falha(alvo, e); });
     }
 
+    // ================= MAIS COBRADO: o que a banca já pediu, por tema — e as questões dela =================
+    // A medida é a única que temos de fato: as questões OFICIAIS deste concurso, classificadas por ponto do
+    // edital. É uma prova, não uma série histórica — a tela diz isso, para o ranking não virar promessa.
+    function maisCobrado(alvo) {
+      var p = E.painel, mm = materias(), uns = {}, compDoItem = {}, discs = [], porDisc = {};
+      p.unidades.forEach(function (u) { (u.competencias || []).forEach(function (k) { if (!uns[k]) uns[k] = u; }); });
+      var temas = p.itens.filter(function (i) { return i.folha; }).map(function (i) {
+        var comp = (i.competencias[0] || {}).codigo || '', m = mm[comp] || { disciplina: 'Programa' }, u = uns[comp];
+        compDoItem[i.codigo] = comp;
+        var d = porDisc[m.disciplina];
+        if (!d) { d = porDisc[m.disciplina] = { nome: m.disciplina, n: 0, pontos: 0, cobrados: 0 }; discs.push(d); }
+        d.n += i.oficiais || 0; d.pontos++; if (i.oficiais) d.cobrados++;
+        return { cod: i.codigo, n: i.oficiais || 0, titulo: (u && u.titulo) || i.texto, comp: comp, un: u && u.codigo, mapa: u && u.mapa, disc: m.disciplina };
+      });
+      var total = temas.reduce(function (s, t) { return s + t.n; }, 0);
+      var cobrados = temas.filter(function (t) { return t.n; }).sort(function (a, b) { return b.n - a.n || (a.cod < b.cod ? -1 : 1); });
+      if (!total) {
+        alvo.innerHTML = '<div class="jr-caixa"><h3>O que mais cai</h3><p class="al-sub">Este percurso ainda não tem questões de prova oficial classificadas por tema. Assim que houver, o ranking aparece aqui.</p></div>';
+        return;
+      }
+      var maxD = Math.max.apply(null, discs.map(function (d) { return d.n; })), maxT = cobrados[0].n;
+      alvo.innerHTML = '<div class="jr-caixa"><h3>O que mais cai</h3>' +
+        '<p class="al-sub">Os temas que a banca já cobrou, do mais ao menos pedido, e as questões da própria prova para treinar. ' +
+        'Base: <b>' + total + '</b> classificações de questões oficiais deste concurso em <b>' + cobrados.length + '</b> dos ' + temas.length + ' pontos do edital.</p>' +
+        '<p class="al-fino">É o retrato de uma prova, não uma estatística de muitos anos: mostra o estilo e as preferências da banca, mas ponto que não caiu pode cair. Use para ordenar o estudo, não para cortar matéria.</p>' +
+        '<div class="es-linha"><button class="al-bt" id="es-mc-todas">Treinar só com questões de prova oficial</button></div></div>' +
+        '<div class="jr-caixa"><h3>Por disciplina</h3><p class="al-sub">Quanto cada disciplina pesou na prova e quantos dos seus pontos foram cobrados.</p>' +
+        discs.slice().sort(function (a, b) { return b.n - a.n; }).map(function (d) {
+          return '<div class="es-mc-linha"><span class="es-mc-nome">' + esc(d.nome) + '</span><span class="es-mc-barra"><i style="width:' + (maxD ? Math.round(d.n * 100 / maxD) : 0) + '%"></i></span>' +
+            '<b class="es-mc-n">' + d.n + '</b><span class="al-fino es-mc-obs">' + d.cobrados + ' de ' + d.pontos + ' pontos</span></div>';
+        }).join('') + '</div>' +
+        '<div class="jr-caixa"><h3>Temas mais cobrados</h3><p class="al-sub">Do edital inteiro, em ordem de cobrança. Em cada tema: a aula, o mapa mental e as questões da prova sobre ele.</p>' +
+        cobrados.map(function (t, i) {
+          return '<div class="es-mc-tema"><span class="es-mc-pos">' + (i + 1) + 'º</span><div class="es-mc-txt"><b>' + esc(t.cod) + '</b> ' + esc(t.titulo) +
+            '<span class="al-fino"> · ' + esc(t.disc) + '</span><span class="es-mc-barra fina"><i style="width:' + Math.round(t.n * 100 / maxT) + '%"></i></span></div>' +
+            '<span class="es-banca">' + t.n + '× na prova</span><span class="es-aula-bts">' +
+            (t.un ? '<button class="al-bt peq fan" data-un="' + esc(t.un) + '">Aula</button>' : '') +
+            (t.mapa ? '<button class="al-bt peq fan" data-mapa="' + esc(t.un) + '">🧠 Mapa</button>' : '') +
+            (t.comp ? '<button class="al-bt peq" data-of="' + esc(t.comp) + '">Questões da prova</button>' : '') + '</span></div>';
+        }).join('') +
+        '<p class="al-fino">' + (temas.length - cobrados.length) + ' pontos do edital não foram cobrados nesta prova; eles continuam no Programa e nas Aulas.</p></div>';
+      el('es-mc-todas').onclick = function () { ir('praticar', { competencia: '', origem: 'oficial' }); };
+      cada(alvo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
+      cada(alvo, '[data-mapa]', function (b) { b.onclick = function () { abrirMapa(b.getAttribute('data-mapa'), window.open('', '_blank')); }; });
+      cada(alvo, '[data-of]', function (b) { b.onclick = function () { ir('praticar', { competencia: b.getAttribute('data-of'), origem: 'oficial' }); }; });
+    }
+
     // ================= PROGRAMA: cada item com o seu destino =================
     function programa(alvo) {
       var p = E.painel, uns = {};
@@ -820,16 +867,19 @@
       }).join('') + '</div>';
     }
     function praticar(alvo, competencia) {
+      var origem = '';
+      if (competencia && typeof competencia === 'object') { origem = competencia.origem || ''; competencia = competencia.competencia || ''; }
       var comps = E.painel.competencias, erradas = competencia === '__erradas__';
       competencia = erradas ? '' : (competencia || '');
       alvo.innerHTML = '<div class="jr-caixa"><div class="es-linha"><label class="es-campo">Matéria (disciplina e ponto do edital)<select id="es-pr-comp"><option value="">Todas as matérias</option>' +
         opcoesComp(competencia) +
-        '</select></label></div><div id="es-pr"></div></div>';
-      el('es-pr-comp').onchange = function () { praticar(alvo, el('es-pr-comp').value); };
+        '</select></label><label class="es-campo es-pr-of"><input type="checkbox" id="es-pr-of"' + (origem === 'oficial' ? ' checked' : '') + '> Só questões de prova oficial</label></div><div id="es-pr"></div></div>';
+      var denovo = function () { praticar(alvo, { competencia: el('es-pr-comp').value, origem: el('es-pr-of').checked ? 'oficial' : '' }); };
+      el('es-pr-comp').onchange = denovo; el('es-pr-of').onchange = denovo;
       var out = el('es-pr');
       if (erradas) el('es-pr-comp').parentNode.parentNode.innerHTML = '<p class="al-rotulo">Refazendo o caderno de erros</p>';
-      api('GET', base() + '/praticar?n=20&competencia=' + encodeURIComponent(competencia) + (erradas ? '&erradas=1' : '')).then(function (r) {
-        if (!r.questoes.length) { out.innerHTML = '<p class="al-sub">' + (erradas ? 'O caderno de erros está vazio.' : 'Ainda não há questões de correção automática para esta matéria.') + '</p>'; return; }
+      api('GET', base() + '/praticar?n=20&competencia=' + encodeURIComponent(competencia) + (erradas ? '&erradas=1' : '') + (origem ? '&origem=' + encodeURIComponent(origem) : '')).then(function (r) {
+        if (!r.questoes.length) { out.innerHTML = '<p class="al-sub">' + (erradas ? 'O caderno de erros está vazio.' : origem === 'oficial' ? 'A prova oficial não trouxe questão sobre esta matéria. Desmarque o filtro para treinar com as demais.' : 'Ainda não há questões de correção automática para esta matéria.') + '</p>'; return; }
         var i = 0, inicio = 0;
         function mostrar() {
           if (i >= r.questoes.length) {

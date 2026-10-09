@@ -247,3 +247,15 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-kd-onde{display:flex;justify-content:space-between;gap:12px;font:400 .82rem Inter,system-ui,sans-serif;color:var(--kd-fraco)}
 .es-kd-onde b{color:var(--kd-fg)}
 @media(max-width:640px){.es-kd-lado{flex-basis:26px;font-size:1.6rem}.es-kd-topo{flex-wrap:wrap}.es-kd-onde span:first-child{display:none}}
+/* guia Mais cobrado */
+.es-mc-linha{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(60px,3fr) 36px minmax(0,1.2fr);gap:10px;align-items:center;padding:7px 0;border-top:1px solid rgba(20,35,70,.08)}
+.es-mc-nome{font-weight:600;color:var(--al-navy)}
+.es-mc-barra{display:block;height:10px;border-radius:99px;background:rgba(20,35,70,.08);overflow:hidden}
+.es-mc-barra i{display:block;height:100%;background:linear-gradient(90deg,var(--al-ambar),var(--al-ouro))}
+.es-mc-barra.fina{height:5px;margin-top:5px;max-width:420px}
+.es-mc-n{text-align:right;color:var(--al-navy)}
+.es-mc-tema{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid rgba(20,35,70,.08);flex-wrap:wrap}
+.es-mc-pos{flex:0 0 34px;font:700 1rem 'Lora',Georgia,serif;color:var(--al-ambar2,#B45309)}
+.es-mc-txt{flex:1 1 320px;min-width:0}
+.es-pr-of{flex-direction:row;align-items:center;gap:6px}
+@media(max-width:640px){.es-mc-linha{grid-template-columns:1fr 40px}.es-mc-linha .es-mc-barra,.es-mc-obs{grid-column:1/-1}}
