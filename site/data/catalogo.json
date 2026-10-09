@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-09T11:58:13.511Z",
+  "coletadoEm": "2026-10-09T22:37:38.592Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -198,6 +198,14 @@
     }
   ],
   "cursos": [
+    {
+      "slug": "construcao-com-conteineres-na-pratica",
+      "titulo": "Construção com Contêineres na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 8 minutos, cada uma com o artigo da aula em PDF, com checklists e fichas, para decidir, contratar e fiscalizar uma construção com contêiner na chácara, do estudo do lugar à entrega da unidade. Coleção Viver de Chácara.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/Lygb_RFT_QXp?v=gGZwD55Sp5r-",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/construcao-com-conteineres-na-pratica"
+    },
     {
       "slug": "pedreiro-completo-na-pratica",
       "titulo": "Pedreiro Completo na Prática",

@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v32'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v33'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -3330,7 +3330,7 @@ ${blocos}
       texto: t('Como cuidar de uma chácara com método: piscina limpa e segura, rotina de manutenção, o que dá para fazer com as próprias mãos, o que contratar e como conferir o serviço de quem você contrata. É a coleção Viver de Chácara, para quem mora, descansa ou recebe hóspedes em uma propriedade rural.',
         'How to look after a country property with method: a clean and safe pool, a maintenance routine, what you can do yourself, what to hire out and how to check the work you pay for. This is the Viver de Chácara collection, for those who live, rest or host guests on a rural property.',
         'Cómo cuidar una casa de campo con método: piscina limpia y segura, rutina de mantenimiento, qué se puede hacer con las propias manos, qué contratar y cómo revisar el servicio contratado. Es la colección Viver de Chácara, para quien vive, descansa o recibe huéspedes en una propiedad rural.'),
-      livros: [], cursos: ['piscineiro-na-pratica', 'paisagismo-na-pratica', 'pedreiro-completo-na-pratica'], sistemas: [] },
+      livros: [], cursos: ['piscineiro-na-pratica', 'paisagismo-na-pratica', 'pedreiro-completo-na-pratica', 'construcao-com-conteineres-na-pratica'], sistemas: [] },
 
     { id: 'negocios',
       nome: t('Negócios, marketing, finanças pessoais e produtos digitais', 'Business, marketing, personal finance and digital products', 'Negocios, marketing, finanzas personales y productos digitales'),
@@ -7446,8 +7446,8 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   // (os dois andam juntos, senão o build quebra); a miniatura src/capas/curso-construcao-com-conteineres-
   // na-pratica.webp já está no repositório.
   const CT_DIR = path.join(__dirname, 'content', 'vdc-conteineres');
-  // const CT_CURSO = 'https://academia.villelastay.com.br/academy/cursos/construcao-com-conteineres-na-pratica?utm_source=villelastay&utm_medium=blog-construcao-com-conteineres-na-pratica';
-  const CT_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-construcao-com-conteineres-na-pratica';
+  // Curso publicado em 09/10/2026 (a página passou a responder 200): o endereço é o do curso.
+  const CT_CURSO = 'https://academia.villelastay.com.br/academy/cursos/construcao-com-conteineres-na-pratica?utm_source=villelastay&utm_medium=blog-construcao-com-conteineres-na-pratica';
   const ctPublicado = CT_CURSO.includes('/academy/cursos/');
   const ctDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
