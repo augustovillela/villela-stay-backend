@@ -4649,6 +4649,17 @@ try {
   });
 } catch (e) { console.error('[comunicados] falha ao montar módulo:', e.message); }
 
+// =========================== Clientes do grupo (alunos, compradores, assinantes) ===========================
+// Portal Staff → 👥 Clientes: uma tela com quem comprou livro, quem estuda na Academy e quem assina
+// cada sistema. SOMENTE LEITURA e só com SESSÃO DE ADMIN — de propósito NÃO recebe a PUBLISH_KEY
+// (chave de automação não lê base de clientes). Os e-mails da equipe do staff marcam conta interna.
+try {
+  require('./clientes').montar(app, {
+    requireAuth, requireAdmin, registrarAuditoria,
+    emailsInternos: () => lerUsuarios().map((u) => u.email),
+  });
+} catch (e) { console.error('[clientes] falha ao montar módulo:', e.message); }
+
 // =========================== Livraria Villela (loja de livros) ===========================
 // Loja pública server-rendered (SEO) + Portal Staff (Gestão de Livros) + webhook próprio.
 // Reaproveita auth/e-mail/WhatsApp/Mercado Pago já existentes (injeção de deps).

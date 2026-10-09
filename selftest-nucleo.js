@@ -308,6 +308,18 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal((await req('GET', '/staff/api/relatorios', { headers: { 'x-publish-key': 'errada' } })).status, 401);
     assert.equal((await req('GET', '/staff/api/relatorios')).status, 401);
   });
+  // A base de clientes (dado pessoal de todos os sistemas) é a exceção: a chave de
+  // automação, que abre quase tudo no staff, NÃO abre esta — nem a lista, nem o CSV.
+  await t('Clientes: só sessão de admin — anônimo=401, membro=403, PUBLISH_KEY=403, admin=200 sem cache', async () => {
+    for (const rota of ['/staff/api/clientes', '/staff/api/clientes.csv']) {
+      assert.equal((await req('GET', rota)).status, 401, rota + ' anônimo');
+      assert.equal((await req('GET', rota, { cookie: opCookie })).status, 403, rota + ' membro');
+      assert.equal((await req('GET', rota, { headers: { 'x-publish-key': 'pk-test' } })).status, 403, rota + ' só com a chave');
+      const ok = await req('GET', rota, { cookie: adminCookie });
+      assert.equal(ok.status, 200, rota + ' admin');
+      assert.match(String(ok.headers['cache-control']), /no-store/, rota + ' sem cache');
+    }
+  });
   await t('ADMIN_KEY: /api/eventos com chave certa=200, errada=401', async () => {
     assert.equal((await req('GET', '/api/eventos', { headers: { 'x-admin-key': 'ak-test' } })).status, 200);
     assert.equal((await req('GET', '/api/eventos', { headers: { 'x-admin-key': 'errada' } })).status, 401);
