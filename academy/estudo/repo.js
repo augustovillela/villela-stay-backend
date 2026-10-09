@@ -356,6 +356,18 @@ function importar(produto, dados = {}) {
       }
     }
 
+    // CORREÇÃO DE CONTEÚDO: a questão é identificada pelo texto (hash do enunciado e das alternativas).
+    // Corrigir esse texto cria uma questão nova e deixa a antiga publicada ao lado. Quem corrige manda
+    // aqui os hashes das versões superadas: elas são ARQUIVADAS (somem do aluno, ficam no histórico —
+    // prova já feita e evidência já registrada continuam apontando para elas).
+    if (dados.arquivar_questoes) {
+      const hashes = lista(dados.arquivar_questoes, 500, 40);
+      rel.questoes_arquivadas = 0;
+      const arq = db.prepare(`UPDATE est_questoes SET situacao = 'arquivada', atualizado_em = ? WHERE producer_id = ? AND hash = ? AND situacao != 'arquivada'
+        AND id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?)`);
+      for (const h of hashes) rel.questoes_arquivadas += arq.run(agora, produto.producer_id, h, escopo.id).changes;
+    }
+
     if (dados.cards) {
       rel.cards = { novos: 0, atualizados: 0 };
       const ordemCard = ordenador('est_cards');
@@ -468,6 +480,13 @@ function cobertura(escopo, { vis = ['publicado'], situacoes = ['disponivel'] } =
   };
 }
 
+// O que existe no banco para este escopo, questão a questão — para quem importa conferir se sobrou órfã.
+function questoesDoEscopo(escopo) {
+  return db.prepare(`SELECT q.id, q.hash, q.origem, q.situacao, q.uso, q.versao, q.atualizado_em,
+      (SELECT group_concat(v.codigo, ',') FROM est_questao_vinculos v WHERE v.questao_id = q.id AND v.escopo_id = ? AND v.alvo = 'item') AS itens
+    FROM est_questoes q WHERE q.id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?) ORDER BY q.criado_em, q.id`).all(escopo.id, escopo.id);
+}
+
 function resumo(productId) {
   return Escopos.doProduto(productId, STATUS).map(e => {
     const c = e.versao ? cobertura(e, { vis: STATUS, situacoes: banco.SITUACOES }) : null;
@@ -488,5 +507,5 @@ function resumo(productId) {
 
 module.exports = {
   Escopos, Questoes, itens, competencias, vinculos, unidades, cards, competenciasDaQuestao,
-  importar, definirStatus, cobertura, resumo, competenciasComPratica, slug, erro, STATUS, TIPOS, EXTENSOES, BLOCOS,
+  importar, definirStatus, cobertura, resumo, competenciasComPratica, questoesDoEscopo, slug, erro, STATUS, TIPOS, EXTENSOES, BLOCOS,
 };

@@ -84,6 +84,13 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
     const { produto } = imp.produtorDono(req.query || {});
     res.json({ resumo: est.resumo(produto.id) });
   }));
+  // as questões do escopo com o hash de cada uma — para achar a versão antiga que ficou órfã depois de uma correção
+  app.get('/staff/api/academy/estudo/questoes', ...PA, h((req, res) => {
+    const { produto } = imp.produtorDono(req.query || {});
+    const escopo = est.Escopos.porSlug(produto.id, est.slug(req.query.escopo));
+    if (!escopo) return res.status(404).json({ erro: 'Escopo não encontrado.' });
+    res.json({ questoes: est.questoesDoEscopo(escopo) });
+  }));
   // o programa inteiro com o destino de cada item — é a auditoria do edital
   app.get('/staff/api/academy/estudo/cobertura', ...PA, h((req, res) => {
     const { produto } = imp.produtorDono(req.query || {});

@@ -517,6 +517,16 @@ async function rodar({ t, req, EST, impId }) {
     const de = await req('POST', `${esc}/questoes/${pr.id}/responder`, { jar, corpo: { resposta: gab } });
     assert.deepEqual([de.json.acerto, de.json.inedita, de.json.anotacao], [true, false, 'Confundi o prazo bienal com o quinquenal.'], 'acertar a mesma questão não é demonstração');
     assert.ok(!(await ids()).includes(pr.id), 'acertou de novo: sai do caderno');
+    // correção de texto cria questão nova; a versão antiga, arquivada, some do aluno e fica no histórico
+    const lista0 = await req('GET', `/staff/api/academy/estudo/questoes?produtor_email=maria@t.com&produto_id=${impId}&escopo=${SLUG}`, { semUser: true, chave: true });
+    assert.equal(lista0.st, 200, lista0.texto);
+    const alvoQ = lista0.json.questoes.find(x => x.id === pr.id);
+    assert.ok(alvoQ && alvoQ.hash && alvoQ.situacao === 'disponivel', 'a listagem traz o hash e a situação');
+    const arq = await importar({ escopo: ESC(), arquivar_questoes: [alvoQ.hash, 'hash-que-nao-existe'] });
+    assert.equal(arq.st, 200, arq.texto);
+    assert.equal(arq.json.importado.questoes_arquivadas, 1, 'só arquiva o que existe e é deste escopo');
+    assert.ok(!(await req('GET', `${esc}/praticar?n=20`, { jar })).json.questoes.some(x => x.id === pr.id), 'questão arquivada não é mais servida');
+    assert.ok(db.prepare('SELECT 1 FROM est_evidencias WHERE ref_id = ?').get(pr.id), 'a evidência já registrada fica');
     // anotar o que nunca respondeu é recusado
     const nunca = db.prepare("SELECT q.id FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id WHERE q.id NOT IN (SELECT ref_id FROM est_evidencias) LIMIT 1").get();
     if (nunca) assert.ok([404, 409].includes((await req('PUT', `${esc}/questoes/${nunca.id}/anotacao`, { jar, corpo: { texto: 'x' } })).st), 'anotação é sobre a resposta dada');
