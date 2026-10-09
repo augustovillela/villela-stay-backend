@@ -206,13 +206,13 @@ async function rodar({ t, req, impId, jars }) {
 
   await t('carteira: a tela do aceite é carregada ANTES do app, e o app refaz a chamada com o valor aceito', async () => {
     const js = await req('GET', '/academy/carteira.js');
-    assert.equal(js.st, 200); assert.ok(/window.AcademyCarteiraUI/.test(js.texto));
+    assert.equal(js.st, 200); assert.ok(js.texto.includes('window.AcademyCarteiraUI'));
     const app = (await req('GET', '/academy/app')).texto;
     assert.ok(app.indexOf('/academy/carteira.js') > 0 && app.indexOf('/academy/carteira.js') < app.indexOf('/academy/app.js'), 'o api() do app procura window.AcademyCarteiraUI');
     const cliente = require('fs').readFileSync(require('path').join(__dirname, 'app-cliente.js'), 'utf8');
-    assert.ok(/X-IA-Aceite/.test(cliente) && /r.status === 402/.test(cliente), 'o 402 é tratado no api(), uma vez, para todas as telas');
+    assert.ok(cliente.includes('X-IA-Aceite') && cliente.includes('r.status === 402'), 'o 402 é tratado no api(), uma vez, para todas as telas');
     const staff = require('fs').readFileSync(require('path').join(__dirname, '..', 'staff', 'app-academy.js'), 'utf8');
-    assert.ok(//ia/creditos/.test(staff) && /ia: ACAD.vIA/.test(staff), 'o crédito de cortesia tem tela no Portal Staff');
+    assert.ok(staff.includes('/ia/creditos') && staff.includes('ia: ACAD.vIA'), 'o crédito de cortesia tem tela no Portal Staff');
   });
 
   // desliga a cobrança ao fim (a virada, uma vez marcada, fica)
