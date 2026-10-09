@@ -210,7 +210,7 @@
         g.aulas.push({ u: u, item: m.item });
       });
       alvo.innerHTML = '<div class="jr-caixa"><h3>Aulas</h3><p class="al-sub">' + p.unidades.length + ' aulas em ' + grupos.length + ' disciplinas, na ordem do edital. ' +
-        '<b>Abrir a aula</b> leva à aula ativa (desafio, explicação, prática e os resumos de 50, 25 e 10 %). <b>Mapa mental</b> abre o mapa da aula pronto para imprimir ou salvar em PDF. <b>Ler a disciplina</b> junta a teoria em texto corrido, em páginas numeradas, para ler, grifar com marca-texto, imprimir ou salvar em PDF. A leitura volta na página em que você parou.</p>' +
+        '<b>Abrir a aula</b> leva à aula ativa (desafio, explicação, prática e os resumos de 50, 25 e 10 %). <b>Mapa mental</b> abre o mapa da aula pronto para imprimir ou salvar em PDF. <b>Ler a disciplina</b> junta a teoria em texto corrido, como num leitor de livros: uma página por vez, do tamanho da tela, com tamanho de letra, fundo claro, sépia ou escuro, busca, marca-texto e PDF. A leitura volta na página em que você parou.</p>' +
         '<div class="es-linha"><button class="al-bt peq fan" id="es-au-mt">🖍️ Minhas marcações</button></div></div>' +
         grupos.map(function (g, n) {
           return '<details class="es-acervo"' + (n === 0 ? ' open' : '') + '><summary><b>' + esc(g.nome) + '</b><span class="al-fino"> · ' + g.aulas.length + ' aula(s)</span></summary>' +
@@ -242,7 +242,8 @@
     function ehSubtitulo(t) {
       t = t.trim();
       if (!t || t.indexOf('\n') >= 0 || t.length > 90) return false;
-      return /^\d+(\.\d+)*[.)]\s+\S/.test(t) || (t.length <= 70 && !/[.;:!?,]$/.test(t));
+      // numerado só é subtítulo se for uma frase só ("3. Evolução histórica"); "2. Efeitos. O primeiro…" é parágrafo
+      return /^\d+(\.\d+)*[.)]\s+[^.]+\.?$/.test(t) || (t.length <= 70 && !/[.;:!?,]$/.test(t));
     }
     function paragrafosMarcados(cru, marcas) {
       cru = String(cru || '');
@@ -295,117 +296,166 @@
       })(p);
       return achou ? total : null;
     }
+    // o inverso de posicaoCrua: do deslocamento no texto cru ao ponto (nó de texto, deslocamento) no DOM
+    function pontoNoDom(bloco, des) {
+      var ps = bloco.querySelectorAll('p[data-o]'), p = null, i;
+      for (i = 0; i < ps.length; i++) if (Number(ps[i].getAttribute('data-o')) <= des) p = ps[i];
+      if (!p) return null;
+      var resta = des - Number(p.getAttribute('data-o')), achado = null;
+      (function anda(x) {
+        if (achado) return;
+        if (x.nodeType === 3) { if (resta <= x.nodeValue.length) achado = [x, resta]; else resta -= x.nodeValue.length; return; }
+        if (x.nodeName === 'BR') { resta -= 1; return; }
+        for (var f = x.firstChild; f && !achado; f = f.nextSibling) anda(f);
+      })(p);
+      return achado;
+    }
     function blocoDe(no) { var x = no && (no.nodeType === 1 ? no : no.parentNode); while (x && !(x.classList && x.classList.contains('es-ler-bl'))) x = x.parentNode; return x || null; }
 
-    // ---- a leitura EM PÁGINAS: texto longo sem número de página não diz onde o leitor está ----
-    // Cada disciplina vira uma sequência de páginas de cerca de ALVO_PAGINA caracteres,
-    // cortadas só em fim de parágrafo e nunca logo depois de um subtítulo. A página
-    // guarda descritores (aula, bloco, de, até), não HTML: o HTML é refeito a cada
-    // desenho, com os grifos do momento.
-    var ALVO_PAGINA = 2800;
-    function paginar(aulas) {
-      var pags = [];
-      aulas.forEach(function (a, ia) {
-        var atual = null, tam = 0, pendente = [];
-        function nova() { atual = { aula: ia, itens: [] }; pags.push(atual); tam = 0; }
-        nova();
-        a.blocos.forEach(function (b) {
-          var rot = NOME_BLOCO[b.tipo] ? NOME_BLOCO[b.tipo] + (b.titulo ? ' — ' + b.titulo : '') : (b.titulo || '');
-          if (rot) pendente.push({ t: 'h', rot: rot });
-          paragrafosMarcados(b.texto, []).forEach(function (p) {
-            var n = p.fim - p.o;
-            // cabe? senão, página nova — levando junto o título/subtítulo que ficaria órfão no rodapé
-            if (tam && tam + n > ALVO_PAGINA && !p.sub) {
-              var orfaos = [];
-              while (atual.itens.length > 1 && atual.itens[atual.itens.length - 1].orfao) orfaos.unshift(atual.itens.pop());
-              nova();
-              orfaos.forEach(function (o) { atual.itens.push(o); tam += (o.ate - o.de) || 0; });
-            }
-            pendente.forEach(function (h) { h.orfao = true; atual.itens.push(h); });
-            pendente = [];
-            var ult = atual.itens[atual.itens.length - 1];
-            if (ult && ult.t === 'b' && ult.n === b.n && !ult.orfao && !p.sub) ult.ate = p.fim;
-            else atual.itens.push({ t: 'b', un: a.codigo, n: b.n, de: p.o, ate: p.fim, orfao: p.sub });
-            tam += n;
-          });
-        });
-        if (!atual.itens.length) pags.pop();
-      });
-      return pags;
-    }
-
+    // ---- a leitura como num leitor de livros: uma página por vez, do tamanho da tela ----
+    // A aula inteira fica num fluxo de COLUNAS da largura da janela; cada coluna é
+    // uma página, e virar a página é deslocar o fluxo. É o navegador que quebra o
+    // texto — por isso a página sempre cabe na tela, em qualquer tamanho de letra,
+    // e o texto no DOM continua sendo o cru (o marca-texto depende disso).
+    var TEMAS_KD = ['claro', 'sepia', 'escuro'], TAM_KD = [15, 16, 17, 18, 19, 20, 22, 24, 26], VAO_KD = 56;
     function lerDisciplina(alvo, cod, irPara) {
       alvo.innerHTML = '<p class="al-sub">Carregando a leitura…</p>';
       Promise.all([api('GET', base() + '/leitura?disciplina=' + encodeURIComponent(cod)), api('GET', base() + '/marcacoes')]).then(function (rs) {
-        var r = rs[0], marcas = rs[1].marcacoes.filter(function (k) { return !k.solta; }), crus = {};
-        r.aulas.forEach(function (a) { a.blocos.forEach(function (b) { crus[a.codigo + '|' + b.n] = b.texto; }); });
-        var pags = paginar(r.aulas), chave = 'es-ler:' + E.pid + ':' + E.slug + ':' + cod, pg = 0;
-        function doBloco(un, n) { return marcas.filter(function (k) { return k.unidade === un && k.bloco === n; }); }
-        function primeiraDaAula(ia) { for (var i = 0; i < pags.length; i++) if (pags[i].aula === ia) return i; return 0; }
-        function corpoDaPagina(p) {
-          return p.itens.map(function (x) {
-            if (x.t === 'h') return '<h3>' + esc(x.rot) + '</h3>';
-            return '<div class="es-ler-bl" data-un="' + esc(x.un) + '" data-bl="' + x.n + '" data-fim="' + x.ate + '">' +
-              paragrafosMarcados(crus[x.un + '|' + x.n], doBloco(x.un, x.n)).filter(function (q) { return q.o >= x.de && q.o < x.ate; }).map(function (q) { return q.html; }).join('') + '</div>';
-          }).join('');
-        }
-        function cabecalhoDaAula(ia, continua) {
-          var a = r.aulas[ia];
-          return '<h2>' + esc(a.titulo) + (continua ? ' <span class="es-ler-cont">(continuação)</span>' : '') + '</h2>' +
-            (!continua && a.itens.length ? '<p class="es-ler-item">' + a.itens.map(function (i) { return '<b>' + esc(i.codigo) + '</b> ' + esc(i.texto); }).join(' · ') + '</p>' : '');
-        }
+        var r = rs[0], marcas = rs[1].marcacoes.filter(function (k) { return !k.solta; }), crus = {}, pesos = [], totalCar = 0;
+        r.aulas.forEach(function (a) {
+          var n = 0;
+          a.blocos.forEach(function (b) { crus[a.codigo + '|' + b.n] = b.texto; n += b.texto.length; });
+          pesos.push(n); totalCar += n;
+        });
+        if (!r.aulas.length || !totalCar) { alvo.innerHTML = '<div class="jr-caixa"><p class="al-sub">Esta disciplina ainda não tem texto para leitura.</p></div>'; return; }
+        var chave = 'es-ler:' + E.pid + ':' + E.slug + ':' + cod, chavePref = 'es-ler-pref';
+        var ia = 0, pg = 0, total = 1, larg = 0, fracInicial = 0, pref = { tam: 19, tema: 'claro' };
+        try { var g0 = JSON.parse(localStorage.getItem(chave) || '{}') || {}; if (g0.ia >= 0 && g0.ia < r.aulas.length) { ia = g0.ia; fracInicial = Number(g0.fr) || 0; } } catch (e) { ia = 0; }
+        try { var p0 = JSON.parse(localStorage.getItem(chavePref) || '{}') || {}; if (TAM_KD.indexOf(p0.tam) >= 0) pref.tam = p0.tam; if (TEMAS_KD.indexOf(p0.tema) >= 0) pref.tema = p0.tema; } catch (e) { /* fica no padrão */ }
         if (irPara) {
-          var k = marcas.filter(function (x) { return x.id === irPara; })[0];
-          pags.forEach(function (p, i) { p.itens.forEach(function (x) { if (k && x.t === 'b' && x.un === k.unidade && x.n === k.bloco && k.inicio >= x.de && k.inicio < x.ate) pg = i; }); });
-        } else {
-          try { pg = Math.min(pags.length - 1, Math.max(0, parseInt(localStorage.getItem(chave), 10) || 0)); } catch (e) { pg = 0; }
+          var km = marcas.filter(function (x) { return x.id === irPara; })[0];
+          if (km) { r.aulas.forEach(function (a, i) { if (a.codigo === km.unidade) ia = i; }); fracInicial = 0; } else irPara = null;
+        }
+        function doBloco(un, n) { return marcas.filter(function (k) { return k.unidade === un && k.bloco === n; }); }
+        function htmlDaAula(i) {
+          var a = r.aulas[i];
+          return '<h2>' + esc(a.titulo) + '</h2>' +
+            (a.itens.length ? '<p class="es-ler-item">' + a.itens.map(function (x) { return '<b>' + esc(x.codigo) + '</b> ' + esc(x.texto); }).join(' · ') + '</p>' : '') +
+            a.blocos.map(function (b) {
+              var rot = NOME_BLOCO[b.tipo] ? NOME_BLOCO[b.tipo] + (b.titulo ? ' — ' + b.titulo : '') : (b.titulo || '');
+              return (rot ? '<h3>' + esc(rot) + '</h3>' : '') + '<div class="es-ler-bl" data-un="' + esc(a.codigo) + '" data-bl="' + b.n + '" data-fim="' + b.texto.length + '">' +
+                textoMarcado(b.texto, doBloco(a.codigo, b.n)) + '</div>';
+            }).join('') +
+            (a.fontes.length ? '<p class="es-ler-fontes"><b>Fontes:</b> ' + a.fontes.map(function (f) { return esc(f.titulo); }).join('; ') + '</p>' : '');
         }
 
-        alvo.innerHTML = '<div class="jr-caixa"><div class="es-linha"><button class="al-bt peq fan" id="es-ler-volta">← Todas as aulas</button>' +
-          '<button class="al-bt peq fan" id="es-ler-mt">🖍️ Minhas marcações</button>' +
-          '<button class="al-bt peq" id="es-ler-pdf">🖨️ Imprimir ou salvar em PDF</button></div>' +
-          '<p class="al-fino">🖍️ Para grifar, selecione um trecho do texto e escolha a cor. As marcações ficam salvas na sua conta; toque numa marcação para anotar, trocar a cor ou apagar.</p></div>' +
-          '<div class="es-ler-nav" id="es-ler-topo"></div><article class="es-ler" id="es-ler-art"></article><div class="es-ler-nav" id="es-ler-pe"></div><div class="es-mt-barra" id="es-mt" hidden></div>';
-        var art = el('es-ler-art'), barra = el('es-mt');
+        var kd = document.createElement('div');
+        kd.className = 'es-kd'; kd.setAttribute('data-tema', pref.tema);
+        kd.innerHTML = '<header class="es-kd-topo"><button class="es-kd-bt" id="es-kd-sair" title="Fechar a leitura (Esc)">← Fechar</button>' +
+          '<select class="es-kd-sel" id="es-kd-sel" aria-label="Ir para a aula">' + r.aulas.map(function (a, i) {
+            return '<option value="' + i + '">' + (i + 1) + '. ' + esc(String(a.titulo).slice(0, 90)) + '</option>';
+          }).join('') + '</select><span class="es-kd-acoes">' +
+          '<button class="es-kd-bt" id="es-kd-menos" title="Diminuir a letra" aria-label="Diminuir a letra">A−</button>' +
+          '<button class="es-kd-bt" id="es-kd-mais" title="Aumentar a letra" aria-label="Aumentar a letra">A+</button>' +
+          '<button class="es-kd-bt" id="es-kd-tema" title="Trocar o fundo: claro, sépia ou escuro" aria-label="Trocar o fundo">◐</button>' +
+          '<button class="es-kd-bt" id="es-kd-busca" title="Procurar na disciplina" aria-label="Procurar na disciplina">🔎</button>' +
+          '<button class="es-kd-bt" id="es-kd-mt" title="Minhas marcações" aria-label="Minhas marcações">🖍️</button>' +
+          '<button class="es-kd-bt" id="es-kd-pdf" title="Imprimir ou salvar em PDF" aria-label="Imprimir ou salvar em PDF">🖨️</button></span></header>' +
+          '<div class="es-kd-buscar" id="es-kd-buscar" hidden><input id="es-kd-q" maxlength="80" placeholder="Procurar nesta disciplina…" aria-label="Procurar nesta disciplina">' +
+          '<button class="es-kd-bt" id="es-kd-q-ir">Próxima ocorrência</button><span class="es-kd-q-msg" id="es-kd-q-msg"></span></div>' +
+          '<div class="es-kd-palco"><button class="es-kd-lado" id="es-kd-ant" aria-label="Página anterior">‹</button>' +
+          '<div class="es-kd-janela" id="es-kd-janela"><article class="es-ler es-kd-fluxo" id="es-ler-art"></article></div>' +
+          '<button class="es-kd-lado" id="es-kd-prox" aria-label="Próxima página">›</button></div>' +
+          '<footer class="es-kd-pe"><div class="es-ler-barra"><i id="es-kd-barra"></i></div><div class="es-kd-onde" id="es-kd-onde"></div></footer>' +
+          '<div class="es-mt-barra" id="es-mt" hidden></div>';
+        alvo.innerHTML = ''; alvo.appendChild(kd);
+        var rolagemAntes = document.documentElement.style.overflow;
+        document.documentElement.style.overflow = 'hidden'; // a página é a tela: nada rola por trás
+        var art = el('es-ler-art'), barra = el('es-mt'), jan = el('es-kd-janela');
 
-        function nav(onde) {
-          var p = pags[pg], ia = p.aula, pct = Math.round((pg + 1) * 100 / pags.length);
-          var naAula = pg - primeiraDaAula(ia) + 1, totAula = pags.filter(function (q) { return q.aula === ia; }).length;
-          el(onde).innerHTML = '<div class="es-ler-onde"><b>' + esc(r.nome) + '</b> · aula ' + (ia + 1) + ' de ' + r.aulas.length +
-            ' · <b>página ' + (pg + 1) + ' de ' + pags.length + '</b><span class="al-fino"> (' + naAula + 'ª de ' + totAula + ' desta aula)</span></div>' +
-            '<div class="es-ler-barra"><i style="width:' + pct + '%"></i></div>' +
-            '<div class="es-linha"><button class="al-bt peq fan" data-pg="-1"' + (pg ? '' : ' disabled') + '>← Página anterior</button>' +
-            '<select class="es-ler-sel" aria-label="Ir para a aula">' + r.aulas.map(function (a, i) {
-              return '<option value="' + i + '"' + (i === ia ? ' selected' : '') + '>' + (i + 1) + '. ' + esc(String(a.titulo).slice(0, 80)) + '</option>';
-            }).join('') + '</select>' +
-            '<button class="al-bt peq" data-pg="1"' + (pg < pags.length - 1 ? '' : ' disabled') + '>Próxima página →</button></div>';
-          cada(el(onde), '[data-pg]', function (b) { b.onclick = function () { irPagina(pg + Number(b.getAttribute('data-pg')), true); }; });
-          el(onde).querySelector('select').onchange = function (e) { irPagina(primeiraDaAula(Number(e.target.value)), true); };
+        function mostrar() {
+          art.style.transform = 'translateX(' + (-(pg * (larg + VAO_KD))) + 'px)';
+          var antes = 0, i;
+          for (i = 0; i < ia; i++) antes += pesos[i];
+          var pct = Math.min(100, Math.round((antes + pesos[ia] * (pg + 1) / total) * 100 / totalCar));
+          el('es-kd-barra').style.width = pct + '%';
+          el('es-kd-onde').innerHTML = '<span>' + esc(r.nome) + ' · aula ' + (ia + 1) + ' de ' + r.aulas.length + '</span><b>página ' + (pg + 1) + ' de ' + total + '</b><span>' + pct + '% da disciplina</span>';
+          el('es-kd-ant').disabled = !ia && !pg;
+          el('es-kd-prox').disabled = ia === r.aulas.length - 1 && pg === total - 1;
+          el('es-kd-sel').value = String(ia);
+          try { localStorage.setItem(chave, JSON.stringify({ ia: ia, fr: pg / total })); } catch (e) { /* sem armazenamento, só não lembra onde parou */ }
         }
-        function desenhar() {
-          var p = pags[pg];
-          art.innerHTML = cabecalhoDaAula(p.aula, pg !== primeiraDaAula(p.aula)) + corpoDaPagina(p) +
-            (pg === pags.length - 1 || pags[pg + 1].aula !== p.aula ? (r.aulas[p.aula].fontes.length ? '<p class="es-ler-fontes"><b>Fontes:</b> ' + r.aulas[p.aula].fontes.map(function (f) { return esc(f.titulo); }).join('; ') + '</p>' : '') : '') +
-            '<p class="es-ler-num">' + (pg + 1) + '</p>';
-          nav('es-ler-topo'); nav('es-ler-pe');
+        // mede as páginas da aula que está no fluxo; `frac` (0 a 1) reposiciona quando o tamanho da página muda
+        function medir(frac) {
+          larg = jan.clientWidth;
+          art.style.fontSize = pref.tam + 'px';
+          art.style.columnWidth = larg + 'px'; art.style.columnGap = VAO_KD + 'px';
+          total = Math.max(1, Math.round((art.scrollWidth + VAO_KD) / (larg + VAO_KD)));
+          if (frac != null) pg = Math.floor(frac * total + 1e-6);
+          pg = Math.min(total - 1, Math.max(0, pg));
+          mostrar();
         }
-        function irPagina(n, subir) {
-          pg = Math.min(pags.length - 1, Math.max(0, n));
-          try { localStorage.setItem(chave, String(pg)); } catch (e) { /* sem armazenamento, só não lembra onde parou */ }
-          fechar(); desenhar();
-          if (subir) el('es-ler-topo').scrollIntoView({ block: 'start' });
+        function semAnimar(fn) { art.style.transition = 'none'; fn(); void art.offsetWidth; art.style.transition = ''; }
+        function abrirAula(i, onde) {
+          ia = i; fechar();
+          semAnimar(function () { art.innerHTML = htmlDaAula(i); pg = 0; medir(onde === 'fim' ? 1 : (onde || 0)); if (onde === 'fim') { pg = total - 1; mostrar(); } });
+        }
+        function redesenhar() { semAnimar(function () { art.innerHTML = htmlDaAula(ia); medir(null); }); }
+        function virar(d) {
+          fechar();
+          if (pg + d >= 0 && pg + d < total) { pg += d; mostrar(); }
+          else if (d > 0 && ia < r.aulas.length - 1) abrirAula(ia + 1, 0);
+          else if (d < 0 && ia > 0) abrirAula(ia - 1, 'fim');
+        }
+        function guardarPref() { try { localStorage.setItem(chavePref, JSON.stringify(pref)); } catch (e) { /* preferência não guardada */ } }
+        function sair(depois) {
+          document.removeEventListener('keydown', tecla); window.removeEventListener('resize', aoRedimensionar); document.removeEventListener('mousedown', foraDaBarra);
+          document.documentElement.style.overflow = rolagemAntes;
+          (depois || aulas)(alvo);
         }
 
-        el('es-ler-volta').onclick = function () { fechar(); aulas(alvo); };
-        el('es-ler-mt').onclick = function () { fechar(); minhasMarcacoes(alvo); };
-        el('es-ler-pdf').onclick = function () {
+        el('es-kd-sair').onclick = function () { sair(); };
+        el('es-kd-ant').onclick = function () { virar(-1); };
+        el('es-kd-prox').onclick = function () { virar(1); };
+        el('es-kd-sel').onchange = function (e) { abrirAula(Number(e.target.value), 0); e.target.blur(); };
+        el('es-kd-menos').onclick = function () { var i = TAM_KD.indexOf(pref.tam); if (i > 0) { pref.tam = TAM_KD[i - 1]; guardarPref(); semAnimar(function () { medir(pg / total); }); } };
+        el('es-kd-mais').onclick = function () { var i = TAM_KD.indexOf(pref.tam); if (i < TAM_KD.length - 1) { pref.tam = TAM_KD[i + 1]; guardarPref(); semAnimar(function () { medir(pg / total); }); } };
+        el('es-kd-tema').onclick = function () { pref.tema = TEMAS_KD[(TEMAS_KD.indexOf(pref.tema) + 1) % TEMAS_KD.length]; kd.setAttribute('data-tema', pref.tema); guardarPref(); };
+        el('es-kd-mt').onclick = function () { sair(minhasMarcacoes); };
+        // busca na disciplina inteira: da página atual em diante, dando a volta; o achado fica selecionado
+        function semAcento(t) { return String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+        var achado = null, indice = null;
+        function procurar() {
+          var q = semAcento(el('es-kd-q').value.trim()), msg = el('es-kd-q-msg');
+          if (q.length < 2) { msg.textContent = 'Digite pelo menos duas letras.'; return; }
+          if (!indice) { indice = []; r.aulas.forEach(function (a, i) { a.blocos.forEach(function (b) { indice.push({ i: i, n: b.n, un: a.codigo, t: semAcento(b.texto) }); }); }); }
+          var mesma = achado && achado.q === q, ini = 0, k;
+          if (mesma) ini = achado.k; else for (k = 0; k < indice.length; k++) if (indice[k].i === ia) { ini = k; break; }
+          for (var v = 0; v <= indice.length; v++) {
+            k = (ini + v) % indice.length;
+            var o = indice[k].t.indexOf(q, v === 0 && mesma ? achado.o + 1 : 0);
+            if (o < 0) continue;
+            achado = { q: q, k: k, o: o }; msg.textContent = '';
+            if (indice[k].i !== ia) abrirAula(indice[k].i, 0);
+            var bl = art.querySelector('.es-ler-bl[data-un="' + indice[k].un + '"][data-bl="' + indice[k].n + '"]');
+            var a = bl && pontoNoDom(bl, o), z = bl && pontoNoDom(bl, o + q.length);
+            if (!a || !z) return;
+            var g = document.createRange(); g.setStart(a[0], a[1]); g.setEnd(z[0], z[1]);
+            var onde = g.getBoundingClientRect().left - art.getBoundingClientRect().left;
+            semAnimar(function () { pg = Math.min(total - 1, Math.max(0, Math.floor(onde / (larg + VAO_KD)))); mostrar(); });
+            var s = window.getSelection(); s.removeAllRanges(); s.addRange(g);
+            return;
+          }
+          msg.textContent = 'Não encontrei "' + el('es-kd-q').value.trim() + '" nesta disciplina.';
+        }
+        el('es-kd-busca').onclick = function () { var b = el('es-kd-buscar'); b.hidden = !b.hidden; if (!b.hidden) el('es-kd-q').focus(); semAnimar(function () { medir(pg / total); }); };
+        el('es-kd-q-ir').onclick = procurar;
+        el('es-kd-q').onkeydown = function (e) { if (e.key === 'Enter') procurar(); else if (e.key === 'Escape') { el('es-kd-buscar').hidden = true; semAnimar(function () { medir(pg / total); }); } };
+        el('es-kd-pdf').onclick = function () {
           var w = window.open('', '_blank');
           if (!w) return;
           // o PDF sai com a disciplina inteira, corrida, com os grifos
-          var tudo = '<h1>' + esc(r.nome) + '</h1><p class="es-ler-sub">' + esc(r.escopo) + ' · ' + r.aulas.length + ' aulas</p>' + r.aulas.map(function (a, ia) {
-            return '<section>' + cabecalhoDaAula(ia, false) + pags.filter(function (p) { return p.aula === ia; }).map(corpoDaPagina).join('') +
-              (a.fontes.length ? '<p class="es-ler-fontes"><b>Fontes:</b> ' + a.fontes.map(function (f) { return esc(f.titulo); }).join('; ') + '</p>' : '') + '</section>';
-          }).join('');
+          var tudo = '<h1>' + esc(r.nome) + '</h1><p class="es-ler-sub">' + esc(r.escopo) + ' · ' + r.aulas.length + ' aulas</p>' + r.aulas.map(function (a, i) { return '<section>' + htmlDaAula(i) + '</section>'; }).join('');
           w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(r.nome) + '</title><style>' +
             '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:12pt/1.55 Georgia,serif;color:#111;max-width:720px;margin:24px auto;padding:0 20px}h1{font-size:22pt;margin:0 0 4px}' +
             'h2{font-size:16pt;margin:30px 0 4px;page-break-after:avoid;border-bottom:1.5px solid #1B2A4A;padding-bottom:4px}h3{font-size:12pt;margin:16px 0 4px;page-break-after:avoid}' +
@@ -415,12 +465,37 @@
             '</style></head><body>' + tudo + '</body></html>');
           w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
         };
+        // teclado: setas, PageUp/PageDown e espaço viram a página; Esc fecha. Fora dos campos de digitar.
+        function tecla(e) {
+          if (!kd.isConnected) { document.removeEventListener('keydown', tecla); return; }
+          var t = e.target && e.target.tagName;
+          if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || e.ctrlKey || e.metaKey || e.altKey) return;
+          if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); virar(1); }
+          else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); virar(-1); }
+          else if (e.key === 'Escape') { if (!barra.hidden) fechar(); else sair(); }
+        }
+        var espera = 0;
+        function aoRedimensionar() {
+          if (!kd.isConnected) { window.removeEventListener('resize', aoRedimensionar); return; }
+          clearTimeout(espera); espera = setTimeout(function () { semAnimar(function () { medir(pg / total); }); }, 120);
+        }
+        document.addEventListener('keydown', tecla);
+        window.addEventListener('resize', aoRedimensionar);
+        // dedo: arrastar para o lado vira a página (sem atrapalhar quem está selecionando texto)
+        var toqueX = null;
+        jan.addEventListener('touchstart', function (e) { toqueX = e.touches.length === 1 ? e.touches[0].clientX : null; }, { passive: true });
+        jan.addEventListener('touchend', function (e) {
+          var s = window.getSelection();
+          if (toqueX == null || (s && !s.isCollapsed)) { toqueX = null; return; }
+          var dx = e.changedTouches[0].clientX - toqueX; toqueX = null;
+          if (Math.abs(dx) > 60) virar(dx < 0 ? 1 : -1);
+        }, { passive: true });
 
         function fechar() { barra.hidden = true; barra.innerHTML = ''; }
         function mostrarBarra(ret, html) {
           barra.innerHTML = html; barra.hidden = false;
-          var larg = barra.offsetWidth || 240, alt = barra.offsetHeight || 44;
-          var x = Math.max(8, Math.min(window.innerWidth - larg - 8, ret.left + ret.width / 2 - larg / 2));
+          var lb = barra.offsetWidth || 240, alt = barra.offsetHeight || 44;
+          var x = Math.max(8, Math.min(window.innerWidth - lb - 8, ret.left + ret.width / 2 - lb / 2));
           var y = ret.top - alt - 8; if (y < 8) y = ret.bottom + 8;
           barra.style.left = x + 'px'; barra.style.top = y + 'px';
         }
@@ -436,9 +511,7 @@
           var un = bl.getAttribute('data-un'), n = Number(bl.getAttribute('data-bl')), cru = crus[un + '|' + n];
           var ini = posicaoCrua(bl, g.startContainer, g.startOffset);
           // seleção que atravessa para outro trecho fica só com a parte deste
-          // (o mesmo bloco pode estar em mais de uma caixa na página — subtítulo e parágrafos; aí a seleção segue)
-          var bf = blocoDe(g.endContainer);
-          var fim = bf && bf.getAttribute('data-un') === un && bf.getAttribute('data-bl') === String(n) ? posicaoCrua(bf, g.endContainer, g.endOffset) : Number(bl.getAttribute('data-fim'));
+          var fim = blocoDe(g.endContainer) === bl ? posicaoCrua(bl, g.endContainer, g.endOffset) : Number(bl.getAttribute('data-fim'));
           if (ini == null || fim == null) return;
           while (ini < fim && /\s/.test(cru.charAt(ini))) ini++;
           while (fim > ini && /\s/.test(cru.charAt(fim - 1))) fim--;
@@ -448,7 +521,7 @@
             b.onmousedown = function (e) { e.preventDefault(); }; // não desfaz a seleção antes do clique
             b.onclick = function () {
               api('POST', base() + '/marcacoes', { unidade: un, bloco: n, inicio: ini, fim: fim, cor: b.getAttribute('data-cor') }).then(function (x) {
-                marcas.push(x.marcacao); window.getSelection().removeAllRanges(); fechar(); desenhar();
+                marcas.push(x.marcacao); window.getSelection().removeAllRanges(); fechar(); redesenhar();
               }).catch(function (e) { barra.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
             };
           });
@@ -466,7 +539,7 @@
             '<button class="al-bt peq" id="es-mt-ok">Salvar</button><button class="al-bt peq fan" id="es-mt-del">Apagar</button>');
           function salvar(cor) {
             api('PUT', base() + '/marcacoes/' + k.id, { cor: cor || k.cor, nota: el('es-mt-nota').value }).then(function (x) {
-              k.cor = x.marcacao.cor; k.nota = x.marcacao.nota; fechar(); desenhar();
+              k.cor = x.marcacao.cor; k.nota = x.marcacao.nota; fechar(); redesenhar();
             }).catch(function (er) { barra.innerHTML = '<span class="es-msg-erro">' + esc(er.message) + '</span>'; });
           }
           cada(barra, '[data-cor]', function (b) { b.onclick = function () { salvar(b.getAttribute('data-cor')); }; });
@@ -474,20 +547,21 @@
           el('es-mt-nota').onkeydown = function (ev) { if (ev.key === 'Enter') salvar(); };
           el('es-mt-del').onclick = function () {
             api('DELETE', base() + '/marcacoes/' + k.id).then(function () {
-              marcas.splice(marcas.indexOf(k), 1); fechar(); desenhar();
+              marcas.splice(marcas.indexOf(k), 1); fechar(); redesenhar();
             }).catch(function (er) { barra.innerHTML = '<span class="es-msg-erro">' + esc(er.message) + '</span>'; });
           };
         });
-        document.addEventListener('mousedown', function (e) { if (barra.isConnected && !barra.hidden && !barra.contains(e.target) && !(e.target.closest && e.target.closest('mark[data-mt]'))) fechar(); });
-        window.addEventListener('scroll', function () { if (barra.isConnected && !barra.hidden && !barra.querySelector('input')) fechar(); }, { passive: true });
+        function foraDaBarra(e) {
+          if (!kd.isConnected) { document.removeEventListener('mousedown', foraDaBarra); return; }
+          if (!barra.hidden && !barra.contains(e.target) && !(e.target.closest && e.target.closest('mark[data-mt]'))) fechar();
+        }
+        document.addEventListener('mousedown', foraDaBarra);
 
-        if (!pags.length) { art.innerHTML = '<p class="al-sub">Esta disciplina ainda não tem texto para leitura.</p>'; return; }
-        desenhar();
+        abrirAula(ia, fracInicial);
         if (irPara) {
           var destino = art.querySelector('mark[data-mt="' + irPara + '"]');
-          if (destino) { destino.scrollIntoView({ block: 'center' }); destino.classList.add('pisca'); return; }
+          if (destino) { semAnimar(function () { pg = Math.min(total - 1, Math.max(0, Math.floor(destino.offsetLeft / (larg + VAO_KD)))); mostrar(); }); destino.classList.add('pisca'); }
         }
-        window.scrollTo(0, 0);
       }).catch(function (e) { falha(alvo, e); });
     }
 

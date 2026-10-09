@@ -500,15 +500,8 @@ async function rodar({ t, req, EST, impId }) {
     // um grifo que atravessa a referência não a quebra nem a perde
     const h3 = textoMarcado(corrido, [{ id: 'z', inicio: corrido.indexOf('no art'), fim: corrido.indexOf('XXIX'), cor: 'verde', nota: '' }]);
     assert.ok(/<mark class="mt-verde" data-mt="z">no <\/mark><mark class="mt-verde" data-mt="z"><b>art\. 7º<\/b><\/mark>/.test(h3), h3);
-    // paginação: cada parágrafo aparece uma vez, na ordem, e nenhum subtítulo fica órfão no fim da página
-    const paginar = new Function('esc', 'NOME_BLOCO', tela.slice(ini, fimF) + tela.slice(tela.indexOf('var ALVO_PAGINA'), tela.indexOf('function lerDisciplina')) + ';return paginar;')(x => String(x), { explicacao: '', exemplo: 'Exemplo', sintese: 'Síntese' });
-    const longo = Array.from({ length: 12 }, (_, i) => `${i + 1}. Seção ${i + 1}\n\n` + 'Parágrafo de corpo com tamanho razoável para encher a página. '.repeat(12).trim()).join('\n\n');
-    const pgs = paginar([{ codigo: 'u1', blocos: [{ n: 1, tipo: 'explicacao', titulo: '', texto: longo }, { n: 2, tipo: 'sintese', titulo: '', texto: 'Fecho da aula.' }] }]);
-    assert.ok(pgs.length >= 3, 'texto longo vira várias páginas: ' + pgs.length);
-    const faixas = pgs.flatMap(p => p.itens.filter(x => x.t === 'b' && x.n === 1).map(x => [x.de, x.ate]));
-    assert.ok(faixas.every((f, i) => i === 0 || f[0] > faixas[i - 1][1] - 1), 'faixas em ordem, sem sobreposição');
-    assert.equal(faixas[0][0], 0); assert.equal(faixas[faixas.length - 1][1], longo.length, 'do primeiro ao último caractere');
-    assert.ok(pgs.every(p => !p.itens[p.itens.length - 1].orfao), 'nenhuma página termina em título ou subtítulo');
+    // a leitura é um fluxo de colunas: a página é do navegador, e o texto do DOM continua sendo o cru
+    assert.ok(/columnWidth = larg \+ 'px'/.test(tela) && /function pontoNoDom/.test(tela), 'o leitor pagina por colunas e sabe achar um trecho no DOM');
   });
 
   await t('estudo: mapas — a página que reúne os mapas mentais por disciplina', async () => {
@@ -593,8 +586,8 @@ async function rodar({ t, req, EST, impId }) {
     // A regra é sobre RESPOSTA DE PROVA (e tudo o que conta como estudo). A única coisa que a tela guarda no
     // navegador é a página em que o aluno parou na leitura — conveniência de quem lê, que o servidor não usa.
     const usos = fonte.match(/localStorage\.\w+\([^)]*\)/g) || [];
-    assert.ok(usos.length === (fonte.match(/localStorage/g) || []).length && usos.every(u => /^localStorage\.(getItem|setItem)\(chave\b/.test(u)) && /chave = 'es-ler:'/.test(fonte),
-      'resposta de prova não mora no navegador: o que vale é o que o servidor confirmou (só a página da leitura fica local): ' + usos.join(' | '));
+    assert.ok(usos.length === (fonte.match(/localStorage/g) || []).length && usos.every(u => /^localStorage\.(getItem|setItem)\(chave(Pref)?\b/.test(u)) && /chave = 'es-ler:'/.test(fonte) && /chavePref = 'es-ler-pref'/.test(fonte),
+      'resposta de prova não mora no navegador: o que vale é o que o servidor confirmou (só a página e a aparência da leitura ficam locais): ' + usos.join(' | '));
   });
 
   await t('estudo: retificação cria versão nova do programa, guarda a antiga e diz o que mudou', async () => {
