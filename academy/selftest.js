@@ -2819,6 +2819,9 @@ async function main() {
     assert.equal(ponte.revogar({ email: 'ninguem@t.com' }).revogadas, 0);
   });
 
+  // ================= ESTUDO (academy\estudo\) =================
+  await require('./estudo/testes').rodar({ t, req, EST, impId });
+
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

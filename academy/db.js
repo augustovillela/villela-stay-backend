@@ -358,6 +358,194 @@ const MIGRACOES = [
     sql: `INSERT OR IGNORE INTO categories (slug, rotulo, origem, ordem, criado_em)
           VALUES ('musica', 'Música', 'sistema', 15, '2026-09-28T00:00:00.000Z');`,
   },
+  // ESTUDO (academy\estudo\): o motor que leva de um assunto ou de um edital a
+  // aprendizagem demonstrada. O ESCOPO é a unidade: um programa de itens
+  // versionado (retificação = versão nova, a antiga fica), competências,
+  // unidades de aula ativa, banco de questões com procedência e cards.
+  // O estado de cada competência NÃO tem tabela — é derivado de est_evidencias
+  // (mesma decisão do XP da jornada). Só a agenda de revisão guarda estado.
+  {
+    nome: 'estudo-fundacao-2026-10-08',
+    sql: `CREATE TABLE IF NOT EXISTS est_escopos (
+            id              TEXT PRIMARY KEY,
+            product_id      TEXT NOT NULL REFERENCES products(id),
+            slug            TEXT NOT NULL,
+            tipo            TEXT NOT NULL,           -- assunto | edital
+            titulo          TEXT NOT NULL,
+            nivel           TEXT DEFAULT '',         -- nível de abordagem pedido
+            extensao        TEXT DEFAULT '',         -- micro | modulo | curso | preparacao
+            resumo          TEXT DEFAULT '',
+            perfil          TEXT DEFAULT '{}',       -- concurso: carreira, órgão, cargo, banca, etapas, fontes
+            regra_pontuacao TEXT DEFAULT '{}',       -- vem do edital-alvo, com fonte (pontuacao.js)
+            data_alvo       TEXT DEFAULT '',         -- AAAA-MM-DD; vazio = sem prova marcada
+            versao          INTEGER DEFAULT 0,       -- versão vigente do programa
+            status          TEXT DEFAULT 'rascunho', -- rascunho (só dono/admin) | publicado
+            criado_em       TEXT NOT NULL,
+            atualizado_em   TEXT NOT NULL,
+            UNIQUE (product_id, slug)
+          );
+          CREATE TABLE IF NOT EXISTS est_versoes (
+            escopo_id TEXT NOT NULL REFERENCES est_escopos(id),
+            versao    INTEGER NOT NULL,
+            documento TEXT DEFAULT '{}',             -- nome, url, data, tipo (edital|retificacao|autoral)
+            diff      TEXT DEFAULT '{}',             -- o que mudou em relação à versão anterior
+            criado_em TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, versao)
+          );
+          CREATE TABLE IF NOT EXISTS est_itens (
+            escopo_id   TEXT NOT NULL REFERENCES est_escopos(id),
+            versao      INTEGER NOT NULL,
+            codigo      TEXT NOT NULL,               -- numeração original do programa
+            pai         TEXT DEFAULT '',
+            ordem       INTEGER DEFAULT 0,
+            texto       TEXT NOT NULL,               -- texto ORIGINAL, nunca resumido
+            hash        TEXT NOT NULL,
+            localizacao TEXT DEFAULT '',             -- documento, página, trecho
+            pendente    TEXT DEFAULT '',             -- leitura incerta (OCR, regra ambígua)
+            peso        REAL DEFAULT 0,
+            esforco     TEXT DEFAULT '',             -- JSON [min, max] em minutos; vazio = sem estimativa
+            folha       INTEGER DEFAULT 1,
+            PRIMARY KEY (escopo_id, versao, codigo)
+          );
+          CREATE TABLE IF NOT EXISTS est_competencias (
+            escopo_id    TEXT NOT NULL REFERENCES est_escopos(id),
+            codigo       TEXT NOT NULL,
+            ordem        INTEGER DEFAULT 0,
+            resultado    TEXT NOT NULL,              -- "Diante de X, o aluno executará Y..."
+            criterios    TEXT DEFAULT '[]',
+            depende_de   TEXT DEFAULT '[]',
+            erros_comuns TEXT DEFAULT '[]',
+            essencial    INTEGER DEFAULT 1,
+            versao       INTEGER DEFAULT 1,
+            PRIMARY KEY (escopo_id, codigo)
+          );
+          CREATE TABLE IF NOT EXISTS est_vinculos (   -- item do programa ↔ competência
+            escopo_id          TEXT NOT NULL REFERENCES est_escopos(id),
+            item_codigo        TEXT NOT NULL,
+            competencia_codigo TEXT NOT NULL,
+            justificativa      TEXT DEFAULT '',
+            estado_revisao     TEXT DEFAULT 'sugerido', -- sugerido | revisado
+            PRIMARY KEY (escopo_id, item_codigo, competencia_codigo)
+          );
+          CREATE TABLE IF NOT EXISTS est_unidades (
+            id            TEXT PRIMARY KEY,
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            codigo        TEXT NOT NULL,
+            ordem         INTEGER DEFAULT 0,
+            titulo        TEXT NOT NULL,
+            competencias  TEXT DEFAULT '[]',
+            itens         TEXT DEFAULT '[]',
+            blocos        TEXT NOT NULL,             -- a aula ativa: desafio, explicação, exemplo, prática...
+            fontes        TEXT DEFAULT '[]',
+            midias        TEXT DEFAULT '[]',         -- [{tipo, estado: planejado|roteirizado|gerado|revisado|publicado}]
+            tempo_min     INTEGER DEFAULT 0,
+            versao        INTEGER DEFAULT 1,
+            status        TEXT DEFAULT 'rascunho',
+            atualizado_em TEXT NOT NULL,
+            UNIQUE (escopo_id, codigo)
+          );
+          CREATE TABLE IF NOT EXISTS est_questoes (   -- o banco é do PRODUTOR; o vínculo é que o liga a um escopo
+            id            TEXT PRIMARY KEY,
+            producer_id   TEXT NOT NULL REFERENCES users(id),
+            hash          TEXT NOT NULL,             -- dedup: reimportar a prova não infla o acervo
+            versao        INTEGER DEFAULT 1,
+            tipo          TEXT NOT NULL,
+            origem        TEXT NOT NULL,             -- oficial | adaptada | autoral | relato
+            uso           TEXT DEFAULT 'aprendizagem', -- aprendizagem | revisao | reservada
+            corrigivel    INTEGER DEFAULT 0,
+            situacao      TEXT DEFAULT 'rascunho',   -- rascunho | revisao | disponivel | suspensa | arquivada
+            dados         TEXT NOT NULL,             -- JSON validado por banco.js (gabarito fica AQUI, no servidor)
+            criado_em     TEXT NOT NULL,
+            atualizado_em TEXT NOT NULL,
+            UNIQUE (producer_id, hash)
+          );
+          CREATE TABLE IF NOT EXISTS est_questao_vinculos (
+            questao_id     TEXT NOT NULL REFERENCES est_questoes(id),
+            escopo_id      TEXT NOT NULL REFERENCES est_escopos(id),
+            alvo           TEXT NOT NULL,            -- competencia | item
+            codigo         TEXT NOT NULL,
+            justificativa  TEXT DEFAULT '',
+            estado_revisao TEXT DEFAULT 'sugerido',
+            PRIMARY KEY (questao_id, escopo_id, alvo, codigo)
+          );
+          CREATE INDEX IF NOT EXISTS idx_estqv_escopo ON est_questao_vinculos(escopo_id, alvo, codigo);
+          CREATE TABLE IF NOT EXISTS est_cards (
+            id                 TEXT PRIMARY KEY,
+            escopo_id          TEXT NOT NULL REFERENCES est_escopos(id),
+            codigo             TEXT NOT NULL,
+            ordem              INTEGER DEFAULT 0,
+            competencia_codigo TEXT NOT NULL,
+            frente             TEXT NOT NULL,
+            verso              TEXT NOT NULL,
+            explicacao         TEXT DEFAULT '',
+            fonte              TEXT DEFAULT '',
+            status             TEXT DEFAULT 'rascunho',
+            UNIQUE (escopo_id, codigo)
+          );
+          CREATE TABLE IF NOT EXISTS est_evidencias (
+            id                 TEXT PRIMARY KEY,
+            user_id            TEXT NOT NULL REFERENCES users(id),
+            escopo_id          TEXT NOT NULL,
+            competencia_codigo TEXT NOT NULL,
+            competencia_versao INTEGER DEFAULT 1,
+            origem             TEXT NOT NULL,        -- questao | card
+            ref_id             TEXT NOT NULL,
+            ref_versao         INTEGER DEFAULT 1,
+            tentativa_id       TEXT DEFAULT '',
+            modo               TEXT NOT NULL,        -- estudo | pratica | avaliacao
+            acerto             INTEGER NOT NULL,
+            pistas             INTEGER DEFAULT 0,
+            ajuda_humana       INTEGER DEFAULT 0,
+            inedita            INTEGER DEFAULT 0,    -- o aluno nunca tinha visto este item
+            tempo_seg          INTEGER DEFAULT 0,
+            confianca          TEXT DEFAULT '',      -- baixa | media | alta (declarada antes da correção)
+            criado_em          TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_estev_user ON est_evidencias(user_id, escopo_id, competencia_codigo);
+          CREATE INDEX IF NOT EXISTS idx_estev_ref ON est_evidencias(user_id, ref_id);
+          CREATE TABLE IF NOT EXISTS est_ajudas (     -- pistas pedidas desde a última resposta: quem conta é o servidor
+            user_id    TEXT NOT NULL REFERENCES users(id),
+            questao_id TEXT NOT NULL,
+            n          INTEGER DEFAULT 0,
+            PRIMARY KEY (user_id, questao_id)
+          );
+          CREATE TABLE IF NOT EXISTS est_revisoes (
+            user_id          TEXT NOT NULL REFERENCES users(id),
+            escopo_id        TEXT NOT NULL,
+            alvo             TEXT NOT NULL,          -- competencia | card
+            alvo_id          TEXT NOT NULL,
+            passo            INTEGER DEFAULT 0,
+            vencimento       TEXT DEFAULT '',        -- AAAA-MM-DD; vazio = sem retomada antes da prova
+            ultimo_resultado TEXT DEFAULT '',
+            atualizado_em    TEXT NOT NULL,
+            PRIMARY KEY (user_id, escopo_id, alvo, alvo_id)
+          );
+          CREATE TABLE IF NOT EXISTS est_tentativas (
+            id          TEXT PRIMARY KEY,
+            user_id     TEXT NOT NULL REFERENCES users(id),
+            escopo_id   TEXT NOT NULL,
+            modo        TEXT NOT NULL,               -- treino | simulado
+            congelado   TEXT NOT NULL,               -- itens, versões, ordem, gabarito e regra fixados no início
+            inicio_em   TEXT NOT NULL,
+            prazo_em    TEXT NOT NULL,               -- o relógio é do servidor
+            respostas   TEXT DEFAULT '{}',
+            salvo_em    TEXT DEFAULT '',
+            enviado_em  TEXT DEFAULT '',
+            resultado   TEXT DEFAULT '',
+            estado      TEXT DEFAULT 'em_andamento'  -- em_andamento | enviada | expirada
+          );
+          CREATE INDEX IF NOT EXISTS idx_esttent_user ON est_tentativas(user_id, escopo_id, estado);
+          CREATE TABLE IF NOT EXISTS est_planos (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            escopo_id     TEXT NOT NULL,
+            entrada       TEXT NOT NULL,             -- disponibilidade, indisponíveis, data-alvo, margem
+            plano         TEXT NOT NULL,
+            historico     TEXT DEFAULT '[]',         -- o que mudou a cada replanejamento
+            versao        INTEGER DEFAULT 1,
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, escopo_id)
+          );`,
+  },
 ];
 
 for (const m of MIGRACOES) {

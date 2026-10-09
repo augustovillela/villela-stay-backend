@@ -24,6 +24,7 @@ const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasInterativo, registrarRotasInterativoStaff } = require('./rotas-interativo');
 const { registrarRotasJornada, registrarRotasJornadaStaff } = require('./rotas-jornada');
 const { registrarRotasEcossistema, registrarRotasEcossistemaStaff, rotinaLembretes } = require('./rotas-ecossistema');
+const { registrarRotasEstudo, registrarRotasEstudoStaff } = require('./rotas-estudo');
 const { registrarPaginas } = require('./paginas');
 const webhookMP = require('../nucleo/webhook-mp');
 
@@ -105,6 +106,8 @@ function montar(app, injected = {}) {
   registrarRotasJornadaStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
   registrarRotasEcossistema(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
   registrarRotasEcossistemaStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
+  registrarRotasEstudo(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
+  registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
   registrarPaginas(app, { notificar });
 
   // webhook do Mercado Pago (200 rápido; processamento assíncrono e idempotente)
