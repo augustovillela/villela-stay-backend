@@ -117,6 +117,11 @@ function registrarRotasIAStaff(app, { requireAuth, requireAdmin }) {
   // Crédito é dinheiro: só SESSÃO de admin do portal. A chave de publicação não entra aqui
   // de propósito — quem automatiza não pode se dar saldo.
   app.get('/staff/api/academy/ia/carteiras', ...A, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json(carteira.painelStaff()); }));
+  // busca o PTAX agora (a rotina faz isso sozinha a cada 6 horas)
+  app.post('/staff/api/academy/ia/ptax', ...A, h(async (req, res) => {
+    const r = await carteira.atualizarPTAX();
+    res.json({ ...r, cambio: carteira.cambio() });
+  }));
   app.post('/staff/api/academy/ia/creditos', ...A, h((req, res) => {
     const b = req.body || {};
     const quem = 'staff:' + ((req.user && (req.user.nome || req.user.email)) || 'admin');

@@ -52,7 +52,16 @@ function montar(app, injected = {}) {
   } catch (e) { /* SEO é acessório: nunca derruba a montagem do módulo */ }
   const notificar = (m) => Promise.resolve((alertaAugusto || (async () => {}))(m)).catch(() => {});
   billing.configurar({ mpFetch, notificar });
-  require('./carteira-ia').configurar({ mpFetch }); // recarga da carteira de IA
+  const carteiraIA = require('./carteira-ia');
+  carteiraIA.configurar({ mpFetch, notificar }); // recarga da carteira de IA + alerta de câmbio parado
+  // PTAX do dia (câmbio da cobrança de IA): ao subir e a cada 6 horas. O resultado vai para o log
+  // do serviço — é como se confere, depois de um deploy, se o Banco Central responde dali.
+  if (String(process.env.ACADEMY_ROTINAS || 'on').toLowerCase() !== 'off') {
+    const ptax = () => carteiraIA.atualizarPTAX()
+      .then(r => console.log(r.ok ? `[academy] PTAX atualizado: ${r.valor} (${r.cotado_em})` : `[academy] PTAX NÃO atualizou: ${r.erro}`)).catch(() => {});
+    const t0 = setTimeout(ptax, 8000); if (t0.unref) t0.unref();
+    const tp = setInterval(ptax, 6 * 3600e3); if (tp.unref) tp.unref();
+  }
   require('./storage').configurar({ segredo: jwtSecret }); // URLs assinadas (F7)
   const emails = require('./emails');
   emails.configurar({ enviarEmail: injected.enviarEmail }); // e-mails transacionais (F8)

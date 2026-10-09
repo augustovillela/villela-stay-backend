@@ -152,8 +152,13 @@ async function rodar({ t, req, impId, jars }) {
     const maria = repo.Usuarios.porEmail('maria@t.com');
     assert.equal(ia.comoCobrar(maria.id, impId), 'paga', 'nem o produtor no próprio curso é isento');
     const atual = repo.Config.obter('ia_cobranca', {});
-    await config({ ...atual, isentos: ['MARIA@t.com'] });
+    // a lista chega colada como o dono escreve: ponto e vírgula, vírgula, espaço, maiúsculas, repetição
+    assert.equal((await config({ ...atual, isentos: ['outra@t.com; MARIA@t.com, maria@t.com', '  terceira@t.com.br'].join(String.fromCharCode(10)) })).st, 200);
+    assert.deepEqual(carteira.cfg().isentos, ['outra@t.com', 'maria@t.com', 'terceira@t.com.br']);
     assert.equal(ia.comoCobrar(maria.id, impId), 'isento');
+    const torta = await config({ ...atual, isentos: 'maria@t.com; fulano-sem-arroba' });
+    assert.equal(torta.st, 400); assert.ok(/não parece um e-mail/.test(torta.json.erro), 'e-mail torto é recusado, não ignorado');
+    assert.deepEqual(carteira.cfg().isentos.length, 3, 'a lista anterior fica como estava');
     db.prepare('UPDATE users SET cortesia = 1 WHERE email = ?').run(NINA.email);
     assert.equal(ia.comoCobrar(repo.Usuarios.porEmail(NINA.email).id, impId), 'paga', 'acesso de cortesia aos cursos não é crédito de IA');
     db.prepare('UPDATE users SET cortesia = 0 WHERE email = ?').run(NINA.email);
@@ -213,6 +218,52 @@ async function rodar({ t, req, impId, jars }) {
     assert.ok(cliente.includes('X-IA-Aceite') && cliente.includes('r.status === 402'), 'o 402 é tratado no api(), uma vez, para todas as telas');
     const staff = require('fs').readFileSync(require('path').join(__dirname, '..', 'staff', 'app-academy.js'), 'utf8');
     assert.ok(staff.includes('/ia/creditos') && staff.includes('ia: ACAD.vIA'), 'o crédito de cortesia tem tela no Portal Staff');
+  });
+
+  await t('carteira: câmbio = PTAX do dia + folga; Banco Central fora do ar não vira preço velho em silêncio', async () => {
+    const avisos = [];
+    let resposta = { ok: true, json: async () => ({ value: [{ cotacaoVenda: 5.0119, dataHoraCotacao: '2026-10-08 13:08:16.814' }] }) };
+    const pedidos = [];
+    carteira.configurar({ buscar: async (url) => { pedidos.push(url); if (resposta instanceof Error) throw resposta; return resposta; }, notificar: async (m) => { avisos.push(m); } });
+    const base = { ativa: true, cambio_modo: 'ptax', cambio_folga_pct: 10, margem_pct: 30, isentos: [] };
+    repo.Config.salvar('ia_ptax', null);
+    assert.equal((await config(base)).st, 400, 'PTAX ainda não buscado e sem reserva: não liga');
+    const r = await req('POST', '/staff/api/academy/ia/ptax');
+    assert.deepEqual([r.st, r.json.ok, r.json.valor], [200, true, 5.0119], r.texto);
+    assert.ok(pedidos[0].includes('olinda.bcb.gov.br') && pedidos[0].includes('cotacaoVenda'), 'busca a cotação de VENDA no Banco Central');
+    assert.equal((await req('POST', '/staff/api/academy/ia/ptax', { semUser: true, chave: true })).st, 401);
+    assert.equal((await config(base)).st, 200);
+    let c = carteira.cfg();
+    assert.deepEqual([c.ativa, c.cambio_origem, c.cambio_brl_usd, c.cambio_aviso], [true, 'ptax', 5.5131, ''], '5,0119 + 10%');
+    assert.equal(carteira.precoEmMilesimos(0.0105), 76, 'o preço acompanha o câmbio do dia');
+    // cotação absurda não entra: fica a de antes
+    resposta = { ok: true, json: async () => ({ value: [{ cotacaoVenda: 501.19, dataHoraCotacao: 'x' }] }) };
+    assert.equal((await carteira.atualizarPTAX()).ok, false);
+    assert.equal(carteira.cfg().cambio_brl_usd, 5.5131);
+    // Banco Central fora do ar há 4 dias: segue com o último PTAX, mas AVISA (na tela e ao dono)
+    resposta = new Error('ECONNRESET');
+    const envelhecer = (dias) => repo.Config.salvar('ia_ptax', { ...repo.Config.obter('ia_ptax', {}), buscado_em: new Date(Date.now() - dias * 864e5).toISOString(), alertado_em: '' });
+    envelhecer(4);
+    assert.equal((await carteira.atualizarPTAX()).ok, false);
+    c = carteira.cfg();
+    assert.deepEqual([c.ativa, c.cambio_origem], [true, 'ptax']);
+    assert.ok(/sem atualizar há 4 dia/.test(c.cambio_aviso), c.cambio_aviso);
+    assert.equal(avisos.length, 1, 'o dono é avisado');
+    await carteira.atualizarPTAX();
+    assert.equal(avisos.length, 1, 'uma vez por dia, não a cada tentativa');
+    // passou de 7 dias: PTAX vencido. Sem reserva, a cobrança se suspende; com reserva, usa a reserva
+    envelhecer(8);
+    c = carteira.cfg();
+    assert.deepEqual([c.ativa, c.ligada, c.cambio_origem], [false, true, ''], 'suspensa, e a tela do dono mostra que ele a ligou');
+    assert.equal(ia.comoCobrar(repo.Usuarios.porEmail(NINA.email).id, impId), '', 'suspensa = ninguém é cobrado com número velho');
+    assert.equal((await config({ ...base, cambio_brl_usd: 5.5 })).st, 200);
+    c = carteira.cfg();
+    assert.deepEqual([c.ativa, c.cambio_origem, c.cambio_brl_usd], [true, 'fixo', 5.5]);
+    assert.ok(/reserva/.test(c.cambio_aviso));
+    // modo fixo ignora o PTAX
+    await config({ ...base, cambio_modo: 'fixo', cambio_brl_usd: 6 });
+    assert.deepEqual([carteira.cfg().cambio_origem, carteira.cfg().cambio_brl_usd, carteira.cfg().cambio_aviso], ['fixo', 6, '']);
+    carteira.configurar({ buscar: async () => { throw new Error('rede desligada no teste'); }, notificar: null });
   });
 
   // desliga a cobrança ao fim (a virada, uma vez marcada, fica)

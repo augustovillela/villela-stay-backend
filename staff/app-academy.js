@@ -219,12 +219,19 @@ const ACAD = {
       <div class="card" style="${c.ativa ? '' : 'border-color:var(--alerta)'}"><h3>${c.ativa ? '🟢 Cobrança de IA ligada' : '⚪ Cobrança de IA desligada'}</h3>
         <p class="sub">${c.ativa
           ? 'Tutor, mentor, lapidar e ferramentas do produtor saem do saldo de quem usa. Antes de gerar, o usuário vê o valor máximo e confirma; paga só o que foi usado.'
-          : 'Enquanto desligada, vale o limite diário antigo e ninguém paga pelo uso. Para ligar é preciso informar o câmbio.'}</p>
+          : (c.ligada ? '⚠️ Você ligou a cobrança, mas ela está SUSPENSA por falta de câmbio válido. ' : '') + 'Enquanto desligada, vale o limite diário antigo e ninguém paga pelo uso.'}</p>
+        <p class="sub"><b>Câmbio em uso: ${c.cambio_brl_usd ? 'R$ ' + Number(c.cambio_brl_usd).toFixed(4) + ' por US$' : '— nenhum —'}</b>
+          ${c.cambio_origem === 'ptax' ? `· PTAX de venda ${Number(c.ptax.valor).toFixed(4)} (cotação de ${esc(String(c.ptax.cotado_em).slice(0, 10).split('-').reverse().join('/'))}, buscada em ${new Date(c.ptax.buscado_em).toLocaleString('pt-BR')}) + ${c.cambio_folga_pct}% de folga` : c.cambio_origem === 'fixo' ? '· valor fixo' : ''}
+          ${c.cambio_aviso ? `<br><span style="color:var(--alerta)">⚠️ ${esc(c.cambio_aviso)}</span>` : ''}
+          ${c.ptax && c.ptax.erro && c.ptax.erro_em > (c.ptax.buscado_em || '') ? `<br><span style="color:var(--alerta)">Última busca falhou (${new Date(c.ptax.erro_em).toLocaleString('pt-BR')}): ${esc(c.ptax.erro)}</span>` : ''}
+          <button class="btn secund peq" type="button" onclick="ACAD.buscarPTAX()">🔄 Buscar PTAX agora</button></p>
         <form class="form" id="acad-ia-cfg"><div class="hi-grid">
-          <label>Câmbio (R$ por US$) <input id="aia-cambio" type="number" step="0.01" min="0" value="${c.cambio_brl_usd || ''}" placeholder="ex.: 5.60"></label>
+          <label>Câmbio <select id="aia-modo"><option value="ptax" ${c.cambio_modo === 'ptax' ? 'selected' : ''}>PTAX do dia (Banco Central) + folga</option><option value="fixo" ${c.cambio_modo === 'fixo' ? 'selected' : ''}>Valor fixo</option></select></label>
+          <label>Folga sobre o PTAX (%) — cobre IOF e spread do cartão <input id="aia-folga" type="number" step="0.5" min="0" max="100" value="${c.cambio_folga_pct}"></label>
+          <label>Câmbio fixo (R$ por US$) — reserva se o Banco Central cair <input id="aia-cambio" type="number" step="0.01" min="0" value="${c.cambio_fixo || ''}" placeholder="ex.: 5.50"></label>
           <label>Margem sobre o custo (%) <input id="aia-margem" type="number" step="1" min="0" value="${c.margem_pct}"></label>
           <label>Pacotes de recarga (R$, separados por vírgula) <input id="aia-pacotes" value="${c.pacotes_centavos.map(v => v / 100).join(', ')}"></label>
-          <label>Isentos (e-mails, separados por vírgula) <input id="aia-isentos" value="${esc(c.isentos.join(', '))}" placeholder="a sua conta"></label></div>
+          <label>Isentos (${c.isentos.length} — e-mails separados por vírgula ou ponto e vírgula) <textarea id="aia-isentos" rows="3" placeholder="a sua conta e quem mais você decidir">${esc(c.isentos.join(', '))}</textarea></label></div>
           <p class="sub">Virada: ${local ? '<b>' + esc(local) + '</b> — quem tinha matrícula antes disso mantém as consultas grátis do dia naquele curso; matrícula posterior paga tudo.' : 'será gravada no momento em que você ligar a cobrança. Quem já tiver matrícula até lá mantém as consultas grátis do dia naquele curso.'}</p>
           <label style="display:flex;gap:.5rem;align-items:center"><input id="aia-ativa" type="checkbox" style="width:auto" ${c.ativa ? 'checked' : ''}> Cobrança ligada</label>
           <button class="btn peq" type="submit">Salvar</button><p id="aia-msg" class="sub"></p></form></div>
@@ -247,13 +254,13 @@ const ACAD = {
       const msg = document.getElementById('aia-msg');
       const ativa = document.getElementById('aia-ativa').checked;
       const cambio = Number(document.getElementById('aia-cambio').value) || 0;
-      if (ativa && !cambio) { msg.textContent = 'Informe o câmbio para ligar a cobrança.'; return; }
-      if (ativa && !c.ativa && !confirm('Ligar a cobrança de IA agora?\n\nA partir deste momento, quem se matricular paga pelo uso do Tutor e das ferramentas de IA. Quem já tem matrícula mantém as consultas grátis do dia no curso que já tinha.')) return;
+      if (ativa && !c.ligada && !confirm('Ligar a cobrança de IA agora?\n\nA partir deste momento, quem se matricular paga pelo uso do Tutor e das ferramentas de IA. Quem já tem matrícula mantém as consultas grátis do dia no curso que já tinha.')) return;
       try {
         await ACAD.api('POST', '/config', { chave: 'ia_cobranca', valor: {
-          ativa, cambio_brl_usd: cambio, margem_pct: Number(document.getElementById('aia-margem').value),
+          ativa, cambio_modo: document.getElementById('aia-modo').value, cambio_folga_pct: Number(document.getElementById('aia-folga').value),
+          cambio_brl_usd: cambio, margem_pct: Number(document.getElementById('aia-margem').value),
           pacotes_centavos: lista('aia-pacotes').map(v => Math.round(Number(v.replace(',', '.')) * 100)).filter(v => v > 0),
-          isentos: lista('aia-isentos'),
+          isentos: document.getElementById('aia-isentos').value, // o servidor separa, limpa e valida
           // a virada é o instante em que a cobrança foi ligada pela primeira vez — e não muda mais
           virada_em: c.virada_em || (ativa ? new Date().toISOString() : '') } });
         ACAD.pintar();
@@ -270,6 +277,14 @@ const ACAD = {
         ACAD.pintar();
       } catch (e) { msg.textContent = e.message; }
     };
+  },
+
+  async buscarPTAX() {
+    try {
+      const r = await ACAD.api('POST', '/ia/ptax');
+      alert(r.ok ? `PTAX de venda: ${r.valor} (${r.cotado_em}). Câmbio em uso: R$ ${Number(r.cambio.valor).toFixed(4)}.` : `O Banco Central não respondeu: ${r.erro}`);
+      ACAD.pintar();
+    } catch (e) { alert(e.message); }
   },
 
   // -------------------------------------------------------- CONFIG

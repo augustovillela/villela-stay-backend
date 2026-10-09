@@ -28,20 +28,93 @@ const PACOTES_PADRAO = [2000, 5000, 10000];      // R$ 20, R$ 50 e R$ 100 (centa
 const RESERVA_ORFA_MIN = 10;                     // reserva sem acerto depois disso = processo caiu: devolve
 const TIPOS_CREDITO = ['recarga', 'cortesia', 'ajuste'];
 
-let _mpFetch = null;
-function configurar({ mpFetch } = {}) { _mpFetch = mpFetch || null; }
+let _mpFetch = null, _buscar = null, _notificar = null;
+// só mexe no que veio: reconfigurar o cliente HTTP num teste não pode derrubar o Mercado Pago
+function configurar(o = {}) {
+  if ('mpFetch' in o) _mpFetch = o.mpFetch || null;
+  if ('buscar' in o) _buscar = o.buscar || null;
+  if ('notificar' in o) _notificar = o.notificar || null;
+  if (!_buscar && !('buscar' in o) && typeof fetch === 'function') _buscar = fetch;
+}
+
+// ---------------------------------------------------------------------
+// CÂMBIO — PTAX de venda do Banco Central, buscado todo dia (decisão do
+// Augusto, 08/10/2026), mais uma folga: a fatura do provedor vem no cartão
+// internacional, com IOF e spread acima da cotação oficial.
+// A leitura é síncrona (o preço se calcula no meio de uma requisição), por
+// isso o valor do dia fica guardado em platform_settings.ia_ptax e uma
+// rotina o renova. Se o Banco Central ficar fora do ar, vale o último PTAX
+// por até PTAX_VALE_DIAS; depois disso entra o câmbio fixo de reserva — e,
+// sem reserva, a cobrança se desliga sozinha em vez de cobrar com número velho.
+// ---------------------------------------------------------------------
+const FOLGA_PADRAO_PCT = 10;   // sugestão minha (PTAX 5,01 → 5,51 em 08/10/2026); o Augusto ajusta no staff
+const PTAX_VALE_DIAS = 7;
+const PTAX_ALERTA_DIAS = 3;
+const PTAX_URL = "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarPeriodo(dataInicial=@i,dataFinalCotacao=@f)";
+const diasDesde = (iso) => (iso ? (Date.now() - Date.parse(iso)) / 864e5 : Infinity);
+
+function ptax() {
+  const p = repo.Config.obter('ia_ptax', null);
+  return p && Number(p.valor) > 0 ? { valor: Number(p.valor), cotado_em: s(p.cotado_em, 30), buscado_em: s(p.buscado_em, 30), erro: s(p.erro, 200), erro_em: s(p.erro_em, 30) } : null;
+}
+// → { valor, origem: 'ptax' | 'fixo' | '', ptax, folga_pct, aviso }
+function cambio(c = repo.Config.obter('ia_cobranca', {}) || {}) {
+  const fixo = Number(c.cambio_brl_usd) || 0;
+  const folga = Number.isFinite(Number(c.cambio_folga_pct)) ? Math.max(0, Number(c.cambio_folga_pct)) : FOLGA_PADRAO_PCT;
+  // o padrão é o PTAX do dia; 'fixo' só quando o dono escolher
+  if (c.cambio_modo === 'fixo') return { valor: fixo, origem: fixo ? 'fixo' : '', ptax: ptax(), folga_pct: folga, aviso: '' };
+  const p = ptax();
+  if (p && diasDesde(p.buscado_em) <= PTAX_VALE_DIAS) {
+    const velho = diasDesde(p.buscado_em) > PTAX_ALERTA_DIAS;
+    return { valor: Math.round(p.valor * (1 + folga / 100) * 10000) / 10000, origem: 'ptax', ptax: p, folga_pct: folga,
+      aviso: velho ? `PTAX sem atualizar há ${Math.floor(diasDesde(p.buscado_em))} dia(s) — o Banco Central não respondeu.` : '' };
+  }
+  return { valor: fixo, origem: fixo ? 'fixo' : '', ptax: p, folga_pct: folga,
+    aviso: fixo ? 'PTAX indisponível: usando o câmbio fixo de reserva.' : 'PTAX indisponível e sem câmbio de reserva: a cobrança está suspensa.' };
+}
+// Busca a cotação de venda mais recente (fim de semana e feriado não têm PTAX: vale a última).
+async function atualizarPTAX() {
+  const agora = nowISO();
+  const mmddaaaa = (d) => `${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}-${d.getUTCFullYear()}`;
+  const url = `${PTAX_URL}?@i='${mmddaaaa(new Date(Date.now() - 10 * 864e5))}'&@f='${mmddaaaa(new Date())}'&$top=1&$orderby=dataHoraCotacao%20desc&$format=json&$select=cotacaoVenda,dataHoraCotacao`;
+  try {
+    if (!_buscar) throw new Error('sem cliente HTTP');
+    const r = await _buscar(url, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error('Banco Central respondeu ' + r.status);
+    const linha = ((await r.json()).value || [])[0];
+    const valor = Number(linha && linha.cotacaoVenda);
+    // cotação fora de qualquer faixa plausível não entra: preço errado é pior que preço de ontem
+    if (!(valor >= 1 && valor <= 50)) throw new Error('cotação inválida: ' + JSON.stringify(linha || null).slice(0, 80));
+    repo.Config.salvar('ia_ptax', { valor, cotado_em: s(linha.dataHoraCotacao, 30), buscado_em: agora });
+    return { ok: true, valor, cotado_em: linha.dataHoraCotacao };
+  } catch (e) {
+    const p = repo.Config.obter('ia_ptax', {}) || {};
+    repo.Config.salvar('ia_ptax', { ...p, erro: s(e.message, 200), erro_em: agora });
+    // fonte caída não pode ficar verde em silêncio: avisa o dono quando o valor começa a envelhecer
+    const c = repo.Config.obter('ia_cobranca', {}) || {};
+    if (c.ativa && c.cambio_modo !== 'fixo' && diasDesde(p.buscado_em) > PTAX_ALERTA_DIAS && diasDesde(p.alertado_em) > 1 && _notificar) {
+      repo.Config.salvar('ia_ptax', { ...p, erro: s(e.message, 200), erro_em: agora, alertado_em: agora });
+      Promise.resolve(_notificar(`⚠️ Villela Academy: o câmbio da cobrança de IA (PTAX) não atualiza desde ${s(p.buscado_em, 10) || 'nunca'} — ${s(e.message, 120)}. ${cambio(c).aviso}`)).catch(() => {});
+    }
+    return { ok: false, erro: e.message };
+  }
+}
 
 // ---------------------------------------------------------------------
 // CONFIG (platform_settings.ia_cobranca) — os números são do Augusto
 // ---------------------------------------------------------------------
 function cfg() {
   const c = repo.Config.obter('ia_cobranca', {}) || {};
-  const cambio = Number(c.cambio_brl_usd) || 0;
+  const cb = cambio(c);
   const pacotes = (Array.isArray(c.pacotes_centavos) ? c.pacotes_centavos : PACOTES_PADRAO).map(n => Math.round(Number(n) || 0)).filter(n => n >= 100);
   return {
     // sem câmbio não há como converter o custo do provedor: a cobrança não liga pela metade
-    ativa: !!c.ativa && cambio > 0,
-    cambio_brl_usd: cambio,
+    ativa: !!c.ativa && cb.valor > 0,
+    cambio_brl_usd: cb.valor,            // o câmbio EFETIVO (PTAX + folga, ou o fixo)
+    cambio_modo: c.cambio_modo === 'fixo' ? 'fixo' : 'ptax',
+    cambio_origem: cb.origem, cambio_aviso: cb.aviso, cambio_folga_pct: cb.folga_pct,
+    cambio_fixo: Number(c.cambio_brl_usd) || 0, ptax: cb.ptax,
+    ligada: !!c.ativa,                   // o que o dono pediu; `ativa` é o que está valendo
     margem_pct: Number.isFinite(Number(c.margem_pct)) ? Math.max(0, Number(c.margem_pct)) : MARGEM_PADRAO_PCT,
     pacotes_centavos: pacotes.length ? pacotes : PACOTES_PADRAO,
     // quem tinha matrícula ANTES desta data mantém a franquia diária naquele curso
@@ -53,12 +126,24 @@ function cfg() {
 // cobrança foi ligada pela primeira vez: nasce sozinha e não muda mais — mudá-la depois trocaria,
 // em silêncio, quem tem a franquia que foi prometida na venda.
 function prepararConfig(novo = {}, atual = repo.Config.obter('ia_cobranca', {}) || {}) {
-  const cambio = Number(novo.cambio_brl_usd) || 0;
-  if (novo.ativa && !(cambio > 0)) throw erro('Informe o câmbio (R$ por US$) para ligar a cobrança de IA.');
-  if (cambio && (cambio < 1 || cambio > 50)) throw erro('Câmbio fora do razoável — confira o número.');
+  const fixo = Number(novo.cambio_brl_usd) || 0;
+  const modo = novo.cambio_modo === 'fixo' ? 'fixo' : 'ptax';
+  if (fixo && (fixo < 1 || fixo > 50)) throw erro('Câmbio fora do razoável — confira o número.');
+  const folga = novo.cambio_folga_pct == null || novo.cambio_folga_pct === '' ? FOLGA_PADRAO_PCT : Number(novo.cambio_folga_pct);
+  if (!(folga >= 0 && folga <= 100)) throw erro('A folga sobre o PTAX deve ficar entre 0 e 100%.');
+  // ligar exige um câmbio que EXISTA agora: o PTAX já buscado, ou o fixo
+  if (novo.ativa && !(cambio({ ...novo, cambio_modo: modo, cambio_brl_usd: fixo, cambio_folga_pct: folga }).valor > 0)) {
+    throw erro(modo === 'ptax' ? 'O PTAX ainda não foi buscado no Banco Central — busque agora ou informe um câmbio fixo de reserva.' : 'Informe o câmbio (R$ por US$) para ligar a cobrança de IA.');
+  }
   const margem = Number(novo.margem_pct);
   if (novo.margem_pct != null && !(margem >= 0 && margem <= 500)) throw erro('Margem deve ficar entre 0 e 500%.');
-  return { ...novo, ativa: !!novo.ativa, cambio_brl_usd: cambio,
+  // a lista de isentos chega colada de qualquer jeito (vírgula, ponto e vírgula, uma por linha):
+  // aqui vira uma lista limpa — e e-mail torto é recusado, para ninguém "isento" pagar por um erro de digitação
+  const isentos = [...new Set((Array.isArray(novo.isentos) ? novo.isentos.join(',') : String(novo.isentos || '')).split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(Boolean))];
+  const torto = isentos.find(e => !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(e));
+  if (torto) throw erro(`"${torto}" não parece um e-mail — confira a lista de isentos.`);
+  if (isentos.length > 50) throw erro('Mais de 50 isentos — isenção é exceção; para os demais, use crédito de cortesia.');
+  return { ...novo, isentos, ativa: !!novo.ativa, cambio_modo: modo, cambio_brl_usd: fixo, cambio_folga_pct: folga,
     virada_em: s(atual.virada_em, 30) || (novo.ativa ? nowISO() : '') };
 }
 
@@ -263,7 +348,7 @@ function painelStaff() {
 }
 
 module.exports = {
-  configurar, cfg, prepararConfig, brl, precoEmMilesimos, isento, temFranquia, saldo, reservar, acertar, estornar, creditar,
+  configurar, cfg, prepararConfig, cambio, ptax, atualizarPTAX, FOLGA_PADRAO_PCT, PTAX_VALE_DIAS, brl, precoEmMilesimos, isento, temFranquia, saldo, reservar, acertar, estornar, creditar,
   criarRecarga, aplicarPagamento, conferirRecarga, extrato, carteiraDoUsuario, painelStaff,
   MARGEM_PADRAO_PCT, PACOTES_PADRAO, TIPOS_CREDITO,
 };
