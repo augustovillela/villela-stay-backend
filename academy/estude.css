@@ -163,3 +163,14 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-alt-lida .es-expl { display: block; margin-top: 3px; font-size: .92em; opacity: .85; }
 .es-anot { display: block; margin-top: 10px; }
 .es-anot textarea { width: 100%; box-sizing: border-box; margin-top: 4px; }
+/* nota que explica a sessão do dia nos cards, e o acervo aberto para o revisor */
+.es-nota-aba{max-width:640px;margin:14px 0 0;padding:14px 16px;border-radius:12px;background:var(--al-creme,#f7f3ea);border-left:4px solid var(--al-ouro,#d97706);font-size:.95rem;line-height:1.5;color:var(--al-navy)}
+.es-nota-aba p{margin:6px 0}
+.es-nota-aba ul{margin:6px 0 6px 18px;padding:0}
+.es-nota-aba.rev{border-left-color:var(--al-navy)}
+.es-acervo{margin:10px 0;padding:10px 14px;border:1px solid rgba(20,35,70,.12);border-radius:12px;background:#fff}
+.es-acervo summary{cursor:pointer;padding:4px 0}
+.es-acervo-card{max-width:720px;padding:10px 0;border-top:1px solid rgba(20,35,70,.08)}
+.es-acervo-card .es-card-frente{font-size:1.05rem;padding:4px 0}
+.es-acervo-card .es-card-verso{margin:6px 0}
+.es-comp-mat{margin:0 0 2px}

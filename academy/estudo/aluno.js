@@ -346,7 +346,29 @@ function cardsDoDia(usuario, produto, slugEscopo) {
   const agendados = new Set(db.prepare("SELECT alvo_id FROM est_revisoes WHERE user_id = ? AND escopo_id = ? AND alvo = 'card'").all(usuario.id, c.escopo.id).map(r => r.alvo_id));
   const novos = todos.filter(k => !agendados.has(k.id)).slice(0, CARDS_NOVOS_DIA);
   const frente = (k, novo) => ({ id: k.id, competencia: k.competencia_codigo, frente: k.frente, novo });
-  return { vencidos: todos.filter(k => vencidos.has(k.id)).map(k => frente(k, false)), novos: novos.map(k => frente(k, true)), adiados: fila.adiadas, total: todos.length };
+  // os limites vão junto para a tela explicar "Card 1 de 5" — sem isso o aluno
+  // lê a sessão do dia como se fosse o acervo inteiro e conclui que falta conteúdo
+  return { vencidos: todos.filter(k => vencidos.has(k.id)).map(k => frente(k, false)), novos: novos.map(k => frente(k, true)), adiados: fila.adiadas, total: todos.length,
+    limites: { novos_dia: CARDS_NOVOS_DIA, revisoes_dia: LIMITE_REVISOES_DIA }, revisor: c.revisor };
+}
+// REVISÃO DO ACERVO — quem responde pelo curso precisa ler todos os cards antes
+// de publicar, e a fila do dia levaria meses. Só revisor; não agenda nem conta
+// como estudo, porque ler o verso aberto não é recordar.
+function todosOsCards(usuario, produto, slugEscopo) {
+  const c = abrir(usuario, produto, slugEscopo);
+  if (!c.revisor) throw erro('A lista completa é só para quem revisa o curso.', 403);
+  // o título que o revisor reconhece é o da aula; a competência só tem o enunciado do resultado
+  const titulos = new Map();
+  for (const u of db.prepare('SELECT titulo, competencias FROM est_unidades WHERE escopo_id = ? ORDER BY ordem').all(c.escopo.id)) {
+    for (const cod of j.parse(u.competencias, [])) if (!titulos.has(cod)) titulos.set(cod, u.titulo);
+  }
+  const grupos = [];
+  for (const k of R.cards(c.escopo.id, c.vis)) {
+    let g = grupos[grupos.length - 1];
+    if (!g || g.competencia !== k.competencia_codigo) grupos.push(g = { competencia: k.competencia_codigo, titulo: titulos.get(k.competencia_codigo) || k.competencia_codigo, cards: [] });
+    g.cards.push({ id: k.id, codigo: k.codigo, status: k.status, frente: k.frente, verso: k.verso, explicacao: k.explicacao, fonte: k.fonte });
+  }
+  return { total: grupos.reduce((n, g) => n + g.cards.length, 0), grupos };
 }
 function cardDoEscopo(c, cardId) {
   const k = R.cards(c.escopo.id, c.vis).find(x => x.id === s(cardId, 40));
@@ -543,6 +565,6 @@ function obterPlano(usuario, produto, slugEscopo) {
 
 module.exports = {
   contexto, escopos, painel, unidade, solucaoDoBloco, praticar, pedirPista, responder, erros, anotar,
-  cardsDoDia, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
+  cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,
 };

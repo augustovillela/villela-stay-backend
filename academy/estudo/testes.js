@@ -422,6 +422,22 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(db.prepare("SELECT modo FROM est_evidencias WHERE ref_id = ?").get(id).modo, 'estudo');
   });
 
+  await t('estudo: cards — a sessão diz os limites do dia; o acervo inteiro é só do revisor e não agenda nada', async () => {
+    const c = (await req('GET', `${esc}/cards`, { jar: 'olga' })).json;
+    assert.deepEqual([c.limites.novos_dia, c.limites.revisoes_dia, c.revisor], [5, 20, false], 'a tela explica "Card 1 de 5" com estes números');
+    assert.ok(c.total >= c.novos.length + c.vencidos.length, 'o total é o acervo, não a sessão');
+    assert.equal((await req('GET', `${esc}/cards/todos`, { jar: 'olga' })).st, 403, 'aluna não lê o verso de todos de uma vez');
+    const antes = db.prepare("SELECT COUNT(*) n FROM est_revisoes WHERE alvo = 'card'").get().n;
+    const ev = db.prepare('SELECT COUNT(*) n FROM est_evidencias').get().n;
+    const tudo = await req('GET', `${esc}/cards/todos`, { jar: 'maria' });
+    assert.equal(tudo.st, 200, tudo.texto);
+    assert.equal(tudo.json.total, c.total);
+    assert.equal(tudo.json.grupos.reduce((n, g) => n + g.cards.length, 0), c.total);
+    assert.ok(tudo.json.grupos.every(g => g.titulo && g.cards.every(k => k.frente && k.verso)), 'frente e verso abertos, sob o título da aula');
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM est_revisoes WHERE alvo = 'card'").get().n, antes, 'ler o acervo não agenda retomada');
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM est_evidencias').get().n, ev, 'nem conta como estudo');
+  });
+
   await t('estudo: plano — 1 hora em 14 dias para 10 horas de programa mostra o déficit e o que fica de fora', async () => {
     assert.equal((await req('GET', `${esc}/plano`, { jar: 'olga' })).json.plano, null);
     const set = (corpo) => req('PUT', `${esc}/plano`, { jar: 'olga', corpo });

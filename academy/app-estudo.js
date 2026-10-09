@@ -31,9 +31,44 @@
     function dataBR(d) { return d ? d.slice(8, 10) + '/' + d.slice(5, 7) + (d.length >= 10 ? '/' + d.slice(0, 4) : '') : ''; }
     function selo(estado) { var x = ESTADO[estado] || ESTADO.nao_avaliada; return '<span class="es-selo ' + x[1] + '">' + x[0] + '</span>'; }
     function cada(alvo, sel, fn) { Array.prototype.forEach.call(alvo.querySelectorAll(sel), fn); }
+    // A competência é escrita como resultado ("Diante de…, o candidato…"), bom
+    // para medir e ruim para escolher: numa lista, todas começam igual. Quem
+    // escolhe o que praticar pensa em MATÉRIA — disciplina, ponto do edital,
+    // título da aula. O mapa sai do painel (itens do programa + aulas).
+    function materias() {
+      var p = E.painel || {};
+      if (E._mm && E._mmDe === p) return E._mm;
+      var itens = {}, titulo = {}, mm = {};
+      (p.itens || []).forEach(function (i) { itens[i.codigo] = i; });
+      (p.unidades || []).forEach(function (u) { (u.competencias || []).forEach(function (k) { if (!titulo[k]) titulo[k] = u.titulo; }); });
+      (p.itens || []).forEach(function (i) {
+        if (!i.folha) return;
+        var partes = i.codigo.split('.'), disc = itens[partes.slice(0, 2).join('.')];
+        (i.competencias || []).forEach(function (k) {
+          if (mm[k.codigo]) return;
+          mm[k.codigo] = { item: i.codigo, disciplina: disc && disc !== i ? partes.slice(0, 2).join('.') + ' ' + disc.texto : 'Programa',
+            titulo: titulo[k.codigo] || i.texto };
+        });
+      });
+      (p.competencias || []).forEach(function (c) {
+        if (!mm[c.codigo]) mm[c.codigo] = { item: '', disciplina: 'Método de estudo', titulo: titulo[c.codigo] || c.resultado };
+      });
+      E._mm = mm; E._mmDe = p;
+      return mm;
+    }
     function nomeComp(codigo) {
-      var c = ((E.painel || {}).competencias || []).filter(function (x) { return x.codigo === codigo; })[0];
-      return c ? c.resultado : codigo;
+      var m = materias()[codigo];
+      return m ? (m.item ? m.item + ' — ' : '') + m.titulo : codigo;
+    }
+    // <option>s agrupados por disciplina, na ordem do programa
+    function opcoesComp(sel) {
+      var mm = materias(), grupos = [], por = {};
+      ((E.painel || {}).competencias || []).forEach(function (c) {
+        var m = mm[c.codigo], g = por[m.disciplina];
+        if (!g) { g = por[m.disciplina] = { nome: m.disciplina, ops: [] }; grupos.push(g); }
+        g.ops.push('<option value="' + esc(c.codigo) + '"' + (c.codigo === sel ? ' selected' : '') + '>' + esc(String(nomeComp(c.codigo)).slice(0, 110)) + '</option>');
+      });
+      return grupos.map(function (g) { return '<optgroup label="' + esc(g.nome.slice(0, 90)) + '">' + g.ops.join('') + '</optgroup>'; }).join('');
     }
     function nomeItem(codigo) {
       var i = ((E.painel || {}).itens || []).filter(function (x) { return x.codigo === codigo; })[0];
@@ -180,7 +215,7 @@
         }).join('') + '</div></div>';
       h += '<div class="jr-caixa"><h3>Competências</h3><p class="al-sub">O que você precisa saber fazer. "Demonstrada" exige acerto sem pista em questão que você ainda não tinha visto; "retida", um novo acerto dias depois.</p>' +
         p.competencias.map(function (c) {
-          return '<div class="es-comp"><div><p>' + esc(c.resultado) + '</p><span class="al-fino">' + c.tentativas + ' resposta(s) · ' + c.acertos + ' acerto(s)' +
+          return '<div class="es-comp"><div><p class="es-comp-mat"><b>' + esc(nomeComp(c.codigo)) + '</b><span class="al-fino"> · ' + esc(materias()[c.codigo].disciplina) + '</span></p><p>' + esc(c.resultado) + '</p><span class="al-fino">' + c.tentativas + ' resposta(s) · ' + c.acertos + ' acerto(s)' +
             (c.depende_de.length ? ' · depende de: ' + c.depende_de.map(esc).join(', ') : '') + (c.estagnada ? ' · <b>várias tentativas sem acerto — volte à explicação</b>' : '') + '</span></div>' +
             '<div class="es-comp-st">' + selo(c.estado) + '<button class="al-bt peq fan" data-pr="' + esc(c.codigo) + '">Praticar</button></div></div>';
         }).join('') + '</div>';
@@ -257,14 +292,14 @@
     function praticar(alvo, competencia) {
       var comps = E.painel.competencias, erradas = competencia === '__erradas__';
       competencia = erradas ? '' : (competencia || '');
-      alvo.innerHTML = '<div class="jr-caixa"><div class="es-linha"><label class="es-campo">Competência<select id="es-pr-comp"><option value="">Todas</option>' +
-        comps.map(function (c) { return '<option value="' + esc(c.codigo) + '"' + (c.codigo === competencia ? ' selected' : '') + '>' + esc(c.resultado.slice(0, 90)) + '</option>'; }).join('') +
+      alvo.innerHTML = '<div class="jr-caixa"><div class="es-linha"><label class="es-campo">Matéria (disciplina e ponto do edital)<select id="es-pr-comp"><option value="">Todas as matérias</option>' +
+        opcoesComp(competencia) +
         '</select></label></div><div id="es-pr"></div></div>';
       el('es-pr-comp').onchange = function () { praticar(alvo, el('es-pr-comp').value); };
       var out = el('es-pr');
       if (erradas) el('es-pr-comp').parentNode.parentNode.innerHTML = '<p class="al-rotulo">Refazendo o caderno de erros</p>';
       api('GET', base() + '/praticar?n=20&competencia=' + encodeURIComponent(competencia) + (erradas ? '&erradas=1' : '')).then(function (r) {
-        if (!r.questoes.length) { out.innerHTML = '<p class="al-sub">' + (erradas ? 'O caderno de erros está vazio.' : 'Ainda não há questões de correção automática para esta competência.') + '</p>'; return; }
+        if (!r.questoes.length) { out.innerHTML = '<p class="al-sub">' + (erradas ? 'O caderno de erros está vazio.' : 'Ainda não há questões de correção automática para esta matéria.') + '</p>'; return; }
         var i = 0, inicio = 0;
         function mostrar() {
           if (i >= r.questoes.length) {
@@ -344,25 +379,58 @@
       }).catch(function (e) { falha(alvo, e); });
     }
 
+    // ---- o acervo inteiro, para quem revisa o curso (não agenda nem conta como estudo) ----
+    function todosOsCards(alvo) {
+      alvo.innerHTML = '<p class="al-sub">Carregando o acervo…</p>';
+      api('GET', base() + '/cards/todos').then(function (r) {
+        alvo.innerHTML = '<div class="jr-caixa"><p class="al-rotulo">Revisão do acervo</p><h3>' + r.total + ' cards em ' + r.grupos.length + ' aulas</h3>' +
+          '<p class="al-sub">Só você, que revisa o curso, vê esta lista. Ler aqui não agenda retomada nem conta como estudo.</p>' +
+          '<div class="es-linha"><button class="al-bt peq fan" id="es-cd-volta">← Voltar à sessão de hoje</button></div></div>' +
+          r.grupos.map(function (g) {
+            return '<details class="es-acervo"><summary><b>' + esc(g.titulo) + '</b><span class="al-fino"> · ' + esc(g.competencia) + ' · ' + g.cards.length + ' card(s)</span></summary>' +
+              g.cards.map(function (k) {
+                return '<div class="es-acervo-card"><p class="al-fino">' + esc(k.codigo) + (k.status !== 'publicado' ? ' · <span class="marca-rasc">' + esc(k.status) + '</span>' : '') + '</p>' +
+                  '<div class="es-card-frente">' + texto(k.frente) + '</div><div class="es-card-verso">' + texto(k.verso) +
+                  (k.explicacao ? '<p class="al-sub">' + esc(k.explicacao) + '</p>' : '') + (k.fonte ? '<p class="al-fino">Fonte: ' + esc(k.fonte) + '</p>' : '') + '</div></div>';
+              }).join('') + '</details>';
+          }).join('');
+        el('es-cd-volta').onclick = function () { cards(alvo); };
+      }).catch(function (e) { falha(alvo, e); });
+    }
+
     // ================= CARDS =================
     function cards(alvo) {
       api('GET', base() + '/cards').then(function (r) {
-        var fila = r.vencidos.concat(r.novos), i = 0;
+        var fila = r.vencidos.concat(r.novos), i = 0, lim = r.limites || {};
+        // "Card 1 de 5" lido sem explicação parece acervo de cinco cards: a nota
+        // diz que é a sessão de hoje, quantos existem e por que chegam aos poucos.
+        var nota = !r.total ? '' : '<div class="es-nota-aba"><b>Por que só ' + (fila.length || 'alguns') + ' hoje?</b>' +
+          '<p>Esta aba entrega a <b>sessão de hoje</b>, não o acervo inteiro. Este percurso tem <b>' + r.total + ' cards</b>, e todos chegam a você com o tempo.</p>' +
+          '<ul><li><b>Cards novos:</b> no máximo ' + (lim.novos_dia || 5) + ' por dia, na ordem do programa.</li>' +
+          '<li><b>Retomadas:</b> os cards que você já viu voltam na data marcada, até ' + (lim.revisoes_dia || 20) + ' revisões por dia.</li></ul>' +
+          '<p>É a repetição espaçada: recordar um pouco por dia, e de novo quando está prestes a esquecer, fixa mais do que ver tudo de uma vez. ' +
+          '“Card 1 de ' + (fila.length || lim.novos_dia || 5) + '” é o primeiro dos de hoje.</p></div>' +
+          (r.revisor ? '<div class="es-nota-aba rev"><b>Você revisa este curso.</b><p>Para ler o acervo inteiro, com frente e verso abertos, sem fila e sem contar como estudo:</p>' +
+            '<button class="al-bt peq" id="es-cd-todos">Ver todos os ' + r.total + ' cards</button></div>' : '');
+        function ligarNota() { if (el('es-cd-todos')) el('es-cd-todos').onclick = function () { todosOsCards(alvo); }; }
         if (!fila.length) {
-          alvo.innerHTML = '<div class="jr-caixa"><h3>Cards</h3><p class="al-sub">' + (r.total ? 'Nada para recordar hoje. Os próximos voltam na data marcada.' : 'Este percurso ainda não tem cards.') + '</p></div>';
+          alvo.innerHTML = '<div class="jr-caixa"><h3>Cards</h3><p class="al-sub">' + (r.total ? 'Nada para recordar hoje. Os próximos voltam na data marcada.' : 'Este percurso ainda não tem cards.') + '</p></div>' + nota;
+          ligarNota();
           return;
         }
         function mostrar() {
           if (i >= fila.length) {
             alvo.innerHTML = '<div class="jr-caixa"><h3>Cards de hoje feitos</h3><p class="al-sub">' + fila.length + ' card(s) recordado(s).' + (r.adiados ? ' ' + r.adiados + ' ficaram para depois.' : '') + '</p>' +
-              '<button class="al-bt" id="es-cd-hj">Ver a próxima tarefa</button></div>';
+              '<button class="al-bt" id="es-cd-hj">Ver a próxima tarefa</button></div>' + nota;
             el('es-cd-hj').onclick = function () { ir('hoje'); };
+            ligarNota();
             return;
           }
           var k = fila[i];
-          alvo.innerHTML = '<div class="jr-caixa es-card"><p class="al-fino">Card ' + (i + 1) + ' de ' + fila.length + (k.novo ? ' · novo' : ' · retomada') + '</p>' +
+          alvo.innerHTML = '<div class="jr-caixa es-card"><p class="al-fino">Card ' + (i + 1) + ' de ' + fila.length + ' de hoje' + (k.novo ? ' · novo' : ' · retomada') + '</p>' +
             '<div class="es-card-frente">' + texto(k.frente) + '</div><p class="al-sub">Responda de memória — em voz alta ou por escrito — antes de virar.</p>' +
-            '<div class="es-linha"><button class="al-bt" id="es-cd-ver">Mostrar a resposta</button></div><div id="es-cd-verso"></div></div>';
+            '<div class="es-linha"><button class="al-bt" id="es-cd-ver">Mostrar a resposta</button></div><div id="es-cd-verso"></div></div>' + nota;
+          ligarNota();
           el('es-cd-ver').onclick = function () {
             api('POST', base() + '/cards/' + k.id + '/revelar').then(function (v) {
               el('es-cd-ver').disabled = true;
@@ -397,7 +465,7 @@
         '<div class="es-form"><label class="es-campo">Tipo<select id="es-pv-modo"><option value="treino">Treino cronometrado</option><option value="simulado">Simulado (usa questões reservadas)</option></select></label>' +
         '<label class="es-campo">Questões<input id="es-pv-n" type="number" min="1" max="200" value="10"></label>' +
         '<label class="es-campo">Duração em minutos<input id="es-pv-dur" type="number" min="0" max="600" placeholder="automática"></label>' +
-        '<label class="es-campo">Competência<select id="es-pv-comp"><option value="">Todas</option>' + p.competencias.map(function (c) { return '<option value="' + esc(c.codigo) + '">' + esc(c.resultado.slice(0, 80)) + '</option>'; }).join('') + '</select></label></div>' +
+        '<label class="es-campo">Matéria (disciplina e ponto do edital)<select id="es-pv-comp"><option value="">Todas as matérias</option>' + opcoesComp('') + '</select></label></div>' +
         '<p class="al-fino"><b>Regra de nota deste percurso:</b> ' + esc(regraTxt(p.regra_pontuacao)) + '</p>' +
         '<div class="es-linha"><button class="al-bt" id="es-pv-ir">Começar</button></div><div id="es-pv-msg"></div></div>';
       function iniciar(aceitar) {

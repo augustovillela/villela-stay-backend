@@ -48,6 +48,7 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
 
   // ---- cards ----
   app.get(`${base}/cards`, ...AL, h((req, res) => { semCache(res); res.json(al.cardsDoDia(...a(req))); }));
+  app.get(`${base}/cards/todos`, ...AL, h((req, res) => { semCache(res); res.json(al.todosOsCards(...a(req))); }));
   app.post(`${base}/cards/:card/revelar`, ...AL, h((req, res) => { res.json(al.revelarCard(...a(req), req.params.card)); }));
   app.post(`${base}/cards/:card/avaliar`, ...AL, h((req, res) => { res.json(al.avaliarCard(...a(req), req.params.card, s(b(req).resultado, 20))); }));
 
