@@ -11,6 +11,7 @@ const repo = require('./repo');
 const ct = require('./repo-conteudo');
 const billing = require('./billing');
 const lib = require('./liberacao'); // gotejamento: a promessa dita na compra
+const amostras = require('./amostras'); // amostras grátis: trechos públicos de vídeo
 
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -223,8 +224,10 @@ function cardProduto(p) {
   // inteiro já é um <a>, e âncora dentro de âncora é HTML inválido.
   const cat = (p.categorias && p.categorias.length ? p.categorias : [p.categoria]).filter(Boolean).slice(0, 2)
     .map(c => `<span class="tag area">${esc(ct.catRotulo(c))}</span>`).join('');
+  // selo discreto: só quando o curso TEM trecho público para assistir antes de comprar
+  const selo = amostras.tem(p.id) ? '<span class="tag amostra">▶ amostras grátis</span>' : '';
   return `<a class="cardp" href="/academy/cursos/${esc(p.slug)}">${capa || '<span class="capa-vazia"></span>'}
-    <span class="tags"><span class="tag">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span>${cat}</span>
+    <span class="tags"><span class="tag">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span>${cat}${selo}</span>
     <b>${esc(p.titulo)}</b>
     <span class="sub">${esc(p.descricao_curta || p.subtitulo)}</span>
     <span class="autor">por ${esc(p.produtor_nome || '')}</span>${preco}</a>`;
@@ -324,9 +327,35 @@ const listaPv = (arr, cls, icone) => arr && arr.length
 const secPv = (titulo, html) => html
   ? `<section class="pv-sec">${titulo ? `<h2>${titulo}</h2>` : ''}${html}</section>` : '';
 
+// ---- AMOSTRAS GRÁTIS na página de venda ----
+// Cada trecho é um <video> nativo com a capa de pôster: toca no lugar, sem autoplay e
+// sem baixar nada antes do clique (preload="none"). Sem JavaScript continua funcionando;
+// o script só cuida de pausar os outros quando um começa.
+const rotAmostra = (a) => [a.aula ? `Aula ${a.aula}` : 'Do curso', a.duracao_seg ? durSeg(a.duracao_seg) : ''].filter(Boolean).join(' · ');
+const videoAmostra = (a, { cls = '', poster = '' } = {}) =>
+  `<video${cls ? ` class="${cls}"` : ''} data-amostra controls playsinline preload="none"${(poster || a.capa_url) ? ` poster="${esc(poster || a.capa_url)}"` : ''} aria-label="Amostra grátis: ${esc(a.titulo)}"><source src="${esc(a.video_url)}" type="${esc(a.video_mime || 'video/mp4')}">Seu navegador não toca este vídeo. <a href="${esc(a.video_url)}">Abrir a amostra</a>.</video>`;
+const cartaoAmostra = (a) => `<figure class="pv-am">${videoAmostra(a)}
+      <figcaption><span class="meta">${esc(rotAmostra(a))}</span><b>${esc(a.titulo)}</b>${a.ponte ? `<span class="ponte">${esc(a.ponte)}</span>` : ''}</figcaption></figure>`;
+const AMOSTRAS_A_VISTA = 6; // o resto abre em "ver mais": 25 capas de uma vez empurram o currículo para longe
+function secaoAmostras(lista, destino, cta) {
+  if (!lista.length) return '';
+  const aVista = lista.slice(0, AMOSTRAS_A_VISTA), resto = lista.slice(AMOSTRAS_A_VISTA);
+  return `<section class="pv-sec" id="amostras"><h2>Amostras grátis</h2>
+    <p class="pv-fino pv-am-intro">${lista.length > 1 ? `${lista.length} trechos das aulas` : 'Um trecho do curso'} para assistir agora, sem cadastro.</p>
+    <div class="pv-amostras">${aVista.map(cartaoAmostra).join('')}</div>
+    ${resto.length ? `<details class="pv-am-mais"><summary>Ver mais ${resto.length} amostra${resto.length > 1 ? 's' : ''}</summary>
+      <div class="pv-amostras">${resto.map(cartaoAmostra).join('')}</div></details>` : ''}
+    <p class="pv-am-cta"><a href="${destino}">${esc(cta)} e assistir às aulas completas →</a></p>
+  </section>`;
+}
+// um vídeo por vez: quando um começa, os outros param
+const SCRIPT_AMOSTRAS = `<script>(function(){var v=document.querySelectorAll('video[data-amostra]');
+    for(var i=0;i<v.length;i++){v[i].addEventListener('play',function(e){for(var j=0;j<v.length;j++){if(v[j]!==e.target&&!v[j].paused)v[j].pause();}});}})();</script>`;
+
 function cursoHTML(slug) {
   const p = ct.Marketplace.porSlug(slug);
   if (!p) return null;
+  const trechos = amostras.publicasDoProduto(p.id); // [] na maioria dos cursos: nada muda na página
   const sp = ct.SalesPages.obter(p.id);
   const nota = ct.Reviews.media(p.id);
   const reviews = ct.Reviews.publicas(p.id);
@@ -382,7 +411,8 @@ function cursoHTML(slug) {
 
   const cartao = `<aside class="pv-compra">
     ${emb ? `<iframe src="${esc(emb)}" style="width:100%;aspect-ratio:16/9;border:0;display:block" allowfullscreen title="Apresentação do curso"></iframe>`
-      : (capaUrl ? `<img class="capa" src="${capaUrl}" alt="Capa do curso ${esc(p.titulo)}">` : '')}
+      : (trechos.length ? videoAmostra(trechos[0], { cls: 'capa', poster: capaUrl })
+        : (capaUrl ? `<img class="capa" src="${capaUrl}" alt="Capa do curso ${esc(p.titulo)}">` : ''))}
     <div class="in">
       ${precoHtml}
       ${avisoIA()}
@@ -429,7 +459,7 @@ function cursoHTML(slug) {
 
   <div class="pv"><div class="pv-corpo">
     <main>
-      ${secPv('O que você vai conquistar', sobre)}
+      ${secPv('O que você vai conquistar', sobre)}${secaoAmostras(trechos, destino, cta)}
       ${secPv('O que está incluído', listaPv(sp.beneficios, '', 'check'))}
       ${secPv('Conteúdo do curso', curriculo)}
       ${secPv('O que você vai aprender', listaPv(sp.aprender, 'duas', 'alvo'))}
@@ -457,7 +487,7 @@ function cursoHTML(slug) {
 
   ${relacionados.length ? `<div class="pv-rel"><div class="pv">
     <h2>Cursos relacionados</h2><p class="pv-fino" style="margin:0 0 20px">De quem estuda o mesmo assunto.</p>
-    <div class="pv-vitrine">${relacionados.map(cardProduto).join('')}</div></div></div>` : ''}
+    <div class="pv-vitrine">${relacionados.map(cardProduto).join('')}</div></div></div>` : ''}${trechos.length ? SCRIPT_AMOSTRAS : ''}
 
   ${(billing.ativo() || gratis) ? '' : `<div class="sec" id="comprar" style="background:var(--ambar-claro)"><div class="wrap" style="max-width:560px">
       <h2>Quero ser avisado</h2>

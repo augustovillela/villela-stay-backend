@@ -625,6 +625,37 @@ const MIGRACOES = [
           );
           CREATE INDEX IF NOT EXISTS ix_est_marcacoes_aluno ON est_marcacoes (user_id, escopo_id);`,
   },
+  {
+    // AMOSTRAS GRÁTIS: trechos curtos de vídeo, PÚBLICOS, um por aula (ou do curso). Tabela
+    // PRÓPRIA de propósito — não é `media_files`: a rota pública só enxerga esta tabela, então
+    // não há id de mídia de aula paga que ela consiga servir. Identidade = (produto, chave):
+    // reenviar a mesma chave SUBSTITUI. Os arquivos moram sob o prefixo `amostras/` do storage.
+    nome: 'amostras-gratis-2026-10-09',
+    sql: `CREATE TABLE IF NOT EXISTS amostras (
+            id            TEXT PRIMARY KEY,
+            product_id    TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+            chave         TEXT NOT NULL,           -- 'aula-3' | 'curso' | livre
+            aula_num      INTEGER DEFAULT 0,       -- 0 = amostra do curso, sem aula
+            chamada       TEXT NOT NULL,           -- título curto
+            ponte         TEXT DEFAULT '',         -- frase de convite para o curso
+            duracao_seg   INTEGER DEFAULT 0,
+            ordem         INTEGER DEFAULT 0,
+            video_path    TEXT NOT NULL,           -- sempre amostras/<produto>/...
+            video_mime    TEXT NOT NULL,
+            video_tamanho INTEGER NOT NULL,
+            video_storage TEXT DEFAULT 'local',    -- local | s3
+            video_sha256  TEXT DEFAULT '',         -- reenviar o MESMO arquivo não troca nada nem sobe a versão
+            capa_path     TEXT DEFAULT '',
+            capa_mime     TEXT DEFAULT '',
+            capa_tamanho  INTEGER DEFAULT 0,
+            capa_storage  TEXT DEFAULT 'local',
+            capa_sha256   TEXT DEFAULT '',
+            versao        INTEGER DEFAULT 1,       -- sobe a cada troca de arquivo (chave de cache ?v=)
+            criado_em     TEXT NOT NULL,
+            atualizado_em TEXT NOT NULL
+          );
+          CREATE UNIQUE INDEX IF NOT EXISTS ux_amostras_produto_chave ON amostras (product_id, chave);`,
+  },
 ];
 
 for (const m of MIGRACOES) {
