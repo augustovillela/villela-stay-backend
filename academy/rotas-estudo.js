@@ -36,6 +36,7 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
 
   // ---- aula ativa ----
   app.get(`${base}/leitura`, ...AL, h((req, res) => { semCache(res); res.json(al.leitura(...a(req), String(req.query.disciplina || ''))); }));
+  app.get(`${base}/mapas`, ...AL, h((req, res) => { semCache(res); res.json(al.mapas(...a(req), String(req.query.disciplina || ''))); }));
   app.get(`${base}/marcacoes`, ...AL, h((req, res) => { semCache(res); res.json(al.marcacoes(...a(req))); }));
   app.post(`${base}/marcacoes`, ...AL, h((req, res) => { res.json(al.marcar(...a(req), b(req))); }));
   app.put(`${base}/marcacoes/:id`, ...AL, h((req, res) => { res.json(al.editarMarcacao(...a(req), req.params.id, b(req))); }));

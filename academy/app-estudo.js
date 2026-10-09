@@ -111,7 +111,7 @@
         if (depois) depois();
       }).catch(function (e) { falha(el('es-corpo'), e); });
     }
-    var ABAS = [['hoje', 'Hoje'], ['aulas', 'Aulas'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
+    var ABAS = [['hoje', 'Hoje'], ['aulas', 'Aulas'], ['mapas', 'Mapas'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
     function abas() {
       el('es-abas').innerHTML = ABAS.map(function (x) { return '<button data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('');
       cada(el('es-abas'), 'button', function (b) { b.onclick = function () { ir(b.getAttribute('data-a')); }; });
@@ -122,7 +122,7 @@
       cada(el('es-abas'), 'button', function (b) { b.classList.toggle('on', b.getAttribute('data-a') === aba); });
       var alvo = el('es-corpo');
       alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
-      ({ hoje: hoje, aulas: aulas, programa: programa, praticar: praticar, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
+      ({ hoje: hoje, aulas: aulas, mapas: mapas, programa: programa, praticar: praticar, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
     }
 
     // ================= HOJE: a próxima tarefa e os três eixos =================
@@ -210,7 +210,7 @@
         g.aulas.push({ u: u, item: m.item });
       });
       alvo.innerHTML = '<div class="jr-caixa"><h3>Aulas</h3><p class="al-sub">' + p.unidades.length + ' aulas em ' + grupos.length + ' disciplinas, na ordem do edital. ' +
-        '<b>Abrir a aula</b> leva à aula ativa (desafio, explicação, prática e os resumos de 50, 25 e 10 %). <b>Mapa mental</b> abre o mapa da aula pronto para imprimir ou salvar em PDF. <b>Ler a disciplina</b> junta a teoria em texto corrido, para ler de uma vez, grifar com marca-texto, imprimir ou salvar em PDF.</p>' +
+        '<b>Abrir a aula</b> leva à aula ativa (desafio, explicação, prática e os resumos de 50, 25 e 10 %). <b>Mapa mental</b> abre o mapa da aula pronto para imprimir ou salvar em PDF. <b>Ler a disciplina</b> junta a teoria em texto corrido, em páginas numeradas, para ler, grifar com marca-texto, imprimir ou salvar em PDF. A leitura volta na página em que você parou.</p>' +
         '<div class="es-linha"><button class="al-bt peq fan" id="es-au-mt">🖍️ Minhas marcações</button></div></div>' +
         grupos.map(function (g, n) {
           return '<details class="es-acervo"' + (n === 0 ? ' open' : '') + '><summary><b>' + esc(g.nome) + '</b><span class="al-fino"> · ' + g.aulas.length + ' aula(s)</span></summary>' +
@@ -230,29 +230,44 @@
     // ---- MARCA-TEXTO na leitura: o que o aluno grifa fica salvo na conta dele ----
     // A marcação é ancorada no texto CRU do bloco (aula, bloco, início, fim). Por
     // isso cada parágrafo carrega `data-o` — a posição onde ele começa no texto
-    // cru — e o HTML não pode ter nada além do texto, <br> e <mark>, senão a conta
-    // do deslocamento a partir da seleção sai errada.
+    // cru — e o HTML só pode ter o texto, <br>, <mark> e <b>: tirando as tags tem
+    // de sobrar o texto cru, senão a conta da seleção sai errada.
     var COR_MARCA = { amarelo: 'Amarelo', verde: 'Verde', azul: 'Azul', rosa: 'Rosa' };
-    function textoMarcado(cru, marcas) {
+    function textoMarcado(cru, marcas) { return paragrafosMarcados(cru, marcas).map(function (p) { return p.html; }).join(''); }
+    // O que vai em negrito na leitura: a referência normativa — é o que o candidato
+    // procura ao reler (artigo, súmula, OJ, tema, ação, lei). Só ela: negrito em
+    // tudo é o mesmo que negrito em nada.
+    var RE_NORMA = /(?:Súmulas?(?: Vinculantes?)?|SV|OJs?(?: Transitórias?)?|Temas?|Precedentes? Normativos?|ADIs?|ADCs?|ADPFs?|ADOs?|AREs?|REs?|REsp|EREsp|IRDR|IAC)\s+(?:n[ºo.]\s*)?\d+(?:\.\d+)*(?:[-\/][0-9A-Z]+)?|\barts?\.\s*\d+(?:\.\d+)*(?:[ºª°]|-[A-Z]\b)?|(?:Leis?(?: Complementar)?|Decretos?(?:-Lei)?|LC|EC|MP|Convenç(?:ão|ões)|Resoluç(?:ão|ões)|IN)\s+(?:n[ºo.]\s*)?\d+(?:\.\d+)*(?:\/\d{4})?/g;
+    // um parágrafo curto, de uma linha só, sem ponto final (ou numerado: "3. Evolução histórica") é subtítulo
+    function ehSubtitulo(t) {
+      t = t.trim();
+      if (!t || t.indexOf('\n') >= 0 || t.length > 90) return false;
+      return /^\d+(\.\d+)*[.)]\s+\S/.test(t) || (t.length <= 70 && !/[.;:!?,]$/.test(t));
+    }
+    function paragrafosMarcados(cru, marcas) {
       cru = String(cru || '');
       var pars = [], re = /\n{2,}/g, ini = 0, m;
       while ((m = re.exec(cru))) { pars.push([ini, m.index]); ini = m.index + m[0].length; }
       pars.push([ini, cru.length]);
       return pars.map(function (p) {
-        var a = p[0], z = p[1], cortes = [a, z];
+        var a = p[0], z = p[1], txt = cru.slice(a, z), sub = ehSubtitulo(txt), fortes = [], cortes = [a, z], x;
+        if (!sub) { RE_NORMA.lastIndex = 0; while ((x = RE_NORMA.exec(txt))) fortes.push([a + x.index, a + x.index + x[0].length]); }
+        fortes.forEach(function (f) { cortes.push(f[0], f[1]); });
         marcas.forEach(function (k) { if (k.inicio > a && k.inicio < z) cortes.push(k.inicio); if (k.fim > a && k.fim < z) cortes.push(k.fim); });
-        cortes.sort(function (x, y) { return x - y; });
+        cortes.sort(function (i, j) { return i - j; });
         var h = '';
         for (var i = 0; i < cortes.length - 1; i++) {
-          var x = cortes[i], y = cortes[i + 1];
-          if (y <= x) continue;
-          var dona = null;
-          marcas.forEach(function (k) { if (k.inicio <= x && k.fim >= y) dona = k; }); // a mais recente por cima
-          var t = esc(cru.slice(x, y)).replace(/\n/g, '<br>');
+          var de = cortes[i], ate = cortes[i + 1];
+          if (ate <= de) continue;
+          var dona = null, forte = false;
+          marcas.forEach(function (k) { if (k.inicio <= de && k.fim >= ate) dona = k; }); // a mais recente por cima
+          fortes.forEach(function (f) { if (f[0] <= de && f[1] >= ate) forte = true; });
+          var t = esc(cru.slice(de, ate)).replace(/\n/g, '<br>');
+          if (forte) t = '<b>' + t + '</b>';
           h += dona ? '<mark class="mt-' + esc(dona.cor) + (dona.nota ? ' nota' : '') + '" data-mt="' + esc(dona.id) + '"' + (dona.nota ? ' title="' + esc(dona.nota) + '"' : '') + '>' + t + '</mark>' : t;
         }
-        return '<p data-o="' + a + '">' + h + '</p>';
-      }).join('');
+        return { o: a, fim: z, sub: sub, html: '<p data-o="' + a + '"' + (sub ? ' class="es-ler-st"' : '') + '>' + h + '</p>' };
+      });
     }
     // posição no texto cru de um ponto (nó, deslocamento) da seleção, dentro do bloco
     function posicaoCrua(bloco, no, des) {
@@ -275,46 +290,126 @@
     }
     function blocoDe(no) { var x = no && (no.nodeType === 1 ? no : no.parentNode); while (x && !(x.classList && x.classList.contains('es-ler-bl'))) x = x.parentNode; return x || null; }
 
+    // ---- a leitura EM PÁGINAS: texto longo sem número de página não diz onde o leitor está ----
+    // Cada disciplina vira uma sequência de páginas de cerca de ALVO_PAGINA caracteres,
+    // cortadas só em fim de parágrafo e nunca logo depois de um subtítulo. A página
+    // guarda descritores (aula, bloco, de, até), não HTML: o HTML é refeito a cada
+    // desenho, com os grifos do momento.
+    var ALVO_PAGINA = 2800;
+    function paginar(aulas) {
+      var pags = [];
+      aulas.forEach(function (a, ia) {
+        var atual = null, tam = 0, pendente = [];
+        function nova() { atual = { aula: ia, itens: [] }; pags.push(atual); tam = 0; }
+        nova();
+        a.blocos.forEach(function (b) {
+          var rot = NOME_BLOCO[b.tipo] ? NOME_BLOCO[b.tipo] + (b.titulo ? ' — ' + b.titulo : '') : (b.titulo || '');
+          if (rot) pendente.push({ t: 'h', rot: rot });
+          paragrafosMarcados(b.texto, []).forEach(function (p) {
+            var n = p.fim - p.o;
+            // cabe? senão, página nova — levando junto o título/subtítulo que ficaria órfão no rodapé
+            if (tam && tam + n > ALVO_PAGINA && !p.sub) {
+              var orfaos = [];
+              while (atual.itens.length > 1 && atual.itens[atual.itens.length - 1].orfao) orfaos.unshift(atual.itens.pop());
+              nova();
+              orfaos.forEach(function (o) { atual.itens.push(o); tam += (o.ate - o.de) || 0; });
+            }
+            pendente.forEach(function (h) { h.orfao = true; atual.itens.push(h); });
+            pendente = [];
+            var ult = atual.itens[atual.itens.length - 1];
+            if (ult && ult.t === 'b' && ult.n === b.n && !ult.orfao && !p.sub) ult.ate = p.fim;
+            else atual.itens.push({ t: 'b', un: a.codigo, n: b.n, de: p.o, ate: p.fim, orfao: p.sub });
+            tam += n;
+          });
+        });
+        if (!atual.itens.length) pags.pop();
+      });
+      return pags;
+    }
+
     function lerDisciplina(alvo, cod, irPara) {
       alvo.innerHTML = '<p class="al-sub">Carregando a leitura…</p>';
       Promise.all([api('GET', base() + '/leitura?disciplina=' + encodeURIComponent(cod)), api('GET', base() + '/marcacoes')]).then(function (rs) {
         var r = rs[0], marcas = rs[1].marcacoes.filter(function (k) { return !k.solta; }), crus = {};
+        r.aulas.forEach(function (a) { a.blocos.forEach(function (b) { crus[a.codigo + '|' + b.n] = b.texto; }); });
+        var pags = paginar(r.aulas), chave = 'es-ler:' + E.pid + ':' + E.slug + ':' + cod, pg = 0;
         function doBloco(un, n) { return marcas.filter(function (k) { return k.unidade === un && k.bloco === n; }); }
-        var corpo = '<h1>' + esc(r.nome) + '</h1><p class="es-ler-sub">' + esc(r.escopo) + ' · ' + r.aulas.length + ' aulas</p>' +
-          r.aulas.map(function (a) {
-            return '<section><h2>' + esc(a.titulo) + '</h2>' +
-              (a.itens.length ? '<p class="es-ler-item">' + a.itens.map(function (i) { return '<b>' + esc(i.codigo) + '</b> ' + esc(i.texto); }).join(' · ') + '</p>' : '') +
-              a.blocos.map(function (b) {
-                crus[a.codigo + '|' + b.n] = b.texto;
-                return (NOME_BLOCO[b.tipo] ? '<h3>' + NOME_BLOCO[b.tipo] + (b.titulo ? ' — ' + esc(b.titulo) : '') + '</h3>' : (b.titulo ? '<h3>' + esc(b.titulo) + '</h3>' : '')) +
-                  '<div class="es-ler-bl" data-un="' + esc(a.codigo) + '" data-bl="' + b.n + '">' + textoMarcado(b.texto, doBloco(a.codigo, b.n)) + '</div>';
-              }).join('') +
-              (a.fontes.length ? '<p class="es-ler-fontes"><b>Fontes:</b> ' + a.fontes.map(function (f) { return esc(f.titulo); }).join('; ') + '</p>' : '') + '</section>';
+        function primeiraDaAula(ia) { for (var i = 0; i < pags.length; i++) if (pags[i].aula === ia) return i; return 0; }
+        function corpoDaPagina(p) {
+          return p.itens.map(function (x) {
+            if (x.t === 'h') return '<h3>' + esc(x.rot) + '</h3>';
+            return '<div class="es-ler-bl" data-un="' + esc(x.un) + '" data-bl="' + x.n + '" data-fim="' + x.ate + '">' +
+              paragrafosMarcados(crus[x.un + '|' + x.n], doBloco(x.un, x.n)).filter(function (q) { return q.o >= x.de && q.o < x.ate; }).map(function (q) { return q.html; }).join('') + '</div>';
           }).join('');
+        }
+        function cabecalhoDaAula(ia, continua) {
+          var a = r.aulas[ia];
+          return '<h2>' + esc(a.titulo) + (continua ? ' <span class="es-ler-cont">(continuação)</span>' : '') + '</h2>' +
+            (!continua && a.itens.length ? '<p class="es-ler-item">' + a.itens.map(function (i) { return '<b>' + esc(i.codigo) + '</b> ' + esc(i.texto); }).join(' · ') + '</p>' : '');
+        }
+        if (irPara) {
+          var k = marcas.filter(function (x) { return x.id === irPara; })[0];
+          pags.forEach(function (p, i) { p.itens.forEach(function (x) { if (k && x.t === 'b' && x.un === k.unidade && x.n === k.bloco && k.inicio >= x.de && k.inicio < x.ate) pg = i; }); });
+        } else {
+          try { pg = Math.min(pags.length - 1, Math.max(0, parseInt(localStorage.getItem(chave), 10) || 0)); } catch (e) { pg = 0; }
+        }
+
         alvo.innerHTML = '<div class="jr-caixa"><div class="es-linha"><button class="al-bt peq fan" id="es-ler-volta">← Todas as aulas</button>' +
           '<button class="al-bt peq fan" id="es-ler-mt">🖍️ Minhas marcações</button>' +
           '<button class="al-bt peq" id="es-ler-pdf">🖨️ Imprimir ou salvar em PDF</button></div>' +
           '<p class="al-fino">🖍️ Para grifar, selecione um trecho do texto e escolha a cor. As marcações ficam salvas na sua conta; toque numa marcação para anotar, trocar a cor ou apagar.</p></div>' +
-          '<article class="es-ler" id="es-ler-art">' + corpo + '</article><div class="es-mt-barra" id="es-mt" hidden></div>';
+          '<div class="es-ler-nav" id="es-ler-topo"></div><article class="es-ler" id="es-ler-art"></article><div class="es-ler-nav" id="es-ler-pe"></div><div class="es-mt-barra" id="es-mt" hidden></div>';
         var art = el('es-ler-art'), barra = el('es-mt');
+
+        function nav(onde) {
+          var p = pags[pg], ia = p.aula, pct = Math.round((pg + 1) * 100 / pags.length);
+          var naAula = pg - primeiraDaAula(ia) + 1, totAula = pags.filter(function (q) { return q.aula === ia; }).length;
+          el(onde).innerHTML = '<div class="es-ler-onde"><b>' + esc(r.nome) + '</b> · aula ' + (ia + 1) + ' de ' + r.aulas.length +
+            ' · <b>página ' + (pg + 1) + ' de ' + pags.length + '</b><span class="al-fino"> (' + naAula + 'ª de ' + totAula + ' desta aula)</span></div>' +
+            '<div class="es-ler-barra"><i style="width:' + pct + '%"></i></div>' +
+            '<div class="es-linha"><button class="al-bt peq fan" data-pg="-1"' + (pg ? '' : ' disabled') + '>← Página anterior</button>' +
+            '<select class="es-ler-sel" aria-label="Ir para a aula">' + r.aulas.map(function (a, i) {
+              return '<option value="' + i + '"' + (i === ia ? ' selected' : '') + '>' + (i + 1) + '. ' + esc(String(a.titulo).slice(0, 80)) + '</option>';
+            }).join('') + '</select>' +
+            '<button class="al-bt peq" data-pg="1"' + (pg < pags.length - 1 ? '' : ' disabled') + '>Próxima página →</button></div>';
+          cada(el(onde), '[data-pg]', function (b) { b.onclick = function () { irPagina(pg + Number(b.getAttribute('data-pg')), true); }; });
+          el(onde).querySelector('select').onchange = function (e) { irPagina(primeiraDaAula(Number(e.target.value)), true); };
+        }
+        function desenhar() {
+          var p = pags[pg];
+          art.innerHTML = cabecalhoDaAula(p.aula, pg !== primeiraDaAula(p.aula)) + corpoDaPagina(p) +
+            (pg === pags.length - 1 || pags[pg + 1].aula !== p.aula ? (r.aulas[p.aula].fontes.length ? '<p class="es-ler-fontes"><b>Fontes:</b> ' + r.aulas[p.aula].fontes.map(function (f) { return esc(f.titulo); }).join('; ') + '</p>' : '') : '') +
+            '<p class="es-ler-num">' + (pg + 1) + '</p>';
+          nav('es-ler-topo'); nav('es-ler-pe');
+        }
+        function irPagina(n, subir) {
+          pg = Math.min(pags.length - 1, Math.max(0, n));
+          try { localStorage.setItem(chave, String(pg)); } catch (e) { /* sem armazenamento, só não lembra onde parou */ }
+          fechar(); desenhar();
+          if (subir) el('es-ler-topo').scrollIntoView({ block: 'start' });
+        }
+
         el('es-ler-volta').onclick = function () { fechar(); aulas(alvo); };
         el('es-ler-mt').onclick = function () { fechar(); minhasMarcacoes(alvo); };
         el('es-ler-pdf').onclick = function () {
           var w = window.open('', '_blank');
           if (!w) return;
+          // o PDF sai com a disciplina inteira, corrida, com os grifos
+          var tudo = '<h1>' + esc(r.nome) + '</h1><p class="es-ler-sub">' + esc(r.escopo) + ' · ' + r.aulas.length + ' aulas</p>' + r.aulas.map(function (a, ia) {
+            return '<section>' + cabecalhoDaAula(ia, false) + pags.filter(function (p) { return p.aula === ia; }).map(corpoDaPagina).join('') +
+              (a.fontes.length ? '<p class="es-ler-fontes"><b>Fontes:</b> ' + a.fontes.map(function (f) { return esc(f.titulo); }).join('; ') + '</p>' : '') + '</section>';
+          }).join('');
           w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(r.nome) + '</title><style>' +
-            '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:12pt/1.55 Georgia,serif;color:#111;max-width:720px;margin:24px auto;padding:0 20px}h1{font-size:22pt;margin:0 0 4px}h2{font-size:15pt;margin:28px 0 4px;page-break-after:avoid}' +
-            'h3{font-size:12pt;margin:16px 0 4px}p{margin:0 0 9px;text-align:justify}.es-ler-sub,.es-ler-item,.es-ler-fontes{font-size:10pt;color:#444;text-align:left}section{page-break-inside:auto}' +
+            '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:12pt/1.55 Georgia,serif;color:#111;max-width:720px;margin:24px auto;padding:0 20px}h1{font-size:22pt;margin:0 0 4px}' +
+            'h2{font-size:16pt;margin:30px 0 4px;page-break-after:avoid;border-bottom:1.5px solid #1B2A4A;padding-bottom:4px}h3{font-size:12pt;margin:16px 0 4px;page-break-after:avoid}' +
+            'p{margin:0 0 9px;text-align:justify}p.es-ler-st{font-weight:700;font-size:12.5pt;margin:16px 0 5px;text-align:left;page-break-after:avoid}' +
+            '.es-ler-sub,.es-ler-item,.es-ler-fontes{font-size:10pt;color:#444;text-align:left}section{page-break-inside:auto}' +
             'mark{color:inherit;border-radius:2px}.mt-amarelo{background:#fff3a3}.mt-verde{background:#c9f2d0}.mt-azul{background:#cfe6ff}.mt-rosa{background:#ffd3e2}' +
-            '</style></head><body>' + art.innerHTML + '</body></html>'); // sai com os grifos
+            '</style></head><body>' + tudo + '</body></html>');
           w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
         };
 
         function fechar() { barra.hidden = true; barra.innerHTML = ''; }
-        function redesenha(un, n) {
-          var b = art.querySelector('.es-ler-bl[data-un="' + un + '"][data-bl="' + n + '"]');
-          if (b) b.innerHTML = textoMarcado(crus[un + '|' + n], doBloco(un, n));
-        }
         function mostrarBarra(ret, html) {
           barra.innerHTML = html; barra.hidden = false;
           var larg = barra.offsetWidth || 240, alt = barra.offsetHeight || 44;
@@ -334,7 +429,9 @@
           var un = bl.getAttribute('data-un'), n = Number(bl.getAttribute('data-bl')), cru = crus[un + '|' + n];
           var ini = posicaoCrua(bl, g.startContainer, g.startOffset);
           // seleção que atravessa para outro trecho fica só com a parte deste
-          var fim = blocoDe(g.endContainer) === bl ? posicaoCrua(bl, g.endContainer, g.endOffset) : cru.length;
+          // (o mesmo bloco pode estar em mais de uma caixa na página — subtítulo e parágrafos; aí a seleção segue)
+          var bf = blocoDe(g.endContainer);
+          var fim = bf && bf.getAttribute('data-un') === un && bf.getAttribute('data-bl') === String(n) ? posicaoCrua(bf, g.endContainer, g.endOffset) : Number(bl.getAttribute('data-fim'));
           if (ini == null || fim == null) return;
           while (ini < fim && /\s/.test(cru.charAt(ini))) ini++;
           while (fim > ini && /\s/.test(cru.charAt(fim - 1))) fim--;
@@ -344,7 +441,7 @@
             b.onmousedown = function (e) { e.preventDefault(); }; // não desfaz a seleção antes do clique
             b.onclick = function () {
               api('POST', base() + '/marcacoes', { unidade: un, bloco: n, inicio: ini, fim: fim, cor: b.getAttribute('data-cor') }).then(function (x) {
-                marcas.push(x.marcacao); window.getSelection().removeAllRanges(); fechar(); redesenha(un, n);
+                marcas.push(x.marcacao); window.getSelection().removeAllRanges(); fechar(); desenhar();
               }).catch(function (e) { barra.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
             };
           });
@@ -362,7 +459,7 @@
             '<button class="al-bt peq" id="es-mt-ok">Salvar</button><button class="al-bt peq fan" id="es-mt-del">Apagar</button>');
           function salvar(cor) {
             api('PUT', base() + '/marcacoes/' + k.id, { cor: cor || k.cor, nota: el('es-mt-nota').value }).then(function (x) {
-              k.cor = x.marcacao.cor; k.nota = x.marcacao.nota; fechar(); redesenha(k.unidade, k.bloco);
+              k.cor = x.marcacao.cor; k.nota = x.marcacao.nota; fechar(); desenhar();
             }).catch(function (er) { barra.innerHTML = '<span class="es-msg-erro">' + esc(er.message) + '</span>'; });
           }
           cada(barra, '[data-cor]', function (b) { b.onclick = function () { salvar(b.getAttribute('data-cor')); }; });
@@ -370,13 +467,15 @@
           el('es-mt-nota').onkeydown = function (ev) { if (ev.key === 'Enter') salvar(); };
           el('es-mt-del').onclick = function () {
             api('DELETE', base() + '/marcacoes/' + k.id).then(function () {
-              marcas.splice(marcas.indexOf(k), 1); fechar(); redesenha(k.unidade, k.bloco);
+              marcas.splice(marcas.indexOf(k), 1); fechar(); desenhar();
             }).catch(function (er) { barra.innerHTML = '<span class="es-msg-erro">' + esc(er.message) + '</span>'; });
           };
         });
         document.addEventListener('mousedown', function (e) { if (barra.isConnected && !barra.hidden && !barra.contains(e.target) && !(e.target.closest && e.target.closest('mark[data-mt]'))) fechar(); });
         window.addEventListener('scroll', function () { if (barra.isConnected && !barra.hidden && !barra.querySelector('input')) fechar(); }, { passive: true });
 
+        if (!pags.length) { art.innerHTML = '<p class="al-sub">Esta disciplina ainda não tem texto para leitura.</p>'; return; }
+        desenhar();
         if (irPara) {
           var destino = art.querySelector('mark[data-mt="' + irPara + '"]');
           if (destino) { destino.scrollIntoView({ block: 'center' }); destino.classList.add('pisca'); return; }
@@ -487,23 +586,90 @@
       '.filhos{display:flex;flex-direction:column;margin-left:12px;border-left:1.5px solid var(--c)}' +
       '.filhos>.no{position:relative;padding-left:12px}.filhos>.no::before{content:"";position:absolute;left:0;top:50%;width:12px;border-top:1.5px solid var(--c)}' +
       'footer{margin-top:8px;font-size:7.5pt;color:#777}@media screen{body{max-width:1120px;margin:20px auto}}';
+    // uma página do PDF: o mapa de UMA aula para UM foco de prova
+    function paginaDoMapa(titulo, foco, txt, versao) {
+      return '<section class="pag"><header><h1>' + esc(titulo) + '</h1><span>Mapa mental · ' + esc(FOCO[foco] || foco) + ' · ' + esc(E.titulo || '') + '</span></header>' +
+        htmlDoMapa(titulo, txt) + '<footer>Villela Academy · mapa da versão ' + versao + ' da aula. Confira a vigência de leis e súmulas antes da prova.</footer></section>';
+    }
+    function escreverMapas(w, titulo, pags) {
+      w.document.open();
+      w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(titulo) + '</title><style>' + CSS_MAPA + '</style></head><body>' +
+        (pags || '<p>Ainda não há mapa mental aqui.</p>') + '</body></html>');
+      w.document.close(); w.focus();
+      if (pags) setTimeout(function () { w.print(); }, 400);
+    }
     // a janela é aberta no clique (antes do fetch), senão o navegador a bloqueia como pop-up
     function abrirMapa(codigo, janela) {
       var w = janela || window.open('', '_blank');
       if (!w) return;
       w.document.write('<p style="font:14px Arial">Montando o mapa mental…</p>');
       api('GET', base() + '/unidades/' + encodeURIComponent(codigo)).then(function (u) {
-        var focos = ['objetiva', 'escrita', 'oral'].filter(function (f) { return u.vespera && u.vespera[f] && u.vespera[f].mapa; });
-        var pags = focos.map(function (f) {
-          return '<section class="pag"><header><h1>' + esc(u.titulo) + '</h1><span>Mapa mental · ' + esc(FOCO[f] || f) + ' · ' + esc(E.titulo || '') + '</span></header>' +
-            htmlDoMapa(u.titulo, u.vespera[f].mapa) + '<footer>Villela Academy · Estude · mapa da versão ' + u.versao + ' da aula. Confira a vigência de leis e súmulas antes da prova.</footer></section>';
-        }).join('');
-        w.document.open();
-        w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Mapa mental — ' + esc(u.titulo) + '</title><style>' + CSS_MAPA + '</style></head><body>' +
-          (pags || '<p>Esta aula ainda não tem mapa mental.</p>') + '</body></html>');
-        w.document.close(); w.focus();
-        if (pags) setTimeout(function () { w.print(); }, 400);
+        var pags = ['objetiva', 'escrita', 'oral'].filter(function (f) { return u.vespera && u.vespera[f] && u.vespera[f].mapa; })
+          .map(function (f) { return paginaDoMapa(u.titulo, f, u.vespera[f].mapa, u.versao); }).join('');
+        escreverMapas(w, 'Mapa mental — ' + u.titulo, pags);
       }).catch(function (e) { w.document.open(); w.document.write('<p>' + esc(e.message) + '</p>'); w.document.close(); });
+    }
+
+    // ================= MAPAS: todos os mapas mentais num lugar só, por disciplina =================
+    // O mesmo desenho do PDF, agora dentro da página. As regras do mapa são as de
+    // CSS_MAPA (uma fonte só): aqui elas entram prefixadas, para não vazar nomes
+    // curtos como .no e .rot para o resto do painel.
+    function estiloDosMapas() {
+      if (document.getElementById('es-mapa-css')) return;
+      var ini = CSS_MAPA.indexOf('.mapa{'), fim = CSS_MAPA.indexOf('footer{');
+      var regras = CSS_MAPA.slice(ini, fim).split('}').filter(function (r) { return r.indexOf('{') > 0; })
+        .map(function (r) { return '.es-mapa-inline ' + r + '}'; }).join('');
+      var st = document.createElement('style');
+      st.id = 'es-mapa-css';
+      st.textContent = '.es-mapa-inline{font:9.5pt/1.3 Arial,Helvetica,sans-serif;color:#111;overflow-x:auto;padding:6px 0 10px}' + regras + '.es-mapa-inline .mapa{zoom:.86}';
+      document.head.appendChild(st);
+    }
+    function mapas(alvo) {
+      estiloDosMapas();
+      alvo.innerHTML = '<p class="al-sub">Carregando os mapas…</p>';
+      api('GET', base() + '/mapas').then(function (r) {
+        var foco = E.focoMapa || 'objetiva', comMapa = 0, aulas = 0;
+        r.disciplinas.forEach(function (d) { comMapa += d.com_mapa; aulas += d.aulas; });
+        alvo.innerHTML = '<div class="jr-caixa"><h3>Mapas mentais</h3>' +
+          '<p class="al-sub">Todos os mapas do percurso, por disciplina e ponto do edital. <b>' + comMapa + '</b> de ' + aulas + ' aulas já têm mapa' +
+          (comMapa < aulas ? '; os que faltam aparecem aqui assim que ficam prontos' : '') + '. Cada aula tem três versões, uma por tipo de prova.</p>' +
+          '<div class="es-linha"><span class="al-fino">Ver os mapas para: </span>' + ['objetiva', 'escrita', 'oral'].map(function (f) {
+            return '<button class="al-bt peq' + (f === foco ? '' : ' fan') + '" data-foco="' + f + '">' + FOCO[f] + '</button>';
+          }).join('') + '</div></div>' +
+          r.disciplinas.map(function (d) {
+            return '<details class="es-acervo" data-disc="' + esc(d.codigo || '_metodo') + '"><summary><b>' + esc((d.codigo ? d.codigo + ' ' : '') + d.nome) + '</b><span class="al-fino"> · ' +
+              (d.com_mapa ? d.com_mapa + ' mapa(s)' + (d.com_mapa < d.aulas ? ' de ' + d.aulas + ' aulas' : '') : 'mapas em preparação') + '</span></summary>' +
+              '<div class="es-mp-corpo">' + (d.com_mapa ? '<p class="al-sub">Abrindo…</p>' : '<p class="al-fino">Os mapas desta disciplina ainda estão em preparação.</p>') + '</div></details>';
+          }).join('');
+        cada(alvo, '[data-foco]', function (b) { b.onclick = function () { E.focoMapa = b.getAttribute('data-foco'); mapas(alvo); }; });
+        cada(alvo, 'details[data-disc]', function (dt) {
+          dt.addEventListener('toggle', function () {
+            if (!dt.open || dt.getAttribute('data-ok')) return;
+            dt.setAttribute('data-ok', '1');
+            var corpo = dt.querySelector('.es-mp-corpo'), cod = dt.getAttribute('data-disc');
+            if (!corpo.querySelector('.al-sub')) return; // disciplina ainda sem mapa
+            api('GET', base() + '/mapas?disciplina=' + encodeURIComponent(cod)).then(function (x) {
+              var com = x.aulas.filter(function (a) { return a.mapas[foco]; });
+              corpo.innerHTML = '<div class="es-linha"><button class="al-bt peq" data-pdf-disc="1">🖨️ PDF com os ' + com.length + ' mapas desta disciplina (' + FOCO[foco].toLowerCase() + ')</button></div>' +
+                x.aulas.map(function (a) {
+                  var item = a.itens.length ? '<b>' + esc(a.itens[0].codigo) + '</b> ' : '';
+                  if (!a.mapas[foco]) return '<div class="es-mp-aula"><h4>' + item + esc(a.titulo) + '</h4><p class="al-fino">mapa em preparação</p></div>';
+                  return '<div class="es-mp-aula"><div class="es-mp-cab"><h4>' + item + esc(a.titulo) + '</h4><span class="es-aula-bts">' +
+                    '<button class="al-bt peq fan" data-pdf-aula="' + esc(a.codigo) + '">🧠 PDF (3 versões)</button>' +
+                    '<button class="al-bt peq fan" data-un="' + esc(a.codigo) + '">Abrir a aula</button></span></div>' +
+                    '<div class="es-mapa-inline">' + htmlDoMapa(a.titulo, a.mapas[foco]) + '</div></div>';
+                }).join('');
+              cada(corpo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
+              cada(corpo, '[data-pdf-aula]', function (b) { b.onclick = function () { abrirMapa(b.getAttribute('data-pdf-aula'), window.open('', '_blank')); }; });
+              corpo.querySelector('[data-pdf-disc]').onclick = function () {
+                var w = window.open('', '_blank');
+                if (!w) return;
+                escreverMapas(w, 'Mapas mentais — ' + x.nome + ' — ' + FOCO[foco], com.map(function (a) { return paginaDoMapa(a.titulo, foco, a.mapas[foco], a.versao); }).join(''));
+              };
+            }).catch(function (e) { falha(corpo, e); });
+          });
+        });
+      }).catch(function (e) { falha(alvo, e); });
     }
 
     // ================= AULA ATIVA =================

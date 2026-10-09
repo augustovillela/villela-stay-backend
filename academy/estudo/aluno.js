@@ -240,25 +240,53 @@ function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100' } = {}) {
 // solução guardada e continuam na aula.
 // ---------------------------------------------------------------------
 const BLOCOS_DE_LEITURA = ['explicacao', 'exemplo', 'sintese'];
-function leitura(usuario, produto, slugEscopo, disciplina = '') {
-  const c = abrir(usuario, produto, slugEscopo);
+// as aulas agrupadas pela disciplina-mãe do edital (ou no grupo geral, quando o programa não tem uma)
+function aulasPorDisciplina(c) {
   const itens = new Map(R.cobertura(c.escopo, c).por_item.map(i => [i.codigo, i.texto]));
   const disc = (u) => { const it = (u.itens[0] || ''); const d = it.split('.').slice(0, 2).join('.'); return it && itens.has(d) && d !== it ? d : ''; };
   const grupos = [], por = {};
   for (const u of R.unidades(c.escopo.id, c.vis)) {
     const d = disc(u);
     if (!por[d]) grupos.push(por[d] = { codigo: d, nome: d ? itens.get(d) : 'Método de estudo', aulas: [] });
-    const blocos = u.blocos.map((b, n) => ({ ...b, n })).filter(b => BLOCOS_DE_LEITURA.includes(b.tipo) && b.texto); // `n` é o endereço do bloco na aula: a marcação aponta para ele
-    por[d].aulas.push({ u, blocos, caracteres: blocos.reduce((n, b) => n + b.texto.length, 0) });
+    por[d].aulas.push(u);
   }
+  const achar = (disciplina) => {
+    const g = por[disciplina === '_metodo' ? '' : s(disciplina, 20)];
+    if (!g) throw erro('Disciplina não encontrada neste percurso.', 404);
+    return g;
+  };
+  return { grupos, achar, itensDe: (u) => u.itens.map(i => ({ codigo: i, texto: itens.get(i) || '' })) };
+}
+function leitura(usuario, produto, slugEscopo, disciplina = '') {
+  const c = abrir(usuario, produto, slugEscopo);
+  const { grupos, achar, itensDe } = aulasPorDisciplina(c);
+  // `n` é o endereço do bloco na aula: a marcação aponta para ele
+  const blocosDe = (u) => u.blocos.map((b, n) => ({ ...b, n })).filter(b => BLOCOS_DE_LEITURA.includes(b.tipo) && b.texto);
   if (!disciplina) {
-    return { disciplinas: grupos.map(g => ({ codigo: g.codigo, nome: g.nome, aulas: g.aulas.length, caracteres: g.aulas.reduce((n, a) => n + a.caracteres, 0) })) };
+    return { disciplinas: grupos.map(g => ({ codigo: g.codigo, nome: g.nome, aulas: g.aulas.length,
+      caracteres: g.aulas.reduce((n, u) => n + blocosDe(u).reduce((m, b) => m + b.texto.length, 0), 0) })) };
   }
-  const g = por[disciplina === '_metodo' ? '' : s(disciplina, 20)];
-  if (!g) throw erro('Disciplina não encontrada neste percurso.', 404);
+  const g = achar(disciplina);
   return { codigo: g.codigo, nome: g.nome, escopo: c.escopo.titulo,
-    aulas: g.aulas.map(({ u, blocos }) => ({ codigo: u.codigo, titulo: u.titulo, itens: u.itens.map(i => ({ codigo: i, texto: itens.get(i) || '' })), versao: u.versao, status: u.status,
-      blocos: blocos.map(b => ({ n: b.n, tipo: b.tipo, titulo: b.titulo, texto: b.texto })), fontes: u.fontes })) };
+    aulas: g.aulas.map(u => ({ codigo: u.codigo, titulo: u.titulo, itens: itensDe(u), versao: u.versao, status: u.status,
+      blocos: blocosDe(u).map(b => ({ n: b.n, tipo: b.tipo, titulo: b.titulo, texto: b.texto })), fontes: u.fontes })) };
+}
+// ---------------------------------------------------------------------
+// MAPAS — todos os mapas mentais do percurso num lugar só, por disciplina.
+// O mapa mora no material de véspera de cada aula (um por foco de prova);
+// aqui ele sai sozinho, sem fichas nem slides, para a página que os reúne.
+// ---------------------------------------------------------------------
+const FOCOS_MAPA = ['objetiva', 'escrita', 'oral'];
+const mapasDe = (u) => Object.fromEntries(FOCOS_MAPA.map(f => [f, (u.vespera && u.vespera[f] && u.vespera[f].mapa) || '']));
+function mapas(usuario, produto, slugEscopo, disciplina = '') {
+  const c = abrir(usuario, produto, slugEscopo);
+  const { grupos, achar, itensDe } = aulasPorDisciplina(c);
+  if (!disciplina) {
+    return { disciplinas: grupos.map(g => ({ codigo: g.codigo, nome: g.nome, aulas: g.aulas.length, com_mapa: g.aulas.filter(u => mapasDe(u).objetiva).length })) };
+  }
+  const g = achar(disciplina);
+  return { codigo: g.codigo, nome: g.nome, escopo: c.escopo.titulo,
+    aulas: g.aulas.map(u => ({ codigo: u.codigo, titulo: u.titulo, itens: itensDe(u), versao: u.versao, mapas: mapasDe(u) })) };
 }
 
 // ---------------------------------------------------------------------
@@ -656,7 +684,7 @@ function obterPlano(usuario, produto, slugEscopo) {
 }
 
 module.exports = {
-  contexto, escopos, painel, unidade, leitura, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, pedirPista, responder, erros, anotar,
+  contexto, escopos, painel, unidade, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, pedirPista, responder, erros, anotar,
   cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,
 };

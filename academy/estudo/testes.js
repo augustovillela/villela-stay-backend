@@ -489,6 +489,45 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(devolta, cru, 'tirando as tags, sobra o texto cru — é isso que mantém a conta da seleção certa');
     assert.ok(/<mark class="mt-amarelo" data-mt="a">parágrafo<br>com dua<\/mark>/.test(html), html);
     assert.ok(/<mark class="mt-azul nota" data-mt="b" title="n">&lt;tag<\/mark>/.test(html), html);
+    // subtítulo destacado e negrito só na referência normativa — sem mexer no texto
+    const corrido = ['3. Evolução histórica', 'A regra está no art. 7º, XXIX, da Constituição; ver a Súmula 308 do TST e o Tema 1046.', 'Texto comum, sem citação nenhuma.'].join('\n\n');
+    const h2 = textoMarcado(corrido, []);
+    assert.ok(/<p data-o="0" class="es-ler-st">3\. Evolução histórica<\/p>/.test(h2), h2);
+    assert.deepEqual([...h2.matchAll(/<b>([^<]+)<\/b>/g)].map(x => x[1]), ['art. 7º', 'Súmula 308', 'Tema 1046'], 'negrito só nas referências');
+    assert.ok(/<p data-o="\d+">Texto comum, sem citação nenhuma\.<\/p>/.test(h2), 'parágrafo comum sai sem negrito');
+    assert.equal(h2.replace(/<\/p><p[^>]*>/g, '\n\n').replace(/<[^>]+>/g, ''), corrido, 'e o texto continua sendo o cru');
+    // um grifo que atravessa a referência não a quebra nem a perde
+    const h3 = textoMarcado(corrido, [{ id: 'z', inicio: corrido.indexOf('no art'), fim: corrido.indexOf('XXIX'), cor: 'verde', nota: '' }]);
+    assert.ok(/<mark class="mt-verde" data-mt="z">no <\/mark><mark class="mt-verde" data-mt="z"><b>art\. 7º<\/b><\/mark>/.test(h3), h3);
+    // paginação: cada parágrafo aparece uma vez, na ordem, e nenhum subtítulo fica órfão no fim da página
+    const paginar = new Function('esc', 'NOME_BLOCO', tela.slice(ini, fimF) + tela.slice(tela.indexOf('var ALVO_PAGINA'), tela.indexOf('function lerDisciplina')) + ';return paginar;')(x => String(x), { explicacao: '', exemplo: 'Exemplo', sintese: 'Síntese' });
+    const longo = Array.from({ length: 12 }, (_, i) => `${i + 1}. Seção ${i + 1}\n\n` + 'Parágrafo de corpo com tamanho razoável para encher a página. '.repeat(12).trim()).join('\n\n');
+    const pgs = paginar([{ codigo: 'u1', blocos: [{ n: 1, tipo: 'explicacao', titulo: '', texto: longo }, { n: 2, tipo: 'sintese', titulo: '', texto: 'Fecho da aula.' }] }]);
+    assert.ok(pgs.length >= 3, 'texto longo vira várias páginas: ' + pgs.length);
+    const faixas = pgs.flatMap(p => p.itens.filter(x => x.t === 'b' && x.n === 1).map(x => [x.de, x.ate]));
+    assert.ok(faixas.every((f, i) => i === 0 || f[0] > faixas[i - 1][1] - 1), 'faixas em ordem, sem sobreposição');
+    assert.equal(faixas[0][0], 0); assert.equal(faixas[faixas.length - 1][1], longo.length, 'do primeiro ao último caractere');
+    assert.ok(pgs.every(p => !p.itens[p.itens.length - 1].orfao), 'nenhuma página termina em título ou subtítulo');
+  });
+
+  await t('estudo: mapas — a página que reúne os mapas mentais por disciplina', async () => {
+    const idx = await req('GET', `${esc}/mapas`, { jar: 'olga' });
+    assert.equal(idx.st, 200, idx.texto);
+    assert.ok(idx.json.disciplinas.length >= 1 && idx.json.disciplinas.every(d => d.aulas >= d.com_mapa && d.com_mapa >= 0), idx.texto);
+    const leit = (await req('GET', `${esc}/leitura`, { jar: 'olga' })).json.disciplinas;
+    assert.deepEqual(idx.json.disciplinas.map(d => [d.codigo, d.aulas]), leit.map(d => [d.codigo, d.aulas]), 'o mesmo agrupamento da leitura');
+    const d = idx.json.disciplinas[0];
+    const m = await req('GET', `${esc}/mapas?disciplina=${encodeURIComponent(d.codigo || '_metodo')}`, { jar: 'olga' });
+    assert.equal(m.st, 200, m.texto);
+    assert.equal(m.json.aulas.length, d.aulas);
+    assert.ok(m.json.aulas.every(a => ['objetiva', 'escrita', 'oral'].every(f => typeof a.mapas[f] === 'string')), 'cada aula diz o mapa de cada foco, mesmo vazio');
+    assert.ok(!/"fichas"|"slides"|"solucao"/.test(m.texto), 'só o mapa sai por aqui');
+    assert.equal((await req('GET', `${esc}/mapas?disciplina=9.9`, { jar: 'olga' })).st, 404);
+    // a tela prefixa as regras do mapa com a classe da página — nenhuma regra solta
+    const tela = require('fs').readFileSync(require('path').join(__dirname, '..', 'app-estudo.js'), 'utf8');
+    const css = new Function(tela.slice(tela.indexOf('var CSS_MAPA'), tela.indexOf('// uma página do PDF')) + ';return CSS_MAPA;')();
+    const meio = css.slice(css.indexOf('.mapa{'), css.indexOf('footer{'));
+    assert.ok(meio.length > 400 && meio.split('}').filter(r => r.includes('{')).every(r => r.trim().startsWith('.')), 'o trecho reaproveitado só tem regras de classe');
   });
 
   await t('estudo: cards — a sessão diz os limites do dia; o acervo inteiro é só do revisor e não agenda nada', async () => {
@@ -550,7 +589,11 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(app.indexOf('/academy/estude.js') > 0 && app.indexOf('/academy/estude.js') < app.indexOf('/academy/aluno.js'), 'o estúdio procura window.AcademyEstude ao montar');
     assert.ok(/estude\.css/.test(app));
     const fonte = require('fs').readFileSync(require('path').join(__dirname, '..', 'app-estudo.js'), 'utf8');
-    assert.ok(!/localStorage/.test(fonte), 'resposta de prova não mora no navegador: o que vale é o que o servidor confirmou');
+    // A regra é sobre RESPOSTA DE PROVA (e tudo o que conta como estudo). A única coisa que a tela guarda no
+    // navegador é a página em que o aluno parou na leitura — conveniência de quem lê, que o servidor não usa.
+    const usos = fonte.match(/localStorage\.\w+\([^)]*\)/g) || [];
+    assert.ok(usos.length === (fonte.match(/localStorage/g) || []).length && usos.every(u => /^localStorage\.(getItem|setItem)\(chave\b/.test(u)) && /chave = 'es-ler:'/.test(fonte),
+      'resposta de prova não mora no navegador: o que vale é o que o servidor confirmou (só a página da leitura fica local): ' + usos.join(' | '));
   });
 
   await t('estudo: retificação cria versão nova do programa, guarda a antiga e diz o que mudou', async () => {
