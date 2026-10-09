@@ -1,0 +1,435 @@
+{
+ "_nota": "Gerado por blogfig_gerar.py (posicao e escolha da figura aberta conferidas a mao). \"secao\" e \"apos\" ancoram a figura no artigo; \"aberta\": true = camada publica.",
+ "_hub": [
+  "fig-01-01",
+  "fig-03-05",
+  "fig-07-01",
+  "fig-11-01"
+ ],
+ "01-possibilidades-e-limitacoes": [
+  {
+   "id": "fig-01-03",
+   "arq": "construcao-com-conteineres-na-pratica-fig-01-03.webp",
+   "w": 1200,
+   "h": 394,
+   "legenda": "As onze etapas da obra em linha, da consulta ao órgão à entrega; repare nas etapas 6 e 7, que correm em paralelo",
+   "aberta": true,
+   "secao": "As onze etapas",
+   "apos": "Depois vêm a higienização profissional do contêiner usado, com comprov"
+  }
+ ],
+ "02-usos-e-programas": [
+  {
+   "id": "fig-01-01",
+   "arq": "construcao-com-conteineres-na-pratica-fig-01-01.webp",
+   "w": 1200,
+   "h": 299,
+   "legenda": "Os usos lado a lado, em planta: a moradia de apoio, o studio e o conjunto de unidades; observe como o programa muda",
+   "aberta": true,
+   "secao": "Seis nomes, seis programas",
+   "apos": "A quitinete é um ambiente, banheiro e cozinha pequena, para uma ou dua"
+  },
+  {
+   "id": "fig-01-02",
+   "arq": "construcao-com-conteineres-na-pratica-fig-01-02.webp",
+   "w": 1200,
+   "h": 556,
+   "legenda": "A planilha do custo total, com as quinze linhas nomeadas e a coluna de preço em branco, para preencher com as propostas recebidas",
+   "aberta": false,
+   "secao": "A forma da conta: quinze linhas",
+   "apos": "O engano mais comum neste tipo de obra é tomar o preço do contêiner pe"
+  }
+ ],
+ "03-equipe-e-documentos": [
+  {
+   "id": "fig-02-01",
+   "arq": "construcao-com-conteineres-na-pratica-fig-02-01.webp",
+   "w": 1200,
+   "h": 785,
+   "legenda": "As três figuras do livro, lado a lado: quem faz, o contratado e quem assina o projeto; observe o que distingue cada uma",
+   "aberta": false,
+   "secao": "Três papéis em toda obra com contêiner",
+   "apos": "Esse registro de responsabilidade técnica é um documento: peça uma cóp"
+  },
+  {
+   "id": "fig-02-02",
+   "arq": "construcao-com-conteineres-na-pratica-fig-02-02.webp",
+   "w": 1200,
+   "h": 474,
+   "legenda": "A pasta de documentos da obra, com uma divisória para cada profissional; observe quais documentos cada um entrega",
+   "aberta": true,
+   "secao": "Os documentos a pedir, por quem",
+   "apos": "Da oficina de transformação, o registro de responsabilidade técnica da"
+  }
+ ],
+ "04-estrutura-e-modificacoes": [
+  {
+   "id": "fig-03-02",
+   "arq": "construcao-com-conteineres-na-pratica-fig-03-02.webp",
+   "w": 1200,
+   "h": 409,
+   "legenda": "A anatomia da caixa: cantoneiras, colunas de canto, longarinas, travessas, piso, chapa lateral, teto, portas e placa; figura para ler, não para executar",
+   "aberta": false,
+   "secao": "O fechamento, as portas e a placa",
+   "apos": "Numa das pontas ficam as portas : as duas folhas da ponta de carga, co"
+  },
+  {
+   "id": "fig-03-03",
+   "arq": "construcao-com-conteineres-na-pratica-fig-03-03.webp",
+   "w": 1200,
+   "h": 436,
+   "legenda": "O caminho das cargas na caixa inteira e na caixa com abertura lateral, onde um trecho deixa de trabalhar; figura para ler, não para executar",
+   "aberta": true,
+   "secao": "A lateral faz parte do conjunto",
+   "apos": "Presa às longarinas e às colunas, ela mantém o quadro no esquadro, que"
+  }
+ ],
+ "05-exigir-e-assistir": [
+  {
+   "id": "fig-02-03",
+   "arq": "construcao-com-conteineres-na-pratica-fig-02-03.webp",
+   "w": 1200,
+   "h": 667,
+   "legenda": "A área isolada do içamento vista de fora, com a linha de isolamento e o leitor atrás dela; figura para ler, não para executar",
+   "aberta": true,
+   "secao": "O içamento, segundo a NR-18",
+   "apos": "Segundo a NR-18, o guindaste é usado conforme o fabricante e o plano d"
+  }
+ ],
+ "06-ponto-e-acesso": [
+  {
+   "id": "fig-04-01",
+   "arq": "construcao-com-conteineres-na-pratica-fig-04-01.webp",
+   "w": 1200,
+   "h": 381,
+   "legenda": "A planta da Chácara-Modelo com os três pontos candidatos marcados e, ao lado, os cinco critérios de comparação",
+   "aberta": true,
+   "secao": "Os três pontos da Chácara-Modelo",
+   "apos": "O primeiro é a clareira, no canto sudoeste. Ela fica junto ao acesso d"
+  },
+  {
+   "id": "fig-04-02",
+   "arq": "construcao-com-conteineres-na-pratica-fig-04-02.webp",
+   "w": 1200,
+   "h": 961,
+   "legenda": "A ficha de acesso sobre a planta: o portão, a estrada interna, o estacionamento, a rede aérea junto ao portão e a clareira",
+   "aberta": false,
+   "secao": "A rede aérea e o chão do guindaste",
+   "apos": "A sexta linha pede a área de manobra e de apoio do guindaste: as medid"
+  }
+ ],
+ "07-implantacao-e-sol": [
+  {
+   "id": "fig-03-05",
+   "arq": "construcao-com-conteineres-na-pratica-fig-03-05.webp",
+   "w": 1200,
+   "h": 961,
+   "legenda": "O sol do Cerrado sobre a caixa, na seca e na chuva; observe o percurso mais baixo, inclinado para o norte, no meio do ano",
+   "aberta": true,
+   "secao": "Por que o comprimento fica no sentido leste–oeste",
+   "apos": "Na ponta oeste, a mais quente à tarde, está o banheiro, que serve de a"
+  },
+  {
+   "id": "fig-05-02",
+   "arq": "construcao-com-conteineres-na-pratica-fig-05-02.webp",
+   "w": 1200,
+   "h": 961,
+   "legenda": "A clareira em planta, com o contêiner, a varanda na face norte, os quatro afastamentos e a faixa do jardim",
+   "aberta": false,
+   "secao": "A varanda, o jardim, a ocupação e o desnível",
+   "apos": "A varanda começa a 3,60 m da ponta leste e vai até 9,60 m. Como a copa"
+  }
+ ],
+ "08-tipos-vistoria-e-compra": [
+  {
+   "id": "fig-03-01",
+   "arq": "construcao-com-conteineres-na-pratica-fig-03-01.webp",
+   "w": 1200,
+   "h": 565,
+   "legenda": "Os três tipos de contêiner em corte, lado a lado; compare a altura interna de cada um",
+   "aberta": false,
+   "secao": "Os três tipos, e o que a tabela mostra",
+   "apos": "A primeira leitura da tabela: os três tipos têm a mesma largura por fo"
+  },
+  {
+   "id": "fig-04-03",
+   "arq": "construcao-com-conteineres-na-pratica-fig-04-03.webp",
+   "w": 1200,
+   "h": 594,
+   "legenda": "Os doze pontos da vistoria numerados sobre a caixa; o leitor fica do lado de fora, de calçado fechado, olhando e anotando na prancheta",
+   "aberta": false,
+   "secao": "A vistoria em doze pontos",
+   "apos": "Você olha, sente o cheiro à porta, fotografa e anota. Não raspa, não l"
+  },
+  {
+   "id": "fig-04-04",
+   "arq": "construcao-com-conteineres-na-pratica-fig-04-04.webp",
+   "w": 1200,
+   "h": 518,
+   "legenda": "O interior escuro da caixa, com pontos de claridade no teto e em volta das portas, e uma pessoa de fora, junto à porta",
+   "aberta": true,
+   "secao": "O cheiro, à porta, e só depois o teste da luz",
+   "apos": "O teste tem quatro condições. É rápido: quem está dentro conta os pont"
+  }
+ ],
+ "09-programa-e-layout": [
+  {
+   "id": "fig-05-01",
+   "arq": "construcao-com-conteineres-na-pratica-fig-05-01.webp",
+   "w": 1200,
+   "h": 406,
+   "legenda": "O contêiner em planta, com as quatro zonas ao longo do comprimento e a divisória única entre a copa e o banheiro",
+   "aberta": false,
+   "secao": "As quatro zonas",
+   "apos": "Medidos por dentro, a partir da ponta leste, os pontos em que cada zon"
+  },
+  {
+   "id": "fig-05-03",
+   "arq": "construcao-com-conteineres-na-pratica-fig-05-03.webp",
+   "w": 1200,
+   "h": 961,
+   "legenda": "O contêiner em corte transversal: a camada r em cada lateral e a largura útil que sobra entre os dois forros",
+   "aberta": true,
+   "secao": "A letra r e as medidas úteis",
+   "apos": "Com a letra, as medidas úteis viram fórmulas. A largura útil é a largu"
+  }
+ ],
+ "10-orcamento-e-contratacao": [
+  {
+   "id": "fig-05-04",
+   "arq": "construcao-com-conteineres-na-pratica-fig-05-04.webp",
+   "w": 1200,
+   "h": 560,
+   "legenda": "As onze etapas sobre a régua do ano, com a seca e a chuva do Cerrado marcadas e, embaixo, os dias de reserva da chácara",
+   "aberta": false,
+   "secao": "O calendário: duas datas do Cerrado e as reservas",
+   "apos": "O que você fixa são duas datas do Cerrado, e arruma o resto de trás pa"
+  },
+  {
+   "id": "fig-10-01",
+   "arq": "construcao-com-conteineres-na-pratica-fig-10-01.webp",
+   "w": 1200,
+   "h": 565,
+   "legenda": "A ficha de aceite por etapa preenchida até a metade, ao lado da pasta de documentos aberta",
+   "aberta": true,
+   "secao": "Paga-se a etapa conferida",
+   "apos": "A conferência fica registrada na ficha de aceite por etapa . Ela tem u"
+  }
+ ],
+ "11-terreno-drenagem-infraestrutura": [
+  {
+   "id": "fig-06-01",
+   "arq": "construcao-com-conteineres-na-pratica-fig-06-01.webp",
+   "w": 1200,
+   "h": 961,
+   "legenda": "A clareira em planta: a seta do caimento, a enxurrada desviada para longe da ponta leste e as duas valas até a parede hidráulica",
+   "aberta": false,
+   "secao": "A água da chuva",
+   "apos": "O critério de conferência cabe em uma linha: a água corre para longe d"
+  }
+ ],
+ "12-fundacoes-e-apoios": [
+  {
+   "id": "fig-04-05",
+   "arq": "construcao-com-conteineres-na-pratica-fig-04-05.webp",
+   "w": 1200,
+   "h": 480,
+   "legenda": "Três famílias de fundação em corte, sem medida: apoios isolados, apoios sobre elementos profundos e viga contínua; figura para ler, não para executar",
+   "aberta": true,
+   "secao": "As três famílias, só como leitura",
+   "apos": "Leitura — não execute. As famílias de solução são três: apoios isolado"
+  },
+  {
+   "id": "fig-06-02",
+   "arq": "construcao-com-conteineres-na-pratica-fig-06-02.webp",
+   "w": 1200,
+   "h": 495,
+   "legenda": "Os apoios prontos vistos de cima, com as duas diagonais e o nível conferidos junto do responsável técnico; figura para ler, não para executar",
+   "aberta": false,
+   "secao": "Com os apoios prontos: nível e esquadro",
+   "apos": "Leve a trena longa, o nível de bolha com a régua, a câmera e a pranche"
+  }
+ ],
+ "13-transporte-e-nivelamento": [
+  {
+   "id": "fig-06-04",
+   "arq": "construcao-com-conteineres-na-pratica-fig-06-04.webp",
+   "w": 1200,
+   "h": 483,
+   "legenda": "O percurso do portão à clareira e a carga suspensa, com o leitor atrás da linha de isolamento; figura para ler, não para executar",
+   "aberta": true,
+   "secao": "No dia: quem fica e o recebimento",
+   "apos": "Dali você assiste. O percurso da carga, do portão à clareira, e a carg"
+  },
+  {
+   "id": "fig-06-03",
+   "arq": "construcao-com-conteineres-na-pratica-fig-06-03.webp",
+   "w": 1200,
+   "h": 622,
+   "legenda": "O contêiner em corte longitudinal, com o piso em nível sobre o terreno que cai de oeste para leste; figura para ler, não para executar",
+   "aberta": false,
+   "secao": "O nivelamento e a conta do desnível",
+   "apos": "Chame de h a altura do piso do contêiner acima do terreno no ponto mai"
+  }
+ ],
+ "14-cortes-reforcos-anticorrosivo": [
+  {
+   "id": "fig-06-05",
+   "arq": "construcao-com-conteineres-na-pratica-fig-06-05.webp",
+   "w": 1200,
+   "h": 369,
+   "legenda": "Três quadros da mesma lateral: inteira, com o vão aberto e com o quadro de reforço no contorno; figura para ler, não para executar",
+   "aberta": true,
+   "secao": "A visita: conferir os vãos contra o projeto",
+   "apos": "Diante da caixa, confira quantas aberturas há, em que face e em que zo"
+  }
+ ],
+ "15-cobertura-fachadas-e-agua": [
+  {
+   "id": "fig-07-01",
+   "arq": "construcao-com-conteineres-na-pratica-fig-07-01.webp",
+   "w": 1200,
+   "h": 961,
+   "legenda": "O contêiner em corte, com a cobertura complementar acima do teto, o beiral sombreando as faces e o ar circulando entre os dois telhados",
+   "aberta": true,
+   "secao": "Por que um segundo telhado",
+   "apos": "A cobertura complementar é um telhado construído acima desse teto, com"
+  }
+ ],
+ "16-isolamento-e-condensacao": [
+  {
+   "id": "fig-03-04",
+   "arq": "construcao-com-conteineres-na-pratica-fig-03-04.webp",
+   "w": 1200,
+   "h": 769,
+   "legenda": "A gota de condensação se formando no aço frio, atrás do forro; observe o ar úmido que vem de dentro da unidade",
+   "aberta": true,
+   "secao": "Por que o aço sua",
+   "apos": "O ar de dentro de uma casa carrega vapor: da respiração de quem dorme,"
+  },
+  {
+   "id": "fig-07-02",
+   "arq": "construcao-com-conteineres-na-pratica-fig-07-02.webp",
+   "w": 1200,
+   "h": 770,
+   "legenda": "A parede e o teto em corte, do aço para dentro: chapa, estrutura auxiliar, isolante, barreira de vapor e forro; r marca a espessura total",
+   "aberta": false,
+   "secao": "As quatro camadas, do aço para dentro",
+   "apos": "Essa ordem é o princípio. A ordem exata, o material de cada camada e, "
+  },
+  {
+   "id": "fig-07-03",
+   "arq": "construcao-com-conteineres-na-pratica-fig-07-03.webp",
+   "w": 1200,
+   "h": 602,
+   "legenda": "O studio em planta, com as aberturas da face norte e da face sul; observe o ar atravessando a largura da caixa",
+   "aberta": false,
+   "secao": "O ar que atravessa a caixa",
+   "apos": "As aberturas pedidas ao projetista ficam em faces opostas: ao norte, a"
+  }
+ ],
+ "18-coordenacao-das-instalacoes": [
+  {
+   "id": "fig-07-04",
+   "arq": "construcao-com-conteineres-na-pratica-fig-07-04.webp",
+   "w": 1200,
+   "h": 476,
+   "legenda": "A parede aberta, com tubulações, eletrodutos e isolante na ordem dos ofícios; o contratado executa e o leitor confere a ficha antes de fechar",
+   "aberta": true,
+   "secao": "A parada “antes de fechar”",
+   "apos": "Depois vêm três registros do que já foi feito. O piso original foi rem"
+  }
+ ],
+ "19-acabamentos-e-mobiliario": [
+  {
+   "id": "fig-08-01",
+   "arq": "construcao-com-conteineres-na-pratica-fig-08-01.webp",
+   "w": 1200,
+   "h": 852,
+   "legenda": "A copa e o banheiro em planta, com a parede hidráulica no meio, a bancada de um lado e as peças do banheiro do outro",
+   "aberta": true,
+   "secao": "A copa e o banheiro",
+   "apos": "No banheiro, chuveiro, vaso e lavatório arrumam-se na largura da caixa"
+  },
+  {
+   "id": "fig-08-02",
+   "arq": "construcao-com-conteineres-na-pratica-fig-08-02.webp",
+   "w": 1200,
+   "h": 961,
+   "legenda": "A varanda na face norte do studio e, ao norte dela, a faixa de jardim até a borda da clareira, em planta",
+   "aberta": false,
+   "secao": "A varanda, o nível do piso e a faixa do jardim",
+   "apos": "Varanda, deck e degraus são de contratado; a cobertura da varanda é co"
+  }
+ ],
+ "20-inspecao-e-manutencao": [
+  {
+   "id": "fig-09-01",
+   "arq": "construcao-com-conteineres-na-pratica-fig-09-01.webp",
+   "w": 1200,
+   "h": 431,
+   "legenda": "Mapa de defeitos da caixa pronta: ferrugem na parte de baixo, teto empoçado, vedação das janelas, mofo no canto e porta que não fecha",
+   "aberta": false,
+   "secao": "Infiltração, condensação e mofo",
+   "apos": "O mofo são pontos escuros e cheiro, onde há umidade e pouco ar: atrás "
+  },
+  {
+   "id": "fig-09-02",
+   "arq": "construcao-com-conteineres-na-pratica-fig-09-02.webp",
+   "w": 1200,
+   "h": 325,
+   "legenda": "O calendário de inspeção no Cerrado: a visita de setembro, antes da chuva, a de maio, depois dela, e a volta a cada hóspede",
+   "aberta": true,
+   "secao": "O plano, no ano do Cerrado",
+   "apos": "Depois da chuva, em maio, confere-se o que a água deixou: ferrugem na "
+  }
+ ],
+ "21-moradia-e-quitinetes": [
+  {
+   "id": "fig-08-03",
+   "arq": "construcao-com-conteineres-na-pratica-fig-08-03.webp",
+   "w": 1200,
+   "h": 622,
+   "legenda": "Três unidades em linha, em planta, com as varandas na mesma face; as setas mostram o que cada uma vê e ouve da vizinha",
+   "aberta": true,
+   "secao": "O conjunto linear: o que poupa e o que se perde",
+   "apos": "Com as portas e as varandas na mesma face, cada hóspede passa diante d"
+  }
+ ],
+ "22-pequenas-villas-com-patio": [
+  {
+   "id": "fig-08-04",
+   "arq": "construcao-com-conteineres-na-pratica-fig-08-04.webp",
+   "w": 1200,
+   "h": 627,
+   "legenda": "Unidades em torno de um pátio, em planta; as linhas de visão mostram o que se vê de uma porta para a outra",
+   "aberta": true,
+   "secao": "As linhas de visão e as duas saídas",
+   "apos": "De cada porta e de cada janela sai uma linha até aquilo que ela vê. Fe"
+  }
+ ],
+ "23-operacao-custos-e-ocupacao": [
+  {
+   "id": "fig-10-02",
+   "arq": "construcao-com-conteineres-na-pratica-fig-10-02.webp",
+   "w": 1200,
+   "h": 383,
+   "legenda": "As quatro fórmulas dos indicadores, com as letras e os campos em branco, em três colunas de cenário",
+   "aberta": true,
+   "secao": "Três cenários e dois cuidados",
+   "apos": "Os cenários são a ocupação baixa, a média e a alta que você considera "
+  }
+ ],
+ "24-implantacao-na-chacara-modelo": [
+  {
+   "id": "fig-11-01",
+   "arq": "construcao-com-conteineres-na-pratica-fig-11-01.webp",
+   "w": 1200,
+   "h": 505,
+   "legenda": "O Studio da Clareira pronto, na planta da propriedade, no canto sudoeste, com a varanda na face norte e o estacionamento a leste",
+   "aberta": true,
+   "secao": "Etapas 10 e 11: o acabamento e a entrega",
+   "apos": "Na entrega, o checklist é percorrido com a pasta aberta, e só então a "
+  }
+ ]
+}

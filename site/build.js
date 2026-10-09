@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v33'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v34'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -3723,13 +3723,13 @@ try {
   blogCreditos = JSON.parse(fs.readFileSync(path.join(__dirname, 'src', 'blog', 'creditos.json'), 'utf8').replace(/^﻿/, ''));
 } catch (e) { console.warn('[blog] sem creditos.json — artigos usarão só a arte de marca'); }
 
-// Copia as imagens do blog (src/blog/*.jpg|png) para dist/blog-img/
+// Copia as imagens do blog (src/blog/*.jpg|png|webp) para dist/blog-img/
 const BLOG_IMG_SRC = path.join(__dirname, 'src', 'blog');
 const BLOG_IMG_DST = path.join(DIST, 'blog-img');
 if (fs.existsSync(BLOG_IMG_SRC)) {
   fs.mkdirSync(BLOG_IMG_DST, { recursive: true });
   for (const f of fs.readdirSync(BLOG_IMG_SRC)) {
-    if (/\.(jpe?g|png)$/i.test(f)) fs.copyFileSync(path.join(BLOG_IMG_SRC, f), path.join(BLOG_IMG_DST, f));
+    if (/\.(jpe?g|png|webp)$/i.test(f)) fs.copyFileSync(path.join(BLOG_IMG_SRC, f), path.join(BLOG_IMG_DST, f));
   }
 }
 fs.mkdirSync(path.join(DIST, 'blog'), { recursive: true });
@@ -6487,6 +6487,174 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     console.log(`Blog O Homem Essencial: hub + ${heNoAr} de ${heTotal} artigos + ${heApoio.length} material(is) de apoio`);
   }
 
+  // ---- Figuras das séries da coleção Viver de Chácara (blocos PI_*, PA_*, PE_* e CT_*) ----
+  // As ilustrações do curso e do livro entram nos artigos. Cada série tem content/vdc-<curso>/figuras.json
+  // (gerado fora do build, com a posição conferida a mão): por artigo, a lista das figuras com o arquivo em
+  // src/blog/<serie>-fig-NN-NN.webp, a medida, a legenda e a âncora ("secao" = o <h2>; "apos" = começo do
+  // parágrafo depois do qual a figura entra).
+  // DUAS CAMADAS, como o texto: no máximo UMA figura por artigo vai ABERTA ("aberta": true), logo depois do
+  // resumo; as demais entram no desenvolvimento, que é montado por JavaScript. A figura aberta passa pelo
+  // veto da série (a legenda) e pela régua de vazamento do exportador (12 palavras seguidas do "Para aplicar
+  // hoje"). ⚠️ O veto lê TEXTO: o que a IMAGEM mostra (valor, traço, espessura, prazo, peso, número a validar,
+  // estrutura sem o selo "Leitura — não execute") só se confere OLHANDO a figura antes de marcá-la aberta.
+  // Legenda nova não se escreve aqui: vale a do figuras.json do livro.
+  const VDC_FIG_CSS = `
+.cap .cap-fig{margin:26px 0;padding:0}
+.cap .cap-fig img{display:block;box-sizing:border-box;width:100%;max-width:100%;height:auto;margin:0 auto;border:1px solid var(--line);border-radius:12px;background:#fbf8f2}
+.cap .cap-fig figcaption{margin:10px 2px 0;font:400 14.5px/1.5 Inter,"Segoe UI",system-ui,sans-serif;color:#675f56;text-align:left}
+.cap .cap-fig figcaption b{color:var(--accent);font-weight:700}
+.cap .cap-publico .cap-fig{margin:0 0 22px}
+.cap .cap-figs-hub{max-width:1100px;margin:0 auto 26px;padding:0 24px}
+.cap .cap-figs-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
+.cap .cap-fig-card{display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;text-decoration:none;color:#1c1a17}
+.cap .cap-fig-card:hover{border-color:var(--accent);box-shadow:0 8px 22px rgba(15,26,43,.1)}
+.cap .cap-fig-quadro{display:flex;align-items:center;justify-content:center;height:170px;padding:10px;background:#fbf8f2;border-bottom:1px solid var(--line)}
+.cap .cap-fig-quadro img{display:block;max-width:100%;max-height:100%;width:auto;height:auto}
+.cap .cap-fig-leg{padding:12px 14px 14px;font:400 14px/1.45 Inter,"Segoe UI",system-ui,sans-serif;color:#4a4640}
+.cap .cap-fig-leg b{display:block;font:700 12px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+@media (max-width:520px){.cap .cap-figs-hub{padding:0 16px}.cap .cap-figs-grade{gap:10px}.cap .cap-fig-quadro{height:120px;padding:8px}.cap .cap-fig-leg{padding:10px 10px 12px;font-size:13px}}`;
+  const vdcNorm = s => String(s).toLowerCase().replace(/[^0-9a-zà-ÿ]+/g, '');
+  const vdcPalavras = s => String(s).toLowerCase().replace(/[^0-9a-zà-ÿ ]+/g, ' ').split(/\s+/).filter(Boolean);
+  // Medida real de um WebP (o dimensoesArquivo do topo só lê PNG e JPEG).
+  function vdcWebpDim(file) {
+    const b = fs.readFileSync(file);
+    if (b.length < 30 || b.toString('ascii', 0, 4) !== 'RIFF' || b.toString('ascii', 8, 12) !== 'WEBP') return null;
+    const t = b.toString('ascii', 12, 16);
+    if (t === 'VP8 ') return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+    if (t === 'VP8L') { const n = b.readUInt32LE(21); return { w: (n & 0x3fff) + 1, h: ((n >>> 14) & 0x3fff) + 1 }; }
+    if (t === 'VP8X') return { w: b.readUIntLE(24, 3) + 1, h: b.readUIntLE(27, 3) + 1 };
+    return null;
+  }
+  // Lê e confere o figuras.json de uma série. Sem o arquivo, a série segue sem figuras.
+  function vdcFiguras(dir, serie) {
+    const arq = path.join(dir, 'figuras.json');
+    if (!fs.existsSync(arq)) return { porArtigo: {}, hub: [] };
+    const bruto = JSON.parse(fs.readFileSync(arq, 'utf8').replace(/^﻿/, ''));
+    const nome = new RegExp('^' + serie + '-fig-\\d\\d-\\d\\d\\.webp$');
+    const porArtigo = {};
+    for (const [chave, lista] of Object.entries(bruto)) {
+      if (chave.startsWith('_')) continue;
+      if (!Array.isArray(lista)) throw new Error(`[${serie}] figuras.json: "${chave}" não é uma lista`);
+      for (const f of lista) {
+        for (const campo of ['id', 'arq', 'w', 'h', 'legenda', 'secao', 'apos']) {
+          if (!f[campo]) throw new Error(`[${serie}] figuras.json: ${chave} / ${f.id || '?'} sem "${campo}"`);
+        }
+        if (!nome.test(f.arq)) throw new Error(`[${serie}] figuras.json: nome de arquivo fora do padrão em ${chave}: ${f.arq}`);
+        const abs = path.join(BLOG_IMG_SRC, f.arq);
+        if (!fs.existsSync(abs)) throw new Error(`[${serie}] figura ${f.id} de ${chave}: ${f.arq} não está em src/blog`);
+        const d = vdcWebpDim(abs);
+        if (!d || d.w !== f.w || d.h !== f.h) throw new Error(`[${serie}] figura ${f.id} de ${chave}: medida do figuras.json (${f.w}×${f.h}) não bate com a do arquivo (${d ? d.w + '×' + d.h : 'ilegível'})`);
+        if (d.w > 1200) throw new Error(`[${serie}] figura ${f.id} de ${chave}: ${d.w} px de largura — o teto é 1200`);
+      }
+      if (lista.filter(f => f.aberta).length > 1) throw new Error(`[${serie}] figuras.json: ${chave} tem mais de uma figura aberta — só uma vai para a camada pública`);
+      porArtigo[chave] = lista;
+    }
+    return { porArtigo, hub: Array.isArray(bruto._hub) ? bruto._hub : [] };
+  }
+  // width:100% + height:auto reservam a altura pela proporção (sem salto de layout). Figura alta ganha um
+  // teto de largura em linha, para não passar de ~620 px de altura na coluna do artigo.
+  const VDC_FIG_ALTURA = 620;
+  const vdcFigHtml = (f, n) => `<figure class="cap-fig"><img src="/blog-img/${f.arq}" alt="${esc(f.legenda)}" width="${f.w}" height="${f.h}"${f.h * 712 > VDC_FIG_ALTURA * f.w ? ` style="max-width:${Math.round(VDC_FIG_ALTURA * f.w / f.h)}px"` : ''} loading="lazy" decoding="async"><figcaption><b>Figura ${n}.</b> ${esc(f.legenda)}</figcaption></figure>`;
+  // Põe as figuras PROTEGIDAS no corpo do artigo (antes de ele ser fatiado em partes), cada uma depois do
+  // parágrafo que a âncora indica, e numera na ordem em que aparecem. A aberta, se houver, é a Figura 1.
+  // Seção que sumiu do artigo quebra o build; parágrafo que mudou manda a figura para o fim da seção, com aviso.
+  function vdcFigInserir(corpo, lista, serie, chave, destexto) {
+    const prot = lista.filter(f => !f.aberta);
+    if (!prot.length) return corpo;
+    const iApoio = corpo.indexOf('<section class="apoio">');
+    const fimPrincipal = iApoio < 0 ? corpo.length : iApoio;
+    const principal = corpo.slice(0, fimPrincipal);
+    const secs = [];
+    const reH2 = /<h2>([\s\S]*?)<\/h2>/g;
+    let m, atual = { titulo: 'Abertura', ini: 0 };
+    while ((m = reH2.exec(principal))) {
+      atual.fim = m.index;
+      secs.push(atual);
+      atual = { titulo: destexto(m[1]).trim(), ini: m.index + m[0].length };
+    }
+    atual.fim = principal.length;
+    secs.push(atual);
+    const pontos = prot.map((f, ordem) => {
+      const sec = secs.find(s => vdcNorm(s.titulo) === vdcNorm(f.secao));
+      if (!sec) throw new Error(`[${serie}] figura ${f.id} de ${chave}: a seção "${f.secao}" não existe mais no artigo — rever content/…/figuras.json`);
+      const alvo = vdcNorm(f.apos).slice(0, 40);
+      const trecho = principal.slice(sec.ini, sec.fim);
+      const reP = /<p\b[^>]*>[\s\S]*?<\/p>/g;
+      let p, pos = -1;
+      while ((p = reP.exec(trecho))) {
+        if (vdcNorm(destexto(p[0])).startsWith(alvo)) { pos = sec.ini + p.index + p[0].length; break; }
+      }
+      if (pos < 0) {
+        console.warn(`[${serie}] figura ${f.id} de ${chave}: parágrafo-âncora não encontrado em "${f.secao}" — foi para o fim da seção`);
+        pos = sec.fim;
+      }
+      return { f, pos, ordem };
+    }).sort((a, b) => a.pos - b.pos || a.ordem - b.ordem);
+    let n = lista.some(f => f.aberta) ? 1 : 0;
+    for (const p of pontos) p.n = ++n;
+    let saida = principal;
+    for (const p of pontos.slice().reverse()) saida = saida.slice(0, p.pos) + '\n' + vdcFigHtml(p.f, p.n) + saida.slice(p.pos);
+    return saida + corpo.slice(fimPrincipal);
+  }
+  // Travas da camada ABERTA: a legenda da figura aberta passa pelo veto da série e não repete 12 palavras
+  // seguidas do "Para aplicar hoje" (a régua do exportador); o figuras.json não cita artigo que não existe;
+  // e a faixa do hub só usa figura que já é aberta no artigo dela.
+  function vdcFigTravas(serie, artigos, figs, veto, preparar) {
+    for (const a of artigos) {
+      const f = a.figAberta;
+      if (!f) continue;
+      const leg = preparar ? preparar(f.legenda) : f.legenda;
+      for (const [re, oQue] of veto) {
+        const m = leg.match(re);
+        if (m) throw new Error(`[${serie}] figura aberta de ${a.chave} (${f.id}) traz ${oQue} na legenda: "${m[0]}" — escolher outra figura para a camada aberta (content/…/figuras.json)`);
+      }
+      const vendido = ' ' + vdcPalavras(String(a.aplicar_html || '').replace(/<[^>]+>/g, ' ')).join(' ') + ' ';
+      const pal = vdcPalavras(f.legenda);
+      for (let i = 0; i + 12 <= pal.length; i++) {
+        const t = pal.slice(i, i + 12).join(' ');
+        if (vendido.includes(` ${t} `)) throw new Error(`[${serie}] figura aberta de ${a.chave} (${f.id}): a legenda repete o "Para aplicar hoje" ("…${t}…") — conteúdo vendido vazando para o aberto`);
+      }
+    }
+    const chaves = new Set(artigos.map(a => a.chave));
+    for (const k of Object.keys(figs.porArtigo)) {
+      if (!chaves.has(k)) throw new Error(`[${serie}] figuras.json cita o artigo "${k}", que não existe em content`);
+    }
+    for (const id of figs.hub) {
+      if (!artigos.some(a => a.figAberta && a.figAberta.id === id)) throw new Error(`[${serie}] faixa do hub pede a figura ${id}, que não é a figura aberta de nenhum artigo`);
+    }
+  }
+  // Faixa de figuras do hub: três ou quatro figuras ABERTAS, cada uma levando ao artigo dela.
+  function vdcFigHub(figs, artigos) {
+    const itens = figs.hub.map(id => artigos.find(a => a.figAberta && a.figAberta.id === id)).filter(Boolean);
+    if (itens.length < 3) return '';
+    return `<section class="cap-figs-hub" aria-label="Figuras da série"><div class="cap-figs-grade">${itens.map(a => `<a class="cap-fig-card" href="${a.caminho}"><span class="cap-fig-quadro"><img src="/blog-img/${a.figAberta.arq}" alt="${esc(a.figAberta.legenda)}" width="${a.figAberta.w}" height="${a.figAberta.h}" loading="lazy" decoding="async"></span><span class="cap-fig-leg"><b>Aula ${a.n}</b>${esc(a.figAberta.legenda)}</span></a>`).join('')}</div></section>`;
+  }
+  // No JSON-LD do artigo, `image` passa a ser a capa da série + a figura aberta (a og:image não muda).
+  const vdcLdImagem = (ld, f) => (f && ld.image) ? { image: [ld.image, `${SITE_URL}/blog-img/${f.arq}`] } : ld;
+  // Conferência final, sobre o HTML que SAIU: toda imagem de /blog-img/ citada (na camada aberta e dentro
+  // do desenvolvimento embutido) existe em dist; a camada aberta de um artigo leva no máximo uma figura; e
+  // nenhuma figura do desenvolvimento aparece no HTML aberto.
+  function vdcConfereImagens(serie, arquivos) {
+    let total = 0;
+    for (const arq of arquivos) {
+      const html = fs.readFileSync(arq, 'utf8');
+      const dm = html.match(/<script type="application\/json" id="cap-dados">([^<]*)<\/script>/);
+      const aberto = dm ? html.replace(dm[0], '') : html;
+      const prot = dm ? Buffer.from(dm[1], 'base64').toString('utf8') : '';
+      const refs = new Set();
+      for (const fonte of [aberto, prot]) for (const r of fonte.matchAll(/\/blog-img\/([A-Za-z0-9._-]+)/g)) refs.add(r[1]);
+      for (const r of refs) {
+        if (!fs.existsSync(path.join(BLOG_IMG_DST, r))) throw new Error(`[${serie}] ${path.basename(arq)} cita /blog-img/${r}, que não existe em dist`);
+        total++;
+      }
+      if (dm && (aberto.match(/<figure class="cap-fig"/g) || []).length > 1) throw new Error(`[${serie}] ${path.basename(arq)}: mais de uma figura na camada aberta`);
+      for (const r of prot.matchAll(/\/blog-img\/([A-Za-z0-9._-]+-fig-\d\d-\d\d\.webp)/g)) {
+        if (aberto.includes(`/blog-img/${r[1]}`)) throw new Error(`[${serie}] ${path.basename(arq)}: a figura ${r[1]} é do desenvolvimento e aparece na camada aberta`);
+      }
+    }
+    return total;
+  }
+
   // ---- Série "Piscineiro na Prática" (coleção Viver de Chácara; curso animado de 25 aulas): mesmo padrão da série O Homem Essencial ----
   // Preparada em 08/10/2026. O livro não está na Livraria: a série anuncia só o curso (Academy), como na
   // série O Homem Contemporâneo, e o BlogPosting cita o livro sem `url`.
@@ -6510,12 +6678,13 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     try { piFaq = piLe('faq.json'); } catch (e) { console.warn('[piscineiro-na-pratica] sem faq.json — artigos sairão sem perguntas frequentes'); }
     try { piApoio = piLe('apoio.json'); } catch (e) { console.warn('[piscineiro-na-pratica] sem apoio.json — hub sairá sem material de apoio'); }
 
+    const piFigs = vdcFiguras(PI_DIR, 'piscineiro-na-pratica');
     piArtigos = fs.readdirSync(PI_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
       const raw = fs.readFileSync(path.join(PI_DIR, f), 'utf8');
       const metaMatch = raw.match(/^<!--META (.*?) -->/);
       if (!metaMatch) throw new Error(`[piscineiro-na-pratica] META ausente em ${f}`);
       const meta = JSON.parse(metaMatch[1]);
-      const corpoBruto = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      const corpoBruto = vdcFigInserir(raw.replace(/^<!--META .*? -->\r?\n?/, ''), piFigs.porArtigo[f.replace(/\.html$/, '')] || [], 'piscineiro-na-pratica', f, piDestexto);
       // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
       // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
       const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
@@ -6534,7 +6703,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
         return { titulo: m ? piDestexto(m[1]) : 'Abertura', html: p };
       });
       if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
-      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const txt = s => s.html.replace(/<figure[\s\S]*?<\/figure>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length; // a figura não conta no tamanho da parte
       const fim = secoes.filter(s => s.final);
       const meio = secoes.filter(s => !s.final);
       const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
@@ -6548,6 +6717,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const slug = `piscineiro-na-pratica-${chave}`;
       return {
         ...meta, chave, slug,
+        figAberta: (piFigs.porArtigo[chave] || []).find(x => x.aberta) || null,
         tituloTexto: piDestexto(meta.titulo), subtituloTexto: piDestexto(meta.subtitulo),
         secoes: [...grupos, ...fim],
         indice: (meta.indice || []).map(t => piDestexto(t)),
@@ -6610,8 +6780,9 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
 .cg-apoio>p{color:#675f56;margin:0 0 16px}
 .cg-apoio .cap-grade{padding:0}
 .cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
-.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}`;
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
 
+    vdcFigTravas('piscineiro-na-pratica', piArtigos, piFigs, PI_VETO);
     const piTotal = piGrade.total;
     const piLinhaGrade = (aula, atual) => {
       const art = piArtigos.find(a => a.n === aula.n);
@@ -6627,7 +6798,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const ant = piArtigos[iArt - 1], prox = piArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('piscineiro-na-pratica').ld,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...vdcLdImagem(serieImagem('piscineiro-na-pratica').ld, a.figAberta),
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-08', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -6659,6 +6830,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <div class="cap-faixa">${piAnuncio('curso', true)}</div>
   <section class="cap-publico">
     ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
     ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
   </section>
   <div class="cap-progresso"><i id="cap-prog"></i></div>
@@ -6750,6 +6922,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   </section>
   <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Piscineiro na Prática</span></nav>
   <div class="cap-faixa">${piAnuncio('curso')}</div>
+  ${vdcFigHub(piFigs, piArtigos)}
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
     <p>As ${piTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
@@ -6762,6 +6935,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       { caminho: '/piscineiro-na-pratica/', semIdiomas: true, ...serieImagem('piscineiro-na-pratica').og, extraHead: `<style>${PI_CSS}</style>` + piHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
+    vdcConfereImagens('piscineiro-na-pratica', [...piArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'piscineiro-na-pratica', 'index.html')]);
     PI_PATHS = ['/piscineiro-na-pratica/', ...piArtigos.map(a => a.caminho), ...piApoio.map(d => `/piscineiro-na-pratica/apoio/${d.chave}.html`)];
     PI_LLMS = `## Blog: Piscineiro na Prática (${piNoAr} artigos, em português)
 
@@ -6806,12 +6980,13 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     try { paFaq = paLe('faq.json'); } catch (e) { console.warn('[paisagismo-na-pratica] sem faq.json — artigos sairão sem perguntas frequentes'); }
     try { paApoio = paLe('apoio.json'); } catch (e) { console.warn('[paisagismo-na-pratica] sem apoio.json — hub sairá sem material de apoio'); }
 
+    const paFigs = vdcFiguras(PA_DIR, 'paisagismo-na-pratica');
     paArtigos = fs.readdirSync(PA_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
       const raw = fs.readFileSync(path.join(PA_DIR, f), 'utf8');
       const metaMatch = raw.match(/^<!--META (.*?) -->/);
       if (!metaMatch) throw new Error(`[paisagismo-na-pratica] META ausente em ${f}`);
       const meta = JSON.parse(metaMatch[1]);
-      const corpoBruto = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      const corpoBruto = vdcFigInserir(raw.replace(/^<!--META .*? -->\r?\n?/, ''), paFigs.porArtigo[f.replace(/\.html$/, '')] || [], 'paisagismo-na-pratica', f, paDestexto);
       // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
       // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
       const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
@@ -6830,7 +7005,7 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
         return { titulo: m ? paDestexto(m[1]) : 'Abertura', html: p };
       });
       if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
-      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const txt = s => s.html.replace(/<figure[\s\S]*?<\/figure>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length; // a figura não conta no tamanho da parte
       const fim = secoes.filter(s => s.final);
       const meio = secoes.filter(s => !s.final);
       const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
@@ -6844,6 +7019,7 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const slug = `paisagismo-na-pratica-${chave}`;
       return {
         ...meta, chave, slug,
+        figAberta: (paFigs.porArtigo[chave] || []).find(x => x.aberta) || null,
         tituloTexto: paDestexto(meta.titulo), subtituloTexto: paDestexto(meta.subtitulo),
         secoes: [...grupos, ...fim],
         indice: (meta.indice || []).map(t => paDestexto(t)),
@@ -6909,8 +7085,9 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
 .cg-apoio>p{color:#675f56;margin:0 0 16px}
 .cg-apoio .cap-grade{padding:0}
 .cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
-.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}`;
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
 
+    vdcFigTravas('paisagismo-na-pratica', paArtigos, paFigs, PA_VETO);
     const paTotal = paGrade.total;
     const paLinhaGrade = (aula, atual) => {
       const art = paArtigos.find(a => a.n === aula.n);
@@ -6926,7 +7103,7 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const ant = paArtigos[iArt - 1], prox = paArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('paisagismo-na-pratica').ld,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...vdcLdImagem(serieImagem('paisagismo-na-pratica').ld, a.figAberta),
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-08', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -6958,6 +7135,7 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <div class="cap-faixa">${paAnuncio('curso', true)}</div>
   <section class="cap-publico">
     ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
     ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
   </section>
   <div class="cap-progresso"><i id="cap-prog"></i></div>
@@ -7049,6 +7227,7 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   </section>
   <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Paisagismo na Prática</span></nav>
   <div class="cap-faixa">${paAnuncio('curso')}</div>
+  ${vdcFigHub(paFigs, paArtigos)}
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
     <p>As ${paTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
@@ -7061,6 +7240,7 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       { caminho: '/paisagismo-na-pratica/', semIdiomas: true, ...serieImagem('paisagismo-na-pratica').og, extraHead: `<style>${PA_CSS}</style>` + paHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
+    vdcConfereImagens('paisagismo-na-pratica', [...paArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'paisagismo-na-pratica', 'index.html')]);
     PA_PATHS = ['/paisagismo-na-pratica/', ...paArtigos.map(a => a.caminho), ...paApoio.map(d => `/paisagismo-na-pratica/apoio/${d.chave}.html`)];
     PA_LLMS = `## Blog: Paisagismo na Prática (${paNoAr} artigos, em português)
 
@@ -7112,12 +7292,13 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     try { peFaq = peLe('faq.json'); } catch (e) { console.warn('[pedreiro-completo-na-pratica] sem faq.json — artigos sairão sem perguntas frequentes'); }
     try { peApoio = peLe('apoio.json'); } catch (e) { console.warn('[pedreiro-completo-na-pratica] sem apoio.json — hub sairá sem material de apoio'); }
 
+    const peFigs = vdcFiguras(PE_DIR, 'pedreiro-completo-na-pratica');
     peArtigos = fs.readdirSync(PE_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
       const raw = fs.readFileSync(path.join(PE_DIR, f), 'utf8');
       const metaMatch = raw.match(/^<!--META (.*?) -->/);
       if (!metaMatch) throw new Error(`[pedreiro-completo-na-pratica] META ausente em ${f}`);
       const meta = JSON.parse(metaMatch[1]);
-      const corpoBruto = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      const corpoBruto = vdcFigInserir(raw.replace(/^<!--META .*? -->\r?\n?/, ''), peFigs.porArtigo[f.replace(/\.html$/, '')] || [], 'pedreiro-completo-na-pratica', f, peDestexto);
       // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
       // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
       const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
@@ -7136,7 +7317,7 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
         return { titulo: m ? peDestexto(m[1]) : 'Abertura', html: p };
       });
       if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
-      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const txt = s => s.html.replace(/<figure[\s\S]*?<\/figure>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length; // a figura não conta no tamanho da parte
       const fim = secoes.filter(s => s.final);
       const meio = secoes.filter(s => !s.final);
       const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
@@ -7150,6 +7331,7 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const slug = `pedreiro-completo-na-pratica-${chave}`;
       return {
         ...meta, chave, slug,
+        figAberta: (peFigs.porArtigo[chave] || []).find(x => x.aberta) || null,
         tituloTexto: peDestexto(meta.titulo), subtituloTexto: peDestexto(meta.subtitulo),
         secoes: [...grupos, ...fim],
         indice: (meta.indice || []).map(t => peDestexto(t)),
@@ -7243,8 +7425,9 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
 .cg-apoio>p{color:#675f56;margin:0 0 16px}
 .cg-apoio .cap-grade{padding:0}
 .cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
-.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}`;
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
 
+    vdcFigTravas('pedreiro-completo-na-pratica', peArtigos, peFigs, PE_VETO_ABERTA);
     const peTotal = peGrade.total;
     const peLinhaGrade = (aula, atual) => {
       const art = peArtigos.find(a => a.n === aula.n);
@@ -7260,7 +7443,7 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const ant = peArtigos[iArt - 1], prox = peArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('pedreiro-completo-na-pratica').ld,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...vdcLdImagem(serieImagem('pedreiro-completo-na-pratica').ld, a.figAberta),
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-09', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -7292,6 +7475,7 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <div class="cap-faixa">${peAnuncio('curso', true)}</div>
   <section class="cap-publico">
     ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
     ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
   </section>
   <div class="cap-progresso"><i id="cap-prog"></i></div>
@@ -7383,6 +7567,7 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   </section>
   <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Pedreiro Completo na Prática</span></nav>
   <div class="cap-faixa">${peAnuncio('curso')}</div>
+  ${vdcFigHub(peFigs, peArtigos)}
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
     <p>As ${peTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
@@ -7395,6 +7580,7 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       { caminho: '/pedreiro-completo-na-pratica/', semIdiomas: true, ...serieImagem('pedreiro-completo-na-pratica').og, extraHead: `<style>${PE_CSS}</style>` + peHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
+    vdcConfereImagens('pedreiro-completo-na-pratica', [...peArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'pedreiro-completo-na-pratica', 'index.html')]);
     PE_PATHS = ['/pedreiro-completo-na-pratica/', ...peArtigos.map(a => a.caminho), ...peApoio.map(d => `/pedreiro-completo-na-pratica/apoio/${d.chave}.html`)];
     PE_LLMS = `## Blog: Pedreiro Completo na Prática (${peNoAr} artigos, em português)
 
@@ -7462,12 +7648,13 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     try { ctFaq = ctLe('faq.json'); } catch (e) { console.warn('[construcao-com-conteineres-na-pratica] sem faq.json — artigos sairão sem perguntas frequentes'); }
     try { ctApoio = ctLe('apoio.json'); } catch (e) { console.warn('[construcao-com-conteineres-na-pratica] sem apoio.json — hub sairá sem material de apoio'); }
 
+    const ctFigs = vdcFiguras(CT_DIR, 'construcao-com-conteineres-na-pratica');
     ctArtigos = fs.readdirSync(CT_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
       const raw = fs.readFileSync(path.join(CT_DIR, f), 'utf8');
       const metaMatch = raw.match(/^<!--META (.*?) -->/);
       if (!metaMatch) throw new Error(`[construcao-com-conteineres-na-pratica] META ausente em ${f}`);
       const meta = JSON.parse(metaMatch[1]);
-      const corpoBruto = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      const corpoBruto = vdcFigInserir(raw.replace(/^<!--META .*? -->\r?\n?/, ''), ctFigs.porArtigo[f.replace(/\.html$/, '')] || [], 'construcao-com-conteineres-na-pratica', f, ctDestexto);
       // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
       // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
       const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
@@ -7486,7 +7673,7 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
         return { titulo: m ? ctDestexto(m[1]) : 'Abertura', html: p };
       });
       if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
-      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const txt = s => s.html.replace(/<figure[\s\S]*?<\/figure>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length; // a figura não conta no tamanho da parte
       const fim = secoes.filter(s => s.final);
       const meio = secoes.filter(s => !s.final);
       const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
@@ -7500,6 +7687,7 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const slug = `construcao-com-conteineres-na-pratica-${chave}`;
       return {
         ...meta, chave, slug,
+        figAberta: (ctFigs.porArtigo[chave] || []).find(x => x.aberta) || null,
         tituloTexto: ctDestexto(meta.titulo), subtituloTexto: ctDestexto(meta.subtitulo),
         secoes: [...grupos, ...fim],
         indice: (meta.indice || []).map(t => ctDestexto(t)),
@@ -7606,8 +7794,9 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
 .cg-apoio>p{color:#675f56;margin:0 0 16px}
 .cg-apoio .cap-grade{padding:0}
 .cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
-.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}`;
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
 
+    vdcFigTravas('construcao-com-conteineres-na-pratica', ctArtigos, ctFigs, CT_VETO_ABERTA, t => CT_MEDIDAS_CATALOGO.reduce((x, med) => x.split(med).join('[medida de catálogo]'), t));
     const ctTotal = ctGrade.total;
     const ctLinhaGrade = (aula, atual) => {
       const art = ctArtigos.find(a => a.n === aula.n);
@@ -7623,7 +7812,7 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const ant = ctArtigos[iArt - 1], prox = ctArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('construcao-com-conteineres-na-pratica').ld,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...vdcLdImagem(serieImagem('construcao-com-conteineres-na-pratica').ld, a.figAberta),
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-09', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -7655,6 +7844,7 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <div class="cap-faixa">${ctAnuncio('curso', true)}</div>
   <section class="cap-publico">
     ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
     ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
   </section>
   <div class="cap-progresso"><i id="cap-prog"></i></div>
@@ -7746,6 +7936,7 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   </section>
   <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Construção com Contêineres na Prática</span></nav>
   <div class="cap-faixa">${ctAnuncio('curso')}</div>
+  ${vdcFigHub(ctFigs, ctArtigos)}
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
     <p>As ${ctTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
@@ -7758,6 +7949,7 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       { caminho: '/construcao-com-conteineres-na-pratica/', semIdiomas: true, ...serieImagem('construcao-com-conteineres-na-pratica').og, extraHead: `<style>${CT_CSS}</style>` + ctHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
+    vdcConfereImagens('construcao-com-conteineres-na-pratica', [...ctArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'construcao-com-conteineres-na-pratica', 'index.html')]);
     CT_PATHS = ['/construcao-com-conteineres-na-pratica/', ...ctArtigos.map(a => a.caminho), ...ctApoio.map(d => `/construcao-com-conteineres-na-pratica/apoio/${d.chave}.html`)];
     CT_LLMS = `## Blog: Construção com Contêineres na Prática (${ctNoAr} artigos, em português)
 
