@@ -279,6 +279,40 @@ async function rodar({ t, req, EST, impId }) {
     db.prepare("DELETE FROM est_unidades WHERE codigo = 'segunda-leva'").run(); // não interfere nos testes seguintes
   });
 
+  await t('estudo: competência sem questão praticável não prende a próxima tarefa; questão transversal não fura a mão dupla', async () => {
+    const escId = db.prepare('SELECT id FROM est_escopos WHERE slug = ?').get(SLUG).id;
+    const cobUrl = `/staff/api/academy/estudo/cobertura?produtor_email=maria@t.com&produto_id=${impId}&escopo=${SLUG}`;
+    const semFolhaAntes = (await req('GET', cobUrl, { semUser: true, chave: true })).json.cobertura.mao_dupla.questoes_sem_folha;
+    // competência de leitura (método de estudo), posta em PRIMEIRO lugar e sem questão nenhuma
+    let r = await importar({ escopo: ESC(), competencias: [{ codigo: 'so-leitura', ordem: -10, resultado: 'Diante do edital, o aluno monta o próprio ciclo de estudo.', criterios: ['monta o ciclo'] }],
+      unidades: [UNIDADE({ codigo: 'so-leitura', titulo: 'Como estudar', competencias: ['so-leitura'], itens: [], ordem: -10 })] });
+    assert.equal(r.st, 200, r.texto);
+    await req('POST', '/staff/api/academy/estudo/status', { semUser: true, chave: true, corpo: EST({ escopo: SLUG, unidades: 'publicado' }) });
+    const praticavel = require('./repo').competenciasComPratica(escId, ['disponivel', 'rascunho']);
+    assert.ok(!praticavel.has('so-leitura') && praticavel.has('prescricao'), 'só é praticável quem tem questão corrigível fora da reserva');
+    const rp = await req('GET', `${esc}/painel`, { jar: 'olga' });
+    assert.equal(rp.st, 200, rp.texto);
+    const px = rp.json.proxima, naoAvaliadas = rp.json.competencias.filter(k => k.estado === 'nao_avaliada').map(k => k.codigo);
+    assert.ok(naoAvaliadas.includes('so-leitura'), 'a competência de leitura está lá, não avaliada');
+    // só pode ser a próxima como ÚLTIMO recurso (nada praticável pendente), e aí o motivo diz que falta questão
+    if (px.competencia === 'so-leitura') assert.ok(/ainda não tem questões/.test(px.motivo) && !naoAvaliadas.some(k => praticavel.has(k)), JSON.stringify(px));
+    // e o motor puro, com aluna que nunca respondeu nada: a primeira da ordem é a de leitura, mas a próxima é a praticável
+    const A = require('./aluno'), R2 = require('./repo');
+    const escopoObj = R2.Escopos.porSlug(impId, SLUG);
+    const zerada = R2.competencias(escopoObj.id).map(k => ({ codigo: k.codigo, estado: 'nao_avaliada', depende_de: [], estagnada: false }));
+    assert.equal(zerada[0].codigo, 'so-leitura', 'a de leitura é a primeira da ordem');
+    const prox = A.proximaTarefa({ id: 'ninguem' }, escopoObj, { vis: ['publicado'], situacoes: ['disponivel', 'rascunho'] }, zerada);
+    assert.ok(prox.competencia && prox.competencia !== 'so-leitura' && praticavel.has(prox.competencia), 'aluna nova não começa presa: ' + JSON.stringify(prox));
+    // uma questão só dessa competência transversal não vira "questão sem ponto do edital"
+    r = await importar({ escopo: ESC(), questoes: [{ tipo: 'objetiva', origem: 'autoral', gerada_por_ia: true, enunciado: 'No ciclo de estudos, o que se mantém fixo de uma sessão para a outra?',
+      alternativas: [{ texto: 'A ordem das disciplinas.', correta: true, explicacao: 'A ordem é mantida; o horário é livre.' }, { texto: 'O horário de cada disciplina.', correta: false, explicacao: 'Isso é cronograma, não ciclo.' }], competencias: ['so-leitura'] }] });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal((await req('GET', cobUrl, { semUser: true, chave: true })).json.cobertura.mao_dupla.questoes_sem_folha, semFolhaAntes, 'transversal fica fora da conta da mão dupla');
+    const qid = db.prepare("SELECT questao_id id FROM est_questao_vinculos WHERE escopo_id = ? AND codigo = 'so-leitura'").get(escId).id;
+    db.prepare('DELETE FROM est_questao_vinculos WHERE questao_id = ?').run(qid); db.prepare('DELETE FROM est_questoes WHERE id = ?').run(qid);
+    db.prepare("DELETE FROM est_unidades WHERE codigo = 'so-leitura'").run(); db.prepare("DELETE FROM est_competencias WHERE codigo = 'so-leitura'").run();
+  });
+
   await t('estudo: prática — gabarito fica no servidor, pista é contada por ele e questão repetida não vira domínio', async () => {
     const pr = await req('GET', `${esc}/praticar?competencia=prescricao&n=10`, { jar: 'olga' });
     assert.equal(pr.st, 200, pr.texto);

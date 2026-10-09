@@ -134,11 +134,15 @@ function proximaTarefa(usuario, escopo, c, est = estadosDoAluno(usuario, escopo)
   }
   const comApoio = est.find(e => e.estado === 'demonstrada_com_apoio');
   if (comApoio) return { tipo: 'pratica_sem_apoio', competencia: comApoio.codigo, motivo: 'Você acertou com pista ou em questão já vista. Falta acertar uma questão nova, sem apoio.' };
-  const nova = est.find(e => e.estado === 'nao_avaliada' && e.depende_de.every(d => !por[d] || ev.demonstrada(por[d].estado)))
-    || est.find(e => e.estado === 'nao_avaliada');
+  // só entra na fila quem o aluno consegue demonstrar hoje; competência sem questão praticável vai para o fim
+  const praticavel = R.competenciasComPratica(escopo.id, c.situacoes);
+  const novas = est.filter(e => e.estado === 'nao_avaliada' && praticavel.has(e.codigo));
+  const nova = novas.find(e => e.depende_de.every(d => !por[d] || ev.demonstrada(por[d].estado))) || novas[0];
   if (nova) return { tipo: 'aprender', competencia: nova.codigo, unidade: unidadeDe(nova.codigo), motivo: nova.depende_de.length ? 'Próxima competência do percurso: os pré-requisitos dela você já demonstrou.' : 'Competência do percurso que você ainda não começou e que não depende de outra.' };
   const semRetencao = est.find(e => e.estado === 'demonstrada_sem_apoio');
   if (semRetencao) return { tipo: 'aguardar_retencao', competencia: semRetencao.codigo, motivo: `Demonstrada, mas a retenção só se confirma com nova questão inédita após ${ev.INTERVALO_RETENCAO_DIAS} dias.` };
+  const soLeitura = est.find(e => e.estado === 'nao_avaliada' && unidadeDe(e.codigo));
+  if (soLeitura) return { tipo: 'aprender', competencia: soLeitura.codigo, unidade: unidadeDe(soLeitura.codigo), motivo: 'Esta parte ainda não tem questões para você demonstrar: estude a aula; ela não conta como demonstrada até haver questão.' };
   return { tipo: est.length ? 'concluido' : 'sem_competencias', motivo: est.length ? 'Todas as competências foram demonstradas e retidas até aqui.' : 'Este percurso ainda não tem competências definidas.' };
 }
 

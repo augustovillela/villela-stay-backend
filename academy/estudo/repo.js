@@ -56,6 +56,21 @@ function unidades(escopoId, vis) {
       niveis: j.parse(u.niveis, {}), vespera: j.parse(u.vespera, {}) }));
 }
 
+// Competências que o aluno PODE demonstrar hoje: têm ao menos uma questão corrigível, fora da
+// reserva, ligada direto a elas ou a um item que elas cobrem. Competência sem isso (unidade de
+// leitura, disciplina ainda sem banco) não pode travar a "próxima tarefa": nunca sairia de "não avaliada".
+function competenciasComPratica(escopoId, situacoes = ['disponivel']) {
+  const m = situacoes.map(() => '?').join(',');
+  return new Set(db.prepare(`
+    SELECT v.codigo AS codigo FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
+      WHERE v.escopo_id = ? AND v.alvo = 'competencia' AND q.corrigivel = 1 AND q.uso != 'reservada' AND q.situacao IN (${m})
+    UNION
+    SELECT k.competencia_codigo FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
+      JOIN est_vinculos k ON k.escopo_id = v.escopo_id AND k.item_codigo = v.codigo
+      WHERE v.escopo_id = ? AND v.alvo = 'item' AND q.corrigivel = 1 AND q.uso != 'reservada' AND q.situacao IN (${m})`)
+    .all(escopoId, ...situacoes, escopoId, ...situacoes).map(r => r.codigo));
+}
+
 // ADR-0005 — níveis derivados do nível 100 (a explicação dos blocos) e véspera por foco.
 // O tamanho de cada nível é conferido contra a explicação: 50 % com 80 % do texto não é resumo.
 const NIVEIS = ['50', '25', '10'];
@@ -428,8 +443,12 @@ function cobertura(escopo, { vis = ['publicado'], situacoes = ['disponivel'] } =
   // aponta ponto nenhum que o aluno possa estudar: conta como sem folha.
   const ehFolha = new Set(folhas.map(i => i.codigo));
   const comFolha = new Set(qv.filter(x => ehFolha.has(x.codigo)).map(x => x.id));
-  const todasQ = db.prepare(`SELECT DISTINCT v.questao_id id FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
-      WHERE v.escopo_id = ? AND q.situacao IN (${situacoes.map(() => '?').join(',')})`).all(escopo.id, ...situacoes).map(x => x.id);
+  // Questão de competência TRANSVERSAL (método de estudo, técnica de prova: competência que não cobre
+  // item nenhum do programa) não tem ponto do edital para apontar — fica fora desta conta.
+  const compComItem = new Set(vins.map(v => v.competencia_codigo));
+  const todasQ = [...new Set(db.prepare(`SELECT v.questao_id id, v.alvo, v.codigo FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
+      WHERE v.escopo_id = ? AND q.situacao IN (${situacoes.map(() => '?').join(',')})`).all(escopo.id, ...situacoes)
+    .filter(x => x.alvo === 'item' || compComItem.has(x.codigo)).map(x => x.id))];
   const maoDupla = {
     folhas_sem_questao: cod(i => !i.questoes_revisadas && !i.questoes_sugeridas),
     questoes_sem_folha: todasQ.filter(id => !comFolha.has(id)).length,
@@ -467,5 +486,5 @@ function resumo(productId) {
 
 module.exports = {
   Escopos, Questoes, itens, competencias, vinculos, unidades, cards, competenciasDaQuestao,
-  importar, definirStatus, cobertura, resumo, slug, erro, STATUS, TIPOS, EXTENSOES, BLOCOS,
+  importar, definirStatus, cobertura, resumo, competenciasComPratica, slug, erro, STATUS, TIPOS, EXTENSOES, BLOCOS,
 };
