@@ -111,7 +111,7 @@
         if (depois) depois();
       }).catch(function (e) { falha(el('es-corpo'), e); });
     }
-    var ABAS = [['hoje', 'Hoje'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
+    var ABAS = [['hoje', 'Hoje'], ['aulas', 'Aulas'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
     function abas() {
       el('es-abas').innerHTML = ABAS.map(function (x) { return '<button data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('');
       cada(el('es-abas'), 'button', function (b) { b.onclick = function () { ir(b.getAttribute('data-a')); }; });
@@ -122,7 +122,7 @@
       cada(el('es-abas'), 'button', function (b) { b.classList.toggle('on', b.getAttribute('data-a') === aba); });
       var alvo = el('es-corpo');
       alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
-      ({ hoje: hoje, programa: programa, praticar: praticar, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
+      ({ hoje: hoje, aulas: aulas, programa: programa, praticar: praticar, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
     }
 
     // ================= HOJE: a próxima tarefa e os três eixos =================
@@ -195,6 +195,58 @@
         'Divida o tempo pelos blocos e reserve o fim para o cartão de respostas.',
         semDesconto ? 'Nesta prova o erro não desconta: não deixe questão em branco.' : 'Nesta prova o erro desconta: só marque quando conseguir eliminar alternativas.',
         'O objetivo é passar, não acertar tudo. Questão travada fica para a segunda volta.']) + '</div>';
+    }
+
+    // ================= AULAS: tudo por disciplina — a aula ativa e a leitura corrida (ADR-0008) =================
+    var NOME_BLOCO = { explicacao: '', exemplo: 'Exemplo', sintese: 'Síntese' };
+    function aulas(alvo, disc) {
+      if (disc != null) return lerDisciplina(alvo, disc);
+      var p = E.painel, mm = materias(), grupos = [], por = {};
+      p.unidades.forEach(function (u) {
+        var m = mm[(u.competencias || [])[0]] || { disciplina: 'Método de estudo', item: '' };
+        var cod = m.item ? m.item.split('.').slice(0, 2).join('.') : '_metodo';
+        var g = por[cod];
+        if (!g) { g = por[cod] = { cod: cod, nome: m.disciplina, aulas: [] }; grupos.push(g); }
+        g.aulas.push({ u: u, item: m.item });
+      });
+      alvo.innerHTML = '<div class="jr-caixa"><h3>Aulas</h3><p class="al-sub">' + p.unidades.length + ' aulas em ' + grupos.length + ' disciplinas, na ordem do edital. ' +
+        '<b>Abrir a aula</b> leva à aula ativa (desafio, explicação, prática e os resumos de 50, 25 e 10 %). <b>Ler a disciplina</b> junta a teoria em texto corrido, para ler de uma vez, imprimir ou salvar em PDF.</p></div>' +
+        grupos.map(function (g, n) {
+          return '<details class="es-acervo"' + (n === 0 ? ' open' : '') + '><summary><b>' + esc(g.nome) + '</b><span class="al-fino"> · ' + g.aulas.length + ' aula(s)</span></summary>' +
+            '<div class="es-linha"><button class="al-bt peq" data-ler="' + esc(g.cod) + '">📄 Ler a disciplina (texto corrido / PDF)</button></div>' +
+            g.aulas.map(function (a) {
+              return '<div class="es-aula-linha"><span>' + (a.item ? '<b>' + esc(a.item) + '</b> ' : '') + esc(a.u.titulo) + (a.u.tempo_min ? '<span class="al-fino"> · ' + horas(a.u.tempo_min) + '</span>' : '') +
+                (a.u.status !== 'publicado' ? ' <span class="marca-rasc">' + esc(a.u.status) + '</span>' : '') + '</span>' +
+                '<button class="al-bt peq fan" data-un="' + esc(a.u.codigo) + '">Abrir a aula</button></div>';
+            }).join('') + '</details>';
+        }).join('');
+      cada(alvo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
+      cada(alvo, '[data-ler]', function (b) { b.onclick = function () { lerDisciplina(alvo, b.getAttribute('data-ler')); }; });
+    }
+    function lerDisciplina(alvo, cod) {
+      alvo.innerHTML = '<p class="al-sub">Carregando a leitura…</p>';
+      api('GET', base() + '/leitura?disciplina=' + encodeURIComponent(cod)).then(function (r) {
+        var corpo = '<h1>' + esc(r.nome) + '</h1><p class="es-ler-sub">' + esc(r.escopo) + ' · ' + r.aulas.length + ' aulas</p>' +
+          r.aulas.map(function (a) {
+            return '<section><h2>' + esc(a.titulo) + '</h2>' +
+              (a.itens.length ? '<p class="es-ler-item">' + a.itens.map(function (i) { return '<b>' + esc(i.codigo) + '</b> ' + esc(i.texto); }).join(' · ') + '</p>' : '') +
+              a.blocos.map(function (b) { return (NOME_BLOCO[b.tipo] ? '<h3>' + NOME_BLOCO[b.tipo] + (b.titulo ? ' — ' + esc(b.titulo) : '') + '</h3>' : (b.titulo ? '<h3>' + esc(b.titulo) + '</h3>' : '')) + texto(b.texto); }).join('') +
+              (a.fontes.length ? '<p class="es-ler-fontes"><b>Fontes:</b> ' + a.fontes.map(function (f) { return esc(f.titulo); }).join('; ') + '</p>' : '') + '</section>';
+          }).join('');
+        alvo.innerHTML = '<div class="jr-caixa"><div class="es-linha"><button class="al-bt peq fan" id="es-ler-volta">← Todas as aulas</button>' +
+          '<button class="al-bt peq" id="es-ler-pdf">🖨️ Imprimir ou salvar em PDF</button></div></div><article class="es-ler">' + corpo + '</article>';
+        el('es-ler-volta').onclick = function () { aulas(alvo); };
+        el('es-ler-pdf').onclick = function () {
+          var w = window.open('', '_blank');
+          if (!w) return;
+          w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(r.nome) + '</title><style>' +
+            'body{font:12pt/1.55 Georgia,serif;color:#111;max-width:720px;margin:24px auto;padding:0 20px}h1{font-size:22pt;margin:0 0 4px}h2{font-size:15pt;margin:28px 0 4px;page-break-after:avoid}' +
+            'h3{font-size:12pt;margin:16px 0 4px}p{margin:0 0 9px;text-align:justify}.es-ler-sub,.es-ler-item,.es-ler-fontes{font-size:10pt;color:#444;text-align:left}section{page-break-inside:auto}' +
+            '</style></head><body>' + corpo + '</body></html>');
+          w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
+        };
+        window.scrollTo(0, 0);
+      }).catch(function (e) { falha(alvo, e); });
     }
 
     // ================= PROGRAMA: cada item com o seu destino =================

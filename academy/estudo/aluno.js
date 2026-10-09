@@ -230,6 +230,34 @@ function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100' } = {}) {
   return { codigo: u.codigo, titulo: u.titulo, competencias: u.competencias, itens: u.itens, tempo_min: Math.round(u.tempo_min * plano.fatorNivel(usado)), versao: u.versao, status: u.status, fontes: u.fontes, midias: u.midias,
     nivel: usado, nivel_motivo: motivo, niveis, vespera, blocos };
 }
+// ---------------------------------------------------------------------
+// LEITURA (ADR-0008) — a teoria em texto corrido, para ler e imprimir. A aula
+// ativa começa pelo desafio e esconde a solução; quem quer LER a matéria
+// precisa do texto inteiro, por disciplina, na ordem do edital. Só entram os
+// blocos de exposição (explicação, exemplo, síntese): prática e aplicação têm
+// solução guardada e continuam na aula.
+// ---------------------------------------------------------------------
+const BLOCOS_DE_LEITURA = ['explicacao', 'exemplo', 'sintese'];
+function leitura(usuario, produto, slugEscopo, disciplina = '') {
+  const c = abrir(usuario, produto, slugEscopo);
+  const itens = new Map(R.cobertura(c.escopo, c).por_item.map(i => [i.codigo, i.texto]));
+  const disc = (u) => { const it = (u.itens[0] || ''); const d = it.split('.').slice(0, 2).join('.'); return it && itens.has(d) && d !== it ? d : ''; };
+  const grupos = [], por = {};
+  for (const u of R.unidades(c.escopo.id, c.vis)) {
+    const d = disc(u);
+    if (!por[d]) grupos.push(por[d] = { codigo: d, nome: d ? itens.get(d) : 'Método de estudo', aulas: [] });
+    const blocos = u.blocos.filter(b => BLOCOS_DE_LEITURA.includes(b.tipo) && b.texto);
+    por[d].aulas.push({ u, blocos, caracteres: blocos.reduce((n, b) => n + b.texto.length, 0) });
+  }
+  if (!disciplina) {
+    return { disciplinas: grupos.map(g => ({ codigo: g.codigo, nome: g.nome, aulas: g.aulas.length, caracteres: g.aulas.reduce((n, a) => n + a.caracteres, 0) })) };
+  }
+  const g = por[disciplina === '_metodo' ? '' : s(disciplina, 20)];
+  if (!g) throw erro('Disciplina não encontrada neste percurso.', 404);
+  return { codigo: g.codigo, nome: g.nome, escopo: c.escopo.titulo,
+    aulas: g.aulas.map(({ u, blocos }) => ({ codigo: u.codigo, titulo: u.titulo, itens: u.itens.map(i => ({ codigo: i, texto: itens.get(i) || '' })), versao: u.versao, status: u.status,
+      blocos: blocos.map(b => ({ tipo: b.tipo, titulo: b.titulo, texto: b.texto })), fontes: u.fontes })) };
+}
 function solucaoDoBloco(usuario, produto, slugEscopo, codigo, n, tentativa) {
   const c = abrir(usuario, produto, slugEscopo);
   const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(codigo));
@@ -564,7 +592,7 @@ function obterPlano(usuario, produto, slugEscopo) {
 }
 
 module.exports = {
-  contexto, escopos, painel, unidade, solucaoDoBloco, praticar, pedirPista, responder, erros, anotar,
+  contexto, escopos, painel, unidade, leitura, solucaoDoBloco, praticar, pedirPista, responder, erros, anotar,
   cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,
 };

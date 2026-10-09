@@ -422,6 +422,20 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(db.prepare("SELECT modo FROM est_evidencias WHERE ref_id = ?").get(id).modo, 'estudo');
   });
 
+  await t('estudo: leitura — a teoria por disciplina, em texto corrido, sem as soluções guardadas', async () => {
+    const idx = await req('GET', `${esc}/leitura`, { jar: 'olga' });
+    assert.equal(idx.st, 200, idx.texto);
+    assert.ok(idx.json.disciplinas.length >= 1 && idx.json.disciplinas.every(d => d.aulas >= 1 && d.nome), idx.texto);
+    const d = idx.json.disciplinas[0];
+    const l = await req('GET', `${esc}/leitura?disciplina=${encodeURIComponent(d.codigo || '_metodo')}`, { jar: 'olga' });
+    assert.equal(l.st, 200, l.texto);
+    assert.equal(l.json.aulas.length, d.aulas);
+    const tipos = new Set(l.json.aulas.flatMap(a => a.blocos.map(b => b.tipo)));
+    assert.ok([...tipos].every(k => ['explicacao', 'exemplo', 'sintese'].includes(k)), 'só exposição: ' + [...tipos]);
+    assert.ok(!/"solucao"|"pistas"/.test(l.texto), 'solução e pistas não saem pela leitura');
+    assert.equal((await req('GET', `${esc}/leitura?disciplina=9.9`, { jar: 'olga' })).st, 404);
+  });
+
   await t('estudo: cards — a sessão diz os limites do dia; o acervo inteiro é só do revisor e não agenda nada', async () => {
     const c = (await req('GET', `${esc}/cards`, { jar: 'olga' })).json;
     assert.deepEqual([c.limites.novos_dia, c.limites.revisoes_dia, c.revisor], [5, 20, false], 'a tela explica "Card 1 de 5" com estes números');

@@ -174,3 +174,12 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-acervo-card .es-card-frente{font-size:1.05rem;padding:4px 0}
 .es-acervo-card .es-card-verso{margin:6px 0}
 .es-comp-mat{margin:0 0 2px}
+/* aba Aulas e leitura corrida (ADR-0008) */
+.es-aula-linha{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid rgba(20,35,70,.08)}
+.es-ler{max-width:760px;background:#fff;border-radius:14px;padding:26px 30px;margin-top:14px;font:400 1.05rem/1.65 'Lora',Georgia,serif;color:#1a1f2e}
+.es-ler h1{font-size:1.7rem;margin:0 0 4px;color:var(--al-navy)}
+.es-ler h2{font-size:1.3rem;margin:34px 0 4px;color:var(--al-navy);border-top:1px solid rgba(20,35,70,.12);padding-top:22px}
+.es-ler h3{font-size:1.05rem;margin:18px 0 4px;color:var(--al-navy)}
+.es-ler p{margin:0 0 10px}
+.es-ler-sub,.es-ler-item,.es-ler-fontes{font:400 .9rem/1.45 Inter,system-ui,sans-serif;color:#5a6478}
+@media(max-width:640px){.es-ler{padding:18px 16px}.es-aula-linha{flex-direction:column;align-items:flex-start}}
