@@ -200,7 +200,8 @@ function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100' } = {}) {
   const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(codigo));
   if (!u) throw erro('Unidade não encontrada.', 404);
   const atual = (k) => u.niveis[k] && u.niveis[k].derivado_de_versao === u.versao;
-  const niveis = ['100', ...Object.keys(u.niveis)].map(k => ({ nivel: Number(k), disponivel: k === '100' || atual(k), desatualizado: k !== '100' && !!u.niveis[k] && !atual(k) }));
+  const niveis = ['100', ...Object.keys(u.niveis)].map(k => ({ nivel: Number(k), disponivel: k === '100' || atual(k), desatualizado: k !== '100' && !!u.niveis[k] && !atual(k) }))
+    .sort((a, b) => b.nivel - a.nivel); // do completo ao esqueleto: 100 · 50 · 25 · 10
   let usado = 100, motivo = '';
   const pedido = String(nivel);
   if (pedido !== '100') {
@@ -215,7 +216,8 @@ function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100' } = {}) {
     return { n: i, tipo: b.tipo, titulo: b.titulo, texto, criterio: b.criterio, pistas_disponiveis: b.pistas.length, tem_solucao: !!b.solucao };
   }).filter(b => b.texto);
   const vespera = Object.fromEntries(Object.entries(u.vespera).map(([f, p]) => [f, { ...p, desatualizado: p.derivado_de_versao !== u.versao }]));
-  return { codigo: u.codigo, titulo: u.titulo, competencias: u.competencias, itens: u.itens, tempo_min: u.tempo_min, versao: u.versao, status: u.status, fontes: u.fontes, midias: u.midias,
+  // o tempo acompanha o nível: só a leitura encolhe (mesmo fator do plano)
+  return { codigo: u.codigo, titulo: u.titulo, competencias: u.competencias, itens: u.itens, tempo_min: Math.round(u.tempo_min * plano.fatorNivel(usado)), versao: u.versao, status: u.status, fontes: u.fontes, midias: u.midias,
     nivel: usado, nivel_motivo: motivo, niveis, vespera, blocos };
 }
 function solucaoDoBloco(usuario, produto, slugEscopo, codigo, n, tentativa) {
@@ -335,6 +337,12 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
     .map(q => ({ q, comps: R.competenciasDaQuestao(q.id, c.escopo.id) }))
     .filter(x => !filtro.size || x.comps.some(k => filtro.has(k)));
   if (modo === 'treino') elegiveis = elegiveis.filter(x => x.q.uso !== 'reservada');
+  // Prova simulada reproduz o edital: questão de competência TRANSVERSAL (método de estudo, técnica
+  // de prova — competência que não cobre item do programa) não entra, a não ser que o aluno a peça.
+  else if (!filtro.size) {
+    const comItem = new Set(R.vinculos(c.escopo.id).map(v => v.competencia_codigo));
+    elegiveis = elegiveis.filter(x => !x.comps.length || x.comps.some(k => comItem.has(k)));
+  }
   const pedido = Math.min(200, Math.max(1, Math.round(Number(n) || 10)));
   // faltou questão: a lacuna é dita, nunca preenchida com repetição ou filtro afrouxado em silêncio
   if (elegiveis.length < pedido && !aceitar_menos) {

@@ -250,6 +250,8 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(r.st, 200, r.texto);
     let u = await req('GET', `${esc}/unidades/prescricao-base?nivel=50`, { jar: 'olga' });
     assert.equal(u.json.nivel, 50, u.texto);
+    assert.deepEqual(u.json.niveis.map(n => n.nivel), [100, 50], 'do completo ao esqueleto, nessa ordem');
+    assert.equal(u.json.tempo_min, Math.round(30 * 0.75), 'o tempo acompanha o nível: só a leitura encolhe');
     assert.ok(/limitados a dois/.test(u.json.blocos[0].texto) && !/pretensão trabalhista/.test(u.json.blocos[0].texto), 'a explicação é a condensada');
     assert.equal(u.json.blocos.length, 2, 'prática não encolhe');
     assert.equal(u.json.vespera.objetiva.fichas.length, 1);
