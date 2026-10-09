@@ -423,7 +423,7 @@ function cobertura(escopo, { vis = ['publicado'], situacoes = ['disponivel'] } =
   const its = itens(escopo);
   const vins = vinculos(escopo.id);
   const uns = unidades(escopo.id, vis);
-  const qv = db.prepare(`SELECT v.codigo, v.estado_revisao, q.id FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
+  const qv = db.prepare(`SELECT v.codigo, v.estado_revisao, q.id, q.origem FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
       WHERE v.escopo_id = ? AND v.alvo = 'item' AND q.situacao IN (${situacoes.map(() => '?').join(',')})`).all(escopo.id, ...situacoes);
   const porItem = its.map(i => {
     const q = qv.filter(x => x.codigo === i.codigo);
@@ -433,6 +433,8 @@ function cobertura(escopo, { vis = ['publicado'], situacoes = ['disponivel'] } =
       unidades: uns.filter(u => u.itens.includes(i.codigo)).map(u => u.codigo),
       questoes_revisadas: q.filter(x => x.estado_revisao === 'revisado').length,
       questoes_sugeridas: q.filter(x => x.estado_revisao !== 'revisado').length,
+      // padrão da banca (ADR-0007): quantas questões OFICIAIS já cobraram este ponto
+      oficiais: q.filter(x => x.origem === 'oficial').length,
     };
   });
   const folhas = porItem.filter(i => i.folha);

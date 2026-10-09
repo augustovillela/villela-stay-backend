@@ -76,7 +76,7 @@
         if (depois) depois();
       }).catch(function (e) { falha(el('es-corpo'), e); });
     }
-    var ABAS = [['hoje', 'Hoje'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
+    var ABAS = [['hoje', 'Hoje'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
     function abas() {
       el('es-abas').innerHTML = ABAS.map(function (x) { return '<button data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('');
       cada(el('es-abas'), 'button', function (b) { b.onclick = function () { ir(b.getAttribute('data-a')); }; });
@@ -87,7 +87,7 @@
       cada(el('es-abas'), 'button', function (b) { b.classList.toggle('on', b.getAttribute('data-a') === aba); });
       var alvo = el('es-corpo');
       alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
-      ({ hoje: hoje, programa: programa, praticar: praticar, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
+      ({ hoje: hoje, programa: programa, praticar: praticar, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
     }
 
     // ================= HOJE: a próxima tarefa e os três eixos =================
@@ -109,7 +109,7 @@
     function hoje(alvo) {
       carregar(function () {
         var p = E.painel, c = p.cobertura, px = p.proxima, ac = ACAO[px.tipo], d = p.desempenho;
-        var h = '<div class="es-proxima"><p class="al-rotulo">Sua próxima tarefa</p>' +
+        var h = retaFinal(p) + '<div class="es-proxima"><p class="al-rotulo">Sua próxima tarefa</p>' +
           '<h3>' + (px.competencia ? esc(nomeComp(px.competencia)) : (px.tipo === 'concluido' ? 'Tudo demonstrado até aqui' : 'Recordar')) + '</h3>' +
           '<p class="es-motivo"><b>Por quê:</b> ' + esc(px.motivo) + '</p>' +
           (ac ? '<button class="al-bt" id="es-agir">' + ac[0] + '</button>' : '') +
@@ -129,10 +129,37 @@
             '<tr><td>Sem pista nem apoio</td><td class="n">' + d.acertos_sem_apoio + ' de ' + d.sem_apoio + '</td></tr>' +
             '<tr><td>Tudo, incluindo repetidas e com pista</td><td class="n">' + d.acertos + ' de ' + d.respostas + '</td></tr></table>'
             : '<p class="al-sub">Ainda sem respostas. Os números aparecem depois da primeira questão.</p>') + '</div></div>';
+        if (p.erros_pendentes) h += '<div class="jr-caixa"><h3>Caderno de erros</h3><p class="al-sub">' + p.erros_pendentes + ' questão(ões) em que a sua última resposta foi um erro. Refazer não conta como domínio, mas fecha a lacuna.</p>' +
+          '<button class="al-bt fan" id="es-hj-err">Abrir o caderno</button></div>';
         alvo.innerHTML = h;
+        if (el('es-hj-err')) el('es-hj-err').onclick = function () { ir('erros'); };
         if (el('es-agir')) el('es-agir').onclick = function () { ac[1](px); };
         el('es-outra').onclick = function () { ir('programa'); };
       });
+    }
+
+    // RETA FINAL (ADR-0007): o que muda perto da prova, dito na tela — e os checklists de véspera e do dia
+    var FOCO_PROVA = { objetiva: 'prova objetiva', escrita: 'provas escritas', oral: 'prova oral' };
+    function lista(itens) { return '<ul class="es-check">' + itens.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'; }
+    function retaFinal(p) {
+      var r = p.reta_final;
+      if (!r || !r.fase) return '';
+      var semDesconto = !(p.regra_pontuacao && p.regra_pontuacao.desconto), foco = FOCO_PROVA[r.foco] || 'prova';
+      if (r.fase === 'revisao_geral') return '<div class="jr-caixa es-reta"><p class="al-rotulo">Reta final · faltam ' + r.dias + ' dias</p><h3>Revisão geral</h3>' +
+        '<p>A partir de agora, a maior parte de cada sessão é do que você já estudou: retomadas, cards, caderno de erros e simulado. Matéria nova fica com a menor fatia do dia.</p></div>';
+      if (r.fase === 'vespera') return '<div class="jr-caixa es-reta"><p class="al-rotulo">Reta final · faltam ' + r.dias + ' dias</p><h3>Sem matéria nova — ' + esc(foco) + '</h3>' +
+        '<p>Nestes últimos dias, só o que já foi visto: abra a "Véspera de prova" das aulas estudadas (fichas, slides e mapa), refaça o caderno de erros e faça um simulado com o tempo real.</p></div>';
+      if (r.fase === 'vespera_imediata') return '<div class="jr-caixa es-reta"><p class="al-rotulo">A prova é amanhã</p><h3>Véspera</h3>' + lista([
+        'Só resumos, fichas e provas anteriores. Nada novo hoje.',
+        'Confira o local e o horário; separe documento, caneta e o que o edital exige.',
+        'Deixe comida leve e água prontas; roupa confortável e um casaco para o ar-condicionado.',
+        'Evite discussões, novidades e dormir tarde. O sono de hoje faz parte da prova.']) + '</div>';
+      return '<div class="jr-caixa es-reta"><p class="al-rotulo">Hoje é o dia da prova</p><h3>Na prova</h3>' + lista([
+        'Sente-se, respire e leia as instruções com calma.',
+        'Responda exatamente o que foi perguntado; atenção também às questões fáceis.',
+        'Divida o tempo pelos blocos e reserve o fim para o cartão de respostas.',
+        semDesconto ? 'Nesta prova o erro não desconta: não deixe questão em branco.' : 'Nesta prova o erro desconta: só marque quando conseguir eliminar alternativas.',
+        'O objetivo é passar, não acertar tudo. Questão travada fica para a segunda volta.']) + '</div>';
     }
 
     // ================= PROGRAMA: cada item com o seu destino =================
@@ -145,7 +172,8 @@
           if (!i.folha) return '<div class="es-item pai" style="--n:' + nivel + '"><b>' + esc(i.codigo) + '</b> ' + esc(i.texto) + '</div>';
           var q = i.questoes_revisadas + i.questoes_sugeridas;
           return '<div class="es-item" style="--n:' + nivel + '"><div class="es-item-txt"><b>' + esc(i.codigo) + '</b> ' + esc(i.texto) +
-            (i.pendente ? '<span class="es-pend">leitura a conferir: ' + esc(i.pendente) + '</span>' : '') + '</div>' +
+            (i.pendente ? '<span class="es-pend">leitura a conferir: ' + esc(i.pendente) + '</span>' : '') +
+            (i.oficiais ? '<span class="es-banca" title="Questões oficiais desta banca vinculadas a este ponto">cobrado ' + i.oficiais + '× em prova oficial</span>' : '') + '</div>' +
             '<div class="es-item-st">' + selo(i.dominio) +
             (i.unidades.length ? i.unidades.map(function (u) { return '<button class="es-link" data-un="' + esc(u) + '">📖 ' + esc((uns[u] || {}).titulo || 'Aula') + '</button>'; }).join('') : '<span class="es-falta">sem aula ainda</span>') +
             (q ? '<span class="al-fino">' + q + ' questão(ões)</span>' : '<span class="es-falta">sem questão ainda</span>') + '</div></div>';
@@ -227,15 +255,16 @@
       }).join('') + '</div>';
     }
     function praticar(alvo, competencia) {
-      var comps = E.painel.competencias;
-      competencia = competencia || '';
+      var comps = E.painel.competencias, erradas = competencia === '__erradas__';
+      competencia = erradas ? '' : (competencia || '');
       alvo.innerHTML = '<div class="jr-caixa"><div class="es-linha"><label class="es-campo">Competência<select id="es-pr-comp"><option value="">Todas</option>' +
         comps.map(function (c) { return '<option value="' + esc(c.codigo) + '"' + (c.codigo === competencia ? ' selected' : '') + '>' + esc(c.resultado.slice(0, 90)) + '</option>'; }).join('') +
         '</select></label></div><div id="es-pr"></div></div>';
       el('es-pr-comp').onchange = function () { praticar(alvo, el('es-pr-comp').value); };
       var out = el('es-pr');
-      api('GET', base() + '/praticar?n=20&competencia=' + encodeURIComponent(competencia)).then(function (r) {
-        if (!r.questoes.length) { out.innerHTML = '<p class="al-sub">Ainda não há questões de correção automática para esta competência.</p>'; return; }
+      if (erradas) el('es-pr-comp').parentNode.parentNode.innerHTML = '<p class="al-rotulo">Refazendo o caderno de erros</p>';
+      api('GET', base() + '/praticar?n=20&competencia=' + encodeURIComponent(competencia) + (erradas ? '&erradas=1' : '')).then(function (r) {
+        if (!r.questoes.length) { out.innerHTML = '<p class="al-sub">' + (erradas ? 'O caderno de erros está vazio.' : 'Ainda não há questões de correção automática para esta competência.') + '</p>'; return; }
         var i = 0, inicio = 0;
         function mostrar() {
           if (i >= r.questoes.length) {
@@ -273,7 +302,12 @@
               var ret = Object.keys(x.retomadas || {}).map(function (k) { return x.retomadas[k].vencimento; }).filter(Boolean)[0];
               el('es-fb').innerHTML = '<div class="es-fb ' + (x.acerto ? 'ok' : 'nao') + '"><b>' + (x.acerto ? 'Certo.' : 'Não foi desta vez.') + '</b> Conta como: ' + esc(x.conta_como) + '.' +
                 (ret ? ' Retomada marcada para ' + dataBR(ret) + '.' : '') + (x.comentario ? '<p>' + esc(x.comentario) + '</p>' : '') + '</div>' +
-                '<div class="es-linha"><button class="al-bt" id="es-prox">Próxima questão</button></div>';
+                '<label class="es-campo es-anot">Sua anotação (fica no caderno de erros)<textarea id="es-anot" rows="3" maxlength="2000" placeholder="Por que errei — ou por que cada alternativa está certa ou errada.">' + esc(x.anotacao || '') + '</textarea></label>' +
+                '<div class="es-linha"><button class="al-bt" id="es-prox">Próxima questão</button><button class="al-bt fan" id="es-anot-ok">Guardar anotação</button><span class="al-fino" id="es-anot-msg"></span></div>';
+              el('es-anot-ok').onclick = function () {
+                api('PUT', base() + '/questoes/' + q.id + '/anotacao', { texto: el('es-anot').value }).then(function () { el('es-anot-msg').textContent = 'Guardada.'; })
+                  .catch(function (e) { el('es-anot-msg').textContent = e.message; });
+              };
               el('es-prox').onclick = function () { i++; mostrar(); window.scrollTo(0, 0); };
               carregar();
             }).catch(function (e) { el('es-resp').disabled = false; el('es-fb').innerHTML = '<p class="es-msg-erro">' + esc(e.message) + '</p>'; });
@@ -281,6 +315,33 @@
         }
         mostrar();
       }).catch(function (e) { falha(out, e); });
+    }
+
+    // ================= CADERNO DE ERROS =================
+    function erros(alvo) {
+      api('GET', base() + '/erros').then(function (r) {
+        if (!r.total) { alvo.innerHTML = '<div class="jr-caixa"><h3>Caderno de erros</h3><p class="al-sub">Vazio. Entra aqui a questão em que a sua última resposta foi um erro; sai quando você a acerta de novo.</p></div>'; return; }
+        alvo.innerHTML = '<div class="jr-caixa"><h3>Caderno de erros <span class="es-selo ambar">' + r.total + '</span></h3>' +
+          '<p class="al-sub">Questão serve para achar lacuna. Leia por que errou, anote com as suas palavras e refaça. Acertar de novo a mesma questão fecha a lacuna, mas não conta como domínio — isso exige questão nova.</p>' +
+          '<div class="es-linha"><button class="al-bt" id="es-err-ref">Refazer estas questões</button></div></div>' +
+          r.questoes.map(function (q) {
+            return '<div class="jr-caixa es-erro"><p class="al-fino">' + (q.erros > 1 ? 'errada ' + q.erros + ' vezes' : 'errada 1 vez') + ' · última em ' + dataBR(q.ultima.slice(0, 10)) +
+              (q.competencias.length ? ' · ' + esc(String(nomeComp(q.competencias[0])).slice(0, 80)) : '') + '</p><div class="es-enun">' + texto(q.enunciado) + '</div>' +
+              '<details><summary>Ver o gabarito comentado</summary>' + q.alternativas.map(function (a) {
+                return '<p class="es-alt-lida ' + (a.correta ? 'certa' : '') + '"><b>' + esc(a.id) + ')</b> ' + esc(a.texto) + (a.explicacao ? '<span class="es-expl">' + esc(a.explicacao) + '</span>' : '') + '</p>';
+              }).join('') + (q.comentario ? '<p>' + esc(q.comentario) + '</p>' : '') + '</details>' +
+              '<label class="es-campo es-anot">Sua anotação<textarea rows="2" maxlength="2000" data-anot="' + esc(q.id) + '" placeholder="Por que errei.">' + esc(q.anotacao || '') + '</textarea></label>' +
+              '<div class="es-linha"><button class="al-bt peq fan" data-anot-ok="' + esc(q.id) + '">Guardar anotação</button><span class="al-fino" data-anot-msg="' + esc(q.id) + '"></span></div></div>';
+          }).join('');
+        el('es-err-ref').onclick = function () { ir('praticar', '__erradas__'); };
+        cada(alvo, '[data-anot-ok]', function (b) {
+          b.onclick = function () {
+            var id = b.getAttribute('data-anot-ok'), msg = alvo.querySelector('[data-anot-msg="' + id + '"]');
+            api('PUT', base() + '/questoes/' + id + '/anotacao', { texto: alvo.querySelector('[data-anot="' + id + '"]').value }).then(function () { msg.textContent = 'Guardada.'; })
+              .catch(function (e) { msg.textContent = e.message; });
+          };
+        });
+      }).catch(function (e) { falha(alvo, e); });
     }
 
     // ================= CARDS =================
@@ -482,11 +543,12 @@
           (v.situacao === 'nao_cabe' || v.situacao === 'apertado' ? '<p class="es-aviso">O programa não cabe inteiro no tempo informado. Nada foi tirado em silêncio: os itens abaixo ficam de fora deste plano. Você pode aumentar a disponibilidade ou aceitar a prioridade.</p>' : '') +
           (p.pendentes.length ? '<p><b>Ficam de fora (' + p.pendentes.length + '):</b> ' + p.pendentes.map(function (x) { return esc(x.codigo) + ' (' + horas(x.faltam_min) + ')'; }).join(' · ') + '</p>' : '') +
           ((v.sem_estimativa || []).length ? '<p class="al-fino">Sem estimativa de tempo, por isso fora da conta: ' + v.sem_estimativa.map(esc).join(', ') + '.</p>' : '') +
+          (p.prioridade ? '<p class="es-nivel-rec"><b>Prioridade pelo padrão da banca.</b> ' + esc(p.prioridade.motivo) + '</p>' : '') +
           (p.nivel_recomendado ? '<p class="es-nivel-rec"><b>Quanto ler de cada aula: ' + p.nivel_recomendado.nivel + ' %.</b> ' + esc(p.nivel_recomendado.motivo) + ' <span class="al-fino">Na aula, o seletor "Quanto ler" troca o nível quando ele existir.</span></p>' : '') + '</div>';
         h += '<div class="jr-caixa"><h3>Próximas sessões</h3>' + (p.proximas.length ? '<div class="es-sessoes">' + p.proximas.map(function (s) {
           return '<div class="es-sessao' + (s.vespera ? ' vespera' : '') + '"><b>' + dataBR(s.data).slice(0, 5) + '</b><span>' + horas(s.minutos) + '</span><p>' +
             (s.vespera ? '<b>Véspera · ' + esc(FOCO[s.vespera] || s.vespera) + '</b> — fichas, slides e mapa das aulas já estudadas; nada de matéria nova.' :
-            (s.estudo.length ? s.estudo.map(function (e) { return '<b class="es-cod">' + esc(e.codigo) + '</b> ' + esc(nomeItem(e.codigo)) + ' · ' + horas(e.minutos); }).join('<br>') : 'só retomadas') + (s.revisao_min ? '<br><i>retomadas · ' + horas(s.revisao_min) + '</i>' : '')) + '</p></div>';
+            (s.fase === 'revisao_geral' ? '<b>Revisão geral</b><br>' : '') + (s.estudo.length ? s.estudo.map(function (e) { return '<b class="es-cod">' + esc(e.codigo) + '</b> ' + esc(nomeItem(e.codigo)) + ' · ' + horas(e.minutos); }).join('<br>') : 'só retomadas') + (s.revisao_min ? '<br><i>retomadas · ' + horas(s.revisao_min) + '</i>' : '')) + '</p></div>';
         }).join('') + '</div>' : '<p class="al-sub">Nenhuma sessão nos próximos dias com a disponibilidade informada.</p>') +
           '<p class="al-fino">' + p.sessoes_total + ' sessão(ões) no plano inteiro · versão ' + r.versao + '</p></div>';
         if ((r.historico || []).length > 1) h += '<details class="jr-caixa es-fontes"><summary>O que mudou no plano</summary><ul>' + r.historico.slice().reverse().map(function (x) {

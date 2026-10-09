@@ -39,7 +39,10 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.post(`${base}/unidades/:unidade/blocos/:n/solucao`, ...AL, h((req, res) => { res.json(al.solucaoDoBloco(...a(req), req.params.unidade, req.params.n, b(req).tentativa)); }));
 
   // ---- prática ----
-  app.get(`${base}/praticar`, ...AL, h((req, res) => { semCache(res); res.json(al.praticar(...a(req), { competencia: req.query.competencia, n: req.query.n })); }));
+  app.get(`${base}/praticar`, ...AL, h((req, res) => { semCache(res); res.json(al.praticar(...a(req), { competencia: req.query.competencia, n: req.query.n, erradas: req.query.erradas === '1' })); }));
+  // caderno de erros: a última resposta foi erro; a anotação é do próprio aluno
+  app.get(`${base}/erros`, ...AL, h((req, res) => { semCache(res); res.json(al.erros(...a(req))); }));
+  app.put(`${base}/questoes/:questao/anotacao`, ...AL, h((req, res) => { res.json(al.anotar(...a(req), req.params.questao, b(req).texto)); }));
   app.post(`${base}/questoes/:questao/pista`, ...AL, h((req, res) => { res.json(al.pedirPista(...a(req), req.params.questao)); }));
   app.post(`${base}/questoes/:questao/responder`, ...AL, h((req, res) => { res.json(al.responder(...a(req), req.params.questao, b(req))); }));
 

@@ -90,7 +90,8 @@ function alocar(cap, itens, { revisao_pct = REVISAO_PADRAO_PCT } = {}) {
   const sessoes = [];
   for (const d of cap.dias) {
     const util = Math.floor(d.minutos * fator);
-    const revisao = fila.length ? Math.floor(util * (revisao_pct / 100)) : util;
+    // na revisão geral (reta final) a matéria nova fica com a fração menor do dia; o resto é retomada
+    const revisao = !fila.length ? util : d.fase === 'revisao_geral' ? util - Math.floor(util * FRACAO_NOVA_NA_REVISAO_GERAL) : Math.floor(util * (revisao_pct / 100));
     let livre = util - revisao;
     const blocos = [];
     while (livre > 0 && fila.length) {
@@ -99,7 +100,7 @@ function alocar(cap, itens, { revisao_pct = REVISAO_PADRAO_PCT } = {}) {
       fila[0].resta -= usa; livre -= usa;
       if (!fila[0].resta) fila.shift();
     }
-    if (blocos.length || revisao) sessoes.push({ data: d.data, minutos: d.minutos, estudo: blocos, revisao_min: revisao });
+    if (blocos.length || revisao) sessoes.push({ data: d.data, minutos: d.minutos, estudo: blocos, revisao_min: revisao, ...(d.fase ? { fase: d.fase } : {}) });
   }
   return { sessoes, pendentes: fila.map(f => ({ codigo: f.codigo, faltam_min: f.resta })) };
 }
@@ -125,16 +126,21 @@ function nivelRecomendado(cap, itens) {
 // Véspera (ADR-0005): os últimos `vespera_dias` antes da data-alvo viram sessões
 // de revisão de véspera no foco da etapa (objetiva | escrita | oral) — nada de
 // matéria nova nesses dias. O foco vem do escopo (ordem das etapas do concurso).
-const VESPERA_PADRAO_DIAS = 7;
+// RETA FINAL (ADR-0007, do que os aprovados e os cursinhos convergem): a "revisão geral" começa
+// 15 dias antes — o dia passa a ser sobretudo do que já foi visto, com uma fração pequena para
+// matéria nova — e nos 5 últimos dias não entra conteúdo novo nenhum: só véspera, no foco da etapa.
+const VESPERA_PADRAO_DIAS = 5;
+const REVISAO_GERAL_PADRAO_DIAS = 15;
+const FRACAO_NOVA_NA_REVISAO_GERAL = 0.3;
 function marcarVespera(sessoes, fim, { vespera_dias = VESPERA_PADRAO_DIAS, foco = 'objetiva' } = {}) {
   if (!fim || !vespera_dias) return sessoes;
   const inicio = somarDias(fim, -int(vespera_dias));
-  return sessoes.map(s => (s.data >= inicio ? { ...s, estudo: [], revisao_min: s.minutos, vespera: foco } : s));
+  return sessoes.map(s => (s.data >= inicio ? { ...s, estudo: [], revisao_min: s.minutos, vespera: foco, fase: 'vespera' } : s));
 }
 
 // Porta única. Sem data-alvo (assunto avulso), o plano diz quando termina
 // no ritmo declarado em vez de fingir um prazo.
-function planejar({ hoje, data_alvo = '', disponibilidade, indisponiveis, margem_pct, revisao_pct, itens, vespera_dias, foco }) {
+function planejar({ hoje, data_alvo = '', disponibilidade, indisponiveis, margem_pct, revisao_pct, itens, vespera_dias, revisao_geral_dias, foco }) {
   const base = { hoje, disponibilidade, indisponiveis, margem_pct };
   if (data_alvo) {
     if (data_alvo <= hoje) throw new Error('A data-alvo precisa ser futura.');
@@ -142,14 +148,19 @@ function planejar({ hoje, data_alvo = '', disponibilidade, indisponiveis, margem
     // os dias de véspera não recebem matéria nova: a alocação usa só os dias anteriores.
     // Véspera só existe se quem chama a pedir (o escopo de edital pede; assunto avulso não) —
     // o motor puro não tira dia nenhum por conta própria.
-    const capEstudo = { ...cap, dias: cap.dias.filter(d => d.data < somarDias(data_alvo, -int(vespera_dias))) };
-    capEstudo.bruta_min = capEstudo.dias.reduce((a, d) => a + d.minutos, 0);
+    const vd = int(vespera_dias), rg = Math.max(vd, int(revisao_geral_dias));
+    const iniV = somarDias(data_alvo, -vd), iniRG = somarDias(data_alvo, -rg);
+    const fase = (data) => (vd && data >= iniV ? 'vespera' : rg > vd && data >= iniRG ? 'revisao_geral' : '');
+    const capEstudo = { ...cap, dias: cap.dias.map(d => ({ ...d, fase: fase(d.data) })).filter(d => d.fase !== 'vespera') };
+    // capacidade para matéria NOVA: o dia de revisão geral conta só pela fração que ainda admite conteúdo novo
+    capEstudo.bruta_min = capEstudo.dias.reduce((a, d) => a + (d.fase === 'revisao_geral' ? Math.floor(d.minutos * FRACAO_NOVA_NA_REVISAO_GERAL) : d.minutos), 0);
     capEstudo.margem_min = Math.round(capEstudo.bruta_min * (cap.margem_pct / 100));
     capEstudo.util_min = capEstudo.bruta_min - capEstudo.margem_min;
     const plano = alocar(capEstudo, itens, { revisao_pct });
     const vesperas = marcarVespera(cap.dias.map(d => ({ data: d.data, minutos: d.minutos, estudo: [], revisao_min: 0 })), data_alvo, { vespera_dias: int(vespera_dias), foco }).filter(s => s.vespera);
     const sessoes = [...plano.sessoes, ...vesperas].sort((a, b) => a.data.localeCompare(b.data));
-    return { data_alvo, viabilidade: viabilidade(capEstudo, itens), nivel_recomendado: nivelRecomendado(capEstudo, itens), ...plano, sessoes,
+    const reta_final = vd || rg ? { revisao_geral_desde: rg > vd ? iniRG : '', sem_materia_nova_desde: vd ? iniV : '', foco: foco || 'objetiva' } : null;
+    return { data_alvo, viabilidade: viabilidade(capEstudo, itens), nivel_recomendado: nivelRecomendado(capEstudo, itens), reta_final, ...plano, sessoes,
       conclusao_estimada: plano.pendentes.length ? '' : (plano.sessoes.filter(s => s.estudo.length).pop() || {}).data || '' };
   }
   const cap = capacidade({ ...base, fim: somarDias(hoje, HORIZONTE_SEM_PRAZO) });
@@ -161,4 +172,4 @@ function planejar({ hoje, data_alvo = '', disponibilidade, indisponiveis, margem
     sessoes: plano.sessoes.slice(0, corte), pendentes: plano.pendentes, conclusao_estimada: ultima ? ultima.data : '' };
 }
 
-module.exports = { planejar, capacidade, viabilidade, alocar, ordenar, esforcoTotal, minutosPorDia, nivelRecomendado, marcarVespera, fatorNivel, NIVEIS, DIAS, MARGEM_PADRAO_PCT, REVISAO_PADRAO_PCT, VESPERA_PADRAO_DIAS };
+module.exports = { planejar, capacidade, viabilidade, alocar, ordenar, esforcoTotal, minutosPorDia, nivelRecomendado, marcarVespera, fatorNivel, NIVEIS, DIAS, MARGEM_PADRAO_PCT, REVISAO_PADRAO_PCT, VESPERA_PADRAO_DIAS, REVISAO_GERAL_PADRAO_DIAS, FRACAO_NOVA_NA_REVISAO_GERAL };

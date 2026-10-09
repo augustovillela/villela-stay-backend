@@ -150,3 +150,16 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-mapa { white-space: pre-wrap; font: inherit; font-size: .92em; margin: 8px 0 0; padding: 8px 10px; background: var(--al-fundo-2, #f4f6fa); border-radius: 8px; }
 .es-nivel-rec { margin: 10px 0 0; padding: 8px 10px; background: var(--al-fundo-2, #f4f6fa); border-radius: 8px; }
 .es-sessao.vespera { border-left: 3px solid var(--al-acento, #1f5fbf); }
+
+/* ADR-0007 — reta final, caderno de erros, padrão da banca */
+.es-reta { border-left: 4px solid var(--al-acento, #1f5fbf); }
+.es-check { margin: 6px 0 0; padding-left: 20px; }
+.es-check li { margin: 5px 0; }
+.es-banca { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: .78em; font-weight: 600; background: #fff3d6; color: #7a5200; white-space: nowrap; }
+.es-erro details { margin: 8px 0; }
+.es-erro summary { cursor: pointer; font-weight: 600; }
+.es-alt-lida { margin: 6px 0; padding: 6px 8px; border-radius: 8px; background: var(--al-fundo-2, #f4f6fa); }
+.es-alt-lida.certa { background: #e6f6ec; }
+.es-alt-lida .es-expl { display: block; margin-top: 3px; font-size: .92em; opacity: .85; }
+.es-anot { display: block; margin-top: 10px; }
+.es-anot textarea { width: 100%; box-sizing: border-box; margin-top: 4px; }

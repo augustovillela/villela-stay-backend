@@ -586,6 +586,19 @@ const MIGRACOES = [
     sql: `ALTER TABLE est_unidades ADD COLUMN niveis TEXT DEFAULT '{}';
           ALTER TABLE est_unidades ADD COLUMN vespera TEXT DEFAULT '{}';`,
   },
+  {
+    // ADR-0007 — caderno de erros: a anotação do próprio aluno sobre a questão ("por que errei",
+    // "por que cada alternativa está certa ou errada"). É dele: uma por questão, reescrita quando muda.
+    nome: 'estudo-anotacoes-2026-10-09',
+    sql: `CREATE TABLE IF NOT EXISTS est_anotacoes (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            questao_id    TEXT NOT NULL,
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            texto         TEXT NOT NULL,
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, questao_id)
+          );`,
+  },
 ];
 
 for (const m of MIGRACOES) {

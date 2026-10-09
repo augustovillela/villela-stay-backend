@@ -431,12 +431,17 @@ async function rodar({ t, req, EST, impId }) {
       { codigo: '1', texto: 'Direito do Trabalho' }, { codigo: '1.1', texto: 'Prescrição', esforco_min: [300, 400] }, { codigo: '1.2', texto: 'FGTS', esforco_min: [300, 400] },
       { codigo: '2', texto: 'Processo do Trabalho' }, { codigo: '2.1', texto: 'Recursos' }] } });
     const semana = Object.fromEntries(plano.DIAS.map(d => [d, 0]));
-    semana[plano.DIAS[new Date(daqui(1) + 'T00:00:00Z').getUTCDay()]] = 30; // um dia da semana, 30 min → 2 sessões em 14 dias
+    semana[plano.DIAS[new Date(daqui(1) + 'T00:00:00Z').getUTCDay()]] = 30;  // sessões em D+1 e D+8
+    semana[plano.DIAS[new Date(daqui(10) + 'T00:00:00Z').getUTCDay()]] = 30; // sessões em D+3 e D+10 (a prova é em D+14)
     const r = await set({ disponibilidade: semana, margem_pct: 0, data_alvo: daqui(300) });
     assert.equal(r.st, 200, r.texto);
     const v = r.json.plano.viabilidade;    assert.equal(r.json.plano.data_alvo, daqui(14), 'a data da prova é a do edital, não a que o aluno digitou');
-    // ADR-0005: os 7 últimos dias são véspera (sem matéria nova) — dos 2 dias com tempo, só o 1º recebe estudo
-    assert.deepEqual([v.situacao, v.capacidade_bruta_min, v.esforco_min, v.deficit_min, v.sem_estimativa], ['nao_cabe', 30, [600, 800], [570, 770], ['2.1']]);
+    // RETA FINAL (ADR-0007): a prova é em 14 dias, então tudo já é revisão geral (D-15) — cada sessão dá só 30 % a
+    // matéria nova (9 de 30 min) — e a sessão de D+10 cai nos 5 últimos dias: véspera, sem matéria nova nenhuma
+    assert.deepEqual([v.situacao, v.capacidade_bruta_min, v.esforco_min, v.deficit_min, v.sem_estimativa], ['nao_cabe', 27, [600, 800], [573, 773], ['2.1']]);
+    const rg = r.json.plano.proximas.filter(s => s.fase === 'revisao_geral');
+    assert.deepEqual([rg.length, rg[0].estudo[0].minutos, rg[0].revisao_min], [3, 9, 21], 'revisão geral: a maior parte do dia é do que já foi visto');
+    assert.deepEqual([r.json.plano.reta_final.sem_materia_nova_desde, r.json.plano.reta_final.revisao_geral_desde, r.json.plano.reta_final.foco], [daqui(9), daqui(-1), 'objetiva']);
     const vesp = r.json.plano.proximas.filter(s => s.vespera);
     assert.deepEqual([vesp.length, vesp[0].vespera, vesp[0].estudo.length, vesp[0].revisao_min], [1, 'objetiva', 0, 30], 'véspera: só revisão, no foco da 1ª etapa');
     assert.equal(r.json.plano.nivel_recomendado.nivel, 10, 'não cabe nem o 10 %: recomenda o menor e mostra o déficit');
@@ -446,7 +451,7 @@ async function rodar({ t, req, EST, impId }) {
     assert.deepEqual([nr.nivel, nr.opcoes.find(o => o.nivel === 50).apertado, nr.opcoes.find(o => o.nivel === 25).esforco_min], [25, true, [375, 500]]);
     assert.equal(plano.nivelRecomendado({ util_min: 1000 }, [{ codigo: 'a', esforco_min: [600, 800] }]).nivel, 100);
     assert.deepEqual(r.json.plano.pendentes.map(p => p.codigo), ['1.1', '1.2'], 'nada sai do programa em silêncio');
-    assert.equal(r.json.plano.sessoes_total, 2);
+    assert.equal(r.json.plano.sessoes_total, 4, "três de revisão geral e uma de véspera");
     const r2 = await set({ disponibilidade: semana, margem_pct: 0, motivo: 'faltei ontem' });
     assert.deepEqual([r2.json.versao, r2.json.historico.length, r2.json.historico[1].motivo], [2, 2, 'faltei ontem'], 'replanejar preserva o histórico');
   });
@@ -487,6 +492,34 @@ async function rodar({ t, req, EST, impId }) {
     const painel = (await req('GET', `${esc}/painel`, { jar: 'olga' })).json;
     assert.equal(painel.escopo.versao, antes + 1);
     assert.ok(painel.desempenho.respostas > 0, 'o histórico da aluna atravessa a retificação');
+  });
+  await t('estudo: caderno de erros — entra quem errou por último, sai quem acerta de novo; a anotação é do aluno (ADR-0007)', async () => {
+    const jar = 'olga';
+    const ids = async () => (await req('GET', `${esc}/erros`, { jar })).json.questoes.map(q => q.id);
+    const antes = await ids();
+    const lote = (await req('GET', `${esc}/praticar?n=20`, { jar })).json.questoes;
+    const pr = lote.find(q => !antes.includes(q.id));
+    assert.ok(pr, 'há questão fora do caderno para testar');
+    const dados = JSON.parse(db.prepare('SELECT dados FROM est_questoes WHERE id = ?').get(pr.id).dados);
+    const gab = dados.alternativas.find(a => a.correta).id, errada = pr.alternativas.find(a => a.id !== gab).id;
+    assert.equal((await req('POST', `${esc}/questoes/${pr.id}/responder`, { jar, corpo: { resposta: errada } })).json.acerto, false);
+    const cad = (await req('GET', `${esc}/erros`, { jar })).json;
+    const linha = cad.questoes.find(q => q.id === pr.id);
+    assert.ok(linha && linha.erros >= 1, 'errou por último: está no caderno');
+    assert.equal(cad.total, antes.length + 1);
+    assert.ok(linha.alternativas.some(a => a.correta && a.explicacao !== undefined), 'no caderno a questão vem com o gabarito');
+    assert.equal((await req('GET', `${esc}/painel`, { jar })).json.erros_pendentes, cad.total, 'o painel conta as pendentes');
+    const an = await req('PUT', `${esc}/questoes/${pr.id}/anotacao`, { jar, corpo: { texto: 'Confundi o prazo bienal com o quinquenal.' } });
+    assert.equal(an.st, 200, an.texto);
+    assert.equal((await req('GET', `${esc}/erros`, { jar })).json.questoes.find(q => q.id === pr.id).anotacao, 'Confundi o prazo bienal com o quinquenal.');
+    const so = (await req('GET', `${esc}/praticar?n=20&erradas=1`, { jar })).json.questoes.map(q => q.id);
+    assert.ok(so.includes(pr.id) && so.every(id => [...antes, pr.id].includes(id)), 'refazer traz só as erradas');
+    const de = await req('POST', `${esc}/questoes/${pr.id}/responder`, { jar, corpo: { resposta: gab } });
+    assert.deepEqual([de.json.acerto, de.json.inedita, de.json.anotacao], [true, false, 'Confundi o prazo bienal com o quinquenal.'], 'acertar a mesma questão não é demonstração');
+    assert.ok(!(await ids()).includes(pr.id), 'acertou de novo: sai do caderno');
+    // anotar o que nunca respondeu é recusado
+    const nunca = db.prepare("SELECT q.id FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id WHERE q.id NOT IN (SELECT ref_id FROM est_evidencias) LIMIT 1").get();
+    if (nunca) assert.ok([404, 409].includes((await req('PUT', `${esc}/questoes/${nunca.id}/anotacao`, { jar, corpo: { texto: 'x' } })).st), 'anotação é sobre a resposta dada');
   });
 }
 

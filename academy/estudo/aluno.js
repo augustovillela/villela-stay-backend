@@ -163,7 +163,17 @@ function painel(usuario, produto, slugEscopo) {
   const conta = (f) => folhas.filter(f).length;
   const fila = filaDeRevisao(usuario, escopo);
   const evs = evidencias(usuario.id, escopo.id);
+  // RETA FINAL (ADR-0007): em que fase o aluno está em relação à prova (a data é a do edital; sem ela, a do plano dele)
+  const pl = db.prepare('SELECT entrada, plano FROM est_planos WHERE user_id = ? AND escopo_id = ?').get(usuario.id, escopo.id);
+  const alvo = escopo.data_alvo || (pl ? j.parse(pl.entrada, {}).data_alvo || '' : '');
+  const rf = (pl && j.parse(pl.plano, {}).reta_final) || {};
+  const hj = hojeBR();
+  const dias = alvo ? Math.round((Date.parse(alvo + 'T00:00:00Z') - Date.parse(hj + 'T00:00:00Z')) / 864e5) : null;
+  const fase = dias == null || dias < 0 ? '' : dias === 0 ? 'dia_da_prova' : dias === 1 ? 'vespera_imediata'
+    : rf.sem_materia_nova_desde && hj >= rf.sem_materia_nova_desde ? 'vespera' : rf.revisao_geral_desde && hj >= rf.revisao_geral_desde ? 'revisao_geral' : '';
   return {
+    reta_final: alvo ? { data_alvo: alvo, dias, fase, foco: rf.foco || 'objetiva' } : null,
+    erros_pendentes: errosPendentes(usuario.id, escopo.id).length,
     escopo: { slug: escopo.slug, tipo: escopo.tipo, titulo: escopo.titulo, nivel: escopo.nivel, extensao: escopo.extensao, data_alvo: escopo.data_alvo, versao: escopo.versao, status: escopo.status, perfil: escopo.perfil },
     revisor: c.revisor,
     // três eixos, cada um com o seu denominador — nunca somados num percentual só
@@ -233,10 +243,51 @@ function solucaoDoBloco(usuario, produto, slugEscopo, codigo, n, tentativa) {
 // ---------------------------------------------------------------------
 // PRÁTICA com questões do banco
 // ---------------------------------------------------------------------
-function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5 } = {}) {
+// ---------------------------------------------------------------------
+// CADERNO DE ERROS (ADR-0007) — "questão serve para achar lacuna". Pendente é a questão cuja
+// ÚLTIMA resposta do aluno foi um erro; sai do caderno quando ele a acerta de novo. Refazer a
+// questão não é demonstração (já foi vista): é prática — a evidência continua exigindo questão nova.
+// ---------------------------------------------------------------------
+function errosPendentes(userId, escopoId) {
+  const por = new Map();
+  for (const e of evidencias(userId, escopoId)) {
+    if (e.origem !== 'questao') continue;
+    const x = por.get(e.ref_id) || { id: e.ref_id, erros: new Set(), ultima: '', pendente: false };
+    if (!e.acerto) x.erros.add(e.criado_em);
+    x.pendente = !e.acerto; x.ultima = e.criado_em; // as evidências vêm em ordem: a última manda
+    por.set(e.ref_id, x);
+  }
+  return [...por.values()].filter(x => x.pendente).map(x => ({ id: x.id, erros: x.erros.size, ultima: x.ultima })).sort((a, b) => b.ultima.localeCompare(a.ultima));
+}
+const anotacaoDe = (userId, questaoId) => (db.prepare('SELECT texto FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(userId, questaoId) || {}).texto || '';
+function erros(usuario, produto, slugEscopo) {
   const c = abrir(usuario, produto, slugEscopo);
+  const lista = errosPendentes(usuario.id, c.escopo.id).map(x => {
+    const q = R.Questoes.obter(x.id);
+    if (!q || !c.situacoes.includes(q.situacao)) return null; // questão retirada do banco não fica cobrando o aluno
+    return { id: q.id, erros: x.erros, ultima: x.ultima, enunciado: q.enunciado, competencias: R.competenciasDaQuestao(q.id, c.escopo.id),
+      alternativas: q.alternativas.map(a => ({ id: a.id, texto: a.texto, correta: a.correta, explicacao: a.explicacao })),
+      comentario: q.comentario, origem: q.origem, vigencia: q.vigencia, anotacao: anotacaoDe(usuario.id, q.id) };
+  }).filter(Boolean);
+  return { total: lista.length, questoes: lista.slice(0, 100) };
+}
+function anotar(usuario, produto, slugEscopo, questaoId, texto) {
+  const c = abrir(usuario, produto, slugEscopo);
+  const { q } = questaoDoEscopo(c, questaoId);
+  if (!jaViu(usuario.id, q.id)) throw erro('Responda a questão antes de anotar: a anotação é sobre a sua resposta.', 409);
+  const t = s(texto, 2000);
+  if (!t) db.prepare('DELETE FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').run(usuario.id, q.id);
+  else db.prepare(`INSERT INTO est_anotacoes (user_id, questao_id, escopo_id, texto, atualizado_em) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT (user_id, questao_id) DO UPDATE SET texto = excluded.texto, atualizado_em = excluded.atualizado_em`).run(usuario.id, q.id, c.escopo.id, t, nowISO());
+  return { ok: true, anotacao: t };
+}
+
+function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, erradas = false } = {}) {
+  const c = abrir(usuario, produto, slugEscopo);
+  const pend = erradas ? new Set(errosPendentes(usuario.id, c.escopo.id).map(x => x.id)) : null;
   const elegiveis = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes, competencia: R.slug(competencia) })
-    .filter(q => q.corrigivel && q.uso !== 'reservada'); // reservada fica para aferição: não se gasta no treino
+    .filter(q => q.corrigivel && q.uso !== 'reservada') // reservada fica para aferição: não se gasta no treino
+    .filter(q => !pend || pend.has(q.id));
   const vistas = new Set(elegiveis.filter(q => jaViu(usuario.id, q.id)).map(q => q.id));
   const ordenadas = [...elegiveis.filter(q => !vistas.has(q.id)), ...elegiveis.filter(q => vistas.has(q.id))];
   const qtd = Math.min(20, Math.max(1, Math.round(Number(n) || 5)));
@@ -278,7 +329,7 @@ function responder(usuario, produto, slugEscopo, questaoId, { resposta, confianc
       conta_como: r.resultado === 'acerto' ? (r.inedita ? 'demonstração sem apoio' : 'prática (questão já vista)') : r.resultado === 'acerto_com_ajuda' ? 'prática com apoio' : 'erro',
       alternativas: q.alternativas.map(a => ({ id: a.id, correta: a.correta, explicacao: a.explicacao })),
       comentario: q.comentario, procedencia: q.procedencia, vigencia: q.vigencia,
-      competencias: comps, retomadas: r.proximas,
+      competencias: comps, retomadas: r.proximas, anotacao: anotacaoDe(usuario.id, q.id),
     };
   });
 }
@@ -439,6 +490,15 @@ function itensDoPlano(escopo, c) {
     return { codigo: i.codigo, ordem: i.ordem, peso: i.peso, esforco_min: faixa };
   });
 }
+// ADR-0007 — "o edital é o mapa; a prova anterior é a bússola". Quando o programa NÃO cabe no tempo,
+// a prioridade passa a seguir o padrão da banca: o ponto já cobrado em prova oficial vem antes, e o
+// que fica de fora é o que ela ainda não cobrou. Quando cabe, a ordem é a do edital — sem reordenar.
+function pesosDaBanca(escopo, c, itens) {
+  const cob = R.cobertura(escopo, c);
+  const of = Object.fromEntries(cob.por_item.map(i => [i.codigo, i.oficiais || 0]));
+  if (!Object.values(of).some(Boolean)) return null; // sem prova oficial vinculada a ponto, não há padrão a seguir
+  return itens.map(i => ({ ...i, peso: (Number(i.peso) || 0) + (of[i.codigo] || 0) }));
+}
 function definirPlano(usuario, produto, slugEscopo, entrada = {}, motivo = 'definido pelo aluno') {
   const c = abrir(usuario, produto, slugEscopo);
   const e = {
@@ -454,7 +514,15 @@ function definirPlano(usuario, produto, slugEscopo, entrada = {}, motivo = 'defi
   const foco = /oral/i.test(etapa1) ? 'oral' : /discurs|escrit|senten|peça|peca/i.test(etapa1) ? 'escrita' : 'objetiva';
   // véspera só no escopo de edital (padrão 7 dias; o perfil pode mudar); assunto avulso não tem prova marcada
   const vesperaDias = perfil.vespera_dias != null && Number.isFinite(Number(perfil.vespera_dias)) ? Number(perfil.vespera_dias) : (c.escopo.tipo === 'edital' ? plano.VESPERA_PADRAO_DIAS : 0);
-  const p = plano.planejar({ hoje: hojeBR(), ...e, itens: itensDoPlano(c.escopo, c), foco, vespera_dias: vesperaDias });
+  const itensP = itensDoPlano(c.escopo, c);
+  const rgDias = perfil.revisao_geral_dias != null && Number.isFinite(Number(perfil.revisao_geral_dias)) ? Number(perfil.revisao_geral_dias) : (c.escopo.tipo === 'edital' ? plano.REVISAO_GERAL_PADRAO_DIAS : 0);
+  const base = { hoje: hojeBR(), ...e, foco, vespera_dias: vesperaDias, revisao_geral_dias: rgDias };
+  let p = plano.planejar({ ...base, itens: itensP });
+  if (['nao_cabe', 'apertado'].includes(p.viabilidade.situacao)) {
+    const pesados = pesosDaBanca(c.escopo, c, itensP);
+    if (pesados) p = { ...plano.planejar({ ...base, itens: pesados }),
+      prioridade: { criterio: 'banca', motivo: 'O programa não cabe inteiro no seu tempo: a ordem passou a seguir o que a banca já cobrou em prova oficial. O que ficou de fora são pontos que ela ainda não cobrou.' } };
+  }
   const atual = db.prepare('SELECT versao, historico FROM est_planos WHERE user_id = ? AND escopo_id = ?').get(usuario.id, c.escopo.id);
   const historico = [...j.parse(atual && atual.historico, []), { em: nowISO(), motivo: s(motivo, 200), situacao: p.viabilidade.situacao, deficit_min: p.viabilidade.deficit_min || null, pendentes: p.pendentes.length }].slice(-20);
   db.prepare(`INSERT INTO est_planos (user_id, escopo_id, entrada, plano, historico, versao, atualizado_em) VALUES (?, ?, ?, ?, ?, 1, ?)
@@ -474,7 +542,7 @@ function obterPlano(usuario, produto, slugEscopo) {
 }
 
 module.exports = {
-  contexto, escopos, painel, unidade, solucaoDoBloco, praticar, pedirPista, responder,
+  contexto, escopos, painel, unidade, solucaoDoBloco, praticar, pedirPista, responder, erros, anotar,
   cardsDoDia, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,
 };
