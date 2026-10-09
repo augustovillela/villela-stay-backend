@@ -602,14 +602,24 @@
         JR.cartao(el('al-jornada'), pid, p, abrirJornada);
       }).catch(function () { /* sem jornada o curso segue igual */ });
     }
+    // Curso que só hospeda o Estude (uma aula de orientação e um percurso): quem
+    // entra espera ver o conteúdo, e ele mora no Estude — abrir direto, uma vez
+    // por visita, para o "Voltar às aulas" não devolver o aluno ao mesmo lugar.
+    var estudeAberto = {};
     function carregarEstude(pid) {
       if (!ES) return;
       api('GET', '/aluno/cursos/' + pid + '/estudo').then(function (r) {
         if (!C || C.pid !== pid) return;
-        ES.cartao(el('al-estude'), pid, r, function (slug) {
+        var abrir = function (slug) {
           var aula = C.i >= 0 ? C.aulas[C.i].a.id : '';
           ES.abrir(pid, C.d.produto.titulo, slug, function () { abrirCurso(pid, aula); });
-        });
+        };
+        ES.cartao(el('al-estude'), pid, r, abrir);
+        var percursos = (r && r.acesso && r.escopos) || [];
+        if (percursos.length === 1 && (C.aulas || []).length <= 1 && !estudeAberto[pid]) {
+          estudeAberto[pid] = true;
+          abrir(percursos[0].slug);
+        }
       }).catch(function () { /* sem o Estude o curso segue igual */ });
     }
     function abrirJornada(aba) {

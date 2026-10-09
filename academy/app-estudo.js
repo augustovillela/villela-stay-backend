@@ -47,9 +47,9 @@
       if (!alvo) return;
       if (!r || !r.acesso || !(r.escopos || []).length) { alvo.innerHTML = ''; return; }
       alvo.innerHTML = '<div class="es-cartao"><div class="es-cartao-txt"><p class="al-rotulo">Estude</p>' +
-        '<b>Do programa à prova, no seu tempo</b><span class="al-fino">Plano, aula ativa, questões, cards e simulado com correção explicada.</span></div>' +
+        '<b>O conteúdo de estudo está aqui</b><span class="al-fino">Aulas, questões, cards, simulado com correção explicada e o plano que cabe no seu tempo.</span></div>' +
         '<div class="es-cartao-bts">' + r.escopos.map(function (e) {
-          return '<button class="al-bt peq" data-es="' + esc(e.slug) + '">' + (e.tipo === 'edital' ? '📜 ' : '📘 ') + esc(e.titulo) +
+          return '<button class="al-bt" data-es="' + esc(e.slug) + '">' + (e.tipo === 'edital' ? '📜 ' : '📘 ') + 'Abrir o conteúdo — ' + esc(e.titulo) +
             (e.status === 'rascunho' ? ' <span class="marca-rasc">rascunho</span>' : '') + '</button>';
         }).join('') + '</div></div>';
       cada(alvo, '[data-es]', function (b) { b.onclick = function () { abrirFn(b.getAttribute('data-es')); }; });
