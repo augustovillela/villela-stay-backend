@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v28'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v29'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -42,6 +42,8 @@ let HE_PATHS = [];                      // rotas da série O Homem Essencial (s�
 let HE_LLMS = '';                       // seção da série O Homem Essencial no llms.txt
 let PI_PATHS = [];                      // rotas da série Piscineiro na Prática (só PT)
 let PI_LLMS = '';                       // seção da série Piscineiro na Prática no llms.txt
+let PA_PATHS = [];                      // rotas da série Paisagismo na Prática (só PT)
+let PA_LLMS = '';                       // seção da série Paisagismo na Prática no llms.txt
 //                       // seção da série ChatGPT no llms.txt
 // Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
@@ -3324,7 +3326,7 @@ ${blocos}
       texto: t('Como cuidar de uma chácara com método: piscina limpa e segura, rotina de manutenção, o que dá para fazer com as próprias mãos, o que contratar e como conferir o serviço de quem você contrata. É a coleção Viver de Chácara, para quem mora, descansa ou recebe hóspedes em uma propriedade rural.',
         'How to look after a country property with method: a clean and safe pool, a maintenance routine, what you can do yourself, what to hire out and how to check the work you pay for. This is the Viver de Chácara collection, for those who live, rest or host guests on a rural property.',
         'Cómo cuidar una casa de campo con método: piscina limpia y segura, rutina de mantenimiento, qué se puede hacer con las propias manos, qué contratar y cómo revisar el servicio contratado. Es la colección Viver de Chácara, para quien vive, descansa o recibe huéspedes en una propiedad rural.'),
-      livros: [], cursos: ['piscineiro-na-pratica'], sistemas: [] },
+      livros: [], cursos: ['piscineiro-na-pratica', 'paisagismo-na-pratica'], sistemas: [] },
 
     { id: 'negocios',
       nome: t('Negócios, marketing, finanças pessoais e produtos digitais', 'Business, marketing, personal finance and digital products', 'Negocios, marketing, finanzas personales y productos digitales'),
@@ -3997,6 +3999,7 @@ let gaArtigos = [];
 let hoArtigos = [];
 let heArtigos = [];
 let piArtigos = [];
+let paArtigos = [];
 let capCss = '';
 const CAP_LIVRO = 'https://livros.villelastay.com.br/livros/claude-ai-na-pratica?utm_source=villelastay&utm_medium=blog-claude';
 const CAP_CURSO = 'https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica?utm_source=villelastay&utm_medium=blog-claude';
@@ -6773,6 +6776,308 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     console.log(`Blog Piscineiro na Prática: hub + ${piNoAr} de ${piTotal} artigos + ${piApoio.length} material(is) de apoio`);
   }
 
+  // ---- Série "Paisagismo na Prática" (coleção Viver de Chácara; curso animado de 25 aulas): bloco copiado do PI_* (Piscineiro na Prática) ----
+  // Preparada em 08/10/2026. O livro não está na Livraria: a série anuncia só o curso (Academy), como no
+  // PI_*, e o BlogPosting cita o livro sem `url`.
+  // ⚠️ Conteúdo de risco (adubo, corretivo e defensivo; eletricidade; árvore de grande porte): nos textos DESTE
+  // bloco e no faq.json não entra dose, distância de plantio, vazão, pressão nem tempo de rega, nem espécie que
+  // os artigos não citem; nada de "garante/certifica/habilita" — é material educacional. A trava logo abaixo
+  // confere as perguntas frequentes de cada artigo.
+  // Diferença para o PI_*: as 25 videoaulas já estão no ar na Academy, então o anúncio não diz "aula a aula".
+  // O selo por aula continua fora (o hub não precisa dele quando todas estão no ar).
+  const PA_DIR = path.join(__dirname, 'content', 'vdc-paisagismo');
+  const PA_CURSO = 'https://academia.villelastay.com.br/academy/cursos/paisagismo-na-pratica?utm_source=villelastay&utm_medium=blog-paisagismo-na-pratica';
+  const paDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(PA_DIR)) {
+    const paCss = fs.readFileSync(path.join(PA_DIR, 'artigo.css'), 'utf8');
+    const paLe = n => JSON.parse(fs.readFileSync(path.join(PA_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const paGrade = paLe('grade.json');
+    let paFaq = {}, paApoio = [];
+    try { paFaq = paLe('faq.json'); } catch (e) { console.warn('[paisagismo-na-pratica] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { paApoio = paLe('apoio.json'); } catch (e) { console.warn('[paisagismo-na-pratica] sem apoio.json — hub sairá sem material de apoio'); }
+
+    paArtigos = fs.readdirSync(PA_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(PA_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[paisagismo-na-pratica] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpoBruto = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
+      // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
+      const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
+        const tam = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+        if (tam(dentro) <= 9000) return m0;
+        const blocos = [];
+        for (const pedaco of dentro.split(/(?=<h3>)/)) {
+          const ult = blocos[blocos.length - 1];
+          if (ult !== undefined && tam(ult) + tam(pedaco) <= 7000) blocos[blocos.length - 1] = ult + pedaco;
+          else blocos.push(pedaco);
+        }
+        return blocos.map((b, k) => `<section class="apoio"><h2>Material de apoio${k ? ' (continuação)' : ''}</h2>${b}</section>`).join(String.fromCharCode(10));
+      });
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? paDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `paisagismo-na-pratica-${chave}`;
+      return {
+        ...meta, chave, slug,
+        tituloTexto: paDestexto(meta.titulo), subtituloTexto: paDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => paDestexto(t)),
+        faq: paFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const paComArtigo = paGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of paArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[paisagismo-na-pratica] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!paComArtigo.includes(a.n)) throw new Error(`[paisagismo-na-pratica] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (paArtigos.length !== paComArtigo.length) throw new Error(`[paisagismo-na-pratica] grade diz ${paComArtigo.length} aulas com artigo, mas há ${paArtigos.length} artigos exportados`);
+    const paSemFaq = paArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (paSemFaq.length) throw new Error(`[paisagismo-na-pratica] SEM perguntas frequentes: ${paSemFaq.join(', ')} — escrever em content/vdc-paisagismo/faq.json`);
+    // Trava de conteúdo: o que é ESCRITO para o blog (perguntas frequentes) não pode trazer dose, distância de
+    // plantio, vazão, pressão, tempo de rega, valor em reais nem promessa de habilitação. Olha o texto que SAIU.
+    // Sem algarismo nenhum, não há como passar número de dose, de distância nem de tempo. "Garantia de pega" é
+    // o assunto da aula 23 (o que combinar por escrito), e por isso é a única forma de "garant-" aceita.
+    const PA_VETO = [
+      [/\d/, 'número (dose, distância, vazão, tempo ou valor)'],
+      [/R\$|\breais\b/i, 'valor em reais'],
+      [/\b(ppm|mg\/l|mililitros?|ml|litros?|mca|bar|psi)\b/i, 'unidade de dose, de vazão ou de pressão'],
+      [/\bgarant(?!ia de pega\b)|\bcertific|\bhabilita(?!do\b|da\b|dos\b|das\b)/i, 'promessa (garante/certifica/habilita)'],
+      [/vital[ií]ci|valida[cç][aã]o p[uú]blica/i, '"vitalício" ou "validação pública"'],
+      [/Grupo Villela(?! Stay)/, '"Grupo Villela" isolado'],
+    ];
+    for (const a of paArtigos) for (const [q, r] of a.faq) for (const [re, oQue] of PA_VETO) {
+      const m = (q + ' ' + r).match(re);
+      if (m) throw new Error(`[paisagismo-na-pratica] faq de ${a.chave} traz ${oQue}: "${m[0]}" em "${q}"`);
+    }
+    for (const a of paArtigos) if (a.faq.length !== 3) throw new Error(`[paisagismo-na-pratica] ${a.chave} precisa de 3 perguntas frequentes; tem ${a.faq.length}`);
+
+    const paAnuncio = (qual, min = false) => `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${PA_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso Paisagismo na Prática — coleção Viver de Chácara</strong><span>Jardins, acessos, áreas de lazer e hospedagem em chácaras do Cerrado, em 25 videoaulas animadas na Villela Academy. Cada aula traz o artigo em PDF, com checklists e fichas. Certificado da Villela Academy ao concluir.</span></span>
+          <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
+    const PA_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(paAnuncio('curso', true))},${JSON.stringify(paAnuncio('curso', true))}];`);
+    const PA_CSS = `${paCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}`;
+
+    const paTotal = paGrade.total;
+    const paLinhaGrade = (aula, atual) => {
+      const art = paArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'paisagismo-na-pratica'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'paisagismo-na-pratica', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of paArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = paArtigos[iArt - 1], prox = paArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('paisagismo-na-pratica').ld,
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-08', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/paisagismo-na-pratica/#serie` },
+        articleSection: 'Paisagismo na Prática', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'Paisagismo na Prática — Viver de Chácara', author: { '@type': 'Person', name: 'Augusto Villela' } },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Paisagismo na Prática', item: `${SITE_URL}/paisagismo-na-pratica/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/paisagismo-na-pratica/">Paisagismo na Prática</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${paTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${paAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar. Material educacional: não habilita profissionalmente; adubo, calcário e defensivo seguem a análise de solo e o rótulo. O artigo em PDF e as videoaulas ficam no curso.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o artigo completo em PDF está no <a href="${PA_CURSO}">curso Paisagismo na Prática</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${paAnuncio('curso')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/paisagismo-na-pratica/"><span class="rot">☰ Índice</span><span class="tit">${paArtigos.length === 1 ? 'O artigo publicado' : `Os ${paArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${paGrade.aulas.map(g => paLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Paisagismo na Prática</strong>, da coleção Viver de Chácara, de Augusto Villela. Conteúdo educacional.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog Paisagismo na Prática`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('paisagismo-na-pratica').og,
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${PA_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${PA_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of paApoio) {
+      const cam = `/paisagismo-na-pratica/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/paisagismo-na-pratica/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'paisagismo-na-pratica', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — Paisagismo na Prática | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série Paisagismo na Prática, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>Paisagismo na Prática</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/paisagismo-na-pratica/">Paisagismo na Prática</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${paAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${PA_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /paisagismo-na-pratica/
+    const paCards = paArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const paApoioCards = paApoio.map(d => `
+  <a class="cap-card" href="/paisagismo-na-pratica/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const paNoAr = paArtigos.length;
+    const paHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/paisagismo-na-pratica/#serie`,
+      name: 'Paisagismo na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: paArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `Paisagismo na Prática — ${paNoAr} ${paNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: paNoAr,
+      itemListElement: paArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'paisagismo-na-pratica', 'index.html'), layout(
+      'Paisagismo na Prática: a série do curso | Villela Stay',
+      `A série Paisagismo na Prática, da coleção Viver de Chácara: jardins, acessos, áreas de lazer e hospedagem em chácaras do Cerrado — ler o lugar, briefing e croqui, escolha das plantas, solo, implantação na ordem certa, gramado, irrigação, manutenção, custos e entrega. ${paNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>Paisagismo na Prática <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Jardins, acessos, áreas de lazer e hospedagem em chácaras do Cerrado</span></h1>
+    <p>Da coleção <strong>Viver de Chácara</strong>. São ${paTotal} artigos, um para cada aula do curso: a leitura do lugar, o briefing e o croqui, a escolha das plantas, o solo, a implantação na ordem certa, a manutenção e as contas. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje. Conteúdo educacional: não habilita profissionalmente; adubo, calcário e defensivo seguem a análise de solo e o rótulo, e a referência é o Cerrado.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Paisagismo na Prática</span></nav>
+  <div class="cap-faixa">${paAnuncio('curso')}</div>
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${paTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${paGrade.aulas.map(g => paLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${paCards}</div>
+  ${paApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${paApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${paAnuncio('curso')}</div>
+</div>`,
+      { caminho: '/paisagismo-na-pratica/', semIdiomas: true, ...serieImagem('paisagismo-na-pratica').og, extraHead: `<style>${PA_CSS}</style>` + paHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    PA_PATHS = ['/paisagismo-na-pratica/', ...paArtigos.map(a => a.caminho), ...paApoio.map(d => `/paisagismo-na-pratica/apoio/${d.chave}.html`)];
+    PA_LLMS = `## Blog: Paisagismo na Prática (${paNoAr} artigos, em português)
+
+Série do curso *Paisagismo na Prática*, da coleção Viver de Chácara, de Augusto Villela: jardins,
+acessos, áreas de lazer e hospedagem em chácaras do Cerrado — as funções de um jardim e as etapas
+de um serviço, segurança e limites do profissional habilitado, princípios de composição, leitura de
+sol, vento, chuva, declive e solo, briefing, medição e croqui, critérios de escolha das espécies,
+grupos de plantas e exame da muda, análise de solo e insumos, setores e circulação, planta
+simplificada, quantidades e cronograma, limpeza e marcação, preparo do solo e canteiros, plantio e
+tutoramento, gramados, vasos e espaços compactos, irrigação, iluminação e acabamentos, entrada,
+entorno da casa e da piscina, pousadas e eventos, manutenção e diagnóstico, custos, proposta,
+contrato, entrega e o projeto integrador.
+Conteúdo educacional: não habilita profissionalmente. A referência é o Cerrado. A série não publica
+dose de adubo, corretivo ou defensivo, distância de plantio, vazão, pressão nem tempo de rega —
+valem a análise de solo, o rótulo e o manual do fabricante.
+Índice da série: ${SITE_URL}/paisagismo-na-pratica/
+Curso on-line (25 videoaulas, na Villela Academy): ${PA_CURSO.split('?')[0]}
+
+${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog Paisagismo na Prática: hub + ${paNoAr} de ${paTotal} artigos + ${paApoio.length} material(is) de apoio`);
+  }
+
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
     ...['01-central-atualizacao-normativa.html', '02-diretorio-pesquisa-juridica.html', '03-atualizacoes-tecnologicas.html'].map(f => `/claude-juridico/recursos/${f}`)];
   // llms.txt: o assistente que "lê e não renderiza" recebe título + resumo de cada artigo.
@@ -6942,6 +7247,18 @@ const piCardsHub = LANG !== 'pt' || !piArtigos.length ? '' : `
     </div>
   </a>`;
 
+// Série Paisagismo na Prática (coleção Viver de Chácara). Card com a capa do curso.
+const paCardsHub = LANG !== 'pt' || !paArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/paisagismo-na-pratica/">
+    <div class="blog-card-img">${img('/blog-img/paisagismo-na-pratica-1.jpg', { alt: 'Capa do curso Paisagismo na Prática, da coleção Viver de Chácara: o título em letras claras sobre fundo verde-escuro, ao lado da foto de uma casa de chácara no Cerrado, com varanda, gramado, caminho de pedra e canteiros com uma muda tutorada', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">🌿 Série · Viver de Chácara</span>
+      <h3>Paisagismo na Prática</h3>
+      <p>Jardins, acessos, áreas de lazer e hospedagem em chácaras do Cerrado: ler o lugar, escolher a planta pelo que ela será adulta, implantar na ordem certa e manter um jardim que cabe no tempo que você tem.</p>
+      <span class="blog-card-leia">Ver os ${paArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
 // ---- busca do blog ----
 // O hub mostra 16 cards, mas o blog já tem quase cem textos: os 13 do Diário e os das três
 // séries, que moram nos hubs próprios. Procurar só nos cards seria inútil — o índice cobre
@@ -6960,6 +7277,7 @@ const buscaItens = [
     ...hoArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🧭 O Homem Contemporâneo', u: a.caminho, n: `Aula ${a.n}` })),
     ...heArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '⚖️ O Homem Essencial', u: a.caminho, n: `Aula ${a.n}` })),
     ...piArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🏊 Piscineiro na Prática', u: a.caminho, n: `Aula ${a.n}` })),
+    ...paArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🌿 Paisagismo na Prática', u: a.caminho, n: `Aula ${a.n}` })),
   ] : []),
 ];
 
@@ -7078,6 +7396,7 @@ const blogLd = {
         ...(hoArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/homem-contemporaneo/#serie`, name: 'O Homem Contemporâneo — a série', url: `${SITE_URL}/homem-contemporaneo/` }] : []),
         ...(heArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/homem-essencial/#serie`, name: 'O Homem Essencial — a série', url: `${SITE_URL}/homem-essencial/` }] : []),
         ...(piArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/piscineiro-na-pratica/#serie`, name: 'Piscineiro na Prática — a série', url: `${SITE_URL}/piscineiro-na-pratica/` }] : []),
+        ...(paArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/paisagismo-na-pratica/#serie`, name: 'Paisagismo na Prática — a série', url: `${SITE_URL}/paisagismo-na-pratica/` }] : []),
       ]
     : undefined,
 };
@@ -7098,7 +7417,7 @@ const blogHub = layout(
 </section>
 ${buscaHtml}
 <section class="grade-wrap">
-  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${gaCardsHub}${hoCardsHub}${heCardsHub}${piCardsHub}${blogCardsHub}</div>
+  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${gaCardsHub}${hoCardsHub}${heCardsHub}${piCardsHub}${paCardsHub}${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
@@ -7531,7 +7850,7 @@ const SALTO = String.fromCharCode(10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
-${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${GA_PATHS.length ? SALTO : ''}${GA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/google-ai/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HO_PATHS.length ? SALTO : ''}${HO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-contemporaneo/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HE_PATHS.length ? SALTO : ''}${HE_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-essencial/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PI_PATHS.length ? SALTO : ''}${PI_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/piscineiro-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
+${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${GA_PATHS.length ? SALTO : ''}${GA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/google-ai/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HO_PATHS.length ? SALTO : ''}${HO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-contemporaneo/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HE_PATHS.length ? SALTO : ''}${HE_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-essencial/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PI_PATHS.length ? SALTO : ''}${PI_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/piscineiro-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PA_PATHS.length ? SALTO : ''}${PA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/paisagismo-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 
@@ -7646,6 +7965,7 @@ ${GA_LLMS}
 ${HO_LLMS}
 ${HE_LLMS}
 ${PI_LLMS}
+${PA_LLMS}
 ## Livros e cursos do autor
 
 Vitrine conjunta dos três acervos (livros, cursos e sistemas), com links diretos

@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-08T17:51:17.456Z",
+  "coletadoEm": "2026-10-09T00:57:02.003Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -198,6 +198,14 @@
     }
   ],
   "cursos": [
+    {
+      "slug": "paisagismo-na-pratica",
+      "titulo": "Paisagismo na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF, com checklists e fichas, para ler o terreno, escolher plantas pelo comportamento, implantar na ordem certa e manter um jardim que cabe no tempo que você tem. Coleção Viver de Chácara.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/m44KZpSp8OGW?v=go6Z976W4kSj",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/paisagismo-na-pratica"
+    },
     {
       "slug": "piscineiro-na-pratica",
       "titulo": "Piscineiro na Prática",
