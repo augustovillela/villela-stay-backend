@@ -358,6 +358,12 @@ const MIGRACOES = [
     sql: `INSERT OR IGNORE INTO categories (slug, rotulo, origem, ordem, criado_em)
           VALUES ('musica', 'Música', 'sistema', 15, '2026-09-28T00:00:00.000Z');`,
   },
+  { // Categoria CONCURSOS PÚBLICOS: a série dos percursos do Estude por edital (ordem do Augusto, 09/10/2026).
+    // É do sistema para aparecer no filtro da vitrine assim que o primeiro curso for publicado.
+    nome: 'categoria-concursos-publicos-2026-10-09',
+    sql: `INSERT OR IGNORE INTO categories (slug, rotulo, origem, ordem, criado_em)
+          VALUES ('concursos-publicos', 'Concursos Públicos', 'sistema', 16, '2026-10-09T00:00:00.000Z');`,
+  },
   // ESTUDO (academy\estudo\): o motor que leva de um assunto ou de um edital a
   // aprendizagem demonstrada. O ESCOPO é a unidade: um programa de itens
   // versionado (retificação = versão nova, a antiga fica), competências,
