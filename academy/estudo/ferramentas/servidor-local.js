@@ -107,6 +107,13 @@ const srv = app.listen(PORTA, async () => {
     db.prepare('UPDATE users SET cortesia = 1 WHERE email = ?').run(ALUNA.email);
     await post('/staff/api/academy/estudo/importar', { ...dono, ...ESCOPO() }, k);
     await post('/staff/api/academy/estudo/status', { ...dono, escopo: 'demonstracao', status: 'publicado', unidades: 'publicado', cards: 'publicado', questoes: 'disponivel' }, k);
+    // CARTEIRA DE IA na demonstração: cobrança ligada com câmbio FICTÍCIO, IA simulada (nenhum
+    // provedor é chamado, nada é gasto) e R$ 2,00 de crédito para ver o aceite e o extrato.
+    const carteira = require('../../carteira-ia');
+    require('../../ia').__mockParaTeste(async () => ({ usage: { input_tokens: 1800, output_tokens: 350 },
+      json: { resposta: 'Resposta simulada do Tutor — demonstração local, nenhuma IA foi chamada.', fontes: [], nao_encontrado: false, sugestoes: [], aula_referencia: '' } }));
+    require('../../repo').Config.salvar('ia_cobranca', carteira.prepararConfig({ ativa: true, cambio_brl_usd: 5.5, margem_pct: 30 }));
+    carteira.creditar({ email: ALUNA.email, valor_centavos: 200, motivo: 'crédito de demonstração', quem: 'demonstração' });
     console.log(`[estude] demonstração em ${B}/academy/app — entrar com ${ALUNA.email} (senha no topo deste arquivo). Banco descartável: ${process.env.DATA_DIR}`);
   } catch (e) { console.error('[estude] falha ao semear a demonstração:', e.message); srv.close(); process.exit(1); }
 });

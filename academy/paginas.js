@@ -173,7 +173,7 @@ function appHTML() {
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy"><div class="cx">
     <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${marca({ escuro: false, altura: 30 })} <span class="tag">painel</span></h2>
     <div id="app"><p class="sub">Carregando…</p></div></div>
-    <script src="/academy/jornada.js?v=3"></script><script src="/academy/ecossistema.js?v=3"></script><script src="/academy/estude.js?v=1"></script><script src="/academy/aluno.js?v=9"></script><script src="/academy/app.js?v=10"></script><script>bootAcademy();</script><script src="/academy/comunicados.js" data-cor="#D97706" data-sino="nao" defer></script></body></html>`;
+    <script src="/academy/jornada.js?v=3"></script><script src="/academy/ecossistema.js?v=3"></script><script src="/academy/carteira.js?v=1"></script><script src="/academy/estude.js?v=1"></script><script src="/academy/aluno.js?v=9"></script><script src="/academy/app.js?v=11"></script><script>bootAcademy();</script><script src="/academy/comunicados.js" data-cor="#D97706" data-sino="nao" defer></script></body></html>`;
 }
 
 // ==================== FASE 3 — vitrine pública (SEO/OG) ====================
@@ -681,6 +681,7 @@ function registrarPaginas(app, { notificar }) {
   app.get('/academy/aluno.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-aluno.js')));
   app.get('/academy/ecossistema.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-ecossistema.js')));
   app.get('/academy/jornada.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-jornada.js')));
+  app.get('/academy/carteira.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-carteira.js')));
   app.get('/academy/estude.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-estudo.js')));
   app.get('/academy/estude.css', (req, res) => res.type('text/css').sendFile(path.join(__dirname, 'estude.css')));
   app.get('/academy/aluno.css', (req, res) => res.type('text/css').sendFile(path.join(__dirname, 'aluno.css')));

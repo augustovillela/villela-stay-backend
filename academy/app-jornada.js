@@ -279,7 +279,7 @@
         clearTimeout(timer);
         salvar().then(function () { return api('POST', '/aluno/cursos/' + J.pid + '/lab/' + m.id + '/mentor'); }).then(function (r) {
           el('jr-fb').innerHTML = fbHtml(r.feedback);
-          el('jr-m-msg').textContent = r.restantes + ' consulta(s) de IA restante(s) hoje.';
+          el('jr-m-msg').textContent = (window.AcademyCarteiraUI ? window.AcademyCarteiraUI.rodape(r.restantes) : r.restantes + ' consulta(s) de IA restante(s) hoje.');
         }).catch(function (er) { el('jr-m-msg').innerHTML = '<span class="erro">' + esc(er.message) + '</span>'; }).then(function () { bt.disabled = false; });
       };
     }
@@ -472,7 +472,7 @@
         api('POST', '/aluno/cursos/' + J.pid + '/ferramentas/refinar', { tipo: tipo, texto: el('jr-f-txt').textContent }).then(function (r) {
           res.innerHTML = '<div class="cd-prompt" style="margin-top:12px"><div class="cd-prompt-cab"><b>Versão lapidada</b><button class="al-bt peq fan" id="jr-f-copia2">Copiar</button></div><pre>' + esc(r.texto) + '</pre></div>' +
             ((r.mudancas || []).length ? '<p><b>O que mudou:</b></p><ul>' + r.mudancas.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
-            '<p class="al-fino">' + r.restantes + ' consulta(s) de IA restante(s) hoje. Revise antes de usar.</p>';
+            '<p class="al-fino">' + (window.AcademyCarteiraUI ? window.AcademyCarteiraUI.rodape(r.restantes) : r.restantes + ' consulta(s) de IA restante(s) hoje.') + ' Revise antes de usar.</p>';
           el('jr-f-copia2').onclick = function () { copiar(r.texto, this); };
         }).catch(function (e) { res.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; }).then(function () { bt.disabled = false; });
       };

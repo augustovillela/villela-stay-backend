@@ -874,7 +874,7 @@
     }
     function rodape(restantes) {
       if (restantes == null || !el('tv-rod')) return;
-      el('tv-rod').textContent = 'O tutor responde com base no curso e mostra de onde tirou. ' + restantes + ' pergunta' + (restantes === 1 ? '' : 's') + ' restante' + (restantes === 1 ? '' : 's') + ' hoje.';
+      el('tv-rod').textContent = 'O tutor responde com base no curso e mostra de onde tirou. ' + (window.AcademyCarteiraUI ? window.AcademyCarteiraUI.rodape(restantes) : restantes + ' pergunta(s) restante(s) hoje.');
     }
     function formatar(t) { // parágrafos e listas "• " (texto puro, escapado)
       return esc(t).replace(/\[(\d{1,2})\]/g, '<sup>$1</sup>').replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');

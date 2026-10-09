@@ -18,7 +18,7 @@ const ACAD = {
   abas() {
     return [['painel', '📊 Painel'], ['aprovacoes', '✅ Aprovações'], ['pedidos', '🧾 Pedidos'],
       ['assinaturas', '🔁 Assinaturas'], ['comissoes', '💸 Comissões'], ['tickets', '🎧 Suporte'],
-      ['moderacao', '🚩 Moderação'], ['leads', '📩 Leads'], ['config', '⚙️ Config'], ['logs', '📜 Logs']];
+      ['moderacao', '🚩 Moderação'], ['leads', '📩 Leads'], ['ia', '🤖 Créditos de IA'], ['config', '⚙️ Config'], ['logs', '📜 Logs']];
   },
   render() {
     const abas = ACAD.abas().map(([id, r]) => `<button class="btn ${ACAD.tab === id ? '' : 'secund'} peq" onclick="ACAD.ir('${id}')">${r}</button>`).join(' ');
@@ -32,7 +32,7 @@ const ACAD = {
     try {
       await ({ painel: ACAD.vPainel, aprovacoes: ACAD.vAprovacoes, pedidos: ACAD.vPedidos, assinaturas: ACAD.vAssinaturas,
         comissoes: ACAD.vComissoes, tickets: ACAD.vTickets, moderacao: ACAD.vModeracao, leads: ACAD.vLeads,
-        config: ACAD.vConfig, logs: ACAD.vLogs }[ACAD.tab])();
+        ia: ACAD.vIA, config: ACAD.vConfig, logs: ACAD.vLogs }[ACAD.tab])();
     } catch (e) { ACAD.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
 
@@ -205,6 +205,71 @@ const ACAD = {
     ACAD.body().innerHTML = `<div class="card">${leads.length ? tabela(['Quando', 'Nome', 'E-mail', 'Interesse', 'Mensagem', 'Status'], leads.map(l => [
       ACAD.dt(l.criado_em), esc(l.nome), esc(l.email), ACAD.chip(l.interesse), esc(l.mensagem || ''), ACAD.chip(l.status),
     ])) : '<p class="vazio">Nenhum lead ainda.</p>'}</div>`;
+  },
+
+  // -------------------------------------------------------- CRÉDITOS DE IA (carteira-ia.js)
+  // Todo uso de provedor de IA sai do saldo do usuário (regra de 08/10/2026). Aqui o dono liga a
+  // cobrança, dá crédito de cortesia a quem quiser e vê quanto entrou, quanto foi consumido e o custo.
+  async vIA() {
+    const p = await ACAD.api('GET', '/ia/carteiras');
+    const c = p.config, t = p.total;
+    const kpi = (rot, val) => `<div class="card" style="min-width:150px;flex:1"><div class="sub">${rot}</div><div style="font-size:1.4rem;font-weight:700">${val}</div></div>`;
+    const local = c.virada_em ? new Date(c.virada_em).toLocaleString('pt-BR') : '';
+    ACAD.body().innerHTML = `
+      <div class="card" style="${c.ativa ? '' : 'border-color:var(--alerta)'}"><h3>${c.ativa ? '🟢 Cobrança de IA ligada' : '⚪ Cobrança de IA desligada'}</h3>
+        <p class="sub">${c.ativa
+          ? 'Tutor, mentor, lapidar e ferramentas do produtor saem do saldo de quem usa. Antes de gerar, o usuário vê o valor máximo e confirma; paga só o que foi usado.'
+          : 'Enquanto desligada, vale o limite diário antigo e ninguém paga pelo uso. Para ligar é preciso informar o câmbio.'}</p>
+        <form class="form" id="acad-ia-cfg"><div class="hi-grid">
+          <label>Câmbio (R$ por US$) <input id="aia-cambio" type="number" step="0.01" min="0" value="${c.cambio_brl_usd || ''}" placeholder="ex.: 5.60"></label>
+          <label>Margem sobre o custo (%) <input id="aia-margem" type="number" step="1" min="0" value="${c.margem_pct}"></label>
+          <label>Pacotes de recarga (R$, separados por vírgula) <input id="aia-pacotes" value="${c.pacotes_centavos.map(v => v / 100).join(', ')}"></label>
+          <label>Isentos (e-mails, separados por vírgula) <input id="aia-isentos" value="${esc(c.isentos.join(', '))}" placeholder="a sua conta"></label></div>
+          <p class="sub">Virada: ${local ? '<b>' + esc(local) + '</b> — quem tinha matrícula antes disso mantém as consultas grátis do dia naquele curso; matrícula posterior paga tudo.' : 'será gravada no momento em que você ligar a cobrança. Quem já tiver matrícula até lá mantém as consultas grátis do dia naquele curso.'}</p>
+          <label style="display:flex;gap:.5rem;align-items:center"><input id="aia-ativa" type="checkbox" style="width:auto" ${c.ativa ? 'checked' : ''}> Cobrança ligada</label>
+          <button class="btn peq" type="submit">Salvar</button><p id="aia-msg" class="sub"></p></form></div>
+      <div style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.6rem 0">
+        ${kpi('Saldo em aberto', t.saldo)}${kpi('Carregado (pago)', t.carregado)}${kpi('Cortesia dada', t.cortesia)}${kpi('Consumido', t.consumido)}${kpi('Custo no provedor', 'US$ ' + Number(t.custo_provedor_usd).toFixed(2))}</div>
+      <div class="card"><h3>🎁 Dar crédito a um usuário</h3>
+        <form class="form" id="acad-ia-cred"><div class="hi-grid">
+          <label>E-mail da conta na Academy <input id="acr-email" type="email" required></label>
+          <label>Valor (R$) <input id="acr-valor" type="number" step="0.01" required placeholder="ex.: 20"></label>
+          <label>Tipo <select id="acr-tipo"><option value="cortesia">Cortesia (crédito)</option><option value="ajuste">Ajuste (aceita valor negativo)</option></select></label>
+          <label>Motivo (aparece no extrato do usuário) <input id="acr-motivo" required maxlength="200"></label></div>
+          <button class="btn peq" type="submit">Creditar</button><p id="acr-msg" class="sub"></p></form></div>
+      <div class="card"><h3>👛 Carteiras</h3>${p.carteiras.length ? tabela(['Usuário', 'E-mail', 'Saldo', 'Carregado', 'Cortesia', 'Consumido', 'Último movimento'],
+        p.carteiras.map(x => [esc(x.nome || '—'), esc(x.email || '—'), '<b>' + esc(x.saldo_txt) + '</b>', esc(x.carregado_txt), esc(x.cortesia_txt), esc(x.consumido_txt), new Date(x.ultimo).toLocaleString('pt-BR')])) : '<p class="vazio">Ninguém tem movimento ainda.</p>'}</div>
+      <div class="card"><h3>📝 Créditos manuais</h3>${p.creditos_manuais.length ? tabela(['Quando', 'E-mail', 'Tipo', 'Valor', 'Motivo', 'Quem'],
+        p.creditos_manuais.map(x => [new Date(x.criado_em).toLocaleString('pt-BR'), esc(x.email || '—'), ACAD.chip(x.tipo), esc(x.valor), esc(x.detalhe), esc(x.quem)])) : '<p class="vazio">Nenhum crédito manual.</p>'}</div>`;
+    const lista = (id) => document.getElementById(id).value.split(',').map(x => x.trim()).filter(Boolean);
+    document.getElementById('acad-ia-cfg').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = document.getElementById('aia-msg');
+      const ativa = document.getElementById('aia-ativa').checked;
+      const cambio = Number(document.getElementById('aia-cambio').value) || 0;
+      if (ativa && !cambio) { msg.textContent = 'Informe o câmbio para ligar a cobrança.'; return; }
+      if (ativa && !c.ativa && !confirm('Ligar a cobrança de IA agora?\n\nA partir deste momento, quem se matricular paga pelo uso do Tutor e das ferramentas de IA. Quem já tem matrícula mantém as consultas grátis do dia no curso que já tinha.')) return;
+      try {
+        await ACAD.api('POST', '/config', { chave: 'ia_cobranca', valor: {
+          ativa, cambio_brl_usd: cambio, margem_pct: Number(document.getElementById('aia-margem').value),
+          pacotes_centavos: lista('aia-pacotes').map(v => Math.round(Number(v.replace(',', '.')) * 100)).filter(v => v > 0),
+          isentos: lista('aia-isentos'),
+          // a virada é o instante em que a cobrança foi ligada pela primeira vez — e não muda mais
+          virada_em: c.virada_em || (ativa ? new Date().toISOString() : '') } });
+        ACAD.pintar();
+      } catch (e) { msg.textContent = e.message; }
+    };
+    document.getElementById('acad-ia-cred').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = document.getElementById('acr-msg');
+      const email = document.getElementById('acr-email').value.trim(), valor = Number(document.getElementById('acr-valor').value);
+      if (!confirm(`Creditar R$ ${valor.toFixed(2)} para ${email}?`)) return;
+      try {
+        const r = await ACAD.api('POST', '/ia/creditos', { email, valor_centavos: Math.round(valor * 100), motivo: document.getElementById('acr-motivo').value, tipo: document.getElementById('acr-tipo').value });
+        alert(`Feito. Saldo de ${r.email}: ${r.saldo}`);
+        ACAD.pintar();
+      } catch (e) { msg.textContent = e.message; }
+    };
   },
 
   // -------------------------------------------------------- CONFIG

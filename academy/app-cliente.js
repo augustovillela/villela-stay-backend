@@ -34,10 +34,26 @@
   // SEQ cresce a cada troca de aba: leitura que volta depois de o usuário já
   // ter mudado de aba não pinta por cima da aba nova.
   var SEQ = 0;
-  function api(m, p, b) {
-    var meu = SEQ;
-    return fetch('/academy/api' + p, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined })
-      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d && d.erro || ('erro ' + r.status)); return d; }); })
+  // IA paga (carteira-ia.js): quando o servidor responde 402 com um orçamento, o usuário
+  // vê o valor e decide; aceito, a MESMA chamada é refeita levando o valor no cabeçalho
+  // X-IA-Aceite. É aqui, e não em cada tela, para nenhuma função de IA ficar sem a pergunta.
+  function api(m, p, b, aceite) {
+    var meu = SEQ, CI = window.AcademyCarteiraUI, cab = { 'Content-Type': 'application/json' };
+    var teto = aceite || (CI ? CI.aceiteGuardado() : 0);
+    if (teto) cab['X-IA-Aceite'] = String(teto);
+    return fetch('/academy/api' + p, { method: m, headers: cab, body: b ? JSON.stringify(b) : undefined })
+      .then(function (r) { return r.json().then(function (d) {
+        if (r.status === 402 && d && d.orcamento_milesimos && CI && !aceite) {
+          return CI.pedir(d).then(function (ok) {
+            if (!ok) throw new Error(d.motivo === 'saldo_insuficiente' ? 'Sem saldo de IA para esta ação — nada foi cobrado.' : 'Ação cancelada — nada foi cobrado.');
+            return api(m, p, b, d.orcamento_milesimos);
+          });
+        }
+        if (!r.ok) throw new Error(d && d.erro || ('erro ' + r.status));
+        // houve cobrança nesta chamada: mostra quanto saiu de verdade
+        if (CI && teto && m !== 'GET' && /\/(tutor|ia|lab|ferramentas)\b/.test(p) && !/\/ia\/carteira/.test(p)) setTimeout(CI.depois, 300);
+        return d;
+      }); })
       .then(function (d) { return (m === 'GET' && meu !== SEQ) ? new Promise(function () {}) : d; });
   }
   var root = function () { return el('app'); };
@@ -233,6 +249,7 @@
 
   function render(me) {
     ME = me;
+    if (window.AcademyCarteiraUI) window.AcademyCarteiraUI.iniciar({ api: api, esc: esc, irParaConta: function () { irPara('conta'); } });
     var papeis = me.papeis_ativos || [];
     var tabs = tabsDoUsuario(me);
     MAPA_VIEWS = {};
@@ -1454,6 +1471,8 @@
 
       secaoHTML('recibo', 'Minhas compras', 'pagamentos e reembolsos', '<div id="c-compras"><p class="al-sub">Carregando…</p></div>') +
 
+      secaoHTML('recibo', 'Créditos de IA', 'saldo do Tutor, do mentor e das ferramentas', '<div id="c-ia"><p class="al-sub">Carregando…</p></div>') +
+
       secaoHTML('chapeu2', 'Meus certificados', 'emitidos ao concluir 100% de um curso',
         '<div id="c-certs"><p class="al-sub">Carregando…</p></div>') +
 
@@ -1552,6 +1571,7 @@
         }).join('') + '</table>'
         : '<p class="sub" style="text-align:left">Nenhuma compra ainda — explore o <a href="/academy/marketplace">marketplace</a>.</p>';
     }).catch(function (e) { el('c-compras').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+    if (window.AcademyCarteiraUI) window.AcademyCarteiraUI.secao(el('c-ia'));
     el('b-salvar').onclick = function () {
       api('PATCH', '/me', { nome: val('c-nome'), telefone: val('c-tel') }).then(bootAcademy).catch(function (e) { el('c-msg').textContent = e.message; });
     };

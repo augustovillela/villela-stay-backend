@@ -35,8 +35,10 @@ async function rodar({ t, req, impId, jars }) {
 
   await t('carteira: desligada por padrão, e não liga sem câmbio', async () => {
     assert.equal((await carteiraDe('olga')).ativa, false);
-    assert.equal((await config({ ativa: true, margem_pct: 30 })).st, 200);
-    assert.equal(carteira.cfg().ativa, false, 'sem câmbio não há como converter o custo do provedor');
+    assert.equal((await config({ ativa: true, margem_pct: 30 })).st, 400, 'ligar sem câmbio é recusado');
+    assert.equal((await config({ ativa: false, margem_pct: 30 })).st, 200);
+    assert.equal(carteira.cfg().ativa, false);
+    assert.equal(carteira.cfg().virada_em, '', 'desligada nunca marcou virada');
     assert.deepEqual(carteira.cfg().pacotes_centavos, [2000, 5000, 10000], 'pacotes de R$ 20, 50 e 100');
     assert.equal(carteira.cfg().margem_pct, 30);
     assert.equal(ia.comoCobrar('qualquer', impId), '', 'desligada: vale o limite diário antigo');
@@ -53,8 +55,12 @@ async function rodar({ t, req, impId, jars }) {
   });
 
   await t('carteira: ligada — quem se matricula DEPOIS da virada paga; sem saldo a IA nem é chamada', async () => {
-    assert.equal((await config({ ativa: true, cambio_brl_usd: 5, margem_pct: 30, virada_em: new Date().toISOString(), isentos: [] })).st, 200);
+    assert.equal((await config({ ativa: true, cambio_brl_usd: 5, margem_pct: 30, isentos: [] })).st, 200);
     assert.equal(carteira.cfg().ativa, true);
+    const virada = carteira.cfg().virada_em;
+    assert.ok(Date.now() - Date.parse(virada) < 5000, 'a virada nasce no momento em que a cobrança é ligada');
+    await config({ ativa: true, cambio_brl_usd: 5, margem_pct: 30, isentos: [], virada_em: '2020-01-01T00:00:00.000Z' });
+    assert.equal(carteira.cfg().virada_em, virada, 'e não muda mais, nem pedindo');
     await new Promise(r => setTimeout(r, 15));
     assert.equal((await req('POST', '/academy/api/signup', { corpo: NINA, jar: 'nina' })).st, 200);
     ct.Matriculas.criar(impId, NINA.email, 'teste', 'cortesia');
@@ -198,7 +204,18 @@ async function rodar({ t, req, impId, jars }) {
     assert.equal((fonte.match(/await chamar\(/g) || []).length, 1, 'e chamar() só é usada por executar()');
   });
 
-  // devolve a suíte ao estado de fábrica
+  await t('carteira: a tela do aceite é carregada ANTES do app, e o app refaz a chamada com o valor aceito', async () => {
+    const js = await req('GET', '/academy/carteira.js');
+    assert.equal(js.st, 200); assert.ok(/window.AcademyCarteiraUI/.test(js.texto));
+    const app = (await req('GET', '/academy/app')).texto;
+    assert.ok(app.indexOf('/academy/carteira.js') > 0 && app.indexOf('/academy/carteira.js') < app.indexOf('/academy/app.js'), 'o api() do app procura window.AcademyCarteiraUI');
+    const cliente = require('fs').readFileSync(require('path').join(__dirname, 'app-cliente.js'), 'utf8');
+    assert.ok(/X-IA-Aceite/.test(cliente) && /r.status === 402/.test(cliente), 'o 402 é tratado no api(), uma vez, para todas as telas');
+    const staff = require('fs').readFileSync(require('path').join(__dirname, '..', 'staff', 'app-academy.js'), 'utf8');
+    assert.ok(//ia/creditos/.test(staff) && /ia: ACAD.vIA/.test(staff), 'o crédito de cortesia tem tela no Portal Staff');
+  });
+
+  // desliga a cobrança ao fim (a virada, uma vez marcada, fica)
   await config({ ativa: false });
   ia.__mockParaTeste(null);
   void jars;

@@ -80,7 +80,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
   app.post('/staff/api/academy/config', ...A, h((req, res) => {
     const { chave, valor } = req.body || {};
     if (!chave) return res.status(400).json({ erro: 'Informe chave e valor.' });
-    repo.Config.salvar(String(chave), valor);
+    repo.Config.salvar(String(chave), String(chave) === 'ia_cobranca' ? require('./carteira-ia').prepararConfig(valor) : valor);
     aud(req, 'config.salvar', 'platform_settings', String(chave), '');
     res.json({ ok: true });
   }));

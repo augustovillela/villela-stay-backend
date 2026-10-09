@@ -49,6 +49,19 @@ function cfg() {
     isentos: (Array.isArray(c.isentos) ? c.isentos : []).map(e => s(e, 120).toLowerCase()).filter(Boolean),
   };
 }
+// O que entra em platform_settings.ia_cobranca passa por aqui. A VIRADA é o instante em que a
+// cobrança foi ligada pela primeira vez: nasce sozinha e não muda mais — mudá-la depois trocaria,
+// em silêncio, quem tem a franquia que foi prometida na venda.
+function prepararConfig(novo = {}, atual = repo.Config.obter('ia_cobranca', {}) || {}) {
+  const cambio = Number(novo.cambio_brl_usd) || 0;
+  if (novo.ativa && !(cambio > 0)) throw erro('Informe o câmbio (R$ por US$) para ligar a cobrança de IA.');
+  if (cambio && (cambio < 1 || cambio > 50)) throw erro('Câmbio fora do razoável — confira o número.');
+  const margem = Number(novo.margem_pct);
+  if (novo.margem_pct != null && !(margem >= 0 && margem <= 500)) throw erro('Margem deve ficar entre 0 e 500%.');
+  return { ...novo, ativa: !!novo.ativa, cambio_brl_usd: cambio,
+    virada_em: s(atual.virada_em, 30) || (novo.ativa ? nowISO() : '') };
+}
+
 const brl = (milesimos) => 'R$ ' + (milesimos / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
 
 // custo do provedor em USD → preço ao usuário em milésimos de real, sempre para cima
@@ -250,7 +263,7 @@ function painelStaff() {
 }
 
 module.exports = {
-  configurar, cfg, brl, precoEmMilesimos, isento, temFranquia, saldo, reservar, acertar, estornar, creditar,
+  configurar, cfg, prepararConfig, brl, precoEmMilesimos, isento, temFranquia, saldo, reservar, acertar, estornar, creditar,
   criarRecarga, aplicarPagamento, conferirRecarga, extrato, carteiraDoUsuario, painelStaff,
   MARGEM_PADRAO_PCT, PACOTES_PADRAO, TIPOS_CREDITO,
 };
