@@ -50,7 +50,9 @@ function situacaoDoItem(item, resposta) {
 function corrigir(itens, respostas = {}, regraCrua = {}) {
   const regra = normalizarRegra(regraCrua);
   const blocos = {};
-  const bloco = (nome) => (blocos[nome] = blocos[nome] || { bloco: nome, certas: 0, erradas: 0, abstencoes: 0, em_branco: 0, anuladas: 0, pontos_brutos: 0, maximo: 0 });
+  // erradas = marcou a alternativa errada. erros_contados = o que a REGRA trata como erro para o
+  // desconto (pode incluir em branco e abstenção). Somar as duas coisas num número só confunde quem lê a nota.
+  const bloco = (nome) => (blocos[nome] = blocos[nome] || { bloco: nome, certas: 0, erradas: 0, erros_contados: 0, abstencoes: 0, em_branco: 0, anuladas: 0, pontos_brutos: 0, maximo: 0 });
   const porItem = [];
   for (const item of itens) {
     if (item.gabarito == null && !item.anulada) throw new Error(`item ${item.id}: sem gabarito — não entra em correção automática.`);
@@ -63,19 +65,19 @@ function corrigir(itens, respostas = {}, regraCrua = {}) {
       b.anuladas++;
       if (regra.anulada === 'excluida') conta = false; else pontos = vale;
     } else if (sit === 'certa') { b.certas++; pontos = vale; }
-    else if (sit === 'abstencao') { b.abstencoes++; if (regra.abstencao_conta_erro) b.erradas++; }
-    else if (sit === 'em_branco') { b.em_branco++; if (regra.em_branco_conta_erro) b.erradas++; }
-    else b.erradas++;
+    else if (sit === 'abstencao') { b.abstencoes++; if (regra.abstencao_conta_erro) b.erros_contados++; }
+    else if (sit === 'em_branco') { b.em_branco++; if (regra.em_branco_conta_erro) b.erros_contados++; }
+    else { b.erradas++; b.erros_contados++; }
     if (conta) b.maximo += vale;
     b.pontos_brutos += pontos;
     porItem.push({ id: item.id, situacao: sit, pontos, bloco: b.bloco });
   }
   const lista = Object.values(blocos);
   const soma = (k) => lista.reduce((a, b) => a + b[k], 0);
-  const bruta = soma('pontos_brutos'), maximo = soma('maximo'), erradas = soma('erradas');
+  const bruta = soma('pontos_brutos'), maximo = soma('maximo'), erros = soma('erros_contados');
   let descontados = 0;
   if (regra.desconto) {
-    const conjuntos = regra.desconto.modo === 'inteiro' ? Math.floor(erradas / regra.desconto.a_cada) : erradas / regra.desconto.a_cada;
+    const conjuntos = regra.desconto.modo === 'inteiro' ? Math.floor(erros / regra.desconto.a_cada) : erros / regra.desconto.a_cada;
     descontados = conjuntos * regra.valor_certa;
   }
   let liquida = bruta - descontados;
@@ -96,7 +98,7 @@ function corrigir(itens, respostas = {}, regraCrua = {}) {
   }
   return {
     nota_bruta: bruta, descontados, nota_liquida: liquida, maximo, pct_liquido: pct(liquida, maximo),
-    certas: soma('certas'), erradas, abstencoes: soma('abstencoes'), em_branco: soma('em_branco'), anuladas: soma('anuladas'),
+    certas: soma('certas'), erradas: soma('erradas'), erros_contados: erros, abstencoes: soma('abstencoes'), em_branco: soma('em_branco'), anuladas: soma('anuladas'),
     por_bloco: lista, minimos, aprovado, por_item: porItem, regra,
   };
 }

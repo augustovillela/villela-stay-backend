@@ -16,6 +16,8 @@
     var api = D.api, esc = D.esc, el = D.el, brl = D.brl, setView = D.setView, erroBox = D.erroBox;
     var C = null; // estado do curso aberto: {pid, d, aulas[], pa, i}
     // jornada do curso (fases 2 e 3): nível, selos, diagnóstico, Lab, desafio, simulações, ferramentas
+    // Estude (academy\estudo): do programa à prova — plano, aula ativa, questões, cards e simulado
+    var ES = window.AcademyEstude ? window.AcademyEstude({ api: api, esc: esc, el: el, setView: setView }) : null;
     var JR = window.AcademyJornada ? window.AcademyJornada({ api: api, esc: esc, el: el, setView: setView, erroBox: erroBox, copiar: function (t, b) { copiar(t, b); } }) : null;
 
     // ---------------- ícones (SVG: nítido em qualquer tela, ao contrário do emoji) ----------------
@@ -226,7 +228,7 @@
         '<span>' + ico('texto', 15) + ' ' + C.d.estrutura.length + ' aulas</span>' +
         (C.aulas.length > C.d.estrutura.length ? '<span>' + ico('play', 15) + ' ' + C.aulas.length + ' conteúdos</span>' : '') +
         (totalSeg ? '<span>' + ico('relogio', 15) + ' ' + dur(totalSeg) + ' de conteúdo</span>' : '') +
-        '</div>' + botaoAudiobook(d.audiobook) + '<div id="al-jornada"></div><div id="al-extras"></div></div>' +
+        '</div>' + botaoAudiobook(d.audiobook) + '<div id="al-jornada"></div><div id="al-estude"></div><div id="al-extras"></div></div>' +
         (d.matriculado ? '' : '<div class="aviso">Você não está matriculado — só as aulas de degustação estão liberadas. ' +
           '<a href="/academy/cursos/' + esc(p.slug || '') + '">Ver a página do curso →</a></div>') +
         avisoGotejamento(d.gotejamento) +
@@ -587,6 +589,7 @@
         C.int = r;
         pintarExtras();
         carregarJornada(pid);
+        carregarEstude(pid);
         if (C.i >= 0) pintarAbas(C.aulas[C.i].a);
         montarTutor();
       }).catch(function () { /* sem a camada interativa o curso segue igual */ });
@@ -598,6 +601,16 @@
         C.jr = p;
         JR.cartao(el('al-jornada'), pid, p, abrirJornada);
       }).catch(function () { /* sem jornada o curso segue igual */ });
+    }
+    function carregarEstude(pid) {
+      if (!ES) return;
+      api('GET', '/aluno/cursos/' + pid + '/estudo').then(function (r) {
+        if (!C || C.pid !== pid) return;
+        ES.cartao(el('al-estude'), pid, r, function (slug) {
+          var aula = C.i >= 0 ? C.aulas[C.i].a.id : '';
+          ES.abrir(pid, C.d.produto.titulo, slug, function () { abrirCurso(pid, aula); });
+        });
+      }).catch(function () { /* sem o Estude o curso segue igual */ });
     }
     function abrirJornada(aba) {
       var pid = C.pid, aula = C.i >= 0 ? C.aulas[C.i].a.id : '';

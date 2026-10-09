@@ -28,7 +28,7 @@ async function rodar({ t, req, EST, impId }) {
     const regra = { desconto: { a_cada: 3 }, fonte: 'regulamento de teste' };
     assert.equal(pontuacao.corrigir(itens, resp, regra).nota_liquida, 6, '2 erradas não fecham um conjunto de 3');
     const comBranco = pontuacao.corrigir(itens, resp, { ...regra, em_branco_conta_erro: true });
-    assert.deepEqual([comBranco.erradas, comBranco.descontados, comBranco.nota_liquida], [3, 1, 5], 'em branco conta como erro; abstenção marcada não');
+    assert.deepEqual([comBranco.erradas, comBranco.erros_contados, comBranco.descontados, comBranco.nota_liquida], [2, 3, 1, 5], 'em branco entra no desconto sem virar "errada"; abstenção marcada não entra');
     assert.equal(pontuacao.corrigir(itens, resp, { ...regra, em_branco_conta_erro: true, aprovacao: { min_pontos: 6 } }).aprovado, false);
     const anulada = itens.map(i => (i.id === 'i7' ? { ...i, anulada: true } : i));
     assert.equal(pontuacao.corrigir(anulada, resp).nota_bruta, 7, 'anulada: ponto para todos');
@@ -306,7 +306,8 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(env.st, 200, env.texto);
     const res = env.json.resultado;
     // regra do escopo: 3 erradas + 1 em branco (conta erro) = 4 erros → 1 conjunto de 3 → desconta 1
-    assert.deepEqual([res.certas, res.erradas, res.em_branco, res.descontados, res.nota_liquida, res.maximo], [3, 4, 1, 1, 2, 7]);
+    assert.deepEqual([res.certas, res.erradas, res.em_branco, res.erros_contados, res.descontados, res.nota_liquida, res.maximo], [3, 3, 1, 4, 1, 2, 7]);
+    assert.equal(res.certas + res.erradas + res.em_branco, 7, 'as três contagens somam a prova — nenhuma questão contada duas vezes');
     assert.equal(res.regra.fonte, 'Regulamento de teste, art. 1º', 'a nota diz de qual regra saiu');
     assert.ok(res.itens.every(i => i.alternativas.length === 3 && i.gabarito === 'a'), 'depois de enviar, o gabarito comentado');
     const evid = () => db.prepare('SELECT COUNT(*) n FROM est_evidencias WHERE tentativa_id = ?').get(tentativaId).n;
@@ -361,6 +362,18 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(r.json.plano.sessoes_total, 2);
     const r2 = await set({ disponibilidade: semana, margem_pct: 0, motivo: 'faltei ontem' });
     assert.deepEqual([r2.json.versao, r2.json.historico.length, r2.json.historico[1].motivo], [2, 2, 'faltei ontem'], 'replanejar preserva o histórico');
+  });
+
+  await t('estudo: a tela do aluno é servida e o painel a carrega antes do estúdio', async () => {
+    const js = await req('GET', '/academy/estude.js');
+    assert.equal(js.st, 200); assert.ok(/javascript/.test(js.ct) && /window\.AcademyEstude/.test(js.texto));
+    const css = await req('GET', '/academy/estude.css');
+    assert.equal(css.st, 200); assert.ok(/text\/css/.test(css.ct) && /\.es-proxima/.test(css.texto));
+    const app = (await req('GET', '/academy/app')).texto;
+    assert.ok(app.indexOf('/academy/estude.js') > 0 && app.indexOf('/academy/estude.js') < app.indexOf('/academy/aluno.js'), 'o estúdio procura window.AcademyEstude ao montar');
+    assert.ok(/estude\.css/.test(app));
+    const fonte = require('fs').readFileSync(require('path').join(__dirname, '..', 'app-estudo.js'), 'utf8');
+    assert.ok(!/localStorage/.test(fonte), 'resposta de prova não mora no navegador: o que vale é o que o servidor confirmou');
   });
 
   await t('estudo: retificação cria versão nova do programa, guarda a antiga e diz o que mudou', async () => {

@@ -136,7 +136,7 @@ function proximaTarefa(usuario, escopo, c, est = estadosDoAluno(usuario, escopo)
   if (comApoio) return { tipo: 'pratica_sem_apoio', competencia: comApoio.codigo, motivo: 'Você acertou com pista ou em questão já vista. Falta acertar uma questão nova, sem apoio.' };
   const nova = est.find(e => e.estado === 'nao_avaliada' && e.depende_de.every(d => !por[d] || ev.demonstrada(por[d].estado)))
     || est.find(e => e.estado === 'nao_avaliada');
-  if (nova) return { tipo: 'aprender', competencia: nova.codigo, unidade: unidadeDe(nova.codigo), motivo: 'Próxima competência do percurso cujos pré-requisitos você já demonstrou.' };
+  if (nova) return { tipo: 'aprender', competencia: nova.codigo, unidade: unidadeDe(nova.codigo), motivo: nova.depende_de.length ? 'Próxima competência do percurso: os pré-requisitos dela você já demonstrou.' : 'Competência do percurso que você ainda não começou e que não depende de outra.' };
   const semRetencao = est.find(e => e.estado === 'demonstrada_sem_apoio');
   if (semRetencao) return { tipo: 'aguardar_retencao', competencia: semRetencao.codigo, motivo: `Demonstrada, mas a retenção só se confirma com nova questão inédita após ${ev.INTERVALO_RETENCAO_DIAS} dias.` };
   return { tipo: est.length ? 'concluido' : 'sem_competencias', motivo: est.length ? 'Todas as competências foram demonstradas e retidas até aqui.' : 'Este percurso ainda não tem competências definidas.' };
@@ -172,6 +172,8 @@ function painel(usuario, produto, slugEscopo) {
     },
     competencias: est,
     itens,
+    unidades: R.unidades(escopo.id, c.vis).map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min, competencias: u.competencias, status: u.status })),
+    regra_pontuacao: escopo.regra_pontuacao,
     revisoes: { hoje: fila.hoje.length, adiadas: fila.adiadas },
     desempenho: {
       respostas: evs.length, acertos: evs.filter(e => e.acerto).length,
