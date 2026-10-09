@@ -220,6 +220,28 @@ async function rodar({ t, req, impId, jars }) {
     assert.ok(staff.includes('/ia/creditos') && staff.includes('ia: ACAD.vIA'), 'o crédito de cortesia tem tela no Portal Staff');
   });
 
+  await t('carteira: o aviso "IA paga à parte" aparece na venda e no pagamento quando a cobrança é ligada — e só então', async () => {
+    const slug = db.prepare('SELECT slug FROM products WHERE id = ?').get(impId).slug;
+    const status = db.prepare('SELECT status FROM products WHERE id = ?').get(impId).status;
+    db.prepare("UPDATE products SET status = 'publicado' WHERE id = ?").run(impId); // a página de venda só existe para curso publicado
+    try {
+      const paginas = async () => [(await req('GET', '/academy/cursos/' + slug)), (await req('GET', '/academy/checkout/' + slug))];
+      assert.equal(carteira.cfg().ligada, true);
+      for (const pg of await paginas()) {
+        assert.equal(pg.st, 200, 'página de ' + slug);
+        assert.ok(pg.texto.includes('pagos à parte, por uso') && pg.texto.includes('/academy/creditos-ia'), 'cobrança ligada: a página avisa e aponta os termos');
+      }
+      const atual = repo.Config.obter('ia_cobranca', {});
+      await config({ ...atual, ativa: false });
+      for (const pg of await paginas()) assert.ok(!pg.texto.includes('pagos à parte'), 'cobrança desligada: dizer "pago" seria falso');
+      await config({ ...atual, ativa: true });
+    } finally { db.prepare('UPDATE products SET status = ? WHERE id = ?').run(status, impId); }
+    const termos = await req('GET', '/academy/creditos-ia');
+    assert.equal(termos.st, 200);
+    for (const trecho of ['MINUTA', 'Validade do saldo', 'art. 49', 'chargeback', 'valor máximo']) assert.ok(termos.texto.includes(trecho), 'os termos tratam de: ' + trecho);
+    assert.ok(!/30\s*%/.test(termos.texto), 'a margem não é publicada');
+  });
+
   await t('carteira: câmbio = PTAX do dia + folga; Banco Central fora do ar não vira preço velho em silêncio', async () => {
     const avisos = [];
     let resposta = { ok: true, json: async () => ({ value: [{ cotacaoVenda: 5.0119, dataHoraCotacao: '2026-10-08 13:08:16.814' }] }) };

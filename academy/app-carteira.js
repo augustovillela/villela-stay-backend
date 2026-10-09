@@ -102,7 +102,8 @@
     estilo();
     if (!c.ativa) { alvo.innerHTML = '<p class="al-sub">O Tutor e as ferramentas de IA estão incluídos no seu acesso, com limite de ' + c.limite_dia + ' consultas por dia.</p>'; return; }
     var h = '<div class="ci-saldo"><b>' + esc(c.saldo) + '</b><span class="al-sub">' + (c.isento ? 'conta isenta de cobrança' : 'de saldo para o Tutor, o mentor e as ferramentas de IA') + '</span></div>' +
-      '<p class="al-sub">Cada ação mostra o valor máximo antes de gerar; depois, você paga só o que foi usado. O saldo é em reais e vale em todos os cursos.</p>';
+      '<p class="al-sub">Cada ação mostra o valor máximo antes de gerar; depois, você paga só o que foi usado. O saldo é em reais e vale em todos os cursos. ' +
+      '<a href="/academy/creditos-ia" target="_blank" rel="noopener">Termos dos créditos de IA</a>.</p>';
     if (!c.isento) {
       h += c.pagamento_online
         ? '<div class="ci-bts">' + c.pacotes.map(function (p) { return '<button class="al-bt' + (p === c.pacotes[0] ? '' : ' fan') + '" data-rec="' + p.valor_centavos + '">Colocar ' + esc(p.rotulo) + '</button>'; }).join('') + '</div><span id="ci-msg" class="erro"></span>'

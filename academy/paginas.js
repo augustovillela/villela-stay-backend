@@ -385,6 +385,7 @@ function cursoHTML(slug) {
       : (capaUrl ? `<img class="capa" src="${capaUrl}" alt="Capa do curso ${esc(p.titulo)}">` : '')}
     <div class="in">
       ${precoHtml}
+      ${avisoIA()}
       <a class="pv-bt" href="${destino}">${svgI('play', 19)} ${cta}</a>
       <a class="pv-bt fan" href="/academy/app">Já sou aluno — entrar</a>
       <ul class="pv-inclui">${inclui.map(([i, txt]) => `<li>${svgI(i, 18)}<span>${txt}</span></li>`).join('')}</ul>
@@ -530,6 +531,7 @@ function checkoutHTML(slug) {
     <p class="sub">Pagamento processado pelo Mercado Pago. O acesso é liberado automaticamente após a confirmação.
       ${clube ? 'Assinatura mensal com renovação automática — cancele quando quiser no painel.' : ''}
       Ao ${clube ? 'assinar' : 'comprar'} você concorda com os <a href="/academy/termos" target="_blank">Termos</a> e a <a href="/academy/reembolso" target="_blank">Política de Reembolso</a>.</p>
+    ${avisoIA()}
   </div></div>
   <script>
   (function(){
@@ -631,6 +633,18 @@ function produtorHTML(slug) {
   return shellPublico({ titulo: pr.nome_publico, descricao: (pr.bio || `Produtos de ${pr.nome_publico} na Villela Academy.`).slice(0, 200), url: `/academy/produtores/${pr.slug}`, corpo });
 }
 
+// IA paga à parte: o aviso aparece na página de venda e no checkout A PARTIR do momento em que
+// o dono liga a cobrança (carteira-ia.js) — antes disso, dizer "pago" seria falso; depois,
+// não dizer seria vender sem avisar. Por isso sai da config, e não do texto de cada curso.
+function avisoIA() {
+  let ligada = false;
+  try { ligada = !!require('./carteira-ia').cfg().ligada; } catch (_) { /* sem a carteira, não há o que avisar */ }
+  if (!ligada) return '';
+  return `<p class="pv-ia" style="font-size:.84rem;line-height:1.45;margin:10px 0;padding:9px 11px;border-left:3px solid #D97706;background:#FEF3E7;border-radius:6px;color:#7A3E06">
+    <b>O Tutor Villela e as ferramentas de IA são pagos à parte, por uso.</b> O curso, os vídeos, os materiais, o quiz e o certificado estão incluídos no preço.
+    A IA usa saldo pré-pago: você vê o valor antes de cada uso e paga só o que usar. <a href="/academy/creditos-ia" style="color:#7A3E06">Como funciona</a>.</p>`;
+}
+
 // Termos/privacidade: MINUTA — precisa de revisão por advogado (OAB) antes
 // de a plataforma operar comercialmente. O texto deixa isso explícito.
 function paginaLegal(titulo, corpo) {
@@ -664,6 +678,45 @@ const REEMBOLSO = `<p>Política de reembolso (consumidor).</p>
   <li>Produtos podem oferecer garantia estendida própria (indicada na página de venda).</li>
   <li>Ao reembolsar, o acesso ao conteúdo é revogado e comissões associadas são canceladas.</li>
   <li>Solicitações: pelo painel do aluno ou canal de suporte.</li></ul>`;
+// Termos dos créditos de IA (saldo pré-pago). MINUTA: as escolhas de validade e de devolução
+// abaixo são PROPOSTA a validar com advogado e a confirmar pelo Augusto (docs\estudo\DECISIONS\ADR-0003).
+// A margem não é publicada; o que se promete ao usuário é o método de preço e o valor antes do uso.
+const CREDITOS_IA = `<p>Estes termos tratam do <b>saldo de créditos de IA</b> da Villela Academy: o valor pré-pago que o usuário usa para o Tutor Villela, o mentor do Villela Lab, o "lapidar com IA" e as demais funções que dependem de provedores de inteligência artificial. Complementam os Termos de Uso e a Política de Reembolso.</p>
+  <h3>1. O que é pago à parte</h3>
+  <ul><li>O preço de um curso inclui as aulas, os vídeos, os materiais, o quiz, o caderno, a jornada e o certificado.</li>
+  <li>As funções que acionam um provedor de IA a cada uso são cobradas <b>por uso</b>, do saldo de créditos. A página de venda e a tela de pagamento de cada curso informam isso.</li>
+  <li>Quem já tinha matrícula em um curso <b>antes</b> do início desta cobrança mantém, naquele curso, a quantidade diária de consultas gratuitas que valia na compra. Esgotada a quantidade do dia, o uso adicional sai do saldo.</li></ul>
+  <h3>2. Como o preço é calculado</h3>
+  <ul><li>O valor de cada uso parte do custo cobrado pelo provedor de IA, em dólares, convertido para reais pela cotação PTAX de venda do Banco Central vigente, acrescido de encargos de conversão e de uma taxa de serviço da plataforma.</li>
+  <li><b>Antes de gerar, a tela mostra o valor máximo daquele uso</b> e pede confirmação. Sem confirmação, nada é gerado e nada é cobrado.</li>
+  <li>Depois de gerar, é debitado apenas o custo efetivo, nunca acima do valor máximo aceito; a diferença volta ao saldo na hora.</li>
+  <li>Se a geração falhar, nada é cobrado: o valor reservado é devolvido integralmente ao saldo.</li>
+  <li>O extrato, em Conta e pagamentos, mostra cada recarga e cada uso.</li>
+  <li>O preço pode variar de um dia para o outro com a cotação do dólar e com os preços do provedor. A variação vale para usos futuros; o saldo, que é em reais, não muda.</li></ul>
+  <h3>3. Recarga</h3>
+  <ul><li>O saldo é carregado em pacotes de valor fixo, pagos pelo Mercado Pago (Pix ou cartão). Dados de cartão vão direto ao Mercado Pago, nunca aos nossos servidores.</li>
+  <li>O crédito entra no saldo quando o pagamento é confirmado pelo Mercado Pago.</li></ul>
+  <h3>4. Validade do saldo</h3>
+  <ul><li>O saldo <b>comprado</b> não tem prazo de validade: fica disponível enquanto a conta existir.</li>
+  <li>O saldo é em reais, não rende, não é transferível a outra conta e só pode ser usado nas funções de IA da Villela Academy. Não é conta de pagamento nem meio de pagamento para outros produtos.</li></ul>
+  <h3>5. Arrependimento e devolução do saldo não usado</h3>
+  <ul><li><b>Em até 7 dias da recarga</b> (direito de arrependimento, art. 49 do Código de Defesa do Consumidor): devolução do valor da recarga. Se parte dela já tiver sido usada, devolve-se a parte não usada.</li>
+  <li><b>Depois de 7 dias:</b> o saldo comprado e ainda não usado pode ser devolvido a pedido do usuário, pelo mesmo meio de pagamento da recarga.</li>
+  <li>O valor já consumido em usos concluídos não é devolvido, salvo falha da plataforma.</li>
+  <li>Pedidos: pelo Suporte, em Conta e pagamentos, ou pelo e-mail da conta. Prazo de resposta: até 10 dias úteis.</li>
+  <li>Ao encerrar a conta, o saldo comprado e não usado é devolvido a pedido, na forma acima.</li></ul>
+  <h3>6. Créditos de cortesia</h3>
+  <ul><li>A plataforma pode conceder créditos de cortesia. Eles aparecem identificados no extrato, não têm valor em dinheiro, não são devolvidos nem convertidos em reais e podem ter prazo ou ser retirados se não usados.</li>
+  <li>Quando há saldo comprado e de cortesia na mesma conta, a devolução considera apenas o saldo comprado.</li></ul>
+  <h3>7. Contestação do pagamento (chargeback) e reembolso pelo meio de pagamento</h3>
+  <ul><li>Se o pagamento de uma recarga for contestado, estornado ou reembolsado pelo meio de pagamento, o crédito correspondente é retirado do saldo.</li>
+  <li>Se esse crédito já tiver sido usado, o saldo fica negativo e as funções de IA ficam suspensas até a regularização. O acesso aos cursos comprados não é afetado por isso.</li>
+  <li>Contestações indevidas ou reiteradas podem levar à suspensão da recarga na conta.</li></ul>
+  <h3>8. Sobre as respostas da IA</h3>
+  <ul><li>As respostas são apoio ao estudo, geradas por modelos de inteligência artificial com base no material do curso. Podem conter erros e não substituem a conferência nas fontes nem orientação profissional.</li>
+  <li>A cobrança se refere ao uso do serviço, e não à concordância do usuário com o conteúdo da resposta.</li></ul>
+  <h3>9. Mudanças</h3>
+  <ul><li>Mudanças nestes termos valem para recargas e usos posteriores à publicação e são informadas na plataforma. O saldo já comprado é preservado.</li></ul>`;
 const PRIVACIDADE = `<p>Tratamos dados pessoais conforme a LGPD (Lei 13.709/2018).</p>
   <ul><li>Coletamos o mínimo necessário: nome, e-mail, telefone e, para produtores/afiliados, dados de documento e pagamento para repasses.</li>
   <li>Usamos os dados para operar a plataforma (conta, compras, entrega de conteúdo, comissões) e, com consentimento, para comunicações.</li>
@@ -691,6 +744,7 @@ function registrarPaginas(app, { notificar }) {
   app.get('/academy/termos-produtor', (req, res) => res.send(paginaLegal('Termos do Produtor', TERMOS_PRODUTOR)));
   app.get('/academy/termos-afiliado', (req, res) => res.send(paginaLegal('Termos do Afiliado', TERMOS_AFILIADO)));
   app.get('/academy/reembolso', (req, res) => res.send(paginaLegal('Política de Reembolso', REEMBOLSO)));
+  app.get('/academy/creditos-ia', (req, res) => res.send(paginaLegal('Termos dos Créditos de IA', CREDITOS_IA)));
 
   // ---- vitrine pública (FASE 3) ----
   app.get('/academy/marketplace', (req, res) => res.send(marketplaceHTML({ q: s(req.query.q, 80), categoria: s(req.query.categoria, 40) })));
