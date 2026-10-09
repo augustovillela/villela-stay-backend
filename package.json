@@ -38,6 +38,7 @@
     "test:voz": "node voz/selftest.js",
     "test:comunicados": "node comunicados/selftest.js",
     "test:mcp": "node mcp-staff/selftest.js",
+    "test:clientes": "node clientes/selftest.js",
     "music:worker": "node music/worker.js",
     "test:nucleo": "node selftest-nucleo.js"
   },

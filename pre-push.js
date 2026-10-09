@@ -27,7 +27,10 @@ const TESTES_POR_PASTA = {
   financeiro: 'test:finance', music: 'test:music', voz: 'test:voz',
   'mcp-staff': 'test:mcp',
   livraria: 'test:livraria',
-  comunicados: 'test:comunicados',
+  // A tela de Clientes lê o catálogo de sistemas da central de comunicados:
+  // mexeu lá, a suíte dela também roda.
+  comunicados: ['test:comunicados', 'test:clientes'],
+  clientes: 'test:clientes',
 };
 // Mexeu aqui, todo mundo é afetado.
 const NUCLEO = ['server.js', 'nucleo/', 'selftest-nucleo.js', 'pwa.js', 'storage-s3.js',
@@ -121,7 +124,7 @@ function principal() {
   const suites = new Set();
   if (mudados.some((f) => NUCLEO.some((n) => f === n || f.startsWith(n)))) suites.add('test:nucleo');
   for (const [pasta, script] of Object.entries(TESTES_POR_PASTA)) {
-    if (mudados.some((f) => f.startsWith(pasta + '/'))) suites.add(script);
+    if (mudados.some((f) => f.startsWith(pasta + '/'))) for (const s of [].concat(script)) suites.add(s);
   }
   if (!suites.size) suites.add('test:nucleo');   // nada reconhecido: roda o mínimo
 
