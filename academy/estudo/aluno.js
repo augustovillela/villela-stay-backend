@@ -438,7 +438,7 @@ function definirPlano(usuario, produto, slugEscopo, entrada = {}, motivo = 'defi
   };
   // ADR-0005: a véspera segue a 1ª etapa do concurso (perfil.etapas, ordem do edital); sem perfil, objetiva
   const perfil = (c.escopo.perfil && typeof c.escopo.perfil === 'object') ? c.escopo.perfil : {};
-  const etapa1 = Array.isArray(perfil.etapas) && perfil.etapas[0] ? String(perfil.etapas[0].foco || perfil.etapas[0].tipo || perfil.etapas[0]) : '';
+  const etapa1 = Array.isArray(perfil.etapas) && perfil.etapas[0] ? String(perfil.etapas[0].foco || perfil.etapas[0].tipo || perfil.etapas[0].nome || perfil.etapas[0]) : '';
   const foco = /oral/i.test(etapa1) ? 'oral' : /discurs|escrit|senten|peça|peca/i.test(etapa1) ? 'escrita' : 'objetiva';
   // véspera só no escopo de edital (padrão 7 dias; o perfil pode mudar); assunto avulso não tem prova marcada
   const vesperaDias = perfil.vespera_dias != null && Number.isFinite(Number(perfil.vespera_dias)) ? Number(perfil.vespera_dias) : (c.escopo.tipo === 'edital' ? plano.VESPERA_PADRAO_DIAS : 0);
