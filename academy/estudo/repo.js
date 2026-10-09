@@ -358,12 +358,6 @@ function definirStatus(produto, dados = {}) {
   if (st(dados.status)) {
     if (dados.status === 'publicado' && !escopo.versao) throw erro('Escopo sem programa não pode ser publicado.');
     r.escopo = db.prepare('UPDATE est_escopos SET status = ?, atualizado_em = ? WHERE id = ?').run(dados.status, nowISO(), escopo.id).changes;
-    // Publicar com furo na mão dupla não é proibido (o conteúdo entra em etapas),
-    // mas o furo volta na resposta — quem publica vê o que ainda falta.
-    if (dados.status === 'publicado') {
-      const md = cobertura({ ...escopo, status: 'publicado' }, { vis: ['publicado'], situacoes: ['disponivel'] }).mao_dupla;
-      if (!md.ok) r.aviso_mao_dupla = { folhas_sem_questao: md.folhas_sem_questao.length, questoes_sem_folha: md.questoes_sem_folha, folhas_com_questao_sem_material: md.folhas_com_questao_sem_material.length };
-    }
   }
   if (st(dados.unidades)) r.unidades = db.prepare('UPDATE est_unidades SET status = ?, atualizado_em = ? WHERE escopo_id = ?').run(dados.unidades, nowISO(), escopo.id).changes;
   if (st(dados.cards)) r.cards = db.prepare('UPDATE est_cards SET status = ? WHERE escopo_id = ?').run(dados.cards, escopo.id).changes;
@@ -374,6 +368,13 @@ function definirStatus(produto, dados = {}) {
   if (REVISAO.includes(dados.vinculos)) {
     r.vinculos = db.prepare('UPDATE est_vinculos SET estado_revisao = ? WHERE escopo_id = ?').run(dados.vinculos, escopo.id).changes
       + db.prepare('UPDATE est_questao_vinculos SET estado_revisao = ? WHERE escopo_id = ?').run(dados.vinculos, escopo.id).changes;
+  }
+  // Publicar com furo na mão dupla não é proibido (o conteúdo entra em etapas),
+  // mas o furo volta na resposta — quem publica vê o que ainda falta. Calculado
+  // DEPOIS de todas as mudanças de status do pedido, senão conta o que acabou de publicar.
+  if (st(dados.status) === 'publicado') {
+    const md = cobertura({ ...escopo, status: 'publicado' }, { vis: ['publicado'], situacoes: ['disponivel'] }).mao_dupla;
+    if (!md.ok) r.aviso_mao_dupla = { folhas_sem_questao: md.folhas_sem_questao.length, questoes_sem_folha: md.questoes_sem_folha, folhas_com_questao_sem_material: md.folhas_com_questao_sem_material.length };
   }
   return r;
 }
