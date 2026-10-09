@@ -330,7 +330,8 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   const inicio = new Date();
   const congelado = {
     modo, duracao_min: duracao, regra: c.escopo.regra_pontuacao || {}, escopo_versao: c.escopo.versao,
-    itens: ordem.map(x => ({ id: x.q.id, versao: x.q.versao, gabarito: banco.gabaritoDe(x.q), bloco: x.q.disciplina || '', competencias: x.comps, publico: banco.paraAluno(x.q, id) })),
+    // o bloco da pontuação é o campo `bloco` da questão; sem ele, a disciplina serve de bloco
+    itens: ordem.map(x => ({ id: x.q.id, versao: x.q.versao, gabarito: banco.gabaritoDe(x.q), bloco: x.q.bloco || x.q.disciplina || '', competencias: x.comps, publico: banco.paraAluno(x.q, id) })),
   };
   db.prepare(`INSERT INTO est_tentativas (id, user_id, escopo_id, modo, congelado, inicio_em, prazo_em) VALUES (?, ?, ?, ?, ?, ?, ?)`)
     .run(id, usuario.id, c.escopo.id, modo, j.str(congelado), inicio.toISOString(), new Date(inicio.getTime() + duracao * 60e3).toISOString());

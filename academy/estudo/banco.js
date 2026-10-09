@@ -62,7 +62,9 @@ function validarQuestao(q, i = 0) {
   const r = {
     tipo, enunciado, apoio: s(q.apoio, 20000), grupo: s(q.grupo, 60), ordem_fixa: !!q.ordem_fixa,
     ...proc, gabarito_situacao: gabSit, comentario: s(q.comentario, 6000),
-    area: s(q.area, 80), disciplina: s(q.disciplina, 80), assunto: s(q.assunto, 120), subassunto: s(q.subassunto, 120),
+    // bloco = a divisão que a REGRA DE PONTUAÇÃO usa (mínimo por bloco); não é a disciplina —
+    // no concurso da magistratura do trabalho o Bloco I reúne cinco disciplinas
+    area: s(q.area, 80), bloco: s(q.bloco, 20), disciplina: s(q.disciplina, 80), assunto: s(q.assunto, 120), subassunto: s(q.subassunto, 120),
     dificuldade_estimada: Math.min(5, Math.max(0, Math.round(Number(q.dificuldade_estimada) || 0))),
     tempo_estimado_seg: Math.max(0, Math.round(Number(q.tempo_estimado_seg) || 0)),
     uso: USOS.includes(q.uso) ? q.uso : 'aprendizagem',

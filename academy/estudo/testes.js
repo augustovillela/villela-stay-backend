@@ -163,7 +163,7 @@ async function rodar({ t, req, EST, impId }) {
     unidades: [UNIDADE()],
     questoes: [
       Q(1, { pistas: ['Lembre do prazo bienal.'] }), Q(2), Q(3), Q(4), Q(5, { competencias: ['fgts'] }),
-      Q(6, { origem: 'oficial', gabarito_situacao: 'definitivo', procedencia: OFICIAL, competencias: [], disciplina: 'Processo', itens: [{ codigo: '2.1', justificativa: 'Pede o recurso cabível contra sentença.' }] }),
+      Q(6, { origem: 'oficial', gabarito_situacao: 'definitivo', procedencia: OFICIAL, competencias: [], disciplina: 'Processo', bloco: 'II', itens: [{ codigo: '2.1', justificativa: 'Pede o recurso cabível contra sentença.' }] }),
       Q(7, { uso: 'reservada' }),
       { tipo: 'discursiva', origem: 'autoral', enunciado: 'Disserte sobre a prescrição intercorrente no processo do trabalho.', competencias: ['prescricao'], rubrica: [{ criterio: 'Conceito' }, { criterio: 'Aplicação ao caso' }] }],
     cards: [
@@ -307,6 +307,10 @@ async function rodar({ t, req, EST, impId }) {
     const res = env.json.resultado;
     // regra do escopo: 3 erradas + 1 em branco (conta erro) = 4 erros → 1 conjunto de 3 → desconta 1
     assert.deepEqual([res.certas, res.erradas, res.em_branco, res.erros_contados, res.descontados, res.nota_liquida, res.maximo], [3, 3, 1, 4, 1, 2, 7]);
+    // o bloco da pontuação é o campo `bloco` da questão quando ele existe (a Q6 tem disciplina "Processo" e bloco "II")
+    const q6 = res.por_bloco.find(b => b.bloco === 'II');
+    assert.ok(q6 && q6.maximo === 1, 'a questão com bloco próprio pontua no seu bloco, não na disciplina');
+    assert.ok(!res.por_bloco.some(b => b.bloco === 'Processo'), 'a disciplina não vira bloco quando há bloco');
     assert.equal(res.certas + res.erradas + res.em_branco, 7, 'as três contagens somam a prova — nenhuma questão contada duas vezes');
     assert.equal(res.regra.fonte, 'Regulamento de teste, art. 1º', 'a nota diz de qual regra saiu');
     assert.ok(res.itens.every(i => i.alternativas.length === 3 && i.gabarito === 'a'), 'depois de enviar, o gabarito comentado');
