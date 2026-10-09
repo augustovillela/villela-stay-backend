@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v34'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v35'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -6512,7 +6512,27 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
 .cap .cap-fig-quadro img{display:block;max-width:100%;max-height:100%;width:auto;height:auto}
 .cap .cap-fig-leg{padding:12px 14px 14px;font:400 14px/1.45 Inter,"Segoe UI",system-ui,sans-serif;color:#4a4640}
 .cap .cap-fig-leg b{display:block;font:700 12px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
-@media (max-width:520px){.cap .cap-figs-hub{padding:0 16px}.cap .cap-figs-grade{gap:10px}.cap .cap-fig-quadro{height:120px;padding:8px}.cap .cap-fig-leg{padding:10px 10px 12px;font-size:13px}}`;
+@media (max-width:520px){.cap .cap-figs-hub{padding:0 16px}.cap .cap-figs-grade{gap:10px}.cap .cap-fig-quadro{height:120px;padding:8px}.cap .cap-fig-leg{padding:10px 10px 12px;font-size:13px}}
+.cap .cap-amostra{box-sizing:border-box;max-width:100%;min-width:0;margin:0 0 22px;padding:0;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.cap .cap-amostra-rot{padding:11px 16px;font:600 12px/1.35 Inter,"Segoe UI",system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#675f56}
+.cap .cap-amostra-rot b{color:var(--accent);font-weight:700}
+.cap .cap-amostra video{display:block;width:100%;max-width:100%;height:auto;aspect-ratio:16/9;background:#0b1120}
+.cap .cap-amostra figcaption{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin:0;padding:14px 16px 16px;text-align:left}
+.cap .cap-amostra-cham{font:700 19px/1.3 Lora,Georgia,serif;color:var(--navy);overflow-wrap:anywhere}
+.cap .cap-amostra-ponte{font:400 15.5px/1.5 Inter,"Segoe UI",system-ui,sans-serif;color:#4a4640;overflow-wrap:anywhere}
+.cap .cap-amostra-btn{display:inline-block;margin-top:4px;padding:10px 18px;border-radius:999px;background:var(--accent);color:#fff;font:700 14.5px/1.2 Inter,"Segoe UI",system-ui,sans-serif;text-decoration:none}
+.cap .cap-amostra-btn:hover{filter:brightness(.92)}
+.cap .cap-amostra-links{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:2px;font:700 14px/1.3 Inter,"Segoe UI",system-ui,sans-serif}
+.cap .cap-amostra-links a{color:var(--accent);text-decoration:none}
+.cap .cap-amostra-links a:hover{text-decoration:underline}
+.cap .cap-amos-hub{max-width:1100px;margin:0 auto 30px;padding:0 24px}
+.cap .cap-amos-hub h2{margin:0 0 6px;font:700 24px/1.25 Lora,Georgia,serif;color:var(--navy)}
+.cap .cap-amos-hub>p{margin:0 0 16px;color:#675f56;font-size:16px;line-height:1.5}
+.cap .cap-amos-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,235px),1fr));gap:16px;align-items:start}
+.cap .cap-amos-grade .cap-amostra{margin:0}
+.cap .cap-amos-grade .cap-amostra-cham{font-size:16.5px}
+.cap .cap-amos-grade .cap-amostra-ponte{font-size:14px}
+@media (max-width:520px){.cap .cap-amos-hub{padding:0 16px}.cap .cap-amostra-cham{font-size:17.5px}}`;
   const vdcNorm = s => String(s).toLowerCase().replace(/[^0-9a-zà-ÿ]+/g, '');
   const vdcPalavras = s => String(s).toLowerCase().replace(/[^0-9a-zà-ÿ ]+/g, ' ').split(/\s+/).filter(Boolean);
   // Medida real de um WebP (o dimensoesArquivo do topo só lê PNG e JPEG).
@@ -6655,6 +6675,151 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     return total;
   }
 
+  // ---- Amostras grátis em vídeo nas séries da coleção Viver de Chácara (blocos PI_*, PA_*, PE_* e CT_*) ----
+  // Cada artigo mostra, na camada ABERTA e em HTML puro, o trecho de 30 a 60 s que a Villela Academy publica
+  // como "amostra grátis" da aula (README da Academy, seção "Amostras grátis"). O vídeo e a capa ficam na
+  // Academy; aqui só entra o endereço. O build NÃO chama a rede: lê data/amostras.json, gravado por
+  // tools/atualizar-amostras.js a partir da API pública. Série ou aula que não está no arquivo sai sem vídeo.
+  // ⚠️ QUANDO SUBIR AMOSTRA NOVA (ex.: as do curso Construção com Contêineres, que ainda renderiza) ou trocar
+  // uma existente, são dois comandos, mais o commit do data/amostras.json:
+  //     node tools/atualizar-amostras.js
+  //     node build.js
+  // Não precisa virar o PWA.cacheVersion por isso: página HTML não fica no cache de nome fixo do service
+  // worker, e o vídeo é de outro domínio. Só vira se mudar CSS, JS ou imagem do site.
+  // A chamada e a frase-ponte vêm da Academy e vão para a camada aberta: passam pelo veto da série e pela
+  // régua de vazamento (12 palavras seguidas do "Para aplicar hoje"). Chamada recusada NÃO é reescrita: o
+  // vídeo sai com o título da aula no lugar; ponte recusada sai de cena. As duas trocas são avisadas no log.
+  // ⚠️ O veto lê TEXTO: o que o VÍDEO mostra e diz foi escolhido e conferido na Academy, não aqui.
+  // Sem `og:video` de propósito (vídeo de outro domínio em prévia social costuma dar problema).
+  const VDC_AMO_ARQ = path.join(__dirname, 'data', 'amostras.json');
+  const VDC_AMO_BASE = 'https://academia.villelastay.com.br/academy/api/amostras/';
+  const VDC_AMO_URL = /^https:\/\/academia\.villelastay\.com\.br\/academy\/api\/amostras\/([A-Za-z0-9_-]+)\/(video\.mp4|capa\.jpg)\?v=\d+$/;
+  const VDC_AMO_HUB = [1, 8, 15, 22]; // aulas preferidas na faixa do hub; faltando alguma, entram as primeiras que houver
+  const VDC_AMO_DADOS = fs.existsSync(VDC_AMO_ARQ) ? JSON.parse(fs.readFileSync(VDC_AMO_ARQ, 'utf8').replace(/^﻿/, '')) : { series: {} };
+  const VDC_AMO_JS = `(function(){var v=document.querySelectorAll('.cap-amostra video');for(var i=0;i<v.length;i++)v[i].addEventListener('play',function(){for(var j=0;j<v.length;j++)if(v[j]!==this)v[j].pause()});})();`;
+  const vdcAmoDur = s => s < 60 ? `${s} s` : `${Math.floor(s / 60)} min${s % 60 ? ` ${s % 60} s` : ''}`;
+  const vdcAmoIso = s => `PT${s >= 60 ? Math.floor(s / 60) + 'M' : ''}${s % 60 || s < 60 ? (s % 60) + 'S' : ''}`;
+  const vdcAmoUtm = (curso, conteudo) => `${curso}${curso.includes('?') ? '&' : '?'}utm_content=${conteudo}`;
+  // Lê e confere as amostras de uma série, por número de aula. Endereço fora da Academy quebra o build.
+  function vdcAmostras(serie) {
+    const bruto = (VDC_AMO_DADOS.series && VDC_AMO_DADOS.series[serie] && VDC_AMO_DADOS.series[serie].amostras) || {};
+    const porAula = {};
+    for (const [k, m] of Object.entries(bruto)) {
+      const n = parseInt(k, 10);
+      if (!Number.isInteger(n) || m.aula !== n) throw new Error(`[${serie}] amostras.json: chave "${k}" não bate com a aula da amostra (${m.aula})`);
+      for (const campo of ['id', 'titulo', 'duracao_seg', 'video_url', 'capa_url', 'visto_em']) {
+        if (!m[campo]) throw new Error(`[${serie}] amostras.json: aula ${n} sem "${campo}" — rodar tools/atualizar-amostras.js`);
+      }
+      for (const u of [m.video_url, m.capa_url]) {
+        const ok = String(u).match(VDC_AMO_URL);
+        if (!ok || ok[1] !== m.id) throw new Error(`[${serie}] amostras.json: aula ${n} aponta para fora das amostras da Academy: ${u}`);
+      }
+      if (!Number.isInteger(m.duracao_seg) || m.duracao_seg < 1 || m.duracao_seg > 180) throw new Error(`[${serie}] amostras.json: aula ${n} com duração inválida (${m.duracao_seg})`);
+      if (!/^\d{4}-\d\d-\d\d$/.test(m.visto_em)) throw new Error(`[${serie}] amostras.json: aula ${n} com "visto_em" inválido (${m.visto_em})`);
+      porAula[n] = m;
+    }
+    return porAula;
+  }
+  // Liga cada artigo à amostra da aula dele (a.amostra) e passa chamada e ponte pelas travas da camada aberta.
+  function vdcAmoPreparar(serie, artigos, curso, veto, preparar) {
+    const porAula = vdcAmostras(serie);
+    const recusa = (a, texto) => {
+      const t = preparar ? preparar(texto) : texto;
+      for (const [re, oQue] of veto) { const m = t.match(re); if (m) return `${oQue}: "${m[0]}"`; }
+      const vendido = ' ' + vdcPalavras(String(a.aplicar_html || '').replace(/<[^>]+>/g, ' ')).join(' ') + ' ';
+      const pal = vdcPalavras(texto);
+      for (let i = 0; i + 12 <= pal.length; i++) {
+        if (vendido.includes(` ${pal.slice(i, i + 12).join(' ')} `)) return 'trecho do "Para aplicar hoje"';
+      }
+      return '';
+    };
+    const trocas = [];
+    for (const a of artigos) {
+      const m = porAula[a.n];
+      a.amostra = null;
+      if (!m) continue;
+      let chamada = m.titulo, ponte = m.ponte || '';
+      const rc = recusa(a, chamada);
+      if (rc) { trocas.push(`aula ${a.n}: chamada trocada pelo título da aula (${rc}) — "${m.titulo}"`); chamada = a.tituloTexto; }
+      const rp = ponte ? recusa(a, ponte) : '';
+      if (rp) { trocas.push(`aula ${a.n}: frase-ponte retirada (${rp}) — "${m.ponte}"`); ponte = ''; }
+      a.amostra = { ...m, chamada, ponte, curso };
+    }
+    for (const n of Object.keys(porAula)) {
+      if (!artigos.some(a => a.n === +n)) console.warn(`[${serie}] amostras.json tem amostra da aula ${n}, que não tem artigo no blog — ficou de fora`);
+    }
+    for (const t of trocas) console.warn(`[${serie}] amostra grátis, ${t}`);
+    return { total: artigos.filter(a => a.amostra).length, trocas };
+  }
+  // O player. `noHub` troca o botão do curso por dois links (o artigo da aula e o curso).
+  function vdcAmoHtml(a, noHub) {
+    const m = a.amostra;
+    if (!m) return '';
+    const curso = m.curso;
+    const nn = String(a.n).padStart(2, '0');
+    const botoes = noHub
+      ? `<span class="cap-amostra-links"><a href="${a.caminho}">Ler o artigo da aula ${a.n} →</a><a href="${esc(vdcAmoUtm(curso, `amostra-hub-aula-${nn}`))}" target="_blank" rel="noopener">Ver o curso →</a></span>`
+      : `<a class="cap-amostra-btn" href="${esc(vdcAmoUtm(curso, `amostra-aula-${nn}`))}" target="_blank" rel="noopener">Ver o curso completo →</a>`;
+    return `<figure class="cap-amostra"${noHub ? '' : ' id="amostra-gratis"'}><div class="cap-amostra-rot"><b>Amostra grátis</b> · Aula ${a.n} · ${vdcAmoDur(m.duracao_seg)}</div><video controls playsinline preload="none" width="1280" height="720" poster="${esc(m.capa_url)}" aria-label="${esc(`Amostra grátis da aula ${a.n}: ${m.chamada}`)}"><source src="${esc(m.video_url)}" type="video/mp4"></video><figcaption><strong class="cap-amostra-cham">${esc(m.chamada)}</strong>${m.ponte ? `<span class="cap-amostra-ponte">${esc(m.ponte)}</span>` : ''}${botoes}</figcaption></figure>`;
+  }
+  // VideoObject do artigo (só quando há amostra).
+  const vdcAmoLd = (a, url) => !a.amostra ? [] : [{
+    '@context': 'https://schema.org', '@type': 'VideoObject', '@id': `${url}#amostra`,
+    name: a.amostra.chamada, description: a.amostra.ponte || a.descricao,
+    thumbnailUrl: a.amostra.capa_url, contentUrl: a.amostra.video_url,
+    duration: vdcAmoIso(a.amostra.duracao_seg), uploadDate: `${a.amostra.visto_em}T00:00:00-03:00`,
+    inLanguage: 'pt-BR', isFamilyFriendly: true, publisher: { '@id': ORG_ID },
+  }];
+  // Faixa "Amostras grátis" do hub: três ou quatro vídeos, tocando no lugar; dar play em um pausa os outros.
+  function vdcAmoHubItens(artigos) {
+    const com = artigos.filter(a => a.amostra);
+    const itens = VDC_AMO_HUB.map(n => com.find(a => a.n === n)).filter(Boolean);
+    for (const a of com) { if (itens.length >= 4) break; if (!itens.includes(a)) itens.push(a); }
+    return itens.length < 3 ? [] : itens.sort((x, y) => x.n - y.n);
+  }
+  function vdcAmoHub(artigos) {
+    const itens = vdcAmoHubItens(artigos);
+    if (!itens.length) return '';
+    return `<section class="cap-amos-hub" aria-label="Amostras grátis"><h2>Amostras grátis</h2><p>Trechos curtos das videoaulas do curso, para assistir aqui mesmo, sem cadastro. Cada artigo da série traz a amostra da aula dele.</p><div class="cap-amos-grade">${itens.map(a => vdcAmoHtml(a, true)).join('')}</div><script>${VDC_AMO_JS}</script></section>`;
+  }
+  // Conferência final, sobre o HTML que SAIU: cada artigo leva o vídeo da aula dele e só ele (um, na camada
+  // aberta; nenhum no desenvolvimento embutido); o hub leva a faixa prevista; todo <video> e todo <source>
+  // apontam para as amostras da Academy; toda amostra citada está no amostras.json da série; nada de
+  // autoplay; e o VideoObject acompanha o vídeo, um para um.
+  function vdcConfereVideos(serie, artigos, od, arqHub) {
+    const ids = new Set(Object.values(vdcAmostras(serie)).map(m => m.id));
+    const olha = (arq, esperados, ldEsperado) => {
+      const html = fs.readFileSync(arq, 'utf8');
+      const nome = path.basename(path.dirname(arq)) + '/' + path.basename(arq);
+      const dm = html.match(/<script type="application\/json" id="cap-dados">([^<]*)<\/script>/);
+      const aberto = dm ? html.replace(dm[0], '') : html;
+      const prot = dm ? Buffer.from(dm[1], 'base64').toString('utf8') : '';
+      if (/<video\b|<source\b/i.test(prot)) throw new Error(`[${serie}] ${nome}: há vídeo dentro do desenvolvimento protegido`);
+      const videos = aberto.match(/<video\b[^>]*>/gi) || [];
+      const fontes = aberto.match(/<source\b[^>]*>/gi) || [];
+      if (videos.length !== esperados.length || fontes.length !== esperados.length) throw new Error(`[${serie}] ${nome}: ${videos.length} vídeo(s) e ${fontes.length} fonte(s) na camada aberta — o esperado era ${esperados.length}`);
+      for (const tag of [...videos, ...fontes]) {
+        if (/\sautoplay\b/i.test(tag)) throw new Error(`[${serie}] ${nome}: vídeo com autoplay`);
+        const enderecos = [...tag.matchAll(/\s(?:src|poster)="([^"]*)"/gi)].map(x => x[1].replace(/&amp;/g, '&'));
+        if (!enderecos.length) throw new Error(`[${serie}] ${nome}: <video> ou <source> sem endereço`);
+        for (const u of enderecos) {
+          const ok = u.match(VDC_AMO_URL);
+          if (!u.startsWith(VDC_AMO_BASE) || !ok) throw new Error(`[${serie}] ${nome}: vídeo ou capa apontando para fora das amostras da Academy: ${u}`);
+          if (!ids.has(ok[1])) throw new Error(`[${serie}] ${nome}: cita a amostra ${ok[1]}, que não está em data/amostras.json`);
+        }
+      }
+      for (const m of esperados) {
+        if (!aberto.includes(`<source src="${esc(m.video_url)}"`) || !aberto.includes(`poster="${esc(m.capa_url)}"`)) throw new Error(`[${serie}] ${nome}: falta o vídeo ou a capa da amostra ${m.id} (aula ${m.aula})`);
+      }
+      const ld = (aberto.match(/"@type":"VideoObject"/g) || []).length;
+      if (ld !== ldEsperado) throw new Error(`[${serie}] ${nome}: ${ld} VideoObject no JSON-LD — o esperado era ${ldEsperado}`);
+      if (/property="og:video/i.test(aberto)) throw new Error(`[${serie}] ${nome}: og:video não entra (vídeo de outro domínio)`);
+    };
+    for (const a of artigos) olha(path.join(od, 'blog', `${a.slug}.html`), a.amostra ? [a.amostra] : [], a.amostra ? 1 : 0);
+    olha(arqHub, vdcAmoHubItens(artigos).map(a => a.amostra), 0);
+    return artigos.filter(a => a.amostra).length;
+  }
+
   // ---- Série "Piscineiro na Prática" (coleção Viver de Chácara; curso animado de 25 aulas): mesmo padrão da série O Homem Essencial ----
   // Preparada em 08/10/2026. O livro não está na Livraria: a série anuncia só o curso (Academy), como na
   // série O Homem Contemporâneo, e o BlogPosting cita o livro sem `url`.
@@ -6783,6 +6948,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
 .cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
 
     vdcFigTravas('piscineiro-na-pratica', piArtigos, piFigs, PI_VETO);
+    const piAmo = vdcAmoPreparar('piscineiro-na-pratica', piArtigos, PI_CURSO, PI_VETO);
     const piTotal = piGrade.total;
     const piLinhaGrade = (aula, atual) => {
       const art = piArtigos.find(a => a.n === aula.n);
@@ -6814,6 +6980,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
           { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
         ]
       }];
+      lds.push(...vdcAmoLd(a, url));
       if (a.faq.length) lds.push({
         '@context': 'https://schema.org', '@type': 'FAQPage',
         mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
@@ -6830,6 +6997,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <div class="cap-faixa">${piAnuncio('curso', true)}</div>
   <section class="cap-publico">
     ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${vdcAmoHtml(a)}
     ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
     ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
   </section>
@@ -6922,6 +7090,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   </section>
   <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Piscineiro na Prática</span></nav>
   <div class="cap-faixa">${piAnuncio('curso')}</div>
+  ${vdcAmoHub(piArtigos)}
   ${vdcFigHub(piFigs, piArtigos)}
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
@@ -6936,6 +7105,7 @@ ${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     ));
 
     vdcConfereImagens('piscineiro-na-pratica', [...piArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'piscineiro-na-pratica', 'index.html')]);
+    vdcConfereVideos('piscineiro-na-pratica', piArtigos, od, path.join(od, 'piscineiro-na-pratica', 'index.html'));
     PI_PATHS = ['/piscineiro-na-pratica/', ...piArtigos.map(a => a.caminho), ...piApoio.map(d => `/piscineiro-na-pratica/apoio/${d.chave}.html`)];
     PI_LLMS = `## Blog: Piscineiro na Prática (${piNoAr} artigos, em português)
 
@@ -6953,7 +7123,7 @@ Curso on-line (25 aulas, na Villela Academy): ${PI_CURSO.split('?')[0]}
 
 ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
 `;
-    console.log(`Blog Piscineiro na Prática: hub + ${piNoAr} de ${piTotal} artigos + ${piApoio.length} material(is) de apoio`);
+    console.log(`Blog Piscineiro na Prática: hub + ${piNoAr} de ${piTotal} artigos + ${piApoio.length} material(is) de apoio + ${piAmo.total} amostra(s) grátis em vídeo`);
   }
 
   // ---- Série "Paisagismo na Prática" (coleção Viver de Chácara; curso animado de 25 aulas): bloco copiado do PI_* (Piscineiro na Prática) ----
@@ -7088,6 +7258,7 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
 .cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
 
     vdcFigTravas('paisagismo-na-pratica', paArtigos, paFigs, PA_VETO);
+    const paAmo = vdcAmoPreparar('paisagismo-na-pratica', paArtigos, PA_CURSO, PA_VETO);
     const paTotal = paGrade.total;
     const paLinhaGrade = (aula, atual) => {
       const art = paArtigos.find(a => a.n === aula.n);
@@ -7119,6 +7290,7 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
           { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
         ]
       }];
+      lds.push(...vdcAmoLd(a, url));
       if (a.faq.length) lds.push({
         '@context': 'https://schema.org', '@type': 'FAQPage',
         mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
@@ -7135,6 +7307,7 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <div class="cap-faixa">${paAnuncio('curso', true)}</div>
   <section class="cap-publico">
     ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${vdcAmoHtml(a)}
     ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
     ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
   </section>
@@ -7227,6 +7400,7 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   </section>
   <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Paisagismo na Prática</span></nav>
   <div class="cap-faixa">${paAnuncio('curso')}</div>
+  ${vdcAmoHub(paArtigos)}
   ${vdcFigHub(paFigs, paArtigos)}
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
@@ -7241,6 +7415,7 @@ ${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     ));
 
     vdcConfereImagens('paisagismo-na-pratica', [...paArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'paisagismo-na-pratica', 'index.html')]);
+    vdcConfereVideos('paisagismo-na-pratica', paArtigos, od, path.join(od, 'paisagismo-na-pratica', 'index.html'));
     PA_PATHS = ['/paisagismo-na-pratica/', ...paArtigos.map(a => a.caminho), ...paApoio.map(d => `/paisagismo-na-pratica/apoio/${d.chave}.html`)];
     PA_LLMS = `## Blog: Paisagismo na Prática (${paNoAr} artigos, em português)
 
@@ -7261,7 +7436,7 @@ Curso on-line (25 videoaulas, na Villela Academy): ${PA_CURSO.split('?')[0]}
 
 ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
 `;
-    console.log(`Blog Paisagismo na Prática: hub + ${paNoAr} de ${paTotal} artigos + ${paApoio.length} material(is) de apoio`);
+    console.log(`Blog Paisagismo na Prática: hub + ${paNoAr} de ${paTotal} artigos + ${paApoio.length} material(is) de apoio + ${paAmo.total} amostra(s) grátis em vídeo`);
   }
 
   // ---- Série "Pedreiro Completo na Prática" (coleção Viver de Chácara; curso animado de 25 aulas): bloco copiado do PA_* (Paisagismo na Prática) ----
@@ -7428,6 +7603,7 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
 .cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
 
     vdcFigTravas('pedreiro-completo-na-pratica', peArtigos, peFigs, PE_VETO_ABERTA);
+    const peAmo = vdcAmoPreparar('pedreiro-completo-na-pratica', peArtigos, PE_CURSO, PE_VETO_ABERTA);
     const peTotal = peGrade.total;
     const peLinhaGrade = (aula, atual) => {
       const art = peArtigos.find(a => a.n === aula.n);
@@ -7459,6 +7635,7 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
           { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
         ]
       }];
+      lds.push(...vdcAmoLd(a, url));
       if (a.faq.length) lds.push({
         '@context': 'https://schema.org', '@type': 'FAQPage',
         mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
@@ -7475,6 +7652,7 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <div class="cap-faixa">${peAnuncio('curso', true)}</div>
   <section class="cap-publico">
     ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${vdcAmoHtml(a)}
     ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
     ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
   </section>
@@ -7567,6 +7745,7 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   </section>
   <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Pedreiro Completo na Prática</span></nav>
   <div class="cap-faixa">${peAnuncio('curso')}</div>
+  ${vdcAmoHub(peArtigos)}
   ${vdcFigHub(peFigs, peArtigos)}
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
@@ -7581,6 +7760,7 @@ ${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     ));
 
     vdcConfereImagens('pedreiro-completo-na-pratica', [...peArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'pedreiro-completo-na-pratica', 'index.html')]);
+    vdcConfereVideos('pedreiro-completo-na-pratica', peArtigos, od, path.join(od, 'pedreiro-completo-na-pratica', 'index.html'));
     PE_PATHS = ['/pedreiro-completo-na-pratica/', ...peArtigos.map(a => a.caminho), ...peApoio.map(d => `/pedreiro-completo-na-pratica/apoio/${d.chave}.html`)];
     PE_LLMS = `## Blog: Pedreiro Completo na Prática (${peNoAr} artigos, em português)
 
@@ -7602,7 +7782,7 @@ Curso on-line (25 aulas na Villela Academy; as videoaulas entram no ar aula a au
 
 ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
 `;
-    console.log(`Blog Pedreiro Completo na Prática: hub + ${peNoAr} de ${peTotal} artigos + ${peApoio.length} material(is) de apoio`);
+    console.log(`Blog Pedreiro Completo na Prática: hub + ${peNoAr} de ${peTotal} artigos + ${peApoio.length} material(is) de apoio + ${peAmo.total} amostra(s) grátis em vídeo`);
   }
 
   // ---- Série "Construção com Contêineres na Prática" (coleção Viver de Chácara; curso animado de 25 aulas): bloco copiado do PE_* (Pedreiro Completo na Prática) ----
@@ -7797,6 +7977,7 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
 .cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
 
     vdcFigTravas('construcao-com-conteineres-na-pratica', ctArtigos, ctFigs, CT_VETO_ABERTA, t => CT_MEDIDAS_CATALOGO.reduce((x, med) => x.split(med).join('[medida de catálogo]'), t));
+    const ctAmo = vdcAmoPreparar('construcao-com-conteineres-na-pratica', ctArtigos, CT_CURSO, CT_VETO_ABERTA, t => CT_MEDIDAS_CATALOGO.reduce((x, med) => x.split(med).join('[medida de catálogo]'), t));
     const ctTotal = ctGrade.total;
     const ctLinhaGrade = (aula, atual) => {
       const art = ctArtigos.find(a => a.n === aula.n);
@@ -7828,6 +8009,7 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
           { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
         ]
       }];
+      lds.push(...vdcAmoLd(a, url));
       if (a.faq.length) lds.push({
         '@context': 'https://schema.org', '@type': 'FAQPage',
         mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
@@ -7844,6 +8026,7 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <div class="cap-faixa">${ctAnuncio('curso', true)}</div>
   <section class="cap-publico">
     ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${vdcAmoHtml(a)}
     ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
     ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
   </section>
@@ -7936,6 +8119,7 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   </section>
   <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Construção com Contêineres na Prática</span></nav>
   <div class="cap-faixa">${ctAnuncio('curso')}</div>
+  ${vdcAmoHub(ctArtigos)}
   ${vdcFigHub(ctFigs, ctArtigos)}
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
@@ -7950,6 +8134,7 @@ ${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     ));
 
     vdcConfereImagens('construcao-com-conteineres-na-pratica', [...ctArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'construcao-com-conteineres-na-pratica', 'index.html')]);
+    vdcConfereVideos('construcao-com-conteineres-na-pratica', ctArtigos, od, path.join(od, 'construcao-com-conteineres-na-pratica', 'index.html'));
     CT_PATHS = ['/construcao-com-conteineres-na-pratica/', ...ctArtigos.map(a => a.caminho), ...ctApoio.map(d => `/construcao-com-conteineres-na-pratica/apoio/${d.chave}.html`)];
     CT_LLMS = `## Blog: Construção com Contêineres na Prática (${ctNoAr} artigos, em português)
 
@@ -7975,7 +8160,7 @@ ${ctPublicado ? 'Curso on-line (25 aulas na Villela Academy; as videoaulas entra
 
 ${ctArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
 `;
-    console.log(`Blog Construção com Contêineres na Prática: hub + ${ctNoAr} de ${ctTotal} artigos + ${ctApoio.length} material(is) de apoio`);
+    console.log(`Blog Construção com Contêineres na Prática: hub + ${ctNoAr} de ${ctTotal} artigos + ${ctApoio.length} material(is) de apoio + ${ctAmo.total} amostra(s) grátis em vídeo`);
   }
 
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),

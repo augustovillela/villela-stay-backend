@@ -1,0 +1,849 @@
+{
+  "coletadoEm": "2026-10-09T23:47:01.670Z",
+  "series": {
+    "piscineiro-na-pratica": {
+      "curso_url": "https://academia.villelastay.com.br/academy/cursos/piscineiro-na-pratica",
+      "amostras": {
+        "1": {
+          "id": "iIh6GnGBhFWR",
+          "aula": 1,
+          "aula_titulo": "Aula 01 — Função do piscineiro e anatomia da piscina",
+          "titulo": "O filtro de areia em corte: por onde a água entra, limpa e volta.",
+          "ponte": "Na aula inteira, o circuito completo da piscina, peça por peça, do skimmer ao retorno.",
+          "duracao_seg": 44,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/iIh6GnGBhFWR/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/iIh6GnGBhFWR/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "2": {
+          "id": "fWQE2Tp7MCsO",
+          "aula": 2,
+          "aula_titulo": "Aula 02 — Segurança química e leitura de rótulos",
+          "titulo": "O depósito dos produtos em corte: seco, ventilado, à sombra e trancado.",
+          "ponte": "A aula completa mostra como organizar, ler o rótulo e transportar os produtos com segurança.",
+          "duracao_seg": 42,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/fWQE2Tp7MCsO/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/fWQE2Tp7MCsO/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "3": {
+          "id": "krspLqfgBcbi",
+          "aula": 3,
+          "aula_titulo": "Aula 03 — Segurança elétrica, hidráulica e dos banhistas",
+          "titulo": "A cerca, o portão que fecha sozinho e o adulto com nome.",
+          "ponte": "No curso, a aula segue para os riscos que quase ninguém conhece: sucção e eletricidade.",
+          "duracao_seg": 32,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/krspLqfgBcbi/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/krspLqfgBcbi/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "4": {
+          "id": "VZnmrGZpWVff",
+          "aula": 4,
+          "aula_titulo": "Aula 04 — Volume, vazão, circulação e filtração",
+          "titulo": "Três círculos que se cruzam e explicam por que a água fica verde.",
+          "ponte": "A aula inteira ensina a ler volume, vazão e tempo de filtração da sua piscina.",
+          "duracao_seg": 37,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/VZnmrGZpWVff/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/VZnmrGZpWVff/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "5": {
+          "id": "rN5qsR99ypww",
+          "aula": 5,
+          "aula_titulo": "Aula 05 — Fundamentos do equilíbrio e da desinfecção",
+          "titulo": "O barco e a âncora: como a alcalinidade segura o pH.",
+          "ponte": "No curso, os cinco parâmetros da água e a ordem em que um depende do outro.",
+          "duracao_seg": 36,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/rN5qsR99ypww/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/rN5qsR99ypww/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "6": {
+          "id": "5l0w3arnbjWC",
+          "aula": 6,
+          "aula_titulo": "Aula 06 — Equipamentos da casa de máquinas",
+          "titulo": "O manômetro do filtro e os três momentos que o ponteiro conta.",
+          "ponte": "A aula completa percorre a casa de máquinas inteira: bomba, filtro, válvula, registros e temporizador.",
+          "duracao_seg": 48,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/5l0w3arnbjWC/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/5l0w3arnbjWC/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "7": {
+          "id": "kuJ5R78YUk4i",
+          "aula": 7,
+          "aula_titulo": "Aula 07 — Acessórios de limpeza e instrumentos de teste",
+          "titulo": "O estojo de teste, o reagente vencido e a cor que engana.",
+          "ponte": "Na aula inteira, os acessórios de limpeza e como escolher o instrumento que mede a água.",
+          "duracao_seg": 46,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/kuJ5R78YUk4i/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/kuJ5R78YUk4i/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "8": {
+          "id": "fDeHotuTxeLe",
+          "aula": 8,
+          "aula_titulo": "Aula 08 — Produtos: funções, compatibilidades e armazenamento",
+          "titulo": "Pontinhos finos se juntam em flocos: o que fazem clarificante e floculante.",
+          "ponte": "O curso organiza todos os produtos por função e ensina a achar a resposta no rótulo.",
+          "duracao_seg": 31,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/fDeHotuTxeLe/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/fDeHotuTxeLe/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "9": {
+          "id": "HcjiAxro2BX-",
+          "aula": 9,
+          "aula_titulo": "Aula 09 — Como inspecionar e registrar uma piscina",
+          "titulo": "A inspeção começa pelo entorno: cerca, piso, galhos e a água da chuva.",
+          "ponte": "A aula inteira percorre o tanque, a casa de máquinas e o caderno de registro.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/HcjiAxro2BX-/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/HcjiAxro2BX-/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "10": {
+          "id": "mWkFDnBYA83c",
+          "aula": 10,
+          "aula_titulo": "Aula 10 — Como calcular volume e planejar a rotina",
+          "titulo": "Duas trenas no corte da piscina: a medida da parede e a da água.",
+          "ponte": "No curso, a conta do volume passo a passo e como ela vira rotina da casa.",
+          "duracao_seg": 36,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/mWkFDnBYA83c/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/mWkFDnBYA83c/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "11": {
+          "id": "S670gvCWE5qF",
+          "aula": 11,
+          "aula_titulo": "Aula 11 — Peneiração, escovação e limpeza de bordas",
+          "titulo": "A película invisível na parede e por que a escova não se pula.",
+          "ponte": "A aula completa mostra a ordem de peneirar, escovar e limpar a borda sem retrabalho.",
+          "duracao_seg": 37,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/S670gvCWE5qF/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/S670gvCWE5qF/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "12": {
+          "id": "jwy7_oMP72W-",
+          "aula": 12,
+          "aula_titulo": "Aula 12 — Aspiração e escolha do modo de operação",
+          "titulo": "A mangueira cheia de ar, as bolhas no pré-filtro e a sucção que some.",
+          "ponte": "No curso, a aspiração do começo ao fim e a escolha entre filtrar e drenar.",
+          "duracao_seg": 32,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/jwy7_oMP72W-/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/jwy7_oMP72W-/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "13": {
+          "id": "s_4PZTd7OlOF",
+          "aula": 13,
+          "aula_titulo": "Aula 13 — Válvulas, bomba e filtro sem erros",
+          "titulo": "A alavanca girada com a bomba ligada e o nível que baixa semanas depois.",
+          "ponte": "A aula inteira explica cada posição da válvula e a limpeza dos cestos, sem pressa.",
+          "duracao_seg": 58,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/s_4PZTd7OlOF/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/s_4PZTd7OlOF/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "14": {
+          "id": "ZxrUZTC9vmBr",
+          "aula": 14,
+          "aula_titulo": "Aula 14 — Retrolavagem, enxágue e reposição de água",
+          "titulo": "A areia do filtro em corte: por que um pouco suja ela filtra melhor.",
+          "ponte": "No curso, quando lavar o filtro de verdade e como repor a água sem desperdício.",
+          "duracao_seg": 35,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/ZxrUZTC9vmBr/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/ZxrUZTC9vmBr/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "15": {
+          "id": "O27_xigBo5Ct",
+          "aula": 15,
+          "aula_titulo": "Aula 15 — Rotina completa de uma visita profissional",
+          "titulo": "A piscina limpa que, vinte minutos depois, tem névoa no fundo.",
+          "ponte": "A aula completa monta a visita inteira em nove passos, na ordem que evita retrabalho.",
+          "duracao_seg": 49,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/O27_xigBo5Ct/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/O27_xigBo5Ct/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "16": {
+          "id": "3Ypt_7axwcI-",
+          "aula": 16,
+          "aula_titulo": "Aula 16 — Coleta, testes e interpretação dos resultados",
+          "titulo": "O tubo de teste enchido na frente do retorno e o resultado que engana.",
+          "ponte": "No curso, onde e como coletar a amostra e como ler os resultados em conjunto.",
+          "duracao_seg": 53,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/3Ypt_7axwcI-/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/3Ypt_7axwcI-/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "17": {
+          "id": "lKdUoJDWcBxq",
+          "aula": 17,
+          "aula_titulo": "Aula 17 — Ajustes de equilíbrio conforme produto e sistema",
+          "titulo": "Barco, âncora e três degraus: a ordem de corrigir a água.",
+          "ponte": "A aula inteira mostra como corrigir aos poucos e conferir cada passo, sempre pelo rótulo.",
+          "duracao_seg": 56,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/lKdUoJDWcBxq/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/lKdUoJDWcBxq/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "18": {
+          "id": "Pq8UmE2b_lYd",
+          "aula": 18,
+          "aula_titulo": "Aula 18 — Desinfecção de rotina e tratamento corretivo",
+          "titulo": "O gráfico da semana: o cloro sobe na visita e some na quarta-feira.",
+          "ponte": "No curso, as formas de manter o cloro entre visitas e quando a piscina fecha.",
+          "duracao_seg": 46,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/Pq8UmE2b_lYd/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/Pq8UmE2b_lYd/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "19": {
+          "id": "-ci3X0751GFo",
+          "aula": 19,
+          "aula_titulo": "Aula 19 — Água verde, turva, espuma, manchas e odores",
+          "titulo": "O corte do terreno: a piscina vazia empurrada para cima pela água do solo.",
+          "ponte": "A aula completa ensina o método para água verde, turva e manchas, sem atalho.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/-ci3X0751GFo/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/-ci3X0751GFo/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "20": {
+          "id": "cs06bwwqYRKj",
+          "aula": 20,
+          "aula_titulo": "Aula 20 — Diagnóstico inicial de vazão, pressão, vazamentos e impactos do ambiente rural",
+          "titulo": "O balde no degrau e as duas marcas que separam evaporação de perda.",
+          "ponte": "No curso, como ler manômetro, ruídos e bolhas antes de chamar o técnico certo.",
+          "duracao_seg": 42,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/cs06bwwqYRKj/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/cs06bwwqYRKj/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "21": {
+          "id": "bl8lNQS7bQZR",
+          "aula": 21,
+          "aula_titulo": "Aula 21 — Planos diário, semanal, mensal e sazonal",
+          "titulo": "O calendário da casa de fim de semana e a semana vazia no meio.",
+          "ponte": "A aula inteira monta o plano para cada regime de uso, com responsável e substituto.",
+          "duracao_seg": 54,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/bl8lNQS7bQZR/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/bl8lNQS7bQZR/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "22": {
+          "id": "UYFdx2aOqkyG",
+          "aula": 22,
+          "aula_titulo": "Aula 22 — Estoque, custos, orçamento e contrato",
+          "titulo": "Um centímetro de nível na parede vira litros: a conta da água perdida.",
+          "ponte": "No curso, as cinco colunas do custo da piscina e como comparar propostas de serviço.",
+          "duracao_seg": 31,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/UYFdx2aOqkyG/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/UYFdx2aOqkyG/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "23": {
+          "id": "4kq88eqoYyV7",
+          "aula": 23,
+          "aula_titulo": "Aula 23 — Relatório ao proprietário, preparação para hóspedes e liberação segura",
+          "titulo": "A mesma piscina, azul na chegada e verde quinze dias depois.",
+          "ponte": "A aula completa trata do relatório do serviço, dos hóspedes e de quando liberar a piscina.",
+          "duracao_seg": 33,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/4kq88eqoYyV7/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/4kq88eqoYyV7/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "24": {
+          "id": "kxCjTP0vwiCs",
+          "aula": 24,
+          "aula_titulo": "Aula 24 — Desenvolvimento do plano de manutenção da piscina da Chácara-Modelo",
+          "titulo": "A ficha da Chácara-Modelo: medidas, equipamentos, entorno e quem cuida.",
+          "ponte": "No curso, essa ficha vira um plano completo de cuidado, em cinco partes.",
+          "duracao_seg": 38,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/kxCjTP0vwiCs/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/kxCjTP0vwiCs/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "25": {
+          "id": "YxXT54rDB2Pb",
+          "aula": 25,
+          "aula_titulo": "Aula 25 — Avaliação de caso e plano de evolução profissional",
+          "titulo": "Piscina verde: primeiro interditar, depois olhar a bomba e o filtro.",
+          "ponte": "A aula inteira resolve o caso até o sábado dos hóspedes, decisão por decisão.",
+          "duracao_seg": 33,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/YxXT54rDB2Pb/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/YxXT54rDB2Pb/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        }
+      }
+    },
+    "paisagismo-na-pratica": {
+      "curso_url": "https://academia.villelastay.com.br/academy/cursos/paisagismo-na-pratica",
+      "amostras": {
+        "1": {
+          "id": "DverhTbr4veq",
+          "aula": 1,
+          "aula_titulo": "Aula 01 — O mercado do paisagismo e as etapas de um serviço",
+          "titulo": "A muda comprada no domingo e plantada onde tinha espaço seca em agosto.",
+          "ponte": "A aula inteira mostra os usos do jardim e as etapas que vêm antes da planta.",
+          "duracao_seg": 32,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/DverhTbr4veq/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/DverhTbr4veq/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "2": {
+          "id": "MKFOouZXWEGa",
+          "aula": 2,
+          "aula_titulo": "Aula 02 — Segurança, EPIs e organização do canteiro",
+          "titulo": "No corte do solo, cano e eletroduto bem onde a pá ia entrar.",
+          "ponte": "No curso, os sete riscos do trabalho no jardim e o que se contrata.",
+          "duracao_seg": 43,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/MKFOouZXWEGa/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/MKFOouZXWEGa/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "3": {
+          "id": "uq8c-1nNeOxJ",
+          "aula": 3,
+          "aula_titulo": "Aula 03 — Princípios de composição paisagística",
+          "titulo": "O jardim em três andares e a falta que faz o do meio.",
+          "ponte": "A aula completa percorre os princípios de composição, com o mesmo canteiro refeito.",
+          "duracao_seg": 35,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/uq8c-1nNeOxJ/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/uq8c-1nNeOxJ/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "4": {
+          "id": "ipz8PMrYfLTe",
+          "aula": 4,
+          "aula_titulo": "Aula 04 — Sol, sombra, clima, solo e drenagem",
+          "titulo": "O canteiro ao pé do muro: sombra em junho, sol pleno em dezembro.",
+          "ponte": "No curso, como ler sol, vento, água e solo antes de escolher qualquer planta.",
+          "duracao_seg": 35,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/ipz8PMrYfLTe/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/ipz8PMrYfLTe/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "5": {
+          "id": "EMdx-eSshXva",
+          "aula": 5,
+          "aula_titulo": "Aula 05 — Briefing, medição, croqui e registro do local",
+          "titulo": "Duas trenas em diagonal revelam que a entrada não é um retângulo.",
+          "ponte": "A aula inteira ensina o briefing, a ordem da medição e o croqui em escala.",
+          "duracao_seg": 47,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/EMdx-eSshXva/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/EMdx-eSshXva/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "6": {
+          "id": "9Fm-gGYaXaOE",
+          "aula": 6,
+          "aula_titulo": "Aula 06 — Como escolher espécies adequadas ao ambiente",
+          "titulo": "O círculo da muda cresce até a copa adulta e toca o telhado.",
+          "ponte": "No curso, os seis critérios para escolher espécies e a ficha que organiza a decisão.",
+          "duracao_seg": 43,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/9Fm-gGYaXaOE/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/9Fm-gGYaXaOE/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "7": {
+          "id": "WbpIz_6xZben",
+          "aula": 7,
+          "aula_titulo": "Aula 07 — Árvores, arbustos, forrações, trepadeiras e gramados",
+          "titulo": "A muda fora do saco: raiz clara e espalhada ou enrolada em espiral.",
+          "ponte": "A aula completa mostra o trabalho de cada grupo de plantas e o exame da muda.",
+          "duracao_seg": 56,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/WbpIz_6xZben/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/WbpIz_6xZben/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "8": {
+          "id": "zGM26KM61EKB",
+          "aula": 8,
+          "aula_titulo": "Aula 08 — Solos, substratos, adubos e cobertura morta",
+          "titulo": "O canteiro em corte, na seca e na chuva, com a cobertura morta trabalhando.",
+          "ponte": "No curso, o solo do Cerrado, a análise e por que a dose vem do laudo.",
+          "duracao_seg": 48,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/zGM26KM61EKB/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/zGM26KM61EKB/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "9": {
+          "id": "l0bTiePzyLvq",
+          "aula": 9,
+          "aula_titulo": "Aula 09 — Setorização, circulação, privacidade e pontos focais",
+          "titulo": "A trilha de capim pisado que corta a curva do caminho calçado.",
+          "ponte": "A aula inteira organiza setores, trajetos, lugares de ficar e vistas sobre o seu croqui.",
+          "duracao_seg": 30,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/l0bTiePzyLvq/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/l0bTiePzyLvq/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "10": {
+          "id": "E8NbGfbGAKvI",
+          "aula": 10,
+          "aula_titulo": "Aula 10 — Planta simplificada, quantitativos e cronograma",
+          "titulo": "O calendário das duas estações: o plantio fixado e as tarefas voltando para trás.",
+          "ponte": "No curso, a planta simplificada, as contas de quantidade e o cronograma completo.",
+          "duracao_seg": 49,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/E8NbGfbGAKvI/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/E8NbGfbGAKvI/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "11": {
+          "id": "8lBDMHJm06Sk",
+          "aula": 11,
+          "aula_titulo": "Aula 11 — Limpeza, marcação e preparo do terreno",
+          "titulo": "O canteiro pronto é aberto de novo para passar o tubo da irrigação.",
+          "ponte": "A aula completa mostra a ordem da implantação e como marcar o projeto no terreno.",
+          "duracao_seg": 32,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/8lBDMHJm06Sk/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/8lBDMHJm06Sk/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "12": {
+          "id": "rIIdwqOYQ7VO",
+          "aula": 12,
+          "aula_titulo": "Aula 12 — Preparo do solo e construção de canteiros",
+          "titulo": "A raiz que chega à parede do buraco e passa a girar em círculo.",
+          "ponte": "No curso, como descompactar, corrigir pelo laudo e preparar o canteiro e a drenagem.",
+          "duracao_seg": 31,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/rIIdwqOYQ7VO/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/rIIdwqOYQ7VO/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "13": {
+          "id": "eHmDle9Gpyan",
+          "aula": 13,
+          "aula_titulo": "Aula 13 — Plantio correto de mudas e tutoramento",
+          "titulo": "Duas mudas em corte: o colo enterrado e o colo no nível do chão.",
+          "ponte": "A aula inteira ensina o berço, a ordem do plantio, o tutor e a primeira rega.",
+          "duracao_seg": 51,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/eHmDle9Gpyan/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/eHmDle9Gpyan/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "14": {
+          "id": "dsrFERsnY0Y2",
+          "aula": 14,
+          "aula_titulo": "Aula 14 — Implantação e recuperação de gramados",
+          "titulo": "Dois dedos no canto da placa: a grama que levanta e a que resiste.",
+          "ponte": "No curso, da base ao assentamento, e como achar a causa do gramado que falha.",
+          "duracao_seg": 34,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/dsrFERsnY0Y2/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/dsrFERsnY0Y2/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "15": {
+          "id": "BAEyRzU1h-VQ",
+          "aula": 15,
+          "aula_titulo": "Aula 15 — Vasos, jardins verticais e espaços compactos",
+          "titulo": "O vaso cheio que não se arrasta e a raiz presa na parede.",
+          "ponte": "A aula completa mostra como montar, dimensionar e agrupar vasos, e o jardim vertical sem ilusão.",
+          "duracao_seg": 58,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/BAEyRzU1h-VQ/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/BAEyRzU1h-VQ/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "16": {
+          "id": "XE-DoORr7ne7",
+          "aula": 16,
+          "aula_titulo": "Aula 16 — Irrigação manual, gotejamento e microaspersão",
+          "titulo": "O calendário da seca com um feriado sem ninguém e o jardim murcho.",
+          "ponte": "No curso, setores de rega, gotejamento, temporizador e como conferir a água no solo.",
+          "duracao_seg": 36,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/XE-DoORr7ne7/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/XE-DoORr7ne7/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "17": {
+          "id": "CcW-_zAoMHMS",
+          "aula": 17,
+          "aula_titulo": "Aula 17 — Iluminação e acabamentos do jardim",
+          "titulo": "Uma lanterna no jardim escuro e estacas onde a luz agrada.",
+          "ponte": "A aula inteira mostra os princípios da luz, o que pedir ao eletricista e os acabamentos.",
+          "duracao_seg": 38,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/CcW-_zAoMHMS/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/CcW-_zAoMHMS/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "18": {
+          "id": "RRDYUiV7-4yr",
+          "aula": 18,
+          "aula_titulo": "Aula 18 — Paisagismo da casa, da entrada e da área de lazer",
+          "titulo": "A árvore ao lado da piscina e um mês contando o cesto de folhas.",
+          "ponte": "No curso, as quatro perguntas aplicadas à entrada, à casa, à área gourmet e à piscina.",
+          "duracao_seg": 36,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/RRDYUiV7-4yr/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/RRDYUiV7-4yr/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "19": {
+          "id": "-llgZ1aIEKm_",
+          "aula": 19,
+          "aula_titulo": "Aula 19 — Paisagismo para pousadas, eventos e hospedagens rurais",
+          "titulo": "No corte do caminho, a roda anda no piso firme e trava no pedrisco.",
+          "ponte": "A aula completa trata de escala, orientação e desgaste em pousadas, eventos e hospedagens.",
+          "duracao_seg": 37,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/-llgZ1aIEKm_/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/-llgZ1aIEKm_/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "20": {
+          "id": "GYs6kKwNWIGR",
+          "aula": 20,
+          "aula_titulo": "Aula 20 — Manutenção, poda, adubação e diagnóstico de problemas",
+          "titulo": "O dedo na terra: seca em cima, úmida embaixo, e a raiz que desce.",
+          "ponte": "No curso, o calendário do ano, a poda e o diagnóstico antes de qualquer produto.",
+          "duracao_seg": 33,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/GYs6kKwNWIGR/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/GYs6kKwNWIGR/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "21": {
+          "id": "4qleLmNQpXVz",
+          "aula": 21,
+          "aula_titulo": "Aula 21 — Levantamento de custos e lista de compras",
+          "titulo": "O canteiro quase fechado, o canto vazio e a viagem por dez mudas.",
+          "ponte": "A aula inteira monta o orçamento por etapa: margem de perda, mão de obra e estrada.",
+          "duracao_seg": 42,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/4qleLmNQpXVz/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/4qleLmNQpXVz/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "22": {
+          "id": "dA1iKPgor2y5",
+          "aula": 22,
+          "aula_titulo": "Aula 22 — Formação de preço, proposta e contrato",
+          "titulo": "Duas propostas para o mesmo jardim e uma lupa lendo linha por linha.",
+          "ponte": "No curso, como pedir, comparar e contratar, e o que o contrato precisa dizer.",
+          "duracao_seg": 33,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/dA1iKPgor2y5/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/dA1iKPgor2y5/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "23": {
+          "id": "ogZZFVqUF4ax",
+          "aula": 23,
+          "aula_titulo": "Aula 23 — Como apresentar, implantar e entregar o projeto",
+          "titulo": "A muda morta na casa fechada e dois telefones sem resposta.",
+          "ponte": "A aula completa mostra o cronograma, a conferência da implantação e o termo de entrega.",
+          "duracao_seg": 37,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/ogZZFVqUF4ax/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/ogZZFVqUF4ax/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "24": {
+          "id": "fwR3Ezms8oWb",
+          "aula": 24,
+          "aula_titulo": "Aula 24 — Desenvolvimento do paisagismo da Chácara-Modelo",
+          "titulo": "O croqui recebe sol, água e norte; a paleta muda na seca.",
+          "ponte": "No curso, as sete páginas do projeto da Chácara-Modelo, montadas uma a uma.",
+          "duracao_seg": 34,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/fwR3Ezms8oWb/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/fwR3Ezms8oWb/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "25": {
+          "id": "Fo_EL5i0KVWJ",
+          "aula": 25,
+          "aula_titulo": "Aula 25 — Apresentação, avaliação e plano de evolução profissional",
+          "titulo": "O projeto passa para outras mãos e duas perguntas mostram o que falta.",
+          "ponte": "A aula inteira traz os seis critérios de avaliação e a revisão do jardim a cada estação.",
+          "duracao_seg": 36,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/Fo_EL5i0KVWJ/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/Fo_EL5i0KVWJ/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        }
+      }
+    },
+    "pedreiro-completo-na-pratica": {
+      "curso_url": "https://academia.villelastay.com.br/academy/cursos/pedreiro-completo-na-pratica",
+      "amostras": {
+        "1": {
+          "id": "blXge9F2j_Y8",
+          "aula": 1,
+          "aula_titulo": "Aula 01 — Funções do pedreiro e sequência de uma obra",
+          "titulo": "O calendário do Cerrado com a janela da obra externa marcada na seca.",
+          "ponte": "A aula inteira mostra quem faz o quê e a sequência de uma reforma pequena.",
+          "duracao_seg": 35,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/blXge9F2j_Y8/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/blXge9F2j_Y8/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "2": {
+          "id": "T166SZAhydxF",
+          "aula": 2,
+          "aula_titulo": "Aula 02 — Segurança, EPIs, organização e descarte",
+          "titulo": "O canteiro certo e o errado, lado a lado: limite, caminho livre, material baixo.",
+          "ponte": "No curso, os riscos um a um, a proteção de cada tarefa e o que se contrata.",
+          "duracao_seg": 46,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/T166SZAhydxF/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/T166SZAhydxF/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "3": {
+          "id": "NJ2HjDZrUMCV",
+          "aula": 3,
+          "aula_titulo": "Aula 03 — Medição, nível, prumo, alinhamento e esquadro",
+          "titulo": "As duas diagonais do cômodo: iguais, cantos no esquadro; diferentes, cômodo torto.",
+          "ponte": "A aula completa ensina as contas de área e as conferências de nível, prumo e esquadro.",
+          "duracao_seg": 45,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/NJ2HjDZrUMCV/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/NJ2HjDZrUMCV/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "4": {
+          "id": "ssmMnD2alWvy",
+          "aula": 4,
+          "aula_titulo": "Aula 04 — Leitura básica de plantas, cortes e detalhes",
+          "titulo": "A régua escolar sobre a planta e a medida diferente da cota.",
+          "ponte": "No curso, planta, corte e elevação do depósito, lidos cota por cota.",
+          "duracao_seg": 51,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/ssmMnD2alWvy/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/ssmMnD2alWvy/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "5": {
+          "id": "Gr6-KIL_86xi",
+          "aula": 5,
+          "aula_titulo": "Aula 05 — Estrutura versus vedação: o que nunca alterar sem projeto",
+          "titulo": "A parede entre cozinha e sala e a pergunta: o que ela sustenta?",
+          "ponte": "A aula inteira mostra o caminho das cargas e quando parar e chamar o engenheiro.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/Gr6-KIL_86xi/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/Gr6-KIL_86xi/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "6": {
+          "id": "KHECnQ0LMa6Q",
+          "aula": 6,
+          "aula_titulo": "Aula 06 — Ferramentas essenciais e uso correto",
+          "titulo": "Duas réguas de alumínio sobre o balcão e o fio de luz por baixo.",
+          "ponte": "No curso, os cinco grupos de ferramentas e o que fica com o profissional contratado.",
+          "duracao_seg": 48,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/KHECnQ0LMa6Q/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/KHECnQ0LMa6Q/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "7": {
+          "id": "NbJp2ncoPonC",
+          "aula": 7,
+          "aula_titulo": "Aula 07 — Cimentos, agregados, argamassas e concretos",
+          "titulo": "Duas argamassas em corte: pouca água, poucos vazios; muita água, fissura.",
+          "ponte": "A aula completa ensina a ler o saco e a escolher cada material pela função.",
+          "duracao_seg": 42,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/NbJp2ncoPonC/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/NbJp2ncoPonC/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "8": {
+          "id": "gYYt8q_bsXOt",
+          "aula": 8,
+          "aula_titulo": "Aula 08 — Blocos, tijolos e materiais de revestimento",
+          "titulo": "A parede em corte, camada por camada, cada uma com o seu trabalho.",
+          "ponte": "No curso, blocos, placas e argamassas, e como conferir e guardar o material que chega.",
+          "duracao_seg": 47,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/gYYt8q_bsXOt/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/gYYt8q_bsXOt/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "9": {
+          "id": "X9O2hXhNyPGC",
+          "aula": 9,
+          "aula_titulo": "Aula 09 — Visita técnica, diagnóstico e marcação",
+          "titulo": "A linha medida num ponto só chega torta ao fundo do depósito.",
+          "ponte": "A aula inteira mostra a visita, o diagnóstico e a marcação da parede no piso.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/X9O2hXhNyPGC/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/X9O2hXhNyPGC/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "10": {
+          "id": "qT4mAg8W3u8u",
+          "aula": 10,
+          "aula_titulo": "Aula 10 — Quantitativos, logística e preparação do serviço",
+          "titulo": "Duas paredes: uma sobe sem desenho e ganha remendo; a outra nasce do papel.",
+          "ponte": "No curso, a conta de blocos por dois caminhos, as perdas e o calendário da obra.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/qT4mAg8W3u8u/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/qT4mAg8W3u8u/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "11": {
+          "id": "O93SNs54boPw",
+          "aula": 11,
+          "aula_titulo": "Aula 11 — Preparação da base e primeira fiada",
+          "titulo": "O piso mais alto no meio e a onda que cada fiada copia.",
+          "ponte": "A aula completa mostra a base, a fiada a seco e as conferências antes de subir.",
+          "duracao_seg": 34,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/O93SNs54boPw/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/O93SNs54boPw/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "12": {
+          "id": "dFiWQyNg9Kng",
+          "aula": 12,
+          "aula_titulo": "Aula 12 — Elevação, amarração, prumo e alinhamento",
+          "titulo": "Duas paredes lado a lado: juntas alinhadas em coluna e juntas desencontradas.",
+          "ponte": "No curso, as quatro conferências de cada fiada e o painel de treino no chão.",
+          "duracao_seg": 35,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/dFiWQyNg9Kng/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/dFiWQyNg9Kng/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "13": {
+          "id": "x3pLFsygCEWF",
+          "aula": 13,
+          "aula_titulo": "Aula 13 — Vãos, vergas, contravergas e encontros",
+          "titulo": "O vão da porta sem nada por cima e as duas fissuras nos cantos.",
+          "ponte": "A aula inteira explica o que é do contratado e o que você confere no vão.",
+          "duracao_seg": 37,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/x3pLFsygCEWF/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/x3pLFsygCEWF/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "14": {
+          "id": "sS3Vi_rd9I0B",
+          "aula": 14,
+          "aula_titulo": "Aula 14 — Passagens de instalações e compatibilização",
+          "titulo": "A parede pronta rasgada de cima a baixo por causa de uma tomada.",
+          "ponte": "No curso, a ordem dos ofícios e o que fotografar antes de revestir.",
+          "duracao_seg": 39,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/sS3Vi_rd9I0B/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/sS3Vi_rd9I0B/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "15": {
+          "id": "xQBb48lNKY9P",
+          "aula": 15,
+          "aula_titulo": "Aula 15 — Conferência e correção da alvenaria",
+          "titulo": "O revestimento desce como cortina e esconde o que não foi conferido.",
+          "ponte": "A aula completa percorre os cinco pontos de conferência da parede, com a ficha.",
+          "duracao_seg": 33,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/xQBb48lNKY9P/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/xQBb48lNKY9P/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "16": {
+          "id": "39mBAewk6TNn",
+          "aula": 16,
+          "aula_titulo": "Aula 16 — Chapisco, emboço, reboco e cura",
+          "titulo": "A parede em corte ganha chapisco, emboço e reboco, cada um com seu trabalho.",
+          "ponte": "No curso, os tempos entre as camadas, as mestras e a cura no clima seco.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/39mBAewk6TNn/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/39mBAewk6TNn/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "17": {
+          "id": "EhFFFDmD4PdF",
+          "aula": 17,
+          "aula_titulo": "Aula 17 — Contrapiso, caimentos e regularização",
+          "titulo": "Contrapiso em nível, bolha no centro e a gota parada longe do ralo.",
+          "ponte": "A aula inteira mostra o caimento da porta ao ralo e a conferência com água.",
+          "duracao_seg": 32,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/EhFFFDmD4PdF/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/EhFFFDmD4PdF/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "18": {
+          "id": "xKfxUU5nwzeh",
+          "aula": 18,
+          "aula_titulo": "Aula 18 — Paginação e assentamento cerâmico",
+          "titulo": "As placas chegam ao canto e o ralo cai no meio de uma inteira.",
+          "ponte": "No curso, a paginação da sala desenhada placa por placa, antes da compra.",
+          "duracao_seg": 45,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/xKfxUU5nwzeh/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/xKfxUU5nwzeh/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "19": {
+          "id": "LqfHdNrFl3ky",
+          "aula": 19,
+          "aula_titulo": "Aula 19 — Rejuntamento, selagem e acabamento",
+          "titulo": "A régua encostada na parede e a fresta de luz que mostra a ondulação.",
+          "ponte": "A aula completa traz os três critérios de conferência e onde vai rejunte ou selante.",
+          "duracao_seg": 47,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/LqfHdNrFl3ky/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/LqfHdNrFl3ky/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "20": {
+          "id": "TrPhn4gbplpG",
+          "aula": 20,
+          "aula_titulo": "Aula 20 — Umidade, impermeabilização, áreas externas e pequenos reparos",
+          "titulo": "A mancha que volta e a parede em corte: umidade subindo do solo.",
+          "ponte": "No curso, os caminhos da água, a drenagem e os reparos que são seus.",
+          "duracao_seg": 51,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/TrPhn4gbplpG/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/TrPhn4gbplpG/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "21": {
+          "id": "D61WzSs4CGT5",
+          "aula": 21,
+          "aula_titulo": "Aula 21 — Controle de qualidade e prevenção de retrabalho",
+          "titulo": "A fissura coberta com massa volta, e a ficha está em branco.",
+          "ponte": "A aula inteira ensina a registrar, medir e acompanhar defeitos antes de qualquer reparo.",
+          "duracao_seg": 35,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/D61WzSs4CGT5/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/D61WzSs4CGT5/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "22": {
+          "id": "3q1f8DTRuKrE",
+          "aula": 22,
+          "aula_titulo": "Aula 22 — Orçamento, produtividade e formação de preço",
+          "titulo": "Duas propostas só com o total e uma trena sem nada para conferir.",
+          "ponte": "No curso, a planilha de quantidades que deixa duas propostas comparáveis linha por linha.",
+          "duracao_seg": 36,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/3q1f8DTRuKrE/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/3q1f8DTRuKrE/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "23": {
+          "id": "bK0ejI2aImbX",
+          "aula": 23,
+          "aula_titulo": "Aula 23 — Proposta, medição, entrega e garantia",
+          "titulo": "A parcela paga no calendário e a etapa ainda pela metade no quadro.",
+          "ponte": "A aula completa mostra proposta, medição por etapa, aditivo, aceite e garantia.",
+          "duracao_seg": 36,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/bK0ejI2aImbX/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/bK0ejI2aImbX/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "24": {
+          "id": "TdjnUnhrcHXN",
+          "aula": 24,
+          "aula_titulo": "Aula 24 — Execução acompanhada do módulo da Chácara-Modelo",
+          "titulo": "O depósito vazio e a ficha de dez etapas presa na porta.",
+          "ponte": "No curso, a reforma percorrida etapa por etapa, com a conferência de cada uma.",
+          "duracao_seg": 53,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/TdjnUnhrcHXN/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/TdjnUnhrcHXN/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "25": {
+          "id": "66wae9z9QEQR",
+          "aula": 25,
+          "aula_titulo": "Aula 25 — Avaliação prática e plano de desenvolvimento profissional",
+          "titulo": "Uma pessoa de fora lê o projeto e devolve com marcas a lápis.",
+          "ponte": "A aula inteira traz a rubrica de avaliação e o plano para aprender o gesto.",
+          "duracao_seg": 37,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/66wae9z9QEQR/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/66wae9z9QEQR/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        }
+      }
+    },
+    "construcao-com-conteineres-na-pratica": {
+      "curso_url": "https://academia.villelastay.com.br/academy/cursos/construcao-com-conteineres-na-pratica",
+      "amostras": {}
+    }
+  }
+}
