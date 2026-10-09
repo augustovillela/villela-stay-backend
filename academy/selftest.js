@@ -2822,6 +2822,9 @@ async function main() {
   // ================= ESTUDO (academy\estudo\) =================
   await require('./estudo/testes').rodar({ t, req, EST, impId });
 
+  // ================= AMOSTRAS GRÁTIS (amostras.js): trechos públicos de vídeo =================
+  await require('./testes-amostras').rodar({ t, req, base: () => BASE, emailProdutor: MARIA.email });
+
   // ================= CARTEIRA DE IA (carteira-ia.js) — por último: liga a cobrança =================
   await require('./testes-carteira-ia').rodar({ t, req, impId, jars });
 

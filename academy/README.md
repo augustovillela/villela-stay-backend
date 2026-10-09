@@ -221,6 +221,96 @@ webhook/consulta segura (nunca pelo retorno do navegador).
    custo estimado em ¢USD) e limite diário por usuário via config
    (`ia.consultas_dia`) — sem chave configurada o recurso avisa e desliga.
 
+## Amostras grátis (trechos públicos de vídeo)
+
+Trechos curtos (30 a 60 s, um por aula) que qualquer visitante assiste sem login. Aparecem
+na página de venda do curso (seção **Amostras grátis**), no card do marketplace (selo
+"amostras grátis") e nos artigos do blog de villelastay.com.br. Código: `amostras.js`
+(modelo, validação, storage), `rotas-amostras.js` (rotas), `testes-amostras.js` (suíte).
+
+**Por que a porta pública não serve aula paga.** Não é uma checagem de permissão, é o desenho:
+
+1. tabela própria (`amostras`) — a rota pública nunca consulta `media_files`, então o id de
+   um vídeo de aula não existe para ela;
+2. prefixo próprio no storage (`amostras/<produto>/…`), conferido de novo na entrega: linha
+   adulterada apontando para outro arquivo responde 404;
+3. só curso **publicado** — rascunho, em revisão, pausado, suspenso e removido respondem 404
+   (na lista e nos bytes). A amostra de curso em rascunho fica guardada e aparece sozinha
+   quando ele for publicado.
+
+**Identidade = (produto, aula).** `aula: 3` vira a chave `aula-3`. Reenviar a mesma aula
+substitui: o `id` (e portanto a URL) continua, o arquivo antigo sai do storage e a `versao`
+sobe — é ela que vai em `?v=`. Reenviar o **mesmo** arquivo não troca nada. Amostra sem
+aula usa `chave` livre (padrão `curso`).
+
+### Rotas
+
+| Rota | Quem | O quê |
+|---|---|---|
+| `GET /academy/api/cursos/:slug/amostras` | público | lista (JSON) das amostras do curso publicado; rascunho → 404 |
+| `GET /academy/api/amostras/:id/video.mp4` | público | o trecho; aceita `Range` (206), `HEAD`, `If-None-Match` |
+| `GET /academy/api/amostras/:id/capa.jpg` | público | a capa (JPG, PNG ou WebP — o `Content-Type` diz qual) |
+| `GET /staff/api/academy/amostras?produtor_email=&produto_id=` | `PUBLISH_KEY` ou admin | o que está guardado, com versão e tamanho |
+| `POST /staff/api/academy/amostras/importar` | `PUBLISH_KEY` ou admin | cria/substitui em lote (até 30 por requisição) |
+| `POST /staff/api/academy/amostras/remover` | `PUBLISH_KEY` ou admin | apaga uma (`aula`, `chave` ou `id`) — linha e arquivos |
+
+Corpo da importação (só toca no que veio; amostra **nova** exige `video`, `chamada` e `duracao`):
+
+```json
+{ "produtor_email": "…", "produto_id": "…",
+  "amostras": [ { "aula": 3, "chamada": "título curto", "ponte": "frase de convite", "duracao": 39,
+                  "video": { "mime": "video/mp4", "conteudo_base64": "…" },
+                  "capa":  { "mime": "image/jpeg", "conteudo_base64": "…" } } ] }
+```
+
+Limites: vídeo MP4 até 12 MB (conferido pela assinatura `ftyp`), capa JPG/PNG/WebP até 2 MB,
+duração até 180 s, 60 amostras por curso. O envio é validado **inteiro** antes da primeira
+escrita. Cliente pronto: `stays\academy-amostras.ps1` (`Send-AcademyAmostras`,
+`Get-AcademyAmostras`, `Remove-AcademyAmostra`), uma amostra por requisição.
+
+**Não há rascunho de amostra**: em curso publicado ela está no ar assim que o envio termina.
+
+### Cache, Range e CORS
+
+- Os caminhos públicos ficam sob `/academy/api` de propósito: o service worker do app não
+  intercepta `/api`, e o padrão ali é `no-store` — então 404 e 416 nunca saem cacheáveis.
+- Sucesso: `?v=<versão atual>` → `public, max-age=31536000, immutable`; sem `?v=` (ou com uma
+  antiga) → `max-age=3600`. A lista JSON: `max-age=300`.
+- Com o storage no R2 os bytes **passam pelo servidor** (URL estável para o blog e para o
+  cache; presignada expira), e o `Range` do visitante é repassado ao bucket. Por isso **o
+  bucket não precisa de regra de CORS nova**.
+- CORS (`Access-Control-Allow-Origin` + `Vary: Origin`) para `https://villelastay.com.br` e
+  `https://www.villelastay.com.br`; outras origens entram pela env `ACADEMY_AMOSTRAS_ORIGENS`
+  (lista separada por vírgula). O `<video>` em si não depende de CORS — o cabeçalho serve
+  para o `fetch()` da lista.
+
+### Trecho para o blog
+
+HTML mínimo para o artigo da aula N — só URLs públicas, sem script. Pegue `id` e `versao` em
+`Get-AcademyAmostras` (ou na lista JSON, que já traz `video_url` e `capa_url` prontas):
+
+```html
+<figure class="amostra-aula">
+  <video controls playsinline preload="none" width="1280" height="720"
+         style="width:100%;height:auto;aspect-ratio:16/9;background:#0B1120"
+         poster="https://academia.villelastay.com.br/academy/api/amostras/ID/capa.jpg?v=VERSAO"
+         aria-label="Amostra grátis da aula N">
+    <source src="https://academia.villelastay.com.br/academy/api/amostras/ID/video.mp4?v=VERSAO" type="video/mp4">
+  </video>
+  <figcaption>
+    <strong>Amostra grátis · Aula N</strong> — PONTE (a frase de convite da amostra)
+    <a href="https://academia.villelastay.com.br/academy/cursos/SLUG-DO-CURSO">Ver o curso completo →</a>
+  </figcaption>
+</figure>
+```
+
+`preload="none"` faz o artigo não baixar vídeo antes do clique; `width`/`height` reservam o
+espaço (sem salto de layout). Se a amostra for trocada, a URL com o `?v=` antigo continua
+respondendo (com cache curto) e já entrega o arquivo novo — atualizar o `?v=` no artigo só
+devolve o cache longo. Para montar por script em vez de colar: `GET
+https://academia.villelastay.com.br/academy/api/cursos/SLUG/amostras` devolve
+`{ curso: { titulo, slug, url }, amostras: [{ id, aula, aula_titulo, titulo, ponte, duracao_seg, video_url, capa_url, … }] }`.
+
 ## Rodar e testar
 
 ```

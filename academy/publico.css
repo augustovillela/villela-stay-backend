@@ -215,3 +215,33 @@
    `p` e tira o `margin:auto`, então "text-align:center" centraliza dentro de uma
    caixa que já está encostada à esquerda. Esta classe devolve a caixa inteira. */
 .sec .pv-centro{max-width:none;width:100%;margin-left:auto;margin-right:auto;text-align:center}
+
+/* ---------- AMOSTRAS GRÁTIS (página do curso + selo do card) ----------
+   Trechos públicos de vídeo. A coluna usa minmax(min(100%,230px),1fr): com
+   `1fr` puro um título longo inflaria a coluna e a grade estouraria no celular. */
+.pv-am-intro{margin:-6px 0 16px!important}
+.pv-amostras{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:16px}
+.pv-am{margin:0;min-width:0;background:#fff;border:1px solid var(--pv-borda);border-radius:14px;overflow:hidden;
+  box-shadow:var(--pv-sombra);display:flex;flex-direction:column}
+.pv-am video{display:block;width:100%;max-width:none;aspect-ratio:16/9;background:#0B1120;object-fit:cover}
+.pv-am figcaption{display:flex;flex-direction:column;gap:5px;padding:12px 14px 14px}
+.pv-am .meta{font:700 .72rem/1.3 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--pv-ambar2)}
+.pv-am b{font:600 .95rem/1.4 'Inter',sans-serif;color:var(--pv-navy);overflow-wrap:anywhere}
+.pv-am .ponte{font-size:.86rem;line-height:1.5;color:var(--pv-tinta2);overflow-wrap:anywhere}
+.pv-am-mais{margin:16px 0 0}
+.pv-am-mais>summary{cursor:pointer;display:inline-block;list-style:none;font:600 .92rem/1 'Inter',sans-serif;color:var(--pv-navy);
+  border:1px solid var(--pv-borda);border-radius:99px;padding:11px 18px;background:#fff}
+.pv-am-mais>summary::-webkit-details-marker{display:none}
+.pv-am-mais>summary:hover{border-color:var(--pv-ambar);color:var(--pv-ambar2)}
+.pv-am-mais[open]>summary{margin-bottom:16px}
+.pv-am-cta{margin:18px 0 0!important;font-weight:600}
+.pv-compra video.capa{width:100%;max-width:none;aspect-ratio:16/9;object-fit:cover;background:#0B1120;display:block}
+.cardp .tag.amostra{background:#E9F6F0;color:var(--pv-ok)}
+/* no celular as amostras viram uma faixa que rola de lado: seis cartões em pilha são
+   2 000 px de rolagem antes do currículo. O cartão seguinte aparece cortado de propósito
+   (84%), que é o que avisa que há mais para o lado. */
+@media(max-width:700px){
+  .pv-amostras{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:84%;overflow-x:auto;
+    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;margin:0 -22px;padding:2px 22px 12px;scroll-padding:0 22px}
+  .pv-am{scroll-snap-align:start}
+}
