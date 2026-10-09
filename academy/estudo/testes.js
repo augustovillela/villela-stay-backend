@@ -436,6 +436,20 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal((await req('GET', `${esc}/leitura?disciplina=9.9`, { jar: 'olga' })).st, 404);
   });
 
+  await t('estudo: mapa mental — o painel diz quais aulas têm mapa, e a tela sabe desenhá-lo', async () => {
+    const p = (await req('GET', `${esc}/painel`, { jar: 'olga' })).json;
+    assert.ok(p.unidades.every(u => typeof u.mapa === 'boolean'), 'cada aula diz se tem mapa mental');
+    const tela = require('fs').readFileSync(require('path').join(__dirname, '..', 'app-estudo.js'), 'utf8');
+    const ini = tela.indexOf('function arvoreDoMapa'), fim = tela.indexOf('var CSS_MAPA');
+    const { arvoreDoMapa, htmlDoMapa } = new Function('esc', tela.slice(ini, fim) + ';return { arvoreDoMapa, htmlDoMapa };')(x => String(x).replace(/</g, '&lt;'));
+    const arv = arvoreDoMapa(['- Prescrição', '  - Bienal', '    - CF, art. 7º, XXIX', '  - Quinquenal', '- Decadência'].join('\n'));
+    assert.deepEqual([arv.f.length, arv.f[0].f.length, arv.f[0].f[0].f[0].t], [2, 2, 'CF, art. 7º, XXIX']);
+    const html = htmlDoMapa('Aula <x>', ['- A', '- B', '  - b1'].join('\n'));
+    assert.ok(/class="centro">Aula &lt;x>/.test(html) && (html.match(/class="ramo"/g) || []).length === 2, 'dois troncos: o centro é o título da aula, escapado');
+    assert.ok(/class="centro">Tronco/.test(htmlDoMapa('Aula', ['- Tronco', '  - a', '  - b'].join('\n'))), 'um tronco só vira o centro');
+    assert.equal(htmlDoMapa('Aula', 'texto sem itens'), '', 'sem árvore não há mapa');
+  });
+
   await t('estudo: cards — a sessão diz os limites do dia; o acervo inteiro é só do revisor e não agenda nada', async () => {
     const c = (await req('GET', `${esc}/cards`, { jar: 'olga' })).json;
     assert.deepEqual([c.limites.novos_dia, c.limites.revisoes_dia, c.revisor], [5, 20, false], 'a tela explica "Card 1 de 5" com estes números');

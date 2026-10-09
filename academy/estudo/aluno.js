@@ -186,7 +186,9 @@ function painel(usuario, produto, slugEscopo) {
     },
     competencias: est,
     itens,
-    unidades: R.unidades(escopo.id, c.vis).map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min, competencias: u.competencias, status: u.status })),
+    // `mapa` diz à lista de aulas se há mapa mental para oferecer (ele mora no material de véspera)
+    unidades: R.unidades(escopo.id, c.vis).map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min, competencias: u.competencias, status: u.status,
+      mapa: !!(u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa) })),
     regra_pontuacao: escopo.regra_pontuacao,
     revisoes: { hoje: fila.hoje.length, adiadas: fila.adiadas },
     desempenho: {
