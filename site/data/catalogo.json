@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-09T00:57:02.003Z",
+  "coletadoEm": "2026-10-09T11:58:13.511Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -198,6 +198,14 @@
     }
   ],
   "cursos": [
+    {
+      "slug": "pedreiro-completo-na-pratica",
+      "titulo": "Pedreiro Completo na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 8 minutos, cada uma com o artigo da aula em PDF, com checklists e fichas, para planejar, executar e conferir uma obra pequena e não estrutural, e para saber o que contratar e o que só fiscalizar. Coleção Viver de Chácara.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/sxcLeiXlUR2k?v=e9q_H23orPXC",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/pedreiro-completo-na-pratica"
+    },
     {
       "slug": "paisagismo-na-pratica",
       "titulo": "Paisagismo na Prática",
