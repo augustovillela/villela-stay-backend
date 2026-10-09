@@ -259,3 +259,13 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-mc-txt{flex:1 1 320px;min-width:0}
 .es-pr-of{flex-direction:row;align-items:center;gap:6px}
 @media(max-width:640px){.es-mc-linha{grid-template-columns:1fr 40px}.es-mc-linha .es-mc-barra,.es-mc-obs{grid-column:1/-1}}
+/* painel de marcações dentro do leitor */
+.es-kd-painel{position:absolute;top:0;right:0;bottom:0;width:min(420px,92vw);z-index:5;overflow-y:auto;background:var(--kd-bg);color:var(--kd-fg);border-left:1px solid var(--kd-linha);box-shadow:-12px 0 32px rgba(0,0,0,.18);padding:14px 16px 24px;font:400 .95rem/1.5 Inter,system-ui,sans-serif}
+.es-kd-painel[hidden]{display:none}
+.es-kd-pn-topo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
+.es-kd-pn-sub{color:var(--kd-fraco);font-size:.88rem;margin:6px 0 10px}
+.es-kd-painel h4{font:700 .95rem/1.3 'Lora',Georgia,serif;color:var(--kd-tit);margin:16px 0 6px}
+.es-kd-pn-item{padding:8px 0;border-top:1px solid var(--kd-linha)}
+.es-kd-pn-trecho{display:block;width:100%;text-align:left;border:0;border-radius:6px;padding:8px 10px;font:400 .95rem/1.5 Georgia,serif;color:#14161a;cursor:pointer;white-space:pre-wrap}
+.es-kd-pn-nota{margin:5px 0 2px;font-style:italic}
+.es-kd-painel .es-link{color:var(--kd-fraco)}

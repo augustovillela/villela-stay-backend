@@ -502,6 +502,8 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(/<mark class="mt-verde" data-mt="z">no <\/mark><mark class="mt-verde" data-mt="z"><b>art\. 7º<\/b><\/mark>/.test(h3), h3);
     // a leitura é um fluxo de colunas: a página é do navegador, e o texto do DOM continua sendo o cru
     assert.ok(/columnWidth = larg \+ 'px'/.test(tela) && /function pontoNoDom/.test(tela), 'o leitor pagina por colunas e sabe achar um trecho no DOM');
+    assert.ok(/el\('es-kd-mt'\)\.onclick = function \(\) \{ fechar\(\); if \(painel\.hidden\) abrirPainel\(\); else fecharPainel\(\); \};/.test(tela), 'a caneta abre as marcações dentro do leitor — não sai do ponto de leitura');
+    assert.ok(/Você ainda não grifou nada em /.test(tela), 'sem marcações, o painel diz isso em vez de ficar vazio');
   });
 
   await t('estudo: mapas — a página que reúne os mapas mentais por disciplina', async () => {

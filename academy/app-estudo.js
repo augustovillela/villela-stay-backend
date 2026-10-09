@@ -359,7 +359,7 @@
           '<button class="es-kd-bt" id="es-kd-mais" title="Aumentar a letra" aria-label="Aumentar a letra">A+</button>' +
           '<button class="es-kd-bt" id="es-kd-tema" title="Trocar o fundo: claro, sépia ou escuro" aria-label="Trocar o fundo">◐</button>' +
           '<button class="es-kd-bt" id="es-kd-busca" title="Procurar na disciplina" aria-label="Procurar na disciplina">🔎</button>' +
-          '<button class="es-kd-bt" id="es-kd-mt" title="Minhas marcações" aria-label="Minhas marcações">🖍️</button>' +
+          '<button class="es-kd-bt" id="es-kd-mt" title="Marcações desta disciplina" aria-label="Marcações desta disciplina">🖍️</button>' +
           '<button class="es-kd-bt" id="es-kd-pdf" title="Imprimir ou salvar em PDF" aria-label="Imprimir ou salvar em PDF">🖨️</button></span></header>' +
           '<div class="es-kd-buscar" id="es-kd-buscar" hidden><input id="es-kd-q" maxlength="80" placeholder="Procurar nesta disciplina…" aria-label="Procurar nesta disciplina">' +
           '<button class="es-kd-bt" id="es-kd-q-ir">Próxima ocorrência</button><span class="es-kd-q-msg" id="es-kd-q-msg"></span></div>' +
@@ -367,6 +367,7 @@
           '<div class="es-kd-janela" id="es-kd-janela"><article class="es-ler es-kd-fluxo" id="es-ler-art"></article></div>' +
           '<button class="es-kd-lado" id="es-kd-prox" aria-label="Próxima página">›</button></div>' +
           '<footer class="es-kd-pe"><div class="es-ler-barra"><i id="es-kd-barra"></i></div><div class="es-kd-onde" id="es-kd-onde"></div></footer>' +
+          '<aside class="es-kd-painel" id="es-kd-painel" hidden aria-label="Marcações desta disciplina"></aside>' +
           '<div class="es-mt-barra" id="es-mt" hidden></div>';
         alvo.innerHTML = ''; alvo.appendChild(kd);
         var rolagemAntes = document.documentElement.style.overflow;
@@ -421,7 +422,60 @@
         el('es-kd-menos').onclick = function () { var i = TAM_KD.indexOf(pref.tam); if (i > 0) { pref.tam = TAM_KD[i - 1]; guardarPref(); semAnimar(function () { medir(pg / total); }); } };
         el('es-kd-mais').onclick = function () { var i = TAM_KD.indexOf(pref.tam); if (i < TAM_KD.length - 1) { pref.tam = TAM_KD[i + 1]; guardarPref(); semAnimar(function () { medir(pg / total); }); } };
         el('es-kd-tema').onclick = function () { pref.tema = TEMAS_KD[(TEMAS_KD.indexOf(pref.tema) + 1) % TEMAS_KD.length]; kd.setAttribute('data-tema', pref.tema); guardarPref(); };
-        el('es-kd-mt').onclick = function () { sair(minhasMarcacoes); };
+        // A caneta abre as marcações DESTA disciplina sem sair da página que está sendo lida: quem está
+        // estudando quer rever o que grifou e voltar ao mesmo ponto, não procurar a aula de novo na lista.
+        var painel = el('es-kd-painel');
+        function irParaMarca(id) {
+          var k = marcas.filter(function (x) { return x.id === id; })[0];
+          if (!k) return;
+          var i = -1;
+          r.aulas.forEach(function (a, n) { if (a.codigo === k.unidade) i = n; });
+          if (i < 0) return;
+          if (i !== ia) abrirAula(i, 0);
+          var destino = art.querySelector('mark[data-mt="' + id + '"]');
+          if (!destino) return;
+          semAnimar(function () { pg = Math.min(total - 1, Math.max(0, Math.floor(destino.offsetLeft / (larg + VAO_KD)))); mostrar(); });
+          destino.classList.add('pisca');
+          setTimeout(function () { destino.classList.remove('pisca'); }, 2500);
+        }
+        function fecharPainel() { painel.hidden = true; painel.innerHTML = ''; }
+        function abrirPainel() {
+          var ordem = {}, grupos = [], por = {};
+          r.aulas.forEach(function (a, n) { ordem[a.codigo] = n; });
+          marcas.filter(function (k) { return ordem[k.unidade] != null; })
+            .sort(function (a, b) { return ordem[a.unidade] - ordem[b.unidade] || a.bloco - b.bloco || a.inicio - b.inicio; })
+            .forEach(function (k) {
+              var g = por[k.unidade];
+              if (!g) { g = por[k.unidade] = { titulo: r.aulas[ordem[k.unidade]].titulo, n: ordem[k.unidade], marcas: [] }; grupos.push(g); }
+              g.marcas.push(k);
+            });
+          var qtd = grupos.reduce(function (s, g) { return s + g.marcas.length; }, 0);
+          painel.innerHTML = '<div class="es-kd-pn-topo"><b>Marcações desta disciplina</b><button class="es-kd-bt" id="es-kd-pn-x" aria-label="Fechar as marcações">Fechar</button></div>' +
+            (qtd ? '<p class="es-kd-pn-sub">' + qtd + ' trecho(s) grifado(s) em ' + esc(r.nome) + '. Toque num trecho para ir até ele.</p>'
+              : '<p class="es-kd-pn-sub">Você ainda não grifou nada em ' + esc(r.nome) + '. Selecione um trecho do texto e escolha a cor.</p>') +
+            grupos.map(function (g) {
+              return '<h4>' + (g.n + 1) + '. ' + esc(g.titulo) + '</h4>' + g.marcas.map(function (k) {
+                return '<div class="es-kd-pn-item"><button class="es-kd-pn-trecho mt-' + esc(k.cor) + '" data-ir="' + esc(k.id) + '">' + esc(k.texto.length > 260 ? k.texto.slice(0, 260) + '…' : k.texto) + '</button>' +
+                  (k.nota ? '<p class="es-kd-pn-nota">✎ ' + esc(k.nota) + '</p>' : '') +
+                  '<button class="es-link" data-del="' + esc(k.id) + '">apagar</button></div>';
+              }).join('');
+            }).join('') +
+            '<p class="es-kd-pn-sub"><button class="es-link" id="es-kd-pn-todas">Ver as marcações de todas as disciplinas (fecha a leitura)</button></p>';
+          painel.hidden = false;
+          el('es-kd-pn-x').onclick = fecharPainel;
+          el('es-kd-pn-todas').onclick = function () { sair(minhasMarcacoes); };
+          cada(painel, '[data-ir]', function (b) { b.onclick = function () { var id = b.getAttribute('data-ir'); fecharPainel(); irParaMarca(id); }; });
+          cada(painel, '[data-del]', function (b) {
+            b.onclick = function () {
+              var id = b.getAttribute('data-del');
+              api('DELETE', base() + '/marcacoes/' + id).then(function () {
+                marcas = marcas.filter(function (x) { return x.id !== id; });
+                redesenhar(); abrirPainel();
+              }).catch(function (e) { painel.insertAdjacentHTML('afterbegin', '<p class="es-msg-erro">' + esc(e.message) + '</p>'); });
+            };
+          });
+        }
+        el('es-kd-mt').onclick = function () { fechar(); if (painel.hidden) abrirPainel(); else fecharPainel(); };
         // busca na disciplina inteira: da página atual em diante, dando a volta; o achado fica selecionado
         function semAcento(t) { return String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
         var achado = null, indice = null;
@@ -470,9 +524,10 @@
           if (!kd.isConnected) { document.removeEventListener('keydown', tecla); return; }
           var t = e.target && e.target.tagName;
           if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || e.ctrlKey || e.metaKey || e.altKey) return;
+          if (!painel.hidden && e.key !== 'Escape') return; // com as marcações abertas, a página não vira por trás
           if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); virar(1); }
           else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); virar(-1); }
-          else if (e.key === 'Escape') { if (!barra.hidden) fechar(); else sair(); }
+          else if (e.key === 'Escape') { if (!painel.hidden) fecharPainel(); else if (!barra.hidden) fechar(); else sair(); }
         }
         var espera = 0;
         function aoRedimensionar() {
