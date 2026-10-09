@@ -35,7 +35,7 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.get(`${base}/painel`, ...AL, h((req, res) => { semCache(res); res.json(al.painel(...a(req))); }));
 
   // ---- aula ativa ----
-  app.get(`${base}/unidades/:unidade`, ...AL, h((req, res) => { semCache(res); res.json(al.unidade(...a(req), req.params.unidade)); }));
+  app.get(`${base}/unidades/:unidade`, ...AL, h((req, res) => { semCache(res); res.json(al.unidade(...a(req), req.params.unidade, { nivel: String(req.query.nivel || '100') })); }));
   app.post(`${base}/unidades/:unidade/blocos/:n/solucao`, ...AL, h((req, res) => { res.json(al.solucaoDoBloco(...a(req), req.params.unidade, req.params.n, b(req).tentativa)); }));
 
   // ---- prática ----

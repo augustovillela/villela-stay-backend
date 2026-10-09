@@ -136,3 +136,15 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
   .es-cab h2{font-size:1.3rem}
 }
 @media (prefers-reduced-motion:reduce){.es-barra i{transition:none}}
+
+/* ADR-0005 — níveis do material e véspera por foco */
+.es-niveis { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 12px; }
+.es-vespera { margin: 16px 0 8px; }
+.es-vespera > summary { cursor: pointer; font-weight: 600; }
+.es-foco { margin: 10px 0 14px; padding: 10px 12px; border: 1px solid var(--al-borda, #e3e6ec); border-radius: 10px; }
+.es-foco h4 { margin: 0 0 8px; }
+.es-fichas { padding-left: 18px; margin: 0 0 8px; }
+.es-fichas li { margin: 4px 0; }
+.es-slide { margin: 8px 0; padding: 8px 10px; background: var(--al-fundo-2, #f4f6fa); border-radius: 8px; }
+.es-slide ul { margin: 4px 0 0; padding-left: 18px; }
+.es-mapa { white-space: pre-wrap; font: inherit; font-size: .92em; margin: 8px 0 0; padding: 8px 10px; background: var(--al-fundo-2, #f4f6fa); border-radius: 8px; }

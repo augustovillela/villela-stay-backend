@@ -162,11 +162,27 @@
     }
 
     // ================= AULA ATIVA =================
-    function unidade(alvo, codigo) {
-      api('GET', base() + '/unidades/' + encodeURIComponent(codigo)).then(function (u) {
+    var FOCO = { objetiva: 'Prova objetiva', escrita: 'Provas escritas', oral: 'Prova oral' };
+    function vespera(u) {
+      var focos = Object.keys(u.vespera || {});
+      if (!focos.length) return '';
+      return '<details class="es-vespera"><summary>Véspera de prova — fichas, slides e mapa</summary>' + focos.map(function (f) {
+        var p = u.vespera[f];
+        return '<section class="es-foco"><h4>' + esc(FOCO[f] || f) + (p.desatualizado ? ' <span class="marca-rasc">desatualizado</span>' : '') + '</h4>' +
+          (p.fichas.length ? '<ul class="es-fichas">' + p.fichas.map(function (x) { return '<li><b>' + esc(x.frente) + '</b> — ' + esc(x.verso) + '</li>'; }).join('') + '</ul>' : '') +
+          (p.slides.length ? p.slides.map(function (sl) { return '<div class="es-slide"><b>' + esc(sl.titulo) + '</b><ul>' + sl.topicos.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>'; }).join('') : '') +
+          (p.mapa ? '<pre class="es-mapa">' + esc(p.mapa) + '</pre>' : '') + '</section>';
+      }).join('') + '</details>';
+    }
+    function unidade(alvo, codigo, nivel) {
+      api('GET', base() + '/unidades/' + encodeURIComponent(codigo) + (nivel ? '?nivel=' + nivel : '')).then(function (u) {
         var acao = { pratica: 1, aplicacao: 1, desafio: 1, recordacao: 1 };
-        alvo.innerHTML = '<div class="jr-caixa es-aula"><p class="al-rotulo">Aula ativa' + (u.tempo_min ? ' · cerca de ' + horas(u.tempo_min) : '') + '</p><h3>' + esc(u.titulo) +
-          (u.status === 'rascunho' ? ' <span class="marca-rasc">rascunho</span>' : '') + '</h3>' +
+        // ADR-0005: o seletor só aparece quando a aula tem algum nível além do 100
+        var sel = u.niveis && u.niveis.length > 1 ? '<p class="es-niveis"><span class="al-fino">Quanto ler: </span>' + u.niveis.map(function (n) {
+          return '<button class="al-bt peq' + (n.nivel === u.nivel ? '' : ' fan') + '" data-nv="' + n.nivel + '"' + (n.disponivel ? '' : ' disabled') + ' title="' + (n.desatualizado ? 'resumo de versão anterior da aula' : '') + '">' + n.nivel + ' %</button>';
+        }).join(' ') + (u.nivel_motivo ? '<span class="al-fino"> ' + esc(u.nivel_motivo) + '</span>' : '') + '</p>' : '';
+        alvo.innerHTML = '<div class="jr-caixa es-aula"><p class="al-rotulo">Aula ativa' + (u.tempo_min ? ' · cerca de ' + horas(u.tempo_min) : '') + (u.nivel !== 100 ? ' · versão ' + u.nivel + ' %' : '') + '</p><h3>' + esc(u.titulo) +
+          (u.status === 'rascunho' ? ' <span class="marca-rasc">rascunho</span>' : '') + '</h3>' + sel +
           u.blocos.map(function (b) {
             return '<section class="es-bloco ' + b.tipo + '"><h4>' + esc(b.titulo || BLOCO[b.tipo]) + '</h4>' + texto(b.texto) +
               (b.criterio ? '<p class="al-fino"><b>Critério:</b> ' + esc(b.criterio) + '</p>' : '') +
@@ -177,8 +193,9 @@
           (u.midias.length ? '<p class="al-fino">Formatos desta aula: ' + u.midias.map(function (m) { return esc(m.tipo) + ' (' + (MIDIA[m.estado] || esc(m.estado)) + ')'; }).join(' · ') + '</p>' : '') +
           (u.fontes.length ? '<details class="es-fontes"><summary>Fontes</summary><ul>' + u.fontes.map(function (f) {
             return '<li>' + esc(f.titulo) + (f.consultado_em ? ' — consultado em ' + dataBR(f.consultado_em) : '') + '</li>';
-          }).join('') + '</ul></details>' : '') +
+          }).join('') + '</ul></details>' : '') + vespera(u) +
           '<div class="es-linha"><button class="al-bt" id="es-un-pr">Praticar esta competência</button><button class="al-bt fan" id="es-un-vt">Voltar ao programa</button></div></div>';
+        cada(alvo, '[data-nv]', function (b) { b.onclick = function () { unidade(alvo, codigo, b.getAttribute('data-nv')); }; });
         cada(alvo, '[data-sol]', function (b) {
           b.onclick = function () {
             var n = b.getAttribute('data-sol'), ta = alvo.querySelector('textarea[data-n="' + n + '"]'), msg = alvo.querySelector('[data-msg="' + n + '"]');

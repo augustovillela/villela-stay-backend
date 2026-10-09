@@ -188,12 +188,31 @@ function painel(usuario, produto, slugEscopo) {
 // UNIDADE (aula ativa): a solução de cada bloco só vai junto para o revisor;
 // o aluno a recebe depois de tentar (rota própria).
 // ---------------------------------------------------------------------
-function unidade(usuario, produto, slugEscopo, codigo) {
+// ADR-0005: `nivel` 100 (padrão) | 50 | 25 | 10 troca só a EXPLICAÇÃO pela versão
+// condensada; prática, aplicação e recordação não encolhem. Nível pedido que não
+// existe ou está desatualizado (o 100 mudou depois) cai para o 100 e diz por quê.
+function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100' } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
   const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(codigo));
   if (!u) throw erro('Unidade não encontrada.', 404);
+  const atual = (k) => u.niveis[k] && u.niveis[k].derivado_de_versao === u.versao;
+  const niveis = ['100', ...Object.keys(u.niveis)].map(k => ({ nivel: Number(k), disponivel: k === '100' || atual(k), desatualizado: k !== '100' && !!u.niveis[k] && !atual(k) }));
+  let usado = 100, motivo = '';
+  const pedido = String(nivel);
+  if (pedido !== '100') {
+    if (atual(pedido)) usado = Number(pedido);
+    else motivo = u.niveis[pedido] ? `O resumo de ${pedido} % ficou para trás: a aula completa mudou (versão ${u.versao}) e ele ainda é da versão ${u.niveis[pedido].derivado_de_versao}.` : `Esta aula ainda não tem o nível ${pedido} %.`;
+  }
+  let trocou = false;
+  const blocos = u.blocos.map((b, i) => {
+    let texto = b.texto;
+    if (usado !== 100 && b.tipo === 'explicacao' && !trocou) { texto = u.niveis[pedido].texto; trocou = true; }
+    else if (usado !== 100 && b.tipo === 'explicacao') texto = ''; // a condensação junta todas as explicações numa só
+    return { n: i, tipo: b.tipo, titulo: b.titulo, texto, criterio: b.criterio, pistas_disponiveis: b.pistas.length, tem_solucao: !!b.solucao };
+  }).filter(b => b.texto);
+  const vespera = Object.fromEntries(Object.entries(u.vespera).map(([f, p]) => [f, { ...p, desatualizado: p.derivado_de_versao !== u.versao }]));
   return { codigo: u.codigo, titulo: u.titulo, competencias: u.competencias, itens: u.itens, tempo_min: u.tempo_min, versao: u.versao, status: u.status, fontes: u.fontes, midias: u.midias,
-    blocos: u.blocos.map((b, i) => ({ n: i, tipo: b.tipo, titulo: b.titulo, texto: b.texto, criterio: b.criterio, pistas_disponiveis: b.pistas.length, tem_solucao: !!b.solucao })) };
+    nivel: usado, nivel_motivo: motivo, niveis, vespera, blocos };
 }
 function solucaoDoBloco(usuario, produto, slugEscopo, codigo, n, tentativa) {
   const c = abrir(usuario, produto, slugEscopo);

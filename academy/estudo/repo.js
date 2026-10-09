@@ -52,7 +52,47 @@ function competencias(escopoId) {
 const vinculos = (escopoId) => db.prepare('SELECT * FROM est_vinculos WHERE escopo_id = ?').all(escopoId);
 function unidades(escopoId, vis) {
   return db.prepare(`SELECT * FROM est_unidades WHERE escopo_id = ? AND status IN (${vis.map(() => '?').join(',')}) ORDER BY ordem`).all(escopoId, ...vis)
-    .map(u => ({ ...u, competencias: j.parse(u.competencias, []), itens: j.parse(u.itens, []), blocos: j.parse(u.blocos, []), fontes: j.parse(u.fontes, []), midias: j.parse(u.midias, []) }));
+    .map(u => ({ ...u, competencias: j.parse(u.competencias, []), itens: j.parse(u.itens, []), blocos: j.parse(u.blocos, []), fontes: j.parse(u.fontes, []), midias: j.parse(u.midias, []),
+      niveis: j.parse(u.niveis, {}), vespera: j.parse(u.vespera, {}) }));
+}
+
+// ADR-0005 — níveis derivados do nível 100 (a explicação dos blocos) e véspera por foco.
+// O tamanho de cada nível é conferido contra a explicação: 50 % com 80 % do texto não é resumo.
+const NIVEIS = ['50', '25', '10'];
+const FOCOS = ['objetiva', 'escrita', 'oral'];
+const TOLERANCIA_PP = 10;
+function validarNiveis(u, onde, blocos) {
+  const exp = blocos.filter(b => b.tipo === 'explicacao').map(b => b.texto).join('\n');
+  const niveis = {};
+  const cru = u.niveis && typeof u.niveis === 'object' ? u.niveis : {};
+  for (const k of Object.keys(cru)) {
+    if (!NIVEIS.includes(String(k))) throw erro(`${onde}: nível "${k}" não existe — use ${NIVEIS.join(', ')} (o 100 são os blocos).`);
+    const texto = s(cru[k] && (cru[k].texto != null ? cru[k].texto : cru[k]), 20000);
+    if (texto.length < 20) throw erro(`${onde}, nível ${k}: texto muito curto.`);
+    const pct = Math.round(100 * texto.length / Math.max(1, exp.length));
+    if (Math.abs(pct - Number(k)) > TOLERANCIA_PP) throw erro(`${onde}, nível ${k}: o texto tem ${pct} % da explicação — tolerância de ±${TOLERANCIA_PP} pontos.`);
+    niveis[k] = { texto, tamanho_pct: pct };
+  }
+  const vespera = {};
+  const cv = u.vespera && typeof u.vespera === 'object' ? u.vespera : {};
+  for (const f of Object.keys(cv)) {
+    if (!FOCOS.includes(f)) throw erro(`${onde}: foco de véspera "${f}" não existe — use ${FOCOS.join(', ')}.`);
+    const p = cv[f] || {};
+    const fichas = (Array.isArray(p.fichas) ? p.fichas : []).map((x, k) => {
+      const frente = s(x && x.frente, 300), verso = s(x && x.verso, 600);
+      if (!frente || !verso) throw erro(`${onde}, véspera ${f}, ficha ${k + 1}: frente e verso.`);
+      return { frente, verso };
+    });
+    const slides = (Array.isArray(p.slides) ? p.slides : []).map((x, k) => {
+      const titulo = s(x && x.titulo, 120), topicos = lista(x && x.topicos, 6, 200);
+      if (!titulo || !topicos.length) throw erro(`${onde}, véspera ${f}, slide ${k + 1}: título e tópicos.`);
+      return { titulo, topicos };
+    });
+    const mapa = s(p.mapa, 6000);
+    if (!fichas.length && !slides.length && !mapa) throw erro(`${onde}, véspera ${f}: vazia — fichas, slides ou mapa.`);
+    vespera[f] = { fichas, slides, mapa };
+  }
+  return { niveis, vespera };
 }
 const abrirQuestao = (r) => r && { ...j.parse(r.dados, {}), id: r.id, versao: r.versao, situacao: r.situacao, uso: r.uso, corrigivel: !!r.corrigivel, producer_id: r.producer_id };
 const Questoes = {
@@ -106,7 +146,8 @@ function validarUnidade(u, i, codComp, codItem) {
     return { tipo, estado, url, nota: s(m.nota, 300) };
   });
   const fontes = (Array.isArray(u.fontes) ? u.fontes : []).map(f => ({ titulo: s(f && f.titulo, 300), url: s(f && f.url, 400), consultado_em: s(f && f.consultado_em, 10), sustenta: s(f && f.sustenta, 400) })).filter(f => f.titulo);
-  return { codigo, titulo, competencias: comps, itens: its, blocos, midias, fontes, tempo_min: Math.max(0, Math.round(Number(u.tempo_min) || 0)) };
+  const { niveis, vespera } = validarNiveis(u, onde, blocos);
+  return { codigo, titulo, competencias: comps, itens: its, blocos, midias, fontes, niveis, vespera, tempo_min: Math.max(0, Math.round(Number(u.tempo_min) || 0)) };
 }
 
 // ---------------------------------------------------------------------
@@ -220,15 +261,23 @@ function importar(produto, dados = {}) {
       rel.unidades = { novas: 0, atualizadas: 0 };
       for (const [i, cru] of (Array.isArray(dados.unidades) ? dados.unidades : []).entries()) {
         const u = validarUnidade(cru, i, codComp, codItem);
-        const atual = db.prepare('SELECT id, blocos FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, u.codigo);
+        const atual = db.prepare('SELECT id, blocos, versao, niveis, vespera FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, u.codigo);
         const campos = [u.titulo, j.str(u.competencias), j.str(u.itens), j.str(u.blocos), j.str(u.fontes), j.str(u.midias), u.tempo_min];
+        // Derivados (ADR-0005) gravam a versão do nível 100 de que saíram. Quem manda só
+        // blocos novos NÃO perde os derivados antigos — eles ficam, marcados desatualizados.
+        const derivar = (obj, versao) => Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, { ...v, derivado_de_versao: versao }]));
+        const temNiveis = u.niveis && Object.keys(u.niveis).length, temVespera = u.vespera && Object.keys(u.vespera).length;
         if (!atual) {
-          db.prepare(`INSERT INTO est_unidades (id, escopo_id, codigo, ordem, titulo, competencias, itens, blocos, fontes, midias, tempo_min, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run(novoId(), escopo.id, u.codigo, i, ...campos, agora);
+          db.prepare(`INSERT INTO est_unidades (id, escopo_id, codigo, ordem, titulo, competencias, itens, blocos, fontes, midias, tempo_min, atualizado_em, niveis, vespera) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(novoId(), escopo.id, u.codigo, i, ...campos, agora, j.str(derivar(u.niveis, 1)), j.str(derivar(u.vespera, 1)));
           rel.unidades.novas++;
         } else {
-          db.prepare(`UPDATE est_unidades SET ordem = ?, titulo = ?, competencias = ?, itens = ?, blocos = ?, fontes = ?, midias = ?, tempo_min = ?, versao = versao + ?, atualizado_em = ? WHERE id = ?`)
-            .run(i, ...campos, atual.blocos !== j.str(u.blocos) ? 1 : 0, agora, atual.id);
+          const mudou = atual.blocos !== j.str(u.blocos) ? 1 : 0;
+          const versao = (atual.versao || 1) + mudou;
+          const niveis = temNiveis ? derivar(u.niveis, versao) : j.parse(atual.niveis, {});
+          const vespera = temVespera ? derivar(u.vespera, versao) : j.parse(atual.vespera, {});
+          db.prepare(`UPDATE est_unidades SET ordem = ?, titulo = ?, competencias = ?, itens = ?, blocos = ?, fontes = ?, midias = ?, tempo_min = ?, versao = versao + ?, atualizado_em = ?, niveis = ?, vespera = ? WHERE id = ?`)
+            .run(i, ...campos, mudou, agora, j.str(niveis), j.str(vespera), atual.id);
           rel.unidades.atualizadas++;
         }
       }

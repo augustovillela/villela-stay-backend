@@ -241,6 +241,31 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(/bienal/.test(sol.json.solucao), sol.texto);
   });
 
+  await t('estudo: níveis 50/25/10 derivam do 100 e medem o tamanho; mudou o 100, o resumo fica desatualizado (ADR-0005)', async () => {
+    const cheio = UNIDADE().blocos[0].texto; // 93 caracteres
+    let r = await importar({ escopo: ESC(), unidades: [UNIDADE({ niveis: { 50: cheio } })] });
+    assert.equal(r.st, 400, 'texto inteiro não é resumo de 50 %: ' + r.texto);
+    r = await importar({ escopo: ESC(), unidades: [UNIDADE({ niveis: { 50: 'Prescrição: cinco anos, limitados a dois após o fim.' },
+      vespera: { objetiva: { fichas: [{ frente: 'Prazo da prescrição trabalhista?', verso: '5 anos, até 2 após o fim do contrato (CF, art. 7º, XXIX).' }], slides: [{ titulo: 'Prescrição', topicos: ['quinquenal', 'bienal'] }] } } })] });
+    assert.equal(r.st, 200, r.texto);
+    let u = await req('GET', `${esc}/unidades/prescricao-base?nivel=50`, { jar: 'olga' });
+    assert.equal(u.json.nivel, 50, u.texto);
+    assert.ok(/limitados a dois/.test(u.json.blocos[0].texto) && !/pretensão trabalhista/.test(u.json.blocos[0].texto), 'a explicação é a condensada');
+    assert.equal(u.json.blocos.length, 2, 'prática não encolhe');
+    assert.equal(u.json.vespera.objetiva.fichas.length, 1);
+    assert.equal(u.json.vespera.objetiva.desatualizado, false);
+    assert.equal((await req('GET', `${esc}/unidades/prescricao-base?nivel=25`, { jar: 'olga' })).json.nivel, 100, 'nível que não existe cai para o 100');
+    assert.equal((await importar({ escopo: ESC(), unidades: [UNIDADE({ vespera: { prova: { mapa: 'x' } } })] })).st, 400, 'foco inventado é recusado');
+    // o 100 mudou (sem mandar níveis): o 50 continua guardado, mas marcado — e o aluno recebe o 100 com o motivo
+    const b = UNIDADE().blocos; b[0] = { ...b[0], texto: b[0].texto + ' A contagem começa na lesão do direito.' };
+    r = await importar({ escopo: ESC(), unidades: [UNIDADE({ blocos: b })] });
+    assert.equal(r.st, 200, r.texto);
+    u = await req('GET', `${esc}/unidades/prescricao-base?nivel=50`, { jar: 'olga' });
+    assert.deepEqual([u.json.nivel, u.json.niveis.find(n => n.nivel === 50).desatualizado], [100, true], u.texto);
+    assert.ok(/ficou para trás/.test(u.json.nivel_motivo), u.json.nivel_motivo);
+    assert.equal((await importar({ escopo: ESC(), unidades: [UNIDADE()] })).st, 200, 'volta ao original para os testes seguintes');
+  });
+
   await t('estudo: prática — gabarito fica no servidor, pista é contada por ele e questão repetida não vira domínio', async () => {
     const pr = await req('GET', `${esc}/praticar?competencia=prescricao&n=10`, { jar: 'olga' });
     assert.equal(pr.st, 200, pr.texto);

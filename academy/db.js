@@ -578,6 +578,14 @@ const MIGRACOES = [
           ALTER TABLE ai_usage_logs ADD COLUMN milesimos INTEGER DEFAULT 0; -- o que foi debitado do usuário
           ALTER TABLE ai_usage_logs ADD COLUMN product_id TEXT DEFAULT '';`,
   },
+  {
+    // ADR-0005: níveis do material (50/25/10 % derivados do nível 100 = blocos) e
+    // pacotes de véspera por foco (objetiva | escrita | oral). Derivados guardam a
+    // versão da unidade de que saíram: mudou o 100, o derivado fica desatualizado.
+    nome: 'estudo-niveis-2026-10-09',
+    sql: `ALTER TABLE est_unidades ADD COLUMN niveis TEXT DEFAULT '{}';
+          ALTER TABLE est_unidades ADD COLUMN vespera TEXT DEFAULT '{}';`,
+  },
 ];
 
 for (const m of MIGRACOES) {
