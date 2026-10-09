@@ -214,13 +214,27 @@ function importar(produto, dados = {}) {
     }
     const codItem = new Set(escopo.versao ? itens(escopo).map(i => i.codigo) : []);
 
+    // ORDEM em importação por partes (uma disciplina por envio): o índice dentro do
+    // pedido colidiria com o das outras disciplinas e a "próxima tarefa" saltaria de
+    // uma para outra. Regra: "ordem" explícita vale; sem ela, quem já existe fica onde
+    // está e quem é novo entra depois do último do escopo, na sequência do pedido.
+    const ordenador = (tabela) => {
+      const m = db.prepare(`SELECT MAX(ordem) m FROM ${tabela} WHERE escopo_id = ?`).get(escopo.id).m;
+      let prox = m == null ? 0 : m + 1;
+      return (cru, atual) => {
+        if (cru != null && cru !== '' && Number.isFinite(Number(cru))) return Math.round(Number(cru));
+        return atual ? atual.ordem : prox++;
+      };
+    };
+
     if (dados.competencias) {
       const lst = Array.isArray(dados.competencias) ? dados.competencias : [];
+      const ordemComp = ordenador('est_competencias');
       const prontas = lst.map((c, i) => {
         const codigo = slug(c.codigo || c.nome), resultado = s(c.resultado, 1000);
         if (!codigo) throw erro(`competência ${i + 1}: sem código.`);
         if (resultado.length < 20) throw erro(`competência ${codigo}: descreva o resultado observável ("Diante de…, o aluno…").`);
-        return { codigo, ordem: i, resultado, criterios: lista(c.criterios, 12, 400), depende_de: lista(c.depende_de, 12, 60).map(slug), erros_comuns: lista(c.erros_comuns, 12, 400), essencial: c.essencial === false ? 0 : 1 };
+        return { codigo, ordem: c.ordem, resultado, criterios: lista(c.criterios, 12, 400), depende_de: lista(c.depende_de, 12, 60).map(slug), erros_comuns: lista(c.erros_comuns, 12, 400), essencial: c.essencial === false ? 0 : 1 };
       });
       const todos = new Set([...competencias(escopo.id).map(c => c.codigo), ...prontas.map(c => c.codigo)]);
       prontas.forEach(c => c.depende_de.forEach(d => { if (!todos.has(d)) throw erro(`competência ${c.codigo}: depende de "${d}", que não existe.`); }));
@@ -228,6 +242,7 @@ function importar(produto, dados = {}) {
       rel.competencias = { novas: 0, atualizadas: 0 };
       for (const c of prontas) {
         const atual = db.prepare('SELECT * FROM est_competencias WHERE escopo_id = ? AND codigo = ?').get(escopo.id, c.codigo);
+        c.ordem = ordemComp(c.ordem, atual);
         if (!atual) {
           db.prepare(`INSERT INTO est_competencias (escopo_id, codigo, ordem, resultado, criterios, depende_de, erros_comuns, essencial) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
             .run(escopo.id, c.codigo, c.ordem, c.resultado, j.str(c.criterios), j.str(c.depende_de), j.str(c.erros_comuns), c.essencial);
@@ -259,9 +274,11 @@ function importar(produto, dados = {}) {
 
     if (dados.unidades) {
       rel.unidades = { novas: 0, atualizadas: 0 };
+      const ordemUn = ordenador('est_unidades');
       for (const [i, cru] of (Array.isArray(dados.unidades) ? dados.unidades : []).entries()) {
         const u = validarUnidade(cru, i, codComp, codItem);
-        const atual = db.prepare('SELECT id, blocos, versao, niveis, vespera FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, u.codigo);
+        const atual = db.prepare('SELECT id, ordem, blocos, versao, niveis, vespera FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, u.codigo);
+        const ord = ordemUn(cru.ordem, atual);
         const campos = [u.titulo, j.str(u.competencias), j.str(u.itens), j.str(u.blocos), j.str(u.fontes), j.str(u.midias), u.tempo_min];
         // Derivados (ADR-0005) gravam a versão do nível 100 de que saíram. Quem manda só
         // blocos novos NÃO perde os derivados antigos — eles ficam, marcados desatualizados.
@@ -269,7 +286,7 @@ function importar(produto, dados = {}) {
         const temNiveis = u.niveis && Object.keys(u.niveis).length, temVespera = u.vespera && Object.keys(u.vespera).length;
         if (!atual) {
           db.prepare(`INSERT INTO est_unidades (id, escopo_id, codigo, ordem, titulo, competencias, itens, blocos, fontes, midias, tempo_min, atualizado_em, niveis, vespera) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run(novoId(), escopo.id, u.codigo, i, ...campos, agora, j.str(derivar(u.niveis, 1)), j.str(derivar(u.vespera, 1)));
+            .run(novoId(), escopo.id, u.codigo, ord, ...campos, agora, j.str(derivar(u.niveis, 1)), j.str(derivar(u.vespera, 1)));
           rel.unidades.novas++;
         } else {
           const mudou = atual.blocos !== j.str(u.blocos) ? 1 : 0;
@@ -277,7 +294,7 @@ function importar(produto, dados = {}) {
           const niveis = temNiveis ? derivar(u.niveis, versao) : j.parse(atual.niveis, {});
           const vespera = temVespera ? derivar(u.vespera, versao) : j.parse(atual.vespera, {});
           db.prepare(`UPDATE est_unidades SET ordem = ?, titulo = ?, competencias = ?, itens = ?, blocos = ?, fontes = ?, midias = ?, tempo_min = ?, versao = versao + ?, atualizado_em = ?, niveis = ?, vespera = ? WHERE id = ?`)
-            .run(i, ...campos, mudou, agora, j.str(niveis), j.str(vespera), atual.id);
+            .run(ord, ...campos, mudou, agora, j.str(niveis), j.str(vespera), atual.id);
           rel.unidades.atualizadas++;
         }
       }
@@ -326,20 +343,22 @@ function importar(produto, dados = {}) {
 
     if (dados.cards) {
       rel.cards = { novos: 0, atualizados: 0 };
+      const ordemCard = ordenador('est_cards');
       for (const [i, c] of (Array.isArray(dados.cards) ? dados.cards : []).entries()) {
         const codigo = slug(c.codigo) || `card-${i + 1}`, comp = slug(c.competencia), frente = s(c.frente, 1000), verso = s(c.verso, 2000);
         if (!codComp.has(comp)) throw erro(`card ${i + 1}: competência "${comp}" não existe.`);
         if (frente.length < 8 || verso.length < 2) throw erro(`card ${i + 1}: frente e verso são obrigatórios.`);
         // card enorme vira releitura; a pergunta tem de caber numa recordação
         if (verso.length > 600) throw erro(`card ${i + 1}: verso com mais de 600 caracteres — divida em cards menores.`);
-        const atual = db.prepare('SELECT id FROM est_cards WHERE escopo_id = ? AND codigo = ?').get(escopo.id, codigo);
+        const atual = db.prepare('SELECT id, ordem FROM est_cards WHERE escopo_id = ? AND codigo = ?').get(escopo.id, codigo);
+        const ord = ordemCard(c.ordem, atual);
         if (!atual) {
           db.prepare(`INSERT INTO est_cards (id, escopo_id, codigo, ordem, competencia_codigo, frente, verso, explicacao, fonte) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run(novoId(), escopo.id, codigo, i, comp, frente, verso, s(c.explicacao, 2000), s(c.fonte, 400));
+            .run(novoId(), escopo.id, codigo, ord, comp, frente, verso, s(c.explicacao, 2000), s(c.fonte, 400));
           rel.cards.novos++;
         } else {
           db.prepare('UPDATE est_cards SET ordem = ?, competencia_codigo = ?, frente = ?, verso = ?, explicacao = ?, fonte = ? WHERE id = ?')
-            .run(i, comp, frente, verso, s(c.explicacao, 2000), s(c.fonte, 400), atual.id);
+            .run(ord, comp, frente, verso, s(c.explicacao, 2000), s(c.fonte, 400), atual.id);
           rel.cards.atualizados++;
         }
       }

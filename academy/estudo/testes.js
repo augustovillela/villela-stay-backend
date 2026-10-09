@@ -266,6 +266,19 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal((await importar({ escopo: ESC(), unidades: [UNIDADE()] })).st, 200, 'volta ao original para os testes seguintes');
   });
 
+  await t('estudo: importação por partes não embaralha a ordem — novo entra no fim, existente fica, "ordem" explícita vale', async () => {
+    const ord = (cod) => db.prepare('SELECT u.ordem FROM est_unidades u JOIN est_escopos e ON e.id = u.escopo_id WHERE e.slug = ? AND u.codigo = ?').get(SLUG, cod).ordem;
+    const antes = ord('prescricao-base');
+    // segundo envio, só com uma unidade nova (como uma disciplina que chega depois): não pode ocupar a posição 0
+    let r = await importar({ escopo: ESC(), unidades: [UNIDADE({ codigo: 'segunda-leva', titulo: 'Unidade que chegou depois', itens: [] })] });
+    assert.equal(r.st, 200, r.texto);
+    assert.ok(ord('segunda-leva') > antes, 'a unidade nova entra depois das que já existiam');
+    assert.equal(ord('prescricao-base'), antes, 'quem já existia não muda de lugar');
+    r = await importar({ escopo: ESC(), unidades: [UNIDADE({ codigo: 'segunda-leva', titulo: 'Unidade que chegou depois', itens: [], ordem: -5 })] });
+    assert.equal(ord('segunda-leva'), -5, 'ordem explícita vale');
+    db.prepare("DELETE FROM est_unidades WHERE codigo = 'segunda-leva'").run(); // não interfere nos testes seguintes
+  });
+
   await t('estudo: prática — gabarito fica no servidor, pista é contada por ele e questão repetida não vira domínio', async () => {
     const pr = await req('GET', `${esc}/praticar?competencia=prescricao&n=10`, { jar: 'olga' });
     assert.equal(pr.st, 200, pr.texto);
