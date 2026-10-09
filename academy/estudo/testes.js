@@ -392,6 +392,15 @@ async function rodar({ t, req, EST, impId }) {
     const cob = await req('GET', `/staff/api/academy/estudo/cobertura?produtor_email=maria@t.com&produto_id=${impId}&escopo=${SLUG}`, { semUser: true, chave: true });
     assert.equal(cob.st, 200, cob.texto);
     assert.deepEqual([cob.json.cobertura.folhas, cob.json.cobertura.pendentes_de_leitura, cob.json.cobertura.sem_competencia], [4, ['2.2'], ['2.2']], 'o item novo aparece como lacuna, não como coberto');
+    // mão dupla: perguntas para todos os pontos e pontos para todas as perguntas
+    const md = cob.json.cobertura.mao_dupla;
+    assert.equal(md.ok, false, 'programa com folha sem questão não fecha a mão dupla');
+    assert.ok(md.folhas_sem_questao.includes('2.2'), 'o item novo entra como folha sem pergunta');
+    assert.equal(typeof md.questoes_sem_folha, 'number');
+    assert.ok(Array.isArray(md.folhas_com_questao_sem_material));
+    const pub = await req('POST', '/staff/api/academy/estudo/status', { semUser: true, chave: true, corpo: EST({ escopo: SLUG, status: 'publicado' }) });
+    assert.equal(pub.st, 200, pub.texto);
+    assert.ok(JSON.stringify(pub.json).includes('aviso_mao_dupla'), 'publicar com furo avisa o furo em vez de esconder: ' + pub.texto);
     const painel = (await req('GET', `${esc}/painel`, { jar: 'olga' })).json;
     assert.equal(painel.escopo.versao, antes + 1);
     assert.ok(painel.desempenho.respostas > 0, 'o histórico da aluna atravessa a retificação');

@@ -309,6 +309,12 @@ function definirStatus(produto, dados = {}) {
   if (st(dados.status)) {
     if (dados.status === 'publicado' && !escopo.versao) throw erro('Escopo sem programa não pode ser publicado.');
     r.escopo = db.prepare('UPDATE est_escopos SET status = ?, atualizado_em = ? WHERE id = ?').run(dados.status, nowISO(), escopo.id).changes;
+    // Publicar com furo na mão dupla não é proibido (o conteúdo entra em etapas),
+    // mas o furo volta na resposta — quem publica vê o que ainda falta.
+    if (dados.status === 'publicado') {
+      const md = cobertura({ ...escopo, status: 'publicado' }, { vis: ['publicado'], situacoes: ['disponivel'] }).mao_dupla;
+      if (!md.ok) r.aviso_mao_dupla = { folhas_sem_questao: md.folhas_sem_questao.length, questoes_sem_folha: md.questoes_sem_folha, folhas_com_questao_sem_material: md.folhas_com_questao_sem_material.length };
+    }
   }
   if (st(dados.unidades)) r.unidades = db.prepare('UPDATE est_unidades SET status = ?, atualizado_em = ? WHERE escopo_id = ?').run(dados.unidades, nowISO(), escopo.id).changes;
   if (st(dados.cards)) r.cards = db.prepare('UPDATE est_cards SET status = ? WHERE escopo_id = ?').run(dados.cards, escopo.id).changes;
@@ -347,12 +353,27 @@ function cobertura(escopo, { vis = ['publicado'], situacoes = ['disponivel'] } =
   });
   const folhas = porItem.filter(i => i.folha);
   const cod = (f) => folhas.filter(f).map(i => i.codigo);
+  // MÃO DUPLA (regra do Augusto, 09/10/2026): perguntas para todos os pontos e
+  // pontos para todas as perguntas — e o material cobre todo ponto que tem
+  // pergunta. Questão presa só à disciplina ("1.1") ou só a competência não
+  // aponta ponto nenhum que o aluno possa estudar: conta como sem folha.
+  const ehFolha = new Set(folhas.map(i => i.codigo));
+  const comFolha = new Set(qv.filter(x => ehFolha.has(x.codigo)).map(x => x.id));
+  const todasQ = db.prepare(`SELECT DISTINCT v.questao_id id FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
+      WHERE v.escopo_id = ? AND q.situacao IN (${situacoes.map(() => '?').join(',')})`).all(escopo.id, ...situacoes).map(x => x.id);
+  const maoDupla = {
+    folhas_sem_questao: cod(i => !i.questoes_revisadas && !i.questoes_sugeridas),
+    questoes_sem_folha: todasQ.filter(id => !comFolha.has(id)).length,
+    folhas_com_questao_sem_material: cod(i => (i.questoes_revisadas || i.questoes_sugeridas) && !i.unidades.length),
+  };
+  maoDupla.ok = !maoDupla.folhas_sem_questao.length && !maoDupla.questoes_sem_folha && !maoDupla.folhas_com_questao_sem_material.length;
   return {
     versao: escopo.versao, itens: its.length, folhas: folhas.length,
     pendentes_de_leitura: cod(i => i.pendente),
     material: { com: cod(i => i.unidades.length && !i.pendente).length, sem: cod(i => !i.unidades.length) },
     avaliacao: { com_questao_revisada: cod(i => i.questoes_revisadas).length, so_sugerida: cod(i => !i.questoes_revisadas && i.questoes_sugeridas), sem: cod(i => !i.questoes_revisadas && !i.questoes_sugeridas) },
     sem_competencia: cod(i => !i.competencias.length),
+    mao_dupla: maoDupla,
     por_item: porItem,
   };
 }
@@ -369,7 +390,8 @@ function resumo(productId) {
       questoes: n(`SELECT q.situacao, q.origem, COUNT(DISTINCT q.id) n FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id WHERE v.escopo_id = ? GROUP BY q.situacao, q.origem`),
       cards: n('SELECT status, COUNT(*) n FROM est_cards WHERE escopo_id = ? GROUP BY status'),
       cobertura: c && { folhas: c.folhas, pendentes_de_leitura: c.pendentes_de_leitura.length, material_com: c.material.com, material_sem: c.material.sem,
-        avaliacao_com_revisada: c.avaliacao.com_questao_revisada, avaliacao_so_sugerida: c.avaliacao.so_sugerida.length, avaliacao_sem: c.avaliacao.sem, sem_competencia: c.sem_competencia },
+        avaliacao_com_revisada: c.avaliacao.com_questao_revisada, avaliacao_so_sugerida: c.avaliacao.so_sugerida.length, avaliacao_sem: c.avaliacao.sem, sem_competencia: c.sem_competencia,
+        mao_dupla: { ok: c.mao_dupla.ok, folhas_sem_questao: c.mao_dupla.folhas_sem_questao.length, questoes_sem_folha: c.mao_dupla.questoes_sem_folha, folhas_com_questao_sem_material: c.mao_dupla.folhas_com_questao_sem_material.length } },
     };
   });
 }
