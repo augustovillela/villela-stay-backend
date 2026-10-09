@@ -12,7 +12,7 @@
 // Custos: cada chamada é logada em ai_agent_runs (tokens + estimativa USD).
 // =====================================================================
 'use strict';
-const { db, nowISO, novoId } = require('./db');
+const { db, nowISO, novoId, tenantAtual, TENANT_PADRAO } = require('./db');
 
 // Modelos em ordem de preferência (o 2º entra se o 1º falhar por indisponibilidade).
 const MODELOS = (process.env.LEGAL_LLM_MODELS || 'claude-opus-5,claude-opus-4-8')
@@ -71,16 +71,82 @@ const SCHEMA_RESPOSTA = {
   additionalProperties: false,
 };
 
+// Costura de TESTE: troca o SDK por um cliente falso (recebe a chave, ou undefined = chave do servidor).
+let _fabricaTeste = null;
+function definirFabricaClienteTeste(fn) { _fabricaTeste = typeof fn === 'function' ? fn : null; _client = null; _clientesPorChave.clear(); }
+
 let _client = null;
 function cliente() {
+  if (_fabricaTeste) return _fabricaTeste(undefined);
   if (!_client) {
     const Anthropic = require('@anthropic-ai/sdk');
     _client = new Anthropic(); // lê ANTHROPIC_API_KEY do ambiente
   }
   return _client;
 }
+// cliente com a CHAVE DO PRÓPRIO escritório (um por chave, guardado pelo hash — a chave não vira índice)
+const _clientesPorChave = new Map();
+function clienteDaChave(apiKey) {
+  if (_fabricaTeste) return _fabricaTeste(apiKey);
+  const h = require('crypto').createHash('sha256').update(String(apiKey)).digest('hex');
+  if (!_clientesPorChave.has(h)) {
+    const Anthropic = require('@anthropic-ai/sdk');
+    if (_clientesPorChave.size > 200) _clientesPorChave.clear();
+    _clientesPorChave.set(h, new Anthropic({ apiKey }));
+  }
+  return _clientesPorChave.get(h);
+}
 
-const ativo = () => !!process.env.ANTHROPIC_API_KEY;
+// ---------------------------------------------------------------------
+// PORTÃO DA IA POR ESCRITÓRIO (Legal SaaS). O escritório interno usa a
+// chave do servidor e não é cobrado. Todo escritório ASSINANTE passa pelo
+// portão que o legal-saas injeta, e só há dois jeitos de a IA rodar:
+//   'chave'   — chave de API do próprio escritório (não consome crédito);
+//   'credito' — chave do servidor, com o custo MÁXIMO reservado ANTES da
+//               chamada e o custo real cobrado depois. Sem saldo, não chama.
+// Sem portão configurado, assinante fica bloqueado: IA de graça por
+// esquecimento de configuração é exatamente o que isto existe para impedir.
+// ---------------------------------------------------------------------
+let _portao = null;
+function configurarPortao(fn) { _portao = typeof fn === 'function' ? fn : null; }
+function contextoIA() {
+  const t = tenantAtual();
+  if (t === TENANT_PADRAO) return { modo: 'interno' };
+  if (!_portao) return { modo: 'bloqueado', motivo: 'IA indisponível para este escritório (cobrança de IA não configurada).' };
+  try { return _portao(t) || { modo: 'bloqueado', motivo: 'IA indisponível para este escritório.' }; }
+  catch (e) { return { modo: 'bloqueado', motivo: e.message }; }
+}
+
+// "Há como responder na hora?" — é o que decide entre responder e enfileirar.
+function ativo() {
+  const c = contextoIA();
+  if (c.modo === 'chave') return true;
+  if (c.modo === 'interno' || c.modo === 'credito') return !!process.env.ANTHROPIC_API_KEY;
+  return false;
+}
+// Rotinas (fila da madrugada) só rodam se houver com que pagar: chave própria ou saldo.
+function podeRodarRotina() {
+  const c = contextoIA();
+  if (c.modo === 'credito') { try { return ativo() && c.disponivel() > 0; } catch (_) { return false; } }
+  return ativo();
+}
+
+// ---- custo em MICRO-dólares (1e-6 USD): tokens × preço por MTok já dá micro-dólar ----
+const precoDe = (modelo) => PRECOS[modelo] || { in: 5, out: 25 };
+// custo real, pelo que o provedor devolveu (escrita de cache custa 1,25×; leitura, 0,1×)
+function custoUsdMicros(modelo, usage) {
+  if (!usage) return 0;
+  const p = precoDe(modelo);
+  return Math.ceil((usage.input_tokens || 0) * p.in + (usage.cache_creation_input_tokens || 0) * p.in * 1.25
+    + (usage.cache_read_input_tokens || 0) * p.in * 0.1 + (usage.output_tokens || 0) * p.out);
+}
+// custo MÁXIMO antes de chamar: entrada estimada por tamanho (3 caracteres por token, com
+// folga, ao preço de escrita de cache) + o teto inteiro de saída, no modelo mais caro da lista.
+function estimarUsdMicros(system, prompt) {
+  const chars = system.reduce((n, b) => n + String(b.text || '').length, 0) + String(prompt || '').length;
+  const p = MODELOS.map(precoDe).reduce((a, b) => ({ in: Math.max(a.in, b.in), out: Math.max(a.out, b.out) }), { in: 0, out: 0 });
+  return Math.ceil((Math.ceil(chars / 3) + 500) * p.in * 1.25 + MAX_TOKENS * p.out);
+}
 
 function logRun({ agente, query_id, modelo, usage, duracao_ms, status, detalhe }) {
   try {
@@ -100,16 +166,32 @@ function logRun({ agente, query_id, modelo, usage, duracao_ms, status, detalhe }
 // Execução genérica com fallback de modelo. Com `schema` → structured output
 // (retorna { json }); sem → texto livre (retorna { texto }). Sempre loga o run.
 async function executar({ agenteId, queryId, systemExtra, prompt, schema }) {
+  const ctx = contextoIA();
+  if (ctx.modo === 'bloqueado') throw new Error(ctx.motivo || 'IA indisponível para este escritório.');
   if (!ativo()) throw new Error('LLM inativo: ANTHROPIC_API_KEY não definida — use a fila (agente local).');
   const system = [
     { type: 'text', text: GUARDRAILS, cache_control: { type: 'ephemeral' } },
     ...(systemExtra ? [{ type: 'text', text: systemExtra, cache_control: { type: 'ephemeral' } }] : []),
   ];
+  // CRÉDITO: o dinheiro é reservado ANTES de qualquer chamada ao provedor. Sem saldo, o erro sai daqui.
+  const reserva = ctx.modo === 'credito' ? ctx.reservar(estimarUsdMicros(system, prompt), { agente: String(agenteId || ''), query_id: String(queryId || '') }) : null;
+  try {
+    return await chamar({ ctx, system, agenteId, queryId, prompt, schema, reserva });
+  } catch (e) {
+    if (reserva && !e._iaLiquidada) { try { ctx.cancelar(reserva); } catch (_) {} } // nada foi gasto → a reserva volta inteira
+    throw e;
+  }
+}
+
+async function chamar({ ctx, system, agenteId, queryId, prompt, schema, reserva }) {
+  const cli = ctx.modo === 'chave' ? clienteDaChave(ctx.apiKey) : cliente();
+  let gasto = 0; // micro-dólares realmente consumidos nesta tarefa (somando tentativas)
+  const acertar = (modelo) => { if (reserva) ctx.liquidar(reserva, gasto, { modelo, agente: String(agenteId || '') }); };
   let ultimoErro = null;
   for (const modelo of MODELOS) {
     const t0 = Date.now();
     try {
-      const stream = cliente().messages.stream({
+      const stream = cli.messages.stream({
         model: modelo,
         max_tokens: MAX_TOKENS,
         thinking: { type: 'adaptive' },
@@ -118,22 +200,32 @@ async function executar({ agenteId, queryId, systemExtra, prompt, schema }) {
         messages: [{ role: 'user', content: prompt }],
       });
       const msg = await stream.finalMessage();
+      gasto += custoUsdMicros(modelo, msg.usage); // o provedor cobrou: entra na conta mesmo que a resposta não sirva
       if (msg.stop_reason === 'refusal') {
         logRun({ agente: agenteId, query_id: queryId, modelo, usage: msg.usage, duracao_ms: Date.now() - t0, status: 'recusado' });
-        throw new Error('O modelo recusou a solicitação (stop_reason=refusal).');
+        throw Object.assign(new Error('O modelo recusou a solicitação (stop_reason=refusal).'), { _recusa: true });
       }
       const texto = (msg.content.find(b => b.type === 'text') || {}).text || '';
       logRun({ agente: agenteId, query_id: queryId, modelo, usage: msg.usage, duracao_ms: Date.now() - t0, status: 'ok' });
-      return { texto, json: schema ? JSON.parse(texto) : null, modelo, usage: msg.usage };
+      const json = schema ? JSON.parse(texto) : null;
+      acertar(modelo);
+      return { texto, json, modelo, usage: msg.usage };
     } catch (e) {
       ultimoErro = e;
-      logRun({ agente: agenteId, query_id: queryId, modelo, duracao_ms: Date.now() - t0, status: 'erro', detalhe: e.message });
+      if (!e._recusa) logRun({ agente: agenteId, query_id: queryId, modelo, duracao_ms: Date.now() - t0, status: 'erro', detalhe: e.message });
       // 404 (modelo indisponível) / 529 / 500: tenta o próximo da lista; 4xx de request não.
       const st = e.status || (e.error && e.error.status);
-      if (st && st >= 400 && st < 500 && st !== 404 && st !== 429) break;
+      if (ctx.modo === 'chave' && (st === 401 || st === 403)) {
+        ultimoErro = new Error('A sua chave de API foi recusada pelo provedor. Confira-a em Painel → 🤖 Créditos de IA (ou remova-a para usar crédito pré-pago).');
+        break;
+      }
+      if (e._recusa || (st && st >= 400 && st < 500 && st !== 404 && st !== 429)) break;
     }
   }
-  throw ultimoErro || new Error('Falha na chamada de IA.');
+  // falhou, mas houve consumo cobrado pelo provedor (recusa, resposta inválida): cobra só esse tanto
+  const erro = ultimoErro || new Error('Falha na chamada de IA.');
+  if (reserva && gasto > 0) { try { acertar(MODELOS[0]); erro._iaLiquidada = true; } catch (_) {} }
+  throw erro;
 }
 
 // Responde uma consulta jurídica com saída estruturada garantida (Fase 3).
@@ -144,4 +236,4 @@ async function consultar({ agentePrompt, agenteId, queryId, pergunta, contexto }
   return { json: r.json, modelo: r.modelo, usage: r.usage };
 }
 
-module.exports = { ativo, consultar, executar, MODELOS, GUARDRAILS, SCHEMA_RESPOSTA, logRun };
+module.exports = { ativo, consultar, executar, MODELOS, GUARDRAILS, SCHEMA_RESPOSTA, logRun, configurarPortao, contextoIA, podeRodarRotina, custoUsdMicros, estimarUsdMicros, PRECOS, MAX_TOKENS, definirFabricaClienteTeste };

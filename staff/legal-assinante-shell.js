@@ -33,6 +33,17 @@ function arquivoParaBase64(file) {
 }
 async function sairLegal() { try { await fetch('/juridico/api/logout', { method: 'POST' }); } catch (_) {} location.href = '/juridico/app'; }
 
+// Saldo de IA no topo: a IA do assinante é paga por uso (crédito pré-pago ou chave própria).
+async function saldoIA() {
+  const el = document.getElementById('ia-saldo'); if (!el) return;
+  try {
+    const d = await api('GET', '/ia/creditos');
+    const brl = 'R$ ' + (Number(d.disponivel_centavos || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    el.textContent = (d.chave && d.chave.tem) ? '🤖 IA: chave própria' : '🤖 IA: ' + brl;
+    el.style.cssText = 'margin-right:12px;font-weight:600' + (!(d.chave && d.chave.tem) && d.disponivel_centavos <= 0 ? ';color:#ffb4a9' : '');
+  } catch (_) { el.textContent = ''; }
+}
+
 // bootstrap: chamado DEPOIS do app-legal.js (quando LG já existe)
 async function bootLegal() {
   try {
@@ -40,6 +51,7 @@ async function bootLegal() {
     ESTADO.me.nome = (me.usuario && (me.usuario.nome || me.usuario.email)) || '';
     const el = document.getElementById('esc-nome'); if (el) el.textContent = (me.escritorio && me.escritorio.nome) || 'Meu escritório';
   } catch (_) { /* 401 já redirecionou; outros erros o SPA mostra */ }
+  saldoIA(); setInterval(saldoIA, 60000);
   if (typeof LG !== 'undefined') LG.abrir();
   else conteudo().innerHTML = '<div class="card">Não foi possível carregar o módulo jurídico. Recarregue a página.</div>';
 }

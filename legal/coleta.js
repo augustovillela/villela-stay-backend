@@ -315,6 +315,7 @@ async function digestClientes() {
 // ---------------------------------------------------------------------
 async function processarFila(limite = 5) {
   if (!llm.ativo()) return { processadas: 0, detalhe: 'modo fila — o agente local processa' };
+  if (!llm.podeRodarRotina()) return { processadas: 0, detalhe: 'sem saldo de IA — a fila aguarda recarga' };
   const pendentes = repo.IA.pendentes(limite);
   let ok = 0, erro = 0;
   for (const q of pendentes) {

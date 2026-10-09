@@ -23,10 +23,11 @@ const enviarEmail = async (to, ass, html) => { enviados.push({ to, ass, html });
 const alertaAugusto = async () => {};
 
 // MP mock
-const mpChamadas = [];
+const mpChamadas = [], mpPrefs = [];
 let _payResp = {}; // resposta de /v1/payments/* controlada por teste (idempotência)
 const mpFetch = async (path, opts) => {
   mpChamadas.push(path);
+  if (path === '/checkout/preferences') { const b = JSON.parse(opts.body); mpPrefs.push(b); return { id: 'PREF' + mpPrefs.length, init_point: 'https://mp/pref/' + mpPrefs.length }; }
   if (path === '/preapproval' && opts && opts.method === 'POST') return { id: 'PRE999', init_point: 'https://mp/PRE999', status: 'pending', external_reference: 'legalsaas' };
   if (path.startsWith('/preapproval/')) return { id: 'PRE999', status: 'authorized' };
   if (path.startsWith('/v1/payments/')) return _payResp;
@@ -38,7 +39,8 @@ const app = express();
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 const saas = require('./index');
-saas.montar(app, { express, requireAuth, requireAdmin, enviarEmail, alertaAugusto, mpFetch, jwtSecret: 'seg-teste' });
+let _chaveValida = true; // o provedor "aceita" a chave? controlado por teste
+saas.montar(app, { express, requireAuth, requireAdmin, enviarEmail, alertaAugusto, mpFetch, jwtSecret: 'seg-teste-com-mais-de-16', validarChaveIA: async () => _chaveValida });
 
 let BASE = '', ok = 0, falhas = [];
 const jar = {};
@@ -179,6 +181,182 @@ async function rodar() {
     assert.equal((await req('PATCH', '/juridico/api/usuarios/' + lista.json.eu, { cookies: true, corpo: { ativo: false } })).st, 400, 'não desativa a si mesmo');
     assert.equal((await req('GET', '/juridico/api/usuarios')).st, 401, 'sem sessão não lista');
   });
+  // =================== CRÉDITOS DE IA (pré-pago) e CHAVE PRÓPRIA ===================
+  const cr = saas.creditos;
+  let escIA; // escritório de CORTESIA: prova que cortesia também paga a IA
+  await t('IA: conversão custo → preço (câmbio + margem, para cima, piso de 1 centavo)', async () => {
+    assert.throws(() => cr.centavosDe(1000000), /Cotação do dólar indisponível/, 'sem câmbio a IA por crédito fica pausada');
+    cr.Config.atualizar({ cambio_modo: 'manual', cambio_manual: 5, margem_pct: 30 });
+    assert.equal(cr.centavosDe(1000000), 650, 'US$ 1,00 × 5 × 1,30 = R$ 6,50');
+    assert.equal(cr.centavosDe(1), 1, 'chamada mínima custa ao menos 1 centavo');
+    assert.equal(cr.centavosDe(1001), 1); assert.equal(cr.centavosDe(0), 0);
+    assert.equal(cr.centavosDe(400000), 260);
+    assert.throws(() => cr.Config.atualizar({ margem_pct: -1 }), /Margem inválida/);
+  });
+  await t('IA: cortesia nasce SEM saldo; reserva exige saldo e trava o valor', async () => {
+    const c = await req('POST', '/staff/api/legal-saas/cortesia', { corpo: { nome: 'IA Cortesia Adv', email: 'ia@cortesia.br', seed_demo: false } });
+    escIA = c.json.tenant;
+    assert.deepEqual(cr.Carteira.saldo(escIA.id), { saldo_centavos: 0, reservado_centavos: 0, disponivel_centavos: 0 });
+    assert.throws(() => cr.Carteira.reservar(escIA.id, 300), (e) => e.codigo === 'SALDO_IA' && /pode custar até R\$ 3,00/.test(e.message) && /Recarregue/.test(e.message));
+    assert.throws(() => cr.Carteira.creditar(escIA.id, 1000, {}), /referência/);
+    assert.equal(cr.Carteira.creditar(escIA.id, 1000, { ref: 'mp:T1' }).duplicado, false);
+    assert.equal(cr.Carteira.creditar(escIA.id, 1000, { ref: 'mp:T1' }).duplicado, true, 'mesma referência não credita duas vezes');
+    const r1 = cr.Carteira.reservar(escIA.id, 700);
+    assert.deepEqual(cr.Carteira.saldo(escIA.id), { saldo_centavos: 1000, reservado_centavos: 700, disponivel_centavos: 300 });
+    assert.throws(() => cr.Carteira.reservar(escIA.id, 301), (e) => e.codigo === 'SALDO_IA', 'o reservado não pode ser gasto por outra tarefa');
+    // liquida pelo real (menor): devolve a diferença
+    assert.equal(cr.Carteira.liquidar(r1, 120, { modelo: 'm' }).cobrado_centavos, 120);
+    assert.deepEqual(cr.Carteira.saldo(escIA.id), { saldo_centavos: 880, reservado_centavos: 0, disponivel_centavos: 880 });
+    assert.equal(cr.Carteira.liquidar(r1, 120).ok, false, 'reserva não liquida duas vezes');
+    // cancelar devolve tudo, sem lançar consumo
+    const r2 = cr.Carteira.reservar(escIA.id, 500); cr.Carteira.cancelar(r2);
+    assert.equal(cr.Carteira.saldo(escIA.id).disponivel_centavos, 880);
+    // reserva esquecida (processo caiu) volta sozinha depois de 30 min
+    const r3 = cr.Carteira.reservar(escIA.id, 800);
+    require('./db').db.prepare('UPDATE ia_reservas SET criado_em = ? WHERE id = ?').run('2020-01-01T00:00:00Z', r3);
+    assert.throws(() => cr.Carteira.reservar(escIA.id, 9999), (e) => e.disponivel_centavos === 880, 'a vencida foi liberada antes de checar');
+    const ex = cr.Carteira.extrato(escIA.id);
+    assert.deepEqual(ex.map(m => m.tipo).sort(), ['consumo', 'recarga']);
+    assert.equal(ex.find(m => m.tipo === 'consumo').valor_centavos, -120);
+  });
+  await t('IA: recarga pelo Mercado Pago credita 1x; valor menor que o pedido NÃO credita', async () => {
+    await assert.rejects(() => cr.Recargas.criar(escIA.id, 500, { email: 'ia@cortesia.br', baseUrl: 'https://x' }), /recarga mínima é R\$ 20,00/);
+    const rec = await cr.Recargas.criar(escIA.id, 5000, { email: 'ia@cortesia.br', baseUrl: 'https://x' });
+    assert.ok(rec.link.startsWith('https://mp/pref/'));
+    const pref = mpPrefs[mpPrefs.length - 1];
+    assert.equal(pref.items[0].unit_price, 50); assert.equal(pref.external_reference, `legalsaas-ia:${escIA.id}:${rec.id}`);
+    const antes = cr.Carteira.saldo(escIA.id).saldo_centavos;
+    // Pix de centavo com a referência certa: não vira crédito
+    _payResp = { id: 'PAY_IA_MENOR', status: 'approved', transaction_amount: 0.01, external_reference: pref.external_reference };
+    await req('POST', '/juridico/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: 'PAY_IA_MENOR' } } }); await new Promise(x => setTimeout(x, 120));
+    assert.equal(cr.Carteira.saldo(escIA.id).saldo_centavos, antes);
+    // pendente não credita
+    _payResp = { id: 'PAY_IA_1', status: 'pending', transaction_amount: 50, external_reference: pref.external_reference };
+    await req('POST', '/juridico/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: 'PAY_IA_1' } } }); await new Promise(x => setTimeout(x, 120));
+    assert.equal(cr.Carteira.saldo(escIA.id).saldo_centavos, antes);
+    // aprovado: credita o valor da recarga, uma vez, mesmo com o MP reenviando o aviso
+    _payResp = { id: 'PAY_IA_1', status: 'approved', transaction_amount: 50, external_reference: pref.external_reference };
+    for (let i = 0; i < 3; i++) { await req('POST', '/juridico/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: 'PAY_IA_1' } } }); await new Promise(x => setTimeout(x, 80)); }
+    assert.equal(cr.Carteira.saldo(escIA.id).saldo_centavos, antes + 5000);
+    assert.equal(cr.Recargas.listar(escIA.id)[0].status, 'paga');
+    // a recarga NÃO mexe na assinatura (cortesia continua cortesia) nem gera fatura de mensalidade
+    assert.equal(saas.repo.Tenants.obter(escIA.id).status, 'cortesia');
+    assert.equal(require('./db').db.prepare("SELECT COUNT(*) n FROM invoices WHERE tenant_id = ?").get(escIA.id).n, 0);
+    // recarga de outro escritório com id trocado não credita
+    _payResp = { id: 'PAY_IA_X', status: 'approved', transaction_amount: 50, external_reference: `legalsaas-ia:${tid}:${rec.id}` };
+    await req('POST', '/juridico/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: 'PAY_IA_X' } } }); await new Promise(x => setTimeout(x, 120));
+    assert.equal(cr.Carteira.saldo(tid).saldo_centavos, 0);
+  });
+  await t('IA ponta a ponta: reserva ANTES de chamar o provedor, cobra o real, devolve o resto', async () => {
+    const llm = require('../legal/llm'), ldb = require('../legal/db');
+    process.env.ANTHROPIC_API_KEY = 'chave-do-servidor-teste';
+    llm.configurarPortao((tl) => cr.portaoDoTenant(tl));
+    const chamadas = [];
+    let resposta = { stop_reason: 'end_turn', content: [{ type: 'text', text: 'minuta' }], usage: { input_tokens: 10000, output_tokens: 4000 } };
+    llm.definirFabricaClienteTeste((apiKey) => ({ messages: { stream: () => ({ finalMessage: async () => {
+      chamadas.push({ apiKey, reservadoNaHora: cr.Carteira.saldo(escIA.id).reservado_centavos });
+      if (resposta instanceof Error) throw resposta;
+      return resposta;
+    } }) } }));
+    const noEscritorio = (fn) => ldb.comTenant('esc-' + escIA.slug, fn);
+    const saldo0 = cr.Carteira.saldo(escIA.id).saldo_centavos;
+    const r = await noEscritorio(() => llm.executar({ agenteId: 'pecas', prompt: 'x'.repeat(3000) }));
+    assert.equal(r.texto, 'minuta');
+    assert.equal(chamadas[0].apiKey, undefined, 'crédito usa a chave do servidor');
+    assert.ok(chamadas[0].reservadoNaHora > 0, 'no instante da chamada ao provedor o dinheiro JÁ estava reservado');
+    // custo real: 10.000×5 + 4.000×25 = 150.000 micro-US$ = US$ 0,15 → × 5 × 1,30 = R$ 0,975 → 98 centavos
+    assert.equal(cr.Carteira.saldo(escIA.id).saldo_centavos, saldo0 - 98);
+    assert.equal(cr.Carteira.saldo(escIA.id).reservado_centavos, 0, 'a sobra da reserva voltou');
+    const mov = cr.Carteira.extrato(escIA.id)[0];
+    assert.equal(mov.tipo, 'consumo'); assert.equal(mov.detalhe.agente, 'pecas'); assert.equal(mov.detalhe.usd_micros, 150000);
+    assert.ok(mov.detalhe.reservado_centavos >= 98, 'a reserva (máximo) cobre o real');
+    // provedor fora do ar: nada é cobrado e a reserva volta inteira
+    resposta = Object.assign(new Error('overloaded'), { status: 529 });
+    const s1 = cr.Carteira.saldo(escIA.id);
+    await assert.rejects(() => noEscritorio(() => llm.executar({ agenteId: 'pecas', prompt: 'x' })), /overloaded/);
+    assert.deepEqual(cr.Carteira.saldo(escIA.id), s1);
+    // recusa do modelo: o provedor cobrou os tokens → cobra só esse tanto
+    resposta = { stop_reason: 'refusal', content: [], usage: { input_tokens: 2000, output_tokens: 0 } };
+    await assert.rejects(() => noEscritorio(() => llm.executar({ agenteId: 'pecas', prompt: 'x' })), /recusou/);
+    assert.equal(cr.Carteira.saldo(escIA.id).saldo_centavos, s1.saldo_centavos - 7, '2.000×5 = 10.000 micro-US$ → R$ 0,065 → 7 centavos');
+    assert.equal(cr.Carteira.saldo(escIA.id).reservado_centavos, 0);
+    // SEM SALDO: o provedor NEM É CHAMADO
+    resposta = { stop_reason: 'end_turn', content: [{ type: 'text', text: 'y' }], usage: { input_tokens: 1, output_tokens: 1 } };
+    const semSaldo = await req('POST', '/staff/api/legal-saas/cortesia', { corpo: { nome: 'Sem Saldo Adv', email: 'sem@saldo.br', seed_demo: false } });
+    const n = chamadas.length;
+    await assert.rejects(() => ldb.comTenant('esc-' + semSaldo.json.tenant.slug, () => llm.executar({ agenteId: 'geral', prompt: 'oi' })), (e) => e.codigo === 'SALDO_IA');
+    assert.equal(chamadas.length, n, 'sem saldo, nenhuma chamada ao provedor');
+    assert.equal(ldb.comTenant('esc-' + semSaldo.json.tenant.slug, () => llm.podeRodarRotina()), false, 'rotina não roda sem saldo');
+    assert.equal(noEscritorio(() => llm.podeRodarRotina()), true);
+    // escritório interno: não passa pelo portão e não é cobrado
+    const totalAntes = require('./db').db.prepare('SELECT COUNT(*) n FROM ia_movimentos').get().n;
+    await ldb.comTenant(ldb.TENANT_PADRAO, () => llm.executar({ agenteId: 'geral', prompt: 'oi' }));
+    assert.equal(require('./db').db.prepare('SELECT COUNT(*) n FROM ia_movimentos').get().n, totalAntes);
+    // escritório desconhecido / sem portão → bloqueado (nunca IA de graça por falta de configuração)
+    await assert.rejects(() => ldb.comTenant('esc-nao-existe', () => llm.executar({ prompt: 'oi' })), /não reconhecido/);
+    llm.configurarPortao(null);
+    await assert.rejects(() => noEscritorio(() => llm.executar({ prompt: 'oi' })), /cobrança de IA não configurada/);
+    llm.configurarPortao((tl) => cr.portaoDoTenant(tl));
+    // CHAVE PRÓPRIA: usa a chave do escritório e não consome crédito
+    await cr.Chaves.salvar(escIA.id, 'sk-ant-api03-' + 'A'.repeat(40) + 'WXYZ', 'ia@cortesia.br');
+    const s2 = cr.Carteira.saldo(escIA.id);
+    await noEscritorio(() => llm.executar({ agenteId: 'geral', prompt: 'oi' }));
+    assert.equal(chamadas[chamadas.length - 1].apiKey, 'sk-ant-api03-' + 'A'.repeat(40) + 'WXYZ');
+    assert.deepEqual(cr.Carteira.saldo(escIA.id), s2, 'com chave própria o saldo não se mexe');
+    assert.equal(ldb.comTenant('esc-' + semSaldo.json.tenant.slug, () => llm.ativo()), true);
+    // chave recusada pelo provedor: mensagem que diz o que fazer
+    resposta = Object.assign(new Error('invalid x-api-key'), { status: 401 });
+    await assert.rejects(() => noEscritorio(() => llm.executar({ prompt: 'oi' })), /sua chave de API foi recusada/);
+    cr.Chaves.remover(escIA.id);
+    llm.definirFabricaClienteTeste(null); llm.configurarPortao(null); delete process.env.ANTHROPIC_API_KEY;
+  });
+  await t('IA: chave própria fica CIFRADA e nenhuma rota a devolve', async () => {
+    const chave = 'sk-ant-api03-' + 'B'.repeat(40) + 'QRST';
+    await assert.rejects(() => cr.Chaves.salvar(escIA.id, 'minha-senha-do-claude', 'x'), /Chave inválida/);
+    _chaveValida = false;
+    await assert.rejects(() => cr.Chaves.salvar(escIA.id, chave, 'x'), /provedor recusou/);
+    _chaveValida = true;
+    assert.deepEqual(Object.keys(await cr.Chaves.salvar(escIA.id, chave, 'ia@cortesia.br')).sort(), ['desde', 'final4', 'provedor', 'tem']);
+    const bruto = require('./db').db.prepare('SELECT chave_cifrada, final4 FROM ia_chaves WHERE tenant_id = ?').get(escIA.id);
+    assert.ok(!bruto.chave_cifrada.includes('sk-ant') && !bruto.chave_cifrada.includes('BBBB'), 'no banco não há chave em claro');
+    assert.equal(bruto.final4, 'QRST'); assert.equal(cr.Chaves.ler(escIA.id), chave);
+    assert.equal(cr.portaoDoTenant('esc-' + escIA.slug).modo, 'chave');
+    const st = await req('GET', `/staff/api/legal-saas/tenants/${escIA.id}/ia-creditos`);
+    assert.ok(!JSON.stringify(st.json).includes('sk-ant'), 'o staff também não vê a chave');
+    cr.Chaves.remover(escIA.id);
+    assert.equal(cr.portaoDoTenant('esc-' + escIA.slug).modo, 'credito');
+  });
+  await t('IA: rotas — assinante vê saldo; só admin recarrega; staff configura e ajusta com motivo', async () => {
+    // dra@beta.br (assinante logada no jar) é admin do próprio escritório
+    const v = await req('GET', '/juridico/api/ia/creditos', { cookies: true });
+    assert.equal(v.st, 200); assert.equal(v.json.disponivel_centavos, 0); assert.equal(v.json.admin, true);
+    assert.equal(v.json.precos.cambio_ok, true); assert.ok(v.json.precos.saida_centavos_por_milhao > v.json.precos.entrada_centavos_por_milhao);
+    assert.ok(!JSON.stringify(v.json).includes('sk-ant'));
+    assert.equal((await req('GET', '/juridico/api/ia/creditos')).st, 401);
+    assert.equal((await req('POST', '/juridico/api/ia/recarga', { cookies: true, corpo: { valor_centavos: 100 } })).st, 400, 'abaixo da mínima');
+    const rc = await req('POST', '/juridico/api/ia/recarga', { cookies: true, corpo: { valor_centavos: 3000 } });
+    assert.equal(rc.st, 200); assert.ok(rc.json.link);
+    assert.equal((await req('PUT', '/juridico/api/ia/chave', { cookies: true, corpo: { chave: 'abc' } })).st, 400);
+    // staff
+    assert.equal((await req('GET', '/staff/api/legal-saas/ia-creditos', { user: 'op' })).st, 403);
+    const pl = await req('GET', '/staff/api/legal-saas/ia-creditos');
+    assert.equal(pl.json.config.margem_pct, 30); assert.ok(pl.json.escritorios.some(e => e.id === escIA.id && e.recarregado_centavos === 6000));
+    assert.equal((await req('PATCH', '/staff/api/legal-saas/ia-creditos/config', { corpo: { margem_pct: 40 } })).json.config.margem_pct, 40);
+    assert.equal(cr.centavosDe(1000000), 700, 'a margem nova vale na hora');
+    await req('PATCH', '/staff/api/legal-saas/ia-creditos/config', { corpo: { margem_pct: 30 } });
+    assert.equal((await req('POST', `/staff/api/legal-saas/tenants/${escIA.id}/ia-creditos/ajuste`, { corpo: { valor_centavos: 500, motivo: '' } })).st, 400, 'ajuste sem motivo é recusado');
+    const aj = await req('POST', `/staff/api/legal-saas/tenants/${escIA.id}/ia-creditos/ajuste`, { corpo: { valor_centavos: 500, motivo: 'Pix recebido por fora, comprovante 123' } });
+    assert.equal(aj.st, 200);
+    assert.equal((await req('POST', `/staff/api/legal-saas/tenants/${escIA.id}/ia-creditos/ajuste`, { user: 'op', corpo: { valor_centavos: 500, motivo: 'tentativa do operador' } })).st, 403);
+    assert.equal((await req('POST', '/staff/api/legal-saas/tenants/nao-existe/ia-creditos/ajuste', { corpo: { valor_centavos: 500, motivo: 'escritório inexistente' } })).st, 404);
+    assert.equal(cr.Carteira.extrato(escIA.id)[0].detalhe.motivo, 'Pix recebido por fora, comprovante 123');
+  });
+  await t('IA: a landing não promete mais consultas de IA por mês', async () => {
+    const pg = await req('GET', '/juridico');
+    assert.ok(!/consultas de IA\/mês/.test(pg.texto));
+    assert.ok(/IA por crédito pré-pago ou com a sua chave de API/.test(pg.texto));
+  });
+
   await t('login assinante errado 5x → 429', async () => {
     for (let i = 0; i < 5; i++) await req('POST', '/juridico/api/login', { corpo: { email: 'dra@beta.br', senha: 'errada' } });
     assert.equal((await req('POST', '/juridico/api/login', { corpo: { email: 'dra@beta.br', senha: 'SenhaForte1' } })).st, 429);

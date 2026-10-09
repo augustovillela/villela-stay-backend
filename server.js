@@ -4714,6 +4714,8 @@ try {
   const usuariosDoTenant = (tenantLegal) => legalSaas.repo.Tenants.usuariosPorSlug(String(tenantLegal || '').replace(/^esc-/, ''))
     .map(u => ({ id: 'assinante:' + u.id, nome: u.nome || u.email, email: u.email, papel: u.papel === 'admin' ? 'admin' : 'membro', areas: ['juridico'], ativo: true }));
   require('./legal').montarAssinante(app, { express, assinanteDeReq, jwtSecret: JWT_SECRET, usuariosDoTenant });
+  // IA de escritório assinante: chave própria OU crédito pré-pago (reserva antes, cobra o real depois)
+  require('./legal').llm.configurarPortao((tenantLegal) => legalSaas.creditos.portaoDoTenant(tenantLegal));
 } catch (e) { console.error('[legal-saas] falha ao montar módulo:', e.message); }
 
 // =========================== Villela Docs Intelligence (SaaS de gestão documental) ===========================

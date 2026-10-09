@@ -161,7 +161,7 @@ function landingHTML() {
     const itens = p.slug === 'trial'
       ? ['Todos os módulos por 14 dias', `${p.limites.advogados} advogados`, `${p.limites.processos_ativos} processos`, 'Sem cartão']
       : [`${p.limites.advogados || '∞'} advogados`, `${p.limites.processos_ativos || 'ilimitados'} processos ativos`,
-         `${p.limites.ia_consultas_mes || 'ilimitadas'} consultas de IA/mês`,
+         p.modulos.includes('ia') ? 'IA por crédito pré-pago ou com a sua chave de API' : 'Sem módulo de IA',
          `${p.modulos.length} módulos${p.flags.ia_direta ? ' · IA direta' : ''}${p.flags.api_publica ? ' · API' : ''}${p.flags.white_label ? ' · marca própria' : ''}`];
     const cta = p.slug === 'enterprise'
       ? `<a class="btn g" href="#contato">Falar com vendas</a>`
@@ -345,14 +345,14 @@ function appHTML() {
       const ent=me.entitlements;
       const alerta=!(ent&&ent.acesso_liberado)?'<div class="aviso">⚠️ Sua conta está <b>'+esc(me.escritorio.status)+'</b>. Regularize a cobrança para reativar o acesso.</div>':(me.escritorio.status==='trial'?'<div class="aviso">🎁 Você está no <b>período de teste</b> até '+dt(ent.trial_expira_em)+'. Assine para continuar sem interrupção.</div>':'');
       app.innerHTML='<div class="card"><h3>'+esc(me.escritorio.nome)+' <span class="tag">'+esc(ent.plano||'—')+'</span></h3>'+alerta
-        +'<div class="menu"><button class="btn g" onclick="vPlano()">💳 Plano</button><button class="btn g" onclick="vUso()">📊 Uso</button><button class="btn g" onclick="vEquipe()">👥 Equipe</button><button class="btn g" onclick="vSup()">🎧 Suporte</button>'
+        +'<div class="menu"><button class="btn g" onclick="vPlano()">💳 Plano</button><button class="btn g" onclick="vUso()">📊 Uso</button><button class="btn g" onclick="vEquipe()">👥 Equipe</button><button class="btn g" onclick="vIA()">🤖 Créditos de IA</button><button class="btn g" onclick="vSup()">🎧 Suporte</button>'
         +((ent&&ent.acesso_liberado)?'<a class="btn" href="/juridico/app/juridico" style="text-decoration:none">⚖️ Meu Jurídico</a>':'')
         +'<button class="btn g" id="pwa-btn" style="display:none" title="Instalar o Villela Legal como app no celular">📲 Instalar app</button>'
         +'<button class="btn g" id="push-btn" style="display:none" title="Notificações no celular">🔔 Avisos</button></div>'
         +'<p class="sub">Olá, '+esc(me.usuario.nome||me.usuario.email)+' · <a href="#" onclick="sair();return false">sair</a></p></div><div id="c"></div>';
       pintarBotaoInstalar();
       pintarBotaoPush();
-      vPlano();}
+      if(location.search.indexOf('creditos=1')>=0)vIA();else vPlano();}
     window.home=home;const c=()=>document.getElementById('c');
     async function sair(){await api('POST','/logout').catch(()=>{});location.reload()}window.sair=sair;
     async function vPlano(){const d=await api('GET','/cobranca');
@@ -365,7 +365,7 @@ function appHTML() {
     async function cancelar(){if(!confirm('Cancelar a assinatura?'))return;try{await api('POST','/cobranca/cancelar');vPlano()}catch(e){alert(e.message)}}window.cancelar=cancelar;
     async function vUso(){const me=await api('GET','/me');const ent=me.entitlements;const u=me.uso;
       const lim=(k)=>ent.limites[k]||0;const usado=(k)=>u[k]||0;
-      const linhas=Object.keys(ent.limites).map(k=>'<div class="lin">'+esc(k.replace(/_/g,\" \"))+': <b>'+usado(k)+'</b> / '+(lim(k)===0?'ilimitado':lim(k))+'</div>').join('');
+      const linhas=Object.keys(ent.limites).filter(k=>k!=='ia_consultas_mes').map(k=>'<div class="lin">'+esc(k.replace(/_/g,\" \"))+': <b>'+usado(k)+'</b> / '+(lim(k)===0?'ilimitado':lim(k))+'</div>').join('');
       c().innerHTML='<div class="card"><h3>Uso do mês</h3>'+linhas+'<h3 style="margin-top:14px">Módulos do seu plano</h3><p>'+ent.modulos.map(m=>'<span class="tag" style="margin:2px">'+esc(m.replace(/_/g,\" \"))+'</span>').join(' ')+'</p></div>';}
     window.vUso=vUso;
     async function vSup(){const {tickets}=await api('GET','/tickets');
@@ -373,6 +373,36 @@ function appHTML() {
         +'<h3 style="margin-top:12px">Abrir chamado</h3><input id="tk-a" placeholder="Assunto"><textarea id="tk-t" rows="3" placeholder="Descreva sua dúvida"></textarea><button class="btn" onclick="abrirTk()">Enviar</button></div>';}
     window.vSup=vSup;
     async function abrirTk(){const a=document.getElementById('tk-a').value,t=document.getElementById('tk-t').value;if(!a||!t)return;await api('POST','/tickets',{assunto:a,texto:t});vSup();}window.abrirTk=abrirTk;
+    // ---- CRÉDITOS DE IA: saldo, recarga, chave própria e extrato ----
+    async function vIA(aviso){const d=await api('GET','/ia/creditos');const p=d.precos;
+      const tipo={recarga:'Recarga',consumo:'Uso de IA',ajuste:'Ajuste'};
+      const det=m=>{const x=m.detalhe||{};return m.tipo==='consumo'?(x.agente?' · '+esc(x.agente):'')+(x.modelo?' · '+esc(x.modelo):''):(x.motivo?' · '+esc(x.motivo):'')};
+      const mov=m=>'<div class="lin"><b style="color:'+(m.valor_centavos<0?'#b3261e':'#1b7f3b')+'">'+(m.valor_centavos<0?'− ':'+ ')+brl(Math.abs(m.valor_centavos))+'</b> '+esc(tipo[m.tipo]||m.tipo)+det(m)+' <span class="sub">'+dt(m.criado_em)+' · saldo '+brl(m.saldo_apos_centavos)+'</span></div>';
+      const usaChave=d.chave&&d.chave.tem;
+      c().innerHTML='<div class="card"><h3>Créditos de IA</h3>'+(aviso?'<div class="aviso">'+esc(aviso)+'</div>':'')
+        +(usaChave?'<div class="aviso">🔑 O escritório está usando a <b>própria chave de API</b> (final '+esc(d.chave.final4)+'). A IA sai pela sua conta no provedor e <b>não consome crédito</b>.</div>':'')
+        +'<p style="font-size:1.6rem;margin:6px 0"><b>'+brl(d.disponivel_centavos)+'</b> <span class="sub">disponível</span></p>'
+        +(d.reservado_centavos?'<p class="sub">'+brl(d.reservado_centavos)+' reservado em tarefas em andamento (volta o que não for usado).</p>':'')
+        +'<p class="sub">A IA do Villela Legal é paga por uso, em qualquer plano. Antes de cada tarefa o sistema <b>reserva o custo máximo</b>; ao terminar, <b>cobra só o que foi usado</b> e devolve a diferença. Sem saldo, a tarefa não é executada.</p>'
+        +(p.cambio_ok?'<p class="sub">Preço hoje ('+esc(p.modelo)+'): '+brl(p.entrada_centavos_por_milhao)+' por milhão de tokens de entrada e '+brl(p.saida_centavos_por_milhao)+' por milhão de saída. Uma tarefa reserva no máximo cerca de '+brl(p.teto_saida_centavos)+' de resposta, mais o tamanho do que você enviar.</p>'
+          :'<p class="aviso">Cotação do dólar indisponível no momento — a IA por crédito está pausada.</p>')
+        +(d.admin?'<h3 style="margin-top:14px">Recarregar</h3>'+(d.pagamento_online
+            ?'<input id="ia-valor" type="number" min="1" step="1" placeholder="Valor em reais (mínimo '+brl(p.recarga_minima_centavos)+')"><button class="btn" id="ia-recarregar">Pagar com Pix ou cartão</button><p id="ia-msg" class="erro"></p>'
+            :'<p class="aviso">Pagamento online em configuração — abra um chamado no Suporte para recarregar.</p>')
+          +'<h3 style="margin-top:14px">Usar a minha própria chave de API</h3><p class="sub">Se o escritório tem conta no provedor de IA (Anthropic — Claude Console), cole aqui a chave de API. A IA passa a sair pela sua conta e deixa de consumir crédito. A chave é guardada cifrada e nunca é exibida de novo. <b>Assinatura pessoal do Claude (Pro/Max) não serve</b>: o provedor só aceita chave de API em sistemas de terceiros.</p>'
+          +'<input id="ia-chave" type="password" autocomplete="off" placeholder="sk-ant-...">'
+          +'<button class="btn g" id="ia-salvar-chave">'+(usaChave?'Trocar chave':'Salvar chave')+'</button>'+(usaChave?' <button class="btn g" id="ia-remover-chave">Remover chave</button>':'')+'<p id="ia-msg2" class="erro"></p>'
+          :'<p class="sub">Só o administrador do escritório recarrega ou cadastra a chave.</p>')
+        +'<h3 style="margin-top:14px">Extrato</h3>'+(d.extrato.length?d.extrato.map(mov).join(''):'<p class="sub">Nenhum movimento ainda.</p>')+'</div>';
+      const br=document.getElementById('ia-recarregar');
+      if(br)br.onclick=async()=>{const m=document.getElementById('ia-msg');m.textContent='';const v=Math.round(Number(String(document.getElementById('ia-valor').value).replace(',','.'))*100);
+        try{const r=await api('POST','/ia/recarga',{valor_centavos:v});location.href=r.link}catch(e){m.textContent=e.message}};
+      const bs=document.getElementById('ia-salvar-chave');
+      if(bs)bs.onclick=async()=>{const m=document.getElementById('ia-msg2');m.textContent='';bs.disabled=true;
+        try{await api('PUT','/ia/chave',{chave:document.getElementById('ia-chave').value});vIA('Chave salva. A IA do escritório passa a usar a sua conta no provedor.')}catch(e){m.textContent=e.message;bs.disabled=false}};
+      const brm=document.getElementById('ia-remover-chave');
+      if(brm)brm.onclick=async()=>{if(!confirm('Remover a chave? A IA volta a consumir crédito pré-pago.'))return;try{await api('DELETE','/ia/chave');vIA('Chave removida.')}catch(e){alert(e.message)}};}
+    window.vIA=vIA;
     // ---- EQUIPE do escritório: convidar, reenviar link, desativar ----
     async function vEquipe(novo){const d=await api('GET','/usuarios');
       const vagas=d.vagas.limite===0?'usuários ilimitados no seu plano':(d.vagas.ativos+' de '+d.vagas.limite+' usuário(s) do plano em uso');
@@ -466,7 +496,7 @@ input,select,textarea{width:100%;padding:9px;border:1px solid #ccc;border-radius
 label{font-size:.9rem;font-weight:600}table{width:100%;border-collapse:collapse}
 </style></head><body>
 <div class="topo"><span style="display:flex;align-items:center;gap:10px"><img src="/assets/brand/villela-legal/logo-negativo.svg" alt="Villela Legal" style="height:26px"><b id="esc-nome">Meu escritório</b></span>
-  <span><a href="/juridico/app">← Painel</a> &nbsp;·&nbsp; <a onclick="sairLegal()">Sair</a></span></div>
+  <span><a href="/juridico/app?creditos=1" id="ia-saldo" title="Créditos de IA — clique para recarregar ou cadastrar a sua chave"></a> <a href="/juridico/app">← Painel</a> &nbsp;·&nbsp; <a onclick="sairLegal()">Sair</a></span></div>
 <div class="area"><div id="conteudo"><p class="sub">Carregando…</p></div></div>
 <script src="/juridico/legal-ui.js"></script>
 <script src="/juridico/legal-shell.js"></script>

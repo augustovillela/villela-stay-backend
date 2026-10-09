@@ -10,6 +10,7 @@ const { db, nowISO } = require('./db');
 const repo = require('./repo');
 const billing = require('./billing');
 const push = require('./push');
+const creditos = require('./creditos');
 
 const COOKIE = 'jur_saas';
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -151,6 +152,33 @@ function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
     const b = req.body || {};
     if (req.params.id === req.assinante.id && b.ativo === false) return res.status(400).json({ erro: 'Você não pode desativar o próprio acesso.' });
     res.json({ ok: true, usuario: repo.Tenants.mudarUsuario(req.assinante.tenant_id, req.params.id, { ativo: b.ativo, papel: b.papel }) });
+  }));
+
+  // ---- CRÉDITOS DE IA e CHAVE PRÓPRIA (ver creditos.js) ----
+  // Todo usuário do escritório VÊ saldo e extrato; só o administrador recarrega ou mexe na chave.
+  const precosIA = () => {
+    const llm = require('../legal/llm');
+    const cfg = creditos.Config.ler(), cam = creditos.cambio();
+    const p = llm.PRECOS[llm.MODELOS[0]] || { in: 5, out: 25 };
+    const porMilhao = (usd) => cam ? Math.ceil(usd * cam * (1 + cfg.margem_pct / 100) * 100) : 0; // centavos por 1 milhão de tokens
+    return { modelo: llm.MODELOS[0], cambio_ok: !!cam, recarga_minima_centavos: cfg.recarga_minima_centavos,
+      entrada_centavos_por_milhao: porMilhao(p.in), saida_centavos_por_milhao: porMilhao(p.out),
+      teto_saida_centavos: cam ? creditos.centavosDe(llm.MAX_TOKENS * p.out) : 0 };
+  };
+  app.get('/juridico/api/ia/creditos', requireAssinante, h(async (req, res) => {
+    const tid = req.assinante.tenant_id;
+    res.json({ ...creditos.Carteira.saldo(tid), extrato: creditos.Carteira.extrato(tid, 40), recargas: creditos.Recargas.listar(tid, 10),
+      chave: creditos.Chaves.resumo(tid), precos: precosIA(), pagamento_online: billing.ativo(), admin: req.assinante.papel === 'admin' });
+  }));
+  app.post('/juridico/api/ia/recarga', requireAssinante, soAdmin, h(async (req, res) => {
+    const r = await creditos.Recargas.criar(req.assinante.tenant_id, Math.round(Number((req.body || {}).valor_centavos) || 0), { email: req.assinante.email, baseUrl: BASE });
+    res.json({ ok: true, ...r });
+  }));
+  app.put('/juridico/api/ia/chave', requireAssinante, soAdmin, h(async (req, res) => {
+    res.json({ ok: true, chave: await creditos.Chaves.salvar(req.assinante.tenant_id, (req.body || {}).chave, req.assinante.email) });
+  }));
+  app.delete('/juridico/api/ia/chave', requireAssinante, soAdmin, h(async (req, res) => {
+    res.json({ ok: true, chave: creditos.Chaves.remover(req.assinante.tenant_id) });
   }));
 
   return { requireAssinante, COOKIE };

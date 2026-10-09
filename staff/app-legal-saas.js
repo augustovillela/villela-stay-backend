@@ -16,7 +16,7 @@ const LS = {
   async abrir() { LS.render(); },
   abas() {
     return [['painel', '📊 Painel'], ['tenants', '🏢 Escritórios'], ['planos', '💳 Planos'],
-      ['custo', '💰 Custo/cliente'], ['cortesia', '🎟️ Cortesia'], ['tickets', '🎧 Suporte'], ['leads', '📩 Leads'], ['logs', '📜 Logs']];
+      ['custo', '💰 Custo/cliente'], ['cortesia', '🎟️ Cortesia'], ['ia', '🤖 IA e créditos'], ['tickets', '🎧 Suporte'], ['leads', '📩 Leads'], ['logs', '📜 Logs']];
   },
   render() {
     const abas = LS.abas().map(([id, r]) => `<button class="btn ${LS.tab === id ? '' : 'secund'} peq" onclick="LS.ir('${id}')">${r}</button>`).join(' ');
@@ -27,7 +27,7 @@ const LS = {
   ir(t) { LS.tab = t; LS.render(); },
   body() { return document.getElementById('ls-body'); },
   async pintar() {
-    try { await ({ painel: LS.vPainel, tenants: LS.vTenants, planos: LS.vPlanos, custo: LS.vCusto, cortesia: LS.vCortesia, tickets: LS.vTickets, leads: LS.vLeads, logs: LS.vLogs }[LS.tab])(); }
+    try { await ({ painel: LS.vPainel, tenants: LS.vTenants, planos: LS.vPlanos, custo: LS.vCusto, cortesia: LS.vCortesia, ia: LS.vIA, tickets: LS.vTickets, leads: LS.vLeads, logs: LS.vLogs }[LS.tab])(); }
     catch (e) { LS.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
 
@@ -150,6 +150,66 @@ const LS = {
   async darCortesia(id) {
     if (!confirm('Dar cortesia a esta conta? Ela passa a ter acesso sem cobrança e sem prazo, no plano em que está.\n\nSe houver assinatura ativa no Mercado Pago, cancele-a antes — a cortesia não interrompe a cobrança.')) return;
     try { await LS.api('POST', `/tenants/${id}/status`, { status: 'cortesia', detalhe: 'cortesia concedida' }); LS.verTenant(id); } catch (e) { alert(e.message); }
+  },
+
+  // -------------------------------------------------------- IA E CRÉDITOS
+  // A IA dos escritórios assinantes é paga por uso (crédito pré-pago ou chave própria), em qualquer
+  // plano e na cortesia. Aqui ficam os dois números comerciais (margem e recarga mínima) e o câmbio.
+  async vIA() {
+    const d = await LS.api('GET', '/ia-creditos');
+    const c = d.config;
+    const soma = (k) => d.escritorios.reduce((n, e) => n + (e[k] || 0), 0);
+    const kpi = (rot, val) => `<div class="card" style="min-width:150px;flex:1"><div class="sub">${rot}</div><div style="font-size:1.4rem;font-weight:700">${val}</div></div>`;
+    LS.body().innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.6rem 0">
+        ${kpi('Em carteira (todos)', LS.brl(soma('saldo_centavos')))}${kpi('Já recarregado', LS.brl(soma('recarregado_centavos')))}
+        ${kpi('Já consumido', LS.brl(soma('consumido_centavos')))}${kpi('Dólar em uso', d.cambio ? 'R$ ' + Number(d.cambio).toFixed(4) : '⚠️ sem cotação')}</div>
+      ${d.cambio ? '' : '<div class="aviso">⚠️ Sem cotação do dólar a IA por crédito fica <b>pausada</b> para todos os escritórios. Atualize a PTAX ou informe um câmbio manual.</div>'}
+      <div class="card"><h3>Regras de cobrança</h3>
+        <form class="form" id="ls-ia-form" style="max-width:720px"><div class="hi-grid">
+          <label>Margem sobre o custo do provedor (%) <input id="lsi-margem" type="number" step="1" min="0" max="500" value="${c.margem_pct}"></label>
+          <label>Recarga mínima (R$) <input id="lsi-min" type="number" step="1" min="1" value="${(c.recarga_minima_centavos / 100).toFixed(2)}"></label>
+          <label>Câmbio <select id="lsi-modo"><option value="auto"${c.cambio_modo === 'auto' ? ' selected' : ''}>Automático (PTAX do Banco Central)</option><option value="manual"${c.cambio_modo === 'manual' ? ' selected' : ''}>Manual (valor fixo)</option></select></label>
+          <label>Câmbio manual (R$ por US$) <input id="lsi-cambio" type="number" step="0.0001" min="0" value="${c.cambio_manual || ''}"></label></div>
+          <p class="sub">PTAX gravada: <b>${c.cambio_auto ? 'R$ ' + Number(c.cambio_auto).toFixed(4) : '—'}</b>${c.cambio_auto_em ? ' (cotação de ' + esc(c.cambio_auto_em) + ')' : ''}. Preço ao assinante = custo do provedor × câmbio × (1 + margem), arredondado para cima.</p>
+          <button class="btn peq" type="submit">Salvar regras</button>
+          <button class="btn secund peq" type="button" onclick="LS.atualizarCambio()">🔄 Buscar PTAX agora</button><p id="lsi-msg" class="erro"></p></form></div>
+      <div class="card"><h3>Carteiras dos escritórios</h3>${tabela(['Escritório', 'Status', 'IA por', 'Saldo', 'Reservado', 'Recarregado', 'Consumido', ''], d.escritorios.map(e => [
+        esc(e.nome), LS.chip(e.status), e.chave_final4 ? '🔑 chave própria (…' + esc(e.chave_final4) + ')' : 'crédito',
+        `<b style="color:${e.saldo_centavos <= 0 && !e.chave_final4 ? 'var(--alerta)' : 'inherit'}">${LS.brl(e.saldo_centavos)}</b>`, LS.brl(e.reservado_centavos),
+        LS.brl(e.recarregado_centavos), LS.brl(e.consumido_centavos),
+        `<button class="btn secund peq" onclick="LS.verIA('${e.id}')">Extrato / ajuste</button>`,
+      ]))}<p class="sub">Cortesia e trial também pagam a IA: nenhum escritório nasce com saldo.</p></div><div id="ls-ia-det"></div>`;
+    document.getElementById('ls-ia-form').onsubmit = async (ev) => {
+      ev.preventDefault(); const msg = document.getElementById('lsi-msg'); msg.textContent = '';
+      try {
+        await LS.api('PATCH', '/ia-creditos/config', { margem_pct: Number(document.getElementById('lsi-margem').value), recarga_minima_centavos: Math.round(Number(document.getElementById('lsi-min').value) * 100),
+          cambio_modo: document.getElementById('lsi-modo').value, cambio_manual: Number(document.getElementById('lsi-cambio').value || 0) });
+        LS.vIA();
+      } catch (e) { msg.textContent = e.message; }
+    };
+  },
+  async atualizarCambio() { try { await LS.api('POST', '/ia-creditos/cambio/atualizar'); LS.vIA(); } catch (e) { alert('Não consegui buscar a PTAX: ' + e.message); } },
+  async verIA(id) {
+    const d = await LS.api('GET', `/tenants/${id}/ia-creditos`);
+    const rot = { recarga: 'Recarga', consumo: 'Uso de IA', ajuste: 'Ajuste manual' };
+    const det = (m) => { const x = m.detalhe || {}; return [x.agente, x.modelo, x.motivo, x.mp_payment_id ? 'MP ' + x.mp_payment_id : ''].filter(Boolean).map(esc).join(' · '); };
+    document.getElementById('ls-ia-det').innerHTML = `<div class="card"><h3>Extrato de IA</h3>
+      <p>Saldo <b>${LS.brl(d.saldo_centavos)}</b> · reservado ${LS.brl(d.reservado_centavos)} · disponível <b>${LS.brl(d.disponivel_centavos)}</b>${d.chave.tem ? ' · 🔑 chave própria (…' + esc(d.chave.final4) + ')' : ''}</p>
+      ${d.extrato.length ? tabela(['Quando', 'Tipo', 'Valor', 'Saldo após', 'Detalhe'], d.extrato.map(m => [new Date(m.criado_em).toLocaleString('pt-BR'), rot[m.tipo] || esc(m.tipo), (m.valor_centavos < 0 ? '− ' : '+ ') + LS.brl(Math.abs(m.valor_centavos)), LS.brl(m.saldo_apos_centavos), det(m)])) : '<p class="vazio">Nenhum movimento.</p>'}
+      <h3 style="margin-top:12px">Ajuste manual</h3>
+      <p class="sub">Para pagamento recebido por fora (Pix direto), estorno ou correção. Use valor negativo para debitar. O motivo aparece no extrato do escritório.</p>
+      <form class="form" id="ls-ia-aj" style="max-width:560px"><div class="hi-grid">
+        <label>Valor (R$) <input id="lsa-valor" type="number" step="0.01" required></label>
+        <label>Motivo <input id="lsa-motivo" maxlength="300" required placeholder="Ex.: Pix recebido em 08/10, comprovante nº…"></label></div>
+        <button class="btn peq" type="submit">Lançar ajuste</button><p id="lsa-msg" class="erro"></p></form></div>`;
+    document.getElementById('ls-ia-aj').onsubmit = async (ev) => {
+      ev.preventDefault(); const msg = document.getElementById('lsa-msg'); msg.textContent = '';
+      const v = Math.round(Number(document.getElementById('lsa-valor').value) * 100);
+      if (!confirm(`Lançar ${v < 0 ? 'DÉBITO' : 'CRÉDITO'} de ${LS.brl(Math.abs(v))} na carteira de IA deste escritório?`)) return;
+      try { await LS.api('POST', `/tenants/${id}/ia-creditos/ajuste`, { valor_centavos: v, motivo: document.getElementById('lsa-motivo').value }); await LS.vIA(); LS.verIA(id); }
+      catch (e) { msg.textContent = e.message; }
+    };
+    document.getElementById('ls-ia-det').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   },
 
   // -------------------------------------------------------- PLANOS
