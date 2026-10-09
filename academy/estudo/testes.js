@@ -524,6 +524,17 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(meio.length > 400 && meio.split('}').filter(r => r.includes('{')).every(r => r.trim().startsWith('.')), 'o trecho reaproveitado só tem regras de classe');
   });
 
+  await t('estudo: mais cobrado — a prática filtra por questão de prova oficial, e o painel conta as oficiais por ponto', async () => {
+    const todas = (await req('GET', `${esc}/praticar?n=20`, { jar: 'olga' })).json;
+    const of = await req('GET', `${esc}/praticar?n=20&origem=oficial`, { jar: 'olga' });
+    assert.equal(of.st, 200, of.texto);
+    assert.ok(of.json.elegiveis <= todas.elegiveis, 'o filtro só tira questões');
+    assert.ok(of.json.questoes.every(q => q.origem === 'oficial'), 'só oficiais: ' + of.json.questoes.map(q => q.origem).join(','));
+    assert.equal((await req('GET', `${esc}/praticar?n=20&origem=inexistente`, { jar: 'olga' })).json.elegiveis, 0);
+    const p = (await req('GET', `${esc}/painel`, { jar: 'olga' })).json;
+    assert.ok(p.itens.filter(i => i.folha).every(i => Number.isInteger(i.oficiais)), 'cada ponto do programa diz quantas questões oficiais o cobraram');
+  });
+
   await t('estudo: cards — a sessão diz os limites do dia; o acervo inteiro é só do revisor e não agenda nada', async () => {
     const c = (await req('GET', `${esc}/cards`, { jar: 'olga' })).json;
     assert.deepEqual([c.limites.novos_dia, c.limites.revisoes_dia, c.revisor], [5, 20, false], 'a tela explica "Card 1 de 5" com estes números');

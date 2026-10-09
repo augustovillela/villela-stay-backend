@@ -402,11 +402,12 @@ function anotar(usuario, produto, slugEscopo, questaoId, texto) {
   return { ok: true, anotacao: t };
 }
 
-function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, erradas = false } = {}) {
+function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, erradas = false, origem = '' } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
   const pend = erradas ? new Set(errosPendentes(usuario.id, c.escopo.id).map(x => x.id)) : null;
   const elegiveis = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes, competencia: R.slug(competencia) })
     .filter(q => q.corrigivel && q.uso !== 'reservada') // reservada fica para aferição: não se gasta no treino
+    .filter(q => !origem || q.origem === origem) // "só questões de prova oficial" (guia Mais cobrado)
     .filter(q => !pend || pend.has(q.id));
   const vistas = new Set(elegiveis.filter(q => jaViu(usuario.id, q.id)).map(q => q.id));
   const ordenadas = [...elegiveis.filter(q => !vistas.has(q.id)), ...elegiveis.filter(q => vistas.has(q.id))];
