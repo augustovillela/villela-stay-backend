@@ -104,15 +104,53 @@ function alocar(cap, itens, { revisao_pct = REVISAO_PADRAO_PCT } = {}) {
   return { sessoes, pendentes: fila.map(f => ({ codigo: f.codigo, faltam_min: f.resta })) };
 }
 
+// ADR-0005 — qual NÍVEL do material o tempo permite. A estimativa de esforço do
+// item é do nível 100; só a parte de LEITURA encolhe nos níveis menores (a prática
+// e a aplicação não), então o fator é 0,5 + 0,5 × nível. Escolhe o maior nível que
+// cabe; se nem o 10 cabe, recomenda o 10 e deixa o déficit à mostra.
+const NIVEIS = [100, 50, 25, 10];
+const fatorNivel = (n) => 0.5 + 0.5 * (n / 100);
+function nivelRecomendado(cap, itens) {
+  const e = esforcoTotal(itens);
+  const util = cap.util_min;
+  const opcoes = NIVEIS.map(n => ({ nivel: n, esforco_min: [Math.round(e.min * fatorNivel(n)), Math.round(e.max * fatorNivel(n))] }))
+    .map(o => ({ ...o, cabe: o.esforco_min[1] <= util, apertado: o.esforco_min[0] <= util && o.esforco_min[1] > util }));
+  const escolha = opcoes.find(o => o.cabe) || opcoes.find(o => o.apertado) || opcoes[opcoes.length - 1];
+  const motivo = escolha.cabe
+    ? (escolha.nivel === 100 ? 'O tempo declarado cobre o material completo.' : `O material completo não cabe no tempo declarado; o nível ${escolha.nivel} % cabe.`)
+    : escolha.apertado ? `Nem o completo cabe com folga; o nível ${escolha.nivel} % cabe só na estimativa mínima.` : 'Nem o nível 10 % cabe no tempo declarado — veja o déficit e o que ficou pendente.';
+  return { nivel: escolha.nivel, motivo, opcoes };
+}
+
+// Véspera (ADR-0005): os últimos `vespera_dias` antes da data-alvo viram sessões
+// de revisão de véspera no foco da etapa (objetiva | escrita | oral) — nada de
+// matéria nova nesses dias. O foco vem do escopo (ordem das etapas do concurso).
+const VESPERA_PADRAO_DIAS = 7;
+function marcarVespera(sessoes, fim, { vespera_dias = VESPERA_PADRAO_DIAS, foco = 'objetiva' } = {}) {
+  if (!fim || !vespera_dias) return sessoes;
+  const inicio = somarDias(fim, -int(vespera_dias));
+  return sessoes.map(s => (s.data >= inicio ? { ...s, estudo: [], revisao_min: s.minutos, vespera: foco } : s));
+}
+
 // Porta única. Sem data-alvo (assunto avulso), o plano diz quando termina
 // no ritmo declarado em vez de fingir um prazo.
-function planejar({ hoje, data_alvo = '', disponibilidade, indisponiveis, margem_pct, revisao_pct, itens }) {
+function planejar({ hoje, data_alvo = '', disponibilidade, indisponiveis, margem_pct, revisao_pct, itens, vespera_dias, foco }) {
   const base = { hoje, disponibilidade, indisponiveis, margem_pct };
   if (data_alvo) {
     if (data_alvo <= hoje) throw new Error('A data-alvo precisa ser futura.');
     const cap = capacidade({ ...base, fim: data_alvo });
-    const plano = alocar(cap, itens, { revisao_pct });
-    return { data_alvo, viabilidade: viabilidade(cap, itens), ...plano, conclusao_estimada: plano.pendentes.length ? '' : (plano.sessoes.filter(s => s.estudo.length).pop() || {}).data || '' };
+    // os dias de véspera não recebem matéria nova: a alocação usa só os dias anteriores.
+    // Véspera só existe se quem chama a pedir (o escopo de edital pede; assunto avulso não) —
+    // o motor puro não tira dia nenhum por conta própria.
+    const capEstudo = { ...cap, dias: cap.dias.filter(d => d.data < somarDias(data_alvo, -int(vespera_dias))) };
+    capEstudo.bruta_min = capEstudo.dias.reduce((a, d) => a + d.minutos, 0);
+    capEstudo.margem_min = Math.round(capEstudo.bruta_min * (cap.margem_pct / 100));
+    capEstudo.util_min = capEstudo.bruta_min - capEstudo.margem_min;
+    const plano = alocar(capEstudo, itens, { revisao_pct });
+    const vesperas = marcarVespera(cap.dias.map(d => ({ data: d.data, minutos: d.minutos, estudo: [], revisao_min: 0 })), data_alvo, { vespera_dias: int(vespera_dias), foco }).filter(s => s.vespera);
+    const sessoes = [...plano.sessoes, ...vesperas].sort((a, b) => a.data.localeCompare(b.data));
+    return { data_alvo, viabilidade: viabilidade(capEstudo, itens), nivel_recomendado: nivelRecomendado(capEstudo, itens), ...plano, sessoes,
+      conclusao_estimada: plano.pendentes.length ? '' : (plano.sessoes.filter(s => s.estudo.length).pop() || {}).data || '' };
   }
   const cap = capacidade({ ...base, fim: somarDias(hoje, HORIZONTE_SEM_PRAZO) });
   const plano = alocar(cap, itens, { revisao_pct });
@@ -123,4 +161,4 @@ function planejar({ hoje, data_alvo = '', disponibilidade, indisponiveis, margem
     sessoes: plano.sessoes.slice(0, corte), pendentes: plano.pendentes, conclusao_estimada: ultima ? ultima.data : '' };
 }
 
-module.exports = { planejar, capacidade, viabilidade, alocar, ordenar, esforcoTotal, minutosPorDia, DIAS, MARGEM_PADRAO_PCT, REVISAO_PADRAO_PCT };
+module.exports = { planejar, capacidade, viabilidade, alocar, ordenar, esforcoTotal, minutosPorDia, nivelRecomendado, marcarVespera, fatorNivel, NIVEIS, DIAS, MARGEM_PADRAO_PCT, REVISAO_PADRAO_PCT, VESPERA_PADRAO_DIAS };

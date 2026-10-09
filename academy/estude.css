@@ -148,3 +148,5 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-slide { margin: 8px 0; padding: 8px 10px; background: var(--al-fundo-2, #f4f6fa); border-radius: 8px; }
 .es-slide ul { margin: 4px 0 0; padding-left: 18px; }
 .es-mapa { white-space: pre-wrap; font: inherit; font-size: .92em; margin: 8px 0 0; padding: 8px 10px; background: var(--al-fundo-2, #f4f6fa); border-radius: 8px; }
+.es-nivel-rec { margin: 10px 0 0; padding: 8px 10px; background: var(--al-fundo-2, #f4f6fa); border-radius: 8px; }
+.es-sessao.vespera { border-left: 3px solid var(--al-acento, #1f5fbf); }

@@ -386,7 +386,16 @@ async function rodar({ t, req, EST, impId }) {
     const r = await set({ disponibilidade: semana, margem_pct: 0, data_alvo: daqui(300) });
     assert.equal(r.st, 200, r.texto);
     const v = r.json.plano.viabilidade;    assert.equal(r.json.plano.data_alvo, daqui(14), 'a data da prova é a do edital, não a que o aluno digitou');
-    assert.deepEqual([v.situacao, v.capacidade_bruta_min, v.esforco_min, v.deficit_min, v.sem_estimativa], ['nao_cabe', 60, [600, 800], [540, 740], ['2.1']]);
+    // ADR-0005: os 7 últimos dias são véspera (sem matéria nova) — dos 2 dias com tempo, só o 1º recebe estudo
+    assert.deepEqual([v.situacao, v.capacidade_bruta_min, v.esforco_min, v.deficit_min, v.sem_estimativa], ['nao_cabe', 30, [600, 800], [570, 770], ['2.1']]);
+    const vesp = r.json.plano.proximas.filter(s => s.vespera);
+    assert.deepEqual([vesp.length, vesp[0].vespera, vesp[0].estudo.length, vesp[0].revisao_min], [1, 'objetiva', 0, 30], 'véspera: só revisão, no foco da 1ª etapa');
+    assert.equal(r.json.plano.nivel_recomendado.nivel, 10, 'não cabe nem o 10 %: recomenda o menor e mostra o déficit');
+    assert.ok(/déficit/.test(r.json.plano.nivel_recomendado.motivo));
+    // puro: com 500 min úteis para [600, 800] no nível 100, o 50 só cabe no mínimo e o 25 cabe inteiro
+    const nr = plano.nivelRecomendado({ util_min: 500 }, [{ codigo: 'a', esforco_min: [600, 800] }]);
+    assert.deepEqual([nr.nivel, nr.opcoes.find(o => o.nivel === 50).apertado, nr.opcoes.find(o => o.nivel === 25).esforco_min], [25, true, [375, 500]]);
+    assert.equal(plano.nivelRecomendado({ util_min: 1000 }, [{ codigo: 'a', esforco_min: [600, 800] }]).nivel, 100);
     assert.deepEqual(r.json.plano.pendentes.map(p => p.codigo), ['1.1', '1.2'], 'nada sai do programa em silêncio');
     assert.equal(r.json.plano.sessoes_total, 2);
     const r2 = await set({ disponibilidade: semana, margem_pct: 0, motivo: 'faltei ontem' });

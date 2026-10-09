@@ -436,7 +436,13 @@ function definirPlano(usuario, produto, slugEscopo, entrada = {}, motivo = 'defi
     data_alvo: c.escopo.data_alvo || (/^\d{4}-\d{2}-\d{2}$/.test(entrada.data_alvo || '') ? entrada.data_alvo : ''),
     margem_pct: Math.min(50, Math.max(0, Number.isFinite(Number(entrada.margem_pct)) ? Number(entrada.margem_pct) : plano.MARGEM_PADRAO_PCT)),
   };
-  const p = plano.planejar({ hoje: hojeBR(), ...e, itens: itensDoPlano(c.escopo, c) });
+  // ADR-0005: a véspera segue a 1ª etapa do concurso (perfil.etapas, ordem do edital); sem perfil, objetiva
+  const perfil = (c.escopo.perfil && typeof c.escopo.perfil === 'object') ? c.escopo.perfil : {};
+  const etapa1 = Array.isArray(perfil.etapas) && perfil.etapas[0] ? String(perfil.etapas[0].foco || perfil.etapas[0].tipo || perfil.etapas[0]) : '';
+  const foco = /oral/i.test(etapa1) ? 'oral' : /discurs|escrit|senten|peça|peca/i.test(etapa1) ? 'escrita' : 'objetiva';
+  // véspera só no escopo de edital (padrão 7 dias; o perfil pode mudar); assunto avulso não tem prova marcada
+  const vesperaDias = perfil.vespera_dias != null && Number.isFinite(Number(perfil.vespera_dias)) ? Number(perfil.vespera_dias) : (c.escopo.tipo === 'edital' ? plano.VESPERA_PADRAO_DIAS : 0);
+  const p = plano.planejar({ hoje: hojeBR(), ...e, itens: itensDoPlano(c.escopo, c), foco, vespera_dias: vesperaDias });
   const atual = db.prepare('SELECT versao, historico FROM est_planos WHERE user_id = ? AND escopo_id = ?').get(usuario.id, c.escopo.id);
   const historico = [...j.parse(atual && atual.historico, []), { em: nowISO(), motivo: s(motivo, 200), situacao: p.viabilidade.situacao, deficit_min: p.viabilidade.deficit_min || null, pendentes: p.pendentes.length }].slice(-20);
   db.prepare(`INSERT INTO est_planos (user_id, escopo_id, entrada, plano, historico, versao, atualizado_em) VALUES (?, ?, ?, ?, ?, 1, ?)

@@ -481,10 +481,12 @@
               (v.deficit_min[1] ? '<tr><td><b>Faltam</b></td><td class="n"><b>' + (v.deficit_min[0] ? horas(v.deficit_min[0]) + ' a ' : 'até ') + horas(v.deficit_min[1]) + '</b></td></tr>' : '') + '</table>') +
           (v.situacao === 'nao_cabe' || v.situacao === 'apertado' ? '<p class="es-aviso">O programa não cabe inteiro no tempo informado. Nada foi tirado em silêncio: os itens abaixo ficam de fora deste plano. Você pode aumentar a disponibilidade ou aceitar a prioridade.</p>' : '') +
           (p.pendentes.length ? '<p><b>Ficam de fora (' + p.pendentes.length + '):</b> ' + p.pendentes.map(function (x) { return esc(x.codigo) + ' (' + horas(x.faltam_min) + ')'; }).join(' · ') + '</p>' : '') +
-          ((v.sem_estimativa || []).length ? '<p class="al-fino">Sem estimativa de tempo, por isso fora da conta: ' + v.sem_estimativa.map(esc).join(', ') + '.</p>' : '') + '</div>';
+          ((v.sem_estimativa || []).length ? '<p class="al-fino">Sem estimativa de tempo, por isso fora da conta: ' + v.sem_estimativa.map(esc).join(', ') + '.</p>' : '') +
+          (p.nivel_recomendado ? '<p class="es-nivel-rec"><b>Quanto ler de cada aula: ' + p.nivel_recomendado.nivel + ' %.</b> ' + esc(p.nivel_recomendado.motivo) + ' <span class="al-fino">Na aula, o seletor "Quanto ler" troca o nível quando ele existir.</span></p>' : '') + '</div>';
         h += '<div class="jr-caixa"><h3>Próximas sessões</h3>' + (p.proximas.length ? '<div class="es-sessoes">' + p.proximas.map(function (s) {
-          return '<div class="es-sessao"><b>' + dataBR(s.data).slice(0, 5) + '</b><span>' + horas(s.minutos) + '</span><p>' +
-            (s.estudo.length ? s.estudo.map(function (e) { return '<b class="es-cod">' + esc(e.codigo) + '</b> ' + esc(nomeItem(e.codigo)) + ' · ' + horas(e.minutos); }).join('<br>') : 'só retomadas') + (s.revisao_min ? '<br><i>retomadas · ' + horas(s.revisao_min) + '</i>' : '') + '</p></div>';
+          return '<div class="es-sessao' + (s.vespera ? ' vespera' : '') + '"><b>' + dataBR(s.data).slice(0, 5) + '</b><span>' + horas(s.minutos) + '</span><p>' +
+            (s.vespera ? '<b>Véspera · ' + esc(FOCO[s.vespera] || s.vespera) + '</b> — fichas, slides e mapa das aulas já estudadas; nada de matéria nova.' :
+            (s.estudo.length ? s.estudo.map(function (e) { return '<b class="es-cod">' + esc(e.codigo) + '</b> ' + esc(nomeItem(e.codigo)) + ' · ' + horas(e.minutos); }).join('<br>') : 'só retomadas') + (s.revisao_min ? '<br><i>retomadas · ' + horas(s.revisao_min) + '</i>' : '')) + '</p></div>';
         }).join('') + '</div>' : '<p class="al-sub">Nenhuma sessão nos próximos dias com a disponibilidade informada.</p>') +
           '<p class="al-fino">' + p.sessoes_total + ' sessão(ões) no plano inteiro · versão ' + r.versao + '</p></div>';
         if ((r.historico || []).length > 1) h += '<details class="jr-caixa es-fontes"><summary>O que mudou no plano</summary><ul>' + r.historico.slice().reverse().map(function (x) {
