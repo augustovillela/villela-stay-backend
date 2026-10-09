@@ -82,8 +82,8 @@ const espera = (ms) => new Promise(r => setTimeout(r, ms));
 let BASE = '', ok = 0, falhas = [];
 // jars de cookie por "pessoa" (cada usuário de teste tem a própria sessão)
 const jars = {};
-async function req(m, p, { corpo, user = 'adm', jar, ip, chave, semUser } = {}) {
-  const headers = { 'Content-Type': 'application/json', 'x-test-user': user, 'x-forwarded-for': ip || '10.0.0.1' };
+async function req(m, p, { corpo, user = 'adm', jar, ip, chave, semUser, cab } = {}) {
+  const headers = { 'Content-Type': 'application/json', 'x-test-user': user, 'x-forwarded-for': ip || '10.0.0.1', ...(cab || {}) };
   if (chave) headers['x-publish-key'] = chave === true ? PUBLISH_KEY_TESTE : chave;
   if (semUser) headers['x-test-user'] = 'ninguem-logado'; // sem sessão de staff: o mock devolve 401
   if (jar && jars[jar]) headers.Cookie = Object.entries(jars[jar]).map(([k, v]) => `${k}=${v}`).join('; ');
@@ -2821,6 +2821,9 @@ async function main() {
 
   // ================= ESTUDO (academy\estudo\) =================
   await require('./estudo/testes').rodar({ t, req, EST, impId });
+
+  // ================= CARTEIRA DE IA (carteira-ia.js) — por último: liga a cobrança =================
+  await require('./testes-carteira-ia').rodar({ t, req, impId, jars });
 
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);

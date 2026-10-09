@@ -8,11 +8,13 @@
 const repo = require('./repo');
 const ct = require('./repo-conteudo');
 const ia = require('./ia');
+const carteira = require('./carteira-ia');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const h = (fn) => (req, res) => {
-  try { Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ erro: e.message })); }
-  catch (e) { res.status(e.status || 400).json({ erro: e.message }); }
+  // `extra` leva o orcamento da IA (402): a tela precisa do valor para pedir o aceite
+  try { Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ erro: e.message, ...(e.extra || {}) })); }
+  catch (e) { res.status(e.status || 400).json({ erro: e.message, ...(e.extra || {}) }); }
 };
 
 function registrarRotasIA(app, { requireUsuario, requirePapel }) {
@@ -26,6 +28,24 @@ function registrarRotasIA(app, { requireUsuario, requirePapel }) {
 
   app.get('/academy/api/ia/status', requireUsuario, h((req, res) => {
     res.json({ ativo: ia.ativo(), limite_dia: ia.limiteDia(), usadas_hoje: ia.usadasHoje(req.usuario.id) });
+  }));
+
+  // ---- CARTEIRA DE IA: saldo, extrato e recarga (carteira-ia.js) ----
+  // `product_id` diz como ESTE curso seria cobrado agora (franquia de quem comprou antes, ou saldo)
+  app.get('/academy/api/ia/carteira', requireUsuario, h((req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const pid = s(req.query.product_id, 40);
+    res.json({ ...carteira.carteiraDoUsuario(req.usuario), limite_dia: ia.limiteDia(), usadas_hoje: ia.usadasHoje(req.usuario.id),
+      cobranca_agora: ia.comoCobrar(req.usuario.id, pid), franquia_neste_curso: pid ? carteira.temFranquia(req.usuario.id, pid) : false });
+  }));
+  app.post('/academy/api/ia/carteira/recarga', requireUsuario, h(async (req, res) => {
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const r = await carteira.criarRecarga(req.usuario, (req.body || {}).valor_centavos, `${proto}://${req.get('host')}`);
+    aud(req, 'ia.recarga.criar', r.recarga_id, String((req.body || {}).valor_centavos));
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/academy/api/ia/carteira/recarga/:id/conferir', requireUsuario, h(async (req, res) => {
+    res.json({ ok: true, ...(await carteira.conferirRecarga(req.usuario, req.params.id)) });
   }));
 
   // ---- produtor ----
@@ -92,6 +112,18 @@ function registrarRotasIAStaff(app, { requireAuth, requireAdmin }) {
   const A = [requireAuth, requireAdmin];
   app.get('/staff/api/academy/ia-logs', ...A, h((req, res) => {
     res.json({ eventos: ia.Logs.listar(req.query.n), ...ia.Logs.custoTotal() });
+  }));
+  // ---- carteira de IA: visão do dono e crédito manual ----
+  // Crédito é dinheiro: só SESSÃO de admin do portal. A chave de publicação não entra aqui
+  // de propósito — quem automatiza não pode se dar saldo.
+  app.get('/staff/api/academy/ia/carteiras', ...A, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json(carteira.painelStaff()); }));
+  app.post('/staff/api/academy/ia/creditos', ...A, h((req, res) => {
+    const b = req.body || {};
+    const quem = 'staff:' + ((req.user && (req.user.nome || req.user.email)) || 'admin');
+    const r = carteira.creditar({ email: b.email, valor_centavos: b.valor_centavos, motivo: b.motivo, tipo: b.tipo === 'ajuste' ? 'ajuste' : 'cortesia', quem });
+    repo.Auditoria.registrar({ quem, acao: 'ia.credito.' + (b.tipo === 'ajuste' ? 'ajuste' : 'cortesia'), entidade: 'ia_movimentos', entidade_id: r.user_id,
+      detalhe: `${r.email}: R$ ${(Math.round(Number(b.valor_centavos)) / 100).toFixed(2)} — ${s(b.motivo, 200)}`, ip: '' });
+    res.json({ ok: true, ...r });
   }));
 }
 

@@ -546,6 +546,38 @@ const MIGRACOES = [
             PRIMARY KEY (user_id, escopo_id)
           );`,
   },
+  // CARTEIRA DE IA (carteira-ia.js): saldo pré-pago que paga o uso de provedor de
+  // IA. O saldo é a SOMA do razão, em milésimos de real. O índice único parcial
+  // é a idempotência da recarga: o mesmo pagamento não credita duas vezes.
+  {
+    nome: 'ia-carteira-2026-10-08',
+    sql: `CREATE TABLE IF NOT EXISTS ia_movimentos (
+            id        TEXT PRIMARY KEY,
+            user_id   TEXT NOT NULL REFERENCES users(id),
+            tipo      TEXT NOT NULL,   -- recarga | cortesia | ajuste | reserva | acerto | estorno | estorno_recarga
+            milesimos INTEGER NOT NULL, -- R$ × 1000; crédito positivo, débito negativo
+            ref       TEXT DEFAULT '',  -- recarga: id da recarga · uso: id que liga reserva e acerto
+            detalhe   TEXT DEFAULT '',
+            quem      TEXT DEFAULT '',
+            criado_em TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_iamov_user ON ia_movimentos(user_id, criado_em);
+          CREATE INDEX IF NOT EXISTS idx_iamov_ref ON ia_movimentos(ref);
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_iamov_recarga ON ia_movimentos(tipo, ref) WHERE tipo IN ('recarga', 'estorno_recarga');
+          CREATE TABLE IF NOT EXISTS ia_recargas (
+            id               TEXT PRIMARY KEY,
+            user_id          TEXT NOT NULL REFERENCES users(id),
+            valor_centavos   INTEGER NOT NULL,
+            status           TEXT DEFAULT 'pendente', -- pendente | paga | recusada | cancelada | reembolsada
+            mp_preference_id TEXT DEFAULT '',
+            mp_payment_id    TEXT DEFAULT '',
+            criado_em        TEXT NOT NULL,
+            pago_em          TEXT DEFAULT ''
+          );
+          ALTER TABLE ai_usage_logs ADD COLUMN cobranca TEXT DEFAULT '';   -- '' (antes da carteira) | franquia | paga | isento
+          ALTER TABLE ai_usage_logs ADD COLUMN milesimos INTEGER DEFAULT 0; -- o que foi debitado do usuário
+          ALTER TABLE ai_usage_logs ADD COLUMN product_id TEXT DEFAULT '';`,
+  },
 ];
 
 for (const m of MIGRACOES) {

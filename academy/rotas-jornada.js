@@ -14,8 +14,9 @@ const fe = require('./ferramentas');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const h = (fn) => (req, res) => {
-  try { Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ erro: e.message })); }
-  catch (e) { res.status(e.status || 400).json({ erro: e.message }); }
+  // `extra` leva o orcamento da IA (402): a tela precisa do valor para pedir o aceite
+  try { Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ erro: e.message, ...(e.extra || {}) })); }
+  catch (e) { res.status(e.status || 400).json({ erro: e.message, ...(e.extra || {}) }); }
 };
 const escHtml = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

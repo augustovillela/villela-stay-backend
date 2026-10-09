@@ -52,6 +52,7 @@ function montar(app, injected = {}) {
   } catch (e) { /* SEO é acessório: nunca derruba a montagem do módulo */ }
   const notificar = (m) => Promise.resolve((alertaAugusto || (async () => {}))(m)).catch(() => {});
   billing.configurar({ mpFetch, notificar });
+  require('./carteira-ia').configurar({ mpFetch }); // recarga da carteira de IA
   require('./storage').configurar({ segredo: jwtSecret }); // URLs assinadas (F7)
   const emails = require('./emails');
   emails.configurar({ enviarEmail: injected.enviarEmail }); // e-mails transacionais (F8)
@@ -86,6 +87,9 @@ function montar(app, injected = {}) {
       next();
     });
   }
+
+  // o aceite de valor da IA (cabecalho X-IA-Aceite) vale para a requisicao inteira; precisa vir antes das rotas
+  app.use('/academy/api', require('./ia').middlewareAceite);
 
   registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrAdmin, jwtSecret });
   registrarRotasCheckoutStaff(app, { requireAuth, requireAdmin });

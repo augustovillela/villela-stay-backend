@@ -118,6 +118,11 @@ async function criarCheckout(usuario, productId, baseUrl, refCodigo) {
 // aplica o resultado de um pagamento do MP a um pedido (idempotente)
 function aplicarPagamento(pay) {
   const ref = String(pay.external_reference || '');
+  if (ref.startsWith('academy-ia:')) { // recarga da carteira de IA (carteira-ia.js credita, idempotente)
+    db.prepare('INSERT INTO payment_events (quando, order_id, mp_payment_id, status, payload) VALUES (?, ?, ?, ?, ?)')
+      .run(nowISO(), 'ia:' + ref.slice('academy-ia:'.length), s(pay.id, 40), s(pay.status, 30), j.str(pay).slice(0, 8000));
+    return require('./carteira-ia').aplicarPagamento(pay);
+  }
   if (ref.startsWith('academy-sub:')) { // cobrança recorrente de assinatura
     const sub = Assinaturas.obter(ref.slice('academy-sub:'.length));
     if (!sub) return { resultado: 'ignorado' };
