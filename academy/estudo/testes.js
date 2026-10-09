@@ -527,6 +527,9 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(arq.json.importado.questoes_arquivadas, 1, 'só arquiva o que existe e é deste escopo');
     assert.ok(!(await req('GET', `${esc}/praticar?n=20`, { jar })).json.questoes.some(x => x.id === pr.id), 'questão arquivada não é mais servida');
     assert.ok(db.prepare('SELECT 1 FROM est_evidencias WHERE ref_id = ?').get(pr.id), 'a evidência já registrada fica');
+    const rep = await req('POST', '/staff/api/academy/estudo/status', { semUser: true, chave: true, corpo: EST({ escopo: SLUG, questoes: 'disponivel' }) });
+    assert.equal(rep.st, 200, rep.texto);
+    assert.equal(db.prepare('SELECT situacao FROM est_questoes WHERE id = ?').get(pr.id).situacao, 'arquivada', 'publicar de novo não ressuscita a questão arquivada');
     // anotar o que nunca respondeu é recusado
     const nunca = db.prepare("SELECT q.id FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id WHERE q.id NOT IN (SELECT ref_id FROM est_evidencias) LIMIT 1").get();
     if (nunca) assert.ok([404, 409].includes((await req('PUT', `${esc}/questoes/${nunca.id}/anotacao`, { jar, corpo: { texto: 'x' } })).st), 'anotação é sobre a resposta dada');

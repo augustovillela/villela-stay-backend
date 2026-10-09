@@ -407,8 +407,9 @@ function definirStatus(produto, dados = {}) {
   }
   if (st(dados.unidades)) r.unidades = db.prepare('UPDATE est_unidades SET status = ?, atualizado_em = ? WHERE escopo_id = ?').run(dados.unidades, nowISO(), escopo.id).changes;
   if (st(dados.cards)) r.cards = db.prepare('UPDATE est_cards SET status = ? WHERE escopo_id = ?').run(dados.cards, escopo.id).changes;
+  // publicar em lote não ressuscita questão ARQUIVADA (versão superada por correção): ela só volta por ato próprio
   if (banco.SITUACOES.includes(dados.questoes)) {
-    r.questoes = db.prepare(`UPDATE est_questoes SET situacao = ?, atualizado_em = ? WHERE producer_id = ? AND id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?)`)
+    r.questoes = db.prepare(`UPDATE est_questoes SET situacao = ?, atualizado_em = ? WHERE producer_id = ? AND situacao != 'arquivada' AND id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?)`)
       .run(dados.questoes, nowISO(), produto.producer_id, escopo.id).changes;
   }
   if (REVISAO.includes(dados.vinculos)) {
