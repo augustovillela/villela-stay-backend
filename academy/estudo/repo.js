@@ -534,6 +534,9 @@ function resumo(productId) {
       competencias: competencias(e.id).length,
       unidades: n('SELECT status, COUNT(*) n FROM est_unidades WHERE escopo_id = ? GROUP BY status'),
       questoes: n(`SELECT q.situacao, q.origem, COUNT(DISTINCT q.id) n FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id WHERE v.escopo_id = ? GROUP BY q.situacao, q.origem`),
+      // videoaulas: quantas aulas têm o vídeo ligado, e se o arquivo está confirmado no storage
+      videos: db.prepare(`SELECT u.codigo, u.status, u.video_media_id AS media_id, m.storage, m.confirmado, m.tamanho, m.mime
+        FROM est_unidades u LEFT JOIN media_files m ON m.id = u.video_media_id WHERE u.escopo_id = ? AND u.video_media_id != '' ORDER BY u.codigo`).all(e.id),
       cards: n('SELECT status, COUNT(*) n FROM est_cards WHERE escopo_id = ? GROUP BY status'),
       cobertura: c && { folhas: c.folhas, pendentes_de_leitura: c.pendentes_de_leitura.length, material_com: c.material.com, material_sem: c.material.sem,
         avaliacao_com_revisada: c.avaliacao.com_questao_revisada, avaliacao_so_sugerida: c.avaliacao.so_sugerida.length, avaliacao_sem: c.avaliacao.sem, sem_competencia: c.sem_competencia,

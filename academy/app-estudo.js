@@ -127,15 +127,46 @@
       el('es-abas').innerHTML = ABAS.map(function (x) { return '<button data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('');
       cada(el('es-abas'), 'button', function (b) { b.onclick = function () { ir(b.getAttribute('data-a')); }; });
     }
+    // O LUGAR de cada aba: quais disciplinas estavam abertas e onde a página estava rolada. Sem isso, voltar da
+    // aula para a lista devolve ao topo, com a primeira disciplina aberta — "volta ao princípio" (Augusto, 10/10/2026).
+    var LUGAR = {}, LISTAS = { aulas: 1, mapas: 1, programa: 1, cobrado: 1 };
+    function rolagem() { return document.scrollingElement || document.documentElement; }
+    function guardarLugar() {
+      var c = el('es-corpo');
+      if (!c || !LISTAS[E.aba] || E.abaArg) return;
+      var abertos = [];
+      cada(c, 'details', function (d, i) { if (d.open) abertos.push(i); });
+      LUGAR[E.aba] = { abertos: abertos, y: rolagem().scrollTop };
+    }
+    function reporLugar(aba, alvo) {
+      var L = LUGAR[aba], n = 0;
+      if (!L) return;
+      (function tentar() {
+        if (E.aba !== aba) return; // o aluno já foi para outro lugar
+        var ds = alvo.querySelectorAll('details');
+        if (!ds.length && alvo.querySelector('.al-sub') && n++ < 40) return setTimeout(tentar, 100); // ainda carregando
+        Array.prototype.forEach.call(ds, function (d, i) { var abrir = L.abertos.indexOf(i) >= 0; if (d.open !== abrir) d.open = abrir; });
+        rolagem().scrollTop = L.y;
+        setTimeout(function () { if (E.aba === aba) rolagem().scrollTop = L.y; }, 300); // depois de a disciplina reabrir
+      })();
+    }
     function ir(aba, arg, substituir) {
       pararRelogio();
-      E.aba = aba;
+      guardarLugar();
+      if (aba === 'unidade' && E.aba && E.aba !== 'unidade') E.veioDe = E.aba;
+      E.aba = aba; E.abaArg = typeof arg === 'string' && arg ? arg : (arg && typeof arg === 'object' ? 'obj' : '');
       rota(['curso', E.pid, 'estude', E.slug, aba].concat(typeof arg === 'string' && arg ? [arg] : []), substituir);
       cada(el('es-abas'), 'button', function (b) { b.classList.toggle('on', b.getAttribute('data-a') === aba); });
       var alvo = el('es-corpo');
       alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
       if (!document.querySelector('.es-kd')) document.documentElement.style.overflow = ''; // o leitor de tela cheia saiu de cena
       ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, praticar: praticar, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
+      if (LISTAS[aba] && !E.abaArg) reporLugar(aba, alvo); else rolagem().scrollTop = 0;
+    }
+    // "Voltar" de dentro da aula: para a tela de onde o aluno veio (lista de aulas, programa, mapas…), no ponto em que estava
+    function voltarDaAula() {
+      var veio = E.veioDe;
+      if (veio && veio !== 'unidade') ir(veio); else ir('aulas');
     }
 
     // ================= HOJE: a próxima tarefa e os três eixos =================
@@ -222,14 +253,15 @@
         if (!g) { g = por[cod] = { cod: cod, nome: m.disciplina, aulas: [] }; grupos.push(g); }
         g.aulas.push({ u: u, item: m.item });
       });
-      alvo.innerHTML = '<div class="jr-caixa"><h3>Aulas</h3><p class="al-sub">' + p.unidades.length + ' aulas em ' + grupos.length + ' disciplinas, na ordem do edital. ' +
+      var comVideo = p.unidades.filter(function (u) { return u.video; }).length;
+      alvo.innerHTML = '<div class="jr-caixa"><h3>Aulas</h3><p class="al-sub">' + p.unidades.length + ' aulas em ' + grupos.length + ' disciplinas, na ordem do edital' + (comVideo ? ' · <b>' + comVideo + ' com videoaula</b> (🎬)' : '') + '. ' +
         '<b>Abrir a aula</b> leva à aula ativa (desafio, explicação, prática e os resumos de 50, 25 e 10 %). <b>Aula animada</b> ensina a aula em três movimentos — o fluxo passo a passo, um caso para você decidir e os erros que a banca planta —, parando para perguntar. <b>Mapa mental</b> abre o mapa da aula pronto para imprimir ou salvar em PDF. <b>Ler a disciplina</b> junta a teoria em texto corrido, como num leitor de livros: uma página por vez, do tamanho da tela, com tamanho de letra, fundo claro, sépia ou escuro, busca, marca-texto e PDF. A leitura volta na página em que você parou.</p>' +
         '<div class="es-linha"><button class="al-bt peq fan" id="es-au-mt">🖍️ Minhas marcações</button></div></div>' +
         grupos.map(function (g, n) {
           return '<details class="es-acervo"' + (n === 0 ? ' open' : '') + '><summary><b>' + esc(g.nome) + '</b><span class="al-fino"> · ' + g.aulas.length + ' aula(s)</span></summary>' +
             '<div class="es-linha"><button class="al-bt peq" data-ler="' + esc(g.cod) + '">📄 Ler a disciplina (texto corrido / PDF)</button></div>' +
             g.aulas.map(function (a) {
-              return '<div class="es-aula-linha"><span>' + (a.item ? '<b>' + esc(a.item) + '</b> ' : '') + esc(a.u.titulo) + (a.u.tempo_min ? '<span class="al-fino"> · ' + horas(a.u.tempo_min) + '</span>' : '') +
+              return '<div class="es-aula-linha"><span>' + (a.u.video ? '<span class="es-tem-video" title="Esta aula tem videoaula">🎬</span> ' : '') + (a.item ? '<b>' + esc(a.item) + '</b> ' : '') + esc(a.u.titulo) + (a.u.tempo_min ? '<span class="al-fino"> · ' + horas(a.u.tempo_min) + '</span>' : '') +
                 (a.u.status !== 'publicado' ? ' <span class="marca-rasc">' + esc(a.u.status) + '</span>' : '') + '</span>' +
                 '<span class="es-aula-bts">' + ((a.u.animada || []).length ? '<button class="al-bt peq" data-animada="' + esc(a.u.codigo) + '" title="' + esc((a.u.animada || []).map(function (t) { return NOME_AN[t].replace(/^\S+\s/, ''); }).join(' · ')) + '">▶ Aula animada</button>' : '') + (a.u.mapa ? '<button class="al-bt peq fan" data-mapa="' + esc(a.u.codigo) + '">🧠 Mapa mental (PDF)</button>' : '<span class="al-fino">mapa em preparação</span>') +
                 '<button class="al-bt peq fan" data-un="' + esc(a.u.codigo) + '">' + (a.u.video ? '🎬 Abrir a aula (com vídeo)' : 'Abrir a aula') + '</button></span></div>';
@@ -1161,11 +1193,11 @@
                 (b.tem_solucao ? '<div class="es-linha"><button class="al-bt peq fan" data-sol="' + b.n + '">Ver a solução</button><span class="al-fino" data-msg="' + b.n + '">A solução aparece depois da sua tentativa.</span></div><div class="es-sol" data-out="' + b.n + '"></div>' : '') : '') +
               '</section>';
           }).join('') +
-          (u.midias.length ? '<p class="al-fino">Formatos desta aula: ' + u.midias.map(function (m) { return esc(m.tipo) + ' (' + (MIDIA[m.estado] || esc(m.estado)) + ')'; }).join(' · ') + '</p>' : '') +
+
           (u.fontes.length ? '<details class="es-fontes"><summary>Fontes</summary><ul>' + u.fontes.map(function (f) {
             return '<li>' + esc(f.titulo) + (f.consultado_em ? ' — consultado em ' + dataBR(f.consultado_em) : '') + '</li>';
           }).join('') + '</ul></details>' : '') + vespera(u) +
-          '<div class="es-linha">' + (u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa ? '<button class="al-bt fan" id="es-un-mapa">🧠 Mapa mental (PDF)</button>' : '') + '<button class="al-bt" id="es-un-pr">Praticar esta matéria</button><button class="al-bt fan" id="es-un-vt">Voltar ao programa</button></div></div>';
+          '<div class="es-linha">' + (u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa ? '<button class="al-bt fan" id="es-un-mapa">🧠 Mapa mental (PDF)</button>' : '') + '<button class="al-bt" id="es-un-pr">Praticar esta matéria</button><button class="al-bt fan" id="es-un-vt">← Voltar</button></div></div>';
         if (u.video && el('es-un-video')) {
           api('GET', '/media/' + encodeURIComponent(u.video.media_id) + '/link').then(function (r) {
             var cx = el('es-un-video');
@@ -1186,7 +1218,7 @@
           };
         });
         el('es-un-pr').onclick = function () { ir('praticar', u.competencias[0]); };
-        el('es-un-vt').onclick = function () { ir('programa'); };
+        el('es-un-vt').onclick = voltarDaAula;
         window.scrollTo(0, 0);
       }).catch(function (e) { falha(alvo, e); });
     }
