@@ -405,12 +405,22 @@ function anotar(usuario, produto, slugEscopo, questaoId, texto) {
   return { ok: true, anotacao: t };
 }
 
-function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, erradas = false, origem = '' } = {}) {
+// O BANCO por eixo (ADR-0009): quantas questões de correção automática há por banca, órgão, cargo,
+// ano e matéria — o aluno escolhe a banca do SEU edital e treina no estilo de quem vai aplicar a prova.
+function bancoDeQuestoes(usuario, produto, slugEscopo) {
   const c = abrir(usuario, produto, slugEscopo);
+  const lista = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes }).filter(q => q.corrigivel);
+  return { total: lista.length, oficiais: lista.filter(q => q.origem === 'oficial').length, ...banco.facetas(lista) };
+}
+
+function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, erradas = false, origem = '', ...resto } = {}) {
+  const c = abrir(usuario, produto, slugEscopo);
+  const eixo = banco.filtroDeEixos(resto);
   const pend = erradas ? new Set(errosPendentes(usuario.id, c.escopo.id).map(x => x.id)) : null;
   const elegiveis = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes, competencia: R.slug(competencia) })
     .filter(q => q.corrigivel && q.uso !== 'reservada') // reservada fica para aferição: não se gasta no treino
     .filter(q => !origem || q.origem === origem) // "só questões de prova oficial" (guia Mais cobrado)
+    .filter(q => banco.casaEixos(q, eixo)) // banca, órgão, cargo, período (ADR-0009)
     .filter(q => !pend || pend.has(q.id));
   const vistas = new Set(elegiveis.filter(q => jaViu(usuario.id, q.id)).map(q => q.id));
   const ordenadas = [...elegiveis.filter(q => !vistas.has(q.id)), ...elegiveis.filter(q => vistas.has(q.id))];
@@ -521,8 +531,9 @@ function avaliarCard(usuario, produto, slugEscopo, cardId, resultado) {
 const abrirTentativa = (r) => r && { ...r, congelado: j.parse(r.congelado, {}), respostas: j.parse(r.respostas, {}), resultado: j.parse(r.resultado, null) };
 const tentativaDe = (usuario, id) => abrirTentativa(db.prepare('SELECT * FROM est_tentativas WHERE id = ? AND user_id = ?').get(s(id, 40), usuario.id));
 
-function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', competencias = [], n = 10, duracao_min = 0, aceitar_menos = false } = {}) {
+function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', competencias = [], n = 10, duracao_min = 0, aceitar_menos = false, ...resto } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
+  const eixo = banco.filtroDeEixos(resto);
   if (!MODOS_TENTATIVA.includes(modo)) throw erro(`modo deve ser ${MODOS_TENTATIVA.join('|')}.`);
   const aberta = abrirTentativa(db.prepare("SELECT * FROM est_tentativas WHERE user_id = ? AND escopo_id = ? AND estado = 'em_andamento'").get(usuario.id, c.escopo.id));
   if (aberta) {
@@ -532,7 +543,8 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   const filtro = new Set((Array.isArray(competencias) ? competencias : []).map(R.slug).filter(Boolean));
   let elegiveis = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes }).filter(q => q.corrigivel)
     .map(q => ({ q, comps: R.competenciasDaQuestao(q.id, c.escopo.id) }))
-    .filter(x => !filtro.size || x.comps.some(k => filtro.has(k)));
+    .filter(x => !filtro.size || x.comps.some(k => filtro.has(k)))
+    .filter(x => banco.casaEixos(x.q, eixo)); // simulado só com a banca (órgão, cargo, período) escolhida
   if (modo === 'treino') elegiveis = elegiveis.filter(x => x.q.uso !== 'reservada');
   // Prova simulada reproduz o edital: questão de competência TRANSVERSAL (método de estudo, técnica
   // de prova — competência que não cobre item do programa) não entra, a não ser que o aluno a peça.
@@ -544,7 +556,7 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   // faltou questão: a lacuna é dita, nunca preenchida com repetição ou filtro afrouxado em silêncio
   if (elegiveis.length < pedido && !aceitar_menos) {
     const e = erro(`Há ${elegiveis.length} questão(ões) elegível(is) para ${pedido} pedida(s).`, 409);
-    e.extra = { elegiveis: elegiveis.length, pedido, opcoes: ['reduzir a prova (aceitar_menos)', 'ampliar as competências'] };
+    e.extra = { elegiveis: elegiveis.length, pedido, opcoes: ['reduzir a prova (aceitar_menos)', 'ampliar as competências'].concat(banco.temFiltroDeEixos(eixo) ? ['tirar o filtro de banca, órgão ou período'] : []) };
     throw e;
   }
   if (!elegiveis.length) throw erro('Não há questões disponíveis para esta prova.', 409);
@@ -557,7 +569,7 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   const duracao = Math.round(Number(duracao_min) || 0) || Math.max(5, Math.ceil(ordem.reduce((t, x) => t + (x.q.tempo_estimado_seg || 180), 0) / 60));
   const inicio = new Date();
   const congelado = {
-    modo, duracao_min: duracao, regra: c.escopo.regra_pontuacao || {}, escopo_versao: c.escopo.versao,
+    modo, duracao_min: duracao, regra: c.escopo.regra_pontuacao || {}, escopo_versao: c.escopo.versao, filtro: eixo,
     // o bloco da pontuação é o campo `bloco` da questão; sem ele, a disciplina serve de bloco
     itens: ordem.map(x => ({ id: x.q.id, versao: x.q.versao, gabarito: banco.gabaritoDe(x.q), bloco: x.q.bloco || x.q.disciplina || '', competencias: x.comps, publico: banco.paraAluno(x.q, id) })),
   };
@@ -688,7 +700,7 @@ function obterPlano(usuario, produto, slugEscopo) {
 }
 
 module.exports = {
-  contexto, escopos, painel, unidade, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, pedirPista, responder, erros, anotar,
+  contexto, escopos, painel, unidade, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, bancoDeQuestoes, pedirPista, responder, erros, anotar,
   cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,
 };

@@ -536,6 +536,25 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(of.json.elegiveis <= todas.elegiveis, 'o filtro só tira questões');
     assert.ok(of.json.questoes.every(q => q.origem === 'oficial'), 'só oficiais: ' + of.json.questoes.map(q => q.origem).join(','));
     assert.equal((await req('GET', `${esc}/praticar?n=20&origem=inexistente`, { jar: 'olga' })).json.elegiveis, 0);
+    // ADR-0009 — o banco por eixo: a banca do caderno vira UM nome, e o filtro só deixa passar questão dela
+    const B = require('./banco');
+    assert.deepEqual(B.eixos({ origem: 'oficial', disciplina: 'Processo', procedencia: { banca: 'Fundação Carlos Chagas (FCC)', orgao: 'Tribunal Regional do Trabalho da 4ª Região', cargo: 'Juiz(a) do Trabalho Substituto(a)', ano: 2012 } }),
+      { banca: 'FCC', orgao: 'TRT-4', cargo: 'Juiz do Trabalho Substituto', ano: 2012, materia: 'Processo' });
+    assert.equal(B.eixos({ origem: 'oficial', procedencia: { banca: 'CESPE/UnB' } }).banca, 'Cebraspe (Cespe)');
+    assert.equal(B.eixos({ origem: 'oficial', procedencia: { orgao: 'TRT 3' } }).banca, 'Comissão do próprio tribunal', 'prova sem banca contratada é da comissão do tribunal');
+    assert.equal(B.eixos({ origem: 'autoral', procedencia: { inspirada_em: 'estilo da FGV' } }).banca, '', 'questão autoral não tem banca');
+    const bq = await req('GET', `${esc}/banco`, { jar: 'olga' });
+    assert.equal(bq.st, 200, bq.texto);
+    const daBanca = bq.json.bancas.find(x => x.valor === 'Banca Teste');
+    assert.ok(daBanca && daBanca.n >= 1 && bq.json.anos.some(x => x.valor === 2023), 'o banco lista as bancas e os anos que tem: ' + JSON.stringify(bq.json.bancas));
+    const sb = (await req('GET', `${esc}/praticar?n=20&banca=${encodeURIComponent('Banca Teste')}`, { jar: 'olga' })).json;
+    assert.ok(sb.elegiveis >= 1 && sb.questoes.every(q => q.origem === 'oficial' && q.procedencia.banca === 'Banca Teste'), 'filtro de banca só traz questão dela');
+    assert.equal((await req('GET', `${esc}/praticar?n=20&banca=${encodeURIComponent('Banca Que Não Existe')}`, { jar: 'olga' })).json.elegiveis, 0);
+    assert.equal((await req('GET', `${esc}/praticar?n=20&ano_de=2099`, { jar: 'olga' })).json.elegiveis, 0, 'período sem prova não devolve questão autoral no lugar');
+    // simulado por banca: faltou questão, o servidor diz — não completa com outra banca em silêncio
+    const sp = await req('POST', `${esc}/tentativas`, { jar: 'olga', corpo: { modo: 'treino', n: 150, banca: 'Banca Teste' } });
+    assert.equal(sp.st, 409, sp.texto);
+    assert.match(sp.texto, /eleg/);
     const p = (await req('GET', `${esc}/painel`, { jar: 'olga' })).json;
     assert.ok(p.itens.filter(i => i.folha).every(i => Number.isInteger(i.oficiais)), 'cada ponto do programa diz quantas questões oficiais o cobraram');
   });

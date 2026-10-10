@@ -1113,20 +1113,46 @@
           '<span class="es-letra">' + String.fromCharCode(65 + k) + '</span><span class="es-alt-txt">' + esc(a.texto) + '</span></label>';
       }).join('') + '</div>';
     }
+    // ADR-0009 — filtros por banca, órgão, cargo e ano. O banco diz o que existe; eixo sem opção não aparece.
+    var EIXOS = [['banca', 'bancas', 'Banca examinadora', 'Todas as bancas'], ['orgao', 'orgaos', 'Órgão', 'Todos os órgãos'], ['cargo', 'cargos', 'Cargo', 'Todos os cargos'], ['ano_de', 'anos', 'A partir do ano', 'Qualquer ano']];
+    function comBanco(feito) {
+      if (E.banco && E.bancoDe === base()) return feito(E.banco);
+      api('GET', base() + '/banco').then(function (b) { E.banco = b; E.bancoDe = base(); feito(b); }).catch(function () { feito({ bancas: [], orgaos: [], cargos: [], anos: [] }); });
+    }
+    function seletoresDeEixo(b, prefixo, atual) {
+      return EIXOS.map(function (x) {
+        var ops = b[x[1]] || [];
+        if (!ops.length) return '';
+        return '<label class="es-campo">' + x[2] + '<select id="' + prefixo + x[0] + '"><option value="">' + x[3] + '</option>' + ops.map(function (o) {
+          return '<option value="' + esc(o.valor) + '"' + (String(atual[x[0]] || '') === String(o.valor) ? ' selected' : '') + '>' + esc(o.valor) + (x[0] === 'ano_de' ? '' : ' (' + o.n + ')') + '</option>';
+        }).join('') + '</select></label>';
+      }).join('');
+    }
+    function eixosEscolhidos(prefixo) {
+      var r = {};
+      EIXOS.forEach(function (x) { var c = el(prefixo + x[0]); if (c && c.value) r[x[0]] = c.value; });
+      return r;
+    }
+    function eixosNaUrl(f) { return EIXOS.map(function (x) { return f[x[0]] ? '&' + x[0] + '=' + encodeURIComponent(f[x[0]]) : ''; }).join(''); }
     function praticar(alvo, competencia) {
-      var origem = '';
-      if (competencia && typeof competencia === 'object') { origem = competencia.origem || ''; competencia = competencia.competencia || ''; }
+      var origem = '', eixo = {};
+      if (competencia && typeof competencia === 'object') { origem = competencia.origem || ''; eixo = competencia.eixo || {}; competencia = competencia.competencia || ''; }
       var comps = E.painel.competencias, erradas = competencia === '__erradas__';
       competencia = erradas ? '' : (competencia || '');
       alvo.innerHTML = '<div class="jr-caixa"><div class="es-linha"><label class="es-campo">Matéria (disciplina e ponto do edital)<select id="es-pr-comp"><option value="">Todas as matérias</option>' +
         opcoesComp(competencia) +
-        '</select></label><label class="es-campo es-pr-of"><input type="checkbox" id="es-pr-of"' + (origem === 'oficial' ? ' checked' : '') + '> Só questões de prova oficial</label></div><div id="es-pr"></div></div>';
-      var denovo = function () { praticar(alvo, { competencia: el('es-pr-comp').value, origem: el('es-pr-of').checked ? 'oficial' : '' }); };
+        '</select></label><label class="es-campo es-pr-of"><input type="checkbox" id="es-pr-of"' + (origem === 'oficial' ? ' checked' : '') + '> Só questões de prova oficial</label></div><div class="es-linha es-eixos" id="es-pr-eixos"></div><div id="es-pr"></div></div>';
+      var denovo = function () { praticar(alvo, { competencia: el('es-pr-comp').value, origem: el('es-pr-of').checked ? 'oficial' : '', eixo: eixosEscolhidos('es-pr-x-') }); };
       el('es-pr-comp').onchange = denovo; el('es-pr-of').onchange = denovo;
+      if (competencia !== '__erradas__') comBanco(function (b) {
+        if (!el('es-pr-eixos')) return;
+        el('es-pr-eixos').innerHTML = seletoresDeEixo(b, 'es-pr-x-', eixo);
+        cada(el('es-pr-eixos'), 'select', function (c) { c.onchange = denovo; });
+      });
       var out = el('es-pr');
       if (erradas) el('es-pr-comp').parentNode.parentNode.innerHTML = '<p class="al-rotulo">Refazendo o caderno de erros</p>';
-      api('GET', base() + '/praticar?n=20&competencia=' + encodeURIComponent(competencia) + (erradas ? '&erradas=1' : '') + (origem ? '&origem=' + encodeURIComponent(origem) : '')).then(function (r) {
-        if (!r.questoes.length) { out.innerHTML = '<p class="al-sub">' + (erradas ? 'O caderno de erros está vazio.' : origem === 'oficial' ? 'A prova oficial não trouxe questão sobre esta matéria. Desmarque o filtro para treinar com as demais.' : 'Ainda não há questões de correção automática para esta matéria.') + '</p>'; return; }
+      api('GET', base() + '/praticar?n=20&competencia=' + encodeURIComponent(competencia) + (erradas ? '&erradas=1' : '') + (origem ? '&origem=' + encodeURIComponent(origem) : '') + eixosNaUrl(eixo)).then(function (r) {
+        if (!r.questoes.length) { out.innerHTML = '<p class="al-sub">' + (erradas ? 'O caderno de erros está vazio.' : eixosNaUrl(eixo) ? 'Não há questão com esses filtros de banca, órgão, cargo ou ano nesta matéria. Tire um deles para ampliar.' : origem === 'oficial' ? 'A prova oficial não trouxe questão sobre esta matéria. Desmarque o filtro para treinar com as demais.' : 'Ainda não há questões de correção automática para esta matéria.') + '</p>'; return; }
         var i = 0, inicio = 0;
         function mostrar() {
           if (i >= r.questoes.length) {
@@ -1293,11 +1319,17 @@
         '<label class="es-campo">Questões<input id="es-pv-n" type="number" min="1" max="200" value="10"></label>' +
         '<label class="es-campo">Duração em minutos<input id="es-pv-dur" type="number" min="0" max="600" placeholder="automática"></label>' +
         '<label class="es-campo">Matéria (disciplina e ponto do edital)<select id="es-pv-comp"><option value="">Todas as matérias</option>' + opcoesComp('') + '</select></label></div>' +
+        '<div class="es-form es-eixos" id="es-pv-eixos"></div><p class="al-fino" id="es-pv-eixos-nota"></p>' +
         '<p class="al-fino"><b>Regra de nota deste percurso:</b> ' + esc(regraTxt(p.regra_pontuacao)) + '</p>' +
         '<div class="es-linha"><button class="al-bt" id="es-pv-ir">Começar</button></div><div id="es-pv-msg"></div></div>';
+      comBanco(function (b) {
+        if (!el('es-pv-eixos')) return;
+        el('es-pv-eixos').innerHTML = seletoresDeEixo(b, 'es-pv-x-', {});
+        if (el('es-pv-eixos').innerHTML) el('es-pv-eixos-nota').textContent = 'Escolha a banca do seu edital para fazer a prova só com questões dela. Banca, órgão, cargo e ano são das questões de prova oficial: com um deles marcado, as questões autorais ficam de fora.';
+      });
       function iniciar(aceitar) {
-        var comp = el('es-pv-comp').value;
-        api('POST', base() + '/tentativas', { modo: el('es-pv-modo').value, n: Number(el('es-pv-n').value) || 10, duracao_min: Number(el('es-pv-dur').value) || 0, competencias: comp ? [comp] : [], aceitar_menos: !!aceitar })
+        var comp = el('es-pv-comp').value, fe = eixosEscolhidos('es-pv-x-');
+        api('POST', base() + '/tentativas', { banca: fe.banca || '', orgao: fe.orgao || '', cargo: fe.cargo || '', ano_de: Number(fe.ano_de) || 0, modo: el('es-pv-modo').value, n: Number(el('es-pv-n').value) || 10, duracao_min: Number(el('es-pv-dur').value) || 0, competencias: comp ? [comp] : [], aceitar_menos: !!aceitar })
           .then(function (t) { executar(alvo, t); })
           .catch(function (e) {
             // faltou questão: o servidor diz quantas há; a escolha de reduzir é do aluno

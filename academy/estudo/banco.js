@@ -135,4 +135,52 @@ const gabaritoDe = (q) => {
   return q.tipo === 'multipla' ? certas : certas[0];
 };
 
-module.exports = { validarQuestao, hashQuestao, embaralhar, paraAluno, gabaritoDe, TIPOS, FECHADOS, ORIGENS, GABARITOS, SITUACOES, USOS };
+// ---------------------------------------------------------------------
+// EIXOS DO BANCO (ADR-0009) — cargo, matéria, banca/organizadora, órgão e ano, num vocabulário único.
+// O caderno de cada concurso escreve a banca e o órgão de um jeito; o filtro precisa de UM nome.
+// O assunto é o vínculo com o programa (item do edital / competência) e já tem filtro próprio.
+// ---------------------------------------------------------------------
+const semAcento = (t) => String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const COMISSAO = 'Comissão do próprio tribunal';
+const BANCAS = [[/\bfgv\b|getulio vargas/, 'FGV'], [/\bfcc\b|carlos chagas/, 'FCC'], [/cespe|cebraspe/, 'Cebraspe (Cespe)'], [/comiss|proprio tribunal|propria corte/, COMISSAO]];
+function bancaCanonica(p) {
+  const b = semAcento(p.banca);
+  if (!b) return p.orgao || p.comissao ? COMISSAO : '';
+  const achada = BANCAS.find(([re]) => re.test(b));
+  return achada ? achada[1] : s(p.banca, 80);
+}
+function orgaoCanonico(p) {
+  const o = semAcento(p.orgao || p.concurso);
+  const trt = o.match(/tribunal regional do trabalho da (\d+)|\btrt[\s-]*(\d+)/);
+  if (trt) return 'TRT-' + Number(trt[1] || trt[2]);
+  if (/conselho superior da justica do trabalho|\bcsjt\b|concurso (publico )?nacional/.test(o)) return 'CSJT (concurso nacional)';
+  return s(p.orgao, 120);
+}
+function cargoCanonico(p) {
+  const c = semAcento(p.cargo);
+  if (/ju[ií]z.*trabalho/.test(c)) return 'Juiz do Trabalho Substituto';
+  return s(p.cargo, 120);
+}
+function eixos(q) {
+  const p = q.procedencia || {};
+  // banca, órgão, cargo e ano são da PROVA: questão autoral não tem (e "inspirada em" não é procedência)
+  if (q.origem !== 'oficial') return { banca: '', orgao: '', cargo: '', ano: 0, materia: s(q.disciplina, 120) };
+  return { banca: bancaCanonica(p), orgao: orgaoCanonico(p), cargo: cargoCanonico(p), ano: Math.round(Number(p.ano) || 0), materia: s(q.disciplina, 120) };
+}
+const filtroDeEixos = (o = {}) => ({ banca: s(o.banca, 80), orgao: s(o.orgao, 120), cargo: s(o.cargo, 120), ano_de: Math.round(Number(o.ano_de) || 0), ano_ate: Math.round(Number(o.ano_ate) || 0) });
+const temFiltroDeEixos = (f) => !!(f.banca || f.orgao || f.cargo || f.ano_de || f.ano_ate);
+function casaEixos(q, f) {
+  if (!temFiltroDeEixos(f)) return true;
+  const e = eixos(q);
+  return (!f.banca || e.banca === f.banca) && (!f.orgao || e.orgao === f.orgao) && (!f.cargo || e.cargo === f.cargo)
+    && (!f.ano_de || e.ano >= f.ano_de) && (!f.ano_ate || (e.ano && e.ano <= f.ano_ate));
+}
+// quantas questões há em cada valor de cada eixo — é o que a tela oferece para filtrar
+function facetas(lista) {
+  const conta = { banca: new Map(), orgao: new Map(), cargo: new Map(), ano: new Map(), materia: new Map() };
+  for (const q of lista) { const e = eixos(q); for (const k of Object.keys(conta)) if (e[k]) conta[k].set(e[k], (conta[k].get(e[k]) || 0) + 1); }
+  const lista_ = (m, porNumero) => [...m.entries()].map(([valor, n]) => ({ valor, n })).sort((a, b) => porNumero ? b.valor - a.valor : b.n - a.n || String(a.valor).localeCompare(String(b.valor)));
+  return { bancas: lista_(conta.banca), orgaos: lista_(conta.orgao), cargos: lista_(conta.cargo), anos: lista_(conta.ano, true), materias: lista_(conta.materia) };
+}
+
+module.exports = { eixos, filtroDeEixos, temFiltroDeEixos, casaEixos, facetas, validarQuestao, hashQuestao, embaralhar, paraAluno, gabaritoDe, TIPOS, FECHADOS, ORIGENS, GABARITOS, SITUACOES, USOS };
