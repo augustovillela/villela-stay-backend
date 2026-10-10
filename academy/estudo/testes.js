@@ -504,6 +504,9 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(/columnWidth = larg \+ 'px'/.test(tela) && /function pontoNoDom/.test(tela), 'o leitor pagina por colunas e sabe achar um trecho no DOM');
     assert.ok(/el\('es-kd-mt'\)\.onclick = function \(\) \{ fechar\(\); if \(painel\.hidden\) abrirPainel\(\); else fecharPainel\(\); \};/.test(tela), 'a caneta abre as marcações dentro do leitor — não sai do ponto de leitura');
     assert.ok(/Você ainda não grifou nada em /.test(tela), 'sem marcações, o painel diz isso em vez de ficar vazio');
+    assert.ok(/id="es-kd-aa"/.test(tela) && /id="es-kd-mk"/.test(tela) && /dicionario\.priberam\.org/.test(tela), 'o leitor tem aparência (Aa), marcador de página e dicionário');
+    assert.ok(/cor: 'marcador'/.test(tela) && /k\.cor !== 'marcador'/.test(tela), 'o marcador é salvo como marcação, mas não entra no desenho do grifo');
+    assert.ok(/function animarMapa/.test(tela) && /data-anim=/.test(tela), 'a aba Mapas oferece o mapa que se desenha');
   });
 
   await t('estudo: mapas — a página que reúne os mapas mentais por disciplina', async () => {

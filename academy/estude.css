@@ -269,3 +269,26 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-kd-pn-trecho{display:block;width:100%;text-align:left;border:0;border-radius:6px;padding:8px 10px;font:400 .95rem/1.5 Georgia,serif;color:#14161a;cursor:pointer;white-space:pre-wrap}
 .es-kd-pn-nota{margin:5px 0 2px;font-style:italic}
 .es-kd-painel .es-link{color:var(--kd-fraco)}
+/* leitor: painel "Aa", marcador de página */
+.es-kd-bt.on{background:var(--kd-fg);color:var(--kd-bg);border-color:var(--kd-fg)}
+.es-kd-aa{position:absolute;top:52px;right:12px;z-index:6;width:min(360px,94vw);background:var(--kd-bg);color:var(--kd-fg);border:1px solid var(--kd-linha);border-radius:14px;box-shadow:0 14px 36px rgba(0,0,0,.22);padding:12px 14px}
+.es-kd-aa[hidden]{display:none}
+.es-kd-aa-g{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--kd-linha);font:500 .85rem Inter,system-ui,sans-serif}
+.es-kd-aa-g:first-child{border-top:0}
+.es-kd-aa-g>span{flex:0 0 92px;color:var(--kd-fraco)}
+.es-kd-aa-g>b{min-width:26px;text-align:center}
+.es-kd-pn-mk{background:var(--kd-bt);color:var(--kd-fg);font-family:Inter,system-ui,sans-serif;font-size:.88rem}
+/* mapa que se desenha */
+.es-an{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;background:#fff;color:#1a1f2e;--kd-bg:#fff;--kd-fg:#1a1f2e;--kd-linha:rgba(20,35,70,.14);--kd-bt:#f3f4f7;--kd-fraco:#5a6478}
+.es-an-topo{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--kd-linha);background:#fff;color:var(--al-navy);font:700 1rem/1.3 'Lora',Georgia,serif;margin:0}
+.es-an-acoes{display:flex;gap:6px;flex-shrink:0}
+.es-an-palco{flex:1;min-height:0;overflow:auto;padding:18px 22px}
+.es-an .es-mapa-inline .mapa{zoom:1.05}
+.es-an .no{transition:opacity .45s ease}
+.es-an .no.esc{opacity:0}
+.es-an .filhos{transition:opacity .4s ease}
+.es-an .filhos.apagado{opacity:0}
+.es-an-pe{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--kd-linha);background:#fff;color:#1a1f2e;margin:0}
+.es-an-pe p{flex:1 1 320px;margin:0;font:400 1.05rem/1.45 Georgia,serif;min-height:1.5em}
+.es-an-bts{display:flex;gap:8px}
+.es-kd-bt.forte{background:var(--al-ambar);border-color:var(--al-ambar);color:#fff}

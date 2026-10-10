@@ -338,6 +338,12 @@
     // uma página, e virar a página é deslocar o fluxo. É o navegador que quebra o
     // texto — por isso a página sempre cabe na tela, em qualquer tamanho de letra,
     // e o texto no DOM continua sendo o cru (o marca-texto depende disso).
+    var NOME_TEMA = { claro: 'Claro', sepia: 'Sépia', escuro: 'Escuro' };
+    var OPC_KD = {
+      fonte: { serif: ['Serifada', "Georgia,'Times New Roman',serif"], sans: ['Sem serifa', "Inter,system-ui,-apple-system,'Segoe UI',sans-serif"], classica: ['Clássica', "'Palatino Linotype','Book Antiqua',Palatino,serif"] },
+      esp: { compacto: ['Compacto', 1.45], normal: ['Normal', 1.7], amplo: ['Amplo', 1.95] },
+      marg: { estreita: ['Estreitas', 860], normal: ['Normais', 720], larga: ['Largas', 580] }
+    };
     var TEMAS_KD = ['claro', 'sepia', 'escuro'], TAM_KD = [15, 16, 17, 18, 19, 20, 22, 24, 26], VAO_KD = 56;
     function lerDisciplina(alvo, cod, irPara) {
       rota(['curso', E.pid, 'estude', E.slug, 'aulas', 'ler', cod]);
@@ -351,9 +357,9 @@
         });
         if (!r.aulas.length || !totalCar) { alvo.innerHTML = '<div class="jr-caixa"><p class="al-sub">Esta disciplina ainda não tem texto para leitura.</p></div>'; return; }
         var chave = 'es-ler:' + E.pid + ':' + E.slug + ':' + cod, chavePref = 'es-ler-pref';
-        var ia = 0, pg = 0, total = 1, larg = 0, fracInicial = 0, pref = { tam: 19, tema: 'claro' };
+        var ia = 0, pg = 0, total = 1, larg = 0, fracInicial = 0, pref = { tam: 19, tema: 'claro', fonte: 'serif', esp: 'normal', marg: 'normal' };
         try { var g0 = JSON.parse(localStorage.getItem(chave) || '{}') || {}; if (g0.ia >= 0 && g0.ia < r.aulas.length) { ia = g0.ia; fracInicial = Number(g0.fr) || 0; } } catch (e) { ia = 0; }
-        try { var p0 = JSON.parse(localStorage.getItem(chavePref) || '{}') || {}; if (TAM_KD.indexOf(p0.tam) >= 0) pref.tam = p0.tam; if (TEMAS_KD.indexOf(p0.tema) >= 0) pref.tema = p0.tema; } catch (e) { /* fica no padrão */ }
+        try { var p0 = JSON.parse(localStorage.getItem(chavePref) || '{}') || {}; if (TAM_KD.indexOf(p0.tam) >= 0) pref.tam = p0.tam; if (TEMAS_KD.indexOf(p0.tema) >= 0) pref.tema = p0.tema; ['fonte', 'esp', 'marg'].forEach(function (k) { if (OPC_KD[k][p0[k]]) pref[k] = p0[k]; }); } catch (e) { /* fica no padrão */ }
         if (irPara) {
           var km = marcas.filter(function (x) { return x.id === irPara; })[0];
           if (km) { r.aulas.forEach(function (a, i) { if (a.codigo === km.unidade) ia = i; }); fracInicial = 0; } else irPara = null;
@@ -377,9 +383,8 @@
           '<select class="es-kd-sel" id="es-kd-sel" aria-label="Ir para a aula">' + r.aulas.map(function (a, i) {
             return '<option value="' + i + '">' + (i + 1) + '. ' + esc(String(a.titulo).slice(0, 90)) + '</option>';
           }).join('') + '</select><span class="es-kd-acoes">' +
-          '<button class="es-kd-bt" id="es-kd-menos" title="Diminuir a letra" aria-label="Diminuir a letra">A−</button>' +
-          '<button class="es-kd-bt" id="es-kd-mais" title="Aumentar a letra" aria-label="Aumentar a letra">A+</button>' +
-          '<button class="es-kd-bt" id="es-kd-tema" title="Trocar o fundo: claro, sépia ou escuro" aria-label="Trocar o fundo">◐</button>' +
+          '<button class="es-kd-bt" id="es-kd-aa" title="Letra, fonte, espaçamento, margens e fundo" aria-label="Aparência do texto">Aa</button>' +
+          '<button class="es-kd-bt" id="es-kd-mk" title="Marcar esta página" aria-label="Marcar esta página">🔖</button>' +
           '<button class="es-kd-bt" id="es-kd-busca" title="Procurar na disciplina" aria-label="Procurar na disciplina">🔎</button>' +
           '<button class="es-kd-bt" id="es-kd-mt" title="Marcações desta disciplina" aria-label="Marcações desta disciplina">🖍️</button>' +
           '<button class="es-kd-bt" id="es-kd-pdf" title="Imprimir ou salvar em PDF" aria-label="Imprimir ou salvar em PDF">🖨️</button></span></header>' +
@@ -389,6 +394,7 @@
           '<div class="es-kd-janela" id="es-kd-janela"><article class="es-ler es-kd-fluxo" id="es-ler-art"></article></div>' +
           '<button class="es-kd-lado" id="es-kd-prox" aria-label="Próxima página">›</button></div>' +
           '<footer class="es-kd-pe"><div class="es-ler-barra"><i id="es-kd-barra"></i></div><div class="es-kd-onde" id="es-kd-onde"></div></footer>' +
+          '<div class="es-kd-aa" id="es-kd-aapn" hidden></div>' +
           '<aside class="es-kd-painel" id="es-kd-painel" hidden aria-label="Marcações desta disciplina"></aside>' +
           '<div class="es-mt-barra" id="es-mt" hidden></div>';
         alvo.innerHTML = ''; alvo.appendChild(kd);
@@ -406,12 +412,16 @@
           el('es-kd-ant').disabled = !ia && !pg;
           el('es-kd-prox').disabled = ia === r.aulas.length - 1 && pg === total - 1;
           el('es-kd-sel').value = String(ia);
+          pintarMarcador();
           try { localStorage.setItem(chave, JSON.stringify({ ia: ia, fr: pg / total })); } catch (e) { /* sem armazenamento, só não lembra onde parou */ }
         }
         // mede as páginas da aula que está no fluxo; `frac` (0 a 1) reposiciona quando o tamanho da página muda
         function medir(frac) {
+          jan.style.maxWidth = OPC_KD.marg[pref.marg][1] + 'px';
           larg = jan.clientWidth;
           art.style.fontSize = pref.tam + 'px';
+          art.style.fontFamily = OPC_KD.fonte[pref.fonte][1];
+          art.style.lineHeight = String(OPC_KD.esp[pref.esp][1]);
           art.style.columnWidth = larg + 'px'; art.style.columnGap = VAO_KD + 'px';
           total = Math.max(1, Math.round((art.scrollWidth + VAO_KD) / (larg + VAO_KD)));
           if (frac != null) pg = Math.floor(frac * total + 1e-6);
@@ -441,9 +451,54 @@
         el('es-kd-ant').onclick = function () { virar(-1); };
         el('es-kd-prox').onclick = function () { virar(1); };
         el('es-kd-sel').onchange = function (e) { abrirAula(Number(e.target.value), 0); e.target.blur(); };
-        el('es-kd-menos').onclick = function () { var i = TAM_KD.indexOf(pref.tam); if (i > 0) { pref.tam = TAM_KD[i - 1]; guardarPref(); semAnimar(function () { medir(pg / total); }); } };
-        el('es-kd-mais').onclick = function () { var i = TAM_KD.indexOf(pref.tam); if (i < TAM_KD.length - 1) { pref.tam = TAM_KD[i + 1]; guardarPref(); semAnimar(function () { medir(pg / total); }); } };
-        el('es-kd-tema').onclick = function () { pref.tema = TEMAS_KD[(TEMAS_KD.indexOf(pref.tema) + 1) % TEMAS_KD.length]; kd.setAttribute('data-tema', pref.tema); guardarPref(); };
+        // "Aa": tamanho, fonte, espaçamento, margens e fundo — tudo o que muda a página, num lugar só
+        var aapn = el('es-kd-aapn');
+        function aplicarPref() { kd.setAttribute('data-tema', pref.tema); guardarPref(); semAnimar(function () { medir(pg / total); }); desenharAa(); }
+        function desenharAa() {
+          function grupo(rot, k) {
+            return '<div class="es-kd-aa-g"><span>' + rot + '</span>' + Object.keys(OPC_KD[k]).map(function (v) {
+              return '<button class="es-kd-bt' + (pref[k] === v ? ' on' : '') + '" data-pf="' + k + '" data-v="' + v + '">' + OPC_KD[k][v][0] + '</button>';
+            }).join('') + '</div>';
+          }
+          aapn.innerHTML = '<div class="es-kd-aa-g"><span>Tamanho</span><button class="es-kd-bt" data-tam="-1" aria-label="Diminuir a letra">A−</button><b>' + pref.tam + '</b>' +
+            '<button class="es-kd-bt" data-tam="1" aria-label="Aumentar a letra">A+</button></div>' + grupo('Fonte', 'fonte') + grupo('Espaçamento', 'esp') + grupo('Margens', 'marg') +
+            '<div class="es-kd-aa-g"><span>Fundo</span>' + TEMAS_KD.map(function (t) { return '<button class="es-kd-bt' + (pref.tema === t ? ' on' : '') + '" data-tema="' + t + '">' + NOME_TEMA[t] + '</button>'; }).join('') + '</div>';
+          cada(aapn, '[data-tam]', function (b) { b.onclick = function () { var i = TAM_KD.indexOf(pref.tam) + Number(b.getAttribute('data-tam')); if (i >= 0 && i < TAM_KD.length) { pref.tam = TAM_KD[i]; aplicarPref(); } }; });
+          cada(aapn, '[data-pf]', function (b) { b.onclick = function () { pref[b.getAttribute('data-pf')] = b.getAttribute('data-v'); aplicarPref(); }; });
+          cada(aapn, '[data-tema]', function (b) { b.onclick = function () { pref.tema = b.getAttribute('data-tema'); aplicarPref(); }; });
+        }
+        el('es-kd-aa').onclick = function () { fechar(); fecharPainel(); aapn.hidden = !aapn.hidden; if (!aapn.hidden) desenharAa(); };
+
+        // MARCADOR DE PÁGINA: prende-se ao parágrafo que abre a página (texto, não número de página — a página
+        // muda com a letra e a tela; o parágrafo, não). Fica salvo na conta, como os grifos.
+        function paginaDe(x) { return Math.floor(x.offsetLeft / (larg + VAO_KD)); }
+        function paragrafoDaPagina() {
+          var ps = art.querySelectorAll('.es-ler-bl p[data-o]'), ach = null, i, pp;
+          for (i = 0; i < ps.length; i++) { pp = paginaDe(ps[i]); if (pp === pg) return ps[i]; if (pp < pg) ach = ps[i]; }
+          return ach; // nenhum parágrafo começa aqui: vale o que atravessa a página
+        }
+        function paragrafoDoMarcador(k) { return art.querySelector('.es-ler-bl[data-un="' + k.unidade + '"][data-bl="' + k.bloco + '"] p[data-o="' + k.inicio + '"]'); }
+        function marcadorDaPagina() {
+          var p = paragrafoDaPagina(), un = r.aulas[ia].codigo, ach = null;
+          if (p) marcas.forEach(function (k) { if (k.cor === 'marcador' && k.unidade === un && paragrafoDoMarcador(k) === p) ach = k; });
+          return ach;
+        }
+        function pintarMarcador() {
+          var b = el('es-kd-mk'), tem = !!marcadorDaPagina();
+          b.classList.toggle('on', tem);
+          b.title = tem ? 'Tirar o marcador desta página' : 'Marcar esta página';
+        }
+        el('es-kd-mk').onclick = function () {
+          var k = marcadorDaPagina(), avisar = function (e) { el('es-kd-onde').textContent = e.message; };
+          if (k) { api('DELETE', base() + '/marcacoes/' + k.id).then(function () { marcas = marcas.filter(function (x) { return x.id !== k.id; }); pintarMarcador(); }).catch(avisar); return; }
+          var p = paragrafoDaPagina();
+          if (!p) return;
+          var bl = blocoDe(p), un = bl.getAttribute('data-un'), n = Number(bl.getAttribute('data-bl')), ini = Number(p.getAttribute('data-o')), cru = crus[un + '|' + n];
+          var fimP = cru.indexOf('\n\n', ini);
+          if (fimP < 0) fimP = cru.length;
+          api('POST', base() + '/marcacoes', { unidade: un, bloco: n, inicio: ini, fim: Math.min(fimP, ini + 140), cor: 'marcador' })
+            .then(function (x) { marcas.push(x.marcacao); pintarMarcador(); }).catch(avisar);
+        };
         // A caneta abre as marcações DESTA disciplina sem sair da página que está sendo lida: quem está
         // estudando quer rever o que grifou e voltar ao mesmo ponto, não procurar a aula de novo na lista.
         var painel = el('es-kd-painel');
@@ -454,7 +509,7 @@
           r.aulas.forEach(function (a, n) { if (a.codigo === k.unidade) i = n; });
           if (i < 0) return;
           if (i !== ia) abrirAula(i, 0);
-          var destino = art.querySelector('mark[data-mt="' + id + '"]');
+          var destino = k.cor === 'marcador' ? paragrafoDoMarcador(k) : art.querySelector('mark[data-mt="' + id + '"]');
           if (!destino) return;
           semAnimar(function () { pg = Math.min(total - 1, Math.max(0, Math.floor(destino.offsetLeft / (larg + VAO_KD)))); mostrar(); });
           destino.classList.add('pisca');
@@ -464,7 +519,9 @@
         function abrirPainel() {
           var ordem = {}, grupos = [], por = {};
           r.aulas.forEach(function (a, n) { ordem[a.codigo] = n; });
-          marcas.filter(function (k) { return ordem[k.unidade] != null; })
+          var marcadores = marcas.filter(function (k) { return ordem[k.unidade] != null && k.cor === 'marcador'; })
+            .sort(function (a, b) { return ordem[a.unidade] - ordem[b.unidade] || a.bloco - b.bloco || a.inicio - b.inicio; });
+          marcas.filter(function (k) { return ordem[k.unidade] != null && k.cor !== 'marcador'; })
             .sort(function (a, b) { return ordem[a.unidade] - ordem[b.unidade] || a.bloco - b.bloco || a.inicio - b.inicio; })
             .forEach(function (k) {
               var g = por[k.unidade];
@@ -475,6 +532,10 @@
           painel.innerHTML = '<div class="es-kd-pn-topo"><b>Marcações desta disciplina</b><button class="es-kd-bt" id="es-kd-pn-x" aria-label="Fechar as marcações">Fechar</button></div>' +
             (qtd ? '<p class="es-kd-pn-sub">' + qtd + ' trecho(s) grifado(s) em ' + esc(r.nome) + '. Toque num trecho para ir até ele.</p>'
               : '<p class="es-kd-pn-sub">Você ainda não grifou nada em ' + esc(r.nome) + '. Selecione um trecho do texto e escolha a cor.</p>') +
+            (marcadores.length ? '<h4>🔖 Marcadores de página</h4>' + marcadores.map(function (k) {
+              return '<div class="es-kd-pn-item"><button class="es-kd-pn-trecho es-kd-pn-mk" data-ir="' + esc(k.id) + '"><b>Aula ' + (ordem[k.unidade] + 1) + '</b> — ' + esc(k.texto.slice(0, 110)) + '…</button>' +
+                '<button class="es-link" data-del="' + esc(k.id) + '">tirar o marcador</button></div>';
+            }).join('') : '') +
             grupos.map(function (g) {
               return '<h4>' + (g.n + 1) + '. ' + esc(g.titulo) + '</h4>' + g.marcas.map(function (k) {
                 return '<div class="es-kd-pn-item"><button class="es-kd-pn-trecho mt-' + esc(k.cor) + '" data-ir="' + esc(k.id) + '">' + esc(k.texto.length > 260 ? k.texto.slice(0, 260) + '…' : k.texto) + '</button>' +
@@ -549,7 +610,7 @@
           if (!painel.hidden && e.key !== 'Escape') return; // com as marcações abertas, a página não vira por trás
           if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); virar(1); }
           else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); virar(-1); }
-          else if (e.key === 'Escape') { if (!painel.hidden) fecharPainel(); else if (!barra.hidden) fechar(); else sair(); }
+          else if (e.key === 'Escape') { if (!aapn.hidden) aapn.hidden = true; else if (!painel.hidden) fecharPainel(); else if (!barra.hidden) fechar(); else sair(); }
         }
         var espera = 0;
         function aoRedimensionar() {
@@ -593,7 +654,16 @@
           while (ini < fim && /\s/.test(cru.charAt(ini))) ini++;
           while (fim > ini && /\s/.test(cru.charAt(fim - 1))) fim--;
           if (fim - ini < 2) return;
-          mostrarBarra(g.getBoundingClientRect(), '<span class="al-fino">Grifar:</span>' + cores(''));
+          // palavra ou expressão curta: além de grifar, dá para consultar o dicionário ou procurá-la na disciplina
+          var trecho = cru.slice(ini, fim), curto = trecho.length <= 40 && trecho.split(/\s+/).length <= 3;
+          mostrarBarra(g.getBoundingClientRect(), '<span class="al-fino">Grifar:</span>' + cores('') +
+            (curto ? '<button class="al-bt peq fan" id="es-mt-dic" title="Abre o dicionário Priberam em outra aba">📖 Dicionário</button><button class="al-bt peq fan" id="es-mt-proc">🔎 Na disciplina</button>' : ''));
+          if (curto) {
+            el('es-mt-dic').onmousedown = function (e) { e.preventDefault(); };
+            el('es-mt-dic').onclick = function () { window.open('https://dicionario.priberam.org/' + encodeURIComponent(trecho.toLowerCase()), '_blank', 'noopener'); fechar(); };
+            el('es-mt-proc').onmousedown = function (e) { e.preventDefault(); };
+            el('es-mt-proc').onclick = function () { fechar(); el('es-kd-buscar').hidden = false; el('es-kd-q').value = trecho; achado = null; semAnimar(function () { medir(pg / total); }); procurar(); };
+          }
           cada(barra, '[data-cor]', function (b) {
             b.onmousedown = function (e) { e.preventDefault(); }; // não desfaz a seleção antes do clique
             b.onclick = function () {
@@ -631,6 +701,7 @@
         function foraDaBarra(e) {
           if (!kd.isConnected) { document.removeEventListener('mousedown', foraDaBarra); return; }
           if (!barra.hidden && !barra.contains(e.target) && !(e.target.closest && e.target.closest('mark[data-mt]'))) fechar();
+          if (!aapn.hidden && !aapn.contains(e.target) && e.target.id !== 'es-kd-aa') aapn.hidden = true;
         }
         document.addEventListener('mousedown', foraDaBarra);
 
@@ -815,6 +886,98 @@
       }).catch(function (e) { w.document.open(); w.document.write('<p>' + esc(e.message) + '</p>'); w.document.close(); });
     }
 
+    // ================= MAPA QUE SE DESENHA (formato A do estudo das aulas em vídeo) =================
+    // Animação feita do mapa mental que a aula já tem, sem custo de produção: os nós aparecem um a um e,
+    // ao fim de cada ramo, ele some e o aluno tem de lembrar o que havia ali antes de ver de novo.
+    // A voz é a do próprio navegador (opcional, começa desligada).
+    function animarMapa(titulo, txt) {
+      estiloDosMapas();
+      var ov = document.createElement('div');
+      ov.className = 'es-an';
+      ov.innerHTML = '<header class="es-an-topo"><b>' + esc(titulo) + '</b><span class="es-an-acoes">' +
+        '<button class="es-kd-bt" id="es-an-voz" aria-pressed="false" title="Ler cada ponto em voz alta, com a voz do navegador">🔈 Voz desligada</button>' +
+        '<button class="es-kd-bt" id="es-an-rec">↺ Recomeçar</button><button class="es-kd-bt" id="es-an-x" title="Fechar (Esc)">Fechar</button></span></header>' +
+        '<div class="es-an-palco" id="es-an-palco"><div class="es-mapa-inline es-an-mapa">' + htmlDoMapa(titulo, txt) + '</div></div>' +
+        '<footer class="es-an-pe"><p id="es-an-msg"></p><div class="es-an-bts"><button class="es-kd-bt" id="es-an-auto">⏸ Pausar</button><button class="es-kd-bt forte" id="es-an-prox">Próximo ›</button></div></footer>';
+      document.body.appendChild(ov);
+      var rolagemAntes = document.documentElement.style.overflow;
+      document.documentElement.style.overflow = 'hidden';
+      var passos = [], i = -1, auto = true, voz = false, timer = 0, fala = window.speechSynthesis || null;
+      cada(ov, '.ramo', function (ramo) {
+        var nos = ramo.querySelectorAll('.no');
+        Array.prototype.forEach.call(nos, function (n) { n.classList.add('esc'); passos.push({ t: 'no', el: n }); });
+        if (nos.length > 1) passos.push({ t: 'lembrar', ramo: ramo, nome: nos[0].querySelector('.rot').textContent }, { t: 'mostrar', ramo: ramo });
+      });
+      var msg = ov.querySelector('#es-an-msg'), bProx = ov.querySelector('#es-an-prox'), bAuto = ov.querySelector('#es-an-auto'), bVoz = ov.querySelector('#es-an-voz');
+      function calar() { clearTimeout(timer); if (fala) { try { fala.cancel(); } catch (e) { /* sem voz */ } } }
+      function agendar(ms) { clearTimeout(timer); if (auto) timer = setTimeout(avancar, ms); }
+      function dizer(texto, depois) {
+        if (!voz || !fala || !window.SpeechSynthesisUtterance) { agendar(Math.min(5200, 1100 + texto.length * 42)); return; }
+        var u = new window.SpeechSynthesisUtterance(texto);
+        u.lang = 'pt-BR'; u.rate = 1.05;
+        u.onend = function () { agendar(depois || 450); };
+        u.onerror = function () { agendar(1500); };
+        fala.speak(u);
+      }
+      function avancar() {
+        calar();
+        if (i >= passos.length - 1) { fim(); return; }
+        var p = passos[++i];
+        bProx.textContent = 'Próximo ›';
+        if (p.t === 'no') {
+          p.el.classList.remove('esc');
+          var rot = p.el.querySelector('.rot');
+          if (rot.scrollIntoView) rot.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+          msg.textContent = rot.textContent;
+          dizer(rot.textContent);
+        } else if (p.t === 'lembrar') {
+          var f = p.ramo.querySelector('.filhos');
+          if (f) f.classList.add('apagado');
+          msg.innerHTML = '<b>Sem olhar:</b> o que havia em “' + esc(p.nome) + '”? Diga em voz alta e toque em <b>Mostrar</b>.';
+          bProx.textContent = 'Mostrar';
+          if (voz && fala && window.SpeechSynthesisUtterance) { var u = new window.SpeechSynthesisUtterance('Sem olhar: o que havia em ' + p.nome + '?'); u.lang = 'pt-BR'; fala.speak(u); }
+          // aqui a animação ESPERA: lembrar é o ponto, e ninguém lembra no ritmo de um cronômetro
+        } else {
+          var g = p.ramo.querySelector('.filhos');
+          if (g) g.classList.remove('apagado');
+          msg.textContent = 'Confira o que você lembrou.';
+          agendar(2600);
+        }
+      }
+      function fim() {
+        msg.innerHTML = '<b>Mapa completo.</b> Feche e tente refazê-lo no papel, de memória — é assim que ele fica.';
+        bProx.disabled = true; bAuto.disabled = true;
+      }
+      function recomecar() {
+        calar(); i = -1; auto = true; bAuto.textContent = '⏸ Pausar'; bProx.disabled = false; bAuto.disabled = false;
+        cada(ov, '.no', function (n) { n.classList.add('esc'); });
+        cada(ov, '.filhos', function (f) { f.classList.remove('apagado'); });
+        ov.querySelector('#es-an-palco').scrollTop = 0;
+        avancar();
+      }
+      function fecharAnim() {
+        calar(); document.removeEventListener('keydown', tecla);
+        document.documentElement.style.overflow = rolagemAntes;
+        if (ov.parentNode) ov.parentNode.removeChild(ov);
+      }
+      function tecla(e) {
+        if (!ov.isConnected) { document.removeEventListener('keydown', tecla); return; }
+        if (e.key === 'Escape') fecharAnim();
+        else if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); avancar(); }
+      }
+      bProx.onclick = avancar;
+      bAuto.onclick = function () { auto = !auto; bAuto.textContent = auto ? '⏸ Pausar' : '▶ Continuar sozinho'; if (auto) agendar(400); else calar(); };
+      bVoz.onclick = function () {
+        voz = !voz && !!fala; bVoz.setAttribute('aria-pressed', voz ? 'true' : 'false');
+        bVoz.textContent = voz ? '🔊 Voz ligada' : (fala ? '🔈 Voz desligada' : '🔇 Este navegador não tem voz');
+        if (!voz) { calar(); agendar(700); } // calar derruba o temporizador: a animação segue sem a voz
+      };
+      ov.querySelector('#es-an-rec').onclick = recomecar;
+      ov.querySelector('#es-an-x').onclick = fecharAnim;
+      document.addEventListener('keydown', tecla);
+      avancar();
+    }
+
     // ================= MAPAS: todos os mapas mentais num lugar só, por disciplina =================
     // O mesmo desenho do PDF, agora dentro da página. As regras do mapa são as de
     // CSS_MAPA (uma fonte só): aqui elas entram prefixadas, para não vazar nomes
@@ -860,11 +1023,18 @@
                   var item = a.itens.length ? '<b>' + esc(a.itens[0].codigo) + '</b> ' : '';
                   if (!a.mapas[foco]) return '<div class="es-mp-aula"><h4>' + item + esc(a.titulo) + '</h4><p class="al-fino">mapa em preparação</p></div>';
                   return '<div class="es-mp-aula"><div class="es-mp-cab"><h4>' + item + esc(a.titulo) + '</h4><span class="es-aula-bts">' +
+                    '<button class="al-bt peq" data-anim="' + esc(a.codigo) + '">▶ Ver o mapa se desenhar</button>' +
                     '<button class="al-bt peq fan" data-pdf-aula="' + esc(a.codigo) + '">🧠 PDF (3 versões)</button>' +
                     '<button class="al-bt peq fan" data-un="' + esc(a.codigo) + '">Abrir a aula</button></span></div>' +
                     '<div class="es-mapa-inline">' + htmlDoMapa(a.titulo, a.mapas[foco]) + '</div></div>';
                 }).join('');
               cada(corpo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
+              cada(corpo, '[data-anim]', function (b) {
+                b.onclick = function () {
+                  var a = x.aulas.filter(function (y) { return y.codigo === b.getAttribute('data-anim'); })[0];
+                  if (a && a.mapas[foco]) animarMapa(a.titulo, a.mapas[foco]);
+                };
+              });
               cada(corpo, '[data-pdf-aula]', function (b) { b.onclick = function () { abrirMapa(b.getAttribute('data-pdf-aula'), window.open('', '_blank')); }; });
               corpo.querySelector('[data-pdf-disc]').onclick = function () {
                 var w = window.open('', '_blank');
