@@ -94,11 +94,11 @@
     function rota(partes, substituir) { if (window.AcademyRota) window.AcademyRota.gravar(partes, substituir); }
     // `inicio` = onde abrir (veio do endereço): { aba, arg, extra } — e `substituir` quando a abertura
     // é automática e não deve virar um passo do botão Voltar.
-    function abrir(pid, titulo, slug, voltar, inicio) {
+    function abrir(pid, titulo, slug, voltar, inicio, rotuloVoltar) {
       pararRelogio();
       inicio = inicio || {};
       E.pid = pid; E.titulo = titulo; E.slug = slug; E.voltar = voltar; E.aba = 'hoje';
-      setView('<div class="al es"><a href="#" class="al-volta" id="es-volta">← Voltar às aulas</a>' +
+      setView('<div class="al es"><a href="#" class="al-volta" id="es-volta">← ' + esc(rotuloVoltar || 'Voltar ao curso') + '</a>' +
         '<div class="es-cab"><p class="al-rotulo">Estude · ' + esc(titulo) + '</p><h2 id="es-titulo">Carregando…</h2><p class="al-sub" id="es-sub"></p></div>' +
         '<div class="est-abas es-abas" id="es-abas"></div><div class="es-corpo" id="es-corpo"><p class="al-sub">Carregando…</p></div></div>');
       el('es-volta').onclick = function (e) { e.preventDefault(); pararRelogio(); voltar(); };
@@ -255,7 +255,7 @@
       });
       var comVideo = p.unidades.filter(function (u) { return u.video; }).length;
       alvo.innerHTML = '<div class="jr-caixa"><h3>Aulas</h3><p class="al-sub">' + p.unidades.length + ' aulas em ' + grupos.length + ' disciplinas, na ordem do edital' + (comVideo ? ' · <b>' + comVideo + ' com videoaula</b> (🎬)' : '') + '. ' +
-        '<b>Abrir a aula</b> leva à aula ativa (desafio, explicação, prática e os resumos de 50, 25 e 10 %). <b>Aula animada</b> ensina a aula em três movimentos — o fluxo passo a passo, um caso para você decidir e os erros que a banca planta —, parando para perguntar. <b>Mapa mental</b> abre o mapa da aula pronto para imprimir ou salvar em PDF. <b>Ler a disciplina</b> junta a teoria em texto corrido, como num leitor de livros: uma página por vez, do tamanho da tela, com tamanho de letra, fundo claro, sépia ou escuro, busca, marca-texto e PDF. A leitura volta na página em que você parou.</p>' +
+        '<b>Abrir a aula</b> leva a tudo o que a aula tem, numa página só: a videoaula, a aula interativa (o fluxo passo a passo, um caso para você decidir e os erros que a banca planta), o mapa mental, o texto com os resumos de 50, 25 e 10 % e a prática. <b>Ler a disciplina</b> junta a teoria em texto corrido, como num leitor de livros: uma página por vez, do tamanho da tela, com tamanho de letra, fundo claro, sépia ou escuro, busca, marca-texto e PDF. A leitura volta na página em que você parou.</p>' +
         '<div class="es-linha"><button class="al-bt peq fan" id="es-au-mt">🖍️ Minhas marcações</button></div></div>' +
         grupos.map(function (g, n) {
           return '<details class="es-acervo"' + (n === 0 ? ' open' : '') + '><summary><b>' + esc(g.nome) + '</b><span class="al-fino"> · ' + g.aulas.length + ' aula(s)</span></summary>' +
@@ -263,8 +263,8 @@
             g.aulas.map(function (a) {
               return '<div class="es-aula-linha"><span>' + (a.u.video ? '<span class="es-tem-video" title="Esta aula tem videoaula">🎬</span> ' : '') + (a.item ? '<b>' + esc(a.item) + '</b> ' : '') + esc(a.u.titulo) + (a.u.tempo_min ? '<span class="al-fino"> · ' + horas(a.u.tempo_min) + '</span>' : '') +
                 (a.u.status !== 'publicado' ? ' <span class="marca-rasc">' + esc(a.u.status) + '</span>' : '') + '</span>' +
-                '<span class="es-aula-bts">' + ((a.u.animada || []).length ? '<button class="al-bt peq" data-animada="' + esc(a.u.codigo) + '" title="' + esc((a.u.animada || []).map(function (t) { return NOME_AN[t].replace(/^\S+\s/, ''); }).join(' · ')) + '">▶ Aula animada</button>' : '') + (a.u.mapa ? '<button class="al-bt peq fan" data-mapa="' + esc(a.u.codigo) + '">🧠 Mapa mental (PDF)</button>' : '<span class="al-fino">mapa em preparação</span>') +
-                '<button class="al-bt peq fan" data-un="' + esc(a.u.codigo) + '">' + (a.u.video ? '🎬 Abrir a aula (com vídeo)' : 'Abrir a aula') + '</button></span></div>';
+                '<span class="es-aula-bts"><span class="al-fino es-aula-tem">' + [a.u.video ? 'vídeo' : '', (a.u.animada || []).length ? 'aula interativa' : '', a.u.mapa ? 'mapa mental' : ''].filter(Boolean).join(' · ') + '</span>' +
+                '<button class="al-bt peq" data-un="' + esc(a.u.codigo) + '">Abrir a aula</button></span></div>';
             }).join('') + '</details>';
         }).join('');
       cada(alvo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
@@ -923,10 +923,24 @@
     // Animação feita do mapa mental que a aula já tem, sem custo de produção: os nós aparecem um a um e,
     // ao fim de cada ramo, ele some e o aluno tem de lembrar o que havia ali antes de ver de novo.
     // A voz é a do próprio navegador (opcional, começa desligada).
+    // Tela por cima da página (aula interativa, mapa animado): o Voltar do navegador FECHA a tela e deixa o aluno
+    // exatamente onde estava. Sem isto, o Voltar pulava para a página anterior com a tela ainda aberta.
+    function sobreposto(fechar) {
+      var estado = 0; // 0 aberta · 1 fechando pelo botão · 2 encerrada
+      function aoVoltar(e) {
+        window.removeEventListener('popstate', aoVoltar, true);
+        e.stopImmediatePropagation(); // a rota não mudou: o painel não precisa remontar a página
+        var era = estado; estado = 2;
+        if (era === 0) fechar();
+      }
+      try { history.pushState({ esSobreposto: 1 }, '', location.href); } catch (x) { return function () {}; }
+      window.addEventListener('popstate', aoVoltar, true);
+      return function () { if (estado !== 0) return; estado = 1; try { history.back(); } catch (x) { /* sem histórico */ } };
+    }
     // ---- AULA ANIMADA (formatos sem avatar): fluxo com paradas, caso para decidir e erro da banca ----
     // Um quadro por vez. A animação PERGUNTA: nas paradas, o botão vira "Ver a resposta" — o aluno
     // responde de cabeça antes de abrir. Nada toca sozinho: quem avança é ele.
-    var NOME_AN = { fluxo: '🧭 Fluxo passo a passo', caso: '⚖️ Caso para decidir', erros: '🎯 Erro da banca' };
+    var NOME_AN = { fluxo: '🧭 Passo a passo', caso: '⚖️ Caso para decidir', erros: '🎯 Erro da banca' };
     function quadrosDe(tipo, r) {
       var q = [];
       if (tipo === 'fluxo') {
@@ -996,7 +1010,9 @@
           if (e.key === 'Escape') fechar();
           else if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); avancar(); }
         }
-        function fechar() { document.removeEventListener('keydown', tecla, true); document.documentElement.style.overflow = antes; if (ov.parentNode) ov.parentNode.removeChild(ov); }
+        function tirar() { document.removeEventListener('keydown', tecla, true); document.documentElement.style.overflow = antes; if (ov.parentNode) ov.parentNode.removeChild(ov); }
+        var soltar = sobreposto(tirar);
+        function fechar() { tirar(); soltar(); }
         cada(ov, '[data-t]', function (b) { b.onclick = function () { abrir(b.getAttribute('data-t')); }; });
         bProx.onclick = avancar;
         ov.querySelector('#es-aq-rec').onclick = function () { abrir(tipo); };
@@ -1070,7 +1086,9 @@
         ov.querySelector('#es-an-palco').scrollTop = 0;
         avancar();
       }
-      function fecharAnim() {
+      var soltarAnim = sobreposto(function () { fecharAnim(true); });
+      function fecharAnim(peloVoltar) {
+        if (peloVoltar !== true) soltarAnim();
         calar(); document.removeEventListener('keydown', tecla);
         document.documentElement.style.overflow = rolagemAntes;
         if (ov.parentNode) ov.parentNode.removeChild(ov);
@@ -1185,7 +1203,13 @@
         alvo.innerHTML = '<div class="jr-caixa es-aula"><p class="al-rotulo">Aula ativa' + (u.tempo_min ? ' · cerca de ' + horas(u.tempo_min) : '') + (u.nivel !== 100 ? ' · versão ' + u.nivel + ' %' : '') + '</p><h3>' + esc(u.titulo) +
           (u.status === 'rascunho' ? ' <span class="marca-rasc">rascunho</span>' : '') + '</h3>' +
           // a videoaula abre a aula (decisão do Augusto): primeiro o vídeo, depois o desafio e o texto
-          (u.video ? '<div class="es-video" id="es-un-video"><p class="al-fino">Carregando a videoaula…</p></div>' : '') + sel +
+          (u.video ? '<div class="es-video" id="es-un-video"><p class="al-fino">Carregando a videoaula…</p></div>' : '') +
+          '<div class="es-un-barra"><span class="al-rotulo">Nesta aula</span>' +
+          ((u.animada || []).length ? '<button class="al-bt" id="es-un-anim">🧭 Aula interativa — passo a passo, caso e erros da banca</button>' : '') +
+          (u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa ? '<button class="al-bt fan" id="es-un-mapa2">🧠 Mapa mental</button>' : '') +
+          '<button class="al-bt fan" id="es-un-pr2">✍️ Praticar esta matéria</button>' +
+          '<button class="al-bt fan" id="es-un-vt2">← Voltar</button></div>' +
+          '<p class="al-rotulo es-un-txt">Texto da aula</p>' + sel +
           u.blocos.map(function (b) {
             return '<section class="es-bloco ' + b.tipo + '"><h4>' + esc(b.titulo || BLOCO[b.tipo]) + '</h4>' + texto(b.texto) +
               (b.criterio ? '<p class="al-fino"><b>Critério:</b> ' + esc(b.criterio) + '</p>' : '') +
@@ -1219,6 +1243,10 @@
         });
         el('es-un-pr').onclick = function () { ir('praticar', u.competencias[0]); };
         el('es-un-vt').onclick = voltarDaAula;
+        el('es-un-vt2').onclick = voltarDaAula;
+        el('es-un-pr2').onclick = function () { ir('praticar', u.competencias[0]); };
+        if (el('es-un-anim')) el('es-un-anim').onclick = function () { aulaAnimada(codigo); };
+        if (el('es-un-mapa2')) el('es-un-mapa2').onclick = function () { abrirMapa(codigo, window.open('', '_blank')); };
         window.scrollTo(0, 0);
       }).catch(function (e) { falha(alvo, e); });
     }

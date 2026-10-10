@@ -620,18 +620,21 @@
       if (!ES) return;
       api('GET', '/aluno/cursos/' + pid + '/estudo').then(function (r) {
         if (!C || C.pid !== pid) return;
+        var percursos = (r && r.acesso && r.escopos) || [];
+        // Curso que só hospeda o Estude não tem "aulas do curso" para onde voltar: o link do topo leva à biblioteca.
+        var soEstude = percursos.length === 1 && (C.aulas || []).length <= 1;
         var abrir = function (slug, inicio) {
           var aula = C.i >= 0 ? C.aulas[C.i].a.id : '';
-          ES.abrir(pid, C.d.produto.titulo, slug, function () { abrirCurso(pid, aula); }, inicio);
+          ES.abrir(pid, C.d.produto.titulo, slug, soEstude ? function () { biblioteca(); } : function () { abrirCurso(pid, aula); }, inicio,
+            soEstude ? 'Minha biblioteca' : 'Voltar ao curso');
         };
         ES.cartao(el('al-estude'), pid, r, abrir);
-        var percursos = (r && r.acesso && r.escopos) || [];
         var pend = rotaEstude[pid]; delete rotaEstude[pid];
         if (pend && percursos.some(function (e) { return e.slug === pend.slug; })) {
           // F5 ou Voltar: reabre o percurso na aba em que o aluno estava
           estudeAberto[pid] = true;
           abrir(pend.slug, pend);
-        } else if (percursos.length === 1 && (C.aulas || []).length <= 1 && !estudeAberto[pid]) {
+        } else if (soEstude) { // sempre: a casca do curso ("Aula de leitura…") não é lugar de parar
           estudeAberto[pid] = true;
           abrir(percursos[0].slug, { substituir: true }); // toma o lugar da página do curso no histórico
         }

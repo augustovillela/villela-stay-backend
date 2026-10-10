@@ -563,7 +563,9 @@ async function rodar({ t, req, EST, impId }) {
       // a tela põe o vídeo ANTES do seletor de nível e do texto
       const tela = require('fs').readFileSync(require('path').join(__dirname, '..', 'app-estudo.js'), 'utf8');
       const iV = tela.indexOf('id="es-un-video"');
-      assert.ok(iV > 0 && tela.indexOf('+ sel +', iV) - iV < 200, 'o vídeo abre a aula: vem antes do seletor de nível e do texto');
+      const iB = tela.indexOf('class="es-un-barra"', iV), iS = tela.indexOf('+ sel +', iV);
+      assert.ok(iV > 0 && iB > iV && iS > iB, 'a aula é uma página só: vídeo, depois a barra do que a aula tem (interativa, mapa, prática), depois o texto');
+      assert.ok(!/Abrir a aula \(com v[ií]deo\)|▶ Aula animada/.test(tela), 'a lista tem um botão só por aula: tudo abre de dentro dela');
       db.prepare("UPDATE est_unidades SET video_media_id = '', video_duracao_seg = 0 WHERE codigo = ?").run(cod);
     } finally { Object.assign(storage, real); }
   });

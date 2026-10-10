@@ -317,3 +317,9 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-video .al-fino{margin-top:6px}
 
 .es-tem-video{font-size:.95em}
+
+/* a aula numa página só: o que ela tem, logo abaixo do vídeo */
+.es-un-barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0 16px;padding:12px 14px;border:1px solid rgba(20,35,70,.14);border-radius:12px;background:#f6f8fc}
+.es-un-barra .al-rotulo{margin:0 6px 0 0}
+.es-un-txt{margin:4px 0 6px}
+.es-aula-tem{margin-right:8px}

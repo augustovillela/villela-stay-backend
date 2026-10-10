@@ -241,6 +241,7 @@ function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100' } = {}) {
   return { codigo: u.codigo, titulo: u.titulo, competencias: u.competencias, itens: u.itens, tempo_min: Math.round(u.tempo_min * plano.fatorNivel(usado)), versao: u.versao, status: u.status, fontes: u.fontes, midias: u.midias,
     // a videoaula entra no INÍCIO da aula; a entrega do arquivo passa por /academy/api/media/:id/link
     video: u.video_media_id ? { media_id: u.video_media_id, duracao_seg: u.video_duracao_seg || 0 } : null,
+    animada: Object.keys(u.animacoes || {}), // a aula interativa (fluxo, caso, erros) abre de dentro da aula
     nivel: usado, nivel_motivo: motivo, niveis, vespera, blocos };
 }
 // ---------------------------------------------------------------------
