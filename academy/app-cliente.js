@@ -59,6 +59,23 @@
   var root = function () { return el('app'); };
   var view = function () { return el('c'); };
   function setView(html) { var v = view(); if (v) v.innerHTML = html; }
+
+  // ROTA — o endereço diz onde o usuário está (#/aluno, #/curso/<id>, #/curso/<id>/estude/<percurso>/<aba>…).
+  // Sem isso, F5 e o botão Voltar devolviam à primeira tela e o aluno tinha de achar a aula de novo.
+  // Enquanto uma rota está sendo APLICADA ninguém grava: reabrir a tela não pode empilhar histórico.
+  var ROTA = { aplicando: false };
+  function rotaAtual() {
+    var h = String(location.hash || '');
+    if (h.indexOf('#/') !== 0) return [];
+    try { return h.slice(2).split('/').map(decodeURIComponent).filter(function (x) { return x !== ''; }); } catch (e) { return []; }
+  }
+  function gravarRota(partes, substituir) {
+    if (ROTA.aplicando) return;
+    var h = '#/' + partes.map(function (x) { return encodeURIComponent(String(x)); }).join('/');
+    if (h === location.hash) return;
+    try { history[substituir ? 'replaceState' : 'pushState'](null, '', h); } catch (e) { /* sem histórico, só não guarda o lugar */ }
+  }
+  window.AcademyRota = { ler: rotaAtual, gravar: gravarRota };
   function esqueleto() {
     return '<div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--linha"></div>' +
       '<div class="vx-skel vx-skel--bloco"></div>';
@@ -228,7 +245,7 @@
       '<span aria-hidden="true">›</span><span>' + esc(c[1]) + '</span></div>' +
       '<h1>' + c[2] + ' ' + esc(c[3]) + '</h1>';
   }
-  function irPara(id) {
+  function irPara(id, semVista) {
     ABA = MAPA_VIEWS[id] ? id : 'aluno';
     SEQ++;
     // Trocar de aba sai do curso: o post-it de dicas volta a só sortear as gerais.
@@ -244,8 +261,34 @@
     });
     pintarCabecalho();
     setView(esqueleto());
+    if (semVista) return; // quem chamou vai pôr a própria tela (ex.: reabrir um curso pela rota)
+    gravarRota([ABA], !rotaAtual().length);
     (MAPA_VIEWS[ABA] || vAluno)();
   }
+  // Reabre a tela que o endereço descreve. Devolve false se o endereço não diz nada que se reconheça.
+  function aplicarRota() {
+    var r = rotaAtual();
+    if (!r.length) return false;
+    try { document.documentElement.style.overflow = ''; } catch (e) { /* leitor de tela cheia que ficou para trás */ }
+    ROTA.aplicando = true;
+    try {
+      if (r[0] === 'curso' && r[1]) {
+        var a = aluno();
+        if (!a) return false;
+        irPara('aluno', true);
+        a.curso(r[1], undefined, r[2] === 'estude' && r[3] ? { estude: { slug: r[3], aba: r[4] || 'hoje', arg: r[5] || '', extra: r[6] || '' } } : null);
+        return true;
+      }
+      if (MAPA_VIEWS[r[0]]) { ROTA.aplicando = false; irPara(r[0]); return true; }
+      return false;
+    } finally { ROTA.aplicando = false; }
+  }
+  window.addEventListener('popstate', function () {
+    if (!ME || !el('c')) return;
+    if (aplicarRota()) return;
+    ROTA.aplicando = true;
+    try { irPara('aluno'); } finally { ROTA.aplicando = false; }
+  });
 
   function render(me) {
     ME = me;
@@ -302,7 +345,7 @@
     ligarNav(me);
     pintarBotaoPush();
     pintarBotaoInstalar();
-    irPara(ABA);
+    if (!aplicarRota()) irPara(ABA);
   }
 
   // ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----

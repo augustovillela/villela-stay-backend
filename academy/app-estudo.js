@@ -91,15 +91,26 @@
     }
 
     // ---------------- casca ----------------
-    function abrir(pid, titulo, slug, voltar) {
+    function rota(partes, substituir) { if (window.AcademyRota) window.AcademyRota.gravar(partes, substituir); }
+    // `inicio` = onde abrir (veio do endereço): { aba, arg, extra } — e `substituir` quando a abertura
+    // é automática e não deve virar um passo do botão Voltar.
+    function abrir(pid, titulo, slug, voltar, inicio) {
       pararRelogio();
+      inicio = inicio || {};
       E.pid = pid; E.titulo = titulo; E.slug = slug; E.voltar = voltar; E.aba = 'hoje';
       setView('<div class="al es"><a href="#" class="al-volta" id="es-volta">← Voltar às aulas</a>' +
         '<div class="es-cab"><p class="al-rotulo">Estude · ' + esc(titulo) + '</p><h2 id="es-titulo">Carregando…</h2><p class="al-sub" id="es-sub"></p></div>' +
         '<div class="est-abas es-abas" id="es-abas"></div><div class="es-corpo" id="es-corpo"><p class="al-sub">Carregando…</p></div></div>');
       el('es-volta').onclick = function (e) { e.preventDefault(); pararRelogio(); voltar(); };
       window.scrollTo(0, 0);
-      carregar(function () { abas(); ir('hoje'); });
+      carregar(function () {
+        abas();
+        if (inicio.aba === 'aulas' && inicio.arg === 'ler' && inicio.extra) {
+          E.aba = 'aulas';
+          cada(el('es-abas'), 'button', function (b) { b.classList.toggle('on', b.getAttribute('data-a') === 'aulas'); });
+          lerDisciplina(el('es-corpo'), inicio.extra);
+        } else ir(inicio.aba || 'hoje', inicio.arg || undefined, !!inicio.substituir);
+      });
     }
     function carregar(depois) {
       api('GET', base() + '/painel').then(function (p) {
@@ -116,12 +127,14 @@
       el('es-abas').innerHTML = ABAS.map(function (x) { return '<button data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('');
       cada(el('es-abas'), 'button', function (b) { b.onclick = function () { ir(b.getAttribute('data-a')); }; });
     }
-    function ir(aba, arg) {
+    function ir(aba, arg, substituir) {
       pararRelogio();
       E.aba = aba;
+      rota(['curso', E.pid, 'estude', E.slug, aba].concat(typeof arg === 'string' && arg ? [arg] : []), substituir);
       cada(el('es-abas'), 'button', function (b) { b.classList.toggle('on', b.getAttribute('data-a') === aba); });
       var alvo = el('es-corpo');
       alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
+      if (!document.querySelector('.es-kd')) document.documentElement.style.overflow = ''; // o leitor de tela cheia saiu de cena
       ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, praticar: praticar, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
     }
 
@@ -327,6 +340,7 @@
     // e o texto no DOM continua sendo o cru (o marca-texto depende disso).
     var TEMAS_KD = ['claro', 'sepia', 'escuro'], TAM_KD = [15, 16, 17, 18, 19, 20, 22, 24, 26], VAO_KD = 56;
     function lerDisciplina(alvo, cod, irPara) {
+      rota(['curso', E.pid, 'estude', E.slug, 'aulas', 'ler', cod]);
       alvo.innerHTML = '<p class="al-sub">Carregando a leitura…</p>';
       Promise.all([api('GET', base() + '/leitura?disciplina=' + encodeURIComponent(cod)), api('GET', base() + '/marcacoes')]).then(function (rs) {
         var r = rs[0], marcas = rs[1].marcacoes.filter(function (k) { return !k.solta; }), crus = {}, pesos = [], totalCar = 0;
@@ -420,7 +434,7 @@
         function sair(depois) {
           document.removeEventListener('keydown', tecla); window.removeEventListener('resize', aoRedimensionar); document.removeEventListener('mousedown', foraDaBarra);
           document.documentElement.style.overflow = rolagemAntes;
-          (depois || aulas)(alvo);
+          if (depois) depois(alvo); else ir('aulas'); // pela aba, para o endereço acompanhar
         }
 
         el('es-kd-sair').onclick = function () { sair(); };

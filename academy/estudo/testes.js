@@ -567,6 +567,30 @@ async function rodar({ t, req, EST, impId }) {
     assert.deepEqual([...textoMarcado(cru, [], []).matchAll(/<b>([^<]+)<\/b>/g)].map(x => x[1]), ['art. 7º'], 'sem destaques do autor, fica o negrito automático da norma');
   });
 
+  await t('estudo: o endereço guarda o lugar — F5 e Voltar não devolvem à primeira tela', async () => {
+    const fs = require('fs'), path = require('path');
+    const painel = fs.readFileSync(path.join(__dirname, '..', 'app-cliente.js'), 'utf8');
+    const aluno = fs.readFileSync(path.join(__dirname, '..', 'app-aluno.js'), 'utf8');
+    const tela = fs.readFileSync(path.join(__dirname, '..', 'app-estudo.js'), 'utf8');
+    assert.ok(/window\.AcademyRota = \{ ler: rotaAtual, gravar: gravarRota \}/.test(painel) && /addEventListener\('popstate'/.test(painel), 'o painel grava a rota e ouve o botão Voltar');
+    assert.ok(/if \(!aplicarRota\(\)\) irPara\(ABA\);/.test(painel), 'ao carregar, a rota do endereço vem antes da tela padrão');
+    assert.ok(/rota\(\['curso', pid\]\)/.test(aluno) && /abrir\(pend\.slug, pend\)/.test(aluno), 'o curso entra no endereço e o percurso pendente é reaberto');
+    assert.ok(/rota\(\['curso', E\.pid, 'estude', E\.slug, aba\]/.test(tela) && /'aulas', 'ler', cod\]/.test(tela), 'cada aba do Estude e a leitura entram no endereço');
+    // o par gravar/ler é ida e volta, com acento e barra no meio
+    const dom = { hash: '', hist: [] };
+    const mod = new Function('location', 'history', painel.slice(painel.indexOf('  var ROTA = { aplicando: false };'), painel.indexOf('  window.AcademyRota =')) + ';return { rotaAtual, gravarRota, ROTA };')(
+      dom, { pushState: (a, b, h) => { dom.hist.push('push'); dom.hash = h; }, replaceState: (a, b, h) => { dom.hist.push('replace'); dom.hash = h; } });
+    mod.gravarRota(['curso', 'uD4H', 'estude', 'magistratura-trt10', 'unidade', 'dit-1-1/3 ação']);
+    assert.deepEqual(mod.rotaAtual(), ['curso', 'uD4H', 'estude', 'magistratura-trt10', 'unidade', 'dit-1-1/3 ação']);
+    mod.gravarRota(['curso', 'uD4H', 'estude', 'magistratura-trt10', 'unidade', 'dit-1-1/3 ação']);
+    mod.gravarRota(['aluno'], true);
+    assert.deepEqual(dom.hist, ['push', 'replace'], 'a mesma rota não empilha de novo');
+    mod.ROTA.aplicando = true; mod.gravarRota(['conta']);
+    assert.deepEqual(mod.rotaAtual(), ['aluno'], 'enquanto uma rota é aplicada, ninguém grava');
+    dom.hash = '#cadastro';
+    assert.deepEqual(mod.rotaAtual(), [], 'âncora que não é rota é ignorada');
+  });
+
   await t('estudo: cards — a sessão diz os limites do dia; o acervo inteiro é só do revisor e não agenda nada', async () => {
     const c = (await req('GET', `${esc}/cards`, { jar: 'olga' })).json;
     assert.deepEqual([c.limites.novos_dia, c.limites.revisoes_dia, c.revisor], [5, 20, false], 'a tela explica "Card 1 de 5" com estes números');

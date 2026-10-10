@@ -83,8 +83,13 @@
       } catch (e) { /* sem o widget, nada a fazer */ }
     }
 
+    // o endereço acompanha a tela (ver ROTA no painel); sem o painel, não faz nada
+    function rota(partes, substituir) { if (window.AcademyRota) window.AcademyRota.gravar(partes, substituir); }
+    var rotaEstude = {}; // percurso do Estude a reabrir assim que o curso carregar (veio do endereço)
+
     // ================= BIBLIOTECA =================
     function biblioteca() {
+      rota(['aluno']);
       limparTutor();
       marcarCursoAberto('');
       document.body.classList.remove('aluno-amplo');
@@ -175,7 +180,9 @@
     }
 
     // ================= ESTÚDIO =================
-    function abrirCurso(pid, aulaId) {
+    function abrirCurso(pid, aulaId, opcoes) {
+      if (opcoes && opcoes.estude) rotaEstude[pid] = opcoes.estude;
+      rota(['curso', pid]);
       if (!C || C.pid !== pid) limparTutor();
       api('GET', '/aluno/cursos/' + pid).then(function (d) {
         C = estadoDoCurso(pid, d);
@@ -610,15 +617,20 @@
       if (!ES) return;
       api('GET', '/aluno/cursos/' + pid + '/estudo').then(function (r) {
         if (!C || C.pid !== pid) return;
-        var abrir = function (slug) {
+        var abrir = function (slug, inicio) {
           var aula = C.i >= 0 ? C.aulas[C.i].a.id : '';
-          ES.abrir(pid, C.d.produto.titulo, slug, function () { abrirCurso(pid, aula); });
+          ES.abrir(pid, C.d.produto.titulo, slug, function () { abrirCurso(pid, aula); }, inicio);
         };
         ES.cartao(el('al-estude'), pid, r, abrir);
         var percursos = (r && r.acesso && r.escopos) || [];
-        if (percursos.length === 1 && (C.aulas || []).length <= 1 && !estudeAberto[pid]) {
+        var pend = rotaEstude[pid]; delete rotaEstude[pid];
+        if (pend && percursos.some(function (e) { return e.slug === pend.slug; })) {
+          // F5 ou Voltar: reabre o percurso na aba em que o aluno estava
           estudeAberto[pid] = true;
-          abrir(percursos[0].slug);
+          abrir(pend.slug, pend);
+        } else if (percursos.length === 1 && (C.aulas || []).length <= 1 && !estudeAberto[pid]) {
+          estudeAberto[pid] = true;
+          abrir(percursos[0].slug, { substituir: true }); // toma o lugar da página do curso no histórico
         }
       }).catch(function () { /* sem o Estude o curso segue igual */ });
     }
