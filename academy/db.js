@@ -626,6 +626,12 @@ const MIGRACOES = [
           CREATE INDEX IF NOT EXISTS ix_est_marcacoes_aluno ON est_marcacoes (user_id, escopo_id);`,
   },
   {
+    // Destaques: as frases da aula que o autor quer em negrito na leitura (ordem do Augusto, 10/10/2026:
+    // "negrito nas frases mais importantes, nos assuntos em destaque"). Lista de trechos LITERAIS do texto.
+    nome: 'estudo-destaques-2026-10-10',
+    sql: `ALTER TABLE est_unidades ADD COLUMN destaques TEXT DEFAULT '[]';`,
+  },
+  {
     // AMOSTRAS GRÁTIS: trechos curtos de vídeo, PÚBLICOS, um por aula (ou do curso). Tabela
     // PRÓPRIA de propósito — não é `media_files`: a rota pública só enxerga esta tabela, então
     // não há id de mídia de aula paga que ela consiga servir. Identidade = (produto, chave):

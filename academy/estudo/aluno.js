@@ -269,7 +269,7 @@ function leitura(usuario, produto, slugEscopo, disciplina = '') {
   const g = achar(disciplina);
   return { codigo: g.codigo, nome: g.nome, escopo: c.escopo.titulo,
     aulas: g.aulas.map(u => ({ codigo: u.codigo, titulo: u.titulo, itens: itensDe(u), versao: u.versao, status: u.status,
-      blocos: blocosDe(u).map(b => ({ n: b.n, tipo: b.tipo, titulo: b.titulo, texto: b.texto })), fontes: u.fontes })) };
+      blocos: blocosDe(u).map(b => ({ n: b.n, tipo: b.tipo, titulo: b.titulo, texto: b.texto })), fontes: u.fontes, destaques: u.destaques || [] })) };
 }
 // ---------------------------------------------------------------------
 // MAPAS — todos os mapas mentais do percurso num lugar só, por disciplina.
@@ -297,6 +297,9 @@ function mapas(usuario, produto, slugEscopo, disciplina = '') {
 // lista como "solta", com o texto que ele tinha marcado.
 // ---------------------------------------------------------------------
 const CORES_MARCA = ['amarelo', 'verde', 'azul', 'rosa'];
+// "marcador" não é grifo: é o marcador de página do leitor. Usa a mesma âncora (aula, bloco, trecho),
+// e por isso também é reencontrado quando a aula é reescrita.
+const MARCADOR = 'marcador';
 const MAX_MARCA = 3000, MAX_MARCAS_POR_ESCOPO = 5000;
 const marcaPublica = (m, extra = {}) => ({ id: m.id, unidade: m.unidade, bloco: m.bloco, inicio: m.inicio, fim: m.fim, texto: m.texto, cor: m.cor, nota: m.nota || '', criado_em: m.criado_em, solta: false, ...extra });
 function marcacoes(usuario, produto, slugEscopo) {
@@ -323,7 +326,7 @@ function marcar(usuario, produto, slugEscopo, d = {}) {
   const inicio = Number(d.inicio), fim = Number(d.fim);
   if (!Number.isInteger(inicio) || !Number.isInteger(fim) || inicio < 0 || fim <= inicio || fim > b.texto.length) throw erro('A seleção não cabe neste trecho.');
   if (fim - inicio > MAX_MARCA) throw erro(`Marque até ${MAX_MARCA} caracteres por vez.`);
-  if (!CORES_MARCA.includes(d.cor)) throw erro(`cor deve ser ${CORES_MARCA.join('|')}.`);
+  if (!CORES_MARCA.includes(d.cor) && d.cor !== MARCADOR) throw erro(`cor deve ser ${CORES_MARCA.join('|')}.`);
   if (db.prepare('SELECT COUNT(*) n FROM est_marcacoes WHERE user_id = ? AND escopo_id = ?').get(usuario.id, c.escopo.id).n >= MAX_MARCAS_POR_ESCOPO) throw erro('Você chegou ao limite de marcações deste percurso. Apague as que não usa mais.', 409);
   // o trecho é recortado AQUI, do texto do servidor: o cliente manda só as posições
   const m = { id: novoId(), unidade: u.codigo, bloco: n, inicio, fim, texto: b.texto.slice(inicio, fim), cor: d.cor, nota: s(d.nota, 500), criado_em: nowISO() };
@@ -339,8 +342,8 @@ function marcacaoDoAluno(usuario, c, id) {
 function editarMarcacao(usuario, produto, slugEscopo, id, d = {}) {
   const c = abrir(usuario, produto, slugEscopo);
   const m = marcacaoDoAluno(usuario, c, id);
-  const cor = d.cor == null ? m.cor : d.cor;
-  if (!CORES_MARCA.includes(cor)) throw erro(`cor deve ser ${CORES_MARCA.join('|')}.`);
+  const cor = d.cor == null || m.cor === MARCADOR ? m.cor : d.cor; // marcador não vira grifo
+  if (!CORES_MARCA.includes(cor) && cor !== MARCADOR) throw erro(`cor deve ser ${CORES_MARCA.join('|')}.`);
   const nota = d.nota == null ? m.nota : s(d.nota, 500);
   db.prepare('UPDATE est_marcacoes SET cor = ?, nota = ? WHERE id = ?').run(cor, nota, m.id);
   return { ok: true, marcacao: marcaPublica({ ...m, cor, nota }) };

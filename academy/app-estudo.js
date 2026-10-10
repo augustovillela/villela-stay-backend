@@ -233,7 +233,7 @@
     // cru — e o HTML só pode ter o texto, <br>, <mark> e <b>: tirando as tags tem
     // de sobrar o texto cru, senão a conta da seleção sai errada.
     var COR_MARCA = { amarelo: 'Amarelo', verde: 'Verde', azul: 'Azul', rosa: 'Rosa' };
-    function textoMarcado(cru, marcas) { return paragrafosMarcados(cru, marcas).map(function (p) { return p.html; }).join(''); }
+    function textoMarcado(cru, marcas, destaques) { return paragrafosMarcados(cru, marcas, destaques).map(function (p) { return p.html; }).join(''); }
     // O que vai em negrito na leitura: a referência normativa — é o que o candidato
     // procura ao reler (artigo, súmula, OJ, tema, ação, lei). Só ela: negrito em
     // tudo é o mesmo que negrito em nada.
@@ -245,8 +245,8 @@
       // numerado só é subtítulo se for uma frase só ("3. Evolução histórica"); "2. Efeitos. O primeiro…" é parágrafo
       return /^\d+(\.\d+)*[.)]\s+[^.]+\.?$/.test(t) || (t.length <= 70 && !/[.;:!?,]$/.test(t));
     }
-    function paragrafosMarcados(cru, marcas) {
-      cru = String(cru || '');
+    function paragrafosMarcados(cru, marcas, destaques) {
+      cru = String(cru || ''); marcas = marcas || []; destaques = destaques || [];
       var pars = [], re = /\n{2,}/g, ini = 0, m;
       while ((m = re.exec(cru))) { pars.push([ini, m.index]); ini = m.index + m[0].length; }
       pars.push([ini, cru.length]);
@@ -257,8 +257,16 @@
           var colado = /^\d+(?:\.\d+)*[.)]\s+[^.\n]{2,70}\.(?=\s)/.exec(txt);
           var apos = colado ? colado[0].length : 0;
           if (colado) fortes.push([a, a + apos]);
-          RE_NORMA.lastIndex = apos;
-          while ((x = RE_NORMA.exec(txt))) fortes.push([a + x.index, a + x.index + x[0].length]);
+          // Com destaques do autor, o negrito é o que ELE escolheu (a frase que importa); sem eles, fica o
+          // automático da referência normativa. Os dois juntos voltariam a encher a página de negrito.
+          if (destaques.length) {
+            destaques.forEach(function (d) {
+              for (var em = txt.indexOf(d, apos); d && em >= 0; em = txt.indexOf(d, em + d.length)) fortes.push([a + em, a + em + d.length]);
+            });
+          } else {
+            RE_NORMA.lastIndex = apos;
+            while ((x = RE_NORMA.exec(txt))) fortes.push([a + x.index, a + x.index + x[0].length]);
+          }
         }
         fortes.forEach(function (f) { cortes.push(f[0], f[1]); });
         marcas.forEach(function (k) { if (k.inicio > a && k.inicio < z) cortes.push(k.inicio); if (k.fim > a && k.fim < z) cortes.push(k.fim); });
@@ -336,7 +344,7 @@
           var km = marcas.filter(function (x) { return x.id === irPara; })[0];
           if (km) { r.aulas.forEach(function (a, i) { if (a.codigo === km.unidade) ia = i; }); fracInicial = 0; } else irPara = null;
         }
-        function doBloco(un, n) { return marcas.filter(function (k) { return k.unidade === un && k.bloco === n; }); }
+        function doBloco(un, n) { return marcas.filter(function (k) { return k.unidade === un && k.bloco === n && k.cor !== 'marcador'; }); }
         function htmlDaAula(i) {
           var a = r.aulas[i];
           return '<h2>' + esc(a.titulo) + '</h2>' +
@@ -344,7 +352,7 @@
             a.blocos.map(function (b) {
               var rot = NOME_BLOCO[b.tipo] ? NOME_BLOCO[b.tipo] + (b.titulo ? ' — ' + b.titulo : '') : (b.titulo || '');
               return (rot ? '<h3>' + esc(rot) + '</h3>' : '') + '<div class="es-ler-bl" data-un="' + esc(a.codigo) + '" data-bl="' + b.n + '" data-fim="' + b.texto.length + '">' +
-                textoMarcado(b.texto, doBloco(a.codigo, b.n)) + '</div>';
+                textoMarcado(b.texto, doBloco(a.codigo, b.n), a.destaques) + '</div>';
             }).join('') +
             (a.fontes.length ? '<p class="es-ler-fontes"><b>Fontes:</b> ' + a.fontes.map(function (f) { return esc(f.titulo); }).join('; ') + '</p>' : '');
         }

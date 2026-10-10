@@ -53,7 +53,7 @@ const vinculos = (escopoId) => db.prepare('SELECT * FROM est_vinculos WHERE esco
 function unidades(escopoId, vis) {
   return db.prepare(`SELECT * FROM est_unidades WHERE escopo_id = ? AND status IN (${vis.map(() => '?').join(',')}) ORDER BY ordem`).all(escopoId, ...vis)
     .map(u => ({ ...u, competencias: j.parse(u.competencias, []), itens: j.parse(u.itens, []), blocos: j.parse(u.blocos, []), fontes: j.parse(u.fontes, []), midias: j.parse(u.midias, []),
-      niveis: j.parse(u.niveis, {}), vespera: j.parse(u.vespera, {}) }));
+      niveis: j.parse(u.niveis, {}), vespera: j.parse(u.vespera, {}), destaques: j.parse(u.destaques, []) }));
 }
 
 // Competências que o aluno PODE demonstrar hoje: têm ao menos uma questão corrigível, fora da
@@ -134,6 +134,7 @@ function cards(escopoId, vis) {
 // ---------------------------------------------------------------------
 // validação do que entra
 // ---------------------------------------------------------------------
+const MAX_DESTAQUES = 40, PCT_DESTAQUES = 18;
 function validarUnidade(u, i, codComp, codItem) {
   const onde = `unidade ${i + 1}`;
   const codigo = slug(u.codigo || u.titulo), titulo = s(u.titulo, 160);
@@ -162,7 +163,15 @@ function validarUnidade(u, i, codComp, codItem) {
   });
   const fontes = (Array.isArray(u.fontes) ? u.fontes : []).map(f => ({ titulo: s(f && f.titulo, 300), url: s(f && f.url, 400), consultado_em: s(f && f.consultado_em, 10), sustenta: s(f && f.sustenta, 400) })).filter(f => f.titulo);
   const { niveis, vespera } = validarNiveis(u, onde, blocos);
-  return { codigo, titulo, competencias: comps, itens: its, blocos, midias, fontes, niveis, vespera, tempo_min: Math.max(0, Math.round(Number(u.tempo_min) || 0)) };
+  // DESTAQUES: cada um tem de ESTAR no texto de exposição, literalmente — destaque que não bate com o
+  // texto é de outra versão da aula. E há teto: negrito em tudo é negrito em nada.
+  const expo = blocos.filter(b => ['explicacao', 'exemplo', 'sintese'].includes(b.tipo)).map(b => b.texto);
+  const destaques = [...new Set((Array.isArray(u.destaques) ? u.destaques : []).map(d => s(d, 220)).filter(d => d.length >= 4))];
+  if (destaques.length > MAX_DESTAQUES) throw erro(`${onde}: no máximo ${MAX_DESTAQUES} destaques por aula.`);
+  destaques.forEach(d => { if (!expo.some(t => t.includes(d))) throw erro(`${onde}: o destaque "${d.slice(0, 60)}" não está no texto da aula (tem de ser trecho literal).`); });
+  const somaD = destaques.reduce((n, d) => n + d.length, 0), somaE = expo.reduce((n, t) => n + t.length, 0);
+  if (somaD > somaE * PCT_DESTAQUES / 100) throw erro(`${onde}: os destaques somam ${Math.round(somaD * 100 / somaE)} % do texto — o teto é ${PCT_DESTAQUES} %.`);
+  return { codigo, titulo, competencias: comps, itens: its, blocos, midias, fontes, niveis, vespera, destaques, tempo_min: Math.max(0, Math.round(Number(u.tempo_min) || 0)) };
 }
 
 // ---------------------------------------------------------------------
@@ -292,7 +301,7 @@ function importar(produto, dados = {}) {
       const ordemUn = ordenador('est_unidades');
       for (const [i, cru] of (Array.isArray(dados.unidades) ? dados.unidades : []).entries()) {
         const u = validarUnidade(cru, i, codComp, codItem);
-        const atual = db.prepare('SELECT id, ordem, blocos, versao, niveis, vespera FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, u.codigo);
+        const atual = db.prepare('SELECT id, ordem, blocos, versao, niveis, vespera, destaques FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, u.codigo);
         const ord = ordemUn(cru.ordem, atual);
         const campos = [u.titulo, j.str(u.competencias), j.str(u.itens), j.str(u.blocos), j.str(u.fontes), j.str(u.midias), u.tempo_min];
         // Derivados (ADR-0005) gravam a versão do nível 100 de que saíram. Quem manda só
@@ -300,16 +309,17 @@ function importar(produto, dados = {}) {
         const derivar = (obj, versao) => Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, { ...v, derivado_de_versao: versao }]));
         const temNiveis = u.niveis && Object.keys(u.niveis).length, temVespera = u.vespera && Object.keys(u.vespera).length;
         if (!atual) {
-          db.prepare(`INSERT INTO est_unidades (id, escopo_id, codigo, ordem, titulo, competencias, itens, blocos, fontes, midias, tempo_min, atualizado_em, niveis, vespera) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run(novoId(), escopo.id, u.codigo, ord, ...campos, agora, j.str(derivar(u.niveis, 1)), j.str(derivar(u.vespera, 1)));
+          db.prepare(`INSERT INTO est_unidades (id, escopo_id, codigo, ordem, titulo, competencias, itens, blocos, fontes, midias, tempo_min, atualizado_em, niveis, vespera, destaques) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(novoId(), escopo.id, u.codigo, ord, ...campos, agora, j.str(derivar(u.niveis, 1)), j.str(derivar(u.vespera, 1)), j.str(u.destaques));
           rel.unidades.novas++;
         } else {
           const mudou = atual.blocos !== j.str(u.blocos) ? 1 : 0;
           const versao = (atual.versao || 1) + mudou;
           const niveis = temNiveis ? derivar(u.niveis, versao) : j.parse(atual.niveis, {});
           const vespera = temVespera ? derivar(u.vespera, versao) : j.parse(atual.vespera, {});
-          db.prepare(`UPDATE est_unidades SET ordem = ?, titulo = ?, competencias = ?, itens = ?, blocos = ?, fontes = ?, midias = ?, tempo_min = ?, versao = versao + ?, atualizado_em = ?, niveis = ?, vespera = ? WHERE id = ?`)
-            .run(ord, ...campos, mudou, agora, j.str(niveis), j.str(vespera), atual.id);
+          db.prepare(`UPDATE est_unidades SET ordem = ?, titulo = ?, competencias = ?, itens = ?, blocos = ?, fontes = ?, midias = ?, tempo_min = ?, versao = versao + ?, atualizado_em = ?, niveis = ?, vespera = ?, destaques = ? WHERE id = ?`)
+            // quem não manda destaques NÃO apaga os que existem (igual aos níveis)
+            .run(ord, ...campos, mudou, agora, j.str(niveis), j.str(vespera), Array.isArray(cru.destaques) ? j.str(u.destaques) : (atual.destaques || '[]'), atual.id);
           rel.unidades.atualizadas++;
         }
       }
@@ -508,5 +518,5 @@ function resumo(productId) {
 
 module.exports = {
   Escopos, Questoes, itens, competencias, vinculos, unidades, cards, competenciasDaQuestao,
-  importar, definirStatus, cobertura, resumo, competenciasComPratica, questoesDoEscopo, slug, erro, STATUS, TIPOS, EXTENSOES, BLOCOS,
+  importar, validarUnidade, definirStatus, cobertura, resumo, competenciasComPratica, questoesDoEscopo, slug, erro, STATUS, TIPOS, EXTENSOES, BLOCOS,
 };

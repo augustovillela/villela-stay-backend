@@ -537,6 +537,36 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(p.itens.filter(i => i.folha).every(i => Number.isInteger(i.oficiais)), 'cada ponto do programa diz quantas questões oficiais o cobraram');
   });
 
+  await t('estudo: destaques e marcador de página — só trecho literal vira negrito; o marcador usa a âncora do grifo', async () => {
+    const idx = (await req('GET', `${esc}/leitura`, { jar: 'olga' })).json.disciplinas[0];
+    const cod = encodeURIComponent(idx.codigo || '_metodo');
+    const antes = (await req('GET', `${esc}/leitura?disciplina=${cod}`, { jar: 'olga' })).json;
+    assert.ok(antes.aulas.every(a => Array.isArray(a.destaques)), 'toda aula diz os seus destaques, mesmo vazios');
+    const R = require('./repo'), aula0 = antes.aulas.find(x => x.blocos.length);
+    const u0 = R.unidades(db.prepare('SELECT escopo_id FROM est_unidades WHERE codigo = ?').get(aula0.codigo).escopo_id, R.STATUS).find(x => x.codigo === aula0.codigo);
+    const expo = u0.blocos.find(b => b.tipo === 'explicacao').texto, trecho = expo.slice(0, Math.max(4, Math.floor(expo.length * 0.08)));
+    const mk = (destaques) => R.validarUnidade({ ...u0, destaques }, 0, new Set(u0.competencias), new Set(u0.itens));
+    assert.deepEqual(mk([trecho, trecho]).destaques, [trecho], 'repetido entra uma vez');
+    assert.throws(() => mk(['frase que não existe na aula de jeito nenhum']), /não está no texto/);
+    assert.throws(() => mk([expo.slice(0, Math.ceil(expo.length * 0.6))]), /teto|no máximo|caracteres|%/);
+    // marcador de página: aceita o tipo, guarda o trecho do servidor, e não vira grifo ao editar
+    const aula = antes.aulas.find(x => x.blocos.length), bl = aula.blocos[0];
+    const m = await req('POST', `${esc}/marcacoes`, { jar: 'olga', corpo: { unidade: aula.codigo, bloco: bl.n, inicio: 0, fim: Math.min(40, bl.texto.length), cor: 'marcador' } });
+    assert.equal(m.st, 200, m.texto);
+    assert.equal(m.json.marcacao.cor, 'marcador');
+    const ed = await req('PUT', `${esc}/marcacoes/${m.json.marcacao.id}`, { jar: 'olga', corpo: { cor: 'verde', nota: 'parei aqui' } });
+    assert.deepEqual([ed.json.marcacao.cor, ed.json.marcacao.nota], ['marcador', 'parei aqui'], ed.texto);
+    assert.equal((await req('DELETE', `${esc}/marcacoes/${m.json.marcacao.id}`, { jar: 'olga' })).st, 200);
+    // a tela: destaque do autor vira <b> sem mexer no texto, e toma o lugar do negrito automático
+    const tela = require('fs').readFileSync(require('path').join(__dirname, '..', 'app-estudo.js'), 'utf8');
+    const textoMarcado = new Function('esc', tela.slice(tela.indexOf('function textoMarcado'), tela.indexOf('// posição no texto cru de um ponto')) + ';return textoMarcado;')(x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;'));
+    const cru = 'A prescrição é bienal após a extinção do contrato (art. 7º, XXIX, da Constituição). Fora disso, vale a quinquenal.';
+    const h = textoMarcado(cru, [], ['prescrição é bienal', 'quinquenal']);
+    assert.deepEqual([...h.matchAll(/<b>([^<]+)<\/b>/g)].map(x => x[1]), ['prescrição é bienal', 'quinquenal'], h);
+    assert.equal(h.replace(/<[^>]+>/g, ''), cru, 'o texto continua sendo o cru');
+    assert.deepEqual([...textoMarcado(cru, [], []).matchAll(/<b>([^<]+)<\/b>/g)].map(x => x[1]), ['art. 7º'], 'sem destaques do autor, fica o negrito automático da norma');
+  });
+
   await t('estudo: cards — a sessão diz os limites do dia; o acervo inteiro é só do revisor e não agenda nada', async () => {
     const c = (await req('GET', `${esc}/cards`, { jar: 'olga' })).json;
     assert.deepEqual([c.limites.novos_dia, c.limites.revisoes_dia, c.revisor], [5, 20, false], 'a tela explica "Card 1 de 5" com estes números');
