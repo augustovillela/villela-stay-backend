@@ -571,6 +571,25 @@ async function rodar({ t, req, EST, impId }) {
     assert.deepEqual(mk([trecho, trecho]).destaques, [trecho], 'repetido entra uma vez');
     assert.throws(() => mk(['frase que não existe na aula de jeito nenhum']), /não está no texto/);
     assert.throws(() => mk([expo.slice(0, Math.ceil(expo.length * 0.6))]), /teto|no máximo|caracteres|%/);
+    // aula animada: o roteiro é validado na entrada, o painel diz quais formatos a aula tem e a rota entrega o roteiro
+    const an = (animacoes) => R.validarUnidade({ ...u0, animacoes }, 0, new Set(u0.competencias), new Set(u0.itens)).animacoes;
+    const ET = (n) => Array.from({ length: n }, (_, k) => ({ ato: 'Ato ' + (k + 1), quem: 'Juiz', prazo: '', fonte: '', nota: '' }));
+    assert.deepEqual(an(undefined), {}, 'aula sem animação continua valendo');
+    assert.throws(() => an({ fluxo: { titulo: 'x', etapas: ET(2), paradas: [] } }), /3 a 12 etapas/);
+    assert.throws(() => an({ fluxo: { titulo: 'x', etapas: ET(4), paradas: [{ depois_da_etapa: 9, pergunta: 'p?', resposta: 'r' }] } }), /etapa que não existe/);
+    assert.throws(() => an({ caso: { narrativa: 'n', pergunta: 'p', passos: [{ rotulo: 'Fato', texto: 'só um' }] } }), /2 a 6 passos/);
+    assert.throws(() => an({ erros: [{ afirmacao: 'falsa', onde_esta_o_erro: '' }] }), /onde está o erro/);
+    const roteiro = { fluxo: { titulo: 'O rito', etapas: ET(4), paradas: [{ depois_da_etapa: 2, pergunta: 'E agora?', resposta: 'Agora isto.' }] },
+      erros: [{ afirmacao: 'Afirmação falsa.', por_que_parece_certa: 'Parece.', onde_esta_o_erro: 'Aqui.', fonte: '' }] };
+    db.prepare('UPDATE est_unidades SET animacoes = ? WHERE codigo = ?').run(JSON.stringify(an(roteiro)), aula0.codigo);
+    const pa = (await req('GET', `${esc}/painel`, { jar: 'olga' })).json.unidades.find(x => x.codigo === aula0.codigo);
+    assert.deepEqual(pa.animada, ['fluxo', 'erros'], 'o painel diz quais formatos a aula tem');
+    const ra = await req('GET', `${esc}/unidades/${encodeURIComponent(aula0.codigo)}/animacoes`, { jar: 'olga' });
+    assert.equal(ra.st, 200, ra.texto);
+    assert.equal(ra.json.fluxo.etapas.length, 4);
+    assert.equal(ra.json.erros[0].onde_esta_o_erro, 'Aqui.');
+    assert.equal(ra.json.caso, undefined, 'formato que a aula não tem não aparece');
+    db.prepare("UPDATE est_unidades SET animacoes = '{}' WHERE codigo = ?").run(aula0.codigo);
     // marcador de página: aceita o tipo, guarda o trecho do servidor, e não vira grifo ao editar
     const aula = antes.aulas.find(x => x.blocos.length), bl = aula.blocos[0];
     const m = await req('POST', `${esc}/marcacoes`, { jar: 'olga', corpo: { unidade: aula.codigo, bloco: bl.n, inicio: 0, fim: Math.min(40, bl.texto.length), cor: 'marcador' } });

@@ -292,3 +292,21 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-an-pe p{flex:1 1 320px;margin:0;font:400 1.05rem/1.45 Georgia,serif;min-height:1.5em}
 .es-an-bts{display:flex;gap:8px}
 .es-kd-bt.forte{background:var(--al-ambar);border-color:var(--al-ambar);color:#fff}
+
+/* aula animada: um quadro por vez, numa trilha que desce */
+.es-aq-trilho{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding-bottom:30px}
+.es-aq{background:#fff;border:1px solid rgba(20,35,70,.14);border-radius:12px;padding:14px 18px;color:#1a1f2e;font:400 1.05rem/1.55 Georgia,serif;transition:opacity .45s ease,transform .45s ease}
+.es-aq.entra{opacity:0;transform:translateY(14px)}
+.es-aq p{margin:0 0 6px}
+.es-aq h3,.es-aq h4{margin:0 0 6px;font:700 1.1rem/1.3 'Lora',Georgia,serif;color:var(--al-navy,#14213d)}
+.es-aq .al-rotulo{font:700 .72rem/1.2 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#5a6478;margin-bottom:6px}
+.es-aq-abre{background:#f3f6fb}
+.es-aq-etapa{display:flex;gap:14px;align-items:flex-start}
+.es-aq-n{flex:0 0 34px;height:34px;border-radius:50%;background:var(--al-navy,#14213d);color:#fff;display:flex;align-items:center;justify-content:center;font:700 .95rem/1 system-ui,sans-serif}
+.es-aq-meta{font:400 .88rem/1.45 system-ui,sans-serif;color:#44506a}
+.es-aq-nota{font-size:.98rem;border-left:3px solid #c9a227;padding-left:10px;margin-top:6px}
+.es-aq-pergunta{background:#fff8e1;border-color:#e6c659}
+.es-aq-resposta{background:#eef7f0;border-color:#9bc9a8}
+.es-aq-caso{font-size:1.08rem}
+.es-aqv .es-an-acoes{flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:640px){.es-aqv .es-an-topo{flex-direction:column;align-items:flex-start}.es-aq{padding:12px 14px;font-size:1rem}}

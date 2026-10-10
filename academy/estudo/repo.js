@@ -53,7 +53,7 @@ const vinculos = (escopoId) => db.prepare('SELECT * FROM est_vinculos WHERE esco
 function unidades(escopoId, vis) {
   return db.prepare(`SELECT * FROM est_unidades WHERE escopo_id = ? AND status IN (${vis.map(() => '?').join(',')}) ORDER BY ordem`).all(escopoId, ...vis)
     .map(u => ({ ...u, competencias: j.parse(u.competencias, []), itens: j.parse(u.itens, []), blocos: j.parse(u.blocos, []), fontes: j.parse(u.fontes, []), midias: j.parse(u.midias, []),
-      niveis: j.parse(u.niveis, {}), vespera: j.parse(u.vespera, {}), destaques: j.parse(u.destaques, []) }));
+      niveis: j.parse(u.niveis, {}), vespera: j.parse(u.vespera, {}), destaques: j.parse(u.destaques, []), animacoes: j.parse(u.animacoes, {}) }));
 }
 
 // Competências que o aluno PODE demonstrar hoje: têm ao menos uma questão corrigível, fora da
@@ -135,6 +135,30 @@ function cards(escopoId, vis) {
 // validação do que entra
 // ---------------------------------------------------------------------
 const MAX_DESTAQUES = 40, PCT_DESTAQUES = 18;
+// AULA ANIMADA: três roteiros opcionais por aula. A animação PERGUNTA — por isso o fluxo tem paradas,
+// o caso esconde a solução em passos e o erro da banca vem com o porquê de parecer certo.
+function validarAnimacoes(a, onde) {
+  if (!a || typeof a !== 'object') return {};
+  const r = {}, arr = (v) => (Array.isArray(v) ? v : []);
+  if (a.fluxo && typeof a.fluxo === 'object') {
+    const etapas = arr(a.fluxo.etapas).map(e => ({ ato: s(e && e.ato, 70), quem: s(e && e.quem, 40), prazo: s(e && e.prazo, 40), fonte: s(e && e.fonte, 80), nota: s(e && e.nota, 160) })).filter(e => e.ato);
+    if (etapas.length < 3 || etapas.length > 12) throw erro(`${onde}: o fluxo animado tem de 3 a 12 etapas.`);
+    const paradas = arr(a.fluxo.paradas).map(p => ({ depois_da_etapa: Math.round(Number(p && p.depois_da_etapa) || 0), pergunta: s(p && p.pergunta, 160), resposta: s(p && p.resposta, 240) }));
+    paradas.forEach(p => { if (p.depois_da_etapa < 1 || p.depois_da_etapa > etapas.length || !p.pergunta || !p.resposta) throw erro(`${onde}: parada do fluxo aponta para etapa que não existe ou está sem pergunta/resposta.`); });
+    r.fluxo = { titulo: s(a.fluxo.titulo, 80), etapas, paradas };
+  }
+  if (a.caso && typeof a.caso === 'object') {
+    const passos = arr(a.caso.passos).map(p => ({ rotulo: s(p && p.rotulo, 20), texto: s(p && p.texto, 300) })).filter(p => p.texto);
+    const narrativa = s(a.caso.narrativa, 520), pergunta = s(a.caso.pergunta, 160);
+    if (!narrativa || !pergunta || passos.length < 2 || passos.length > 6) throw erro(`${onde}: o caso animado pede narrativa, pergunta e de 2 a 6 passos.`);
+    r.caso = { narrativa, pergunta, passos };
+  }
+  const erros = arr(a.erros).map(e => ({ afirmacao: s(e && e.afirmacao, 220), por_que_parece_certa: s(e && e.por_que_parece_certa, 200), onde_esta_o_erro: s(e && e.onde_esta_o_erro, 260), fonte: s(e && e.fonte, 100) }));
+  if (erros.some(e => !e.afirmacao || !e.onde_esta_o_erro)) throw erro(`${onde}: erro da banca pede a afirmação e onde está o erro.`);
+  if (erros.length > 6) throw erro(`${onde}: no máximo 6 erros da banca por aula.`);
+  if (erros.length) r.erros = erros;
+  return r;
+}
 function validarUnidade(u, i, codComp, codItem) {
   const onde = `unidade ${i + 1}`;
   const codigo = slug(u.codigo || u.titulo), titulo = s(u.titulo, 160);
@@ -171,7 +195,7 @@ function validarUnidade(u, i, codComp, codItem) {
   destaques.forEach(d => { if (!expo.some(t => t.includes(d))) throw erro(`${onde}: o destaque "${d.slice(0, 60)}" não está no texto da aula (tem de ser trecho literal).`); });
   const somaD = destaques.reduce((n, d) => n + d.length, 0), somaE = expo.reduce((n, t) => n + t.length, 0);
   if (somaD > somaE * PCT_DESTAQUES / 100) throw erro(`${onde}: os destaques somam ${Math.round(somaD * 100 / somaE)} % do texto — o teto é ${PCT_DESTAQUES} %.`);
-  return { codigo, titulo, competencias: comps, itens: its, blocos, midias, fontes, niveis, vespera, destaques, tempo_min: Math.max(0, Math.round(Number(u.tempo_min) || 0)) };
+  return { codigo, titulo, competencias: comps, itens: its, blocos, midias, fontes, niveis, vespera, destaques, animacoes: validarAnimacoes(u.animacoes, onde), tempo_min: Math.max(0, Math.round(Number(u.tempo_min) || 0)) };
 }
 
 // ---------------------------------------------------------------------
@@ -301,7 +325,7 @@ function importar(produto, dados = {}) {
       const ordemUn = ordenador('est_unidades');
       for (const [i, cru] of (Array.isArray(dados.unidades) ? dados.unidades : []).entries()) {
         const u = validarUnidade(cru, i, codComp, codItem);
-        const atual = db.prepare('SELECT id, ordem, blocos, versao, niveis, vespera, destaques FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, u.codigo);
+        const atual = db.prepare('SELECT id, ordem, blocos, versao, niveis, vespera, destaques, animacoes FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, u.codigo);
         const ord = ordemUn(cru.ordem, atual);
         const campos = [u.titulo, j.str(u.competencias), j.str(u.itens), j.str(u.blocos), j.str(u.fontes), j.str(u.midias), u.tempo_min];
         // Derivados (ADR-0005) gravam a versão do nível 100 de que saíram. Quem manda só
@@ -309,17 +333,19 @@ function importar(produto, dados = {}) {
         const derivar = (obj, versao) => Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, { ...v, derivado_de_versao: versao }]));
         const temNiveis = u.niveis && Object.keys(u.niveis).length, temVespera = u.vespera && Object.keys(u.vespera).length;
         if (!atual) {
-          db.prepare(`INSERT INTO est_unidades (id, escopo_id, codigo, ordem, titulo, competencias, itens, blocos, fontes, midias, tempo_min, atualizado_em, niveis, vespera, destaques) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run(novoId(), escopo.id, u.codigo, ord, ...campos, agora, j.str(derivar(u.niveis, 1)), j.str(derivar(u.vespera, 1)), j.str(u.destaques));
+          db.prepare(`INSERT INTO est_unidades (id, escopo_id, codigo, ordem, titulo, competencias, itens, blocos, fontes, midias, tempo_min, atualizado_em, niveis, vespera, destaques, animacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(novoId(), escopo.id, u.codigo, ord, ...campos, agora, j.str(derivar(u.niveis, 1)), j.str(derivar(u.vespera, 1)), j.str(u.destaques), j.str(u.animacoes));
           rel.unidades.novas++;
         } else {
           const mudou = atual.blocos !== j.str(u.blocos) ? 1 : 0;
           const versao = (atual.versao || 1) + mudou;
           const niveis = temNiveis ? derivar(u.niveis, versao) : j.parse(atual.niveis, {});
           const vespera = temVespera ? derivar(u.vespera, versao) : j.parse(atual.vespera, {});
-          db.prepare(`UPDATE est_unidades SET ordem = ?, titulo = ?, competencias = ?, itens = ?, blocos = ?, fontes = ?, midias = ?, tempo_min = ?, versao = versao + ?, atualizado_em = ?, niveis = ?, vespera = ?, destaques = ? WHERE id = ?`)
+          db.prepare(`UPDATE est_unidades SET ordem = ?, titulo = ?, competencias = ?, itens = ?, blocos = ?, fontes = ?, midias = ?, tempo_min = ?, versao = versao + ?, atualizado_em = ?, niveis = ?, vespera = ?, destaques = ?, animacoes = ? WHERE id = ?`)
             // quem não manda destaques NÃO apaga os que existem (igual aos níveis)
-            .run(ord, ...campos, mudou, agora, j.str(niveis), j.str(vespera), Array.isArray(cru.destaques) ? j.str(u.destaques) : (atual.destaques || '[]'), atual.id);
+            .run(ord, ...campos, mudou, agora, j.str(niveis), j.str(vespera), Array.isArray(cru.destaques) ? j.str(u.destaques) : (atual.destaques || '[]'),
+              // idem para a aula animada: só troca quem manda
+              cru.animacoes && typeof cru.animacoes === 'object' ? j.str(u.animacoes) : (atual.animacoes || '{}'), atual.id);
           rel.unidades.atualizadas++;
         }
       }

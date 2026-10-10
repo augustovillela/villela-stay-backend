@@ -632,6 +632,12 @@ const MIGRACOES = [
     sql: `ALTER TABLE est_unidades ADD COLUMN destaques TEXT DEFAULT '[]';`,
   },
   {
+    // AULAS ANIMADAS (estudo de vídeo, formatos sem avatar): o roteiro do fluxo, do caso para decidir e
+    // dos erros da banca de cada aula. O tocador é da tela; aqui mora só o roteiro, em JSON.
+    nome: 'estudo-animacoes-2026-10-10',
+    sql: `ALTER TABLE est_unidades ADD COLUMN animacoes TEXT DEFAULT '{}';`,
+  },
+  {
     // AMOSTRAS GRÁTIS: trechos curtos de vídeo, PÚBLICOS, um por aula (ou do curso). Tabela
     // PRÓPRIA de propósito — não é `media_files`: a rota pública só enxerga esta tabela, então
     // não há id de mídia de aula paga que ela consiga servir. Identidade = (produto, chave):

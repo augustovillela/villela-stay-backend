@@ -188,7 +188,9 @@ function painel(usuario, produto, slugEscopo) {
     itens,
     // `mapa` diz à lista de aulas se há mapa mental para oferecer (ele mora no material de véspera)
     unidades: R.unidades(escopo.id, c.vis).map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min, competencias: u.competencias, status: u.status,
-      mapa: !!(u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa) })),
+      mapa: !!(u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa),
+      // quais aulas animadas esta aula tem (fluxo, caso, erros) — o roteiro só vem quando o aluno abre
+      animada: Object.keys(u.animacoes || {}) })),
     regra_pontuacao: escopo.regra_pontuacao,
     revisoes: { hoje: fila.hoje.length, adiadas: fila.adiadas },
     desempenho: {
@@ -207,6 +209,13 @@ function painel(usuario, produto, slugEscopo) {
 // ADR-0005: `nivel` 100 (padrão) | 50 | 25 | 10 troca só a EXPLICAÇÃO pela versão
 // condensada; prática, aplicação e recordação não encolhem. Nível pedido que não
 // existe ou está desatualizado (o 100 mudou depois) cai para o 100 e diz por quê.
+// AULA ANIMADA: os roteiros de uma aula (fluxo com paradas, caso para decidir, erros da banca)
+function animacoes(usuario, produto, slugEscopo, codigo) {
+  const c = abrir(usuario, produto, slugEscopo);
+  const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(codigo));
+  if (!u) throw erro('Unidade não encontrada.', 404);
+  return { codigo: u.codigo, titulo: u.titulo, ...(u.animacoes || {}) };
+}
 function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100' } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
   const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(codigo));
@@ -700,7 +709,7 @@ function obterPlano(usuario, produto, slugEscopo) {
 }
 
 module.exports = {
-  contexto, escopos, painel, unidade, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, bancoDeQuestoes, pedirPista, responder, erros, anotar,
+  contexto, escopos, painel, unidade, animacoes, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, bancoDeQuestoes, pedirPista, responder, erros, anotar,
   cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,
 };

@@ -223,7 +223,7 @@
         g.aulas.push({ u: u, item: m.item });
       });
       alvo.innerHTML = '<div class="jr-caixa"><h3>Aulas</h3><p class="al-sub">' + p.unidades.length + ' aulas em ' + grupos.length + ' disciplinas, na ordem do edital. ' +
-        '<b>Abrir a aula</b> leva à aula ativa (desafio, explicação, prática e os resumos de 50, 25 e 10 %). <b>Mapa mental</b> abre o mapa da aula pronto para imprimir ou salvar em PDF. <b>Ler a disciplina</b> junta a teoria em texto corrido, como num leitor de livros: uma página por vez, do tamanho da tela, com tamanho de letra, fundo claro, sépia ou escuro, busca, marca-texto e PDF. A leitura volta na página em que você parou.</p>' +
+        '<b>Abrir a aula</b> leva à aula ativa (desafio, explicação, prática e os resumos de 50, 25 e 10 %). <b>Aula animada</b> ensina a aula em três movimentos — o fluxo passo a passo, um caso para você decidir e os erros que a banca planta —, parando para perguntar. <b>Mapa mental</b> abre o mapa da aula pronto para imprimir ou salvar em PDF. <b>Ler a disciplina</b> junta a teoria em texto corrido, como num leitor de livros: uma página por vez, do tamanho da tela, com tamanho de letra, fundo claro, sépia ou escuro, busca, marca-texto e PDF. A leitura volta na página em que você parou.</p>' +
         '<div class="es-linha"><button class="al-bt peq fan" id="es-au-mt">🖍️ Minhas marcações</button></div></div>' +
         grupos.map(function (g, n) {
           return '<details class="es-acervo"' + (n === 0 ? ' open' : '') + '><summary><b>' + esc(g.nome) + '</b><span class="al-fino"> · ' + g.aulas.length + ' aula(s)</span></summary>' +
@@ -231,12 +231,13 @@
             g.aulas.map(function (a) {
               return '<div class="es-aula-linha"><span>' + (a.item ? '<b>' + esc(a.item) + '</b> ' : '') + esc(a.u.titulo) + (a.u.tempo_min ? '<span class="al-fino"> · ' + horas(a.u.tempo_min) + '</span>' : '') +
                 (a.u.status !== 'publicado' ? ' <span class="marca-rasc">' + esc(a.u.status) + '</span>' : '') + '</span>' +
-                '<span class="es-aula-bts">' + (a.u.mapa ? '<button class="al-bt peq fan" data-mapa="' + esc(a.u.codigo) + '">🧠 Mapa mental (PDF)</button>' : '<span class="al-fino">mapa em preparação</span>') +
+                '<span class="es-aula-bts">' + ((a.u.animada || []).length ? '<button class="al-bt peq" data-animada="' + esc(a.u.codigo) + '" title="' + esc((a.u.animada || []).map(function (t) { return NOME_AN[t].replace(/^\S+\s/, ''); }).join(' · ')) + '">▶ Aula animada</button>' : '') + (a.u.mapa ? '<button class="al-bt peq fan" data-mapa="' + esc(a.u.codigo) + '">🧠 Mapa mental (PDF)</button>' : '<span class="al-fino">mapa em preparação</span>') +
                 '<button class="al-bt peq fan" data-un="' + esc(a.u.codigo) + '">Abrir a aula</button></span></div>';
             }).join('') + '</details>';
         }).join('');
       cada(alvo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
       cada(alvo, '[data-ler]', function (b) { b.onclick = function () { lerDisciplina(alvo, b.getAttribute('data-ler')); }; });
+      cada(alvo, '[data-animada]', function (b) { b.onclick = function () { aulaAnimada(b.getAttribute('data-animada')); }; });
       if (el('es-au-mt')) el('es-au-mt').onclick = function () { minhasMarcacoes(alvo); };
       cada(alvo, '[data-mapa]', function (b) { b.onclick = function () { abrirMapa(b.getAttribute('data-mapa'), window.open('', '_blank')); }; });
     }
@@ -890,6 +891,88 @@
     // Animação feita do mapa mental que a aula já tem, sem custo de produção: os nós aparecem um a um e,
     // ao fim de cada ramo, ele some e o aluno tem de lembrar o que havia ali antes de ver de novo.
     // A voz é a do próprio navegador (opcional, começa desligada).
+    // ---- AULA ANIMADA (formatos sem avatar): fluxo com paradas, caso para decidir e erro da banca ----
+    // Um quadro por vez. A animação PERGUNTA: nas paradas, o botão vira "Ver a resposta" — o aluno
+    // responde de cabeça antes de abrir. Nada toca sozinho: quem avança é ele.
+    var NOME_AN = { fluxo: '🧭 Fluxo passo a passo', caso: '⚖️ Caso para decidir', erros: '🎯 Erro da banca' };
+    function quadrosDe(tipo, r) {
+      var q = [];
+      if (tipo === 'fluxo') {
+        var f = r.fluxo;
+        q.push({ h: '<div class="es-aq es-aq-abre"><p class="al-rotulo">Fluxo</p><h3>' + esc(f.titulo || r.titulo) + '</h3><p>' + f.etapas.length + ' etapas, na ordem. Em ' + f.paradas.length + ' ponto(s) a aula para e pergunta: responda de cabeça antes de abrir a resposta.</p></div>', bt: 'Começar ›' });
+        f.etapas.forEach(function (e, k) {
+          q.push({ h: '<div class="es-aq es-aq-etapa"><span class="es-aq-n">' + (k + 1) + '</span><div><h4>' + esc(e.ato) + '</h4>' +
+            '<p class="es-aq-meta">' + [e.quem ? '<b>Quem:</b> ' + esc(e.quem) : '', e.prazo ? '<b>Prazo:</b> ' + esc(e.prazo) : '', e.fonte ? '<b>Fonte:</b> ' + esc(e.fonte) : ''].filter(Boolean).join(' · ') + '</p>' +
+            (e.nota ? '<p class="es-aq-nota">' + esc(e.nota) + '</p>' : '') + '</div></div>' });
+          f.paradas.filter(function (p) { return p.depois_da_etapa === k + 1; }).forEach(function (p) {
+            q.push({ h: '<div class="es-aq es-aq-pergunta"><p class="al-rotulo">Pare e responda</p><p>' + esc(p.pergunta) + '</p></div>', bt: 'Ver a resposta' });
+            q.push({ h: '<div class="es-aq es-aq-resposta"><p class="al-rotulo">Resposta</p><p>' + esc(p.resposta) + '</p></div>' });
+          });
+        });
+      } else if (tipo === 'caso') {
+        var c = r.caso;
+        q.push({ h: '<div class="es-aq es-aq-abre"><p class="al-rotulo">Caso para decidir</p><p class="es-aq-caso">' + esc(c.narrativa) + '</p></div>' });
+        q.push({ h: '<div class="es-aq es-aq-pergunta"><p class="al-rotulo">Decida antes de abrir</p><p>' + esc(c.pergunta) + '</p></div>', bt: 'Ver a solução, passo a passo' });
+        c.passos.forEach(function (p) { q.push({ h: '<div class="es-aq es-aq-passo"><p class="al-rotulo">' + esc(p.rotulo || 'Passo') + '</p><p>' + esc(p.texto) + '</p></div>' }); });
+      } else {
+        r.erros.forEach(function (e, k) {
+          q.push({ h: '<div class="es-aq es-aq-pergunta"><p class="al-rotulo">Afirmação ' + (k + 1) + ' de ' + r.erros.length + ' — está errada. Ache o erro antes de abrir.</p><p class="es-aq-caso">' + esc(e.afirmacao) + '</p></div>', bt: 'Ver onde está o erro' });
+          q.push({ h: '<div class="es-aq es-aq-resposta">' + (e.por_que_parece_certa ? '<p class="al-rotulo">Por que parece certa</p><p>' + esc(e.por_que_parece_certa) + '</p>' : '') +
+            '<p class="al-rotulo">Onde está o erro</p><p>' + esc(e.onde_esta_o_erro) + '</p>' + (e.fonte ? '<p class="es-aq-meta"><b>Fonte:</b> ' + esc(e.fonte) + '</p>' : '') + '</div>' });
+        });
+      }
+      return q;
+    }
+    function aulaAnimada(codigo, tipoInicial) {
+      api('GET', base() + '/unidades/' + encodeURIComponent(codigo) + '/animacoes').then(function (r) {
+        var tipos = ['fluxo', 'caso', 'erros'].filter(function (t) { return r[t]; });
+        if (!tipos.length) return;
+        var ov = document.createElement('div');
+        ov.className = 'es-an es-aqv';
+        ov.innerHTML = '<header class="es-an-topo"><b>' + esc(r.titulo) + '</b><span class="es-an-acoes">' +
+          tipos.map(function (t) { return '<button class="es-kd-bt" data-t="' + t + '">' + NOME_AN[t] + '</button>'; }).join('') +
+          '<button class="es-kd-bt" id="es-aq-x" title="Fechar (Esc)">Fechar</button></span></header>' +
+          '<div class="es-an-palco"><div class="es-aq-trilho" id="es-aq-trilho"></div></div>' +
+          '<footer class="es-an-pe"><p id="es-aq-onde"></p><div class="es-an-bts"><button class="es-kd-bt" id="es-aq-rec">↺ Recomeçar</button><button class="es-kd-bt forte" id="es-aq-prox">Próximo ›</button></div></footer>';
+        document.body.appendChild(ov);
+        var antes = document.documentElement.style.overflow;
+        document.documentElement.style.overflow = 'hidden';
+        var trilho = ov.querySelector('#es-aq-trilho'), bProx = ov.querySelector('#es-aq-prox'), onde = ov.querySelector('#es-aq-onde'), quadros = [], i = -1, tipo = '';
+        function avancar() {
+          if (i >= quadros.length - 1) {
+            var prox = tipos[tipos.indexOf(tipo) + 1];
+            if (prox) abrir(prox); else fechar();
+            return;
+          }
+          var qd = quadros[++i], d = document.createElement('div');
+          d.innerHTML = qd.h;
+          var no = d.firstChild;
+          no.classList.add('entra');
+          trilho.appendChild(no);
+          if (no.scrollIntoView) no.scrollIntoView({ block: 'end', behavior: 'smooth' });
+          setTimeout(function () { no.classList.remove('entra'); }, 30);
+          var ultimo = i >= quadros.length - 1, seguinte = tipos[tipos.indexOf(tipo) + 1];
+          bProx.textContent = ultimo ? (seguinte ? 'Ir para: ' + NOME_AN[seguinte] + ' ›' : 'Concluir') : (qd.bt || 'Próximo ›');
+          onde.textContent = NOME_AN[tipo] + ' · ' + (i + 1) + ' de ' + quadros.length;
+        }
+        function abrir(t) {
+          tipo = t; quadros = quadrosDe(t, r); i = -1; trilho.innerHTML = '';
+          cada(ov, '[data-t]', function (b) { b.classList.toggle('forte', b.getAttribute('data-t') === t); });
+          avancar();
+        }
+        function tecla(e) {
+          if (e.key === 'Escape') fechar();
+          else if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); avancar(); }
+        }
+        function fechar() { document.removeEventListener('keydown', tecla, true); document.documentElement.style.overflow = antes; if (ov.parentNode) ov.parentNode.removeChild(ov); }
+        cada(ov, '[data-t]', function (b) { b.onclick = function () { abrir(b.getAttribute('data-t')); }; });
+        bProx.onclick = avancar;
+        ov.querySelector('#es-aq-rec').onclick = function () { abrir(tipo); };
+        ov.querySelector('#es-aq-x').onclick = fechar;
+        document.addEventListener('keydown', tecla, true);
+        abrir(tipos.indexOf(tipoInicial) >= 0 ? tipoInicial : tipos[0]);
+      }).catch(function (e) { window.alert(e.message); });
+    }
     function animarMapa(titulo, txt) {
       estiloDosMapas();
       var ov = document.createElement('div');
