@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-09T23:47:01.670Z",
+  "coletadoEm": "2026-10-10T02:36:19.087Z",
   "series": {
     "piscineiro-na-pratica": {
       "curso_url": "https://academia.villelastay.com.br/academy/cursos/piscineiro-na-pratica",
@@ -843,7 +843,283 @@
     },
     "construcao-com-conteineres-na-pratica": {
       "curso_url": "https://academia.villelastay.com.br/academy/cursos/construcao-com-conteineres-na-pratica",
-      "amostras": {}
+      "amostras": {
+        "1": {
+          "id": "ApRpy1eG268m",
+          "aula": 1,
+          "aula_titulo": "Aula 01 — Construção com contêineres: possibilidades e limitações",
+          "titulo": "Três frases sobre contêiner viram perguntas: é rápido, é barato, é só cortar.",
+          "ponte": "A aula inteira mostra as onze etapas e por que a compra é só a quarta.",
+          "duracao_seg": 39,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/ApRpy1eG268m/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/ApRpy1eG268m/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "2": {
+          "id": "-drZ_n0Zsxvj",
+          "aula": 2,
+          "aula_titulo": "Aula 02 — Casas, quitinetes e villas: escolha do modelo de negócio",
+          "titulo": "A unidade no papel e duas perguntas em branco sobre quem atende.",
+          "ponte": "No curso, como o uso escolhido muda cozinha, privacidade, vaga e limpeza da unidade.",
+          "duracao_seg": 39,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/-drZ_n0Zsxvj/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/-drZ_n0Zsxvj/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "3": {
+          "id": "x2ZNpV8UaBkm",
+          "aula": 3,
+          "aula_titulo": "Aula 03 — Equipe técnica, licenciamento e documentação",
+          "titulo": "O contratado promete o registro e a divisória da pasta segue vazia.",
+          "ponte": "A aula completa mostra quem faz o quê, a pasta de documentos e a consulta ao órgão.",
+          "duracao_seg": 32,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/x2ZNpV8UaBkm/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/x2ZNpV8UaBkm/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "4": {
+          "id": "r5k3AmEQmtJc",
+          "aula": 4,
+          "aula_titulo": "Aula 04 — Estrutura do contêiner e riscos das modificações",
+          "titulo": "Dois contornos de giz na lateral da caixa: janela aqui, porta ali.",
+          "ponte": "No curso, a anatomia do contêiner e por que cada abertura depende de projeto.",
+          "duracao_seg": 34,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/r5k3AmEQmtJc/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/r5k3AmEQmtJc/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "5": {
+          "id": "JuXCV3Fe2anK",
+          "aula": 5,
+          "aula_titulo": "Aula 05 — Segurança em transporte, içamento, corte e montagem",
+          "titulo": "A linha de isolamento no chão e alguém que caminha para cruzá-la.",
+          "ponte": "A aula inteira mostra o que exigir no papel e de onde assistir, sem executar.",
+          "duracao_seg": 53,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/JuXCV3Fe2anK/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/JuXCV3Fe2anK/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "6": {
+          "id": "OWh047JZpkZg",
+          "aula": 6,
+          "aula_titulo": "Aula 06 — Como avaliar a chácara e escolher o ponto de implantação",
+          "titulo": "O contêiner já comprado no pátio e a carreta parada diante do portão.",
+          "ponte": "No curso, a comparação dos pontos do terreno e a ficha de acesso da carga.",
+          "duracao_seg": 34,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/OWh047JZpkZg/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/OWh047JZpkZg/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "7": {
+          "id": "0RY9RoPq0EWR",
+          "aula": 7,
+          "aula_titulo": "Aula 07 — Implantação, sol, ventilação, privacidade e acessos",
+          "titulo": "O sol do Cerrado em dois arcos sobre a caixa do exemplo.",
+          "ponte": "A aula completa ensina a ler sol, vento e água no seu terreno.",
+          "duracao_seg": 47,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/0RY9RoPq0EWR/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/0RY9RoPq0EWR/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "8": {
+          "id": "u0Qa1TQUZw-h",
+          "aula": 8,
+          "aula_titulo": "Aula 08 — Tipos, inspeção, procedência e compra do contêiner",
+          "titulo": "Três contêineres usados no pátio e uma lateral repintada sem explicação.",
+          "ponte": "No curso, os tipos de contêiner, os pontos da vistoria e os documentos da compra.",
+          "duracao_seg": 38,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/u0Qa1TQUZw-h/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/u0Qa1TQUZw-h/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "9": {
+          "id": "GeQEpfsETE3R",
+          "aula": 9,
+          "aula_titulo": "Aula 09 — Programa, layout e compatibilização preliminar",
+          "titulo": "A planta mobiliada na linha do aço e a faixa que cresce para dentro.",
+          "ponte": "A aula inteira divide o comprimento em zonas e faz a conta da largura útil.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/GeQEpfsETE3R/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/GeQEpfsETE3R/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "10": {
+          "id": "wfyUKRrHHxzq",
+          "aula": 10,
+          "aula_titulo": "Aula 10 — Orçamento, cronograma, riscos e contratação",
+          "titulo": "Duas propostas com totais diferentes que se abrem em linhas da planilha.",
+          "ponte": "No curso, a planilha de custo, o cronograma, os riscos e o pagamento por etapa.",
+          "duracao_seg": 38,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/wfyUKRrHHxzq/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/wfyUKRrHHxzq/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "11": {
+          "id": "Es5nobR6PLEx",
+          "aula": 11,
+          "aula_titulo": "Aula 11 — Preparação do terreno, drenagem e infraestrutura",
+          "titulo": "A ordem de aplainar a clareira é riscada: a caixa fica sobre apoios.",
+          "ponte": "A aula completa mostra a marcação, o caminho da água e o que é do contratado.",
+          "duracao_seg": 39,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/Es5nobR6PLEx/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/Es5nobR6PLEx/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "12": {
+          "id": "gfGALtxTAUgk",
+          "aula": 12,
+          "aula_titulo": "Aula 12 — Fundações e apoios: critérios para projeto e fiscalização",
+          "titulo": "Os apoios prontos vistos de cima: nível de topo em topo e duas diagonais.",
+          "ponte": "No curso, o que pedir a quem projeta a fundação e como fiscalizar.",
+          "duracao_seg": 43,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/gfGALtxTAUgk/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/gfGALtxTAUgk/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "13": {
+          "id": "jZ444NyzB_Js",
+          "aula": 13,
+          "aula_titulo": "Aula 13 — Transporte, recebimento, posicionamento e nivelamento",
+          "titulo": "A véspera do içamento e a rede aérea ainda sem resposta da concessionária.",
+          "ponte": "A aula inteira mostra a véspera, o seu lugar no dia e a conferência depois.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/jZ444NyzB_Js/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/jZ444NyzB_Js/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "14": {
+          "id": "Xkpfr_1EjCmI",
+          "aula": 14,
+          "aula_titulo": "Aula 14 — Cortes, reforços e tratamento anticorrosivo",
+          "titulo": "Na oficina parada, o pedido de boca: mais uma janela deste lado.",
+          "ponte": "No curso, o que conferir contra o projeto e fotografar antes da tinta.",
+          "duracao_seg": 31,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/Xkpfr_1EjCmI/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/Xkpfr_1EjCmI/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "15": {
+          "id": "1PJmziLdiN8w",
+          "aula": 15,
+          "aula_titulo": "Aula 15 — Cobertura, fachadas, esquadrias e proteção contra água",
+          "titulo": "O contêiner em corte: segundo telhado e ar passando entre os dois.",
+          "ponte": "A aula completa trata de fachadas, esquadrias e de onde a água se confere.",
+          "duracao_seg": 53,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/1PJmziLdiN8w/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/1PJmziLdiN8w/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "16": {
+          "id": "pStreYc20lj-",
+          "aula": 16,
+          "aula_titulo": "Aula 16 — Isolamento térmico e controle de condensação",
+          "titulo": "A parede em corte: o ar úmido encontra o aço frio e vira gota.",
+          "ponte": "No curso, as camadas do isolamento e as perguntas a levar ao projetista.",
+          "duracao_seg": 43,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/pStreYc20lj-/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/pStreYc20lj-/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "17": {
+          "id": "Xil5pY9f9wBj",
+          "aula": 17,
+          "aula_titulo": "Aula 17 — Desempenho acústico e privacidade",
+          "titulo": "Chuva no teto de aço: a chapa vibra e a caixa vira tambor.",
+          "ponte": "A aula inteira mostra o que reduz o ruído e como conferir a privacidade.",
+          "duracao_seg": 36,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/Xil5pY9f9wBj/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/Xil5pY9f9wBj/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "18": {
+          "id": "xFK2Yxripifw",
+          "aula": 18,
+          "aula_titulo": "Aula 18 — Coordenação das instalações elétricas e hidrossanitárias",
+          "titulo": "A parede aberta, o forro esperando e três selos: foto, teste, assinatura.",
+          "ponte": "No curso, a ordem dos ofícios dentro da parede e a ficha antes de fechar.",
+          "duracao_seg": 31,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/xFK2Yxripifw/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/xFK2Yxripifw/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "19": {
+          "id": "s9u2hY2Y5uTv",
+          "aula": 19,
+          "aula_titulo": "Aula 19 — Revestimentos, cozinha, banheiro e mobiliário",
+          "titulo": "O guarda-roupa que cabia na planta fecha a passagem depois do forro.",
+          "ponte": "A aula completa trata de largura útil, fixação sem furar a chapa, copa e banheiro.",
+          "duracao_seg": 32,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/s9u2hY2Y5uTv/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/s9u2hY2Y5uTv/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "20": {
+          "id": "mebKhtcDkzUk",
+          "aula": 20,
+          "aula_titulo": "Aula 20 — Inspeção, patologias e plano de manutenção",
+          "titulo": "A mancha de ferrugem, a espátula riscada e a régua ao lado da foto.",
+          "ponte": "No curso, o mapa de defeitos, o calendário de inspeção e os sinais de parar.",
+          "duracao_seg": 37,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/mebKhtcDkzUk/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/mebKhtcDkzUk/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "21": {
+          "id": "I_sffLvg-xmX",
+          "aula": 21,
+          "aula_titulo": "Aula 21 — Projeto de moradia ou quitinetes para locação mensal na chácara",
+          "titulo": "O studio de fim de semana recebe quem vai morar o ano inteiro.",
+          "ponte": "A aula inteira refaz o programa para moradia e mostra as unidades em linha.",
+          "duracao_seg": 45,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/I_sffLvg-xmX/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/I_sffLvg-xmX/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "22": {
+          "id": "VW1T8xpsXj7E",
+          "aula": 22,
+          "aula_titulo": "Aula 22 — Projeto de pequenas villas para plataformas de hospedagem e turismo rural",
+          "titulo": "Unidades em volta do pátio à noite e a conversa chegando a todas.",
+          "ponte": "No curso, o estudo do conjunto no papel: visão, caminho, som e nova consulta.",
+          "duracao_seg": 30,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/VW1T8xpsXj7E/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/VW1T8xpsXj7E/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "23": {
+          "id": "WZkMEgyLMZME",
+          "aula": 23,
+          "aula_titulo": "Aula 23 — Operação, custos, ocupação e experiência do hóspede",
+          "titulo": "A conta da casa cheia e o calendário que se esvazia noite a noite.",
+          "ponte": "A aula completa traz as quatro fórmulas, em letras, para três cenários de ocupação.",
+          "duracao_seg": 43,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/WZkMEgyLMZME/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/WZkMEgyLMZME/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "24": {
+          "id": "avG04S1wS-2y",
+          "aula": 24,
+          "aula_titulo": "Aula 24 — Desenvolvimento da implantação na Chácara-Modelo",
+          "titulo": "O estudo preliminar vai ao balcão do órgão antes da compra do contêiner.",
+          "ponte": "No curso, a obra de exemplo percorrida etapa por etapa, com o que se confere.",
+          "duracao_seg": 35,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/avG04S1wS-2y/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/avG04S1wS-2y/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        },
+        "25": {
+          "id": "JKnfSe3V79CI",
+          "aula": 25,
+          "aula_titulo": "Aula 25 — Apresentação, análise de viabilidade e próximos passos",
+          "titulo": "As páginas do plano na mesa de quem projeta, com a cadeira vazia.",
+          "ponte": "A aula inteira mostra como avaliar o estudo e testar a conta no cenário baixo.",
+          "duracao_seg": 38,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/JKnfSe3V79CI/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/JKnfSe3V79CI/capa.jpg?v=1",
+          "visto_em": "2026-10-09"
+        }
+      }
     }
   }
 }
