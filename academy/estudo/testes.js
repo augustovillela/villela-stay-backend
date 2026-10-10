@@ -529,6 +529,45 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(meio.length > 400 && meio.split('}').filter(r => r.includes('{')).every(r => r.trim().startsWith('.')), 'o trecho reaproveitado só tem regras de classe');
   });
 
+  await t('estudo: vídeo da aula — sobe pela chave direto ao bucket, abre a aula, e só entra quem tem o curso', async () => {
+    const storage = require('../storage');
+    const real = { s3Ativo: storage.s3Ativo, presignS3: storage.presignS3, s3Existe: storage.s3Existe };
+    const bucket = new Map();
+    storage.s3Ativo = () => true;
+    storage.presignS3 = (cfg, met, key) => `https://fake.r2/${encodeURIComponent(key)}?met=${met}`;
+    storage.s3Existe = async (key) => (bucket.has(key) ? { tamanho: bucket.get(key) } : null);
+    try {
+      const cod = (await req('GET', `${esc}/painel`, { jar: 'olga' })).json.unidades[0].codigo;
+      const V = (extra) => ({ semUser: true, chave: true, corpo: EST({ escopo: SLUG, unidade: cod, ...extra }) });
+      assert.equal((await req('POST', '/staff/api/academy/estudo/video', { semUser: true, corpo: EST({ escopo: SLUG, unidade: cod, nome: 'a.mp4', mime: 'video/mp4', tamanho: 4096 }) })).st, 401, 'sem chave não sobe');
+      const fora = await req('POST', '/staff/api/academy/estudo/video', V({ unidade: 'aula-que-nao-ha', nome: 'a.mp4', mime: 'video/mp4', tamanho: 4096 }));
+      assert.equal(fora.st, 400, fora.texto);
+      assert.equal((await req('POST', '/staff/api/academy/estudo/video', V({ nome: 'a.mov', mime: 'video/quicktime', tamanho: 4096 }))).st, 400, 'só mp4');
+      const ini = await req('POST', '/staff/api/academy/estudo/video', V({ nome: 'aula.mp4', mime: 'video/mp4', tamanho: 4096 }));
+      assert.equal(ini.st, 200, ini.texto);
+      assert.ok(ini.json.upload_url && ini.json.media_id);
+      assert.equal((await req('GET', `${esc}/unidades/${encodeURIComponent(cod)}`, { jar: 'olga' })).json.video, null, 'antes de confirmar, a aula não anuncia vídeo');
+      bucket.set(ini.json.media_id + '.mp4', 4096); // o PUT direto aconteceu
+      const ok = await req('POST', `/staff/api/academy/estudo/video/${ini.json.media_id}/confirmar`, V({ duracao_seg: 458 }));
+      assert.equal(ok.st, 200, ok.texto);
+      const un = (await req('GET', `${esc}/unidades/${encodeURIComponent(cod)}`, { jar: 'olga' })).json;
+      assert.deepEqual(un.video, { media_id: ini.json.media_id, duracao_seg: 458 });
+      assert.equal((await req('GET', `${esc}/painel`, { jar: 'olga' })).json.unidades.find(x => x.codigo === cod).video, true);
+      // a PORTA: aluna matriculada recebe o link; quem não tem o curso leva 404 mesmo sabendo o id
+      assert.equal((await req('GET', `/academy/api/media/${ini.json.media_id}/link`, { jar: 'olga' })).st, 200);
+      assert.equal((await req('GET', `/academy/api/media/${ini.json.media_id}/link`, { jar: 'caio' })).st, 404, 'sem o curso, o id do vídeo não abre nada');
+      // aula despublicada não entrega o vídeo pela URL
+      db.prepare("UPDATE est_unidades SET status = 'rascunho' WHERE codigo = ?").run(cod);
+      assert.equal((await req('GET', `/academy/api/media/${ini.json.media_id}/link`, { jar: 'olga' })).st, 404, 'vídeo de aula em rascunho não se entrega');
+      db.prepare("UPDATE est_unidades SET status = 'publicado' WHERE codigo = ?").run(cod);
+      // a tela põe o vídeo ANTES do seletor de nível e do texto
+      const tela = require('fs').readFileSync(require('path').join(__dirname, '..', 'app-estudo.js'), 'utf8');
+      const iV = tela.indexOf('id="es-un-video"');
+      assert.ok(iV > 0 && tela.indexOf('+ sel +', iV) - iV < 200, 'o vídeo abre a aula: vem antes do seletor de nível e do texto');
+      db.prepare("UPDATE est_unidades SET video_media_id = '', video_duracao_seg = 0 WHERE codigo = ?").run(cod);
+    } finally { Object.assign(storage, real); }
+  });
+
   await t('estudo: mais cobrado — a prática filtra por questão de prova oficial, e o painel conta as oficiais por ponto', async () => {
     const todas = (await req('GET', `${esc}/praticar?n=20`, { jar: 'olga' })).json;
     const of = await req('GET', `${esc}/praticar?n=20&origem=oficial`, { jar: 'olga' });

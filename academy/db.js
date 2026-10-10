@@ -632,6 +632,14 @@ const MIGRACOES = [
     sql: `ALTER TABLE est_unidades ADD COLUMN destaques TEXT DEFAULT '[]';`,
   },
   {
+    // VÍDEO DA AULA do Estude: a videoaula animada (MP4) de cada unidade. O arquivo é uma mídia da
+    // Academy (bucket privado); quem autoriza a entrega é Midia.podeAcessar, pela matrícula no curso.
+    nome: 'estudo-video-da-aula-2026-10-10',
+    sql: `ALTER TABLE est_unidades ADD COLUMN video_media_id TEXT DEFAULT '';
+          ALTER TABLE est_unidades ADD COLUMN video_duracao_seg INTEGER DEFAULT 0;
+          CREATE INDEX IF NOT EXISTS ix_est_unidades_video ON est_unidades (video_media_id);`,
+  },
+  {
     // AULAS ANIMADAS (estudo de vídeo, formatos sem avatar): o roteiro do fluxo, do caso para decidir e
     // dos erros da banca de cada aula. O tocador é da tela; aqui mora só o roteiro, em JSON.
     nome: 'estudo-animacoes-2026-10-10',

@@ -310,3 +310,8 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-aq-caso{font-size:1.08rem}
 .es-aqv .es-an-acoes{flex-wrap:wrap;justify-content:flex-end}
 @media (max-width:640px){.es-aqv .es-an-topo{flex-direction:column;align-items:flex-start}.es-aq{padding:12px 14px;font-size:1rem}}
+
+/* videoaula no início da aula */
+.es-video{margin:10px 0 16px}
+.es-video video{display:block;width:100%;max-width:960px;aspect-ratio:16/9;background:#0e1730;border-radius:12px}
+.es-video .al-fino{margin-top:6px}

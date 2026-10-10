@@ -190,7 +190,7 @@ function painel(usuario, produto, slugEscopo) {
     unidades: R.unidades(escopo.id, c.vis).map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min, competencias: u.competencias, status: u.status,
       mapa: !!(u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa),
       // quais aulas animadas esta aula tem (fluxo, caso, erros) — o roteiro só vem quando o aluno abre
-      animada: Object.keys(u.animacoes || {}) })),
+      animada: Object.keys(u.animacoes || {}), video: !!u.video_media_id })),
     regra_pontuacao: escopo.regra_pontuacao,
     revisoes: { hoje: fila.hoje.length, adiadas: fila.adiadas },
     desempenho: {
@@ -239,6 +239,8 @@ function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100' } = {}) {
   const vespera = Object.fromEntries(Object.entries(u.vespera).map(([f, p]) => [f, { ...p, desatualizado: p.derivado_de_versao !== u.versao }]));
   // o tempo acompanha o nível: só a leitura encolhe (mesmo fator do plano)
   return { codigo: u.codigo, titulo: u.titulo, competencias: u.competencias, itens: u.itens, tempo_min: Math.round(u.tempo_min * plano.fatorNivel(usado)), versao: u.versao, status: u.status, fontes: u.fontes, midias: u.midias,
+    // a videoaula entra no INÍCIO da aula; a entrega do arquivo passa por /academy/api/media/:id/link
+    video: u.video_media_id ? { media_id: u.video_media_id, duracao_seg: u.video_duracao_seg || 0 } : null,
     nivel: usado, nivel_motivo: motivo, niveis, vespera, blocos };
 }
 // ---------------------------------------------------------------------

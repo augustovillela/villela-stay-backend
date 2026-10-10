@@ -489,8 +489,12 @@ const Midia = {
       -- Material do CURSO: não é aula, então não goteja (lesson_id vazio), mas
       -- exige matrícula como qualquer conteúdo pago. Sem esta linha o arquivo
       -- apareceria na prateleira e daria 404 no clique.
-      UNION SELECT '' AS lesson_id, m.product_id, 0 AS gratuita FROM product_materials m WHERE m.media_id = ?`)
-      .all(mediaId, mediaId, mediaId, mediaId);
+      UNION SELECT '' AS lesson_id, m.product_id, 0 AS gratuita FROM product_materials m WHERE m.media_id = ?
+      -- Vídeo de aula do ESTUDE: não é aula do curso (não goteja), exige matrícula no curso que hospeda o
+      -- percurso, e só vale para aula PUBLICADA — vídeo de aula em rascunho não se entrega pela URL.
+      UNION SELECT '' AS lesson_id, e.product_id, 0 AS gratuita FROM est_unidades u JOIN est_escopos e ON e.id = u.escopo_id
+            WHERE u.video_media_id = ? AND u.status = 'publicado' AND e.status = 'publicado'`)
+      .all(mediaId, mediaId, mediaId, mediaId, mediaId);
     for (const r of refs) {
       if (r.gratuita) return true; // degustação
       if (!temAcesso(usuario.id, r.product_id)) continue; // matrícula ou assinatura (clube)

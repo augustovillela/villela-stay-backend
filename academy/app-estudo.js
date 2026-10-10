@@ -232,7 +232,7 @@
               return '<div class="es-aula-linha"><span>' + (a.item ? '<b>' + esc(a.item) + '</b> ' : '') + esc(a.u.titulo) + (a.u.tempo_min ? '<span class="al-fino"> · ' + horas(a.u.tempo_min) + '</span>' : '') +
                 (a.u.status !== 'publicado' ? ' <span class="marca-rasc">' + esc(a.u.status) + '</span>' : '') + '</span>' +
                 '<span class="es-aula-bts">' + ((a.u.animada || []).length ? '<button class="al-bt peq" data-animada="' + esc(a.u.codigo) + '" title="' + esc((a.u.animada || []).map(function (t) { return NOME_AN[t].replace(/^\S+\s/, ''); }).join(' · ')) + '">▶ Aula animada</button>' : '') + (a.u.mapa ? '<button class="al-bt peq fan" data-mapa="' + esc(a.u.codigo) + '">🧠 Mapa mental (PDF)</button>' : '<span class="al-fino">mapa em preparação</span>') +
-                '<button class="al-bt peq fan" data-un="' + esc(a.u.codigo) + '">Abrir a aula</button></span></div>';
+                '<button class="al-bt peq fan" data-un="' + esc(a.u.codigo) + '">' + (a.u.video ? '🎬 Abrir a aula (com vídeo)' : 'Abrir a aula') + '</button></span></div>';
             }).join('') + '</details>';
         }).join('');
       cada(alvo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
@@ -1151,7 +1151,9 @@
           return '<button class="al-bt peq' + (n.nivel === u.nivel ? '' : ' fan') + '" data-nv="' + n.nivel + '"' + (n.disponivel ? '' : ' disabled') + ' title="' + (n.desatualizado ? 'resumo de versão anterior da aula' : '') + '">' + n.nivel + ' %</button>';
         }).join(' ') + (u.nivel_motivo ? '<span class="al-fino"> ' + esc(u.nivel_motivo) + '</span>' : '') + '</p>' : '';
         alvo.innerHTML = '<div class="jr-caixa es-aula"><p class="al-rotulo">Aula ativa' + (u.tempo_min ? ' · cerca de ' + horas(u.tempo_min) : '') + (u.nivel !== 100 ? ' · versão ' + u.nivel + ' %' : '') + '</p><h3>' + esc(u.titulo) +
-          (u.status === 'rascunho' ? ' <span class="marca-rasc">rascunho</span>' : '') + '</h3>' + sel +
+          (u.status === 'rascunho' ? ' <span class="marca-rasc">rascunho</span>' : '') + '</h3>' +
+          // a videoaula abre a aula (decisão do Augusto): primeiro o vídeo, depois o desafio e o texto
+          (u.video ? '<div class="es-video" id="es-un-video"><p class="al-fino">Carregando a videoaula…</p></div>' : '') + sel +
           u.blocos.map(function (b) {
             return '<section class="es-bloco ' + b.tipo + '"><h4>' + esc(b.titulo || BLOCO[b.tipo]) + '</h4>' + texto(b.texto) +
               (b.criterio ? '<p class="al-fino"><b>Critério:</b> ' + esc(b.criterio) + '</p>' : '') +
@@ -1164,6 +1166,14 @@
             return '<li>' + esc(f.titulo) + (f.consultado_em ? ' — consultado em ' + dataBR(f.consultado_em) : '') + '</li>';
           }).join('') + '</ul></details>' : '') + vespera(u) +
           '<div class="es-linha">' + (u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa ? '<button class="al-bt fan" id="es-un-mapa">🧠 Mapa mental (PDF)</button>' : '') + '<button class="al-bt" id="es-un-pr">Praticar esta matéria</button><button class="al-bt fan" id="es-un-vt">Voltar ao programa</button></div></div>';
+        if (u.video && el('es-un-video')) {
+          api('GET', '/media/' + encodeURIComponent(u.video.media_id) + '/link').then(function (r) {
+            var cx = el('es-un-video');
+            if (!cx) return; // o aluno já saiu da aula
+            cx.innerHTML = '<video controls playsinline preload="metadata" src="' + esc(r.url) + '"></video>' +
+              '<p class="al-fino">Videoaula' + (u.video.duracao_seg ? ' · ' + Math.round(u.video.duracao_seg / 60) + ' min' : '') + ' · a aula para e pergunta: responda antes de ouvir a resposta.</p>';
+          }).catch(function (e) { var cx = el('es-un-video'); if (cx) cx.innerHTML = '<p class="al-fino">Não foi possível carregar a videoaula: ' + esc(e.message) + '</p>'; });
+        }
         cada(alvo, '[data-nv]', function (b) { b.onclick = function () { unidade(alvo, codigo, b.getAttribute('data-nv')); }; });
         if (el('es-un-mapa')) el('es-un-mapa').onclick = function () { abrirMapa(codigo, window.open('', '_blank')); };
         cada(alvo, '[data-sol]', function (b) {

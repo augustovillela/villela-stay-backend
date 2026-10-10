@@ -16,6 +16,7 @@
 const repo = require('./repo');
 const eco = require('./ecossistema');
 const ct = require('./repo-conteudo');
+const { db } = require('./db');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 // chave de comparação: sem acento, sem caixa, sem espaço duplicado
@@ -342,6 +343,34 @@ async function confirmarVideo(mediaId, dados = {}) {
   return { media: { id: m.id, nome: m.nome, tamanho: m.tamanho, storage: m.storage }, aula: depois };
 }
 
+// ---- VÍDEO DA AULA DO ESTUDE (mesmo ciclo: iniciar → PUT direto ao bucket → confirmar) ----
+// Identidade = (escopo, código da unidade): reenviar troca o vídeo daquela aula.
+function unidadeDoEstudo(produto, dados) {
+  const est = require('./estudo/repo');
+  const escopo = est.Escopos.porSlug(produto.id, est.slug(dados.escopo));
+  if (!escopo) throw new Error('Escopo não encontrado neste produto.');
+  const cod = est.slug(dados.unidade);
+  const un = db.prepare('SELECT id, codigo, titulo FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, cod);
+  if (!un) throw new Error(`Unidade "${cod}" não existe neste escopo.`);
+  return { escopo, un };
+}
+function iniciarVideoEstudo(dados = {}) {
+  const { u, produto } = produtorDono(dados);
+  const { un } = unidadeDoEstudo(produto, dados);
+  const mime = s(dados.mime, 100).toLowerCase();
+  if (mime !== 'video/mp4') throw new Error('O vídeo da aula precisa ser video/mp4.');
+  const r = ct.Midia.iniciarUploadGrande(u.id, { nome: dados.nome, mime, tamanho: dados.tamanho });
+  return { media_id: r.id, upload_url: r.upload_url, expira_seg: r.expira_seg, unidade: { codigo: un.codigo, titulo: un.titulo } };
+}
+async function confirmarVideoEstudo(mediaId, dados = {}) {
+  const { u, produto } = produtorDono(dados);
+  const { un } = unidadeDoEstudo(produto, dados);
+  const m = await ct.Midia.confirmarUploadGrande(s(mediaId, 40), u.id);
+  db.prepare('UPDATE est_unidades SET video_media_id = ?, video_duracao_seg = ?, atualizado_em = ? WHERE id = ?')
+    .run(m.id, Math.max(0, parseInt(dados.duracao_seg, 10) || 0), new Date().toISOString(), un.id);
+  return { media: { id: m.id, nome: m.nome, tamanho: m.tamanho, storage: m.storage }, unidade: { codigo: un.codigo, titulo: un.titulo } };
+}
+
 // ---- material do CURSO grande (mesmo caminho do vídeo: direto ao bucket) ----
 // O anexo de aula viaja em base64 dentro da requisição e por isso para em 10 MB.
 // Um caderno de 58 MB não passa por ali — e comprimir para caber estragaria o
@@ -365,6 +394,6 @@ async function confirmarMaterialCurso(mediaId, dados = {}) {
 
 module.exports = {
   validarModulos, aplicarEstrutura, anexarMateriais, anexarMateriaisCurso, importarCurso, estruturaDoCurso,
-  iniciarVideo, confirmarVideo, iniciarMaterialCurso, confirmarMaterialCurso,
+  iniciarVideo, confirmarVideo, iniciarVideoEstudo, confirmarVideoEstudo, iniciarMaterialCurso, confirmarMaterialCurso,
   iniciarAudio, confirmarAudio, editarCapitulo, produtorDono, aulaPorTitulo,
 };

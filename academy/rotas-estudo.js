@@ -83,6 +83,17 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
     aud(req, 'estudo.importar', produto.id, JSON.stringify(r));
     res.json({ ok: true, importado: r, resumo: est.resumo(produto.id).find(e => e.slug === r.escopo) });
   }));
+  // vídeo da aula: o arquivo vai do PC direto ao bucket; o servidor só recebe o id
+  app.post('/staff/api/academy/estudo/video', ...PA, h((req, res) => {
+    const r = imp.iniciarVideoEstudo(req.body || {});
+    aud(req, 'estudo.video.iniciar', r.media_id, r.unidade.codigo);
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/staff/api/academy/estudo/video/:mediaId/confirmar', ...PA, h(async (req, res) => {
+    const r = await imp.confirmarVideoEstudo(req.params.mediaId, req.body || {});
+    aud(req, 'estudo.video.confirmar', r.media.id, `${r.unidade.codigo} (${r.media.tamanho}b)`);
+    res.json({ ok: true, ...r });
+  }));
   app.post('/staff/api/academy/estudo/status', ...PA, h((req, res) => {
     const b = req.body || {};
     const { produto } = imp.produtorDono(b);
