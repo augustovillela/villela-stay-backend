@@ -316,6 +316,9 @@
       if (i < 0 || i >= C.aulas.length) return;
       C.i = i;
       var a = C.aulas[i].a;
+      // a aula aberta entra no endereço (vale para todo curso): F5 volta a ela. Com um percurso do Estude
+      // esperando para reabrir, o endereço já é o dele — não se mexe.
+      if (!rotaEstude[C.pid]) rota(['curso', C.pid, 'aula', a.id], !!primeira);
       pintarPalco(a);
       pintarPassos(a);
       pintarNav(i);

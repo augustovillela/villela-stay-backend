@@ -276,7 +276,7 @@
         var a = aluno();
         if (!a) return false;
         irPara('aluno', true);
-        a.curso(r[1], undefined, r[2] === 'estude' && r[3] ? { estude: { slug: r[3], aba: r[4] || 'hoje', arg: r[5] || '', extra: r[6] || '' } } : null);
+        a.curso(r[1], r[2] === 'aula' && r[3] ? r[3] : undefined, r[2] === 'estude' && r[3] ? { estude: { slug: r[3], aba: r[4] || 'hoje', arg: r[5] || '', extra: r[6] || '' } } : null);
         return true;
       }
       if (MAPA_VIEWS[r[0]]) { ROTA.aplicando = false; irPara(r[0]); return true; }
