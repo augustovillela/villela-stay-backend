@@ -419,7 +419,10 @@ function anotar(usuario, produto, slugEscopo, questaoId, texto) {
 function bancoDeQuestoes(usuario, produto, slugEscopo) {
   const c = abrir(usuario, produto, slugEscopo);
   const lista = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes }).filter(q => q.corrigivel);
-  return { total: lista.length, oficiais: lista.filter(q => q.origem === 'oficial').length, ...banco.facetas(lista) };
+  // a banca do edital DESTE percurso (está no edital: perfil.banca ou perfil.organizadora) — a tela a aponta no filtro
+  const pf = (c.escopo.perfil && typeof c.escopo.perfil === 'object') ? c.escopo.perfil : {};
+  const doEdital = pf.banca || pf.organizadora ? banco.bancaCanonica({ banca: String(pf.banca || pf.organizadora) }) : '';
+  return { total: lista.length, oficiais: lista.filter(q => q.origem === 'oficial').length, banca_do_edital: doEdital, ...banco.facetas(lista) };
 }
 
 function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, erradas = false, origem = '', ...resto } = {}) {

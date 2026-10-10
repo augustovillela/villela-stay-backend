@@ -545,6 +545,8 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(B.eixos({ origem: 'autoral', procedencia: { inspirada_em: 'estilo da FGV' } }).banca, '', 'questão autoral não tem banca');
     const bq = await req('GET', `${esc}/banco`, { jar: 'olga' });
     assert.equal(bq.st, 200, bq.texto);
+    assert.equal(typeof bq.json.banca_do_edital, 'string', 'o banco diz qual é a banca do edital do percurso (vazio quando o edital não a traz)');
+    assert.equal(B.bancaCanonica({ banca: 'Conselho Superior da Justiça do Trabalho, com assessoria da FGV' }), 'FGV');
     const daBanca = bq.json.bancas.find(x => x.valor === 'Banca Teste');
     assert.ok(daBanca && daBanca.n >= 1 && bq.json.anos.some(x => x.valor === 2023), 'o banco lista as bancas e os anos que tem: ' + JSON.stringify(bq.json.bancas));
     const sb = (await req('GET', `${esc}/praticar?n=20&banca=${encodeURIComponent('Banca Teste')}`, { jar: 'olga' })).json;

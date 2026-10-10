@@ -183,4 +183,4 @@ function facetas(lista) {
   return { bancas: lista_(conta.banca), orgaos: lista_(conta.orgao), cargos: lista_(conta.cargo), anos: lista_(conta.ano, true), materias: lista_(conta.materia) };
 }
 
-module.exports = { eixos, filtroDeEixos, temFiltroDeEixos, casaEixos, facetas, validarQuestao, hashQuestao, embaralhar, paraAluno, gabaritoDe, TIPOS, FECHADOS, ORIGENS, GABARITOS, SITUACOES, USOS };
+module.exports = { bancaCanonica, eixos, filtroDeEixos, temFiltroDeEixos, casaEixos, facetas, validarQuestao, hashQuestao, embaralhar, paraAluno, gabaritoDe, TIPOS, FECHADOS, ORIGENS, GABARITOS, SITUACOES, USOS };

@@ -1207,7 +1207,7 @@
         var ops = b[x[1]] || [];
         if (!ops.length) return '';
         return '<label class="es-campo">' + x[2] + '<select id="' + prefixo + x[0] + '"><option value="">' + x[3] + '</option>' + ops.map(function (o) {
-          return '<option value="' + esc(o.valor) + '"' + (String(atual[x[0]] || '') === String(o.valor) ? ' selected' : '') + '>' + esc(o.valor) + (x[0] === 'ano_de' ? '' : ' (' + o.n + ')') + '</option>';
+          return '<option value="' + esc(o.valor) + '"' + (String(atual[x[0]] || '') === String(o.valor) ? ' selected' : '') + '>' + esc(o.valor) + (x[0] === 'ano_de' ? '' : ' (' + o.n + ')') + (x[0] === 'banca' && b.banca_do_edital === o.valor ? ' — banca do seu edital' : '') + '</option>';
         }).join('') + '</select></label>';
       }).join('');
     }
