@@ -114,6 +114,9 @@ const srv = app.listen(PORTA, async () => {
       json: { resposta: 'Resposta simulada do Tutor — demonstração local, nenhuma IA foi chamada.', fontes: [], nao_encontrado: false, sugestoes: [], aula_referencia: '' } }));
     require('../../repo').Config.salvar('ia_cobranca', carteira.prepararConfig({ ativa: true, cambio_brl_usd: 5.5, margem_pct: 30 }));
     carteira.creditar({ email: ALUNA.email, valor_centavos: 200, motivo: 'crédito de demonstração', quem: 'demonstração' });
+    // CHAVE GERAL dos pedidos pagos (estudo_pedidos): na demonstração fica LIGADA, para a aba "Escrita e oral" aparecer.
+    // ESTUDE_DEMO_PEDIDOS=off mostra a tela como o aluno a vê com a chave desligada (é como ela nasce no deploy).
+    if (process.env.ESTUDE_DEMO_PEDIDOS !== 'off') require('../pedidos').salvarConfigPedidos({ ativos: true }, { admin: true });
     console.log(`[estude] demonstração em ${B}/academy/app — entrar com ${ALUNA.email} (senha no topo deste arquivo). Banco descartável: ${process.env.DATA_DIR}`);
   } catch (e) { console.error('[estude] falha ao semear a demonstração:', e.message); srv.close(); process.exit(1); }
 });

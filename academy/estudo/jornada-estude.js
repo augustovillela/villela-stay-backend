@@ -33,7 +33,7 @@ const DIAG_FAIXA_BASE_PCT = 50;           // abaixo disto: "comece por aqui"
 const DIAG_FAIXA_FORTE_PCT = 80;          // a partir disto: "ponto forte"; entre as duas: "base razoável"
 const TESTE_FINAL_PCT_AULAS = 70;         // % das aulas estudadas (régua de `aulaEstudada`) que libera o teste final
 const TESTE_FINAL_INTERVALO_DIAS = 14;    // intervalo mínimo para refazer o teste final
-const MODOS = ['diagnostico', 'teste_final'];
+const MODOS = A.MODOS_DE_AFERICAO;       // diagnostico | teste_final — a lista é a da régua (aluno.js): o que se responde aqui não conta como aula estudada
 const LEITURAS = { comece_por_aqui: 'Comece por aqui', base_razoavel: 'Base razoável', ponto_forte: 'Ponto forte', sem_questoes: 'Sem questões para medir' };
 const GERAL = '_geral';
 
@@ -67,12 +67,12 @@ const resumoDe = (t) => t && { id: t.id, modo: t.modo, estado: t.estado, enviado
   acertos: t.resultado ? t.resultado.certas : 0, respondidas: t.resultado ? t.resultado.certas + t.resultado.erradas : 0, disciplinas: porDisciplina(t) };
 
 // O estado do diagnóstico e do teste final — é o que a aba Hoje, o Plano e "Minha jornada" mostram.
-function situacao(usuario, c, { discs = disciplinas(c), comResposta = A.competenciasComResposta(usuario.id, c.escopo.id) } = {}) {
+function situacao(usuario, c, { discs = disciplinas(c), regua = A.reguaDeEstudo(usuario.id, c.escopo.id) } = {}) {
   const todas = tentativas(usuario, c.escopo);
   const aberta = (modo) => todas.find(t => t.modo === modo && t.estado === 'em_andamento') || null;
   const feitas = (modo) => todas.filter(t => t.modo === modo && t.estado !== 'em_andamento');
   const diag = feitas('diagnostico')[0] || null, finais = feitas('teste_final'), ultimo = finais[finais.length - 1] || null;
-  const totalAulas = discs.reduce((n, d) => n + d.aulas.length, 0), estudadas = discs.reduce((n, d) => n + d.aulas.filter(u => A.aulaEstudada(u, comResposta)).length, 0);
+  const totalAulas = discs.reduce((n, d) => n + d.aulas.length, 0), estudadas = discs.reduce((n, d) => n + d.aulas.filter(u => A.aulaEstudada(u, regua)).length, 0);
   const pctAulas = totalAulas ? Math.floor(100 * estudadas / totalAulas) : 0;
   const faltamAulas = Math.max(0, Math.ceil(totalAulas * TESTE_FINAL_PCT_AULAS / 100) - estudadas);
   const hoje = A.hojeBR();
@@ -190,10 +190,10 @@ function nivelDe(c, est) {
 const SELO_PRATA_PCT = 70;
 const SELO_OURO_PCT = 100;
 const GRAUS = ['bronze', 'prata', 'ouro'];
-function selos(discs, est, comResposta) {
+function selos(discs, est, regua) {
   const por = Object.fromEntries(est.map(e => [e.codigo, e]));
   return discs.map(d => {
-    const aulas = d.aulas.length, estudadas = d.aulas.filter(u => A.aulaEstudada(u, comResposta)).length;
+    const aulas = d.aulas.length, estudadas = d.aulas.filter(u => A.aulaEstudada(u, regua)).length;
     const total = d.competencias.length, dem = d.competencias.filter(k => por[k] && ev.demonstrada(por[k].estado)).length;
     const pct = total ? Math.floor(100 * dem / total) : 0;
     const grau = total && pct >= SELO_OURO_PCT ? 'ouro' : total && pct >= SELO_PRATA_PCT ? 'prata' : aulas && estudadas === aulas ? 'bronze' : '';
@@ -249,7 +249,7 @@ function medalhas(usuario, produto, c, { discs, evs, diag }) {
     { id: 'erros', icone: '🧹', nome: 'Caderno de erros zerado', desc: 'Zerou o caderno de erros de uma disciplina (refez e acertou tudo o que tinha errado nela)', ok: zeradas.length > 0, existe: true, detalhe: zeradas.join(' · ') },
     { id: 'largada', icone: '🔥', nome: tituloDesafio || 'Largada', desc: `Concluiu ${diasDesafio ? 'os ' + diasDesafio + ' dias' : 'todos os dias'} do desafio do curso`, ok: diasDesafio > 0 && checkins >= diasDesafio, existe: diasDesafio > 0,
       detalhe: diasDesafio ? `${checkins} de ${diasDesafio} dias` : '' },
-    { id: 'correcao', icone: '✍️', nome: 'Primeira correção', desc: 'Pediu a primeira correção de escrita ou de arguição oral', ok: correcoes > 0, existe: true, detalhe: correcoes ? pl(correcoes, 'correção pedida', 'correções pedidas') : '' },
+    { id: 'correcao', icone: '✍️', nome: 'Primeira correção', desc: 'Pediu a primeira correção de escrita ou de arguição oral', ok: correcoes > 0, existe: require('./pedidos').liberadoPara(usuario), detalhe: correcoes ? pl(correcoes, 'correção pedida', 'correções pedidas') : '' },
   ].filter(m => m.existe).map(({ existe, ...m }) => m);
 }
 
@@ -259,18 +259,18 @@ function medalhas(usuario, produto, c, { discs, evs, diag }) {
 function jornada(usuario, produto, slugEscopo) {
   const c = A.abrir(usuario, produto, slugEscopo);
   const est = A.estadosDoAluno(usuario, c.escopo), evs = A.evidencias(usuario.id, c.escopo.id);
-  const discs = disciplinas(c), comResposta = new Set(evs.map(e => e.competencia_codigo));
-  const diag = situacao(usuario, c, { discs, comResposta });
+  const discs = disciplinas(c), regua = A.reguaDeEstudo(usuario.id, c.escopo.id);
+  const diag = situacao(usuario, c, { discs, regua });
   return { escopo: { slug: c.escopo.slug, titulo: c.escopo.titulo, particular: !!c.particular },
-    nivel: nivelDe(c, est), selos: selos(discs, est, comResposta), medalhas: medalhas(usuario, produto, c, { discs, evs, diag }),
+    nivel: nivelDe(c, est), selos: selos(discs, est, regua), medalhas: medalhas(usuario, produto, c, { discs, evs, diag }),
     sequencia: sequencias(evs), avaliacao: diag,
     criterios: { selo_prata_pct: SELO_PRATA_PCT, selo_ouro_pct: SELO_OURO_PCT, sequencia_dias: MEDALHA_SEQUENCIA_DIAS, retencao_dias: ev.INTERVALO_RETENCAO_DIAS,
       faixa_base_pct: DIAG_FAIXA_BASE_PCT, faixa_forte_pct: DIAG_FAIXA_FORTE_PCT } };
 }
 // o que o painel leva para a aba Hoje: o nível (cartão compacto) e o diagnóstico (cartão e ordem sugerida).
 // Recebe os estados que o painel já calculou — não lê as evidências de novo.
-function resumoParaPainel(usuario, c, est, comResposta, pre) {
-  const nv = nivelDe(c, est), diag = situacao(usuario, c, { discs: disciplinas(c, pre), comResposta });
+function resumoParaPainel(usuario, c, est, regua, pre) {
+  const nv = nivelDe(c, est), diag = situacao(usuario, c, { discs: disciplinas(c, pre), regua });
   return { nivel: { n: nv.n, nome: nv.nome, de: nv.de, proximo: nv.proximo, competencias: nv.competencias },
     avaliacao: { disponivel: diag.disponivel, por_disciplina: diag.por_disciplina, disciplinas: diag.disciplinas,
       diagnostico: { feito: diag.diagnostico.feito, aberto: diag.diagnostico.aberto, ordem_sugerida: diag.diagnostico.ordem_sugerida },
@@ -282,7 +282,7 @@ function resumoParaPainel(usuario, c, est, comResposta, pre) {
 // a data da prova, a disponibilidade do Plano dele (se houver) e as aulas que faltam estudar, por disciplina.
 function ferramentas(usuario, produto, slugEscopo) {
   const c = A.abrir(usuario, produto, slugEscopo);
-  const comResposta = A.competenciasComResposta(usuario.id, c.escopo.id);
+  const regua = A.reguaDeEstudo(usuario.id, c.escopo.id);
   const { grupos } = A.aulasPorDisciplina(c);
   const p = db.prepare('SELECT entrada FROM est_planos WHERE user_id = ? AND escopo_id = ?').get(usuario.id, c.escopo.id);
   const ent = p ? j.parse(p.entrada, {}) : null;
@@ -293,7 +293,7 @@ function ferramentas(usuario, produto, slugEscopo) {
     reta_final: A.retaFinalDoEscopo(c.escopo),
     niveis: plano.NIVEIS, reservas: { margem_pct: plano.MARGEM_PADRAO_PCT, revisao_pct: crono.REVISAO_PCT, simulado_pct: crono.SIMULADO_PCT },
     disciplinas: grupos.map(g => ({ codigo: g.codigo || '_metodo', nome: g.nome,
-      aulas: g.aulas.map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min || 0, estudada: A.aulaEstudada(u, comResposta) })) })) };
+      aulas: g.aulas.map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min || 0, estudada: A.aulaEstudada(u, regua) })) })) };
 }
 
 module.exports = {

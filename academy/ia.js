@@ -17,7 +17,11 @@ const carteira = require('./carteira-ia');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
-const MODELOS = (process.env.ACADEMY_LLM_MODELS || 'claude-sonnet-5,claude-haiku-4-5')
+// A fila: o primeiro que responder serve. A reserva é o Haiku ATUAL — o Haiku 4.5, que ocupava o lugar, tem
+// aposentadoria anunciada ("not sooner than October 15, 2026", lido em 11/10/2026 na página do modelo). O id
+// antigo segue na tabela de preços: o operador pode ter fixado a fila por ACADEMY_LLM_MODELS.
+const MODELOS_PADRAO = 'claude-sonnet-5,claude-haiku-5-5';
+const MODELOS = (process.env.ACADEMY_LLM_MODELS || MODELOS_PADRAO)
   .split(',').map(x => x.trim()).filter(Boolean);
 const MAX_TOKENS = parseInt(process.env.ACADEMY_LLM_MAX_TOKENS, 10) || 4000;
 // USD por MTok — atualizar junto com os modelos. Conferido em 11/10/2026 na página oficial de preços
@@ -25,6 +29,11 @@ const MAX_TOKENS = parseInt(process.env.ACADEMY_LLM_MAX_TOKENS, 10) || 4000;
 // virou o preço padrão, e o aumento para 3/15 anunciado para 01/09/2026 não aconteceu. `cache` = quanto custa
 // a leitura de cache em relação à entrada (0,1 no padrão; 0,05 nos modelos 5.5 de Opus e Sonnet).
 // Modelo que não está aqui é orçado e custeado por cima (3/15): errar para mais nunca cobra a menos do provedor.
+// HAIKU 5.5 (lançado em 07/10/2026; id `claude-haiku-5-5`) — lido em 11/10/2026 na mesma página de preços e em
+// https://platform.claude.com/docs/en/about-claude/models/overview: o preço tem DUAS FAIXAS, pelo tamanho do
+// prompt: até 100.000 tokens, 0,10 de entrada e 0,50 de saída; acima disso, 0,50 e 2,50 (a requisição inteira).
+// `longo` guarda a segunda faixa: o custo real escolhe a faixa pelo prompt da chamada (`custoUSD`), e o TETO
+// usa sempre a mais cara (`precoMaximo`) — um PDF grande passa dos 100 mil tokens. Leitura de cache: 0,1 (padrão).
 const PRECOS = {
   'claude-opus-5-5': { in: 4, out: 20, cache: 0.05 },
   'claude-opus-5': { in: 5, out: 25 },
@@ -32,7 +41,8 @@ const PRECOS = {
   'claude-sonnet-5-5': { in: 2, out: 10, cache: 0.05 },
   'claude-sonnet-5': { in: 2, out: 10 },
   'claude-sonnet-4-6': { in: 3, out: 15 },
-  'claude-haiku-4-5': { in: 1, out: 5 },
+  'claude-haiku-5-5': { in: 0.1, out: 0.5, longo: { acima: 100000, in: 0.5, out: 2.5 } },
+  'claude-haiku-4-5': { in: 1, out: 5 },                 // aposentadoria anunciada: fica só para fila fixada por variável de ambiente
   'claude-haiku-4-5-20251001': { in: 1, out: 5 },
 };
 
@@ -50,6 +60,8 @@ const maxSaida = (agente) => SAIDA_PROPRIA[agente] || Math.min(MAX_TOKENS, MAX_S
 // RACIOCÍNIO ("thinking") — lido na documentação oficial em 11/10/2026
 // (https://platform.claude.com/docs/en/build-with-claude/thinking-troubleshooting, tabela por modelo):
 //   · o Sonnet 5 RACIOCINA POR PADRÃO quando o parâmetro é omitido, e aceita `thinking: { type: 'disabled' }`;
+//   · o Haiku 5.5 também RACIOCINA POR PADRÃO e aceita 'disabled' — com esforço `high` ou menor (com `xhigh` ou
+//     `max` a API responde 400); aqui o esforço não é enviado, e o padrão dele é `medium`. Recusa 'enabled';
 //   · o Haiku 4.5 não raciocina por padrão (só no modo manual), e também aceita 'disabled';
 //   · os tokens de raciocínio são cobrados como SAÍDA e contam para o `max_tokens` do passo.
 // Os pedidos pagos têm orçamento por passo: neles o raciocínio fica DESLIGADO, para a saída inteira ser a
@@ -104,10 +116,15 @@ const ativo = () => !!(_mock || process.env.ANTHROPIC_API_KEY);
 const transcricaoAtiva = () => !!(_mock || process.env.OPENAI_API_KEY);
 
 const precoDe = (modelo) => PRECOS[modelo] || { in: 3, out: 15 };
+// o preço mais caro que o modelo pode cobrar (a faixa de prompt longo, quando ele tem uma): é o que entra no teto
+const precoMaximo = (modelo) => { const p = precoDe(modelo); return p.longo ? { in: Math.max(p.in, p.longo.in), out: Math.max(p.out, p.longo.out) } : { in: p.in, out: p.out }; };
 // custo do provedor em USD (escrita de cache custa 1,25× a entrada; leitura, 0,1×)
 function custoUSD(modelo, usage) {
   if (!usage) return 0;
-  const p = precoDe(modelo);
+  let p = precoDe(modelo);
+  // modelo com faixa de prompt longo: o prompt é TUDO o que entrou (novo, gravado em cache e lido do cache)
+  const prompt = (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0);
+  if (p.longo && prompt > p.longo.acima) p = { ...p, in: p.longo.in, out: p.longo.out };
   const entrada = (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) * 1.25 + (usage.cache_read_input_tokens || 0) * (p.cache || 0.1);
   return (entrada * p.in + (usage.output_tokens || 0) * p.out) / 1e6;
 }
@@ -120,7 +137,7 @@ function tetoUSD(agente, prompt) {
 // mais as regras do sistema a cada passo), as páginas de PDF pelo teto fixo, a saída máxima por passo
 // × o número de passos e, havendo áudio, a transcrição pela duração MÁXIMA.
 // o preço do teto: o mais caro da fila, em cada ponta
-const precoTeto = () => MODELOS.map(precoDe).reduce((a, b) => ({ in: Math.max(a.in, b.in), out: Math.max(a.out, b.out) }), { in: 0, out: 0 });
+const precoTeto = () => MODELOS.map(precoMaximo).reduce((a, b) => ({ in: Math.max(a.in, b.in), out: Math.max(a.out, b.out) }), { in: 0, out: 0 });
 function tetoTrabalhoUSD(agente, { caracteres = 0, paginas_pdf = 0, passos = 1, saida_por_passo = 0, audio_seg = 0 } = {}) {
   const n = Math.max(1, Math.round(passos) || 1);
   const entrada = Math.ceil((GUARDRAILS.length * n + Math.max(0, caracteres)) / 3) + Math.max(0, Math.round(paginas_pdf) || 0) * TOKENS_POR_PAGINA_PDF;
@@ -520,7 +537,7 @@ const Logs = {
 };
 
 module.exports = {
-  ativo, MODELOS, Agentes, Logs, usadasHoje, limiteDia, comoCobrar, middlewareAceite, tetoUSD, custoUSD, __mockParaTeste,
+  ativo, MODELOS, MODELOS_PADRAO, precoMaximo, Agentes, Logs, usadasHoje, limiteDia, comoCobrar, middlewareAceite, tetoUSD, custoUSD, __mockParaTeste,
   // pedidos pagos (ADR-0010)
   abrirTrabalho, tetoTrabalhoUSD, comoCobrarPedido, transcricaoAtiva, custoTranscricaoUSD, maxSaida,
   SO_PAGOS, TOKENS_POR_PAGINA_PDF, TRANSCRICAO_USD_POR_MIN, precoTeto, precoDe, parametroDeRaciocinio, jsonDaResposta, duracaoPeloTamanho, AUDIO_KBPS_MINIMO,

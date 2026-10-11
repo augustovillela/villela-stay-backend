@@ -764,6 +764,12 @@ const MIGRACOES = [
           ALTER TABLE certificates ADD COLUMN carga_horaria_min INTEGER DEFAULT 0;
           ALTER TABLE est_pedidos ADD COLUMN audio_apagado_em TEXT DEFAULT '';`,
   },
+  {
+    // AULA SEM QUESTÃO NEM CARD (estudo/aluno.js › aulaEstudada): quando o aluno chegou ao fim do texto da aula.
+    // É o que deixa essa aula contar como estudada — sem isto ela travaria o certificado para sempre.
+    nome: 'estudo-aula-lida-2026-10-11',
+    sql: `ALTER TABLE est_aula_estado ADD COLUMN lida_em TEXT DEFAULT '';`,
+  },
 ];
 
 for (const m of MIGRACOES) {

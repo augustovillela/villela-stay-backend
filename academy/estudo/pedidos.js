@@ -25,6 +25,7 @@
 const path = require('path');
 const crypto = require('crypto');
 const { db, transacao, nowISO, novoId, j } = require('../db');
+const repo = require('../repo');
 const ct = require('../repo-conteudo');
 const storage = require('../storage');
 const ia = require('../ia');
@@ -172,6 +173,54 @@ function apagarAudiosDoTitular(userId) {
     n++;
   }
   return n;
+}
+
+// ---------------------------------------------------------------------
+// CHAVE GERAL dos pedidos pagos — platform_settings.estudo_pedidos = { ativos: false, liberados: [e-mails] }.
+// Nasce DESLIGADA: correção de discursiva/peça/oral, importar prova e ler edital ainda não rodaram com provedor
+// real, e não abrem para aluno no deploy. Com `ativos: false` só entram os e-mails de `liberados` e quem é
+// isento na carteira de IA (ia_cobranca.isentos); para os demais a aba some (painel: `pedidos_disponiveis: false`)
+// e as rotas de pedido respondem 404. Com `ativos: true`, vale para todos.
+// QUEM PEDE NÃO APROVA: ligar para todos exige SESSÃO de admin. A chave de publicação (que um agente carrega)
+// lê o estado e edita `liberados` — e pode DESLIGAR, que é o lado seguro —, mas não liga.
+// Esta chave decide quem VÊ o serviço; se ele está de pé (cobrança ligada, provedor configurado) é `disponibilidade`.
+// ---------------------------------------------------------------------
+const CFG_PEDIDOS = 'estudo_pedidos';
+const LIBERADOS_MAX = 50;
+const AINDA_NAO = 'Este serviço ainda não está disponível.';
+const listaDeEmails = (v) => [...new Set((Array.isArray(v) ? v.join(',') : String(v == null ? '' : v)).split(/[,;\s]+/).map(x => x.trim().toLowerCase()).filter(Boolean))];
+function cfgPedidos() {
+  const c = repo.Config.obter(CFG_PEDIDOS, {}) || {};
+  return { ativos: c.ativos === true, liberados: listaDeEmails(c.liberados) };
+}
+// O que entra em platform_settings.estudo_pedidos passa por aqui. Aceita a configuração inteira
+// ({ ativos, liberados }) ou o gesto de um e-mail só ({ liberar } / { remover }); o que não vier fica como está.
+function prepararConfigPedidos(novo = {}, { admin = false, atual = cfgPedidos() } = {}) {
+  if (!novo || typeof novo !== 'object') throw erro('Informe { ativos, liberados } — ou { liberar: "e-mail" } / { remover: "e-mail" }.');
+  let liberados = novo.liberados == null ? atual.liberados : listaDeEmails(novo.liberados);
+  const tirar = new Set(listaDeEmails(novo.remover));
+  liberados = [...new Set(liberados.concat(listaDeEmails(novo.liberar)))].filter(x => !tirar.has(x));
+  const torto = liberados.find(x => !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(x));
+  if (torto) throw erro(`"${torto}" não parece um e-mail — confira a lista de liberados.`);
+  if (liberados.length > LIBERADOS_MAX) throw erro(`Mais de ${LIBERADOS_MAX} liberados — a lista é para teste; para abrir a todos, ligue a chave (ativos).`);
+  // só o booleano liga: "true", 1 ou "sim" não abrem o serviço por engano
+  if (novo.ativos != null && typeof novo.ativos !== 'boolean') throw erro('ativos deve ser true ou false.');
+  const ativos = novo.ativos == null ? atual.ativos : novo.ativos;
+  if (ativos && !atual.ativos && !admin) throw erro('Ligar os pedidos pagos para todos os alunos exige sessão de administrador no Portal Staff — a chave de publicação lê o estado e edita a lista de liberados, mas não liga.', 403);
+  return { ativos, liberados };
+}
+function salvarConfigPedidos(novo, { admin = false } = {}) {
+  const atual = cfgPedidos(), v = prepararConfigPedidos(novo, { admin, atual });
+  repo.Config.salvar(CFG_PEDIDOS, v);
+  return { antes: atual, estudo_pedidos: v };
+}
+// A porta: este usuário vê a aba e pode pedir?
+function liberadoPara(usuario) {
+  const c = cfgPedidos();
+  if (c.ativos) return true;
+  if (!usuario || !usuario.id) return false;
+  const email = String(usuario.email || '').trim().toLowerCase();
+  return (!!email && c.liberados.includes(email)) || carteira.isento(usuario.id);
 }
 
 // O serviço existe? Só com a cobrança ligada (ou conta isenta) e com o provedor configurado.
@@ -1019,7 +1068,7 @@ function painelStaff({ admin = false } = {}) {
     .map((p) => { const c = j.parse(p.contestacao, {}), r = j.parse(p.resultado, {}); return { id: p.id, tipo: p.tipo, questao_id: p.questao_id, product_id: p.product_id, nome: p.nome, email: p.email,
       nota: r && r.nota, cobrado: carteira.brl(p.cobrado_milesimos), motivo: c.motivo, em: c.em, resolvida_em: c.resolvida_em || '', criado_em: p.criado_em }; })
     .filter(c => !c.resolvida_em);
-  return { contagem, total_pedidos: contagem.reduce((t, x) => t + x.n, 0), total_cobrado_milesimos: total, total_cobrado: carteira.brl(total),
+  return { config: cfgPedidos(), contagem, total_pedidos: contagem.reduce((t, x) => t + x.n, 0), total_cobrado_milesimos: total, total_cobrado: carteira.brl(total),
     contestacoes_abertas_total: contestacoes.length, ...(admin ? { contestacoes_abertas: contestacoes } : {}) };
 }
 function abrirParaStaff(id) {
@@ -1049,5 +1098,6 @@ module.exports = {
   linkDoAudio, expurgarAudios, apagarAudiosDoTitular, AUDIO_ORAL_RETENCAO_DIAS,
   opcoesDeProva, reorcar, aplicar, opcoesDeEdital, previaDoEdital,
   EDITAIS_POR_DIA, RESULTADO_DA_DISCIPLINA,
+  cfgPedidos, prepararConfigPedidos, salvarConfigPedidos, liberadoPara, CFG_PEDIDOS, LIBERADOS_MAX, AINDA_NAO,
   TIPOS, ESTADOS, ABERTOS, LIMITE_TEXTO, MINIMO_TEXTO, ORAL_MAX_SEG, ORAL_MAX_BYTES, ORAL_TRANSCRICAO_MAX, FALHAS_POR_DIA, PROVAS_POR_DIA, AVISO, INTERROMPIDO,
 };

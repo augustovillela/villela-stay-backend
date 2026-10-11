@@ -166,11 +166,55 @@ async function rodar({ t, req }) {
     assert.deepEqual(J.ordemSugerida([{ nome: 'x', pct: 50, total: 3, ordem: 0 }, { nome: 'y', pct: 0, total: 0, ordem: 1 }, { nome: 'z', pct: 50, total: 3, ordem: 2 }, { nome: 'w', pct: 10, total: 3, ordem: 3 }]).map(x => x.nome), ['w', 'x', 'z', 'y']);
   });
 
+  await t('régua da aula estudada: o que se responde no DIAGNÓSTICO (e no teste final) não conta como estudo — nem na lista de aulas, na biblioteca, no certificado, no cronograma, no bronze ou na liberação do teste final; como DOMÍNIO, continua valendo', async () => {
+    const bia = uid(BIA.email), e = eid();
+    // o diagnóstico da Bia deixou evidência nas três disciplinas (sete respostas; quais competências, depende do sorteio)…
+    const doDiag = db.prepare('SELECT DISTINCT competencia_codigo c FROM est_evidencias WHERE user_id = ? AND tentativa_id = ? ORDER BY c').all(bia, diagId).map(r => r.c);
+    assert.ok(doDiag.includes('cc1') && doDiag.some(k => /^cb/.test(k)) && doDiag.some(k => /^ca/.test(k)), 'o diagnóstico tocou A, B e C: ' + doDiag.join(','));
+    // …mas FORA dele ela só respondeu as questões 1 (aula A1) e 5 (aula A2), no Praticar
+    const estudadas = (p) => p.unidades.filter(u => u.estudada).map(u => u.codigo);
+    let p = await painel('bia-j');
+    assert.deepEqual(estudadas(p), ['aula-a1', 'aula-a2'], 'antes da correção, as cinco aulas apareciam estudadas');
+    assert.equal(p.cobertura.estudo.estudados, 2, '"Estudados por você" (itens do programa) segue a mesma régua');
+    // biblioteca, certificado, cronograma (Ferramentas), teste final e selo bronze: o mesmo número
+    assert.deepEqual([A.progressoDoCurso(bia, pid).progresso.concluidas, A.conclusao(bia, pid).estudadas, p.conclusao.estudadas], [2, 2, 2]);
+    const fer = (await req('GET', `${esc()}/ferramentas`, { jar: 'bia-j' })).json;
+    assert.deepEqual(fer.disciplinas.flatMap(d => d.aulas.filter(a => a.estudada).map(a => a.codigo)), ['aula-a1', 'aula-a2'], 'o cronograma ainda conta as outras três como por estudar');
+    const jr = await jornada('bia-j');
+    assert.deepEqual([jr.avaliacao.teste_final.aulas_estudadas, jr.avaliacao.teste_final.faltam_aulas, jr.avaliacao.teste_final.liberado], [2, 2, false], '70 % de 5 = 4: faltam duas');
+    assert.deepEqual(jr.selos.map(s => [s.nome, s.aulas_estudadas, s.aulas]), [['Direito A', 2, 2], ['Direito B', 0, 2], ['Direito C', 0, 1]]);
+    // DOMÍNIO: a evidência do diagnóstico continua valendo — estado da competência, nível e selo por demonstração
+    const comp = Object.fromEntries(p.competencias.map(c => [c.codigo, c]));
+    assert.ok(comp.cb1.tentativas + comp.cb2.tentativas >= 3 && comp.cc1.tentativas >= 1, 'as respostas do diagnóstico estão no estado das competências');
+    assert.ok(comp.cc1.estado !== 'nao_avaliada', 'a C só foi respondida no diagnóstico, e deixou de ser "não avaliada": ' + comp.cc1.estado);
+    // B: duas certas em questão nova, sem pista — ao menos uma competência dela foi DEMONSTRADA só pelo diagnóstico
+    const demB = ['cb1', 'cb2'].filter(k => ['demonstrada_sem_apoio', 'retida'].includes(comp[k].estado)).length;
+    assert.ok(demB >= 1, 'acerto do diagnóstico é demonstração: ' + comp.cb1.estado + ' / ' + comp.cb2.estado);
+    assert.deepEqual([jr.selos[1].demonstradas, jr.selos[1].aulas_estudadas], [demB, 0], 'conta para a prata e o ouro de Direito B — sem que nenhuma aula dela esteja estudada');
+    assert.ok(jr.nivel.competencias.demonstradas >= 2 + demB, 'e para o nível: ' + JSON.stringify(jr.nivel.competencias));
+    // a regra está no MODO da tentativa: o teste final é tratado como o diagnóstico; um simulado, não
+    assert.deepEqual(A.MODOS_DE_AFERICAO, ['diagnostico', 'teste_final']);
+    const modo = (m) => db.prepare('UPDATE est_tentativas SET modo = ? WHERE id = ?').run(m, diagId);
+    try {
+      modo('teste_final');
+      assert.deepEqual(estudadas(await painel('bia-j')), ['aula-a1', 'aula-a2'], 'teste final também é aferição');
+      modo('simulado');
+      const comSimulado = [...new Set(['aula-a1', 'aula-a2'].concat(doDiag.map(k => 'aula-' + k.slice(1))))].sort();
+      assert.ok(comSimulado.length >= 4 && comSimulado.includes('aula-c1'));
+      assert.deepEqual(estudadas(await painel('bia-j')).sort(), comSimulado, 'as mesmas respostas, num simulado, contariam como estudo');
+    } finally { modo('diagnostico'); }
+    assert.deepEqual(estudadas(await painel('bia-j')), ['aula-a1', 'aula-a2']);
+    // um lugar só: ninguém mais consulta as evidências para decidir "estudada"
+    const fonte = ler('estudo/aluno.js') + ler('estudo/jornada-estude.js');
+    assert.equal((fonte.match(/function aulaEstudada\(|const aulaEstudada =/g) || []).length, 1, 'uma régua só');
+    assert.ok(!/competenciasComResposta|new Set\(evs\.map\(e => e\.competencia_codigo\)\)/.test(fonte), 'o atalho antigo (toda evidência conta) saiu de cena');
+  });
+
   // ================= 3. MEDALHAS (as que dependem do diagnóstico da Bia) =================
   await t('medalhas: diagnóstico feito; caderno de erros zerado numa disciplina que JÁ teve erro; primeiro simulado ENVIADO (treino não conta)', async () => {
     const med = async (jar) => Object.fromEntries((await jornada(jar)).medalhas.map(m => [m.id, m]));
     let m = await med('bia-j');
-    assert.deepEqual(Object.keys(m), ['diagnostico', 'simulado', 'sequencia', 'erros', 'correcao'], 'sem desafio publicado não há medalha da Largada; audiobook não existe');
+    assert.deepEqual(Object.keys(m), ['diagnostico', 'simulado', 'sequencia', 'erros'], 'sem desafio publicado não há medalha da Largada; audiobook não existe; e a "primeira correção" só existe para quem tem os pedidos pagos (chave geral desligada)');
     assert.deepEqual([m.diagnostico.ok, (await med('leo-j')).diagnostico.ok], [true, false]);
     // B e C têm erro pendente; a A nunca teve erro (não é "zerada": nunca precisou)
     assert.deepEqual([m.erros.ok, m.erros.detalhe], [false, '']);
@@ -194,8 +238,12 @@ async function rodar({ t, req }) {
     // o Leo não estudou aula nenhuma: 70 % de 5 aulas = 4
     let r = await req('POST', `${esc()}/diagnostico`, { jar: 'leo-j', corpo: { tipo: 'teste_final' } });
     assert.ok(r.st === 409 && /70 % das aulas: faltam 4 aulas \(0 de 5/.test(r.json.erro), r.texto);
-    // a Bia garante as cinco aulas estudadas (régua única: respondeu algo de cada competência)
+    // a Bia responde algo das duas aulas de B: quatro de cinco. A aula C só foi respondida no DIAGNÓSTICO — não conta
     await responder('bia-j', 9); await responder('bia-j', 12);
+    assert.deepEqual((await painel('bia-j')).unidades.filter(u => !u.estudada).map(u => u.codigo), ['aula-c1']);
+    assert.equal((await jornada('bia-j')).avaliacao.teste_final.liberado, true, 'quatro de cinco já são 70 %');
+    // …e garante as cinco (régua única: respondeu, fora do diagnóstico, algo de cada competência)
+    await responder('bia-j', 14);
     const p = await painel('bia-j');
     assert.equal(p.unidades.filter(u => u.estudada).length, 5);
     let f = (await jornada('bia-j')).avaliacao.teste_final;
@@ -301,13 +349,15 @@ async function rodar({ t, req }) {
     const comps = Array.from({ length: 10 }, (_, i) => 'k' + i);
     const disc = { codigo: '9.9', nome: 'Disciplina de dez', competencias: comps, aulas: comps.map(k => ({ competencias: [k] })) };
     const est = (n, estado = 'demonstrada_sem_apoio') => comps.map((k, i) => ({ codigo: k, estado: i < n ? estado : 'nao_avaliada' }));
-    const selo = (n, estudadas, estado) => J.selos([disc], est(n, estado), new Set(comps.slice(0, estudadas)))[0];
+    // a régua de `aulaEstudada`: quem respondeu o quê; todas as competências têm questão (leitura não entra na conta)
+    const regua = (respondidas) => ({ comResposta: new Set(respondidas), comMeio: new Set(comps), aulas: new Map() });
+    const selo = (n, estudadas, estado) => J.selos([disc], est(n, estado), regua(comps.slice(0, estudadas)))[0];
     assert.deepEqual([selo(0, 0).grau, selo(0, 9).grau, selo(0, 10).grau], ['', '', 'bronze'], 'bronze só com TODAS as aulas estudadas');
     assert.deepEqual([selo(6, 10).grau, selo(7, 10).grau, selo(7, 7).grau, selo(9, 10).grau, selo(10, 10).grau], ['bronze', 'prata', 'prata', 'prata', 'ouro'], '6 de 10 não é prata; 7 é; 10 é ouro');
     assert.equal(selo(10, 10, 'demonstrada_com_apoio').grau, 'bronze', 'acerto com apoio não dá prata nem ouro');
     assert.equal(selo(8, 10, 'retida').grau, 'prata', 'retida também é demonstrada');
     assert.deepEqual([selo(7, 10).falta, selo(10, 10).falta], ['Ouro: demonstre mais 3 competências.', '']);
-    assert.equal(J.selos([{ codigo: 'x', nome: 'Sem competência', competencias: [], aulas: [] }], [], new Set())[0].grau, '');
+    assert.equal(J.selos([{ codigo: 'x', nome: 'Sem competência', competencias: [], aulas: [] }], [], regua([]))[0].grau, '');
     // o Leo, que só abriu aulas e acertou uma com pista: nenhum selo (a aula A1 conta como estudada, a A2 não)
     assert.deepEqual((await jornada('leo-j')).selos.map(s => [s.grau, s.aulas_estudadas, s.demonstradas]), [['', 1, 0], ['', 0, 0], ['', 0, 0]]);
     assert.deepEqual((await jornada('bia-j')).selos.map(s => s.nome), ['Direito A', 'Direito B', 'Direito C'], 'um selo por disciplina do edital, na ordem do edital');
@@ -350,7 +400,13 @@ async function rodar({ t, req }) {
     check.run(uid(BIA.email), pid, 7, '', nowISO());
     m = await med('bia-j');
     assert.deepEqual([m.largada.ok, m.largada.detalhe, (await med('leo-j')).largada.ok], [true, '7 de 7 dias', false]);
-    // primeira correção: orçamento não conta; pedido confirmado (processando/pronto), sim
+    // primeira correção: a medalha só EXISTE para quem tem os pedidos pagos (chave geral) — aqui, a Bia entra na lista de liberados
+    assert.ok(!('correcao' in m), 'com os pedidos desligados, nada aponta para a aba que não existe');
+    const pedidos = require('./pedidos');
+    pedidos.salvarConfigPedidos({ liberar: BIA.email }, { admin: false });
+    m = await med('bia-j');
+    assert.ok(!('correcao' in (await med('leo-j'))), 'só ela foi liberada');
+    // orçamento não conta; pedido confirmado (processando/pronto), sim
     assert.equal(m.correcao.ok, false);
     const idPed = novoId();
     db.prepare("INSERT INTO est_pedidos (id, user_id, product_id, escopo_id, tipo, estado, questao_id, entrada, criado_em, atualizado_em) VALUES (?, ?, ?, ?, 'correcao', 'orcado', 'q-disc', '{}', ?, ?)").run(idPed, uid(BIA.email), pid, eid(), nowISO(), nowISO());
@@ -364,6 +420,7 @@ async function rodar({ t, req }) {
     assert.equal((await med('bia-j')).correcao.ok, true);
     assert.deepEqual(Object.keys(m), ['diagnostico', 'simulado', 'sequencia', 'erros', 'largada', 'correcao'], 'seis marcos; audiobook não entra');
     db.prepare('DELETE FROM est_pedidos WHERE id = ?').run(idPed); // os testes dos pedidos pagos contam pedidos do zero
+    db.prepare("DELETE FROM platform_settings WHERE chave = 'estudo_pedidos'").run(); // …e partem da chave geral como ela nasce: sem registro
     // nada disso está gravado como "conquista": não há tabela nova
     assert.equal(db.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type = 'table' AND (name LIKE '%medalha%' OR name LIKE '%selo%' OR name LIKE '%nivel%' OR name LIKE '%conquista%')").get().n, 0);
   });

@@ -64,6 +64,50 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
   const idQ = (trecho) => db.prepare('SELECT id FROM est_questoes WHERE dados LIKE ?').get(`%${trecho}%`).id;
   let qDisc = '', qPeca = '', qOral = '', pedidoPaula = '', midiaPaula = '', teto = 0;
 
+  const cfgPed = (corpo, o = {}) => req('POST', '/staff/api/academy/estudo/pedidos-config', { corpo, ...o });
+  const PELA_CHAVE = { semUser: true, chave: true };
+  await t('chave geral (estudo_pedidos): nasce DESLIGADA e sem liberados; a chave de publicação lê e edita a lista, mas NÃO liga para todos — ligar é sessão de admin', async () => {
+    assert.deepEqual(ped.cfgPedidos(), { ativos: false, liberados: [] }, 'sem configuração gravada, o serviço está fechado');
+    assert.equal(repo.Config.obter('estudo_pedidos', null), null, 'nada no banco: o padrão é do código');
+    assert.equal(ped.liberadoPara(null), false);
+    // sem credencial nenhuma: nem lê
+    assert.equal((await req('GET', '/staff/api/academy/estudo/pedidos-config', { semUser: true })).st, 401);
+    assert.equal((await cfgPed({ ativos: true }, { user: 'op' })).st, 403, 'membro do staff sem papel de admin não entra');
+    // a chave lê…
+    let r = await req('GET', '/staff/api/academy/estudo/pedidos-config', PELA_CHAVE);
+    assert.deepEqual([r.st, r.json.estudo_pedidos, r.json.pode_ligar], [200, { ativos: false, liberados: [] }, false], r.texto);
+    // …edita a lista (um e-mail por vez, ou a lista inteira; maiúscula e repetição se resolvem)…
+    r = await cfgPed({ liberar: ' Teste.Um@T.com ' }, PELA_CHAVE);
+    assert.deepEqual([r.st, r.json.estudo_pedidos], [200, { ativos: false, liberados: ['teste.um@t.com'] }], r.texto);
+    r = await cfgPed({ liberados: 'a@t.com; b@t.com\nA@t.com', remover: 'b@t.com' }, PELA_CHAVE);
+    assert.deepEqual(r.json.estudo_pedidos, { ativos: false, liberados: ['a@t.com'] }, r.texto);
+    // …e NÃO liga: nem pela rota dela, nem em nenhum formato que "pareça" verdadeiro
+    r = await cfgPed({ ativos: true }, PELA_CHAVE);
+    assert.equal(r.st, 403, r.texto);
+    assert.ok(/sessão de administrador/.test(r.json.erro), r.json.erro);
+    for (const torto of ['true', 1, 'sim']) assert.equal((await cfgPed({ ativos: torto })).st, 400, 'só o booleano liga: ' + JSON.stringify(torto));
+    assert.equal((await cfgPed({ liberar: 'sem-arroba' }, PELA_CHAVE)).st, 400, 'e-mail torto é recusado');
+    assert.equal((await cfgPed({ liberados: Array.from({ length: ped.LIBERADOS_MAX + 1 }, (_, i) => `l${i}@t.com`) }, PELA_CHAVE)).st, 400, 'a lista é para teste, não para abrir a todos');
+    assert.deepEqual(ped.cfgPedidos(), { ativos: false, liberados: ['a@t.com'] }, 'pedido recusado não grava nada');
+    assert.throws(() => ped.prepararConfigPedidos({ ativos: true }, { admin: false }), (er) => er.status === 403, 'a recusa é da função, não só da rota');
+    // a config genérica do staff não é atalho: passa pela mesma validação
+    assert.equal((await req('POST', '/staff/api/academy/config', { corpo: { chave: 'estudo_pedidos', valor: { ativos: 'true' } } })).st, 400);
+    // o painel de staff dos pedidos mostra o estado
+    r = await req('GET', '/staff/api/academy/estudo/pedidos', PELA_CHAVE);
+    assert.deepEqual(r.json.config, { ativos: false, liberados: ['a@t.com'] }, r.texto);
+    // sessão de admin LIGA — e o que vem depois nesta suíte (pedidos, prova, edital) roda com o serviço aberto
+    r = await cfgPed({ ativos: true, liberados: [] });
+    assert.deepEqual([r.st, r.json.estudo_pedidos], [200, { ativos: true, liberados: [] }], r.texto);
+    assert.equal(ped.liberadoPara(null), true, 'ligada, vale para todos');
+    // já ligada, a chave repetir "ativos: true" não é ligar (nada muda) — e ela pode DESLIGAR, que é o lado seguro
+    assert.equal((await cfgPed({ ativos: true, liberar: 'c@t.com' }, PELA_CHAVE)).st, 200);
+    assert.equal((await cfgPed({ ativos: false }, PELA_CHAVE)).json.estudo_pedidos.ativos, false);
+    assert.equal((await cfgPed({ ativos: true }, PELA_CHAVE)).st, 403, 'desligou, não religa');
+    assert.equal((await cfgPed({ ativos: true, liberados: [] })).st, 200);
+    const trilha = repo.Auditoria.listar(20).filter(x => x.acao === 'estudo.pedidos.config');
+    assert.ok(trilha.length >= 5 && trilha.some(x => /chave-de-publicacao/.test(x.quem)) && trilha.some(x => /ativos false → true/.test(x.detalhe)), 'cada mudança fica na auditoria, com quem fez');
+  });
+
   await t('pedidos: com a cobrança desligada o serviço não existe — a tela avisa e nada é criado', async () => {
     assert.equal(carteira.cfg().ativa, false, 'os testes da carteira deixam a cobrança desligada');
     for (const [u, jar, ip] of [[PAULA, 'paula', '10.0.9.1'], [RUI, 'rui', '10.0.9.2']]) {
@@ -90,6 +134,115 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     assert.ok(/indispon/.test(r.json.erro), 'erro claro: indisponível');
     assert.throws(() => ia.abrirTrabalho(uid(PAULA.email), 'correcao', 0.01, { id: impId }, { aceite: 99999 }), (e) => e.status === 503 && /indispon/.test(e.message), 'a porta também recusa');
     assert.equal(db.prepare('SELECT COUNT(*) n FROM est_pedidos').get().n, 0);
+  });
+
+  await t('chave geral DESLIGADA: para o aluno a aba não existe — painel diz pedidos_disponiveis: false, TODA rota de pedido responde 404, a medalha "primeira correção" some; liberado (por e-mail) e isento (da carteira) entram', async () => {
+    assert.equal((await cfgPed({ ativos: false }, PELA_CHAVE)).st, 200);
+    const painel = async (jar) => { const r = await req('GET', `${base}/painel`, { jar }); assert.equal(r.st, 200, r.texto); return r.json; };
+    const medalhas = async (jar) => (await req('GET', `${base}/jornada`, { jar })).json.medalhas.map(m => m.id);
+    assert.equal((await painel('paula')).pedidos_disponiveis, false);
+    assert.ok(!(await medalhas('paula')).includes('correcao'), 'medalha de um recurso que o aluno não tem não aparece');
+    // todas as rotas de pedido, e a lista de abertas: 404, com a mesma frase — nada é criado, nenhum arquivo entra
+    const ROTAS = [['GET', '/abertas'], ['GET', '/pedidos'], ['POST', '/pedidos'], ['POST', '/pedidos/arquivo'], ['POST', '/pedidos/arquivo-grande'], ['POST', '/pedidos/arquivo-grande/x/confirmar'],
+      ['GET', '/pedidos/x'], ['POST', '/pedidos/x/confirmar'], ['POST', '/pedidos/x/cancelar'], ['GET', '/pedidos/x/audio'], ['POST', '/pedidos/x/contestar'], ['GET', '/pedidos/prova/opcoes'],
+      ['POST', '/pedidos/x/paginas'], ['POST', '/pedidos/x/aplicar'], ['GET', '/pedidos/edital/opcoes'], ['POST', '/pedidos/x/previa'], ['POST', '/pedidos/x/recarga'], ['GET', '/pedidos/rota-que-ainda-nao-existe']];
+    const midias = db.prepare('SELECT COUNT(*) n FROM media_files').get().n;
+    for (const [m, rota] of ROTAS) {
+      const r = await req(m, base + rota, { jar: 'paula', corpo: m === 'POST' ? { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA, nome: 'a.pdf', mime: 'application/pdf', conteudo_base64: 'JVBERi0=' } : undefined });
+      assert.deepEqual([r.st, r.json && r.json.erro], [404, 'Este serviço ainda não está disponível.'], `${m} ${rota}: ${r.texto}`);
+    }
+    assert.deepEqual([db.prepare('SELECT COUNT(*) n FROM est_pedidos').get().n, db.prepare('SELECT COUNT(*) n FROM media_files').get().n], [0, midias]);
+    // a guarda cobre TODA rota de pedido registrada no aplicativo (rota nova nasce atrás dela: é um `use` no prefixo)
+    const fonte = require('fs').readFileSync(require('path').join(__dirname, '..', 'rotas-estudo.js'), 'utf8');
+    const daTela = [...fonte.matchAll(/app\.(get|post|put|delete)\(`\$\{base\}\/(pedidos|abertas)/g)].length;
+    assert.ok(daTela >= 17 && fonte.indexOf('app.use([`${base}/pedidos`, `${base}/abertas`]') < fonte.indexOf('app.get(`${base}/abertas`'), 'a guarda vem ANTES das rotas que protege');
+    // sem sessão continua 401 (a chave geral não troca a ordem das portas)
+    assert.equal((await req('GET', `${base}/pedidos`, {})).st, 401);
+    // o resto do Estude segue aberto
+    assert.equal((await req('GET', `${base}/praticar`, { jar: 'paula' })).st, 200);
+
+    // o que o SERVIDOR diz também não aponta para a aba: percurso particular sem questões, prova pedida
+    const part = R.criarParticular(ct.Produtos.obter(impId), repo.Usuarios.porEmail(RUI.email), 'Percurso do Rui (chave desligada)');
+    const provaVazia = () => req('POST', `/academy/api/aluno/cursos/${impId}/estudo/${part.slug}/tentativas`, { jar: 'rui', corpo: { modo: 'simulado', n: 5 } });
+    try {
+      let pv = await provaVazia();
+      assert.deepEqual([pv.st, pv.json.erro], [409, 'Este percurso ainda não tem questões.'], pv.texto);
+      const pp = await req('GET', `/academy/api/aluno/cursos/${impId}/estudo/${part.slug}/painel`, { jar: 'rui' });
+      assert.ok(pp.st === 200 && pp.json.pedidos_disponiveis === false && !/Escrita e oral|Importe uma prova/.test(pp.json.proxima.motivo), pp.texto);
+      repo.Config.salvar('estudo_pedidos', { ativos: true, liberados: [] });
+      pv = await provaVazia();
+      assert.ok(pv.st === 409 && /aba Escrita e oral › Importar prova/.test(pv.json.erro), 'ligada, a mensagem ensina o caminho: ' + pv.texto);
+    } finally {
+      repo.Config.salvar('estudo_pedidos', { ativos: false, liberados: [] });
+      db.prepare('DELETE FROM est_escopos WHERE id = ?').run(part.id);
+    }
+
+    // LIBERADA por e-mail (pela chave de publicação): a Paula entra, o Rui não
+    assert.equal((await cfgPed({ liberar: PAULA.email.toUpperCase() }, PELA_CHAVE)).st, 200);
+    assert.deepEqual([(await painel('paula')).pedidos_disponiveis, (await painel('rui')).pedidos_disponiveis], [true, false]);
+    assert.deepEqual([(await req('GET', `${base}/abertas`, { jar: 'paula' })).st, (await req('GET', `${base}/abertas`, { jar: 'rui' })).st], [200, 404]);
+    assert.ok((await medalhas('paula')).includes('correcao') && !(await medalhas('rui')).includes('correcao'));
+    // passar pela chave geral não liga a cobrança: o serviço continua dizendo que está indisponível (503), como antes
+    assert.equal((await criar('paula', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA })).st, 503);
+    assert.equal((await criar('rui', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA })).st, 404);
+    // ISENTO na carteira de IA também entra (é a conta do dono) — mesmo sem estar na lista
+    const antes = repo.Config.obter('ia_cobranca', {}) || {};
+    repo.Config.salvar('ia_cobranca', { ...antes, isentos: [RUI.email] });
+    try {
+      assert.deepEqual([ped.cfgPedidos().liberados, (await painel('rui')).pedidos_disponiveis, (await req('GET', `${base}/pedidos`, { jar: 'rui' })).st], [[PAULA.email], true, 200]);
+    } finally { repo.Config.salvar('ia_cobranca', antes); }
+    assert.equal((await painel('rui')).pedidos_disponiveis, false, 'saiu da isenção, saiu do serviço');
+    // remover devolve a Paula ao 404
+    assert.equal((await cfgPed({ remover: PAULA.email }, PELA_CHAVE)).st, 200);
+    assert.equal((await req('GET', `${base}/abertas`, { jar: 'paula' })).st, 404);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM est_pedidos').get().n, 0);
+    // o admin religa: daqui em diante a suíte roda com o serviço aberto
+    assert.equal((await cfgPed({ ativos: true })).st, 200);
+    assert.deepEqual([(await painel('rui')).pedidos_disponiveis, (await req('GET', `${base}/abertas`, { jar: 'rui' })).st], [true, 200]);
+  });
+
+  await t('chave geral / tela: a aba "Escrita e oral" e as entradas de importar prova e ler edital só se desenham com pedidos_disponiveis — nenhum botão, dica ou link aponta para a aba de quem não a tem', async () => {
+    const tela = fs.readFileSync(path.join(__dirname, '..', 'app-estudo.js'), 'utf8').replace(/\r\n/g, '\n');
+    assert.ok(tela.includes('function temPedidos() { return !!(E.painel && E.painel.pedidos_disponiveis); }'), 'uma pergunta só, feita ao painel');
+    assert.ok(tela.includes("ABAS.filter(function (x) { return x[0] !== 'escrita' || temPedidos(); })"), 'a aba some da barra');
+    // link antigo, favorito, retorno de pagamento: `ir` devolve à aba Hoje ANTES de gravar a rota e de desenhar
+    const guarda = tela.indexOf("if (aba === 'escrita' && !temPedidos()) { aba = 'hoje'; arg = undefined; }");
+    assert.ok(guarda > tela.indexOf('function ir(aba, arg, substituir) {') && guarda < tela.indexOf('E.aba = aba; E.abaArg ='), 'a guarda está em `ir`, antes de qualquer efeito');
+    // fora da própria aba, toda linha que OFERECE o serviço pergunta antes (a aba em si só abre por `ir`)
+    const fimDoResto = tela.indexOf('// ================= ESCRITA E ORAL');
+    assert.ok(fimDoResto > 0);
+    const linhas = tela.slice(0, fimDoResto).split('\n');
+    const OFERTA = /Importar (uma )?prova em PDF|Ler edital em PDF|importe uma prova em PDF|Envie o edital do concurso em PDF/;
+    const iSem = linhas.findIndex(l => l.includes('function semQuestoes() {'));
+    const ofertas = linhas.map((l, i) => ({ l, i })).filter(x => OFERTA.test(x.l) && !/^\s*\/\//.test(x.l)); // comentário não é oferta
+    assert.ok(ofertas.length >= 8, 'as ofertas conhecidas estão sendo vistas pelo teste: ' + ofertas.length);
+    for (const { l, i } of ofertas) {
+      const dentroDeSemQuestoes = i > iSem && i <= iSem + 4;            // `part` já nasce de temPedidos()
+      const tabelaDeAcoes = /^\s*sem_questoes: \[/.test(l);             // o botão só existe se `ac` não foi anulado em hoje()
+      const continuaAGuardada = /\+\s*$/.test(linhas[i - 1]) && linhas[i - 1].includes('temPedidos()'); // a instrução começou na linha de cima, já com a pergunta
+      assert.ok(l.includes('temPedidos()') || continuaAGuardada || dentroDeSemQuestoes || tabelaDeAcoes,`oferta sem perguntar (linha ${i + 1}): ${l.trim().slice(0, 140)}`);
+    }
+    assert.ok(linhas[iSem + 1].includes("var part = !!(E.painel && E.painel.escopo.particular) && temPedidos();"), 'semQuestoes só oferece importar a quem tem os pedidos');
+    assert.ok(tela.includes("if (px.tipo === 'sem_questoes' && (!p.escopo.particular || !temPedidos())) ac = null;"), 'a "próxima tarefa" não ganha botão para a aba que não existe');
+    // medalha "primeira correção" e a dica de importar vêm do servidor, que já decide por aluno (teste acima);
+    // o cartão do certificado e o do diagnóstico não citam correção, prova em PDF nem edital
+    for (const fn of ['function caixaConclusao()', 'function cartaoDiagnostico(', 'function cartaoJornada(']) {
+      const ini = tela.indexOf(fn), corpo = tela.slice(ini, tela.indexOf('\n    function ', ini + 10));
+      assert.ok(ini > 0 && !/Escrita e oral|corre[çc][aã]o de|prova em PDF|edital em PDF|'escrita'/.test(corpo), fn + ' não aponta para a aba');
+    }
+  });
+
+  await t('versão dos arquivos da tela: o painel pede as versões novas de estude.js, estude.css, aluno.js, carteira.js, jornada.js e app.js — o navegador do aluno troca sem Ctrl+F5', async () => {
+    const pg = await req('GET', '/academy/app');
+    assert.equal(pg.st, 200);
+    // mecanismo de sempre: ?v=N na URL, dentro do HTML do painel (que o service worker nunca guarda — pwa.js: navegação é só rede)
+    for (const ref of ['/academy/estude.js?v=2', '/academy/estude.css?v=2', '/academy/aluno.js?v=10', '/academy/carteira.js?v=2', '/academy/jornada.js?v=4', '/academy/app.js?v=12', '/academy/ecossistema.js?v=3', '/academy/aluno.css?v=5']) {
+      assert.ok(pg.texto.includes(`"${ref}"`), 'o painel não pede ' + ref);
+    }
+    for (const velho of ['estude.js?v=1"', 'estude.css?v=1"', 'aluno.js?v=9"', 'carteira.js?v=1"', 'jornada.js?v=3"', 'app.js?v=11"']) assert.ok(!pg.texto.includes(velho), 'sobrou a versão antiga: ' + velho);
+    // os motores das Ferramentas saem sempre frescos (no-cache): a versão deles na URL não precisa mudar
+    const js = await req('GET', '/academy/estude.js?v=2');
+    assert.ok(js.st === 200 && js.texto.includes('function temPedidos()') && js.texto.includes('function ligarFimDaLeitura('), 'o arquivo servido é o novo');
   });
 
   await t('pedidos: a lista de abertas vai sem o nível 3, sem os erros críticos e sem o comentário — e só para quem tem o curso', async () => {
@@ -600,7 +753,17 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     assert.deepEqual([ia.precoDe('claude-sonnet-5'), ia.precoDe('claude-haiku-4-5'), ia.precoDe('modelo-que-ninguem-conhece')], [{ in: 2, out: 10 }, { in: 1, out: 5 }, { in: 3, out: 15 }]);
     assert.equal(ia.custoUSD('claude-sonnet-5', { input_tokens: 1e6, output_tokens: 1e6 }), 12);
     assert.ok(Math.abs(ia.custoUSD('claude-sonnet-5', { cache_creation_input_tokens: 1e6, cache_read_input_tokens: 1e6 }) - 2.7) < 1e-9 && Math.abs(ia.custoUSD('claude-sonnet-5-5', { cache_read_input_tokens: 1e6 }) - 0.1) < 1e-9, 'escrita de cache 1,25×; leitura 0,1× (0,05× nos 5.5)');
-    if (!process.env.ACADEMY_LLM_MODELS) assert.deepEqual([ia.MODELOS, ia.precoTeto()], [['claude-sonnet-5', 'claude-haiku-4-5'], { in: 2, out: 10 }], 'a fila padrão não mudou; o teto é orçado a 2/10');
+    assert.equal(ia.MODELOS_PADRAO, 'claude-sonnet-5,claude-haiku-5-5', 'a reserva da fila é o Haiku atual (o 4.5 tem aposentadoria anunciada)');
+    if (!process.env.ACADEMY_LLM_MODELS) assert.deepEqual([ia.MODELOS, ia.precoTeto()], [['claude-sonnet-5', 'claude-haiku-5-5'], { in: 2, out: 10 }], 'o teto é orçado pelo mais caro da fila: 2/10');
+    // ---- Haiku 5.5 (página oficial, lida em 11/10/2026): duas faixas pelo tamanho do PROMPT — até 100 mil tokens, 0,10/0,50; acima, 0,50/2,50
+    assert.deepEqual(ia.precoDe('claude-haiku-5-5'), { in: 0.1, out: 0.5, longo: { acima: 100000, in: 0.5, out: 2.5 } });
+    const perto = (a, b) => Math.abs(a - b) < 1e-9;
+    assert.ok(perto(ia.custoUSD('claude-haiku-5-5', { input_tokens: 50000, output_tokens: 10000 }), 0.01), 'faixa curta: 50 mil × 0,10 + 10 mil × 0,50');
+    assert.ok(perto(ia.custoUSD('claude-haiku-5-5', { input_tokens: 100000, output_tokens: 10000 }), 0.015), 'exatamente 100 mil ainda é a faixa curta');
+    assert.ok(perto(ia.custoUSD('claude-haiku-5-5', { input_tokens: 100001, output_tokens: 10000 }), 100001 * 0.5 / 1e6 + 0.025), 'passou de 100 mil: a requisição INTEIRA vai à faixa longa, saída inclusive');
+    assert.ok(perto(ia.custoUSD('claude-haiku-5-5', { input_tokens: 1000, cache_read_input_tokens: 150000, output_tokens: 0 }), (1000 + 150000 * 0.1) * 0.5 / 1e6), 'o que foi lido do cache também conta para o tamanho do prompt');
+    assert.deepEqual([ia.precoMaximo('claude-haiku-5-5'), ia.precoMaximo('claude-sonnet-5'), ia.precoMaximo('claude-haiku-4-5')], [{ in: 0.5, out: 2.5 }, { in: 2, out: 10 }, { in: 1, out: 5 }], 'o TETO usa a faixa mais cara do modelo — o id antigo continua na tabela');
+    assert.deepEqual([ia.parametroDeRaciocinio('correcao', 'claude-haiku-5-5'), ia.parametroDeRaciocinio('tutor', 'claude-haiku-5-5')], [{ thinking: { type: 'disabled' } }, {}], 'o Haiku 5.5 aceita "disabled" (sem esforço enviado)');
     // ---- raciocínio: fixo (desligado) nos agentes de pedido pago; os demais ficam como estavam
     assert.deepEqual(['correcao', 'edital', 'prova'].map(a => ia.parametroDeRaciocinio(a, 'claude-sonnet-5')), [1, 2, 3].map(() => ({ thinking: { type: 'disabled' } })));
     assert.deepEqual([ia.parametroDeRaciocinio('prova', 'claude-haiku-4-5'), ia.parametroDeRaciocinio('tutor', 'claude-sonnet-5'), ia.parametroDeRaciocinio('edital', 'claude-opus-5-5'), ia.parametroDeRaciocinio('edital', 'claude-fable-5-1'), ia.parametroDeRaciocinio('prova', 'claude-sonnet-5-5')],

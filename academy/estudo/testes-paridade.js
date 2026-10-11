@@ -312,6 +312,71 @@ async function rodar({ t, req }) {
     for (const pedaco of ['function caixaConclusao()', '🎓 Emitir certificado', 'sem validade para o MEC', 'id="es-bar-cert"', "' aulas' : ' aula'", "' simulados' : ' simulado'"]) assert.ok(tela.includes(pedaco), 'falta na tela: ' + pedaco);
   });
 
+  // ================= D1b. AULA SEM QUESTÃO NEM CARD =================
+  await t('paridade/aula sem questão nem card: conta como estudada pela leitura ATÉ O FIM (de aula aberta) ou pela videoaula (≥ 90 %) — e só nesse caso; com questão ou card, estudar continua sendo responder', async () => {
+    const lia = uid(LIA.email), eid = R.Escopos.porSlug(pid, SLUG).id;
+    const concl = async () => (await req('GET', `${esc()}/painel`, { jar: 'lia' })).json.conclusao;
+    const estudadas = async () => (await req('GET', `${esc()}/painel`, { jar: 'lia' })).json.unidades.filter(u => u.estudada).map(u => u.codigo);
+    const lida = (aula) => req('PUT', `${esc()}/unidades/${aula}/lida`, { jar: 'lia' });
+    const abrir = (aula) => req('GET', `${esc()}/unidades/${aula}?aberta=1`, { jar: 'lia' });
+    let k = await concl();
+    assert.deepEqual([k.total_aulas, k.estudadas, k.aulas_sem_questao], [3, 0, 0], 'as três aulas têm o que responder: duas com questão, a terceira com card');
+    assert.ok(!/sem questão nem card/.test(k.falta_txt), k.falta_txt);
+    // ler sem ter aberto a aula não é leitura
+    let r = await lida('aula-tres');
+    assert.equal(r.st, 409, r.texto);
+    assert.equal((await lida('nao-existe')).st, 404);
+    assert.equal((await req('PUT', `${esc()}/unidades/aula-tres/lida`, { jar: 'caio' })).st, 403, 'quem não tem o curso não registra nada');
+    // aula COM card (a três) e aula COM questão (a dois): abrir e ler até o fim fica registrado, mas NÃO é estudar
+    for (const aula of ['aula-dois', 'aula-tres']) {
+      r = await abrir(aula);
+      assert.deepEqual([r.st, r.json.lida, r.json.conta_pela_leitura], [200, false, false], aula);
+      r = await lida(aula);
+      assert.deepEqual([r.st, r.json.lida, r.json.estudada], [200, true, false], aula + ': ' + r.texto);
+      assert.equal((await abrir(aula)).json.lida, true, 'a aula sabe que já foi lida');
+    }
+    assert.deepEqual(await estudadas(), [], 'havendo questão ou card, só responder conta');
+    // o card da aula três sai do ar: agora ela não tem questão nem card — e a leitura feita passa a valer
+    db.prepare("UPDATE est_cards SET status = 'rascunho' WHERE escopo_id = ?").run(eid);
+    try {
+      k = await concl();
+      assert.deepEqual([k.aulas_sem_questao, k.estudadas, k.faltam_aulas], [1, 1, 2], 'a contagem informa quantas são; a que foi lida até o fim conta');
+      assert.ok(/na aula sem questão nem card, leia até o fim ou assista à videoaula/.test(k.falta_txt), k.falta_txt);
+      assert.deepEqual(await estudadas(), ['aula-tres']);
+      assert.equal((await abrir('aula-tres')).json.conta_pela_leitura, true, 'a tela pode dizer ao aluno que aqui a leitura conta');
+      assert.deepEqual([A.progressoDoCurso(lia, pid).progresso.concluidas, (await req('GET', `${esc()}/ferramentas`, { jar: 'lia' })).json.disciplinas.flatMap(d => d.aulas).filter(a => a.estudada).length], [1, 1], 'biblioteca e cronograma: a mesma régua');
+      // só ABRIR não basta: sem a leitura até o fim, não conta
+      const marca = db.prepare('SELECT lida_em FROM est_aula_estado WHERE user_id = ? AND escopo_id = ? AND unidade = ?').get(lia, eid, 'aula-tres').lida_em;
+      assert.ok(marca, 'o instante da leitura fica registrado');
+      db.prepare("UPDATE est_aula_estado SET lida_em = '' WHERE user_id = ? AND escopo_id = ? AND unidade = ?").run(lia, eid, 'aula-tres');
+      assert.deepEqual(await estudadas(), [], 'aula aberta e não lida até o fim não é estudada');
+      // …ou a VIDEOAULA: 89 % ainda não; 90 %, sim (o registro que já existia)
+      db.prepare("UPDATE est_unidades SET video_media_id = 'video-paridade-tres', video_duracao_seg = 100 WHERE codigo = 'aula-tres' AND escopo_id = ?").run(eid);
+      assert.equal((await req('PUT', `${esc()}/unidades/aula-tres/video`, { jar: 'lia', corpo: { posicao_seg: 89 } })).json.assistido, false);
+      assert.deepEqual(await estudadas(), []);
+      assert.equal((await req('PUT', `${esc()}/unidades/aula-tres/video`, { jar: 'lia', corpo: { posicao_seg: 90 } })).json.assistido, true);
+      assert.deepEqual(await estudadas(), ['aula-tres'], 'assistiu à videoaula da aula sem questão nem card');
+      // a leitura registrada não volta atrás, e registrar de novo não muda a data
+      r = await lida('aula-tres');
+      const de = db.prepare('SELECT lida_em FROM est_aula_estado WHERE user_id = ? AND escopo_id = ? AND unidade = ?').get(lia, eid, 'aula-tres').lida_em;
+      assert.deepEqual([r.json.estudada, (await lida('aula-tres')).st, db.prepare('SELECT lida_em FROM est_aula_estado WHERE user_id = ? AND escopo_id = ? AND unidade = ?').get(lia, eid, 'aula-tres').lida_em], [true, 200, de]);
+      // nas aulas que TÊM questão, o vídeo assistido continua não contando (regra de sempre)
+      db.prepare("UPDATE est_unidades SET video_media_id = 'video-paridade-dois', video_duracao_seg = 100 WHERE codigo = 'aula-dois' AND escopo_id = ?").run(eid);
+      assert.equal((await req('PUT', `${esc()}/unidades/aula-dois/video`, { jar: 'lia', corpo: { posicao_seg: 100 } })).json.assistido, true);
+      assert.deepEqual(await estudadas(), ['aula-tres']);
+    } finally {
+      db.prepare("UPDATE est_cards SET status = 'publicado' WHERE escopo_id = ?").run(eid);
+      db.prepare("UPDATE est_unidades SET video_media_id = '', video_duracao_seg = 0 WHERE codigo IN ('aula-dois', 'aula-tres') AND escopo_id = ?").run(eid);
+    }
+    // o card voltou: a aula três volta a pedir resposta — a leitura e o vídeo deixam de bastar
+    k = await concl();
+    assert.deepEqual([k.aulas_sem_questao, k.estudadas], [0, 0]);
+    // a tela: o marco no fim do TEXTO da aula, o aviso ao servidor uma vez, com tempo mínimo — e a regra dita ao aluno
+    const tela = ler('app-estudo.js');
+    for (const pedaco of ['<span id="es-un-fim" aria-hidden="true"></span>', "'/lida'", 'function ligarFimDaLeitura(codigo, jaLida)', 'ligarFimDaLeitura(codigo, u.lida);', 'LEITURA_MIN_MS', 'ela conta como estudada quando você lê o texto até o fim ou assiste à videoaula', 'sem questão nem card, lê até o fim ou assiste à videoaula']) assert.ok(tela.includes(pedaco), 'falta na tela: ' + pedaco);
+    assert.ok(tela.indexOf('<span id="es-un-fim"') < tela.indexOf('id="es-un-quiz"') && tela.indexOf('<span id="es-un-fim"') > tela.indexOf("'<p class=\"al-rotulo es-un-txt\">Texto da aula</p>'"), 'o marco fica depois do texto e antes do quiz');
+  });
+
   // ================= D5. TUTOR =================
   await t('paridade/Tutor: sem base importada não responde (nem aparece) no Estude; com base, a aula aberta vem primeiro', async () => {
     const perguntar = (corpo, jar = 'nara') => req('POST', '/academy/api/aluno/tutor/perguntar', { jar, corpo: { product_id: pid, ...corpo } });
@@ -383,6 +448,8 @@ async function rodar({ t, req }) {
 
   await t('paridade/áudio da oral: a tela avisa dos 6 meses antes de gravar e no resultado; baixar é só de quem pediu, por endereço temporário', async () => {
     assert.equal(ped.AUDIO_ORAL_RETENCAO_DIAS, 183);
+    // as rotas de pedido ficam atrás da chave geral (estudo_pedidos), que nasce desligada: estes dois testes a ligam
+    ped.salvarConfigPedidos({ ativos: true }, { admin: true });
     const p = await pedidoOral(NARA.email, diasAtras(10));
     const o = await req('GET', `${esc()}/pedidos/${p.id}`, { jar: 'nara' });
     assert.equal(o.st, 200, o.texto);
@@ -426,6 +493,10 @@ async function rodar({ t, req }) {
     assert.deepEqual([o.audio.disponivel, o.audio.apagado_em, o.resultado.transcricao], [false, v.audio_apagado_em, 'TRANSCRICAO-GUARDADA'], 'a tela recebe "apagado em" e continua mostrando a correção');
     assert.equal((await req('GET', `${esc()}/pedidos/${velho.id}/audio`, { jar: 'nara' })).st, 404, 'depois do expurgo não há o que baixar');
     assert.ok(/expurgarAudios\(\)/.test(ler('index.js')) && /setInterval\(expurgo, 24 \* 3600e3\)/.test(ler('index.js')), 'a rotina roda ao subir e uma vez por dia');
+    // a chave geral volta a ser como nasce (sem registro): desligada — e o expurgo NÃO depende dela
+    db.prepare("DELETE FROM platform_settings WHERE chave = 'estudo_pedidos'").run();
+    assert.equal((await req('GET', `${esc()}/pedidos/${velho.id}`, { jar: 'nara' })).st, 404, 'desligada, a rota de pedido some');
+    assert.deepEqual((await ped.expurgarAudios()).falhas, 0, 'a rotina de expurgo roda com a chave desligada');
   });
 
   // ================= D2. LGPD =================

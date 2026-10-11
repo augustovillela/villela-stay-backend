@@ -64,10 +64,14 @@
       return mm;
     }
     var RE_DISCIPLINA = /^Diante de questões de prova de (.+), o candidato identifica a resposta correta sem apoio.$/;
+    // CHAVE GERAL dos pedidos pagos (servidor: estudo_pedidos): sem `pedidos_disponiveis` no painel, a aba "Escrita e
+    // oral" e as entradas "Importar prova" e "Ler edital em PDF" NÃO existem para este aluno. Toda porta para elas
+    // passa por aqui — botão, dica ou link que aponte para a aba sem perguntar leva a uma tela que não existe.
+    function temPedidos() { return !!(E.painel && E.painel.pedidos_disponiveis); }
     // percurso sem questão nenhuma: o que dizer (e, no percurso particular, o que oferecer)
     function semQuestoes() {
-      var part = !!(E.painel && E.painel.escopo.particular);
-      return { particular: part, txt: part ? 'Este percurso ainda não tem questões — importe uma prova em PDF para praticar e fazer simulado.' : 'Este percurso ainda não tem questões de correção automática.',
+      var part = !!(E.painel && E.painel.escopo.particular) && temPedidos();
+      return { particular: part, txt: part ? 'Este percurso ainda não tem questões — importe uma prova em PDF para praticar e fazer simulado.' : E.painel && E.painel.escopo.particular ? 'Este percurso ainda não tem questões.' : 'Este percurso ainda não tem questões de correção automática.',
         botao: function (idBt) { return part ? '<div class="es-linha"><button class="al-bt" id="' + idBt + '">Importar prova em PDF</button></div>' : ''; },
         ligar: function (idBt) { if (el(idBt)) el(idBt).onclick = function () { ir('escrita', 'importar'); }; } };
     }
@@ -175,7 +179,7 @@
     }
     var ABAS = [['hoje', 'Hoje'], ['aulas', 'Aulas'], ['mapas', 'Mapas'], ['cobrado', 'Mais cobrado'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['escrita', 'Escrita e oral'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
     function abas() {
-      el('es-abas').innerHTML = ABAS.map(function (x) { return '<button data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('');
+      el('es-abas').innerHTML = ABAS.filter(function (x) { return x[0] !== 'escrita' || temPedidos(); }).map(function (x) { return '<button data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('');
       cada(el('es-abas'), 'button', function (b) { b.onclick = function () { ir(b.getAttribute('data-a')); }; });
     }
     // O LUGAR de cada aba: quais disciplinas estavam abertas e onde a página estava rolada. Sem isso, voltar da
@@ -214,6 +218,8 @@
     function ir(aba, arg, substituir) {
       pararRelogio();
       guardarLugar();
+      // link antigo, favorito ou retorno de pagamento para a aba que este aluno não tem: cai na aba Hoje
+      if (aba === 'escrita' && !temPedidos()) { aba = 'hoje'; arg = undefined; }
       if (aba === 'unidade' && E.aba && E.aba !== 'unidade') E.veioDe = E.aba;
       if (aba === 'caderno' && E.aba !== 'caderno') E.antesDoCaderno = ONDE[chavePercurso(E.slug)] || { aba: E.aba }; // o caderno devolve a quem o abriu
       // Minha jornada e Ferramentas são PORTAS (não são abas): guardam de onde o aluno veio — aba, aula e rolagem — para devolvê-lo lá
@@ -255,7 +261,7 @@
     function hoje(alvo) {
       carregar(function () {
         var p = E.painel, c = p.cobertura, px = p.proxima, ac = ACAO[px.tipo], d = p.desempenho;
-        if (px.tipo === 'sem_questoes' && !p.escopo.particular) ac = null; // no percurso do curso, quem traz o conteúdo é o curso
+        if (px.tipo === 'sem_questoes' && (!p.escopo.particular || !temPedidos())) ac = null; // no percurso do curso, quem traz o conteúdo é o curso; sem os pedidos, não há por onde importar
         var jaFez = !!(p.jornada && p.jornada.avaliacao && p.jornada.avaliacao.diagnostico.feito);
         // enquanto o diagnóstico não foi feito, a porta dele vem ANTES da próxima tarefa; depois, vira a ordem sugerida, logo abaixo
         var h = retaFinal(p) + (jaFez ? '' : cartaoDiagnostico(p, true)) + '<div class="es-proxima"><p class="al-rotulo">Sua próxima tarefa</p>' +
@@ -264,7 +270,7 @@
           (ac ? '<button class="al-bt" id="es-agir">' + ac[0] + '</button>' : '') +
           ' <button class="al-bt fan" id="es-outra">Escolher outra coisa</button></div>' + (jaFez ? cartaoDiagnostico(p, true) : '') + cartaoJornada(p);
         // percurso particular ainda sem programa: dizer o que falta, e por onde ele chega
-        if (p.escopo.particular && !p.escopo.versao) h += '<div class="jr-caixa"><h3>Este percurso ainda não tem programa</h3><p class="al-sub">Envie o edital do concurso em PDF: o sistema lê o conteúdo programático, e o percurso ganha o programa por disciplina e o plano com a data da prova.</p>' +
+        if (p.escopo.particular && !p.escopo.versao && temPedidos()) h += '<div class="jr-caixa"><h3>Este percurso ainda não tem programa</h3><p class="al-sub">Envie o edital do concurso em PDF: o sistema lê o conteúdo programático, e o percurso ganha o programa por disciplina e o plano com a data da prova.</p>' +
           '<button class="al-bt fan" id="es-hj-edital">Ler edital em PDF</button></div>';
         h += '<div class="jr-caixa"><h3>Onde você está no programa</h3>' +
           '<p class="al-sub">São quatro medidas diferentes, cada uma com a sua contagem. Ter a aula pronta não é ter estudado, e ter estudado não é ter demonstrado.</p>' +
@@ -323,7 +329,7 @@
         alvo.innerHTML = '<div class="jr-caixa"><h3>Aulas</h3><p class="al-sub">' + (p.escopo.particular
           ? 'Percurso particular não tem aulas: ele reúne o programa do edital que você leu e as questões das provas que você importou. As aulas ficam no percurso do curso — troque de percurso no alto da página.'
           : 'Este percurso ainda não tem aulas publicadas.') + '</p>' +
-          '<div class="es-linha"><button class="al-bt fan" id="es-au-prog">Ver o programa</button>' + (p.escopo.particular ? '<button class="al-bt fan" id="es-au-imp">Importar prova em PDF</button>' : '') + '</div></div>';
+          '<div class="es-linha"><button class="al-bt fan" id="es-au-prog">Ver o programa</button>' + (p.escopo.particular && temPedidos() ? '<button class="al-bt fan" id="es-au-imp">Importar prova em PDF</button>' : '') + '</div></div>';
         el('es-au-prog').onclick = function () { ir('programa'); };
         if (el('es-au-imp')) el('es-au-imp').onclick = function () { ir('escrita', 'importar'); };
         return;
@@ -915,17 +921,17 @@
       var p = E.painel, uns = {};
       p.unidades.forEach(function (u) { uns[u.codigo] = u; });
       if (!p.itens.length && !p.competencias.length) {
-        alvo.innerHTML = '<div class="jr-caixa"><h3>Programa</h3><p class="al-sub">Este percurso ainda não tem programa.' + (p.escopo.particular ? ' Envie o edital do concurso em PDF: o sistema lê o conteúdo programático e monta o programa por disciplina.' : '') + '</p>' +
-          (p.escopo.particular ? '<div class="es-linha"><button class="al-bt" id="es-pg-edital">Ler edital em PDF</button></div>' : '') + '</div>';
+        alvo.innerHTML = '<div class="jr-caixa"><h3>Programa</h3><p class="al-sub">Este percurso ainda não tem programa.' + (p.escopo.particular && temPedidos() ? ' Envie o edital do concurso em PDF: o sistema lê o conteúdo programático e monta o programa por disciplina.' : '') + '</p>' +
+          (p.escopo.particular && temPedidos() ? '<div class="es-linha"><button class="al-bt" id="es-pg-edital">Ler edital em PDF</button></div>' : '') + '</div>';
         if (el('es-pg-edital')) el('es-pg-edital').onclick = function () { ir('escrita', 'edital'); };
         return;
       }
       // só o programa (edital lido, sem aula e sem questão): os itens estão aí — falta com o que estudar e praticar
       var soPrograma = p.itens.length && !p.unidades.length && !p.itens.some(function (i) { return i.questoes_revisadas + i.questoes_sugeridas; });
       var h = (soPrograma ? '<div class="es-nota-aba"><b>Este percurso tem o programa, e ainda não tem questões.</b><p>' + (p.escopo.particular
-        ? 'Os itens abaixo são os do edital que você enviou. Para praticar por disciplina e fazer simulado, importe uma prova em PDF; para organizar o estudo até a prova, monte o plano.'
+        ? 'Os itens abaixo são os do edital que você enviou. ' + (temPedidos() ? 'Para praticar por disciplina e fazer simulado, importe uma prova em PDF; para organizar o estudo até a prova, monte o plano.' : 'Para organizar o estudo até a prova, monte o plano.')
         : 'As aulas e as questões aparecem aqui, item a item, assim que forem publicadas.') + '</p>' +
-        (p.escopo.particular ? '<div class="es-linha"><button class="al-bt peq" id="es-pg-imp">Importar prova em PDF</button><button class="al-bt peq fan" id="es-pg-plano">Montar o plano</button></div>' : '') + '</div>' : '') +
+        (p.escopo.particular ? '<div class="es-linha">' + (temPedidos() ? '<button class="al-bt peq" id="es-pg-imp">Importar prova em PDF</button>' : '') + '<button class="al-bt peq fan" id="es-pg-plano">Montar o plano</button></div>' : '') + '</div>' : '') +
         '<div class="jr-caixa"><h3>Programa</h3><p class="al-sub">O texto de cada item é o original. Ao lado, o que já existe para ele e o que você demonstrou.</p><div class="es-prog">' +
         p.itens.map(function (i) {
           var nivel = i.codigo.split('.').length - 1;
@@ -1329,6 +1335,8 @@
                 (b.tem_solucao ? '<div class="es-linha"><button class="al-bt peq fan" data-sol="' + b.n + '">Ver a solução</button><span class="al-fino" data-msg="' + b.n + '">A solução aparece depois da sua tentativa.</span></div><div class="es-sol" data-out="' + b.n + '"></div>' : '') : '') +
               '</section>';
           }).join('') +
+          // o fim do TEXTO da aula: quando ele entra na tela, a leitura foi até o fim (`ligarFimDaLeitura`)
+          '<span id="es-un-fim" aria-hidden="true"></span>' +
           // o quiz mora DENTRO da aula, como nos outros cursos; as questões vêm do banco e são respondidas aqui
           '<section class="es-bloco es-quiz" id="es-un-quiz"><h4>Quiz desta aula</h4><div id="es-un-quiz-cx"><p class="al-sub">Procurando as questões desta aula…</p></div></section>' +
           '<section class="es-bloco es-nota-aula"><h4>Minhas anotações desta aula</h4>' +
@@ -1351,7 +1359,8 @@
         }
         cada(alvo, '[data-nv]', function (b) { b.onclick = function () { unidade(alvo, codigo, b.getAttribute('data-nv')); }; });
         ligarCadernoDaAula(alvo, codigo);
-        quizDaAula(el('es-un-quiz-cx'), codigo);
+        ligarFimDaLeitura(codigo, u.lida);
+        quizDaAula(el('es-un-quiz-cx'), codigo, u.conta_pela_leitura);
         if (el('es-un-mapa')) el('es-un-mapa').onclick = function () { abrirMapa(codigo, window.open('', '_blank')); };
         cada(alvo, '[data-sol]', function (b) {
           b.onclick = function () {
@@ -1400,11 +1409,12 @@
       if (el('es-un-cad')) el('es-un-cad').onclick = function () { ir('caderno'); };
     }
     // QUIZ DESTA AULA: até 5 questões do banco, respondidas aqui mesmo — pelas rotas do Praticar
-    function quizDaAula(cx, codigo) {
+    function quizDaAula(cx, codigo, contaPelaLeitura) {
       if (!cx) return;
       api('GET', base() + '/unidades/' + encodeURIComponent(codigo) + '/quiz').then(function (r) {
         if (!el('es-un-quiz')) return; // o aluno já saiu da aula
-        if (!r.total) { cx.innerHTML = '<p class="al-sub">Esta aula ainda não tem questões no banco. Quando houver, elas aparecem aqui.</p>'; return; }
+        if (!r.total) { cx.innerHTML = '<p class="al-sub">Esta aula ainda não tem questões no banco. Quando houver, elas aparecem aqui.' +
+          (contaPelaLeitura ? ' Enquanto isso, ela conta como estudada quando você lê o texto até o fim ou assiste à videoaula.' : '') + '</p>'; return; }
         var n = r.questoes.length, i = 0;
         cx.innerHTML = '<p class="al-sub">Esta aula tem <b>' + r.total + ' questão(ões)</b> no banco' + (r.ineditas ? ', ' + r.ineditas + ' nova(s) para você' : ', todas já respondidas por você') + '. ' +
           (r.total > n ? 'Aqui vão ' + n + ' — as que você ainda não viu vêm primeiro.' : 'As que você ainda não viu vêm primeiro.') + '</p>' +
@@ -1415,7 +1425,7 @@
           if (i >= n) {
             out.innerHTML = '<p class="al-sub">Você respondeu ' + (n > 1 ? 'as ' + n + ' questões' : 'a questão') + ' do quiz desta aula.' + (r.total > n ? ' Há mais ' + (r.total - n) + ' no banco.' : '') + ' Acertar de novo a mesma questão não conta como domínio.</p>' +
               '<div class="es-linha">' + (r.total > n ? '<button class="al-bt peq" id="es-qz-mais">Mais questões desta aula</button>' : '') + '<button class="al-bt peq fan" id="es-qz-tudo">Praticar todas</button></div>';
-            if (el('es-qz-mais')) el('es-qz-mais').onclick = function () { quizDaAula(cx, codigo); };
+            if (el('es-qz-mais')) el('es-qz-mais').onclick = function () { quizDaAula(cx, codigo, contaPelaLeitura); };
             el('es-qz-tudo').onclick = function () { ir('praticar', r.competencia); };
             return;
           }
@@ -1424,6 +1434,26 @@
             i + 1 < n ? 'Próxima questão' : 'Concluir o quiz', function () { i++; mostrar(); if (cx.scrollIntoView) cx.scrollIntoView({ block: 'start' }); });
         })();
       }).catch(function (e) { falha(cx, e); });
+    }
+    // LEITURA ATÉ O FIM: avisa o servidor, uma vez, quando o fim do texto da aula entra na tela. Só PESA na aula que
+    // não tem questão nem card (a régua é do servidor: estudo/aluno.js › aulaEstudada) — nas outras, estudar é responder.
+    // O tempo mínimo existe para "abrir" não virar "ler": aula curta cabe inteira na tela logo ao abrir.
+    var LEITURA_MIN_MS = 15000;
+    function ligarFimDaLeitura(codigo, jaLida) {
+      var fim = el('es-un-fim');
+      if (!fim || jaLida) return;
+      var desde = Date.now(), timer = null;
+      function parar() { clearInterval(timer); window.removeEventListener('scroll', ver); }
+      function ver() {
+        if (el('es-un-fim') !== fim) { parar(); return; } // o aluno saiu desta aula
+        if (Date.now() - desde < LEITURA_MIN_MS) return;
+        if (fim.getBoundingClientRect().top > (window.innerHeight || document.documentElement.clientHeight)) return; // ainda não chegou ao fim
+        parar();
+        api('PUT', base() + '/unidades/' + encodeURIComponent(codigo) + '/lida').then(function (x) { if (x.estudada) carregar(); })
+          .catch(function () { /* sem o registro a aula segue igual; a próxima abertura tenta de novo */ });
+      }
+      timer = setInterval(ver, 2000);
+      window.addEventListener('scroll', ver, { passive: true });
     }
     // VÍDEO: retoma do ponto em que parou e registra "assistiu" — a posição mora no servidor, por aula
     function ligarVideoDaAula(cx, codigo, video) {
@@ -1527,7 +1557,7 @@
       var k = E.painel && E.painel.conclusao;
       if (!k) return '';
       return '<div class="jr-caixa es-concl"><h3>Certificado de conclusão</h3>' +
-        '<p class="al-sub">Curso livre. Certificado emitido pela Villela Academy, sem validade para o MEC. Sai quando você estuda todas as aulas do percurso (responde ao menos uma questão ou um card de cada) e envia um simulado completo.</p>' +
+        '<p class="al-sub">Curso livre. Certificado emitido pela Villela Academy, sem validade para o MEC. Sai quando você estuda todas as aulas do percurso (responde ao menos uma questão ou um card de cada' + (k.aulas_sem_questao ? '; ' + (k.aulas_sem_questao > 1 ? 'nas ' + k.aulas_sem_questao + ' aulas' : 'na aula') + ' sem questão nem card, lê até o fim ou assiste à videoaula' : '') + ') e envia um simulado completo.</p>' +
         '<table class="es-tab"><tr><td>Aulas estudadas</td><td class="n">' + k.estudadas + ' de ' + k.total_aulas + '</td></tr>' +
         '<tr><td>Simulados completos enviados</td><td class="n">' + k.provas_enviadas + '</td></tr></table>' +
         (k.certificado ? '<div class="es-linha"><a class="al-bt" href="/academy/certificados/' + esc(k.certificado) + '" target="_blank" rel="noopener">🎓 Ver o meu certificado</a></div>'

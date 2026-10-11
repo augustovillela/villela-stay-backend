@@ -50,6 +50,8 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.put(`${base}/unidades/:unidade/blocos/:n/tentativa`, ...AL, h((req, res) => { res.json(al.guardarTentativa(...a(req), req.params.unidade, req.params.n, b(req).texto)); }));
   app.put(`${base}/unidades/:unidade/nota`, ...AL, h((req, res) => { res.json(al.anotarAula(...a(req), req.params.unidade, b(req).texto)); }));
   app.put(`${base}/unidades/:unidade/video`, ...AL, h((req, res) => { res.json(al.registrarVideo(...a(req), req.params.unidade, b(req))); }));
+  // chegou ao fim do texto da aula (só pesa na aula sem questão nem card — a régua é `aulaEstudada`)
+  app.put(`${base}/unidades/:unidade/lida`, ...AL, h((req, res) => { res.json(al.registrarLeitura(...a(req), req.params.unidade)); }));
   // "Meu caderno": tentativas, notas de aula, marcações com nota e anotações do caderno de erros — só as de quem pede
   app.get(`${base}/caderno`, ...AL, h((req, res) => { semCache(res); res.json(al.caderno(...a(req))); }));
   app.get(`${base}/unidades/:unidade/animacoes`, ...AL, h((req, res) => { semCache(res); res.json(al.animacoes(...a(req), req.params.unidade)); }));
@@ -92,6 +94,10 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   // criar → orçamento (nada cobrado) → confirmar (402 com o valor, pelo `h`; a tela pede o aceite e refaz) →
   // roda em segundo plano → a tela consulta o estado. O pedido é de quem pediu: outro usuário recebe 404.
   const baseUrl = (req) => `${req.headers['x-forwarded-proto'] || req.protocol || 'https'}://${req.get('host')}`;
+  // CHAVE GERAL (estudo_pedidos, em estudo/pedidos.js): desligada, tudo o que mora em /pedidos e /abertas responde
+  // 404 a quem não está liberado — como rota que não existe. É um `use` no prefixo, e não uma guarda rota a rota,
+  // para a rota de pedido que nascer depois já nascer atrás da porta.
+  app.use([`${base}/pedidos`, `${base}/abertas`], ...AL, (req, res, next) => (ped.liberadoPara(req.usuario) ? next() : res.status(404).json({ erro: ped.AINDA_NAO })));
   app.get(`${base}/abertas`, ...AL, h((req, res) => { semCache(res); res.json(ped.abertas(...a(req))); }));
   app.get(`${base}/pedidos`, ...AL, h((req, res) => { semCache(res); res.json(ped.listar(...a(req), { questao: req.query.questao })); }));
   app.post(`${base}/pedidos`, ...AL, h(async (req, res) => { res.json(await ped.criar(...a(req), b(req))); }));
@@ -166,6 +172,15 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
   const ADM = [requireAuth, requireAdmin];
   const sessaoDeAdmin = (req) => !req.viaChave && !!req.user && req.user.papel === 'admin';
   app.get('/staff/api/academy/estudo/pedidos', ...PA, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json(ped.painelStaff({ admin: sessaoDeAdmin(req) })); }));
+  // CHAVE GERAL dos pedidos pagos (estudo_pedidos). A chave de publicação LÊ e edita a lista de liberados
+  // ({ liberar: "e-mail" }, { remover: "e-mail" } ou { liberados: [...] }); LIGAR para todos ({ ativos: true })
+  // só com sessão de admin — quem pede não aprova (a recusa é de `prepararConfigPedidos`, 403).
+  app.get('/staff/api/academy/estudo/pedidos-config', ...PA, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json({ estudo_pedidos: ped.cfgPedidos(), pode_ligar: sessaoDeAdmin(req) }); }));
+  app.post('/staff/api/academy/estudo/pedidos-config', ...PA, h((req, res) => {
+    const r = ped.salvarConfigPedidos(req.body || {}, { admin: sessaoDeAdmin(req) });
+    aud(req, 'estudo.pedidos.config', ped.CFG_PEDIDOS, `ativos ${r.antes.ativos} → ${r.estudo_pedidos.ativos}; liberados ${r.antes.liberados.length} → ${r.estudo_pedidos.liberados.length}`);
+    res.json({ ok: true, estudo_pedidos: r.estudo_pedidos });
+  }));
   app.get('/staff/api/academy/estudo/pedidos/:id', ...ADM, h((req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const r = ped.abrirParaStaff(req.params.id);
