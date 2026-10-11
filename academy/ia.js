@@ -20,11 +20,20 @@ const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const MODELOS = (process.env.ACADEMY_LLM_MODELS || 'claude-sonnet-5,claude-haiku-4-5')
   .split(',').map(x => x.trim()).filter(Boolean);
 const MAX_TOKENS = parseInt(process.env.ACADEMY_LLM_MAX_TOKENS, 10) || 4000;
-const PRECOS = { // USD por MTok — atualizar junto com os modelos
+// USD por MTok — atualizar junto com os modelos. Conferido em 11/10/2026 na página oficial de preços
+// (https://platform.claude.com/docs/en/about-claude/pricing): o Sonnet 5 custa 2/10 — o preço de lançamento
+// virou o preço padrão, e o aumento para 3/15 anunciado para 01/09/2026 não aconteceu. `cache` = quanto custa
+// a leitura de cache em relação à entrada (0,1 no padrão; 0,05 nos modelos 5.5 de Opus e Sonnet).
+// Modelo que não está aqui é orçado e custeado por cima (3/15): errar para mais nunca cobra a menos do provedor.
+const PRECOS = {
+  'claude-opus-5-5': { in: 4, out: 20, cache: 0.05 },
+  'claude-opus-5': { in: 5, out: 25 },
   'claude-opus-4-8': { in: 5, out: 25 },
-  'claude-sonnet-5': { in: 3, out: 15 },
+  'claude-sonnet-5-5': { in: 2, out: 10, cache: 0.05 },
+  'claude-sonnet-5': { in: 2, out: 10 },
   'claude-sonnet-4-6': { in: 3, out: 15 },
   'claude-haiku-4-5': { in: 1, out: 5 },
+  'claude-haiku-4-5-20251001': { in: 1, out: 5 },
 };
 
 // Teto de saída por agente: é o que limita o ORÇAMENTO mostrado ao usuário antes de gerar.
@@ -33,16 +42,38 @@ const MAX_SAIDA = { tutor: 1500, suporte: 1200, mentor: 3000, refinar: 3500, est
 // PEDIDOS PAGOS (ADR-0010): agentes que só existem com a cobrança ligada — a franquia das matrículas
 // antigas não vale para eles — e que têm teto de saída PRÓPRIO, por passo, sem o corte global de
 // ACADEMY_LLM_MAX_TOKENS (uma correção de peça ou a leitura de um edital não cabem em 4.000 tokens).
-// `prova` (importar prova em PDF, estudo\prova.js) pede menos que isto por passo — 8.000 por lote de páginas e
-// 3.000 para o gabarito, pelo `max_saida` de cada passo; `edital` (ler edital em PDF, estudo\edital-pdf.js) pede 12.000 por lote de 2 páginas.
+// `prova` (importar prova em PDF, estudo\prova.js) e `edital` (ler edital em PDF, estudo\edital-pdf.js) pedem menos
+// que isto por passo, pelo `max_saida` de cada passo (as constantes SAIDA_* de cada módulo, medidas nos PDFs reais).
 const SAIDA_PROPRIA = { correcao: 5000, edital: 16000, prova: 16000 };
 const SO_PAGOS = ['correcao', 'edital', 'prova', 'transcricao'];
 const maxSaida = (agente) => SAIDA_PROPRIA[agente] || Math.min(MAX_TOKENS, MAX_SAIDA[agente] || MAX_TOKENS);
+// RACIOCÍNIO ("thinking") — lido na documentação oficial em 11/10/2026
+// (https://platform.claude.com/docs/en/build-with-claude/thinking-troubleshooting, tabela por modelo):
+//   · o Sonnet 5 RACIOCINA POR PADRÃO quando o parâmetro é omitido, e aceita `thinking: { type: 'disabled' }`;
+//   · o Haiku 4.5 não raciocina por padrão (só no modo manual), e também aceita 'disabled';
+//   · os tokens de raciocínio são cobrados como SAÍDA e contam para o `max_tokens` do passo.
+// Os pedidos pagos têm orçamento por passo: neles o raciocínio fica DESLIGADO, para a saída inteira ser a
+// resposta (transcrever página e dar nível por critério não pedem rascunho) e o teto ser previsível.
+// Exceções da mesma tabela: Fable, Mythos e Opus 5.5 raciocinam sempre e RECUSAM 'disabled' (400) — neles o
+// parâmetro é omitido, e o `max_tokens` continua sendo o teto; o Sonnet 5.5 desliga com 'between_tools'.
+const RACIOCINIO_FIXO = ['correcao', 'edital', 'prova'];
+function parametroDeRaciocinio(agente, modelo) {
+  if (!RACIOCINIO_FIXO.includes(agente)) return {};
+  if (/^claude-(fable|mythos|opus-5-5)/.test(modelo)) return {};
+  if (/^claude-sonnet-5-5/.test(modelo)) return { thinking: { type: 'between_tools' } };
+  return { thinking: { type: 'disabled' } };
+}
 // Orçamento de PDF enviado como bloco `document`: teto fixo de tokens por página, POR CIMA (a página
 // entra como texto + imagem; a documentação do provedor fala em 1.500 a 3.000 tokens por página).
 const TOKENS_POR_PAGINA_PDF = 3000;
 // Transcrição de áudio (segundo provedor): orçada por minuto, por cima do preço de tabela do modelo.
 const TRANSCRICAO_USD_POR_MIN = 0.006;
+// Quando o provedor NÃO informa a duração, ela é estimada pelo TAMANHO do arquivo — nunca pelo que o cliente
+// declara. A conta: segundos = bytes × 8 ÷ taxa mínima. 24 kbps é o piso de um gravador de voz (o da tela
+// grava a ~32 kbps; MP3 e M4A de voz ficam acima disso): com o piso, a estimativa sai POR CIMA da duração
+// real — 1 MB ≈ 5 min 33 s —, e quem chama a limita ao teto orçado (5 min).
+const AUDIO_KBPS_MINIMO = 24;
+const duracaoPeloTamanho = (bytes) => Math.ceil((Math.max(0, Number(bytes) || 0) * 8) / (AUDIO_KBPS_MINIMO * 1000));
 const TRANSCRICAO_MODELO = () => process.env.ACADEMY_STT_MODELO || 'gpt-4o-mini-transcribe';
 const TRANSCRICAO_TIMEOUT_MS = Number(process.env.ACADEMY_STT_TIMEOUT_MS) || 120000;
 
@@ -65,8 +96,10 @@ REGRAS INVIOLÁVEIS:
 
 // ---- cliente (com gancho de mock p/ o selftest) ----
 let _client = null;
-let _mock = null;
-const __mockParaTeste = (fn) => { _mock = fn; };
+let _mock = null, _mockModelos = null;
+// `modelos`: com a lista, o simulado passa pela MESMA fila de modelos do provedor — a função recebe também
+// `modelo` e `params` e devolve a mensagem crua ({ content, stop_reason, usage }) ou lança o erro do provedor.
+const __mockParaTeste = (fn, { modelos = null } = {}) => { _mock = fn; _mockModelos = fn && Array.isArray(modelos) && modelos.length ? modelos.slice() : null; };
 const ativo = () => !!(_mock || process.env.ANTHROPIC_API_KEY);
 const transcricaoAtiva = () => !!(_mock || process.env.OPENAI_API_KEY);
 
@@ -75,7 +108,7 @@ const precoDe = (modelo) => PRECOS[modelo] || { in: 3, out: 15 };
 function custoUSD(modelo, usage) {
   if (!usage) return 0;
   const p = precoDe(modelo);
-  const entrada = (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) * 1.25 + (usage.cache_read_input_tokens || 0) * 0.1;
+  const entrada = (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) * 1.25 + (usage.cache_read_input_tokens || 0) * (p.cache || 0.1);
   return (entrada * p.in + (usage.output_tokens || 0) * p.out) / 1e6;
 }
 // O TETO: entrada estimada por cima (3 caracteres por token) + a saída máxima do agente,
@@ -86,11 +119,13 @@ function tetoUSD(agente, prompt) {
 // O teto de um TRABALHO de vários passos, somado: o texto de todos os passos (3 caracteres por token,
 // mais as regras do sistema a cada passo), as páginas de PDF pelo teto fixo, a saída máxima por passo
 // × o número de passos e, havendo áudio, a transcrição pela duração MÁXIMA.
+// o preço do teto: o mais caro da fila, em cada ponta
+const precoTeto = () => MODELOS.map(precoDe).reduce((a, b) => ({ in: Math.max(a.in, b.in), out: Math.max(a.out, b.out) }), { in: 0, out: 0 });
 function tetoTrabalhoUSD(agente, { caracteres = 0, paginas_pdf = 0, passos = 1, saida_por_passo = 0, audio_seg = 0 } = {}) {
   const n = Math.max(1, Math.round(passos) || 1);
   const entrada = Math.ceil((GUARDRAILS.length * n + Math.max(0, caracteres)) / 3) + Math.max(0, Math.round(paginas_pdf) || 0) * TOKENS_POR_PAGINA_PDF;
   const saida = Math.min(maxSaida(agente), saida_por_passo > 0 ? saida_por_passo : Infinity) * n;
-  const p = MODELOS.map(precoDe).reduce((a, b) => ({ in: Math.max(a.in, b.in), out: Math.max(a.out, b.out) }), { in: 0, out: 0 });
+  const p = precoTeto();
   return (entrada * p.in + saida * p.out) / 1e6 + custoTranscricaoUSD(audio_seg);
 }
 const custoTranscricaoUSD = (segundos) => (Math.max(0, Number(segundos) || 0) / 60) * TRANSCRICAO_USD_POR_MIN;
@@ -98,7 +133,9 @@ const custoTranscricaoUSD = (segundos) => (Math.max(0, Number(segundos) || 0) / 
 function logRun(userId, agente, { modelo, usage, status, detalhe, cobranca = '', milesimos = 0, productId = '', custoUsd = null }) {
   try {
     // trabalho de vários passos (ou com transcrição) traz o custo já somado; chamada única, o custo sai do uso
-    const custo = Math.round((custoUsd != null ? custoUsd : custoUSD(modelo, usage)) * 100);
+    // em centavos de dólar, com 4 casas: arredondado para centavo inteiro, uma correção de US$ 0,004 gravava
+    // zero e a soma da coluna errava para os dois lados
+    const custo = Math.round((custoUsd != null ? custoUsd : custoUSD(modelo, usage)) * 1e6) / 1e4;
     db.prepare(`INSERT INTO ai_usage_logs (id, quando, user_id, agente, modelo, input_tokens, output_tokens, custo_centavos_usd, status, detalhe, cobranca, milesimos, product_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(novoId(), nowISO(), s(userId, 40), s(agente, 30), s(modelo, 40),
@@ -153,34 +190,57 @@ function conteudoValido(conteudo) {
 }
 const textoDoConteudo = (c) => (typeof c === 'string' ? c : c.filter(b => b.type === 'text').map(b => b.text).join('\n'));
 
+// O JSON da resposta. Uma frase antes da chave ("Segue o resultado:") não derruba um passo que já foi pago:
+// vale o trecho do primeiro "{" ao último "}". Sem JSON aí dentro, é resposta fora do formato.
+function jsonDaResposta(texto) {
+  const limpo = String(texto || '').replace(/^\s*```(json)?\s*/i, '').replace(/```\s*$/, '').trim();
+  try { return JSON.parse(limpo); } catch (_) { /* tenta o recorte */ }
+  const a = limpo.indexOf('{'), b = limpo.lastIndexOf('}');
+  if (a < 0 || b <= a) throw new Error('fora do formato');
+  return JSON.parse(limpo.slice(a, b + 1));
+}
+const CORTADA = 'resposta maior que o limite do lote';
+
+// → { json, modelo, usage, custo_falhas_usd }. Toda tentativa que o provedor RESPONDEU custa, dê certo ou não:
+// o custo das que falharam vai em `custo_falhas_usd` (ou em `e.custo_usd`, quando nenhuma serviu) e entra na
+// conta do custo real do trabalho. Resposta CORTADA pelo limite de tokens (`stop_reason: 'max_tokens'`) é erro
+// claro e NÃO tenta o modelo seguinte: com o mesmo limite ele cortaria de novo, e a despesa dobraria.
 async function chamar(agente, conteudo, opcoes = {}) {
   const content = conteudoValido(conteudo);
-  if (_mock) { const r = await _mock({ agente, prompt: textoDoConteudo(content), conteudo: content }); return { json: r.json, modelo: 'mock', usage: r.usage || { input_tokens: 10, output_tokens: 10 } }; }
-  if (!_client) { const Anthropic = require('@anthropic-ai/sdk'); _client = new Anthropic(); }
+  if (_mock && !_mockModelos) { const r = await _mock({ agente, prompt: textoDoConteudo(content), conteudo: content }); return { json: r.json, modelo: 'mock', usage: r.usage || { input_tokens: 10, output_tokens: 10 }, custo_falhas_usd: 0 }; }
+  if (!_mock && !_client) { const Anthropic = require('@anthropic-ai/sdk'); _client = new Anthropic(); }
   const maxTokens = Math.min(maxSaida(agente), opcoes.max_saida > 0 ? Math.round(opcoes.max_saida) : Infinity);
-  let ultimoErro = null;
-  for (const modelo of MODELOS) {
+  let ultimoErro = null, custoFalhas = 0;
+  for (const modelo of (_mock ? _mockModelos : MODELOS)) {
     try {
-      const msg = await _client.messages.create({
-        model: modelo, max_tokens: maxTokens,
+      const params = {
+        model: modelo, max_tokens: maxTokens, ...parametroDeRaciocinio(agente, modelo),
         system: [{ type: 'text', text: GUARDRAILS, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content }],
-      });
-      const texto = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
-        .replace(/^```(json)?\s*/i, '').replace(/```\s*$/, '').trim();
+      };
+      const msg = _mock ? await _mock({ agente, prompt: textoDoConteudo(content), conteudo: content, modelo, params }) : await _client.messages.create(params);
+      if (msg.stop_reason === 'max_tokens') {
+        const e = new Error(`${CORTADA} (${maxTokens.toLocaleString('pt-BR')} tokens de saída)`);
+        e.cortada = true; e.status = 422; e.usage = msg.usage; // 4xx: encerra a fila, como os erros do próprio pedido
+        throw e;
+      }
+      const texto = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
       let json;
       // a mensagem do JSON.parse cita um pedaço do texto — e o texto pode citar a resposta do aluno.
       // O erro que sobe (e vai para o log) diz só o que houve.
-      try { json = JSON.parse(texto); } catch (_) { throw new Error(msg.stop_reason === 'max_tokens' ? 'a resposta passou do tamanho máximo e veio cortada' : 'a resposta veio fora do formato esperado'); }
-      return { json, modelo, usage: msg.usage };
+      try { json = jsonDaResposta(texto); } catch (_) { const e = new Error('a resposta veio fora do formato esperado'); e.usage = msg.usage; throw e; }
+      return { json, modelo, usage: msg.usage, custo_falhas_usd: custoFalhas };
     } catch (e) {
       ultimoErro = e; ultimoErro.modelo = modelo;
+      if (e.usage) custoFalhas += custoUSD(modelo, e.usage);
       const st = e.status || (e.response && e.response.status);
       if (st && st >= 400 && st < 500 && st !== 404 && st !== 429) break;
     }
   }
   const e = new Error('IA falhou: ' + (ultimoErro ? ultimoErro.message : 'sem modelo disponível'));
   e.modelo = ultimoErro ? ultimoErro.modelo : '-';
+  e.custo_usd = custoFalhas;
+  e.cortada = !!(ultimoErro && ultimoErro.cortada);
   throw e;
 }
 
@@ -257,19 +317,22 @@ function abrirTrabalho(userId, agente, tetoUsd, p, opcoes = {}) {
     ref, cobranca, teto_milesimos: teto,
     async passo(conteudo, o = {}) {
       exigirAberto(); exigirFolga();
-      const r = await chamar(agente, conteudo, o);
-      custo += custoUSD(r.modelo, r.usage); modelo = r.modelo;
+      let r;
+      // o que o provedor cobrou por tentativa que NÃO serviu também é custo real deste trabalho
+      try { r = await chamar(agente, conteudo, o); } catch (e) { custo += (e && e.custo_usd) || 0; throw e; }
+      custo += custoUSD(r.modelo, r.usage) + (r.custo_falhas_usd || 0); modelo = r.modelo;
       uso.input_tokens += (r.usage && r.usage.input_tokens) || 0; uso.output_tokens += (r.usage && r.usage.output_tokens) || 0;
       return r.json;
     },
-    // `duracao_seg` é a duração DECLARADA por quem enviou: só vale quando o provedor não diz a real,
-    // e nunca passa de `max_seg` (o teto que foi orçado).
-    async transcrever({ bytes, mime, extensao, duracao_seg = 0, max_seg = 0 }) {
+    // A duração COBRADA é a do provedor, quando ele a informa; quando não informa, é estimada pelo tamanho do
+    // arquivo (`duracaoPeloTamanho`) — e nunca passa de `max_seg`, o teto que foi orçado. A duração declarada
+    // por quem enviou não entra na conta: quem declarasse 3 segundos pagaria 3 segundos por 5 minutos de áudio.
+    async transcrever({ bytes, mime, extensao, max_seg = 0 }) {
       exigirAberto(); exigirFolga();
       const r = await chamarTranscricao({ bytes, mime, extensao });
       if (!r.texto) throw erroIA('A transcrição voltou vazia — não deu para ouvir fala no áudio.', 422);
       const tetoSeg = max_seg > 0 ? max_seg : Infinity;
-      const segundos = Math.min(tetoSeg, Math.max(1, Math.ceil(r.duracao_seg || Number(duracao_seg) || (Number.isFinite(tetoSeg) ? tetoSeg : 60))));
+      const segundos = Math.min(tetoSeg, Math.max(1, Math.ceil(r.duracao_seg > 0 ? r.duracao_seg : duracaoPeloTamanho(bytes.length))));
       custo += custoTranscricaoUSD(segundos);
       return { texto: r.texto, duracao_seg: segundos, duracao_do_provedor: r.duracao_seg > 0 };
     },
@@ -442,7 +505,7 @@ const Logs = {
       if (r.status === 'ok') { x.perguntas++; x.dias_ativos.add(r.dia); x.por_agente[r.agente] = (x.por_agente[r.agente] || 0) + 1; }
       else if (r.status === 'limite') { x.bloqueios++; x.dias_no_limite.add(r.dia); }
       else x.erros++;
-      const p = PRECOS[r.modelo] || { in: 3, out: 15 };
+      const p = precoDe(r.modelo);
       x.input_tokens += r.input_tokens || 0; x.output_tokens += r.output_tokens || 0;
       x.custo_usd += ((r.input_tokens || 0) * p.in + (r.output_tokens || 0) * p.out) / 1e6;
     }
@@ -460,5 +523,5 @@ module.exports = {
   ativo, MODELOS, Agentes, Logs, usadasHoje, limiteDia, comoCobrar, middlewareAceite, tetoUSD, custoUSD, __mockParaTeste,
   // pedidos pagos (ADR-0010)
   abrirTrabalho, tetoTrabalhoUSD, comoCobrarPedido, transcricaoAtiva, custoTranscricaoUSD, maxSaida,
-  SO_PAGOS, TOKENS_POR_PAGINA_PDF, TRANSCRICAO_USD_POR_MIN,
+  SO_PAGOS, TOKENS_POR_PAGINA_PDF, TRANSCRICAO_USD_POR_MIN, precoTeto, precoDe, parametroDeRaciocinio, jsonDaResposta, duracaoPeloTamanho, AUDIO_KBPS_MINIMO,
 };

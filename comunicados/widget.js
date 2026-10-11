@@ -214,7 +214,10 @@
   // e tira ao sair, avisando com o evento "vs:contexto". Sem curso aberto, o
   // servidor só sorteia dicas gerais; com curso, as gerais + as DELE.
   function cursoAberto() { return document.documentElement.getAttribute('data-vs-curso') || ''; }
-  function qsCurso() { var c = cursoAberto(); return c ? '?curso=' + encodeURIComponent(c) : ''; }
+  // <html data-vs-so-curso="1"> (o Estude marca): a tela aberta pede SÓ as dicas do curso — as gerais falam de
+  // recursos que ela não tem. O servidor então sorteia só as do curso, sem gastar dica geral como vista.
+  function soDoCurso() { return document.documentElement.hasAttribute('data-vs-so-curso'); }
+  function qsCurso() { var c = cursoAberto(); return c ? '?curso=' + encodeURIComponent(c) + (soDoCurso() ? '&so_curso=1' : '') : ''; }
   var cursosComPostIt = {};
   function mostrarPostIt() {
     if (!bt || document.querySelector('.vsc-post') || document.querySelector('.vsc-dica')) return;

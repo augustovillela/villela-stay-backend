@@ -273,8 +273,9 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
     });
     // Uma dica por abertura do app (a dica é marcada como vista ao ser mostrada).
     // `?curso=` = o curso aberto no app: só as dicas gerais + as DELE (o servidor confere se é da pessoa).
-    app.get(`${A}/dicas/proxima`, doUsuario((ref, req) => dicas.painelDoUsuario(f.chave, ref, req.query.curso)));
-    app.get(`${A}/dicas`, doUsuario((ref, req) => dicas.doUsuario(f.chave, ref, req.query.curso)));
+    // `&so_curso=1` = a tela aberta pede SÓ as dicas do curso (o Estude): as gerais ficam fora do sorteio e da aba.
+    app.get(`${A}/dicas/proxima`, doUsuario((ref, req) => dicas.painelDoUsuario(f.chave, ref, req.query.curso, req.query.so_curso === '1')));
+    app.get(`${A}/dicas`, doUsuario((ref, req) => dicas.doUsuario(f.chave, ref, req.query.curso, req.query.so_curso === '1')));
     app.post(`${A}/dicas/preferencia`, json, doUsuario((ref, req) => ({ mostrar_post_it: dicas.definirPref(f.chave, ref, (req.body || {}).mostrar !== false) })));
     app.get(`${A}/preferencias`, doUsuario(async (ref) => ({ preferencias: await motor.preferencias(f.chave, ref) })));
     app.post(`${A}/preferencias`, json, doUsuario(async (ref, req) => ({ preferencias: await motor.salvarPreferencias(f.chave, ref, req.body || {}) })));

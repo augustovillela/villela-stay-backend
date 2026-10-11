@@ -30,7 +30,14 @@ const { liso, textoConfere, sha256 } = prova;
 // ---- limites (ADR-0010: edital até 60 páginas lidas por pedido) ----
 const MAX_PAGINAS = 60;                    // páginas do edital lidas num pedido
 const PAGINAS_POR_LOTE = 2;                // um passo ao modelo a cada 2 páginas (página de programa é densa)
-const SAIDA_POR_LOTE = 12000;              // tokens de saída por lote (o programa volta inteiro, item a item)
+// SAÍDA POR LOTE: 9.000 tokens. Medido em 11/10/2026 no edital real (Anexo II, 15 páginas, 218 itens), com o oráculo
+// no papel de modelo: o JSON perfeito do pior lote de 2 páginas tem 10.377 caracteres = 3.459 tokens a 3 caracteres
+// por token (folga de 62 % sobre os 9.000) ou 4.512 a 2,3 por token, o tokenizador dos modelos novos (folga de 50 %).
+// Os 12.000 de antes eram folga demais: é a saída máxima que faz o orçamento mostrado ao usuário.
+const SAIDA_POR_LOTE = 9000;               // tokens de saída por lote (o programa volta inteiro, item a item)
+// A saída de uma transcrição acompanha a entrada: página de diário oficial em três colunas tem 17 mil caracteres,
+// e duas delas num lote só estourariam qualquer limite. O lote fecha em 2 páginas OU quando a próxima passaria disto.
+const LOTE_MAX_CHARS = 10000;
 const PAGINA_MAX_CHARS = 14000;            // o que vai de cada página
 const CARREGA_CHARS = 2500;                // fim da página anterior, quando o último item foi cortado
 const LOTE_PDF_MAX_BYTES = prova.LOTE_PDF_MAX_BYTES;
@@ -39,7 +46,7 @@ const MAX_ITENS = 3000;                    // acima disso a leitura saiu do tril
 const MAX_ITENS_POR_LOTE = 800;
 const MAX_DISCIPLINAS = 80;
 const TRECHO_CHARS = 160;                  // o começo de cada página, para o usuário reconhecer
-const LIMIAR_PROGRAMA = 6;                 // pontos para a página contar como "tem programa"
+const LIMIAR_PROGRAMA = 6;                 // pontos (os que a visão página a página mostra) de uma página com matéria de programa
 const DADOS_MAX_PAGINAS = 3;               // páginas sugeridas para os dados do concurso
 const LIMIAR_DADOS = 4;
 const FOLGA_DE_PROMPT = 1200;              // rótulos de página, disciplina em vigor e item cortado
@@ -58,42 +65,98 @@ const novoDelimitador = () => crypto.randomBytes(9).toString('hex');
 const semDelimitador = (t, delim) => String(t == null ? '' : t).split(delim).join('');
 
 // ---------------------------------------------------------------------
-// A FAIXA SUGERIDA — heurística LOCAL, página a página. Sinais de que a página traz o programa:
-// os títulos de praxe, nomes de disciplina em maiúsculas seguidos de dois-pontos e a densidade de
-// itens numerados CURTOS ("1 Princípios. 2 Fontes." — a cláusula de regra também é numerada, mas é longa).
+// CABEÇALHO E RODAPÉ REPETIDOS — a linha que aparece igual (a menos dos algarismos: o número da página)
+// na borda de boa parte das páginas não é texto do edital. Sai antes da heurística da faixa e antes da
+// conferência dos itens: é ela que fica no MEIO do item que atravessa a quebra de página.
 // ---------------------------------------------------------------------
-const NUMERADO = /(?:^|[\s.;:])(\d{1,3}(?:\.\d{1,3}){0,4})[.)]?\s+(?=[A-Z"(])/g;
-function itensCurtos(t) {
-  const pos = [];
-  NUMERADO.lastIndex = 0;
-  for (let m; (m = NUMERADO.exec(t));) pos.push(m.index);
-  let n = 0;
-  for (let i = 0; i < pos.length; i++) {
-    const fim = i + 1 < pos.length ? pos[i + 1] : Math.min(t.length, pos[i] + 400);
-    const tam = fim - pos[i];
-    if (tam >= 6 && tam <= 130) n++;
+const BORDA_TOPO = 6, BORDA_PE = 4;        // linhas do alto e do pé de cada página em que se procura a repetição
+// a chave da linha: só o número do COMEÇO e o do FIM viram "#" (é onde mora o número da página); o do meio fica —
+// "1. Tema 1" e "2. Tema 2" são linhas diferentes, e item de programa não pode passar por cabeçalho
+const chaveDaLinha = (l) => {
+  const t = semAcento(l).toLowerCase().trim();
+  if (t.length > 160) return '';
+  return t.replace(/\b(pagina|pag|fls?)\.?\s*\d+(\s*(de|\/)\s*\d+)?/g, '$1#').replace(/^\d+/, '#').replace(/\d+$/, '#').replace(/[^a-z0-9#]+/g, '');
+};
+function linhasRepetidas(textos) {
+  const comTexto = (textos || []).filter(x => x && !x.sem_texto && x.texto);
+  const conta = new Map();
+  for (const x of comTexto) {
+    const ls = x.texto.split('\n');
+    const borda = new Set(ls.slice(0, BORDA_TOPO).concat(ls.slice(-BORDA_PE)).map(chaveDaLinha).filter(Boolean));
+    for (const k of borda) conta.set(k, (conta.get(k) || 0) + 1);
   }
-  return n;
+  // em ao menos 3 páginas e em 30 % das que têm texto: título de disciplina que abre duas páginas não é cabeçalho
+  const minimo = Math.max(3, Math.ceil(comTexto.length * 0.3));
+  return new Set([...conta].filter(([, n]) => n >= minimo).map(([k]) => k));
 }
+function semRepetidas(texto, repetidas) {
+  const t = String(texto == null ? '' : texto);
+  if (!repetidas || !repetidas.size) return t;
+  const ls = t.split('\n');
+  return ls.filter((l, i) => !((i < BORDA_TOPO || i >= ls.length - BORDA_PE) && repetidas.has(chaveDaLinha(l)))).join('\n');
+}
+
+// ---------------------------------------------------------------------
+// A FAIXA SUGERIDA — heurística LOCAL, sem provedor. Reescrita em 11/10/2026 sobre dez editais reais (o do
+// II CNU da Magistratura do Trabalho e nove de TRTs, de quatro bancas): a anterior acertava 11 das 108 páginas
+// de programa e sugeria 23 erradas. O que ela usa:
+//   · o texto de PROGRAMA e o de REGRA têm vocabulário diferente — regra fala de "candidato", "edital",
+//     "inscrição", "será", "deverá"; programa é lista de matéria. É o sinal mais firme (e não depende de
+//     dois-pontos depois da disciplina nem de o item ser curto);
+//   · o documento é cortado em TRECHOS nos títulos de anexo ("ANEXO II …"): o anexo do conteúdo programático
+//     vai até o próximo anexo que não é programa, ou até o fim;
+//   · a faixa é contígua: uma página fraca no meio (fim de disciplina, tabela) não a quebra, e a página
+//     parcial do fim entra;
+//   · o título de praxe ("conteúdo programático", "objetos de avaliação", "programa") só vale em LINHA DE
+//     TÍTULO — citado no meio de frase ou numa tabela, não abre faixa;
+//   · programa repetido (a resolução anexada ao edital traz o mesmo programa) não é sugerido duas vezes.
+// A sugestão sai com um grau de CONFIANÇA. Com confiança baixa nada é pré-selecionado: a tela mostra o que
+// foi achado, diz que é incerto e o usuário escolhe as páginas — ninguém paga por faixa "chutada".
+// ---------------------------------------------------------------------
+const PALAVRA_DE_REGRA = /\b(candidat[oa]s?|serao?|devera?o?|podera?o?|edital|inscric(?:ao|oes)|comissao|convoca\w+|requer\w+)\b/gi;
+const ITEM_NUMERADO = /(?:^|\n|[.;:]\s)\s*\(?\d{1,2}(?:\.\d{1,2}){0,3}\s?[.)\-–]?\s+(?=[A-Z"(])/g;
+const TITULO_DE_ANEXO = /^ANEXO\b/i;
+const TITULO_DO_PROGRAMA = /CONTEUDOS?\s+PROGRAMATICOS?|OBJETOS?\s+DE\s+AVALIACAO|CONHECIMENTOS\s+(?:BASICOS|ESPECIFICOS|GERAIS)|^(?:ANEXO\s+[IVXLC\d]+\s*[-–:.]?\s*)?(?:[A-Z]\s*[.)]\s*)?PROGRAMAS?\b/i;
 const TITULO_DE_DISCIPLINA = /(?:^|\n)\s*(?:[IVX]{1,4}\s*[-–.)]\s*|\d{1,2}\s*[-–.)]\s*)?[A-Z][A-Z ,/&()-]{5,90}:/g;
+const NAO_E_DISCIPLINA = /^(ANEXO|BLOCO|PODER|JUSTICA|TRIBUNAL|CONSELHO|EDITAL|CONCURSO|CARGO|PROGRAMA|CONTEUDO|OBJETO|CONHECIMENTOS|OBSERVAC|CRONOGRAMA|REQUERIMENTO)\b/;
+const MIN_ITENS = 3;                       // itens numerados para o trecho valer como matéria
+const FAIXA_SEM_TITULO_MIN_ITENS = 12;     // sem título de praxe, a faixa precisa de corpo: páginas e itens
+const PONTE_MAX = 2;                       // trechos fracos seguidos que a faixa atravessa, havendo matéria depois
+const REPETIDO_FRACAO = 0.5;               // metade das frases já vista em outra faixa = o mesmo programa de novo
+const CONFIANCAS = ['alta', 'media', 'baixa'];
+
+// linha de título: curta, sem pontilhado de sumário, e em maiúsculas (ou começando por "Anexo")
+function linhaDeTitulo(l) {
+  const t = semAcento(l).trim();
+  if (t.length < 4 || t.length > 110 || /\.{4,}/.test(t) || /[;,]$/.test(t)) return false;
+  const letras = t.replace(/[^A-Za-z]/g, '');
+  if (letras.length < 4) return false;
+  return TITULO_DE_ANEXO.test(t) ? !/\b(deste|desta|do edital|consta|conforme)\b/i.test(t) : letras.replace(/[^A-Z]/g, '').length / letras.length >= 0.8;
+}
+const mediana = (v) => { const o = v.slice().sort((a, b) => a - b); return o.length ? o[Math.floor(o.length / 2)] : 0; };
+
+// Os números de um trecho de texto (uma página, ou a parte dela que vai de um título de anexo ao seguinte).
 function sinaisDoPrograma(texto) {
   const t = semAcento(texto);
+  const linhas = t.split('\n').map(l => l.trim()).filter(Boolean);
+  const L = t.replace(/\s+/g, ' ').trim().length;
+  const conta = (re) => (t.match(re) || []).length;
+  const regras = conta(PALAVRA_DE_REGRA), itens = conta(ITEM_NUMERADO), frases = conta(/[.;:]\s+[A-Z]/g);
+  const lacunas = conta(/_{4,}/g), datas = conta(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g), pontilhado = conta(/\.{6,}/g);
+  const emLinha = linhas.filter(l => l.length >= 6 && l.length <= 90 && !/\d/.test(l) && l === l.toUpperCase() && /[A-Z]{3,}\s+[A-Z]{2,}|^[A-Z]{6,}$/.test(l.replace(/^[·•*\-–]\s*|^[A-Z]\)\s*/, '')) && !NAO_E_DISCIPLINA.test(l.replace(/^[·•*\-–]\s*|^[A-Z]\)\s*/, ''))).length;
+  const disciplinas = emLinha + conta(TITULO_DE_DISCIPLINA);
+  const ancora = linhas.some(l => linhaDeTitulo(l) && TITULO_DO_PROGRAMA.test(l));
+  // COMPATÍVEL com programa: não é texto de regra, nem formulário, nem cronograma, nem sumário
+  const compativel = L >= 12 && regras <= Math.max(2, (L * 3) / 1000) && lacunas <= 1 && datas <= Math.max(3, (L * 4) / 1000) && pontilhado < 3;
+  // MATÉRIA: itens numerados em quantidade, ou lista de frases nominais em linha cheia (programa sem numeração)
+  const forte = compativel && ((itens >= MIN_ITENS && (itens * 1000) / L >= 1.5) || ((frases * 1000) / L >= 10 && mediana(linhas.map(l => l.length)) >= 45 && L >= 300));
   const sinais = [];
-  let pontos = 0, ancora = false;
-  const marca = (nome, p, ehAncora = false) => { sinais.push(nome); pontos += p; if (ehAncora) ancora = true; };
-  if (/CONTEUDOS?\s+PROGRAMATICOS?/i.test(t)) marca('título "conteúdo programático"', 6, true);
-  if (/OBJETOS?\s+DE\s+AVALIACAO/i.test(t)) marca('título "objetos de avaliação"', 5, true);
-  if (/CONHECIMENTOS\s+(BASICOS|ESPECIFICOS|GERAIS)/i.test(t)) marca('título "conhecimentos básicos/específicos/gerais"', 3, true);
-  if (/(?:^|\n)[^\na-z]*\bPROGRAMAS?\b[^\na-z]*(?=\n|$)/.test(t)) marca('título "programa"', 2, true);
-  if (/(?:^|\n)\s*ANEXO\s+[IVXLC\d]+/i.test(t)) marca('anexo', 1);
-  const disciplinas = (t.match(TITULO_DE_DISCIPLINA) || []).length;
-  if (disciplinas) marca(`${disciplinas} nome(s) de disciplina`, Math.min(8, disciplinas * 2));
-  const curtos = itensCurtos(t);
-  if (curtos >= 3) marca(`${curtos} itens numerados curtos`, Math.min(10, Math.floor(curtos / 3)));
-  // o título sozinho (sumário, remissão "consta do Anexo I") não basta: a página tem de TRAZER matéria.
-  // `cauda`: a última página do programa costuma ser parcial (um resto de disciplina e pouca coisa mais) —
-  // sozinha não abre faixa, mas CONTINUA a faixa que vinha da página anterior.
-  return { pontos, sinais, ancora, forte: pontos >= LIMIAR_PROGRAMA && (disciplinas > 0 || curtos >= 6), cauda: pontos >= 3 && curtos >= 3 };
+  if (ancora) sinais.push('título do programa');
+  if (compativel && disciplinas) sinais.push(`${disciplinas} nome(s) de disciplina`);
+  if (compativel && itens >= MIN_ITENS) sinais.push(`${itens} itens numerados`);
+  if (!compativel && L >= 12) sinais.push(lacunas > 1 ? 'formulário' : pontilhado >= 3 ? 'sumário' : regras > 2 ? 'texto de regras' : 'tabela de datas');
+  const pontos = !compativel ? 0 : Math.min(10, itens) + Math.min(6, disciplinas * 2) + (ancora ? 6 : 0) + (forte ? 2 : 0);
+  return { pontos, sinais, ancora, forte, compativel, cauda: compativel && !forte && L < 1500 && (itens >= 1 || frases >= 2), itens, disciplinas, chars: L };
 }
 // Onde costumam estar os dados do concurso (cargo, banca, data da prova, etapas, número de questões).
 function pontosDeDados(texto, n) {
@@ -114,36 +177,108 @@ const compactar = (pags) => {
 };
 const expandir = (faixas) => faixas.flatMap(([de, ate]) => Array.from({ length: ate - de + 1 }, (_, k) => de + k));
 
-// → { faixas, dados_paginas, paginas: [{ n, chars, sem_texto, pontos, sinais, trecho }] }
+// Os TRECHOS do documento, na ordem: cada página, cortada nos títulos de anexo que houver nela.
+function trechosDoDocumento(paginas) {
+  const trechos = [];
+  for (const p of paginas) {
+    if (p.sem_texto) { trechos.push({ n: p.n, sem_texto: true, anexo: false, texto: '', forte: false, compativel: false, cauda: false, ancora: false, itens: 0, chars: 0 }); continue; }
+    const partes = [{ anexo: false, linhas: [] }];
+    for (const l of p.limpo.split('\n')) {
+      if (TITULO_DE_ANEXO.test(l.trim()) && linhaDeTitulo(l)) partes.push({ anexo: true, linhas: [l] }); else partes[partes.length - 1].linhas.push(l);
+    }
+    for (const parte of partes) {
+      const texto = parte.linhas.join('\n');
+      if (!texto.trim()) continue;
+      trechos.push({ n: p.n, sem_texto: false, anexo: parte.anexo, texto, ...sinaisDoPrograma(texto) });
+    }
+  }
+  return trechos;
+}
+// as frases de uma faixa, para reconhecer o mesmo programa escrito de novo mais adiante
+function frasesDe(texto) {
+  const r = new Set();
+  for (const f of String(texto).replace(/\s+/g, ' ').split(/[.;:)]\s/)) { const k = liso(f).toLowerCase(); if (k.length >= 25) r.add(k); }
+  return r;
+}
+
+// → { faixas, dados_paginas, confianca, motivo, paginas: [{ n, chars, sem_texto, pontos, sinais, trecho }] }
 function sugerir(textos) {
+  const repetidas = linhasRepetidas(textos);
   const pags = textos.map((x) => {
-    const sp = x.sem_texto ? { pontos: 0, sinais: [], ancora: false, forte: false, cauda: false } : sinaisDoPrograma(x.texto);
-    return { n: x.n, chars: Math.min(PAGINA_MAX_CHARS, x.texto.length), sem_texto: !!x.sem_texto, pontos: sp.pontos, sinais: sp.sinais, ancora: sp.ancora, forte: sp.forte, cauda: sp.cauda,
-      dados: x.sem_texto ? 0 : pontosDeDados(x.texto, x.n), trecho: s(String(x.texto || '').replace(/\s+/g, ' '), TRECHO_CHARS) };
+    const limpo = x.sem_texto ? '' : semRepetidas(x.texto, repetidas);
+    const sp = x.sem_texto ? { pontos: 0, sinais: [] } : sinaisDoPrograma(limpo);
+    return { n: x.n, limpo, chars: Math.min(PAGINA_MAX_CHARS, String(x.texto || '').length), sem_texto: !!x.sem_texto, pontos: sp.pontos, sinais: sp.sinais,
+      dados: x.sem_texto ? 0 : pontosDeDados(x.texto, x.n), trecho: s(limpo.replace(/\s+/g, ' '), TRECHO_CHARS) };
   });
-  // intervalos contíguos de páginas fortes; UMA página fraca entre duas fortes é continuação (fim de disciplina
-  // sem título), e a página parcial logo depois de uma faixa é a cauda dela
-  const grupos = [];
-  let atual = null;
-  pags.forEach((p, i) => {
-    const ponte = !p.forte && atual && pags[i + 1] && pags[i + 1].forte && pags[i - 1] && pags[i - 1].forte;
-    if (p.forte || ponte || (atual && p.cauda)) { if (!atual) grupos.push(atual = { de: p.n, ate: p.n, pontos: 0, ancora: false }); atual.ate = p.n; atual.pontos += p.pontos; atual.ancora = atual.ancora || p.ancora; }
-    else atual = null;
-  });
-  // vale o intervalo que tem um dos títulos de praxe; sem título em nenhum, só o mais denso — e só se for denso mesmo
-  let bons = grupos.filter(g => g.ancora);
-  if (!bons.length) { const melhor = grupos.slice().sort((a, b) => b.pontos - a.pontos)[0]; bons = melhor && melhor.pontos >= 10 ? [melhor] : []; }
-  const doPrograma = expandir(bons.map(g => [g.de, g.ate])).slice(0, MAX_PAGINAS);
+  const T = trechosDoDocumento(pags);
+  // faixas candidatas: começam num trecho de matéria (ou no título do programa, quando a matéria vem logo depois)
+  // e seguem enquanto houver matéria; UM trecho fraco no meio é ponte; o anexo que não é programa encerra
+  const candidatas = [];
+  for (let i = 0; i < T.length;) {
+    const t = T[i], prox = T[i + 1], depois = T[i + 2];
+    const tituloSolto = t.ancora && !t.forte && t.chars < 700 && prox && (prox.forte || (prox.compativel && depois && depois.forte));
+    if (!t.forte && !tituloSolto) { i++; continue; }
+    const f = { de: i, ate: i, pontes: 0, escaneadas: 0 };
+    for (let k = i + 1; k < T.length; k++) {
+      const u = T[k];
+      if (u.forte) { f.ate = k; continue; }
+      // PONTE: até PONTE_MAX trechos fracos seguidos (fim de disciplina, tabela, página escaneada) com matéria logo depois
+      let j = k;
+      while (j < T.length && j - k < PONTE_MAX && !T[j].forte && (T[j].compativel || T[j].sem_texto)) j++;
+      if (j > k && j < T.length && T[j].forte) { f.pontes += j - k; f.escaneadas += T.slice(k, j).filter(x => x.sem_texto).length; f.ate = j; k = j; continue; }
+      break;
+    }
+    // a página parcial do fim: continuação curta, que não abre anexo novo
+    const fim = T[f.ate + 1];
+    if (fim && fim.cauda && !fim.anexo && !fim.ancora) f.ate++;
+    const seus = T.slice(f.de, f.ate + 1);
+    // o que vem depois (pulando linha solta de cabeçalho): fim NÍTIDO é acabar o arquivo, vir texto de regra ou outro anexo
+    let q = f.ate + 1;
+    while (q < T.length && !T[q].sem_texto && T[q].compativel && !T[q].anexo && T[q].chars < 200) q++;
+    const seguinte = T[q];
+    candidatas.push({ ...f, paginas: [...new Set(seus.map(x => x.n))], ancora: seus.some(x => x.ancora), itens: seus.reduce((n, x) => n + (x.itens || 0), 0),
+      texto: seus.map(x => x.texto).join('\n'), fimClaro: !seguinte || (!seguinte.sem_texto && (!seguinte.compativel || seguinte.anexo)) });
+    i = f.ate + 1;
+  }
+  // vale a faixa com título de praxe; sem título em nenhuma, a que tem corpo (ao menos duas páginas e uma dúzia de itens)
+  let boas = candidatas.filter(c => c.ancora);
+  if (!boas.length) boas = candidatas.filter(c => c.paginas.length >= 2 && c.itens >= FAIXA_SEM_TITULO_MIN_ITENS);
+  // o mesmo programa de novo (resolução anexada, outro anexo com a mesma lista): fica a primeira ocorrência
+  const vistas = new Set(), unicas = [];
+  let repetidasFora = 0;
+  for (const c of boas) {
+    const fr = frasesDe(c.texto);
+    const ja = [...fr].filter(x => vistas.has(x)).length;
+    if (fr.size >= 5 && ja / fr.size >= REPETIDO_FRACAO) { repetidasFora++; continue; }
+    fr.forEach(x => vistas.add(x));
+    unicas.push(c);
+  }
+  const doPrograma = [...new Set(unicas.flatMap(c => c.paginas))].sort((a, b) => a - b).slice(0, MAX_PAGINAS);
   const noPrograma = new Set(doPrograma);
   const dadosPaginas = pags.filter(p => p.dados >= LIMIAR_DADOS && !noPrograma.has(p.n)).sort((a, b) => b.dados - a.dados || a.n - b.n).slice(0, DADOS_MAX_PAGINAS).map(p => p.n).sort((a, b) => a - b);
-  return { faixas: compactar(doPrograma), dados_paginas: dadosPaginas,
+  // a CONFIANÇA: alta só com título de praxe, fim nítido e uma faixa só; baixa quando o que sobra é pouco ou solto
+  let confianca = '', motivo = '';
+  if (unicas.length) {
+    const comTitulo = unicas.every(c => c.ancora), fimClaro = unicas.every(c => c.fimClaro), itens = unicas.reduce((n, c) => n + c.itens, 0);
+    if (!comTitulo && (doPrograma.length < 3 || itens < 30)) { confianca = 'baixa'; motivo = 'não há título de conteúdo programático, e o trecho achado é curto'; }
+    else if (comTitulo && itens < MIN_ITENS * 2 && doPrograma.length < 2) { confianca = 'baixa'; motivo = 'o título do conteúdo programático foi achado, mas quase não há matéria depois dele'; }
+    else if (doPrograma.length < 2) { confianca = 'media'; motivo = 'a faixa achada tem uma página só'; }
+    else if (!comTitulo) { confianca = 'media'; motivo = 'as páginas têm cara de programa, mas não há o título de conteúdo programático'; }
+    else if (unicas.length > 1) { confianca = 'media'; motivo = 'há mais de um trecho com programa no arquivo'; }
+    else if (unicas.some(c => c.escaneadas)) { confianca = 'media'; motivo = 'há página escaneada no meio da faixa (ela entra, mas não dá para saber o que traz)'; }
+    else if (unicas.some(c => c.pontes)) { confianca = 'media'; motivo = 'há página com pouco texto de programa no meio da faixa'; }
+    else if (!fimClaro) { confianca = 'media'; motivo = 'o fim da faixa não está nítido'; }
+    else confianca = 'alta';
+  }
+  return { faixas: compactar(doPrograma), dados_paginas: dadosPaginas, confianca, motivo, repetidas_fora: repetidasFora,
     paginas: pags.map(p => ({ n: p.n, chars: p.chars, sem_texto: p.sem_texto, pontos: p.pontos, sinais: p.sinais, trecho: p.trecho })) };
 }
 // A seleção padrão: a faixa sugerida do programa + as páginas dos dados do concurso, até o limite.
-// Sem faixa de programa não há seleção — o usuário escolhe as páginas (edital escaneado, layout fora do comum).
+// Sem faixa de programa — ou com CONFIANÇA BAIXA — não há seleção: o plano nasce vazio (sem valor) e o
+// usuário escolhe as páginas, vendo o que foi achado. Nada é cobrado por uma faixa que o sistema não sustenta.
 function selecaoSugerida(sug) {
   const doPrograma = expandir(sug.faixas);
-  if (!doPrograma.length) return [];
+  if (!doPrograma.length || sug.confianca === 'baixa') return [];
   const todas = [...new Set(doPrograma.concat(sug.dados_paginas))].slice(0, MAX_PAGINAS);
   return todas.sort((a, b) => a - b);
 }
@@ -169,7 +304,11 @@ function paginasValidas(totalPaginas, paginas) {
 function planejar(paginasInfo, pags) {
   const info = new Map(paginasInfo.map(p => [p.n, p]));
   const grupos = [];
-  for (let i = 0; i < pags.length; i += PAGINAS_POR_LOTE) grupos.push(pags.slice(i, i + PAGINAS_POR_LOTE));
+  const charsDe = (n) => (info.get(n).sem_texto ? 0 : info.get(n).chars);
+  for (const n of pags) {
+    const g = grupos[grupos.length - 1];
+    if (g && g.length < PAGINAS_POR_LOTE && g.reduce((t, k) => t + charsDe(k), 0) + charsDe(n) <= LOTE_MAX_CHARS) g.push(n); else grupos.push([n]);
+  }
   const lotes = grupos.map((paginas, i) => {
     // o último item do lote anterior pode ter sido cortado: orça-se levar o fim dele — só quando as páginas são vizinhas
     const fimAnterior = i ? grupos[i - 1][grupos[i - 1].length - 1] : 0;
@@ -199,7 +338,7 @@ function detalheDoOrcamento(entrada, comPaginas = false) {
   const pl = entrada.plano || { faixas: [], total: 0, escaneadas: 0, com_texto: 0, lotes: [], paginas: [] };
   const sug = entrada.sugestao || { faixas: [], dados_paginas: [] };
   const d = { total_paginas: entrada.total_paginas, sem_texto: entrada.sem_texto || 0, faixas: pl.faixas, paginas: pl.total, escaneadas: pl.escaneadas, com_texto: pl.com_texto,
-    lotes: pl.lotes.length, paginas_por_lote: PAGINAS_POR_LOTE, max_paginas: MAX_PAGINAS, sugestao: { faixas: sug.faixas, dados_paginas: sug.dados_paginas } };
+    lotes: pl.lotes.length, paginas_por_lote: PAGINAS_POR_LOTE, max_paginas: MAX_PAGINAS, sugestao: { faixas: sug.faixas, dados_paginas: sug.dados_paginas, confianca: sug.confianca || '', motivo: sug.motivo || '' } };
   if (comPaginas) {
     const lidas = new Set(pl.paginas), doPrograma = new Set(expandir(sug.faixas)), dosDados = new Set(sug.dados_paginas);
     d.paginas_detectadas = (entrada.paginas_info || []).map(p => ({ n: p.n, sem_texto: p.sem_texto, trecho: p.trecho, sinais: p.sinais, selecionada: lidas.has(p.n),
@@ -304,33 +443,52 @@ const unico = (codigo, usados) => {
   return c;
 };
 
-// Conferência de um trecho contra as páginas candidatas → a página em que foi achado (ou a declarada, se o
-// trecho atravessa duas páginas), ou 0 se não confere.
+// Conferência de um trecho contra as páginas candidatas → a página em que foi achado (a página em que ele
+// COMEÇA, se atravessa a quebra), ou 0 se não confere. O trecho tem de estar por inteiro numa página ou,
+// emendadas as páginas na ordem (já sem cabeçalho e rodapé), atravessando de uma para a outra.
 function paginaQueConfere(trecho, declarada, candidatas, lisoDe) {
   const alvo = liso(trecho);
   if (!alvo) return 0;
   const ordem = [declarada].concat(candidatas.filter(n => n !== declarada));
   for (const n of ordem) if (lisoDe(n).includes(alvo)) return n;
-  return textoConfere(trecho, candidatas.map(lisoDe).join('')) || textoConfere(trecho, candidatas.map(n => lisoDe(n) + '\n').join('')) ? declarada : 0;
+  const pags = candidatas.slice().sort((a, b) => a - b);
+  const inicio = [];
+  let junto = '';
+  for (const n of pags) { inicio.push([junto.length, n]); junto += lisoDe(n); }
+  const k = junto.indexOf(alvo);
+  if (k >= 0) return inicio.reduce((p, [i, n]) => (i <= k ? n : p), pags[0]);
+  return textoConfere(trecho, junto) || textoConfere(trecho, pags.map(n => lisoDe(n) + '\n').join('')) ? declarada : 0;
 }
 
+// `textos` = Map(página → texto) do DOCUMENTO (não só das páginas lidas): é dele que saem o cabeçalho e o
+// rodapé repetidos e as páginas vizinhas contra as quais o item que atravessa a quebra é conferido.
 function montar({ brutos, dadosBrutos = [], textos, escaneadas = [], semTexto = 0 }) {
   const esc = new Set(escaneadas);
-  const cacheLiso = new Map();
-  const lisoDe = (n) => { if (!cacheLiso.has(n)) cacheLiso.set(n, liso(textos.get(n) || '')); return cacheLiso.get(n); };
+  const repetidas = linhasRepetidas([...textos].map(([n, texto]) => ({ n, texto, sem_texto: esc.has(n) })));
+  const cacheLiso = new Map(), cacheBruto = new Map();
+  // os ITENS são conferidos contra a página sem cabeçalho nem rodapé; os DADOS do concurso, contra a página
+  // como ela é (o nome do órgão costuma estar justamente no cabeçalho)
+  const lisoDe = (n) => { if (!cacheLiso.has(n)) cacheLiso.set(n, liso(semRepetidas(textos.get(n) || '', repetidas))); return cacheLiso.get(n); };
+  const lisoBruto = (n) => { if (!cacheBruto.has(n)) cacheBruto.set(n, liso(textos.get(n) || '')); return cacheBruto.get(n); };
+  const temTexto = (n) => textos.has(n) && !esc.has(n) && !!textos.get(n);
   const usados = new Set(), itens = [];
   // escaneada = a página declarada é imagem (ou todas as do lote são): não há texto contra o qual conferir.
-  // Senão, a página em que o trecho foi achado (0 = não confere).
-  const conferir = (trecho, b) => {
+  // Senão, a página em que o trecho foi achado (0 = não confere). As candidatas são as páginas do lote e as
+  // VIZINHAS: o item pode terminar na página seguinte ou ter começado na anterior (a faixa pedida pode abrir no
+  // meio dele); o título da disciplina fica no pé da página de trás quando o primeiro item começa no alto desta.
+  // Conferir contra a vizinha não afrouxa nada: o texto tem de estar, inteiro e emendado, no próprio edital.
+  const conferir = (trecho, b, titulo = false) => {
     const comTexto = b.paginas.filter(n => !esc.has(n));
     if (esc.has(b.pagina) || !comTexto.length) return { escaneada: true, pag: 0 };
-    return { escaneada: false, pag: paginaQueConfere(trecho, b.pagina, comTexto, lisoDe) };
+    // (vizinha de CADA página do lote: um lote pode juntar páginas distantes — a 1 e a 62, numa seleção por faixas)
+    const vizinhas = [...new Set(comTexto.flatMap(n => (titulo ? [n - 1] : [n - 1, n + 1])))].filter(n => temTexto(n) && !comTexto.includes(n));
+    return { escaneada: false, pag: paginaQueConfere(trecho, b.pagina, comTexto.concat(vizinhas), lisoDe) };
   };
   let disc = null, nDisc = 0;
   const novaDisciplina = (titulo, b, identificada) => {
     if (++nDisc > MAX_DISCIPLINAS) throw new Error('a leitura do edital devolveu disciplinas demais');
     const codigo = unico(siglaDe(titulo), usados);
-    const { escaneada, pag } = conferir(titulo, b);
+    const { escaneada, pag } = conferir(titulo, b, true);
     itens.push({ n: itens.length + 1, codigo, pai: '', texto: titulo, raiz: true, disciplina: codigo, pagina: pag || b.pagina, localizacao: `p. ${pag || b.pagina}`,
       pendente: !identificada ? 'disciplina não identificada na leitura — confira no edital' : escaneada ? PENDENTE_ESCANEADA : pag ? '' : PENDENTE });
     disc = { chave: chaveDaDisciplina(titulo), codigo, ultimoPor: new Map(), seq: 0 };
@@ -348,9 +506,9 @@ function montar({ brutos, dadosBrutos = [], textos, escaneadas = [], semTexto = 
     const { escaneada, pag } = conferir(b.texto, b);
     itens.push({ n: itens.length + 1, codigo, pai, texto: b.texto, raiz: false, disciplina: disc.codigo, pagina: pag || b.pagina, localizacao: `p. ${pag || b.pagina}`,
       pendente: escaneada ? PENDENTE_ESCANEADA : b.continua ? PENDENTE_CORTADO : pag ? '' : PENDENTE,
-      ...(codigo !== `${disc.codigo}.${impresso}` ? { desambiguado: true } : {}) });
+      ...(codigo !== `${disc.codigo}.${impresso}` ? { desambiguado: true } : {}), ...(b.codigo ? {} : { sem_numero: true }) });
   }
-  const { dados, descartados } = conferirDados(dadosBrutos, lisoDe, esc);
+  const { dados, descartados } = conferirDados(dadosBrutos, lisoBruto, esc);
   return { aviso: AVISO, itens, dados, resumo: resumir(itens, dados), descartados: { itens_sem_texto: semTexto, dados: descartados, itens_acima_do_limite: Math.max(0, brutos.length - MAX_ITENS) } };
 }
 function resumir(itens, dados) {
@@ -479,10 +637,105 @@ function escolher(resultado, dados = {}) {
   if (!vivos.length) throw erro('Nada para aplicar: todas as disciplinas foram excluídas.');
   return {
     revistos,
-    itens: vivos.map(i => ({ codigo: i.codigo, pai: i.pai, texto: i.texto, localizacao: i.localizacao, pendente: i.pendente })),
+    itens: vivos.map(i => ({ codigo: i.codigo, pai: i.pai, texto: i.texto, localizacao: i.localizacao, pendente: i.pendente, ...(i.sem_numero ? { sem_numero: true } : {}) })),
     disciplinas: vivos.filter(i => i.raiz).map(r => ({ codigo: r.codigo, titulo: r.texto, itens: vivos.filter(i => i.disciplina === r.codigo).map(i => i.codigo) })),
   };
 }
+// ---------------------------------------------------------------------
+// SOMAR — ler o edital em MAIS DE UM PEDIDO. O que este pedido traz entra no programa que o percurso já tem;
+// nada do que veio de outro pedido (ou de outra importação) sai por causa dele.
+//   atuais     os itens do programa vigente do percurso
+//   esc        o que `escolher` devolveu (itens e disciplinas deste pedido, com os códigos DESTE pedido)
+//   meus       os códigos que ESTE pedido pôs no programa da outra vez que foi aplicado: esses ele pode
+//              mudar e tirar (reaplicar com uma disciplina excluída continua sendo retificação, e aparece no diff)
+// Regras:
+//   · a disciplina é reconhecida pelo TÍTULO (sem acento, caixa nem pontuação): a que já existe no percurso
+//     mantém a sigla dela, e os itens deste pedido entram embaixo dela — a sigla nasceu noutro pedido e é ESTÁVEL;
+//   · disciplina nova cuja sigla já é de OUTRA disciplina do percurso ("DCT" de Direito Coletivo × "DCT" de
+//     Direito Constitucional do Trabalho) ganha sigla própria ("DCT-2"): código é único no percurso;
+//   · o item que já está na disciplina com o mesmo texto é o mesmo item (fica com o código que tinha);
+//   · numeração impressa igual com texto PARECIDO (o item que vinha cortado e agora veio inteiro, a redação
+//     corrigida) é ALTERAÇÃO do item (vai ao diff, pede confirmação); com texto que não tem nada a ver, é outro
+//     item que calhou de ter o mesmo número (programa vindo de outro documento) — entra com código próprio;
+//   · item sem numeração (o código era a ordem dentro do pedido) entra depois do último da disciplina.
+// → { itens (o programa inteiro, na ordem), mapa (código do pedido → código no percurso), meus (os códigos que
+//     este pedido põe agora), somadas [{ codigo, titulo }], renomeadas [{ de, para, titulo }] }
+// ---------------------------------------------------------------------
+const palavrasDe = (t) => new Set(semAcento(t).toLowerCase().split(/[^a-z0-9]+/).filter(p => p.length >= 3));
+function mesmoItem(a, b) {
+  const la = liso(a).toLowerCase(), lb = liso(b).toLowerCase();
+  if (Math.min(la.length, lb.length) >= 8 && (la.startsWith(lb) || lb.startsWith(la))) return true; // um é o começo do outro
+  const pa = palavrasDe(a), pb = palavrasDe(b);
+  const comuns = [...pa].filter(p => pb.has(p)).length, todas = new Set([...pa, ...pb]).size;
+  return todas > 0 && comuns / todas >= 0.5;
+}
+function somar(atuais, esc, meus = []) {
+  const todos = atuais || [];
+  const dele = new Set(meus);
+  const porCodigo = new Map(todos.map(i => [i.codigo, i]));
+  const raizDe = (i) => { let x = i; for (let k = 0; k < 12 && x && x.pai && porCodigo.has(x.pai); k++) x = porCodigo.get(x.pai); return x ? x.codigo : ''; };
+  const discDe = new Map(todos.map(i => [i.codigo, raizDe(i)]));
+  // a BASE: o que não é deste pedido — e a disciplina dele que tem item de outra origem embaixo (não se tira o teto de ninguém)
+  const comAlheios = new Set(todos.filter(i => !dele.has(i.codigo)).map(i => discDe.get(i.codigo)));
+  const naBase = (i) => !dele.has(i.codigo) || (!i.pai && comAlheios.has(i.codigo));
+  const base = todos.filter(naBase);
+  const usados = new Set(base.map(i => i.codigo));
+  const raizPorTitulo = new Map(), textoNaDisc = new Map();
+  for (const i of base) {
+    const raiz = discDe.get(i.codigo);
+    if (!i.pai && !raizPorTitulo.has(chaveDaDisciplina(i.texto))) raizPorTitulo.set(chaveDaDisciplina(i.texto), i.codigo);
+    if (i.pai) { if (!textoNaDisc.has(raiz)) textoNaDisc.set(raiz, new Map()); const m = textoNaDisc.get(raiz), k = liso(i.texto).toLowerCase(); if (!m.has(k)) m.set(k, i.codigo); }
+  }
+  const doPedido = new Map(esc.itens.map(i => [i.codigo, i]));
+  const mapa = new Map(), postos = new Set(), entram = [], somadas = [], renomeadas = [];
+  for (const d of esc.disciplinas) {
+    const titulo = doPedido.get(d.codigo);
+    const existente = raizPorTitulo.get(chaveDaDisciplina(d.titulo));
+    let raiz = existente;
+    if (!raiz) { raiz = unico(usados.has(d.codigo) || postos.has(d.codigo) ? siglaDe(d.titulo) : d.codigo, new Set([...usados, ...postos])); if (raiz !== d.codigo) renomeadas.push({ de: d.codigo, para: raiz, titulo: d.titulo }); }
+    else somadas.push({ codigo: raiz, titulo: d.titulo });
+    mapa.set(d.codigo, raiz); postos.add(raiz);
+    // o título: o que o percurso já tem fica como está (texto e pendência); disciplina nova entra como veio
+    if (!existente) entram.push({ ...titulo, codigo: raiz, pai: '', disc: raiz });
+    const jaNaDisc = textoNaDisc.get(raiz) || new Map();
+    let seq = 0;
+    const proximoLivre = () => { let c; do { c = `${raiz}.${++seq}`; } while (usados.has(c) || postos.has(c)); return c; };
+    for (const cod of d.itens) {
+      if (cod === d.codigo) continue;
+      const it = doPedido.get(cod);
+      if (!it) continue;
+      const igual = jaNaDisc.get(liso(it.texto).toLowerCase());
+      let alvo = igual && !postos.has(igual) ? igual : raiz + it.codigo.slice(d.codigo.length);
+      const ocupado = usados.has(alvo) ? porCodigo.get(alvo) : null;
+      const mesmo = alvo === igual || (!!ocupado && !it.sem_numero && discDe.get(alvo) === raiz && mesmoItem(ocupado.texto, it.texto));
+      if (!mesmo && (postos.has(alvo) || usados.has(alvo))) alvo = it.sem_numero ? proximoLivre() : unico(alvo, new Set([...usados, ...postos]));
+      mapa.set(cod, alvo); postos.add(alvo);
+      // leitura INCERTA (pendente, cortada) não toma o lugar de item que já está conferido no percurso: fica o que há
+      // — e o item que já está lá, igual e conferido, não é reescrito (nem passa a ser "deste pedido")
+      if (mesmo && ocupado && !ocupado.pendente && (it.pendente || alvo === igual)) continue;
+      entram.push({ ...it, codigo: alvo, pai: mapa.get(it.pai) || raiz, disc: raiz });
+    }
+  }
+  // a ORDEM: o que já estava fica onde está (o texto muda no lugar); o que é novo entra no fim da disciplina dele
+  const limpo = (i) => ({ codigo: i.codigo, pai: i.pai, texto: i.texto, localizacao: i.localizacao || '', pendente: i.pendente || '', ...(i.sem_numero ? { sem_numero: true } : {}) });
+  const itens = todos.map(i => ({ codigo: i.codigo, pai: i.pai, texto: i.texto, localizacao: i.localizacao || '', pendente: i.pendente || '', peso: i.peso || 0, ...(i.esforco_min ? { esforco_min: i.esforco_min } : {}) }));
+  const escritos = new Set();
+  for (const n of entram) {
+    escritos.add(n.codigo);
+    const novo = limpo(n);
+    delete novo.sem_numero;
+    const k = itens.findIndex(i => i.codigo === n.codigo);
+    if (k >= 0) { itens[k] = { ...itens[k], ...novo }; continue; }
+    let fimDaDisc = -1;
+    itens.forEach((i, x) => { if (discDe.get(i.codigo) === n.disc) fimDaDisc = x; });
+    discDe.set(n.codigo, n.disc);
+    if (fimDaDisc >= 0) itens.splice(fimDaDisc + 1, 0, novo); else itens.push(novo);
+  }
+  // sai só o que era deste pedido e ele não trouxe de novo (a disciplina excluída na revisão, o item desmarcado)
+  const fica = (i) => escritos.has(i.codigo) || !porCodigo.has(i.codigo) || naBase(porCodigo.get(i.codigo));
+  return { itens: itens.filter(fica), mapa, meus: [...escritos], somadas, renomeadas };
+}
+
 // Os dados do concurso como o usuário os confirmou (ou digitou). Vai para o `perfil` do percurso.
 // Nenhum campo de pontuação é aceito aqui — nem que venha no corpo do pedido.
 function dadosConfirmados(d = {}) {
@@ -498,8 +751,8 @@ function dadosConfirmados(d = {}) {
 }
 
 module.exports = {
-  sugerir, selecaoSugerida, sinaisDoPrograma, pontosDeDados, itensCurtos, paginasValidas, planejar, tetoUSD, detalheDoOrcamento, compactar, expandir,
-  instrucoesDoLote, conteudoDoLote, lerLote, montar, resumir, executar, escolher, dadosConfirmados, siglaDe, chaveDaDisciplina, codigoImpresso, tituloLimpo, dataNoTrecho, naturezaDe, sha256,
+  sugerir, selecaoSugerida, sinaisDoPrograma, pontosDeDados, linhasRepetidas, semRepetidas, paginasValidas, planejar, tetoUSD, detalheDoOrcamento, compactar, expandir,
+  instrucoesDoLote, conteudoDoLote, lerLote, montar, resumir, executar, escolher, somar, mesmoItem, paginaQueConfere, dadosConfirmados, siglaDe, chaveDaDisciplina, codigoImpresso, tituloLimpo, dataNoTrecho, naturezaDe, sha256,
   MAX_PAGINAS, PAGINAS_POR_LOTE, SAIDA_POR_LOTE, PAGINA_MAX_CHARS, CARREGA_CHARS, MAX_ITENS, MAX_DISCIPLINAS, MAX_FAIXAS, LIMIAR_PROGRAMA, DADOS_MAX_PAGINAS, ESFORCO_PADRAO_MIN,
-  PENDENTE, PENDENTE_ESCANEADA, PENDENTE_CORTADO, NATUREZAS, AVISO, JUSTIFICATIVA,
+  PENDENTE, PENDENTE_ESCANEADA, PENDENTE_CORTADO, NATUREZAS, AVISO, JUSTIFICATIVA, CONFIANCAS, LOTE_MAX_CHARS,
 };

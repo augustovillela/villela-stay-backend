@@ -130,6 +130,9 @@ async function rodar({ t, req, EST, impId }) {
       I(DA, '3', 'Responsabilidade civil do Estado.', 6),              // o item cortado, agora inteiro
       I('', '4', 'Agentes públicos.', 6), I('', '5', 'Controle da administração pública.', 6), ...ITENS_DT(),
     ], dados: [] }),
+    // (para "ler o edital em mais de um pedido") a página 3 lida sozinha: uma disciplina cuja SIGLA é a de outra
+    // (Direito do Turismo × Direito do Trabalho) e dois tópicos sem numeração de uma disciplina que já existe
+    3: () => ({ itens: [I('DIREITO DO TURISMO', '1', 'Política nacional de turismo.', 3), I(NI, '', 'Segurança da informação;', 3), I(NI, '', 'Redes de computadores.', 3)], dados: [] }),
     '5, 6': () => ({ itens: [...ITENS_DC('Organização do Estado.'), I(DA, '1', 'Atos administrativos.', 5), I(DA, '2', 'Licitações e contratos.', 5),
       I(DA, '3', 'Responsabilidade civil do Estado.', 5), I(DA, '4', 'Agentes públicos.', 6), I(DA, '5', 'Controle da administração pública.', 6), ...ITENS_DT()], dados: [] }),
   };
@@ -168,21 +171,22 @@ async function rodar({ t, req, EST, impId }) {
   const DADOS_CONFIRMADOS = () => ({ orgao: 'Tribunal Regional de Teste', banca: 'Fundação Banca Exemplo', cargo: 'Analista Judiciário', data_prova: DATA_ISO,
     etapas: [{ nome: 'prova objetiva', natureza: 'objetiva' }, { nome: 'prova discursiva', natureza: 'discursiva' }], questoes: [{ bloco: 'prova objetiva', quantidade: 60 }] });
 
-  await t('edital: a FAIXA do programa é sugerida sem provedor — títulos, disciplinas em maiúsculas e itens numerados curtos; regra numerada longa não engana', async () => {
+  await t('edital: a FAIXA do programa é sugerida sem provedor — título de praxe em linha de título, vocabulário de programa (e não de regra), itens numerados; regra numerada não engana', async () => {
     EDITAL = await montarPdf(PAGINAS);
     SO_REGRAS = await montarPdf([PAGINAS[0], PAGINAS[1], PAGINAS[2], PAGINAS[6]]);
     const leitura = await pdf.ler(EDITAL);
     assert.deepEqual([leitura.paginas, leitura.textos.filter(x => x.sem_texto).map(x => x.n)], [8, [8]]);
     const sug = ep.sugerir(leitura.textos);
     assert.deepEqual(sug.faixas, [[4, 6]], 'as três páginas do programa, e só elas: ' + JSON.stringify(sug.paginas.map(p => [p.n, p.pontos])));
+    assert.deepEqual([sug.confianca, sug.motivo, ep.CONFIANCAS], ['alta', '', ['alta', 'media', 'baixa']], 'título de praxe, uma faixa só, e o anexo seguinte (cronograma) fecha a faixa');
     assert.deepEqual(sug.dados_paginas, [1, 2], 'cargo e banca na página 1; etapas, data e número de questões na 2');
     const pg = (n) => sug.paginas.find(p => p.n === n);
-    assert.ok(pg(4).sinais.some(x => /conteúdo programático/.test(x)) && pg(4).sinais.some(x => /nome\(s\) de disciplina/.test(x)) && pg(4).sinais.some(x => /itens numerados curtos/.test(x)), JSON.stringify(pg(4).sinais));
+    assert.ok(pg(4).sinais.some(x => /título do programa/.test(x)) && pg(4).sinais.some(x => /nome\(s\) de disciplina/.test(x)) && pg(4).sinais.some(x => /itens numerados/.test(x)), JSON.stringify(pg(4).sinais));
     assert.ok(pg(4).trecho.startsWith('ANEXO I - CONTEÚDO PROGRAMÁTICO') && pg(4).trecho.length <= 160 && pg(8).trecho === '' && pg(8).sem_texto, 'o começo de cada página, para o usuário reconhecer');
     // a página 2 CITA o conteúdo programático ("consta do Anexo I") e é toda numerada — e não é programa
-    assert.ok(pg(2).pontos >= ep.LIMIAR_PROGRAMA && !sug.faixas.some(([de, ate]) => de <= 2 && ate >= 2), 'título citado sem matéria não abre faixa');
-    // a página 6 é parcial (um resto de disciplina): sozinha não abriria faixa, mas continua a que vinha
-    assert.ok(pg(6).pontos < ep.LIMIAR_PROGRAMA);
+    assert.deepEqual([pg(2).pontos, pg(2).sinais, sug.faixas.some(([de, ate]) => de <= 2 && ate >= 2)], [0, ['texto de regras'], false], 'título citado no meio de frase, em página de regra, não abre faixa');
+    // a página 6 é parcial (um resto de disciplina): sozinha não abre faixa, mas continua a que vinha
+    assert.ok(pg(6).pontos >= ep.LIMIAR_PROGRAMA && pg(6).pontos < pg(4).pontos);
     assert.deepEqual(ep.sugerir(leitura.textos.filter(x => x.n === 6)).faixas, []);
     assert.deepEqual(ep.selecaoSugerida(sug), [1, 2, 4, 5, 6], 'a seleção padrão: programa + dados do concurso');
     // edital só de regras: nenhuma faixa, nenhuma seleção
@@ -191,12 +195,24 @@ async function rodar({ t, req, EST, impId }) {
     // sinais isolados
     assert.equal(ep.sinaisDoPrograma('SUMÁRIO\nANEXO I - CONTEÚDO PROGRAMÁTICO ........ 45\nANEXO II - CRONOGRAMA ........ 60').forte, false, 'sumário não é programa');
     assert.equal(ep.sinaisDoPrograma('OBJETOS DE AVALIAÇÃO\nDIREITO CIVIL: 1 Lei de introdução. 2 Pessoas naturais. 3 Bens.').forte, true);
-    assert.equal(ep.itensCurtos('1 Principios. 2 Fontes. 2.1 Hierarquia. 3 Relacao de emprego.'), 4);
+    assert.equal(ep.sinaisDoPrograma('1 Principios. 2 Fontes. 2.1 Hierarquia. 3 Relacao de emprego.').itens, 4);
+    assert.deepEqual([ep.sinaisDoPrograma('9.1 O candidato deverá apresentar o requerimento de inscrição. 9.2 Não será aceito recurso fora do prazo deste edital. 9.3 A comissão convocará os candidatos.').forte,
+      ep.sinaisDoPrograma('Nome: ________________ CPF: ______________ 1) Endereço: ____________ 2) Cidade: ____________ 3) Telefone: __________').compativel,
+      ep.sinaisDoPrograma('ANEXO III - CRONOGRAMA\nInscrições 09/01/2023 a 15/02/2023\nIsenção 09/01/2023 a 27/01/2023\nResultado 02/03/2023\nProva 14/05/2023').compativel], [false, false, false], 'regra numerada, formulário e cronograma não são programa');
     assert.ok(!/api\.openai\.com|anthropic|messages\.create|t\.passo\(/.test(fs.readFileSync(path.join(__dirname, 'edital-pdf.js'), 'utf8').split('// EXECUTAR')[0].split('// O PEDIDO AO MODELO')[0]), 'a sugestão da faixa não fala com provedor');
   });
 
   await t('edital: as peças puras — faixas e limite de 60 páginas, plano em lotes de 2, teto por lote, siglas, códigos e a conferência dos dados', async () => {
-    assert.deepEqual([ep.MAX_PAGINAS, ep.PAGINAS_POR_LOTE, ep.SAIDA_POR_LOTE, ep.ESFORCO_PADRAO_MIN, ia.maxSaida('edital') >= ep.SAIDA_POR_LOTE], [60, 2, 12000, [20, 45], true]);
+    assert.deepEqual([ep.MAX_PAGINAS, ep.PAGINAS_POR_LOTE, ep.SAIDA_POR_LOTE, ep.ESFORCO_PADRAO_MIN, ia.maxSaida('edital') >= ep.SAIDA_POR_LOTE], [60, 2, 9000, [20, 45], true]);
+    const PRECO = ia.precoTeto(); // o teto é orçado ao preço mais caro da fila de modelos
+    // A SAÍDA POR LOTE — números do edital real (Anexo II do II CNU da Magistratura do Trabalho, 15 páginas, 218 itens),
+    // medidos em 11/10/2026 com o oráculo no papel de modelo: o maior JSON perfeito de um lote de 2 páginas tem 10.377
+    // caracteres. Folga exigida: 60 % a 3 caracteres por token (a conta do orçamento); e ainda sobra a 2,3.
+    assert.ok(Math.ceil(10377 / 3) <= ep.SAIDA_POR_LOTE * 0.4 && Math.ceil(10377 / 2.3) <= ep.SAIDA_POR_LOTE * 0.55, 'o pior lote real cabe na saída do lote com a folga pedida');
+    // página de diário oficial (três colunas, 17 mil caracteres): não divide o lote com outra
+    const denso = [1, 2, 3].map(n => ({ n, chars: n === 3 ? 2000 : 9000, sem_texto: false }));
+    assert.deepEqual([ep.LOTE_MAX_CHARS, ep.planejar(denso, [1, 2, 3]).lotes.map(l => l.paginas)], [10000, [[1], [2], [3]]], 'o lote fecha antes de passar do limite de caracteres');
+    assert.deepEqual(ep.planejar([1, 2, 3].map(n => ({ n, chars: 4000, sem_texto: false })), [1, 2, 3]).lotes.map(l => l.paginas), [[1, 2], [3]]);
     assert.deepEqual(ep.paginasValidas(200, [[30, 41], [1, 1], [40, 44]]), [1].concat(Array.from({ length: 15 }, (_, k) => 30 + k)), 'faixas que se sobrepõem contam uma vez, em ordem');
     assert.deepEqual([ep.paginasValidas(8, [4, 6]), ep.paginasValidas(8, [[7]])], [[4, 5, 6], [7]], '[de, ate] solto e página única também valem');
     assert.throws(() => ep.paginasValidas(200, [[1, 61]]), /até 60 páginas/);
@@ -210,8 +226,8 @@ async function rodar({ t, req, EST, impId }) {
       [6, 1, 5, [[1, 2], [4, 6], [8, 8]], [[[1, 2], 3000, [], 0], [[4, 5], 9000, [], 0], [[6, 8], 6000, [8], 2500]]], 'só o lote que continua a página vizinha orça levar o fim dela');
     assert.deepEqual([ep.planejar(info, []).lotes, ep.tetoUSD({ plano: ep.planejar(info, []) })], [[], 0], 'sem página, sem lote e sem valor');
     const usd = (pags) => ep.tetoUSD({ plano: ep.planejar(info, pags) });
-    assert.ok(Math.abs(usd([7, 8]) - usd([7]) - ia.TOKENS_POR_PAGINA_PDF * 3 / 1e6) < 1e-9, 'a página escaneada custa o teto de página de PDF');
-    assert.ok(usd([1, 2, 3]) > usd([1, 2]) + ep.SAIDA_POR_LOTE * 15 / 1e6 - 1e-9, 'um lote a mais, uma saída máxima a mais');
+    assert.ok(Math.abs(usd([7, 8]) - usd([7]) - ia.TOKENS_POR_PAGINA_PDF * PRECO.in / 1e6) < 1e-9, 'a página escaneada custa o teto de página de PDF');
+    assert.ok(usd([1, 2, 3]) > usd([1, 2]) + ep.SAIDA_POR_LOTE * PRECO.out / 1e6 - 1e-9, 'um lote a mais, uma saída máxima a mais');
     // siglas e códigos
     assert.deepEqual([LP, NI, DC, DA, DT, 'INFORMÁTICA', 'Raciocínio Lógico-Matemático', 'Direito Processual do Trabalho', '— —'].map(ep.siglaDe), ['LP', 'NI', 'DC', 'DA', 'DT', 'INF', 'RLM', 'DPT', 'D']);
     assert.deepEqual(['1.', ' 2.1 ', '(a)', 'IV', '10.2.3.', '1.2.b', 'item 3', '1,2', ''].map(ep.codigoImpresso), ['1', '2.1', 'a', 'IV', '10.2.3', '1.2.b', '', '', '']);
@@ -268,13 +284,13 @@ async function rodar({ t, req, EST, impId }) {
     assert.deepEqual([pedido.estado, pedido.tipo, pedido.cobrado_milesimos, pedido.edital.arquivo], ['orcado', 'edital', 0, 'edital-trt.pdf']);
     const d = orcamento.detalhe;
     assert.deepEqual([d.total_paginas, d.sem_texto, d.faixas, d.paginas, d.escaneadas, d.com_texto, d.lotes, d.paginas_por_lote, d.max_paginas, d.sugestao],
-      [8, 1, [[1, 2], [4, 6]], 5, 0, 5, 3, 2, 60, { faixas: [[4, 6]], dados_paginas: [1, 2] }], 'o orçamento diz o que será lido: páginas, lotes e a sugestão');
+      [8, 1, [[1, 2], [4, 6]], 5, 0, 5, 3, 2, 60, { faixas: [[4, 6]], dados_paginas: [1, 2], confianca: 'alta', motivo: '' }], 'o orçamento diz o que será lido: páginas, lotes e a sugestão, com a confiança dela');
     assert.deepEqual(d.paginas_detectadas.map(p => [p.n, p.sugerida, p.selecionada, p.sem_texto]),
       [[1, 'dados', true, false], [2, 'dados', true, false], [3, '', false, false], [4, 'programa', true, false], [5, 'programa', true, false], [6, 'programa', true, false], [7, '', false, false], [8, '', false, true]]);
     assert.ok(d.paginas_detectadas[3].trecho.startsWith('ANEXO I - CONTEÚDO PROGRAMÁTICO') && d.paginas_detectadas[4].trecho.includes('DIREITO CONSTITUCIONAL'), 'um trecho de cada página, para reconhecer');
     const e = JSON.parse(db.prepare('SELECT entrada FROM est_pedidos WHERE id = ?').get(pedidoEdna).entrada);
     assert.equal(tetoEdna, carteira.precoEmMilesimos(ep.tetoUSD(e)), 'o teto é o do plano de leitura');
-    assert.ok(tetoEdna > carteira.precoEmMilesimos(3 * ep.SAIDA_POR_LOTE * 15 / 1e6) && /R\$/.test(orcamento.orcamento), 'cobre a saída máxima dos três lotes');
+    assert.ok(tetoEdna > carteira.precoEmMilesimos(3 * ep.SAIDA_POR_LOTE * ia.precoTeto().out / 1e6) && /R\$/.test(orcamento.orcamento), 'cobre a saída máxima dos três lotes');
     assert.ok(e.edital_sha256.length === 64 && !JSON.stringify(e).includes('Planilhas eletrônicas') && e.paginas_info.every(p => p.trecho.length <= 160), 'do texto do edital, o pedido guarda só o começo de cada página');
     assert.deepEqual([orcamento.cobranca, orcamento.saldo_milesimos, orcamento.saldo_suficiente, orcamento.falta_milesimos], ['paga', 0, false, tetoEdna]);
     assert.deepEqual([carteira.saldo(edna), movs(edna, 'reserva'), chamadas.length], [0, 0, 0], 'orçar não cobra e não chama o provedor');
@@ -605,8 +621,15 @@ async function rodar({ t, req, EST, impId }) {
     const p1 = await lerEdital('maria', { edital_media_id: midia, destino: { escopo: SLUG }, paginas: [[5, 6]] });
     assert.deepEqual([p1.estado, p1.cobrado_milesimos], ['pronto', carteira.precoEmMilesimos(0.0105)]);
     const pv = await previa('maria', p1.id);
-    assert.deepEqual([pv.st, pv.json.retificacao, pv.json.destino.escopo, pv.json.destino.particular, pv.json.diff.removidos_total, pv.json.diff.adicionados_total, pv.json.diff.mudou],
-      [200, true, SLUG, false, itensAntes.length, 15, true], pv.texto);
+    // o que o pedido leu SOMA ao programa do curso: nada do que estava lá sai — a não ser que ela peça para substituir
+    assert.deepEqual([pv.st, pv.json.retificacao, pv.json.destino.escopo, pv.json.destino.particular, pv.json.diff.removidos_total, pv.json.diff.adicionados_total, pv.json.diff.mudou, pv.json.soma.substituir, pv.json.programa.itens],
+      [200, true, SLUG, false, 0, 14, true, false, itensAntes.length + 14], pv.texto);
+    // "Direito do Trabalho" já era disciplina do curso (código 1): os itens do edital entram embaixo dela. O número
+    // igual com assunto diferente ("1.1 Prescrição" × "1 Princípios.") NÃO sobrescreve o item do curso: ganha código próprio
+    assert.deepEqual([pv.json.soma.disciplinas_somadas, pv.json.diff.alterados_total, pv.json.diff.adicionados.map(x => x.codigo).slice(0, 3)], [[{ codigo: '1', titulo: 'DIREITO DO TRABALHO' }], 0, ['1.1-2', '1.2-2', '1.3']], pv.texto);
+    const troca = await previa('maria', p1.id, { substituir: true });
+    assert.deepEqual([troca.st, troca.json.soma.substituir, troca.json.diff.removidos_total, troca.json.diff.adicionados_total, troca.json.programa.itens], [200, true, itensAntes.length, 15, 15], 'substituir é escolha expressa, e o diff mostra tudo o que sai');
+    assert.deepEqual([(await aplicar('maria', p1.id, { substituir: true })).st, R.itens(R.Escopos.porSlug(impId, SLUG)).length], [409, itensAntes.length], 'nem substituindo passa sem a confirmação');
     const sem = await aplicar('maria', p1.id);
     assert.deepEqual([sem.st, sem.json.motivo], [409, 'confirmar_retificacao'], sem.texto);
     assert.deepEqual([R.Escopos.porSlug(impId, SLUG).versao, R.itens(R.Escopos.porSlug(impId, SLUG)).map(i => i.codigo)], [doCurso.versao, itensAntes], 'o programa do curso não mudou');
@@ -640,6 +663,194 @@ async function rodar({ t, req, EST, impId }) {
     const painel = await req('GET', '/staff/api/academy/estudo/pedidos', { semUser: true, chave: true });
     assert.ok(painel.json.contagem.some(x => x.tipo === 'edital' && x.estado === 'aplicado' && x.n === 3) && painel.json.contagem.some(x => x.tipo === 'edital' && x.estado === 'falhou' && x.cobrado === 0), JSON.stringify(painel.json.contagem));
     assert.ok(!painel.texto.includes('Tipologia'));
+  });
+
+  // =====================================================================
+  // ENSAIO COM OS PDFs REAIS (11/10/2026) — os defeitos que ele achou, reproduzidos aqui em miniatura. As medidas nos
+  // dez editais reais ficam fora do repositório (dados\\estude\\teste-real-pedidos); estes testes guardam o desenho.
+  // =====================================================================
+  const CAB = (n) => `CONSELHO DE TESTE | CONCURSO PÚBLICO 2023 ${n}`;
+  const pag = (n, linhas, cabecalho = true) => ({ n, texto: (cabecalho && linhas.length ? [CAB(n)] : []).concat(linhas).join('\n'), sem_texto: !linhas.length });
+  const REGRAS = (k) => [`${k} DAS INSCRIÇÕES E DOS RECURSOS`, `${k}.1 O candidato deverá realizar a inscrição exclusivamente pela internet, conforme este edital.`,
+    `${k}.2 Não será aceita inscrição fora do prazo; o candidato poderá interpor recurso dirigido à comissão.`, `${k}.3 A comissão convocará os candidatos aprovados por meio de edital, e a convocação será publicada no portal.`];
+  // item LONGO (um parágrafo, bem mais que 130 caracteres), como os do edital da FGV — a heurística antiga só contava item curto
+  const ITEM = (n, tema) => `${n}. ${tema}: conceito, características, natureza jurídica e classificação. Fontes formais e materiais. Princípios aplicáveis e a\njurisprudência dominante dos Tribunais Superiores sobre ${tema.toLowerCase()}, com as hipóteses de exceção previstas em lei especial.`;
+  const MATERIA = (titulo, de, ate) => (titulo ? [titulo] : []).concat(Array.from({ length: ate - de + 1 }, (_, k) => ITEM(de + k, `Tema ${de + k} da disciplina`)));
+  const CRONOGRAMA = ['ANEXO III - CRONOGRAMA', 'Período de inscrições 09/01/2023 a 15/02/2023', 'Requerimento de isenção 09/01/2023 a 27/01/2023', 'Resultado das isenções 02/03/2023', 'Aplicação da prova objetiva 14/05/2023', 'Gabarito preliminar 16/05/2023'];
+  // o edital no formato do paradigma: cabeçalho em toda página, tabela que CITA o conteúdo programático, anexo de vagas,
+  // disciplina em maiúsculas SEM dois-pontos, itens longos, uma página fraca no meio e a página parcial do fim
+  const PARADIGMA = (fracaNoMeio) => [
+    pag(1, REGRAS(1)), pag(2, REGRAS(2)), pag(3, REGRAS(3)),
+    pag(4, ['Título', 'Pontuação', 'Sugestão de Forma de Comprovação', 'atribuições exercidas, o curso, a matéria, o', 'conteúdo programático, a', 'carga horária e a forma de admissão', 'III - Exercício de outro cargo privativo de bacharel em Direito']),
+    pag(5, ['ANEXO I – DAS VAGAS', 'TRIBUNAL VAGA (S)', 'Tribunal Regional do Trabalho da 1ª Região - Rio de Janeiro 45', 'Tribunal Regional do Trabalho da 2ª Região – São Paulo 85', 'TOTAL DE CARGOS VAGOS 300']),
+    pag(6, ['ANEXO II - CONTEÚDO PROGRAMÁTICO', 'CARGO: JUIZ(A) DO TRABALHO SUBSTITUTO(A)', 'BLOCO I'].concat(MATERIA('DIREITO INDIVIDUAL DO TRABALHO', 1, 4))),
+    pag(7, ['e terceirização. Responsabilidade subsidiária e solidária.'].concat(MATERIA('', 5, 8))),
+    pag(8, fracaNoMeio ? ['trabalho em domicílio e ao teletrabalho, com as regras próprias de cada regime, as hipóteses de', 'enquadramento sindical diferenciado, as categorias profissionais regulamentadas em lei especial e',
+      'os efeitos da negociação coletiva sobre cada uma dessas modalidades de prestação pessoal de serviços'] : MATERIA('', 9, 12)),
+    pag(9, MATERIA('DIREITO COLETIVO DO TRABALHO', 1, 4)),
+    pag(10, ['do Trabalho.', '9. Princípios de Bangalore sobre a conduta judicial.', '10. O controle jurisdicional da convencionalidade.']),
+    pag(11, CRONOGRAMA),
+  ];
+
+  await t('edital/faixa (defeito 1 do ensaio real): disciplina em maiúsculas sem dois-pontos, itens longos e página fraca no meio não quebram a faixa; o anexo vai até o próximo anexo; título citado em tabela não abre faixa', async () => {
+    const bom = ep.sugerir(PARADIGMA(false));
+    assert.deepEqual([bom.faixas, bom.confianca, bom.motivo], [[[6, 10]], 'alta', ''], JSON.stringify(bom.paginas.map(p => [p.n, p.pontos, p.sinais])));
+    // a página fraca no meio (o resto de um item longo, sem número nem título) é PONTE: a faixa segue — e isso é dito
+    const fraca = ep.sugerir(PARADIGMA(true));
+    assert.deepEqual([fraca.faixas, fraca.confianca, /pouco texto de programa no meio/.test(fraca.motivo)], [[[6, 10]], 'media', true], fraca.motivo);
+    assert.deepEqual(ep.selecaoSugerida(fraca).filter(n => n >= 4), [6, 7, 8, 9, 10], 'confiança média: a faixa vem marcada (com o aviso); a 4 (tabela) e a 5 (vagas) ficam de fora');
+    // o cabeçalho repetido sai do trecho que a tela mostra (era o mesmo em todas as páginas) e da conta
+    const pg = (n) => bom.paginas.find(p => p.n === n);
+    assert.ok(pg(6).trecho.startsWith('ANEXO II - CONTEÚDO PROGRAMÁTICO') && pg(6).sinais.includes('título do programa') && pg(1).sinais.includes('texto de regras') && pg(11).pontos === 0, JSON.stringify([pg(6), pg(1)]));
+    const rep = ep.linhasRepetidas(PARADIGMA(false));
+    assert.deepEqual([rep.size, ep.semRepetidas(PARADIGMA(false)[5].texto, rep).split('\n')[0], ep.semRepetidas('1988\ntexto', rep)], [1, 'ANEXO II - CONTEÚDO PROGRAMÁTICO', '1988\ntexto'], 'só a linha que se repete na borda das páginas');
+    // título de praxe só vale em LINHA DE TÍTULO: seção das regras que cita o programa, frase e tabela não são âncora
+    const ancora = (t2) => ep.sinaisDoPrograma(t2).ancora;
+    assert.deepEqual(['ANEXO II - CONTEÚDO PROGRAMÁTICO', 'ANEXO I – PROGRAMA', 'PROGRAMA PARA CONCURSO DE JUIZ DO TRABALHO SUBSTITUTO', 'OBJETOS DE AVALIAÇÃO (PROGRAMA)', 'A. PROGRAMA GERAL'].map(ancora), [true, true, true, true, true]);
+    assert.deepEqual(['6. DAS ETAPAS E PROGRAMA DO CONCURSO', 'XVI- DO PROGRAMA', 'DAS ETAPAS E DO PROGRAMA DO CONCURSO', '2.4 O conteúdo programático consta do Anexo I deste edital.', 'curso, a matéria, o\nconteúdo programático, a\ncarga horária',
+      'ANEXO I - CONTEÚDO PROGRAMÁTICO ........ 45'].map(ancora), [false, false, false, false, false, false]);
+    // página ESCANEADA no meio do programa: entra na faixa (não dá para saber o que traz) e a confiança cai
+    const esc = PARADIGMA(false).map(p => (p.n === 8 ? pag(8, []) : p));
+    const comEsc = ep.sugerir(esc);
+    assert.deepEqual([comEsc.faixas, comEsc.confianca, /escaneada no meio/.test(comEsc.motivo)], [[[6, 10]], 'media', true]);
+    // o MESMO programa de novo mais adiante (a resolução anexada ao edital): sugerido uma vez só
+    const repetido = PARADIGMA(false).concat([pag(12, REGRAS(9)), pag(13, ['ANEXO DA RESOLUÇÃO ADMINISTRATIVA Nº 907/2002', 'PROGRAMA PARA CONCURSO DE JUIZ DO TRABALHO SUBSTITUTO'].concat(MATERIA('· DIREITO INDIVIDUAL DO TRABALHO', 1, 8))),
+      pag(14, MATERIA('', 9, 12).concat(MATERIA('· DIREITO COLETIVO DO TRABALHO', 1, 4))), pag(15, REGRAS(10))]);
+    const semRepetir = ep.sugerir(repetido);
+    assert.deepEqual([semRepetir.faixas, semRepetir.repetidas_fora], [[[6, 10]], 1], 'o programa repetido não é cobrado duas vezes');
+  });
+
+  await t('edital/faixa: programa SEM título de praxe (o anexo abre direto na disciplina) é achado pelo corpo, com confiança média; trecho curto e solto tem confiança BAIXA — e aí nada vem marcado nem orçado', async () => {
+    const curto = (n, k) => `${n}) Tópico ${k} da matéria: conceito, classificação e efeitos.`;
+    const lista = (de, ate) => Array.from({ length: ate - de + 1 }, (_, k) => curto(de + k, de + k));
+    // formato do TRT-23: "ANEXO I" e, logo abaixo, a disciplina — sem "conteúdo programático" em lugar nenhum; o programa segue pelo Anexo II
+    const SEM_TITULO = [pag(1, REGRAS(1), false), pag(2, REGRAS(2), false),
+      pag(3, ['ANEXO I', 'DIREITO INDIVIDUAL DO TRABALHO'].concat(lista(1, 14)), false), pag(4, lista(15, 28), false),
+      pag(5, ['ANEXO II', 'NOÇÕES GERAIS DE DIREITO E FORMAÇÃO HUMANÍSTICA', 'A) SOCIOLOGIA DO DIREITO'].concat(lista(1, 8)), false),
+      pag(6, ['5. Ideologias.', '6. A Declaração Universal dos Direitos do Homem (ONU).'], false),
+      pag(7, ['ANEXO III', 'REQUERIMENTO DE INSCRIÇÃO PRELIMINAR', 'Nome: ______________________ CPF: ______________', 'Endereço: ____________________ Cidade: ____________', 'O candidato declara que conhece o edital e requer a sua inscrição.'], false)];
+    const s1 = ep.sugerir(SEM_TITULO);
+    assert.deepEqual([s1.faixas, s1.confianca, /não há o título de conteúdo programático/.test(s1.motivo)], [[[3, 6]], 'media', true], JSON.stringify(s1));
+    assert.deepEqual(ep.selecaoSugerida(s1).filter(n => n >= 3), [3, 4, 5, 6], 'o anexo que também é programa continua a faixa; a página parcial do fim entra; o formulário, não');
+    // duas páginas soltas com uma dúzia de itens, sem título: é palpite — confiança baixa, nenhuma seleção
+    const SOLTO = [pag(1, REGRAS(1), false), pag(2, REGRAS(2), false), pag(3, ['DIREITO CIVIL'].concat(lista(1, 6)), false), pag(4, lista(7, 12), false), pag(5, REGRAS(5), false)];
+    const s2 = ep.sugerir(SOLTO);
+    assert.deepEqual([s2.faixas, s2.confianca, ep.selecaoSugerida(s2)], [[[3, 4]], 'baixa', []], JSON.stringify(s2));
+    // pelo pedido: o plano nasce VAZIO (valor zero), a sugestão vai com o aviso, confirmar é recusado — só paga quem escolheu as páginas
+    const m = await enviar('edna', await montarPdf(SOLTO.map(p => p.texto.split('\n'))), 'edital-incerto.pdf');
+    const c = await pedir('edna', { edital_media_id: m });
+    assert.equal(c.st, 200, c.texto);
+    const d = c.json.orcamento.detalhe;
+    assert.deepEqual([c.json.orcamento.orcamento_milesimos, d.paginas, d.lotes, d.sugestao.faixas, d.sugestao.confianca, d.sugestao.motivo.length > 10], [0, 0, 0, [[3, 4]], 'baixa', true], c.texto);
+    assert.deepEqual(d.paginas_detectadas.filter(p => p.sugerida === 'programa').map(p => [p.n, p.selecionada]), [[3, false], [4, false]], 'as páginas achadas aparecem como sugestão, desmarcadas');
+    const edna = uid(EDNA.email), r0 = movs(edna, 'reserva');
+    const conf = await confirmar('edna', c.json.pedido.id, 1);
+    assert.deepEqual([conf.st, /Escolha as páginas/.test(conf.json.erro), /Nada foi cobrado/.test(conf.json.erro), movs(edna, 'reserva') - r0], [409, true, true, 0], conf.texto);
+    const escolhe = await paginas('edna', c.json.pedido.id, [[3, 4]]);
+    assert.ok(escolhe.st === 200 && escolhe.json.orcamento.orcamento_milesimos > 0 && escolhe.json.orcamento.detalhe.sugestao.confianca === 'baixa', 'escolhidas as páginas, há valor — e o aviso continua na tela');
+    assert.equal((await req('POST', `${base}/pedidos/${c.json.pedido.id}/cancelar`, { jar: 'edna' })).json.pedido.estado, 'cancelado');
+    // a tela diz a confiança antes do valor
+    const tela = fs.readFileSync(path.join(__dirname, '..', 'app-estudo.js'), 'utf8');
+    for (const parte of ["sg.confianca === 'baixa'", 'Sugestão de confiança baixa', 'nenhuma página veio marcada e nada foi orçado', "sg.confianca === 'media'", 'Confira a faixa antes de pagar']) assert.ok(tela.includes(parte), 'a tela perdeu: ' + parte);
+  });
+
+  await t('edital/conferência (defeitos 6 e 7 do ensaio real): item que atravessa a quebra de página e título de disciplina no pé da página anterior CONFEREM — sem cabeçalho no meio, e sem criar falso "conferido"', async () => {
+    const T = new Map([
+      [9, [CAB(9), '7. Contratos em espécie.', '8. Responsabilidade civil.'].join('\n')],
+      [10, [CAB(10), 'DIREITO CIVIL', '1. Pessoas naturais. Capacidade e'].join('\n')],
+      [11, [CAB(11), 'incapacidade. Direitos da personalidade.', '2. Bens. Classificação dos bens.', 'DIREITO PENAL'].join('\n')],
+      [12, [CAB(12), '1. Aplicação da lei penal. Princípio da legalidade e'].join('\n')],
+      [13, [CAB(13), 'da anterioridade.', '2. Crime: conceito e classificação.'].join('\n')],
+    ]);
+    const B = (disciplina, codigo, texto, pagina, paginas) => ({ disciplina, codigo, pai: '', texto, pagina, continua: false, paginas });
+    const INTEIRO_1 = 'Pessoas naturais. Capacidade e incapacidade. Direitos da personalidade.', INTEIRO_2 = 'Aplicação da lei penal. Princípio da legalidade e da anterioridade.';
+    const r = ep.montar({ textos: T, brutos: [
+      B('DIREITO CIVIL', '1', INTEIRO_1, 10, [10, 11]),          // atravessa a quebra DENTRO do lote: o cabeçalho da página 11 fica no meio
+      B('DIREITO CIVIL', '2', 'Bens. Classificação dos bens.', 11, [10, 11]),
+      B('DIREITO PENAL', '1', INTEIRO_2, 12, [12, 13]),          // o título "DIREITO PENAL" está no pé da página 11, fora do lote
+      B('DIREITO PENAL', '2', 'Crime: conceito e classificação.', 13, [12, 13]),
+    ], dadosBrutos: [{ campo: 'orgao', valor: 'Conselho de Teste', pagina: 10, trecho: 'CONSELHO DE TESTE | CONCURSO PÚBLICO 2023', natureza: '', quantidade: 0, paginas: [10, 11] }] });
+    assert.deepEqual(r.itens.map(i => [i.codigo, i.pendente, i.localizacao]), [['DC', '', 'p. 10'], ['DC.1', '', 'p. 10'], ['DC.2', '', 'p. 11'], ['DP', '', 'p. 11'], ['DP.1', '', 'p. 12'], ['DP.2', '', 'p. 13']],
+      'nenhum pendente: o item é conferido contra as duas páginas emendadas (sem o cabeçalho), e o título contra a página de trás');
+    assert.deepEqual([r.resumo.pendentes, r.dados.orgao.map(x => x.valor)], [0, ['Conselho de Teste']], 'o dado do concurso que mora no cabeçalho continua sendo conferido com a página como ela é');
+    // a faixa pedida abre (ou fecha) no meio do item: confere com a página vizinha, que está no próprio edital
+    const um = (texto, pagina, paginas) => ep.montar({ textos: T, brutos: [B('DIREITO CIVIL', '1', texto, pagina, paginas)] }).itens[1];
+    assert.deepEqual([um(INTEIRO_1, 11, [11]).pendente, um(INTEIRO_1, 11, [11]).localizacao, um(INTEIRO_2, 12, [12]).pendente], ['', 'p. 10', '']);
+    // … e o que NÃO pode passar: palavra trocada na emenda, frase inventada, o cabeçalho transcrito dentro do item, texto de página que não é vizinha
+    for (const [nome, texto, pagina, paginas] of [
+      ['palavra trocada', 'Pessoas naturais. Capacidade e inimputabilidade. Direitos da personalidade.', 10, [10, 11]],
+      ['frase inventada', INTEIRO_1 + ' Emancipação e curatela.', 10, [10, 11]],
+      ['cabeçalho dentro do item', `Pessoas naturais. Capacidade e ${CAB(11)} incapacidade. Direitos da personalidade.`, 10, [10, 11]],
+      ['página que não é vizinha', 'Crime: conceito e classificação.', 10, [10, 11]],
+      ['pedaços de páginas distantes emendados', 'Pessoas naturais. Capacidade e da anterioridade.', 10, [10, 11]]]) {
+      assert.equal(um(texto, pagina, paginas).pendente, ep.PENDENTE, nome);
+    }
+    assert.equal(ep.montar({ textos: T, brutos: [B('DIREITO PROCESSUAL', '1', 'Bens. Classificação dos bens.', 11, [10, 11])] }).itens[0].pendente, ep.PENDENTE, 'título de disciplina que não está no edital segue pendente');
+    // a função da conferência, isolada: devolve a página em que o trecho COMEÇA
+    const lisoDe = (n) => ep.semRepetidas(T.get(n) || '', ep.linhasRepetidas([...T].map(([n2, texto]) => ({ n: n2, texto })))).replace(/\s+/g, '');
+    assert.deepEqual([ep.paginaQueConfere('incapacidade. Direitos da personalidade.', 10, [10, 11], lisoDe), ep.paginaQueConfere('Capacidade e incapacidade.', 11, [10, 11], lisoDe), ep.paginaQueConfere('nada disto', 10, [10, 11], lisoDe)], [11, 10, 0]);
+  });
+
+  await t('edital em MAIS DE UM PEDIDO (defeito 8 do ensaio real): o segundo pedido SOMA ao programa do percurso — mesma disciplina, mesma sigla; sigla repetida de outra disciplina ganha código próprio; o diff aparece antes; nada some sem o usuário ver', async () => {
+    const edna = uid(EDNA.email);
+    const escopo = () => R.Escopos.porSlug(impId, slugPartes);
+    const codigos = () => R.itens(escopo()).map(i => i.codigo);
+    let slugPartes = '';
+    // 1º pedido: páginas 4 e 5 — Língua Portuguesa, Informática, Constitucional e o começo de Administrativo (o item 3 vem cortado)
+    chamadas = [];
+    const pA = await lerEdital('edna', { edital_media_id: midiaEdna, destino: { novo: { titulo: 'Edital em partes' } }, paginas: [[4, 5]] });
+    assert.deepEqual([pA.estado, chamadas, pA.resultado.itens.find(i => i.codigo === 'DA.3').pendente], ['pronto', ['4, 5'], ep.PENDENTE_CORTADO], pA.erro);
+    const rA = await aplicar('edna', pA.id);
+    assert.equal(rA.st, 200, rA.texto);
+    slugPartes = rA.json.aplicado.escopo;
+    assert.deepEqual([rA.json.aplicado.versao, rA.json.aplicado.itens, rA.json.aplicado.codigos.length, codigos().filter(c => /^DA/.test(c))], [1, 21, 21, ['DA', 'DA.1', 'DA.2', 'DA.3']]);
+    // 2º pedido, NO MESMO percurso: a página 6 — o resto de Administrativo (o item 3 inteiro, 4 e 5) e Direito do Trabalho
+    const pB = await lerEdital('edna', { edital_media_id: midiaEdna, destino: { escopo: slugPartes }, paginas: [[6]] });
+    assert.deepEqual([pB.estado, pB.resultado.itens.map(i => i.codigo), pB.resultado.itens.find(i => i.codigo === 'DA.3').pendente, pB.resultado.itens.find(i => i.codigo === 'DA.3').localizacao],
+      ['pronto', ['DA', 'DA.1'.replace('1', '3'), 'DA.4', 'DA.5', 'DT', 'DT.1', 'DT.2', 'DT.3'], '', 'p. 5'], 'o item que começou na página de trás confere com ela');
+    const pvB = await previa('edna', pB.id);
+    assert.deepEqual([pvB.st, pvB.json.retificacao, pvB.json.soma.substituir, pvB.json.soma.disciplinas_somadas, pvB.json.soma.siglas_trocadas, pvB.json.diff.removidos_total, pvB.json.diff.adicionados.map(x => x.codigo), pvB.json.diff.alterados, pvB.json.programa.itens],
+      [200, true, false, [{ codigo: 'DA', titulo: 'DIREITO ADMINISTRATIVO' }], [], 0, ['DA.4', 'DA.5', 'DT', 'DT.1', 'DT.2', 'DT.3'], [{ codigo: 'DA.3', antes: 'Responsabilidade civil do', depois: 'Responsabilidade civil do Estado.' }], 27], pvB.texto);
+    const semB = await aplicar('edna', pB.id);
+    assert.deepEqual([semB.st, semB.json.motivo, escopo().versao, codigos().length], [409, 'confirmar_retificacao', 1, 21], 'o diff aparece antes: sem a confirmação nada muda');
+    const rB = await aplicar('edna', pB.id, { confirmar_retificacao: true });
+    assert.deepEqual([rB.st, rB.json.aplicado.versao, rB.json.aplicado.adicionados, rB.json.aplicado.removidos, rB.json.aplicado.alterados, rB.json.aplicado.itens, rB.json.aplicado.competencias_novas], [200, 2, 6, 0, 1, 27, 1], rB.texto);
+    assert.deepEqual(codigos(), ['LP', 'LP.1', 'LP.2', 'LP.3', 'LP.4', 'LP.4.1', 'LP.4.1-2', 'LP.5', 'NI', 'NI.1', 'NI.2', 'NI.3', 'DC', 'DC.1', 'DC.2', 'DC.2.1', 'DC.3', 'DA', 'DA.1', 'DA.2', 'DA.3', 'DA.4', 'DA.5', 'DT', 'DT.1', 'DT.2', 'DT.3'],
+      'o programa do 1º pedido continua lá; os itens novos entram no fim da disciplina deles, e a disciplina nova, no fim');
+    const da3 = R.itens(escopo()).find(i => i.codigo === 'DA.3'), da4 = R.itens(escopo()).find(i => i.codigo === 'DA.4');
+    assert.deepEqual([da3.texto, da3.pendente, da4.pai, R.vinculos(escopo().id).find(v => v.item_codigo === 'DA.4').competencia_codigo], ['Responsabilidade civil do Estado.', '', 'DA', 'direito-administrativo'], 'o item cortado no 1º pedido foi completado pelo 2º');
+    assert.deepEqual(R.competencias(escopo().id).map(k => k.codigo), ['lingua-portuguesa', 'nocoes-de-informatica', 'direito-constitucional', 'direito-administrativo', 'direito-do-trabalho']);
+    // 3º pedido: uma disciplina cuja sigla (DT) já é de OUTRA disciplina do percurso, e dois tópicos sem numeração de uma que já existe
+    const pC = await lerEdital('edna', { edital_media_id: midiaEdna, destino: { escopo: slugPartes }, paginas: [[3]] });
+    assert.deepEqual([pC.estado, pC.resultado.itens.map(i => [i.codigo, !!i.sem_numero])], ['pronto', [['DT', false], ['DT.1', false], ['NI', false], ['NI.1', true], ['NI.2', true]]], 'dentro do pedido a sigla é DT — a mesma de Direito do Trabalho');
+    const pvC = await previa('edna', pC.id);
+    assert.deepEqual([pvC.json.soma.siglas_trocadas, pvC.json.soma.disciplinas_somadas, pvC.json.diff.adicionados.map(x => [x.codigo, x.texto]), pvC.json.diff.alterados_total, pvC.json.diff.removidos_total],
+      [[{ de: 'DT', para: 'DT-2', titulo: 'DIREITO DO TURISMO' }], [{ codigo: 'NI', titulo: 'NOÇÕES DE INFORMÁTICA' }],
+        [['NI.4', 'Redes de computadores.'], ['DT-2', 'DIREITO DO TURISMO'], ['DT-2.1', 'Política nacional de turismo.']], 0, 0], pvC.texto);
+    const rC = await aplicar('edna', pC.id, { confirmar_retificacao: true });
+    assert.deepEqual([rC.st, rC.json.aplicado.versao, rC.json.aplicado.itens, rC.json.aplicado.codigos], [200, 3, 30, ['DT-2', 'DT-2.1', 'NI.4']], rC.texto);
+    const it = (c) => R.itens(escopo()).find(i => i.codigo === c);
+    assert.deepEqual([it('DT').texto, it('DT-2').texto, it('DT-2.1').pai, it('NI.2').texto, it('NI.2').pendente, codigos().slice(8, 13)],
+      ['DIREITO DO TRABALHO', 'DIREITO DO TURISMO', 'DT-2', 'Segurança da informação;', '', ['NI', 'NI.1', 'NI.2', 'NI.3', 'NI.4']],
+      'a sigla de Direito do Trabalho não mudou; o tópico que já estava (conferido) não virou pendente por uma releitura incerta; o novo entrou depois do último');
+    assert.equal(new Set(codigos()).size, 30, 'códigos únicos no percurso');
+    // reaplicar o 1º pedido com uma disciplina excluída: sai só o que ELE tinha posto e ninguém mexeu — e o diff mostra antes
+    const nLP = pA.resultado.itens.find(i => i.codigo === 'LP').n;
+    const pvA = await previa('edna', pA.id, { excluir: [nLP] });
+    assert.deepEqual([pvA.json.diff.removidos.map(x => x.codigo), pvA.json.diff.adicionados_total, pvA.json.diff.alterados_total],
+      [['LP', 'LP.1', 'LP.2', 'LP.3', 'LP.4', 'LP.4.1', 'LP.4.1-2', 'LP.5'], 0, 0], 'o item que o 2º pedido completou (DA.3) não volta a ficar cortado; o que veio dos outros pedidos fica');
+    assert.deepEqual([(await aplicar('edna', pA.id, { excluir: [nLP] })).st, codigos().length], [409, 30]);
+    const rA2 = await aplicar('edna', pA.id, { excluir: [nLP], confirmar_retificacao: true });
+    assert.deepEqual([rA2.st, rA2.json.aplicado.versao, rA2.json.aplicado.removidos, codigos().length, it('DA.3').texto, it('NI.4').texto, it('DT.1').texto], [200, 4, 8, 22, 'Responsabilidade civil do Estado.', 'Redes de computadores.', 'Princípios.'], rA2.texto);
+    // SUBSTITUIR é escolha expressa — e mostra tudo o que sai
+    const pvS = await previa('edna', pC.id, { substituir: true });
+    assert.deepEqual([pvS.json.soma.substituir, pvS.json.programa.itens, pvS.json.diff.removidos_total + pvS.json.diff.alterados_total + pvS.json.diff.iguais], [true, 5, 22], pvS.texto);
+    assert.deepEqual([(await aplicar('edna', pC.id, { substituir: true })).st, escopo().versao], [409, 4]);
+    // as peças puras da soma
+    assert.deepEqual([ep.mesmoItem('Responsabilidade civil do', 'Responsabilidade civil do Estado.'), ep.mesmoItem('Organização do Estado brasileiro.', 'Organização do Estado.'), ep.mesmoItem('Prescrição', 'Princípios.')], [true, true, false]);
+    const tela = fs.readFileSync(path.join(__dirname, '..', 'app-estudo.js'), 'utf8');
+    for (const parte of ['substituir: SUBST || undefined', 'Substituir o programa atual pelo deste pedido', 'soma</b> ao programa que já existe: nada do que está lá sai', 'sm.siglas_trocadas', 'sm.disciplinas_somadas']) assert.ok(tela.includes(parte), 'a tela perdeu: ' + parte);
+    assert.equal(movs(edna, 'estorno'), 0, 'nenhum dos três pedidos falhou');
   });
 
   await t('edital: a tela — Ler edital em PDF na aba de pedidos (páginas com trecho, faixas, orçamento, lote a lote, árvore, dados, retificação) e a TROCA de percurso no alto do Estude', async () => {

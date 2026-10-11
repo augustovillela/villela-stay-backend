@@ -102,15 +102,20 @@ function cursoDaPessoa(produto, ref, curso) {
 }
 /** Dicas que ESTA pessoa pode ver AGORA: as gerais do sistema + as do curso
  *  aberto. Nunca "as de todos os cursos dela" — o produtor de todos via tudo. */
-function escopoSQL(produto, ref, curso) {
+/** `soCurso`: o app pediu SÓ as dicas do curso aberto (a tela em que a pessoa
+ *  está não é a do curso comum — as gerais falam de recursos que ela não tem
+ *  ali). Aí as gerais nem entram no sorteio: não aparecem e não são "queimadas"
+ *  como vistas. Pedido sem curso que seja da pessoa não sorteia nada. */
+function escopoSQL(produto, ref, curso, soCurso) {
   const c = cursoDaPessoa(produto, ref, curso);
+  if (soCurso) return c ? { cond: 'd.curso_id = ?', args: [c] } : { cond: '0', args: [] };
   return c ? { cond: "(d.curso_id = '' OR d.curso_id = ?)", args: [c] } : { cond: "d.curso_id = ''", args: [] };
 }
 /** A próxima dica: sorteada entre as que a pessoa ainda não viu. As de
  *  `ordem` < 100 são prioridade e saem antes, na ordem. */
-function proxima(produto, ref, curso) {
+function proxima(produto, ref, curso, soCurso) {
   if (!querPostIt(produto, ref)) return null;
-  const e = escopoSQL(produto, ref, curso);
+  const e = escopoSQL(produto, ref, curso, soCurso);
   const d = db.prepare(`SELECT d.* FROM dicas d
     WHERE d.produto = ? AND d.ativa = 1 AND ${e.cond}
       AND NOT EXISTS (SELECT 1 FROM dicas_vistas v WHERE v.dica_id = d.id AND v.produto = d.produto AND v.usuario_ref = ?)
@@ -126,10 +131,10 @@ function marcarVista(produto, ref, id) {
 /** Aba "Dicas": as gerais + as do curso aberto (essas primeiro), marcando o
  *  que a pessoa já viu. Fora de curso, só as gerais — `curso` volta vazio e
  *  o app avisa que as de cada curso aparecem dentro dele. */
-function doUsuario(produto, ref, curso) {
+function doUsuario(produto, ref, curso, soCurso) {
   const vistas = new Set(db.prepare('SELECT dica_id FROM dicas_vistas WHERE produto = ? AND usuario_ref = ?').all(produto, ref).map((v) => v.dica_id));
   const c = cursoDaPessoa(produto, ref, curso);
-  const itens = listar(produto, { incluirInativas: false }).filter((d) => !d.curso_id || (c && String(d.curso_id) === c));
+  const itens = listar(produto, { incluirInativas: false }).filter((d) => (!d.curso_id && !soCurso) || (c && String(d.curso_id) === c));
   itens.sort((a, b) => (a.curso_id ? 0 : 1) - (b.curso_id ? 0 : 1));   // sort estável: mantém a ordem dentro de cada grupo
   return {
     itens: itens.map((d) => ({ id: d.id, titulo: d.titulo, corpo: d.corpo, passos: d.passos, link_url: d.link_url, link_rotulo: d.link_rotulo, do_curso: !!d.curso_id, vista: vistas.has(d.id) })),
@@ -138,8 +143,8 @@ function doUsuario(produto, ref, curso) {
     mostrar_post_it: querPostIt(produto, ref),
   };
 }
-function painelDoUsuario(produto, ref, curso) {
-  const d = proxima(produto, ref, curso);
+function painelDoUsuario(produto, ref, curso, soCurso) {
+  const d = proxima(produto, ref, curso, soCurso);
   if (!d) return { dica: null };
   marcarVista(produto, ref, d.id);   // mostrada = vista: quem ignora não fica preso na mesma
   return { dica: { id: d.id, titulo: d.titulo, corpo: d.corpo, passos: d.passos, link_url: d.link_url, link_rotulo: d.link_rotulo } };

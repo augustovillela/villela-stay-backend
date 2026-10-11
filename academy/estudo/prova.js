@@ -24,8 +24,15 @@ const slug = (v) => s(v, 60).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, 
 
 // ---- limites (ADR-0010: prova até 80 páginas por pedido) ----
 const MAX_PAGINAS = 80;                    // páginas do caderno lidas num pedido
-const PAGINAS_POR_LOTE = 4;                // um passo ao modelo a cada 4 páginas
-const SAIDA_POR_LOTE = 8000;               // tokens de saída por lote (4 páginas de questões, com folga)
+// LOTE: 2 páginas e 8.000 tokens de saída. Medido em 11/10/2026 no caderno real da FGV (34 páginas, 100 questões),
+// com o oráculo no papel de modelo (o JSON perfeito de cada lote, em qualquer alinhamento da faixa):
+//   4 páginas → até 25.473 caracteres de JSON = 8.491 tokens a 3 caracteres por token: NÃO cabia nos 8.000;
+//   2 páginas → até 13.148 caracteres = 4.383 tokens a 3 por token (a conta do orçamento): folga de 45 %.
+// A 2,3 caracteres por token — o tokenizador dos modelos novos rende ~30 % mais tokens para o mesmo texto — o pior
+// lote dá 5.717 tokens: ainda cabe, com 28 % de folga; a medida de verdade é a do provedor (`stop_reason`).
+// Resposta que ainda assim passar do limite é erro claro (ia.js), nunca JSON cortado tratado como formato torto.
+const PAGINAS_POR_LOTE = 2;                // um passo ao modelo a cada 2 páginas
+const SAIDA_POR_LOTE = 8000;               // tokens de saída por lote
 const SAIDA_GABARITO = 3000;               // tokens de saída do passo que lê o gabarito
 const PAGINA_MAX_CHARS = 12000;            // o que vai de cada página (uma página densa tem 4 a 6 mil)
 const CARREGA_CHARS = 3000;                // fim do lote anterior, quando a última questão foi cortada
@@ -213,16 +220,69 @@ function lerGabarito(json) {
   for (const [k, v] of Object.entries(json.gabarito).slice(0, 1000)) { const n = numeroLimpo(k), g = valorDoGabarito(v); if (n && g) mapa[n] = g; }
   return { mapa, ambiguo: !!json.ambiguo };
 }
-// Conferência independente do modelo: os pares que o TEXTO do gabarito traz de forma explícita
-// ("12-A", "12: B", "12) anulada"). Número que aparece com duas letras (vários cadernos) não entra.
-function paresExplicitos(texto) {
+// Conferência independente do modelo: os pares número ↔ letra que o TEXTO do gabarito traz, lidos sem provedor.
+// Três formatos:
+//   explícito   "12-A", "12: B", "12) anulada"
+//   em grade    uma linha só de números e, logo abaixo, uma linha com o MESMO tanto de letras (ou "*", "X",
+//               "anulada") — é como sai o gabarito em tabela da maioria das bancas ("1 2 3 … 20" / "B C E … D")
+//   alternado   "1 B 2 C 3 E" na mesma linha
+// VÁRIOS CADERNOS no mesmo documento ("TIPO 1", "TIPO 2", "CADERNO AZUL"…): o texto é dividido pelos títulos;
+// informado o caderno do candidato, valem só os pares da seção dele. Sem caderno (ou sem a seção dele), número
+// que aparece com duas letras não entra — a conferência só afirma o que o texto diz sem ambiguidade.
+const SO_ACENTO = (t) => String(t == null ? '' : t).normalize('NFD').replace(/[̀-ͯ]/g, '');
+const chaveDoCaderno = (t) => SO_ACENTO(t).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const TITULO_DE_CADERNO = /\b(tipo|caderno|prova|versao|modelo|cor)\s*[:\-–—]?\s*(\d{1,2}|[a-z]|branc[ao]|verde|amarel[ao]|azul|rosa|cinza|laranja)\b/i;
+const VALOR_DE_GRADE = /^(?:[A-Ea-e]|[*Xx]|anulad[ao]|nula)$/;
+function paresDaSecao(linhas) {
   const pares = {}, conflito = new Set();
-  const re = /(?:^|[\s|;,])(\d{1,3})\s*[-–—.:)=]\s*(anulada|nula|[A-Ea-e]|[Xx*])(?=$|[\s|;,.])/gim;
-  for (let m; (m = re.exec(String(texto || '')));) {
-    const n = String(parseInt(m[1], 10)), g = valorDoGabarito(m[2]);
-    if (!g) continue;
+  const marca = (num, valor) => {
+    const n = String(parseInt(num, 10)), g = valorDoGabarito(valor);
+    if (!g || !(Number(n) >= 1)) return;
     if (pares[n] && pares[n] !== g) conflito.add(n); else pares[n] = g;
+  };
+  const explicito = /(?:^|[\s|;,])(\d{1,3})\s*[-–—.:)=]\s*(anulada|nula|[A-Ea-e]|[Xx*])(?=$|[\s|;,.])/gi;
+  for (let i = 0; i < linhas.length; i++) {
+    const partes = linhas[i].replace(/[|;,]/g, ' ').trim().split(/\s+/).filter(Boolean);
+    const soNumeros = partes.length >= 2 && partes.every(p => /^\d{1,3}$/.test(p));
+    if (soNumeros) {
+      // grade: a linha de letras vem logo abaixo (pula linha em branco), com o mesmo tanto de células
+      let k = i + 1;
+      while (k < linhas.length && !linhas[k].trim()) k++;
+      const letras = k < linhas.length ? linhas[k].replace(/[|;,]/g, ' ').trim().split(/\s+/).filter(Boolean) : [];
+      if (letras.length === partes.length && letras.every(p => VALOR_DE_GRADE.test(p))) { partes.forEach((n, x) => marca(n, letras[x])); i = k; }
+      continue;
+    }
+    // alternado: número, letra, número, letra… (ao menos três pares, e a linha inteira nesse compasso)
+    if (partes.length >= 6 && partes.length % 2 === 0 && partes.every((p, x) => (x % 2 ? VALOR_DE_GRADE.test(p) : /^\d{1,3}$/.test(p)))) {
+      for (let x = 0; x < partes.length; x += 2) marca(partes[x], partes[x + 1]);
+      continue;
+    }
+    explicito.lastIndex = 0;
+    for (let m; (m = explicito.exec(linhas[i]));) marca(m[1], m[2]);
   }
+  conflito.forEach(n => delete pares[n]);
+  return pares;
+}
+function paresExplicitos(texto, { caderno = '' } = {}) {
+  const linhas = String(texto || '').split(/\r?\n/);
+  // as seções: cada título de caderno abre uma; o que vem antes do primeiro título é a seção sem nome
+  const secoes = [{ titulo: '', linhas: [] }];
+  for (const l of linhas) {
+    const semNumeros = !/^[\s\d|;,]+$/.test(l) && l.trim().length <= 120;
+    if (semNumeros && TITULO_DE_CADERNO.test(SO_ACENTO(l))) secoes.push({ titulo: chaveDoCaderno(l), linhas: [] });
+    else secoes[secoes.length - 1].linhas.push(l);
+  }
+  const comNome = secoes.filter(s => s.titulo);
+  const alvo = chaveDoCaderno(caderno);
+  if (alvo && comNome.length > 1) {
+    // "tipo 1" não casa com "tipo 10": a chave do caderno tem de aparecer como palavras inteiras do título
+    const doCaderno = comNome.filter(s => ` ${s.titulo} `.includes(` ${alvo} `));
+    if (doCaderno.length) return paresDaSecao(doCaderno.flatMap(s => s.linhas));
+  }
+  if (comNome.length <= 1) return paresDaSecao(linhas);
+  // vários cadernos e não se sabe qual vale: só o que TODAS as seções dizem igual
+  const pares = {}, conflito = new Set();
+  for (const s of secoes) for (const [n, g] of Object.entries(paresDaSecao(s.linhas))) { if (pares[n] && pares[n] !== g) conflito.add(n); else pares[n] = g; }
   conflito.forEach(n => delete pares[n]);
   return pares;
 }
@@ -351,7 +411,7 @@ async function executar({ t, entrada, caderno, gabarito, aoProgredir = () => {} 
   let lido = { mapa: {}, ambiguo: false };
   if (numeros.length) lido = lerGabarito(await t.passo(await conteudoDoGabarito({ gab: gabarito, proc, situacao, numeros, delim }), { max_saida: SAIDA_GABARITO }));
   aoProgredir({ etapa: 'conferencia', feito: total, total });
-  return montar({ brutas, gabarito: lido, paresDoTexto: paresExplicitos(gabarito.texto), textos, proc, situacao });
+  return montar({ brutas, gabarito: lido, paresDoTexto: paresExplicitos(gabarito.texto, { caderno: proc.caderno }), textos, proc, situacao });
 }
 
 // ---------------------------------------------------------------------

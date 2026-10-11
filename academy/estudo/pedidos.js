@@ -48,7 +48,8 @@ const LIMITE_TEXTO = { curta: 8000, discursiva: 8000, peca: 30000 };
 const MINIMO_TEXTO = 30;                 // abaixo disso não há o que corrigir — e cobrar por isso seria errado
 const ORAL_MAX_SEG = 300;                // 5 minutos (ADR-0010)
 // O áudio é cobrado no máximo pelo teto de 5 minutos — então o ARQUIVO também tem de caber em 5 minutos:
-// 4 MB são 5 min a ~100 kbps (o gravador da tela usa ~32 kbps). A duração declarada por quem envia não é prova de nada.
+// 4 MB são 5 min a ~100 kbps (o gravador da tela usa ~32 kbps). A duração declarada por quem envia não é prova de nada:
+// ela só valida a entrada; a COBRADA é a do provedor ou, sem ela, a estimada pelo tamanho do arquivo (ia.duracaoPeloTamanho).
 const ORAL_MAX_BYTES = ct.PEDIDO_AUDIO_MAX_BYTES;
 // Falha devolve TUDO (a plataforma absorve o que o provedor cobrou). Quem consegue fazer o trabalho falhar
 // de propósito (resposta montada para quebrar o corretor, PDF torto) usaria o provedor de graça: há teto por dia.
@@ -411,7 +412,8 @@ async function gerarCorrecao(p, q, t) {
   const m = ct.Midia.obter(e.media_id);
   if (!m || m.owner_user_id !== p.user_id) throw erro('O áudio deste pedido não foi encontrado.', 422);
   const bytes = await ct.Midia.lerBytes(m, ORAL_MAX_BYTES);
-  const tr = await t.transcrever({ bytes, mime: m.mime, extensao: path.extname(m.file_path).slice(1) || 'webm', duracao_seg: e.duracao_seg, max_seg: ORAL_MAX_SEG });
+  // a duração declarada (e.duracao_seg) não vai à cobrança: vale a do provedor ou a estimada pelo tamanho do arquivo
+  const tr = await t.transcrever({ bytes, mime: m.mime, extensao: path.extname(m.file_path).slice(1) || 'webm', max_seg: ORAL_MAX_SEG });
   const texto = tr.texto.slice(0, ORAL_TRANSCRICAO_MAX);
   const resultado = montarResultado(q, texto, await t.passo(promptCorrecao(q, texto, { oral: true })));
   resultado.transcricao = texto;
@@ -432,8 +434,10 @@ async function executar(p, t, gerar) {
     // não gerou: devolve TUDO. A mensagem técnica fica no log de uso de IA; o usuário lê o que houve em
     // português — e só as falhas que são dele (áudio mudo, arquivo sumido ou trocado) chegam com o texto próprio.
     t.falhar(e);
+    // resposta cortada pelo limite de tokens do passo: não adianta "tentar de novo em alguns minutos" — diz o que houve
+    const cortada = e && e.cortada ? `${DE_ARQUIVO.includes(p.tipo) ? 'A leitura' : 'A correção'} não foi concluída: a resposta de um trecho ficou maior que o limite do lote.${DEVOLVIDO}${DE_ARQUIVO.includes(p.tipo) ? ' Tente uma faixa de páginas menor.' : ''}` : '';
     db.prepare("UPDATE est_pedidos SET estado = 'falhou', erro = ?, progresso = '', atualizado_em = ? WHERE id = ?")
-      .run(e && e.status === 422 ? s(String(e.message).replace(/\s*Nada foi cobrado\.?/g, ''), 300) + DEVOLVIDO : falhaGenerica(p.tipo), nowISO(), p.id);
+      .run(cortada || (e && e.status === 422 ? s(String(e.message).replace(/\s*Nada foi cobrado\.?/g, ''), 300) + DEVOLVIDO : falhaGenerica(p.tipo)), nowISO(), p.id);
     return;
   }
   try {
@@ -816,7 +820,8 @@ async function criarEdital(usuario, produto, slugEscopo, c, dados) {
   const bytes = await ct.Midia.lerBytes(m, ct.PEDIDO_PDF_MAX_BYTES);
   const leitura = await pdf.ler(bytes, { nome: 'O PDF do edital' });
   const sug = editalPdf.sugerir(leitura.textos);
-  // sem faixa pedida vale a sugerida; sem sugestão o plano nasce VAZIO (orçamento zero) e a tela pede as páginas
+  // sem faixa pedida vale a sugerida; sem sugestão — ou com sugestão de CONFIANÇA BAIXA — o plano nasce VAZIO
+  // (orçamento zero) e a tela pede as páginas: ninguém confirma, sem ver, uma faixa que o sistema não sustenta
   const pedidas = Array.isArray(dados.paginas) && dados.paginas.length > 0;
   const pags = pedidas ? editalPdf.paginasValidas(leitura.paginas, dados.paginas) : editalPdf.selecaoSugerida(sug);
   const plano = editalPdf.planejar(sug.paginas, pags);
@@ -824,7 +829,7 @@ async function criarEdital(usuario, produto, slugEscopo, c, dados) {
   // 3) o orçamento. O hash do arquivo fica no pedido: se ele for trocado depois, o trabalho não roda.
   // Do texto do edital, o pedido guarda só o começo de cada página (para o usuário reconhecê-la ao escolher a faixa).
   const entrada = { edital_media_id: m.id, edital_sha256: prova.sha256(bytes), nome_arquivo: s(m.nome, 200), total_paginas: leitura.paginas,
-    sem_texto: leitura.textos.filter(x => x.sem_texto).length, paginas_info: sug.paginas, sugestao: { faixas: sug.faixas, dados_paginas: sug.dados_paginas }, plano, destino };
+    sem_texto: leitura.textos.filter(x => x.sem_texto).length, paginas_info: sug.paginas, sugestao: { faixas: sug.faixas, dados_paginas: sug.dados_paginas, confianca: sug.confianca, motivo: sug.motivo }, plano, destino };
   const agora = nowISO();
   const p = { id: novoId(), tipo: 'edital', entrada: j.str(entrada) };
   db.prepare(`INSERT INTO est_pedidos (id, user_id, product_id, escopo_id, tipo, estado, questao_id, entrada, orcamento_milesimos, criado_em, atualizado_em)
@@ -879,10 +884,23 @@ function prepararEdital(usuario, produto, p, dados) {
   const conf = editalPdf.dadosConfirmados(dados.dados);
   const novo = e.destino && e.destino.novo ? e.destino.novo : null;
   const escopo = destinoDoEdital(usuario, produto, e.destino).escopo; // null: o percurso novo nasce ao aplicar
-  let novos;
-  try { novos = edital.normalizarItens(esc.itens); } catch (x) { throw erro(x.message); }
   const atuais = escopo && escopo.versao ? R.itens(escopo) : [];
-  return { e, r, esc, conf, novo, escopo, novos, diff: edital.comparar(atuais, novos), retificacao: atuais.length > 0 };
+  // LER O EDITAL EM MAIS DE UM PEDIDO: o que este pedido traz SOMA ao programa que o percurso já tem. Só sai o
+  // que ELE MESMO pôs da outra vez e agora veio excluído (reaplicar continua sendo retificação) — a não ser que
+  // quem aplica peça para SUBSTITUIR o programa inteiro, e veja no diff o que some.
+  const substituir = dados.substituir === true;
+  const ap = r.aplicacao && escopo && r.aplicacao.escopo === escopo.slug ? r.aplicacao : null;
+  // "Meus" = os códigos que este pedido escreveu da outra vez E que ninguém mudou depois (o texto é o mesmo que
+  // ele deixou — confere pelo hash): o item que outro pedido completou ou corrigiu já não é dele para desfazer.
+  // Pedido aplicado antes desta regra não guardou os códigos: valem os dele que estão no programa.
+  const porCodigo = new Map(atuais.map(i => [i.codigo, i]));
+  const guardados = ap ? (Array.isArray(ap.codigos) ? ap.codigos : r.itens.map(i => i.codigo)) : [];
+  const meus = substituir ? atuais.map(i => i.codigo)
+    : guardados.filter(c => porCodigo.has(c) && (!ap.hashes || ap.hashes[c] === porCodigo.get(c).hash));
+  const soma = editalPdf.somar(atuais, esc, meus);
+  let novos;
+  try { novos = edital.normalizarItens(soma.itens); } catch (x) { throw erro(x.message); }
+  return { e, r, esc, conf, novo, escopo, novos, soma, substituir, diff: edital.comparar(atuais, novos), retificacao: atuais.length > 0 };
 }
 // plano vazio não tem valor: zero mesmo (e não o "-0" que o arredondamento para cima devolveria)
 const precoDoEdital = (p) => Math.max(0, carteira.precoEmMilesimos(tetoUSD(p))) || 0;
@@ -895,13 +913,17 @@ function previaDoEdital(usuario, produto, slugEscopo, id, dados = {}) {
   const x = prepararEdital(usuario, produto, p, dados);
   return {
     destino: x.escopo ? { escopo: x.escopo.slug, titulo: x.escopo.titulo, particular: !!x.escopo.dono_user_id, status: x.escopo.status, versao: x.escopo.versao } : { novo: x.novo },
-    retificacao: x.retificacao, programa: { itens: x.novos.length, disciplinas: x.esc.disciplinas.length, pendentes: x.novos.filter(i => i.pendente).length },
+    retificacao: x.retificacao, programa: { itens: x.novos.length, disciplinas: x.novos.filter(i => !i.pai).length, pendentes: x.novos.filter(i => i.pendente).length },
+    // em percurso que já tem programa: o que este pedido SOMA — as disciplinas que já existiam e recebem itens, e
+    // as que mudam de sigla porque a dele já era de outra disciplina do percurso
+    soma: x.retificacao ? { substituir: x.substituir, deste_pedido: x.esc.itens.length, disciplinas_somadas: x.soma.somadas, siglas_trocadas: x.soma.renomeadas } : null,
     diff: x.retificacao ? diffPublico(x.diff) : null,
   };
 }
 
-// APLICAR — sem custo. Em percurso que JÁ tem programa, aplicar é retificação (versão nova, com o diff):
-// só passa com a confirmação expressa de quem viu o que muda.
+// APLICAR — sem custo. Em percurso que JÁ tem programa, aplicar cria versão nova (com o diff): só passa com a
+// confirmação expressa de quem viu o que muda. O que o pedido traz SOMA ao que há (prepararEdital); trocar o
+// programa inteiro pelo deste pedido é `substituir: true`, e o diff mostra o que sai.
 function aplicarEdital(usuario, produto, p, dados = {}) {
   return transacao(() => {
     const x = prepararEdital(usuario, produto, p, dados);
@@ -934,8 +956,8 @@ function aplicarEdital(usuario, produto, p, dados = {}) {
       const nome = prova.nomeDaDisciplina(d.titulo);
       const cod = porNome.get(editalPdf.chaveDaDisciplina(nome)) || prova.codigoDaDisciplina(d.titulo);
       if (!existentes.has(cod) && !novas.has(cod)) { novas.set(cod, nome); deDisciplina.add(cod); }
-      if (!raizDe.has(cod)) raizDe.set(cod, d.codigo);
-      for (const item of d.itens) vinculos.push({ item, competencia: cod, justificativa: editalPdf.JUSTIFICATIVA });
+      if (!raizDe.has(cod)) raizDe.set(cod, x.soma.mapa.get(d.codigo) || d.codigo);
+      for (const item of d.itens) vinculos.push({ item: x.soma.mapa.get(item) || item, competencia: cod, justificativa: editalPdf.JUSTIFICATIVA });
     }
 
     // PERFIL: os dados que o usuário confirmou entram por cima do que havia; campo deixado em branco não apaga.
@@ -952,7 +974,7 @@ function aplicarEdital(usuario, produto, p, dados = {}) {
       // (sem `regra_pontuacao`: ela exige fonte e é informada por quem responde pelo percurso)
       escopo: { slug: slugDestino, ...(novoNoCurso ? { tipo: 'edital', titulo: titulo || x.novo.titulo } : {}), ...(particular && titulo && !x.novo ? { titulo } : {}),
         perfil, ...(dataFutura ? { data_alvo: x.conf.data_alvo } : {}) },
-      programa: { itens: x.esc.itens, documento: { nome: x.e.nome_arquivo, tipo: 'edital' } },
+      programa: { itens: x.soma.itens, documento: { nome: x.e.nome_arquivo, tipo: 'edital' } },
       competencias: [...novas].map(([codigo, nome]) => ({ codigo, resultado: RESULTADO_DA_DISCIPLINA(nome), criterios: [], essencial: true })),
       vinculos,
     }, particular ? { dono: usuario.id, autor: usuario.id, situacao: 'disponivel', tipo: 'edital' } : {});
@@ -970,7 +992,9 @@ function aplicarEdital(usuario, produto, p, dados = {}) {
     r.resumo = editalPdf.resumir(r.itens, r.dados);
     r.dados_confirmados = { ...x.conf.perfil, data_prova: x.conf.data_alvo };
     r.aplicacao = { escopo: destino.slug, titulo: destino.titulo, particular, status: destino.status, em: nowISO(), versao: prog.versao || destino.versao, sem_mudanca: !!prog.sem_mudanca,
-      retificacao: x.retificacao && !prog.sem_mudanca, itens: x.novos.length, disciplinas: x.esc.disciplinas.length, pendentes: x.novos.filter(i => i.pendente).length,
+      retificacao: x.retificacao && !prog.sem_mudanca, itens: x.novos.length, disciplinas: x.novos.filter(i => !i.pai).length, pendentes: x.novos.filter(i => i.pendente).length,
+      // os códigos que ESTE pedido pôs no programa: é o que ele pode mudar ou tirar se for aplicado de novo
+      codigos: x.soma.meus, hashes: Object.fromEntries(x.novos.filter(i => x.soma.meus.includes(i.codigo)).map(i => [i.codigo, i.hash])), substituiu: x.substituir && x.retificacao,
       adicionados: prog.adicionados || 0, removidos: prog.removidos || 0, alterados: prog.alterados || 0,
       competencias_novas: (rel.competencias || {}).novas || 0, questoes_ligadas: ligadas, data_alvo: dataFutura ? x.conf.data_alvo : '',
       ...(x.conf.data_alvo && !dataFutura ? { aviso_data: 'A data da prova informada já passou: o percurso ficou sem prazo, e o plano diz quando você termina no seu ritmo.' } : {}) };

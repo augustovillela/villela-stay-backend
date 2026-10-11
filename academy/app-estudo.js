@@ -2746,7 +2746,7 @@
 
     // ---- um pedido de edital: páginas e orçamento → leitura (lote a lote) → árvore para rever → aplicar ----
     function telaEdital(alvo, id) {
-      var consulta = null, EXCL = {}, TXT = {}, ABERTAS = {}, DC = null, INICIADO = false;
+      var consulta = null, EXCL = {}, TXT = {}, ABERTAS = {}, DC = null, INICIADO = false, SUBST = false;
       alvo.innerHTML = subnav('') + '<div class="es-linha"><button class="al-bt peq fan" id="es-ed-volta">← Meus pedidos</button></div><div id="es-ed-ped"><p class="al-sub">Carregando…</p></div>';
       ligarSubnav(alvo);
       var ped = el('es-ed-ped');
@@ -2778,6 +2778,9 @@
         h += '<p>O PDF tem <b>' + d.total_paginas + '</b> página(s)' + (d.sem_texto ? ', <b>' + d.sem_texto + '</b> sem texto copiável (escaneadas)' : '') + '. ' +
           (sg.faixas.length ? 'O conteúdo programático parece estar nas páginas <b>' + esc(faixasTxt(sg.faixas)) + '</b>' + (sg.dados_paginas.length ? ', e os dados do concurso (cargo, banca, data da prova, etapas) nas páginas <b>' + esc(sg.dados_paginas.join(', ')) + '</b>' : '') + '. Confira pelos trechos abaixo e ajuste se preciso.'
             : '<span class="es-aviso">Não foi possível localizar o conteúdo programático automaticamente (edital escaneado, ou com um formato fora do comum). Marque abaixo as páginas que trazem o programa.</span>') + '</p>';
+        // a faixa é sugerida por uma leitura automática do texto: quando ela não se sustenta, isso é DITO antes do valor
+        if (sg.faixas.length && sg.confianca === 'baixa') h += '<p class="es-aviso"><b>Sugestão de confiança baixa</b>: ' + esc(sg.motivo || 'o programa não foi localizado com segurança') + '. Por isso nenhuma página veio marcada e nada foi orçado. Abra o edital, confira onde começa e onde termina o conteúdo programático, marque as páginas abaixo e recalcule — você só paga pelas páginas que escolher.</p>';
+        else if (sg.faixas.length && sg.confianca === 'media') h += '<p class="es-aviso"><b>Confira a faixa antes de pagar</b>: ' + esc(sg.motivo || 'a sugestão é automática') + '. Veja pelos trechos se as páginas marcadas são mesmo as do conteúdo programático e ajuste o que for preciso.</p>';
         function linhaPag(g) {
           return '<label class="es-ed-pag' + (g.selecionada ? ' on' : '') + '"><input type="checkbox" data-pag="' + g.n + '"' + (g.selecionada ? ' checked' : '') + '><b>p. ' + g.n + '</b>' +
             (g.sugerida === 'programa' ? '<span class="es-selo verde">programa</span>' : g.sugerida === 'dados' ? '<span class="es-selo azul">dados do concurso</span>' : '') +
@@ -2994,7 +2997,7 @@
 
         // o corpo do aplicar (e da prévia): o que foi excluído, os textos conferidos e os dados confirmados. Sem regra de pontuação.
         function corpo(confirmar) {
-          return { titulo: dest.novo ? DC.titulo : undefined, excluir: Object.keys(EXCL).filter(function (k) { return EXCL[k]; }).map(Number), textos: TXT, confirmar_retificacao: confirmar || undefined,
+          return { titulo: dest.novo ? DC.titulo : undefined, excluir: Object.keys(EXCL).filter(function (k) { return EXCL[k]; }).map(Number), textos: TXT, confirmar_retificacao: confirmar || undefined, substituir: SUBST || undefined,
             dados: { orgao: DC.orgao, banca: DC.banca, cargo: DC.cargo, data_prova: DC.data_prova, etapas: DC.etapas.filter(function (e) { return e.nome.trim(); }), questoes: DC.questoes } };
         }
         var btA = el('es-ed-aplicar'), amsg = el('es-ed-amsg');
@@ -3009,21 +3012,30 @@
             trocaDePercurso(); // o percurso novo passa a aparecer na troca, no alto
           }).catch(erroA);
         }
-        btA.onclick = function () {
+        // a PRÉVIA: em percurso que já tem programa, o que este pedido traz SOMA ao que há (dá para ler o edital em
+        // mais de um pedido). O diff aparece antes, e só passa confirmado; substituir o programa inteiro é escolha expressa.
+        function previaAgora() {
           btA.disabled = true; amsg.textContent = 'Conferindo o que muda…';
-          // a PRÉVIA: em percurso que já tem programa, aplicar é retificação — o diff aparece antes, e só passa confirmado
           api('POST', base() + '/pedidos/' + id + '/previa', corpo(false)).then(function (v) {
             if (!aqui()) return;
-            if (!(v.retificacao && v.diff && v.diff.mudou)) return aplicarAgora(false);
+            if (!(v.retificacao && v.diff && v.diff.mudou) && !SUBST) return aplicarAgora(false);
             btA.disabled = false; amsg.textContent = '';
+            var sm = v.soma || {};
             el('es-ed-previa').innerHTML = '<div class="es-nota-aba es-ed-ret"><b>Este percurso já tem programa (versão ' + v.destino.versao + ').</b>' +
-              '<p>Aplicar cria uma versão nova — uma retificação. A versão atual continua guardada. O que muda:</p>' + diffHtml(v.diff) +
-              '<div class="es-linha"><button class="al-bt" id="es-ed-ret">Confirmar a retificação</button><button class="al-bt fan" id="es-ed-ret-nao">Voltar à revisão</button></div></div>';
+              (SUBST ? '<p>Você pediu para <b>substituir</b> o programa atual pelo deste pedido: o que não está neste pedido SAI do programa. A versão atual continua guardada. O que muda:</p>'
+                : '<p>O que este pedido leu <b>soma</b> ao programa que já existe: nada do que está lá sai. Aplicar cria uma versão nova — uma retificação —, e a atual continua guardada. O que muda:</p>') +
+              ((sm.disciplinas_somadas || []).length ? '<p class="al-fino">Disciplinas que já existem e recebem os itens deste pedido: ' + sm.disciplinas_somadas.map(function (d) { return '<b>' + esc(d.codigo) + '</b> ' + esc(d.titulo); }).join('; ') + '.</p>' : '') +
+              ((sm.siglas_trocadas || []).length ? '<p class="al-fino">Sigla que já era de outra disciplina do percurso: ' + sm.siglas_trocadas.map(function (d) { return esc(d.titulo) + ' entra como <b>' + esc(d.para) + '</b>'; }).join('; ') + '.</p>' : '') +
+              diffHtml(v.diff) +
+              '<label class="es-ip-marca es-ed-subst"><input type="checkbox" id="es-ed-subst"' + (SUBST ? ' checked' : '') + '> Substituir o programa atual pelo deste pedido (use quando o edital foi relido inteiro)</label>' +
+              '<div class="es-linha"><button class="al-bt" id="es-ed-ret"' + (v.diff.mudou ? '' : ' disabled') + '>Confirmar a retificação</button><button class="al-bt fan" id="es-ed-ret-nao">Voltar à revisão</button></div></div>';
             el('es-ed-ret').onclick = function () { this.disabled = true; aplicarAgora(true); };
-            el('es-ed-ret-nao').onclick = function () { el('es-ed-previa').innerHTML = ''; };
+            el('es-ed-ret-nao').onclick = function () { SUBST = false; el('es-ed-previa').innerHTML = ''; };
+            el('es-ed-subst').onchange = function () { SUBST = this.checked; previaAgora(); };
             el('es-ed-previa').scrollIntoView({ block: 'nearest' });
           }).catch(erroA);
-        };
+        }
+        btA.onclick = previaAgora;
       }
       carregar();
     }

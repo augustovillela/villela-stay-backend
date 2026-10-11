@@ -290,7 +290,7 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     // o teto soma texto, páginas de PDF (teto fixo por página), passos e áudio
     const um = ia.tetoTrabalhoUSD('correcao', { caracteres: 3000 });
     assert.equal(ia.tetoUSD('correcao', 'x'.repeat(3000)), um, 'tetoUSD é o caso de um passo');
-    assert.ok(Math.abs(ia.tetoTrabalhoUSD('correcao', { caracteres: 3000, paginas_pdf: 10 }) - um - 10 * ia.TOKENS_POR_PAGINA_PDF * 3 / 1e6) < 1e-9, 'cada página de PDF entra pelo teto fixo');
+    assert.ok(Math.abs(ia.tetoTrabalhoUSD('correcao', { caracteres: 3000, paginas_pdf: 10 }) - um - 10 * ia.TOKENS_POR_PAGINA_PDF * ia.precoTeto().in / 1e6) < 1e-9, 'cada página de PDF entra pelo teto fixo');
     assert.ok(Math.abs(ia.tetoTrabalhoUSD('correcao', { caracteres: 3000, audio_seg: 300 }) - um - 5 * ia.TRANSCRICAO_USD_POR_MIN) < 1e-9, 'o áudio entra pela duração máxima');
     assert.ok(usd > 2.9 * ia.tetoTrabalhoUSD('correcao', { caracteres: 0 }) , 'a saída máxima conta uma vez por passo');
     assert.ok(ia.maxSaida('correcao') > ia.maxSaida('tutor') && ia.maxSaida('edital') >= 16000, 'agente de pedido tem teto de saída próprio, sem o corte global');
@@ -592,6 +592,109 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
       assert.deepEqual([p.estado, p.resultado.duracao_seg, p.cobrado_milesimos], ['pronto', 300, tetoDe5Min], 'a duração cobrada é contida em 5 minutos');
       assert.ok(p.cobrado_milesimos <= p.orcamento_milesimos, 'nunca acima do teto aceito');
     } finally { duracaoOuvida = 90; }
+  });
+
+  await t('ensaio real, defeitos 3 a 5: preços conferidos na fonte; raciocínio DESLIGADO nos pedidos pagos; resposta CORTADA é erro claro e não tenta o 2º modelo; tentativa que falhou entra no custo real — e o aluno nunca paga acima do teto', async () => {
+    const paula = uid(PAULA.email);
+    // ---- preços (página oficial, lida em 11/10/2026): Sonnet 5 = US$ 2/10 por milhão; o teto usa o mais caro da fila
+    assert.deepEqual([ia.precoDe('claude-sonnet-5'), ia.precoDe('claude-haiku-4-5'), ia.precoDe('modelo-que-ninguem-conhece')], [{ in: 2, out: 10 }, { in: 1, out: 5 }, { in: 3, out: 15 }]);
+    assert.equal(ia.custoUSD('claude-sonnet-5', { input_tokens: 1e6, output_tokens: 1e6 }), 12);
+    assert.ok(Math.abs(ia.custoUSD('claude-sonnet-5', { cache_creation_input_tokens: 1e6, cache_read_input_tokens: 1e6 }) - 2.7) < 1e-9 && Math.abs(ia.custoUSD('claude-sonnet-5-5', { cache_read_input_tokens: 1e6 }) - 0.1) < 1e-9, 'escrita de cache 1,25×; leitura 0,1× (0,05× nos 5.5)');
+    if (!process.env.ACADEMY_LLM_MODELS) assert.deepEqual([ia.MODELOS, ia.precoTeto()], [['claude-sonnet-5', 'claude-haiku-4-5'], { in: 2, out: 10 }], 'a fila padrão não mudou; o teto é orçado a 2/10');
+    // ---- raciocínio: fixo (desligado) nos agentes de pedido pago; os demais ficam como estavam
+    assert.deepEqual(['correcao', 'edital', 'prova'].map(a => ia.parametroDeRaciocinio(a, 'claude-sonnet-5')), [1, 2, 3].map(() => ({ thinking: { type: 'disabled' } })));
+    assert.deepEqual([ia.parametroDeRaciocinio('prova', 'claude-haiku-4-5'), ia.parametroDeRaciocinio('tutor', 'claude-sonnet-5'), ia.parametroDeRaciocinio('edital', 'claude-opus-5-5'), ia.parametroDeRaciocinio('edital', 'claude-fable-5-1'), ia.parametroDeRaciocinio('prova', 'claude-sonnet-5-5')],
+      [{ thinking: { type: 'disabled' } }, {}, {}, {}, { thinking: { type: 'between_tools' } }], 'modelo que recusa "disabled" não recebe o parâmetro (a recusa é um 400, que derrubaria o pedido)');
+    // ---- a fila de modelos, com o provedor simulado devolvendo a mensagem crua
+    const usd = ia.tetoTrabalhoUSD('correcao', { caracteres: 3000, passos: 3 });
+    const fila = [];
+    let roteiro = {};
+    const msg = (texto, usage = USO, stop = 'end_turn') => ({ content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: texto }], stop_reason: stop, usage });
+    const cru = async (x) => {
+      if (x.agente === 'transcricao') return { texto: TRANSCRICAO, duracao_seg: 0 }; // o provedor NÃO informou a duração
+      fila.push({ modelo: x.modelo, params: x.params });
+      const r = roteiro[x.modelo];
+      if (r instanceof Error) throw r;
+      return r;
+    };
+    const ultimoLog = () => db.prepare('SELECT * FROM ai_usage_logs WHERE user_id = ? ORDER BY rowid DESC').get(paula);
+    const BOA = JSON.stringify(CORRECAO);
+    ia.__mockParaTeste(cru, { modelos: ['claude-sonnet-5', 'claude-haiku-4-5'] });
+    try {
+      // (a) CORTADA: stop_reason 'max_tokens' → erro claro, UMA chamada (o segundo modelo cortaria igual e dobraria a despesa)
+      const saldo = carteira.saldo(paula), est0 = movs(paula, 'estorno');
+      roteiro = { 'claude-sonnet-5': msg('{"criterios":[{"n":1,"nivel":3,"trecho":"cortou aq', { input_tokens: 1000, output_tokens: 800 }, 'max_tokens'), 'claude-haiku-4-5': msg(BOA) };
+      const t1 = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
+      const e1 = await t1.passo('um passo que não coube', { max_saida: 800 }).then(() => null, (e) => e);
+      assert.ok(e1 && e1.cortada === true && /resposta maior que o limite do lote \(800 tokens de saída\)/.test(e1.message), e1 && e1.message);
+      assert.deepEqual(fila.map(f => f.modelo), ['claude-sonnet-5'], 'não tentou o segundo modelo');
+      assert.deepEqual([fila[0].params.thinking, fila[0].params.max_tokens, fila[0].params.model], [{ type: 'disabled' }, 800, 'claude-sonnet-5'], 'o que vai ao provedor: raciocínio desligado e o limite do passo');
+      t1.falhar(e1);
+      assert.deepEqual([carteira.saldo(paula), movs(paula, 'estorno') - est0], [saldo, 1], 'não gerou: volta tudo ao aluno');
+      // … e a plataforma registra o que a tentativa custou: (1.000 × 2 + 800 × 10) ÷ 1 milhão = US$ 0,01 = 1 centavo
+      const l1 = ultimoLog();
+      assert.deepEqual([l1.status, l1.modelo, l1.custo_centavos_usd, /resposta maior que o limite do lote/.test(l1.detalhe), l1.milesimos], ['erro', 'claude-sonnet-5', 1, true, 0]);
+      // (b) o 1º modelo respondeu fora do formato (e cobrou); o 2º acertou: o custo real soma os DOIS
+      fila.length = 0;
+      roteiro = { 'claude-sonnet-5': msg('Desculpe, não consegui montar a correção.', { input_tokens: 2000, output_tokens: 1000 }), 'claude-haiku-4-5': msg(BOA) };
+      const t2 = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
+      const j2 = await t2.passo('segundo trabalho');
+      const f2 = t2.concluir();
+      const custo2 = (2000 * 2 + 1000 * 10) / 1e6 + (1000 * 1 + 500 * 5) / 1e6; // US$ 0,014 da tentativa perdida + 0,0035 da que serviu
+      assert.deepEqual([fila.map(f => f.modelo), j2.comentario], [['claude-sonnet-5', 'claude-haiku-4-5'], CORRECAO.comentario]);
+      assert.ok(Math.abs(f2.custo_usd - custo2) < 1e-12 && f2.cobrado_milesimos === carteira.precoEmMilesimos(custo2), 'a tentativa que falhou entra na conta: ' + f2.custo_usd);
+      assert.deepEqual([ultimoLog().status, ultimoLog().modelo, ultimoLog().custo_centavos_usd], ['ok', 'claude-haiku-4-5', 1.75], 'o log guarda o custo com fração de centavo (antes arredondava para 2)');
+      // (c) os dois falharam: o erro leva o custo dos dois, e o log do pedido falho também
+      roteiro = { 'claude-sonnet-5': msg('nada de JSON', { input_tokens: 2000, output_tokens: 1000 }), 'claude-haiku-4-5': msg('nem aqui', { input_tokens: 2000, output_tokens: 1000 }) };
+      const t3 = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
+      const e3 = await t3.passo('terceiro').then(() => null, (e) => e);
+      assert.ok(e3 && !e3.cortada && /fora do formato/.test(e3.message) && Math.abs(e3.custo_usd - 0.021) < 1e-12, e3 && e3.message);
+      t3.falhar(e3);
+      assert.deepEqual([ultimoLog().status, ultimoLog().custo_centavos_usd, carteira.saldo(paula)], ['erro', 2.1, saldo - f2.cobrado_milesimos], 'o aluno não paga; o custo fica registrado');
+      // (d) NUNCA acima do teto: o custo real (com a tentativa perdida) passou do valor aceito — cobra-se o teto, e só
+      roteiro = { 'claude-sonnet-5': msg('fora do formato', { input_tokens: 50000, output_tokens: 5000 }), 'claude-haiku-4-5': msg(BOA) };
+      const t4 = ia.abrirTrabalho(paula, 'correcao', 0.002, { id: impId }, { aceite: 999999 });
+      await t4.passo('quarto');
+      const f4 = t4.concluir();
+      assert.ok(f4.custo_usd > 0.15 && f4.cobrado_milesimos === t4.teto_milesimos && t4.teto_milesimos === carteira.precoEmMilesimos(0.002), 'cobrado = teto: ' + JSON.stringify(f4));
+      // … e o passo seguinte de um trabalho que já estourou o teto não começa
+      const t5 = ia.abrirTrabalho(paula, 'correcao', 0.002, { id: impId }, { aceite: 999999 });
+      await t5.passo('quinto');
+      await assert.rejects(() => t5.passo('sexto'), /valor máximo aceito/);
+      t5.falhar(new Error('parou no teto'));
+      // (e) erro 4xx do provedor (parâmetro recusado) encerra a fila; 429 e 5xx tentam o seguinte — como era
+      fila.length = 0;
+      roteiro = { 'claude-sonnet-5': Object.assign(new Error('sobrecarga'), { status: 529 }), 'claude-haiku-4-5': msg(BOA) };
+      const t6 = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
+      await t6.passo('sétimo');
+      assert.deepEqual([fila.map(f => f.modelo), t6.concluir().custo_usd], [['claude-sonnet-5', 'claude-haiku-4-5'], 0.0035], 'erro de rede/sobrecarga não custa e passa ao modelo seguinte');
+      // (f) JSON com texto em volta (uma frase antes, cerca de código depois): não derruba um passo que já foi pago
+      fila.length = 0;
+      roteiro = { 'claude-sonnet-5': msg('Segue a correção pedida:\n```json\n' + BOA + '\n```\nQualquer dúvida, é só dizer.') };
+      const t7 = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
+      assert.deepEqual([(await t7.passo('oitavo')).comentario, fila.length], [CORRECAO.comentario, 1]);
+      t7.concluir();
+      assert.deepEqual([ia.jsonDaResposta('{"a":1}'), ia.jsonDaResposta('```json\n{"a":1}\n```'), ia.jsonDaResposta('antes {"a":{"b":2}} depois')], [{ a: 1 }, { a: 1 }, { a: { b: 2 } }]);
+      for (const ruim of ['sem chave nenhuma', '} invertido {', '{"cortado":']) assert.throws(() => ia.jsonDaResposta(ruim), 'não é JSON: ' + ruim);
+      // (g) ORAL — a duração cobrada não é a que o cliente declara. O provedor não informou a duração (acima): vale a
+      // estimada pelo TAMANHO do arquivo, a 24 kbps (por cima), contida no teto de 5 minutos.
+      assert.deepEqual([ia.AUDIO_KBPS_MINIMO, ia.duracaoPeloTamanho(3000), ia.duracaoPeloTamanho(90000), ia.duracaoPeloTamanho(1024 * 1024), ia.duracaoPeloTamanho(0)], [24, 1, 30, 350, 0], 'segundos = bytes × 8 ÷ 24.000');
+      const t8 = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
+      const curto = await t8.transcrever({ bytes: Buffer.alloc(90000), mime: 'audio/webm', extensao: 'webm', duracao_seg: 3, max_seg: 300 });
+      const longo = await t8.transcrever({ bytes: Buffer.alloc(2 * 1024 * 1024), mime: 'audio/webm', extensao: 'webm', duracao_seg: 3, max_seg: 300 });
+      assert.deepEqual([curto.duracao_seg, curto.duracao_do_provedor, longo.duracao_seg], [30, false, 300], 'declarar 3 segundos não muda nada: 90 kB são 30 s; 2 MB passam de 5 min e ficam no teto');
+      assert.ok(Math.abs(t8.concluir().custo_usd - ia.custoTranscricaoUSD(330)) < 1e-12);
+      assert.ok(!/Number\(duracao_seg\)/.test(fs.readFileSync(path.join(__dirname, '..', 'ia.js'), 'utf8')) && !/duracao_seg: e\.duracao_seg, max_seg/.test(fs.readFileSync(path.join(__dirname, 'pedidos.js'), 'utf8')), 'a duração declarada não chega à cobrança');
+    } finally { ia.__mockParaTeste(mock); }
+    // pelo pedido inteiro: a correção cortada falha com mensagem que diz o que houve (e não "tente de novo em alguns minutos")
+    ia.__mockParaTeste(async () => msg('{"criterios":[', USO, 'max_tokens'), { modelos: ['claude-sonnet-5', 'claude-haiku-4-5'] });
+    try {
+      const c = await criar('paula', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
+      assert.equal((await confirmar('paula', c.json.pedido.id, c.json.orcamento.orcamento_milesimos)).st, 200);
+      await ped.aguardar(c.json.pedido.id);
+      const p = (await obter('paula', c.json.pedido.id)).json.pedido;
+      assert.deepEqual([p.estado, p.cobrado_milesimos, /maior que o limite do lote/.test(p.erro), /voltou ao seu saldo/.test(p.erro), /alguns minutos/.test(p.erro)], ['falhou', 0, true, true, false], p.erro);
+    } finally { ia.__mockParaTeste(mock); }
   });
 
   await t('revisão 3: o teto subiu depois do orçamento → o 402 GRAVA o valor novo no pedido (a tela reconfirma com ele, não com o velho)', async () => {

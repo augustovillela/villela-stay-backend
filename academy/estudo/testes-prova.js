@@ -91,6 +91,7 @@ async function rodar({ t, req, EST, impId }) {
 
   // ---- o "modelo": devolve as questões do lote pedido e, no outro passo, o gabarito ----
   const Qm = (n, extra = {}) => ({ numero: String(n), tipo: 'objetiva', disciplina: '', apoio: '', enunciado: ENUN[n], alternativas: ALT[n].map((texto, i) => ({ letra: 'ABCDE'[i], texto })), tem_figura: false, continua: false, ...extra });
+  // lotes de 2 páginas: 1–2 (questões 1 a 4), 3–4 (5, 6 e o começo da 7) e 5–6 (o resto)
   const LOTE1 = () => ({ questoes: [
     // o modelo "sopra" a resposta junto da questão: o servidor ignora — gabarito só vem do documento do gabarito
     Qm(1, { disciplina: 'DIREITO CONSTITUCIONAL', gabarito: 'A', correta: 'A', alternativas: ALT[1].map((texto, i) => ({ letra: 'ABCDE'[i], texto, correta: i === 0 })) }),
@@ -98,11 +99,13 @@ async function rodar({ t, req, EST, impId }) {
     Qm(2, { alternativas: ALT[2].map((texto, i) => ({ letra: 'ABCDE'[i], texto: i === 1 ? 'É exercido exclusivamente pelo Superior Tribunal de Justiça.' : texto })) }),
     Qm(3),
     Qm(4, { tem_figura: true }),
+  ] });
+  const LOTE1B = () => ({ questoes: [
     Qm(5, { disciplina: 'DIREITO ADMINISTRATIVO' }),
     Qm(6, { numero: '5' }), // leu o número errado: dois "5"
     { ...Qm(7), alternativas: [], continua: true }, // cortada no fim da página 4
   ] });
-  const LOTE2 = () => ({ questoes: [
+  const LOTE3 = () => ({ questoes: [
     Qm(8, { apoio: APOIO8 }),
     Qm(9),
     { numero: '11', tipo: 'certo_errado', disciplina: '', apoio: '', enunciado: ENUN[11], alternativas: [], tem_figura: false, continua: false },
@@ -113,13 +116,13 @@ async function rodar({ t, req, EST, impId }) {
   let chamadas = [], pedidosAoModelo = [], modo = 'ok', portao = null;
   const mock = async (x) => {
     const ehGab = x.prompt.startsWith('Abaixo está o GABARITO');
-    const lote = ehGab ? 0 : /páginas 1 a 4 /.test(x.prompt) ? 1 : /páginas 5 a 6 /.test(x.prompt) ? 2 : /páginas 5 a 5 /.test(x.prompt) ? 3 : 9;
+    const lote = ehGab ? 0 : /páginas 1 a 2 /.test(x.prompt) ? 1 : /páginas 3 a 4 /.test(x.prompt) ? 2 : /páginas 5 a 6 /.test(x.prompt) ? 3 : 9;
     chamadas.push(ehGab ? 'gabarito' : 'lote' + lote);
     pedidosAoModelo.push(x);
     if (lote === 2 && portao) await portao;
     if (lote === 2 && modo === 'falha-no-lote-2') throw new Error('provedor fora do ar no segundo lote');
     if (lote === 2 && modo === 'torto') return { usage: USO, json: { nada: true } };
-    return { usage: USO, json: ehGab ? GAB_LIDO : lote === 1 ? LOTE1() : lote === 2 ? LOTE2() : { questoes: [] } };
+    return { usage: USO, json: ehGab ? GAB_LIDO : lote === 1 ? LOTE1() : lote === 2 ? LOTE1B() : lote === 3 ? LOTE3() : { questoes: [] } };
   };
   const enviar = async (jar, bytes, nome = 'prova.pdf') => {
     const r = await req('POST', `${base}/pedidos/arquivo`, { jar, corpo: { nome, mime: 'application/pdf', conteudo_base64: bytes.toString('base64') } });
@@ -161,20 +164,31 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(!/api\.openai\.com|anthropic|messages\.create/i.test(fs.readFileSync(path.join(__dirname, 'pdf.js'), 'utf8')), 'o leitor não fala com provedor');
   });
 
-  await t('prova: as peças puras — faixa e limite de 80 páginas, plano em lotes de 4, conferência do texto e pares explícitos do gabarito', async () => {
-    assert.deepEqual([prova.MAX_PAGINAS, prova.PAGINAS_POR_LOTE, prova.SAIDA_POR_LOTE, prova.SAIDA_GABARITO, prova.GABARITO_MAX_PAGINAS], [80, 4, 8000, 3000, 10]);
+  await t('prova: as peças puras — faixa e limite de 80 páginas, plano em lotes de 2, conferência do texto e pares explícitos do gabarito', async () => {
+    assert.deepEqual([prova.MAX_PAGINAS, prova.PAGINAS_POR_LOTE, prova.SAIDA_POR_LOTE, prova.SAIDA_GABARITO, prova.GABARITO_MAX_PAGINAS], [80, 2, 8000, 3000, 10]);
+    const PRECO = ia.precoTeto(); // o teto é orçado ao preço mais caro da fila de modelos
     assert.deepEqual([prova.faixaValida(200), prova.faixaValida(6), prova.faixaValida(200, [11, 90]), prova.faixaValida(6, [3])], [[1, 80], [1, 6], [11, 90], [3, 3]]);
     assert.throws(() => prova.faixaValida(200, [1, 81]), /até 80 páginas/);
     for (const ruim of [[0, 3], [4, 2], [1, 7], ['x', 2]]) assert.throws(() => prova.faixaValida(6, ruim), /inválida/);
     const info = [1, 2, 3, 4, 5, 6].map(n => ({ n, chars: n === 6 ? 0 : 1000 * n, sem_texto: n === 6 }));
     const pl = prova.planejar(info, [1, 6]);
     assert.deepEqual([pl.paginas, pl.escaneadas, pl.com_texto, pl.lotes.map(l => [l.paginas, l.chars, l.escaneadas, l.carrega_chars])],
-      [6, 1, 5, [[[1, 2, 3, 4], 10000, [], 0], [[5, 6], 5000, [6], 3000]]], 'o segundo lote orça levar o fim do primeiro (questão cortada)');
+      [6, 1, 5, [[[1, 2], 3000, [], 0], [[3, 4], 7000, [], 2000], [[5, 6], 5000, [6], 3000]]], 'cada lote orça levar o fim do anterior (questão cortada), até o limite');
     // o teto: cada página escaneada entra pelo teto fixo de página de PDF; cada lote, pela saída máxima do lote
     const usd = (faixa) => prova.tetoUSD({ plano: prova.planejar(info, faixa), gabarito: { chars: 100, escaneadas: [] } });
-    assert.ok(Math.abs(usd([5, 6]) - usd([5, 5]) - ia.TOKENS_POR_PAGINA_PDF * 3 / 1e6) < 1e-9, 'a página escaneada custa o teto de página de PDF');
-    assert.ok(usd([1, 6]) > usd([1, 4]) + prova.SAIDA_POR_LOTE * 15 / 1e6 - 1e-9, 'um lote a mais, uma saída máxima a mais');
-    assert.ok(usd([1, 4]) > prova.SAIDA_POR_LOTE * 15 / 1e6 + prova.SAIDA_GABARITO * 15 / 1e6, 'o gabarito é um passo, com a saída dele');
+    assert.ok(Math.abs(usd([5, 6]) - usd([5, 5]) - ia.TOKENS_POR_PAGINA_PDF * PRECO.in / 1e6) < 1e-9, 'a página escaneada custa o teto de página de PDF');
+    assert.ok(usd([1, 6]) > usd([1, 4]) + prova.SAIDA_POR_LOTE * PRECO.out / 1e6 - 1e-9, 'um lote a mais, uma saída máxima a mais');
+    assert.ok(usd([1, 4]) > 2 * prova.SAIDA_POR_LOTE * PRECO.out / 1e6 + prova.SAIDA_GABARITO * PRECO.out / 1e6, 'o gabarito é um passo, com a saída dele');
+    // O LOTE CABE NA SAÍDA — os números são do caderno real da FGV (II CNU da Magistratura do Trabalho, 34 páginas,
+    // 100 questões), medidos em 11/10/2026 com o oráculo no papel de modelo: o maior JSON perfeito de um lote, em
+    // caracteres, para cada tamanho de lote. A folga exigida é de 40 % a 3 caracteres por token (a conta do orçamento),
+    // e o lote ainda tem de caber a 2,3 por token (o tokenizador dos modelos novos); com 4 páginas por lote, como era, NÃO cabia.
+    const PIOR_JSON_DO_LOTE = { 1: 6652, 2: 13148, 3: 19383, 4: 25473 };
+    const tokens = (chars, porToken) => Math.ceil(chars / porToken);
+    assert.ok(tokens(PIOR_JSON_DO_LOTE[prova.PAGINAS_POR_LOTE], 3) <= prova.SAIDA_POR_LOTE * 0.6, 'o pior lote real cabe na saída do lote com folga de 40 %');
+    assert.ok(tokens(PIOR_JSON_DO_LOTE[prova.PAGINAS_POR_LOTE], 2.3) <= prova.SAIDA_POR_LOTE * 0.75, '… e ainda cabe, com folga, no tokenizador que rende 30 % mais tokens');
+    assert.ok(tokens(PIOR_JSON_DO_LOTE[4], 3) > prova.SAIDA_POR_LOTE, 'o arranjo antigo (4 páginas por lote) não comportava o caderno real');
+    assert.ok(ia.maxSaida('prova') >= prova.SAIDA_POR_LOTE, 'o teto do agente não corta o do lote');
     // conferência: espaços, quebra de linha e hífen de fim de linha não contam; palavra trocada conta
     const pagina = prova.liso('1. Acerca dos direitos fundamentais, assinale a alternativa cor-\nreta.\n(A) São “absolutos” e não\nadmitem restrição.\nPágina 3 de 20\nSegunda frase da questão; terceira parte dela.');
     assert.equal(prova.textoConfere('Acerca dos direitos fundamentais, assinale a alternativa correta.', pagina), true);
@@ -183,6 +197,24 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(prova.textoConfere('São "absolutos" e não admitem restrição. Segunda frase da questão; terceira parte dela.', pagina), true, 'interrompido por rodapé: confere frase a frase');
     assert.equal(prova.textoConfere('São "absolutos" e não admitem restrição. Frase que o modelo inventou agora mesmo.', pagina), false);
     assert.deepEqual(prova.paresExplicitos('TIPO 1\n1-B 2: c 3) anulada 4 - X\n5-A 5-B 6 D'), { 1: 'B', 2: 'C', 3: 'anulada', 4: 'anulada' }, 'número com duas letras (dois cadernos) e par sem separador ficam de fora');
+    // GABARITO EM GRADE (uma linha de números, outra de letras) — é como sai o texto do gabarito da FGV, e o de quase
+    // toda banca; com vários cadernos no mesmo documento. Antes a conferência achava ZERO pares aqui.
+    const GRADE = ['CONSELHO DE TESTE', 'GABARITO DEFINITIVO DA PROVA APLICADA NO DIA 14/05/2023', 'Página 1 de 1',
+      'Juiz Substituto - TIPO 1', '1 2 3 4 5 6 7 8 9 10', 'B C E C B E A * E D', '11 12', 'C X', '(*) – Questão Anulada',
+      'Juiz Substituto - TIPO 2', '1 2 3 4 5 6 7 8 9 10', 'B E C B C A B D E C', '11 12', 'E C',
+      'Juiz Substituto - TIPO 10', '1 2 3 4 5 6 7 8 9 10', 'A A A A A A A A A A', '11 12', 'A A'].join('\n');
+    const doTipo1 = prova.paresExplicitos(GRADE, { caderno: 'Tipo 1' });
+    assert.deepEqual(doTipo1, { 1: 'B', 2: 'C', 3: 'E', 4: 'C', 5: 'B', 6: 'E', 7: 'A', 8: 'anulada', 9: 'E', 10: 'D', 11: 'C', 12: 'anulada' }, 'a grade do caderno do candidato, com as anuladas — e "tipo 1" não é "tipo 10"');
+    assert.deepEqual(prova.paresExplicitos(GRADE, { caderno: 'TIPO 2' })[2], 'E');
+    assert.deepEqual(prova.paresExplicitos(GRADE), {}, 'sem saber o caderno, só entra o que TODOS dizem igual — aqui, nada');
+    assert.deepEqual(prova.paresExplicitos(GRADE, { caderno: 'Tipo 7' }), {}, 'caderno que não está no documento: nada é afirmado');
+    assert.deepEqual(prova.paresExplicitos('1 2 3\nA B\n4 5 6\nC D E\n7 A 8 B 9 anulada'), { 4: 'C', 5: 'D', 6: 'E', 7: 'A', 8: 'B', 9: 'anulada' }, 'linha de letras com outro tanto de células não é grade; "número letra" alternado na mesma linha é');
+    assert.deepEqual(prova.paresExplicitos('Prova aplicada em 14 de maio\nQuestão Resposta\n1 2\n3 4'), {}, 'número embaixo de número não é gabarito');
+    // a conferência serve para isto: o modelo leu a coluna errada (o gabarito do Tipo 2) — o texto diz outra coisa
+    const gradeVsModelo = (mapa) => prova.montar({ brutas: prova.lerLote({ questoes: [Qm(1)] }, { paginas: [1], escaneadas: [] }), gabarito: { mapa, ambiguo: false }, paresDoTexto: prova.paresExplicitos(GRADE.replace('B C E C B E A * E D', 'A C E C B E A * E D'), { caderno: PROC.caderno }),
+      textos: new Map([[1, PAGINAS[0].join('\n')]]), proc: { ...PROC, fonte: 'x' }, situacao: 'definitivo' }).questoes[0];
+    assert.deepEqual([gradeVsModelo({ 1: 'A' }).estado, gradeVsModelo({ 1: 'B' }).estado, /gabarito a conferir: a leitura deu B, mas o texto do gabarito traz A/.test(gradeVsModelo({ 1: 'B' }).motivo)], ['ok', 'revisar', true]);
+    assert.ok(/paresExplicitos\(gabarito\.texto, \{ caderno: proc\.caderno \}\)/.test(fs.readFileSync(path.join(__dirname, 'prova.js'), 'utf8')), 'a leitura real passa o caderno do candidato à conferência');
     // o gabarito lido pelo modelo que contradiz o que o TEXTO do gabarito diz às claras: a questão vai para revisão
     const textos = new Map([[1, PAGINAS[0].join('\n')]]);
     const bruta = prova.lerLote({ questoes: [Qm(1)] }, { paginas: [1], escaneadas: [] });
@@ -235,10 +267,10 @@ async function rodar({ t, req, EST, impId }) {
     const { pedido, orcamento } = r.json;
     pedidoAna = pedido.id; tetoAna = orcamento.orcamento_milesimos;
     assert.deepEqual([pedido.estado, pedido.tipo, pedido.cobrado_milesimos, pedido.prova.arquivo], ['orcado', 'prova', 0, 'caderno-tipo-1.pdf']);
-    assert.deepEqual(orcamento.detalhe, { total_paginas: 6, de: 1, ate: 6, paginas: 6, escaneadas: 1, com_texto: 5, lotes: 2, paginas_por_lote: 4, max_paginas: 80, gabarito: { tipo: 'texto', paginas_escaneadas: 0 } }, 'o orçamento diz o que será lido');
+    assert.deepEqual(orcamento.detalhe, { total_paginas: 6, de: 1, ate: 6, paginas: 6, escaneadas: 1, com_texto: 5, lotes: 3, paginas_por_lote: 2, max_paginas: 80, gabarito: { tipo: 'texto', paginas_escaneadas: 0 } }, 'o orçamento diz o que será lido');
     const e = JSON.parse(db.prepare('SELECT entrada FROM est_pedidos WHERE id = ?').get(pedidoAna).entrada);
     assert.equal(tetoAna, carteira.precoEmMilesimos(prova.tetoUSD(e)), 'o teto é o do plano de leitura');
-    assert.ok(tetoAna > carteira.precoEmMilesimos(2 * prova.SAIDA_POR_LOTE * 15 / 1e6) && /R\$/.test(orcamento.orcamento), 'cobre a saída máxima dos dois lotes');
+    assert.ok(tetoAna > carteira.precoEmMilesimos(3 * prova.SAIDA_POR_LOTE * ia.precoTeto().out / 1e6) && /R\$/.test(orcamento.orcamento), 'cobre a saída máxima dos três lotes');
     assert.ok(/Caderno de prova em PDF enviado/.test(e.procedencia.fonte) && e.caderno_sha256.length === 64, 'sem outra fonte informada, a fonte é o próprio arquivo — e o hash dele fica no pedido');
     assert.ok(!JSON.stringify(e).includes('direitos fundamentais'), 'o texto da prova não é copiado para o pedido na criação');
     assert.deepEqual([orcamento.cobranca, orcamento.saldo_milesimos, orcamento.saldo_suficiente, orcamento.falta_milesimos], ['paga', 0, false, tetoAna]);
@@ -250,7 +282,7 @@ async function rodar({ t, req, EST, impId }) {
     const pag = (jar, corpo) => req('POST', `${base}/pedidos/${pedidoAna}/paginas`, { jar, corpo });
     const menor = await pag('iris', { paginas: [1, 4] });
     assert.equal(menor.st, 200, menor.texto);
-    assert.deepEqual([menor.json.orcamento.detalhe.paginas, menor.json.orcamento.detalhe.lotes, menor.json.orcamento.detalhe.escaneadas, menor.json.orcamento.orcamento_milesimos < tetoAna], [4, 1, 0, true]);
+    assert.deepEqual([menor.json.orcamento.detalhe.paginas, menor.json.orcamento.detalhe.lotes, menor.json.orcamento.detalhe.escaneadas, menor.json.orcamento.orcamento_milesimos < tetoAna], [4, 2, 0, true]);
     assert.equal((await pag('iris', { paginas: [0, 99] })).st, 400);
     assert.equal((await pag('beto', { paginas: [1, 2] })).st, 404, 'pedido de outro');
     const volta = await pag('iris', { paginas: [1, 6] });
@@ -270,26 +302,27 @@ async function rodar({ t, req, EST, impId }) {
     assert.deepEqual(chamadas, ['lote1', 'lote2'], 'o primeiro lote terminou; o segundo está no provedor');
     // enquanto roda: o progresso está no pedido, confirmar de novo não reserva de novo, e não dá para cancelar nem aplicar
     const meio = (await obter('iris', pedidoAna)).json.pedido;
-    assert.deepEqual([meio.estado, meio.prova.progresso], ['processando', { etapa: 'questoes', feito: 1, total: 3 }]);
+    assert.deepEqual([meio.estado, meio.prova.progresso], ['processando', { etapa: 'questoes', feito: 1, total: 4 }]);
     assert.deepEqual([(await confirmar('iris', pedidoAna, tetoAna)).json.ja_confirmado, movs(ana, 'reserva')], [true, 1], 'idempotência antes do passo caro');
     assert.equal((await req('POST', `${base}/pedidos/${pedidoAna}/cancelar`, { jar: 'iris' })).st, 409);
     assert.equal((await aplicar('iris', pedidoAna, [{ n: 1 }])).st, 409);
     assert.equal((await req('POST', `${base}/pedidos/${pedidoAna}/paginas`, { jar: 'iris', corpo: { paginas: [1, 2] } })).st, 409);
     soltar(); portao = null;
     await ped.aguardar(pedidoAna);
-    assert.deepEqual(chamadas, ['lote1', 'lote2', 'gabarito'], 'um passo por lote e um para o gabarito');
+    assert.deepEqual(chamadas, ['lote1', 'lote2', 'lote3', 'gabarito'], 'um passo por lote e um para o gabarito');
     const p = (await obter('iris', pedidoAna)).json.pedido;
-    // 3 passos × US$ 0,0105 × 5,00 × 1,30 = 204,75 → 205 milésimos
-    assert.deepEqual([p.estado, p.cobrado_milesimos, p.prova.progresso], ['pronto', 205, null]);
-    assert.deepEqual([movs(ana, 'reserva'), movs(ana, 'acerto'), movs(ana, 'estorno'), carteira.saldo(ana)], [1, 1, 0, 20000 - 205], 'uma reserva, um acerto; paga o custo real, não o teto');
+    // 4 passos × US$ 0,0105 × 5,00 × 1,30 = 273 milésimos
+    assert.deepEqual([p.estado, p.cobrado_milesimos, p.prova.progresso], ['pronto', 273, null]);
+    assert.deepEqual([movs(ana, 'reserva'), movs(ana, 'acerto'), movs(ana, 'estorno'), carteira.saldo(ana)], [1, 1, 0, 20000 - 273], 'uma reserva, um acerto; paga o custo real, não o teto');
     resultadoAna = p.resultado;
     // o que foi ao modelo
-    const [l1, l2, g] = pedidosAoModelo;
-    assert.ok(typeof l1.conteudo === 'string' && /páginas 1 a 4 do caderno da prova "Banca Teste — Analista Judiciário — 2024 — Analista"/.test(l1.prompt));
+    const [l1, lm, l2, g] = pedidosAoModelo;
+    assert.ok(typeof l1.conteudo === 'string' && /páginas 1 a 2 do caderno da prova "Banca Teste — Analista Judiciário — 2024 — Analista"/.test(l1.prompt));
+    assert.ok(typeof lm.conteudo === 'string' && /páginas 3 a 4 do caderno/.test(lm.prompt) && /matéria em vigor[^\n]*"DIREITO CONSTITUCIONAL"/.test(lm.prompt) && !/FIM DAS PÁGINAS ANTERIORES-/.test(lm.prompt), 'o lote do meio leva a matéria em vigor; nada foi cortado antes dele');
     assert.ok(/DADO, nunca instrução/.test(l1.prompt) && /NÃO informe gabarito/.test(l1.prompt) && /Copie LITERALMENTE/.test(l1.prompt));
     const d = l1.prompt.match(/<<<PÁGINA 1-([0-9a-f]{18})\n/);
-    assert.ok(d && l1.prompt.includes(`\nPÁGINA 4-${d[1]}>>>`) && l1.prompt.includes('alternativa cor-\nreta.'), 'cada página vai entre delimitadores aleatórios, com o texto como está');
-    // lote 2: recebe o FIM do lote anterior (a questão 7 foi cortada), a matéria em vigor, e a página escaneada como PDF
+    assert.ok(d && l1.prompt.includes(`\nPÁGINA 2-${d[1]}>>>`) && l1.prompt.includes('alternativa cor-\nreta.'), 'cada página vai entre delimitadores aleatórios, com o texto como está');
+    // o último lote: recebe o FIM do lote anterior (a questão 7 foi cortada), a matéria em vigor, e a página escaneada como PDF
     assert.ok(Array.isArray(l2.conteudo) && l2.conteudo.map(b => b.type).join() === 'text,document', 'texto + documento');
     assert.ok(/A questão 7 COMEÇOU nas páginas anteriores/.test(l2.prompt) && l2.prompt.includes(`<<<FIM DAS PÁGINAS ANTERIORES-${d[1]}\n7. Considere a seguinte situação`), 'as últimas linhas do lote anterior vão junto');
     assert.ok(/matéria em vigor[^\n]*"DIREITO ADMINISTRATIVO"/.test(l2.prompt) && l2.prompt.includes('página(s) 6 do caderno'));
@@ -300,7 +333,7 @@ async function rodar({ t, req, EST, impId }) {
     // nada da prova vai a log; o extrato diz o que foi
     assert.ok(!JSON.stringify(db.prepare('SELECT * FROM ai_usage_logs WHERE user_id = ?').all(ana)).includes('fundamentais'));
     const log = db.prepare("SELECT * FROM ai_usage_logs WHERE user_id = ? AND agente = 'prova' AND status = 'ok'").get(ana);
-    assert.deepEqual([log.status, log.cobranca, log.milesimos, log.input_tokens], ['ok', 'paga', 205, 3000]);
+    assert.deepEqual([log.status, log.cobranca, log.milesimos, log.input_tokens], ['ok', 'paga', 273, 4000]);
     assert.equal((await req('GET', `/academy/api/ia/carteira?product_id=${impId}`, { jar: 'iris' })).json.extrato[0].descricao, 'Importação de prova em PDF');
   });
 
@@ -312,7 +345,7 @@ async function rodar({ t, req, EST, impId }) {
     // 1: pronta — gabarito B (o do documento), não o A que o modelo soprou; formato do banco, com a procedência
     const q1 = q(1)[0];
     assert.deepEqual([q1.estado, q1.motivo, q1.gabarito, q1.alternativas.map(a => a.correta), q1.tipo, q1.origem, q1.gabarito_situacao, q1.disciplina, q1.paginas],
-      ['ok', '', 'B', [false, true, false, false, false], 'objetiva', 'oficial', 'definitivo', 'DIREITO CONSTITUCIONAL', [1, 4]]);
+      ['ok', '', 'B', [false, true, false, false, false], 'objetiva', 'oficial', 'definitivo', 'DIREITO CONSTITUCIONAL', [1, 2]]);
     assert.deepEqual([q1.procedencia.numero_original, q1.procedencia.banca, q1.procedencia.concurso, q1.procedencia.ano, q1.procedencia.caderno], ['1', 'Banca Teste', 'Analista Judiciário', 2024, 'Tipo 1']);
     assert.equal(q1.enunciado, ENUN[1], 'a palavra hifenizada no fim da linha confere com a página');
     assert.equal(prova.recusaDoBanco(q1), '', 'o banco aceita a questão como está');
@@ -327,7 +360,7 @@ async function rodar({ t, req, EST, impId }) {
     assert.deepEqual(q(5).map(x => [x.estado, x.gabarito, x.alternativas.some(a => a.correta), /número repetido/.test(x.motivo)]), [['revisar', '', false, true], ['revisar', '', false, true]]);
     // 7: atravessou o lote — a versão inteira substituiu o pedaço e foi conferida contra as páginas dos dois lotes
     const q7 = q(7)[0];
-    assert.deepEqual([q7.estado, q7.gabarito, q7.alternativas.length, q7.paginas, q7.disciplina], ['ok', 'B', 5, [1, 6], 'DIREITO ADMINISTRATIVO']);
+    assert.deepEqual([q7.estado, q7.gabarito, q7.alternativas.length, q7.paginas, q7.disciplina], ['ok', 'B', 5, [3, 6], 'DIREITO ADMINISTRATIVO']);
     // 8: com texto-base (as questões do mesmo texto ficam no mesmo grupo)
     assert.deepEqual([q(8)[0].estado, q(8)[0].apoio, /^p[0-9a-f]{10}$/.test(q(8)[0].grupo)], ['ok', APOIO8, true]);
     // 9: o gabarito não traz a questão — fica sem resposta (nunca inventada)
@@ -516,12 +549,12 @@ async function rodar({ t, req, EST, impId }) {
     chamadas = []; pedidosAoModelo = [];
     const c = await pedir('maria', { caderno_media_id: cad, gabarito_texto: undefined, gabarito_media_id: gab, destino: { escopo: SLUG }, paginas: [1, 4], procedencia: { ...PROC, fonte: 'https://banca.teste/provas/2024' } });
     assert.equal(c.st, 200, c.texto);
-    assert.deepEqual([c.json.orcamento.detalhe.lotes, c.json.orcamento.detalhe.gabarito], [1, { tipo: 'pdf', paginas_escaneadas: 0 }]);
+    assert.deepEqual([c.json.orcamento.detalhe.lotes, c.json.orcamento.detalhe.gabarito], [2, { tipo: 'pdf', paginas_escaneadas: 0 }]);
     assert.equal((await confirmar('maria', c.json.pedido.id, c.json.orcamento.orcamento_milesimos)).st, 200);
     await ped.aguardar(c.json.pedido.id);
     const p = (await obter('maria', c.json.pedido.id)).json.pedido;
-    assert.deepEqual([p.estado, chamadas, p.cobrado_milesimos], ['pronto', ['lote1', 'gabarito'], carteira.precoEmMilesimos(2 * 0.0105)]);
-    assert.ok(pedidosAoModelo[1].prompt.includes('GABARITO DEFINITIVO - CADERNO TIPO 1\n1-B 2-B 3-anulada'), 'o texto do PDF do gabarito vai ao passo do gabarito');
+    assert.deepEqual([p.estado, chamadas, p.cobrado_milesimos], ['pronto', ['lote1', 'lote2', 'gabarito'], carteira.precoEmMilesimos(3 * 0.0105)]);
+    assert.ok(pedidosAoModelo[2].prompt.includes('GABARITO DEFINITIVO - CADERNO TIPO 1\n1-B 2-B 3-anulada'), 'o texto do PDF do gabarito vai ao passo do gabarito');
     const q1 = p.resultado.questoes.find(x => x.numero === '1'), q7 = p.resultado.questoes.find(x => x.numero === '7');
     assert.deepEqual([q1.estado, q1.gabarito, q1.procedencia.fonte], ['ok', 'B', 'https://banca.teste/provas/2024']);
     assert.ok(q7.estado === 'revisar' && /cortada no fim da página/.test(q7.motivo), 'a faixa terminou no meio da questão 7: fica marcada, não é completada');
