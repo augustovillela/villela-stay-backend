@@ -11,6 +11,7 @@ const imp = require('./importacao');
 const est = require('./estudo/repo');
 const al = require('./estudo/aluno');
 const ped = require('./estudo/pedidos');
+const jr = require('./estudo/jornada-estude');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 // `extra` leva o que a tela precisa para oferecer saída (ex.: quantas questões há de fato)
@@ -75,6 +76,13 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.get(`${base}/tentativas/:tentativa`, ...AL, h((req, res) => { semCache(res); res.json(al.obterTentativa(...a(req), req.params.tentativa)); }));
   app.put(`${base}/tentativas/:tentativa/respostas`, ...AL, h((req, res) => { res.json(al.salvarRespostas(...a(req), req.params.tentativa, b(req).respostas)); }));
   app.post(`${base}/tentativas/:tentativa/enviar`, ...AL, h((req, res) => { res.json(al.enviarTentativa(...a(req), req.params.tentativa)); }));
+
+  // ---- jornada do Estude (etapa 2): nível pelo domínio, selos, medalhas, diagnóstico de entrada e teste final ----
+  // o diagnóstico e o teste final são tentativas: começam aqui e seguem pelas rotas de /tentativas (salvar, abrir, enviar)
+  app.get(`${base}/jornada`, ...AL, h((req, res) => { semCache(res); res.json(jr.jornada(...a(req))); }));
+  app.post(`${base}/diagnostico`, ...AL, h((req, res) => { res.json(jr.iniciar(...a(req), { tipo: s(b(req).tipo, 20) || 'diagnostico' })); }));
+  // ---- ferramentas do concurseiro: só os DADOS (regra com fonte, data da prova, aulas que faltam); a conta roda no navegador ----
+  app.get(`${base}/ferramentas`, ...AL, h((req, res) => { semCache(res); res.json(jr.ferramentas(...a(req))); }));
 
   // ---- plano ----
   app.get(`${base}/plano`, ...AL, h((req, res) => { semCache(res); res.json(al.obterPlano(...a(req))); }));

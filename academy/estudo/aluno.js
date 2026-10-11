@@ -27,7 +27,7 @@ const hojeBR = (d = new Date()) => new Date(d.getTime() - 3 * 3600e3).toISOStrin
 const LIMITE_REVISOES_DIA = 20;
 const CARDS_NOVOS_DIA = 5;
 const FALHAS_PARA_ESTAGNACAO = 3;   // falhas sem apoio seguidas → trocar a estratégia, não repetir
-const MODOS_TENTATIVA = ['treino', 'simulado'];
+const MODOS_TENTATIVA = ['treino', 'simulado']; // o diagnóstico e o teste final (jornada-estude.js) são tentativas de outro molde, com porta própria
 const CONFIANCAS = ['baixa', 'media', 'alta'];
 
 // ---------------------------------------------------------------------
@@ -180,7 +180,7 @@ function painel(usuario, produto, slugEscopo) {
   const fila = filaDeRevisao(usuario, escopo);
   const evs = evidencias(usuario.id, escopo.id);
   // por aula: estudada (a régua única de `aulaEstudada`) e videoaula assistida — a lista de aulas mostra
-  const comResposta = new Set(evs.map(e => e.competencia_codigo)), aulas = estadoDasAulas(usuario.id, escopo.id);
+  const comResposta = new Set(evs.map(e => e.competencia_codigo)), aulas = estadoDasAulas(usuario.id, escopo.id), uns = R.unidades(escopo.id, c.vis);
   // RETA FINAL (ADR-0007): em que fase o aluno está em relação à prova (a data é a do edital; sem ela, a do plano dele)
   const pl = db.prepare('SELECT entrada, plano FROM est_planos WHERE user_id = ? AND escopo_id = ?').get(usuario.id, escopo.id);
   const alvo = escopo.data_alvo || (pl ? j.parse(pl.entrada, {}).data_alvo || '' : '');
@@ -205,13 +205,15 @@ function painel(usuario, produto, slugEscopo) {
     competencias: est,
     itens,
     // `mapa` diz à lista de aulas se há mapa mental para oferecer (ele mora no material de véspera)
-    unidades: R.unidades(escopo.id, c.vis).map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min, competencias: u.competencias, status: u.status,
+    unidades: uns.map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min, competencias: u.competencias, status: u.status,
       mapa: !!(u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa),
       // quais aulas animadas esta aula tem (fluxo, caso, erros) — o roteiro só vem quando o aluno abre
       animada: Object.keys(u.animacoes || {}), video: !!u.video_media_id,
       estudada: aulaEstudada(u, comResposta), video_assistido: !!(aulas.get(u.codigo) || {}).video_assistido })),
     // o que falta para o certificado do curso (percurso particular não emite: vem `null`)
     conclusao: c.particular || escopo.status !== 'publicado' ? null : conclusao(usuario.id, produto.id),
+    // ETAPA 2: o nível (pelo domínio demonstrado) e o diagnóstico — o cartão compacto da aba Hoje; a tela inteira é /jornada
+    jornada: require('./jornada-estude').resumoParaPainel(usuario, c, est, comResposta, { cob, uns }),
     regra_pontuacao: escopo.regra_pontuacao,
     revisoes: { hoje: fila.hoje.length, adiadas: fila.adiadas },
     desempenho: {
@@ -282,11 +284,12 @@ function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100', aberta =
 // ---------------------------------------------------------------------
 const BLOCOS_DE_LEITURA = ['explicacao', 'exemplo', 'sintese'];
 // as aulas agrupadas pela disciplina-mãe do edital (ou no grupo geral, quando o programa não tem uma)
-function aulasPorDisciplina(c) {
-  const itens = new Map(R.cobertura(c.escopo, c).por_item.map(i => [i.codigo, i.texto]));
+// (`cob` e `uns`: quem já calculou a cobertura e leu as aulas — o painel — passa adiante, para não refazer)
+function aulasPorDisciplina(c, { cob = null, uns = null } = {}) {
+  const itens = new Map((cob || R.cobertura(c.escopo, c)).por_item.map(i => [i.codigo, i.texto]));
   const disc = (u) => { const it = (u.itens[0] || ''); const d = it.split('.').slice(0, 2).join('.'); return it && itens.has(d) && d !== it ? d : ''; };
   const grupos = [], por = {};
-  for (const u of R.unidades(c.escopo.id, c.vis)) {
+  for (const u of uns || R.unidades(c.escopo.id, c.vis)) {
     const d = disc(u);
     if (!por[d]) grupos.push(por[d] = { codigo: d, nome: d ? itens.get(d) : 'Método de estudo', aulas: [] });
     por[d].aulas.push(u);
@@ -581,7 +584,8 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   const c = abrir(usuario, produto, slugEscopo);
   const eixo = banco.filtroDeEixos(resto);
   if (!MODOS_TENTATIVA.includes(modo)) throw erro(`modo deve ser ${MODOS_TENTATIVA.join('|')}.`);
-  const aberta = abrirTentativa(db.prepare("SELECT * FROM est_tentativas WHERE user_id = ? AND escopo_id = ? AND estado = 'em_andamento'").get(usuario.id, c.escopo.id));
+  // só prova aberta segura outra prova: o diagnóstico pode ficar dias em andamento (faz-se em partes) sem travar o treino e o simulado
+  const aberta = abrirTentativa(db.prepare(`SELECT * FROM est_tentativas WHERE user_id = ? AND escopo_id = ? AND estado = 'em_andamento' AND modo IN (${MODOS_TENTATIVA.map(() => '?').join(',')})`).get(usuario.id, c.escopo.id, ...MODOS_TENTATIVA));
   if (aberta) {
     const viva = consolidarSeExpirou(usuario, c.escopo, aberta);
     if (viva.estado === 'em_andamento') return { ...paraAlunoTentativa(viva), retomada: true };
@@ -709,6 +713,18 @@ function pesosDaBanca(escopo, c, itens) {
   if (!Object.values(of).some(Boolean)) return null; // sem prova oficial vinculada a ponto, não há padrão a seguir
   return itens.map(i => ({ ...i, peso: (Number(i.peso) || 0) + (of[i.codigo] || 0) }));
 }
+// A RETA FINAL do percurso: foco da véspera e quantos dias de véspera e de revisão geral. Um lugar só — o Plano
+// e o cronograma das Ferramentas (que é uma visão de calendário do mesmo plano) pedem daqui.
+function retaFinalDoEscopo(escopo) {
+  // ADR-0005: a véspera segue a 1ª etapa do concurso (perfil.etapas, ordem do edital); sem perfil, objetiva
+  const perfil = (escopo.perfil && typeof escopo.perfil === 'object') ? escopo.perfil : {};
+  const etapa1 = Array.isArray(perfil.etapas) && perfil.etapas[0] ? String(perfil.etapas[0].foco || perfil.etapas[0].tipo || perfil.etapas[0].nome || perfil.etapas[0]) : '';
+  const foco = /oral/i.test(etapa1) ? 'oral' : /discurs|escrit|senten|peça|peca/i.test(etapa1) ? 'escrita' : 'objetiva';
+  // véspera só no escopo de edital (o perfil pode mudar os dias); assunto avulso não tem prova marcada
+  const vesperaDias = perfil.vespera_dias != null && Number.isFinite(Number(perfil.vespera_dias)) ? Number(perfil.vespera_dias) : (escopo.tipo === 'edital' ? plano.VESPERA_PADRAO_DIAS : 0);
+  const rgDias = perfil.revisao_geral_dias != null && Number.isFinite(Number(perfil.revisao_geral_dias)) ? Number(perfil.revisao_geral_dias) : (escopo.tipo === 'edital' ? plano.REVISAO_GERAL_PADRAO_DIAS : 0);
+  return { foco, vespera_dias: vesperaDias, revisao_geral_dias: rgDias };
+}
 function definirPlano(usuario, produto, slugEscopo, entrada = {}, motivo = 'definido pelo aluno') {
   const c = abrir(usuario, produto, slugEscopo);
   const e = {
@@ -718,15 +734,8 @@ function definirPlano(usuario, produto, slugEscopo, entrada = {}, motivo = 'defi
     data_alvo: c.escopo.data_alvo || (/^\d{4}-\d{2}-\d{2}$/.test(entrada.data_alvo || '') ? entrada.data_alvo : ''),
     margem_pct: Math.min(50, Math.max(0, Number.isFinite(Number(entrada.margem_pct)) ? Number(entrada.margem_pct) : plano.MARGEM_PADRAO_PCT)),
   };
-  // ADR-0005: a véspera segue a 1ª etapa do concurso (perfil.etapas, ordem do edital); sem perfil, objetiva
-  const perfil = (c.escopo.perfil && typeof c.escopo.perfil === 'object') ? c.escopo.perfil : {};
-  const etapa1 = Array.isArray(perfil.etapas) && perfil.etapas[0] ? String(perfil.etapas[0].foco || perfil.etapas[0].tipo || perfil.etapas[0].nome || perfil.etapas[0]) : '';
-  const foco = /oral/i.test(etapa1) ? 'oral' : /discurs|escrit|senten|peça|peca/i.test(etapa1) ? 'escrita' : 'objetiva';
-  // véspera só no escopo de edital (padrão 7 dias; o perfil pode mudar); assunto avulso não tem prova marcada
-  const vesperaDias = perfil.vespera_dias != null && Number.isFinite(Number(perfil.vespera_dias)) ? Number(perfil.vespera_dias) : (c.escopo.tipo === 'edital' ? plano.VESPERA_PADRAO_DIAS : 0);
   const itensP = itensDoPlano(c.escopo, c);
-  const rgDias = perfil.revisao_geral_dias != null && Number.isFinite(Number(perfil.revisao_geral_dias)) ? Number(perfil.revisao_geral_dias) : (c.escopo.tipo === 'edital' ? plano.REVISAO_GERAL_PADRAO_DIAS : 0);
-  const base = { hoje: hojeBR(), ...e, foco, vespera_dias: vesperaDias, revisao_geral_dias: rgDias };
+  const base = { hoje: hojeBR(), ...e, ...retaFinalDoEscopo(c.escopo) };
   let p = plano.planejar({ ...base, itens: itensP });
   if (['nao_cabe', 'apertado'].includes(p.viabilidade.situacao)) {
     const pesados = pesosDaBanca(c.escopo, c, itensP);
@@ -927,4 +936,6 @@ module.exports = {
   contexto, abrir, escopos, painel, unidade, animacoes, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, bancoDeQuestoes, pedirPista, responder, erros, anotar,
   cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,
+  // para a jornada do Estude (jornada-estude.js): o diagnóstico é uma tentativa, e o nível, os selos e as medalhas saem das mesmas evidências
+  evidencias, jaViu, errosPendentes, aulasPorDisciplina, competenciasComResposta, abrirTentativa, tentativaDe, paraAlunoTentativa, consolidarSeExpirou, retaFinalDoEscopo,
 };

@@ -2823,6 +2823,8 @@ async function main() {
   await require('./estudo/testes').rodar({ t, req, EST, impId });
   // ESTUDO · paridade com os outros cursos (barra do curso, quiz na aula, caderno, certificado, Tutor por aula, áudio da oral, LGPD)
   await require('./estudo/testes-paridade').rodar({ t, req });
+  // ================= JORNADA do Estude e FERRAMENTAS do concurseiro (paridade, etapa 2): diagnóstico, nível, selos, medalhas, pontuação, prazo e cronograma =================
+  await require('./estudo/testes-jornada-estude').rodar({ t, req });
 
   // ================= AMOSTRAS GRÁTIS (amostras.js): trechos públicos de vídeo =================
   await require('./testes-amostras').rodar({ t, req, base: () => BASE, emailProdutor: MARIA.email });

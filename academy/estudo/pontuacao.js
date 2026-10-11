@@ -16,6 +16,9 @@ const ABSTENCAO = '__abstencao__';
 const SITUACOES = ['certa', 'errada', 'abstencao', 'em_branco', 'anulada'];
 
 const num = (v, padrao) => (Number.isFinite(Number(v)) ? Number(v) : padrao);
+// Soma de pontos fracionários (0,1 por acerto) acumula ruído de ponto flutuante: nove acertos de 0,1 dão
+// 0,8999999999999999 e ficariam ABAIXO de um mínimo de 0,9. Toda soma de pontos passa por aqui antes de ser comparada.
+const arr = (n) => Math.round(n * 1e6) / 1e6;
 const conjunto = (v) => (Array.isArray(v) ? v : [v]).map(String).sort().join('|');
 
 // Regra normalizada. Tudo que não vier cai no comportamento mais simples
@@ -73,14 +76,15 @@ function corrigir(itens, respostas = {}, regraCrua = {}) {
     porItem.push({ id: item.id, situacao: sit, pontos, bloco: b.bloco });
   }
   const lista = Object.values(blocos);
+  for (const b of lista) { b.pontos_brutos = arr(b.pontos_brutos); b.maximo = arr(b.maximo); }
   const soma = (k) => lista.reduce((a, b) => a + b[k], 0);
-  const bruta = soma('pontos_brutos'), maximo = soma('maximo'), erros = soma('erros_contados');
+  const bruta = arr(soma('pontos_brutos')), maximo = arr(soma('maximo')), erros = soma('erros_contados');
   let descontados = 0;
   if (regra.desconto) {
     const conjuntos = regra.desconto.modo === 'inteiro' ? Math.floor(erros / regra.desconto.a_cada) : erros / regra.desconto.a_cada;
-    descontados = conjuntos * regra.valor_certa;
+    descontados = arr(conjuntos * regra.valor_certa);
   }
-  let liquida = bruta - descontados;
+  let liquida = arr(bruta - descontados);
   if (regra.piso_zero && liquida < 0) liquida = 0;
   const pct = (p, m) => (m > 0 ? Math.round((p / m) * 1000) / 10 : 0);
 

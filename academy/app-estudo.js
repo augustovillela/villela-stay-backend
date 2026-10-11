@@ -180,7 +180,7 @@
     }
     // O LUGAR de cada aba: quais disciplinas estavam abertas e onde a página estava rolada. Sem isso, voltar da
     // aula para a lista devolve ao topo, com a primeira disciplina aberta — "volta ao princípio" (Augusto, 10/10/2026).
-    var LUGAR = {}, LUGARES = {}, ONDE = {}, LISTAS = { aulas: 1, mapas: 1, programa: 1, cobrado: 1, escrita: 1 };
+    var LUGAR = {}, LUGARES = {}, ONDE = {}, LISTAS = { aulas: 1, mapas: 1, programa: 1, cobrado: 1, escrita: 1 }, PORTAS = { jornada: 1, ferramentas: 1 };
     function rolagem() { return document.scrollingElement || document.documentElement; }
     function guardarLugar() {
       var c = el('es-corpo');
@@ -216,6 +216,8 @@
       guardarLugar();
       if (aba === 'unidade' && E.aba && E.aba !== 'unidade') E.veioDe = E.aba;
       if (aba === 'caderno' && E.aba !== 'caderno') E.antesDoCaderno = ONDE[chavePercurso(E.slug)] || { aba: E.aba }; // o caderno devolve a quem o abriu
+      // Minha jornada e Ferramentas são PORTAS (não são abas): guardam de onde o aluno veio — aba, aula e rolagem — para devolvê-lo lá
+      if (PORTAS[aba] && !PORTAS[E.aba]) { var veioDe = ONDE[chavePercurso(E.slug)] || {}; E.antesDaPorta = { aba: E.aba, arg: veioDe.aba === E.aba ? veioDe.arg : undefined, y: rolagem().scrollTop }; }
       E.aba = aba; E.abaArg = typeof arg === 'string' && arg ? arg : (arg && typeof arg === 'object' ? 'obj' : '');
       ONDE[chavePercurso(E.slug)] = { aba: aba, arg: typeof arg === 'string' && arg ? arg : undefined }; // para voltar a este percurso onde estava
       rota(['curso', E.pid, 'estude', E.slug, aba].concat(typeof arg === 'string' && arg ? [arg] : []), substituir);
@@ -223,7 +225,7 @@
       var alvo = el('es-corpo');
       alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
       if (!document.querySelector('.es-kd')) document.documentElement.style.overflow = ''; // o leitor de tela cheia saiu de cena
-      ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, praticar: praticar, escrita: escrita, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade, caderno: caderno }[aba] || hoje)(alvo, arg);
+      ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, praticar: praticar, escrita: escrita, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade, caderno: caderno, jornada: jornada, ferramentas: ferramentas }[aba] || hoje)(alvo, arg);
       if (LISTAS[aba] && !E.abaArg) reporLugar(aba, alvo); else rolagem().scrollTop = 0;
     }
     // "Voltar" de dentro da aula: para a tela de onde o aluno veio (lista de aulas, programa, mapas…), no ponto em que estava
@@ -254,22 +256,19 @@
       carregar(function () {
         var p = E.painel, c = p.cobertura, px = p.proxima, ac = ACAO[px.tipo], d = p.desempenho;
         if (px.tipo === 'sem_questoes' && !p.escopo.particular) ac = null; // no percurso do curso, quem traz o conteúdo é o curso
-        var h = retaFinal(p) + '<div class="es-proxima"><p class="al-rotulo">Sua próxima tarefa</p>' +
+        var jaFez = !!(p.jornada && p.jornada.avaliacao && p.jornada.avaliacao.diagnostico.feito);
+        // enquanto o diagnóstico não foi feito, a porta dele vem ANTES da próxima tarefa; depois, vira a ordem sugerida, logo abaixo
+        var h = retaFinal(p) + (jaFez ? '' : cartaoDiagnostico(p, true)) + '<div class="es-proxima"><p class="al-rotulo">Sua próxima tarefa</p>' +
           '<h3>' + (px.competencia ? esc(nomeComp(px.competencia)) : (px.tipo === 'concluido' ? 'Tudo demonstrado até aqui' : px.tipo === 'sem_questoes' ? 'Faltam questões para praticar' : px.tipo === 'sem_competencias' ? 'Percurso ainda vazio' : 'Recordar')) + '</h3>' +
           '<p class="es-motivo"><b>Por quê:</b> ' + esc(px.motivo) + '</p>' +
           (ac ? '<button class="al-bt" id="es-agir">' + ac[0] + '</button>' : '') +
-          ' <button class="al-bt fan" id="es-outra">Escolher outra coisa</button></div>';
+          ' <button class="al-bt fan" id="es-outra">Escolher outra coisa</button></div>' + (jaFez ? cartaoDiagnostico(p, true) : '') + cartaoJornada(p);
         // percurso particular ainda sem programa: dizer o que falta, e por onde ele chega
         if (p.escopo.particular && !p.escopo.versao) h += '<div class="jr-caixa"><h3>Este percurso ainda não tem programa</h3><p class="al-sub">Envie o edital do concurso em PDF: o sistema lê o conteúdo programático, e o percurso ganha o programa por disciplina e o plano com a data da prova.</p>' +
           '<button class="al-bt fan" id="es-hj-edital">Ler edital em PDF</button></div>';
         h += '<div class="jr-caixa"><h3>Onde você está no programa</h3>' +
           '<p class="al-sub">São quatro medidas diferentes, cada uma com a sua contagem. Ter a aula pronta não é ter estudado, e ter estudado não é ter demonstrado.</p>' +
-          '<div class="es-eixos">' +
-          eixo('Com aula pronta', c.material.com, c.folhas, 'itens do programa com material', 'cinza') +
-          eixo('Com questão conferida', c.avaliacao.com_questao_revisada, c.folhas, c.avaliacao.so_sugerida ? '+ ' + c.avaliacao.so_sugerida + ' com vínculo ainda a conferir' : 'itens com questão vinculada', 'cinza') +
-          eixo('Estudados por você', c.estudo.estudados, c.folhas, 'itens em que você já respondeu algo', 'ambar') +
-          eixo('Demonstrados sem apoio', c.dominio.sem_apoio + c.dominio.retidos, c.folhas, c.dominio.retidos + ' com retenção confirmada', 'verde') +
-          '</div>' + (c.pendentes_de_leitura ? '<p class="es-aviso">' + c.pendentes_de_leitura + ' item(ns) do programa com leitura pendente de conferência — não contam como cobertos.</p>' : '') + '</div>';
+          caixaEixos(p) + (c.pendentes_de_leitura ? '<p class="es-aviso">' + c.pendentes_de_leitura + ' item(ns) do programa com leitura pendente de conferência — não contam como cobertos.</p>' : '') + '</div>';
         h += '<div class="es-duas"><div class="jr-caixa"><h3>Retomadas</h3><p class="es-num">' + p.revisoes.hoje + '</p><p class="al-sub">para hoje' +
           (p.revisoes.adiadas ? ' · ' + p.revisoes.adiadas + ' ficaram para depois, para a fila caber no dia' : '') + '</p></div>' +
           '<div class="jr-caixa"><h3>Seu desempenho</h3>' + (d.respostas ? '<table class="es-tab">' +
@@ -281,6 +280,9 @@
           '<button class="al-bt fan" id="es-hj-err">Abrir o caderno</button></div>';
         alvo.innerHTML = h;
         if (el('es-hj-err')) el('es-hj-err').onclick = function () { ir('erros'); };
+        ligarAvaliacao(alvo);
+        if (el('es-hj-jr')) el('es-hj-jr').onclick = function () { ir('jornada'); };
+        cada(alvo, '[data-ir-jr]', function (b) { b.onclick = function () { ir('jornada', 'avaliacao'); }; });
         if (el('es-hj-edital')) el('es-hj-edital').onclick = function () { ir('escrita', 'edital'); };
         if (el('es-agir')) el('es-agir').onclick = function () { ac[1](px); };
         el('es-outra').onclick = function () { ir('programa'); };
@@ -1549,11 +1551,338 @@
     function botoesDaBarra() {
       var cx = el('es-barra-es'), k = E.painel && E.painel.conclusao;
       if (!cx) return;
-      cx.innerHTML = '<button class="al-bt peq fan" id="es-bar-cad">📓 Meu caderno</button>' +
+      cx.innerHTML = '<button class="al-bt peq fan" id="es-bar-jr">🏅 Minha jornada</button><button class="al-bt peq fan" id="es-bar-fer">🧰 Ferramentas</button><button class="al-bt peq fan" id="es-bar-cad">📓 Meu caderno</button>' +
         (k && k.certificado ? '<a class="al-bt peq fan" href="/academy/certificados/' + esc(k.certificado) + '" target="_blank" rel="noopener">🎓 Meu certificado</a>'
           : k && k.cumprido ? '<button class="al-bt peq" id="es-bar-cert">🎓 Emitir certificado</button>' : '');
       el('es-bar-cad').onclick = function () { ir('caderno'); };
+      el('es-bar-jr').onclick = function () { ir('jornada'); };
+      el('es-bar-fer').onclick = function () { ir('ferramentas'); };
       if (el('es-bar-cert')) el('es-bar-cert').onclick = function () { emitirCertificado(el('es-bar-cert')); };
+    }
+
+    // ================= MINHA JORNADA (etapa 2): nível, selos, medalhas, diagnóstico × teste final =================
+    // Tudo vem pronto do servidor (estudo/jornada-estude.js), derivado das evidências: aqui só se mostra. O nível
+    // mede o que foi DEMONSTRADO — a tela diz isso com todas as letras, e diz o que falta em número de competências.
+    // Os eixos do programa continuam separados, cada um com a sua contagem: nenhum percentual único.
+    var GRAU = { ouro: ['🥇', 'Ouro'], prata: ['🥈', 'Prata'], bronze: ['🥉', 'Bronze'], '': ['○', 'Ainda sem selo'] };
+    var LEITURA_COR = { comece_por_aqui: 'ambar', base_razoavel: 'azul', ponto_forte: 'verde', sem_questoes: 'cinza' };
+    var TIPO_AVAL = { diagnostico: 'Diagnóstico de entrada', teste_final: 'Teste final' };
+    function ehAvaliacao(t) { return !!t && (t.modo === 'diagnostico' || t.modo === 'teste_final'); }
+    function num(x) { return String(Math.round(Number(x) * 1000) / 1000).replace('.', ','); }
+    function voltarDaPorta() {
+      var a = E.antesDaPorta || { aba: 'hoje' };
+      ir(a.aba, a.arg);
+      if (a.y > 0 && !(LISTAS[a.aba] && !a.arg)) reporRolagem(a.aba, a.y); // as listas repõem o próprio lugar
+    }
+    function botaoVoltarDaPorta() { return '<button class="al-bt fan" data-volta-porta="1">← Voltar para onde eu estava</button>'; }
+    function ligarVoltarDaPorta(alvo) { cada(alvo, '[data-volta-porta]', function (b) { b.onclick = voltarDaPorta; }); }
+    // começa (ou retoma) o diagnóstico ou o teste final e abre a mesma tela de prova — sem relógio
+    function iniciarAvaliacao(tipo, msg) {
+      api('POST', base() + '/diagnostico', { tipo: tipo }).then(function (t) {
+        ir('jornada', { tentativa: t }); // a prova abre DENTRO da jornada: é para lá que o F5 e o "continuar depois" devolvem
+      }).catch(function (e) { if (msg) msg.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; else alert(e.message); });
+    }
+    function linhasDeLeitura(ds) {
+      return '<table class="es-tab es-jr-tab">' + ds.map(function (d) {
+        return '<tr><td>' + esc(d.nome) + '</td><td class="n">' + (d.total ? d.acertos + ' de ' + d.total : '—') + '</td><td class="n"><span class="es-selo ' + (LEITURA_COR[d.leitura] || 'cinza') + '">' + esc(d.leitura_txt) + '</span></td></tr>';
+      }).join('') + '</table>';
+    }
+    function ordemSugeridaTxt(ordem) {
+      return '<ol class="es-jr-ordem">' + ordem.map(function (d) { return '<li>' + esc(d.nome) + ' <span class="al-fino">· ' + (d.total ? d.acertos + ' de ' + d.total + ' · ' : '') + esc(d.leitura_txt.toLowerCase()) + '</span></li>'; }).join('') + '</ol>';
+    }
+    // a caixa do diagnóstico e do teste final, com o antes × depois
+    function caixaAvaliacao(a) {
+      if (!a || !a.disponivel) return '';
+      var d = a.diagnostico, f = a.teste_final, n = a.por_disciplina * a.disciplinas;
+      var h = '<div class="jr-caixa es-jr-aval" id="es-jr-aval"><p class="al-rotulo">Diagnóstico × teste final</p><h3>Por onde começar, e quanto você evoluiu</h3>';
+      if (d.aberto) h += '<p>Diagnóstico em andamento: <b>' + d.aberto.respondidas + ' de ' + d.aberto.total + '</b> respondidas. As respostas estão salvas; ele fica aberto até ' + dataBR(String(d.aberto.valido_ate).slice(0, 10)) + '.</p>' +
+        '<div class="es-linha"><button class="al-bt" data-aval="diagnostico">Continuar o diagnóstico</button><span data-aval-msg="1"></span></div>';
+      else if (!d.feito) h += '<p class="al-sub">Uma prova curta, com até ' + a.por_disciplina + ' questões de cada disciplina do percurso (cerca de ' + n + ' no total). Não tem relógio: responda no seu ritmo, pare quando quiser e continue depois. No fim, você vê como foi em cada disciplina e por onde vale começar.</p>' +
+        '<p class="al-fino">As respostas contam como qualquer resposta sua (entram no seu desempenho e no caderno de erros). O diagnóstico é feito uma vez; no fim do percurso, o teste final repete o molde com outras questões, para comparar.</p>' +
+        '<div class="es-linha"><button class="al-bt" data-aval="diagnostico">Começar o diagnóstico</button><span data-aval-msg="1"></span></div>';
+      else {
+        h += '<h4>Diagnóstico de entrada · ' + dataBR(String(d.resultado.enviado_em).slice(0, 10)) + ' · ' + d.resultado.acertos + ' de ' + d.resultado.total + '</h4>' + linhasDeLeitura(d.resultado.disciplinas) +
+          '<h4>Ordem sugerida de estudo</h4>' + ordemSugeridaTxt(d.ordem_sugerida) +
+          '<p class="al-fino">Com ' + a.por_disciplina + ' questões por disciplina, o diagnóstico aponta por onde começar — não mede o domínio da disciplina. A ordem é uma sugestão: o seu Plano continua como você o montou.</p>';
+      }
+      h += '<h4>Teste final</h4>';
+      if (f.aberto) h += '<p>Teste final em andamento: <b>' + f.aberto.respondidas + ' de ' + f.aberto.total + '</b> respondidas.</p><div class="es-linha"><button class="al-bt" data-aval="teste_final">Continuar o teste final</button><span data-aval-msg="1"></span></div>';
+      else if (!f.liberado) h += '<p class="al-sub">Abre quando você tiver estudado ' + f.pct_exigido + ' % das aulas do percurso: até aqui, ' + f.aulas_estudadas + ' de ' + f.total_aulas + ' (' + (f.faltam_aulas > 1 ? 'faltam ' + f.faltam_aulas + ' aulas' : 'falta 1 aula') + '). É o mesmo molde do diagnóstico, com outras questões.</p>';
+      else h += (f.resultado ? '<p>Último teste final em ' + dataBR(String(f.resultado.enviado_em).slice(0, 10)) + ': <b>' + f.resultado.acertos + ' de ' + f.resultado.total + '</b>.</p>' : '<p class="al-sub">Liberado: você já estudou ' + f.pct_aulas + ' % das aulas. Mesmo molde do diagnóstico, com outras questões sempre que houver.</p>') +
+        (f.pode_refazer ? '<div class="es-linha"><button class="al-bt' + (f.resultado ? ' fan' : '') + '" data-aval="teste_final">' + (f.resultado ? 'Refazer o teste final' : 'Fazer o teste final') + '</button><span data-aval-msg="1"></span></div>'
+          : '<p class="al-fino">Para refazer, espere até ' + dataBR(f.pode_refazer_em) + ' (intervalo de ' + f.intervalo_dias + ' dias entre um teste final e outro).</p>');
+      if (a.evolucao.length) h += '<h4>Antes × depois, por disciplina</h4><table class="es-tab es-jr-tab"><tr><th>Disciplina</th><th class="n">Diagnóstico</th><th class="n">Teste final</th><th class="n">Variação</th></tr>' + a.evolucao.map(function (x) {
+        var v = x.variacao_pp;
+        return '<tr><td>' + esc(x.nome) + '</td><td class="n">' + (x.antes.total ? x.antes.acertos + ' de ' + x.antes.total : '—') + '</td><td class="n">' + (x.depois && x.depois.total ? x.depois.acertos + ' de ' + x.depois.total : '—') + '</td>' +
+          '<td class="n">' + (v == null ? '—' : '<span class="es-selo ' + (v > 0 ? 'verde' : v < 0 ? 'ambar' : 'cinza') + '">' + (v > 0 ? '+' : '') + v + ' p.p.</span>') + '</td></tr>';
+      }).join('') + '</table><p class="al-fino">São poucas questões por disciplina: leia a variação como um sinal, não como nota.</p>';
+      else if (f.resultado && !d.feito) h += '<p class="al-fino">Você não fez o diagnóstico de entrada: não há um "antes" para comparar.</p>' + linhasDeLeitura(f.resultado.disciplinas);
+      return h + '</div>';
+    }
+    function ligarAvaliacao(alvo) {
+      cada(alvo, '[data-aval]', function (b) { b.onclick = function () { b.disabled = true; iniciarAvaliacao(b.getAttribute('data-aval'), b.parentNode.querySelector('[data-aval-msg]')); setTimeout(function () { b.disabled = false; }, 4000); }; });
+    }
+    function caixaNivel(nv) {
+      var k = nv.competencias, px = nv.proximo;
+      var linha = function (a, b) { return '<tr><td>' + a + '</td><td class="n">' + b + '</td></tr>'; };
+      return '<div class="jr-caixa es-jr-nivel"><p class="al-rotulo">Minha jornada · nível pelo domínio demonstrado</p><h3>Nível ' + nv.n + ' de ' + nv.de + ' — ' + esc(nv.nome) + '</h3>' +
+        '<div class="es-jr-escada">' + nv.escada.map(function (x) {
+          return '<div class="es-jr-degrau' + (x.n === nv.n ? ' on' : x.n < nv.n ? ' feito' : '') + '"><b>' + x.n + '</b><span>' + esc(x.nome) + '</span><small>' + (x.n === 1 ? 'ponto de partida' : x.demonstradas + ' demonstrada' + (x.demonstradas === 1 ? '' : 's') + (x.retidas ? ' · ' + x.retidas + ' retida' + (x.retidas === 1 ? '' : 's') : '')) + '</small></div>';
+        }).join('') + '</div>' +
+        '<p class="es-jr-falta">' + (px ? esc(px.texto) : (k.total ? 'Você está no nível mais alto. Ele se mantém enquanto as competências continuarem demonstradas e retidas.' : 'Este percurso ainda não tem competências para demonstrar.')) + '</p>' +
+        '<table class="es-tab es-jr-tab">' + linha('Competências do percurso', k.total) + linha('<b>Demonstradas sem apoio</b> (questão nova, sem pista)', '<b>' + k.demonstradas + '</b>') + linha('— das quais com retenção confirmada', k.retidas) +
+        linha('Acertadas só com apoio (pista, questão repetida ou card)', k.com_apoio) + linha('Em prática (o último resultado sem apoio foi erro)', k.em_pratica) + linha('Ainda não avaliadas', k.nao_avaliadas) + '</table>' +
+        (k.sem_questao ? '<p class="es-aviso">' + k.sem_questao + ' competência(s) ainda não têm questão para você demonstrar: elas contam no total, e o nível sobe quando o conteúdo delas chegar.</p>' : '') +
+        '<p class="al-fino">O nível sai só do que você demonstrou: acertar, sem pista, uma questão que ainda não tinha visto. Assistir, ler e abrir aula não mudam o nível — e ele pode descer: um erro sem apoio reabre a competência. Nível não é previsão de resultado em prova.</p></div>';
+    }
+    function caixaEixos(p) {
+      var c = p.cobertura;
+      return '<div class="es-eixos">' +
+        eixo('Com aula pronta', c.material.com, c.folhas, 'itens do programa com material', 'cinza') +
+        eixo('Com questão conferida', c.avaliacao.com_questao_revisada, c.folhas, c.avaliacao.so_sugerida ? '+ ' + c.avaliacao.so_sugerida + ' com vínculo ainda a conferir' : 'itens com questão vinculada', 'cinza') +
+        eixo('Estudados por você', c.estudo.estudados, c.folhas, 'itens em que você já respondeu algo', 'ambar') +
+        eixo('Demonstrados sem apoio', c.dominio.sem_apoio + c.dominio.retidos, c.folhas, c.dominio.retidos + ' com retenção confirmada', 'verde') + '</div>';
+    }
+    // o cartão compacto da aba Hoje: nível, o que falta e a porta para a tela inteira
+    function cartaoJornada(p) {
+      var jn = p.jornada;
+      if (!jn || !jn.nivel) return '';
+      var nv = jn.nivel;
+      return '<div class="jr-caixa es-jr-mini"><div class="es-linha"><div><p class="al-rotulo">Minha jornada</p><h3>Nível ' + nv.n + ' de ' + nv.de + ' — ' + esc(nv.nome) + '</h3></div>' +
+        '<button class="al-bt fan" id="es-hj-jr">🏅 Abrir a minha jornada</button></div>' +
+        '<p class="al-sub">' + (nv.proximo ? esc(nv.proximo.texto) : nv.competencias.total ? 'Nível mais alto: todas as faixas de domínio cumpridas.' : 'O percurso ainda não tem competências para demonstrar.') +
+        ' <span class="al-fino">' + nv.competencias.demonstradas + ' de ' + nv.competencias.total + ' competências demonstradas sem apoio.</span></p></div>';
+    }
+    // o cartão do diagnóstico na aba Hoje: enquanto não foi feito, a porta; depois, a ordem sugerida como ponto de partida
+    function cartaoDiagnostico(p, compacto) {
+      var a = p.jornada && p.jornada.avaliacao;
+      if (!a || !a.disponivel) return '';
+      var d = a.diagnostico;
+      if (d.feito) return '<div class="jr-caixa es-jr-ponto"><p class="al-rotulo">Ponto de partida · pelo seu diagnóstico</p><h3>Ordem sugerida de estudo</h3>' + ordemSugeridaTxt(compacto ? d.ordem_sugerida.slice(0, 5) : d.ordem_sugerida) +
+        '<p class="al-fino">' + (compacto && d.ordem_sugerida.length > 5 ? 'As cinco primeiras de ' + d.ordem_sugerida.length + ' disciplinas. ' : '') + 'É uma sugestão a partir de poucas questões por disciplina — o Plano não foi alterado por ela.' +
+        (a.teste_final.liberado && !a.teste_final.feitos ? ' O teste final já está liberado.' : '') + ' <button class="es-link" data-ir-jr="1">ver o diagnóstico completo</button></p></div>';
+      return '<div class="jr-caixa es-jr-ponto"><p class="al-rotulo">Antes de começar</p><h3>' + (d.aberto ? 'Seu diagnóstico está em andamento' : 'Faça o diagnóstico de entrada') + '</h3>' +
+        '<p class="al-sub">' + (d.aberto ? d.aberto.respondidas + ' de ' + d.aberto.total + ' questões respondidas. As respostas estão salvas: continue de onde parou.'
+          : 'Até ' + a.por_disciplina + ' questões de cada disciplina (cerca de ' + (a.por_disciplina * a.disciplinas) + '), sem relógio e em quantas partes você quiser. No fim, você vê por onde vale começar.') + '</p>' +
+        '<div class="es-linha"><button class="al-bt" data-aval="diagnostico">' + (d.aberto ? 'Continuar o diagnóstico' : 'Começar o diagnóstico') + '</button><span data-aval-msg="1"></span></div></div>';
+    }
+    function jornada(alvo, arg) {
+      // veio de "Começar/Continuar o diagnóstico": a tela é a da prova (sem relógio), não a da jornada — e nada é buscado por baixo dela
+      if (arg && arg.tentativa) return executar(alvo, arg.tentativa);
+      api('GET', base() + '/jornada').then(function (r) {
+        var h = '<div class="es-linha es-jr-topo">' + botaoVoltarDaPorta() + '<button class="al-bt fan" data-jr-fer="1">🧰 Ferramentas do concurseiro</button></div>' + caixaNivel(r.nivel) + caixaAvaliacao(r.avaliacao);
+        h += '<div class="jr-caixa"><p class="al-rotulo">Selos por disciplina</p><h3>Um selo para cada disciplina do edital</h3>' +
+          '<p class="al-sub"><b>Bronze</b>: todas as aulas da disciplina estudadas. <b>Prata</b>: ' + r.criterios.selo_prata_pct + ' % das competências dela demonstradas sem apoio. <b>Ouro</b>: todas demonstradas sem apoio.</p>' +
+          (r.selos.length ? '<div class="es-jr-selos">' + r.selos.map(function (s) {
+            var g = GRAU[s.grau] || GRAU[''];
+            return '<div class="es-jr-selo ' + (s.grau || 'sem') + '"><span class="es-jr-ico" aria-hidden="true">' + g[0] + '</span><div><b>' + esc(s.nome) + '</b><small>' + g[1] + ' · aulas ' + s.aulas_estudadas + ' de ' + s.aulas + ' · competências ' + s.demonstradas + ' de ' + s.competencias + '</small>' +
+              (s.falta ? '<span class="al-fino">' + esc(s.falta) + '</span>' : '') + '</div></div>';
+          }).join('') + '</div>' : '<p class="al-sub">Este percurso ainda não tem aulas por disciplina.</p>') + '</div>';
+        h += '<div class="jr-caixa"><p class="al-rotulo">Medalhas</p><h3>Marcos do percurso</h3><div class="es-jr-meds">' + r.medalhas.map(function (m) {
+          return '<div class="es-jr-med' + (m.ok ? ' ok' : '') + '"><span class="es-jr-ico" aria-hidden="true">' + m.icone + '</span><div><b>' + esc(m.nome) + '</b><small>' + (m.ok ? 'Conquistada' : 'Ainda não') + '</small><span class="al-fino">' + esc(m.desc) + (m.detalhe ? ' · ' + esc(m.detalhe) : '') + '</span></div></div>';
+        }).join('') + '</div><p class="al-fino">As medalhas saem do que já está registrado no seu percurso (respostas, provas, pedidos, desafio). Ouvir o audiobook não entra: não há registro confiável de escuta.</p></div>';
+        h += '<div class="jr-caixa"><p class="al-rotulo">Onde você está no programa</p><h3>Quatro medidas, cada uma com a sua contagem</h3>' +
+          '<p class="al-sub">Ter a aula pronta não é ter estudado, e ter estudado não é ter demonstrado. Por isso estes números não viram um percentual só.</p>' + caixaEixos(E.painel) + '</div>' + caixaConclusao() +
+          '<div class="es-linha">' + botaoVoltarDaPorta() + '</div>';
+        alvo.innerHTML = h;
+        ligarVoltarDaPorta(alvo); ligarAvaliacao(alvo); ligarConclusao(alvo);
+        cada(alvo, '[data-jr-fer]', function (b) { b.onclick = function () { ir('ferramentas'); }; });
+        if (arg === 'avaliacao' && el('es-jr-aval')) el('es-jr-aval').scrollIntoView(); // quem acabou de concluir o diagnóstico cai no resultado
+      }).catch(function (e) { falha(alvo, e); });
+    }
+
+    // ================= FERRAMENTAS DO CONCURSEIRO: pontuação da prova, prazo e cronograma =================
+    // Rodam no navegador, sem IA e sem custo — com os MOTORES do servidor (estudo/pontuacao.js, plano.js, prazo.js,
+    // calculadora.js, cronograma.js), que chegam em /academy/estude-motores.js. Nenhuma conta é refeita aqui: a tela
+    // lê os campos, chama o motor e mostra. Do servidor vêm só os dados do percurso (regra com fonte, data, aulas).
+    var FERRAMENTAS = [['pontuacao', '🧮 Pontuação da prova'], ['prazo', '📅 Contador de prazo'], ['cronograma', '🗓️ Cronograma']];
+    function comMotores(alvo, feito) {
+      if (window.EstudeMotores) return feito(window.EstudeMotores);
+      var sc = document.createElement('script');
+      sc.src = '/academy/estude-motores.js?v=1';
+      sc.onload = function () { if (window.EstudeMotores) feito(window.EstudeMotores); else falha(alvo, new Error('As ferramentas não carregaram. Recarregue a página.')); };
+      sc.onerror = function () { falha(alvo, new Error('Não foi possível carregar as ferramentas. Confira a conexão e tente de novo.')); };
+      document.head.appendChild(sc);
+    }
+    function ferramentas(alvo, qual) {
+      qual = FERRAMENTAS.some(function (x) { return x[0] === qual; }) ? qual : 'pontuacao';
+      alvo.innerHTML = '<div class="es-linha es-jr-topo">' + botaoVoltarDaPorta() + '<button class="al-bt fan" data-fer-jr="1">🏅 Minha jornada</button></div>' +
+        '<div class="jr-caixa"><p class="al-rotulo">Ferramentas do concurseiro</p><h3>Contas que você faz toda semana</h3>' +
+        '<p class="al-sub">Rodam aqui no seu navegador, sem IA e sem custo. São calculadoras: o resultado vale para os números que você informar.</p>' +
+        '<div class="es-linha es-fer-nav">' + FERRAMENTAS.map(function (x) { return '<button class="al-bt peq' + (x[0] === qual ? '' : ' fan') + '" data-fer="' + x[0] + '"' + (x[0] === qual ? ' aria-current="true"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div></div>' +
+        '<div id="es-fer-corpo"><p class="al-sub">Carregando…</p></div>';
+      ligarVoltarDaPorta(alvo);
+      cada(alvo, '[data-fer]', function (b) { b.onclick = function () { ir('ferramentas', b.getAttribute('data-fer')); }; });
+      cada(alvo, '[data-fer-jr]', function (b) { b.onclick = function () { ir('jornada'); }; });
+      var cx = el('es-fer-corpo');
+      comMotores(cx, function (M) {
+        api('GET', base() + '/ferramentas').then(function (F) {
+          if (!el('es-fer-corpo')) return;
+          ({ pontuacao: ferPontuacao, prazo: ferPrazo, cronograma: ferCronograma }[qual])(cx, M, F);
+        }).catch(function (e) { falha(cx, e); });
+      });
+    }
+    function campoNum(rotulo, attrs, valor) { return '<label class="es-campo">' + rotulo + '<input type="number" min="0" ' + attrs + ' value="' + (valor == null ? '' : valor) + '"></label>'; }
+
+    // ---- 1. calculadora de pontuação: a regra do percurso (com a fonte) ou os números que o aluno informar ----
+    function ferPontuacao(cx, M, F) {
+      var regra = F.regra_pontuacao, temRegra = !!regra, norm = temRegra ? M.pontuacao.normalizarRegra(regra) : null;
+      var desconta = temRegra ? !!(norm.desconto || norm.em_branco_conta_erro) : true;
+      var blocos = temRegra ? (norm.minimos.length ? norm.minimos.map(function (m) { return { bloco: m.bloco, fixo: true, min: m }; }) : [{ bloco: '', fixo: true }]) : [{ bloco: 'I' }, { bloco: 'II' }, { bloco: 'III' }];
+      function minimoTxt(m) { return !m ? '' : [m.min_pontos != null ? num(m.min_pontos) + ' ponto(s)' : '', m.min_pct != null ? num(m.min_pct) + ' %' : ''].filter(Boolean).join(' e '); }
+      function linhas() {
+        return blocos.map(function (b, i) {
+          return '<div class="es-form es-fer-bloco" data-bl="' + i + '">' +
+            (b.fixo ? '<p class="es-fer-nome"><b>' + (b.bloco ? 'Bloco ' + esc(b.bloco) : 'Prova inteira') + '</b>' + (b.min ? '<span class="al-fino">mínimo do bloco: ' + minimoTxt(b.min) + '</span>' : '') + '</p>'
+              : '<label class="es-campo">Nome do bloco<input type="text" maxlength="40" data-c="bloco" value="' + esc(b.bloco) + '"></label>') +
+            campoNum('Questões do bloco', 'max="500" data-c="questoes"', b.questoes) +
+            (b.fixo ? '' : campoNum('Mínimo de acertos do bloco', 'max="500" data-c="minimo"', b.minimo)) +
+            campoNum('Seus acertos', 'max="500" data-c="acertos"', b.acertos) +
+            (desconta ? campoNum('Seus erros', 'max="500" data-c="erros"', b.erros) : '') + '</div>';
+        }).join('');
+      }
+      function pintar() {
+        cx.innerHTML = '<div class="jr-caixa"><h3>Calculadora de pontuação da prova</h3>' +
+          (temRegra ? '<p class="al-sub"><b>Regra deste percurso:</b> ' + esc(regraTxt(regra)) + '</p>' +
+              '<p class="al-fino">A regra é a cadastrada para este percurso, com a fonte indicada — a mesma que a aba Prova aplica. Informe quantas questões cada bloco tem na sua prova e quantas você acertou' + (desconta ? ' e errou (o que sobrar é contado como em branco)' : '') + '.</p>'
+            : '<p class="es-aviso">Este percurso não tem a regra de pontuação cadastrada. Informe os números do SEU edital — questões e mínimo de cada bloco, e o mínimo geral. O resultado vale para os números que você informou, não para os do edital.</p>') +
+          '<div id="es-fer-blocos">' + linhas() + '</div>' +
+          (temRegra ? '' : '<div class="es-linha"><button class="al-bt peq fan" id="es-fer-mais">+ bloco</button>' + (blocos.length > 1 ? '<button class="al-bt peq fan" id="es-fer-menos">− bloco</button>' : '') + '</div>' +
+            '<div class="es-form">' + campoNum('Mínimo geral de acertos', 'max="2000" id="es-fer-geral"', E.ferGeral) + campoNum('Cada quantas erradas anulam 1 certa (0 = não desconta)', 'max="20" id="es-fer-desc"', E.ferDesc || 0) +
+            '<label class="es-campo es-fer-check"><input type="checkbox" id="es-fer-branco"' + (E.ferBranco ? ' checked' : '') + '> Questão em branco conta como erro</label></div>') +
+          '<div class="es-linha"><button class="al-bt" id="es-fer-calc">Calcular</button></div><div id="es-fer-res"></div></div>';
+        if (el('es-fer-mais')) el('es-fer-mais').onclick = function () { ler(); blocos.push({ bloco: String(blocos.length + 1) }); pintar(); };
+        if (el('es-fer-menos')) el('es-fer-menos').onclick = function () { ler(); blocos.pop(); pintar(); };
+        el('es-fer-calc').onclick = calcular;
+      }
+      function ler() {
+        cada(cx, '[data-bl]', function (linha) {
+          var b = blocos[Number(linha.getAttribute('data-bl'))];
+          cada(linha, '[data-c]', function (i) { var k = i.getAttribute('data-c'); b[k] = k === 'bloco' ? i.value.trim() : (i.value === '' ? '' : Number(i.value)); });
+        });
+        if (el('es-fer-geral')) { E.ferGeral = el('es-fer-geral').value; E.ferDesc = el('es-fer-desc').value; E.ferBranco = el('es-fer-branco').checked; }
+      }
+      function calcular() {
+        ler();
+        var r, out = el('es-fer-res');
+        try {
+          r = M.calculadora.calcular(temRegra ? regra : M.calculadora.regraInformada({ blocos: blocos, minimo_geral: E.ferGeral, desconto_a_cada: E.ferDesc, em_branco_conta_erro: E.ferBranco }), blocos);
+        } catch (e) { out.innerHTML = '<p class="es-aviso">' + esc(e.message) + '</p>'; return; }
+        var falta = function (x, onde) { return x.faltam_acertos == null ? '' : x.faltam_acertos === 0 ? '<span class="es-selo verde">mínimo atingido</span>' : x.possivel ? '<span class="es-selo ambar">faltam ' + x.faltam_acertos + ' acerto' + (x.faltam_acertos > 1 ? 's' : '') + '</span>' : '<span class="es-selo verm">não alcança nem acertando ' + onde + '</span>'; };
+        out.innerHTML = '<div class="es-nota"><b>' + num(r.nota_liquida) + '</b><span> de ' + num(r.maximo) + ' · ' + num(r.pct_liquido) + ' %</span></div>' +
+          '<table class="es-tab es-jr-tab"><tr><th>Bloco</th><th class="n">Acertos</th><th class="n">Pontos</th><th class="n">Mínimo</th><th class="n">Situação</th></tr>' + r.blocos.map(function (b) {
+            return '<tr><td>' + (b.bloco ? 'Bloco ' + esc(b.bloco) : 'Prova inteira') + '</td><td class="n">' + b.acertos + ' de ' + b.questoes + '</td><td class="n">' + num(b.pontos) + ' de ' + num(b.maximo) + '</td><td class="n">' + (b.minimo ? minimoTxt(b.minimo) : '—') + '</td><td class="n">' + (falta(b, 'o bloco inteiro') || '—') + '</td></tr>';
+          }).join('') + '</table>' +
+          '<table class="es-tab">' + (r.descontados ? '<tr><td>Pontos brutos</td><td class="n">' + num(r.nota_bruta) + '</td></tr><tr><td>Desconto: ' + r.erros_contados + ' erro(s) pela regra</td><td class="n">− ' + num(r.descontados) + '</td></tr>' : '') +
+          '<tr><td><b>Nota líquida</b></td><td class="n"><b>' + num(r.nota_liquida) + '</b></td></tr>' +
+          (r.geral ? '<tr><td>Mínimo geral: ' + minimoTxt(r.geral) + '</td><td class="n">' + falta(r.geral, 'tudo o que falta') + '</td></tr>' : '') + '</table>' +
+          (r.minimos_sem_bloco.length ? '<p class="es-aviso">A regra tem mínimo para o(s) bloco(s) ' + r.minimos_sem_bloco.map(esc).join(', ') + ', que você não preencheu.</p>' : '') +
+          '<p><b>' + (r.aprovado === null ? 'Sem mínimo geral informado: não há critério para dizer se atinge ou não.' : r.aprovado ? 'Com estes números, você atinge os mínimos ' + (temRegra ? 'cadastrados' : 'que informou') + '.' : 'Com estes números, você não atinge os mínimos ' + (temRegra ? 'cadastrados' : 'que informou') + '.') + '</b></p>' +
+          '<p class="al-fino">"Faltam N acertos" troca primeiro questões erradas por certas e, depois, as em branco. ' + (temRegra ? 'Regra aplicada: ' + esc(regraTxt(r.regra)) + '.' : 'São os números que você informou, não os do edital.') + ' É uma conta, não um resultado oficial nem uma previsão.</p>';
+      }
+      pintar();
+    }
+
+    // ---- 2. contador de prazo: uma calculadora de datas, com o passo a passo ----
+    function ferPrazo(cx, M, F) {
+      var z = M.prazo;
+      cx.innerHTML = '<div class="jr-caixa"><h3>Contador de prazo</h3>' +
+        '<p class="es-aviso">Esta ferramenta só conta datas. Confira no edital ou na lei qual é o prazo e se ele corre em dias úteis ou corridos — e o calendário do seu tribunal ou órgão.</p>' +
+        '<div class="es-form"><label class="es-campo">Dia do começo (não entra na contagem)<input type="date" id="es-pz-ini" value="' + esc(F.hoje) + '"></label>' +
+        campoNum('Quantidade de dias', 'max="' + z.MAX_DIAS + '" id="es-pz-dias"', 15) +
+        '<label class="es-campo">Contagem<select id="es-pz-modo"><option value="uteis">Dias úteis</option><option value="corridos">Dias corridos</option></select></label></div>' +
+        '<label class="es-campo es-fer-check"><input type="checkbox" id="es-pz-fac" checked> Tratar Carnaval (segunda e terça) e Corpus Christi como dias sem expediente (costumam ser ponto facultativo)</label>' +
+        '<label class="es-campo es-fer-check"><input type="checkbox" id="es-pz-util"> Em dias corridos, começar a contar só no primeiro dia útil depois do dia do começo</label>' +
+        '<label class="es-campo">Feriados locais, recessos e suspensões de expediente (uma data por linha, como 08/12/2026; ou um período, como 20/12/2026 a 06/01/2027)<textarea id="es-pz-extras" rows="3" placeholder="08/12/2026 - feriado local&#10;20/12/2026 a 06/01/2027 - recesso"></textarea></label>' +
+        '<div class="es-linha"><button class="al-bt" id="es-pz-ok">Contar</button></div><div id="es-pz-res"></div></div>';
+      el('es-pz-ok').onclick = function () {
+        var out = el('es-pz-res'), lidas = z.lerDatas(el('es-pz-extras').value), r;
+        try { r = z.contar({ inicio: el('es-pz-ini').value, dias: el('es-pz-dias').value, modo: el('es-pz-modo').value, extras: lidas.datas, facultativos: el('es-pz-fac').checked, comeco_em_dia_util: el('es-pz-util').checked }); }
+        catch (e) { out.innerHTML = '<p class="es-aviso">' + esc(e.message) + '</p>'; return; }
+        var anos = {}, lista = [];
+        r.passos.forEach(function (p) { anos[p.data.slice(0, 4)] = 1; });
+        Object.keys(anos).forEach(function (a) { lista = lista.concat(z.feriadosDoAno(Number(a), { facultativos: el('es-pz-fac').checked })); });
+        out.innerHTML = '<div class="es-nota es-pz-venc"><b>' + dataBR(r.vencimento) + '</b><span> · ' + esc(r.semana) + ' · vencimento</span></div>' +
+          '<p>' + r.dias + ' dia' + (r.dias > 1 ? 's' : '') + ' ' + (r.modo === 'uteis' ? (r.dias > 1 ? 'úteis' : 'útil') : 'corrido' + (r.dias > 1 ? 's' : '')) + ' a partir de ' + dataBR(r.inicio) + ': o último dia contado é ' + dataBR(r.ultimo_dia_contado) +
+          (r.prorrogado ? ', que caiu em dia sem expediente — o vencimento passa para o primeiro dia útil seguinte.' : '.') + '</p>' +
+          (lidas.ignoradas.length ? '<p class="es-aviso">Não entendi como data e deixei de fora: ' + lidas.ignoradas.map(esc).join(' · ') + '</p>' : '') +
+          '<table class="es-tab es-jr-tab es-pz-passos"><tr><th>Data</th><th>Dia</th><th class="n">Conta</th><th>Observação</th></tr>' + r.passos.map(function (p) {
+            return '<tr class="' + (p.conta ? 'conta' : 'pula') + (p.data === r.vencimento ? ' venc' : '') + '"><td>' + dataBR(p.data) + '</td><td>' + esc(p.semana) + '</td><td class="n">' + (p.conta ? p.n + 'º' : '—') + '</td><td>' + esc(p.motivo) + (p.data === r.vencimento && p.conta ? (p.motivo ? ' · ' : '') + 'vencimento' : '') + '</td></tr>';
+          }).join('') + '</table>' +
+          '<details class="es-fontes"><summary>Feriados embutidos no período (' + Object.keys(anos).join(', ') + ')</summary><ul>' + lista.map(function (f) { return '<li>' + dataBR(f.data) + ' — ' + esc(f.nome) + (f.movel ? ' <span class="al-fino">(calculado a partir da Páscoa' + (f.facultativo ? '; ponto facultativo' : '') + ')</span>' : '') + '</li>'; }).join('') + '</ul>' +
+          '<p class="al-fino">Só os feriados nacionais. Feriado estadual, municipal, recesso e suspensão de expediente entram no campo acima.</p></details>';
+      };
+    }
+
+    // ---- 3. cronograma: uma visão de calendário do MESMO plano (motor de estudo/plano.js) ----
+    var CSS_CRONO = '@page{size:A4 portrait;margin:14mm}body{font:10.5pt/1.45 Arial,sans-serif;color:#1d2433;max-width:820px;margin:20px auto;padding:0 18px}' +
+      'header{border-bottom:3px solid #1B2A4A;padding-bottom:10px;margin-bottom:14px}header p{margin:0;font:600 9pt Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#B45309}' +
+      'h1{font:700 18pt Arial,sans-serif;color:#1B2A4A;margin:4px 0}h2{font:700 11.5pt Arial,sans-serif;color:#1B2A4A;margin:0 0 4px}.sem{border:1px solid #d9dee8;border-radius:8px;padding:9px 12px;margin:0 0 9px;break-inside:avoid}' +
+      '.sem ul{margin:4px 0 0 18px;padding:0}.sem li{margin:1px 0}.fino{color:#5b6474;font-size:9pt}.aviso{border-left:4px solid #B45309;background:#fff7e6;padding:8px 12px;margin:0 0 12px}' +
+      '.barra-mapa{position:sticky;top:0;display:flex;gap:8px;justify-content:flex-end;padding:10px 0;background:#fff;border-bottom:1px solid #dde2ec;margin-bottom:12px}' +
+      '.barra-mapa button{font:600 11pt Arial,sans-serif;padding:8px 14px;border-radius:8px;border:1.5px solid #1B2A4A;background:#1B2A4A;color:#fff;cursor:pointer}' +
+      '.barra-mapa button.fan{background:#fff;color:#1B2A4A}@media print{.barra-mapa{display:none}body{margin:0;padding:0}}';
+    function semanaDoCrono(w, classe) {
+      var itens = w.disciplinas.map(function (d) { return '<li><b>' + esc(d.nome || 'Método de estudo') + '</b> — ' + horas(d.minutos) + ' · ' + d.aulas.length + ' aula' + (d.aulas.length > 1 ? 's' : '') + '</li>'; });
+      if (w.revisao_min) itens.push('<li>Retomadas (revisões, cards, caderno de erros) — ' + horas(w.revisao_min) + '</li>');
+      if (w.simulado_min) itens.push('<li>Simulado — ' + horas(w.simulado_min) + '</li>');
+      if (w.vespera_min) itens.push('<li>Véspera de prova: só o que já foi estudado — ' + horas(w.vespera_min) + '</li>');
+      return '<div class="' + classe + '"><h2>Semana de ' + dataBR(w.inicio).slice(0, 5) + ' a ' + dataBR(w.fim).slice(0, 5) + ' · ' + horas(w.minutos) + '</h2><ul>' + itens.join('') + '</ul></div>';
+    }
+    function resumoDoCrono(r) {
+      return (r.cabe ? 'Cabe: ' + r.aulas + ' aula(s), ' + horas(r.esforco_min) + ' no nível ' + r.nivel + ' %' + (r.conclusao_estimada ? ', com a última aula por volta de ' + dataBR(r.conclusao_estimada) : '') + '.' : r.aviso) +
+        ' De cada dia de estudo: ' + r.reservas.margem_pct + ' % de margem para imprevistos; do que sobra, ' + r.reservas.revisao_pct + ' % para retomadas e ' + r.reservas.simulado_pct + ' % para simulado.';
+    }
+    function escreverCronograma(w, r, titulo) {
+      w.document.open();
+      w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Cronograma — ' + esc(titulo) + '</title><style>' + CSS_CRONO + '</style></head><body>' +
+        '<div class="barra-mapa"><button id="cr-imprimir">🖨️ Imprimir ou salvar em PDF</button><button id="cr-fechar" class="fan">Fechar</button></div>' +
+        '<header><p>Villela Academy · Cronograma de estudo</p><h1>' + esc(titulo) + '</h1><div>' + (r.data_alvo ? 'Prova em ' + dataBR(r.data_alvo) + ' · ' : '') + 'montado em ' + dataBR(r.hoje) + ' · leitura no nível ' + r.nivel + ' %</div></header>' +
+        '<p class="' + (r.cabe ? 'fino' : 'aviso') + '">' + esc(resumoDoCrono(r)) + '</p>' + r.semanas.map(function (s) { return semanaDoCrono(s, 'sem'); }).join('') +
+        '<p class="fino">Visão de calendário do plano de estudo: usa as horas que você informou e não promete resultado. Refaça quando a sua rotina mudar.</p></body></html>');
+      w.document.close(); w.focus();
+      var bi = w.document.getElementById('cr-imprimir'), bf = w.document.getElementById('cr-fechar');
+      if (bi) bi.onclick = function () { w.print(); };
+      if (bf) bf.onclick = function () { w.close(); };
+    }
+    function ferCronograma(cx, M, F) {
+      var pl = F.plano, disp = (pl && pl.disponibilidade) || [0, 0, 0, 0, 0, 0, 0], fixa = F.escopo.data_alvo, ultimo = null;
+      var faltam = [], porDisc = 0, total = 0;
+      F.disciplinas.forEach(function (d) {
+        var n = 0;
+        d.aulas.forEach(function (a) { if (!a.estudada) { n++; total += a.tempo_min; faltam.push({ codigo: a.codigo, titulo: a.titulo, disciplina: d.codigo, disciplina_nome: d.nome, tempo_min: a.tempo_min }); } });
+        if (n) porDisc++;
+      });
+      cx.innerHTML = '<div class="jr-caixa"><h3>Montador de cronograma</h3>' +
+        '<p class="al-sub">Uma visão de calendário do seu <b>Plano</b>: o mesmo motor distribui as horas, com a mesma margem para imprevistos e a mesma reta final (revisão geral e véspera). A diferença é a unidade — aqui a conta é por <b>aula que você ainda não estudou</b>, no nível de leitura escolhido; na aba Plano é por item do edital. Se mudar as horas aqui, leve-as ao Plano pelo botão, para os dois continuarem dizendo a mesma coisa.</p>' +
+        '<p><b>' + faltam.length + ' aula(s) ainda não estudada(s)</b> em ' + porDisc + ' disciplina(s) · ' + horas(total) + ' no nível 100 %.' + (faltam.length ? '' : ' Tudo estudado: o cronograma fica só com retomadas e simulados.') + '</p>' +
+        '<div class="es-semana">' + DIAS.map(function (d, k) {
+          return '<label class="es-campo">' + d[1] + '<input type="number" min="0" max="16" step="0.5" data-crh="' + d[0] + '" value="' + (disp[k] ? Math.round(disp[k] / 6) / 10 : 0) + '" aria-label="Horas de estudo de ' + d[1] + '"></label>';
+        }).join('') + '</div><p class="al-fino">Horas de estudo em cada dia da semana' + (pl ? ' (vieram do seu Plano)' : '') + '.</p>' +
+        '<div class="es-form">' + (fixa ? '<p class="al-fino">Data da prova: ' + dataBR(fixa) + ' (do edital).</p>' : '<label class="es-campo">Data da prova (se já souber)<input type="date" id="es-cr-dt" value="' + esc((pl && pl.data_alvo) || '') + '"></label>') +
+        '<label class="es-campo">Quanto ler de cada aula<select id="es-cr-nv">' + F.niveis.map(function (n) { return '<option value="' + n + '">' + n + ' %' + (n === 100 ? ' — a aula completa' : '') + '</option>'; }).join('') + '</select></label></div>' +
+        '<div class="es-linha"><button class="al-bt" id="es-cr-ok">Montar o cronograma</button></div><div id="es-cr-res"></div></div>';
+      function minutos() { var d = {}; cada(cx, '[data-crh]', function (i) { d[i.getAttribute('data-crh')] = Math.round((Number(i.value) || 0) * 60); }); return d; }
+      el('es-cr-ok').onclick = function () {
+        var out = el('es-cr-res'), r, alvo = fixa || (el('es-cr-dt') ? el('es-cr-dt').value : '');
+        try {
+          r = M.cronograma.montar({ hoje: F.hoje, data_alvo: alvo, disponibilidade: minutos(), indisponiveis: (pl && pl.indisponiveis) || [], margem_pct: pl && pl.margem_pct != null ? pl.margem_pct : F.reservas.margem_pct, nivel: Number(el('es-cr-nv').value), aulas: faltam,
+            vespera_dias: alvo ? F.reta_final.vespera_dias : 0, revisao_geral_dias: alvo ? F.reta_final.revisao_geral_dias : 0, foco: F.reta_final.foco });
+        } catch (e) { out.innerHTML = '<p class="es-aviso">' + esc(e.message) + '</p>'; return; }
+        ultimo = r;
+        out.innerHTML = '<p class="' + (r.cabe ? 'es-nivel-rec' : 'es-aviso') + '">' + esc(resumoDoCrono(r)) + '</p>' +
+          (r.pendentes.length ? '<p><b>Ficam de fora neste ritmo:</b> ' + r.pendentes.map(function (x) { return esc(x.nome || 'Método de estudo') + ' (' + x.aulas + ' aula' + (x.aulas > 1 ? 's' : '') + ', ' + horas(x.minutos) + ')'; }).join(' · ') + '</p>' : '') +
+          (r.sem_estimativa.length ? '<p class="al-fino">' + r.sem_estimativa.length + ' aula(s) sem tempo estimado ficaram fora da conta.</p>' : '') +
+          '<div class="es-linha"><button class="al-bt fan" id="es-cr-pdf">🖨️ Abrir para imprimir ou salvar em PDF</button><button class="al-bt fan" id="es-cr-plano">Usar estas horas no meu Plano</button><span id="es-cr-msg"></span></div>' +
+          '<div class="es-crono">' + r.semanas.map(function (s) { return semanaDoCrono(s, 'es-crono-sem'); }).join('') + '</div>' +
+          (r.semanas_total > r.semanas.length ? '<p class="al-fino">Mostrando ' + r.semanas.length + ' de ' + r.semanas_total + ' semanas.</p>' : '');
+        el('es-cr-pdf').onclick = function () { var w = window.open('', '_blank'); if (w) escreverCronograma(w, ultimo, F.escopo.titulo); }; // a janela abre no clique; imprimir é outro clique, lá dentro
+        el('es-cr-plano').onclick = function () {
+          api('PUT', base() + '/plano', { disponibilidade: minutos(), margem_pct: pl && pl.margem_pct != null ? pl.margem_pct : F.reservas.margem_pct, data_alvo: alvo, motivo: 'horas levadas do cronograma das Ferramentas' })
+            .then(function () { el('es-cr-msg').textContent = 'Plano atualizado com estas horas.'; })
+            .catch(function (e) { el('es-cr-msg').innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+        };
+      };
     }
 
     // ================= PRATICAR =================
@@ -1775,11 +2104,21 @@
 
     // ================= PROVA =================
     function regraTxt(regra) {
-      var r = regra || {}, t = [];
-      if (r.desconto && r.desconto.a_cada) t.push('cada ' + r.desconto.a_cada + ' erradas descontam 1 certa');
+      // a regra INTEIRA, como está cadastrada: quanto vale o acerto, o desconto, o mínimo de cada bloco e o mínimo geral
+      // (antes, uma regra de 0,1 por acerto com mínimos por bloco era lida como "1 ponto por acerto, sem desconto")
+      var r = regra || {}, t = [], v = r.valor_certa == null ? 1 : Number(r.valor_certa), desconta = !!(r.desconto && r.desconto.a_cada);
+      var pts = function (n) { return num(n) + (Math.abs(Number(n)) < 2 ? ' ponto' : ' pontos'); }; // 0,9 ponto · 1,2 ponto · 6 pontos
+      if (v !== 1) t.push(pts(v) + ' por acerto');
+      if (desconta) t.push('cada ' + r.desconto.a_cada + ' erradas descontam 1 certa');
       if (r.em_branco_conta_erro) t.push('questão em branco conta como erro');
+      (r.minimos || []).forEach(function (m) {
+        var x = [m.min_pontos != null ? pts(m.min_pontos) : '', m.min_pct != null ? num(m.min_pct) + '%' : ''].filter(Boolean).join(' e ');
+        if (x) t.push('mínimo no bloco ' + m.bloco + ': ' + x);
+      });
       if (r.aprovacao && r.aprovacao.min_pct != null) t.push('mínimo de ' + r.aprovacao.min_pct + '%');
+      if (r.aprovacao && r.aprovacao.min_pontos != null) t.push('mínimo geral de ' + pts(r.aprovacao.min_pontos));
       if (!t.length) t.push('1 ponto por acerto, sem desconto');
+      else if (!desconta) t.splice(v !== 1 ? 1 : 0, 0, 'sem desconto por erro');
       return t.join('; ') + (r.fonte ? ' (fonte: ' + r.fonte + ')' : '');
     }
     function prova(alvo) {
@@ -1820,12 +2159,14 @@
     }
     function executar(alvo, t) {
       if (t.estado !== 'em_andamento') return resultado(alvo, t);
+      var aval = ehAvaliacao(t); // diagnóstico e teste final: mesma tela, sem relógio
       var desvio = Date.parse(t.agora) - Date.now(), prazo = Date.parse(t.prazo_em), resp = t.respostas || {}, marcadas = {}, i = 0, fila = null, salvando = false;
-      alvo.innerHTML = '<div class="es-prova"><div class="es-pv-topo"><div><b id="es-pv-rel">--:--</b><span class="al-fino"> restantes · ' + (t.modo === 'simulado' ? 'simulado' : 'treino') + (t.retomada ? ' · retomada de onde você parou' : '') + '</span></div>' +
+      alvo.innerHTML = '<div class="es-prova"><div class="es-pv-topo">' + (aval ? '<div><b>' + TIPO_AVAL[t.modo] + '</b><span class="al-fino"> · sem relógio: responda no seu ritmo, pare quando quiser e continue depois' + (t.retomada ? ' · retomado de onde você parou' : '') + '</span></div>'
+          : '<div><b id="es-pv-rel">--:--</b><span class="al-fino"> restantes · ' + (t.modo === 'simulado' ? 'simulado' : 'treino') + (t.retomada ? ' · retomada de onde você parou' : '') + '</span></div>') +
         '<span class="es-salvo" id="es-pv-salvo" role="status">' + (t.salvo_em ? 'Respostas salvas' : 'Nada respondido ainda') + '</span></div>' +
         '<div class="es-pv-nav" id="es-pv-nav"></div><div class="jr-caixa" id="es-pv-q"></div>' +
         '<div class="es-linha"><button class="al-bt fan" id="es-pv-ant">← Anterior</button><button class="al-bt fan" id="es-pv-prox">Próxima →</button><button class="al-bt fan" id="es-pv-marc">Marcar para voltar</button>' +
-        '<button class="al-bt ok" id="es-pv-env">Enviar a prova</button></div><div id="es-pv-conf"></div></div>';
+        (aval ? '<button class="al-bt fan" id="es-pv-sair">Salvar e continuar depois</button>' : '') + '<button class="al-bt ok" id="es-pv-env">' + (aval ? 'Concluir e ver o resultado' : 'Enviar a prova') + '</button></div><div id="es-pv-conf"></div></div>';
       function salvar() {
         if (salvando || !fila) return;
         var envio = fila; fila = null; salvando = true;
@@ -1873,7 +2214,7 @@
       el('es-pv-marc').onclick = function () { var id = t.questoes[i].id; marcadas[id] = !marcadas[id]; pintar(); };
       el('es-pv-env').onclick = function () {
         var faltam = t.questoes.filter(function (q) { return !resp[q.id]; }).length;
-        el('es-pv-conf').innerHTML = '<div class="es-aviso">' + (faltam ? faltam + ' questão(ões) sem resposta. ' : 'Todas respondidas. ') + 'Depois de enviar não dá para alterar.' +
+        el('es-pv-conf').innerHTML = '<div class="es-aviso">' + (faltam ? faltam + ' questão(ões) sem resposta. ' + (aval ? 'Elas contam como não acertadas — se quiser respondê-las depois, use "Salvar e continuar depois". ' : '') : 'Todas respondidas. ') + 'Depois de enviar não dá para alterar.' +
           '<div class="es-linha"><button class="al-bt ok" id="es-pv-sim">Enviar agora</button><button class="al-bt fan" id="es-pv-nao">Continuar respondendo</button></div></div>';
         el('es-pv-sim').onclick = finalizar;
         el('es-pv-nao').onclick = function () { el('es-pv-conf').innerHTML = ''; };
@@ -1891,12 +2232,16 @@
           api('GET', base() + '/tentativas/' + t.id).then(function (r) { executar(alvo, r); }).catch(function () {});
         }
       }
-      E.relogio = setInterval(tique, 500);
+      if (el('es-pv-sair')) el('es-pv-sair').onclick = function sair() { if (salvando || fila) { if (fila) salvar(); return setTimeout(sair, 300); } ir('jornada', 'avaliacao'); };
+      if (!aval) E.relogio = setInterval(tique, 500); // o diagnóstico não tem prazo na tela: o que vale é o que está salvo
       document.body.classList.add('es-em-prova');
-      tique(); pintar();
+      if (!aval) tique();
+      pintar();
     }
     function resultado(alvo, t) {
       pararRelogio();
+      // diagnóstico e teste final: o resultado é por disciplina e mora em Minha jornada (com a ordem sugerida e o antes × depois)
+      if (ehAvaliacao(t)) { carregar(function () { botoesDaBarra(); ir('jornada', 'avaliacao'); }); return; }
       var r = t.resultado, pos = {}, k = 0;
       var linha = function (a, b) { return '<tr><td>' + a + '</td><td class="n">' + b + '</td></tr>'; };
       alvo.innerHTML = '<div class="jr-caixa"><h3>Resultado' + (r.expirada ? ' — o prazo terminou' : '') + '</h3>' +
@@ -1960,11 +2305,14 @@
           return '<li>' + dataBR(x.em.slice(0, 10)) + ' — ' + esc(x.motivo) + ' · ' + esc(x.situacao) + (x.pendentes ? ' · ' + x.pendentes + ' item(ns) de fora' : '') + '</li>';
         }).join('') + '</ul></details>';
       }
+      h += cartaoDiagnostico(E.painel, false);
       h += '<div class="jr-caixa"><h3>Meu caderno</h3><p class="al-sub">As suas tentativas nos exercícios, as anotações de cada aula, as marcações com nota e as anotações do caderno de erros — num lugar só, com busca e versão para imprimir.</p>' +
         '<div class="es-linha"><button class="al-bt fan" id="es-pl-cad">📓 Abrir o meu caderno</button></div></div>' + caixaConclusao();
       alvo.innerHTML = h;
       el('es-pl-cad').onclick = function () { ir('caderno'); };
       ligarConclusao(alvo);
+      ligarAvaliacao(alvo);
+      cada(alvo, '[data-ir-jr]', function (b) { b.onclick = function () { ir('jornada', 'avaliacao'); }; });
       el('es-pl-ok').onclick = function () {
         var d = {};
         cada(alvo, '[data-dia]', function (i) { d[i.getAttribute('data-dia')] = Number(i.value) || 0; });

@@ -766,6 +766,8 @@ function registrarPaginas(app, { notificar }) {
   app.get('/academy/jornada.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-jornada.js')));
   app.get('/academy/carteira.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-carteira.js')));
   app.get('/academy/estude.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-estudo.js')));
+  // os motores puros do Estude (pontuação, prazo, plano, cronograma) para as Ferramentas, que rodam no navegador
+  app.get('/academy/estude-motores.js', (req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.type('application/javascript').send(require('./estudo/motores-navegador').pacote()); });
   app.get('/academy/estude.css', (req, res) => res.type('text/css').sendFile(path.join(__dirname, 'estude.css')));
   app.get('/academy/aluno.css', (req, res) => res.type('text/css').sendFile(path.join(__dirname, 'aluno.css')));
   app.get('/academy/publico.css', (req, res) => res.type('text/css').sendFile(path.join(__dirname, 'publico.css')));

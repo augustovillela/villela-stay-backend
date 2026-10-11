@@ -430,6 +430,44 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-curso-barra{align-items:center}
 .es-curso-barra:empty{display:none}
 .es-barra-es{display:contents}
+/* ---- etapa 2: Minha jornada (nível, selos, medalhas, diagnóstico) e Ferramentas do concurseiro ---- */
+.es-jr-topo{justify-content:space-between;margin:0 0 12px}
+.es-jr-escada{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0}
+.es-jr-degrau{border:1.5px solid var(--al-borda);border-radius:12px;padding:10px 8px;text-align:center;display:flex;flex-direction:column;gap:2px;min-width:0}
+.es-jr-degrau b{font:700 1.15rem/1 'Inter',sans-serif;color:var(--al-tinta2)}
+.es-jr-degrau span{font:600 .86rem/1.2 'Inter',sans-serif;overflow-wrap:anywhere}
+.es-jr-degrau small{font-size:.72rem;color:var(--al-tinta2);line-height:1.25}
+.es-jr-degrau.feito{background:var(--al-ok-luz);border-color:transparent}
+.es-jr-degrau.on{border-color:var(--al-navy);background:var(--al-navy);color:#fff}
+.es-jr-degrau.on b,.es-jr-degrau.on small{color:#fff}
+.es-jr-falta{font-weight:600;margin:10px 0}
+.es-jr-tab{max-width:680px;margin:10px 0}
+.es-jr-tab th{text-align:left;font:600 .76rem/1.2 'Inter',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--al-tinta2);padding:7px 0;border-bottom:1.5px solid var(--al-borda)}
+.es-jr-tab th.n{text-align:right;padding-left:12px}
+.es-jr-aval h4{margin:18px 0 6px}
+.es-jr-ordem{margin:6px 0 8px 22px;padding:0}.es-jr-ordem li{margin:3px 0}
+.es-jr-selos,.es-jr-meds{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:12px}
+.es-jr-selo,.es-jr-med{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--al-borda);border-radius:12px;padding:11px 12px;min-width:0}
+.es-jr-selo>div,.es-jr-med>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.es-jr-selo small,.es-jr-med small{font-size:.78rem;color:var(--al-tinta2)}
+.es-jr-ico{font-size:1.7rem;line-height:1}
+.es-jr-selo.sem .es-jr-ico{color:var(--al-tinta2)}
+.es-jr-selo.ouro{border-color:#C9A227;background:#FFF9E3}.es-jr-selo.prata{border-color:#9AA3AF;background:#F4F6F8}.es-jr-selo.bronze{border-color:#B87333;background:#FBF1E7}
+.es-jr-med{opacity:.62}.es-jr-med.ok{opacity:1;border-color:var(--al-ok);background:var(--al-ok-luz)}
+.es-jr-mini .es-linha{justify-content:space-between;align-items:flex-start}
+.es-jr-ponto{border-left:4px solid var(--al-navy)}
+.es-fer-nav{margin-top:10px}
+.es-fer-bloco{align-items:flex-end;border-top:1px solid var(--al-borda2);padding-top:10px;margin-top:10px}
+.es-fer-nome{display:flex;flex-direction:column;gap:2px;min-width:150px;margin:0}
+.es-campo.es-fer-check{flex-direction:row;align-items:center;gap:8px;margin:8px 0;font-weight:400}
+.es-campo.es-fer-check input{width:auto;flex:none}
+.es-pz-passos tr.pula td{color:var(--al-tinta2)}
+.es-pz-passos tr.venc td{font-weight:700;background:var(--al-ok-luz)}
+.es-crono{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:12px}
+.es-crono-sem{border:1.5px solid var(--al-borda);border-radius:12px;padding:11px 14px}
+.es-crono-sem h2{font:700 .95rem/1.3 'Inter',sans-serif;margin:0 0 6px;color:var(--al-navy)}
+.es-crono-sem ul{margin:0 0 0 18px;padding:0;font-size:.9rem}.es-crono-sem li{margin:2px 0}
+@media (max-width:640px){.es-jr-escada{grid-template-columns:1fr 1fr}}
 .es-salvo{margin:4px 0 0}
 .es-bloco.es-quiz,.es-bloco.es-nota-aula{border-top:2px solid var(--al-borda);margin-top:22px;padding-top:16px}
 .es-cad-h{font-family:Lora,serif;font-size:1.1rem;color:var(--al-navy);margin:22px 0 8px}
