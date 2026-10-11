@@ -428,6 +428,22 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 
 /* ---- paridade com os outros cursos: barra do curso, quiz e nota na aula, Meu caderno, certificado, guarda do áudio ---- */
 .es-curso-barra{align-items:center}
+/* ---- auditoria de 11/10/2026 ---- */
+/* CELULAR: a barra do curso e as abas viram UMA faixa rolável cada (eram 8 botões + 11 abas em 7 linhas: o conteúdo
+   da aba começava depois de uma tela inteira). Tocar numa aba leva a página até as abas (app-estudo.js › irAoConteudo). */
+@media (max-width:760px){
+  .es-abas,.es-curso-barra{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .es-abas button,.es-curso-barra .al-bt,.es-curso-barra a{flex:0 0 auto;white-space:nowrap}
+  .es-abas{margin-top:14px;scroll-snap-type:x proximity}.es-abas button.on{scroll-snap-align:center}
+  /* leitura em tela estreita: texto justificado sem hifenização abria buracos entre as palavras */
+  .es-kd .es-ler p{text-align:left}
+}
+.es-kd .es-ler p{-webkit-hyphens:auto}
+.es-pv-aberta{border-left:4px solid var(--al-ambar)}
+.es-vigencia{font-size:.9rem;color:var(--al-tinta2);border-left:3px solid var(--al-borda);padding-left:9px;margin:8px 0 0}
+.es-rev .es-enun,.es-rev .es-apoio{margin:8px 0}
+.es-rev-alt .es-expl{display:block;font-weight:400;color:var(--al-tinta2);margin-top:2px}
+.es-pv-semv{margin:0 0 8px}
 .es-curso-barra:empty{display:none}
 .es-barra-es{display:contents}
 /* ---- etapa 2: Minha jornada (nível, selos, medalhas, diagnóstico) e Ferramentas do concurseiro ---- */

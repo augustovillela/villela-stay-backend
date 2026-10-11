@@ -15,9 +15,11 @@ const jr = require('./estudo/jornada-estude');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 // `extra` leva o que a tela precisa para oferecer saída (ex.: quantas questões há de fato)
+// Cada rota roda dentro da MEMÓRIA DA REQUISIÇÃO (estudo/repo.js › comCache): a mesma leitura do conteúdo é feita
+// uma vez por chamada. Em rota assíncrona ela vale até o primeiro `await` — depois disso as leituras voltam ao banco.
 const h = (fn) => (req, res) => {
   const falha = (e) => res.status(e.status || 400).json({ erro: e.message, ...(e.extra || {}) });
-  try { Promise.resolve(fn(req, res)).catch(falha); } catch (e) { falha(e); }
+  try { Promise.resolve(est.comCache(() => fn(req, res))).catch(falha); } catch (e) { falha(e); }
 };
 
 function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
@@ -50,7 +52,7 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.put(`${base}/unidades/:unidade/blocos/:n/tentativa`, ...AL, h((req, res) => { res.json(al.guardarTentativa(...a(req), req.params.unidade, req.params.n, b(req).texto)); }));
   app.put(`${base}/unidades/:unidade/nota`, ...AL, h((req, res) => { res.json(al.anotarAula(...a(req), req.params.unidade, b(req).texto)); }));
   app.put(`${base}/unidades/:unidade/video`, ...AL, h((req, res) => { res.json(al.registrarVideo(...a(req), req.params.unidade, b(req))); }));
-  // chegou ao fim do texto da aula (só pesa na aula sem questão nem card — a régua é `aulaEstudada`)
+  // chegou ao fim do texto da aula (abrir + ler até o fim é uma das formas de estudar a aula — a régua é `aulaEstudada`)
   app.put(`${base}/unidades/:unidade/lida`, ...AL, h((req, res) => { res.json(al.registrarLeitura(...a(req), req.params.unidade)); }));
   // "Meu caderno": tentativas, notas de aula, marcações com nota e anotações do caderno de erros — só as de quem pede
   app.get(`${base}/caderno`, ...AL, h((req, res) => { semCache(res); res.json(al.caderno(...a(req))); }));
@@ -62,7 +64,7 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
     banca: req.query.banca, orgao: req.query.orgao, cargo: req.query.cargo, ano_de: req.query.ano_de, ano_ate: req.query.ano_ate })); }));
   app.get(`${base}/banco`, ...AL, h((req, res) => { semCache(res); res.json(al.bancoDeQuestoes(...a(req))); }));
   // caderno de erros: a última resposta foi erro; a anotação é do próprio aluno
-  app.get(`${base}/erros`, ...AL, h((req, res) => { semCache(res); res.json(al.erros(...a(req))); }));
+  app.get(`${base}/erros`, ...AL, h((req, res) => { semCache(res); res.json(al.erros(...a(req), { pagina: req.query.pagina })); }));
   app.put(`${base}/questoes/:questao/anotacao`, ...AL, h((req, res) => { res.json(al.anotar(...a(req), req.params.questao, b(req).texto)); }));
   app.post(`${base}/questoes/:questao/pista`, ...AL, h((req, res) => { res.json(al.pedirPista(...a(req), req.params.questao)); }));
   app.post(`${base}/questoes/:questao/responder`, ...AL, h((req, res) => { res.json(al.responder(...a(req), req.params.questao, b(req))); }));
@@ -76,13 +78,13 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   // ---- prova (relógio do servidor) ----
   app.post(`${base}/tentativas`, ...AL, h((req, res) => { res.json(al.iniciarTentativa(...a(req), b(req))); }));
   app.get(`${base}/tentativas/:tentativa`, ...AL, h((req, res) => { semCache(res); res.json(al.obterTentativa(...a(req), req.params.tentativa)); }));
-  app.put(`${base}/tentativas/:tentativa/respostas`, ...AL, h((req, res) => { res.json(al.salvarRespostas(...a(req), req.params.tentativa, b(req).respostas)); }));
+  app.put(`${base}/tentativas/:tentativa/respostas`, ...AL, h((req, res) => { res.json(al.salvarRespostas(...a(req), req.params.tentativa, b(req).respostas, b(req).posicao)); }));
   app.post(`${base}/tentativas/:tentativa/enviar`, ...AL, h((req, res) => { res.json(al.enviarTentativa(...a(req), req.params.tentativa)); }));
 
   // ---- jornada do Estude (etapa 2): nível pelo domínio, selos, medalhas, diagnóstico de entrada e teste final ----
   // o diagnóstico e o teste final são tentativas: começam aqui e seguem pelas rotas de /tentativas (salvar, abrir, enviar)
   app.get(`${base}/jornada`, ...AL, h((req, res) => { semCache(res); res.json(jr.jornada(...a(req))); }));
-  app.post(`${base}/diagnostico`, ...AL, h((req, res) => { res.json(jr.iniciar(...a(req), { tipo: s(b(req).tipo, 20) || 'diagnostico' })); }));
+  app.post(`${base}/diagnostico`, ...AL, h((req, res) => { res.json(jr.iniciar(...a(req), { tipo: s(b(req).tipo, 20) || 'diagnostico', recomecar: b(req).recomecar === true })); }));
   // ---- ferramentas do concurseiro: só os DADOS (regra com fonte, data da prova, aulas que faltam); a conta roda no navegador ----
   app.get(`${base}/ferramentas`, ...AL, h((req, res) => { semCache(res); res.json(jr.ferramentas(...a(req))); }));
 

@@ -27,8 +27,10 @@ const MAX_TOKENS = parseInt(process.env.ACADEMY_LLM_MAX_TOKENS, 10) || 4000;
 // USD por MTok — atualizar junto com os modelos. Conferido em 11/10/2026 na página oficial de preços
 // (https://platform.claude.com/docs/en/about-claude/pricing): o Sonnet 5 custa 2/10 — o preço de lançamento
 // virou o preço padrão, e o aumento para 3/15 anunciado para 01/09/2026 não aconteceu. `cache` = quanto custa
-// a leitura de cache em relação à entrada (0,1 no padrão; 0,05 nos modelos 5.5 de Opus e Sonnet).
-// Modelo que não está aqui é orçado e custeado por cima (3/15): errar para mais nunca cobra a menos do provedor.
+// a leitura de cache em relação à entrada (0,1 no padrão; 0,05 no Opus 5.5 — US$ 0,20 sobre 4. No Sonnet 5.5
+// são US$ 0,20 sobre 2, isto é, 0,1: o padrão).
+// Modelo que não está aqui é orçado e custeado pelo preço MAIS CARO da tabela (`PRECO_DESCONHECIDO`): errar
+// para mais nunca cobra a menos do provedor — e 3/15 não era "por cima" para um Opus (5/25).
 // HAIKU 5.5 (lançado em 07/10/2026; id `claude-haiku-5-5`) — lido em 11/10/2026 na mesma página de preços e em
 // https://platform.claude.com/docs/en/about-claude/models/overview: o preço tem DUAS FAIXAS, pelo tamanho do
 // prompt: até 100.000 tokens, 0,10 de entrada e 0,50 de saída; acima disso, 0,50 e 2,50 (a requisição inteira).
@@ -38,13 +40,29 @@ const PRECOS = {
   'claude-opus-5-5': { in: 4, out: 20, cache: 0.05 },
   'claude-opus-5': { in: 5, out: 25 },
   'claude-opus-4-8': { in: 5, out: 25 },
-  'claude-sonnet-5-5': { in: 2, out: 10, cache: 0.05 },
+  'claude-sonnet-5-5': { in: 2, out: 10 },
   'claude-sonnet-5': { in: 2, out: 10 },
   'claude-sonnet-4-6': { in: 3, out: 15 },
   'claude-haiku-5-5': { in: 0.1, out: 0.5, longo: { acima: 100000, in: 0.5, out: 2.5 } },
   'claude-haiku-4-5': { in: 1, out: 5 },                 // aposentadoria anunciada: fica só para fila fixada por variável de ambiente
   'claude-haiku-4-5-20251001': { in: 1, out: 5 },
 };
+// o mais caro da tabela em cada ponta (contando a faixa de prompt longo): é o preço de quem NÃO está nela
+const PRECO_DESCONHECIDO = Object.values(PRECOS).reduce((a, p) => ({
+  in: Math.max(a.in, p.in, p.longo ? p.longo.in : 0), out: Math.max(a.out, p.out, p.longo ? p.longo.out : 0) }), { in: 0, out: 0 });
+// o SIMULADO dos testes (`__mockParaTeste` sem lista de modelos) responde como modelo "mock": preço fixo de
+// 3/15, para o valor cobrado nos testes ser conferível. Nenhum provedor atende por este nome.
+const PRECO_DO_SIMULADO = { in: 3, out: 15 };
+// Quantos caracteres rende um token, POR BAIXO. É o divisor da ENTRADA no teto — com 3, a entrada do Tutor saía
+// orçada ~30 % abaixo do que custava. MEDIDO em 11/10/2026 nos textos reais do curso (1.450 arquivos de
+// dados\estude\concursos\magistratura-trabalho-ii-cnu-2023 — edital, cadernos de prova, aulas, roteiros), SEM
+// provedor e sem tokenizador (não há um local): ESTIMATIVA por heurística de BPE — palavra de até 4 letras = 1
+// token; maior, 1 a cada 4 letras, +1 se acentuada; cada sinal de pontuação = 1; algarismos, 1 a cada 3; quebra
+// de linha = 1 — com mais 35 % (o que o provedor documenta de aumento nos tokenizadores novos). Resultado, em
+// caracteres por token: edital 2,13 · cadernos de prova (mediana) 2,28 · textos de aula 2,14 · JSON 1,99.
+// Fica 2,0: prosa nunca sai orçada por baixo. É teto (o usuário paga o uso real); a medida de verdade é o
+// `usage.input_tokens` do provedor em ai_usage_logs — recalibrar por ele quando houver volume.
+const CHARS_POR_TOKEN = 2.0;
 
 // Teto de saída por agente: é o que limita o ORÇAMENTO mostrado ao usuário antes de gerar.
 // Folgado o bastante para a resposta caber (JSON cortado no meio = geração perdida e estornada).
@@ -115,7 +133,7 @@ const __mockParaTeste = (fn, { modelos = null } = {}) => { _mock = fn; _mockMode
 const ativo = () => !!(_mock || process.env.ANTHROPIC_API_KEY);
 const transcricaoAtiva = () => !!(_mock || process.env.OPENAI_API_KEY);
 
-const precoDe = (modelo) => PRECOS[modelo] || { in: 3, out: 15 };
+const precoDe = (modelo) => PRECOS[modelo] || (modelo === 'mock' ? PRECO_DO_SIMULADO : PRECO_DESCONHECIDO);
 // o preço mais caro que o modelo pode cobrar (a faixa de prompt longo, quando ele tem uma): é o que entra no teto
 const precoMaximo = (modelo) => { const p = precoDe(modelo); return p.longo ? { in: Math.max(p.in, p.longo.in), out: Math.max(p.out, p.longo.out) } : { in: p.in, out: p.out }; };
 // custo do provedor em USD (escrita de cache custa 1,25× a entrada; leitura, 0,1×)
@@ -128,19 +146,19 @@ function custoUSD(modelo, usage) {
   const entrada = (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) * 1.25 + (usage.cache_read_input_tokens || 0) * (p.cache || 0.1);
   return (entrada * p.in + (usage.output_tokens || 0) * p.out) / 1e6;
 }
-// O TETO: entrada estimada por cima (3 caracteres por token) + a saída máxima do agente,
+// O TETO: entrada estimada por cima (CHARS_POR_TOKEN caracteres por token) + a saída máxima do agente,
 // no modelo mais caro da fila. É o valor que o usuário aceita; o real fica sempre abaixo.
 function tetoUSD(agente, prompt) {
   return tetoTrabalhoUSD(agente, { caracteres: String(prompt).length });
 }
-// O teto de um TRABALHO de vários passos, somado: o texto de todos os passos (3 caracteres por token,
+// O teto de um TRABALHO de vários passos, somado: o texto de todos os passos (CHARS_POR_TOKEN caracteres por token,
 // mais as regras do sistema a cada passo), as páginas de PDF pelo teto fixo, a saída máxima por passo
 // × o número de passos e, havendo áudio, a transcrição pela duração MÁXIMA.
 // o preço do teto: o mais caro da fila, em cada ponta
 const precoTeto = () => MODELOS.map(precoMaximo).reduce((a, b) => ({ in: Math.max(a.in, b.in), out: Math.max(a.out, b.out) }), { in: 0, out: 0 });
 function tetoTrabalhoUSD(agente, { caracteres = 0, paginas_pdf = 0, passos = 1, saida_por_passo = 0, audio_seg = 0 } = {}) {
   const n = Math.max(1, Math.round(passos) || 1);
-  const entrada = Math.ceil((GUARDRAILS.length * n + Math.max(0, caracteres)) / 3) + Math.max(0, Math.round(paginas_pdf) || 0) * TOKENS_POR_PAGINA_PDF;
+  const entrada = Math.ceil((GUARDRAILS.length * n + Math.max(0, caracteres)) / CHARS_POR_TOKEN) + Math.max(0, Math.round(paginas_pdf) || 0) * TOKENS_POR_PAGINA_PDF;
   const saida = Math.min(maxSaida(agente), saida_por_passo > 0 ? saida_por_passo : Infinity) * n;
   const p = precoTeto();
   return (entrada * p.in + saida * p.out) / 1e6 + custoTranscricaoUSD(audio_seg);
@@ -217,6 +235,9 @@ function jsonDaResposta(texto) {
   return JSON.parse(limpo.slice(a, b + 1));
 }
 const CORTADA = 'resposta maior que o limite do lote';
+// o que o USUÁRIO lê quando nenhum modelo serviu (o detalhe técnico fica no log — ver o fim de `chamar`)
+const FALHA_AO_USUARIO = 'O serviço de inteligência artificial não respondeu agora. Tente de novo em alguns minutos.';
+const FALHA_CORTADA = 'A resposta ficou maior que o limite e não foi concluída. Tente um pedido mais curto ou mais específico.';
 
 // → { json, modelo, usage, custo_falhas_usd }. Toda tentativa que o provedor RESPONDEU custa, dê certo ou não:
 // o custo das que falharam vai em `custo_falhas_usd` (ou em `e.custo_usd`, quando nenhuma serviu) e entra na
@@ -224,7 +245,13 @@ const CORTADA = 'resposta maior que o limite do lote';
 // claro e NÃO tenta o modelo seguinte: com o mesmo limite ele cortaria de novo, e a despesa dobraria.
 async function chamar(agente, conteudo, opcoes = {}) {
   const content = conteudoValido(conteudo);
-  if (_mock && !_mockModelos) { const r = await _mock({ agente, prompt: textoDoConteudo(content), conteudo: content }); return { json: r.json, modelo: 'mock', usage: r.usage || { input_tokens: 10, output_tokens: 10 }, custo_falhas_usd: 0 }; }
+  if (_mock && !_mockModelos) {
+    let r;
+    // (o simulado simples sobe como o provedor de verdade: mensagem ao usuário na `message`, o que o "provedor" disse em `detalhe`)
+    try { r = await _mock({ agente, prompt: textoDoConteudo(content), conteudo: content }); }
+    catch (x) { const e = new Error(FALHA_AO_USUARIO); e.detalhe = 'IA falhou: ' + ((x && x.message) || 'erro'); e.modelo = 'mock'; e.custo_usd = 0; e.cortada = false; throw e; }
+    return { json: r.json, modelo: 'mock', usage: r.usage || { input_tokens: 10, output_tokens: 10 }, custo_falhas_usd: 0 };
+  }
   if (!_mock && !_client) { const Anthropic = require('@anthropic-ai/sdk'); _client = new Anthropic(); }
   const maxTokens = Math.min(maxSaida(agente), opcoes.max_saida > 0 ? Math.round(opcoes.max_saida) : Infinity);
   let ultimoErro = null, custoFalhas = 0;
@@ -257,7 +284,12 @@ async function chamar(agente, conteudo, opcoes = {}) {
       if (st && st >= 400 && st < 500 && st !== 404 && st !== 429) break;
     }
   }
-  const e = new Error('IA falhou: ' + (ultimoErro ? ultimoErro.message : 'sem modelo disponível'));
+  // A mensagem do provedor (id de modelo, corpo do erro HTTP) NÃO sobe na `message`: as rotas devolvem
+  // `e.message` a quem pediu. Quem pediu lê o que houve em português; o texto técnico vai em `e.detalhe`,
+  // que só o log de uso de IA grava (ele não leva conteúdo do aluno: o erro de formato já é reescrito acima).
+  const cortou = !!(ultimoErro && ultimoErro.cortada);
+  const e = new Error(cortou ? FALHA_CORTADA : FALHA_AO_USUARIO);
+  e.detalhe = 'IA falhou: ' + (ultimoErro ? ultimoErro.message : 'sem modelo disponível');
   e.modelo = ultimoErro ? ultimoErro.modelo : '-';
   e.custo_usd = custoFalhas;
   e.cortada = !!(ultimoErro && ultimoErro.cortada);
@@ -369,7 +401,7 @@ function abrirTrabalho(userId, agente, tetoUsd, p, opcoes = {}) {
       // não gerou: o usuário não paga — o teto volta inteiro
       if (cobranca === 'paga') carteira.estornar(userId, ref, teto, 'não gerou — valor devolvido');
       carteira.soltar(ref);
-      logRun(userId, agente, { modelo: (e && e.modelo) || modelo, status: 'erro', detalhe: (e && e.message) || 'falhou', cobranca, productId, custoUsd: custo });
+      logRun(userId, agente, { modelo: (e && e.modelo) || modelo, status: 'erro', detalhe: (e && (e.detalhe || e.message)) || 'falhou', cobranca, productId, custoUsd: custo });
     },
   };
 }
@@ -377,11 +409,28 @@ function abrirTrabalho(userId, agente, tetoUsd, p, opcoes = {}) {
 // Uma pergunta = um trabalho de um passo só.
 async function executar(userId, agente, prompt, p) {
   const t = abrirTrabalho(userId, agente, tetoUSD(agente, prompt), p);
-  try {
-    const json = await t.passo(prompt);
-    t.concluir();
-    return json;
-  } catch (e) { t.falhar(e); throw e; }
+  let json;
+  try { json = await t.passo(prompt); } catch (e) { t.falhar(e); throw e; }
+  try { t.concluir(); }
+  catch (_) {
+    // O ACERTO não foi gravado (banco travado, disco cheio). O trabalho já está fechado — `t.falhar` sairia sem
+    // fazer nada, e a reserva ficaria "viva" neste processo até o próximo reinício. Solta e devolve já, como
+    // faz o pedido pago (estudo\pedidos.js); a devolução é idempotente por reserva. Quem pediu não recebe a
+    // resposta nem paga por ela — e a mensagem não leva o erro do banco.
+    carteira.soltar(t.ref);
+    try { carteira.devolverReserva(t.ref, 'não gerou — valor devolvido'); } catch (__) { /* o banco segue fora: a reserva, já solta, volta pela regra da órfã */ }
+    throw erroIA(FALHA_AO_USUARIO, 503);
+  }
+  return json;
+}
+
+// O que a plataforma ABSORVEU em trabalhos que falharam (o provedor cobrou, o usuário recebeu tudo de volta),
+// em USD, desde `desde` (ISO) — de uma conta, ou de todas (`userId` vazio). Sai do log de uso: toda falha de
+// trabalho grava ali o custo acumulado até cair. É o que alimenta o teto diário de VALOR dos pedidos pagos.
+function custoDeFalhasUSD({ userId = '', desde, agentes = SO_PAGOS } = {}) {
+  const r = db.prepare(`SELECT COALESCE(SUM(custo_centavos_usd), 0) c FROM ai_usage_logs WHERE status = 'erro' AND quando > ?
+    AND agente IN (${agentes.map(() => '?').join(',')})${userId ? ' AND user_id = ?' : ''}`).get(...[desde, ...agentes].concat(userId ? [userId] : []));
+  return (Number(r.c) || 0) / 100;
 }
 
 // ---------------- contexto compartilhado ----------------
@@ -544,4 +593,5 @@ module.exports = {
   // pedidos pagos (ADR-0010)
   abrirTrabalho, tetoTrabalhoUSD, comoCobrarPedido, transcricaoAtiva, custoTranscricaoUSD, maxSaida,
   SO_PAGOS, TOKENS_POR_PAGINA_PDF, TRANSCRICAO_USD_POR_MIN, precoTeto, precoDe, parametroDeRaciocinio, jsonDaResposta, duracaoPeloTamanho, AUDIO_KBPS_MINIMO,
+  custoDeFalhasUSD, PRECO_DESCONHECIDO, CHARS_POR_TOKEN, FALHA_AO_USUARIO, FALHA_CORTADA,
 };

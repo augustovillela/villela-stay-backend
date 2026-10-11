@@ -610,6 +610,8 @@ async function rodar({ t, req, EST, impId }) {
 
   await t('edital: a PRODUTORA aplica num escopo do curso — em escopo com programa é retificação (com o diff); escopo novo nasce em RASCUNHO, e o aluno não o vê', async () => {
     const maria = uid('maria@t.com');
+    // (a produtora já tem um percurso particular: o do teste de importar prova por pedido — auditoria, item 7)
+    const particularesAntes = db.prepare('SELECT COUNT(*) n FROM est_escopos WHERE dono_user_id = ?').get(maria).n;
     carteira.creditar({ email: 'maria@t.com', valor_centavos: 2000, motivo: 'saldo para o teste de edital em PDF', quem: 'teste' });
     const op = (await req('GET', `${base}/pedidos/edital/opcoes`, { jar: 'maria' })).json;
     assert.ok(op.produtor && op.pode_novo_no_curso && op.destinos.some(d => d.slug === SLUG && d.particular === false && d.tem_programa === true), 'a dona do produto pode escolher um escopo do curso');
@@ -642,7 +644,7 @@ async function rodar({ t, req, EST, impId }) {
     assert.deepEqual([r.json.aplicado.escopo, r.json.aplicado.particular, r.json.aplicado.status, r.json.aplicado.versao, r.json.aplicado.itens, r.json.aplicado.competencias_novas], ['edital-trt-teste', false, 'rascunho', 1, 15, 3]);
     const novo = R.Escopos.porSlug(impId, 'edital-trt-teste');
     assert.deepEqual([novo.dono_user_id, novo.tipo, novo.status, novo.titulo, novo.data_alvo, novo.perfil.banca, novo.perfil.esforco_padrao_min, novo.regra_pontuacao], ['', 'edital', 'rascunho', 'Edital TRT Teste', DATA_ISO, 'Fundação Banca Exemplo', [20, 45], {}]);
-    assert.equal(db.prepare('SELECT COUNT(*) n FROM est_escopos WHERE dono_user_id = ?').get(maria).n, 0, 'não virou percurso particular da produtora');
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM est_escopos WHERE dono_user_id = ?').get(maria).n, particularesAntes, 'não virou percurso particular da produtora');
     // rascunho: a aluna não vê; a produtora (revisora) vê; o resumo do staff lista
     assert.equal((await req('GET', `${curso}/edital-trt-teste/painel`, { jar: 'edna' })).st, 404);
     assert.ok(!(await req('GET', curso, { jar: 'edna' })).texto.includes('edital-trt-teste'));
@@ -861,7 +863,7 @@ async function rodar({ t, req, EST, impId }) {
       'Confirmar a retificação', 'item(ns) com a redação alterada', 'Abrir o meu percurso', "abrirPercurso(ap.escopo, { aba: 'programa' })", "data-pe=\"",
       // a troca de percurso e o "voltar"
       'Seus percursos neste curso:', 'data-troca="', 'function abrirPercurso(slug, inicio) { abrir(E.pid, E.titulo, slug, E.voltar, inicio || ONDE[chavePercurso(slug)] || {}, E.rotuloVoltar, E.barra); }',
-      "abrirPercurso(ap.escopo, { aba: 'praticar' })", 'LUGAR = LUGARES[chavePercurso(slug)]',
+      "abrirPercurso(ap.escopo, { aba: 'praticar' })", 'LUGAR = LUGARES[ch] || (LUGARES[ch] = {});',
       // o percurso sem conteúdo diz o que falta
       'Faltam questões para praticar', "sem_questoes: ['Importar uma prova em PDF'", 'Percurso particular não tem aulas', 'Este percurso ainda não tem questões — importe uma prova em PDF para praticar e fazer simulado.',
       'Este percurso tem o programa, e ainda não tem questões.', 'Este percurso ainda não tem programa', "el('es-pv-ir').disabled = true;", 'Disciplinas do edital']) {
@@ -881,6 +883,113 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(js.st === 200 && js.texto.includes('Ler edital em PDF') && js.texto.includes('Seus percursos neste curso:'));
     // as rotas novas existem e pedem sessão
     for (const [m, rota] of [['GET', `${base}/pedidos/edital/opcoes`], ['POST', `${base}/pedidos/x/previa`]]) assert.equal((await req(m, rota, { jar: 'ninguem' })).st, 401, rota);
+  });
+
+  // ================= auditoria de 11/10/2026, frente 4 =================
+  await t('auditoria 9: página DENSA de edital (mais de 10 mil caracteres) é dividida em partes de texto — um lote por parte, cada um com a sua saída no teto; o item cortado na emenda volta inteiro; nada se perde nem duplica', async () => {
+    assert.deepEqual([ep.LOTE_MAX_CHARS, ep.PARTE_MAX_CHARS, ep.MAX_PARTES, ep.PAGINA_DIVIDIDA_MAX_CHARS], [10000, 7000, 6, 42000]);
+    // o corte: partes parecidas, na quebra de linha — o texto emendado é o original, e nenhuma palavra é partida
+    const linhas = ['DIREITO CIVIL:'].concat(Array.from({ length: 260 }, (_, k) => `${k + 1} Tópico número ${k + 1} do programa de direito civil, com redação própria.`));
+    const densa = linhas.join('\n');
+    assert.ok(densa.length > 14000 && densa.length < 21000, 'página de diário oficial em três colunas: ' + densa.length);
+    const partes = ep.partesDoTexto(densa, 3);
+    assert.deepEqual([partes.length, partes.join('') === densa, partes.every(p => p.length <= ep.PARTE_MAX_CHARS * 1.2), partes.slice(0, -1).every(p => p.endsWith('\n'))], [3, true, true, true]);
+    assert.deepEqual(ep.partesDoTexto('uma palavra só', 1), ['uma palavra só']);
+    // o PLANO: a página densa vira N lotes de parte; as vizinhas seguem como eram
+    const info = [{ n: 1, chars: 4000, sem_texto: false }, { n: 2, chars: densa.length, sem_texto: false }, { n: 3, chars: 3000, sem_texto: false }];
+    const pl = ep.planejar(info, [1, 2, 3]);
+    const porParte = Math.ceil(densa.length / 3);
+    assert.deepEqual(pl.lotes.map(l => [l.paginas, l.parte || 0, l.partes || 0, l.chars, l.carrega_chars]),
+      [[[1], 0, 0, 4000, 0], [[2], 1, 3, porParte, 2500], [[2], 2, 3, porParte, 2500], [[2], 3, 3, porParte, 2500], [[3], 0, 0, 3000, 2500]]);
+    assert.ok(pl.lotes.every(l => l.chars <= ep.LOTE_MAX_CHARS), 'nenhum lote passa do limite de caracteres');
+    assert.deepEqual(ep.planejar([{ n: 1, chars: 10000, sem_texto: false }], [1]).lotes.map(l => l.partes || 0), [0], 'no limite exato, não divide');
+    // o TETO acompanha: cada parte é um passo, com a saída máxima de um lote
+    const PRECO = ia.precoTeto();
+    const semDividir = ep.tetoUSD({ plano: { lotes: [pl.lotes[0], { paginas: [2], escaneadas: [], chars: densa.length, carrega_chars: 2500, carrega_pdf: [] }, pl.lotes[4]] } });
+    assert.ok(ep.tetoUSD({ plano: pl }) >= semDividir + 2 * ep.SAIDA_POR_LOTE * PRECO.out / 1e6 - 1e-9, 'duas partes a mais, duas saídas máximas a mais no orçamento');
+    // a leitura sugere/orça a página inteira (antes: cortava em 14 mil e o resto da página nem era lido)
+    assert.equal(ep.sugerir([{ n: 1, texto: densa, sem_texto: false }]).paginas[0].chars, densa.length);
+    // a EXECUÇÃO: três passos para a página 2. O "modelo" devolve o que há na parte que recebeu; o último item da
+    // parte 1 ele devolve CORTADO (continua) — e, na parte 2, o servidor manda o fim da parte anterior e pede o item inteiro
+    const passos = [];
+    const itemDe = (l) => { const m = /^(\d+) (.+)$/.exec(l); return m ? { disciplina: 'DIREITO CIVIL', codigo: m[1], pai: '', texto: m[2], pagina: 2, continua: false } : null; };
+    const tFalso = { passo: async (conteudo, o) => {
+      const m = /<<<PÁGINA 2 \(PARTE (\d) DE 3\)-[0-9a-f]+\n([\s\S]*?)\nPÁGINA 2 \(PARTE \d DE 3\)-[0-9a-f]+>>>/.exec(conteudo);
+      assert.ok(m, 'o lote de parte leva só a parte, rotulada: ' + String(conteudo).slice(-200));
+      const k = Number(m[1]);
+      passos.push({ k, o, chars: m[2].length, instrucao: /a página 2 é longa e foi dividida em 3 partes; abaixo está SÓ a parte/.test(conteudo), levaFim: /<<<FIM DAS PÁGINAS ANTERIORES-/.test(conteudo) });
+      const itens = m[2].split('\n').map(itemDe).filter(Boolean);
+      if (k === 1) { const u = itens[itens.length - 1]; u.texto = u.texto.slice(0, 20); u.continua = true; }
+      if (k === 2) { const cortado = ep.partesDoTexto(densa, 3)[0].trimEnd().split('\n').pop(); itens.unshift(itemDe(cortado)); }
+      return { itens, dados: [] };
+    } };
+    const r = await ep.executar({ t: tFalso, entrada: { plano: ep.planejar(info, [2]) }, arquivo: { bytes: null, leitura: { textos: [{ n: 2, texto: densa, sem_texto: false }] } } });
+    assert.deepEqual(passos.map(p => [p.k, p.o.max_saida, p.instrucao, p.levaFim]), [[1, ep.SAIDA_POR_LOTE, true, false], [2, ep.SAIDA_POR_LOTE, true, true], [3, ep.SAIDA_POR_LOTE, true, false]]);
+    assert.ok(passos.every(p => p.chars <= ep.PARTE_MAX_CHARS * 1.2), 'cada passo leva uma parte, não a página: ' + passos.map(p => p.chars));
+    const itens = r.itens.filter(i => !i.raiz);
+    assert.deepEqual([itens.length, new Set(itens.map(i => i.codigo)).size, itens.filter(i => i.pendente).length, r.itens.filter(i => i.raiz).map(i => i.texto)], [260, 260, 0, ['DIREITO CIVIL']],
+      'os 260 tópicos, uma vez cada, todos conferidos com a página — o cortado na emenda voltou inteiro');
+    assert.deepEqual(itens.map(i => i.codigo).slice(0, 3).concat(itens[259].codigo), ['DC.1', 'DC.2', 'DC.3', 'DC.260']);
+  });
+
+  await t('auditoria 10/12 e B13 (LGPD): a exportação leva o PERCURSO PARTICULAR (título, programa e questões importadas) e os arquivos enviados; excluir a conta apaga o percurso, as questões dela e TODA mídia de pedido (PDFs também) — o que é do curso e dos outros fica', async () => {
+    const iris = uid('iris@t.com'), maria = uid('maria@t.com');
+    const n = (sql, ...a) => db.prepare(sql).get(...a).n;
+    const escopos = db.prepare('SELECT id, titulo, versao FROM est_escopos WHERE dono_user_id = ?').all(iris);
+    assert.ok(escopos.length >= 1 && escopos.some(e => e.versao > 0), 'a Íris tem percurso particular com programa (prova + edital importados)');
+    const marcas = escopos.map(() => '?').join(','), ids = escopos.map(e => e.id);
+    const minhasQ = n('SELECT COUNT(*) n FROM est_questoes WHERE producer_id = ?', iris);
+    assert.equal(minhasQ, 4);
+    // um áudio que subiu e nunca virou pedido, e um envio grande que ela não confirmou: também são dela
+    const solto = (await req('POST', `${base}/pedidos/arquivo`, { jar: 'iris', corpo: { nome: 'solto.webm', mime: 'audio/webm', conteudo_base64: Buffer.from('audio solto da iris').toString('base64') } })).json.media_id;
+    db.prepare("INSERT INTO media_files (id, owner_user_id, nome, mime, tamanho, file_path, storage, confirmado, criado_em) VALUES ('iris-pendente', ?, 'p.pdf', 'application/pdf', 10, 'pedidos/iris-pendente.pdf', 'local', 0, ?)").run(iris, new Date().toISOString());
+    const midias = db.prepare('SELECT * FROM media_files WHERE owner_user_id = ?').all(iris);
+    const pdfs = midias.filter(m => m.mime === 'application/pdf' && m.confirmado);
+    assert.ok(pdfs.length >= 2 && midias.every(m => m.file_path.startsWith('pedidos/')), 'cadernos, edital e áudio: tudo com a marca de pedido');
+    const noDisco = midias.filter(m => m.confirmado).map(m => ct.Midia.caminhoAbsoluto(m));
+    assert.ok(noDisco.every(c => fs.existsSync(c)));
+    // ---- a EXPORTAÇÃO
+    const ex = await req('GET', '/academy/api/me/exportar', { jar: 'iris' });
+    assert.equal(ex.st, 200, ex.texto);
+    const pp = ex.json.estude.percursos_particulares;
+    assert.equal(pp.length, escopos.length);
+    const comPrograma = pp.find(p => p.programa.length > 0);
+    assert.ok(comPrograma && comPrograma.titulo && comPrograma.programa.some(i => /Responsabilidade civil do Estado/.test(i.texto)), 'o programa lido do edital dela');
+    const todasQ = pp.flatMap(p => p.questoes);
+    assert.ok(todasQ.length >= 4 && todasQ.some(q => q.enunciado === 'Acerca dos direitos fundamentais, assinale a alternativa correta.' && q.alternativas.filter(a => a.correta).length === 1 && q.procedencia.banca === 'Banca Teste'), 'as questões que ela importou, com o gabarito do documento dela');
+    assert.ok(ex.json.estude.arquivos_enviados.length === midias.length && ex.json.estude.arquivos_enviados.some(a => a.tipo === 'application/pdf'), 'e a lista dos arquivos enviados');
+    assert.ok(!/COMENTARIO-CURADO|EXPLICACAO-CURADA/.test(ex.texto), 'nada do banco do curso vai junto');
+    // ---- o que NÃO pode mudar
+    const fora = () => [n('SELECT COUNT(*) n FROM est_questoes WHERE producer_id != ?', iris), n("SELECT COUNT(*) n FROM est_escopos WHERE dono_user_id != ?", iris),
+      n('SELECT COUNT(*) n FROM media_files WHERE owner_user_id != ?', iris), n('SELECT COUNT(*) n FROM est_pedidos WHERE user_id = ?', iris), db.prepare('PRAGMA foreign_key_check').all().length];
+    const antes = fora();
+    const oficial = db.prepare("SELECT * FROM est_questoes WHERE producer_id = ? AND dados LIKE '%COMENTARIO-CURADO%'").get(maria);
+    assert.ok(oficial, 'a questão curada da produtora (mesmo texto de uma das da Íris)');
+    // ---- a EXCLUSÃO
+    assert.equal((await req('POST', '/academy/api/me/excluir', { jar: 'iris', corpo: { senha: 'senha-forte-8' } })).st, 200);
+    await new Promise(r => setTimeout(r, 50)); // o arquivo sai logo depois do registro
+    assert.deepEqual([n('SELECT COUNT(*) n FROM est_escopos WHERE dono_user_id = ?', iris), n('SELECT COUNT(*) n FROM est_questoes WHERE producer_id = ?', iris), n('SELECT COUNT(*) n FROM media_files WHERE owner_user_id = ?', iris)], [0, 0, 0],
+      'saíram o percurso, as questões dela e toda mídia de pedido — o áudio solto e o envio não confirmado também');
+    for (const tabela of ['est_itens', 'est_versoes', 'est_competencias', 'est_vinculos', 'est_questao_vinculos', 'est_evidencias', 'est_tentativas']) {
+      assert.equal(n(`SELECT COUNT(*) n FROM ${tabela} WHERE escopo_id IN (${marcas})`, ...ids), 0, 'sobrou linha do percurso em ' + tabela);
+    }
+    assert.ok(noDisco.every(c => !fs.existsSync(c)) && !ct.Midia.obterMesmoPendente(solto), 'os arquivos saíram do armazenamento');
+    assert.deepEqual(fora(), antes, 'questões, percursos e arquivos dos outros intactos; os pedidos dela ficam (registro financeiro); nenhuma chave estrangeira órfã');
+    assert.ok(!/media_id|sha256|questoes_ids/.test(JSON.stringify(db.prepare('SELECT entrada FROM est_pedidos WHERE user_id = ?').all(iris))), 'e os pedidos ficam sem o endereço dos arquivos');
+    assert.deepEqual(db.prepare('SELECT * FROM est_questoes WHERE id = ?').get(oficial.id), oficial, 'a questão oficial de mesmo texto não foi tocada');
+    // ---- conta que TAMBÉM é produtora: sai o percurso particular e o que nasceu de pedido dela; o banco oficial do curso fica
+    const particularesDaMaria = n('SELECT COUNT(*) n FROM est_escopos WHERE dono_user_id = ?', maria);
+    assert.ok(particularesDaMaria >= 1, 'a produtora tem o percurso particular do teste de importação');
+    const nascidas = db.prepare("SELECT entrada FROM est_pedidos WHERE user_id = ? AND tipo = 'prova'").all(maria).flatMap(p => JSON.parse(p.entrada).questoes_ids || []);
+    const noParticular = db.prepare('SELECT DISTINCT v.questao_id id FROM est_questao_vinculos v JOIN est_escopos e ON e.id = v.escopo_id WHERE e.dono_user_id = ?').all(maria).map(x => x.id);
+    const saem = nascidas.filter(id => noParticular.includes(id) && !db.prepare("SELECT 1 FROM est_questao_vinculos v JOIN est_escopos e ON e.id = v.escopo_id WHERE v.questao_id = ? AND e.dono_user_id = ''").get(id));
+    assert.ok(saem.length >= 1 && noParticular.includes(oficial.id), 'há questão que nasceu de pedido só no particular — e a oficial também está ligada a ele');
+    const totalMaria = n('SELECT COUNT(*) n FROM est_questoes WHERE producer_id = ?', maria), materiais = n("SELECT COUNT(*) n FROM media_files WHERE owner_user_id = ? AND file_path NOT LIKE 'pedidos/%'", maria);
+    const rm = ped.apagarDoTitular(maria);
+    assert.deepEqual([rm.percursos, rm.questoes, n('SELECT COUNT(*) n FROM est_escopos WHERE dono_user_id = ?', maria), n('SELECT COUNT(*) n FROM est_questoes WHERE producer_id = ?', maria)], [particularesDaMaria, saem.length, 0, totalMaria - saem.length]);
+    assert.deepEqual(db.prepare('SELECT * FROM est_questoes WHERE id = ?').get(oficial.id), oficial, 'a questão oficial, curada e publicada, continua igual');
+    assert.deepEqual([n("SELECT COUNT(*) n FROM media_files WHERE owner_user_id = ? AND file_path LIKE 'pedidos/%'", maria), n("SELECT COUNT(*) n FROM media_files WHERE owner_user_id = ? AND file_path NOT LIKE 'pedidos/%'", maria)], [0, materiais], 'os PDFs de pedido dela saem; o material de curso fica');
+    assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, antes[4]);
   });
 
   // desliga a cobrança ao fim, como os testes anteriores a deixaram

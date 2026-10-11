@@ -77,8 +77,10 @@ function calcular(regra, blocosCrus) {
         if (m.atendido) break;
       }
     }
+    // `atingido` é o que a tela escreve: sai do motor, nunca de "faltam 0" (quando não há mais questão para acertar,
+    // `faltam` fica em 0 e `possivel` é falso — e a tela dizia "mínimo atingido" para um mínimo inalcançável)
     return { ...b, pontos: linha.pontos_brutos || 0, maximo: linha.maximo || 0, minimo: min ? { min_pct: min.min_pct, min_pontos: min.min_pontos, atendido: min.atendido } : null,
-      faltam_acertos: faltam, possivel };
+      faltam_acertos: possivel ? faltam : null, possivel, atingido: min ? min.atendido === true : null };
   });
   // geral: quantos acertos a mais, em qualquer bloco, levam a nota líquida ao mínimo geral (os mínimos por bloco
   // são ditos à parte, acima). Erradas primeiro — onde houver desconto, é a troca que mais rende.
@@ -96,10 +98,13 @@ function calcular(regra, blocosCrus) {
   }
   // mínimo da regra para um bloco que o aluno não informou: dizer, em vez de calar
   const semBloco = r.minimos.filter(m => m.atendido === null).map(m => m.bloco);
+  const atingiuGeral = ap ? (ap.min_pct == null || r.pct_liquido >= ap.min_pct) && (ap.min_pontos == null || r.nota_liquida >= ap.min_pontos) : null;
+  // com bloco da regra sem preencher não há como dizer "atinge": a conta está incompleta (antes saía "você atinge os mínimos")
+  const aprovado = semBloco.length ? null : r.aprovado;
   return { nota_bruta: r.nota_bruta, descontados: r.descontados, nota_liquida: r.nota_liquida, maximo: r.maximo, pct_liquido: r.pct_liquido,
     certas: r.certas, erradas: r.erradas, em_branco: r.em_branco, erros_contados: r.erros_contados,
-    blocos: porBloco, minimos_sem_bloco: semBloco, aprovado: r.aprovado,
-    geral: ap ? { min_pct: ap.min_pct, min_pontos: ap.min_pontos, faltam_acertos: faltamGeral, possivel: possivelGeral } : null,
+    blocos: porBloco, minimos_sem_bloco: semBloco, aprovado,
+    geral: ap ? { min_pct: ap.min_pct, min_pontos: ap.min_pontos, faltam_acertos: possivelGeral ? faltamGeral : null, possivel: possivelGeral, atingido: atingiuGeral } : null,
     regra: r.regra };
 }
 

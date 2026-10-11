@@ -424,6 +424,14 @@ const PEDIDO_PDF_MAX_BYTES = 40 * 1024 * 1024;
 // Opus — e a transcrição é cobrada no máximo pelo teto de 5 min: a diferença ficava com a plataforma.
 const PEDIDO_AUDIO_MAX_BYTES = 4 * 1024 * 1024;
 const PEDIDO_UPLOAD_EXPIRA_SEG = 600; // validade da URL de envio direto ao storage (10 min)
+// A ORIGEM da mídia de pedido fica no próprio caminho: todo arquivo que entra pelo envio de pedido é gravado
+// sob `pedidos/` — é o servidor que escreve o caminho, nunca quem envia. É por essa marca que a cota de envio,
+// a limpeza do que ficou solto e a exclusão do titular sabem o que é "arquivo de pedido" e o que é material de
+// curso do produtor (que NUNCA entra nessas contas). Arquivo de pedido anterior a esta marca (sem o prefixo)
+// não é alcançado pela limpeza automática — só pelo pedido que o cita.
+const PEDIDO_PREFIXO = 'pedidos/';
+const PEDIDO_PENDENTE_HORAS = 1;      // envio grande iniciado e NÃO confirmado: registro e objeto saem depois disto
+const PEDIDO_ORFA_HORAS = 24;         // arquivo enviado que não virou pedido nenhum: sai depois disto
 
 const Midia = {
   // checagem PURA (não grava nada): a importação valida o payload inteiro com ela
@@ -496,7 +504,7 @@ const Midia = {
     const { mime, ext } = Midia.validarArquivoDePedido({ mime: mimeBruto, tamanho: buffer.length });
     if (buffer.length > UPLOAD_MAX_BYTES) throw new Error('Arquivo acima de 10 MB: use o envio direto ao storage.');
     const id = novoId();
-    const rel = id + ext;
+    const rel = PEDIDO_PREFIXO + id + ext;
     const onde = await storage.salvar(rel, buffer, mime);
     db.prepare('INSERT INTO media_files (id, owner_user_id, nome, mime, tamanho, sha256, file_path, storage, confirmado, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)')
       .run(id, ownerUserId, s(nome, 200) || rel, mime, buffer.length, crypto.createHash('sha256').update(buffer).digest('hex'), rel, onde, nowISO());
@@ -509,10 +517,11 @@ const Midia = {
     if (!storage.s3Ativo()) throw new Error('O envio de arquivo grande está indisponível no momento (storage externo não configurado).');
     const { mime, ext } = Midia.validarArquivoDePedido({ mime: mimeBruto, tamanho });
     const id = novoId();
-    const rel = id + ext;
+    const rel = PEDIDO_PREFIXO + id + ext;
     db.prepare("INSERT INTO media_files (id, owner_user_id, nome, mime, tamanho, file_path, storage, confirmado, criado_em) VALUES (?, ?, ?, ?, ?, ?, 's3', 0, ?)")
       .run(id, ownerUserId, s(nome, 200) || rel, mime, parseInt(tamanho, 10), rel, nowISO());
-    return { id, upload_url: storage.presignS3(storage.s3cfg(), 'PUT', rel, PEDIDO_UPLOAD_EXPIRA_SEG), expira_seg: PEDIDO_UPLOAD_EXPIRA_SEG };
+    // o tamanho declarado vai na ASSINATURA: a URL não aceita corpo de outro tamanho (antes, aceitava até o limite de um PUT)
+    return { id, upload_url: storage.presignS3(storage.s3cfg(), 'PUT', rel, PEDIDO_UPLOAD_EXPIRA_SEG, { tamanho: parseInt(tamanho, 10) }), expira_seg: PEDIDO_UPLOAD_EXPIRA_SEG };
   },
   // Confirma o envio grande de um pedido: o arquivo é CONFERIDO antes de valer. O tamanho é o que chegou
   // ao bucket, não o declarado; reprovado, somem o registro e o objeto — nada fica "confirmado" à espera.
@@ -531,6 +540,18 @@ const Midia = {
   async descartarDePedido(m) {
     db.prepare('DELETE FROM media_files WHERE id = ?').run(m.id);
     await storage.apagar(m.file_path, m.storage);
+  },
+  // nasceu de um envio de pedido? (a marca é o caminho, escrito pelo servidor — ver PEDIDO_PREFIXO)
+  dePedido(m) { return !!m && String(m.file_path || '').startsWith(PEDIDO_PREFIXO); },
+  // Alguma aula, material, capa, videoaula do Estude ou faixa de audiobook aponta para esta mídia? Quem apaga
+  // arquivo "de pedido" confere isto antes: mídia que o curso usa não é de pedido, por mais que um pedido a cite.
+  // (Na dúvida — tabela que não deu para ler — responde que SIM: errar para o lado de não apagar.)
+  referenciada(mediaId) {
+    const id = String(mediaId || '');
+    if (!id) return false;
+    const fontes = ['SELECT 1 FROM lessons WHERE media_id = ?', 'SELECT 1 FROM lesson_materials WHERE media_id = ?', 'SELECT 1 FROM products WHERE capa_media_id = ?',
+      'SELECT 1 FROM product_materials WHERE media_id = ?', 'SELECT 1 FROM est_unidades WHERE video_media_id = ?', 'SELECT 1 FROM audiobook_faixas WHERE media_id = ?'];
+    try { return fontes.some(sql => !!db.prepare(sql + ' LIMIT 1').get(id)); } catch (_) { return true; }
   },
   // Os BYTES de uma mídia, lidos pelo servidor (transcrição do áudio; PDF da prova e do edital): do disco
   // no driver local, ou do bucket por URL presignada de leitura. Quem chama já conferiu de quem é o
@@ -1203,7 +1224,7 @@ const Denuncias = {
 
 module.exports = {
   TIPOS_PRODUTO, TIPOS_AULA, duracaoDeVideo, CATEGORIAS, CAT_ROT, catRotulo, Categorias, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
-  PEDIDO_PDF_MAX_BYTES, PEDIDO_AUDIO_MAX_BYTES, PEDIDO_UPLOAD_EXPIRA_SEG,
+  PEDIDO_PDF_MAX_BYTES, PEDIDO_AUDIO_MAX_BYTES, PEDIDO_UPLOAD_EXPIRA_SEG, PEDIDO_PREFIXO, PEDIDO_PENDENTE_HORAS, PEDIDO_ORFA_HORAS,
   Produtos, Conteudo, Midia, MateriaisCurso, Matriculas, Cortesia, Progresso, Liberacao, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
   temAcesso, Clube, Audiobook,

@@ -28,7 +28,8 @@ const { erro } = R;
 // DIAGNÓSTICO (entrada) e TESTE FINAL (saída): o mesmo molde
 // ---------------------------------------------------------------------
 const DIAG_QUESTOES_POR_DISCIPLINA = 3;   // 15 disciplinas → cerca de 45 questões
-const DIAG_VALIDADE_DIAS = 30;            // sem relógio punitivo: dá para fazer em partes; depois disso vale o que foi salvo
+const DIAG_VALIDADE_DIAS = 30;            // sem relógio punitivo: dá para fazer em partes; passado isso fica "não concluído" (retomar ou recomeçar)
+const ABANDONADA = 'abandonada';          // a tentativa que o aluno trocou por outra ao RECOMEÇAR: sai de cena sem virar resultado
 const DIAG_FAIXA_BASE_PCT = 50;           // abaixo disto: "comece por aqui"
 const DIAG_FAIXA_FORTE_PCT = 80;          // a partir disto: "ponto forte"; entre as duas: "base razoável"
 const TESTE_FINAL_PCT_AULAS = 70;         // % das aulas estudadas (régua de `aulaEstudada`) que libera o teste final
@@ -45,10 +46,15 @@ function disciplinas(c, pre) {
   return (com.length ? com : grupos).map(g => ({ codigo: g.codigo || GERAL, nome: g.codigo ? g.nome : c.escopo.titulo, aulas: g.aulas,
     competencias: [...new Set(g.aulas.flatMap(u => u.competencias))] }));
 }
-// as tentativas de diagnóstico e de teste final do aluno neste percurso, já consolidadas (a vencida vira resultado)
+// as tentativas de diagnóstico e de teste final do aluno neste percurso.
+// DIAGNÓSTICO ESQUECIDO (auditoria de 11/10/2026): vencer a validade NÃO corrige a tentativa nem a dá por feita.
+// Antes, quem tocava em "Começar", olhava e saía ficava, 30 dias depois, com um diagnóstico "feito" de 0 acertos,
+// medalha concedida, ordem sugerida sem sentido e sem poder refazer. Agora só é FEITA a tentativa que o aluno
+// ENVIOU (`enviada`); a aberta continua aberta (vencida ou não), e ele a retoma ou recomeça.
+// (Tentativa `expirada` de antes desta regra também não conta como feita: o aluno pode fazer o diagnóstico de novo.)
 function tentativas(usuario, escopo) {
-  return db.prepare(`SELECT * FROM est_tentativas WHERE user_id = ? AND escopo_id = ? AND modo IN (${MODOS.map(() => '?').join(',')}) ORDER BY inicio_em`).all(usuario.id, escopo.id, ...MODOS)
-    .map(A.abrirTentativa).map(t => A.consolidarSeExpirou(usuario, escopo, t));
+  return R.memo(`evs:aval:${usuario.id}:${escopo.id}`, () => db.prepare(`SELECT * FROM est_tentativas WHERE user_id = ? AND escopo_id = ? AND modo IN (${MODOS.map(() => '?').join(',')}) ORDER BY inicio_em`).all(usuario.id, escopo.id, ...MODOS)
+    .map(A.abrirTentativa));
 }
 const leituraDoPct = (pct, total) => (!total ? 'sem_questoes' : pct < DIAG_FAIXA_BASE_PCT ? 'comece_por_aqui' : pct < DIAG_FAIXA_FORTE_PCT ? 'base_razoavel' : 'ponto_forte');
 // resultado por disciplina de uma tentativa encerrada; questão em branco não é acerto
@@ -70,7 +76,9 @@ const resumoDe = (t) => t && { id: t.id, modo: t.modo, estado: t.estado, enviado
 function situacao(usuario, c, { discs = disciplinas(c), regua = A.reguaDeEstudo(usuario.id, c.escopo.id) } = {}) {
   const todas = tentativas(usuario, c.escopo);
   const aberta = (modo) => todas.find(t => t.modo === modo && t.estado === 'em_andamento') || null;
-  const feitas = (modo) => todas.filter(t => t.modo === modo && t.estado !== 'em_andamento');
+  const feitas = (modo) => todas.filter(t => t.modo === modo && t.estado === 'enviada');
+  // começou e não concluiu (venceu numa versão antiga ou foi trocada): diz-se "não concluído", sem resultado
+  const largadas = (modo) => todas.filter(t => t.modo === modo && t.estado !== 'enviada' && t.estado !== 'em_andamento').length;
   const diag = feitas('diagnostico')[0] || null, finais = feitas('teste_final'), ultimo = finais[finais.length - 1] || null;
   const totalAulas = discs.reduce((n, d) => n + d.aulas.length, 0), estudadas = discs.reduce((n, d) => n + d.aulas.filter(u => A.aulaEstudada(u, regua)).length, 0);
   const pctAulas = totalAulas ? Math.floor(100 * estudadas / totalAulas) : 0;
@@ -78,12 +86,13 @@ function situacao(usuario, c, { discs = disciplinas(c), regua = A.reguaDeEstudo(
   const hoje = A.hojeBR();
   const podeRefazerEm = ultimo ? somarDias(A.hojeBR(new Date(ultimo.enviado_em || ultimo.inicio_em)), TESTE_FINAL_INTERVALO_DIAS) : '';
   const abertoD = aberta('diagnostico'), abertoF = aberta('teste_final');
-  const andamento = (t) => t && { id: t.id, respondidas: Object.keys(t.respostas || {}).length, total: t.congelado.itens.length, inicio_em: t.inicio_em, valido_ate: t.prazo_em };
+  const andamento = (t) => t && { id: t.id, respondidas: Object.keys(t.respostas || {}).length, total: t.congelado.itens.length, inicio_em: t.inicio_em, valido_ate: t.prazo_em,
+    vencido: new Date().toISOString() > t.prazo_em }; // passou da validade sem concluir: "não concluído — retomar ou recomeçar"
   const antes = resumoDe(diag), depois = resumoDe(ultimo);
   return {
     disponivel: discs.length > 0 && !c.particular, // o percurso particular do aluno não tem aulas por disciplina: não há o que diagnosticar
     por_disciplina: DIAG_QUESTOES_POR_DISCIPLINA, disciplinas: discs.length,
-    diagnostico: { feito: !!diag, aberto: andamento(abertoD), resultado: antes, ordem_sugerida: antes ? ordemSugerida(antes.disciplinas).map(d => ({ codigo: d.codigo, nome: d.nome, leitura: d.leitura, leitura_txt: d.leitura_txt, acertos: d.acertos, total: d.total })) : [] },
+    diagnostico: { feito: !!diag, aberto: andamento(abertoD), nao_concluido: !diag && !abertoD && largadas('diagnostico') > 0, resultado: antes, ordem_sugerida: antes ? ordemSugerida(antes.disciplinas).map(d => ({ codigo: d.codigo, nome: d.nome, leitura: d.leitura, leitura_txt: d.leitura_txt, acertos: d.acertos, total: d.total })) : [] },
     teste_final: { liberado: totalAulas > 0 && !faltamAulas, pct_aulas: pctAulas, pct_exigido: TESTE_FINAL_PCT_AULAS, aulas_estudadas: estudadas, total_aulas: totalAulas, faltam_aulas: faltamAulas,
       aberto: andamento(abertoF), feitos: finais.length, resultado: depois, pode_refazer_em: podeRefazerEm, pode_refazer: !ultimo || hoje >= podeRefazerEm, intervalo_dias: TESTE_FINAL_INTERVALO_DIAS },
     // antes × depois, lado a lado, por disciplina (só quando há os dois)
@@ -93,13 +102,23 @@ function situacao(usuario, c, { discs = disciplinas(c), regua = A.reguaDeEstudo(
 
 // Começa (ou retoma) o diagnóstico ou o teste final. N questões por disciplina, sorteadas entre as disponíveis
 // e corrigíveis, NUNCA reservadas; inédita para o aluno primeiro; no teste final, as do diagnóstico ficam por último.
-function iniciar(usuario, produto, slugEscopo, { tipo = 'diagnostico' } = {}) {
+// `recomecar`: larga a tentativa aberta (fica `abandonada`, sem correção e sem evidência) e sorteia outra.
+function iniciar(usuario, produto, slugEscopo, { tipo = 'diagnostico', recomecar = false } = {}) {
   const c = A.abrir(usuario, produto, slugEscopo);
   if (!MODOS.includes(tipo)) throw erro(`tipo deve ser ${MODOS.join('|')}.`);
-  const discs = disciplinas(c), st = situacao(usuario, c, { discs });
+  const discs = disciplinas(c);
+  let st = situacao(usuario, c, { discs });
   if (!st.disponivel) throw erro('Este percurso não tem aulas por disciplina: não há diagnóstico a fazer.', 409);
   const ab = tipo === 'diagnostico' ? st.diagnostico.aberto : st.teste_final.aberto;
-  if (ab) return { ...A.paraAlunoTentativa(A.tentativaDe(usuario, ab.id)), retomada: true };
+  if (ab && recomecar) {
+    db.prepare("UPDATE est_tentativas SET estado = ?, enviado_em = ? WHERE id = ? AND user_id = ? AND estado = 'em_andamento'").run(ABANDONADA, new Date().toISOString(), ab.id, usuario.id);
+    R.esquecer('evs:');
+    st = situacao(usuario, c, { discs });
+  } else if (ab) {
+    // RETOMAR: as respostas salvas continuam; a validade recomeça a contar de agora
+    if (ab.vencido) db.prepare('UPDATE est_tentativas SET prazo_em = ? WHERE id = ?').run(new Date(Date.now() + DIAG_VALIDADE_DIAS * 864e5).toISOString(), ab.id);
+    return { ...A.paraAlunoTentativa(A.tentativaDe(usuario, ab.id)), retomada: true };
+  }
   if (tipo === 'diagnostico' && st.diagnostico.feito) throw erro('O diagnóstico de entrada já foi feito: o resultado está em Minha jornada. Para medir a evolução, use o teste final.', 409);
   if (tipo === 'teste_final') {
     const f = st.teste_final;
@@ -111,7 +130,8 @@ function iniciar(usuario, produto, slugEscopo, { tipo = 'diagnostico' } = {}) {
     .map(q => ({ q, comps: R.competenciasDaQuestao(q.id, c.escopo.id) }));
   // o que já caiu no diagnóstico (ou num teste final anterior) deste aluno
   const jaCaiu = new Set(tentativas(usuario, c.escopo).flatMap(t => t.congelado.itens.map(i => i.id)));
-  const peso = (x) => (jaCaiu.has(x.q.id) ? 4 : 0) + (A.jaViu(usuario.id, x.q.id) ? 2 : 0);
+  const vistas = A.vistasDe(usuario.id);
+  const peso = (x) => (jaCaiu.has(x.q.id) ? 4 : 0) + (vistas.has(x.q.id) ? 2 : 0);
   const tomadas = new Set(), itens = [], resumo = [];
   for (const d of discs) {
     const comps = new Set(d.competencias);
@@ -130,6 +150,7 @@ function iniciar(usuario, produto, slugEscopo, { tipo = 'diagnostico' } = {}) {
   const congelado = { modo: tipo, duracao_min: 0, sem_relogio: true, regra: {}, escopo_versao: c.escopo.versao, por_disciplina: DIAG_QUESTOES_POR_DISCIPLINA, disciplinas: resumo, itens };
   db.prepare('INSERT INTO est_tentativas (id, user_id, escopo_id, modo, congelado, inicio_em, prazo_em) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run(id, usuario.id, c.escopo.id, tipo, j.str(congelado), inicio.toISOString(), new Date(inicio.getTime() + DIAG_VALIDADE_DIAS * 864e5).toISOString());
+  R.esquecer('evs:');
   return { ...A.paraAlunoTentativa(A.tentativaDe(usuario, id)), disciplinas: resumo, faltaram: discs.length * DIAG_QUESTOES_POR_DISCIPLINA - itens.length };
 }
 
@@ -199,8 +220,9 @@ function selos(discs, est, regua) {
     const grau = total && pct >= SELO_OURO_PCT ? 'ouro' : total && pct >= SELO_PRATA_PCT ? 'prata' : aulas && estudadas === aulas ? 'bronze' : '';
     const paraPrata = Math.max(0, Math.ceil(total * SELO_PRATA_PCT / 100) - dem);
     const falta = grau === 'ouro' ? '' : grau === 'prata' ? `Ouro: demonstre mais ${pl(total - dem, 'competência', 'competências')}.`
-      : grau === 'bronze' ? `Prata: demonstre mais ${pl(paraPrata, 'competência', 'competências')}.`
-      : !total ? 'Esta disciplina ainda não tem competências para demonstrar.'
+      // bronze numa disciplina SEM competência: não há prata a buscar (dizia "demonstre mais 0 competências")
+      : grau === 'bronze' ? (paraPrata > 0 ? `Prata: demonstre mais ${pl(paraPrata, 'competência', 'competências')}.` : 'Todas as aulas estudadas. Esta disciplina não tem competências para demonstrar: o bronze é o selo dela.')
+      : !total ? (aulas ? `Bronze: estude mais ${pl(aulas - estudadas, 'aula', 'aulas')}. Esta disciplina não tem competências para demonstrar.` : 'Esta disciplina ainda não tem aulas nem competências.')
       : `Bronze: estude mais ${pl(aulas - estudadas, 'aula', 'aulas')} — ou vá direto à prata, demonstrando mais ${pl(paraPrata, 'competência', 'competências')}.`;
     return { codigo: d.codigo, nome: d.nome, grau, aulas, aulas_estudadas: estudadas, competencias: total, demonstradas: dem, demonstradas_pct: pct, falta };
   });
@@ -230,7 +252,7 @@ function medalhas(usuario, produto, c, { discs, evs, diag }) {
   // caderno de erros zerado numa disciplina: ela JÁ teve erro em questão, e hoje nenhuma questão dela está pendente
   const compsDe = new Map();
   for (const e of evs) if (e.origem === 'questao') { if (!compsDe.has(e.ref_id)) compsDe.set(e.ref_id, new Set()); compsDe.get(e.ref_id).add(e.competencia_codigo); }
-  const pendentes = A.errosPendentes(uid, eid).map(x => x.id);
+  const pendentes = A.errosPendentes(uid, eid, c).map(x => x.id); // questão retirada do banco não prende a medalha
   const zeradas = discs.filter(d => {
     const dela = new Set(d.competencias), toca = (qid) => [...(compsDe.get(qid) || [])].some(k => dela.has(k));
     return evs.some(e => e.origem === 'questao' && !e.acerto && dela.has(e.competencia_codigo)) && !pendentes.some(toca);
@@ -273,7 +295,7 @@ function resumoParaPainel(usuario, c, est, regua, pre) {
   const nv = nivelDe(c, est), diag = situacao(usuario, c, { discs: disciplinas(c, pre), regua });
   return { nivel: { n: nv.n, nome: nv.nome, de: nv.de, proximo: nv.proximo, competencias: nv.competencias },
     avaliacao: { disponivel: diag.disponivel, por_disciplina: diag.por_disciplina, disciplinas: diag.disciplinas,
-      diagnostico: { feito: diag.diagnostico.feito, aberto: diag.diagnostico.aberto, ordem_sugerida: diag.diagnostico.ordem_sugerida },
+      diagnostico: { feito: diag.diagnostico.feito, aberto: diag.diagnostico.aberto, nao_concluido: diag.diagnostico.nao_concluido, ordem_sugerida: diag.diagnostico.ordem_sugerida },
       teste_final: { liberado: diag.teste_final.liberado, feitos: diag.teste_final.feitos, aberto: diag.teste_final.aberto, faltam_aulas: diag.teste_final.faltam_aulas, pct_exigido: diag.teste_final.pct_exigido } } };
 }
 
@@ -293,11 +315,12 @@ function ferramentas(usuario, produto, slugEscopo) {
     reta_final: A.retaFinalDoEscopo(c.escopo),
     niveis: plano.NIVEIS, reservas: { margem_pct: plano.MARGEM_PADRAO_PCT, revisao_pct: crono.REVISAO_PCT, simulado_pct: crono.SIMULADO_PCT },
     disciplinas: grupos.map(g => ({ codigo: g.codigo || '_metodo', nome: g.nome,
-      aulas: g.aulas.map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min || 0, estudada: A.aulaEstudada(u, regua) })) })) };
+      aulas: g.aulas.map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min || 0, estudada: A.aulaEstudada(u, regua) })) })),
+    formato: A.formatoDoPercurso(c.escopo) };
 }
 
 module.exports = {
   iniciar, situacao, jornada, resumoParaPainel, ferramentas, disciplinas, nivelDe, selos, medalhas, sequencias, porDisciplina, ordemSugerida,
   DIAG_QUESTOES_POR_DISCIPLINA, DIAG_VALIDADE_DIAS, DIAG_FAIXA_BASE_PCT, DIAG_FAIXA_FORTE_PCT, TESTE_FINAL_PCT_AULAS, TESTE_FINAL_INTERVALO_DIAS,
-  NIVEIS, SELO_PRATA_PCT, SELO_OURO_PCT, GRAUS, MEDALHA_SEQUENCIA_DIAS, MODOS, LEITURAS,
+  NIVEIS, SELO_PRATA_PCT, SELO_OURO_PCT, GRAUS, MEDALHA_SEQUENCIA_DIAS, MODOS, LEITURAS, ABANDONADA,
 };

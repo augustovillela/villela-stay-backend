@@ -142,7 +142,16 @@ async function rodar({ t, req }) {
     r = await req('PUT', `${esc()}/tentativas/${diagId}/respostas`, { jar: 'bia-j', corpo: { respostas: { [ids[3]]: 'a', [ids[4]]: 'a', [ids[5]]: 'b', [ids[6]]: 'b' } } });
     assert.deepEqual([r.json.respondidas, r.json.total], [7, 8]);
     const sem = db.prepare('SELECT COUNT(*) n FROM est_evidencias WHERE user_id = ?').get(uid(BIA.email)).n;
+    const retomadas = () => db.prepare("SELECT alvo_id, vencimento FROM est_revisoes WHERE user_id = ? AND alvo = 'competencia' ORDER BY alvo_id").all(uid(BIA.email));
+    const retomadasAntes = retomadas();
     r = await req('POST', `${esc()}/tentativas/${diagId}/enviar`, { jar: 'bia-j' });
+    // ERRO DO DIAGNÓSTICO É PONTO DE PARTIDA, NÃO DÍVIDA (auditoria 11/10/2026): nenhuma retomada nasce nem muda de data
+    assert.deepEqual(retomadas(), retomadasAntes, 'o diagnóstico não agenda retomada de matéria que a aluna nunca estudou');
+    p = await painel('bia-j');
+    assert.equal(p.revisoes.hoje, 0);
+    assert.ok(!['revisao', 'intervencao', 'mudar_estrategia', 'pre_requisito'].includes(p.proxima.tipo), 'a próxima tarefa não cobra "erro recente" do que só caiu no diagnóstico: ' + JSON.stringify(p.proxima));
+    assert.ok(p.competencias.filter(c => /^c[bc]/.test(c.codigo) && c.tentativas).every(c => c.so_diagnostico), 'B e C só foram vistas no diagnóstico');
+    assert.ok(p.erros_pendentes >= 2, 'os erros continuam no caderno de erros (lá é consulta, não cobrança)');
     assert.deepEqual([r.st, r.json.estado, r.json.resultado.certas, r.json.resultado.erradas, r.json.resultado.em_branco], [200, 'enviada', 5, 2, 1], r.texto);
     const evs = db.prepare('SELECT * FROM est_evidencias WHERE user_id = ? AND tentativa_id = ?').all(uid(BIA.email), diagId);
     assert.deepEqual([evs.length, db.prepare('SELECT COUNT(*) n FROM est_evidencias WHERE user_id = ?').get(uid(BIA.email)).n - sem, evs.every(e => e.modo === 'avaliacao' && e.origem === 'questao')], [7, 7, true],
@@ -174,7 +183,11 @@ async function rodar({ t, req }) {
     // …mas FORA dele ela só respondeu as questões 1 (aula A1) e 5 (aula A2), no Praticar
     const estudadas = (p) => p.unidades.filter(u => u.estudada).map(u => u.codigo);
     let p = await painel('bia-j');
-    assert.deepEqual(estudadas(p), ['aula-a1', 'aula-a2'], 'antes da correção, as cinco aulas apareciam estudadas');
+    // RÉGUA de 11/10/2026: sem ABRIR a aula, nem a resposta em prática a marca
+    assert.deepEqual(estudadas(p), [], 'respondeu no Praticar, mas não abriu aula nenhuma');
+    for (const a of ['aula-a1', 'aula-a2', 'aula-b1', 'aula-b2', 'aula-c1']) assert.equal((await req('GET', `${esc()}/unidades/${a}?aberta=1`, { jar: 'bia-j' })).st, 200);
+    p = await painel('bia-j');
+    assert.deepEqual(estudadas(p), ['aula-a1', 'aula-a2'], 'abertas as cinco: só as duas em que ela respondeu questão FORA de prova contam — as do diagnóstico, não');
     assert.equal(p.cobertura.estudo.estudados, 2, '"Estudados por você" (itens do programa) segue a mesma régua');
     // biblioteca, certificado, cronograma (Ferramentas), teste final e selo bronze: o mesmo número
     assert.deepEqual([A.progressoDoCurso(bia, pid).progresso.concluidas, A.conclusao(bia, pid).estudadas, p.conclusao.estudadas], [2, 2, 2]);
@@ -198,10 +211,8 @@ async function rodar({ t, req }) {
     try {
       modo('teste_final');
       assert.deepEqual(estudadas(await painel('bia-j')), ['aula-a1', 'aula-a2'], 'teste final também é aferição');
-      modo('simulado');
-      const comSimulado = [...new Set(['aula-a1', 'aula-a2'].concat(doDiag.map(k => 'aula-' + k.slice(1))))].sort();
-      assert.ok(comSimulado.length >= 4 && comSimulado.includes('aula-c1'));
-      assert.deepEqual(estudadas(await painel('bia-j')).sort(), comSimulado, 'as mesmas respostas, num simulado, contariam como estudo');
+      // …e, desde 11/10/2026, SIMULADO e TREINO também não marcam aula: prova mede, não é estudo da aula
+      for (const m of ['simulado', 'treino']) { modo(m); assert.deepEqual(estudadas(await painel('bia-j')), ['aula-a1', 'aula-a2'], m + ' não marca aula como estudada'); }
     } finally { modo('diagnostico'); }
     assert.deepEqual(estudadas(await painel('bia-j')), ['aula-a1', 'aula-a2']);
     // um lugar só: ninguém mais consulta as evidências para decidir "estudada"
@@ -238,7 +249,8 @@ async function rodar({ t, req }) {
     // o Leo não estudou aula nenhuma: 70 % de 5 aulas = 4
     let r = await req('POST', `${esc()}/diagnostico`, { jar: 'leo-j', corpo: { tipo: 'teste_final' } });
     assert.ok(r.st === 409 && /70 % das aulas: faltam 4 aulas \(0 de 5/.test(r.json.erro), r.texto);
-    // a Bia responde algo das duas aulas de B: quatro de cinco. A aula C só foi respondida no DIAGNÓSTICO — não conta
+    // a Bia (que já abriu as cinco aulas) responde, no Praticar, algo das duas aulas de B: quatro de cinco.
+    // A aula C só foi respondida no DIAGNÓSTICO — não conta
     await responder('bia-j', 9); await responder('bia-j', 12);
     assert.deepEqual((await painel('bia-j')).unidades.filter(u => !u.estudada).map(u => u.codigo), ['aula-c1']);
     assert.equal((await jornada('bia-j')).avaliacao.teste_final.liberado, true, 'quatro de cinco já são 70 %');
@@ -270,15 +282,43 @@ async function rodar({ t, req }) {
     const de2 = await req('POST', `${esc()}/diagnostico`, { jar: 'bia-j', corpo: { tipo: 'teste_final' } });
     assert.ok(de2.st === 200 && de2.json.id !== r.json.id, 'passado o intervalo, um novo teste final: ' + de2.texto);
     assert.equal((await jornada('bia-j')).avaliacao.teste_final.aberto.id, de2.json.id);
-    // diagnóstico que venceu sem envio vale pelo que foi salvo (e passa a contar como feito)
+  });
+
+  // ================= 1c. DIAGNÓSTICO ESQUECIDO (auditoria 11/10/2026) =================
+  await t('diagnóstico esquecido: vencer sem concluir NÃO é "feito" — fica não concluído, sem medalha nem ordem sugerida; retoma (com as respostas) ou recomeça', async () => {
+    const dan = uid(DAN.email);
     const venc = await req('POST', `${esc()}/diagnostico`, { jar: 'dan-j', corpo: {} });
+    assert.equal(venc.st, 200, venc.texto);
     await req('PUT', `${esc()}/tentativas/${venc.json.id}/respostas`, { jar: 'dan-j', corpo: { respostas: { [venc.json.questoes[0].id]: 'a' } } });
     db.prepare('UPDATE est_tentativas SET prazo_em = ? WHERE id = ?').run(diasAtras(1), venc.json.id);
-    const dv = (await jornada('dan-j')).avaliacao.diagnostico;
-    assert.deepEqual([dv.feito, dv.aberto, dv.resultado.estado, dv.resultado.acertos, dv.resultado.respondidas], [true, null, 'expirada', 1, 1]);
-    // (o Dan começa os testes de nível do zero: as evidências deste diagnóstico saem)
-    db.prepare('DELETE FROM est_evidencias WHERE user_id = ?').run(uid(DAN.email));
-    db.prepare('DELETE FROM est_revisoes WHERE user_id = ?').run(uid(DAN.email));
+    let jr = await jornada('dan-j'), dv = jr.avaliacao.diagnostico;
+    assert.deepEqual([dv.feito, dv.resultado, dv.ordem_sugerida, dv.aberto.id, dv.aberto.vencido, dv.aberto.respondidas], [false, null, [], venc.json.id, true, 1], 'venceu: continua aberto, marcado como vencido, sem resultado');
+    assert.equal(jr.medalhas.find(m => m.id === 'diagnostico').ok, false, 'sem medalha');
+    assert.equal((await painel('dan-j')).jornada.avaliacao.diagnostico.feito, false);
+    assert.deepEqual([db.prepare('SELECT estado FROM est_tentativas WHERE id = ?').get(venc.json.id).estado, db.prepare('SELECT COUNT(*) n FROM est_evidencias WHERE user_id = ?').get(dan).n], ['em_andamento', 0], 'nada foi corrigido nem virou evidência por decurso de prazo');
+    // abrir a tentativa vencida pela rota de sempre também não a corrige
+    assert.equal((await req('GET', `${esc()}/tentativas/${venc.json.id}`, { jar: 'dan-j' })).json.estado, 'em_andamento');
+    // RETOMAR: a mesma tentativa, com a resposta salva, e a validade renovada
+    let r = await req('POST', `${esc()}/diagnostico`, { jar: 'dan-j', corpo: { tipo: 'diagnostico' } });
+    assert.deepEqual([r.st, r.json.id, r.json.retomada, Object.keys(r.json.respostas).length], [200, venc.json.id, true, 1], r.texto);
+    assert.ok(db.prepare('SELECT prazo_em FROM est_tentativas WHERE id = ?').get(venc.json.id).prazo_em > nowISO(), 'retomou: a validade recomeça');
+    assert.equal((await jornada('dan-j')).avaliacao.diagnostico.aberto.vencido, false);
+    // RECOMEÇAR: a antiga sai de cena (sem correção, sem evidência) e nasce outra
+    r = await req('POST', `${esc()}/diagnostico`, { jar: 'dan-j', corpo: { tipo: 'diagnostico', recomecar: true } });
+    assert.ok(r.st === 200 && r.json.id !== venc.json.id && !r.json.retomada && !Object.keys(r.json.respostas).length, r.texto);
+    assert.deepEqual([db.prepare('SELECT estado FROM est_tentativas WHERE id = ?').get(venc.json.id).estado, db.prepare('SELECT COUNT(*) n FROM est_evidencias WHERE user_id = ?').get(dan).n], [J.ABANDONADA, 0]);
+    // tentativa "expirada" de antes desta regra (já corrigida por decurso de prazo): não conta como feita, e dá para fazer de novo
+    db.prepare("UPDATE est_tentativas SET estado = 'expirada' WHERE id = ?").run(r.json.id);
+    dv = (await jornada('dan-j')).avaliacao.diagnostico;
+    assert.deepEqual([dv.feito, dv.aberto, dv.nao_concluido, dv.ordem_sugerida], [false, null, true, []], 'não concluído');
+    const de = await req('POST', `${esc()}/diagnostico`, { jar: 'dan-j', corpo: { tipo: 'diagnostico' } });
+    assert.equal(de.st, 200, 'não está "já feito": ' + de.texto);
+    // (o Dan começa os testes de nível do zero: os diagnósticos dele saem)
+    db.prepare("DELETE FROM est_tentativas WHERE user_id = ? AND modo = 'diagnostico'").run(dan);
+    db.prepare('DELETE FROM est_evidencias WHERE user_id = ?').run(dan);
+    db.prepare('DELETE FROM est_revisoes WHERE user_id = ?').run(dan);
+    const tela = ler('app-estudo.js');
+    for (const pedaco of ['Diagnóstico não concluído', 'recomecar: true', 'Recomeçar do zero']) assert.ok(tela.includes(pedaco), 'falta na tela: ' + pedaco);
   });
 
   // ================= 2. NÍVEL =================
@@ -307,6 +347,8 @@ async function rodar({ t, req }) {
 
   await t('nível: sobe SÓ com competência demonstrada (questão nova, sem pista), pede retenção para o topo — e desce quando a demonstração cai', async () => {
     const nivel = async () => { const nv = (await jornada('dan-j')).nivel; return [nv.n, nv.nome, nv.competencias.demonstradas, nv.competencias.retidas]; };
+    // (o Dan abre as cinco aulas: pela régua, a resposta em prática só marca a aula que ele abriu)
+    for (const a of ['aula-a1', 'aula-a2', 'aula-b1', 'aula-b2', 'aula-c1']) assert.equal((await req('GET', `${esc()}/unidades/${a}?aberta=1`, { jar: 'dan-j' })).st, 200);
     assert.deepEqual(await nivel(), [1, 'Explorador', 0, 0]);
     // pisos com 5 competências: Praticante 1 (10 %), Criador 2 (35 %), Especialista 4 (65 %), Mestre 5 (90 %) + 3 retidas (50 %)
     assert.deepEqual((await jornada('dan-j')).nivel.escada.map(e => [e.demonstradas, e.retidas]), [[0, 0], [1, 0], [2, 0], [4, 0], [5, 3]]);
@@ -347,10 +389,11 @@ async function rodar({ t, req }) {
   await t('selos por disciplina: bronze = todas as aulas estudadas; prata = 70 % demonstradas; ouro = todas — vale o grau mais alto', async () => {
     assert.deepEqual([J.SELO_PRATA_PCT, J.SELO_OURO_PCT, J.GRAUS], [70, 100, ['bronze', 'prata', 'ouro']]);
     const comps = Array.from({ length: 10 }, (_, i) => 'k' + i);
-    const disc = { codigo: '9.9', nome: 'Disciplina de dez', competencias: comps, aulas: comps.map(k => ({ competencias: [k] })) };
+    const disc = { codigo: '9.9', nome: 'Disciplina de dez', competencias: comps, aulas: comps.map(k => ({ codigo: 'aula-' + k, competencias: [k] })) };
     const est = (n, estado = 'demonstrada_sem_apoio') => comps.map((k, i) => ({ codigo: k, estado: i < n ? estado : 'nao_avaliada' }));
-    // a régua de `aulaEstudada`: quem respondeu o quê; todas as competências têm questão (leitura não entra na conta)
-    const regua = (respondidas) => ({ comResposta: new Set(respondidas), comMeio: new Set(comps), aulas: new Map() });
+    // a régua de `aulaEstudada`: todas as aulas ABERTAS; quem respondeu questão de quê (em prática)
+    const regua = (respondidas) => ({ comResposta: new Set(respondidas), aulas: new Map(comps.map(k => ['aula-' + k, { aberta_em: '2026-10-11T12:00:00.000Z' }])) });
+    assert.equal(J.selos([disc], est(0), { comResposta: new Set(comps), aulas: new Map() })[0].grau, '', 'sem abrir as aulas, nem todas as respostas do mundo dão o bronze');
     const selo = (n, estudadas, estado) => J.selos([disc], est(n, estado), regua(comps.slice(0, estudadas)))[0];
     assert.deepEqual([selo(0, 0).grau, selo(0, 9).grau, selo(0, 10).grau], ['', '', 'bronze'], 'bronze só com TODAS as aulas estudadas');
     assert.deepEqual([selo(6, 10).grau, selo(7, 10).grau, selo(7, 7).grau, selo(9, 10).grau, selo(10, 10).grau], ['bronze', 'prata', 'prata', 'prata', 'ouro'], '6 de 10 não é prata; 7 é; 10 é ouro');
@@ -358,6 +401,11 @@ async function rodar({ t, req }) {
     assert.equal(selo(8, 10, 'retida').grau, 'prata', 'retida também é demonstrada');
     assert.deepEqual([selo(7, 10).falta, selo(10, 10).falta], ['Ouro: demonstre mais 3 competências.', '']);
     assert.equal(J.selos([{ codigo: 'x', nome: 'Sem competência', competencias: [], aulas: [] }], [], regua([]))[0].grau, '');
+    // bronze em disciplina SEM competência: a frase não manda "demonstrar mais 0 competências"
+    const semComp = J.selos([{ codigo: 'y', nome: 'Só leitura', competencias: [], aulas: [{ codigo: 'aula-k0', competencias: [] }] }], [], { comResposta: new Set(), aulas: new Map([['aula-k0', { aberta_em: 'x', lida_em: 'x' }]]) })[0];
+    assert.equal(semComp.grau, 'bronze');
+    assert.ok(!/mais 0 /.test(semComp.falta) && /bronze é o selo dela/.test(semComp.falta), semComp.falta);
+    assert.ok(!J.selos([disc], est(3), regua(comps)).concat(J.selos([disc], est(7), regua([])), J.selos([disc], est(10), regua(comps))).some(s => /mais 0 /.test(s.falta)), 'nenhum selo pede "mais 0"');
     // o Leo, que só abriu aulas e acertou uma com pista: nenhum selo (a aula A1 conta como estudada, a A2 não)
     assert.deepEqual((await jornada('leo-j')).selos.map(s => [s.grau, s.aulas_estudadas, s.demonstradas]), [['', 1, 0], ['', 0, 0], ['', 0, 0]]);
     assert.deepEqual((await jornada('bia-j')).selos.map(s => s.nome), ['Direito A', 'Direito B', 'Direito C'], 'um selo por disciplina do edital, na ordem do edital');
@@ -445,7 +493,15 @@ async function rodar({ t, req }) {
     assert.equal(r.aprovado, true, '60 acertos com todos os mínimos');
     // bloco menor que o mínimo: não alcança nem acertando tudo — dito, não escondido
     r = calc.calcular(REGRA, [{ bloco: 'I', questoes: 10, acertos: 2 }]);
-    assert.deepEqual([r.blocos[0].possivel, r.blocos[0].faltam_acertos, r.geral.possivel, r.minimos_sem_bloco], [false, 8, false, ['II', 'III']]);
+    assert.deepEqual([r.blocos[0].possivel, r.blocos[0].faltam_acertos, r.blocos[0].atingido, r.geral.possivel, r.geral.atingido, r.minimos_sem_bloco], [false, null, false, false, false, ['II', 'III']]);
+    assert.equal(r.aprovado, null, 'com bloco da regra sem preencher não há veredito (antes: "você atinge os mínimos")');
+    assert.equal(calc.calcular(REGRA, [{ bloco: 'I', questoes: 40, acertos: 30 }]).aprovado, null, 'Bloco I 30/40 e os outros vazios: conta incompleta');
+    // MÍNIMO INALCANÇÁVEL NUNCA É "ATINGIDO" (auditoria 11/10/2026): prova de 10 questões, tudo certo — 0,4 de 0,4 contra mínimo de 1,2
+    r = calc.calcular(REGRA, [{ bloco: 'I', questoes: 4, acertos: 4 }, { bloco: 'II', questoes: 3, acertos: 3 }, { bloco: 'III', questoes: 3, acertos: 3 }]);
+    assert.deepEqual(r.blocos.map(b => [b.atingido, b.possivel, b.faltam_acertos]), [[false, false, null], [false, false, null], [false, false, null]], 'acertou tudo e o mínimo segue fora de alcance');
+    assert.deepEqual([r.nota_liquida, r.geral.atingido, r.geral.possivel, r.geral.faltam_acertos, r.aprovado], [1, false, false, null, false]);
+    const telaCalc = ler('app-estudo.js');
+    assert.ok(telaCalc.includes('x.atingido') && telaCalc.includes('inalcançável com este número de questões') && !telaCalc.includes("x.faltam_acertos === 0 ? '<span class=\"es-selo verde\">mínimo atingido"), 'a tela escreve "mínimo atingido" pelo motor (atingido), nunca por "faltam 0"');
     // DESCONTO (à mão): 20 questões, cada 3 erros anulam 1 certa, em branco conta como erro, mínimo de 50 %
     const DESC = { desconto: { a_cada: 3 }, em_branco_conta_erro: true, aprovacao: { min_pct: 50 }, fonte: 'Regulamento de teste' };
     r = mesma([{ bloco: '', questoes: 20, acertos: 12, erros: 6 }], DESC);
@@ -627,11 +683,11 @@ async function rodar({ t, req }) {
       // nível, selos, medalhas, eixos
       'nível pelo domínio demonstrado', 'Assistir, ler e abrir aula não mudam o nível', 'Um selo para cada disciplina do edital', 'Marcos do percurso', 'não viram um percentual só', 'function caixaEixos(',
       // ferramentas
-      "'/academy/estude-motores.js?v=1'", 'Calculadora de pontuação da prova', 'não para os do edital', 'M.calculadora.calcular(', 'Confira no edital ou na lei qual é o prazo e se ele corre em dias úteis ou corridos',
+      "'/academy/estude-motores.js?v=2'", 'Calculadora de pontuação da prova', 'não para os do edital', 'M.calculadora.calcular(', 'Confira no edital ou na lei qual é o prazo e se ele corre em dias úteis ou corridos',
       'z.contar(', 'Uma visão de calendário do seu <b>Plano</b>', 'M.cronograma.montar(', 'id="cr-imprimir">🖨️ Imprimir ou salvar em PDF', 'Usar estas horas no meu Plano',
     ]) assert.ok(tela.includes(pedaco), 'falta na tela: ' + pedaco);
     // a regra é dita INTEIRA (valor do acerto, mínimo por bloco, mínimo geral) — a mesma frase na aba Prova e na calculadora
-    const ri = tela.indexOf('function regraTxt('), rf = tela.indexOf('function prova(alvo)');
+    const ri = tela.indexOf('function regraTxt('), rf = tela.indexOf('function prova(alvo, arg)');
     const regraTxt = new Function('num', tela.slice(ri, rf) + ';return regraTxt;')((x) => String(Math.round(Number(x) * 1000) / 1000).replace('.', ','));
     assert.equal(regraTxt(REGRA), '0,1 ponto por acerto; sem desconto por erro; mínimo no bloco I: 1,2 ponto; mínimo no bloco II: 0,9 ponto; mínimo no bloco III: 0,9 ponto; mínimo geral de 6 pontos (fonte: Edital de teste, item 10)');
     assert.equal(regraTxt({}), '1 ponto por acerto, sem desconto');

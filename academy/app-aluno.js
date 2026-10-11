@@ -96,14 +96,23 @@
       return k < 0 || !m[k + 1] ? null : { pid: pid, slug: m[k + 1], aba: m[k + 2] || 'hoje', arg: m[k + 3] || '', extra: m[k + 4] || '',
         y: (document.scrollingElement || document.documentElement).scrollTop || 0 };
     }
+    // A tela aberta ENTRA NO HISTÓRICO (um passo a mais, no mesmo endereço do Estude): o Voltar do navegador devolve
+    // ao passo do Estude — mesma aba, aula e rolagem —, e não a um passo antes dele. O botão "Voltar ao Estude" da
+    // tela faz o MESMO caminho (history.back), para o histórico não ficar com um passo sobrando.
+    var portaNoHistorico = false;
     function sairDoEstude(pid) {
+      if (voltaEstude && voltaEstude.pid === pid && portaNoHistorico) return; // já está numa tela aberta do Estude: o lugar de volta é o mesmo
       voltaEstude = lugarNoEstude(pid);
       if (ES && ES.guardarLugar) ES.guardarLugar(); // as disciplinas abertas da lista
+      if (ES && ES.sair) ES.sair();                 // relógio, microfone e consulta periódica não seguem para a outra tela
+      portaNoHistorico = !!(voltaEstude && window.AcademyRota && window.AcademyRota.empilhar && window.AcademyRota.empilhar({ porta: 1 }));
     }
     function voltarAoEstude(pid) {
       var v = voltaEstude; voltaEstude = null;
+      if (portaNoHistorico) { portaNoHistorico = false; try { history.back(); return; } catch (e) { /* sem histórico: reabre abaixo */ } }
       if (v && v.pid === pid) abrirCurso(pid, '', { estude: v }); else abrirCurso(pid);
     }
+    function esquecerVoltaAoEstude() { voltaEstude = null; portaNoHistorico = false; }
     // DICAS: dentro do Estude a tela não é a do curso comum — as dicas GERAIS da Academy falam de recursos que ela
     // não tem. O app marca <html data-vs-so-curso="1"> (ao lado do data-vs-curso): é o pedido para o widget de
     // comunicados sortear só as dicas DESTE curso. (Quem atende ao pedido é o módulo comunicados.)
@@ -121,6 +130,8 @@
     function biblioteca() {
       rota(['aluno']);
       foraDoEstude();
+      esquecerVoltaAoEstude(); // saiu do curso: um "voltar ao Estude" antigo não pode reaparecer no audiobook
+      if (ES && ES.sair) ES.sair();
       limparTutor();
       marcarCursoAberto('');
       document.body.classList.remove('aluno-amplo');
@@ -220,6 +231,8 @@
     // ================= ESTÚDIO =================
     function abrirCurso(pid, aulaId, opcoes) {
       if (opcoes && opcoes.estude) rotaEstude[pid] = opcoes.estude;
+      if (opcoes && opcoes.estude && opcoes.estude.pelaRota) esquecerVoltaAoEstude(); // chegou pelo Voltar/F5: o lugar já é este
+      noEstude = false; // volta a valer quando o Estude abrir (logo abaixo, se for o caso)
       rota(['curso', pid]);
       if (!C || C.pid !== pid) limparTutor();
       api('GET', '/aluno/cursos/' + pid).then(function (d) {
@@ -1459,6 +1472,8 @@
       document.body.classList.add('ab-com-mini');
       document.getElementById('ab-mini-play').onclick = tocarPausar;
       document.getElementById('ab-mini-abrir').onclick = function () {
+        // de dentro do Estude: guarda o lugar (aba, aula, rolagem) — o "Voltar ao curso" do audiobook devolve a ele
+        if (noEstude && C && C.pid === AB.pid) sairDoEstude(C.pid);
         if (C && C.pid === AB.pid) abrirAudiobook();
         else api('GET', '/aluno/cursos/' + AB.pid).then(function (d) { C = estadoDoCurso(AB.pid, d); abrirAudiobook(); }).catch(erroBox);
       };

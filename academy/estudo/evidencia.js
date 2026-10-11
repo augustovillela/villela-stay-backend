@@ -19,7 +19,15 @@ const ESTADOS = ['nao_avaliada', 'em_pratica', 'demonstrada_com_apoio', 'demonst
 const MODOS = ['estudo', 'pratica', 'avaliacao'];
 const INTERVALO_RETENCAO_DIAS = 7; // hipótese inicial (seção 16: 7 e 30 dias são opções, não garantias)
 
-const dia = (iso) => String(iso || '').slice(0, 10);
+// O DIA é o de Brasília (UTC−3, sem horário de verão): quem demonstra na segunda às 21h30 e de novo na segunda
+// seguinte às 20h deixou passar 7 dias de calendário — em UTC seriam 6, e a retenção não era reconhecida.
+// Data sem hora ("AAAA-MM-DD") já é um dia: fica como está.
+const dia = (iso) => {
+  const t = String(iso || '');
+  if (t.length <= 10) return t;
+  const ms = Date.parse(t);
+  return Number.isFinite(ms) ? new Date(ms - 3 * 3600e3).toISOString().slice(0, 10) : t.slice(0, 10);
+};
 const diasEntre = (a, b) => Math.round((Date.parse(dia(b) + 'T00:00:00Z') - Date.parse(dia(a) + 'T00:00:00Z')) / 86400e3);
 
 function independente(ev) {

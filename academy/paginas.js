@@ -160,7 +160,7 @@ function landingHTML() {
 
 function appHTML() {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/aluno.css?v=5"><link rel="stylesheet" href="/academy/estude.css?v=2"><style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/aluno.css?v=5"><link rel="stylesheet" href="/academy/estude.css?v=3"><style>${CSS}
     .cx{max-width:1040px;margin:20px auto;padding:0 14px;transition:max-width .25s}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
     .kpi{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;min-width:120px;display:inline-block;margin:4px}
@@ -174,7 +174,7 @@ function appHTML() {
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy"><div class="cx">
     <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${marca({ escuro: false, altura: 30 })} <span class="tag">painel</span></h2>
     <div id="app"><p class="sub">Carregando…</p></div></div>
-    <script src="/academy/jornada.js?v=4"></script><script src="/academy/ecossistema.js?v=3"></script><script src="/academy/carteira.js?v=2"></script><script src="/academy/estude.js?v=2"></script><script src="/academy/aluno.js?v=10"></script><script src="/academy/app.js?v=12"></script><script>bootAcademy();</script><script src="/academy/comunicados.js" data-cor="#D97706" data-sino="nao" defer></script></body></html>`;
+    <script src="/academy/jornada.js?v=4"></script><script src="/academy/ecossistema.js?v=3"></script><script src="/academy/carteira.js?v=2"></script><script src="/academy/estude.js?v=3"></script><script src="/academy/aluno.js?v=11"></script><script src="/academy/app.js?v=13"></script><script>bootAcademy();</script><script src="/academy/comunicados.js" data-cor="#D97706" data-sino="nao" defer></script></body></html>`;
 }
 
 // ==================== FASE 3 — vitrine pública (SEO/OG) ====================
@@ -870,6 +870,9 @@ function registrarPaginas(app, { notificar }) {
       name: c.produto_titulo, organizationName: 'Villela Academy', issueYear: String(emitido.getUTCFullYear()),
       issueMonth: String(emitido.getUTCMonth() + 1), certUrl: 'https://academia.villelastay.com.br/academy/certificados/' + c.id, certId: c.id,
     }).toString();
+    // CERTIFICADO ANTIGO, emitido pela aula-casca de um curso que hoje hospeda o Estude (tipo vazio): na exibição ele
+    // ganha a frase do curso livre e perde o "1 aula(s)" da casca — o registro emitido não é alterado.
+    const cascaDoEstude = c.tipo !== 'estude' && require('./estudo/repo').Escopos.temDoCurso(c.product_id);
     const corpo =`<div class="sec"><div class="wrap" style="max-width:680px">
       <div class="card" style="border:3px solid var(--villela-gold);text-align:center;padding:40px">
         <p style="margin:0 0 8px"><img src="${BRAND}/simbolo-v.svg" alt="Villela Academy" style="height:44px"></p>
@@ -880,8 +883,8 @@ function registrarPaginas(app, { notificar }) {
         <p class="sub">concluiu com êxito</p>
         <p style="font-size:1.2rem;font-weight:700;margin:6px 0">${esc(c.produto_titulo)}</p>
         ${c.produtor_nome ? `<p class="sub">por ${esc(c.produtor_nome)}</p>` : ''}
-        <p class="sub">${c.total_aulas} aula(s)${c.tipo === 'estude' && c.carga_horaria_min ? ` · carga horária de ${Math.max(1, Math.round(c.carga_horaria_min / 60))} hora(s)` : ''} · emitido em ${esc(String(c.emitido_em).slice(0, 10).split('-').reverse().join('/'))}</p>
-        ${c.tipo === 'estude' ? `<p class="sub" style="margin-top:10px"><b>${esc(require('./governanca').FRASE_CURSO_LIVRE)}</b></p>` : ''}
+        <p class="sub">${cascaDoEstude ? '' : `${c.total_aulas} aula(s)`}${c.tipo === 'estude' && c.carga_horaria_min ? ` · carga horária de ${Math.max(1, Math.round(c.carga_horaria_min / 60))} hora(s)` : ''}${cascaDoEstude ? '' : ' · '}emitido em ${esc(String(c.emitido_em).slice(0, 10).split('-').reverse().join('/'))}</p>
+        ${c.tipo === 'estude' || cascaDoEstude ? `<p class="sub" style="margin-top:10px"><b>${esc(require('./governanca').FRASE_CURSO_LIVRE)}</b></p>` : ''}
         ${selos.length ? `<p class="sub" style="margin:18px 0 6px">competências comprovadas no curso</p>
         <p style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0">${selos.map(x => `<span class="tag" style="background:#eef7f3;color:#0d6b52">${esc((x.icone ? x.icone + ' ' : '') + x.nome)}</span>`).join('')}</p>` : ''}
         <p style="margin-top:18px"><span class="tag">Código de validação: ${esc(c.id)}</span></p>
@@ -890,7 +893,7 @@ function registrarPaginas(app, { notificar }) {
       <p style="text-align:center;margin-top:14px"><button class="btn peq" onclick="window.print()">🖨️ Imprimir / salvar PDF</button>
         <a class="btn peq" style="margin-left:8px;background:#0A66C2" target="_blank" rel="noopener" href="${esc(linkedin)}">Adicionar ao LinkedIn</a></p>
     </div></div>`;
-    res.send(shellPublico({ titulo: 'Certificado ' + c.id, descricao: `Certificado de conclusão de ${c.aluno_nome} — ${c.produto_titulo}.${c.tipo === 'estude' ? ' ' + require('./governanca').FRASE_CURSO_LIVRE : ''}`, corpo }));
+    res.send(shellPublico({ titulo: 'Certificado ' + c.id, descricao: `Certificado de conclusão de ${c.aluno_nome} — ${c.produto_titulo}.${c.tipo === 'estude' || cascaDoEstude ? ' ' + require('./governanca').FRASE_CURSO_LIVRE : ''}`, corpo }));
   });
 
   // F8: páginas de verificação de e-mail e redefinição de senha

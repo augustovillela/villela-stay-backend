@@ -55,6 +55,13 @@ const ORAL_MAX_BYTES = ct.PEDIDO_AUDIO_MAX_BYTES;
 // Falha devolve TUDO (a plataforma absorve o que o provedor cobrou). Quem consegue fazer o trabalho falhar
 // de propósito (resposta montada para quebrar o corretor, PDF torto) usaria o provedor de graça: há teto por dia.
 const FALHAS_POR_DIA = 5;
+// A contagem sozinha não segura o VALOR: uma leitura de 80 páginas que cai no último lote custou à plataforma
+// quase o teto inteiro, e cinco delas por dia, por conta, somam. Por isso há também um teto do que a plataforma
+// ABSORVEU em falhas nas últimas 24 h (US$, do log de uso de IA): por conta e — o que protege o caixa de muitas
+// contas ao mesmo tempo, ou de um defeito nosso que derruba todo pedido — de TODAS as contas somadas.
+// A conta isenta (o dono) não tem o teto por conta, só o global.
+const FALHAS_USD_POR_DIA_CONTA = 2;
+const FALHAS_USD_POR_DIA_GLOBAL = 20;
 // Orçar uma prova não custa ao usuário, mas custa processador (o servidor abre o PDF inteiro): há teto por dia.
 const PROVAS_POR_DIA = 20;
 const EDITAIS_POR_DIA = 20;              // idem para o edital
@@ -138,21 +145,60 @@ const _apagarNoStorage = (m) => storage.apagar(m.file_path, m.storage); // devol
 // marca `audio_apagado_em` no pedido. Idempotente (pedido já marcado não volta à lista). Se o armazenamento
 // falhar, o pedido fica como estava e a rotina tenta de novo na próxima passada — nada aqui derruba o processo.
 // `apagar` existe para o teste simular o armazenamento fora do ar.
+// O pedido guarda só o ID da mídia — e a criação confere dono e tipo, não a ORIGEM. Antes de apagar o ARQUIVO o
+// expurgo confere que ele é mesmo só deste pedido: do dono do pedido, sem aula, material, capa ou audiobook
+// apontando para ele (pela API, um produtor podia citar num pedido oral um áudio que é material de curso — e em
+// 6 meses o expurgo levava o arquivo do curso) e sem outro pedido oral VIVO com a mesma mídia (o mais antigo
+// levava o áudio do mais novo antes do prazo prometido). Quando não é, o pedido é marcado (para ELE o áudio saiu)
+// e o arquivo fica.
+const citaMidia = (mediaId) => `"media_id":${JSON.stringify(String(mediaId))}`;
+function audioSoDestePedido(m, p) {
+  if (m.owner_user_id !== p.user_id || ct.Midia.referenciada(m.id)) return false;
+  return !db.prepare("SELECT 1 FROM est_pedidos WHERE id != ? AND tipo = 'oral' AND audio_apagado_em = '' AND instr(entrada, ?) > 0 LIMIT 1").get(p.id, citaMidia(m.id));
+}
 async function expurgarAudios({ agora = new Date(), apagar = _apagarNoStorage } = {}) {
   const corte = new Date(agora.getTime() - AUDIO_ORAL_RETENCAO_DIAS * 864e5).toISOString();
   const r = { vencidos: 0, apagados: 0, falhas: 0 };
   let lista = [];
-  try { lista = db.prepare("SELECT id, entrada FROM est_pedidos WHERE tipo = 'oral' AND audio_apagado_em = '' AND criado_em < ?").all(corte); } catch (_) { return r; }
+  try { lista = db.prepare("SELECT id, user_id, entrada FROM est_pedidos WHERE tipo = 'oral' AND audio_apagado_em = '' AND criado_em < ? ORDER BY criado_em, rowid").all(corte); } catch (_) { return r; }
   for (const p of lista) {
     r.vencidos++;
     try {
       const m = ct.Midia.obterMesmoPendente(s(j.parse(p.entrada, {}).media_id, 40));
-      if (m) {
+      if (m && audioSoDestePedido(m, p)) {
         if (!(await apagar(m))) { r.falhas++; continue; }
         db.prepare('DELETE FROM media_files WHERE id = ?').run(m.id);
       }
       db.prepare('UPDATE est_pedidos SET audio_apagado_em = ? WHERE id = ?').run(agora.toISOString(), p.id);
       r.apagados++;
+    } catch (_) { r.falhas++; }
+  }
+  // na MESMA passada diária: o que foi enviado para pedido e ficou solto (contado à parte — `falhas` é só dos áudios vencidos)
+  try { r.soltas = await expurgarMidiaSolta({ agora, apagar }); } catch (_) { /* nunca derruba a rotina */ }
+  return r;
+}
+// ARQUIVO DE PEDIDO QUE FICOU SOLTO — só mídia com a marca de pedido (`ct.PEDIDO_PREFIXO`); material de curso nunca:
+//   pendente  envio grande iniciado e não confirmado há mais de PEDIDO_PENDENTE_HORAS (a URL de envio vale 10 min):
+//             a linha `confirmado = 0` e o objeto que tenha chegado ao bucket ficavam para sempre;
+//   órfã      arquivo confirmado há mais de PEDIDO_ORFA_HORAS que nenhum pedido do dono cita (o áudio subiu e a
+//             criação do pedido falhou — saldo, rede, gravação curta; o PDF enviado e largado antes do orçamento).
+// O que um pedido cita fica (o áudio, até o prazo de guarda; o PDF, enquanto o pedido existir). Falha do
+// armazenamento não apaga o registro: tenta de novo na próxima passada.
+async function expurgarMidiaSolta({ agora = new Date(), apagar = _apagarNoStorage } = {}) {
+  const r = { pendentes: 0, orfas: 0, falhas: 0 };
+  const ha = (horas) => new Date(agora.getTime() - horas * 3600e3).toISOString();
+  let lista = [];
+  try {
+    lista = db.prepare('SELECT * FROM media_files WHERE file_path LIKE ? AND ((confirmado = 0 AND criado_em < ?) OR (confirmado != 0 AND criado_em < ?)) ORDER BY criado_em LIMIT 500')
+      .all(ct.PEDIDO_PREFIXO + '%', ha(ct.PEDIDO_PENDENTE_HORAS), ha(ct.PEDIDO_ORFA_HORAS));
+  } catch (_) { return r; }
+  const citada = db.prepare('SELECT 1 FROM est_pedidos WHERE user_id = ? AND instr(entrada, ?) > 0 LIMIT 1');
+  for (const m of lista) {
+    try {
+      if (citada.get(m.owner_user_id, JSON.stringify(String(m.id))) || ct.Midia.referenciada(m.id)) continue;
+      if (!(await apagar(m))) { r.falhas++; continue; }
+      db.prepare('DELETE FROM media_files WHERE id = ?').run(m.id);
+      if (m.confirmado) r.orfas++; else r.pendentes++;
     } catch (_) { r.falhas++; }
   }
   return r;
@@ -165,7 +211,8 @@ function apagarAudiosDoTitular(userId) {
   let n = 0;
   for (const p of db.prepare("SELECT id, entrada FROM est_pedidos WHERE user_id = ? AND tipo = 'oral' AND audio_apagado_em = ''").all(userId)) {
     const m = ct.Midia.obterMesmoPendente(s(j.parse(p.entrada, {}).media_id, 40));
-    if (m && m.owner_user_id === userId) {
+    // (mídia que o curso usa não é "áudio do titular", ainda que um pedido dele a cite — ver o expurgo)
+    if (m && m.owner_user_id === userId && !ct.Midia.referenciada(m.id)) {
       db.prepare('DELETE FROM media_files WHERE id = ?').run(m.id);
       Promise.resolve(_apagarNoStorage(m)).catch(() => {});
     }
@@ -173,6 +220,96 @@ function apagarAudiosDoTitular(userId) {
     n++;
   }
   return n;
+}
+// ---------------------------------------------------------------------
+// LGPD — TUDO o que os pedidos guardam do titular, além dos textos (que saem pela lista de academy\repo.js):
+//   · o áudio das respostas orais (acima);
+//   · TODA mídia de pedido dele — inclusive os PDFs de prova, gabarito e edital, e o que ficou sem pedido:
+//     pela marca de origem (`pedidos/`) e, para o que é anterior à marca, pelo que os pedidos dele citam;
+//   · o PERCURSO PARTICULAR: o escopo (o título é texto digitado por ele), o programa lido do edital que ele
+//     enviou, as competências, os vínculos e o que ele estudou ali — e as questões que ele importou.
+// Roda DENTRO da transação de quem exclui a conta, ANTES de a `entrada` dos pedidos ser limpa (é nela que
+// estão os endereços dos arquivos). A linha do pedido fica: é registro financeiro.
+// ---------------------------------------------------------------------
+const midiasDaEntrada = (e) => [e.media_id, e.caderno_media_id, e.edital_media_id, e.gabarito && e.gabarito.media_id].map(x => s(x, 40)).filter(Boolean);
+// as tabelas do Estude que guardam linhas POR ESCOPO (lidas do próprio banco: tabela nova entra sozinha).
+// `est_pedidos` fica de fora — o pedido não é apagado; `est_escopos` sai por último.
+function tabelasPorEscopo() {
+  return db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'est@_%' ESCAPE '@'").all().map(x => x.name)
+    .filter(n => /^est_[a-z0-9_]+$/.test(n) && !['est_pedidos', 'est_escopos'].includes(n) && db.prepare(`PRAGMA table_info(${n})`).all().some(c => c.name === 'escopo_id'));
+}
+function apagarPercursosDoTitular(userId) {
+  const r = { percursos: 0, questoes: 0 };
+  const escopos = db.prepare("SELECT id FROM est_escopos WHERE dono_user_id = ?").all(userId).map(x => x.id);
+  // As questões "importadas por ele": as que têm o nome dele como autor. Numa conta que também é PRODUTORA, o
+  // mesmo `producer_id` é o do banco oficial dos cursos dela — aí só sai o que comprovadamente nasceu de um
+  // pedido (os ids ficam guardados na aplicação do pedido) e estava ligado a um percurso particular.
+  const produtora = !!db.prepare('SELECT 1 FROM products WHERE producer_id = ? LIMIT 1').get(userId);
+  const nascidas = new Set();
+  for (const p of db.prepare("SELECT entrada FROM est_pedidos WHERE user_id = ? AND tipo = 'prova'").all(userId)) {
+    for (const id of (j.parse(p.entrada, {}) || {}).questoes_ids || []) nascidas.add(id);
+  }
+  const marcas = escopos.map(() => '?').join(',');
+  const candidatas = produtora
+    ? (escopos.length ? db.prepare(`SELECT DISTINCT q.id FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id WHERE q.producer_id = ? AND v.escopo_id IN (${marcas})`).all(userId, ...escopos).map(x => x.id).filter(id => nascidas.has(id)) : [])
+    : db.prepare('SELECT id FROM est_questoes WHERE producer_id = ?').all(userId).map(x => x.id);
+  if (!escopos.length && !candidatas.length) return r;
+  // Num PONTO DE RETORNO próprio: se sobrar chave estrangeira apontando para o que saiu (tabela nova, ligada ao
+  // escopo por outro caminho), desfaz-se SÓ esta parte e o percurso é esvaziado do que ele digitou — a exclusão
+  // da conta não pode falhar inteira por causa disto.
+  const pendencias = () => db.prepare('PRAGMA foreign_key_check').all().length;
+  db.exec('SAVEPOINT est_lgpd_percursos');
+  try {
+    const antes = pendencias();
+    // as tabelas-filhas saem em qualquer ordem: a conferência das chaves estrangeiras fica para o fim da transação
+    db.exec('PRAGMA defer_foreign_keys = ON');
+    if (escopos.length) {
+      for (const t of tabelasPorEscopo()) db.prepare(`DELETE FROM ${t} WHERE escopo_id IN (${marcas})`).run(...escopos);
+      r.percursos = Number(db.prepare(`DELETE FROM est_escopos WHERE id IN (${marcas}) AND dono_user_id = ?`).run(...escopos, userId).changes) || 0;
+    }
+    // a questão só sai se nenhum OUTRO percurso a usa (o vínculo com os particulares dele acabou de sair)
+    const usada = db.prepare('SELECT 1 FROM est_questao_vinculos WHERE questao_id = ? LIMIT 1');
+    const apagar = db.prepare('DELETE FROM est_questoes WHERE id = ? AND producer_id = ?');
+    for (const id of candidatas) if (!usada.get(id)) r.questoes += Number(apagar.run(id, userId).changes) || 0;
+    if (pendencias() > antes) throw new Error('sobrou referência ao percurso');
+    db.exec('RELEASE est_lgpd_percursos');
+  } catch (_) {
+    db.exec('ROLLBACK TO est_lgpd_percursos'); db.exec('RELEASE est_lgpd_percursos');
+    r.percursos = 0; r.questoes = 0;
+    r.esvaziados = Number(db.prepare("UPDATE est_escopos SET titulo = 'Percurso excluído', resumo = '', perfil = '{}', data_alvo = '', atualizado_em = ? WHERE dono_user_id = ?").run(nowISO(), userId).changes) || 0;
+    try { console.error('[estudo/pedidos] LGPD: o percurso particular não pôde ser apagado por inteiro (referência pendente) — ficou esvaziado'); } catch (__) { /* nem o log */ }
+  }
+  return r;
+}
+function apagarDoTitular(userId) {
+  const r = { audios: apagarAudiosDoTitular(userId), midias: 0, percursos: 0, questoes: 0 };
+  const ids = new Set(db.prepare('SELECT id FROM media_files WHERE owner_user_id = ? AND file_path LIKE ?').all(userId, ct.PEDIDO_PREFIXO + '%').map(x => x.id));
+  for (const p of db.prepare('SELECT entrada FROM est_pedidos WHERE user_id = ?').all(userId)) midiasDaEntrada(j.parse(p.entrada, {}) || {}).forEach(id => ids.add(id));
+  for (const id of ids) {
+    const m = ct.Midia.obterMesmoPendente(id);
+    // só o que é dele e que o curso não usa (mídia citada num pedido não é, por isso, mídia de pedido)
+    if (!m || m.owner_user_id !== userId || ct.Midia.referenciada(m.id)) continue;
+    db.prepare('DELETE FROM media_files WHERE id = ?').run(m.id);
+    Promise.resolve(_apagarNoStorage(m)).catch(() => {});
+    r.midias++;
+  }
+  return { ...r, ...apagarPercursosDoTitular(userId) };
+}
+// LGPD: o que a EXPORTAÇÃO do titular leva dos pedidos além dos textos — o percurso particular (título, programa
+// e as questões que ele importou, com o gabarito que veio do documento dele) e a lista dos arquivos enviados.
+function exportarDoTitular(userId) {
+  const percursos = db.prepare("SELECT id FROM est_escopos WHERE dono_user_id = ? ORDER BY criado_em").all(userId).map(x => R.Escopos.obter(x.id)).filter(Boolean).map((e) => ({
+    product_id: e.product_id, slug: e.slug, tipo: e.tipo, titulo: e.titulo, resumo: e.resumo || '', perfil: e.perfil || {}, data_alvo: e.data_alvo || '', criado_em: e.criado_em,
+    programa: e.versao ? R.itens(e).map(i => ({ codigo: i.codigo, pai: i.pai, texto: i.texto, localizacao: i.localizacao || '', pendente: i.pendente || '' })) : [],
+    questoes: R.Questoes.doEscopo(e.id, { situacoes: banco.SITUACOES }).filter(q => q.producer_id === userId).map(q => ({
+      tipo: q.tipo, disciplina: q.disciplina || '', enunciado: q.enunciado || '', apoio: q.apoio || '',
+      alternativas: (q.alternativas || []).map(a => ({ id: a.id, texto: a.texto, correta: !!a.correta })), procedencia: q.procedencia || null, gabarito_situacao: q.gabarito_situacao || '' })),
+  }));
+  const ids = new Set(db.prepare('SELECT id FROM media_files WHERE owner_user_id = ? AND file_path LIKE ?').all(userId, ct.PEDIDO_PREFIXO + '%').map(x => x.id));
+  for (const p of db.prepare('SELECT entrada FROM est_pedidos WHERE user_id = ?').all(userId)) midiasDaEntrada(j.parse(p.entrada, {}) || {}).forEach(id => ids.add(id));
+  const arquivos = [...ids].map(id => ct.Midia.obterMesmoPendente(id)).filter(m => m && m.owner_user_id === userId && !ct.Midia.referenciada(m.id))
+    .map(m => ({ nome: m.nome, tipo: m.mime, tamanho: m.tamanho, enviado_em: m.criado_em }));
+  return { percursos_particulares: percursos, arquivos_enviados: arquivos };
 }
 
 // ---------------------------------------------------------------------
@@ -409,8 +546,16 @@ const aguardar = (id) => emAndamento.get(id) || Promise.resolve();
 // Quem já teve FALHAS_POR_DIA pedidos falhos (com reserva) nas últimas 24 h espera: cada falha devolve tudo,
 // e o provedor foi pago mesmo assim.
 function exigirLimiteDeFalhas(userId) {
-  const n = db.prepare("SELECT COUNT(*) n FROM est_pedidos WHERE user_id = ? AND estado = 'falhou' AND ref != '' AND atualizado_em > ?").get(userId, new Date(Date.now() - 864e5).toISOString()).n;
+  const desde = new Date(Date.now() - 864e5).toISOString();
+  const n = db.prepare("SELECT COUNT(*) n FROM est_pedidos WHERE user_id = ? AND estado = 'falhou' AND ref != '' AND atualizado_em > ?").get(userId, desde).n;
   if (n >= FALHAS_POR_DIA) throw erro(`${n} pedidos seus não foram concluídos nas últimas 24 horas (o valor de cada um voltou ao saldo). Por segurança, novos pedidos ficam em espera até amanhã — se o problema for do serviço, fale com o suporte. Nada foi cobrado.`, 429);
+  // … e pelo VALOR que essas falhas custaram à plataforma (a mensagem não diz o número: é custo nosso, não do aluno)
+  if (!carteira.isento(userId) && ia.custoDeFalhasUSD({ userId, desde }) >= FALHAS_USD_POR_DIA_CONTA) {
+    throw erro('Pedidos seus que não foram concluídos nas últimas 24 horas já alcançaram o limite diário de tentativas (o valor de cada um voltou ao saldo). Por segurança, novos pedidos ficam em espera até amanhã — se o problema for do serviço, fale com o suporte. Nada foi cobrado.', 429);
+  }
+  if (ia.custoDeFalhasUSD({ desde }) >= FALHAS_USD_POR_DIA_GLOBAL) {
+    throw erro('Este serviço está em pausa por hoje: muitos pedidos não foram concluídos nas últimas 24 horas e estamos verificando. Tente de novo amanhã. Nada foi cobrado.', 503);
+  }
 }
 
 // Tudo síncrono do estado lido até o estado gravado: dois "confirmar" seguidos nunca reservam duas vezes.
@@ -551,6 +696,12 @@ function aoCreditar(pedidoId, userId) {
   if (!p || p.user_id !== userId || p.estado !== 'orcado' || !(p.aceite_milesimos > 0)) return false;
   const produto = ct.Produtos.obter(p.product_id);
   if (!produto || !(ct.temAcesso(userId, produto.id) || produto.producer_id === userId)) return false;
+  // a CHAVE GERAL vale também aqui: quem criou a recarga liberado e saiu da lista antes de o Pix compensar não
+  // roda o pedido sem passar pela porta. O crédito fica no saldo; o aceite sai, como em todo início que não acontece.
+  if (!liberadoPara(repo.Usuarios.porId(userId))) {
+    db.prepare("UPDATE est_pedidos SET aceite_milesimos = 0, atualizado_em = ? WHERE id = ? AND estado = 'orcado'").run(nowISO(), p.id);
+    return false;
+  }
   try { iniciar(p, produto, { aceite: p.aceite_milesimos }); return true; }
   catch (_) {
     // não começou (o teto subiu além do aceite, a questão saiu do ar, o limite de falhas): o crédito JÁ
@@ -628,8 +779,10 @@ function abertas(usuario, produto, slugEscopo) {
 // ---------------------------------------------------------------------
 // ENVIO DE ARQUIVO pelo aluno, só para pedido (áudio da oral; depois, PDF da prova e do edital)
 // ---------------------------------------------------------------------
+// Conta só ARQUIVO DE PEDIDO (a marca de origem no caminho): o produtor que sobe 40 materiais de curso num dia
+// não fica, por isso, sem poder enviar o áudio ou o PDF de um pedido.
 function exigirCotaDeEnvio(usuario) {
-  const n = db.prepare('SELECT COUNT(*) n FROM media_files WHERE owner_user_id = ? AND criado_em > ?').get(usuario.id, new Date(Date.now() - 864e5).toISOString()).n;
+  const n = db.prepare('SELECT COUNT(*) n FROM media_files WHERE owner_user_id = ? AND file_path LIKE ? AND criado_em > ?').get(usuario.id, ct.PEDIDO_PREFIXO + '%', new Date(Date.now() - 864e5).toISOString()).n;
   if (n >= ENVIOS_POR_DIA) throw erro('Muitos arquivos enviados nas últimas 24 horas — tente de novo amanhã.', 429);
 }
 async function enviarArquivo(usuario, produto, slugEscopo, dados = {}) {
@@ -809,7 +962,9 @@ function aplicar(usuario, produto, slugEscopo, id, dados = {}) {
       escopo: { slug: escopo.slug },
       competencias: [...novas].map(([codigo, nome]) => ({ codigo, resultado: `Diante de questões de prova de ${nome}, o candidato identifica a resposta correta sem apoio.`, criterios: [], essencial: true })),
       questoes: prontas.map(q => ({ ...prova.paraOBanco(q), competencias: [prova.codigoDaDisciplina(q.disciplina)] })),
-    }, particular ? { dono: usuario.id, autor: usuario.id, situacao: 'disponivel' } : {});
+      // `preservar`: por pedido NUNCA se reescreve questão que já existe — quem importa pode ser o produtor, e a
+      // questão de mesmo texto é a oficial, curada e publicada (comentário, explicações, pistas, bloco, uso)
+    }, particular ? { dono: usuario.id, autor: usuario.id, situacao: 'disponivel', preservar: true } : { preservar: true });
     // o resultado guarda o que entrou (com as edições de quem revisou) — dá para adicionar o resto depois
     const por = new Map(prontas.map(q => [q.n, q]));
     // a que estava "a revisar" e entrou foi conferida por quem importou: passa a contar como pronta (o motivo fica, como registro)
@@ -818,8 +973,10 @@ function aplicar(usuario, produto, slugEscopo, id, dados = {}) {
     r.aplicacao = { escopo: escopo.slug, titulo: escopo.titulo, particular, situacao: particular ? 'disponivel' : 'rascunho', em: nowISO(),
       novas: antes.novas + rel.questoes.novas, duplicadas: antes.duplicadas + rel.questoes.duplicadas, atualizadas: antes.atualizadas + rel.questoes.atualizadas };
     r.resumo = prova.resumir(r.questoes);
+    // `questoes_ids` (na entrada, que não vai à tela): as questões que NASCERAM deste pedido — é por elas que a
+    // exclusão da conta sabe o que foi "importado por ele" quando a conta também é produtora
     db.prepare("UPDATE est_pedidos SET estado = 'aplicado', resultado = ?, entrada = ?, atualizado_em = ? WHERE id = ?")
-      .run(j.str(r), j.str({ ...e, destino: { escopo: escopo.slug } }), nowISO(), p.id);
+      .run(j.str(r), j.str({ ...e, destino: { escopo: escopo.slug }, questoes_ids: (e.questoes_ids || []).concat(rel.questoes.ids_novas || []) }), nowISO(), p.id);
     return { pedido: publico(linha(p.id), true), aplicado: { ...rel.questoes, escopo: escopo.slug, titulo: escopo.titulo, particular, situacao: r.aplicacao.situacao } };
   });
 }
@@ -1095,7 +1252,8 @@ module.exports = {
   criar, orcamento, confirmar, obter, listar, cancelar, contestar, recarga, abertas, aoCreditar, aguardar, recuperarInterrompidos,
   enviarArquivo, iniciarArquivoGrande, confirmarArquivoGrande, painelStaff, abrirParaStaff, resolverContestacao,
   promptCorrecao, montarResultado, citacaoConferida,
-  linkDoAudio, expurgarAudios, apagarAudiosDoTitular, AUDIO_ORAL_RETENCAO_DIAS,
+  linkDoAudio, expurgarAudios, expurgarMidiaSolta, apagarAudiosDoTitular, apagarDoTitular, exportarDoTitular, AUDIO_ORAL_RETENCAO_DIAS,
+  FALHAS_USD_POR_DIA_CONTA, FALHAS_USD_POR_DIA_GLOBAL,
   opcoesDeProva, reorcar, aplicar, opcoesDeEdital, previaDoEdital,
   EDITAIS_POR_DIA, RESULTADO_DA_DISCIPLINA,
   cfgPedidos, prepararConfigPedidos, salvarConfigPedidos, liberadoPara, CFG_PEDIDOS, LIBERADOS_MAX, AINDA_NAO,

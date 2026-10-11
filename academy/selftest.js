@@ -2826,6 +2826,9 @@ async function main() {
   // ================= JORNADA do Estude e FERRAMENTAS do concurseiro (paridade, etapa 2): diagnóstico, nível, selos, medalhas, pontuação, prazo e cronograma =================
   await require('./estudo/testes-jornada-estude').rodar({ t, req });
 
+  // ================= AUDITORIA de 11/10/2026 (caminho do aluno): sorteio sem viés, simulado no formato do edital, prova em andamento, questão sem competência, vigência, ordem fixa, desempenho =================
+  await require('./estudo/testes-auditoria').rodar({ t, req });
+
   // ================= AMOSTRAS GRÁTIS (amostras.js): trechos públicos de vídeo =================
   await require('./testes-amostras').rodar({ t, req, base: () => BASE, emailProdutor: MARIA.email });
 

@@ -103,6 +103,9 @@ const Usuarios = {
       sessoes: db.prepare('SELECT criada_em, expira_em, ip, user_agent, revogada FROM sessions WHERE user_id = ?').all(id),
       auditoria: db.prepare('SELECT quando, acao, entidade, detalhe, ip FROM audit_logs WHERE quem = ? ORDER BY id DESC LIMIT 500').all(id),
       aprendizagem: textosDoAluno(id),
+      // Estude: o PERCURSO PARTICULAR (título, programa e questões que o titular importou) e a lista dos arquivos
+      // que ele enviou para pedidos — não cabem na lista de tabelas de texto (require tardio: pedidos → carteira → repo)
+      estude: (() => { try { return require('./estudo/pedidos').exportarDoTitular(id); } catch (_) { return { percursos_particulares: [], arquivos_enviados: [] }; } })(),
       comunidade: require('./ecossistema').exportar(id), // require tardio: ecossistema → repo-conteudo → repo
     };
   },
@@ -122,8 +125,10 @@ const Usuarios = {
       // (no Estude: marcações, anotações, tentativas e notas de aula saem; o pedido pago FICA — é registro
       // financeiro — mas sem o que o aluno escreveu ou falou: resposta, transcrição, correção e contestação)
       // o ÁUDIO da prova oral sai na hora, sem esperar o prazo de guarda — e ANTES de limpar a entrada do pedido,
-      // que é onde está o endereço dele (require tardio: pedidos → carteira → repo)
-      try { require('./estudo/pedidos').apagarAudiosDoTitular(id); } catch (_) {}
+      // que é onde está o endereço dele (require tardio: pedidos → carteira → repo).
+      // Junto saem TODA mídia de pedido do titular (os PDFs de prova, gabarito e edital também) e o PERCURSO
+      // PARTICULAR dele: o escopo, o programa e as questões que ele importou (`apagarDoTitular`).
+      try { require('./estudo/pedidos').apagarDoTitular(id); } catch (_) {}
       for (const [tabela, , apagar] of TEXTOS_DO_ALUNO) { try { db.prepare(apagar || `DELETE FROM ${tabela} WHERE user_id = ?`).run(id); } catch (_) {} }
       require('./ecossistema').apagarDoTitular(id); // comunidade e lives: o texto sai, o fio da conversa fica
       return true;

@@ -134,6 +134,30 @@ async function rodar({ t, req, impId, jars }) {
     db.prepare("DELETE FROM ia_movimentos WHERE id = 'viva1'").run();
   });
 
+  await t('auditoria 6 e 18: a mensagem do provedor não chega ao aluno (fica no log de uso) — e, se o ACERTO não se grava, a reserva é solta e devolvida na hora', async () => {
+    const uid = repo.Usuarios.porEmail(NINA.email).id;
+    const saldoAntes = carteira.saldo(uid);
+    const ultimoLog = () => db.prepare('SELECT * FROM ai_usage_logs WHERE user_id = ? ORDER BY rowid DESC').get(uid);
+    // 18: o provedor caiu com um erro cheio de detalhe técnico
+    falhar = true;
+    let r = await perguntar('nina', teto);
+    falhar = false;
+    assert.ok(r.st >= 400 && r.json.erro === ia.FALHA_AO_USUARIO && !/provedor fora do ar|IA falhou|claude|mock/.test(r.texto), 'quem perguntou lê o que houve, sem o texto do provedor: ' + r.texto);
+    assert.deepEqual([ultimoLog().status, ultimoLog().detalhe], ['erro', 'IA falhou: provedor fora do ar'], 'o detalhe técnico fica no log de uso');
+    assert.equal(carteira.saldo(uid), saldoAntes);
+    // 6: a IA respondeu, mas o acerto não pôde ser gravado (banco travado, disco cheio)
+    const antes = chamadas;
+    db.exec("CREATE TRIGGER teste_sem_acerto BEFORE INSERT ON ia_movimentos WHEN NEW.tipo = 'acerto' BEGIN SELECT RAISE(ABORT, 'disco cheio (teste)'); END");
+    try { r = await perguntar('nina', teto); } finally { db.exec('DROP TRIGGER IF EXISTS teste_sem_acerto'); }
+    assert.equal(chamadas, antes + 1, 'o provedor foi chamado');
+    assert.ok(r.st === 503 && r.json.erro === ia.FALHA_AO_USUARIO && !/disco cheio|SQLITE|constraint/i.test(r.texto), 'sem a resposta e sem o erro do banco: ' + r.texto);
+    const ref = db.prepare("SELECT ref FROM ia_movimentos WHERE user_id = ? AND tipo = 'reserva' ORDER BY rowid DESC").get(uid).ref;
+    assert.equal(carteira.reservaViva(ref), false, 'a reserva não fica "viva" no processo até o próximo reinício');
+    assert.deepEqual(db.prepare('SELECT tipo FROM ia_movimentos WHERE ref = ? ORDER BY rowid').all(ref).map(x => x.tipo), ['reserva', 'estorno'], 'e volta já, sem esperar os 10 minutos da reserva órfã');
+    assert.equal(carteira.saldo(uid), saldoAntes, 'não recebeu a resposta, não pagou');
+    assert.equal(carteira.devolverReserva(ref), 0, 'a devolução é uma só');
+  });
+
   await t('carteira: quem comprou ANTES da virada mantém a franquia diária naquele curso; acabou, paga', async () => {
     const olga = repo.Usuarios.porEmail('olga@t.com');
     repo.Config.salvar('ia', { consultas_dia: ia.usadasHoje(olga.id) + 1 }); // sobra exatamente uma pergunta grátis hoje

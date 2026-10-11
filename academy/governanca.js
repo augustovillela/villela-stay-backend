@@ -85,7 +85,7 @@ const Certificados = {
   // cumpre o critério do percurso (estudo/aluno.js › conclusao). Em nenhum caso é certificado de "aprovação".
   emitir(usuario, productId) {
     const p = ct.Produtos.obter(productId);
-    if (!p || !ct.temAcesso(usuario.id, p.id)) throw new Error('Você não tem acesso a este produto.');
+    if (!p || !ct.temAcesso(usuario.id, p.id)) { const e = new Error('Você não tem acesso a este produto.'); e.status = 403; throw e; }
     // Curso que hospeda o ESTUDE tem uma aula-casca e centenas de aulas no percurso: "100 % das aulas" aqui
     // seria concluir a casca e levar o certificado do curso inteiro. Para ele a casca NÃO conta: vale o
     // critério do percurso publicado (todas as aulas estudadas + prova completa enviada).

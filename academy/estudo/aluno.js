@@ -64,9 +64,17 @@ function escopos(usuario, produto) {
 // ---------------------------------------------------------------------
 // EVIDÊNCIA e AGENDA
 // ---------------------------------------------------------------------
-const evidencias = (userId, escopoId) => db.prepare('SELECT * FROM est_evidencias WHERE user_id = ? AND escopo_id = ? ORDER BY criado_em').all(userId, escopoId)
-  .map(e => ({ ...e, acerto: !!e.acerto, inedita: !!e.inedita, ajuda_humana: !!e.ajuda_humana }));
+// `tentativa_modo`: de que prova a resposta veio ('' = resposta avulsa: prática, quiz da aula, card). É o que separa
+// o erro do DIAGNÓSTICO (ponto de partida) do erro de quem já estudou a matéria (dívida).
+const evidencias = (userId, escopoId) => R.memo(`evs:${userId}:${escopoId}`, () => db.prepare(`SELECT e.*, COALESCE(t.modo, '') AS tentativa_modo FROM est_evidencias e LEFT JOIN est_tentativas t ON t.id = e.tentativa_id
+    WHERE e.user_id = ? AND e.escopo_id = ? ORDER BY e.criado_em`).all(userId, escopoId)
+  .map(e => ({ ...e, acerto: !!e.acerto, inedita: !!e.inedita, ajuda_humana: !!e.ajuda_humana })));
 const jaViu = (userId, refId) => !!db.prepare('SELECT 1 FROM est_evidencias WHERE user_id = ? AND ref_id = ? LIMIT 1').get(userId, refId);
+// tudo o que o aluno já respondeu, numa consulta só (quiz, praticar e prova perguntavam questão a questão)
+const vistasDe = (userId) => R.memo(`evs:vistas:${userId}`, () => new Set(db.prepare('SELECT DISTINCT ref_id FROM est_evidencias WHERE user_id = ?').all(userId).map(r => r.ref_id)));
+// as questões que o aluno ENXERGA neste percurso (situação visível para ele): questão retirada do banco não conta em nada
+const questoesVivas = (c) => R.memo(`vivas:${c.escopo.id}:${c.situacoes.join(',')}`, () => new Set(db.prepare(`SELECT DISTINCT q.id FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id
+    WHERE v.escopo_id = ? AND q.situacao IN (${c.situacoes.map(() => '?').join(',')})`).all(c.escopo.id, ...c.situacoes).map(r => r.id)));
 
 function reagendar(userId, escopo, alvo, alvoId, resultado) {
   const atual = db.prepare('SELECT passo FROM est_revisoes WHERE user_id = ? AND escopo_id = ? AND alvo = ? AND alvo_id = ?').get(userId, escopo.id, alvo, alvoId);
@@ -78,7 +86,14 @@ function reagendar(userId, escopo, alvo, alvoId, resultado) {
 }
 
 // Uma linha por competência avaliada. `inedita` é medida ANTES de gravar.
-function registrar(usuario, escopo, { origem, refId, refVersao = 1, comps, modo, acerto, pistas = 0, tentativaId = '', tempo = 0, confianca = '' }) {
+// QUESTÃO SEM COMPETÊNCIA (vinculada só à disciplina, e não a um ponto do edital): a resposta é gravada do mesmo
+// jeito, numa linha com a competência vazia. Sem isto ela nunca ficava "vista" — voltava ao topo do Praticar como
+// inédita para sempre — e o erro nela não entrava no caderno de erros. Linha sem competência não move estado,
+// nível, selo nem régua de aula: só registra que o aluno respondeu.
+// `agendar: false` (diagnóstico de entrada): a resposta vale como evidência, mas o erro NÃO vira retomada com
+// vencimento — é matéria que o aluno ainda não estudou; entra como ponto de partida, não como dívida.
+const SEM_COMPETENCIA = '';
+function registrar(usuario, escopo, { origem, refId, refVersao = 1, comps, modo, acerto, pistas = 0, tentativaId = '', tempo = 0, confianca = '', agendar = true }) {
   const inedita = !jaViu(usuario.id, refId);
   const versoes = Object.fromEntries(R.competencias(escopo.id).map(c => [c.codigo, c.versao]));
   const ins = db.prepare(`INSERT INTO est_evidencias (id, user_id, escopo_id, competencia_codigo, competencia_versao, origem, ref_id, ref_versao, tentativa_id, modo, acerto, pistas, inedita, tempo_seg, confianca, criado_em)
@@ -86,11 +101,12 @@ function registrar(usuario, escopo, { origem, refId, refVersao = 1, comps, modo,
   const agora = nowISO();
   const resultado = !acerto ? 'erro' : (pistas > 0 || modo === 'estudo') ? 'acerto_com_ajuda' : 'acerto';
   const proximas = {};
-  for (const c of comps) {
+  for (const c of (comps && comps.length ? comps : [SEM_COMPETENCIA])) {
     ins.run(novoId(), usuario.id, escopo.id, c, versoes[c] || 1, origem, refId, refVersao, tentativaId, modo, acerto ? 1 : 0, pistas, inedita ? 1 : 0,
       Math.max(0, Math.round(Number(tempo) || 0)), CONFIANCAS.includes(confianca) ? confianca : '', agora);
-    if (origem === 'questao') proximas[c] = reagendar(usuario.id, escopo, 'competencia', c, resultado);
+    if (origem === 'questao' && c !== SEM_COMPETENCIA && agendar) proximas[c] = reagendar(usuario.id, escopo, 'competencia', c, resultado);
   }
+  R.esquecer('evs:'); // o que esta requisição já tinha lido das evidências deixou de valer
   return { inedita, resultado, proximas };
 }
 
@@ -101,18 +117,26 @@ function estadosDoAluno(usuario, escopo) {
   const evs = evidencias(usuario.id, escopo.id);
   const est = ev.estados(evs);
   const comps = R.competencias(escopo.id);
-  const falhasSeguidas = (codigo) => {
+  // as evidências de cada competência, agrupadas UMA vez (antes: um filtro da lista inteira por competência)
+  const porComp = new Map();
+  for (const e of evs) { if (!porComp.has(e.competencia_codigo)) porComp.set(e.competencia_codigo, []); porComp.get(e.competencia_codigo).push(e); }
+  const falhasSeguidas = (lista) => {
     let n = 0;
-    for (const e of evs.filter(x => x.competencia_codigo === codigo).reverse()) {
-      if (!e.acerto && ev.independente(e)) n++; else if (e.acerto) break;
-    }
+    for (let i = lista.length - 1; i >= 0; i--) { const e = lista[i]; if (!e.acerto && ev.independente(e)) n++; else if (e.acerto) break; }
     return n;
   };
-  return comps.map(c => ({
-    codigo: c.codigo, resultado: c.resultado, essencial: c.essencial, depende_de: c.depende_de,
-    ...(est[c.codigo] || ev.estadoDaCompetencia([])),
-    estagnada: falhasSeguidas(c.codigo) >= FALHAS_PARA_ESTAGNACAO,
-  }));
+  return comps.map(c => {
+    const dela = porComp.get(c.codigo) || [];
+    return {
+      codigo: c.codigo, resultado: c.resultado, essencial: c.essencial, depende_de: c.depende_de,
+      ...(est[c.codigo] || ev.estadoDaCompetencia([])),
+      estagnada: falhasSeguidas(dela) >= FALHAS_PARA_ESTAGNACAO,
+      // tudo o que se sabe desta competência veio do DIAGNÓSTICO de entrada: o erro ali não é "erro recente" de quem
+      // estudou — a próxima tarefa a trata como matéria por começar
+      so_diagnostico: dela.length > 0 && dela.every(e => e.tentativa_modo === 'diagnostico'),
+      so_cards: dela.length > 0 && dela.every(e => e.origem === 'card'), // só avaliou card: a frase da próxima tarefa não fala em "pista"
+    };
+  });
 }
 
 function filaDeRevisao(usuario, escopo, limite = LIMITE_REVISOES_DIA) {
@@ -132,7 +156,7 @@ function proximaTarefa(usuario, escopo, c, est = estadosDoAluno(usuario, escopo)
   if (rev) return { tipo: 'revisao', competencia: rev.alvo_id, motivo: `Retomada vencida em ${rev.vencimento}: recupere antes de reler.` };
   if (fila.hoje.length) return { tipo: 'cards', motivo: `${fila.hoje.length} card(s) para recordar hoje.` };
 
-  const emPratica = est.find(e => e.estado === 'em_pratica');
+  const emPratica = est.find(e => e.estado === 'em_pratica' && !e.so_diagnostico);
   if (emPratica) {
     const falta = emPratica.depende_de.find(d => por[d] && !ev.demonstrada(por[d].estado));
     if (falta) return { tipo: 'pre_requisito', competencia: falta, unidade: unidadeDe(falta), motivo: `Você errou em "${emPratica.codigo}", que depende de "${falta}", ainda não demonstrada. Retome a base primeiro.` };
@@ -140,13 +164,15 @@ function proximaTarefa(usuario, escopo, c, est = estadosDoAluno(usuario, escopo)
       motivo: `${FALHAS_PARA_ESTAGNACAO} tentativas sem apoio e sem acerto: repetir questão não está funcionando. Volte à explicação e ao exemplo resolvido — ou peça ajuda humana.` };
     return { tipo: 'intervencao', competencia: emPratica.codigo, unidade: unidadeDe(emPratica.codigo), motivo: 'Erro recente sem apoio: reveja o exemplo resolvido e tente uma questão diferente.' };
   }
-  const comApoio = est.find(e => e.estado === 'demonstrada_com_apoio');
-  if (comApoio) return { tipo: 'pratica_sem_apoio', competencia: comApoio.codigo, motivo: 'Você acertou com pista ou em questão já vista. Falta acertar uma questão nova, sem apoio.' };
+  const comApoio = est.find(e => e.estado === 'demonstrada_com_apoio' && !e.so_diagnostico);
+  if (comApoio) return { tipo: 'pratica_sem_apoio', competencia: comApoio.codigo, motivo: comApoio.so_cards ? 'Você recordou o card desta matéria — card é recordação, não demonstração. Falta acertar uma questão nova, sem apoio.' : 'Você acertou com pista ou em questão já vista. Falta acertar uma questão nova, sem apoio.' };
   // só entra na fila quem o aluno consegue demonstrar hoje; competência sem questão praticável vai para o fim
   const praticavel = R.competenciasComPratica(escopo.id, c.situacoes);
-  const novas = est.filter(e => e.estado === 'nao_avaliada' && praticavel.has(e.codigo));
+  // "por começar": nunca avaliada — ou só vista no diagnóstico de entrada, sem demonstração (o erro de lá é ponto de partida)
+  const porComecar = (e) => e.estado === 'nao_avaliada' || (e.so_diagnostico && !ev.demonstrada(e.estado));
+  const novas = est.filter(e => porComecar(e) && praticavel.has(e.codigo));
   const nova = novas.find(e => e.depende_de.every(d => !por[d] || ev.demonstrada(por[d].estado))) || novas[0];
-  if (nova) return { tipo: 'aprender', competencia: nova.codigo, unidade: unidadeDe(nova.codigo), motivo: nova.depende_de.length ? 'Próxima competência do percurso: os pré-requisitos dela você já demonstrou.' : 'Competência do percurso que você ainda não começou e que não depende de outra.' };
+  if (nova) return { tipo: 'aprender', competencia: nova.codigo, unidade: unidadeDe(nova.codigo), motivo: (nova.so_diagnostico ? 'Você a viu só no diagnóstico de entrada, que é ponto de partida: comece pela aula. ' : '') + (nova.depende_de.length ? 'Próxima competência do percurso: os pré-requisitos dela você já demonstrou.' : 'Competência do percurso que você ainda não começou e que não depende de outra.') };
   const semRetencao = est.find(e => e.estado === 'demonstrada_sem_apoio');
   if (semRetencao) return { tipo: 'aguardar_retencao', competencia: semRetencao.codigo, motivo: `Demonstrada, mas a retenção só se confirma com nova questão inédita após ${ev.INTERVALO_RETENCAO_DIAS} dias.` };
   const soLeitura = est.find(e => e.estado === 'nao_avaliada' && unidadeDe(e.codigo));
@@ -171,18 +197,22 @@ function painel(usuario, produto, slugEscopo) {
   // "estudado" (itens do programa e aulas) sai da régua única — a resposta dada no diagnóstico não entra nela
   const regua = reguaDeEstudo(usuario.id, escopo.id);
   const ordem = Object.fromEntries(ev.ESTADOS.map((e, i) => [e, i]));
+  const uns = R.unidades(escopo.id, c.vis);
+  // item ESTUDADO = alguma aula que o cobre está estudada (a régua única); item sem aula conta pela resposta em prática
+  const estudadaPorCodigo = new Map(uns.map(u => [u.codigo, aulaEstudada(u, regua)]));
   // o domínio de um item é o da competência MAIS FRACA que o cobre
   const itens = cob.por_item.map(i => {
     const estados = i.competencias.map(k => (por[k.codigo] || {}).estado || 'nao_avaliada');
     const dominio = estados.length ? estados.sort((a, b) => ordem[a] - ordem[b])[0] : 'sem_competencia';
-    return { ...i, estudado: i.competencias.some(k => regua.comResposta.has(k.codigo)), dominio };
+    const estudado = i.unidades.length ? i.unidades.some(cod => estudadaPorCodigo.get(cod)) : i.competencias.some(k => regua.comResposta.has(k.codigo));
+    return { ...i, estudado, dominio };
   });
   const folhas = itens.filter(i => i.folha);
   const conta = (f) => folhas.filter(f).length;
   const fila = filaDeRevisao(usuario, escopo);
   const evs = evidencias(usuario.id, escopo.id);
   // por aula: estudada (a régua única de `aulaEstudada`) e videoaula assistida — a lista de aulas mostra
-  const aulas = regua.aulas, uns = R.unidades(escopo.id, c.vis);
+  const aulas = regua.aulas;
   // RETA FINAL (ADR-0007): em que fase o aluno está em relação à prova (a data é a do edital; sem ela, a do plano dele)
   const pl = db.prepare('SELECT entrada, plano FROM est_planos WHERE user_id = ? AND escopo_id = ?').get(usuario.id, escopo.id);
   const alvo = escopo.data_alvo || (pl ? j.parse(pl.entrada, {}).data_alvo || '' : '');
@@ -193,7 +223,10 @@ function painel(usuario, produto, slugEscopo) {
     : rf.sem_materia_nova_desde && hj >= rf.sem_materia_nova_desde ? 'vespera' : rf.revisao_geral_desde && hj >= rf.revisao_geral_desde ? 'revisao_geral' : '';
   return {
     reta_final: alvo ? { data_alvo: alvo, dias, fase, foco: rf.foco || 'objetiva' } : null,
-    erros_pendentes: errosPendentes(usuario.id, escopo.id).length,
+    erros_pendentes: errosPendentes(usuario.id, escopo.id, c).length,
+    // PROVA EM ANDAMENTO (treino ou simulado): a aba Prova e a aba Hoje mostram "continuar", com o tempo que resta —
+    // trocar de aba ou recarregar a página não pode esconder uma prova com o relógio correndo
+    prova_aberta: provaAberta(usuario, escopo),
     escopo: { slug: escopo.slug, tipo: escopo.tipo, titulo: escopo.titulo, nivel: escopo.nivel, extensao: escopo.extensao, data_alvo: escopo.data_alvo, versao: escopo.versao, status: escopo.status, perfil: escopo.perfil, particular: !!c.particular },
     revisor: c.revisor,
     // três eixos, cada um com o seu denominador — nunca somados num percentual só
@@ -211,7 +244,7 @@ function painel(usuario, produto, slugEscopo) {
       mapa: !!(u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa),
       // quais aulas animadas esta aula tem (fluxo, caso, erros) — o roteiro só vem quando o aluno abre
       animada: Object.keys(u.animacoes || {}), video: !!u.video_media_id,
-      estudada: aulaEstudada(u, regua), video_assistido: !!(aulas.get(u.codigo) || {}).video_assistido })),
+      estudada: estudadaPorCodigo.get(u.codigo), aberta: !!(aulas.get(u.codigo) || {}).aberta_em, video_assistido: !!(aulas.get(u.codigo) || {}).video_assistido })),
     // o que falta para o certificado do curso (percurso particular não emite: vem `null`)
     conclusao: c.particular || escopo.status !== 'publicado' ? null : conclusao(usuario.id, produto.id),
     // ETAPA 2: o nível (pelo domínio demonstrado) e o diagnóstico — o cartão compacto da aba Hoje; a tela inteira é /jornada
@@ -240,7 +273,7 @@ function painel(usuario, produto, slugEscopo) {
 // AULA ANIMADA: os roteiros de uma aula (fluxo com paradas, caso para decidir, erros da banca)
 function animacoes(usuario, produto, slugEscopo, codigo) {
   const c = abrir(usuario, produto, slugEscopo);
-  const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(codigo));
+  const u = R.unidadePorCodigo(c.escopo.id, c.vis, R.slug(codigo));
   if (!u) throw erro('Unidade não encontrada.', 404);
   return { codigo: u.codigo, titulo: u.titulo, ...(u.animacoes || {}) };
 }
@@ -248,7 +281,7 @@ function animacoes(usuario, produto, slugEscopo, codigo) {
 // e não contam) — é o que o "Continuar" da biblioteca usa.
 function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100', aberta = false } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
-  const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(codigo));
+  const u = R.unidadePorCodigo(c.escopo.id, c.vis, R.slug(codigo));
   if (!u) throw erro('Unidade não encontrada.', 404);
   if (aberta) tocarAula(usuario.id, c.escopo.id, u.codigo, { aberta_em: nowISO() });
   const st = estadoDasAulas(usuario.id, c.escopo.id).get(u.codigo) || {};
@@ -274,10 +307,10 @@ function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100', aberta =
     // a videoaula entra no INÍCIO da aula; a entrega do arquivo passa por /academy/api/media/:id/link
     video: u.video_media_id ? { media_id: u.video_media_id, duracao_seg: u.video_duracao_seg || 0, posicao_seg: st.video_pos_seg || 0, assistido: !!st.video_assistido } : null,
     // o que o aluno já escreveu aqui: a tentativa de cada bloco e a nota livre da aula (voltam preenchidas)
-    ...escritoNaAula(usuario.id, c.escopo.id, u.codigo),
+    ...escritoNaAula(usuario.id, c.escopo.id, u.codigo, u),
     animada: Object.keys(u.animacoes || {}), // a aula interativa (fluxo, caso, erros) abre de dentro da aula
-    // chegou ao fim do texto — e se isso PESA: só na aula sem questão nem card (a régua é `aulaEstudada`)
-    lida: !!st.lida_em, conta_pela_leitura: aulaSemMeio(u, reguaDeEstudo(usuario.id, c.escopo.id)),
+    // chegou ao fim do texto — e isso CONTA em toda aula (a régua é `aulaEstudada`): abrir + ler até o fim
+    lida: !!st.lida_em, conta_pela_leitura: true, estudada: aulaEstudada(u, reguaDeEstudo(usuario.id, c.escopo.id)),
     // os destaques do autor são trechos literais do nível 100: nos resumos vale o negrito automático da norma
     destaques: usado === 100 ? (u.destaques || []) : [],
     nivel: usado, nivel_motivo: motivo, niveis, vespera, blocos };
@@ -370,7 +403,7 @@ function marcacoes(usuario, produto, slugEscopo) {
 }
 function marcar(usuario, produto, slugEscopo, d = {}) {
   const c = abrir(usuario, produto, slugEscopo);
-  const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(d.unidade));
+  const u = R.unidadePorCodigo(c.escopo.id, c.vis, R.slug(d.unidade));
   if (!u) throw erro('Aula não encontrada.', 404);
   const n = Number(d.bloco), b = Number.isInteger(n) ? u.blocos[n] : null;
   if (!b || !BLOCOS_DE_LEITURA.includes(b.tipo)) throw erro('Trecho não encontrado nesta aula.', 404);
@@ -406,13 +439,13 @@ function removerMarcacao(usuario, produto, slugEscopo, id) {
 }
 function solucaoDoBloco(usuario, produto, slugEscopo, codigo, n, tentativa) {
   const c = abrir(usuario, produto, slugEscopo);
-  const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(codigo));
+  const u = R.unidadePorCodigo(c.escopo.id, c.vis, R.slug(codigo));
   const b = u && u.blocos[Number(n)];
   if (!b || !b.solucao) throw erro('Bloco sem solução.', 404);
   // tentar antes de ver: a solução só sai contra uma tentativa escrita
   if (s(tentativa, 8000).length < 15) throw erro('Escreva a sua tentativa antes de ver a solução.');
   // …e fica guardada no caderno do aluno (antes só se conferia o tamanho e o texto era descartado)
-  gravarTentativa(usuario.id, c.escopo.id, u.codigo, Number(n), tentativa);
+  gravarTentativa(usuario.id, c.escopo.id, u.codigo, Number(n), tentativa, u);
   return { solucao: b.solucao, pistas: b.pistas };
 }
 
@@ -424,7 +457,10 @@ function solucaoDoBloco(usuario, produto, slugEscopo, codigo, n, tentativa) {
 // ÚLTIMA resposta do aluno foi um erro; sai do caderno quando ele a acerta de novo. Refazer a
 // questão não é demonstração (já foi vista): é prática — a evidência continua exigindo questão nova.
 // ---------------------------------------------------------------------
-function errosPendentes(userId, escopoId) {
+// `c` (o contexto do aluno): com ele, questão RETIRADA do banco sai da conta — o painel dizia "1 questão no caderno
+// de erros", o caderno abria vazio e a medalha "Caderno de erros zerado" ficava impossível naquela disciplina.
+function errosPendentes(userId, escopoId, c = null) {
+  const vivas = c ? questoesVivas(c) : null;
   const por = new Map();
   for (const e of evidencias(userId, escopoId)) {
     if (e.origem !== 'questao') continue;
@@ -433,19 +469,24 @@ function errosPendentes(userId, escopoId) {
     x.pendente = !e.acerto; x.ultima = e.criado_em; // as evidências vêm em ordem: a última manda
     por.set(e.ref_id, x);
   }
-  return [...por.values()].filter(x => x.pendente).map(x => ({ id: x.id, erros: x.erros.size, ultima: x.ultima })).sort((a, b) => b.ultima.localeCompare(a.ultima));
+  return [...por.values()].filter(x => x.pendente && (!vivas || vivas.has(x.id))).map(x => ({ id: x.id, erros: x.erros.size, ultima: x.ultima })).sort((a, b) => b.ultima.localeCompare(a.ultima));
 }
 const anotacaoDe = (userId, questaoId) => (db.prepare('SELECT texto FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(userId, questaoId) || {}).texto || '';
-function erros(usuario, produto, slugEscopo) {
+// Em PÁGINAS: com centenas de erros a lista era cortada em 100 sem aviso. O total é o do caderno inteiro; a tela
+// mostra "1 a 100 de 689" e pede a página seguinte.
+const ERROS_POR_PAGINA = 100;
+function erros(usuario, produto, slugEscopo, { pagina = 1 } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
-  const lista = errosPendentes(usuario.id, c.escopo.id).map(x => {
+  const pend = errosPendentes(usuario.id, c.escopo.id, c); // questão retirada do banco não fica cobrando o aluno
+  const paginas = Math.max(1, Math.ceil(pend.length / ERROS_POR_PAGINA)), pg = Math.min(paginas, Math.max(1, Math.round(Number(pagina) || 1)));
+  const lista = pend.slice((pg - 1) * ERROS_POR_PAGINA, pg * ERROS_POR_PAGINA).map(x => {
     const q = R.Questoes.obter(x.id);
-    if (!q || !c.situacoes.includes(q.situacao)) return null; // questão retirada do banco não fica cobrando o aluno
+    if (!q) return null;
     return { id: q.id, erros: x.erros, ultima: x.ultima, enunciado: q.enunciado, competencias: R.competenciasDaQuestao(q.id, c.escopo.id),
       alternativas: q.alternativas.map(a => ({ id: a.id, texto: a.texto, correta: a.correta, explicacao: a.explicacao })),
       comentario: q.comentario, origem: q.origem, vigencia: q.vigencia, anotacao: anotacaoDe(usuario.id, q.id) };
   }).filter(Boolean);
-  return { total: lista.length, questoes: lista.slice(0, 100) };
+  return { total: pend.length, pagina: pg, paginas, por_pagina: ERROS_POR_PAGINA, questoes: lista };
 }
 function anotar(usuario, produto, slugEscopo, questaoId, texto) {
   const c = abrir(usuario, produto, slugEscopo);
@@ -466,7 +507,17 @@ function bancoDeQuestoes(usuario, produto, slugEscopo) {
   // a banca do edital DESTE percurso (está no edital: perfil.banca ou perfil.organizadora) — a tela a aponta no filtro
   const pf = (c.escopo.perfil && typeof c.escopo.perfil === 'object') ? c.escopo.perfil : {};
   const doEdital = pf.banca || pf.organizadora ? banco.bancaCanonica({ banca: String(pf.banca || pf.organizadora) }) : '';
-  return { total: lista.length, oficiais: lista.filter(q => q.origem === 'oficial').length, banca_do_edital: doEdital, ...banco.facetas(lista) };
+  // MAIS COBRADO fala de "provas": a tela precisa dos números reais — quantas questões oficiais, de quantas provas
+  // (órgão + ano), de que bancas e de que anos. Nada disso é escrito à mão na tela.
+  const of = lista.filter(q => q.origem === 'oficial'), provas = new Map(), bancasOf = new Map(), anos = of.map(q => banco.eixos(q).ano).filter(Boolean);
+  for (const q of of) {
+    const e = banco.eixos(q), chave = (e.orgao || (q.procedencia || {}).concurso || '?') + ' · ' + (e.ano || '?');
+    provas.set(chave, (provas.get(chave) || 0) + 1);
+    if (e.banca) bancasOf.set(e.banca, (bancasOf.get(e.banca) || 0) + 1);
+  }
+  const oficiais_resumo = { questoes: of.length, provas: provas.size, lista_provas: [...provas.entries()].map(([nome, n]) => ({ nome, n })).sort((a, b) => a.nome.localeCompare(b.nome)),
+    bancas: [...bancasOf.entries()].map(([valor, n]) => ({ valor, n })).sort((a, b) => b.n - a.n), ano_de: anos.length ? Math.min(...anos) : 0, ano_ate: anos.length ? Math.max(...anos) : 0 };
+  return { total: lista.length, oficiais: of.length, oficiais_resumo, banca_do_edital: doEdital, formato: formatoDoPercurso(c.escopo), ...banco.facetas(lista) };
 }
 
 function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, erradas = false, origem = '', ...resto } = {}) {
@@ -478,7 +529,8 @@ function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, errad
     .filter(q => !origem || q.origem === origem) // "só questões de prova oficial" (guia Mais cobrado)
     .filter(q => banco.casaEixos(q, eixo)) // banca, órgão, cargo, período (ADR-0009)
     .filter(q => !pend || pend.has(q.id));
-  const vistas = new Set(elegiveis.filter(q => jaViu(usuario.id, q.id)).map(q => q.id));
+  const ja = vistasDe(usuario.id);
+  const vistas = new Set(elegiveis.filter(q => ja.has(q.id)).map(q => q.id));
   const ordenadas = [...elegiveis.filter(q => !vistas.has(q.id)), ...elegiveis.filter(q => vistas.has(q.id))];
   const qtd = Math.min(20, Math.max(1, Math.round(Number(n) || 5)));
   return {
@@ -508,6 +560,9 @@ function responder(usuario, produto, slugEscopo, questaoId, { resposta, confianc
   if (q.uso === 'reservada') throw erro('Questão reservada para simulado.', 403);
   const sit = pontuacao.situacaoDoItem({ gabarito: banco.gabaritoDe(q) }, resposta);
   if (sit === 'em_branco') throw erro('Escolha uma alternativa.');
+  // alternativa que não existe nesta questão não é "erro do aluno": é pedido torto (antes virava erro e ia para o caderno)
+  const validas = new Set(q.alternativas.map(a => a.id));
+  if (resposta !== pontuacao.ABSTENCAO && [].concat(resposta).some(x => !validas.has(String(x)))) throw erro('Alternativa inexistente nesta questão.');
   const acerto = sit === 'certa';
   return transacao(() => {
     const pistas = (db.prepare('SELECT n FROM est_ajudas WHERE user_id = ? AND questao_id = ?').get(usuario.id, q.id) || {}).n || 0;
@@ -534,12 +589,16 @@ function cardsDoDia(usuario, produto, slugEscopo) {
   const fila = filaDeRevisao(usuario, c.escopo);
   const vencidos = new Set(fila.hoje.filter(r => r.alvo === 'card').map(r => r.alvo_id));
   const agendados = new Set(db.prepare("SELECT alvo_id FROM est_revisoes WHERE user_id = ? AND escopo_id = ? AND alvo = 'card'").all(usuario.id, c.escopo.id).map(r => r.alvo_id));
-  const novos = todos.filter(k => !agendados.has(k.id)).slice(0, CARDS_NOVOS_DIA);
+  // "no máximo 5 cards novos por dia" É limite: conta os cards cuja PRIMEIRA avaliação foi hoje (data de Brasília).
+  // Antes, avaliados os 5, a tela buscava outros 5 — dava para percorrer o acervo inteiro num dia.
+  const novosHoje = db.prepare(`SELECT COUNT(*) n FROM (SELECT ref_id, MIN(criado_em) m FROM est_evidencias WHERE user_id = ? AND escopo_id = ? AND origem = 'card' GROUP BY ref_id) WHERE m >= ?`)
+    .get(usuario.id, c.escopo.id, hojeBR() + 'T03:00:00.000Z').n;
+  const novos = todos.filter(k => !agendados.has(k.id)).slice(0, Math.max(0, CARDS_NOVOS_DIA - novosHoje));
   const frente = (k, novo) => ({ id: k.id, competencia: k.competencia_codigo, frente: k.frente, novo });
   // os limites vão junto para a tela explicar "Card 1 de 5" — sem isso o aluno
   // lê a sessão do dia como se fosse o acervo inteiro e conclui que falta conteúdo
   return { vencidos: todos.filter(k => vencidos.has(k.id)).map(k => frente(k, false)), novos: novos.map(k => frente(k, true)), adiados: fila.adiadas, total: todos.length,
-    limites: { novos_dia: CARDS_NOVOS_DIA, revisoes_dia: LIMITE_REVISOES_DIA }, revisor: c.revisor };
+    limites: { novos_dia: CARDS_NOVOS_DIA, revisoes_dia: LIMITE_REVISOES_DIA }, novos_hoje: novosHoje, por_ver: todos.filter(k => !agendados.has(k.id)).length, revisor: c.revisor };
 }
 // REVISÃO DO ACERVO — quem responde pelo curso precisa ler todos os cards antes
 // de publicar, e a fila do dia levaria meses. Só revisor; não agenda nem conta
@@ -585,6 +644,21 @@ function avaliarCard(usuario, produto, slugEscopo, cardId, resultado) {
 // aparelho não reinicia o prazo; enviar duas vezes não gera duas notas.
 // ---------------------------------------------------------------------
 const abrirTentativa = (r) => r && { ...r, congelado: j.parse(r.congelado, {}), respostas: j.parse(r.respostas, {}), resultado: j.parse(r.resultado, null) };
+// O FORMATO do percurso para o simulado: os blocos da regra com o peso de cada um e, se cadastrado, o total do edital
+function formatoDoPercurso(escopo) {
+  let f = null;
+  try { f = pontuacao.blocosDaRegra(escopo.regra_pontuacao || {}); } catch (e) { f = null; } // regra torta não derruba a tela
+  return f && { origem: f.origem, questoes: f.questoes, blocos: f.blocos.map(b => b.bloco), exemplo: pontuacao.repartirPorBloco(f.questoes || SIMULADO_QUESTOES_PADRAO, f.blocos) };
+}
+const SIMULADO_QUESTOES_PADRAO = 100; // o tamanho que a tela sugere para o simulado quando a regra não cadastra o total
+// a prova (treino ou simulado) que está aberta, sem carregar as questões: só o que o cartão "continuar" mostra
+function provaAberta(usuario, escopo) {
+  const r = db.prepare(`SELECT id, modo, inicio_em, prazo_em, posicao, respostas, json_array_length(congelado, '$.itens') AS total FROM est_tentativas
+    WHERE user_id = ? AND escopo_id = ? AND estado = 'em_andamento' AND modo IN (${MODOS_TENTATIVA.map(() => '?').join(',')}) ORDER BY inicio_em DESC`).get(usuario.id, escopo.id, ...MODOS_TENTATIVA);
+  if (!r) return null;
+  if (nowISO() > r.prazo_em) { consolidarSeExpirou(usuario, escopo, tentativaDe(usuario, r.id)); return null; } // venceu: vira resultado, com o que estava salvo
+  return { id: r.id, modo: r.modo, inicio_em: r.inicio_em, prazo_em: r.prazo_em, agora: nowISO(), respondidas: Object.keys(j.parse(r.respostas, {})).length, total: r.total || 0, posicao: r.posicao || 0 };
+}
 const tentativaDe = (usuario, id) => abrirTentativa(db.prepare('SELECT * FROM est_tentativas WHERE id = ? AND user_id = ?').get(s(id, 40), usuario.id));
 
 function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', competencias = [], n = 10, duracao_min = 0, aceitar_menos = false, ...resto } = {}) {
@@ -598,8 +672,9 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
     if (viva.estado === 'em_andamento') return { ...paraAlunoTentativa(viva), retomada: true };
   }
   const filtro = new Set((Array.isArray(competencias) ? competencias : []).map(R.slug).filter(Boolean));
+  const compsDe = R.competenciasDasQuestoes(c.escopo.id);
   let elegiveis = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes }).filter(q => q.corrigivel)
-    .map(q => ({ q, comps: R.competenciasDaQuestao(q.id, c.escopo.id) }))
+    .map(q => ({ q, comps: compsDe.get(q.id) || [] }))
     .filter(x => !filtro.size || x.comps.some(k => filtro.has(k)))
     .filter(x => banco.casaEixos(x.q, eixo)); // simulado só com a banca (órgão, cargo, período) escolhida
   // percurso sem questão nenhuma (só o programa do edital): não é "faltou questão para o filtro" — é dizer o que falta
@@ -616,35 +691,98 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
     if (comItem.size) elegiveis = elegiveis.filter(x => !x.comps.length || x.comps.some(k => comItem.has(k)));
   }
   const pedido = Math.min(200, Math.max(1, Math.round(Number(n) || 10)));
+  const opcoes = ['reduzir a prova (aceitar_menos)', 'ampliar as competências'].concat(banco.temFiltroDeEixos(eixo) ? ['tirar o filtro de banca, órgão ou período'] : []);
+  // SIMULADO NO FORMATO DO EDITAL (auditoria de 11/10/2026): sem matéria escolhida, o simulado segue a proporção dos
+  // blocos da regra do percurso (o edital da magistratura do trabalho: 40/30/30 em 100). O sorteio é POR BLOCO —
+  // antes saíam as `n` primeiras do sorteio geral, e um simulado de 100 vinha com 7 questões no Bloco III, onde o
+  // mínimo do edital (0,9 ponto) era inalcançável. Com matéria escolhida, a prova é um recorte: não há o que repartir.
+  // (banco sem o campo `bloco` nas questões — nenhuma cai em bloco da regra — não tem como repartir: sai o sorteio
+  // geral, e o resultado dirá "fora do formato do edital")
+  let fmt = modo === 'simulado' && !filtro.size ? formatoDoPercurso(c.escopo) && pontuacao.blocosDaRegra(c.escopo.regra_pontuacao || {}) : null;
+  if (fmt && !elegiveis.some(x => fmt.blocos.some(b => b.bloco === (x.q.bloco || '')))) fmt = null;
+  const partes = fmt ? pontuacao.repartirPorBloco(pedido, fmt.blocos).map(p => ({ ...p, lista: elegiveis.filter(x => (x.q.bloco || '') === p.bloco) })) : null;
+  const faltas = partes ? partes.filter(p => p.lista.length < p.questoes).map(p => ({ bloco: p.bloco, pedidas: p.questoes, elegiveis: p.lista.length })) : [];
   // faltou questão: a lacuna é dita, nunca preenchida com repetição ou filtro afrouxado em silêncio
-  if (elegiveis.length < pedido && !aceitar_menos) {
+  if (partes && faltas.length && !aceitar_menos) {
+    const e = erro('Faltam questões para montar o simulado no formato do edital: ' + faltas.map(f => `no bloco ${f.bloco} há ${f.elegiveis} questão(ões) elegível(is) para ${f.pedidas} pedida(s)`).join('; ') + '.', 409);
+    e.extra = { elegiveis: partes.reduce((a, p) => a + Math.min(p.lista.length, p.questoes), 0), pedido, blocos: faltas, opcoes };
+    throw e;
+  }
+  if (!partes && elegiveis.length < pedido && !aceitar_menos) {
     const e = erro(`Há ${elegiveis.length} questão(ões) elegível(is) para ${pedido} pedida(s).`, 409);
-    e.extra = { elegiveis: elegiveis.length, pedido, opcoes: ['reduzir a prova (aceitar_menos)', 'ampliar as competências'].concat(banco.temFiltroDeEixos(eixo) ? ['tirar o filtro de banca, órgão ou período'] : []) };
+    e.extra = { elegiveis: elegiveis.length, pedido, opcoes };
     throw e;
   }
   if (!elegiveis.length) throw erro('Não há questões disponíveis para esta prova.', 409);
   const id = novoId();
-  // inéditas (e, no simulado, reservadas) primeiro; o restante só completa
-  const peso = (x) => (jaViu(usuario.id, x.q.id) ? 2 : 0) + (modo === 'simulado' && x.q.uso === 'reservada' ? -1 : 0);
-  const escolhidas = banco.embaralhar(elegiveis, id).sort((a, b) => peso(a) - peso(b)).slice(0, pedido);
-  // questões do mesmo texto-base ficam juntas
-  const ordem = [...escolhidas].sort((a, b) => (a.q.grupo || '~').localeCompare(b.q.grupo || '~'));
+  // inéditas (e, no simulado, reservadas) primeiro; o restante só completa. O peso é calculado UMA vez por questão.
+  const ja = vistasDe(usuario.id);
+  const peso = (x) => (ja.has(x.q.id) ? 2 : 0) + (modo === 'simulado' && x.q.uso === 'reservada' ? -1 : 0);
+  const sortear = (lista, semente, quantas) => banco.embaralhar(lista, semente).map(x => ({ x, p: peso(x) })).sort((a, b) => a.p - b.p).slice(0, quantas).map(y => y.x);
+  const escolhidas = partes ? partes.flatMap(p => sortear(p.lista, id + ':' + p.bloco, p.questoes)) : sortear(elegiveis, id, pedido);
+  if (!escolhidas.length) throw erro('Não há questões disponíveis para esta prova.', 409);
+  // a prova por blocos sai na ordem dos blocos do edital; dentro disso, questões do mesmo texto-base ficam juntas
+  const ordemBloco = partes ? new Map(partes.map((p, i) => [p.bloco, i])) : null;
+  const ordem = [...escolhidas].sort((a, b) => (ordemBloco ? ordemBloco.get(a.q.bloco || '') - ordemBloco.get(b.q.bloco || '') : 0) || (a.q.grupo || '~').localeCompare(b.q.grupo || '~'));
   const duracao = Math.round(Number(duracao_min) || 0) || Math.max(5, Math.ceil(ordem.reduce((t, x) => t + (x.q.tempo_estimado_seg || 180), 0) / 60));
   const inicio = new Date();
   const congelado = {
     modo, duracao_min: duracao, regra: c.escopo.regra_pontuacao || {}, escopo_versao: c.escopo.versao, filtro: eixo,
+    por_bloco: partes ? partes.map(p => ({ bloco: p.bloco, pedidas: p.questoes, questoes: Math.min(p.questoes, p.lista.length) })) : null,
     // o bloco da pontuação é o campo `bloco` da questão; sem ele, a disciplina serve de bloco
     itens: ordem.map(x => ({ id: x.q.id, versao: x.q.versao, gabarito: banco.gabaritoDe(x.q), bloco: x.q.bloco || x.q.disciplina || '', competencias: x.comps, publico: banco.paraAluno(x.q, id) })),
   };
   db.prepare(`INSERT INTO est_tentativas (id, user_id, escopo_id, modo, congelado, inicio_em, prazo_em) VALUES (?, ?, ?, ?, ?, ?, ?)`)
     .run(id, usuario.id, c.escopo.id, modo, j.str(congelado), inicio.toISOString(), new Date(inicio.getTime() + duracao * 60e3).toISOString());
-  return { ...paraAlunoTentativa(tentativaDe(usuario, id)), faltaram: pedido - ordem.length };
+  return { ...paraAlunoTentativa(tentativaDe(usuario, id)), faltaram: pedido - ordem.length, faltas_por_bloco: faltas };
 }
 
+// O VEREDITO ("atingiu / não atingiu o critério") só existe para SIMULADO no formato da regra do percurso. Treino
+// e prova curta mostram acertos e nota, com a frase "prova fora do formato do edital: sem veredito" — numa prova de
+// 10 questões os mínimos do edital são inalcançáveis, e a tela dizia "Não atingiu" a quem acertava tudo.
+//   atingiu | nao_atingiu   simulado no formato, pela regra cadastrada
+//   fora_do_formato         treino, ou simulado em que algum mínimo é inalcançável (os motivos vão junto)
+//   sem_criterio            a regra do percurso não define mínimo: não se inventa um
+function vereditoDe(t) {
+  const f = pontuacao.formatoDaProva(t.congelado.itens || [], t.congelado.regra || {});
+  if (!f.definido) return { veredito: 'sem_criterio', motivos: [], no_formato: false };
+  if (t.modo !== 'simulado') return { veredito: 'fora_do_formato', motivos: ['é um treino, não um simulado'], no_formato: false };
+  if (!f.ok) return { veredito: 'fora_do_formato', motivos: f.motivos, no_formato: false };
+  return { veredito: null, motivos: [], no_formato: true };
+}
+// A CORREÇÃO COMENTADA mostra a prova COMO O ALUNO A VIU: as alternativas na ordem congelada da tentativa, a letra
+// pela POSIÇÃO (a mesma da tela da prova), o texto de cada uma e o enunciado. Antes saía o `id` original da
+// alternativa ("D · sua resposta") — que, com as alternativas embaralhadas, era outra letra na tela: o aluno
+// conferia o gabarito na alternativa errada. Montado na LEITURA, do que está congelado: vale para prova antiga.
+const LETRAS_DA_TELA = 'ABCDEFGHIJ';
+function resultadoParaAluno(t) {
+  const r = t.resultado;
+  if (!r) return r;
+  const pub = new Map((t.congelado.itens || []).map(i => [i.id, i.publico || {}]));
+  const itens = (r.itens || []).map(it => {
+    const p = pub.get(it.id) || {}, det = new Map((it.alternativas || []).map(a => [a.id, a]));
+    const naOrdem = p.alternativas && p.alternativas.length ? p.alternativas : (it.alternativas || []);
+    const letra = new Map(naOrdem.map((a, k) => [a.id, LETRAS_DA_TELA[k] || String(k + 1)]));
+    const marcadas = it.resposta == null || it.resposta === pontuacao.ABSTENCAO ? [] : [].concat(it.resposta).map(String), gab = it.gabarito == null ? [] : [].concat(it.gabarito).map(String);
+    // `resposta` e `gabarito` seguem como dado (o id da alternativa); o que a TELA escreve é a letra pela posição
+    return { id: it.id, situacao: it.situacao, resposta: it.resposta == null ? null : it.resposta, gabarito: it.gabarito, competencias: it.competencias, comentario: it.comentario || '', vigencia: it.vigencia || '', bloco: it.bloco || '',
+      enunciado: p.enunciado || '', apoio: p.apoio || '', procedencia: p.procedencia || null, origem: p.origem || '',
+      alternativas: naOrdem.map(a => ({ id: a.id, letra: letra.get(a.id), texto: a.texto || '', correta: !!(det.get(a.id) || {}).correta, marcada: marcadas.includes(a.id), explicacao: (det.get(a.id) || {}).explicacao || '' })),
+      resposta_letra: marcadas.map(x => letra.get(x)).filter(Boolean).join(', '), gabarito_letra: gab.map(x => letra.get(x)).filter(Boolean).sort().join(', ') };
+  });
+  const v = vereditoDe(t);
+  const veredito = v.veredito || (r.aprovado === null ? 'sem_criterio' : r.aprovado ? 'atingiu' : 'nao_atingiu');
+  // `aprovado` só vai quando há veredito: fora do formato, o número cru da regra enganaria
+  return { ...r, itens, veredito, veredito_motivos: v.motivos, no_formato: v.no_formato, aprovado: v.no_formato ? r.aprovado : null,
+    respondidas: (r.certas || 0) + (r.erradas || 0) + (r.abstencoes || 0), total: (t.congelado.itens || []).length };
+}
 function paraAlunoTentativa(t) {
   const base = { id: t.id, modo: t.modo, estado: t.estado, inicio_em: t.inicio_em, prazo_em: t.prazo_em, agora: nowISO(), salvo_em: t.salvo_em, duracao_min: t.congelado.duracao_min };
-  if (t.estado !== 'em_andamento') return { ...base, enviado_em: t.enviado_em, resultado: t.resultado };
-  return { ...base, questoes: t.congelado.itens.map(i => i.publico), respostas: t.respostas };
+  if (t.estado !== 'em_andamento') return { ...base, enviado_em: t.enviado_em, resultado: resultadoParaAluno(t) };
+  const v = vereditoDe(t);
+  // `posicao`: a questão em que o aluno estava — recarregar a página ou voltar pela aba retoma NELA, não na primeira
+  return { ...base, questoes: t.congelado.itens.map(i => i.publico), respostas: t.respostas, posicao: Math.min(Math.max(0, t.posicao || 0), Math.max(0, t.congelado.itens.length - 1)),
+    por_bloco: t.congelado.por_bloco || null, sem_veredito: v.veredito === 'fora_do_formato', sem_veredito_motivos: v.motivos };
 }
 
 function corrigirTentativa(usuario, escopo, t, estado) {
@@ -652,8 +790,9 @@ function corrigirTentativa(usuario, escopo, t, estado) {
   const porId = Object.fromEntries(res.por_item.map(i => [i.id, i]));
   const detalhe = t.congelado.itens.map(i => {
     const q = R.Questoes.obter(i.id);
-    return { id: i.id, situacao: porId[i.id].situacao, resposta: t.respostas[i.id] == null ? null : t.respostas[i.id], gabarito: i.gabarito, competencias: i.competencias,
-      alternativas: q ? q.alternativas.map(a => ({ id: a.id, correta: a.correta, explicacao: a.explicacao })) : [], comentario: q ? q.comentario : '' };
+    return { id: i.id, situacao: porId[i.id].situacao, resposta: t.respostas[i.id] == null ? null : t.respostas[i.id], gabarito: i.gabarito, competencias: i.competencias, bloco: i.bloco || '',
+      alternativas: q ? q.alternativas.map(a => ({ id: a.id, correta: a.correta, explicacao: a.explicacao })) : [], comentario: q ? q.comentario : '',
+      vigencia: q ? q.vigencia || '' : '' }; // a nota de vigência só aparece AQUI, na correção — nunca durante a prova
   });
   const { por_item, ...nota } = res;
   const resultado = { ...nota, itens: detalhe, expirada: estado === 'expirada' };
@@ -662,13 +801,17 @@ function corrigirTentativa(usuario, escopo, t, estado) {
     // por falta de tempo não prova que o aluno não sabia
     for (const i of t.congelado.itens) {
       const sit = porId[i.id].situacao;
-      if (sit === 'certa' || sit === 'errada') registrar(usuario, escopo, { origem: 'questao', refId: i.id, refVersao: i.versao, comps: i.competencias, modo: 'avaliacao', acerto: sit === 'certa', tentativaId: t.id });
+      // o erro do DIAGNÓSTICO não vira retomada com vencimento (matéria ainda não estudada): `agendar: false`
+      if (sit === 'certa' || sit === 'errada') registrar(usuario, escopo, { origem: 'questao', refId: i.id, refVersao: i.versao, comps: i.competencias, modo: 'avaliacao', acerto: sit === 'certa', tentativaId: t.id, agendar: t.modo !== 'diagnostico' });
     }
     db.prepare('UPDATE est_tentativas SET estado = ?, enviado_em = ?, resultado = ? WHERE id = ?').run(estado, nowISO(), j.str(resultado), t.id);
   });
   return tentativaDe(usuario, t.id);
 }
+// O DIAGNÓSTICO e o TESTE FINAL não têm relógio: vencer a validade NÃO os corrige nem os dá por feitos — ficam
+// "não concluídos", e o aluno retoma ou recomeça (jornada-estude.js). Só treino e simulado expiram com o que foi salvo.
 function consolidarSeExpirou(usuario, escopo, t) {
+  if (MODOS_DE_AFERICAO.includes(t.modo)) return t;
   return t.estado === 'em_andamento' && nowISO() > t.prazo_em ? corrigirTentativa(usuario, escopo, t, 'expirada') : t;
 }
 function tentativaAberta(usuario, produto, slugEscopo, id) {
@@ -679,7 +822,7 @@ function tentativaAberta(usuario, produto, slugEscopo, id) {
 }
 const obterTentativa = (usuario, produto, slugEscopo, id) => paraAlunoTentativa(tentativaAberta(usuario, produto, slugEscopo, id).t);
 
-function salvarRespostas(usuario, produto, slugEscopo, id, respostas) {
+function salvarRespostas(usuario, produto, slugEscopo, id, respostas, posicao) {
   const { t } = tentativaAberta(usuario, produto, slugEscopo, id);
   if (t.estado !== 'em_andamento') return { salvo: false, motivo: t.estado === 'expirada' ? 'O prazo terminou: valeram as respostas já salvas.' : 'Prova já enviada.', ...paraAlunoTentativa(t) };
   const validos = new Set(t.congelado.itens.map(i => i.id));
@@ -690,7 +833,9 @@ function salvarRespostas(usuario, produto, slugEscopo, id, respostas) {
     else novas[k] = Array.isArray(v) ? v.map(x => s(x, 20)).slice(0, 10) : s(v, 20);
   }
   const agora = nowISO();
-  db.prepare('UPDATE est_tentativas SET respostas = ?, salvo_em = ? WHERE id = ?').run(j.str(novas), agora, t.id);
+  // a questão em que o aluno está (para retomar nela); só muda se veio um número que cabe na prova
+  const pos = Number.isInteger(posicao) && posicao >= 0 && posicao < validos.size ? posicao : (t.posicao || 0);
+  db.prepare('UPDATE est_tentativas SET respostas = ?, salvo_em = ?, posicao = ? WHERE id = ?').run(j.str(novas), agora, pos, t.id);
   return { salvo: true, salvo_em: agora, respondidas: Object.keys(novas).length, total: validos.size, prazo_em: t.prazo_em, agora };
 }
 function enviarTentativa(usuario, produto, slugEscopo, id) {
@@ -734,6 +879,8 @@ function retaFinalDoEscopo(escopo) {
 }
 function definirPlano(usuario, produto, slugEscopo, entrada = {}, motivo = 'definido pelo aluno') {
   const c = abrir(usuario, produto, slugEscopo);
+  // data em formato torto ("31/12/2026") era ignorada em silêncio, e o plano saía "sem prova marcada"
+  if (!c.escopo.data_alvo && entrada.data_alvo != null && entrada.data_alvo !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(String(entrada.data_alvo))) throw erro('A data da prova deve vir como AAAA-MM-DD (ex.: 2026-12-31).');
   const e = {
     disponibilidade: plano.minutosPorDia(entrada.disponibilidade),
     indisponiveis: (Array.isArray(entrada.indisponiveis) ? entrada.indisponiveis : []).map(d => s(d, 10)).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).slice(0, 400),
@@ -773,64 +920,106 @@ function obterPlano(usuario, produto, slugEscopo) {
 // tentativa de cada bloco, a nota livre da aula), o vídeo que lembra onde parou, o "continuar" da biblioteca
 // e a conclusão do curso (certificado). Nada aqui corrige questão: o quiz responde pelos caminhos de sempre.
 // ---------------------------------------------------------------------
-// AULA ESTUDADA — um critério só, o do painel ("Estudados por você"): a aula conta como estudada quando o
-// aluno já respondeu algo (questão ou card) de alguma competência dela. Abrir a aula ou ver o vídeo não conta.
-// A biblioteca, a lista de aulas, o cronograma, o selo bronze, a liberação do teste final e o certificado usam
-// ESTA régua (`reguaDeEstudo` + `aulaEstudada`) — não criar outra ao lado. Duas regras moram aqui, e só aqui:
-//   1. AFERIÇÃO NÃO É ESTUDO: a resposta dada no diagnóstico de entrada ou no teste final (tentativa de modo
-//      `diagnostico` | `teste_final`) mede o que o aluno JÁ sabia — não prova que ele estudou a aula. Sem isto,
-//      um diagnóstico de 45 questões marcava até 45 aulas como estudadas. Ela continua valendo como evidência de
-//      DOMÍNIO da competência (estado, nível, selos prata e ouro): isso é em evidencia.js, e não muda.
-//   2. AULA SEM QUESTÃO NEM CARD: se nenhuma competência da aula tem questão disponível nem card publicado, não
-//      há o que responder — e ela travaria o certificado para sempre. Nesse caso, e só nele, conta quem abriu a
-//      aula e chegou ao fim da leitura, ou assistiu à videoaula (`VIDEO_ASSISTIDO_PCT`).
+// AULA ESTUDADA — a RÉGUA ÚNICA (decisão do Augusto, 11/10/2026, depois da auditoria; substitui a de 10/10):
+//
+//   a aula está estudada quando o aluno ABRIU a aula  E  fez ao menos uma destas três coisas:
+//     · leu o texto até o fim;
+//     · assistiu a pelo menos 90 % da videoaula (`VIDEO_ASSISTIDO_PCT`);
+//     · respondeu ao menos uma QUESTÃO do quiz ou da prática dessa aula, em modo de estudo ou de prática
+//       (resposta avulsa, fora de prova, de uma competência da aula).
+//
+// O que NÃO marca aula como estudada: resposta em TREINO, SIMULADO, DIAGNÓSTICO ou TESTE FINAL (é prova: mede o
+// que o aluno sabe, não prova que ele estudou a aula) e avaliação de CARD. Tudo isso continua valendo como
+// evidência de DOMÍNIO da competência (estado, nível, selos prata e ouro) — isso é em evidencia.js, e não muda.
+// Antes, um simulado de 200 questões marcava como "estudadas" aulas que o aluno nunca abriu, e o certificado saía
+// com a carga horária de todas. Aula cuja competência só tem card (ou nada): a leitura e o vídeo contam, como em
+// qualquer outra — não existe mais o caso especial da "aula sem questão".
+//
+// A biblioteca, a lista de aulas, "Estudados por você", o cronograma, o selo bronze, a liberação do teste final e
+// o certificado usam ESTA régua (`reguaDeEstudo` + `aulaEstudada`) — não criar outra ao lado.
 const MODOS_DE_AFERICAO = ['diagnostico', 'teste_final'];
+const MODOS_DE_ESTUDO = ['estudo', 'pratica']; // o que o Praticar e o quiz da aula gravam (prova grava 'avaliacao')
 const estadoDasAulas = (userId, escopoId) => new Map(db.prepare('SELECT * FROM est_aula_estado WHERE user_id = ? AND escopo_id = ?').all(userId, escopoId).map(r => [r.unidade, r]));
 function reguaDeEstudo(userId, escopoId) {
-  // `tentativa_id` vazio = resposta avulsa (prática, quiz da aula, card); treino e simulado contam
-  const comResposta = new Set(db.prepare(`SELECT DISTINCT e.competencia_codigo c FROM est_evidencias e LEFT JOIN est_tentativas t ON t.id = e.tentativa_id
-    WHERE e.user_id = ? AND e.escopo_id = ? AND (t.modo IS NULL OR t.modo NOT IN (${MODOS_DE_AFERICAO.map(() => '?').join(',')}))`).all(userId, escopoId, ...MODOS_DE_AFERICAO).map(r => r.c));
-  // o que o ALUNO tem para responder: questão disponível (corrigível, fora da reserva) ou card publicado
-  const comMeio = new Set([...R.competenciasComPratica(escopoId, ['disponivel']), ...R.cards(escopoId, ['publicado']).map(k => k.competencia_codigo)]);
-  return { comResposta, comMeio, aulas: estadoDasAulas(userId, escopoId) };
+  return R.memo(`evs:regua:${userId}:${escopoId}`, () => {
+    // competências em que o aluno respondeu QUESTÃO fora de prova (`tentativa_id` vazio), em estudo ou prática
+    const comResposta = new Set(db.prepare(`SELECT DISTINCT competencia_codigo c FROM est_evidencias
+      WHERE user_id = ? AND escopo_id = ? AND origem = 'questao' AND tentativa_id = '' AND competencia_codigo != '' AND modo IN (${MODOS_DE_ESTUDO.map(() => '?').join(',')})`).all(userId, escopoId, ...MODOS_DE_ESTUDO).map(r => r.c));
+    return { comResposta, aulas: estadoDasAulas(userId, escopoId) };
+  });
 }
-const aulaSemMeio = (u, regua) => !u.competencias.some(k => regua.comMeio.has(k));
 function aulaEstudada(u, regua) {
-  if (u.competencias.some(k => regua.comResposta.has(k))) return true;
-  if (!aulaSemMeio(u, regua)) return false;
-  const st = regua.aulas.get(u.codigo) || {};
-  return !!(st.aberta_em && st.lida_em) || !!st.video_assistido;
+  const st = regua.aulas.get(u.codigo);
+  if (!st || !st.aberta_em) return false; // sem abrir a aula, nada conta
+  return !!st.lida_em || !!st.video_assistido || u.competencias.some(k => regua.comResposta.has(k));
 }
 // a chave geral dos pedidos pagos mora em pedidos.js (que depende deste módulo): por isso o require é tardio
 const pedidosLiberados = (usuario) => require('./pedidos').liberadoPara(usuario);
 function unidadeDoAluno(usuario, produto, slugEscopo, codigo) {
   const c = abrir(usuario, produto, slugEscopo);
-  const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(codigo));
+  const u = R.unidadePorCodigo(c.escopo.id, c.vis, R.slug(codigo)); // UMA aula: a nota, a tentativa e o vídeo (a cada ~10 s) não leem as outras 250
   if (!u) throw erro('Aula não encontrada.', 404);
   return { c, u };
 }
 function tocarAula(userId, escopoId, unidade, campos = {}) {
   db.prepare(`INSERT INTO est_aula_estado (user_id, escopo_id, unidade) VALUES (?, ?, ?) ON CONFLICT (user_id, escopo_id, unidade) DO NOTHING`).run(userId, escopoId, unidade);
   for (const [k, v] of Object.entries(campos)) db.prepare(`UPDATE est_aula_estado SET ${k} = ? WHERE user_id = ? AND escopo_id = ? AND unidade = ?`).run(v, userId, escopoId, unidade);
+  R.esquecer('evs:regua:'); // a régua lida nesta requisição deixou de valer
 }
 
 // ---- CADERNO: a tentativa de cada bloco e a nota livre da aula ----
 const BLOCOS_COM_TENTATIVA = ['desafio', 'recordacao', 'pratica', 'aplicacao']; // onde a tela pede "escreva antes de ver"
 const MAX_TENTATIVA = 8000, MAX_NOTA_AULA = 6000;
-function gravarTentativa(userId, escopoId, unidade, bloco, texto) {
-  const t = s(texto, MAX_TENTATIVA);
+// A TENTATIVA É DO BLOCO, NÃO DA POSIÇÃO (auditoria de 11/10/2026): ela era presa só ao ÍNDICE do bloco — reimportar
+// a aula com os blocos em outra ordem colava o texto do aluno no exercício errado. Agora cada tentativa guarda a
+// `bloco_ref` (a digital do enunciado do bloco em que foi escrita), e na leitura ela é reencontrada pelo enunciado:
+//   · o bloco continua no mesmo lugar, com o mesmo texto → fica onde está;
+//   · o bloco mudou de posição → a tentativa vai com ele;
+//   · o enunciado foi reescrito e outro bloco tomou aquele índice → ela NÃO é colada no exercício novo: fica no
+//     caderno como tentativa de versão anterior da aula, com o que o aluno escreveu.
+// Tentativa de antes desta regra (sem `bloco_ref`) fica no índice em que foi gravada.
+const refDoBloco = (b) => (b ? require('crypto').createHash('sha1').update(b.tipo + '\u0001' + b.texto).digest('hex').slice(0, 16) : '');
+// `u` = a aula (com os blocos de hoje). Antes de gravar, as tentativas já guardadas da aula são postas no lugar em que
+// os blocos delas estão HOJE — senão a gravação no índice novo passaria por cima da tentativa de outro exercício.
+function gravarTentativa(userId, escopoId, unidade, bloco, texto, u = null) {
+  const t = s(texto, MAX_TENTATIVA), ref = u ? refDoBloco(u.blocos[bloco]) : '';
+  if (u) arrumarTentativas(userId, escopoId, u);
   if (!t) { db.prepare('DELETE FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? AND unidade = ? AND bloco = ?').run(userId, escopoId, unidade, bloco); return { texto: '', atualizado_em: '' }; }
   const agora = nowISO();
-  db.prepare(`INSERT INTO est_tentativas_bloco (user_id, escopo_id, unidade, bloco, texto, atualizado_em) VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT (user_id, escopo_id, unidade, bloco) DO UPDATE SET texto = excluded.texto, atualizado_em = excluded.atualizado_em`).run(userId, escopoId, unidade, bloco, t, agora);
+  db.prepare(`INSERT INTO est_tentativas_bloco (user_id, escopo_id, unidade, bloco, texto, atualizado_em, bloco_ref) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (user_id, escopo_id, unidade, bloco) DO UPDATE SET texto = excluded.texto, atualizado_em = excluded.atualizado_em, bloco_ref = excluded.bloco_ref`).run(userId, escopoId, unidade, bloco, t, agora, ref);
   return { texto: t, atualizado_em: agora };
+}
+// regrava as tentativas da aula no índice ATUAL do bloco de cada uma (só quando alguma saiu do lugar). A que ficou
+// sem bloco (o exercício foi reescrito) vai para um índice negativo: continua no caderno e não ocupa o lugar de ninguém.
+function arrumarTentativas(userId, escopoId, u) {
+  const linhas = db.prepare('SELECT bloco, texto, atualizado_em, bloco_ref FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? AND unidade = ?').all(userId, escopoId, u.codigo);
+  const postas = tentativasNoLugar(u, linhas);
+  if (!postas.some(p => p.n !== p.linha.bloco && !(p.n < 0 && p.linha.bloco < 0))) return;
+  transacao(() => {
+    db.prepare('DELETE FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? AND unidade = ?').run(userId, escopoId, u.codigo);
+    const ins = db.prepare('INSERT INTO est_tentativas_bloco (user_id, escopo_id, unidade, bloco, texto, atualizado_em, bloco_ref) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    let solta = 0;
+    for (const p of postas) ins.run(userId, escopoId, u.codigo, p.n >= 0 ? p.n : -(++solta), p.linha.texto, p.linha.atualizado_em, p.linha.bloco_ref || '');
+  });
+}
+// onde cada tentativa guardada mora HOJE na aula: { linha, n } — `n` é o índice atual do bloco, ou -1 (o bloco dela não existe mais)
+function tentativasNoLugar(u, linhas) {
+  const refs = u.blocos.map(refDoBloco), usados = new Set();
+  const postas = linhas.map(l => {
+    if (!l.bloco_ref || refs[l.bloco] === l.bloco_ref) return { linha: l, n: u.blocos[l.bloco] ? l.bloco : -1 };
+    return { linha: l, n: refs.indexOf(l.bloco_ref) };
+  });
+  // dois registros no mesmo bloco (resto de reordenação): vale o mais recente
+  return postas.sort((a, b) => String(b.linha.atualizado_em).localeCompare(String(a.linha.atualizado_em)))
+    .map(p => { if (p.n >= 0 && usados.has(p.n)) return { ...p, n: -1 }; if (p.n >= 0) usados.add(p.n); return p; });
 }
 // salva sozinha enquanto o aluno escreve (a tela chama com atraso); bloco que não pede tentativa é recusado
 function guardarTentativa(usuario, produto, slugEscopo, codigo, n, texto) {
   const { c, u } = unidadeDoAluno(usuario, produto, slugEscopo, codigo);
   const k = Number(n), b = Number.isInteger(k) ? u.blocos[k] : null;
   if (!b || !BLOCOS_COM_TENTATIVA.includes(b.tipo)) throw erro('Este trecho da aula não pede tentativa.', 404);
-  return { ok: true, ...gravarTentativa(usuario.id, c.escopo.id, u.codigo, k, texto) };
+  return { ok: true, ...gravarTentativa(usuario.id, c.escopo.id, u.codigo, k, texto, u) };
 }
 function anotarAula(usuario, produto, slugEscopo, codigo, texto) {
   const { c, u } = unidadeDoAluno(usuario, produto, slugEscopo, codigo);
@@ -841,9 +1030,11 @@ function anotarAula(usuario, produto, slugEscopo, codigo, texto) {
   return { ok: true, texto: t, atualizado_em: t ? agora : '' };
 }
 // o que o aluno já escreveu NESTA aula — vai junto com a aula, para os campos voltarem preenchidos
-function escritoNaAula(userId, escopoId, unidade) {
+function escritoNaAula(userId, escopoId, unidade, u = null) {
   const tentativas = {};
-  for (const r of db.prepare('SELECT bloco, texto, atualizado_em FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? AND unidade = ?').all(userId, escopoId, unidade)) tentativas[r.bloco] = { texto: r.texto, atualizado_em: r.atualizado_em };
+  const linhas = db.prepare('SELECT bloco, texto, atualizado_em, bloco_ref FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? AND unidade = ?').all(userId, escopoId, unidade);
+  // cada tentativa volta no bloco em que foi escrita, ainda que ele tenha mudado de posição na aula
+  for (const p of (u ? tentativasNoLugar(u, linhas) : linhas.map(l => ({ linha: l, n: l.bloco })))) if (p.n >= 0) tentativas[p.n] = { texto: p.linha.texto, atualizado_em: p.linha.atualizado_em };
   const nota = db.prepare('SELECT texto, atualizado_em FROM est_notas_aula WHERE user_id = ? AND escopo_id = ? AND unidade = ?').get(userId, escopoId, unidade);
   return { tentativas, nota: nota || { texto: '', atualizado_em: '' } };
 }
@@ -857,7 +1048,7 @@ function caderno(usuario, produto, slugEscopo) {
   const { grupos } = aulasPorDisciplina(c);
   const por = (sql) => db.prepare(sql).all(uid, eid);
   const agrupar = (linhas, chave = 'unidade') => { const m = new Map(); for (const l of linhas) { if (!m.has(l[chave])) m.set(l[chave], []); m.get(l[chave]).push(l); } return m; };
-  const tent = agrupar(por('SELECT unidade, bloco, texto, atualizado_em FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? ORDER BY bloco'));
+  const tent = agrupar(por('SELECT unidade, bloco, texto, atualizado_em, bloco_ref FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? ORDER BY bloco'));
   const notas = new Map(por('SELECT unidade, texto, atualizado_em FROM est_notas_aula WHERE user_id = ? AND escopo_id = ?').map(n => [n.unidade, n]));
   const marcas = agrupar(por("SELECT unidade, bloco, inicio, texto, cor, nota, criado_em FROM est_marcacoes WHERE user_id = ? AND escopo_id = ? AND nota != '' ORDER BY bloco, inicio"));
   // a anotação do caderno de erros é por QUESTÃO: fica na primeira aula que cobre uma competência dela
@@ -872,7 +1063,9 @@ function caderno(usuario, produto, slugEscopo) {
   }
   const total = { tentativas: 0, notas: 0, marcacoes: 0, anotacoes: avulsas.length };
   const disciplinas = grupos.map(g => ({ codigo: g.codigo || '_metodo', nome: g.nome, aulas: g.aulas.map(u => {
-    const t = (tent.get(u.codigo) || []).map(x => { const b = u.blocos[x.bloco] || {}; return { bloco: x.bloco, tipo: b.tipo || '', titulo: b.titulo || '', enunciado: s(b.texto, 600), texto: x.texto, em: x.atualizado_em }; });
+    // o enunciado ao lado da tentativa é o do bloco em que ela foi escrita (reencontrado pela digital); bloco que saiu da aula: sem enunciado, com o aviso
+    const t = tentativasNoLugar(u, tent.get(u.codigo) || []).sort((a, b) => (a.n < 0 ? 1e9 : a.n) - (b.n < 0 ? 1e9 : b.n)).map(p => { const b = p.n >= 0 ? u.blocos[p.n] : null, x = p.linha;
+      return { bloco: p.n >= 0 ? p.n : x.bloco, tipo: b ? b.tipo : '', titulo: b ? b.titulo || '' : 'Exercício de uma versão anterior da aula', enunciado: b ? s(b.texto, 600) : '', texto: x.texto, em: x.atualizado_em, solta: p.n < 0 }; });
     const n = notas.get(u.codigo), m = (marcas.get(u.codigo) || []).map(x => ({ texto: x.texto, nota: x.nota, cor: x.cor, em: x.criado_em })), an = anot.get(u.codigo) || [];
     total.tentativas += t.length; total.notas += n ? 1 : 0; total.marcacoes += m.length; total.anotacoes += an.length;
     return { codigo: u.codigo, titulo: u.titulo, nota: n ? { texto: n.texto, em: n.atualizado_em } : null, tentativas: t, marcacoes: m, anotacoes: an };
@@ -888,10 +1081,11 @@ function quizDaAula(usuario, produto, slugEscopo, codigo) {
   const { c, u } = unidadeDoAluno(usuario, produto, slugEscopo, codigo);
   const comps = new Set(u.competencias), itens = new Set(u.itens);
   const doItem = itens.size ? new Set(db.prepare("SELECT questao_id q, codigo FROM est_questao_vinculos WHERE escopo_id = ? AND alvo = 'item'").all(c.escopo.id).filter(v => itens.has(v.codigo)).map(v => v.q)) : new Set();
+  const compsDe = R.competenciasDasQuestoes(c.escopo.id), ja = vistasDe(usuario.id);
   const elegiveis = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes })
     .filter(q => q.corrigivel && q.uso !== 'reservada')
-    .filter(q => doItem.has(q.id) || R.competenciasDaQuestao(q.id, c.escopo.id).some(k => comps.has(k)));
-  const vistas = new Set(elegiveis.filter(q => jaViu(usuario.id, q.id)).map(q => q.id));
+    .filter(q => doItem.has(q.id) || (compsDe.get(q.id) || []).some(k => comps.has(k)));
+  const vistas = new Set(elegiveis.filter(q => ja.has(q.id)).map(q => q.id));
   const ordenadas = [...elegiveis.filter(q => !vistas.has(q.id)), ...elegiveis.filter(q => vistas.has(q.id))];
   return { total: elegiveis.length, ineditas: elegiveis.length - vistas.size, limite: QUIZ_DA_AULA, competencia: u.competencias[0] || '',
     questoes: ordenadas.slice(0, QUIZ_DA_AULA).map(q => ({ ...banco.paraAluno(q, usuario.id), ja_vista: vistas.has(q.id) })) };
@@ -916,7 +1110,7 @@ function registrarVideo(usuario, produto, slugEscopo, codigo, { posicao_seg, dur
 
 // ---- LEITURA ATÉ O FIM: a tela avisa quando o fim do texto da aula entrou na tela ----
 // Só registra em aula que o aluno ABRIU (a tela da aula; o leitor e o mapa não contam), e não volta atrás.
-// O registro vale para todas as aulas, mas só PESA na aula sem questão nem card (`aulaEstudada`).
+// Conta em TODA aula: abrir + ler até o fim é uma das três formas de estudar a aula (`aulaEstudada`).
 function registrarLeitura(usuario, produto, slugEscopo, codigo) {
   const { c, u } = unidadeDoAluno(usuario, produto, slugEscopo, codigo);
   const antes = estadoDasAulas(usuario.id, c.escopo.id).get(u.codigo);
@@ -926,38 +1120,63 @@ function registrarLeitura(usuario, produto, slugEscopo, codigo) {
 }
 
 // ---- CONCLUSÃO DO CURSO (certificado) e PROGRESSO da biblioteca ----
-// Critério SUGERIDO, a confirmar pelo Augusto — por isso em constantes: todas as aulas publicadas do percurso
-// do curso estudadas (pela régua de `aulaEstudada`) e ao menos uma prova completa ENVIADA. A aula-casca do
-// curso não entra em conta nenhuma. Percurso particular do aluno não emite certificado nem soma aqui.
+// Critério DECIDIDO pelo Augusto em 11/10/2026 (constantes nomeadas): todas as aulas publicadas do percurso do
+// curso estudadas (pela régua de `aulaEstudada`) e ao menos um SIMULADO QUE CONTA. A aula-casca do curso não
+// entra em conta nenhuma. Percurso particular do aluno não emite certificado nem soma aqui.
+// O simulado que conta: ENVIADO pelo aluno (prova que expirou não conta), NO FORMATO da regra do percurso (todo
+// mínimo do edital alcançável — `pontuacao.formatoDaProva`) e com ao menos 80 % das questões RESPONDIDAS. Antes
+// valia um simulado de 1 questão enviado em branco. A carga horária do certificado continua a soma dos tempos das aulas.
 const CERT_PCT_AULAS_ESTUDADAS = 100;
 const CERT_PROVAS_ENVIADAS = 1;
 const CERT_MODOS_DE_PROVA = ['simulado'];     // "Treino" é prática com relógio; quem prova o percurso é o simulado
+const CERT_SIMULADO_PCT_RESPONDIDAS = 80;     // % mínimo de questões respondidas no simulado que conta
+const CERT_SIMULADO_QUESTOES_MIN = 5;         // percurso cuja regra NÃO define mínimos (não há formato a conferir): tamanho mínimo do simulado
+const SIMULADOS_CONFERIDOS = new Map();       // tentativa enviada não muda mais: a conferência é guardada pelo id
+function simuladoQueConta(linha) {
+  if (SIMULADOS_CONFERIDOS.has(linha.id)) return SIMULADOS_CONFERIDOS.get(linha.id);
+  const t = abrirTentativa(linha), itens = t.congelado.itens || [];
+  const f = pontuacao.formatoDaProva(itens, t.congelado.regra || {});
+  const respondidas = itens.filter(i => t.respostas[i.id] != null && t.respostas[i.id] !== '').length;
+  const noFormato = f.definido ? f.ok : itens.length >= CERT_SIMULADO_QUESTOES_MIN;
+  const r = { no_formato: noFormato, respondidas, total: itens.length, conta: noFormato && itens.length > 0 && respondidas * 100 >= itens.length * CERT_SIMULADO_PCT_RESPONDIDAS };
+  if (SIMULADOS_CONFERIDOS.size > 5000) SIMULADOS_CONFERIDOS.clear();
+  SIMULADOS_CONFERIDOS.set(linha.id, r);
+  return r;
+}
 function percursosDoCurso(productId) { return R.Escopos.doProduto(productId, ['publicado']); }
 function conclusao(userId, productId) {
+ return R.comCache(() => {
   const escopos = percursosDoCurso(productId);
-  let total = 0, estudadas = 0, carga = 0, provas = 0, semMeio = 0;
+  let total = 0, estudadas = 0, carga = 0, provas = 0, enviados = 0;
   for (const e of escopos) {
     const regua = reguaDeEstudo(userId, e.id);
     for (const u of R.unidades(e.id, ['publicado'])) {
       total++; carga += u.tempo_min || 0;
       if (aulaEstudada(u, regua)) estudadas++;
-      if (aulaSemMeio(u, regua)) semMeio++; // aula sem questão nem card: conta pela leitura até o fim ou pela videoaula
     }
-    provas += db.prepare(`SELECT COUNT(*) n FROM est_tentativas WHERE user_id = ? AND escopo_id = ? AND estado = 'enviada' AND modo IN (${CERT_MODOS_DE_PROVA.map(() => '?').join(',')})`).get(userId, e.id, ...CERT_MODOS_DE_PROVA).n;
+    // só os ids primeiro: a prova inteira (o congelado) só é aberta para simulado ainda não conferido
+    for (const s0 of db.prepare(`SELECT id FROM est_tentativas WHERE user_id = ? AND escopo_id = ? AND estado = 'enviada' AND modo IN (${CERT_MODOS_DE_PROVA.map(() => '?').join(',')})`).all(userId, e.id, ...CERT_MODOS_DE_PROVA)) {
+      enviados++;
+      const v = SIMULADOS_CONFERIDOS.get(s0.id) || simuladoQueConta(db.prepare('SELECT * FROM est_tentativas WHERE id = ?').get(s0.id));
+      if (v.conta) provas++;
+    }
   }
   const exigidas = Math.ceil(total * CERT_PCT_AULAS_ESTUDADAS / 100);
   const faltamAulas = Math.max(0, exigidas - estudadas), faltamProvas = Math.max(0, CERT_PROVAS_ENVIADAS - provas);
   const cumprido = total > 0 && !faltamAulas && !faltamProvas;
   const partes = [faltamAulas ? `${faltamAulas} aula${faltamAulas > 1 ? 's' : ''}` : '', faltamProvas ? `${faltamProvas} simulado${faltamProvas > 1 ? 's' : ''}` : ''].filter(Boolean);
   const cert = db.prepare('SELECT id FROM certificates WHERE user_id = ? AND product_id = ?').get(userId, productId);
-  return { total_aulas: total, estudadas, faltam_aulas: faltamAulas, provas_enviadas: provas, faltam_provas: faltamProvas, aulas_sem_questao: semMeio, carga_horaria_min: carga, cumprido,
+  return { total_aulas: total, estudadas, faltam_aulas: faltamAulas, provas_enviadas: provas, simulados_enviados: enviados, faltam_provas: faltamProvas, carga_horaria_min: carga, cumprido,
+    simulado_pct_respondidas: CERT_SIMULADO_PCT_RESPONDIDAS,
     certificado: cert ? cert.id : '',
     falta_txt: !total ? 'Este curso ainda não emite certificado: o percurso dele ainda não foi publicado.'
-      : cumprido ? '' : `Para emitir o certificado falta${partes.length > 1 || faltamAulas > 1 || faltamProvas > 1 ? 'm' : ''} ${partes.join(' e ')}: estude todas as aulas do percurso (responda ao menos uma questão ou um card de cada${semMeio ? '; ' + (semMeio > 1 ? 'nas ' + semMeio + ' aulas' : 'na aula') + ' sem questão nem card, leia até o fim ou assista à videoaula' : ''}) e envie um simulado completo na aba Prova.` };
+      : cumprido ? '' : `Para emitir o certificado falta${partes.length > 1 || faltamAulas > 1 || faltamProvas > 1 ? 'm' : ''} ${partes.join(' e ')}: estude todas as aulas do percurso (abra cada aula e leia até o fim, assista à videoaula ou responda uma questão do quiz dela) e envie, na aba Prova, um simulado no formato do edital com ao menos ${CERT_SIMULADO_PCT_RESPONDIDAS} % das questões respondidas.` + (enviados > provas ? ` Você já enviou ${enviados - provas} simulado(s) que não conta(m): fora do formato do edital ou com menos de ${CERT_SIMULADO_PCT_RESPONDIDAS} % respondido.` : '') };
+ });
 }
 // O cartão da biblioteca: para curso com percurso publicado, "aulas estudadas / aulas do percurso" no lugar de
 // "0 de 1 conteúdos" (a casca), e a última aula aberta para o botão Continuar. `null` = curso comum.
-function progressoDoCurso(userId, productId) {
+function progressoDoCurso(userId, productId) { return R.comCache(() => progressoDoCurso_(userId, productId)); }
+function progressoDoCurso_(userId, productId) {
   const escopos = percursosDoCurso(productId);
   if (!escopos.length) return null;
   let total = 0, estudadas = 0, ultima = null;
@@ -973,7 +1192,8 @@ function progressoDoCurso(userId, productId) {
 
 module.exports = {
   guardarTentativa, anotarAula, caderno, quizDaAula, registrarVideo, registrarLeitura, conclusao, progressoDoCurso, aulaEstudada, reguaDeEstudo, MODOS_DE_AFERICAO,
-  QUIZ_DA_AULA, VIDEO_ASSISTIDO_PCT, CERT_PCT_AULAS_ESTUDADAS, CERT_PROVAS_ENVIADAS, CERT_MODOS_DE_PROVA,
+  QUIZ_DA_AULA, VIDEO_ASSISTIDO_PCT, CERT_PCT_AULAS_ESTUDADAS, CERT_PROVAS_ENVIADAS, CERT_MODOS_DE_PROVA, CERT_SIMULADO_PCT_RESPONDIDAS, CERT_SIMULADO_QUESTOES_MIN, MODOS_DE_ESTUDO,
+  CARDS_NOVOS_DIA, ERROS_POR_PAGINA, simuladoQueConta, provaAberta, formatoDoPercurso, vereditoDe, vistasDe, corrigirTentativa,
   contexto, abrir, escopos, painel, unidade, animacoes, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, bancoDeQuestoes, pedirPista, responder, erros, anotar,
   cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,

@@ -69,13 +69,39 @@
     if (h.indexOf('#/') !== 0) return [];
     try { return h.slice(2).split('/').map(decodeURIComponent).filter(function (x) { return x !== ''; }); } catch (e) { return []; }
   }
-  function gravarRota(partes, substituir) {
+  // "VOLTAR PARA ONDE ESTAVA, SEMPRE" (auditoria de 11/10/2026): cada passo do histórico leva um ESTADO — a rolagem
+  // em que o aluno deixou aquela tela (`y`) e o que a tela quiser lembrar (`es`: disciplinas abertas, de onde veio).
+  // O estado mora no próprio histórico do navegador (history.state): sobrevive ao F5 e ao Voltar, e não usa
+  // localStorage. A rolagem é gravada no passo ATUAL no instante em que se sai dele para um passo novo.
+  function copia(o) { var n = {}, k; for (k in (o || {})) if (Object.prototype.hasOwnProperty.call(o, k)) n[k] = o[k]; return n; }
+  function rolagemAgora() { try { return (document.scrollingElement || document.documentElement).scrollTop || 0; } catch (e) { return 0; } }
+  function guardarNoPasso(dados) {
+    try { var st = copia(history.state), k; for (k in dados) st[k] = dados[k]; history.replaceState(st, '', location.href); } catch (e) { /* sem histórico, só não guarda o lugar */ }
+  }
+  function gravarRota(partes, substituir, estado) {
     if (ROTA.aplicando) return;
     var h = '#/' + partes.map(function (x) { return encodeURIComponent(String(x)); }).join('/');
-    if (h === location.hash) return;
-    try { history[substituir ? 'replaceState' : 'pushState'](null, '', h); } catch (e) { /* sem histórico, só não guarda o lugar */ }
+    if (h === location.hash) { if (estado) guardarNoPasso(estado); return; } // mesmo endereço: só atualiza o que a tela lembra
+    if (!substituir) guardarNoPasso({ y: rolagemAgora() });
+    try { history[substituir ? 'replaceState' : 'pushState'](estado || null, '', h); } catch (e) { /* sem histórico, só não guarda o lugar */ }
   }
-  window.AcademyRota = { ler: rotaAtual, gravar: gravarRota };
+  // Uma tela que NÃO muda o endereço (as portas da barra do curso: Largada, Simulações, Lab, material, audiobook…)
+  // entra no histórico como um passo a mais no MESMO endereço: o Voltar do navegador devolve ao passo de baixo,
+  // que tem o endereço e a rolagem de onde o aluno saiu — e não a um passo antes dele.
+  function empilhar(estado) {
+    try {
+      var y = rolagemAgora(), st = copia(history.state), k;
+      guardarNoPasso({ y: y });
+      st.y = y; for (k in (estado || {})) st[k] = estado[k];
+      history.pushState(st, '', location.href);
+      return true;
+    } catch (e) { return false; }
+  }
+  // `sobrepostos`: telas por cima da página (aula interativa, mapa que se desenha) que empilharam um passo só para o
+  // Voltar fechá-las. Enquanto houver uma, o Voltar é DELAS: o painel não remonta a página — qualquer que seja a
+  // ordem em que o navegador avisa os ouvintes.
+  window.AcademyRota = { ler: rotaAtual, gravar: gravarRota, guardar: guardarNoPasso, empilhar: empilhar, estado: function () { return copia(history.state); }, sobrepostos: 0 };
+  try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) { /* quem repõe a rolagem é a tela, depois de carregar */ }
   function esqueleto() {
     return '<div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--linha"></div>' +
       '<div class="vx-skel vx-skel--bloco"></div>';
@@ -260,6 +286,8 @@
       else b.removeAttribute('aria-current');
     });
     pintarCabecalho();
+    // sair do Estude por aqui (menu do painel) também desliga o relógio da prova, o microfone e a marca "em prova"
+    if (!semVista && window.AcademyEstudeSair) { try { window.AcademyEstudeSair(); } catch (e) { /* o Estude não estava aberto */ } }
     setView(esqueleto());
     if (semVista) return; // quem chamou vai pôr a própria tela (ex.: reabrir um curso pela rota)
     gravarRota([ABA], !rotaAtual().length);
@@ -276,7 +304,9 @@
         var a = aluno();
         if (!a) return false;
         irPara('aluno', true);
-        a.curso(r[1], r[2] === 'aula' && r[3] ? r[3] : undefined, r[2] === 'estude' && r[3] ? { estude: { slug: r[3], aba: r[4] || 'hoje', arg: r[5] || '', extra: r[6] || '' } } : null);
+        // o estado do passo (rolagem e o que o Estude lembrava) vai junto: é o que devolve o aluno ao MESMO lugar
+        var st = history.state || {};
+        a.curso(r[1], r[2] === 'aula' && r[3] ? r[3] : undefined, r[2] === 'estude' && r[3] ? { estude: { slug: r[3], aba: r[4] || 'hoje', arg: r[5] || '', extra: r[6] || '', y: Number(st.y) || 0, es: st.es || null, pelaRota: true } } : null);
         return true;
       }
       if (MAPA_VIEWS[r[0]]) { ROTA.aplicando = false; irPara(r[0]); return true; }
@@ -284,6 +314,7 @@
     } finally { ROTA.aplicando = false; }
   }
   window.addEventListener('popstate', function () {
+    if (window.AcademyRota.sobrepostos > 0) return; // o Voltar é da tela sobreposta (ela se fecha; a página fica como está)
     if (!ME || !el('c')) return;
     if (aplicarRota()) return;
     ROTA.aplicando = true;

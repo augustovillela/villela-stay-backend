@@ -225,12 +225,11 @@ async function rodar({ t, req }) {
     let c = b.cursos.find(x => x.product_id === pid);
     assert.deepEqual(c.progresso, { total_aulas: 3, concluidas: 0, pct: 0, estude: true }, 'três aulas do percurso, não a aula-casca');
     assert.deepEqual([c.estude.slug, c.estude.continuar], [SLUG, null], 'quem ainda não abriu aula nenhuma não tem para onde continuar');
-    // a Nara respondeu questões das aulas um e dois (critério do painel: "estudados por você")
+    // a Nara respondeu questões das aulas um e dois, mas ainda não ABRIU aula nenhuma: pela régua de 11/10/2026
+    // (abriu a aula E leu até o fim, viu o vídeo ou respondeu questão dela), nada está estudado ainda
     b = await bib('nara');
     c = b.cursos.find(x => x.product_id === pid);
-    assert.deepEqual(c.progresso, { total_aulas: 3, concluidas: 2, pct: 67, estude: true });
-    const painel = (await req('GET', `${esc()}/painel`, { jar: 'nara' })).json;
-    assert.deepEqual([painel.cobertura.estudo.estudados, painel.unidades.filter(u => u.estudada).length], [2, 2], 'a mesma régua do painel do Estude');
+    assert.deepEqual(c.progresso, { total_aulas: 3, concluidas: 0, pct: 0, estude: true }, 'responder sem abrir a aula não é estudar a aula');
     // pedir a unidade para o mapa não é "abrir a aula"; a tela da aula é
     assert.equal(c.estude.continuar, null);
     await req('GET', `${esc()}/unidades/aula-dois`, { jar: 'nara' });
@@ -241,6 +240,10 @@ async function rodar({ t, req }) {
     b = await bib('nara');
     c = b.cursos.find(x => x.product_id === pid);
     assert.deepEqual([c.estude.continuar.slug, c.estude.continuar.unidade, c.estude.continuar.titulo], [SLUG, 'aula-dois', 'Aula dois']);
+    // abertas as duas aulas em que ela respondeu questão: agora contam
+    assert.deepEqual(c.progresso, { total_aulas: 3, concluidas: 2, pct: 67, estude: true });
+    const painel = (await req('GET', `${esc()}/painel`, { jar: 'nara' })).json;
+    assert.deepEqual([painel.cobertura.estudo.estudados, painel.unidades.filter(u => u.estudada).length], [2, 2], 'a mesma régua do painel do Estude');
     assert.deepEqual([b.continuar.product_id, b.continuar.aula_titulo, b.continuar.estude], [pid, 'Aula dois', { slug: SLUG, unidade: 'aula-dois' }], 'o "Continuar de onde parou" aponta a aula do Estude');
     // curso comum continua como era
     const comum = (await bib('ana')).cursos.find(x => !x.estude);
@@ -265,22 +268,45 @@ async function rodar({ t, req }) {
     assert.deepEqual([k.total_aulas, k.estudadas, k.faltam_aulas, k.provas_enviadas, k.faltam_provas, k.cumprido, k.carga_horaria_min], [3, 2, 1, 0, 1, false, 180]);
     r = await cert('nara');
     assert.ok(r.st === 409 && /falta.* 1 aula e 1 simulado/.test(r.json.erro), r.texto);
-    // a aula três não tem questão: estuda-se pelo card (resposta de card também é "respondeu algo")
+    // a aula três só tem CARD: avaliar o card não marca a aula (vale como evidência, não como estudo)…
     const cards = (await req('GET', `${esc()}/cards`, { jar: 'nara' })).json;
     assert.equal((await req('POST', `${esc()}/cards/${cards.novos[0].id}/avaliar`, { jar: 'nara', corpo: { resultado: 'acerto' } })).st, 200);
+    assert.equal((await concl('nara')).estudadas, 2, 'card não é "questão do quiz ou da prática da aula"');
+    // …o que conta nela é abrir e ler até o fim (ou a videoaula)
+    assert.equal((await req('GET', `${esc()}/unidades/aula-tres?aberta=1`, { jar: 'nara' })).st, 200);
+    assert.equal((await concl('nara')).estudadas, 2, 'só abrir não basta');
+    assert.equal((await req('PUT', `${esc()}/unidades/aula-tres/lida`, { jar: 'nara' })).json.estudada, true);
     r = await cert('nara');
-    assert.ok(r.st === 409 && /falta 1 simulado/.test(r.json.erro) && !/aula[s]? e/.test(r.json.erro), 'só o simulado: ' + r.texto);
+    assert.ok(r.st === 409 && /falta 1 simulado/.test(r.json.erro) && !/d aulas? e/.test(r.json.erro), 'só o simulado: ' + r.texto);
     // treino enviado não é simulado; simulado ABERTO (não enviado) também não
-    let tt = await req('POST', `${esc()}/tentativas`, { jar: 'nara', corpo: { modo: 'treino', n: 2 } });
-    assert.equal(tt.st, 200, tt.texto);
-    await req('POST', `${esc()}/tentativas/${tt.json.id}/enviar`, { jar: 'nara' });
+    const enviar = async (corpo, responder) => {
+      const x = await req('POST', `${esc()}/tentativas`, { jar: 'nara', corpo });
+      assert.equal(x.st, 200, x.texto);
+      if (responder == null) return x;
+      const respostas = Object.fromEntries(x.json.questoes.slice(0, responder).map(q => [q.id, q.alternativas[0].id]));
+      if (responder) assert.equal((await req('PUT', `${esc()}/tentativas/${x.json.id}/respostas`, { jar: 'nara', corpo: { respostas } })).json.salvo, true);
+      assert.equal((await req('POST', `${esc()}/tentativas/${x.json.id}/enviar`, { jar: 'nara' })).st, 200);
+      return x;
+    };
+    await enviar({ modo: 'treino', n: 2 }, 2);
     assert.equal((await concl('nara')).provas_enviadas, 0, 'treino não vale como prova do percurso');
-    tt = await req('POST', `${esc()}/tentativas`, { jar: 'nara', corpo: { modo: 'simulado', n: 5 } });
+    // O SIMULADO QUE CONTA (11/10/2026): enviado, no formato e com 80 % respondido. Em branco não conta; curto demais não conta
+    await enviar({ modo: 'simulado', n: 5 }, 0);
+    k = await concl('nara');
+    assert.deepEqual([k.provas_enviadas, k.simulados_enviados, k.cumprido], [0, 1, false], 'simulado enviado EM BRANCO não conta');
+    assert.ok(/não conta/.test(k.falta_txt), k.falta_txt);
+    await enviar({ modo: 'simulado', n: 2 }, 2);
+    assert.equal((await concl('nara')).provas_enviadas, 0, `simulado de 2 questões é menor que o mínimo (${A.CERT_SIMULADO_QUESTOES_MIN}) de um percurso sem regra de mínimos`);
+    await enviar({ modo: 'simulado', n: 5 }, 3);
+    assert.equal((await concl('nara')).provas_enviadas, 0, '3 de 5 respondidas = 60 %: abaixo dos 80 %');
+    const tt = await req('POST', `${esc()}/tentativas`, { jar: 'nara', corpo: { modo: 'simulado', n: 5 } });
     assert.equal(tt.st, 200, tt.texto);
+    assert.equal((await req('PUT', `${esc()}/tentativas/${tt.json.id}/respostas`, { jar: 'nara', corpo: { respostas: Object.fromEntries(tt.json.questoes.slice(0, 4).map(q => [q.id, q.alternativas[0].id])) } })).json.salvo, true);
     assert.equal((await cert('nara')).st, 409, 'simulado aberto ainda não conta');
     assert.equal((await req('POST', `${esc()}/tentativas/${tt.json.id}/enviar`, { jar: 'nara' })).st, 200);
     k = await concl('nara');
-    assert.deepEqual([k.estudadas, k.provas_enviadas, k.cumprido, k.falta_txt, k.certificado], [3, 1, true, '', '']);
+    assert.deepEqual([k.estudadas, k.provas_enviadas, k.cumprido, k.falta_txt, k.certificado], [3, 1, true, '', ''], '4 de 5 respondidas = 80 %');
+    assert.deepEqual([A.CERT_SIMULADO_PCT_RESPONDIDAS, A.CERT_SIMULADO_QUESTOES_MIN], [80, 5], 'os dois limites do simulado estão em constantes com nome');
     r = await cert('nara');
     assert.equal(r.st, 200, r.texto);
     const linha = gov.Certificados.porCodigo(r.json.codigo);
@@ -312,68 +338,72 @@ async function rodar({ t, req }) {
     for (const pedaco of ['function caixaConclusao()', '🎓 Emitir certificado', 'sem validade para o MEC', 'id="es-bar-cert"', "' aulas' : ' aula'", "' simulados' : ' simulado'"]) assert.ok(tela.includes(pedaco), 'falta na tela: ' + pedaco);
   });
 
-  // ================= D1b. AULA SEM QUESTÃO NEM CARD =================
-  await t('paridade/aula sem questão nem card: conta como estudada pela leitura ATÉ O FIM (de aula aberta) ou pela videoaula (≥ 90 %) — e só nesse caso; com questão ou card, estudar continua sendo responder', async () => {
+  // ================= D1b. A RÉGUA DA AULA ESTUDADA (decisão de 11/10/2026) =================
+  await t('paridade/régua: aula estudada = ABRIU a aula e (leu até o fim OU assistiu a 90 % do vídeo OU respondeu questão dela em estudo/prática) — card, treino e simulado não marcam aula', async () => {
     const lia = uid(LIA.email), eid = R.Escopos.porSlug(pid, SLUG).id;
     const concl = async () => (await req('GET', `${esc()}/painel`, { jar: 'lia' })).json.conclusao;
     const estudadas = async () => (await req('GET', `${esc()}/painel`, { jar: 'lia' })).json.unidades.filter(u => u.estudada).map(u => u.codigo);
     const lida = (aula) => req('PUT', `${esc()}/unidades/${aula}/lida`, { jar: 'lia' });
     const abrir = (aula) => req('GET', `${esc()}/unidades/${aula}?aberta=1`, { jar: 'lia' });
     let k = await concl();
-    assert.deepEqual([k.total_aulas, k.estudadas, k.aulas_sem_questao], [3, 0, 0], 'as três aulas têm o que responder: duas com questão, a terceira com card');
-    assert.ok(!/sem questão nem card/.test(k.falta_txt), k.falta_txt);
+    assert.deepEqual([k.total_aulas, k.estudadas], [3, 0]);
+    assert.ok(/abra cada aula e leia até o fim, assista à videoaula ou responda uma questão do quiz dela/.test(k.falta_txt), k.falta_txt);
     // ler sem ter aberto a aula não é leitura
     let r = await lida('aula-tres');
     assert.equal(r.st, 409, r.texto);
     assert.equal((await lida('nao-existe')).st, 404);
     assert.equal((await req('PUT', `${esc()}/unidades/aula-tres/lida`, { jar: 'caio' })).st, 403, 'quem não tem o curso não registra nada');
-    // aula COM card (a três) e aula COM questão (a dois): abrir e ler até o fim fica registrado, mas NÃO é estudar
-    for (const aula of ['aula-dois', 'aula-tres']) {
-      r = await abrir(aula);
-      assert.deepEqual([r.st, r.json.lida, r.json.conta_pela_leitura], [200, false, false], aula);
-      r = await lida(aula);
-      assert.deepEqual([r.st, r.json.lida, r.json.estudada], [200, true, false], aula + ': ' + r.texto);
-      assert.equal((await abrir(aula)).json.lida, true, 'a aula sabe que já foi lida');
+    // 1. RESPONDER SEM ABRIR não marca: a Lia responde, no Praticar, uma questão da aula um
+    const q1 = (await req('GET', `${esc()}/praticar?competencia=c-um&n=1`, { jar: 'lia' })).json.questoes[0];
+    assert.equal((await req('POST', `${esc()}/questoes/${q1.id}/responder`, { jar: 'lia', corpo: { resposta: q1.alternativas[0].id } })).st, 200);
+    assert.deepEqual(await estudadas(), [], 'respondeu a questão, mas não abriu a aula');
+    // …abriu a aula: a resposta em prática passa a contar (é questão DESSA aula, em modo de prática)
+    r = await abrir('aula-um');
+    assert.deepEqual([r.st, r.json.lida, r.json.conta_pela_leitura, r.json.estudada], [200, false, true, true]);
+    assert.deepEqual(await estudadas(), ['aula-um']);
+    // 2. SÓ ABRIR não basta (aula dois: tem questão, a Lia não respondeu nenhuma dela)
+    r = await abrir('aula-dois');
+    assert.equal(r.json.estudada, false);
+    assert.deepEqual(await estudadas(), ['aula-um'], 'aula aberta e não lida até o fim não é estudada');
+    // 3. LEU ATÉ O FIM: conta — em aula COM questão também
+    r = await lida('aula-dois');
+    assert.deepEqual([r.st, r.json.lida, r.json.estudada], [200, true, true], r.texto);
+    assert.equal((await abrir('aula-dois')).json.lida, true, 'a aula sabe que já foi lida');
+    assert.deepEqual(await estudadas(), ['aula-um', 'aula-dois']);
+    // 4. PROVA NÃO MARCA AULA: a Lia faz um treino e um simulado com questões das três competências — a aula três
+    //    (aberta, mas sem leitura nem vídeo) continua por estudar; e o CARD dela também não a marca
+    await abrir('aula-tres');
+    for (const modo of ['treino', 'simulado']) {
+      const tt = await req('POST', `${esc()}/tentativas`, { jar: 'lia', corpo: { modo, n: 7, aceitar_menos: true } });
+      assert.equal(tt.st, 200, tt.texto);
+      await req('PUT', `${esc()}/tentativas/${tt.json.id}/respostas`, { jar: 'lia', corpo: { respostas: Object.fromEntries(tt.json.questoes.map(q => [q.id, q.alternativas[0].id])) } });
+      assert.equal((await req('POST', `${esc()}/tentativas/${tt.json.id}/enviar`, { jar: 'lia' })).st, 200);
     }
-    assert.deepEqual(await estudadas(), [], 'havendo questão ou card, só responder conta');
-    // o card da aula três sai do ar: agora ela não tem questão nem card — e a leitura feita passa a valer
-    db.prepare("UPDATE est_cards SET status = 'rascunho' WHERE escopo_id = ?").run(eid);
+    const cd = (await req('GET', `${esc()}/cards`, { jar: 'lia' })).json;
+    assert.equal((await req('POST', `${esc()}/cards/${cd.novos[0].id}/avaliar`, { jar: 'lia', corpo: { resultado: 'acerto' } })).st, 200);
+    assert.deepEqual(await estudadas(), ['aula-um', 'aula-dois'], 'treino, simulado e card valem como evidência de domínio — não como aula estudada');
+    assert.ok(db.prepare("SELECT COUNT(*) n FROM est_evidencias WHERE user_id = ? AND escopo_id = ? AND modo = 'avaliacao'").get(lia, eid).n > 0, 'e a evidência da prova está lá');
+    // 5. A VIDEOAULA: 89 % ainda não; 90 %, sim
+    db.prepare("UPDATE est_unidades SET video_media_id = 'video-paridade-tres', video_duracao_seg = 100 WHERE codigo = 'aula-tres' AND escopo_id = ?").run(eid);
     try {
-      k = await concl();
-      assert.deepEqual([k.aulas_sem_questao, k.estudadas, k.faltam_aulas], [1, 1, 2], 'a contagem informa quantas são; a que foi lida até o fim conta');
-      assert.ok(/na aula sem questão nem card, leia até o fim ou assista à videoaula/.test(k.falta_txt), k.falta_txt);
-      assert.deepEqual(await estudadas(), ['aula-tres']);
-      assert.equal((await abrir('aula-tres')).json.conta_pela_leitura, true, 'a tela pode dizer ao aluno que aqui a leitura conta');
-      assert.deepEqual([A.progressoDoCurso(lia, pid).progresso.concluidas, (await req('GET', `${esc()}/ferramentas`, { jar: 'lia' })).json.disciplinas.flatMap(d => d.aulas).filter(a => a.estudada).length], [1, 1], 'biblioteca e cronograma: a mesma régua');
-      // só ABRIR não basta: sem a leitura até o fim, não conta
-      const marca = db.prepare('SELECT lida_em FROM est_aula_estado WHERE user_id = ? AND escopo_id = ? AND unidade = ?').get(lia, eid, 'aula-tres').lida_em;
-      assert.ok(marca, 'o instante da leitura fica registrado');
-      db.prepare("UPDATE est_aula_estado SET lida_em = '' WHERE user_id = ? AND escopo_id = ? AND unidade = ?").run(lia, eid, 'aula-tres');
-      assert.deepEqual(await estudadas(), [], 'aula aberta e não lida até o fim não é estudada');
-      // …ou a VIDEOAULA: 89 % ainda não; 90 %, sim (o registro que já existia)
-      db.prepare("UPDATE est_unidades SET video_media_id = 'video-paridade-tres', video_duracao_seg = 100 WHERE codigo = 'aula-tres' AND escopo_id = ?").run(eid);
       assert.equal((await req('PUT', `${esc()}/unidades/aula-tres/video`, { jar: 'lia', corpo: { posicao_seg: 89 } })).json.assistido, false);
-      assert.deepEqual(await estudadas(), []);
+      assert.deepEqual(await estudadas(), ['aula-um', 'aula-dois']);
       assert.equal((await req('PUT', `${esc()}/unidades/aula-tres/video`, { jar: 'lia', corpo: { posicao_seg: 90 } })).json.assistido, true);
-      assert.deepEqual(await estudadas(), ['aula-tres'], 'assistiu à videoaula da aula sem questão nem card');
-      // a leitura registrada não volta atrás, e registrar de novo não muda a data
-      r = await lida('aula-tres');
-      const de = db.prepare('SELECT lida_em FROM est_aula_estado WHERE user_id = ? AND escopo_id = ? AND unidade = ?').get(lia, eid, 'aula-tres').lida_em;
-      assert.deepEqual([r.json.estudada, (await lida('aula-tres')).st, db.prepare('SELECT lida_em FROM est_aula_estado WHERE user_id = ? AND escopo_id = ? AND unidade = ?').get(lia, eid, 'aula-tres').lida_em], [true, 200, de]);
-      // nas aulas que TÊM questão, o vídeo assistido continua não contando (regra de sempre)
-      db.prepare("UPDATE est_unidades SET video_media_id = 'video-paridade-dois', video_duracao_seg = 100 WHERE codigo = 'aula-dois' AND escopo_id = ?").run(eid);
-      assert.equal((await req('PUT', `${esc()}/unidades/aula-dois/video`, { jar: 'lia', corpo: { posicao_seg: 100 } })).json.assistido, true);
-      assert.deepEqual(await estudadas(), ['aula-tres']);
+      assert.deepEqual(await estudadas(), ['aula-um', 'aula-dois', 'aula-tres'], 'assistiu a 90 % da videoaula');
+      assert.deepEqual([A.progressoDoCurso(lia, pid).progresso.concluidas, (await req('GET', `${esc()}/ferramentas`, { jar: 'lia' })).json.disciplinas.flatMap(d => d.aulas).filter(a => a.estudada).length], [3, 3], 'biblioteca e cronograma: a mesma régua');
     } finally {
-      db.prepare("UPDATE est_cards SET status = 'publicado' WHERE escopo_id = ?").run(eid);
-      db.prepare("UPDATE est_unidades SET video_media_id = '', video_duracao_seg = 0 WHERE codigo IN ('aula-dois', 'aula-tres') AND escopo_id = ?").run(eid);
+      db.prepare("UPDATE est_unidades SET video_media_id = '', video_duracao_seg = 0 WHERE codigo = 'aula-tres' AND escopo_id = ?").run(eid);
     }
-    // o card voltou: a aula três volta a pedir resposta — a leitura e o vídeo deixam de bastar
-    k = await concl();
-    assert.deepEqual([k.aulas_sem_questao, k.estudadas], [0, 0]);
+    // a leitura registrada não volta atrás, e registrar de novo não muda a data
+    const de = db.prepare('SELECT lida_em FROM est_aula_estado WHERE user_id = ? AND escopo_id = ? AND unidade = ?').get(lia, eid, 'aula-dois').lida_em;
+    assert.ok(de, 'o instante da leitura fica registrado');
+    assert.deepEqual([(await lida('aula-dois')).st, db.prepare('SELECT lida_em FROM est_aula_estado WHERE user_id = ? AND escopo_id = ? AND unidade = ?').get(lia, eid, 'aula-dois').lida_em], [200, de]);
+    db.prepare("UPDATE est_aula_estado SET lida_em = '' WHERE user_id = ? AND escopo_id = ? AND unidade = ?").run(lia, eid, 'aula-dois');
+    assert.deepEqual(await estudadas(), ['aula-um', 'aula-tres'], 'sem a leitura (e sem questão respondida dela), a aula dois volta a não estar estudada');
+    assert.deepEqual(A.MODOS_DE_ESTUDO, ['estudo', 'pratica']);
     // a tela: o marco no fim do TEXTO da aula, o aviso ao servidor uma vez, com tempo mínimo — e a regra dita ao aluno
     const tela = ler('app-estudo.js');
-    for (const pedaco of ['<span id="es-un-fim" aria-hidden="true"></span>', "'/lida'", 'function ligarFimDaLeitura(codigo, jaLida)', 'ligarFimDaLeitura(codigo, u.lida);', 'LEITURA_MIN_MS', 'ela conta como estudada quando você lê o texto até o fim ou assiste à videoaula', 'sem questão nem card, lê até o fim ou assiste à videoaula']) assert.ok(tela.includes(pedaco), 'falta na tela: ' + pedaco);
+    for (const pedaco of ['<span id="es-un-fim" aria-hidden="true"></span>', "'/lida'", 'function ligarFimDaLeitura(codigo, jaLida)', 'ligarFimDaLeitura(codigo, u.lida);', 'LEITURA_MIN_MS', 'abrir a aula e ler o texto até o fim, assistir à videoaula ou responder uma questão do quiz dela']) assert.ok(tela.includes(pedaco), 'falta na tela: ' + pedaco);
     assert.ok(tela.indexOf('<span id="es-un-fim"') < tela.indexOf('id="es-un-quiz"') && tela.indexOf('<span id="es-un-fim"') > tela.indexOf("'<p class=\"al-rotulo es-un-txt\">Texto da aula</p>'"), 'o marco fica depois do texto e antes do quiz');
   });
 
@@ -418,6 +448,15 @@ async function rodar({ t, req }) {
       assert.ok(ultimo.indexOf('deixa de cumprir determinação') < ultimo.indexOf('execução parada por inércia'), 'a aula dois na frente do livro');
       // aula que não existe (ou que ela não vê) não derruba a pergunta: vira pergunta sobre o curso
       assert.equal((await perguntar({ pergunta: PERGUNTA, estude: { escopo: SLUG, unidade: 'nao-existe' } })).st, 200);
+      // AULA EM RASCUNHO não entra no acervo do Tutor da aluna (só no de quem revisa o curso)
+      db.prepare("UPDATE est_unidades SET status = 'rascunho' WHERE codigo = 'aula-dois' AND escopo_id = ?").run(R.Escopos.porSlug(pid, SLUG).id);
+      try {
+        r = await perguntar({ pergunta: PERGUNTA, estude: { escopo: SLUG, unidade: '' } });
+        assert.equal(r.st, 200, r.texto);
+        assert.ok(!ultimo.includes('deixa de cumprir determinação') && ultimo.includes('execução parada por inércia'), 'o trecho da aula em rascunho ficou de fora; o do livro continua');
+        r = await perguntar({ pergunta: PERGUNTA, estude: { escopo: SLUG, unidade: '' } }, 'maria');
+        assert.ok(r.st === 200 && ultimo.includes('deixa de cumprir determinação'), 'a dona do curso revisa o rascunho: ' + r.texto);
+      } finally { db.prepare("UPDATE est_unidades SET status = 'publicado' WHERE codigo = 'aula-dois' AND escopo_id = ?").run(R.Escopos.porSlug(pid, SLUG).id); }
       assert.equal((await perguntar({ pergunta: PERGUNTA, estude: { escopo: SLUG, unidade: 'aula-um' } }, 'caio')).st, 403, 'quem não tem o curso não conversa');
     } finally { iaM.__mockParaTeste(null); }
     const tela = ler('app-aluno.js');

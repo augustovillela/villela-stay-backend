@@ -15,7 +15,9 @@
 const ABSTENCAO = '__abstencao__';
 const SITUACOES = ['certa', 'errada', 'abstencao', 'em_branco', 'anulada'];
 
-const num = (v, padrao) => (Number.isFinite(Number(v)) ? Number(v) : padrao);
+// `null`, `undefined` e '' NÃO são zero: `Number(null)` é 0, e uma regra com `min_pct: null` virava "mínimo de 0 %"
+// (aprovado sempre) em vez de "sem critério".
+const num = (v, padrao) => (v == null || v === '' || !Number.isFinite(Number(v)) ? padrao : Number(v));
 // Soma de pontos fracionários (0,1 por acerto) acumula ruído de ponto flutuante: nove acertos de 0,1 dão
 // 0,8999999999999999 e ficariam ABAIXO de um mínimo de 0,9. Toda soma de pontos passa por aqui antes de ser comparada.
 const arr = (n) => Math.round(n * 1e6) / 1e6;
@@ -35,11 +37,74 @@ function normalizarRegra(r = {}) {
     anulada: r.anulada === 'excluida' ? 'excluida' : 'ponto_para_todos',
     piso_zero: r.piso_zero !== false,
     minimos: (Array.isArray(r.minimos) ? r.minimos : []).map(m => ({ bloco: String(m.bloco || ''), min_pct: num(m.min_pct, null), min_pontos: num(m.min_pontos, null) })),
-    aprovacao: r.aprovacao ? { min_pct: num(r.aprovacao.min_pct, null), min_pontos: num(r.aprovacao.min_pontos, null) } : null,
+    // aprovação declarada SEM número nenhum (`{ min_pct: null }`) não é critério: fica nula, e o resultado diz "sem
+    // critério cadastrado" — antes o nulo virava 0, e todo mundo "atingia o critério"
+    aprovacao: r.aprovacao && (num(r.aprovacao.min_pct, null) != null || num(r.aprovacao.min_pontos, null) != null) ? { min_pct: num(r.aprovacao.min_pct, null), min_pontos: num(r.aprovacao.min_pontos, null) } : null,
     fonte: String(r.fonte || ''),
+    formato: normalizarFormato(r.formato),
   };
   if (regra.valor_certa <= 0) throw new Error('regra de pontuação: valor_certa deve ser positivo.');
   return regra;
+}
+
+// FORMATO DA PROVA (opcional na regra): quantas questões a prova do edital tem, e quantas por bloco.
+//   formato: { questoes: 100, blocos: { I: 40, II: 30, III: 30 } }
+// Sem ele, a PROPORÇÃO dos blocos sai dos mínimos por bloco (edital com mínimo de 12, 9 e 9 acertos = 40/30/30),
+// e "estar no formato" quer dizer: todo mínimo da regra é alcançável nesta prova.
+function normalizarFormato(f) {
+  if (!f || typeof f !== 'object') return null;
+  const blocos = {};
+  for (const [k, v] of Object.entries(f.blocos && typeof f.blocos === 'object' ? f.blocos : {})) { const n = Math.round(num(v, 0)); if (n > 0) blocos[String(k)] = n; }
+  const soma = Object.values(blocos).reduce((a, b) => a + b, 0), questoes = Math.round(num(f.questoes, 0)) || soma;
+  return questoes > 0 ? { questoes, blocos } : null;
+}
+// Os blocos da regra com o PESO de cada um na prova: do formato cadastrado; sem ele, dos mínimos por bloco.
+// `null` = a regra não divide a prova em blocos (não há o que repartir).
+function blocosDaRegra(regraCrua = {}) {
+  const regra = normalizarRegra(regraCrua);
+  if (regra.formato && Object.keys(regra.formato.blocos).length) return { origem: 'formato', questoes: regra.formato.questoes, blocos: Object.entries(regra.formato.blocos).map(([bloco, peso]) => ({ bloco, peso })) };
+  const comMin = regra.minimos.filter(m => m.bloco && (m.min_pontos > 0 || m.min_pct > 0));
+  if (comMin.length < 2) return null;
+  // mínimo em pontos → proporção pelos pontos; só percentual → partes iguais
+  const emPontos = comMin.every(m => m.min_pontos > 0);
+  return { origem: 'minimos', questoes: regra.formato ? regra.formato.questoes : null, blocos: comMin.map(m => ({ bloco: m.bloco, peso: emPontos ? m.min_pontos : 1 })) };
+}
+// Reparte `n` questões pelos blocos, na proporção dos pesos (maiores restos): 100 → 40/30/30; 10 → 4/3/3.
+function repartirPorBloco(n, blocos) {
+  const total = blocos.reduce((a, b) => a + b.peso, 0);
+  const partes = blocos.map((b, i) => { const exato = n * b.peso / total; return { bloco: b.bloco, n: Math.floor(exato + 1e-9), resto: exato - Math.floor(exato + 1e-9), i }; });
+  let falta = n - partes.reduce((a, p) => a + p.n, 0);
+  for (const p of [...partes].sort((a, b) => b.resto - a.resto || a.i - b.i)) { if (falta <= 0) break; p.n++; falta--; }
+  return partes.map(p => ({ bloco: p.bloco, questoes: p.n }));
+}
+// A prova (os itens congelados) tem o formato da regra? Só aí cabe dizer "atingiu / não atingiu o critério":
+// numa prova de 10 questões a 0,1 ponto, o mínimo de 1,2 no bloco e o de 6 no total são inalcançáveis, e o
+// veredito seria "não atingiu" para qualquer resposta.
+//   definido  a regra tem critério (mínimo por bloco ou geral) — sem ele não há veredito a dar, nem formato a conferir
+//   ok        a prova está no formato: com formato cadastrado, tem as questões do edital por bloco e no total;
+//             sem ele, todo mínimo da regra é alcançável com as questões desta prova
+function formatoDaProva(itens, regraCrua = {}) {
+  const regra = normalizarRegra(regraCrua);
+  const definido = !!(regra.aprovacao || regra.minimos.length);
+  const porBloco = {}; let maximo = 0, questoes = 0;
+  for (const i of itens || []) {
+    if (i.anulada && regra.anulada === 'excluida') continue;
+    const b = String(i.bloco || ''), vale = regra.valor_certa * num(i.peso, 1);
+    porBloco[b] = porBloco[b] || { bloco: b, questoes: 0, maximo: 0 };
+    porBloco[b].questoes++; porBloco[b].maximo = arr(porBloco[b].maximo + vale); maximo = arr(maximo + vale); questoes++;
+  }
+  const motivos = [], br = (n) => String(n).replace(".", ","); // o motivo vai à tela: número com vírgula
+  if (regra.formato) {
+    if (questoes < regra.formato.questoes) motivos.push(`a prova tem ${questoes} questões; a do edital tem ${regra.formato.questoes}`);
+    for (const [b, n] of Object.entries(regra.formato.blocos)) { const tem = (porBloco[b] || {}).questoes || 0; if (tem < n) motivos.push(`o bloco ${b} tem ${tem} de ${n} questões`); }
+  }
+  for (const m of regra.minimos) {
+    const b = porBloco[m.bloco];
+    if (!b) motivos.push(`o bloco ${m.bloco} não tem questão nesta prova`);
+    else if (m.min_pontos != null && b.maximo < m.min_pontos) motivos.push(`o bloco ${m.bloco} vale no máximo ${br(b.maximo)} e o mínimo dele é ${br(m.min_pontos)}`);
+  }
+  if (regra.aprovacao && regra.aprovacao.min_pontos != null && maximo < regra.aprovacao.min_pontos) motivos.push(`a prova vale no máximo ${br(maximo)} e o mínimo geral é ${br(regra.aprovacao.min_pontos)}`);
+  return { definido, ok: definido && !motivos.length, motivos: [...new Set(motivos)], questoes, maximo, por_bloco: Object.values(porBloco) };
 }
 
 function situacaoDoItem(item, resposta) {
@@ -107,4 +172,4 @@ function corrigir(itens, respostas = {}, regraCrua = {}) {
   };
 }
 
-module.exports = { corrigir, normalizarRegra, situacaoDoItem, ABSTENCAO, SITUACOES };
+module.exports = { corrigir, normalizarRegra, situacaoDoItem, blocosDaRegra, repartirPorBloco, formatoDaProva, ABSTENCAO, SITUACOES };

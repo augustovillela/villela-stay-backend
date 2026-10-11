@@ -582,6 +582,141 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(!painel.texto.includes('fundamentais'));
   });
 
+  // ================= auditoria de 11/10/2026, frente 4 =================
+  await t('auditoria 7: importar prova POR PEDIDO com a conta da PRODUTORA não reescreve a questão oficial publicada — fica byte a byte igual, e só ganha vínculo com o percurso particular; a importação do curso continua atualizando', async () => {
+    const maria = uid('maria@t.com');
+    const produto = ct.Produtos.obter(impId);
+    const hashDe = (enun) => db.prepare('SELECT hash FROM est_questoes WHERE producer_id = ? AND dados LIKE ?').get(maria, `%${enun}%`).hash;
+    const linhaQ = (hash) => db.prepare('SELECT * FROM est_questoes WHERE producer_id = ? AND hash = ?').get(maria, hash);
+    const h1 = hashDe(ENUN[1]);
+    // 1) a CURADORIA oficial, pela importação do curso (a chave do staff): comentário, explicação por alternativa, pistas,
+    //    bloco, área, assunto e uso RESERVADO (só entra em simulado). Mesmo texto → mesma questão: este caminho ATUALIZA.
+    const oficial = { tipo: 'objetiva', origem: 'oficial', enunciado: ENUN[1], apoio: '', gabarito_situacao: 'definitivo',
+      procedencia: { ...PROC, fonte: 'https://banca.teste/provas/2024' }, comentario: 'COMENTARIO-CURADO: o núcleo essencial limita a restrição.',
+      alternativas: ALT[1].map((texto, i) => ({ texto, correta: i === 1, explicacao: `EXPLICACAO-CURADA da alternativa ${i + 1}.` })),
+      pistas: ['PISTA-CURADA: pense no núcleo essencial.'], area: 'Direito Público', bloco: 'I', disciplina: 'Direito Constitucional', assunto: 'Direitos fundamentais', uso: 'reservada',
+      competencias: ['direito-constitucional'] };
+    const cur = await req('POST', '/staff/api/academy/estudo/importar', { semUser: true, chave: true, corpo: EST({ escopo: { slug: SLUG }, questoes: [oficial] }) });
+    assert.equal(cur.st, 200, cur.texto);
+    assert.deepEqual([cur.json.importado.questoes.novas, cur.json.importado.questoes.atualizadas], [0, 1], 'a importação do CURSO continua atualizando a questão de mesmo texto');
+    db.prepare("UPDATE est_questoes SET situacao = 'disponivel' WHERE producer_id = ? AND hash = ?").run(maria, h1); // publicada
+    const antes = linhaQ(h1);
+    const dAntes = JSON.parse(antes.dados);
+    assert.deepEqual([antes.uso, antes.situacao, dAntes.bloco, dAntes.pistas.length, dAntes.alternativas.every(a => /EXPLICACAO-CURADA/.test(a.explicacao)), /COMENTARIO-CURADO/.test(dAntes.comentario)], ['reservada', 'disponivel', 'I', 1, true, true]);
+    const total = () => db.prepare('SELECT COUNT(*) n FROM est_questoes WHERE producer_id = ?').get(maria).n;
+    const n0 = total();
+    // 2) a produtora testa "Importar prova" com o MESMO caderno, destino = percurso particular novo
+    chamadas = []; pedidosAoModelo = [];
+    const c = await pedir('maria', { caderno_media_id: await enviar('maria', CADERNO, 'caderno-de-novo.pdf'), paginas: [1, 2], destino: { novo: { titulo: 'Teste da produtora' } } });
+    assert.equal(c.st, 200, c.texto);
+    assert.equal((await confirmar('maria', c.json.pedido.id, c.json.orcamento.orcamento_milesimos)).st, 200);
+    await ped.aguardar(c.json.pedido.id);
+    const p = (await obter('maria', c.json.pedido.id)).json.pedido;
+    assert.equal(p.estado, 'pronto', JSON.stringify(p.erro));
+    const q1 = p.resultado.questoes.find(x => x.numero === '1'), q3 = p.resultado.questoes.find(x => x.numero === '3'), q4 = p.resultado.questoes.find(x => x.numero === '4');
+    assert.equal(prova.paraOBanco(q1).comentario, undefined, 'o que vem do PDF não traz comentário, explicações, pistas, bloco nem uso');
+    const r = await aplicar('maria', c.json.pedido.id, [{ n: q1.n }, { n: q3.n }, { n: q4.n, confirmada: true }]);
+    assert.equal(r.st, 200, r.texto);
+    // a 1 e a 3 já existiam (são da produtora): mantidas; a 4 é nova. NENHUMA "atualizada".
+    assert.deepEqual([r.json.aplicado.novas, r.json.aplicado.duplicadas, r.json.aplicado.atualizadas, r.json.aplicado.particular], [1, 2, 0, true], JSON.stringify(r.json.aplicado));
+    assert.deepEqual(linhaQ(h1), antes, 'a questão oficial ficou BYTE A BYTE igual: dados, uso, corrigível, situação, versão e data');
+    assert.equal(total(), n0 + 1, 'só a questão 4 nasceu');
+    // o percurso particular enxerga a questão oficial (o vínculo é dele); o escopo do curso não ganhou nada
+    const particular = R.Escopos.porSlug(impId, r.json.aplicado.escopo);
+    assert.equal(particular.dono_user_id, maria);
+    assert.deepEqual(db.prepare('SELECT alvo, codigo FROM est_questao_vinculos WHERE questao_id = ? AND escopo_id = ?').all(antes.id, particular.id), [{ alvo: 'competencia', codigo: 'direito-constitucional' }]);
+    // o pedido guarda (na entrada, que não vai à tela) só as questões que NASCERAM dele
+    const entrada = JSON.parse(db.prepare('SELECT entrada FROM est_pedidos WHERE id = ?').get(c.json.pedido.id).entrada);
+    const idQ4 = db.prepare('SELECT id FROM est_questoes WHERE producer_id = ? AND dados LIKE ?').get(maria, `%${ENUN[4]}%`).id;
+    assert.deepEqual(entrada.questoes_ids, [idQ4]);
+    assert.ok(!/questoes_ids/.test(JSON.stringify(r.json)), 'a lista de ids não vai à tela');
+    // aplicar de novo: nada muda
+    const de_novo = await aplicar('maria', c.json.pedido.id, [{ n: q1.n }, { n: q4.n, confirmada: true }]);
+    assert.deepEqual([de_novo.st, de_novo.json.aplicado.novas, de_novo.json.aplicado.duplicadas, de_novo.json.aplicado.atualizadas], [200, 0, 2, 0], 'a 4, agora, também já existe: mantida');
+    assert.deepEqual(linhaQ(h1), antes);
+    assert.equal(total(), n0 + 1);
+    // 3) destino = ESCOPO DO CURSO: a que já existe não é reescrita NEM ligada (ligar poria ali, já "disponível", o que entra em rascunho)
+    const rel = R.importar(produto, { escopo: { slug: 'escopo-b-da-auditoria', tipo: 'assunto', titulo: 'Escopo B (auditoria)' },
+      competencias: [{ codigo: 'direito-constitucional', resultado: 'Diante de questões de prova de Direito Constitucional, o candidato identifica a resposta correta sem apoio.', criterios: [], essencial: true }],
+      questoes: [{ ...prova.paraOBanco(q1), competencias: ['direito-constitucional'] }] }, { preservar: true });
+    const escopoB = R.Escopos.porSlug(impId, 'escopo-b-da-auditoria');
+    try {
+      assert.deepEqual([rel.questoes.novas, rel.questoes.duplicadas, rel.questoes.atualizadas, rel.questoes.ids_novas], [0, 1, 0, undefined]);
+      assert.equal(db.prepare('SELECT COUNT(*) n FROM est_questao_vinculos WHERE escopo_id = ?').get(escopoB.id).n, 0, 'nenhum vínculo no escopo do curso');
+      assert.deepEqual(linhaQ(h1), antes);
+    } finally {
+      db.prepare('DELETE FROM est_competencias WHERE escopo_id = ?').run(escopoB.id);
+      db.prepare('DELETE FROM est_escopos WHERE id = ?').run(escopoB.id);
+    }
+    // 4) e o aluno comum segue como estava: a questão dele é (aluno, hash) — a oficial não é tocada por ele
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM est_questoes WHERE hash = ?').get(h1).n, 2, 'a da Íris e a da produtora: duas linhas, um dono cada');
+  });
+
+  await t('auditoria 17: a conferência do texto exige as frases NA ORDEM — frases verdadeiras de lugares diferentes, costuradas noutra ordem, vão para revisão', async () => {
+    const pagina = prova.liso('Primeira frase do enunciado da questão. Cabeçalho que interrompe o texto no meio da página. Segunda frase do enunciado, que conclui; a parte final da questão.');
+    assert.equal(prova.textoConfere('Primeira frase do enunciado da questão. Segunda frase do enunciado, que conclui; a parte final da questão.', pagina), true, 'interrompido por cabeçalho, mas na ordem da página: confere');
+    assert.equal(prova.textoConfere('Segunda frase do enunciado, que conclui; a parte final da questão. Primeira frase do enunciado da questão.', pagina), false, 'as mesmas frases, fora de ordem: NÃO confere');
+    assert.equal(prova.textoConfere('Primeira frase do enunciado da questão. Primeira frase do enunciado da questão.', pagina), false, 'frase repetida não vale duas vezes');
+    // pela montagem do resultado: enunciado montado com a frase da questão 2 ANTES da frase da questão 1 (as duas estão na página 1)
+    const textos = new Map([[1, PAGINAS[0].join('\n')]]);
+    const montada = { numero: '1', tipo: 'objetiva', enunciado: `${ENUN[2]} ${ENUN[1]}`, apoio: '', alternativas: ALT[1].map((texto, i) => ({ letra: 'ABCDE'[i], texto })), tem_figura: false, disciplina: '', continua: false, paginas: [1], lote_escaneado: false };
+    const naOrdem = { ...montada, numero: '2', enunciado: ENUN[1] };
+    const r = prova.montar({ brutas: [montada, naOrdem], gabarito: { mapa: { 1: 'B', 2: 'B' }, ambiguo: false }, textos, proc: { ...PROC, fonte: 'caderno' }, situacao: 'definitivo' });
+    assert.deepEqual(r.questoes.map(q => [q.estado, /texto não confere com a página \(enunciado\)/.test(q.motivo)]), [['revisar', true], ['ok', false]]);
+  });
+
+  await t('auditoria 16: PDF montado para explodir — a leitura roda em processo filho com prazo e teto de memória, e a página tem teto de texto: vira 422 claro, sem travar o serviço e sem criar pedido', async () => {
+    const zlib = require('zlib');
+    // um PDF de uma página cujo conteúdo, comprimido, tem poucos kB — e, aberto, dezenas de MB de texto
+    const pdfCom = (conteudo) => {
+      const z = zlib.deflateSync(conteudo);
+      const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>', null, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+      const partes = [Buffer.from('%PDF-1.4\n')], pos = [];
+      let tam = partes[0].length;
+      objs.forEach((o, i) => {
+        pos.push(tam);
+        const b = o == null ? Buffer.concat([Buffer.from(`${i + 1} 0 obj\n<< /Length ${z.length} /Filter /FlateDecode >>\nstream\n`), z, Buffer.from('\nendstream\nendobj\n')]) : Buffer.from(`${i + 1} 0 obj\n${o}\nendobj\n`);
+        partes.push(b); tam += b.length;
+      });
+      const xref = `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + pos.map(x => String(x).padStart(10, '0') + ' 00000 n \n').join('') + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${tam}\n%%EOF\n`;
+      return Buffer.concat(partes.concat(Buffer.from(xref)));
+    };
+    const linha = (n) => `BT /F1 10 Tf 40 ${700 - (n % 60) * 10} Td (linha ${n} do caderno de prova, com texto bastante para contar como pagina) Tj ET\n`;
+    const normal = pdfCom(Buffer.from(Array.from({ length: 40 }, (_, i) => linha(i)).join('')));
+    const bomba = pdfCom(Buffer.from(linha(1).repeat(400000)));
+    assert.ok(bomba.length < 400 * 1024, `a bomba é pequena no disco (${bomba.length} bytes) — o limite de 40 MB do envio não a pega`);
+    assert.deepEqual([pdf.PRAZO_MS, pdf.PAGINA_TEXTO_MAX_CHARS, pdf.LEITURAS_SIMULTANEAS, pdf.HEAP_MB >= 256, pdf.MEMORIA_MB >= pdf.HEAP_MB], [60000, 300000, 2, true, true]);
+    // o PDF comum (feito à mão, do mesmo jeito) lê normalmente pelo processo filho
+    const ok = await pdf.ler(normal);
+    assert.deepEqual([ok.paginas, ok.textos[0].sem_texto, /linha 39 do caderno/.test(ok.textos[0].texto)], [1, false, true]);
+    // (a) teto de TEXTO por página: a leitura para no excesso — e o processo web não fica preso enquanto isso
+    let maior = 0, ult = Date.now();
+    const iv = setInterval(() => { const a = Date.now(); maior = Math.max(maior, a - ult - 20); ult = a; }, 20);
+    const t0 = Date.now();
+    const e1 = await pdf.ler(bomba, { nome: 'O PDF do caderno' }).then(() => null, (e) => e);
+    clearInterval(iv);
+    assert.ok(e1 && e1.status === 422 && e1.message === pdf.PESADO && /Nada foi cobrado/.test(e1.message) && !/[\\/]academy[\\/]|at \w+ \(/.test(e1.message), e1 && e1.message);
+    assert.ok(Date.now() - t0 < 30000 && maior < 1500, `recusado em ${Date.now() - t0} ms; maior bloqueio do laço de eventos: ${maior} ms`);
+    // (b) PRAZO: sem o teto de página, a leitura que não termina é MORTA no prazo (o filho inteiro, não um aviso)
+    const t1 = Date.now();
+    const e2 = await pdf.ler(bomba, { pagina_max_chars: 1e12, prazo_ms: 400 }).then(() => null, (e) => e);
+    assert.ok(e2 && e2.status === 422 && e2.message === pdf.PESADO && Date.now() - t1 < 15000, `morto no prazo, em ${Date.now() - t1} ms`);
+    // (c) MEMÓRIA: o filho com heap pequeno estoura e morre sozinho — o processo web segue de pé
+    const e3 = await pdf.ler(bomba, { pagina_max_chars: 1e12, heap_mb: 48 }).then(() => null, (e) => e);
+    assert.ok(e3 && e3.status === 422 && e3.message === pdf.PESADO, 'heap do filho estourado vira o mesmo erro claro');
+    // (d) o filho não herda as chaves do servidor, e a leitura no próprio processo (ACADEMY_PDF_ISOLADO=off) mantém o teto de página
+    const fonte = fs.readFileSync(path.join(__dirname, 'pdf.js'), 'utf8');
+    assert.ok(/stdio: \['ignore', 'ignore', 'ignore', 'ipc'\], env \}\)/.test(fonte) && /const env = \{\};/.test(fonte) && !/env: process\.env/.test(fonte), 'ambiente limpo no filho');
+    await assert.rejects(() => pdf.lerAqui(bomba), (e) => e.status === 422 && e.message === pdf.PESADO);
+    // (e) pela rota: orçar com a bomba responde 422, não cria pedido e não chama o provedor
+    const antes = nPedidos(), n0 = chamadas.length;
+    const r = await pedir('iris', { caderno_media_id: await enviar('iris', bomba, 'bomba.pdf') });
+    assert.deepEqual([r.st, r.json.erro, nPedidos(), chamadas.length], [422, pdf.PESADO, antes, n0], r.texto);
+    // … e o PDF de verdade continua sendo lido depois disso (nenhum filho ficou pendurado ocupando a vez)
+    assert.equal((await pdf.ler(CADERNO)).paginas, 6);
+  });
+
   await t('prova: a tela — Escrita e oral · Importar prova · Meus pedidos; envio com progresso, orçamento com a faixa, leitura por lote, lista para conferir e adicionar', async () => {
     const tela = fs.readFileSync(path.join(__dirname, '..', 'app-estudo.js'), 'utf8');
     assert.ok(/\[\['', 'Escrita e oral'\], \['importar', 'Importar prova'\], \['edital', 'Ler edital em PDF'\], \['pedidos', 'Meus pedidos'\]\]/.test(tela), 'as quatro telas da aba');

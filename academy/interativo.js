@@ -423,8 +423,14 @@ function contextoTutor(usuario, produto, pergunta, lessonId, estude = null) {
   // aula (livro, FAQ, tarefas) não goteja. Calculado uma vez, não por trecho.
   const gote = ct.Liberacao.mapa(usuario, produto);
   const travada = (id) => !!(id && gote.aulas[id] && !gote.aulas[id].liberada);
+  // AULA DO ESTUDE EM RASCUNHO (auditoria de 11/10/2026): o trecho rotulado `[est:percurso/aula]` de aula ainda não
+  // publicada entrava na busca geral do curso para qualquer aluno — o Tutor contava a aula antes de ela existir.
+  // Só quem revisa o curso (dono e admin) conversa sobre rascunho.
+  const noArDoEstude = podeRevisar(usuario, produto) ? null : new Set(db.prepare(`SELECT e.slug || '|' || u.codigo AS k FROM est_unidades u JOIN est_escopos e ON e.id = u.escopo_id
+    WHERE e.product_id = ? AND e.dono_user_id = '' AND e.status = 'publicado' AND u.status = 'publicado'`).all(produto.id).map(r => r.k));
+  const publicadaNoEstude = (d) => !d.est_unidade || !noArDoEstude || noArDoEstude.has(d.est_escopo + '|' + d.est_unidade);
   // quem não comprou só conversa sobre as aulas de degustação — livro e aulas pagas ficam fora
-  const permitido = (d) => !travada(d.lesson_id) && (acesso || (d.lesson_id && gratis.has(d.lesson_id)));
+  const permitido = (d) => publicadaNoEstude(d) && !travada(d.lesson_id) && (acesso || (d.lesson_id && gratis.has(d.lesson_id)));
   let trechos;
   const un = estude && estude.unidade ? { escopo: s(estude.escopo, 60), unidade: s(estude.unidade, 60) } : null;
   if (un) {

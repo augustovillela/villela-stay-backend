@@ -236,12 +236,12 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     const pg = await req('GET', '/academy/app');
     assert.equal(pg.st, 200);
     // mecanismo de sempre: ?v=N na URL, dentro do HTML do painel (que o service worker nunca guarda — pwa.js: navegação é só rede)
-    for (const ref of ['/academy/estude.js?v=2', '/academy/estude.css?v=2', '/academy/aluno.js?v=10', '/academy/carteira.js?v=2', '/academy/jornada.js?v=4', '/academy/app.js?v=12', '/academy/ecossistema.js?v=3', '/academy/aluno.css?v=5']) {
+    for (const ref of ['/academy/estude.js?v=3', '/academy/estude.css?v=3', '/academy/aluno.js?v=11', '/academy/carteira.js?v=2', '/academy/jornada.js?v=4', '/academy/app.js?v=13', '/academy/ecossistema.js?v=3', '/academy/aluno.css?v=5']) {
       assert.ok(pg.texto.includes(`"${ref}"`), 'o painel não pede ' + ref);
     }
-    for (const velho of ['estude.js?v=1"', 'estude.css?v=1"', 'aluno.js?v=9"', 'carteira.js?v=1"', 'jornada.js?v=3"', 'app.js?v=11"']) assert.ok(!pg.texto.includes(velho), 'sobrou a versão antiga: ' + velho);
+    for (const velho of ['estude.js?v=2"', 'estude.css?v=2"', 'aluno.js?v=10"', 'carteira.js?v=1"', 'jornada.js?v=3"', 'app.js?v=12"']) assert.ok(!pg.texto.includes(velho), 'sobrou a versão antiga: ' + velho);
     // os motores das Ferramentas saem sempre frescos (no-cache): a versão deles na URL não precisa mudar
-    const js = await req('GET', '/academy/estude.js?v=2');
+    const js = await req('GET', '/academy/estude.js?v=3');
     assert.ok(js.st === 200 && js.texto.includes('function temPedidos()') && js.texto.includes('function ligarFimDaLeitura('), 'o arquivo servido é o novo');
   });
 
@@ -686,6 +686,13 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
       const up = await iniciar();
       assert.deepEqual([up.st, up.json.expira_seg, ct.PEDIDO_UPLOAD_EXPIRA_SEG], [200, 600, 600], up.texto);
       assert.ok(/X-Amz-Expires=600(&|$)/.test(up.json.upload_url), 'a validade está na própria assinatura: ' + up.json.upload_url);
+      // auditoria 12: o TAMANHO declarado também — a URL só aceita um corpo com aquele content-length (o bucket recusa outro)
+      assert.ok(/X-Amz-SignedHeaders=content-length%3Bhost(&|$)/.test(up.json.upload_url), 'o content-length é cabeçalho assinado: ' + up.json.upload_url);
+      const st = require('../storage'), cfgS3 = st.s3cfg();
+      const assinatura = (u) => /X-Amz-Signature=([0-9a-f]{64})/.exec(u)[1];
+      const [u1, u2, comum] = [st.presignS3(cfgS3, 'PUT', 'pedidos/x.pdf', 600, { tamanho: 1e6 }), st.presignS3(cfgS3, 'PUT', 'pedidos/x.pdf', 600, { tamanho: 2e9 }), st.presignS3(cfgS3, 'PUT', 'pedidos/x.pdf', 600)];
+      assert.ok(assinatura(u1) !== assinatura(u2) && assinatura(u1) !== assinatura(comum), 'outro tamanho, outra assinatura: a de 1 MB não serve para 2 GB');
+      assert.ok(/X-Amz-SignedHeaders=host(&|$)/.test(comum), 'fora do envio de pedido a URL é a de sempre (só o host assinado)');
       // declarou 1 MB e mandou 50 MB: a conferência reprova ANTES de confirmar — e não sobra registro nem objeto
       obj.tamanho = 50 * 1024 * 1024;
       const ruim = await confirmarEnvio(up.json.media_id);
@@ -750,9 +757,14 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
   await t('ensaio real, defeitos 3 a 5: preços conferidos na fonte; raciocínio DESLIGADO nos pedidos pagos; resposta CORTADA é erro claro e não tenta o 2º modelo; tentativa que falhou entra no custo real — e o aluno nunca paga acima do teto', async () => {
     const paula = uid(PAULA.email);
     // ---- preços (página oficial, lida em 11/10/2026): Sonnet 5 = US$ 2/10 por milhão; o teto usa o mais caro da fila
-    assert.deepEqual([ia.precoDe('claude-sonnet-5'), ia.precoDe('claude-haiku-4-5'), ia.precoDe('modelo-que-ninguem-conhece')], [{ in: 2, out: 10 }, { in: 1, out: 5 }, { in: 3, out: 15 }]);
+    assert.deepEqual([ia.precoDe('claude-sonnet-5'), ia.precoDe('claude-haiku-4-5'), ia.precoDe('modelo-que-ninguem-conhece')], [{ in: 2, out: 10 }, { in: 1, out: 5 }, { in: 5, out: 25 }], 'modelo fora da tabela é orçado pelo MAIS CARO dela (auditoria, item 4) — 3/15 ficava abaixo de um Opus');
+    assert.deepEqual([ia.PRECO_DESCONHECIDO, ia.precoDe('mock'), ia.precoMaximo('claude-opus-4-7')], [{ in: 5, out: 25 }, { in: 3, out: 15 }, { in: 5, out: 25 }], 'o simulado dos testes tem preço próprio; id desconhecido vai ao teto pelo mais caro');
+    // item 3: a entrada do teto é orçada a 2,0 caracteres por token (medida por heurística nos textos do curso), não a 3
+    assert.equal(ia.CHARS_POR_TOKEN, 2);
+    assert.ok(Math.abs(ia.tetoTrabalhoUSD('correcao', { caracteres: 20000, passos: 1 }) - ia.tetoTrabalhoUSD('correcao', { caracteres: 0, passos: 1 }) - (20000 / 2) * ia.precoTeto().in / 1e6) < 1e-9, '20 mil caracteres = 10 mil tokens de entrada no teto');
     assert.equal(ia.custoUSD('claude-sonnet-5', { input_tokens: 1e6, output_tokens: 1e6 }), 12);
-    assert.ok(Math.abs(ia.custoUSD('claude-sonnet-5', { cache_creation_input_tokens: 1e6, cache_read_input_tokens: 1e6 }) - 2.7) < 1e-9 && Math.abs(ia.custoUSD('claude-sonnet-5-5', { cache_read_input_tokens: 1e6 }) - 0.1) < 1e-9, 'escrita de cache 1,25×; leitura 0,1× (0,05× nos 5.5)');
+    assert.ok(Math.abs(ia.custoUSD('claude-sonnet-5', { cache_creation_input_tokens: 1e6, cache_read_input_tokens: 1e6 }) - 2.7) < 1e-9 && Math.abs(ia.custoUSD('claude-sonnet-5-5', { cache_read_input_tokens: 1e6 }) - 0.2) < 1e-9 && Math.abs(ia.custoUSD('claude-opus-5-5', { cache_read_input_tokens: 1e6 }) - 0.2) < 1e-9,
+      'escrita de cache 1,25×; leitura 0,1× — no Sonnet 5.5 também (US$ 0,20 sobre 2; auditoria, item 5); 0,05× só no Opus 5.5 (0,20 sobre 4)');
     assert.equal(ia.MODELOS_PADRAO, 'claude-sonnet-5,claude-haiku-5-5', 'a reserva da fila é o Haiku atual (o 4.5 tem aposentadoria anunciada)');
     if (!process.env.ACADEMY_LLM_MODELS) assert.deepEqual([ia.MODELOS, ia.precoTeto()], [['claude-sonnet-5', 'claude-haiku-5-5'], { in: 2, out: 10 }], 'o teto é orçado pelo mais caro da fila: 2/10');
     // ---- Haiku 5.5 (página oficial, lida em 11/10/2026): duas faixas pelo tamanho do PROMPT — até 100 mil tokens, 0,10/0,50; acima, 0,50/2,50
@@ -789,7 +801,9 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
       roteiro = { 'claude-sonnet-5': msg('{"criterios":[{"n":1,"nivel":3,"trecho":"cortou aq', { input_tokens: 1000, output_tokens: 800 }, 'max_tokens'), 'claude-haiku-4-5': msg(BOA) };
       const t1 = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
       const e1 = await t1.passo('um passo que não coube', { max_saida: 800 }).then(() => null, (e) => e);
-      assert.ok(e1 && e1.cortada === true && /resposta maior que o limite do lote \(800 tokens de saída\)/.test(e1.message), e1 && e1.message);
+      assert.ok(e1 && e1.cortada === true && /resposta maior que o limite do lote \(800 tokens de saída\)/.test(e1.detalhe), e1 && e1.detalhe);
+      // item 18: o que sobe na `message` (as rotas a devolvem a quem pediu) não leva texto do provedor, id de modelo nem "lote"
+      assert.ok(e1.message === ia.FALHA_CORTADA && !/lote|claude|tokens|IA falhou/.test(e1.message), e1.message);
       assert.deepEqual(fila.map(f => f.modelo), ['claude-sonnet-5'], 'não tentou o segundo modelo');
       assert.deepEqual([fila[0].params.thinking, fila[0].params.max_tokens, fila[0].params.model], [{ type: 'disabled' }, 800, 'claude-sonnet-5'], 'o que vai ao provedor: raciocínio desligado e o limite do passo');
       t1.falhar(e1);
@@ -811,9 +825,18 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
       roteiro = { 'claude-sonnet-5': msg('nada de JSON', { input_tokens: 2000, output_tokens: 1000 }), 'claude-haiku-4-5': msg('nem aqui', { input_tokens: 2000, output_tokens: 1000 }) };
       const t3 = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
       const e3 = await t3.passo('terceiro').then(() => null, (e) => e);
-      assert.ok(e3 && !e3.cortada && /fora do formato/.test(e3.message) && Math.abs(e3.custo_usd - 0.021) < 1e-12, e3 && e3.message);
+      assert.ok(e3 && !e3.cortada && /fora do formato/.test(e3.detalhe) && e3.message === ia.FALHA_AO_USUARIO && Math.abs(e3.custo_usd - 0.021) < 1e-12, e3 && e3.message);
       t3.falhar(e3);
       assert.deepEqual([ultimoLog().status, ultimoLog().custo_centavos_usd, carteira.saldo(paula)], ['erro', 2.1, saldo - f2.cobrado_milesimos], 'o aluno não paga; o custo fica registrado');
+      assert.ok(/IA falhou: a resposta veio fora do formato esperado/.test(ultimoLog().detalhe), 'o detalhe técnico fica no log de uso: ' + ultimoLog().detalhe);
+      // item 18: erro HTTP do provedor com o corpo cru (id de modelo, JSON) — nada disso chega a quem pediu
+      roteiro = { 'claude-sonnet-5': Object.assign(new Error('404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-sonnet-5"}}'), { status: 404 }),
+        'claude-haiku-4-5': Object.assign(new Error('400 {"error":{"message":"thinking: Input should be enabled"}}'), { status: 400 }) };
+      const t3b = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
+      const e3b = await t3b.passo('provedor recusou').then(() => null, (e) => e);
+      assert.ok(e3b && e3b.message === ia.FALHA_AO_USUARIO && !/claude|not_found|thinking|\{/.test(e3b.message), e3b && e3b.message);
+      t3b.falhar(e3b);
+      assert.ok(/IA falhou: 400 /.test(ultimoLog().detalhe) && ultimoLog().modelo === 'claude-haiku-4-5', 'no log, sim: ' + ultimoLog().detalhe);
       // (d) NUNCA acima do teto: o custo real (com a tentativa perdida) passou do valor aceito — cobra-se o teto, e só
       roteiro = { 'claude-sonnet-5': msg('fora do formato', { input_tokens: 50000, output_tokens: 5000 }), 'claude-haiku-4-5': msg(BOA) };
       const t4 = ia.abrirTrabalho(paula, 'correcao', 0.002, { id: impId }, { aceite: 999999 });
@@ -976,6 +999,169 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     assert.equal(carteira.estornar(rui, r2, 100, 'não gerou'), false);
     assert.equal(carteira.acertar(rui, r2, 100, 100, 'correcao'), 0, 'reserva estornada não é cobrada depois');
     assert.deepEqual([n(r2), carteira.saldo(rui), carteira.devolverReserva(r2)], [2, saldo - 30, 0]);
+  });
+
+  // ================= auditoria de 11/10/2026, frente 4 (dinheiro, IA e pedidos pagos) =================
+  await t('auditoria 8: além da CONTAGEM, há teto diário do VALOR absorvido em falhas — por conta e GLOBAL (a conta isenta só tem o global)', async () => {
+    const rui = uid(RUI.email), paula = uid(PAULA.email);
+    assert.deepEqual([ped.FALHAS_USD_POR_DIA_CONTA, ped.FALHAS_USD_POR_DIA_GLOBAL], [2, 20]);
+    const falha = (id, userId, centavos, quando = new Date().toISOString(), agente = 'prova', status = 'erro') => db.prepare(`INSERT INTO ai_usage_logs (id, quando, user_id, agente, modelo, input_tokens, output_tokens, custo_centavos_usd, status, detalhe, cobranca, milesimos, product_id)
+      VALUES (?, ?, ?, ?, 'claude-sonnet-5', 0, 0, ?, ?, 'teste', 'paga', 0, ?)`).run('aud8-' + id, quando, userId, agente, centavos, status, impId);
+    const limpar = () => db.prepare("DELETE FROM ai_usage_logs WHERE id LIKE 'aud8-%'").run();
+    const base0 = ia.custoDeFalhasUSD({ desde: new Date(Date.now() - 864e5).toISOString() });
+    try {
+      const c = await criar('rui', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
+      const id = c.json.pedido.id, aceite = c.json.orcamento.orcamento_milesimos;
+      // o que NÃO conta: falha de ontem, uso que deu certo, e falha de agente que não é pedido pago (Tutor)
+      falha('velha', rui, 500, new Date(Date.now() - 25 * 3600e3).toISOString());
+      falha('ok', rui, 500, undefined, 'prova', 'ok');
+      falha('tutor', rui, 500, undefined, 'tutor');
+      falha('a', rui, 150);
+      assert.ok(Math.abs(ia.custoDeFalhasUSD({ userId: rui, desde: new Date(Date.now() - 864e5).toISOString() }) - 1.5) < 1e-9, 'só as falhas de pedido pago das últimas 24 h');
+      // US$ 1,50 absorvido: ainda roda (uma falha só — a contagem não barraria)
+      const n = chamadas.length, reservas = movs(rui, 'reserva');
+      falha('b', rui, 60); // US$ 2,10: passou do teto por conta
+      const r = await confirmar('rui', id, aceite);
+      assert.equal(r.st, 429, r.texto);
+      assert.ok(/limite diário de tentativas/.test(r.json.erro) && /Nada foi cobrado/.test(r.json.erro) && !/US\$|2,10|dólar/.test(r.json.erro), 'a mensagem não expõe o custo da plataforma: ' + r.json.erro);
+      assert.deepEqual([chamadas.length, movs(rui, 'reserva')], [n, reservas], 'barrado antes da reserva e do provedor');
+      // é POR CONTA: a Paula, que não falhou, segue pedindo
+      const cp = await criar('paula', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
+      assert.equal((await confirmar('paula', cp.json.pedido.id, cp.json.orcamento.orcamento_milesimos)).st, 200);
+      await ped.aguardar(cp.json.pedido.id);
+      // GLOBAL: somadas todas as contas, US$ 20 em 24 h → o serviço para para todos, com 503
+      falha('g', uid('olga@t.com'), Math.ceil((20 - base0 - 2.1) * 100) + 1);
+      const cp2 = await criar('paula', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
+      const g = await confirmar('paula', cp2.json.pedido.id, cp2.json.orcamento.orcamento_milesimos);
+      assert.equal(g.st, 503, g.texto);
+      assert.ok(/em pausa por hoje/.test(g.json.erro) && /Nada foi cobrado/.test(g.json.erro));
+      // a conta ISENTA não tem o teto por conta, mas tem o global
+      await config({ ...LIGADA, isentos: [RUI.email] });
+      assert.equal((await confirmar('rui', id)).st, 503, 'isento também para no teto global');
+      db.prepare("DELETE FROM ai_usage_logs WHERE id = 'aud8-g'").run();
+      const livre = await confirmar('rui', id);
+      assert.equal(livre.st, 200, 'sem o global, o isento roda mesmo com US$ 2,10 de falhas dele: ' + livre.texto);
+      await ped.aguardar(id);
+      await config(LIGADA);
+      // passadas as 24 h (ou limpo o registro), a conta comum volta a rodar
+      limpar();
+      const r2 = await confirmar('paula', cp2.json.pedido.id, cp2.json.orcamento.orcamento_milesimos);
+      assert.equal(r2.st, 200, r2.texto);
+      await ped.aguardar(cp2.json.pedido.id);
+    } finally { limpar(); await config(LIGADA); }
+  });
+
+  await t('auditoria 10, 12, 14 e 15: arquivo de pedido tem MARCA de origem; o expurgo diário limpa o que ficou solto (órfão > 24 h, envio não confirmado > 1 h), não leva material de curso nem áudio de outro pedido vivo; a cota conta só arquivo de pedido', async () => {
+    const paula = uid(PAULA.email), maria = uid('maria@t.com');
+    const horasAtras = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+    const enviarAudio = async (jar = 'paula') => (await req('POST', `${base}/pedidos/arquivo`, { jar, corpo: { nome: 'solto.webm', mime: 'audio/webm', conteudo_base64: Buffer.from('audio-solto-' + Math.random()).toString('base64') } })).json.media_id;
+    const envelhecer = (id, h) => db.prepare('UPDATE media_files SET criado_em = ? WHERE id = ?').run(horasAtras(h), id);
+    const arquivo = (id) => ct.Midia.caminhoAbsoluto(ct.Midia.obterMesmoPendente(id));
+    assert.deepEqual([ct.PEDIDO_PREFIXO, ct.PEDIDO_ORFA_HORAS, ct.PEDIDO_PENDENTE_HORAS], ['pedidos/', 24, 1]);
+    // a marca: quem escreve o caminho é o servidor; o upload do produtor NÃO a recebe
+    const solto = await enviarAudio();
+    assert.ok(ct.Midia.obter(solto).file_path.startsWith('pedidos/') && ct.Midia.dePedido(ct.Midia.obter(solto)) && fs.existsSync(arquivo(solto)));
+    const material = (await ct.Midia.salvar(maria, { nome: 'material.pdf', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF-1.4 material do curso').toString('base64') })).id;
+    assert.equal(ct.Midia.dePedido(ct.Midia.obter(material)), false, 'material de curso não é arquivo de pedido');
+    // ---- 10: áudio que subiu e NÃO virou pedido (a criação falhou): fica 24 h, depois sai — registro e arquivo
+    const citado = midiaPaula; // o áudio do pedido oral da Paula (citado num pedido): nunca é "solto"
+    const recente = await enviarAudio();
+    envelhecer(solto, 25); envelhecer(citado, 25 * 30); envelhecer(material, 25 * 30);
+    const caminhoSolto = arquivo(solto);
+    // armazenamento fora do ar: nada é apagado nem marcado; fica para a próxima passada
+    let r = await ped.expurgarMidiaSolta({ apagar: async () => false });
+    assert.deepEqual([r, !!ct.Midia.obter(solto)], [{ pendentes: 0, orfas: 0, falhas: 1 }, true]);
+    r = (await ped.expurgarAudios()).soltas; // a rotina diária que já existe é quem chama
+    assert.deepEqual(r, { pendentes: 0, orfas: 1, falhas: 0 });
+    assert.ok(!ct.Midia.obterMesmoPendente(solto) && !fs.existsSync(caminhoSolto), 'saíram o registro e o arquivo');
+    assert.ok(ct.Midia.obter(recente) && ct.Midia.obter(citado) && ct.Midia.obter(material), 'ficam: o enviado há pouco, o que um pedido cita e o material de curso');
+    assert.deepEqual((await ped.expurgarAudios()).soltas, { pendentes: 0, orfas: 0, falhas: 0 }, 'rodar de novo não faz nada');
+    // ---- 12: envio grande iniciado e não confirmado: sai depois de 1 h (com o objeto que tenha chegado ao bucket)
+    const ins = db.prepare("INSERT INTO media_files (id, owner_user_id, nome, mime, tamanho, file_path, storage, confirmado, criado_em) VALUES (?, ?, 'p.pdf', 'application/pdf', 1000, ?, 's3', 0, ?)");
+    ins.run('pend-velho', paula, 'pedidos/pend-velho.pdf', horasAtras(2));
+    ins.run('pend-novo', paula, 'pedidos/pend-novo.pdf', horasAtras(0.5));
+    ins.run('video-pendente', maria, 'video-pendente.mp4', horasAtras(48)); // upload de vídeo do produtor, pendente: NÃO é de pedido
+    // 11: com o bucket desconfigurado, `storage.apagar` NÃO diz que apagou — o registro fica e a rotina tenta de novo
+    assert.equal(await require('../storage').apagar('pedidos/pend-velho.pdf', 's3'), false, 'objeto do bucket com o bucket desconfigurado não foi apagado');
+    assert.equal(await require('../storage').apagar('nao-existe.bin', 'local'), true, 'no disco, arquivo que já não existe conta como apagado');
+    r = await ped.expurgarMidiaSolta();
+    assert.deepEqual([r, !!ct.Midia.obterMesmoPendente('pend-velho')], [{ pendentes: 0, orfas: 0, falhas: 1 }, true], 'não marca "apagado" sem apagar');
+    const apagados = [];
+    r = await ped.expurgarMidiaSolta({ apagar: async (m) => { apagados.push(m.id); return true; } });
+    assert.deepEqual([r, apagados], [{ pendentes: 1, orfas: 0, falhas: 0 }, ['pend-velho']]);
+    assert.ok(!ct.Midia.obterMesmoPendente('pend-velho') && ct.Midia.obterMesmoPendente('pend-novo') && ct.Midia.obterMesmoPendente('video-pendente'), 'o recente fica; o vídeo pendente do produtor não é assunto desta rotina');
+    db.prepare("DELETE FROM media_files WHERE id IN ('pend-novo', 'video-pendente')").run();
+    // ---- 14: o expurgo dos 6 meses confere de QUEM é a mídia, se o curso a usa e se outro pedido vivo a cita
+    const escopoId = db.prepare('SELECT id FROM est_escopos WHERE slug = ? AND product_id = ?').get(SLUG, impId).id;
+    const oral = db.prepare(`INSERT INTO est_pedidos (id, user_id, product_id, escopo_id, tipo, estado, questao_id, entrada, criado_em, atualizado_em) VALUES (?, ?, ?, ?, 'oral', 'pronto', ?, ?, ?, ?)`);
+    const dias = (d) => new Date(Date.now() - d * 864e5).toISOString();
+    // (a) o produtor apontou um pedido oral para um ÁUDIO QUE É MATERIAL DE CURSO (pela API: é dele e é áudio)
+    const audioDoCurso = (await ct.Midia.salvar(maria, { nome: 'aula.mp3', mime: 'audio/mpeg', conteudo_base64: Buffer.from('audio da aula do curso').toString('base64') })).id;
+    const aula = db.prepare('SELECT id, media_id FROM lessons WHERE product_id = ? LIMIT 1').get(impId);
+    db.prepare('UPDATE lessons SET media_id = ? WHERE id = ?').run(audioDoCurso, aula.id);
+    oral.run('exp-curso', maria, impId, escopoId, qOral, JSON.stringify({ media_id: audioDoCurso, duracao_seg: 30 }), dias(200), dias(200));
+    // (b) dois pedidos com a MESMA mídia: o velho venceu, o novo ainda está no prazo
+    const compartilhado = await enviarAudio();
+    oral.run('exp-velho', paula, impId, escopoId, qOral, JSON.stringify({ media_id: compartilhado, duracao_seg: 30 }), dias(200), dias(200));
+    oral.run('exp-novo', paula, impId, escopoId, qOral, JSON.stringify({ media_id: compartilhado, duracao_seg: 30 }), dias(10), dias(10));
+    // (c) pedido de um usuário citando a mídia de OUTRO
+    const daPaula = await enviarAudio();
+    oral.run('exp-alheio', uid(RUI.email), impId, escopoId, qOral, JSON.stringify({ media_id: daPaula, duracao_seg: 30 }), dias(200), dias(200));
+    try {
+      r = await ped.expurgarAudios();
+      assert.deepEqual([r.vencidos, r.apagados, r.falhas], [3, 3, 0]);
+      const marcado = (id) => !!db.prepare('SELECT audio_apagado_em a FROM est_pedidos WHERE id = ?').get(id).a;
+      assert.deepEqual(['exp-curso', 'exp-velho', 'exp-alheio', 'exp-novo'].map(marcado), [true, true, true, false], 'os três vencidos ficam marcados (para ELES o áudio saiu)');
+      assert.ok(ct.Midia.obter(audioDoCurso) && fs.existsSync(arquivo(audioDoCurso)), 'o áudio que é material de curso NÃO foi apagado');
+      assert.ok(ct.Midia.obter(compartilhado) && fs.existsSync(arquivo(compartilhado)), 'o áudio que o pedido mais novo ainda usa fica até o prazo DELE');
+      assert.ok(ct.Midia.obter(daPaula), 'mídia de outro usuário não sai pelo pedido de quem a citou');
+      // quando o pedido novo vencer, aí sim o áudio compartilhado sai
+      db.prepare("UPDATE est_pedidos SET criado_em = ? WHERE id = 'exp-novo'").run(dias(190));
+      const caminho = arquivo(compartilhado);
+      r = await ped.expurgarAudios();
+      assert.deepEqual([r.vencidos, r.apagados, !!ct.Midia.obterMesmoPendente(compartilhado), fs.existsSync(caminho)], [1, 1, false, false]);
+    } finally {
+      db.prepare("DELETE FROM est_pedidos WHERE id LIKE 'exp-%'").run();
+      db.prepare('UPDATE lessons SET media_id = ? WHERE id = ?').run(aula.media_id, aula.id);
+      db.prepare('UPDATE media_files SET criado_em = ? WHERE id = ?').run(new Date().toISOString(), citado);
+    }
+    // ---- 15: a cota de envio (40 em 24 h) conta só arquivo de pedido — 40 materiais de curso não travam o envio do pedido
+    const mat = db.prepare("INSERT INTO media_files (id, owner_user_id, nome, mime, tamanho, file_path, storage, confirmado, criado_em) VALUES (?, ?, 'm.pdf', 'application/pdf', 10, ?, 'local', 1, ?)");
+    for (let i = 0; i < 45; i++) mat.run('cota-mat-' + i, paula, 'cota-mat-' + i + '.pdf', new Date().toISOString());
+    const comMateriais = await req('POST', `${base}/pedidos/arquivo`, { jar: 'paula', corpo: { nome: 'a.webm', mime: 'audio/webm', conteudo_base64: Buffer.from('audio-cota').toString('base64') } });
+    assert.equal(comMateriais.st, 200, 'material de curso não entra na cota: ' + comMateriais.texto);
+    db.prepare("DELETE FROM media_files WHERE id LIKE 'cota-mat-%'").run();
+    const jaTem = db.prepare("SELECT COUNT(*) n FROM media_files WHERE owner_user_id = ? AND file_path LIKE 'pedidos/%' AND criado_em > ?").get(paula, horasAtras(24)).n;
+    for (let i = jaTem; i < 40; i++) mat.run('cota-ped-' + i, paula, 'pedidos/cota-ped-' + i + '.pdf', new Date().toISOString());
+    const cheio = await req('POST', `${base}/pedidos/arquivo`, { jar: 'paula', corpo: { nome: 'a.webm', mime: 'audio/webm', conteudo_base64: Buffer.from('audio-cota-2').toString('base64') } });
+    assert.equal(cheio.st, 429, 'quarenta arquivos de pedido em 24 h: o 41º espera — ' + cheio.texto);
+    db.prepare("DELETE FROM media_files WHERE id LIKE 'cota-ped-%'").run();
+  });
+
+  await t('auditoria 13: o crédito da recarga NÃO inicia o pedido de quem saiu da lista de liberados — o saldo fica, o aceite sai', async () => {
+    const rui = uid(RUI.email);
+    const antes = repo.Config.obter('estudo_pedidos', null);
+    try {
+      ped.salvarConfigPedidos({ ativos: false, liberados: [RUI.email] }, { admin: true });
+      const c = await criar('rui', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
+      const id = c.json.pedido.id, teto = c.json.orcamento.orcamento_milesimos;
+      db.prepare('UPDATE est_pedidos SET aceite_milesimos = ? WHERE id = ?').run(teto, id); // a recarga foi criada: o aceite está gravado
+      // o Rui sai da lista ANTES de o Pix compensar
+      ped.salvarConfigPedidos({ remover: RUI.email }, { admin: true });
+      assert.equal(ped.liberadoPara(repo.Usuarios.porId(rui)), false);
+      const n = chamadas.length, reservas = movs(rui, 'reserva'), saldo = carteira.saldo(rui);
+      assert.equal(ped.aoCreditar(id, rui), false, 'o pedido não começa');
+      const p = db.prepare('SELECT estado, aceite_milesimos FROM est_pedidos WHERE id = ?').get(id);
+      assert.deepEqual([p.estado, p.aceite_milesimos, chamadas.length, movs(rui, 'reserva'), carteira.saldo(rui)], ['orcado', 0, n, reservas, saldo], 'nada reservado, nada chamado; o saldo fica');
+      // de volta à lista (com o aceite regravado), o crédito inicia — a porta é a mesma das rotas
+      ped.salvarConfigPedidos({ liberar: RUI.email }, { admin: true });
+      db.prepare('UPDATE est_pedidos SET aceite_milesimos = ? WHERE id = ?').run(teto, id);
+      assert.equal(ped.aoCreditar(id, rui), true);
+      await ped.aguardar(id);
+      assert.equal(db.prepare('SELECT estado FROM est_pedidos WHERE id = ?').get(id).estado, 'pronto');
+    } finally {
+      if (antes == null) db.prepare("DELETE FROM platform_settings WHERE chave = 'estudo_pedidos'").run(); else repo.Config.salvar('estudo_pedidos', antes);
+    }
   });
 
   await t('pedidos: a tela tem a aba "Escrita e oral", diz "estimativa" junto da nota e trata o orçamento, o pagamento e a espera', async () => {

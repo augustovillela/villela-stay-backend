@@ -68,7 +68,10 @@ function validarQuestao(q, i = 0) {
     dificuldade_estimada: Math.min(5, Math.max(0, Math.round(Number(q.dificuldade_estimada) || 0))),
     tempo_estimado_seg: Math.max(0, Math.round(Number(q.tempo_estimado_seg) || 0)),
     uso: USOS.includes(q.uso) ? q.uso : 'aprendizagem',
-    vigencia: s(q.vigencia, 300), // ex.: "desatualizada desde a Lei X" — separa simulação histórica de estudo atual
+    // ex.: "desatualizada desde a Lei X" — separa simulação histórica de estudo atual. Nota maior que o limite NÃO é
+    // cortada no meio da palavra (ficava "…não tem mais verbete que a susten"): corta na fronteira de frase ou de
+    // palavra e leva reticências — o mesmo espírito dos outros campos (cortar, não recusar), sem deixar toco.
+    vigencia: cortarNaFronteira(q.vigencia, MAX_VIGENCIA),
     pistas: (Array.isArray(q.pistas) ? q.pistas : []).map(p => s(p, 500)).filter(Boolean).slice(0, 5),
     alternativas: [], rubrica: [],
   };
@@ -99,32 +102,65 @@ function validarQuestao(q, i = 0) {
   return r;
 }
 
+// Corta um texto longo em até `max` caracteres sem partir palavra: prefere o fim da última frase que caiba
+// (desde que sobre ao menos 60 % do limite); senão, o último espaço. Sempre termina em reticências quando cortou.
+const MAX_VIGENCIA = 300;
+function cortarNaFronteira(v, max) {
+  const t = String(v == null ? '' : v).trim().replace(/\s+/g, ' ');
+  if (t.length <= max) return t;
+  const janela = t.slice(0, max - 2); // lugar para " …"
+  const frase = Math.max(janela.lastIndexOf('. '), janela.lastIndexOf('; '), janela.lastIndexOf('! '), janela.lastIndexOf('? '));
+  if (frase >= max * 0.6) return janela.slice(0, frase + 1) + ' …';
+  const palavra = janela.lastIndexOf(' ');
+  return (palavra > 0 ? janela.slice(0, palavra) : janela).replace(/[\s,;:–—-]+$/, '') + '…';
+}
+
 // Mesma questão em outro caderno (alternativas em outra ordem) = mesmo hash.
 function hashQuestao(q) {
   const alts = (q.alternativas || []).map(a => normal(a.texto)).sort().join('\u0001');
   return crypto.createHash('sha1').update(normal(q.enunciado) + '\u0002' + normal(q.apoio || '') + '\u0002' + alts).digest('hex').slice(0, 20);
 }
 
-// Embaralha por semente (aluno + tentativa): a correção refaz a mesma ordem.
+// Embaralha por semente (aluno + tentativa): mesma semente, mesma ordem — é o que deixa a prova reproduzível.
+// SEM VIÉS (auditoria de 11/10/2026): antes a posição saía de UM byte (`h[k] % (i + 1)`, 0 a 255) — em lista
+// com mais de 256 itens, o que estava além da posição 256 só trocava com as 256 primeiras, e o simulado quase não
+// trazia prova oficial nem o Bloco III. Agora é Fisher–Yates com inteiro de 32 bits tirado de um fluxo SHA-256
+// (semente + contador) e AMOSTRAGEM POR REJEIÇÃO: o número que cairia na sobra de 2^32 % n é descartado, para
+// nenhuma posição ser mais provável que outra.
+function sorteador(semente) {
+  const base = crypto.createHash('sha256').update(String(semente)).digest();
+  let bloco = Buffer.alloc(0), k = 0, n = 0;
+  const u32 = () => {
+    if (k + 4 > bloco.length) { const c = Buffer.alloc(4); c.writeUInt32BE(n++); bloco = crypto.createHash('sha256').update(base).update(c).digest(); k = 0; }
+    const v = bloco.readUInt32BE(k); k += 4; return v;
+  };
+  // inteiro uniforme em [0, max)
+  return (max) => {
+    const limite = 0x100000000 - (0x100000000 % max);
+    for (;;) { const v = u32(); if (v < limite) return v % max; }
+  };
+}
 function embaralhar(lista, semente) {
-  const r = [...lista];
-  let h = crypto.createHash('sha1').update(String(semente)).digest();
-  for (let i = r.length - 1, k = 0; i > 0; i--, k++) {
-    if (k >= h.length - 1) { h = crypto.createHash('sha1').update(h).digest(); k = 0; }
-    const jx = h[k] % (i + 1);
+  const r = [...lista], ate = sorteador(semente);
+  for (let i = r.length - 1; i > 0; i--) {
+    const jx = ate(i + 1);
     [r[i], r[jx]] = [r[jx], r[i]];
   }
   return r;
 }
 
-// O que vai ao navegador: nunca `correta`, `explicacao`, comentário ou rubrica interna.
+// O que vai ao navegador ANTES da resposta: nunca `correta`, `explicacao`, comentário ou rubrica interna — nem a nota
+// de `vigencia`: em parte das questões ela cita a norma que só a alternativa correta traz (auditoria de 11/10/2026).
+// A vigência vai depois: na resposta do Praticar/quiz e na correção comentada da prova.
+// `ordem_fixa` (alternativa "nenhuma das anteriores", comentário que cita letra do caderno): a ordem é a do caderno,
+// em TODO caminho — prática, quiz, prova e diagnóstico passam por aqui, e a correção mostra a ordem congelada.
 function paraAluno(q, semente) {
   const alts = q.ordem_fixa || q.tipo === 'certo_errado' ? q.alternativas : embaralhar(q.alternativas, semente + ':' + q.id);
   return {
     id: q.id, tipo: q.tipo, enunciado: q.enunciado, apoio: q.apoio, grupo: q.grupo,
     alternativas: alts.map(a => ({ id: a.id, texto: a.texto })),
     rubrica_publica: (q.rubrica || []).map(c => ({ criterio: c.criterio, peso: c.peso })),
-    origem: q.origem, gerada_por_ia: q.gerada_por_ia, gabarito_situacao: q.gabarito_situacao, vigencia: q.vigencia,
+    origem: q.origem, gerada_por_ia: q.gerada_por_ia, gabarito_situacao: q.gabarito_situacao, ordem_fixa: !!q.ordem_fixa,
     procedencia: q.origem === 'autoral' ? { inspirada_em: q.procedencia.inspirada_em } : q.procedencia,
     pistas_disponiveis: (q.pistas || []).length,
   };
@@ -183,4 +219,4 @@ function facetas(lista) {
   return { bancas: lista_(conta.banca), orgaos: lista_(conta.orgao), cargos: lista_(conta.cargo), anos: lista_(conta.ano, true), materias: lista_(conta.materia) };
 }
 
-module.exports = { bancaCanonica, eixos, filtroDeEixos, temFiltroDeEixos, casaEixos, facetas, validarQuestao, validarProcedencia, hashQuestao, embaralhar, paraAluno, gabaritoDe, TIPOS, FECHADOS, ORIGENS, GABARITOS, SITUACOES, USOS };
+module.exports = { bancaCanonica, eixos, filtroDeEixos, temFiltroDeEixos, casaEixos, facetas, validarQuestao, validarProcedencia, hashQuestao, embaralhar, cortarNaFronteira, MAX_VIGENCIA, paraAluno, gabaritoDe, TIPOS, FECHADOS, ORIGENS, GABARITOS, SITUACOES, USOS };

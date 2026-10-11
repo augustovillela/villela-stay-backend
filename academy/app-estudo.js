@@ -11,8 +11,21 @@
   'use strict';
 
   window.AcademyEstude = function (D) {
-    var api = D.api, esc = D.esc, el = D.el, setView = D.setView;
+    var apiCru = D.api, esc = D.esc, el = D.el, setView = D.setView;
     var E = { pid: '', titulo: '', slug: '', escopos: [], painel: null, aba: 'hoje', relogio: null };
+    // "AINDA ESTOU NESTA TELA?" — um mecanismo só para o Estude inteiro (auditoria de 11/10/2026). Toda tela nova
+    // (trocar de aba, abrir outra aula, outro filtro, outro percurso) avança `VEZ`; toda chamada à API guarda a VEZ
+    // em que foi feita, e a resposta que chega DEPOIS de o aluno ter saído daquela tela não é entregue a ninguém —
+    // nem o resultado, nem o erro. Antes, o painel (a rota mais pesada) chegava atrasado e pintava a aba Hoje por
+    // cima da aba Aulas; a aula A pintava sobre a B; o quiz da A entrava na B. Como TODA chamada passa por aqui,
+    // tela nova não precisa lembrar de conferir. (Gravar continua gravando: só a resposta é que não volta à tela.)
+    var VEZ = 0;
+    function novaTela() { VEZ++; return VEZ; }
+    function api(m, p, b) {
+      var v = VEZ;
+      return apiCru(m, p, b).then(function (d) { return v === VEZ ? d : new Promise(function () {}); },
+        function (e) { if (v === VEZ) throw e; return new Promise(function () {}); });
+    }
 
     var ESTADO = {
       nao_avaliada: ['Ainda não avaliada', 'cinza'], em_pratica: ['Em prática', 'ambar'],
@@ -100,6 +113,17 @@
       if (E.aoSair) { var sair = E.aoSair; E.aoSair = null; try { sair(); } catch (x) { /* a tela já saiu */ } }
       document.body.classList.remove('es-em-prova');
     }
+    // SAIR do Estude por qualquer porta (biblioteca, menu do painel, barra do curso): desliga relógio, microfone e a
+    // marca "em prova" — o diagnóstico não tem relógio para limpá-la, e a esfera do Tutor sumia nos outros cursos
+    function sairDoEstude() { novaTela(); guardarLugar(); pararRelogio(); }
+    window.AcademyEstudeSair = sairDoEstude;
+    // janela nova barrada pelo navegador: avisar — antes o clique não fazia nada
+    function abrirJanela() {
+      var w = null;
+      try { w = window.open('', '_blank'); } catch (x) { w = null; }
+      if (!w) window.alert('O navegador bloqueou a nova janela. Permita pop-ups para este site (o ícone na barra de endereço) e clique de novo.');
+      return w;
+    }
 
     // ---------------- cartão no cabeçalho do estúdio ----------------
     function cartao(alvo, pid, r, abrirFn) {
@@ -117,7 +141,21 @@
     }
 
     // ---------------- casca ----------------
-    function rota(partes, substituir) { if (window.AcademyRota) window.AcademyRota.gravar(partes, substituir); }
+    // cada passo do histórico leva o que a tela LEMBRA (as disciplinas abertas e a rolagem de cada lista; de onde o
+    // aluno veio para a aula, para o caderno, para a jornada): é o que sobrevive ao F5 e devolve ao mesmo lugar
+    function lembrancas() { return { es: { lugares: LUGAR, veioDe: E.veioDe || '', porta: E.antesDaPorta || null, caderno: E.antesDoCaderno || null } }; }
+    function rota(partes, substituir) { if (window.AcademyRota) window.AcademyRota.gravar(partes, substituir, lembrancas()); }
+    // fechar a aba ou recarregar: o passo atual guarda a rolagem e as disciplinas abertas deste instante
+    function guardarPassoAgora() {
+      if (!el('es-corpo') || !window.AcademyRota || !window.AcademyRota.guardar || document.querySelector('.es-an')) return;
+      guardarLugar();
+      var d = lembrancas(); d.y = rolagem().scrollTop;
+      window.AcademyRota.guardar(d);
+    }
+    window.addEventListener('pagehide', guardarPassoAgora);
+    // …e um instante depois de cada rolagem (há navegador que não deixa gravar o histórico com a página indo embora)
+    var rolouTimer = null;
+    window.addEventListener('scroll', function () { clearTimeout(rolouTimer); rolouTimer = setTimeout(guardarPassoAgora, 700); }, { passive: true });
     // `inicio` = onde abrir (veio do endereço): { aba, arg, extra } — e `substituir` quando a abertura
     // é automática e não deve virar um passo do botão Voltar.
     // `barra` = { html, ligar }: o que o curso oferece além do percurso (audiobook, material, desafio…), montado por
@@ -125,10 +163,16 @@
     // `inicio.y` = a rolagem em que o aluno estava quando saiu para uma tela do curso — "voltar para onde estava".
     function abrir(pid, titulo, slug, voltar, inicio, rotuloVoltar, barra) {
       pararRelogio();
+      novaTela();
       inicio = inicio || {};
-      E.pid = pid; E.titulo = titulo; E.slug = slug; E.voltar = voltar; E.aba = 'hoje';
+      E.pid = pid; E.titulo = titulo; E.slug = slug; E.voltar = voltar; E.aba = 'hoje'; E.dentro = '';
       E.rotuloVoltar = rotuloVoltar; E.barra = barra; // quem troca de percurso leva junto o "voltar" e a barra do curso
-      LUGAR = LUGARES[chavePercurso(slug)] || (LUGARES[chavePercurso(slug)] = {});
+      // o que o passo do histórico lembrava (F5 ou Voltar do navegador): depois de um F5 a memória da página está
+      // vazia, e é daqui que voltam as disciplinas abertas; e o "de onde vim" de CADA passo é o daquele passo
+      var lembrado = inicio.es || null, ch = chavePercurso(slug);
+      if (lembrado && lembrado.lugares && !LUGARES[ch]) LUGARES[ch] = lembrado.lugares;
+      if (lembrado) { E.veioDe = lembrado.veioDe || E.veioDe; E.antesDaPorta = lembrado.porta || E.antesDaPorta; E.antesDoCaderno = lembrado.caderno || E.antesDoCaderno; }
+      LUGAR = LUGARES[ch] || (LUGARES[ch] = {});
       setView('<div class="al es"><a href="#" class="al-volta" id="es-volta">← ' + esc(rotuloVoltar || 'Voltar ao curso') + '</a>' +
         '<div class="es-cab"><p class="al-rotulo">Estude · ' + esc(titulo) + '</p><h2 id="es-titulo">Carregando…</h2><p class="al-sub" id="es-sub"></p><div class="es-troca" id="es-troca"></div>' +
         '<div class="es-curso-barra">' + (barra && barra.html ? (typeof barra.html === 'function' ? barra.html() : barra.html) : '') + '<span class="es-barra-es" id="es-barra-es"></span></div></div>' +
@@ -145,7 +189,8 @@
           cada(el('es-abas'), 'button', function (b) { b.classList.toggle('on', b.getAttribute('data-a') === 'aulas'); });
           lerDisciplina(el('es-corpo'), inicio.extra);
         } else {
-          ir(inicio.aba || 'hoje', inicio.arg || undefined, !!inicio.substituir);
+          // `pelaRota` (F5, Voltar): a tela está sendo REABERTA — o "de onde vim" é o que o passo lembrava, não a aba Hoje
+          ir(inicio.aba || 'hoje', inicio.arg || undefined, !!inicio.substituir, { reabrindo: !!inicio.pelaRota, primeira: !inicio.pelaRota && !inicio.y });
           if (inicio.y > 0) reporRolagem(inicio.aba || 'hoje', inicio.y); // depois do `ir`, que leva ao topo
         }
       });
@@ -167,15 +212,21 @@
         cada(alvo, '[data-troca]', function (b) { b.onclick = function () { var s2 = b.getAttribute('data-troca'); if (s2 !== E.slug) abrirPercurso(s2); }; });
       }).catch(function () { /* sem a lista, o percurso segue igual */ });
     }
+    // O painel é DADO do percurso: a resposta atualiza `E.painel` mesmo que o aluno já tenha trocado de aba (a lista
+    // de aulas precisa do "✓ estudada" novo). O que NÃO acontece fora de hora é pintar: o `depois` só roda se a
+    // tela ainda é a que pediu.
     function carregar(depois) {
-      api('GET', base() + '/painel').then(function (p) {
-        E.painel = p;
+      var v = VEZ, b = base();
+      apiCru('GET', b + '/painel').then(function (p) {
+        if (b !== base()) return; // o percurso mudou: este painel é de outro
+        E.painel = p; E.painelEm = Date.now();
+        if (v !== VEZ) return;
         if (el('es-titulo')) {
           el('es-titulo').innerHTML = esc(p.escopo.titulo) + (p.escopo.particular ? ' <span class="marca-rasc">percurso particular — só você vê</span>' : p.escopo.status === 'rascunho' ? ' <span class="marca-rasc">rascunho — só você vê</span>' : '');
           el('es-sub').textContent = [p.escopo.nivel, p.escopo.data_alvo ? 'prova em ' + dataBR(p.escopo.data_alvo) : 'sem prova marcada', p.escopo.particular && !p.escopo.versao ? 'questões importadas por você' : 'programa versão ' + p.escopo.versao + (p.escopo.particular ? ' (do edital que você enviou)' : '')].filter(Boolean).join(' · ');
         }
         if (depois) depois();
-      }).catch(function (e) { falha(el('es-corpo'), e); });
+      }).catch(function (e) { if (v === VEZ && b === base()) falha(el('es-corpo'), e); });
     }
     var ABAS = [['hoje', 'Hoje'], ['aulas', 'Aulas'], ['mapas', 'Mapas'], ['cobrado', 'Mais cobrado'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['escrita', 'Escrita e oral'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
     function abas() {
@@ -186,44 +237,68 @@
     // aula para a lista devolve ao topo, com a primeira disciplina aberta — "volta ao princípio" (Augusto, 10/10/2026).
     var LUGAR = {}, LUGARES = {}, ONDE = {}, LISTAS = { aulas: 1, mapas: 1, programa: 1, cobrado: 1, escrita: 1 }, PORTAS = { jornada: 1, ferramentas: 1 };
     function rolagem() { return document.scrollingElement || document.documentElement; }
+    // `E.dentro`: o corpo NÃO é a lista — é o leitor ("Ler a disciplina") ou "Minhas marcações", abertos por cima
+    // dela na mesma aba. Guardar o lugar ali gravava o DOM do leitor (nenhuma disciplina aberta, rolagem 0), e
+    // fechar o leitor devolvia a lista toda fechada, no topo.
     function guardarLugar() {
       var c = el('es-corpo');
-      if (!c || !LISTAS[E.aba] || E.abaArg) return;
+      if (!c || !LISTAS[E.aba] || E.abaArg || E.dentro) return;
       var abertos = [];
       cada(c, 'details', function (d, i) { if (d.open) abertos.push(i); });
       LUGAR[E.aba] = { abertos: abertos, y: rolagem().scrollTop };
     }
-    function reporLugar(aba, alvo) {
-      var L = LUGAR[aba], n = 0;
-      if (!L) return;
+    function reporLugar(aba, alvo, primeira) {
+      var L = LUGAR[aba], n = 0, v = VEZ;
+      // lista aberta pela primeira vez: começa do começo (antes herdava a rolagem da tela anterior — a aula em 4.000)
+      if (!L) { irAoConteudo(primeira); return; }
       (function tentar() {
-        if (E.aba !== aba) return; // o aluno já foi para outro lugar
+        if (E.aba !== aba || v !== VEZ) return; // o aluno já foi para outro lugar
         var ds = alvo.querySelectorAll('details');
-        if (!ds.length && alvo.querySelector('.al-sub') && n++ < 40) return setTimeout(tentar, 100); // ainda carregando
-        Array.prototype.forEach.call(ds, function (d, i) { var abrir = L.abertos.indexOf(i) >= 0; if (d.open !== abrir) d.open = abrir; });
-        rolagem().scrollTop = L.y;
-        setTimeout(function () { if (E.aba === aba) rolagem().scrollTop = L.y; }, 300); // depois de a disciplina reabrir
+        // "ainda carregando" = o corpo é só o aviso de carregamento (uma lista pronta também tem .al-sub: não é sinal)
+        if (alvo.children.length === 1 && /Carregando/.test(alvo.textContent) && n++ < 60) return setTimeout(tentar, 100);
+        Array.prototype.forEach.call(ds, function (d, i) { var abrir = (L.abertos || []).indexOf(i) >= 0; if (d.open !== abrir) d.open = abrir; });
+        reporRolagem(aba, L.y || 0); // espera a página ter altura (a disciplina reaberta carrega o conteúdo dela)
       })();
+    }
+    // CELULAR: o cabeçalho do curso (título, barra do curso e abas) ocupa mais de uma tela. Tocar numa aba trocava
+    // o conteúdo lá embaixo, fora da vista — parecia botão que não responde. Em tela estreita, trocar de aba leva a
+    // página até as abas, com o conteúdo logo abaixo; em tela larga (e na primeira abertura), ao topo, como antes.
+    var LARGURA_CELULAR = 760;
+    function irAoConteudo(primeira) {
+      var abas = el('es-abas'), r = rolagem();
+      if (primeira || !abas || window.innerWidth > LARGURA_CELULAR) { r.scrollTop = 0; return; }
+      var fixo = document.querySelector('header.top'), h = fixo && /sticky|fixed/.test(window.getComputedStyle(fixo).position) ? fixo.offsetHeight : 0;
+      r.scrollTop = Math.max(0, abas.getBoundingClientRect().top + r.scrollTop - h - 6);
     }
     // a rolagem de volta numa tela que ainda está carregando: espera a página ter altura para chegar lá
     function reporRolagem(aba, y) {
-      var n = 0;
+      var n = 0, v = VEZ;
       (function tentar() {
-        if (E.aba !== aba) return;
+        if (E.aba !== aba || v !== VEZ) return;
         var r = rolagem();
         if (r.scrollHeight - window.innerHeight >= y - 4 || n++ > 40) { r.scrollTop = y; return; }
         setTimeout(tentar, 120);
       })();
     }
-    function ir(aba, arg, substituir) {
+    // `como.reabrindo`: a tela está sendo reaberta pelo endereço (F5, Voltar do navegador) — o "de onde vim" já veio
+    // do passo do histórico e NÃO é regravado (era o que fazia o "voltar para onde eu estava" cair sempre em Hoje).
+    // `como.primeira`: a primeira tela ao entrar no curso — começa do topo, com o cabeçalho à vista.
+    function ir(aba, arg, substituir, como) {
+      como = como || {};
       pararRelogio();
       guardarLugar();
+      novaTela();
+      var yAntes = rolagem().scrollTop, onde = ONDE[chavePercurso(E.slug)] || {};
       // link antigo, favorito ou retorno de pagamento para a aba que este aluno não tem: cai na aba Hoje
       if (aba === 'escrita' && !temPedidos()) { aba = 'hoje'; arg = undefined; }
-      if (aba === 'unidade' && E.aba && E.aba !== 'unidade') E.veioDe = E.aba;
-      if (aba === 'caderno' && E.aba !== 'caderno') E.antesDoCaderno = ONDE[chavePercurso(E.slug)] || { aba: E.aba }; // o caderno devolve a quem o abriu
-      // Minha jornada e Ferramentas são PORTAS (não são abas): guardam de onde o aluno veio — aba, aula e rolagem — para devolvê-lo lá
-      if (PORTAS[aba] && !PORTAS[E.aba]) { var veioDe = ONDE[chavePercurso(E.slug)] || {}; E.antesDaPorta = { aba: E.aba, arg: veioDe.aba === E.aba ? veioDe.arg : undefined, y: rolagem().scrollTop }; }
+      if (!como.reabrindo) {
+        if (aba === 'unidade' && E.aba && E.aba !== 'unidade') E.veioDe = E.aba;
+        // o caderno devolve a quem o abriu — aba, aula e ROLAGEM
+        if (aba === 'caderno' && E.aba !== 'caderno') E.antesDoCaderno = { aba: onde.aba || E.aba, arg: onde.arg, y: yAntes };
+        // Minha jornada e Ferramentas são PORTAS (não são abas): guardam de onde o aluno veio — aba, aula e rolagem — para devolvê-lo lá
+        if (PORTAS[aba] && !PORTAS[E.aba]) E.antesDaPorta = { aba: E.aba, arg: onde.aba === E.aba ? onde.arg : undefined, y: yAntes };
+      }
+      E.dentro = '';
       E.aba = aba; E.abaArg = typeof arg === 'string' && arg ? arg : (arg && typeof arg === 'object' ? 'obj' : '');
       ONDE[chavePercurso(E.slug)] = { aba: aba, arg: typeof arg === 'string' && arg ? arg : undefined }; // para voltar a este percurso onde estava
       rota(['curso', E.pid, 'estude', E.slug, aba].concat(typeof arg === 'string' && arg ? [arg] : []), substituir);
@@ -232,7 +307,13 @@
       alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
       if (!document.querySelector('.es-kd')) document.documentElement.style.overflow = ''; // o leitor de tela cheia saiu de cena
       ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, praticar: praticar, escrita: escrita, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade, caderno: caderno, jornada: jornada, ferramentas: ferramentas }[aba] || hoje)(alvo, arg);
-      if (LISTAS[aba] && !E.abaArg) reporLugar(aba, alvo); else rolagem().scrollTop = 0;
+      if (LISTAS[aba] && !E.abaArg) reporLugar(aba, alvo, como.primeira); else irAoConteudo(como.primeira);
+    }
+    // volta a um lugar guardado ({ aba, arg, y }): a tela e a rolagem em que o aluno estava
+    function voltarPara(lugar) {
+      var a = lugar || { aba: 'hoje' };
+      ir(a.aba || 'hoje', a.arg);
+      if (a.y > 0 && !(LISTAS[a.aba] && !a.arg)) reporRolagem(a.aba, a.y); // as listas repõem o próprio lugar
     }
     // "Voltar" de dentro da aula: para a tela de onde o aluno veio (lista de aulas, programa, mapas…), no ponto em que estava
     function voltarDaAula() {
@@ -258,13 +339,34 @@
       return '<div class="es-eixo"><small>' + titulo + '</small><b>' + num + '<i> de ' + den + '</i></b>' +
         '<div class="es-barra ' + cor + '"><i style="width:' + pct + '%"></i></div><span class="al-fino">' + legenda + '</span></div>';
     }
+    var PAINEL_FRESCO_MS = 4000;
     function hoje(alvo) {
-      carregar(function () {
+      // a abertura do curso acabou de pedir o painel: a aba Hoje usa o que chegou, em vez de pedir de novo
+      if (E.painel && E.painelEm && Date.now() - E.painelEm < PAINEL_FRESCO_MS) return pintarHoje(alvo);
+      carregar(function () { pintarHoje(alvo); });
+    }
+    // PROVA EM ANDAMENTO: o cartão "continuar" (aba Prova e aba Hoje), com o tempo que resta pelo relógio do servidor
+    function tempoQueResta(pa) {
+      var s = Math.max(0, Math.floor((Date.parse(pa.prazo_em) - Date.parse(pa.agora) - (Date.now() - (E.painelEm || Date.now()))) / 1000));
+      return s >= 3600 ? Math.floor(s / 3600) + ' h ' + Math.floor(s % 3600 / 60) + ' min' : s >= 60 ? Math.floor(s / 60) + ' min' : 'menos de 1 min';
+    }
+    function cartaoProvaAberta(p) {
+      var pa = p && p.prova_aberta;
+      if (!pa) return '';
+      return '<div class="jr-caixa es-pv-aberta"><p class="al-rotulo">Prova em andamento</p><h3>Você tem ' + (pa.modo === 'simulado' ? 'um simulado' : 'um treino') + ' em andamento — continuar</h3>' +
+        '<p class="al-sub"><b>' + pa.respondidas + ' de ' + pa.total + '</b> questões respondidas · tempo restante: <b>' + tempoQueResta(pa) + '</b>. O relógio é o do servidor e continua correndo; o que você já respondeu está salvo.</p>' +
+        '<div class="es-linha"><button class="al-bt" data-pv-continuar="' + esc(pa.id) + '">Continuar a prova</button></div></div>';
+    }
+    function ligarProvaAberta(alvo) {
+      cada(alvo, '[data-pv-continuar]', function (b) { b.onclick = function () { b.disabled = true; ir('prova', { continuar: b.getAttribute('data-pv-continuar') }); }; });
+    }
+    function pintarHoje(alvo) {
+      (function () {
         var p = E.painel, c = p.cobertura, px = p.proxima, ac = ACAO[px.tipo], d = p.desempenho;
         if (px.tipo === 'sem_questoes' && (!p.escopo.particular || !temPedidos())) ac = null; // no percurso do curso, quem traz o conteúdo é o curso; sem os pedidos, não há por onde importar
         var jaFez = !!(p.jornada && p.jornada.avaliacao && p.jornada.avaliacao.diagnostico.feito);
         // enquanto o diagnóstico não foi feito, a porta dele vem ANTES da próxima tarefa; depois, vira a ordem sugerida, logo abaixo
-        var h = retaFinal(p) + (jaFez ? '' : cartaoDiagnostico(p, true)) + '<div class="es-proxima"><p class="al-rotulo">Sua próxima tarefa</p>' +
+        var h = cartaoProvaAberta(p) + retaFinal(p) + (jaFez ? '' : cartaoDiagnostico(p, true)) + '<div class="es-proxima"><p class="al-rotulo">Sua próxima tarefa</p>' +
           '<h3>' + (px.competencia ? esc(nomeComp(px.competencia)) : (px.tipo === 'concluido' ? 'Tudo demonstrado até aqui' : px.tipo === 'sem_questoes' ? 'Faltam questões para praticar' : px.tipo === 'sem_competencias' ? 'Percurso ainda vazio' : 'Recordar')) + '</h3>' +
           '<p class="es-motivo"><b>Por quê:</b> ' + esc(px.motivo) + '</p>' +
           (ac ? '<button class="al-bt" id="es-agir">' + ac[0] + '</button>' : '') +
@@ -292,7 +394,8 @@
         if (el('es-hj-edital')) el('es-hj-edital').onclick = function () { ir('escrita', 'edital'); };
         if (el('es-agir')) el('es-agir').onclick = function () { ac[1](px); };
         el('es-outra').onclick = function () { ir('programa'); };
-      });
+        ligarProvaAberta(alvo);
+      })();
     }
 
     // RETA FINAL (ADR-0007): o que muda perto da prova, dito na tela — e os checklists de véspera e do dia
@@ -350,7 +453,7 @@
             '<div class="es-linha"><button class="al-bt peq" data-ler="' + esc(g.cod) + '">📄 Ler a disciplina (texto corrido / PDF)</button></div>' +
             g.aulas.map(function (a) {
               return '<div class="es-aula-linha"><span>' + (a.u.video ? '<span class="es-tem-video" title="Esta aula tem videoaula">🎬</span> ' : '') + (a.item ? '<b>' + esc(a.item) + '</b> ' : '') + esc(a.u.titulo) + (a.u.tempo_min ? '<span class="al-fino"> · ' + horas(a.u.tempo_min) + '</span>' : '') +
-                (a.u.estudada ? ' <span class="es-selo verde" title="Você já respondeu questão ou card desta aula">✓ estudada</span>' : '') +
+                (a.u.estudada ? ' <span class="es-selo verde" title="Você abriu esta aula e leu até o fim, assistiu à videoaula ou respondeu questão dela">✓ estudada</span>' : '') +
                 (a.u.status !== 'publicado' ? ' <span class="marca-rasc">' + esc(a.u.status) + '</span>' : '') + '</span>' +
                 '<span class="es-aula-bts"><span class="al-fino es-aula-tem">' + [a.u.video ? (a.u.video_assistido ? 'vídeo ✓ assistido' : 'vídeo') : '', (a.u.animada || []).length ? 'aula interativa' : '', a.u.mapa ? 'mapa mental' : ''].filter(Boolean).join(' · ') + '</span>' +
                 '<button class="al-bt peq" data-un="' + esc(a.u.codigo) + '">Abrir a aula</button></span></div>';
@@ -360,7 +463,7 @@
       cada(alvo, '[data-ler]', function (b) { b.onclick = function () { lerDisciplina(alvo, b.getAttribute('data-ler')); }; });
       cada(alvo, '[data-animada]', function (b) { b.onclick = function () { aulaAnimada(b.getAttribute('data-animada')); }; });
       if (el('es-au-mt')) el('es-au-mt').onclick = function () { minhasMarcacoes(alvo); };
-      cada(alvo, '[data-mapa]', function (b) { b.onclick = function () { abrirMapa(b.getAttribute('data-mapa'), window.open('', '_blank')); }; });
+      cada(alvo, '[data-mapa]', function (b) { b.onclick = function () { abrirMapa(b.getAttribute('data-mapa'), abrirJanela()); }; });
     }
     // ---- MARCA-TEXTO na leitura: o que o aluno grifa fica salvo na conta dele ----
     // A marcação é ancorada no texto CRU do bloco (aula, bloco, início, fim). Por
@@ -468,6 +571,12 @@
     };
     var TEMAS_KD = ['claro', 'sepia', 'escuro'], TAM_KD = [15, 16, 17, 18, 19, 20, 22, 24, 26], VAO_KD = 56;
     function lerDisciplina(alvo, cod, irPara, aoFechar) {
+      guardarLugar(); // o lugar da LISTA (disciplinas abertas, rolagem), antes de o leitor tomar o corpo
+      // de dentro da aula ("Ler como livro"): fechar o leitor devolve a aula na mesma rolagem
+      var yDaAula = E.aba === 'unidade' ? rolagem().scrollTop : 0, abaDaAula = E.aba === 'unidade';
+      novaTela();
+      E.dentro = 'leitor';
+      if (abaDaAula && aoFechar) { var fecharAula = aoFechar; aoFechar = function () { fecharAula(); if (yDaAula > 0) reporRolagem('unidade', yDaAula); }; }
       rota(['curso', E.pid, 'estude', E.slug, 'aulas', 'ler', cod]);
       alvo.innerHTML = '<p class="al-sub">Carregando a leitura…</p>';
       Promise.all([api('GET', base() + '/leitura?disciplina=' + encodeURIComponent(cod)), api('GET', base() + '/marcacoes')]).then(function (rs) {
@@ -715,7 +824,7 @@
         el('es-kd-q-ir').onclick = procurar;
         el('es-kd-q').onkeydown = function (e) { if (e.key === 'Enter') procurar(); else if (e.key === 'Escape') { el('es-kd-buscar').hidden = true; semAnimar(function () { medir(pg / total); }); } };
         el('es-kd-pdf').onclick = function () {
-          var w = window.open('', '_blank');
+          var w = abrirJanela();
           if (!w) return;
           // o PDF sai com a disciplina inteira, corrida, com os grifos
           var tudo = '<h1>' + esc(r.nome) + '</h1><p class="es-ler-sub">' + esc(r.escopo) + ' · ' + r.aulas.length + ' aulas</p>' + r.aulas.map(function (a, i) { return '<section>' + htmlDaAula(i) + '</section>'; }).join('');
@@ -841,6 +950,9 @@
 
     // ---- rever: tudo o que foi grifado, por aula, com a anotação ----
     function minhasMarcacoes(alvo) {
+      guardarLugar(); // o lugar da lista de aulas, antes de as marcações tomarem o corpo
+      novaTela();
+      E.dentro = 'marcacoes';
       alvo.innerHTML = '<p class="al-sub">Carregando as marcações…</p>';
       api('GET', base() + '/marcacoes').then(function (r) {
         var mm = materias(), comp = {}, grupos = [], por = {};
@@ -863,7 +975,7 @@
                 '<button class="es-link" data-del="' + esc(k.id) + '">apagar</button></p></div>';
             }).join('') + '</div>';
           }).join('');
-        el('es-mm-volta').onclick = function () { aulas(alvo); };
+        el('es-mm-volta').onclick = function () { ir('aulas'); }; // pela aba: a lista volta com as mesmas disciplinas abertas e a mesma rolagem
         cada(alvo, '[data-ir]', function (b) { b.onclick = function () { lerDisciplina(alvo, disc(b.getAttribute('data-un')), b.getAttribute('data-ir')); }; });
         cada(alvo, '[data-del]', function (b) { b.onclick = function () { api('DELETE', base() + '/marcacoes/' + b.getAttribute('data-del')).then(function () { minhasMarcacoes(alvo); }).catch(function (e) { falha(alvo, e); }); }; });
       }).catch(function (e) { falha(alvo, e); });
@@ -873,7 +985,19 @@
     // A medida é a única que temos de fato: as questões OFICIAIS deste concurso, classificadas por ponto do
     // edital. É uma prova, não uma série histórica — a tela diz isso, para o ranking não virar promessa.
     function maisCobrado(alvo) {
+      // quantas questões oficiais, de quantas PROVAS, de que bancas e anos: vem do servidor (/banco), não do texto da tela
+      alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
+      var v = VEZ;
+      comBanco(function (b) { if (v === VEZ && E.aba === 'cobrado') pintarMaisCobrado(alvo, b.oficiais_resumo || null); });
+    }
+    function listaE(itens) { return itens.length > 1 ? itens.slice(0, -1).join(', ') + ' e ' + itens[itens.length - 1] : (itens[0] || ''); }
+    function pintarMaisCobrado(alvo, of) {
       var p = E.painel, mm = materias(), uns = {}, compDoItem = {}, discs = [], porDisc = {};
+      var nProvas = of ? of.provas : 0, uma = nProvas === 1;
+      var bancasTxt = of && of.bancas.length ? listaE(of.bancas.map(function (x) { return esc(x.valor) + ' (' + x.n + ')'; })) : '';
+      var anosTxt = of && of.ano_de ? (of.ano_de === of.ano_ate ? 'de ' + of.ano_de : 'de ' + of.ano_de + ' a ' + of.ano_ate) : '';
+      var baseTxt = of && of.questoes ? '<b>' + of.questoes + '</b> ' + (of.questoes === 1 ? 'questão oficial' : 'questões oficiais') + ' de <b>' + nProvas + '</b> ' + (uma ? 'prova' : 'provas') + (anosTxt ? ' (' + anosTxt + ')' : '') +
+        (bancasTxt ? ', de ' + (of.bancas.length === 1 ? 'uma banca: ' : of.bancas.length + ' bancas: ') + bancasTxt : '') : '';
       p.unidades.forEach(function (u) { (u.competencias || []).forEach(function (k) { if (!uns[k]) uns[k] = u; }); });
       var temas = p.itens.filter(function (i) { return i.folha; }).map(function (i) {
         var comp = (i.competencias[0] || {}).codigo || '', m = mm[comp] || { disciplina: 'Programa' }, u = uns[comp];
@@ -891,28 +1015,29 @@
       }
       var maxD = Math.max.apply(null, discs.map(function (d) { return d.n; })), maxT = cobrados[0].n;
       alvo.innerHTML = '<div class="jr-caixa"><h3>O que mais cai</h3>' +
-        '<p class="al-sub">Os temas que a banca já cobrou, do mais ao menos pedido, e as questões da própria prova para treinar. ' +
-        'Base: <b>' + total + '</b> classificações de questões oficiais deste concurso em <b>' + cobrados.length + '</b> dos ' + temas.length + ' pontos do edital.</p>' +
-        '<p class="al-fino">É o retrato de uma prova, não uma estatística de muitos anos: mostra o estilo e as preferências da banca, mas ponto que não caiu pode cair. Use para ordenar o estudo, não para cortar matéria.</p>' +
+        '<p class="al-sub">Os temas já cobrados em prova oficial, do mais ao menos pedido, e as questões dessas provas para treinar. ' +
+        'Base: ' + (baseTxt ? baseTxt + ' — ' : '') + '<b>' + total + '</b> classificações por ponto do edital, em <b>' + cobrados.length + '</b> dos ' + temas.length + ' pontos.</p>' +
+        '<p class="al-fino">' + (uma ? 'É o retrato de uma prova, não uma estatística de muitos anos: mostra o estilo da banca, mas ponto que não caiu pode cair.' : 'São ' + nProvas + ' provas de bancas e anos diferentes, não só a do seu edital: o ranking mostra o que costuma cair neste cargo, mas ponto que não caiu pode cair — e a banca do seu concurso pode ter preferências próprias (filtre por ela em Praticar).') + ' Use para ordenar o estudo, não para cortar matéria.</p>' +
+        (of && of.lista_provas && of.lista_provas.length > 1 ? '<details class="es-fontes"><summary>As ' + nProvas + ' provas da base</summary><ul>' + of.lista_provas.map(function (x) { return '<li>' + esc(x.nome) + ' — ' + x.n + ' questões</li>'; }).join('') + '</ul></details>' : '') +
         '<div class="es-linha"><button class="al-bt" id="es-mc-todas">Treinar só com questões de prova oficial</button></div></div>' +
-        '<div class="jr-caixa"><h3>Por disciplina</h3><p class="al-sub">Quanto cada disciplina pesou na prova e quantos dos seus pontos foram cobrados.</p>' +
+        '<div class="jr-caixa"><h3>Por disciplina</h3><p class="al-sub">Quanto cada disciplina pesou ' + (uma ? 'na prova' : 'no conjunto das ' + nProvas + ' provas') + ' e quantos dos seus pontos foram cobrados.</p>' +
         discs.slice().sort(function (a, b) { return b.n - a.n; }).map(function (d) {
           return '<div class="es-mc-linha"><span class="es-mc-nome">' + esc(d.nome) + '</span><span class="es-mc-barra"><i style="width:' + (maxD ? Math.round(d.n * 100 / maxD) : 0) + '%"></i></span>' +
             '<b class="es-mc-n">' + d.n + '</b><span class="al-fino es-mc-obs">' + d.cobrados + ' de ' + d.pontos + ' pontos</span></div>';
         }).join('') + '</div>' +
-        '<div class="jr-caixa"><h3>Temas mais cobrados</h3><p class="al-sub">Do edital inteiro, em ordem de cobrança. Em cada tema: a aula, o mapa mental e as questões da prova sobre ele.</p>' +
+        '<div class="jr-caixa"><h3>Temas mais cobrados</h3><p class="al-sub">Do edital inteiro, em ordem de cobrança' + (uma ? '' : ' (o número é a soma das ' + nProvas + ' provas)') + '. Em cada tema: a aula, o mapa mental e as questões de prova sobre ele.</p>' +
         cobrados.map(function (t, i) {
           return '<div class="es-mc-tema"><span class="es-mc-pos">' + (i + 1) + 'º</span><div class="es-mc-txt"><b>' + esc(t.cod) + '</b> ' + esc(t.titulo) +
             '<span class="al-fino"> · ' + esc(t.disc) + '</span><span class="es-mc-barra fina"><i style="width:' + Math.round(t.n * 100 / maxT) + '%"></i></span></div>' +
-            '<span class="es-banca">' + t.n + '× na prova</span><span class="es-aula-bts">' +
+            '<span class="es-banca">' + t.n + (uma ? '× na prova' : '× nas ' + nProvas + ' provas') + '</span><span class="es-aula-bts">' +
             (t.un ? '<button class="al-bt peq fan" data-un="' + esc(t.un) + '">Aula</button>' : '') +
             (t.mapa ? '<button class="al-bt peq fan" data-mapa="' + esc(t.un) + '">🧠 Mapa</button>' : '') +
-            (t.comp ? '<button class="al-bt peq" data-of="' + esc(t.comp) + '">Questões da prova</button>' : '') + '</span></div>';
+            (t.comp ? '<button class="al-bt peq" data-of="' + esc(t.comp) + '">Questões de prova</button>' : '') + '</span></div>';
         }).join('') +
-        '<p class="al-fino">' + (temas.length - cobrados.length) + ' pontos do edital não foram cobrados nesta prova; eles continuam no Programa e nas Aulas.</p></div>';
+        '<p class="al-fino">' + (temas.length - cobrados.length) + ' pontos do edital não foram cobrados ' + (uma ? 'nesta prova' : 'em nenhuma das ' + nProvas + ' provas') + '; eles continuam no Programa e nas Aulas.</p></div>';
       el('es-mc-todas').onclick = function () { ir('praticar', { competencia: '', origem: 'oficial' }); };
       cada(alvo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
-      cada(alvo, '[data-mapa]', function (b) { b.onclick = function () { abrirMapa(b.getAttribute('data-mapa'), window.open('', '_blank')); }; });
+      cada(alvo, '[data-mapa]', function (b) { b.onclick = function () { abrirMapa(b.getAttribute('data-mapa'), abrirJanela()); }; });
       cada(alvo, '[data-of]', function (b) { b.onclick = function () { ir('praticar', { competencia: b.getAttribute('data-of'), origem: 'oficial' }); }; });
     }
 
@@ -1024,7 +1149,7 @@
     }
     // a janela é aberta no clique (antes do fetch), senão o navegador a bloqueia como pop-up
     function abrirMapa(codigo, janela) {
-      var w = janela || window.open('', '_blank');
+      var w = janela; // quem chama abre a janela no clique, com `abrirJanela()` — que avisa quando o navegador a barra
       if (!w) return;
       w.document.write('<p style="font:14px Arial">Montando o mapa mental…</p>');
       api('GET', base() + '/unidades/' + encodeURIComponent(codigo)).then(function (u) {
@@ -1040,17 +1165,26 @@
     // A voz é a do próprio navegador (opcional, começa desligada).
     // Tela por cima da página (aula interativa, mapa animado): o Voltar do navegador FECHA a tela e deixa o aluno
     // exatamente onde estava. Sem isto, o Voltar pulava para a página anterior com a tela ainda aberta.
+    // O painel NÃO depende da ordem em que o navegador avisa os ouvintes: enquanto `AcademyRota.sobrepostos` é maior
+    // que zero, o ouvinte dele não faz nada (em WebKit antigo ele rodava antes deste e remontava a página).
+    // A ROLAGEM da página é guardada ao abrir e reposta ao fechar: a tela sobreposta trava a rolagem do documento, e
+    // fechar devolvia a aula ao topo.
     function sobreposto(fechar) {
       var estado = 0; // 0 aberta · 1 fechando pelo botão · 2 encerrada
+      var R0 = window.AcademyRota, y0 = rolagem().scrollTop;
+      function repor() { rolagem().scrollTop = y0; setTimeout(function () { if (!document.querySelector('.es-an')) rolagem().scrollTop = y0; }, 60); }
       function aoVoltar(e) {
         window.removeEventListener('popstate', aoVoltar, true);
         e.stopImmediatePropagation(); // a rota não mudou: o painel não precisa remontar a página
         var era = estado; estado = 2;
         if (era === 0) fechar();
+        repor();
+        setTimeout(function () { if (R0 && R0.sobrepostos > 0) R0.sobrepostos--; }, 0); // depois de todos os ouvintes deste Voltar
       }
-      try { history.pushState({ esSobreposto: 1 }, '', location.href); } catch (x) { return function () {}; }
+      try { history.pushState({ esSobreposto: 1 }, '', location.href); } catch (x) { return function () { repor(); }; }
+      if (R0) R0.sobrepostos = (R0.sobrepostos || 0) + 1;
       window.addEventListener('popstate', aoVoltar, true);
-      return function () { if (estado !== 0) return; estado = 1; try { history.back(); } catch (x) { /* sem histórico */ } };
+      return function () { if (estado !== 0) return; estado = 1; repor(); try { history.back(); } catch (x) { /* sem histórico */ } };
     }
     // ---- AULA ANIMADA (formatos sem avatar): fluxo com paradas, caso para decidir e erro da banca ----
     // Um quadro por vez. A animação PERGUNTA: nas paradas, o botão vira "Ver a resposta" — o aluno
@@ -1085,9 +1219,14 @@
       return q;
     }
     function aulaAnimada(codigo, tipoInicial) {
+      // duplo clique: uma camada só (a segunda chegava depois e abria outra por cima)
+      if (E.abrindoAnimada || document.querySelector('.es-an')) return;
+      E.abrindoAnimada = true;
+      setTimeout(function () { E.abrindoAnimada = false; }, 4000); // a resposta descartada (o aluno saiu) não pode travar o botão
       api('GET', base() + '/unidades/' + encodeURIComponent(codigo) + '/animacoes').then(function (r) {
+        E.abrindoAnimada = false;
         var tipos = ['fluxo', 'caso', 'erros'].filter(function (t) { return r[t]; });
-        if (!tipos.length) return;
+        if (!tipos.length || document.querySelector('.es-an')) return;
         var ov = document.createElement('div');
         ov.className = 'es-an es-aqv';
         ov.innerHTML = '<header class="es-an-topo"><b>' + esc(r.titulo) + '</b><span class="es-an-acoes">' +
@@ -1134,9 +1273,10 @@
         ov.querySelector('#es-aq-x').onclick = fechar;
         document.addEventListener('keydown', tecla, true);
         abrir(tipos.indexOf(tipoInicial) >= 0 ? tipoInicial : tipos[0]);
-      }).catch(function (e) { window.alert(e.message); });
+      }).catch(function (e) { E.abrindoAnimada = false; window.alert(e.message); });
     }
     function animarMapa(titulo, txt) {
+      if (document.querySelector('.es-an')) return; // já há uma tela por cima
       estiloDosMapas();
       var ov = document.createElement('div');
       ov.className = 'es-an';
@@ -1241,6 +1381,7 @@
       document.head.appendChild(st);
     }
     function mapas(alvo) {
+      novaTela();
       estiloDosMapas();
       alvo.innerHTML = '<p class="al-sub">Carregando os mapas…</p>';
       api('GET', base() + '/mapas').then(function (r) {
@@ -1283,9 +1424,9 @@
                   if (a && a.mapas[foco]) animarMapa(a.titulo, a.mapas[foco]);
                 };
               });
-              cada(corpo, '[data-pdf-aula]', function (b) { b.onclick = function () { abrirMapa(b.getAttribute('data-pdf-aula'), window.open('', '_blank')); }; });
+              cada(corpo, '[data-pdf-aula]', function (b) { b.onclick = function () { abrirMapa(b.getAttribute('data-pdf-aula'), abrirJanela()); }; });
               corpo.querySelector('[data-pdf-disc]').onclick = function () {
-                var w = window.open('', '_blank');
+                var w = abrirJanela();
                 if (!w) return;
                 escreverMapas(w, 'Mapas mentais — ' + x.nome + ' — ' + FOCO[foco], com.map(function (a) { return paginaDoMapa(a.titulo, foco, a.mapas[foco], a.versao); }).join(''));
               };
@@ -1309,6 +1450,7 @@
       }).join('') + '</details>';
     }
     function unidade(alvo, codigo, nivel) {
+      novaTela(); // trocar o nível (100 · 50 · 25 · 10) repinta a aula: o que foi pedido para a tela anterior não entra nesta
       // `aberta=1`: é a tela da aula que conta como "abriu a aula" (o Continuar da biblioteca volta a ela)
       api('GET', base() + '/unidades/' + encodeURIComponent(codigo) + '?aberta=1' + (nivel ? '&nivel=' + nivel : '')).then(function (u) {
         var acao = { pratica: 1, aplicacao: 1, desafio: 1, recordacao: 1 }, tent = u.tentativas || {};
@@ -1338,7 +1480,7 @@
           // o fim do TEXTO da aula: quando ele entra na tela, a leitura foi até o fim (`ligarFimDaLeitura`)
           '<span id="es-un-fim" aria-hidden="true"></span>' +
           // o quiz mora DENTRO da aula, como nos outros cursos; as questões vêm do banco e são respondidas aqui
-          '<section class="es-bloco es-quiz" id="es-un-quiz"><h4>Quiz desta aula</h4><div id="es-un-quiz-cx"><p class="al-sub">Procurando as questões desta aula…</p></div></section>' +
+          '<section class="es-bloco es-quiz" id="es-un-quiz" data-aula="' + esc(codigo) + '"><h4>Quiz desta aula</h4><div id="es-un-quiz-cx"><p class="al-sub">Procurando as questões desta aula…</p></div></section>' +
           '<section class="es-bloco es-nota-aula"><h4>Minhas anotações desta aula</h4>' +
           '<textarea class="es-ta" id="es-un-nota" rows="4" maxlength="6000" placeholder="O que você quer lembrar desta aula. Salva sozinho.">' + esc((u.nota || {}).texto || '') + '</textarea>' +
           '<div class="es-linha"><span class="al-fino" id="es-un-nota-st">' + ((u.nota || {}).texto ? 'Salva em ' + dataBR(String(u.nota.atualizado_em).slice(0, 10)) + '.' : 'Fica no seu caderno, com as tentativas e as marcações.') + '</span>' +
@@ -1361,7 +1503,7 @@
         ligarCadernoDaAula(alvo, codigo);
         ligarFimDaLeitura(codigo, u.lida);
         quizDaAula(el('es-un-quiz-cx'), codigo, u.conta_pela_leitura);
-        if (el('es-un-mapa')) el('es-un-mapa').onclick = function () { abrirMapa(codigo, window.open('', '_blank')); };
+        if (el('es-un-mapa')) el('es-un-mapa').onclick = function () { abrirMapa(codigo, abrirJanela()); };
         cada(alvo, '[data-sol]', function (b) {
           b.onclick = function () {
             var n = b.getAttribute('data-sol'), ta = alvo.querySelector('textarea[data-n="' + n + '"]'), msg = alvo.querySelector('[data-msg="' + n + '"]');
@@ -1381,20 +1523,39 @@
           var m = materias()[(u.competencias || [])[0]];
           lerDisciplina(alvo, (m && m.cod) || '_metodo', { unidade: codigo }, function () { ir('unidade', codigo); });
         };
-        if (el('es-un-mapa2')) el('es-un-mapa2').onclick = function () { abrirMapa(codigo, window.open('', '_blank')); };
+        if (el('es-un-mapa2')) el('es-un-mapa2').onclick = function () { abrirMapa(codigo, abrirJanela()); };
       }).catch(function (e) { falha(alvo, e); });
     }
 
     // ---- o que a aula ganhou dos outros cursos: a tentativa que fica guardada, a nota da aula, o quiz e o vídeo que lembra onde parou ----
     // salva sozinho: um tempo depois da última tecla e ao sair do campo; `dizer` mostra "Salvando… / ✓ Salvo"
-    function salvarSozinho(campo, dizer, enviar) {
-      var timer = null, ultimo = campo.value;
+    // `caminho` = a rota do PUT (para o envio de última hora). Três cuidados (auditoria de 11/10/2026):
+    //   · um envio por vez: o seguinte só sai quando o anterior voltou — dois PUT não chegam fora de ordem;
+    //   · F5 ou fechar a aba: o que ainda não foi enviado sai na hora, com `keepalive` (o navegador conclui o envio
+    //     mesmo com a página indo embora) — antes perdia-se o texto dos últimos instantes;
+    //   · cada campo se desinscreve quando sai da tela.
+    var PENDENTES = [];
+    function despejarPendentes() { PENDENTES.slice().forEach(function (f) { f(); }); }
+    window.addEventListener('pagehide', despejarPendentes);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') despejarPendentes(); });
+    function salvarSozinho(campo, dizer, enviar, caminho) {
+      var timer = null, ultimo = campo.value, emVoo = false;
       function agora() {
         clearTimeout(timer); timer = null;
-        if (campo.value === ultimo) return;
-        var v = campo.value; dizer('Salvando…');
-        enviar(v).then(function () { ultimo = v; dizer('✓ Salvo'); }).catch(function (e) { dizer(e.message); });
+        if (emVoo || campo.value === ultimo) return;
+        var v = campo.value; dizer('Salvando…'); emVoo = true;
+        enviar(v).then(function () { emVoo = false; ultimo = v; dizer('✓ Salvo'); if (campo.value !== ultimo) agora(); })
+          .catch(function (e) { emVoo = false; dizer(e.message); });
+        // (se o aluno saiu da tela, a resposta não volta — o envio foi feito; a trava cai sozinha)
+        setTimeout(function () { emVoo = false; }, 8000);
       }
+      function naSaida() {
+        if (!document.body.contains(campo)) { PENDENTES = PENDENTES.filter(function (f) { return f !== naSaida; }); return; }
+        if (campo.value === ultimo || !caminho) return;
+        var v = campo.value; ultimo = v; clearTimeout(timer);
+        try { fetch('/academy/api' + caminho, { method: 'PUT', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto: v }) }); } catch (x) { /* o navegador não tem keepalive: fica o que já foi salvo */ }
+      }
+      PENDENTES.push(naSaida);
       campo.oninput = function () { clearTimeout(timer); timer = setTimeout(agora, 1200); };
       campo.onblur = agora;
     }
@@ -1402,21 +1563,22 @@
       var un = base() + '/unidades/' + encodeURIComponent(codigo);
       cada(alvo, 'textarea[data-n]', function (ta) {
         var n = ta.getAttribute('data-n'), st = alvo.querySelector('[data-salvo="' + n + '"]');
-        salvarSozinho(ta, function (m) { if (st) st.textContent = m; }, function (v) { return api('PUT', un + '/blocos/' + n + '/tentativa', { texto: v }); });
+        salvarSozinho(ta, function (m) { if (st) st.textContent = m; }, function (v) { return api('PUT', un + '/blocos/' + n + '/tentativa', { texto: v }); }, un + '/blocos/' + n + '/tentativa');
       });
       var nota = el('es-un-nota');
-      if (nota) salvarSozinho(nota, function (m) { if (el('es-un-nota-st')) el('es-un-nota-st').textContent = m; }, function (v) { return api('PUT', un + '/nota', { texto: v }); });
+      if (nota) salvarSozinho(nota, function (m) { if (el('es-un-nota-st')) el('es-un-nota-st').textContent = m; }, function (v) { return api('PUT', un + '/nota', { texto: v }); }, un + '/nota');
       if (el('es-un-cad')) el('es-un-cad').onclick = function () { ir('caderno'); };
     }
     // QUIZ DESTA AULA: até 5 questões do banco, respondidas aqui mesmo — pelas rotas do Praticar
     function quizDaAula(cx, codigo, contaPelaLeitura) {
       if (!cx) return;
       api('GET', base() + '/unidades/' + encodeURIComponent(codigo) + '/quiz').then(function (r) {
-        if (!el('es-un-quiz')) return; // o aluno já saiu da aula
-        if (!r.total) { cx.innerHTML = '<p class="al-sub">Esta aula ainda não tem questões no banco. Quando houver, elas aparecem aqui.' +
-          (contaPelaLeitura ? ' Enquanto isso, ela conta como estudada quando você lê o texto até o fim ou assiste à videoaula.' : '') + '</p>'; return; }
+        if (!el('es-un-quiz') || el('es-un-quiz').getAttribute('data-aula') !== codigo) return; // o aluno já saiu DESTA aula
+        if (!r.total) { cx.innerHTML = '<p class="al-sub">Esta aula ainda não tem questões no banco. Quando houver, elas aparecem aqui. Ela conta como estudada quando você lê o texto até o fim ou assiste à videoaula.</p>'; return; }
         var n = r.questoes.length, i = 0;
-        cx.innerHTML = '<p class="al-sub">Esta aula tem <b>' + r.total + ' questão(ões)</b> no banco' + (r.ineditas ? ', ' + r.ineditas + ' nova(s) para você' : ', todas já respondidas por você') + '. ' +
+        // a régua da aula estudada, dita onde o aluno age: abrir a aula e ler o texto até o fim, assistir à videoaula ou responder uma questão do quiz dela
+        cx.innerHTML = '<p class="al-fino">Para a aula contar como estudada: abrir a aula e ler o texto até o fim, assistir à videoaula ou responder uma questão do quiz dela.</p>' +
+          '<p class="al-sub">Esta aula tem <b>' + r.total + ' questão(ões)</b> no banco' + (r.ineditas ? ', ' + r.ineditas + ' nova(s) para você' : ', todas já respondidas por você') + '. ' +
           (r.total > n ? 'Aqui vão ' + n + ' — as que você ainda não viu vêm primeiro.' : 'As que você ainda não viu vêm primeiro.') + '</p>' +
           '<div class="es-linha"><button class="al-bt peq fan" id="es-qz-todas">✍️ Praticar todas (' + r.total + ')</button></div><div id="es-qz-q"></div>';
         el('es-qz-todas').onclick = function () { ir('praticar', r.competencia); };
@@ -1537,8 +1699,8 @@
           }).join('') +
           (r.avulsas.length ? '<div class="es-cad-disc"><h3 class="es-cad-h">Outras questões</h3>' + aulaDoCaderno({ titulo: 'Anotações de questões sem aula', tentativas: [], marcacoes: [], anotacoes: r.avulsas }) + '</div>' : '');
         cada(alvo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
-        if (el('es-cad-volta')) el('es-cad-volta').onclick = function () { ir(antes.aba, antes.arg); };
-        if (el('es-cad-pdf')) el('es-cad-pdf').onclick = function () { var w = window.open('', '_blank'); if (w) escreverCaderno(w, r); }; // a janela abre no clique
+        if (el('es-cad-volta')) el('es-cad-volta').onclick = function () { voltarPara(antes); };
+        if (el('es-cad-pdf')) el('es-cad-pdf').onclick = function () { var w = abrirJanela(); if (w) escreverCaderno(w, r); }; // a janela abre no clique
         if (el('es-cad-busca')) el('es-cad-busca').oninput = function () {
           var f = this.value.toLowerCase().trim(), achou = 0;
           cada(alvo, '.es-cad-aula', function (cx) { var ok = !f || cx.textContent.toLowerCase().indexOf(f) >= 0; cx.style.display = ok ? '' : 'none'; if (ok) achou++; });
@@ -1557,9 +1719,9 @@
       var k = E.painel && E.painel.conclusao;
       if (!k) return '';
       return '<div class="jr-caixa es-concl"><h3>Certificado de conclusão</h3>' +
-        '<p class="al-sub">Curso livre. Certificado emitido pela Villela Academy, sem validade para o MEC. Sai quando você estuda todas as aulas do percurso (responde ao menos uma questão ou um card de cada' + (k.aulas_sem_questao ? '; ' + (k.aulas_sem_questao > 1 ? 'nas ' + k.aulas_sem_questao + ' aulas' : 'na aula') + ' sem questão nem card, lê até o fim ou assiste à videoaula' : '') + ') e envia um simulado completo.</p>' +
+        '<p class="al-sub">Curso livre. Certificado emitido pela Villela Academy, sem validade para o MEC. Sai quando você estuda todas as aulas do percurso (em cada uma: abrir a aula e ler até o fim, assistir à videoaula ou responder uma questão do quiz dela) e envia um simulado no formato do edital, com ao menos ' + (k.simulado_pct_respondidas || 80) + ' % das questões respondidas.</p>' +
         '<table class="es-tab"><tr><td>Aulas estudadas</td><td class="n">' + k.estudadas + ' de ' + k.total_aulas + '</td></tr>' +
-        '<tr><td>Simulados completos enviados</td><td class="n">' + k.provas_enviadas + '</td></tr></table>' +
+        '<tr><td>Simulados que contam (no formato do edital, ' + (k.simulado_pct_respondidas || 80) + ' % respondido)</td><td class="n">' + k.provas_enviadas + (k.simulados_enviados > k.provas_enviadas ? ' <span class="al-fino">de ' + k.simulados_enviados + ' enviado(s)</span>' : '') + '</td></tr></table>' +
         (k.certificado ? '<div class="es-linha"><a class="al-bt" href="/academy/certificados/' + esc(k.certificado) + '" target="_blank" rel="noopener">🎓 Ver o meu certificado</a></div>'
           : k.cumprido ? '<div class="es-linha"><button class="al-bt" data-cert="1">🎓 Emitir certificado</button><span class="al-fino" data-cert-msg="1"></span></div>'
           : '<p class="es-aviso">' + (k.total_aulas ? (k.faltam_aulas + k.faltam_provas > 1 ? 'Faltam ' : 'Falta ') + [k.faltam_aulas ? k.faltam_aulas + (k.faltam_aulas > 1 ? ' aulas' : ' aula') : '', k.faltam_provas ? k.faltam_provas + (k.faltam_provas > 1 ? ' simulados' : ' simulado') : ''].filter(Boolean).join(' e ') + '.' : esc(k.falta_txt)) + '</p>' +
@@ -1568,7 +1730,7 @@
     function emitirCertificado(bt, msg) {
       var w = window.open('', '_blank'); // no clique, antes da rede — senão o navegador barra como pop-up
       bt.disabled = true;
-      api('POST', '/aluno/cursos/' + E.pid + '/certificado').then(function (r) {
+      apiCru('POST', '/aluno/cursos/' + E.pid + '/certificado').then(function (r) {
         if (w) w.location = r.url; else location.href = r.url;
         carregar(function () { botoesDaBarra(); });
       }).catch(function (e) { if (w) w.close(); bt.disabled = false; if (msg) msg.textContent = e.message; else alert(e.message); });
@@ -1599,16 +1761,12 @@
     var TIPO_AVAL = { diagnostico: 'Diagnóstico de entrada', teste_final: 'Teste final' };
     function ehAvaliacao(t) { return !!t && (t.modo === 'diagnostico' || t.modo === 'teste_final'); }
     function num(x) { return String(Math.round(Number(x) * 1000) / 1000).replace('.', ','); }
-    function voltarDaPorta() {
-      var a = E.antesDaPorta || { aba: 'hoje' };
-      ir(a.aba, a.arg);
-      if (a.y > 0 && !(LISTAS[a.aba] && !a.arg)) reporRolagem(a.aba, a.y); // as listas repõem o próprio lugar
-    }
+    function voltarDaPorta() { voltarPara(E.antesDaPorta); }
     function botaoVoltarDaPorta() { return '<button class="al-bt fan" data-volta-porta="1">← Voltar para onde eu estava</button>'; }
     function ligarVoltarDaPorta(alvo) { cada(alvo, '[data-volta-porta]', function (b) { b.onclick = voltarDaPorta; }); }
     // começa (ou retoma) o diagnóstico ou o teste final e abre a mesma tela de prova — sem relógio
-    function iniciarAvaliacao(tipo, msg) {
-      api('POST', base() + '/diagnostico', { tipo: tipo }).then(function (t) {
+    function iniciarAvaliacao(tipo, msg, recomecar) {
+      api('POST', base() + '/diagnostico', recomecar ? { tipo: tipo, recomecar: true } : { tipo: tipo }).then(function (t) {
         ir('jornada', { tentativa: t }); // a prova abre DENTRO da jornada: é para lá que o F5 e o "continuar depois" devolvem
       }).catch(function (e) { if (msg) msg.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; else alert(e.message); });
     }
@@ -1625,9 +1783,11 @@
       if (!a || !a.disponivel) return '';
       var d = a.diagnostico, f = a.teste_final, n = a.por_disciplina * a.disciplinas;
       var h = '<div class="jr-caixa es-jr-aval" id="es-jr-aval"><p class="al-rotulo">Diagnóstico × teste final</p><h3>Por onde começar, e quanto você evoluiu</h3>';
-      if (d.aberto) h += '<p>Diagnóstico em andamento: <b>' + d.aberto.respondidas + ' de ' + d.aberto.total + '</b> respondidas. As respostas estão salvas; ele fica aberto até ' + dataBR(String(d.aberto.valido_ate).slice(0, 10)) + '.</p>' +
-        '<div class="es-linha"><button class="al-bt" data-aval="diagnostico">Continuar o diagnóstico</button><span data-aval-msg="1"></span></div>';
-      else if (!d.feito) h += '<p class="al-sub">Uma prova curta, com até ' + a.por_disciplina + ' questões de cada disciplina do percurso (cerca de ' + n + ' no total). Não tem relógio: responda no seu ritmo, pare quando quiser e continue depois. No fim, você vê como foi em cada disciplina e por onde vale começar.</p>' +
+      if (d.aberto && d.aberto.vencido) h += '<p><b>Diagnóstico não concluído.</b> Você respondeu ' + d.aberto.respondidas + ' de ' + d.aberto.total + ' e não enviou. Nada foi corrigido: retome de onde parou (as respostas estão salvas) ou recomece com outras questões.</p>' +
+        '<div class="es-linha"><button class="al-bt" data-aval="diagnostico">Retomar de onde parei</button><button class="al-bt fan" data-aval="diagnostico" data-recomecar="1">Recomeçar do zero</button><span data-aval-msg="1"></span></div>';
+      else if (d.aberto) h += '<p>Diagnóstico em andamento: <b>' + d.aberto.respondidas + ' de ' + d.aberto.total + '</b> respondidas. As respostas estão salvas; ele fica aberto até ' + dataBR(String(d.aberto.valido_ate).slice(0, 10)) + '.</p>' +
+        '<div class="es-linha"><button class="al-bt" data-aval="diagnostico">Continuar o diagnóstico</button><button class="al-bt fan" data-aval="diagnostico" data-recomecar="1">Recomeçar do zero</button><span data-aval-msg="1"></span></div>';
+      else if (!d.feito) h += (d.nao_concluido ? '<p><b>Diagnóstico não concluído.</b> Você começou um diagnóstico e não o enviou: ele não conta como feito. Pode começar de novo quando quiser.</p>' : '') + '<p class="al-sub">Uma prova curta, com até ' + a.por_disciplina + ' questões de cada disciplina do percurso (cerca de ' + n + ' no total). Não tem relógio: responda no seu ritmo, pare quando quiser e continue depois. No fim, você vê como foi em cada disciplina e por onde vale começar.</p>' +
         '<p class="al-fino">As respostas contam como qualquer resposta sua (entram no seu desempenho e no caderno de erros). O diagnóstico é feito uma vez; no fim do percurso, o teste final repete o molde com outras questões, para comparar.</p>' +
         '<div class="es-linha"><button class="al-bt" data-aval="diagnostico">Começar o diagnóstico</button><span data-aval-msg="1"></span></div>';
       else {
@@ -1650,7 +1810,13 @@
       return h + '</div>';
     }
     function ligarAvaliacao(alvo) {
-      cada(alvo, '[data-aval]', function (b) { b.onclick = function () { b.disabled = true; iniciarAvaliacao(b.getAttribute('data-aval'), b.parentNode.querySelector('[data-aval-msg]')); setTimeout(function () { b.disabled = false; }, 4000); }; });
+      cada(alvo, '[data-aval]', function (b) {
+        b.onclick = function () {
+          var de_novo = b.getAttribute('data-recomecar') === '1'; // { recomecar: true }: larga a tentativa aberta, sem correção
+          if (de_novo && !window.confirm('Recomeçar o diagnóstico do zero? As respostas salvas desta tentativa são descartadas (nada delas foi corrigido).')) return;
+          b.disabled = true; iniciarAvaliacao(b.getAttribute('data-aval'), b.parentNode.querySelector('[data-aval-msg]'), de_novo); setTimeout(function () { b.disabled = false; }, 4000);
+        };
+      });
     }
     function caixaNivel(nv) {
       var k = nv.competencias, px = nv.proximo;
@@ -1669,8 +1835,10 @@
       var c = p.cobertura;
       return '<div class="es-eixos">' +
         eixo('Com aula pronta', c.material.com, c.folhas, 'itens do programa com material', 'cinza') +
-        eixo('Com questão conferida', c.avaliacao.com_questao_revisada, c.folhas, c.avaliacao.so_sugerida ? '+ ' + c.avaliacao.so_sugerida + ' com vínculo ainda a conferir' : 'itens com questão vinculada', 'cinza') +
-        eixo('Estudados por você', c.estudo.estudados, c.folhas, 'itens em que você já respondeu algo', 'ambar') +
+        // "conferida" é etapa de REVISÃO do curso: quem revisa vê a conferência; o aluno vê quantos pontos têm questão para praticar
+        (p.revisor ? eixo('Com questão conferida', c.avaliacao.com_questao_revisada, c.folhas, c.avaliacao.so_sugerida ? '+ ' + c.avaliacao.so_sugerida + ' com vínculo ainda a conferir' : 'itens com questão vinculada', 'cinza')
+          : eixo('Com questão para praticar', c.avaliacao.com_questao_revisada + c.avaliacao.so_sugerida, c.folhas, 'itens do programa com questão no banco', 'cinza')) +
+        eixo('Estudados por você', c.estudo.estudados, c.folhas, 'itens cuja aula você já estudou', 'ambar') +
         eixo('Demonstrados sem apoio', c.dominio.sem_apoio + c.dominio.retidos, c.folhas, c.dominio.retidos + ' com retenção confirmada', 'verde') + '</div>';
     }
     // o cartão compacto da aba Hoje: nível, o que falta e a porta para a tela inteira
@@ -1691,10 +1859,12 @@
       if (d.feito) return '<div class="jr-caixa es-jr-ponto"><p class="al-rotulo">Ponto de partida · pelo seu diagnóstico</p><h3>Ordem sugerida de estudo</h3>' + ordemSugeridaTxt(compacto ? d.ordem_sugerida.slice(0, 5) : d.ordem_sugerida) +
         '<p class="al-fino">' + (compacto && d.ordem_sugerida.length > 5 ? 'As cinco primeiras de ' + d.ordem_sugerida.length + ' disciplinas. ' : '') + 'É uma sugestão a partir de poucas questões por disciplina — o Plano não foi alterado por ela.' +
         (a.teste_final.liberado && !a.teste_final.feitos ? ' O teste final já está liberado.' : '') + ' <button class="es-link" data-ir-jr="1">ver o diagnóstico completo</button></p></div>';
-      return '<div class="jr-caixa es-jr-ponto"><p class="al-rotulo">Antes de começar</p><h3>' + (d.aberto ? 'Seu diagnóstico está em andamento' : 'Faça o diagnóstico de entrada') + '</h3>' +
-        '<p class="al-sub">' + (d.aberto ? d.aberto.respondidas + ' de ' + d.aberto.total + ' questões respondidas. As respostas estão salvas: continue de onde parou.'
+      return '<div class="jr-caixa es-jr-ponto"><p class="al-rotulo">Antes de começar</p><h3>' + (d.aberto && d.aberto.vencido ? 'Diagnóstico não concluído' : d.aberto ? 'Seu diagnóstico está em andamento' : d.nao_concluido ? 'Diagnóstico não concluído — comece de novo' : 'Faça o diagnóstico de entrada') + '</h3>' +
+        '<p class="al-sub">' + (d.aberto && d.aberto.vencido ? d.aberto.respondidas + ' de ' + d.aberto.total + ' questões respondidas e nenhum envio: ele não conta como feito. Retome de onde parou (as respostas estão salvas) ou recomece em Minha jornada.'
+          : d.aberto ? d.aberto.respondidas + ' de ' + d.aberto.total + ' questões respondidas. As respostas estão salvas: continue de onde parou.'
           : 'Até ' + a.por_disciplina + ' questões de cada disciplina (cerca de ' + (a.por_disciplina * a.disciplinas) + '), sem relógio e em quantas partes você quiser. No fim, você vê por onde vale começar.') + '</p>' +
-        '<div class="es-linha"><button class="al-bt" data-aval="diagnostico">' + (d.aberto ? 'Continuar o diagnóstico' : 'Começar o diagnóstico') + '</button><span data-aval-msg="1"></span></div></div>';
+        '<div class="es-linha"><button class="al-bt" data-aval="diagnostico">' + (d.aberto && d.aberto.vencido ? 'Retomar de onde parei' : d.aberto ? 'Continuar o diagnóstico' : 'Começar o diagnóstico') + '</button>' +
+        (d.aberto && d.aberto.vencido ? '<button class="al-bt fan" data-aval="diagnostico" data-recomecar="1">Recomeçar do zero</button>' : '') + '<span data-aval-msg="1"></span></div></div>';
     }
     function jornada(alvo, arg) {
       // veio de "Começar/Continuar o diagnóstico": a tela é a da prova (sem relógio), não a da jornada — e nada é buscado por baixo dela
@@ -1729,8 +1899,9 @@
     function comMotores(alvo, feito) {
       if (window.EstudeMotores) return feito(window.EstudeMotores);
       var sc = document.createElement('script');
-      sc.src = '/academy/estude-motores.js?v=1';
-      sc.onload = function () { if (window.EstudeMotores) feito(window.EstudeMotores); else falha(alvo, new Error('As ferramentas não carregaram. Recarregue a página.')); };
+      sc.src = '/academy/estude-motores.js?v=2';
+      // o arquivo chegou e não rodou: é navegador antigo (os motores usam recursos de 2018) — dizer isso, em vez de "recarregue"
+      sc.onload = function () { if (window.EstudeMotores) feito(window.EstudeMotores); else falha(alvo, new Error('As ferramentas (calculadora, prazo e cronograma) precisam de um navegador mais recente: Chrome ou Edge 79+, Firefox 60+, Safari 11.1+. Atualize o navegador para usá-las — o resto do curso funciona neste aqui.')); };
       sc.onerror = function () { falha(alvo, new Error('Não foi possível carregar as ferramentas. Confira a conexão e tente de novo.')); };
       document.head.appendChild(sc);
     }
@@ -1759,11 +1930,19 @@
       var regra = F.regra_pontuacao, temRegra = !!regra, norm = temRegra ? M.pontuacao.normalizarRegra(regra) : null;
       var desconta = temRegra ? !!(norm.desconto || norm.em_branco_conta_erro) : true;
       var blocos = temRegra ? (norm.minimos.length ? norm.minimos.map(function (m) { return { bloco: m.bloco, fixo: true, min: m }; }) : [{ bloco: '', fixo: true }]) : [{ bloco: 'I' }, { bloco: 'II' }, { bloco: 'III' }];
+      // o formato do edital (quando a regra o traz): as questões de cada bloco já vêm preenchidas, e bloco SEM mínimo também entra na conta
+      var fmtBlocos = temRegra && norm.formato ? norm.formato.blocos : null;
+      if (fmtBlocos) {
+        blocos.forEach(function (b) { if (fmtBlocos[b.bloco]) b.questoes = fmtBlocos[b.bloco]; });
+        Object.keys(fmtBlocos).forEach(function (nome) { if (!blocos.some(function (b) { return b.bloco === nome; })) blocos.push({ bloco: nome, fixo: true, questoes: fmtBlocos[nome] }); });
+      }
+      // regra com mínimo só em ALGUNS blocos: a nota era calculada só sobre eles. As demais questões da prova entram por aqui.
+      var podeOutras = temRegra && norm.minimos.length > 0 && !fmtBlocos;
       function minimoTxt(m) { return !m ? '' : [m.min_pontos != null ? num(m.min_pontos) + ' ponto(s)' : '', m.min_pct != null ? num(m.min_pct) + ' %' : ''].filter(Boolean).join(' e '); }
       function linhas() {
         return blocos.map(function (b, i) {
           return '<div class="es-form es-fer-bloco" data-bl="' + i + '">' +
-            (b.fixo ? '<p class="es-fer-nome"><b>' + (b.bloco ? 'Bloco ' + esc(b.bloco) : 'Prova inteira') + '</b>' + (b.min ? '<span class="al-fino">mínimo do bloco: ' + minimoTxt(b.min) + '</span>' : '') + '</p>'
+            (b.fixo ? '<p class="es-fer-nome"><b>' + (b.outras ? 'Outras questões (sem mínimo de bloco)' : b.bloco ? 'Bloco ' + esc(b.bloco) : 'Prova inteira') + '</b>' + (b.min ? '<span class="al-fino">mínimo do bloco: ' + minimoTxt(b.min) + '</span>' : '') + '</p>'
               : '<label class="es-campo">Nome do bloco<input type="text" maxlength="40" data-c="bloco" value="' + esc(b.bloco) + '"></label>') +
             campoNum('Questões do bloco', 'max="500" data-c="questoes"', b.questoes) +
             (b.fixo ? '' : campoNum('Mínimo de acertos do bloco', 'max="500" data-c="minimo"', b.minimo)) +
@@ -1777,11 +1956,13 @@
               '<p class="al-fino">A regra é a cadastrada para este percurso, com a fonte indicada — a mesma que a aba Prova aplica. Informe quantas questões cada bloco tem na sua prova e quantas você acertou' + (desconta ? ' e errou (o que sobrar é contado como em branco)' : '') + '.</p>'
             : '<p class="es-aviso">Este percurso não tem a regra de pontuação cadastrada. Informe os números do SEU edital — questões e mínimo de cada bloco, e o mínimo geral. O resultado vale para os números que você informou, não para os do edital.</p>') +
           '<div id="es-fer-blocos">' + linhas() + '</div>' +
+          (podeOutras && !blocos.some(function (b) { return b.outras; }) ? '<div class="es-linha"><button class="al-bt peq fan" id="es-fer-outras">+ questões de bloco sem mínimo</button><span class="al-fino">Se a sua prova tem questões fora destes blocos, inclua: elas contam na nota e no mínimo geral.</span></div>' : '') +
           (temRegra ? '' : '<div class="es-linha"><button class="al-bt peq fan" id="es-fer-mais">+ bloco</button>' + (blocos.length > 1 ? '<button class="al-bt peq fan" id="es-fer-menos">− bloco</button>' : '') + '</div>' +
             '<div class="es-form">' + campoNum('Mínimo geral de acertos', 'max="2000" id="es-fer-geral"', E.ferGeral) + campoNum('Cada quantas erradas anulam 1 certa (0 = não desconta)', 'max="20" id="es-fer-desc"', E.ferDesc || 0) +
             '<label class="es-campo es-fer-check"><input type="checkbox" id="es-fer-branco"' + (E.ferBranco ? ' checked' : '') + '> Questão em branco conta como erro</label></div>') +
           '<div class="es-linha"><button class="al-bt" id="es-fer-calc">Calcular</button></div><div id="es-fer-res"></div></div>';
         if (el('es-fer-mais')) el('es-fer-mais').onclick = function () { ler(); blocos.push({ bloco: String(blocos.length + 1) }); pintar(); };
+        if (el('es-fer-outras')) el('es-fer-outras').onclick = function () { ler(); blocos.push({ bloco: 'outras questões', fixo: true, outras: true }); pintar(); };
         if (el('es-fer-menos')) el('es-fer-menos').onclick = function () { ler(); blocos.pop(); pintar(); };
         el('es-fer-calc').onclick = calcular;
       }
@@ -1798,16 +1979,23 @@
         try {
           r = M.calculadora.calcular(temRegra ? regra : M.calculadora.regraInformada({ blocos: blocos, minimo_geral: E.ferGeral, desconto_a_cada: E.ferDesc, em_branco_conta_erro: E.ferBranco }), blocos);
         } catch (e) { out.innerHTML = '<p class="es-aviso">' + esc(e.message) + '</p>'; return; }
-        var falta = function (x, onde) { return x.faltam_acertos == null ? '' : x.faltam_acertos === 0 ? '<span class="es-selo verde">mínimo atingido</span>' : x.possivel ? '<span class="es-selo ambar">faltam ' + x.faltam_acertos + ' acerto' + (x.faltam_acertos > 1 ? 's' : '') + '</span>' : '<span class="es-selo verm">não alcança nem acertando ' + onde + '</span>'; };
+        // "mínimo atingido" sai do MOTOR (`x.atingido`), nunca de "faltam 0": numa prova de 10 questões o mínimo de 1,2 é
+        // inalcançável, não há mais questão a acertar (faltam 0) e a tela dizia "mínimo atingido"
+        var falta = function (x, onde) {
+          if (x.atingido == null) return '';
+          if (x.atingido) return '<span class="es-selo verde">mínimo atingido</span>';
+          if (!x.possivel) return '<span class="es-selo verm">inalcançável com este número de questões (nem acertando ' + onde + ')</span>';
+          return '<span class="es-selo ambar">faltam ' + x.faltam_acertos + ' acerto' + (x.faltam_acertos > 1 ? 's' : '') + '</span>';
+        };
         out.innerHTML = '<div class="es-nota"><b>' + num(r.nota_liquida) + '</b><span> de ' + num(r.maximo) + ' · ' + num(r.pct_liquido) + ' %</span></div>' +
           '<table class="es-tab es-jr-tab"><tr><th>Bloco</th><th class="n">Acertos</th><th class="n">Pontos</th><th class="n">Mínimo</th><th class="n">Situação</th></tr>' + r.blocos.map(function (b) {
-            return '<tr><td>' + (b.bloco ? 'Bloco ' + esc(b.bloco) : 'Prova inteira') + '</td><td class="n">' + b.acertos + ' de ' + b.questoes + '</td><td class="n">' + num(b.pontos) + ' de ' + num(b.maximo) + '</td><td class="n">' + (b.minimo ? minimoTxt(b.minimo) : '—') + '</td><td class="n">' + (falta(b, 'o bloco inteiro') || '—') + '</td></tr>';
+            return '<tr><td>' + (b.bloco === 'outras questões' ? 'Outras questões' : b.bloco ? 'Bloco ' + esc(b.bloco) : 'Prova inteira') + '</td><td class="n">' + b.acertos + ' de ' + b.questoes + '</td><td class="n">' + num(b.pontos) + ' de ' + num(b.maximo) + '</td><td class="n">' + (b.minimo ? minimoTxt(b.minimo) : '—') + '</td><td class="n">' + (falta(b, 'o bloco inteiro') || '—') + '</td></tr>';
           }).join('') + '</table>' +
           '<table class="es-tab">' + (r.descontados ? '<tr><td>Pontos brutos</td><td class="n">' + num(r.nota_bruta) + '</td></tr><tr><td>Desconto: ' + r.erros_contados + ' erro(s) pela regra</td><td class="n">− ' + num(r.descontados) + '</td></tr>' : '') +
           '<tr><td><b>Nota líquida</b></td><td class="n"><b>' + num(r.nota_liquida) + '</b></td></tr>' +
           (r.geral ? '<tr><td>Mínimo geral: ' + minimoTxt(r.geral) + '</td><td class="n">' + falta(r.geral, 'tudo o que falta') + '</td></tr>' : '') + '</table>' +
           (r.minimos_sem_bloco.length ? '<p class="es-aviso">A regra tem mínimo para o(s) bloco(s) ' + r.minimos_sem_bloco.map(esc).join(', ') + ', que você não preencheu.</p>' : '') +
-          '<p><b>' + (r.aprovado === null ? 'Sem mínimo geral informado: não há critério para dizer se atinge ou não.' : r.aprovado ? 'Com estes números, você atinge os mínimos ' + (temRegra ? 'cadastrados' : 'que informou') + '.' : 'Com estes números, você não atinge os mínimos ' + (temRegra ? 'cadastrados' : 'que informou') + '.') + '</b></p>' +
+          '<p><b>' + (r.minimos_sem_bloco.length ? 'Preencha todos os blocos da regra para saber se atinge os mínimos.' : r.aprovado === null ? 'Sem mínimo geral informado: não há critério para dizer se atinge ou não.' : r.aprovado ? 'Com estes números, você atinge os mínimos ' + (temRegra ? 'cadastrados' : 'que informou') + '.' : 'Com estes números, você não atinge os mínimos ' + (temRegra ? 'cadastrados' : 'que informou') + '.') + '</b></p>' +
           '<p class="al-fino">"Faltam N acertos" troca primeiro questões erradas por certas e, depois, as em branco. ' + (temRegra ? 'Regra aplicada: ' + esc(regraTxt(r.regra)) + '.' : 'São os números que você informou, não os do edital.') + ' É uma conta, não um resultado oficial nem uma previsão.</p>';
       }
       pintar();
@@ -1906,7 +2094,7 @@
           '<div class="es-linha"><button class="al-bt fan" id="es-cr-pdf">🖨️ Abrir para imprimir ou salvar em PDF</button><button class="al-bt fan" id="es-cr-plano">Usar estas horas no meu Plano</button><span id="es-cr-msg"></span></div>' +
           '<div class="es-crono">' + r.semanas.map(function (s) { return semanaDoCrono(s, 'es-crono-sem'); }).join('') + '</div>' +
           (r.semanas_total > r.semanas.length ? '<p class="al-fino">Mostrando ' + r.semanas.length + ' de ' + r.semanas_total + ' semanas.</p>' : '');
-        el('es-cr-pdf').onclick = function () { var w = window.open('', '_blank'); if (w) escreverCronograma(w, ultimo, F.escopo.titulo); }; // a janela abre no clique; imprimir é outro clique, lá dentro
+        el('es-cr-pdf').onclick = function () { var w = abrirJanela(); if (w) escreverCronograma(w, ultimo, F.escopo.titulo); }; // a janela abre no clique; imprimir é outro clique, lá dentro
         el('es-cr-plano').onclick = function () {
           api('PUT', base() + '/plano', { disponibilidade: minutos(), margem_pct: pl && pl.margem_pct != null ? pl.margem_pct : F.reservas.margem_pct, data_alvo: alvo, motivo: 'horas levadas do cronograma das Ferramentas' })
             .then(function () { el('es-cr-msg').textContent = 'Plano atualizado com estas horas.'; })
@@ -1921,9 +2109,11 @@
       if (q.origem === 'oficial' || q.origem === 'adaptada') partes.push([p.banca, p.orgao, p.concurso, p.ano || '', p.caderno, p.numero_original ? 'nº ' + p.numero_original : ''].filter(Boolean).join(' · '));
       if (q.origem === 'autoral' && q.gerada_por_ia) partes.push('escrita com IA');
       if (p.inspirada_em) partes.push('inspirada em ' + p.inspirada_em);
-      if (q.vigencia) partes.push(q.vigencia);
+      // a nota de VIGÊNCIA não entra aqui: em parte das questões ela cita a norma da alternativa certa. Ela aparece
+      // depois da resposta (Praticar e quiz) e na correção comentada (prova) — `notaDeVigencia`
       return '<p class="es-proc">' + partes.filter(Boolean).map(esc).join(' — ') + '</p>';
     }
+    function notaDeVigencia(v) { return v ? '<p class="es-vigencia"><b>Vigência:</b> ' + esc(v) + '</p>' : ''; }
     function alternativas(q, nome, marcada) {
       return '<div class="es-alts">' + q.alternativas.map(function (a, k) {
         return '<label class="es-alt" data-alt="' + a.id + '"><input type="radio" name="' + nome + '" value="' + a.id + '"' + (marcada === a.id ? ' checked' : '') + '>' +
@@ -1981,7 +2171,7 @@
           });
           var ret = Object.keys(x.retomadas || {}).map(function (k) { return x.retomadas[k].vencimento; }).filter(Boolean)[0];
           el('es-fb').innerHTML = '<div class="es-fb ' + (x.acerto ? 'ok' : 'nao') + '"><b>' + (x.acerto ? 'Certo.' : 'Não foi desta vez.') + '</b> Conta como: ' + esc(x.conta_como) + '.' +
-            (ret ? ' Retomada marcada para ' + dataBR(ret) + '.' : '') + (x.comentario ? '<p>' + esc(x.comentario) + '</p>' : '') + '</div>' +
+            (ret ? ' Retomada marcada para ' + dataBR(ret) + '.' : '') + (x.comentario ? '<p>' + esc(x.comentario) + '</p>' : '') + notaDeVigencia(x.vigencia) + '</div>' +
             '<label class="es-campo es-anot">Sua anotação (fica no caderno de erros)<textarea id="es-anot" rows="3" maxlength="2000" placeholder="Por que errei — ou por que cada alternativa está certa ou errada.">' + esc(x.anotacao || '') + '</textarea></label>' +
             '<div class="es-linha"><button class="al-bt" id="es-prox">' + esc(rotuloProx) + '</button><button class="al-bt fan" id="es-anot-ok">Guardar anotação</button><span class="al-fino" id="es-anot-msg"></span></div>';
           el('es-anot-ok').onclick = function () {
@@ -1994,6 +2184,7 @@
       };
     }
     function praticar(alvo, competencia) {
+      novaTela(); // trocar o filtro repinta: a lista do filtro anterior não entra por cima
       var origem = '', eixo = {};
       if (competencia && typeof competencia === 'object') { origem = competencia.origem || ''; eixo = competencia.eixo || {}; competencia = competencia.competencia || ''; }
       var comps = E.painel.competencias, erradas = competencia === '__erradas__';
@@ -2036,21 +2227,29 @@
     }
 
     // ================= CADERNO DE ERROS =================
-    function erros(alvo) {
-      api('GET', base() + '/erros').then(function (r) {
+    function erros(alvo, pagina) {
+      novaTela();
+      pagina = Number(pagina) > 0 ? Number(pagina) : 1;
+      api('GET', base() + '/erros?pagina=' + pagina).then(function (r) {
         if (!r.total) { alvo.innerHTML = '<div class="jr-caixa"><h3>Caderno de erros</h3><p class="al-sub">Vazio. Entra aqui a questão em que a sua última resposta foi um erro; sai quando você a acerta de novo.</p></div>'; return; }
         alvo.innerHTML = '<div class="jr-caixa"><h3>Caderno de erros <span class="es-selo ambar">' + r.total + '</span></h3>' +
           '<p class="al-sub">Questão serve para achar lacuna. Leia por que errou, anote com as suas palavras e refaça. Acertar de novo a mesma questão fecha a lacuna, mas não conta como domínio — isso exige questão nova.</p>' +
-          '<div class="es-linha"><button class="al-bt" id="es-err-ref">Refazer estas questões</button></div></div>' +
+          '<div class="es-linha"><button class="al-bt" id="es-err-ref">Refazer estas questões</button></div>' +
+          // a lista vem em páginas: o total é o do caderno inteiro, e a tela diz qual pedaço está à vista
+          (r.paginas > 1 ? '<p class="al-fino es-err-pg">Mostrando ' + ((r.pagina - 1) * r.por_pagina + 1) + ' a ' + ((r.pagina - 1) * r.por_pagina + r.questoes.length) + ' de ' + r.total + ' · página ' + r.pagina + ' de ' + r.paginas + ' ' +
+            (r.pagina > 1 ? '<button class="es-link" data-err-pg="' + (r.pagina - 1) + '">← anteriores</button> ' : '') + (r.pagina < r.paginas ? '<button class="es-link" data-err-pg="' + (r.pagina + 1) + '">próximas →</button>' : '') + '</p>' : '') + '</div>' +
           r.questoes.map(function (q) {
             return '<div class="jr-caixa es-erro"><p class="al-fino">' + (q.erros > 1 ? 'errada ' + q.erros + ' vezes' : 'errada 1 vez') + ' · última em ' + dataBR(q.ultima.slice(0, 10)) +
               (q.competencias.length ? ' · ' + esc(String(nomeComp(q.competencias[0])).slice(0, 80)) : '') + '</p><div class="es-enun">' + texto(q.enunciado) + '</div>' +
               '<details><summary>Ver o gabarito comentado</summary>' + q.alternativas.map(function (a) {
                 return '<p class="es-alt-lida ' + (a.correta ? 'certa' : '') + '"><b>' + esc(a.id) + ')</b> ' + esc(a.texto) + (a.explicacao ? '<span class="es-expl">' + esc(a.explicacao) + '</span>' : '') + '</p>';
-              }).join('') + (q.comentario ? '<p>' + esc(q.comentario) + '</p>' : '') + '</details>' +
+              }).join('') + (q.comentario ? '<p>' + esc(q.comentario) + '</p>' : '') + notaDeVigencia(q.vigencia) + '</details>' +
               '<label class="es-campo es-anot">Sua anotação<textarea rows="2" maxlength="2000" data-anot="' + esc(q.id) + '" placeholder="Por que errei.">' + esc(q.anotacao || '') + '</textarea></label>' +
               '<div class="es-linha"><button class="al-bt peq fan" data-anot-ok="' + esc(q.id) + '">Guardar anotação</button><span class="al-fino" data-anot-msg="' + esc(q.id) + '"></span></div></div>';
-          }).join('');
+          }).join('') +
+          (r.paginas > 1 ? '<div class="jr-caixa"><p class="al-fino">Página ' + r.pagina + ' de ' + r.paginas + ' · ' + r.total + ' questões no caderno. ' +
+            (r.pagina > 1 ? '<button class="es-link" data-err-pg="' + (r.pagina - 1) + '">← anteriores</button> ' : '') + (r.pagina < r.paginas ? '<button class="es-link" data-err-pg="' + (r.pagina + 1) + '">próximas →</button>' : '') + '</p></div>' : '');
+        cada(alvo, '[data-err-pg]', function (b) { b.onclick = function () { erros(alvo, b.getAttribute('data-err-pg')); irAoConteudo(false); }; });
         el('es-err-ref').onclick = function () { ir('praticar', '__erradas__'); };
         cada(alvo, '[data-anot-ok]', function (b) {
           b.onclick = function () {
@@ -2064,6 +2263,7 @@
 
     // ---- o acervo inteiro, para quem revisa o curso (não agenda nem conta como estudo) ----
     function todosOsCards(alvo) {
+      novaTela();
       alvo.innerHTML = '<p class="al-sub">Carregando o acervo…</p>';
       api('GET', base() + '/cards/todos').then(function (r) {
         alvo.innerHTML = '<div class="jr-caixa"><p class="al-rotulo">Revisão do acervo</p><h3>' + r.total + ' cards em ' + r.grupos.length + ' aulas</h3>' +
@@ -2083,13 +2283,14 @@
 
     // ================= CARDS =================
     function cards(alvo) {
+      novaTela();
       api('GET', base() + '/cards').then(function (r) {
         var fila = r.vencidos.concat(r.novos), i = 0, lim = r.limites || {};
         // "Card 1 de 5" lido sem explicação parece acervo de cinco cards: a nota
         // diz que é a sessão de hoje, quantos existem e por que chegam aos poucos.
         var nota = !r.total ? '' : '<div class="es-nota-aba"><b>Por que só ' + (fila.length || 'alguns') + ' hoje?</b>' +
           '<p>Esta aba entrega a <b>sessão de hoje</b>, não o acervo inteiro. Este percurso tem <b>' + r.total + ' cards</b>, e todos chegam a você com o tempo.</p>' +
-          '<ul><li><b>Cards novos:</b> no máximo ' + (lim.novos_dia || 5) + ' por dia, na ordem do programa.</li>' +
+          '<ul><li><b>Cards novos:</b> no máximo ' + (lim.novos_dia || 5) + ' por dia, na ordem do programa' + (r.novos_hoje ? ' — hoje você já começou ' + r.novos_hoje + (r.novos_hoje >= (lim.novos_dia || 5) && r.por_ver ? '; os próximos chegam amanhã' : '') : '') + '.</li>' +
           '<li><b>Retomadas:</b> os cards que você já viu voltam na data marcada, até ' + (lim.revisoes_dia || 20) + ' revisões por dia.</li></ul>' +
           '<p>É a repetição espaçada: recordar um pouco por dia, e de novo quando está prestes a esquecer, fixa mais do que ver tudo de uma vez. ' +
           '“Card 1 de ' + (fila.length || lim.novos_dia || 5) + '” é o primeiro dos de hoje.</p></div>' +
@@ -2151,19 +2352,62 @@
       else if (!desconta) t.splice(v !== 1 ? 1 : 0, 0, 'sem desconto por erro');
       return t.join('; ') + (r.fonte ? ' (fonte: ' + r.fonte + ')' : '');
     }
-    function prova(alvo) {
+    // A aba Prova pergunta ao servidor, A CADA ABERTURA, se há prova em andamento (o painel traz `prova_aberta`):
+    // havendo, mostra "continuar" com o tempo que resta — antes, trocar de aba ou dar F5 no meio da prova caía no
+    // formulário "Montar a prova", sem aviso, com o relógio correndo.
+    function prova(alvo, arg) {
+      if (arg && arg.continuar) {
+        api('GET', base() + '/tentativas/' + arg.continuar).then(function (t) { t.retomada = true; executar(alvo, t); }).catch(function (e) { falha(alvo, e); });
+        return;
+      }
+      carregar(function () {
+        if (E.painel.prova_aberta) {
+          alvo.innerHTML = cartaoProvaAberta(E.painel) + '<p class="al-fino">Só dá para montar outra prova depois de enviar esta (ou de o prazo dela terminar).</p>';
+          ligarProvaAberta(alvo);
+          return;
+        }
+        montarProva(alvo);
+      });
+    }
+    function montarProva(alvo) {
       var p = E.painel;
       alvo.innerHTML = '<div class="jr-caixa"><h3>Montar a prova</h3>' +
-        '<p class="al-sub">A prova é fixada no início: questões, ordem, regra e prazo. O relógio é o do servidor — recarregar a página ou trocar de aparelho não reinicia o tempo.</p>' +
+        '<p class="al-sub">A prova é fixada no início: questões, ordem, regra e prazo. O relógio é o do servidor — recarregar a página ou trocar de aparelho não reinicia o tempo, e a aba Prova mostra "continuar" enquanto ela estiver aberta.</p>' +
         '<div class="es-form"><label class="es-campo">Tipo<select id="es-pv-modo"><option value="treino">Treino cronometrado</option><option value="simulado">Simulado (usa questões reservadas)</option></select></label>' +
         '<label class="es-campo">Questões<input id="es-pv-n" type="number" min="1" max="200" value="10"></label>' +
         '<label class="es-campo">Duração em minutos<input id="es-pv-dur" type="number" min="0" max="600" placeholder="automática"></label>' +
         '<label class="es-campo">Matéria (disciplina e ponto do edital)<select id="es-pv-comp"><option value="">Todas as matérias</option>' + opcoesComp('') + '</select></label></div>' +
         '<div class="es-form es-eixos" id="es-pv-eixos"></div><p class="al-fino" id="es-pv-eixos-nota"></p>' +
         '<p class="al-fino"><b>Regra de nota deste percurso:</b> ' + esc(regraTxt(p.regra_pontuacao)) + '</p>' +
+        '<p class="al-fino" id="es-pv-formato"></p>' +
         '<div class="es-linha"><button class="al-bt" id="es-pv-ir">Começar</button></div><div id="es-pv-msg"></div></div>';
+      // SIMULADO NO FORMATO DO EDITAL: os blocos da regra na proporção do edital (o servidor reparte e sorteia por
+      // bloco). O veredito "atingiu / não atingiu" só sai de simulado nesse formato; treino e prova curta dão nota.
+      var fmt = null, nTocado = false;
+      function dizerFormato() {
+        var cx = el('es-pv-formato');
+        if (!cx) return;
+        var sim = el('es-pv-modo').value === 'simulado', comMateria = !!el('es-pv-comp').value, n = Number(el('es-pv-n').value) || 10;
+        if (!fmt) { cx.innerHTML = ''; return; }
+        if (!sim) { cx.innerHTML = 'Treino é prática com relógio: no fim você vê acertos e nota — <b>sem veredito</b> de "atingiu o critério", que é do simulado no formato do edital.'; return; }
+        if (comMateria) { cx.innerHTML = 'Com matéria escolhida o simulado é um recorte: sai a nota, <b>sem veredito</b> (prova fora do formato do edital).'; return; }
+        var total = fmt.questoes || n;
+        cx.innerHTML = 'Simulado <b>no formato do edital</b>: as questões são repartidas pelos blocos ' + esc(fmt.blocos.join(', ')) + ' na proporção do edital' +
+          (fmt.exemplo ? ' (' + fmt.exemplo.map(function (x) { return x.questoes + ' no ' + esc(x.bloco); }).join(', ') + ' em ' + (fmt.questoes || 100) + ')' : '') + '. ' +
+          (n < total && fmt.questoes ? 'Com ' + n + ' questões a prova fica menor que a do edital: sai a nota, sem veredito. ' : 'Prova curta demais para os mínimos do edital sai com a nota, sem veredito. ') +
+          '<button class="es-link" id="es-pv-completo">Usar ' + (fmt.questoes || 100) + ' questões (simulado completo)</button>';
+        if (el('es-pv-completo')) el('es-pv-completo').onclick = function () { el('es-pv-n').value = fmt.questoes || 100; nTocado = true; dizerFormato(); };
+      }
+      el('es-pv-n').oninput = function () { nTocado = true; dizerFormato(); };
+      el('es-pv-comp').onchange = dizerFormato;
+      el('es-pv-modo').onchange = function () {
+        // escolher "Simulado" já propõe a prova inteira do edital (se o aluno não digitou outro número)
+        if (fmt && !nTocado) el('es-pv-n').value = el('es-pv-modo').value === 'simulado' && !el('es-pv-comp').value ? (fmt.questoes || 100) : 10;
+        dizerFormato();
+      };
       comBanco(function (b) {
         if (!el('es-pv-eixos')) return;
+        fmt = b.formato || null; dizerFormato();
         el('es-pv-eixos').innerHTML = seletoresDeEixo(b, 'es-pv-x-', {});
         if (el('es-pv-eixos').innerHTML) el('es-pv-eixos-nota').textContent = 'Escolha a banca do seu edital para fazer a prova só com questões dela. Banca, órgão, cargo e ano são das questões de prova oficial: com um deles marcado, as questões autorais ficam de fora.';
         // percurso sem questão: não há prova a montar — dizer isso antes de o aluno apertar "Começar"
@@ -2179,9 +2423,10 @@
         api('POST', base() + '/tentativas', { banca: fe.banca || '', orgao: fe.orgao || '', cargo: fe.cargo || '', ano_de: Number(fe.ano_de) || 0, modo: el('es-pv-modo').value, n: Number(el('es-pv-n').value) || 10, duracao_min: Number(el('es-pv-dur').value) || 0, competencias: comp ? [comp] : [], aceitar_menos: !!aceitar })
           .then(function (t) { executar(alvo, t); })
           .catch(function (e) {
-            // faltou questão: o servidor diz quantas há; a escolha de reduzir é do aluno
+            // faltou questão (no total ou num BLOCO do formato do edital): o servidor diz quantas há; a escolha de reduzir é do aluno
             el('es-pv-msg').innerHTML = '<p class="es-aviso">' + esc(e.message) + '</p>' +
-              (/eleg[ií]vel/.test(e.message) ? '<button class="al-bt fan" id="es-pv-menos">Fazer com as questões que existem</button>' : '');
+              (/eleg[ií]vel/.test(e.message) ? '<button class="al-bt fan" id="es-pv-menos">Fazer com as questões que existem</button>' +
+                (/formato do edital/.test(e.message) ? '<p class="al-fino">Com menos questões num bloco a prova sai do formato do edital: você verá a nota, sem veredito.</p>' : '') : '');
             if (el('es-pv-menos')) el('es-pv-menos').onclick = function () { iniciar(true); };
           });
       }
@@ -2190,22 +2435,25 @@
     function executar(alvo, t) {
       if (t.estado !== 'em_andamento') return resultado(alvo, t);
       var aval = ehAvaliacao(t); // diagnóstico e teste final: mesma tela, sem relógio
-      var desvio = Date.parse(t.agora) - Date.now(), prazo = Date.parse(t.prazo_em), resp = t.respostas || {}, marcadas = {}, i = 0, fila = null, salvando = false;
+      var desvio = Date.parse(t.agora) - Date.now(), prazo = Date.parse(t.prazo_em), resp = t.respostas || {}, marcadas = {}, fila = null, salvando = false;
+      // retoma NA QUESTÃO em que o aluno estava (a posição mora no servidor, com as respostas) — não na primeira
+      var i = Math.min(Math.max(0, Number(t.posicao) || 0), Math.max(0, t.questoes.length - 1)), posMudou = false, posTimer = null;
       alvo.innerHTML = '<div class="es-prova"><div class="es-pv-topo">' + (aval ? '<div><b>' + TIPO_AVAL[t.modo] + '</b><span class="al-fino"> · sem relógio: responda no seu ritmo, pare quando quiser e continue depois' + (t.retomada ? ' · retomado de onde você parou' : '') + '</span></div>'
           : '<div><b id="es-pv-rel">--:--</b><span class="al-fino"> restantes · ' + (t.modo === 'simulado' ? 'simulado' : 'treino') + (t.retomada ? ' · retomada de onde você parou' : '') + '</span></div>') +
         '<span class="es-salvo" id="es-pv-salvo" role="status">' + (t.salvo_em ? 'Respostas salvas' : 'Nada respondido ainda') + '</span></div>' +
+        (!aval && t.sem_veredito ? '<p class="al-fino es-pv-semv">Prova fora do formato do edital (' + esc((t.sem_veredito_motivos || []).join('; ')) + '): no fim você vê acertos e nota, sem veredito.</p>' : '') +
         '<div class="es-pv-nav" id="es-pv-nav"></div><div class="jr-caixa" id="es-pv-q"></div>' +
         '<div class="es-linha"><button class="al-bt fan" id="es-pv-ant">← Anterior</button><button class="al-bt fan" id="es-pv-prox">Próxima →</button><button class="al-bt fan" id="es-pv-marc">Marcar para voltar</button>' +
         (aval ? '<button class="al-bt fan" id="es-pv-sair">Salvar e continuar depois</button>' : '') + '<button class="al-bt ok" id="es-pv-env">' + (aval ? 'Concluir e ver o resultado' : 'Enviar a prova') + '</button></div><div id="es-pv-conf"></div></div>';
       function salvar() {
-        if (salvando || !fila) return;
-        var envio = fila; fila = null; salvando = true;
-        el('es-pv-salvo').textContent = 'Salvando…';
-        api('PUT', base() + '/tentativas/' + t.id + '/respostas', { respostas: envio }).then(function (r) {
+        if (salvando || (!fila && !posMudou)) return;
+        var envio = fila || {}, soPosicao = !fila; fila = null; posMudou = false; salvando = true;
+        if (!soPosicao && el('es-pv-salvo')) el('es-pv-salvo').textContent = 'Salvando…';
+        api('PUT', base() + '/tentativas/' + t.id + '/respostas', { respostas: envio, posicao: i }).then(function (r) {
           salvando = false;
           if (!r.salvo) { pararRelogio(); return executar(alvo, r); }
           if (el('es-pv-salvo')) { el('es-pv-salvo').textContent = 'Salvo · ' + r.respondidas + ' de ' + r.total + ' respondidas'; el('es-pv-salvo').className = 'es-salvo'; }
-          if (fila) salvar();
+          if (fila || posMudou) salvar();
         }).catch(function () {
           // o aluno precisa saber que NÃO salvou: a resposta volta para a fila e tenta de novo
           salvando = false;
@@ -2214,11 +2462,13 @@
           setTimeout(salvar, 4000);
         });
       }
+      // mudou de questão sem responder: a posição segue para o servidor um instante depois (junto da próxima resposta, se houver)
+      function mudouDeQuestao() { posMudou = true; clearTimeout(posTimer); posTimer = setTimeout(salvar, 1200); }
       function nav() {
         el('es-pv-nav').innerHTML = t.questoes.map(function (q, k) {
           return '<button data-k="' + k + '" class="' + (k === i ? 'on ' : '') + (resp[q.id] ? 'feita ' : '') + (marcadas[q.id] ? 'marc' : '') + '" aria-label="Questão ' + (k + 1) + (resp[q.id] ? ', respondida' : ', sem resposta') + '">' + (k + 1) + '</button>';
         }).join('');
-        cada(el('es-pv-nav'), 'button', function (b) { b.onclick = function () { i = Number(b.getAttribute('data-k')); pintar(); }; });
+        cada(el('es-pv-nav'), 'button', function (b) { b.onclick = function () { i = Number(b.getAttribute('data-k')); mudouDeQuestao(); pintar(); }; });
       }
       function pintar() {
         var q = t.questoes[i];
@@ -2239,8 +2489,8 @@
         if (fila) salvar();
         espera();
       }
-      el('es-pv-ant').onclick = function () { i--; pintar(); };
-      el('es-pv-prox').onclick = function () { i++; pintar(); };
+      el('es-pv-ant').onclick = function () { i--; mudouDeQuestao(); pintar(); };
+      el('es-pv-prox').onclick = function () { i++; mudouDeQuestao(); pintar(); };
       el('es-pv-marc').onclick = function () { var id = t.questoes[i].id; marcadas[id] = !marcadas[id]; pintar(); };
       el('es-pv-env').onclick = function () {
         var faltam = t.questoes.filter(function (q) { return !resp[q.id]; }).length;
@@ -2272,24 +2522,44 @@
       pararRelogio();
       // diagnóstico e teste final: o resultado é por disciplina e mora em Minha jornada (com a ordem sugerida e o antes × depois)
       if (ehAvaliacao(t)) { carregar(function () { botoesDaBarra(); ir('jornada', 'avaliacao'); }); return; }
-      var r = t.resultado, pos = {}, k = 0;
+      var r = t.resultado, k = 0;
       var linha = function (a, b) { return '<tr><td>' + a + '</td><td class="n">' + b + '</td></tr>'; };
+      // O VEREDITO vem do servidor (`r.veredito`): "atingiu / não atingiu" só para simulado no formato da regra do
+      // percurso. Treino e prova curta mostram acertos e nota, com a frase "prova fora do formato do edital: sem veredito".
+      var veredito = r.veredito === 'atingiu' ? '<p><b>Atingiu o critério cadastrado.</b></p>'
+        : r.veredito === 'nao_atingiu' ? '<p><b>Não atingiu o critério cadastrado.</b></p>'
+        : r.veredito === 'fora_do_formato' ? '<p class="es-aviso"><b>Prova fora do formato do edital: sem veredito.</b> ' + esc((r.veredito_motivos || []).join('; ')) + '. Aqui valem os acertos e a nota; o "atingiu / não atingiu o critério" só sai de um simulado no formato do edital.</p>'
+        : r.veredito ? '<p class="al-fino">Este percurso não tem nota de corte cadastrada — por isso não há "aprovado" ou "reprovado" aqui.</p>'
+        // (resultado de antes desta regra, sem o campo: mantém a leitura antiga)
+        : r.aprovado === null ? '<p class="al-fino">Este percurso não tem nota de corte cadastrada — por isso não há "aprovado" ou "reprovado" aqui.</p>' : '<p><b>' + (r.aprovado ? 'Atingiu o critério cadastrado.' : 'Não atingiu o critério cadastrado.') + '</b></p>';
+      var acertos = r.certas + ' de ' + (r.total || (r.certas + r.erradas + r.em_branco + (r.abstencoes || 0) + (r.anuladas || 0))) + (r.certas === 1 ? ' acerto' : ' acertos');
       alvo.innerHTML = '<div class="jr-caixa"><h3>Resultado' + (r.expirada ? ' — o prazo terminou' : '') + '</h3>' +
         (r.expirada ? '<p class="es-aviso">O tempo acabou antes do envio. Valeram as respostas que já estavam salvas no servidor.</p>' : '') +
-        '<div class="es-nota"><b>' + r.nota_liquida + '</b><span> de ' + r.maximo + ' · ' + r.pct_liquido + '%</span></div>' +
+        // números sempre com vírgula decimal (antes: "0.3 de 1 · 30%")
+        '<div class="es-nota"><b>' + num(r.nota_liquida) + '</b><span> de ' + num(r.maximo) + ' · ' + num(r.pct_liquido) + ' % · ' + acertos + '</span></div>' +
         '<table class="es-tab">' + linha('Certas', r.certas) + linha('Erradas', r.erradas) + linha('Em branco', r.em_branco) + (r.abstencoes ? linha('Marcadas como não respondidas', r.abstencoes) : '') +
-        (r.anuladas ? linha('Anuladas', r.anuladas) : '') + linha('Pontos brutos', r.nota_bruta) + (r.descontados ? linha('Desconto: ' + r.erros_contados + ' erro(s) pela regra' + (r.erros_contados > r.erradas ? ' (erradas + em branco)' : ''), '− ' + r.descontados) : '') + linha('<b>Nota líquida</b>', '<b>' + r.nota_liquida + '</b>') + '</table>' +
-        '<p class="al-fino"><b>Regra aplicada:</b> ' + esc(regraTxt(r.regra)) + '</p>' +
-        (r.aprovado === null ? '<p class="al-fino">Este percurso não tem nota de corte cadastrada — por isso não há "aprovado" ou "reprovado" aqui.</p>' : '<p><b>' + (r.aprovado ? 'Atingiu o critério cadastrado.' : 'Não atingiu o critério cadastrado.') + '</b></p>') +
+        (r.anuladas ? linha('Anuladas', r.anuladas) : '') + linha('Pontos brutos', num(r.nota_bruta)) + (r.descontados ? linha('Desconto: ' + r.erros_contados + ' erro(s) pela regra' + (r.erros_contados > r.erradas ? ' (erradas + em branco)' : ''), '− ' + num(r.descontados)) : '') + linha('<b>Nota líquida</b>', '<b>' + num(r.nota_liquida) + '</b>') + '</table>' +
+        ((r.por_bloco || []).length > 1 ? '<table class="es-tab es-jr-tab"><tr><th>Bloco</th><th class="n">Acertos</th><th class="n">Pontos</th></tr>' + r.por_bloco.map(function (b) {
+          return '<tr><td>' + (b.bloco ? esc(b.bloco) : 'Sem bloco') + '</td><td class="n">' + b.certas + '</td><td class="n">' + num(b.pontos_brutos) + ' de ' + num(b.maximo) + '</td></tr>';
+        }).join('') + '</table>' : '') +
+        '<p class="al-fino"><b>Regra aplicada:</b> ' + esc(regraTxt(r.regra)) + '</p>' + veredito +
         '<p class="al-fino">Um resultado em poucas questões mostra como você foi nestas questões, não o domínio do programa inteiro.</p>' +
         '<div class="es-linha"><button class="al-bt" id="es-rs-hj">Ver a próxima tarefa</button><button class="al-bt fan" id="es-rs-nova">Outra prova</button></div></div>' +
-        '<div class="jr-caixa"><h3>Correção comentada</h3>' + r.itens.map(function (it) {
+        // CORREÇÃO COMENTADA — a prova COMO O ALUNO A VIU: as alternativas na ordem congelada da tentativa, a letra pela
+        // posição (a mesma da tela da prova), o texto de cada uma e o enunciado. Nunca o id cru da alternativa: com as
+        // alternativas embaralhadas, o "D" do id era outra letra na tela, e o aluno conferia o gabarito na alternativa errada.
+        '<div class="jr-caixa"><h3>Correção comentada</h3><p class="al-fino">As alternativas estão na mesma ordem e com as mesmas letras da sua prova.</p>' + r.itens.map(function (it) {
           var rot = { certa: ['Certa', 'ok'], errada: ['Errada', 'nao'], em_branco: ['Em branco', 'neutro'], abstencao: ['Não respondida (marcada)', 'neutro'], anulada: ['Anulada', 'neutro'] }[it.situacao];
-          k++; pos[it.id] = k;
-          return '<details class="es-rev ' + rot[1] + '"><summary>Questão ' + k + ' — ' + rot[0] + '</summary>' +
-            it.alternativas.map(function (a) {
-              return '<p class="es-rev-alt' + (a.correta ? ' certa' : (it.resposta === a.id ? ' errada' : '')) + '"><b>' + a.id.toUpperCase() + (a.correta ? ' · gabarito' : '') + (it.resposta === a.id ? ' · sua resposta' : '') + '</b> ' + esc(a.explicacao || '') + '</p>';
-            }).join('') + (it.comentario ? '<p>' + esc(it.comentario) + '</p>' : '') + '</details>';
+          k++;
+          var resumo = it.gabarito_letra ? ' · gabarito ' + esc(it.gabarito_letra) + (it.resposta_letra ? ' · você marcou ' + esc(it.resposta_letra) : '') : '';
+          return '<details class="es-rev ' + rot[1] + '"><summary>Questão ' + k + ' — ' + rot[0] + resumo + '</summary>' +
+            (it.apoio ? '<div class="es-apoio">' + texto(it.apoio) + '</div>' : '') + (it.enunciado ? '<div class="es-enun">' + texto(it.enunciado) + '</div>' : '') +
+            it.alternativas.map(function (a, n) {
+              // resultado de antes desta regra não traz `letra`: a posição na lista (que já é a ordem da prova) dá a letra
+              var letra = a.letra || String.fromCharCode(65 + n), marcada = a.marcada != null ? a.marcada : it.resposta === a.id;
+              return '<p class="es-rev-alt' + (a.correta ? ' certa' : (marcada ? ' errada' : '')) + '"><b>' + esc(letra) + ')' + (a.correta ? ' · gabarito' : '') + (marcada ? ' · sua resposta' : '') + '</b> ' + esc(a.texto || '') +
+                (a.explicacao ? '<span class="es-expl">' + esc(a.explicacao) + '</span>' : '') + '</p>';
+            }).join('') + (it.comentario ? '<p>' + esc(it.comentario) + '</p>' : '') + notaDeVigencia(it.vigencia) + '</details>';
         }).join('') + '</div>';
       el('es-rs-hj').onclick = function () { ir('hoje'); };
       el('es-rs-nova').onclick = function () { ir('prova'); };
@@ -3420,6 +3690,6 @@
 
     // `guardarLugar`: quem tira o aluno do Estude para uma tela do curso (audiobook, desafio, material…) chama
     // antes de sair — as disciplinas abertas e a rolagem ficam guardadas para a volta.
-    return { cartao: cartao, abrir: abrir, guardarLugar: guardarLugar };
+    return { cartao: cartao, abrir: abrir, guardarLugar: guardarLugar, sair: sairDoEstude };
   };
 })();

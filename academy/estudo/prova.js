@@ -305,7 +305,16 @@ function textoConfere(trecho, baseLisa) {
     if (liso(acum).length >= 15) { pedacos.push(acum); acum = ''; }
   }
   if (acum) { if (pedacos.length) pedacos[pedacos.length - 1] += ' ' + acum; else pedacos.push(acum); }
-  return pedacos.length > 1 && pedacos.every(p => baseLisa.includes(liso(p)));
+  if (pedacos.length < 2) return false;
+  // … e NA ORDEM: cada frase é procurada DEPOIS da anterior. Frases verdadeiras de lugares diferentes da página,
+  // costuradas noutra ordem, não são o texto da questão — é montagem, e vai para revisão.
+  let de = 0;
+  for (const p of pedacos) {
+    const alvoP = liso(p), k = baseLisa.indexOf(alvoP, de);
+    if (k < 0) return false;
+    de = k + alvoP.length;
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------

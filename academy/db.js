@@ -770,12 +770,31 @@ const MIGRACOES = [
     nome: 'estudo-aula-lida-2026-10-11',
     sql: `ALTER TABLE est_aula_estado ADD COLUMN lida_em TEXT DEFAULT '';`,
   },
+  {
+    // PROVA EM ANDAMENTO (auditoria de 11/10/2026): a questão em que o aluno estava — recarregar a página ou voltar
+    // pela aba Prova retoma NELA, não na primeira.
+    nome: 'estudo-tentativa-posicao-2026-10-11',
+    sql: `ALTER TABLE est_tentativas ADD COLUMN posicao INTEGER DEFAULT 0;`,
+  },
+  {
+    // A TENTATIVA É DO BLOCO, NÃO DA POSIÇÃO: a digital do enunciado do bloco em que o aluno escreveu — reimportar a
+    // aula com os blocos em outra ordem não cola mais o texto dele no exercício errado (estudo/aluno.js › tentativasNoLugar).
+    nome: 'estudo-tentativa-bloco-ref-2026-10-11',
+    sql: `ALTER TABLE est_tentativas_bloco ADD COLUMN bloco_ref TEXT DEFAULT '';`,
+  },
 ];
 
+// Cada migração é ATÔMICA: os comandos dela e o registro em `migrations` entram na mesma transação. Antes, um
+// processo morto entre dois `ALTER TABLE ADD COLUMN` deixava a migração pela metade e sem registro — e a subida
+// seguinte parava em "duplicate column". (O DDL do SQLite é transacional: o ROLLBACK desfaz o ALTER.)
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;
-  db.exec(m.sql);
-  db.prepare('INSERT INTO migrations (nome, aplicada_em) VALUES (?, ?)').run(m.nome, new Date().toISOString());
+  db.exec('BEGIN');
+  try {
+    db.exec(m.sql);
+    db.prepare('INSERT INTO migrations (nome, aplicada_em) VALUES (?, ?)').run(m.nome, new Date().toISOString());
+    db.exec('COMMIT');
+  } catch (e) { try { db.exec('ROLLBACK'); } catch (_) { /* nada aberto */ } throw e; }
 }
 
 const nowISO = () => new Date().toISOString();

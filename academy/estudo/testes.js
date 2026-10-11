@@ -329,6 +329,9 @@ async function rodar({ t, req, EST, impId }) {
     assert.deepEqual([r.json.acerto, r.json.pistas_usadas, r.json.conta_como], [true, 1, 'prática com apoio'], r.texto);
     assert.ok(r.json.alternativas.every(a => a.explicacao), 'depois de responder, todas as alternativas explicadas');
     let p = await estado();
+    // RÉGUA (11/10/2026): responder no Praticar SEM ter aberto a aula não a marca como estudada
+    assert.equal(p.cobertura.estudo.estudados, 0, 'sem abrir a aula, a resposta não vira aula estudada');
+    assert.equal((await req('GET', `${esc}/unidades/prescricao-base?aberta=1`, { jar: 'olga' })).st, 200);
     assert.equal(p.competencias.find(c => c.codigo === 'prescricao').estado, 'demonstrada_com_apoio');
     assert.equal(p.proxima.tipo, 'pratica_sem_apoio');
     r = await resp(2, 'a');
@@ -340,6 +343,9 @@ async function rodar({ t, req, EST, impId }) {
     assert.deepEqual([p.cobertura.estudo.estudados, p.cobertura.dominio.sem_apoio], [1, 1]);
     assert.deepEqual([p.desempenho.respostas, p.desempenho.ineditas, p.desempenho.acertos_sem_apoio], [3, 2, 2]);
     assert.equal((await resp(1, '')).st, 400, 'resposta vazia');
+    const torta = await resp(1, 'zz');
+    assert.equal(torta.st, 400, 'alternativa que não existe é pedido torto, não erro do aluno');
+    assert.equal((await estado()).desempenho.respostas, 3, 'e não vira evidência');
     assert.equal((await resp(7, 'a')).st, 403, 'reservada não se gasta na prática');
     assert.equal((await req('POST', `${esc}/questoes/${idDe(1)}/responder`, { jar: 'caio', corpo: { resposta: 'a' } })).st, 403);
   });
@@ -388,6 +394,23 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(res.certas + res.erradas + res.em_branco, 7, 'as três contagens somam a prova — nenhuma questão contada duas vezes');
     assert.equal(res.regra.fonte, 'Regulamento de teste, art. 1º', 'a nota diz de qual regra saiu');
     assert.ok(res.itens.every(i => i.alternativas.length === 3 && i.gabarito === 'a'), 'depois de enviar, o gabarito comentado');
+    // CORREÇÃO COMENTADA (auditoria 11/10/2026): a ordem é a CONGELADA que a aluna viu, a letra é a da POSIÇÃO, e vêm o texto e o enunciado
+    const vista = Object.fromEntries(ini.json.questoes.map(q => [q.id, q]));
+    assert.ok(ini.json.questoes.some(q => q.alternativas.map(a => a.id).join('') !== 'abc'), 'ao menos uma questão desta prova saiu embaralhada (senão o teste não prova nada)');
+    for (const it of res.itens) {
+      const q = vista[it.id];
+      assert.deepEqual(it.alternativas.map(a => a.id), q.alternativas.map(a => a.id), 'mesma ordem da tela da prova');
+      assert.deepEqual(it.alternativas.map(a => a.letra), ['A', 'B', 'C'], 'letra pela posição');
+      assert.deepEqual(it.alternativas.map(a => a.texto), q.alternativas.map(a => a.texto), 'com o texto de cada alternativa');
+      assert.equal(it.enunciado, q.enunciado, 'e o enunciado');
+      const posGab = q.alternativas.findIndex(a => a.id === 'a'), marc = respostas[it.id];
+      assert.equal(it.gabarito_letra, 'ABC'[posGab], 'a letra do gabarito é a da posição em que a alternativa certa apareceu');
+      assert.equal(it.resposta_letra, marc ? 'ABC'[q.alternativas.findIndex(a => a.id === marc)] : '', 'a letra da resposta é a da posição que a aluna marcou');
+      assert.deepEqual(it.alternativas.filter(a => a.correta).map(a => a.id), ['a']);
+      assert.deepEqual(it.alternativas.filter(a => a.marcada).map(a => a.id), marc ? [marc] : []);
+    }
+    // prova sem o formato da regra (7 questões; a regra tem mínimo): nota sim, veredito não
+    assert.ok(['fora_do_formato', 'sem_criterio', 'atingiu', 'nao_atingiu'].includes(res.veredito), res.veredito);
     const evid = () => db.prepare('SELECT COUNT(*) n FROM est_evidencias WHERE tentativa_id = ?').get(tentativaId).n;
     assert.equal(evid(), 6, 'branco não vira evidência de que a aluna não sabia');
     const env2 = await req('POST', `${esc}/tentativas/${tentativaId}/enviar`, { jar: 'olga' });
@@ -656,14 +679,19 @@ async function rodar({ t, req, EST, impId }) {
     const painel = fs.readFileSync(path.join(__dirname, '..', 'app-cliente.js'), 'utf8');
     const aluno = fs.readFileSync(path.join(__dirname, '..', 'app-aluno.js'), 'utf8');
     const tela = fs.readFileSync(path.join(__dirname, '..', 'app-estudo.js'), 'utf8');
-    assert.ok(/window\.AcademyRota = \{ ler: rotaAtual, gravar: gravarRota \}/.test(painel) && /addEventListener\('popstate'/.test(painel), 'o painel grava a rota e ouve o botão Voltar');
+    assert.ok(/window\.AcademyRota = \{ ler: rotaAtual, gravar: gravarRota, guardar: guardarNoPasso, empilhar: empilhar, /.test(painel) && /addEventListener\('popstate'/.test(painel), 'o painel grava a rota e ouve o botão Voltar');
     assert.ok(/if \(!aplicarRota\(\)\) irPara\(ABA\);/.test(painel), 'ao carregar, a rota do endereço vem antes da tela padrão');
     assert.ok(/rota\(\['curso', pid\]\)/.test(aluno) && /abrir\(pend\.slug, pend\)/.test(aluno), 'o curso entra no endereço e o percurso pendente é reaberto');
     assert.ok(/rota\(\['curso', E\.pid, 'estude', E\.slug, aba\]/.test(tela) && /'aulas', 'ler', cod\]/.test(tela), 'cada aba do Estude e a leitura entram no endereço');
     // o par gravar/ler é ida e volta, com acento e barra no meio
-    const dom = { hash: '', hist: [] };
-    const mod = new Function('location', 'history', painel.slice(painel.indexOf('  var ROTA = { aplicando: false };'), painel.indexOf('  window.AcademyRota =')) + ';return { rotaAtual, gravarRota, ROTA };')(
-      dom, { pushState: (a, b, h) => { dom.hist.push('push'); dom.hash = h; }, replaceState: (a, b, h) => { dom.hist.push('replace'); dom.hash = h; } });
+    // um histórico de mentira: pilha de passos { hash, state }; `hist` anota só o que MUDA o endereço
+    const dom = { hist: [], pilha: [{ hash: '', state: null }], y: 0, get hash() { return this.pilha[this.pilha.length - 1].hash; }, set hash(v) { this.pilha[this.pilha.length - 1].hash = v; }, get href() { return 'https://x/academy/app' + this.hash; } };
+    const soHash = (h) => (String(h).includes('#') ? String(h).slice(String(h).indexOf('#')) : '');
+    const hist = { get state() { return dom.pilha[dom.pilha.length - 1].state; },
+      pushState: (st, b, h) => { if (soHash(h) !== dom.hash) dom.hist.push('push'); dom.pilha.push({ hash: soHash(h), state: st }); },
+      replaceState: (st, b, h) => { const topo = dom.pilha[dom.pilha.length - 1]; if (soHash(h) !== topo.hash) dom.hist.push('replace'); topo.hash = soHash(h); topo.state = st; } };
+    const mod = new Function('location', 'history', 'document', painel.slice(painel.indexOf('  var ROTA = { aplicando: false };'), painel.indexOf('  window.AcademyRota =')) + ';return { rotaAtual, gravarRota, guardarNoPasso, empilhar, ROTA };')(
+      dom, hist, { get scrollingElement() { return { scrollTop: dom.y }; } });
     mod.gravarRota(['curso', 'uD4H', 'estude', 'magistratura-trt10', 'unidade', 'dit-1-1/3 ação']);
     assert.deepEqual(mod.rotaAtual(), ['curso', 'uD4H', 'estude', 'magistratura-trt10', 'unidade', 'dit-1-1/3 ação']);
     mod.gravarRota(['curso', 'uD4H', 'estude', 'magistratura-trt10', 'unidade', 'dit-1-1/3 ação']);
@@ -673,6 +701,45 @@ async function rodar({ t, req, EST, impId }) {
     assert.deepEqual(mod.rotaAtual(), ['aluno'], 'enquanto uma rota é aplicada, ninguém grava');
     dom.hash = '#cadastro';
     assert.deepEqual(mod.rotaAtual(), [], 'âncora que não é rota é ignorada');
+    // "VOLTAR PARA ONDE ESTAVA, SEMPRE" (auditoria 11/10/2026): o passo que se DEIXA guarda a rolagem; o passo novo leva o que a tela lembra
+    mod.ROTA.aplicando = false;
+    dom.pilha = [{ hash: '#/curso/p/estude/s/unidade/aula-x', state: null }]; dom.y = 8903;
+    mod.gravarRota(['curso', 'p', 'estude', 's', 'caderno'], false, { es: { caderno: { aba: 'unidade', arg: 'aula-x', y: 8903 } } });
+    assert.deepEqual(dom.pilha.map(p => [p.hash, p.state && p.state.y]), [['#/curso/p/estude/s/unidade/aula-x', 8903], ['#/curso/p/estude/s/caderno', undefined]], 'a aula ficou com a rolagem 8.903 no passo dela');
+    assert.deepEqual(dom.pilha[1].state.es.caderno, { aba: 'unidade', arg: 'aula-x', y: 8903 }, 'e o caderno sabe para onde devolver — inclusive depois de um F5 (o estado mora no histórico)');
+    // a tela da barra do curso (Largada, Simulações, Lab, material, audiobook) não muda o endereço: entra como um passo A MAIS
+    dom.pilha = [{ hash: '#/curso/p/estude/s/hoje', state: null }, { hash: '#/curso/p/estude/s/aulas', state: { es: { lugares: { aulas: { abertos: [6], y: 4533 } } } } }]; dom.y = 4533;
+    assert.equal(mod.empilhar({ porta: 1 }), true);
+    assert.deepEqual(dom.pilha.map(p => p.hash), ['#/curso/p/estude/s/hoje', '#/curso/p/estude/s/aulas', '#/curso/p/estude/s/aulas'], 'o Voltar do navegador cai no passo de Aulas — não em Hoje');
+    assert.deepEqual([dom.pilha[1].state.y, dom.pilha[1].state.es.lugares.aulas.abertos, dom.pilha[2].state.porta, dom.pilha[2].state.y], [4533, [6], 1, 4533], 'com a rolagem e a disciplina aberta de onde ele saiu (e o F5 na tela aberta também volta lá)');
+    // as peças na tela: quem abre a porta empilha; o botão "Voltar ao Estude" faz o mesmo caminho do navegador; o Estude repõe a rolagem do passo
+    assert.ok(/window\.AcademyRota\.empilhar\(\{ porta: 1 \}\)/.test(aluno) && /if \(portaNoHistorico\) \{ portaNoHistorico = false; try \{ history\.back\(\); return; \}/.test(aluno), 'a barra do curso entra no histórico');
+    assert.ok(aluno.includes('if (noEstude && C && C.pid === AB.pid) sairDoEstude(C.pid);'), 'o mini-player, de dentro do Estude, guarda o lugar antes de abrir o audiobook');
+    assert.ok(painel.includes("y: Number(st.y) || 0, es: st.es || null, pelaRota: true") && tela.includes('if (inicio.y > 0) reporRolagem(inicio.aba ||'), 'o passo reaberto leva a rolagem ao Estude');
+    assert.ok(tela.includes("if (!c || !LISTAS[E.aba] || E.abaArg || E.dentro) return;") && tela.includes("E.dentro = 'leitor';") && tela.includes("E.dentro = 'marcacoes';"), 'o leitor e as marcações não regravam o lugar da lista de aulas');
+    assert.ok(tela.includes('if (!como.reabrindo) {') && tela.includes('E.antesDoCaderno = { aba: onde.aba || E.aba, arg: onde.arg, y: yAntes };'), 'reabrir pelo endereço não regrava o "de onde vim"; o caderno guarda a rolagem');
+    assert.ok(painel.includes('if (window.AcademyRota.sobrepostos > 0) return;') && tela.includes('R0.sobrepostos = (R0.sobrepostos || 0) + 1;') && tela.includes('var R0 = window.AcademyRota, y0 = rolagem().scrollTop;'), 'tela sobreposta: o painel não remonta e a rolagem é reposta, qualquer que seja a ordem dos ouvintes');
+    // F. "ainda estou nesta tela": UMA porta para toda chamada à API do Estude
+    assert.ok(tela.includes('var apiCru = D.api,') && /function api\(m, p, b\) \{\s+var v = VEZ;/.test(tela), 'toda chamada do Estude passa pela conferência');
+    assert.equal((tela.match(/\bD\.api\b/g) || []).length, 1, 'ninguém chama D.api por fora');
+    const usaCru = (tela.match(/apiCru\(/g) || []).length;
+    assert.ok(usaCru <= 4, 'apiCru só onde o DADO tem de chegar mesmo fora da tela (painel, certificado): ' + usaCru);
+    // a conferência, rodando: a resposta que chega depois de a tela mudar não é entregue (nem o erro)
+    const trecho = tela.slice(tela.indexOf('    var VEZ = 0;'), tela.indexOf('    var ESTADO = {'));
+    const pend = []; const fx = new Function('apiCru', trecho + ';return { api: api, novaTela: novaTela };')((m, p) => new Promise((ok, falha) => pend.push({ p, ok, falha })));
+    const chegou = [];
+    fx.api('GET', '/painel').then(() => chegou.push('painel'), () => chegou.push('erro-painel'));
+    fx.novaTela(); // o aluno tocou em Aulas
+    fx.api('GET', '/aulas').then(() => chegou.push('aulas'));
+    fx.api('GET', '/outra').then(() => chegou.push('outra'), () => chegou.push('erro-outra'));
+    pend[1].ok({}); pend[0].ok({}); pend[2].falha(new Error('x'));
+    await new Promise(r => setTimeout(r, 5));
+    assert.deepEqual(chegou, ['aulas', 'erro-outra'], 'o painel atrasado não pinta por cima da aba nova; o que é da tela atual chega (resultado e erro)');
+    fx.api('GET', '/a').then(() => chegou.push('a'), () => chegou.push('erro-a')); fx.novaTela(); pend[3].falha(new Error('y'));
+    await new Promise(r => setTimeout(r, 5));
+    assert.deepEqual(chegou, ['aulas', 'erro-outra'], 'erro atrasado também não aparece na tela nova');
+    // celular: trocar de aba leva às abas
+    assert.ok(tela.includes('function irAoConteudo(primeira) {') && tela.includes('window.innerWidth > LARGURA_CELULAR') && fs.readFileSync(path.join(__dirname, '..', 'estude.css'), 'utf8').includes('.es-abas,.es-curso-barra{flex-wrap:nowrap;overflow-x:auto'), 'no celular, a aba tocada fica à vista');
   });
 
   await t('estudo: cards — a sessão diz os limites do dia; o acervo inteiro é só do revisor e não agenda nada', async () => {
