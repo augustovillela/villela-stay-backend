@@ -114,7 +114,7 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     await recusa({ tipo: 'correcao', questao_id: qDisc, resposta: 'x'.repeat(8001) }, 400, /passa de 8\.000/);
     await recusa({ tipo: 'correcao', questao_id: qOral, resposta: RESPOSTA }, 400, /arguição oral/);
     await recusa({ tipo: 'correcao', questao_id: 'nao-existe', resposta: RESPOSTA }, 404);
-    await recusa({ tipo: 'edital', questao_id: qDisc }, 501, /ainda não/);
+    await recusa({ tipo: 'edital', questao_id: qDisc }, 400, /para onde vai o programa/); // o edital é pedido de arquivo: sem destino e sem PDF não nasce (testes-edital.js)
     await recusa({ tipo: 'outro', questao_id: qDisc }, 400);
     assert.equal((await criar('caio', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA })).st, 403);
     const peca = await criar('paula', { tipo: 'correcao', questao_id: qPeca, resposta: 'Excelentíssimo Senhor Juiz. '.repeat(900) });

@@ -151,6 +151,14 @@ function proximaTarefa(usuario, escopo, c, est = estadosDoAluno(usuario, escopo)
   if (semRetencao) return { tipo: 'aguardar_retencao', competencia: semRetencao.codigo, motivo: `Demonstrada, mas a retenção só se confirma com nova questão inédita após ${ev.INTERVALO_RETENCAO_DIAS} dias.` };
   const soLeitura = est.find(e => e.estado === 'nao_avaliada' && unidadeDe(e.codigo));
   if (soLeitura) return { tipo: 'aprender', competencia: soLeitura.codigo, unidade: unidadeDe(soLeitura.codigo), motivo: 'Esta parte ainda não tem questões para você demonstrar: estude a aula; ela não conta como demonstrada até haver questão.' };
+  // há competência por avaliar, mas nem questão nem aula para ela (percurso só com o programa do edital):
+  // dizer "tudo demonstrado" seria mentira — a tarefa é trazer questões
+  const semMeio = est.filter(e => e.estado === 'nao_avaliada');
+  if (semMeio.length) {
+    return { tipo: 'sem_questoes', motivo: c.particular
+      ? `Este percurso tem o programa, mas ainda não tem questões: ${semMeio.length} disciplina(s) esperam por elas. Importe uma prova em PDF (aba Escrita e oral › Importar prova) para praticar e fazer simulado.`
+      : `${semMeio.length} competência(s) deste percurso ainda não têm aula nem questão. Elas aparecem aqui assim que o conteúdo for publicado.` };
+  }
   return { tipo: est.length ? 'concluido' : 'sem_competencias', motivo: est.length ? 'Todas as competências foram demonstradas e retidas até aqui.' : 'Este percurso ainda não tem competências definidas.' };
 }
 
@@ -570,6 +578,10 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
     .map(q => ({ q, comps: R.competenciasDaQuestao(q.id, c.escopo.id) }))
     .filter(x => !filtro.size || x.comps.some(k => filtro.has(k)))
     .filter(x => banco.casaEixos(x.q, eixo)); // simulado só com a banca (órgão, cargo, período) escolhida
+  // percurso sem questão nenhuma (só o programa do edital): não é "faltou questão para o filtro" — é dizer o que falta
+  if (!elegiveis.length && !filtro.size && !banco.temFiltroDeEixos(eixo)) {
+    throw erro(c.particular ? 'Este percurso ainda não tem questões — importe uma prova em PDF (aba Escrita e oral › Importar prova) para montar a prova.' : 'Este percurso ainda não tem questões de correção automática.', 409);
+  }
   if (modo === 'treino') elegiveis = elegiveis.filter(x => x.q.uso !== 'reservada');
   // Prova simulada reproduz o edital: questão de competência TRANSVERSAL (método de estudo, técnica
   // de prova — competência que não cobre item do programa) não entra, a não ser que o aluno a peça.

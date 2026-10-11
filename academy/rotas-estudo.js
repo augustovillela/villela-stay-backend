@@ -92,6 +92,10 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.get(`${base}/pedidos/prova/opcoes`, ...AL, h((req, res) => { semCache(res); res.json(ped.opcoesDeProva(...a(req))); }));
   app.post(`${base}/pedidos/:pedido/paginas`, ...AL, h(async (req, res) => { res.json(await ped.reorcar(...a(req), req.params.pedido, b(req))); }));
   app.post(`${base}/pedidos/:pedido/aplicar`, ...AL, h((req, res) => { res.json({ ok: true, ...ped.aplicar(...a(req), req.params.pedido, b(req)) }); }));
+  // ler edital em PDF (fase 4): o que a tela precisa antes de pedir; e a PRÉVIA do aplicar — o que entra no programa
+  // e, em percurso que já tem programa, o diff da retificação. Reorçar (/paginas) e aplicar são as rotas da prova.
+  app.get(`${base}/pedidos/edital/opcoes`, ...AL, h((req, res) => { semCache(res); res.json(ped.opcoesDeEdital(...a(req))); }));
+  app.post(`${base}/pedidos/:pedido/previa`, ...AL, h((req, res) => { semCache(res); res.json({ ok: true, ...ped.previaDoEdital(...a(req), req.params.pedido, b(req)) }); }));
   // falta saldo: recarga do valor que falta, ligada ao pedido — creditou, o pedido começa sozinho
   app.post(`${base}/pedidos/:pedido/recarga`, ...AL, h(async (req, res) => { res.json({ ok: true, ...(await ped.recarga(...a(req), req.params.pedido, b(req), baseUrl(req))) }); }));
 }

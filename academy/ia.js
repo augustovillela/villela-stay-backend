@@ -34,7 +34,7 @@ const MAX_SAIDA = { tutor: 1500, suporte: 1200, mentor: 3000, refinar: 3500, est
 // antigas não vale para eles — e que têm teto de saída PRÓPRIO, por passo, sem o corte global de
 // ACADEMY_LLM_MAX_TOKENS (uma correção de peça ou a leitura de um edital não cabem em 4.000 tokens).
 // `prova` (importar prova em PDF, estudo\prova.js) pede menos que isto por passo — 8.000 por lote de páginas e
-// 3.000 para o gabarito, pelo `max_saida` de cada passo; `edital` já tem o teto aqui e o executor vem depois.
+// 3.000 para o gabarito, pelo `max_saida` de cada passo; `edital` (ler edital em PDF, estudo\edital-pdf.js) pede 12.000 por lote de 2 páginas.
 const SAIDA_PROPRIA = { correcao: 5000, edital: 16000, prova: 16000 };
 const SO_PAGOS = ['correcao', 'edital', 'prova', 'transcricao'];
 const maxSaida = (agente) => SAIDA_PROPRIA[agente] || Math.min(MAX_TOKENS, MAX_SAIDA[agente] || MAX_TOKENS);

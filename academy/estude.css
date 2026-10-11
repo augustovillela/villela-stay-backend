@@ -393,3 +393,35 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-ip-edit .es-campo{margin-top:10px}
 .es-ip-rodape{position:sticky;bottom:0;z-index:2;box-shadow:0 -6px 18px rgba(20,35,70,.08)}
 @media (max-width:640px){.es-ip-faixa .es-campo{width:calc(50% - 8px)}}
+/* troca de percurso (o do curso e os particulares), no cabeçalho do Estude */
+.es-troca{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 0}
+.es-troca:empty{display:none}
+.es-troca button{font:600 .82rem 'Inter',sans-serif;padding:6px 12px;border-radius:99px;border:1px solid var(--al-borda);background:#fff;color:var(--al-tinta);cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.es-troca button.on{background:var(--al-navy);border-color:var(--al-navy);color:#fff;cursor:default}
+.es-troca button:focus-visible{outline:2px solid var(--al-ambar);outline-offset:2px}
+/* ler edital em PDF (ADR-0010, fase 4): páginas detectadas, árvore do programa, dados do concurso e retificação */
+.es-ed [hidden]{display:none}
+.es-ed-orc,.es-ed-dados,.es-ed-arvore{max-width:860px}
+.es-ed-pags{display:grid;gap:4px;margin:10px 0}
+.es-ed-pag{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:baseline;padding:7px 10px;border-radius:8px;border:1px solid rgba(20,35,70,.1);cursor:pointer;line-height:1.45}
+.es-ed-pag.on{background:var(--al-ok-luz);border-color:transparent}
+.es-ed-pag input{width:17px;height:17px;align-self:center}
+.es-ed-trecho{flex:1 1 260px;min-width:0;font-size:.86rem;color:var(--al-tinta);opacity:.8;overflow-wrap:anywhere}
+.es-ip-faixa .es-campo.es-ed-faixas{width:min(100%,320px)}
+.es-ed-fonte{display:block;margin-top:3px;overflow-wrap:anywhere}
+.es-ed-sub{margin:14px 0 6px}
+.es-ed-etapa{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 6px}
+.es-ed-etapa input{flex:1 1 220px;min-width:0}
+.es-ed-regra{margin-top:14px}
+.es-ed-disc.fora>summary{opacity:.55;text-decoration:line-through}
+.es-ed-item{display:flex;gap:8px;align-items:flex-start;padding:6px 8px 6px calc(8px + var(--n,0)*20px);border-top:1px solid rgba(20,35,70,.07);line-height:1.5}
+.es-ed-item.pend{background:#FFF7E6;border-left:3px solid var(--al-ambar)}
+.es-ed-item.fora .es-ed-txt{opacity:.5;text-decoration:line-through}
+.es-ed-txt{flex:1;min-width:0;overflow-wrap:anywhere}
+.es-ed-txt .es-pend{display:block}
+.es-ed-diff{margin:6px 0 6px 18px;padding:0;line-height:1.5}
+.es-ed-diff li{overflow-wrap:anywhere;margin-bottom:4px}
+.es-ed-diff li.mais{color:#12805C}
+.es-ed-diff li.menos{color:#BE123C;text-decoration:line-through}
+.es-ed-ret{margin-top:12px}
+@media (max-width:640px){.es-ed-item{padding-left:calc(6px + var(--n,0)*10px)}}

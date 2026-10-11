@@ -2832,6 +2832,8 @@ async function main() {
   await require('./estudo/testes-pedidos').rodar({ t, req, EST, impId, mpFetch });
   // ESTUDO · importar prova em PDF e percurso particular (ADR-0010, fase 3): liga a cobrança de novo e a desliga ao fim
   await require('./estudo/testes-prova').rodar({ t, req, EST, impId });
+  // ESTUDO · ler edital em PDF (ADR-0010, fase 4): faixa sugerida sem provedor, leitura em lotes, árvore do programa e aplicar
+  await require('./estudo/testes-edital').rodar({ t, req, EST, impId });
 
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);

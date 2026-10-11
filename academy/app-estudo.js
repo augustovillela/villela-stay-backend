@@ -38,9 +38,15 @@
     function materias() {
       var p = E.painel || {};
       if (E._mm && E._mmDe === p) return E._mm;
-      var itens = {}, titulo = {}, mm = {};
-      (p.itens || []).forEach(function (i) { itens[i.codigo] = i; });
+      var itens = {}, titulo = {}, mm = {}, comItem = {};
+      (p.itens || []).forEach(function (i) { itens[i.codigo] = i; (i.competencias || []).forEach(function (k) { comItem[k.codigo] = true; }); });
       (p.unidades || []).forEach(function (u) { (u.competencias || []).forEach(function (k) { if (!titulo[k]) titulo[k] = u.titulo; }); });
+      // competência de DISCIPLINA (uma por disciplina: nasce da prova importada ou do edital lido em PDF): o nome que o
+      // aluno reconhece é o da disciplina — e não o do primeiro item que ela cobre. Vem antes dos itens, de propósito.
+      (p.competencias || []).forEach(function (c) {
+        var imp = RE_DISCIPLINA.exec(c.resultado || '');
+        if (imp) mm[c.codigo] = { item: '', cod: '', disciplina: comItem[c.codigo] ? 'Disciplinas do edital' : 'Provas importadas', grupo: imp[1], titulo: imp[1] };
+      });
       (p.itens || []).forEach(function (i) {
         if (!i.folha) return;
         var partes = i.codigo.split('.'), disc = itens[partes.slice(0, 2).join('.')];
@@ -52,12 +58,18 @@
       });
       (p.competencias || []).forEach(function (c) {
         if (mm[c.codigo]) return;
-        // competência nascida de prova importada (uma por disciplina): o nome que o aluno reconhece é o da disciplina
-        var imp = /^Diante de questões de prova de (.+), o candidato identifica a resposta correta sem apoio.$/.exec(c.resultado || '');
-        mm[c.codigo] = imp ? { item: '', cod: '', disciplina: 'Provas importadas', titulo: imp[1] } : { item: '', cod: '', disciplina: 'Método de estudo', titulo: titulo[c.codigo] || c.resultado };
+        mm[c.codigo] = { item: '', cod: '', disciplina: 'Método de estudo', titulo: titulo[c.codigo] || c.resultado };
       });
       E._mm = mm; E._mmDe = p;
       return mm;
+    }
+    var RE_DISCIPLINA = /^Diante de questões de prova de (.+), o candidato identifica a resposta correta sem apoio.$/;
+    // percurso sem questão nenhuma: o que dizer (e, no percurso particular, o que oferecer)
+    function semQuestoes() {
+      var part = !!(E.painel && E.painel.escopo.particular);
+      return { particular: part, txt: part ? 'Este percurso ainda não tem questões — importe uma prova em PDF para praticar e fazer simulado.' : 'Este percurso ainda não tem questões de correção automática.',
+        botao: function (idBt) { return part ? '<div class="es-linha"><button class="al-bt" id="' + idBt + '">Importar prova em PDF</button></div>' : ''; },
+        ligar: function (idBt) { if (el(idBt)) el(idBt).onclick = function () { ir('escrita', 'importar'); }; } };
     }
     function nomeComp(codigo) {
       var m = materias()[codigo];
@@ -109,13 +121,16 @@
       pararRelogio();
       inicio = inicio || {};
       E.pid = pid; E.titulo = titulo; E.slug = slug; E.voltar = voltar; E.aba = 'hoje';
+      E.rotuloVoltar = rotuloVoltar; E.barra = barra; // quem troca de percurso leva junto o "voltar" e a barra do curso
+      LUGAR = LUGARES[chavePercurso(slug)] || (LUGARES[chavePercurso(slug)] = {});
       setView('<div class="al es"><a href="#" class="al-volta" id="es-volta">← ' + esc(rotuloVoltar || 'Voltar ao curso') + '</a>' +
-        '<div class="es-cab"><p class="al-rotulo">Estude · ' + esc(titulo) + '</p><h2 id="es-titulo">Carregando…</h2><p class="al-sub" id="es-sub"></p>' +
+        '<div class="es-cab"><p class="al-rotulo">Estude · ' + esc(titulo) + '</p><h2 id="es-titulo">Carregando…</h2><p class="al-sub" id="es-sub"></p><div class="es-troca" id="es-troca"></div>' +
         (barra && barra.html ? '<div class="es-curso-barra">' + barra.html + '</div>' : '') + '</div>' +
         '<div class="est-abas es-abas" id="es-abas"></div><div class="es-corpo" id="es-corpo"><p class="al-sub">Carregando…</p></div></div>');
       el('es-volta').onclick = function (e) { e.preventDefault(); pararRelogio(); voltar(); };
       if (barra && barra.ligar) barra.ligar();
       window.scrollTo(0, 0);
+      trocaDePercurso();
       carregar(function () {
         abas();
         if (inicio.aba === 'aulas' && inicio.arg === 'ler' && inicio.extra) {
@@ -125,12 +140,29 @@
         } else ir(inicio.aba || 'hoje', inicio.arg || undefined, !!inicio.substituir);
       });
     }
+    // TROCA DE PERCURSO: quem tem o percurso do curso e um particular (ou vários) passa de um para o outro AQUI, sem
+    // voltar à página do curso. Cada percurso lembra a aba em que estava, e o "voltar" do topo continua o mesmo.
+    function chavePercurso(slug) { return E.pid + '/' + slug; }
+    function abrirPercurso(slug, inicio) { abrir(E.pid, E.titulo, slug, E.voltar, inicio || ONDE[chavePercurso(slug)] || {}, E.rotuloVoltar, E.barra); }
+    function trocaDePercurso() {
+      var pid = E.pid, slug = E.slug;
+      api('GET', '/aluno/cursos/' + pid + '/estudo').then(function (r) {
+        var alvo = el('es-troca'), lista = (r && r.escopos) || [];
+        if (!alvo || E.pid !== pid || E.slug !== slug) return;
+        E.escopos = lista;
+        if (lista.length < 2) { alvo.innerHTML = ''; return; }
+        alvo.innerHTML = '<span class="al-fino">Seus percursos neste curso:</span>' + lista.map(function (e) {
+          return '<button data-troca="' + esc(e.slug) + '"' + (e.slug === slug ? ' class="on" aria-current="true"' : '') + '>' + (e.particular ? '🗂️ Meu percurso — ' : e.tipo === 'edital' ? '📜 ' : '📘 ') + esc(e.titulo) + '</button>';
+        }).join('');
+        cada(alvo, '[data-troca]', function (b) { b.onclick = function () { var s2 = b.getAttribute('data-troca'); if (s2 !== E.slug) abrirPercurso(s2); }; });
+      }).catch(function () { /* sem a lista, o percurso segue igual */ });
+    }
     function carregar(depois) {
       api('GET', base() + '/painel').then(function (p) {
         E.painel = p;
         if (el('es-titulo')) {
           el('es-titulo').innerHTML = esc(p.escopo.titulo) + (p.escopo.particular ? ' <span class="marca-rasc">percurso particular — só você vê</span>' : p.escopo.status === 'rascunho' ? ' <span class="marca-rasc">rascunho — só você vê</span>' : '');
-          el('es-sub').textContent = [p.escopo.nivel, p.escopo.data_alvo ? 'prova em ' + dataBR(p.escopo.data_alvo) : 'sem prova marcada', p.escopo.particular ? 'questões importadas por você' : 'programa versão ' + p.escopo.versao].filter(Boolean).join(' · ');
+          el('es-sub').textContent = [p.escopo.nivel, p.escopo.data_alvo ? 'prova em ' + dataBR(p.escopo.data_alvo) : 'sem prova marcada', p.escopo.particular && !p.escopo.versao ? 'questões importadas por você' : 'programa versão ' + p.escopo.versao + (p.escopo.particular ? ' (do edital que você enviou)' : '')].filter(Boolean).join(' · ');
         }
         if (depois) depois();
       }).catch(function (e) { falha(el('es-corpo'), e); });
@@ -142,7 +174,7 @@
     }
     // O LUGAR de cada aba: quais disciplinas estavam abertas e onde a página estava rolada. Sem isso, voltar da
     // aula para a lista devolve ao topo, com a primeira disciplina aberta — "volta ao princípio" (Augusto, 10/10/2026).
-    var LUGAR = {}, LISTAS = { aulas: 1, mapas: 1, programa: 1, cobrado: 1, escrita: 1 };
+    var LUGAR = {}, LUGARES = {}, ONDE = {}, LISTAS = { aulas: 1, mapas: 1, programa: 1, cobrado: 1, escrita: 1 };
     function rolagem() { return document.scrollingElement || document.documentElement; }
     function guardarLugar() {
       var c = el('es-corpo');
@@ -168,6 +200,7 @@
       guardarLugar();
       if (aba === 'unidade' && E.aba && E.aba !== 'unidade') E.veioDe = E.aba;
       E.aba = aba; E.abaArg = typeof arg === 'string' && arg ? arg : (arg && typeof arg === 'object' ? 'obj' : '');
+      ONDE[chavePercurso(E.slug)] = { aba: aba, arg: typeof arg === 'string' && arg ? arg : undefined }; // para voltar a este percurso onde estava
       rota(['curso', E.pid, 'estude', E.slug, aba].concat(typeof arg === 'string' && arg ? [arg] : []), substituir);
       cada(el('es-abas'), 'button', function (b) { b.classList.toggle('on', b.getAttribute('data-a') === aba); });
       var alvo = el('es-corpo');
@@ -191,7 +224,9 @@
       intervencao: ['Rever e tentar outra', function (p) { p.unidade ? ir('unidade', p.unidade) : ir('praticar', p.competencia); }],
       pratica_sem_apoio: ['Praticar sem apoio', function (p) { ir('praticar', p.competencia); }],
       aprender: ['Começar', function (p) { p.unidade ? ir('unidade', p.unidade) : ir('praticar', p.competencia); }],
-      aguardar_retencao: ['Fazer um simulado', function () { ir('prova'); }]
+      aguardar_retencao: ['Fazer um simulado', function () { ir('prova'); }],
+      // percurso só com o programa (edital lido, ainda sem prova importada): a tarefa é trazer questões
+      sem_questoes: ['Importar uma prova em PDF', function () { ir('escrita', 'importar'); }]
     };
     function eixo(titulo, num, den, legenda, cor) {
       var pct = den ? Math.round(num * 100 / den) : 0;
@@ -201,11 +236,15 @@
     function hoje(alvo) {
       carregar(function () {
         var p = E.painel, c = p.cobertura, px = p.proxima, ac = ACAO[px.tipo], d = p.desempenho;
+        if (px.tipo === 'sem_questoes' && !p.escopo.particular) ac = null; // no percurso do curso, quem traz o conteúdo é o curso
         var h = retaFinal(p) + '<div class="es-proxima"><p class="al-rotulo">Sua próxima tarefa</p>' +
-          '<h3>' + (px.competencia ? esc(nomeComp(px.competencia)) : (px.tipo === 'concluido' ? 'Tudo demonstrado até aqui' : 'Recordar')) + '</h3>' +
+          '<h3>' + (px.competencia ? esc(nomeComp(px.competencia)) : (px.tipo === 'concluido' ? 'Tudo demonstrado até aqui' : px.tipo === 'sem_questoes' ? 'Faltam questões para praticar' : px.tipo === 'sem_competencias' ? 'Percurso ainda vazio' : 'Recordar')) + '</h3>' +
           '<p class="es-motivo"><b>Por quê:</b> ' + esc(px.motivo) + '</p>' +
           (ac ? '<button class="al-bt" id="es-agir">' + ac[0] + '</button>' : '') +
           ' <button class="al-bt fan" id="es-outra">Escolher outra coisa</button></div>';
+        // percurso particular ainda sem programa: dizer o que falta, e por onde ele chega
+        if (p.escopo.particular && !p.escopo.versao) h += '<div class="jr-caixa"><h3>Este percurso ainda não tem programa</h3><p class="al-sub">Envie o edital do concurso em PDF: o sistema lê o conteúdo programático, e o percurso ganha o programa por disciplina e o plano com a data da prova.</p>' +
+          '<button class="al-bt fan" id="es-hj-edital">Ler edital em PDF</button></div>';
         h += '<div class="jr-caixa"><h3>Onde você está no programa</h3>' +
           '<p class="al-sub">São quatro medidas diferentes, cada uma com a sua contagem. Ter a aula pronta não é ter estudado, e ter estudado não é ter demonstrado.</p>' +
           '<div class="es-eixos">' +
@@ -225,6 +264,7 @@
           '<button class="al-bt fan" id="es-hj-err">Abrir o caderno</button></div>';
         alvo.innerHTML = h;
         if (el('es-hj-err')) el('es-hj-err').onclick = function () { ir('erros'); };
+        if (el('es-hj-edital')) el('es-hj-edital').onclick = function () { ir('escrita', 'edital'); };
         if (el('es-agir')) el('es-agir').onclick = function () { ac[1](px); };
         el('es-outra').onclick = function () { ir('programa'); };
       });
@@ -259,6 +299,16 @@
     function aulas(alvo, disc) {
       if (disc != null) return lerDisciplina(alvo, disc);
       var p = E.painel, mm = materias(), grupos = [], por = {};
+      if (!p.unidades.length) {
+        // percurso sem aula (o particular nunca tem): dizer por quê e o que há no lugar — nunca "0 aulas em 0 disciplinas"
+        alvo.innerHTML = '<div class="jr-caixa"><h3>Aulas</h3><p class="al-sub">' + (p.escopo.particular
+          ? 'Percurso particular não tem aulas: ele reúne o programa do edital que você leu e as questões das provas que você importou. As aulas ficam no percurso do curso — troque de percurso no alto da página.'
+          : 'Este percurso ainda não tem aulas publicadas.') + '</p>' +
+          '<div class="es-linha"><button class="al-bt fan" id="es-au-prog">Ver o programa</button>' + (p.escopo.particular ? '<button class="al-bt fan" id="es-au-imp">Importar prova em PDF</button>' : '') + '</div></div>';
+        el('es-au-prog').onclick = function () { ir('programa'); };
+        if (el('es-au-imp')) el('es-au-imp').onclick = function () { ir('escrita', 'importar'); };
+        return;
+      }
       p.unidades.forEach(function (u) {
         var m = mm[(u.competencias || [])[0]] || { disciplina: 'Método de estudo', item: '', cod: '' };
         var cod = m.cod || '_metodo'; // o mesmo agrupamento do servidor: sem disciplina-mãe no programa, a aula fica no grupo geral
@@ -802,10 +852,10 @@
       var temas = p.itens.filter(function (i) { return i.folha; }).map(function (i) {
         var comp = (i.competencias[0] || {}).codigo || '', m = mm[comp] || { disciplina: 'Programa' }, u = uns[comp];
         compDoItem[i.codigo] = comp;
-        var d = porDisc[m.disciplina];
-        if (!d) { d = porDisc[m.disciplina] = { nome: m.disciplina, n: 0, pontos: 0, cobrados: 0 }; discs.push(d); }
+        var nomeD = m.grupo || m.disciplina, d = porDisc[nomeD];
+        if (!d) { d = porDisc[nomeD] = { nome: nomeD, n: 0, pontos: 0, cobrados: 0 }; discs.push(d); }
         d.n += i.oficiais || 0; d.pontos++; if (i.oficiais) d.cobrados++;
-        return { cod: i.codigo, n: i.oficiais || 0, titulo: (u && u.titulo) || i.texto, comp: comp, un: u && u.codigo, mapa: u && u.mapa, disc: m.disciplina };
+        return { cod: i.codigo, n: i.oficiais || 0, titulo: (u && u.titulo) || i.texto, comp: comp, un: u && u.codigo, mapa: u && u.mapa, disc: nomeD };
       });
       var total = temas.reduce(function (s, t) { return s + t.n; }, 0);
       var cobrados = temas.filter(function (t) { return t.n; }).sort(function (a, b) { return b.n - a.n || (a.cod < b.cod ? -1 : 1); });
@@ -844,7 +894,19 @@
     function programa(alvo) {
       var p = E.painel, uns = {};
       p.unidades.forEach(function (u) { uns[u.codigo] = u; });
-      var h = '<div class="jr-caixa"><h3>Programa</h3><p class="al-sub">O texto de cada item é o original. Ao lado, o que já existe para ele e o que você demonstrou.</p><div class="es-prog">' +
+      if (!p.itens.length && !p.competencias.length) {
+        alvo.innerHTML = '<div class="jr-caixa"><h3>Programa</h3><p class="al-sub">Este percurso ainda não tem programa.' + (p.escopo.particular ? ' Envie o edital do concurso em PDF: o sistema lê o conteúdo programático e monta o programa por disciplina.' : '') + '</p>' +
+          (p.escopo.particular ? '<div class="es-linha"><button class="al-bt" id="es-pg-edital">Ler edital em PDF</button></div>' : '') + '</div>';
+        if (el('es-pg-edital')) el('es-pg-edital').onclick = function () { ir('escrita', 'edital'); };
+        return;
+      }
+      // só o programa (edital lido, sem aula e sem questão): os itens estão aí — falta com o que estudar e praticar
+      var soPrograma = p.itens.length && !p.unidades.length && !p.itens.some(function (i) { return i.questoes_revisadas + i.questoes_sugeridas; });
+      var h = (soPrograma ? '<div class="es-nota-aba"><b>Este percurso tem o programa, e ainda não tem questões.</b><p>' + (p.escopo.particular
+        ? 'Os itens abaixo são os do edital que você enviou. Para praticar por disciplina e fazer simulado, importe uma prova em PDF; para organizar o estudo até a prova, monte o plano.'
+        : 'As aulas e as questões aparecem aqui, item a item, assim que forem publicadas.') + '</p>' +
+        (p.escopo.particular ? '<div class="es-linha"><button class="al-bt peq" id="es-pg-imp">Importar prova em PDF</button><button class="al-bt peq fan" id="es-pg-plano">Montar o plano</button></div>' : '') + '</div>' : '') +
+        '<div class="jr-caixa"><h3>Programa</h3><p class="al-sub">O texto de cada item é o original. Ao lado, o que já existe para ele e o que você demonstrou.</p><div class="es-prog">' +
         p.itens.map(function (i) {
           var nivel = i.codigo.split('.').length - 1;
           if (!i.folha) return '<div class="es-item pai" style="--n:' + nivel + '"><b>' + esc(i.codigo) + '</b> ' + esc(i.texto) + '</div>';
@@ -865,6 +927,8 @@
       alvo.innerHTML = h;
       cada(alvo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
       cada(alvo, '[data-pr]', function (b) { b.onclick = function () { ir('praticar', b.getAttribute('data-pr')); }; });
+      if (el('es-pg-imp')) el('es-pg-imp').onclick = function () { ir('escrita', 'importar'); };
+      if (el('es-pg-plano')) el('es-pg-plano').onclick = function () { ir('plano'); };
     }
 
     // ================= MAPA MENTAL (um por aula, em PDF) =================
@@ -1335,6 +1399,13 @@
       var out = el('es-pr');
       if (erradas) el('es-pr-comp').parentNode.parentNode.innerHTML = '<p class="al-rotulo">Refazendo o caderno de erros</p>';
       api('GET', base() + '/praticar?n=20&competencia=' + encodeURIComponent(competencia) + (erradas ? '&erradas=1' : '') + (origem ? '&origem=' + encodeURIComponent(origem) : '') + eixosNaUrl(eixo)).then(function (r) {
+        // o percurso inteiro sem questão (só o programa): dizer o que falta e oferecer o caminho
+        if (!r.questoes.length && !r.elegiveis && !erradas && !competencia && !origem && !eixosNaUrl(eixo)) {
+          var sq = semQuestoes();
+          out.innerHTML = '<p class="al-sub">' + sq.txt + '</p>' + sq.botao('es-pr-imp');
+          sq.ligar('es-pr-imp');
+          return;
+        }
         if (!r.questoes.length) { out.innerHTML = '<p class="al-sub">' + (erradas ? 'O caderno de erros está vazio.' : eixosNaUrl(eixo) ? 'Não há questão com esses filtros de banca, órgão, cargo ou ano nesta matéria. Tire um deles para ampliar.' : origem === 'oficial' ? 'A prova oficial não trouxe questão sobre esta matéria. Desmarque o filtro para treinar com as demais.' : 'Ainda não há questões de correção automática para esta matéria.') + '</p>'; return; }
         var i = 0, inicio = 0;
         function mostrar() {
@@ -1450,7 +1521,7 @@
             '<button class="al-bt peq" id="es-cd-todos">Ver todos os ' + r.total + ' cards</button></div>' : '');
         function ligarNota() { if (el('es-cd-todos')) el('es-cd-todos').onclick = function () { todosOsCards(alvo); }; }
         if (!fila.length) {
-          alvo.innerHTML = '<div class="jr-caixa"><h3>Cards</h3><p class="al-sub">' + (r.total ? 'Nada para recordar hoje. Os próximos voltam na data marcada.' : 'Este percurso ainda não tem cards.') + '</p></div>' + nota;
+          alvo.innerHTML = '<div class="jr-caixa"><h3>Cards</h3><p class="al-sub">' + (r.total ? 'Nada para recordar hoje. Os próximos voltam na data marcada.' : 'Este percurso ainda não tem cards.' + (E.painel.escopo.particular ? ' Os cards vêm com as aulas do curso; no percurso particular, a recordação é pelas questões das provas que você importar (aba Praticar).' : '')) + '</p></div>' + nota;
           ligarNota();
           return;
         }
@@ -1509,6 +1580,13 @@
         if (!el('es-pv-eixos')) return;
         el('es-pv-eixos').innerHTML = seletoresDeEixo(b, 'es-pv-x-', {});
         if (el('es-pv-eixos').innerHTML) el('es-pv-eixos-nota').textContent = 'Escolha a banca do seu edital para fazer a prova só com questões dela. Banca, órgão, cargo e ano são das questões de prova oficial: com um deles marcado, as questões autorais ficam de fora.';
+        // percurso sem questão: não há prova a montar — dizer isso antes de o aluno apertar "Começar"
+        if (!b.total && el('es-pv-msg')) {
+          var sq = semQuestoes();
+          el('es-pv-msg').innerHTML = '<p class="es-aviso">' + sq.txt + '</p>' + sq.botao('es-pv-imp');
+          sq.ligar('es-pv-imp');
+          el('es-pv-ir').disabled = true;
+        }
       });
       function iniciar(aceitar) {
         var comp = el('es-pv-comp').value, fe = eixosEscolhidos('es-pv-x-');
@@ -1695,9 +1773,12 @@
     function relogioTxt(seg) { seg = Math.max(0, Math.round(seg)); return Math.floor(seg / 60) + ':' + ('0' + (seg % 60)).slice(-2); }
     function milhar(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 
-    // A aba tem três telas: Escrita e oral (a lista) · Importar prova · Meus pedidos. O argumento da rota diz qual:
-    // vazio = a lista; "importar"; "pedidos"; "prova.<id>" = um pedido de prova; qualquer outro = a questão aberta.
+    // A aba tem quatro telas: Escrita e oral (a lista) · Importar prova · Ler edital em PDF · Meus pedidos. O argumento
+    // da rota diz qual: vazio = a lista; "importar"; "edital"; "pedidos"; "prova.<id>" e "edital.<id>" = um pedido;
+    // qualquer outro = a questão aberta.
     function escrita(alvo, questaoId) {
+      if (questaoId === 'edital') return lerEdital(alvo);
+      if (typeof questaoId === 'string' && questaoId.indexOf('edital.') === 0) return telaEdital(alvo, questaoId.slice(7));
       if (questaoId === 'importar') return importarProva(alvo);
       if (questaoId === 'pedidos') return telaMeusPedidos(alvo);
       if (typeof questaoId === 'string' && questaoId.indexOf('prova.') === 0) return telaProva(alvo, questaoId.slice(6));
@@ -1744,14 +1825,16 @@
       api('GET', base() + '/pedidos').then(function (r) {
         if (!r.pedidos.length) { out.innerHTML = '<p class="al-sub">Nenhum pedido ainda.</p>'; return; }
         out.innerHTML = '<table class="es-tab es-eo-tab">' + r.pedidos.map(function (p) {
-          var ehProva = p.tipo === 'prova', rs = ehProva && p.prova && p.prova.resumo;
-          return '<tr><td>' + dataBR(p.criado_em.slice(0, 10)) + '</td><td><a href="#" ' + (ehProva ? 'data-pp="' + esc(p.id) : 'data-pq="' + esc(p.questao_id)) + '">' + esc(String(p.questao || 'questão').slice(0, 90)) + '</a><br>' +
-            (ehProva ? seloProva(p) + '<span class="al-fino">' + (rs ? ' · ' + rs.lidas + ' questões lidas, ' + rs.aplicadas + ' no percurso' : '') + '</span>'
+          var ehProva = p.tipo === 'prova', ehEdital = p.tipo === 'edital', rs = ehProva && p.prova && p.prova.resumo, re = ehEdital && p.edital && p.edital.resumo;
+          return '<tr><td>' + dataBR(p.criado_em.slice(0, 10)) + '</td><td><a href="#" ' + (ehEdital ? 'data-pe="' + esc(p.id) : ehProva ? 'data-pp="' + esc(p.id) : 'data-pq="' + esc(p.questao_id)) + '">' + esc(String(p.questao || 'questão').slice(0, 90)) + '</a><br>' +
+            (ehEdital ? seloEdital(p) + '<span class="al-fino">' + (re ? ' · ' + re.itens + ' itens em ' + re.disciplinas + ' disciplina(s)' + (re.pendentes ? ', ' + re.pendentes + ' a conferir' : '') : '') + '</span>'
+              : ehProva ? seloProva(p) + '<span class="al-fino">' + (rs ? ' · ' + rs.lidas + ' questões lidas, ' + rs.aplicadas + ' no percurso' : '') + '</span>'
               : seloPedido(p) + '<span class="al-fino">' + esc(notaCurta(p)) + (p.tipo === 'oral' ? ' · oral' : '') + '</span>') + '</td>' +
             '<td class="n">' + (p.estado === 'pronto' || p.estado === 'aplicado' ? esc(p.cobrado) : p.estado === 'orcado' || p.estado === 'processando' ? 'até ' + esc(p.orcamento) : '—') + '</td></tr>';
         }).join('') + '</table>';
         cada(out, '[data-pq]', function (a) { a.onclick = function (e) { e.preventDefault(); ir('escrita', a.getAttribute('data-pq')); }; });
         cada(out, '[data-pp]', function (a) { a.onclick = function (e) { e.preventDefault(); ir('escrita', 'prova.' + a.getAttribute('data-pp')); }; });
+        cada(out, '[data-pe]', function (a) { a.onclick = function (e) { e.preventDefault(); ir('escrita', 'edital.' + a.getAttribute('data-pe')); }; });
       }).catch(function (e) { falha(out, e); });
     }
 
@@ -2021,7 +2104,7 @@
     var FORM_PROVA = {};        // o que o usuário digitou no formulário (só nesta visita; os arquivos não ficam)
     var CONSULTAS_PROVA = 120;  // 120 consultas de 5 em 5 segundos = 10 minutos sem o lote avançar; depois, "Atualizar"
     function subnav(atual) {
-      return '<div class="es-eo-sub">' + [['', 'Escrita e oral'], ['importar', 'Importar prova'], ['pedidos', 'Meus pedidos']].map(function (x) {
+      return '<div class="es-eo-sub">' + [['', 'Escrita e oral'], ['importar', 'Importar prova'], ['edital', 'Ler edital em PDF'], ['pedidos', 'Meus pedidos']].map(function (x) {
         return '<button data-sub="' + x[0] + '"' + (x[0] === atual ? ' class="on"' : '') + '>' + x[1] + '</button>';
       }).join('') + '</div>';
     }
@@ -2034,7 +2117,7 @@
     }
 
     function telaMeusPedidos(alvo) {
-      alvo.innerHTML = subnav('pedidos') + '<div class="jr-caixa"><h3>Meus pedidos</h3><p class="al-sub">Tudo o que você pediu neste percurso — correções e provas importadas —, com o estado e o valor cobrado.</p><div id="es-eo-meus"></div></div>';
+      alvo.innerHTML = subnav('pedidos') + '<div class="jr-caixa"><h3>Meus pedidos</h3><p class="al-sub">Tudo o que você pediu neste percurso — correções, provas importadas e editais lidos —, com o estado e o valor cobrado.</p><div id="es-eo-meus"></div></div>';
       ligarSubnav(alvo);
       meusPedidos(el('es-eo-meus'));
     }
@@ -2165,7 +2248,7 @@
       function pintar(x) {
         var p = x.pedido;
         parar();
-        if (p.tipo !== 'prova') { ir('escrita', p.questao_id); return; }
+        if (p.tipo !== 'prova') { ir('escrita', p.tipo === 'edital' ? 'edital.' + p.id : p.questao_id); return; }
         if (p.estado === 'orcado' && !p.aguardando_pagamento) return orcamento(x);
         if (p.estado === 'orcado' || p.estado === 'processando') return acompanhar(x, 0, '');
         if (p.estado === 'pronto' || p.estado === 'aplicado') return resultado(p);
@@ -2289,7 +2372,7 @@
         cada(ped, '[data-filtro]', function (b) { b.onclick = function () { FILTRO = b.getAttribute('data-filtro'); resultado(p); }; });
         cada(ped, '[data-marca]', function (c) { c.onchange = function () { MARCA[c.getAttribute('data-marca')] = c.checked; rotulo(); }; });
         cada(ped, '[data-editar]', function (b) { b.onclick = function () { editar(p, Number(b.getAttribute('data-editar'))); }; });
-        if (el('es-ip-abrir')) el('es-ip-abrir').onclick = function () { abrir(E.pid, E.titulo, ap.escopo, E.voltar, { aba: 'praticar' }); };
+        if (el('es-ip-abrir')) el('es-ip-abrir').onclick = function () { abrirPercurso(ap.escopo, { aba: 'praticar' }); };
         btA.onclick = function () {
           var envio = escolhidas().map(function (q) {
             var ed = EDICAO[q.n];
@@ -2324,6 +2407,372 @@
           resultado(p);
         };
         cx.querySelector('[data-e="nao"]').onclick = function () { delete EDICAO[n]; MARCA[n] = q.estado === 'ok'; resultado(p); };
+      }
+      carregar();
+    }
+
+    // ================= LER EDITAL EM PDF (ADR-0010, fase 4) =================
+    // O usuário envia o edital e diz para onde vai o programa. O servidor lê o PDF sem cobrar, SUGERE as páginas do
+    // conteúdo programático (e as dos dados do concurso) e mostra o orçamento — as faixas são dele para ajustar.
+    // Confirmado, a leitura roda em segundo plano, lote a lote. O resultado é a ÁRVORE do programa para rever
+    // (disciplina → tópico → subitem, com os itens de leitura incerta marcados) e os dados do concurso para
+    // confirmar. Aplicar não custa nada; em percurso que já tem programa, mostra ANTES o que muda (retificação).
+    // A regra de pontuação não passa por aqui: não é lida nem enviada.
+    var ESTADO_EDITAL = { orcado: ['aguardando a sua confirmação', 'cinza'], processando: ['lendo…', 'azul'], pronto: ['lido — falta aplicar', 'ambar'], aplicado: ['aplicado ao percurso', 'verde'],
+      falhou: ['não concluída — valor devolvido', 'verm'], cancelado: ['cancelado', 'cinza'] };
+    var NATUREZA = [['objetiva', 'objetiva'], ['discursiva', 'discursiva'], ['sentenca', 'sentença'], ['oral', 'oral'], ['titulos', 'títulos'], ['outra', 'outra']];
+    var FORM_EDITAL = {};       // destino e nome escolhidos no formulário (só nesta visita; o arquivo não fica)
+    function seloEdital(p) {
+      var x = ESTADO_EDITAL[p.estado] || [p.estado, 'cinza'];
+      if (p.estado === 'orcado' && p.aguardando_pagamento) x = ['aguardando o pagamento', 'ambar'];
+      return '<span class="es-selo ' + x[1] + '">' + x[0] + '</span>';
+    }
+    // "1-2, 4-6" ↔ [[1, 2], [4, 6]] — o usuário escreve as faixas como falaria delas
+    function faixasTxt(faixas) { return (faixas || []).map(function (f) { return f[0] === f[1] ? String(f[0]) : f[0] + '-' + f[1]; }).join(', '); }
+    function faixasDoTexto(t) {
+      var partes = String(t || '').split(/[,;]+/).filter(function (x) { return x.trim(); }), r = [];
+      for (var k = 0; k < partes.length; k++) {
+        var m = /^\s*(\d+)\s*(?:(?:-|–|a|até)\s*(\d+))?\s*$/.exec(partes[k]);
+        if (!m) return null;
+        r.push([Number(m[1]), Number(m[2] || m[1])]);
+      }
+      return r;
+    }
+    function faixasDasPaginas(ns) {
+      var r = [];
+      ns.slice().sort(function (a, b) { return a - b; }).forEach(function (n) { var u = r[r.length - 1]; if (u && n === u[1] + 1) u[1] = n; else r.push([n, n]); });
+      return r;
+    }
+
+    function lerEdital(alvo) {
+      api('GET', base() + '/pedidos/edital/opcoes').then(function (o) {
+        var F = FORM_EDITAL;
+        var h = subnav('edital') + '<div class="jr-caixa"><h3>Ler edital em PDF</h3>' +
+          '<p class="al-sub">Envie o edital do seu concurso. O sistema localiza as páginas do conteúdo programático, lê o programa disciplina por disciplina e confere cada item com a página. Você revê a árvore, confirma os dados do concurso e aplica: o percurso ganha o programa, uma matéria por disciplina e o plano com a data da prova.</p>' +
+          '<p class="al-sub"><b>A leitura é paga com o seu saldo de IA.</b> Antes de ler você vê as páginas e o valor máximo, e confirma; depois paga só o que foi usado. Aplicar o programa ao percurso não custa nada. <b>A regra de pontuação não é lida</b>: ela exige a fonte, e é você quem informa.</p>' +
+          (o.disponivel ? '' : '<p class="es-aviso">' + esc(o.motivo_indisponivel) + '</p>') + '</div>';
+        if (!o.disponivel) { alvo.innerHTML = h; ligarSubnav(alvo); return; }
+        var destinos = o.destinos.map(function (d) {
+          return '<option value="' + esc(d.slug) + '"' + (F.destino === d.slug ? ' selected' : '') + '>' + (d.particular ? 'Meu percurso: ' : 'Curso: ') + esc(d.titulo) + (d.tem_programa ? ' (já tem programa — será retificado)' : '') + '</option>';
+        }).join('') + (o.pode_novo ? '<option value="+"' + (F.destino === '+' || (!F.destino && !o.destinos.length) ? ' selected' : '') + '>➕ Novo percurso particular…</option>' : '') +
+          (o.pode_novo_no_curso ? '<option value="+curso"' + (F.destino === '+curso' ? ' selected' : '') + '>➕ Novo percurso do curso (nasce em rascunho)…</option>' : '');
+        h += '<div class="jr-caixa es-ip es-ed"><h3>1. O arquivo</h3>' +
+          '<label class="es-campo">Edital (PDF, até ' + megas(o.limites.pdf_max_bytes) + ')<input type="file" id="es-ed-arq" accept="application/pdf,.pdf"></label>' +
+          '<p class="al-fino">O edital inteiro pode ser longo; só as páginas do conteúdo programático (e as dos dados do concurso) precisam ser lidas. O sistema sugere quais, e você ajusta antes de pagar. Cada pedido lê até ' + o.limites.paginas_max + ' páginas. Página escaneada (imagem) também é lida: custa mais, e os itens dela vêm marcados para você conferir.</p>' +
+          '<h3>2. Para onde vai o programa</h3>' +
+          '<label class="es-campo">Destino<select id="es-ed-dest">' + destinos + '</select></label>' +
+          '<label class="es-campo" id="es-ed-novo-cx">Nome do percurso novo<input id="es-ed-novo" maxlength="120" value="' + esc(F.novo || '') + '" placeholder="TRT-10 — Analista Judiciário"></label>' +
+          '<p class="al-fino">O percurso particular é só seu: ninguém mais vê. Ele fica ao lado do percurso do curso — você troca de um para o outro no alto da página.</p>' +
+          '<div class="es-linha"><button class="al-bt" id="es-ed-ok">Enviar e ver as páginas</button><span class="al-fino" id="es-ed-msg">Nada é cobrado nesta etapa.</span></div>' +
+          '<div class="es-barra es-ip-barra" id="es-ed-barra" hidden><i style="width:0"></i></div></div>';
+        alvo.innerHTML = h;
+        ligarSubnav(alvo);
+        var msg = el('es-ed-msg'), bt = el('es-ed-ok'), barra = el('es-ed-barra'), dest = el('es-ed-dest');
+        function mostrar() { el('es-ed-novo-cx').hidden = dest.value.charAt(0) !== '+'; F.destino = dest.value; F.novo = el('es-ed-novo').value; }
+        dest.onchange = mostrar; el('es-ed-novo').oninput = mostrar;
+        mostrar();
+        function aqui() { return E.aba === 'escrita' && el('es-ed-ok') === bt; }
+        bt.onclick = function () {
+          mostrar();
+          var arq = el('es-ed-arq').files[0], novo = F.destino.charAt(0) === '+';
+          var erroForm = !arq ? 'Escolha o PDF do edital.' : !F.destino ? 'Escolha o destino.' : novo && F.novo.trim().length < 3 ? 'Dê um nome ao percurso novo.' : '';
+          if (erroForm) { msg.innerHTML = '<span class="es-msg-erro">' + esc(erroForm) + '</span>'; return; }
+          bt.disabled = true;
+          enviarPdf(arq, o, function (fr) {
+            if (!aqui()) return;
+            barra.hidden = false;
+            barra.firstChild.style.width = (fr < 0 ? 100 : Math.round(fr * 100)) + '%';
+            msg.textContent = 'Enviando o edital' + (fr < 0 ? '…' : ' — ' + Math.round(fr * 100) + '%');
+          }).then(function (mediaId) {
+            if (aqui()) { barra.firstChild.style.width = '100%'; msg.textContent = 'Lendo o PDF e procurando o conteúdo programático…'; }
+            return api('POST', base() + '/pedidos', { tipo: 'edital', edital_media_id: mediaId,
+              destino: novo ? { novo: F.destino === '+curso' ? { titulo: F.novo, curso: true } : { titulo: F.novo } } : { escopo: F.destino } });
+          }).then(function (x) { if (aqui()) ir('escrita', 'edital.' + x.pedido.id); })
+            .catch(function (e) { if (!aqui()) return; bt.disabled = false; barra.hidden = true; msg.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+        };
+      }).catch(function (e) { falha(alvo, e); });
+    }
+
+    // ---- um pedido de edital: páginas e orçamento → leitura (lote a lote) → árvore para rever → aplicar ----
+    function telaEdital(alvo, id) {
+      var consulta = null, EXCL = {}, TXT = {}, ABERTAS = {}, DC = null, INICIADO = false;
+      alvo.innerHTML = subnav('') + '<div class="es-linha"><button class="al-bt peq fan" id="es-ed-volta">← Meus pedidos</button></div><div id="es-ed-ped"><p class="al-sub">Carregando…</p></div>';
+      ligarSubnav(alvo);
+      var ped = el('es-ed-ped');
+      el('es-ed-volta').onclick = function () { ir('escrita', 'pedidos'); };
+      function parar() { if (consulta) { clearTimeout(consulta); consulta = null; } }
+      E.aoSair = parar;
+      function aqui() { return E.aba === 'escrita' && el('es-ed-ped') === ped; }
+      function cab(p) { return '<p class="al-rotulo">Edital em PDF</p><p class="al-fino">' + esc(p.edital.arquivo) + ' ' + seloEdital(p) + '</p>'; }
+      function carregar() {
+        api('GET', base() + '/pedidos/' + id).then(function (x) { if (aqui()) pintar(x); }).catch(function (e) { if (aqui()) falha(ped, e); });
+      }
+      function pintar(x) {
+        var p = x.pedido;
+        parar();
+        if (p.tipo !== 'edital') { ir('escrita', p.tipo === 'prova' ? 'prova.' + p.id : p.questao_id); return; }
+        if (p.estado === 'orcado' && !p.aguardando_pagamento) return orcamento(x);
+        if (p.estado === 'orcado' || p.estado === 'processando') return acompanhar(x, 0, '');
+        if (p.estado === 'pronto' || p.estado === 'aplicado') return resultado(p);
+        ped.innerHTML = '<div class="jr-caixa">' + cab(p) + (p.estado === 'falhou' ? '<p class="es-aviso">' + esc(p.erro || 'A leitura não foi concluída. O valor reservado voltou ao seu saldo.') + '</p><p class="al-sub">Nada foi cobrado.</p>' : '<p class="al-sub">Pedido cancelado.</p>') +
+          '<div class="es-linha"><button class="al-bt peq" id="es-ed-de-novo">Ler outro edital</button></div></div>';
+        el('es-ed-de-novo').onclick = function () { ir('escrita', 'edital'); };
+      }
+
+      // as páginas detectadas e o orçamento: a faixa sugerida vem marcada; o usuário marca, desmarca ou escreve as faixas e recalcula
+      function orcamento(x) {
+        var p = x.pedido, o = x.orcamento, d = o.detalhe || p.edital, pags = d.paginas_detectadas || [], sg = d.sugestao || { faixas: [], dados_paginas: [] };
+        var h = '<div class="jr-caixa es-eo-orc es-ed-orc">' + cab(p) + '<p class="al-rotulo">Páginas e orçamento da leitura</p>';
+        if (!o.disponivel) { ped.innerHTML = h + '<p class="es-aviso">' + esc(o.motivo_indisponivel) + '</p></div>'; return; }
+        h += '<p>O PDF tem <b>' + d.total_paginas + '</b> página(s)' + (d.sem_texto ? ', <b>' + d.sem_texto + '</b> sem texto copiável (escaneadas)' : '') + '. ' +
+          (sg.faixas.length ? 'O conteúdo programático parece estar nas páginas <b>' + esc(faixasTxt(sg.faixas)) + '</b>' + (sg.dados_paginas.length ? ', e os dados do concurso (cargo, banca, data da prova, etapas) nas páginas <b>' + esc(sg.dados_paginas.join(', ')) + '</b>' : '') + '. Confira pelos trechos abaixo e ajuste se preciso.'
+            : '<span class="es-aviso">Não foi possível localizar o conteúdo programático automaticamente (edital escaneado, ou com um formato fora do comum). Marque abaixo as páginas que trazem o programa.</span>') + '</p>';
+        function linhaPag(g) {
+          return '<label class="es-ed-pag' + (g.selecionada ? ' on' : '') + '"><input type="checkbox" data-pag="' + g.n + '"' + (g.selecionada ? ' checked' : '') + '><b>p. ' + g.n + '</b>' +
+            (g.sugerida === 'programa' ? '<span class="es-selo verde">programa</span>' : g.sugerida === 'dados' ? '<span class="es-selo azul">dados do concurso</span>' : '') +
+            (g.sem_texto ? '<span class="es-selo ambar">escaneada</span>' : '') +
+            '<span class="es-ed-trecho">' + (g.sem_texto ? 'página em imagem — sem texto para mostrar' : esc(g.trecho) + '…') + '</span></label>';
+        }
+        var principais = pags.filter(function (g) { return g.sugerida || g.selecionada; }), outras = pags.filter(function (g) { return !g.sugerida && !g.selecionada; });
+        h += '<div class="es-ed-pags">' + principais.map(linhaPag).join('') + '</div>' +
+          (outras.length ? '<details class="es-fontes"' + (principais.length ? '' : ' open') + '><summary>As outras ' + outras.length + ' página(s) do PDF</summary><div class="es-ed-pags">' + outras.map(linhaPag).join('') + '</div></details>' : '') +
+          '<div class="es-ip-faixa"><label class="es-campo es-ed-faixas">Páginas a ler (ex.: 1-2, 30-41)<input id="es-ed-faixas" value="' + esc(faixasTxt(d.faixas)) + '" inputmode="numeric" autocomplete="off"></label>' +
+          '<button class="al-bt peq fan" id="es-ed-reorcar">Recalcular</button></div>' +
+          '<p class="al-fino">Leia só o que precisa: as páginas do programa e, se quiser as sugestões de cargo, banca e data, as dos dados do concurso. Cada pedido lê até ' + d.max_paginas + ' páginas.</p>';
+        var temPaginas = d.paginas > 0;
+        if (temPaginas) h += '<ul class="es-ip-det"><li>Serão lidas <b>' + d.paginas + '</b> página(s) (' + esc(faixasTxt(d.faixas)) + '), em <b>' + d.lotes + '</b> lote(s) de até ' + d.paginas_por_lote + ' páginas.</li>' +
+          '<li>' + (d.escaneadas ? '<b>' + d.escaneadas + '</b> página(s) escaneada(s): são lidas como imagem, custam mais e os itens delas vêm marcados para conferir.' : 'Todas têm texto copiável: cada item do programa é conferido com a página.') + '</li></ul>';
+        h += '<div id="es-ed-pagar">';
+        if (!temPaginas) h += '<p class="es-aviso">Nenhuma página escolhida ainda — marque as páginas e recalcule. Nada foi cobrado.</p><div class="es-linha">';
+        else if (o.cobranca === 'isento') h += '<p>Sua conta é isenta de cobrança de IA.</p><div class="es-linha"><button class="al-bt" id="es-ed-conf">Ler agora</button>';
+        else {
+          h += '<p class="es-eo-valor">até ' + esc(o.orcamento) + '</p>' +
+            '<p class="al-sub">É o valor máximo. Terminada a leitura, você paga só o que foi usado e a diferença volta ao saldo. Se a leitura não sair, você não paga nada. Seu saldo de IA: <b>' + esc(o.saldo) + '</b>.</p>';
+          if (o.saldo_suficiente) h += '<div class="es-linha"><button class="al-bt" id="es-ed-conf">Confirmar e ler o edital</button>';
+          else {
+            h += '<p class="es-aviso">Faltam <b>' + esc(o.falta) + '</b> de saldo para esta leitura.</p>' +
+              (o.pagamento_online ? '<p class="al-sub">O pagamento é feito no Mercado Pago e entra como saldo de IA. A leitura começa sozinha quando o pagamento for confirmado, e o que sobrar fica no seu saldo.</p>' +
+                '<div class="es-linha"><button class="al-bt" id="es-ed-pagar-bt">Pagar ' + esc(o.recarga) + ' e ler o edital</button>'
+                : '<p class="al-sub">A recarga online está indisponível no momento.</p><div class="es-linha">');
+          }
+        }
+        h += '<button class="al-bt fan" id="es-ed-nao">Cancelar</button><span class="al-fino" id="es-ed-omsg"></span></div></div></div>';
+        ped.innerHTML = h;
+        var omsg = el('es-ed-omsg'), campo = el('es-ed-faixas');
+        var deNovo = function (e) {
+          // o valor, o saldo ou as faixas mudaram desde que o orçamento foi mostrado: mostra o de agora, com o motivo
+          api('GET', base() + '/pedidos/' + id).then(function (y) {
+            if (!aqui()) return;
+            pintar(y);
+            if (el('es-ed-omsg')) el('es-ed-omsg').innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>';
+          }).catch(function () { if (omsg) omsg.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+        };
+        // mexeu nas páginas: o valor na tela deixou de valer — só confirma depois de recalcular
+        function mudou() {
+          ['es-ed-conf', 'es-ed-pagar-bt'].forEach(function (k) { if (el(k)) el(k).disabled = true; });
+          omsg.textContent = 'As páginas mudaram: recalcule para ver o valor.';
+        }
+        cada(ped, '[data-pag]', function (c) {
+          c.onchange = function () {
+            var ns = [];
+            cada(ped, '[data-pag]', function (k) { if (k.checked) ns.push(Number(k.getAttribute('data-pag'))); k.parentNode.classList.toggle('on', k.checked); });
+            campo.value = faixasTxt(faixasDasPaginas(ns));
+            mudou();
+          };
+        });
+        campo.oninput = mudou;
+        el('es-ed-reorcar').onclick = function () {
+          var faixas = faixasDoTexto(campo.value);
+          if (!faixas || !faixas.length) { omsg.innerHTML = '<span class="es-msg-erro">Escreva as páginas assim: 1-2, 30-41.</span>'; return; }
+          this.disabled = true; omsg.textContent = 'Recalculando…';
+          api('POST', base() + '/pedidos/' + id + '/paginas', { paginas: faixas }).then(function (y) { if (aqui()) orcamento(y); })
+            .catch(function (e) { if (!aqui()) return; el('es-ed-reorcar').disabled = false; omsg.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+        };
+        el('es-ed-nao').onclick = function () { api('POST', base() + '/pedidos/' + id + '/cancelar').then(function () { if (aqui()) ir('escrita', 'edital'); }).catch(deNovo); };
+        if (el('es-ed-conf')) el('es-ed-conf').onclick = function () {
+          this.disabled = true;
+          // o aceite é DESTE valor, o que está na tela: o servidor recusa se o orçamento passou dele
+          api('POST', base() + '/pedidos/' + id + '/confirmar', null, o.orcamento_milesimos || 1).then(function () { if (aqui()) carregar(); }).catch(deNovo);
+        };
+        if (el('es-ed-pagar-bt')) el('es-ed-pagar-bt').onclick = function () {
+          var btPagar = this;
+          btPagar.disabled = true; omsg.textContent = 'Abrindo o pagamento…';
+          api('POST', base() + '/pedidos/' + id + '/recarga', { aceite_milesimos: o.orcamento_milesimos }).then(function (x2) {
+            if (x2.init_point) location.href = x2.init_point; // volta para este pedido; o crédito entra pela confirmação do Mercado Pago
+            else { btPagar.disabled = false; omsg.innerHTML = '<span class="es-msg-erro">O pagamento não pôde ser aberto. Tente de novo.</span>'; }
+          }).catch(deNovo);
+        };
+      }
+
+      // a leitura em curso: consulta de 5 em 5 segundos; o contador recomeça quando o lote avança, e a tela PARA
+      function acompanhar(x, n, visto) {
+        var p = x.pedido, pg = p.edital.progresso, espera = p.estado === 'orcado';
+        var marca = pg ? pg.etapa + ':' + pg.feito : '';
+        if (marca !== visto) n = 0;
+        if (n >= CONSULTAS_PROVA) {
+          ped.innerHTML = '<div class="jr-caixa">' + cab(p) + '<p class="al-sub">' + (espera ? 'O Mercado Pago ainda não confirmou o pagamento. Assim que confirmar, a leitura começa sozinha — você pode sair desta página.' : 'Está demorando mais que o normal. O pedido continua rodando; se não sair, o valor volta sozinho ao saldo.') + '</p>' +
+            '<div class="es-linha"><button class="al-bt peq" id="es-ed-atual">Atualizar</button>' + (espera ? '<button class="al-bt peq fan" id="es-ed-desiste">Cancelar o pedido</button>' : '') + '</div></div>';
+          el('es-ed-atual').onclick = carregar;
+          if (el('es-ed-desiste')) el('es-ed-desiste').onclick = function () { api('POST', base() + '/pedidos/' + id + '/cancelar').then(function () { if (aqui()) carregar(); }).catch(function () {}); };
+          return;
+        }
+        var pct = pg && pg.total ? Math.round(pg.feito * 100 / pg.total) : 0;
+        var etapa = espera ? 'A leitura começa sozinha quando o Mercado Pago confirmar o pagamento.'
+          : !pg ? 'Abrindo o PDF…' : pg.etapa === 'conferencia' ? 'Conferindo cada item com a página…' : 'Lendo o edital: lote ' + Math.min(pg.feito + 1, pg.total) + ' de ' + pg.total + '.';
+        ped.innerHTML = '<div class="jr-caixa">' + cab(p) + '<p class="al-rotulo">' + (espera ? 'Aguardando o pagamento' : 'Lendo o edital') + '</p>' +
+          '<p class="al-sub"><span class="es-eo-gira"></span> ' + etapa + '</p>' + (espera ? '' : '<div class="es-barra verde es-ip-barra"><i style="width:' + pct + '%"></i></div>' +
+          '<p class="al-fino">Leva de meio minuto a um minuto por lote. Você pode sair desta página: o pedido continua, e o resultado fica em Meus pedidos.</p>') + '</div>';
+        consulta = setTimeout(function () {
+          api('GET', base() + '/pedidos/' + id).then(function (y) {
+            if (!aqui()) return;
+            if (y.pedido.estado === 'orcado' && y.pedido.aguardando_pagamento || y.pedido.estado === 'processando') acompanhar(y, n + 1, marca);
+            else { if ((y.pedido.estado === 'pronto' || y.pedido.estado === 'falhou') && window.AcademyCarteiraUI) window.AcademyCarteiraUI.depois(); pintar(y); }
+          }).catch(function (e) { if (aqui()) falha(ped, e); });
+        }, 5000);
+      }
+
+      // os dados do concurso como estão na tela: os já confirmados (pedido reaberto) ou a primeira sugestão de cada campo
+      function dadosIniciais(r, dest, ap) {
+        var c = r.dados_confirmados, sg = r.dados || {};
+        function um(lista) { return lista && lista.length ? lista[0].valor : ''; }
+        if (c) return { titulo: ap ? ap.titulo : '', orgao: c.orgao || '', banca: c.banca || '', cargo: c.cargo || '', data_prova: c.data_prova || '',
+          etapas: (c.etapas || []).map(function (e) { return { nome: e.nome, natureza: e.tipo }; }), questoes: (c.questoes_por_bloco || []).slice() };
+        return { titulo: dest.novo ? dest.novo.titulo : '', orgao: um(sg.orgao), banca: um(sg.banca), cargo: (sg.cargo || []).length === 1 ? sg.cargo[0].valor : '', data_prova: um(sg.data_prova),
+          etapas: (sg.etapas || []).map(function (e) { return { nome: e.nome, natureza: e.natureza }; }), questoes: (sg.questoes || []).map(function (q) { return { bloco: q.bloco, quantidade: q.quantidade }; }) };
+      }
+      function diffHtml(d) {
+        function bloco(titulo, lista, total, fn) {
+          return total ? '<details class="es-fontes"' + (total <= 12 ? ' open' : '') + '><summary><b>' + total + '</b> ' + titulo + '</summary><ul class="es-ed-diff">' + lista.map(fn).join('') +
+            (total > lista.length ? '<li class="al-fino">… e mais ' + (total - lista.length) + '</li>' : '') + '</ul></details>' : '';
+        }
+        return bloco('item(ns) novo(s)', d.adicionados, d.adicionados_total, function (x) { return '<li class="mais"><b>' + esc(x.codigo) + '</b> ' + esc(x.texto) + '</li>'; }) +
+          bloco('item(ns) que saem do programa', d.removidos, d.removidos_total, function (x) { return '<li class="menos"><b>' + esc(x.codigo) + '</b> ' + esc(x.texto) + '</li>'; }) +
+          bloco('item(ns) com a redação alterada', d.alterados, d.alterados_total, function (x) { return '<li><b>' + esc(x.codigo) + '</b> <s>' + esc(x.antes) + '</s><br>' + esc(x.depois) + '</li>'; }) +
+          '<p class="al-fino">' + d.iguais + ' item(ns) ficam como estão.</p>';
+      }
+
+      // o resultado: a árvore para rever e os dados do concurso para confirmar
+      function resultado(p) {
+        var r = p.resultado || {}, itens = r.itens || [], rs = r.resumo || {}, ap = r.aplicacao, dest = p.edital.destino || {}, sg = r.dados || {};
+        if (!INICIADO) { INICIADO = true; EXCL = {}; itens.forEach(function (i) { if (i.excluido) EXCL[i.n] = true; }); DC = dadosIniciais(r, dest, ap); }
+        var por = {}, filhos = {}, raizes = [];
+        itens.forEach(function (i) { por[i.codigo] = i; if (i.raiz) raizes.push(i); else (filhos[i.disciplina] = filhos[i.disciplina] || []).push(i); });
+        // fora = excluído por ele mesmo ou por quem está acima dele (a disciplina leva os itens; o tópico, os subitens)
+        function fora(i) { for (var x = i, k = 0; x && k < 12; x = por[x.pai], k++) if (EXCL[x.n]) return true; return false; }
+        function aConferir(i) { return !!i.pendente && TXT[i.n] == null; }
+        function linha(i, ehRaiz) {
+          var nivel = ehRaiz ? 0 : Math.max(0, i.codigo.split('.').length - 2), f = fora(i), ed = TXT[i.n];
+          return '<div class="es-ed-item' + (f ? ' fora' : '') + (aConferir(i) ? ' pend' : '') + '" style="--n:' + nivel + '">' +
+            (ehRaiz ? '' : '<label class="es-ip-marca" title="Incluir este item"><input type="checkbox" data-inc="' + i.n + '"' + (EXCL[i.n] ? '' : ' checked') + (i.pai && por[i.pai] && fora(por[i.pai]) ? ' disabled' : '') + '></label>') +
+            '<div class="es-ed-txt">' + (ehRaiz ? '<span class="al-fino">Título da disciplina: </span>' : '<b>' + esc(i.codigo) + '</b> ') + esc(ed != null ? ed : i.texto) + ' <span class="al-fino">' + esc(i.localizacao) + '</span>' +
+            (ed != null ? ' <span class="es-selo azul">conferido por você</span>' : i.pendente ? '<span class="es-pend">' + esc(i.pendente) + '</span>' : '') +
+            (i.pendente && !f ? ' <button class="es-link" data-conf="' + i.n + '">' + (ed != null ? 'Editar de novo' : 'Conferir e corrigir o texto') + '</button>' : '') + '<div data-edit="' + i.n + '"></div></div></div>';
+        }
+        var vivos = itens.filter(function (i) { return !fora(i); }), pendentes = vivos.filter(aConferir).length;
+        var destinoTxt = dest.novo ? (dest.novo.curso ? 'percurso novo do curso' : 'percurso novo') + ' “' + (DC.titulo || dest.novo.titulo) + '”' : 'percurso “' + ((ap && ap.titulo) || dest.escopo || '') + '”';
+        var h = '<div class="jr-caixa es-ip-res">' + cab(p) +
+          '<p><b>' + rs.itens + '</b> item(ns) em <b>' + rs.disciplinas + '</b> disciplina(s) · <b>' + rs.pendentes + '</b> de leitura incerta, a conferir' + (rs.excluidos ? ' · ' + rs.excluidos + ' excluído(s) por você' : '') + '.</p>' +
+          '<p class="al-fino">' + esc(r.aviso || '') + ' Cobrado: ' + esc(p.cobrado) + ' (o orçamento era de até ' + esc(p.orcamento) + ').</p>' +
+          (ap ? '<p class="es-nota-aba rev"><b>Programa aplicado</b> a “' + esc(ap.titulo) + '”: versão ' + ap.versao + (ap.sem_mudanca ? ' (o texto não mudou)' : ap.retificacao ? ' — retificação: ' + ap.adicionados + ' novo(s), ' + ap.removidos + ' removido(s), ' + ap.alterados + ' alterado(s)' : '') +
+            ', ' + ap.itens + ' itens em ' + ap.disciplinas + ' disciplina(s)' + (ap.pendentes ? ', ' + ap.pendentes + ' ainda a conferir' : '') + (ap.particular ? '.' : ' — percurso do curso, em ' + esc(ap.status) + '.') +
+            (ap.aviso_data ? ' ' + esc(ap.aviso_data) : '') + ' <button class="al-bt peq" id="es-ed-abrir">Abrir o meu percurso</button></p>' : '') + '</div>';
+
+        // ---- dados do concurso ----
+        function fonte(lista) {
+          var vistos = {}; // duas etapas costumam sair da mesma frase: o trecho aparece uma vez
+          return (lista || []).filter(function (x) { var k = x.pagina + '|' + x.trecho; if (vistos[k]) return false; vistos[k] = 1; return true; }).slice(0, 2).map(function (x) { return '<span class="al-fino es-ed-fonte">p. ' + x.pagina + ' — “' + esc(String(x.trecho).slice(0, 140)) + '”</span>'; }).join('');
+        }
+        function campo(rotulo, chave, max, lista) {
+          return '<label class="es-campo">' + rotulo + '<input data-d="' + chave + '" maxlength="' + max + '" value="' + esc(DC[chave] || '') + '"' + (lista && lista.length > 1 ? ' list="es-ed-l-' + chave + '"' : '') + '>' +
+            (lista && lista.length > 1 ? '<datalist id="es-ed-l-' + chave + '">' + lista.map(function (x) { return '<option value="' + esc(x.valor) + '">'; }).join('') + '</datalist>' : '') + fonte(lista) + '</label>';
+        }
+        h += '<div class="jr-caixa es-ed-dados"><h3>Dados do concurso</h3>' +
+          '<p class="al-sub">Sugestões tiradas do edital, cada uma com a página e o trecho de onde saiu. Confirme ou corrija — é o que fica no perfil do percurso e o que dá a data ao seu plano.' + ((sg.cargo || []).length > 1 ? ' O edital traz mais de um cargo: escolha o seu.' : '') + '</p>' +
+          '<div class="es-ip-grade">' + (dest.novo ? campo('Nome do percurso', 'titulo', 120) : '') + campo('Órgão', 'orgao', 160, sg.orgao) + campo('Banca', 'banca', 120, sg.banca) + campo('Cargo', 'cargo', 160, sg.cargo) +
+          '<label class="es-campo">Data da prova objetiva<input type="date" data-d="data_prova" value="' + esc(DC.data_prova || '') + '">' + fonte(sg.data_prova) + '</label></div>' +
+          '<p class="es-ed-sub"><b>Etapas</b> <span class="al-fino">(a primeira define o foco da reta final do plano)</span></p>' +
+          DC.etapas.map(function (e, k) {
+            return '<div class="es-ed-etapa"><input data-et="' + k + '" maxlength="120" value="' + esc(e.nome) + '" aria-label="Nome da etapa"><select data-en="' + k + '" aria-label="Natureza da etapa">' +
+              NATUREZA.map(function (n) { return '<option value="' + n[0] + '"' + (e.natureza === n[0] ? ' selected' : '') + '>' + n[1] + '</option>'; }).join('') + '</select><button class="es-link" data-er="' + k + '">remover</button></div>';
+          }).join('') + '<div class="es-linha"><button class="al-bt peq fan" id="es-ed-mais-etapa">＋ etapa</button></div>' + fonte(sg.etapas) +
+          (DC.questoes.length ? '<p class="es-ed-sub"><b>Questões por bloco</b> <span class="al-fino">(como o edital traz — é informação, não regra de nota)</span></p>' +
+            DC.questoes.map(function (q, k) { return '<div class="es-ed-etapa"><span>' + esc(q.bloco) + ': <b>' + q.quantidade + '</b> questões</span><button class="es-link" data-qr="' + k + '">remover</button></div>'; }).join('') : '') +
+          '<p class="es-aviso es-ed-regra"><b>Regra de pontuação</b> (desconto por erro, nota mínima, pesos): não é lida do edital nem gravada por aqui. Ela muda a sua nota e exige a fonte — informe-a depois, com o item do edital.</p></div>';
+
+        // ---- a árvore ----
+        h += '<div class="jr-caixa es-ed-arvore"><h3>Programa</h3><p class="al-sub">O texto de cada item é o do edital, conferido com a página. Desmarque a disciplina ou o item que não é do seu cargo. ' +
+          (pendentes ? '<b>' + pendentes + ' item(ns) de leitura incerta</b>: entram marcados como pendentes (fora da conta de cobertura) até você conferir com o edital.' : 'Nenhum item de leitura incerta.') + '</p>' +
+          raizes.map(function (d, k) {
+            var fs = filhos[d.codigo] || [], pend = fs.concat([d]).filter(function (i) { return aConferir(i) && !fora(i); }).length, dFora = fora(d);
+            var aberta = ABERTAS[d.codigo] != null ? ABERTAS[d.codigo] : (k === 0 || pend > 0);
+            return '<details class="es-acervo es-ed-disc' + (dFora ? ' fora' : '') + '" data-disc="' + esc(d.codigo) + '"' + (aberta ? ' open' : '') + '><summary><label class="es-ip-marca" title="Incluir a disciplina"><input type="checkbox" data-inc="' + d.n + '"' + (dFora ? '' : ' checked') + '></label> ' +
+              '<b>' + esc(d.codigo) + '</b> ' + esc(TXT[d.n] != null ? TXT[d.n] : d.texto) + '<span class="al-fino"> · ' + fs.length + ' item(ns) · ' + esc(d.localizacao) + '</span>' + (pend && !dFora ? ' <span class="es-selo ambar">' + pend + ' a conferir</span>' : '') + (dFora ? ' <span class="es-selo cinza">fora</span>' : '') + '</summary>' +
+              (d.pendente ? linha(d, true) : '') + fs.map(function (i) { return linha(i, false); }).join('') + '</details>';
+          }).join('') + '</div>';
+        h += '<div class="jr-caixa es-ip-rodape"><div class="es-linha"><button class="al-bt" id="es-ed-aplicar">' + (ap ? 'Aplicar de novo: ' : 'Aplicar ') + vivos.length + ' item(ns) ao ' + esc(destinoTxt) + '</button>' +
+          '<span class="al-fino" id="es-ed-amsg">Aplicar não custa nada. Dá para reabrir este pedido e aplicar de novo depois.</span></div><div id="es-ed-previa"></div></div>';
+        ped.innerHTML = h;
+
+        function repintar() { var y = rolagem().scrollTop; resultado(p); rolagem().scrollTop = y; }
+        cada(ped, 'details[data-disc]', function (d) { d.addEventListener('toggle', function () { ABERTAS[d.getAttribute('data-disc')] = d.open; }); });
+        cada(ped, '[data-inc]', function (c) {
+          c.onclick = function (ev) { ev.stopPropagation(); }; // a caixa mora no título da disciplina: marcar não abre nem fecha
+          c.onchange = function () { EXCL[c.getAttribute('data-inc')] = !c.checked; repintar(); };
+        });
+        cada(ped, '[data-conf]', function (b) {
+          b.onclick = function () {
+            var n = b.getAttribute('data-conf'), i = itens.filter(function (x) { return String(x.n) === n; })[0], cx = ped.querySelector('[data-edit="' + n + '"]');
+            cx.innerHTML = '<div class="es-ip-edit"><label class="es-campo">Texto do item, como está no edital (' + esc(i.localizacao) + ')<textarea class="es-ta" rows="3" maxlength="4000">' + esc(TXT[n] != null ? TXT[n] : i.texto) + '</textarea></label>' +
+              '<p class="al-fino">Compare com o edital e copie dele o que estiver diferente. Guardado, o item deixa de ser pendente.</p>' +
+              '<div class="es-linha"><button class="al-bt peq" data-e="ok">Conferi: guardar o texto</button><button class="al-bt peq fan" data-e="nao">Desfazer</button></div></div>';
+            cx.querySelector('[data-e="ok"]').onclick = function () {
+              var t = cx.querySelector('textarea').value.replace(/\s+/g, ' ').trim();
+              if (!t) return;
+              TXT[n] = t; repintar();
+            };
+            cx.querySelector('[data-e="nao"]').onclick = function () { delete TXT[n]; repintar(); };
+          };
+        });
+        cada(ped, '[data-d]', function (c) { c.oninput = function () { DC[c.getAttribute('data-d')] = c.value; }; });
+        cada(ped, '[data-et]', function (c) { c.oninput = function () { DC.etapas[Number(c.getAttribute('data-et'))].nome = c.value; }; });
+        cada(ped, '[data-en]', function (c) { c.onchange = function () { DC.etapas[Number(c.getAttribute('data-en'))].natureza = c.value; }; });
+        cada(ped, '[data-er]', function (b) { b.onclick = function () { DC.etapas.splice(Number(b.getAttribute('data-er')), 1); repintar(); }; });
+        cada(ped, '[data-qr]', function (b) { b.onclick = function () { DC.questoes.splice(Number(b.getAttribute('data-qr')), 1); repintar(); }; });
+        el('es-ed-mais-etapa').onclick = function () { DC.etapas.push({ nome: '', natureza: 'objetiva' }); repintar(); };
+        if (el('es-ed-abrir')) el('es-ed-abrir').onclick = function () { abrirPercurso(ap.escopo, { aba: 'programa' }); };
+
+        // o corpo do aplicar (e da prévia): o que foi excluído, os textos conferidos e os dados confirmados. Sem regra de pontuação.
+        function corpo(confirmar) {
+          return { titulo: dest.novo ? DC.titulo : undefined, excluir: Object.keys(EXCL).filter(function (k) { return EXCL[k]; }).map(Number), textos: TXT, confirmar_retificacao: confirmar || undefined,
+            dados: { orgao: DC.orgao, banca: DC.banca, cargo: DC.cargo, data_prova: DC.data_prova, etapas: DC.etapas.filter(function (e) { return e.nome.trim(); }), questoes: DC.questoes } };
+        }
+        var btA = el('es-ed-aplicar'), amsg = el('es-ed-amsg');
+        function erroA(e) { if (!aqui()) return; btA.disabled = false; amsg.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; }
+        function aplicarAgora(confirmar) {
+          btA.disabled = true; amsg.textContent = 'Aplicando…';
+          api('POST', base() + '/pedidos/' + id + '/aplicar', corpo(confirmar)).then(function (y) {
+            if (!aqui()) return;
+            TXT = {}; INICIADO = false; // o que foi revisto agora está no pedido: a tela recomeça dele
+            resultado(y.pedido);
+            rolagem().scrollTop = 0;
+            trocaDePercurso(); // o percurso novo passa a aparecer na troca, no alto
+          }).catch(erroA);
+        }
+        btA.onclick = function () {
+          btA.disabled = true; amsg.textContent = 'Conferindo o que muda…';
+          // a PRÉVIA: em percurso que já tem programa, aplicar é retificação — o diff aparece antes, e só passa confirmado
+          api('POST', base() + '/pedidos/' + id + '/previa', corpo(false)).then(function (v) {
+            if (!aqui()) return;
+            if (!(v.retificacao && v.diff && v.diff.mudou)) return aplicarAgora(false);
+            btA.disabled = false; amsg.textContent = '';
+            el('es-ed-previa').innerHTML = '<div class="es-nota-aba es-ed-ret"><b>Este percurso já tem programa (versão ' + v.destino.versao + ').</b>' +
+              '<p>Aplicar cria uma versão nova — uma retificação. A versão atual continua guardada. O que muda:</p>' + diffHtml(v.diff) +
+              '<div class="es-linha"><button class="al-bt" id="es-ed-ret">Confirmar a retificação</button><button class="al-bt fan" id="es-ed-ret-nao">Voltar à revisão</button></div></div>';
+            el('es-ed-ret').onclick = function () { this.disabled = true; aplicarAgora(true); };
+            el('es-ed-ret-nao').onclick = function () { el('es-ed-previa').innerHTML = ''; };
+            el('es-ed-previa').scrollIntoView({ block: 'nearest' });
+          }).catch(erroA);
+        };
       }
       carregar();
     }

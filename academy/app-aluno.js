@@ -628,7 +628,10 @@
         if (!C || C.pid !== pid) return;
         var percursos = (r && r.acesso && r.escopos) || [];
         // Curso que só hospeda o Estude não tem "aulas do curso" para onde voltar: o link do topo leva à biblioteca.
-        var soEstude = percursos.length === 1 && (C.aulas || []).length <= 1;
+        // (o percurso particular do aluno não conta: quem importou uma prova ou leu um edital continua caindo direto
+        // no percurso do curso — e passa de um para o outro pela troca de percurso, no alto do Estude)
+        var doCurso = percursos.filter(function (e) { return !e.particular; });
+        var soEstude = doCurso.length === 1 && (C.aulas || []).length <= 1;
         var abrir = function (slug, inicio) {
           var aula = C.i >= 0 ? C.aulas[C.i].a.id : '';
           ES.abrir(pid, C.d.produto.titulo, slug, soEstude ? function () { biblioteca(); } : function () { abrirCurso(pid, aula); }, inicio,
@@ -646,7 +649,7 @@
           abrir(pend.slug, pend);
         } else if (soEstude) { // sempre: a casca do curso ("Aula de leitura…") não é lugar de parar
           estudeAberto[pid] = true;
-          abrir(percursos[0].slug, { substituir: true }); // toma o lugar da página do curso no histórico
+          abrir(doCurso[0].slug, { substituir: true }); // toma o lugar da página do curso no histórico
         }
       }).catch(function () { /* sem o Estude o curso segue igual */ });
     }

@@ -208,11 +208,11 @@ function validarUnidade(u, i, codComp, codItem) {
 // ---------------------------------------------------------------------
 // ---------------------------------------------------------------------
 // PERCURSO PARTICULAR (ADR-0010, §6) — escopo de UM aluno, hospedado no curso em que ele tem acesso.
-// Só o dono o vê; não tem aulas nem programa: as questões que ele importa (prova em PDF) ficam no nome
-// dele, e as competências nascem das disciplinas, para Praticar e Prova funcionarem.
+// Só o dono o vê; não tem aulas: as questões que ele importa (prova em PDF) ficam no nome dele, o programa
+// vem do edital que ele mandou ler (fase 4), e as competências nascem das disciplinas, para Praticar e Prova funcionarem.
 // ---------------------------------------------------------------------
 const PARTICULARES_MAX = 10; // por aluno, por curso: dá para organizar por concurso e não vira depósito
-function criarParticular(produto, usuario, titulo) {
+function criarParticular(produto, usuario, titulo, resumo = '') {
   const t = s(titulo, 120);
   if (t.length < 3) throw erro('Dê um nome ao seu percurso (ao menos 3 letras).');
   if (Escopos.doDono(produto.id, usuario.id).length >= PARTICULARES_MAX) throw erro(`Você já tem ${PARTICULARES_MAX} percursos particulares neste curso — use um dos que existem.`, 409);
@@ -220,7 +220,7 @@ function criarParticular(produto, usuario, titulo) {
   // o slug leva um pedaço do id: não colide com escopo do curso nem com percurso de outro aluno
   const sl = `meu-${slug(t).slice(0, 36).replace(/-$/, '') || 'percurso'}-${id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toLowerCase()}`;
   db.prepare(`INSERT INTO est_escopos (id, product_id, slug, tipo, titulo, extensao, resumo, dono_user_id, criado_em, atualizado_em) VALUES (?, ?, ?, 'assunto', ?, 'modulo', ?, ?, ?, ?)`)
-    .run(id, produto.id, sl, t, 'Percurso particular: questões de prova importadas por você.', usuario.id, agora, agora);
+    .run(id, produto.id, sl, t, s(resumo, 2000) || 'Percurso particular: questões de prova importadas por você.', usuario.id, agora, agora);
   return Escopos.obter(id);
 }
 
@@ -228,6 +228,7 @@ function criarParticular(produto, usuario, titulo) {
 //   dono      o usuário dono do percurso PARTICULAR de destino (sem ele, percurso particular é intocável)
 //   autor     de quem são as questões (est_questoes.producer_id); padrão: o produtor do curso
 //   situacao  com que situação a questão NOVA nasce; padrão: rascunho, como toda importação
+//   tipo      o tipo que o escopo passa a ter (o percurso particular vira "edital" quando ganha o programa de um)
 function importar(produto, dados = {}, opcoes = {}) {
   const e = dados.escopo || {};
   const sl = slug(e.slug || e.titulo);
@@ -253,6 +254,7 @@ function importar(produto, dados = {}, opcoes = {}) {
     // só mexe no campo que veio — reimportar as questões não apaga a regra de pontuação
     const set = (col, val) => db.prepare(`UPDATE est_escopos SET ${col} = ?, atualizado_em = ? WHERE id = ?`).run(val, agora, escopo.id);
     if (e.titulo != null && !rel.criado) set('titulo', s(e.titulo, 200));
+    if (TIPOS.includes(opcoes.tipo) && escopo.tipo !== opcoes.tipo) set('tipo', opcoes.tipo);
     if (e.nivel != null) set('nivel', s(e.nivel, 60));
     if (e.extensao != null) { if (!EXTENSOES.includes(e.extensao)) throw erro(`escopo.extensao deve ser ${EXTENSOES.join('|')}.`); set('extensao', e.extensao); }
     if (e.resumo != null) set('resumo', s(e.resumo, 2000));

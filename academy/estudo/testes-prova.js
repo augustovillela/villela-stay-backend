@@ -551,7 +551,7 @@ async function rodar({ t, req, EST, impId }) {
 
   await t('prova: a tela — Escrita e oral · Importar prova · Meus pedidos; envio com progresso, orçamento com a faixa, leitura por lote, lista para conferir e adicionar', async () => {
     const tela = fs.readFileSync(path.join(__dirname, '..', 'app-estudo.js'), 'utf8');
-    assert.ok(/\[\['', 'Escrita e oral'\], \['importar', 'Importar prova'\], \['pedidos', 'Meus pedidos'\]\]/.test(tela), 'as três telas da aba');
+    assert.ok(/\[\['', 'Escrita e oral'\], \['importar', 'Importar prova'\], \['edital', 'Ler edital em PDF'\], \['pedidos', 'Meus pedidos'\]\]/.test(tela), 'as quatro telas da aba');
     for (const parte of ["if (questaoId === 'importar') return importarProva(alvo);", "questaoId.indexOf('prova.') === 0", "'/pedidos/prova/opcoes'", "/paginas'", "/aplicar'", "'/pedidos/arquivo-grande'", "/confirmar'",
       'XMLHttpRequest', 'x.upload.onprogress', "x.open('PUT', u.upload_url)", 'o.limites.base64_max_bytes', "tipo: 'prova', caderno_media_id", 'gabarito_situacao: F.sit', "{ novo: { titulo: F.novo } }",
       'Recalcular', 'página(s) escaneada(s)', "Pagar ' + esc(o.recarga) + ' e ler a prova", 'Lendo as páginas: lote ', 'CONSULTAS_PROVA', "data-filtro", "['revisar', 'A revisar']", 'Conferi com o caderno e quero adicionar',

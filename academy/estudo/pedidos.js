@@ -12,7 +12,8 @@
 // Aqui moram a correção de discursiva e de peça (texto), a de prova oral
 // (áudio gravado → transcrição → correção) e a IMPORTAÇÃO DE PROVA EM PDF
 // (o caderno em lotes de páginas + o gabarito; a leitura em si está em
-// prova.js). O edital em PDF usa esta mesma tabela — entra depois.
+// prova.js) e a LEITURA DE EDITAL EM PDF (a faixa do programa sugerida sem
+// provedor, a leitura em lotes e a árvore do programa; está em edital-pdf.js).
 //
 // Três regras que este arquivo sustenta:
 //   · a NOTA é do servidor (soma ponderada dos níveis); o modelo só dá o nível de cada critério
@@ -33,6 +34,8 @@ const banco = require('./banco');
 const al = require('./aluno');
 const pdf = require('./pdf');
 const prova = require('./prova');
+const edital = require('./edital');
+const editalPdf = require('./edital-pdf');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const erro = (msg, status = 400, extra) => { const e = new Error(msg); e.status = status; if (extra) e.extra = extra; return e; };
@@ -52,11 +55,14 @@ const ORAL_MAX_BYTES = ct.PEDIDO_AUDIO_MAX_BYTES;
 const FALHAS_POR_DIA = 5;
 // Orçar uma prova não custa ao usuário, mas custa processador (o servidor abre o PDF inteiro): há teto por dia.
 const PROVAS_POR_DIA = 20;
+const EDITAIS_POR_DIA = 20;              // idem para o edital
+// pedidos que não nascem de uma questão aberta: leem um PDF em lotes e têm um passo próprio de APLICAR
+const DE_ARQUIVO = ['prova', 'edital'];
 const ORAL_TRANSCRICAO_MAX = 8000;       // caracteres da transcrição que vão ao corretor (5 min de fala cabem com folga)
 const ENVIOS_POR_DIA = 40;               // arquivos por aluno a cada 24 h: sobra para estudar e não enche o disco
 const AVISO = 'Nota estimada por inteligência artificial a partir da rubrica da questão. É apoio de estudo: não é a correção da banca nem promessa de resultado.';
 const DEVOLVIDO = ' O valor reservado voltou ao seu saldo.';
-const falhaGenerica = (tipo) => `${tipo === 'prova' ? 'A leitura da prova' : 'A correção'} não foi concluída por uma falha no serviço de IA.${DEVOLVIDO.replace('.', '')} — tente de novo em alguns minutos.`;
+const falhaGenerica = (tipo) => `${tipo === 'prova' ? 'A leitura da prova' : tipo === 'edital' ? 'A leitura do edital' : 'A correção'} não foi concluída por uma falha no serviço de IA.${DEVOLVIDO.replace('.', '')} — tente de novo em alguns minutos.`;
 const INTERROMPIDO = 'interrompido — valor devolvido';
 
 // ---------------------------------------------------------------------
@@ -86,8 +92,14 @@ function publico(p, completo = false) {
     o.prova = { titulo: prova.rotuloDaProva(e.procedencia || {}), arquivo: e.nome_arquivo || '', ...prova.detalheDoOrcamento(e), destino: e.destino || null,
       progresso: p.estado === 'processando' ? j.parse(p.progresso, null) : null, resumo: (r && r.resumo) || null, aplicacao: (r && r.aplicacao) || null };
   }
+  // edital em PDF: o arquivo, o que será (ou foi) lido, o lote em curso e o resumo — sem a árvore (só em `completo`)
+  if (p.tipo === 'edital') {
+    o.edital = { arquivo: e.nome_arquivo || '', ...editalPdf.detalheDoOrcamento(e), destino: e.destino || null,
+      progresso: p.estado === 'processando' ? j.parse(p.progresso, null) : null, resumo: (r && r.resumo) || null, aplicacao: (r && r.aplicacao) || null };
+  }
   if (completo) {
     o.entrada = p.tipo === 'prova' ? { procedencia: e.procedencia, gabarito_situacao: e.gabarito_situacao, destino: e.destino }
+      : p.tipo === 'edital' ? { destino: e.destino }
       : { resposta: e.resposta || '', duracao_seg: e.duracao_seg || 0, media_id: e.media_id || '' };
     o.resultado = r;
     o.contestacao = cont && { motivo: cont.motivo, em: cont.em, resposta: cont.resposta || '', resolvida_em: cont.resolvida_em || '' };
@@ -198,6 +210,7 @@ function montarResultado(q, resposta, bruto) {
 function tetoUSD(p, q) {
   const e = j.parse(p.entrada, {});
   if (p.tipo === 'prova') return prova.tetoUSD(e);
+  if (p.tipo === 'edital') return editalPdf.tetoUSD(e);
   if (p.tipo === 'oral') {
     // a transcrição ainda não existe: orça-se pelo tamanho MÁXIMO dela e pela duração MÁXIMA do áudio
     return ia.tetoTrabalhoUSD('correcao', { caracteres: promptCorrecao(q, '', { oral: true }).length + ORAL_TRANSCRICAO_MAX, passos: 1, audio_seg: ORAL_MAX_SEG });
@@ -217,6 +230,8 @@ function orcamentoPara(usuario, p) {
     recarga_centavos: recarga, recarga: 'R$ ' + (recarga / 100).toFixed(2).replace('.', ','),
     pagamento_online: carteira.pagamentoOnline(),
     ...(p.tipo === 'prova' ? { detalhe: prova.detalheDoOrcamento(j.parse(p.entrada, {})) } : {}),
+    // edital: a visão página a página (trecho e sinais) acompanha o orçamento — é com ela que o usuário ajusta as faixas
+    ...(p.tipo === 'edital' ? { detalhe: editalPdf.detalheDoOrcamento(j.parse(p.entrada, {}), true) } : {}),
   };
 }
 
@@ -227,9 +242,9 @@ async function criar(usuario, produto, slugEscopo, dados = {}) {
   const c = al.abrir(usuario, produto, slugEscopo);
   const tipo = s(dados.tipo, 12);
   if (!TIPOS.includes(tipo)) throw erro(`tipo deve ser ${TIPOS.join('|')}.`);
-  if (tipo === 'edital') throw erro('A leitura de edital em PDF ainda não está disponível.', 501);
   exigirDisponivel(usuario, tipo === 'oral');
   if (tipo === 'prova') return criarProva(usuario, produto, slugEscopo, c, dados);
+  if (tipo === 'edital') return criarEdital(usuario, produto, slugEscopo, c, dados);
   const q = questaoAberta(c, dados.questao_id);
   let entrada;
   if (tipo === 'oral') {
@@ -285,16 +300,18 @@ function exigirLimiteDeFalhas(userId) {
 // Tudo síncrono do estado lido até o estado gravado: dois "confirmar" seguidos nunca reservam duas vezes.
 function iniciar(p, produto, { aceite } = {}) {
   exigirLimiteDeFalhas(p.user_id);
-  const ehProva = p.tipo === 'prova', oral = p.tipo === 'oral';
+  const deArquivo = DE_ARQUIVO.includes(p.tipo), oral = p.tipo === 'oral';
   let q = null;
-  if (!ehProva) {
+  // edital sem página escolhida: não há o que ler nem o que cobrar
+  if (p.tipo === 'edital') exigirPaginasDoEdital(j.parse(p.entrada, {}));
+  if (!deArquivo) {
     q = R.Questoes.obter(p.questao_id);
     if (!q || !ABERTOS.includes(q.tipo) || !(q.rubrica || []).length) throw erro('A questão deste pedido não está mais disponível.', 409);
     if (oral && !ia.transcricaoAtiva()) throw erro('A correção de resposta oral está indisponível no momento (transcrição de áudio não configurada). Nada foi cobrado.', 503);
   }
   // lança 402 (saldo ou aceite) com o orçamento, 503 se a cobrança estiver desligada — antes de qualquer gasto
   let t;
-  try { t = ia.abrirTrabalho(p.user_id, ehProva ? 'prova' : 'correcao', tetoUSD(p, q), produto, { aceite, rotulo: ehProva ? 'prova' : oral ? 'correcao_oral' : 'correcao' }); }
+  try { t = ia.abrirTrabalho(p.user_id, deArquivo ? p.tipo : 'correcao', tetoUSD(p, q), produto, { aceite, rotulo: deArquivo ? p.tipo : oral ? 'correcao_oral' : 'correcao' }); }
   catch (e) {
     // o teto de AGORA passou do que foi aceito (câmbio, margem): fica gravado no pedido — sem isso a tela
     // reconfirmava para sempre com o valor velho, que o servidor recusa de novo
@@ -307,7 +324,7 @@ function iniciar(p, produto, { aceite } = {}) {
     .run(t.ref, t.teto_milesimos, t.teto_milesimos, nowISO(), p.id);
   // o trabalho roda solto: a promessa NUNCA rejeita (um erro aqui, sem `.catch`, derrubaria o processo).
   // O que sobrar de erro é só registrado — sem texto de resposta nem de prova, só o que houve.
-  const trabalho = executar(p, t, () => (ehProva ? gerarProva(p, t) : gerarCorrecao(p, q, t)))
+  const trabalho = executar(p, t, () => (p.tipo === 'prova' ? gerarProva(p, t) : p.tipo === 'edital' ? gerarEdital(p, t) : gerarCorrecao(p, q, t)))
     .catch((e) => { try { console.error('[estudo/pedidos] pedido %s: o desfecho não foi gravado (%s)', p.id, (e && (e.code || e.name)) || 'erro'); } catch (_) { /* nem o log */ } })
     .finally(() => emAndamento.delete(p.id));
   emAndamento.set(p.id, trabalho);
@@ -387,8 +404,10 @@ async function recarga(usuario, produto, slugEscopo, id, dados = {}, baseUrl = '
   if (p.estado !== 'orcado') throw erro('Este pedido já foi confirmado ou encerrado.', 409);
   const d = exigirDisponivel(usuario, p.tipo === 'oral');
   if (d.cobranca !== 'paga') throw erro('A sua conta não precisa de recarga para este pedido — é só confirmar.', 409);
-  const q = p.tipo === 'prova' ? null : R.Questoes.obter(p.questao_id);
-  if (p.tipo !== 'prova' && !q) throw erro('A questão deste pedido não está mais disponível.', 409);
+  const deArquivo = DE_ARQUIVO.includes(p.tipo);
+  if (p.tipo === 'edital') exigirPaginasDoEdital(j.parse(p.entrada, {}));
+  const q = deArquivo ? null : R.Questoes.obter(p.questao_id);
+  if (!deArquivo && !q) throw erro('A questão deste pedido não está mais disponível.', 409);
   const teto = carteira.precoEmMilesimos(tetoUSD(p, q));
   const aceite = Math.floor(Number(dados.aceite_milesimos) || 0);
   // o aceite é do VALOR que a tela mostrou: se o orçamento subiu desde então, mostra de novo
@@ -398,7 +417,7 @@ async function recarga(usuario, produto, slugEscopo, id, dados = {}, baseUrl = '
   }
   const r = await carteira.criarRecarga(usuario, 0, baseUrl, {
     para_pedido: { id: p.id, teto_milesimos: teto },
-    retorno: `#/curso/${produto.id}/estude/${R.slug(slugEscopo)}/escrita/${p.tipo === 'prova' ? 'prova.' + p.id : p.questao_id}`,
+    retorno: `#/curso/${produto.id}/estude/${R.slug(slugEscopo)}/escrita/${deArquivo ? p.tipo + '.' + p.id : p.questao_id}`,
   });
   // o aceite fica GRAVADO: é ele que autoriza o pedido a rodar sem o aluno na tela, e só até este valor
   db.prepare('UPDATE est_pedidos SET orcamento_milesimos = ?, aceite_milesimos = ?, atualizado_em = ? WHERE id = ?').run(teto, teto, nowISO(), p.id);
@@ -440,6 +459,7 @@ function listar(usuario, produto, slugEscopo, { questao = '' } = {}) {
   const titulo = {};
   return { pedidos: linhas.map((p) => {
     if (p.tipo === 'prova') return { ...publico(p), questao: 'Prova em PDF: ' + s(prova.rotuloDaProva(j.parse(p.entrada, {}).procedencia || {}), 140) };
+    if (p.tipo === 'edital') return { ...publico(p), questao: 'Edital em PDF: ' + s(j.parse(p.entrada, {}).nome_arquivo || 'edital', 140) };
     if (!(p.questao_id in titulo)) { const q = R.Questoes.obter(p.questao_id); titulo[p.questao_id] = q ? s(q.enunciado, 140) : ''; }
     return { ...publico(p), questao: titulo[p.questao_id] };
   }) };
@@ -448,7 +468,7 @@ function cancelar(usuario, produto, slugEscopo, id) {
   al.abrir(usuario, produto, slugEscopo);
   const p = meu(usuario, produto, id);
   if (p.estado === 'cancelado') return { pedido: publico(p) };
-  if (p.estado !== 'orcado') throw erro(p.estado === 'processando' ? `${p.tipo === 'prova' ? 'A leitura' : 'A correção'} já começou — não dá mais para cancelar.` : 'Este pedido já foi concluído.', 409);
+  if (p.estado !== 'orcado') throw erro(p.estado === 'processando' ? `${DE_ARQUIVO.includes(p.tipo) ? 'A leitura' : 'A correção'} já começou — não dá mais para cancelar.` : 'Este pedido já foi concluído.', 409);
   db.prepare("UPDATE est_pedidos SET estado = 'cancelado', aceite_milesimos = 0, atualizado_em = ? WHERE id = ?").run(nowISO(), p.id);
   return { pedido: publico(linha(p.id)) };
 }
@@ -457,6 +477,7 @@ function contestar(usuario, produto, slugEscopo, id, motivo) {
   al.abrir(usuario, produto, slugEscopo);
   const p = meu(usuario, produto, id);
   if (p.tipo === 'prova') throw erro('A leitura da prova se corrige na própria revisão das questões: edite a que estiver errada antes de adicionar.', 409);
+  if (p.tipo === 'edital') throw erro('A leitura do edital se corrige na própria revisão do programa: exclua ou corrija o item antes de aplicar.', 409);
   if (!['pronto', 'aplicado'].includes(p.estado)) throw erro('Só dá para contestar uma correção concluída.', 409);
   if (p.contestacao) throw erro('Você já registrou a sua discordância sobre esta correção.', 409);
   const m = s(motivo, 1000);
@@ -600,10 +621,11 @@ async function criarProva(usuario, produto, slugEscopo, c, dados) {
 async function reorcar(usuario, produto, slugEscopo, id, dados = {}) {
   al.abrir(usuario, produto, slugEscopo);
   const p = meu(usuario, produto, id);
-  if (p.tipo !== 'prova') throw erro('Só a importação de prova tem faixa de páginas.');
+  if (!DE_ARQUIVO.includes(p.tipo)) throw erro('Só a importação de prova e a leitura de edital têm faixa de páginas.');
   if (p.estado !== 'orcado') throw erro('Este pedido já foi confirmado ou encerrado.', 409);
   if (p.aceite_milesimos > 0) throw erro('Há um pagamento a caminho para este pedido — cancele-o para mudar a faixa.', 409);
   const e = j.parse(p.entrada, {});
+  if (p.tipo === 'edital') return reorcarEdital(usuario, produto, slugEscopo, p, e, dados);
   const plano = prova.planejar(e.paginas_info, prova.faixaValida(e.total_paginas, dados.paginas));
   if (plano.escaneadas) {
     const m = pdfDoUsuario(usuario, e.caderno_media_id, 'do caderno');
@@ -649,7 +671,8 @@ function opcoesDeProva(usuario, produto, slugEscopo) {
 function aplicar(usuario, produto, slugEscopo, id, dados = {}) {
   al.abrir(usuario, produto, slugEscopo);
   const p = meu(usuario, produto, id);
-  if (p.tipo !== 'prova') throw erro('Este pedido não é de importação de prova.');
+  if (p.tipo === 'edital') return aplicarEdital(usuario, produto, p, dados);
+  if (p.tipo !== 'prova') throw erro('Este pedido não é de importação de prova nem de leitura de edital.');
   if (!['pronto', 'aplicado'].includes(p.estado)) throw erro('A leitura desta prova ainda não terminou.', 409);
   const e = j.parse(p.entrada, {}), r = j.parse(p.resultado, null);
   if (!r || !Array.isArray(r.questoes)) throw erro('Este pedido não tem resultado.', 409);
@@ -679,6 +702,215 @@ function aplicar(usuario, produto, slugEscopo, id, dados = {}) {
     db.prepare("UPDATE est_pedidos SET estado = 'aplicado', resultado = ?, entrada = ?, atualizado_em = ? WHERE id = ?")
       .run(j.str(r), j.str({ ...e, destino: { escopo: escopo.slug } }), nowISO(), p.id);
     return { pedido: publico(linha(p.id), true), aplicado: { ...rel.questoes, escopo: escopo.slug, titulo: escopo.titulo, particular, situacao: r.aplicacao.situacao } };
+  });
+}
+
+// =====================================================================
+// LER EDITAL EM PDF (ADR-0010, fase 4)
+//   criar     lê o PDF SEM provedor, sugere a faixa do conteúdo programático (heurística local) e orça
+//   reorçar   outras faixas de páginas, outro teto
+//   executar  um trabalho, um passo por lote de páginas (edital-pdf.js)
+//   prévia    o que APLICAR vai fazer: a árvore que entra e, em percurso que já tem programa, o diff. Não grava.
+//   aplicar   programa versionado (o MESMO caminho da importação), perfil confirmado, data da prova e uma
+//             competência por disciplina. Sem custo. Regra de pontuação NUNCA é gravada por aqui.
+// Quem pode: o aluno com acesso (percurso particular dele) e o dono do produto (escopo do curso — um que
+// já existe, ou um novo, que nasce em rascunho — ou percurso particular).
+// =====================================================================
+// A competência de uma DISCIPLINA tem sempre este enunciado — é por ele que a importação de prova e a
+// leitura do edital se reconhecem (e que a tela mostra o nome da disciplina em vez da frase).
+const RESULTADO_DA_DISCIPLINA = (nome) => `Diante de questões de prova de ${nome}, o candidato identifica a resposta correta sem apoio.`;
+const RE_DISCIPLINA = /^Diante de questões de prova de (.+), o candidato identifica a resposta correta sem apoio\.$/;
+const RESUMO_DO_PARTICULAR = 'Percurso particular: programa lido do edital que você enviou.';
+const DIFF_MAX = 300; // linhas de cada lista do diff que vão à tela (os totais vão sempre)
+
+function destinoDoEdital(usuario, produto, destino) {
+  const d = destino && typeof destino === 'object' ? destino : {};
+  // só o dono do produto abre um escopo NOVO do curso; para os demais, o pedido responde como destino que não existe
+  if (d.novo && typeof d.novo === 'object' && d.novo.curso === true) {
+    if (produto.producer_id !== usuario.id) throw erro('Percurso de destino não encontrado.', 404);
+    const titulo = s(d.novo.titulo, 120);
+    if (titulo.length < 3) throw erro('Dê um nome ao percurso novo (ao menos 3 letras).');
+    if (!R.slug(titulo) || R.Escopos.porSlug(produto.id, R.slug(titulo))) throw erro('Já existe um percurso com este nome neste curso — dê outro nome, ou escolha o percurso que existe como destino.', 409);
+    return { destino: { novo: { titulo, curso: true } }, escopo: null };
+  }
+  if (!(d.novo && typeof d.novo === 'object') && !s(d.escopo, 80)) throw erro('Escolha para onde vai o programa: um percurso seu ou um percurso novo.');
+  return destinoValido(usuario, produto, d);
+}
+function exigirPaginasDoEdital(e) {
+  if (!e.plano || !Array.isArray(e.plano.lotes) || !e.plano.lotes.length) throw erro('Escolha as páginas do edital que trazem o conteúdo programático antes de confirmar. Nada foi cobrado.', 409);
+}
+
+async function criarEdital(usuario, produto, slugEscopo, c, dados) {
+  const hoje = db.prepare("SELECT COUNT(*) n FROM est_pedidos WHERE user_id = ? AND tipo = 'edital' AND criado_em > ?").get(usuario.id, new Date(Date.now() - 864e5).toISOString()).n;
+  if (hoje >= EDITAIS_POR_DIA) throw erro('Muitos orçamentos de edital nas últimas 24 horas — tente de novo amanhã. Nada foi cobrado.', 429);
+  // 1) o que não custa nem leitura: destino e arquivo
+  const { destino } = destinoDoEdital(usuario, produto, dados.destino);
+  const m = pdfDoUsuario(usuario, dados.edital_media_id, 'do edital');
+  // 2) a leitura, sem provedor: texto por página, quais são escaneadas e a faixa sugerida do programa
+  const bytes = await ct.Midia.lerBytes(m, ct.PEDIDO_PDF_MAX_BYTES);
+  const leitura = await pdf.ler(bytes, { nome: 'O PDF do edital' });
+  const sug = editalPdf.sugerir(leitura.textos);
+  // sem faixa pedida vale a sugerida; sem sugestão o plano nasce VAZIO (orçamento zero) e a tela pede as páginas
+  const pedidas = Array.isArray(dados.paginas) && dados.paginas.length > 0;
+  const pags = pedidas ? editalPdf.paginasValidas(leitura.paginas, dados.paginas) : editalPdf.selecaoSugerida(sug);
+  const plano = editalPdf.planejar(sug.paginas, pags);
+  await conferirEscaneadas(bytes, plano);
+  // 3) o orçamento. O hash do arquivo fica no pedido: se ele for trocado depois, o trabalho não roda.
+  // Do texto do edital, o pedido guarda só o começo de cada página (para o usuário reconhecê-la ao escolher a faixa).
+  const entrada = { edital_media_id: m.id, edital_sha256: prova.sha256(bytes), nome_arquivo: s(m.nome, 200), total_paginas: leitura.paginas,
+    sem_texto: leitura.textos.filter(x => x.sem_texto).length, paginas_info: sug.paginas, sugestao: { faixas: sug.faixas, dados_paginas: sug.dados_paginas }, plano, destino };
+  const agora = nowISO();
+  const p = { id: novoId(), tipo: 'edital', entrada: j.str(entrada) };
+  db.prepare(`INSERT INTO est_pedidos (id, user_id, product_id, escopo_id, tipo, estado, questao_id, entrada, orcamento_milesimos, criado_em, atualizado_em)
+    VALUES (?, ?, ?, ?, 'edital', 'orcado', '', ?, ?, ?, ?)`).run(p.id, usuario.id, produto.id, c.escopo.id, p.entrada, precoDoEdital(p), agora, agora);
+  return orcamento(usuario, produto, slugEscopo, p.id);
+}
+// Outras faixas → outro plano e outro teto (a rota é a mesma da prova; quem chama já conferiu o estado do pedido).
+async function reorcarEdital(usuario, produto, slugEscopo, p, e, dados) {
+  const plano = editalPdf.planejar(e.paginas_info, editalPdf.paginasValidas(e.total_paginas, dados.paginas));
+  if (plano.lotes.some(l => l.escaneadas.length || l.carrega_pdf.length)) {
+    const m = pdfDoUsuario(usuario, e.edital_media_id, 'do edital');
+    const bytes = await ct.Midia.lerBytes(m, ct.PEDIDO_PDF_MAX_BYTES);
+    if (prova.sha256(bytes) !== e.edital_sha256) throw erro('O arquivo do edital mudou depois do orçamento. Envie de novo e peça outro orçamento.', 422);
+    await conferirEscaneadas(bytes, plano);
+  }
+  const nova = { ...p, entrada: j.str({ ...e, plano }) };
+  db.prepare("UPDATE est_pedidos SET entrada = ?, orcamento_milesimos = ?, atualizado_em = ? WHERE id = ? AND estado = 'orcado'").run(nova.entrada, precoDoEdital(nova), nowISO(), p.id);
+  return orcamento(usuario, produto, slugEscopo, p.id);
+}
+// O trabalho: relê o arquivo (é o MESMO do orçamento — o hash confere), lê em lotes e monta a árvore.
+async function gerarEdital(p, t) {
+  const e = j.parse(p.entrada, {});
+  const m = ct.Midia.obter(e.edital_media_id);
+  if (!m || m.owner_user_id !== p.user_id) throw erro('O PDF do edital não está mais disponível.', 422);
+  const bytes = await ct.Midia.lerBytes(m, ct.PEDIDO_PDF_MAX_BYTES);
+  if (prova.sha256(bytes) !== e.edital_sha256) throw erro('O arquivo do edital mudou depois do orçamento. Envie de novo e peça outro orçamento.', 422);
+  const leitura = await pdf.ler(bytes, { nome: 'O PDF do edital' });
+  const gravar = db.prepare("UPDATE est_pedidos SET progresso = ?, atualizado_em = ? WHERE id = ? AND estado = 'processando'");
+  return editalPdf.executar({ t, entrada: e, arquivo: { bytes, leitura }, aoProgredir: (x) => { try { gravar.run(j.str(x), nowISO(), p.id); } catch (_) { /* progresso é cortesia */ } } });
+}
+
+// O que a tela de "Ler edital" precisa antes de pedir.
+function opcoesDeEdital(usuario, produto, slugEscopo) {
+  al.abrir(usuario, produto, slugEscopo);
+  const d = disponibilidade(usuario);
+  const produtor = produto.producer_id === usuario.id;
+  const meus = R.Escopos.doDono(produto.id, usuario.id).map(e => ({ slug: e.slug, titulo: e.titulo, particular: true, tem_programa: e.versao > 0 }));
+  const doCurso = produtor ? R.Escopos.doProduto(produto.id, R.STATUS).map(e => ({ slug: e.slug, titulo: e.titulo, particular: false, status: e.status, tem_programa: e.versao > 0 })) : [];
+  return { disponivel: d.disponivel, motivo_indisponivel: d.motivo.replace('A correção por IA', 'A leitura de edital'), cobranca: d.cobranca,
+    envio_grande: storage.s3Ativo(), destinos: meus.concat(doCurso), pode_novo: meus.length < R.PARTICULARES_MAX, pode_novo_no_curso: produtor, produtor,
+    limites: { pdf_max_bytes: ct.PEDIDO_PDF_MAX_BYTES, base64_max_bytes: ct.UPLOAD_MAX_BYTES, paginas_max: editalPdf.MAX_PAGINAS, paginas_por_lote: editalPdf.PAGINAS_POR_LOTE, faixas_max: editalPdf.MAX_FAIXAS },
+    esforco_padrao_min: editalPdf.ESFORCO_PADRAO_MIN, aviso: editalPdf.AVISO };
+}
+
+// Tudo o que APLICAR precisa, conferido e SEM gravar: o que o usuário reviu, os dados confirmados, o destino
+// de AGORA (o percurso pode ter mudado de mãos desde o pedido) e o que muda no programa que já existe.
+function prepararEdital(usuario, produto, p, dados) {
+  if (!['pronto', 'aplicado'].includes(p.estado)) throw erro('A leitura deste edital ainda não terminou.', 409);
+  const e = j.parse(p.entrada, {}), r = j.parse(p.resultado, null);
+  if (!r || !Array.isArray(r.itens)) throw erro('Este pedido não tem resultado.', 409);
+  const esc = editalPdf.escolher(r, dados);
+  const conf = editalPdf.dadosConfirmados(dados.dados);
+  const novo = e.destino && e.destino.novo ? e.destino.novo : null;
+  const escopo = destinoDoEdital(usuario, produto, e.destino).escopo; // null: o percurso novo nasce ao aplicar
+  let novos;
+  try { novos = edital.normalizarItens(esc.itens); } catch (x) { throw erro(x.message); }
+  const atuais = escopo && escopo.versao ? R.itens(escopo) : [];
+  return { e, r, esc, conf, novo, escopo, novos, diff: edital.comparar(atuais, novos), retificacao: atuais.length > 0 };
+}
+// plano vazio não tem valor: zero mesmo (e não o "-0" que o arredondamento para cima devolveria)
+const precoDoEdital = (p) => Math.max(0, carteira.precoEmMilesimos(tetoUSD(p))) || 0;
+const diffPublico = (d) => ({ mudou: d.mudou, iguais: d.iguais, adicionados_total: d.adicionados.length, removidos_total: d.removidos.length, alterados_total: d.alterados.length,
+  adicionados: d.adicionados.slice(0, DIFF_MAX), removidos: d.removidos.slice(0, DIFF_MAX), alterados: d.alterados.slice(0, DIFF_MAX) });
+function previaDoEdital(usuario, produto, slugEscopo, id, dados = {}) {
+  al.abrir(usuario, produto, slugEscopo);
+  const p = meu(usuario, produto, id);
+  if (p.tipo !== 'edital') throw erro('Este pedido não é de leitura de edital.');
+  const x = prepararEdital(usuario, produto, p, dados);
+  return {
+    destino: x.escopo ? { escopo: x.escopo.slug, titulo: x.escopo.titulo, particular: !!x.escopo.dono_user_id, status: x.escopo.status, versao: x.escopo.versao } : { novo: x.novo },
+    retificacao: x.retificacao, programa: { itens: x.novos.length, disciplinas: x.esc.disciplinas.length, pendentes: x.novos.filter(i => i.pendente).length },
+    diff: x.retificacao ? diffPublico(x.diff) : null,
+  };
+}
+
+// APLICAR — sem custo. Em percurso que JÁ tem programa, aplicar é retificação (versão nova, com o diff):
+// só passa com a confirmação expressa de quem viu o que muda.
+function aplicarEdital(usuario, produto, p, dados = {}) {
+  return transacao(() => {
+    const x = prepararEdital(usuario, produto, p, dados);
+    if (x.retificacao && x.diff.mudou && dados.confirmar_retificacao !== true) {
+      throw erro('Este percurso já tem programa: aplicar cria uma versão nova (retificação). Confira o que muda e confirme.', 409, { motivo: 'confirmar_retificacao', diff: diffPublico(x.diff) });
+    }
+    const titulo = s(dados.titulo, 120);
+    if (titulo && titulo.length < 3) throw erro('O nome do percurso precisa de ao menos 3 letras.');
+    // o destino: o percurso particular novo nasce aqui; o escopo novo do curso nasce na importação, em rascunho
+    const novoNoCurso = !!(x.novo && x.novo.curso);
+    let escopo = x.escopo;
+    if (x.novo && !novoNoCurso) escopo = R.criarParticular(produto, usuario, titulo || x.novo.titulo, RESUMO_DO_PARTICULAR);
+    const particular = !!(escopo && escopo.dono_user_id);
+    const slugDestino = escopo ? escopo.slug : R.slug(x.novo.titulo);
+
+    // UMA COMPETÊNCIA POR DISCIPLINA (item-raiz). A que a importação de prova já criou é reaproveitada pelo
+    // nome normalizado da disciplina; competência que já existe com o mesmo código não é reescrita.
+    const comps = escopo ? R.competencias(escopo.id) : [];
+    const existentes = new Set(comps.map(k => k.codigo));
+    const porNome = new Map(), deDisciplina = new Set();
+    for (const k of comps) {
+      const m = RE_DISCIPLINA.exec(k.resultado || '');
+      if (!m) continue;
+      deDisciplina.add(k.codigo);
+      const ch = editalPdf.chaveDaDisciplina(m[1]);
+      if (!porNome.has(ch)) porNome.set(ch, k.codigo);
+    }
+    const novas = new Map(), vinculos = [], raizDe = new Map();
+    for (const d of x.esc.disciplinas) {
+      const nome = prova.nomeDaDisciplina(d.titulo);
+      const cod = porNome.get(editalPdf.chaveDaDisciplina(nome)) || prova.codigoDaDisciplina(d.titulo);
+      if (!existentes.has(cod) && !novas.has(cod)) { novas.set(cod, nome); deDisciplina.add(cod); }
+      if (!raizDe.has(cod)) raizDe.set(cod, d.codigo);
+      for (const item of d.itens) vinculos.push({ item, competencia: cod, justificativa: editalPdf.JUSTIFICATIVA });
+    }
+
+    // PERFIL: os dados que o usuário confirmou entram por cima do que havia; campo deixado em branco não apaga.
+    // A data só vira prazo do plano se for FUTURA (edital de concurso passado serve para estudar, não para contar dias).
+    const antigo = escopo && escopo.perfil && typeof escopo.perfil === 'object' && !Array.isArray(escopo.perfil) ? escopo.perfil : {};
+    const informados = Object.fromEntries(Object.entries(x.conf.perfil).filter(([, v]) => (Array.isArray(v) ? v.length : v)));
+    const dataFutura = !!x.conf.data_alvo && x.conf.data_alvo > al.hojeBR();
+    const perfil = { ...antigo, ...informados, ...(x.conf.data_alvo ? { data_prova_do_edital: x.conf.data_alvo } : {}), origem_dos_dados: 'edital em PDF — confirmados por quem importou' };
+    // sem aula nem estimativa por item o plano não teria o que somar: percurso novo (ou particular) ganha a faixa padrão por tópico
+    if (!Array.isArray(perfil.esforco_padrao_min) && (particular || !escopo || !escopo.versao)) perfil.esforco_padrao_min = editalPdf.ESFORCO_PADRAO_MIN;
+    delete perfil.regra_pontuacao; // regra de pontuação não mora no perfil nem entra por este pedido
+
+    const rel = R.importar(produto, {
+      // (sem `regra_pontuacao`: ela exige fonte e é informada por quem responde pelo percurso)
+      escopo: { slug: slugDestino, ...(novoNoCurso ? { tipo: 'edital', titulo: titulo || x.novo.titulo } : {}), ...(particular && titulo && !x.novo ? { titulo } : {}),
+        perfil, ...(dataFutura ? { data_alvo: x.conf.data_alvo } : {}) },
+      programa: { itens: x.esc.itens, documento: { nome: x.e.nome_arquivo, tipo: 'edital' } },
+      competencias: [...novas].map(([codigo, nome]) => ({ codigo, resultado: RESULTADO_DA_DISCIPLINA(nome), criterios: [], essencial: true })),
+      vinculos,
+    }, particular ? { dono: usuario.id, autor: usuario.id, situacao: 'disponivel', tipo: 'edital' } : {});
+    const destino = R.Escopos.porSlug(produto.id, slugDestino);
+
+    // as questões que já estavam na competência da disciplina (prova importada antes) passam a apontar o item-raiz dela
+    const liga = db.prepare(`INSERT OR IGNORE INTO est_questao_vinculos (questao_id, escopo_id, alvo, codigo, justificativa, estado_revisao)
+      SELECT questao_id, escopo_id, 'item', ?, ?, 'sugerido' FROM est_questao_vinculos WHERE escopo_id = ? AND alvo = 'competencia' AND codigo = ?`);
+    let ligadas = 0;
+    for (const [cod, raiz] of raizDe) if (deDisciplina.has(cod)) ligadas += Number(liga.run(raiz, editalPdf.JUSTIFICATIVA, destino.id, cod).changes) || 0;
+
+    // o resultado guarda o que foi revisto (exclusões e textos conferidos) — dá para reaplicar depois
+    const r = x.r, prog = rel.programa || {};
+    r.itens = x.esc.revistos;
+    r.resumo = editalPdf.resumir(r.itens, r.dados);
+    r.dados_confirmados = { ...x.conf.perfil, data_prova: x.conf.data_alvo };
+    r.aplicacao = { escopo: destino.slug, titulo: destino.titulo, particular, status: destino.status, em: nowISO(), versao: prog.versao || destino.versao, sem_mudanca: !!prog.sem_mudanca,
+      retificacao: x.retificacao && !prog.sem_mudanca, itens: x.novos.length, disciplinas: x.esc.disciplinas.length, pendentes: x.novos.filter(i => i.pendente).length,
+      adicionados: prog.adicionados || 0, removidos: prog.removidos || 0, alterados: prog.alterados || 0,
+      competencias_novas: (rel.competencias || {}).novas || 0, questoes_ligadas: ligadas, data_alvo: dataFutura ? x.conf.data_alvo : '',
+      ...(x.conf.data_alvo && !dataFutura ? { aviso_data: 'A data da prova informada já passou: o percurso ficou sem prazo, e o plano diz quando você termina no seu ritmo.' } : {}) };
+    db.prepare("UPDATE est_pedidos SET estado = 'aplicado', resultado = ?, entrada = ?, atualizado_em = ? WHERE id = ?")
+      .run(j.str(r), j.str({ ...x.e, destino: { escopo: destino.slug } }), nowISO(), p.id);
+    return { pedido: publico(linha(p.id), true), aplicado: r.aplicacao };
   });
 }
 
@@ -724,6 +956,7 @@ module.exports = {
   criar, orcamento, confirmar, obter, listar, cancelar, contestar, recarga, abertas, aoCreditar, aguardar, recuperarInterrompidos,
   enviarArquivo, iniciarArquivoGrande, confirmarArquivoGrande, painelStaff, abrirParaStaff, resolverContestacao,
   promptCorrecao, montarResultado, citacaoConferida,
-  opcoesDeProva, reorcar, aplicar,
+  opcoesDeProva, reorcar, aplicar, opcoesDeEdital, previaDoEdital,
+  EDITAIS_POR_DIA, RESULTADO_DA_DISCIPLINA,
   TIPOS, ESTADOS, ABERTOS, LIMITE_TEXTO, MINIMO_TEXTO, ORAL_MAX_SEG, ORAL_MAX_BYTES, ORAL_TRANSCRICAO_MAX, FALHAS_POR_DIA, PROVAS_POR_DIA, AVISO, INTERROMPIDO,
 };
