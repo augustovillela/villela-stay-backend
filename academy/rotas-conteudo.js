@@ -178,10 +178,25 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
   // ============================ ALUNO ============================
   // biblioteca real (substitui o dashboard placeholder da FASE 1)
   app.get('/academy/api/aluno/biblioteca', requireUsuario, requirePapel('aluno'), h((req, res) => {
-    const cursos = ct.Matriculas.doAlunoComAcesso(req.usuario.id)
-      .map(e => ({ ...e, progresso: ct.Progresso.doProduto(req.usuario.id, e.product_id) }));
+    // Curso que hospeda o ESTUDE: o progresso é o do percurso (aulas estudadas / aulas do percurso), não o da
+    // aula-casca ("0 de 1 conteúdos"), e o Continuar aponta a última aula aberta lá (`estude`).
+    const est = require('./estudo/aluno');
+    const cursos = ct.Matriculas.doAlunoComAcesso(req.usuario.id).map(e => {
+      const pe = est.progressoDoCurso(req.usuario.id, e.product_id);
+      return pe ? { ...e, progresso: pe.progresso, estude: { slug: pe.slug, continuar: pe.continuar } }
+        : { ...e, progresso: ct.Progresso.doProduto(req.usuario.id, e.product_id) };
+    });
     const assinaturas = require('./billing').Assinaturas.doUsuario(req.usuario.id);
-    res.json({ cursos, assinaturas, continuar: ct.Progresso.continuar(req.usuario.id) });
+    // "Continuar de onde parou": a última coisa que o aluno abriu — aula de curso comum ou aula do Estude
+    let continuar = ct.Progresso.continuar(req.usuario.id);
+    for (const c of cursos) {
+      const u = c.estude && c.estude.continuar;
+      if (u && (!continuar || u.aberta_em > continuar.atualizado_em)) {
+        continuar = { product_id: c.product_id, lesson_id: '', atualizado_em: u.aberta_em, aula_titulo: u.titulo, produto_titulo: c.titulo, capa_media_id: c.capa_media_id || '',
+          estude: { slug: u.slug, unidade: u.unidade } };
+      }
+    }
+    res.json({ cursos, assinaturas, continuar });
   }));
   // estrutura do curso p/ estudo (matrícula ativa OU aulas gratuitas)
   app.get('/academy/api/aluno/cursos/:productId', requireUsuario, requirePapel('aluno'), h((req, res) => {

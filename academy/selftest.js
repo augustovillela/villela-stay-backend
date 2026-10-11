@@ -2821,6 +2821,8 @@ async function main() {
 
   // ================= ESTUDO (academy\estudo\) =================
   await require('./estudo/testes').rodar({ t, req, EST, impId });
+  // ESTUDO · paridade com os outros cursos (barra do curso, quiz na aula, caderno, certificado, Tutor por aula, áudio da oral, LGPD)
+  await require('./estudo/testes-paridade').rodar({ t, req });
 
   // ================= AMOSTRAS GRÁTIS (amostras.js): trechos públicos de vídeo =================
   await require('./testes-amostras').rodar({ t, req, base: () => BASE, emailProdutor: MARIA.email });

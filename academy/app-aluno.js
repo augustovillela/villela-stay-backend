@@ -86,16 +86,41 @@
     // o endereço acompanha a tela (ver ROTA no painel); sem o painel, não faz nada
     function rota(partes, substituir) { if (window.AcademyRota) window.AcademyRota.gravar(partes, substituir); }
     var rotaEstude = {}; // percurso do Estude a reabrir assim que o curso carregar (veio do endereço)
-    var voltaEstude = null; // de onde, no Estude, o aluno abriu o audiobook — é para lá que o Voltar devolve
+    // "Quero voltar para onde estava, sempre" (Augusto): toda tela aberta de dentro do Estude — audiobook, desafio,
+    // simulações, Lab, folhas de revisão, material do curso, avaliar — devolve à mesma aba, aula e ROLAGEM.
+    var voltaEstude = null; // de onde, no Estude, o aluno saiu — é para lá que o Voltar devolve
+    var noEstude = false;   // a tela do Estude está aberta (ou uma tela do curso aberta a partir dela)
     function lugarNoEstude(pid) {
       var m = String(location.hash || '').replace(/^#\/?/, '').split('/').map(function (x) { try { return decodeURIComponent(x); } catch (e) { return x; } });
       var k = m.indexOf('estude');
-      return k < 0 || !m[k + 1] ? null : { pid: pid, slug: m[k + 1], aba: m[k + 2] || 'hoje', arg: m[k + 3] || '', extra: m[k + 4] || '' };
+      return k < 0 || !m[k + 1] ? null : { pid: pid, slug: m[k + 1], aba: m[k + 2] || 'hoje', arg: m[k + 3] || '', extra: m[k + 4] || '',
+        y: (document.scrollingElement || document.documentElement).scrollTop || 0 };
     }
+    function sairDoEstude(pid) {
+      voltaEstude = lugarNoEstude(pid);
+      if (ES && ES.guardarLugar) ES.guardarLugar(); // as disciplinas abertas da lista
+    }
+    function voltarAoEstude(pid) {
+      var v = voltaEstude; voltaEstude = null;
+      if (v && v.pid === pid) abrirCurso(pid, '', { estude: v }); else abrirCurso(pid);
+    }
+    // DICAS: dentro do Estude a tela não é a do curso comum — as dicas GERAIS da Academy falam de recursos que ela
+    // não tem. O app marca <html data-vs-so-curso="1"> (ao lado do data-vs-curso): é o pedido para o widget de
+    // comunicados sortear só as dicas DESTE curso. (Quem atende ao pedido é o módulo comunicados.)
+    function marcarSoDicasDoCurso(sim) {
+      try {
+        var raiz = document.documentElement, tem = raiz.hasAttribute('data-vs-so-curso');
+        if (!!sim === tem) return;
+        if (sim) raiz.setAttribute('data-vs-so-curso', '1'); else raiz.removeAttribute('data-vs-so-curso');
+        window.dispatchEvent(new CustomEvent('vs:contexto'));
+      } catch (e) { /* sem o widget, nada a fazer */ }
+    }
+    function foraDoEstude() { noEstude = false; marcarSoDicasDoCurso(false); }
 
     // ================= BIBLIOTECA =================
     function biblioteca() {
       rota(['aluno']);
+      foraDoEstude();
       limparTutor();
       marcarCursoAberto('');
       document.body.classList.remove('aluno-amplo');
@@ -112,7 +137,7 @@
             '<p class="al-rotulo">Continuar de onde parou</p>' +
             '<h3>' + esc(d.continuar.produto_titulo) + '</h3>' +
             '<p class="aula">' + ico('play', 15) + ' ' + esc(d.continuar.aula_titulo) + '</p>' +
-            '<button class="al-bt" data-curso="' + esc(d.continuar.product_id) + '" data-aula="' + esc(d.continuar.lesson_id || '') + '">' +
+            '<button class="al-bt" data-curso="' + esc(d.continuar.product_id) + '" data-aula="' + esc(d.continuar.lesson_id || '') + '"' + dadosDoEstude(d.continuar.estude) + '>' +
             ico('play') + ' Retomar a aula</button></div></div>';
         }
 
@@ -125,11 +150,12 @@
         } else {
           h += '<div class="al-grade">' + cursos.map(function (c) {
             var p = c.progresso || { pct: 0, concluidas: 0, total_aulas: 0 };
-            return '<div class="al-curso" data-curso="' + esc(c.product_id) + '">' +
+            // curso que hospeda o Estude: o progresso é o do percurso, e o Continuar leva à última aula aberta lá
+            return '<div class="al-curso" data-curso="' + esc(c.product_id) + '"' + dadosDoEstude(c.estude && c.estude.continuar) + '>' +
               '<div class="capa" style="' + capaCss(c) + '">' + (c.capa_media_id ? '' : '<span class="vazia">' + ico('chapeu', 40) + '</span>') +
               (c.origem === 'cortesia' ? '<span class="selo">🎁 cortesia</span>' : (p.pct === 100 ? '<span class="selo">✓ concluído</span>' : '')) + '</div>' +
               '<div class="corpo"><h4>' + esc(c.titulo) + '</h4>' +
-              '<p class="al-fino">' + p.concluidas + ' de ' + p.total_aulas + ' conteúdos</p>' +
+              '<p class="al-fino">' + p.concluidas + ' de ' + p.total_aulas + (p.estude ? ' aulas estudadas' : ' conteúdos') + '</p>' +
               barra(p.pct, 'fina') +
               '<div class="rod"><span class="al-pct">' + p.pct + '%</span>' +
               '<span class="al-bt peq">' + (p.pct > 0 ? 'Continuar' : 'Começar') + ' ' + ico('dir', 15) + '</span></div></div></div>';
@@ -162,9 +188,15 @@
 
     function ligarCartoes(raiz) {
       Array.prototype.forEach.call((raiz || document).querySelectorAll('[data-curso]'), function (b) {
-        b.onclick = function (e) { e.preventDefault(); abrirCurso(b.getAttribute('data-curso'), b.getAttribute('data-aula') || ''); };
+        b.onclick = function (e) {
+          e.preventDefault();
+          var slug = b.getAttribute('data-es-slug'), un = b.getAttribute('data-es-un');
+          abrirCurso(b.getAttribute('data-curso'), b.getAttribute('data-aula') || '', slug && un ? { estude: { slug: slug, aba: 'unidade', arg: un } } : undefined);
+        };
       });
     }
+    // a última aula aberta no Estude, para o cartão e para o "Retomar a aula"
+    function dadosDoEstude(u) { return u && u.slug && u.unidade ? ' data-es-slug="' + esc(u.slug) + '" data-es-un="' + esc(u.unidade) + '"' : ''; }
 
     // recomendações: cursos parecidos com o que o aluno já tem (ou com o curso aberto)
     function recomendados(pid, alvoId, titulo) {
@@ -228,6 +260,7 @@
     }
 
     function pintarEstudio() {
+      foraDoEstude();
       var d = C.d, p = d.produto, pr = d.progresso || { pct: 0, concluidas: 0, total_aulas: 0 };
       var totalSeg = 0;
       // só vídeo conta (mesma regra de Marketplace.resumoConteudo): PDF/texto/áudio não somam
@@ -612,7 +645,8 @@
     }
     function carregarJornada(pid) {
       if (!JR) return;
-      api('GET', '/aluno/cursos/' + pid + '/jornada').then(function (p) {
+      // `C.jrP`: a barra do curso no Estude espera por isto para saber quais portas o curso tem
+      C.jrP = api('GET', '/aluno/cursos/' + pid + '/jornada').then(function (p) {
         if (!C || C.pid !== pid) return;
         C.jr = p;
         JR.cartao(el('al-jornada'), pid, p, abrirJornada);
@@ -625,6 +659,8 @@
     function carregarEstude(pid) {
       if (!ES) return;
       api('GET', '/aluno/cursos/' + pid + '/estudo').then(function (r) {
+        return (C && C.jrP ? C.jrP : Promise.resolve()).then(function () { return r; }); // a jornada primeiro: é dela que saem as portas
+      }).then(function (r) {
         if (!C || C.pid !== pid) return;
         var percursos = (r && r.acesso && r.escopos) || [];
         // Curso que só hospeda o Estude não tem "aulas do curso" para onde voltar: o link do topo leva à biblioteca.
@@ -634,12 +670,13 @@
         var soEstude = doCurso.length === 1 && (C.aulas || []).length <= 1;
         var abrir = function (slug, inicio) {
           var aula = C.i >= 0 ? C.aulas[C.i].a.id : '';
+          noEstude = true;
+          marcarSoDicasDoCurso(true);
+          tutorNoEstude();
           ES.abrir(pid, C.d.produto.titulo, slug, soEstude ? function () { biblioteca(); } : function () { abrirCurso(pid, aula); }, inicio,
             soEstude ? 'Minha biblioteca' : 'Voltar ao curso',
-            // o que a página comum do curso oferecia e o Estude escondia
-            { html: botaoAudiobook(C.d.audiobook), ligar: function () {
-              if (el('al-ab')) el('al-ab').onclick = function () { voltaEstude = lugarNoEstude(pid); abrirAudiobook(); };
-            } });
+            // o que a página comum do curso oferecia e o Estude escondia: a barra do curso
+            { html: function () { return barraDoEstude(); }, ligar: function () { ligarBarraDoEstude(pid); } });
         };
         ES.cartao(el('al-estude'), pid, r, abrir);
         var pend = rotaEstude[pid]; delete rotaEstude[pid];
@@ -652,6 +689,76 @@
           abrir(doCurso[0].slug, { substituir: true }); // toma o lugar da página do curso no histórico
         }
       }).catch(function () { /* sem o Estude o curso segue igual */ });
+    }
+    // ---- A BARRA DO CURSO no cabeçalho do Estude: as portas do que é do PRODUTO ----
+    // Cada botão só existe quando o curso TEM aquilo (seção da jornada publicada, arquivo na prateleira, faixa de
+    // audiobook): o conteúdo que chegar depois aparece sozinho. De propósito NÃO entram aqui, neste curso:
+    //   · "Minha jornada" (o cartão de XP/nível da jornada comum, que conta por aula do curso) e o diagnóstico dela;
+    //   · as Ferramentas de curso de IA (Prompt Builder, gerador de agentes) e a biblioteca de prompts.
+    // ETAPA 2: o nível e os selos do Estude (derivados das evidências) e as ferramentas próprias do concurso
+    // (calculadora de pontuação, contador de prazo, cronograma) entram AQUI, como novas portas — e no
+    // `botoesDaBarra` do app-estudo.js, que é onde o Estude põe os botões dele (Meu caderno, certificado).
+    var PORTAS_DA_JORNADA = ['desafio', 'simulacoes', 'lab', 'recursos'];
+    function barraDoEstude() {
+      if (!C) return '';
+      var d = C.d, jr = C.jr || {}, s = (jr.acesso && jr.secoes) || {}, mats = d.materiais_curso || [];
+      var bt = function (id, txt) { return '<button class="al-bt peq fan" data-porta="' + id + '">' + txt + '</button>'; };
+      return botaoAudiobook(d.audiobook) +
+        (s.desafio ? bt('desafio', '🔥 ' + esc(jr.desafio && jr.desafio.titulo ? jr.desafio.titulo : 'Desafio')) : '') +
+        (s.simulacoes ? bt('simulacoes', '🎯 Simulações') : '') +
+        (s.lab ? bt('lab', '🧪 Villela Lab') : '') +
+        (s.recursos ? bt('recursos', '📄 Cheat sheets e templates') : '') +
+        (mats.length ? bt('material', '📚 Material do curso · ' + mats.length) : '') +
+        (d.matriculado ? bt('avaliar', '★ Avaliar o curso') : '');
+    }
+    function ligarBarraDoEstude(pid) {
+      if (el('al-ab')) el('al-ab').onclick = function () { sairDoEstude(pid); abrirAudiobook(); };
+      Array.prototype.forEach.call(document.querySelectorAll('.es-curso-barra [data-porta]'), function (b) {
+        b.onclick = function () { abrirPorta(pid, b.getAttribute('data-porta')); };
+      });
+    }
+    function abrirPorta(pid, qual) {
+      if (!C || C.pid !== pid) return;
+      sairDoEstude(pid);
+      if (qual === 'material') return telaMaterialDoCurso(pid);
+      if (qual === 'avaliar') return telaAvaliarCurso(pid);
+      if (!JR || PORTAS_DA_JORNADA.indexOf(qual) < 0) return;
+      JR.abrir(pid, C.d.produto.titulo, qual, function () { voltarAoEstude(pid); }, function (lid) { abrirCurso(pid, lid); },
+        { so: PORTAS_DA_JORNADA, rotuloVoltar: 'Voltar ao Estude' });
+    }
+    // tela simples do curso, aberta de dentro do Estude: o Voltar devolve ao lugar em que o aluno estava
+    function telaDoEstude(pid, rotulo, titulo, corpo) {
+      setView('<div class="al"><a href="#" class="al-volta" id="pe-volta">' + ico('esq', 16) + ' Voltar ao Estude</a>' +
+        '<div class="est-cab"><p class="al-rotulo">' + esc(rotulo) + '</p><h2>' + esc(titulo) + '</h2></div>' + corpo + '</div>');
+      el('pe-volta').onclick = function (e) { e.preventDefault(); voltarAoEstude(pid); };
+      window.scrollTo(0, 0);
+    }
+    function telaMaterialDoCurso(pid) {
+      var mats = (C.d.materiais_curso || []).map(function (m) { return { nome: m.nome, media_id: m.media_id, mime: m.mime, tamanho: m.tamanho }; });
+      telaDoEstude(pid, 'Material do curso', C.d.produto.titulo,
+        '<p class="al-sub" style="margin:14px 0">' + mats.length + ' arquivo' + (mats.length > 1 ? 's' : '') + ' que vale' + (mats.length > 1 ? 'm' : '') + ' para o curso inteiro. Abra aqui ou baixe para estudar.</p>' +
+        '<div class="mats">' + mats.map(function (m) { return cartaoMaterial(m); }).join('') + '</div>');
+    }
+    function telaAvaliarCurso(pid) {
+      telaDoEstude(pid, 'Avaliar o curso', C.d.produto.titulo,
+        '<div class="al-caixa" style="margin-top:20px;padding:18px"><h4 style="font-size:1.05rem;margin-bottom:10px">Como está sendo o curso para você?</h4>' +
+        '<div class="al-nota"><select id="pe-nota"><option value="5">★★★★★</option><option value="4">★★★★</option><option value="3">★★★</option><option value="2">★★</option><option value="1">★</option></select>' +
+        '<input type="text" id="pe-avtxt" placeholder="Conte como foi (opcional)">' +
+        '<button class="al-bt peq" id="pe-avbt">Enviar avaliação</button></div><p id="pe-avmsg" class="erro"></p>' +
+        '<p class="al-fino">A sua nota aparece na página do curso. Você pode avaliar de novo quando quiser: vale a última.</p></div>' +
+        '<p class="al-fino" style="margin-top:22px"><a href="#" id="pe-denuncia" style="color:var(--al-tinta3)">Denunciar conteúdo irregular</a></p>');
+      el('pe-avbt').onclick = function () {
+        api('POST', '/aluno/cursos/' + pid + '/avaliar', { nota: el('pe-nota').value, texto: el('pe-avtxt').value })
+          .then(function () { D.okMsg('pe-avmsg', '✅ Obrigado pela avaliação!'); }).catch(function (e) { D.falha('pe-avmsg', e); });
+      };
+      el('pe-denuncia').onclick = function (e) {
+        e.preventDefault();
+        var motivo = prompt('Motivo (direitos-autorais, enganoso, ilegal, adulto, outro):', 'outro');
+        if (motivo == null) return;
+        var texto = prompt('Descreva o problema:') || '';
+        api('POST', '/denunciar', { product_id: pid, motivo: motivo, texto: texto })
+          .then(function () { alert('Denúncia registrada. Obrigado.'); }).catch(function (er) { alert(er.message); });
+      };
     }
     function abrirJornada(aba) {
       var pid = C.pid, aula = C.i >= 0 ? C.aulas[C.i].a.id : '';
@@ -840,8 +947,18 @@
       document.body.classList.remove('tv-aberto');
       T = { aberto: false, carregou: false, ocupado: false };
     }
+    // Dentro do Estude o Tutor só existe quando o curso tem base própria importada: sem ela, a pergunta cairia no
+    // agente antigo, que só conhece a aula-casca — e responderia Direito sem o conteúdo. Sem base, sem esfera.
+    function temBaseDoTutor() { return !!(C && C.int && C.int.tutor && C.int.tutor.base_propria); }
+    function tutorNoEstude() { if (temBaseDoTutor()) montarTutor(); else limparTutor(); }
+    // a aula do Estude que está aberta (do endereço): vai com a pergunta, e o Tutor procura primeiro nela
+    function unidadeNoEstude() {
+      var l = noEstude && C ? lugarNoEstude(C.pid) : null;
+      return l ? { escopo: l.slug, unidade: l.aba === 'unidade' ? l.arg : '' } : null;
+    }
     function montarTutor() {
       if (!C) return;
+      if (noEstude && !temBaseDoTutor()) return;
       if (!el('tv-fab')) {
         var b = document.createElement('button');
         b.id = 'tv-fab'; b.className = 'tv-fab'; b.setAttribute('aria-label', 'Abrir o Tutor Villela');
@@ -904,7 +1021,8 @@
       }).catch(function (e) { bolha('sis', esc(e.message)); });
     }
     function sugestoesIniciais() {
-      var a = aulaAtual();
+      var a = aulaAtual(), un = unidadeNoEstude();
+      if (un) a = un.unidade ? a || {} : null; // no Estude vale a aula do percurso, não a casca
       var s = a ? ['Explique de novo o ponto principal desta aula', 'Crie um exemplo aplicado à minha profissão', 'Faça um exercício para eu testar se entendi']
         : ['Por onde eu começo o curso?', 'Resuma o curso em cinco pontos'];
       mostrarSugestoes(s);
@@ -925,8 +1043,9 @@
       d.className = 'tv-msg ' + quem;
       d.innerHTML = html + (fontes && fontes.length ? '<div class="tv-fontes">' + fontes.map(function (f) {
         var rot = f.rotulo || f.aula || f.fonte;
-        var ir = f.lesson_id && indiceDe(f.lesson_id) >= 0;
-        return '<button type="button" class="tv-fonte"' + (ir ? ' data-l="' + esc(f.lesson_id) + '" data-t="' + (f.ini_seg || 0) + '"' : ' disabled') + '>' +
+        var ir = f.lesson_id && indiceDe(f.lesson_id) >= 0, es = f.estude && f.estude.unidade;
+        return '<button type="button" class="tv-fonte"' + (ir ? ' data-l="' + esc(f.lesson_id) + '" data-t="' + (f.ini_seg || 0) + '"'
+          : es ? ' data-es="' + esc(f.estude.escopo) + '" data-un="' + esc(f.estude.unidade) + '"' : ' disabled') + '>' +
           '<sup>' + f.n + '</sup> ' + (f.fonte === 'livro' ? '📖 ' : (f.fonte === 'transcricao' ? '▶ ' : '')) + esc(rot) + '</button>';
       }).join('') + '</div>' : '');
       el('tv-fita').appendChild(d);
@@ -937,6 +1056,12 @@
           if (window.innerWidth < 900) fecharTutor();
           if (C.i === indiceDe(lid) && el('al-video') && t > 0) { el('al-video').currentTime = Math.max(0, t - 3); el('al-video').play && el('al-video').play(); }
           else irParaAula(indiceDe(lid), false);
+        };
+      });
+      Array.prototype.forEach.call(d.querySelectorAll('.tv-fonte[data-un]'), function (b) {
+        b.onclick = function () { // a fonte é uma aula do Estude: abre a aula
+          if (window.innerWidth < 900) fecharTutor();
+          abrirCurso(C.pid, '', { estude: { slug: b.getAttribute('data-es'), aba: 'unidade', arg: b.getAttribute('data-un') } });
         };
       });
       el('tv-fita').scrollTop = el('tv-fita').scrollHeight;
@@ -952,8 +1077,10 @@
       bolha('eu', esc(texto));
       var pensando = bolha('ele pensando', '<span class="tv-pontos"><i></i><i></i><i></i></span>');
       var fab = el('tv-fab'); if (fab) fab.classList.add('pensando');
-      var a = aulaAtual();
-      api('POST', '/aluno/tutor/perguntar', { product_id: C.pid, lesson_id: a ? a.id : '', pergunta: texto }).then(function (r) {
+      var a = aulaAtual(), un = unidadeNoEstude();
+      var corpo = { product_id: C.pid, lesson_id: a && !un ? a.id : '', pergunta: texto };
+      if (un) corpo.estude = un; // dentro do Estude: o código da aula aberta (ou vazio, fora de aula)
+      api('POST', '/aluno/tutor/perguntar', corpo).then(function (r) {
         pensando.parentNode.removeChild(pensando);
         bolha('ele', formatar(r.resposta) + (r.nao_encontrado ? '<p class="tv-nao">Não encontrei isso no conteúdo do curso.</p>' : ''), r.fontes);
         mostrarSugestoes(r.sugestoes && r.sugestoes.length ? r.sugestoes : []);
@@ -1228,9 +1355,8 @@
       raiz.oncontextmenu = function (e) { e.preventDefault(); };
       el('ab-volta').onclick = function (e) {
         e.preventDefault();
-        if (voltaEstude && voltaEstude.pid === AB.pid) { // veio do Estude: volta para a mesma aba
-          var v = voltaEstude; voltaEstude = null;
-          abrirCurso(AB.pid, '', { estude: v }); pintarMini(); return;
+        if (voltaEstude && voltaEstude.pid === AB.pid) { // veio do Estude: volta para a mesma aba, aula e rolagem
+          voltarAoEstude(AB.pid); pintarMini(); return;
         }
         if (C && C.pid === AB.pid) { document.body.classList.add('aluno-amplo'); pintarEstudio(); irParaAula(C.i >= 0 ? C.i : 0, true); }
         else abrirCurso(AB.pid);

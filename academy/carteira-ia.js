@@ -28,8 +28,9 @@ const PACOTES_PADRAO = [2000, 5000, 10000];      // R$ 20, R$ 50 e R$ 100 (centa
 const RESERVA_ORFA_MIN = 10;                     // reserva sem acerto depois disso = processo caiu: devolve
 const TIPOS_CREDITO = ['recarga', 'cortesia', 'ajuste'];
 // Recarga "do valor que falta" para um pedido (ADR-0010): o que falta, para cima até o real inteiro,
-// nunca abaixo deste mínimo — escolha a confirmar pelo Augusto; ajustável em ia_cobranca.recarga_minima_centavos.
-const RECARGA_MINIMA_PADRAO = 500;               // R$ 5,00 (centavos)
+// nunca abaixo deste mínimo — R$ 50,00 por decisão do Augusto (11/10/2026; era R$ 5,00); ajustável em
+// ia_cobranca.recarga_minima_centavos. O que sobra do pedido fica como saldo de IA na conta.
+const RECARGA_MINIMA_PADRAO = 5000;              // R$ 50,00 (centavos)
 const RECARGA_MAXIMA_DO_PEDIDO = 100000;         // R$ 1.000,00: acima disso é orçamento errado, não recarga
 
 let _mpFetch = null, _buscar = null, _notificar = null, _aoCreditarPedido = null;

@@ -49,10 +49,15 @@
     }
 
     // ---------------- tela da jornada ----------------
-    function abrir(pid, titulo, aba, voltar, irAula) {
+    // `opcoes` (quem abre de dentro do Estude): { so: [abas que este curso mostra], rotuloVoltar }. Com `so`, as
+    // abas fora da lista NÃO aparecem — é como o curso que hospeda o Estude esconde o cartão de XP da jornada
+    // comum ("Minha jornada", que conta por aula do curso) e as Ferramentas de curso de IA.
+    function abrir(pid, titulo, aba, voltar, irAula, opcoes) {
+      opcoes = opcoes || {};
       J.pid = pid; J.titulo = titulo; J.voltar = voltar; J.irAula = irAula; J.aba = aba || 'visao';
-      setView('<div class="al jr"><a href="#" class="al-volta" id="jr-volta">← Voltar às aulas</a>' +
-        '<div class="jr-cab"><p class="al-rotulo">Jornada do curso</p><h2>' + esc(titulo) + '</h2></div>' +
+      J.so = Array.isArray(opcoes.so) ? opcoes.so : null;
+      setView('<div class="al jr"><a href="#" class="al-volta" id="jr-volta">← ' + esc(opcoes.rotuloVoltar || 'Voltar às aulas') + '</a>' +
+        '<div class="jr-cab"><p class="al-rotulo">' + (J.so ? 'Do curso' : 'Jornada do curso') + '</p><h2>' + esc(titulo) + '</h2></div>' +
         '<div class="est-abas jr-abas" id="jr-abas"></div><div class="jr-corpo" id="jr-corpo"><p class="al-sub">Carregando…</p></div></div>');
       el('jr-volta').onclick = function (e) { e.preventDefault(); voltar(); };
       window.scrollTo(0, 0);
@@ -71,6 +76,10 @@
       if (s.simulacoes) lista.push(['simulacoes', 'Simulações']);
       lista.push(['ferramentas', 'Ferramentas']);
       if (s.recursos) lista.push(['recursos', 'Cheat sheets e templates']);
+      if (J.so) {
+        lista = lista.filter(function (x) { return J.so.indexOf(x[0]) >= 0; });
+        if (!lista.some(function (x) { return x[0] === J.aba; })) J.aba = lista.length ? lista[0][0] : '';
+      }
       el('jr-abas').innerHTML = lista.map(function (x) {
         return '<button data-a="' + x[0] + '"' + (x[0] === J.aba ? ' class="on"' : '') + '>' + esc(x[1]) +
           (s[x[0]] === 'rascunho' ? ' <span class="marca-rasc">rascunho</span>' : '') + '</button>';
@@ -78,6 +87,7 @@
       Array.prototype.forEach.call(el('jr-abas').querySelectorAll('button'), function (b) { b.onclick = function () { ir(b.getAttribute('data-a')); }; });
     }
     function ir(aba) {
+      if (J.so && J.so.indexOf(aba) < 0) { el('jr-corpo').innerHTML = '<p class="al-sub">Este curso ainda não tem este conteúdo.</p>'; return; }
       J.aba = aba;
       Array.prototype.forEach.call(el('jr-abas').querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-a') === aba); });
       var alvo = el('jr-corpo');

@@ -45,6 +45,9 @@ const Escopos = {
   doDono: (productId, userId) => (userId ? db.prepare('SELECT * FROM est_escopos WHERE product_id = ? AND dono_user_id = ? ORDER BY criado_em').all(productId, userId).map(abrir) : []),
   // o escopo do curso pelo slug, para as rotas do staff: percurso particular responde como escopo que não existe
   doCursoPorSlug(productId, sl) { const e = this.porSlug(productId, sl); return e && !e.dono_user_id ? e : null; },
+  // o produto HOSPEDA o Estude? (qualquer escopo do curso, publicado ou não — percurso particular de aluno não conta).
+  // Quem pergunta é o certificado: curso assim não se conclui pelas "aulas" da casca.
+  temDoCurso: (productId) => !!db.prepare("SELECT 1 FROM est_escopos WHERE product_id = ? AND dono_user_id = '' LIMIT 1").get(productId),
 };
 function itens(escopo, versao = escopo.versao) {
   return db.prepare('SELECT * FROM est_itens WHERE escopo_id = ? AND versao = ? ORDER BY ordem').all(escopo.id, versao)

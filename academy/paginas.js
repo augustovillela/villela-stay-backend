@@ -878,7 +878,8 @@ function registrarPaginas(app, { notificar }) {
         <p class="sub">concluiu com êxito</p>
         <p style="font-size:1.2rem;font-weight:700;margin:6px 0">${esc(c.produto_titulo)}</p>
         ${c.produtor_nome ? `<p class="sub">por ${esc(c.produtor_nome)}</p>` : ''}
-        <p class="sub">${c.total_aulas} aula(s) · emitido em ${esc(String(c.emitido_em).slice(0, 10).split('-').reverse().join('/'))}</p>
+        <p class="sub">${c.total_aulas} aula(s)${c.tipo === 'estude' && c.carga_horaria_min ? ` · carga horária de ${Math.max(1, Math.round(c.carga_horaria_min / 60))} hora(s)` : ''} · emitido em ${esc(String(c.emitido_em).slice(0, 10).split('-').reverse().join('/'))}</p>
+        ${c.tipo === 'estude' ? `<p class="sub" style="margin-top:10px"><b>${esc(require('./governanca').FRASE_CURSO_LIVRE)}</b></p>` : ''}
         ${selos.length ? `<p class="sub" style="margin:18px 0 6px">competências comprovadas no curso</p>
         <p style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0">${selos.map(x => `<span class="tag" style="background:#eef7f3;color:#0d6b52">${esc((x.icone ? x.icone + ' ' : '') + x.nome)}</span>`).join('')}</p>` : ''}
         <p style="margin-top:18px"><span class="tag">Código de validação: ${esc(c.id)}</span></p>
@@ -887,7 +888,7 @@ function registrarPaginas(app, { notificar }) {
       <p style="text-align:center;margin-top:14px"><button class="btn peq" onclick="window.print()">🖨️ Imprimir / salvar PDF</button>
         <a class="btn peq" style="margin-left:8px;background:#0A66C2" target="_blank" rel="noopener" href="${esc(linkedin)}">Adicionar ao LinkedIn</a></p>
     </div></div>`;
-    res.send(shellPublico({ titulo: 'Certificado ' + c.id, descricao: `Certificado de conclusão de ${c.aluno_nome} — ${c.produto_titulo}.`, corpo }));
+    res.send(shellPublico({ titulo: 'Certificado ' + c.id, descricao: `Certificado de conclusão de ${c.aluno_nome} — ${c.produto_titulo}.${c.tipo === 'estude' ? ' ' + require('./governanca').FRASE_CURSO_LIVRE : ''}`, corpo }));
   });
 
   // F8: páginas de verificação de e-mail e redefinição de senha

@@ -127,7 +127,7 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     assert.ok(teto > CUSTO && /R\$/.test(orcamento.orcamento), 'o teto cobre a entrada estimada e a saída máxima');
     assert.ok(peca.json.orcamento.orcamento_milesimos > teto, 'resposta maior, teto maior');
     assert.deepEqual([orcamento.cobranca, orcamento.saldo_milesimos, orcamento.saldo_suficiente, orcamento.falta_milesimos, orcamento.recarga_centavos, orcamento.recarga],
-      ['paga', 0, false, teto, 500, 'R$ 5,00'], 'sem saldo: diz quanto falta e quanto é a recarga (mínimo de R$ 5)');
+      ['paga', 0, false, teto, 5000, 'R$ 50,00'], 'sem saldo: diz quanto falta e quanto é a recarga (mínimo de R$ 50)');
     assert.deepEqual([carteira.saldo(paula), movs(paula, 'reserva'), chamadas.length], [0, 0, 0], 'orçar não cobra e não gasta');
     // pedir de novo para a mesma questão tira da lista o orçamento largado
     const r2 = await criar('paula', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
@@ -365,12 +365,14 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     }
   });
 
-  await t('pedidos: recarga do valor que falta — para cima até o real, mínimo de R$ 5; creditou, o pedido começa sozinho, uma vez só', async () => {
+  await t('pedidos: recarga do valor que falta — para cima até o real, mínimo de R$ 50; creditou, o pedido começa sozinho, uma vez só', async () => {
     const rui = uid(RUI.email);
     const c5 = { recarga_minima_centavos: 500 };
     assert.deepEqual([1, 4999, 5000, 5001, 12345].map(f => carteira.valorDaRecargaQueFalta(f, c5)), [500, 500, 500, 600, 1300], 'o que falta, arredondado para cima ao real inteiro, nunca abaixo do mínimo');
     assert.equal(carteira.valorDaRecargaQueFalta(1, { recarga_minima_centavos: 700 }), 700);
-    assert.deepEqual([carteira.RECARGA_MINIMA_PADRAO, carteira.cfg().recarga_minima_centavos], [500, 500]);
+    assert.deepEqual([carteira.RECARGA_MINIMA_PADRAO, carteira.cfg().recarga_minima_centavos], [5000, 5000], 'o mínimo padrão é R$ 50,00');
+    assert.deepEqual([1, 49999, 50000, 50001, 123450].map(f => carteira.valorDaRecargaQueFalta(f)), [5000, 5000, 5000, 5100, 12400], 'max(R$ 50, o que falta para cima até o real)');
+    assert.deepEqual(carteira.PACOTES_PADRAO, [2000, 5000, 10000], 'os pacotes da recarga comum não mudaram');
     await config({ ...LIGADA, recarga_minima_centavos: 900 });
     assert.equal(carteira.cfg().recarga_minima_centavos, 900, 'o mínimo é configurável em ia_cobranca');
     await config(LIGADA);
@@ -386,16 +388,16 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
       assert.equal((await req('POST', `${base}/pedidos/${id}/recarga`, { jar: 'paula', corpo: { aceite_milesimos: tetoRui } })).st, 404, 'pedido de outro');
       const r = await rec({ aceite_milesimos: tetoRui });
       assert.equal(r.st, 200, r.texto);
-      assert.deepEqual([r.json.valor_centavos, r.json.valor, r.json.falta_milesimos, r.json.pedido.aguardando_pagamento], [500, 'R$ 5,00', tetoRui, true]);
+      assert.deepEqual([r.json.valor_centavos, r.json.valor, r.json.falta_milesimos, r.json.pedido.aguardando_pagamento], [5000, 'R$ 50,00', tetoRui, true]);
       assert.ok(/^https:\/\/mp\.test\//.test(r.json.init_point));
       const pref = prefs[prefs.length - 1];
-      assert.deepEqual([pref.items[0].unit_price, pref.external_reference], [5, 'academy-ia:' + r.json.recarga_id]);
+      assert.deepEqual([pref.items[0].unit_price, pref.external_reference], [50, 'academy-ia:' + r.json.recarga_id]);
       assert.ok(pref.back_urls.success.endsWith(`?recarga=${r.json.recarga_id}#/curso/${impId}/estude/${SLUG}/escrita/${qDisc}`), 'o pagamento devolve o aluno à questão: ' + pref.back_urls.success);
       assert.equal(db.prepare('SELECT pedido_id FROM ia_recargas WHERE id = ?').get(r.json.recarga_id).pedido_id, id, 'a recarga sabe qual pedido destrava');
-      assert.equal((await req('POST', '/academy/api/ia/carteira/recarga', { jar: 'rui', corpo: { valor_centavos: 500 } })).st, 400, 'a recarga comum continua só nos pacotes');
+      assert.equal((await req('POST', '/academy/api/ia/carteira/recarga', { jar: 'rui', corpo: { valor_centavos: 700 } })).st, 400, 'a recarga comum continua só nos pacotes');
       // voltar do navegador não credita nem roda nada; pagamento de valor errado, também não
       const n = chamadas.length;
-      const pay = { id: 8801, status: 'approved', external_reference: 'academy-ia:' + r.json.recarga_id, transaction_amount: 5 };
+      const pay = { id: 8801, status: 'approved', external_reference: 'academy-ia:' + r.json.recarga_id, transaction_amount: 50 };
       assert.equal(billing.aplicarPagamento({ ...pay, transaction_amount: 1 }).resultado, 'valor-divergente');
       assert.deepEqual([carteira.saldo(rui), (await obter('rui', id)).json.pedido.estado, chamadas.length], [0, 'orcado', n]);
       // o pagamento confirmou: credita e o pedido começa sozinho, com o aceite gravado
@@ -403,11 +405,11 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
       assert.equal(db.prepare('SELECT estado FROM est_pedidos WHERE id = ?').get(id).estado, 'processando', 'começou sem o aluno clicar de novo');
       await ped.aguardar(id);
       const p = (await obter('rui', id)).json.pedido;
-      assert.deepEqual([p.estado, p.nota, p.cobrado_milesimos, carteira.saldo(rui)], ['pronto', 61, CUSTO, 5000 - CUSTO], 'o que sobrou da recarga fica no saldo');
+      assert.deepEqual([p.estado, p.nota, p.cobrado_milesimos, carteira.saldo(rui)], ['pronto', 61, CUSTO, 50000 - CUSTO], 'o que sobrou da recarga fica no saldo');
       // webhook repetido: não credita de novo, não corrige de novo
       assert.equal(billing.aplicarPagamento(pay).resultado, 'ja-paga');
       assert.equal(ped.aoCreditar(id, rui), false);
-      assert.deepEqual([carteira.saldo(rui), movs(rui, 'reserva'), chamadas.length], [5000 - CUSTO, 1, n + 1]);
+      assert.deepEqual([carteira.saldo(rui), movs(rui, 'reserva'), chamadas.length], [50000 - CUSTO, 1, n + 1]);
       // com saldo que já cobre, não se abre pagamento
       const c2 = await criar('rui', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
       const sobra = await req('POST', `${base}/pedidos/${c2.json.pedido.id}/recarga`, { jar: 'rui', corpo: { aceite_milesimos: c2.json.orcamento.orcamento_milesimos } });
@@ -722,7 +724,7 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     // revisão 9: a permissão do microfone chegou DEPOIS de o aluno sair da tela → as trilhas são paradas, não se grava
     assert.ok(/getUserMedia\(\{ audio: true \}\)\.then\(function \(stream\) \{[^}]*if \(G\.fim \|\| !caixa\.isConnected\) \{ stream\.getTracks\(\)\.forEach\(function \(t\) \{ t\.stop\(\); \}\); return; \}/.test(tela), 'o gravador solta o microfone se a tela já não é esta');
     assert.ok(/function encerrar\(\) \{ G\.fim = true; limpar\(\); \}/.test(tela) && /if \(grav\) grav\.encerrar\(\)/.test(tela), 'sair da tela marca o gravador como encerrado');
-    const i = tela.indexOf('// ================= ESCRITA E ORAL'), f = tela.indexOf('return { cartao: cartao, abrir: abrir }');
+    const i = tela.indexOf('// ================= ESCRITA E ORAL'), f = tela.indexOf('return { cartao: cartao, abrir: abrir');
     assert.ok(i > 0 && f > i && !/localStorage|sessionStorage/.test(tela.slice(i, f)), 'a resposta do aluno não mora no navegador');
     const cliente = fs.readFileSync(path.join(__dirname, '..', 'app-cliente.js'), 'utf8');
     assert.ok(/\(tutor\|ia\|lab\|ferramentas\|pedidos\)/.test(cliente), 'o aviso de débito também vale para os pedidos');

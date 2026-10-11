@@ -425,3 +425,23 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-ed-diff li.menos{color:#BE123C;text-decoration:line-through}
 .es-ed-ret{margin-top:12px}
 @media (max-width:640px){.es-ed-item{padding-left:calc(6px + var(--n,0)*10px)}}
+
+/* ---- paridade com os outros cursos: barra do curso, quiz e nota na aula, Meu caderno, certificado, guarda do áudio ---- */
+.es-curso-barra{align-items:center}
+.es-curso-barra:empty{display:none}
+.es-barra-es{display:contents}
+.es-salvo{margin:4px 0 0}
+.es-bloco.es-quiz,.es-bloco.es-nota-aula{border-top:2px solid var(--al-borda);margin-top:22px;padding-top:16px}
+.es-cad-h{font-family:Lora,serif;font-size:1.1rem;color:var(--al-navy);margin:22px 0 8px}
+.es-cad-aula h4{margin:0;flex:1}
+.es-cad-busca{flex:1;min-width:220px}
+.es-cad-busca input{width:100%}
+.cad-item{margin:10px 0 0}
+.cad-rot{font:700 .7rem/1.2 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--al-ok);margin:0 0 4px}
+.cad-enun{color:var(--al-tinta3);font-size:.92rem;border-left:3px solid var(--al-borda);padding-left:10px;margin-bottom:6px}
+.cad-enun p,.cad-meu p{margin:0 0 6px}
+.cad-meu{border:1px dashed var(--al-borda);border-radius:8px;padding:8px 12px;background:#FBFCFE;overflow-wrap:anywhere}
+.es-cad-aula blockquote{margin:0 0 6px;padding:6px 10px;border-radius:6px}
+.es-concl .es-tab{max-width:460px}
+.es-eo-audio{margin-top:12px}
+.es-eo-guarda{margin:8px 0 12px}

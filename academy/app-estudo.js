@@ -116,7 +116,9 @@
     function rota(partes, substituir) { if (window.AcademyRota) window.AcademyRota.gravar(partes, substituir); }
     // `inicio` = onde abrir (veio do endereço): { aba, arg, extra } — e `substituir` quando a abertura
     // é automática e não deve virar um passo do botão Voltar.
-    // `barra` = { html, ligar }: o que o curso oferece além do percurso (audiobook…), montado por quem abre
+    // `barra` = { html, ligar }: o que o curso oferece além do percurso (audiobook, material, desafio…), montado por
+    // quem abre. `html` pode ser função: a barra é refeita a cada abertura, com o que o curso tem NAQUELE momento.
+    // `inicio.y` = a rolagem em que o aluno estava quando saiu para uma tela do curso — "voltar para onde estava".
     function abrir(pid, titulo, slug, voltar, inicio, rotuloVoltar, barra) {
       pararRelogio();
       inicio = inicio || {};
@@ -125,7 +127,7 @@
       LUGAR = LUGARES[chavePercurso(slug)] || (LUGARES[chavePercurso(slug)] = {});
       setView('<div class="al es"><a href="#" class="al-volta" id="es-volta">← ' + esc(rotuloVoltar || 'Voltar ao curso') + '</a>' +
         '<div class="es-cab"><p class="al-rotulo">Estude · ' + esc(titulo) + '</p><h2 id="es-titulo">Carregando…</h2><p class="al-sub" id="es-sub"></p><div class="es-troca" id="es-troca"></div>' +
-        (barra && barra.html ? '<div class="es-curso-barra">' + barra.html + '</div>' : '') + '</div>' +
+        '<div class="es-curso-barra">' + (barra && barra.html ? (typeof barra.html === 'function' ? barra.html() : barra.html) : '') + '<span class="es-barra-es" id="es-barra-es"></span></div></div>' +
         '<div class="est-abas es-abas" id="es-abas"></div><div class="es-corpo" id="es-corpo"><p class="al-sub">Carregando…</p></div></div>');
       el('es-volta').onclick = function (e) { e.preventDefault(); pararRelogio(); voltar(); };
       if (barra && barra.ligar) barra.ligar();
@@ -133,11 +135,15 @@
       trocaDePercurso();
       carregar(function () {
         abas();
+        botoesDaBarra();
         if (inicio.aba === 'aulas' && inicio.arg === 'ler' && inicio.extra) {
           E.aba = 'aulas';
           cada(el('es-abas'), 'button', function (b) { b.classList.toggle('on', b.getAttribute('data-a') === 'aulas'); });
           lerDisciplina(el('es-corpo'), inicio.extra);
-        } else ir(inicio.aba || 'hoje', inicio.arg || undefined, !!inicio.substituir);
+        } else {
+          ir(inicio.aba || 'hoje', inicio.arg || undefined, !!inicio.substituir);
+          if (inicio.y > 0) reporRolagem(inicio.aba || 'hoje', inicio.y); // depois do `ir`, que leva ao topo
+        }
       });
     }
     // TROCA DE PERCURSO: quem tem o percurso do curso e um particular (ou vários) passa de um para o outro AQUI, sem
@@ -195,10 +201,21 @@
         setTimeout(function () { if (E.aba === aba) rolagem().scrollTop = L.y; }, 300); // depois de a disciplina reabrir
       })();
     }
+    // a rolagem de volta numa tela que ainda está carregando: espera a página ter altura para chegar lá
+    function reporRolagem(aba, y) {
+      var n = 0;
+      (function tentar() {
+        if (E.aba !== aba) return;
+        var r = rolagem();
+        if (r.scrollHeight - window.innerHeight >= y - 4 || n++ > 40) { r.scrollTop = y; return; }
+        setTimeout(tentar, 120);
+      })();
+    }
     function ir(aba, arg, substituir) {
       pararRelogio();
       guardarLugar();
       if (aba === 'unidade' && E.aba && E.aba !== 'unidade') E.veioDe = E.aba;
+      if (aba === 'caderno' && E.aba !== 'caderno') E.antesDoCaderno = ONDE[chavePercurso(E.slug)] || { aba: E.aba }; // o caderno devolve a quem o abriu
       E.aba = aba; E.abaArg = typeof arg === 'string' && arg ? arg : (arg && typeof arg === 'object' ? 'obj' : '');
       ONDE[chavePercurso(E.slug)] = { aba: aba, arg: typeof arg === 'string' && arg ? arg : undefined }; // para voltar a este percurso onde estava
       rota(['curso', E.pid, 'estude', E.slug, aba].concat(typeof arg === 'string' && arg ? [arg] : []), substituir);
@@ -206,7 +223,7 @@
       var alvo = el('es-corpo');
       alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
       if (!document.querySelector('.es-kd')) document.documentElement.style.overflow = ''; // o leitor de tela cheia saiu de cena
-      ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, praticar: praticar, escrita: escrita, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
+      ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, praticar: praticar, escrita: escrita, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade, caderno: caderno }[aba] || hoje)(alvo, arg);
       if (LISTAS[aba] && !E.abaArg) reporLugar(aba, alvo); else rolagem().scrollTop = 0;
     }
     // "Voltar" de dentro da aula: para a tela de onde o aluno veio (lista de aulas, programa, mapas…), no ponto em que estava
@@ -325,8 +342,9 @@
             '<div class="es-linha"><button class="al-bt peq" data-ler="' + esc(g.cod) + '">📄 Ler a disciplina (texto corrido / PDF)</button></div>' +
             g.aulas.map(function (a) {
               return '<div class="es-aula-linha"><span>' + (a.u.video ? '<span class="es-tem-video" title="Esta aula tem videoaula">🎬</span> ' : '') + (a.item ? '<b>' + esc(a.item) + '</b> ' : '') + esc(a.u.titulo) + (a.u.tempo_min ? '<span class="al-fino"> · ' + horas(a.u.tempo_min) + '</span>' : '') +
+                (a.u.estudada ? ' <span class="es-selo verde" title="Você já respondeu questão ou card desta aula">✓ estudada</span>' : '') +
                 (a.u.status !== 'publicado' ? ' <span class="marca-rasc">' + esc(a.u.status) + '</span>' : '') + '</span>' +
-                '<span class="es-aula-bts"><span class="al-fino es-aula-tem">' + [a.u.video ? 'vídeo' : '', (a.u.animada || []).length ? 'aula interativa' : '', a.u.mapa ? 'mapa mental' : ''].filter(Boolean).join(' · ') + '</span>' +
+                '<span class="es-aula-bts"><span class="al-fino es-aula-tem">' + [a.u.video ? (a.u.video_assistido ? 'vídeo ✓ assistido' : 'vídeo') : '', (a.u.animada || []).length ? 'aula interativa' : '', a.u.mapa ? 'mapa mental' : ''].filter(Boolean).join(' · ') + '</span>' +
                 '<button class="al-bt peq" data-un="' + esc(a.u.codigo) + '">Abrir a aula</button></span></div>';
             }).join('') + '</details>';
         }).join('');
@@ -1283,8 +1301,9 @@
       }).join('') + '</details>';
     }
     function unidade(alvo, codigo, nivel) {
-      api('GET', base() + '/unidades/' + encodeURIComponent(codigo) + (nivel ? '?nivel=' + nivel : '')).then(function (u) {
-        var acao = { pratica: 1, aplicacao: 1, desafio: 1, recordacao: 1 };
+      // `aberta=1`: é a tela da aula que conta como "abriu a aula" (o Continuar da biblioteca volta a ela)
+      api('GET', base() + '/unidades/' + encodeURIComponent(codigo) + '?aberta=1' + (nivel ? '&nivel=' + nivel : '')).then(function (u) {
+        var acao = { pratica: 1, aplicacao: 1, desafio: 1, recordacao: 1 }, tent = u.tentativas || {};
         // ADR-0005: o seletor só aparece quando a aula tem algum nível além do 100
         var sel = u.niveis && u.niveis.length > 1 ? '<p class="es-niveis"><span class="al-fino">Quanto ler: </span>' + u.niveis.map(function (n) {
           return '<button class="al-bt peq' + (n.nivel === u.nivel ? '' : ' fan') + '" data-nv="' + n.nivel + '"' + (n.disponivel ? '' : ' disabled') + ' title="' + (n.desatualizado ? 'resumo de versão anterior da aula' : '') + '">' + n.nivel + ' %</button>';
@@ -1303,10 +1322,17 @@
           u.blocos.map(function (b) {
             return '<section class="es-bloco ' + b.tipo + '"><h4>' + esc(b.titulo || BLOCO[b.tipo]) + '</h4><div class="es-un-ler">' + textoMarcado(b.texto, [], u.destaques) + '</div>' +
               (b.criterio ? '<p class="al-fino"><b>Critério:</b> ' + esc(b.criterio) + '</p>' : '') +
-              (acao[b.tipo] ? '<textarea class="es-ta" data-n="' + b.n + '" rows="4" placeholder="Escreva a sua tentativa aqui, antes de ver a solução."></textarea>' +
+              (acao[b.tipo] ? '<textarea class="es-ta" data-n="' + b.n + '" rows="4" maxlength="8000" placeholder="Escreva a sua tentativa aqui, antes de ver a solução.">' + esc((tent[b.n] || {}).texto || '') + '</textarea>' +
+                '<p class="al-fino es-salvo"><span data-salvo="' + b.n + '">' + (tent[b.n] ? 'Guardada no seu caderno em ' + dataBR(String(tent[b.n].atualizado_em).slice(0, 10)) + '.' : 'O que você escrever fica guardado no seu caderno.') + '</span></p>' +
                 (b.tem_solucao ? '<div class="es-linha"><button class="al-bt peq fan" data-sol="' + b.n + '">Ver a solução</button><span class="al-fino" data-msg="' + b.n + '">A solução aparece depois da sua tentativa.</span></div><div class="es-sol" data-out="' + b.n + '"></div>' : '') : '') +
               '</section>';
           }).join('') +
+          // o quiz mora DENTRO da aula, como nos outros cursos; as questões vêm do banco e são respondidas aqui
+          '<section class="es-bloco es-quiz" id="es-un-quiz"><h4>Quiz desta aula</h4><div id="es-un-quiz-cx"><p class="al-sub">Procurando as questões desta aula…</p></div></section>' +
+          '<section class="es-bloco es-nota-aula"><h4>Minhas anotações desta aula</h4>' +
+          '<textarea class="es-ta" id="es-un-nota" rows="4" maxlength="6000" placeholder="O que você quer lembrar desta aula. Salva sozinho.">' + esc((u.nota || {}).texto || '') + '</textarea>' +
+          '<div class="es-linha"><span class="al-fino" id="es-un-nota-st">' + ((u.nota || {}).texto ? 'Salva em ' + dataBR(String(u.nota.atualizado_em).slice(0, 10)) + '.' : 'Fica no seu caderno, com as tentativas e as marcações.') + '</span>' +
+          '<button class="al-bt peq fan" id="es-un-cad">📓 Abrir o meu caderno</button></div></section>' +
 
           (u.fontes.length ? '<details class="es-fontes"><summary>Fontes</summary><ul>' + u.fontes.map(function (f) {
             return '<li>' + esc(f.titulo) + (f.consultado_em ? ' — consultado em ' + dataBR(f.consultado_em) : '') + '</li>';
@@ -1317,10 +1343,13 @@
             var cx = el('es-un-video');
             if (!cx) return; // o aluno já saiu da aula
             cx.innerHTML = '<video controls playsinline preload="metadata" src="' + esc(r.url) + '"></video>' +
-              '<p class="al-fino">Videoaula' + (u.video.duracao_seg ? ' · ' + Math.round(u.video.duracao_seg / 60) + ' min' : '') + ' · a aula para e pergunta: responda antes de ouvir a resposta.</p>';
+              '<p class="al-fino">Videoaula' + (u.video.duracao_seg ? ' · ' + Math.round(u.video.duracao_seg / 60) + ' min' : '') + '<span id="es-un-visto">' + (u.video.assistido ? ' · <b>✓ assistida</b>' : u.video.posicao_seg > 10 ? ' · continua de onde você parou' : '') + '</span> · a aula para e pergunta: responda antes de ouvir a resposta.</p>';
+            ligarVideoDaAula(cx, codigo, u.video);
           }).catch(function (e) { var cx = el('es-un-video'); if (cx) cx.innerHTML = '<p class="al-fino">Não foi possível carregar a videoaula: ' + esc(e.message) + '</p>'; });
         }
         cada(alvo, '[data-nv]', function (b) { b.onclick = function () { unidade(alvo, codigo, b.getAttribute('data-nv')); }; });
+        ligarCadernoDaAula(alvo, codigo);
+        quizDaAula(el('es-un-quiz-cx'), codigo);
         if (el('es-un-mapa')) el('es-un-mapa').onclick = function () { abrirMapa(codigo, window.open('', '_blank')); };
         cada(alvo, '[data-sol]', function (b) {
           b.onclick = function () {
@@ -1328,6 +1357,7 @@
             api('POST', base() + '/unidades/' + encodeURIComponent(codigo) + '/blocos/' + n + '/solucao', { tentativa: ta.value }).then(function (r) {
               alvo.querySelector('[data-out="' + n + '"]').innerHTML = '<h4>Solução comentada</h4><div class="es-un-ler">' + textoMarcado(r.solucao, [], []) + '</div>' + '<p class="al-fino">Compare com o que você escreveu e corrija uma frase da sua tentativa.</p>';
               b.disabled = true; msg.textContent = '';
+              var st = alvo.querySelector('[data-salvo="' + n + '"]'); if (st) st.textContent = '✓ Tentativa guardada no seu caderno.';
             }).catch(function (e) { msg.textContent = e.message; msg.className = 'es-msg-erro'; });
           };
         });
@@ -1341,8 +1371,189 @@
           lerDisciplina(alvo, (m && m.cod) || '_metodo', { unidade: codigo }, function () { ir('unidade', codigo); });
         };
         if (el('es-un-mapa2')) el('es-un-mapa2').onclick = function () { abrirMapa(codigo, window.open('', '_blank')); };
-        window.scrollTo(0, 0);
       }).catch(function (e) { falha(alvo, e); });
+    }
+
+    // ---- o que a aula ganhou dos outros cursos: a tentativa que fica guardada, a nota da aula, o quiz e o vídeo que lembra onde parou ----
+    // salva sozinho: um tempo depois da última tecla e ao sair do campo; `dizer` mostra "Salvando… / ✓ Salvo"
+    function salvarSozinho(campo, dizer, enviar) {
+      var timer = null, ultimo = campo.value;
+      function agora() {
+        clearTimeout(timer); timer = null;
+        if (campo.value === ultimo) return;
+        var v = campo.value; dizer('Salvando…');
+        enviar(v).then(function () { ultimo = v; dizer('✓ Salvo'); }).catch(function (e) { dizer(e.message); });
+      }
+      campo.oninput = function () { clearTimeout(timer); timer = setTimeout(agora, 1200); };
+      campo.onblur = agora;
+    }
+    function ligarCadernoDaAula(alvo, codigo) {
+      var un = base() + '/unidades/' + encodeURIComponent(codigo);
+      cada(alvo, 'textarea[data-n]', function (ta) {
+        var n = ta.getAttribute('data-n'), st = alvo.querySelector('[data-salvo="' + n + '"]');
+        salvarSozinho(ta, function (m) { if (st) st.textContent = m; }, function (v) { return api('PUT', un + '/blocos/' + n + '/tentativa', { texto: v }); });
+      });
+      var nota = el('es-un-nota');
+      if (nota) salvarSozinho(nota, function (m) { if (el('es-un-nota-st')) el('es-un-nota-st').textContent = m; }, function (v) { return api('PUT', un + '/nota', { texto: v }); });
+      if (el('es-un-cad')) el('es-un-cad').onclick = function () { ir('caderno'); };
+    }
+    // QUIZ DESTA AULA: até 5 questões do banco, respondidas aqui mesmo — pelas rotas do Praticar
+    function quizDaAula(cx, codigo) {
+      if (!cx) return;
+      api('GET', base() + '/unidades/' + encodeURIComponent(codigo) + '/quiz').then(function (r) {
+        if (!el('es-un-quiz')) return; // o aluno já saiu da aula
+        if (!r.total) { cx.innerHTML = '<p class="al-sub">Esta aula ainda não tem questões no banco. Quando houver, elas aparecem aqui.</p>'; return; }
+        var n = r.questoes.length, i = 0;
+        cx.innerHTML = '<p class="al-sub">Esta aula tem <b>' + r.total + ' questão(ões)</b> no banco' + (r.ineditas ? ', ' + r.ineditas + ' nova(s) para você' : ', todas já respondidas por você') + '. ' +
+          (r.total > n ? 'Aqui vão ' + n + ' — as que você ainda não viu vêm primeiro.' : 'As que você ainda não viu vêm primeiro.') + '</p>' +
+          '<div class="es-linha"><button class="al-bt peq fan" id="es-qz-todas">✍️ Praticar todas (' + r.total + ')</button></div><div id="es-qz-q"></div>';
+        el('es-qz-todas').onclick = function () { ir('praticar', r.competencia); };
+        var out = el('es-qz-q');
+        (function mostrar() {
+          if (i >= n) {
+            out.innerHTML = '<p class="al-sub">Você respondeu ' + (n > 1 ? 'as ' + n + ' questões' : 'a questão') + ' do quiz desta aula.' + (r.total > n ? ' Há mais ' + (r.total - n) + ' no banco.' : '') + ' Acertar de novo a mesma questão não conta como domínio.</p>' +
+              '<div class="es-linha">' + (r.total > n ? '<button class="al-bt peq" id="es-qz-mais">Mais questões desta aula</button>' : '') + '<button class="al-bt peq fan" id="es-qz-tudo">Praticar todas</button></div>';
+            if (el('es-qz-mais')) el('es-qz-mais').onclick = function () { quizDaAula(cx, codigo); };
+            el('es-qz-tudo').onclick = function () { ir('praticar', r.competencia); };
+            return;
+          }
+          var q = r.questoes[i];
+          questaoNaTela(out, q, '<p class="al-fino">Questão ' + (i + 1) + ' de ' + n + (q.ja_vista ? ' · <b>você já respondeu esta</b>' : ' · nova para você') + '</p>',
+            i + 1 < n ? 'Próxima questão' : 'Concluir o quiz', function () { i++; mostrar(); if (cx.scrollIntoView) cx.scrollIntoView({ block: 'start' }); });
+        })();
+      }).catch(function (e) { falha(cx, e); });
+    }
+    // VÍDEO: retoma do ponto em que parou e registra "assistiu" — a posição mora no servidor, por aula
+    function ligarVideoDaAula(cx, codigo, video) {
+      var v = cx.querySelector('video'); if (!v) return;
+      var ultimo = -99, marcou = !!video.assistido, pediu90 = false;
+      function gravar(pos) {
+        api('PUT', base() + '/unidades/' + encodeURIComponent(codigo) + '/video', { posicao_seg: Math.floor(pos || 0), duracao_seg: Math.floor(v.duration || 0) }).then(function (x) {
+          if (x.assistido && !marcou) { marcou = true; if (el('es-un-visto')) el('es-un-visto').innerHTML = ' · <b>✓ assistida</b>'; carregar(); }
+        }).catch(function () { /* a posição é conveniência: sem ela a aula segue igual */ });
+      }
+      v.addEventListener('loadedmetadata', function () {
+        var p = Number(video.posicao_seg) || 0;
+        if (p > 10 && (!v.duration || p < v.duration - 15)) { try { v.currentTime = p; } catch (e) { /* o navegador recusou: começa do início */ } }
+      });
+      v.addEventListener('timeupdate', function () {
+        if (!v.duration) return;
+        if (Math.abs(v.currentTime - ultimo) > 10) { ultimo = v.currentTime; gravar(v.currentTime); }
+        else if (!marcou && !pediu90 && v.currentTime / v.duration >= 0.9) { pediu90 = true; gravar(v.currentTime); }
+      });
+      v.addEventListener('pause', function () { if (v.currentTime > 1) gravar(v.currentTime); });
+      v.addEventListener('ended', function () { gravar(v.duration); });
+    }
+
+    // ================= MEU CADERNO: tudo o que o aluno escreveu no percurso, por disciplina e aula =================
+    // Tentativas dos blocos, a nota de cada aula, as marcações com nota e as anotações do caderno de erros.
+    // A busca filtra na tela; a versão para imprimir abre para LER (mesmo padrão do mapa mental): o botão
+    // "Imprimir ou salvar em PDF" é do aluno — a página nunca chama a impressão sozinha.
+    var NOME_TENT = { desafio: 'Desafio', recordacao: 'Recordar', pratica: 'Prática', aplicacao: 'Aplicação' };
+    function aulaDoCaderno(a, paraPapel) {
+      var h = '';
+      if (a.nota) h += '<div class="cad-item"><p class="cad-rot">Minhas anotações desta aula</p><div class="cad-meu">' + texto(a.nota.texto) + '</div></div>';
+      h += a.tentativas.map(function (t) {
+        return '<div class="cad-item"><p class="cad-rot">' + esc(NOME_TENT[t.tipo] || 'Tentativa') + (t.titulo ? ' — ' + esc(t.titulo) : '') + ' · ' + dataBR(String(t.em).slice(0, 10)) + '</p>' +
+          (t.enunciado ? '<div class="cad-enun">' + texto(t.enunciado) + '</div>' : '') + '<div class="cad-meu">' + texto(t.texto) + '</div></div>';
+      }).join('');
+      h += a.marcacoes.map(function (m) {
+        return '<div class="cad-item"><p class="cad-rot">Marcação na leitura · ' + dataBR(String(m.em).slice(0, 10)) + '</p><blockquote class="mt-' + esc(m.cor) + '">' + esc(m.texto) + '</blockquote><div class="cad-meu">✎ ' + esc(m.nota) + '</div></div>';
+      }).join('');
+      h += a.anotacoes.map(function (q) {
+        return '<div class="cad-item"><p class="cad-rot">Anotação do caderno de erros · ' + dataBR(String(q.em).slice(0, 10)) + '</p><div class="cad-enun">' + texto(q.enunciado) + '</div><div class="cad-meu">' + texto(q.texto) + '</div></div>';
+      }).join('');
+      return paraPapel ? '<section class="cad-aula"><h3>' + esc(a.titulo) + '</h3>' + h + '</section>'
+        : '<div class="jr-caixa es-cad-aula"><div class="es-linha"><h4>' + esc(a.titulo) + '</h4>' + (a.codigo ? '<button class="es-link" data-un="' + esc(a.codigo) + '">abrir a aula</button>' : '') + '</div>' + h + '</div>';
+    }
+    var CSS_CADERNO = '@page{size:A4 portrait;margin:14mm}body{font:11pt/1.5 Georgia,"Times New Roman",serif;color:#1d2433;max-width:820px;margin:20px auto;padding:0 18px}' +
+      'header{border-bottom:3px solid #1B2A4A;padding-bottom:10px;margin-bottom:18px}header p{margin:0;font:600 9pt Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#B45309}' +
+      'h1{font:700 20pt Arial,sans-serif;color:#1B2A4A;margin:4px 0}h2{font:700 13pt Arial,sans-serif;color:#1B2A4A;border-bottom:1px solid #d9dee8;padding-bottom:4px;margin:22px 0 8px}' +
+      'h3{font:700 11.5pt Arial,sans-serif;margin:14px 0 6px}.cad-aula{break-inside:auto}.cad-item{margin:0 0 10px;break-inside:avoid}' +
+      '.cad-rot{font:700 8pt Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#159A78;margin:8px 0 3px}' +
+      '.cad-enun{color:#5b6474;font-size:10pt;border-left:3px solid #d9dee8;padding-left:9px}.cad-enun p,.cad-meu p{margin:0 0 5px}' +
+      '.cad-meu{border:1px dashed #b9c1d0;border-radius:6px;padding:7px 10px;background:#fbfcfe}blockquote{margin:0 0 5px;padding:5px 9px;background:#fff7d6;border-radius:4px}' +
+      '.barra-mapa{position:sticky;top:0;display:flex;gap:8px;justify-content:flex-end;padding:10px 0;background:#fff;border-bottom:1px solid #dde2ec;margin-bottom:12px}' +
+      '.barra-mapa button{font:600 11pt Arial,sans-serif;padding:8px 14px;border-radius:8px;border:1.5px solid #1B2A4A;background:#1B2A4A;color:#fff;cursor:pointer}' +
+      '.barra-mapa button.fan{background:#fff;color:#1B2A4A}@media print{.barra-mapa{display:none}body{margin:0;padding:0}}';
+    function escreverCaderno(w, r) {
+      var corpo = r.disciplinas.map(function (d) { return '<h2>' + esc(d.nome) + '</h2>' + d.aulas.map(function (a) { return aulaDoCaderno(a, true); }).join(''); }).join('') +
+        (r.avulsas.length ? '<h2>Outras questões</h2>' + aulaDoCaderno({ titulo: 'Anotações de questões sem aula', tentativas: [], marcacoes: [], anotacoes: r.avulsas }, true) : '');
+      w.document.open();
+      w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Meu caderno — ' + esc(r.escopo) + '</title><style>' + CSS_CADERNO + '</style></head><body>' +
+        '<div class="barra-mapa"><button id="cd-imprimir">🖨️ Imprimir ou salvar em PDF</button><button id="cd-fechar" class="fan">Fechar</button></div>' +
+        '<header><p>Villela Academy · Meu caderno</p><h1>' + esc(r.escopo) + '</h1><div>' + esc(r.aluno) + ' · ' + new Date().toLocaleDateString('pt-BR') + '</div></header>' +
+        (corpo || '<p>O caderno ainda está em branco.</p>') + '</body></html>');
+      w.document.close(); w.focus();
+      // os cliques são ligados daqui (script escrito dentro da janela seria barrado pela política da página)
+      var bi = w.document.getElementById('cd-imprimir'), bf = w.document.getElementById('cd-fechar');
+      if (bi) bi.onclick = function () { w.print(); };
+      if (bf) bf.onclick = function () { w.close(); };
+    }
+    function caderno(alvo) {
+      var antes = E.antesDoCaderno;
+      api('GET', base() + '/caderno').then(function (r) {
+        var t = r.total, n = t.tentativas + t.notas + t.marcacoes + t.anotacoes;
+        alvo.innerHTML = '<div class="jr-caixa"><p class="al-rotulo">Para rever e imprimir</p><h3>Meu caderno</h3>' +
+          '<p class="al-sub">' + (n ? 'Tudo o que você escreveu neste percurso: ' + t.tentativas + ' tentativa(s) nos exercícios das aulas, ' + t.notas + ' aula(s) com anotação, ' + t.marcacoes + ' marcação(ões) com nota e ' + t.anotacoes + ' anotação(ões) do caderno de erros. Só você vê.'
+            : 'O caderno ainda está em branco. Ele se enche sozinho: com o que você escreve nos exercícios de cada aula (antes de ver a solução), com "Minhas anotações desta aula", com as marcações da leitura que têm nota e com as anotações do caderno de erros.') + '</p>' +
+          '<div class="es-linha">' + (n ? '<label class="es-campo es-cad-busca">Buscar no caderno<input type="search" id="es-cad-busca" placeholder="uma palavra, um artigo, uma súmula…"></label>' +
+            '<button class="al-bt fan" id="es-cad-pdf">🖨️ Abrir para imprimir ou salvar em PDF</button>' : '') +
+          (antes && antes.aba && antes.aba !== 'caderno' ? '<button class="al-bt fan" id="es-cad-volta">← Voltar para onde eu estava</button>' : '') + '</div><p class="al-fino" id="es-cad-achou"></p></div>' +
+          r.disciplinas.map(function (d) {
+            return '<div class="es-cad-disc"><h3 class="es-cad-h">' + esc(d.nome) + '</h3>' + d.aulas.map(function (a) { return aulaDoCaderno(a); }).join('') + '</div>';
+          }).join('') +
+          (r.avulsas.length ? '<div class="es-cad-disc"><h3 class="es-cad-h">Outras questões</h3>' + aulaDoCaderno({ titulo: 'Anotações de questões sem aula', tentativas: [], marcacoes: [], anotacoes: r.avulsas }) + '</div>' : '');
+        cada(alvo, '[data-un]', function (b) { b.onclick = function () { ir('unidade', b.getAttribute('data-un')); }; });
+        if (el('es-cad-volta')) el('es-cad-volta').onclick = function () { ir(antes.aba, antes.arg); };
+        if (el('es-cad-pdf')) el('es-cad-pdf').onclick = function () { var w = window.open('', '_blank'); if (w) escreverCaderno(w, r); }; // a janela abre no clique
+        if (el('es-cad-busca')) el('es-cad-busca').oninput = function () {
+          var f = this.value.toLowerCase().trim(), achou = 0;
+          cada(alvo, '.es-cad-aula', function (cx) { var ok = !f || cx.textContent.toLowerCase().indexOf(f) >= 0; cx.style.display = ok ? '' : 'none'; if (ok) achou++; });
+          cada(alvo, '.es-cad-disc', function (d) { d.style.display = d.querySelector('.es-cad-aula:not([style*="none"])') ? '' : 'none'; });
+          el('es-cad-achou').textContent = f ? (achou ? achou + ' aula(s) com "' + this.value.trim() + '".' : 'Nada no caderno com "' + this.value.trim() + '".') : '';
+        };
+      }).catch(function (e) { falha(alvo, e); });
+    }
+
+    // ================= CONCLUSÃO DO CURSO: o que falta para o certificado, e a emissão =================
+    // O critério é do servidor (estudo/aluno.js › conclusao): todas as aulas do percurso estudadas e um simulado
+    // completo enviado. A aula-casca do curso não conta. É certificado de CONCLUSÃO, de curso livre.
+    // ETAPA 2 (nível e selos do Estude): o cartão de nível entra ao lado desta caixa e na barra do curso —
+    // `botoesDaBarra` é o ponto de extensão; o XP da jornada comum (por aula do curso) não vale aqui.
+    function caixaConclusao() {
+      var k = E.painel && E.painel.conclusao;
+      if (!k) return '';
+      return '<div class="jr-caixa es-concl"><h3>Certificado de conclusão</h3>' +
+        '<p class="al-sub">Curso livre. Certificado emitido pela Villela Academy, sem validade para o MEC. Sai quando você estuda todas as aulas do percurso (responde ao menos uma questão ou um card de cada) e envia um simulado completo.</p>' +
+        '<table class="es-tab"><tr><td>Aulas estudadas</td><td class="n">' + k.estudadas + ' de ' + k.total_aulas + '</td></tr>' +
+        '<tr><td>Simulados completos enviados</td><td class="n">' + k.provas_enviadas + '</td></tr></table>' +
+        (k.certificado ? '<div class="es-linha"><a class="al-bt" href="/academy/certificados/' + esc(k.certificado) + '" target="_blank" rel="noopener">🎓 Ver o meu certificado</a></div>'
+          : k.cumprido ? '<div class="es-linha"><button class="al-bt" data-cert="1">🎓 Emitir certificado</button><span class="al-fino" data-cert-msg="1"></span></div>'
+          : '<p class="es-aviso">' + (k.total_aulas ? (k.faltam_aulas + k.faltam_provas > 1 ? 'Faltam ' : 'Falta ') + [k.faltam_aulas ? k.faltam_aulas + (k.faltam_aulas > 1 ? ' aulas' : ' aula') : '', k.faltam_provas ? k.faltam_provas + (k.faltam_provas > 1 ? ' simulados' : ' simulado') : ''].filter(Boolean).join(' e ') + '.' : esc(k.falta_txt)) + '</p>' +
+            '<div class="es-linha">' + (k.faltam_aulas ? '<button class="al-bt peq fan" data-concl-ir="aulas">Ir para as aulas</button>' : '') + (k.faltam_provas ? '<button class="al-bt peq fan" data-concl-ir="prova">Fazer um simulado</button>' : '') + '</div>') + '</div>';
+    }
+    function emitirCertificado(bt, msg) {
+      var w = window.open('', '_blank'); // no clique, antes da rede — senão o navegador barra como pop-up
+      bt.disabled = true;
+      api('POST', '/aluno/cursos/' + E.pid + '/certificado').then(function (r) {
+        if (w) w.location = r.url; else location.href = r.url;
+        carregar(function () { botoesDaBarra(); });
+      }).catch(function (e) { if (w) w.close(); bt.disabled = false; if (msg) msg.textContent = e.message; else alert(e.message); });
+    }
+    function ligarConclusao(alvo) {
+      cada(alvo, '[data-cert]', function (b) { b.onclick = function () { emitirCertificado(b, alvo.querySelector('[data-cert-msg]')); }; });
+      cada(alvo, '[data-concl-ir]', function (b) { b.onclick = function () { ir(b.getAttribute('data-concl-ir')); }; });
+    }
+    // os botões que o próprio Estude põe na barra do curso (os do PRODUTO — audiobook, material, desafio… — vêm de quem abre)
+    function botoesDaBarra() {
+      var cx = el('es-barra-es'), k = E.painel && E.painel.conclusao;
+      if (!cx) return;
+      cx.innerHTML = '<button class="al-bt peq fan" id="es-bar-cad">📓 Meu caderno</button>' +
+        (k && k.certificado ? '<a class="al-bt peq fan" href="/academy/certificados/' + esc(k.certificado) + '" target="_blank" rel="noopener">🎓 Meu certificado</a>'
+          : k && k.cumprido ? '<button class="al-bt peq" id="es-bar-cert">🎓 Emitir certificado</button>' : '');
+      el('es-bar-cad').onclick = function () { ir('caderno'); };
+      if (el('es-bar-cert')) el('es-bar-cert').onclick = function () { emitirCertificado(el('es-bar-cert')); };
     }
 
     // ================= PRATICAR =================
@@ -1381,6 +1592,48 @@
       return r;
     }
     function eixosNaUrl(f) { return EIXOS.map(function (x) { return f[x[0]] ? '&' + x[0] + '=' + encodeURIComponent(f[x[0]]) : ''; }).join(''); }
+    // UMA QUESTÃO NA TELA — a mesma do Praticar e do "Quiz desta aula": pista (quem conta é o servidor),
+    // resposta, gabarito comentado e anotação. Nada se corrige aqui: quem corrige e registra é o servidor.
+    function questaoNaTela(out, q, cabecalho, rotuloProx, aoProxima) {
+      var inicio = Date.now();
+      out.innerHTML = cabecalho +
+        procedencia(q) + (q.apoio ? '<div class="es-apoio">' + texto(q.apoio) + '</div>' : '') + '<div class="es-enun">' + texto(q.enunciado) + '</div>' + alternativas(q, 'es-q') +
+        '<div class="es-linha es-conf"><span class="al-fino">Sua confiança:</span>' + [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta']].map(function (c) {
+          return '<label><input type="radio" name="es-conf" value="' + c[0] + '"> ' + c[1] + '</label>';
+        }).join('') + '</div>' +
+        '<div id="es-pistas"></div><div class="es-linha"><button class="al-bt" id="es-resp">Responder</button>' +
+        (q.pistas_disponiveis ? '<button class="al-bt fan" id="es-pista">Pedir uma pista</button><span class="al-fino">Com pista, o acerto conta como prática com apoio.</span>' : '') + '</div><div id="es-fb"></div>';
+      if (el('es-pista')) el('es-pista').onclick = function () {
+        api('POST', base() + '/questoes/' + q.id + '/pista').then(function (x) {
+          el('es-pistas').innerHTML += '<p class="es-pista-txt">💡 ' + esc(x.pista) + '</p>';
+          if (!x.restantes) el('es-pista').disabled = true;
+        }).catch(function (e) { el('es-pista').disabled = true; el('es-pistas').innerHTML += '<p class="al-fino">' + esc(e.message) + '</p>'; });
+      };
+      el('es-resp').onclick = function () {
+        var m = out.querySelector('input[name="es-q"]:checked'), cf = out.querySelector('input[name="es-conf"]:checked');
+        if (!m) { el('es-fb').innerHTML = '<p class="es-msg-erro">Escolha uma alternativa.</p>'; return; }
+        el('es-resp').disabled = true;
+        api('POST', base() + '/questoes/' + q.id + '/responder', { resposta: m.value, confianca: cf ? cf.value : '', tempo_seg: Math.round((Date.now() - inicio) / 1000) }).then(function (x) {
+          cada(out, '.es-alt', function (l) {
+            var a = x.alternativas.filter(function (y) { return y.id === l.getAttribute('data-alt'); })[0];
+            l.classList.add(a.correta ? 'certa' : (l.querySelector('input').checked ? 'errada' : 'neutra'));
+            l.querySelector('input').disabled = true;
+            if (a.explicacao) l.insertAdjacentHTML('beforeend', '<span class="es-expl">' + esc(a.explicacao) + '</span>');
+          });
+          var ret = Object.keys(x.retomadas || {}).map(function (k) { return x.retomadas[k].vencimento; }).filter(Boolean)[0];
+          el('es-fb').innerHTML = '<div class="es-fb ' + (x.acerto ? 'ok' : 'nao') + '"><b>' + (x.acerto ? 'Certo.' : 'Não foi desta vez.') + '</b> Conta como: ' + esc(x.conta_como) + '.' +
+            (ret ? ' Retomada marcada para ' + dataBR(ret) + '.' : '') + (x.comentario ? '<p>' + esc(x.comentario) + '</p>' : '') + '</div>' +
+            '<label class="es-campo es-anot">Sua anotação (fica no caderno de erros)<textarea id="es-anot" rows="3" maxlength="2000" placeholder="Por que errei — ou por que cada alternativa está certa ou errada.">' + esc(x.anotacao || '') + '</textarea></label>' +
+            '<div class="es-linha"><button class="al-bt" id="es-prox">' + esc(rotuloProx) + '</button><button class="al-bt fan" id="es-anot-ok">Guardar anotação</button><span class="al-fino" id="es-anot-msg"></span></div>';
+          el('es-anot-ok').onclick = function () {
+            api('PUT', base() + '/questoes/' + q.id + '/anotacao', { texto: el('es-anot').value }).then(function () { el('es-anot-msg').textContent = 'Guardada.'; })
+              .catch(function (e) { el('es-anot-msg').textContent = e.message; });
+          };
+          el('es-prox').onclick = aoProxima;
+          carregar();
+        }).catch(function (e) { el('es-resp').disabled = false; el('es-fb').innerHTML = '<p class="es-msg-erro">' + esc(e.message) + '</p>'; });
+      };
+    }
     function praticar(alvo, competencia) {
       var origem = '', eixo = {};
       if (competencia && typeof competencia === 'object') { origem = competencia.origem || ''; eixo = competencia.eixo || {}; competencia = competencia.competencia || ''; }
@@ -1407,7 +1660,7 @@
           return;
         }
         if (!r.questoes.length) { out.innerHTML = '<p class="al-sub">' + (erradas ? 'O caderno de erros está vazio.' : eixosNaUrl(eixo) ? 'Não há questão com esses filtros de banca, órgão, cargo ou ano nesta matéria. Tire um deles para ampliar.' : origem === 'oficial' ? 'A prova oficial não trouxe questão sobre esta matéria. Desmarque o filtro para treinar com as demais.' : 'Ainda não há questões de correção automática para esta matéria.') + '</p>'; return; }
-        var i = 0, inicio = 0;
+        var i = 0;
         function mostrar() {
           if (i >= r.questoes.length) {
             out.innerHTML = '<p class="al-sub">Você passou por todas as ' + r.questoes.length + ' questões disponíveis aqui. Acertar de novo a mesma questão não conta como domínio — o próximo passo é o simulado, que usa questões reservadas.</p>' +
@@ -1416,44 +1669,8 @@
             return;
           }
           var q = r.questoes[i];
-          inicio = Date.now();
-          out.innerHTML = '<p class="al-fino">Questão ' + (i + 1) + ' de ' + r.questoes.length + ' · ' + r.ineditas + ' nova(s) para você' + (q.ja_vista ? ' · <b>você já respondeu esta</b>' : '') + '</p>' +
-            procedencia(q) + (q.apoio ? '<div class="es-apoio">' + texto(q.apoio) + '</div>' : '') + '<div class="es-enun">' + texto(q.enunciado) + '</div>' + alternativas(q, 'es-q') +
-            '<div class="es-linha es-conf"><span class="al-fino">Sua confiança:</span>' + [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta']].map(function (c) {
-              return '<label><input type="radio" name="es-conf" value="' + c[0] + '"> ' + c[1] + '</label>';
-            }).join('') + '</div>' +
-            '<div id="es-pistas"></div><div class="es-linha"><button class="al-bt" id="es-resp">Responder</button>' +
-            (q.pistas_disponiveis ? '<button class="al-bt fan" id="es-pista">Pedir uma pista</button><span class="al-fino">Com pista, o acerto conta como prática com apoio.</span>' : '') + '</div><div id="es-fb"></div>';
-          if (el('es-pista')) el('es-pista').onclick = function () {
-            api('POST', base() + '/questoes/' + q.id + '/pista').then(function (x) {
-              el('es-pistas').innerHTML += '<p class="es-pista-txt">💡 ' + esc(x.pista) + '</p>';
-              if (!x.restantes) el('es-pista').disabled = true;
-            }).catch(function (e) { el('es-pista').disabled = true; el('es-pistas').innerHTML += '<p class="al-fino">' + esc(e.message) + '</p>'; });
-          };
-          el('es-resp').onclick = function () {
-            var m = out.querySelector('input[name="es-q"]:checked'), cf = out.querySelector('input[name="es-conf"]:checked');
-            if (!m) { el('es-fb').innerHTML = '<p class="es-msg-erro">Escolha uma alternativa.</p>'; return; }
-            el('es-resp').disabled = true;
-            api('POST', base() + '/questoes/' + q.id + '/responder', { resposta: m.value, confianca: cf ? cf.value : '', tempo_seg: Math.round((Date.now() - inicio) / 1000) }).then(function (x) {
-              cada(out, '.es-alt', function (l) {
-                var a = x.alternativas.filter(function (y) { return y.id === l.getAttribute('data-alt'); })[0];
-                l.classList.add(a.correta ? 'certa' : (l.querySelector('input').checked ? 'errada' : 'neutra'));
-                l.querySelector('input').disabled = true;
-                if (a.explicacao) l.insertAdjacentHTML('beforeend', '<span class="es-expl">' + esc(a.explicacao) + '</span>');
-              });
-              var ret = Object.keys(x.retomadas || {}).map(function (k) { return x.retomadas[k].vencimento; }).filter(Boolean)[0];
-              el('es-fb').innerHTML = '<div class="es-fb ' + (x.acerto ? 'ok' : 'nao') + '"><b>' + (x.acerto ? 'Certo.' : 'Não foi desta vez.') + '</b> Conta como: ' + esc(x.conta_como) + '.' +
-                (ret ? ' Retomada marcada para ' + dataBR(ret) + '.' : '') + (x.comentario ? '<p>' + esc(x.comentario) + '</p>' : '') + '</div>' +
-                '<label class="es-campo es-anot">Sua anotação (fica no caderno de erros)<textarea id="es-anot" rows="3" maxlength="2000" placeholder="Por que errei — ou por que cada alternativa está certa ou errada.">' + esc(x.anotacao || '') + '</textarea></label>' +
-                '<div class="es-linha"><button class="al-bt" id="es-prox">Próxima questão</button><button class="al-bt fan" id="es-anot-ok">Guardar anotação</button><span class="al-fino" id="es-anot-msg"></span></div>';
-              el('es-anot-ok').onclick = function () {
-                api('PUT', base() + '/questoes/' + q.id + '/anotacao', { texto: el('es-anot').value }).then(function () { el('es-anot-msg').textContent = 'Guardada.'; })
-                  .catch(function (e) { el('es-anot-msg').textContent = e.message; });
-              };
-              el('es-prox').onclick = function () { i++; mostrar(); window.scrollTo(0, 0); };
-              carregar();
-            }).catch(function (e) { el('es-resp').disabled = false; el('es-fb').innerHTML = '<p class="es-msg-erro">' + esc(e.message) + '</p>'; });
-          };
+          questaoNaTela(out, q, '<p class="al-fino">Questão ' + (i + 1) + ' de ' + r.questoes.length + ' · ' + r.ineditas + ' nova(s) para você' + (q.ja_vista ? ' · <b>você já respondeu esta</b>' : '') + '</p>',
+            'Próxima questão', function () { i++; mostrar(); window.scrollTo(0, 0); });
         }
         mostrar();
       }).catch(function (e) { falha(out, e); });
@@ -1743,7 +1960,11 @@
           return '<li>' + dataBR(x.em.slice(0, 10)) + ' — ' + esc(x.motivo) + ' · ' + esc(x.situacao) + (x.pendentes ? ' · ' + x.pendentes + ' item(ns) de fora' : '') + '</li>';
         }).join('') + '</ul></details>';
       }
+      h += '<div class="jr-caixa"><h3>Meu caderno</h3><p class="al-sub">As suas tentativas nos exercícios, as anotações de cada aula, as marcações com nota e as anotações do caderno de erros — num lugar só, com busca e versão para imprimir.</p>' +
+        '<div class="es-linha"><button class="al-bt fan" id="es-pl-cad">📓 Abrir o meu caderno</button></div></div>' + caixaConclusao();
       alvo.innerHTML = h;
+      el('es-pl-cad').onclick = function () { ir('caderno'); };
+      ligarConclusao(alvo);
       el('es-pl-ok').onclick = function () {
         var d = {};
         cada(alvo, '[data-dia]', function (i) { d[i.getAttribute('data-dia')] = Number(i.value) || 0; });
@@ -1829,13 +2050,40 @@
           return '<tr><td>' + dataBR(p.criado_em.slice(0, 10)) + '</td><td><a href="#" ' + (ehEdital ? 'data-pe="' + esc(p.id) : ehProva ? 'data-pp="' + esc(p.id) : 'data-pq="' + esc(p.questao_id)) + '">' + esc(String(p.questao || 'questão').slice(0, 90)) + '</a><br>' +
             (ehEdital ? seloEdital(p) + '<span class="al-fino">' + (re ? ' · ' + re.itens + ' itens em ' + re.disciplinas + ' disciplina(s)' + (re.pendentes ? ', ' + re.pendentes + ' a conferir' : '') : '') + '</span>'
               : ehProva ? seloProva(p) + '<span class="al-fino">' + (rs ? ' · ' + rs.lidas + ' questões lidas, ' + rs.aplicadas + ' no percurso' : '') + '</span>'
-              : seloPedido(p) + '<span class="al-fino">' + esc(notaCurta(p)) + (p.tipo === 'oral' ? ' · oral' : '') + '</span>') + '</td>' +
+              : seloPedido(p) + '<span class="al-fino">' + esc(notaCurta(p)) + (p.tipo === 'oral' ? ' · oral · ' + audioCurto(p) : '') + '</span>') + '</td>' +
             '<td class="n">' + (p.estado === 'pronto' || p.estado === 'aplicado' ? esc(p.cobrado) : p.estado === 'orcado' || p.estado === 'processando' ? 'até ' + esc(p.orcamento) : '—') + '</td></tr>';
         }).join('') + '</table>';
         cada(out, '[data-pq]', function (a) { a.onclick = function (e) { e.preventDefault(); ir('escrita', a.getAttribute('data-pq')); }; });
         cada(out, '[data-pp]', function (a) { a.onclick = function (e) { e.preventDefault(); ir('escrita', 'prova.' + a.getAttribute('data-pp')); }; });
         cada(out, '[data-pe]', function (a) { a.onclick = function (e) { e.preventDefault(); ir('escrita', 'edital.' + a.getAttribute('data-pe')); }; });
       }).catch(function (e) { falha(out, e); });
+    }
+
+    // ---- o ÁUDIO da resposta oral: guardado por 6 meses, com download; depois do prazo, a tela diz quando foi apagado ----
+    function audioCurto(p) {
+      var a = p.audio || {};
+      return a.apagado_em ? 'áudio apagado em ' + dataBR(String(a.apagado_em).slice(0, 10)) : a.ate ? 'áudio disponível até ' + dataBR(String(a.ate).slice(0, 10)) : 'áudio';
+    }
+    function avisoDoAudio(p) {
+      var a = p.audio;
+      if (p.tipo !== 'oral' || !a) return '';
+      if (a.apagado_em) return '<p class="al-fino es-eo-audio">Áudio apagado em ' + dataBR(String(a.apagado_em).slice(0, 10)) + ' (prazo de 6 meses). A transcrição e a correção continuam aqui.</p>';
+      return '<div class="es-nota-aba es-eo-audio"><b>Guardamos este áudio por 6 meses, até ' + dataBR(String(a.ate).slice(0, 10)) + '.</b> Se quiser mantê-lo, baixe agora.' +
+        (a.disponivel ? '<div class="es-linha"><button class="al-bt peq fan" id="es-eo-baixar">⬇️ Baixar o áudio</button><span class="al-fino" id="es-eo-baixar-msg"></span></div>' : '') + '</div>';
+    }
+    // o endereço do arquivo é temporário e só o servidor o dá — e só a quem fez o pedido
+    function ligarAudio(cx, p) {
+      var b = el('es-eo-baixar');
+      if (!b) return;
+      b.onclick = function () {
+        b.disabled = true;
+        api('GET', base() + '/pedidos/' + p.id + '/audio').then(function (r) {
+          b.disabled = false;
+          var a = document.createElement('a');
+          a.href = r.url; a.download = r.nome || 'resposta-oral'; a.target = '_blank'; a.rel = 'noopener';
+          document.body.appendChild(a); a.click(); a.remove();
+        }).catch(function (e) { b.disabled = false; el('es-eo-baixar-msg').textContent = e.message; });
+      };
     }
 
     // ---- gravador (resposta oral): grava, mostra o tempo, deixa ouvir antes de enviar e regravar ----
@@ -1921,7 +2169,8 @@
         '<div class="es-eo-rub"><b>Como a resposta é avaliada</b><ul>' + q.rubrica_publica.map(function (c) { return '<li>' + esc(c.criterio) + ' <span class="al-fino">· peso ' + c.peso + '</span></li>'; }).join('') + '</ul>' +
         '<p class="al-fino">Cada critério recebe de 0 a 3. O que vale o nível máximo de cada um não aparece antes: é o que a correção mede.</p></div></div>' +
         '<div class="jr-caixa"><h3>' + (oral ? 'Sua resposta falada' : 'Sua resposta') + '</h3>' +
-        (oral ? '<p class="al-sub">Responda em voz alta, como na arguição. A gravação é transcrita e a transcrição é corrigida pelos critérios acima — você vê as duas.</p><div id="es-eo-grav"></div>'
+        (oral ? '<p class="al-sub">Responda em voz alta, como na arguição. A gravação é transcrita e a transcrição é corrigida pelos critérios acima — você vê as duas.</p>' +
+          '<p class="es-aviso es-eo-guarda">Guardamos o áudio da sua resposta por 6 meses (' + (r.limites.audio_retencao_dias || 183) + ' dias) e depois ele é apagado. A transcrição e a correção continuam com você. Se quiser manter o áudio, baixe-o na página do resultado.</p><div id="es-eo-grav"></div>'
           : '<textarea class="es-ta es-eo-ta" id="es-eo-ta" rows="' + (q.tipo === 'peca' ? 22 : 12) + '" maxlength="' + q.limite_caracteres + '" placeholder="Escreva a sua resposta inteira, como escreveria na prova."></textarea>' +
             '<p class="al-fino" id="es-eo-cont"></p>') +
         '<div class="es-linha"><button class="al-bt" id="es-eo-pedir"' + (r.disponivel && (!oral || r.transcricao) ? '' : ' disabled') + '>Pedir correção</button><span class="al-fino" id="es-eo-msg"></span></div>' +
@@ -1971,7 +2220,7 @@
           if (o.saldo_suficiente) h += '<div class="es-linha"><button class="al-bt" id="es-eo-ok">Confirmar e corrigir</button>';
           else {
             h += '<p class="es-aviso">Faltam <b>' + esc(o.falta) + '</b> de saldo para esta correção.</p>' +
-              (o.pagamento_online ? '<p class="al-sub">O pagamento é feito no Mercado Pago e entra como saldo de IA (a recarga mínima é a que aparece no botão). A correção começa sozinha quando o pagamento for confirmado, e o que sobrar fica no seu saldo.</p>' +
+              (o.pagamento_online ? '<p class="al-sub">Será cobrado <b>' + esc(o.recarga) + '</b> no Mercado Pago (é o que falta, arredondado para cima, com o mínimo da recarga). O valor entra como saldo de IA; a correção começa sozinha quando o pagamento for confirmado, e o que sobrar fica como saldo de IA na sua conta.</p>' +
                 '<div class="es-linha"><button class="al-bt" id="es-eo-pagar">Pagar ' + esc(o.recarga) + ' e corrigir</button>'
                 : '<p class="al-sub">A recarga online está indisponível no momento.</p><div class="es-linha">');
           }
@@ -2042,6 +2291,7 @@
         if (x.transcricao) h += '<details class="es-fontes" open><summary>O que foi ouvido na sua gravação' + (x.duracao_seg ? ' (' + relogioTxt(x.duracao_seg) + ')' : '') + '</summary><div class="es-apoio">' + texto(x.transcricao) + '</div>' +
           '<p class="al-fino">Transcrição automática: pode trocar uma palavra ou outra. A correção foi feita sobre este texto.</p></details>';
         else if (p.entrada && p.entrada.resposta) h += '<details class="es-fontes"><summary>A resposta que foi corrigida</summary><div class="es-apoio">' + texto(p.entrada.resposta) + '</div></details>';
+        h += avisoDoAudio(p);
         h += (x.criterios || []).map(function (k) {
           return '<div class="es-eo-crit n' + k.nivel + '"><div class="es-eo-crit-cab"><b>' + esc(k.criterio) + '</b><span class="al-fino">peso ' + k.peso + '</span><span class="es-eo-nivel">nível ' + k.nivel + ' de 3</span></div>' +
             (k.trecho ? '<blockquote>“' + esc(k.trecho) + '”</blockquote>' : (k.nivel > 0 ? '<p class="al-fino">A correção não apontou, na sua resposta, um trecho que sustente este nível — leia este critério com mais desconfiança.</p>' : '<p class="al-fino">A resposta não tratou deste critério.</p>')) +
@@ -2057,6 +2307,7 @@
           : '<div class="es-linha"><button class="al-bt peq fan" id="es-eo-disc">Discordo da correção</button></div><div id="es-eo-disc-cx"></div>';
         h += '</div>';
         ped.innerHTML = h;
+        ligarAudio(ped, p);
         if (el('es-eo-disc')) el('es-eo-disc').onclick = function () {
           el('es-eo-disc-cx').innerHTML = '<label class="es-campo es-anot">Em que ponto a correção errou?<textarea class="es-ta" id="es-eo-mot" rows="3" maxlength="1000" placeholder="Ex.: o critério 2 foi tratado no terceiro parágrafo."></textarea></label>' +
             '<div class="es-linha"><button class="al-bt peq" id="es-eo-mot-ok">Registrar a discordância</button><span class="al-fino" id="es-eo-mot-msg">Fica registrado e a equipe do curso vê. Não há devolução automática.</span></div>';
@@ -2275,7 +2526,7 @@
           if (o.saldo_suficiente) h += '<div class="es-linha"><button class="al-bt" id="es-ip-conf">Confirmar e ler a prova</button>';
           else {
             h += '<p class="es-aviso">Faltam <b>' + esc(o.falta) + '</b> de saldo para esta leitura.</p>' +
-              (o.pagamento_online ? '<p class="al-sub">O pagamento é feito no Mercado Pago e entra como saldo de IA. A leitura começa sozinha quando o pagamento for confirmado, e o que sobrar fica no seu saldo.</p>' +
+              (o.pagamento_online ? '<p class="al-sub">Será cobrado <b>' + esc(o.recarga) + '</b> no Mercado Pago (é o que falta, arredondado para cima, com o mínimo da recarga). O valor entra como saldo de IA; a leitura começa sozinha quando o pagamento for confirmado, e o que sobrar fica como saldo de IA na sua conta.</p>' +
                 '<div class="es-linha"><button class="al-bt" id="es-ip-pagar">Pagar ' + esc(o.recarga) + ' e ler a prova</button>'
                 : '<p class="al-sub">A recarga online está indisponível no momento.</p><div class="es-linha">');
           }
@@ -2551,7 +2802,7 @@
           if (o.saldo_suficiente) h += '<div class="es-linha"><button class="al-bt" id="es-ed-conf">Confirmar e ler o edital</button>';
           else {
             h += '<p class="es-aviso">Faltam <b>' + esc(o.falta) + '</b> de saldo para esta leitura.</p>' +
-              (o.pagamento_online ? '<p class="al-sub">O pagamento é feito no Mercado Pago e entra como saldo de IA. A leitura começa sozinha quando o pagamento for confirmado, e o que sobrar fica no seu saldo.</p>' +
+              (o.pagamento_online ? '<p class="al-sub">Será cobrado <b>' + esc(o.recarga) + '</b> no Mercado Pago (é o que falta, arredondado para cima, com o mínimo da recarga). O valor entra como saldo de IA; a leitura começa sozinha quando o pagamento for confirmado, e o que sobrar fica como saldo de IA na sua conta.</p>' +
                 '<div class="es-linha"><button class="al-bt" id="es-ed-pagar-bt">Pagar ' + esc(o.recarga) + ' e ler o edital</button>'
                 : '<p class="al-sub">A recarga online está indisponível no momento.</p><div class="es-linha">');
           }
@@ -2777,6 +3028,8 @@
       carregar();
     }
 
-    return { cartao: cartao, abrir: abrir };
+    // `guardarLugar`: quem tira o aluno do Estude para uma tela do curso (audiobook, desafio, material…) chama
+    // antes de sair — as disciplinas abertas e a rolagem ficam guardadas para a volta.
+    return { cartao: cartao, abrir: abrir, guardarLugar: guardarLugar };
   };
 })();

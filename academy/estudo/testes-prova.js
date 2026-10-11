@@ -561,7 +561,7 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(/api\('POST', base\(\) \+ '\/pedidos\/' \+ id \+ '\/confirmar', null, o\.orcamento_milesimos/.test(tela), 'o aceite que vai ao servidor é o do valor que a tela mostrou');
     assert.ok(/qs\.forEach\(function \(q\) \{ if \(!\(q\.n in MARCA\)\) MARCA\[q\.n\] = q\.estado === 'ok' && !q\.aplicada; \}\);/.test(tela), 'as prontas vêm marcadas; as "a revisar", não');
     assert.ok(/if \(n >= CONSULTAS_PROVA\)/.test(tela) && /E\.aoSair = parar;/.test(tela), 'a consulta periódica para sozinha e ao sair da tela');
-    const i = tela.indexOf('// ================= IMPORTAR PROVA EM PDF'), f = tela.indexOf('return { cartao: cartao, abrir: abrir }');
+    const i = tela.indexOf('// ================= IMPORTAR PROVA EM PDF'), f = tela.indexOf('return { cartao: cartao, abrir: abrir');
     assert.ok(i > 0 && f > i && !/localStorage|sessionStorage/.test(tela.slice(i, f)), 'a prova e o gabarito do usuário não moram no navegador');
     const css = await req('GET', '/academy/estude.css');
     for (const classe of ['.es-eo-sub', '.es-ip-grade', '.es-ip-q.rev', '.es-ip-alts li.certa', '.es-ip-faixa']) assert.ok(css.texto.includes(classe), 'falta no CSS: ' + classe);

@@ -71,6 +71,21 @@ function tokens(t) {
     .filter(w => w.length > 2 && !PARADAS.has(w))
     .map(w => w.length > 5 ? w.replace(/(oes|aes|coes|mente|s)$/, '') : w); // radical grosseiro: plural/advérbio
 }
+// TRECHO ↔ AULA DO ESTUDE. O curso que hospeda o Estude não tem `lesson_id` por aula (as aulas são
+// `est_unidades`), então o vínculo vai no RÓTULO do trecho, num prefixo que a IMPORTAÇÃO escreve assim:
+//
+//     [est:<slug-do-escopo>/<codigo-da-unidade>] <o que o aluno lê como fonte>
+//     ex.:  [est:magistratura-trabalho-trt10/adm-1-3-1] Ato administrativo · vídeo 2:10
+//
+// (`trechos.itens[]` de `Send-AcademyInterativo`, sem `aula_titulo`; `fonte` = artigo para o texto da aula,
+// transcricao para a fala do vídeo, com `ini_seg`). O prefixo NÃO aparece para o aluno nem entra na busca:
+// `rotuloEstude` o separa. Com a aula aberta, o Tutor procura PRIMEIRO nos trechos dela.
+const RE_ROTULO_ESTUDE = /^\[est:([a-z0-9-]+)\/([a-z0-9-]+)\]\s*/;
+function rotuloEstude(rotulo) {
+  const m = RE_ROTULO_ESTUDE.exec(String(rotulo || ''));
+  return m ? { escopo: m[1], unidade: m[2], rotulo: String(rotulo).slice(m[0].length) } : { escopo: '', unidade: '', rotulo: String(rotulo || '') };
+}
+const temBase = (productId) => !!db.prepare('SELECT 1 FROM tutor_trechos WHERE product_id = ? LIMIT 1').get(productId);
 const _indice = new Map(); // productId → {versao, docs:[{id, tf:Map, len}], df:Map, media}
 const _versao = new Map();
 function invalidar(productId) { _versao.set(productId, (_versao.get(productId) || 0) + 1); }
@@ -78,9 +93,11 @@ function indice(productId) {
   const v = _versao.get(productId) || 0;
   const ja = _indice.get(productId);
   if (ja && ja.versao === v) return ja;
-  const linhas = db.prepare('SELECT id, lesson_id, fonte, rotulo, ini_seg, texto FROM tutor_trechos WHERE product_id = ?').all(productId);
+  const linhas = db.prepare('SELECT id, lesson_id, fonte, rotulo, ini_seg, ordem, texto FROM tutor_trechos WHERE product_id = ? ORDER BY ordem').all(productId);
   const df = new Map();
-  const docs = linhas.map(l => {
+  const docs = linhas.map(cru => {
+    const re = rotuloEstude(cru.rotulo);
+    const l = { ...cru, rotulo: re.rotulo, est_escopo: re.escopo, est_unidade: re.unidade }; // o prefixo sai do que se lê e do que se busca
     const tf = new Map();
     const tk = tokens(l.rotulo + ' ' + l.texto);
     for (const w of tk) tf.set(w, (tf.get(w) || 0) + 1);
@@ -303,7 +320,7 @@ function resumoParaAluno(usuario, produto) {
   const aulasCad = db.prepare(`SELECT lesson_id, status FROM aula_caderno WHERE product_id = ? AND status IN (${ph})`).all(produto.id, ...vis);
   const melhor = {};
   for (const t of db.prepare('SELECT lesson_id, MAX(acertos * 100 / total) pct FROM quiz_tentativas WHERE user_id = ? AND product_id = ? GROUP BY lesson_id').all(usuario.id, produto.id)) melhor[t.lesson_id] = t.pct;
-  const temTutor = !!db.prepare('SELECT 1 FROM tutor_trechos WHERE product_id = ? LIMIT 1').get(produto.id);
+  const temTutor = temBase(produto.id);
   return {
     quiz: Object.fromEntries(aulasQuiz.map(x => [x.lesson_id, { status: x.status, melhor_pct: melhor[x.lesson_id] == null ? null : melhor[x.lesson_id] }])),
     caderno: Object.fromEntries(aulasCad.map(x => [x.lesson_id, { status: x.status }])),
@@ -397,7 +414,8 @@ function promptsParaAluno(usuario, produto) {
 // ---------------------------------------------------------------------
 // TUTOR: contexto recuperado + histórico curto da conversa
 // ---------------------------------------------------------------------
-function contextoTutor(usuario, produto, pergunta, lessonId) {
+// `estude` = { escopo, unidade }: a aula do Estude que o aluno tem aberta (quem chama já conferiu que ele a vê)
+function contextoTutor(usuario, produto, pergunta, lessonId, estude = null) {
   const acesso = ct.temAcesso(usuario.id, produto.id) || podeRevisar(usuario, produto);
   const gratis = new Set(db.prepare('SELECT id FROM lessons WHERE product_id = ? AND gratuita = 1').all(produto.id).map(x => x.id));
   // GOTEJAMENTO: a transcrição de aula que ainda não abriu sai do acervo do
@@ -407,15 +425,28 @@ function contextoTutor(usuario, produto, pergunta, lessonId) {
   const travada = (id) => !!(id && gote.aulas[id] && !gote.aulas[id].liberada);
   // quem não comprou só conversa sobre as aulas de degustação — livro e aulas pagas ficam fora
   const permitido = (d) => !travada(d.lesson_id) && (acesso || (d.lesson_id && gratis.has(d.lesson_id)));
-  let trechos = buscar(produto.id, pergunta, { n: 8, aulaAtual: s(lessonId, 40), permitido });
-  if (lessonId && !trechos.some(t => t.lesson_id === lessonId)) {
-    const daAula = trechosDaAula(produto.id, lessonId).filter(permitido);
-    trechos = daAula.slice(0, 2).concat(trechos).slice(0, 9);
+  let trechos;
+  const un = estude && estude.unidade ? { escopo: s(estude.escopo, 60), unidade: s(estude.unidade, 60) } : null;
+  if (un) {
+    // AULA DO ESTUDE aberta: primeiro os trechos DELA (até 4, pela pergunta); se a pergunta não casa com
+    // nenhum ("explique de novo"), o começo da aula; o resto do curso só completa o contexto.
+    const daUnidade = (d) => d.est_unidade === un.unidade && d.est_escopo === un.escopo;
+    let dela = buscar(produto.id, pergunta, { n: 4, permitido: (d) => daUnidade(d) && permitido(d) });
+    if (!dela.length) dela = indice(produto.id).docs.filter(d => daUnidade(d) && permitido(d)).slice(0, 2);
+    const ids = new Set(dela.map(d => d.id));
+    trechos = dela.concat(buscar(produto.id, pergunta, { n: 8, permitido: (d) => !ids.has(d.id) && permitido(d) })).slice(0, 8);
+  } else {
+    trechos = buscar(produto.id, pergunta, { n: 8, aulaAtual: s(lessonId, 40), permitido });
+    if (lessonId && !trechos.some(t => t.lesson_id === lessonId)) {
+      const daAula = trechosDaAula(produto.id, lessonId).filter(permitido).map(t => ({ ...t, rotulo: rotuloEstude(t.rotulo).rotulo }));
+      trechos = daAula.slice(0, 2).concat(trechos).slice(0, 9);
+    }
   }
   const titulos = new Map(db.prepare('SELECT id, titulo FROM lessons WHERE product_id = ?').all(produto.id).map(x => [x.id, x.titulo]));
   return trechos.map((t, i) => ({
     n: i + 1, id: t.id, fonte: t.fonte, lesson_id: t.lesson_id || '', aula: titulos.get(t.lesson_id) || '',
     rotulo: t.rotulo || (titulos.get(t.lesson_id) || t.fonte), ini_seg: t.ini_seg, texto: t.texto,
+    est_escopo: t.est_escopo || '', est_unidade: t.est_unidade || '',
   }));
 }
 function historico(userId, productId, n = 3) {
@@ -431,7 +462,7 @@ function conversas(userId, productId, n = 20) {
     .all(userId, productId, Math.min(parseInt(n, 10) || 20, 50)).reverse().map(c => ({ ...c, fontes: j.parse(c.fontes, []) }));
 }
 
-module.exports = {
+module.exports = { rotuloEstude, temBase,
   FONTES, TIPOS_QUESTAO, podeRevisar, importar, definirStatus, resumo, resumoParaAluno,
   quizParaAluno, corrigirQuiz, cadernoParaAluno, salvarResposta, cadernoCompleto, camposDoCaderno,
   promptsParaAluno, contextoTutor, historico, registrarConversa, conversas, buscar, tokens, validarQuestoes,

@@ -58,6 +58,9 @@ const PROVAS_POR_DIA = 20;
 const EDITAIS_POR_DIA = 20;              // idem para o edital
 // pedidos que não nascem de uma questão aberta: leem um PDF em lotes e têm um passo próprio de APLICAR
 const DE_ARQUIVO = ['prova', 'edital'];
+// GUARDA DO ÁUDIO (decisão do Augusto, 11/10/2026): a gravação da resposta oral fica 6 meses e depois é apagada
+// — a tela avisa antes de gravar e no resultado, e oferece o download. A transcrição e a correção ficam.
+const AUDIO_ORAL_RETENCAO_DIAS = 183;
 const ORAL_TRANSCRICAO_MAX = 8000;       // caracteres da transcrição que vão ao corretor (5 min de fala cabem com folga)
 const ENVIOS_POR_DIA = 40;               // arquivos por aluno a cada 24 h: sobra para estudar e não enche o disco
 const AVISO = 'Nota estimada por inteligência artificial a partir da rubrica da questão. É apoio de estudo: não é a correção da banca nem promessa de resultado.';
@@ -97,6 +100,8 @@ function publico(p, completo = false) {
     o.edital = { arquivo: e.nome_arquivo || '', ...editalPdf.detalheDoOrcamento(e), destino: e.destino || null,
       progresso: p.estado === 'processando' ? j.parse(p.progresso, null) : null, resumo: (r && r.resumo) || null, aplicacao: (r && r.aplicacao) || null };
   }
+  // resposta oral: até quando o áudio fica guardado, ou quando foi apagado (a lista e o resultado mostram)
+  if (p.tipo === 'oral') o.audio = audioDoPedido(p, e);
   if (completo) {
     o.entrada = p.tipo === 'prova' ? { procedencia: e.procedencia, gabarito_situacao: e.gabarito_situacao, destino: e.destino }
       : p.tipo === 'edital' ? { destino: e.destino }
@@ -105,6 +110,67 @@ function publico(p, completo = false) {
     o.contestacao = cont && { motivo: cont.motivo, em: cont.em, resposta: cont.resposta || '', resolvida_em: cont.resolvida_em || '' };
   }
   return o;
+}
+
+// ---------------------------------------------------------------------
+// ÁUDIO DA RESPOSTA ORAL — guarda de AUDIO_ORAL_RETENCAO_DIAS, download pelo dono e expurgo.
+// ---------------------------------------------------------------------
+const audioAte = (p) => new Date(Date.parse(p.criado_em) + AUDIO_ORAL_RETENCAO_DIAS * 864e5).toISOString();
+function audioDoPedido(p, e = j.parse(p.entrada, {})) {
+  const apagado = p.audio_apagado_em || '';
+  return { retencao_dias: AUDIO_ORAL_RETENCAO_DIAS, ate: audioAte(p), apagado_em: apagado,
+    disponivel: !apagado && !!(e.media_id && ct.Midia.obter(e.media_id)) };
+}
+// "Baixar o áudio": só o dono do pedido (o `meu` devolve 404 a qualquer outro), e por URL TEMPORÁRIA — a mesma
+// entrega assinada de toda mídia da Academy; não existe endereço permanente do arquivo.
+function linkDoAudio(usuario, produto, slugEscopo, id) {
+  al.abrir(usuario, produto, slugEscopo);
+  const p = meu(usuario, produto, id);
+  if (p.tipo !== 'oral') throw erro('Este pedido não tem áudio.', 404);
+  const a = audioDoPedido(p), m = a.disponivel ? ct.Midia.obter(j.parse(p.entrada, {}).media_id) : null;
+  if (!m || m.owner_user_id !== usuario.id) throw erro(a.apagado_em ? 'O áudio deste pedido foi apagado ao fim do prazo de guarda.' : 'Áudio não encontrado.', 404);
+  return { ...ct.Midia.urlTemporaria(m, usuario.id, 600), mime: m.mime, nome: 'resposta-oral-' + p.criado_em.slice(0, 10) + path.extname(m.file_path), ate: a.ate };
+}
+const _apagarNoStorage = (m) => storage.apagar(m.file_path, m.storage); // devolve false quando o armazenamento falha; nunca lança
+// EXPURGO: apaga o objeto no armazenamento e o registro de mídia dos pedidos orais que passaram do prazo, e
+// marca `audio_apagado_em` no pedido. Idempotente (pedido já marcado não volta à lista). Se o armazenamento
+// falhar, o pedido fica como estava e a rotina tenta de novo na próxima passada — nada aqui derruba o processo.
+// `apagar` existe para o teste simular o armazenamento fora do ar.
+async function expurgarAudios({ agora = new Date(), apagar = _apagarNoStorage } = {}) {
+  const corte = new Date(agora.getTime() - AUDIO_ORAL_RETENCAO_DIAS * 864e5).toISOString();
+  const r = { vencidos: 0, apagados: 0, falhas: 0 };
+  let lista = [];
+  try { lista = db.prepare("SELECT id, entrada FROM est_pedidos WHERE tipo = 'oral' AND audio_apagado_em = '' AND criado_em < ?").all(corte); } catch (_) { return r; }
+  for (const p of lista) {
+    r.vencidos++;
+    try {
+      const m = ct.Midia.obterMesmoPendente(s(j.parse(p.entrada, {}).media_id, 40));
+      if (m) {
+        if (!(await apagar(m))) { r.falhas++; continue; }
+        db.prepare('DELETE FROM media_files WHERE id = ?').run(m.id);
+      }
+      db.prepare('UPDATE est_pedidos SET audio_apagado_em = ? WHERE id = ?').run(agora.toISOString(), p.id);
+      r.apagados++;
+    } catch (_) { r.falhas++; }
+  }
+  return r;
+}
+// LGPD: a exclusão da conta apaga o áudio NA HORA, sem esperar o prazo. Síncrono no que importa (o registro de
+// mídia some e o pedido é marcado dentro da transação de quem chama); o arquivo sai em seguida — no driver local
+// isso também é imediato; no bucket, se falhar, não há mais registro que o entregue a ninguém.
+function apagarAudiosDoTitular(userId) {
+  const agora = nowISO();
+  let n = 0;
+  for (const p of db.prepare("SELECT id, entrada FROM est_pedidos WHERE user_id = ? AND tipo = 'oral' AND audio_apagado_em = ''").all(userId)) {
+    const m = ct.Midia.obterMesmoPendente(s(j.parse(p.entrada, {}).media_id, 40));
+    if (m && m.owner_user_id === userId) {
+      db.prepare('DELETE FROM media_files WHERE id = ?').run(m.id);
+      Promise.resolve(_apagarNoStorage(m)).catch(() => {});
+    }
+    db.prepare('UPDATE est_pedidos SET audio_apagado_em = ? WHERE id = ?').run(agora, p.id);
+    n++;
+  }
+  return n;
 }
 
 // O serviço existe? Só com a cobrança ligada (ou conta isenta) e com o provedor configurado.
@@ -503,7 +569,7 @@ function abertas(usuario, produto, slugEscopo) {
     ultimo_pedido: ultimos[q.id] || null,
   }));
   return { disponivel: d.disponivel, motivo_indisponivel: d.motivo, transcricao: d.transcricao, cobranca: d.cobranca,
-    limites: { oral_max_seg: ORAL_MAX_SEG, minimo_caracteres: MINIMO_TEXTO }, aviso: AVISO, questoes };
+    limites: { oral_max_seg: ORAL_MAX_SEG, minimo_caracteres: MINIMO_TEXTO, audio_retencao_dias: AUDIO_ORAL_RETENCAO_DIAS }, aviso: AVISO, questoes };
 }
 
 // ---------------------------------------------------------------------
@@ -956,6 +1022,7 @@ module.exports = {
   criar, orcamento, confirmar, obter, listar, cancelar, contestar, recarga, abertas, aoCreditar, aguardar, recuperarInterrompidos,
   enviarArquivo, iniciarArquivoGrande, confirmarArquivoGrande, painelStaff, abrirParaStaff, resolverContestacao,
   promptCorrecao, montarResultado, citacaoConferida,
+  linkDoAudio, expurgarAudios, apagarAudiosDoTitular, AUDIO_ORAL_RETENCAO_DIAS,
   opcoesDeProva, reorcar, aplicar, opcoesDeEdital, previaDoEdital,
   EDITAIS_POR_DIA, RESULTADO_DA_DISCIPLINA,
   TIPOS, ESTADOS, ABERTOS, LIMITE_TEXTO, MINIMO_TEXTO, ORAL_MAX_SEG, ORAL_MAX_BYTES, ORAL_TRANSCRICAO_MAX, FALHAS_POR_DIA, PROVAS_POR_DIA, AVISO, INTERROMPIDO,

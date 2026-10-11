@@ -64,6 +64,14 @@ function montar(app, injected = {}) {
     const tp = setInterval(ptax, 6 * 3600e3); if (tp.unref) tp.unref();
   }
   require('./storage').configurar({ segredo: jwtSecret }); // URLs assinadas (F7)
+  // EXPURGO do áudio da prova oral (guarda de 6 meses — estudo/pedidos.js): ao subir e uma vez por dia.
+  // Falha do armazenamento não derruba nada: o que não saiu hoje sai amanhã.
+  if (String(process.env.ACADEMY_ROTINAS || 'on').toLowerCase() !== 'off') {
+    const expurgo = () => require('./estudo/pedidos').expurgarAudios()
+      .then(r => { if (r.vencidos) console.log(`[academy] áudios de prova oral fora do prazo: ${r.apagados} apagado(s), ${r.falhas} falha(s)`); }).catch(() => {});
+    const te0 = setTimeout(expurgo, 20000); if (te0.unref) te0.unref();
+    const te = setInterval(expurgo, 24 * 3600e3); if (te.unref) te.unref();
+  }
   const emails = require('./emails');
   emails.configurar({ enviarEmail: injected.enviarEmail }); // e-mails transacionais (F8)
 

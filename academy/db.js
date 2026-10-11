@@ -715,6 +715,55 @@ const MIGRACOES = [
           CREATE INDEX IF NOT EXISTS idx_estesc_dono ON est_escopos (product_id, dono_user_id);
           ALTER TABLE est_pedidos ADD COLUMN progresso TEXT DEFAULT '';`,
   },
+  {
+    // PARIDADE com os outros cursos (docs\estudo\paridade-com-os-outros-cursos.md, etapa 1) — o que o aluno
+    // ESCREVE e onde ele PAROU dentro de cada aula do Estude. Três tabelas pequenas, todas dele:
+    //   est_tentativas_bloco  a tentativa escrita em cada bloco de ação (desafio, recordação, prática, aplicação)
+    //                         antes de ver a solução — antes só se conferia o tamanho e o texto era descartado
+    //   est_notas_aula        "Minhas anotações desta aula": uma nota livre por aula
+    //   est_aula_estado       quando abriu a aula por último (o "Continuar" da biblioteca) e o vídeo dela:
+    //                         posição e se assistiu (a partir de 90 %). Sem texto livre.
+    nome: 'estudo-paridade-caderno-2026-10-11',
+    sql: `CREATE TABLE IF NOT EXISTS est_tentativas_bloco (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            unidade       TEXT NOT NULL,
+            bloco         INTEGER NOT NULL,
+            texto         TEXT NOT NULL,
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, escopo_id, unidade, bloco)
+          );
+          CREATE TABLE IF NOT EXISTS est_notas_aula (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            unidade       TEXT NOT NULL,
+            texto         TEXT NOT NULL,
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, escopo_id, unidade)
+          );
+          CREATE TABLE IF NOT EXISTS est_aula_estado (
+            user_id         TEXT NOT NULL REFERENCES users(id),
+            escopo_id       TEXT NOT NULL REFERENCES est_escopos(id),
+            unidade         TEXT NOT NULL,
+            aberta_em       TEXT DEFAULT '',
+            video_pos_seg   INTEGER DEFAULT 0,
+            video_assistido INTEGER DEFAULT 0,
+            video_em        TEXT DEFAULT '',
+            PRIMARY KEY (user_id, escopo_id, unidade)
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_aula_estado_aberta ON est_aula_estado (user_id, aberta_em);`,
+  },
+  {
+    // CERTIFICADO do curso que hospeda o Estude (decisão do Augusto, 11/10/2026: "emite certificado da Villela
+    // Academy, sem validade para o MEC"): o registro guarda de que TIPO é (o texto do certificado muda) e a carga
+    // horária, que é a soma dos tempos das aulas do percurso no dia da emissão. Os outros cursos ficam como eram.
+    // ÁUDIO DA PROVA ORAL: guardado por 6 meses (AUDIO_ORAL_RETENCAO_DIAS, em estudo/pedidos.js) e apagado depois;
+    // o pedido registra quando — a transcrição e a correção continuam nele.
+    nome: 'estudo-certificado-e-audio-oral-2026-10-11',
+    sql: `ALTER TABLE certificates ADD COLUMN tipo TEXT DEFAULT '';              -- '' (curso comum) | estude
+          ALTER TABLE certificates ADD COLUMN carga_horaria_min INTEGER DEFAULT 0;
+          ALTER TABLE est_pedidos ADD COLUMN audio_apagado_em TEXT DEFAULT '';`,
+  },
 ];
 
 for (const m of MIGRACOES) {

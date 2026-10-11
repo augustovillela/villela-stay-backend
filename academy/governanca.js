@@ -77,20 +77,34 @@ const DoisFA = {
 };
 
 // ------------------------------------------------------------ certificados
+// A frase que o certificado do curso que hospeda o Estude TRAZ, visível, no certificado e na página pública de
+// verificação (decisão do Augusto, 11/10/2026). Os outros cursos mantêm a redação que já tinham.
+const FRASE_CURSO_LIVRE = 'Curso livre. Certificado emitido pela Villela Academy, sem validade para o MEC.';
 const Certificados = {
-  // emite quando o aluno tem acesso e concluiu 100% das aulas
+  // emite quando o aluno tem acesso e concluiu 100% das aulas — ou, no curso que hospeda o ESTUDE, quando
+  // cumpre o critério do percurso (estudo/aluno.js › conclusao). Em nenhum caso é certificado de "aprovação".
   emitir(usuario, productId) {
     const p = ct.Produtos.obter(productId);
     if (!p || !ct.temAcesso(usuario.id, p.id)) throw new Error('Você não tem acesso a este produto.');
-    const prog = ct.Progresso.doProduto(usuario.id, p.id);
-    if (!prog.total_aulas || prog.pct < 100) throw new Error(`Conclua todas as aulas antes de emitir (${prog.concluidas}/${prog.total_aulas}).`);
+    // Curso que hospeda o ESTUDE tem uma aula-casca e centenas de aulas no percurso: "100 % das aulas" aqui
+    // seria concluir a casca e levar o certificado do curso inteiro. Para ele a casca NÃO conta: vale o
+    // critério do percurso publicado (todas as aulas estudadas + prova completa enviada).
+    let prog, tipo = '', carga = 0;
+    if (require('./estudo/repo').Escopos.temDoCurso(p.id)) {
+      const c = require('./estudo/aluno').conclusao(usuario.id, p.id);
+      if (!c.cumprido) { const e = new Error(c.falta_txt); e.status = 409; e.extra = { conclusao: c }; throw e; }
+      prog = { total_aulas: c.total_aulas }; tipo = 'estude'; carga = c.carga_horaria_min;
+    } else {
+      prog = ct.Progresso.doProduto(usuario.id, p.id);
+      if (!prog.total_aulas || prog.pct < 100) throw new Error(`Conclua todas as aulas antes de emitir (${prog.concluidas}/${prog.total_aulas}).`);
+    }
     const existente = db.prepare('SELECT * FROM certificates WHERE user_id = ? AND product_id = ?').get(usuario.id, p.id);
     if (existente) return existente;
     const produtor = db.prepare('SELECT nome_publico FROM producer_profiles WHERE user_id = ?').get(p.producer_id);
     const codigo = 'VA-' + crypto.randomBytes(6).toString('hex').toUpperCase();
-    db.prepare(`INSERT INTO certificates (id, user_id, product_id, aluno_nome, produto_titulo, produtor_nome, total_aulas, emitido_em)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(codigo, usuario.id, p.id, usuario.nome, p.titulo, (produtor && produtor.nome_publico) || '', prog.total_aulas, nowISO());
+    db.prepare(`INSERT INTO certificates (id, user_id, product_id, aluno_nome, produto_titulo, produtor_nome, total_aulas, emitido_em, tipo, carga_horaria_min)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(codigo, usuario.id, p.id, usuario.nome, p.titulo, (produtor && produtor.nome_publico) || '', prog.total_aulas, nowISO(), tipo, carga);
     repo.Auditoria.registrar({ quem: usuario.id, acao: 'certificado.emitir', entidade: 'certificates', entidade_id: codigo, detalhe: p.titulo });
     return db.prepare('SELECT * FROM certificates WHERE id = ?').get(codigo);
   },
@@ -175,4 +189,4 @@ const Relatorios = {
   },
 };
 
-module.exports = { DoisFA, Certificados, Tickets, Relatorios, totpAgora, totpConfere, base32Encode };
+module.exports = { DoisFA, Certificados, FRASE_CURSO_LIVRE, Tickets, Relatorios, totpAgora, totpConfere, base32Encode };

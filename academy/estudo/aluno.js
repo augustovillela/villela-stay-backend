@@ -179,6 +179,8 @@ function painel(usuario, produto, slugEscopo) {
   const conta = (f) => folhas.filter(f).length;
   const fila = filaDeRevisao(usuario, escopo);
   const evs = evidencias(usuario.id, escopo.id);
+  // por aula: estudada (a régua única de `aulaEstudada`) e videoaula assistida — a lista de aulas mostra
+  const comResposta = new Set(evs.map(e => e.competencia_codigo)), aulas = estadoDasAulas(usuario.id, escopo.id);
   // RETA FINAL (ADR-0007): em que fase o aluno está em relação à prova (a data é a do edital; sem ela, a do plano dele)
   const pl = db.prepare('SELECT entrada, plano FROM est_planos WHERE user_id = ? AND escopo_id = ?').get(usuario.id, escopo.id);
   const alvo = escopo.data_alvo || (pl ? j.parse(pl.entrada, {}).data_alvo || '' : '');
@@ -206,7 +208,10 @@ function painel(usuario, produto, slugEscopo) {
     unidades: R.unidades(escopo.id, c.vis).map(u => ({ codigo: u.codigo, titulo: u.titulo, tempo_min: u.tempo_min, competencias: u.competencias, status: u.status,
       mapa: !!(u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa),
       // quais aulas animadas esta aula tem (fluxo, caso, erros) — o roteiro só vem quando o aluno abre
-      animada: Object.keys(u.animacoes || {}), video: !!u.video_media_id })),
+      animada: Object.keys(u.animacoes || {}), video: !!u.video_media_id,
+      estudada: aulaEstudada(u, comResposta), video_assistido: !!(aulas.get(u.codigo) || {}).video_assistido })),
+    // o que falta para o certificado do curso (percurso particular não emite: vem `null`)
+    conclusao: c.particular || escopo.status !== 'publicado' ? null : conclusao(usuario.id, produto.id),
     regra_pontuacao: escopo.regra_pontuacao,
     revisoes: { hoje: fila.hoje.length, adiadas: fila.adiadas },
     desempenho: {
@@ -232,10 +237,14 @@ function animacoes(usuario, produto, slugEscopo, codigo) {
   if (!u) throw erro('Unidade não encontrada.', 404);
   return { codigo: u.codigo, titulo: u.titulo, ...(u.animacoes || {}) };
 }
-function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100' } = {}) {
+// `aberta`: a tela da aula avisa que o aluno ABRIU a aula (o mapa mental e a leitura também pedem a unidade,
+// e não contam) — é o que o "Continuar" da biblioteca usa.
+function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100', aberta = false } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
   const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(codigo));
   if (!u) throw erro('Unidade não encontrada.', 404);
+  if (aberta) tocarAula(usuario.id, c.escopo.id, u.codigo, { aberta_em: nowISO() });
+  const st = estadoDasAulas(usuario.id, c.escopo.id).get(u.codigo) || {};
   const atual = (k) => u.niveis[k] && u.niveis[k].derivado_de_versao === u.versao;
   const niveis = ['100', ...Object.keys(u.niveis)].map(k => ({ nivel: Number(k), disponivel: k === '100' || atual(k), desatualizado: k !== '100' && !!u.niveis[k] && !atual(k) }))
     .sort((a, b) => b.nivel - a.nivel); // do completo ao esqueleto: 100 · 50 · 25 · 10
@@ -256,7 +265,9 @@ function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100' } = {}) {
   // o tempo acompanha o nível: só a leitura encolhe (mesmo fator do plano)
   return { codigo: u.codigo, titulo: u.titulo, competencias: u.competencias, itens: u.itens, tempo_min: Math.round(u.tempo_min * plano.fatorNivel(usado)), versao: u.versao, status: u.status, fontes: u.fontes, midias: u.midias,
     // a videoaula entra no INÍCIO da aula; a entrega do arquivo passa por /academy/api/media/:id/link
-    video: u.video_media_id ? { media_id: u.video_media_id, duracao_seg: u.video_duracao_seg || 0 } : null,
+    video: u.video_media_id ? { media_id: u.video_media_id, duracao_seg: u.video_duracao_seg || 0, posicao_seg: st.video_pos_seg || 0, assistido: !!st.video_assistido } : null,
+    // o que o aluno já escreveu aqui: a tentativa de cada bloco e a nota livre da aula (voltam preenchidas)
+    ...escritoNaAula(usuario.id, c.escopo.id, u.codigo),
     animada: Object.keys(u.animacoes || {}), // a aula interativa (fluxo, caso, erros) abre de dentro da aula
     // os destaques do autor são trechos literais do nível 100: nos resumos vale o negrito automático da norma
     destaques: usado === 100 ? (u.destaques || []) : [],
@@ -390,6 +401,8 @@ function solucaoDoBloco(usuario, produto, slugEscopo, codigo, n, tentativa) {
   if (!b || !b.solucao) throw erro('Bloco sem solução.', 404);
   // tentar antes de ver: a solução só sai contra uma tentativa escrita
   if (s(tentativa, 8000).length < 15) throw erro('Escreva a sua tentativa antes de ver a solução.');
+  // …e fica guardada no caderno do aluno (antes só se conferia o tamanho e o texto era descartado)
+  gravarTentativa(usuario.id, c.escopo.id, u.codigo, Number(n), tentativa);
   return { solucao: b.solucao, pistas: b.pistas };
 }
 
@@ -738,7 +751,179 @@ function obterPlano(usuario, produto, slugEscopo) {
     plano: { ...p, sessoes_total: sessoes.length, hoje: sessoes.find(x => x.data === hoje) || null, proximas: sessoes.filter(x => x.data >= hoje).slice(0, 14) } };
 }
 
+// ---------------------------------------------------------------------
+// PARIDADE com os outros cursos (docs\estudo\paridade-com-os-outros-cursos.md) — o que os cursos comuns
+// têm por `lesson_id` e o Estude passa a ter por AULA do percurso: o quiz dentro da aula, o caderno (a
+// tentativa de cada bloco, a nota livre da aula), o vídeo que lembra onde parou, o "continuar" da biblioteca
+// e a conclusão do curso (certificado). Nada aqui corrige questão: o quiz responde pelos caminhos de sempre.
+// ---------------------------------------------------------------------
+// AULA ESTUDADA — um critério só, o do painel ("Estudados por você"): a aula conta como estudada quando o
+// aluno já respondeu algo (questão ou card) de alguma competência dela. Abrir a aula ou ver o vídeo não conta.
+// A biblioteca, a lista de aulas e o certificado usam ESTA função — não criar outra régua ao lado.
+const competenciasComResposta = (userId, escopoId) => new Set(db.prepare('SELECT DISTINCT competencia_codigo c FROM est_evidencias WHERE user_id = ? AND escopo_id = ?').all(userId, escopoId).map(r => r.c));
+const aulaEstudada = (u, comResposta) => u.competencias.some(k => comResposta.has(k));
+const estadoDasAulas = (userId, escopoId) => new Map(db.prepare('SELECT * FROM est_aula_estado WHERE user_id = ? AND escopo_id = ?').all(userId, escopoId).map(r => [r.unidade, r]));
+function unidadeDoAluno(usuario, produto, slugEscopo, codigo) {
+  const c = abrir(usuario, produto, slugEscopo);
+  const u = R.unidades(c.escopo.id, c.vis).find(x => x.codigo === R.slug(codigo));
+  if (!u) throw erro('Aula não encontrada.', 404);
+  return { c, u };
+}
+function tocarAula(userId, escopoId, unidade, campos = {}) {
+  db.prepare(`INSERT INTO est_aula_estado (user_id, escopo_id, unidade) VALUES (?, ?, ?) ON CONFLICT (user_id, escopo_id, unidade) DO NOTHING`).run(userId, escopoId, unidade);
+  for (const [k, v] of Object.entries(campos)) db.prepare(`UPDATE est_aula_estado SET ${k} = ? WHERE user_id = ? AND escopo_id = ? AND unidade = ?`).run(v, userId, escopoId, unidade);
+}
+
+// ---- CADERNO: a tentativa de cada bloco e a nota livre da aula ----
+const BLOCOS_COM_TENTATIVA = ['desafio', 'recordacao', 'pratica', 'aplicacao']; // onde a tela pede "escreva antes de ver"
+const MAX_TENTATIVA = 8000, MAX_NOTA_AULA = 6000;
+function gravarTentativa(userId, escopoId, unidade, bloco, texto) {
+  const t = s(texto, MAX_TENTATIVA);
+  if (!t) { db.prepare('DELETE FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? AND unidade = ? AND bloco = ?').run(userId, escopoId, unidade, bloco); return { texto: '', atualizado_em: '' }; }
+  const agora = nowISO();
+  db.prepare(`INSERT INTO est_tentativas_bloco (user_id, escopo_id, unidade, bloco, texto, atualizado_em) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT (user_id, escopo_id, unidade, bloco) DO UPDATE SET texto = excluded.texto, atualizado_em = excluded.atualizado_em`).run(userId, escopoId, unidade, bloco, t, agora);
+  return { texto: t, atualizado_em: agora };
+}
+// salva sozinha enquanto o aluno escreve (a tela chama com atraso); bloco que não pede tentativa é recusado
+function guardarTentativa(usuario, produto, slugEscopo, codigo, n, texto) {
+  const { c, u } = unidadeDoAluno(usuario, produto, slugEscopo, codigo);
+  const k = Number(n), b = Number.isInteger(k) ? u.blocos[k] : null;
+  if (!b || !BLOCOS_COM_TENTATIVA.includes(b.tipo)) throw erro('Este trecho da aula não pede tentativa.', 404);
+  return { ok: true, ...gravarTentativa(usuario.id, c.escopo.id, u.codigo, k, texto) };
+}
+function anotarAula(usuario, produto, slugEscopo, codigo, texto) {
+  const { c, u } = unidadeDoAluno(usuario, produto, slugEscopo, codigo);
+  const t = s(texto, MAX_NOTA_AULA), agora = nowISO();
+  if (!t) db.prepare('DELETE FROM est_notas_aula WHERE user_id = ? AND escopo_id = ? AND unidade = ?').run(usuario.id, c.escopo.id, u.codigo);
+  else db.prepare(`INSERT INTO est_notas_aula (user_id, escopo_id, unidade, texto, atualizado_em) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT (user_id, escopo_id, unidade) DO UPDATE SET texto = excluded.texto, atualizado_em = excluded.atualizado_em`).run(usuario.id, c.escopo.id, u.codigo, t, agora);
+  return { ok: true, texto: t, atualizado_em: t ? agora : '' };
+}
+// o que o aluno já escreveu NESTA aula — vai junto com a aula, para os campos voltarem preenchidos
+function escritoNaAula(userId, escopoId, unidade) {
+  const tentativas = {};
+  for (const r of db.prepare('SELECT bloco, texto, atualizado_em FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? AND unidade = ?').all(userId, escopoId, unidade)) tentativas[r.bloco] = { texto: r.texto, atualizado_em: r.atualizado_em };
+  const nota = db.prepare('SELECT texto, atualizado_em FROM est_notas_aula WHERE user_id = ? AND escopo_id = ? AND unidade = ?').get(userId, escopoId, unidade);
+  return { tentativas, nota: nota || { texto: '', atualizado_em: '' } };
+}
+
+// ---- MEU CADERNO: tudo o que o aluno escreveu no percurso, por disciplina e aula ----
+// Tentativas, nota da aula, marcações COM nota e anotações do caderno de erros. É dele: a consulta é sempre
+// por `user_id`, e o percurso passa pela mesma porta (`abrir`) do resto. A busca e a impressão são da tela.
+function caderno(usuario, produto, slugEscopo) {
+  const c = abrir(usuario, produto, slugEscopo);
+  const uid = usuario.id, eid = c.escopo.id;
+  const { grupos } = aulasPorDisciplina(c);
+  const por = (sql) => db.prepare(sql).all(uid, eid);
+  const agrupar = (linhas, chave = 'unidade') => { const m = new Map(); for (const l of linhas) { if (!m.has(l[chave])) m.set(l[chave], []); m.get(l[chave]).push(l); } return m; };
+  const tent = agrupar(por('SELECT unidade, bloco, texto, atualizado_em FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? ORDER BY bloco'));
+  const notas = new Map(por('SELECT unidade, texto, atualizado_em FROM est_notas_aula WHERE user_id = ? AND escopo_id = ?').map(n => [n.unidade, n]));
+  const marcas = agrupar(por("SELECT unidade, bloco, inicio, texto, cor, nota, criado_em FROM est_marcacoes WHERE user_id = ? AND escopo_id = ? AND nota != '' ORDER BY bloco, inicio"));
+  // a anotação do caderno de erros é por QUESTÃO: fica na primeira aula que cobre uma competência dela
+  const todas = grupos.flatMap(g => g.aulas);
+  const anot = new Map(), avulsas = [];
+  for (const a of por('SELECT questao_id, texto, atualizado_em FROM est_anotacoes WHERE user_id = ? AND escopo_id = ? ORDER BY atualizado_em')) {
+    const q = R.Questoes.obter(a.questao_id);
+    const comps = q ? R.competenciasDaQuestao(q.id, eid) : [];
+    const u = todas.find(x => x.competencias.some(k => comps.includes(k)));
+    const item = { questao: a.questao_id, enunciado: q ? s(q.enunciado, 400) : '(questão retirada do banco)', texto: a.texto, em: a.atualizado_em };
+    if (u) { if (!anot.has(u.codigo)) anot.set(u.codigo, []); anot.get(u.codigo).push(item); } else avulsas.push(item);
+  }
+  const total = { tentativas: 0, notas: 0, marcacoes: 0, anotacoes: avulsas.length };
+  const disciplinas = grupos.map(g => ({ codigo: g.codigo || '_metodo', nome: g.nome, aulas: g.aulas.map(u => {
+    const t = (tent.get(u.codigo) || []).map(x => { const b = u.blocos[x.bloco] || {}; return { bloco: x.bloco, tipo: b.tipo || '', titulo: b.titulo || '', enunciado: s(b.texto, 600), texto: x.texto, em: x.atualizado_em }; });
+    const n = notas.get(u.codigo), m = (marcas.get(u.codigo) || []).map(x => ({ texto: x.texto, nota: x.nota, cor: x.cor, em: x.criado_em })), an = anot.get(u.codigo) || [];
+    total.tentativas += t.length; total.notas += n ? 1 : 0; total.marcacoes += m.length; total.anotacoes += an.length;
+    return { codigo: u.codigo, titulo: u.titulo, nota: n ? { texto: n.texto, em: n.atualizado_em } : null, tentativas: t, marcacoes: m, anotacoes: an };
+  }).filter(a => a.nota || a.tentativas.length || a.marcacoes.length || a.anotacoes.length) })).filter(d => d.aulas.length);
+  return { escopo: c.escopo.titulo, curso: produto.titulo, aluno: usuario.nome || '', total, disciplinas, avulsas };
+}
+
+// ---- QUIZ DESTA AULA: até 5 questões das competências e dos itens da aula ----
+// Só ESCOLHE as questões: quem corrige, conta pista, explica e registra a evidência são `pedirPista` e
+// `responder`, pelas rotas de sempre. Inédita primeiro, já vista depois — a mesma ordem do Praticar.
+const QUIZ_DA_AULA = 5;
+function quizDaAula(usuario, produto, slugEscopo, codigo) {
+  const { c, u } = unidadeDoAluno(usuario, produto, slugEscopo, codigo);
+  const comps = new Set(u.competencias), itens = new Set(u.itens);
+  const doItem = itens.size ? new Set(db.prepare("SELECT questao_id q, codigo FROM est_questao_vinculos WHERE escopo_id = ? AND alvo = 'item'").all(c.escopo.id).filter(v => itens.has(v.codigo)).map(v => v.q)) : new Set();
+  const elegiveis = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes })
+    .filter(q => q.corrigivel && q.uso !== 'reservada')
+    .filter(q => doItem.has(q.id) || R.competenciasDaQuestao(q.id, c.escopo.id).some(k => comps.has(k)));
+  const vistas = new Set(elegiveis.filter(q => jaViu(usuario.id, q.id)).map(q => q.id));
+  const ordenadas = [...elegiveis.filter(q => !vistas.has(q.id)), ...elegiveis.filter(q => vistas.has(q.id))];
+  return { total: elegiveis.length, ineditas: elegiveis.length - vistas.size, limite: QUIZ_DA_AULA, competencia: u.competencias[0] || '',
+    questoes: ordenadas.slice(0, QUIZ_DA_AULA).map(q => ({ ...banco.paraAluno(q, usuario.id), ja_vista: vistas.has(q.id) })) };
+}
+
+// ---- VÍDEO DA AULA: lembra a posição e registra "assistiu" (a partir de 90 %) ----
+const VIDEO_ASSISTIDO_PCT = 90;
+function registrarVideo(usuario, produto, slugEscopo, codigo, { posicao_seg, duracao_seg } = {}) {
+  const { c, u } = unidadeDoAluno(usuario, produto, slugEscopo, codigo);
+  if (!u.video_media_id) throw erro('Esta aula não tem videoaula.', 404);
+  // a duração que vale é a do cadastro do vídeo; a do navegador só serve quando o cadastro não tem
+  const dur = Number(u.video_duracao_seg) || Math.max(0, Math.round(Number(duracao_seg) || 0));
+  let pos = Math.max(0, Math.round(Number(posicao_seg) || 0));
+  if (dur) pos = Math.min(pos, dur);
+  const assistiu = !!dur && pos * 100 >= dur * VIDEO_ASSISTIDO_PCT;
+  const antes = estadoDasAulas(usuario.id, c.escopo.id).get(u.codigo);
+  // chegou ao fim: da próxima vez começa do início; "assistido" não volta atrás
+  tocarAula(usuario.id, c.escopo.id, u.codigo, { video_pos_seg: dur && pos >= dur - 15 ? 0 : pos, video_assistido: assistiu || (antes && antes.video_assistido) ? 1 : 0, video_em: nowISO() });
+  const st = estadoDasAulas(usuario.id, c.escopo.id).get(u.codigo);
+  return { ok: true, posicao_seg: st.video_pos_seg, assistido: !!st.video_assistido };
+}
+
+// ---- CONCLUSÃO DO CURSO (certificado) e PROGRESSO da biblioteca ----
+// Critério SUGERIDO, a confirmar pelo Augusto — por isso em constantes: todas as aulas publicadas do percurso
+// do curso estudadas (pela régua de `aulaEstudada`) e ao menos uma prova completa ENVIADA. A aula-casca do
+// curso não entra em conta nenhuma. Percurso particular do aluno não emite certificado nem soma aqui.
+const CERT_PCT_AULAS_ESTUDADAS = 100;
+const CERT_PROVAS_ENVIADAS = 1;
+const CERT_MODOS_DE_PROVA = ['simulado'];     // "Treino" é prática com relógio; quem prova o percurso é o simulado
+function percursosDoCurso(productId) { return R.Escopos.doProduto(productId, ['publicado']); }
+function conclusao(userId, productId) {
+  const escopos = percursosDoCurso(productId);
+  let total = 0, estudadas = 0, carga = 0, provas = 0, semMeio = 0;
+  for (const e of escopos) {
+    const comResp = competenciasComResposta(userId, e.id), praticavel = R.competenciasComPratica(e.id, ['disponivel']);
+    const comCard = new Set(R.cards(e.id, ['publicado']).map(k => k.competencia_codigo));
+    for (const u of R.unidades(e.id, ['publicado'])) {
+      total++; carga += u.tempo_min || 0;
+      if (aulaEstudada(u, comResp)) estudadas++;
+      else if (!u.competencias.some(k => praticavel.has(k) || comCard.has(k))) semMeio++; // aula sem questão nem card: hoje o aluno não tem como estudá-la
+    }
+    provas += db.prepare(`SELECT COUNT(*) n FROM est_tentativas WHERE user_id = ? AND escopo_id = ? AND estado = 'enviada' AND modo IN (${CERT_MODOS_DE_PROVA.map(() => '?').join(',')})`).get(userId, e.id, ...CERT_MODOS_DE_PROVA).n;
+  }
+  const exigidas = Math.ceil(total * CERT_PCT_AULAS_ESTUDADAS / 100);
+  const faltamAulas = Math.max(0, exigidas - estudadas), faltamProvas = Math.max(0, CERT_PROVAS_ENVIADAS - provas);
+  const cumprido = total > 0 && !faltamAulas && !faltamProvas;
+  const partes = [faltamAulas ? `${faltamAulas} aula${faltamAulas > 1 ? 's' : ''}` : '', faltamProvas ? `${faltamProvas} simulado${faltamProvas > 1 ? 's' : ''}` : ''].filter(Boolean);
+  const cert = db.prepare('SELECT id FROM certificates WHERE user_id = ? AND product_id = ?').get(userId, productId);
+  return { total_aulas: total, estudadas, faltam_aulas: faltamAulas, provas_enviadas: provas, faltam_provas: faltamProvas, aulas_sem_questao: semMeio, carga_horaria_min: carga, cumprido,
+    certificado: cert ? cert.id : '',
+    falta_txt: !total ? 'Este curso ainda não emite certificado: o percurso dele ainda não foi publicado.'
+      : cumprido ? '' : `Para emitir o certificado falta${partes.length > 1 || faltamAulas > 1 || faltamProvas > 1 ? 'm' : ''} ${partes.join(' e ')}: estude todas as aulas do percurso (responda ao menos uma questão ou um card de cada) e envie um simulado completo na aba Prova.` };
+}
+// O cartão da biblioteca: para curso com percurso publicado, "aulas estudadas / aulas do percurso" no lugar de
+// "0 de 1 conteúdos" (a casca), e a última aula aberta para o botão Continuar. `null` = curso comum.
+function progressoDoCurso(userId, productId) {
+  const escopos = percursosDoCurso(productId);
+  if (!escopos.length) return null;
+  let total = 0, estudadas = 0, ultima = null;
+  for (const e of escopos) {
+    const comResp = competenciasComResposta(userId, e.id), uns = R.unidades(e.id, ['publicado']);
+    total += uns.length; estudadas += uns.filter(u => aulaEstudada(u, comResp)).length;
+    const st = db.prepare("SELECT unidade, aberta_em FROM est_aula_estado WHERE user_id = ? AND escopo_id = ? AND aberta_em != '' ORDER BY aberta_em DESC").all(userId, e.id)
+      .map(x => ({ ...x, u: uns.find(u => u.codigo === x.unidade) })).find(x => x.u); // aula despublicada não é para onde voltar
+    if (st && (!ultima || st.aberta_em > ultima.aberta_em)) ultima = { slug: e.slug, unidade: st.unidade, titulo: st.u.titulo, aberta_em: st.aberta_em };
+  }
+  return { progresso: { total_aulas: total, concluidas: estudadas, pct: total ? Math.round(100 * estudadas / total) : 0, estude: true }, continuar: ultima, slug: escopos[0].slug };
+}
+
 module.exports = {
+  guardarTentativa, anotarAula, caderno, quizDaAula, registrarVideo, conclusao, progressoDoCurso, aulaEstudada,
+  QUIZ_DA_AULA, VIDEO_ASSISTIDO_PCT, CERT_PCT_AULAS_ESTUDADAS, CERT_PROVAS_ENVIADAS, CERT_MODOS_DE_PROVA,
   contexto, abrir, escopos, painel, unidade, animacoes, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, bancoDeQuestoes, pedirPista, responder, erros, anotar,
   cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,

@@ -551,7 +551,7 @@ async function rodar({ t, req, EST, impId }) {
       const ok = await req('POST', `/staff/api/academy/estudo/video/${ini.json.media_id}/confirmar`, V({ duracao_seg: 458 }));
       assert.equal(ok.st, 200, ok.texto);
       const un = (await req('GET', `${esc}/unidades/${encodeURIComponent(cod)}`, { jar: 'olga' })).json;
-      assert.deepEqual(un.video, { media_id: ini.json.media_id, duracao_seg: 458 });
+      assert.deepEqual(un.video, { media_id: ini.json.media_id, duracao_seg: 458, posicao_seg: 0, assistido: false });
       assert.equal((await req('GET', `${esc}/painel`, { jar: 'olga' })).json.unidades.find(x => x.codigo === cod).video, true);
       // a PORTA: aluna matriculada recebe o link; quem não tem o curso leva 404 mesmo sabendo o id
       assert.equal((await req('GET', `/academy/api/media/${ini.json.media_id}/link`, { jar: 'olga' })).st, 200);

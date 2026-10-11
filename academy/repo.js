@@ -119,7 +119,12 @@ const Usuarios = {
       Sessoes.revogarDoUsuario(id);
       // o que o aluno ESCREVEU (caderno, tutor, missões, desafio) é dele: sai inteiro.
       // Notas e tentativas ficam (sem texto livre), como as vendas.
-      for (const [tabela] of TEXTOS_DO_ALUNO) { try { db.prepare(`DELETE FROM ${tabela} WHERE user_id = ?`).run(id); } catch (_) {} }
+      // (no Estude: marcações, anotações, tentativas e notas de aula saem; o pedido pago FICA — é registro
+      // financeiro — mas sem o que o aluno escreveu ou falou: resposta, transcrição, correção e contestação)
+      // o ÁUDIO da prova oral sai na hora, sem esperar o prazo de guarda — e ANTES de limpar a entrada do pedido,
+      // que é onde está o endereço dele (require tardio: pedidos → carteira → repo)
+      try { require('./estudo/pedidos').apagarAudiosDoTitular(id); } catch (_) {}
+      for (const [tabela, , apagar] of TEXTOS_DO_ALUNO) { try { db.prepare(apagar || `DELETE FROM ${tabela} WHERE user_id = ?`).run(id); } catch (_) {} }
       require('./ecossistema').apagarDoTitular(id); // comunidade e lives: o texto sai, o fio da conversa fica
       return true;
     });
@@ -132,6 +137,15 @@ const TEXTOS_DO_ALUNO = [
   ['tutor_conversas', 'SELECT product_id, lesson_id, pergunta, resposta, criado_em FROM tutor_conversas WHERE user_id = ?'],
   ['lab_entregas', 'SELECT product_id, missao_id, respostas, entregue_em, feedback, atualizado_em FROM lab_entregas WHERE user_id = ?'],
   ['desafio_checkins', 'SELECT product_id, dia, nota, criado_em FROM desafio_checkins WHERE user_id = ?'],
+  // ESTUDE (academy\estudo): o grifo com a nota, a anotação do caderno de erros, a tentativa escrita em cada
+  // bloco da aula, a nota livre da aula e os textos dos pedidos pagos. O terceiro campo, quando existe, é
+  // como APAGAR sem apagar a linha (o pedido tem valor cobrado: a linha fica, o texto sai).
+  ['est_marcacoes', 'SELECT escopo_id, unidade, texto, cor, nota, criado_em FROM est_marcacoes WHERE user_id = ?'],
+  ['est_anotacoes', 'SELECT escopo_id, questao_id, texto, atualizado_em FROM est_anotacoes WHERE user_id = ?'],
+  ['est_tentativas_bloco', 'SELECT escopo_id, unidade, bloco, texto, atualizado_em FROM est_tentativas_bloco WHERE user_id = ?'],
+  ['est_notas_aula', 'SELECT escopo_id, unidade, texto, atualizado_em FROM est_notas_aula WHERE user_id = ?'],
+  ['est_pedidos', 'SELECT product_id, tipo, estado, questao_id, entrada, resultado, contestacao, criado_em FROM est_pedidos WHERE user_id = ?',
+    "UPDATE est_pedidos SET entrada = '{}', resultado = '', contestacao = '', erro = '' WHERE user_id = ?"],
 ];
 function textosDoAluno(id) {
   const out = {};

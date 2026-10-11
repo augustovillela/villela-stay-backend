@@ -659,7 +659,7 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal(tela.split("api('POST', base() + '/pedidos/' + id + '/confirmar', null, o.orcamento_milesimos || 1)").length, 3, 'prova e edital: o aceite que vai ao servidor é o do valor que a tela mostrou');
     assert.ok(/if \(n >= CONSULTAS_PROVA\)/.test(tela) && tela.split('E.aoSair = parar;').length === 3, 'a consulta periódica para sozinha e ao sair da tela');
     assert.ok(/function mudou\(\) \{\s*\['es-ed-conf', 'es-ed-pagar-bt'\]\.forEach\(function \(k\) \{ if \(el\(k\)\) el\(k\)\.disabled = true; \}\);/.test(tela), 'mexeu nas páginas: só confirma depois de recalcular');
-    const i = tela.indexOf('// ================= LER EDITAL EM PDF'), f = tela.indexOf('return { cartao: cartao, abrir: abrir }');
+    const i = tela.indexOf('// ================= LER EDITAL EM PDF'), f = tela.indexOf('return { cartao: cartao, abrir: abrir');
     assert.ok(i > 0 && f > i && !/localStorage|sessionStorage|regra_pontuacao/.test(tela.slice(i, f)), 'o edital do usuário não mora no navegador — e a tela não manda regra de pontuação');
     // quem tem o percurso do curso + um particular continua caindo direto no do curso (e troca pelo alto do Estude)
     const aluno = fs.readFileSync(path.join(__dirname, '..', 'app-aluno.js'), 'utf8');

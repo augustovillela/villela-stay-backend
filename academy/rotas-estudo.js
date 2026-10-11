@@ -42,7 +42,15 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.post(`${base}/marcacoes`, ...AL, h((req, res) => { res.json(al.marcar(...a(req), b(req))); }));
   app.put(`${base}/marcacoes/:id`, ...AL, h((req, res) => { res.json(al.editarMarcacao(...a(req), req.params.id, b(req))); }));
   app.delete(`${base}/marcacoes/:id`, ...AL, h((req, res) => { res.json(al.removerMarcacao(...a(req), req.params.id)); }));
-  app.get(`${base}/unidades/:unidade`, ...AL, h((req, res) => { semCache(res); res.json(al.unidade(...a(req), req.params.unidade, { nivel: String(req.query.nivel || '100') })); }));
+  app.get(`${base}/unidades/:unidade`, ...AL, h((req, res) => { semCache(res); res.json(al.unidade(...a(req), req.params.unidade, { nivel: String(req.query.nivel || '100'), aberta: req.query.aberta === '1' })); }));
+  // ---- paridade com os outros cursos: quiz dentro da aula, caderno (tentativa e nota), vídeo que lembra onde parou ----
+  // o quiz só ESCOLHE as questões da aula; responder e pedir pista são as rotas de /questoes, mais abaixo
+  app.get(`${base}/unidades/:unidade/quiz`, ...AL, h((req, res) => { semCache(res); res.json(al.quizDaAula(...a(req), req.params.unidade)); }));
+  app.put(`${base}/unidades/:unidade/blocos/:n/tentativa`, ...AL, h((req, res) => { res.json(al.guardarTentativa(...a(req), req.params.unidade, req.params.n, b(req).texto)); }));
+  app.put(`${base}/unidades/:unidade/nota`, ...AL, h((req, res) => { res.json(al.anotarAula(...a(req), req.params.unidade, b(req).texto)); }));
+  app.put(`${base}/unidades/:unidade/video`, ...AL, h((req, res) => { res.json(al.registrarVideo(...a(req), req.params.unidade, b(req))); }));
+  // "Meu caderno": tentativas, notas de aula, marcações com nota e anotações do caderno de erros — só as de quem pede
+  app.get(`${base}/caderno`, ...AL, h((req, res) => { semCache(res); res.json(al.caderno(...a(req))); }));
   app.get(`${base}/unidades/:unidade/animacoes`, ...AL, h((req, res) => { semCache(res); res.json(al.animacoes(...a(req), req.params.unidade)); }));
   app.post(`${base}/unidades/:unidade/blocos/:n/solucao`, ...AL, h((req, res) => { res.json(al.solucaoDoBloco(...a(req), req.params.unidade, req.params.n, b(req).tentativa)); }));
 
@@ -86,6 +94,8 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.get(`${base}/pedidos/:pedido`, ...AL, h((req, res) => { semCache(res); res.json(ped.obter(...a(req), req.params.pedido)); }));
   app.post(`${base}/pedidos/:pedido/confirmar`, ...AL, h((req, res) => { res.json(ped.confirmar(...a(req), req.params.pedido)); }));
   app.post(`${base}/pedidos/:pedido/cancelar`, ...AL, h((req, res) => { res.json(ped.cancelar(...a(req), req.params.pedido)); }));
+  // o áudio da resposta oral: só o dono do pedido, por URL temporária (guardado por 6 meses; depois, 404)
+  app.get(`${base}/pedidos/:pedido/audio`, ...AL, h((req, res) => { semCache(res); res.json({ ok: true, ...ped.linkDoAudio(...a(req), req.params.pedido) }); }));
   app.post(`${base}/pedidos/:pedido/contestar`, ...AL, h((req, res) => { res.json(ped.contestar(...a(req), req.params.pedido, b(req).motivo)); }));
   // importar prova em PDF: o que a tela precisa antes de pedir; outra faixa de páginas (reorça); e APLICAR
   // ao percurso as questões escolhidas — passo próprio, sem custo
