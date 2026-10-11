@@ -242,6 +242,8 @@ function unidade(usuario, produto, slugEscopo, codigo, { nivel = '100' } = {}) {
     // a videoaula entra no INÍCIO da aula; a entrega do arquivo passa por /academy/api/media/:id/link
     video: u.video_media_id ? { media_id: u.video_media_id, duracao_seg: u.video_duracao_seg || 0 } : null,
     animada: Object.keys(u.animacoes || {}), // a aula interativa (fluxo, caso, erros) abre de dentro da aula
+    // os destaques do autor são trechos literais do nível 100: nos resumos vale o negrito automático da norma
+    destaques: usado === 100 ? (u.destaques || []) : [],
     nivel: usado, nivel_motivo: motivo, niveis, vespera, blocos };
 }
 // ---------------------------------------------------------------------

@@ -323,3 +323,9 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-un-barra .al-rotulo{margin:0 6px 0 0}
 .es-un-txt{margin:4px 0 6px}
 .es-aula-tem{margin-right:8px}
+
+/* texto da aula com a tipografia da leitura: subtítulo em destaque, negrito no que importa */
+.es-un-ler{font:400 1.06rem/1.72 Georgia,'Times New Roman',serif;color:#1a1f2e;max-width:74ch}
+.es-un-ler p{margin:0 0 11px;font-weight:400}
+.es-un-ler b{font-weight:700;color:#12203b}
+.es-un-ler p.es-ler-st{font:700 1.14rem/1.35 'Lora',Georgia,serif;color:var(--al-navy);margin:22px 0 8px}

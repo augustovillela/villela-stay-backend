@@ -378,7 +378,7 @@
       marg: { estreita: ['Estreitas', 860], normal: ['Normais', 720], larga: ['Largas', 580] }
     };
     var TEMAS_KD = ['claro', 'sepia', 'escuro'], TAM_KD = [15, 16, 17, 18, 19, 20, 22, 24, 26], VAO_KD = 56;
-    function lerDisciplina(alvo, cod, irPara) {
+    function lerDisciplina(alvo, cod, irPara, aoFechar) {
       rota(['curso', E.pid, 'estude', E.slug, 'aulas', 'ler', cod]);
       alvo.innerHTML = '<p class="al-sub">Carregando a leitura…</p>';
       Promise.all([api('GET', base() + '/leitura?disciplina=' + encodeURIComponent(cod)), api('GET', base() + '/marcacoes')]).then(function (rs) {
@@ -393,6 +393,10 @@
         var ia = 0, pg = 0, total = 1, larg = 0, fracInicial = 0, pref = { tam: 19, tema: 'claro', fonte: 'serif', esp: 'normal', marg: 'normal' };
         try { var g0 = JSON.parse(localStorage.getItem(chave) || '{}') || {}; if (g0.ia >= 0 && g0.ia < r.aulas.length) { ia = g0.ia; fracInicial = Number(g0.fr) || 0; } } catch (e) { ia = 0; }
         try { var p0 = JSON.parse(localStorage.getItem(chavePref) || '{}') || {}; if (TAM_KD.indexOf(p0.tam) >= 0) pref.tam = p0.tam; if (TEMAS_KD.indexOf(p0.tema) >= 0) pref.tema = p0.tema; ['fonte', 'esp', 'marg'].forEach(function (k) { if (OPC_KD[k][p0[k]]) pref[k] = p0[k]; }); } catch (e) { /* fica no padrão */ }
+        if (irPara && irPara.unidade) { // aberto de dentro de uma aula: começa nela
+          r.aulas.forEach(function (a, i) { if (a.codigo === irPara.unidade) { ia = i; fracInicial = 0; } });
+          irPara = null;
+        }
         if (irPara) {
           var km = marcas.filter(function (x) { return x.id === irPara; })[0];
           if (km) { r.aulas.forEach(function (a, i) { if (a.codigo === km.unidade) ia = i; }); fracInicial = 0; } else irPara = null;
@@ -477,7 +481,7 @@
         function sair(depois) {
           document.removeEventListener('keydown', tecla); window.removeEventListener('resize', aoRedimensionar); document.removeEventListener('mousedown', foraDaBarra);
           document.documentElement.style.overflow = rolagemAntes;
-          if (depois) depois(alvo); else ir('aulas'); // pela aba, para o endereço acompanhar
+          if (depois) depois(alvo); else if (aoFechar) aoFechar(); else ir('aulas'); // pela aba, para o endereço acompanhar
         }
 
         el('es-kd-sair').onclick = function () { sair(); };
@@ -894,7 +898,10 @@
       '.tem>.rot::after{content:"";position:absolute;left:100%;top:50%;width:12px;border-top:1.5px solid var(--c)}' +
       '.filhos{display:flex;flex-direction:column;margin-left:12px;border-left:1.5px solid var(--c)}' +
       '.filhos>.no{position:relative;padding-left:12px}.filhos>.no::before{content:"";position:absolute;left:0;top:50%;width:12px;border-top:1.5px solid var(--c)}' +
-      'footer{margin-top:8px;font-size:7.5pt;color:#777}@media screen{body{max-width:1120px;margin:20px auto}}';
+      'footer{margin-top:8px;font-size:7.5pt;color:#777}@media screen{body{max-width:1120px;margin:20px auto}}' +
+      '.barra-mapa{position:sticky;top:0;z-index:5;display:flex;gap:8px;justify-content:flex-end;padding:10px 0;background:#fff;border-bottom:1px solid #dde2ec;margin-bottom:12px}' +
+      '.barra-mapa button{font:600 11pt Arial,sans-serif;padding:8px 14px;border-radius:8px;border:1.5px solid #1B2A4A;background:#1B2A4A;color:#fff;cursor:pointer}' +
+      '.barra-mapa button.fan{background:#fff;color:#1B2A4A}@media print{.barra-mapa{display:none}}';
     // uma página do PDF: o mapa de UMA aula para UM foco de prova
     function paginaDoMapa(titulo, foco, txt, versao) {
       return '<section class="pag"><header><h1>' + esc(titulo) + '</h1><span>Mapa mental · ' + esc(FOCO[foco] || foco) + ' · ' + esc(E.titulo || '') + '</span></header>' +
@@ -903,9 +910,14 @@
     function escreverMapas(w, titulo, pags) {
       w.document.open();
       w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(titulo) + '</title><style>' + CSS_MAPA + '</style></head><body>' +
+        // o mapa abre para LER; imprimir é um botão (pedido do Augusto, 11/10/2026) — a barra não sai no papel
+        (pags ? '<div class="barra-mapa"><button id="mp-imprimir">🖨️ Imprimir ou salvar em PDF</button><button id="mp-fechar" class="fan">Fechar</button></div>' : '') +
         (pags || '<p>Ainda não há mapa mental aqui.</p>') + '</body></html>');
       w.document.close(); w.focus();
-      if (pags) setTimeout(function () { w.print(); }, 400);
+      // os cliques são ligados daqui: script escrito dentro da janela seria barrado pela política da página
+      var bi = w.document.getElementById('mp-imprimir'), bf = w.document.getElementById('mp-fechar');
+      if (bi) bi.onclick = function () { w.print(); };
+      if (bf) bf.onclick = function () { w.close(); };
     }
     // a janela é aberta no clique (antes do fetch), senão o navegador a bloqueia como pop-up
     function abrirMapa(codigo, janela) {
@@ -1207,11 +1219,12 @@
           '<div class="es-un-barra"><span class="al-rotulo">Nesta aula</span>' +
           ((u.animada || []).length ? '<button class="al-bt" id="es-un-anim">🧭 Aula interativa — passo a passo, caso e erros da banca</button>' : '') +
           (u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa ? '<button class="al-bt fan" id="es-un-mapa2">🧠 Mapa mental</button>' : '') +
+          '<button class="al-bt fan" id="es-un-livro">📖 Ler como livro</button>' +
           '<button class="al-bt fan" id="es-un-pr2">✍️ Praticar esta matéria</button>' +
           '<button class="al-bt fan" id="es-un-vt2">← Voltar</button></div>' +
           '<p class="al-rotulo es-un-txt">Texto da aula</p>' + sel +
           u.blocos.map(function (b) {
-            return '<section class="es-bloco ' + b.tipo + '"><h4>' + esc(b.titulo || BLOCO[b.tipo]) + '</h4>' + texto(b.texto) +
+            return '<section class="es-bloco ' + b.tipo + '"><h4>' + esc(b.titulo || BLOCO[b.tipo]) + '</h4><div class="es-un-ler">' + textoMarcado(b.texto, [], u.destaques) + '</div>' +
               (b.criterio ? '<p class="al-fino"><b>Critério:</b> ' + esc(b.criterio) + '</p>' : '') +
               (acao[b.tipo] ? '<textarea class="es-ta" data-n="' + b.n + '" rows="4" placeholder="Escreva a sua tentativa aqui, antes de ver a solução."></textarea>' +
                 (b.tem_solucao ? '<div class="es-linha"><button class="al-bt peq fan" data-sol="' + b.n + '">Ver a solução</button><span class="al-fino" data-msg="' + b.n + '">A solução aparece depois da sua tentativa.</span></div><div class="es-sol" data-out="' + b.n + '"></div>' : '') : '') +
@@ -1221,7 +1234,7 @@
           (u.fontes.length ? '<details class="es-fontes"><summary>Fontes</summary><ul>' + u.fontes.map(function (f) {
             return '<li>' + esc(f.titulo) + (f.consultado_em ? ' — consultado em ' + dataBR(f.consultado_em) : '') + '</li>';
           }).join('') + '</ul></details>' : '') + vespera(u) +
-          '<div class="es-linha">' + (u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa ? '<button class="al-bt fan" id="es-un-mapa">🧠 Mapa mental (PDF)</button>' : '') + '<button class="al-bt" id="es-un-pr">Praticar esta matéria</button><button class="al-bt fan" id="es-un-vt">← Voltar</button></div></div>';
+          '<div class="es-linha">' + (u.vespera && u.vespera.objetiva && u.vespera.objetiva.mapa ? '<button class="al-bt fan" id="es-un-mapa">🧠 Mapa mental</button>' : '') + '<button class="al-bt" id="es-un-pr">Praticar esta matéria</button><button class="al-bt fan" id="es-un-vt">← Voltar</button></div></div>';
         if (u.video && el('es-un-video')) {
           api('GET', '/media/' + encodeURIComponent(u.video.media_id) + '/link').then(function (r) {
             var cx = el('es-un-video');
@@ -1236,7 +1249,7 @@
           b.onclick = function () {
             var n = b.getAttribute('data-sol'), ta = alvo.querySelector('textarea[data-n="' + n + '"]'), msg = alvo.querySelector('[data-msg="' + n + '"]');
             api('POST', base() + '/unidades/' + encodeURIComponent(codigo) + '/blocos/' + n + '/solucao', { tentativa: ta.value }).then(function (r) {
-              alvo.querySelector('[data-out="' + n + '"]').innerHTML = '<h4>Solução comentada</h4>' + texto(r.solucao) + '<p class="al-fino">Compare com o que você escreveu e corrija uma frase da sua tentativa.</p>';
+              alvo.querySelector('[data-out="' + n + '"]').innerHTML = '<h4>Solução comentada</h4><div class="es-un-ler">' + textoMarcado(r.solucao, [], []) + '</div>' + '<p class="al-fino">Compare com o que você escreveu e corrija uma frase da sua tentativa.</p>';
               b.disabled = true; msg.textContent = '';
             }).catch(function (e) { msg.textContent = e.message; msg.className = 'es-msg-erro'; });
           };
@@ -1246,6 +1259,10 @@
         el('es-un-vt2').onclick = voltarDaAula;
         el('es-un-pr2').onclick = function () { ir('praticar', u.competencias[0]); };
         if (el('es-un-anim')) el('es-un-anim').onclick = function () { aulaAnimada(codigo); };
+        el('es-un-livro').onclick = function () {
+          var m = materias()[(u.competencias || [])[0]];
+          lerDisciplina(alvo, (m && m.cod) || '_metodo', { unidade: codigo }, function () { ir('unidade', codigo); });
+        };
         if (el('es-un-mapa2')) el('es-un-mapa2').onclick = function () { abrirMapa(codigo, window.open('', '_blank')); };
         window.scrollTo(0, 0);
       }).catch(function (e) { falha(alvo, e); });
