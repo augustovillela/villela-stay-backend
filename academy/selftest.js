@@ -2828,6 +2828,9 @@ async function main() {
   // ================= CARTEIRA DE IA (carteira-ia.js) — por último: liga a cobrança =================
   await require('./testes-carteira-ia').rodar({ t, req, impId, jars });
 
+  // ================= PEDIDOS PAGOS do Estude (estudo\pedidos.js, ADR-0010) — depois da carteira: usam a virada e religam a cobrança =================
+  await require('./estudo/testes-pedidos').rodar({ t, req, EST, impId, mpFetch });
+
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

@@ -30,7 +30,20 @@ const PRECOS = { // USD por MTok — atualizar junto com os modelos
 // Teto de saída por agente: é o que limita o ORÇAMENTO mostrado ao usuário antes de gerar.
 // Folgado o bastante para a resposta caber (JSON cortado no meio = geração perdida e estornada).
 const MAX_SAIDA = { tutor: 1500, suporte: 1200, mentor: 3000, refinar: 3500, estruturar: 4000, copy: 4000, pedagogico: 3500, relatorio: 1500 };
-const maxSaida = (agente) => Math.min(MAX_TOKENS, MAX_SAIDA[agente] || MAX_TOKENS);
+// PEDIDOS PAGOS (ADR-0010): agentes que só existem com a cobrança ligada — a franquia das matrículas
+// antigas não vale para eles — e que têm teto de saída PRÓPRIO, por passo, sem o corte global de
+// ACADEMY_LLM_MAX_TOKENS (uma correção de peça ou a leitura de um edital não cabem em 4.000 tokens).
+// `edital` e `prova` já têm o teto aqui porque a infraestrutura é a mesma; os executores vêm depois.
+const SAIDA_PROPRIA = { correcao: 5000, edital: 16000, prova: 16000 };
+const SO_PAGOS = ['correcao', 'edital', 'prova', 'transcricao'];
+const maxSaida = (agente) => SAIDA_PROPRIA[agente] || Math.min(MAX_TOKENS, MAX_SAIDA[agente] || MAX_TOKENS);
+// Orçamento de PDF enviado como bloco `document`: teto fixo de tokens por página, POR CIMA (a página
+// entra como texto + imagem; a documentação do provedor fala em 1.500 a 3.000 tokens por página).
+const TOKENS_POR_PAGINA_PDF = 3000;
+// Transcrição de áudio (segundo provedor): orçada por minuto, por cima do preço de tabela do modelo.
+const TRANSCRICAO_USD_POR_MIN = 0.006;
+const TRANSCRICAO_MODELO = () => process.env.ACADEMY_STT_MODELO || 'gpt-4o-mini-transcribe';
+const TRANSCRICAO_TIMEOUT_MS = Number(process.env.ACADEMY_STT_TIMEOUT_MS) || 120000;
 
 // O aceite de valor chega no cabeçalho X-IA-Aceite (milésimos de real) e vale para a
 // requisição inteira. Rota que não passar por aqui cai em "sem aceite" — falha fechada.
@@ -54,6 +67,7 @@ let _client = null;
 let _mock = null;
 const __mockParaTeste = (fn) => { _mock = fn; };
 const ativo = () => !!(_mock || process.env.ANTHROPIC_API_KEY);
+const transcricaoAtiva = () => !!(_mock || process.env.OPENAI_API_KEY);
 
 const precoDe = (modelo) => PRECOS[modelo] || { in: 3, out: 15 };
 // custo do provedor em USD (escrita de cache custa 1,25× a entrada; leitura, 0,1×)
@@ -66,14 +80,24 @@ function custoUSD(modelo, usage) {
 // O TETO: entrada estimada por cima (3 caracteres por token) + a saída máxima do agente,
 // no modelo mais caro da fila. É o valor que o usuário aceita; o real fica sempre abaixo.
 function tetoUSD(agente, prompt) {
-  const entrada = Math.ceil((GUARDRAILS.length + String(prompt).length) / 3);
-  const p = MODELOS.map(precoDe).reduce((a, b) => ({ in: Math.max(a.in, b.in), out: Math.max(a.out, b.out) }), { in: 0, out: 0 });
-  return (entrada * p.in + maxSaida(agente) * p.out) / 1e6;
+  return tetoTrabalhoUSD(agente, { caracteres: String(prompt).length });
 }
+// O teto de um TRABALHO de vários passos, somado: o texto de todos os passos (3 caracteres por token,
+// mais as regras do sistema a cada passo), as páginas de PDF pelo teto fixo, a saída máxima por passo
+// × o número de passos e, havendo áudio, a transcrição pela duração MÁXIMA.
+function tetoTrabalhoUSD(agente, { caracteres = 0, paginas_pdf = 0, passos = 1, saida_por_passo = 0, audio_seg = 0 } = {}) {
+  const n = Math.max(1, Math.round(passos) || 1);
+  const entrada = Math.ceil((GUARDRAILS.length * n + Math.max(0, caracteres)) / 3) + Math.max(0, Math.round(paginas_pdf) || 0) * TOKENS_POR_PAGINA_PDF;
+  const saida = Math.min(maxSaida(agente), saida_por_passo > 0 ? saida_por_passo : Infinity) * n;
+  const p = MODELOS.map(precoDe).reduce((a, b) => ({ in: Math.max(a.in, b.in), out: Math.max(a.out, b.out) }), { in: 0, out: 0 });
+  return (entrada * p.in + saida * p.out) / 1e6 + custoTranscricaoUSD(audio_seg);
+}
+const custoTranscricaoUSD = (segundos) => (Math.max(0, Number(segundos) || 0) / 60) * TRANSCRICAO_USD_POR_MIN;
 
-function logRun(userId, agente, { modelo, usage, status, detalhe, cobranca = '', milesimos = 0, productId = '' }) {
+function logRun(userId, agente, { modelo, usage, status, detalhe, cobranca = '', milesimos = 0, productId = '', custoUsd = null }) {
   try {
-    const custo = Math.round(custoUSD(modelo, usage) * 100);
+    // trabalho de vários passos (ou com transcrição) traz o custo já somado; chamada única, o custo sai do uso
+    const custo = Math.round((custoUsd != null ? custoUsd : custoUSD(modelo, usage)) * 100);
     db.prepare(`INSERT INTO ai_usage_logs (id, quando, user_id, agente, modelo, input_tokens, output_tokens, custo_centavos_usd, status, detalhe, cobranca, milesimos, product_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(novoId(), nowISO(), s(userId, 40), s(agente, 30), s(modelo, 40),
@@ -104,21 +128,50 @@ function comoCobrar(userId, productId) {
   if (carteira.temFranquia(userId, productId, c) && usadasHoje(userId) < limiteDia()) return 'franquia';
   return 'paga';
 }
+// Os pedidos pagos (SO_PAGOS) não têm franquia nem "limite diário grátis": ou a conta é isenta, ou
+// sai do saldo. Com a cobrança desligada eles não existem — '' aqui quer dizer INDISPONÍVEL.
+function comoCobrarPedido(userId) {
+  const c = carteira.cfg();
+  if (!c.ativa) return '';
+  return carteira.isento(userId, c) ? 'isento' : 'paga';
+}
+const erroIA = (msg, status) => { const e = new Error(msg); e.status = status; return e; };
 
-async function chamar(agente, prompt) {
-  if (_mock) { const r = await _mock({ agente, prompt }); return { json: r.json, modelo: 'mock', usage: r.usage || { input_tokens: 10, output_tokens: 10 } }; }
+// O conteúdo de um passo: texto, ou a lista de blocos da API do provedor — só `text` e `document`
+// (PDF em base64; é assim que se lê página escaneada: o modelo enxerga a página).
+function conteudoValido(conteudo) {
+  if (typeof conteudo === 'string') return conteudo;
+  if (!Array.isArray(conteudo) || !conteudo.length) throw new Error('Passo de IA sem conteúdo.');
+  return conteudo.map((b) => {
+    if (b && b.type === 'text' && typeof b.text === 'string') return { type: 'text', text: b.text };
+    if (b && b.type === 'document' && b.source && b.source.type === 'base64' && b.source.media_type === 'application/pdf' && typeof b.source.data === 'string' && b.source.data) {
+      return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b.source.data } };
+    }
+    throw new Error('Bloco de IA não aceito (só texto e PDF em base64).');
+  });
+}
+const textoDoConteudo = (c) => (typeof c === 'string' ? c : c.filter(b => b.type === 'text').map(b => b.text).join('\n'));
+
+async function chamar(agente, conteudo, opcoes = {}) {
+  const content = conteudoValido(conteudo);
+  if (_mock) { const r = await _mock({ agente, prompt: textoDoConteudo(content), conteudo: content }); return { json: r.json, modelo: 'mock', usage: r.usage || { input_tokens: 10, output_tokens: 10 } }; }
   if (!_client) { const Anthropic = require('@anthropic-ai/sdk'); _client = new Anthropic(); }
+  const maxTokens = Math.min(maxSaida(agente), opcoes.max_saida > 0 ? Math.round(opcoes.max_saida) : Infinity);
   let ultimoErro = null;
   for (const modelo of MODELOS) {
     try {
       const msg = await _client.messages.create({
-        model: modelo, max_tokens: maxSaida(agente),
+        model: modelo, max_tokens: maxTokens,
         system: [{ type: 'text', text: GUARDRAILS, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content }],
       });
       const texto = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
         .replace(/^```(json)?\s*/i, '').replace(/```\s*$/, '').trim();
-      return { json: JSON.parse(texto), modelo, usage: msg.usage };
+      let json;
+      // a mensagem do JSON.parse cita um pedaço do texto — e o texto pode citar a resposta do aluno.
+      // O erro que sobe (e vai para o log) diz só o que houve.
+      try { json = JSON.parse(texto); } catch (_) { throw new Error(msg.stop_reason === 'max_tokens' ? 'a resposta passou do tamanho máximo e veio cortada' : 'a resposta veio fora do formato esperado'); }
+      return { json, modelo, usage: msg.usage };
     } catch (e) {
       ultimoErro = e; ultimoErro.modelo = modelo;
       const st = e.status || (e.response && e.response.status);
@@ -130,32 +183,121 @@ async function chamar(agente, prompt) {
   throw e;
 }
 
-async function executar(userId, agente, prompt, p) {
+// A SEGUNDA chamada a provedor da Academy (ADR-0010): áudio → texto, pela OpenAI. Mora aqui, e só
+// aqui, para a cobrança ter uma porta — quem a usa é o passo `transcrever` de um trabalho aberto.
+// Não reaproveita voz\transcricao.js: aquele módulo abre o banco da Voz, guarda o texto num cache de
+// lá (a fala do aluno iria parar em outro banco) e não devolve a duração, que é o que se cobra.
+// → { texto, duracao_seg } (duracao_seg = 0 quando o provedor não informa).
+async function chamarTranscricao({ bytes, mime, extensao }) {
+  if (_mock) { const r = await _mock({ agente: 'transcricao', audio: { mime, tamanho: bytes.length } }); return { texto: String(r.texto || '').trim(), duracao_seg: Number(r.duracao_seg) || 0, modelo: 'mock' }; }
+  const chave = process.env.OPENAI_API_KEY;
+  if (!chave) throw erroIA('Transcrição indisponível: OPENAI_API_KEY não configurada no servidor.', 503);
+  const form = new FormData();
+  form.append('file', new Blob([bytes], { type: mime }), `audio.${extensao}`);
+  form.append('model', TRANSCRICAO_MODELO());
+  form.append('language', 'pt'); // sem o idioma, o modelo às vezes TRADUZ em vez de transcrever
+  form.append('response_format', 'json');
+  let r, corpo;
+  try {
+    r = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${chave}` }, body: form, signal: AbortSignal.timeout(TRANSCRICAO_TIMEOUT_MS) });
+    corpo = await r.text();
+  } catch (e) {
+    throw erroIA(e.name === 'TimeoutError' || e.name === 'AbortError' ? 'A transcrição demorou demais.' : 'Falha de rede na transcrição.', 502);
+  }
+  if (!r.ok) {
+    let detalhe = '';
+    try { detalhe = String(JSON.parse(corpo).error.message || '').slice(0, 200); } catch (_) { /* sem detalhe */ }
+    throw erroIA(`Transcrição recusada pelo provedor (HTTP ${r.status})${detalhe ? ': ' + detalhe : ''}`, 502);
+  }
+  let d;
+  try { d = JSON.parse(corpo); } catch (_) { throw erroIA('A transcrição veio fora do formato esperado.', 502); }
+  const u = d.usage || {};
+  return { texto: String(d.text || '').trim(), duracao_seg: Number(u.seconds) || Number(d.duration) || 0, modelo: TRANSCRICAO_MODELO() };
+}
+
+// =====================================================================
+// TRABALHO — a porta única, agora com vários passos (ADR-0010):
+//   uma RESERVA do teto → N passos ao provedor (custo real acumulado) → um ACERTO (ou estorno de tudo).
+// Síncrona até a reserva: decide quem paga, confere o saldo e o aceite e debita o teto ANTES de
+// qualquer chamada. Lança 402 com o orçamento (`e.extra`) se faltar saldo ou aceite.
+//   t.passo(conteudo, opcoes)   chama o modelo; devolve o JSON da resposta
+//   t.transcrever(audio)        áudio → { texto, duracao_seg }, cobrado pela duração real
+//   t.concluir()                acerta (devolve teto − custo real) e grava o log → { cobrado_milesimos, … }
+//   t.falhar(erro)              devolve TUDO, mesmo que algum passo tenha gasto (a plataforma absorve)
+// `opcoes.aceite`: o valor aceito quando não há requisição (pedido que roda depois de a recarga creditar).
+// `opcoes.rotulo`: como a linha aparece no extrato, quando o agente sozinho não diz (ex.: correcao_oral).
+// =====================================================================
+function abrirTrabalho(userId, agente, tetoUsd, p, opcoes = {}) {
   if (!ativo()) throw new Error('IA indisponível: ANTHROPIC_API_KEY não configurada no servidor.');
   const productId = (p && p.id) || '';
-  const cobranca = comoCobrar(userId, productId);
+  const soPago = SO_PAGOS.includes(agente);
+  const cobranca = soPago ? comoCobrarPedido(userId) : comoCobrar(userId, productId);
+  if (soPago && cobranca === '') throw erroIA('Este serviço está indisponível no momento: ele depende dos créditos de IA, que estão desligados.', 503);
   if (cobranca === '' && usadasHoje(userId) >= limiteDia()) {
     // registra o BLOQUEIO (sem custo) para o relatório de uso medir quem bate no limite; usadasHoje só conta 'ok'
     logRun(userId, agente, { modelo: '-', status: 'limite', detalhe: `limite ${limiteDia()}/dia`, productId });
-    const e = new Error(`Você atingiu o limite da sua assinatura: ${limiteDia()} perguntas por dia ao Tutor e às ferramentas de IA. A contagem recomeça amanhã (às 21h, horário de Brasília). Enquanto isso, o quiz, o caderno, os prompts e o material da aula continuam liberados.`); e.status = 429; throw e; }
+    throw erroIA(`Você atingiu o limite da sua assinatura: ${limiteDia()} perguntas por dia ao Tutor e às ferramentas de IA. A contagem recomeça amanhã (às 21h, horário de Brasília). Enquanto isso, o quiz, o caderno, os prompts e o material da aula continuam liberados.`, 429);
+  }
   // PAGA: o débito do teto acontece ANTES de qualquer chamada ao provedor
   let teto = 0, ref = '';
   if (cobranca === 'paga') {
-    teto = carteira.precoEmMilesimos(tetoUSD(agente, prompt));
-    try { ref = carteira.reservar(userId, teto, { agente, aceite: aceiteAtual() }); }
+    teto = carteira.precoEmMilesimos(tetoUsd);
+    const aceite = Number.isFinite(Number(opcoes.aceite)) && Number(opcoes.aceite) > 0 ? Math.floor(Number(opcoes.aceite)) : aceiteAtual();
+    try { ref = carteira.reservar(userId, teto, { agente: opcoes.rotulo || agente, aceite }); }
     catch (e) { logRun(userId, agente, { modelo: '-', status: 'sem_saldo', detalhe: (e.extra && e.extra.motivo) || '', cobranca, productId }); throw e; }
+    carteira.manterViva(ref); // trabalho aberto neste processo: a reserva não é órfã, por mais que demore
   }
+  let custo = 0, aberto = true, modelo = '-';
+  const uso = { input_tokens: 0, output_tokens: 0 };
+  const exigirAberto = () => { if (!aberto) throw new Error('Trabalho de IA já encerrado.'); };
+  // quem paga não gasta além do teto: o passo seguinte não começa se o que já foi usado alcançou o valor aceito
+  const exigirFolga = () => { if (cobranca === 'paga' && custo > 0 && carteira.precoEmMilesimos(custo) >= teto) throw new Error('O trabalho alcançou o valor máximo aceito antes de terminar.'); };
+  return {
+    ref, cobranca, teto_milesimos: teto,
+    async passo(conteudo, o = {}) {
+      exigirAberto(); exigirFolga();
+      const r = await chamar(agente, conteudo, o);
+      custo += custoUSD(r.modelo, r.usage); modelo = r.modelo;
+      uso.input_tokens += (r.usage && r.usage.input_tokens) || 0; uso.output_tokens += (r.usage && r.usage.output_tokens) || 0;
+      return r.json;
+    },
+    // `duracao_seg` é a duração DECLARADA por quem enviou: só vale quando o provedor não diz a real,
+    // e nunca passa de `max_seg` (o teto que foi orçado).
+    async transcrever({ bytes, mime, extensao, duracao_seg = 0, max_seg = 0 }) {
+      exigirAberto(); exigirFolga();
+      const r = await chamarTranscricao({ bytes, mime, extensao });
+      if (!r.texto) throw erroIA('A transcrição voltou vazia — não deu para ouvir fala no áudio.', 422);
+      const tetoSeg = max_seg > 0 ? max_seg : Infinity;
+      const segundos = Math.min(tetoSeg, Math.max(1, Math.ceil(r.duracao_seg || Number(duracao_seg) || (Number.isFinite(tetoSeg) ? tetoSeg : 60))));
+      custo += custoTranscricaoUSD(segundos);
+      return { texto: r.texto, duracao_seg: segundos, duracao_do_provedor: r.duracao_seg > 0 };
+    },
+    concluir() {
+      exigirAberto(); aberto = false;
+      const cobrado = cobranca === 'paga' ? carteira.acertar(userId, ref, teto, carteira.precoEmMilesimos(custo), opcoes.rotulo || agente) : 0;
+      carteira.soltar(ref);
+      logRun(userId, agente, { modelo, usage: uso, status: 'ok', cobranca, milesimos: cobrado, productId, custoUsd: custo });
+      return { cobranca, cobrado_milesimos: cobrado, teto_milesimos: teto, custo_usd: custo };
+    },
+    falhar(e) {
+      if (!aberto) return;
+      aberto = false;
+      // não gerou: o usuário não paga — o teto volta inteiro
+      if (cobranca === 'paga') carteira.estornar(userId, ref, teto, 'não gerou — valor devolvido');
+      carteira.soltar(ref);
+      logRun(userId, agente, { modelo: (e && e.modelo) || modelo, status: 'erro', detalhe: (e && e.message) || 'falhou', cobranca, productId, custoUsd: custo });
+    },
+  };
+}
+
+// Uma pergunta = um trabalho de um passo só.
+async function executar(userId, agente, prompt, p) {
+  const t = abrirTrabalho(userId, agente, tetoUSD(agente, prompt), p);
   try {
-    const r = await chamar(agente, prompt);
-    const cobrado = cobranca === 'paga' ? carteira.acertar(userId, ref, teto, carteira.precoEmMilesimos(custoUSD(r.modelo, r.usage)), agente) : 0;
-    logRun(userId, agente, { modelo: r.modelo, usage: r.usage, status: 'ok', cobranca, milesimos: cobrado, productId });
-    return r.json;
-  } catch (e) {
-    // não gerou: o usuário não paga — o teto volta inteiro
-    if (cobranca === 'paga') carteira.estornar(userId, ref, teto, 'não gerou — valor devolvido');
-    logRun(userId, agente, { modelo: e.modelo || '-', status: 'erro', detalhe: e.message, cobranca, productId });
-    throw e;
-  }
+    const json = await t.passo(prompt);
+    t.concluir();
+    return json;
+  } catch (e) { t.falhar(e); throw e; }
 }
 
 // ---------------- contexto compartilhado ----------------
@@ -313,4 +455,9 @@ const Logs = {
   },
 };
 
-module.exports = { ativo, MODELOS, Agentes, Logs, usadasHoje, limiteDia, comoCobrar, middlewareAceite, tetoUSD, custoUSD, __mockParaTeste };
+module.exports = {
+  ativo, MODELOS, Agentes, Logs, usadasHoje, limiteDia, comoCobrar, middlewareAceite, tetoUSD, custoUSD, __mockParaTeste,
+  // pedidos pagos (ADR-0010)
+  abrirTrabalho, tetoTrabalhoUSD, comoCobrarPedido, transcricaoAtiva, custoTranscricaoUSD, maxSaida,
+  SO_PAGOS, TOKENS_POR_PAGINA_PDF, TRANSCRICAO_USD_POR_MIN,
+};

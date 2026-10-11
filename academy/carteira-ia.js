@@ -27,13 +27,20 @@ const MARGEM_PADRAO_PCT = 30;                    // decisão do Augusto, 08/10/2
 const PACOTES_PADRAO = [2000, 5000, 10000];      // R$ 20, R$ 50 e R$ 100 (centavos) — idem
 const RESERVA_ORFA_MIN = 10;                     // reserva sem acerto depois disso = processo caiu: devolve
 const TIPOS_CREDITO = ['recarga', 'cortesia', 'ajuste'];
+// Recarga "do valor que falta" para um pedido (ADR-0010): o que falta, para cima até o real inteiro,
+// nunca abaixo deste mínimo — escolha a confirmar pelo Augusto; ajustável em ia_cobranca.recarga_minima_centavos.
+const RECARGA_MINIMA_PADRAO = 500;               // R$ 5,00 (centavos)
+const RECARGA_MAXIMA_DO_PEDIDO = 100000;         // R$ 1.000,00: acima disso é orçamento errado, não recarga
 
-let _mpFetch = null, _buscar = null, _notificar = null;
+let _mpFetch = null, _buscar = null, _notificar = null, _aoCreditarPedido = null;
 // só mexe no que veio: reconfigurar o cliente HTTP num teste não pode derrubar o Mercado Pago
 function configurar(o = {}) {
   if ('mpFetch' in o) _mpFetch = o.mpFetch || null;
   if ('buscar' in o) _buscar = o.buscar || null;
   if ('notificar' in o) _notificar = o.notificar || null;
+  // gancho: a recarga de um pedido creditou → quem cuida de pedidos o põe para rodar. É um callback
+  // (e não um require) para a carteira não depender do Estude.
+  if ('aoCreditarPedido' in o) _aoCreditarPedido = o.aoCreditarPedido || null;
   if (!_buscar && !('buscar' in o) && typeof fetch === 'function') _buscar = fetch;
 }
 
@@ -117,6 +124,7 @@ function cfg() {
     ligada: !!c.ativa,                   // o que o dono pediu; `ativa` é o que está valendo
     margem_pct: Number.isFinite(Number(c.margem_pct)) ? Math.max(0, Number(c.margem_pct)) : MARGEM_PADRAO_PCT,
     pacotes_centavos: pacotes.length ? pacotes : PACOTES_PADRAO,
+    recarga_minima_centavos: Math.round(Number(c.recarga_minima_centavos)) >= 100 ? Math.round(Number(c.recarga_minima_centavos)) : RECARGA_MINIMA_PADRAO,
     // quem tinha matrícula ANTES desta data mantém a franquia diária naquele curso
     virada_em: s(c.virada_em, 30),
     isentos: (Array.isArray(c.isentos) ? c.isentos : []).map(e => s(e, 120).toLowerCase()).filter(Boolean),
@@ -172,12 +180,31 @@ function lancar(userId, tipo, milesimos, { ref = '', detalhe = '', quem = '' } =
   db.prepare('INSERT INTO ia_movimentos (id, user_id, tipo, milesimos, ref, detalhe, quem, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     .run(novoId(), userId, tipo, Math.round(milesimos), s(ref, 60), s(detalhe, 300), s(quem, 120), nowISO());
 }
+// TRABALHO LONGO (ADR-0010): ler um edital ou corrigir uma peça pode passar dos 10 minutos. Enquanto
+// o trabalho está aberto NESTE processo, a reserva dele está viva e não é órfã — os 10 minutos valem
+// só para reserva de processo que morreu (a memória some junto, e aí a regra antiga a devolve).
+const _vivas = new Set();
+const manterViva = (ref) => { if (ref) _vivas.add(ref); };
+const soltar = (ref) => { _vivas.delete(ref); };
+const reservaViva = (ref) => _vivas.has(ref);
 // Reserva que ficou sem acerto (o servidor reiniciou no meio da geração) volta ao saldo.
 function liberarOrfas(userId) {
   const corte = new Date(Date.now() - RESERVA_ORFA_MIN * 60e3).toISOString();
   const orfas = db.prepare(`SELECT r.ref, r.milesimos FROM ia_movimentos r WHERE r.user_id = ? AND r.tipo = 'reserva' AND r.criado_em < ?
     AND NOT EXISTS (SELECT 1 FROM ia_movimentos f WHERE f.ref = r.ref AND f.tipo IN ('acerto', 'estorno'))`).all(userId, corte);
-  for (const o of orfas) lancar(userId, 'estorno', -o.milesimos, { ref: o.ref, detalhe: 'geração interrompida — valor devolvido', quem: 'sistema' });
+  for (const o of orfas) {
+    if (_vivas.has(o.ref)) continue;
+    lancar(userId, 'estorno', -o.milesimos, { ref: o.ref, detalhe: 'geração interrompida — valor devolvido', quem: 'sistema' });
+  }
+}
+// Devolve AGORA uma reserva sem desfecho (o pedido foi encontrado "processando" ao subir o serviço:
+// não há por que o aluno esperar os 10 minutos). Idempotente: com acerto ou estorno, não faz nada.
+function devolverReserva(ref, detalhe = 'interrompido — valor devolvido') {
+  if (!ref || _vivas.has(ref)) return 0;
+  const r = db.prepare("SELECT user_id, milesimos FROM ia_movimentos WHERE ref = ? AND tipo = 'reserva'").get(ref);
+  if (!r || db.prepare("SELECT 1 FROM ia_movimentos WHERE ref = ? AND tipo IN ('acerto', 'estorno')").get(ref)) return 0;
+  lancar(r.user_id, 'estorno', -r.milesimos, { ref, detalhe, quem: 'sistema' });
+  return -r.milesimos;
 }
 function saldo(userId) {
   liberarOrfas(userId);
@@ -228,28 +255,46 @@ function creditar({ email, valor_centavos, motivo, quem, tipo = 'cortesia' }) {
 // RECARGA pelo Mercado Pago — o crédito só entra por webhook ou conferência
 // segura (como o pedido de curso); o retorno do navegador nunca credita.
 // ---------------------------------------------------------------------
-async function criarRecarga(usuario, valorCentavos, baseUrl) {
+// O que falta (milésimos) → o valor da recarga (centavos): para cima até o real inteiro, com piso.
+function valorDaRecargaQueFalta(faltaMilesimos, c = cfg()) {
+  const falta = Math.max(0, Math.round(Number(faltaMilesimos) || 0));
+  return Math.max(c.recarga_minima_centavos, Math.ceil(falta / 1000) * 100);
+}
+// Recarga comum: só os pacotes. Recarga de PEDIDO (`opcoes.para_pedido` = { id, teto_milesimos }):
+// o valor é o que falta para o teto do pedido, calculado AQUI com o saldo de agora — o valor não vem
+// da tela. `opcoes.retorno` é o trecho do endereço (#/…) para onde o Mercado Pago devolve o usuário.
+async function criarRecarga(usuario, valorCentavos, baseUrl, opcoes = {}) {
   const c = cfg();
   if (!c.ativa) throw erro('A cobrança de IA não está ativa.');
-  const valor = Math.round(Number(valorCentavos) || 0);
-  if (!c.pacotes_centavos.includes(valor)) throw erro('Escolha um dos pacotes de recarga.');
+  const pp = opcoes.para_pedido || null;
+  let valor = Math.round(Number(valorCentavos) || 0), falta = 0;
+  if (pp) {
+    falta = Math.round(Number(pp.teto_milesimos) || 0) - saldo(usuario.id);
+    if (!s(pp.id, 40) || !(pp.teto_milesimos > 0)) throw erro('Pedido sem orçamento.');
+    if (falta <= 0) throw erro('O seu saldo já cobre este pedido — é só confirmar.', 409);
+    valor = valorDaRecargaQueFalta(falta, c);
+    if (valor > RECARGA_MAXIMA_DO_PEDIDO) throw erro('Valor acima de R$ 1.000,00 — confira o pedido.');
+  } else if (!c.pacotes_centavos.includes(valor)) throw erro('Escolha um dos pacotes de recarga.');
   if (!_mpFetch) throw erro('Pagamento online indisponível no momento.');
   const id = novoId();
-  db.prepare("INSERT INTO ia_recargas (id, user_id, valor_centavos, status, criado_em) VALUES (?, ?, ?, 'pendente', ?)").run(id, usuario.id, valor, nowISO());
+  db.prepare("INSERT INTO ia_recargas (id, user_id, valor_centavos, status, criado_em, pedido_id) VALUES (?, ?, ?, 'pendente', ?, ?)").run(id, usuario.id, valor, nowISO(), pp ? s(pp.id, 40) : '');
+  // só um trecho de rota do próprio painel (#/a/b/c): nada de endereço de fora no retorno do pagamento
+  const retorno = /^#\/[\w\-./%]{1,200}$/.test(String(opcoes.retorno || '')) ? String(opcoes.retorno) : '';
+  const volta = `${baseUrl}/academy/app?recarga=${id}${retorno}`;
   const pref = await _mpFetch('/checkout/preferences', {
     method: 'POST',
     body: JSON.stringify({
       items: [{ title: `Créditos de IA — Villela Academy (R$ ${(valor / 100).toFixed(2)})`, quantity: 1, unit_price: valor / 100, currency_id: 'BRL' }],
       payer: { email: usuario.email },
       external_reference: 'academy-ia:' + id,
-      back_urls: { success: `${baseUrl}/academy/app?recarga=${id}`, pending: `${baseUrl}/academy/app?recarga=${id}`, failure: `${baseUrl}/academy/app?recarga=${id}` },
+      back_urls: { success: volta, pending: volta, failure: volta },
       auto_return: 'approved',
       notification_url: `${baseUrl}/academy/webhooks/mercadopago`,
       statement_descriptor: 'VILLELA ACADEMY',
     }),
   });
   db.prepare('UPDATE ia_recargas SET mp_preference_id = ? WHERE id = ?').run(s(pref.id, 80), id);
-  return { recarga_id: id, init_point: pref.init_point || pref.sandbox_init_point || '' };
+  return { recarga_id: id, init_point: pref.init_point || pref.sandbox_init_point || '', valor_centavos: valor, falta_milesimos: falta };
 }
 
 // Idempotente: o índice único (tipo, ref) do razão impede creditar a mesma recarga duas vezes.
@@ -267,6 +312,9 @@ function aplicarPagamento(pay) {
       lancar(rec.user_id, 'recarga', rec.valor_centavos * 10, { ref: rec.id, detalhe: 'recarga pelo Mercado Pago', quem: 'mercadopago' });
     });
     repo.Auditoria.registrar({ quem: 'mercadopago', acao: 'ia.recarga.paga', entidade: 'ia_recargas', entidade_id: rec.id, detalhe: `R$ ${(rec.valor_centavos / 100).toFixed(2)}` });
+    // recarga feita para um pedido: o crédito entrou, o pedido começa sozinho. Só chega aqui UMA vez
+    // por recarga (a repetição do webhook sai acima, em "ja-paga"); e o crédito nunca depende do gancho.
+    if (rec.pedido_id && _aoCreditarPedido) { try { _aoCreditarPedido(rec.pedido_id, rec.user_id); } catch (_) { /* o saldo ficou; o usuário confirma na tela */ } }
     return { resultado: 'paga' };
   }
   if (['rejected', 'cancelled'].includes(st) && rec.status === 'pendente') {
@@ -297,7 +345,8 @@ async function conferirRecarga(usuario, id) {
 // EXTRATO — uma linha por uso (reserva + acerto somados), não duas
 // ---------------------------------------------------------------------
 const ROTULO = { recarga: 'Recarga', cortesia: 'Crédito de cortesia', ajuste: 'Ajuste', estorno_recarga: 'Recarga devolvida' };
-const AGENTE = { tutor: 'Tutor Villela', suporte: 'Tutor Villela', mentor: 'Mentor do Villela Lab', refinar: 'Lapidar com IA', estruturar: 'Estruturar curso', copy: 'Página de venda', pedagogico: 'Revisão pedagógica', relatorio: 'Relatório executivo' };
+const AGENTE = { tutor: 'Tutor Villela', suporte: 'Tutor Villela', mentor: 'Mentor do Villela Lab', refinar: 'Lapidar com IA', estruturar: 'Estruturar curso', copy: 'Página de venda', pedagogico: 'Revisão pedagógica', relatorio: 'Relatório executivo',
+  correcao: 'Correção de resposta escrita', correcao_oral: 'Correção de resposta oral (com transcrição)', transcricao: 'Transcrição de áudio', prova: 'Importação de prova em PDF', edital: 'Leitura de edital em PDF' };
 function extrato(userId, n = 30) {
   const linhas = db.prepare('SELECT * FROM ia_movimentos WHERE user_id = ? ORDER BY criado_em DESC, rowid DESC LIMIT 400').all(userId);
   const usos = {}, saida = [];
@@ -350,5 +399,6 @@ function painelStaff() {
 module.exports = {
   configurar, cfg, prepararConfig, cambio, ptax, atualizarPTAX, FOLGA_PADRAO_PCT, PTAX_VALE_DIAS, brl, precoEmMilesimos, isento, temFranquia, saldo, reservar, acertar, estornar, creditar,
   criarRecarga, aplicarPagamento, conferirRecarga, extrato, carteiraDoUsuario, painelStaff,
-  MARGEM_PADRAO_PCT, PACOTES_PADRAO, TIPOS_CREDITO,
+  manterViva, soltar, reservaViva, devolverReserva, valorDaRecargaQueFalta, pagamentoOnline: () => !!_mpFetch,
+  MARGEM_PADRAO_PCT, PACOTES_PADRAO, TIPOS_CREDITO, RECARGA_MINIMA_PADRAO, RESERVA_ORFA_MIN,
 };

@@ -676,6 +676,36 @@ const MIGRACOES = [
           );
           CREATE UNIQUE INDEX IF NOT EXISTS ux_amostras_produto_chave ON amostras (product_id, chave);`,
   },
+  {
+    // PEDIDOS PAGOS do Estude (ADR-0010): tudo o que o usuário pede e que gasta com provedor —
+    // correção de discursiva/peça, oral gravada e, depois, prova e edital em PDF. Quatro momentos:
+    // criar (nada cobrado) → orçamento → confirmar (reserva do teto) → resultado (acerto ou estorno).
+    // `ref` é a reserva na carteira de IA; `entrada` guarda o que o aluno enviou e NUNCA vai a log.
+    // A recarga "do valor que falta" aponta para o pedido que ela destrava (ia_recargas.pedido_id).
+    nome: 'estudo-pedidos-2026-10-11',
+    sql: `CREATE TABLE IF NOT EXISTS est_pedidos (
+            id                  TEXT PRIMARY KEY,
+            user_id             TEXT NOT NULL REFERENCES users(id),
+            product_id          TEXT NOT NULL REFERENCES products(id),
+            escopo_id           TEXT DEFAULT '',     -- vazio: pedido que ainda não pertence a um percurso (edital novo)
+            tipo                TEXT NOT NULL,       -- correcao | oral | prova | edital
+            estado              TEXT NOT NULL DEFAULT 'orcado', -- orcado | processando | pronto | aplicado | falhou | cancelado
+            questao_id          TEXT DEFAULT '',     -- correção e oral: a questão aberta (índice do histórico)
+            entrada             TEXT NOT NULL DEFAULT '{}',
+            orcamento_milesimos INTEGER DEFAULT 0,   -- o teto calculado
+            aceite_milesimos    INTEGER DEFAULT 0,   -- o teto que o usuário viu e aceitou
+            cobrado_milesimos   INTEGER DEFAULT 0,   -- o que saiu de verdade (≤ aceite)
+            ref                 TEXT DEFAULT '',     -- reserva em ia_movimentos
+            resultado           TEXT DEFAULT '',
+            erro                TEXT DEFAULT '',
+            contestacao         TEXT DEFAULT '',     -- { motivo, em } — aparece no staff; sem devolução automática
+            criado_em           TEXT NOT NULL,
+            atualizado_em       TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_estped_user ON est_pedidos (user_id, product_id, criado_em);
+          CREATE INDEX IF NOT EXISTS idx_estped_estado ON est_pedidos (estado);
+          ALTER TABLE ia_recargas ADD COLUMN pedido_id TEXT DEFAULT '';`,
+  },
 ];
 
 for (const m of MIGRACOES) {

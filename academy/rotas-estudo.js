@@ -10,6 +10,7 @@ const ct = require('./repo-conteudo');
 const imp = require('./importacao');
 const est = require('./estudo/repo');
 const al = require('./estudo/aluno');
+const ped = require('./estudo/pedidos');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 // `extra` leva o que a tela precisa para oferecer saída (ex.: quantas questões há de fato)
@@ -70,6 +71,24 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   // ---- plano ----
   app.get(`${base}/plano`, ...AL, h((req, res) => { semCache(res); res.json(al.obterPlano(...a(req))); }));
   app.put(`${base}/plano`, ...AL, h((req, res) => { res.json(al.definirPlano(...a(req), b(req), s(b(req).motivo, 200) || undefined)); }));
+
+  // ---- escrita e oral: questões abertas e PEDIDOS PAGOS de correção (ADR-0010) ----
+  // criar → orçamento (nada cobrado) → confirmar (402 com o valor, pelo `h`; a tela pede o aceite e refaz) →
+  // roda em segundo plano → a tela consulta o estado. O pedido é de quem pediu: outro usuário recebe 404.
+  const baseUrl = (req) => `${req.headers['x-forwarded-proto'] || req.protocol || 'https'}://${req.get('host')}`;
+  app.get(`${base}/abertas`, ...AL, h((req, res) => { semCache(res); res.json(ped.abertas(...a(req))); }));
+  app.get(`${base}/pedidos`, ...AL, h((req, res) => { semCache(res); res.json(ped.listar(...a(req), { questao: req.query.questao })); }));
+  app.post(`${base}/pedidos`, ...AL, h((req, res) => { res.json(ped.criar(...a(req), b(req))); }));
+  // envio de arquivo do aluno, só para pedido: pequeno em base64; grande direto ao storage (URL assinada)
+  app.post(`${base}/pedidos/arquivo`, ...AL, h(async (req, res) => { res.json({ ok: true, ...(await ped.enviarArquivo(...a(req), b(req))) }); }));
+  app.post(`${base}/pedidos/arquivo-grande`, ...AL, h((req, res) => { res.json({ ok: true, ...ped.iniciarArquivoGrande(...a(req), b(req)) }); }));
+  app.post(`${base}/pedidos/arquivo-grande/:media/confirmar`, ...AL, h(async (req, res) => { res.json({ ok: true, ...(await ped.confirmarArquivoGrande(...a(req), req.params.media)) }); }));
+  app.get(`${base}/pedidos/:pedido`, ...AL, h((req, res) => { semCache(res); res.json(ped.obter(...a(req), req.params.pedido)); }));
+  app.post(`${base}/pedidos/:pedido/confirmar`, ...AL, h((req, res) => { res.json(ped.confirmar(...a(req), req.params.pedido)); }));
+  app.post(`${base}/pedidos/:pedido/cancelar`, ...AL, h((req, res) => { res.json(ped.cancelar(...a(req), req.params.pedido)); }));
+  app.post(`${base}/pedidos/:pedido/contestar`, ...AL, h((req, res) => { res.json(ped.contestar(...a(req), req.params.pedido, b(req).motivo)); }));
+  // falta saldo: recarga do valor que falta, ligada ao pedido — creditou, o pedido começa sozinho
+  app.post(`${base}/pedidos/:pedido/recarga`, ...AL, h(async (req, res) => { res.json({ ok: true, ...(await ped.recarga(...a(req), req.params.pedido, b(req), baseUrl(req))) }); }));
 }
 
 function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin }) {
@@ -111,6 +130,22 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
     const escopo = est.Escopos.porSlug(produto.id, est.slug(req.query.escopo));
     if (!escopo) return res.status(404).json({ erro: 'Escopo não encontrado.' });
     res.json({ questoes: est.questoesDoEscopo(escopo) });
+  }));
+  // PEDIDOS PAGOS (ADR-0010): volume por tipo e estado, total cobrado e as contestações abertas. A listagem
+  // não leva o texto das respostas dos alunos; abrir um pedido (aí sim, com a resposta) e responder a uma
+  // contestação exigem SESSÃO de admin — a chave de publicação conta, mas não lê o que o aluno escreveu.
+  const ADM = [requireAuth, requireAdmin];
+  app.get('/staff/api/academy/estudo/pedidos', ...PA, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json(ped.painelStaff()); }));
+  app.get('/staff/api/academy/estudo/pedidos/:id', ...ADM, h((req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const r = ped.abrirParaStaff(req.params.id);
+    aud(req, 'estudo.pedido.abrir', r.pedido.id, r.pedido.tipo);
+    res.json(r);
+  }));
+  app.post('/staff/api/academy/estudo/pedidos/:id/contestacao', ...ADM, h((req, res) => {
+    const r = ped.resolverContestacao(req.params.id, { resposta: (req.body || {}).resposta, quem: quem(req) });
+    aud(req, 'estudo.pedido.contestacao', r.pedido.id, '');
+    res.json({ ok: true, ...r });
   }));
   // o programa inteiro com o destino de cada item — é a auditoria do edital
   app.get('/staff/api/academy/estudo/cobertura', ...PA, h((req, res) => {

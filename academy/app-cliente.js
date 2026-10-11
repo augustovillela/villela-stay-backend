@@ -51,7 +51,7 @@
         }
         if (!r.ok) throw new Error(d && d.erro || ('erro ' + r.status));
         // houve cobrança nesta chamada: mostra quanto saiu de verdade
-        if (CI && teto && m !== 'GET' && /\/(tutor|ia|lab|ferramentas)\b/.test(p) && !/\/ia\/carteira/.test(p)) setTimeout(CI.depois, 300);
+        if (CI && teto && m !== 'GET' && /\/(tutor|ia|lab|ferramentas|pedidos)\b/.test(p) && !/\/ia\/carteira/.test(p)) setTimeout(CI.depois, 300);
         return d;
       }); })
       .then(function (d) { return (m === 'GET' && meu !== SEQ) ? new Promise(function () {}) : d; });

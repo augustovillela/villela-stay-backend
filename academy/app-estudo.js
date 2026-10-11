@@ -75,7 +75,12 @@
       return i ? (i.texto.length > 46 ? i.texto.slice(0, 44) + '…' : i.texto) : '';
     }
     // durante a prova o Tutor some: ajuda aberta ao lado de um simulado desfaz a medida
-    function pararRelogio() { if (E.relogio) { clearInterval(E.relogio); E.relogio = null; } document.body.classList.remove('es-em-prova'); }
+    // `E.aoSair`: a tela que abriu microfone ou consulta periódica (Escrita e oral) deixa aqui como se desliga
+    function pararRelogio() {
+      if (E.relogio) { clearInterval(E.relogio); E.relogio = null; }
+      if (E.aoSair) { var sair = E.aoSair; E.aoSair = null; try { sair(); } catch (x) { /* a tela já saiu */ } }
+      document.body.classList.remove('es-em-prova');
+    }
 
     // ---------------- cartão no cabeçalho do estúdio ----------------
     function cartao(alvo, pid, r, abrirFn) {
@@ -125,14 +130,14 @@
         if (depois) depois();
       }).catch(function (e) { falha(el('es-corpo'), e); });
     }
-    var ABAS = [['hoje', 'Hoje'], ['aulas', 'Aulas'], ['mapas', 'Mapas'], ['cobrado', 'Mais cobrado'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
+    var ABAS = [['hoje', 'Hoje'], ['aulas', 'Aulas'], ['mapas', 'Mapas'], ['cobrado', 'Mais cobrado'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['escrita', 'Escrita e oral'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
     function abas() {
       el('es-abas').innerHTML = ABAS.map(function (x) { return '<button data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('');
       cada(el('es-abas'), 'button', function (b) { b.onclick = function () { ir(b.getAttribute('data-a')); }; });
     }
     // O LUGAR de cada aba: quais disciplinas estavam abertas e onde a página estava rolada. Sem isso, voltar da
     // aula para a lista devolve ao topo, com a primeira disciplina aberta — "volta ao princípio" (Augusto, 10/10/2026).
-    var LUGAR = {}, LISTAS = { aulas: 1, mapas: 1, programa: 1, cobrado: 1 };
+    var LUGAR = {}, LISTAS = { aulas: 1, mapas: 1, programa: 1, cobrado: 1, escrita: 1 };
     function rolagem() { return document.scrollingElement || document.documentElement; }
     function guardarLugar() {
       var c = el('es-corpo');
@@ -163,7 +168,7 @@
       var alvo = el('es-corpo');
       alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
       if (!document.querySelector('.es-kd')) document.documentElement.style.overflow = ''; // o leitor de tela cheia saiu de cena
-      ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, praticar: praticar, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
+      ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, praticar: praticar, escrita: escrita, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade }[aba] || hoje)(alvo, arg);
       if (LISTAS[aba] && !E.abaArg) reporLugar(aba, alvo); else rolagem().scrollTop = 0;
     }
     // "Voltar" de dentro da aula: para a tela de onde o aluno veio (lista de aulas, programa, mapas…), no ponto em que estava
@@ -1663,6 +1668,330 @@
           .then(function (x) { pintarPlano(alvo, x); })
           .catch(function (e) { el('es-pl-msg').innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
       };
+    }
+
+    // ================= ESCRITA E ORAL (ADR-0010): questões abertas e a correção paga por IA =================
+    // O aluno escreve (ou grava), pede a correção, VÊ O VALOR e só então confirma. O servidor reserva o teto,
+    // corrige em segundo plano e a tela acompanha. A nota é ESTIMATIVA — dito sempre, junto do número.
+    // Nada disto mora no navegador: o texto vai no pedido; o rascunho em memória só sobrevive à troca de aba.
+    var TIPO_ABERTA = { curta: 'Resposta curta', discursiva: 'Discursiva', peca: 'Peça prática', oral: 'Arguição oral' };
+    var ESTADO_PED = {
+      orcado: ['aguardando a sua confirmação', 'cinza'], processando: ['corrigindo…', 'azul'], pronto: ['corrigida', 'verde'], aplicado: ['corrigida', 'verde'],
+      falhou: ['não concluída — valor devolvido', 'verm'], cancelado: ['cancelado', 'cinza']
+    };
+    var RASCUNHO = {};          // questão → texto que o aluno estava escrevendo (só nesta visita)
+    var CONSULTAS_MAX = 80;     // 80 consultas de 3 em 3 segundos = 4 minutos; depois a tela para e oferece "Atualizar"
+    function seloPedido(p) {
+      var x = ESTADO_PED[p.estado] || [p.estado, 'cinza'];
+      if (p.estado === 'orcado' && p.aguardando_pagamento) x = ['aguardando o pagamento', 'ambar'];
+      return '<span class="es-selo ' + x[1] + '">' + x[0] + '</span>';
+    }
+    function notaCurta(p) { return p && p.nota != null && (p.estado === 'pronto' || p.estado === 'aplicado') ? ' · nota estimada ' + p.nota + '/100' : ''; }
+    function relogioTxt(seg) { seg = Math.max(0, Math.round(seg)); return Math.floor(seg / 60) + ':' + ('0' + (seg % 60)).slice(-2); }
+    function milhar(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+    function escrita(alvo, questaoId) {
+      api('GET', base() + '/abertas').then(function (r) {
+        if (typeof questaoId === 'string' && questaoId) {
+          var q = r.questoes.filter(function (x) { return x.id === questaoId; })[0];
+          if (q) return abrirAberta(alvo, r, q);
+        }
+        listaAbertas(alvo, r);
+      }).catch(function (e) { falha(alvo, e); });
+    }
+    function listaAbertas(alvo, r) {
+      var h = '<div class="jr-caixa"><h3>Escrita e oral</h3>' +
+        '<p class="al-sub">Questões discursivas, peças e arguição oral. Escreva (ou grave) a sua resposta e peça a correção por IA: ela lê a resposta contra os critérios da questão e mostra, critério a critério, o trecho em que se apoiou e o que faltou.</p>' +
+        '<p class="al-sub"><b>A correção é paga com o seu saldo de IA.</b> Antes de corrigir você vê o valor máximo e confirma; depois paga só o que foi usado. A nota é uma <b>estimativa</b> — apoio de estudo, não a correção da banca.</p>' +
+        (r.disponivel ? '' : '<p class="es-aviso">' + esc(r.motivo_indisponivel) + ' Você pode ler as questões e os critérios.</p>') + '</div>';
+      if (!r.questoes.length) {
+        alvo.innerHTML = h + '<div class="jr-caixa"><p class="al-sub">Este percurso ainda não tem questões discursivas, peças ou arguições.</p></div>';
+        return;
+      }
+      var grupos = [], por = {};
+      r.questoes.forEach(function (q) {
+        var nome = q.disciplina || 'Geral', g = por[nome];
+        if (!g) { g = por[nome] = { nome: nome, qs: [] }; grupos.push(g); }
+        g.qs.push(q);
+      });
+      h += grupos.map(function (g, i) {
+        return '<details class="es-acervo es-eo-grupo"' + (i === 0 ? ' open' : '') + '><summary><b>' + esc(g.nome) + '</b><span class="al-fino"> · ' + g.qs.length + ' questão(ões)</span></summary>' +
+          g.qs.map(function (q) {
+            var u = q.ultimo_pedido;
+            return '<div class="es-eo-item"><p class="al-fino"><span class="es-selo ' + (q.tipo === 'oral' ? 'azul' : 'cinza') + '">' + esc(TIPO_ABERTA[q.tipo] || q.tipo) + '</span> ' +
+              (u ? seloPedido(u) + esc(notaCurta(u)) : 'ainda sem correção') + '</p>' +
+              '<p class="es-eo-enun">' + esc(String(q.enunciado).slice(0, 220)) + (q.enunciado.length > 220 ? '…' : '') + '</p>' +
+              '<button class="al-bt peq" data-ab="' + esc(q.id) + '">' + (q.tipo === 'oral' ? '🎙️ Abrir e gravar' : '✍️ Abrir e escrever') + '</button></div>';
+          }).join('') + '</details>';
+      }).join('');
+      h += '<div class="jr-caixa"><h3>Meus pedidos</h3><p class="al-sub">Tudo o que você pediu neste percurso, com o estado e o valor cobrado.</p><div id="es-eo-meus"><button class="al-bt peq fan" id="es-eo-ver">Ver os meus pedidos</button></div></div>';
+      alvo.innerHTML = h;
+      cada(alvo, '[data-ab]', function (b) { b.onclick = function () { ir('escrita', b.getAttribute('data-ab')); }; });
+      el('es-eo-ver').onclick = function () { meusPedidos(el('es-eo-meus')); };
+    }
+    function meusPedidos(out) {
+      out.innerHTML = '<p class="al-sub">Carregando…</p>';
+      api('GET', base() + '/pedidos').then(function (r) {
+        if (!r.pedidos.length) { out.innerHTML = '<p class="al-sub">Nenhum pedido ainda.</p>'; return; }
+        out.innerHTML = '<table class="es-tab es-eo-tab">' + r.pedidos.map(function (p) {
+          return '<tr><td>' + dataBR(p.criado_em.slice(0, 10)) + '</td><td><a href="#" data-pq="' + esc(p.questao_id) + '">' + esc(String(p.questao || 'questão').slice(0, 90)) + '</a><br>' +
+            seloPedido(p) + '<span class="al-fino">' + esc(notaCurta(p)) + (p.tipo === 'oral' ? ' · oral' : '') + '</span></td>' +
+            '<td class="n">' + (p.estado === 'pronto' || p.estado === 'aplicado' ? esc(p.cobrado) : p.estado === 'orcado' || p.estado === 'processando' ? 'até ' + esc(p.orcamento) : '—') + '</td></tr>';
+        }).join('') + '</table>';
+        cada(out, '[data-pq]', function (a) { a.onclick = function (e) { e.preventDefault(); ir('escrita', a.getAttribute('data-pq')); }; });
+      }).catch(function (e) { falha(out, e); });
+    }
+
+    // ---- gravador (resposta oral): grava, mostra o tempo, deixa ouvir antes de enviar e regravar ----
+    function gravador(caixa, maxSeg, aoMudar) {
+      var G = { rec: null, stream: null, partes: [], blob: null, seg: 0, t0: 0, timer: null, url: '' };
+      function soltarMicrofone() { if (G.stream) { G.stream.getTracks().forEach(function (t) { t.stop(); }); G.stream = null; } }
+      function limpar() {
+        if (G.timer) { clearInterval(G.timer); G.timer = null; }
+        if (G.rec && G.rec.state !== 'inactive') { G.rec.onstop = null; try { G.rec.stop(); } catch (e) { /* já parou */ } }
+        G.rec = null; soltarMicrofone();
+        if (G.url) { URL.revokeObjectURL(G.url); G.url = ''; }
+      }
+      function tipoAceito() {
+        var t = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+        for (var i = 0; i < t.length; i++) if (window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(t[i])) return t[i];
+        return '';
+      }
+      function pintar(msg) {
+        if (G.rec) {
+          caixa.innerHTML = '<div class="es-eo-grav on"><span class="es-eo-ponto"></span><b id="es-eo-tempo">0:00</b><span class="al-fino"> de ' + relogioTxt(maxSeg) + '</span>' +
+            '<button class="al-bt peq" id="es-eo-parar">■ Parar</button></div>';
+          el('es-eo-parar').onclick = parar;
+        } else if (G.blob) {
+          caixa.innerHTML = '<div class="es-eo-grav"><audio controls src="' + G.url + '"></audio><span class="al-fino">' + relogioTxt(G.seg) + ' gravados — ouça antes de enviar.</span>' +
+            '<button class="al-bt peq fan" id="es-eo-regravar">Regravar</button></div>';
+          el('es-eo-regravar').onclick = function () { limpar(); G.blob = null; G.seg = 0; pintar(); aoMudar(); };
+        } else {
+          caixa.innerHTML = '<div class="es-eo-grav"><button class="al-bt" id="es-eo-gravar">🎙️ Gravar a resposta</button><span class="al-fino">Até ' + Math.round(maxSeg / 60) + ' minutos. O navegador vai pedir o microfone.</span></div>' +
+            (msg ? '<p class="es-msg-erro">' + esc(msg) + '</p>' : '');
+          el('es-eo-gravar').onclick = iniciar;
+        }
+      }
+      function iniciar() {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+          var tipo = tipoAceito();
+          G.stream = stream; G.partes = [];
+          // 32 kbps em mono é voz clara e deixa 5 minutos em pouco mais de 1 MB
+          G.rec = new window.MediaRecorder(stream, tipo ? { mimeType: tipo, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 });
+          G.rec.ondataavailable = function (e) { if (e.data && e.data.size) G.partes.push(e.data); };
+          G.rec.onstop = function () {
+            var tipoFinal = (G.rec && G.rec.mimeType) || tipo || 'audio/webm';
+            G.seg = Math.min(maxSeg, Math.max(1, Math.round((Date.now() - G.t0) / 1000)));
+            G.blob = new Blob(G.partes, { type: tipoFinal });
+            G.url = URL.createObjectURL(G.blob);
+            G.rec = null; soltarMicrofone();
+            if (G.timer) { clearInterval(G.timer); G.timer = null; }
+            pintar(); aoMudar();
+          };
+          G.t0 = Date.now();
+          G.rec.start(1000);
+          pintar();
+          G.timer = setInterval(function () {
+            var s = (Date.now() - G.t0) / 1000, t = el('es-eo-tempo');
+            if (t) t.textContent = relogioTxt(s);
+            if (s >= maxSeg) parar(); // o teto é do servidor também: passou de 5 minutos, ele recusa
+          }, 500);
+        }).catch(function () { pintar('Não foi possível usar o microfone. Confira a permissão do navegador para este site.'); });
+      }
+      function parar() { if (G.rec && G.rec.state !== 'inactive') G.rec.stop(); }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+        caixa.innerHTML = '<p class="es-aviso">Este navegador não grava áudio. Abra esta página no Chrome, no Edge, no Firefox ou no Safari atualizado.</p>';
+      } else pintar();
+      return { blob: function () { return G.blob; }, seg: function () { return G.seg; }, gravando: function () { return !!G.rec; }, limpar: limpar };
+    }
+    function emBase64(blob) {
+      return new Promise(function (ok, erro) {
+        var fr = new FileReader();
+        fr.onload = function () { ok(String(fr.result).split(',')[1] || ''); };
+        fr.onerror = function () { erro(new Error('Não foi possível ler a gravação.')); };
+        fr.readAsDataURL(blob);
+      });
+    }
+
+    function abrirAberta(alvo, r, q) {
+      var oral = q.pede === 'oral', grav = null, consulta = null;
+      alvo.innerHTML = '<div class="es-linha"><button class="al-bt peq fan" id="es-eo-volta">← Voltar às questões</button></div>' +
+        '<div class="jr-caixa es-eo-q"><p class="al-fino"><span class="es-selo ' + (oral ? 'azul' : 'cinza') + '">' + esc(TIPO_ABERTA[q.tipo] || q.tipo) + '</span>' + (q.disciplina ? ' ' + esc(q.disciplina) : '') + '</p>' +
+        procedencia(q) + (q.apoio ? '<div class="es-apoio">' + texto(q.apoio) + '</div>' : '') + '<div class="es-enun">' + texto(q.enunciado) + '</div>' +
+        '<div class="es-eo-rub"><b>Como a resposta é avaliada</b><ul>' + q.rubrica_publica.map(function (c) { return '<li>' + esc(c.criterio) + ' <span class="al-fino">· peso ' + c.peso + '</span></li>'; }).join('') + '</ul>' +
+        '<p class="al-fino">Cada critério recebe de 0 a 3. O que vale o nível máximo de cada um não aparece antes: é o que a correção mede.</p></div></div>' +
+        '<div class="jr-caixa"><h3>' + (oral ? 'Sua resposta falada' : 'Sua resposta') + '</h3>' +
+        (oral ? '<p class="al-sub">Responda em voz alta, como na arguição. A gravação é transcrita e a transcrição é corrigida pelos critérios acima — você vê as duas.</p><div id="es-eo-grav"></div>'
+          : '<textarea class="es-ta es-eo-ta" id="es-eo-ta" rows="' + (q.tipo === 'peca' ? 22 : 12) + '" maxlength="' + q.limite_caracteres + '" placeholder="Escreva a sua resposta inteira, como escreveria na prova."></textarea>' +
+            '<p class="al-fino" id="es-eo-cont"></p>') +
+        '<div class="es-linha"><button class="al-bt" id="es-eo-pedir"' + (r.disponivel && (!oral || r.transcricao) ? '' : ' disabled') + '>Pedir correção</button><span class="al-fino" id="es-eo-msg"></span></div>' +
+        (r.disponivel ? (oral && !r.transcricao ? '<p class="es-aviso">A correção de resposta oral está indisponível no momento.</p>' : '') : '<p class="es-aviso">' + esc(r.motivo_indisponivel) + '</p>') +
+        '</div><div id="es-eo-ped"></div><div class="jr-caixa"><h3>Correções anteriores desta questão</h3><div id="es-eo-hist"><p class="al-sub">Carregando…</p></div></div>';
+      var ped = el('es-eo-ped'), msg = el('es-eo-msg'), bt = el('es-eo-pedir'), ta = el('es-eo-ta');
+      function parar() { if (consulta) { clearTimeout(consulta); consulta = null; } }
+      E.aoSair = function () { parar(); if (grav) grav.limpar(); };
+      function aqui() { return E.aba === 'escrita' && el('es-eo-ped') === ped; } // a tela ainda é esta
+      el('es-eo-volta').onclick = function () { ir('escrita'); };
+      if (ta) {
+        ta.value = RASCUNHO[q.id] || '';
+        var contar = function () {
+          RASCUNHO[q.id] = ta.value;
+          el('es-eo-cont').textContent = milhar(ta.value.length) + ' de ' + milhar(q.limite_caracteres) + ' caracteres' + (ta.value.length < r.limites.minimo_caracteres ? ' · escreva a resposta inteira para pedir a correção' : '');
+        };
+        ta.oninput = contar; contar();
+      } else grav = gravador(el('es-eo-grav'), r.limites.oral_max_seg, function () { msg.textContent = ''; });
+
+      // ---- pedir: cria o pedido e mostra o orçamento. Nada é cobrado aqui. ----
+      bt.onclick = function () {
+        var criar;
+        msg.textContent = '';
+        if (oral) {
+          if (grav.gravando()) { msg.textContent = 'Pare a gravação antes de enviar.'; return; }
+          if (!grav.blob()) { msg.textContent = 'Grave a sua resposta primeiro.'; return; }
+          bt.disabled = true; msg.textContent = 'Enviando a gravação…';
+          criar = emBase64(grav.blob()).then(function (b64) {
+            return api('POST', base() + '/pedidos/arquivo', { nome: 'resposta-oral', mime: grav.blob().type, conteudo_base64: b64 });
+          }).then(function (m) { return api('POST', base() + '/pedidos', { tipo: 'oral', questao_id: q.id, media_id: m.media_id, duracao_seg: grav.seg() }); });
+        } else {
+          bt.disabled = true; msg.textContent = 'Calculando o orçamento…';
+          criar = api('POST', base() + '/pedidos', { tipo: 'correcao', questao_id: q.id, resposta: ta.value });
+        }
+        criar.then(function (x) { if (!aqui()) return; bt.disabled = false; msg.textContent = ''; orcamento(x); })
+          .catch(function (e) { bt.disabled = false; msg.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+      };
+
+      // ---- orçamento: o valor máximo, o saldo, e confirmar (ou pagar o que falta) ----
+      function orcamento(x) {
+        var p = x.pedido, o = x.orcamento, h = '<div class="jr-caixa es-eo-orc"><p class="al-rotulo">Orçamento da correção</p>';
+        if (!o.disponivel) { ped.innerHTML = h + '<p class="es-aviso">' + esc(o.motivo_indisponivel) + '</p></div>'; return; }
+        if (o.cobranca === 'isento') h += '<p>Sua conta é isenta de cobrança de IA.</p><div class="es-linha"><button class="al-bt" id="es-eo-ok">Corrigir agora</button>';
+        else {
+          h += '<p class="es-eo-valor">até ' + esc(o.orcamento) + '</p>' +
+            '<p class="al-sub">É o valor máximo. Depois de corrigir, você paga só o que foi usado e a diferença volta ao saldo. Se a correção não sair, você não paga nada. Seu saldo de IA: <b>' + esc(o.saldo) + '</b>.</p>';
+          if (o.saldo_suficiente) h += '<div class="es-linha"><button class="al-bt" id="es-eo-ok">Confirmar e corrigir</button>';
+          else {
+            h += '<p class="es-aviso">Faltam <b>' + esc(o.falta) + '</b> de saldo para esta correção.</p>' +
+              (o.pagamento_online ? '<p class="al-sub">O pagamento é feito no Mercado Pago e entra como saldo de IA (a recarga mínima é a que aparece no botão). A correção começa sozinha quando o pagamento for confirmado, e o que sobrar fica no seu saldo.</p>' +
+                '<div class="es-linha"><button class="al-bt" id="es-eo-pagar">Pagar ' + esc(o.recarga) + ' e corrigir</button>'
+                : '<p class="al-sub">A recarga online está indisponível no momento.</p><div class="es-linha">');
+          }
+        }
+        h += '<button class="al-bt fan" id="es-eo-nao">Cancelar</button><span class="al-fino" id="es-eo-omsg"></span></div></div>';
+        ped.innerHTML = h;
+        var omsg = el('es-eo-omsg');
+        var erroNoOrcamento = function (e) {
+          // o valor ou o saldo mudou desde que o orçamento foi mostrado: mostra o de agora, com o motivo
+          api('GET', base() + '/pedidos/' + p.id).then(function (y) {
+            if (!aqui()) return;
+            if (y.pedido.estado === 'orcado' && y.orcamento) { orcamento(y); if (el('es-eo-omsg')) el('es-eo-omsg').innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; }
+            else acompanhar(p.id);
+          }).catch(function () { if (omsg) omsg.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+        };
+        el('es-eo-nao').onclick = function () { api('POST', base() + '/pedidos/' + p.id + '/cancelar').catch(function () {}); ped.innerHTML = ''; };
+        if (el('es-eo-ok')) el('es-eo-ok').onclick = function () {
+          this.disabled = true;
+          // o aceite é DESTE valor, o que está na tela: vai no cabeçalho, e o servidor recusa se o orçamento passou dele
+          api('POST', base() + '/pedidos/' + p.id + '/confirmar', null, o.orcamento_milesimos || 1).then(function () { if (aqui()) acompanhar(p.id); }).catch(erroNoOrcamento);
+        };
+        if (el('es-eo-pagar')) el('es-eo-pagar').onclick = function () {
+          var btPagar = this;
+          btPagar.disabled = true; omsg.textContent = 'Abrindo o pagamento…';
+          api('POST', base() + '/pedidos/' + p.id + '/recarga', { aceite_milesimos: o.orcamento_milesimos }).then(function (x2) {
+            if (x2.init_point) location.href = x2.init_point; // volta para esta questão; o crédito entra pela confirmação do Mercado Pago
+            else { btPagar.disabled = false; omsg.innerHTML = '<span class="es-msg-erro">O pagamento não pôde ser aberto. Tente de novo.</span>'; }
+          }).catch(erroNoOrcamento);
+        };
+      }
+
+      // ---- acompanhar: consulta de 3 em 3 segundos, e PARA (sai da tela, terminou ou passou do limite) ----
+      function acompanhar(id, n) {
+        parar();
+        n = n || 0;
+        api('GET', base() + '/pedidos/' + id).then(function (x) {
+          if (!aqui()) return;
+          var p = x.pedido;
+          if (p.estado === 'pronto' || p.estado === 'aplicado') { resultado(p); historico(); if (window.AcademyCarteiraUI) window.AcademyCarteiraUI.depois(); return; }
+          if (p.estado === 'falhou') {
+            ped.innerHTML = '<div class="jr-caixa"><p class="al-rotulo">Correção não concluída</p><p class="es-aviso">' + esc(p.erro || 'A correção não foi concluída. O valor reservado voltou ao seu saldo.') + '</p>' +
+              '<p class="al-sub">Nada foi cobrado. A sua resposta continua aí em cima: é só pedir de novo.</p></div>';
+            return;
+          }
+          if (p.estado === 'cancelado') { ped.innerHTML = ''; return; }
+          if (p.estado === 'orcado' && !p.aguardando_pagamento) { orcamento(x); return; }
+          var esperaPagamento = p.estado === 'orcado';
+          if (n >= CONSULTAS_MAX) {
+            ped.innerHTML = '<div class="jr-caixa"><p class="al-rotulo">' + (esperaPagamento ? 'Aguardando o pagamento' : 'Ainda corrigindo') + '</p><p class="al-sub">' +
+              (esperaPagamento ? 'O Mercado Pago ainda não confirmou o pagamento. Assim que confirmar, a correção começa sozinha — você pode sair desta página.' : 'Está demorando mais que o normal. O pedido continua rodando; se não sair, o valor volta sozinho ao saldo.') +
+              '</p><div class="es-linha"><button class="al-bt peq" id="es-eo-atual">Atualizar</button>' + (esperaPagamento ? '<button class="al-bt peq fan" id="es-eo-desiste">Cancelar o pedido</button>' : '') + '</div></div>';
+            el('es-eo-atual').onclick = function () { acompanhar(id, 0); };
+            if (el('es-eo-desiste')) el('es-eo-desiste').onclick = function () { api('POST', base() + '/pedidos/' + id + '/cancelar').then(function () { ped.innerHTML = ''; historico(); }).catch(function () {}); };
+            return;
+          }
+          if (!n || !el('es-eo-and')) ped.innerHTML = '<div class="jr-caixa" id="es-eo-and"><p class="al-rotulo">' + (esperaPagamento ? 'Aguardando o pagamento' : 'Corrigindo a sua resposta') + '</p>' +
+            '<p class="al-sub"><span class="es-eo-gira"></span> ' + (esperaPagamento ? 'A correção começa sozinha quando o Mercado Pago confirmar o pagamento.' : (oral ? 'Transcrevendo a gravação e corrigindo pelos critérios. ' : 'Lendo a resposta contra cada critério. ') + 'Costuma levar menos de um minuto.') + '</p></div>';
+          consulta = setTimeout(function () { acompanhar(id, n + 1); }, 3000);
+        }).catch(function (e) { if (aqui()) falha(ped, e); });
+      }
+
+      // ---- resultado: a nota (estimativa), critério a critério com o trecho citado e o que faltou ----
+      function resultado(p) {
+        var x = p.resultado || {}, c = p.contestacao;
+        var h = '<div class="jr-caixa es-eo-resultado"><p class="al-rotulo">Correção por IA · ' + dataBR(p.criado_em.slice(0, 10)) + '</p>' +
+          '<div class="es-eo-nota"><b>' + (x.nota == null ? '—' : x.nota) + '</b><i>/100</i> <span class="es-selo ambar">estimativa</span></div>' +
+          '<p class="al-fino">' + esc(x.aviso || 'Nota estimada por IA: apoio de estudo, não a correção da banca.') + '</p>';
+        if (x.transcricao) h += '<details class="es-fontes" open><summary>O que foi ouvido na sua gravação' + (x.duracao_seg ? ' (' + relogioTxt(x.duracao_seg) + ')' : '') + '</summary><div class="es-apoio">' + texto(x.transcricao) + '</div>' +
+          '<p class="al-fino">Transcrição automática: pode trocar uma palavra ou outra. A correção foi feita sobre este texto.</p></details>';
+        else if (p.entrada && p.entrada.resposta) h += '<details class="es-fontes"><summary>A resposta que foi corrigida</summary><div class="es-apoio">' + texto(p.entrada.resposta) + '</div></details>';
+        h += (x.criterios || []).map(function (k) {
+          return '<div class="es-eo-crit n' + k.nivel + '"><div class="es-eo-crit-cab"><b>' + esc(k.criterio) + '</b><span class="al-fino">peso ' + k.peso + '</span><span class="es-eo-nivel">nível ' + k.nivel + ' de 3</span></div>' +
+            (k.trecho ? '<blockquote>“' + esc(k.trecho) + '”</blockquote>' : (k.nivel > 0 ? '<p class="al-fino">A correção não apontou, na sua resposta, um trecho que sustente este nível — leia este critério com mais desconfiança.</p>' : '<p class="al-fino">A resposta não tratou deste critério.</p>')) +
+            (k.faltou ? '<p><b>O que faltou:</b> ' + esc(k.faltou) + '</p>' : '') + '</div>';
+        }).join('');
+        if ((x.erros_criticos || []).length) h += '<div class="es-aviso"><b>Erros críticos encontrados</b><ul>' + x.erros_criticos.map(function (e) {
+          return '<li>' + esc(e.erro) + (e.trecho ? ' — “' + esc(e.trecho) + '”' : '') + '</li>';
+        }).join('') + '</ul></div>';
+        if (x.comentario) h += '<div class="es-eo-coment"><b>Para a próxima tentativa</b>' + texto(x.comentario) + '</div>';
+        h += '<p class="al-fino">Cobrado: ' + esc(p.cobrado) + ' (o orçamento era de até ' + esc(p.orcamento) + '). Esta correção não muda o seu painel de competências.</p>';
+        h += c ? '<div class="es-nota-aba rev"><b>Você discordou desta correção em ' + dataBR(String(c.em).slice(0, 10)) + '.</b><p>' + esc(c.motivo) + '</p>' +
+            (c.resposta ? '<p><b>Resposta da equipe:</b> ' + esc(c.resposta) + '</p>' : '<p class="al-fino">A equipe do curso vê a sua discordância. Não há devolução automática.</p>') + '</div>'
+          : '<div class="es-linha"><button class="al-bt peq fan" id="es-eo-disc">Discordo da correção</button></div><div id="es-eo-disc-cx"></div>';
+        h += '</div>';
+        ped.innerHTML = h;
+        if (el('es-eo-disc')) el('es-eo-disc').onclick = function () {
+          el('es-eo-disc-cx').innerHTML = '<label class="es-campo es-anot">Em que ponto a correção errou?<textarea class="es-ta" id="es-eo-mot" rows="3" maxlength="1000" placeholder="Ex.: o critério 2 foi tratado no terceiro parágrafo."></textarea></label>' +
+            '<div class="es-linha"><button class="al-bt peq" id="es-eo-mot-ok">Registrar a discordância</button><span class="al-fino" id="es-eo-mot-msg">Fica registrado e a equipe do curso vê. Não há devolução automática.</span></div>';
+          el('es-eo-mot-ok').onclick = function () {
+            api('POST', base() + '/pedidos/' + p.id + '/contestar', { motivo: el('es-eo-mot').value }).then(function (y) { if (aqui()) resultado(y.pedido); })
+              .catch(function (e) { el('es-eo-mot-msg').innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+          };
+        };
+      }
+
+      // ---- histórico da questão; ao abrir, retoma o pedido em curso ou mostra a última correção ----
+      function historico(aoAbrir) {
+        api('GET', base() + '/pedidos?questao=' + encodeURIComponent(q.id)).then(function (y) {
+          if (!aqui()) return;
+          var out = el('es-eo-hist'), prontos = y.pedidos.filter(function (p) { return p.estado === 'pronto' || p.estado === 'aplicado'; });
+          out.innerHTML = prontos.length ? '<table class="es-tab es-eo-tab">' + prontos.map(function (p) {
+            return '<tr><td>' + dataBR(p.criado_em.slice(0, 10)) + '</td><td><a href="#" data-ver="' + esc(p.id) + '">nota estimada ' + p.nota + '/100</a>' + (p.contestado ? ' <span class="al-fino">· você discordou</span>' : '') + '</td><td class="n">' + esc(p.cobrado) + '</td></tr>';
+          }).join('') + '</table>' : '<p class="al-sub">Nenhuma correção desta questão ainda.</p>';
+          cada(out, '[data-ver]', function (a) {
+            a.onclick = function (e) {
+              e.preventDefault(); parar();
+              api('GET', base() + '/pedidos/' + a.getAttribute('data-ver')).then(function (z) { if (aqui()) { resultado(z.pedido); ped.scrollIntoView({ block: 'start' }); } }).catch(function (er) { falha(ped, er); });
+            };
+          });
+          if (!aoAbrir) return;
+          var u = y.pedidos.filter(function (p) { return p.estado !== 'cancelado'; })[0];
+          if (!u) return;
+          if (u.estado === 'processando' || (u.estado === 'orcado' && u.aguardando_pagamento)) acompanhar(u.id);
+          if (u.estado === 'processando' || u.estado === 'orcado' || u.estado === 'falhou') {
+            // o texto do pedido em aberto volta à caixa (o aluno foi ao Mercado Pago e voltou; a página recarregou)
+            if (ta && !ta.value) api('GET', base() + '/pedidos/' + u.id).then(function (z) { if (aqui() && !ta.value && z.pedido.entrada.resposta) { ta.value = z.pedido.entrada.resposta; ta.oninput(); } }).catch(function () {});
+          } else if (prontos.length) api('GET', base() + '/pedidos/' + prontos[0].id).then(function (z) { if (aqui() && !ped.innerHTML) resultado(z.pedido); }).catch(function () {});
+        }).catch(function (e) { if (aqui()) falha(el('es-eo-hist'), e); });
+      }
+      historico(true);
     }
 
     return { cartao: cartao, abrir: abrir };

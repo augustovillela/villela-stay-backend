@@ -86,7 +86,8 @@
     ler().then(function (c) {
       var u = (c.extrato || [])[0];
       // só o uso que acabou de acontecer: chamada que saiu pela franquia não repete o aviso da anterior
-      if (u && u.tipo === 'uso' && u.milesimos < 0 && Date.now() - Date.parse(u.quando) < 20000) toast('IA: ' + u.valor + ' debitado · saldo ' + c.saldo);
+      // (nem o pedido que ainda está rodando: ali o que saiu foi a reserva do teto, não o valor final)
+      if (u && u.tipo === 'uso' && u.milesimos < 0 && !/em andamento$/.test(u.descricao) && Date.now() - Date.parse(u.quando) < 20000) toast('IA: ' + u.valor + ' debitado · saldo ' + c.saldo);
       var alvo = document.getElementById('c-ia');
       if (alvo) pintar(alvo, c);
     }).catch(function () {});
