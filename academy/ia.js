@@ -68,9 +68,9 @@ const maxSaida = (agente) => SAIDA_PROPRIA[agente] || Math.min(MAX_TOKENS, MAX_S
 // resposta (transcrever página e dar nível por critério não pedem rascunho) e o teto ser previsível.
 // Exceções da mesma tabela: Fable, Mythos e Opus 5.5 raciocinam sempre e RECUSAM 'disabled' (400) — neles o
 // parâmetro é omitido, e o `max_tokens` continua sendo o teto; o Sonnet 5.5 desliga com 'between_tools'.
-const RACIOCINIO_FIXO = ['correcao', 'edital', 'prova'];
+// DESLIGADO EM TODOS OS AGENTES (auditoria de 11/10/2026): toda resposta daqui é um objeto JSON curto. Com o
+// raciocínio ligado por padrão, ele comia o `max_tokens` do Tutor (1.500) e a resposta saía cortada.
 function parametroDeRaciocinio(agente, modelo) {
-  if (!RACIOCINIO_FIXO.includes(agente)) return {};
   if (/^claude-(fable|mythos|opus-5-5)/.test(modelo)) return {};
   if (/^claude-sonnet-5-5/.test(modelo)) return { thinking: { type: 'between_tools' } };
   return { thinking: { type: 'disabled' } };
@@ -238,7 +238,10 @@ async function chamar(agente, conteudo, opcoes = {}) {
       const msg = _mock ? await _mock({ agente, prompt: textoDoConteudo(content), conteudo: content, modelo, params }) : await _client.messages.create(params);
       if (msg.stop_reason === 'max_tokens') {
         const e = new Error(`${CORTADA} (${maxTokens.toLocaleString('pt-BR')} tokens de saída)`);
-        e.cortada = true; e.status = 422; e.usage = msg.usage; // 4xx: encerra a fila, como os erros do próprio pedido
+        // Nos pedidos pagos (teto por passo) o corte ENCERRA a fila: repetir no outro modelo só dobraria a despesa.
+        // Nos demais agentes (Tutor, mentor, lapidar…) segue para o modelo de reserva, como sempre foi — é o que
+        // entregava a resposta ao aluno quando o primeiro modelo estourava o limite.
+        e.cortada = true; e.usage = msg.usage; if (SAIDA_PROPRIA[agente]) e.status = 422;
         throw e;
       }
       const texto = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');

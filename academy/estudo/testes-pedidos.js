@@ -763,11 +763,11 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     assert.ok(perto(ia.custoUSD('claude-haiku-5-5', { input_tokens: 100001, output_tokens: 10000 }), 100001 * 0.5 / 1e6 + 0.025), 'passou de 100 mil: a requisição INTEIRA vai à faixa longa, saída inclusive');
     assert.ok(perto(ia.custoUSD('claude-haiku-5-5', { input_tokens: 1000, cache_read_input_tokens: 150000, output_tokens: 0 }), (1000 + 150000 * 0.1) * 0.5 / 1e6), 'o que foi lido do cache também conta para o tamanho do prompt');
     assert.deepEqual([ia.precoMaximo('claude-haiku-5-5'), ia.precoMaximo('claude-sonnet-5'), ia.precoMaximo('claude-haiku-4-5')], [{ in: 0.5, out: 2.5 }, { in: 2, out: 10 }, { in: 1, out: 5 }], 'o TETO usa a faixa mais cara do modelo — o id antigo continua na tabela');
-    assert.deepEqual([ia.parametroDeRaciocinio('correcao', 'claude-haiku-5-5'), ia.parametroDeRaciocinio('tutor', 'claude-haiku-5-5')], [{ thinking: { type: 'disabled' } }, {}], 'o Haiku 5.5 aceita "disabled" (sem esforço enviado)');
-    // ---- raciocínio: fixo (desligado) nos agentes de pedido pago; os demais ficam como estavam
+    assert.deepEqual([ia.parametroDeRaciocinio('correcao', 'claude-haiku-5-5'), ia.parametroDeRaciocinio('tutor', 'claude-haiku-5-5')], [{ thinking: { type: 'disabled' } }, { thinking: { type: 'disabled' } }], 'o Haiku 5.5 aceita "disabled" (sem esforço enviado)');
+    // ---- raciocínio: desligado em TODOS os agentes (o do Tutor comia o limite de saída e a resposta saía cortada)
     assert.deepEqual(['correcao', 'edital', 'prova'].map(a => ia.parametroDeRaciocinio(a, 'claude-sonnet-5')), [1, 2, 3].map(() => ({ thinking: { type: 'disabled' } })));
     assert.deepEqual([ia.parametroDeRaciocinio('prova', 'claude-haiku-4-5'), ia.parametroDeRaciocinio('tutor', 'claude-sonnet-5'), ia.parametroDeRaciocinio('edital', 'claude-opus-5-5'), ia.parametroDeRaciocinio('edital', 'claude-fable-5-1'), ia.parametroDeRaciocinio('prova', 'claude-sonnet-5-5')],
-      [{ thinking: { type: 'disabled' } }, {}, {}, {}, { thinking: { type: 'between_tools' } }], 'modelo que recusa "disabled" não recebe o parâmetro (a recusa é um 400, que derrubaria o pedido)');
+      [{ thinking: { type: 'disabled' } }, { thinking: { type: 'disabled' } }, {}, {}, { thinking: { type: 'between_tools' } }], 'modelo que recusa "disabled" não recebe o parâmetro (a recusa é um 400, que derrubaria o pedido)');
     // ---- a fila de modelos, com o provedor simulado devolvendo a mensagem crua
     const usd = ia.tetoTrabalhoUSD('correcao', { caracteres: 3000, passos: 3 });
     const fila = [];
