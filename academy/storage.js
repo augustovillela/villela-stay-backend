@@ -75,6 +75,21 @@ async function s3Existe(key) {
   return r.ok ? { tamanho: parseInt(r.headers.get('content-length'), 10) || 0 } : null;
 }
 
+// apaga um objeto do bucket (envio de pedido reprovado na conferência: não fica lixo de aluno no storage).
+// Idempotente: objeto que já não existe (404) conta como apagado.
+async function s3Apagar(key) {
+  const u = presignS3(s3cfg(), 'DELETE', key, 300);
+  const r = await fetch(u, { method: 'DELETE' });
+  if (!r.ok && r.status !== 404) throw new Error(`Storage S3 recusou a remoção (${r.status}).`);
+}
+// remove do driver em que o arquivo está; nunca lança (quem chama já está tratando outra falha)
+async function apagar(rel, onde) {
+  try {
+    if (onde === 's3') { if (s3Ativo()) await s3Apagar(rel); } else fs.rmSync(path.join(ARQUIVOS_DIR, rel), { force: true });
+    return true;
+  } catch (_) { return false; }
+}
+
 // ---------------- URL assinada do driver LOCAL (HMAC próprio) ----------------
 function assinaturaLocal(mediaId, uid, expEpoch) {
   return crypto.createHmac('sha256', _segredo).update(`${mediaId}.${uid}.${expEpoch}`).digest('base64url');
@@ -108,6 +123,6 @@ function urlDeLeitura(media, uid, segundos) {
 }
 
 module.exports = {
-  configurar, s3Ativo, s3cfg, presignS3, s3Put, s3Existe,
+  configurar, s3Ativo, s3cfg, presignS3, s3Put, s3Existe, s3Apagar, apagar,
   salvar, caminhoLocal, urlDeLeitura, validarLocalAssinada, ARQUIVOS_DIR,
 };

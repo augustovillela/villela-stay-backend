@@ -347,7 +347,7 @@ async function confirmarVideo(mediaId, dados = {}) {
 // Identidade = (escopo, código da unidade): reenviar troca o vídeo daquela aula.
 function unidadeDoEstudo(produto, dados) {
   const est = require('./estudo/repo');
-  const escopo = est.Escopos.porSlug(produto.id, est.slug(dados.escopo));
+  const escopo = est.Escopos.doCursoPorSlug(produto.id, est.slug(dados.escopo)); // percurso particular de aluno não recebe vídeo
   if (!escopo) throw new Error('Escopo não encontrado neste produto.');
   const cod = est.slug(dados.unidade);
   const un = db.prepare('SELECT id, codigo, titulo FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, cod);

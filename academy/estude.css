@@ -363,3 +363,33 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-eo-tab td{vertical-align:top}.es-eo-tab td:first-child{white-space:nowrap;padding-right:12px;color:var(--al-tinta3)}
 @media (max-width:640px){.es-eo-nivel{margin-left:0}.es-eo-valor{font-size:1.6rem}}
 @media (prefers-reduced-motion:reduce){.es-eo-ponto,.es-eo-gira{animation:none}}
+/* ---- importar prova em PDF (ADR-0010, fase 3): sub-abas da aba, formulário, orçamento, leitura e lista para conferir ---- */
+.es-eo-sub{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.es-eo-sub button{font:600 .86rem 'Inter',sans-serif;padding:7px 14px;border-radius:99px;border:1px solid var(--al-borda);background:#fff;color:var(--al-tinta2);cursor:pointer}
+.es-eo-sub button.on{background:var(--al-navy);border-color:var(--al-navy);color:#fff}
+.es-eo-sub button:focus-visible{outline:2px solid var(--al-ambar);outline-offset:2px}
+.es-ip{max-width:820px}
+.es-ip [hidden],.es-ip-barra[hidden]{display:none}
+.es-ip h3{margin-top:22px}.es-ip h3:first-child{margin-top:0}
+.es-ip .es-campo{margin-top:12px}
+.es-ip input[type=file]{padding:7px;max-width:100%}
+.es-ip-gab{margin-top:16px;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center}
+.es-ip-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:0 14px}
+.es-ip-barra{margin-top:12px;max-width:480px}
+.es-ip-det{margin:8px 0 4px 18px;padding:0;line-height:1.6}
+.es-ip-faixa{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin:10px 0 4px}
+.es-ip-faixa .es-campo{width:130px}
+.es-ip-res,.es-ip-q,.es-ip-rodape{max-width:860px}
+.es-ip-filtros{margin:12px 0 0}
+.es-ip-q.rev{border-left:4px solid var(--al-ambar)}
+.es-ip-q .es-enun{font-size:.98rem}
+.es-ip-motivo{margin:6px 0 8px}
+.es-ip-alts{list-style:none;margin:8px 0;padding:0}
+.es-ip-alts li{padding:6px 10px;border-radius:8px;line-height:1.5;overflow-wrap:anywhere}
+.es-ip-alts li.certa{background:var(--al-ok-luz)}
+.es-ip-marca{display:inline-flex;gap:8px;align-items:center;font:600 .9rem 'Inter',sans-serif;cursor:pointer}
+.es-ip-marca input{width:18px;height:18px}
+.es-ip-edit{margin-top:12px;padding:12px 14px;border-radius:10px;background:#F6F8FC;border:1px solid rgba(20,35,70,.1)}
+.es-ip-edit .es-campo{margin-top:10px}
+.es-ip-rodape{position:sticky;bottom:0;z-index:2;box-shadow:0 -6px 18px rgba(20,35,70,.08)}
+@media (max-width:640px){.es-ip-faixa .es-campo{width:calc(50% - 8px)}}

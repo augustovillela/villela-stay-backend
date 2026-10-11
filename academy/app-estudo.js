@@ -51,7 +51,10 @@
         });
       });
       (p.competencias || []).forEach(function (c) {
-        if (!mm[c.codigo]) mm[c.codigo] = { item: '', cod: '', disciplina: 'Método de estudo', titulo: titulo[c.codigo] || c.resultado };
+        if (mm[c.codigo]) return;
+        // competência nascida de prova importada (uma por disciplina): o nome que o aluno reconhece é o da disciplina
+        var imp = /^Diante de questões de prova de (.+), o candidato identifica a resposta correta sem apoio.$/.exec(c.resultado || '');
+        mm[c.codigo] = imp ? { item: '', cod: '', disciplina: 'Provas importadas', titulo: imp[1] } : { item: '', cod: '', disciplina: 'Método de estudo', titulo: titulo[c.codigo] || c.resultado };
       });
       E._mm = mm; E._mmDe = p;
       return mm;
@@ -89,6 +92,8 @@
       alvo.innerHTML = '<div class="es-cartao"><div class="es-cartao-txt"><p class="al-rotulo">Estude</p>' +
         '<b>O conteúdo de estudo está aqui</b><span class="al-fino">Aulas, questões, cards, simulado com correção explicada e o plano que cabe no seu tempo.</span></div>' +
         '<div class="es-cartao-bts">' + r.escopos.map(function (e) {
+          // percurso particular (questões que o próprio aluno importou): só ele o recebe nesta lista
+          if (e.particular) return '<button class="al-bt fan" data-es="' + esc(e.slug) + '">🗂️ Meu percurso — ' + esc(e.titulo) + '</button>';
           return '<button class="al-bt" data-es="' + esc(e.slug) + '">' + (e.tipo === 'edital' ? '📜 ' : '📘 ') + 'Abrir o conteúdo — ' + esc(e.titulo) +
             (e.status === 'rascunho' ? ' <span class="marca-rasc">rascunho</span>' : '') + '</button>';
         }).join('') + '</div></div>';
@@ -124,8 +129,8 @@
       api('GET', base() + '/painel').then(function (p) {
         E.painel = p;
         if (el('es-titulo')) {
-          el('es-titulo').innerHTML = esc(p.escopo.titulo) + (p.escopo.status === 'rascunho' ? ' <span class="marca-rasc">rascunho — só você vê</span>' : '');
-          el('es-sub').textContent = [p.escopo.nivel, p.escopo.data_alvo ? 'prova em ' + dataBR(p.escopo.data_alvo) : 'sem prova marcada', 'programa versão ' + p.escopo.versao].filter(Boolean).join(' · ');
+          el('es-titulo').innerHTML = esc(p.escopo.titulo) + (p.escopo.particular ? ' <span class="marca-rasc">percurso particular — só você vê</span>' : p.escopo.status === 'rascunho' ? ' <span class="marca-rasc">rascunho — só você vê</span>' : '');
+          el('es-sub').textContent = [p.escopo.nivel, p.escopo.data_alvo ? 'prova em ' + dataBR(p.escopo.data_alvo) : 'sem prova marcada', p.escopo.particular ? 'questões importadas por você' : 'programa versão ' + p.escopo.versao].filter(Boolean).join(' · ');
         }
         if (depois) depois();
       }).catch(function (e) { falha(el('es-corpo'), e); });
@@ -1690,7 +1695,12 @@
     function relogioTxt(seg) { seg = Math.max(0, Math.round(seg)); return Math.floor(seg / 60) + ':' + ('0' + (seg % 60)).slice(-2); }
     function milhar(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 
+    // A aba tem três telas: Escrita e oral (a lista) · Importar prova · Meus pedidos. O argumento da rota diz qual:
+    // vazio = a lista; "importar"; "pedidos"; "prova.<id>" = um pedido de prova; qualquer outro = a questão aberta.
     function escrita(alvo, questaoId) {
+      if (questaoId === 'importar') return importarProva(alvo);
+      if (questaoId === 'pedidos') return telaMeusPedidos(alvo);
+      if (typeof questaoId === 'string' && questaoId.indexOf('prova.') === 0) return telaProva(alvo, questaoId.slice(6));
       api('GET', base() + '/abertas').then(function (r) {
         if (typeof questaoId === 'string' && questaoId) {
           var q = r.questoes.filter(function (x) { return x.id === questaoId; })[0];
@@ -1700,12 +1710,13 @@
       }).catch(function (e) { falha(alvo, e); });
     }
     function listaAbertas(alvo, r) {
-      var h = '<div class="jr-caixa"><h3>Escrita e oral</h3>' +
+      var h = subnav('') + '<div class="jr-caixa"><h3>Escrita e oral</h3>' +
         '<p class="al-sub">Questões discursivas, peças e arguição oral. Escreva (ou grave) a sua resposta e peça a correção por IA: ela lê a resposta contra os critérios da questão e mostra, critério a critério, o trecho em que se apoiou e o que faltou.</p>' +
         '<p class="al-sub"><b>A correção é paga com o seu saldo de IA.</b> Antes de corrigir você vê o valor máximo e confirma; depois paga só o que foi usado. A nota é uma <b>estimativa</b> — apoio de estudo, não a correção da banca.</p>' +
         (r.disponivel ? '' : '<p class="es-aviso">' + esc(r.motivo_indisponivel) + ' Você pode ler as questões e os critérios.</p>') + '</div>';
       if (!r.questoes.length) {
         alvo.innerHTML = h + '<div class="jr-caixa"><p class="al-sub">Este percurso ainda não tem questões discursivas, peças ou arguições.</p></div>';
+        ligarSubnav(alvo);
         return;
       }
       var grupos = [], por = {};
@@ -1724,27 +1735,29 @@
               '<button class="al-bt peq" data-ab="' + esc(q.id) + '">' + (q.tipo === 'oral' ? '🎙️ Abrir e gravar' : '✍️ Abrir e escrever') + '</button></div>';
           }).join('') + '</details>';
       }).join('');
-      h += '<div class="jr-caixa"><h3>Meus pedidos</h3><p class="al-sub">Tudo o que você pediu neste percurso, com o estado e o valor cobrado.</p><div id="es-eo-meus"><button class="al-bt peq fan" id="es-eo-ver">Ver os meus pedidos</button></div></div>';
       alvo.innerHTML = h;
+      ligarSubnav(alvo);
       cada(alvo, '[data-ab]', function (b) { b.onclick = function () { ir('escrita', b.getAttribute('data-ab')); }; });
-      el('es-eo-ver').onclick = function () { meusPedidos(el('es-eo-meus')); };
     }
     function meusPedidos(out) {
       out.innerHTML = '<p class="al-sub">Carregando…</p>';
       api('GET', base() + '/pedidos').then(function (r) {
         if (!r.pedidos.length) { out.innerHTML = '<p class="al-sub">Nenhum pedido ainda.</p>'; return; }
         out.innerHTML = '<table class="es-tab es-eo-tab">' + r.pedidos.map(function (p) {
-          return '<tr><td>' + dataBR(p.criado_em.slice(0, 10)) + '</td><td><a href="#" data-pq="' + esc(p.questao_id) + '">' + esc(String(p.questao || 'questão').slice(0, 90)) + '</a><br>' +
-            seloPedido(p) + '<span class="al-fino">' + esc(notaCurta(p)) + (p.tipo === 'oral' ? ' · oral' : '') + '</span></td>' +
+          var ehProva = p.tipo === 'prova', rs = ehProva && p.prova && p.prova.resumo;
+          return '<tr><td>' + dataBR(p.criado_em.slice(0, 10)) + '</td><td><a href="#" ' + (ehProva ? 'data-pp="' + esc(p.id) : 'data-pq="' + esc(p.questao_id)) + '">' + esc(String(p.questao || 'questão').slice(0, 90)) + '</a><br>' +
+            (ehProva ? seloProva(p) + '<span class="al-fino">' + (rs ? ' · ' + rs.lidas + ' questões lidas, ' + rs.aplicadas + ' no percurso' : '') + '</span>'
+              : seloPedido(p) + '<span class="al-fino">' + esc(notaCurta(p)) + (p.tipo === 'oral' ? ' · oral' : '') + '</span>') + '</td>' +
             '<td class="n">' + (p.estado === 'pronto' || p.estado === 'aplicado' ? esc(p.cobrado) : p.estado === 'orcado' || p.estado === 'processando' ? 'até ' + esc(p.orcamento) : '—') + '</td></tr>';
         }).join('') + '</table>';
         cada(out, '[data-pq]', function (a) { a.onclick = function (e) { e.preventDefault(); ir('escrita', a.getAttribute('data-pq')); }; });
+        cada(out, '[data-pp]', function (a) { a.onclick = function (e) { e.preventDefault(); ir('escrita', 'prova.' + a.getAttribute('data-pp')); }; });
       }).catch(function (e) { falha(out, e); });
     }
 
     // ---- gravador (resposta oral): grava, mostra o tempo, deixa ouvir antes de enviar e regravar ----
     function gravador(caixa, maxSeg, aoMudar) {
-      var G = { rec: null, stream: null, partes: [], blob: null, seg: 0, t0: 0, timer: null, url: '' };
+      var G = { rec: null, stream: null, partes: [], blob: null, seg: 0, t0: 0, timer: null, url: '', fim: false };
       function soltarMicrofone() { if (G.stream) { G.stream.getTracks().forEach(function (t) { t.stop(); }); G.stream = null; } }
       function limpar() {
         if (G.timer) { clearInterval(G.timer); G.timer = null; }
@@ -1752,6 +1765,8 @@
         G.rec = null; soltarMicrofone();
         if (G.url) { URL.revokeObjectURL(G.url); G.url = ''; }
       }
+      // sair da tela: além de limpar, o gravador fica ENCERRADO — o pedido de permissão que ainda estiver aberto não abre o microfone depois
+      function encerrar() { G.fim = true; limpar(); }
       function tipoAceito() {
         var t = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
         for (var i = 0; i < t.length; i++) if (window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(t[i])) return t[i];
@@ -1774,6 +1789,8 @@
       }
       function iniciar() {
         navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+          // o aluno saiu antes de responder ao pedido de permissão: solta o microfone na hora e não grava
+          if (G.fim || !caixa.isConnected) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
           var tipo = tipoAceito();
           G.stream = stream; G.partes = [];
           // 32 kbps em mono é voz clara e deixa 5 minutos em pouco mais de 1 MB
@@ -1796,13 +1813,13 @@
             if (t) t.textContent = relogioTxt(s);
             if (s >= maxSeg) parar(); // o teto é do servidor também: passou de 5 minutos, ele recusa
           }, 500);
-        }).catch(function () { pintar('Não foi possível usar o microfone. Confira a permissão do navegador para este site.'); });
+        }).catch(function () { if (!G.fim && caixa.isConnected) pintar('Não foi possível usar o microfone. Confira a permissão do navegador para este site.'); });
       }
       function parar() { if (G.rec && G.rec.state !== 'inactive') G.rec.stop(); }
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
         caixa.innerHTML = '<p class="es-aviso">Este navegador não grava áudio. Abra esta página no Chrome, no Edge, no Firefox ou no Safari atualizado.</p>';
       } else pintar();
-      return { blob: function () { return G.blob; }, seg: function () { return G.seg; }, gravando: function () { return !!G.rec; }, limpar: limpar };
+      return { blob: function () { return G.blob; }, seg: function () { return G.seg; }, gravando: function () { return !!G.rec; }, limpar: limpar, encerrar: encerrar };
     }
     function emBase64(blob) {
       return new Promise(function (ok, erro) {
@@ -1829,7 +1846,7 @@
         '</div><div id="es-eo-ped"></div><div class="jr-caixa"><h3>Correções anteriores desta questão</h3><div id="es-eo-hist"><p class="al-sub">Carregando…</p></div></div>';
       var ped = el('es-eo-ped'), msg = el('es-eo-msg'), bt = el('es-eo-pedir'), ta = el('es-eo-ta');
       function parar() { if (consulta) { clearTimeout(consulta); consulta = null; } }
-      E.aoSair = function () { parar(); if (grav) grav.limpar(); };
+      E.aoSair = function () { parar(); if (grav) grav.encerrar(); };
       function aqui() { return E.aba === 'escrita' && el('es-eo-ped') === ped; } // a tela ainda é esta
       el('es-eo-volta').onclick = function () { ir('escrita'); };
       if (ta) {
@@ -1992,6 +2009,323 @@
         }).catch(function (e) { if (aqui()) falha(el('es-eo-hist'), e); });
       }
       historico(true);
+    }
+
+    // ================= IMPORTAR PROVA EM PDF (ADR-0010, fase 3) =================
+    // O usuário envia o caderno e o gabarito, diz de onde é a prova e para onde vão as questões. O servidor lê o
+    // PDF sem cobrar e mostra o ORÇAMENTO (páginas, quantas são escaneadas, lotes, valor máximo). Confirmado, a
+    // leitura roda em segundo plano, lote a lote. O resultado é uma lista para CONFERIR: as prontas já vêm
+    // marcadas; as "a revisar" só entram confirmadas ou editadas, uma a uma. Adicionar ao percurso não custa nada.
+    var ESTADO_PROVA = { orcado: ['aguardando a sua confirmação', 'cinza'], processando: ['lendo…', 'azul'], pronto: ['lida — falta adicionar', 'ambar'], aplicado: ['adicionada ao percurso', 'verde'],
+      falhou: ['não concluída — valor devolvido', 'verm'], cancelado: ['cancelado', 'cinza'] };
+    var FORM_PROVA = {};        // o que o usuário digitou no formulário (só nesta visita; os arquivos não ficam)
+    var CONSULTAS_PROVA = 120;  // 120 consultas de 5 em 5 segundos = 10 minutos sem o lote avançar; depois, "Atualizar"
+    function subnav(atual) {
+      return '<div class="es-eo-sub">' + [['', 'Escrita e oral'], ['importar', 'Importar prova'], ['pedidos', 'Meus pedidos']].map(function (x) {
+        return '<button data-sub="' + x[0] + '"' + (x[0] === atual ? ' class="on"' : '') + '>' + x[1] + '</button>';
+      }).join('') + '</div>';
+    }
+    function ligarSubnav(alvo) { cada(alvo, '[data-sub]', function (b) { b.onclick = function () { ir('escrita', b.getAttribute('data-sub') || undefined); }; }); }
+    function megas(n) { return (n / 1048576).toFixed(n < 10485760 ? 1 : 0).replace('.', ',') + ' MB'; }
+    function seloProva(p) {
+      var x = ESTADO_PROVA[p.estado] || [p.estado, 'cinza'];
+      if (p.estado === 'orcado' && p.aguardando_pagamento) x = ['aguardando o pagamento', 'ambar'];
+      return '<span class="es-selo ' + x[1] + '">' + x[0] + '</span>';
+    }
+
+    function telaMeusPedidos(alvo) {
+      alvo.innerHTML = subnav('pedidos') + '<div class="jr-caixa"><h3>Meus pedidos</h3><p class="al-sub">Tudo o que você pediu neste percurso — correções e provas importadas —, com o estado e o valor cobrado.</p><div id="es-eo-meus"></div></div>';
+      ligarSubnav(alvo);
+      meusPedidos(el('es-eo-meus'));
+    }
+
+    // ---- envio do PDF: direto ao armazenamento (URL assinada, com progresso); sem ele, ou se o navegador
+    // não conseguir, pelo caminho pequeno (até o limite do corpo da requisição) ----
+    function enviarPdf(arq, o, aoProgresso) {
+      if (!/\.pdf$/i.test(arq.name) && arq.type !== 'application/pdf') return Promise.reject(new Error('"' + arq.name + '" não é um PDF.'));
+      if (arq.size > o.limites.pdf_max_bytes) return Promise.reject(new Error('"' + arq.name + '" tem ' + megas(arq.size) + ' — o limite é de ' + megas(o.limites.pdf_max_bytes) + '.'));
+      var pequeno = function () {
+        if (arq.size > o.limites.base64_max_bytes) return Promise.reject(new Error('Não foi possível enviar "' + arq.name + '" (' + megas(arq.size) + '). O envio de arquivo acima de ' + megas(o.limites.base64_max_bytes) + ' está indisponível no momento.'));
+        aoProgresso(-1);
+        return emBase64(arq).then(function (b64) { return api('POST', base() + '/pedidos/arquivo', { nome: arq.name, mime: 'application/pdf', conteudo_base64: b64 }); }).then(function (m) { return m.media_id; });
+      };
+      if (!o.envio_grande) return pequeno();
+      return api('POST', base() + '/pedidos/arquivo-grande', { nome: arq.name, mime: 'application/pdf', tamanho: arq.size }).then(function (u) {
+        return new Promise(function (ok, erro) {
+          var x = new XMLHttpRequest();
+          x.open('PUT', u.upload_url);
+          x.setRequestHeader('Content-Type', 'application/pdf');
+          x.upload.onprogress = function (ev) { if (ev.lengthComputable) aoProgresso(ev.loaded / ev.total); };
+          x.onload = function () { if (x.status >= 200 && x.status < 300) ok(u); else erro(new Error('O armazenamento recusou o arquivo (' + x.status + ').')); };
+          x.onerror = function () { erro(new Error('O envio do arquivo foi interrompido.')); };
+          x.send(arq);
+        });
+      }).then(function (u) { return api('POST', base() + '/pedidos/arquivo-grande/' + u.media_id + '/confirmar'); })
+        .then(function (m) { return m.media_id; })
+        .catch(function (e) { if (arq.size <= o.limites.base64_max_bytes) return pequeno(); throw e; });
+    }
+
+    function importarProva(alvo) {
+      api('GET', base() + '/pedidos/prova/opcoes').then(function (o) {
+        var F = FORM_PROVA, v = function (k) { return esc(F[k] || ''); };
+        var h = subnav('importar') + '<div class="jr-caixa"><h3>Importar prova em PDF</h3>' +
+          '<p class="al-sub">Envie o caderno de uma prova e o gabarito. O sistema separa as questões, casa cada uma com a letra do gabarito e confere o texto com a página. Você revisa a lista e escolhe o que entra no seu percurso — para praticar e fazer simulado como com qualquer questão.</p>' +
+          '<p class="al-sub"><b>A leitura é paga com o seu saldo de IA.</b> Antes de ler você vê o valor máximo e confirma; depois paga só o que foi usado. Adicionar as questões ao percurso não custa nada.</p>' +
+          (o.disponivel ? '' : '<p class="es-aviso">' + esc(o.motivo_indisponivel) + '</p>') + '</div>';
+        if (!o.disponivel) { alvo.innerHTML = h; ligarSubnav(alvo); return; }
+        var destinos = o.destinos.map(function (d) {
+          return '<option value="' + esc(d.slug) + '"' + (F.destino === d.slug ? ' selected' : '') + '>' + (d.particular ? 'Meu percurso: ' : 'Curso (entra em rascunho): ') + esc(d.titulo) + '</option>';
+        }).join('') + (o.pode_novo ? '<option value="+"' + (F.destino === '+' || !o.destinos.length ? ' selected' : '') + '>➕ Novo percurso particular…</option>' : '');
+        h += '<div class="jr-caixa es-ip"><h3>1. Os arquivos</h3>' +
+          '<label class="es-campo">Caderno da prova (PDF, até ' + megas(o.limites.pdf_max_bytes) + ')<input type="file" id="es-ip-cad" accept="application/pdf,.pdf"></label>' +
+          '<p class="al-fino">Cada pedido lê até ' + o.limites.paginas_max + ' páginas; num PDF maior você escolhe a faixa depois. Página escaneada (imagem) também é lida, e custa mais.</p>' +
+          '<div class="es-ip-gab"><b>Gabarito</b> <label><input type="radio" name="es-ip-g" value="pdf"' + (F.gabModo === 'texto' ? '' : ' checked') + '> PDF</label> <label><input type="radio" name="es-ip-g" value="texto"' + (F.gabModo === 'texto' ? ' checked' : '') + '> colar o texto</label></div>' +
+          '<label class="es-campo" id="es-ip-gab-pdf">Gabarito (PDF, até ' + o.limites.gabarito_paginas_max + ' páginas)<input type="file" id="es-ip-gab" accept="application/pdf,.pdf"></label>' +
+          '<label class="es-campo" id="es-ip-gab-txt">Gabarito (cole a tabela de respostas)<textarea class="es-ta" id="es-ip-gabt" rows="5" maxlength="' + o.limites.gabarito_texto_max + '" placeholder="1-A  2-C  3-anulada  4-E …">' + v('gabTexto') + '</textarea></label>' +
+          '<label class="es-campo">O gabarito é<select id="es-ip-sit"><option value="definitivo"' + (F.sit === 'preliminar' ? '' : ' selected') + '>definitivo</option><option value="preliminar"' + (F.sit === 'preliminar' ? ' selected' : '') + '>preliminar</option></select></label>' +
+          '<h3>2. De onde é a prova</h3><p class="al-fino">Questão de prova entra com a procedência — é ela que permite filtrar por banca, órgão e ano. Banca ou órgão, concurso e ano são obrigatórios.</p>' +
+          '<div class="es-ip-grade">' +
+          '<label class="es-campo">Banca<input id="es-ip-banca" maxlength="80" value="' + v('banca') + '" placeholder="FGV, FCC, Cebraspe…"></label>' +
+          '<label class="es-campo">Órgão<input id="es-ip-orgao" maxlength="120" value="' + v('orgao') + '" placeholder="TRT-10, TJDFT…"></label>' +
+          '<label class="es-campo">Concurso *<input id="es-ip-concurso" maxlength="160" value="' + v('concurso') + '" placeholder="Analista Judiciário — área judiciária"></label>' +
+          '<label class="es-campo">Ano *<input id="es-ip-ano" type="number" min="1950" max="2100" value="' + v('ano') + '"></label>' +
+          '<label class="es-campo">Cargo<input id="es-ip-cargo" maxlength="120" value="' + v('cargo') + '"></label>' +
+          '<label class="es-campo">Tipo de caderno<input id="es-ip-caderno" maxlength="40" value="' + v('caderno') + '" placeholder="Tipo 1 — branca"></label>' +
+          '<label class="es-campo">Etapa<input id="es-ip-etapa" maxlength="60" value="' + v('etapa') + '" placeholder="Prova objetiva"></label>' +
+          '<label class="es-campo">Fonte (de onde você baixou)<input id="es-ip-fonte" maxlength="400" value="' + v('fonte') + '" placeholder="endereço da página da banca"></label>' +
+          '</div><p class="al-fino">Informe o tipo de caderno quando o gabarito trouxer mais de um: só o do seu caderno é lido.</p>' +
+          '<h3>3. Para onde vão as questões</h3>' +
+          '<label class="es-campo">Destino<select id="es-ip-dest">' + destinos + '</select></label>' +
+          '<label class="es-campo" id="es-ip-novo-cx">Nome do percurso novo<input id="es-ip-novo" maxlength="120" value="' + v('novo') + '" placeholder="Provas do TRT — FCC"></label>' +
+          '<p class="al-fino">O percurso particular é só seu: ninguém mais vê, nem as questões que você puser nele.</p>' +
+          '<div class="es-linha"><button class="al-bt" id="es-ip-ok">Enviar e calcular o orçamento</button><span class="al-fino" id="es-ip-msg">Nada é cobrado nesta etapa.</span></div>' +
+          '<div class="es-barra es-ip-barra" id="es-ip-barra" hidden><i style="width:0"></i></div></div>';
+        alvo.innerHTML = h;
+        ligarSubnav(alvo);
+        var msg = el('es-ip-msg'), bt = el('es-ip-ok'), barra = el('es-ip-barra');
+        function modoGab() { var r = alvo.querySelector('input[name="es-ip-g"]:checked'); return r ? r.value : 'pdf'; }
+        function mostrar() {
+          el('es-ip-gab-pdf').hidden = modoGab() !== 'pdf'; el('es-ip-gab-txt').hidden = modoGab() !== 'texto';
+          el('es-ip-novo-cx').hidden = el('es-ip-dest').value !== '+';
+        }
+        function guardar() {
+          F.gabModo = modoGab(); F.gabTexto = el('es-ip-gabt').value; F.sit = el('es-ip-sit').value; F.destino = el('es-ip-dest').value; F.novo = el('es-ip-novo').value;
+          ['banca', 'orgao', 'concurso', 'ano', 'cargo', 'caderno', 'etapa', 'fonte'].forEach(function (k) { F[k] = el('es-ip-' + k).value; });
+        }
+        cada(alvo, 'input[name="es-ip-g"]', function (r) { r.onchange = mostrar; });
+        el('es-ip-dest').onchange = mostrar;
+        cada(alvo, '.es-ip input, .es-ip textarea, .es-ip select', function (c) { if (c.type !== 'file') c.addEventListener('input', guardar); });
+        mostrar();
+        function aqui() { return E.aba === 'escrita' && el('es-ip-ok') === bt; }
+        function progresso(rotulo) {
+          return function (fr) {
+            if (!aqui()) return;
+            barra.hidden = false;
+            barra.firstChild.style.width = (fr < 0 ? 100 : Math.round(fr * 100)) + '%';
+            msg.textContent = rotulo + (fr < 0 ? '…' : ' — ' + Math.round(fr * 100) + '%');
+          };
+        }
+        bt.onclick = function () {
+          guardar();
+          var cad = el('es-ip-cad').files[0], gab = modoGab() === 'pdf' ? el('es-ip-gab').files[0] : null;
+          var erroForm = !cad ? 'Escolha o PDF do caderno.' : modoGab() === 'pdf' && !gab ? 'Escolha o PDF do gabarito (ou cole o texto).' : modoGab() === 'texto' && F.gabTexto.replace(/\s/g, '').length < 3 ? 'Cole o gabarito.'
+            : !(F.banca || F.orgao) ? 'Informe a banca ou o órgão.' : !F.concurso ? 'Informe o concurso.' : !Number(F.ano) ? 'Informe o ano da prova.' : F.destino === '+' && F.novo.trim().length < 3 ? 'Dê um nome ao percurso novo.' : !F.destino ? 'Escolha o destino.' : '';
+          if (erroForm) { msg.innerHTML = '<span class="es-msg-erro">' + esc(erroForm) + '</span>'; return; }
+          bt.disabled = true;
+          var ids = {};
+          enviarPdf(cad, o, progresso('Enviando o caderno')).then(function (id) {
+            ids.caderno = id;
+            return gab ? enviarPdf(gab, o, progresso('Enviando o gabarito')) : '';
+          }).then(function (id) {
+            ids.gabarito = id;
+            if (aqui()) { barra.firstChild.style.width = '100%'; msg.textContent = 'Lendo o PDF e calculando o orçamento…'; }
+            return api('POST', base() + '/pedidos', { tipo: 'prova', caderno_media_id: ids.caderno, gabarito_media_id: ids.gabarito || undefined, gabarito_texto: gab ? undefined : F.gabTexto,
+              procedencia: { banca: F.banca, orgao: F.orgao, concurso: F.concurso, ano: Number(F.ano), cargo: F.cargo, caderno: F.caderno, etapa: F.etapa, fonte: F.fonte },
+              gabarito_situacao: F.sit, destino: F.destino === '+' ? { novo: { titulo: F.novo } } : { escopo: F.destino } });
+          }).then(function (x) { if (aqui()) ir('escrita', 'prova.' + x.pedido.id); })
+            .catch(function (e) { if (!aqui()) return; bt.disabled = false; barra.hidden = true; msg.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+        };
+      }).catch(function (e) { falha(alvo, e); });
+    }
+
+    // ---- um pedido de prova: orçamento → leitura (lote a lote) → lista para conferir → adicionar ----
+    function telaProva(alvo, id) {
+      var consulta = null, EDICAO = {}, MARCA = {}, FILTRO = 'todas';
+      alvo.innerHTML = subnav('') + '<div class="es-linha"><button class="al-bt peq fan" id="es-ip-volta">← Meus pedidos</button></div><div id="es-ip-ped"><p class="al-sub">Carregando…</p></div>';
+      ligarSubnav(alvo);
+      var ped = el('es-ip-ped');
+      el('es-ip-volta').onclick = function () { ir('escrita', 'pedidos'); };
+      function parar() { if (consulta) { clearTimeout(consulta); consulta = null; } }
+      E.aoSair = parar;
+      function aqui() { return E.aba === 'escrita' && el('es-ip-ped') === ped; }
+      function cab(p) { return '<p class="al-rotulo">Prova em PDF · ' + esc(p.prova.titulo) + '</p><p class="al-fino">' + esc(p.prova.arquivo) + ' ' + seloProva(p) + '</p>'; }
+      function carregar() {
+        api('GET', base() + '/pedidos/' + id).then(function (x) { if (aqui()) pintar(x); }).catch(function (e) { if (aqui()) falha(ped, e); });
+      }
+      function pintar(x) {
+        var p = x.pedido;
+        parar();
+        if (p.tipo !== 'prova') { ir('escrita', p.questao_id); return; }
+        if (p.estado === 'orcado' && !p.aguardando_pagamento) return orcamento(x);
+        if (p.estado === 'orcado' || p.estado === 'processando') return acompanhar(x, 0, '');
+        if (p.estado === 'pronto' || p.estado === 'aplicado') return resultado(p);
+        ped.innerHTML = '<div class="jr-caixa">' + cab(p) + (p.estado === 'falhou' ? '<p class="es-aviso">' + esc(p.erro || 'A leitura não foi concluída. O valor reservado voltou ao seu saldo.') + '</p><p class="al-sub">Nada foi cobrado.</p>' : '<p class="al-sub">Pedido cancelado.</p>') +
+          '<div class="es-linha"><button class="al-bt peq" id="es-ip-de-novo">Importar outra prova</button></div></div>';
+        el('es-ip-de-novo').onclick = function () { ir('escrita', 'importar'); };
+      }
+
+      // o orçamento: o que será lido, o valor máximo e o saldo. A faixa de páginas é ajustável (reorça).
+      function orcamento(x) {
+        var p = x.pedido, o = x.orcamento, d = o.detalhe || p.prova, h = '<div class="jr-caixa es-eo-orc">' + cab(p) + '<p class="al-rotulo">Orçamento da leitura</p>';
+        if (!o.disponivel) { ped.innerHTML = h + '<p class="es-aviso">' + esc(o.motivo_indisponivel) + '</p></div>'; return; }
+        h += '<ul class="es-ip-det"><li>O PDF tem <b>' + d.total_paginas + '</b> página(s); serão lidas <b>' + d.paginas + '</b> (da ' + d.de + ' à ' + d.ate + ').</li>' +
+          '<li>' + (d.escaneadas ? '<b>' + d.escaneadas + '</b> página(s) escaneada(s) — imagem, sem texto copiável: são lidas como imagem, custam mais e o texto delas não tem como ser conferido automaticamente (as questões vêm marcadas para você conferir).' : 'Todas as páginas têm texto copiável: o texto de cada questão é conferido com a página.') + '</li>' +
+          '<li>A leitura é feita em <b>' + d.lotes + '</b> lote(s) de até ' + d.paginas_por_lote + ' páginas, mais a leitura do gabarito.</li></ul>' +
+          '<div class="es-ip-faixa"><label class="es-campo">Da página<input type="number" id="es-ip-de" min="1" max="' + d.total_paginas + '" value="' + d.de + '"></label>' +
+          '<label class="es-campo">até a página<input type="number" id="es-ip-ate" min="1" max="' + d.total_paginas + '" value="' + d.ate + '"></label>' +
+          '<button class="al-bt peq fan" id="es-ip-reorcar">Recalcular</button></div>' +
+          '<p class="al-fino">Tire a capa, as instruções e as folhas de rascunho para pagar menos. Cada pedido lê até ' + d.max_paginas + ' páginas.</p>';
+        if (o.cobranca === 'isento') h += '<p>Sua conta é isenta de cobrança de IA.</p><div class="es-linha"><button class="al-bt" id="es-ip-conf">Ler agora</button>';
+        else {
+          h += '<p class="es-eo-valor">até ' + esc(o.orcamento) + '</p>' +
+            '<p class="al-sub">É o valor máximo. Terminada a leitura, você paga só o que foi usado e a diferença volta ao saldo. Se a leitura não sair, você não paga nada. Seu saldo de IA: <b>' + esc(o.saldo) + '</b>.</p>';
+          if (o.saldo_suficiente) h += '<div class="es-linha"><button class="al-bt" id="es-ip-conf">Confirmar e ler a prova</button>';
+          else {
+            h += '<p class="es-aviso">Faltam <b>' + esc(o.falta) + '</b> de saldo para esta leitura.</p>' +
+              (o.pagamento_online ? '<p class="al-sub">O pagamento é feito no Mercado Pago e entra como saldo de IA. A leitura começa sozinha quando o pagamento for confirmado, e o que sobrar fica no seu saldo.</p>' +
+                '<div class="es-linha"><button class="al-bt" id="es-ip-pagar">Pagar ' + esc(o.recarga) + ' e ler a prova</button>'
+                : '<p class="al-sub">A recarga online está indisponível no momento.</p><div class="es-linha">');
+          }
+        }
+        h += '<button class="al-bt fan" id="es-ip-nao">Cancelar</button><span class="al-fino" id="es-ip-omsg"></span></div></div>';
+        ped.innerHTML = h;
+        var omsg = el('es-ip-omsg');
+        var deNovo = function (e) {
+          // o valor ou o saldo mudou desde que o orçamento foi mostrado: mostra o de agora, com o motivo
+          api('GET', base() + '/pedidos/' + id).then(function (y) {
+            if (!aqui()) return;
+            pintar(y);
+            if (el('es-ip-omsg')) el('es-ip-omsg').innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>';
+          }).catch(function () { if (omsg) omsg.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+        };
+        el('es-ip-reorcar').onclick = function () {
+          this.disabled = true; omsg.textContent = 'Recalculando…';
+          api('POST', base() + '/pedidos/' + id + '/paginas', { paginas: [Number(el('es-ip-de').value), Number(el('es-ip-ate').value)] }).then(function (y) { if (aqui()) orcamento(y); }).catch(deNovo);
+        };
+        el('es-ip-nao').onclick = function () { api('POST', base() + '/pedidos/' + id + '/cancelar').then(function () { if (aqui()) ir('escrita', 'importar'); }).catch(deNovo); };
+        if (el('es-ip-conf')) el('es-ip-conf').onclick = function () {
+          this.disabled = true;
+          // o aceite é DESTE valor, o que está na tela: o servidor recusa se o orçamento passou dele
+          api('POST', base() + '/pedidos/' + id + '/confirmar', null, o.orcamento_milesimos || 1).then(function () { if (aqui()) carregar(); }).catch(deNovo);
+        };
+        if (el('es-ip-pagar')) el('es-ip-pagar').onclick = function () {
+          var btPagar = this;
+          btPagar.disabled = true; omsg.textContent = 'Abrindo o pagamento…';
+          api('POST', base() + '/pedidos/' + id + '/recarga', { aceite_milesimos: o.orcamento_milesimos }).then(function (x2) {
+            if (x2.init_point) location.href = x2.init_point; // volta para este pedido; o crédito entra pela confirmação do Mercado Pago
+            else { btPagar.disabled = false; omsg.innerHTML = '<span class="es-msg-erro">O pagamento não pôde ser aberto. Tente de novo.</span>'; }
+          }).catch(deNovo);
+        };
+      }
+
+      // a leitura em curso: consulta de 5 em 5 segundos; o contador recomeça quando o lote avança, e a tela PARA
+      // (saiu da tela, terminou, ou ficou tempo demais sem avançar)
+      function acompanhar(x, n, visto) {
+        var p = x.pedido, pg = p.prova.progresso, espera = p.estado === 'orcado';
+        var marca = pg ? pg.etapa + ':' + pg.feito : '';
+        if (marca !== visto) n = 0;
+        if (n >= CONSULTAS_PROVA) {
+          ped.innerHTML = '<div class="jr-caixa">' + cab(p) + '<p class="al-sub">' + (espera ? 'O Mercado Pago ainda não confirmou o pagamento. Assim que confirmar, a leitura começa sozinha — você pode sair desta página.' : 'Está demorando mais que o normal. O pedido continua rodando; se não sair, o valor volta sozinho ao saldo.') + '</p>' +
+            '<div class="es-linha"><button class="al-bt peq" id="es-ip-atual">Atualizar</button>' + (espera ? '<button class="al-bt peq fan" id="es-ip-desiste">Cancelar o pedido</button>' : '') + '</div></div>';
+          el('es-ip-atual').onclick = carregar;
+          if (el('es-ip-desiste')) el('es-ip-desiste').onclick = function () { api('POST', base() + '/pedidos/' + id + '/cancelar').then(function () { if (aqui()) carregar(); }).catch(function () {}); };
+          return;
+        }
+        var pct = pg && pg.total ? Math.round(pg.feito * 100 / pg.total) : 0;
+        var etapa = espera ? 'A leitura começa sozinha quando o Mercado Pago confirmar o pagamento.'
+          : !pg ? 'Abrindo o PDF…' : pg.etapa === 'gabarito' ? 'Lendo o gabarito…' : pg.etapa === 'conferencia' ? 'Conferindo o texto com as páginas…' : 'Lendo as páginas: lote ' + Math.min(pg.feito + 1, p.prova.lotes) + ' de ' + p.prova.lotes + '.';
+        ped.innerHTML = '<div class="jr-caixa">' + cab(p) + '<p class="al-rotulo">' + (espera ? 'Aguardando o pagamento' : 'Lendo a prova') + '</p>' +
+          '<p class="al-sub"><span class="es-eo-gira"></span> ' + etapa + '</p>' + (espera ? '' : '<div class="es-barra verde es-ip-barra"><i style="width:' + pct + '%"></i></div>' +
+          '<p class="al-fino">Leva de meio minuto a um minuto por lote. Você pode sair desta página: o pedido continua, e o resultado fica em Meus pedidos.</p>') + '</div>';
+        consulta = setTimeout(function () {
+          api('GET', base() + '/pedidos/' + id).then(function (y) {
+            if (!aqui()) return;
+            if (y.pedido.estado === 'orcado' && y.pedido.aguardando_pagamento || y.pedido.estado === 'processando') acompanhar(y, n + 1, marca);
+            else { if ((y.pedido.estado === 'pronto' || y.pedido.estado === 'falhou') && window.AcademyCarteiraUI) window.AcademyCarteiraUI.depois(); pintar(y); }
+          }).catch(function (e) { if (aqui()) falha(ped, e); });
+        }, 5000);
+      }
+
+      // o resultado: a lista para conferir. As prontas vêm marcadas; as "a revisar" só entram confirmadas ou editadas.
+      function resultado(p) {
+        var r = p.resultado || {}, qs = r.questoes || [], s = r.resumo || {}, ap = r.aplicacao;
+        qs.forEach(function (q) { if (!(q.n in MARCA)) MARCA[q.n] = q.estado === 'ok' && !q.aplicada; });
+        var visiveis = qs.filter(function (q) { return FILTRO === 'todas' || (FILTRO === 'revisar' ? q.estado === 'revisar' && !q.aplicada : FILTRO === 'ok' ? q.estado === 'ok' && !q.aplicada : q.aplicada); });
+        function escolhidas() { return qs.filter(function (q) { return MARCA[q.n] && !q.aplicada; }); }
+        var h = '<div class="jr-caixa es-ip-res">' + cab(p) +
+          '<p><b>' + s.lidas + '</b> questão(ões) lida(s): <b>' + s.ok + '</b> pronta(s) · <b>' + s.a_revisar + '</b> a revisar · ' + s.sem_gabarito + ' sem gabarito · ' + s.anuladas + ' anulada(s) · ' + s.com_figura + ' com figura' + (s.aplicadas ? ' · <b>' + s.aplicadas + '</b> já no percurso' : '') + '.</p>' +
+          '<p class="al-fino">' + esc(r.aviso || '') + ' Cobrado: ' + esc(p.cobrado) + ' (o orçamento era de até ' + esc(p.orcamento) + ').</p>' +
+          (ap ? '<p class="es-nota-aba rev"><b>' + (ap.novas + ap.atualizadas) + ' questão(ões) adicionada(s)</b> a “' + esc(ap.titulo) + '”' + (ap.duplicadas ? ' (' + ap.duplicadas + ' já estavam lá e não foram duplicadas)' : '') + (ap.particular ? '.' : ', em rascunho — publique pelo fluxo de sempre.') +
+            ' <button class="al-bt peq" id="es-ip-abrir">Abrir o percurso e praticar</button></p>' : '') +
+          '<div class="es-eo-sub es-ip-filtros">' + [['todas', 'Todas (' + qs.length + ')'], ['revisar', 'A revisar'], ['ok', 'Prontas'], ['feitas', 'Já no percurso']].map(function (f) { return '<button data-filtro="' + f[0] + '"' + (FILTRO === f[0] ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div></div>';
+        h += visiveis.map(function (q) {
+          var ed = EDICAO[q.n], alts = ed ? ed.alternativas : q.alternativas, gab = ed ? ed.gabarito : q.gabarito;
+          var cabQ = '<p class="al-fino"><b>Questão ' + esc(q.numero || '?') + '</b> · p. ' + q.paginas[0] + (q.paginas[1] !== q.paginas[0] ? '–' + q.paginas[1] : '') + (q.disciplina ? ' · ' + esc(ed && ed.disciplina != null ? ed.disciplina : q.disciplina) : '') + ' ' +
+            (q.aplicada ? '<span class="es-selo verde">já no percurso</span>' : ed ? '<span class="es-selo azul">editada por você</span>' : q.estado === 'ok' ? '<span class="es-selo verde">pronta</span>' : '<span class="es-selo ambar">a revisar</span>') + '</p>' +
+            (q.estado === 'revisar' && !q.aplicada && !ed ? '<p class="es-aviso es-ip-motivo">' + esc(q.motivo) + '</p>' : '');
+          var corpo = (q.apoio ? '<details class="es-fontes"><summary>Texto de apoio</summary><div class="es-apoio">' + texto(q.apoio) + '</div></details>' : '') +
+            '<div class="es-enun">' + texto(ed ? ed.enunciado : q.enunciado) + '</div>' +
+            (alts.length ? '<ol class="es-ip-alts">' + alts.map(function (a) { return '<li' + (a.letra === gab ? ' class="certa"' : '') + '><b>' + esc(a.letra) + ')</b> ' + esc(a.texto) + (a.letra === gab ? ' <span class="es-selo verde">gabarito</span>' : '') + '</li>'; }).join('') + '</ol>' : '') +
+            (gab === 'anulada' ? '<p class="al-fino">Questão <b>anulada</b>: entra para leitura, fora da correção automática.</p>' : (!gab && q.tipo !== 'discursiva' ? '<p class="al-fino">Sem gabarito: edite e marque a alternativa correta para poder adicionar.</p>' : ''));
+          var acoes = q.aplicada ? '' : '<div class="es-linha"><label class="es-ip-marca"><input type="checkbox" data-marca="' + q.n + '"' + (MARCA[q.n] ? ' checked' : '') + '> ' + (q.estado === 'revisar' && !ed ? 'Conferi com o caderno e quero adicionar' : 'Adicionar') + '</label>' +
+            (q.tipo === 'discursiva' ? '' : '<button class="al-bt peq fan" data-editar="' + q.n + '">Editar</button>') + '</div><div data-form="' + q.n + '"></div>';
+          return '<div class="jr-caixa es-ip-q' + (q.estado === 'revisar' && !q.aplicada && !ed ? ' rev' : '') + '">' + cabQ + corpo + acoes + '</div>';
+        }).join('') || '<div class="jr-caixa"><p class="al-sub">Nenhuma questão neste filtro.</p></div>';
+        h += '<div class="jr-caixa es-ip-rodape"><div class="es-linha"><button class="al-bt" id="es-ip-aplicar"></button><span class="al-fino" id="es-ip-amsg">Adicionar não custa nada. As que ficarem de fora continuam aqui — dá para adicionar depois.</span></div></div>';
+        ped.innerHTML = h;
+        var btA = el('es-ip-aplicar');
+        function rotulo() { var n = escolhidas().length; btA.textContent = 'Adicionar ' + n + ' questão(ões) ao ' + (p.prova.destino && p.prova.destino.novo ? 'percurso “' + p.prova.destino.novo.titulo + '”' : 'percurso escolhido'); btA.disabled = !n; }
+        rotulo();
+        cada(ped, '[data-filtro]', function (b) { b.onclick = function () { FILTRO = b.getAttribute('data-filtro'); resultado(p); }; });
+        cada(ped, '[data-marca]', function (c) { c.onchange = function () { MARCA[c.getAttribute('data-marca')] = c.checked; rotulo(); }; });
+        cada(ped, '[data-editar]', function (b) { b.onclick = function () { editar(p, Number(b.getAttribute('data-editar'))); }; });
+        if (el('es-ip-abrir')) el('es-ip-abrir').onclick = function () { abrir(E.pid, E.titulo, ap.escopo, E.voltar, { aba: 'praticar' }); };
+        btA.onclick = function () {
+          var envio = escolhidas().map(function (q) {
+            var ed = EDICAO[q.n];
+            return { n: q.n, confirmada: true, edicao: ed ? { enunciado: ed.enunciado, disciplina: ed.disciplina, alternativas: q.tipo === 'objetiva' ? ed.alternativas.map(function (a) { return { texto: a.texto }; }) : undefined,
+              anulada: ed.gabarito === 'anulada', correta: ed.gabarito && ed.gabarito !== 'anulada' ? ed.alternativas.map(function (a) { return a.letra; }).indexOf(ed.gabarito) : undefined } : undefined };
+          });
+          btA.disabled = true; el('es-ip-amsg').textContent = 'Adicionando…';
+          api('POST', base() + '/pedidos/' + id + '/aplicar', { questoes: envio }).then(function (y) {
+            if (!aqui()) return;
+            EDICAO = {}; MARCA = {}; FILTRO = 'todas';
+            resultado(y.pedido);
+            rolagem().scrollTop = 0;
+          }).catch(function (e) { btA.disabled = false; el('es-ip-amsg').innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+        };
+      }
+      // edição simples, na própria lista: enunciado, alternativas, gabarito e matéria. Fica nesta tela até adicionar.
+      function editar(p, n) {
+        var q = (p.resultado.questoes || []).filter(function (x) { return x.n === n; })[0], cx = ped.querySelector('[data-form="' + n + '"]');
+        if (!q || !cx) return;
+        var ed = EDICAO[n] || { enunciado: q.enunciado, disciplina: q.disciplina || '', gabarito: q.gabarito || '', alternativas: q.alternativas.map(function (a) { return { letra: a.letra, texto: a.texto }; }) };
+        cx.innerHTML = '<div class="es-ip-edit"><label class="es-campo">Enunciado<textarea class="es-ta" data-e="enun" rows="5" maxlength="12000">' + esc(ed.enunciado) + '</textarea></label>' +
+          (q.tipo === 'objetiva' ? ed.alternativas.map(function (a, k) { return '<label class="es-campo">Alternativa ' + esc(a.letra) + '<textarea class="es-ta" data-e="alt" data-k="' + k + '" rows="2" maxlength="3000">' + esc(a.texto) + '</textarea></label>'; }).join('') : '') +
+          '<div class="es-ip-grade"><label class="es-campo">Gabarito<select data-e="gab"><option value="">— sem gabarito —</option>' + ed.alternativas.map(function (a) { return '<option value="' + esc(a.letra) + '"' + (ed.gabarito === a.letra ? ' selected' : '') + '>' + esc(a.letra) + (q.tipo === 'certo_errado' ? ' — ' + esc(a.texto) : '') + '</option>'; }).join('') +
+          '<option value="anulada"' + (ed.gabarito === 'anulada' ? ' selected' : '') + '>anulada</option></select></label>' +
+          '<label class="es-campo">Matéria<input data-e="disc" maxlength="80" value="' + esc(ed.disciplina) + '"></label></div>' +
+          '<p class="al-fino">Copie do caderno o que estiver errado. O gabarito é o do documento oficial — não o que você acha certo.</p>' +
+          '<div class="es-linha"><button class="al-bt peq" data-e="ok">Guardar a edição</button><button class="al-bt peq fan" data-e="nao">Desfazer</button></div></div>';
+        cx.querySelector('[data-e="ok"]').onclick = function () {
+          var nova = { enunciado: cx.querySelector('[data-e="enun"]').value, disciplina: cx.querySelector('[data-e="disc"]').value, gabarito: cx.querySelector('[data-e="gab"]').value, alternativas: ed.alternativas.map(function (a) { return { letra: a.letra, texto: a.texto }; }) };
+          cada(cx, '[data-e="alt"]', function (t) { nova.alternativas[Number(t.getAttribute('data-k'))].texto = t.value; });
+          EDICAO[n] = nova; MARCA[n] = true;
+          resultado(p);
+        };
+        cx.querySelector('[data-e="nao"]').onclick = function () { delete EDICAO[n]; MARCA[n] = q.estado === 'ok'; resultado(p); };
+      }
+      carregar();
     }
 
     return { cartao: cartao, abrir: abrir };

@@ -416,10 +416,14 @@ const Conteudo = {
 // vídeo só via upload-grande (direto ao bucket, F7); nunca por base64
 const MIMES_VIDEO = { 'video/mp4': '.mp4', 'video/webm': '.webm' };
 const UPLOAD_GRANDE_MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB (vai direto ao S3)
-// arquivo que o ALUNO envia para um pedido pago do Estude (ADR-0010): PDF até 40 MB, áudio até 15 MB
+// arquivo que o ALUNO envia para um pedido pago do Estude (ADR-0010): PDF até 40 MB, áudio até 4 MB
 const MIMES_PEDIDO = { 'application/pdf': '.pdf', 'audio/webm': '.webm', 'audio/mp4': '.m4a', 'audio/ogg': '.ogg', 'audio/mpeg': '.mp3', 'audio/wav': '.wav' };
 const PEDIDO_PDF_MAX_BYTES = 40 * 1024 * 1024;
-const PEDIDO_AUDIO_MAX_BYTES = 15 * 1024 * 1024;
+// Áudio de pedido: a resposta oral vai até 5 minutos, e 5 minutos de voz cabem com muita folga em 4 MB
+// (o gravador da tela usa ~32 kbps ≈ 1,2 MB; 4 MB são 5 min a ~100 kbps). Os 15 MB da ADR eram HORAS de
+// Opus — e a transcrição é cobrada no máximo pelo teto de 5 min: a diferença ficava com a plataforma.
+const PEDIDO_AUDIO_MAX_BYTES = 4 * 1024 * 1024;
+const PEDIDO_UPLOAD_EXPIRA_SEG = 600; // validade da URL de envio direto ao storage (10 min)
 
 const Midia = {
   // checagem PURA (não grava nada): a importação valida o payload inteiro com ela
@@ -483,7 +487,7 @@ const Midia = {
     const max = mime === 'application/pdf' ? PEDIDO_PDF_MAX_BYTES : PEDIDO_AUDIO_MAX_BYTES;
     tamanho = parseInt(tamanho, 10) || 0;
     if (!tamanho) throw new Error('Arquivo vazio.');
-    if (tamanho > max) throw new Error(`Arquivo acima de ${Math.round(max / 1048576)} MB.`);
+    if (tamanho > max) throw new Error(mime === 'application/pdf' ? `Arquivo acima de ${Math.round(max / 1048576)} MB.` : `Áudio acima de ${Math.round(max / 1048576)} MB — a resposta oral vai até 5 minutos.`);
     return { mime, ext, max };
   },
   // pequeno (cabe no corpo JSON): base64, como o upload do produtor
@@ -498,7 +502,9 @@ const Midia = {
       .run(id, ownerUserId, s(nome, 200) || rel, mime, buffer.length, crypto.createHash('sha256').update(buffer).digest('hex'), rel, onde, nowISO());
     return { id, tamanho: buffer.length, mime };
   },
-  // grande (PDF): presigned PUT direto ao bucket; confirma-se com `confirmarUploadGrande` + `conferirArquivoDePedido`
+  // grande (PDF): presigned PUT direto ao bucket; confirma-se com `confirmarUploadDePedido`.
+  // A URL vale pouco (PEDIDO_UPLOAD_EXPIRA_SEG): ela não fixa o tamanho, e uma URL que vale uma hora
+  // deixava o aluno confirmar 1 MB e reenviar 2 GB por cima. O tamanho que vale é o conferido na leitura.
   iniciarUploadDePedido(ownerUserId, { nome, mime: mimeBruto, tamanho }) {
     if (!storage.s3Ativo()) throw new Error('O envio de arquivo grande está indisponível no momento (storage externo não configurado).');
     const { mime, ext } = Midia.validarArquivoDePedido({ mime: mimeBruto, tamanho });
@@ -506,25 +512,59 @@ const Midia = {
     const rel = id + ext;
     db.prepare("INSERT INTO media_files (id, owner_user_id, nome, mime, tamanho, file_path, storage, confirmado, criado_em) VALUES (?, ?, ?, ?, ?, ?, 's3', 0, ?)")
       .run(id, ownerUserId, s(nome, 200) || rel, mime, parseInt(tamanho, 10), rel, nowISO());
-    return { id, upload_url: storage.presignS3(storage.s3cfg(), 'PUT', rel, 3600), expira_seg: 3600 };
+    return { id, upload_url: storage.presignS3(storage.s3cfg(), 'PUT', rel, PEDIDO_UPLOAD_EXPIRA_SEG), expira_seg: PEDIDO_UPLOAD_EXPIRA_SEG };
   },
-  // o tamanho que vale é o que CHEGOU ao bucket, não o declarado ao pedir a URL
-  conferirArquivoDePedido(m) { Midia.validarArquivoDePedido({ mime: m.mime, tamanho: m.tamanho }); return m; },
-  // Os BYTES de uma mídia, lidos pelo servidor (transcrição do áudio; depois, o PDF da prova e do
-  // edital): do disco no driver local, ou do bucket por URL presignada de leitura. Quem chama já
-  // conferiu de quem é o arquivo — aqui não há sessão.
+  // Confirma o envio grande de um pedido: o arquivo é CONFERIDO antes de valer. O tamanho é o que chegou
+  // ao bucket, não o declarado; reprovado, somem o registro e o objeto — nada fica "confirmado" à espera.
+  async confirmarUploadDePedido(id, ownerUserId) {
+    const m = this.obterMesmoPendente(id);
+    if (!m || m.owner_user_id !== ownerUserId) throw new Error('Upload não encontrado.');
+    if (m.confirmado) return m;
+    const obj = await storage.s3Existe(m.file_path);
+    if (!obj) throw new Error('Arquivo ainda não chegou ao storage — envie e confirme de novo.');
+    try { Midia.validarArquivoDePedido({ mime: m.mime, tamanho: obj.tamanho }); }
+    catch (e) { await Midia.descartarDePedido(m); throw e; }
+    db.prepare('UPDATE media_files SET confirmado = 1, tamanho = ? WHERE id = ?').run(obj.tamanho, id);
+    return this.obter(id);
+  },
+  // apaga o registro e o objeto de um arquivo de pedido que não serve (só o que NADA referencia: é do aluno, para pedido)
+  async descartarDePedido(m) {
+    db.prepare('DELETE FROM media_files WHERE id = ?').run(m.id);
+    await storage.apagar(m.file_path, m.storage);
+  },
+  // Os BYTES de uma mídia, lidos pelo servidor (transcrição do áudio; PDF da prova e do edital): do disco
+  // no driver local, ou do bucket por URL presignada de leitura. Quem chama já conferiu de quem é o
+  // arquivo — aqui não há sessão. O tamanho gravado no registro NÃO é confiável (o objeto pode ter sido
+  // trocado depois de confirmado): confere-se o `content-length` e lê-se em fluxo, com corte em `maxBytes`.
   async lerBytes(m, maxBytes = PEDIDO_PDF_MAX_BYTES) {
+    const grande = () => { const e = new Error('Arquivo grande demais para ser lido.'); e.status = 422; return e; };
     if (!m) throw new Error('Arquivo não encontrado.');
-    if (m.tamanho > maxBytes) throw new Error('Arquivo grande demais para ser lido.');
+    if (m.tamanho > maxBytes) throw grande();
     if (m.storage === 's3') {
       if (!storage.s3Ativo()) throw new Error('Storage externo indisponível.');
       const r = await fetch(storage.presignS3(storage.s3cfg(), 'GET', m.file_path, 300), { signal: AbortSignal.timeout(120000) });
       if (!r.ok) throw new Error(`O storage não entregou o arquivo (${r.status}).`);
-      const buf = Buffer.from(await r.arrayBuffer());
-      if (buf.length > maxBytes) throw new Error('Arquivo grande demais para ser lido.');
-      return buf;
+      const cancelar = () => { try { if (r.body && r.body.cancel) r.body.cancel().catch(() => {}); } catch (_) { /* já fechado */ } };
+      if (Number(r.headers.get('content-length')) > maxBytes) { cancelar(); throw grande(); }
+      if (!r.body || !r.body.getReader) { const buf = Buffer.from(await r.arrayBuffer()); if (buf.length > maxBytes) throw grande(); return buf; }
+      // em fluxo: o cabeçalho pode faltar (ou mentir) — para de ler no primeiro byte além do limite
+      const leitor = r.body.getReader(), partes = [];
+      let total = 0;
+      for (;;) {
+        const { done, value } = await leitor.read();
+        if (done) break;
+        total += value.length;
+        if (total > maxBytes) { try { await leitor.cancel(); } catch (_) { /* já fechado */ } throw grande(); }
+        partes.push(Buffer.from(value));
+      }
+      return Buffer.concat(partes, total);
     }
-    return fs.readFileSync(storage.caminhoLocal(m.file_path));
+    const caminho = storage.caminhoLocal(m.file_path);
+    let tamanho;
+    // o erro do sistema traz o caminho do servidor: quem pediu só precisa saber que o arquivo não está lá
+    try { tamanho = fs.statSync(caminho).size; } catch (_) { const e = new Error('O arquivo não está mais no armazenamento — envie de novo.'); e.status = 422; throw e; }
+    if (tamanho > maxBytes) throw grande();
+    return fs.readFileSync(caminho);
   },
 
   obter(id) { return db.prepare('SELECT * FROM media_files WHERE id = ? AND confirmado = 1').get(id) || null; },
@@ -1163,6 +1203,7 @@ const Denuncias = {
 
 module.exports = {
   TIPOS_PRODUTO, TIPOS_AULA, duracaoDeVideo, CATEGORIAS, CAT_ROT, catRotulo, Categorias, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
+  PEDIDO_PDF_MAX_BYTES, PEDIDO_AUDIO_MAX_BYTES, PEDIDO_UPLOAD_EXPIRA_SEG,
   Produtos, Conteudo, Midia, MateriaisCurso, Matriculas, Cortesia, Progresso, Liberacao, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
   temAcesso, Clube, Audiobook,

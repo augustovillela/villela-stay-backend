@@ -226,13 +226,21 @@ function reservar(userId, teto, { agente, aceite }) {
   lancar(userId, 'reserva', -teto, { ref, detalhe: agente });
   return ref;
 }
+// O desfecho de uma reserva é UM só — acerto ou estorno — e as duas funções são idempotentes por `ref`:
+// chamadas de novo (nova tentativa depois de uma falha de gravação, recuperação ao subir o serviço),
+// saem sem lançar. Um segundo lançamento devolveria dinheiro em dobro.
+const desfecho = (ref) => (ref ? db.prepare("SELECT tipo, milesimos FROM ia_movimentos WHERE ref = ? AND tipo IN ('acerto', 'estorno') LIMIT 1").get(ref) : null);
 function acertar(userId, ref, teto, real, detalhe) {
+  const ja = desfecho(ref);
+  if (ja) return ja.tipo === 'acerto' ? Math.max(0, teto - ja.milesimos) : 0; // o que ficou cobrado da primeira vez
   const cobrado = Math.min(teto, Math.max(0, Math.round(real))); // nunca acima do teto aceito
   lancar(userId, 'acerto', teto - cobrado, { ref, detalhe });
   return cobrado;
 }
 function estornar(userId, ref, teto, detalhe) {
+  if (desfecho(ref)) return false;
   lancar(userId, 'estorno', teto, { ref, detalhe });
+  return true;
 }
 
 // Crédito manual do dono da plataforma: cortesia (positivo) ou ajuste (qualquer sinal, sem deixar negativo).

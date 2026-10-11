@@ -39,7 +39,12 @@ const abrir = (r) => r && { ...r, perfil: j.parse(r.perfil, {}), regra_pontuacao
 const Escopos = {
   obter: (id) => abrir(db.prepare('SELECT * FROM est_escopos WHERE id = ?').get(id)),
   porSlug: (productId, sl) => abrir(db.prepare('SELECT * FROM est_escopos WHERE product_id = ? AND slug = ?').get(productId, sl)),
-  doProduto: (productId, vis) => db.prepare(`SELECT * FROM est_escopos WHERE product_id = ? AND status IN (${vis.map(() => '?').join(',')}) ORDER BY criado_em`).all(productId, ...vis).map(abrir),
+  // os escopos DO CURSO: percurso particular de aluno (dono_user_id) nunca entra aqui — nem para o
+  // produtor, nem para o resumo, nem para outro aluno. Quem o lista é `doDono`, e só para o dono.
+  doProduto: (productId, vis) => db.prepare(`SELECT * FROM est_escopos WHERE product_id = ? AND dono_user_id = '' AND status IN (${vis.map(() => '?').join(',')}) ORDER BY criado_em`).all(productId, ...vis).map(abrir),
+  doDono: (productId, userId) => (userId ? db.prepare('SELECT * FROM est_escopos WHERE product_id = ? AND dono_user_id = ? ORDER BY criado_em').all(productId, userId).map(abrir) : []),
+  // o escopo do curso pelo slug, para as rotas do staff: percurso particular responde como escopo que não existe
+  doCursoPorSlug(productId, sl) { const e = this.porSlug(productId, sl); return e && !e.dono_user_id ? e : null; },
 };
 function itens(escopo, versao = escopo.versao) {
   return db.prepare('SELECT * FROM est_itens WHERE escopo_id = ? AND versao = ? ORDER BY ordem').all(escopo.id, versao)
@@ -201,13 +206,40 @@ function validarUnidade(u, i, codComp, codItem) {
 // ---------------------------------------------------------------------
 // IMPORTAÇÃO
 // ---------------------------------------------------------------------
-function importar(produto, dados = {}) {
+// ---------------------------------------------------------------------
+// PERCURSO PARTICULAR (ADR-0010, §6) — escopo de UM aluno, hospedado no curso em que ele tem acesso.
+// Só o dono o vê; não tem aulas nem programa: as questões que ele importa (prova em PDF) ficam no nome
+// dele, e as competências nascem das disciplinas, para Praticar e Prova funcionarem.
+// ---------------------------------------------------------------------
+const PARTICULARES_MAX = 10; // por aluno, por curso: dá para organizar por concurso e não vira depósito
+function criarParticular(produto, usuario, titulo) {
+  const t = s(titulo, 120);
+  if (t.length < 3) throw erro('Dê um nome ao seu percurso (ao menos 3 letras).');
+  if (Escopos.doDono(produto.id, usuario.id).length >= PARTICULARES_MAX) throw erro(`Você já tem ${PARTICULARES_MAX} percursos particulares neste curso — use um dos que existem.`, 409);
+  const id = novoId(), agora = nowISO();
+  // o slug leva um pedaço do id: não colide com escopo do curso nem com percurso de outro aluno
+  const sl = `meu-${slug(t).slice(0, 36).replace(/-$/, '') || 'percurso'}-${id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toLowerCase()}`;
+  db.prepare(`INSERT INTO est_escopos (id, product_id, slug, tipo, titulo, extensao, resumo, dono_user_id, criado_em, atualizado_em) VALUES (?, ?, ?, 'assunto', ?, 'modulo', ?, ?, ?, ?)`)
+    .run(id, produto.id, sl, t, 'Percurso particular: questões de prova importadas por você.', usuario.id, agora, agora);
+  return Escopos.obter(id);
+}
+
+// `opcoes` só existe para o caminho interno (aplicar uma prova importada por pedido — pedidos.js):
+//   dono      o usuário dono do percurso PARTICULAR de destino (sem ele, percurso particular é intocável)
+//   autor     de quem são as questões (est_questoes.producer_id); padrão: o produtor do curso
+//   situacao  com que situação a questão NOVA nasce; padrão: rascunho, como toda importação
+function importar(produto, dados = {}, opcoes = {}) {
   const e = dados.escopo || {};
   const sl = slug(e.slug || e.titulo);
   if (!sl) throw erro('Informe "escopo.slug" (ou o título).');
+  const dono = s(opcoes.dono, 40), autor = s(opcoes.autor, 40) || produto.producer_id;
+  const situacaoNova = banco.SITUACOES.includes(opcoes.situacao) ? opcoes.situacao : 'rascunho';
   const rel = { escopo: sl, criado: false };
   transacao(() => {
     let escopo = Escopos.porSlug(produto.id, sl);
+    // percurso particular só é tocado pelo dono, e só por este caminho interno
+    if (escopo && (escopo.dono_user_id || '') !== dono) throw erro(dono ? 'Percurso não encontrado.' : 'Este endereço pertence a um percurso particular de aluno — escolha outro slug.', dono ? 404 : 409);
+    if (!escopo && dono) throw erro('Percurso não encontrado.', 404);
     const agora = nowISO();
     if (!escopo) {
       const tipo = s(e.tipo, 12), titulo = s(e.titulo, 200);
@@ -363,7 +395,7 @@ function importar(produto, dados = {}) {
           if (!x.justificativa) throw erro(`questão ${i + 1}: justifique o vínculo com o item ${x.codigo}.`);
         });
         const { hash, uso, corrigivel, tipo, origem, ...resto } = q;
-        let atual = db.prepare('SELECT id, dados FROM est_questoes WHERE producer_id = ? AND hash = ?').get(produto.producer_id, hash);
+        let atual = db.prepare('SELECT id, dados FROM est_questoes WHERE producer_id = ? AND hash = ?').get(autor, hash);
         if (atual) {
           // A mesma questão vinda de outro caderno traz as alternativas em outra
           // ordem. A letra de cada alternativa é a da PRIMEIRA importação e não
@@ -374,8 +406,8 @@ function importar(produto, dados = {}) {
         const dadosQ = j.str({ ...resto, tipo, origem });
         if (!atual) {
           const id = novoId();
-          db.prepare(`INSERT INTO est_questoes (id, producer_id, hash, tipo, origem, uso, corrigivel, dados, criado_em, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run(id, produto.producer_id, hash, tipo, origem, uso, corrigivel ? 1 : 0, dadosQ, agora, agora);
+          db.prepare(`INSERT INTO est_questoes (id, producer_id, hash, tipo, origem, uso, corrigivel, situacao, dados, criado_em, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(id, autor, hash, tipo, origem, uso, corrigivel ? 1 : 0, situacaoNova, dadosQ, agora, agora);
           atual = { id };
           rel.questoes.novas++;
         } else if (atual.dados !== dadosQ) {
@@ -401,7 +433,7 @@ function importar(produto, dados = {}) {
       rel.questoes_arquivadas = 0;
       const arq = db.prepare(`UPDATE est_questoes SET situacao = 'arquivada', atualizado_em = ? WHERE producer_id = ? AND hash = ? AND situacao != 'arquivada'
         AND id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?)`);
-      for (const h of hashes) rel.questoes_arquivadas += arq.run(agora, produto.producer_id, h, escopo.id).changes;
+      for (const h of hashes) rel.questoes_arquivadas += arq.run(agora, autor, h, escopo.id).changes;
     }
 
     if (dados.cards) {
@@ -433,7 +465,7 @@ function importar(produto, dados = {}) {
 
 // Publicar é ato separado da importação. Questão sem vínculo com o escopo não muda.
 function definirStatus(produto, dados = {}) {
-  const escopo = Escopos.porSlug(produto.id, slug(dados.escopo));
+  const escopo = Escopos.doCursoPorSlug(produto.id, slug(dados.escopo));
   if (!escopo) throw erro('Escopo não encontrado.', 404);
   const r = {};
   const st = (v) => (STATUS.includes(v) ? v : null);
@@ -547,5 +579,5 @@ function resumo(productId) {
 
 module.exports = {
   Escopos, Questoes, itens, competencias, vinculos, unidades, cards, competenciasDaQuestao,
-  importar, validarUnidade, definirStatus, cobertura, resumo, competenciasComPratica, questoesDoEscopo, slug, erro, STATUS, TIPOS, EXTENSOES, BLOCOS,
+  importar, criarParticular, PARTICULARES_MAX, validarUnidade, definirStatus, cobertura, resumo, competenciasComPratica, questoesDoEscopo, slug, erro, STATUS, TIPOS, EXTENSOES, BLOCOS,
 };

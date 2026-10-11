@@ -39,18 +39,26 @@ function contexto(usuario, produto) {
   const acesso = revisor || ct.temAcesso(usuario.id, produto.id);
   return { revisor, acesso, vis: revisor ? R.STATUS : ['publicado'], situacoes: revisor ? banco.SITUACOES : ['disponivel'] };
 }
+// PERCURSO PARTICULAR (ADR-0010, §6): só o DONO entra — para todos os outros (o produtor e o admin
+// inclusive) ele responde como percurso que não existe. O dono o vê mesmo em rascunho (ele nunca é
+// "publicado": não é do curso), mas só com o acesso ao curso em dia, que é onde o percurso mora.
 function abrir(usuario, produto, slugEscopo) {
   const c = contexto(usuario, produto);
   if (!c.acesso) throw erro('Esta área é para quem tem acesso ao curso.', 403);
   const escopo = R.Escopos.porSlug(produto.id, R.slug(slugEscopo));
+  if (escopo && escopo.dono_user_id) {
+    if (escopo.dono_user_id !== usuario.id) throw erro('Percurso não encontrado.', 404);
+    return { ...c, vis: R.STATUS, particular: true, escopo };
+  }
   if (!escopo || !c.vis.includes(escopo.status)) throw erro('Percurso não encontrado.', 404);
-  return { ...c, escopo };
+  return { ...c, particular: false, escopo };
 }
 function escopos(usuario, produto) {
   const c = contexto(usuario, produto);
   if (!c.acesso) return { acesso: false, escopos: [] };
-  return { acesso: true, revisor: c.revisor, escopos: R.Escopos.doProduto(produto.id, c.vis)
-    .map(e => ({ slug: e.slug, tipo: e.tipo, titulo: e.titulo, nivel: e.nivel, extensao: e.extensao, resumo: e.resumo, data_alvo: e.data_alvo, status: e.status })) };
+  const linha = (e) => ({ slug: e.slug, tipo: e.tipo, titulo: e.titulo, nivel: e.nivel, extensao: e.extensao, resumo: e.resumo, data_alvo: e.data_alvo, status: e.status, particular: !!e.dono_user_id });
+  // os do curso primeiro; depois os particulares DESTE usuário (os de outro aluno não existem para ele)
+  return { acesso: true, revisor: c.revisor, escopos: R.Escopos.doProduto(produto.id, c.vis).concat(R.Escopos.doDono(produto.id, usuario.id)).map(linha) };
 }
 
 // ---------------------------------------------------------------------
@@ -174,7 +182,7 @@ function painel(usuario, produto, slugEscopo) {
   return {
     reta_final: alvo ? { data_alvo: alvo, dias, fase, foco: rf.foco || 'objetiva' } : null,
     erros_pendentes: errosPendentes(usuario.id, escopo.id).length,
-    escopo: { slug: escopo.slug, tipo: escopo.tipo, titulo: escopo.titulo, nivel: escopo.nivel, extensao: escopo.extensao, data_alvo: escopo.data_alvo, versao: escopo.versao, status: escopo.status, perfil: escopo.perfil },
+    escopo: { slug: escopo.slug, tipo: escopo.tipo, titulo: escopo.titulo, nivel: escopo.nivel, extensao: escopo.extensao, data_alvo: escopo.data_alvo, versao: escopo.versao, status: escopo.status, perfil: escopo.perfil, particular: !!c.particular },
     revisor: c.revisor,
     // três eixos, cada um com o seu denominador — nunca somados num percentual só
     cobertura: {
@@ -565,9 +573,11 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   if (modo === 'treino') elegiveis = elegiveis.filter(x => x.q.uso !== 'reservada');
   // Prova simulada reproduz o edital: questão de competência TRANSVERSAL (método de estudo, técnica
   // de prova — competência que não cobre item do programa) não entra, a não ser que o aluno a peça.
+  // Percurso SEM programa (o particular do aluno: só questões de prova) não tem o que separar — sem
+  // esta guarda, nenhuma competência "cobre item" e o simulado sairia vazio.
   else if (!filtro.size) {
     const comItem = new Set(R.vinculos(c.escopo.id).map(v => v.competencia_codigo));
-    elegiveis = elegiveis.filter(x => !x.comps.length || x.comps.some(k => comItem.has(k)));
+    if (comItem.size) elegiveis = elegiveis.filter(x => !x.comps.length || x.comps.some(k => comItem.has(k)));
   }
   const pedido = Math.min(200, Math.max(1, Math.round(Number(n) || 10)));
   // faltou questão: a lacuna é dita, nunca preenchida com repetição ou filtro afrouxado em silêncio

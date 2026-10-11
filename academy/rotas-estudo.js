@@ -78,7 +78,7 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   const baseUrl = (req) => `${req.headers['x-forwarded-proto'] || req.protocol || 'https'}://${req.get('host')}`;
   app.get(`${base}/abertas`, ...AL, h((req, res) => { semCache(res); res.json(ped.abertas(...a(req))); }));
   app.get(`${base}/pedidos`, ...AL, h((req, res) => { semCache(res); res.json(ped.listar(...a(req), { questao: req.query.questao })); }));
-  app.post(`${base}/pedidos`, ...AL, h((req, res) => { res.json(ped.criar(...a(req), b(req))); }));
+  app.post(`${base}/pedidos`, ...AL, h(async (req, res) => { res.json(await ped.criar(...a(req), b(req))); }));
   // envio de arquivo do aluno, só para pedido: pequeno em base64; grande direto ao storage (URL assinada)
   app.post(`${base}/pedidos/arquivo`, ...AL, h(async (req, res) => { res.json({ ok: true, ...(await ped.enviarArquivo(...a(req), b(req))) }); }));
   app.post(`${base}/pedidos/arquivo-grande`, ...AL, h((req, res) => { res.json({ ok: true, ...ped.iniciarArquivoGrande(...a(req), b(req)) }); }));
@@ -87,6 +87,11 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.post(`${base}/pedidos/:pedido/confirmar`, ...AL, h((req, res) => { res.json(ped.confirmar(...a(req), req.params.pedido)); }));
   app.post(`${base}/pedidos/:pedido/cancelar`, ...AL, h((req, res) => { res.json(ped.cancelar(...a(req), req.params.pedido)); }));
   app.post(`${base}/pedidos/:pedido/contestar`, ...AL, h((req, res) => { res.json(ped.contestar(...a(req), req.params.pedido, b(req).motivo)); }));
+  // importar prova em PDF: o que a tela precisa antes de pedir; outra faixa de páginas (reorça); e APLICAR
+  // ao percurso as questões escolhidas — passo próprio, sem custo
+  app.get(`${base}/pedidos/prova/opcoes`, ...AL, h((req, res) => { semCache(res); res.json(ped.opcoesDeProva(...a(req))); }));
+  app.post(`${base}/pedidos/:pedido/paginas`, ...AL, h(async (req, res) => { res.json(await ped.reorcar(...a(req), req.params.pedido, b(req))); }));
+  app.post(`${base}/pedidos/:pedido/aplicar`, ...AL, h((req, res) => { res.json({ ok: true, ...ped.aplicar(...a(req), req.params.pedido, b(req)) }); }));
   // falta saldo: recarga do valor que falta, ligada ao pedido — creditou, o pedido começa sozinho
   app.post(`${base}/pedidos/:pedido/recarga`, ...AL, h(async (req, res) => { res.json({ ok: true, ...(await ped.recarga(...a(req), req.params.pedido, b(req), baseUrl(req))) }); }));
 }
@@ -127,15 +132,18 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
   // as questões do escopo com o hash de cada uma — para achar a versão antiga que ficou órfã depois de uma correção
   app.get('/staff/api/academy/estudo/questoes', ...PA, h((req, res) => {
     const { produto } = imp.produtorDono(req.query || {});
-    const escopo = est.Escopos.porSlug(produto.id, est.slug(req.query.escopo));
+    const escopo = est.Escopos.doCursoPorSlug(produto.id, est.slug(req.query.escopo));
     if (!escopo) return res.status(404).json({ erro: 'Escopo não encontrado.' });
     res.json({ questoes: est.questoesDoEscopo(escopo) });
   }));
   // PEDIDOS PAGOS (ADR-0010): volume por tipo e estado, total cobrado e as contestações abertas. A listagem
   // não leva o texto das respostas dos alunos; abrir um pedido (aí sim, com a resposta) e responder a uma
   // contestação exigem SESSÃO de admin — a chave de publicação conta, mas não lê o que o aluno escreveu.
+  // Pela chave saem SÓ as contagens: o motivo da contestação (texto livre do aluno), o nome e o e-mail de
+  // quem discordou só vão a quem entrou com sessão de admin.
   const ADM = [requireAuth, requireAdmin];
-  app.get('/staff/api/academy/estudo/pedidos', ...PA, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json(ped.painelStaff()); }));
+  const sessaoDeAdmin = (req) => !req.viaChave && !!req.user && req.user.papel === 'admin';
+  app.get('/staff/api/academy/estudo/pedidos', ...PA, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json(ped.painelStaff({ admin: sessaoDeAdmin(req) })); }));
   app.get('/staff/api/academy/estudo/pedidos/:id', ...ADM, h((req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const r = ped.abrirParaStaff(req.params.id);
@@ -150,7 +158,7 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
   // o programa inteiro com o destino de cada item — é a auditoria do edital
   app.get('/staff/api/academy/estudo/cobertura', ...PA, h((req, res) => {
     const { produto } = imp.produtorDono(req.query || {});
-    const escopo = est.Escopos.porSlug(produto.id, est.slug(req.query.escopo));
+    const escopo = est.Escopos.doCursoPorSlug(produto.id, est.slug(req.query.escopo));
     if (!escopo || !escopo.versao) return res.status(404).json({ erro: 'Escopo sem programa.' });
     res.json({ cobertura: est.cobertura(escopo, { vis: est.STATUS, situacoes: require('./estudo/banco').SITUACOES }) });
   }));

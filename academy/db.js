@@ -706,6 +706,15 @@ const MIGRACOES = [
           CREATE INDEX IF NOT EXISTS idx_estped_estado ON est_pedidos (estado);
           ALTER TABLE ia_recargas ADD COLUMN pedido_id TEXT DEFAULT '';`,
   },
+  {
+    // ADR-0010, fase 3 — PERCURSO PARTICULAR e importação de prova em PDF.
+    // `dono_user_id`: escopo que só o dono vê (nunca listado para outro aluno, nem no resumo do produtor).
+    // `progresso`: em que lote está o trabalho longo de um pedido ({ etapa, feito, total }) — a tela acompanha.
+    nome: 'estudo-percurso-particular-2026-10-11',
+    sql: `ALTER TABLE est_escopos ADD COLUMN dono_user_id TEXT DEFAULT '';
+          CREATE INDEX IF NOT EXISTS idx_estesc_dono ON est_escopos (product_id, dono_user_id);
+          ALTER TABLE est_pedidos ADD COLUMN progresso TEXT DEFAULT '';`,
+  },
 ];
 
 for (const m of MIGRACOES) {
