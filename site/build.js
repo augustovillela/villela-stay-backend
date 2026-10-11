@@ -3309,6 +3309,14 @@ ${blocos}
       livros: ['claude-ai-na-pratica-juridica', 'claude-ai-para-advogados-guia-visual'],
       cursos: ['claude-ai-na-pratica-juridica'], sistemas: ['legal'] },
 
+    // Super curso para concursos (ESTUDE), no ar desde 10/2026. Próximos concursos entram aqui, no campo cursos.
+    { id: 'concursos',
+      nome: t('Concursos públicos e magistratura do trabalho', 'Public service exams and the labour judiciary', 'Oposiciones y magistratura del trabajo'),
+      texto: t('Preparação para concurso pelo programa oficial, e não por apostila genérica: uma aula para cada item do edital, teoria para leitura, questões de provas anteriores e questões autorais comentadas, cards de revisão, mapas mentais, simulados com a regra do concurso e plano de estudo no tempo de quem estuda. O primeiro curso segue o edital do concurso nacional da Magistratura do Trabalho, para quem quer ser juiz do trabalho.',
+        'Exam preparation built on the official syllabus rather than a generic handout: one lesson for each item of the public notice, reading theory, past-paper and original questions with commentary, revision cards, mind maps, mock exams under the real rules and a study plan that fits your schedule. The first course follows the national competition for Brazilian labour judges.',
+        'Preparación para oposiciones por el programa oficial, no por apuntes genéricos: una clase por cada punto de la convocatoria, teoría para lectura, preguntas de exámenes anteriores y originales comentadas, tarjetas de repaso, mapas mentales, simulacros con la regla del concurso y plan de estudio a tu ritmo. El primer curso sigue la convocatoria nacional para jueces del trabajo en Brasil.'),
+      livros: [], cursos: ['juiz-do-trabalho-trt-10a-regiao-concurso-paradigma'], sistemas: [] },
+
     { id: 'gestao',
       nome: t('Gestão da empresa: clientes, documentos, projetos e dinheiro', 'Running the company: clients, documents, projects and money', 'Gestión de la empresa: clientes, documentos, proyectos y dinero'),
       texto: t('Funil comercial e CRM, gestão documental com busca por IA, portfólio de projetos e eventos, controle financeiro com partida dobrada, cursos e produtos digitais com checkout nacional, e a plataforma de receita que junta tudo. São os sistemas que a operação do grupo usa todo dia — vendidos depois, não antes.',
@@ -3327,9 +3335,9 @@ ${blocos}
     // contêineres, irrigação, horta, pintura, elétrica, hidráulica, hospedagem) entram aqui, no campo cursos/livros.
     { id: 'chacara',
       nome: t('Chácara, casa de campo e manutenção da propriedade', 'Country house and property maintenance', 'Casa de campo y mantenimiento de la propiedad'),
-      texto: t('Como cuidar de uma chácara com método: piscina limpa e segura, rotina de manutenção, o que dá para fazer com as próprias mãos, o que contratar e como conferir o serviço de quem você contrata. É a coleção Viver de Chácara, para quem mora, descansa ou recebe hóspedes em uma propriedade rural.',
-        'How to look after a country property with method: a clean and safe pool, a maintenance routine, what you can do yourself, what to hire out and how to check the work you pay for. This is the Viver de Chácara collection, for those who live, rest or host guests on a rural property.',
-        'Cómo cuidar una casa de campo con método: piscina limpia y segura, rutina de mantenimiento, qué se puede hacer con las propias manos, qué contratar y cómo revisar el servicio contratado. Es la colección Viver de Chácara, para quien vive, descansa o recibe huéspedes en una propiedad rural.'),
+      texto: t('Como cuidar de uma chácara com método: piscina limpa e segura, jardim e paisagismo, pequenas obras de alvenaria, construção com contêineres, rotina de manutenção, o que dá para fazer com as próprias mãos, o que contratar e como conferir o serviço de quem você contrata. É a coleção Viver de Chácara, para quem mora, descansa ou recebe hóspedes em uma propriedade rural.',
+        'How to look after a country property with method: a clean and safe pool, garden and landscaping, small masonry jobs, building with shipping containers, a maintenance routine, what you can do yourself, what to hire out and how to check the work you pay for. This is the Viver de Chácara collection, for those who live, rest or host guests on a rural property.',
+        'Cómo cuidar una casa de campo con método: piscina limpia y segura, jardín y paisajismo, pequeñas obras de albañilería, construcción con contenedores, rutina de mantenimiento, qué se puede hacer con las propias manos, qué contratar y cómo revisar el servicio contratado. Es la colección Viver de Chácara, para quien vive, descansa o recibe huéspedes en una propiedad rural.'),
       livros: [], cursos: ['piscineiro-na-pratica', 'paisagismo-na-pratica', 'pedreiro-completo-na-pratica', 'construcao-com-conteineres-na-pratica'], sistemas: [] },
 
     { id: 'negocios',
