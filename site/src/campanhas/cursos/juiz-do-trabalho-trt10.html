@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}.byline{margin:18px 0 0;font-size:14px;color:var(--band-ink)}
+.byline a{color:var(--band-accent);font-weight:600}
+.byline a:focus-visible{outline:2px solid var(--band-accent);outline-offset:2px}
+</style>
+<title>Juiz do Trabalho — Magistratura do Trabalho (TRT 10ª Região): conteúdo do curso</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Conteúdo do curso · Villela Academy</p>
+    <h1>Juiz do Trabalho — Magistratura do Trabalho (TRT 10ª Região)</h1>
+    <p class="lead">Tudo o que o curso oferece a quem se prepara para a Magistratura do Trabalho, disciplina por disciplina.</p>
+    <p class="byline"><a href="/campanhas/cursos/">&larr; Conteúdo dos cursos</a> &nbsp;·&nbsp; Curso de <strong>Augusto Villela</strong></p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As disciplinas</a>
+  <a href="#metodos">Ferramentas de estudo</a>
+  <a href="#casos">Como funciona na prática</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Perguntas frequentes</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados principais do curso.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>Juiz do Trabalho — Magistratura do Trabalho (TRT 10ª Região)</dd></div>
+    <div><dt>Série</dt><dd>Concursos Públicos</dd></div>
+    <div><dt>Autor</dt><dd>Augusto Villela</dd></div>
+    <div><dt>Programa</dt><dd>3 blocos, 15 disciplinas e 249 pontos do edital</dd></div>
+    <div><dt>Aulas</dt><dd>251 em 11/10/2026, cada uma com videoaula animada, texto, questões e cards</dd></div>
+    <div><dt>Questões</dt><dd>1.004 autorais comentadas e 628 de provas oficiais</dd></div>
+    <div><dt>Cards de revisão</dt><dd>1.015</dd></div>
+    <div><dt>Preço</dt><dd>R$ 980,00 (em outubro de 2026; vale o preço da página do curso)</dd></div>
+    <div><dt>Pagamento</dt><dd>Pix com liberação imediata ou cartão</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, com reembolso</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/juiz-do-trabalho-trt-10a-regiao-concurso-paradigma">academia.villelastay.com.br/academy/cursos/juiz-do-trabalho-trt-10a-regiao-concurso-paradigma</a></p>
+  <p>Os números de aulas, questões e cards são os do curso publicado em 11/10/2026.</p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">O curso em poucas palavras.</p>
+  <p class="thesis">Este curso não promete aprovação. Ele organiza o estudo pelo edital e mede o que você demonstra saber.</p>
+  <p>O curso é um percurso de estudo construído item a item sobre o conteúdo programático (Anexo II) do Edital 1/2023 do II Concurso Nacional Unificado da Magistratura do Trabalho, em que o TRT da 10ª Região participou. Cada ponto do programa tem a sua aula, os seus cards de revisão e as suas questões comentadas.</p>
+  <h3>A regra que organiza tudo</h3>
+  <p>Toda pergunta aponta um ponto do programa, e todo ponto do programa tem pergunta e aula. Nada fica solto: o que se estuda está no edital, e o que está no edital pode ser treinado.</p>
+  <h3>O que o curso é, em uma frase</h3>
+  <p>Preparação pelo programa oficial do concurso nacional da Magistratura do Trabalho: aula por item do edital, teoria para leitura, questões das provas anteriores e autorais comentadas, cards, mapas mentais, simulados com a regra do concurso e plano no seu tempo.</p>
+  <h3>Quatro ideias que sustentam o curso</h3>
+  <ul>
+    <li><strong>O edital é o roteiro.</strong> O programa aparece com o texto original e a localização de cada ponto no edital.</li>
+    <li><strong>A videoaula pergunta.</strong> Em alguns pontos o vídeo para, faz uma pergunta e espera. A frase que se repete nas aulas é “Responda antes de mim”.</li>
+    <li><strong>Saber é demonstrar.</strong> O curso separa ter a aula disponível, ter estudado e ter acertado sem ajuda uma questão ainda não vista.</li>
+    <li><strong>O plano cabe na sua semana.</strong> Você informa quantas horas tem. Se o programa não couber, o curso mostra o que ficou de fora.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada disciplina cobre</h2>
+  <p class="sub">Para cada disciplina: os temas das aulas e, onde houver, uma ou duas frases do próprio curso.</p>
+
+  <p class="block-title">Método · 2 aulas</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>Método de estudo e de prova</h3>
+    <ul>
+      <li><strong>Como estudar para este concurso.</strong> O ciclo de estudos montado passo a passo para quem tem poucas horas por semana: ler o edital e resolver uma prova anterior antes de estudar, escolher as disciplinas da rodada, distribuir as horas, revisar antes do conteúdo novo e refazer o ciclo conforme o andamento.</li>
+      <li><strong>Como fazer a prova.</strong> O plano da prova objetiva: tempo por bloco, por onde começar, as três passagens pelo caderno, o que fazer com a questão em dúvida e a hora de preencher o cartão de respostas.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O edital é o mapa e a prova anterior é a bússola.</q><q>Ciclo, não cronograma. A ordem das disciplinas é fixa e o horário é livre.</q></div>
+  </div></article>
+
+  <p class="block-title">Bloco I do edital · 5 disciplinas</p>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>Direito Individual do Trabalho · 38 aulas</h3>
+    <ul>
+      <li>O trabalho na história, fundamentos, fontes, interpretação e princípios do Direito do Trabalho.</li>
+      <li>Relação de trabalho e relação de emprego, empregado, empregador, terceirização e trabalho temporário.</li>
+      <li>Contrato de emprego: modalidades, invalidade, efeitos, alteração, interrupção e suspensão.</li>
+      <li>Proteção da criança e do adolescente, da mulher, da pessoa com deficiência e do trabalhador imigrante. Racismo e trabalho.</li>
+      <li>Duração do trabalho, períodos de descanso, remuneração e salário.</li>
+      <li>Término do contrato, aviso prévio, estabilidade e garantias provisórias, FGTS, prescrição e decadência.</li>
+      <li>Saúde e segurança, acidente de trabalho, danos nas relações de trabalho, meio ambiente do trabalho e trabalho escravo contemporâneo.</li>
+      <li>Como ler e aplicar súmulas, orientações jurisprudenciais e precedentes.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Localizar a norma legal, e só depois o verbete que a interpreta.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Direito Coletivo do Trabalho · 10 aulas</h3>
+    <ul>
+      <li>Conceito, fontes, princípios e solução dos conflitos coletivos.</li>
+      <li>Liberdade sindical, modelo brasileiro, entidades sindicais, garantias e condutas antissindicais.</li>
+      <li>Negociação coletiva, acordo e convenção coletiva, contrato coletivo de trabalho.</li>
+      <li>Mediação, arbitragem, poder normativo e conciliação prévia.</li>
+      <li>Greve, representação dos trabalhadores nas empresas e tutela coletiva trabalhista.</li>
+      <li>Como ler a jurisprudência coletiva.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A fonte é o sítio do TST, não o manual.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Direito Administrativo · 13 aulas</h3>
+    <ul>
+      <li>Conceito, fontes, sistemas e princípios da Administração Pública.</li>
+      <li>Ato administrativo, organização administrativa e poderes da Administração.</li>
+      <li>Licitações e contratos administrativos.</li>
+      <li>Responsabilidade civil do Estado, bens públicos e serviço público.</li>
+      <li>Agentes públicos, processo disciplinar e improbidade administrativa.</li>
+      <li>Inquérito civil e compromisso de ajustamento de conduta.</li>
+      <li>Como ler e aplicar a jurisprudência dos Tribunais Superiores na matéria.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A banca costuma omitir a ressalva.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>Direito Penal · 16 aulas</h3>
+    <ul>
+      <li>Introdução ao Direito Penal, teoria do crime e aplicação da pena, nas categorias que interessam ao Direito do Trabalho.</li>
+      <li>Crimes contra a liberdade pessoal, o patrimônio e a honra.</li>
+      <li>Abuso de autoridade e crimes contra a Administração da Justiça e a Administração Pública.</li>
+      <li>Direito Penal do Trabalho e falsidade documental no contrato e no processo.</li>
+      <li>Crimes contra a propriedade intelectual, de perigo comum e contra a saúde pública, ligados ao meio ambiente de trabalho.</li>
+      <li>Crimes contra a liberdade sexual e assédio sexual.</li>
+      <li>Método de leitura da jurisprudência penal pelo juiz do trabalho.</li>
+    </ul>
+  </div></article>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>Noções Gerais de Direito e Formação Humanística · 39 aulas</h3>
+    <ul>
+      <li>Sociologia do Direito: administração judiciária, relações sociais, opinião pública e composição não judicial de conflitos.</li>
+      <li>Psicologia judiciária: comunicação, assédio, teoria do conflito, mediação e conciliação, psicologia do testemunho.</li>
+      <li>Ética e estatuto da magistratura: regime jurídico, direitos e deveres, Código de Ética, controle interno e responsabilidade dos magistrados.</li>
+      <li>Filosofia do Direito e Teoria Geral: justiça, Direito e Moral, interpretação, fontes e eficácia da lei no tempo.</li>
+      <li>Política e Direito, ideologias, Declaração Universal dos Direitos Humanos e Agenda 2030.</li>
+      <li>Direito digital: transformação digital do Judiciário, prova digital, contratos inteligentes e proteção de dados pessoais.</li>
+      <li>Pragmatismo, análise econômica do Direito, economia comportamental, governança e compliance.</li>
+      <li>Direito da Antidiscriminação: conceitos, modalidades e prova, legislação, ações afirmativas, povos indígenas, comunidades tradicionais e trabalhador imigrante.</li>
+    </ul>
+  </div></article>
+
+  <p class="block-title">Bloco II do edital · 5 disciplinas</p>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>Direito Processual do Trabalho · 31 aulas</h3>
+    <ul>
+      <li>Teoria geral do processo do trabalho, organização da Justiça do Trabalho, Ministério Público do Trabalho e competência.</li>
+      <li>Partes e procuradores, atos, termos e prazos, nulidades e preclusão.</li>
+      <li>Dissídio individual: petição inicial, audiência, conciliação, resposta, provas e sentença.</li>
+      <li>Sistema recursal trabalhista, recurso de revista e recursos nos dissídios coletivos.</li>
+      <li>Execução trabalhista: liquidação, penhora, defesas, expropriação, Fazenda Pública e contribuições previdenciárias.</li>
+      <li>Inquérito para apuração de falta grave, mandado de segurança, ação rescisória, ações coletivas, dissídio coletivo e ação de cumprimento.</li>
+      <li>Tutela provisória, procedimento sumaríssimo, correição parcial, sistema de precedentes e recursos de revista repetitivos.</li>
+      <li>Como ler e aplicar a jurisprudência processual do TST.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Em dois pontos eu paro e pergunto. Responda antes de mim.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>Direito Constitucional · 16 aulas</h3>
+    <ul>
+      <li>Constituição, supremacia e poder constituinte. Princípios e normas constitucionais.</li>
+      <li>Direitos e garantias fundamentais, remédios constitucionais e direitos sociais.</li>
+      <li>Constituição e processo. Administração Pública na Constituição.</li>
+      <li>Separação dos Poderes, Legislativo, Executivo e Judiciário.</li>
+      <li>Controle de constitucionalidade.</li>
+      <li>Finanças públicas, ordem econômica e financeira, ordem social e Advocacia Pública.</li>
+      <li>Como ler, classificar e aplicar a jurisprudência constitucional.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A tese é um enunciado sintético. A razão de decidir está no acórdão.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>Direito Constitucional do Trabalho · 8 aulas</h3>
+    <ul>
+      <li>Constitucionalismo e paradigmas do Estado.</li>
+      <li>A constitucionalização do Direito do Trabalho, no Ocidente e no Brasil.</li>
+      <li>A Constituição de 1988 no Direito Individual e Coletivo do Trabalho.</li>
+      <li>Princípios constitucionais do trabalho. O trabalho na ordem econômica e na ordem social.</li>
+      <li>Os direitos constitucionais dos trabalhadores, inciso a inciso.</li>
+      <li>Parâmetros constitucionais do Direito Coletivo.</li>
+      <li>Método para ler, hierarquizar e aplicar a jurisprudência constitucional trabalhista.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Na sentença, o método começa pelos fatos, e não pela tese.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>Direito Civil · 11 aulas</h3>
+    <ul>
+      <li>Constitucionalização do Direito Civil e direitos fundamentais nas relações privadas.</li>
+      <li>Lei de Introdução, pessoas naturais e jurídicas, fatos, atos e negócios jurídicos.</li>
+      <li>Prescrição e decadência. Bens e bem de família na execução.</li>
+      <li>Obrigações, contratos e responsabilidade civil.</li>
+      <li>Posse, propriedade, registro e condomínio.</li>
+      <li>Método de leitura da jurisprudência civil no processo do trabalho.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Lê-se o acórdão, não só a ementa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>Direito da Criança, do Adolescente e do Jovem · 6 aulas</h3>
+    <ul>
+      <li>Proteção integral.</li>
+      <li>Trabalho infantil: conceito, proibições, restrições, penalidades e efeitos.</li>
+      <li>Conselho Tutelar e Conselhos de Direitos.</li>
+      <li>O adolescente que trabalha: estágio, aprendizagem e vulnerabilidades.</li>
+      <li>Trabalho educativo.</li>
+      <li>Piores formas de trabalho infantil.</li>
+    </ul>
+  </div></article>
+
+  <p class="block-title">Bloco III do edital · 5 disciplinas</p>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Direito Processual Civil · 21 aulas</h3>
+    <ul>
+      <li>Processo civil constitucional e normas fundamentais do CPC.</li>
+      <li>Jurisdição, ação, competência e sujeitos do processo.</li>
+      <li>Atos processuais, prazos, nulidades e tutela provisória.</li>
+      <li>Procedimento comum: petição inicial, resposta do réu, saneamento, provas e sentença.</li>
+      <li>Coisa julgada, liquidação, cumprimento, procedimentos especiais e processo de execução.</li>
+      <li>Processos nos tribunais, recursos e sistema de precedentes.</li>
+      <li>Informatização do processo judicial.</li>
+      <li>Método de leitura da jurisprudência dos Tribunais Superiores em processo civil.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Separar o que obriga do que apenas persuade.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>Direito Internacional e Comunitário · 11 aulas</h3>
+    <ul>
+      <li>Sujeitos do Direito Internacional Público, agentes diplomáticos e representantes consulares.</li>
+      <li>Imunidade de jurisdição e de execução.</li>
+      <li>Atividades do estrangeiro no Brasil.</li>
+      <li>Tratados internacionais e controle de convencionalidade.</li>
+      <li>Organização Internacional do Trabalho.</li>
+      <li>OMC, concorrência internacional e padrões trabalhistas.</li>
+      <li>Conflito de leis trabalhistas no espaço.</li>
+      <li>Direito comunitário, União Europeia e Mercosul.</li>
+      <li>Método de leitura da jurisprudência em direito internacional.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Extrair a razão de decidir, e não a ementa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Direito Previdenciário · 6 aulas</h3>
+    <ul>
+      <li>Seguridade Social: origem, definição, objetivos e princípios.</li>
+      <li>Regimes de previdência e gestão do regime geral.</li>
+      <li>Custeio da Seguridade Social.</li>
+      <li>Benefícios do regime geral.</li>
+      <li>Acidente do trabalho.</li>
+      <li>Regime próprio de previdência.</li>
+    </ul>
+  </div></article>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>Direito Empresarial · 11 aulas</h3>
+    <ul>
+      <li>Evolução histórica, autonomia, fontes e características.</li>
+      <li>Empresa, empresário e estabelecimento.</li>
+      <li>Propriedade intelectual e industrial, patente e marca.</li>
+      <li>Títulos de crédito.</li>
+      <li>Sociedades, sociedade limitada e sociedade anônima.</li>
+      <li>Contratos mercantis.</li>
+      <li>Recuperação judicial e extrajudicial e falência.</li>
+      <li>Código de Defesa do Consumidor.</li>
+      <li>Tripulante, comandante, aeronauta e aeroviário.</li>
+    </ul>
+  </div></article>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>Direitos Humanos e Direitos Humanos Sociais · 12 aulas</h3>
+    <ul>
+      <li>Conceito, fundamentos, evolução, características e dimensões dos direitos humanos.</li>
+      <li>Declaração Universal dos Direitos Humanos e positivação dos direitos humanos.</li>
+      <li>Direitos humanos e fundamentais na relação de trabalho. Os direitos humanos sociais.</li>
+      <li>Tratados de direitos humanos e a Constituição. Os sistemas da ONU e da OEA.</li>
+      <li>Interpretação e aplicação dos tratados.</li>
+      <li>Proteção internacional da criança e do adolescente contra a exploração econômica.</li>
+      <li>Princípios de Bangalore sobre a conduta judicial.</li>
+      <li>Convenção Americana sobre Direitos Humanos e controle jurisdicional de convencionalidade.</li>
+    </ul>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>As ferramentas de estudo</h2>
+  <p class="sub">O que o aluno encontra no curso, com o nome que cada item tem na tela.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Ferramenta</th><th>O que é</th><th>Onde fica</th></tr></thead>
+    <tbody>
+      <tr><td>Hoje</td><td>A tela de entrada do curso. Mostra o que há para fazer e o que ficou pendente no caderno de erros. Perto da prova, traz as orientações da reta final e da véspera.</td><td class="aula">Hoje</td></tr>
+      <tr><td>Videoaula animada</td><td>Abre cada aula. É uma animação narrada, de cerca de 8 minutos em média, que para em alguns pontos, pergunta e mostra uma contagem regressiva antes da resposta.</td><td class="aula">Aulas</td></tr>
+      <tr><td>Aula interativa</td><td>Passo a passo do tema, um caso para decidir e erros da banca.</td><td class="aula">Aulas</td></tr>
+      <tr><td>Texto da aula</td><td>Teoria para leitura, em versão completa e em versões resumidas. Dá para ler como livro, ler a disciplina inteira em texto corrido e salvar em PDF.</td><td class="aula">Aulas</td></tr>
+      <tr><td>Marcações</td><td>Marca-texto com nota, marcador de página, dicionário e busca dentro da disciplina.</td><td class="aula">Aulas</td></tr>
+      <tr><td>Mapas mentais</td><td>O mapa de cada aula, para ver na tela, imprimir ou salvar em PDF.</td><td class="aula">Mapas</td></tr>
+      <tr><td>Mais cobrado</td><td>Os temas que a banca já cobrou, do mais ao menos pedido, com as questões da própria prova para treinar. O curso avisa: serve para ordenar o estudo, não para cortar matéria.</td><td class="aula">Mais cobrado</td></tr>
+      <tr><td>Programa</td><td>O conteúdo programático do edital, com o texto original e a localização de cada ponto, e o andamento do aluno em cada um.</td><td class="aula">Programa</td></tr>
+      <tr><td>Banco de questões</td><td>Questões autorais e de provas oficiais, comentadas alternativa a alternativa. Filtros de banca, órgão, cargo e ano, e a opção de treinar só com prova oficial.</td><td class="aula">Praticar</td></tr>
+      <tr><td>Pista</td><td>Ajuda opcional na questão. Com pista, o acerto conta como prática com apoio, e não como domínio demonstrado.</td><td class="aula">Praticar</td></tr>
+      <tr><td>Caderno de erros</td><td>Entra a questão em que a última resposta foi um erro. Sai quando o aluno a acerta de novo.</td><td class="aula">Erros</td></tr>
+      <tr><td>Cards</td><td>Cartões de frente e verso, com revisão espaçada.</td><td class="aula">Cards</td></tr>
+      <tr><td>Simulado</td><td>Prova com a regra de pontuação do edital (0,1 por acerto, sem desconto, mínimos por bloco) e relógio do servidor. Dá para montar a prova só com questões de uma banca.</td><td class="aula">Prova</td></tr>
+      <tr><td>Plano de estudo</td><td>Montado pela disponibilidade semanal do aluno. Se o programa não couber no tempo informado, o plano mostra o que ficou de fora.</td><td class="aula">Plano</td></tr>
+      <tr><td>Véspera de prova</td><td>Fichas, slides e mapa das aulas já estudadas, para a revisão dos últimos dias.</td><td class="aula">Aulas e Plano</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Como o curso funciona na prática</h2>
+  <p class="sub">O caminho do aluno dentro do curso, do primeiro acesso à véspera da prova.</p>
+  <div class="cases">
+    <div class="case"><h3>Uma aula, do começo ao fim</h3><p>O aluno escolhe a disciplina e abre a aula. Primeiro vem a videoaula animada, que para e pergunta. Depois, na mesma página, estão a aula interativa, o mapa mental, a prática com questões daquele ponto e o texto para leitura.</p></div>
+    <div class="case"><h3>O estudo segue o edital</h3><p>São 249 pontos do programa, em 15 disciplinas e 3 blocos. Cada ponto tem a sua aula. As duas aulas de método, sobre como estudar e como fazer a prova, completam as 251.</p></div>
+    <div class="case"><h3>O que conta como saber</h3><p>O curso mostra medidas separadas e não as soma em um percentual só. Nas palavras da própria tela: “Ter a aula pronta não é ter estudado, e ter estudado não é ter demonstrado.” Uma competência só aparece como demonstrada depois de um acerto sem pista em questão que o aluno ainda não tinha visto. Para aparecer como retida, pede um novo acerto dias depois.</p></div>
+    <div class="case"><h3>Quando o tempo não dá</h3><p>O plano parte das horas que o aluno informa. Se o programa não cabe inteiro, o curso não esconde o corte. A tela diz: “Nada foi tirado em silêncio.” O aluno escolhe entre aumentar a disponibilidade e aceitar a prioridade proposta.</p></div>
+    <div class="case"><h3>Treino com prova de verdade</h3><p>O banco reúne questões de provas oficiais, identificadas por banca, órgão e ano, e questões autorais. O simulado usa a regra de pontuação do edital, com o tempo contado pelo servidor.</p></div>
+    <div class="case"><h3>Conteúdo em revisão contínua</h3><p>O conteúdo jurídico é produzido com apoio de ferramentas e passa por revisão contínua. A data da legislação e da jurisprudência usadas está indicada em cada aula e questão.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">O que está incluído no preço e o que é cobrado à parte.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula animada, com pausas para o aluno responder.</li>
+        <li>Aula interativa: passo a passo, caso e erros da banca.</li>
+        <li>Texto para leitura, em versão completa e em versões resumidas.</li>
+        <li>Mapa mental.</li>
+        <li>Questões comentadas alternativa a alternativa.</li>
+        <li>Cards de revisão espaçada.</li>
+        <li>Material de véspera: fichas, slides e mapa.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li>Programa oficial completo, com texto original e localização no edital.</li>
+        <li>Banco com 1.004 questões autorais e 628 questões de provas oficiais.</li>
+        <li>1.015 cards.</li>
+        <li>Simulado com a regra de pontuação do edital e relógio do servidor.</li>
+        <li>Plano de estudo pela disponibilidade semanal, com revisão de véspera.</li>
+        <li>Caderno de erros e a lista do que a banca mais cobrou.</li>
+        <li>Atualizações do conteúdo dentro do período de acesso.</li>
+        <li>Acesso no computador e no celular.</li>
+      </ul>
+      <h3>Cobrado à parte</h3>
+      <ul>
+        <li><strong>Tutor Villela e ferramentas de inteligência artificial.</strong> São pagos à parte, por uso. A IA usa saldo pré-pago: o aluno vê o valor antes de cada uso e paga só o que usar.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Quem se prepara para a Magistratura do Trabalho e quer estudar pelo programa do edital, ponto a ponto.</li>
+        <li>Quem tem poucas horas por semana e precisa de um plano que caiba nelas.</li>
+        <li>Quem prefere aula curta, com pergunta e treino, a horas de exposição.</li>
+        <li>Quem já estuda e quer um banco de questões com filtro de banca e simulado com a regra do concurso.</li>
+        <li>Quem quer saber, com honestidade, o que já domina e o que ainda não demonstrou.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura promessa de aprovação. O curso diz, na própria página, que não promete.</li>
+        <li>Quem quer aulas longas com professor gravado. As videoaulas são animações narradas e curtas.</li>
+        <li>Quem espera que o Tutor e as ferramentas de IA estejam incluídos no preço. São cobrados à parte, por uso.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Perguntas frequentes</h2>
+  <p class="sub">As dúvidas mais comuns de quem está decidindo.</p>
+  <h3>O curso garante aprovação?</h3>
+  <p>Não. O curso não promete aprovação. Ele organiza o estudo pelo edital e mede o que o aluno demonstra saber.</p>
+  <h3>Qual é o concurso de referência?</h3>
+  <p>O programa do curso é o conteúdo programático (Anexo II) do Edital 1/2023 do II Concurso Nacional Unificado da Magistratura do Trabalho, em que o TRT da 10ª Região participou. O curso não anuncia edital novo nem data de prova.</p>
+  <h3>Tem pouco tempo para estudar. Serve para mim?</h3>
+  <p>O plano é montado pela disponibilidade semanal que o aluno informa. Se o programa não couber, o curso mostra o que ficou de fora e deixa a escolha com o aluno. A aula de método mostra como montar um ciclo de estudos com poucas horas por semana.</p>
+  <h3>As aulas são gravadas por professor?</h3>
+  <p>Não. As videoaulas são animações narradas, de cerca de 8 minutos em média, que param para o aluno responder. O texto completo de cada aula fica na mesma página.</p>
+  <h3>As questões são de prova?</h3>
+  <p>O banco tem 628 questões de provas oficiais, com banca, órgão e ano, e 1.004 questões autorais. Todas são comentadas alternativa a alternativa, e dá para treinar só com prova oficial.</p>
+  <h3>O conteúdo está atualizado?</h3>
+  <p>O conteúdo jurídico é produzido com apoio de ferramentas e passa por revisão contínua. Cada aula e cada questão indicam a data da legislação e da jurisprudência usadas. Quem compra recebe as atualizações dentro do período de acesso.</p>
+  <h3>O Tutor e a inteligência artificial estão incluídos?</h3>
+  <p>Não. O Tutor Villela e as ferramentas de IA são pagos à parte, por uso, com saldo pré-pago. O aluno vê o valor antes de cada uso e paga só o que usar.</p>
+  <h3>Por quanto tempo tenho acesso?</h3>
+  <p>Por 1 ano a partir da compra, no computador e no celular.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias. Se o curso não for para a pessoa, ela pede o reembolso dentro do prazo.</p>
+</section>
+
+<footer>
+  Grupo Villela Stay. Autor: Augusto Villela. <a href="/campanhas/cursos/">Voltar para o conteúdo de todos os cursos</a>.
+</footer>
+
+</div>
+</body>
+</html>

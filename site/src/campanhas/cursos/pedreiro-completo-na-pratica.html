@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}.byline{margin:18px 0 0;font-size:14px;color:var(--band-ink)}
+.byline a{color:var(--band-accent);font-weight:600}
+.byline a:focus-visible{outline:2px solid var(--band-accent);outline-offset:2px}
+</style>
+<title>Pedreiro Completo na Prática: conteúdo do curso</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Conteúdo do curso · Villela Academy</p>
+    <h1>Pedreiro Completo na Prática</h1>
+    <p class="lead">Tudo o que o curso ensina a quem faz, contrata ou fiscaliza uma obra pequena na chácara, aula por aula.</p>
+    <p class="byline"><a href="/campanhas/cursos/">&larr; Conteúdo dos cursos</a> &nbsp;·&nbsp; Curso de <strong>Augusto Villela</strong></p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 25 aulas</a>
+  <a href="#metodos">Procedimentos com nome</a>
+  <a href="#casos">Cenas das aulas</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Perguntas frequentes</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados principais do curso.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>Pedreiro Completo na Prática</dd></div>
+    <div><dt>Subtítulo</dt><dd>Alvenaria, revestimentos, áreas externas e pequenos reparos em chácaras e hospedagens</dd></div>
+    <div><dt>Em uma frase</dt><dd>A obra pequena feita na ordem certa, e conferida por você</dd></div>
+    <div><dt>Coleção</dt><dd>Viver de Chácara</dd></div>
+    <div><dt>Autor</dt><dd>Augusto Villela</dd></div>
+    <div><dt>Formato</dt><dd>25 videoaulas animadas, de cerca de 8 minutos cada</dd></div>
+    <div><dt>Duração em vídeo</dt><dd>3 h 20 min</dd></div>
+    <div><dt>Em cada aula</dt><dd>Artigo em PDF, com checklists, fichas e passos</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Certificado</dt><dd>Certificado da Villela Academy, ao concluir todas as aulas</dd></div>
+    <div><dt>Preço</dt><dd>R$ 85,00 (em outubro de 2026; vale o preço da página do curso)</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, incondicional, com reembolso</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/pedreiro-completo-na-pratica">academia.villelastay.com.br/academy/cursos/pedreiro-completo-na-pratica</a></p>
+  <p>Na página, a aula 5 (Estrutura versus vedação: o que nunca alterar sem projeto) aparece aberta como degustação grátis, com vídeo e artigo.</p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">O curso em poucas palavras.</p>
+  <p class="thesis">Cada etapa é a base da seguinte. Em obra pequena, a ordem vale mais do que a pressa.</p>
+  <p>Quase todo dono de chácara já pagou por um serviço sem saber dizer se ficou bom, e já ouviu que é só uma paredinha. Uma obra pequena não dá errado por falta de força. Dá errado pela ordem e pela falta de conferência. O curso percorre o ciclo inteiro de uma obra pequena e não estrutural, da primeira medida à entrega, e separa três coisas com clareza: o que você faz, o que contrata e confere, e o que só fiscaliza, porque pede projeto e responsável técnico.</p>
+  <h3>O método do curso</h3>
+  <ul>
+    <li><strong>Medir e ler o que já existe.</strong> Antes de comprar e antes de riscar qualquer coisa no piso.</li>
+    <li><strong>Separar em três colunas.</strong> O que é serviço seu, o que é de contratado e o que só anda com projeto.</li>
+    <li><strong>Calcular a quantidade.</strong> Com a perda, e conferida por um segundo caminho.</li>
+    <li><strong>Executar uma etapa de cada vez.</strong> Cada uma tem o seu tempo de espera.</li>
+    <li><strong>Conferir com critério escrito.</strong> Antes de passar à etapa seguinte, e antes de cobrir o que foi feito.</li>
+    <li><strong>Combinar por escrito.</strong> Escopo, medição, pagamento por etapa conferida e aceite.</li>
+  </ul>
+  <h3>A promessa, em uma frase</h3>
+  <p>Você termina com a reforma de um cômodo planejada no papel, etapa por etapa, sabendo o que faz, o que contrata e o que só fiscaliza.</p>
+  <h3>Quatro ideias que sustentam o curso</h3>
+  <ul>
+    <li><strong>O que sustenta a casa não se mexe.</strong> Não se fura, não se retira e não se carrega com peso novo sem projeto e sem responsável técnico.</li>
+    <li><strong>O número tem dono.</strong> O que depende do produto está na embalagem. O que depende da obra está na norma ou no projeto.</li>
+    <li><strong>Confere-se antes de cobrir.</strong> Parede revestida esconde o que tem dentro. Tudo o que vai ficar coberto é conferido e fotografado antes.</li>
+    <li><strong>A quantidade vem antes do preço.</strong> E paga-se por etapa concluída e conferida, e não por data.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso. Os títulos são os publicados na Villela Academy. O agrupamento em blocos é deste material.</p>
+
+  <p class="block-title">Ofício, segurança e leitura da obra · aulas 1 a 5</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>Funções do pedreiro e sequência de uma obra</h3>
+    <ul>
+      <li>A ordem que o curso propõe: medir e ler o que existe, separar o que é seu do que é de contratado e do que pede projeto, calcular a quantidade, executar uma etapa por vez e conferir cada uma com critério escrito.</li>
+      <li>O que o curso é e o que não é. Não é formação profissional e não é tabela de preços. “Completo” quer dizer o ciclo completo de uma obra pequena, que não toca em nada que sustente a construção.</li>
+      <li>As três leituras do mesmo curso: a de quem faz o serviço pequeno, a de quem trabalha ou quer trabalhar na área e a de quem contrata.</li>
+      <li>A obra de exemplo, na Chácara-Modelo: a reforma de um depósito de 4 m por 3 m, que ganha uma parede divisória, e o caminho de pedestres da entrada, de 5 m por 1,20 m.</li>
+      <li>O que o pedreiro faz, com quem divide a obra e as quatro conferências que voltam no curso inteiro: nível, prumo, alinhamento e esquadro.</li>
+      <li>Os três tipos de serviço (obra nova, reforma e manutenção) e o calendário do Cerrado: obra externa e concreto ficam, de preferência, para a seca.</li>
+      <li>As dez etapas da reforma, da marcação à limpeza e ao aceite, e as quatro perguntas para ler o local antes de qualquer serviço.</li>
+      <li>A tabela das três colunas: o que você faz, o que contrata e confere, e o que só fiscaliza. Na dúvida, o serviço sobe para a coluna mais restrita.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Cada etapa é a base da seguinte.</q><q>Em obra pequena, a ordem vale mais do que a pressa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>Segurança, EPIs, organização e descarte</h3>
+    <ul>
+      <li>A ordem da segurança: primeiro se arruma o canteiro, depois se veste o equipamento. A proteção coletiva tira o risco do lugar. A individual cuida do risco que sobrou.</li>
+      <li>O que se veste muda com a tarefa: misturar, assentar, cortar, chapiscar, lixar e carregar. A tabela completa fica no material, com a remissão à norma regulamentadora de equipamento de proteção individual.</li>
+      <li>Cimento e cal queimam a pele úmida e os olhos. Respingo no rosto se lava na hora, e olho atingido é motivo para procurar atendimento.</li>
+      <li>A maior parte das quedas de obra pequena acontece no mesmo nível: no entulho, na mangueira, na tábua esquecida. A primeira medida é o caminho livre.</li>
+      <li>O canteiro tem limite, marcado e avisado. Criança, hóspede e animal ficam do lado de fora, buraco não passa a noite aberto e, com reserva na casa, a obra não acontece.</li>
+      <li>Corte só com ferramenta sem motor e com água contra a poeira. Máquina de disco e serra de bancada ficam na mão do contratado.</li>
+      <li>Os limites do que não é serviço seu: entrar em vala, trabalhar em altura, montar andaime, demolir. Para as fiadas de cima da parede há duas saídas: plataforma baixa e estável, conforme o manual, ou contratar a parte alta.</li>
+      <li>Entulho separado em três grupos desde o primeiro dia, canteiro limpo no fim de cada dia e o cuidado quando quem executa é o caseiro.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Obra pequena machuca por parecer pequena.</q><q>Escada é acesso, não é posto de trabalho.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Medição, nível, prumo, alinhamento e esquadro</h3>
+    <ul>
+      <li>Toda conta de obra começa na trena, e todo erro de compra também. Medir sempre duas vezes, em dois pontos, e anotar na hora, com a unidade.</li>
+      <li>Área é comprimento vezes largura. Quando a superfície tem um vão, desconta-se o vão, e as contas de compra se fazem sobre a área líquida.</li>
+      <li>Uma conta de área se confere somando os pedaços. No depósito, sala A, sala B e a faixa da parede devolvem os 12 m² do todo.</li>
+      <li>Volume é área vezes espessura, com tudo em metros. A espessura de cada camada não é escolha de quem faz a conta: vem do fabricante, da norma ou do projeto.</li>
+      <li>A regra de três em quatro linhas, usada para a perda do piso. A maior parte dos erros nasce de uma linha invertida.</li>
+      <li>As quatro conferências, com o instrumento e o erro comum de cada uma: nível (bolha e mangueira), prumo, alinhamento (linha esticada) e esquadro.</li>
+      <li>Dois métodos de esquadro para o cômodo inteiro: as diagonais iguais e o triângulo de lados três, quatro e cinco (60, 80 e 100 cm).</li>
+      <li>Como medir e desenhar um cômodo: cada parede rente ao piso, o que já existe com a distância até o canto, e a altura em pelo menos dois cantos.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O olho aceita quase tudo.</q><q>O prumo se confere enquanto a parede sobe.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Leitura básica de plantas, cortes e detalhes</h3>
+    <ul>
+      <li>Tomar a medida do desenho com a régua é um dos erros mais comuns de quem começa. Vale a cota, que é a medida escrita no desenho.</li>
+      <li>Desenho sem cota não serve para comprar nem para executar. A escala ajuda a entender o tamanho das coisas, mas quem manda na obra é a cota.</li>
+      <li>As três vistas: a planta (de cima), o corte (de lado, o desenho das alturas) e a elevação (uma parede vista de frente, com os vãos).</li>
+      <li>O depósito da Chácara-Modelo lido em planta: frente, fundo, laterais, a parede nova, as duas salas e o ralo que já existe no canto do fundo.</li>
+      <li>As duas cotas que mandam na marcação da reforma: a posição da parede nova e a do vão da porta. O que já existe e não vai mudar fica sem cota.</li>
+      <li>Cada vista responde a um tipo de pergunta. A planta diz onde, o desenho de lado diz a que altura, e a elevação mostra a parede de frente.</li>
+      <li>O detalhe da espessura: a face acabada e a face do bloco. Quem confunde as duas entrega uma sala mais estreita do que o desenho pede.</li>
+      <li>Se a soma das cotas não fecha com o todo, há uma cota lida errado.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A medida de um desenho não se tira. Ela se lê.</q><q>Quem lê só a planta acerta a posição da parede e esquece a altura dela.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>Estrutura versus vedação: o que nunca alterar sem projeto</h3>
+    <ul>
+      <li>A regra de parada do curso: o que sustenta a casa não se fura, não se retira e não se carrega com peso novo sem projeto e sem responsável técnico.</li>
+      <li>As seis partes da estrutura: fundação, pilar, viga, cinta, laje e muro de arrimo. Paredes de vedação, revestimentos e pisos são o que o curso ensina.</li>
+      <li>O caminho das cargas, do telhado ao solo, como uma corrente. Tirar ou enfraquecer uma peça obriga a carga a procurar outro trajeto, e o resultado nem sempre aparece no dia.</li>
+      <li>O jeito de construir muda o que cada parede é: estrutura de concreto, alvenaria estrutural, madeira e metal. Em casa antiga de chácara, é frequente a mistura.</li>
+      <li>Acrescentar peso também mexe na corrente. Caixa-d'água nova e segundo piso são serviço de projeto, e fundação é sempre projeto, mesmo a de uma construção pequena.</li>
+      <li>As cinco perguntas do porte: sustenta carga, segura terra, fica acima de gente, mexe no que já existe, tem fogo, gás ou água de beber. Um sim basta para pedir engenheiro ou arquiteto.</li>
+      <li>Em parede que já existe, abrir, alargar ou fechar um vão e retirar ou cortar a parede pertencem à terceira coluna. Demolição não é ensinada, nem de parede pequena.</li>
+      <li>O que pedir antes do primeiro dia de obra: o projeto e o documento de responsabilidade técnica de quem responde pela execução.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O que sustenta a casa não se mexe.</q><q>Vista de fora, a parede que sustenta a casa é igual à que só fecha um vão.</q></div>
+  </div></article>
+
+  <p class="block-title">Ferramentas e materiais · aulas 6 a 8</p>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>Ferramentas essenciais e uso correto</h3>
+    <ul>
+      <li>O teste da régua de alumínio na loja: encostada numa superfície plana, a régua boa não deixa passar luz por baixo.</li>
+      <li>As ferramentas de alvenaria e revestimento em cinco grupos: medição e conferência, corte, mistura, assentamento e acabamento.</li>
+      <li>Para a reforma do depósito, tudo cabe numa caixa e num carrinho de mão. Peça sem motivo não entra na lista.</li>
+      <li>O recipiente de medida: um balde ou uma lata, rígido, o mesmo do primeiro ao último dia, cheio até a borda e rasado com a régua.</li>
+      <li>O escantilhão, a régua vertical com a altura das fiadas marcada, e as quatro desempenadeiras: de madeira, de aço, dentada e de borracha.</li>
+      <li>Lavar tudo no fim do dia. Argamassa endurecida na régua muda a medida.</li>
+      <li>Quatro regras para ferramenta elétrica, extensão, área molhada e furo em parede. Emenda com fita não entra no canteiro, e a proteção contra choque é pergunta para o eletricista.</li>
+      <li>As três máquinas que, sem treinamento, ficam com o contratado: serra de bancada, betoneira e placa vibratória.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ferramenta se escolhe pela função.</q><q>Quem compra assim leva pouco e usa tudo.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>Cimentos, agregados, argamassas e concretos</h3>
+    <ul>
+      <li>A pergunta que vem antes do nome do produto: o que este material precisa fazer aqui? A resposta está impressa na embalagem.</li>
+      <li>O cimento não endurece por secar. Endurece por uma reação com a água, e por isso precisa de água na medida e de um tempo úmido depois de aplicado, a cura.</li>
+      <li>Cal hidratada, areia (com o teste do punhado úmido entre as mãos), brita e pedrisco, a água que serve para beber e os aditivos, só na dose da embalagem.</li>
+      <li>O saco lido pelo verso. As três informações que mais pesam na compra: uso indicado, quantidade de água e validade com o lote.</li>
+      <li>O que é traço: a proporção entre os componentes, medida em volume e escrita sempre na mesma ordem. Ele só existe se a medida for sempre a mesma.</li>
+      <li>Por que a água a mais enfraquece: ela evapora e deixa vazios. O critério é a menor quantidade de água que permita trabalhar. Número de água, só o da embalagem.</li>
+      <li>Massa que começou a endurecer na masseira não se recupera com mais água. Vira perda.</li>
+      <li>Concreto simples serve para pequenas bases no nível do terreno. Com armadura, o concreto é estrutura, e estrutura é assunto de projeto.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Pá não é medida.</q><q>A cura é a etapa mais barata do concreto, e a primeira a ser esquecida.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>Blocos, tijolos e materiais de revestimento</h3>
+    <ul>
+      <li>As três peças da parede e para que serve cada uma: bloco cerâmico de vedação, bloco de concreto e tijolo maciço. Se a parede sustenta alguma coisa, ela é assunto de projeto.</li>
+      <li>Conferir a medida do bloco vendido na sua região e refazer a conta com o módulo dele.</li>
+      <li>As argamassas se distinguem pelo serviço, e não pela cor: assentamento, chapisco, emboço, reboco e contrapiso. Cada uma tem o seu saco.</li>
+      <li>Antes de ir à loja, escrever o serviço em uma linha: o que o material precisa fazer, em que base e em que ambiente.</li>
+      <li>O que a caixa da placa cerâmica informa: medidas, uso indicado, tonalidade, lote e metros quadrados. Tonalidade e lote precisam ser os mesmos em todas as caixas.</li>
+      <li>Os três produtos que acompanham a placa: argamassa colante, rejunte e selante. O selante vai nos encontros que se movimentam, onde o rejunte, que é rígido, tende a fissurar.</li>
+      <li>Receber é conferir na hora, com o entregador presente, antes de assinar. Saco rasgado, úmido ou empedrado volta no mesmo caminhão.</li>
+      <li>Onde guardar cada material e o que é perda: a parte inevitável, que entra na conta, e a parte que se evita.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Nenhuma camada faz bem o trabalho da outra.</q><q>Perda é tudo o que foi comprado e não virou obra.</q></div>
+  </div></article>
+
+  <p class="block-title">Visita, marcação e quantitativos · aulas 9 e 10</p>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>Visita técnica, diagnóstico e marcação</h3>
+    <ul>
+      <li>A visita responde ao que a obra não pode descobrir no meio: o que existe, o que passa dentro e o que não é serviço seu.</li>
+      <li>As três partes da visita: medir (com as duas diagonais), ver o acesso (por onde o material entra e onde o caminhão descarrega) e diagnosticar o estado do que existe.</li>
+      <li>As duas anotações do ralo: a altura da boca em relação ao piso existente e a espessura do sistema novo. O que se faz com elas é serviço contratado ao encanador.</li>
+      <li>A pergunta que não é sua: confirmar com um profissional habilitado que o piso existente pode receber a parede.</li>
+      <li>A marcação da parede: a distância medida junto à frente e junto ao fundo, um ponto em cada lugar e a linha esticada entre os dois.</li>
+      <li>A linha riscada é a face acabada. Quem assenta o bloco em cima dela entrega uma sala mais estreita do que a do desenho.</li>
+      <li>Proteger o que existe antes de qualquer massa, e os três critérios da base da parede: limpa, firme e nivelada.</li>
+      <li>A lista de cinco conferências antes do primeiro bloco.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quem mede de um lado só faz a parede torta sem que nenhuma medida pareça errada.</q><q>O que está escondido hoje é o que atrapalha a obra amanhã.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>Quantitativos, logística e preparação do serviço</h3>
+    <ul>
+      <li>Quantitativo é a lista do que comprar, com a quantidade de cada item. Um número só entra na lista de compras depois de conferido por outro caminho.</li>
+      <li>Os blocos por dois caminhos: contando módulos (o bloco mais a junta) e pela área líquida. Na parede do exemplo, os dois dão 151 blocos.</li>
+      <li>A primeira fiada desenhada no papel antes de comprar: quantos módulos inteiros cabem, onde fica o vão e onde cai o corte.</li>
+      <li>A perda é o que se compra a mais. Com a perda de referência do SINAPI para o bloco, de 13,2%, os 151 blocos do exemplo viram 171 a comprar.</li>
+      <li>Os consumos de referência de argamassa já têm a perda dentro. Somar perda à argamassa é contar duas vezes.</li>
+      <li>As contas do piso, do rodapé, da soleira e do caminho da entrada, e a linha de serviço contratado: a adequação da altura do ralo pelo encanador.</li>
+      <li>A entrega programada pela ordem de uso, as esperas entre as etapas e os dois calendários: o do Cerrado e o das reservas.</li>
+      <li>Os três testes do plano: o das duas contas, o da soma das áreas e o do calendário, em que nenhuma etapa cai em dia de reserva.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Conta que se confere por um segundo caminho é conta que se pode comprar.</q><q>Decidir no papel teria custado um desenho.</q></div>
+  </div></article>
+
+  <p class="block-title">A parede de vedação · aulas 11 a 15</p>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>Preparação da base e primeira fiada</h3>
+    <ul>
+      <li>Se a primeira fiada sai torta ou desnivelada, cada fiada de cima herda o erro.</li>
+      <li>A parede do curso é de vedação: divide o depósito em duas salas e não sustenta nada. Sem a confirmação do piso por profissional habilitado, a obra não começa.</li>
+      <li>A locação em quatro passos: conferir a marcação e o esquadro, achar o ponto mais alto do piso, dispor a fiada a seco e só então assentar.</li>
+      <li>Entre as linhas de face acabada riscam-se as linhas de face do bloco. É por elas que a fiada se guia.</li>
+      <li>A fiada a seco mostra se a conta do papel fecha no piso e se as bordas do vão caem onde foram marcadas.</li>
+      <li>Assentam-se primeiro os blocos das pontas e das bordas do vão. Cada bloco é conferido em três direções.</li>
+      <li>A argamassa de assentamento: a preferência pela industrializada, a água na menor quantidade que permita trabalhar e só o que será usado no tempo que a embalagem indica.</li>
+      <li>Mais do que o número, vale a regularidade da junta. Terminada a fiada, para-se e mede-se. Se algo não fecha, desmancha-se enquanto o erro é de uma fiada só.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A primeira fiada decide as outras.</q><q>Não é decisão para tomar com a colher na mão.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Elevação, amarração, prumo e alinhamento</h3>
+    <ul>
+      <li>Juntas verticais alinhadas do piso ao alto são um defeito: a parede passa a se comportar como pilhas de blocos lado a lado.</li>
+      <li>A amarração: a junta vertical de uma fiada nunca fica sobre a da fiada de baixo. Por isso a parede pede meios-blocos que a conta de compra não mostra.</li>
+      <li>O escantilhão dá a altura das fiadas, e a linha esticada de uma marca à outra dá o alinhamento e o nível ao mesmo tempo.</li>
+      <li>A ordem que poupa tempo e erro: primeiro os blocos das pontas, depois a linha, por último o meio.</li>
+      <li>As quatro conferências de cada fiada: nível, prumo, alinhamento e amarração. O que não passou se corrige na hora, com a argamassa fresca.</li>
+      <li>Quantas fiadas subir por dia e se o bloco deve ser umedecido: quem diz são a norma de execução de alvenaria e o fabricante.</li>
+      <li>As fiadas de cima estão fora do alcance de quem trabalha com os pés no chão. Banco, lata e pilha de blocos não são lugar de trabalho.</li>
+      <li>O painel de treino: um painel em L, de cinco fiadas, levantado com os pés no chão, que não vira parte de construção nenhuma e é desmontado no fim.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Cada bloco se apoia sobre dois, meio em cada um.</q><q>Quem confere bloco a bloco com o nível de bolha demora mais e acumula erro.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>Vãos, vergas, contravergas e encontros</h3>
+    <ul>
+      <li>As três frases da aula: o vão nasce com a parede, a verga e a ligação com as paredes existentes são do contratado, e a conferência é sua.</li>
+      <li>O vão da porta não é aberto depois. Já estava na primeira fiada, e as bordas sobem no prumo, com a largura conferida a cada fiada.</li>
+      <li>A verga é a peça horizontal sobre o vão, que leva para as laterais o apoio das fiadas de cima. Sem ela, é comum aparecerem fissuras inclinadas saindo dos cantos.</li>
+      <li>A contraverga é a peça equivalente por baixo do vão de uma janela.</li>
+      <li>Dimensão, apoio e armadura da verga são conforme o projeto ou o fabricante. Na compra, pede-se a especificação por escrito.</li>
+      <li>As três conferências da verga, antes do revestimento: existe e está sobre o vão, entra na parede dos dois lados com o apoio especificado e está nivelada.</li>
+      <li>Os encontros com as paredes existentes: o detalhe da ligação é conforme o projeto, a execução é contratada, e o aluno confere e fotografa antes do revestimento.</li>
+      <li>O limite: em parede que já existe, abrir, alargar ou fechar um vão só se faz com projeto e responsável técnico.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O vão nasce com a parede.</q><q>Ninguém sabe, só de olhar, o que uma parede antiga passou a sustentar.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Passagens de instalações e compatibilização</h3>
+    <ul>
+      <li>Quem começa pelo acabamento e deixa o tubo e o fio para depois volta atrás com um rasgo no revestimento novo.</li>
+      <li>O encunhamento: o preenchimento do espaço entre a última fiada e a laje. Ele prende o topo da parede sem fazer da parede de vedação um apoio da laje.</li>
+      <li>O encunhamento é serviço contratado. A conferência se faz do chão, com duas perguntas: está preenchido em todo o comprimento? Foi feito depois de a parede estar pronta?</li>
+      <li>Compatibilizar é fazer os ofícios caberem uns nos outros, no desenho e no tempo. Na parede e no piso, a ordem tem seis passos.</li>
+      <li>As duas perguntas ao eletricista antes de a parede subir: haverá interruptor, tomada ou ponto de luz na parede nova? A instalação fica embutida ou aparente?</li>
+      <li>O curso não ensina a passar nada por dentro da parede nem a rasgar parede existente. Havendo gás no caminho, para-se e chama-se a empresa responsável.</li>
+      <li>Antes de fechar a parede, fotografar as duas faces com a trena encostada, mostrando onde passam os eletrodutos e as caixas.</li>
+      <li>Onde cada um entra nas dez etapas: o eletricista antes do chapisco e o encanador antes do contrapiso.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Parede revestida esconde o que tem dentro.</q><q>Essa foto é o que diz, anos depois, onde não furar.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>Conferência e correção da alvenaria</h3>
+    <ul>
+      <li>A parede se confere antes do chapisco. Depois do revestimento, ela só mostra duas coisas: o prumo e o alinhamento.</li>
+      <li>Os cinco pontos, iguais para a parede que você fez e para a que você contratou: prumo, nível das fiadas, alinhamento, juntas e encontros.</li>
+      <li>O prumo se confere em três lugares, e não em um só. O alinhamento, com a régua na face, procurando luz por trás dela.</li>
+      <li>Os quatro encontros: o pé da parede, o topo junto à laje, as duas pontas e a volta do vão, com a verga.</li>
+      <li>Quanto desvio se aceita, quem diz é a norma. O curso ensina a medir o desvio e a registrar o que foi encontrado, com foto e medida.</li>
+      <li>A ficha de conferência: o ponto, como foi conferido e o que foi encontrado, anotado como conforme ou não conforme.</li>
+      <li>O que se pode corrigir depende de quando o defeito é descoberto: com a argamassa fresca, na primeira fiada ou na parede pronta, antes do emboço.</li>
+      <li>Na parede contratada, a parte do proprietário não é corrigir. É mostrar a ficha, com as fotos e as datas.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Tudo o que vai ficar coberto se fotografa antes de ser coberto.</q><q>Se há dúvida, é não conforme, com a dúvida escrita.</q></div>
+  </div></article>
+
+  <p class="block-title">Revestimento e piso · aulas 16 a 19</p>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>Chapisco, emboço, reboco e cura</h3>
+    <ul>
+      <li>As três camadas e o trabalho de cada uma: o chapisco dá aspereza, o emboço corrige o prumo e a planeza, e o reboco dá o acabamento que recebe a pintura.</li>
+      <li>Emboçar sobre o chapisco do mesmo dia é um dos erros mais comuns do revestimento. Segundo o caderno de chapisco do SINAPI, o chapisco é aplicado três dias antes do revestimento à base de cimento.</li>
+      <li>O chapisco é lançado com a colher, com força, e não se alisa. A aspereza é o trabalho dele.</li>
+      <li>A diferença entre emboço, que é base para cerâmica, e massa única, que é base para pintura.</li>
+      <li>Emboço sem guia sai ondulado. As guias são as taliscas e as mestras, e a régua corre apoiada nelas.</li>
+      <li>Regularizar a base antes da camada inteira. A espessura do emboço tem um mínimo e um máximo, e os limites são conforme a norma.</li>
+      <li>A cura: dar tempo e água para a argamassa endurecer. Sombra, proteção contra o vento e névoa fina de água, sem jato.</li>
+      <li>No Cerrado, a seca é a boa época para obra e também a de sol forte e ar seco, que puxam a água do revestimento em poucas horas.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Cada camada tem um trabalho, e a ordem não se inverte.</q><q>O chapisco agarra, o emboço endireita, o reboco dá o acabamento.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Contrapiso, caimentos e regularização</h3>
+    <ul>
+      <li>Um contrapiso feito em nível, à espera de que a cerâmica dê o caimento, é um serviço caprichado e errado.</li>
+      <li>O piso novo sobe, e a boca do ralo existente ficaria abaixo dele. Adequar a altura do ralo é serviço do encanador, feito antes do contrapiso.</li>
+      <li>O valor do caimento é conforme a norma ou o projeto. A conta é sempre a mesma: cada um por cento de caimento é um centímetro de desnível a cada metro.</li>
+      <li>O caimento se marca com linha e nível, a partir do ralo, com taliscas. De qualquer talisca, o caminho até o ralo sempre desce.</li>
+      <li>O teste da água: despejada junto à porta e em cada canto, ela precisa andar até o ralo. Onde parar, marca-se com giz e corrige-se antes da cerâmica.</li>
+      <li>A soleira resolve o encontro de dois níveis na porta: acabamento à vista, sem quina viva e sem degrau escondido.</li>
+      <li>Concreto simples para uma base pequena de equipamento leve, em cinco passos: misturar, lançar, adensar, nivelar e curar. Base de caixa-d'água e de contêiner é fundação, e pede projeto.</li>
+      <li>O caminho de pedestres em piso intertravado: bloquetes sobre areia, travados por guias laterais, com o caimento decidido antes. É serviço para a seca.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O caimento se resolve no contrapiso, e não na cerâmica.</q><q>A placa copia o que tem por baixo.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>Paginação e assentamento cerâmico</h3>
+    <ul>
+      <li>Paginar é decidir, no papel, onde fica cada placa e onde caem os cortes. Antes de comprar, porque o desenho dá a quantidade. Antes de assentar, porque dá o lugar de cada corte.</li>
+      <li>A conta se faz um sentido de cada vez: divide-se o comprimento da sala pelo lado da placa e olha-se o que sobra.</li>
+      <li>Na sala A do exemplo, com placa de 35 por 35 cm, a paginação dá 39 placas, e o desenho cabe na compra.</li>
+      <li>As placas inteiras partem de onde o olho chega primeiro. As faixas de corte ficam junto à lateral e ao fundo, e o recorte do ralo cai em peças pequenas.</li>
+      <li>Na loja, conferir se todas as caixas trazem o mesmo lote e a mesma tonalidade.</li>
+      <li>As linhas de referência nascem na soleira. O assentamento começa no fundo e vem em direção à porta, com o ralo de boca tampada.</li>
+      <li>O tempo em aberto manda no ritmo: estende-se só a área que dá para cobrir dentro dele. Ele está na embalagem e encurta com calor, vento e ar seco.</li>
+      <li>A dupla colagem e a largura da junta são conforme a norma e o fabricante. O corte das faixas se faz com o cortador manual, sem motor.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Pagine antes de abrir a caixa.</q><q>O ralo no centro da placa não se corrige com argamassa nem com habilidade. Corrige-se antes, com lápis e escala.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>Rejuntamento, selagem e acabamento</h3>
+    <ul>
+      <li>Rejuntar no dia seguinte é um dos erros mais comuns do piso. O caderno do SINAPI indica o rejuntamento no mínimo 72 horas depois do assentamento, ou o que a embalagem do rejunte indicar, se for mais.</li>
+      <li>Os três trabalhos do rejunte: fechar as juntas, impedir a entrada de sujeira e ajudar a água a correr por cima. Junta cheia é o critério.</li>
+      <li>No mesmo piso convivem três tipos de junta, e só uma leva rejunte: a de assentamento, a de encontro com a parede e a de movimentação.</li>
+      <li>O selante é flexível, e o rejunte é rígido. Na sala A, o selante vai em três lugares: a volta do ralo, o encontro do piso com a soleira e o do rodapé com o piso.</li>
+      <li>Um revestimento que outra pessoa executou se confere com três coisas: uma régua, água e a mão.</li>
+      <li>Planeza: a régua em várias posições e a lanterna rente à superfície. Aderência: o som cheio e o som oco, com giz na mão. Aparência: juntas alinhadas e cortes limpos.</li>
+      <li>No piso, repete-se o teste da água do contrapiso: a água despejada na porta chega ao ralo e não para no caminho.</li>
+      <li>A parede está pronta para pintar quando está curada, seca, firme e sem pó.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Rejunte onde nada se move; selante onde o piso se move ou recebe água.</q><q>A luz rasante mostra a ondulação que a luz de frente esconde.</q></div>
+  </div></article>
+
+  <p class="block-title">Umidade, reparos e controle de qualidade · aulas 20 e 21</p>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>Umidade, impermeabilização, áreas externas e pequenos reparos</h3>
+    <ul>
+      <li>A mancha que volta no mesmo lugar depois de raspada e pintada: o reparo respondeu à pergunta errada. A primeira pergunta é de onde vem a água.</li>
+      <li>As quatro origens da umidade: do solo, da chuva batida pelo vento, de cima e de vazamento. Cada uma deixa a mancha num lugar diferente.</li>
+      <li>Os três princípios da drenagem de superfície: a água se afasta das construções, anda devagar e tem destino. Enxurrada e barranco são obra de profissional.</li>
+      <li>Do lado de fora, o piso da borda da piscina cai para fora do tanque. A conferência se faz com a mangueira aberta no lado mais alto.</li>
+      <li>O hóspede não conhece o seu piso. Antes da temporada, molhar o piso da borda e dos acessos e andar por ele.</li>
+      <li>Impermeabilização em laje, reservatório e piscina é serviço contratado. O curso ensina o que perguntar antes, como entregar a superfície e o que conferir na entrega.</li>
+      <li>A fissura superficial de reboco e a trinca que atravessa a parede parecem iguais e não são. A segunda não é assunto de reparo.</li>
+      <li>Os pequenos reparos da chácara (reboco solto, rejunte, peça que soa oca, bloquete que afundou) e os cinco sinais que mandam parar e chamar um engenheiro civil ou um arquiteto.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Reparo sem tratar a causa volta.</q><q>Nenhum produto resolve a água que não tem para onde ir.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>Controle de qualidade e prevenção de retrabalho</h3>
+    <ul>
+      <li>O limite da parte do aluno: descrever e registrar o defeito. O laudo, que diz a causa, é de profissional habilitado.</li>
+      <li>As cinco anotações de todo defeito: onde está, que forma tem, que tamanho foi medido, desde quando e se muda com a chuva.</li>
+      <li>Como descrever fissura, umidade, eflorescência e descolamento pela forma e pela medida, sem dar nome à causa.</li>
+      <li>Dizer que a fissura é inclinada e cresceu é um fato. Dizer que é só do reboco é uma conclusão, e a conclusão errada custa nos dois sentidos.</li>
+      <li>O registro em quatro passos: fotografar (com a régua encostada e a data no quadro), medir, marcar com um traço de lápis em cada ponta e voltar depois.</li>
+      <li>A inspeção se faz ao fim de cada etapa, com uma lista, sempre na mesma ordem. Cada item recebe conforme ou não conforme, com observação e foto.</li>
+      <li>As três saídas do item não conforme: corrige-se, refaz-se ou para-se e chama-se o profissional.</li>
+      <li>As fotos em três momentos (antes, durante e depois) e a entrega técnica: fotos com data, ficha de inspeção e embalagens guardadas, com lote e validade.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Não se repara o que não foi registrado.</q><q>Massa por cima apaga a informação.</q></div>
+  </div></article>
+
+  <p class="block-title">Orçamento e combinado · aulas 22 e 23</p>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>Orçamento, produtividade e formação de preço</h3>
+    <ul>
+      <li>Duas propostas só com o total no fim da página não se comparam: não há como saber se as duas mediram a mesma obra.</li>
+      <li>O orçamento começa pelo escopo, em duas frases: o que será feito e o que não será.</li>
+      <li>A planilha da reforma, linha por linha: serviço, quantidade, perda, quantidade a comprar e horas de referência.</li>
+      <li>Dois erros de perda: somar perda duas vezes na argamassa e comprar bloco e piso sem perda nenhuma.</li>
+      <li>A mão de obra se mede em horas, antes de virar dinheiro. As horas de referência do SINAPI servem para comparar propostas, e não para prever o seu tempo.</li>
+      <li>Onde não há hora de referência, a célula da planilha recebe três palavras: peça na proposta.</li>
+      <li>A coluna de preço fica vazia de propósito. O valor, quem dá é o mercado, com a cotação do dia, na sua região.</li>
+      <li>As quatro parcelas do preço de um serviço: materiais, horas vezes o valor da hora, custos indiretos e margem. E o pedido que muda a comparação: as quantidades, e não só o total.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A quantidade vem antes do preço.</q><q>O total de uma proposta é um número que você recebe pronto. A quantidade é um número que você mede.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">23</div><div class="body">
+    <h3>Proposta, medição, entrega e garantia</h3>
+    <ul>
+      <li>A parcela paga porque o dia chegou, com a etapa pela metade: dali em diante, o que foi pago e o que foi feito deixam de andar juntos.</li>
+      <li>As seis perguntas a que uma proposta comparável responde: escopo, quantidades, o que está fora, prazo e parada, medição e material.</li>
+      <li>Medição é conferir o que foi feito antes de pagar por ele. Cada parcela corresponde a uma etapa concluída e conferida.</li>
+      <li>Na ficha de etapas, a coluna que mais importa chama-se “conferida por”.</li>
+      <li>Aditivo é a mudança do combinado. Vai por escrito antes de ser executado, com a quantidade nova, o efeito no prazo e a linha de preço.</li>
+      <li>Três regras de comunicação: uma pessoa decide, o que muda escopo, prazo ou preço fica registrado no mesmo dia, e os outros ofícios passam na hora certa.</li>
+      <li>O diário da obra, uma página por dia, e o aceite: a vistoria em que proprietário e prestador percorrem o serviço juntos, com a ficha na mão.</li>
+      <li>Antes de aceitar o piso, pedir o teste da água na sua frente. E escrever na proposta o que se combina sobre o defeito que aparece depois da entrega.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Paga-se por etapa concluída e conferida, e não por data.</q><q>Obra pequena se perde em recado.</q></div>
+  </div></article>
+
+  <p class="block-title">Projeto final · aulas 24 e 25</p>
+
+  <article class="lesson"><div class="n">24</div><div class="body">
+    <h3>Execução acompanhada do módulo da Chácara-Modelo</h3>
+    <ul>
+      <li>A aula percorre a reforma do depósito do primeiro dia ao aceite, com o critério de conferência que cada aula ensinou.</li>
+      <li>O projeto final é um plano, e não uma execução. Não é preciso construir nada para concluí-lo.</li>
+      <li>A ficha de etapas presa na porta: dez linhas e três colunas, com quem executa, quando a etapa foi concluída e quem a conferiu.</li>
+      <li>Em cada etapa, fica dito quem executa. Verga, fechamento contra a laje, ligação com as paredes existentes e altura do ralo são sempre do contratado.</li>
+      <li>Em nenhum momento a etapa seguinte começa sem a anterior conferida. O diário do dia é preenchido ao longo de todas elas, com foto.</li>
+      <li>As dez páginas do projeto, da lista de benfeitorias ao orçamento com a ficha de aceite.</li>
+      <li>Juntas, as páginas precisam permitir que um pedreiro contratado, que nunca viu o lugar, entenda a reforma, e que o proprietário confira cada etapa.</li>
+      <li>Quem não tem depósito faz o plano de um serviço equivalente e não estrutural da própria propriedade.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A linha que não pode ser marcada não se pula: vira pendência, com nome e prazo.</q><q>Uma etapa de cada vez, e a conferência antes da seguinte.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">25</div><div class="body">
+    <h3>Avaliação prática e plano de desenvolvimento profissional</h3>
+    <ul>
+      <li>A primeira avaliação do projeto é a leitura de uma pessoa de fora. Cada ponto que ela não entendeu mostra onde o plano só funcionava com o autor ao lado.</li>
+      <li>O curso não tem prova prática. O Certificado da Villela Academy é emitido pela conclusão das aulas, e não pela entrega do projeto.</li>
+      <li>A autoavaliação por uma rubrica de seis critérios: segurança, técnica, planejamento, qualidade, custo e apresentação.</li>
+      <li>Três caminhos para a prática: acompanhar o profissional contratado na própria obra, trabalhar como ajudante em canteiro e repetir o painel de treino.</li>
+      <li>Para quem quer trabalhar na área, o curso diz com todas as letras que não é formação profissional, e indica três perguntas para escolher um curso de formação.</li>
+      <li>Para quem vai prestar o serviço: orçar por quantidade, registrar o que fez, entregar com ficha e anotar no diário quanto produziu em cada dia.</li>
+      <li>O plano de uma página, com quatro listas e a data. A quarta é o que não se faz sem projeto e responsável técnico.</li>
+      <li>O diagnóstico inicial, de doze perguntas, respondido de novo para comparar o começo com o fim.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um livro e um curso ensinam a ordem, o critério e a conta. O gesto se aprende de outro jeito.</q><q>Nenhuma leitura substitui essa etapa, e nenhuma animação também.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Procedimentos e regras com nome</h2>
+  <p class="sub">Rotinas, listas e testes que o aluno leva para a obra, cada um com a aula em que aparece.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Procedimento</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>A tabela das 3 colunas</td><td>O que você faz, o que contrata e confere, e o que só fiscaliza. Na dúvida, a coluna mais restrita.</td><td class="aula">1 e 5</td></tr>
+      <tr><td>As 10 etapas da reforma</td><td>Da marcação à limpeza e ao aceite, sempre na mesma ordem.</td><td class="aula">1, 10 e 24</td></tr>
+      <tr><td>As 4 conferências</td><td>Nível, prumo, alinhamento e esquadro.</td><td class="aula">1 e 3</td></tr>
+      <tr><td>As 4 perguntas do local</td><td>Por onde o material chega, de onde vêm água e energia, o que não pode ser atingido e quem circula por perto.</td><td class="aula">1</td></tr>
+      <tr><td>Coletiva antes da individual</td><td>Primeiro se arruma o canteiro, depois se veste o equipamento.</td><td class="aula">2</td></tr>
+      <tr><td>Os 3 símbolos de risco</td><td>Pare e chame, Leitura (não execute) e Proteção obrigatória para esta tarefa.</td><td class="aula">2</td></tr>
+      <tr><td>As 2 saídas da parte alta</td><td>Plataforma baixa e estável, conforme o manual, ou contratar a parte alta.</td><td class="aula">2 e 12</td></tr>
+      <tr><td>Os 3 grupos de entulho</td><td>O que vira agregado, o reciclável por outra via e o perigoso.</td><td class="aula">2</td></tr>
+      <tr><td>As diagonais iguais</td><td>Num retângulo, as duas diagonais têm o mesmo comprimento.</td><td class="aula">3</td></tr>
+      <tr><td>O triângulo 3, 4 e 5</td><td>Três medidas que provam o ângulo reto de um canto.</td><td class="aula">3 e 11</td></tr>
+      <tr><td>A regra de três em 4 linhas</td><td>As mesmas grandezas, na mesma ordem.</td><td class="aula">3</td></tr>
+      <tr><td>Vale a cota</td><td>A medida de um desenho se lê. Não se tira com a régua.</td><td class="aula">4</td></tr>
+      <tr><td>As 3 vistas</td><td>Planta, corte e elevação.</td><td class="aula">4</td></tr>
+      <tr><td>Face acabada e face do bloco</td><td>A cota vai até o revestimento pronto. O bloco fica recuado.</td><td class="aula">4, 9 e 11</td></tr>
+      <tr><td>A regra de parada</td><td>O que sustenta a casa não se mexe.</td><td class="aula">5</td></tr>
+      <tr><td>O caminho das cargas</td><td>Do telhado ao solo, como uma corrente.</td><td class="aula">5</td></tr>
+      <tr><td>As 5 perguntas do porte</td><td>Um sim basta para o serviço pedir engenheiro ou arquiteto.</td><td class="aula">5</td></tr>
+      <tr><td>O teste da régua</td><td>Régua boa, numa superfície plana, não deixa passar luz por baixo.</td><td class="aula">6</td></tr>
+      <tr><td>Os 5 grupos de ferramentas</td><td>Medição e conferência, corte, mistura, assentamento e acabamento.</td><td class="aula">6</td></tr>
+      <tr><td>O recipiente de medida</td><td>O mesmo balde, do primeiro ao último dia, rasado com a régua.</td><td class="aula">6 e 7</td></tr>
+      <tr><td>O saco lido</td><td>Uso indicado, quantidade de água e validade com o lote.</td><td class="aula">7</td></tr>
+      <tr><td>O campo “anote aqui”</td><td>O espaço em branco para copiar o que diz a embalagem do seu produto.</td><td class="aula">7, 11, 16 e 18</td></tr>
+      <tr><td>O teste do punhado de areia</td><td>Areia úmida esfregada entre as mãos mostra se há argila demais.</td><td class="aula">7</td></tr>
+      <tr><td>O serviço em uma linha</td><td>O que o material precisa fazer, em que base e em que ambiente.</td><td class="aula">8</td></tr>
+      <tr><td>O roteiro de recebimento</td><td>Conferir na hora, com o entregador presente, antes de assinar.</td><td class="aula">8</td></tr>
+      <tr><td>A visita em 3 partes</td><td>Medir, ver o acesso e diagnosticar.</td><td class="aula">9</td></tr>
+      <tr><td>As 2 anotações do ralo</td><td>A altura da boca e a espessura do sistema novo.</td><td class="aula">9 e 17</td></tr>
+      <tr><td>Dois pontos e uma linha</td><td>A posição da parede medida junto à frente e junto ao fundo.</td><td class="aula">9</td></tr>
+      <tr><td>Os 3 critérios da base</td><td>Limpa, firme e nivelada.</td><td class="aula">9 e 11</td></tr>
+      <tr><td>Os blocos por 2 caminhos</td><td>Por módulos e pela área. Os dois precisam dar o mesmo número.</td><td class="aula">10</td></tr>
+      <tr><td>A primeira fiada no papel</td><td>Módulos inteiros, o vão e o lugar do corte, antes de comprar.</td><td class="aula">10 e 11</td></tr>
+      <tr><td>Os 3 testes do plano</td><td>O das duas contas, o da soma e o do calendário.</td><td class="aula">10</td></tr>
+      <tr><td>A locação em 4 passos</td><td>Conferir a marcação, achar o ponto mais alto, dispor a seco e assentar.</td><td class="aula">11</td></tr>
+      <tr><td>A fiada a seco</td><td>Os blocos no lugar, sem argamassa, para ver se a conta fecha no piso.</td><td class="aula">11</td></tr>
+      <tr><td>A junta desencontrada</td><td>Nenhuma junta vertical sobre a da fiada de baixo.</td><td class="aula">12</td></tr>
+      <tr><td>As 4 conferências da fiada</td><td>Nível, prumo, alinhamento e amarração, a cada fiada.</td><td class="aula">12</td></tr>
+      <tr><td>O painel de treino</td><td>Um painel em L, de cinco fiadas, levantado com os pés no chão e desmontado no fim.</td><td class="aula">12 e 15</td></tr>
+      <tr><td>As 3 conferências da verga</td><td>Existe, entra na parede dos dois lados e está nivelada.</td><td class="aula">13</td></tr>
+      <tr><td>As 2 perguntas do topo</td><td>Preenchido em todo o comprimento? Feito depois de a parede estar pronta?</td><td class="aula">14</td></tr>
+      <tr><td>A ordem dos ofícios</td><td>Seis passos, do que se define no papel à pintura.</td><td class="aula">14</td></tr>
+      <tr><td>A foto com a trena</td><td>As duas faces da parede fotografadas antes de fechar.</td><td class="aula">14</td></tr>
+      <tr><td>Os 5 pontos da parede</td><td>Prumo, nível das fiadas, alinhamento, juntas e encontros.</td><td class="aula">15</td></tr>
+      <tr><td>Conforme ou não conforme</td><td>Se há dúvida, é não conforme, com a dúvida escrita.</td><td class="aula">15 e 21</td></tr>
+      <tr><td>As 3 camadas</td><td>Chapisco, emboço e reboco: áspero, grosso e fino, nessa ordem.</td><td class="aula">16</td></tr>
+      <tr><td>Taliscas e mestras</td><td>As guias que fazem a régua correr e o emboço sair plano.</td><td class="aula">16</td></tr>
+      <tr><td>O teste da água</td><td>Despejada na porta e nos cantos, a água chega ao ralo sem parar.</td><td class="aula">17, 19 e 23</td></tr>
+      <tr><td>Os 5 passos do concreto simples</td><td>Misturar, lançar, adensar, nivelar e curar.</td><td class="aula">17</td></tr>
+      <tr><td>A paginação</td><td>O desenho que dá a quantidade de placas e o lugar de cada corte.</td><td class="aula">18</td></tr>
+      <tr><td>O tempo em aberto</td><td>O tempo em que a argamassa estendida ainda cola. Está na embalagem.</td><td class="aula">8 e 18</td></tr>
+      <tr><td>Os 3 tipos de junta</td><td>De assentamento, de encontro com a parede e de movimentação.</td><td class="aula">19</td></tr>
+      <tr><td>Régua, água e mão</td><td>Planeza, caimento e aderência conferidos em serviço pronto.</td><td class="aula">19</td></tr>
+      <tr><td>As 4 origens da umidade</td><td>Do solo, da chuva batida, de cima e de vazamento.</td><td class="aula">20</td></tr>
+      <tr><td>Os 3 princípios da drenagem</td><td>A água se afasta, anda devagar e tem destino.</td><td class="aula">20</td></tr>
+      <tr><td>Os 5 sinais que mandam parar</td><td>Trinca que atravessa a parede, piso que afunda, infiltração de laje, porta que passou a emperrar e fissura que cresce.</td><td class="aula">20 e 21</td></tr>
+      <tr><td>As 5 anotações do defeito</td><td>Onde, forma, tamanho, desde quando e se muda com a chuva.</td><td class="aula">21</td></tr>
+      <tr><td>O registro em 4 passos</td><td>Fotografar, medir, marcar e voltar.</td><td class="aula">21</td></tr>
+      <tr><td>As 3 saídas do não conforme</td><td>Corrige-se, refaz-se ou para-se e chama-se.</td><td class="aula">21</td></tr>
+      <tr><td>A entrega técnica</td><td>Junto com as chaves, o que é preciso para manter o que foi feito.</td><td class="aula">21</td></tr>
+      <tr><td>O escopo em 2 frases</td><td>O que será feito e o que não será.</td><td class="aula">22</td></tr>
+      <tr><td>A planilha com o preço em branco</td><td>Quantidade, perda e horas de referência. O valor é o da cotação do dia.</td><td class="aula">22</td></tr>
+      <tr><td>As 4 parcelas do preço</td><td>Materiais, horas vezes o valor da hora, custos indiretos e margem.</td><td class="aula">22</td></tr>
+      <tr><td>As 6 perguntas da proposta</td><td>Escopo, quantidades, o que está fora, prazo e parada, medição e material.</td><td class="aula">23</td></tr>
+      <tr><td>Medição antes do pagamento</td><td>Parcela por etapa concluída e conferida, e não por data.</td><td class="aula">23</td></tr>
+      <tr><td>O aditivo por escrito</td><td>Quantidade nova, efeito no prazo e linha de preço, antes de executar.</td><td class="aula">23</td></tr>
+      <tr><td>O diário da obra</td><td>Uma página por dia, com cinco anotações.</td><td class="aula">23 e 24</td></tr>
+      <tr><td>A ficha de aceite</td><td>A vistoria feita em conjunto, linha por linha, no local.</td><td class="aula">23</td></tr>
+      <tr><td>As 10 páginas do projeto</td><td>Da lista de benfeitorias ao orçamento com a ficha de aceite.</td><td class="aula">24</td></tr>
+      <tr><td>A rubrica de 6 critérios</td><td>Segurança, técnica, planejamento, qualidade, custo e apresentação.</td><td class="aula">25</td></tr>
+      <tr><td>O plano de uma página</td><td>Quatro listas curtas, com data, relidas a cada obra.</td><td class="aula">25</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Cenas e exemplos das aulas</h2>
+  <p class="sub">O curso não conta casos de clientes reais. Cada aula abre com uma cena imaginada do dia a dia de uma obra pequena, e os exemplos usam a Chácara-Modelo, uma propriedade fictícia. Nenhuma das cenas abaixo é história real nem depoimento.</p>
+  <div class="cases">
+    <div class="case"><h3>O serviço pago sem saber se ficou bom</h3><p>A ferramenta foi recolhida, a parede está pintada e chegou a hora de pagar. Você acha que ficou bom e paga. Se alguém perguntasse por que ficou bom, não saberia dizer. Aula 1.</p></div>
+    <div class="case"><h3>É só cortar um bloco</h3><p>Falta um bloco para fechar a fiada, e os óculos ficaram na caixa, do outro lado do canteiro. Ninguém atravessa o canteiro por causa de um golpe. É nesse corte que a lasca salta. Aula 2.</p></div>
+    <div class="case"><h3>O prumo que só chegou no fim</h3><p>A última fiada está assentada quando alguém encosta o fio de prumo. O desvio veio crescendo fiada a fiada, sem que o olho percebesse. Com a parede pronta, já não dá para corrigir. Aula 3.</p></div>
+    <div class="case"><h3>A régua escolar sobre a planta</h3><p>O desenho não traz a medida procurada. Alguém encosta uma régua no papel e faz a conta de cabeça. A compra sai dessa conta, e a parede, na obra, tem outro tamanho. Aula 4.</p></div>
+    <div class="case"><h3>“É só uma paredinha”</h3><p>A cozinha é apertada, e alguém propõe tirar a parede que a separa da sala. Ninguém, na conversa, pergunta o que aquela parede sustenta. E a pergunta não tem resposta no olho. Aula 5.</p></div>
+    <div class="case"><h3>A luz por baixo da régua</h3><p>Na loja, as réguas de alumínio parecem todas iguais. Uma delas, encostada no balcão, deixa passar um fio de claridade. Volta para a prateleira. Aula 6.</p></div>
+    <div class="case"><h3>O saco errado não avisa na hora</h3><p>Quase tudo na loja é cinza e vem em saco. A placa assenta, o reboco cobre, a obra fica com cara de pronta. O defeito aparece meses depois. Aula 7.</p></div>
+    <div class="case"><h3>Duas caixas, dois tons</h3><p>As placas têm o mesmo nome, o mesmo tamanho e o mesmo desenho. Abertas lado a lado, a tonalidade não bate. O motivo estava impresso do lado de fora da caixa, em letra pequena: lotes diferentes. Aula 8.</p></div>
+    <div class="case"><h3>A sala mais estreita no fundo</h3><p>A trena estava certa e a linha parecia reta. Semanas depois, a sala pronta ficou mais estreita numa ponta do que na outra. Nenhuma medida estava errada. Faltou uma. Aula 9.</p></div>
+    <div class="case"><h3>A decisão tomada na terceira fiada</h3><p>A parede sobe sem desenho. Na terceira fiada, alguém percebe que o comprimento não fecha em blocos inteiros e que o lugar da porta nunca foi decidido. A decisão sai ali, de pé, com a argamassa fresca. Aula 10.</p></div>
+    <div class="case"><h3>As juntas em linha reta</h3><p>Cada bloco foi posto exatamente em cima do bloco de baixo. De longe, a parede parece arrumada. As linhas retas das juntas são o defeito. Aula 12.</p></div>
+    <div class="case"><h3>As fissuras nos cantos da porta nova</h3><p>Algum tempo depois de pronta, a parede mostra duas fissuras inclinadas saindo dos cantos de cima do vão. Não faltou bloco nem argamassa. Faltou uma peça em cima do vão. Aula 13.</p></div>
+    <div class="case"><h3>A tomada lembrada tarde demais</h3><p>A parede está revestida, lisa, esperando a pintura. Só então alguém lembra que ali ia uma tomada. O jeito é um rasgo no revestimento novo, de cima a baixo. Aula 14.</p></div>
+    <div class="case"><h3>O emboço na mesma tarde</h3><p>De manhã a parede recebe o chapisco. À tarde, com o dia rendendo, vem a ideia de adiantar o serviço. A massa gruda, a régua passa, e nada avisa na hora. Aula 16.</p></div>
+    <div class="case"><h3>O contrapiso caprichado, e errado</h3><p>Liso, desempenado, com a bolha do nível no centro em todas as direções. A sala vai ser lavada e tem um ralo no canto. A cerâmica não dá o caimento que o contrapiso não deu. Aula 17.</p></div>
+    <div class="case"><h3>O ralo no meio da placa</h3><p>As placas vieram alinhadas, fileira por fileira. A última chega ao canto do fundo, e o ralo cai no meio de uma placa inteira. Ninguém errou a mão. Ninguém desenhou. Aula 18.</p></div>
+    <div class="case"><h3>A mancha que volta</h3><p>A tinta estufou no pé da parede. Alguém raspa, passa massa e pinta de novo. Meses depois, a mancha está lá outra vez, no mesmo lugar. Aula 20.</p></div>
+    <div class="case"><h3>“É para ver se volta”</h3><p>Uma fissura fina sai do canto de uma porta. Alguém cobre com massa e tinta. Meses depois ela volta, e ninguém sabe dizer se cresceu: não há foto, medida nem data. Aula 21.</p></div>
+    <div class="case"><h3>Duas propostas, dois totais</h3><p>As duas são para a mesma reforma, e os totais são bem diferentes. Nenhuma diz quantos blocos contou, quanto de piso, quanta parede. Aula 22.</p></div>
+    <div class="case"><h3>A parcela paga porque o dia chegou</h3><p>A reforma foi combinada em parcelas com data. A data da segunda chega com a etapa pela metade, e a parcela é paga assim mesmo. Aula 23.</p></div>
+    <div class="case"><h3>A Chácara-Modelo</h3><p>A propriedade fictícia usada no curso inteiro. A obra de exemplo é a reforma de um depósito de 4 m por 3 m, que ganha uma parede divisória, e o caminho de pedestres da entrada. A estrutura do depósito fica intocada.</p></div>
+    <div class="case"><h3>As simulações de decisão</h3><p>O curso traz cinco simulações na plataforma, entre elas: “é só uma paredinha”, o ralo que ficaria abaixo do piso e as duas propostas com dois totais.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">O que o aluno recebe ao se matricular.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula animada, de cerca de oito minutos: a parede subindo fiada a fiada, as camadas do revestimento, o caimento do contrapiso e a paginação do piso.</li>
+        <li>Artigo da aula em PDF, com os checklists, as fichas e os passos.</li>
+        <li>Quiz comentado, com a explicação de cada alternativa. São 125 questões no curso.</li>
+        <li>Caderno de trabalho: o que aprendi, o que pratiquei, as três tarefas da aula e o resultado esperado.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li><strong>Tutor Villela.</strong> O assistente de inteligência artificial do curso responde com base no conteúdo das aulas e indica o minuto do vídeo em que o assunto aparece. Não substitui a embalagem do produto, a norma técnica, o projeto nem o profissional habilitado.</li>
+        <li>Jornada com 9 selos de competência, níveis de Explorador a Mestre e medalhas.</li>
+        <li>Diagnóstico inicial e teste final, de 20 questões.</li>
+        <li>Villela Lab: 6 missões práticas na própria obra e o projeto final, a reforma planejada.</li>
+        <li>Desafio de 21 dias: uma ação curta por dia, começando pela segurança.</li>
+        <li>5 simulações de decisão.</li>
+        <li>9 modelos e resumos para imprimir, entre eles a tabela das três colunas, as dez etapas, a ficha de inspeção, a planilha de quantitativos e a ficha de aceite.</li>
+        <li>Audiobook do curso, para ouvir no carro ou no fone, com a tela bloqueada.</li>
+        <li>Certificado da Villela Academy ao concluir todas as aulas.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Dono de chácara que quer fazer pequenos serviços com método e saber até onde ir.</li>
+        <li>Quem contrata pedreiro e quer saber o que pedir, o que conferir e quando pagar.</li>
+        <li>Caseiro que executa a manutenção e precisa de um passo a passo claro e seguro.</li>
+        <li>Anfitrião de temporada, que precisa da obra pronta entre uma reserva e outra.</li>
+        <li>Quem quer começar no ofício pela obra pequena, com critério, antes de um curso de formação.</li>
+      </ul>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem quer aprender a fazer fundação, laje, muro de arrimo, demolição ou abertura de vão em parede existente. Tudo isso pede projeto e responsável técnico.</li>
+        <li>Quem procura uma receita de traço ou uma tabela de preços. No curso, o número é o da embalagem, da norma ou do projeto, e o preço é o da cotação do dia.</li>
+        <li>Quem espera sair habilitado como pedreiro. O curso é educacional, e o gesto do ofício se aprende repetindo, ao lado de quem faz bem.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>O que cada perfil leva (das aulas)</h3>
+      <ul>
+        <li><strong>Dono que faz:</strong> a tabela das três colunas, as quatro conferências, os quantitativos com perda e a ordem das dez etapas (aulas 1, 3, 5 e 10).</li>
+        <li><strong>Dono que contrata:</strong> o escopo escrito, as quantidades na proposta, o pagamento por etapa conferida e a ficha de aceite (aulas 15, 22 e 23).</li>
+        <li><strong>Caseiro:</strong> o canteiro seguro, a proteção de cada tarefa e os limites do que não se faz sem treinamento, sem andaime e sem profissional (aulas 2, 6 e 20).</li>
+        <li><strong>Anfitrião de temporada:</strong> a obra posta no calendário das reservas, com folga depois do aceite, e o piso externo conferido molhado antes da temporada (aulas 10, 20 e 23).</li>
+        <li><strong>Quem quer começar no ofício:</strong> o painel de treino, os três caminhos da prática e as três perguntas para escolher um curso de formação (aulas 12 e 25).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Perguntas frequentes</h2>
+  <p class="sub">As dúvidas mais comuns de quem pensa em se matricular.</p>
+  <h3>Preciso ter experiência em obra?</h3>
+  <p>Não. O curso começa pela sequência da obra e pela segurança, antes de qualquer ferramenta. Quem não tem uma obra em vista acompanha os exemplos com a Chácara-Modelo, a propriedade fictícia usada no curso inteiro: a reforma de um depósito de 4 m por 3 m e o caminho de pedestres da entrada.</p>
+  <h3>O curso ensina a fazer fundação, laje ou muro de arrimo?</h3>
+  <p>Não, e isso é de propósito. Tudo o que sustenta a casa pede projeto e responsável técnico. O curso mostra essas peças em corte, para o aluno entender o que está vendo, e ensina o que pedir e o que conferir de quem responde por elas. Demolição, instalação elétrica e hidráulica e trabalho em altura também ficam com profissional.</p>
+  <h3>O curso dá o traço da argamassa e as medidas de cada serviço?</h3>
+  <p>O curso ensina de onde cada número vem. O que depende do produto está na embalagem. O que depende da obra está na norma ou no projeto. Os números de referência que aparecem trazem a fonte ao lado e são apresentados como referência de orçamento, e não como receita.</p>
+  <h3>Este curso me habilita como pedreiro?</h3>
+  <p>O curso é educacional e não equivale a formação profissional, licença ou responsabilidade técnica. Ele ensina ordem, critério e conta. O gesto do ofício se aprende repetindo, ao lado de quem faz bem, e o curso diz isso com todas as letras.</p>
+  <h3>As aulas são filmadas numa obra?</h3>
+  <p>São videoaulas animadas, de cerca de oito minutos cada. O aluno vê a parede subir fiada a fiada, as camadas do revestimento, o caimento do contrapiso e a paginação do piso, enquanto a explicação acompanha. Cada aula vem com o artigo em PDF, com os checklists, as fichas e os passos.</p>
+  <h3>Eu só contrato o serviço. O curso serve para mim?</h3>
+  <p>Serve. O aluno aprende a escrever o escopo, a pedir propostas comparáveis, a conferir cada etapa antes da seguinte e a combinar medição, pagamento por etapa e aceite por escrito.</p>
+  <h3>O que é o Tutor Villela?</h3>
+  <p>É o assistente de inteligência artificial do curso. Ele responde às dúvidas com base no conteúdo das aulas e indica o minuto do vídeo em que o assunto é tratado. Não substitui a embalagem do produto, a norma técnica, o projeto nem o profissional habilitado.</p>
+  <h3>Por quanto tempo tenho acesso? Tem certificado?</h3>
+  <p>O acesso é de 1 ano a partir da compra. Ao concluir todas as aulas, o aluno recebe o Certificado da Villela Academy, que atesta a conclusão do curso e não é habilitação profissional.</p>
+  <h3>O que é a coleção Viver de Chácara?</h3>
+  <p>É a coleção de livros e cursos sobre como cuidar, melhorar e rentabilizar uma chácara. Já estão no ar o Piscineiro na Prática, o Paisagismo na Prática e a Construção com Contêineres na Prática. Os próximos tratam de decoração, pintura e hospedagem por temporada, entre outros.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias, incondicional. A pessoa assiste às aulas, faz as tarefas e, se o curso não servir, pede o reembolso dentro do prazo.</p>
+</section>
+
+<footer>
+  Coleção Viver de Chácara. Villela Academy, uma empresa do Grupo Villela Stay. Autor: Augusto Villela. <a href="/campanhas/cursos/">Voltar para o conteúdo de todos os cursos</a>.
+</footer>
+
+</div>
+</body>
+</html>

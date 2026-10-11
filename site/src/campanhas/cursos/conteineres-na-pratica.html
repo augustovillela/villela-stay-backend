@@ -1,0 +1,756 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}.byline{margin:18px 0 0;font-size:14px;color:var(--band-ink)}
+.byline a{color:var(--band-accent);font-weight:600}
+.byline a:focus-visible{outline:2px solid var(--band-accent);outline-offset:2px}
+</style>
+<title>Construção com Contêineres na Prática: conteúdo do curso</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Conteúdo do curso · Villela Academy</p>
+    <h1>Construção com Contêineres na Prática</h1>
+    <p class="lead">Tudo o que o curso ensina a quem pensa em uma casa, um studio ou uma pequena villa de contêiner na chácara e vai decidir, contratar e fiscalizar a obra, aula por aula.</p>
+    <p class="byline"><a href="/campanhas/cursos/">&larr; Conteúdo dos cursos</a> &nbsp;·&nbsp; Curso de <strong>Augusto Villela</strong></p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 25 aulas</a>
+  <a href="#metodos">Procedimentos com nome</a>
+  <a href="#casos">Cenas das aulas</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Perguntas frequentes</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados principais do curso.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>Construção com Contêineres na Prática</dd></div>
+    <div><dt>Subtítulo</dt><dd>Planejamento, contratação e fiscalização de casas, studios e pequenas villas</dd></div>
+    <div><dt>Em uma frase</dt><dd>Contêiner não é só cortar e morar</dd></div>
+    <div><dt>Coleção</dt><dd>Viver de Chácara</dd></div>
+    <div><dt>Autor</dt><dd>Augusto Villela</dd></div>
+    <div><dt>Formato</dt><dd>25 videoaulas animadas, de cerca de 8 minutos cada</dd></div>
+    <div><dt>Duração em vídeo</dt><dd>3 h 22 min</dd></div>
+    <div><dt>Em cada aula</dt><dd>Artigo em PDF, com checklists e fichas</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Certificado</dt><dd>Certificado da Villela Academy, ao concluir todas as aulas</dd></div>
+    <div><dt>Preço</dt><dd>R$ 85,00 (em outubro de 2026; vale o preço da página do curso)</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, incondicional, com reembolso</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/construcao-com-conteineres-na-pratica">academia.villelastay.com.br/academy/cursos/construcao-com-conteineres-na-pratica</a></p>
+  <p>A aula 4 (Estrutura do contêiner e riscos das modificações) está aberta como degustação grátis, com vídeo e artigo. Há também 25 trechos das aulas, um por aula, para assistir sem cadastro.</p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">O curso em poucas palavras.</p>
+  <p class="thesis">O contêiner é uma caixa de carga. Para abrigar gente, ele depende de onze etapas, e a compra é a quarta.</p>
+  <p>Quem tem chácara acaba querendo mais uma unidade na propriedade: para o caseiro, para a família que cresceu ou para receber hóspedes. E quem começa a procurar ouve logo três frases curtas. Com contêiner é rápido. Com contêiner é barato. E é só cortar e morar. O curso devolve cada uma em forma de pergunta. Ele não defende o contêiner: é um guia de decisão, contratação e fiscalização, e chegar ao fim concluindo que, para o seu caso, não vale é um resultado admitido.</p>
+  <h3>O método</h3>
+  <ul>
+    <li><strong>Decidir o uso antes da caixa.</strong> Casa, quitinete, studio e villa são listas do que a unidade precisa ter. Quem escreve essa lista é o uso.</li>
+    <li><strong>Consultar o órgão do município antes de comprar.</strong> A consulta leva o estudo preliminar, e as respostas voltam por escrito.</li>
+    <li><strong>Saber de quem é cada serviço.</strong> Três colunas: o que você faz, o que contrata e confere, e o que só fiscaliza, porque pede projeto e responsável técnico.</li>
+    <li><strong>Pedir o papel antes do serviço.</strong> Cada responsável tem um registro na pasta, e o contrato lista os documentos que cada contratado entrega.</li>
+    <li><strong>Conferir antes de cobrir.</strong> Tudo o que vai ficar escondido é fotografado antes, com data. Não se fecha parede sem foto, teste e assinatura.</li>
+    <li><strong>Pagar a etapa conferida.</strong> A data que chegou, sozinha, não libera nada.</li>
+    <li><strong>Fazer a conta com os seus números.</strong> O curso dá a forma da conta, em letras, e não diz quanto custa nem quanto rende.</li>
+  </ul>
+  <h3>A promessa, em uma frase</h3>
+  <p>Você termina com o plano de uma unidade no papel, etapa por etapa, que outra pessoa entende sem você na sala.</p>
+  <h3>Quatro mensagens centrais do curso</h3>
+  <ul>
+    <li><strong>A compra é a quarta etapa.</strong> Antes dela vêm a consulta ao órgão, a equipe com os projetos e as licenças.</li>
+    <li><strong>A lateral trabalha.</strong> A chapa ondulada faz parte da estrutura. Cada corte tira um pedaço dela, e o que repõe é o reforço que o projeto calcula.</li>
+    <li><strong>A caixa é uma linha em quinze.</strong> O engano mais comum é tomar o preço do contêiner pelo preço da unidade.</li>
+    <li><strong>Ao dono cabe decidir, contratar e conferir.</strong> Quase nada do que a caixa pede é serviço do dono, e é nessa parte que as obras desse tipo costumam se perder.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso. Os títulos são os publicados na Villela Academy. O agrupamento em blocos é deste material.</p>
+
+  <p class="block-title">Decisão, equipe, estrutura e segurança · aulas 1 a 5</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>Construção com contêineres: possibilidades e limitações</h3>
+    <ul>
+      <li>O contêiner é uma caixa de aço de padrão único, feita para viajar em navio. Construir com ele é aproveitar essa caixa como módulo, que chega inteiro ao terreno, por caminhão e guindaste.</li>
+      <li>Três consequências: o tamanho é fixo, o caminho da carreta passa a fazer parte do projeto, e o aço esquenta ao sol, sua por dentro e enferruja onde a água para.</li>
+      <li>Uma tabela com seis frases que se ouvem sobre contêiner, em três colunas: o que se diz, do que depende e o que perguntar. A resposta não vem impressa, porque depende do lugar e dos orçamentos de cada um.</li>
+      <li>“Mais barato” e “mais rápido” ficam como mitos a testar com os seus orçamentos. A largura é uma limitação que nenhum acabamento desfaz.</li>
+      <li>Cinco perguntas que vêm antes de gostar da ideia. Entre elas: para que uso, e para quem? O órgão de licenciamento já foi consultado? Quem limpa, mantém e atende depois de pronta?</li>
+      <li>A obra de exemplo do curso inteiro: o Studio da Clareira, um contêiner de 40 pés high cube, usado, transformado em unidade térrea para duas pessoas, na Chácara-Modelo.</li>
+      <li>As onze etapas da obra, na ordem, da consulta ao órgão à entrega. O erro mais comum é o caminho inverso: comprar a caixa antes de consultar o órgão e de ter quem projete.</li>
+      <li>O que o curso não é: manual de construção, projeto, parecer sobre licenciamento, plano de negócio ou formação profissional. E não dá número de estrutura.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O contêiner é uma caixa de carga: para abrigar gente, ele depende de onze etapas, e a compra é a quarta.</q><q>Ao dono cabe decidir, contratar e conferir, e é nessa parte que as obras desse tipo costumam se perder.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>Casas, quitinetes e villas: escolha do modelo de negócio</h3>
+    <ul>
+      <li>Programa é a lista do que a unidade precisa ter. Os nomes que se ouvem por aí são seis programas diferentes: casa do proprietário, moradia de apoio, quitinete, studio, chalé e pequena villa.</li>
+      <li>O mesmo studio pode servir a quem mora, a quem aluga por mês, a quem recebe por temporada ou a um retiro. O uso muda quatro coisas: privacidade, cozinha, estacionamento e limpeza.</li>
+      <li>Na moradia, a limpeza é de quem mora. Na temporada, ela volta para a propriedade a cada saída, e alguém tem de estar escalado para isso.</li>
+      <li>Em área rural, duas coisas pesam mais: a estrada de chegada e a distância de quem limpa e mantém.</li>
+      <li>Quatro decisões se amarram com o uso: público, programa, diária ou aluguel e proposta de valor. A diária é número que se pesquisa, e não número que o curso informa.</li>
+      <li>O custo total é montado em quinze linhas, com a coluna de preço em branco. A caixa é uma linha em quinze.</li>
+      <li>Cinco passos para decidir, todos no papel. O quinto é escolher entre seguir, adiar ou parar por aqui, e as três saídas valem o mesmo.</li>
+      <li>Dois erros comuns nessa fase: comparar o preço da caixa com o de uma construção pronta e esquecer quem vai limpar a unidade.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O uso muda o programa, e não só a decoração.</q><q>Uma unidade a mais é também limpeza, manutenção e vizinho a mais.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Equipe técnica, licenciamento e documentação</h3>
+    <ul>
+      <li>Três papéis aparecem em toda obra com contêiner: quem projeta, o contratado que executa e quem assina, que é o responsável técnico com registro no seu conselho.</li>
+      <li>Todo serviço do curso pertence a uma de três colunas: o que você faz, o que você contrata e confere, e o que você só fiscaliza. Na dúvida, o serviço sobe para a mais restrita.</li>
+      <li>Na terceira coluna estão a fundação e os apoios, o corte de qualquer abertura na chapa, o içamento, a elétrica, a água com o esgoto, o gás, a cobertura complementar e o próprio licenciamento.</li>
+      <li>Três serviços parecem leves e não são do dono: lixar ou raspar a pintura e o piso originais, furar a chapa e qualquer serviço no teto ou na cobertura.</li>
+      <li>A pasta de documentos tem dez divisórias, uma para cada item da lista de papéis a pedir, por quem entrega.</li>
+      <li>Você não avalia esses documentos. Confere que existem, que têm nome, data e assinatura, e guarda a cópia.</li>
+      <li>Quatro perguntas vão por escrito ao órgão de licenciamento do município, antes da compra. O curso não responde a nenhuma: quem responde é o órgão do lugar.</li>
+      <li>Dois erros comuns: aceitar a promessa do registro para depois e contratar a oficina antes de ter o projeto de aberturas e reforços.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Cada serviço tem uma coluna. Cada responsável tem um registro na pasta. E a consulta ao órgão vem antes da compra.</q><q>O papel deixa de ser favor e passa a ser parte do serviço.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Estrutura do contêiner e riscos das modificações</h3>
+    <ul>
+      <li>A aula dá o vocabulário para conversar com quem projeta. Nada nela é para executar, e ela não traz número de estrutura.</li>
+      <li>O contêiner é um esqueleto de aço fechado por chapa. Tem nove partes: cantoneiras, colunas de canto, longarinas, travessas, piso, chapa lateral, teto, portas e placa.</li>
+      <li>O caminho da carga termina sempre nos cantos. A caixa foi feita para ser presa, erguida e posta uma sobre a outra por eles.</li>
+      <li>A chapa ondulada não é um tapume pendurado no esqueleto. Ela mantém o quadro no esquadro e ajuda as longarinas a vencer o comprimento da caixa.</li>
+      <li>Uma porta ou uma janela na lateral retira parte dessa viga. A carga precisa de outro caminho, e esse caminho é o reforço, que é resposta do projeto estrutural.</li>
+      <li>Os desenhos de fundação, apoio, abertura, reforço e içamento trazem um selo: leitura, não execute.</li>
+      <li>Quatro pontos sensíveis, que uma vistoria olha primeiro: os cantos e as colunas, a parte de baixo, o teto e as aberturas novas.</li>
+      <li>Juntar caixas lado a lado, uma sobre a outra ou em balanço mexe na estrutura. No curso, isso aparece só como leitura.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma lateral inteira funciona como uma viga alta e fina.</q><q>Quando alguém disser que é só cortar e morar, devolva a frase como pergunta: quem projeta as aberturas e os reforços, e quem assina?</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>Segurança em transporte, içamento, corte e montagem</h3>
+    <ul>
+      <li>Transporte, içamento, corte e montagem são quatro serviços, e nenhum é do dono. Você não executa nem ajuda: exige os documentos e sabe de onde assistir.</li>
+      <li>A aula não mostra como se iça, como se corta nem como se solda. Mostra o que existe no papel antes e onde você fica na hora.</li>
+      <li>Do responsável pelo içamento, a pasta recebe três papéis: o plano de carga, os comprovantes do operador e do sinaleiro e a análise de risco. As regras citadas são as da NR 18.</li>
+      <li>A data do içamento é combinada fora dos dias de reserva, sem hóspede, sem criança e sem animal solto. O caseiro fica onde você fica: fora da área isolada.</li>
+      <li>Ninguém se aproxima da rede elétrica aérea. Qualquer providência é da concessionária e do responsável.</li>
+      <li>Corte, esmerilhamento e solda são trabalho a quente. Na obra de exemplo, são feitos na oficina do contratado, antes do transporte, porque na seca do Cerrado o capim em volta é material combustível.</li>
+      <li>Ninguém fica dentro do contêiner fechado durante solda, pintura ou colagem.</li>
+      <li>A regra do curso para altura é mais restrita do que a norma: você fica com os pés no chão, e o teto é visto por foto ou de longe.</li>
+      <li>Quatro perguntas sobre incêndio vão ao projetista. O curso não afirma nenhuma exigência: manda consultar o corpo de bombeiros do estado.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Nesses serviços, a sua segurança é um lugar e uma pasta: atrás da linha de isolamento, com os documentos conferidos antes.</q><q>O aço não queima, mas o que se põe dentro dele queima: o forro, o isolante, os móveis.</q></div>
+  </div></article>
+
+  <p class="block-title">O lugar, a caixa e o plano · aulas 6 a 10</p>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>Como avaliar a chácara e escolher o ponto de implantação</h3>
+    <ul>
+      <li>Um dos erros mais comuns deste tipo de obra: comprar a caixa antes de saber se a carreta chega ao lugar dela.</li>
+      <li>Cinco critérios para comparar pontos dentro da mesma propriedade: acesso da carreta e do guindaste, sol, água da chuva, privacidade e distância até a água e a energia.</li>
+      <li>Na Chácara-Modelo, três pontos são comparados sem nota e sem vencedor. Em cada critério, escreve-se o que se observa.</li>
+      <li>Todo ponto tem um ganho e um custo. O que importa é saber do que se está abrindo mão, com a justificativa escrita.</li>
+      <li>O curso não dá medida mínima de portão, de curva nem de altura. Quem diz se a carreta passa é quem dirige e quem assina o plano de carga.</li>
+      <li>O serviço do dono é descrever o caminho, numa ficha de acesso com dez linhas: da estrada de chegada ao ponto de descarga, com fotos e a trena aparecendo na foto.</li>
+      <li>Na linha das redes aéreas, a instrução é não medir. Fotografa-se e pede-se a altura à concessionária.</li>
+      <li>A ficha vai ao transportador e ao responsável pelo içamento antes da compra do contêiner. A resposta deles, por escrito, é o que vale.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O lugar vem antes do contêiner.</q><q>Você não avalia o chão. Você conta o que sabe dele, e o que sabe que está enterrado.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>Implantação, sol, ventilação, privacidade e acessos</h3>
+    <ul>
+      <li>Antes de qualquer isolante, quatro decisões mudam o calor da caixa: a sombra, a cor, a ventilação e a orientação. Todas são de projeto e de implantação.</li>
+      <li>A cobertura complementar, que é um telhado acima do teto do contêiner, sombreia o teto. O beiral e a varanda sombreiam as faces.</li>
+      <li>Ler o lugar é serviço do dono: marcar o norte no croqui, voltar de manhã cedo e no fim da tarde, anotar o vento, marcar por onde a água da chuva corre e desenhar a sombra que já existe. Tudo com a data.</li>
+      <li>No exemplo, o studio fica com o comprimento no sentido leste–oeste, para que só as duas pontas estreitas recebam o sol baixo da manhã e da tarde.</li>
+      <li>Na ponta oeste do exemplo fica o banheiro, que serve de anteparo. A varanda coberta fica na face norte, e as janelas em faces opostas permitem a ventilação cruzada.</li>
+      <li>Essa é a resposta da Chácara-Modelo. A de cada terreno depende do vento, das árvores e das construções do lugar.</li>
+      <li>Implantar é pôr a caixa no terreno, no papel, com as distâncias escritas. Os afastamentos do exemplo são números de exemplo, e não recuo recomendado: o recuo é do órgão do lugar.</li>
+      <li>A privacidade entra como pergunta ao projetista, e não como defeito a esconder: o que fecha a vista entre o painel de vidro e o estacionamento, sem tirar a luz da manhã?</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ao sol, a caixa de aço é um forno. À sombra, a mesma caixa não é.</q><q>A sombra vem antes da espessura do isolante.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>Tipos, inspeção, procedência e compra do contêiner</h3>
+    <ul>
+      <li>Três tipos de contêiner de carga seca aparecem à venda para construção: o 20 pés standard, o 40 pés standard e o 40 pés high cube. A largura é a mesma, e a altura muda.</li>
+      <li>O nome não é a medida. Quem desenha a implantação usa a medida em metros, e vale a placa e a medição do contêiner que se vai comprar.</li>
+      <li>Três registros ligam a caixa ao papel: o número de identificação pintado na porta, a placa fotografada de perto e o histórico de uso, declarado por escrito pelo vendedor.</li>
+      <li>Os pesos da placa servem para informar o transportador e quem faz o plano de içamento, e para nada mais. Não entram em conta de fundação, de apoio nem de piso.</li>
+      <li>A vistoria é do comprador, de calçado fechado, de dia e com alguém junto. Você olha, sente o cheiro à porta, fotografa e anota. Não raspa, não lixa e não fura nada.</li>
+      <li>São doze pontos, com o que olhar, o que reprova e o que perguntar ao vendedor. Em nenhum deles você diz a causa: descreve, fotografa e pergunta.</li>
+      <li>O teste da luz tem quatro condições. É rápido, nunca é feito sozinho, não se faz com a caixa ao sol forte e não se faz depois de um cheiro forte ao abrir.</li>
+      <li>Ferrugem que fura a chapa ou solta em lascas, coluna torta e emenda sem explicação nos cantos não se decidem no olho: só com laudo de profissional habilitado.</li>
+      <li>Comprada a caixa, o contêiner usado passa por um processo de higienização profissional, antes de qualquer serviço interno, com comprovante do que foi limpo, com que processo, em que data e por quem.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Compra-se a caixa pelo que a vistoria mostra e pelo que o documento declara.</q><q>Você não lava, não lixa, não raspa nem aplica produto por conta própria.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>Programa, layout e compatibilização preliminar</h3>
+    <ul>
+      <li>Um erro comum: mobiliar o desenho como se a camada interna não existisse. A linha da planta é a do aço, e entre o aço e o ambiente ainda vai uma camada inteira.</li>
+      <li>No Studio da Clareira, o programa tem quatro zonas: dormir, estar, copa compacta e banheiro. Só o banheiro é fechado, e a única divisória é também a parede hidráulica.</li>
+      <li>A conta de fechamento é do dono: as zonas somam o comprimento inteiro, sem sobra e sem falta, e as áreas somam a área do piso.</li>
+      <li>No estudo, as aberturas entram em quantidade e em face, sem medida. A medida, a posição exata e o reforço são do projeto.</li>
+      <li>O desenho do dono é um pedido. O projetista pode reduzir, deslocar ou recusar qualquer abertura.</li>
+      <li>A espessura total da camada interna, em cada face, é a letra R. Quem dá o valor é o projeto de arquitetura, com a especificação do fabricante. No curso ela não ganha número, nem de exemplo.</li>
+      <li>Cada centímetro de camada por face tira dois centímetros da largura. A economia não está em diminuir a camada por conta própria, e sim em pedir ao projetista a solução que cumpre a função com a menor espessura.</li>
+      <li>O estudo preliminar é o pedido que se leva ao arquiteto e ao engenheiro. Não substitui o projeto de nenhum dos dois, e levá-lo direto à oficina é erro.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A largura é o recurso escasso do contêiner.</q><q>No papel, cabe tudo. Depois do forro, a largura é outra.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>Orçamento, cronograma, riscos e contratação</h3>
+    <ul>
+      <li>Duas propostas com totais diferentes quase nunca oferecem a mesma coisa. Proposta se compara linha por linha.</li>
+      <li>A ferramenta é a planilha do custo total, com quinze linhas. Nesta fase ela é uma lista de quantidades, sem preço. Quantidade não é preço, mas é o que permite pedir preço.</li>
+      <li>Em cada linha de cada proposta escreve-se uma de três coisas: o valor, “incluído na linha tal” ou “não incluído”. A comparação só começa quando não sobra célula vazia.</li>
+      <li>As linhas que os orçamentos costumam esquecer são conhecidas. Entre elas estão os projetos, a higienização, o içamento e a própria reserva.</li>
+      <li>A reserva para imprevistos não é luxo. Sem ela, o imprevisto é pago com o dinheiro da etapa seguinte, e a obra para pela metade.</li>
+      <li>O curso não dá prazo para nenhuma etapa. No exemplo do Cerrado, fixam-se duas datas e arruma-se o resto de trás para a frente: a caixa chega na seca, e a cobertura fica pronta antes da chuva de outubro.</li>
+      <li>Obra e hóspede não combinam. Se a casa recebe hóspedes, é o calendário das reservas que manda.</li>
+      <li>Uma matriz com dezoito riscos, em três colunas: o risco, quem responde e que documento fica na pasta. Uma resposta não vale nela: “eu resolvo”, para serviço que é de contratado ou de quem assina.</li>
+      <li>A conferência fica registrada na ficha de aceite por etapa. Mudança, só por escrito, e antes de ser executada.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Paga-se a etapa conferida, e não a data que chegou.</q><q>O que ninguém orçou continua existindo.</q></div>
+  </div></article>
+
+  <p class="block-title">Do terreno à caixa no lugar · aulas 11 a 14</p>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>Preparação do terreno, drenagem e infraestrutura</h3>
+    <ul>
+      <li>Mandar aplainar a clareira para assentar o contêiner está na lista dos erros comuns. A caixa não se assenta no chão: fica acima do terreno, sobre apoios, e é por eles que o nível é dado.</li>
+      <li>A oficina e o terreno correm em paralelo: enquanto a oficina trabalha na caixa, o terreno e a fundação ficam prontos.</li>
+      <li>Sem o comprovante de higienização na pasta, a caixa não vai para a oficina.</li>
+      <li>Quase tudo nesta etapa é serviço que o dono só fiscaliza. O papel dele tem três verbos: pedir o documento, acompanhar de fora e registrar.</li>
+      <li>O que é do dono: a limpeza leve do mato baixo e a marcação da pegada do contêiner, com trena, linha e quatro estacas. Se as duas diagonais forem iguais, o retângulo está no esquadro.</li>
+      <li>O critério da água da chuva cabe em uma linha: a água corre para longe dos apoios e não fica parada debaixo da caixa.</li>
+      <li>As valas de água e de energia são abertas e fechadas pelo contratado. O que se pede é a foto: cada trecho fotografado aberto, com a trena na foto, antes de ser coberto.</li>
+      <li>Tudo o que foi enterrado depois da ficha de acesso é avisado ao responsável pelo içamento. A ficha descrevia o chão de antes das valas.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O contêiner é nivelado pelos apoios, e não pelo chão.</q><q>É a regra de tudo o que vai ser coberto nesta obra: fotografa-se antes, com data.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Fundações e apoios: critérios para projeto e fiscalização</h3>
+    <ul>
+      <li>O título fala em critérios para projeto. Entenda assim: o que pedir a quem projeta e como fiscalizar. Critério de fundação o dono não dá, e a aula também não.</li>
+      <li>O contêiner descarrega em poucos pontos, e cada ponto leva ao solo uma parte grande do peso. Por isso o solo precisa ser conhecido antes, por uma investigação pedida por quem responde pela fundação.</li>
+      <li>As soluções se agrupam em três famílias, mostradas só para reconhecer o desenho. Não há profundidade nem quantidade de apoios na aula, de propósito.</li>
+      <li>De quem responde pela estrutura e pela fundação, a pasta recebe quatro documentos: o relatório da investigação do solo, o projeto de fundação e apoios, o projeto de aberturas e reforços e o registro de responsabilidade técnica.</li>
+      <li>Antes da concretagem, uma visita com uma pergunta só: o que está no chão é o que está no projeto? Olha-se de fora das escavações, e cada apoio é fotografado aberto.</li>
+      <li>Com os apoios prontos, duas perguntas, sempre com o responsável presente. O nível: os topos estão na mesma altura? O esquadro: as duas diagonais têm a mesma medida?</li>
+      <li>Quanto de diferença se aceita é resposta do projetista, anotada antes do dia da conferência.</li>
+      <li>Se o que está no chão não for o que está no desenho, você não corrige nem pede a ninguém que corrija. Registra com foto e data e chama de novo quem assina.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A base do contêiner é fundação.</q><q>Você mede e diz o que mediu. Quem compara com o projeto e anota é o responsável, ao seu lado.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>Transporte, recebimento, posicionamento e nivelamento</h3>
+    <ul>
+      <li>O içamento é o dia de maior risco da obra. Ele tem três tempos: a véspera, no papel; o dia, atrás da linha de isolamento; e a conferência, depois da liberação.</li>
+      <li>O responsável pelo içamento recebe a ficha de acesso respondida, os dados do contêiner e os pesos da placa. O peso da caixa transformada é informado pela oficina.</li>
+      <li>Quem coordena a oficina, o terreno, a carreta e o guindaste é o responsável técnico da obra, e não o dono. É ele quem libera a fundação e quem diz se o tempo permite a operação.</li>
+      <li>Na véspera, seis itens precisam existir por escrito, da liberação da fundação à resposta da concessionária sobre a rede aérea.</li>
+      <li>Marcar o içamento sem a resposta da concessionária está na lista dos erros comuns. Você não mede a rede nem chega perto dela, e a decisão sobre a data é do responsável.</li>
+      <li>Com a carreta parada, três conferências antes de a operação começar: o número pintado na porta, as aberturas da oficina e a ausência de amassado novo de viagem.</li>
+      <li>Liberada a área, três olhares, sem tocar na estrutura: o nível sobre o piso, as portas de carga abrindo e fechando sem esforço e a caixa pousada em todos os apoios previstos.</li>
+      <li>Dois sinais mandam parar: porta ou janela que fechava e deixou de fechar, e apoio que afundou, inclinou ou rachou. A conduta é tirar as pessoas, registrar com foto e data e chamar o profissional.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O dia do içamento se decide na véspera, no papel.</q><q>A caixa é nivelada sobre os apoios, e não pelo terreno.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Cortes, reforços e tratamento anticorrosivo</h3>
+    <ul>
+      <li>“Já que está aqui, faz mais uma janela deste lado.” O pedido de boca parece pequeno e está na lista dos erros comuns desta etapa.</li>
+      <li>A abertura vem desenhada no projeto de aberturas e reforços, e a oficina executa o que está desenhado. Vale o projeto, e não o pedido.</li>
+      <li>Da oficina, a pasta recebe três registros: a responsabilidade técnica da execução, as fotos de cada abertura e de cada reforço antes da pintura e o registro do tratamento anticorrosivo.</li>
+      <li>Duas frases no contrato. A caixa só entra na oficina com o comprovante de higienização. E nenhuma abertura é acrescentada, deslocada ou aumentada sem o projeto revisto por quem o assina.</li>
+      <li>A visita à oficina é marcada com o serviço parado, com o desenho na mão. Confere-se quantas aberturas há, em que face e em que zona, e se cada uma tem o seu quadro de reforço.</li>
+      <li>No exemplo, o corte é feito na oficina por dois motivos: o fogo, porque na seca a vegetação em volta da clareira está seca, e a ordem, porque a caixa chega com os vãos prontos e tratados.</li>
+      <li>Cada corte expõe aço nu na borda, e cada solda queima a tinta em volta. É por esses pontos que a corrosão começa, e por isso o tratamento vem logo depois da solda.</li>
+      <li>Quatro perguntas sobre o anticorrosivo, entre elas: o tratamento cobre as bordas dos vãos, as soldas, os reforços e a parte de baixo da caixa? E quem retoca os riscos do transporte e do içamento?</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Nenhuma abertura se decide na oficina.</q><q>Depois da pintura e do forro, ninguém mais vê a solda.</q></div>
+  </div></article>
+
+  <p class="block-title">Envoltória, conforto e instalações · aulas 15 a 18</p>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>Cobertura, fachadas, esquadrias e proteção contra água</h3>
+    <ul>
+      <li>O teto do contêiner é uma chapa fina e quase plana, com amassados que empoçam. Ele aquece depressa ao sol, e o calor passa para dentro.</li>
+      <li>A cobertura complementar é um telhado construído acima desse teto, com beiral. Entre os dois fica uma camada de ar, aberta nas bordas.</li>
+      <li>Vão fechado com forro, ou com material guardado, desfaz o efeito. É uma coisa que se vê do chão e que vale perguntar: o ar ainda passa ali?</li>
+      <li>A aula não traz altura, inclinação nem medida de janela. Traz perguntas e o que olhar com os pés no chão.</li>
+      <li>O beiral faz dois serviços: sombreia a parte de cima das faces e joga a água da chuva para longe da chapa.</li>
+      <li>A chuva procura os encontros. São cinco: o contorno de cada janela e da porta, o painel fixo da ponta leste, cada passagem de tubo ou de cabo, os amassados do teto e o encontro da varanda com a caixa.</li>
+      <li>Uma conferência que não pede ferramenta: depois da primeira chuva forte, dar a volta na unidade e ver para onde a água foi.</li>
+      <li>A cobertura e qualquer serviço no teto são trabalho em altura. O dono acompanha do chão e vê o teto por foto, feita pelo contratado.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um segundo telhado recebe o sol e a chuva no lugar da chapa. E a água se confere nos encontros.</q><q>A unidade pronta pede o que o aço pede: pintura inteira, vedação inteira e nenhuma água parada.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>Isolamento térmico e controle de condensação</h3>
+    <ul>
+      <li>Por que o aço sua: o ar de dentro carrega vapor, da respiração de quem dorme, do banho e da panela. Quando esse ar encontra uma superfície fria, o vapor vira água.</li>
+      <li>Atrás do forro, a gota molha o isolante, alimenta o mofo e começa a ferrugem por um lado que ninguém vê.</li>
+      <li>Do aço para dentro, quatro camadas: a estrutura auxiliar, o isolante, a barreira de vapor e o forro. A ordem exata, o material e o lado da barreira são decisões do projeto para aquele clima.</li>
+      <li>Copiar a camada de outra obra, de outro clima, está entre os erros comuns desta etapa.</li>
+      <li>A palavra que decide é contínuo. Um trecho de aço sem isolante, uma emenda aberta na barreira ou um perfil que encosta na chapa formam a ponte térmica, e é nela que a gota aparece primeiro.</li>
+      <li>A pergunta para levar ao projetista: onde o aço ainda toca o lado de dentro?</li>
+      <li>A camada também é espaço perdido. Quem equilibra conforto e espaço é o projetista.</li>
+      <li>A ventilação cruzada é a primeira ferramenta de conforto e não consome energia. O equipamento de climatização vem depois da sombra e da ventilação, e não no lugar delas. O curso não promete economia.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Camada mais grossa isola mais e deixa menos casa.</q><q>Primeiro se tira o sol de cima da caixa; depois se escolhe o equipamento para o calor que sobrou.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Desempenho acústico e privacidade</h3>
+    <ul>
+      <li>Três coisas mudam o barulho da chuva, e as três já estão na obra por outros motivos: a cobertura complementar, o isolante encostado na chapa e o forro.</li>
+      <li>O que reduz o som é massa, camada e vedação. Nenhuma das três tem número na aula, e o curso não promete silêncio.</li>
+      <li>Som passa por onde passa ar: a fresta sob a porta, o vão em volta de um tubo, a janela que não encosta.</li>
+      <li>Na entrega, a conferência das esquadrias é simples: as janelas e a porta fecham sem esforço, e encostam.</li>
+      <li>Duas caixas encostadas ou empilhadas dividem estrutura, e a estrutura conduz o som de passos e de portas. Unidades afastadas trocam de problema.</li>
+      <li>Da cama, do sofá e da varanda, anota-se o que se vê e quem vê você. Depois faz-se o caminho contrário, de fora para dentro.</li>
+      <li>Pensar a privacidade só de dentro para fora está entre os erros comuns desta fase.</li>
+      <li>O dono não mede som nem escolhe vidro. Leva ao projetista uma folha com o que viu, o que ouviu e de onde.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Chapa fina de aço funciona como a pele de um tambor.</q><q>Privacidade se confere sentado e deitado.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>Coordenação das instalações elétricas e hidrossanitárias</h3>
+    <ul>
+      <li>Cada instalação tem projeto próprio e responsável técnico próprio. Ao dono cabe a coordenação: saber quem entra quando e o que tem de estar pronto antes do seguinte.</li>
+      <li>A aula não tem bitola, disjuntor, diâmetro nem esquema. Ficam a ordem e as perguntas.</li>
+      <li>Dentro da parede, a ordem que evita desmanchar serviço pronto tem seis passos, da estrutura auxiliar ao forro. A sequência exata é do projeto.</li>
+      <li>Toda passagem é uma abertura na chapa ou no piso. Aceitar só mais uma passagem, combinada de boca, está entre os erros comuns.</li>
+      <li>Num contêiner, um fio com defeito encosta em aço, e o aço da caixa é um só. Por isso o aterramento da caixa metálica é pergunta obrigatória ao projetista, antes de qualquer outra.</li>
+      <li>A obra tem uma parada marcada, com nome: antes de fechar. São nove conferências, e a parede só fecha com as nove.</li>
+      <li>Nenhum dos testes é feito pelo dono. Quem testa é quem executou, diante de quem assina, e o resultado vem por escrito.</li>
+      <li>Cada parede e o teto são fotografados abertos, com a trena na foto. Anos mais tarde, é essa foto que mostra onde se pode fixar um armário e onde procurar um vazamento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Não se fecha parede sem foto, teste e assinatura.</q><q>O teste é de quem executou, a assinatura é de quem responde, e a foto e a presença são suas.</q></div>
+  </div></article>
+
+  <p class="block-title">Acabamento e manutenção · aulas 19 e 20</p>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>Revestimentos, cozinha, banheiro e mobiliário</h3>
+    <ul>
+      <li>O guarda-roupa comprado pela medida da planta fecha a passagem no dia da entrega. A planta dizia a largura do contêiner, e o móvel foi parar numa largura que já perdeu duas vezes a camada interna.</li>
+      <li>Com o forro pronto, mede-se a largura em três pontos de cada zona, no chão, e anota-se a menor medida. É essa que vale para o móvel.</li>
+      <li>A pintura interna sobre forro novo, a montagem de móveis soltos e a decoração são do dono. Tudo o que é fixo é de contratado.</li>
+      <li>Furar a chapa continua proibido. O que se pendura é fixado no forro e na estrutura auxiliar, e o que pesa precisa ter sido pedido ao projetista enquanto a parede estava aberta.</li>
+      <li>Decide-se a lista de equipamentos da copa antes do projeto elétrico e do de água, porque cada item é um ponto dentro da parede.</li>
+      <li>O curso não dá medida de louça, de bancada nem de box. Pede-se ao projetista a planta com as peças desenhadas na largura útil.</li>
+      <li>No recebimento, abre-se cada torneira, aciona-se a descarga e olha-se por baixo da bancada com a lanterna.</li>
+      <li>Para quem recebe hóspedes, a varanda e o que se vê dela são parte do programa, e não sobra de orçamento.</li>
+      <li>Padronizar o que quebra e o que se gasta: um modelo só de torneira, de fechadura e de lâmpada, com a referência anotada e um de reserva.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Numa caixa estreita, acabamento é o que cabe na largura útil e se fixa sem furar a chapa.</q><q>O acabamento que serve a isso é o que se repõe sem obra.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>Inspeção, patologias e plano de manutenção</h3>
+    <ul>
+      <li>Diante de uma mancha de ferrugem, a vontade é raspar para ver até onde vai. Raspar não é serviço do dono e não responde à pergunta.</li>
+      <li>Os quatro problemas da unidade pronta têm a mesma origem, que é água parada onde não devia: corrosão, infiltração, condensação e mofo.</li>
+      <li>A pergunta que separa infiltração de condensação é quando. Anota-se a data da chuva e a data em que se viu a mancha.</li>
+      <li>Dois avisos chegam sem mancha: a ponte térmica, que aparece como faixa mais quente ou linha reta de condensação, e o ruído novo, registrado com a data em que começou.</li>
+      <li>Duas conferências se repetem sempre iguais: abrir e fechar cada porta e cada janela, prestando atenção no esforço, e pôr o nível de bolha no piso, nos mesmos pontos.</li>
+      <li>O plano segue o ano do Cerrado: uma visita completa antes da chuva, em setembro, outra depois da chuva, em maio, e uma volta rápida a cada troca de hóspede, feita por quem limpa.</li>
+      <li>A foto que serve tem data e régua, tirada sempre do mesmo lugar.</li>
+      <li>Nove sinais não esperam a próxima visita. A conduta é sempre a mesma: tirar as pessoas, registrar com foto e data e chamar o profissional, no mesmo dia.</li>
+      <li>Qualquer mudança depois da entrega é reforma. Sem projeto e sem quem assine, não se mexe.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Uma foto sozinha mostra uma mancha. Duas fotos iguais, com meses de intervalo, mostram se ela cresceu.</q><q>Você descreve e registra. Quem diz a causa é quem dá laudo.</q></div>
+  </div></article>
+
+  <p class="block-title">Usos, conjuntos e contas · aulas 21 a 23</p>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>Projeto de moradia ou quitinetes para locação mensal na chácara</h3>
+    <ul>
+      <li>O título diz projeto no sentido de plano. O que se faz na aula é um estudo, no papel e sem número. Projeto é de quem assina.</li>
+      <li>Quem fica mais tempo cozinha todo dia, guarda mais coisas e lava roupa. São três pedidos a mais, e os três disputam lugar na mesma caixa estreita e comprida.</li>
+      <li>Na locação tradicional, a limpeza é do inquilino, a vaga é fixa e a entrada é independente. O aluguel é número que você pesquisa. O curso não diz.</li>
+      <li>A moradia do caseiro é a variação em que o programa mais muda. Quem trabalha na propriedade precisa de privacidade em relação à casa e aos hóspedes, e não só o contrário.</li>
+      <li>A relação de trabalho e um eventual contrato de locação são outro assunto: consulte um advogado.</li>
+      <li>O conjunto em linha poupa caminho e vala e põe todos de frente para a mesma paisagem. Perde-se privacidade de três maneiras, e nenhuma é de acabamento. São de posição.</li>
+      <li>Quanto afastar e para que lado girar cada caixa é pergunta para o projetista. O curso não dá essa distância nem esse giro.</li>
+      <li>Mais de uma unidade muda a conversa com o órgão e pede nova consulta. O curso não ensina a dividir imóvel nem a fazer condomínio ou loteamento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Morar é outro programa na mesma caixa.</q><q>São caixas vizinhas, e não uma caixa maior.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>Projeto de pequenas villas para plataformas de hospedagem e turismo rural</h3>
+    <ul>
+      <li>Pequena villa, no curso, é mais de uma unidade no mesmo terreno, com caminhos, vagas e áreas comuns. Aqui elas se arrumam em volta de um pátio.</li>
+      <li>O pátio cria um lugar de encontro e concentra caminho, luz e jardim. Em troca, todas as portas dão para o mesmo ponto, e a conversa no pátio chega a todas as unidades.</li>
+      <li>Se a razão para alguém escolher a unidade é o silêncio, é dela que o pátio cobra.</li>
+      <li>O desenho que mostra isso é feito de linhas de visão: de cada porta e de cada janela sai uma linha até aquilo que ela vê.</li>
+      <li>A estada se confere no papel, do portão à cama, com cinco perguntas: onde o hóspede para o carro, por onde anda à noite, o que ouve ao deitar, o que vê ao acordar e quem o vê.</li>
+      <li>A fogueira entra com o seu limite. Antes de decidir se haverá, consulta-se o órgão ambiental e o corpo de bombeiros do estado. O curso não dá procedimento nem distância.</li>
+      <li>Um conjunto muda a conversa com o corpo de bombeiros e com o órgão de licenciamento. Planejar a segunda unidade sem essa volta está na lista dos erros comuns.</li>
+      <li>Preço, anúncio, canais e atendimento são assunto de outro título da coleção. Este curso vai até a unidade mobiliada e entregue.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Em volta de um pátio, as unidades ganham um lugar de encontro e perdem silêncio.</q><q>Cada unidade a mais é também limpeza, manutenção e vizinho a mais.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">23</div><div class="body">
+    <h3>Operação, custos, ocupação e experiência do hóspede</h3>
+    <ul>
+      <li>A conta feita só com a casa cheia não mostra o mês em que quase ninguém vem, nem a conta de luz que chega do mesmo jeito.</li>
+      <li>São quatro contas, todas com letras: a taxa de ocupação, a receita do mês, o resultado do mês e os meses para recuperar o investimento.</li>
+      <li>Todo preço é um campo em branco. O valor da noite é o que o mercado do seu lugar paga pelo programa que você oferece, e é você quem pesquisa.</li>
+      <li>Para os impostos, chame o contador. É ele quem diz o que incide sobre a receita.</li>
+      <li>As quatro contas são feitas três vezes, com a ocupação baixa, a média e a alta. Preencher só a coluna da ocupação alta está na lista dos erros comuns.</li>
+      <li>Se o resultado do mês der zero ou negativo em algum cenário, a divisão não tem resposta. E isso já é a resposta daquele cenário.</li>
+      <li>A lista do dia da entrega inclui uma linha que costuma ficar em branco: o nome e o telefone de quem limpa, de quem mantém e de quem atende quando algo falha.</li>
+      <li>O checklist de entrega tem oito itens, e todos são papel. Receber a unidade sem receber a pasta é outro dos erros comuns.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O hóspede fotografa a varanda, não a fundação.</q><q>Há conta que chega com a unidade vazia.</q></div>
+  </div></article>
+
+  <p class="block-title">Projeto final · aulas 24 e 25</p>
+
+  <article class="lesson"><div class="n">24</div><div class="body">
+    <h3>Desenvolvimento da implantação na Chácara-Modelo</h3>
+    <ul>
+      <li>A aula não traz conteúdo novo. Percorre a obra de exemplo do começo ao fim e diz, em cada etapa, o que se confere antes de passar à seguinte.</li>
+      <li>Etapa um: o uso cabe em uma frase, e as perguntas ao órgão foram e voltaram por escrito.</li>
+      <li>A compra é só a quarta etapa. Ela esperou porque o projeto pode pedir outro tipo de caixa.</li>
+      <li>Sem o comprovante de higienização na pasta, a caixa não vai para a oficina.</li>
+      <li>Na oficina, a foto de cada vão vem antes da tinta. Na clareira, as valas são fotografadas abertas, com a trena.</li>
+      <li>No dia do içamento, o lugar do dono e do caseiro é atrás da linha de isolamento, do começo ao fim.</li>
+      <li>O projeto final do aluno é um plano, e não uma obra: não é preciso comprar nem construir nada para concluí-lo. Tem catorze páginas e responde a oito entregáveis.</li>
+      <li>Três itens da conferência final: nenhum serviço de contratado ou de quem assina aparece como “faço”, a consulta ao órgão vem antes da compra, e uma pessoa de fora leu e disse o que não entendeu.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O seu projeto final é um plano, e não uma obra.</q><q>Entre as quatro estacas e a unidade entregue não houve atalho: cada etapa só começou depois de a anterior ser conferida, com o papel na pasta.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">25</div><div class="body">
+    <h3>Apresentação, análise de viabilidade e próximos passos</h3>
+    <ul>
+      <li>O projeto final serve a dois leitores: o arquiteto e o engenheiro, que precisam entender o pedido sem perguntar o básico, e o órgão de licenciamento do município.</li>
+      <li>O estudo está pronto quando o projetista não precisa adivinhar nada. O teste é uma pessoa de fora ler e dizer o que não entendeu.</li>
+      <li>Uma rubrica com seis critérios serve para o aluno se avaliar: segurança, planejamento, técnica, qualidade, custo e apresentação. O que mais pesa é a segurança.</li>
+      <li>O certificado é emitido pela conclusão das aulas do curso, e não pela entrega do projeto.</li>
+      <li>A análise de viabilidade começa pelo cenário de ocupação baixa. A pergunta final é uma só: em qual dos três a conta ainda fecha?</li>
+      <li>Se a resposta do cenário baixo não serve, a decisão volta ao começo do curso: seguir, adiar ou concluir que não vale.</li>
+      <li>O diagnóstico inicial, de dez perguntas, é respondido de novo. A diferença entre as duas folhas é o que o aluno aprendeu a perguntar.</li>
+      <li>Três pessoas vêm antes de qualquer assinatura: o advogado, que lê o contrato; o contador, que diz que impostos entram nos custos; e quem assina o projeto, diante de qualquer mudança.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O plano está pronto quando outra pessoa o entende sem você ao lado.</q><q>O curso não defende o contêiner, e um plano que termina em não também cumpriu o papel dele.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Procedimentos e regras com nome</h2>
+  <p class="sub">Fichas, listas e conferências que o aluno leva para a pasta da obra. Cada uma tem nome e, quase sempre, um número.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Procedimento</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>As 11 etapas da obra</td><td>Da consulta ao órgão do município à vistoria final. A compra do contêiner é a quarta.</td><td class="aula">1 e 24</td></tr>
+      <tr><td>A tabela das 6 frases</td><td>O que se diz, do que depende e o que perguntar, sem resposta impressa.</td><td class="aula">1</td></tr>
+      <tr><td>As 5 perguntas do proprietário</td><td>O que responder antes de gostar da ideia.</td><td class="aula">1</td></tr>
+      <tr><td>O diagnóstico de 10 perguntas</td><td>Respondido com sim, não ou não sei, no começo e no fim do curso.</td><td class="aula">1 e 25</td></tr>
+      <tr><td>Os 6 programas</td><td>Casa do proprietário, moradia de apoio, quitinete, studio, chalé e pequena villa.</td><td class="aula">2</td></tr>
+      <tr><td>As 4 colunas do uso</td><td>Privacidade, cozinha, estacionamento e limpeza.</td><td class="aula">2 e 21</td></tr>
+      <tr><td>Seguir, adiar ou parar</td><td>As três saídas da decisão, que valem o mesmo.</td><td class="aula">2 e 25</td></tr>
+      <tr><td>As 3 colunas</td><td>O que você faz, o que contrata e confere, e o que só fiscaliza.</td><td class="aula">3</td></tr>
+      <tr><td>A pasta de 10 divisórias</td><td>Os documentos a pedir, por quem entrega.</td><td class="aula">3</td></tr>
+      <tr><td>As 4 perguntas ao órgão</td><td>Levadas por escrito, com resposta por escrito, antes da compra.</td><td class="aula">3 e 22</td></tr>
+      <tr><td>A matriz de responsabilidades</td><td>Para cada etapa: quem executa, quem assina e que documento fica na pasta.</td><td class="aula">3</td></tr>
+      <tr><td>As 9 partes da caixa</td><td>Cantoneiras, colunas de canto, longarinas, travessas, piso, chapa lateral, teto, portas e placa.</td><td class="aula">4</td></tr>
+      <tr><td>Leitura, não execute</td><td>O selo dos desenhos de fundação, apoio, abertura, reforço e içamento.</td><td class="aula">4</td></tr>
+      <tr><td>A linha de isolamento</td><td>O lugar do dono e do caseiro no içamento e no trabalho a quente.</td><td class="aula">5 e 13</td></tr>
+      <tr><td>Os 5 critérios do ponto</td><td>Acesso, sol, água da chuva, privacidade e distância até a água e a energia.</td><td class="aula">6</td></tr>
+      <tr><td>A ficha de acesso</td><td>Dez linhas que descrevem o caminho da carga, respondidas por quem dirige e por quem assina.</td><td class="aula">6</td></tr>
+      <tr><td>As 4 decisões do calor</td><td>Sombra, cor, ventilação e orientação, antes de qualquer isolante.</td><td class="aula">7</td></tr>
+      <tr><td>O croqui datado</td><td>Norte, sol, vento, água da chuva e sombra existente, com a pegada da caixa.</td><td class="aula">7</td></tr>
+      <tr><td>Os 3 registros da caixa</td><td>Número da porta, placa e declaração do histórico de uso.</td><td class="aula">8</td></tr>
+      <tr><td>A vistoria de 12 pontos</td><td>O que olhar, o que reprova e o que perguntar ao vendedor.</td><td class="aula">8 e 20</td></tr>
+      <tr><td>O teste da luz</td><td>Portas fechadas e pontos de claridade contados, com quatro condições.</td><td class="aula">8</td></tr>
+      <tr><td>Higienização com comprovante</td><td>Serviço contratado, antes de qualquer serviço interno no contêiner usado.</td><td class="aula">8</td></tr>
+      <tr><td>A conta de fechamento</td><td>As zonas somam o comprimento, e as áreas somam o piso.</td><td class="aula">9</td></tr>
+      <tr><td>A letra R</td><td>A espessura da camada interna por face, que o projeto define.</td><td class="aula">9, 16 e 19</td></tr>
+      <tr><td>O estudo preliminar</td><td>O pedido que se leva ao arquiteto, ao engenheiro e ao órgão.</td><td class="aula">9 e 25</td></tr>
+      <tr><td>A planilha de 15 linhas</td><td>O custo total da unidade. A caixa é uma linha.</td><td class="aula">2 e 10</td></tr>
+      <tr><td>A matriz de 18 riscos</td><td>O risco, quem responde e que documento fica na pasta.</td><td class="aula">10</td></tr>
+      <tr><td>A ficha de aceite por etapa</td><td>Onze linhas e quatro colunas. Paga-se a etapa conferida.</td><td class="aula">10 e 23</td></tr>
+      <tr><td>As 4 estacas e as diagonais</td><td>A marcação da pegada, conferida no esquadro.</td><td class="aula">11</td></tr>
+      <tr><td>Foto antes de cobrir</td><td>O apoio aberto, a vala com a trena e a solda antes da tinta.</td><td class="aula">11, 14 e 18</td></tr>
+      <tr><td>Nível e esquadro</td><td>As duas perguntas dos apoios prontos, com o responsável presente.</td><td class="aula">12</td></tr>
+      <tr><td>Os 6 itens da véspera</td><td>O que precisa existir por escrito antes do içamento.</td><td class="aula">13</td></tr>
+      <tr><td>Os 3 olhares</td><td>Nível no piso, portas de carga e caixa pousada em todos os apoios.</td><td class="aula">13</td></tr>
+      <tr><td>As 2 frases do contrato da oficina</td><td>Caixa só entra higienizada, e abertura só muda com o projeto revisto.</td><td class="aula">14</td></tr>
+      <tr><td>As 4 perguntas do anticorrosivo</td><td>Sistema, preparação, o que o tratamento cobre e quem retoca.</td><td class="aula">14</td></tr>
+      <tr><td>Os 5 encontros da água</td><td>Onde a chuva tenta passar.</td><td class="aula">15</td></tr>
+      <tr><td>As 4 camadas</td><td>Estrutura auxiliar, isolante, barreira de vapor e forro.</td><td class="aula">16</td></tr>
+      <tr><td>A pergunta da ponte térmica</td><td>Onde o aço ainda toca o lado de dentro?</td><td class="aula">16</td></tr>
+      <tr><td>Sentado e deitado</td><td>A privacidade conferida de dentro para fora e de fora para dentro.</td><td class="aula">17</td></tr>
+      <tr><td>A ordem de 6 passos</td><td>O que entra na parede, e quando, da estrutura auxiliar ao forro.</td><td class="aula">18</td></tr>
+      <tr><td>As 4 perguntas do aterramento</td><td>Levadas ao projetista da elétrica, antes de qualquer outra.</td><td class="aula">18</td></tr>
+      <tr><td>Antes de fechar</td><td>Nove conferências. A parede só fecha com as nove.</td><td class="aula">18</td></tr>
+      <tr><td>A largura em 3 pontos</td><td>Medida no chão, depois do forro. Vale a menor.</td><td class="aula">19</td></tr>
+      <tr><td>Duas visitas e uma rotina</td><td>Setembro, maio e uma volta rápida a cada troca de hóspede.</td><td class="aula">20</td></tr>
+      <tr><td>Os 9 sinais de pare e chame</td><td>Tirar as pessoas, registrar com foto e data e chamar o profissional.</td><td class="aula">20</td></tr>
+      <tr><td>As 3 perdas do conjunto em linha</td><td>Passagem diante da varanda, janela diante de janela e ruído junto ao quarto.</td><td class="aula">21</td></tr>
+      <tr><td>As linhas de visão</td><td>De cada porta e de cada janela, uma linha até o que ela vê.</td><td class="aula">22</td></tr>
+      <tr><td>As 5 perguntas da estada</td><td>Do portão à cama, no papel.</td><td class="aula">22</td></tr>
+      <tr><td>As 4 contas com letras</td><td>Ocupação, receita, resultado e meses para recuperar o investimento.</td><td class="aula">23</td></tr>
+      <tr><td>Os 3 cenários</td><td>Ocupação baixa, média e alta. Começa-se pela baixa.</td><td class="aula">23 e 25</td></tr>
+      <tr><td>O checklist de entrega</td><td>Oito itens, todos de papel, percorridos com a pasta aberta.</td><td class="aula">23</td></tr>
+      <tr><td>O plano de 14 páginas</td><td>O projeto final, que responde a oito entregáveis.</td><td class="aula">24</td></tr>
+      <tr><td>A rubrica de 6 critérios</td><td>Segurança, planejamento, técnica, qualidade, custo e apresentação.</td><td class="aula">25</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Cenas das aulas (exemplos fictícios)</h2>
+  <p class="sub">O curso não conta casos de clientes reais. Cada aula abre com uma cena imaginada, e os exemplos usam a Chácara-Modelo e o Studio da Clareira, uma propriedade e uma unidade fictícias.</p>
+  <div class="cases">
+    <div class="case"><h3>Três frases curtas sobre contêiner</h3><p>É rápido. É barato. É só cortar e morar. Nenhuma das três vem com resposta pronta. O que dá para fazer com cada uma é devolvê-la em forma de pergunta. Aula 1.</p></div>
+    <div class="case"><h3>A renda já calculada de cabeça</h3><p>A varanda está desenhada, a vista está escolhida e a conta da receita já foi feita. Só que ninguém escreveu ainda quem troca a roupa de cama nem quem atende o hóspede à noite. Aula 2.</p></div>
+    <div class="case"><h3>“Depois eu mando o registro”</h3><p>No primeiro dia de obra, o dono pede o papel que diz quem responde por aquele serviço. O serviço começa naquela manhã, e o papel não chega nunca. Aula 3.</p></div>
+    <div class="case"><h3>Uma janela aqui e uma porta ali</h3><p>Duas pessoas diante de uma caixa de aço num pátio resolvem as aberturas de boca, apontando para a lateral ondulada, como se ela fosse um tapume. Aula 4.</p></div>
+    <div class="case"><h3>O celular do outro lado da linha</h3><p>A carreta parou, o guindaste está armado e o contêiner começa a sair do chão. Alguém atravessa a linha marcada no chão para filmar de perto. Aula 5.</p></div>
+    <div class="case"><h3>A caixa paga e parada no pátio</h3><p>O contêiner foi escolhido e pago e espera o frete. Só então alguém pergunta se a carreta chega ao ponto escolhido, lá dentro da chácara. Aula 6.</p></div>
+    <div class="case"><h3>A mesma caixa em dois lugares</h3><p>Na primeira vez, ela está no meio do terreno, fechada, ao sol do começo da tarde. Na segunda, à sombra. A diferença entre as duas não está no isolante. Aula 7.</p></div>
+    <div class="case"><h3>A lateral que brilha</h3><p>Num pátio de usados, um contêiner tem o tamanho certo, e uma das laterais foi repintada há pouco. O vendedor não explica. A lateral não aprova nem reprova a caixa: vira pergunta escrita. Aula 8.</p></div>
+    <div class="case"><h3>Duas propostas sobre a mesa</h3><p>Os totais são bem diferentes, e a vontade é assinar a mais baixa. Lidas com calma, elas não oferecem a mesma coisa. Aula 10.</p></div>
+    <div class="case"><h3>A máquina na borda da clareira</h3><p>Alguém dá a ordem que parece a mais natural: aplainar tudo, para assentar o contêiner num chão reto. Aula 11.</p></div>
+    <div class="case"><h3>A porta que deixou de fechar</h3><p>Um apoio afunda mais do que os outros. Ninguém vê o chão ceder: o que se vê é a caixa fora do nível, e a porta é a primeira a acusar. Aula 12.</p></div>
+    <div class="case"><h3>A véspera sem a resposta da concessionária</h3><p>O içamento está marcado, a carreta está a caminho, e a pergunta sobre a rede elétrica aérea que cruza o acesso continua sem resposta. Aula 13.</p></div>
+    <div class="case"><h3>A gota atrás do forro</h3><p>Numa madrugada da seca, duas pessoas dormem com as janelas fechadas. O forro está inteiro e limpo. Do lado de dentro da chapa, uma gota acaba de se formar. Aula 16.</p></div>
+    <div class="case"><h3>“O teste fica para depois”</h3><p>A parede ainda está aberta, as placas do forro esperam num canto, e o contratado quer fechar hoje. A resposta é não, com calma e com uma ficha na mão. Aula 18.</p></div>
+    <div class="case"><h3>O guarda-roupa que cabia na planta</h3><p>Foi comprado com antecedência, pela medida do desenho. No dia da entrega, com o forro pronto, o móvel fecha a passagem. Aula 19.</p></div>
+    <div class="case"><h3>A conversa no pátio, à noite</h3><p>As unidades ficam em volta do pátio, e todas as portas dão para o mesmo ponto. Duas pessoas conversam em voz normal, e quem já se deitou escuta. Aula 22.</p></div>
+    <div class="case"><h3>A conta da casa cheia</h3><p>Todas as noites do mês ocupadas, o valor da noite lá em cima e um resultado animador no pé da folha. É só uma das três colunas. Aula 23.</p></div>
+    <div class="case"><h3>As catorze páginas e a cadeira vazia</h3><p>O plano está sobre a mesa de quem projeta, e o autor não está na sala. O que está escrito, a pessoa entende. O que ficou só na cabeça não chegou até a mesa. Aula 25.</p></div>
+    <div class="case"><h3>As simulações de decisão</h3><p>Na plataforma, o curso traz cinco simulações. Três delas: é só cortar e morar, a caixa mais em conta sem papel, e a carreta e o portão.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">O que acompanha as 25 videoaulas.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula animada, de cerca de oito minutos: a caixa por dentro, o caminho das cargas, a implantação no terreno, o sol ao longo do dia e as camadas da parede.</li>
+        <li>Artigo da aula em PDF: a aula por escrito, com os checklists, as fichas em branco e três tarefas para aplicar.</li>
+        <li>Quiz comentado, com a explicação de cada alternativa. São 125 questões no curso.</li>
+        <li>Caderno de trabalho: o que aprendi, o que pratiquei, as três tarefas da aula e o resultado esperado.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li><strong>Tutor Villela.</strong> O assistente de inteligência artificial do curso responde com base no conteúdo das aulas e indica o minuto do vídeo em que o assunto aparece. Não substitui o projeto, a norma técnica, o órgão do município nem o profissional habilitado.</li>
+        <li>Jornada com 9 selos de competência, níveis de Explorador a Mestre e medalhas.</li>
+        <li>Diagnóstico inicial e teste final, de 20 questões.</li>
+        <li>Villela Lab: 6 missões práticas, todas de planejamento e conferência, e o projeto final, o plano de uma unidade.</li>
+        <li>Desafio de 21 dias: uma ação curta por dia, para o plano sair do papel antes de qualquer compra.</li>
+        <li>5 simulações de decisão.</li>
+        <li>9 modelos e resumos para imprimir, entre eles as três colunas, as onze etapas, os doze pontos da vistoria, a ficha de acesso e a planilha de quinze linhas.</li>
+        <li>Certificado da Villela Academy ao concluir todas as aulas.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Dono de chácara que pensa em um studio, uma quitinete ou uma casa de caseiro em contêiner.</li>
+        <li>Quem quer receber hóspedes e precisa decidir com método antes de gastar.</li>
+        <li>Quem vai contratar a obra e quer saber o que pedir, o que conferir e quando pagar.</li>
+        <li>Quem já comprou um contêiner e quer saber o que falta antes de alguém morar nele.</li>
+        <li>Profissionais de obra que querem entender o sistema para orientar o cliente.</li>
+      </ul>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura um passo a passo para cortar, soldar e montar o contêiner. Esses serviços são de projeto e de responsável técnico, e aparecem nas aulas só para leitura.</li>
+        <li>Quem espera uma tabela de preços, um prazo de obra ou uma projeção de retorno. O curso ensina a montar a conta com os seus números.</li>
+        <li>Quem espera sair habilitado a construir. O curso é educacional e não equivale a formação profissional, licença ou responsabilidade técnica.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>O que cada perfil leva (das aulas)</h3>
+      <ul>
+        <li><strong>Dono que ainda vai decidir:</strong> as onze etapas, a escolha do uso, a consulta ao órgão antes da compra e as três saídas da decisão (aulas 1, 2 e 25).</li>
+        <li><strong>Quem quer receber hóspedes:</strong> o programa de temporada, a privacidade nos dois sentidos, a estada conferida do portão à cama e as quatro contas em três cenários (aulas 2, 17, 22 e 23).</li>
+        <li><strong>Quem vai contratar:</strong> as três colunas, a pasta de documentos, a planilha de quinze linhas, a comparação de propostas linha por linha e a ficha de aceite por etapa (aulas 3 e 10).</li>
+        <li><strong>Quem já comprou a caixa:</strong> a higienização profissional com comprovante, o projeto de aberturas e reforços antes da oficina e a parada antes de fechar (aulas 8, 14 e 18).</li>
+        <li><strong>Profissional de obra:</strong> a ordem das etapas, as conferências de cada uma e a divisão de quem faz, quem executa e quem assina, para orientar o cliente (aulas 3, 10 e 24).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Perguntas frequentes</h2>
+  <p class="sub">Perguntas frequentes sobre o curso.</p>
+  <h3>Preciso entender de obra para acompanhar?</h3>
+  <p>Não. O curso começa pelo que é o sistema e pelas etapas, antes de qualquer detalhe técnico. Quem não tem um terreno em vista acompanha os exemplos com a Chácara-Modelo, a propriedade fictícia usada no curso inteiro, e o Studio da Clareira, uma unidade de um contêiner de 40 pés para dois hóspedes.</p>
+  <h3>O curso ensina a cortar, soldar e montar o contêiner?</h3>
+  <p>Não, e isso é de propósito. Fundação, apoios, corte, reforço, solda, içamento, instalações e cobertura são serviços de projeto e de responsável técnico. O curso mostra essas etapas para o aluno entender o que está vendo, e ensina o que pedir, o que conferir e de onde assistir. O que se faz com as próprias mãos é decidir, ler o lugar, vistoriar antes de comprar, acompanhar, conferir e manter.</p>
+  <h3>O curso diz quanto custa e quanto rende uma unidade?</h3>
+  <p>Não. Preço muda de região para região e de mês para mês, e retorno depende de decisões que são de cada um. O curso entrega a planilha com as quinze linhas de custo e as contas com letras, para preencher com os seus números, em três cenários. Nenhuma promessa de rentabilidade.</p>
+  <h3>E o contêiner usado?</h3>
+  <p>O curso ensina a vistoria antes da compra e trata o contêiner usado com uma regra só: ele passa por um processo de higienização profissional, contratado e com comprovante, antes de qualquer serviço interno.</p>
+  <h3>Posso construir na minha chácara?</h3>
+  <p>Isso depende das regras do lugar. O curso ensina o que perguntar e quando: antes de comprar o contêiner e de contratar, consulta-se o órgão de licenciamento de obras do município, levando o estudo preliminar.</p>
+  <h3>Este curso me habilita a construir com contêiner?</h3>
+  <p>O curso é educacional e não equivale a formação profissional, licença ou responsabilidade técnica. Ele ensina ordem, critério e conferência.</p>
+  <h3>As aulas são filmadas numa obra?</h3>
+  <p>São videoaulas animadas, de cerca de oito minutos cada: o aluno vê a caixa por dentro, o caminho das cargas, a implantação no terreno, o sol ao longo do dia e as camadas da parede, enquanto a explicação acompanha. Cada aula vem com o artigo em PDF, com os checklists, as fichas e os passos.</p>
+  <h3>O que é o Tutor Villela?</h3>
+  <p>É o assistente de inteligência artificial do curso. Ele responde às dúvidas com base no conteúdo das aulas e indica o minuto do vídeo em que o assunto é tratado. Não substitui o projeto, a norma técnica, o órgão do município nem o profissional habilitado.</p>
+  <h3>Por quanto tempo tenho acesso? Tem certificado?</h3>
+  <p>O acesso é de 1 ano a partir da compra. Ao concluir todas as aulas, o aluno recebe o Certificado da Villela Academy, que atesta a conclusão do curso e não é habilitação profissional.</p>
+  <h3>O que é a coleção Viver de Chácara?</h3>
+  <p>É a coleção de livros e cursos sobre como cuidar, melhorar e rentabilizar uma chácara. Já estão no ar o Piscineiro na Prática, o Paisagismo na Prática e o Pedreiro Completo na Prática. Os próximos tratam de decoração, pintura, irrigação e hospedagem por temporada, entre outros.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias, incondicional. A pessoa assiste às aulas, faz as tarefas e, se o curso não servir, pede o reembolso dentro do prazo.</p>
+</section>
+
+<footer>
+  Coleção Viver de Chácara. Villela Academy, uma empresa do Grupo Villela Stay. Autor: Augusto Villela. <a href="/campanhas/cursos/">Voltar para o conteúdo de todos os cursos</a>.
+</footer>
+
+</div>
+</body>
+</html>

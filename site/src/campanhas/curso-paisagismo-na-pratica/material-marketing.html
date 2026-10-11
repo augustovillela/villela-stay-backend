@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>img{max-width:100%}.byline{margin:18px 0 0;font-size:14px;color:var(--band-ink)}
+.byline a{color:var(--band-accent);font-weight:600}
+.byline a:focus-visible{outline:2px solid var(--band-accent);outline-offset:2px}
+</style>
+<title>Paisagismo na Prática: material para criativos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada aula é uma linha com o número na margem e o conteúdo ao lado. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --ink:#0E1B2E; --muted:#56657A; --line:#D5DDE8;
+  --accent:#0A6F96; --accent-soft:#E2F1F7; --band:#0E1B2E; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#8A4B00; --warn-soft:#FBF0DF;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+    --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+    --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1320; --surface:#111D30; --ink:#E7EDF5; --muted:#9DAEC4; --line:#24344D;
+  --accent:#5CCBF2; --accent-soft:#10293A; --band:#060D18; --band-ink:#F2F6FB; --band-accent:#5CCBF2;
+  --warn:#F1BE78; --warn-soft:#2B2110; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0}
+.wrap{max-width:860px;margin-inline:auto;padding-inline:20px;padding-block:0 72px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{background:var(--band);color:var(--band-ink)}
+header.top .wrap{padding-block:44px 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--band-accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+header.top p.lead{max-width:62ch;margin:0;color:var(--band-ink);opacity:.88}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-block:28px 8px}
+nav.toc a{font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+
+section{margin-top:52px}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2 + p.sub{color:var(--muted);margin:0 0 22px;max-width:65ch}
+h3{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:6px}
+strong{font-weight:700}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:14px 16px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+
+.thesis{font-family:var(--display);font-size:clamp(22px,3.2vw,28px);line-height:1.3;border-left:3px solid var(--accent);padding-left:18px;margin:0 0 18px;max-width:30em}
+
+.block-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:36px 0 4px}
+.lesson{display:grid;grid-template-columns:56px minmax(0,1fr);gap:16px;padding-block:22px;border-top:1px solid var(--line)}
+.lesson .n{font-family:var(--mono);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.lesson .body{min-width:0}
+.quote{background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:10px 0 0;max-width:68ch}
+.quote span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.quote q{quotes:"“" "”";font-family:var(--display);font-size:18px;line-height:1.35}
+.quote q + q{display:block;margin-top:6px}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.aula{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+
+.cases{display:grid;gap:14px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.case p:last-child{margin-bottom:0}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.two > div{min-width:0}
+
+.care{background:var(--warn-soft);border-radius:10px;padding:18px 20px}
+.care h3{color:var(--warn)}
+.care ul{margin-bottom:0}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .lesson{grid-template-columns:1fr;gap:4px}
+  td:first-child{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Material de apoio para marketing · outubro de 2026</p>
+    <h1>Paisagismo na Prática</h1>
+    <p class="lead">Tudo o que o curso ensina a quem quer projetar, implantar e manter o jardim de uma chácara, ou contratar o serviço sabendo o que pedir, aula por aula, pronto para virar apresentação e criativo. O conteúdo abaixo foi tirado dos roteiros das 25 videoaulas e da página de venda no ar.</p>
+    <p class="byline"><a href="/campanhas/materiais-marketing/">&larr; Materiais de marketing</a> &nbsp;·&nbsp; Curso de <strong>Augusto Villela</strong></p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="Seções">
+  <a href="#ficha">Ficha do curso</a>
+  <a href="#ideia">Ideia central</a>
+  <a href="#aulas">As 25 aulas</a>
+  <a href="#metodos">Procedimentos com nome</a>
+  <a href="#casos">Cenas das aulas</a>
+  <a href="#inclui">O que vem junto</a>
+  <a href="#publico">Para quem é</a>
+  <a href="#objecoes">Objeções</a>
+  <a href="#cuidados">Cuidados na comunicação</a>
+</nav>
+
+<section id="ficha">
+  <h2>Ficha do curso</h2>
+  <p class="sub">Os dados que podem ser citados como estão.</p>
+  <dl class="facts">
+    <div><dt>Nome</dt><dd>Paisagismo na Prática</dd></div>
+    <div><dt>Chamada da página</dt><dd>O jardim da chácara pensado antes de plantado</dd></div>
+    <div><dt>Coleção</dt><dd>Viver de Chácara</dd></div>
+    <div><dt>Autor</dt><dd>Augusto Villela</dd></div>
+    <div><dt>Formato</dt><dd>25 videoaulas animadas, de cerca de 9 minutos cada</dd></div>
+    <div><dt>Duração em vídeo</dt><dd>3 h 40 min</dd></div>
+    <div><dt>Em cada aula</dt><dd>Artigo em PDF, com checklists e fichas</dd></div>
+    <div><dt>Acesso</dt><dd>1 ano a partir da compra, no computador e no celular</dd></div>
+    <div><dt>Certificado</dt><dd>Certificado da Villela Academy, ao concluir todas as aulas</dd></div>
+    <div><dt>Preço</dt><dd>R$ 85,00 (conferido na página em 11/10/2026)</dd></div>
+    <div><dt>Garantia</dt><dd>7 dias, incondicional, com reembolso</dd></div>
+    <div><dt>Onde</dt><dd>Villela Academy</dd></div>
+  </dl>
+  <p style="margin-top:14px">Página do curso: <a href="https://academia.villelastay.com.br/academy/cursos/paisagismo-na-pratica">academia.villelastay.com.br/academy/cursos/paisagismo-na-pratica</a></p>
+  <p>A aula 4 (Sol, sombra, clima, solo e drenagem) está aberta como degustação grátis, com vídeo e artigo. Há também 25 amostras curtas, uma por aula, para assistir sem cadastro.</p>
+</section>
+
+<section id="ideia">
+  <h2>A ideia central</h2>
+  <p class="sub">Se o criativo só puder dizer uma coisa, é esta.</p>
+  <p class="thesis">A planta é a última coisa a decidir. Antes dela vêm o lugar, o uso e o tempo que você tem para cuidar.</p>
+  <p>Quase todo jardim de chácara começa por uma muda comprada num domingo de entusiasmo e termina, em agosto, com a planta morta. A explicação de costume é azar, mão ruim ou muda fraca. O curso mostra outra: o erro raramente é a planta, é a ordem. A decisão começou pelo viveiro, quando devia ter começado pelo terreno.</p>
+  <h3>O método, em seis passos</h3>
+  <ul>
+    <li><strong>Ler o lugar.</strong> Sol, sombra, vento, declive, solo e o caminho da água da chuva, nas duas estações do ano.</li>
+    <li><strong>Medir.</strong> Trena, diagonais, pontos fixos e o que passa por baixo e por cima da área.</li>
+    <li><strong>Desenhar.</strong> Briefing em uma página, croqui em escala, setores, caminhos e vistas.</li>
+    <li><strong>Escolher.</strong> A espécie pelo porte adulto e pelo comportamento, com uma ficha preenchida junto com o viveirista.</li>
+    <li><strong>Implantar.</strong> Na sequência certa: primeiro o que fica embaixo, depois o que fica em cima.</li>
+    <li><strong>Manter.</strong> Olhar com método e agir cedo, em um ano que tem chuva de outubro a abril e seca de maio a setembro.</li>
+  </ul>
+  <h3>A promessa, em uma frase</h3>
+  <p>Sem receita de adubo e sem lista de plantas da moda: você termina com o projeto de paisagismo de uma área sua em poucas páginas, que qualquer pessoa consegue ler em pé, no meio do terreno.</p>
+  <h3>Quatro mensagens que atravessam o curso</h3>
+  <ul>
+    <li><strong>Quando o desejo e o terreno discordam, o lugar vence.</strong> A composição diz o que você quer do espaço. O sol, a água, o vento e o solo dizem o que ele permite.</li>
+    <li><strong>Você compra a planta que ela vai ser.</strong> A muda é uma fotografia de hoje. O que vai para casa é a copa, a raiz e a folha no chão de muitos anos depois.</li>
+    <li><strong>O exame vem antes do saco.</strong> A correção do solo sai da análise feita em laboratório e do rótulo do produto, nunca de uma receita geral.</li>
+    <li><strong>Um jardim não se termina. Acompanha-se.</strong> Quem cumpre a promessa do projeto é a manutenção, com um caderno, uma volta de observação e duas revisões por ano.</li>
+  </ul>
+</section>
+
+<section id="aulas">
+  <h2>O que cada aula ensina</h2>
+  <p class="sub">Para cada aula: os ensinamentos e uma ou duas frases do próprio curso, com pequenos ajustes de corte, que funcionam como chamada. Os títulos são os publicados na Villela Academy. O agrupamento em blocos é deste material.</p>
+
+  <p class="block-title">Fundamentos e leitura do lugar · aulas 1 a 5</p>
+
+  <article class="lesson"><div class="n">01</div><div class="body">
+    <h3>O mercado do paisagismo e as etapas de um serviço</h3>
+    <ul>
+      <li>A ordem do curso inteiro: primeiro se lê o terreno, depois se define o que cada área precisa fazer. Só então se escolhe a planta, pelo comportamento dela.</li>
+      <li>Paisagismo é decidir: por onde se entra, onde se fica, o que se vê, o que se esconde, por onde a água corre. Jardinagem é cuidar: plantar, regar, podar, adubar, roçar e repor. Um não funciona sem o outro.</li>
+      <li>A Chácara-Modelo, a propriedade fictícia usada do começo ao fim: casa térrea com varanda, piscina de 8 m por 4 m, estrada de terra, família nos fins de semana, hóspedes em feriados e férias, caseiro de segunda a sexta.</li>
+      <li>A área projetada aula por aula é a entrada da propriedade, uma faixa de 12 m por 5 m, com 60 m². Todas as contas do curso usam essas medidas.</li>
+      <li>A região de referência é o Cerrado, com duas estações: chuva de outubro a abril e seca de maio a setembro.</li>
+      <li>As quatro funções de um jardim: estética, ambiental, funcional e comercial. A pergunta de partida é sempre o que aquela área precisa fazer.</li>
+      <li>As quatro etapas de todo serviço: briefing, projeto, implantação e manutenção. Elas valem para quem faz, para quem contrata e para quem fiscaliza.</li>
+      <li>Não é preciso fazer a chácara inteira de uma vez. Pensa-se a propriedade toda no papel e implanta-se uma área por estação chuvosa.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Paisagismo sem jardinagem é um desenho que se perde em um ano.</q><q>A planta entra no fim da conversa.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">02</div><div class="body">
+    <h3>Segurança, EPIs e organização do canteiro</h3>
+    <ul>
+      <li>Os sete riscos do trabalho no jardim: máquina de corte, queda de altura, choque elétrico, produto químico, animal peçonhento, corte de árvore sem autorização e intervenção em área protegida.</li>
+      <li>Em cada risco, a aula marca uma linha. De um lado, o que você faz. Do outro, o que você contrata e fiscaliza.</li>
+      <li>O corpo é a primeira ferramenta. No Cerrado, trabalha-se cedo e no fim da tarde, com água por perto. Tontura, dor de cabeça, enjoo ou cãibra são sinal de parar.</li>
+      <li>O equipamento de proteção depende da tarefa. Para a roçadeira: viseira ou óculos, protetor de ouvido, luvas, calça grossa, perneiras e bota. Antes de ligar, recolhem-se pedras, brinquedos, mangueiras e arames, e as pessoas saem de perto.</li>
+      <li>Ferramenta de corte afiada é a mais segura. A cega exige força, escapa e fere.</li>
+      <li>Motosserra, poda em altura e árvore de grande porte são serviço de equipe especializada. Galho perto da rede elétrica é assunto da concessionária de energia.</li>
+      <li>Antes de cavar, saber o que há embaixo: eletroduto, cano de água e tubo de irrigação. Instalação elétrica é de eletricista habilitado.</li>
+      <li>O curso não dá dose de nenhum produto. Defensivo é último recurso, escolhido e orientado por profissional habilitado, usado exatamente como o rótulo manda.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Jardim tem cara de passatempo, e é por isso que machuca.</q><q>O que não se alcança do chão, com os dois pés firmes, é serviço de especialista.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">03</div><div class="body">
+    <h3>Princípios de composição paisagística</h3>
+    <ul>
+      <li>O canteiro com uma planta de cada espécie parece prateleira de loja. Nenhuma planta está errada, e o conjunto não diz nada. O jardim virou mostruário.</li>
+      <li>Os sete princípios de composição: forma, linha, escala, ritmo, equilíbrio, contraste e unidade.</li>
+      <li>A escala se decide com a planta adulta, e não com a muda.</li>
+      <li>Contraste é tempero. Um ponto de contraste por área basta.</li>
+      <li>Regra prática para área pequena: menos espécies, em maior quantidade, funcionam melhor do que uma de cada.</li>
+      <li>Os quatro materiais com que a composição trabalha: cor, textura, volume e sazonalidade. O jardim tem três andares, e o do meio, o dos arbustos, é o que dá aconchego, privacidade e fundo para as flores.</li>
+      <li>O projeto se planeja para as duas estações. Um jardim pensado só para a chuva passa a seca inteira sem ter o que mostrar.</li>
+      <li>Três perguntas ao viveirista sobre cada espécie: em que meses floresce, se perde as folhas e em que época, e como fica na seca, sem rega. Quem recebe hóspedes cruza a floração com o calendário de hospedagem.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um jardim parece pensado quando poucas coisas se repetem.</q><q>Jardim que só é bonito em janeiro não aparece na foto de quem vem nas férias de inverno.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">04</div><div class="body">
+    <h3>Sol, sombra, clima, solo e drenagem</h3>
+    <ul>
+      <li>Um jardim dá certo quando duas coisas se encontram: o que você quer do espaço e o que o lugar permite. Quando as duas discordam, o lugar vence.</li>
+      <li>O sol se lê em dois relógios, o do dia e o do ano. O canteiro que está à sombra em junho pode estar em sol pleno em dezembro.</li>
+      <li>A leitura: num dia de céu limpo, anotar onde bate sol e onde há sombra às nove da manhã, ao meio-dia e às três da tarde. Marcar no croqui, com a data, e repetir na outra estação.</li>
+      <li>O vento resseca, quebra galho novo e carrega poeira. Barreira boa é a que filtra, como um maciço de arbustos e árvores. Muro cheio faz o vento saltar e descer em redemoinho.</li>
+      <li>Do calendário das chuvas saem três consequências: planta-se no começo das chuvas, a muda nova precisa de rega no veranico e na primeira seca, e a água da chuva precisa de caminho.</li>
+      <li>O declive decide para onde a água vai. A melhor leitura de drenagem se faz debaixo de chuva forte, ou logo depois. Na seca, procuram-se os sinais que ela deixou: sulcos, terra acumulada e raiz exposta.</li>
+      <li>Cada canto do terreno é um microclima. Plantas de exigências parecidas ficam juntas, no microclima que as atende.</li>
+      <li>Enxurrada que abre sulco, água correndo para a casa e barranco que desmorona pedem obra de drenagem ou de contenção, que é serviço de profissional.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Ninguém errou no plantio. O canteiro é que mudou.</q><q>Quem lê o lugar nas duas estações descobre isso no caderno, e não na folha queimada.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">05</div><div class="body">
+    <h3>Briefing, medição, croqui e registro do local</h3>
+    <ul>
+      <li>O caminho é perguntar para que a área serve, medir, desenhar e registrar. Só depois vem a compra.</li>
+      <li>O briefing é a conversa que define o que o jardim precisa fazer. As perguntas se dividem em três grupos: o uso, o resultado e os limites.</li>
+      <li>Nos limites estão as perguntas que quase ninguém faz: quantas horas por semana existem para manter, de quem são essas horas, se a água da rega chega até ali na seca, se há teto de gasto e data marcada.</li>
+      <li>O briefing ouve quem usa a área e também quem vai cuidar dela. Cabe em uma página, que mais adiante desempata as escolhas do projeto.</li>
+      <li>A medição tem ordem: o contorno, as diagonais, os pontos fixos e, por fim, as alturas e o desnível.</li>
+      <li>Diagonais diferentes mostram que a área está fora de esquadro. A posição de uma árvore se acha por triangulação, medindo a distância dela até dois pontos conhecidos.</li>
+      <li>O croqui é o desenho à mão, feito no local, com as medidas, o norte, os pontos fixos, a data e quem mediu. Em casa ele vira o mapa básico, em escala.</li>
+      <li>Fotos dos quatro cantos, com a posição de cada uma marcada no croqui. E duas camadas a mais no mapa: os acessos e as interferências, como rede elétrica, tubulação, fossa, beirais e divisa.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Primeiro o papel, depois a pá.</q><q>O papel existe para isso: para o erro aparecer enquanto ainda custa só uma borracha.</q></div>
+  </div></article>
+
+  <p class="block-title">Plantas e solo · aulas 6 a 8</p>
+
+  <article class="lesson"><div class="n">06</div><div class="body">
+    <h3>Como escolher espécies adequadas ao ambiente</h3>
+    <ul>
+      <li>A aula não traz uma lista de espécies para copiar. Planta é regional. O que serve em qualquer lugar é o critério, e a lista se monta com o viveirista da região.</li>
+      <li>Os seis critérios, seis perguntas para cada planta do projeto: porte adulto, sol, água, raiz, o que cai, e toxicidade e espinho.</li>
+      <li>Com o porte adulto, desenha-se no croqui o círculo da copa adulta, na escala. Se o círculo encosta no telhado ou alcança a rede elétrica, a planta está no lugar errado.</li>
+      <li>Plantas de mesma sede ficam juntas. É isso que, mais tarde, permite regar por setores.</li>
+      <li>O curso não dá distância de plantio em relação a construções, de propósito. Ela depende da espécie e do que está por perto. Para a rede elétrica, quem define o afastamento é a concessionária.</li>
+      <li>Um sétimo item resume os outros: a manutenção. Quantas podas por ano a planta pede, e o que acontece se ela ficar um mês sem cuidado.</li>
+      <li>Ser nativa não responde a nenhuma dessas perguntas. O nome diz de onde a planta é. Não diz o tamanho que ela alcança nem como se comporta perto de uma construção.</li>
+      <li>A ficha de seleção de espécies vai ao viveiro, com uma coluna por planta e a fonte de cada informação. Porte e toxicidade se conferem numa segunda fonte.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Você compra a planta que ela vai ser.</q><q>Planta com campo em branco ainda não está escolhida.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">07</div><div class="body">
+    <h3>Árvores, arbustos, forrações, trepadeiras e gramados</h3>
+    <ul>
+      <li>O jardim se monta em camadas, da mais alta para a mais baixa, e cada camada faz um trabalho.</li>
+      <li>Os seis grupos de plantas: árvores, palmeiras, arbustos, forrações, trepadeiras e gramado. A aula trata da função de cada grupo e da pergunta que ele pede.</li>
+      <li>As árvores são a decisão mais duradoura do jardim, e a mais difícil de desfazer.</li>
+      <li>A pergunta do arbusto: ele aceita poda, e com que frequência precisa dela? A resposta são as horas de tesoura no ano.</li>
+      <li>O gramado é a área de pisar e de brincar. É também a que mais consome tempo, água e máquina. Antes do tipo de grama, decide-se o tamanho.</li>
+      <li>Os acompanhamentos e para que serve cada um: vaso, borda, tutor e mantas. A manta contra o mato reduz a capina, mas não elimina.</li>
+      <li>O exame da muda no viveiro começa pela raiz. Pede-se para tirar uma muda da embalagem: o torrão deve sair inteiro, com raízes claras e bem distribuídas. Depois o tronco, as folhas e a proporção.</li>
+      <li>Para quem contrata o plantio: combinar por escrito a espécie, o tamanho da muda e o direito de recusar a que chegar fora do padrão. E conferir as mudas no descarregamento.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Cerca-viva de crescimento rápido cobra em tesoura o que deu em pressa.</q><q>Depois de plantada, a raiz enrolada não se vê mais.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">08</div><div class="body">
+    <h3>Solos, substratos, adubos e cobertura morta</h3>
+    <ul>
+      <li>Os solos mais comuns do Cerrado são profundos, bem drenados e de boa estrutura. O problema está na química: são ácidos e pobres em nutrientes e em matéria orgânica. Corrigidos, respondem muito bem.</li>
+      <li>A correção começa por um exame, a análise de solo, feita em laboratório. Como coletar a amostra, quem explica é o laboratório ou a assistência técnica rural da região.</li>
+      <li>O que procurar no laudo, para conversar com quem vai interpretar: pH, alumínio, cálcio e magnésio, fósforo e potássio, e matéria orgânica.</li>
+      <li>Quem diz quanto de corretivo e de adubo a área pede é um engenheiro agrônomo ou um técnico agrícola, por escrito. Ficam guardadas duas folhas: o laudo e a recomendação.</li>
+      <li>O que é cada produto da loja: corretivo, adubo mineral e orgânico, composto, terra vegetal e substrato. Esterco tem que ser curtido.</li>
+      <li>A cobertura morta segura a umidade na seca, protege a raiz do calor, reduz o mato e amortece a chuva. A folha que cai das árvores do terreno serve.</li>
+      <li>Defensivo não se compra por precaução. Quando for o caso, valem a orientação técnica e o rótulo.</li>
+      <li>Ferramentas: comprar primeiro o que se usa toda semana. O que se usa uma vez por ano pode ser alugado ou vir com o serviço contratado. Três perguntas antes de comprar uma máquina.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O exame vem antes do saco.</q><q>O solo analisado tem que ser o seu.</q></div>
+  </div></article>
+
+  <p class="block-title">O projeto no papel · aulas 9 e 10</p>
+
+  <article class="lesson"><div class="n">09</div><div class="body">
+    <h3>Setorização, circulação, privacidade e pontos focais</h3>
+    <ul>
+      <li>Antes de decidir onde vai cada planta, divide-se o terreno pelo uso. Toda propriedade tem três tipos de área: social, íntima e de serviço.</li>
+      <li>A área de serviço se esconde sem dificultar o acesso. O depósito precisa sair da vista e continuar à mão.</li>
+      <li>Se a casa recebe hóspedes, mais uma pergunta: o que eles usam, o que apenas veem e aonde não vão.</li>
+      <li>O capim pisado mostra o trajeto real. Costuma ser mais fácil pôr o caminho onde as pessoas passam do que ensiná-las a dar a volta.</li>
+      <li>Separar o que roda do que anda. E pensar em quem cuida: o carrinho passa entre os canteiros? A mangueira alcança o fundo?</li>
+      <li>Um lugar de ficar funciona com três condições: sombra na hora em que é usado, alguma coisa para olhar e as costas protegidas.</li>
+      <li>Duas listas de vistas. O que merece ser visto se enquadra, com plantas dos lados. O que é melhor não ver se filtra, com um maciço de arbustos, conferido do ponto de onde se olha de verdade.</li>
+      <li>Em jardim pequeno vale um ponto focal só. E muitas vezes ele já existe: uma árvore antiga, um trecho de vegetação nativa, uma vista.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O projeto protege a área íntima, valoriza a social e esconde a de serviço.</q><q>Caminho bom é o que as pessoas já fazem.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">10</div><div class="body">
+    <h3>Planta simplificada, quantitativos e cronograma</h3>
+    <ul>
+      <li>O estilo se define com três decisões: linhas retas ou curvas, quais materiais, e jardim aparado ou de forma natural. A terceira mexe direto nas horas de tesoura.</li>
+      <li>A paleta vegetal é a lista curta de plantas do projeto, montada pela função: plantas de estrutura, arbustos de volume e plantas que cobrem o solo.</li>
+      <li>Na planta simplificada, cada árvore e cada arbusto entra como um círculo do tamanho da copa adulta, na escala. As forrações entram como mancha, com o nome e a área.</li>
+      <li>O teste da soma, na entrada da Chácara-Modelo: 6 m² de caminho, 24 m² de canteiros e 30 m² de gramado dão os 60 m² da área. Se as partes não fecham com o total, há erro de medida ou de desenho.</li>
+      <li>Três contas de quantidade, todas sobre as áreas da planta: mudas por área, mudas em linha e volume de terra, composto e cobertura morta.</li>
+      <li>O espaçamento vem da ficha de espécies, informado pelo viveirista. A margem de perda se combina com o fornecedor. Corretivo e adubo ficam fora da conta: saem da recomendação feita sobre o laudo.</li>
+      <li>O cronograma se monta de trás para a frente, a partir do plantio, que fica no começo das chuvas. A seca inteira é tempo de papel e de obra.</li>
+      <li>Três cuidados com o calendário: a drenagem não se analisa na seca, o veranico existe, e a primeira seca é a prova. Cada linha do cronograma tem um responsável.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A data que manda no jardim é a do plantio.</q><q>Quem decide a data do jardim é a chuva.</q></div>
+  </div></article>
+
+  <p class="block-title">Implantação · aulas 11 a 15</p>
+
+  <article class="lesson"><div class="n">11</div><div class="body">
+    <h3>Limpeza, marcação e preparo do terreno</h3>
+    <ul>
+      <li>O que mais estraga uma implantação raramente é a muda ruim. É a ordem errada.</li>
+      <li>Da regra sai uma sequência de onze etapas. Começa pelo chão: limpar, marcar, enterrar o que vai enterrado e só então soltar e corrigir a terra. O gramado fica quase no fim.</li>
+      <li>Obra e preparo se fazem na seca. O plantio, no começo das chuvas. Plantar na seca é possível, mas é uma decisão, e a rega entra no orçamento.</li>
+      <li>Antes de qualquer ferramenta, conferir o que há embaixo e marcar no chão, com cal, as linhas de canos, esgoto, fossa e cabos.</li>
+      <li>Limpar é tirar o que atrapalha e proteger o que fica. Saem o entulho, o mato com a raiz e a grama velha de onde vai haver canteiro.</li>
+      <li>Durante a obra, nada de entulho, monte de terra ou carro debaixo da copa de uma árvore existente. E a terra escura da superfície se separa, para voltar por último.</li>
+      <li>Marcar é desenhar o projeto no chão, em tamanho real, antes de cavar. Linha reta com estacas e barbante. Curva com a mangueira de jardim.</li>
+      <li>Três conferências antes de cavar: a do círculo da copa adulta, a do caminho e a da vista.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Primeiro o que fica embaixo, depois o que fica em cima. Primeiro o grande, depois o pequeno.</q><q>Quem planta a forração e depois abre a vala do tubo planta duas vezes.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">12</div><div class="body">
+    <h3>Preparo do solo e construção de canteiros</h3>
+    <ul>
+      <li>Quem prepara só o buraco da muda faz um vaso enterrado, sem perceber. A raiz chega à parede dura e passa a dar voltas.</li>
+      <li>São três serviços, nesta ordem: descompactar, corrigir e preparar.</li>
+      <li>O teste da haste: com o solo úmido, empurra-se com a mão uma haste de ferro. Onde ela para, há uma camada dura. Repetido em vários pontos, vira um mapa da compactação.</li>
+      <li>Trabalha-se com a terra levemente úmida. Depois de solto, ninguém mais pisa no canteiro.</li>
+      <li>Corrigir é sempre conforme a análise. O corretivo se incorpora à camada solta, com a antecedência que a recomendação pedir. A matéria orgânica entra como composto bem curtido.</li>
+      <li>Três critérios para a água da chuva: ela se afasta das construções, anda devagar e tem destino. Nunca o terreno do vizinho, nem a estrada.</li>
+      <li>O que cabe ao dono é a drenagem superficial: acertar caimentos, abrir valetas rasas, levantar canteiros. Tubos enterrados, caixas e contenção de barranco são outro serviço.</li>
+      <li>A forma do canteiro: levemente abaulado, ou elevado onde não há como drenar. A borda entra antes das forrações, e as valas de irrigação e de eletrodutos, antes de qualquer muda.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Solta-se a área toda do canteiro, e não só o buraco da muda.</q><q>A análise de solo custa menos do que o adubo aplicado sem necessidade.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">13</div><div class="body">
+    <h3>Plantio correto de mudas e tutoramento</h3>
+    <ul>
+      <li>O colo é o lugar em que o caule encontra a raiz. Enterrado, apodrece. Alto demais, deixa as raízes expostas. É o detalhe que mais mata muda em jardim novo.</li>
+      <li>A entrega das mudas se combina para a véspera ou para o próprio dia do plantio. Ao receber, conferir espécie, quantidade e tamanho.</li>
+      <li>Antes de abrir o primeiro buraco, distribuir todas as mudas, ainda embaladas, nos seus lugares, e olhar do portão.</li>
+      <li>O buraco de plantio se chama berço. É mais largo do que fundo, com o fundo firme e as paredes ásperas.</li>
+      <li>A conferência do colo: o cabo da enxada deitado sobre o berço, apoiado no chão dos dois lados. O topo do torrão deve encostar no cabo.</li>
+      <li>A ordem entre as plantas: árvores e palmeiras primeiro, depois os arbustos, por último as forrações, plantadas em desencontro e do fundo para a borda.</li>
+      <li>O tutor fica fora do torrão, do lado de onde vem o vento, com amarra em forma de oito, larga e macia. E tem data para sair.</li>
+      <li>A primeira rega é farta e lenta, logo depois de plantar cada muda. Nas semanas seguintes, o critério é o solo: dedo na terra, ao lado do torrão. A cobertura morta não encosta no caule.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O colo fica no nível do chão.</q><q>Jardim recém-plantado, com o espaçamento certo, parece vazio.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">14</div><div class="body">
+    <h3>Implantação e recuperação de gramados</h3>
+    <ul>
+      <li>O teste dos dois dedos: segurar o canto de uma placa e puxar de leve. Se levanta como a ponta de um tapete, ainda não pegou. Se resiste, a raiz desceu.</li>
+      <li>A grama se escolhe com o fornecedor da região, levando três informações: o sol que a área recebe, o quanto ela é pisada e a rega disponível na seca.</li>
+      <li>Todo defeito do chão aparece depois na grama, a cada corte. A base é solta, corrigida conforme a análise e regularizada com uma tábua reta, no caimento definido para a água.</li>
+      <li>As placas chegam no dia do plantio e são assentadas em desencontro, como tijolos numa parede, bem encostadas, sem sobrepor e sem esticar.</li>
+      <li>Três conferências antes de dar o serviço por pronto, ou de pagar por ele: juntas fechadas, nenhum degrau entre as placas e grama rente aos pisos.</li>
+      <li>Até enraizar, o gramado novo não pode secar e não pode ser pisado.</li>
+      <li>No gramado que falha, procura-se a causa antes do remendo. São cinco: sombra, pisoteio, água, corte e praga.</li>
+      <li>Se a sombra ou a passagem vão continuar, ali não é lugar de grama. O lugar pede forração de sombra, cobertura ou piso.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>A grama copia o chão.</q><q>A grama é o acabamento do chão.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">15</div><div class="body">
+    <h3>Vasos, jardins verticais e espaços compactos</h3>
+    <ul>
+      <li>No canteiro, a raiz tem o terreno inteiro para buscar água. No vaso, ela só tem a água e o alimento que couberem ali dentro.</li>
+      <li>A montagem do vaso: furo de drenagem, camada drenante com manta, substrato no lugar de terra do quintal, colo no nível do substrato e borda livre para a água da rega.</li>
+      <li>O tamanho do vaso segue a planta adulta. E o lugar se decide com o vaso ainda vazio: cheio e molhado, ele não se arrasta.</li>
+      <li>No inverno seco do Cerrado, o vaso seca muito antes do canteiro. Quando a água é pouca, a ordem de prioridade é: mudas novas, vasos, canteiros e, por último, o gramado.</li>
+      <li>Dois jeitos de aliviar: agrupar os vasos, ou ter menos vasos, e maiores.</li>
+      <li>Em espaço compacto, três orientações: poucas espécies repetidas, um ponto focal só e o porte adulto levado ainda mais a sério.</li>
+      <li>A aula não ensina a fazer jardim vertical. Ensina a decidir se vale a pena, com três perguntas: a parede aguenta o peso e está impermeabilizada, há água, irrigação automática e escoamento, e quem repõe as plantas que morrem.</li>
+      <li>Na maior parte das chácaras, uma trepadeira plantada no chão e conduzida numa treliça afastada da parede dá o mesmo efeito, com uma fração da manutenção.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Cada vaso é um compromisso de rega.</q><q>Vaso sem furo é um balde.</q></div>
+  </div></article>
+
+  <p class="block-title">Água, luz e acabamentos · aulas 16 e 17</p>
+
+  <article class="lesson"><div class="n">16</div><div class="body">
+    <h3>Irrigação manual, gotejamento e microaspersão</h3>
+    <ul>
+      <li>De maio a setembro, toda a água do jardim sai da torneira. A rega se calcula para agosto, e não para a média do ano.</li>
+      <li>A pergunta de partida: quanta água existe em agosto, e quem vai entregá-la às plantas.</li>
+      <li>A irrigação mais barata começa antes do tubo: planta que pede pouca água depois de estabelecida, solo preparado e cobertura morta.</li>
+      <li>Setor é um grupo de plantas que recebe água junto, pelo mesmo registro, durante o mesmo tempo. Gramado, canteiro de baixa exigência e vasos nunca ficam no mesmo setor.</li>
+      <li>A fonte se mede com um balde de volume conhecido e um relógio. Repete-se em outro horário, com a casa em uso, e na seca. Vale o menor valor.</li>
+      <li>As formas de regar, com os pontos fortes e os limites de cada uma: manual, gotejamento, microaspersão e aspersão. No gotejamento, o filtro é obrigatório.</li>
+      <li>A fronteira da automação: o temporizador de torneira, a pilha, é de quem cuida. Controlador ligado ao quadro, válvulas elétricas e bomba são serviço de eletricista habilitado.</li>
+      <li>Automação não dispensa inspeção. E para saber se a rega serviu, olha-se o solo, e não o relógio.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Rega que depende de alguém presente falha no primeiro feriado sem ninguém.</q><q>A programação de agosto afoga o jardim em dezembro.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">17</div><div class="body">
+    <h3>Iluminação e acabamentos do jardim</h3>
+    <ul>
+      <li>O teste da lanterna: numa noite escura, apoiar uma lanterna forte ao pé de uma árvore, no muro, no caminho, e olhar de longe. Onde o efeito agrada, crava-se uma estaca. O desenho das estacas é o pedido ao eletricista.</li>
+      <li>A luz do jardim tem duas funções: a luz para andar, que vem primeiro, e a luz para ver.</li>
+      <li>Ilumina-se o que se olha e esconde-se a lâmpada. Nos caminhos, a luz é baixa e voltada para o chão.</li>
+      <li>No escuro do campo, poucos pontos fracos resolvem. Escolhem-se dois ou três destaques e deixa-se o resto em sombra.</li>
+      <li>A divisão do serviço: o dono faz o teste, desenha os pontos e instala a luminária solar de espeto. Toda luminária ligada à energia da casa, inclusive as de baixa tensão, é serviço de eletricista habilitado.</li>
+      <li>Os eletrodutos entram no chão antes do plantio. Por isso o eletricista é chamado antes do jardineiro.</li>
+      <li>O que pedir por escrito e o que conferir sem abrir quadro nem caixa de ligação, com o teste de tudo feito na presença do dono, antes do pagamento final.</li>
+      <li>Os acabamentos e os critérios de cada um: borda rente, funda e firme; caminho com a largura que o uso pede e piso que não escorrega; pedrisco com manta e borda; deck, mobiliário e banco.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Pouca luz, bem colocada. O escuro faz parte do projeto.</q><q>O banco que ninguém usa quase sempre está no lugar errado.</q></div>
+  </div></article>
+
+  <p class="block-title">O método em cada lugar · aulas 18 e 19</p>
+
+  <article class="lesson"><div class="n">18</div><div class="body">
+    <h3>Paisagismo da casa, da entrada e da área de lazer</h3>
+    <ul>
+      <li>O método é o mesmo em toda a propriedade. O que muda são as respostas a quatro perguntas: quem usa o lugar, quando, o que precisa acontecer ali e quem mantém, com quanto tempo.</li>
+      <li>A entrada tem três trabalhos: mostrar onde se entra, conduzir e aguentar a poeira da seca e a enxurrada da chuva. Planta que tapa a visão de quem sai de carro é risco.</li>
+      <li>Jardim de baixa manutenção se decide no projeto, e não na rotina: menos gramado, planta adaptada e solo coberto.</li>
+      <li>Nenhuma planta nativa dispensa a ficha de seleção. Porte adulto, raiz e queda de folha se perguntam ao viveirista, uma a uma.</li>
+      <li>Junto à casa, três critérios: porte adulto e raiz decidem a distância, a água fica longe da parede, e pergunta-se o que cai sobre telhado e calha.</li>
+      <li>Na área gourmet, observar na hora do uso de onde vem o sol da tarde, para onde o vento leva a fumaça e o que se vê da mesa.</li>
+      <li>Perto da piscina não existe uma distância que sirva para todas as espécies. Existem perguntas: para onde vai o que cai, onde cai a sombra e a que horas, e como é a raiz.</li>
+      <li>Árvore grande, poda em altura e corte são de profissional de arborização, e o corte pode exigir autorização do órgão ambiental do município.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Antes de condenar a árvore, meça o problema.</q><q>O projeto começa pelo que se mantém.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">19</div><div class="body">
+    <h3>Paisagismo para pousadas, eventos e hospedagens rurais</h3>
+    <ul>
+      <li>Quando o lugar recebe gente, três coisas mudam: a escala, a orientação e o desgaste.</li>
+      <li>Caminhos e áreas de permanência se pensam para o dia mais cheio, e não para o dia comum.</li>
+      <li>O visitante não conhece o terreno. O jardim precisa dizer, sem placa, onde é a recepção, onde se estaciona e onde não se entra.</li>
+      <li>O desgaste se define no projeto: por onde entra o serviço, onde a tenda é montada e qual trecho do gramado é de sacrifício, com a recuperação prevista depois de cada evento.</li>
+      <li>Na hospedagem, a escolha das plantas ganha três perguntas: é segura para criança e animal, tem espinho, seiva que irrita ou fruto que mancha, e aguenta uma semana sem ninguém.</li>
+      <li>O jardim entra no roteiro de preparação entre estadias, como a roupa de cama e a piscina.</li>
+      <li>Casamento, retiro e o lugar da foto têm exigências próprias. O espaço fotogênico tem três partes: um fundo limpo, uma moldura e um chão firme para a pessoa ficar.</li>
+      <li>O caminho acessível serve à cadeira de rodas, ao idoso, à mala do hóspede e ao carrinho de mão do caseiro. Espaço que recebe público pagante pede profissional com responsabilidade técnica.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Quando o lugar recebe público, o jardim passa a fazer parte do serviço.</q><q>Esconder o fio e a caixa-d'água costuma custar menos do que construir um cenário.</q></div>
+  </div></article>
+
+  <p class="block-title">Manutenção, custos e contrato · aulas 20 a 23</p>
+
+  <article class="lesson"><div class="n">20</div><div class="body">
+    <h3>Manutenção, poda, adubação e diagnóstico de problemas</h3>
+    <ul>
+      <li>A manutenção começa por um caderno do jardim: a data, o que foi feito, o que chamou atenção.</li>
+      <li>No Cerrado, o calendário do jardim é o calendário da água, em quatro períodos: início das chuvas, auge das chuvas, fim das chuvas e seca.</li>
+      <li>A tarefa mais barata e a que mais rende é a volta de observação: sempre o mesmo percurso, sem ferramenta na mão, olhando folha, broto, caule e solo.</li>
+      <li>Quando e quanto regar, quem responde é o solo. Rega funda e com intervalo. Rega rápida todo dia mantém a raiz rasa.</li>
+      <li>Poda tem motivo, e três cabem ao dono e ao caseiro: limpeza, condução e contenção. Do chão, com ferramenta manual, o galho que se segura com uma das mãos.</li>
+      <li>Adubo não corrige planta no lugar errado nem solo compactado. A quantidade é a do laudo e do rótulo, com orientação de um agrônomo.</li>
+      <li>O diagnóstico segue uma ordem, do mais provável e barato ao mais raro. Começa pela água, depois o lugar, depois o solo e a raiz. Praga e doença só no quinto passo, e nutrição por último, com laudo.</li>
+      <li>Diante de praga, o caminho é o manejo integrado: identificar, medir, tolerar o que não causa dano, corrigir a causa e preservar os aliados. Produto é o último degrau, só com orientação profissional.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Sem registro, cada problema parece novo. Com registro, você enxerga o que se repete.</q><q>Se a contenção vira trabalho mensal, a planta é grande demais para o lugar.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">21</div><div class="body">
+    <h3>Levantamento de custos e lista de compras</h3>
+    <ul>
+      <li>O escopo diz qual área será trabalhada, o que será feito nela e o que não será. A frase do que está fora vale tanto quanto a outra.</li>
+      <li>O memorial descritivo é o escopo aberto em detalhes: um texto curto que permite a outra pessoa executar o serviço sem falar com o autor.</li>
+      <li>Para quem contrata: pedir o memorial antes do preço. Quem entrega uma lista de plantas com um total embaixo vendeu uma lista de compras.</li>
+      <li>A lista de compras sai do memorial, linha por linha, com duas quantidades: a calculada e a que se vai comprar. A diferença tem dois nomes, perda e embalagem.</li>
+      <li>Não existe uma porcentagem única de perda. Pergunta-se ao viveirista e anota-se a perda real do primeiro canteiro. Árvores e arbustos grandes se compram na quantidade certa, escolhidos um a um.</li>
+      <li>A mão de obra se mede em horas: a quantidade dividida pela produtividade, cronometrada em uma hora de trabalho de verdade.</li>
+      <li>A estrada pesa em três parcelas: viagens de compra, frete e viagens de serviço. Juntar as compras em menos viagens costuma ser a economia mais fácil.</li>
+      <li>O orçamento por etapa cabe em uma folha, com a reserva para imprevistos em linha própria e uma linha que quase todo orçamento esquece: o primeiro ano de manutenção.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Orçamento sem escopo é palpite.</q><q>Quem não orça isso paga do mesmo jeito, só que sem ter previsto.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">22</div><div class="body">
+    <h3>Formação de preço, proposta e contrato</h3>
+    <ul>
+      <li>A aula fala com três pessoas: quem faz o próprio jardim, quem contrata e quem presta o serviço.</li>
+      <li>A quem pedir cada coisa: muda ao viveiro, análise ao laboratório de solos, recomendação ao engenheiro agrônomo, parte elétrica ao eletricista habilitado, poda em altura à empresa especializada.</li>
+      <li>O mesmo escopo, o mesmo croqui e a mesma lista para todos os candidatos. Só assim as respostas ficam comparáveis.</li>
+      <li>As propostas se leem lado a lado, com as mesmas linhas. Uma delas merece atenção separada: o que está fora.</li>
+      <li>Duas armadilhas do preço menor: a mesma espécie em muda menor e a proposta sem preparo de solo.</li>
+      <li>Três perguntas a cada candidato: qual é o porte adulto de cada planta proposta, onde bate o sol da tarde na área e o que ele faz com o laudo de solo.</li>
+      <li>Para quem presta o serviço, as parcelas do preço: materiais e mudas com a perda, horas, deslocamento e frete, custos fixos, margem e impostos. E as duas formas de cobrar: preço fechado ou administração.</li>
+      <li>O contrato de manutenção responde por escrito a sete pontos, entre eles a frequência das visitas, o que cada visita inclui e o que não está incluído.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Compara-se o que a proposta entrega, e não o total.</q><q>Quem não cobra a estrada trabalha de graça dentro do carro.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">23</div><div class="body">
+    <h3>Como apresentar, implantar e entregar o projeto</h3>
+    <ul>
+      <li>Apresentar é pôr na mão da outra pessoa o croqui, o memorial e o cronograma. Se quem lê entende o que vai acontecer, em que ordem e quando, o projeto foi apresentado.</li>
+      <li>O cronograma marca as dependências: o plantio espera o preparo do solo, e o preparo espera o laudo.</li>
+      <li>Antes de dar a implantação por terminada, ou de pagar por ela, há uma lista de nove itens. Entre eles: firmeza da muda, embalagens recolhidas, quantidade e espaçamento, água sem poça e colo no nível do solo.</li>
+      <li>A inspeção final se faz duas vezes, de dia e de noite, com a planta na mão. De dia, os setores de rega. De noite, as luminárias.</li>
+      <li>Fica com o dono o papel: a planta de como ficou, com tubos e cabos onde realmente passaram, a lista do que foi plantado, os manuais, as garantias e a programação da irrigação para a seca e para as chuvas.</li>
+      <li>Um item separado dos outros: o nome de quem rega nas primeiras semanas. Um nome, escrito.</li>
+      <li>O aceite é a vistoria em que cliente e prestador percorrem a área juntos. O que estiver pendente vai para uma lista, com prazo.</li>
+      <li>A garantia que importa é a de pega das mudas. Combinam-se por escrito três coisas: o prazo, o que é reposto e qual cuidado fica por conta do cliente.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>O jardim está entregue quando alguém que não participou da obra consegue mantê-lo.</q><q>Assina-se o aceite quando a lista estiver vazia. Não antes.</q></div>
+  </div></article>
+
+  <p class="block-title">Projeto final · aulas 24 e 25</p>
+
+  <article class="lesson"><div class="n">24</div><div class="body">
+    <h3>Desenvolvimento do paisagismo da Chácara-Modelo</h3>
+    <ul>
+      <li>O projeto integrador: um documento que permita a uma pessoa que nunca viu o lugar implantar o jardim e mantê-lo por um ano, sem telefonar para o autor.</li>
+      <li>Três exercícios antes do projeto, um para cada habilidade: ler o lugar, escolher a planta pelo comportamento e calcular quantidades.</li>
+      <li>No exercício de escolha, as plantas não têm nome. São letras, de propósito. A cor da flor entra depois, só para desempatar.</li>
+      <li>Pode ser feito com a entrada da Chácara-Modelo, com a área do aluno ou com as duas.</li>
+      <li>Os sete entregáveis: briefing, croqui, paleta, lista de espécies, implantação, orçamento e manutenção.</li>
+      <li>Os entregáveis precisam conversar entre si. A planta da lista está no croqui, a quantidade do orçamento sai da planta e a rega do plano cabe na água que foi medida.</li>
+      <li>O croqui em uma página e o plano de manutenção em uma página ficam à vista de quem trabalha.</li>
+      <li>O projeto integrador é um exercício de aprendizagem. Não substitui o projeto com responsabilidade técnica nem a recomendação de um agrônomo sobre o laudo de solo.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Se o seu projeto precisa de você ao lado para ser entendido, ele ainda não acabou.</q><q>Projeto que só se entende sentado, com tempo e com explicação do autor, não chega ao canteiro.</q></div>
+  </div></article>
+
+  <article class="lesson"><div class="n">25</div><div class="body">
+    <h3>Apresentação, avaliação e plano de evolução profissional</h3>
+    <ul>
+      <li>O teste final: entregar o projeto a alguém que não fez o curso, sem explicar nada, e fazer duas perguntas. O que você plantaria primeiro? O que faria na primeira semana de seca?</li>
+      <li>O que essa pessoa errar ou perguntar é o que falta escrever. Corrige-se e entrega-se de novo.</li>
+      <li>Os seis critérios de avaliação do projeto: segurança, técnica, planejamento, qualidade, custo e apresentação.</li>
+      <li>Duas datas de revisão no ano, uma no fim da estação chuvosa e outra no fim da seca, com três perguntas em cada visita.</li>
+      <li>A terceira pergunta é sobre a casa: o que mudou no uso, nas pessoas ou no tempo disponível, e ainda não mudou no plano de manutenção.</li>
+      <li>As anotações de qual planta foi bem e qual não foi, e em que zona, viram a lista de espécies daquele terreno.</li>
+      <li>Para quem quer trabalhar na área, as frentes: manutenção recorrente, implantação por empreitada e consultoria com projeto simples. E o limite das atividades de profissional habilitado.</li>
+      <li>O portfólio começa com a foto da área antes de qualquer intervenção, repetida depois da implantação e um ano depois.</li>
+    </ul>
+    <div class="quote"><span>Frases do curso</span><q>Um jardim não se termina. Acompanha-se.</q><q>Um jardim se julga pelo que ele é um ano depois.</q></div>
+  </div></article>
+</section>
+
+<section id="metodos">
+  <h2>Procedimentos e regras com nome</h2>
+  <p class="sub">Listas, fichas e testes que o aluno leva para o terreno, cada um com a aula em que aparece.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Procedimento</th><th>O que é</th><th>Aula</th></tr></thead>
+    <tbody>
+      <tr><td>As 4 funções de um jardim</td><td>Estética, ambiental, funcional e comercial.</td><td class="aula">1</td></tr>
+      <tr><td>As 4 etapas de um serviço</td><td>Briefing, projeto, implantação e manutenção.</td><td class="aula">1</td></tr>
+      <tr><td>O inventário das áreas</td><td>A propriedade percorrida a pé, com quem usa cada área, o que incomoda e o tempo que ela consome.</td><td class="aula">1</td></tr>
+      <tr><td>Os 7 riscos do jardim</td><td>Máquina de corte, altura, eletricidade, produto químico, animal peçonhento, corte sem autorização e área protegida.</td><td class="aula">2</td></tr>
+      <tr><td>A página de riscos</td><td>Três colunas: o risco, o que você faz e o que será contratado. Vai pregada na porta do depósito.</td><td class="aula">2</td></tr>
+      <tr><td>Os 7 princípios de composição</td><td>Forma, linha, escala, ritmo, equilíbrio, contraste e unidade.</td><td class="aula">3</td></tr>
+      <tr><td>Os 4 materiais da composição</td><td>Cor, textura, volume e sazonalidade.</td><td class="aula">3</td></tr>
+      <tr><td>As 3 perguntas da sazonalidade</td><td>Em que meses floresce, se perde as folhas e como fica na seca, sem rega.</td><td class="aula">3</td></tr>
+      <tr><td>As 5 leituras do lugar</td><td>Sol, vento, chuva, declive e microclima.</td><td class="aula">4</td></tr>
+      <tr><td>Sol em 3 horários</td><td>Sol e sombra anotados às nove, ao meio-dia e às três, nas duas estações.</td><td class="aula">4</td></tr>
+      <tr><td>Os 3 grupos do briefing</td><td>O uso, o resultado e os limites.</td><td class="aula">5</td></tr>
+      <tr><td>As duas diagonais</td><td>A medida que mostra se a área está no esquadro.</td><td class="aula">5</td></tr>
+      <tr><td>Triangulação</td><td>A posição de uma árvore pela distância a dois pontos conhecidos.</td><td class="aula">5</td></tr>
+      <tr><td>Croqui e mapa básico</td><td>O desenho feito no local, passado a limpo em escala.</td><td class="aula">5</td></tr>
+      <tr><td>Os 6 critérios de escolha</td><td>Porte adulto, sol, água, raiz, o que cai, e toxicidade e espinho.</td><td class="aula">6</td></tr>
+      <tr><td>A ficha de seleção de espécies</td><td>Uma coluna por planta, preenchida com o viveirista, com a fonte de cada informação.</td><td class="aula">6</td></tr>
+      <tr><td>O círculo da copa adulta</td><td>Desenhado no croqui em escala e depois riscado no chão.</td><td class="aula">6 e 11</td></tr>
+      <tr><td>Os 6 grupos de plantas</td><td>Árvores, palmeiras, arbustos, forrações, trepadeiras e gramado.</td><td class="aula">7</td></tr>
+      <tr><td>O exame da muda</td><td>Raiz, tronco, folhas e proporção, nessa ordem.</td><td class="aula">7</td></tr>
+      <tr><td>Os 5 itens do laudo</td><td>pH, alumínio, cálcio e magnésio, fósforo e potássio, e matéria orgânica.</td><td class="aula">8</td></tr>
+      <tr><td>Laudo e recomendação</td><td>As duas folhas que a correção do solo precisa ter guardadas.</td><td class="aula">8</td></tr>
+      <tr><td>Os 3 setores</td><td>Social, íntimo e de serviço.</td><td class="aula">9</td></tr>
+      <tr><td>As 3 condições do lugar de ficar</td><td>Sombra na hora do uso, algo para olhar e as costas protegidas.</td><td class="aula">9</td></tr>
+      <tr><td>Enquadrar e filtrar</td><td>O que fazer com as vistas que merecem ser vistas e com as que incomodam.</td><td class="aula">9</td></tr>
+      <tr><td>O teste da soma</td><td>As áreas de canteiros, gramado e caminhos fecham com a área total.</td><td class="aula">10</td></tr>
+      <tr><td>As 3 contas de quantidade</td><td>Mudas por área, mudas em linha e volume de material.</td><td class="aula">10</td></tr>
+      <tr><td>Cronograma de trás para a frente</td><td>Fixa-se o plantio no começo das chuvas e encaixa-se o resto antes e depois.</td><td class="aula">10</td></tr>
+      <tr><td>As 11 etapas da implantação</td><td>Primeiro o que fica embaixo, depois o que fica em cima. Primeiro o grande, depois o pequeno.</td><td class="aula">11</td></tr>
+      <tr><td>As 3 conferências da marcação</td><td>A do círculo, a do caminho e a da vista, antes de cavar.</td><td class="aula">11</td></tr>
+      <tr><td>O teste da haste</td><td>Uma haste de ferro empurrada com a mão mostra onde está a camada dura.</td><td class="aula">12</td></tr>
+      <tr><td>Descompactar, corrigir e preparar</td><td>Os três serviços do solo, nesta ordem.</td><td class="aula">12</td></tr>
+      <tr><td>Os 3 critérios da água da chuva</td><td>Ela se afasta das construções, anda devagar e tem destino.</td><td class="aula">12</td></tr>
+      <tr><td>O berço</td><td>Mais largo do que fundo, com o fundo firme e as paredes ásperas.</td><td class="aula">13</td></tr>
+      <tr><td>O colo no cabo da enxada</td><td>O cabo deitado sobre o berço confere a altura do torrão.</td><td class="aula">13</td></tr>
+      <tr><td>O teste dos dois dedos</td><td>O canto da placa de grama que resiste mostra que a raiz desceu.</td><td class="aula">14</td></tr>
+      <tr><td>As 5 causas do gramado que falha</td><td>Sombra, pisoteio, água, corte e praga.</td><td class="aula">14</td></tr>
+      <tr><td>As 7 regras do vaso</td><td>A montagem, do furo de drenagem ao lugar decidido com o vaso vazio.</td><td class="aula">15</td></tr>
+      <tr><td>As 3 perguntas do jardim vertical</td><td>A parede, a água e a pessoa que repõe as plantas.</td><td class="aula">15</td></tr>
+      <tr><td>A torneira medida com o balde</td><td>Litros divididos por segundos, em mais de um horário. Vale o menor valor.</td><td class="aula">16</td></tr>
+      <tr><td>Setores de rega</td><td>Grupos de plantas que recebem água juntos, pelo mesmo registro.</td><td class="aula">16</td></tr>
+      <tr><td>O teste da lanterna</td><td>Uma lanterna e algumas estacas decidem onde a luz fica.</td><td class="aula">17</td></tr>
+      <tr><td>Luz para andar e luz para ver</td><td>As duas funções da iluminação do jardim.</td><td class="aula">17</td></tr>
+      <tr><td>As 4 perguntas de cada lugar</td><td>Quem usa, quando, o que precisa acontecer e quem mantém.</td><td class="aula">18</td></tr>
+      <tr><td>A contagem do cesto</td><td>Um mês anotando quantas vezes o cesto do skimmer enche, antes de condenar a árvore.</td><td class="aula">18</td></tr>
+      <tr><td>O teste do barbante</td><td>O caminho marcado no chão e três pessoas cruzando por ele.</td><td class="aula">19</td></tr>
+      <tr><td>Teste do visitante e da segunda-feira</td><td>Quem nunca esteve ali se orienta sozinho, e o caseiro recupera o jardim no tempo que tem.</td><td class="aula">19</td></tr>
+      <tr><td>O caderno do jardim</td><td>A data, o que foi feito e o que chamou atenção.</td><td class="aula">20</td></tr>
+      <tr><td>A volta de observação</td><td>O mesmo percurso, sem ferramenta na mão, olhando folha, broto, caule e solo.</td><td class="aula">20</td></tr>
+      <tr><td>A ordem do diagnóstico</td><td>Seis passos, da água à nutrição, do mais provável ao mais raro.</td><td class="aula">20</td></tr>
+      <tr><td>Escopo e memorial descritivo</td><td>O que será feito, o que não será e como se confere.</td><td class="aula">21</td></tr>
+      <tr><td>Orçamento por etapa</td><td>Etapas nas linhas, quatro tipos de custo nas colunas, reserva e primeiro ano de manutenção.</td><td class="aula">21</td></tr>
+      <tr><td>Propostas lado a lado</td><td>O mesmo escopo para todos e as mesmas linhas na comparação.</td><td class="aula">22</td></tr>
+      <tr><td>Os 7 pontos do contrato de manutenção</td><td>Frequência, o que cada visita inclui, insumos, o que está fora, chamada extra e registro, entre outros.</td><td class="aula">22</td></tr>
+      <tr><td>A conferência da implantação</td><td>Nove itens antes de dar o serviço por terminado, ou de pagar por ele.</td><td class="aula">23</td></tr>
+      <tr><td>O aceite</td><td>A vistoria conjunta, com lista de pendências e prazo.</td><td class="aula">23</td></tr>
+      <tr><td>Os 7 entregáveis do projeto</td><td>Briefing, croqui, paleta, lista de espécies, implantação, orçamento e manutenção.</td><td class="aula">24</td></tr>
+      <tr><td>Os 6 critérios de avaliação</td><td>Segurança, técnica, planejamento, qualidade, custo e apresentação.</td><td class="aula">25</td></tr>
+      <tr><td>As duas datas de revisão</td><td>No fim das chuvas e no fim da seca, com três perguntas em cada visita.</td><td class="aula">25</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="casos">
+  <h2>Cenas e exemplos das aulas</h2>
+  <p class="sub">O curso não conta casos de clientes reais. Cada aula abre com uma cena do dia a dia, e os exemplos usam a Chácara-Modelo, uma propriedade fictícia. As cenas abaixo são situações de ensino, e não histórias reais nem depoimentos.</p>
+  <div class="cases">
+    <div class="case"><h3>A muda de domingo</h3><p>Um domingo de sol, um viveiro na beira da estrada e uma muda bonita, cheia de folha nova. Ela é plantada onde tinha espaço. Em agosto, morreu. A muda não tinha defeito nenhum. Faltou perguntar, antes de comprar, o que aquele canto precisava fazer e o que tinha a oferecer. Aula 1.</p></div>
+    <div class="case"><h3>“É só passar a roçadeira na beira da cerca”</h3><p>Para um serviço assim ninguém veste óculos, ninguém procura a perneira, ninguém pede para tirarem o carro de perto. É nessa hora que a pedra sobe. Aula 2.</p></div>
+    <div class="case"><h3>O canteiro de uma planta de cada</h3><p>Cada uma chegou num dia diferente, e cada uma era bonita quando chegou. Todas pegaram. E o canteiro parece uma prateleira de loja. Ele se resolve com menos, e não com mais. Aula 3.</p></div>
+    <div class="case"><h3>Sombra em junho, sol pleno em dezembro</h3><p>O canteiro encostado no muro passa junho inteiro na sombra e recebe plantas de sombra. Em dezembro, o sol bate ali em cheio, e as folhas queimam. O erro foi ler o sol num dia só e projetar para o ano inteiro. Aula 4.</p></div>
+    <div class="case"><h3>O retângulo que não era</h3><p>De longe, a entrada parece um retângulo. Duas pessoas esticam a trena de canto a canto, e as duas diagonais não batem. A trena achou em poucos minutos um erro que a pá só acharia no dia da obra. Aula 5.</p></div>
+    <div class="case"><h3>A muda que cabe no porta-malas</h3><p>Ela vem num saquinho, bate na altura do joelho e vai para dois passos da varanda, para dar sombra logo. Dez anos depois, a mesma pessoa paga para tirar a árvore de lá. Aula 6.</p></div>
+    <div class="case"><h3>A cerca que não parava de crescer</h3><p>Alguém pede no viveiro a planta de cerca-viva que cresce mais rápido. Ela cumpre o prometido. Só que continua crescendo no mesmo passo, e alguém precisa segurá-la na tesoura enquanto a cerca existir. Aula 7.</p></div>
+    <div class="case"><h3>A muda parada na terra vermelha</h3><p>Ela não morre. Também não cresce. A resposta de sempre é comprar um saco de adubo. Só que ela não está doente: está num solo que não lhe entrega o que precisa. Aula 8.</p></div>
+    <div class="case"><h3>O capim pisado</h3><p>Em quase todo terreno existe uma faixa de capim mais baixo, amassado, que ninguém desenhou. Ela mostra o trajeto real, por mais bonito que seja o caminho calçado ao lado. Aula 9.</p></div>
+    <div class="case"><h3>A festa marcada para agosto</h3><p>A família quer a entrada pronta até lá. O jardim é plantado em julho, no meio da seca, e cada muda passa a depender de alguém com a mangueira na mão até a chuva voltar. Aula 10.</p></div>
+    <div class="case"><h3>O canteiro aberto de novo</h3><p>A forração foi plantada no sábado, muda por muda. Na semana seguinte chega o tubo da irrigação, e ele passa por baixo daquele canteiro. Aula 11.</p></div>
+    <div class="case"><h3>O colo enterrado</h3><p>A muda veio bonita, o buraco foi bem aberto, água não faltou. E ela não vai para a frente. Até que alguém afasta a terra do pé da planta e vê que o caule entra no chão bem abaixo de onde devia. Aula 13.</p></div>
+    <div class="case"><h3>O feriado sem ninguém</h3><p>Na Chácara-Modelo, o caseiro folga e a família passa o feriado em outro lugar. Ninguém fez nada de errado. Quando o portão abre de novo, os vasos estão secos e o canteiro novo, murcho. Aula 16.</p></div>
+    <div class="case"><h3>A árvore ao lado da piscina</h3><p>A piscina vive cheia de folha, e alguém da casa já decidiu que a árvore tem que sair. Um mês contando o cesto do skimmer pode mostrar que a queda se concentra em poucas semanas do ano. Uma capa nesses dias resolve, e a sombra fica. Aula 18.</p></div>
+    <div class="case"><h3>Dez mudas e uma viagem</h3><p>Sábado de plantio, o canteiro quase fechado, e sobra um canto vazio. Duas mudas quebraram na estrada de terra, outras chegaram fracas. O viveiro fica longe. Aula 21.</p></div>
+    <div class="case"><h3>Duas propostas para o mesmo jardim</h3><p>O mesmo terreno, a mesma lista de plantas, o mesmo prazo. Uma delas é bem mais barata. Lida linha por linha, a espécie é a mesma, mas a muda é menor, e não há uma palavra sobre o solo. Aula 22.</p></div>
+    <div class="case"><h3>A muda morta na casa fechada</h3><p>O jardim foi plantado, o serviço foi pago e a casa ficou fechada, na seca. De um lado da linha, a frase é “a muda que você plantou morreu”. Do outro, é “ninguém regou”. Sem nada escrito, há só duas opiniões. Aula 23.</p></div>
+    <div class="case"><h3>As simulações de decisão</h3><p>São cinco simulações na plataforma, entre elas: a muda bonita a dois passos da varanda, a festa no meio da seca e duas propostas para comparar.</p></div>
+  </div>
+</section>
+
+<section id="inclui">
+  <h2>O que vem junto com o curso</h2>
+  <p class="sub">O que o aluno recebe, em cada aula e no curso todo, e o que é pago à parte.</p>
+  <div class="two">
+    <div>
+      <h3>Em cada aula</h3>
+      <ul>
+        <li>Videoaula animada, de cerca de nove minutos: a planta baixa ganhando camadas, a sombra andando ao longo do dia, o canteiro em corte e o calendário do ano.</li>
+        <li>Artigo da aula em PDF, com os checklists, as fichas e os passos.</li>
+        <li>Quiz comentado, com a explicação de cada alternativa. São 125 questões no curso.</li>
+        <li>Caderno de trabalho: o que aprendi, o que pratiquei, as três tarefas da aula e o resultado esperado.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>No curso todo</h3>
+      <ul>
+        <li>Jornada com 9 selos de competência, níveis de Explorador a Mestre e medalhas.</li>
+        <li>Diagnóstico inicial e teste final, de 20 questões.</li>
+        <li>Villela Lab: 6 missões práticas no próprio terreno e o projeto final, o paisagismo de uma área do aluno.</li>
+        <li>Desafio de 21 dias: uma ação curta por dia, começando pela leitura do lugar.</li>
+        <li>5 simulações de decisão.</li>
+        <li>9 modelos e resumos para imprimir, entre eles a ficha de seleção de espécies, o briefing, as onze etapas, o checklist de entrega e o plano sazonal.</li>
+        <li>Audiobook do curso, para ouvir no carro ou no fone, com a tela bloqueada.</li>
+        <li>Certificado da Villela Academy ao concluir todas as aulas.</li>
+        <li><strong>Tutor Villela, pago por uso.</strong> O assistente de inteligência artificial do curso responde com base no conteúdo das aulas e indica o minuto do vídeo em que o assunto aparece. Ele funciona com saldo pré-pago, à parte do preço do curso, e quem não usa não gasta nada. Não substitui a análise de solo, o rótulo do produto, o órgão ambiental nem o profissional habilitado.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="publico">
+  <h2>Para quem é</h2>
+  <div class="two">
+    <div>
+      <h3>É para</h3>
+      <ul>
+        <li>Dono de chácara que quer um jardim bonito sem replantar todo ano.</li>
+        <li>Quem vai contratar um paisagista ou jardineiro e quer saber o que pedir e como conferir.</li>
+        <li>Caseiro e jardineiro que executam a rotina e precisam de um passo a passo claro.</li>
+        <li>Anfitrião de temporada, pousada ou espaço de eventos, para quem o jardim faz parte do serviço.</li>
+        <li>Quem quer começar a prestar serviço de jardinagem e paisagismo na região.</li>
+      </ul>
+      <h3>Não é para</h3>
+      <ul>
+        <li>Quem procura uma lista de plantas pronta ou uma receita de adubo. No curso, a espécie se escolhe com o viveirista da região, e a dose vem da análise de solo e do rótulo.</li>
+        <li>Quem espera sair habilitado para instalação elétrica, poda em altura, corte de árvore ou receita de defensivo. Isso continua sendo serviço de profissional habilitado.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>O que cada perfil leva (das aulas)</h3>
+      <ul>
+        <li><strong>Dono que faz:</strong> a leitura do lugar, o croqui em escala, a ficha de seleção, as onze etapas da implantação e o plano de manutenção das duas estações.</li>
+        <li><strong>Dono que contrata:</strong> o memorial antes do preço, as propostas comparadas linha por linha, três perguntas a cada candidato e a vistoria de aceite com lista de pendências (aulas 21 a 23).</li>
+        <li><strong>Caseiro e jardineiro:</strong> a ordem do plantio, o critério do dedo na terra para a rega, a volta de observação e a ordem do diagnóstico (aulas 13 e 20).</li>
+        <li><strong>Anfitrião de temporada e de eventos:</strong> o jardim pensado para o dia mais cheio, as plantas seguras para criança e animal e o jardim no roteiro de preparação entre estadias (aulas 18 e 19).</li>
+        <li><strong>Quem presta o serviço:</strong> as parcelas do preço, as duas formas de cobrar, a proposta que duas pessoas leem do mesmo jeito e os sete pontos do contrato de manutenção (aulas 21 e 22).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="objecoes">
+  <h2>Objeções e respostas</h2>
+  <p class="sub">As dúvidas mais comuns de quem está decidindo.</p>
+  <h3>Preciso ter experiência com jardim?</h3>
+  <p>Não. O curso começa pela leitura do lugar e pela segurança, antes de qualquer planta. É preciso ter uma área para observar e medir, trena, papel e caneta. Quem não tem terreno acompanha os exemplos com a Chácara-Modelo, a propriedade fictícia usada no curso inteiro, e a entrada dela, de 60 m².</p>
+  <h3>O curso diz qual planta eu devo plantar?</h3>
+  <p>Não, e isso é de propósito. A planta certa depende do sol, do solo, do espaço e da manutenção que o lugar permite. O curso ensina os critérios de escolha, a ficha de seleção e as perguntas a fazer ao viveirista da região, que é quem conhece o que vai bem ali.</p>
+  <h3>O curso traz doses de adubo e de calcário?</h3>
+  <p>Não. A correção do solo sai da análise feita em laboratório e do rótulo do produto, nunca de uma receita geral. O curso ensina a pedir a análise, a ler o que importa no laudo e a ordem do serviço.</p>
+  <h3>Moro fora do Cerrado. O curso serve?</h3>
+  <p>O método serve em qualquer lugar: ler, medir, desenhar, escolher, implantar e manter. O calendário e os exemplos são os do Cerrado, com chuva de outubro a abril e seca de maio a setembro. Em outra região, as datas se adaptam ao regime de chuvas local.</p>
+  <h3>Este curso me habilita como paisagista?</h3>
+  <p>O curso é educacional e não equivale a formação profissional regulamentada nem a responsabilidade técnica. Instalação elétrica de bomba, temporizador e iluminação, motosserra, árvore de grande porte, poda em altura e defensivo com receita são serviço de profissional habilitado. O curso mostra quando chamá-lo e o que conferir.</p>
+  <h3>As aulas são filmadas num jardim?</h3>
+  <p>São videoaulas animadas, de cerca de nove minutos cada. O aluno vê a planta baixa ganhar camadas, a sombra andar ao longo do dia, o canteiro em corte e o calendário do ano, enquanto a explicação acompanha. Cada aula vem com o artigo em PDF, com os checklists, as fichas e os passos.</p>
+  <h3>Eu só contrato o serviço. O curso serve para mim?</h3>
+  <p>Serve. O aluno aprende a escrever o escopo, a pedir propostas comparáveis, a compará-las pelo que entregam e não pelo total, e a fazer a vistoria de aceite com uma lista de pendências.</p>
+  <h3>O que é o Tutor Villela e quanto custa?</h3>
+  <p>É o assistente de inteligência artificial do curso. Ele responde às dúvidas com base no conteúdo das aulas e indica o minuto do vídeo em que o assunto é tratado. É pago por uso, à parte do preço do curso, com saldo pré-pago, e o valor máximo aparece antes de cada pergunta. Quem não quiser usar não gasta nada: o quiz, o caderno de trabalho e todo o resto do curso continuam incluídos no preço.</p>
+  <h3>Por quanto tempo tenho acesso? Tem certificado?</h3>
+  <p>O acesso é de 1 ano a partir da compra. Ao concluir todas as aulas, o aluno recebe o Certificado da Villela Academy, que atesta a conclusão do curso e não é habilitação profissional.</p>
+  <h3>O que é a coleção Viver de Chácara?</h3>
+  <p>É a coleção de livros e cursos sobre como cuidar, melhorar e rentabilizar uma chácara. O Paisagismo na Prática é um dos cursos dela, ao lado do Piscineiro na Prática.</p>
+  <h3>Tem garantia?</h3>
+  <p>Sete dias, incondicional. A pessoa assiste às aulas, faz as tarefas e, se o curso não servir, pede o reembolso dentro do prazo.</p>
+</section>
+
+<section id="cuidados">
+  <h2>Cuidados na comunicação</h2>
+  <p class="sub">Para o criativo não prometer o que o curso faz questão de não prometer.</p>
+  <div class="care">
+    <h3>Evitar</h3>
+    <ul>
+      <li>Qualquer dose de adubo, de calcário ou de outro produto, espaçamento entre mudas, distância de plantio, espessura de cobertura, tempo ou frequência de rega em número. O curso não diz esses números, de propósito: manda à análise de solo, ao rótulo, ao viveirista e ao manual do fabricante. Os únicos números que podem ser citados são os da Chácara-Modelo (a entrada de 12 m por 5 m, com 60 m², e a divisão em 6, 24 e 30 m²), sempre como exemplo.</li>
+      <li>As quantidades de mudas e de cobertura que aparecem nas contas das aulas 10 e 21. O próprio curso avisa que foram calculadas com espaçamento, espessura e margem inventados, só para mostrar a conta.</li>
+      <li>A distância entre a árvore e a piscina da Chácara-Modelo como recomendação. A aula 18 diz que ela descreve a propriedade de exemplo e que não existe um número que sirva para todas as espécies.</li>
+      <li>“Jardim pronto em um fim de semana”, “jardim sem manutenção” ou “plante e esqueça”. O curso diz que jardim recém-plantado parece vazio, que a primeira seca é a prova e que um jardim não se termina, acompanha-se. O que ele ensina é jardim de baixa manutenção, decidido no projeto.</li>
+      <li>Lista de “plantas certas”, “plantas que não morrem” ou recomendação de espécie. O curso ensina o critério e manda montar a lista com o viveirista da região. As espécies citadas nas aulas são exemplos de nativas do Cerrado e de ornamentais tóxicas, e não indicação de plantio.</li>
+      <li>“Nativa é sempre a melhor escolha”. O curso diz que ser nativa não responde a nenhuma das perguntas de escolha.</li>
+      <li>“Faça você mesmo” para instalação elétrica de bomba, temporizador ligado ao quadro e iluminação, inclusive de baixa tensão, para motosserra, poda em altura, árvore de grande porte, corte de árvore, obra de drenagem ou de contenção. Nesses pontos o curso ensina a pedir, conferir e chamar o profissional habilitado.</li>
+      <li>Imagem ou texto de aplicação de defensivo, herbicida ou receita caseira. No curso, produto é o último degrau, só com orientação e receita de profissional habilitado, e conforme o rótulo.</li>
+      <li>Imagem de roçadeira, poda ou escavação sem equipamento de proteção, com crianças ou animais por perto, de pessoa em escada apoiada em galho ou de queima de restos de poda. A aula 2 ensina o contrário.</li>
+      <li>Dar a entender que o curso resolve corte de árvore ou intervenção perto de córrego, nascente, vereda ou encosta. O curso não interpreta a lei: manda consultar o órgão ambiental antes de mexer.</li>
+      <li>“Formação de paisagista”, “habilitação”, “curso profissionalizante” ou certificado como licença. O curso é educacional, o certificado atesta só a conclusão, e o projeto final é um exercício que não substitui o projeto com responsabilidade técnica.</li>
+      <li>Promessa de renda, de número de clientes ou de ganho como jardineiro ou paisagista. As aulas 1, 22 e 25 falam das frentes de trabalho e ensinam a formar o preço, sem prometer faturamento.</li>
+      <li>Promessa de economia em reais ou em percentual, ou de valorização do imóvel e da diária em número. As aulas de custos não dizem nenhum valor em dinheiro.</li>
+      <li>Vender o curso como válido do mesmo jeito para qualquer região. O método serve em qualquer lugar, mas o calendário e os exemplos são os do Cerrado, e em outra região as datas precisam ser adaptadas.</li>
+      <li>“Aprenda a fazer jardim vertical”. A aula 15 não ensina a construir um: ensina a decidir se vale a pena.</li>
+      <li>Apresentar a Chácara-Modelo e as cenas de abertura como casos reais. São exemplos fictícios do curso.</li>
+      <li>“Acesso vitalício”. O acesso é de 1 ano a partir da compra.</li>
+      <li>Depoimentos de alunos. A página de venda não tem nenhum, então não há o que citar.</li>
+      <li>Dizer que as aulas são filmadas num jardim. São videoaulas animadas.</li>
+      <li>Anunciar o Tutor Villela como incluído no preço. Ele é pago por uso, com saldo pré-pago, assim como as outras ferramentas de inteligência artificial da plataforma.</li>
+      <li>Vender o curso como dependente da Gestão do Viver de Chácara. As aulas citam o sistema e repetem que tudo funciona com caderno, papel e lápis.</li>
+      <li>Anunciar como disponíveis os outros livros e cursos da coleção citados na aula 25 sem conferir, um a um, se estão no ar.</li>
+    </ul>
+  </div>
+  <p style="margin-top:14px">O preço e os itens incluídos mudam. Antes de fechar uma peça com valor, confira na página do curso.</p>
+</section>
+
+<footer>
+  Fonte: roteiros das 25 videoaulas e página de venda do curso na Villela Academy. Coleção Viver de Chácara. Villela Academy, uma empresa do Grupo Villela Stay. Autor: Augusto Villela. <a href="/campanhas/materiais-marketing/">Voltar para os materiais de todos os cursos</a>.
+</footer>
+
+</div>
+</body>
+</html>
