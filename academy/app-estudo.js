@@ -94,14 +94,17 @@
     function rota(partes, substituir) { if (window.AcademyRota) window.AcademyRota.gravar(partes, substituir); }
     // `inicio` = onde abrir (veio do endereço): { aba, arg, extra } — e `substituir` quando a abertura
     // é automática e não deve virar um passo do botão Voltar.
-    function abrir(pid, titulo, slug, voltar, inicio, rotuloVoltar) {
+    // `barra` = { html, ligar }: o que o curso oferece além do percurso (audiobook…), montado por quem abre
+    function abrir(pid, titulo, slug, voltar, inicio, rotuloVoltar, barra) {
       pararRelogio();
       inicio = inicio || {};
       E.pid = pid; E.titulo = titulo; E.slug = slug; E.voltar = voltar; E.aba = 'hoje';
       setView('<div class="al es"><a href="#" class="al-volta" id="es-volta">← ' + esc(rotuloVoltar || 'Voltar ao curso') + '</a>' +
-        '<div class="es-cab"><p class="al-rotulo">Estude · ' + esc(titulo) + '</p><h2 id="es-titulo">Carregando…</h2><p class="al-sub" id="es-sub"></p></div>' +
+        '<div class="es-cab"><p class="al-rotulo">Estude · ' + esc(titulo) + '</p><h2 id="es-titulo">Carregando…</h2><p class="al-sub" id="es-sub"></p>' +
+        (barra && barra.html ? '<div class="es-curso-barra">' + barra.html + '</div>' : '') + '</div>' +
         '<div class="est-abas es-abas" id="es-abas"></div><div class="es-corpo" id="es-corpo"><p class="al-sub">Carregando…</p></div></div>');
       el('es-volta').onclick = function (e) { e.preventDefault(); pararRelogio(); voltar(); };
+      if (barra && barra.ligar) barra.ligar();
       window.scrollTo(0, 0);
       carregar(function () {
         abas();

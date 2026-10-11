@@ -329,3 +329,6 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-un-ler p{margin:0 0 11px;font-weight:400}
 .es-un-ler b{font-weight:700;color:#12203b}
 .es-un-ler p.es-ler-st{font:700 1.14rem/1.35 'Lora',Georgia,serif;color:var(--al-navy);margin:22px 0 8px}
+
+/* o que o curso oferece além do percurso (audiobook…), no cabeçalho do Estude */
+.es-curso-barra{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}

@@ -86,6 +86,12 @@
     // o endereço acompanha a tela (ver ROTA no painel); sem o painel, não faz nada
     function rota(partes, substituir) { if (window.AcademyRota) window.AcademyRota.gravar(partes, substituir); }
     var rotaEstude = {}; // percurso do Estude a reabrir assim que o curso carregar (veio do endereço)
+    var voltaEstude = null; // de onde, no Estude, o aluno abriu o audiobook — é para lá que o Voltar devolve
+    function lugarNoEstude(pid) {
+      var m = String(location.hash || '').replace(/^#\/?/, '').split('/').map(function (x) { try { return decodeURIComponent(x); } catch (e) { return x; } });
+      var k = m.indexOf('estude');
+      return k < 0 || !m[k + 1] ? null : { pid: pid, slug: m[k + 1], aba: m[k + 2] || 'hoje', arg: m[k + 3] || '', extra: m[k + 4] || '' };
+    }
 
     // ================= BIBLIOTECA =================
     function biblioteca() {
@@ -626,7 +632,11 @@
         var abrir = function (slug, inicio) {
           var aula = C.i >= 0 ? C.aulas[C.i].a.id : '';
           ES.abrir(pid, C.d.produto.titulo, slug, soEstude ? function () { biblioteca(); } : function () { abrirCurso(pid, aula); }, inicio,
-            soEstude ? 'Minha biblioteca' : 'Voltar ao curso');
+            soEstude ? 'Minha biblioteca' : 'Voltar ao curso',
+            // o que a página comum do curso oferecia e o Estude escondia
+            { html: botaoAudiobook(C.d.audiobook), ligar: function () {
+              if (el('al-ab')) el('al-ab').onclick = function () { voltaEstude = lugarNoEstude(pid); abrirAudiobook(); };
+            } });
         };
         ES.cartao(el('al-estude'), pid, r, abrir);
         var pend = rotaEstude[pid]; delete rotaEstude[pid];
@@ -1215,6 +1225,10 @@
       raiz.oncontextmenu = function (e) { e.preventDefault(); };
       el('ab-volta').onclick = function (e) {
         e.preventDefault();
+        if (voltaEstude && voltaEstude.pid === AB.pid) { // veio do Estude: volta para a mesma aba
+          var v = voltaEstude; voltaEstude = null;
+          abrirCurso(AB.pid, '', { estude: v }); pintarMini(); return;
+        }
         if (C && C.pid === AB.pid) { document.body.classList.add('aluno-amplo'); pintarEstudio(); irParaAula(C.i >= 0 ? C.i : 0, true); }
         else abrirCurso(AB.pid);
         pintarMini();
