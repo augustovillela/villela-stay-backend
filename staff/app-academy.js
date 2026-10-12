@@ -212,6 +212,9 @@ const ACAD = {
   // cobrança, dá crédito de cortesia a quem quiser e vê quanto entrou, quanto foi consumido e o custo.
   async vIA() {
     const p = await ACAD.api('GET', '/ia/carteiras');
+    // CHAVE GERAL dos pedidos pagos do Estude (estudo/pedidos.js): só a sessão de admin liga para todos.
+    const pc = await ACAD.api('GET', '/estudo/pedidos-config').catch(() => null);
+    const pe = pc ? pc.estudo_pedidos : null;
     const c = p.config, t = p.total;
     const kpi = (rot, val) => `<div class="card" style="min-width:150px;flex:1"><div class="sub">${rot}</div><div style="font-size:1.4rem;font-weight:700">${val}</div></div>`;
     const local = c.virada_em ? new Date(c.virada_em).toLocaleString('pt-BR') : '';
@@ -235,6 +238,14 @@ const ACAD = {
           <p class="sub">Virada: ${local ? '<b>' + esc(local) + '</b> — quem tinha matrícula antes disso mantém as consultas grátis do dia naquele curso; matrícula posterior paga tudo.' : 'será gravada no momento em que você ligar a cobrança. Quem já tiver matrícula até lá mantém as consultas grátis do dia naquele curso.'}</p>
           <label style="display:flex;gap:.5rem;align-items:center"><input id="aia-ativa" type="checkbox" style="width:auto" ${c.ativa ? 'checked' : ''}> Cobrança ligada</label>
           <button class="btn peq" type="submit">Salvar</button><p id="aia-msg" class="sub"></p></form></div>
+      ${pe ? `<div class="card" id="acad-ped-card" style="${pe.ativos ? '' : 'border-color:var(--alerta)'}"><h3>${pe.ativos ? '🟢 Pedidos pagos do Estude ligados' : '⚪ Pedidos pagos do Estude desligados'}</h3>
+        <p class="sub">Correção de discursiva, peça e oral, importação de prova em PDF e leitura de edital em PDF. ${pe.ativos
+          ? 'Todo aluno com acesso ao curso vê a aba “Escrita e oral” e pode pedir; cada pedido mostra o orçamento antes e sai do saldo de créditos de IA.'
+          : 'Enquanto desligados, só veem o serviço os e-mails liberados abaixo e os isentos da cobrança de IA.'}${c.ativa ? '' : ' <b>A cobrança de IA está desligada: sem ela os pedidos ficam indisponíveis.</b>'}</p>
+        <form class="form" id="acad-ped-cfg">
+          <label>Liberados para teste (${pe.liberados.length} — e-mails separados por vírgula) <textarea id="aped-lib" rows="2" placeholder="contas que podem pedir antes de abrir para todos">${esc(pe.liberados.join(', '))}</textarea></label>
+          <label style="display:flex;gap:.5rem;align-items:center"><input id="aped-ativos" type="checkbox" style="width:auto" ${pe.ativos ? 'checked' : ''} ${pc.pode_ligar || pe.ativos ? '' : 'disabled'}> Pedidos pagos ligados para todos os alunos</label>
+          <button class="btn peq" type="submit">Salvar</button><p id="aped-msg" class="sub">${pc.pode_ligar ? '' : 'Ligar para todos exige sessão de administrador.'}</p></form></div>` : ''}
       <div style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.6rem 0">
         ${kpi('Saldo em aberto', t.saldo)}${kpi('Carregado (pago)', t.carregado)}${kpi('Cortesia dada', t.cortesia)}${kpi('Consumido', t.consumido)}${kpi('Custo no provedor', 'US$ ' + Number(t.custo_provedor_usd).toFixed(2))}</div>
       <div class="card"><h3>🎁 Dar crédito a um usuário</h3>
@@ -263,6 +274,17 @@ const ACAD = {
           isentos: document.getElementById('aia-isentos').value, // o servidor separa, limpa e valida
           // a virada é o instante em que a cobrança foi ligada pela primeira vez — e não muda mais
           virada_em: c.virada_em || (ativa ? new Date().toISOString() : '') } });
+        ACAD.pintar();
+      } catch (e) { msg.textContent = e.message; }
+    };
+    const fPed = document.getElementById('acad-ped-cfg');
+    if (fPed) fPed.onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = document.getElementById('aped-msg');
+      const ativos = document.getElementById('aped-ativos').checked;
+      if (ativos && !pe.ativos && !confirm('Ligar os pedidos pagos do Estude para TODOS os alunos agora?\n\nCorreção de discursiva, peça e oral, prova em PDF e edital em PDF passam a aparecer para quem tem acesso ao curso. Cada pedido mostra o orçamento antes e é descontado do saldo de créditos de IA.')) return;
+      try {
+        await ACAD.api('POST', '/estudo/pedidos-config', { ativos, liberados: document.getElementById('aped-lib').value });
         ACAD.pintar();
       } catch (e) { msg.textContent = e.message; }
     };
