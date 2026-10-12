@@ -903,6 +903,125 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
       'HSTS em resposta http não vale nada e só confunde');
   });
 
+  // ---------- Despesas dos sistemas (nucleo/despesas-sistemas.js): leitura única para o relatório semanal ----------
+  const ROTA_DESP = '/staff/api/despesas-sistemas';
+  const sis = (r, chave) => r.json.sistemas.find(s => s.sistema === chave);
+  await t('despesas-sistemas: sem credencial → 401; chave errada → 401; sessão que não é admin → 403', async () => {
+    assert.equal((await req('GET', ROTA_DESP)).status, 401);
+    assert.equal((await req('GET', ROTA_DESP, { headers: { 'x-publish-key': 'errada' } })).status, 401);
+    assert.equal((await req('GET', ROTA_DESP, { cookie: opCookie })).status, 403);
+  });
+
+  await t('despesas-sistemas: com a chave (ou sessão de admin) → 200 com a lista de sistemas, sem cache', async () => {
+    const r = await req('GET', ROTA_DESP, { headers: { 'x-publish-key': 'pk-test' } });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.dias, 7, 'o padrão é 7 dias');
+    assert.ok(/no-store/.test(String(r.headers['cache-control'] || '')), 'resposta sem no-store');
+    assert.ok(Array.isArray(r.json.sistemas) && r.json.sistemas.length >= 15, 'lista de sistemas curta demais');
+    for (const chave of ['academy', 'legal-saas', 'vdocs', 'vpe', 'crm', 'finance', 'origena', 'music', 'hospede', 'livraria', 'cozinhe']) {
+      const s = sis(r, chave);
+      assert.ok(s, 'faltou o sistema ' + chave);
+      assert.equal(typeof s.medido, 'boolean');
+      assert.ok(s.medido || s.motivo, chave + ' sem medida e sem motivo');
+    }
+    assert.ok(sis(r, 'academy').medido && sis(r, 'academy').ia, 'a Academy tem de vir medida (Logs.custos)');
+    assert.equal(sis(r, 'cozinhe').medido, false, 'o Cozinhe mora fora deste backend');
+    assert.ok(Array.isArray(r.json.nao_medido) && r.json.nao_medido.length, 'faltou a lista do que ninguém registra');
+    assert.ok(r.json.total && typeof r.json.total.ia_custo_usd === 'number' && typeof r.json.total.pagamentos_bruto_brl === 'number');
+    assert.ok(!/@/.test(JSON.stringify(r.json)), 'a resposta não pode levar e-mail');
+    assert.equal((await req('GET', ROTA_DESP + '?dias=99999', { headers: { 'x-publish-key': 'pk-test' } })).json.dias, 366, 'o teto é 366 dias');
+    assert.equal((await req('GET', ROTA_DESP, { cookie: adminCookie })).status, 200, 'sessão de admin também lê');
+  });
+
+  await t('despesas-sistemas: um coletor que quebra não derruba os outros', async () => {
+    const D = require('./nucleo/despesas-sistemas');
+    const vdocs = D.COLETORES.find(c => c.sistema === 'vdocs');
+    const r = await D.resumo(7, { coletores: [
+      { sistema: 'quebrado', nome: 'Quebrado', coletar() { throw new Error('no such table: nada'); } },
+      { sistema: 'recusa', nome: 'Promessa recusada', coletar: async () => { throw new Error('conexão caiu'); } },
+      vdocs,
+    ] });
+    assert.equal(r.sistemas.length, 3);
+    assert.equal(r.sistemas[0].medido, false); assert.ok(/no such table/.test(r.sistemas[0].motivo), 'o motivo tem de dizer o que falhou');
+    assert.equal(r.sistemas[1].medido, false); assert.ok(/conexão caiu/.test(r.sistemas[1].motivo));
+    assert.equal(r.sistemas[2].medido, true, 'o coletor seguinte tem de seguir de pé');
+    assert.equal(r.total.sistemas_medidos, 1); assert.equal(r.total.sistemas_nao_medidos, 2);
+  });
+
+  await t('despesas-sistemas: soma certo sobre linhas plantadas (IA e arquivos do Docs, uso da Eva) e respeita o período', async () => {
+    const chave = { headers: { 'x-publish-key': 'pk-test' } };
+    const antes = sis(await req('GET', ROTA_DESP + '?dias=30', chave), 'vdocs');
+    const vdb = require('./vdocs/db').db;
+    const iso = (diasAtras) => new Date(Date.now() - diasAtras * 864e5).toISOString();
+    const run = vdb.prepare('INSERT INTO ai_runs (id, tenant_id, modelo, input_tokens, output_tokens, custo_centavos_usd, duracao_ms, status, detalhe, criado_em) VALUES (?,?,?,?,?,?,?,?,?,?)');
+    // modelo "mock" = preço fixo de 3/15 por milhão (academy/ia.js): 1.000 de entrada + 500 de saída = US$ 0,0105
+    run.run('desp-1', 'conta-a', 'mock', 1000, 500, 12, 0, 'ok', '', iso(1));
+    run.run('desp-2', 'conta-b', 'mock', 1000, 500, 30, 0, 'ok', '', iso(2));
+    run.run('desp-velha', 'conta-c', 'mock', 1000, 500, 999, 0, 'ok', '', iso(40));   // fora dos 30 dias
+    vdb.prepare('INSERT INTO document_versions (id, tenant_id, document_id, numero, nome_arquivo, mime, tamanho, sha256, file_path, criado_em) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .run('desp-arq', 'conta-a', 'doc-1', 1, 'a.pdf', 'application/pdf', 1500, 'x', 'conta-a/x', iso(1));
+    const dia = (diasAtras) => iso(diasAtras).slice(0, 10);
+    fs.writeFileSync(path.join(DATA_DIR, 'eva-uso.json'), JSON.stringify({ porDia: {
+      [dia(1)]: { in: 100, out: 50, msgs: 3, custoUSD: 0.0123 }, [dia(60)]: { in: 9, out: 9, msgs: 9, custoUSD: 9 } } }));
+
+    // envios da central: 2 e-mails e 1 WhatsApp ao Musique dentro do período; o aviso no app e o pendente não contam
+    const cdb = require('./comunicados/db').db;
+    cdb.prepare("INSERT INTO comunicados (id, titulo, corpo, categoria, criado_em, atualizado_em) VALUES ('desp-com', 'Aviso', 'Corpo', 'novidade', ?, ?)").run(iso(1), iso(1));
+    const ent = cdb.prepare("INSERT INTO entregas (comunicado_id, canal, chave, produto, usuario_ref, status, atualizado_em) VALUES ('desp-com', ?, ?, 'music', ?, ?, ?)");
+    ent.run('email', 'k1', 'u1', 'enviado', iso(1)); ent.run('email', 'k2', 'u2', 'enviado', iso(2));
+    ent.run('whatsapp', 'k3', 'u1', 'enviado', iso(1)); ent.run('whatsapp', 'k4', 'u2', 'pendente', iso(1));
+    ent.run('app', 'k5', 'u1', 'lido', iso(1)); ent.run('email', 'k6', 'u3', 'enviado', iso(45));
+
+    const r30 = await req('GET', ROTA_DESP + '?dias=30', chave);
+    assert.deepEqual([sis(r30, 'music').mensagens.email, sis(r30, 'music').mensagens.whatsapp], [2, 1], 'envios do Musique pela central');
+    const v = sis(r30, 'vdocs');
+    const perto = (a, b) => Math.abs(a - b) < 1e-9;
+    assert.equal(v.ia.chamadas - antes.ia.chamadas, 2, 'duas chamadas dentro do período');
+    assert.ok(perto(v.ia.custo_usd - antes.ia.custo_usd, 0.42), 'custo gravado: 12 + 30 centavos = US$ 0,42 (veio ' + v.ia.custo_usd + ')');
+    assert.ok(perto(v.ia.custo_por_tokens_usd - antes.ia.custo_por_tokens_usd, 0.021), 'custo pelos tokens: 2 × 0,0105 (veio ' + v.ia.custo_por_tokens_usd + ')');
+    assert.equal(v.ia.custo_estimado_por_tokens, false, 'o Docs grava o custo: não é estimativa');
+    assert.equal(v.ia.usuarios - antes.ia.usuarios, 2, 'duas contas distintas');
+    assert.equal(v.ia.bancado_pela_plataforma_usd, v.ia.custo_usd, 'IA incluída no plano: tudo bancado pela plataforma');
+    assert.equal(v.armazenamento.bytes - antes.armazenamento.bytes, 1500);
+    assert.equal(v.armazenamento.arquivos - antes.armazenamento.arquivos, 1);
+    const h = sis(r30, 'hospede');
+    assert.equal(h.ia.chamadas, 3); assert.equal(h.ia.custo_usd, 0.0123, 'a Eva de 60 dias atrás fica fora dos 30');
+    assert.ok(perto(r30.json.total.ia_custo_usd, r30.json.sistemas.reduce((s, x) => s + ((x.ia && x.ia.custo_usd) || 0) + ((x.google && x.google.custo_usd) || 0), 0)), 'o total de IA tem de bater com a soma dos sistemas');
+    // 60 dias: a linha velha do Docs entra (US$ 9,99 a mais)
+    const v60 = sis(await req('GET', ROTA_DESP + '?dias=60', chave), 'vdocs');
+    assert.ok(perto(v60.ia.custo_usd - v.ia.custo_usd, 9.99), 'com 60 dias a linha velha tem de entrar');
+  });
+
+  await t('despesas-sistemas: Origena (Postgres) — sem banco não é medida; com banco soma por família sem dado pessoal', async () => {
+    const D = require('./nucleo/despesas-sistemas');
+    const origena = D.COLETORES.find(c => c.sistema === 'origena');
+    const sem = await D.resumo(7, { coletores: [origena], origena: { db: { configurado: () => false } } });
+    assert.equal(sem.sistemas[0].medido, false); assert.ok(/não está configurado/.test(sem.sistemas[0].motivo));
+    // banco e escopo de mentira: duas famílias; o que cada consulta devolve é decidido pelo texto dela
+    const dados = {
+      f1: { ledger: [{ provider: 'anthropic', model: 'mock', tokens_in: 1000, tokens_out: 200, custo_centavos: 30, creditos_cobrados: 10 }], n: 4, b: '1000', pn: 1, ps: '4990' },
+      f2: { ledger: [{ provider: 'anthropic', model: 'mock', tokens_in: 1000, tokens_out: 200, custo_centavos: 30, creditos_cobrados: 10 },
+        { provider: 'google', model: 'gemini-x', tokens_in: 700, tokens_out: 0, custo_centavos: 5, creditos_cobrados: 2 }], n: 1, b: '250', pn: 0, ps: '0' },
+    };
+    const falso = {
+      db: { configurado: () => true, todas: async () => [{ id: 'f1' }, { id: 'f2' }] },
+      tenancy: { comEscopo: async (id, fn) => fn({
+        todas: async () => dados[id].ledger,
+        uma: async (sql) => (/FROM orders/.test(sql) ? { n: dados[id].pn, s: dados[id].ps } : { n: dados[id].n, b: dados[id].b }),
+      }) },
+    };
+    const o = (await D.resumo(7, { coletores: [origena], origena: falso })).sistemas[0];
+    assert.equal(o.medido, true);
+    assert.equal(o.ia.chamadas, 2); assert.equal(o.ia.usuarios, 2);
+    assert.equal(o.ia.custo_usd, 0.012, '2 × (1.000 × 3 + 200 × 15) ÷ 1e6'); assert.equal(o.ia.custo_estimado_por_tokens, true);
+    assert.equal(o.ia.custo_estimado_registrado_brl, 0.6); assert.equal(o.ia.creditos_cobrados, 20);
+    assert.equal(o.google.chamadas, 1); assert.equal(o.google.custo_usd, null, 'sem tabela de preços do Google não há custo em dólar');
+    assert.equal(o.google.tokens_entrada, 700);
+    assert.deepEqual([o.armazenamento.arquivos, o.armazenamento.bytes, o.armazenamento.no_r2.bytes], [5, 1250, 1250]);
+    assert.deepEqual([o.pagamentos.aprovados, o.pagamentos.bruto_brl, o.pagamentos.taxa_medida], [1, 49.9, false]);
+    assert.ok(!/f1|f2/.test(JSON.stringify(o)), 'id de família não pode sair na resposta');
+  });
+
   // ---------- A1: sessão que não morria na troca de senha ----------
   // Ficam por último de propósito: trocam as senhas que os testes acima usam.
   await t('A1 staff: trocar a senha mata o cookie antigo e mantém quem trocou', async () => {
