@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-10T02:36:19.087Z",
+  "coletadoEm": "2026-10-12T13:52:23.306Z",
   "series": {
     "piscineiro-na-pratica": {
       "curso_url": "https://academia.villelastay.com.br/academy/cursos/piscineiro-na-pratica",
@@ -1118,6 +1118,286 @@
           "video_url": "https://academia.villelastay.com.br/academy/api/amostras/JKnfSe3V79CI/video.mp4?v=1",
           "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/JKnfSe3V79CI/capa.jpg?v=1",
           "visto_em": "2026-10-09"
+        }
+      }
+    },
+    "decoracao-de-interiores-na-pratica": {
+      "curso_url": "https://academia.villelastay.com.br/academy/cursos/decoracao-de-interiores-na-pratica",
+      "amostras": {
+        "1": {
+          "id": "1T93krFbzyig",
+          "aula": 1,
+          "aula_titulo": "Aula 01 — Decorar para hóspedes: o que muda quando a casa não é de quem mora",
+          "titulo": "Dois quartos gêmeos, uma cozinha comum e o pátio com a piscina no meio.",
+          "ponte": "A aula completa mostra o que muda quando quem usa o ambiente é hóspede e as etapas do curso.",
+          "duracao_seg": 40,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/1T93krFbzyig/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/1T93krFbzyig/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "2": {
+          "id": "qz7NHPtdYwyC",
+          "aula": 2,
+          "aula_titulo": "Aula 02 — Lugares de dormir não são lotação",
+          "titulo": "Cama por cama, a planta do quarto vira uma conta de lugares de dormir.",
+          "ponte": "No curso, o que cada lugar a mais cobra do banheiro, da mesa e da passagem.",
+          "duracao_seg": 44,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/qz7NHPtdYwyC/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/qz7NHPtdYwyC/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "3": {
+          "id": "DcMWatC9D2ht",
+          "aula": 3,
+          "aula_titulo": "Aula 03 — Segurança do hóspede e os limites do que você faz",
+          "titulo": "O caminho do beliche ao banheiro, no escuro, com as camas abertas.",
+          "ponte": "A aula inteira separa o que é seu, o que é de contratado e o que é de profissional.",
+          "duracao_seg": 40,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/DcMWatC9D2ht/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/DcMWatC9D2ht/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "4": {
+          "id": "7_i4G5qspE85",
+          "aula": 4,
+          "aula_titulo": "Aula 04 — Proporção, escala e ponto focal",
+          "titulo": "A cama feita de branco chama o olhar e a parede acima dela fica vazia.",
+          "ponte": "A aula completa trata de proporção, escala, ponto focal, repetição e respiro.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/7_i4G5qspE85/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/7_i4G5qspE85/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "5": {
+          "id": "0wXA_GJ-BVR2",
+          "aula": 5,
+          "aula_titulo": "Aula 05 — Estilo e conceito: uma linguagem só",
+          "titulo": "A foto do quarto perde a cor e mostra se há contraste ou uma massa só.",
+          "ponte": "No curso, as quatro palavras da cor e a frase de conceito que organiza as escolhas.",
+          "duracao_seg": 38,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/0wXA_GJ-BVR2/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/0wXA_GJ-BVR2/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "6": {
+          "id": "FyDq20diwRKY",
+          "aula": 6,
+          "aula_titulo": "Aula 06 — Medição, fotos e inventário do ambiente",
+          "titulo": "A parede fotografada de frente, com a trena esticada, responde na loja.",
+          "ponte": "A aula inteira mostra o croqui, as fotos, a planta em escala e a ficha de inventário.",
+          "duracao_seg": 45,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/FyDq20diwRKY/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/FyDq20diwRKY/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "7": {
+          "id": "7EJ8P5pvvBeN",
+          "aula": 7,
+          "aula_titulo": "Aula 07 — O quarto-modelo de 30 m² em planta",
+          "titulo": "A folha da planta virada contra a luz desenha o segundo quarto, em espelho.",
+          "ponte": "No curso, a planta do quarto com os móveis numerados e o que cada medida significa.",
+          "duracao_seg": 37,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/7EJ8P5pvvBeN/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/7EJ8P5pvvBeN/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "8": {
+          "id": "bqtI7Ex_tOuG",
+          "aula": 8,
+          "aula_titulo": "Aula 08 — Cor na prática: a paleta que aceita reposição",
+          "titulo": "A mesma paleta pinta a sala-quarto, a suíte, a cozinha e o pátio.",
+          "ponte": "A aula completa mostra base, acentos, a cor sob a luz do dia e o registro na ficha.",
+          "duracao_seg": 47,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/bqtI7Ex_tOuG/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/bqtI7Ex_tOuG/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "9": {
+          "id": "XXjgedO6edR5",
+          "aula": 9,
+          "aula_titulo": "Aula 09 — Materiais e tecidos pelos cinco filtros",
+          "titulo": "O sofá-cama do quarto passa pelas perguntas do curso, uma de cada vez.",
+          "ponte": "No curso, os cinco filtros aplicados a tecido, colchão e revestimento, com a fonte de cada resposta.",
+          "duracao_seg": 52,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/XXjgedO6edR5/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/XXjgedO6edR5/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "10": {
+          "id": "AmO3O5rQ8xD1",
+          "aula": 10,
+          "aula_titulo": "Aula 10 — Painel de referências e caderno de especificação",
+          "titulo": "As amostras pousam juntas na caixa e a que destoa sai do painel.",
+          "ponte": "A aula inteira leva do painel de referências ao caderno de especificação, linha por linha.",
+          "duracao_seg": 42,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/AmO3O5rQ8xD1/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/AmO3O5rQ8xD1/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "11": {
+          "id": "mKpKuGpXa4oM",
+          "aula": 11,
+          "aula_titulo": "Aula 11 — A suíte: a cama grande no cômodo estreito",
+          "titulo": "A mesma suíte em duas versões: cama grande encostada ou cama menor com passagem.",
+          "ponte": "No curso, a conta da largura, o trecho livre e o teste da porta que abre inteira.",
+          "duracao_seg": 33,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/mKpKuGpXa4oM/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/mKpKuGpXa4oM/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "12": {
+          "id": "FBwxD-sp35Wk",
+          "aula": 12,
+          "aula_titulo": "Aula 12 — A sala-quarto: muitas camas, pouca área",
+          "titulo": "Apagada a luz, o sofá-cama e a cama auxiliar se abrem sobre a mesma faixa.",
+          "ponte": "A aula completa mostra a sala-quarto de dia e de noite e o teste com fita no piso.",
+          "duracao_seg": 38,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/FBwxD-sp35Wk/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/FBwxD-sp35Wk/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "13": {
+          "id": "OxJWbcUkHIIZ",
+          "aula": 13,
+          "aula_titulo": "Aula 13 — O banheiro compacto, dentro da suíte",
+          "titulo": "A porta do banheiro gira e tudo o que estava no arco precisa sair dali.",
+          "ponte": "No curso, o caminho noturno, a privacidade e um ponto de toalha por pessoa.",
+          "duracao_seg": 45,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/OxJWbcUkHIIZ/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/OxJWbcUkHIIZ/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "14": {
+          "id": "xI_9NME6Nce-",
+          "aula": 14,
+          "aula_titulo": "Aula 14 — A cozinha comum no contêiner",
+          "titulo": "A bancada de refeições corre ao longo do lado de vidro, e não no meio.",
+          "ponte": "A aula inteira organiza as duas pontas da cozinha, a passagem e os lugares à mesa.",
+          "duracao_seg": 47,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/xI_9NME6Nce-/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/xI_9NME6Nce-/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "15": {
+          "id": "g3LETAj9ItKN",
+          "aula": 15,
+          "aula_titulo": "Aula 15 — A cozinha equipada para dois grupos",
+          "titulo": "Cada utensílio ganha um lugar marcado e a foto do armário vai para a porta.",
+          "ponte": "No curso, a conta dos utensílios por lugar de dormir e a referência de reposição.",
+          "duracao_seg": 49,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/g3LETAj9ItKN/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/g3LETAj9ItKN/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "16": {
+          "id": "prLYfntnSpCC",
+          "aula": 16,
+          "aula_titulo": "Aula 16 — Iluminação em camadas e o interruptor que o hóspede acha",
+          "titulo": "A luz geral acende no teto, baixa, e as outras camadas entram uma a uma.",
+          "ponte": "A aula completa mostra as quatro camadas, a cor da luz e o mapa de pedidos ao eletricista.",
+          "duracao_seg": 51,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/prLYfntnSpCC/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/prLYfntnSpCC/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "17": {
+          "id": "9QBlZ7CL5ObP",
+          "aula": 17,
+          "aula_titulo": "Aula 17 — Cortinas, tapetes e tecidos do ambiente",
+          "titulo": "Três tapetes lado a lado e a pergunta em que cada um deles para.",
+          "ponte": "No curso, a cortina do painel de vidro, a privacidade à noite e os tecidos que lavam.",
+          "duracao_seg": 52,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/9QBlZ7CL5ObP/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/9QBlZ7CL5ObP/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "18": {
+          "id": "J4WrqkMfKksa",
+          "aula": 18,
+          "aula_titulo": "Aula 18 — Enxoval de cama e de banho",
+          "titulo": "Pilhas brancas iguais na rouparia e a cama aberta camada por camada.",
+          "ponte": "A aula inteira faz a conta do enxoval por cama e por pessoa e mostra onde ele mora.",
+          "duracao_seg": 49,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/J4WrqkMfKksa/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/J4WrqkMfKksa/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "19": {
+          "id": "k_yMX0TIj94H",
+          "aula": 19,
+          "aula_titulo": "Aula 19 — O pátio e a piscina com muitas plantas",
+          "titulo": "Vasos de um modelo só, em grupo: planta alta, média e baixa.",
+          "ponte": "No curso, as zonas do pátio, a passagem, a borda da piscina e quem rega cada vaso.",
+          "duracao_seg": 44,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/k_yMX0TIj94H/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/k_yMX0TIj94H/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "20": {
+          "id": "hgWYN_GlO8IY",
+          "aula": 20,
+          "aula_titulo": "Aula 20 — O ambiente que se explica sozinho",
+          "titulo": "Fechar a casa para sair, e o percurso inteiro do hóspede sobre a planta.",
+          "ponte": "A aula completa percorre as paradas do hóspede, da chegada com a mala ao apagar das luzes.",
+          "duracao_seg": 37,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/hgWYN_GlO8IY/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/hgWYN_GlO8IY/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "21": {
+          "id": "Bfzl9gsZe-Cp",
+          "aula": 21,
+          "aula_titulo": "Aula 21 — Dois quartos gêmeos: um projeto, uma lista, uma foto",
+          "titulo": "Dois quartos em espelho ligados a uma lista só, com a foto invertida.",
+          "ponte": "No curso, o que é igual nos gêmeos, o que troca de mão e a ordem da montagem.",
+          "duracao_seg": 50,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/Bfzl9gsZe-Cp/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/Bfzl9gsZe-Cp/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "22": {
+          "id": "bO9iUM-xc4J2",
+          "aula": 22,
+          "aula_titulo": "Aula 22 — Orçamento como investimento e compra por etapas",
+          "titulo": "As quantidades saem da planta e entram na planilha; a coluna de preço fica em branco.",
+          "ponte": "A aula inteira mostra as linhas do orçamento, as cotações por escrito e a compra por etapas.",
+          "duracao_seg": 48,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/bO9iUM-xc4J2/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/bO9iUM-xc4J2/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "23": {
+          "id": "b3cKlxuD4uc5",
+          "aula": 23,
+          "aula_titulo": "Aula 23 — Recebimento, montagem e a foto do ambiente pronto",
+          "titulo": "O mesmo ponto de vista antes e depois: o cômodo vazio e o ambiente pronto.",
+          "ponte": "No curso, o recebimento das peças, a ordem da montagem e a foto que fecha a ficha.",
+          "duracao_seg": 32,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/b3cKlxuD4uc5/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/b3cKlxuD4uc5/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "24": {
+          "id": "EPY-33w6D0-M",
+          "aula": 24,
+          "aula_titulo": "Aula 24 — Conservação entre estadias e correções",
+          "titulo": "Dois antes e depois: o móvel fundo que fecha a passagem e a mesa cheia demais.",
+          "ponte": "A aula completa mostra a conferência entre estadias e o calendário de conservação.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/EPY-33w6D0-M/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/EPY-33w6D0-M/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
+        },
+        "25": {
+          "id": "VVW16AjTiidl",
+          "aula": 25,
+          "aula_titulo": "Aula 25 — O exemplo inteiro, a rubrica e os próximos passos",
+          "titulo": "O exemplo inteiro em planta: os gêmeos, a cozinha comum e o pátio.",
+          "ponte": "No curso, a pasta da unidade, a rubrica de avaliação e os próximos passos.",
+          "duracao_seg": 45,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/VVW16AjTiidl/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/VVW16AjTiidl/capa.jpg?v=1",
+          "visto_em": "2026-10-12"
         }
       }
     }
