@@ -154,8 +154,19 @@ function embaralhar(lista, semente) {
 // A vigência vai depois: na resposta do Praticar/quiz e na correção comentada da prova.
 // `ordem_fixa` (alternativa "nenhuma das anteriores", comentário que cita letra do caderno): a ordem é a do caderno,
 // em TODO caminho — prática, quiz, prova e diagnóstico passam por aqui, e a correção mostra a ordem congelada.
+// PONTUAÇÃO DE LISTA (réplica de 11/10/2026, baixa 6): em 752 questões as alternativas a–d terminam em ";" e a última
+// em "." — é a pontuação do caderno. Embaralhadas, o ponto final caía no meio ("A … apenas; · B … apenas. · C …;") e
+// denunciava qual era a última do caderno. Quando a questão É embaralhada e as alternativas têm essa pontuação de
+// lista (todas terminam em ";" ou ".", e ao menos uma em ";"), a EXIBIÇÃO sai com todas em ponto final. O dado e o
+// hash não mudam; questão de ordem fixa e certo/errado saem como estão no caderno.
+const FIM_DE_ITEM_DE_LISTA = /\s*;\s*(?:e|ou)?\s*$/i;
+function semPontuacaoDeLista(alts) {
+  const textos = alts.map(a => String(a.texto == null ? '' : a.texto).trimEnd());
+  if (alts.length < 3 || !textos.some(t => FIM_DE_ITEM_DE_LISTA.test(t)) || !textos.every(t => FIM_DE_ITEM_DE_LISTA.test(t) || /\.$/.test(t))) return alts;
+  return alts.map((a, i) => ({ ...a, texto: textos[i].replace(FIM_DE_ITEM_DE_LISTA, '.') }));
+}
 function paraAluno(q, semente) {
-  const alts = q.ordem_fixa || q.tipo === 'certo_errado' ? q.alternativas : embaralhar(q.alternativas, semente + ':' + q.id);
+  const alts = q.ordem_fixa || q.tipo === 'certo_errado' ? q.alternativas : semPontuacaoDeLista(embaralhar(q.alternativas, semente + ':' + q.id));
   return {
     id: q.id, tipo: q.tipo, enunciado: q.enunciado, apoio: q.apoio, grupo: q.grupo,
     alternativas: alts.map(a => ({ id: a.id, texto: a.texto })),
@@ -219,4 +230,4 @@ function facetas(lista) {
   return { bancas: lista_(conta.banca), orgaos: lista_(conta.orgao), cargos: lista_(conta.cargo), anos: lista_(conta.ano, true), materias: lista_(conta.materia) };
 }
 
-module.exports = { bancaCanonica, eixos, filtroDeEixos, temFiltroDeEixos, casaEixos, facetas, validarQuestao, validarProcedencia, hashQuestao, embaralhar, cortarNaFronteira, MAX_VIGENCIA, paraAluno, gabaritoDe, TIPOS, FECHADOS, ORIGENS, GABARITOS, SITUACOES, USOS };
+module.exports = { semPontuacaoDeLista, bancaCanonica, eixos, filtroDeEixos, temFiltroDeEixos, casaEixos, facetas, validarQuestao, validarProcedencia, hashQuestao, embaralhar, cortarNaFronteira, MAX_VIGENCIA, paraAluno, gabaritoDe, TIPOS, FECHADOS, ORIGENS, GABARITOS, SITUACOES, USOS };

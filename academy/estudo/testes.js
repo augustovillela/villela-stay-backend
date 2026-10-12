@@ -424,7 +424,8 @@ async function rodar({ t, req, EST, impId }) {
     assert.notEqual(ini.json.id, tentativaId);
     const [q1, q2] = ini.json.questoes.map(q => q.id);
     await req('PUT', `${esc}/tentativas/${ini.json.id}/respostas`, { jar: 'olga', corpo: { respostas: { [q1]: 'a' } } });
-    db.prepare('UPDATE est_tentativas SET prazo_em = ? WHERE id = ?').run(new Date(Date.now() - 1000).toISOString(), ini.json.id);
+    // (o prazo venceu há mais que a tolerância do servidor — aluno.PROVA_TOLERANCIA_SEG, 5 s, que existe para a resposta do último segundo)
+    db.prepare('UPDATE est_tentativas SET prazo_em = ? WHERE id = ?').run(new Date(Date.now() - 9000).toISOString(), ini.json.id);
     const tarde = await req('PUT', `${esc}/tentativas/${ini.json.id}/respostas`, { jar: 'olga', corpo: { respostas: { [q2]: 'a' } } });
     assert.deepEqual([tarde.json.salvo, tarde.json.estado], [false, 'expirada'], tarde.texto);
     const g = (await req('GET', `${esc}/tentativas/${ini.json.id}`, { jar: 'olga' })).json;
@@ -720,7 +721,7 @@ async function rodar({ t, req, EST, impId }) {
     assert.ok(tela.includes('if (!como.reabrindo) {') && tela.includes('E.antesDoCaderno = { aba: onde.aba || E.aba, arg: onde.arg, y: yAntes };'), 'reabrir pelo endereço não regrava o "de onde vim"; o caderno guarda a rolagem');
     assert.ok(painel.includes('if (window.AcademyRota.sobrepostos > 0) return;') && tela.includes('R0.sobrepostos = (R0.sobrepostos || 0) + 1;') && tela.includes('var R0 = window.AcademyRota, y0 = rolagem().scrollTop;'), 'tela sobreposta: o painel não remonta e a rolagem é reposta, qualquer que seja a ordem dos ouvintes');
     // F. "ainda estou nesta tela": UMA porta para toda chamada à API do Estude
-    assert.ok(tela.includes('var apiCru = D.api,') && /function api\(m, p, b\) \{\s+var v = VEZ;/.test(tela), 'toda chamada do Estude passa pela conferência');
+    assert.ok(tela.includes('var apiCru = D.api,') && /function api\(m, p, b, aceite\) \{\s+var v = VEZ;/.test(tela), 'toda chamada do Estude passa pela conferência');
     assert.equal((tela.match(/\bD\.api\b/g) || []).length, 1, 'ninguém chama D.api por fora');
     const usaCru = (tela.match(/apiCru\(/g) || []).length;
     assert.ok(usaCru <= 4, 'apiCru só onde o DADO tem de chegar mesmo fora da tela (painel, certificado): ' + usaCru);

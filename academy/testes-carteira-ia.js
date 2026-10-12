@@ -312,6 +312,71 @@ async function rodar({ t, req, impId, jars }) {
     carteira.configurar({ buscar: async () => { throw new Error('rede desligada no teste'); }, notificar: null });
   });
 
+  // RÉPLICA de 11/10/2026, R4-2: a tentativa que FALHOU não entra na conta do aluno — a plataforma absorve. O 1º
+  // modelo corta a resposta do Tutor (e cobra), o de reserva responde: o aluno paga só o que respondeu; o log de
+  // uso guarda o custo REAL (os dois), que é o que os tetos de falha e o relatório do dono leem.
+  await t('réplica R4-2: tentativa de IA que falhou não entra na conta do aluno — ele paga só a que gerou a resposta; o log guarda o custo total', async () => {
+    const nina = repo.Usuarios.porEmail(NINA.email).id;
+    assert.equal((await config({ ativa: true, cambio_modo: 'fixo', cambio_brl_usd: 5, margem_pct: 30, isentos: [] })).st, 200);
+    assert.equal((await creditar({ email: NINA.email, valor_centavos: 500, motivo: 'saldo para o teste da réplica' })).st, 200);
+    const msg = (texto, usage, stop = 'end_turn') => ({ content: [{ type: 'text', text: texto }], stop_reason: stop, usage });
+    const BOA = JSON.stringify({ resposta: 'Resposta do tutor.', fontes: [], nao_encontrado: false, sugestoes: [], aula_referencia: '' });
+    const fila = [];
+    let roteiro = {
+      'claude-sonnet-5': msg('{"resposta":"cortou aq', { input_tokens: 1000, output_tokens: 1500 }, 'max_tokens'), // US$ 0,017 — perdida
+      'claude-haiku-4-5': msg(BOA, { input_tokens: 1000, output_tokens: 500 }) };                                   // US$ 0,0035 — a que serviu
+    ia.__mockParaTeste(async (x) => { fila.push(x.modelo); const r = roteiro[x.modelo]; if (r instanceof Error) throw r; return r; }, { modelos: ['claude-sonnet-5', 'claude-haiku-4-5'] });
+    const ultimoLog = () => db.prepare('SELECT * FROM ai_usage_logs WHERE user_id = ? ORDER BY rowid DESC').get(nina);
+    try {
+      const saldo = carteira.saldo(nina);
+      const tr = ia.abrirTrabalho(nina, 'tutor', 0.05, { id: impId }, { aceite: 999999 });
+      assert.equal(tr.cobranca, 'paga', 'a Nina se matriculou depois da virada: paga');
+      const json = await tr.passo('Pergunta da réplica');
+      const f = tr.concluir();
+      assert.deepEqual([fila, json.resposta], [['claude-sonnet-5', 'claude-haiku-4-5'], 'Resposta do tutor.'], 'o modelo de reserva respondeu');
+      const soAQueServiu = carteira.precoEmMilesimos(0.0035), asDuas = carteira.precoEmMilesimos(0.017 + 0.0035);
+      assert.ok(soAQueServiu < asDuas, 'o teste só prova algo se os dois valores forem diferentes');
+      assert.equal(f.cobrado_milesimos, soAQueServiu, `o aluno paga ${soAQueServiu} milésimos (só a tentativa que respondeu), não ${asDuas}`);
+      assert.equal(carteira.saldo(nina), saldo - soAQueServiu, 'e é isso que sai do saldo');
+      assert.ok(Math.abs(f.custo_usd - 0.0205) < 1e-12 && Math.abs(f.absorvido_usd - 0.017) < 1e-12, 'o custo real do trabalho soma as duas: ' + JSON.stringify(f));
+      const l = ultimoLog();
+      assert.deepEqual([l.status, l.custo_centavos_usd, l.milesimos], ['ok', 2.05, soAQueServiu], 'o log de uso guarda o custo TOTAL (com a falha) e o que foi cobrado');
+      // … e NUNCA acima do teto: a tentativa que serviu custou mais que o valor aceito → cobra o teto, e só
+      roteiro = { 'claude-sonnet-5': msg('fora do formato', { input_tokens: 50000, output_tokens: 5000 }), 'claude-haiku-4-5': msg(BOA, { input_tokens: 1000, output_tokens: 500 }) };
+      const t2 = ia.abrirTrabalho(nina, 'tutor', 0.002, { id: impId }, { aceite: 999999 });
+      await t2.passo('Outra pergunta');
+      const f2 = t2.concluir();
+      assert.equal(f2.cobrado_milesimos, t2.teto_milesimos, 'cobrado = teto');
+      // os dois falharam: o aluno não paga nada, e o custo das duas tentativas fica no log como falha (alimenta os tetos)
+      roteiro = { 'claude-sonnet-5': msg('nada de JSON', { input_tokens: 2000, output_tokens: 1000 }), 'claude-haiku-4-5': msg('nem aqui', { input_tokens: 2000, output_tokens: 1000 }) };
+      const antes = carteira.saldo(nina);
+      const t3 = ia.abrirTrabalho(nina, 'tutor', 0.05, { id: impId }, { aceite: 999999 });
+      const e3 = await t3.passo('Terceira').then(() => null, (e) => e);
+      t3.falhar(e3);
+      assert.deepEqual([carteira.saldo(nina), ultimoLog().status, ultimoLog().custo_centavos_usd], [antes, 'erro', 2.1], 'não gerou: volta tudo; a plataforma registra o que absorveu');
+      // O QUE A PLATAFORMA ABSORVE TEM TETO POR CONTA, também quando o trabalho DÁ CERTO. Sem isso, quem força o 1º
+      // modelo a cortar ou a sair do formato (e recebe a resposta do 2º) faria a plataforma pagar a tentativa perdida
+      // sem limite — a falha nunca viraria `status = 'erro'`. A linha 'ok' guarda a parte absorvida, e o teto de
+      // VALOR por conta (US$ 0,50 em 24 h) a soma.
+      const absorvidas = () => db.prepare("SELECT absorvido_centavos_usd a FROM ai_usage_logs WHERE user_id = ? AND status = 'ok' AND absorvido_centavos_usd > 0 ORDER BY rowid").all(nina).map(x => x.a);
+      assert.deepEqual(absorvidas().slice(0, 1), [1.7], 'a linha do trabalho que deu certo diz quanto a plataforma absorveu (US$ 0,017)');
+      roteiro = { 'claude-sonnet-5': msg('fora do formato', { input_tokens: 50000, output_tokens: 5000 }), 'claude-haiku-4-5': msg(BOA, { input_tokens: 1000, output_tokens: 500 }) };
+      let barrou = null, deramCerto = 0;
+      for (let k = 0; k < 8 && !barrou; k++) {
+        try { const tx = ia.abrirTrabalho(nina, 'tutor', 0.05, { id: impId }, { aceite: 999999 }); await tx.passo('Pergunta que faz o 1º modelo errar'); tx.concluir(); deramCerto++; }
+        catch (e) { barrou = e; }
+      }
+      const falhasDaNina = db.prepare("SELECT COUNT(*) n FROM ai_usage_logs WHERE user_id = ? AND status = 'erro' AND quando > ?").get(nina, new Date(Date.now() - 864e5).toISOString()).n;
+      assert.ok(barrou && barrou.status === 429 && /em pausa para a sua conta/.test(barrou.message), 'o valor absorvido em trabalhos que deram certo alcança o teto e pausa a conta: ' + (barrou && barrou.message));
+      assert.ok(deramCerto >= 1 && deramCerto < 8 && falhasDaNina < 5, `quem barrou foi o VALOR absorvido, não a contagem de falhas (${deramCerto} trabalhos, ${falhasDaNina} falha(s))`);
+    } finally {
+      ia.__mockParaTeste(null);
+      // a pausa de 24 h da Nina é deste teste: os seguintes usam a conta dela
+      db.prepare("UPDATE ai_usage_logs SET absorvido_centavos_usd = 0 WHERE user_id = ? AND status = 'ok'").run(nina);
+      db.prepare("DELETE FROM ai_usage_logs WHERE user_id = ? AND status = 'limite' AND detalhe LIKE 'teto de falhas%'").run(nina);
+    }
+  });
+
   // desliga a cobrança ao fim (a virada, uma vez marcada, fica)
   await config({ ativa: false });
   ia.__mockParaTeste(null);

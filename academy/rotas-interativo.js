@@ -73,6 +73,9 @@ function registrarRotasInterativo(app, { requireUsuario, requirePapel }) {
   app.get('/academy/api/aluno/tutor/:productId/conversa', ...AL, h((req, res) => {
     const p = produtoVisivel(req.params.productId);
     if (!p) return res.status(404).json({ erro: 'Curso não encontrado.' });
+    // (réplica de 11/10/2026, R2-B7) a conversa é de quem tem o curso — ou de quem está na degustação de um curso com
+    // aula gratuita, que é quando a tela a pede. Sem uma coisa nem outra, 403: antes respondia 200 a qualquer conta.
+    if (!it.podeConversar(req.usuario, p)) return res.status(403).json({ erro: 'O Tutor atende quem tem acesso ao curso.' });
     res.json({ conversa: it.conversas(req.usuario.id, p.id, req.query.n), ativo: ia.ativo(),
       restantes: Math.max(0, ia.limiteDia() - ia.usadasHoje(req.usuario.id)) });
   }));

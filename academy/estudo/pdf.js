@@ -17,7 +17,12 @@
 //     /proc a cada 250 ms — é o que pega o que o heap não conta: os buffers descomprimidos);
 //   · teto de TEXTO por página (PAGINA_TEXTO_MAX_CHARS), lido em fluxo: a leitura para no excesso;
 //   · ambiente limpo: o filho não recebe as chaves do servidor;
-//   · no máximo LEITURAS_SIMULTANEAS filhos de uma vez (as demais esperam a vez).
+//   · no máximo LEITURAS_SIMULTANEAS filhos de uma vez (as demais esperam a vez);
+//   · a ESPERA tem teto e prazo (segunda revisão, 11/10/2026, R3): no máximo FILA_MAX leituras de orçamento à
+//     espera, cada uma por até FILA_ESPERA_MS — passou, a resposta é "leitor ocupado" (503), na hora. Antes a
+//     fila não tinha tamanho nem prazo: duas leituras lentas seguravam todas as outras, inclusive a execução de
+//     pedido JÁ PAGO. O trabalho pago (`prioridade`) passa à frente dos orçamentos e espera mais;
+//   · `recortar` (páginas escaneadas → PDF menor) roda no MESMO processo filho: também abre arquivo de usuário.
 // O que estoura qualquer um deles vira erro 422, claro, antes de qualquer cobrança. `ACADEMY_PDF_ISOLADO=off`
 // volta à leitura no próprio processo (com o teto por página e o prazo conferido entre páginas).
 // =====================================================================
@@ -36,6 +41,10 @@ const HEAP_MB = Number(process.env.ACADEMY_PDF_HEAP_MB) || 512;          // heap
 const MEMORIA_MB = Number(process.env.ACADEMY_PDF_MEM_MB) || 700;        // memória residente do filho (o pico real medido foi ~280 MB, no processo inteiro)
 const PAGINA_TEXTO_MAX_CHARS = 300000;                                   // página de diário oficial em três colunas tem ~17 mil
 const LEITURAS_SIMULTANEAS = 2;
+const FILA_MAX = 8;                                                      // leituras de orçamento à espera da vez; a seguinte é recusada na hora
+const FILA_ESPERA_MS = Number(process.env.ACADEMY_PDF_FILA_MS) || 90000; // quanto uma leitura de orçamento espera a vez
+const FILA_ESPERA_PAGO_MS = 10 * 60000;                                  // o trabalho já pago espera mais (e passa à frente)
+const OCUPADO = 'O leitor de PDF está ocupado agora. Tente de novo em alguns minutos. Nada foi cobrado.';
 
 let _pdfjs = null;
 const pdfjs = async () => _pdfjs || (_pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs'));
@@ -108,13 +117,29 @@ async function lerAqui(bytes, { maxPaginas = MAX_PAGINAS_LIDAS, nome = 'Este PDF
 // do sistema (caminho do servidor, pilha): o que não for erro de leitura conhecido vira PESADO ou ILEGIVEL.
 let _lendo = 0;
 const _fila = [];
-const vez = () => new Promise((ok) => { if (_lendo < LEITURAS_SIMULTANEAS) { _lendo++; ok(); } else _fila.push(ok); });
-const passarAVez = () => { const prox = _fila.shift(); if (prox) prox(); else _lendo--; };
+// A vez de ler. `prioridade` = trabalho JÁ PAGO: entra à frente dos orçamentos e não conta no teto da fila.
+function vez({ prioridade = false, espera_ms = 0 } = {}) {
+  return new Promise((ok, recusar) => {
+    if (_lendo < LEITURAS_SIMULTANEAS) { _lendo++; return ok(); }
+    if (!prioridade && _fila.filter(x => !x.prioridade).length >= FILA_MAX) return recusar(erro(OCUPADO, 503));
+    const item = { prioridade, ok: () => { clearTimeout(item.relogio); ok(); } };
+    item.relogio = setTimeout(() => {
+      const k = _fila.indexOf(item);
+      if (k >= 0) { _fila.splice(k, 1); recusar(erro(OCUPADO, 503)); }
+    }, espera_ms > 0 ? espera_ms : prioridade ? FILA_ESPERA_PAGO_MS : FILA_ESPERA_MS);
+    if (item.relogio.unref) item.relogio.unref();
+    if (!prioridade) return _fila.push(item);
+    let k = 0; while (k < _fila.length && _fila[k].prioridade) k++; // depois dos pagos que já esperam, antes dos orçamentos
+    _fila.splice(k, 0, item);
+  });
+}
+const passarAVez = () => { const prox = _fila.shift(); if (prox) prox.ok(); else _lendo--; };
+const estadoDaFila = () => ({ lendo: _lendo, esperando: _fila.length, pagos: _fila.filter(x => x.prioridade).length });
 // memória residente de um processo, em MB (só no Linux — é onde o serviço roda; fora dele, 0: vale o teto do heap)
 function residenteMB(pid) {
   try { return (Number(fs.readFileSync(`/proc/${pid}/statm`, 'utf8').split(' ')[1]) * 4096) / 1048576; } catch (_) { return 0; }
 }
-function lerIsolado(bytes, opcoes = {}) {
+function lerIsolado(bytes, opcoes = {}, tarefa = null) {
   const prazo = opcoes.prazo_ms > 0 ? opcoes.prazo_ms : PRAZO_MS, memoria = opcoes.memoria_mb > 0 ? opcoes.memoria_mb : MEMORIA_MB;
   return new Promise((resolve, reject) => {
     const { fork } = require('child_process');
@@ -143,7 +168,7 @@ function lerIsolado(bytes, opcoes = {}) {
     filho.on('error', () => encerrar(() => reject(erro(ILEGIVEL))));
     // saiu sem responder: estourou a memória (o Node aborta) ou foi morto pelo sistema
     filho.on('exit', () => encerrar(() => reject(erro(PESADO))));
-    try { filho.send({ bytes, opcoes: { maxPaginas: opcoes.maxPaginas, nome: opcoes.nome, prazo_ms: prazo, pagina_max_chars: opcoes.pagina_max_chars } }, (e) => { if (e) encerrar(() => reject(erro(ILEGIVEL))); }); }
+    try { filho.send({ bytes, ...(tarefa || {}), opcoes: { maxPaginas: opcoes.maxPaginas, nome: opcoes.nome, prazo_ms: prazo, pagina_max_chars: opcoes.pagina_max_chars } }, (e) => { if (e) encerrar(() => reject(erro(ILEGIVEL))); }); }
     catch (_) { encerrar(() => reject(erro(ILEGIVEL))); }
   });
 }
@@ -152,12 +177,20 @@ async function ler(bytes, opcoes = {}) {
   // o que nem é PDF não merece um processo
   if (!bytes || bytes.length < 8 || bytes.subarray(0, 1024).indexOf('%PDF-') < 0) throw erro(ILEGIVEL);
   if (String(process.env.ACADEMY_PDF_ISOLADO || 'on').toLowerCase() === 'off') return lerAqui(bytes, opcoes);
-  await vez();
+  await vez({ prioridade: !!opcoes.prioridade, espera_ms: opcoes.fila_espera_ms });
   try { return await lerIsolado(bytes, opcoes); } finally { passarAVez(); }
 }
 
 // Um PDF só com as páginas pedidas (números a partir de 1, na ordem dada) → { base64, bytes, paginas }.
-async function recortar(bytes, paginas) {
+// A porta: no processo filho, como `ler` — o `pdf-lib` também abre o arquivo do usuário, e antes fazia isso no
+// processo web. O que nem é PDF e a lista vazia de páginas são recusados aqui, sem gastar um processo.
+async function recortar(bytes, paginas, opcoes = {}) {
+  if (String(process.env.ACADEMY_PDF_ISOLADO || 'on').toLowerCase() === 'off') return recortarAqui(bytes, paginas);
+  if (!bytes || bytes.length < 8 || bytes.subarray(0, 1024).indexOf('%PDF-') < 0) throw erro(ILEGIVEL);
+  await vez({ prioridade: !!opcoes.prioridade, espera_ms: opcoes.fila_espera_ms });
+  try { return await lerIsolado(bytes, opcoes, { op: 'recortar', paginas: (Array.isArray(paginas) ? paginas : []).slice(0, MAX_PAGINAS_LIDAS) }); } finally { passarAVez(); }
+}
+async function recortarAqui(bytes, paginas) {
   const { PDFDocument } = require('pdf-lib');
   let origem, total;
   try { origem = await PDFDocument.load(bytes, { updateMetadata: false }); total = origem.getPageCount(); }
@@ -179,13 +212,14 @@ function lotes(de, ate, porLote) {
   return r;
 }
 
-module.exports = { ler, lerAqui, recortar, lotes, textoDaPagina, MAX_PAGINAS_LIDAS, MINIMO_DE_TEXTO, PRAZO_MS, HEAP_MB, MEMORIA_MB, PAGINA_TEXTO_MAX_CHARS, LEITURAS_SIMULTANEAS, PESADO };
+module.exports = { ler, lerAqui, recortar, recortarAqui, lotes, textoDaPagina, MAX_PAGINAS_LIDAS, MINIMO_DE_TEXTO, PRAZO_MS, HEAP_MB, MEMORIA_MB, PAGINA_TEXTO_MAX_CHARS, LEITURAS_SIMULTANEAS, PESADO,
+  FILA_MAX, FILA_ESPERA_MS, FILA_ESPERA_PAGO_MS, OCUPADO, estadoDaFila };
 
 // MODO FILHO: este arquivo, executado por `lerIsolado`. Recebe UM pedido, responde e sai.
 if (require.main === module && typeof process.send === 'function') {
   process.once('message', async (m) => {
     let resposta;
-    try { resposta = { ok: await lerAqui(Buffer.from(m.bytes), m.opcoes || {}) }; }
+    try { resposta = { ok: m.op === 'recortar' ? await recortarAqui(Buffer.from(m.bytes), m.paginas) : await lerAqui(Buffer.from(m.bytes), m.opcoes || {}) }; }
     catch (e) { resposta = { erro: { message: e && e.status ? e.message : '', status: (e && e.status) || 0 } }; }
     process.send(resposta, () => process.exit(0));
   });

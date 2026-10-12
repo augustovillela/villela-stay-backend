@@ -104,6 +104,13 @@
 #es-pv-rel{font:700 1.5rem/1 'Inter',sans-serif;font-variant-numeric:tabular-nums;color:#fff}
 #es-pv-rel.fim{color:#FDB022}
 .es-salvo{font-size:.84rem;color:#B7E4D3}.es-salvo.ruim{color:#FDA29B;font-weight:600}
+/* depois da resposta: gabarito e "sua resposta" em TEXTO, ao lado da alternativa (a cor não é o único sinal) */
+.es-alt-marca{grid-column:3;font-size:.8rem;font-weight:700}
+.es-alt.certa .es-alt-marca{color:#0B5C41}.es-alt.errada .es-alt-marca{color:#B42318}
+/* uma gravação feita na tela anterior não chegou ao servidor: aviso discreto, no pé da página */
+.es-nao-gravou{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9000;max-width:calc(100% - 28px);background:#7A271A;color:#fff;border-radius:10px;padding:10px 14px;font-size:.88rem;box-shadow:0 10px 30px rgba(16,24,40,.3)}
+.es-mt-conflito{flex:1 0 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.82rem;border-top:1px solid rgba(20,35,70,.15);padding-top:6px;margin-top:4px;color:#7A271A}
+.es-nao-gravou .es-link{color:#fff;text-decoration:underline;margin-left:6px}
 .es-pv-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .es-pv-nav button{min-width:38px;height:38px;border-radius:9px;border:1px solid var(--al-borda);background:#fff;font:600 .88rem 'Inter',sans-serif;color:var(--al-tinta2);cursor:pointer}
 .es-pv-nav button.feita{background:var(--al-ok-luz);border-color:#9fd9c3;color:#0B5C41}
@@ -432,6 +439,9 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 /* CELULAR: a barra do curso e as abas viram UMA faixa rolável cada (eram 8 botões + 11 abas em 7 linhas: o conteúdo
    da aba começava depois de uma tela inteira). Tocar numa aba leva a página até as abas (app-estudo.js › irAoConteudo). */
 @media (max-width:760px){
+  /* réplica de 11/10/2026, M2: com a aba ainda em "Carregando…" (ou com conteúdo curto) a página não tinha altura
+     para a rolagem levar o conteúdo ao topo — tocar em Prova, Cards, Erros, Plano, Programa não saía do lugar */
+  .es-corpo{min-height:100vh;min-height:100dvh}
   .es-abas,.es-curso-barra{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
   .es-abas button,.es-curso-barra .al-bt,.es-curso-barra a{flex:0 0 auto;white-space:nowrap}
   .es-abas{margin-top:14px;scroll-snap-type:x proximity}.es-abas button.on{scroll-snap-align:center}
@@ -458,6 +468,26 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-jr-degrau.on b,.es-jr-degrau.on small{color:#fff}
 .es-jr-falta{font-weight:600;margin:10px 0}
 .es-jr-tab{max-width:680px;margin:10px 0}
+/* réplica de 11/10/2026, M3: a tabela da calculadora (5 colunas) tinha 408 px num cartão de 297 no celular, sem
+   rolagem própria — a coluna "Situação" saía cortada e a página inteira ganhava rolagem de lado. A faixa rola
+   sozinha, e em tela estreita a situação pode quebrar de linha. */
+.es-tab-rola{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+@media (max-width:760px){.es-fer-tab td.n:last-child{white-space:normal}.es-fer-tab td.n .es-selo{white-space:normal;line-height:1.3}
+  /* …e a tabela CABE no cartão (297 px a 375 de tela): quatro colunas de número e a SITUAÇÃO numa linha própria, abaixo
+     de cada bloco, com a largura toda — é ela que traz as frases longas ("inalcançável com este número de questões…").
+     A faixa rolável fica só de garantia. */
+  .es-tab.es-fer-tab tr{display:grid;grid-template-columns:1.15fr 1fr 1fr 1.1fr;align-items:start}
+  .es-tab.es-fer-tab th:last-child,.es-tab.es-fer-tab .es-fer-nada{display:none}
+  .es-tab.es-fer-tab th{font-size:.62rem;letter-spacing:0}
+  .es-tab.es-fer-tab td.n,.es-tab.es-fer-tab th.n{white-space:normal;padding-left:6px}
+  .es-tab.es-fer-tab td:not(:last-child){border-bottom:0}.es-tab.es-fer-tab td{background:transparent}
+  .es-tab.es-fer-tab td.n:last-child{grid-column:1/-1;text-align:left;padding:0 0 8px}}
+/* réplica de 11/10/2026, M5: o aviso de DUAS ABAS — o texto que está salvo (da outra aba), logo abaixo do campo, que
+   segue com o que o aluno digitou; e as três escolhas (juntar, ficar com o daqui, ficar com o de lá) */
+.es-conflito{margin:8px 0 12px;padding:12px 14px;border:1px solid #FEC84B;border-left:4px solid #D97706;border-radius:10px;background:#FFFAEB;color:#7A2E0E;font-size:.9rem}
+.es-conflito p{margin:0 0 8px}
+.es-conflito-txt{margin:0 0 10px;padding:8px 10px;border-left:3px solid #FEC84B;background:#fff;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;color:var(--al-tinta)}
+.es-conflito .es-linha{gap:8px;flex-wrap:wrap}
 .es-jr-tab th{text-align:left;font:600 .76rem/1.2 'Inter',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--al-tinta2);padding:7px 0;border-bottom:1.5px solid var(--al-borda)}
 .es-jr-tab th.n{text-align:right;padding-left:12px}
 .es-jr-aval h4{margin:18px 0 6px}

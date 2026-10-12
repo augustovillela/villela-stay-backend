@@ -434,7 +434,7 @@ async function conteudoDoLote({ bytes, textos, lote, delim, anterior = null }) {
   else for (const n of lote.paginas) if (!lote.escaneadas.includes(n)) partes.push(bloco(`PÁGINA ${n}`, textos.get(n) || ''));
   const noPdf = (cortado && !anterior.texto ? anterior.pdf_paginas || [] : []).concat(lote.escaneadas);
   if (!noPdf.length) return partes.join('\n\n');
-  const corte = await pdf.recortar(bytes, noPdf);
+  const corte = await pdf.recortar(bytes, noPdf, { prioridade: true }); // trabalho já pago: passa à frente dos orçamentos
   if (corte.bytes > LOTE_PDF_MAX_BYTES) throw erro('As páginas escaneadas deste PDF são pesadas demais para a leitura. Reduza a resolução do arquivo e envie de novo.', 422);
   partes.push(`O documento PDF anexo traz, nesta ordem, a(s) página(s) ${noPdf.join(', ')} do edital, que são imagem (sem texto copiável): leia-as como as demais.${cortado && !anterior.texto ? ' A primeira delas é o "FIM DAS PÁGINAS ANTERIORES".' : ''}`);
   return [{ type: 'text', text: partes.join('\n\n') }, { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: corte.base64 } }];

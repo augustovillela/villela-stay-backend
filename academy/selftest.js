@@ -1330,7 +1330,11 @@ async function main() {
     assert.ok(r.texto.includes(`/academy/cursos/${slug}"`), 'apontando para a própria página');
     assert.ok(r.texto.includes('name="robots" content="index,follow,max-image-preview:large"'), 'preview grande liberado');
     assert.ok(r.texto.includes('twitter:card'), 'cartão do Twitter/X');
-    assert.ok(r.texto.includes('og:image:width'), 'dimensão da imagem — sem ela o WhatsApp corta');
+    // (auditoria de 11/10/2026-b, P-B1) a dimensão declarada é a REAL da capa, lida do arquivo. A capa deste curso de
+    // teste não é imagem de verdade: sem medida conhecida a página OMITE a dimensão — declarar 1200×630 numa capa
+    // 1920×1080 era o defeito. A dimensão real de PNG e JPEG é conferida em testes-pagina-venda.js.
+    assert.ok(r.texto.includes('property="og:image"'), 'a imagem do cartão vai sempre');
+    assert.ok(!r.texto.includes('og:image:width'), 'capa que não se sabe medir sai sem dimensão declarada');
     const bruto = r.texto.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
     assert.ok(bruto, 'tem JSON-LD');
     const dados = JSON.parse(bruto[1]);
@@ -2828,6 +2832,12 @@ async function main() {
 
   // ================= AUDITORIA de 11/10/2026 (caminho do aluno): sorteio sem viés, simulado no formato do edital, prova em andamento, questão sem competência, vigência, ordem fixa, desempenho =================
   await require('./estudo/testes-auditoria').rodar({ t, req });
+  // ================= SEGUNDA REVISÃO de 11/10/2026 (docs/estudo/auditoria-2026-10-11-b): exclusão × assinatura, certificado revogável, escrita que não se perde, régua com transição, tetos de leitura e de falha, LGPD, dicas, acessibilidade =================
+  await require('./estudo/testes-auditoria-b').rodar({ t, req, impId, mpFetch, base: () => BASE });
+  // ================= RÉPLICA de 11/10/2026 (r-replica-regressao.md): motores em ES5, veredito pelo formato, duas abas, painel enxuto, celular e as baixas =================
+  await require('./estudo/testes-auditoria-b2').rodar({ t, req });
+  // ================= PÁGINA DE VENDA (frente P): números do percurso do Estude, descrição com lista, og:image com a medida real, compra à vista no celular =================
+  await require('./testes-pagina-venda').rodar({ t, req });
 
   // ================= AMOSTRAS GRÁTIS (amostras.js): trechos públicos de vídeo =================
   await require('./testes-amostras').rodar({ t, req, base: () => BASE, emailProdutor: MARIA.email });

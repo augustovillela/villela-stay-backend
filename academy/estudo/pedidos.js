@@ -62,6 +62,17 @@ const FALHAS_POR_DIA = 5;
 // A conta isenta (o dono) não tem o teto por conta, só o global.
 const FALHAS_USD_POR_DIA_CONTA = 2;
 const FALHAS_USD_POR_DIA_GLOBAL = 20;
+// SEGUNDA REVISÃO (11/10/2026, R4) — as três travas acima só leem falha JÁ GRAVADA. Sem limite de pedidos em
+// processamento, uma conta confirmava vários pedidos longos de uma vez (cada `iniciar` via zero falhas) e, se
+// caíam tarde, sozinha esgotava o teto global e pausava os pedidos de TODOS por 24 h. Agora:
+//   · no máximo PEDIDOS_SIMULTANEOS_POR_CONTA pedido em processamento por conta (o seguinte espera o anterior —
+//     e o anterior, se falhar, já estará no teto da conta quando o seguinte for conferido);
+//   · no máximo PEDIDOS_SIMULTANEOS_GLOBAL em processamento no serviço inteiro;
+//   · no teto GLOBAL cada conta pesa no máximo FALHAS_USD_POR_DIA_CONTA: para pausar todos é preciso que MUITAS
+//     contas tenham falhado (defeito nosso ou do provedor) — uma conta sozinha só pausa a si mesma;
+//   · a conta ISENTA (o dono), que não tem o teto de US$ 2, para no valor do teto global — só ela.
+const PEDIDOS_SIMULTANEOS_POR_CONTA = 1;
+const PEDIDOS_SIMULTANEOS_GLOBAL = 6;
 // Orçar uma prova não custa ao usuário, mas custa processador (o servidor abre o PDF inteiro): há teto por dia.
 const PROVAS_POR_DIA = 20;
 const EDITAIS_POR_DIA = 20;              // idem para o edital
@@ -141,6 +152,35 @@ function linkDoAudio(usuario, produto, slugEscopo, id) {
   return { ...ct.Midia.urlTemporaria(m, usuario.id, 600), mime: m.mime, nome: 'resposta-oral-' + p.criado_em.slice(0, 10) + path.extname(m.file_path), ate: a.ate };
 }
 const _apagarNoStorage = (m) => storage.apagar(m.file_path, m.storage); // devolve false quando o armazenamento falha; nunca lança
+// ARQUIVO QUE SAI DEPOIS DA LINHA (segunda revisão, 11/10/2026). Na exclusão da conta a linha da mídia é apagada
+// dentro da transação e o arquivo saía "em seguida", sem ninguém conferir: se a remoção no armazenamento falhasse,
+// o arquivo ficava no bucket SEM registro — e a varredura só olha registros. E a remoção era disparada ANTES do
+// COMMIT: transação desfeita, arquivo já apagado. Agora a remoção fica ANOTADA (`est_midia_remover`, na mesma
+// transação) e só roda depois: se a transação foi desfeita, a anotação sumiu com ela e nada é apagado; se o
+// armazenamento falhar, a anotação fica e a passada diária tenta de novo.
+function removerDoStorageDepois(m) {
+  db.prepare('INSERT OR REPLACE INTO est_midia_remover (id, dados, criado_em, tentativas) VALUES (?, ?, ?, 0)').run(m.id, j.str({ file_path: m.file_path, storage: m.storage }), nowISO());
+  const t = setImmediate(() => { tentarRemover(m.id).catch(() => {}); });
+  if (t.unref) t.unref();
+}
+async function tentarRemover(id, apagar = _apagarNoStorage) {
+  const l = db.prepare('SELECT * FROM est_midia_remover WHERE id = ?').get(id);
+  if (!l) return false; // a transação de quem pediu foi desfeita: a mídia continua no banco, o arquivo fica
+  if (db.prepare('SELECT 1 FROM media_files WHERE id = ?').get(id)) { db.prepare('DELETE FROM est_midia_remover WHERE id = ?').run(id); return false; } // a linha voltou: não é para apagar
+  let ok = false;
+  try { ok = !!(await apagar(j.parse(l.dados, {}))); } catch (_) { ok = false; }
+  if (ok) db.prepare('DELETE FROM est_midia_remover WHERE id = ?').run(id);
+  else db.prepare('UPDATE est_midia_remover SET tentativas = tentativas + 1 WHERE id = ?').run(id);
+  return ok;
+}
+// a passada diária: o que ficou anotado e ainda não saiu do armazenamento
+async function esvaziarRemocoes({ apagar = _apagarNoStorage } = {}) {
+  const r = { removidos: 0, falhas: 0 };
+  let lista = [];
+  try { lista = db.prepare('SELECT id FROM est_midia_remover ORDER BY criado_em LIMIT 500').all(); } catch (_) { return r; }
+  for (const x of lista) { if (await tentarRemover(x.id, apagar)) r.removidos++; else if (db.prepare('SELECT 1 FROM est_midia_remover WHERE id = ?').get(x.id)) r.falhas++; }
+  return r;
+}
 // EXPURGO: apaga o objeto no armazenamento e o registro de mídia dos pedidos orais que passaram do prazo, e
 // marca `audio_apagado_em` no pedido. Idempotente (pedido já marcado não volta à lista). Se o armazenamento
 // falhar, o pedido fica como estava e a rotina tenta de novo na próxima passada — nada aqui derruba o processo.
@@ -175,6 +215,8 @@ async function expurgarAudios({ agora = new Date(), apagar = _apagarNoStorage } 
   }
   // na MESMA passada diária: o que foi enviado para pedido e ficou solto (contado à parte — `falhas` é só dos áudios vencidos)
   try { r.soltas = await expurgarMidiaSolta({ agora, apagar }); } catch (_) { /* nunca derruba a rotina */ }
+  // … e o arquivo cuja linha já saiu (exclusão de conta) e que o armazenamento não removeu na hora
+  try { r.remocoes = await esvaziarRemocoes({ apagar }); } catch (_) { /* idem */ }
   return r;
 }
 // ARQUIVO DE PEDIDO QUE FICOU SOLTO — só mídia com a marca de pedido (`ct.PEDIDO_PREFIXO`); material de curso nunca:
@@ -214,7 +256,7 @@ function apagarAudiosDoTitular(userId) {
     // (mídia que o curso usa não é "áudio do titular", ainda que um pedido dele a cite — ver o expurgo)
     if (m && m.owner_user_id === userId && !ct.Midia.referenciada(m.id)) {
       db.prepare('DELETE FROM media_files WHERE id = ?').run(m.id);
-      Promise.resolve(_apagarNoStorage(m)).catch(() => {});
+      removerDoStorageDepois(m);
     }
     db.prepare('UPDATE est_pedidos SET audio_apagado_em = ? WHERE id = ?').run(agora, p.id);
     n++;
@@ -290,7 +332,7 @@ function apagarDoTitular(userId) {
     // só o que é dele e que o curso não usa (mídia citada num pedido não é, por isso, mídia de pedido)
     if (!m || m.owner_user_id !== userId || ct.Midia.referenciada(m.id)) continue;
     db.prepare('DELETE FROM media_files WHERE id = ?').run(m.id);
-    Promise.resolve(_apagarNoStorage(m)).catch(() => {});
+    removerDoStorageDepois(m);
     r.midias++;
   }
   return { ...r, ...apagarPercursosDoTitular(userId) };
@@ -550,17 +592,28 @@ function exigirLimiteDeFalhas(userId) {
   const n = db.prepare("SELECT COUNT(*) n FROM est_pedidos WHERE user_id = ? AND estado = 'falhou' AND ref != '' AND atualizado_em > ?").get(userId, desde).n;
   if (n >= FALHAS_POR_DIA) throw erro(`${n} pedidos seus não foram concluídos nas últimas 24 horas (o valor de cada um voltou ao saldo). Por segurança, novos pedidos ficam em espera até amanhã — se o problema for do serviço, fale com o suporte. Nada foi cobrado.`, 429);
   // … e pelo VALOR que essas falhas custaram à plataforma (a mensagem não diz o número: é custo nosso, não do aluno)
-  if (!carteira.isento(userId) && ia.custoDeFalhasUSD({ userId, desde }) >= FALHAS_USD_POR_DIA_CONTA) {
+  // (a conta isenta não tem o teto de US$ 2 — mas o que ELA absorver sozinha até o valor do teto global pausa só ela)
+  if (ia.custoDeFalhasUSD({ userId, desde }) >= (carteira.isento(userId) ? FALHAS_USD_POR_DIA_GLOBAL : FALHAS_USD_POR_DIA_CONTA)) {
     throw erro('Pedidos seus que não foram concluídos nas últimas 24 horas já alcançaram o limite diário de tentativas (o valor de cada um voltou ao saldo). Por segurança, novos pedidos ficam em espera até amanhã — se o problema for do serviço, fale com o suporte. Nada foi cobrado.', 429);
   }
-  if (ia.custoDeFalhasUSD({ desde }) >= FALHAS_USD_POR_DIA_GLOBAL) {
+  // GLOBAL: cada conta pesa no máximo o teto por conta — uma conta sozinha não pausa o serviço dos outros
+  if (ia.custoDeFalhasGlobalUSD({ desde, tetoPorConta: FALHAS_USD_POR_DIA_CONTA }) >= FALHAS_USD_POR_DIA_GLOBAL) {
     throw erro('Este serviço está em pausa por hoje: muitos pedidos não foram concluídos nas últimas 24 horas e estamos verificando. Tente de novo amanhã. Nada foi cobrado.', 503);
   }
+}
+// Pedidos EM PROCESSAMENTO: um por conta, e um teto para o serviço inteiro. Síncrono com o `iniciar` (lê e grava
+// sem `await` no meio): dois "confirmar" seguidos não passam os dois.
+function exigirVagaDeProcessamento(p) {
+  const daConta = db.prepare("SELECT COUNT(*) n FROM est_pedidos WHERE user_id = ? AND estado = 'processando' AND id != ?").get(p.user_id, p.id).n;
+  if (daConta >= PEDIDOS_SIMULTANEOS_POR_CONTA) throw erro('Você já tem um pedido em processamento. Espere ele terminar para confirmar o próximo — este continua guardado, com o orçamento. Nada foi cobrado.', 429);
+  const total = db.prepare("SELECT COUNT(*) n FROM est_pedidos WHERE estado = 'processando' AND id != ?").get(p.id).n;
+  if (total >= PEDIDOS_SIMULTANEOS_GLOBAL) throw erro('Há muitos pedidos sendo processados agora. Tente de novo em alguns minutos — este continua guardado, com o orçamento. Nada foi cobrado.', 503);
 }
 
 // Tudo síncrono do estado lido até o estado gravado: dois "confirmar" seguidos nunca reservam duas vezes.
 function iniciar(p, produto, { aceite } = {}) {
   exigirLimiteDeFalhas(p.user_id);
+  exigirVagaDeProcessamento(p);
   const deArquivo = DE_ARQUIVO.includes(p.tipo), oral = p.tipo === 'oral';
   let q = null;
   // edital sem página escolhida: não há o que ler nem o que cobrar
@@ -650,9 +703,12 @@ async function executar(p, t, gerar) {
 // Pedido "processando" que não está na memória deste processo: o serviço caiu no meio. Vira
 // `falhou` e a reserva volta já (sem esperar os 10 minutos da reserva órfã).
 function recuperarInterrompidos() {
-  const presos = db.prepare("SELECT id, ref FROM est_pedidos WHERE estado = 'processando'").all().filter(p => !emAndamento.has(p.id));
+  const presos = db.prepare("SELECT id, ref, user_id, product_id, tipo, aceite_milesimos FROM est_pedidos WHERE estado = 'processando'").all().filter(p => !emAndamento.has(p.id));
   for (const p of presos) {
     carteira.devolverReserva(p.ref, INTERROMPIDO);
+    // o processo caiu no meio: não há como saber quanto o provedor cobrou. Entra nos tetos de falha pelo TETO aceito
+    // (o pior caso) — antes não entrava por nada, e um pedido que derrubasse o processo podia ser repetido sem fim.
+    try { ia.registrarFalhaInterrompida(p.user_id, DE_ARQUIVO.includes(p.tipo) ? p.tipo : 'correcao', p.aceite_milesimos, p.product_id); } catch (_) { /* o registro é acessório: a devolução já foi feita */ }
     db.prepare("UPDATE est_pedidos SET estado = 'falhou', erro = ?, atualizado_em = ? WHERE id = ? AND estado = 'processando'").run(INTERROMPIDO, nowISO(), p.id);
   }
   return presos.length;
@@ -845,21 +901,46 @@ async function conferirEscaneadas(bytes, plano) {
   }
 }
 // O gabarito como será lido: texto colado, ou o PDF (texto das páginas com texto + as escaneadas como documento)
-async function lerGabaritoEnviado(usuario, entradaGabarito) {
+async function lerGabaritoEnviado(usuario, entradaGabarito, { prioridade = false } = {}) {
   const g = entradaGabarito || {};
   if (g.tipo !== 'pdf') return { texto: s(g.texto, prova.GABARITO_TEXTO_MAX) };
   const m = ct.Midia.obter(g.media_id);
   if (!m || m.owner_user_id !== usuario.id) throw erro('O PDF do gabarito não está mais disponível.', 422);
   const bytes = await ct.Midia.lerBytes(m, ct.PEDIDO_PDF_MAX_BYTES);
   if (g.sha256 && prova.sha256(bytes) !== g.sha256) throw erro('O PDF do gabarito mudou depois do orçamento. Envie de novo e peça outro orçamento.', 422);
-  const leitura = await pdf.ler(bytes, { maxPaginas: prova.GABARITO_MAX_PAGINAS, nome: 'O PDF do gabarito' });
+  const leitura = await pdf.ler(bytes, { maxPaginas: prova.GABARITO_MAX_PAGINAS, nome: 'O PDF do gabarito', prioridade });
   return { texto: leitura.textos.filter(x => !x.sem_texto).map(x => x.texto).join('\n').slice(0, prova.GABARITO_TEXTO_MAX),
     pdf: { bytes, escaneadas: leitura.textos.filter(x => x.sem_texto).map(x => x.n) }, sha256: prova.sha256(bytes) };
 }
 
+// LER O PDF PARA ORÇAR conta como TENTATIVA (segunda revisão, 11/10/2026, R3). O teto diário contava os PEDIDOS
+// criados — e o PDF montado para estourar a leitura não cria pedido: a contagem nunca saía do zero, e dois laços em
+// paralelo ocupavam as duas vagas do leitor o dia inteiro. Agora cada tentativa de leitura é gravada ANTES de ler
+// (`est_leituras`), e uma conta só tem UMA leitura de orçamento por vez.
+const _lendoDaConta = new Set();
+const LIMITE_DE_LEITURAS = { prova: PROVAS_POR_DIA, edital: EDITAIS_POR_DIA };
+function exigirCotaDeLeitura(userId, tipo) {
+  const desde = new Date(Date.now() - 864e5).toISOString();
+  const pedidos = db.prepare('SELECT COUNT(*) n FROM est_pedidos WHERE user_id = ? AND tipo = ? AND criado_em > ?').get(userId, tipo, desde).n;
+  const leituras = db.prepare('SELECT COUNT(*) n FROM est_leituras WHERE user_id = ? AND tipo = ? AND quando > ?').get(userId, tipo, desde).n;
+  if (Math.max(pedidos, leituras) >= LIMITE_DE_LEITURAS[tipo]) throw erro(`Muitos orçamentos de ${tipo === 'edital' ? 'edital' : 'prova'} nas últimas 24 horas — tente de novo amanhã. Nada foi cobrado.`, 429);
+}
+async function lerParaOrcar(usuario, tipo, bytes, opcoes) {
+  exigirCotaDeLeitura(usuario.id, tipo);
+  if (_lendoDaConta.has(usuario.id)) throw erro('Já há uma leitura de PDF sua em andamento. Espere ela terminar e peça de novo. Nada foi cobrado.', 429);
+  const id = novoId();
+  db.prepare("INSERT INTO est_leituras (id, user_id, tipo, quando, desfecho) VALUES (?, ?, ?, ?, 'lendo')").run(id, usuario.id, tipo, nowISO());
+  _lendoDaConta.add(usuario.id);
+  let desfecho = 'falhou';
+  try { const r = await pdf.ler(bytes, opcoes); desfecho = 'ok'; return r; }
+  finally {
+    _lendoDaConta.delete(usuario.id);
+    try { db.prepare('UPDATE est_leituras SET desfecho = ? WHERE id = ?').run(desfecho, id); } catch (_) { /* a contagem já foi feita */ }
+  }
+}
+
 async function criarProva(usuario, produto, slugEscopo, c, dados) {
-  const hoje = db.prepare("SELECT COUNT(*) n FROM est_pedidos WHERE user_id = ? AND tipo = 'prova' AND criado_em > ?").get(usuario.id, new Date(Date.now() - 864e5).toISOString()).n;
-  if (hoje >= PROVAS_POR_DIA) throw erro('Muitos orçamentos de prova nas últimas 24 horas — tente de novo amanhã. Nada foi cobrado.', 429);
+  exigirCotaDeLeitura(usuario.id, 'prova');
   // 1) o que não custa nem leitura: destino, procedência (sem ela o pedido não nasce) e os arquivos
   const { destino } = destinoValido(usuario, produto, dados.destino);
   const m = pdfDoUsuario(usuario, dados.caderno_media_id, 'do caderno');
@@ -870,7 +951,7 @@ async function criarProva(usuario, produto, slugEscopo, c, dados) {
   if (gTexto.length > prova.GABARITO_TEXTO_MAX) throw erro(`O gabarito colado passa de ${prova.GABARITO_TEXTO_MAX.toLocaleString('pt-BR')} caracteres — cole só a tabela de respostas.`);
   // 2) a leitura, sem provedor: páginas, texto por página, quais são escaneadas
   const bytes = await ct.Midia.lerBytes(m, ct.PEDIDO_PDF_MAX_BYTES);
-  const leitura = await pdf.ler(bytes, { nome: 'O PDF do caderno' });
+  const leitura = await lerParaOrcar(usuario, 'prova', bytes, { nome: 'O PDF do caderno' });
   const info = prova.resumoDaLeitura(leitura);
   const plano = prova.planejar(info, prova.faixaValida(leitura.paginas, dados.paginas));
   await conferirEscaneadas(bytes, plano);
@@ -918,8 +999,8 @@ async function gerarProva(p, t) {
   if (!m || m.owner_user_id !== p.user_id) throw erro('O PDF do caderno não está mais disponível.', 422);
   const bytes = await ct.Midia.lerBytes(m, ct.PEDIDO_PDF_MAX_BYTES);
   if (prova.sha256(bytes) !== e.caderno_sha256) throw erro('O arquivo do caderno mudou depois do orçamento. Envie de novo e peça outro orçamento.', 422);
-  const leitura = await pdf.ler(bytes, { nome: 'O PDF do caderno' });
-  const gabarito = await lerGabaritoEnviado(usuario, e.gabarito);
+  const leitura = await pdf.ler(bytes, { nome: 'O PDF do caderno', prioridade: true }); // já pago: à frente dos orçamentos
+  const gabarito = await lerGabaritoEnviado(usuario, e.gabarito, { prioridade: true });
   const gravar = db.prepare("UPDATE est_pedidos SET progresso = ?, atualizado_em = ? WHERE id = ? AND estado = 'processando'");
   const r = await prova.executar({ t, entrada: e, caderno: { bytes, leitura }, gabarito, aoProgredir: (x) => { try { gravar.run(j.str(x), nowISO(), p.id); } catch (_) { /* progresso é cortesia */ } } });
   return { ...r, gabarito_situacao: e.gabarito_situacao };
@@ -1017,14 +1098,13 @@ function exigirPaginasDoEdital(e) {
 }
 
 async function criarEdital(usuario, produto, slugEscopo, c, dados) {
-  const hoje = db.prepare("SELECT COUNT(*) n FROM est_pedidos WHERE user_id = ? AND tipo = 'edital' AND criado_em > ?").get(usuario.id, new Date(Date.now() - 864e5).toISOString()).n;
-  if (hoje >= EDITAIS_POR_DIA) throw erro('Muitos orçamentos de edital nas últimas 24 horas — tente de novo amanhã. Nada foi cobrado.', 429);
+  exigirCotaDeLeitura(usuario.id, 'edital');
   // 1) o que não custa nem leitura: destino e arquivo
   const { destino } = destinoDoEdital(usuario, produto, dados.destino);
   const m = pdfDoUsuario(usuario, dados.edital_media_id, 'do edital');
   // 2) a leitura, sem provedor: texto por página, quais são escaneadas e a faixa sugerida do programa
   const bytes = await ct.Midia.lerBytes(m, ct.PEDIDO_PDF_MAX_BYTES);
-  const leitura = await pdf.ler(bytes, { nome: 'O PDF do edital' });
+  const leitura = await lerParaOrcar(usuario, 'edital', bytes, { nome: 'O PDF do edital' });
   const sug = editalPdf.sugerir(leitura.textos);
   // sem faixa pedida vale a sugerida; sem sugestão — ou com sugestão de CONFIANÇA BAIXA — o plano nasce VAZIO
   // (orçamento zero) e a tela pede as páginas: ninguém confirma, sem ver, uma faixa que o sistema não sustenta
@@ -1062,7 +1142,7 @@ async function gerarEdital(p, t) {
   if (!m || m.owner_user_id !== p.user_id) throw erro('O PDF do edital não está mais disponível.', 422);
   const bytes = await ct.Midia.lerBytes(m, ct.PEDIDO_PDF_MAX_BYTES);
   if (prova.sha256(bytes) !== e.edital_sha256) throw erro('O arquivo do edital mudou depois do orçamento. Envie de novo e peça outro orçamento.', 422);
-  const leitura = await pdf.ler(bytes, { nome: 'O PDF do edital' });
+  const leitura = await pdf.ler(bytes, { nome: 'O PDF do edital', prioridade: true }); // já pago: à frente dos orçamentos
   const gravar = db.prepare("UPDATE est_pedidos SET progresso = ?, atualizado_em = ? WHERE id = ? AND estado = 'processando'");
   return editalPdf.executar({ t, entrada: e, arquivo: { bytes, leitura }, aoProgredir: (x) => { try { gravar.run(j.str(x), nowISO(), p.id); } catch (_) { /* progresso é cortesia */ } } });
 }
@@ -1253,7 +1333,8 @@ module.exports = {
   enviarArquivo, iniciarArquivoGrande, confirmarArquivoGrande, painelStaff, abrirParaStaff, resolverContestacao,
   promptCorrecao, montarResultado, citacaoConferida,
   linkDoAudio, expurgarAudios, expurgarMidiaSolta, apagarAudiosDoTitular, apagarDoTitular, exportarDoTitular, AUDIO_ORAL_RETENCAO_DIAS,
-  FALHAS_USD_POR_DIA_CONTA, FALHAS_USD_POR_DIA_GLOBAL,
+  FALHAS_USD_POR_DIA_CONTA, FALHAS_USD_POR_DIA_GLOBAL, PEDIDOS_SIMULTANEOS_POR_CONTA, PEDIDOS_SIMULTANEOS_GLOBAL,
+  removerDoStorageDepois, tentarRemover, esvaziarRemocoes, exigirCotaDeLeitura, lerParaOrcar,
   opcoesDeProva, reorcar, aplicar, opcoesDeEdital, previaDoEdital,
   EDITAIS_POR_DIA, RESULTADO_DA_DISCIPLINA,
   cfgPedidos, prepararConfigPedidos, salvarConfigPedidos, liberadoPara, CFG_PEDIDOS, LIBERADOS_MAX, AINDA_NAO,

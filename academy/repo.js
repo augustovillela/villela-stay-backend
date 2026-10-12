@@ -103,6 +103,10 @@ const Usuarios = {
       sessoes: db.prepare('SELECT criada_em, expira_em, ip, user_agent, revogada FROM sessions WHERE user_id = ?').all(id),
       auditoria: db.prepare('SELECT quando, acao, entidade, detalhe, ip FROM audit_logs WHERE quem = ? ORDER BY id DESC LIMIT 500').all(id),
       aprendizagem: textosDoAluno(id),
+      // o que a conta TEM e FEZ (segunda revisão, 11/10/2026, L1): compras, matrículas, assinaturas, progresso,
+      // certificados, avaliações, suporte, o que o Estude registrou (evidências, provas, plano, estado das aulas)
+      // e a carteira de IA (movimentos e recargas). Antes a exportação levava só o que o aluno escreveu.
+      registros: registrosDoTitular(id),
       // Estude: o PERCURSO PARTICULAR (título, programa e questões que o titular importou) e a lista dos arquivos
       // que ele enviou para pedidos — não cabem na lista de tabelas de texto (require tardio: pedidos → carteira → repo)
       estude: (() => { try { return require('./estudo/pedidos').exportarDoTitular(id); } catch (_) { return { percursos_particulares: [], arquivos_enviados: [] }; } })(),
@@ -120,16 +124,32 @@ const Usuarios = {
       db.prepare("UPDATE producer_profiles SET nome_publico = '', documento = '', bio = '', site = '', dados_pagamento = '{}', status = 'bloqueado', atualizado_em = ? WHERE user_id = ?").run(nowISO(), id);
       db.prepare("UPDATE affiliate_profiles SET nome_publico = '', documento = '', canais = '', dados_pagamento = '{}', status = 'bloqueado', atualizado_em = ? WHERE user_id = ?").run(nowISO(), id);
       Sessoes.revogarDoUsuario(id);
+      // segundo fator e inscrições de notificação são da PESSOA: saem com ela
+      db.prepare("UPDATE users SET totp_secret = '', totp_ativo = 0 WHERE id = ?").run(id);
+      db.prepare('DELETE FROM push_subs WHERE user_id = ?').run(id);
+      // o NOME sai do certificado (a página pública passa a dizer que o titular removeu os dados)
+      require('./governanca').Certificados.esquecerTitular(id); // require tardio: governanca → repo
+      // texto livre fora da lista de aprendizagem: o que ele escreveu ao SUPORTE (assunto e mensagens; o e-mail
+      // dele era o `autor`) e o texto das AVALIAÇÕES de curso (a nota fica, sem autor identificável)
+      db.prepare("UPDATE support_messages SET texto = '[removido a pedido do titular]', autor = '' WHERE lado = 'usuario' AND ticket_id IN (SELECT id FROM support_tickets WHERE user_id = ?)").run(id);
+      db.prepare("UPDATE support_tickets SET assunto = '[removido a pedido do titular]' WHERE user_id = ?").run(id);
+      db.prepare("UPDATE reviews SET texto = '' WHERE user_id = ?").run(id);
       // o que o aluno ESCREVEU (caderno, tutor, missões, desafio) é dele: sai inteiro.
-      // Notas e tentativas ficam (sem texto livre), como as vendas.
+      // Notas ficam (sem texto livre), como as vendas.
       // (no Estude: marcações, anotações, tentativas e notas de aula saem; o pedido pago FICA — é registro
       // financeiro — mas sem o que o aluno escreveu ou falou: resposta, transcrição, correção e contestação)
       // o ÁUDIO da prova oral sai na hora, sem esperar o prazo de guarda — e ANTES de limpar a entrada do pedido,
       // que é onde está o endereço dele (require tardio: pedidos → carteira → repo).
       // Junto saem TODA mídia de pedido do titular (os PDFs de prova, gabarito e edital também) e o PERCURSO
       // PARTICULAR dele: o escopo, o programa e as questões que ele importou (`apagarDoTitular`).
-      try { require('./estudo/pedidos').apagarDoTitular(id); } catch (_) {}
-      for (const [tabela, , apagar] of TEXTOS_DO_ALUNO) { try { db.prepare(apagar || `DELETE FROM ${tabela} WHERE user_id = ?`).run(id); } catch (_) {} }
+      // NADA de "tenta e segue": uma falha aqui deixava o texto no banco, a transação confirmava e a rota respondia
+      // `ok: true`, sem log. Agora o erro sobe — a transação inteira é desfeita e quem pediu a exclusão fica sabendo.
+      require('./estudo/pedidos').apagarDoTitular(id);
+      for (const [tabela, , apagar] of TEXTOS_DO_ALUNO) db.prepare(apagar || `DELETE FROM ${tabela} WHERE user_id = ?`).run(id);
+      // Estude, o que não é texto mas é do aluno: as respostas marcadas em cada prova (a linha da tentativa sai
+      // inteira — a evidência por competência, sem texto, fica) e o plano de estudo (disponibilidade e datas dele)
+      db.prepare('DELETE FROM est_tentativas WHERE user_id = ?').run(id);
+      db.prepare('DELETE FROM est_planos WHERE user_id = ?').run(id);
       require('./ecossistema').apagarDoTitular(id); // comunidade e lives: o texto sai, o fio da conversa fica
       return true;
     });
@@ -152,6 +172,35 @@ const TEXTOS_DO_ALUNO = [
   ['est_pedidos', 'SELECT product_id, tipo, estado, questao_id, entrada, resultado, contestacao, criado_em FROM est_pedidos WHERE user_id = ?',
     "UPDATE est_pedidos SET entrada = '{}', resultado = '', contestacao = '', erro = '' WHERE user_id = ?"],
 ];
+// EXPORTAÇÃO (LGPD): os REGISTROS da conta, tabela por tabela — sempre filtrados pelo próprio usuário. Colunas
+// escolhidas uma a uma (nada de `SELECT *`): não vai o que é de outra pessoa (comissão do produtor, do afiliado),
+// nem o gabarito congelado das provas (o conteúdo do curso não é dado do titular).
+const REGISTROS_DO_TITULAR = [
+  ['compras', 'SELECT id, product_id, produto_titulo, valor_centavos, status, tipo, criado_em, pago_em FROM orders WHERE user_id = ? ORDER BY criado_em'],
+  ['matriculas', 'SELECT product_id, origem, status, criado_em FROM enrollments WHERE user_id = ? ORDER BY criado_em'],
+  ['assinaturas', 'SELECT id, product_id, produto_titulo, valor_centavos, status, criado_em, ativa_em, cancelada_em FROM subscriptions WHERE user_id = ? ORDER BY criado_em'],
+  ['progresso', 'SELECT product_id, lesson_id, concluida, posicao_seg, atualizado_em FROM student_progress WHERE user_id = ?'],
+  ['certificados', 'SELECT id AS codigo, product_id, produto_titulo, aluno_nome, total_aulas, carga_horaria_min, emitido_em, revogado_em FROM certificates WHERE user_id = ?'],
+  ['avaliacoes_de_curso', 'SELECT product_id, nota, texto, status, criado_em FROM reviews WHERE user_id = ?'],
+  ['suporte', `SELECT t.id AS ticket, t.assunto, t.categoria, t.status, m.lado, m.texto, m.criado_em FROM support_tickets t
+     LEFT JOIN support_messages m ON m.ticket_id = t.id WHERE t.user_id = ? ORDER BY t.criado_em, m.criado_em`],
+  ['estude_evidencias', 'SELECT escopo_id, competencia_codigo, origem, ref_id, tentativa_id, modo, acerto, pistas, inedita, tempo_seg, confianca, criado_em FROM est_evidencias WHERE user_id = ? ORDER BY criado_em'],
+  ['estude_provas', 'SELECT id, escopo_id, modo, estado, inicio_em, prazo_em, salvo_em, enviado_em, respostas FROM est_tentativas WHERE user_id = ? ORDER BY inicio_em'],
+  ['estude_planos', 'SELECT escopo_id, entrada, plano, versao, atualizado_em FROM est_planos WHERE user_id = ?'],
+  ['estude_aulas', 'SELECT escopo_id, unidade, aberta_em, lida_em, video_pos_seg, video_assistido, video_em FROM est_aula_estado WHERE user_id = ?'],
+  ['estude_revisoes', 'SELECT escopo_id, alvo, alvo_id, passo, vencimento, ultimo_resultado, atualizado_em FROM est_revisoes WHERE user_id = ?'],
+  ['carteira_ia_movimentos', 'SELECT tipo, milesimos, detalhe, criado_em FROM ia_movimentos WHERE user_id = ? ORDER BY criado_em'],
+  ['carteira_ia_recargas', 'SELECT id, valor_centavos, status, criado_em, pago_em FROM ia_recargas WHERE user_id = ? ORDER BY criado_em'],
+  ['uso_de_ia', 'SELECT quando, agente, status, cobranca, milesimos, product_id FROM ai_usage_logs WHERE user_id = ? ORDER BY quando'],
+];
+function registrosDoTitular(id) {
+  const out = {};
+  for (const [nome, sql] of REGISTROS_DO_TITULAR) {
+    // tabela que ainda não existe neste banco não derruba a exportação — mas a lacuna vai DITA, não escondida
+    try { out[nome] = db.prepare(sql).all(id); } catch (e) { out[nome] = []; out._nao_exportado = (out._nao_exportado || []).concat(nome); }
+  }
+  return out;
+}
 function textosDoAluno(id) {
   const out = {};
   for (const [tabela, sql] of TEXTOS_DO_ALUNO) { try { out[tabela] = db.prepare(sql).all(id); } catch (_) { out[tabela] = []; } }

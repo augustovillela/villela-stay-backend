@@ -31,6 +31,31 @@
     alvo.textContent = texto;
   }
 
+  // ABA ABERTA DURANTE UM DEPLOY: toda resposta da API traz a versão da tela que o servidor está servindo
+  // (cabeçalho X-Academy-Tela); a página sabe a versão com que foi carregada (window.ACADEMY_TELA). Diferentes →
+  // um aviso discreto, com o botão "Atualizar". NUNCA recarrega sozinha: o aluno pode estar no meio de uma prova
+  // ou com um texto em edição — quem decide a hora é ele.
+  var avisouVersao = false;
+  function conferirVersao(r) {
+    try {
+      var nova = r && r.headers && r.headers.get('X-Academy-Tela'), minha = window.ACADEMY_TELA;
+      if (!nova || !minha || nova === minha || avisouVersao) return;
+      avisouVersao = true;
+      var a = document.createElement('div');
+      a.id = 'ac-versao'; a.setAttribute('role', 'status');
+      a.style.cssText = 'position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9500;max-width:calc(100% - 24px);background:#1B2A4A;color:#fff;border-radius:99px;padding:8px 8px 8px 16px;font:500 .86rem Inter,sans-serif;box-shadow:0 10px 30px rgba(16,24,40,.3);display:flex;gap:10px;align-items:center';
+      a.innerHTML = '<span>Há uma versão nova desta tela.</span>' +
+        '<button type="button" id="ac-versao-ir" style="border:0;border-radius:99px;padding:6px 14px;background:#D97706;color:#fff;font:600 .84rem Inter,sans-serif;cursor:pointer">Atualizar</button>' +
+        '<button type="button" id="ac-versao-x" aria-label="Fechar o aviso de versão nova" style="border:0;background:none;color:#fff;font-size:1.1rem;cursor:pointer;padding:0 8px">×</button>';
+      document.body.appendChild(a);
+      el('ac-versao-ir').onclick = function () {
+        // no meio de uma prova, ou com algo ainda por salvar, o aluno confirma antes
+        if (document.body.classList.contains('es-em-prova') && !window.confirm('Você está no meio de uma prova. As respostas já salvas ficam guardadas e a prova continua de onde parou. Atualizar agora?')) return;
+        location.reload();
+      };
+      el('ac-versao-x').onclick = function () { if (a.parentNode) a.parentNode.removeChild(a); };
+    } catch (e) { /* aviso é cortesia */ }
+  }
   // SEQ cresce a cada troca de aba: leitura que volta depois de o usuário já
   // ter mudado de aba não pinta por cima da aba nova.
   var SEQ = 0;
@@ -42,14 +67,16 @@
     var teto = aceite || (CI ? CI.aceiteGuardado() : 0);
     if (teto) cab['X-IA-Aceite'] = String(teto);
     return fetch('/academy/api' + p, { method: m, headers: cab, body: b ? JSON.stringify(b) : undefined })
-      .then(function (r) { return r.json().then(function (d) {
+      .then(function (r) { conferirVersao(r); return r.json().then(function (d) {
         if (r.status === 402 && d && d.orcamento_milesimos && CI && !aceite) {
           return CI.pedir(d).then(function (ok) {
             if (!ok) throw new Error(d.motivo === 'saldo_insuficiente' ? 'Sem saldo de IA para esta ação — nada foi cobrado.' : 'Ação cancelada — nada foi cobrado.');
             return api(m, p, b, d.orcamento_milesimos);
           });
         }
-        if (!r.ok) throw new Error(d && d.erro || ('erro ' + r.status));
+        // o erro leva o código e o corpo da resposta: quem trata um caso (ex.: 409 de duas abas, com o texto que está
+        // no servidor — app-estudo.js › salvarSozinho) lê `e.status` e `e.dados`; para os demais nada muda
+        if (!r.ok) { var falhou = new Error(d && d.erro || ('erro ' + r.status)); falhou.status = r.status; falhou.dados = d || null; throw falhou; }
         // houve cobrança nesta chamada: mostra quanto saiu de verdade
         if (CI && teto && m !== 'GET' && /\/(tutor|ia|lab|ferramentas|pedidos)\b/.test(p) && !/\/ia\/carteira/.test(p)) setTimeout(CI.depois, 300);
         return d;
@@ -100,8 +127,13 @@
   // `sobrepostos`: telas por cima da página (aula interativa, mapa que se desenha) que empilharam um passo só para o
   // Voltar fechá-las. Enquanto houver uma, o Voltar é DELAS: o painel não remonta a página — qualquer que seja a
   // ordem em que o navegador avisa os ouvintes.
-  window.AcademyRota = { ler: rotaAtual, gravar: gravarRota, guardar: guardarNoPasso, empilhar: empilhar, estado: function () { return copia(history.state); }, sobrepostos: 0 };
-  try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) { /* quem repõe a rolagem é a tela, depois de carregar */ }
+  // A ROLAGEM é reposta pela própria tela SÓ no Estude (ele carrega e depois rola). Nas outras telas do painel
+  // (produtor, afiliado, biblioteca, conta) quem repõe é o navegador — com o modo manual valendo para o painel
+  // inteiro, o Voltar passava a abrir essas telas sempre no topo. O Estude liga ao abrir e desliga ao sair.
+  function rolagemManual(sim) { try { if ('scrollRestoration' in history) history.scrollRestoration = sim ? 'manual' : 'auto'; } catch (e) { /* navegador sem o recurso */ } }
+  window.AcademyRota = { ler: rotaAtual, gravar: gravarRota, guardar: guardarNoPasso, empilhar: empilhar, estado: function () { return copia(history.state); }, sobrepostos: 0, rolagemManual: rolagemManual };
+  // o endereço é do Estude (F5 ou link direto): a rolagem já nasce manual, antes de o navegador tentar repor
+  if (/\/estude\//.test(String(location.hash || ''))) rolagemManual(true);
   function esqueleto() {
     return '<div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--linha"></div>' +
       '<div class="vx-skel vx-skel--bloco"></div>';
@@ -126,6 +158,11 @@
 
   // ---------------- login / cadastro / boot ----------------
   function bootAcademy() {
+    // F5 com tela sobreposta ou com uma porta do Estude aberta: o passo do topo é o da tela que não volta
+    try {
+      var st0 = history.state;
+      if (!bootAcademy.pulou && st0 && (st0.esSobreposto || st0.porta)) { bootAcademy.pulou = true; pularPassoFantasma(); }
+    } catch (e) { /* sem histórico */ }
     api('GET', '/me').then(render).catch(function () {
       (location.hash === '#cadastro' ? renderCadastro : renderLogin)();
     });
@@ -202,7 +239,16 @@
     };
     el('b-log').onclick = function (e) { e.preventDefault(); renderLogin(); };
   }
-  function sair() { api('POST', '/logout').catch(function () {}).then(function () { location.hash = ''; location.reload(); }); }
+  // SAIR também esvazia o que o aparelho guardou para o modo offline (o cache do service worker): em aparelho
+  // compartilhado, a próxima pessoa não pode abrir o app sem rede e ver a tela de quem saiu.
+  function limparCacheDoAparelho() {
+    try { if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ tipo: 'limpar-cache' }); } catch (e) { /* sem service worker */ }
+    try {
+      if (!window.caches) return Promise.resolve();
+      return caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k.indexOf('villela-pwa-academy-') === 0; }).map(function (k) { return caches.delete(k); })); }).catch(function () {});
+    } catch (e) { return Promise.resolve(); }
+  }
+  function sair() { api('POST', '/logout').catch(function () {}).then(limparCacheDoAparelho).then(function () { location.hash = ''; location.reload(); }); }
 
   // ---------------- shell autenticado ----------------
   // [id, grupo do menu, ícone, rótulo, view] — o papel do usuário decide quais entram
@@ -313,8 +359,16 @@
       return false;
     } finally { ROTA.aplicando = false; }
   }
+  // PASSO FANTASMA: uma tela sobreposta (aula animada, mapa) empilha um passo no MESMO endereço só para o Voltar
+  // fechá-la. Depois de fechada — ou de um F5 —, esse passo continua no histórico: o Avançar caía nele e a página
+  // era remontada (um quiz pela metade se perdia), e o F5 deixava um Voltar que "não fazia nada". Agora o passo
+  // fantasma é PULADO: volta-se ao passo de baixo, sem remontar nada.
+  var pulandoPasso = false;
+  function pularPassoFantasma() { pulandoPasso = true; try { history.back(); } catch (e) { pulandoPasso = false; } }
   window.addEventListener('popstate', function () {
+    if (pulandoPasso) { pulandoPasso = false; return; } // chegou ao passo de baixo: a tela já é a dele
     if (window.AcademyRota.sobrepostos > 0) return; // o Voltar é da tela sobreposta (ela se fecha; a página fica como está)
+    if (history.state && history.state.esSobreposto) return pularPassoFantasma(); // o Avançar caiu no passo de uma tela que já fechou
     if (!ME || !el('c')) return;
     if (aplicarRota()) return;
     ROTA.aplicando = true;
@@ -1591,6 +1645,7 @@
     api('GET', '/aluno/certificados').then(function (d) {
       el('c-certs').innerHTML = d.certificados.length
         ? d.certificados.map(function (c) {
+          if (c.revogado_em) return '<div class="lin">🎓 ' + esc(c.produto_titulo) + ' <span class="chip">' + esc(c.id) + '</span> · <b>revogado</b> em ' + dt(c.revogado_em) + ' (o acesso ao curso foi encerrado)</div>';
           return '<div class="lin">🎓 <a href="/academy/certificados/' + esc(c.id) + '" target="_blank">' + esc(c.produto_titulo) + '</a> <span class="chip">' + esc(c.id) + '</span> · ' + dt(c.emitido_em) + '</div>';
         }).join('')
         : '<p class="sub" style="text-align:left">Conclua 100% de um curso para emitir o certificado.</p>';

@@ -236,12 +236,12 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     const pg = await req('GET', '/academy/app');
     assert.equal(pg.st, 200);
     // mecanismo de sempre: ?v=N na URL, dentro do HTML do painel (que o service worker nunca guarda — pwa.js: navegação é só rede)
-    for (const ref of ['/academy/estude.js?v=3', '/academy/estude.css?v=3', '/academy/aluno.js?v=11', '/academy/carteira.js?v=2', '/academy/jornada.js?v=4', '/academy/app.js?v=13', '/academy/ecossistema.js?v=3', '/academy/aluno.css?v=5']) {
+    for (const ref of ['/academy/estude.js?v=4', '/academy/estude.css?v=4', '/academy/aluno.js?v=12', '/academy/carteira.js?v=3', '/academy/jornada.js?v=5', '/academy/app.js?v=14', '/academy/ecossistema.js?v=3', '/academy/aluno.css?v=5']) {
       assert.ok(pg.texto.includes(`"${ref}"`), 'o painel não pede ' + ref);
     }
-    for (const velho of ['estude.js?v=2"', 'estude.css?v=2"', 'aluno.js?v=10"', 'carteira.js?v=1"', 'jornada.js?v=3"', 'app.js?v=12"']) assert.ok(!pg.texto.includes(velho), 'sobrou a versão antiga: ' + velho);
+    for (const velho of ['estude.js?v=3"', 'estude.css?v=3"', 'aluno.js?v=11"', 'carteira.js?v=2"', 'jornada.js?v=4"', 'app.js?v=13"']) assert.ok(!pg.texto.includes(velho), 'sobrou a versão antiga: ' + velho);
     // os motores das Ferramentas saem sempre frescos (no-cache): a versão deles na URL não precisa mudar
-    const js = await req('GET', '/academy/estude.js?v=3');
+    const js = await req('GET', '/academy/estude.js?v=4');
     assert.ok(js.st === 200 && js.texto.includes('function temPedidos()') && js.texto.includes('function ligarFimDaLeitura('), 'o arquivo servido é o novo');
   });
 
@@ -811,7 +811,8 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
       // … e a plataforma registra o que a tentativa custou: (1.000 × 2 + 800 × 10) ÷ 1 milhão = US$ 0,01 = 1 centavo
       const l1 = ultimoLog();
       assert.deepEqual([l1.status, l1.modelo, l1.custo_centavos_usd, /resposta maior que o limite do lote/.test(l1.detalhe), l1.milesimos], ['erro', 'claude-sonnet-5', 1, true, 0]);
-      // (b) o 1º modelo respondeu fora do formato (e cobrou); o 2º acertou: o custo real soma os DOIS
+      // (b) o 1º modelo respondeu fora do formato (e cobrou); o 2º acertou: o custo REAL soma os dois (é o que vai ao
+      // log), mas o aluno paga só a tentativa que serviu — a plataforma absorve a perdida (réplica de 11/10/2026, R4-2)
       fila.length = 0;
       roteiro = { 'claude-sonnet-5': msg('Desculpe, não consegui montar a correção.', { input_tokens: 2000, output_tokens: 1000 }), 'claude-haiku-4-5': msg(BOA) };
       const t2 = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
@@ -819,7 +820,8 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
       const f2 = t2.concluir();
       const custo2 = (2000 * 2 + 1000 * 10) / 1e6 + (1000 * 1 + 500 * 5) / 1e6; // US$ 0,014 da tentativa perdida + 0,0035 da que serviu
       assert.deepEqual([fila.map(f => f.modelo), j2.comentario], [['claude-sonnet-5', 'claude-haiku-4-5'], CORRECAO.comentario]);
-      assert.ok(Math.abs(f2.custo_usd - custo2) < 1e-12 && f2.cobrado_milesimos === carteira.precoEmMilesimos(custo2), 'a tentativa que falhou entra na conta: ' + f2.custo_usd);
+      assert.ok(Math.abs(f2.custo_usd - custo2) < 1e-12, 'o custo real do trabalho soma as duas tentativas: ' + f2.custo_usd);
+      assert.ok(f2.cobrado_milesimos === carteira.precoEmMilesimos(0.0035) && f2.cobrado_milesimos < carteira.precoEmMilesimos(custo2) && Math.abs(f2.absorvido_usd - 0.014) < 1e-12, 'a tentativa que falhou NÃO entra na conta do aluno: ' + JSON.stringify(f2));
       assert.deepEqual([ultimoLog().status, ultimoLog().modelo, ultimoLog().custo_centavos_usd], ['ok', 'claude-haiku-4-5', 1.75], 'o log guarda o custo com fração de centavo (antes arredondava para 2)');
       // (c) os dois falharam: o erro leva o custo dos dois, e o log do pedido falho também
       roteiro = { 'claude-sonnet-5': msg('nada de JSON', { input_tokens: 2000, output_tokens: 1000 }), 'claude-haiku-4-5': msg('nem aqui', { input_tokens: 2000, output_tokens: 1000 }) };
@@ -1008,6 +1010,9 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     const falha = (id, userId, centavos, quando = new Date().toISOString(), agente = 'prova', status = 'erro') => db.prepare(`INSERT INTO ai_usage_logs (id, quando, user_id, agente, modelo, input_tokens, output_tokens, custo_centavos_usd, status, detalhe, cobranca, milesimos, product_id)
       VALUES (?, ?, ?, ?, 'claude-sonnet-5', 0, 0, ?, ?, 'teste', 'paga', 0, ?)`).run('aud8-' + id, quando, userId, agente, centavos, status, impId);
     const limpar = () => db.prepare("DELETE FROM ai_usage_logs WHERE id LIKE 'aud8-%'").run();
+    // (os pedidos que os testes anteriores deixaram "interrompidos" agora entram nos tetos, pelo teto aceito — este
+    // teste mede valores exatos, então parte de uma conta sem esse resíduo)
+    db.prepare("DELETE FROM ai_usage_logs WHERE detalhe LIKE 'interrompido%'").run();
     const base0 = ia.custoDeFalhasUSD({ desde: new Date(Date.now() - 864e5).toISOString() });
     try {
       const c = await criar('rui', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
@@ -1029,8 +1034,18 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
       const cp = await criar('paula', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
       assert.equal((await confirmar('paula', cp.json.pedido.id, cp.json.orcamento.orcamento_milesimos)).st, 200);
       await ped.aguardar(cp.json.pedido.id);
-      // GLOBAL: somadas todas as contas, US$ 20 em 24 h → o serviço para para todos, com 503
-      falha('g', uid('olga@t.com'), Math.ceil((20 - base0 - 2.1) * 100) + 1);
+      // UMA CONTA SOZINHA NÃO PAUSA O SERVIÇO (segunda revisão, R4): a Olga absorveu US$ 30 — passa do teto global em
+      // valor bruto, mas no global cada conta pesa no máximo US$ 2. Só ela fica em espera; a Paula segue pedindo.
+      void base0;
+      falha('g', uid('olga@t.com'), 3000);
+      const desde = new Date(Date.now() - 864e5).toISOString();
+      assert.ok(ia.custoDeFalhasUSD({ desde }) >= 30 && ia.custoDeFalhasGlobalUSD({ desde, tetoPorConta: ped.FALHAS_USD_POR_DIA_CONTA }) < ped.FALHAS_USD_POR_DIA_GLOBAL);
+      const cp1 = await criar('paula', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
+      assert.equal((await confirmar('paula', cp1.json.pedido.id, cp1.json.orcamento.orcamento_milesimos)).st, 200, 'uma conta com falhas não derruba as outras');
+      await ped.aguardar(cp1.json.pedido.id);
+      // GLOBAL: MUITAS contas no teto (defeito nosso ou do provedor) somam US$ 20 → o serviço para para todos, com 503
+      const pesoAgora = ia.custoDeFalhasGlobalUSD({ desde, tetoPorConta: ped.FALHAS_USD_POR_DIA_CONTA });
+      for (let i = 0; i < Math.ceil((ped.FALHAS_USD_POR_DIA_GLOBAL - pesoAgora) / ped.FALHAS_USD_POR_DIA_CONTA); i++) falha('gx' + i, 'conta-de-teste-' + i, 250);
       const cp2 = await criar('paula', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
       const g = await confirmar('paula', cp2.json.pedido.id, cp2.json.orcamento.orcamento_milesimos);
       assert.equal(g.st, 503, g.texto);
@@ -1038,7 +1053,7 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
       // a conta ISENTA não tem o teto por conta, mas tem o global
       await config({ ...LIGADA, isentos: [RUI.email] });
       assert.equal((await confirmar('rui', id)).st, 503, 'isento também para no teto global');
-      db.prepare("DELETE FROM ai_usage_logs WHERE id = 'aud8-g'").run();
+      db.prepare("DELETE FROM ai_usage_logs WHERE id LIKE 'aud8-gx%'").run();
       const livre = await confirmar('rui', id);
       assert.equal(livre.st, 200, 'sem o global, o isento roda mesmo com US$ 2,10 de falhas dele: ' + livre.texto);
       await ped.aguardar(id);
@@ -1049,6 +1064,48 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
       assert.equal(r2.st, 200, r2.texto);
       await ped.aguardar(cp2.json.pedido.id);
     } finally { limpar(); await config(LIGADA); }
+  });
+
+  await t('segunda revisão R4: UM pedido em processamento por conta e teto no serviço inteiro — o segundo "confirmar" espera, sem reserva nem provedor; pedido interrompido entra nos tetos de falha', async () => {
+    assert.deepEqual([ped.PEDIDOS_SIMULTANEOS_POR_CONTA, ped.PEDIDOS_SIMULTANEOS_GLOBAL], [1, 6]);
+    const paula = uid(PAULA.email), rui = uid(RUI.email);
+    carteira.creditar({ email: PAULA.email, valor_centavos: 500, motivo: 'saldo para o teste dos pedidos simultâneos', quem: 'teste' });
+    let soltar; portao = new Promise((ok) => { soltar = ok; });
+    try {
+      const a = await criar('paula', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
+      assert.equal((await confirmar('paula', a.json.pedido.id, a.json.orcamento.orcamento_milesimos)).st, 200);
+      assert.equal((await obter('paula', a.json.pedido.id)).json.pedido.estado, 'processando');
+      // o segundo, com o primeiro ainda rodando: fica orçado, sem reserva e sem provedor
+      const b = await criar('paula', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
+      const n = chamadas.length, reservas = movs(paula, 'reserva');
+      const r = await confirmar('paula', b.json.pedido.id, b.json.orcamento.orcamento_milesimos);
+      assert.equal(r.st, 429, r.texto);
+      assert.ok(/já tem um pedido em processamento/.test(r.json.erro) && /Nada foi cobrado/.test(r.json.erro));
+      assert.deepEqual([chamadas.length, movs(paula, 'reserva'), (await obter('paula', b.json.pedido.id)).json.pedido.estado], [n, reservas, 'orcado']);
+      // terminou o primeiro: o segundo roda
+      soltar(); portao = null;
+      await ped.aguardar(a.json.pedido.id);
+      assert.equal((await confirmar('paula', b.json.pedido.id, b.json.orcamento.orcamento_milesimos)).st, 200);
+      await ped.aguardar(b.json.pedido.id);
+      // TETO DO SERVIÇO: seis pedidos de outras contas em processamento → o sétimo espera (503), de qualquer conta
+      const ins = db.prepare(`INSERT INTO est_pedidos (id, user_id, product_id, escopo_id, tipo, estado, questao_id, entrada, ref, aceite_milesimos, criado_em, atualizado_em)
+        VALUES (?, ?, ?, '', 'edital', 'processando', '', '{}', '', 3250, ?, ?)`);
+      const agora = new Date().toISOString();
+      for (let i = 0; i < ped.PEDIDOS_SIMULTANEOS_GLOBAL; i++) ins.run('lotado-' + i, rui, impId, agora, agora);
+      const c = await criar('paula', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
+      const cheio = await confirmar('paula', c.json.pedido.id, c.json.orcamento.orcamento_milesimos);
+      assert.deepEqual([cheio.st, /muitos pedidos sendo processados/.test(cheio.json.erro)], [503, true], cheio.texto);
+      // esses seis "caíram com o processo": viram falha E entram nos tetos, pelo teto aceito (R$ 3,25 = US$ 0,50 a 5 × 1,3)
+      const desde = new Date(Date.now() - 864e5).toISOString(), antes = ia.custoDeFalhasUSD({ userId: rui, desde });
+      assert.equal(ped.recuperarInterrompidos(), ped.PEDIDOS_SIMULTANEOS_GLOBAL);
+      assert.ok(Math.abs(ia.custoDeFalhasUSD({ userId: rui, desde }) - antes - 0.5 * ped.PEDIDOS_SIMULTANEOS_GLOBAL) < 1e-6, 'antes o pedido interrompido não entrava em soma nenhuma');
+      assert.equal((await confirmar('paula', c.json.pedido.id, c.json.orcamento.orcamento_milesimos)).st, 200, 'com a fila livre, roda');
+      await ped.aguardar(c.json.pedido.id);
+    } finally {
+      if (soltar) soltar(); portao = null;
+      db.prepare("DELETE FROM est_pedidos WHERE id LIKE 'lotado-%'").run();
+      db.prepare("DELETE FROM ai_usage_logs WHERE detalhe LIKE 'interrompido%'").run();
+    }
   });
 
   await t('auditoria 10, 12, 14 e 15: arquivo de pedido tem MARCA de origem; o expurgo diário limpa o que ficou solto (órfão > 24 h, envio não confirmado > 1 h), não leva material de curso nem áudio de outro pedido vivo; a cota conta só arquivo de pedido', async () => {

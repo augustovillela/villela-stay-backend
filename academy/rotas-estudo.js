@@ -36,7 +36,8 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   const b = (req) => req.body || {};
 
   app.get(curso, ...AL, h((req, res) => { semCache(res); res.json(al.escopos(req.usuario, produto(req))); }));
-  app.get(`${base}/painel`, ...AL, h((req, res) => { semCache(res); res.json(al.painel(...a(req))); }));
+  // `?resumo=1`: o painel sem a parte fixa das listas grandes — a tela junta ao que já tem (estudo/aluno.js › painel)
+  app.get(`${base}/painel`, ...AL, h((req, res) => { semCache(res); res.json(al.painel(...a(req), { resumo: req.query.resumo === '1' })); }));
 
   // ---- aula ativa ----
   app.get(`${base}/leitura`, ...AL, h((req, res) => { semCache(res); res.json(al.leitura(...a(req), String(req.query.disciplina || ''))); }));
@@ -49,8 +50,10 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   // ---- paridade com os outros cursos: quiz dentro da aula, caderno (tentativa e nota), vídeo que lembra onde parou ----
   // o quiz só ESCOLHE as questões da aula; responder e pedir pista são as rotas de /questoes, mais abaixo
   app.get(`${base}/unidades/:unidade/quiz`, ...AL, h((req, res) => { semCache(res); res.json(al.quizDaAula(...a(req), req.params.unidade)); }));
-  app.put(`${base}/unidades/:unidade/blocos/:n/tentativa`, ...AL, h((req, res) => { res.json(al.guardarTentativa(...a(req), req.params.unidade, req.params.n, b(req).texto)); }));
-  app.put(`${base}/unidades/:unidade/nota`, ...AL, h((req, res) => { res.json(al.anotarAula(...a(req), req.params.unidade, b(req).texto)); }));
+  // `lido_em` (o `atualizado_em` que a tela leu) e `ao_sair` (envio de última hora): duas abas não se sobrescrevem — 409 com o texto atual
+  const lido = (req) => ({ lido_em: b(req).lido_em, ao_sair: b(req).ao_sair });
+  app.put(`${base}/unidades/:unidade/blocos/:n/tentativa`, ...AL, h((req, res) => { res.json(al.guardarTentativa(...a(req), req.params.unidade, req.params.n, b(req).texto, lido(req))); }));
+  app.put(`${base}/unidades/:unidade/nota`, ...AL, h((req, res) => { res.json(al.anotarAula(...a(req), req.params.unidade, b(req).texto, lido(req))); }));
   app.put(`${base}/unidades/:unidade/video`, ...AL, h((req, res) => { res.json(al.registrarVideo(...a(req), req.params.unidade, b(req))); }));
   // chegou ao fim do texto da aula (abrir + ler até o fim é uma das formas de estudar a aula — a régua é `aulaEstudada`)
   app.put(`${base}/unidades/:unidade/lida`, ...AL, h((req, res) => { res.json(al.registrarLeitura(...a(req), req.params.unidade)); }));
@@ -65,7 +68,7 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.get(`${base}/banco`, ...AL, h((req, res) => { semCache(res); res.json(al.bancoDeQuestoes(...a(req))); }));
   // caderno de erros: a última resposta foi erro; a anotação é do próprio aluno
   app.get(`${base}/erros`, ...AL, h((req, res) => { semCache(res); res.json(al.erros(...a(req), { pagina: req.query.pagina })); }));
-  app.put(`${base}/questoes/:questao/anotacao`, ...AL, h((req, res) => { res.json(al.anotar(...a(req), req.params.questao, b(req).texto)); }));
+  app.put(`${base}/questoes/:questao/anotacao`, ...AL, h((req, res) => { res.json(al.anotar(...a(req), req.params.questao, b(req).texto, lido(req))); }));
   app.post(`${base}/questoes/:questao/pista`, ...AL, h((req, res) => { res.json(al.pedirPista(...a(req), req.params.questao)); }));
   app.post(`${base}/questoes/:questao/responder`, ...AL, h((req, res) => { res.json(al.responder(...a(req), req.params.questao, b(req))); }));
 

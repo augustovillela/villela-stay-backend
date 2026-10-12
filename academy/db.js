@@ -782,6 +782,68 @@ const MIGRACOES = [
     nome: 'estudo-tentativa-bloco-ref-2026-10-11',
     sql: `ALTER TABLE est_tentativas_bloco ADD COLUMN bloco_ref TEXT DEFAULT '';`,
   },
+  {
+    // SEGUNDA REVISÃO de 11/10/2026 (docs\estudo\auditoria-2026-10-11-b):
+    //  · certificado REVOGÁVEL (A2): reembolso e revogação de acesso deixam o registro, mas a página pública passa
+    //    a dizer "certificado revogado", sem o nome;
+    //  · `est_leituras` (R3): cada TENTATIVA de abrir um PDF para orçar — é o que o teto diário conta (antes contava
+    //    o pedido criado, e o PDF que estourava a leitura não criava pedido: o teto nunca saía do zero);
+    //  · `est_midia_remover` (LGPD): arquivo cuja linha de mídia já saiu do banco e que ainda precisa sair do
+    //    armazenamento — se a remoção falhar, a passada diária tenta de novo (antes ficava no bucket, sem registro).
+    nome: 'auditoria-b-certificado-leituras-2026-10-11',
+    sql: `ALTER TABLE certificates ADD COLUMN revogado_em TEXT DEFAULT '';
+          ALTER TABLE certificates ADD COLUMN revogado_motivo TEXT DEFAULT '';
+          CREATE TABLE IF NOT EXISTS est_leituras (
+            id       TEXT PRIMARY KEY,
+            user_id  TEXT NOT NULL,
+            tipo     TEXT NOT NULL,          -- prova | edital
+            quando   TEXT NOT NULL,
+            desfecho TEXT DEFAULT 'lendo'    -- lendo | ok | falhou
+          );
+          CREATE INDEX IF NOT EXISTS idx_estleit_user ON est_leituras (user_id, tipo, quando);
+          CREATE TABLE IF NOT EXISTS est_midia_remover (
+            id         TEXT PRIMARY KEY,     -- o id que a mídia tinha
+            dados      TEXT NOT NULL,        -- a linha da mídia (onde o arquivo mora)
+            criado_em  TEXT NOT NULL,
+            tentativas INTEGER DEFAULT 0
+          );`,
+  },
+  {
+    // RÉGUA NOVA SEM PERDER O QUE JÁ ERA DO ALUNO (R6). A régua de "aula estudada" passou a exigir que o aluno tenha
+    // ABERTO a aula (`aberta_em`). Quem estudou até 10/10 respondendo questão ou card da competência da aula, sem
+    // abrir a tela dela, perderia de uma vez "Estudados por você", o selo bronze, a liberação do teste final e o que
+    // falta para o certificado. Esta migração roda UMA vez: para cada (aluno, percurso, aula) com evidência de ESTUDO
+    // ou PRÁTICA de uma competência da aula anterior a 11/10/2026 (00:00 de Brasília), a aula fica marcada como
+    // aberta e lida nessa data. Resposta de PROVA (modo 'avaliacao') não entra — é o que a régua nova quis tirar.
+    // Dali em diante vale a régua nova. Não mexe em quem já tinha `aberta_em`/`lida_em`.
+    nome: 'estudo-regua-transicao-2026-10-11',
+    sql: `INSERT INTO est_aula_estado (user_id, escopo_id, unidade, aberta_em, lida_em)
+          SELECT DISTINCT e.user_id, e.escopo_id, u.codigo, '2026-10-11T03:00:00.000Z', '2026-10-11T03:00:00.000Z'
+            FROM est_evidencias e
+            JOIN est_unidades u ON u.escopo_id = e.escopo_id
+            JOIN json_each(u.competencias) k ON k.value = e.competencia_codigo
+           WHERE e.criado_em < '2026-10-11T03:00:00.000Z' AND e.competencia_codigo != '' AND e.modo IN ('estudo', 'pratica')
+              AND EXISTS (SELECT 1 FROM users x WHERE x.id = e.user_id) AND EXISTS (SELECT 1 FROM est_escopos y WHERE y.id = e.escopo_id)
+          ON CONFLICT (user_id, escopo_id, unidade) DO UPDATE SET
+            aberta_em = CASE WHEN COALESCE(est_aula_estado.aberta_em, '') = '' THEN excluded.aberta_em ELSE est_aula_estado.aberta_em END,
+            lida_em   = CASE WHEN COALESCE(est_aula_estado.lida_em, '') = '' THEN excluded.lida_em ELSE est_aula_estado.lida_em END;`,
+  },
+  {
+    // DUAS ABAS, NOTA DA MARCAÇÃO (réplica de 11/10/2026, M5): a anotação de um grifo era a única escrita de texto do
+    // aluno sem data de alteração — a aba aberta antes gravava a nota velha (ou vazia) por cima da outra, sem aviso.
+    // Com `atualizado_em`, o servidor confere o que a tela leu, como já faz com a nota da aula, a tentativa do bloco e
+    // a anotação da questão. Marcação antiga fica com '' ("nunca alterada"), que é o que a tela dela leu.
+    nome: 'estudo-marcacao-atualizado-em-2026-10-11',
+    sql: `ALTER TABLE est_marcacoes ADD COLUMN atualizado_em TEXT DEFAULT '';`,
+  },
+  {
+    // FALHA ABSORVIDA DENTRO DE TRABALHO QUE DEU CERTO (réplica de 11/10/2026, R4-2). A tentativa que falhou deixou de
+    // ser cobrada do aluno: a plataforma absorve. O log de uso guarda, na linha 'ok', quanto desse custo foi absorvido
+    // — é o que os tetos de falha por conta somam. Sem isso, quem força o 1º modelo a cortar a resposta faria a
+    // plataforma absorver sem limite, com o trabalho sempre "dando certo".
+    nome: 'ia-custo-absorvido-2026-10-11',
+    sql: `ALTER TABLE ai_usage_logs ADD COLUMN absorvido_centavos_usd REAL DEFAULT 0;`,
+  },
 ];
 
 // Cada migração é ATÔMICA: os comandos dela e o registro em `migrations` entram na mesma transação. Antes, um
@@ -814,4 +876,7 @@ const j = {
   str(o) { try { return JSON.stringify(o == null ? null : o); } catch { return 'null'; } },
 };
 
-module.exports = { db, transacao, nowISO, novoId, j, DATA_DIR, MOD_DIR, DB_PATH };
+// (o SQL de uma migração pelo nome — é como o teste reaplica a de transição da régua sobre dados antigos e novos)
+const sqlDaMigracao = (nome) => (MIGRACOES.find(m => m.nome === nome) || {}).sql || '';
+
+module.exports = { db, transacao, nowISO, novoId, j, DATA_DIR, MOD_DIR, DB_PATH, sqlDaMigracao };

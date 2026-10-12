@@ -94,7 +94,7 @@ function landingHTML() {
     <link rel="canonical" href="${BASE_URL()}/academy">
     ${HEAD_MARCA}${GA}
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Academy","applicationCategory":"EducationalApplication","operatingSystem":"Web","description":"Marketplace brasileiro de cursos online e produtos digitais: publicar é grátis e o produtor paga só comissão de 8,9% + R$ 1 por venda.","publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=1"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=2"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
     <header class="top"><div class="wrap">
       ${marca({ escuro: true, altura: 150 })}
       <nav><a class="esconde" href="/academy#cursos">Cursos</a><a class="esconde" href="/academy/marketplace">Marketplace</a><a class="esconde" href="https://villelastay.com.br/campanhas/cursos/">Conteúdo dos cursos</a><a href="/academy/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/academy/app#cadastro">Criar conta grátis</a></nav>
@@ -158,9 +158,20 @@ function landingHTML() {
       </script></footer></body></html>`;
 }
 
+// VERSÃO DOS ARQUIVOS DE TELA do painel (/academy/app). Um lugar só: subir o número de um arquivo aqui muda o `?v=`
+// dele no HTML e muda a VERSAO_TELA — que vai em toda resposta da API (cabeçalho X-Academy-Tela, index.js) e nasce
+// na página (window.ACADEMY_TELA). Aba aberta durante um deploy compara as duas e mostra "Há uma versão nova desta
+// tela — Atualizar" (app-cliente.js › conferirVersao); nunca recarrega sozinha. ⚠️ Alterou um arquivo de tela
+// (app-*.js, aluno.css, estude.css)? Suba o número dele aqui. O pacote dos motores (/academy/estude-motores.js) é
+// pedido pela própria tela (app-estudo.js › comMotores) e tem o `?v=` dele lá.
+const V_SCRIPTS = { jornada: 5, ecossistema: 3, carteira: 3, estude: 4, aluno: 12, app: 14 };
+const V_FOLHAS = { aluno: 5, estude: 4 };
+const script = (n) => `<script src="/academy/${n}.js?v=${V_SCRIPTS[n]}"></script>`;
+const folha = (n) => `<link rel="stylesheet" href="/academy/${n}.css?v=${V_FOLHAS[n]}">`;
+const VERSAO_TELA = Object.keys(V_FOLHAS).map(n => `${n}.${V_FOLHAS[n]}`).concat(Object.keys(V_SCRIPTS).map(n => `${n}.${V_SCRIPTS[n]}`)).join('-');
 function appHTML() {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/aluno.css?v=5"><link rel="stylesheet" href="/academy/estude.css?v=3"><style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7">${folha('aluno')}${folha('estude')}<style>${CSS}
     .cx{max-width:1040px;margin:20px auto;padding:0 14px;transition:max-width .25s}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
     .kpi{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;min-width:120px;display:inline-block;margin:4px}
@@ -174,7 +185,7 @@ function appHTML() {
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy"><div class="cx">
     <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${marca({ escuro: false, altura: 30 })} <span class="tag">painel</span></h2>
     <div id="app"><p class="sub">Carregando…</p></div></div>
-    <script src="/academy/jornada.js?v=4"></script><script src="/academy/ecossistema.js?v=3"></script><script src="/academy/carteira.js?v=2"></script><script src="/academy/estude.js?v=3"></script><script src="/academy/aluno.js?v=11"></script><script src="/academy/app.js?v=13"></script><script>bootAcademy();</script><script src="/academy/comunicados.js" data-cor="#D97706" data-sino="nao" defer></script></body></html>`;
+    <script>window.ACADEMY_TELA=${JSON.stringify(VERSAO_TELA)};</script>${['jornada', 'ecossistema', 'carteira', 'estude', 'aluno', 'app'].map(script).join('')}<script>bootAcademy();</script><script src="/academy/comunicados.js" data-cor="#D97706" data-sino="nao" defer></script></body></html>`;
 }
 
 // ==================== FASE 3 — vitrine pública (SEO/OG) ====================
@@ -187,22 +198,29 @@ const sufixoMes = (p) => (p.tipo === 'clube' ? '<small>/mês</small>' : '');
 // `url` é o caminho da página (ex.: /academy/marketplace). Vira canonical e og:url
 // ABSOLUTOS: sem canonical, o mesmo conteúdo responde por academia./academy./cursos.
 // e pelo domínio da Render — quatro endereços disputando a mesma página.
-function shellPublico({ titulo, descricao, url, corpo, imagem, jsonld }) {
+// `noindex`: página que leva dado pessoal (o certificado, com o nome do aluno) não entra em buscador.
+// `imagemDim` = { largura, altura } REAIS de `imagem`. Sem ele as dimensões não são declaradas: o shell dizia
+// 1200×630 para qualquer imagem, e a capa do curso é 1920×1080 (auditoria de 11/10/2026, B1). Dimensão
+// errada é pior do que nenhuma — a rede social recorta pelo que foi declarado.
+const OG_MARCA = { largura: 1200, altura: 630 }; // medida de /assets/brand/villela-academy/og-image.png
+const ogDimensoes = (d) => (d && d.largura > 0 && d.altura > 0
+  ? `<meta property="og:image:width" content="${Number(d.largura)}"><meta property="og:image:height" content="${Number(d.altura)}">` : '');
+function shellPublico({ titulo, descricao, url, corpo, imagem, imagemDim, jsonld, noindex }) {
   const abs = url ? (String(url).startsWith('http') ? url : BASE_URL() + url) : '';
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>${esc(titulo)} — Villela Academy</title>
     <meta name="description" content="${esc(descricao)}">
-    <meta name="robots" content="index,follow,max-image-preview:large">
+    <meta name="robots" content="${noindex ? 'noindex,nofollow' : 'index,follow,max-image-preview:large'}">
     ${abs ? `<link rel="canonical" href="${esc(abs)}">` : ''}
     <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
     <meta property="og:type" content="website">${abs ? `<meta property="og:url" content="${esc(abs)}">` : ''}
     <meta property="og:site_name" content="Villela Academy"><meta property="og:locale" content="pt_BR">
     <meta property="og:image" content="${esc(imagem || `${BASE_URL()}${BRAND}/og-image.png`)}">
-    <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+    ${ogDimensoes(imagem ? imagemDim : OG_MARCA)}
     <meta name="twitter:card" content="summary_large_image">
     ${jsonld ? `<script type="application/ld+json">${JSON.stringify(jsonld).replace(/</g, '\\u003c')}</script>` : ''}
     ${HEAD_MARCA}
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=1"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=2"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
     .estrela{color:var(--villela-gold)}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
     <div class="top"><div class="wrap" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${marca({ escuro: true, altura: 28 })}<span style="flex:1"></span><a href="/academy/marketplace">Marketplace</a><a href="https://villelastay.com.br/campanhas/cursos/">Conteúdo dos cursos</a><a href="/academy/app">Entrar</a></div></div>
     ${corpo}
@@ -326,6 +344,97 @@ const listaPv = (arr, cls, icone) => arr && arr.length
   ? `<ul class="pv-lista ${cls}">${arr.map(x => `<li>${svgI(icone, 20)}<span>${esc(x)}</span></li>`).join('')}</ul>` : '';
 const secPv = (titulo, html) => html
   ? `<section class="pv-sec">${titulo ? `<h2>${titulo}</h2>` : ''}${html}</section>` : '';
+// "1.632 questões", e nunca "1 conteúdos": número com milhar e a palavra no número certo
+const num = (n) => Number(n || 0).toLocaleString('pt-BR');
+const qtd = (n, um, muitos) => `${num(n)} ${Number(n) === 1 ? um : muitos}`;
+
+// DESCRIÇÃO LONGA do produtor (auditoria de 11/10/2026, M1). O texto chega com listas ("- item") e títulos
+// internos ("O que é"), e saía num parágrafo só: 13 itens corridos, 893 px de texto contínuo no celular.
+// Três regras, e nada além delas:
+//   · linha que começa com "- " é item de lista;
+//   · linha curta, sem pontuação no fim, SOZINHA entre linhas em branco e com texto depois dela, é subtítulo;
+//   · o resto é parágrafo.
+// O texto é ESCAPADO ANTES de qualquer coisa: daqui só saem as tags <p>, <ul>, <li> e <h3> que ESTA função
+// escreve. Não é Markdown e não aceita HTML — "<script>" do produtor aparece como texto na tela.
+const TITULO_MAX = 70;
+function textoRico(texto) {
+  const blocos = esc(String(texto == null ? '' : texto).replace(/\r\n?/g, '\n')).split(/\n[ \t]*\n/)
+    .map(b => b.split('\n').map(l => l.trim()).filter(Boolean)).filter(b => b.length);
+  const ehItem = (l) => /^- +\S/.test(l);
+  return blocos.map((linhas, i) => {
+    const so = linhas.length === 1 ? linhas[0] : '';
+    if (so && i < blocos.length - 1 && !ehItem(so) && so.length <= TITULO_MAX && !/[.!?:;,…]$/.test(so)) return `<h3 class="pv-sub">${so}</h3>`;
+    const saida = []; let par = [], itens = [];
+    const fecha = () => {
+      if (par.length) saida.push(`<p>${par.join(' ')}</p>`);
+      if (itens.length) saida.push(`<ul class="pv-pontos">${itens.map(x => `<li>${x}</li>`).join('')}</ul>`);
+      par = []; itens = [];
+    };
+    for (const l of linhas) {
+      if (ehItem(l)) { if (par.length) fecha(); itens.push(l.replace(/^- +/, '')); }
+      else { if (itens.length) fecha(); par.push(l); }
+    }
+    fecha();
+    return saida.join('');
+  }).join('');
+}
+
+// og:image (auditoria de 11/10/2026, B1): largura e altura REAIS da capa, lidas do cabeçalho do arquivo. Só PNG
+// e JPEG (o que o upload de capa recebe na prática); formato que não se sabe ler fica SEM dimensão declarada.
+function dimensoesDaImagem(buf) {
+  try {
+    if (!buf || buf.length < 24) return null;
+    if (buf.readUInt32BE(0) === 0x89504E47 && buf.toString('latin1', 12, 16) === 'IHDR') return { largura: buf.readUInt32BE(16), altura: buf.readUInt32BE(20) };
+    if (buf[0] === 0xFF && buf[1] === 0xD8) {
+      // JPEG: anda pelos segmentos até o SOF (C0–CF, menos C4, C8 e CC), onde estão altura e largura
+      let i = 2;
+      while (i + 9 < buf.length) {
+        if (buf[i] !== 0xFF) { i++; continue; }
+        const m = buf[i + 1];
+        if (m === 0xFF) { i++; continue; }
+        if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) return { largura: buf.readUInt16BE(i + 7), altura: buf.readUInt16BE(i + 5) };
+        if ((m >= 0xD0 && m <= 0xD9) || m === 0x01) { i += 2; continue; } // marcadores sem tamanho
+        i += 2 + buf.readUInt16BE(i + 2);
+      }
+    }
+  } catch (_) { /* arquivo truncado ou estranho: sem dimensão */ }
+  return null;
+}
+// A medida fica guardada pelo id da mídia (trocar a capa troca o id). Capa no disco é lida na hora; capa no
+// bucket só é conhecida depois que a rota /academy/capa a serviu uma vez — até lá a página sai SEM dimensão,
+// que é o certo: a página de venda não espera uma ida ao bucket para montar o cabeçalho.
+const DIMS_CAPA = new Map();
+function dimsDaCapa(mediaId, bytes) {
+  if (!mediaId) return null;
+  if (DIMS_CAPA.has(mediaId)) return DIMS_CAPA.get(mediaId);
+  let buf = bytes || null;
+  if (!buf) {
+    try {
+      const m = ct.Midia.obter(mediaId);
+      if (!m || m.storage === 's3') return null; // no bucket: espera a rota da capa
+      const caminho = ct.Midia.caminhoAbsoluto(m);
+      const fd = fs.openSync(caminho, 'r');
+      // 256 KB bastam para o cabeçalho (o SOF do JPEG pode vir depois de um EXIF com miniatura)
+      try { buf = Buffer.alloc(262144); buf = buf.subarray(0, fs.readSync(fd, buf, 0, buf.length, 0)); } finally { fs.closeSync(fd); }
+    } catch (_) { return null; }
+  }
+  const d = dimensoesDaImagem(buf);
+  if (DIMS_CAPA.size > 2000) DIMS_CAPA.clear();
+  DIMS_CAPA.set(mediaId, d);
+  return d;
+}
+
+// ERRO PÚBLICO (404 de curso, de produtor e de certificado) — auditoria de 11/10/2026, B4. Estas páginas
+// saíam do molde dos textos legais e herdavam a faixa "MINUTA — documento em elaboração…" por cima de
+// "Certificado não encontrado". O molde de erro é o shell público, sem faixa e fora dos buscadores.
+// `mensagem` é texto FIXO de quem chama (nunca o que veio na URL) e sai escapado.
+function paginaErro(titulo, mensagem) {
+  return shellPublico({ titulo, descricao: mensagem, noindex: true,
+    corpo: `<div class="sec"><div class="wrap" style="max-width:620px"><div class="card" style="text-align:center;padding:40px">
+      <h1 style="color:var(--villela-navy);margin:8px 0;font-size:1.6rem">${esc(titulo)}</h1>
+      <p class="sub">${esc(mensagem)}</p>
+      <p style="margin-top:22px"><a class="btn" href="/academy/marketplace">Ver os cursos</a></p></div></div></div>` });
+}
 
 // ---- AMOSTRAS GRÁTIS na página de venda ----
 // Cada trecho é um <video> nativo com a capa de pôster: toca no lugar, sem autoplay e
@@ -360,9 +469,14 @@ function cursoHTML(slug) {
   const nota = ct.Reviews.media(p.id);
   const reviews = ct.Reviews.publicas(p.id);
   const resumo = ct.Marketplace.resumoConteudo(p.id);
+  // curso COM área: só entram cursos da mesma área — sem nenhum, a seção não aparece (melhor do que pôr
+  // Paisagismo ao lado de Direito). Curso sem área cai no catálogo recente, e o subtítulo diz isso.
+  const areas = (p.categorias && p.categorias.length ? p.categorias : [p.categoria]).filter(Boolean);
   const relacionados = ct.Marketplace.recomendados({
-    excluir: [p.id], categorias: [p.categoria], tags: p.tags || [], produtores: [p.producer_id], n: 3,
+    excluir: [p.id], categorias: areas, tags: p.tags || [], produtores: [p.producer_id], n: 3, soDaCategoria: areas.length > 0,
   });
+  // curso que hospeda o Estude: os números da página vêm do percurso publicado, não da casca (ver resumoDoEstude)
+  const est = resumo.estude;
   const emb = embedDe(sp.video_url);
   const ehClube = p.tipo === 'clube';
   const valor = p.preco_promo_centavos || p.preco_centavos;
@@ -380,14 +494,22 @@ function cursoHTML(slug) {
   // "o que você leva" sai do conteúdo REAL do curso, não de promessa escrita à mão
   const inclui = [];
   // a grade conta só as aulas; o módulo bônus (Villela Express) aparece à parte
-  const nAulas = resumo.modulos.filter(m => !m.extra).length;
+  const nAulas = est ? est.aulas : resumo.modulos.filter(m => !m.extra).length;
+  // horas de VÍDEO do curso: as das videoaulas do percurso, ou as dos vídeos da grade
+  const segVideo = est ? est.video_seg : resumo.total_seg;
   const bonusExpress = resumo.total_express ? `+ Villela Express: ${resumo.total_express} vídeo${resumo.total_express > 1 ? 's' : ''} curto${resumo.total_express > 1 ? 's' : ''} de consulta rápida` : '';
-  if (nAulas) inclui.push(['texto', `${nAulas} aula${nAulas > 1 ? 's' : ''}, do começo ao fim`]);
+  if (nAulas) inclui.push(['texto', `${qtd(nAulas, 'aula', 'aulas')}, do começo ao fim`]);
   if (bonusExpress) inclui.push(['play', bonusExpress]);
-  if (resumo.total_videos) inclui.push(['play', `${resumo.total_videos} vídeo${resumo.total_videos > 1 ? 's' : ''}${resumo.total_seg ? ` · ${durSeg(resumo.total_seg)}` : ''}`]);
-  const naoVideo = resumo.total_aulas - resumo.total_videos;
-  if (naoVideo > 0) inclui.push(['doc', `${naoVideo} conteúdo${naoVideo > 1 ? 's' : ''} de leitura e prática`]);
-  if (resumo.total_materiais) inclui.push(['baixar', `${resumo.total_materiais} materiais para baixar`]);
+  if (est) {
+    if (est.videos) inclui.push(['play', `${qtd(est.videos, 'videoaula', 'videoaulas')}${est.video_seg ? ` · ${durSeg(est.video_seg)}` : ''}`]);
+    if (est.questoes) inclui.push(['alvo', `${qtd(est.questoes, 'questão', 'questões')} para praticar`]);
+    if (est.cards) inclui.push(['doc', `${qtd(est.cards, 'card', 'cards')} de revisão`]);
+  } else {
+    if (resumo.total_videos) inclui.push(['play', `${resumo.total_videos} vídeo${resumo.total_videos > 1 ? 's' : ''}${resumo.total_seg ? ` · ${durSeg(resumo.total_seg)}` : ''}`]);
+    const naoVideo = resumo.total_aulas - resumo.total_videos;
+    if (naoVideo > 0) inclui.push(['doc', `${naoVideo} conteúdo${naoVideo > 1 ? 's' : ''} de leitura e prática`]);
+  }
+  if (resumo.total_materiais) inclui.push(['baixar', `${qtd(resumo.total_materiais, 'material', 'materiais')} para baixar`]);
   inclui.push(['chapeu', 'Certificado da Villela Academy']);
   if (gote.ativo) inclui.push(['relogio', `${lib.promessa(gote)}, a partir da sua matrícula`]);
   inclui.push(['relogio', ehClube ? 'Acesso enquanto a assinatura estiver ativa' : 'Acesso por 1 ano, no computador e no celular']);
@@ -398,10 +520,12 @@ function cursoHTML(slug) {
     ...((p.categorias && p.categorias.length ? p.categorias : [p.categoria]).filter(Boolean)
       .map(c => `<a class="pv-chip" href="/academy/marketplace?categoria=${encodeURIComponent(c)}" style="text-decoration:none">${esc(ct.catRotulo(c))}</a>`)),
     nota.media ? `<span class="pv-chip" style="color:var(--pv-ouro)">★ ${nota.media} <span style="opacity:.8;color:#E8EDF6">(${nota.total} avaliações)</span></span>` : '',
-    nAulas ? `<span class="pv-chip">${svgI('texto', 15)} ${nAulas} aula${nAulas > 1 ? 's' : ''}</span>` : '',
-    resumo.total_aulas > resumo.modulos.length ? `<span class="pv-chip">${svgI('play', 15)} ${resumo.total_aulas} conteúdos</span>` : '',
-    resumo.total_seg ? `<span class="pv-chip">${svgI('relogio', 15)} ${durSeg(resumo.total_seg)}</span>` : '',
-    resumo.total_materiais ? `<span class="pv-chip">${svgI('baixar', 15)} ${resumo.total_materiais} materiais</span>` : '',
+    nAulas ? `<span class="pv-chip">${svgI('texto', 15)} ${qtd(nAulas, 'aula', 'aulas')}</span>` : '',
+    est ? (est.videos ? `<span class="pv-chip">${svgI('play', 15)} ${qtd(est.videos, 'videoaula', 'videoaulas')}</span>` : '')
+      : (resumo.total_aulas > resumo.modulos.length ? `<span class="pv-chip">${svgI('play', 15)} ${resumo.total_aulas} conteúdos</span>` : ''),
+    segVideo ? `<span class="pv-chip">${svgI('relogio', 15)} ${durSeg(segVideo)}</span>` : '',
+    est && est.questoes ? `<span class="pv-chip">${svgI('alvo', 15)} ${qtd(est.questoes, 'questão', 'questões')}</span>` : '',
+    resumo.total_materiais ? `<span class="pv-chip">${svgI('baixar', 15)} ${qtd(resumo.total_materiais, 'material', 'materiais')}</span>` : '',
   ].filter(Boolean).join('');
 
   const precoHtml = gratis
@@ -415,7 +539,7 @@ function cursoHTML(slug) {
         : (capaUrl ? `<img class="capa" src="${capaUrl}" alt="Capa do curso ${esc(p.titulo)}">` : ''))}
     <div class="in">
       ${precoHtml}
-      ${avisoIA()}
+      ${avisoIA(p)}
       <a class="pv-bt" href="${destino}">${svgI('play', 19)} ${cta}</a>
       <a class="pv-bt fan" href="/academy/app">Já sou aluno — entrar</a>
       <ul class="pv-inclui">${inclui.map(([i, txt]) => `<li>${svgI(i, 18)}<span>${txt}</span></li>`).join('')}</ul>
@@ -423,12 +547,24 @@ function cursoHTML(slug) {
         ? `<p class="pv-garantia">${svgI('escudo', 15)} ${esc(sp.garantia_texto || `Garantia de ${p.garantia_dias} dias: se o curso não for para você, peça o reembolso dentro do prazo.`)}</p>` : ''}
     </div></aside>`;
 
-  const curriculo = resumo.modulos.length ? `
+  // CURSO QUE HOSPEDA O ESTUDE: o "conteúdo do curso" é o PROGRAMA — as disciplinas, com as aulas de cada uma —
+  // e não a casca ("Comece por aqui — 1 conteúdo"). Com mais de um percurso publicado, o nome do percurso vem junto.
+  const curriculoEstude = est ? `
+    <div class="pv-resumo-curr">
+      <span>${svgI('texto', 16)} ${qtd(est.aulas, 'aula', 'aulas')}${est.disciplinas ? ` em ${qtd(est.disciplinas, 'disciplina', 'disciplinas')}` : ''}</span>
+      ${est.videos ? `<span>${svgI('play', 16)} ${qtd(est.videos, 'videoaula', 'videoaulas')}${est.video_seg ? ` · ${durSeg(est.video_seg)} de vídeo` : ''}</span>` : ''}
+      ${est.questoes ? `<span>${svgI('alvo', 16)} ${qtd(est.questoes, 'questão', 'questões')}</span>` : ''}
+      ${est.cards ? `<span>${svgI('doc', 16)} ${qtd(est.cards, 'card', 'cards')} de revisão</span>` : ''}
+    </div>
+    <div class="pv-curr pv-disc">${est.grupos.map(g => `<div class="aula">${svgI('texto', 17)}
+      <span>${esc(est.percursos > 1 && g.nome !== g.percurso ? `${g.percurso} — ${g.nome}` : g.nome)}</span>
+      <span class="dur">${qtd(g.aulas, 'aula', 'aulas')}</span></div>`).join('')}</div>` : '';
+  const curriculo = est ? curriculoEstude : resumo.modulos.length ? `
     <div class="pv-resumo-curr">
       <span>${svgI('texto', 16)} ${nAulas} aula${nAulas > 1 ? 's' : ''}${resumo.total_express ? ` + Villela Express (${resumo.total_express} vídeos curtos)` : ''}</span>
-      <span>${svgI('play', 16)} ${resumo.total_aulas} conteúdos (vídeo, artigo, material)</span>
+      <span>${svgI('play', 16)} ${qtd(resumo.total_aulas, 'conteúdo', 'conteúdos')} (vídeo, artigo, material)</span>
       ${resumo.total_seg ? `<span>${svgI('relogio', 16)} ${durSeg(resumo.total_seg)} de conteúdo</span>` : ''}
-      ${resumo.total_materiais ? `<span>${svgI('baixar', 16)} ${resumo.total_materiais} materiais</span>` : ''}
+      ${resumo.total_materiais ? `<span>${svgI('baixar', 16)} ${qtd(resumo.total_materiais, 'material', 'materiais')}</span>` : ''}
     </div>
     ${gote.ativo ? `<p class="pv-gote">${svgI('relogio', 15)} <b>${esc(lib.promessa(gote))}.</b>
       Este curso abre em trilha, contada da <b>sua</b> matrícula — não de uma data fixa de turma.
@@ -443,8 +579,7 @@ function cursoHTML(slug) {
     </details>`).join('')}</div>` : '';
 
   const depoimentos = (sp.depoimentos || []).concat(reviews.map(r => ({ nome: r.nome, texto: r.texto, nota: r.nota })));
-  const sobre = sp.promessa ? `<p>${esc(sp.promessa)}</p>`
-    : (p.descricao_longa ? esc(p.descricao_longa).split('\n\n').map(x => `<p>${x}</p>`).join('') : '');
+  const sobre = textoRico(sp.promessa || p.descricao_longa); // listas e subtítulos do texto do produtor, sempre escapado
 
   const corpo = `
   <div class="pv-hero"><div class="pv">
@@ -486,7 +621,7 @@ function cursoHTML(slug) {
   </div></div>
 
   ${relacionados.length ? `<div class="pv-rel"><div class="pv">
-    <h2>Cursos relacionados</h2><p class="pv-fino" style="margin:0 0 20px">De quem estuda o mesmo assunto.</p>
+    <h2>${areas.length ? 'Cursos relacionados' : 'Outros cursos da Villela Academy'}</h2><p class="pv-fino" style="margin:0 0 20px">${areas.length ? `Da mesma área: ${esc(areas.map(c => ct.catRotulo(c)).join(', '))}.` : 'Os mais recentes do catálogo.'}</p>
     <div class="pv-vitrine">${relacionados.map(cardProduto).join('')}</div></div></div>` : ''}${trechos.length ? SCRIPT_AMOSTRAS : ''}
 
   ${(billing.ativo() || gratis) ? '' : `<div class="sec" id="comprar" style="background:var(--ambar-claro)"><div class="wrap" style="max-width:560px">
@@ -500,24 +635,42 @@ function cursoHTML(slug) {
         const r=await fetch('/academy/api/cursos/${esc(p.id)}/interesse',{method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({nome:i_nome.value,email:i_email.value,telefone:i_tel.value})});
         m.textContent=r.ok?'✅ Anotado! Você será avisado.':'Erro ao enviar.';if(r.ok)document.getElementById('int').reset();};</script>
-    </div></div>`}`;
+    </div></div>`}
+  ${/* BARRA DE COMPRA do celular (auditoria de 11/10/2026, M6): em tela estreita o cartão de compra desce para
+       depois do conteúdo e o preço ficava a mais de 3.000 px do topo. A barra fica presa ao rodapé da tela com
+       preço e botão; só aparece abaixo de 980 px (publico.css), que é quando o cartão sai do lado. Tem de ser o
+       ÚLTIMO elemento do corpo: o CSS abre espaço no <footer> que vem logo depois, para a barra não cobri-lo. */''}
+  <div class="pv-barra" role="region" aria-label="Preço e compra">
+    <div class="pv-barra-preco">${gratis ? '<b>Grátis</b>' : `${p.preco_promo_centavos ? `<s>${brl(p.preco_centavos)}</s>` : ''}<b>${brl(valor)}</b>${ehClube ? '<span class="mes">/mês</span>' : ''}`}</div>
+    <a class="pv-bt" href="${destino}">${cta}</a>
+  </div>`;
 
   // Course é o schema que faz o curso aparecer com provedor, preço e nota nos
   // resultados; sem ele a página é só texto para o buscador. `offers` só entra
   // com preço de verdade, e `aggregateRating` só quando existe avaliação real —
   // marcação de nota inventada é motivo de penalidade.
+  // Quem ensina: o produtor é uma PESSOA, salvo quando o curso é da própria casa — "Villela Academy" marcada
+  // como Person é organização vestida de gente (auditoria de 11/10/2026, B6).
+  const nomeProdutor = String(p.produtor_nome || '').trim();
+  const quemEnsina = !nomeProdutor || /^villela academy$/i.test(nomeProdutor)
+    ? { '@type': 'Organization', name: 'Villela Academy', url: `${BASE_URL()}/academy` }
+    : { '@type': 'Person', name: nomeProdutor };
   const ld = {
     '@context': 'https://schema.org', '@type': 'Course', inLanguage: 'pt-BR',
     name: p.titulo, description: p.descricao_curta || sp.headline || p.subtitulo || p.titulo,
     url: `${BASE_URL()}/academy/cursos/${p.slug}`,
     provider: { '@type': 'Organization', name: 'Villela Academy', url: `${BASE_URL()}/academy` },
-    author: { '@type': 'Person', name: p.produtor_nome || 'Villela Academy' },
+    author: quemEnsina,
     ...(p.capa_media_id ? { image: `${BASE_URL()}/academy/capa/${p.id}?v=${p.capa_media_id}` } : {}),
     hasCourseInstance: {
       '@type': 'CourseInstance', courseMode: 'online',
-      courseWorkload: resumo.total_seg ? `PT${Math.max(1, Math.round(resumo.total_seg / 3600))}H` : undefined,
-      instructor: { '@type': 'Person', name: p.produtor_nome || 'Villela Academy' },
+      courseWorkload: segVideo ? `PT${Math.max(1, Math.round(segVideo / 3600))}H` : undefined,
+      instructor: quemEnsina,
     },
+    // curso que hospeda o Estude: o programa (disciplina e nº de aulas) vai junto, como na página
+    ...(est ? {
+      syllabusSections: est.grupos.map(g => ({ '@type': 'Syllabus', name: g.nome, description: qtd(g.aulas, 'aula', 'aulas') })),
+    } : {}),
     ...(valor ? {
       offers: {
         '@type': 'Offer', price: (valor / 100).toFixed(2), priceCurrency: 'BRL',
@@ -541,6 +694,7 @@ function cursoHTML(slug) {
     jsonld: ldFaq ? [ld, ldFaq] : ld,
     // capa do curso como og:image quando existe (melhor); og da marca é o fallback do shell
     imagem: p.capa_media_id ? `${BASE_URL()}/academy/capa/${p.id}?v=${p.capa_media_id}` : null,
+    imagemDim: dimsDaCapa(p.capa_media_id), // medida real do arquivo; desconhecida = não declara
   });
 }
 
@@ -561,7 +715,7 @@ function checkoutHTML(slug) {
     <p class="sub">Pagamento processado pelo Mercado Pago. O acesso é liberado automaticamente após a confirmação.
       ${clube ? 'Assinatura mensal com renovação automática — cancele quando quiser no painel.' : ''}
       Ao ${clube ? 'assinar' : 'comprar'} você concorda com os <a href="/academy/termos" target="_blank">Termos</a> e a <a href="/academy/reembolso" target="_blank">Política de Reembolso</a>.</p>
-    ${avisoIA()}
+    ${avisoIA(p)}
   </div></div>
   <script>
   (function(){
@@ -599,7 +753,7 @@ function checkoutHTML(slug) {
     boot();
   })();
   </script>`;
-  return shellPublico({ titulo: 'Checkout — ' + p.titulo, descricao: 'Finalize sua compra na Villela Academy.', corpo });
+  return shellPublico({ titulo: 'Checkout — ' + p.titulo, descricao: 'Finalize sua compra na Villela Academy.', corpo, noindex: true });
 }
 
 function obrigadoHTML() {
@@ -625,7 +779,7 @@ function obrigadoHTML() {
     if(id) checa(); else box.innerHTML='<p class="erro">Pedido não informado.</p>';
   })();
   </script>`;
-  return shellPublico({ titulo: 'Obrigado', descricao: 'Confirmação de compra na Villela Academy.', corpo });
+  return shellPublico({ titulo: 'Obrigado', descricao: 'Confirmação de compra na Villela Academy.', corpo, noindex: true });
 }
 
 function obrigadoAssinaturaHTML() {
@@ -647,7 +801,7 @@ function obrigadoAssinaturaHTML() {
     if(id) checa(); else box.innerHTML='<p class="erro">Assinatura não informada.</p>';
   })();
   </script>`;
-  return shellPublico({ titulo: 'Assinatura', descricao: 'Confirmação de assinatura na Villela Academy.', corpo });
+  return shellPublico({ titulo: 'Assinatura', descricao: 'Confirmação de assinatura na Villela Academy.', corpo, noindex: true });
 }
 
 function produtorHTML(slug) {
@@ -666,12 +820,25 @@ function produtorHTML(slug) {
 // IA paga à parte: o aviso aparece na página de venda e no checkout A PARTIR do momento em que
 // o dono liga a cobrança (carteira-ia.js) — antes disso, dizer "pago" seria falso; depois,
 // não dizer seria vender sem avisar. Por isso sai da config, e não do texto de cada curso.
-function avisoIA() {
+// O QUE O PREÇO INCLUI sai do que o curso TEM (auditoria de 11/10/2026, B2): a frase era fixa e prometia "o quiz"
+// a curso sem quiz nenhum. Curso que hospeda o Estude tem a prática DENTRO do percurso (questões e caderno de
+// erros), não o quiz da Academy; curso comum só fala em quiz quando há quiz publicado. Sem produto (chamada
+// antiga), a lista fica no que todo curso tem.
+function inclusoNoPreco(p) {
+  let est = null, quiz = false;
+  try { if (p) { est = ct.Marketplace.resumoDoEstude(p.id); quiz = ct.Marketplace.temQuiz(p.id); } } catch (_) { /* na dúvida, promete menos */ }
+  const itens = est
+    ? ['O curso', 'as aulas', est.videos ? 'as videoaulas' : '', est.questoes ? 'as questões' : '', est.questoes ? 'o caderno de erros' : '', 'o certificado']
+    : ['O curso', 'os vídeos', 'os materiais', quiz ? 'o quiz' : '', 'o certificado'];
+  const l = itens.filter(Boolean);
+  return `${l.slice(0, -1).join(', ')} e ${l[l.length - 1]} estão incluídos no preço.`;
+}
+function avisoIA(p) {
   let ligada = false;
   try { ligada = !!require('./carteira-ia').cfg().ligada; } catch (_) { /* sem a carteira, não há o que avisar */ }
   if (!ligada) return '';
   return `<p class="pv-ia" style="font-size:.84rem;line-height:1.45;margin:10px 0;padding:9px 11px;border-left:3px solid #D97706;background:#FEF3E7;border-radius:6px;color:#7A3E06">
-    <b>O Tutor Villela e as ferramentas de IA são pagos à parte, por uso.</b> O curso, os vídeos, os materiais, o quiz e o certificado estão incluídos no preço.
+    <b>O Tutor Villela e as ferramentas de IA são pagos à parte, por uso.</b> ${esc(inclusoNoPreco(p))}
     A IA usa saldo pré-pago: você vê o valor antes de cada uso e paga só o que usar. <a href="/academy/creditos-ia" style="color:#7A3E06">Como funciona</a>.</p>`;
 }
 
@@ -783,7 +950,7 @@ function registrarPaginas(app, { notificar }) {
   app.get('/academy/categorias/:slug', (req, res) => res.redirect(302, '/academy/marketplace?categoria=' + encodeURIComponent(s(req.params.slug, 40))));
   app.get('/academy/cursos/:slug', (req, res) => {
     const html = cursoHTML(s(req.params.slug, 90));
-    if (!html) return res.status(404).send(paginaLegal('Não encontrado', '<p>Este produto não existe ou não está publicado.</p>'));
+    if (!html) return res.status(404).send(paginaErro('Curso não encontrado', 'Este produto não existe ou não está publicado.'));
     // rastreio de afiliado (?ref=): registra o clique e arma o cookie de atribuição
     const ref = s(req.query.ref, 30);
     if (ref) {
@@ -798,14 +965,14 @@ function registrarPaginas(app, { notificar }) {
   });
   app.get('/academy/checkout/:slug', (req, res) => {
     const html = checkoutHTML(s(req.params.slug, 90));
-    if (!html) return res.status(404).send(paginaLegal('Não encontrado', '<p>Este produto não existe ou não está publicado.</p>'));
+    if (!html) return res.status(404).send(paginaErro('Curso não encontrado', 'Este produto não existe ou não está publicado.'));
     res.send(html);
   });
   app.get('/academy/obrigado', (req, res) => res.send(obrigadoHTML()));
   app.get('/academy/obrigado-assinatura', (req, res) => res.send(obrigadoAssinaturaHTML()));
   app.get('/academy/produtores/:slug', (req, res) => {
     const html = produtorHTML(s(req.params.slug, 90));
-    if (!html) return res.status(404).send(paginaLegal('Não encontrado', '<p>Produtor não encontrado.</p>'));
+    if (!html) return res.status(404).send(paginaErro('Produtor não encontrado', 'Esta página de produtor não existe.'));
     res.send(html);
   });
   // capa pública: SÓ de produto publicado (sem sessão; único arquivo exposto sem login)
@@ -833,6 +1000,7 @@ function registrarPaginas(app, { notificar }) {
         const r = await fetch(u);
         if (!r.ok) return res.sendStatus(404);
         const bytes = Buffer.from(await r.arrayBuffer());
+        dimsDaCapa(m.id, bytes); // a medida real passa a valer no og:image da página de venda
         entregar();
         return res.end(bytes);
       } catch (_) { return res.sendStatus(404); }
@@ -863,12 +1031,25 @@ function registrarPaginas(app, { notificar }) {
   // F10: validação pública de certificado (imprimível)
   app.get('/academy/certificados/:codigo', (req, res) => {
     const c = require('./governanca').Certificados.porCodigo(s(req.params.codigo, 30));
-    if (!c) return res.status(404).send(paginaLegal('Certificado não encontrado', '<p>Este código de certificado não existe. Confira o código e tente de novo.</p>'));
+    if (!c) return res.status(404).send(paginaErro('Certificado não encontrado', 'Este código de certificado não existe. Confira o código e tente de novo.'));
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow'); // o nome do aluno não é assunto de buscador
+    // REVOGADO (reembolso, acesso revogado): o código continua respondendo — quem confere precisa saber que ele
+    // NÃO vale mais —, mas a página não mostra o nome nem o certificado.
+    if (c.revogado_em) {
+      return res.send(shellPublico({ titulo: 'Certificado revogado', descricao: 'Este certificado foi revogado e não é mais válido.', noindex: true,
+        corpo: `<div class="sec"><div class="wrap" style="max-width:680px"><div class="card" style="text-align:center;padding:40px">
+          <h1 style="color:var(--villela-navy);margin:8px 0">Certificado revogado</h1>
+          <p class="sub">O certificado de código <b>${esc(c.id)}</b> foi revogado em ${esc(require('./governanca').Certificados.dataBrasilia(c.revogado_em).br)} e <b>não é mais válido</b>.</p>
+          <p class="sub">Curso: ${esc(c.produto_titulo)}</p></div></div></div>` }));
+    }
     const selos = require('./jornada').selosDoCertificado(c.user_id, c.product_id);
-    const emitido = new Date(c.emitido_em);
+    // a data é a do fuso de Brasília (emitido às 22 h do dia 10 não sai como dia 11)
+    const emitido = require('./governanca').Certificados.dataBrasilia(c.emitido_em);
+    // conta excluída a pedido do titular (LGPD): o certificado fica, sem o nome
+    const semTitular = !c.aluno_nome;
     const linkedin = 'https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&' + new URLSearchParams({
-      name: c.produto_titulo, organizationName: 'Villela Academy', issueYear: String(emitido.getUTCFullYear()),
-      issueMonth: String(emitido.getUTCMonth() + 1), certUrl: 'https://academia.villelastay.com.br/academy/certificados/' + c.id, certId: c.id,
+      name: c.produto_titulo, organizationName: 'Villela Academy', issueYear: String(emitido.ano),
+      issueMonth: String(emitido.mes), certUrl: 'https://academia.villelastay.com.br/academy/certificados/' + c.id, certId: c.id,
     }).toString();
     // CERTIFICADO ANTIGO, emitido pela aula-casca de um curso que hoje hospeda o Estude (tipo vazio): na exibição ele
     // ganha a frase do curso livre e perde o "1 aula(s)" da casca — o registro emitido não é alterado.
@@ -878,12 +1059,14 @@ function registrarPaginas(app, { notificar }) {
         <p style="margin:0 0 8px"><img src="${BRAND}/simbolo-v.svg" alt="Villela Academy" style="height:44px"></p>
         <p style="color:var(--villela-navy);font-weight:800;letter-spacing:2px;margin:0">VILLELA <span style="color:var(--villela-gold)">ACADEMY</span></p>
         <h1 style="color:var(--villela-navy);margin:8px 0">Certificado de Conclusão</h1>
-        <p class="sub">certificamos que</p>
+        ${semTitular ? `<p class="sub">certificado emitido para um aluno que depois pediu a exclusão da conta</p>
+        <p style="font-size:1.2rem;font-weight:700;color:var(--villela-navy);margin:6px 0">O titular removeu os dados pessoais</p>
+        <p class="sub">o registro confirma a conclusão de</p>` : `<p class="sub">certificamos que</p>
         <p style="font-size:1.6rem;font-weight:800;color:var(--villela-navy);margin:6px 0">${esc(c.aluno_nome)}</p>
-        <p class="sub">concluiu com êxito</p>
+        <p class="sub">concluiu com êxito</p>`}
         <p style="font-size:1.2rem;font-weight:700;margin:6px 0">${esc(c.produto_titulo)}</p>
         ${c.produtor_nome ? `<p class="sub">por ${esc(c.produtor_nome)}</p>` : ''}
-        <p class="sub">${cascaDoEstude ? '' : `${c.total_aulas} aula(s)`}${c.tipo === 'estude' && c.carga_horaria_min ? ` · carga horária de ${Math.max(1, Math.round(c.carga_horaria_min / 60))} hora(s)` : ''}${cascaDoEstude ? '' : ' · '}emitido em ${esc(String(c.emitido_em).slice(0, 10).split('-').reverse().join('/'))}</p>
+        <p class="sub">${cascaDoEstude ? '' : `${c.total_aulas} aula(s)`}${c.tipo === 'estude' && c.carga_horaria_min ? ` · carga horária de ${Math.max(1, Math.round(c.carga_horaria_min / 60))} hora(s)` : ''}${cascaDoEstude ? '' : ' · '}emitido em ${esc(emitido.br)}</p>
         ${c.tipo === 'estude' || cascaDoEstude ? `<p class="sub" style="margin-top:10px"><b>${esc(require('./governanca').FRASE_CURSO_LIVRE)}</b></p>` : ''}
         ${selos.length ? `<p class="sub" style="margin:18px 0 6px">competências comprovadas no curso</p>
         <p style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0">${selos.map(x => `<span class="tag" style="background:#eef7f3;color:#0d6b52">${esc((x.icone ? x.icone + ' ' : '') + x.nome)}</span>`).join('')}</p>` : ''}
@@ -891,14 +1074,14 @@ function registrarPaginas(app, { notificar }) {
         <p class="sub" style="font-size:.8rem">Autenticidade verificável em villelastay.com.br — /academy/certificados/${esc(c.id)}</p>
       </div>
       <p style="text-align:center;margin-top:14px"><button class="btn peq" onclick="window.print()">🖨️ Imprimir / salvar PDF</button>
-        <a class="btn peq" style="margin-left:8px;background:#0A66C2" target="_blank" rel="noopener" href="${esc(linkedin)}">Adicionar ao LinkedIn</a></p>
+        ${semTitular ? '' : `<a class="btn peq" style="margin-left:8px;background:#0A66C2" target="_blank" rel="noopener" href="${esc(linkedin)}">Adicionar ao LinkedIn</a>`}</p>
     </div></div>`;
-    res.send(shellPublico({ titulo: 'Certificado ' + c.id, descricao: `Certificado de conclusão de ${c.aluno_nome} — ${c.produto_titulo}.${c.tipo === 'estude' || cascaDoEstude ? ' ' + require('./governanca').FRASE_CURSO_LIVRE : ''}`, corpo }));
+    res.send(shellPublico({ titulo: 'Certificado ' + c.id, noindex: true, descricao: `Certificado de conclusão — ${c.produto_titulo}.${c.tipo === 'estude' || cascaDoEstude ? ' ' + require('./governanca').FRASE_CURSO_LIVRE : ''}`, corpo }));
   });
 
   // F8: páginas de verificação de e-mail e redefinição de senha
   app.get('/academy/verificar-email', (req, res) => res.send(shellPublico({
-    titulo: 'Verificar e-mail', descricao: 'Confirmação de e-mail na Villela Academy.',
+    titulo: 'Verificar e-mail', descricao: 'Confirmação de e-mail na Villela Academy.', noindex: true,
     corpo: `<div class="sec"><div class="wrap" style="max-width:520px"><div class="card" id="vf-box"><p class="sub">Confirmando…</p></div></div></div>
     <script>fetch('/academy/api/verificar-email',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({token:new URLSearchParams(location.search).get('token')})})
@@ -906,7 +1089,7 @@ function registrarPaginas(app, { notificar }) {
       .then(function(){document.getElementById('vf-box').innerHTML='<h2 style="text-align:left">✅ E-mail confirmado!</h2><p><a class="btn" href="/academy/app">Ir para o painel</a></p>';})
       .catch(function(e){document.getElementById('vf-box').innerHTML='<p class="erro">'+e.message+'</p>';});</script>` })));
   app.get('/academy/redefinir-senha', (req, res) => res.send(shellPublico({
-    titulo: 'Redefinir senha', descricao: 'Redefinição de senha na Villela Academy.',
+    titulo: 'Redefinir senha', descricao: 'Redefinição de senha na Villela Academy.', noindex: true,
     corpo: `<div class="sec"><div class="wrap" style="max-width:520px"><div class="card">
       <h2 style="text-align:left">Criar nova senha</h2>
       <input id="s1" type="password" placeholder="Nova senha (8+)"><input id="s2" type="password" placeholder="Confirme">
@@ -919,4 +1102,6 @@ function registrarPaginas(app, { notificar }) {
         .then(function(){location.href='/academy/app';}).catch(function(e){m.textContent=e.message;});}</script>` })));
 }
 
-module.exports = { registrarPaginas, landingHTML, appHTML };
+module.exports = { registrarPaginas, landingHTML, appHTML, VERSAO_TELA,
+  // só para os testes (testes-pagina-venda.js): as funções puras da página de venda
+  _teste: { textoRico, dimensoesDaImagem, inclusoNoPreco } };

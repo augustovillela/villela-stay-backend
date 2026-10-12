@@ -314,6 +314,7 @@ function aplicarPagamento(pay) {
   const st = String(pay.status || '');
   if (st === 'approved') {
     if (rec.status === 'paga') return { resultado: 'ja-paga' };
+    if (rec.status === 'reembolsada') return { resultado: 'sem-acao:reembolsada' }; // dinheiro que já voltou não credita de novo
     // o valor creditado é o da recarga que NÓS criamos, conferido com o que o MP diz ter recebido
     if (pay.transaction_amount != null && Math.round(Number(pay.transaction_amount) * 100) !== rec.valor_centavos) return { resultado: 'valor-divergente' };
     transacao(() => {
@@ -343,7 +344,9 @@ function aplicarPagamento(pay) {
 async function conferirRecarga(usuario, id) {
   const rec = db.prepare('SELECT * FROM ia_recargas WHERE id = ? AND user_id = ?').get(s(id, 40), usuario.id);
   if (!rec) throw erro('Recarga não encontrada.', 404);
-  if (rec.status === 'pendente' && _mpFetch) {
+  // 'recusada' e 'cancelada' também conferem: a primeira tentativa de pagamento recusada e a segunda aprovada, com
+  // o aviso do Mercado Pago perdido, deixava a recarga sem "Já paguei" que a recuperasse (o crédito é idempotente).
+  if (['pendente', 'recusada', 'cancelada'].includes(rec.status) && _mpFetch) {
     const r = await _mpFetch(`/v1/payments/search?external_reference=${encodeURIComponent('academy-ia:' + rec.id)}&sort=date_created&criteria=desc`);
     for (const pay of (r && r.results) || []) aplicarPagamento(pay);
   }
@@ -356,20 +359,24 @@ async function conferirRecarga(usuario, id) {
 const ROTULO = { recarga: 'Recarga', cortesia: 'Crédito de cortesia', ajuste: 'Ajuste', estorno_recarga: 'Recarga devolvida' };
 const AGENTE = { tutor: 'Tutor Villela', suporte: 'Tutor Villela', mentor: 'Mentor do Villela Lab', refinar: 'Lapidar com IA', estruturar: 'Estruturar curso', copy: 'Página de venda', pedagogico: 'Revisão pedagógica', relatorio: 'Relatório executivo',
   correcao: 'Correção de resposta escrita', correcao_oral: 'Correção de resposta oral (com transcrição)', transcricao: 'Transcrição de áudio', prova: 'Importação de prova em PDF', edital: 'Leitura de edital em PDF' };
-function extrato(userId, n = 30) {
-  const linhas = db.prepare('SELECT * FROM ia_movimentos WHERE user_id = ? ORDER BY criado_em DESC, rowid DESC LIMIT 400').all(userId);
+const EXTRATO_POR_PAGINA = 30;
+// `pagina` (a partir de 1): o extrato inteiro é alcançável, 30 linhas por vez — antes só as 30 últimas existiam.
+function extrato(userId, n = EXTRATO_POR_PAGINA, pagina = 1) {
+  const pag = Math.max(1, parseInt(pagina, 10) || 1), por = Math.min(100, Math.max(1, parseInt(n, 10) || EXTRATO_POR_PAGINA));
+  const linhas = db.prepare('SELECT * FROM ia_movimentos WHERE user_id = ? ORDER BY criado_em DESC, rowid DESC LIMIT ?').all(userId, 400 + pag * por * 3);
   const usos = {}, saida = [];
   for (const m of linhas) {
     if (['reserva', 'acerto', 'estorno'].includes(m.tipo)) {
       let u = usos[m.ref];
-      if (!u) { u = usos[m.ref] = { tipo: 'uso', milesimos: 0, quando: m.criado_em, agente: '', estornado: false, aberto: true }; saida.push(u); }
+      if (!u) { u = usos[m.ref] = { tipo: 'uso', milesimos: 0, quando: m.criado_em, fechado_em: '', agente: '', estornado: false, aberto: true }; saida.push(u); }
       u.milesimos += m.milesimos;
-      if (m.tipo === 'reserva') { u.agente = m.detalhe; u.quando = m.criado_em; } else u.aberto = false;
+      // `fechado_em`: a hora do ACERTO (ou do estorno) — a geração pode levar minutos depois da reserva
+      if (m.tipo === 'reserva') { u.agente = m.detalhe; u.quando = m.criado_em; } else { u.aberto = false; u.fechado_em = m.criado_em; }
       if (m.tipo === 'estorno') u.estornado = true;
     } else saida.push({ tipo: m.tipo, milesimos: m.milesimos, quando: m.criado_em, detalhe: m.detalhe });
   }
-  return saida.slice(0, n).map(x => x.tipo === 'uso'
-    ? { tipo: 'uso', quando: x.quando, milesimos: x.milesimos, valor: brl(Math.abs(x.milesimos)),
+  return saida.slice((pag - 1) * por, pag * por).map(x => x.tipo === 'uso'
+    ? { tipo: 'uso', quando: x.quando, fechado_em: x.fechado_em, milesimos: x.milesimos, valor: brl(Math.abs(x.milesimos)),
         descricao: (AGENTE[x.agente] || x.agente || 'IA') + (x.estornado ? ' — não gerou, valor devolvido' : x.aberto ? ' — em andamento' : '') }
     : { tipo: x.tipo, quando: x.quando, milesimos: x.milesimos, valor: brl(Math.abs(x.milesimos)), descricao: (ROTULO[x.tipo] || x.tipo) + (x.detalhe && x.tipo !== 'recarga' ? ' — ' + x.detalhe : '') });
 }
@@ -381,8 +388,9 @@ function carteiraDoUsuario(usuario) {
     ativa: c.ativa, isento: isento(usuario.id, c), saldo_milesimos: sd, saldo: brl(sd),
     pacotes: c.pacotes_centavos.map(v => ({ valor_centavos: v, rotulo: 'R$ ' + (v / 100).toFixed(0) })),
     pagamento_online: !!_mpFetch,
-    extrato: extrato(usuario.id),
-    recargas_pendentes: db.prepare("SELECT id, valor_centavos, criado_em FROM ia_recargas WHERE user_id = ? AND status = 'pendente' AND criado_em > ? ORDER BY criado_em DESC").all(usuario.id, new Date(Date.now() - 2 * 864e5).toISOString()),
+    extrato: extrato(usuario.id), extrato_por_pagina: EXTRATO_POR_PAGINA,
+    // (a recusada também aparece: a pessoa pode ter pago na segunda tentativa, e o "Já paguei" a confere)
+    recargas_pendentes: db.prepare("SELECT id, valor_centavos, criado_em, status FROM ia_recargas WHERE user_id = ? AND status IN ('pendente', 'recusada') AND criado_em > ? ORDER BY criado_em DESC").all(usuario.id, new Date(Date.now() - 2 * 864e5).toISOString()),
   };
 }
 
@@ -407,7 +415,7 @@ function painelStaff() {
 
 module.exports = {
   configurar, cfg, prepararConfig, cambio, ptax, atualizarPTAX, FOLGA_PADRAO_PCT, PTAX_VALE_DIAS, brl, precoEmMilesimos, isento, temFranquia, saldo, reservar, acertar, estornar, creditar,
-  criarRecarga, aplicarPagamento, conferirRecarga, extrato, carteiraDoUsuario, painelStaff,
+  criarRecarga, aplicarPagamento, conferirRecarga, extrato, EXTRATO_POR_PAGINA, carteiraDoUsuario, painelStaff,
   manterViva, soltar, reservaViva, devolverReserva, valorDaRecargaQueFalta, pagamentoOnline: () => !!_mpFetch,
   MARGEM_PADRAO_PCT, PACOTES_PADRAO, TIPOS_CREDITO, RECARGA_MINIMA_PADRAO, RESERVA_ORFA_MIN,
 };

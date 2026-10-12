@@ -41,6 +41,12 @@
 .pv-sec{padding:0 0 34px}
 .pv-sec h2{font-family:'Lora',Georgia,serif;font-size:1.55rem;color:var(--pv-navy);margin:0 0 14px;line-height:1.25}
 .pv-sec p{line-height:1.7;margin:0 0 14px;color:#283246}
+/* descrição longa do produtor: subtítulos e listas que vêm do texto (textoRico, em paginas.js) */
+.pv-sec .pv-sub{font:700 1.08rem/1.35 'Inter',sans-serif;color:var(--pv-navy);margin:22px 0 10px}
+.pv-sec .pv-sub:first-child{margin-top:0}
+.pv-sec .pv-pontos{margin:0 0 16px;padding:0 0 0 20px;display:grid;gap:9px;color:#283246}
+.pv-sec .pv-pontos li{line-height:1.6;padding-left:2px}
+.pv-sec .pv-pontos li::marker{color:var(--pv-ambar)}
 .pv-lista{list-style:none;padding:0;margin:0;display:grid;gap:11px}
 .pv-lista.duas{grid-template-columns:1fr 1fr}
 @media(max-width:700px){.pv-lista.duas{grid-template-columns:1fr}}
@@ -89,6 +95,10 @@
 .pv-curr .aula .dur{margin-left:auto;color:var(--pv-tinta3);font-size:.8rem;white-space:nowrap;padding-left:10px}
 .pv-curr .aula .free{background:#E7F5EF;color:var(--pv-ok);border-radius:99px;padding:1px 8px;font-size:.72rem;font-weight:700;margin-left:7px}
 .pv-resumo-curr{display:flex;gap:18px;flex-wrap:wrap;color:var(--pv-tinta2);font-size:.9rem;margin:0 0 14px}
+/* curso que hospeda o Estude: o currículo é a lista de DISCIPLINAS com o nº de aulas (sem sanfona) */
+.pv-curr.pv-disc .aula{padding:13px 18px;font-size:.95rem;font-weight:600;color:var(--pv-navy);border-bottom:1px solid var(--pv-borda2)}
+.pv-curr.pv-disc .aula:last-child{border-bottom:0}
+.pv-curr.pv-disc .aula .dur{font-weight:500;font-size:.82rem}
 /* gotejamento: a trilha é método, e o comprador lê isso ANTES de pagar */
 .pv-gote{margin:0 0 16px;padding:12px 16px;border-radius:12px;background:rgba(217,119,6,.10);
   border:1px solid rgba(217,119,6,.28);color:var(--pv-tinta2);font-size:.9rem;line-height:1.6}
@@ -121,6 +131,28 @@
 .pv-fim .pv-bt{display:inline-flex;width:auto;padding:15px 34px}
 .pv-rel{padding:46px 0 56px;background:#F7F8FA}
 .pv-rel h2{font-family:'Lora',serif;color:var(--pv-navy);font-size:1.45rem;margin:0 0 6px}
+
+/* ---------- barra de compra do celular ----------
+   Abaixo de 980px o cartão de compra sai do lado e desce para depois do conteúdo:
+   o preço ficava a mais de 3.000px do topo (auditoria de 11/10/2026, M6). A barra
+   fica presa ao rodapé da TELA com preço e botão. Ela é o último elemento antes do
+   <footer>, e é por isso que o espaço é aberto nele (`~ footer`): sem esse respiro
+   a barra cobriria as últimas linhas da página. A altura dela é fixa (62px + a
+   área segura do aparelho) para o respiro ser exato. */
+.pv-barra{display:none}
+@media(max-width:980px){
+  .pv-barra{display:flex;align-items:center;gap:12px;position:fixed;left:0;right:0;bottom:0;z-index:60;box-sizing:border-box;
+    height:calc(62px + env(safe-area-inset-bottom,0px));padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px));
+    background:#fff;border-top:1px solid var(--pv-borda);box-shadow:0 -8px 24px rgba(16,24,40,.14)}
+  .pv-barra-preco{display:flex;flex-direction:column;justify-content:center;flex:0 0 auto;min-width:0;line-height:1.15}
+  .pv-barra-preco b{font:800 1.18rem/1.15 'Inter',sans-serif;color:var(--pv-navy);white-space:nowrap}
+  .pv-barra-preco s{color:var(--pv-tinta3);font-size:.76rem}
+  .pv-barra-preco .mes{font-size:.76rem;color:var(--pv-tinta2);font-weight:600}
+  .pv-barra .pv-bt{flex:1 1 auto;width:auto;min-width:0;padding:13px 12px;white-space:nowrap}
+  .pv-barra .pv-bt:hover{transform:none}
+  .pv-barra ~ footer{padding-bottom:calc(30px + 62px + env(safe-area-inset-bottom,0px))}
+}
+@media print{.pv-barra{display:none!important}}
 
 /* ---------- landing: vitrine e números ---------- */
 /* auto-FIT (não auto-fill) + teto de 320px + justify-content:center: com poucos

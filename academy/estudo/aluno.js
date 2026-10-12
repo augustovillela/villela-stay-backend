@@ -188,7 +188,29 @@ function proximaTarefa(usuario, escopo, c, est = estadosDoAluno(usuario, escopo)
   return { tipo: est.length ? 'concluido' : 'sem_competencias', motivo: est.length ? 'Todas as competências foram demonstradas e retidas até aqui.' : 'Este percurso ainda não tem competências definidas.' };
 }
 
-function painel(usuario, produto, slugEscopo) {
+// PAINEL ENXUTO (réplica de 11/10/2026, R3-M9). O painel do curso real tem 365–386 KB, e era pedido INTEIRO a cada
+// questão respondida no Praticar e a cada Voltar do navegador. Quase tudo ali é CONTEÚDO, que não muda com a resposta
+// do aluno: o enunciado de cada competência, o título e a ficha de cada aula, o programa item a item. Por isso:
+//   · o painel leva uma `assinatura` — a digital dessa parte fixa;
+//   · `{ resumo: true }` devolve o MESMO painel sem a parte fixa das três listas grandes (competências, aulas, itens):
+//     de cada entrada vão só o código e o que muda com o estudo. A tela junta ao painel que já tem (app-estudo.js ›
+//     `juntarResumo`) — se a assinatura for outra (o curso publicou conteúdo), ela pede o painel inteiro;
+//   · `responder` devolve esse resumo junto com a correção, quando a tela pede: responder uma questão não gera mais
+//     pedido de painel nenhum.
+// O resumo sai do painel inteiro, calculado do mesmo jeito — não há segunda conta para divergir.
+const PAINEL_FIXOS = { competencias: ['codigo', 'resultado', 'essencial', 'depende_de'] };            // o resto da entrada é estado do aluno
+const PAINEL_DINAMICOS = { unidades: ['estudada', 'aberta', 'video_assistido'], itens: ['estudado', 'dominio'] }; // o resto da entrada é conteúdo
+const PAINEL_LISTAS = ['competencias', 'unidades', 'itens'];
+const parteFixa = (lista, x) => Object.fromEntries(Object.entries(x).filter(([k]) => (PAINEL_FIXOS[lista] ? PAINEL_FIXOS[lista].includes(k) : !PAINEL_DINAMICOS[lista].includes(k))));
+const parteViva = (lista, x) => Object.fromEntries(Object.entries(x).filter(([k]) => k === 'codigo' || (PAINEL_FIXOS[lista] ? !PAINEL_FIXOS[lista].includes(k) : PAINEL_DINAMICOS[lista].includes(k))));
+const assinaturaDoPainel = (p) => require('crypto').createHash('sha1').update(JSON.stringify(PAINEL_LISTAS.map(l => p[l].map(x => parteFixa(l, x))))).digest('hex').slice(0, 16);
+function painel(usuario, produto, slugEscopo, { resumo = false } = {}) {
+  const p = painelInteiro(usuario, produto, slugEscopo);
+  p.assinatura = assinaturaDoPainel(p);
+  if (!resumo) return p;
+  return { ...p, resumo: true, fixos: PAINEL_FIXOS, dinamicos: PAINEL_DINAMICOS, ...Object.fromEntries(PAINEL_LISTAS.map(l => [l, p[l].map(x => parteViva(l, x))])) };
+}
+function painelInteiro(usuario, produto, slugEscopo) {
   const c = abrir(usuario, produto, slugEscopo);
   const { escopo } = c;
   const est = estadosDoAluno(usuario, escopo);
@@ -326,7 +348,11 @@ const BLOCOS_DE_LEITURA = ['explicacao', 'exemplo', 'sintese'];
 // as aulas agrupadas pela disciplina-mãe do edital (ou no grupo geral, quando o programa não tem uma)
 // (`cob` e `uns`: quem já calculou a cobertura e leu as aulas — o painel — passa adiante, para não refazer)
 function aulasPorDisciplina(c, { cob = null, uns = null } = {}) {
-  const itens = new Map((cob || R.cobertura(c.escopo, c)).por_item.map(i => [i.codigo, i.texto]));
+  // Daqui só se usa o TEXTO de cada item do programa (o nome da disciplina). Quem não traz a cobertura pronta lê os
+  // itens direto: calcular a cobertura inteira (≈ 50 ms no curso real, metade do custo da rota) só para tirar dela
+  // o texto dos itens fazia `GET …/jornada`, a leitura, os mapas, o caderno e as ferramentas custarem como o painel
+  // (réplica de 11/10/2026, baixa 11).
+  const itens = new Map(cob ? cob.por_item.map(i => [i.codigo, i.texto]) : R.itens(c.escopo).map(i => [i.codigo, i.texto]));
   const disc = (u) => { const it = (u.itens[0] || ''); const d = it.split('.').slice(0, 2).join('.'); return it && itens.has(d) && d !== it ? d : ''; };
   const grupos = [], por = {};
   for (const u of uns || R.unidades(c.escopo.id, c.vis)) {
@@ -385,7 +411,7 @@ const CORES_MARCA = ['amarelo', 'verde', 'azul', 'rosa'];
 // e por isso também é reencontrado quando a aula é reescrita.
 const MARCADOR = 'marcador';
 const MAX_MARCA = 3000, MAX_MARCAS_POR_ESCOPO = 5000;
-const marcaPublica = (m, extra = {}) => ({ id: m.id, unidade: m.unidade, bloco: m.bloco, inicio: m.inicio, fim: m.fim, texto: m.texto, cor: m.cor, nota: m.nota || '', criado_em: m.criado_em, solta: false, ...extra });
+const marcaPublica = (m, extra = {}) => ({ id: m.id, unidade: m.unidade, bloco: m.bloco, inicio: m.inicio, fim: m.fim, texto: m.texto, cor: m.cor, nota: m.nota || '', atualizado_em: m.atualizado_em || '', criado_em: m.criado_em, solta: false, ...extra });
 function marcacoes(usuario, produto, slugEscopo) {
   const c = abrir(usuario, produto, slugEscopo);
   const us = new Map(R.unidades(c.escopo.id, c.vis).map(u => [u.codigo, u]));
@@ -413,7 +439,7 @@ function marcar(usuario, produto, slugEscopo, d = {}) {
   if (!CORES_MARCA.includes(d.cor) && d.cor !== MARCADOR) throw erro(`cor deve ser ${CORES_MARCA.join('|')}.`);
   if (db.prepare('SELECT COUNT(*) n FROM est_marcacoes WHERE user_id = ? AND escopo_id = ?').get(usuario.id, c.escopo.id).n >= MAX_MARCAS_POR_ESCOPO) throw erro('Você chegou ao limite de marcações deste percurso. Apague as que não usa mais.', 409);
   // o trecho é recortado AQUI, do texto do servidor: o cliente manda só as posições
-  const m = { id: novoId(), unidade: u.codigo, bloco: n, inicio, fim, texto: b.texto.slice(inicio, fim), cor: d.cor, nota: s(d.nota, 500), criado_em: nowISO() };
+  const m = { id: novoId(), unidade: u.codigo, bloco: n, inicio, fim, texto: b.texto.slice(inicio, fim), cor: d.cor, nota: s(textoDoAluno(d.nota), 500), criado_em: nowISO() };
   db.prepare('INSERT INTO est_marcacoes (id, user_id, escopo_id, unidade, bloco, inicio, fim, texto, cor, nota, versao_unidade, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .run(m.id, usuario.id, c.escopo.id, m.unidade, m.bloco, m.inicio, m.fim, m.texto, m.cor, m.nota, u.versao, m.criado_em);
   return { ok: true, marcacao: marcaPublica(m, { titulo: u.titulo }) };
@@ -428,9 +454,19 @@ function editarMarcacao(usuario, produto, slugEscopo, id, d = {}) {
   const m = marcacaoDoAluno(usuario, c, id);
   const cor = d.cor == null || m.cor === MARCADOR ? m.cor : d.cor; // marcador não vira grifo
   if (!CORES_MARCA.includes(cor) && cor !== MARCADOR) throw erro(`cor deve ser ${CORES_MARCA.join('|')}.`);
-  const nota = d.nota == null ? m.nota : s(d.nota, 500);
-  db.prepare('UPDATE est_marcacoes SET cor = ?, nota = ? WHERE id = ?').run(cor, nota, m.id);
-  return { ok: true, marcacao: marcaPublica({ ...m, cor, nota }) };
+  const nota = d.nota == null ? m.nota : s(textoDoAluno(d.nota), 500);
+  // DUAS ABAS (réplica de 11/10/2026, M5): a nota do grifo confere o `atualizado_em` que a tela leu (`lido_em`), como
+  // a nota da aula — texto mais novo no servidor → 409 com o que está salvo, e nada é gravado. Trocar só a cor não
+  // disputa texto com ninguém. Sem `lido_em` (tela antiga, chamada direta) vale o de sempre.
+  const mudouNota = nota !== (m.nota || '');
+  if (mudouNota && d.lido_em != null && String(d.lido_em) !== (m.atualizado_em || '')) {
+    const e = erro('Esta anotação foi alterada em outra aba (ou em outro aparelho) depois que esta tela foi aberta. Nada foi gravado: veja o que está salvo e escolha.', 409);
+    e.extra = { conflito: true, texto: m.nota || '', atualizado_em: m.atualizado_em || '' };
+    throw e;
+  }
+  const em = mudouNota ? nowISO() : (m.atualizado_em || '');
+  db.prepare('UPDATE est_marcacoes SET cor = ?, nota = ?, atualizado_em = ? WHERE id = ?').run(cor, nota, em, m.id);
+  return { ok: true, marcacao: marcaPublica({ ...m, cor, nota, atualizado_em: em }) };
 }
 function removerMarcacao(usuario, produto, slugEscopo, id) {
   const c = abrir(usuario, produto, slugEscopo);
@@ -443,10 +479,11 @@ function solucaoDoBloco(usuario, produto, slugEscopo, codigo, n, tentativa) {
   const b = u && u.blocos[Number(n)];
   if (!b || !b.solucao) throw erro('Bloco sem solução.', 404);
   // tentar antes de ver: a solução só sai contra uma tentativa escrita
-  if (s(tentativa, 8000).length < 15) throw erro('Escreva a sua tentativa antes de ver a solução.');
+  if (s(textoDoAluno(tentativa), 8000).length < 15) throw erro('Escreva a sua tentativa antes de ver a solução.');
   // …e fica guardada no caderno do aluno (antes só se conferia o tamanho e o texto era descartado)
-  gravarTentativa(usuario.id, c.escopo.id, u.codigo, Number(n), tentativa, u);
-  return { solucao: b.solucao, pistas: b.pistas };
+  const gravada = gravarTentativa(usuario.id, c.escopo.id, u.codigo, Number(n), tentativa, u);
+  // `texto` e `atualizado_em`: a tela acerta o "li em" do salvamento automático (senão o envio seguinte pareceria de outra aba)
+  return { solucao: b.solucao, pistas: b.pistas, texto: gravada.texto, atualizado_em: gravada.atualizado_em };
 }
 
 // ---------------------------------------------------------------------
@@ -472,6 +509,35 @@ function errosPendentes(userId, escopoId, c = null) {
   return [...por.values()].filter(x => x.pendente && (!vivas || vivas.has(x.id))).map(x => ({ id: x.id, erros: x.erros.size, ultima: x.ultima })).sort((a, b) => b.ultima.localeCompare(a.ultima));
 }
 const anotacaoDe = (userId, questaoId) => (db.prepare('SELECT texto FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(userId, questaoId) || {}).texto || '';
+const anotacaoEm = (userId, questaoId) => (db.prepare('SELECT atualizado_em FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(userId, questaoId) || {}).atualizado_em || '';
+// TEXTO DO ALUNO TEM DE SER TEXTO (réplica de 11/10/2026, baixa 8): `{ "a": 1 }` era gravado como "[object Object]".
+function textoDoAluno(v) {
+  if (v != null && typeof v !== 'string') throw erro('O texto deve ser enviado como texto.');
+  return v == null ? '' : v;
+}
+// DUAS ABAS OU DOIS APARELHOS (réplica de 11/10/2026, M5 / R3-B5). A nota da aula, a tentativa do bloco e a anotação
+// da questão eram "vale a última": a tela aberta antes gravava o texto velho (ou vazio) por cima do que a outra tinha
+// salvado, sem aviso. Agora a tela manda o `atualizado_em` que LEU (`lido_em`; '' = "li vazio"), e o servidor confere:
+//   · é o mesmo do banco → ninguém mexeu: grava;
+//   · é outro → 409 com `conflito`, o texto e o `atualizado_em` que estão no banco. NADA é gravado: a tela mostra o
+//     texto da outra aba, mantém o que o aluno digitou e ele escolhe (ficar com um, com o outro, ou juntar);
+//   · é outro e o envio é o de ÚLTIMA HORA (`ao_sair`: fechar a aba, F5 — não há ninguém para escolher) → o servidor
+//     JUNTA: guarda o texto do banco e, abaixo dele, o que chegou (se um contém o outro, fica o maior). Nenhum some.
+// Sem `lido_em` (tela antiga, chamada direta) o comportamento é o de sempre.
+const SEPARADOR_DE_ABAS = '\n\n— escrito em outra aba —\n';
+function conferirTextoLido(linha, lido, novo, aoSair, max) {
+  if (lido == null) return { texto: novo, juntado: false };
+  const noBanco = linha ? linha.texto : '', em = linha ? linha.atualizado_em : '';
+  if (String(lido) === em || noBanco === novo) return { texto: novo, juntado: false };
+  if (aoSair) {
+    if (novo.includes(noBanco)) return { texto: novo, juntado: false };
+    if (noBanco.includes(novo)) return { texto: noBanco, juntado: true };
+    return { texto: s(noBanco + SEPARADOR_DE_ABAS + novo, max), juntado: true };
+  }
+  const e = erro('Este texto foi alterado em outra aba (ou em outro aparelho) depois que esta tela foi aberta. Nada foi gravado: veja abaixo o que está salvo e escolha.', 409);
+  e.extra = { conflito: true, texto: noBanco, atualizado_em: em };
+  throw e;
+}
 // Em PÁGINAS: com centenas de erros a lista era cortada em 100 sem aviso. O total é o do caderno inteiro; a tela
 // mostra "1 a 100 de 689" e pede a página seguinte.
 const ERROS_POR_PAGINA = 100;
@@ -484,19 +550,21 @@ function erros(usuario, produto, slugEscopo, { pagina = 1 } = {}) {
     if (!q) return null;
     return { id: q.id, erros: x.erros, ultima: x.ultima, enunciado: q.enunciado, competencias: R.competenciasDaQuestao(q.id, c.escopo.id),
       alternativas: q.alternativas.map(a => ({ id: a.id, texto: a.texto, correta: a.correta, explicacao: a.explicacao })),
-      comentario: q.comentario, origem: q.origem, vigencia: q.vigencia, anotacao: anotacaoDe(usuario.id, q.id) };
+      comentario: q.comentario, origem: q.origem, vigencia: q.vigencia, anotacao: anotacaoDe(usuario.id, q.id), anotacao_em: anotacaoEm(usuario.id, q.id) };
   }).filter(Boolean);
   return { total: pend.length, pagina: pg, paginas, por_pagina: ERROS_POR_PAGINA, questoes: lista };
 }
-function anotar(usuario, produto, slugEscopo, questaoId, texto) {
+function anotar(usuario, produto, slugEscopo, questaoId, texto, { lido_em, ao_sair } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
   const { q } = questaoDoEscopo(c, questaoId);
   if (!jaViu(usuario.id, q.id)) throw erro('Responda a questão antes de anotar: a anotação é sobre a sua resposta.', 409);
-  const t = s(texto, 2000);
+  const atual = db.prepare('SELECT texto, atualizado_em FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(usuario.id, q.id);
+  const { texto: t, juntado } = conferirTextoLido(atual, lido_em, s(textoDoAluno(texto), 2000), ao_sair === true, 2000);
+  const agora = nowISO();
   if (!t) db.prepare('DELETE FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').run(usuario.id, q.id);
   else db.prepare(`INSERT INTO est_anotacoes (user_id, questao_id, escopo_id, texto, atualizado_em) VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT (user_id, questao_id) DO UPDATE SET texto = excluded.texto, atualizado_em = excluded.atualizado_em`).run(usuario.id, q.id, c.escopo.id, t, nowISO());
-  return { ok: true, anotacao: t };
+    ON CONFLICT (user_id, questao_id) DO UPDATE SET texto = excluded.texto, atualizado_em = excluded.atualizado_em`).run(usuario.id, q.id, c.escopo.id, t, agora);
+  return { ok: true, anotacao: t, atualizado_em: t ? agora : '', juntado };
 }
 
 // O BANCO por eixo (ADR-0009): quantas questões de correção automática há por banca, órgão, cargo,
@@ -524,11 +592,13 @@ function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, errad
   const c = abrir(usuario, produto, slugEscopo);
   const eixo = banco.filtroDeEixos(resto);
   const pend = erradas ? new Set(errosPendentes(usuario.id, c.escopo.id).map(x => x.id)) : null;
+  const emProva = questoesEmProvaAberta(usuario.id, c.escopo.id);
   const elegiveis = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes, competencia: R.slug(competencia) })
     .filter(q => q.corrigivel && q.uso !== 'reservada') // reservada fica para aferição: não se gasta no treino
     .filter(q => !origem || q.origem === origem) // "só questões de prova oficial" (guia Mais cobrado)
     .filter(q => banco.casaEixos(q, eixo)) // banca, órgão, cargo, período (ADR-0009)
-    .filter(q => !pend || pend.has(q.id));
+    .filter(q => !pend || pend.has(q.id))
+    .filter(q => !emProva.has(q.id)); // a que está numa prova aberta dele fica para a prova
   const ja = vistasDe(usuario.id);
   const vistas = new Set(elegiveis.filter(q => ja.has(q.id)).map(q => q.id));
   const ordenadas = [...elegiveis.filter(q => !vistas.has(q.id)), ...elegiveis.filter(q => vistas.has(q.id))];
@@ -537,6 +607,14 @@ function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, errad
     elegiveis: elegiveis.length, ineditas: elegiveis.length - vistas.size,
     questoes: ordenadas.slice(0, qtd).map(q => ({ ...banco.paraAluno(q, usuario.id), ja_vista: vistas.has(q.id) })),
   };
+}
+// QUESTÃO EM PROVA ABERTA (segunda revisão, 11/10/2026): enquanto o aluno tem treino, simulado, diagnóstico ou
+// teste final EM ANDAMENTO (e dentro do prazo), as questões daquela prova não saem no Praticar nem no quiz da aula,
+// e `responder` as recusa (409). Antes, com o id de uma questão da prova, a rota devolvia gabarito, explicações e
+// comentário na hora — e o teste final deixava de medir. Prova vencida ou encerrada não segura nada.
+function questoesEmProvaAberta(userId, escopoId) {
+  return new Set(db.prepare(`SELECT DISTINCT json_extract(i.value, '$.id') AS id FROM est_tentativas t, json_each(t.congelado, '$.itens') i
+    WHERE t.user_id = ? AND t.escopo_id = ? AND t.estado = 'em_andamento' AND t.prazo_em > ?`).all(userId, escopoId, nowISO()).map(r => r.id));
 }
 function questaoDoEscopo(c, questaoId) {
   const q = R.Questoes.obter(s(questaoId, 40));
@@ -553,18 +631,25 @@ function pedirPista(usuario, produto, slugEscopo, questaoId) {
   db.prepare('INSERT INTO est_ajudas (user_id, questao_id, n) VALUES (?, ?, 1) ON CONFLICT (user_id, questao_id) DO UPDATE SET n = n + 1').run(usuario.id, q.id);
   return { pista: q.pistas[n], usadas: n + 1, restantes: q.pistas.length - n - 1, aviso: 'Com pista, o acerto conta como prática com apoio.' };
 }
-function responder(usuario, produto, slugEscopo, questaoId, { resposta, confianca, tempo_seg, modo } = {}) {
+function responder(usuario, produto, slugEscopo, questaoId, { resposta, confianca, tempo_seg, modo, painel: comPainel } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
   const { q, comps } = questaoDoEscopo(c, questaoId);
   if (!q.corrigivel) throw erro('Esta questão não tem correção automática (aberta, anulada ou sem gabarito confirmado).');
   if (q.uso === 'reservada') throw erro('Questão reservada para simulado.', 403);
+  if (questoesEmProvaAberta(usuario.id, c.escopo.id).has(q.id)) throw erro('Esta questão está numa prova sua em andamento: responda-a na prova. O gabarito aparece na correção, depois de enviar.', 409);
+  // RESPOSTA TORTA É PEDIDO TORTO, não erro do aluno (réplica de 11/10/2026, baixa 8): uma LISTA numa questão de uma
+  // alternativa só (`["a","b"]`) era corrigida como "errou" e ia para o caderno de erros; objeto e número, idem.
+  const umaSo = q.tipo !== 'multipla';
+  if (resposta != null && resposta !== '' && (umaSo ? typeof resposta !== 'string' : !(typeof resposta === 'string' || (Array.isArray(resposta) && resposta.every(x => typeof x === 'string'))))) {
+    throw erro(umaSo ? 'Esta questão aceita uma alternativa só: envie o identificador dela, não uma lista.' : 'Envie a alternativa (ou a lista de alternativas) marcada.');
+  }
   const sit = pontuacao.situacaoDoItem({ gabarito: banco.gabaritoDe(q) }, resposta);
   if (sit === 'em_branco') throw erro('Escolha uma alternativa.');
   // alternativa que não existe nesta questão não é "erro do aluno": é pedido torto (antes virava erro e ia para o caderno)
   const validas = new Set(q.alternativas.map(a => a.id));
   if (resposta !== pontuacao.ABSTENCAO && [].concat(resposta).some(x => !validas.has(String(x)))) throw erro('Alternativa inexistente nesta questão.');
   const acerto = sit === 'certa';
-  return transacao(() => {
+  const corrigida = transacao(() => {
     const pistas = (db.prepare('SELECT n FROM est_ajudas WHERE user_id = ? AND questao_id = ?').get(usuario.id, q.id) || {}).n || 0;
     db.prepare('DELETE FROM est_ajudas WHERE user_id = ? AND questao_id = ?').run(usuario.id, q.id);
     const r = registrar(usuario, c.escopo, { origem: 'questao', refId: q.id, refVersao: q.versao, comps,
@@ -574,9 +659,11 @@ function responder(usuario, produto, slugEscopo, questaoId, { resposta, confianc
       conta_como: r.resultado === 'acerto' ? (r.inedita ? 'demonstração sem apoio' : 'prática (questão já vista)') : r.resultado === 'acerto_com_ajuda' ? 'prática com apoio' : 'erro',
       alternativas: q.alternativas.map(a => ({ id: a.id, correta: a.correta, explicacao: a.explicacao })),
       comentario: q.comentario, procedencia: q.procedencia, vigencia: q.vigencia,
-      competencias: comps, retomadas: r.proximas, anotacao: anotacaoDe(usuario.id, q.id),
+      competencias: comps, retomadas: r.proximas, anotacao: anotacaoDe(usuario.id, q.id), anotacao_em: anotacaoEm(usuario.id, q.id),
     };
   });
+  // a tela pediu o painel junto (`painel: true`): vai o RESUMO, já com esta resposta contada — sem outro pedido
+  return comPainel ? { ...corrigida, painel: painel(usuario, produto, slugEscopo, { resumo: true }) } : corrigida;
 }
 
 // ---------------------------------------------------------------------
@@ -633,6 +720,14 @@ function avaliarCard(usuario, produto, slugEscopo, cardId, resultado) {
   const k = cardDoEscopo(c, cardId);
   if (!agenda.RESULTADOS.includes(resultado)) throw erro(`resultado deve ser ${agenda.RESULTADOS.join('|')}.`);
   return transacao(() => {
+    // UMA AVALIAÇÃO POR CARD POR DIA (réplica de 11/10/2026, baixa 7): duplo clique ou duas abas avaliavam o mesmo card
+    // duas vezes no mesmo instante, e ele subia dois degraus (revisão em 3 dias em vez de 1). O card avaliado HOJE
+    // (data de Brasília) e ainda não vencido não é avaliado de novo: a segunda chamada devolve a agenda que já está
+    // gravada (`repetida: true`), sem nova evidência e sem mexer no degrau. A fila do dia nunca o oferece duas vezes.
+    const ja = db.prepare("SELECT passo, vencimento, atualizado_em FROM est_revisoes WHERE user_id = ? AND escopo_id = ? AND alvo = 'card' AND alvo_id = ?").get(usuario.id, c.escopo.id, k.id);
+    if (ja && hojeBR(new Date(ja.atualizado_em)) === hojeBR() && !(ja.vencimento && ja.vencimento <= hojeBR())) {
+      return { ok: true, repetida: true, passo: ja.passo, vencimento: ja.vencimento, motivo: 'Este card já foi avaliado hoje: vale a primeira avaliação.' };
+    }
     registrar(usuario, c.escopo, { origem: 'card', refId: k.id, comps: [k.competencia_codigo], modo: 'estudo', acerto: resultado !== 'erro' });
     return { ok: true, ...reagendar(usuario.id, c.escopo, 'card', k.id, resultado) };
   });
@@ -651,12 +746,13 @@ function formatoDoPercurso(escopo) {
   return f && { origem: f.origem, questoes: f.questoes, blocos: f.blocos.map(b => b.bloco), exemplo: pontuacao.repartirPorBloco(f.questoes || SIMULADO_QUESTOES_PADRAO, f.blocos) };
 }
 const SIMULADO_QUESTOES_PADRAO = 100; // o tamanho que a tela sugere para o simulado quando a regra não cadastra o total
+const SIMULADO_PCT_RESERVADAS = 50;   // % das vagas de cada bloco do simulado que vão para questões reservadas inéditas (ver `iniciarTentativa`)
 // a prova (treino ou simulado) que está aberta, sem carregar as questões: só o que o cartão "continuar" mostra
 function provaAberta(usuario, escopo) {
   const r = db.prepare(`SELECT id, modo, inicio_em, prazo_em, posicao, respostas, json_array_length(congelado, '$.itens') AS total FROM est_tentativas
     WHERE user_id = ? AND escopo_id = ? AND estado = 'em_andamento' AND modo IN (${MODOS_TENTATIVA.map(() => '?').join(',')}) ORDER BY inicio_em DESC`).get(usuario.id, escopo.id, ...MODOS_TENTATIVA);
   if (!r) return null;
-  if (nowISO() > r.prazo_em) { consolidarSeExpirou(usuario, escopo, tentativaDe(usuario, r.id)); return null; } // venceu: vira resultado, com o que estava salvo
+  if (prazoVenceu(r.prazo_em)) { consolidarSeExpirou(usuario, escopo, tentativaDe(usuario, r.id)); return null; } // venceu: vira resultado, com o que estava salvo
   return { id: r.id, modo: r.modo, inicio_em: r.inicio_em, prazo_em: r.prazo_em, agora: nowISO(), respondidas: Object.keys(j.parse(r.respostas, {})).length, total: r.total || 0, posicao: r.posicao || 0 };
 }
 const tentativaDe = (usuario, id) => abrirTentativa(db.prepare('SELECT * FROM est_tentativas WHERE id = ? AND user_id = ?').get(s(id, 40), usuario.id));
@@ -715,10 +811,29 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   }
   if (!elegiveis.length) throw erro('Não há questões disponíveis para esta prova.', 409);
   const id = novoId();
-  // inéditas (e, no simulado, reservadas) primeiro; o restante só completa. O peso é calculado UMA vez por questão.
+  // TREINO: inéditas primeiro; o restante só completa.
+  // SIMULADO: MISTURA de reservadas e banco (réplica de 11/10/2026, baixa 5). Antes as reservadas vinham SEMPRE na
+  // frente: os dois primeiros simulados de 100 saíam só com as 249 reservadas (todas autorais), e as outras 1.373
+  // questões — as 626 de prova oficial entre elas — só apareciam a partir do terceiro. Não há ADR que fixe a
+  // proporção (o prompt mestre pede só "itens reservados para avaliação", fora do treino); a regra passa a ser:
+  //   · em cada bloco, até `SIMULADO_PCT_RESERVADAS` % das vagas vão para reservadas INÉDITAS — a parte da prova que
+  //     o aluno não tem como ter visto no Praticar, e que por isso mede;
+  //   · as demais vagas vão para questões INÉDITAS do banco (autorais e de prova oficial), sorteadas sem distinção;
+  //   · faltou de um lado, completa do outro (inédita reservada ↔ inédita do banco); só depois entram as já vistas
+  //     (reservadas antes das demais).
+  // Com 249 reservadas, o aluno passa a ter cinco simulados de 100 com reservada inédita (eram dois e meio), e
+  // questão de prova oficial desde o primeiro. O peso é calculado UMA vez por questão.
   const ja = vistasDe(usuario.id);
-  const peso = (x) => (ja.has(x.q.id) ? 2 : 0) + (modo === 'simulado' && x.q.uso === 'reservada' ? -1 : 0);
-  const sortear = (lista, semente, quantas) => banco.embaralhar(lista, semente).map(x => ({ x, p: peso(x) })).sort((a, b) => a.p - b.p).slice(0, quantas).map(y => y.x);
+  const sortearTreino = (lista, semente, quantas) => banco.embaralhar(lista, semente).map(x => ({ x, p: ja.has(x.q.id) ? 2 : 0 })).sort((a, b) => a.p - b.p).slice(0, quantas).map(y => y.x);
+  const sortearSimulado = (lista, semente, quantas) => {
+    const emb = banco.embaralhar(lista, semente), inedita = (x) => !ja.has(x.q.id), reservada = (x) => x.q.uso === 'reservada';
+    const resNovas = emb.filter(x => reservada(x) && inedita(x)), bancoNovas = emb.filter(x => !reservada(x) && inedita(x));
+    const a = resNovas.slice(0, Math.round(quantas * SIMULADO_PCT_RESERVADAS / 100)), b = bancoNovas.slice(0, quantas - a.length);
+    let r = a.concat(b);
+    for (const mais of [resNovas.slice(a.length), emb.filter(x => reservada(x) && !inedita(x)), emb.filter(x => !reservada(x) && !inedita(x))]) if (r.length < quantas) r = r.concat(mais.slice(0, quantas - r.length));
+    return r;
+  };
+  const sortear = modo === 'simulado' ? sortearSimulado : sortearTreino;
   const escolhidas = partes ? partes.flatMap(p => sortear(p.lista, id + ':' + p.bloco, p.questoes)) : sortear(elegiveis, id, pedido);
   if (!escolhidas.length) throw erro('Não há questões disponíveis para esta prova.', 409);
   // a prova por blocos sai na ordem dos blocos do edital; dentro disso, questões do mesmo texto-base ficam juntas
@@ -781,7 +896,9 @@ function paraAlunoTentativa(t) {
   if (t.estado !== 'em_andamento') return { ...base, enviado_em: t.enviado_em, resultado: resultadoParaAluno(t) };
   const v = vereditoDe(t);
   // `posicao`: a questão em que o aluno estava — recarregar a página ou voltar pela aba retoma NELA, não na primeira
-  return { ...base, questoes: t.congelado.itens.map(i => i.publico), respostas: t.respostas, posicao: Math.min(Math.max(0, t.posicao || 0), Math.max(0, t.congelado.itens.length - 1)),
+  // (prova iniciada antes de 11/10 congelou a `vigencia` dentro de `publico`: ela não vai — a nota de vigência
+  // entrega a resposta, e só aparece na correção)
+  return { ...base, questoes: t.congelado.itens.map(i => { const { vigencia, ...pub } = i.publico || {}; return pub; }), respostas: t.respostas, posicao: Math.min(Math.max(0, t.posicao || 0), Math.max(0, t.congelado.itens.length - 1)),
     por_bloco: t.congelado.por_bloco || null, sem_veredito: v.veredito === 'fora_do_formato', sem_veredito_motivos: v.motivos };
 }
 
@@ -810,9 +927,14 @@ function corrigirTentativa(usuario, escopo, t, estado) {
 }
 // O DIAGNÓSTICO e o TESTE FINAL não têm relógio: vencer a validade NÃO os corrige nem os dá por feitos — ficam
 // "não concluídos", e o aluno retoma ou recomeça (jornada-estude.js). Só treino e simulado expiram com o que foi salvo.
+// TOLERÂNCIA DO PRAZO (segunda revisão, 11/10/2026): a prova só é dada por expirada PROVA_TOLERANCIA_SEG segundos
+// depois do prazo que o aluno vê. A resposta marcada no último segundo, cujo salvamento chega um instante depois,
+// era descartada. O relógio da tela continua zerando no prazo: a folga é só para o que já estava a caminho.
+const PROVA_TOLERANCIA_SEG = 5;
+const prazoVenceu = (prazoEm) => Date.now() > Date.parse(prazoEm) + PROVA_TOLERANCIA_SEG * 1000;
 function consolidarSeExpirou(usuario, escopo, t) {
   if (MODOS_DE_AFERICAO.includes(t.modo)) return t;
-  return t.estado === 'em_andamento' && nowISO() > t.prazo_em ? corrigirTentativa(usuario, escopo, t, 'expirada') : t;
+  return t.estado === 'em_andamento' && prazoVenceu(t.prazo_em) ? corrigirTentativa(usuario, escopo, t, 'expirada') : t;
 }
 function tentativaAberta(usuario, produto, slugEscopo, id) {
   const c = abrir(usuario, produto, slugEscopo);
@@ -981,14 +1103,17 @@ const MAX_TENTATIVA = 8000, MAX_NOTA_AULA = 6000;
 const refDoBloco = (b) => (b ? require('crypto').createHash('sha1').update(b.tipo + '\u0001' + b.texto).digest('hex').slice(0, 16) : '');
 // `u` = a aula (com os blocos de hoje). Antes de gravar, as tentativas já guardadas da aula são postas no lugar em que
 // os blocos delas estão HOJE — senão a gravação no índice novo passaria por cima da tentativa de outro exercício.
-function gravarTentativa(userId, escopoId, unidade, bloco, texto, u = null) {
-  const t = s(texto, MAX_TENTATIVA), ref = u ? refDoBloco(u.blocos[bloco]) : '';
+// `lido`: o `atualizado_em` que a tela leu ANTES de o aluno escrever (`conferirTextoLido`: duas abas não se sobrescrevem)
+function gravarTentativa(userId, escopoId, unidade, bloco, texto, u = null, { lido_em, ao_sair } = {}) {
+  const ref = u ? refDoBloco(u.blocos[bloco]) : '';
   if (u) arrumarTentativas(userId, escopoId, u);
-  if (!t) { db.prepare('DELETE FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? AND unidade = ? AND bloco = ?').run(userId, escopoId, unidade, bloco); return { texto: '', atualizado_em: '' }; }
+  const atual = db.prepare('SELECT texto, atualizado_em FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? AND unidade = ? AND bloco = ?').get(userId, escopoId, unidade, bloco);
+  const { texto: t, juntado } = conferirTextoLido(atual, lido_em, s(textoDoAluno(texto), MAX_TENTATIVA), ao_sair === true, MAX_TENTATIVA);
+  if (!t) { db.prepare('DELETE FROM est_tentativas_bloco WHERE user_id = ? AND escopo_id = ? AND unidade = ? AND bloco = ?').run(userId, escopoId, unidade, bloco); return { texto: '', atualizado_em: '', juntado }; }
   const agora = nowISO();
   db.prepare(`INSERT INTO est_tentativas_bloco (user_id, escopo_id, unidade, bloco, texto, atualizado_em, bloco_ref) VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (user_id, escopo_id, unidade, bloco) DO UPDATE SET texto = excluded.texto, atualizado_em = excluded.atualizado_em, bloco_ref = excluded.bloco_ref`).run(userId, escopoId, unidade, bloco, t, agora, ref);
-  return { texto: t, atualizado_em: agora };
+  return { texto: t, atualizado_em: agora, juntado };
 }
 // regrava as tentativas da aula no índice ATUAL do bloco de cada uma (só quando alguma saiu do lugar). A que ficou
 // sem bloco (o exercício foi reescrito) vai para um índice negativo: continua no caderno e não ocupa o lugar de ninguém.
@@ -1015,19 +1140,21 @@ function tentativasNoLugar(u, linhas) {
     .map(p => { if (p.n >= 0 && usados.has(p.n)) return { ...p, n: -1 }; if (p.n >= 0) usados.add(p.n); return p; });
 }
 // salva sozinha enquanto o aluno escreve (a tela chama com atraso); bloco que não pede tentativa é recusado
-function guardarTentativa(usuario, produto, slugEscopo, codigo, n, texto) {
+function guardarTentativa(usuario, produto, slugEscopo, codigo, n, texto, lido = {}) {
   const { c, u } = unidadeDoAluno(usuario, produto, slugEscopo, codigo);
   const k = Number(n), b = Number.isInteger(k) ? u.blocos[k] : null;
   if (!b || !BLOCOS_COM_TENTATIVA.includes(b.tipo)) throw erro('Este trecho da aula não pede tentativa.', 404);
-  return { ok: true, ...gravarTentativa(usuario.id, c.escopo.id, u.codigo, k, texto, u) };
+  return { ok: true, ...gravarTentativa(usuario.id, c.escopo.id, u.codigo, k, texto, u, lido) };
 }
-function anotarAula(usuario, produto, slugEscopo, codigo, texto) {
+function anotarAula(usuario, produto, slugEscopo, codigo, texto, { lido_em, ao_sair } = {}) {
   const { c, u } = unidadeDoAluno(usuario, produto, slugEscopo, codigo);
-  const t = s(texto, MAX_NOTA_AULA), agora = nowISO();
+  const atual = db.prepare('SELECT texto, atualizado_em FROM est_notas_aula WHERE user_id = ? AND escopo_id = ? AND unidade = ?').get(usuario.id, c.escopo.id, u.codigo);
+  const { texto: t, juntado } = conferirTextoLido(atual, lido_em, s(textoDoAluno(texto), MAX_NOTA_AULA), ao_sair === true, MAX_NOTA_AULA);
+  const agora = nowISO();
   if (!t) db.prepare('DELETE FROM est_notas_aula WHERE user_id = ? AND escopo_id = ? AND unidade = ?').run(usuario.id, c.escopo.id, u.codigo);
   else db.prepare(`INSERT INTO est_notas_aula (user_id, escopo_id, unidade, texto, atualizado_em) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT (user_id, escopo_id, unidade) DO UPDATE SET texto = excluded.texto, atualizado_em = excluded.atualizado_em`).run(usuario.id, c.escopo.id, u.codigo, t, agora);
-  return { ok: true, texto: t, atualizado_em: t ? agora : '' };
+  return { ok: true, texto: t, atualizado_em: t ? agora : '', juntado };
 }
 // o que o aluno já escreveu NESTA aula — vai junto com a aula, para os campos voltarem preenchidos
 function escritoNaAula(userId, escopoId, unidade, u = null) {
@@ -1082,8 +1209,9 @@ function quizDaAula(usuario, produto, slugEscopo, codigo) {
   const comps = new Set(u.competencias), itens = new Set(u.itens);
   const doItem = itens.size ? new Set(db.prepare("SELECT questao_id q, codigo FROM est_questao_vinculos WHERE escopo_id = ? AND alvo = 'item'").all(c.escopo.id).filter(v => itens.has(v.codigo)).map(v => v.q)) : new Set();
   const compsDe = R.competenciasDasQuestoes(c.escopo.id), ja = vistasDe(usuario.id);
+  const emProva = questoesEmProvaAberta(usuario.id, c.escopo.id);
   const elegiveis = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes })
-    .filter(q => q.corrigivel && q.uso !== 'reservada')
+    .filter(q => q.corrigivel && q.uso !== 'reservada' && !emProva.has(q.id))
     .filter(q => doItem.has(q.id) || (compsDe.get(q.id) || []).some(k => comps.has(k)));
   const vistas = new Set(elegiveis.filter(q => ja.has(q.id)).map(q => q.id));
   const ordenadas = [...elegiveis.filter(q => !vistas.has(q.id)), ...elegiveis.filter(q => vistas.has(q.id))];
@@ -1136,7 +1264,9 @@ function simuladoQueConta(linha) {
   if (SIMULADOS_CONFERIDOS.has(linha.id)) return SIMULADOS_CONFERIDOS.get(linha.id);
   const t = abrirTentativa(linha), itens = t.congelado.itens || [];
   const f = pontuacao.formatoDaProva(itens, t.congelado.regra || {});
-  const respondidas = itens.filter(i => t.respostas[i.id] != null && t.respostas[i.id] !== '').length;
+  // RESPONDIDA = marcou uma alternativa. "Não respondida" (abstenção) é decisão de prova, mas não é resposta:
+  // um simulado inteiro em abstenção cumpria os 80 % e liberava o certificado.
+  const respondidas = itens.filter(i => t.respostas[i.id] != null && t.respostas[i.id] !== '' && t.respostas[i.id] !== pontuacao.ABSTENCAO).length;
   const noFormato = f.definido ? f.ok : itens.length >= CERT_SIMULADO_QUESTOES_MIN;
   const r = { no_formato: noFormato, respondidas, total: itens.length, conta: noFormato && itens.length > 0 && respondidas * 100 >= itens.length * CERT_SIMULADO_PCT_RESPONDIDAS };
   if (SIMULADOS_CONFERIDOS.size > 5000) SIMULADOS_CONFERIDOS.clear();
@@ -1165,7 +1295,7 @@ function conclusao(userId, productId) {
   const faltamAulas = Math.max(0, exigidas - estudadas), faltamProvas = Math.max(0, CERT_PROVAS_ENVIADAS - provas);
   const cumprido = total > 0 && !faltamAulas && !faltamProvas;
   const partes = [faltamAulas ? `${faltamAulas} aula${faltamAulas > 1 ? 's' : ''}` : '', faltamProvas ? `${faltamProvas} simulado${faltamProvas > 1 ? 's' : ''}` : ''].filter(Boolean);
-  const cert = db.prepare('SELECT id FROM certificates WHERE user_id = ? AND product_id = ?').get(userId, productId);
+  const cert = db.prepare("SELECT id FROM certificates WHERE user_id = ? AND product_id = ? AND COALESCE(revogado_em, '') = ''").get(userId, productId);
   return { total_aulas: total, estudadas, faltam_aulas: faltamAulas, provas_enviadas: provas, simulados_enviados: enviados, faltam_provas: faltamProvas, carga_horaria_min: carga, cumprido,
     simulado_pct_respondidas: CERT_SIMULADO_PCT_RESPONDIDAS,
     certificado: cert ? cert.id : '',
@@ -1192,7 +1322,7 @@ function progressoDoCurso_(userId, productId) {
 
 module.exports = {
   guardarTentativa, anotarAula, caderno, quizDaAula, registrarVideo, registrarLeitura, conclusao, progressoDoCurso, aulaEstudada, reguaDeEstudo, MODOS_DE_AFERICAO,
-  QUIZ_DA_AULA, VIDEO_ASSISTIDO_PCT, CERT_PCT_AULAS_ESTUDADAS, CERT_PROVAS_ENVIADAS, CERT_MODOS_DE_PROVA, CERT_SIMULADO_PCT_RESPONDIDAS, CERT_SIMULADO_QUESTOES_MIN, MODOS_DE_ESTUDO,
+  QUIZ_DA_AULA, VIDEO_ASSISTIDO_PCT, PROVA_TOLERANCIA_SEG, SIMULADO_PCT_RESERVADAS, SEPARADOR_DE_ABAS, questoesEmProvaAberta, CERT_PCT_AULAS_ESTUDADAS, CERT_PROVAS_ENVIADAS, CERT_MODOS_DE_PROVA, CERT_SIMULADO_PCT_RESPONDIDAS, CERT_SIMULADO_QUESTOES_MIN, MODOS_DE_ESTUDO,
   CARDS_NOVOS_DIA, ERROS_POR_PAGINA, simuladoQueConta, provaAberta, formatoDoPercurso, vereditoDe, vistasDe, corrigirTentativa,
   contexto, abrir, escopos, painel, unidade, animacoes, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, bancoDeQuestoes, pedirPista, responder, erros, anotar,
   cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,

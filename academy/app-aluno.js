@@ -113,6 +113,14 @@
       if (v && v.pid === pid) abrirCurso(pid, '', { estude: v }); else abrirCurso(pid);
     }
     function esquecerVoltaAoEstude() { voltaEstude = null; portaNoHistorico = false; }
+    var aguardeTimer = null;
+    function aguardarDicas(sim) {
+      try {
+        clearTimeout(aguardeTimer);
+        if (sim) { document.documentElement.setAttribute('data-vs-aguarde', '1'); aguardeTimer = setTimeout(function () { aguardarDicas(false); }, 8000); } // nunca fica presa
+        else document.documentElement.removeAttribute('data-vs-aguarde');
+      } catch (e) { /* sem o widget, nada a fazer */ }
+    }
     // DICAS: dentro do Estude a tela não é a do curso comum — as dicas GERAIS da Academy falam de recursos que ela
     // não tem. O app marca <html data-vs-so-curso="1"> (ao lado do data-vs-curso): é o pedido para o widget de
     // comunicados sortear só as dicas DESTE curso. (Quem atende ao pedido é o módulo comunicados.)
@@ -131,6 +139,7 @@
       rota(['aluno']);
       foraDoEstude();
       esquecerVoltaAoEstude(); // saiu do curso: um "voltar ao Estude" antigo não pode reaparecer no audiobook
+      aguardarDicas(false);
       if (ES && ES.sair) ES.sair();
       limparTutor();
       marcarCursoAberto('');
@@ -231,7 +240,16 @@
     // ================= ESTÚDIO =================
     function abrirCurso(pid, aulaId, opcoes) {
       if (opcoes && opcoes.estude) rotaEstude[pid] = opcoes.estude;
-      if (opcoes && opcoes.estude && opcoes.estude.pelaRota) esquecerVoltaAoEstude(); // chegou pelo Voltar/F5: o lugar já é este
+      // ABRIR O CURSO é sair de qualquer porta do Estude (segunda revisão, 11/10/2026, R5): o "voltar ao Estude"
+      // guardado e o passo que a porta empilhou valiam para a tela que acabou de fechar. Antes só a biblioteca e a
+      // reabertura pelo endereço limpavam: quem saía de uma porta por uma aula sugerida levava o lugar ANTIGO, e a
+      // porta seguinte nem guardava o lugar novo nem desligava relógio e microfone.
+      esquecerVoltaAoEstude();
+      if (ES && ES.sair) ES.sair(); // relógio, microfone e consulta periódica não seguem para a tela do curso
+      // DICAS: enquanto o curso carrega, ainda não se sabe se a tela será a do Estude. A página pede ao widget de
+      // comunicados que ESPERE (<html data-vs-aguarde>) — sem isso, com a rede lenta, o post-it sorteava uma dica
+      // geral antes de a tela se definir. (O servidor também decide: curso que hospeda o Estude só recebe as dele.)
+      aguardarDicas(true);
       noEstude = false; // volta a valer quando o Estude abrir (logo abaixo, se for o caso)
       rota(['curso', pid]);
       if (!C || C.pid !== pid) limparTutor();
@@ -670,7 +688,7 @@
     // por visita, para o "Voltar às aulas" não devolver o aluno ao mesmo lugar.
     var estudeAberto = {};
     function carregarEstude(pid) {
-      if (!ES) return;
+      if (!ES) { aguardarDicas(false); return; }
       api('GET', '/aluno/cursos/' + pid + '/estudo').then(function (r) {
         return (C && C.jrP ? C.jrP : Promise.resolve()).then(function () { return r; }); // a jornada primeiro: é dela que saem as portas
       }).then(function (r) {
@@ -701,7 +719,8 @@
           estudeAberto[pid] = true;
           abrir(doCurso[0].slug, { substituir: true }); // toma o lugar da página do curso no histórico
         }
-      }).catch(function () { /* sem o Estude o curso segue igual */ });
+      }).catch(function () { /* sem o Estude o curso segue igual */ })
+        .then(function () { aguardarDicas(false); }); // a tela se definiu (Estude ou curso comum): o post-it pode sortear
     }
     // ---- A BARRA DO CURSO no cabeçalho do Estude: as portas do que é do PRODUTO ----
     // Cada botão só existe quando o curso TEM aquilo (seção da jornada publicada, arquivo na prateleira, faixa de

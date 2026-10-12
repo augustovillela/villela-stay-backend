@@ -47,6 +47,10 @@ const ESTADOS_MIDIA = ['planejado', 'roteirizado', 'gerado', 'revisado', 'public
 //    carregar o texto). Toda escrita do sistema muda `atualizado_em`; uma escrita direta no banco muda o tamanho
 //    ou o status. A digital é lida a CADA chamada: não há prazo de validade nem invalidação para esquecer.
 //    Os objetos guardados são CONGELADOS — quem recebe não pode alterá-los.
+//    ⚠️ O QUE A DIGITAL NÃO VÊ (segunda revisão, 11/10/2026): uma escrita DIRETA no banco que mantenha o tamanho da
+//    coluna e o `atualizado_em` — por exemplo um script que troca qual alternativa é a `correta` com `UPDATE` cru.
+//    O processo serviria a versão antiga até reiniciar. Por isso CORREÇÃO DE GABARITO É SEMPRE PELA IMPORTAÇÃO
+//    (que sobe a versão e o `atualizado_em`); quem precisar mexer no banco à mão atualiza `atualizado_em` junto.
 // ---------------------------------------------------------------------
 let MEMO = null;
 function comCache(fn) {
@@ -657,10 +661,14 @@ function cobertura(escopo, { vis = ['publicado'], situacoes = ['disponivel'] } =
 }
 
 // O que existe no banco para este escopo, questão a questão — para quem importa conferir se sobrou órfã.
+// `ordem_fixa` sai junto (auditoria de 11/10/2026, B9): é o que impede o embaralhamento das alternativas, e sem
+// ele a conferência produção × local só se fazia por indício (a versão que subiu). Mora dentro de `dados`.
 function questoesDoEscopo(escopo) {
   return db.prepare(`SELECT q.id, q.hash, q.origem, q.situacao, q.uso, q.versao, q.atualizado_em,
+      COALESCE(json_extract(q.dados, '$.ordem_fixa'), 0) AS ordem_fixa,
       (SELECT group_concat(v.codigo, ',') FROM est_questao_vinculos v WHERE v.questao_id = q.id AND v.escopo_id = ? AND v.alvo = 'item') AS itens
-    FROM est_questoes q WHERE q.id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?) ORDER BY q.criado_em, q.id`).all(escopo.id, escopo.id);
+    FROM est_questoes q WHERE q.id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?) ORDER BY q.criado_em, q.id`).all(escopo.id, escopo.id)
+    .map(q => ({ ...q, ordem_fixa: !!q.ordem_fixa }));
 }
 
 function resumo(productId) {

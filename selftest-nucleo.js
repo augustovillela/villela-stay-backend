@@ -241,7 +241,17 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
 
   // ---------- Auth / sessão ----------
   await t('/health diz qual commit esta no ar (push nao e o mesmo que estar no ar)', async () => {
-    const r = await req('GET', '/health');
+    // PÚBLICO (auditoria de 11/10/2026, B7): vivo, serviço e commit curto — e mais nada. Branch, ambiente e
+    // sinalizadores de segredo são informação de reconhecimento: só saem para quem manda a PUBLISH_KEY.
+    const pub = await req('GET', '/health');
+    assert.equal(pub.status, 200);
+    assert.deepEqual(Object.keys(pub.json).sort(), ['commit', 'ok', 'servico'], 'sem chave, o health só diz que está vivo e qual commit');
+    assert.ok(pub.json.ok, "o health tem de continuar dizendo ok");
+    assert.equal(pub.json.servico, 'villela-stay-backend', 'o Test-StaffPortal (publicar-staff.ps1) lê o serviço');
+    assert.ok(pub.json.commit.length > 0 && pub.json.commit.length <= 7, 'commit em forma curta');
+    const errada = await req('GET', '/health', { headers: { 'x-publish-key': 'chave-errada' } });
+    assert.deepEqual(Object.keys(errada.json).sort(), ['commit', 'ok', 'servico'], 'chave errada vale o mesmo que chave nenhuma');
+    const r = await req('GET', '/health', { headers: { 'x-publish-key': process.env.PUBLISH_KEY } });
     assert.equal(r.status, 200);
     assert.ok(r.json.ok, "o health tem de continuar dizendo ok");
     assert.equal(typeof r.json.commit, 'string', 'sem o commit nao da para conferir o que ficou live');

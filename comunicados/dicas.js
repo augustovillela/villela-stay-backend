@@ -98,7 +98,7 @@ function definirPref(produto, ref, mostrar) {
 function cursoDaPessoa(produto, ref, curso) {
   const c = s(curso, 60);
   if (!c) return '';
-  return fontes.cursosDoUsuario(produto, ref).map(String).includes(c) ? c : '';
+  return fontes.temCurso(produto, ref, c) ? c : '';
 }
 /** Dicas que ESTA pessoa pode ver AGORA: as gerais do sistema + as do curso
  *  aberto. Nunca "as de todos os cursos dela" — o produtor de todos via tudo. */
@@ -106,8 +106,12 @@ function cursoDaPessoa(produto, ref, curso) {
  *  está não é a do curso comum — as gerais falam de recursos que ela não tem
  *  ali). Aí as gerais nem entram no sorteio: não aparecem e não são "queimadas"
  *  como vistas. Pedido sem curso que seja da pessoa não sorteia nada. */
+/** O curso aberto pode EXIGIR "só as dele" (na Academy, o que hospeda o Estude): aí vale para toda chamada, com ou
+ *  sem o pedido do app — a decisão é do servidor, não de a página ter sido marcada a tempo. */
+const soDoCurso = (produto, c, pedido) => !!pedido || (!!c && fontes.soDicasDoCurso(produto, c));
 function escopoSQL(produto, ref, curso, soCurso) {
   const c = cursoDaPessoa(produto, ref, curso);
+  soCurso = soDoCurso(produto, c, soCurso);
   if (soCurso) return c ? { cond: 'd.curso_id = ?', args: [c] } : { cond: '0', args: [] };
   return c ? { cond: "(d.curso_id = '' OR d.curso_id = ?)", args: [c] } : { cond: "d.curso_id = ''", args: [] };
 }
@@ -134,6 +138,7 @@ function marcarVista(produto, ref, id) {
 function doUsuario(produto, ref, curso, soCurso) {
   const vistas = new Set(db.prepare('SELECT dica_id FROM dicas_vistas WHERE produto = ? AND usuario_ref = ?').all(produto, ref).map((v) => v.dica_id));
   const c = cursoDaPessoa(produto, ref, curso);
+  soCurso = soDoCurso(produto, c, soCurso);
   const itens = listar(produto, { incluirInativas: false }).filter((d) => (!d.curso_id && !soCurso) || (c && String(d.curso_id) === c));
   itens.sort((a, b) => (a.curso_id ? 0 : 1) - (b.curso_id ? 0 : 1));   // sort estável: mantém a ordem dentro de cada grupo
   return {

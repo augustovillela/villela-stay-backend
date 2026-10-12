@@ -683,7 +683,7 @@ async function rodar({ t, req }) {
       // nível, selos, medalhas, eixos
       'nível pelo domínio demonstrado', 'Assistir, ler e abrir aula não mudam o nível', 'Um selo para cada disciplina do edital', 'Marcos do percurso', 'não viram um percentual só', 'function caixaEixos(',
       // ferramentas
-      "'/academy/estude-motores.js?v=2'", 'Calculadora de pontuação da prova', 'não para os do edital', 'M.calculadora.calcular(', 'Confira no edital ou na lei qual é o prazo e se ele corre em dias úteis ou corridos',
+      "'/academy/estude-motores.js?v=3'", 'Calculadora de pontuação da prova', 'não para os do edital', 'M.calculadora.calcular(', 'Confira no edital ou na lei qual é o prazo e se ele corre em dias úteis ou corridos',
       'z.contar(', 'Uma visão de calendário do seu <b>Plano</b>', 'M.cronograma.montar(', 'id="cr-imprimir">🖨️ Imprimir ou salvar em PDF', 'Usar estas horas no meu Plano',
     ]) assert.ok(tela.includes(pedaco), 'falta na tela: ' + pedaco);
     // a regra é dita INTEIRA (valor do acerto, mínimo por bloco, mínimo geral) — a mesma frase na aba Prova e na calculadora

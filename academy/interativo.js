@@ -86,6 +86,7 @@ function rotuloEstude(rotulo) {
   return m ? { escopo: m[1], unidade: m[2], rotulo: String(rotulo).slice(m[0].length) } : { escopo: '', unidade: '', rotulo: String(rotulo || '') };
 }
 const temBase = (productId) => !!db.prepare('SELECT 1 FROM tutor_trechos WHERE product_id = ? LIMIT 1').get(productId);
+const INDICES_EM_MEMORIA = 40; // quantos cursos ficam com o índice de busca do Tutor montado ao mesmo tempo
 const _indice = new Map(); // productId → {versao, docs:[{id, tf:Map, len}], df:Map, media}
 const _versao = new Map();
 function invalidar(productId) { _versao.set(productId, (_versao.get(productId) || 0) + 1); }
@@ -106,6 +107,9 @@ function indice(productId) {
   });
   const media = docs.length ? docs.reduce((a, d) => a + d.len, 0) / docs.length : 1;
   const idx = { versao: v, docs, df, media };
+  // o índice mora na memória do processo: com teto (os cursos menos usados saem primeiro e são refeitos sob demanda)
+  _indice.delete(productId);
+  while (_indice.size >= INDICES_EM_MEMORIA) _indice.delete(_indice.keys().next().value);
   _indice.set(productId, idx);
   return idx;
 }
@@ -128,10 +132,11 @@ function buscar(productId, pergunta, { n = 8, aulaAtual = '', permitido = () => 
     if (sc > 0) pont.push({ d, sc });
   }
   pont.sort((x, y) => y.sc - x.sc);
-  // diversidade: no máximo 3 trechos seguidos da mesma fonte+aula
+  // diversidade: no máximo 3 trechos seguidos da mesma fonte+aula. No ESTUDE a aula é a UNIDADE do percurso
+  // (`lesson_id` vem vazio): sem ela na chave, todos os trechos de uma fonte caíam no mesmo balde e saíam ~6 em vez de 8.
   const out = [], conta = new Map();
   for (const { d } of pont) {
-    const k = d.fonte + ':' + d.lesson_id;
+    const k = d.fonte + ':' + (d.lesson_id || (d.est_unidade ? d.est_escopo + '/' + d.est_unidade : ''));
     if ((conta.get(k) || 0) >= 3) continue;
     conta.set(k, (conta.get(k) || 0) + 1);
     out.push(d);
@@ -313,21 +318,36 @@ function resumo(productId) {
 // ALUNO
 // ---------------------------------------------------------------------
 // o que o estúdio precisa saber para montar as abas (sem conteúdo pesado)
+// SEM MATRÍCULA (réplica de 11/10/2026, R2-B7): a página do curso de quem ainda não comprou (ou perdeu o acesso) usa
+// este resumo para montar a DEGUSTAÇÃO — o quiz e o caderno das aulas gratuitas, o Tutor sobre elas e os cartões do
+// que o curso tem. Antes ia o mapa do curso inteiro: em que aula há quiz e caderno, quantos prompts, e o LINK de cada
+// material extra. Agora, sem acesso, vai só o que aquela página mostra: as aulas gratuitas, os extras sem o link, e
+// `acesso: false`. A rota segue 200 (é o que a página de quem não comprou lê); o conteúdo de fato é barrado em cada
+// rota (quiz, caderno e prompts conferem o acesso por conta própria).
+const aulasGratuitas = (productId) => new Set(db.prepare('SELECT id FROM lessons WHERE product_id = ? AND gratuita = 1').all(productId).map(r => r.id));
+const temAcessoAoCurso = (usuario, produto) => ct.temAcesso(usuario.id, produto.id) || podeRevisar(usuario, produto);
+// a conversa com o Tutor: de quem tem o curso — ou de quem está na degustação de um curso que TEM aula gratuita
+const podeConversar = (usuario, produto) => temAcessoAoCurso(usuario, produto) || aulasGratuitas(produto.id).size > 0;
 function resumoParaAluno(usuario, produto) {
   const vis = statusVisiveis(usuario, produto);
   const ph = vis.map(() => '?').join(',');
-  const aulasQuiz = db.prepare(`SELECT lesson_id, status FROM aula_quiz WHERE product_id = ? AND status IN (${ph})`).all(produto.id, ...vis);
-  const aulasCad = db.prepare(`SELECT lesson_id, status FROM aula_caderno WHERE product_id = ? AND status IN (${ph})`).all(produto.id, ...vis);
+  const acesso = temAcessoAoCurso(usuario, produto), gratis = acesso ? null : aulasGratuitas(produto.id);
+  const daqui = (x) => acesso || gratis.has(x.lesson_id);
+  const aulasQuiz = db.prepare(`SELECT lesson_id, status FROM aula_quiz WHERE product_id = ? AND status IN (${ph})`).all(produto.id, ...vis).filter(daqui);
+  const aulasCad = db.prepare(`SELECT lesson_id, status FROM aula_caderno WHERE product_id = ? AND status IN (${ph})`).all(produto.id, ...vis).filter(daqui);
   const melhor = {};
   for (const t of db.prepare('SELECT lesson_id, MAX(acertos * 100 / total) pct FROM quiz_tentativas WHERE user_id = ? AND product_id = ? GROUP BY lesson_id').all(usuario.id, produto.id)) melhor[t.lesson_id] = t.pct;
   const temTutor = temBase(produto.id);
   return {
     quiz: Object.fromEntries(aulasQuiz.map(x => [x.lesson_id, { status: x.status, melhor_pct: melhor[x.lesson_id] == null ? null : melhor[x.lesson_id] }])),
     caderno: Object.fromEntries(aulasCad.map(x => [x.lesson_id, { status: x.status }])),
-    prompts: db.prepare(`SELECT COUNT(*) n FROM curso_prompts WHERE product_id = ? AND status IN (${ph})`).get(produto.id, ...vis).n,
+    // a biblioteca de prompts é de quem tem o curso (a rota dela responde 403 a quem não tem): sem acesso, nem o número
+    prompts: acesso ? db.prepare(`SELECT COUNT(*) n FROM curso_prompts WHERE product_id = ? AND status IN (${ph})`).get(produto.id, ...vis).n : 0,
     tutor: { base_propria: temTutor, nome: 'Tutor Villela' },
-    extras: db.prepare('SELECT titulo, descricao, status, url FROM curso_extras WHERE product_id = ? ORDER BY ordem').all(produto.id),
+    // o cartão de cada extra (título e descrição) é vitrine; o LINK do material é de quem tem o curso
+    extras: db.prepare('SELECT titulo, descricao, status, url FROM curso_extras WHERE product_id = ? ORDER BY ordem').all(produto.id).map(x => (acesso ? x : { ...x, url: '' })),
     revisor: podeRevisar(usuario, produto),
+    acesso,
   };
 }
 
@@ -457,7 +477,7 @@ function contextoTutor(usuario, produto, pergunta, lessonId, estude = null) {
 }
 function historico(userId, productId, n = 3) {
   return db.prepare('SELECT pergunta, resposta FROM tutor_conversas WHERE user_id = ? AND product_id = ? ORDER BY criado_em DESC LIMIT ?')
-    .all(userId, productId, n).reverse();
+    .all(userId, productId, Math.min(Math.max(1, parseInt(n, 10) || 3), 10)).reverse();
 }
 function registrarConversa(userId, productId, lessonId, pergunta, resposta, fontes) {
   db.prepare('INSERT INTO tutor_conversas (id, user_id, product_id, lesson_id, pergunta, resposta, fontes, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
@@ -465,10 +485,10 @@ function registrarConversa(userId, productId, lessonId, pergunta, resposta, font
 }
 function conversas(userId, productId, n = 20) {
   return db.prepare('SELECT pergunta, resposta, fontes, lesson_id, criado_em FROM tutor_conversas WHERE user_id = ? AND product_id = ? ORDER BY criado_em DESC LIMIT ?')
-    .all(userId, productId, Math.min(parseInt(n, 10) || 20, 50)).reverse().map(c => ({ ...c, fontes: j.parse(c.fontes, []) }));
+    .all(userId, productId, Math.min(Math.max(1, parseInt(n, 10) || 20), 50)).reverse().map(c => ({ ...c, fontes: j.parse(c.fontes, []) })); // (`?n=-1` virava LIMIT -1: a conversa inteira)
 }
 
-module.exports = { rotuloEstude, temBase,
+module.exports = { rotuloEstude, temBase, podeConversar, temAcessoAoCurso,
   FONTES, TIPOS_QUESTAO, podeRevisar, importar, definirStatus, resumo, resumoParaAluno,
   quizParaAluno, corrigirQuiz, cadernoParaAluno, salvarResposta, cadernoCompleto, camposDoCaderno,
   promptsParaAluno, contextoTutor, historico, registrarConversa, conversas, buscar, tokens, validarQuestoes,

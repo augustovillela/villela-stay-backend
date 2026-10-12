@@ -186,9 +186,21 @@ app.post('/csp-report', express.json({ type: ['application/csp-report', 'applica
   } catch (e) { /* relatorio malformado nao derruba nada */ }
 });
 
-app.get('/health', (req, res) => res.json({
-  ok: true, servico: 'villela-stay-backend',
-  commit: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7),
+// PUBLICO: so o que o Render (health check), o Test-StaffPortal e a conferencia de
+// deploy precisam — vivo, servico e commit curto. A branch, o ambiente e os
+// sinalizadores de segredo nao revelam segredo nenhum, mas dizem a quem esta
+// fazendo reconhecimento o que esta armado e o que nao esta (auditoria de
+// 11/10/2026, B7). Continuam existindo, pelo mesmo endereco, para quem manda a
+// PUBLISH_KEY no cabecalho x-publish-key — a mesma chave das rotinas locais.
+app.get('/health', (req, res) => {
+  const publico = {
+    ok: true, servico: 'villela-stay-backend',
+    commit: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7),
+  };
+  const chave = req.headers['x-publish-key'];
+  if (!(process.env.PUBLISH_KEY && chave && tokensIguais(chave, process.env.PUBLISH_KEY))) return res.json(publico);
+  res.json({
+  ...publico,
   branch: process.env.RENDER_GIT_BRANCH || 'local',
   // Se a conferencia de assinatura do webhook do MP esta ARMADA. Sem isto, a
   // unica forma de saber era esperar um webhook chegar e procurar um aviso no
@@ -205,7 +217,8 @@ app.get('/health', (req, res) => res.json({
   ambiente: EM_PRODUCAO ? (process.env.NODE_ENV || 'render') : (process.env.NODE_ENV || 'local'),
   // a MESMA constante que arma a guarda do boot: uma verdade só
   guardas_de_producao_armadas: EM_PRODUCAO,
-}));
+  });
+});
 
 // Disponibilidade e preços de um anúncio (o site consome este endpoint)
 app.get('/api/disponibilidade/:listingId', async (req, res) => {

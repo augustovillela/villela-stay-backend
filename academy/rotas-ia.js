@@ -38,6 +38,13 @@ function registrarRotasIA(app, { requireUsuario, requirePapel }) {
     res.json({ ...carteira.carteiraDoUsuario(req.usuario), limite_dia: ia.limiteDia(), usadas_hoje: ia.usadasHoje(req.usuario.id),
       cobranca_agora: ia.comoCobrar(req.usuario.id, pid), franquia_neste_curso: pid ? carteira.temFranquia(req.usuario.id, pid) : false });
   }));
+  // o extrato, página a página (a primeira já vem em /ia/carteira)
+  app.get('/academy/api/ia/carteira/extrato', requireUsuario, h((req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const pagina = Math.max(1, parseInt(req.query.pagina, 10) || 1);
+    const linhas = carteira.extrato(req.usuario.id, carteira.EXTRATO_POR_PAGINA, pagina);
+    res.json({ pagina, extrato: linhas, tem_mais: linhas.length === carteira.EXTRATO_POR_PAGINA });
+  }));
   app.post('/academy/api/ia/carteira/recarga', requireUsuario, h(async (req, res) => {
     const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
     const r = await carteira.criarRecarga(req.usuario, (req.body || {}).valor_centavos, `${proto}://${req.get('host')}`);

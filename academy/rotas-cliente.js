@@ -197,10 +197,30 @@ function registrarRotasCliente(app, { jwtSecret }) {
     if (!repo.Usuarios.conferirSenha(repo.Usuarios.porId(req.usuario.id), (req.body || {}).senha)) {
       return res.status(400).json({ erro: 'Confirme com a sua senha.' });
     }
-    aud(req, 'lgpd.excluir', 'users', req.usuario.id, 'anonimização a pedido do titular');
-    repo.Usuarios.anonimizar(req.usuario.id);
+    // ASSINATURA ATIVA (segunda revisão, 11/10/2026, A1): a exclusão cancela ANTES, no Mercado Pago, toda assinatura
+    // viva da conta — pelo mesmo caminho do cancelamento comum. Antes a conta era anonimizada, o titular não
+    // conseguia mais entrar e o Mercado Pago seguia cobrando. Se o provedor não confirmar, NADA é anonimizado: o
+    // titular lê o que houve e o dono é avisado (alerta + auditoria).
+    const billing = require('./billing'); // require tardio: billing → repo-conteudo → repo
+    const uid = req.usuario.id, email = req.usuario.email;
+    const canc = await billing.cancelarAssinaturasDoTitular(uid, 'lgpd:' + uid);
+    if (canc.falhas.length) {
+      aud(req, 'lgpd.excluir.falha', 'users', uid, s('assinatura não cancelada no provedor: ' + canc.falhas.map(f => `${f.id} (${f.erro})`).join('; '), 780));
+      billing.avisarDono(`🚨 Villela Academy: EXCLUSÃO DE CONTA NÃO CONCLUÍDA — ${email} pediu a exclusão, mas ${canc.falhas.length} assinatura(s) não puderam ser canceladas no Mercado Pago (${canc.falhas.map(f => `"${f.produto}"`).join(', ')}). A conta continua ativa. Cancele a assinatura no painel e refaça a exclusão.`);
+      return res.status(502).json({ erro: 'Não foi possível cancelar a sua assinatura no Mercado Pago agora, e por isso a conta NÃO foi excluída (para a cobrança não continuar numa conta sem acesso). Tente de novo em alguns minutos; a equipe já foi avisada.',
+        assinaturas_pendentes: canc.falhas.length });
+    }
+    aud(req, 'lgpd.excluir', 'users', uid, 'anonimização a pedido do titular' + (canc.canceladas.length ? ` · ${canc.canceladas.length} assinatura(s) cancelada(s) antes` : ''));
+    try { repo.Usuarios.anonimizar(uid); }
+    catch (e) {
+      // a transação foi desfeita: nada saiu pela metade. Fica o registro para o dono, e o titular sabe que não concluiu.
+      try { console.error('[academy] LGPD: exclusão da conta %s não concluída (%s)', uid, (e && (e.code || e.message)) || 'erro'); } catch (_) { /* nem o log */ }
+      aud(req, 'lgpd.excluir.falha', 'users', uid, s('anonimização não concluída: ' + ((e && e.message) || 'erro'), 780));
+      billing.avisarDono(`🚨 Villela Academy: EXCLUSÃO DE CONTA NÃO CONCLUÍDA — ${email} pediu a exclusão e a anonimização falhou (${s((e && e.message) || 'erro', 160)}). Nada foi apagado.${canc.canceladas.length ? ' As assinaturas dele JÁ foram canceladas.' : ''}`);
+      return res.status(500).json({ erro: 'Não foi possível concluir a exclusão agora. Nada foi apagado' + (canc.canceladas.length ? ' (a sua assinatura já foi cancelada)' : '') + '. Tente de novo em alguns minutos; a equipe já foi avisada.' });
+    }
     sessaoAcademy.limpar(res);
-    res.json({ ok: true });
+    res.json({ ok: true, assinaturas_canceladas: canc.canceladas.length });
   }));
 
   // ---- onboarding de produtor / afiliado (fluxo com aprovação) ----

@@ -219,13 +219,22 @@
   function soDoCurso() { return document.documentElement.hasAttribute('data-vs-so-curso'); }
   function qsCurso() { var c = cursoAberto(); return c ? '?curso=' + encodeURIComponent(c) + (soDoCurso() ? '&so_curso=1' : '') : ''; }
   var cursosComPostIt = {};
+  // <html data-vs-aguarde="1">: o app está ABRINDO uma tela (um curso, vindo do endereço) e ainda não sabe dizer
+  // qual é o contexto. O post-it espera — sortear agora gastaria uma dica geral numa tela que não é a dela.
+  // Com teto: página que esqueça a marca não fica sem dica para sempre.
+  var buscandoPostIt = false, esperas = 0;
   function mostrarPostIt() {
-    if (!bt || document.querySelector('.vsc-post') || document.querySelector('.vsc-dica')) return;
+    if (!bt || buscandoPostIt || document.querySelector('.vsc-post') || document.querySelector('.vsc-dica')) return;
+    if (document.documentElement.hasAttribute('data-vs-aguarde') && esperas < 12) { esperas++; setTimeout(mostrarPostIt, 800); return; }
+    esperas = 0;
     var c = cursoAberto();
     if (c) cursosComPostIt[c] = true;
+    // a trava vale DURANTE a busca: dois pedidos seguidos (a abertura e a entrada no curso) punham dois post-its
+    buscandoPostIt = true;
     silencioso(api('GET', '/dicas/proxima' + qsCurso())).then(function (r) {
+      buscandoPostIt = false;
       var d = r && r.dica;
-      if (!d) return;
+      if (!d || document.querySelector('.vsc-post')) return;
       E.dica = d;
       var el = document.createElement('div');
       el.className = 'vsc-post'; el.setAttribute('role', 'note'); el.style.position = 'fixed';

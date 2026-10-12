@@ -106,6 +106,11 @@ function montar(app, injected = {}) {
     });
   }
 
+  // ABA ABERTA DURANTE UM DEPLOY: toda resposta da API diz qual versão da TELA o servidor está servindo
+  // (paginas.VERSAO_TELA — muda quando sobe o ?v= de qualquer arquivo de tela). A página compara com a versão
+  // com que foi carregada e, se for outra, mostra "Há uma versão nova — Atualizar" (app-cliente.js › conferirVersao).
+  app.use('/academy/api', (req, res, next) => { const v = require('./paginas').VERSAO_TELA; if (v) res.setHeader('X-Academy-Tela', v); next(); });
+
   // o aceite de valor da IA (cabecalho X-IA-Aceite) vale para a requisicao inteira; precisa vir antes das rotas
   app.use('/academy/api', require('./ia').middlewareAceite);
 

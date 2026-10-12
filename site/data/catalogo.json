@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-11T20:17:26.414Z",
+  "coletadoEm": "2026-10-11T23:44:18.735Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -199,20 +199,20 @@
   ],
   "cursos": [
     {
+      "slug": "juiz-do-trabalho-trt-10a-regiao-concurso-paradigma",
+      "titulo": "Juiz do Trabalho — Magistratura do Trabalho (TRT 10ª Região)",
+      "resumo": "Preparação pelo programa oficial do concurso nacional da Magistratura do Trabalho (Edital 1/2023, CSJT/FGV): 251 aulas com videoaula e audiobook, 1.632 questões comentadas (628 de provas oficiais), cards, mapas mentais, prova com relógio e plano no seu tempo. Acesso por 1 ano.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/uD4HwcKoS0Gq?v=EurJawigxHC4",
+      "preco": 98000,
+      "url": "https://academia.villelastay.com.br/academy/cursos/juiz-do-trabalho-trt-10a-regiao-concurso-paradigma"
+    },
+    {
       "slug": "construcao-com-conteineres-na-pratica",
       "titulo": "Construção com Contêineres na Prática",
       "resumo": "25 videoaulas animadas, de cerca de 8 minutos, cada uma com o artigo da aula em PDF, com checklists e fichas, para decidir, contratar e fiscalizar uma construção com contêiner na chácara, do estudo do lugar à entrega da unidade. Coleção Viver de Chácara.",
       "capa": "https://academia.villelastay.com.br/academy/capa/Lygb_RFT_QXp?v=gGZwD55Sp5r-",
       "preco": 8500,
       "url": "https://academia.villelastay.com.br/academy/cursos/construcao-com-conteineres-na-pratica"
-    },
-    {
-      "slug": "juiz-do-trabalho-trt-10a-regiao-concurso-paradigma",
-      "titulo": "Juiz do Trabalho — Magistratura do Trabalho (TRT 10ª Região)",
-      "resumo": "Preparação pelo programa oficial do concurso nacional da Magistratura do Trabalho (Edital 1/2023, CSJT/FGV): aula por item do edital, teoria para leitura, questões das provas anteriores e autorais comentadas, cards, mapas mentais, simulados com a regra do concurso e plano no seu tempo. Acesso por 1",
-      "capa": "https://academia.villelastay.com.br/academy/capa/uD4HwcKoS0Gq?v=EurJawigxHC4",
-      "preco": 98000,
-      "url": "https://academia.villelastay.com.br/academy/cursos/juiz-do-trabalho-trt-10a-regiao-concurso-paradigma"
     },
     {
       "slug": "pedreiro-completo-na-pratica",

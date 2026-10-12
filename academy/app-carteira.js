@@ -17,8 +17,13 @@
   function guardar(v) { try { sessionStorage.setItem('ia-aceite', String(v)); } catch (e) { /* sem armazenamento: pergunta toda vez */ } }
   function dataHora(iso) { var d = new Date(iso); return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
 
+  // `product_id`: o curso aberto (o painel marca <html data-vs-curso>). Com ele o servidor diz como ESTE curso é
+  // cobrado agora (`cobranca_agora`) — sem ele, quem tem franquia lia "Saldo R$ 0,00 — você confirma antes" e era
+  // atendido de graça.
+  function cursoAberto() { try { return document.documentElement.getAttribute('data-vs-curso') || ''; } catch (e) { return ''; } }
   function ler() {
-    return fetch('/academy/api/ia/carteira', { headers: { 'Content-Type': 'application/json' } })
+    var pid = cursoAberto();
+    return fetch('/academy/api/ia/carteira' + (pid ? '?product_id=' + encodeURIComponent(pid) : ''), { headers: { 'Content-Type': 'application/json' } })
       .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d && d.erro || ('erro ' + r.status)); estado = d; return d; }); });
   }
 
@@ -87,13 +92,16 @@
       var u = (c.extrato || [])[0];
       // só o uso que acabou de acontecer: chamada que saiu pela franquia não repete o aviso da anterior
       // (nem o pedido que ainda está rodando: ali o que saiu foi a reserva do teto, não o valor final)
-      if (u && u.tipo === 'uso' && u.milesimos < 0 && !/em andamento$/.test(u.descricao) && Date.now() - Date.parse(u.quando) < 20000) toast('IA: ' + u.valor + ' debitado · saldo ' + c.saldo);
+      // (a hora que vale é a do ACERTO, não a da reserva: geração de mais de 20 s perdia o aviso do valor debitado)
+      if (u && u.tipo === 'uso' && u.milesimos < 0 && !/em andamento$/.test(u.descricao) && Date.now() - Date.parse(u.fechado_em || u.quando) < 20000) toast('IA: ' + u.valor + ' debitado · saldo ' + c.saldo);
       var alvo = document.getElementById('c-ia');
       if (alvo) pintar(alvo, c);
     }).catch(function () {});
   }
   // o rodapé do Tutor e do mentor: com a carteira ligada, o que importa é o saldo
   function rodape(restantes) {
+    // franquia NESTE curso (matrícula anterior à cobrança): as consultas do dia saem de graça — o saldo só entra depois delas
+    if (estado && estado.ativa && !estado.isento && estado.cobranca_agora === 'franquia') return restantes + ' consulta' + (restantes === 1 ? '' : 's') + ' de IA incluída' + (restantes === 1 ? '' : 's') + ' no seu acesso hoje. Depois delas, o uso sai do saldo (' + estado.saldo + '), com o valor mostrado antes.';
     if (estado && estado.ativa && !estado.isento) return 'Saldo de IA: ' + estado.saldo + '. Antes de gerar, você vê o valor e confirma.';
     return restantes + ' consulta' + (restantes === 1 ? '' : 's') + ' de IA restante' + (restantes === 1 ? '' : 's') + ' hoje.';
   }
@@ -114,12 +122,25 @@
           c.recargas_pendentes.map(function (r) { return '<button class="al-bt peq fan" data-conf="' + esc(r.id) + '">Já paguei R$ ' + (r.valor_centavos / 100).toFixed(0) + ' — conferir</button>'; }).join(' ') + '</p>';
       }
     }
+    var cheio = (c.extrato || []).length >= (c.extrato_por_pagina || 30);
     h += (c.extrato || []).length
       ? '<table class="ci-ext">' + c.extrato.map(function (x) {
           return '<tr><td class="q">' + dataHora(x.quando) + '</td><td>' + esc(x.descricao) + '</td><td class="v' + (x.milesimos > 0 ? ' mais' : '') + '">' + (x.milesimos > 0 ? '+ ' : x.milesimos < 0 ? '− ' : '') + esc(x.valor) + '</td></tr>';
-        }).join('') + '</table>'
+        }).join('') + '</table>' + (cheio ? '<p style="margin-top:10px"><button class="al-bt peq fan" id="ci-mais">Ver movimentos anteriores</button></p>' : '')
       : '<p class="al-sub" style="margin-top:12px">Nenhum movimento ainda.</p>';
     alvo.innerHTML = h;
+    // o extrato inteiro, página a página
+    var pagina = 1, mais = alvo.querySelector('#ci-mais');
+    if (mais) mais.onclick = function () {
+      mais.disabled = true;
+      api('GET', '/ia/carteira/extrato?pagina=' + (++pagina)).then(function (r) {
+        var tb = alvo.querySelector('.ci-ext');
+        if (tb) tb.insertAdjacentHTML('beforeend', (r.extrato || []).map(function (x) {
+          return '<tr><td class="q">' + dataHora(x.quando) + '</td><td>' + esc(x.descricao) + '</td><td class="v' + (x.milesimos > 0 ? ' mais' : '') + '">' + (x.milesimos > 0 ? '+ ' : x.milesimos < 0 ? '− ' : '') + esc(x.valor) + '</td></tr>';
+        }).join(''));
+        if (r.tem_mais) mais.disabled = false; else if (mais.parentNode) mais.parentNode.removeChild(mais);
+      }).catch(function () { mais.disabled = false; pagina--; });
+    };
     Array.prototype.forEach.call(alvo.querySelectorAll('[data-rec]'), function (b) {
       b.onclick = function () {
         b.disabled = true;
@@ -143,8 +164,11 @@
     }).catch(function (e) { toast(e.message); if (depoisDe) depoisDe(); });
   }
 
+  var ouvindoContexto = false;
   function iniciar(D) {
     api = D.api; esc = D.esc;
+    // abriu (ou fechou) um curso: a forma de cobrança é POR CURSO — relê, para o rodapé do Tutor dizer a verdade
+    if (!ouvindoContexto) { ouvindoContexto = true; window.addEventListener('vs:contexto', function () { ler().catch(function () {}); }); }
     window.AcademyCarteiraUI.irParaConta = D.irParaConta;
     ler().catch(function () {});
     // voltou do Mercado Pago: confere a recarga (o retorno do navegador sozinho não credita nada)

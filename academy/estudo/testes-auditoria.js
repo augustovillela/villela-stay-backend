@@ -227,7 +227,7 @@ async function rodar({ t, req }) {
     await req('POST', `${esc()}/tentativas/${ini.json.id}/enviar`, { jar: 'ivo-a' });
     assert.equal((await painel('ivo-a')).prova_aberta, null);
     const outra = await req('POST', `${esc()}/tentativas`, { jar: 'ivo-a', corpo: { modo: 'treino', n: 2 } });
-    db.prepare('UPDATE est_tentativas SET prazo_em = ? WHERE id = ?').run(new Date(Date.now() - 1000).toISOString(), outra.json.id);
+    db.prepare('UPDATE est_tentativas SET prazo_em = ? WHERE id = ?').run(new Date(Date.now() - 9000).toISOString(), outra.json.id); // além da tolerância de 5 s do servidor
     assert.equal((await painel('ivo-a')).prova_aberta, null);
     assert.equal(db.prepare('SELECT estado FROM est_tentativas WHERE id = ?').get(outra.json.id).estado, 'expirada');
     // a tela: o cartão nas duas abas, a retomada na posição e a posição enviada com as respostas
@@ -323,7 +323,8 @@ async function rodar({ t, req }) {
     assert.equal((await req('GET', `${esc()}/unidades/aud-b`, { jar: 'ivo-a' })).json.titulo, 'Aula B revista');
     // a tela não pede o painel duas vezes ao abrir o curso
     const tela = ler('app-estudo.js');
-    assert.ok(tela.includes('if (E.painel && E.painelEm && Date.now() - E.painelEm < PAINEL_FRESCO_MS) return pintarHoje(alvo);'));
+    // (réplica de 11/10/2026, R3-M9: o painel reaproveitado tem de ser DESTE percurso e sem escrita por conferir)
+    assert.ok(tela.includes('if (E.painel && E.painelDe === base() && !E.painelVelho && E.painelEm && Date.now() - E.painelEm < PAINEL_FRESCO_MS) return pintarHoje(alvo);'));
   });
 
   // ================= O. AS BAIXAS =================
@@ -383,7 +384,9 @@ async function rodar({ t, req }) {
     assert.ok(tela.includes("if (E.abrindoAnimada || document.querySelector('.es-an')) return;"), 'duplo clique não abre duas camadas');
     assert.ok(tela.includes('window.AcademyEstudeSair = sairDoEstude;') && ler('app-cliente.js').includes('window.AcademyEstudeSair()') && ler('app-aluno.js').includes('if (ES && ES.sair) ES.sair();'), 'sair do Estude por qualquer porta limpa a marca "em prova", o relógio e o microfone');
     assert.ok(tela.includes("keepalive: true") && tela.includes("window.addEventListener('pagehide', despejarPendentes);"), 'o que o aluno escreveu sai na hora ao fechar ou recarregar a página');
-    assert.ok(tela.includes('precisam de um navegador mais recente'), 'navegador antigo recebe o aviso certo nas Ferramentas');
+    // (réplica de 11/10/2026, R3-B11) os motores passaram a ir em ES5: o aviso de "navegador mais recente" saiu — o que
+    // garante isso é o verificador de ES5 de testes-auditoria-b2.js
+    assert.ok(!tela.includes('precisam de um navegador mais recente') && tela.includes('As ferramentas não carregaram por inteiro'), 'as Ferramentas não pedem mais navegador novo; arquivo que não rodou é falha de carga');
   });
 
   await t('auditoria B5: a tentativa escrita é do BLOCO, não da posição — reimportar a aula com os exercícios em outra ordem não cola o texto no exercício errado', async () => {

@@ -175,6 +175,8 @@
           if (falta) { el('av-res').innerHTML = '<span class="erro">Faltam ' + falta + '.</span>'; return; }
           bt.disabled = true;
           api('POST', '/aluno/cursos/' + J.pid + '/avaliacao/' + momento, { respostas: resp }).then(function (r) {
+            // o diagnóstico diz só o que você acertou: o gabarito comentado fica para o teste final (as questões são as mesmas)
+            if (r.gabarito_no_final && el('av-res')) el('av-res').insertAdjacentHTML('afterend', '<p class="al-fino">As questões voltam no teste final: por isso o diagnóstico mostra o que você acertou, e o gabarito comentado aparece na correção do teste final.</p>');
             r.correcao.forEach(function (c) {
               var fs = alvo.querySelector('fieldset[data-q="' + c.id + '"]');
               Array.prototype.forEach.call(fs.querySelectorAll('.qz-alt'), function (lb, k) {

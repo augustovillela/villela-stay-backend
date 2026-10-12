@@ -39,6 +39,9 @@ async function esquecer(produto, ref) {
     out.conversas++;
   }
   out.leituras = Number(db.prepare('DELETE FROM leituras WHERE produto = ? AND usuario_ref = ?').run(produto, ref).changes || 0);
+  // as dicas que a pessoa viu e a preferência do post-it também são dela: saem junto (antes ficavam para sempre)
+  out.dicas = Number(db.prepare('DELETE FROM dicas_vistas WHERE produto = ? AND usuario_ref = ?').run(produto, ref).changes || 0)
+    + Number(db.prepare('DELETE FROM dicas_pref WHERE produto = ? AND usuario_ref = ?').run(produto, ref).changes || 0);
   // A entrega continua existindo (o número de quem recebeu é registro do
   // envio), mas sem nada que identifique a pessoa. `chave` também sai: ela
   // guarda o e-mail/telefone que deduplicou o envio.
@@ -51,7 +54,9 @@ async function esquecer(produto, ref) {
 function pessoasNaCentral() {
   return db.prepare(`SELECT produto, usuario_ref FROM conversas
     UNION SELECT produto, usuario_ref FROM entregas
-    UNION SELECT produto, usuario_ref FROM leituras`).all()
+    UNION SELECT produto, usuario_ref FROM leituras
+    UNION SELECT produto, usuario_ref FROM dicas_vistas
+    UNION SELECT produto, usuario_ref FROM dicas_pref`).all()
     .filter((p) => p.usuario_ref && !String(p.usuario_ref).startsWith('removido:'));
 }
 

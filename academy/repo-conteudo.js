@@ -856,6 +856,8 @@ const Matriculas = {
     const e = db.prepare('SELECT * FROM enrollments WHERE id = ? AND product_id = ?').get(enrollmentId, productId);
     if (!e) throw new Error('Matrícula não encontrada.');
     db.prepare("UPDATE enrollments SET status = 'revogada' WHERE id = ?").run(enrollmentId);
+    // (require tardio: governanca → repo-conteudo) sem acesso ao produto, o certificado dele deixa de valer
+    require('./governanca').Certificados.revogarSeSemAcesso(e.user_id, e.product_id, 'matrícula revogada');
   },
   doProduto(productId) {
     return db.prepare(`SELECT e.*, u.nome, u.email FROM enrollments e JOIN users u ON u.id = e.user_id
@@ -958,6 +960,7 @@ const Cortesia = {
     if (!this.ehCortesia(userId)) throw new Error('Este usuário não tem acesso de cortesia.');
     db.prepare('UPDATE users SET cortesia = 0, atualizado_em = ? WHERE id = ?').run(nowISO(), userId);
     const r = db.prepare("UPDATE enrollments SET status = 'revogada' WHERE user_id = ? AND origem = 'cortesia' AND status = 'ativa'").run(userId);
+    require('./governanca').Certificados.revogarOndeSemAcesso(userId, 'cortesia revogada'); // (require tardio)
     return { revogadas: r.changes };
   },
 
@@ -1076,7 +1079,10 @@ const Marketplace = {
   // `excluir` são os produtos que ele JÁ tem — recomendar o que já foi comprado é o
   // erro clássico dessas vitrines. Sem afinidade nenhuma, cai no catálogo recente
   // (melhor mostrar algo bom do que uma prateleira vazia).
-  recomendados({ excluir = [], categorias = [], tags = [], produtores = [], n = 6 } = {}) {
+  // `soDaCategoria` (página de venda): só entra quem divide ALGUMA área com o curso. Sem ele, um curso
+  // sozinho na sua área recebia como "relacionados" os três mais recentes do catálogo — Direito ao lado de
+  // Paisagismo, sob o título "de quem estuda o mesmo assunto" (auditoria de 11/10/2026, B6).
+  recomendados({ excluir = [], categorias = [], tags = [], produtores = [], n = 6, soDaCategoria = false } = {}) {
     const fora = new Set((excluir || []).filter(Boolean));
     const cat = new Set((categorias || []).filter(Boolean));
     const pro = new Set((produtores || []).filter(Boolean));
@@ -1094,7 +1100,8 @@ const Marketplace = {
         : (pro.has(r.producer_id) ? `Do mesmo autor: ${r.produtor_nome}`
           : (emComum.length ? `Também sobre ${emComum[0]}` : 'Em destaque na Academy'));
       return { ...r, tags: minhas, score, motivo };
-    })).sort((a, b) => b.score - a.score || String(b.atualizado_em || '').localeCompare(String(a.atualizado_em || '')))
+    })).filter(r => !soDaCategoria || (r.categorias || [r.categoria]).some(c => cat.has(c)))
+      .sort((a, b) => b.score - a.score || String(b.atualizado_em || '').localeCompare(String(a.atualizado_em || '')))
       .slice(0, Math.min(parseInt(n, 10) || 6, 24));
   },
 
@@ -1140,7 +1147,58 @@ const Marketplace = {
         extra: aulas.some(a => a.module_id === m.id) && aulas.filter(a => a.module_id === m.id).every(a => a.formato === 'express'),
       })),
       total_express: aulas.filter(a => a.formato === 'express').length,
+      // curso que hospeda o Estude: os números de verdade estão no percurso, não na casca acima
+      estude: this.resumoDoEstude(productId),
     };
+  },
+
+  // o curso tem quiz PUBLICADO em alguma aula? Quem pergunta é o aviso do que o preço inclui: "o quiz" só é
+  // prometido onde existe (auditoria de 11/10/2026, B2). Quiz em rascunho o aluno não vê — não conta.
+  temQuiz(productId) {
+    return !!db.prepare("SELECT 1 FROM aula_quiz WHERE product_id = ? AND status = 'publicado' LIMIT 1").get(productId);
+  },
+
+  // CURSO QUE HOSPEDA O ESTUDE (auditoria de 11/10/2026, A1). A casca do curso tem um módulo e uma aula
+  // ("Comece por aqui"); o conteúdo vendido mora no percurso do Estude. Contada pela casca, a página de venda
+  // dizia "1 aula" em cinco lugares, ao lado de uma descrição que promete 251. Aqui a conta é a do percurso,
+  // com a MESMA régua do certificado (`estudo\aluno.js › conclusao`): só escopo PUBLICADO do curso — percurso
+  // particular de aluno fica fora em `Escopos.doProduto` — e só aula publicada. Questão conta a `disponivel`;
+  // card, o publicado. `null` = curso comum (ou percurso ainda sem aula no ar): vale a casca.
+  // Página pública: só contagens e nomes de disciplina, lidos em colunas leves — nenhum texto de aula é aberto.
+  resumoDoEstude(productId) {
+    const R = require('./estudo/repo'); // tardio: `estudo\aluno.js` importa este arquivo
+    const escopos = R.Escopos.doProduto(productId, ['publicado']);
+    if (!escopos.length) return null;
+    const { aulasPorDisciplina } = require('./estudo/aluno');
+    const r = { percursos: escopos.length, aulas: 0, videos: 0, video_seg: 0, questoes: 0, cards: 0, disciplinas: 0, grupos: [] };
+    for (const e of escopos) {
+      const uns = db.prepare(`SELECT codigo, titulo, itens, video_media_id, video_duracao_seg FROM est_unidades
+        WHERE escopo_id = ? AND status = 'publicado' ORDER BY ordem`).all(e.id).map(u => ({ ...u, itens: j.parse(u.itens, []) }));
+      if (!uns.length) continue;
+      // a regra de "qual é a disciplina desta aula" é a do aluno (uma só no sistema); a cobertura inteira
+      // (questão por item) não é calculada: o agrupamento só precisa do código e do texto de cada item
+      const { grupos } = aulasPorDisciplina({ escopo: e, vis: ['publicado'] }, { cob: { por_item: e.versao ? R.itens(e) : [] }, uns });
+      const temDisciplina = grupos.some(g => g.codigo);
+      for (const g of grupos) {
+        const comVideo = g.aulas.filter(u => u.video_media_id);
+        r.grupos.push({
+          percurso: e.titulo, disciplina: !!g.codigo,
+          // programa sem nível de disciplina (percurso por assunto): o grupo é o próprio percurso
+          nome: g.codigo || temDisciplina ? g.nome : e.titulo,
+          aulas: g.aulas.length, videos: comVideo.length,
+          video_seg: comVideo.reduce((n, u) => n + Math.max(0, Number(u.video_duracao_seg) || 0), 0),
+        });
+        if (g.codigo) r.disciplinas++;
+      }
+    }
+    for (const g of r.grupos) { r.aulas += g.aulas; r.videos += g.videos; r.video_seg += g.video_seg; }
+    if (!r.aulas) return null;
+    const ids = escopos.map(e => e.id), m = ids.map(() => '?').join(',');
+    // DISTINCT: a mesma questão ligada a dois percursos do curso é uma questão só
+    r.questoes = db.prepare(`SELECT COUNT(DISTINCT q.id) n FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id
+      WHERE v.escopo_id IN (${m}) AND q.situacao = 'disponivel'`).get(...ids).n;
+    r.cards = db.prepare(`SELECT COUNT(*) n FROM est_cards WHERE escopo_id IN (${m}) AND status = 'publicado'`).get(...ids).n;
+    return r;
   },
 };
 

@@ -155,7 +155,7 @@ async function conteudoDoLote({ bytes, textos, lote, proc, delim, anterior = nul
   for (const n of lote.paginas) if (!lote.escaneadas.includes(n)) partes.push(bloco(`PÁGINA ${n}`, textos.get(n) || ''));
   const noPdf = (cortada && !anterior.texto ? anterior.pdf_paginas || [] : []).concat(lote.escaneadas);
   if (!noPdf.length) return partes.join('\n\n');
-  const corte = await pdf.recortar(bytes, noPdf);
+  const corte = await pdf.recortar(bytes, noPdf, { prioridade: true }); // trabalho já pago: passa à frente dos orçamentos
   if (corte.bytes > LOTE_PDF_MAX_BYTES) throw erro('As páginas escaneadas deste PDF são pesadas demais para a leitura. Reduza a resolução do arquivo e envie de novo.', 422);
   partes.push(`O documento PDF anexo traz, nesta ordem, a(s) página(s) ${noPdf.join(', ')} do caderno, que são imagem (sem texto copiável): leia-as como as demais.${cortada && !anterior.texto ? ` A primeira delas é o "FIM DAS PÁGINAS ANTERIORES".` : ''}`);
   return [{ type: 'text', text: partes.join('\n\n') }, { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: corte.base64 } }];
@@ -184,7 +184,7 @@ async function conteudoDoGabarito({ gab, proc, situacao, numeros, delim }) {
   if (texto) partes.push(`<<<GABARITO-${delim}\n${texto}\nGABARITO-${delim}>>>`);
   const esc = (gab.pdf && gab.pdf.escaneadas) || [];
   if (!esc.length) return partes.join('\n\n');
-  const corte = await pdf.recortar(gab.pdf.bytes, esc);
+  const corte = await pdf.recortar(gab.pdf.bytes, esc, { prioridade: true });
   if (corte.bytes > LOTE_PDF_MAX_BYTES) throw erro('O PDF do gabarito é pesado demais para a leitura. Cole o gabarito como texto ou reduza a resolução do arquivo.', 422);
   partes.push('O documento PDF anexo é o gabarito (página em imagem, sem texto copiável).');
   return [{ type: 'text', text: partes.join('\n\n') }, { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: corte.base64 } }];

@@ -32,6 +32,8 @@ const erro = (msg, status = 400) => { const e = new Error(msg); e.status = statu
 const SECOES = ['competencias', 'avaliacao', 'lab', 'desafio', 'simulacoes', 'recursos'];
 const STATUS = ['rascunho', 'publicado'];
 const MOMENTOS = ['diagnostico', 'final'];
+const ENTREGA_MAX_CHARS = 12000;     // caracteres por entregável do Lab — o mentor lê o MESMO tanto (ia.MENTOR_ENTREGA_MAX)
+const CHECKINS_NOVOS_POR_DIA = 2;    // desafio: dias NOVOS que se pode marcar num mesmo dia (o de hoje e um atrasado)
 const FINAL_EXIGE_PCT = 70;          // o teste final abre com 70% das aulas concluídas
 const QUIZ_APROVA = 70;              // % mínimo para o quiz contar para selo e XP
 
@@ -288,8 +290,11 @@ function estadoAvaliacao(usuario, produto, c) {
   const finais = ts.filter(t => t.momento === 'final');
   const final = finais.length ? finais.reduce((a, b) => (b.pct > a.pct ? b : a)) : null;
   const pct = progressoPct(usuario.id, produto.id);
+  // a liberação conta AULAS INTEIRAS, não o percentual arredondado (139 de 200 arredondam para 70 % e abriam o teste)
+  const prog = ct.Progresso.doProduto(usuario.id, produto.id);
+  const cumpriu = prog.total_aulas > 0 && prog.concluidas * 100 >= prog.total_aulas * FINAL_EXIGE_PCT;
   return { titulo: sec.dados.titulo, descricao: sec.dados.descricao, questoes: sec.dados.questoes.length, status: sec.status,
-    diagnostico: diag, final, final_liberado: c.revisor || pct >= FINAL_EXIGE_PCT, final_exige_pct: FINAL_EXIGE_PCT, progresso_pct: pct,
+    diagnostico: diag, final, final_liberado: c.revisor || cumpriu, final_exige_pct: FINAL_EXIGE_PCT, progresso_pct: pct,
     diagnostico_feito: !!diag };
 }
 function avaliacaoParaAluno(usuario, produto, momento) {
@@ -325,6 +330,10 @@ function corrigirAvaliacao(usuario, produto, momento, respostas) {
     const k = q.competencia || '_geral';
     comp[k] = comp[k] || { acertos: 0, total: 0 };
     comp[k].total++; if (ok) comp[k].acertos++;
+    // O DIAGNÓSTICO usa as MESMAS questões do teste final: ele diz se o aluno acertou, e só. A alternativa certa e
+    // as explicações ficam para a correção do teste final — antes o diagnóstico entregava o gabarito comentado da
+    // prova que o aluno faria depois, e o "antes × depois" media memória, não aprendizado.
+    if (momento === 'diagnostico') return { id: q.id, escolhida: exibida, correta: ok ? exibida : -1, acertou: ok, explicacoes: [] };
     return { id: q.id, escolhida: exibida, correta: o.indexOf(certaOriginal), acertou: ok, explicacoes: o.map(i => q.alternativas[i].explicacao) };
   });
   const pct = Math.round(acertos * 100 / qs.length);
@@ -332,7 +341,7 @@ function corrigirAvaliacao(usuario, produto, momento, respostas) {
   for (const k of Object.keys(comp)) comp[k].pct = Math.round(comp[k].acertos * 100 / comp[k].total);
   db.prepare('INSERT INTO avaliacao_tentativas (id, user_id, product_id, momento, respostas, pontos, total, pct, nivel, por_competencia, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .run(novoId(), usuario.id, produto.id, momento, j.str(resp), acertos, qs.length, pct, nivel, j.str(comp), nowISO());
-  return { momento, acertos, total: qs.length, pct, nivel, por_competencia: comp, correcao,
+  return { momento, acertos, total: qs.length, pct, nivel, por_competencia: comp, correcao, gabarito_no_final: momento === 'diagnostico',
     recomendacao: recomendar(produto, comp, c), antes: momento === 'final' ? (tentativas(usuario.id, produto.id).find(t => t.momento === 'diagnostico') || null) : null };
 }
 // trilha recomendada: as competências mais fracas, com as aulas delas
@@ -367,7 +376,7 @@ function missao(usuario, produto, missaoId) {
 function salvarEntrega(usuario, produto, missaoId, respostas) {
   const { m, entrega } = missao(usuario, produto, missaoId);
   const r = {};
-  for (const e of m.entregaveis) r[e.id] = s(respostas && respostas[e.id], 12000);
+  for (const e of m.entregaveis) r[e.id] = s(respostas && respostas[e.id], ENTREGA_MAX_CHARS);
   const t = nowISO();
   db.prepare(`INSERT INTO lab_entregas (user_id, product_id, missao_id, respostas, entregue_em, feedback, avaliado_em, atualizado_em) VALUES (?, ?, ?, ?, '', '', '', ?)
     ON CONFLICT(user_id, product_id, missao_id) DO UPDATE SET respostas = excluded.respostas, atualizado_em = excluded.atualizado_em`)
@@ -377,7 +386,7 @@ function salvarEntrega(usuario, produto, missaoId, respostas) {
 function entregar(usuario, produto, missaoId) {
   const { m, entrega } = missao(usuario, produto, missaoId);
   const r = (entrega && entrega.respostas) || {};
-  const vazios = m.entregaveis.filter(e => s(r[e.id], 12000).length < 20).map(e => e.rotulo);
+  const vazios = m.entregaveis.filter(e => s(r[e.id], ENTREGA_MAX_CHARS).length < 20).map(e => e.rotulo);
   if (vazios.length) throw erro(`Complete antes de entregar: ${vazios.join('; ')} (pelo menos algumas linhas em cada).`);
   if (entrega.entregue_em) return { ok: true, entregue_em: entrega.entregue_em, ja_entregue: true };
   const t = nowISO();
@@ -424,6 +433,12 @@ function checkin(usuario, produto, dia, nota) {
   if (!alvo.liberado) throw erro(`O dia ${alvo.dia} abre em ${alvo.dia - d.dia_atual} dia(s). Um dia de cada vez — é assim que vira hábito.`, 409);
   const texto = s(nota, 3000);
   if (texto.length < 10) throw erro('Conte em uma ou duas frases o que você fez hoje.');
+  // "um dia de cada vez" também para quem ficou para trás: no mesmo dia cabem CHECKINS_NOVOS_POR_DIA dias NOVOS
+  // (reescrever a nota de um dia já marcado não conta). Quem começou há 21 dias marcava os 21 em um minuto.
+  if (!alvo.feito && !exigirAcesso(usuario, produto).revisor) {
+    const hoje = db.prepare('SELECT criado_em FROM desafio_checkins WHERE user_id = ? AND product_id = ?').all(usuario.id, produto.id).filter(x => hojeBR(new Date(x.criado_em)) === d.hoje).length;
+    if (hoje >= CHECKINS_NOVOS_POR_DIA) throw erro(`Você já marcou ${hoje} dias do desafio hoje. Os próximos ficam para amanhã — um dia de cada vez é o que faz virar hábito.`, 409);
+  }
   db.prepare(`INSERT INTO desafio_checkins (user_id, product_id, dia, nota, criado_em) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(user_id, product_id, dia) DO UPDATE SET nota = excluded.nota`).run(usuario.id, produto.id, alvo.dia, texto, nowISO());
   return desafioParaAluno(usuario, produto);
@@ -463,12 +478,17 @@ function escolher(usuario, produto, partidaId, opcao) {
   const sim = simulacao(usuario, produto, p.simulacao_id);
   const no = sim.nos[p.no_atual];
   const k = parseInt(opcao, 10);
-  if (!no || !no.opcoes || !(k >= 0 && k < no.opcoes.length)) throw erro('Opção inválida.');
+  // a simulação foi reimportada no meio desta partida e o ponto em que o aluno estava não existe mais: a partida
+  // não continua (antes estourava TypeError no desfecho, com a partida já gravada como terminada)
+  const MUDOU = 'Esta simulação foi atualizada depois que você começou. Comece uma nova partida — esta não conta.';
+  if (!no) throw erro(MUDOU, 409);
+  if (!no.opcoes || !(k >= 0 && k < no.opcoes.length)) throw erro('Opção inválida.');
   const o = no.opcoes[k];
   const caminho = j.parse(p.caminho, []);
   caminho.push({ no: p.no_atual, opcao: k, pontos: o.pontos });
   const pontos = p.pontos + o.pontos;
   const prox = sim.nos[o.vai_para];
+  if (!prox || caminho.some(c => !sim.nos[c.no] || !(sim.nos[c.no].opcoes || [])[c.opcao])) throw erro(MUDOU, 409);
   const final = prox.final ? o.vai_para : '';
   db.prepare('UPDATE simulacao_partidas SET no_atual = ?, caminho = ?, pontos = ?, final_id = ?, atualizado_em = ? WHERE id = ?')
     .run(o.vai_para, j.str(caminho), pontos, final, nowISO(), p.id);
@@ -492,6 +512,8 @@ function recursos(usuario, produto) {
 // ---------------------------------------------------------------------
 function painel(usuario, produto) {
   const c = contexto(usuario, produto);
+  // sem acesso ao curso, a jornada não diz nada (antes: seções, nomes de competências e medalhas iam a qualquer conta)
+  if (!c.acesso) return { acesso: false, revisor: false, secoes: {} };
   const secs = {};
   for (const n of SECOES) { const x = secao(produto.id, n, c.vis); if (x) secs[n] = x; }
   const uid = usuario.id, pid = produto.id;
@@ -537,7 +559,9 @@ function painel(usuario, produto) {
     ['Quizzes aprovados', qAprov * XP.quiz + q100 * XP.quiz_100, quizzes.length * (XP.quiz + XP.quiz_100)],
     ['Cadernos com resultado', cadFeitos * XP.caderno, cadernos.length * XP.caderno],
   ];
-  if (secs.avaliacao) fontes.push(['Diagnóstico e teste final', (diag ? XP.diagnostico : 0) + (final ? XP.final + Math.max(0, final.pct - (diag ? diag.pct : final.pct)) : 0), XP.diagnostico + XP.final]);
+  // (o bônus de evolução — pontos percentuais ganhos do diagnóstico ao final — conta até o teto DECLARADO da fonte:
+  // antes a linha mostrava "175 de 75" e o XP total passava do máximo do curso)
+  if (secs.avaliacao) fontes.push(['Diagnóstico e teste final', Math.min(XP.diagnostico + XP.final, (diag ? XP.diagnostico : 0) + (final ? XP.final + Math.max(0, final.pct - (diag ? diag.pct : final.pct)) : 0)), XP.diagnostico + XP.final]);
   if (missoes.length) fontes.push(['Villela Lab', mFeitas * XP.missao + (projFeito ? XP.projeto : 0), missoes.filter(m => m.tipo === 'missao').length * XP.missao + (projeto ? XP.projeto : 0)]);
   if (diasTot) fontes.push(['Desafio', diasFeitos * XP.dia + (diasFeitos >= diasTot ? XP.desafio_completo : 0), diasTot * XP.dia + XP.desafio_completo]);
   if (sims.length) fontes.push(['Simulações', simFeitas * XP.simulacao + simOtimas * XP.simulacao_otima, sims.length * (XP.simulacao + XP.simulacao_otima)]);
@@ -592,7 +616,7 @@ function selosDoCertificado(userId, productId) {
 }
 
 module.exports = {
-  SECOES, XP, NIVEIS_XP, nivelAvaliacao, hojeBR, importar, definirStatus, resumo, painel, estadoAvaliacao, contexto,
+  SECOES, XP, NIVEIS_XP, ENTREGA_MAX_CHARS, CHECKINS_NOVOS_POR_DIA, nivelAvaliacao, hojeBR, importar, definirStatus, resumo, painel, estadoAvaliacao, contexto,
   avaliacaoParaAluno, corrigirAvaliacao, labParaAluno, salvarEntrega, entregar, dadosParaMentor, registrarFeedback,
   desafioParaAluno, iniciarDesafio, checkin, simulacoes, iniciarSimulacao, escolher, recursos, selosDoCertificado,
   validarSimulacoes,
