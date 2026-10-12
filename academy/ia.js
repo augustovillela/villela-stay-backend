@@ -218,6 +218,31 @@ const FALHAS_DIA_POR_CONTA = 5;
 // o que a plataforma absorveu numa linha do log: o custo todo, se o trabalho falhou; a parte absorvida, se deu certo
 const CUSTO_ABSORVIDO_SQL = "CASE WHEN status = 'erro' THEN custo_centavos_usd ELSE absorvido_centavos_usd END";
 const LINHA_COM_ABSORCAO_SQL = "(status = 'erro' OR (status = 'ok' AND absorvido_centavos_usd > 0))";
+// ---- as linhas do log para os RELATÓRIOS de custo (`Logs.custos`, `Logs.pessoas`) — somadas no SQL, nunca em laço ----
+// só `ok` e `erro` chegaram ao provedor: `limite`, `sem_saldo` e `em_curso` (a vaga aberta) não são chamada
+const CHEGOU_AO_PROVEDOR_SQL = "status IN ('ok', 'erro')";
+// o pedido que o processo deixou pela metade: custo ESTIMADO pelo teto aceito (`registrarFalhaInterrompida`). A marca é o
+// modelo `estimado`; as linhas gravadas antes da marca são reconhecidas pelo detalhe que a mesma função escrevia.
+const MODELO_ESTIMADO = 'estimado';
+const INTERROMPIDO_SQL = `(status = 'erro' AND (COALESCE(modelo, '') = '${MODELO_ESTIMADO}' OR COALESCE(detalhe, '') LIKE 'interrompido — custo estimado%'))`;
+// c = custo de provedor (centavos de dólar); m = o que saiu do saldo (milésimos de real); falha = a parte que a
+// plataforma absorveu (o custo todo se o trabalho falhou; a tentativa perdida, se deu certo — nunca mais que o custo)
+// `estimado` = 1 na linha do pedido interrompido (fica fora dos totais de custo medido).
+const linhasDeCustoSQL = (tabela = 'ai_usage_logs') => `SELECT user_id, agente, modelo, status, cobranca, quando, COALESCE(custo_centavos_usd, 0) c, ABS(COALESCE(milesimos, 0)) m,
+    CASE WHEN status = 'erro' THEN COALESCE(custo_centavos_usd, 0) ELSE MIN(COALESCE(custo_centavos_usd, 0), COALESCE(absorvido_centavos_usd, 0)) END falha,
+    CASE WHEN ${INTERROMPIDO_SQL} THEN 1 ELSE 0 END estimado FROM ${tabela}`;
+// JANELA CURTA usa o índice de `quando`; JANELA LONGA lê a tabela em sequência. Medido com 1 milhão de linhas (auditoria
+// C, C-07): quando a janela cobre boa parte da tabela, ir ao índice e voltar à tabela linha a linha custa mais do que
+// ler tudo de uma vez. O relatório semanal pede 7, 14 e 30 dias; acima de 45 a leitura é sequencial.
+const tabelaDoLog = (dias) => (dias > 45 ? 'ai_usage_logs NOT INDEXED' : 'ai_usage_logs');
+// `quando` é UTC: o dia do relatório é o de Brasília (o uso das 21h às 24h caía no dia seguinte). O SQL agrupa pela
+// HORA em UTC (um `substr`, barato) e a conversão para o dia de Brasília é feita aqui, grupo a grupo — `date(quando,
+// '-3 hours')` linha a linha quase dobrava o tempo da leitura (medido com 1 milhão de linhas).
+const HORA_UTC_SQL = 'substr(quando, 1, 13)';
+const diaDeBrasilia = (horaUTC) => {
+  const t = Date.parse(String(horaUTC || '') + ':00:00Z');
+  return Number.isNaN(t) ? String(horaUTC || '').slice(0, 10) : new Date(t - 3 * 3600e3).toISOString().slice(0, 10);
+};
 const FALHAS_USD_DIA_POR_CONTA = 0.5;
 function exigirLimiteDeFalhas(userId, agente, productId) {
   if (carteira.isento(userId)) return; // a conta do dono testa à vontade
@@ -327,6 +352,11 @@ async function chamar(agente, conteudo, opcoes = {}) {
     } catch (e) {
       ultimoErro = e; ultimoErro.modelo = modelo;
       if (e.usage) custoFalhas += custoUSD(modelo, e.usage);
+      // `uma_tentativa_paga` (o passo ABSORVIDO pela plataforma — a segunda leitura da correção): a tentativa que o
+      // provedor COBROU e não serviu encerra a fila. O passo foi autorizado pelo pior caso de UMA tentativa (`t.cabe`);
+      // tentar o modelo seguinte cobraria outra, e o custo real passaria da reserva (auditoria C, C-12). Erro sem
+      // cobrança (rede, 5xx, 429) não gastou nada: segue para o modelo de reserva, como sempre.
+      if (e.usage && opcoes.uma_tentativa_paga) break;
       const st = e.status || (e.response && e.response.status);
       if (st && st >= 400 && st < 500 && st !== 404 && st !== 429) break;
     }
@@ -495,8 +525,13 @@ async function executar(userId, agente, prompt, p) {
 // tentativas perdidas dentro de trabalhos que deram certo (o aluno paga só a que serviu) —, em USD, desde `desde`
 // (ISO), de uma conta ou de todas (`userId` vazio). Sai do log de uso. É o que alimenta o teto diário de VALOR dos
 // pedidos pagos.
-function custoDeFalhasUSD({ userId = '', desde, agentes = SO_PAGOS } = {}) {
-  const r = db.prepare(`SELECT COALESCE(SUM(${CUSTO_ABSORVIDO_SQL}), 0) c FROM ai_usage_logs WHERE ${LINHA_COM_ABSORCAO_SQL} AND quando > ?
+// `soFalhas`: só o trabalho que FALHOU (`status = 'erro'`), sem a parte absorvida de trabalho que deu certo — é o que
+// PAUSA pedido novo (estudo\pedidos.js › exigirLimiteDeFalhas). A soma inteira segue decidindo se a plataforma ainda
+// absorve uma segunda leitura. (Auditoria C, C-09: correção entregue não pode contar como "pedido que não foi concluído".)
+const absorcaoSQL = (soFalhas) => (soFalhas ? { soma: 'custo_centavos_usd', linha: "status = 'erro'" } : { soma: CUSTO_ABSORVIDO_SQL, linha: LINHA_COM_ABSORCAO_SQL });
+function custoDeFalhasUSD({ userId = '', desde, agentes = SO_PAGOS, soFalhas = false } = {}) {
+  const q = absorcaoSQL(soFalhas);
+  const r = db.prepare(`SELECT COALESCE(SUM(${q.soma}), 0) c FROM ai_usage_logs WHERE ${q.linha} AND quando > ?
     AND agente IN (${agentes.map(() => '?').join(',')})${userId ? ' AND user_id = ?' : ''}`).get(...[desde, ...agentes].concat(userId ? [userId] : []));
   return (Number(r.c) || 0) / 100;
 }
@@ -504,18 +539,24 @@ function custoDeFalhasUSD({ userId = '', desde, agentes = SO_PAGOS } = {}) {
 // O mesmo, de TODAS as contas, mas com cada conta pesando no máximo `tetoPorConta` (segunda revisão, 11/10/2026,
 // R4): é o que o teto GLOBAL dos pedidos lê. Sem isso, uma conta sozinha (várias falhas tardias de uma vez, ou a
 // conta isenta) esgotava o teto e pausava os pedidos de todos por 24 h.
-function custoDeFalhasGlobalUSD({ desde, agentes = SO_PAGOS, tetoPorConta = Infinity } = {}) {
-  const linhas = db.prepare(`SELECT user_id, COALESCE(SUM(${CUSTO_ABSORVIDO_SQL}), 0) c FROM ai_usage_logs WHERE ${LINHA_COM_ABSORCAO_SQL} AND quando > ?
-    AND agente IN (${agentes.map(() => '?').join(',')}) GROUP BY user_id`).all(desde, ...agentes);
+function custoDeFalhasGlobalUSD({ desde, agentes = SO_PAGOS, tetoPorConta = Infinity, soFalhas = false } = {}) {
+  const q = absorcaoSQL(soFalhas);
+  const linhas = db.prepare(`SELECT user_id, COALESCE(SUM(${q.soma}), 0) c FROM ai_usage_logs WHERE ${q.linha} AND quando > ?
+    AND agente IN (${agentes.map(() => '?').join(',')}) GROUP BY +user_id`).all(desde, ...agentes);
+  // (`+user_id`: sem o "+", o SQLite escolhia o índice de usuário para agrupar e percorria a tabela INTEIRA a cada pedido
+  // pago; com ele, entra pelo índice de data e lê só as últimas 24 h. Medido com 1 milhão de linhas espalhadas por um
+  // ano: de 164–234 ms para 2 ms — auditoria C de 12/10/2026, C-07.)
   return linhas.reduce((t, r) => t + Math.min((Number(r.c) || 0) / 100, tetoPorConta), 0);
 }
 // Pedido que o processo deixou pela metade (queda, deploy): não há como saber quanto o provedor cobrou. Vai para
 // o log como falha pelo TETO que o usuário tinha aceitado, convertido de volta a dólar — o pior caso.
+// É ESTIMATIVA, e a linha diz isso no modelo (`estimado`): os tetos de falha a somam (pior caso é o certo ali); os
+// relatórios de custo a mostram à parte, fora do total do que foi pago ao provedor (auditoria C, C-10).
 function registrarFalhaInterrompida(userId, agente, aceiteMilesimos, productId = '') {
   const c = carteira.cfg();
   const fator = (Number(c.cambio_brl_usd) || 0) * (1 + (Number(c.margem_pct) || 0) / 100) * 1000;
   const usd = fator > 0 ? Math.max(0, Number(aceiteMilesimos) || 0) / fator : 0;
-  logRun(userId, agente, { modelo: '-', status: 'erro', detalhe: 'interrompido — custo estimado pelo teto aceito', cobranca: 'paga', productId, custoUsd: usd });
+  logRun(userId, agente, { modelo: MODELO_ESTIMADO, status: 'erro', detalhe: 'interrompido — custo estimado pelo teto aceito', cobranca: 'paga', productId, custoUsd: usd });
   return usd;
 }
 
@@ -690,34 +731,49 @@ const Logs = {
   // lê com a chave. Diferente de `porUsuario` (que serve para calibrar o limite), aqui a pergunta é "quem pagou":
   // o que saiu do saldo do aluno, o que a plataforma bancou (isentos, franquia grátis, tentativas falhas) e o
   // crédito de cortesia dado. Custo de provedor = o `custo_centavos_usd` gravado na hora (não recalcula por tabela).
+  //
+  // Auditoria C de 12/10/2026:
+  //   · C-07 — TUDO É SOMADO NO SQL (`linhasDeCustoSQL` + GROUP BY), com o índice `idx_ai_quando` nas janelas curtas.
+  //     Antes a tabela vinha inteira para a memória e era somada em laço: com 1 milhão de linhas, +560 MB de memória
+  //     (queda certa numa instância pequena). A consulta segue síncrona: o que sumiu foi a memória e as passagens a mais;
+  //   · C-11 — `chamadas` conta só o que CHEGOU ao provedor (`ok` e `erro`). `sem_saldo`, `em_curso` (vaga aberta) e
+  //     `limite` nunca saíram daqui e não são chamada;
+  //   · C-10 — o pedido INTERROMPIDO (queda, deploy) é gravado pelo TETO que o usuário aceitou: é o pior caso, certo
+  //     para os tetos de falha, mas não é dinheiro medido. Sai do total e vai à parte, em
+  //     `custo_estimado_interrompidos_usd` — antes um edital de R$ 12 interrompido virava ~US$ 1,70 de "falha" real;
+  //   · rótulo: a linha PAGA com parte absorvida aparece em `contas_bancadas` como "tentativa absorvida" (era "paga",
+  //     para uma conta que não teve nada pago entre o bancado); e `por_dia` corta o dia no fuso de Brasília.
   custos(dias) {
     const d = Math.min(Math.max(parseInt(dias, 10) || 7, 1), 366);
     const desde = new Date(Date.now() - d * 864e5).toISOString();
     const usd = (centavos) => Math.round((Number(centavos) || 0) * 100) / 10000;
     const brl = (milesimos) => Math.round(Number(milesimos) || 0) / 1000;
-    const linhas = db.prepare(`SELECT l.user_id, u.email, l.agente, l.modelo, l.status, l.cobranca, l.custo_centavos_usd c, l.milesimos m,
-        l.absorvido_centavos_usd a, substr(l.quando, 1, 10) dia FROM ai_usage_logs l LEFT JOIN users u ON u.id = l.user_id WHERE l.quando >= ?`).all(desde);
-    const grupo = () => ({ chamadas: 0, custo: 0, cobrado: 0 });
-    const tot = { chamadas: 0, custo: 0, cobrado: 0, pago_pelo_aluno: 0, isentos: 0, franquia: 0, falhas: 0, sem_marca: 0 };
-    const porAgente = {}, porDia = {}, porModelo = {}, contas = {};
-    for (const r of linhas) {
-      if (r.status === 'limite') continue; // bloqueio pelo limite não chega ao provedor
-      const c = Number(r.c) || 0, m = Math.abs(Number(r.m) || 0);
-      const falha = r.status === 'erro' ? c : Math.min(c, Number(r.a) || 0);
-      const util = c - falha;
-      tot.chamadas++; tot.custo += c; tot.cobrado += m; tot.falhas += falha;
-      if (r.cobranca === 'paga') tot.pago_pelo_aluno += util;
-      else if (r.cobranca === 'isento') tot.isentos += util;
-      else if (r.cobranca === 'franquia') tot.franquia += util;
-      else tot.sem_marca += util;
-      for (const [mapa, k] of [[porAgente, r.agente || '?'], [porDia, r.dia], [porModelo, r.modelo || '?']]) {
-        const g = mapa[k] || (mapa[k] = grupo()); g.chamadas++; g.custo += c; g.cobrado += m;
+    const n = (v) => Number(v) || 0;
+    // DUAS passagens pelo período, e só: (1) dia × função × modelo × cobrança — poucas linhas, de onde saem o total e
+    // os três recortes; (2) as contas bancadas. Janela longa lê a tabela em sequência (`tabelaDoLog`).
+    const tabela = tabelaDoLog(d);
+    const grupos = db.prepare(`WITH l AS (${linhasDeCustoSQL(tabela)} WHERE quando >= ? AND ${CHEGOU_AO_PROVEDOR_SQL})
+        SELECT ${HORA_UTC_SQL} hora, CASE WHEN agente = '' THEN '?' ELSE agente END agente, CASE WHEN modelo = '' THEN '?' ELSE modelo END modelo, cobranca, estimado,
+          COUNT(*) chamadas, COALESCE(SUM(c), 0) custo, COALESCE(SUM(m), 0) cobrado, COALESCE(SUM(falha), 0) falhas FROM l GROUP BY 1, 2, 3, 4, 5`).all(desde);
+    const tot = { chamadas: 0, custo: 0, cobrado: 0, falhas: 0, pago_pelo_aluno: 0, isentos: 0, franquia: 0, sem_marca: 0 };
+    const interrompidos = { n: 0, c: 0 };
+    const porAgente = {}, porDia = {}, porModelo = {};
+    for (const g of grupos) {
+      if (g.estimado) { interrompidos.n += g.chamadas; interrompidos.c += n(g.custo); continue; } // fora do total (C-10)
+      const util = n(g.custo) - n(g.falhas);
+      tot.chamadas += g.chamadas; tot.custo += n(g.custo); tot.cobrado += n(g.cobrado); tot.falhas += n(g.falhas);
+      tot[g.cobranca === 'paga' ? 'pago_pelo_aluno' : g.cobranca === 'isento' ? 'isentos' : g.cobranca === 'franquia' ? 'franquia' : 'sem_marca'] += util;
+      for (const [mapa, k] of [[porAgente, g.agente], [porDia, diaDeBrasilia(g.hora)], [porModelo, g.modelo]]) {
+        const x = mapa[k] || (mapa[k] = { chamadas: 0, custo: 0, cobrado: 0 }); x.chamadas += g.chamadas; x.custo += n(g.custo); x.cobrado += n(g.cobrado);
       }
-      // conta que a plataforma bancou (isento, franquia ou falha): entra na lista do "quem custou"
-      const bancado = (r.cobranca === 'paga' ? 0 : util) + falha;
-      if (bancado > 0) { const k = r.user_id || '?'; const x = contas[k] || (contas[k] = { email: r.email || '', chamadas: 0, custo: 0, tipo: {} }); x.chamadas++; x.custo += bancado; x.tipo[r.status === 'erro' ? 'falha' : (r.cobranca || 'sem marca')] = 1; }
     }
     const lista = (mapa, chave) => Object.keys(mapa).map(k => ({ [chave]: k, chamadas: mapa[k].chamadas, custo_usd: usd(mapa[k].custo), cobrado_brl: brl(mapa[k].cobrado) }));
+    // conta que a plataforma bancou (isento, franquia, sem marca ou falha): entra na lista do "quem custou"
+    const contas = db.prepare(`WITH l AS (${linhasDeCustoSQL(tabela)} WHERE quando >= ? AND ${CHEGOU_AO_PROVEDOR_SQL}),
+          b AS (SELECT user_id, (CASE WHEN cobranca = 'paga' THEN 0 ELSE c - falha END) + falha bancado,
+            CASE WHEN status = 'erro' THEN 'falha' WHEN cobranca = 'paga' THEN 'tentativa absorvida' WHEN cobranca = '' THEN 'sem marca' ELSE cobranca END tipo FROM l WHERE estimado = 0),
+          t AS (SELECT user_id, COUNT(*) chamadas, SUM(bancado) custo, group_concat(DISTINCT tipo) tipos FROM b WHERE bancado > 0 GROUP BY +user_id ORDER BY custo DESC LIMIT 30)
+        SELECT t.*, COALESCE(u.email, '') email FROM t LEFT JOIN users u ON u.id = t.user_id ORDER BY t.custo DESC`).all(desde);
     const mov = db.prepare(`SELECT tipo, COUNT(*) n, COALESCE(SUM(milesimos), 0) soma FROM ia_movimentos WHERE criado_em >= ? GROUP BY tipo`).all(desde);
     const movimentos = {}; for (const x of mov) movimentos[x.tipo] = { n: x.n, brl: brl(x.soma) };
     const saldo = db.prepare(`SELECT COALESCE(SUM(milesimos), 0) s, COUNT(DISTINCT user_id) n FROM ia_movimentos`).get();
@@ -728,12 +784,13 @@ const Logs = {
       total: { chamadas: tot.chamadas, custo_usd: usd(tot.custo), cobrado_dos_alunos_brl: brl(tot.cobrado),
         custo_coberto_por_aluno_usd: usd(tot.pago_pelo_aluno), custo_isentos_usd: usd(tot.isentos), custo_franquia_usd: usd(tot.franquia),
         custo_falhas_usd: usd(tot.falhas), custo_sem_marca_usd: usd(tot.sem_marca),
-        bancado_pela_plataforma_usd: usd(tot.isentos + tot.franquia + tot.falhas + tot.sem_marca) },
+        bancado_pela_plataforma_usd: usd(n(tot.isentos) + n(tot.franquia) + n(tot.falhas) + n(tot.sem_marca)),
+        // fora do total: estimativa pelo teto aceito, não medição (ver o cabeçalho)
+        interrompidos: interrompidos.n, custo_estimado_interrompidos_usd: usd(interrompidos.c) },
       por_agente: lista(porAgente, 'agente').sort((a, b) => b.custo_usd - a.custo_usd),
       por_modelo: lista(porModelo, 'modelo').sort((a, b) => b.custo_usd - a.custo_usd),
       por_dia: lista(porDia, 'dia').sort((a, b) => (a.dia < b.dia ? -1 : 1)),
-      contas_bancadas: Object.values(contas).map(x => ({ email: x.email, chamadas: x.chamadas, custo_usd: usd(x.custo), tipo: Object.keys(x.tipo).sort().join(' + ') }))
-        .sort((a, b) => b.custo_usd - a.custo_usd).slice(0, 30),
+      contas_bancadas: contas.map(x => ({ email: x.email || '', chamadas: x.chamadas, custo_usd: usd(x.custo), tipo: String(x.tipos || '').split(',').filter(Boolean).sort().join(' + ') })),
       movimentos,
       carteiras: { contas: saldo.n, saldo_em_aberto_brl: brl(saldo.s), cortesia_dada_total_brl: brl(cortesiaTotal.s), contas_com_cortesia: cortesiaTotal.n },
       config: { cobranca_ativa: cfg.ativa === true, cambio_brl_usd: Number(cfg.cambio_brl_usd) || 0, margem_pct: Number(cfg.margem_pct) || 0,
@@ -743,6 +800,9 @@ const Logs = {
   // cada conta com CRÉDITO de cortesia, quem tem CORTESIA DE CURSO e usou IA, e os maiores consumidores do período.
   // O Augusto pediu por nome (12/10/2026: "para que eu possa contornar os eventuais prejuízos no futuro"); a rota é
   // a mesma porta do `ia-uso`, que já devolve nome e e-mail — quem publica o relatório mascara o e-mail.
+  // As MESMAS linhas de `custos` (só o que chegou ao provedor, sem a estimativa do pedido interrompido), somadas no
+  // SQL: o "desde sempre" é uma agregação por conta, e o período, outra com o índice de `quando` (auditoria C, C-07 —
+  // antes o histórico inteiro vinha para a memória a cada chamada, e montava-se uma linha para cada conta da plataforma).
   pessoas(dias) {
     const d = Math.min(Math.max(parseInt(dias, 10) || 7, 1), 366);
     const desde = new Date(Date.now() - d * 864e5).toISOString();
@@ -750,16 +810,21 @@ const Logs = {
     const brl = (milesimos) => Math.round(Number(milesimos) || 0) / 1000;
     let cfg = {}; try { cfg = require('./carteira-ia').cfg(); } catch (_) { /* carteira indisponível */ }
     const isentos = new Set((Array.isArray(cfg.isentos) ? cfg.isentos : []).map(e => String(e).toLowerCase()));
-    // uso por conta: no período e desde sempre (o segundo responde "quanto esta conta já custou")
+    // (bancado = o custo todo menos o que o próprio usuário pagou: a parte útil de linha `paga`)
+    const somas = `COUNT(*) chamadas, COALESCE(SUM(c), 0) custo, COALESCE(SUM(CASE WHEN cobranca = 'paga' THEN c - falha ELSE 0 END), 0) pago, COALESCE(SUM(m), 0) cobrado, MAX(quando) ultimo`;
     const uso = {};
-    const conta = (id) => uso[id] || (uso[id] = { chamadas: 0, custo: 0, pago: 0, bancado: 0, cobrado: 0, chamadas_total: 0, custo_total: 0, bancado_total: 0, funcoes: {}, ultimo: '' });
-    for (const r of db.prepare(`SELECT user_id, agente, status, cobranca, custo_centavos_usd c, milesimos m, absorvido_centavos_usd a, quando FROM ai_usage_logs WHERE status != 'limite'`).all()) {
-      const c = Number(r.c) || 0, falha = r.status === 'erro' ? c : Math.min(c, Number(r.a) || 0);
-      const pago = r.cobranca === 'paga' ? c - falha : 0, bancado = c - pago;
-      const x = conta(r.user_id || '?');
-      x.chamadas_total++; x.custo_total += c; x.bancado_total += bancado;
-      if (r.quando > x.ultimo) x.ultimo = r.quando;
-      if (r.quando >= desde) { x.chamadas++; x.custo += c; x.pago += pago; x.bancado += bancado; x.cobrado += Math.abs(Number(r.m) || 0); x.funcoes[r.agente || '?'] = (x.funcoes[r.agente || '?'] || 0) + 1; }
+    const conta = (id) => uso[id || '?'] || (uso[id || '?'] = { chamadas: 0, custo: 0, pago: 0, bancado: 0, cobrado: 0, chamadas_total: 0, custo_total: 0, bancado_total: 0, funcoes: {}, ultimo: '' });
+    // DESDE SEMPRE: uma agregação por conta, lendo a tabela em sequência (pelo índice de usuário seria uma ida ao disco por linha)
+    for (const r of db.prepare(`WITH l AS (${linhasDeCustoSQL('ai_usage_logs NOT INDEXED')} WHERE ${CHEGOU_AO_PROVEDOR_SQL}) SELECT user_id, ${somas} FROM l WHERE estimado = 0 GROUP BY user_id`).all()) {
+      const x = conta(r.user_id);
+      x.chamadas_total = r.chamadas; x.custo_total = Number(r.custo) || 0; x.bancado_total = x.custo_total - (Number(r.pago) || 0); x.ultimo = r.ultimo || '';
+    }
+    // NO PERÍODO: por conta e função, de uma passagem só (as somas da conta são a soma das funções dela)
+    for (const r of db.prepare(`WITH l AS (${linhasDeCustoSQL(tabelaDoLog(d))} WHERE quando >= ? AND ${CHEGOU_AO_PROVEDOR_SQL})
+        SELECT user_id, agente, ${somas} FROM l WHERE estimado = 0 GROUP BY +user_id, agente`).all(desde)) { // (`+user_id`: entra pelo índice de data, não pelo de usuário)
+      const x = conta(r.user_id), funcao = r.agente || '?';
+      x.chamadas += r.chamadas; x.custo += Number(r.custo) || 0; x.pago += Number(r.pago) || 0; x.cobrado += Number(r.cobrado) || 0; x.bancado = x.custo - x.pago;
+      x.funcoes[funcao] = (x.funcoes[funcao] || 0) + r.chamadas;
     }
     const carteira = {};
     for (const m of db.prepare(`SELECT user_id, SUM(milesimos) saldo, SUM(CASE WHEN tipo = 'cortesia' THEN milesimos ELSE 0 END) cortesia,
@@ -774,9 +839,11 @@ const Logs = {
         credito_cortesia_brl: brl(w.cortesia), recargas_brl: brl(w.recarga), saldo_brl: brl(w.saldo),
         chamadas: x.chamadas || 0, custo_usd: usd(x.custo), pago_pelo_usuario_usd: usd(x.pago), bancado_usd: usd(x.bancado), cobrado_brl: brl(x.cobrado),
         chamadas_total: x.chamadas_total || 0, custo_total_usd: usd(x.custo_total), bancado_total_usd: usd(x.bancado_total),
-        funcoes: Object.keys(x.funcoes || {}).sort((a, b) => x.funcoes[b] - x.funcoes[a]).slice(0, 4).join(', '), ultimo_uso: (x.ultimo || '').slice(0, 10) };
+        funcoes: Object.keys(x.funcoes || {}).sort((a, b) => x.funcoes[b] - x.funcoes[a] || (a < b ? -1 : 1)).slice(0, 4).join(', '), ultimo_uso: (x.ultimo || '').slice(0, 10) };
     };
-    const todos = usuarios.map(linha);
+    // só quem pode aparecer em alguma lista: usou IA, tem movimento na carteira, tem cortesia (de curso ou vitalícia) ou é isento
+    const interessa = (u) => !!(uso[u.id] || carteira[u.id] || cursos[u.id] || u.cortesia === 1 || isentos.has(String(u.email || '').toLowerCase()));
+    const todos = usuarios.filter(interessa).map(linha);
     const porBancado = (a, b) => b.bancado_total_usd - a.bancado_total_usd || b.custo_total_usd - a.custo_total_usd;
     const comConta = new Set(usuarios.map(u => String(u.email || '').toLowerCase()));
     const comCortesiaDeCurso = todos.filter(x => x.cortesia_vitalicia || x.cursos_de_cortesia > 0);

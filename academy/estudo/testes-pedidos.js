@@ -245,12 +245,12 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     const pg = await req('GET', '/academy/app');
     assert.equal(pg.st, 200);
     // mecanismo de sempre: ?v=N na URL, dentro do HTML do painel (que o service worker nunca guarda — pwa.js: navegação é só rede)
-    for (const ref of ['/academy/estude.js?v=5', '/academy/estude.css?v=4', '/academy/aluno.js?v=12', '/academy/carteira.js?v=3', '/academy/jornada.js?v=5', '/academy/app.js?v=14', '/academy/ecossistema.js?v=3', '/academy/aluno.css?v=5']) {
+    for (const ref of ['/academy/estude.js?v=6', '/academy/estude.css?v=4', '/academy/aluno.js?v=12', '/academy/carteira.js?v=3', '/academy/jornada.js?v=5', '/academy/app.js?v=14', '/academy/ecossistema.js?v=3', '/academy/aluno.css?v=5']) {
       assert.ok(pg.texto.includes(`"${ref}"`), 'o painel não pede ' + ref);
     }
-    for (const velho of ['estude.js?v=4"', 'estude.js?v=3"', 'estude.css?v=3"', 'aluno.js?v=11"', 'carteira.js?v=2"', 'jornada.js?v=4"', 'app.js?v=13"']) assert.ok(!pg.texto.includes(velho), 'sobrou a versão antiga: ' + velho);
+    for (const velho of ['estude.js?v=5"', 'estude.js?v=4"', 'estude.js?v=3"', 'estude.css?v=3"', 'aluno.js?v=11"', 'carteira.js?v=2"', 'jornada.js?v=4"', 'app.js?v=13"']) assert.ok(!pg.texto.includes(velho), 'sobrou a versão antiga: ' + velho);
     // os motores das Ferramentas saem sempre frescos (no-cache): a versão deles na URL não precisa mudar
-    const js = await req('GET', '/academy/estude.js?v=5');
+    const js = await req('GET', '/academy/estude.js?v=6');
     assert.ok(js.st === 200 && js.texto.includes('function temPedidos()') && js.texto.includes('function ligarFimDaLeitura('), 'o arquivo servido é o novo');
   });
 
@@ -1354,12 +1354,154 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     // as peças puras: a conferência tolera espaços, quebras, aspas, caixa e travessão — e não tolera paráfrase
     const base2 = 'A prescrição "intercorrente" — no curso da execução — exige a inércia do exequente';
     const confere = (trecho) => ped.montarResultado({ rubrica: [{ criterio: 'a', peso: 1 }] }, base2, { criterios: [{ n: 1, nivel: 2, trecho }] }).criterios[0];
-    for (const ok of ['PRESCRIÇÃO “intercorrente”', 'intercorrente" - no curso   da\nexecução', '…exige a inércia do exequente…', '"a prescrição "intercorrente""']) assert.deepEqual([confere(ok).citacao_conferida, confere(ok).sem_trecho], [true, false], 'devia conferir: ' + ok);
-    for (const nao of ['a prescrição intercorrente exige inércia', 'no curso do processo', 'inércia', '']) assert.deepEqual([confere(nao).citacao_conferida, confere(nao).sem_trecho, confere(nao).trecho], [false, true, ''], 'não devia conferir: ' + nao);
+    for (const ok of ['A PRESCRIÇÃO “intercorrente”', 'intercorrente" - no curso   da\nexecução', '…exige a inércia do exequente…', '"a prescrição "intercorrente""']) assert.deepEqual([confere(ok).citacao_conferida, confere(ok).sem_trecho], [true, false], 'devia conferir: ' + ok);
+    // (auditoria C, C-13: o nome do instituto, sozinho — duas palavras —, deixou de sustentar nível: a citação é uma afirmação do candidato)
+    for (const nao of ['a prescrição intercorrente exige inércia', 'no curso do processo', 'inércia', 'PRESCRIÇÃO “intercorrente”', '']) assert.deepEqual([confere(nao).citacao_conferida, confere(nao).sem_trecho, confere(nao).trecho], [false, true, ''], 'não devia conferir: ' + nao);
     // completarCitacoes nunca lança e não chama ninguém quando não falta nada
-    const semFalta = ped.montarResultado({ rubrica: [{ criterio: 'a', peso: 1 }] }, 'uma resposta qualquer do aluno', { criterios: [{ n: 1, nivel: 3, trecho: 'resposta qualquer' }] });
+    const semFalta = ped.montarResultado({ rubrica: [{ criterio: 'a', peso: 1 }] }, 'uma resposta qualquer do aluno', { criterios: [{ n: 1, nivel: 3, trecho: 'uma resposta qualquer do aluno' }] });
     assert.equal(await ped.completarCitacoes({ rubrica: [{ criterio: 'a', peso: 1 }] }, 'uma resposta qualquer do aluno', semFalta, { cabe() { throw new Error('não devia perguntar'); }, passo() { throw new Error('não devia chamar'); } }), semFalta);
     assert.equal(semFalta.segunda_leitura, undefined);
+  });
+
+  await t('auditoria C (correção): a conferência da citação não recusa texto fiel por hífen, apóstrofo ou reticência — e não aceita palavra solta (C-13); segunda leitura RENUMERADA é descartada (C-S1); o passo absorvido faz UMA tentativa paga (C-12); e correção PRONTA com segunda leitura absorvida não pausa pedido novo (C-09)', async () => {
+    // ---- C-13 — o que é fiel e conferia mal ----
+    const RESP = 'A prescrição inter­corrente não‑se confunde com a d’água — e o juiz, d´ofício, pode declará-la… desde que ouça o exequente.';
+    const um = { rubrica: [{ criterio: 'a', peso: 1 }] };
+    const confere = (trecho, resposta = RESP) => ped.montarResultado(um, resposta, { criterios: [{ n: 1, nivel: 2, trecho }] }).criterios[0];
+    for (const fiel of [
+      'A prescrição intercorrente não-se confunde',                       // hífen suave (U+00AD) some; hífen não separável (U+2011) vira "-"
+      "o juiz, d'ofício, pode declará-la",                                // acento agudo usado como apóstrofo
+      'o juiz, d`ofício, pode declará-la',                                // crase usada como apóstrofo
+      'o juiz,​ d′ofício, pode declará-la',                     // espaço de largura zero e "prime"
+      'se confunde com a d\'água - e o juiz',                             // apóstrofo tipográfico e travessão
+      'pode declará-la... desde que ouça o exequente',                    // "..." onde a resposta tem "…"
+      'A prescrição intercorrente … pode declará-la',                // reticência no MEIO: confere por partes, na ordem
+      'não-se confunde [...] desde que ouça o exequente',                 // idem, com colchetes
+      '„A prescrição intercorrente não-se confunde‟',           // aspas baixas e invertidas em volta
+    ]) assert.deepEqual([confere(fiel).citacao_conferida, confere(fiel).sem_trecho], [true, false], 'citação fiel recusada: ' + JSON.stringify(fiel));
+    for (const falsa of [
+      'pode declará-la … A prescrição intercorrente',                // as partes existem, mas FORA de ordem
+      'A prescrição intercorrente … extingue a execução fiscal',     // uma parte inventada
+      'A prescrição intercorrente não se confunde com a água',            // paráfrase
+    ]) assert.deepEqual([confere(falsa).citacao_conferida, confere(falsa).trecho], [false, ''], 'citação que não está na resposta aceita: ' + JSON.stringify(falsa));
+    // ---- C-13 — o piso: palavra solta e lugar-comum não sustentam nível, ainda que ESTEJAM na resposta ----
+    const COMUM = 'De acordo com o artigo citado, nos termos da lei, cabe o recurso de revista ao tribunal.';
+    for (const solta of ['de acordo', 'o artigo', 'nos termos da lei', 'cabe o recurso', 'recurso', 'de … o … da']) assert.deepEqual([confere(solta, COMUM).citacao_conferida, confere(solta, COMUM).sem_trecho], [false, true], 'piso frouxo: ' + solta);
+    for (const frase of ['De acordo com o artigo citado', 'cabe o recurso de revista', 'nos termos da lei, cabe o recurso']) assert.equal(confere(frase, COMUM).citacao_conferida, true, 'afirmação inteira recusada: ' + frase);
+    assert.equal(ped.citacaoConferida('de acordo', 'de acordo com o artigo citado'), '', 'antes: 8 caracteres bastavam');
+
+    // ---- C-S1 — a segunda leitura que volta com a numeração trocada ----
+    const tres = { rubrica: [{ criterio: 'a', peso: 1 }, { criterio: 'b', peso: 1 }, { criterio: 'c', peso: 1 }] };
+    const R3 = 'Primeiro, o prazo é de dois anos contados da intimação. Segundo, a inércia tem de ser do exequente. Terceiro, o juiz ouve a parte antes de decidir.';
+    const T1 = 'o prazo é de dois anos contados da intimação', T2 = 'a inércia tem de ser do exequente', T3 = 'o juiz ouve a parte antes de decidir';
+    const segunda = async (lista) => {
+      const res = ped.montarResultado(tres, R3, { criterios: [{ n: 1, nivel: 3, trecho: T1 }, { n: 2, nivel: 2, trecho: '' }, { n: 3, nivel: 2, trecho: '' }] });
+      const opcoes = [];
+      await ped.completarCitacoes(tres, R3, res, { cabe: () => true, passo: async (_p, o) => { opcoes.push(o); return { criterios: lista }; } });
+      return { res, opcoes };
+    };
+    let s2 = await segunda([{ n: 1, trecho: T2 }, { n: 2, trecho: T3 }]); // pedidos 2 e 3; voltaram "1 e 2": o trecho do 3 ia parar no critério 2
+    assert.deepEqual([s2.res.segunda_leitura, s2.res.criterios.map(k => [k.trecho, k.sem_trecho]), s2.res.sem_citacao],
+      [{ criterios: 2, feita: true, recuperadas: 0, motivo: 'numeracao' }, [[T1, false], ['', true], ['', true]], 2], 'numeração trocada: a segunda leitura é descartada inteira — antes o critério 2 recebia o trecho do 3, conferido e errado');
+    assert.deepEqual(s2.opcoes.map(o => [o.absorver, o.uma_tentativa_paga]), [[true, true]], 'o passo vai como absorvido e com uma tentativa paga só');
+    s2 = await segunda([{ n: 2, trecho: T2 }, { n: 3, trecho: T3 }]);
+    assert.deepEqual([s2.res.segunda_leitura, s2.res.criterios.map(k => k.trecho)], [{ criterios: 2, feita: true, recuperadas: 2, motivo: '' }, [T1, T2, T3]], 'numeração certa: recupera os dois');
+    s2 = await segunda([{ n: 3, trecho: T3 }]);
+    assert.deepEqual([s2.res.segunda_leitura.recuperadas, s2.res.segunda_leitura.motivo, s2.res.criterios.map(k => k.trecho)], [1, '', [T1, '', T3]], 'resposta parcial, sem número estranho: vale o que veio');
+    s2 = await segunda([{ n: 2, trecho: T2 }, { n: 2, trecho: T3 }, { n: 3, trecho: T3 }]);
+    assert.deepEqual([s2.res.segunda_leitura.recuperadas, s2.res.criterios.map(k => k.trecho)], [1, [T1, '', T3]], 'o mesmo número duas vezes não serve ao critério: segue marcado');
+
+    // ---- C-12 — o passo absorvido não cobra duas tentativas ----
+    const DORA = { nome: 'Dora Diligente', email: 'dora.audc@t.com', senha: 'senha-forte-8', aceite_termos: true };
+    assert.equal((await req('POST', '/academy/api/signup', { corpo: DORA, jar: 'dora', ip: '10.0.9.41' })).st, 200);
+    ct.Matriculas.criar(impId, DORA.email, 'teste', 'cortesia');
+    carteira.creditar({ email: DORA.email, valor_centavos: 5000, motivo: 'saldo para os testes da auditoria C', quem: 'teste' });
+    const dora = uid(DORA.email), paula = dora; // (conta nova: as falhas plantadas aqui não pesam na conta de ninguém)
+    const usd = ia.tetoTrabalhoUSD('correcao', { caracteres: 3000, passos: 3 });
+    const msg = (texto, usage = USO, stop = 'end_turn') => ({ content: [{ type: 'text', text: texto }], stop_reason: stop, usage });
+    const fila = [];
+    let roteiro2 = {};
+    ia.__mockParaTeste(async (x) => { fila.push(x.modelo); const r = roteiro2[x.modelo]; if (r instanceof Error) throw r; return r; }, { modelos: ['claude-sonnet-5', 'claude-haiku-4-5'] });
+    try {
+      const BOA = '{"criterios":[{"n":2,"trecho":"x"}]}';
+      // o 1º modelo respondeu fora do formato (e COBROU): com `uma_tentativa_paga`, a fila para aí
+      roteiro2 = { 'claude-sonnet-5': msg('sem JSON nenhum', { input_tokens: 2000, output_tokens: 1000 }), 'claude-haiku-4-5': msg(BOA) };
+      let tr = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
+      const e = await tr.passo('segunda leitura', { absorver: true, uma_tentativa_paga: true }).then(() => null, (x) => x);
+      assert.ok(e && Math.abs(e.custo_usd - 0.014) < 1e-9, 'falhou, e custou UMA tentativa: (2.000 × 2 + 1.000 × 10) ÷ 1 milhão = US$ 0,014 — veio ' + (e && e.custo_usd));
+      assert.deepEqual(fila, ['claude-sonnet-5'], 'não tentou o modelo de reserva: seria a segunda tentativa paga de um passo autorizado para uma');
+      tr.falhar(e);
+      // … sem a opção, a fila segue como sempre (é o que entrega a resposta ao aluno nos passos comuns)
+      fila.length = 0;
+      tr = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
+      assert.deepEqual([(await tr.passo('passo comum')).criterios.length, fila], [1, ['claude-sonnet-5', 'claude-haiku-4-5']]);
+      tr.falhar(new Error('fim do teste'));
+      // … e erro que NÃO cobrou (provedor fora do ar) não encerra a fila nem com a opção: nada foi gasto
+      fila.length = 0;
+      roteiro2 = { 'claude-sonnet-5': Object.assign(new Error('503 overloaded'), { status: 503 }), 'claude-haiku-4-5': msg(BOA) };
+      tr = ia.abrirTrabalho(paula, 'correcao', usd, { id: impId }, { aceite: 999999 });
+      assert.deepEqual([(await tr.passo('segunda leitura', { absorver: true, uma_tentativa_paga: true })).criterios.length, fila], [1, ['claude-sonnet-5', 'claude-haiku-4-5']]);
+      tr.falhar(new Error('fim do teste'));
+    } finally {
+      ia.__mockParaTeste(mock);
+      db.prepare('DELETE FROM ai_usage_logs WHERE user_id = ?').run(dora); // as três tentativas acima são deste trecho: não contam no que vem a seguir
+    }
+
+    // ---- C-09 — 40 correções ENTREGUES, cada uma com US$ 0,05 de segunda leitura absorvida ----
+    const ins = db.prepare(`INSERT INTO ai_usage_logs (id, quando, user_id, agente, modelo, input_tokens, output_tokens, custo_centavos_usd, status, detalhe, cobranca, milesimos, product_id, absorvido_centavos_usd)
+      VALUES (?, ?, ?, 'correcao', 'mock', 0, 0, ?, ?, '', 'paga', ?, '', ?)`);
+    const desde = new Date(Date.now() - 864e5).toISOString();
+    try {
+      for (let k = 0; k < 40; k++) ins.run('audc-pronta-' + k, new Date().toISOString(), dora, 10, 'ok', 300, 5);
+      assert.deepEqual([Math.round(ia.custoDeFalhasUSD({ userId: dora, desde }) * 100) / 100, ia.custoDeFalhasUSD({ userId: dora, desde, soFalhas: true })], [2, 0], 'US$ 2 absorvidos — e nenhuma falha');
+      assert.deepEqual([ped.absorcaoEsgotada(dora), ped.absorcaoEsgotada(dora, desde, { soFalhas: true })], ['conta', ''], 'a plataforma para de ABSORVER (não há mais segunda leitura hoje)… mas isso não é pedido que falhou');
+      const c = await criar('dora', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
+      assert.equal(c.st, 200, c.texto);
+      const ok = await confirmar('dora', c.json.pedido.id, c.json.orcamento.orcamento_milesimos);
+      assert.equal(ok.st, 200, 'antes: 429 "Pedidos seus que não foram concluídos… alcançaram o limite diário de tentativas", para quem não teve falha nenhuma — ' + ok.texto);
+      await ped.aguardar(c.json.pedido.id);
+      assert.equal((await obter('dora', c.json.pedido.id)).json.pedido.estado, 'pronto');
+      // … e o que FALHOU continua pausando (a régua de sempre): US$ 2 em pedidos com erro
+      db.prepare("DELETE FROM ai_usage_logs WHERE id LIKE 'audc-pronta-%'").run();
+      ins.run('audc-pronta-falha', new Date().toISOString(), dora, 200, 'erro', 0, 0);
+      const c2 = await criar('dora', { tipo: 'correcao', questao_id: qDisc, resposta: RESPOSTA });
+      const pausa = await confirmar('dora', c2.json.pedido.id, c2.json.orcamento.orcamento_milesimos);
+      assert.ok(pausa.st === 429 && /limite diário de tentativas/.test(pausa.json.erro), pausa.texto);
+      // o teto GLOBAL também só lê falha: dez contas com correção pronta e segunda leitura absorvida não pausam o serviço
+      db.prepare("DELETE FROM ai_usage_logs WHERE id LIKE 'audc-pronta-%'").run();
+      for (let u = 0; u < 10; u++) for (let k = 0; k < 40; k++) ins.run(`audc-pronta-g${u}-${k}`, new Date().toISOString(), 'conta-pronta-' + u, 10, 'ok', 300, 5);
+      assert.deepEqual([ped.absorcaoEsgotada(dora), ped.absorcaoEsgotada(dora, desde, { soFalhas: true })], ['global', '']);
+    } finally { db.prepare("DELETE FROM ai_usage_logs WHERE id LIKE 'audc-pronta-%'").run(); }
+  });
+
+  await t('auditoria C-20 (staff): salvar o cartão dos pedidos manda só a DIFERENÇA da lista de liberados — o liberado que entrou pela chave enquanto a aba estava aberta não é apagado pela lista velha da tela', async () => {
+    const antes = repo.Config.obter('estudo_pedidos', null);
+    try {
+      repo.Config.salvar('estudo_pedidos', { ativos: false, liberados: ['ana@t.com', 'beto@t.com'] }); // o que a aba CARREGOU
+      assert.equal((await cfgPed({ liberar: 'chave@t.com' }, { semUser: true, chave: true })).st, 200, 'um agente acrescenta um liberado pela chave');
+      // o que a tela manda hoje: tirou a Ana, pôs a Cora — e não repete a lista inteira
+      const r = await cfgPed({ ativos: false, liberar: 'cora@t.com', remover: 'ana@t.com' });
+      assert.equal(r.st, 200, r.texto);
+      assert.deepEqual(ped.cfgPedidos().liberados.slice().sort(), ['beto@t.com', 'chave@t.com', 'cora@t.com'], 'o acréscimo pela chave ficou; a retirada e o acréscimo da tela valeram');
+      // … e quem só liga ou desliga, sem mexer na lista, não manda lista nenhuma
+      assert.equal((await cfgPed({ ativos: false })).st, 200);
+      assert.equal(ped.cfgPedidos().liberados.length, 3);
+      // (o que a tela mandava antes — a lista inteira que ela tinha carregado — apagava o acréscimo)
+      repo.Config.salvar('estudo_pedidos', { ativos: false, liberados: ['ana@t.com', 'beto@t.com', 'chave@t.com'] });
+      await cfgPed({ ativos: false, liberados: 'ana@t.com, beto@t.com' });
+      assert.deepEqual(ped.cfgPedidos().liberados, ['ana@t.com', 'beto@t.com'], 'a lista inteira SUBSTITUI: por isso a tela deixou de mandá-la');
+      const tela = fs.readFileSync(path.join(__dirname, '..', '..', 'staff', 'app-academy.js'), 'utf8');
+      const i = tela.indexOf("if (fPed) fPed.onsubmit"), trecho = tela.slice(i, tela.indexOf("document.getElementById('acad-ia-cred').onsubmit", i));
+      assert.ok(i > 0 && /const corpo = \{ ativos \};/.test(trecho) && /if \(liberar\.length\) corpo\.liberar = /.test(trecho) && /if \(remover\.length\) corpo\.remover = /.test(trecho) && /api\('POST', '\/estudo\/pedidos-config', corpo\)/.test(trecho), 'o cartão manda a diferença');
+      assert.ok(!/liberados:\s*document\.getElementById\('aped-lib'\)\.value/.test(tela), 'e não manda mais a lista inteira da tela');
+      // a conta da diferença, como a tela a faz (a função é a mesma, copiada do arquivo)
+      const emails = (v) => [...new Set(String(v == null ? '' : v).split(/[,;\s]+/).map(x => x.trim().toLowerCase()).filter(Boolean))];
+      const dif = (carregados, naTela) => ({ liberar: emails(naTela).filter(x => !emails(carregados).includes(x)), remover: emails(carregados).filter(x => !emails(naTela).includes(x)) });
+      assert.deepEqual([dif('a@t.com, b@t.com', 'B@t.com;  c@t.com\n'), dif('a@t.com', 'a@t.com')], [{ liberar: ['c@t.com'], remover: ['a@t.com'] }, { liberar: [], remover: [] }]);
+      assert.ok(trecho.includes("String(v == null ? '' : v).split(/[,;\\s]+/).map(x => x.trim().toLowerCase()).filter(Boolean)"), 'a tela separa os e-mails como o servidor');
+    } finally {
+      if (antes == null) db.prepare("DELETE FROM platform_settings WHERE chave = 'estudo_pedidos'").run(); else repo.Config.salvar('estudo_pedidos', antes);
+    }
   });
 
   await t('correção/citação, na tela: o critério com nível e sem trecho aparece como "Sem trecho localizado" (nível mantido), há o aviso no alto com a contagem, e a versão de estude.js subiu', async () => {
@@ -1371,7 +1513,8 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     assert.ok(/A resposta não tratou deste critério\./.test(tela), 'nível 0 continua com o texto dele');
     assert.ok(!tela.includes('A correção não apontou, na sua resposta, um trecho que sustente este nível'), 'o texto antigo saiu');
     const pag = require('../paginas');
-    assert.ok(/-estude\.5-/.test(pag.VERSAO_TELA), 'arquivo de tela alterado → versão nova: ' + pag.VERSAO_TELA);
+    // (6 = auditoria C de 12/10/2026: a prévia do edital mostra a disciplina que vira subárea, o que muda de lugar e o bloqueio do programa em dobro)
+    assert.ok(/-estude\.6-/.test(pag.VERSAO_TELA), 'arquivo de tela alterado → versão nova: ' + pag.VERSAO_TELA);
   });
 
   await t('pedidos: a tela tem a aba "Escrita e oral", diz "estimativa" junto da nota e trata o orçamento, o pagamento e a espera', async () => {

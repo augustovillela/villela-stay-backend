@@ -844,6 +844,14 @@ const MIGRACOES = [
     nome: 'ia-custo-absorvido-2026-10-11',
     sql: `ALTER TABLE ai_usage_logs ADD COLUMN absorvido_centavos_usd REAL DEFAULT 0;`,
   },
+  {
+    // ÍNDICE POR DATA NO LOG DE USO (auditoria C de 12/10/2026, C-07). O único índice era `idx_ai_user (user_id, quando)`,
+    // que não serve a filtro só por data: os relatórios de custo (`Logs.custos`, `Logs.pessoas`) e os tetos de valor
+    // absorvido (`custoDeFalhasGlobalUSD`, lido a CADA pedido pago e a cada segunda leitura de correção) varriam a
+    // tabela inteira. Medido com 1 milhão de linhas: 0,3 s por pedido só nessa consulta, com o servidor parado.
+    nome: 'ia-log-indice-por-data-2026-10-12',
+    sql: `CREATE INDEX IF NOT EXISTS idx_ai_quando ON ai_usage_logs(quando);`,
+  },
 ];
 
 // Cada migração é ATÔMICA: os comandos dela e o registro em `migrations` entram na mesma transação. Antes, um

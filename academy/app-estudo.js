@@ -3889,6 +3889,7 @@
         return bloco('item(ns) novo(s)', d.adicionados, d.adicionados_total, function (x) { return '<li class="mais"><b>' + esc(x.codigo) + '</b> ' + esc(x.texto) + '</li>'; }) +
           bloco('item(ns) que saem do programa', d.removidos, d.removidos_total, function (x) { return '<li class="menos"><b>' + esc(x.codigo) + '</b> ' + esc(x.texto) + '</li>'; }) +
           bloco('item(ns) com a redação alterada', d.alterados, d.alterados_total, function (x) { return '<li><b>' + esc(x.codigo) + '</b> <s>' + esc(x.antes) + '</s><br>' + esc(x.depois) + '</li>'; }) +
+          bloco('item(ns) que mudam de lugar (o código e o texto ficam)', d.movidos || [], d.movidos_total || 0, function (x) { return '<li><b>' + esc(x.codigo) + '</b> ' + esc(x.texto) + ' — passa a ficar ' + (x.para ? 'dentro de <b>' + esc(x.para) + '</b>' : 'como disciplina') + '</li>'; }) +
           '<p class="al-fino">' + d.iguais + ' item(ns) ficam como estão.</p>';
       }
 
@@ -4013,9 +4014,11 @@
                 : '<p>O que este pedido leu <b>soma</b> ao programa que já existe: nada do que está lá sai. Aplicar cria uma versão nova — uma retificação —, e a atual continua guardada. O que muda:</p>') +
               ((sm.disciplinas_somadas || []).length ? '<p class="al-fino">Disciplinas que já existem e recebem os itens deste pedido: ' + sm.disciplinas_somadas.map(function (d) { return '<b>' + esc(d.codigo) + '</b> ' + esc(d.titulo); }).join('; ') + '.</p>' : '') +
               ((sm.siglas_trocadas || []).length ? '<p class="al-fino">Sigla que já era de outra disciplina do percurso: ' + sm.siglas_trocadas.map(function (d) { return esc(d.titulo) + ' entra como <b>' + esc(d.para) + '</b>'; }).join('; ') + '.</p>' : '') +
+              ((sm.disciplinas_absorvidas || []).length ? '<p class="al-fino">Disciplina que passa a ser <b>subárea</b> de outra (ela e os tópicos conservam o código; as questões e o seu histórico continuam ligados): ' + sm.disciplinas_absorvidas.map(function (d) { return '<b>' + esc(d.de) + '</b> ' + esc(d.titulo) + ' → dentro de <b>' + esc(d.para) + '</b> ' + esc(d.disciplina); }).join('; ') + '.</p>' : '') +
+              (sm.bloqueio ? '<p class="es-aviso" role="alert"><b>Não dá para aplicar assim.</b> ' + esc(sm.bloqueio) + '</p>' : '') +
               diffHtml(v.diff) +
               '<label class="es-ip-marca es-ed-subst"><input type="checkbox" id="es-ed-subst"' + (SUBST ? ' checked' : '') + '> Substituir o programa atual pelo deste pedido (use quando o edital foi relido inteiro)</label>' +
-              '<div class="es-linha"><button class="al-bt" id="es-ed-ret"' + (v.diff.mudou ? '' : ' disabled') + '>Confirmar a retificação</button><button class="al-bt fan" id="es-ed-ret-nao">Voltar à revisão</button></div></div>';
+              '<div class="es-linha"><button class="al-bt" id="es-ed-ret"' + (v.diff.mudou && !sm.bloqueio ? '' : ' disabled') + '>Confirmar a retificação</button><button class="al-bt fan" id="es-ed-ret-nao">Voltar à revisão</button></div></div>';
             el('es-ed-ret').onclick = function () { this.disabled = true; aplicarAgora(true); };
             el('es-ed-ret-nao').onclick = function () { SUBST = false; el('es-ed-previa').innerHTML = ''; };
             el('es-ed-subst').onchange = function () { SUBST = this.checked; previaAgora(); };

@@ -63,19 +63,24 @@ function normalizarItens(lista) {
   return itens;
 }
 
-// Retificação: o que entrou, o que saiu e o que mudou de redação.
+// Retificação: o que entrou, o que saiu, o que mudou de redação — e o que mudou de LUGAR na árvore.
+// `movidos` (auditoria C de 12/10/2026, C-03): o item que conserva código e texto mas passa a ter outro pai — a
+// disciplina solta que a releitura do edital reconheceu como subárea de outra. Sem isso a mudança de pai não era
+// "mudança": nenhuma versão nova nascia e o programa seguia com a árvore antiga, sem ninguém ver.
 function comparar(antes, depois) {
   const a = new Map((antes || []).map(i => [i.codigo, i]));
   const d = new Map((depois || []).map(i => [i.codigo, i]));
-  const r = { adicionados: [], removidos: [], alterados: [], iguais: 0 };
+  const r = { adicionados: [], removidos: [], alterados: [], movidos: [], iguais: 0 };
   for (const [codigo, it] of d) {
     const velho = a.get(codigo);
-    if (!velho) r.adicionados.push({ codigo, texto: it.texto });
-    else if (velho.hash !== it.hash) r.alterados.push({ codigo, antes: velho.texto, depois: it.texto });
-    else r.iguais++;
+    if (!velho) { r.adicionados.push({ codigo, texto: it.texto }); continue; }
+    const mudouDeTexto = velho.hash !== it.hash, mudouDePai = (velho.pai || '') !== (it.pai || '');
+    if (mudouDeTexto) r.alterados.push({ codigo, antes: velho.texto, depois: it.texto });
+    if (mudouDePai) r.movidos.push({ codigo, texto: it.texto, de: velho.pai || '', para: it.pai || '' });
+    if (!mudouDeTexto && !mudouDePai) r.iguais++;
   }
   for (const [codigo, it] of a) if (!d.has(codigo)) r.removidos.push({ codigo, texto: it.texto });
-  r.mudou = !!(r.adicionados.length || r.removidos.length || r.alterados.length);
+  r.mudou = !!(r.adicionados.length || r.removidos.length || r.alterados.length || r.movidos.length);
   return r;
 }
 

@@ -11,11 +11,34 @@
 //   • SÓ O QUE ESTÁ GRAVADO. Nada de estimativa inventada: sistema que não
 //     registra o uso aparece com `medido: false` e o motivo, ou com a
 //     categoria em `null` e uma nota. Isso é achado útil, não erro.
-//   • UM COLETOR NÃO DERRUBA O OUTRO. Cada sistema roda no próprio try/catch
-//     (e com prazo); dentro do sistema, cada categoria também. Banco ausente,
-//     tabela que falta ou consulta que falha vira nota, e os outros seguem.
+//   • UM COLETOR NÃO DERRUBA O OUTRO. Cada sistema roda no próprio try/catch;
+//     dentro do sistema, cada categoria também. Banco ausente, tabela que
+//     falta ou consulta que falha vira nota, e os outros seguem.
 //   • NADA DE DADO PESSOAL. Só contagens e somas por sistema — nem e-mail,
-//     nem nome, nem id de usuário ou de conta.
+//     nem nome, nem id de usuário ou de conta. Vale também para o TEXTO DE
+//     ERRO: a resposta leva só a CLASSE da falha ("tabela ausente", "módulo
+//     não carregou"); a mensagem crua da exceção — que cita caminho de
+//     arquivo e o que mais o erro trouxer, até e-mail — vai só para o log do
+//     servidor (`classeDoErro`).
+//
+// PRAZO, CACHE E FREQUÊNCIA (auditoria C de 12/10/2026, C-06) — o que vale e o que não vale:
+//   • 17 dos 18 coletores são SÍNCRONOS (node:sqlite). Consulta síncrona não
+//     se interrompe sem thread: enquanto ela roda, nenhum temporizador
+//     dispara. O "prazo por coletor" NÃO corta esses coletores — o cabeçalho
+//     antigo prometia que sim. O que o prazo faz de verdade:
+//       – coletor ASSÍNCRONO (Origena): vence, a linha sai como "tempo
+//         esgotado" e o laço das famílias PARA (sinal conferido a cada
+//         família), em vez de seguir rodando em segundo plano;
+//       – coletor síncrono que passou do prazo: o resultado vale (já custou),
+//         e a linha ganha a nota de que foi lento;
+//       – PRAZO TOTAL: vencido, os coletores que ainda não rodaram NÃO rodam
+//         nesta chamada (saem "não lido nesta rodada").
+//   • entre um coletor e outro o laço de eventos é devolvido (`setImmediate`):
+//     as outras requisições do servidor respiram.
+//   • a proteção de fato é o CACHE: a resposta fica 5 minutos em memória por
+//     valor de `dias`; chamadas simultâneas do mesmo `dias` dividem UMA
+//     leitura; e há um teto de leituras NOVAS por minuto (429 acima dele) —
+//     sem isso, quem tem a chave repetia `?dias=366` em laço e parava o servidor.
 //   • MOEDAS SEPARADAS. Provedor de IA é em USD (4 casas); pagamento é em BRL
 //     (2 casas). O total nunca soma uma na outra, e armazenamento sai em
 //     bytes: o preço por GB entra no script do relatório, não aqui.
@@ -31,7 +54,10 @@ const fs = require('fs');
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
-const TEMPO_LIMITE_MS = Number(process.env.DESPESAS_TEMPO_LIMITE_MS || 20000);
+const TEMPO_LIMITE_MS = Number(process.env.DESPESAS_TEMPO_LIMITE_MS || 20000);       // por coletor (ver o cabeçalho: só corta o assíncrono)
+const TEMPO_TOTAL_MS = Number(process.env.DESPESAS_TEMPO_TOTAL_MS || 60000);         // da leitura inteira: vencido, o resto não roda
+const CACHE_MS = Number(process.env.DESPESAS_CACHE_MS || 5 * 60 * 1000);             // a resposta de cada `dias`
+const LEITURAS_POR_MINUTO = Number(process.env.DESPESAS_LEITURAS_POR_MINUTO || 6);   // leituras NOVAS (fora do cache), de todos os `dias`
 // A Origena atravessa as famílias uma a uma (RLS): o teto evita uma varredura sem fim.
 const ORIGENA_MAX_FAMILIAS = 500;
 
@@ -40,9 +66,35 @@ const dbDe = (mod) => require(`../${mod}/db`).db;
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const usd = (v) => Math.round(num(v) * 1e4) / 1e4;                 // USD com 4 casas
 const brl = (centavos) => Math.round(num(centavos)) / 100;         // centavos → BRL com 2 casas
-const curto = (e) => String((e && e.message) || e || '').replace(/\s+/g, ' ').slice(0, 160);
-// Erro que NÃO é defeito: o sistema simplesmente não tem o que medir aqui.
+// O TEXTO DE ERRO NÃO VAI NA RESPOSTA (auditoria C, C-14). `e.message` de um erro de banco ou de `require` cita o
+// caminho do arquivo no servidor e o que a consulta trouxer — o teste da auditoria reproduziu um e-mail saindo em
+// `motivo`, que o relatório publica na área `ceo`. A resposta leva a CLASSE da falha; o detalhe fica no log do servidor.
+function classeDoErro(e) {
+  const m = String((e && e.message) || e || ''), c = String((e && e.code) || '');
+  if (e && e.tempoEsgotado) return 'tempo esgotado';
+  if (c === 'MODULE_NOT_FOUND' || /cannot find module/i.test(m)) return 'módulo não carregou';
+  if (/no such table/i.test(m) || c === '42P01') return 'tabela ausente';
+  if (/no such column|has no column/i.test(m) || c === '42703') return 'coluna ausente';
+  if (/database is locked|SQLITE_BUSY|SQLITE_LOCKED/i.test(m + ' ' + c)) return 'banco ocupado';
+  if (/unable to open database|SQLITE_CANTOPEN|ENOENT|EACCES|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN/i.test(m + ' ' + c)) return 'banco ou arquivo indisponível';
+  if ((e instanceof SyntaxError) || /unexpected token|unexpected end of json/i.test(m)) return 'arquivo ilegível';
+  if (/constraint/i.test(m)) return 'restrição do banco';
+  return 'erro inesperado';
+}
+// → a classe, para a resposta; o detalhe (sem pilha: uma linha) vai para o log do servidor, com o lugar em que falhou
+const curto = (e, onde = '') => {
+  const classe = classeDoErro(e);
+  try { console.error(`[despesas-sistemas] ${onde || 'leitura'}: ${classe} — ${String((e && e.message) || e || '').replace(/\s+/g, ' ').slice(0, 400)}`); } catch (_) { /* o log nunca derruba a leitura */ }
+  return classe;
+};
+// Erro que NÃO é defeito: o sistema simplesmente não tem o que medir aqui. (O motivo é texto NOSSO, escrito neste arquivo.)
 const naoMedido = (motivo) => Object.assign(new Error(motivo), { naoMedido: true });
+const textoNosso = (e) => String((e && e.message) || '').replace(/\s+/g, ' ').slice(0, 240);
+
+// USA IA? — campo próprio por sistema (auditoria C, C-18). O relatório decidia o rótulo procurando a frase "sem IA de
+// provedor" nas notas: o sistema cuja LEITURA falhou, o que escreveu a nota de outro jeito e todo sistema novo caíam
+// em "usa IA e não registra o gasto". Agora cada coletor DECLARA:
+const USA_IA = { SIM: 'sim', SEM_REGISTRO: 'sim_sem_registro', NAO: 'nao', FALHA: 'falha_de_leitura' };
 
 function lerJSON(arquivo, padrao) {
   const f = path.join(DATA_DIR, arquivo);
@@ -51,9 +103,17 @@ function lerJSON(arquivo, padrao) {
 }
 
 // Categoria protegida: a falha vira nota e a categoria fica `null`.
-function tentar(notas, rotulo, fn) {
+function tentar(notas, rotulo, fn, aoFalhar) {
   try { return fn(); }
-  catch (e) { notas.push(`${rotulo}: não deu para ler (${curto(e)})`); return null; }
+  catch (e) { notas.push(`${rotulo}: não deu para ler (${curto(e, rotulo)})`); if (aoFalhar) aoFalhar(); return null; }
+}
+// A categoria de IA de um sistema que REGISTRA o uso: além do bloco, marca `usa_ia` — 'sim', ou 'falha_de_leitura'
+// quando a leitura quebrou (aí não se sabe o custo: não é "não registra").
+function lerIA(out, notas, rotulo, fn) {
+  let falhou = false;
+  const v = tentar(notas, rotulo, fn, () => { falhou = true; });
+  out.usa_ia = falhou ? USA_IA.FALHA : USA_IA.SIM;
+  return v;
 }
 
 // A tabela de preços é a do backend (academy/ia.js) — a regra não é copiada para cá.
@@ -75,7 +135,7 @@ function somarExecucoes(linhas, notas) {
     if (r.conta) s.contas.add(String(r.conta));
     if (num(r.tin) + num(r.tout) > 0 && !s.semTabela) {
       try { s.porTokens += custoPorTokens(r.modelo, r.tin, r.tout, r.tcache); }
-      catch (e) { s.semTabela = true; if (notas) notas.push(`custo por tokens indisponível (tabela de preços da Academy não carregou: ${curto(e)})`); }
+      catch (e) { s.semTabela = true; if (notas) notas.push(`custo por tokens indisponível (tabela de preços da Academy não carregou: ${curto(e, 'tabela de preços')})`); }
     }
   }
   return s;
@@ -134,10 +194,11 @@ function academy({ dias, desde }) {
   const db = dbDe('academy');
   const out = { notas };
   // IA: a regra de "quem pagou" é a de Logs.custos — reaproveitada, não duplicada.
-  const c = tentar(notas, 'IA', () => require('../academy/ia').Logs.custos(dias));
+  const c = lerIA(out, notas, 'IA', () => require('../academy/ia').Logs.custos(dias));
   if (c) {
+    // (só o que chegou ao provedor — o mesmo recorte de `Logs.custos`: bloqueio, falta de saldo e vaga aberta não são uso)
     const usuarios = tentar(notas, 'IA (contas)', () => db.prepare(
-      "SELECT COUNT(DISTINCT user_id) n FROM ai_usage_logs WHERE quando >= ? AND status <> 'limite' AND user_id <> ''").get(desde).n);
+      "SELECT COUNT(DISTINCT user_id) n FROM ai_usage_logs WHERE quando >= ? AND status IN ('ok', 'erro') AND user_id <> ''").get(desde).n);
     out.ia = { chamadas: c.total.chamadas, custo_usd: usd(c.total.custo_usd), custo_estimado_por_tokens: false,
       pago_pelo_usuario_usd: usd(c.total.custo_coberto_por_aluno_usd), bancado_pela_plataforma_usd: usd(c.total.bancado_pela_plataforma_usd),
       cobrado_dos_usuarios_brl: c.total.cobrado_dos_alunos_brl, usuarios: usuarios == null ? null : usuarios, fonte: 'academy.ai_usage_logs (Logs.custos)' };
@@ -163,23 +224,41 @@ function academy({ dias, desde }) {
 
 // Legal Intelligence (escritório interno) + Legal SaaS (escritórios assinantes): um banco por
 // escritório. O interno usa a chave da plataforma; o assinante paga por crédito ou usa chave própria.
+// SÓ LEITURA DE VERDADE (auditoria C, C-15). Ler pelo módulo (`L.comTenant` + `L.db`) passava por `legal/db.js › _abrir`:
+// rodava o schema e as migrações pendentes de CADA escritório — inclusive os inativos — e deixava a conexão aberta
+// para sempre (um arquivo aberto por escritório até o próximo reinício). O cabeçalho deste arquivo diz que nada daqui
+// roda migração. Agora cada banco é aberto direto, em modo somente leitura, lido e FECHADO. Escritório cujo banco
+// ainda não tem a tabela (ou a coluna) não é migrado por aqui: fica de fora, e a nota diz quantos.
+function lerBancoDoEscritorio(L, tid, fn) {
+  const arquivo = path.join(L.dirDoTenant(tid), 'legal.db');
+  if (!fs.existsSync(arquivo)) return undefined;   // só banco que JÁ existe: aqui nada se cria
+  const { DatabaseSync } = require('node:sqlite');
+  const sqlite = new DatabaseSync(arquivo, { readOnly: true });
+  try { return fn(sqlite); } finally { try { sqlite.close(); } catch (_) { /* já fechado */ } }
+}
+function porEscritorio(notas, rotulo, fn) {
+  const L = require('../legal/db');
+  let fora = 0;
+  for (const tid of L.listarTenants()) {
+    try { lerBancoDoEscritorio(L, tid, (sqlite) => fn(sqlite, tid, L)); }
+    catch (e) { fora++; curto(e, `${rotulo} (um escritório do Legal)`); }
+  }
+  if (fora) notas.push(`${rotulo}: ${fora} escritório(s) ficaram de fora (banco que não pôde ser lido só para leitura — tabela ou coluna que ainda não existe nele)`);
+  return L;
+}
 function legal({ desde }) {
   const notas = [];
   const out = { notas };
-  out.ia = tentar(notas, 'IA', () => {
-    const L = require('../legal/db');
+  out.ia = lerIA(out, notas, 'IA', () => {
     const linhas = [];
     let interno = 0;
-    for (const tid of L.listarTenants()) {
-      // só banco que JÁ existe: abrir pelo módulo criaria o arquivo, e aqui nada se cria
-      if (!fs.existsSync(path.join(L.dirDoTenant(tid), 'legal.db'))) continue;
-      const rs = L.comTenant(tid, () => L.db.prepare(
-        'SELECT modelo, input_tokens tin, output_tokens tout, cache_read_tokens tcache, custo_centavos_usd c FROM ai_agent_runs WHERE quando >= ?').all(desde));
+    porEscritorio(notas, 'IA', (sqlite, tid, L) => {
+      const rs = sqlite.prepare('SELECT modelo, input_tokens tin, output_tokens tout, cache_read_tokens tcache, custo_centavos_usd c FROM ai_agent_runs WHERE quando >= ?').all(desde);
       for (const r of rs) {
         linhas.push({ ...r, custo_usd: num(r.c) / 100, conta: tid });
         if (tid === L.TENANT_PADRAO) interno += num(r.c) / 100;
       }
-    }
+    });
     const b = blocoIA(somarExecucoes(linhas, notas), { fonte: 'legal.ai_agent_runs (um banco por escritório) + legal-saas.ia_movimentos' });
     b.bancado_pela_plataforma_usd = usd(interno);   // o escritório interno não é cobrado
     return b;
@@ -204,12 +283,8 @@ function legal({ desde }) {
     notas.push(NOTA_ARREDONDA);
   }
   out.armazenamento = tentar(notas, 'armazenamento', () => {
-    const L = require('../legal/db');
     const partes = [];
-    for (const tid of L.listarTenants()) {
-      if (!fs.existsSync(path.join(L.dirDoTenant(tid), 'legal.db'))) continue;
-      partes.push({ ...L.comTenant(tid, () => L.db.prepare('SELECT COUNT(*) n, COALESCE(SUM(tamanho), 0) b FROM document_versions').get()), onde: 'disco' });
-    }
+    porEscritorio(notas, 'armazenamento', (sqlite) => { partes.push({ ...sqlite.prepare('SELECT COUNT(*) n, COALESCE(SUM(tamanho), 0) b FROM document_versions').get(), onde: 'disco' }); });
     return blocoArquivos(partes, 'legal.document_versions');
   });
   if (dbSaas) {
@@ -229,7 +304,7 @@ function saasComAiRuns(mod, { arquivos } = {}) {
     const notas = [];
     const db = dbDe(mod);
     const out = { notas };
-    out.ia = tentar(notas, 'IA', () => blocoIA(somarExecucoes(
+    out.ia = lerIA(out, notas, 'IA', () => blocoIA(somarExecucoes(
       db.prepare('SELECT tenant_id conta, modelo, input_tokens tin, output_tokens tout, custo_centavos_usd c FROM ai_runs WHERE criado_em >= ?').all(desde)
         .map((r) => ({ ...r, custo_usd: num(r.c) / 100 })), notas), { fonte: `${mod}.ai_runs`, bancadoTudo: true }));
     if (out.ia) notas.push('IA incluída no plano: tudo sai da chave da plataforma (o limite é por número de consultas, não por custo)', NOTA_ARREDONDA);
@@ -251,7 +326,7 @@ function crm({ desde }) {
   const notas = [];
   const db = dbDe('crm');
   const out = { notas };
-  out.ia = tentar(notas, 'IA', () => {
+  out.ia = lerIA(out, notas, 'IA', () => {
     require('../growth/db');   // as tabelas gx_ nascem aqui; sem o Growth carregado a consulta falha e vira nota
     const s = somarExecucoes(
       db.prepare("SELECT tenant_id conta, modelo, tokens_entrada tin, tokens_saida tout, custo_centavos c FROM gx_agente_execucoes WHERE motor = 'llm' AND criado_em >= ?").all(desde)
@@ -284,7 +359,7 @@ function finance({ desde }) {
   const repo = require('../financeiro/repo'), tenancy = require('../financeiro/tenancy');
   const como = (fn) => tenancy.comoPlataforma({ userId: 'despesas-sistemas', motivo: 'relatório de despesas dos sistemas (só leitura)' }, fn);
   const out = { notas };
-  out.ia = tentar(notas, 'IA', () => {
+  out.ia = lerIA(out, notas, 'IA', () => {
     const linhas = como(() => repo.qPlataforma(
       "SELECT tenant_id conta, modelo, tokens_entrada tin, tokens_saida tout, custo_usd_micros c FROM fin_inv_resultados_motor WHERE motor = 'critico_ia' AND criado_em >= :desde", { desde }));
     const b = blocoIA(somarExecucoes(linhas.map((r) => ({ ...r, custo_usd: num(r.c) / 1e6 })), notas), { fonte: 'financeiro.fin_inv_resultados_motor (motor = critico_ia)', bancadoTudo: true });
@@ -305,7 +380,7 @@ function finance({ desde }) {
 
 // Origena: PostgreSQL próprio com RLS — a leitura entra no escopo de cada família, uma a uma
 // (é o que as rotas de staff da própria Origena fazem). `dep` permite injetar db/tenancy no teste.
-async function origena({ desde }, dep = {}) {
+async function origena({ desde, sinal }, dep = {}) {
   const notas = [];
   const db = dep.db || require('../origena/db');
   if (!db.configurado()) throw naoMedido('o banco da Origena (PostgreSQL próprio) não está configurado neste processo — falta ORIGENA_DATABASE_URL');
@@ -315,6 +390,9 @@ async function origena({ desde }, dep = {}) {
   const ledger = [], partes = [];
   let pedidos = 0, pedidosCentavos = 0, creditos = 0;
   for (const f of familias.slice(0, ORIGENA_MAX_FAMILIAS)) {
+    // o prazo venceu enquanto as famílias eram lidas: PARA aqui (antes o laço seguia em segundo plano, e as chamadas
+    // repetidas se empilhavam). Quem chamou já devolveu "tempo esgotado" para a linha.
+    if (sinal && sinal.vencido) throw Object.assign(new Error('prazo vencido durante a leitura das famílias'), { tempoEsgotado: true });
     const r = await tenancy.comEscopo(f.id, async (t) => ({
       ledger: await t.todas('SELECT provider, model, tokens_in, tokens_out, custo_centavos, creditos_cobrados FROM ai_cost_ledger WHERE created_at >= $1', [desde]),
       arquivos: await t.uma(`SELECT (SELECT count(*) FROM media) + (SELECT count(*) FROM exports WHERE storage_key <> '')
@@ -358,7 +436,7 @@ function music({ desde }) {
   const notas = [];
   const db = dbDe('music');
   const out = { notas };
-  out.ia = tentar(notas, 'IA', () => {
+  out.ia = lerIA(out, notas, 'IA', () => {
     const r = db.prepare(`SELECT COUNT(*) n, COALESCE(SUM(ok), 0) ok, COALESCE(SUM(creditos), 0) cr, COALESCE(SUM(custo_centavos), 0) c,
         COUNT(DISTINCT CASE WHEN usuario <> '' THEN usuario END) u FROM ia_usos WHERE criado_em >= ?`).get(desde);
     notas.push('o roteador de IA do Musique grava só a ESTIMATIVA fixa por chamada cadastrada no provedor (sem tokens nem modelo): não há custo medido em dólar');
@@ -380,7 +458,7 @@ function closet({ desde }) {
   const notas = ['o sistema não registra o uso de IA (closet/ia-llm.js chama a Anthropic sem gravar tokens nem custo)',
     'o aluguel de peça (bookings) não entra em pagamentos: só a assinatura premium tem fatura paga com data'];
   const db = dbDe('closet');
-  const out = { notas, ia: null };
+  const out = { notas, ia: null, usa_ia: USA_IA.SEM_REGISTRO };
   out.armazenamento = tentar(notas, 'armazenamento', () => blocoArquivos(
     db.prepare("SELECT COALESCE(storage, 'local') onde, COUNT(*) n, COALESCE(SUM(bytes), 0) b FROM uploads GROUP BY 1").all(), 'closet.uploads'));
   out.pagamentos = tentar(notas, 'pagamentos', () => {
@@ -395,7 +473,7 @@ function kids({ desde }) {
   const notas = ['o sistema não registra o uso de IA de texto (kids/ia-llm.js chama a Anthropic sem gravar tokens nem custo)',
     'sem cobrança: beta fechado, não há pagamento registrado'];
   const db = dbDe('kids');
-  const out = { notas, ia: null };
+  const out = { notas, ia: null, usa_ia: USA_IA.SEM_REGISTRO };
   out.google = tentar(notas, 'imagens (Google)', () => {
     const r = db.prepare("SELECT COUNT(*) n, COUNT(DISTINCT child_id) u FROM portfolio WHERE tipo = 'imagem' AND criado_em >= ?").get(desde);
     notas.push('ilustrações do Estúdio (Gemini): só a contagem das imagens geradas — nem custo nem tamanho do arquivo são gravados');
@@ -408,7 +486,7 @@ function voz({ desde }) {
   const notas = ['os comandos de voz interpretados pela Anthropic (voz/cerebro.js) e as sessões de tempo real da OpenAI (voz/realtime.js) não gravam uso',
     'a transcrição grava bytes e tempo de resposta, não a duração do áudio: não há como chegar ao custo por minuto'];
   const db = dbDe('voz');
-  const out = { notas, ia: null };
+  const out = { notas, ia: null, usa_ia: USA_IA.SEM_REGISTRO };
   out.openai = tentar(notas, 'transcrição', () => {
     const r = db.prepare(`SELECT COUNT(*) n, COALESCE(SUM(CASE WHEN erro <> '' THEN 1 ELSE 0 END), 0) f, COALESCE(SUM(bytes), 0) b
         FROM transcricoes WHERE criado_em >= ? AND provedor = 'openai'`).get(desde);
@@ -423,7 +501,7 @@ function voz({ desde }) {
 function hospede({ desde }) {
   const notas = [];
   const out = { notas };
-  out.ia = tentar(notas, 'IA (Eva)', () => {
+  out.ia = lerIA(out, notas, 'IA (Eva)', () => {
     const u = lerJSON('eva-uso.json', null);
     if (!u) { notas.push('a Eva ainda não tem uso gravado (eva-uso.json não existe)'); return null; }
     // o arquivo agrega por DIA (data de Brasília) e guarda 90 dias: o recorte é por dia inteiro
@@ -449,7 +527,7 @@ function hospede({ desde }) {
 function livraria({ desde }) {
   const notas = ['sem IA de provedor neste sistema'];
   const db = dbDe('livraria');
-  const out = { notas, ia: null };
+  const out = { notas, ia: null, usa_ia: USA_IA.NAO };
   out.armazenamento = tentar(notas, 'armazenamento', () => blocoArquivos(
     [{ ...db.prepare('SELECT COUNT(*) n, COALESCE(SUM(tamanho), 0) b FROM book_files').get(), onde: 'disco' }], 'livraria.book_files'));
   out.pagamentos = tentar(notas, 'pagamentos', () => {
@@ -463,7 +541,7 @@ function livraria({ desde }) {
 function vsm({ desde }) {
   const notas = ['sem IA de provedor neste sistema', 'armazenamento: nenhuma tabela do sistema guarda o tamanho dos arquivos'];
   const db = dbDe('vsm');
-  const out = { notas, ia: null };
+  const out = { notas, ia: null, usa_ia: USA_IA.NAO };
   out.pagamentos = tentar(notas, 'pagamentos', () => {
     const f = db.prepare("SELECT COUNT(*) n, COALESCE(SUM(valor_centavos), 0) s FROM invoices WHERE status = 'paga' AND pago_em >= ?").get(desde);
     return blocoPagamentos(f.n, f.s, 'vsm.invoices');
@@ -476,7 +554,7 @@ function vsm({ desde }) {
 function vitrine({ desde }) {
   const notas = ['sem IA de provedor neste sistema', 'armazenamento: as fotos dos produtos são gravadas só pela URL, sem tamanho'];
   const db = dbDe('vitrine');
-  const out = { notas, ia: null };
+  const out = { notas, ia: null, usa_ia: USA_IA.NAO };
   out.pagamentos = tentar(notas, 'pagamentos', () => {
     const p = db.prepare(`SELECT COUNT(*) n, COALESCE(SUM(valor_centavos), 0) s, COALESCE(SUM(tarifa_centavos), 0) t
         FROM payments WHERE status = 'aprovado' AND provedor <> 'simulado' AND COALESCE(NULLIF(atualizado_em, ''), criado_em) >= ?`).get(desde);
@@ -489,7 +567,7 @@ function vitrine({ desde }) {
 function altaVista({ desde }) {
   const notas = ['sem registro de uso de IA neste sistema', 'os panoramas 360° não têm o tamanho gravado: ficam fora da soma de armazenamento'];
   const db = dbDe('alta-vista');
-  const out = { notas, ia: null };
+  const out = { notas, ia: null, usa_ia: USA_IA.NAO };
   out.armazenamento = tentar(notas, 'armazenamento', () => {
     notas.push('a tabela não diz onde o arquivo mora: depende do driver do módulo (R2 quando as variáveis ALTAVISTA_S3_* existem; senão, disco)');
     return blocoArquivos([
@@ -509,7 +587,7 @@ function altaVista({ desde }) {
 function comunicados() {
   const notas = ['sem IA de provedor neste sistema'];
   const db = dbDe('comunicados');
-  const out = { notas, ia: null };
+  const out = { notas, ia: null, usa_ia: USA_IA.NAO };
   out.armazenamento = tentar(notas, 'armazenamento', () => blocoArquivos(
     db.prepare('SELECT driver onde, COUNT(*) n, COALESCE(SUM(bytes), 0) b FROM anexos GROUP BY 1').all(), 'comunicados.anexos'));
   return out;
@@ -564,43 +642,66 @@ function mensagensPorSistema(desde) {
   return m;
 }
 
-// Roda um coletor com prazo: consulta que não volta vira "tempo esgotado", não trava a rota.
-function comPrazo(promessa, ms) {
+// Roda um coletor com prazo. SÓ CORTA O QUE É ASSÍNCRONO: `Promise.race` contra `setTimeout` só vence se o laço de
+// eventos girar, e a consulta síncrona (node:sqlite) não o deixa girar — quando ela volta, a promessa do coletor já
+// está resolvida e ganha a corrida (medido na auditoria C: coletor síncrono de 3 s com prazo de 200 ms levou 3 s, e
+// saiu "medido"). Para o coletor assíncrono o prazo vence de verdade, e o `sinal` avisa o coletor para PARAR.
+function comPrazo(promessa, ms, sinal) {
   let relogio;
-  const prazo = new Promise((_, rej) => { relogio = setTimeout(() => rej(new Error('tempo esgotado ao ler o sistema')), ms); });
+  const prazo = new Promise((_, rej) => { relogio = setTimeout(() => { if (sinal) sinal.vencido = true; rej(Object.assign(new Error('tempo esgotado ao ler o sistema'), { tempoEsgotado: true })); }, ms); });
+  // (a promessa do coletor que perdeu a corrida ainda vai rejeitar quando ele parar: sem ouvinte, viraria rejeição solta)
+  promessa.catch(() => {});
   return Promise.race([promessa, prazo]).finally(() => clearTimeout(relogio));
 }
+const cederOLaco = () => new Promise((ok) => setImmediate(ok));
 
 const CATEGORIAS = ['ia', 'openai', 'google', 'armazenamento', 'pagamentos', 'mensagens'];
 
 /**
- * O resumo. `opcoes.coletores` troca a lista (teste); `opcoes.origena` injeta db/tenancy da Origena.
+ * O resumo. `opcoes.coletores` troca a lista (teste); `opcoes.origena` injeta db/tenancy da Origena;
+ * `opcoes.prazoMs` e `opcoes.prazoTotalMs` trocam os prazos (teste).
  */
 async function resumo(dias, opcoes = {}) {
   const d = Math.min(Math.max(parseInt(dias, 10) || 7, 1), 366);
   const desde = new Date(Date.now() - d * 864e5).toISOString();
   const coletores = opcoes.coletores || COLETORES;
-  const ctx = { dias: d, desde, origena: opcoes.origena };
+  const prazoMs = opcoes.prazoMs > 0 ? opcoes.prazoMs : TEMPO_LIMITE_MS, prazoTotalMs = opcoes.prazoTotalMs > 0 ? opcoes.prazoTotalMs : TEMPO_TOTAL_MS;
   const naoMedidoGeral = NAO_MEDIDO.slice();
+  const inicio = Date.now();
 
   let mensagens = new Map();
   try { mensagens = mensagensPorSistema(desde); }
-  catch (e) { naoMedidoGeral.push(`envios da central de comunicados: não deu para ler (${curto(e)})`); }
+  catch (e) { naoMedidoGeral.push(`envios da central de comunicados: não deu para ler (${curto(e, 'envios da central')})`); }
 
   const sistemas = [];
+  let naoLidos = 0;
   for (const c of coletores) {
-    const linha = { sistema: c.sistema, nome: c.nome, medido: false, motivo: '', ia: null, openai: null, google: null, armazenamento: null, pagamentos: null, mensagens: null, notas: [] };
-    try {
-      const r = (await comPrazo(Promise.resolve().then(() => c.coletar(ctx)), TEMPO_LIMITE_MS)) || {};
-      for (const k of Object.keys(r)) if (r[k] !== undefined) linha[k] = r[k];
-    } catch (e) {
-      linha.motivo = e && e.naoMedido ? curto(e) : `falha ao ler: ${curto(e)}`;
+    const linha = { sistema: c.sistema, nome: c.nome, medido: false, motivo: '', usa_ia: '', ia: null, openai: null, google: null, armazenamento: null, pagamentos: null, mensagens: null, notas: [] };
+    if (Date.now() - inicio > prazoTotalMs) {
+      // o PRAZO TOTAL venceu: o que ainda não rodou não roda nesta chamada (é aqui que o prazo vale para coletor síncrono)
+      linha.motivo = 'não lido nesta rodada: o prazo total da leitura acabou antes de chegar a este sistema';
+      naoLidos++;
+    } else {
+      const sinal = { vencido: false }, t0 = Date.now();
+      try {
+        const r = (await comPrazo(Promise.resolve().then(() => c.coletar({ dias: d, desde, origena: opcoes.origena, sinal })), prazoMs, sinal)) || {};
+        for (const k of Object.keys(r)) if (r[k] !== undefined) linha[k] = r[k];
+        const levou = Date.now() - t0;
+        if (levou > prazoMs) linha.notas = (Array.isArray(linha.notas) ? linha.notas : []).concat(`leitura lenta: ${levou} ms, acima do prazo de ${prazoMs} ms (consulta síncrona não pode ser interrompida; o resultado vale)`);
+      } catch (e) {
+        if (e && e.naoMedido) linha.motivo = textoNosso(e);
+        else { linha.motivo = `falha ao ler: ${curto(e, c.sistema)}`; linha.usa_ia = USA_IA.FALHA; }
+      }
+      await cederOLaco(); // entre um sistema e outro, as outras requisições do servidor respiram
     }
     if (mensagens.has(c.sistema)) { linha.mensagens = mensagens.get(c.sistema); mensagens.delete(c.sistema); }
     linha.medido = CATEGORIAS.some((k) => linha[k] != null);
     if (!linha.medido && !linha.motivo) linha.motivo = 'o sistema não registra nada do que este relatório mede';
+    // quem não declarou: com bloco de IA, usa e registra; sem bloco, NÃO SE SABE (vazio) — o relatório não acusa ninguém por omissão
+    if (!linha.usa_ia && linha.ia) linha.usa_ia = USA_IA.SIM;
     sistemas.push(linha);
   }
+  if (naoLidos) naoMedidoGeral.push(`${naoLidos} sistema(s) não foram lidos nesta rodada: a leitura passou do prazo total de ${Math.round(prazoTotalMs / 1000)} s`);
   // envio para produto que não tem coletor: não some — fica na central, com nota
   if (mensagens.size) {
     const central = sistemas.find((s) => s.sistema === 'comunicados');
@@ -639,21 +740,55 @@ async function resumo(dias, opcoes = {}) {
   for (const k of ['ia_custo_usd', 'pago_pelo_usuario_usd', 'bancado_pela_plataforma_usd']) total[k] = usd(total[k]);
   total.pagamentos_bruto_brl = brl(centavos); total.taxa_pagamentos_brl = brl(taxaCentavos);
 
-  return { dias: d, desde, gerado_em: new Date().toISOString(),
+  return { dias: d, desde, gerado_em: new Date().toISOString(), levou_ms: Date.now() - inicio,
     moedas: { ia: 'USD (4 casas)', pagamentos: 'BRL (2 casas)', armazenamento: 'bytes — estado de hoje, não do período' },
     sistemas, total, nao_medido: naoMedidoGeral };
 }
 
+// ---------------- cache e frequência (o que protege o servidor de verdade — ver o cabeçalho) ----------------
+// Uma resposta por valor de `dias`, por CACHE_MS; quem chega enquanto a leitura roda recebe a MESMA promessa (uma
+// leitura só, por mais gente que peça); e as leituras NOVAS de todos os `dias` somados têm teto por minuto.
+function novoCache({ leitor = resumo, cacheMs = CACHE_MS, porMinuto = LEITURAS_POR_MINUTO, agora = () => Date.now() } = {}) {
+  const guardadas = new Map(), emCurso = new Map();
+  let recentes = [];
+  const diasDe = (v) => Math.min(Math.max(parseInt(v, 10) || 7, 1), 366);
+  return {
+    async ler(v) {
+      const d = diasDe(v), t = agora();
+      const g = guardadas.get(d);
+      if (g && t - g.em < cacheMs) return { ...g.resposta, em_cache: true, cache_expira_em: new Date(g.em + cacheMs).toISOString() };
+      if (emCurso.has(d)) return emCurso.get(d);
+      recentes = recentes.filter((x) => t - x < 60000);
+      if (recentes.length >= porMinuto) {
+        throw Object.assign(new Error('Muitas leituras novas em um minuto. A resposta de cada período fica guardada por alguns minutos: espere e tente de novo.'),
+          { status: 429, espere_seg: Math.max(1, Math.ceil((60000 - (t - recentes[0])) / 1000)) });
+      }
+      recentes.push(t);
+      const p = Promise.resolve().then(() => leitor(d))
+        .then((resposta) => { guardadas.set(d, { em: agora(), resposta }); return { ...resposta, em_cache: false }; })
+        .finally(() => { emCurso.delete(d); for (const [k, x] of guardadas) if (agora() - x.em >= cacheMs) guardadas.delete(k); });
+      emCurso.set(d, p);
+      return p;
+    },
+    limpar() { guardadas.clear(); recentes = []; },
+  };
+}
+const cacheDaRota = novoCache();
+
 // A rota: chave de publicação (rotinas locais) OU sessão de admin — o mesmo portão das outras
 // leituras por chave do staff (`requirePublishOrAdmin`, o `PA` da Academy). Sem nenhum dos dois: 401.
+// (`Cache-Control: no-store` é para o navegador e os intermediários; o cache de 5 minutos é do servidor.)
 function montar(app, deps = {}) {
   const { requirePublishOrAdmin } = deps;
   if (!requirePublishOrAdmin) throw new Error('despesas-sistemas.montar: falta requirePublishOrAdmin.');
   app.get('/staff/api/despesas-sistemas', requirePublishOrAdmin, async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    try { res.json(await resumo(req.query.dias)); }
-    catch (e) { res.status(500).json({ erro: 'Falha ao montar as despesas dos sistemas.', detalhe: curto(e) }); }
+    try { res.json(await cacheDaRota.ler(req.query.dias)); }
+    catch (e) {
+      if (e && e.status === 429) { res.setHeader('Retry-After', String(e.espere_seg || 60)); return res.status(429).json({ erro: e.message, espere_seg: e.espere_seg || 60 }); }
+      res.status(500).json({ erro: 'Falha ao montar as despesas dos sistemas.', detalhe: curto(e, 'rota') });
+    }
   });
 }
 
-module.exports = { montar, resumo, COLETORES, _int: { somarExecucoes, blocoIA, blocoArquivos, blocoPagamentos, origena } };
+module.exports = { montar, resumo, COLETORES, USA_IA, _int: { somarExecucoes, blocoIA, blocoArquivos, blocoPagamentos, origena, classeDoErro, novoCache, limparCache: () => cacheDaRota.limpar() } };

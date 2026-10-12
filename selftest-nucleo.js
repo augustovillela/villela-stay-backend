@@ -949,14 +949,163 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
       vdocs,
     ] });
     assert.equal(r.sistemas.length, 3);
-    assert.equal(r.sistemas[0].medido, false); assert.ok(/no such table/.test(r.sistemas[0].motivo), 'o motivo tem de dizer o que falhou');
-    assert.equal(r.sistemas[1].medido, false); assert.ok(/conexão caiu/.test(r.sistemas[1].motivo));
+    // (auditoria C, C-14) o motivo diz a CLASSE da falha — o texto cru da exceção fica no log do servidor, não na resposta
+    assert.equal(r.sistemas[0].medido, false); assert.equal(r.sistemas[0].motivo, 'falha ao ler: tabela ausente', 'o motivo tem de dizer o que falhou');
+    assert.equal(r.sistemas[1].medido, false); assert.equal(r.sistemas[1].motivo, 'falha ao ler: erro inesperado');
     assert.equal(r.sistemas[2].medido, true, 'o coletor seguinte tem de seguir de pé');
     assert.equal(r.total.sistemas_medidos, 1); assert.equal(r.total.sistemas_nao_medidos, 2);
   });
 
+  // ---------- auditoria C de 12/10/2026 (C-06, C-14, C-15, C-18) ----------
+  await t('despesas-sistemas (C-14): o texto da exceção NÃO sai na resposta — caminho de arquivo, e-mail e mensagem do banco ficam no log; sai a classe da falha', async () => {
+    const D = require('./nucleo/despesas-sistemas');
+    const erros = [];
+    const antigo = console.error; console.error = (...a) => { erros.push(a.join(' ')); };
+    let r;
+    try {
+      r = await D.resumo(7, { coletores: [
+        { sistema: 'modulo', nome: 'Módulo ausente', coletar() { return require('./nao-existe-mesmo/db'); } },
+        { sistema: 'pessoal', nome: 'Erro com dado', coletar() { throw new Error('UNIQUE constraint failed: users.email (fulano.de.tal@exemplo.com) em /opt/render/project/src/academy/db.js'); } },
+        { sistema: 'categoria', nome: 'Falha numa categoria', coletar() { const notas = []; let ia = null; try { throw new Error('no such column: segredo em C:\\Users\\alguem\\dados\\x.db'); } catch (e) { notas.push('IA: não deu para ler (' + D._int.classeDoErro(e) + ')'); } return { ia, armazenamento: { arquivos: 1, bytes: 10, no_r2: null, no_disco: null, fonte: 'teste' }, notas }; } },
+        { sistema: 'fora', nome: 'Sem o que medir', coletar() { throw Object.assign(new Error('mora em outro serviço: este processo não enxerga o banco dele'), { naoMedido: true }); } },
+      ] });
+    } finally { console.error = antigo; }
+    assert.deepEqual(r.sistemas.map(s => s.motivo), ['falha ao ler: módulo não carregou', 'falha ao ler: restrição do banco', '', 'mora em outro serviço: este processo não enxerga o banco dele'], 'o motivo que NÓS escrevemos (não medido) continua inteiro');
+    const resposta = JSON.stringify(r);
+    assert.ok(!/@|exemplo\.com|\/opt\/render|Require stack|Users\\\\|\.db\b|segredo|UNIQUE|constraint failed/i.test(resposta), 'vazou texto de exceção na resposta: ' + resposta.slice(0, 400));
+    assert.ok(erros.some(e => /fulano\.de\.tal@exemplo\.com/.test(e) && /\[despesas-sistemas\] pessoal: restrição do banco/.test(e)) && erros.some(e => /nao-existe-mesmo/.test(e)), 'o detalhe vai para o log do servidor, com o sistema e a classe');
+    assert.deepEqual(['no such table: x', 'SQLITE_BUSY: database is locked', 'unable to open database file', 'Unexpected token } in JSON', 'qualquer outra coisa'].map(m => D._int.classeDoErro(new Error(m))),
+      ['tabela ausente', 'banco ocupado', 'banco ou arquivo indisponível', 'arquivo ilegível', 'erro inesperado']);
+    // a rota: o 500 também não leva o texto
+    const fonte = fs.readFileSync(path.join(__dirname, 'nucleo', 'despesas-sistemas.js'), 'utf8');
+    assert.ok(!/e\.message\)\s*\.replace\(\/\\s\+\/g, ' '\)\.slice\(0, 160\)/.test(fonte) && /detalhe: curto\(e, 'rota'\)/.test(fonte));
+  });
+
+  await t('despesas-sistemas (C-06): o prazo vale para o que dá — coletor assíncrono é cortado e PARA; prazo total vencido, o resto não roda; coletor síncrono lento sai com a nota; e a rota responde do CACHE, divide a leitura em curso e limita as leituras novas', async () => {
+    const D = require('./nucleo/despesas-sistemas');
+    const dormir = (ms) => new Promise(ok => setTimeout(ok, ms));
+    const ocupar = (ms) => { const f = Date.now() + ms; while (Date.now() < f) { /* consulta síncrona demorada */ } };
+    const antigo = console.error; console.error = () => {};
+    try {
+      // (1) assíncrono que passa do prazo: "tempo esgotado" — e o laço dele recebe o sinal e para
+      let voltas = 0, parou = false;
+      const lerFamilias = async (ctx) => { for (let k = 0; k < 200; k++) { if (ctx.sinal.vencido) { parou = true; throw new Error('parei'); } voltas++; await dormir(15); } return { ia: { chamadas: 1, custo_usd: 1 }, notas: [] }; };
+      let r = await D.resumo(7, { prazoMs: 80, coletores: [{ sistema: 'lento-async', nome: 'Assíncrono lento', coletar: lerFamilias }, { sistema: 'depois', nome: 'O seguinte', coletar: () => ({ ia: { chamadas: 2, custo_usd: 0.5 }, notas: [] }) }] });
+      assert.deepEqual([r.sistemas[0].medido, r.sistemas[0].motivo, r.sistemas[0].usa_ia, r.sistemas[1].medido, r.total.ia_chamadas], [false, 'falha ao ler: tempo esgotado', 'falha_de_leitura', true, 2]);
+      await dormir(60);
+      const noCorte = voltas;
+      await dormir(120);
+      assert.ok(parou && voltas === noCorte && voltas < 30, `o laço parou quando o prazo venceu (${voltas} voltas de 200) — antes seguia rodando em segundo plano`);
+      // a Origena de verdade confere o sinal a cada família
+      let familiasLidas = 0;
+      const sinal = { vencido: false };
+      const origenaFalsa = { db: { configurado: () => true, todas: async () => [{ id: 'f1' }, { id: 'f2' }, { id: 'f3' }] },
+        tenancy: { comEscopo: async () => { familiasLidas++; sinal.vencido = true; return { ledger: [], arquivos: { n: 0, b: 0 }, pedidos: { n: 0, s: 0 } }; } } };
+      const eo = await D._int.origena({ desde: new Date().toISOString(), sinal }, origenaFalsa).then(() => null, (e) => e);
+      assert.deepEqual([familiasLidas, !!(eo && eo.tempoEsgotado)], [1, true], 'vencido o prazo, a segunda família já não é lida');
+      // (2) síncrono lento: não há como cortar — o resultado vale, e a linha diz que passou do prazo
+      r = await D.resumo(7, { prazoMs: 40, coletores: [{ sistema: 'lento-sync', nome: 'Síncrono lento', coletar() { ocupar(120); return { ia: { chamadas: 1, custo_usd: 1 }, notas: ['nota do coletor'] }; } }] });
+      assert.deepEqual([r.sistemas[0].medido, r.sistemas[0].motivo, r.sistemas[0].notas.length, /^leitura lenta: \d+ ms, acima do prazo de 40 ms \(consulta síncrona não pode ser interrompida/.test(r.sistemas[0].notas[1])], [true, '', 2, true]);
+      // (3) prazo TOTAL: o primeiro coletor (síncrono) gastou tudo → os seguintes NÃO rodam nesta chamada
+      let rodou = 0;
+      r = await D.resumo(7, { prazoTotalMs: 60, coletores: [{ sistema: 'a', nome: 'A', coletar() { ocupar(100); return { ia: { chamadas: 1, custo_usd: 1 }, notas: [] }; } },
+        { sistema: 'b', nome: 'B', coletar() { rodou++; return { ia: { chamadas: 9, custo_usd: 9 }, notas: [] }; } }, { sistema: 'c', nome: 'C', coletar() { rodou++; return {}; } }] });
+      assert.deepEqual([rodou, r.sistemas.map(s => s.medido), /^não lido nesta rodada: o prazo total/.test(r.sistemas[1].motivo), r.total.ia_chamadas, r.nao_medido.some(n => /^2 sistema\(s\) não foram lidos nesta rodada/.test(n))], [0, [true, false, false], true, 1, true]);
+      assert.ok(typeof r.levou_ms === 'number' && r.levou_ms >= 100);
+    } finally { console.error = antigo; }
+
+    // (4) o CACHE: uma leitura por `dias`, dividida por quem chega junto, com teto de leituras novas por minuto
+    let leituras = 0, relogio = 1000000;
+    const C = D._int.novoCache({ leitor: async (d) => { leituras++; await dormir(20); return { dias: d, gerado_em: 'g' + leituras }; }, cacheMs: 300000, porMinuto: 3, agora: () => relogio });
+    const [a, b] = await Promise.all([C.ler('7'), C.ler(7)]);
+    assert.deepEqual([leituras, a.gerado_em, b.gerado_em, a.em_cache, a.dias], [1, 'g1', 'g1', false, 7], 'duas chamadas simultâneas: UMA leitura');
+    const c2 = await C.ler(7);
+    assert.deepEqual([leituras, c2.gerado_em, c2.em_cache, c2.cache_expira_em], [1, 'g1', true, new Date(1000000 + 300000).toISOString()], 'dentro de 5 minutos: a mesma resposta, sem ler de novo');
+    await C.ler(30); await C.ler(99999);
+    assert.deepEqual([leituras, (await C.ler(366)).em_cache], [3, true], 'cada `dias` tem a sua; 99999 é 366');
+    const recusa = await C.ler(60).then(() => null, (e) => e);
+    assert.deepEqual([recusa && recusa.status, leituras, recusa && recusa.espere_seg > 0 && recusa.espere_seg <= 60], [429, 3, true], 'a quarta leitura NOVA no mesmo minuto é recusada (as do cache continuam respondendo)');
+    assert.equal((await C.ler(7)).em_cache, true);
+    relogio += 61000;
+    assert.deepEqual([(await C.ler(60)).em_cache, leituras], [false, 4], 'passado o minuto, volta a ler');
+    relogio += 300000;
+    assert.deepEqual([(await C.ler(7)).gerado_em, leituras], ['g5', 5], 'vencidos os 5 minutos, lê de novo');
+    // leitura que falha não fica guardada (nem trava o `dias`)
+    let vez = 0;
+    const F = D._int.novoCache({ leitor: async () => { if (!vez++) throw new Error('caiu'); return { dias: 7 }; }, porMinuto: 5 });
+    assert.equal((await F.ler(7).then(() => 'ok', () => 'erro')), 'erro');
+    assert.equal((await F.ler(7)).em_cache, false);
+    // a rota usa o cache: a segunda chamada devolve a mesma leitura; e o 429 leva Retry-After
+    D._int.limparCache();
+    const chave = { headers: { 'x-publish-key': 'pk-test' } };
+    const r1 = await req('GET', ROTA_DESP + '?dias=3', chave), r2 = await req('GET', ROTA_DESP + '?dias=3', chave);
+    assert.deepEqual([r1.status, r1.json.em_cache, r2.json.em_cache, r2.json.gerado_em === r1.json.gerado_em], [200, false, true, true]);
+    let ultima = null;
+    for (let d = 100; d < 100 + 8; d++) { ultima = await req('GET', ROTA_DESP + '?dias=' + d, chave); if (ultima.status === 429) break; }
+    assert.deepEqual([ultima.status, Number(ultima.headers['retry-after']) > 0, /Muitas leituras novas/.test(ultima.json.erro)], [429, true, true], 'quem repete `dias` diferentes em laço é barrado');
+    assert.equal((await req('GET', ROTA_DESP + '?dias=3', chave)).status, 200, 'o que está no cache segue respondendo');
+    D._int.limparCache();
+    const fonte = fs.readFileSync(path.join(__dirname, 'nucleo', 'despesas-sistemas.js'), 'utf8');
+    assert.ok(/await cederOLaco\(\);/.test(fonte) && /NÃO corta esses coletores/.test(fonte), 'entre os coletores o laço é devolvido; e o cabeçalho diz o que o prazo não faz');
+  });
+
+  await t('despesas-sistemas (C-15 e C-18): o Legal é lido SÓ para leitura (sem abrir o banco pelo módulo, sem migrar, sem deixar conexão aberta); e cada sistema DECLARA se usa IA', async () => {
+    const D = require('./nucleo/despesas-sistemas');
+    const L = require('./legal/db');
+    const { DatabaseSync } = require('node:sqlite');
+    // um escritório com banco "antigo": tem as tabelas, não tem a tabela de migrações — abrir pelo módulo o migraria
+    const dir = L.dirDoTenant('audcescritorio');
+    fs.mkdirSync(dir, { recursive: true });
+    const arq = path.join(dir, 'legal.db');
+    const novo = new DatabaseSync(arq);
+    novo.exec(`CREATE TABLE ai_agent_runs (id TEXT PRIMARY KEY, modelo TEXT, input_tokens INTEGER, output_tokens INTEGER, cache_read_tokens INTEGER, custo_centavos_usd INTEGER, quando TEXT);
+      CREATE TABLE document_versions (id TEXT PRIMARY KEY, tamanho INTEGER);
+      INSERT INTO ai_agent_runs VALUES ('r1', 'mock', 1000, 500, 0, 7, '${new Date().toISOString()}');
+      INSERT INTO document_versions VALUES ('d1', 4096);`);
+    novo.close();
+    // … e um escritório cujo banco ainda não tem a tabela: fica de fora, com nota, sem derrubar os outros
+    const dir2 = L.dirDoTenant('audcvazio');
+    fs.mkdirSync(dir2, { recursive: true });
+    const vazio = new DatabaseSync(path.join(dir2, 'legal.db')); vazio.exec('CREATE TABLE outra (x INTEGER);'); vazio.close();
+    const legal = D.COLETORES.find(c => c.sistema === 'legal-saas');
+    const antes = fs.statSync(arq).mtimeMs, comTenant = L.comTenant;
+    const antigoErr = console.error; console.error = () => {};
+    let usouOModulo = 0, r;
+    L.comTenant = (...a) => { usouOModulo++; return comTenant(...a); };
+    try { r = await D.resumo(7, { coletores: [legal] }); } finally { L.comTenant = comTenant; console.error = antigoErr; }
+    const s = r.sistemas[0];
+    assert.equal(usouOModulo, 0, 'a leitura não passa por legal/db.js › comTenant (que abriria, migraria e guardaria a conexão)');
+    assert.ok(s.ia && s.ia.chamadas >= 1 && s.ia.custo_usd >= 0.07 && s.armazenamento.bytes >= 4096 && s.usa_ia === 'sim', JSON.stringify(s).slice(0, 300));
+    assert.ok(s.notas.some(n => /^IA: 1 escritório\(s\) ficaram de fora/.test(n)) && s.notas.some(n => /^armazenamento: 1 escritório\(s\) ficaram de fora/.test(n)), s.notas.join(' | '));
+    const conf = new DatabaseSync(arq, { readOnly: true });
+    const tabelas = conf.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map(x => x.name);
+    conf.close();
+    assert.deepEqual([tabelas, fs.statSync(arq).mtimeMs], [['ai_agent_runs', 'document_versions'], antes], 'nenhuma tabela criada, nenhuma migração rodada, arquivo intocado');
+    fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(dir2, { recursive: true, force: true }); // conexão fechada: no Windows o arquivo aberto não sairia
+    assert.ok(!fs.existsSync(arq), 'o banco foi FECHADO depois da leitura');
+
+    // C-18 — o campo `usa_ia`, por sistema
+    D._int.limparCache();
+    const todos = await req('GET', ROTA_DESP, { headers: { 'x-publish-key': 'pk-test' } });
+    const usa = Object.fromEntries(todos.json.sistemas.map(x => [x.sistema, x.usa_ia]));
+    assert.deepEqual([usa.academy, usa.livraria, usa.vsm, usa.vitrine, usa.comunicados, usa['alta-vista'], usa.closet, usa.kids, usa.voz, usa.cozinhe],
+      ['sim', 'nao', 'nao', 'nao', 'nao', 'nao', 'sim_sem_registro', 'sim_sem_registro', 'sim_sem_registro', ''], 'quem não usa, quem usa e não grava, e quem não se sabe (não medido) — sem depender de frase nas notas');
+    assert.ok(todos.json.sistemas.every(x => ['sim', 'nao', 'sim_sem_registro', 'falha_de_leitura', ''].includes(x.usa_ia)));
+    // sistema cuja leitura de IA FALHOU não vira "usa IA e não registra"
+    const antigo2 = console.error; console.error = () => {};
+    let q;
+    try { q = await D.resumo(7, { coletores: [{ sistema: 'x', nome: 'X', coletar() { throw new Error('no such table: ai_runs'); } }, { sistema: 'novo', nome: 'Sistema novo', coletar: () => ({ armazenamento: { arquivos: 0, bytes: 0, no_r2: null, no_disco: null, fonte: 't' }, notas: [] }) }] }); }
+    finally { console.error = antigo2; }
+    assert.deepEqual(q.sistemas.map(x => x.usa_ia), ['falha_de_leitura', ''], 'falha de leitura é falha de leitura; sistema novo que não declarou fica em branco — o relatório não acusa por omissão');
+    D._int.limparCache();
+  });
+
   await t('despesas-sistemas: soma certo sobre linhas plantadas (IA e arquivos do Docs, uso da Eva) e respeita o período', async () => {
     const chave = { headers: { 'x-publish-key': 'pk-test' } };
+    // (a rota guarda a resposta por 5 minutos e limita as leituras novas — auditoria C, C-06: este teste planta linhas
+    // e lê de novo, então esvazia o cache a cada mudança, como faria o relógio)
+    const limparCache = require('./nucleo/despesas-sistemas')._int.limparCache;
+    limparCache();
     const antes = sis(await req('GET', ROTA_DESP + '?dias=30', chave), 'vdocs');
     const vdb = require('./vdocs/db').db;
     const iso = (diasAtras) => new Date(Date.now() - diasAtras * 864e5).toISOString();
@@ -979,6 +1128,8 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     ent.run('whatsapp', 'k3', 'u1', 'enviado', iso(1)); ent.run('whatsapp', 'k4', 'u2', 'pendente', iso(1));
     ent.run('app', 'k5', 'u1', 'lido', iso(1)); ent.run('email', 'k6', 'u3', 'enviado', iso(45));
 
+    assert.equal((await req('GET', ROTA_DESP + '?dias=30', chave)).json.em_cache, true, 'sem esvaziar, a rota devolveria a leitura de antes das linhas plantadas');
+    limparCache();
     const r30 = await req('GET', ROTA_DESP + '?dias=30', chave);
     assert.deepEqual([sis(r30, 'music').mensagens.email, sis(r30, 'music').mensagens.whatsapp], [2, 1], 'envios do Musique pela central');
     const v = sis(r30, 'vdocs');

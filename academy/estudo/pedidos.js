@@ -467,11 +467,42 @@ JSON: {"criterios":[{"n":1,"nivel":0,"trecho":"","faltou":""}],"erros_criticos":
 
 // A citação só fica se estiver na resposta. Compara-se sem diferença de espaços, aspas e caixa —
 // o modelo costuma trocar aspa curva por reta e juntar linhas; inventar frase, não passa.
-const chato = (t) => String(t == null ? '' : t).normalize('NFC').replace(/[“”«»"]/g, '"').replace(/[‘’']/g, "'").replace(/[–—]/g, '-').replace(/\s+/g, ' ').trim().toLowerCase();
+// (auditoria C de 12/10/2026, C-13) O que NÃO pode recusar citação fiel — e recusava, gastando a segunda leitura à toa:
+//   · hífen não separável (U+2011) e os outros traços (U+2010 a U+2015, sinal de menos): viram "-";
+//   · hífen suave (U+00AD) e espaços de largura zero (texto colado do Word): não se veem, saem;
+//   · apóstrofos e crases (’ ‘ ‚ ‛ ′ ´ `) e aspas tipográficas (“ ” „ ‟ « » ″): viram ' e ";
+//   · reticências: "…" e "..." são a mesma coisa;
+//   · espaços e quebras de linha (inclusive o espaço não separável): um espaço só.
+const chato = (t) => String(t == null ? '' : t).normalize('NFC')
+  .replace(/[­​-‍⁠﻿]/g, '')
+  .replace(/[“”„‟«»″"]/g, '"').replace(/[‘’‚‛′´`']/g, "'")
+  .replace(/[‐-―−]/g, '-')
+  .replace(/…/g, '...')
+  .replace(/\s+/g, ' ').trim().toLowerCase();
+// O PISO da citação. Eram 8 caracteres, comparados como pedaço de texto: "de acordo", "o artigo", "direito do"
+// sustentavam um nível 3 se o modelo os devolvesse — qualquer resposta os contém. Quem sustenta um nível é uma
+// AFIRMAÇÃO do candidato, não uma palavra: agora a citação precisa de ao menos 3 palavras E 20 caracteres (contados
+// depois de normalizar, somadas as partes quando há reticência no meio). "A lei não retroage." (4 palavras, 19
+// caracteres) fica de fora por um caractere: é o preço de não aceitar "nos termos da lei" (17) — e o critério que
+// perde a citação por isso NÃO perde o nível: sai marcado "sem trecho localizado", à vista.
+const CITACAO_MIN_CHARS = 20, CITACAO_MIN_PALAVRAS = 3;
+const RETICENCIA_NO_MEIO = /\s*(?:\[\s*\.\.\.\s*\]|\(\s*\.\.\.\s*\)|\.\.\.)\s*/;
 function citacaoConferida(trecho, respostaChata) {
-  let t = s(trecho, 400).replace(/^[\s"“”'‘’…]+|[\s"“”'‘’…]+$/g, '').replace(/^\.{3}|\.{3}$/g, '').trim();
-  if (t.length < 8) return ''; // uma palavra solta não sustenta nível nenhum
-  return respostaChata.includes(chato(t)) ? t : '';
+  const t = s(trecho, 400).replace(/^[\s"“”„‟«»'‘’‚‛′´`…]+|[\s"“”„‟«»'‘’‚‛′´`…]+$/g, '').replace(/^\.{3}|\.{3}$/g, '').trim();
+  const inteiro = chato(t);
+  // CITAÇÃO COM RETICÊNCIA NO MEIO ("o exequente … deixa de cumprir"): o modelo pulou um pedaço. Confere-se POR PARTES —
+  // cada parte tem de existir na resposta, e na ORDEM em que foi citada. (A resposta que traz as reticências ela
+  // mesma, no mesmo lugar, confere inteira, sem partir.)
+  const partes = respostaChata.includes(inteiro) ? [inteiro] : inteiro.split(RETICENCIA_NO_MEIO).map(p => p.trim()).filter(Boolean);
+  const util = partes.join(' ');
+  if (util.length < CITACAO_MIN_CHARS || (util.match(/[\p{L}\p{N}]+/gu) || []).length < CITACAO_MIN_PALAVRAS) return '';
+  let de = 0;
+  for (const p of partes) {
+    const k = respostaChata.indexOf(p, de);
+    if (k < 0) return '';
+    de = k + p.length;
+  }
+  return t;
 }
 
 // O resultado: níveis do modelo, citações conferidas e a NOTA calculada aqui (0–100).
@@ -556,17 +587,28 @@ async function completarCitacoes(q, resposta, resultado, t, { oral = false, user
   const leitura = { criterios: faltam.length, feita: false, recuperadas: 0, motivo: '' };
   const prompt = promptCitacao(q, resposta, faltam, { oral });
   const saida = SAIDA_CITACAO_BASE + SAIDA_POR_CITACAO * faltam.length;
+  // `t.cabe` autoriza o PIOR caso de UMA tentativa paga — e o passo vai com `uma_tentativa_paga` (ia.js), para que seja
+  // uma só mesmo: sem isso a fila de modelos podia cobrar duas (a primeira fora do formato, a segunda boa) e o custo
+  // real do trabalho passava da reserva, por conta da plataforma (auditoria C, C-12).
   if (!t.cabe(ia.tetoTrabalhoUSD('correcao', { caracteres: prompt.length, passos: 1, saida_por_passo: saida }))) leitura.motivo = 'sem_folga';
   else if (userId && absorcaoEsgotada(userId)) leitura.motivo = 'sem_absorcao'; // a plataforma já absorveu o teto do dia: não gasta mais
   else {
     try {
-      const bruto = await t.passo(prompt, { max_saida: saida, absorver: true });
+      const bruto = await t.passo(prompt, { max_saida: saida, absorver: true, uma_tentativa_paga: true });
       leitura.feita = true;
       const base = chato(resposta);
-      const lista = bruto && Array.isArray(bruto.criterios) ? bruto.criterios : [];
-      for (const f of faltam) {
-        const m = lista.find(x => x && Math.round(Number(x.n)) === f.n);
-        const trecho = m ? citacaoConferida(m.trecho, base) : '';
+      const lista = (bruto && Array.isArray(bruto.criterios) ? bruto.criterios : []).filter(x => x && typeof x === 'object');
+      // NUMERAÇÃO TROCADA (auditoria C, C-S1 — reproduzida com o modelo simulado): pedidos os critérios 2 e 3, a resposta
+      // que volta numerada "1 e 2" colava o trecho do critério 3 no 2 — e ele passava na conferência, porque ESTÁ na
+      // resposta do aluno. A assinatura da renumeração é dupla: veio número que não foi pedido E faltou número pedido.
+      // Aí a segunda leitura inteira é descartada (os critérios seguem marcados). Número a mais com todos os pedidos
+      // presentes é só sobra, ignorada como sempre; e número repetido não serve a ninguém.
+      const pedidos = new Set(faltam.map(f => f.n)), vindos = lista.map(x => Math.round(Number(x.n)));
+      const estranho = vindos.some(n => !pedidos.has(n)), faltou = faltam.some(f => !vindos.includes(f.n));
+      if (estranho && faltou) leitura.motivo = 'numeracao';
+      else for (const f of faltam) {
+        const doCriterio = lista.filter(x => Math.round(Number(x.n)) === f.n);
+        const trecho = doCriterio.length === 1 ? citacaoConferida(doCriterio[0].trecho, base) : '';
         if (!trecho) continue; // de novo sem trecho (ou inventado): segue marcado
         Object.assign(f.c, { trecho, citacao_conferida: true, sem_trecho: false });
         leitura.recuperadas++;
@@ -671,11 +713,17 @@ const aguardar = (id) => emAndamento.get(id) || Promise.resolve();
 
 // Quem já teve FALHAS_POR_DIA pedidos falhos (com reserva) nas últimas 24 h espera: cada falha devolve tudo,
 // e o provedor foi pago mesmo assim.
-// O VALOR que a plataforma já absorveu nas últimas 24 h alcançou o teto? → 'conta' | 'global' | ''. Uma régua só:
-// é ela que pausa pedido novo (`exigirLimiteDeFalhas`) e que impede a segunda leitura da correção, que é absorvida.
-function absorcaoEsgotada(userId, desde = new Date(Date.now() - 864e5).toISOString()) {
-  if (ia.custoDeFalhasUSD({ userId, desde }) >= (carteira.isento(userId) ? FALHAS_USD_POR_DIA_GLOBAL : FALHAS_USD_POR_DIA_CONTA)) return 'conta';
-  if (ia.custoDeFalhasGlobalUSD({ desde, tetoPorConta: FALHAS_USD_POR_DIA_CONTA }) >= FALHAS_USD_POR_DIA_GLOBAL) return 'global';
+// O VALOR que a plataforma já absorveu nas últimas 24 h alcançou o teto? → 'conta' | 'global' | ''.
+// DUAS LEITURAS da mesma régua (auditoria C de 12/10/2026, C-09):
+//   · tudo o que foi absorvido — pedido que FALHOU e segunda leitura de correção que deu CERTO — decide se a
+//     plataforma ainda absorve mais: é o que impede a próxima segunda leitura (`completarCitacoes`);
+//   · `soFalhas`: só o pedido que falhou (`status = 'erro'`) — é o que PAUSA pedido novo (`exigirLimiteDeFalhas`).
+// Antes era uma conta só, e correção PRONTA empurrava a conta para a pausa: 40 correções entregues, cada uma com a
+// segunda leitura absorvida, e o aluno lia "pedidos seus que não foram concluídos… alcançaram o limite" sem ter tido
+// falha nenhuma; dez contas assim pausavam o serviço de todos. Quem para de gastar é a segunda leitura, não o aluno.
+function absorcaoEsgotada(userId, desde = new Date(Date.now() - 864e5).toISOString(), { soFalhas = false } = {}) {
+  if (ia.custoDeFalhasUSD({ userId, desde, soFalhas }) >= (carteira.isento(userId) ? FALHAS_USD_POR_DIA_GLOBAL : FALHAS_USD_POR_DIA_CONTA)) return 'conta';
+  if (ia.custoDeFalhasGlobalUSD({ desde, tetoPorConta: FALHAS_USD_POR_DIA_CONTA, soFalhas }) >= FALHAS_USD_POR_DIA_GLOBAL) return 'global';
   return '';
 }
 function exigirLimiteDeFalhas(userId) {
@@ -684,11 +732,13 @@ function exigirLimiteDeFalhas(userId) {
   if (n >= FALHAS_POR_DIA) throw erro(`${n} pedidos seus não foram concluídos nas últimas 24 horas (o valor de cada um voltou ao saldo). Por segurança, novos pedidos ficam em espera até amanhã — se o problema for do serviço, fale com o suporte. Nada foi cobrado.`, 429);
   // … e pelo VALOR que essas falhas custaram à plataforma (a mensagem não diz o número: é custo nosso, não do aluno)
   // (a conta isenta não tem o teto de US$ 2 — mas o que ELA absorver sozinha até o valor do teto global pausa só ela)
-  if (absorcaoEsgotada(userId, desde) === 'conta') {
+  // (`soFalhas`: aqui só conta o que FALHOU — correção entregue com segunda leitura absorvida não pausa ninguém)
+  const esgotada = absorcaoEsgotada(userId, desde, { soFalhas: true });
+  if (esgotada === 'conta') {
     throw erro('Pedidos seus que não foram concluídos nas últimas 24 horas já alcançaram o limite diário de tentativas (o valor de cada um voltou ao saldo). Por segurança, novos pedidos ficam em espera até amanhã — se o problema for do serviço, fale com o suporte. Nada foi cobrado.', 429);
   }
   // GLOBAL: cada conta pesa no máximo o teto por conta — uma conta sozinha não pausa o serviço dos outros
-  if (absorcaoEsgotada(userId, desde) === 'global') {
+  if (esgotada === 'global') {
     throw erro('Este serviço está em pausa por hoje: muitos pedidos não foram concluídos nas últimas 24 horas e estamos verificando. Tente de novo amanhã. Nada foi cobrado.', 503);
   }
 }
@@ -1282,7 +1332,12 @@ function prepararEdital(usuario, produto, p, dados) {
 // plano vazio não tem valor: zero mesmo (e não o "-0" que o arredondamento para cima devolveria)
 const precoDoEdital = (p) => Math.max(0, carteira.precoEmMilesimos(tetoUSD(p))) || 0;
 const diffPublico = (d) => ({ mudou: d.mudou, iguais: d.iguais, adicionados_total: d.adicionados.length, removidos_total: d.removidos.length, alterados_total: d.alterados.length,
-  adicionados: d.adicionados.slice(0, DIFF_MAX), removidos: d.removidos.slice(0, DIFF_MAX), alterados: d.alterados.slice(0, DIFF_MAX) });
+  movidos_total: (d.movidos || []).length,
+  adicionados: d.adicionados.slice(0, DIFF_MAX), removidos: d.removidos.slice(0, DIFF_MAX), alterados: d.alterados.slice(0, DIFF_MAX), movidos: (d.movidos || []).slice(0, DIFF_MAX) });
+// A releitura que deixaria o programa EM DOBRO não é aplicada (auditoria C, C-03): a subárea deste pedido repete os
+// tópicos de uma disciplina que o percurso já tem com OUTRO título, e não há como garantir que é a mesma matéria.
+// A prévia mostra o motivo (a tela mantém as saídas à vista); aplicar recusa com a mesma mensagem.
+const mensagemDeDobro = (conflitos) => `Esta leitura deixaria o programa em dobro: ${conflitos.slice(0, 3).map(c => `a subárea "${s(c.subarea, 80)}" repete ${c.topicos} tópico(s) que já estão na disciplina "${s(c.disciplina, 80)}" (${c.codigo_no_percurso}) do percurso`).join('; ')}${conflitos.length > 3 ? `; e mais ${conflitos.length - 3}` : ''}. Como os títulos são diferentes, não dá para garantir que é a mesma matéria — e juntar errado quebraria as questões e o seu histórico. Para seguir: volte à revisão e exclua essa subárea deste pedido, ou marque "Substituir o programa atual pelo deste pedido". Nada foi alterado.`;
 function previaDoEdital(usuario, produto, slugEscopo, id, dados = {}) {
   al.abrir(usuario, produto, slugEscopo);
   const p = meu(usuario, produto, id);
@@ -1293,9 +1348,34 @@ function previaDoEdital(usuario, produto, slugEscopo, id, dados = {}) {
     retificacao: x.retificacao, programa: { itens: x.novos.length, disciplinas: x.novos.filter(i => !i.pai).length, pendentes: x.novos.filter(i => i.pendente).length },
     // em percurso que já tem programa: o que este pedido SOMA — as disciplinas que já existiam e recebem itens, e
     // as que mudam de sigla porque a dele já era de outra disciplina do percurso
-    soma: x.retificacao ? { substituir: x.substituir, deste_pedido: x.esc.itens.length, disciplinas_somadas: x.soma.somadas, siglas_trocadas: x.soma.renomeadas } : null,
+    // `disciplinas_absorvidas`: a disciplina solta de uma leitura antiga que este pedido reconheceu como SUBÁREA de
+    // outra — ela muda de lugar (não duplica) e conserva os códigos; `bloqueio`: a leitura que deixaria o programa em dobro
+    soma: x.retificacao ? { substituir: x.substituir, deste_pedido: x.esc.itens.length, disciplinas_somadas: x.soma.somadas, siglas_trocadas: x.soma.renomeadas,
+      disciplinas_absorvidas: x.soma.absorvidas || [], bloqueio: (x.soma.conflitos || []).length ? mensagemDeDobro(x.soma.conflitos) : '' } : null,
     diff: x.retificacao ? diffPublico(x.diff) : null,
   };
+}
+
+// Religa ao código NOVO os vínculos do item que saiu do programa com o mesmo texto (ver `aplicarEdital`). → quantos
+// códigos foram religados. `OR IGNORE` + apagar a sobra: se o código novo já tinha o mesmo vínculo, não duplica.
+function reapontarVinculos(escopoId, diff) {
+  const saiu = new Map(), entrou = new Map();
+  const por = (mapa, lista) => { for (const i of lista || []) { const h = edital.hash(i.texto); if (!mapa.has(h)) mapa.set(h, []); mapa.get(h).push(i.codigo); } };
+  por(saiu, diff.removidos); por(entrou, diff.adicionados);
+  const qv = db.prepare("UPDATE OR IGNORE est_questao_vinculos SET codigo = ? WHERE escopo_id = ? AND alvo = 'item' AND codigo = ?");
+  const qvSobra = db.prepare("DELETE FROM est_questao_vinculos WHERE escopo_id = ? AND alvo = 'item' AND codigo = ?");
+  const iv = db.prepare('UPDATE OR IGNORE est_vinculos SET item_codigo = ? WHERE escopo_id = ? AND item_codigo = ?');
+  const ivSobra = db.prepare('DELETE FROM est_vinculos WHERE escopo_id = ? AND item_codigo = ?');
+  let n = 0;
+  for (const [h, velhos] of saiu) {
+    const novos = entrou.get(h) || [];
+    if (velhos.length !== 1 || novos.length !== 1) continue; // texto repetido no programa: não se adivinha qual é qual
+    const mexeu = Number(qv.run(novos[0], escopoId, velhos[0]).changes || 0) + Number(iv.run(novos[0], escopoId, velhos[0]).changes || 0)
+      + Number(qvSobra.run(escopoId, velhos[0]).changes || 0) + Number(ivSobra.run(escopoId, velhos[0]).changes || 0);
+    if (mexeu) n++;
+  }
+  if (n) R.limparCache && R.limparCache();
+  return n;
 }
 
 // APLICAR — sem custo. Em percurso que JÁ tem programa, aplicar cria versão nova (com o diff): só passa com a
@@ -1304,6 +1384,7 @@ function previaDoEdital(usuario, produto, slugEscopo, id, dados = {}) {
 function aplicarEdital(usuario, produto, p, dados = {}) {
   return transacao(() => {
     const x = prepararEdital(usuario, produto, p, dados);
+    if ((x.soma.conflitos || []).length) throw erro(mensagemDeDobro(x.soma.conflitos), 409, { motivo: 'programa_em_dobro', conflitos: x.soma.conflitos.slice(0, DIFF_MAX) });
     if (x.retificacao && x.diff.mudou && dados.confirmar_retificacao !== true) {
       throw erro('Este percurso já tem programa: aplicar cria uma versão nova (retificação). Confira o que muda e confirme.', 409, { motivo: 'confirmar_retificacao', diff: diffPublico(x.diff) });
     }
@@ -1363,6 +1444,14 @@ function aplicarEdital(usuario, produto, p, dados = {}) {
     let ligadas = 0;
     for (const [cod, raiz] of raizDe) if (deDisciplina.has(cod)) ligadas += Number(liga.run(raiz, editalPdf.JUSTIFICATIVA, destino.id, cod).changes) || 0;
 
+    // O ITEM QUE TROCOU DE CÓDIGO LEVA OS VÍNCULOS DELE (auditoria C de 12/10/2026, C-S2 — reproduzida). Com
+    // "substituir", o item da leitura antiga sai ("NGDFH.1", "FD.1") e o MESMO texto entra com outro código
+    // ("NGDFH.A.1", "NGDFH.C.1"). As questões ligadas ao código antigo (`est_questao_vinculos`, alvo 'item') e a
+    // competência que o cobria (`est_vinculos`) ficavam apontando para um código que não existe mais no programa: a
+    // questão deixava de aparecer no ponto do edital e a evidência do aluno, na competência antiga, ficava sem item.
+    // Só se religa o que é INEQUÍVOCO: texto idêntico (o hash do item), um único código que saiu e um único que entrou.
+    const reapontados = reapontarVinculos(destino.id, x.diff);
+
     // o resultado guarda o que foi revisto (exclusões e textos conferidos) — dá para reaplicar depois
     const r = x.r, prog = rel.programa || {};
     r.itens = x.esc.revistos;
@@ -1373,7 +1462,8 @@ function aplicarEdital(usuario, produto, p, dados = {}) {
       // os códigos que ESTE pedido pôs no programa: é o que ele pode mudar ou tirar se for aplicado de novo
       codigos: x.soma.meus, hashes: Object.fromEntries(x.novos.filter(i => x.soma.meus.includes(i.codigo)).map(i => [i.codigo, i.hash])), substituiu: x.substituir && x.retificacao,
       adicionados: prog.adicionados || 0, removidos: prog.removidos || 0, alterados: prog.alterados || 0,
-      competencias_novas: (rel.competencias || {}).novas || 0, questoes_ligadas: ligadas, data_alvo: dataFutura ? x.conf.data_alvo : '',
+      competencias_novas: (rel.competencias || {}).novas || 0, questoes_ligadas: ligadas, vinculos_reapontados: reapontados,
+      disciplinas_absorvidas: (x.soma.absorvidas || []).length, data_alvo: dataFutura ? x.conf.data_alvo : '',
       ...(x.conf.data_alvo && !dataFutura ? { aviso_data: 'A data da prova informada já passou: o percurso ficou sem prazo, e o plano diz quando você termina no seu ritmo.' } : {}) };
     db.prepare("UPDATE est_pedidos SET estado = 'aplicado', resultado = ?, entrada = ?, atualizado_em = ? WHERE id = ?")
       .run(j.str(r), j.str({ ...x.e, destino: { escopo: destino.slug } }), nowISO(), p.id);

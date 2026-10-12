@@ -389,6 +389,106 @@ async function rodar({ t, req, impId, jars }) {
     }
   });
 
+  // ================= auditoria C de 12/10/2026 — C-21 (teste que só conferia o TIPO), C-07, C-10 e C-11 =================
+  await t('auditoria C (custos de IA): Logs.custos e Logs.pessoas com LINHAS PLANTADAS — a divisão por quem pagou (paga, isento, franquia, sem marca, falha total, falha parcial absorvida) e os totais batem; o que não chegou ao provedor não é chamada; o pedido interrompido fica à parte; o dia é o de Brasília; e nada disso varre a tabela na memória', async () => {
+    const PIA = { nome: 'Pia Pagante', email: 'pia.audc@t.com', senha: 'senha-forte-7', aceite_termos: true };
+    const ISA = { nome: 'Isa Isenta', email: 'isa.audc@t.com', senha: 'senha-forte-7', aceite_termos: true };
+    const FRAN = { nome: 'Fran Franquia', email: 'fran.audc@t.com', senha: 'senha-forte-7', aceite_termos: true };
+    for (const [k, u] of [PIA, ISA, FRAN].entries()) assert.equal((await req('POST', '/academy/api/signup', { corpo: u, jar: 'audc' + k, ip: '10.0.9.' + (31 + k) })).st, 200);
+    const id = (u) => repo.Usuarios.porEmail(u.email).id;
+    const pia = id(PIA), isa = id(ISA), fran = id(FRAN);
+    const cfgAntes = repo.Config.obter('ia_cobranca', null);
+    const r4 = (v) => Math.round(v * 1e4) / 1e4;
+    const agora = new Date().toISOString();
+    const velho = new Date(Date.now() - 40 * 864e5).toISOString();
+    // 01:30 em UTC de um dia que já passou: em Brasília ainda era o dia ANTERIOR (22:30)
+    const diaUTC = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+    const naBorda = `${diaUTC}T01:30:00.000Z`, diaDeBrasilia = new Date(Date.parse(naBorda) - 3 * 3600e3).toISOString().slice(0, 10);
+    assert.notEqual(diaDeBrasilia, diaUTC);
+    const ins = db.prepare(`INSERT INTO ai_usage_logs (id, quando, user_id, agente, modelo, input_tokens, output_tokens, custo_centavos_usd, status, detalhe, cobranca, milesimos, product_id, absorvido_centavos_usd)
+      VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, '', ?)`);
+    let n = 0;
+    const linha = (user, agente, custo, status, cobranca, mil = 0, abs = 0, { quando = agora, modelo = 'audc-modelo', detalhe = '' } = {}) => ins.run('audc-' + (++n), quando, user, agente, modelo, custo, status, detalhe, cobranca, mil, abs);
+    const antes = ia.Logs.custos(7).total;
+    try {
+      repo.Config.salvar('ia_cobranca', { ...(cfgAntes || {}), isentos: [ISA.email.toUpperCase(), 'fantasma.audc@t.com'] });
+      // custo em CENTAVOS de dólar; milésimos de real cobrados do aluno
+      linha(pia, 'audc-correcao', 210, 'ok', 'paga', 69, 105);        // paga, com falha PARCIAL absorvida (a segunda leitura): 105 úteis + 105 da plataforma
+      linha(pia, 'audc-correcao', 105, 'ok', 'paga', 69, 0);          // paga, inteira do aluno
+      linha(pia, 'audc-prova', 400, 'erro', 'paga', 0, 0);            // falha TOTAL: tudo da plataforma
+      linha(pia, 'audc-correcao', 0, 'sem_saldo', 'paga');            // nunca chegou ao provedor
+      linha(pia, 'audc-edital', 170, 'erro', 'paga', 0, 0, { modelo: 'estimado', detalhe: 'interrompido — custo estimado pelo teto aceito' }); // estimativa: fora do total
+      linha(pia, 'audc-correcao', 1000, 'ok', 'paga', 600, 0, { quando: velho }); // fora do período: só no "desde sempre"
+      linha(isa, 'audc-tutor', 300, 'ok', 'isento', 0, 100);          // isenta, com tentativa perdida: 200 úteis + 100 de falha — tudo da plataforma
+      linha(fran, 'audc-tutor', 50, 'ok', 'franquia');                // consulta grátis do dia
+      linha(fran, 'audc-tutor', 0, 'em_curso', 'franquia');           // vaga aberta: não é chamada
+      linha(fran, 'audc-tutor', 0, 'limite', '');                     // bloqueio pelo limite: não é chamada
+      linha(fran, 'audc-tutor', 40, 'ok', '');                        // sem marca de cobrança (cobrança desligada)
+      linha(fran, 'audc-borda', 0, 'ok', 'franquia', 0, 0, { quando: naBorda });
+
+      const c = ia.Logs.custos(7), tot = c.total;
+      const delta = (k) => r4(tot[k] - antes[k]);
+      assert.deepEqual({ chamadas: tot.chamadas - antes.chamadas, custo_usd: delta('custo_usd'), cobrado_dos_alunos_brl: delta('cobrado_dos_alunos_brl'), custo_coberto_por_aluno_usd: delta('custo_coberto_por_aluno_usd'),
+        custo_isentos_usd: delta('custo_isentos_usd'), custo_franquia_usd: delta('custo_franquia_usd'), custo_falhas_usd: delta('custo_falhas_usd'), custo_sem_marca_usd: delta('custo_sem_marca_usd'),
+        bancado_pela_plataforma_usd: delta('bancado_pela_plataforma_usd'), interrompidos: tot.interrompidos - antes.interrompidos, custo_estimado_interrompidos_usd: delta('custo_estimado_interrompidos_usd') },
+      { chamadas: 7, custo_usd: 11.05, cobrado_dos_alunos_brl: 0.138, custo_coberto_por_aluno_usd: 2.1,
+        custo_isentos_usd: 2, custo_franquia_usd: 0.5, custo_falhas_usd: 6.05, custo_sem_marca_usd: 0.4,
+        bancado_pela_plataforma_usd: 8.95, interrompidos: 1, custo_estimado_interrompidos_usd: 1.7 },
+      'sete chamadas chegaram ao provedor (sem_saldo, em_curso e limite não); a estimativa do interrompido (US$ 1,70) não entra em custo, falhas nem bancado');
+      assert.equal(r4(delta('custo_coberto_por_aluno_usd') + delta('bancado_pela_plataforma_usd')), delta('custo_usd'), 'pago pelo aluno + bancado pela plataforma = custo total');
+      assert.equal(r4(delta('custo_isentos_usd') + delta('custo_franquia_usd') + delta('custo_falhas_usd') + delta('custo_sem_marca_usd')), delta('bancado_pela_plataforma_usd'), 'o bancado é a soma das quatro parcelas');
+      const ag = (a) => c.por_agente.find(x => x.agente === a);
+      assert.deepEqual([ag('audc-correcao'), ag('audc-prova'), ag('audc-tutor'), ag('audc-borda'), ag('audc-edital')],
+        [{ agente: 'audc-correcao', chamadas: 2, custo_usd: 3.15, cobrado_brl: 0.138 }, { agente: 'audc-prova', chamadas: 1, custo_usd: 4, cobrado_brl: 0 }, { agente: 'audc-tutor', chamadas: 3, custo_usd: 3.9, cobrado_brl: 0 },
+          { agente: 'audc-borda', chamadas: 1, custo_usd: 0, cobrado_brl: 0 }, undefined], 'por função: só o que chegou ao provedor, sem a linha estimada');
+      assert.deepEqual(c.por_modelo.find(x => x.modelo === 'audc-modelo'), { modelo: 'audc-modelo', chamadas: 7, custo_usd: 11.05, cobrado_brl: 0.138 });
+      assert.ok(!c.por_modelo.some(x => x.modelo === 'estimado'), 'o "modelo" da linha estimada não aparece como modelo de provedor');
+      const conta = (u) => c.contas_bancadas.find(x => x.email === u.email);
+      assert.deepEqual([conta(PIA), conta(ISA), conta(FRAN)], [{ email: PIA.email, chamadas: 2, custo_usd: 5.05, tipo: 'falha + tentativa absorvida' }, { email: ISA.email, chamadas: 1, custo_usd: 3, tipo: 'isento' }, { email: FRAN.email, chamadas: 2, custo_usd: 0.9, tipo: 'franquia + sem marca' }],
+        'quem a plataforma bancou: a linha paga inteira do aluno não entra; a paga com parte absorvida entra como "tentativa absorvida", não como "paga"');
+      assert.ok(c.contas_bancadas.every((x, k, v) => !k || v[k - 1].custo_usd >= x.custo_usd) && c.contas_bancadas.length <= 30, 'maior primeiro, no máximo 30');
+      assert.ok(c.por_dia.some(x => x.dia === diaDeBrasilia) && c.por_dia.every((x, k, v) => !k || v[k - 1].dia < x.dia), 'por dia, em ordem');
+      const somaDias = c.por_dia.reduce((s, x) => s + x.chamadas, 0);
+      assert.equal(somaDias, tot.chamadas, 'a soma dos dias é o total');
+      db.prepare("DELETE FROM ai_usage_logs WHERE id LIKE 'audc-%' AND agente = 'audc-borda'").run();
+      const semBorda = ia.Logs.custos(7).por_dia.find(x => x.dia === diaDeBrasilia), comBorda = c.por_dia.find(x => x.dia === diaDeBrasilia);
+      assert.equal(comBorda.chamadas - (semBorda ? semBorda.chamadas : 0), 1, 'a chamada de 01:30 UTC conta no dia ANTERIOR, que é o de Brasília');
+
+      // ---- Logs.pessoas: as MESMAS linhas, por conta ----
+      const p = ia.Logs.pessoas(7);
+      const de = (lista, u) => lista.find(x => x.email === u.email);
+      const hoje = agora.slice(0, 10);
+      assert.deepEqual(de(p.maiores_do_periodo, PIA), { nome: PIA.nome, email: PIA.email, isento: false, cortesia_vitalicia: false, cursos_de_cortesia: 0, credito_cortesia_brl: 0, recargas_brl: 0, saldo_brl: 0,
+        chamadas: 3, custo_usd: 7.15, pago_pelo_usuario_usd: 2.1, bancado_usd: 5.05, cobrado_brl: 0.138, chamadas_total: 4, custo_total_usd: 17.15, bancado_total_usd: 5.05, funcoes: 'audc-correcao, audc-prova', ultimo_uso: hoje },
+      'a pagante: no período, 3 chamadas (sem a que ficou sem saldo e sem a estimada); desde sempre, 4 — e a linha antiga, paga inteira, não aumenta o bancado');
+      assert.deepEqual([de(p.isentos, ISA).isento, de(p.isentos, ISA).chamadas, de(p.isentos, ISA).custo_usd, de(p.isentos, ISA).pago_pelo_usuario_usd, de(p.isentos, ISA).bancado_usd, de(p.isentos, ISA).bancado_total_usd, p.isentos.length, p.isentos_sem_conta],
+        [true, 1, 3, 0, 3, 3, 1, ['fantasma.audc@t.com']], 'a isenta entra na lista pelo e-mail (sem diferença de caixa), com TODO o custo bancado; isento sem conta aparece à parte');
+      assert.deepEqual([de(p.maiores_do_periodo, FRAN).chamadas, de(p.maiores_do_periodo, FRAN).custo_usd, de(p.maiores_do_periodo, FRAN).bancado_usd, de(p.maiores_do_periodo, FRAN).funcoes], [2, 0.9, 0.9, 'audc-tutor'], 'franquia e sem marca: tudo da plataforma; vaga aberta e bloqueio não contam');
+      const ordem = [PIA, ISA, FRAN].map(u => p.maiores_do_periodo.findIndex(x => x.email === u.email));
+      assert.ok(ordem[0] >= 0 && ordem[0] < ordem[1] && ordem[1] < ordem[2], 'maiores do período: por custo, maior primeiro');
+      assert.ok(de(p.maiores_desde_sempre, PIA) && p.maiores_desde_sempre.every((x, k, v) => !k || v[k - 1].custo_total_usd >= x.custo_total_usd));
+      assert.ok(p.credito_de_cortesia.every(x => x.credito_cortesia_brl > 0) && !de(p.credito_de_cortesia, PIA), 'quem não recebeu crédito de cortesia não aparece na lista de crédito');
+      assert.ok(!JSON.stringify(c).includes(PIA.nome), 'Logs.custos não leva nome de ninguém (o e-mail das contas bancadas, só para chave ou admin)');
+
+      // ---- C-07: índice por data, e as consultas não trazem a tabela para a memória ----
+      assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_ai_quando'").get(), 'o índice de `quando` existe (migração)');
+      assert.ok(/idx_ai_quando/.test(db.prepare("EXPLAIN QUERY PLAN SELECT COUNT(*) FROM ai_usage_logs WHERE quando >= ? AND status IN ('ok', 'erro')").all(agora).map(x => x.detail).join(' ')), 'o filtro por data usa o índice');
+      // o teto GLOBAL de valor absorvido roda a cada pedido pago: tem de entrar pelo índice de data (e não percorrer o de usuário inteiro)
+      const planoDoTeto = db.prepare(`EXPLAIN QUERY PLAN SELECT user_id, COALESCE(SUM(custo_centavos_usd), 0) c FROM ai_usage_logs WHERE status = 'erro' AND quando > ? AND agente IN ('correcao') GROUP BY +user_id`).all(agora).map(x => x.detail).join(' ');
+      assert.ok(/idx_ai_quando/.test(planoDoTeto) && !/idx_ai_user/.test(planoDoTeto), planoDoTeto);
+      const fonte = require('fs').readFileSync(require('path').join(__dirname, 'ia.js'), 'utf8');
+      assert.ok(/GROUP BY \+user_id`\)\.all\(desde, \.\.\.agentes\)/.test(fonte), 'custoDeFalhasGlobalUSD agrupa com `+user_id`');
+      assert.ok(Math.abs(ia.custoDeFalhasGlobalUSD({ desde: new Date(Date.now() - 864e5).toISOString(), agentes: ['audc-prova'] }) - 4) < 1e-9 && Math.abs(ia.custoDeFalhasGlobalUSD({ desde: new Date(Date.now() - 864e5).toISOString(), agentes: ['audc-prova', 'audc-correcao', 'audc-tutor'], tetoPorConta: 1.5 }) - (1.5 + 1)) < 1e-9,
+        'e soma igual: US$ 4 da falha da Pia; com teto de US$ 1,50 por conta, 1,50 (Pia: 4 + 1,05) + 1 (Isa)');
+      const corpo = fonte.slice(fonte.indexOf('  custos(dias) {'), fonte.indexOf('module.exports = {'));
+      assert.ok(corpo.length > 2000 && !/FROM ai_usage_logs[^`]*`\)\.all\(\)\) \{\s*const c = Number/.test(corpo) && !/SELECT[^`]*FROM ai_usage_logs l LEFT JOIN users/.test(corpo) && (corpo.match(/GROUP BY/g) || []).length >= 5,
+        'custos e pessoas somam no SQL (GROUP BY), não em laço sobre a tabela inteira');
+    } finally {
+      db.prepare("DELETE FROM ai_usage_logs WHERE id LIKE 'audc-%'").run();
+      if (cfgAntes == null) db.prepare("DELETE FROM platform_settings WHERE chave = 'ia_cobranca'").run(); else repo.Config.salvar('ia_cobranca', cfgAntes);
+    }
+  });
+
   // desliga a cobrança ao fim (a virada, uma vez marcada, fica)
   await config({ ativa: false });
   ia.__mockParaTeste(null);

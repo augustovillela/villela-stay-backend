@@ -283,8 +283,18 @@ const ACAD = {
       const msg = document.getElementById('aped-msg');
       const ativos = document.getElementById('aped-ativos').checked;
       if (ativos && !pe.ativos && !confirm('Ligar os pedidos pagos do Estude para TODOS os alunos agora?\n\nCorreção de discursiva, peça e oral, prova em PDF e edital em PDF passam a aparecer para quem tem acesso ao curso. Cada pedido mostra o orçamento antes e é descontado do saldo de créditos de IA.')) return;
+      // SÓ A DIFERENÇA vai ao servidor (auditoria C de 12/10/2026, C-20). Antes o POST levava a lista INTEIRA que estava
+      // na tela: o liberado que um agente acrescentasse pela chave entre o carregamento da aba e o clique em Salvar era
+      // apagado pela lista velha. Agora vai o que ESTA tela acrescentou (`liberar`) e o que tirou (`remover`), contra a
+      // lista que ela carregou — o servidor aplica sobre a lista de AGORA. Quem não mexeu na lista não manda lista.
+      const emails = (v) => [...new Set(String(v == null ? '' : v).split(/[,;\s]+/).map(x => x.trim().toLowerCase()).filter(Boolean))];
+      const carregados = emails(pe.liberados.join(',')), naTela = emails(document.getElementById('aped-lib').value);
+      const corpo = { ativos };
+      const liberar = naTela.filter(x => !carregados.includes(x)), remover = carregados.filter(x => !naTela.includes(x));
+      if (liberar.length) corpo.liberar = liberar.join(', ');
+      if (remover.length) corpo.remover = remover.join(', ');
       try {
-        await ACAD.api('POST', '/estudo/pedidos-config', { ativos, liberados: document.getElementById('aped-lib').value });
+        await ACAD.api('POST', '/estudo/pedidos-config', corpo);
         ACAD.pintar();
       } catch (e) { msg.textContent = e.message; }
     };
