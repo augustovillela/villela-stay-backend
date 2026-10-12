@@ -74,6 +74,9 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
   // Uso de IA por aluno (SÓ LEITURA): perguntas, bloqueios pelo limite diário, tokens e custo — o relatório
   // semanal (stays\academy-ia-uso.ps1) lê com a chave para o Augusto calibrar o limite com números.
   app.get('/staff/api/academy/ia-uso', ...PA, h((req, res) => res.json(require('./ia').Logs.porUsuario(req.query.dias))));
+  // Custos de IA da plataforma (SÓ LEITURA): quem pagou cada dólar — aluno, isento, franquia ou falha absorvida —, por
+  // agente, modelo e dia, mais cortesias e saldo das carteiras. Lido pelo relatório semanal de despesas de sistemas.
+  app.get('/staff/api/academy/ia-custos', ...PA, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json(require('./ia').Logs.custos(req.query.dias)); }));
 
   // config comercial (comissões padrão etc.)
   app.get('/staff/api/academy/config', ...A, h((req, res) => res.json({ comissoes: repo.Config.obter('comissoes', {}) })));

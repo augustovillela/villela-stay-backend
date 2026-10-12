@@ -93,6 +93,12 @@ async function rodar({ t, req, impId, jars }) {
     const p = (await req('GET', '/staff/api/academy/ia/carteiras')).json;
     assert.ok(p.carteiras.some(x => x.email === NINA.email && x.cortesia === 5000 && x.carregado === 0), 'cortesia não se confunde com recarga');
     assert.equal((await req('GET', '/staff/api/academy/ia/carteiras', { semUser: true, chave: true })).st, 401);
+    // custos de IA (só leitura, lido pela chave no relatório semanal de despesas de sistemas): a cortesia aparece e nada vaza saldo por conta
+    const k = await req('GET', '/staff/api/academy/ia-custos?dias=7', { semUser: true, chave: true });
+    assert.equal(k.st, 200, k.texto);
+    assert.ok(k.json.carteiras.cortesia_dada_total_brl >= 5 && k.json.movimentos.cortesia.n >= 1, 'a cortesia dada entra no relatório');
+    assert.ok(k.json.total && typeof k.json.total.bancado_pela_plataforma_usd === 'number' && Array.isArray(k.json.contas_bancadas), 'o total diz quanto a plataforma bancou');
+    assert.equal((await req('GET', '/staff/api/academy/ia-custos', { semUser: true })).st, 401, 'sem chave nem sessão não lê');
   });
 
   await t('carteira: com saldo, ainda exige aceitar o VALOR — e cobra o custo real, não o teto', async () => {

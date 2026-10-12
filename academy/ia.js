@@ -680,6 +680,59 @@ const Logs = {
       alunos_que_bateram_limite: alunos.filter(a => a.bloqueios > 0).length,
       custo_usd: Math.round(soma('custo_usd') * 100) / 100 } };
   },
+  // CUSTOS DE IA DA PLATAFORMA (só leitura) — o relatório semanal de despesas de sistemas (stays\despesas-sistemas-semanal.ps1)
+  // lê com a chave. Diferente de `porUsuario` (que serve para calibrar o limite), aqui a pergunta é "quem pagou":
+  // o que saiu do saldo do aluno, o que a plataforma bancou (isentos, franquia grátis, tentativas falhas) e o
+  // crédito de cortesia dado. Custo de provedor = o `custo_centavos_usd` gravado na hora (não recalcula por tabela).
+  custos(dias) {
+    const d = Math.min(Math.max(parseInt(dias, 10) || 7, 1), 366);
+    const desde = new Date(Date.now() - d * 864e5).toISOString();
+    const usd = (centavos) => Math.round((Number(centavos) || 0) * 100) / 10000;
+    const brl = (milesimos) => Math.round(Number(milesimos) || 0) / 1000;
+    const linhas = db.prepare(`SELECT l.user_id, u.email, l.agente, l.modelo, l.status, l.cobranca, l.custo_centavos_usd c, l.milesimos m,
+        l.absorvido_centavos_usd a, substr(l.quando, 1, 10) dia FROM ai_usage_logs l LEFT JOIN users u ON u.id = l.user_id WHERE l.quando >= ?`).all(desde);
+    const grupo = () => ({ chamadas: 0, custo: 0, cobrado: 0 });
+    const tot = { chamadas: 0, custo: 0, cobrado: 0, pago_pelo_aluno: 0, isentos: 0, franquia: 0, falhas: 0, sem_marca: 0 };
+    const porAgente = {}, porDia = {}, porModelo = {}, contas = {};
+    for (const r of linhas) {
+      if (r.status === 'limite') continue; // bloqueio pelo limite não chega ao provedor
+      const c = Number(r.c) || 0, m = Math.abs(Number(r.m) || 0);
+      const falha = r.status === 'erro' ? c : Math.min(c, Number(r.a) || 0);
+      const util = c - falha;
+      tot.chamadas++; tot.custo += c; tot.cobrado += m; tot.falhas += falha;
+      if (r.cobranca === 'paga') tot.pago_pelo_aluno += util;
+      else if (r.cobranca === 'isento') tot.isentos += util;
+      else if (r.cobranca === 'franquia') tot.franquia += util;
+      else tot.sem_marca += util;
+      for (const [mapa, k] of [[porAgente, r.agente || '?'], [porDia, r.dia], [porModelo, r.modelo || '?']]) {
+        const g = mapa[k] || (mapa[k] = grupo()); g.chamadas++; g.custo += c; g.cobrado += m;
+      }
+      // conta que a plataforma bancou (isento, franquia ou falha): entra na lista do "quem custou"
+      const bancado = (r.cobranca === 'paga' ? 0 : util) + falha;
+      if (bancado > 0) { const k = r.user_id || '?'; const x = contas[k] || (contas[k] = { email: r.email || '', chamadas: 0, custo: 0, tipo: {} }); x.chamadas++; x.custo += bancado; x.tipo[r.status === 'erro' ? 'falha' : (r.cobranca || 'sem marca')] = 1; }
+    }
+    const lista = (mapa, chave) => Object.keys(mapa).map(k => ({ [chave]: k, chamadas: mapa[k].chamadas, custo_usd: usd(mapa[k].custo), cobrado_brl: brl(mapa[k].cobrado) }));
+    const mov = db.prepare(`SELECT tipo, COUNT(*) n, COALESCE(SUM(milesimos), 0) soma FROM ia_movimentos WHERE criado_em >= ? GROUP BY tipo`).all(desde);
+    const movimentos = {}; for (const x of mov) movimentos[x.tipo] = { n: x.n, brl: brl(x.soma) };
+    const saldo = db.prepare(`SELECT COALESCE(SUM(milesimos), 0) s, COUNT(DISTINCT user_id) n FROM ia_movimentos`).get();
+    const cortesiaTotal = db.prepare(`SELECT COALESCE(SUM(milesimos), 0) s, COUNT(DISTINCT user_id) n FROM ia_movimentos WHERE tipo = 'cortesia'`).get();
+    let cfg = {}; try { cfg = require('./carteira-ia').cfg(); } catch (_) { /* carteira indisponível: segue sem a configuração */ }
+    let pedidos = null; try { pedidos = require('./estudo/pedidos').cfgPedidos(); } catch (_) { /* módulo ausente */ }
+    return { dias: d, desde,
+      total: { chamadas: tot.chamadas, custo_usd: usd(tot.custo), cobrado_dos_alunos_brl: brl(tot.cobrado),
+        custo_coberto_por_aluno_usd: usd(tot.pago_pelo_aluno), custo_isentos_usd: usd(tot.isentos), custo_franquia_usd: usd(tot.franquia),
+        custo_falhas_usd: usd(tot.falhas), custo_sem_marca_usd: usd(tot.sem_marca),
+        bancado_pela_plataforma_usd: usd(tot.isentos + tot.franquia + tot.falhas + tot.sem_marca) },
+      por_agente: lista(porAgente, 'agente').sort((a, b) => b.custo_usd - a.custo_usd),
+      por_modelo: lista(porModelo, 'modelo').sort((a, b) => b.custo_usd - a.custo_usd),
+      por_dia: lista(porDia, 'dia').sort((a, b) => (a.dia < b.dia ? -1 : 1)),
+      contas_bancadas: Object.values(contas).map(x => ({ email: x.email, chamadas: x.chamadas, custo_usd: usd(x.custo), tipo: Object.keys(x.tipo).sort().join(' + ') }))
+        .sort((a, b) => b.custo_usd - a.custo_usd).slice(0, 30),
+      movimentos,
+      carteiras: { contas: saldo.n, saldo_em_aberto_brl: brl(saldo.s), cortesia_dada_total_brl: brl(cortesiaTotal.s), contas_com_cortesia: cortesiaTotal.n },
+      config: { cobranca_ativa: cfg.ativa === true, cambio_brl_usd: Number(cfg.cambio_brl_usd) || 0, margem_pct: Number(cfg.margem_pct) || 0,
+        isentos: Array.isArray(cfg.isentos) ? cfg.isentos.length : 0, pedidos_pagos_ativos: !!(pedidos && pedidos.ativos), pedidos_liberados: pedidos ? pedidos.liberados.length : 0 } };
+  },
 };
 
 module.exports = {
