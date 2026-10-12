@@ -78,13 +78,20 @@ global.fetch = async (url, opts) => {
 require('./server.js'); // sobe e escuta em PORT
 
 // --- cliente HTTP de teste (node:http) ---
+// UMA CONEXÃO POR PEDIDO (sem keep-alive). O servidor roda NESTE processo: um teste com trecho síncrono longo (a
+// varredura de arquivos da Permissions-Policy, os bcrypt.hashSync) segura o laço de eventos; se passa de 6 s
+// (keepAliveTimeout de 5 s + 1 s de folga do Node 24), o servidor fecha a conexão ociosa assim que o laço volta —
+// e o pedido seguinte, já escrito nela pelo agente global, morria com `read ECONNRESET`. Foi o que derrubou, uma
+// vez em 12/10/2026, os dois testes do coletor de CSP (os primeiros depois da varredura). Reproduzido à parte:
+// 6,5 s de laço preso → ECONNRESET com o agente padrão; nenhum com este.
+const SEM_REUSO = new http.Agent({ keepAlive: false });
 function req(method, pth, { json, cookie, headers } = {}) {
   return new Promise((resolve, reject) => {
     const body = json !== undefined ? JSON.stringify(json) : null;
     const h = Object.assign({ Accept: 'application/json' }, headers || {});
     if (body) { h['Content-Type'] = 'application/json'; h['Content-Length'] = Buffer.byteLength(body); }
     if (cookie) h['Cookie'] = cookie;
-    const r = http.request(BASE + pth, { method, headers: h }, (res) => {
+    const r = http.request(BASE + pth, { method, headers: h, agent: SEM_REUSO }, (res) => {
       let data = ''; res.on('data', c => (data += c));
       res.on('end', () => { let j = null; try { j = JSON.parse(data); } catch {} resolve({ status: res.statusCode, json: j, text: data, headers: res.headers, setCookie: res.headers['set-cookie'] || [] }); });
     });

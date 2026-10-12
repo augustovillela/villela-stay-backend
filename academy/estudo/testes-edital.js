@@ -136,13 +136,13 @@ async function rodar({ t, req, EST, impId }) {
     '5, 6': () => ({ itens: [...ITENS_DC('Organização do Estado.'), I(DA, '1', 'Atos administrativos.', 5), I(DA, '2', 'Licitações e contratos.', 5),
       I(DA, '3', 'Responsabilidade civil do Estado.', 5), I(DA, '4', 'Agentes públicos.', 6), I(DA, '5', 'Controle da administração pública.', 6), ...ITENS_DT()], dados: [] }),
   };
-  let chamadas = [], pedidosAoModelo = [], modo = 'ok', portao = null;
+  let chamadas = [], pedidosAoModelo = [], modo = 'ok', portao = null, aoChegarNoPortao = null;
   const mock = async (x) => {
     const m = /as páginas ([\d, ]+) de um edital/.exec(x.prompt);
     const lote = m ? m[1] : '?';
     chamadas.push(lote);
     pedidosAoModelo.push(x);
-    if (lote === '4, 5' && portao) await portao;
+    if (lote === '4, 5' && portao) { if (aoChegarNoPortao) aoChegarNoPortao(); await portao; }
     if (lote === '4, 5' && modo === 'falha') throw new Error('provedor fora do ar no segundo lote');
     if (lote === '4, 5' && modo === 'torto') return { usage: USO, json: { nada: true } };
     return { usage: USO, json: (RESPOSTAS[lote] || (() => ({ itens: [], dados: [] })))() };
@@ -333,10 +333,14 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal((await confirmar('edna', pedidoEdna, tetoEdna)).st, 402, 'sem saldo: 402 com o orçamento');
     carteira.creditar({ email: EDNA.email, valor_centavos: 2000, motivo: 'saldo para o teste de edital em PDF', quem: 'teste' });
     let soltar; portao = new Promise((ok) => { soltar = ok; });
+    const chegou = new Promise((ok) => { aoChegarNoPortao = ok; });
     const r = await confirmar('edna', pedidoEdna, tetoEdna);
     assert.deepEqual([r.st, r.json.pedido.estado], [200, 'processando'], r.texto);
     assert.equal(carteira.saldo(edna), 20000 - tetoEdna, 'o teto saiu antes de qualquer passo');
-    for (let i = 0; i < 200 && chamadas.length < 2; i++) await new Promise(ok => setTimeout(ok, 10));
+    // espera pelo ACONTECIMENTO (o segundo lote chegou ao "provedor"), não por um prazo: o laço de 200 × 10 ms que havia
+    // aqui dependia da velocidade da máquina — com ela ocupada, a asserção rodava antes de o lote chegar. O limite de
+    // 60 s só existe para o teste FALHAR (na asserção abaixo) em vez de ficar pendurado se o lote nunca chegar.
+    await Promise.race([chegou, new Promise(ok => setTimeout(ok, 60000).unref())]); aoChegarNoPortao = null;
     assert.deepEqual(chamadas, ['1, 2', '4, 5'], 'o primeiro lote terminou; o segundo está no provedor');
     const meio = (await obter('edna', pedidoEdna)).json.pedido;
     assert.deepEqual([meio.estado, meio.edital.progresso], ['processando', { etapa: 'programa', feito: 1, total: 3 }]);
@@ -791,6 +795,176 @@ async function rodar({ t, req, EST, impId }) {
     // a função da conferência, isolada: devolve a página em que o trecho COMEÇA
     const lisoDe = (n) => ep.semRepetidas(T.get(n) || '', ep.linhasRepetidas([...T].map(([n2, texto]) => ({ n: n2, texto })))).replace(/\s+/g, '');
     assert.deepEqual([ep.paginaQueConfere('incapacidade. Direitos da personalidade.', 10, [10, 11], lisoDe), ep.paginaQueConfere('Capacidade e incapacidade.', 11, [10, 11], lisoDe), ep.paginaQueConfere('nada disto', 10, [10, 11], lisoDe)], [11, 10, 0]);
+  });
+
+  await t('edital/subárea (teste real de 12/10/2026): a subárea com LETRA que abre o lote continua filha da disciplina em vigor — "D) Filosofia do Direito" não vira disciplina solta, o tópico que continua a numeração da subárea é dela, e o lote seguinte é avisado da subárea em vigor', async () => {
+    // RECORTE FIEL das páginas 56 a 59 do edital do II CNU da Magistratura do Trabalho (linhas como o leitor de PDF as dá,
+    // com o cabeçalho que se repete). A disciplina tem oito subáreas, de "A)" a "H)"; a página 58 abre no MEIO dela.
+    const CABR = (n) => `CONSELHO SUPERIOR DA JUSTIÇA DO TRABALHO | CONCURSO PÚBLICO 2023 ${n}`;
+    const NG = 'NOÇÕES GERAIS DE DIREITO E FORMAÇÃO HUMANÍSTICA', DADM = 'DIREITO ADMINISTRATIVO', DPEN = 'DIREITO PENAL', DPT = 'DIREITO PROCESSUAL DO TRABALHO';
+    // subárea → [página em que o título está, [número, linhas do tópico, página (quando não é a do título)]]
+    const SUBS = [
+      ['A', 'Sociologia do Direito', 57, [
+        [1, ['Introdução à sociologia da administração judiciária. Aspectos gerenciais da atividade judiciária', '(administração e economia). Gestão. Gestão de Pessoas.']],
+        [2, ['Relações sociais e relações jurídicas. Controle social e o Direito. Transformações sociais e Direito.']],
+        [3, ['Direito, Comunicação Social e opinião pública.']],
+        [4, ['Conflitos sociais e mecanismos de resolução. Sistemas não judiciais de composição de litígios.']]]],
+      ['B', 'Psicologia Judiciária', 57, [
+        [1, ['Psicologia e Comunicação: relacionamento interpessoal, relacionamento do magistrado com a', 'sociedade e a mídia.']],
+        [2, ['Problemas atuais da psicologia com reflexos no direito: assédio moral e assédio sexual.']],
+        [3, ['Teoria do Conflito e os mecanismos autocompositivos. Técnicas de negociação e mediação.', 'Procedimentos, posturas, condutas e mecanismos aptos a obter a solução conciliada dos conflitos.']],
+        [4, ['O processo psicológico e a obtenção da verdade judicial. O comportamento de partes e testemunhas.']]]],
+      ['C', 'Ética e Estatuto Jurídico da Magistratura Nacional', 57, [
+        [1, ['Regime jurídico da magistratura nacional: carreiras, ingresso, promoções, remoções.']],
+        [2, ['Direitos e deveres funcionais da magistratura.']],
+        [3, ['Código de Ética da Magistratura Nacional.']],
+        [4, ['Sistemas de controle interno do Poder Judiciário: Corregedorias, Ouvidorias, Conselhos Superiores e', 'Conselho Nacional de Justiça.']],
+        [5, ['Responsabilidade administrativa, civil e criminal dos magistrados.']],
+        [6, ['Administração judicial. Planejamento estratégico. Modernização da gestão.'], 58]]], // o "6." abre a página 58, ANTES do "D)"
+      ['D', 'Filosofia do Direito', 58, [
+        [1, ['O conceito de Justiça. Sentido lato de Justiça, como valor universal. Sentido estrito de Justiça, como', 'valor jurídico-político. Divergências sobre o conteúdo do conceito.']],
+        [2, ['O conceito de Direito. Equidade. Direito e Moral.']],
+        [3, ['A interpretação do Direito. A superação dos métodos e interpretação mediante puro raciocínio lógico-', 'dedutivo. O método de interpretação pela lógica do razoável.']]]],
+      ['E', 'Teoria Geral do Direito e da Política', 58, [
+        [1, ['Direito objetivo e direito subjetivo.']],
+        [2, ['Fontes do Direito objetivo. Princípios gerais de Direito. Jurisprudência. Súmula. Súmula vinculante.']],
+        [3, ['Eficácia da lei no tempo. Conflito de normas jurídicas no tempo e o Direito brasileiro: Direito Penal,', 'Direito Civil, Direito Constitucional e Direito do Trabalho.']],
+        [4, ['O conceito de Política. Política e Direito.']],
+        [5, ['Ideologias.']],
+        [6, ['A Declaração Universal dos Direitos do Homem (ONU).']],
+        [7, ['Agenda 2030 e os 17 Objetivos de Desenvolvimento Sustentável.']]]],
+      ['F', 'Direito Digital', 58, [
+        [1, ['4ª Revolução industrial. Transformação Digital no Poder Judiciário. Tecnologia no contexto', 'jurídico. Automação do processo. Inteligência Artificial e Direito. Audiências virtuais. Cortes remotas.', 'Ciência de dados e Jurimetria. Resoluções do CNJ sobre inovações tecnológicas no Judiciário.']],
+        [2, ['Persecução Penal e novas tecnologias. Crimes virtuais e cibersegurança. Deepweb e Darkweb.', 'Provas digitais. Criptomoedas e Lavagem de dinheiro.']],
+        [3, ['Noções gerais de contratos Inteligentes, Blockchain e Algoritmos.']],
+        [4, ['LGPD e proteção de dados pessoais.']]]],
+      ['G', 'Pragmatismo, Análise Econômica do Direito e Economia Comportamental', 58, [
+        [1, ['Função judicial e pragmatismo. Antifundacionalismo. Contextualismo. Consequencialismo.', 'Racionalismo e Empirismo. Dialética. Utilitarismo.']],
+        [2, ['Análise econômica do direito. Conceitos fundamentais. Racionalidade econômica. Eficiência', 'processual. Métodos adequados de resolução de conflitos e acesso à Justiça. Demandas frívolas e de', 'valor esperado negativo. Precedentes, estabilidade da jurisprudência e segurança jurídica. Coisa', 'Julgada.']],
+        [3, ['Economia comportamental. Heurística e vieses cognitivos. A percepção de Justiça. Processo cognitivo', 'de tomada de decisão.']],
+        [4, ['Governança corporativa e Compliance no Brasil. Mecanismos de Combate às organizações criminosas', 'e Lavagem de Dinheiro. Whistleblower.']]]],
+      ['H', 'Direito da Antidiscriminação', 58, [
+        [1, ['Conceitos Fundamentais do Direito da Antidiscriminação.']],
+        [2, ['Modalidades de Discriminação.']],
+        [3, ['Legislação antidiscriminação nacional e internacional.']],
+        [4, ['Conceitos Fundamentais do Racismo, Sexismo, Intolerância Religiosa, LGBTQIA+fobia.'], 59],
+        [5, ['Ações Afirmativas.'], 59],
+        [6, ['Direitos dos Povos indígenas e das comunidades tradicionais. Proteção legal no Direito Pátrio e', 'Internacional.'], 59],
+        [7, ['Direitos do Trabalhador Imigrante. Proteção legal no Direito Pátrio e Internacional.'], 59]]],
+    ];
+    const DPT_1 = ['Direito Processual do Trabalho. Princípios. Fontes. Autonomia. Interpretação. Integração. Eficácia.', 'Aplicação do Direito Processual Comum no Processo do Trabalho e a técnica da subsidiariedade e da', 'supletividade.'];
+    // o texto que o modelo devolve: as linhas juntas, a palavra partida por hífen emendada
+    const junto = (linhas) => linhas.join(' ').replace(/- (?=[a-zà-ú])/g, '-');
+    const linhasDaPagina = (n) => SUBS.flatMap(([letra, titulo, pag, topicos]) => (pag === n ? [`${letra}) ${titulo}`] : []).concat(topicos.filter(([, , p]) => (p || pag) === n).flatMap(([num, ls]) => [`${num}. ${ls[0]}`].concat(ls.slice(1)))));
+    const T = new Map([
+      [56, [CABR(56), DADM, '13. Jurisprudência aplicável dos Tribunais Superiores.', DPEN, '3. Crimes contra a liberdade pessoal.', '5. Crimes contra a honra.'].join('\n')],
+      [57, [CABR(57), '15. Crimes contra a liberdade sexual. Assédio sexual.', '16. Jurisprudência aplicável dos Tribunais Superiores.', NG, ...linhasDaPagina(57)].join('\n')],
+      [58, [CABR(58), ...linhasDaPagina(58)].join('\n')],
+      [59, [CABR(59), ...linhasDaPagina(59), 'BLOCO II', DPT, `1. ${DPT_1[0]}`, ...DPT_1.slice(1)].join('\n')],
+    ]);
+    assert.ok(T.get(58).startsWith(`${CABR(58)}\n6. Administração judicial. Planejamento estratégico. Modernização da gestão.\nD) Filosofia do Direito\n1. O conceito de Justiça.`), 'a página 58 abre no meio da disciplina, como no edital');
+    const topicosDe = (n, comoVeio) => SUBS.flatMap(([letra, titulo, pag, topicos]) => {
+      const daqui = topicos.filter(([, , p]) => (p || pag) === n);
+      // CERTO (o lote em que a disciplina abre): a subárea é ITEM da disciplina, e os tópicos têm a letra como pai.
+      // COMO VEIO no teste real (o lote que abre no meio da disciplina): a subárea vira "disciplina" dos tópicos dela;
+      // o tópico que continua a subárea da página anterior vem sob a disciplina em vigor, sem pai.
+      if (comoVeio === 'certo') return (pag === n ? [I(NG, letra, titulo, n)] : []).concat(daqui.map(([num, ls]) => I(NG, String(num), junto(ls), n, { pai: letra })));
+      return daqui.map(([num, ls]) => I(pag === n ? titulo : comoVeio, String(num), junto(ls), n));
+    });
+    const lerEmLotes = async (pags, respostas) => {
+      const pedidos = [];
+      const passo = async (conteudo) => { const lote = /as páginas ([\d, ]+) de um edital/.exec(conteudo)[1]; pedidos.push({ lote, prompt: conteudo }); return respostas[lote](); };
+      const plano = ep.planejar(pags.map(n => ({ n, chars: T.get(n).length, sem_texto: false })), pags);
+      const r = await ep.executar({ t: { passo }, entrada: { plano }, arquivo: { bytes: Buffer.alloc(0), leitura: { textos: [...T].map(([n, texto]) => ({ n, texto })) } } });
+      return { r, pedidos };
+    };
+    const conferirArvore = (r, nome) => {
+      const it = (codigo) => r.itens.find(i => i.codigo === codigo);
+      assert.deepEqual(r.itens.filter(i => i.raiz).map(i => [i.codigo, i.texto]), [['DA', DADM], ['DP', DPEN], ['NGDFH', NG], ['DPT', DPT]].filter(([c]) => it(c)), nome + ': as disciplinas são as do edital — nenhuma subárea virou disciplina');
+      assert.ok(!r.itens.some(i => /^(FD|TGDP|DD|PAEDEC|DA-2)\b/.test(i.codigo)), nome + ': nada de FD, TGDP, DD, PAEDEC nem DA-2');
+      assert.deepEqual(r.itens.filter(i => i.pai === 'NGDFH').map(i => [i.codigo, i.texto, i.raiz, i.pendente, i.localizacao]),
+        SUBS.map(([letra, titulo, pag]) => [`NGDFH.${letra}`, titulo, false, '', `p. ${pag}`]), nome + ': as oito subáreas são filhas da disciplina, com a letra do edital, conferidas com a página');
+      for (const [letra, , pag, topicos] of SUBS) {
+        assert.deepEqual(r.itens.filter(i => i.pai === `NGDFH.${letra}`).map(i => [i.codigo, i.texto, i.disciplina, i.pendente, i.localizacao, !!i.desambiguado]),
+          topicos.map(([num, ls, p]) => [`NGDFH.${letra}.${num}`, junto(ls), 'NGDFH', '', `p. ${p || pag}`, false]), `${nome}: os tópicos da subárea ${letra} são filhos dela, com a letra no código (a numeração reinicia em cada subárea)`);
+      }
+      assert.deepEqual([it('NGDFH.C.6').pai, it('NGDFH.C.6').localizacao, it('NGDFH.H.4').pai, it('NGDFH.H.4').localizacao], ['NGDFH.C', 'p. 58', 'NGDFH.H', 'p. 59'], nome + ': o tópico que abre a página continuando a subárea é dela');
+      assert.deepEqual([it('DPT.1').pai, it('DPT.1').texto, r.resumo.pendentes, r.itens.filter(i => i.desambiguado).length], ['DPT', junto(DPT_1), 0, 0], nome + ': a disciplina NOVA, depois das subáreas, nasce disciplina; nada pendente, nada desambiguado');
+      // aplicar leva a árvore como está: a disciplina com TODOS os itens dela (subáreas e tópicos)
+      const esc = ep.escolher(r);
+      assert.equal(esc.disciplinas.find(d => d.codigo === 'NGDFH').itens.length, 1 + SUBS.length + SUBS.reduce((n, s) => n + s[3].length, 0));
+    };
+
+    // 1) COMO NO TESTE REAL: lotes [56, 57] e [58, 59]. O primeiro veio certo; o segundo, com D–H como "disciplinas"
+    const real = await lerEmLotes([56, 57, 58, 59], {
+      '56, 57': () => ({ itens: [I(DADM, '13', 'Jurisprudência aplicável dos Tribunais Superiores.', 56), I(DPEN, '3', 'Crimes contra a liberdade pessoal.', 56), I(DPEN, '5', 'Crimes contra a honra.', 56),
+        I(DPEN, '15', 'Crimes contra a liberdade sexual. Assédio sexual.', 57), I(DPEN, '16', 'Jurisprudência aplicável dos Tribunais Superiores.', 57), ...topicosDe(57, 'certo')], dados: [] }),
+      '58, 59': () => ({ itens: [...topicosDe(58, NG), ...topicosDe(59, 'Direito da Antidiscriminação'), I(DPT, '1', junto(DPT_1), 59)], dados: [] }),
+    });
+    assert.deepEqual(real.pedidos.map(p => p.lote), ['56, 57', '58, 59']);
+    conferirArvore(real.r, 'como no teste real');
+    // o lote que abre no meio da disciplina é avisado da disciplina E da subárea em vigor (o servidor continua decidindo)
+    assert.ok(new RegExp(`disciplina em vigor[^\\n]*"${NG}"[^\\n]*subárea em vigor era "C\\) Ética e Estatuto Jurídico da Magistratura Nacional"[^\\n]*"pai": "C"`).test(real.pedidos[1].prompt), 'o segundo lote recebe a subárea em vigor');
+    assert.ok(/SUBÁREA não é disciplina/.test(real.pedidos[0].prompt) && !/subárea em vigor/.test(real.pedidos[0].prompt));
+    assert.ok(ep.instrucoesDoLote({ paginas: [100, 101], disciplina: 'x'.repeat(200), subarea: { letra: 'W', titulo: 'x'.repeat(200) }, cortado: { codigo: '100.100', disciplina: 'x'.repeat(200) }, parte: { k: 10, total: 10 } }).length
+      <= ep.instrucoesDoLote({ paginas: [100, 101], disciplina: 'x'.repeat(160), subarea: { letra: 'W', titulo: 'x'.repeat(160) }, cortado: { codigo: '100.100', disciplina: 'x'.repeat(160) }, parte: { k: 10, total: 10 } }).length, 'o aviso da subárea está dentro do que o orçamento conta de prompt fixo');
+
+    // 2) OUTRO CORTE: lotes [57, 58] e [59]. O lote termina DENTRO da subárea H, que o modelo chamou de
+    //    disciplina; o lote seguinte recebe a disciplina de verdade + "H)", e devolve os tópicos 4–7 sem disciplina nem pai
+    const corte = await lerEmLotes([57, 58, 59], {
+      '57, 58': () => ({ itens: [I(DPEN, '15', 'Crimes contra a liberdade sexual. Assédio sexual.', 57), I(DPEN, '16', 'Jurisprudência aplicável dos Tribunais Superiores.', 57), ...topicosDe(57, 'certo'), ...topicosDe(58, NG)], dados: [] }),
+      59: () => ({ itens: [...topicosDe(59, ''), I(DPT, '1', junto(DPT_1), 59)], dados: [] }),
+    });
+    assert.deepEqual(corte.pedidos.map(p => p.lote), ['57, 58', '59']);
+    assert.ok(new RegExp(`disciplina em vigor[^\\n]*"${NG}"[^\\n]*subárea em vigor era "H\\) Direito da Antidiscriminação"`).test(corte.pedidos[1].prompt), 'a disciplina em vigor é a do SERVIDOR, não o título de subárea que o modelo deu');
+    conferirArvore(corte.r, 'lote que termina dentro da subárea');
+    // … e o modelo que, avisado, devolve certo (disciplina de verdade, pai "H") dá a mesma árvore
+    const avisado = await lerEmLotes([57, 58, 59], {
+      '57, 58': () => ({ itens: [I(DPEN, '15', 'Crimes contra a liberdade sexual. Assédio sexual.', 57), I(DPEN, '16', 'Jurisprudência aplicável dos Tribunais Superiores.', 57), ...topicosDe(57, 'certo'), ...topicosDe(58, 'certo')], dados: [] }),
+      59: () => ({ itens: [...topicosDe(59, 'certo'), I(DPT, '1', junto(DPT_1), 59)], dados: [] }),
+    });
+    assert.deepEqual(avisado.r.itens.map(i => [i.codigo, i.pai, i.texto]), corte.r.itens.map(i => [i.codigo, i.pai, i.texto]), 'leitura certa e leitura torta chegam à MESMA árvore');
+    // a linha do título, isolada: marcador de letra, caixa, título em parágrafo corrido
+    assert.deepEqual([ep.tituloNaLinha('D) Filosofia do Direito', ep.chaveDaDisciplina('Filosofia do Direito')), ep.tituloNaLinha(NG, ep.chaveDaDisciplina(NG)), ep.tituloNaLinha('DIREITO CIVIL: 1 Pessoas naturais.', ep.chaveDaDisciplina('Direito Civil')), ep.tituloNaLinha('1. Filosofia do Direito e outras', ep.chaveDaDisciplina('Filosofia do Direito'))],
+      [{ marcador: 'D', caixa_alta: false }, { marcador: '', caixa_alta: true }, { marcador: '', caixa_alta: true }, null]);
+  });
+
+  await t('edital/subárea, o caso OPOSTO: disciplina NOVA que abre o lote continua nascendo disciplina — sem letra, com letra quando as disciplinas é que são letradas, em caixa alta sem sequência; e letra fora de sequência fica PENDENTE em vez de adivinhar', async () => {
+    const B = (disciplina, codigo, texto, pagina, paginas, pai = '') => ({ disciplina, codigo, pai, texto, pagina, continua: false, paginas });
+    const arvore = (T, brutos) => ep.montar({ textos: T, brutos }).itens.map(i => [i.codigo, i.pai, i.texto, i.pendente]);
+    // (a) título sem letra no alto do lote seguinte: disciplina (é o caso de todo edital)
+    assert.deepEqual(arvore(new Map([[10, 'DIREITO CIVIL\n1. Pessoas naturais.\n2. Bens.'], [11, 'DIREITO PENAL\n1. Aplicação da lei penal.\n2. Crime.']]),
+      [B('DIREITO CIVIL', '1', 'Pessoas naturais.', 10, [10]), B('DIREITO CIVIL', '2', 'Bens.', 10, [10]), B('DIREITO PENAL', '1', 'Aplicação da lei penal.', 11, [11]), B('DIREITO PENAL', '2', 'Crime.', 11, [11])]),
+    [['DC', '', 'DIREITO CIVIL', ''], ['DC.1', 'DC', 'Pessoas naturais.', ''], ['DC.2', 'DC', 'Bens.', ''], ['DP', '', 'DIREITO PENAL', ''], ['DP.1', 'DP', 'Aplicação da lei penal.', ''], ['DP.2', 'DP', 'Crime.', '']]);
+    // (b) o edital em que as DISCIPLINAS é que têm letra ("A) …", "B) …"): são irmãs — em caixa alta ou mista
+    for (const [a, b] of [['LÍNGUA PORTUGUESA', 'DIREITO CIVIL'], ['Língua Portuguesa', 'Direito Civil']]) {
+      assert.deepEqual(arvore(new Map([[20, `A) ${a}\n1. Ortografia oficial.\n2. Acentuação gráfica.`], [21, `B) ${b}\n1. Pessoas naturais.`]]),
+        [B(a, '1', 'Ortografia oficial.', 20, [20]), B(a, '2', 'Acentuação gráfica.', 20, [20]), B(b, '1', 'Pessoas naturais.', 21, [21])]),
+      [['LP', '', a, ''], ['LP.1', 'LP', 'Ortografia oficial.', ''], ['LP.2', 'LP', 'Acentuação gráfica.', ''], ['DC', '', b, ''], ['DC.1', 'DC', 'Pessoas naturais.', '']], 'disciplinas letradas: ' + a);
+    }
+    // (c) "A) LÍNGUA PORTUGUESA" em CAIXA ALTA logo abaixo de um título de bloco que o modelo deu como disciplina: disciplina
+    assert.deepEqual(arvore(new Map([[30, 'CONHECIMENTOS BÁSICOS\n1. Noções gerais do cargo.\nA) LÍNGUA PORTUGUESA\n1. Ortografia oficial.']]),
+      [B('CONHECIMENTOS BÁSICOS', '1', 'Noções gerais do cargo.', 30, [30]), B('LÍNGUA PORTUGUESA', '1', 'Ortografia oficial.', 30, [30])]),
+    [['CB', '', 'CONHECIMENTOS BÁSICOS', ''], ['CB.1', 'CB', 'Noções gerais do cargo.', ''], ['LP', '', 'LÍNGUA PORTUGUESA', ''], ['LP.1', 'LP', 'Ortografia oficial.', '']]);
+    // (d) a leitura começou no meio da disciplina (a faixa pedida abre na página 58): não há disciplina em vigor em que pendurar — fica como veio
+    assert.deepEqual(arvore(new Map([[58, 'D) Filosofia do Direito\n1. O conceito de Justiça.']]), [B('Filosofia do Direito', '1', 'O conceito de Justiça.', 58, [58])]),
+      [['FD', '', 'Filosofia do Direito', ''], ['FD.1', 'FD', 'O conceito de Justiça.', '']]);
+    // (e) DÚVIDA: caixa mista com letra, abaixo de disciplina em caixa alta, mas a sequência não fecha (chega "D)" sem A, B e C):
+    //     entra como subárea, PENDENTE — fica à vista e fora da conta de cobertura; os tópicos dela, conferidos, não
+    const T = new Map([[40, 'FORMAÇÃO HUMANÍSTICA\n1. Noções introdutórias.'], [41, 'D) Filosofia do Direito\n1. O conceito de Justiça.\n2. O conceito de Direito.']]);
+    const duvida = arvore(T, [B('FORMAÇÃO HUMANÍSTICA', '1', 'Noções introdutórias.', 40, [40]), B('Filosofia do Direito', '1', 'O conceito de Justiça.', 41, [41]), B('Filosofia do Direito', '2', 'O conceito de Direito.', 41, [41])]);
+    assert.deepEqual(duvida, [['FH', '', 'FORMAÇÃO HUMANÍSTICA', ''], ['FH.1', 'FH', 'Noções introdutórias.', ''], ['FH.D', 'FH', 'Filosofia do Direito', ep.PENDENTE_SUBAREA], ['FH.D.1', 'FH.D', 'O conceito de Justiça.', ''], ['FH.D.2', 'FH.D', 'O conceito de Direito.', '']]);
+    assert.ok(/subárea ou disciplina\?/.test(ep.PENDENTE_SUBAREA) && /confira no edital/.test(ep.PENDENTE_SUBAREA));
+    // … e a letra "A" em caixa mista logo abaixo da disciplina em caixa alta é subárea, sem dúvida
+    assert.deepEqual(arvore(new Map([[40, 'FORMAÇÃO HUMANÍSTICA'], [41, 'A) Sociologia do Direito\n1. Controle social.']]), [B('Sociologia do Direito', '1', 'Controle social.', 41, [41])]),
+      [['SD', '', 'Sociologia do Direito', ''], ['SD.1', 'SD', 'Controle social.', '']], 'sem disciplina em vigor, a primeira é disciplina');
+    assert.deepEqual(arvore(new Map([[40, 'FORMAÇÃO HUMANÍSTICA\n1. Noções introdutórias.'], [41, 'A) Sociologia do Direito\n1. Controle social.']]),
+      [B('FORMAÇÃO HUMANÍSTICA', '1', 'Noções introdutórias.', 40, [40]), B('Sociologia do Direito', '1', 'Controle social.', 41, [41])]),
+    [['FH', '', 'FORMAÇÃO HUMANÍSTICA', ''], ['FH.1', 'FH', 'Noções introdutórias.', ''], ['FH.A', 'FH', 'Sociologia do Direito', ''], ['FH.A.1', 'FH.A', 'Controle social.', '']]);
+    // (f) tópico numerado que NÃO continua a subárea aberta segue sendo da disciplina (a subárea tinha 1 e 2; chega o "7")
+    assert.deepEqual(arvore(new Map([[50, 'DIREITO X\nA) Parte geral\n1. Fontes.\n2. Princípios.\n7. Tema avulso da disciplina.']]),
+      [B('DIREITO X', 'A', 'Parte geral', 50, [50]), B('DIREITO X', '1', 'Fontes.', 50, [50], 'A'), B('DIREITO X', '2', 'Princípios.', 50, [50], 'A'), B('DIREITO X', '7', 'Tema avulso da disciplina.', 50, [50])]).map(x => x.slice(0, 2)),
+    [['DX', ''], ['DX.A', 'DX'], ['DX.A.1', 'DX.A'], ['DX.A.2', 'DX.A'], ['DX.7', 'DX']]);
   });
 
   await t('edital em MAIS DE UM PEDIDO (defeito 8 do ensaio real): o segundo pedido SOMA ao programa do percurso — mesma disciplina, mesma sigla; sigla repetida de outra disciplina ganha código próprio; o diff aparece antes; nada some sem o usuário ver', async () => {

@@ -426,13 +426,19 @@ function abrirTrabalho(userId, agente, tetoUsd, p, opcoes = {}) {
   const exigirFolga = () => { if (cobranca === 'paga' && custo > 0 && carteira.precoEmMilesimos(custo) >= teto) throw new Error('O trabalho alcançou o valor máximo aceito antes de terminar.'); };
   return {
     ref, cobranca, teto_milesimos: teto,
+    // Um passo OPCIONAL cabe no que já foi reservado? `usd` é o PIOR caso dele (entrada estimada por cima + saída
+    // máxima, ao preço mais caro da fila — o mesmo cálculo do orçamento). Quem chama só faz o passo se couber: o
+    // trabalho nunca passa do valor que o usuário aceitou. Sem reserva (isento), não há teto a respeitar.
+    cabe(usd) { return cobranca !== 'paga' || carteira.precoEmMilesimos(custo + Math.max(0, Number(usd) || 0)) <= teto; },
     async passo(conteudo, o = {}) {
       exigirAberto(); exigirFolga();
       let r;
       // o que o provedor cobrou por tentativa que NÃO serviu também é custo real deste trabalho (mas não do aluno)
       try { r = await chamar(agente, conteudo, o); } catch (e) { custo += (e && e.custo_usd) || 0; throw e; }
       const serviu = custoUSD(r.modelo, r.usage);
-      custo += serviu + (r.custo_falhas_usd || 0); custoCobrado += serviu; modelo = r.modelo;
+      // `o.absorver`: passo que a PLATAFORMA paga mesmo dando certo (a segunda leitura da correção, que só existe
+      // porque o modelo deixou de citar o trecho). Entra no custo real e no absorvido — como a tentativa que falhou.
+      custo += serviu + (r.custo_falhas_usd || 0); custoCobrado += o.absorver ? 0 : serviu; modelo = r.modelo;
       uso.input_tokens += (r.usage && r.usage.input_tokens) || 0; uso.output_tokens += (r.usage && r.usage.output_tokens) || 0;
       return r.json;
     },

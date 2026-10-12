@@ -3272,9 +3272,16 @@
           '<p class="al-fino">Transcrição automática: pode trocar uma palavra ou outra. A correção foi feita sobre este texto.</p></details>';
         else if (p.entrada && p.entrada.resposta) h += '<details class="es-fontes"><summary>A resposta que foi corrigida</summary><div class="es-apoio">' + texto(p.entrada.resposta) + '</div></details>';
         h += avisoDoAudio(p);
+        // critérios que ficaram com nível e sem trecho da resposta: dito no alto, antes da lista (a nota os inclui)
+        var seg = x.segunda_leitura || null, semTrecho = (x.criterios || []).filter(function (k) { return k.nivel > 0 && !k.trecho; }).length;
+        if (semTrecho) h += '<div class="es-aviso es-eo-sem-citacao"><b>' + (semTrecho > 1 ? semTrecho + ' critérios ficaram' : '1 critério ficou') + ' sem trecho localizado.</b> ' +
+          'Cada nível deve vir com a frase da sua resposta que o sustenta. ' + (semTrecho > 1 ? 'Nestes critérios' : 'Neste critério') + ' a frase não veio, ou não estava na sua resposta' + (seg && seg.feita ? ', mesmo depois de o sistema pedir de novo' : '') +
+          '. A nota acima conta ' + (semTrecho > 1 ? 'esses níveis' : 'esse nível') + ' como ' + (semTrecho > 1 ? 'vieram' : 'veio') + '; se discordar, use “Discordo da correção”.' + (seg && seg.feita ? ' O novo pedido ao corretor não foi cobrado de você.' : '') + '</div>';
         h += (x.criterios || []).map(function (k) {
           return '<div class="es-eo-crit n' + k.nivel + '"><div class="es-eo-crit-cab"><b>' + esc(k.criterio) + '</b><span class="al-fino">peso ' + k.peso + '</span><span class="es-eo-nivel">nível ' + k.nivel + ' de 3</span></div>' +
-            (k.trecho ? '<blockquote>“' + esc(k.trecho) + '”</blockquote>' : (k.nivel > 0 ? '<p class="al-fino">A correção não apontou, na sua resposta, um trecho que sustente este nível — leia este critério com mais desconfiança.</p>' : '<p class="al-fino">A resposta não tratou deste critério.</p>')) +
+            // nível acima de zero SEM trecho conferido (pedidos.js › CITAÇÃO POR CRITÉRIO): o servidor pediu o trecho de novo
+            // e ele não veio (ou não estava na resposta). O nível fica, e a tela diz que ficou sem lastro
+            (k.trecho ? '<blockquote>“' + esc(k.trecho) + '”</blockquote>' : (k.nivel > 0 ? '<p class="al-fino es-eo-sem-trecho"><b>Sem trecho localizado.</b> A correção deu este nível, mas não apontou, na sua resposta, a frase em que se apoiou' + (seg && seg.feita ? ' — nem quando o sistema pediu de novo' : '') + '. O nível foi mantido (ele não foi rebaixado nem revisto), mas está sem lastro: leia este critério com mais desconfiança.</p>' : '<p class="al-fino">A resposta não tratou deste critério.</p>')) +
             (k.faltou ? '<p><b>O que faltou:</b> ' + esc(k.faltou) + '</p>' : '') + '</div>';
         }).join('');
         if ((x.erros_criticos || []).length) h += '<div class="es-aviso"><b>Erros críticos encontrados</b><ul>' + x.erros_criticos.map(function (e) {

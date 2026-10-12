@@ -113,13 +113,13 @@ async function rodar({ t, req, EST, impId }) {
     Qm(7), // a questão cortada, agora inteira (o modelo a devolve fora de ordem)
   ] });
   const GAB_LIDO = { gabarito: { 1: 'B', 2: 'b', 3: 'ANULADA', 4: 'A', 5: 'C', 7: 'B', 8: 'B', 10: 'D', 11: 'C', 99: 'A', 12: 'talvez' }, ambiguo: false };
-  let chamadas = [], pedidosAoModelo = [], modo = 'ok', portao = null;
+  let chamadas = [], pedidosAoModelo = [], modo = 'ok', portao = null, aoChegarNoPortao = null;
   const mock = async (x) => {
     const ehGab = x.prompt.startsWith('Abaixo está o GABARITO');
     const lote = ehGab ? 0 : /páginas 1 a 2 /.test(x.prompt) ? 1 : /páginas 3 a 4 /.test(x.prompt) ? 2 : /páginas 5 a 6 /.test(x.prompt) ? 3 : 9;
     chamadas.push(ehGab ? 'gabarito' : 'lote' + lote);
     pedidosAoModelo.push(x);
-    if (lote === 2 && portao) await portao;
+    if (lote === 2 && portao) { if (aoChegarNoPortao) aoChegarNoPortao(); await portao; }
     if (lote === 2 && modo === 'falha-no-lote-2') throw new Error('provedor fora do ar no segundo lote');
     if (lote === 2 && modo === 'torto') return { usage: USO, json: { nada: true } };
     return { usage: USO, json: ehGab ? GAB_LIDO : lote === 1 ? LOTE1() : lote === 2 ? LOTE1B() : lote === 3 ? LOTE3() : { questoes: [] } };
@@ -295,10 +295,14 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal((await confirmar('iris', pedidoAna, tetoAna)).st, 402, 'sem saldo: 402 com o orçamento');
     carteira.creditar({ email: ANA.email, valor_centavos: 2000, motivo: 'saldo para o teste de prova em PDF', quem: 'teste' });
     let soltar; portao = new Promise((ok) => { soltar = ok; });
+    const chegou = new Promise((ok) => { aoChegarNoPortao = ok; });
     const r = await confirmar('iris', pedidoAna, tetoAna);
     assert.deepEqual([r.st, r.json.pedido.estado], [200, 'processando'], r.texto);
     assert.equal(carteira.saldo(ana), 20000 - tetoAna, 'o teto saiu antes de qualquer passo');
-    for (let i = 0; i < 200 && chamadas.length < 2; i++) await new Promise(ok => setTimeout(ok, 10));
+    // espera pelo ACONTECIMENTO (o segundo lote chegou ao "provedor"), não por um prazo: o laço de 200 × 10 ms que havia
+    // aqui dependia da velocidade da máquina — com ela ocupada, a asserção rodava antes de o lote chegar. O limite de
+    // 60 s só existe para o teste FALHAR (na asserção abaixo) em vez de ficar pendurado se o lote nunca chegar.
+    await Promise.race([chegou, new Promise(ok => setTimeout(ok, 60000).unref())]); aoChegarNoPortao = null;
     assert.deepEqual(chamadas, ['lote1', 'lote2'], 'o primeiro lote terminou; o segundo está no provedor');
     // enquanto roda: o progresso está no pedido, confirmar de novo não reserva de novo, e não dá para cancelar nem aplicar
     const meio = (await obter('iris', pedidoAna)).json.pedido;

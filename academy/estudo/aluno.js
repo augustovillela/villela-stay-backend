@@ -67,7 +67,7 @@ function escopos(usuario, produto) {
 // `tentativa_modo`: de que prova a resposta veio ('' = resposta avulsa: prática, quiz da aula, card). É o que separa
 // o erro do DIAGNÓSTICO (ponto de partida) do erro de quem já estudou a matéria (dívida).
 const evidencias = (userId, escopoId) => R.memo(`evs:${userId}:${escopoId}`, () => db.prepare(`SELECT e.*, COALESCE(t.modo, '') AS tentativa_modo FROM est_evidencias e LEFT JOIN est_tentativas t ON t.id = e.tentativa_id
-    WHERE e.user_id = ? AND e.escopo_id = ? ORDER BY e.criado_em`).all(userId, escopoId)
+    WHERE e.user_id = ? AND e.escopo_id = ? ORDER BY e.criado_em, e.rowid`).all(userId, escopoId) /* rowid: respostas da MESMA prova nascem no mesmo milissegundo, e o estado da competência depende da ordem (errou e depois acertou ≠ acertou e depois errou) */
   .map(e => ({ ...e, acerto: !!e.acerto, inedita: !!e.inedita, ajuda_humana: !!e.ajuda_humana })));
 const jaViu = (userId, refId) => !!db.prepare('SELECT 1 FROM est_evidencias WHERE user_id = ? AND ref_id = ? LIMIT 1').get(userId, refId);
 // tudo o que o aluno já respondeu, numa consulta só (quiz, praticar e prova perguntavam questão a questão)

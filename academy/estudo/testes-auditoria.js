@@ -203,13 +203,19 @@ async function rodar({ t, req }) {
   // ================= D. PROVA EM ANDAMENTO =================
   await t('auditoria D: a prova em andamento aparece no painel (aba Prova e aba Hoje) com o tempo que resta, e retoma na QUESTÃO em que o aluno estava', async () => {
     assert.equal((await painel('ivo-a')).prova_aberta, null);
-    const ini = await req('POST', `${esc()}/tentativas`, { jar: 'ivo-a', corpo: { modo: 'treino', n: 5, duracao_min: 30 } });
+    // A prova é das SEIS questões da competência ka (bloco I), e a que o Ivo responde é sempre a questão 3 — não "a primeira
+    // das cinco sorteadas". Sorteada entre as 13 do percurso, a primeira era a questão 14 em 1 prova de cada 13; respondida
+    // aqui, ela chegava "já vista" ao teste L (logo abaixo), que exige vê-la como INÉDITA no Praticar — e a suíte falhava de
+    // vez em quando (12/10/2026; o conserto de 11/10 só tirava a 14 de prova ABERTA). Com as seis da ka, o conjunto é sempre
+    // o mesmo (só a ordem muda), a 14 nunca entra e o que o Ivo deixa de evidência é sempre o mesmo.
+    const ini = await req('POST', `${esc()}/tentativas`, { jar: 'ivo-a', corpo: { modo: 'treino', n: 6, duracao_min: 30, competencias: ['ka'] } });
+    assert.deepEqual(ini.json.questoes.map(q => q.id).sort(), [1, 2, 3, 4, 5, 6].map(idQ).sort(), 'as seis da competência ka, em qualquer ordem — sem a 14, que não tem competência');
     assert.deepEqual([ini.st, ini.json.posicao], [200, 0], ini.texto);
     let pa = (await painel('ivo-a')).prova_aberta;
-    assert.deepEqual([pa.id, pa.modo, pa.total, pa.respondidas, pa.posicao, pa.prazo_em], [ini.json.id, 'treino', 5, 0, 0, ini.json.prazo_em]);
+    assert.deepEqual([pa.id, pa.modo, pa.total, pa.respondidas, pa.posicao, pa.prazo_em], [ini.json.id, 'treino', 6, 0, 0, ini.json.prazo_em]);
     assert.ok(Date.parse(pa.prazo_em) - Date.parse(pa.agora) > 29 * 60e3, 'o tempo que resta sai do relógio do servidor');
-    // respondeu a 1ª e foi para a 4ª (índice 3)
-    let r = await req('PUT', `${esc()}/tentativas/${ini.json.id}/respostas`, { jar: 'ivo-a', corpo: { respostas: { [ini.json.questoes[0].id]: 'a' }, posicao: 3 } });
+    // respondeu uma (a questão 3, esteja onde estiver na prova) e foi para a 4ª (índice 3)
+    let r = await req('PUT', `${esc()}/tentativas/${ini.json.id}/respostas`, { jar: 'ivo-a', corpo: { respostas: { [idQ(3)]: 'a' }, posicao: 3 } });
     assert.deepEqual([r.json.salvo, r.json.respondidas], [true, 1]);
     pa = (await painel('ivo-a')).prova_aberta;
     assert.deepEqual([pa.respondidas, pa.posicao], [1, 3]);

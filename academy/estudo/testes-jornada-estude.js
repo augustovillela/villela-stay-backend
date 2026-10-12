@@ -138,8 +138,13 @@ async function rodar({ t, req }) {
     assert.ok(tr.st === 200 && tr.json.id !== diagId && !tr.json.retomada && tr.json.modo === 'treino', 'o treino começa mesmo com o diagnóstico aberto: ' + tr.texto);
     assert.equal((await req('POST', `${esc()}/tentativas/${tr.json.id}/enviar`, { jar: 'bia-j' })).st, 200);
     assert.equal((await req('GET', `${esc()}/tentativas/${diagId}`, { jar: 'leo-j' })).st, 404, 'a tentativa é de quem a começou');
-    // 2ª parte: B com duas certas e uma errada; C com uma errada e uma em branco
-    r = await req('PUT', `${esc()}/tentativas/${diagId}/respostas`, { jar: 'bia-j', corpo: { respostas: { [ids[3]]: 'a', [ids[4]]: 'a', [ids[5]]: 'b', [ids[6]]: 'b' } } });
+    // 2ª parte: B com duas certas e uma errada; C com uma errada e uma em branco.
+    // A ERRADA de B é a PRIMEIRA das três, e não a última: as três questões de B são SORTEADAS entre cinco (três da
+    // competência cb1, duas da cb2), e em 1 sorteio de cada 10 saem as três da cb1. Com a errada por último, a cb1
+    // terminava derrubada ("em prática") e a cb2 nem era tocada — o teste da régua, adiante, exigia "ao menos uma
+    // competência de B demonstrada" e falhava nesse sorteio (12/10/2026). Errada primeiro, as duas certas vêm DEPOIS
+    // dela: em qualquer sorteio há competência de B demonstrada, e o teste diz exatamente quais.
+    r = await req('PUT', `${esc()}/tentativas/${diagId}/respostas`, { jar: 'bia-j', corpo: { respostas: { [ids[3]]: 'b', [ids[4]]: 'a', [ids[5]]: 'a', [ids[6]]: 'b' } } });
     assert.deepEqual([r.json.respondidas, r.json.total], [7, 8]);
     const sem = db.prepare('SELECT COUNT(*) n FROM est_evidencias WHERE user_id = ?').get(uid(BIA.email)).n;
     const retomadas = () => db.prepare("SELECT alvo_id, vencimento FROM est_revisoes WHERE user_id = ? AND alvo = 'competencia' ORDER BY alvo_id").all(uid(BIA.email));
@@ -200,9 +205,17 @@ async function rodar({ t, req }) {
     const comp = Object.fromEntries(p.competencias.map(c => [c.codigo, c]));
     assert.ok(comp.cb1.tentativas + comp.cb2.tentativas >= 3 && comp.cc1.tentativas >= 1, 'as respostas do diagnóstico estão no estado das competências');
     assert.ok(comp.cc1.estado !== 'nao_avaliada', 'a C só foi respondida no diagnóstico, e deixou de ser "não avaliada": ' + comp.cc1.estado);
-    // B: duas certas em questão nova, sem pista — ao menos uma competência dela foi DEMONSTRADA só pelo diagnóstico
-    const demB = ['cb1', 'cb2'].filter(k => ['demonstrada_sem_apoio', 'retida'].includes(comp[k].estado)).length;
-    assert.ok(demB >= 1, 'acerto do diagnóstico é demonstração: ' + comp.cb1.estado + ' / ' + comp.cb2.estado);
+    // B: duas certas em questão nova, sem pista — a competência de cada uma foi DEMONSTRADA só pelo diagnóstico.
+    // Quais são, sai do SORTEIO (questões 9–11 = cb1, 12–13 = cb2): a errada foi a primeira de B, as duas certas vieram
+    // depois — a competência de cada certa está demonstrada; a que só teve a errada, em prática; a que não caiu, não avaliada
+    const compDeB = (n) => (n <= 11 ? 'cb1' : 'cb2');
+    const [erradaB, ...certasB] = diagQs.slice(3, 6).map(compDeB);
+    const esperadas = [...new Set(certasB)].sort();
+    const demonstradasB = ['cb1', 'cb2'].filter(k => ['demonstrada_sem_apoio', 'retida'].includes(comp[k].estado));
+    assert.deepEqual(demonstradasB, esperadas, `acerto do diagnóstico é demonstração (sorteio de B: ${diagQs.slice(3, 6).join(',')}): ${comp.cb1.estado} / ${comp.cb2.estado}`);
+    for (const k of ['cb1', 'cb2']) if (!esperadas.includes(k)) assert.equal(comp[k].estado, k === erradaB ? 'em_pratica' : 'nao_avaliada', `${k}: só a errada, ou nem caiu`);
+    const demB = demonstradasB.length;
+    assert.ok(demB >= 1, 'em qualquer sorteio, ao menos uma competência de B fica demonstrada');
     assert.deepEqual([jr.selos[1].demonstradas, jr.selos[1].aulas_estudadas], [demB, 0], 'conta para a prata e o ouro de Direito B — sem que nenhuma aula dela esteja estudada');
     assert.ok(jr.nivel.competencias.demonstradas >= 2 + demB, 'e para o nível: ' + JSON.stringify(jr.nivel.competencias));
     // a regra está no MODO da tentativa: o teste final é tratado como o diagnóstico; um simulado, não
@@ -229,7 +242,7 @@ async function rodar({ t, req }) {
     assert.deepEqual([m.diagnostico.ok, (await med('leo-j')).diagnostico.ok], [true, false]);
     // B e C têm erro pendente; a A nunca teve erro (não é "zerada": nunca precisou)
     assert.deepEqual([m.erros.ok, m.erros.detalhe], [false, '']);
-    const erradaDeB = diagQs[5];
+    const erradaDeB = diagQs[3]; // a errada de B é a primeira das três sorteadas (ver o envio do diagnóstico)
     assert.equal((await responder('bia-j', erradaDeB, 'a')).json.acerto, true);
     m = await med('bia-j');
     assert.deepEqual([m.erros.ok, m.erros.detalhe], [true, 'Direito B'], 'refez e acertou o que tinha errado em B; a C continua pendente');
