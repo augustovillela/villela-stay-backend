@@ -842,23 +842,66 @@ function avisoIA(p) {
     A IA usa saldo pré-pago: você vê o valor antes de cada uso e paga só o que usar. <a href="/academy/creditos-ia" style="color:#7A3E06">Como funciona</a>.</p>`;
 }
 
-// Termos/privacidade: MINUTA — precisa de revisão por advogado (OAB) antes
-// de a plataforma operar comercialmente. O texto deixa isso explícito.
+// Termos/privacidade: MINUTA — o carimbo só sai depois de validado por advogado (OAB); é regra da casa.
+// A FRASE da faixa, porém, não pode mentir (auditoria de 11/10/2026, M4): dizia "antes da operação
+// comercial" com o checkout aberto. Agora diz o que é verdade: o texto está em validação e, até a versão
+// definitiva, é o que vale. Uma faixa só, igual em todas as páginas legais (`FAIXA_MINUTA`).
+//
+// PONTOS PENDENTES DE ADVOGADO — ficam AQUI, fora do texto público (lista completa em
+// docs\estudo\MINUTA-termos-pedidos-e-audio.md, seção "Publicado como minuta em 11/10/2026"):
+//   [A VALIDAR]   base legal de cada tratamento (o texto fala em "executar o serviço", "obrigação legal" e
+//                 "consentimento" sem citar artigo da LGPD);
+//   [A VALIDAR]   transferência internacional e salvaguardas dos operadores (arts. 33 a 36 da LGPD): o texto
+//                 nomeia os operadores que o CÓDIGO comprova e diz que pode haver tratamento fora do Brasil;
+//   [A VALIDAR]   idade mínima / declaração de idade: nada foi escrito (o cadastro não pergunta a idade);
+//   [A VALIDAR]   nome do encarregado e canal fora do painel: o texto aponta o Suporte, único canal publicado;
+//   [A VALIDAR]   aviso/consentimento do Google Analytics da landing /academy (a política só o descreve);
+//   [A CONFIRMAR] tentativa que falha dentro de um pedido concluído: o código já NÃO a cobra do aluno
+//                 (ia.js, `custoCobrado`), mas o texto promete só "o custo efetivo, nunca acima do aceito";
+//   [A CONFIRMAR] critério do certificado (todas as aulas + um simulado): fica na página do curso, não aqui;
+//   [A VALIDAR]   enquadramento do saldo pré-pago e do arrependimento sobre pedido já executado.
+const FAIXA_MINUTA = '<div class="aviso"><b>MINUTA</b> — texto em validação jurídica. Enquanto a versão definitiva não é publicada, estas são as condições em vigor.</div>';
 function paginaLegal(titulo, corpo) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>${esc(titulo)} — Villela Academy</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS} .doc{max-width:760px;margin:32px auto;padding:0 18px;line-height:1.6}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head>
     <body class="vx" data-vertical="academy"><div class="doc"><p><a href="/academy">← Villela Academy</a></p>
-    <div class="aviso"><b>MINUTA</b> — documento em elaboração, sujeito a revisão jurídica (advogado OAB) antes da operação comercial.</div>
+    ${FAIXA_MINUTA}
     <h1 style="color:var(--villela-navy)">${esc(titulo)}</h1>${corpo}
     <p class="sub" style="text-align:left">Villela Academy é um produto da Augusto Villela Ltda (CNPJ 56.776.526/0001-12).</p>
     </div></body></html>`;
 }
-const TERMOS = `<p>Estes Termos de Uso regem o acesso à plataforma Villela Academy por alunos, produtores e afiliados.</p>
+// Operadores citados nos textos: só os que o código comprova — Anthropic (ia.js, SDK @anthropic-ai/sdk: texto e
+// PDF), OpenAI (ia.js, /v1/audio/transcriptions: áudio), Mercado Pago (billing.js e carteira-ia.js), Cloudflare R2
+// (storage.js), Render (hospedagem: docs\integracoes\backend-portal.md) e Google (o gtag da landing, `GA`, acima).
+const TERMOS = `<p>Estes Termos de Uso regem o acesso à plataforma Villela Academy por alunos, produtores e afiliados. Complementam-se pela <a href="/academy/privacidade">Política de Privacidade</a>, pela <a href="/academy/reembolso">Política de Reembolso</a> e pelos <a href="/academy/creditos-ia">Termos dos Créditos de IA</a>.</p>
+  <h3>1. Conta</h3>
   <ul><li>A conta é pessoal e intransferível; você responde pelo que fizer com ela.</li>
-  <li>Produtores respondem pelo conteúdo que publicam e declaram ter os direitos autorais do material.</li>
+  <li>Compartilhar acesso, redistribuir ou revender conteúdo comprado viola estes termos.</li></ul>
+  <h3>2. Conteúdo e conduta</h3>
+  <ul><li>Produtores respondem pelo conteúdo que publicam e declaram ter os direitos autorais do material.</li>
   <li>É proibido conteúdo ilegal, enganoso, adulto, perigoso, discriminatório ou que viole direitos de terceiros; a plataforma pode revisar, suspender e remover conteúdo e contas.</li>
-  <li>Comissões, prazos de repasse e política de reembolso serão definidos nos Termos do Produtor e do Afiliado.</li>
-  <li>Compartilhar acesso, redistribuir ou revender conteúdo comprado viola estes termos.</li></ul>`;
+  <li>As condições de quem vende e de quem divulga estão nos <a href="/academy/termos-produtor">Termos do Produtor</a> e nos <a href="/academy/termos-afiliado">Termos do Afiliado</a>.</li></ul>
+  <h3>3. Compra e acesso</h3>
+  <ul><li>A página de venda de cada curso informa o preço e, quando houver, o prazo de acesso e a garantia.</li>
+  <li>O pagamento é processado pelo Mercado Pago; o acesso é liberado quando ele confirma o pagamento.</li>
+  <li>Arrependimento, garantia e devolução seguem a <a href="/academy/reembolso">Política de Reembolso</a>.</li></ul>
+  <h3>4. Funções de IA e pedidos pagos por uso</h3>
+  <ul><li>As funções que acionam um provedor de inteligência artificial a cada uso (como o Tutor Villela) são pagas à parte, do saldo de créditos de IA, conforme os <a href="/academy/creditos-ia">Termos dos Créditos de IA</a>.</li>
+  <li>A plataforma também oferece <b>pedidos pagos por uso</b> — correção de resposta discursiva, de peça e de resposta oral; importação de prova em PDF; leitura de edital em PDF. Essa função é liberada aos poucos e pode ainda não estar disponível na sua conta.</li>
+  <li>Antes de qualquer cobrança, a tela mostra o valor máximo e pede o seu aceite. Quando o saldo não basta, a recarga feita para pagar um pedido tem valor mínimo de R$ 50,00.</li></ul>
+  <h3>5. Natureza do conteúdo e dos resultados</h3>
+  <ul><li>Os cursos e as ferramentas são material de estudo. A plataforma não garante resultado em concurso, exame ou seleção.</li>
+  <li>A nota e os comentários produzidos por inteligência artificial são <b>estimativa</b> e apoio de estudo: não equivalem à avaliação de banca examinadora e podem conter erros.</li></ul>
+  <h3>6. Certificado</h3>
+  <ul><li>Ao concluir um curso, o aluno pode emitir o certificado de conclusão da Villela Academy, que pode ser conferido pelo código impresso nele.</li>
+  <li>Os cursos são <b>cursos livres</b>: o certificado <b>não tem validade para o MEC</b> e não constitui título nem habilitação profissional. O critério de emissão é informado em cada curso.</li></ul>
+  <h3>7. Conteúdo enviado pelo usuário</h3>
+  <ul><li>Ao enviar respostas, áudios e arquivos (como provas e editais em PDF), você declara ter o direito de enviá-los e responde pelo conteúdo enviado.</li>
+  <li>A leitura automática de arquivos pode conter erros; o que não pôde ser conferido com o documento fica marcado para a sua revisão. O percurso particular criado a partir dos seus arquivos é visível apenas a você.</li>
+  <li>O áudio da resposta oral fica guardado por 6 meses e depois é apagado; os detalhes estão na <a href="/academy/privacidade">Política de Privacidade</a>.</li></ul>
+  <h3>8. Mudanças e contato</h3>
+  <ul><li>Mudanças nestes termos são informadas na plataforma e valem para o uso posterior à publicação.</li>
+  <li>Dúvidas e pedidos: pelo Suporte, no painel, em Conta.</li></ul>`;
 const TERMOS_PRODUTOR = `<p>Termos específicos de quem vende na Villela Academy (complementam os Termos de Uso).</p>
   <ul><li>O produtor declara ser titular dos direitos do conteúdo publicado e responde civil e criminalmente por ele.</li>
   <li>Todo produto passa por revisão editorial e pode ser rejeitado, suspenso ou removido conforme a Política de Conteúdo.</li>
@@ -870,15 +913,26 @@ const TERMOS_AFILIADO = `<p>Termos específicos de quem divulga produtos da Vill
   <li>A comissão só é devida sobre venda confirmada e é bloqueada em caso de reembolso ou chargeback.</li>
   <li>Percentuais, prazo de cookie e regras de atribuição são definidos por produto (Fase 5).</li>
   <li>Violação das regras leva a suspensão/bloqueio e perda das comissões pendentes.</li></ul>`;
-const REEMBOLSO = `<p>Política de reembolso (consumidor).</p>
+const REEMBOLSO = `<p>Política de reembolso (consumidor). Nada aqui reduz os direitos que o Código de Defesa do Consumidor garante.</p>
+  <h3>1. Cursos e produtos</h3>
   <ul><li>Compras online têm direito de arrependimento de 7 dias (art. 49 do CDC), com reembolso integral.</li>
   <li>Produtos podem oferecer garantia estendida própria (indicada na página de venda).</li>
   <li>Ao reembolsar, o acesso ao conteúdo é revogado e comissões associadas são canceladas.</li>
-  <li>Solicitações: pelo painel do aluno ou canal de suporte.</li></ul>`;
+  <li>A devolução é feita pelo mesmo meio de pagamento da compra, pelo Mercado Pago.</li></ul>
+  <h3>2. Assinaturas</h3>
+  <ul><li>A assinatura pode ser cancelada pelo próprio assinante no painel; o cancelamento interrompe as cobranças seguintes.</li></ul>
+  <h3>3. Créditos de IA e pedidos pagos por uso</h3>
+  <ul><li><b>Recarga:</b> em até 7 dias, devolve-se o valor da recarga (ou a parte não usada, se já houve uso). Depois disso, o saldo comprado e ainda não usado pode ser devolvido a pedido.</li>
+  <li><b>Recarga feita para pagar um pedido:</b> tem valor mínimo de R$ 50,00. O que exceder o custo do pedido fica como saldo de créditos de IA, nas mesmas condições da recarga comum — inclusive as de devolução.</li>
+  <li><b>Pedido que não se conclui</b> por falha técnica: o valor reservado volta integralmente ao saldo.</li>
+  <li><b>Pedido concluído:</b> o valor consumido não é devolvido, salvo falha da plataforma. Discordar da nota não gera devolução automática; a discordância registrada é analisada pela Academy.</li>
+  <li>As regras completas estão nos <a href="/academy/creditos-ia">Termos dos Créditos de IA</a>.</li></ul>
+  <h3>4. Como pedir</h3>
+  <ul><li>Solicitações: pelo Suporte, no painel, em Conta.</li></ul>`;
 // Termos dos créditos de IA (saldo pré-pago). MINUTA: as escolhas de validade e de devolução
 // abaixo são PROPOSTA a validar com advogado e a confirmar pelo Augusto (docs\estudo\DECISIONS\ADR-0003).
 // A margem não é publicada; o que se promete ao usuário é o método de preço e o valor antes do uso.
-const CREDITOS_IA = `<p>Estes termos tratam do <b>saldo de créditos de IA</b> da Villela Academy: o valor pré-pago que o usuário usa para o Tutor Villela, o mentor do Villela Lab, o "lapidar com IA" e as demais funções que dependem de provedores de inteligência artificial. Complementam os Termos de Uso e a Política de Reembolso.</p>
+const CREDITOS_IA = `<p>Estes termos tratam do <b>saldo de créditos de IA</b> da Villela Academy: o valor pré-pago que o usuário usa para o Tutor Villela, o mentor do Villela Lab, o "lapidar com IA", os pedidos pagos por uso (correção de respostas, importação de prova e leitura de edital) e as demais funções que dependem de provedores de inteligência artificial. Complementam os Termos de Uso e a Política de Reembolso.</p>
   <h3>1. O que é pago à parte</h3>
   <ul><li>O preço de um curso inclui as aulas, os vídeos, os materiais, o quiz, o caderno, a jornada e o certificado.</li>
   <li>As funções que acionam um provedor de IA a cada uso são cobradas <b>por uso</b>, do saldo de créditos. A página de venda e a tela de pagamento de cada curso informam isso.</li>
@@ -891,36 +945,78 @@ const CREDITOS_IA = `<p>Estes termos tratam do <b>saldo de créditos de IA</b> d
   <li>O extrato, em Conta e pagamentos, mostra cada recarga e cada uso.</li>
   <li>O preço pode variar de um dia para o outro com a cotação do dólar e com os preços do provedor. A variação vale para usos futuros; o saldo, que é em reais, não muda.</li></ul>
   <h3>3. Recarga</h3>
-  <ul><li>O saldo é carregado em pacotes de valor fixo, pagos pelo Mercado Pago (Pix ou cartão). Dados de cartão vão direto ao Mercado Pago, nunca aos nossos servidores.</li>
+  <ul><li>A recarga comum é feita em pacotes de valor fixo — hoje R$ 20, R$ 50 e R$ 100; os pacotes em vigor aparecem na tela de recarga —, pagos pelo Mercado Pago (Pix ou cartão). Dados de cartão vão direto ao Mercado Pago, nunca aos nossos servidores.</li>
+  <li><b>Recarga para pagar um pedido:</b> quando o saldo não basta para um pedido pago por uso, a recarga feita na hora cobre o que falta e tem valor mínimo de R$ 50,00. O que exceder o custo do pedido permanece como saldo de créditos de IA, nas mesmas condições do saldo comprado por recarga comum.</li>
   <li>O crédito entra no saldo quando o pagamento é confirmado pelo Mercado Pago.</li></ul>
-  <h3>4. Validade do saldo</h3>
+  <h3>4. Pedidos pagos por uso</h3>
+  <ul><li>Além das consultas ao Tutor e das demais funções de IA, a Academy oferece pedidos pagos por uso, descontados do saldo: (a) correção de resposta discursiva, de peça e de resposta oral; (b) importação de prova em PDF; (c) leitura de edital em PDF. <b>Essa função é liberada aos poucos</b> e pode ainda não estar disponível em todos os cursos e contas.</li>
+  <li><b>Orçamento e aceite:</b> antes de qualquer cobrança, a tela mostra o valor máximo do pedido, e ele só é executado depois do aceite. O valor máximo é reservado no saldo no momento do aceite; concluído o pedido, cobra-se apenas o custo efetivo, e a diferença volta ao saldo. Nunca se cobra acima do valor aceito.</li>
+  <li><b>Pedido que não se conclui:</b> se o pedido falhar por motivo técnico, o valor reservado volta integralmente ao saldo.</li>
+  <li><b>Natureza do resultado:</b> a correção é apoio de estudo produzido por inteligência artificial a partir da rubrica da questão. A nota é <b>estimativa</b>: não equivale à avaliação de banca examinadora e não garante resultado em concurso. O usuário pode registrar discordância da correção; o registro é analisado pela Academy e não gera devolução automática.</li>
+  <li><b>Arquivos enviados:</b> o usuário declara ter o direito de enviar os arquivos (editais e provas) e responde pelo conteúdo enviado. A leitura automática pode conter erros; itens e questões cuja leitura não pôde ser conferida com o documento ficam marcados para revisão do próprio usuário. O percurso particular criado a partir desses arquivos é visível apenas a ele.</li>
+  <li><b>Áudio da resposta oral:</b> é transcrito por provedor de transcrição e fica guardado por 6 meses, com download enquanto estiver disponível; depois é apagado. A transcrição e a correção permanecem no histórico.</li>
+  <li><b>Limites de uso:</b> a Academy pode limitar a quantidade diária de pedidos e o tamanho dos arquivos, para proteger o serviço.</li></ul>
+  <h3>5. Validade do saldo</h3>
   <ul><li>O saldo <b>comprado</b> não tem prazo de validade: fica disponível enquanto a conta existir.</li>
   <li>O saldo é em reais, não rende, não é transferível a outra conta e só pode ser usado nas funções de IA da Villela Academy. Não é conta de pagamento nem meio de pagamento para outros produtos.</li></ul>
-  <h3>5. Arrependimento e devolução do saldo não usado</h3>
+  <h3>6. Arrependimento e devolução do saldo não usado</h3>
   <ul><li><b>Em até 7 dias da recarga</b> (direito de arrependimento, art. 49 do Código de Defesa do Consumidor): devolução do valor da recarga. Se parte dela já tiver sido usada, devolve-se a parte não usada.</li>
   <li><b>Depois de 7 dias:</b> o saldo comprado e ainda não usado pode ser devolvido a pedido do usuário, pelo mesmo meio de pagamento da recarga.</li>
   <li>O valor já consumido em usos concluídos não é devolvido, salvo falha da plataforma.</li>
   <li>Pedidos: pelo Suporte, em Conta e pagamentos, ou pelo e-mail da conta. Prazo de resposta: até 10 dias úteis.</li>
   <li>Ao encerrar a conta, o saldo comprado e não usado é devolvido a pedido, na forma acima.</li></ul>
-  <h3>6. Créditos de cortesia</h3>
+  <h3>7. Créditos de cortesia</h3>
   <ul><li>A plataforma pode conceder créditos de cortesia. Eles aparecem identificados no extrato, não têm valor em dinheiro, não são devolvidos nem convertidos em reais e podem ter prazo ou ser retirados se não usados.</li>
   <li>Quando há saldo comprado e de cortesia na mesma conta, a devolução considera apenas o saldo comprado.</li></ul>
-  <h3>7. Contestação do pagamento (chargeback) e reembolso pelo meio de pagamento</h3>
+  <h3>8. Contestação do pagamento (chargeback) e reembolso pelo meio de pagamento</h3>
   <ul><li>Se o pagamento de uma recarga for contestado, estornado ou reembolsado pelo meio de pagamento, o crédito correspondente é retirado do saldo.</li>
   <li>Se esse crédito já tiver sido usado, o saldo fica negativo e as funções de IA ficam suspensas até a regularização. O acesso aos cursos comprados não é afetado por isso.</li>
   <li>Contestações indevidas ou reiteradas podem levar à suspensão da recarga na conta.</li></ul>
-  <h3>8. Sobre as respostas da IA</h3>
+  <h3>9. Sobre as respostas da IA</h3>
   <ul><li>As respostas são apoio ao estudo, geradas por modelos de inteligência artificial com base no material do curso. Podem conter erros e não substituem a conferência nas fontes nem orientação profissional.</li>
-  <li>A cobrança se refere ao uso do serviço, e não à concordância do usuário com o conteúdo da resposta.</li></ul>
-  <h3>9. Mudanças</h3>
+  <li>A cobrança se refere ao uso do serviço, e não à concordância do usuário com o conteúdo da resposta.</li>
+  <li>Para gerar as respostas, o texto enviado e os arquivos em PDF são processados por modelos da Anthropic; o áudio das respostas orais é transcrito por serviço da OpenAI. O tratamento pode ocorrer fora do Brasil. Os detalhes estão na <a href="/academy/privacidade">Política de Privacidade</a>.</li></ul>
+  <h3>10. Mudanças</h3>
   <ul><li>Mudanças nestes termos valem para recargas e usos posteriores à publicação e são informadas na plataforma. O saldo já comprado é preservado.</li></ul>`;
-const PRIVACIDADE = `<p>Tratamos dados pessoais conforme a LGPD (Lei 13.709/2018).</p>
-  <ul><li>Coletamos o mínimo necessário: nome, e-mail, telefone e, para produtores/afiliados, dados de documento e pagamento para repasses.</li>
-  <li>Usamos os dados para operar a plataforma (conta, compras, entrega de conteúdo, comissões) e, com consentimento, para comunicações.</li>
-  <li>Você pode exportar seus dados e pedir exclusão (anonimização) direto no painel, em Conta.</li>
-  <li>Registramos logs de acesso e auditoria por segurança e obrigação legal.</li>
-  <li>Não vendemos dados pessoais. Compartilhamos apenas com operadores essenciais — em especial o
-  Mercado Pago, que processa os pagamentos (dados de cartão vão direto a ele, nunca aos nossos servidores).</li></ul>`;
+const PRIVACIDADE = `<p>Tratamos dados pessoais conforme a LGPD (Lei 13.709/2018). A Villela Academy é operada pela Augusto Villela Ltda, responsável pelo tratamento descrito aqui.</p>
+  <h3>1. Dados que tratamos</h3>
+  <ul><li><b>Cadastro:</b> coletamos o mínimo necessário — nome, e-mail, telefone e, para produtores/afiliados, dados de documento e pagamento para repasses.</li>
+  <li><b>Compras:</b> pedidos, valores, recargas e o extrato do saldo de créditos de IA. Dados de cartão vão direto ao Mercado Pago, nunca aos nossos servidores.</li>
+  <li><b>Estudo:</b> progresso nas aulas, respostas e notas, certificados, anotações, marcações, tentativas, o que você escreve no caderno e na comunidade, e as mensagens ao Suporte.</li>
+  <li><b>Funções de IA:</b> as perguntas e os textos que você envia ao Tutor Villela e às demais funções de IA, e as respostas geradas.</li>
+  <li><b>Pedidos pagos por uso:</b> o texto das respostas escritas; o áudio das respostas orais e a transcrição desse áudio; os arquivos PDF enviados (editais e provas) e o que deles for extraído; e os registros de discordância da correção.</li>
+  <li><b>Acesso e segurança:</b> registros de sessão (data, endereço IP e navegador) e de auditoria.</li></ul>
+  <h3>2. Para que usamos</h3>
+  <ul><li>Para operar a plataforma e executar o serviço que você pediu (conta, compras, entrega de conteúdo, funções de IA, pedidos, certificados, comissões).</li>
+  <li>Para cumprir obrigações legais e fiscais e para a segurança da plataforma.</li>
+  <li>Com consentimento, para comunicações.</li>
+  <li>Não vendemos dados pessoais.</li></ul>
+  <h3>3. Com quem compartilhamos (operadores)</h3>
+  <p>Compartilhamos apenas com os fornecedores necessários para o serviço funcionar:</p>
+  <ul><li><b>Mercado Pago</b> — processa os pagamentos de cursos, assinaturas e recargas.</li>
+  <li><b>Anthropic</b> — provedor dos modelos de inteligência artificial que geram as respostas do Tutor, as correções e a leitura de provas e editais: recebe o texto enviado e os arquivos em PDF.</li>
+  <li><b>OpenAI</b> — provedor da transcrição: recebe o áudio das respostas orais.</li>
+  <li><b>Cloudflare</b> (armazenamento R2) — guarda os arquivos da plataforma, entre eles os vídeos, os materiais e os arquivos e áudios que você envia.</li>
+  <li><b>Render</b> — hospeda a aplicação e o banco de dados.</li>
+  <li><b>Google</b> — mede as visitas da página inicial pública (Google Analytics) e fornece as fontes tipográficas das páginas.</li>
+  <li>Serviços de envio de e-mail e de notificação, para as mensagens da plataforma.</li></ul>
+  <p>Esses fornecedores podem tratar dados <b>fora do Brasil</b>.</p>
+  <h3>4. Cookies e medição de visitas</h3>
+  <ul><li>Usamos um cookie de sessão, necessário para manter você conectado.</li>
+  <li>Contamos as visitas às páginas públicas com medição própria, que não grava o endereço IP nem usa cookie.</li>
+  <li>A página inicial pública (<a href="/academy">/academy</a>) carrega o Google Analytics, que pode gravar cookies e registrar dados de navegação, como páginas vistas e endereço IP. É possível bloqueá-lo nas configurações do navegador.</li></ul>
+  <h3>5. Por quanto tempo guardamos</h3>
+  <ul><li><b>Áudio da resposta oral:</b> fica guardado por <b>6 meses</b> a contar do envio e é apagado depois disso. A tela informa a data-limite e permite <b>baixar o próprio áudio</b> enquanto ele estiver disponível. A transcrição e a correção permanecem no seu histórico.</li>
+  <li>Os demais dados da conta ficam guardados enquanto a conta existir.</li>
+  <li>Registros financeiros (valor e data de compras, recargas e pedidos) são mantidos pelo prazo exigido em lei.</li></ul>
+  <h3>6. Seus direitos, exportação e exclusão</h3>
+  <ul><li>Você pode pedir confirmação e acesso aos seus dados, correção, informação sobre o compartilhamento, exclusão e revogação de consentimento.</li>
+  <li><b>Exportação:</b> você pode exportar seus dados direto no painel, em Conta — o cadastro, os textos que escreveu, os registros de estudo e de compra e os pedidos que fez.</li>
+  <li><b>Exclusão:</b> você pode excluir a conta direto no painel, em Conta. Os dados de identificação são anonimizados; o áudio, os arquivos enviados, as respostas, as transcrições, as correções, as anotações e o percurso particular são apagados. Permanece o registro financeiro (valor e data), pelo prazo legal.</li></ul>
+  <h3>7. Encarregado e contato</h3>
+  <ul><li>O canal do <b>encarregado pelo tratamento de dados pessoais</b> é o Suporte da plataforma: no painel, em Conta, seção Suporte. As respostas chegam por ali e pelo e-mail da conta.</li></ul>
+  <h3>8. Mudanças</h3>
+  <ul><li>Mudanças nesta política são informadas na plataforma.</li></ul>`;
 
 function registrarPaginas(app, { notificar }) {
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));

@@ -811,6 +811,55 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.ok(ro.includes("object-src 'none'"), 'object-src é o que barra plugin antigo');
   });
 
+  await t('M5: não anuncia o Express e manda Permissions-Policy compatível com o que os produtos usam', async () => {
+    const r = await req('GET', '/health');
+    assert.ok(!('x-powered-by' in r.headers), 'x-powered-by exposto: ' + r.headers['x-powered-by']);
+    const pp = r.headers['permissions-policy'];
+    assert.ok(pp, 'sem Permissions-Policy');
+    const mapa = Object.fromEntries(String(pp).split(',').map((d) => d.trim().split('=')));
+    // fechado para todo mundo: ninguém usa
+    for (const rec of ['camera', 'geolocation', 'payment', 'usb', 'bluetooth', 'serial', 'hid']) assert.equal(mapa[rec], '()', rec + ' devia estar fechado');
+    // aberto só para a própria origem: algum produto usa
+    for (const rec of ['microphone', 'display-capture', 'midi', 'screen-wake-lock', 'gyroscope', 'accelerometer']) assert.equal(mapa[rec], '(self)', rec + ' é usado por produto da casa');
+    // NÃO listados: o player de vídeo embutido (iframe de terceiro) depende do padrão do navegador
+    for (const rec of ['fullscreen', 'autoplay', 'picture-in-picture', 'encrypted-media', 'clipboard-write', 'web-share']) assert.ok(!(rec in mapa), rec + ' listado tira recurso do vídeo embutido');
+    assert.ok(!/\*/.test(pp), 'curinga abre o recurso para qualquer iframe');
+    // vai também em página de produto e em 404, não só no /health
+    for (const rota of ['/academy/termos', '/rota-que-nao-existe']) {
+      const o = await req('GET', rota);
+      assert.equal(o.headers['permissions-policy'], pp, rota);
+      assert.ok(!('x-powered-by' in o.headers), rota);
+    }
+    // A política tem de acompanhar o CÓDIGO: varre o que é servido ao navegador e confere que nada do que ela
+    // fecha é usado — e que o microfone, que o Estude e o Musique usam, continua aberto para a própria origem.
+    const usos = { camera: 0, microphone: 0, geolocation: 0, 'display-capture': 0, midi: 0, 'screen-wake-lock': 0, payment: 0, usb: 0 };
+    const FORA = new Set(['node_modules', '.git', 'data', 'dist']);
+    const varrer = (dir) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (FORA.has(e.name) || e.name.startsWith('.wt')) continue;
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) { varrer(p); continue; }
+        if (!/\.(js|html)$/.test(e.name) || /selftest|^testes|\.test\./.test(e.name)) continue;
+        const src = fs.readFileSync(p, 'utf8');
+        for (const m of src.matchAll(/getUserMedia\(([^)]{0,200})/g)) {
+          if (/video\s*:/.test(m[1])) usos.camera++;
+          usos.microphone++;
+        }
+        if (/navigator\.geolocation/.test(src)) usos.geolocation++;
+        if (/getDisplayMedia/.test(src)) usos['display-capture']++;
+        if (/requestMIDIAccess/.test(src)) usos.midi++;
+        if (/wakeLock/.test(src)) usos['screen-wake-lock']++;
+        if (/new PaymentRequest/.test(src)) usos.payment++;
+        if (/navigator\.(usb|bluetooth|serial|hid)\b/.test(src)) usos.usb++;
+      }
+    };
+    varrer(__dirname);
+    assert.ok(usos.microphone > 0, 'a varredura não achou o getUserMedia do Estude: o teste está cego');
+    assert.ok(fs.readFileSync(path.join(__dirname, 'academy', 'app-estudo.js'), 'utf8').includes('getUserMedia({ audio: true }'), 'a prova oral do Estude grava áudio');
+    for (const rec of ['camera', 'geolocation', 'payment', 'usb']) assert.equal(usos[rec], 0, `algum arquivo passou a usar ${rec}: abrir na Permissions-Policy (server.js) antes de publicar`);
+    for (const rec of ['microphone', 'display-capture', 'midi', 'screen-wake-lock']) if (usos[rec]) assert.equal(mapa[rec], '(self)', rec);
+  });
+
   await t('o coletor de CSP grava a violação e responde 204', async () => {
     const antes = (lerData('csp-violacoes.jsonl') === null) ? 0 : 0;
     const r = await req('POST', '/csp-report', { json: { 'csp-report': {

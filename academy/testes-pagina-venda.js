@@ -4,6 +4,7 @@
 // trava um achado de docs\estudo\auditoria-2026-10-11-b\p-producao-e-integridade.md:
 //   A1  curso que hospeda o Estude conta pelo PERCURSO, não pela casca ("1 aula")
 //   M1  descrição longa com listas e subtítulos — e nada de HTML do produtor
+//   M4  textos legais: faixa MINUTA verdadeira e conteúdo em dia com o sistema (pedidos, áudio, operadores)
 //   M6  barra de compra presa ao rodapé no celular
 //   B1  og:image com a medida REAL da capa (ou sem medida)
 //   B2  "o quiz" só é prometido a curso que tem quiz
@@ -296,6 +297,66 @@ async function rodar({ t, req }) {
       const r = await req('GET', rota);
       assert.ok(r.st === 200 && r.texto.includes('<b>MINUTA</b>'), rota + ': a faixa das páginas legais fica (decisão do dono)');
     }
+  });
+
+  // ================= M4 =================
+  // Textos legais: o carimbo MINUTA fica (só sai com advogado), mas a faixa não pode dizer "antes da operação
+  // comercial" com o checkout aberto, e o texto tem de acompanhar o que o sistema faz: pedidos pagos, recarga
+  // mínima do pedido, guarda do áudio, operadores e canal do encarregado. O que NÃO pode aparecer: promessa de
+  // aprovação e a margem da IA (regras-negocio.md: a margem não é publicada).
+  await t('M4: páginas legais — faixa verdadeira, pedidos pagos, recarga mínima, áudio por 6 meses, operadores, encarregado; sem promessa e sem margem', async () => {
+    const FAIXA = '<b>MINUTA</b> — texto em validação jurídica. Enquanto a versão definitiva não é publicada, estas são as condições em vigor.';
+    const pg = {};
+    for (const nome of ['termos', 'privacidade', 'reembolso', 'creditos-ia', 'termos-produtor', 'termos-afiliado']) {
+      const r = await req('GET', '/academy/' + nome); assert.equal(r.st, 200, nome);
+      pg[nome] = r.texto;
+      assert.equal(r.texto.split(FAIXA).length, 2, nome + ': a faixa nova, uma vez só');
+      assert.ok(!r.texto.includes('antes da operação comercial'), nome + ': a faixa antiga dizia algo falso com o checkout aberto');
+      assert.ok(!r.texto.includes('documento em elaboração'), nome + ': sobrou a frase antiga');
+      assert.ok(!/A VALIDAR|A CONFIRMAR/.test(r.texto), nome + ': ponto pendente de advogado fica no código, não no texto público');
+    }
+    const quatro = ['termos', 'privacidade', 'reembolso', 'creditos-ia'];
+    for (const nome of quatro) {
+      // só o CORPO do documento: o <style> do cabeçalho tem "width:100%" e não é texto legal
+      const txt = pg[nome].slice(pg[nome].indexOf('<div class="doc">'));
+      assert.ok(txt.length > 400 && txt.includes('<h3>'), nome + ': o corpo do documento não foi achado');
+      // nenhuma promete aprovação nem resultado
+      assert.ok(!/aprova[çd]/i.test(txt), nome + ': a palavra "aprovação" não tem por que estar num texto que não promete resultado');
+      assert.ok(!/(garantimos|garantia de|asseguramos|prometemos)\s+(o\s+|a\s+|seu\s+|sua\s+)?(resultado|nota|vaga|classifica)/i.test(txt), nome + ': promessa de resultado');
+      // a margem não é publicada: nenhum percentual de acréscimo
+      assert.ok(!/30\s*%/.test(txt) && !/\bmargem\b/i.test(txt), nome + ': a margem não é publicada');
+      assert.ok(!/\d+\s*%/.test(txt), nome + ': percentual no texto legal — comissão e margem ficam de fora');
+    }
+    // pedidos pagos, com a ressalva de liberação gradual, e a recarga mínima do pedido
+    for (const nome of ['termos', 'creditos-ia']) {
+      assert.ok(/pedidos pagos por uso/i.test(pg[nome]) && pg[nome].includes('liberada aos poucos'), nome + ': pedidos pagos entram já, com a ressalva');
+      assert.ok(pg[nome].includes('valor máximo'), nome + ': orçamento antes do aceite');
+    }
+    for (const nome of ['termos', 'reembolso', 'creditos-ia']) assert.ok(pg[nome].includes('valor mínimo de R$ 50,00'), nome + ': recarga mínima do pedido');
+    assert.ok(pg['creditos-ia'].includes('R$ 20, R$ 50 e R$ 100'), 'os pacotes da recarga comum');
+    assert.ok(pg['creditos-ia'].includes('nas mesmas condições do saldo comprado por recarga comum'), 'o que sobra do pedido é saldo como outro qualquer');
+    assert.ok(pg['creditos-ia'].includes('Nunca se cobra acima do valor aceito') && pg['creditos-ia'].includes('volta integralmente ao saldo'));
+    // nota é estimativa
+    for (const nome of ['termos', 'creditos-ia']) assert.ok(pg[nome].includes('<b>estimativa</b>') && /não garante resultado/.test(pg[nome]), nome + ': a nota é estimativa');
+    // áudio: 6 meses, com download
+    for (const nome of ['termos', 'privacidade', 'creditos-ia']) assert.ok(/guardado por (<b>)?6 meses/.test(pg[nome]), nome + ': guarda do áudio');
+    assert.ok(pg.privacidade.includes('baixar o próprio áudio') && pg.privacidade.includes('A transcrição e a correção permanecem'));
+    // o prazo publicado é o do código
+    assert.equal(Math.round(require('./estudo/pedidos').AUDIO_ORAL_RETENCAO_DIAS / 30.4), 6, 'o texto diz 6 meses: o prazo do expurgo tem de ser esse');
+    // operadores: os que o código comprova, e o aviso de tratamento fora do Brasil
+    for (const op of ['Mercado Pago', 'Anthropic', 'OpenAI', 'Cloudflare', 'Render', 'Google Analytics']) assert.ok(pg.privacidade.includes(op), 'privacidade nomeia o operador: ' + op);
+    assert.ok(pg.privacidade.includes('fora do Brasil'));
+    for (const op of ['Mercado Pago', 'Anthropic', 'OpenAI']) assert.ok(pg['creditos-ia'].includes(op), 'créditos de IA nomeia: ' + op);
+    assert.ok(pg['creditos-ia'].includes('fora do Brasil'));
+    assert.ok(pg.termos.includes('Mercado Pago') && pg.reembolso.includes('Mercado Pago'));
+    // encarregado: o canal publicado; exclusão e exportação
+    assert.ok(/encarregado pelo tratamento de dados pessoais<\/b> é o Suporte/.test(pg.privacidade), 'canal do encarregado');
+    assert.ok(pg.privacidade.includes('<b>Exportação:</b>') && pg.privacidade.includes('<b>Exclusão:</b>') && pg.privacidade.includes('Permanece o registro financeiro'));
+    assert.ok(pg.privacidade.slice(pg.privacidade.indexOf('<div class="doc">')).length > 4000, 'a política tinha 909 caracteres');
+    // certificado: curso livre, sem validade para o MEC
+    assert.ok(pg.termos.includes('cursos livres') && pg.termos.includes('não tem validade para o MEC'));
+    // a landing que carrega o Analytics é a que a política aponta
+    assert.ok((await req('GET', '/academy')).texto.includes('googletagmanager.com'), 'a política diz que /academy carrega o Google Analytics');
   });
 
   // ================= B6 =================

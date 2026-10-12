@@ -34,6 +34,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const app = express();
+app.disable('x-powered-by'); // não anunciar o framework (auditoria de 11/10/2026, M5)
 app.set('trust proxy', 1); // Render põe 1 proxy na frente → req.ip = IP real do cliente (não o X-Forwarded-For forjável)
 app.use(express.json({ limit: '15mb' })); // 15mb p/ aceitar PDFs em base64 no upload de relatórios
 app.use(express.urlencoded({ extended: true, limit: '1mb' })); // form-urlencoded (ex.: ingestão do Make → CRM)
@@ -85,9 +86,32 @@ const CSP_POLITICA = [
   "report-uri /csp-report",
 ].join("; ");
 
+// Permissions-Policy (auditoria de 11/10/2026, M5): fecha o que NENHUM produto usa e deixa para a própria
+// origem o que algum produto usa. Conferido por grep no repositório antes de fechar:
+//   microphone       getUserMedia({ audio }) no Estude (prova oral), Musique, Origena e Voz -> (self)
+//   display-capture  getDisplayMedia no Laboratório do Musique (transcrever)               -> (self)
+//   midi             requestMIDIAccess no Musique (palco e Laboratório)                     -> (self)
+//   screen-wake-lock wakeLock no Musique (biblioteca e palco)                               -> (self)
+//   sensores         DeviceOrientation no tour 360 (giroscópio do celular)                  -> (self)
+//   camera, geolocation, payment, usb, bluetooth, serial, hid: nenhum uso -> ()
+//     (a foto do staff é <input type="file" capture>, que esta política não governa; o Mercado Pago é
+//      redirecionamento, não a Payment Request API)
+// DE PROPÓSITO FORA DA LISTA: fullscreen, autoplay, picture-in-picture, encrypted-media, clipboard-write
+// e web-share. A aula embute vídeo de terceiro em <iframe allow="autoplay; fullscreen; picture-in-picture">;
+// listar esses recursos como (self) tiraria a tela cheia do player. Sem listar, vale o padrão do navegador.
+// Regra para quem mexer: recurso novo de navegador num produto -> conferir esta linha (o selftest do núcleo
+// varre o código e quebra se alguém usar microfone, câmera ou localização que a política fecha).
+const PERMISSIONS_POLICY = [
+  'camera=()', 'microphone=(self)', 'geolocation=()', 'display-capture=(self)',
+  'midi=(self)', 'screen-wake-lock=(self)',
+  'accelerometer=(self)', 'gyroscope=(self)', 'magnetometer=(self)',
+  'payment=()', 'usb=()', 'bluetooth=()', 'serial=()', 'hid=()',
+].join(', ');
+
 // Cabeçalhos de segurança (equivalente leve ao helmet, sem dependência nova)
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Permissions-Policy', PERMISSIONS_POLICY);
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // HSTS: sem ele, o PRIMEIRO acesso de cada navegador ainda pode sair em http
