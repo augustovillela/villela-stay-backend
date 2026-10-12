@@ -239,6 +239,11 @@ async function rodar({ t, req }) {
   await t('auditoria L: questão vinculada só à disciplina (sem competência) registra a resposta — deixa de voltar como inédita e entra no caderno de erros', async () => {
     const id = idQ(14), ivo = uid(IVO.email);
     assert.deepEqual(R.competenciasDaQuestao(id, eid()), [], 'o vínculo é com o item 1.2 (disciplina, não folha): nenhuma competência');
+    // Prova aberta por um teste anterior pode ter SORTEADO esta questão — e questão em prova aberta não sai no
+    // Praticar (segunda revisão). Sem isto o teste falhava de vez em quando, conforme o sorteio (portão de 11/10/2026).
+    const abertasDoIvo = db.prepare("SELECT id FROM est_tentativas WHERE user_id = ? AND estado = 'em_andamento'").all(ivo).map(x => x.id);
+    abertasDoIvo.forEach(x => db.prepare("UPDATE est_tentativas SET estado = 'enviada' WHERE id = ?").run(x));
+    try {
     let pr = (await req('GET', `${esc()}/praticar?n=20`, { jar: 'ivo-a' })).json;
     const antes = pr.questoes.find(q => q.id === id);
     assert.ok(antes && antes.ja_vista === false, 'ela é oferecida no Praticar, como nova');
@@ -258,6 +263,7 @@ async function rodar({ t, req }) {
     assert.ok(!(await req('GET', `${esc()}/erros`, { jar: 'ivo-a' })).json.questoes.some(q => q.id === id), 'acertou de novo: sai do caderno');
     // em PROVA a mesma coisa (competências vazias no item congelado)
     assert.doesNotThrow(() => R.comCache(() => A.estadosDoAluno(repo.Usuarios.porEmail(IVO.email), R.Escopos.obter(eid()))));
+    } finally { abertasDoIvo.forEach(x => db.prepare("UPDATE est_tentativas SET estado = 'em_andamento' WHERE id = ?").run(x)); }
   });
 
   // ================= K. MAIS COBRADO =================
