@@ -77,6 +77,8 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
   // Custos de IA da plataforma (SÓ LEITURA): quem pagou cada dólar — aluno, isento, franquia ou falha absorvida —, por
   // agente, modelo e dia, mais cortesias e saldo das carteiras. Lido pelo relatório semanal de despesas de sistemas.
   app.get('/staff/api/academy/ia-custos', ...PA, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json(require('./ia').Logs.custos(req.query.dias)); }));
+  // Quem gera o custo (SÓ LEITURA): isentos, créditos de cortesia, cortesia de curso que usa IA e os maiores consumidores.
+  app.get('/staff/api/academy/ia-custos/pessoas', ...PA, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json(require('./ia').Logs.pessoas(req.query.dias)); }));
 
   // config comercial (comissões padrão etc.)
   app.get('/staff/api/academy/config', ...A, h((req, res) => res.json({ comissoes: repo.Config.obter('comissoes', {}) })));

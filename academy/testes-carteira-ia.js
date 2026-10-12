@@ -99,6 +99,12 @@ async function rodar({ t, req, impId, jars }) {
     assert.ok(k.json.carteiras.cortesia_dada_total_brl >= 5 && k.json.movimentos.cortesia.n >= 1, 'a cortesia dada entra no relatório');
     assert.ok(k.json.total && typeof k.json.total.bancado_pela_plataforma_usd === 'number' && Array.isArray(k.json.contas_bancadas), 'o total diz quanto a plataforma bancou');
     assert.equal((await req('GET', '/staff/api/academy/ia-custos', { semUser: true })).st, 401, 'sem chave nem sessão não lê');
+    // a parte nominal: quem recebeu crédito de cortesia aparece com o valor; a lista de isentos é devolvida mesmo sem uso
+    const pp = await req('GET', '/staff/api/academy/ia-custos/pessoas?dias=7', { semUser: true, chave: true });
+    assert.equal(pp.st, 200, pp.texto);
+    assert.ok(pp.json.credito_de_cortesia.some(x => x.email === NINA.email && x.credito_cortesia_brl === 5), 'a conta com crédito de cortesia aparece com o valor dado');
+    assert.ok(Array.isArray(pp.json.isentos) && Array.isArray(pp.json.isentos_sem_conta) && Array.isArray(pp.json.maiores_do_periodo) && typeof pp.json.cortesia_de_curso.contas === 'number');
+    assert.equal((await req('GET', '/staff/api/academy/ia-custos/pessoas', { semUser: true })).st, 401);
   });
 
   await t('carteira: com saldo, ainda exige aceitar o VALOR — e cobra o custo real, não o teto', async () => {

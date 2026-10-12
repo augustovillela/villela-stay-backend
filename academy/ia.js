@@ -733,6 +733,56 @@ const Logs = {
       config: { cobranca_ativa: cfg.ativa === true, cambio_brl_usd: Number(cfg.cambio_brl_usd) || 0, margem_pct: Number(cfg.margem_pct) || 0,
         isentos: Array.isArray(cfg.isentos) ? cfg.isentos.length : 0, pedidos_pagos_ativos: !!(pedidos && pedidos.ativos), pedidos_liberados: pedidos ? pedidos.liberados.length : 0 } };
   },
+  // QUEM GERA O CUSTO (só leitura) — a parte nominal do relatório de despesas: cada conta ISENTA (com ou sem uso),
+  // cada conta com CRÉDITO de cortesia, quem tem CORTESIA DE CURSO e usou IA, e os maiores consumidores do período.
+  // O Augusto pediu por nome (12/10/2026: "para que eu possa contornar os eventuais prejuízos no futuro"); a rota é
+  // a mesma porta do `ia-uso`, que já devolve nome e e-mail — quem publica o relatório mascara o e-mail.
+  pessoas(dias) {
+    const d = Math.min(Math.max(parseInt(dias, 10) || 7, 1), 366);
+    const desde = new Date(Date.now() - d * 864e5).toISOString();
+    const usd = (centavos) => Math.round((Number(centavos) || 0) * 100) / 10000;
+    const brl = (milesimos) => Math.round(Number(milesimos) || 0) / 1000;
+    let cfg = {}; try { cfg = require('./carteira-ia').cfg(); } catch (_) { /* carteira indisponível */ }
+    const isentos = new Set((Array.isArray(cfg.isentos) ? cfg.isentos : []).map(e => String(e).toLowerCase()));
+    // uso por conta: no período e desde sempre (o segundo responde "quanto esta conta já custou")
+    const uso = {};
+    const conta = (id) => uso[id] || (uso[id] = { chamadas: 0, custo: 0, pago: 0, bancado: 0, cobrado: 0, chamadas_total: 0, custo_total: 0, bancado_total: 0, funcoes: {}, ultimo: '' });
+    for (const r of db.prepare(`SELECT user_id, agente, status, cobranca, custo_centavos_usd c, milesimos m, absorvido_centavos_usd a, quando FROM ai_usage_logs WHERE status != 'limite'`).all()) {
+      const c = Number(r.c) || 0, falha = r.status === 'erro' ? c : Math.min(c, Number(r.a) || 0);
+      const pago = r.cobranca === 'paga' ? c - falha : 0, bancado = c - pago;
+      const x = conta(r.user_id || '?');
+      x.chamadas_total++; x.custo_total += c; x.bancado_total += bancado;
+      if (r.quando > x.ultimo) x.ultimo = r.quando;
+      if (r.quando >= desde) { x.chamadas++; x.custo += c; x.pago += pago; x.bancado += bancado; x.cobrado += Math.abs(Number(r.m) || 0); x.funcoes[r.agente || '?'] = (x.funcoes[r.agente || '?'] || 0) + 1; }
+    }
+    const carteira = {};
+    for (const m of db.prepare(`SELECT user_id, SUM(milesimos) saldo, SUM(CASE WHEN tipo = 'cortesia' THEN milesimos ELSE 0 END) cortesia,
+        SUM(CASE WHEN tipo = 'recarga' THEN milesimos ELSE 0 END) recarga FROM ia_movimentos GROUP BY user_id`).all()) carteira[m.user_id] = m;
+    const cursos = {};
+    for (const e of db.prepare(`SELECT user_id, COUNT(*) n FROM enrollments WHERE origem = 'cortesia' AND status = 'ativa' GROUP BY user_id`).all()) cursos[e.user_id] = e.n;
+    const usuarios = db.prepare('SELECT id, nome, email, cortesia FROM users').all();
+    const linha = (u) => {
+      const x = uso[u.id] || {}, w = carteira[u.id] || {};
+      const isento = isentos.has(String(u.email || '').toLowerCase());
+      return { nome: u.nome || '', email: u.email || '', isento, cortesia_vitalicia: u.cortesia === 1, cursos_de_cortesia: cursos[u.id] || 0,
+        credito_cortesia_brl: brl(w.cortesia), recargas_brl: brl(w.recarga), saldo_brl: brl(w.saldo),
+        chamadas: x.chamadas || 0, custo_usd: usd(x.custo), pago_pelo_usuario_usd: usd(x.pago), bancado_usd: usd(x.bancado), cobrado_brl: brl(x.cobrado),
+        chamadas_total: x.chamadas_total || 0, custo_total_usd: usd(x.custo_total), bancado_total_usd: usd(x.bancado_total),
+        funcoes: Object.keys(x.funcoes || {}).sort((a, b) => x.funcoes[b] - x.funcoes[a]).slice(0, 4).join(', '), ultimo_uso: (x.ultimo || '').slice(0, 10) };
+    };
+    const todos = usuarios.map(linha);
+    const porBancado = (a, b) => b.bancado_total_usd - a.bancado_total_usd || b.custo_total_usd - a.custo_total_usd;
+    const comConta = new Set(usuarios.map(u => String(u.email || '').toLowerCase()));
+    const comCortesiaDeCurso = todos.filter(x => x.cortesia_vitalicia || x.cursos_de_cortesia > 0);
+    return { dias: d, desde,
+      isentos: todos.filter(x => x.isento).sort(porBancado),
+      isentos_sem_conta: [...isentos].filter(e => !comConta.has(e)),
+      credito_de_cortesia: todos.filter(x => x.credito_cortesia_brl > 0).sort((a, b) => b.credito_cortesia_brl - a.credito_cortesia_brl),
+      cortesia_de_curso: { contas: comCortesiaDeCurso.length, vitalicias: comCortesiaDeCurso.filter(x => x.cortesia_vitalicia).length,
+        que_usaram_ia: comCortesiaDeCurso.filter(x => x.chamadas_total > 0).sort(porBancado).slice(0, 30) },
+      maiores_do_periodo: todos.filter(x => x.chamadas > 0).sort((a, b) => b.custo_usd - a.custo_usd).slice(0, 20),
+      maiores_desde_sempre: todos.filter(x => x.chamadas_total > 0).sort((a, b) => b.custo_total_usd - a.custo_total_usd).slice(0, 20) };
+  },
 };
 
 module.exports = {
