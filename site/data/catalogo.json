@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-11T23:44:18.735Z",
+  "coletadoEm": "2026-10-12T10:10:22.101Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -198,6 +198,14 @@
     }
   ],
   "cursos": [
+    {
+      "slug": "decoracao-de-interiores-na-pratica",
+      "titulo": "Decoração de Interiores na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 8 minutos, cada uma com o artigo da aula em PDF, com checklists e fichas, para decorar a unidade que recebe hóspedes: do programa e da planta em escala à montagem, à foto do ambiente pronto e à conservação entre estadias. Coleção Viver de Chácara.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/E4gcvQH53kXK?v=8S9CNYm9fbG9",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/decoracao-de-interiores-na-pratica"
+    },
     {
       "slug": "juiz-do-trabalho-trt-10a-regiao-concurso-paradigma",
       "titulo": "Juiz do Trabalho — Magistratura do Trabalho (TRT 10ª Região)",
