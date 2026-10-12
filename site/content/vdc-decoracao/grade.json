@@ -8,7 +8,7 @@
    "titulo": "Decorar para hóspedes: o que muda quando a casa não é de quem mora",
    "sub": "Quem usa não conhece a casa, não é dono e fica pouco: a função vem antes do conforto, e o conforto antes da identidade.",
    "capitulos": "Capítulo 1 e elementos iniciais",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -16,7 +16,7 @@
    "titulo": "Lugares de dormir não são lotação",
    "sub": "Conta-se o lugar de dormir, e cada lugar puxa banho, assento, lugar à mesa, tomada e mala; quantas pessoas a unidade pode receber é resposta do órgão do lugar.",
    "capitulos": "Capítulo 5, com os capítulos 1 e 2",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -24,7 +24,7 @@
    "titulo": "Segurança do hóspede e os limites do que você faz",
    "sub": "Todo serviço tem uma coluna, a decoração cria ou tira risco, e dez sinais param tudo.",
    "capitulos": "Capítulo 2 e elementos iniciais",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -32,7 +32,7 @@
    "titulo": "Proporção, escala e ponto focal",
    "sub": "Um ambiente cheio de camas fica calmo quando tem um ponto focal, uma repetição e um trecho vazio.",
    "capitulos": "Capítulo 3 (proporção e escala; equilíbrio e ritmo; contraste e harmonia; ponto focal, repetição e respiro)",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -40,7 +40,7 @@
    "titulo": "Estilo e conceito: uma linguagem só",
    "sub": "Estilo, aqui, são três respostas: o que o lugar já tem, o que se repete e o que não entra.",
    "capitulos": "Capítulo 3 (cor; textura e estampa; estilo)",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -48,7 +48,7 @@
    "titulo": "Medição, fotos e inventário do ambiente",
    "sub": "Mede-se o ambiente acabado, com a trena, e cada item entra na ficha com a referência de reposição.",
    "capitulos": "Capítulo 5 (levantamento métrico e fotográfico; o inventário), com trechos do capítulo 3",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -56,7 +56,7 @@
    "titulo": "O quarto-modelo de 30 m² em planta",
    "sub": "Seis metros por quatro e oitenta, em duas faixas de dois e quarenta: a suíte, com o banheiro, e a sala-quarto, por onde se entra.",
    "capitulos": "Capítulo 5 (a planta em escala) e capítulo 6 (o quarto em duas faixas)",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -64,7 +64,7 @@
    "titulo": "Cor na prática: a paleta que aceita reposição",
    "sub": "Paleta curta, por família de cor, testada na parede em três horas do dia e anotada pelo código.",
    "capitulos": "Capítulo 7 (paleta de base e de acento; o teste da amostra; paredes e pisos sem obra pesada; a referência anotada)",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -72,7 +72,7 @@
    "titulo": "Materiais e tecidos pelos cinco filtros",
    "sub": "Toda peça responde a cinco perguntas antes de “é bonito?”, e a resposta está na etiqueta, na ficha e no manual.",
    "capitulos": "Capítulo 4 (os cinco filtros; etiqueta, ficha e manual; a escolha estética da placa; tecidos; colchão e travesseiro; louças, metais e vidro; materiais no Cerrado)",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -80,7 +80,7 @@
    "titulo": "Painel de referências e caderno de especificação",
    "sub": "O gosto vira uma lista que outra pessoa consegue comprar: modelo, medida, cor e quantidade.",
    "capitulos": "Capítulo 4 (o painel de referências e a lista de fornecedores) e capítulo 5 (conceito, paleta e painel; lista de compras, prioridades e cronograma), com trecho do capítulo 1",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -88,7 +88,7 @@
    "titulo": "A suíte: a cama grande no cômodo estreito",
    "sub": "A cama é escolha; o que sobra em volta dela é conta, e o que a planta não dá se mede com a trena.",
    "capitulos": "Capítulo 6 (o quarto em duas faixas; a suíte: a cama grande no cômodo estreito), com trechos dos capítulos 4 e 9",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -96,7 +96,7 @@
    "titulo": "A sala-quarto: muitas camas, pouca área",
    "sub": "O layout se confere de noite, com tudo aberto: é quando o sofá-cama, a cama auxiliar e a mesa disputam a mesma faixa.",
    "capitulos": "Capítulo 6 (a sala-quarto, de dia e de noite; a bagagem de oito e a guarda de roupa; o que fica sobre cada superfície), com o capítulo 2",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -104,7 +104,7 @@
    "titulo": "O banheiro compacto, dentro da suíte",
    "sub": "No banheiro, quase tudo é de profissional; o que é seu são os acessórios soltos, o percurso até a porta e duas perguntas.",
    "capitulos": "Capítulo 6 (o percurso até o banheiro; o banheiro compacto), com o capítulo 2",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -112,7 +112,7 @@
    "titulo": "A cozinha comum no contêiner",
    "sub": "Numa caixa estreita, a cozinha funciona pelas duas pontas e pelo meio livre, e a mesa fica do lado de fora.",
    "capitulos": "Capítulo 6 (a cozinha comum no contêiner; o que fica sobre cada superfície)",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -120,7 +120,7 @@
    "titulo": "A cozinha equipada para dois grupos",
    "sub": "Utensílio se conta pelos lugares, com folga, em um modelo só, e cada coisa tem lugar marcado.",
    "capitulos": "Capítulo 9 (utensílios pelos lugares; o que se oferece e o que não se oferece; a cozinha equipada para dois grupos; o que fica trancado), com trecho do capítulo 7",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -128,7 +128,7 @@
    "titulo": "Iluminação em camadas e o interruptor que o hóspede acha",
    "sub": "Você desenha o mapa e escolhe a lâmpada; o ponto fixo é pedido ao eletricista.",
    "capitulos": "Capítulo 7 (as quatro camadas de luz; a temperatura de cor; luminária de tomada e ponto fixo; o interruptor e a tomada; o mapa de luz e de tomadas), com um trecho do capítulo 2",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -136,7 +136,7 @@
    "titulo": "Cortinas, tapetes e tecidos do ambiente",
    "sub": "O tecido do ambiente tem três trabalhos: escurecer, dar privacidade e voltar limpo da lavagem.",
    "capitulos": "Capítulo 7 (a luz natural, o vidro e o escurecimento) e capítulo 4 (tecidos; tapetes), com trechos do capítulo 6 e do capítulo 3",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -144,7 +144,7 @@
    "titulo": "Enxoval de cama e de banho",
    "sub": "O enxoval sai de uma conta: camas vezes jogos, pessoas vezes jogos, em um modelo só.",
    "capitulos": "Capítulo 9 (enxoval: o que compõe; tecido e cor; a cama feita em camadas; a quantidade; onde guardar a reserva), com trechos do capítulo 4 (colchão e travesseiro; tecido de cama) e do capítulo 6",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -152,7 +152,7 @@
    "titulo": "O pátio e a piscina com muitas plantas",
    "sub": "Cada vaso é um compromisso de rega: decide-se quem rega antes de comprar o primeiro.",
    "capitulos": "Capítulo 8",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -160,7 +160,7 @@
    "titulo": "O ambiente que se explica sozinho",
    "sub": "O hóspede não conhece a casa: em doze paradas, o ambiente responde ou ele telefona.",
    "capitulos": "Capítulo 9 (as doze paradas) e capítulo 7 (o interruptor, a tomada e os controles), com trechos do capítulo 6 (o percurso até o banheiro; a bagagem; o que fica sobre cada superfície)",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -168,7 +168,7 @@
    "titulo": "Dois quartos gêmeos: um projeto, uma lista, uma foto",
    "sub": "Em unidades espelhadas a lista é a mesma e a foto é invertida: padroniza-se o que quebra e o que se gasta.",
    "capitulos": "Capítulo 9 (padronizar para repor) e capítulo 6 (montagem em camadas e edição), com trecho do capítulo 5 (a planta em escala: o espelhamento)",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -176,7 +176,7 @@
    "titulo": "Orçamento como investimento e compra por etapas",
    "sub": "São catorze linhas em quantidades, com o preço em branco, e uma conta com letras que só os seus números preenchem.",
    "capitulos": "Capítulo 10 (as catorze linhas do orçamento; a decoração como investimento, com letras) e capítulo 5 (lista de compras, prioridades e cronograma)",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -184,7 +184,7 @@
    "titulo": "Recebimento, montagem e a foto do ambiente pronto",
    "sub": "Primeiro entra quem é profissional, depois o contratado, por último você; e a foto mostra o que o hóspede encontra.",
    "capitulos": "Capítulo 10 (recebimento e conferência; a ordem da montagem; preparar o ambiente para a fotografia; passo a passo “da entrega à unidade pronta”)",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -192,7 +192,7 @@
    "titulo": "Conservação entre estadias e correções",
    "sub": "Compara-se o ambiente com a foto da ficha, sempre com as mesmas sete perguntas, e o calendário segue a chuva e a seca.",
    "capitulos": "Capítulo 10 (correções; a conferência entre estadias; o calendário de conservação por estação), com as cinco perguntas das plantas, do capítulo 8, e os dez sinais de “pare e chame”, do capítulo 2",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -200,7 +200,7 @@
    "titulo": "O exemplo inteiro, a rubrica e os próximos passos",
    "sub": "O projeto está pronto quando outra pessoa prepara e repõe a unidade só com a pasta na mão.",
    "capitulos": "Capítulo 11 e elementos finais, com o diagnóstico inicial dos elementos iniciais",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   }
  ]
