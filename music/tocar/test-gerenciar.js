@@ -99,4 +99,32 @@ test('Salvar pendente impede duplo clique e mudança de obra; formulário retorn
 test('Sem obras mostra caminho do acervo e não oferece salvar em obra alheia',async()=>{
   const h=montar({page:'gestao',logado:true,fetch:async()=>resposta({obras:[],arranjos:[],total:0})});await h.settle();assert.equal(h.$('tg-work-empty').hidden,false);await h.event('tg-use-example','click');assert.equal(h.$('tg-save').disabled,true);assert.match(h.$('tg-visibility').textContent,/Escolha uma obra sua/);
 });
+test('Editor cria notas sem JSON e salva no mesmo contrato autenticado',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await h.settle();await h.event('tg-work','change','obra-a');await h.event('te-new','click');
+  await h.event('tg-title','input','Meu primeiro arranjo visual');await h.event('tg-objective','input','Praticar mi grave');await h.event('tg-credits','input','Arranjo original de teste');await h.event('tg-save','click');
+  assert.equal(s.current.documento.title,'Meu primeiro arranjo visual');assert.equal(s.current.documento.chart.title,s.current.documento.title);assert.equal(s.current.documento.chart.notes.length,1);assert.equal(s.current.documento.chart.notes[0].midi,40);assert.equal(h.$('tg-publish').disabled,false);
+});
+test('Campos visuais pendentes bloqueiam salvar, publicar, trocar base e abrir prévia sem sumir',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);await h.event('te-note-fret','input','3');
+  assert.equal(h.$('tg-save').disabled,true);assert.equal(h.$('tg-publish').disabled,true);assert.equal(h.$('tg-preview').hidden,true);assert.equal(h.$('tg-json').disabled,true);assert.equal(h.$('tg-use-example').disabled,true);
+  await Promise.all(h.$('tg-list').children[0].children.at(-1).click());assert.equal(h.$('te-note-fret').value,'3');assert.match(h.$('tg-status').textContent,/não salvas/);
+  await h.event('te-discard','click');assert.equal(h.$('tg-publish').disabled,false);assert.equal(h.$('te-note-fret').value,'0');assert.equal(h.$('tg-preview').hidden,false);
+});
+test('Editar e salvar nota preserva ID, deriva altura e mantém desfazer após salvar',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);const old=copy(s.current.documento.chart.notes[0]);
+  await h.event('te-note-fret','input','3');await h.event('te-apply-note','click');assert.equal(h.$('tg-publish').disabled,true);await h.event('tg-save','click');
+  assert.equal(s.current.documento.chart.notes[0].id,old.id);assert.equal(s.current.documento.chart.notes[0].midi,old.midi+3);assert.equal(h.$('te-undo').disabled,false);assert.equal(h.$('tg-publish').disabled,false);
+  await h.event('te-undo','click');assert.equal(h.$('tg-publish').disabled,true);await h.event('tg-save','click');assert.deepEqual(s.current.documento.chart.notes[0],old);
+});
+test('Edição visual invalida importação de arquivo que terminou atrasada',async()=>{
+  const h=montar({page:'gestao',logado:true,fetch:servidor().fetch});await abrir(h);let release;
+  h.$('tg-json').files=[{size:300,text:()=>new Promise(r=>{release=r;})}];const pending=h.$('tg-json').dispatch('change');await h.settle();
+  await h.event('te-note-fret','input','2');await h.event('te-apply-note','click');const incoming=documento();incoming.title=incoming.chart.title='Arquivo antigo';release(JSON.stringify(incoming));await Promise.all(pending);
+  assert.equal(h.$('tg-title').value,'Duas cordas');assert.equal(h.$('te-note-fret').value,'2');
+});
+test('Salvar bloqueia edição até resposta e falha não apaga nota alterada ou desfazer',async()=>{
+  let release;const s=servidor((url,opts)=>opts.method==='PUT'?new Promise(r=>{release=r;}):null),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);
+  await h.event('te-note-fret','input','2');await h.event('te-apply-note','click');const pending=h.$('tg-save').click();await h.settle();assert.equal(h.$('te-note-fret').disabled,true);assert.equal(h.$('te-undo').disabled,true);
+  release(resposta({erro:'Falha transitória'},500));await Promise.all(pending);assert.equal(h.$('te-note-fret').value,'2');assert.equal(h.$('te-undo').disabled,false);assert.equal(h.$('tg-save').disabled,false);
+});
 (async()=>{let failures=0;for(const t of tests){try{await t.fn();console.log('OK',t.name);}catch(e){failures++;console.error('FALHOU',t.name,'\n',e.stack);}}console.log(`${tests.length-failures}/${tests.length} verificações da gestão passaram (DOM/HTTP simulados).`);if(failures)process.exitCode=1;})();

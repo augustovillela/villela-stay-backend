@@ -14,6 +14,7 @@ const ARQUIVOS = Object.freeze([
   'cliente.js', 'estilo.css', 'nucleo.js', 'audio.js', 'detector.js',
   'capturar-worklet.js', 'detector-worker.js', 'aprender.js', 'estudos.js',
   'formato-catalogo.js', 'catalogo-cliente.js', 'gerenciar.js',
+  'editor-nucleo.js', 'editor-cliente.js', 'editor.css',
 ]);
 
 function invalido(mensagem) {
@@ -135,6 +136,7 @@ function montar(app, { requireUsuario, opcional } = {}) {
   app.get('/music/tocar/gerenciar', opcional, (req, res) => {
     const estado = { logado: !!req.usuario };
     const corpo = `<link rel="stylesheet" href="/music/tocar/estilo.css">
+<link rel="stylesheet" href="/music/tocar/editor.css">
 <main id="tocar-gestao" data-estado="${esc(JSON.stringify(estado))}">
   <header class="tocar-cab"><p>Musique · seu Acervo</p><h1>Gerenciar arranjos</h1>
   <p>Prepare uma versão, confira na pista e disponibilize para quem tem acesso à música.</p></header>
@@ -144,6 +146,8 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/nucleo.js" defer></script>
 <script src="/music/tocar/formato-catalogo.js" defer></script>
 <script src="/music/tocar/estudos.js" defer></script>
+<script src="/music/tocar/editor-nucleo.js" defer></script>
+<script src="/music/tocar/editor-cliente.js" defer></script>
 <script src="/music/tocar/gerenciar.js" defer></script>`;
     res.set('Cache-Control', 'no-store').type('html').send(layout('Gerenciar arranjos | Musique', corpo, {
       caminho: '/music/tocar/gerenciar', noApp: estado.logado,

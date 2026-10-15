@@ -19,7 +19,7 @@ O padrão escolhido é violão pelo microfone do computador. Na prática em modo
 
 “Nível de captação” aplica ganho digital à entrada, de 0 a 18 dB em passos de 3 dB. Microfone começa em 6 dB (aproximadamente 2×); Interface e Real Tone começam em 0 dB (1×). O ajuste fica guardado por forma de captação enquanto esta página estiver aberta, inclusive ao reconectar ou trocar apenas o instrumento. Pode ser alterado com a entrada ativa e o transporte parado; fica bloqueado durante conexão, prática, demonstração e calibração. Se alterado durante uma prática pausada, encerra a rodada para não misturar sensibilidades no resultado. O medidor usa o sinal amplificado. Esse controle não aumenta o acompanhamento nem altera o ganho físico do dispositivo: amplifica também o ruído e pode saturar o sinal. Reduza diante de ruído ou sinal alto. Não há medição de relação sinal/ruído nem garantia de precisão ou nota decorrente do aumento.
 
-O catálogo de músicas administrado pelo proprietário, autoria de arranjos, reconhecimento de acordes, efeitos de amplificador, dificuldade adaptativa, outros instrumentos e paridade com Rocksmith+ são etapas futuras. A biblioteca de estudos desta versão vem embutida no código; não é um catálogo administrável.
+O catálogo administrado e a autoria visual de arranjos estão descritos abaixo. Os sete estudos originais continuam embutidos no código e podem servir de base para rascunhos próprios. Reconhecimento de acordes, efeitos de amplificador, dificuldade adaptativa, outros instrumentos e paridade com Rocksmith+ não estão incluídos.
 
 ## Aprender nota por nota
 
@@ -88,7 +88,7 @@ O formato musical de `nucleo.js` permanece compatível. `formato-catalogo.js` va
 
 `title` e `chart.title` devem corresponder. Instrumento: `violao` ou `guitarra`; nível: `iniciante`, `intermediario` ou `avancado`; técnica: `notas-isoladas`, `cordas-soltas`, `troca-de-cordas`, `escalas` ou `arpejos`. Objetivo e créditos são obrigatórios. O catálogo aceita somente afinação padrão de seis cordas, até 2.000 notas monofônicas e 900 segundos. Os metadados externos não alteram a avaliação da altura.
 
-A mídia opcional usa `midias` e `obra_midias` existentes: áudio pronto pertencente ao dono, anexado à mesma obra, sem URL externa livre. `catalogo.js` revalida acesso, remoção e vínculo antes de emitir uma URL R2 de 600 segundos. O navegador pode carregar o arranjo mesmo quando o áudio está indisponível e informa a falha; o MIME não garante que o codec seja reproduzível. Sem áudio anexado, a demonstração pode sintetizar as notas. Links de YouTube/Spotify não são arquivos de acompanhamento. Esta etapa não inclui editor visual, transcrição de MP3 nem novo serviço de armazenamento.
+A mídia opcional usa `midias` e `obra_midias` existentes: áudio pronto pertencente ao dono, anexado à mesma obra, sem URL externa livre. `catalogo.js` revalida acesso, remoção e vínculo antes de emitir uma URL R2 de 600 segundos. O navegador pode carregar o arranjo mesmo quando o áudio está indisponível e informa a falha; o MIME não garante que o codec seja reproduzível. Sem áudio anexado, a demonstração pode sintetizar as notas. Links de YouTube/Spotify não são arquivos de acompanhamento. Não há transcrição de MP3 nem novo serviço de armazenamento.
 
 `120-tocar-catalogo.sql` cria `tocar_arranjos` (rascunho, revisão otimista e ponteiro publicado) e `tocar_versoes` (snapshot, número e SHA-256). Um trigger impede UPDATE de versão publicada; exclusão por privacidade continua possível. Obra e identidade não são duplicadas. Os schemas rodam antes das migrations de tabelas antigas; os novos índices usam somente colunas das novas tabelas.
 
@@ -105,6 +105,18 @@ Listagens têm paginação (`limit` até 50, `offset`) e busca `q`; catálogo/ge
 Os dois contratos de sessão existentes aceitam opcionalmente `catalogRef: {arranjoId, versionId, from, to}`. A API valida referência, título, chart, intervalo e quantidade de notas contra o snapshot publicado. Persiste também `versionNumber`, `sha256` e `obraId`, resolvidos no servidor. Uma rodada já iniciada pode ser guardada após retirada do catálogo se a obra ainda estiver acessível. Perda de acesso ou remoção da obra bloqueia novos registros, preservando os resumos anteriores. A duração de `practice` corresponde ao trecho; a de `learn` continua sendo o tempo ativo. Isso confere coerência, não prova execução musical.
 
 O backup/exclusão do Acervo inclui rascunhos e versões próprios. A exclusão de obra remove essas linhas em transação. Os resumos de treino de outras contas permanecem no histórico independente, com título/referência registrados; cada conta continua exportando e apagando seus próprios treinos pelo Laboratório.
+
+## Editor visual — primeira entrega da Etapa C
+
+A gestão inclui uma linha do tempo de seis cordas, com grade do andamento e seleção de notas. O responsável pode começar com uma nota Mi2 editável, abrir um rascunho existente ou importar um JSON/estudo como base. Os campos de nota permitem alterar início e duração em segundos, corda e casa; a altura MIDI é derivada da afinação. Adicionar, duplicar e excluir continuam sujeitos à validação do chart inteiro. O arranjo precisa manter pelo menos uma nota.
+
+Frases têm título, início e fim editáveis. BPM altera a grade de referência, sem deslocar notas nem modificar o áudio; duração total não pode cortar notas ou frases existentes. A navegação pela linha do tempo permite conferir partes de um arranjo longo sem mudar seus eventos. Os tempos importados não são quantizados ao abrir.
+
+`editor-nucleo.js` oferece operações puras e atômicas usando `nucleo.validarChart`, cópias defensivas e até 80 operações de desfazer/refazer. `editor-cliente.js` e `editor.css` fornecem a interface, enquanto `gerenciar.js` mantém a persistência autenticada da Etapa B. Não há API nem schema novo. Erros preservam a música e as pilhas de histórico. Desfazer/refazer afeta notas, frases e andamento/duração; não os metadados de objetivo/créditos preenchidos no gestor.
+
+Os campos precisam ser aplicados ou cancelados antes de salvar, publicar, baixar ou abrir a prévia. Edições visuais invalidam uma importação de arquivo ainda pendente; durante salvamento a edição fica bloqueada. A página avisa ao sair com alterações não salvas. Salvar/publicar preserva o histórico local do editor quando o conteúdo musical retornado é igual; abrir outro arranjo, importar uma base ou recarregar a revisão salva reinicia esse histórico.
+
+Use **Salvar rascunho → Revisar na pista** para conferir exatamente o chart persistido, inclusive o áudio autorizado já associado. A versão que os alunos veem só muda após **Publicar nova versão**. Esta entrega não inclui mapa de andamento variável, importadores MIDI/MusicXML, waveform, arrastar notas ou reprodução de áudio dentro do editor. São incrementos posteriores da Etapa C, sem achatamento automático de polifonia.
 
 ## Verificação automatizada
 

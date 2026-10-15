@@ -18,7 +18,7 @@ class Eventos {
 }
 class Elemento extends Eventos {
   constructor(tag, doc) {
-    super(); this.tagName = tag.toUpperCase(); this.doc = doc; this.attributes = {}; this.children = [];
+    super(); this.tagName = tag.toUpperCase(); this.doc = doc; this.ownerDocument = doc; this.attributes = {}; this.children = [];
     this.style = {}; this.files = []; this.disabled = false; this.hidden = false; this.checked = false;
     this._value = ''; this._text = ''; this.classes = new Set();
     this.classList = { toggle: (name, yes) => { if (yes === undefined) yes = !this.classes.has(name); if (yes) this.classes.add(name); else this.classes.delete(name); return yes; }, contains: name => this.classes.has(name) };
@@ -136,7 +136,7 @@ function montar(options = {}) {
   const sandbox = { window, document, console, fetch, Blob, URLSearchParams, performance: { now: () => now * 1000 }, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
     requestAnimationFrame: fn => { const id = ++sequence; rafs.set(id, fn); return id; }, cancelAnimationFrame: id => rafs.delete(id),
     setTimeout: (fn, ms) => { const id = ++sequence; timers.set(id, { at: now + ms / 1000, fn }); return id; }, clearTimeout: id => timers.delete(id) };
-  const scripts = options.page === 'gestao' ? ['gerenciar.js'] : ['catalogo-cliente.js','cliente.js'];
+  const scripts = options.page === 'gestao' ? ['editor-nucleo.js','editor-cliente.js','gerenciar.js'] : ['catalogo-cliente.js','cliente.js'];
   scripts.forEach(file => vm.runInNewContext(fs.readFileSync(path.join(__dirname, file), 'utf8'), sandbox, { filename: file }));
   const $ = id => document.getElementById(id);
   async function settle() { for (let i = 0; i < 8; i++) await Promise.resolve(); }

@@ -2,11 +2,11 @@
   'use strict';
   var app = document.getElementById('tocar-gestao');
   if (!app) return;
-  var Core = window.MusiqueTocarCore, Formato = window.MusiqueTocarFormatoCatalogo, Estudos = window.MusiqueTocarEstudos;
-  if (!Core || !Formato || !Estudos) { app.textContent = 'Não foi possível carregar a gestão. Recarregue a página.'; return; }
+  var Core = window.MusiqueTocarCore, Formato = window.MusiqueTocarFormatoCatalogo, Estudos = window.MusiqueTocarEstudos, Editor = window.MusiqueTocarEditor;
+  if (!Core || !Formato || !Estudos || !Editor) { app.textContent = 'Não foi possível carregar a gestão. Recarregue a página.'; return; }
   var boot = JSON.parse(app.getAttribute('data-estado') || '{}');
   if (!boot.logado) { app.innerHTML='<h1>Gerenciar seus arranjos</h1><p>Entre na sua conta Musique para criar arranjos das obras do seu acervo.</p><a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar ou criar conta</a><p><a href="/music/tocar">Voltar aos estudos abertos</a></p>';return; }
-  var current = null, chart = null, dirty = false, busy = false, conflict = false;
+  var current = null, chart = null, dirty = false, busy = false, conflict = false, editor = null, editorPending = false;
   var detailTicket = 0, mediaTicket = 0, importTicket = 0, worksTicket = 0, listTicket = 0;
   var worksOffset = 0, listOffset = 0, works = [], arrangements = [];
   var mediaItems=[],mediaOffset=0,mediaWork='';
@@ -31,23 +31,30 @@
   }
   var fields = ['tg-work', 'tg-title', 'tg-instrument', 'tg-level', 'tg-technique', 'tg-objective', 'tg-credits', 'tg-media', 'tg-json', 'tg-example', 'tg-use-example'];
   function render() {
-    fields.forEach(function (id) { $(id).disabled = busy || (id === 'tg-work' && !!current); });
-    $('tg-save').disabled = busy || !chart || !$('tg-work').value || conflict;
-    $('tg-publish').disabled = busy || !current || dirty || conflict;
-    $('tg-withdraw').disabled = busy || !current || !current.publishedVersionId || dirty || conflict;
+    fields.forEach(function (id) { $(id).disabled = busy || (id === 'tg-work' && !!current) || (editorPending && ['tg-json','tg-example','tg-use-example'].includes(id)); });
+    if (editor) editor.bloquear(busy);
+    $('tg-save').disabled = busy || !chart || !$('tg-work').value || conflict || editorPending;
+    $('tg-publish').disabled = busy || !current || dirty || conflict || editorPending;
+    $('tg-withdraw').disabled = busy || !current || !current.publishedVersionId || dirty || conflict || editorPending;
     $('tg-new').disabled = busy; $('tg-reload').disabled = busy || !current;
-    $('tg-preview').hidden = !current || dirty || conflict || busy;
+    $('tg-preview').hidden = !current || dirty || conflict || busy || editorPending;
     $('tg-preview').setAttribute('href', current ? '/music/tocar?previa=' + encodeURIComponent(current.id) + '&revisao=' + current.revision : '#');
-    $('tg-new').textContent = dirty ? 'Descartar alterações e criar outro' : 'Novo arranjo';
-    $('tg-version').textContent = current ? 'Revisão de trabalho ' + current.revision + ' · ' + (current.publishedVersionId ? 'há uma versão publicada' : 'sem versão publicada') + (dirty ? ' · alterações não salvas' : '') : 'Novo rascunho';
-    $('tg-chart-info').textContent = chart ? chart.notes.length + ' notas · ' + (chart.sections || []).length + ' frases · ' + chart.bpm + ' BPM · ' + chart.duration.toFixed(2) + ' s · afinação padrão' : 'Importe um arranjo JSON ou escolha um estudo como ponto de partida.';
+    $('tg-new').textContent = dirty || editorPending ? 'Descartar alterações e criar outro' : 'Novo arranjo';
+    $('tg-version').textContent = (current ? 'Revisão de trabalho ' + current.revision + ' · ' + (current.publishedVersionId ? 'há uma versão publicada' : 'sem versão publicada') : 'Novo rascunho') + (dirty ? ' · alterações não salvas' : '') + (editorPending ? ' · aplique ou cancele os campos do editor' : '');
+    $('tg-chart-info').textContent = chart ? chart.notes.length + ' notas · ' + (chart.sections || []).length + ' frases · ' + chart.bpm + ' BPM · ' + chart.duration.toFixed(2) + ' s · afinação padrão' : 'Crie as notas no editor visual, importe um arranjo JSON ou escolha um estudo como ponto de partida.';
     var selected = works.find(function (w) { return w.id === $('tg-work').value; }) || (current && current.obra);
     $('tg-visibility').textContent = selected ? 'Obra: ' + selected.titulo + ' · visibilidade ' + (selected.visibilidade || 'conforme o acervo') + '. Publicar o arranjo mantém o acesso definido no acervo; não torna a obra pública.' : 'Escolha uma obra sua. As permissões continuam sendo as do acervo.';
   }
   function changed() { dirty = true; render(); }
   function option(select, value, label) { select.appendChild(node('option', label, { value: value })); }
-  function fillDocument(d) {
+  function mesmaMusica(a, b) {
+    if (!a || !b) return false;
+    return ['id','bpm','duration','tuning','notes','sections'].every(function (key) { return JSON.stringify(a[key]) === JSON.stringify(b[key]); });
+  }
+  function fillDocument(d, preserveEditor) {
+    var keepHistory = preserveEditor && d && mesmaMusica(chart, d.chart);
     chart = d ? Core.validarChart(d.chart) : null;
+    if (editor && !keepHistory) editor.carregar(chart);
     $('tg-title').value = d ? d.title : '';
     $('tg-instrument').value = d ? d.instrument : 'violao';
     $('tg-level').value = d ? d.level : 'iniciante';
@@ -58,7 +65,8 @@
     $('tg-media').value = d ? d.mediaId : '';
   }
   function readDocument() {
-    if (!chart) throw new Error('Importe as notas do arranjo antes de salvar.');
+    if (editorPending) throw new Error('Aplique ou cancele os campos pendentes do editor antes de salvar ou baixar.');
+    if (!chart) throw new Error('Crie ou importe as notas do arranjo antes de salvar.');
     var copied = Core.validarChart(chart); copied.title = $('tg-title').value.trim();
     return Formato.validarDocumento({ title: copied.title, instrument: $('tg-instrument').value, level: $('tg-level').value,
       technique: $('tg-technique').value, objective: $('tg-objective').value.trim(), credits: $('tg-credits').value.trim(), mediaId: $('tg-media').value, chart: copied });
@@ -115,8 +123,8 @@
       $('tg-list-prev').disabled = offset === 0; $('tg-list-next').disabled = offset + 20 >= Number(data.total || 0);
     } catch (e) { if (ticket === listTicket) message(e.message, true); }
   }
-  function accept(a) {
-    current = a; dirty = false; conflict = false; fillDocument(a.documento);
+  function accept(a, preserveEditor) {
+    current = a; dirty = false; conflict = false; fillDocument(a.documento, preserveEditor);
     if (!Array.prototype.some.call($('tg-work').children, function (n) { return n.value === a.obra.id; })) option($('tg-work'), a.obra.id, a.obra.titulo);
     $('tg-work').value = a.obra.id; render();
     $('tg-versions').replaceChildren();
@@ -125,7 +133,7 @@
   }
   async function loadDetail(id, discard) {
     if (busy) return;
-    if (dirty && !discard) { message('Há alterações não salvas. Salve ou use “Descartar alterações e criar outro” antes de mudar de arranjo.', true); return; }
+    if ((dirty || editorPending) && !discard) { message('Há alterações não salvas. Aplique ou cancele os campos do editor e salve, ou use “Descartar alterações e criar outro” antes de mudar de arranjo.', true); return; }
     var ticket = ++detailTicket; ++importTicket; busy = true; render();
     try { var data = await api('/arranjos/' + encodeURIComponent(id)); if (ticket === detailTicket) { accept(data.arranjo); message('Rascunho carregado. Alterar o conteúdo não muda a versão já publicada.'); } }
     catch (e) { if (ticket === detailTicket) message(e.message, true); }
@@ -133,6 +141,7 @@
   }
   async function mutate(action) {
     if (busy || conflict) return;
+    if (editorPending) { message('Aplique ou cancele os campos pendentes do editor antes de continuar.', true); return; }
     var id = current && current.id, method = 'POST', path = '/arranjos', body;
     try {
       if (action === 'save') {
@@ -145,7 +154,7 @@
         path += '/' + encodeURIComponent(id) + (action === 'publish' ? '/publicar' : '/retirar'); body = { revision: current.revision };
       }
       busy = true; ++importTicket; render();
-      var data = await api(path, method, body); accept(data.arranjo);
+      var data = await api(path, method, body); accept(data.arranjo, true);
       message(action === 'save' ? 'Rascunho salvo. Abra a prévia e revise antes de publicar.' : action === 'publish' ? 'Nova versão publicada para quem pode acessar a obra.' : 'Publicação retirada. Versões e sessões anteriores foram preservadas.');
       loadList(listOffset);
     } catch (e) {
@@ -157,7 +166,7 @@
     if (busy) return;
     ++detailTicket; ++mediaTicket; ++importTicket; ++workChoice; current = null; dirty = false; conflict = false;
     mediaItems=[];mediaOffset=0;mediaWork='';$('tg-media-more').hidden=true;
-    fillDocument(null); $('tg-work').value = ''; $('tg-versions').replaceChildren(); render(); message('Escolha a obra e importe as notas do novo arranjo.');
+    fillDocument(null); $('tg-work').value = ''; $('tg-versions').replaceChildren(); render(); message('Escolha a obra e crie ou importe as notas do novo arranjo.');
   }
   app.innerHTML = '<div class="tj-heading"><div><p class="tj-eyebrow">MUSIQUE / SEU ACERVO</p><h1>Gerenciar arranjos</h1><p class="tj-intro">Prepare uma versão, revise na pista e publique para quem pode acessar a obra.</p></div><a href="/music/tocar">Voltar à prática</a></div>' +
     '<p id="tg-status" class="tj-status" role="status"></p><p id="tg-login" hidden>Sua sessão terminou. <a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar no Musique</a></p><p id="tg-access" hidden>Seu acesso ao Musique precisa estar ativo. <a href="/music/app#conta">Ver assinatura</a></p><div class="tg-layout"><section class="tj-panel"><h2>Seus arranjos</h2><div class="tg-search"><label>Buscar arranjo<input id="tg-list-q" type="search"></label><button id="tg-list-search" type="button">Buscar</button></div><ul id="tg-list" class="tj-catalog-results"></ul><div class="tj-catalog-pages"><button id="tg-list-prev" disabled>Anterior</button><button id="tg-list-next" disabled>Próxima</button></div><button id="tg-new" type="button">Novo arranjo</button></section>' +
@@ -166,7 +175,16 @@
     '<label class="tj-field">Objetivo do estudo<input id="tg-objective" maxlength="500"></label><label class="tj-field">Autoria, créditos e procedência<input id="tg-credits" maxlength="500"></label><label class="tj-field">Áudio já vinculado à obra<select id="tg-media"><option value="">Sem áudio associado · usar demonstração sintetizada</option></select></label><button id="tg-media-more" type="button" hidden>Carregar mais áudios desta obra</button>' +
     '<p class="tj-small">Arquivos de áudio são geridos no acervo. Aqui entram apenas notas isoladas em afinação padrão; MP3 sozinho não cria um arranjo.</p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label>' +
     '<div class="tg-search"><label>Começar de um estudo original<select id="tg-example"></select></label><button id="tg-use-example" type="button">Usar cópia do estudo</button></div><p id="tg-chart-info"></p>' +
+    '<div id="tg-editor"></div>' +
     '<div class="tg-actions"><button id="tg-save" type="button">Salvar rascunho</button><a id="tg-preview" target="_blank" rel="noopener" hidden>Revisar na pista ↗</a><button id="tg-publish" type="button" disabled>Publicar nova versão</button><button id="tg-withdraw" type="button" disabled>Retirar publicação</button><button id="tg-reload" type="button" disabled>Recarregar revisão salva (descarta alterações)</button><button id="tg-download" type="button">Baixar JSON do formulário</button></div><p class="tj-small">Publicar cria uma versão preservada. Editar depois prepara outro rascunho; retirar não apaga o histórico.</p><h3>Versões publicadas</h3><ul id="tg-versions"></ul></section></div>';
+  editor = Editor.montar($('tg-editor'), {
+    onChange: function (next) {
+      ++importTicket;
+      if (!chart || !$('tg-title').value.trim()) $('tg-title').value = next.title;
+      chart = Core.validarChart(next); changed();
+    },
+    onPending: function (pending) { editorPending = pending; if (pending) ++importTicket; render(); },
+  });
   Formato.INSTRUMENTOS.forEach(function (v) { option($('tg-instrument'), v, v === 'violao' ? 'Violão' : 'Guitarra'); });
   Formato.NIVEIS.forEach(function (v) { option($('tg-level'), v, v); });
   Formato.TECNICAS.forEach(function (v) { option($('tg-technique'), v, v.replace(/-/g, ' ')); });
@@ -176,20 +194,22 @@
   $('tg-work').addEventListener('change', function () { ++workChoice; $('tg-media').replaceChildren(node('option','Sem áudio associado · usar demonstração sintetizada',{value:''})); changed(); return loadMedia(this.value, ''); });
   $('tg-media-more').addEventListener('click',function(){if(mediaWork===$('tg-work').value)return loadMedia(mediaWork,undefined,mediaOffset);});
   $('tg-json').addEventListener('change', async function () {
+    if (busy || editorPending) return;
     var file = this.files[0]; if (!file) return; var ticket = ++importTicket;
     try {
       if (file.size > Formato.LIMITE_BYTES) throw new Error('O arquivo deve ter no máximo 1 MiB.');
       var parsed = JSON.parse(await file.text()); if (ticket !== importTicket) return;
       if (parsed.chart) { var doc=Formato.validarDocumento(parsed); ++mediaTicket;fillDocument(doc);loadMedia($('tg-work').value,doc.mediaId); }
-      else { chart = Core.validarChart(parsed); $('tg-title').value = chart.title; }
+      else { chart = Core.validarChart(parsed); $('tg-title').value = chart.title; editor.carregar(chart); }
       dirty = true; render(); message('Notas importadas. Confira objetivo, créditos, áudio e prévia antes de publicar.');
     } catch (e) { if (ticket === importTicket) message('Arranjo inválido: ' + e.message, true); }
     this.value = '';
   });
   $('tg-use-example').addEventListener('click', function () {
+    if (busy || editorPending) return;
     ++importTicket;
     var s = Estudos.listar().find(function (item) { return item.id === $('tg-example').value; }); if (!s) return;
-    chart = s.chart; $('tg-title').value = s.title; $('tg-objective').value = s.objective; $('tg-credits').value = 'Estudo original Musique';
+    chart = s.chart; editor.carregar(chart); $('tg-title').value = s.title; $('tg-objective').value = s.objective; $('tg-credits').value = 'Estudo original Musique';
     $('tg-level').value = 'iniciante'; dirty = true; render(); message('Cópia do estudo carregada. A biblioteca original continua preservada.');
   });
   $('tg-save').addEventListener('click', function () { return mutate('save'); });
@@ -216,5 +236,6 @@
       $('tg-work').value=w.id;render();await loadMedia(w.id,'');
     }catch(e){if(choice===workChoice)message('Não foi possível selecionar a obra: '+e.message,true);}
   }
+  window.addEventListener('beforeunload', function (event) { if (dirty || editorPending) { event.preventDefault(); event.returnValue = ''; } });
   newDraft(); loadWorks(0); loadList(0); selectInitialWork();
 })();

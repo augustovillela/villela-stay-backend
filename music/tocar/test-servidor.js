@@ -77,19 +77,22 @@ test('demonstração pública usa exatamente o arranjo do núcleo', async () => 
 });
 
 test('arquivos de servidor e caminhos não autorizados não ficam públicos', async () => {
-  for (const arquivo of ['index.js', 'catalogo.js', 'rotas-catalogo.js', 'test-catalogo.js', 'test-servidor.js', 'test-aprender.js', 'test-estudos.js', 'schema.sql', '%2e%2e%2fdb.js']) {
+  for (const arquivo of ['index.js', 'catalogo.js', 'rotas-catalogo.js', 'test-catalogo.js', 'test-servidor.js', 'test-aprender.js', 'test-estudos.js', 'test-editor-nucleo.js', 'test-editor-cliente.js', 'schema.sql', '%2e%2e%2fdb.js']) {
     assert.equal((await fetch(base + '/music/tocar/' + arquivo)).status, 404, arquivo);
   }
   const nucleo = await fetch(base + '/music/tocar/nucleo.js');
   assert.equal(nucleo.status, 200);
   assert.match(nucleo.headers.get('content-type'), /javascript/);
   assert.equal(nucleo.headers.get('x-content-type-options'), 'nosniff');
-  for (const arquivo of ['aprender.js', 'estudos.js', 'formato-catalogo.js', 'catalogo-cliente.js', 'gerenciar.js']) {
+  for (const arquivo of ['aprender.js', 'estudos.js', 'formato-catalogo.js', 'catalogo-cliente.js', 'editor-nucleo.js', 'editor-cliente.js', 'gerenciar.js']) {
     const asset = await fetch(base + '/music/tocar/' + arquivo);
     assert.equal(asset.status, 200);
     assert.match(asset.headers.get('content-type'), /javascript/);
     assert.equal(asset.headers.get('x-content-type-options'), 'nosniff');
   }
+  const estiloEditor = await fetch(base + '/music/tocar/editor.css');
+  assert.equal(estiloEditor.status, 200);
+  assert.match(estiloEditor.headers.get('content-type'), /text\/css/);
 });
 
 test('gestão pública só entrega a interface e não incorpora identidade ou obras', async () => {
@@ -100,6 +103,10 @@ test('gestão pública só entrega a interface e não incorpora identidade ou ob
     const html = await resposta.text();
     assert.match(html, /id="tocar-gestao"/);
     assert.match(html, /\/music\/tocar\/gerenciar\.js/);
+    assert.match(html, /\/music\/tocar\/editor\.css/);
+    const scripts = ['nucleo', 'editor-nucleo', 'editor-cliente', 'gerenciar'].map(nome => html.indexOf('src="/music/tocar/' + nome + '.js"'));
+    assert.ok(scripts.every(posicao => posicao >= 0));
+    assert.ok(scripts.every((posicao, i) => i === 0 || posicao > scripts[i - 1]), 'O núcleo e o editor devem carregar antes da integração do gestor.');
     assert.doesNotMatch(html, /nao-expor|<script>nome|editor-catalogo/);
   }
 });
@@ -123,6 +130,90 @@ async function fixtureCatalogo(dono, titulo = 'Estudo para catálogo') {
   assert.equal(criada.status, 201, JSON.stringify(criada.body));
   return { obra, documento, arranjo: criada.body.arranjo };
 }
+
+function chartEditado(titulo) {
+  return {
+    id: '_arranjo-visual', title: titulo, bpm: 87.5, duration: 2.875,
+    tuning: [40, 45, 50, 55, 59, 64],
+    notes: [
+      { id: 'mi-01', time: 0.125, duration: 1 / 3, string: 6, fret: 2, midi: 42 },
+      { id: '_la-02', time: 0.75, duration: 0.125, string: 5, fret: 0, midi: 45 },
+      { id: '-si-03', time: 1.375, duration: 0.25, string: 2, fret: 1, midi: 60 },
+    ],
+    sections: [
+      { id: 'frase-A', title: 'Primeira frase', from: 0.125, to: 1.125 },
+      { id: '_frase-B', title: 'Resposta', from: 1.375, to: 2.875 },
+    ],
+    metadata: { demo: false },
+  };
+}
+
+test('edição de notas salva e reabre tempos fracionários, IDs e frases sem arredondamento', async () => {
+  const dono = 'editor-visual-precisao', f = await fixtureCatalogo(dono, 'Frases editadas');
+  const documento = { ...f.documento, chart: chartEditado(f.documento.title) };
+  // A normalização ordena pelo tempo, sem renumerar IDs ou quantizar tempos.
+  documento.chart.notes.reverse(); documento.chart.sections.reverse();
+  const esperado = require('./formato-catalogo').validarDocumento(documento);
+  const salva = await catalogoHTTP(dono, '/gestao/arranjos/' + f.arranjo.id, 'PUT', { revision: f.arranjo.revision, documento });
+  assert.equal(salva.status, 200, JSON.stringify(salva.body));
+  assert.equal(salva.body.arranjo.revision, f.arranjo.revision + 1);
+  assert.deepEqual(salva.body.arranjo.documento, esperado);
+  const reaberta = await catalogoHTTP(dono, '/gestao/arranjos/' + f.arranjo.id);
+  assert.equal(reaberta.status, 200);
+  assert.deepEqual(reaberta.body.arranjo.documento, esperado);
+  const chart = reaberta.body.arranjo.documento.chart;
+  assert.equal(chart.bpm, 87.5); assert.equal(chart.duration, 2.875);
+  assert.deepEqual(chart.notes.map(n => n.id), ['mi-01', '_la-02', '-si-03']);
+  assert.equal(chart.notes[0].duration, 1 / 3);
+  assert.deepEqual(chart.sections.map(s => [s.id, s.from, s.to]), [['frase-A', 0.125, 1.125], ['_frase-B', 1.375, 2.875]]);
+});
+
+test('edição inválida por sobreposição não altera revisão, rascunho ou versão publicada', async () => {
+  const dono = 'editor-visual-atomico', f = await fixtureCatalogo(dono, 'Edição atômica');
+  const documento = { ...f.documento, chart: chartEditado(f.documento.title) };
+  const salvo = await catalogoHTTP(dono, '/gestao/arranjos/' + f.arranjo.id, 'PUT', { revision: f.arranjo.revision, documento });
+  assert.equal(salvo.status, 200);
+  const publicada = await catalogoHTTP(dono, '/gestao/arranjos/' + f.arranjo.id + '/publicar', 'POST', { revision: salvo.body.arranjo.revision });
+  assert.equal(publicada.status, 200);
+  const antes = publicada.body.arranjo;
+  const snapshot = await catalogoHTTP(dono, '/catalogo/' + antes.id);
+  const sobreposta = structuredClone(antes.documento);
+  sobreposta.chart.notes[1].time = 0.25;
+  const recusada = await catalogoHTTP(dono, '/gestao/arranjos/' + antes.id, 'PUT', { revision: antes.revision, documento: sobreposta });
+  assert.equal(recusada.status, 400); assert.match(recusada.body.erro, /sobrepostas/i);
+  assert.deepEqual((await catalogoHTTP(dono, '/gestao/arranjos/' + antes.id)).body.arranjo, antes);
+  assert.deepEqual((await catalogoHTTP(dono, '/catalogo/' + antes.id)).body, snapshot.body);
+  // Nem apagar todas as notas nem discordar da afinação deve persistir pela API.
+  for (const invalidar of [c => { c.notes = []; }, c => { c.notes[0].fret += 1; }]) {
+    const invalida = structuredClone(antes.documento); invalidar(invalida.chart);
+    assert.equal((await catalogoHTTP(dono, '/gestao/arranjos/' + antes.id, 'PUT', { revision: antes.revision, documento: invalida })).status, 400);
+    assert.deepEqual((await catalogoHTTP(dono, '/gestao/arranjos/' + antes.id)).body.arranjo, antes);
+  }
+});
+
+test('editar notas e frases prepara nova publicação sem reescrever a versão anterior', async () => {
+  const dono = 'editor-visual-versoes', f = await fixtureCatalogo(dono, 'Publicações do editor');
+  const primeira = await catalogoHTTP(dono, '/gestao/arranjos/' + f.arranjo.id + '/publicar', 'POST', { revision: f.arranjo.revision });
+  assert.equal(primeira.status, 200);
+  const a1 = primeira.body.arranjo;
+  const versao1 = await catalogoHTTP(dono, '/catalogo/' + a1.id + '/versoes/' + a1.publishedVersionId);
+  const editado = { ...f.documento, chart: chartEditado(f.documento.title) };
+  const salvo = await catalogoHTTP(dono, '/gestao/arranjos/' + a1.id, 'PUT', { revision: a1.revision, documento: editado });
+  assert.equal(salvo.status, 200);
+  assert.equal(salvo.body.arranjo.publishedVersionId, a1.publishedVersionId);
+  assert.deepEqual((await catalogoHTTP(dono, '/catalogo/' + a1.id)).body, versao1.body, 'Editar rascunho mantém a publicação anterior.');
+  const segunda = await catalogoHTTP(dono, '/gestao/arranjos/' + a1.id + '/publicar', 'POST', { revision: salvo.body.arranjo.revision });
+  assert.equal(segunda.status, 200);
+  const a2 = segunda.body.arranjo;
+  assert.notEqual(a2.publishedVersionId, a1.publishedVersionId);
+  const versao2 = await catalogoHTTP(dono, '/catalogo/' + a1.id);
+  assert.equal(versao2.status, 200);
+  assert.equal(versao2.body.arranjo.versionNumber, 2);
+  assert.notEqual(versao2.body.arranjo.sha256, versao1.body.arranjo.sha256);
+  assert.deepEqual(versao2.body.documento, require('./formato-catalogo').validarDocumento(editado));
+  assert.deepEqual((await catalogoHTTP(dono, '/catalogo/' + a1.id + '/versoes/' + a1.publishedVersionId)).body, versao1.body);
+  assert.deepEqual((await catalogoHTTP(dono, '/gestao/arranjos/' + a1.id)).body.arranjo.documento, versao2.body.documento);
+});
 
 test('sessões do catálogo fixam versão e trecho mesmo após editar, republicar e retirar', async () => {
   const dono = 'catalogo-editor', aluno = 'catalogo-aluno';
