@@ -36,6 +36,8 @@ Limites: 2.000 notas, 900 segundos, arranjo até 1 MB e áudio local até 100 MB
 
 `audio.js` gerencia permissão, dispositivos e descarte. `capturar-worklet.js` mantém janela de 64 ms e envia no máximo um quadro em trânsito. `detector-worker.js` executa `detector.js`; o resultado leva o instante central do quadro no relógio de áudio. `nucleo.js` valida arranjos e julga as medidas. `cliente.js` relaciona relógio, transporte, pista e feedback.
 
+A lista de entradas é consultada ao abrir a página e após cada tentativa de conexão, mesmo quando ela falha; a escolha do usuário é preservada. Nomes podem ficar ocultos até a permissão do navegador. O contexto de áudio é criado após obter a faixa de captura e sua ativação tem espera limitada e cancelável. Faixa aberta e processamento ativo são verificados separadamente antes de anunciar a conexão.
+
 A compensação positiva subtrai atraso do instante captado. O juiz recebe segundos da música; estabilidade e tolerância também usam esse relógio. Ao mudar velocidade ou compensação, a rodada é encerrada para evitar misturar parâmetros. O transporte aguarda quadros atrasados antes de marcar ausências e encerrar a rodada. A calibração por cliques inclui a reação humana e não mede isoladamente a latência do dispositivo de entrada.
 
 `index.js` oferece somente os arquivos públicos de uma lista fixa. A API aceita um resumo numérico fechado; não aceita áudio, campos extras nem modos de demonstração. A identidade vem da sessão do servidor. O resultado é autodeclarado pelo navegador, sem garantia contra adulteração do cliente. A migração aditiva `110-tocar.sql` cria `tocar_sessoes` no banco próprio do Musique.

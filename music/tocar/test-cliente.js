@@ -91,15 +91,20 @@ function montar(options = {}) {
     }
   }
   const audio = { criar(callbacks) {
-    const i = { callbacks, calls: [], stopped: 0, currentContext: null, status: { estado: 'parado' },
+    const labels = { 'microfone-interno': 'Microfone (Realtek Audio)', 'real-tone': 'Rocksmith USB Guitar Adapter', 'interface-2': 'Interface USB 2' };
+    const devices = () => Object.keys(labels).map(deviceId => ({ kind: 'audioinput', deviceId, label: labels[deviceId] }));
+    const i = { callbacks, calls: [], enumerations: 0, stopped: 0, currentContext: null, status: { estado: 'parado' },
+      async dispositivos() {
+        this.enumerations++;
+        return options.enumerate ? options.enumerate(this, devices()) : devices();
+      },
       async iniciar(id) {
         this.calls.push(id); this.status = { estado: 'iniciando' }; callbacks.onStatus(this.status);
         if (audioFailure) { this.status = { estado: 'erro', mensagem: audioFailure }; callbacks.onStatus(this.status); throw new Error(audioFailure); }
         if (this.currentContext) this.currentContext.close();
         const selected = id || 'microfone-interno';
-        const labels = { 'microfone-interno': 'Microfone integrado', 'real-tone': 'Rocksmith USB Guitar Adapter', 'interface-2': 'Interface USB 2' };
         this.currentContext = new Contexto(); this.status = { estado: 'conectado', deviceId: selected, nome: labels[selected] || 'Entrada de áudio' }; callbacks.onStatus(this.status);
-        return Object.keys(labels).map(deviceId => ({ kind: 'audioinput', deviceId, label: labels[deviceId] }));
+        return devices();
       },
       estado() { return this.status; }, contexto() { return this.currentContext && this.currentContext.state !== 'closed' ? this.currentContext : null; },
       parar() { this.stopped++; if (this.currentContext) this.currentContext.close(); this.status = { estado: 'parado', mensagem: 'Entrada desligada.' }; callbacks.onStatus(this.status); },
@@ -165,8 +170,77 @@ test('Padrão: violão pelo microfone, sem sons de apoio ligados', async () => {
   assert.equal(h.$('tj-instrument').value, 'violao'); assert.equal(h.$('tj-instrument-label').textContent, 'Violão');
   assert.equal(h.$('tj-connection-type').value, 'microphone'); assert.match(h.$('tj-connect').textContent, /microfone/i);
   for (const id of ['tj-metronome', 'tj-guide', 'tj-backing']) assert.equal(h.$(id).checked, false, id);
-  assert.equal(h.inputs.length, 0); await h.event('tj-connect', 'click');
-  assert.equal(h.inputs[0].calls[0], undefined); assert.equal(h.$('tj-device').value, 'microfone-interno');
+  assert.equal(h.inputs[0].calls.length, 0); assert.equal(h.contexts.length, 0); await h.event('tj-connect', 'click');
+  assert.equal(h.inputs[0].calls[0], undefined); assert.equal(h.$('tj-device').value, '');
+});
+
+test('Entradas aparecem antes da captura, sem abrir microfone nem escolher dispositivo', async () => {
+  const h = montar(); await h.settle();
+  const input = h.inputs[0], select = h.$('tj-device');
+  assert.equal(input.enumerations, 1); assert.equal(input.calls.length, 0); assert.equal(h.contexts.length, 0);
+  assert.equal(select.disabled, false); assert.equal(select.value, '');
+  assert.ok(select.children.some(option => option.value === 'microfone-interno' && /Realtek/.test(option.textContent)));
+  await h.event('tj-device', 'change', 'microfone-interno'); assert.equal(input.calls.length, 0);
+  await h.event('tj-connect', 'click');
+  assert.equal(input.calls[0], 'microfone-interno'); assert.equal(input.enumerations, 2);
+  assert.equal(select.value, 'microfone-interno'); assert.equal(h.$('tj-practice').disabled, false);
+});
+
+test('Labels ocultos ficam genéricos e se atualizam mesmo após falha de inicialização', async () => {
+  const originalError = 'A entrada de áudio foi interrompida. Conecte novamente.';
+  const h = montar({ audioFailure: originalError, enumerate: (input, devices) => input.calls.length ? devices : devices.map(d => ({ ...d, label: '' })) });
+  await h.settle();
+  const select = h.$('tj-device');
+  assert.equal(select.children[1].textContent, 'Entrada de áudio 1'); assert.doesNotMatch(select.textContent, /Realtek|Rocksmith/);
+  await h.event('tj-connect', 'click');
+  assert.match(select.textContent, /Realtek/); assert.equal(select.value, ''); assert.equal(select.disabled, false);
+  assert.equal(h.$('tj-status').textContent, originalError); assert.equal(h.$('tj-practice').disabled, true);
+  await h.event('tj-device', 'change', 'microfone-interno'); assert.equal(h.inputs[0].calls.length, 1);
+  h.audioFailure(null); await h.event('tj-connect', 'click');
+  assert.equal(h.inputs[0].calls.at(-1), 'microfone-interno'); assert.equal(h.$('tj-practice').disabled, false);
+});
+
+test('Falha na enumeração não apaga lista, seleção nem erro de permissão', async () => {
+  const originalError = 'A permissão de áudio foi negada.';
+  const h = montar({ audioFailure: originalError, enumerate(input, devices) {
+    if (input.calls.length) throw new Error('Falha de enumerateDevices');
+    return devices;
+  } });
+  await h.settle(); await h.event('tj-device', 'change', 'interface-2');
+  const previous = h.$('tj-device').textContent;
+  await h.event('tj-connect', 'click');
+  assert.equal(h.$('tj-device').textContent, previous); assert.equal(h.$('tj-device').value, 'interface-2');
+  assert.equal(h.$('tj-device').disabled, false); assert.equal(h.$('tj-connect').disabled, false);
+  assert.equal(h.$('tj-status').textContent, originalError); assert.equal(h.$('tj-status').classList.contains('tj-error'), true);
+});
+
+test('Troca conectada que falha mantém escolha e permite tentar novamente explicitamente', async () => {
+  const h = montar(); await h.settle(); await h.event('tj-connect', 'click');
+  h.audioFailure('Não foi possível abrir a entrada escolhida.'); await h.event('tj-device', 'change', 'interface-2');
+  assert.equal(h.inputs[0].calls.at(-1), 'interface-2'); assert.equal(h.inputs[0].enumerations, 3);
+  assert.equal(h.$('tj-device').value, 'interface-2'); assert.equal(h.$('tj-device').disabled, false);
+  assert.equal(h.$('tj-practice').disabled, true); assert.match(h.$('tj-status').textContent, /entrada escolhida/);
+  h.audioFailure(null); await h.event('tj-connect', 'click');
+  assert.equal(h.inputs[0].calls.at(-1), 'interface-2'); assert.equal(h.$('tj-practice').disabled, false);
+});
+
+test('Lista antiga pendente não bloqueia conexão nem sobrescreve nomes após permissão', async () => {
+  let release;
+  const h = montar({ enumerate(input, devices) {
+    return input.enumerations === 1 ? new Promise(resolve => { release = () => resolve(devices.map(d => ({ ...d, label: '' }))); }) : devices;
+  } });
+  await h.event('tj-connect', 'click');
+  assert.equal(h.inputs[0].calls.length, 1); assert.equal(h.$('tj-practice').disabled, false);
+  assert.match(h.$('tj-device').textContent, /Realtek/);
+  release(); await h.settle(); assert.match(h.$('tj-device').textContent, /Realtek/);
+  assert.equal(h.$('tj-device').value, '');
+});
+
+test('Lista reduzida depois de recusa não muda a entrada explicitamente escolhida', async () => {
+  const h = montar({ audioFailure: 'A permissão de áudio foi negada.', enumerate: (input, devices) => input.calls.length ? [] : devices });
+  await h.settle(); await h.event('tj-device', 'change', 'interface-2'); await h.event('tj-connect', 'click');
+  assert.equal(h.$('tj-device').value, 'interface-2'); assert.match(h.$('tj-device').textContent, /Interface USB 2/);
+  h.audioFailure(null); await h.event('tj-connect', 'click'); assert.equal(h.inputs[0].calls.at(-1), 'interface-2');
 });
 test('Trocar instrumento ou forma de captação encerra a captura e exige novo clique', async () => {
   for (const [id, value] of [['tj-instrument', 'guitarra'], ['tj-connection-type', 'interface']]) {
@@ -214,7 +288,7 @@ test('Visitante: demonstração funciona sem captura, nota ou histórico inventa
   assert.equal(h.$('tj-practice').disabled, true); assert.equal(h.$('tj-save').disabled, true);
   await h.event('tj-demo', 'click'); await h.advance(4.2);
   assert.match(h.$('tj-mode').textContent, /DEMONSTRAÇÃO/); assert.equal(h.$('tj-hits').textContent, '—');
-  assert.equal(h.$('tj-save').disabled, true); assert.equal(h.inputs.length, 0); assert.equal(h.requests.length, 0);
+  assert.equal(h.$('tj-save').disabled, true); assert.equal(h.inputs[0].calls.length, 0); assert.equal(h.requests.length, 0);
 });
 test('Contagem inicial toca quatro cliques mesmo com metrônomo desmarcado', async () => {
   const h = montar(); await h.chart(); h.$('tj-metronome').checked = false;

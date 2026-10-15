@@ -99,7 +99,7 @@ class Eventos {
   constructor() { this.eventos = new Map(); }
   addEventListener(nome, fn) { this.eventos.set(nome, fn); }
   removeEventListener(nome, fn) { if (this.eventos.get(nome) === fn) this.eventos.delete(nome); }
-  emitir(nome) { const fn = this.eventos.get(nome); if (fn) fn(); }
+  emitir(nome) { const fn = this.eventos.get(nome); if (fn) fn(); if (typeof this['on' + nome] === 'function') this['on' + nome](); }
 }
 function ambiente() {
   const trilha = Object.assign(new Eventos(), { readyState: 'live', label: 'Rocksmith USB Guitar Adapter', stops: 0,
@@ -109,9 +109,9 @@ function ambiente() {
     getUserMedia(pedido) { this.pedidos.push(pedido); return Promise.resolve(stream); },
     enumerateDevices() { return Promise.resolve(this.lista); } });
   const contextos = [], workers = [], nodes = [];
-  class Contexto {
-    constructor() { this.state = 'suspended'; this.sampleRate = 48000; this.destination = {}; this.audioWorklet = { addModule: async url => { assert.equal(url, '/music/tocar/capturar-worklet.js'); } }; contextos.push(this); }
-    resume() { this.state = 'running'; return Promise.resolve(); }
+  class Contexto extends Eventos {
+    constructor() { super(); this.state = 'suspended'; this.resumes = 0; this.sampleRate = 48000; this.destination = {}; this.audioWorklet = { addModule: async url => { assert.equal(url, '/music/tocar/capturar-worklet.js'); } }; contextos.push(this); }
+    resume() { this.resumes++; this.state = 'running'; return Promise.resolve(); }
     close() { this.state = 'closed'; this.closed = true; return Promise.resolve(); }
     createMediaStreamSource(s) { assert.equal(s, stream); return { connect() {}, disconnect() {} }; }
   }
@@ -129,6 +129,30 @@ function ambiente() {
   return { g, trilha, stream, media, contextos, workers, nodes };
 }
 async function verificarAsync(nome, fn) { await fn(); testes++; console.log('OK', nome); }
+async function aguardar(condicao) {
+  for (let i = 0; i < 10 && !condicao(); i++) await new Promise(resolve => setImmediate(resolve));
+  assert.ok(condicao(), 'A etapa assíncrona esperada não foi alcançada.');
+}
+function comRetomada(retomar) {
+  const a = ambiente(), C = a.g.AudioContext;
+  a.g.AudioContext = class extends C {
+    resume() {
+      if (!this.resumes) return super.resume();
+      this.resumes++;
+      return retomar(this, a);
+    }
+  };
+  a.media.enumerateDevices = async () => { a.contextos[0].state = 'suspended'; return a.media.lista; };
+  return a;
+}
+function conferirLimpeza(a) {
+  assert.equal(a.trilha.stops, 1);
+  assert.equal(a.contextos[0].closed, true);
+  assert.equal(a.contextos[0].eventos.size, 0);
+  for (const worker of a.workers) assert.equal(worker.terminated, true);
+  assert.equal(a.media.eventos.size, 0);
+  assert.equal(a.trilha.eventos.size, 0);
+}
 async function principal() {
   await verificarAsync('Ciclo: dispositivo exato, processamento desativado, callback e liberação total', async () => {
     const a = ambiente(), frames = [], estados = [];
@@ -138,6 +162,7 @@ async function principal() {
     assert.deepEqual(a.media.pedidos[0].audio.deviceId, { exact: 'real-tone' });
     for (const opção of ['echoCancellation', 'noiseSuppression', 'autoGainControl']) assert.equal(a.media.pedidos[0].audio[opção], false);
     assert.equal(mic.estado().estado, 'conectado'); assert.equal(mic.contexto(), a.contextos[0]);
+    assert.equal(a.contextos[0].resumes, 1, 'contexto já ativo não é retomado de novo');
     const port = a.nodes[0].port, worker = a.workers[0];
     const frame = { audioTime: 1, hz: 110, rms: 0.2, confidence: 0.99, onset: true };
     port.onmessage({ data: { tipo: 'quadro', id: 1, buffer: new ArrayBuffer(4) } });
@@ -155,7 +180,7 @@ async function principal() {
     const a = ambiente(); a.media.getUserMedia = async () => { const e = new Error('denied'); e.name = 'NotAllowedError'; throw e; };
     const mic = Audio.criar({ ambiente: a.g });
     await assert.rejects(mic.iniciar(), /permissão de áudio foi negada/);
-    assert.equal(mic.estado().estado, 'erro'); assert.equal(a.contextos[0].closed, true);
+    assert.equal(mic.estado().estado, 'erro'); assert.equal(a.contextos.length, 0);
     const b = ambiente(); delete b.g.AudioWorkletNode;
     const outro = Audio.criar({ ambiente: b.g });
     await assert.rejects(outro.iniciar(), /AudioWorklet/);
@@ -165,9 +190,64 @@ async function principal() {
     const a = ambiente(); let permitir;
     a.media.getUserMedia = () => new Promise(resolve => { permitir = resolve; });
     const mic = Audio.criar({ ambiente: a.g });
-    const promessa = mic.iniciar(); mic.parar(); permitir(a.stream);
+    const promessa = mic.iniciar();
+    assert.equal(a.contextos.length, 0, 'nenhum contexto aberto enquanto a entrada está pendente');
+    mic.parar(); permitir(a.stream);
     await assert.rejects(promessa, { name: 'AbortError' });
-    assert.equal(a.trilha.stops, 1); assert.equal(a.contextos[0].closed, true); assert.equal(mic.estado().estado, 'parado');
+    assert.equal(a.trilha.stops, 1); assert.equal(a.contextos.length, 0); assert.equal(mic.estado().estado, 'parado');
+  });
+  await verificarAsync('Contexto só é criado depois de a entrada abrir; contexto já running dispensa resume', async () => {
+    const a = ambiente(), C = a.g.AudioContext;
+    let permitir, entradaAberta = false;
+    a.media.getUserMedia = () => new Promise(resolve => { permitir = () => { entradaAberta = true; resolve(a.stream); }; });
+    a.g.AudioContext = class extends C {
+      constructor() { assert.equal(entradaAberta, true); super(); this.state = 'running'; }
+    };
+    const mic = Audio.criar({ ambiente: a.g }), promessa = mic.iniciar();
+    assert.equal(a.contextos.length, 0);
+    permitir(); await promessa;
+    assert.equal(a.contextos[0].resumes, 0);
+    assert.equal(mic.estado().estado, 'conectado');
+    mic.parar(); conferirLimpeza(a);
+  });
+  await verificarAsync('Primeira retomada pendente ou sem running expira e libera a entrada antes de montar o grafo', async () => {
+    for (const modo of ['pendente', 'suspended']) {
+      const a = ambiente(), C = a.g.AudioContext;
+      let expirar;
+      a.g.AudioContext = class extends C {
+        resume() { this.resumes++; return modo === 'pendente' ? new Promise(() => {}) : Promise.resolve(); }
+      };
+      a.g.setTimeout = (fn, ms) => { assert.equal(ms, 2000); expirar = fn; return {}; };
+      a.g.clearTimeout = () => {};
+      const mic = Audio.criar({ ambiente: a.g });
+      const rejeicao = assert.rejects(mic.iniciar(), /processamento de áudio do navegador continua indisponível/);
+      await aguardar(() => !!expirar);
+      assert.equal(a.workers.length, 0);
+      expirar(); await rejeicao;
+      assert.equal(a.contextos[0].resumes, 1);
+      assert.equal(mic.estado().estado, 'erro');
+      conferirLimpeza(a);
+    }
+  });
+  await verificarAsync('Primeira retomada rejeitada ou cancelada libera a faixa e não monta o grafo', async () => {
+    for (const modo of ['rejeitada', 'cancelada']) {
+      const a = ambiente(), C = a.g.AudioContext;
+      let liberar;
+      a.g.AudioContext = class extends C {
+        resume() {
+          this.resumes++;
+          if (modo === 'rejeitada') return Promise.reject(new Error('audio unavailable'));
+          return new Promise(resolve => { liberar = resolve; });
+        }
+      };
+      const estados = [], mic = Audio.criar({ ambiente: a.g, onStatus: s => estados.push(s.estado) });
+      const rejeicao = assert.rejects(mic.iniciar(), modo === 'cancelada' ? { name: 'AbortError' } : /Não foi possível retomar o processamento de áudio/);
+      if (modo === 'cancelada') { await aguardar(() => !!liberar); mic.parar(); liberar(); }
+      await rejeicao;
+      assert.equal(a.workers.length, 0);
+      assert.deepEqual(estados, ['iniciando', modo === 'cancelada' ? 'parado' : 'erro']);
+      conferirLimpeza(a);
+    }
   });
   await verificarAsync('Desconectar faixa interrompe worker, contexto e captura', async () => {
     const a = ambiente(), mic = Audio.criar({ ambiente: a.g }); await mic.iniciar();
@@ -200,8 +280,90 @@ async function principal() {
     resolverAntiga({ getTracks: () => [faixaAntiga] });
     await rejeiçãoAntiga;
     assert.equal(stopsAntigos, 1); assert.equal(a.trilha.stops, 0);
-    assert.equal(mic.estado().estado, 'conectado'); assert.equal(mic.contexto(), a.contextos[1]);
+    assert.equal(mic.estado().estado, 'conectado'); assert.equal(mic.contexto(), a.contextos[0]);
+    assert.equal(a.contextos.length, 1, 'a solicitação antiga nunca abriu um contexto');
     mic.parar();
+  });
+  await verificarAsync('Suspensão após módulo ou enumeração recebe uma única retomada final', async () => {
+    for (const fase of ['modulo', 'enumeracao']) {
+      const a = ambiente(), C = a.g.AudioContext;
+      if (fase === 'modulo') a.g.AudioContext = class extends C {
+        constructor() { super(); this.audioWorklet.addModule = async () => { this.state = 'suspended'; }; }
+      };
+      if (fase === 'enumeracao') a.media.enumerateDevices = async () => { a.contextos[0].state = 'suspended'; return a.media.lista; };
+      const mic = Audio.criar({ ambiente: a.g });
+      await mic.iniciar();
+      assert.equal(mic.estado().estado, 'conectado', fase);
+      assert.equal(a.trilha.readyState, 'live');
+      assert.equal(a.contextos[0].state, 'running');
+      assert.equal(a.contextos[0].resumes, 2);
+      assert.equal(a.contextos[0].eventos.size, 0, 'listener temporário removido');
+      mic.parar(); conferirLimpeza(a);
+    }
+  });
+  await verificarAsync('Interrupção transitória aguarda statechange sem anunciar conexão antes de running', async () => {
+    let concluirRetomada;
+    const a = comRetomada(ctx => {
+      ctx.state = 'interrupted';
+      concluirRetomada = () => { ctx.state = 'running'; ctx.emitir('statechange'); };
+      return Promise.resolve();
+    });
+    const estados = [], mic = Audio.criar({ ambiente: a.g, onStatus: s => estados.push(s.estado) });
+    const iniciar = mic.iniciar();
+    await aguardar(() => !!concluirRetomada);
+    assert.equal(mic.estado().estado, 'iniciando');
+    concluirRetomada(); await iniciar;
+    assert.deepEqual(estados, ['iniciando', 'conectado']);
+    assert.equal(a.contextos[0].resumes, 2);
+    mic.parar(); conferirLimpeza(a);
+  });
+  await verificarAsync('Retomada rejeitada mantém a falha de áudio visível e libera todos os recursos', async () => {
+    const a = comRetomada(() => Promise.reject(new Error('audio hardware unavailable')));
+    const mic = Audio.criar({ ambiente: a.g });
+    await assert.rejects(mic.iniciar(), /Não foi possível retomar o processamento de áudio/);
+    assert.equal(a.contextos[0].resumes, 2);
+    assert.equal(mic.estado().estado, 'erro');
+    conferirLimpeza(a);
+  });
+  await verificarAsync('Retomada pendente ou sem running tem prazo limitado e não tenta após expirar', async () => {
+    for (const modo of ['pendente', 'suspended', 'interrupted']) {
+      let expirar, timerLimpo = false;
+      const a = comRetomada(ctx => {
+        if (modo === 'pendente') return new Promise(() => {});
+        ctx.state = modo; return Promise.resolve();
+      });
+      const marcador = {};
+      a.g.setTimeout = (fn, ms) => { if (ms === 2000 && a.contextos[0].resumes === 1) { expirar = fn; return marcador; } return setTimeout(fn, ms); };
+      a.g.clearTimeout = timer => { if (timer === marcador) timerLimpo = true; else clearTimeout(timer); };
+      const mic = Audio.criar({ ambiente: a.g });
+      const rejeicao = assert.rejects(mic.iniciar(), /processamento de áudio do navegador continua indisponível/);
+      await aguardar(() => !!expirar);
+      assert.equal(mic.estado().estado, 'iniciando');
+      expirar(); await rejeicao;
+      assert.equal(timerLimpo, true);
+      assert.equal(a.contextos[0].resumes, 2);
+      conferirLimpeza(a);
+    }
+  });
+  await verificarAsync('Cancelar durante a retomada aborta espera e ignora a resolução tardia', async () => {
+    let liberar;
+    const a = comRetomada(() => new Promise(resolve => { liberar = resolve; }));
+    const estados = [], mic = Audio.criar({ ambiente: a.g, onStatus: s => estados.push(s.estado) });
+    const rejeicao = assert.rejects(mic.iniciar(), { name: 'AbortError' });
+    await aguardar(() => !!liberar);
+    mic.parar(); await rejeicao; liberar();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(estados, ['iniciando', 'parado']);
+    conferirLimpeza(a);
+  });
+  await verificarAsync('Faixa encerrada durante a retomada não vira conexão válida', async () => {
+    const a = comRetomada((ctx, entrada) => {
+      ctx.state = 'running'; entrada.trilha.readyState = 'ended'; return Promise.resolve();
+    });
+    const mic = Audio.criar({ ambiente: a.g });
+    await assert.rejects(mic.iniciar(), /entrada de áudio foi desconectada durante a inicialização/);
+    assert.equal(mic.estado().estado, 'erro');
+    conferirLimpeza(a);
   });
   await verificarAsync('Suspensão do contexto interrompe captura; respostas antigas são ignoradas', async () => {
     const a = ambiente(), frames = [], mic = Audio.criar({ ambiente: a.g, onFrame: f => frames.push(f) });
@@ -218,4 +380,5 @@ async function principal() {
   console.log(`Detector: média local de ${((performance.now() - começo) / 100).toFixed(2)} ms/quadro (96 kHz; não é medição de hardware de áudio).`);
   console.log(`${testes} verificações passaram.`);
 }
-principal().catch(e => { console.error(e); process.exitCode = 1; });
+const prazoTestes = setTimeout(() => { console.error('Os testes de áudio não concluíram dentro do prazo.'); process.exitCode = 1; }, 15000);
+principal().catch(e => { console.error(e); process.exitCode = 1; }).finally(() => clearTimeout(prazoTestes));

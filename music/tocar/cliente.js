@@ -5,7 +5,7 @@
   var Core = window.MusiqueTocarCore, Audio = window.MusiqueTocarAudio;
   if (!Core || !Audio) { app.textContent = 'Não foi possível carregar o modo de prática. Recarregue a página.'; return; }
   var boot = JSON.parse(app.getAttribute('data-estado') || '{}');
-  var chart = Core.demoChart(), input = null, demoContext = null, ctx = null;
+  var chart = Core.demoChart(), input = null, demoContext = null, ctx = null, deviceRefresh = 0;
   var media = null, mediaUrl = null, mediaStarting = false, raf = null, nodes = [], generation = 0;
   var state = { mode: 'idle', running: false, position: 0, origin: 0, start: 0, speed: 1,
     from: 0, to: chart.duration, loop: false, judge: null, lastFrame: null, offset: 0,
@@ -210,21 +210,45 @@
     if (s.estado === 'erro') msg(s.mensagem, true);
     updateTransport();
   }
-  async function connect() {
-    pause(); cancelCalibration();
-    if (state.connected) { pause(); input.parar(); return; }
+  function audioInput() {
     if (!input) input = Audio.criar({ onFrame: onFrame, onStatus: onStatus });
+    return input;
+  }
+  async function refreshDevices() {
+    var attempt = ++deviceRefresh;
+    try {
+      // Enumerar não abre o microfone nem pede permissão. Os nomes podem estar ocultos.
+      var devices = await audioInput().dispositivos();
+      if (attempt !== deviceRefresh) return;
+      var select = $('tj-device'), selected = select.value;
+      var previous = Array.prototype.find.call(select.children, function (n) { return n.value === selected; });
+      var found = !selected, seen = Object.create(null);
+      select.replaceChildren(el('option', { value: '', text: 'Entrada padrão do sistema' }));
+      devices.forEach(function (d, i) {
+        if (!d.deviceId || seen[d.deviceId]) return;
+        seen[d.deviceId] = true;
+        select.appendChild(el('option', { value: d.deviceId, text: d.label || ('Entrada de áudio ' + (i + 1)) }));
+        if (d.deviceId === selected) found = true;
+      });
+      // Uma lista reduzida por permissão não deve trocar silenciosamente a escolha.
+      if (!found) select.appendChild(el('option', { value: selected, text: previous ? previous.textContent : 'Entrada selecionada' }));
+      select.value = selected;
+    } catch (_) { /* Preserva a lista e a mensagem original da tentativa de captura. */ }
+  }
+  async function activateInput() {
     $('tj-connect').disabled = true;
     try {
-      var devices = await input.iniciar($('tj-device').value || undefined);
+      var devices = await audioInput().iniciar($('tj-device').value || undefined);
       var selected = input.estado().deviceId;
-      $('tj-device').replaceChildren(el('option', { value: '', text: 'Entrada padrão do sistema' }));
-      devices.forEach(function (d) { $('tj-device').appendChild(el('option', { value: d.deviceId, text: d.label || 'Entrada de áudio' })); });
-      if (selected) $('tj-device').value = selected;
       var realTone = devices.find(function (d) { return /rocksmith|real.?tone/i.test(d.label || ''); });
       msg(state.inputKind === 'realtone' && realTone && selected !== realTone.deviceId ? 'O Real Tone foi encontrado. Selecione-o em “Entrada de áudio”.' : 'Confira o dispositivo em “Entrada de áudio” e toque uma corda. Use fones para ouvir o acompanhamento.');
     } catch (e) { msg(e.message || 'Não consegui abrir a entrada de áudio.', true); }
-    finally { $('tj-connect').disabled = false; }
+    finally { $('tj-connect').disabled = false; refreshDevices(); }
+  }
+  function connect() {
+    pause(); cancelCalibration();
+    if (state.connected) { input.parar(); return; }
+    return activateInput();
   }
   function cancelCalibration() {
     if (state.calibration) { clearTimeout(state.calibration.timer); state.calibration = null; silence(); }
@@ -309,7 +333,7 @@
   on('tj-demo','click',function(){start('demo',false);});on('tj-practice','click',function(){start('practice',false);});
   on('tj-instrument','change',changeProfile);on('tj-connection-type','change',changeProfile);
   on('tj-pause','click',function(){if(state.running)pause();else start(state.mode,true);});on('tj-stop','click',function(){stop();cancelCalibration();msg('Pronto para uma nova rodada.');});
-  on('tj-connect','click',connect);on('tj-device','change',async function(){if(!input || !state.connected)return;pause();cancelCalibration();try{await input.iniciar($('tj-device').value||undefined);}catch(e){msg(e.message,true);}});
+  on('tj-connect','click',connect);on('tj-device','change',function(){if(!input || !state.connected)return;pause();cancelCalibration();return activateInput();});
   on('tj-speed','change',function(){stop();state.speed=Number(this.value);if(media)media.playbackRate=state.speed;msg('Velocidade ajustada. Inicie uma nova rodada.');});
   on('tj-loop','change',function(){state.loop=this.checked;});
   ['tj-from','tj-to'].forEach(function(id){on(id,'change',function(){var f=Number($('tj-from').value),t=Number($('tj-to').value);if(!Number.isFinite(f)||!Number.isFinite(t)||f<0||t>chart.duration||t-f<0.5){msg('Escolha um trecho válido de pelo menos meio segundo.',true);$('tj-from').value=state.from;$('tj-to').value=state.to;return;}state.from=f;state.to=t;stop();});});
@@ -337,5 +361,5 @@
   window.addEventListener('pageshow',function(e){if(e.persisted && !raf)tick();});
   text('tj-history-label',boot.logado?'Últimas rodadas guardadas nesta conta.':'Entre no Musique para guardar as rodadas na sua conta.');
   if(!boot.logado)$('tj-history').appendChild(el('li',{},[el('a',{href:'/music/entrar?voltar=%2Fmusic%2Ftocar',text:'Entrar ou criar conta'})]));
-  profile();applyChart(chart);history();tick();
+  profile();applyChart(chart);refreshDevices();history();tick();
 })();

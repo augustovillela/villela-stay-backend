@@ -25,6 +25,7 @@
       if (s.timer) g.clearTimeout(s.timer);
       if (s.timerPronto) g.clearTimeout(s.timerPronto);
       if (s.rejeitarPronto) { s.rejeitarPronto(cancelar()); s.rejeitarPronto = null; }
+      if (s.cancelarRetomada) s.cancelarRetomada();
       if (s.media && s.deviceChange) s.media.removeEventListener('devicechange', s.deviceChange);
       if (s.stream) s.stream.getTracks().forEach(function (t) { t.removeEventListener('ended', s.ended); });
       if (s.node) {
@@ -63,6 +64,42 @@
         return { kind: 'audioinput', deviceId: d.deviceId, label: d.label || ('Entrada de áudio ' + (++indice)) };
       });
     }
+    // Cada retomada espera running por um prazo curto, inclusive a inicial.
+    // Faixa ativa, sozinha, não prova que o navegador está processando áudio;
+    // falha persistente continua visível, sem tentativas em laço.
+    function garantirContextoAtivo(s) {
+      if (!atual(s)) return Promise.reject(cancelar());
+      if (s.ctx.state === 'running') return Promise.resolve();
+      if (s.ctx.state === 'closed') return Promise.reject(erro('O processamento de áudio do navegador foi encerrado. Ative a entrada novamente.'));
+      return new Promise(function (resolve, reject) {
+        var terminou = false, timer;
+        function concluir(falha) {
+          if (terminou) return;
+          terminou = true;
+          if (timer) g.clearTimeout(timer);
+          s.ctx.removeEventListener('statechange', conferir);
+          s.cancelarRetomada = null;
+          if (falha) reject(falha); else resolve();
+        }
+        function conferir() {
+          if (!atual(s)) return concluir(cancelar());
+          if (s.ctx.state === 'closed') return concluir(erro('O processamento de áudio do navegador foi encerrado. Ative a entrada novamente.'));
+          if (s.ctx.state === 'running') concluir();
+        }
+        s.cancelarRetomada = function () { concluir(cancelar()); };
+        s.ctx.addEventListener('statechange', conferir);
+        timer = g.setTimeout(function () {
+          concluir(erro('O processamento de áudio do navegador continua indisponível. Confira a saída de som e tente novamente.'));
+        }, 2000);
+        try {
+          Promise.resolve(s.ctx.resume()).then(conferir, function () {
+            concluir(erro('Não foi possível retomar o processamento de áudio. Confira a saída de som do navegador e tente novamente.'));
+          });
+        } catch (_) {
+          concluir(erro('Não foi possível retomar o processamento de áudio. Confira a saída de som do navegador e tente novamente.'));
+        }
+      });
+    }
     async function iniciar(deviceId) {
       var anterior = sessao;
       var s = { geracao: ++geracao, fechada: false, conectado: false, pendente: null };
@@ -75,11 +112,6 @@
         if (!s.media || !s.media.getUserMedia) throw erro('Este navegador não permite capturar áudio. Use uma versão atual do Chrome, Edge ou Firefox.');
         var C = g.AudioContext || g.webkitAudioContext;
         if (!C || !g.AudioWorkletNode || !g.Worker) throw erro('Este navegador não oferece o processamento de áudio necessário (AudioWorklet e Worker). Atualize o navegador para conectar o instrumento.');
-        s.ctx = new C({ latencyHint: 'interactive' });
-        if (!s.ctx.audioWorklet || !s.ctx.audioWorklet.addModule) throw erro('AudioWorklet não está disponível neste navegador. Atualize o navegador para conectar o instrumento.');
-        // Resume ainda dentro do gesto do usuário, antes da permissão assíncrona.
-        var retomada = s.ctx.resume();
-        Promise.resolve(retomada).catch(function () {});
         var audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 1 } };
         if (deviceId) audio.deviceId = { exact: deviceId };
         var stream = await s.media.getUserMedia({ audio: audio, video: false });
@@ -89,7 +121,11 @@
         stream.getTracks().forEach(function (t) { t.addEventListener('ended', s.ended); });
         var faixa = stream.getAudioTracks()[0];
         if (!faixa || faixa.readyState === 'ended') throw erro('A entrada foi desconectada antes de iniciar. Confira o dispositivo e tente novamente.');
-        await retomada;
+        // Inicializamos o contexto depois de confirmar uma faixa ativa;
+        // a permissão pendente não precisa manter um renderizador aberto.
+        s.ctx = new C({ latencyHint: 'interactive' });
+        if (!s.ctx.audioWorklet || !s.ctx.audioWorklet.addModule) throw erro('AudioWorklet não está disponível neste navegador. Atualize o navegador para conectar o instrumento.');
+        await garantirContextoAtivo(s);
         if (!atual(s)) throw cancelar();
         await s.ctx.audioWorklet.addModule('/music/tocar/capturar-worklet.js');
         if (!atual(s)) throw cancelar();
@@ -146,7 +182,11 @@
         if (s.media.addEventListener) s.media.addEventListener('devicechange', s.deviceChange);
         var lista = await dispositivos();
         if (!atual(s)) throw cancelar();
-        if (faixa.readyState === 'ended' || s.ctx.state !== 'running') throw erro('A entrada de áudio foi interrompida. Conecte novamente.');
+        if (faixa.readyState === 'ended') throw erro('A entrada de áudio foi desconectada durante a inicialização. Confira o dispositivo e tente novamente.');
+        await garantirContextoAtivo(s);
+        if (!atual(s)) throw cancelar();
+        if (faixa.readyState === 'ended') throw erro('A entrada de áudio foi desconectada durante a inicialização. Confira o dispositivo e tente novamente.');
+        if (s.ctx.state !== 'running') throw erro('O processamento de áudio do navegador foi interrompido. Confira a saída de som e tente novamente.');
         s.conectado = true;
         informar('conectado', 'Entrada conectada. A análise acontece somente neste dispositivo.', {
           deviceId: s.deviceId, nome: faixa.label || 'Entrada de áudio', sampleRate: s.ctx.sampleRate
