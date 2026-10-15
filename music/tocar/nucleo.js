@@ -1,0 +1,193 @@
+// Musique — chart e julgamento monofônico de treino. Funções sem DOM,
+// banco, áudio ou usuário. A entrada é uma medida; corda/casa vêm do
+// arranjo, pois a mesma altura pode ser tocada em posições diferentes.
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.MusiqueTocarCore = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var PADRAO = [40, 45, 50, 55, 59, 64]; // da corda grave à aguda
+  var EPS = 1e-7;
+  function exigir(ok, mensagem) { if (!ok) throw new Error(mensagem); }
+  function numero(v) { return typeof v === 'number' && Number.isFinite(v); }
+  function objeto(v) { return v && typeof v === 'object' && !Array.isArray(v); }
+  function texto(v, nome, max) {
+    exigir(typeof v === 'string' && v.trim().length > 0 && v.length <= max && !/[<>\u0000-\u001f\u007f]/.test(v), nome + ' deve ser texto simples de até ' + max + ' caracteres.');
+    return v.trim();
+  }
+  function id(v, nome) {
+    exigir(typeof v === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(v), nome + ' inválido (use letras, números, _ ou -).');
+    return v;
+  }
+  function limite(v, min, max, nome) {
+    exigir(numero(v) && v >= min && v <= max, nome + ' deve estar entre ' + min + ' e ' + max + '.');
+    return v;
+  }
+
+  function validarChart(input) {
+    exigir(objeto(input), 'O arranjo deve ser um objeto.');
+    var chart = {
+      id: id(input.id, 'id do arranjo'), title: texto(input.title, 'Título', 120),
+      bpm: limite(input.bpm, 20, 300, 'BPM'), duration: limite(input.duration, 0.04, 900, 'Duração'),
+      tuning: (input.tuning == null ? PADRAO : input.tuning), notes: [],
+    };
+    exigir(Array.isArray(chart.tuning) && chart.tuning.length === 6, 'Afinação deve conter seis alturas MIDI, da corda grave à aguda.');
+    chart.tuning = chart.tuning.map(function (m) { exigir(Number.isInteger(m) && m >= 24 && m <= 88, 'Altura da afinação fora da faixa MIDI de guitarra (24–88).'); return m; });
+    exigir(Array.isArray(input.notes) && input.notes.length > 0 && input.notes.length <= 2000, 'O arranjo deve ter de 1 a 2000 notas.');
+    var ids = Object.create(null);
+    chart.notes = input.notes.map(function (n, i) {
+      exigir(objeto(n), 'Nota ' + (i + 1) + ' inválida.');
+      var nid = id(n.id, 'id da nota ' + (i + 1));
+      exigir(!ids[nid], 'id de nota repetido: ' + nid); ids[nid] = true;
+      var start = limite(n.time, 0, 900, 'Início da nota ' + nid);
+      var dur = limite(n.duration, 0.04, 60, 'Duração da nota ' + nid);
+      exigir(start + dur <= chart.duration + EPS, 'A nota ' + nid + ' ultrapassa a duração do arranjo.');
+      exigir(Number.isInteger(n.string) && n.string >= 1 && n.string <= 6, 'Corda inválida na nota ' + nid + ' (1 é a mi aguda).');
+      exigir(Number.isInteger(n.fret) && n.fret >= 0 && n.fret <= 24, 'Casa inválida na nota ' + nid + ' (0–24).');
+      var midi = chart.tuning[6 - n.string] + n.fret;
+      exigir(Number.isInteger(n.midi) && n.midi === midi && midi <= 127, 'MIDI, corda, casa e afinação discordam na nota ' + nid + '.');
+      return { id: nid, time: start, duration: dur, string: n.string, fret: n.fret, midi: midi };
+    }).sort(function (a, b) { return a.time - b.time; });
+    for (var i = 1; i < chart.notes.length; i++) {
+      var ant = chart.notes[i - 1], atual = chart.notes[i];
+      exigir(atual.time + EPS >= ant.time + ant.duration, 'Notas sobrepostas: ' + ant.id + ' e ' + atual.id + '. Este modo aceita uma nota por vez.');
+    }
+    if (input.sections != null) {
+      exigir(Array.isArray(input.sections) && input.sections.length <= 100, 'Trechos inválidos (máximo 100).');
+      var secIds = Object.create(null);
+      chart.sections = input.sections.map(function (s) {
+        exigir(objeto(s), 'Trecho inválido.');
+        var sid = id(s.id, 'id do trecho'); exigir(!secIds[sid], 'id de trecho repetido: ' + sid); secIds[sid] = true;
+        var from = limite(s.from, 0, chart.duration, 'Início do trecho');
+        var to = limite(s.to, 0, chart.duration, 'Fim do trecho');
+        exigir(to > from, 'O fim do trecho deve vir depois do início.');
+        return { id: sid, title: texto(s.title, 'Título do trecho', 80), from: from, to: to };
+      }).sort(function (a, b) { return a.from - b.from; });
+    }
+    // Metadados descritivos não entram na medida nem permitem executar código.
+    if (input.metadata != null) {
+      exigir(objeto(input.metadata), 'Metadados inválidos.');
+      chart.metadata = { demo: input.metadata.demo === true };
+    }
+    return chart;
+  }
+
+  function demoChart() {
+    // Exercício original em mi menor: 8 frases de 6 notas. Os intervalos
+    // são deliberadamente espaçosos para a primeira ligação da guitarra.
+    var frases = [[0, 2, 2, 0, 0, 3], [3, 2, 0, 2, 0, 0], [0, 3, 2, 0, 3, 0], [2, 2, 0, 2, 0, 2],
+      [0, 2, 2, 0, 0, 0], [3, 2, 0, 0, 3, 3], [2, 0, 2, 2, 0, 2], [0, 2, 2, 0, 0, 0]];
+    var spans = [2, 1, 2, 1, 2, 2], beat = 60 / 90, t = 2, notes = [], sections = [];
+    frases.forEach(function (frets, p) {
+      var begin = t;
+      frets.forEach(function (fret, j) {
+        var span = spans[j] * beat;
+        notes.push({ id: 'demo-' + (p * 6 + j + 1), time: t, duration: span * 0.65, string: 6 - j, fret: fret, midi: PADRAO[j] + fret });
+        t += span;
+      });
+      sections.push({ id: 'frase-' + (p + 1), title: 'Frase ' + (p + 1), from: begin, to: t });
+    });
+    return validarChart({ id: 'primeiro-riff-v1', title: 'Primeiro riff', bpm: 90, duration: t + 2,
+      tuning: PADRAO.slice(), notes: notes, sections: sections, metadata: { demo: true } });
+  }
+
+  function criarJulgador(input, options) {
+    var chart = validarChart(input), o = options || {};
+    function opt(k, pad, min, max) { return limite(o[k] == null ? pad : o[k], min, max, k); }
+    var offset = opt('offsetMs', 0, -2000, 2000) / 1000;
+    var tolerance = opt('toleranceMs', 180, 20, 1000) / 1000;
+    var centsTolerance = opt('centsTolerance', 45, 1, 50);
+    var stable = opt('stableMs', 40, 20, 250) / 1000;
+    var minConfidence = opt('minConfidence', 0.7, 0, 1);
+    var minRms = opt('minRms', 0.003, 0.000001, 1);
+    var from = opt('from', 0, 0, chart.duration), to = opt('to', chart.duration, 0, chart.duration);
+    exigir(to > from, 'O fim da prática deve vir depois do início.');
+    var notes = chart.notes.filter(function (n) { return n.time >= from && n.time < to; });
+    var states = notes.map(function (n) { return { id: n.id, status: 'pending' }; });
+    var segment = null, silence = null, attack = 0, attackMidi = null, change = null;
+    var usedAttacks = Object.create(null), lastSample = -Infinity, lastOnset = -Infinity;
+    function copy(s) { return Object.assign({}, s); }
+
+    function expire(correctedTime) {
+      var changed = [];
+      notes.forEach(function (n, i) {
+        // Dá tempo para confirmar 40 ms de uma entrada no fim da janela.
+        if (states[i].status === 'pending' && correctedTime > n.time + tolerance + stable + EPS) {
+          states[i].status = 'miss'; changed.push(copy(states[i]));
+        }
+      });
+      return changed;
+    }
+    function avancar(time) { return numero(time) ? expire(time - offset) : []; }
+
+    function amostrar(sample) {
+      if (!objeto(sample) || !numero(sample.time) || sample.time < lastSample) return null;
+      var time = sample.time - offset;
+      lastSample = sample.time;
+      var quiet = numero(sample.rms) && sample.rms < minRms;
+      var valid = numero(sample.hz) && sample.hz > 0 && numero(sample.confidence) && sample.confidence >= minConfidence && sample.confidence <= 1 && numero(sample.rms) && sample.rms >= minRms;
+      if (!valid) {
+        if (quiet) { if (silence === null) silence = time; } else silence = null;
+        segment = null; change = null;
+        expire(time); return null;
+      }
+      var exact = 69 + 12 * Math.log(sample.hz / 440) / Math.LN2;
+      var midi = Math.round(exact), cents = (exact - midi) * 100;
+      if (!numero(exact) || midi < 0 || midi > 127) { segment = null; expire(time); return null; }
+      var onset = sample.onset === true && time - lastOnset >= 0.06 - EPS;
+      var fresh = attackMidi === null || onset || (silence !== null && time - silence >= 0.03 - EPS);
+      silence = null;
+      if (fresh) {
+        attack++; attackMidi = midi; change = null; segment = null;
+        if (onset) lastOnset = time;
+      } else if (midi !== attackMidi) {
+        if (!change || change.midi !== midi) change = { midi: midi, start: time };
+        // Uma oscilação isolada do detector não cria outra palhetada.
+        if (time - change.start >= stable - EPS) { attack++; attackMidi = midi; change = null; }
+      } else change = null;
+
+      // Um buraco de leitura não prova continuidade do som. O novo
+      // segmento exige confirmação; ele não cria sozinho novo ataque.
+      if (!segment || segment.midi !== midi || time - segment.end > 0.075) {
+        segment = { midi: midi, start: time, end: time, sum: cents, count: 1 };
+      } else { segment.end = time; segment.sum += cents; segment.count++; }
+      var result = null;
+      if (time - segment.start >= stable - EPS && midi === attackMidi && !usedAttacks[attack]) {
+        var meanCents = segment.sum / segment.count, best = -1, bestDistance = Infinity;
+        if (Math.abs(meanCents) <= centsTolerance + EPS) {
+          notes.forEach(function (n, i) {
+            var distance = Math.abs(segment.start - n.time);
+            // MIDI absoluto: tocar uma oitava acima não acerta o alvo.
+            if (states[i].status === 'pending' && n.midi === midi && distance <= tolerance + EPS && distance < bestDistance) {
+              best = i; bestDistance = distance;
+            }
+          });
+        }
+        if (best >= 0) {
+          states[best] = { id: notes[best].id, status: 'hit', timingMs: Math.round((segment.start - notes[best].time) * 1000), cents: Math.round(meanCents * 10) / 10 };
+          usedAttacks[attack] = true; result = copy(states[best]);
+        }
+      }
+      expire(time); return result;
+    }
+
+    function resumo() {
+      var hits = 0, misses = 0, timing = 0, cents = 0;
+      states.forEach(function (s) {
+        if (s.status === 'hit') { hits++; timing += Math.abs(s.timingMs); cents += Math.abs(s.cents); }
+        else if (s.status === 'miss') misses++;
+      });
+      var done = hits + misses;
+      return { total: states.length, hits: hits, misses: misses, pending: states.length - done,
+        accuracy: done ? Math.round(1000 * hits / done) / 10 : 0,
+        completion: states.length ? Math.round(1000 * done / states.length) / 10 : 0,
+        meanAbsTimingMs: hits ? Math.round(timing / hits) : null,
+        meanAbsCents: hits ? Math.round(cents / hits * 10) / 10 : null,
+        trainingOnly: true };
+    }
+    return { amostrar: amostrar, avancar: avancar, resumo: resumo, estados: function () { return states.map(copy); } };
+  }
+
+  return { validarChart: validarChart, demoChart: demoChart, criarJulgador: criarJulgador };
+});

@@ -165,6 +165,7 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
       perfil: db.prepare('SELECT * FROM lab_perfil WHERE usuario = ?').get(u) || null,
       atividades_criadas: db.prepare('SELECT id, titulo, config, criado_em FROM lab_atividades WHERE professor = ?').all(u),
       tutor_de_braco: require('./tutor-braco').dadosDe(u),
+      tocar_junto: require('../tocar').dadosDe(u),
     };
     res.set('Content-Disposition', 'attachment; filename="musique-laboratorio-meus-dados.json"').json(corpo);
   }));
@@ -177,6 +178,7 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     db.prepare('DELETE FROM lab_jogos WHERE usuario = ?').run(u);
     db.prepare('DELETE FROM lab_perfil WHERE usuario = ?').run(u);
     require('./tutor-braco').excluirDe(u);
+    require('../tocar').excluirDe(u);
     res.json({ ok: true, tentativas_excluidas: n });
   }));
 
