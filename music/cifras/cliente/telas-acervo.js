@@ -271,6 +271,7 @@
       acoes.appendChild(C.botao(d.favorita ? '★ Favorita' : '☆ Favoritar', function () { api('POST', '/musicas/' + id + '/favorito').then(function () { T.musica(id); }); }, 'sec'));
       acoes.appendChild(C.botao('+ Nova versão', function () { C.ir('importar', null, { obra_id: id, titulo: m.titulo, artista: m.artista }); }, 'sec'));
       if (d.sou_dono) {
+        if (!d.removida) acoes.appendChild(el('a', { class: 'cf-bt sec', href: '/music/tocar/gerenciar?obra=' + encodeURIComponent(id), txt: 'Arranjos do Tocar junto' }));
         acoes.appendChild(C.botao('Editar dados', function () { editarDados(d); }, 'sec'));
         acoes.appendChild(C.botao('Compartilhar com banda', function () { compartilharComBanda(d); }, 'sec'));
         acoes.appendChild(C.botao(d.removida ? 'Restaurar' : 'Mover para a lixeira', function () {

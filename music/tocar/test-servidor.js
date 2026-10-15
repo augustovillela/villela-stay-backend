@@ -13,7 +13,7 @@ const express = require('express');
 const { montar, validarResumo, dadosDe, excluirDe } = require('./index');
 const { db, DB_PATH } = require('../db');
 const app = express();
-app.use(express.json({ limit: '4kb' }));
+app.use(express.json({ limit: '2mb' }));
 const opcional = (req, res, next) => {
   const id = req.get('x-test-user');
   if (id) req.usuario = { id, nome: '<script>nome</script>', email: 'nao-expor@example.test' };
@@ -59,7 +59,7 @@ test('página pública tem bootstrap escapado sem identidade e apenas scripts pr
   const html = await resposta.text();
   assert.match(html, /id="tocar-app" data-estado="\{&quot;logado&quot;:true\}"/);
   assert.match(html, /\/music\/tocar\/cliente\.js/);
-  for (const script of ['aprender', 'estudos']) {
+  for (const script of ['aprender', 'estudos', 'formato-catalogo', 'catalogo-cliente']) {
     assert.ok(html.includes('/music/tocar/' + script + '.js'));
     assert.ok(html.indexOf('/music/tocar/' + script + '.js') < html.indexOf('/music/tocar/cliente.js'));
   }
@@ -77,19 +77,185 @@ test('demonstração pública usa exatamente o arranjo do núcleo', async () => 
 });
 
 test('arquivos de servidor e caminhos não autorizados não ficam públicos', async () => {
-  for (const arquivo of ['index.js', 'test-servidor.js', 'test-aprender.js', 'test-estudos.js', 'schema.sql', '%2e%2e%2fdb.js']) {
+  for (const arquivo of ['index.js', 'catalogo.js', 'rotas-catalogo.js', 'test-catalogo.js', 'test-servidor.js', 'test-aprender.js', 'test-estudos.js', 'schema.sql', '%2e%2e%2fdb.js']) {
     assert.equal((await fetch(base + '/music/tocar/' + arquivo)).status, 404, arquivo);
   }
   const nucleo = await fetch(base + '/music/tocar/nucleo.js');
   assert.equal(nucleo.status, 200);
   assert.match(nucleo.headers.get('content-type'), /javascript/);
   assert.equal(nucleo.headers.get('x-content-type-options'), 'nosniff');
-  for (const arquivo of ['aprender.js', 'estudos.js']) {
+  for (const arquivo of ['aprender.js', 'estudos.js', 'formato-catalogo.js', 'catalogo-cliente.js', 'gerenciar.js']) {
     const asset = await fetch(base + '/music/tocar/' + arquivo);
     assert.equal(asset.status, 200);
     assert.match(asset.headers.get('content-type'), /javascript/);
     assert.equal(asset.headers.get('x-content-type-options'), 'nosniff');
   }
+});
+
+test('gestão pública só entrega a interface e não incorpora identidade ou obras', async () => {
+  for (const usuario of [null, 'editor-catalogo']) {
+    const resposta = await fetch(base + '/music/tocar/gerenciar', { headers: usuario ? { 'x-test-user': usuario } : {} });
+    assert.equal(resposta.status, 200);
+    assert.equal(resposta.headers.get('cache-control'), 'no-store');
+    const html = await resposta.text();
+    assert.match(html, /id="tocar-gestao"/);
+    assert.match(html, /\/music\/tocar\/gerenciar\.js/);
+    assert.doesNotMatch(html, /nao-expor|<script>nome|editor-catalogo/);
+  }
+});
+
+async function catalogoHTTP(usuario, caminho, method = 'GET', corpo) {
+  const resposta = await fetch(base + '/music/api/tocar' + caminho, {
+    method, headers: { ...(usuario ? { 'x-test-user': usuario } : {}), ...(corpo ? { 'Content-Type': 'application/json' } : {}) },
+    ...(corpo ? { body: JSON.stringify(corpo) } : {}),
+  });
+  return { status: resposta.status, body: await resposta.json() };
+}
+
+async function fixtureCatalogo(dono, titulo = 'Estudo para catálogo') {
+  const repo = require('../repo');
+  const obra = repo.Obras.criar({ dono, titulo, titularidade: 'propria' });
+  const chart = require('./estudos').obter('cordas-soltas-v1');
+  chart.title = titulo;
+  const documento = { title: titulo, instrument: 'violao', level: 'iniciante', technique: 'cordas-soltas',
+    objective: 'Tocar cada corda solta com clareza.', credits: 'Estudo original Musique, preparação de teste.', mediaId: '', chart };
+  const criada = await catalogoHTTP(dono, '/gestao/arranjos', 'POST', { obraId: obra.id, documento });
+  assert.equal(criada.status, 201, JSON.stringify(criada.body));
+  return { obra, documento, arranjo: criada.body.arranjo };
+}
+
+test('sessões do catálogo fixam versão e trecho mesmo após editar, republicar e retirar', async () => {
+  const dono = 'catalogo-editor', aluno = 'catalogo-aluno';
+  const f = await fixtureCatalogo(dono);
+  require('../direitos').definirVisibilidade({ obraId: f.obra.id, usuario: dono, visibilidade: 'publica' });
+  const publicada = await catalogoHTTP(dono, '/gestao/arranjos/' + f.arranjo.id + '/publicar', 'POST', { revision: f.arranjo.revision });
+  assert.equal(publicada.status, 200, JSON.stringify(publicada.body));
+  let atual = publicada.body.arranjo;
+  const aberta = await catalogoHTTP(aluno, '/catalogo/' + atual.id);
+  assert.equal(aberta.status, 200);
+  const anterior = aberta.body.arranjo;
+  const from = f.documento.chart.sections[0].from, to = f.documento.chart.sections[0].to;
+  const total = f.documento.chart.notes.filter(n => n.time >= from && n.time < to).length;
+  const catalogRef = { arranjoId: atual.id, versionId: anterior.versionId, from, to };
+  const treino = { chartId: f.documento.chart.id, title: f.documento.title, total, hits: total, misses: 0, accuracy: 100,
+    speed: 1, offsetMs: 0, duration: to - from, mode: 'practice', catalogRef };
+
+  // A outra publicação ocorre enquanto o aluno ainda está na versão anterior.
+  const nova = structuredClone(f.documento); nova.title = nova.chart.title = 'Estudo revisado';
+  const editada = await catalogoHTTP(dono, '/gestao/arranjos/' + atual.id, 'PUT', { revision: atual.revision, documento: nova });
+  assert.equal(editada.status, 200, JSON.stringify(editada.body)); atual = editada.body.arranjo;
+  const segunda = await catalogoHTTP(dono, '/gestao/arranjos/' + atual.id + '/publicar', 'POST', { revision: atual.revision });
+  assert.equal(segunda.status, 200); atual = segunda.body.arranjo;
+  assert.notEqual(atual.publishedVersionId, anterior.versionId);
+
+  const salvo = await enviar(aluno, treino);
+  assert.equal(salvo.status, 201, await salvo.clone().text());
+  const sessao = (await salvo.json()).sessao;
+  assert.equal(sessao.title, f.documento.title);
+  assert.deepEqual(Object.keys(sessao.catalogRef).sort(), ['arranjoId', 'versionId', 'versionNumber', 'sha256', 'obraId', 'from', 'to'].sort());
+  assert.equal(sessao.catalogRef.versionId, anterior.versionId);
+  assert.equal(sessao.catalogRef.versionNumber, 1);
+  assert.equal(sessao.catalogRef.obraId, f.obra.id);
+  assert.match(sessao.catalogRef.sha256, /^[a-f0-9]{64}$/);
+  assert.equal(sessao.vale_nota, false);
+
+  const retirada = await catalogoHTTP(dono, '/gestao/arranjos/' + atual.id + '/retirar', 'POST', { revision: atual.revision });
+  assert.equal(retirada.status, 200);
+  assert.equal((await catalogoHTTP(aluno, '/catalogo/' + atual.id)).status, 404);
+  const aprendendo = { chartId: treino.chartId, title: treino.title, total, hits: 1, skipped: total - 1, duration: 12, mode: 'learn', catalogRef };
+  assert.equal((await enviar(aluno, aprendendo)).status, 201, 'Rodada já iniciada pode terminar após retirada, enquanto houver acesso à obra.');
+  const exportado = await (await fetch(base + '/music/api/lab/meus-dados', { headers: { 'x-test-user': aluno } })).json();
+  assert.equal(exportado.tocar_junto.length, 2);
+  assert.ok(exportado.tocar_junto.every(s => s.catalogRef.versionId === anterior.versionId));
+  assert.deepEqual(dadosDe(dono), []);
+
+  // Revogar a visibilidade da obra já impede novos resultados desse aluno.
+  require('../direitos').definirVisibilidade({ obraId: f.obra.id, usuario: dono, visibilidade: 'privada' });
+  const negada = await enviar(aluno, treino);
+  assert.ok([403, 404].includes(negada.status));
+  assert.equal(dadosDe(aluno).length, 2);
+});
+
+test('referência de catálogo não aceita falsificar versão, intervalo, título ou total', async () => {
+  const dono = 'catalogo-validacao', f = await fixtureCatalogo(dono, 'Validação de sessão');
+  const draftRef = { arranjoId: f.arranjo.id, versionId: 'versao-inexistente', from: 0, to: f.documento.chart.duration };
+  const total = f.documento.chart.notes.length;
+  const treino = { chartId: f.documento.chart.id, title: f.documento.title, total, hits: 0, skipped: total, duration: 8, mode: 'learn', catalogRef: draftRef };
+  assert.ok([400, 404].includes((await enviar(dono, treino)).status));
+  const pub = await catalogoHTTP(dono, '/gestao/arranjos/' + f.arranjo.id + '/publicar', 'POST', { revision: f.arranjo.revision });
+  assert.equal(pub.status, 200);
+  treino.catalogRef = { ...draftRef, versionId: pub.body.arranjo.publishedVersionId };
+  for (const mudanca of [
+    { title: 'Título falsificado' }, { chartId: 'chart-inventado' }, { total: total - 1, skipped: total - 1 },
+    { catalogRef: { ...treino.catalogRef, from: 3 } },
+    { catalogRef: { ...treino.catalogRef, to: f.documento.chart.duration + 1 } },
+    { catalogRef: { ...treino.catalogRef, to: 0 } },
+    { catalogRef: { ...treino.catalogRef, versionNumber: 1 } },
+    { catalogRef: null }, { catalogRef: [] }, { catalogRef: { ...treino.catalogRef, from: '0' } },
+  ]) assert.equal((await enviar(dono, { ...treino, ...mudanca })).status, 400, JSON.stringify(mudanca));
+  assert.deepEqual(dadosDe(dono), []);
+});
+
+test('IDs de chart aceitos pelo núcleo com hífen ou sublinhado inicial podem guardar rodada', async () => {
+  for (const chartId of ['_estudo-valido', '-estudo-valido']) {
+    const chart = require('./nucleo').validarChart({ ...require('./estudos').obter('cordas-soltas-v1'), id: chartId });
+    const dono = 'catalogo-id-' + chartId;
+    const f = await fixtureCatalogo(dono, chart.title);
+    f.documento.chart.id = chart.id;
+    const editada = await catalogoHTTP(dono, '/gestao/arranjos/' + f.arranjo.id, 'PUT', { revision: f.arranjo.revision, documento: f.documento });
+    const publicada = await catalogoHTTP(dono, '/gestao/arranjos/' + f.arranjo.id + '/publicar', 'POST', { revision: editada.body.arranjo.revision });
+    const r = await enviar(dono, { chartId, title: chart.title, total: chart.notes.length, hits: 0, skipped: chart.notes.length, mode: 'learn', duration: 2,
+      catalogRef: { arranjoId: f.arranjo.id, versionId: publicada.body.arranjo.publishedVersionId, from: 0, to: chart.duration } });
+    assert.equal(r.status, 201, await r.clone().text());
+    assert.equal((await r.json()).sessao.chartId, chartId);
+  }
+});
+
+test('backup e exclusão do Acervo incluem catálogo próprio sem apagar treino de outro usuário', async () => {
+  const dono = 'catalogo-privacidade', aluno = 'catalogo-historico-preservado';
+  const f = await fixtureCatalogo(dono, 'Obra a exportar');
+  require('../direitos').definirVisibilidade({ obraId: f.obra.id, usuario: dono, visibilidade: 'publica' });
+  const publicada = await catalogoHTTP(dono, '/gestao/arranjos/' + f.arranjo.id + '/publicar', 'POST', { revision: f.arranjo.revision });
+  const ref = { arranjoId: f.arranjo.id, versionId: publicada.body.arranjo.publishedVersionId, from: 0, to: f.documento.chart.duration };
+  const total = f.documento.chart.notes.length;
+  assert.equal((await enviar(aluno, { chartId: f.documento.chart.id, title: f.documento.title, total, hits: 0, skipped: total, duration: 20, mode: 'learn', catalogRef: ref })).status, 201);
+  const { Exportar } = require('../cifras/exportar');
+  const backup = Exportar.tudo(dono);
+  assert.ok(JSON.stringify(backup.tocar_arranjos).includes(ref.versionId));
+  assert.ok(!JSON.stringify(Exportar.tudo(aluno).tocar_arranjos).includes(ref.versionId));
+  assert.throws(() => Exportar.excluirTudo(dono, 'NÃO'));
+  Exportar.excluirTudo(dono, 'EXCLUIR MINHAS CIFRAS');
+  assert.equal(require('../repo').Obras.porId(f.obra.id), null);
+  assert.ok(!JSON.stringify(Exportar.tudo(dono).tocar_arranjos).includes(ref.versionId));
+  assert.equal(dadosDe(aluno).length, 1);
+  assert.equal(dadosDe(aluno)[0].catalogRef.versionId, ref.versionId);
+  assert.equal(excluirDe(aluno), 1);
+});
+
+test('exclusão legada de obra remove arranjos tocáveis na mesma transação', async () => {
+  const dono = 'catalogo-exclusao-legada', f = await fixtureCatalogo(dono, 'Exclusão da obra');
+  require('../repo').Obras.excluir(f.obra.id, dono);
+  assert.equal(require('../repo').Obras.porId(f.obra.id), null);
+  assert.ok(!JSON.stringify(require('./catalogo').dadosDe(dono)).includes(f.arranjo.id));
+});
+
+test('catálogo usa o portão real de assinatura; estudos públicos continuam abertos', async () => {
+  const { Contas } = require('../contas');
+  const conta = Contas.criar({ nome: 'Teste assinatura', email: 'catalogo-assinatura@example.test' }, { senhaHash: 'hash-de-teste-local' });
+  db.prepare('UPDATE contas_music SET criado_em = ? WHERE id = ?').run(new Date(Date.now() - 40 * 86400000).toISOString(), conta.id);
+  const sessao = require('../sessao').criar({ resolver(req) { return req.get('x-test-user') === conta.id ? { usuario: Contas.publica(Contas.porId(conta.id)) } : null; } });
+  const isolado = express(); isolado.use(express.json()); montar(isolado, sessao);
+  const s = await new Promise(resolve => { const v = isolado.listen(0, '127.0.0.1', () => resolve(v)); });
+  const b = 'http://127.0.0.1:' + s.address().port;
+  try {
+    for (const caminho of ['/catalogo', '/gestao/obras', '/gestao/arranjos']) {
+      assert.equal((await fetch(b + '/music/api/tocar' + caminho)).status, 401);
+      assert.equal((await fetch(b + '/music/api/tocar' + caminho, { headers: { 'x-test-user': conta.id } })).status, 402);
+    }
+    assert.equal((await fetch(b + '/music/tocar')).status, 200);
+    assert.equal((await fetch(b + '/music/api/tocar/demo')).status, 200);
+    assert.equal((await fetch(b + '/music/tocar/estudos.js')).status, 200);
+  } finally { await new Promise(resolve => s.close(resolve)); }
 });
 
 test('salvar e consultar exigem autenticação', async () => {

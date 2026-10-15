@@ -74,7 +74,39 @@ A compensação positiva subtrai atraso do instante captado. O juiz recebe segun
 
 Os dois formatos mantêm `vale_nota: false`, autenticação e isolamento por conta. Usam a mesma coluna JSON validada, sem nova migração ou alteração de sessões antigas. Exportação e exclusão do Laboratório abrangem ambos.
 
-## Verificação
+## Catálogo de arranjos — Etapa B
+
+`/music/tocar` oferece catálogo com busca e filtros por instrumento, nível e técnica, além dos sete estudos originais. O catálogo exige a conta/assinatura do Musique e só mostra versões publicadas de obras que o usuário pode acessar no Acervo. A lista vazia ou indisponível não impede os estudos abertos e a importação local.
+
+`/music/tocar/gerenciar` permite ao **dono da obra** selecionar uma música própria do Acervo, importar um chart JSON, preencher objetivo/créditos e salvar rascunho. Uma base dos estudos originais também pode ser usada. A prévia abre a pista em demonstração, sem captura automática e sem histórico. Publicar gera uma versão imutável; salvar alterações posteriores muda somente o rascunho. Retirar a publicação mantém versões e treinos históricos. Publicar o arranjo **não torna a obra pública**: a visibilidade e o compartilhamento continuam sendo definidos no Acervo. O detalhe da música no Acervo contém um link para a gestão.
+
+O formato musical de `nucleo.js` permanece compatível. `formato-catalogo.js` valida um envelope fechado de até 1 MiB UTF-8:
+
+```js
+{ title, instrument, level, technique, objective, credits, mediaId, chart }
+```
+
+`title` e `chart.title` devem corresponder. Instrumento: `violao` ou `guitarra`; nível: `iniciante`, `intermediario` ou `avancado`; técnica: `notas-isoladas`, `cordas-soltas`, `troca-de-cordas`, `escalas` ou `arpejos`. Objetivo e créditos são obrigatórios. O catálogo aceita somente afinação padrão de seis cordas, até 2.000 notas monofônicas e 900 segundos. Os metadados externos não alteram a avaliação da altura.
+
+A mídia opcional usa `midias` e `obra_midias` existentes: áudio pronto pertencente ao dono, anexado à mesma obra, sem URL externa livre. `catalogo.js` revalida acesso, remoção e vínculo antes de emitir uma URL R2 de 600 segundos. O navegador pode carregar o arranjo mesmo quando o áudio está indisponível e informa a falha; o MIME não garante que o codec seja reproduzível. Sem áudio anexado, a demonstração pode sintetizar as notas. Links de YouTube/Spotify não são arquivos de acompanhamento. Esta etapa não inclui editor visual, transcrição de MP3 nem novo serviço de armazenamento.
+
+`120-tocar-catalogo.sql` cria `tocar_arranjos` (rascunho, revisão otimista e ponteiro publicado) e `tocar_versoes` (snapshot, número e SHA-256). Um trigger impede UPDATE de versão publicada; exclusão por privacidade continua possível. Obra e identidade não são duplicadas. Os schemas rodam antes das migrations de tabelas antigas; os novos índices usam somente colunas das novas tabelas.
+
+APIs autenticadas em `/music/api/tocar`:
+
+- `GET /catalogo` e `GET /catalogo/:id`, com versão anterior em `GET /catalogo/:id/versoes/:versionId` enquanto o arranjo estiver disponível.
+- `GET /catalogo/:id/versoes/:versionId/audio`, com autorização atual e URL temporária.
+- `GET /gestao/obras`, `GET /gestao/obras/:id` e `GET /gestao/obras/:id/midias` para obras próprias.
+- `GET/POST /gestao/arranjos`; `GET/PUT /gestao/arranjos/:id`; `POST /gestao/arranjos/:id/publicar` e `/retirar`.
+- `GET /gestao/arranjos/:id/audio?revision=N` para a prévia do rascunho atual.
+
+Listagens têm paginação (`limit` até 50, `offset`) e busca `q`; catálogo/gestão de arranjos aceitam `instrument`, `level`, `technique`. Edição, publicação e retirada exigem a revisão atual e devolvem 409 se outra aba a modificou. Cada publicação mantém título, chart e mídia daquele momento.
+
+Os dois contratos de sessão existentes aceitam opcionalmente `catalogRef: {arranjoId, versionId, from, to}`. A API valida referência, título, chart, intervalo e quantidade de notas contra o snapshot publicado. Persiste também `versionNumber`, `sha256` e `obraId`, resolvidos no servidor. Uma rodada já iniciada pode ser guardada após retirada do catálogo se a obra ainda estiver acessível. Perda de acesso ou remoção da obra bloqueia novos registros, preservando os resumos anteriores. A duração de `practice` corresponde ao trecho; a de `learn` continua sendo o tempo ativo. Isso confere coerência, não prova execução musical.
+
+O backup/exclusão do Acervo inclui rascunhos e versões próprios. A exclusão de obra remove essas linhas em transação. Os resumos de treino de outras contas permanecem no histórico independente, com título/referência registrados; cada conta continua exportando e apagando seus próprios treinos pelo Laboratório.
+
+## Verificação automatizada
 
 ```powershell
 npm.cmd run test:music-tocar

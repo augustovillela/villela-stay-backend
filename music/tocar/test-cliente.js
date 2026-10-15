@@ -8,6 +8,7 @@ const vm = require('node:vm');
 const Core = require('./nucleo');
 const Aprender = require('./aprender');
 const Estudos = require('./estudos');
+const Formato = require('./formato-catalogo');
 
 class Eventos {
   constructor() { this.listeners = new Map(); }
@@ -65,7 +66,7 @@ function montar(options = {}) {
   document.createElement = tag => new Elemento(tag, document);
   document.createTextNode = text => ({ textContent: String(text) });
   document.getElementById = id => document.ids.get(id) || null;
-  const app = document.createElement('main'); app.setAttribute('id', 'tocar-app'); app.setAttribute('data-estado', JSON.stringify({ logado: !!options.logado }));
+  const app = document.createElement('main'); app.setAttribute('id', options.page === 'gestao' ? 'tocar-gestao' : 'tocar-app'); app.setAttribute('data-estado', JSON.stringify({ logado: !!options.logado }));
   let now = 0, sequence = 0;
   const rafs = new Map(), timers = new Map(), contexts = [], oscillators = [], volumes = [], medias = [], requests = [], inputs = [], revoked = [];
   let audioFailure = options.audioFailure || null, pendingPlay = false;
@@ -122,19 +123,21 @@ function montar(options = {}) {
   } };
   async function fetch(url, opts = {}) {
     requests.push({ url, opts });
+    if (options.fetch) return options.fetch(url, opts);
     if (options.fetchFailure) throw new Error('Offline');
     if (opts.method === 'POST') {
       if (options.saveFailure) return { ok: false, json: async () => ({ erro: 'Não foi possível guardar agora.' }) };
       return { ok: true, json: async () => ({ ok: true }) };
     }
-    return { ok: true, json: async () => ({ sessoes: options.history || [] }) };
+    return { ok: true, json: async () => ({ sessoes: options.history || [], arranjos: [], total: 0 }) };
   }
   const window = new Eventos();
-  Object.assign(window, { devicePixelRatio: 1, AudioContext: Contexto, Audio: Media, MusiqueTocarCore: Core, MusiqueTocarAudio: audio, MusiqueTocarAprender: Aprender, MusiqueTocarEstudos: Estudos });
-  const sandbox = { window, document, console, fetch, Blob, performance: { now: () => now * 1000 }, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
+  Object.assign(window, { devicePixelRatio: 1, location: {search: options.search || ''}, AudioContext: Contexto, Audio: Media, MusiqueTocarCore: Core, MusiqueTocarAudio: audio, MusiqueTocarAprender: Aprender, MusiqueTocarEstudos: Estudos, MusiqueTocarFormatoCatalogo: Formato });
+  const sandbox = { window, document, console, fetch, Blob, URLSearchParams, performance: { now: () => now * 1000 }, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
     requestAnimationFrame: fn => { const id = ++sequence; rafs.set(id, fn); return id; }, cancelAnimationFrame: id => rafs.delete(id),
     setTimeout: (fn, ms) => { const id = ++sequence; timers.set(id, { at: now + ms / 1000, fn }); return id; }, clearTimeout: id => timers.delete(id) };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'cliente.js'), 'utf8'), sandbox, { filename: 'cliente.js' });
+  const scripts = options.page === 'gestao' ? ['gerenciar.js'] : ['catalogo-cliente.js','cliente.js'];
+  scripts.forEach(file => vm.runInNewContext(fs.readFileSync(path.join(__dirname, file), 'utf8'), sandbox, { filename: file }));
   const $ = id => document.getElementById(id);
   async function settle() { for (let i = 0; i < 8; i++) await Promise.resolve(); }
   async function event(id, type, value) {
@@ -487,7 +490,7 @@ test('Histórico vem da conta, é limitado e trata títulos como texto', async (
   const h = montar({ logado: true, history: Array.from({ length: 8 }, (_, i) => ({ title: i ? 'Estudo ' + i : title, accuracy: 80, createdAt: '2026-10-15T12:00:00Z' })) });
   await h.settle(); const list = h.$('tj-history');
   assert.equal(list.children.length, 5); assert.match(list.children[0].textContent, /<img src=x/);
-  assert.equal(list.children[0].children.length, 0); assert.equal(h.requests.length, 1); assert.equal(h.requests[0].opts.credentials, 'same-origin');
+  assert.equal(list.children[0].children.length, 0); assert.equal(h.requests.filter(r=>r.url.endsWith('/sessoes')).length, 1); assert.equal(h.requests[0].opts.credentials, 'same-origin');
   const offline = montar({ logado: true, fetchFailure: true }); await offline.settle();
   assert.match(offline.$('tj-history-label').textContent, /indisponível/);
 });
@@ -509,7 +512,7 @@ test('Segundo plano pausa; saída da página fecha captura e revoga áudio local
 
 async function aprender(h) {
   await h.event('tj-study-mode', 'change', 'learn');
-  await h.event('tj-connect', 'click'); await h.event('tj-practice', 'click'); await h.advance(0.04);
+  if(h.inputs[0].status.estado!=='conectado')await h.event('tj-connect', 'click'); await h.event('tj-practice', 'click'); await h.advance(0.04);
 }
 async function tocarNota(h, midi, options = {}) {
   const input = h.inputs[0], hz = 440 * 2 ** ((midi - 69) / 12);
@@ -699,7 +702,118 @@ test('Histórico distingue aprender do ritmo sem inventar porcentagem de precis�
   assert.match(list.children[1].textContent, /80%/);
 });
 
-(async () => {
+function resposta(data, status = 200) { return {ok:status>=200&&status<300,status,json:async()=>data}; }
+function documento(c = pequeno(), mediaId = '') { return {title:c.title,instrument:'violao',level:'iniciante',technique:'notas-isoladas',objective:'Praticar duas notas',credits:'Estudo de teste',mediaId,chart:c}; }
+function itemCatalogo(id = 'arranjo-a', versionId = 'versao-1') { return {id,versionId,versionNumber:1,title:'Duas cordas',obra:{id:'obra-a',titulo:'Obra própria',artista:'Autor'},instrument:'violao',level:'iniciante',technique:'notas-isoladas',objective:'Praticar duas notas',credits:'Estudo de teste',hasAudio:false}; }
+function fetchCatalogo(extra) {
+  return async(url,opts)=> {
+    const overridden=extra&&await extra(url,opts); if(overridden)return overridden;
+    if(url.includes('/catalogo?'))return resposta({arranjos:[itemCatalogo()],total:1});
+    if(url.includes('/catalogo/arranjo-a/versoes/versao-1'))return resposta({arranjo:itemCatalogo(),documento:documento()});
+    return resposta({sessoes:[]});
+  };
+}
+async function abrirPrimeiro(h) { await h.settle(); const button=h.$('tc-results').children[0].children.at(-1); await Promise.all(button.click());await h.settle(); }
+
+test('Catálogo: filtros usam parâmetros, falha de acesso mantém estudos e demonstração',async()=>{
+  const h=montar({logado:true,fetch:fetchCatalogo((url)=>url.includes('q=')?resposta({erro:'Assinatura necessária'},402):null)});await h.settle();
+  await h.event('tc-q','input','mi & lá');await h.event('tc-instrument','change','violao');await h.event('tc-search','click');
+  const req=h.requests.find(r=>r.url.includes('q='));const params=new URL(req.url,'https://local.test').searchParams;
+  assert.equal(params.get('q'),'mi & lá');assert.equal(params.get('instrument'),'violao');assert.match(h.$('tc-status').textContent,/assinatura ativa/);
+  assert.equal(h.$('tc-results').children[0].children[0].getAttribute('href'),'/music/app#conta');
+  await h.event('tj-demo','click');await h.advance(0.1);assert.ok(h.oscillators.length);assert.equal(h.inputs[0].calls.length,0);
+});
+test('Catálogo com sessão expirada oferece entrar mantendo estudos abertos',async()=>{
+  const h=montar({logado:true,fetch:async()=>resposta({erro:'Sessão expirada'},401)});await h.settle();assert.match(h.$('tc-status').textContent,/Entre na sua conta/);assert.equal(h.$('tc-results').children[0].children[0].getAttribute('href'),'/music/entrar?voltar=%2Fmusic%2Ftocar');assert.equal(h.$('tj-demo').disabled,false);
+});
+test('Catálogo usa versão fixa, trata texto sem HTML e não confunde ID do estudo com origem',async()=>{
+  const c=Core.demoChart(),item=itemCatalogo();item.title='<img onerror=alert(1)>';
+  const h=montar({logado:true,fetch:fetchCatalogo(url=>url.includes('/catalogo?')?resposta({arranjos:[item],total:1}):url.includes('/versoes/')?resposta({arranjo:itemCatalogo(),documento:documento(c)}):null)});
+  await abrirPrimeiro(h);assert.equal(h.$('tc-results').children[0].children[0].children.length,0);
+  assert.equal(h.$('tj-study').value,'');assert.match(h.$('tj-source').textContent,/Catálogo · versão 1/);
+  assert.ok(h.requests.some(r=>r.url.endsWith('/catalogo/arranjo-a/versoes/versao-1')));
+  assert.equal(h.$('tj-audio-file').disabled,true);assert.equal(h.inputs[0].calls.length,0);
+  await h.event('tj-demo','click');await h.advance(5);assert.ok(h.oscillators.some(o=>o.frequency.value<200));
+});
+test('Aprender em versão publicada guarda referência e intervalo, e trocar para estudo remove referência',async()=>{
+  const h=montar({logado:true,fetch:fetchCatalogo()});await abrirPrimeiro(h);await aprender(h);
+  await h.event('tj-skip','click');await h.advance(0.04);await h.event('tj-skip','click');await h.event('tj-save','click');
+  let payload=JSON.parse(h.requests.filter(r=>r.opts.method==='POST').at(-1).opts.body);
+  assert.deepEqual(payload.catalogRef,{arranjoId:'arranjo-a',versionId:'versao-1',from:0,to:2});assert.equal(payload.mode,'learn');
+  await h.event('tj-study','change','cordas-soltas-v1');assert.equal(h.$('tj-study').value,'cordas-soltas-v1');
+  await h.chart();await aprender(h);await h.event('tj-skip','click');await h.advance(.04);await h.event('tj-skip','click');await h.event('tj-save','click');
+  payload=JSON.parse(h.requests.filter(r=>r.opts.method==='POST').at(-1).opts.body);assert.equal(payload.catalogRef,undefined);
+});
+test('No ritmo em catálogo mantém resumo antigo com referência adicional de versão',async()=>{
+  const h=montar({logado:true,fetch:fetchCatalogo()});await abrirPrimeiro(h);await h.event('tj-connect','click');await h.event('tj-practice','click');await h.advance(4.6);await h.event('tj-save','click');
+  const payload=JSON.parse(h.requests.find(r=>r.opts.method==='POST').opts.body);assert.equal(payload.mode,'practice');assert.equal(payload.misses,2);assert.equal(payload.catalogRef.versionId,'versao-1');
+});
+test('Resposta de catálogo atrasada não substitui estudo escolhido nem importação local',async()=>{
+  for(const kind of ['study','local']) {
+    let release;const h=montar({logado:true,fetch:fetchCatalogo(url=>url.includes('/versoes/')?new Promise(r=>{release=r;}):null)});await h.settle();
+    const pending=h.$('tc-results').children[0].children.at(-1).click();await h.settle();
+    if(kind==='study')await h.event('tj-study','change','cordas-soltas-v1');else await h.chart();
+    const title=h.$('tj-song-title').textContent;release(resposta({arranjo:itemCatalogo(),documento:documento()}));await Promise.all(pending);await h.settle();
+    assert.equal(h.$('tj-song-title').textContent,title);assert.doesNotMatch(h.$('tj-source').textContent,/Catálogo/);assert.equal(h.$('tj-demo').disabled,false);
+  }
+});
+test('Duas escolhas de catálogo respeitam a mais recente mesmo se a primeira terminar depois',async()=>{
+  let release;const b=itemCatalogo('arranjo-b','versao-b'),docb=documento();docb.title=docb.chart.title='Segundo arranjo';
+  const h=montar({logado:true,fetch:fetchCatalogo(url=>url.includes('/catalogo?')?resposta({arranjos:[itemCatalogo(),b],total:2}):url.includes('/arranjo-a/versoes')?new Promise(r=>{release=r;}):url.includes('/arranjo-b/versoes')?resposta({arranjo:b,documento:docb}):null)});await h.settle();
+  const pending=h.$('tc-results').children[0].children.at(-1).click();await h.settle();await Promise.all(h.$('tc-results').children[1].children.at(-1).click());
+  release(resposta({arranjo:itemCatalogo(),documento:documento()}));await Promise.all(pending);assert.equal(h.$('tj-song-title').textContent,'Segundo arranjo');
+});
+test('Lista de busca descarta resposta antiga e bloqueia abrir durante rodada',async()=>{
+  let release;const h=montar({logado:true,fetch:fetchCatalogo(url=>url.includes('/catalogo?')&&!url.includes('q=')?new Promise(r=>{release=r;}):null)});await h.settle();
+  await h.event('tc-q','input','nova');await h.event('tc-search','click');release(resposta({arranjos:[],total:0}));await h.settle();
+  assert.equal(h.$('tc-results').children.length,1);await h.event('tj-demo','click');await h.settle();assert.equal(h.$('tc-results').children[0].children.at(-1).disabled,true);
+});
+test('Mídia remota atrasada não volta após mudar para um estudo',async()=>{
+  let release;const h=montar({logado:true,fetch:fetchCatalogo(url=>url.endsWith('/audio')?new Promise(r=>{release=r;}):url.includes('/versoes/')?resposta({arranjo:itemCatalogo(),documento:documento(pequeno(),'audio-a')}):null)});await h.settle();
+  const pending=h.$('tc-results').children[0].children.at(-1).click();await h.settle();await h.event('tj-study','change','cordas-soltas-v1');
+  release(resposta({url:'https://audio.example.test/temporario',mime:'audio/mpeg',expiresIn:600}));await Promise.all(pending);assert.equal(h.medias.length,0);assert.equal(h.$('tj-remote-audio').hidden,true);
+});
+test('Erro da faixa mostra recuperação; URL temporária é renovada sem gravar ou revogar URL remota',async()=>{
+  let count=0;const h=montar({logado:true,fetch:fetchCatalogo(url=>url.endsWith('/audio')?resposta({url:'https://audio.example.test/'+(++count),mime:'audio/mpeg',expiresIn:600}):url.includes('/versoes/')?resposta({arranjo:itemCatalogo(),documento:documento(pequeno(),'audio-a')}):null)});
+  await abrirPrimeiro(h);const old=h.medias[0];old.onerror();assert.match(h.$('tj-status').textContent,/Recarregue o áudio/);await h.event('tj-remote-audio','click');
+  assert.equal(count,2);assert.equal(h.medias.at(-1).src,'https://audio.example.test/2');assert.equal(h.revoked.length,0);
+});
+test('Recarregar faixa bloqueia iniciar e continuar enquanto pendente e preserva velocidade',async()=>{
+  let count=0,release;const h=montar({logado:true,fetch:fetchCatalogo(url=>url.endsWith('/audio')?(++count===1?resposta({url:'https://audio.example.test/1',mime:'audio/mpeg',expiresIn:600}):new Promise(r=>{release=r;})):url.includes('/versoes/')?resposta({arranjo:itemCatalogo(),documento:documento(pequeno(),'audio-a')}):null)});
+  await abrirPrimeiro(h);await h.event('tj-speed','change','.5');const pending=h.$('tj-remote-audio').click();await h.settle();
+  assert.equal(h.$('tj-demo').disabled,true);assert.equal(h.$('tj-practice').disabled,true);assert.equal(h.$('tj-pause').disabled,true);await h.event('tj-demo','click');assert.equal(h.$('tj-mode').textContent,'PRONTO PARA TOCAR');
+  release(resposta({url:'https://audio.example.test/2',mime:'audio/mpeg',expiresIn:600}));await Promise.all(pending);await h.settle();assert.equal(h.medias.at(-1).playbackRate,.5);assert.equal(h.$('tj-demo').disabled,false);
+});
+test('Prévia correta é só demonstração, sem criar entrada, enumerar, praticar ou guardar',async()=>{
+  const h=montar({logado:true,search:'?previa=arranjo-a&revisao=3',fetch:async()=>resposta({arranjo:{id:'arranjo-a',revision:3,documento:documento()}})});await h.settle();
+  assert.equal(h.inputs.length,0);assert.equal(h.$('tj-demo').disabled,false);assert.equal(h.$('tj-connect').disabled,true);assert.equal(h.$('tj-practice').disabled,true);assert.equal(h.$('tj-save').disabled,true);
+  assert.equal(h.$('tj-chart-file').disabled,true);assert.equal(h.$('tj-catalog').hidden,true);assert.match(h.$('tj-source').textContent,/revisão 3/);
+  await h.event('tj-demo','click');await h.advance(2.3);assert.ok(h.oscillators.length);assert.equal(h.requests.filter(r=>r.url.includes('/sessoes')).length,0);assert.equal(h.inputs.length,0);
+});
+test('Saída durante recarga pendente invalida mídia e libera controles para volta à página',async()=>{
+  let count=0,release;const h=montar({logado:true,fetch:fetchCatalogo(url=>url.endsWith('/audio')?(++count===1?resposta({url:'https://audio.example.test/1',mime:'audio/mpeg',expiresIn:600}):new Promise(r=>{release=r;})):url.includes('/versoes/')?resposta({arranjo:itemCatalogo(),documento:documento(pequeno(),'audio-a')}):null)});
+  await abrirPrimeiro(h);const pending=h.$('tj-remote-audio').click();await h.settle();assert.equal(h.$('tj-demo').disabled,true);h.window.dispatch('pagehide');
+  release(resposta({url:'https://audio.example.test/2',mime:'audio/mpeg',expiresIn:600}));await Promise.all(pending);await h.settle();assert.equal(h.$('tj-demo').disabled,false);assert.equal(h.$('tj-remote-audio').disabled,false);assert.equal(h.medias.length,1);
+});
+test('Prévia inválida ou desatualizada falha fechada sem demonstração do estudo anterior',async()=>{
+  for(const search of ['?previa=arranjo-a&revisao=2','?previa=arranjo-a&revisao=abc']){
+    const h=montar({logado:true,search,fetch:async()=>resposta({arranjo:{id:'arranjo-a',revision:3,documento:documento()}})});await h.settle();
+    assert.equal(h.$('tj-demo').disabled,true);assert.equal(h.$('tj-connect').disabled,true);assert.equal(h.inputs.length,0);assert.match(h.$('tj-status').textContent,/rascunho mudou|inválido/);
+  }
+});
+test('Resposta de guardar antiga não marca uma nova rodada como guardada',async()=>{
+  let release;const h=montar({logado:true,fetch:fetchCatalogo((url,opts)=>opts.method==='POST'?new Promise(r=>{release=r;}):null)});await h.chart();await aprender(h);
+  await h.event('tj-skip','click');await h.advance(.04);await h.event('tj-skip','click');const pending=h.$('tj-save').click();await h.settle();
+  await h.chart();await aprender(h);await h.event('tj-skip','click');await h.advance(.04);await h.event('tj-skip','click');release(resposta({ok:true}));await Promise.all(pending);await h.settle();
+  assert.equal(h.$('tj-save').disabled,false);assert.doesNotMatch(h.$('tj-status').textContent,/Resultado guardado/);
+});
+test('Histórico do catálogo mostra versão e preserva sessões legadas',async()=>{
+  const h=montar({logado:true,history:[{title:'Estudo',mode:'learn',hits:2,skipped:0,createdAt:'2026-10-15',catalogRef:{versionNumber:4}},{title:'Local',accuracy:80,createdAt:'2026-10-15'}]});await h.settle();
+  assert.match(h.$('tj-history').children[0].textContent,/versão 4/);assert.doesNotMatch(h.$('tj-history').children[1].textContent,/versão/);
+});
+
+module.exports = { montar, pequeno, resposta, documento };
+if (require.main === module) (async () => {
   let failures = 0;
   for (const t of tests) {
     try { await t.fn(); console.log('OK', t.name); }

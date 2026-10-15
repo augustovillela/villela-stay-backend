@@ -320,6 +320,7 @@ const Exportar = {
       cifras: cifras.map((c) => ({ ...c, documento: JSON.parse(c.documento) })),
       revisoes: cids.length ? db.prepare(`SELECT * FROM cifra_revisoes WHERE cifra_id IN (${cph})`).all(...cids).map((r) => ({ ...r, documento: JSON.parse(r.documento) })) : [],
       arranjos: db.prepare('SELECT * FROM cifra_arranjos WHERE criado_por = ?').all(usuario),
+      tocar_arranjos: require('../tocar/catalogo').dadosDe(usuario),
       visoes: db.prepare('SELECT * FROM cifra_visoes WHERE usuario = ?').all(usuario),
       preferencias: Preferencias.obter(usuario),
       voicings: db.prepare('SELECT * FROM voicings_usuario WHERE usuario = ?').all(usuario),
@@ -345,6 +346,7 @@ const Exportar = {
     if (donas.length) throw erro('Você é proprietário de ' + donas.length + ' banda(s). Transfira ou exclua antes.', 409);
     const obras = db.prepare('SELECT id FROM obras WHERE dono = ?').all(usuario).map((o) => o.id);
     transacao(() => {
+      require('../tocar/catalogo').excluirDe(usuario);
       obras.forEach((oid) => {
         const cids = db.prepare('SELECT id FROM cifras WHERE obra_id = ?').all(oid).map((c) => c.id);
         cids.forEach((cid) => {

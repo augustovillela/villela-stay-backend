@@ -8,11 +8,12 @@ const { db, novoId, nowISO } = require('../db');
 const { layout, esc } = require('../paginas');
 
 const INDICACAO = 'Indicação de treino calculada no seu aparelho; não é nota nem avaliação do professor.';
-const CAMPOS_PRATICA = new Set(['chartId', 'title', 'total', 'hits', 'misses', 'accuracy', 'speed', 'offsetMs', 'duration', 'mode']);
-const CAMPOS_APRENDER = new Set(['chartId', 'title', 'total', 'hits', 'skipped', 'duration', 'mode']);
+const CAMPOS_PRATICA = new Set(['chartId', 'title', 'total', 'hits', 'misses', 'accuracy', 'speed', 'offsetMs', 'duration', 'mode', 'catalogRef']);
+const CAMPOS_APRENDER = new Set(['chartId', 'title', 'total', 'hits', 'skipped', 'duration', 'mode', 'catalogRef']);
 const ARQUIVOS = Object.freeze([
   'cliente.js', 'estilo.css', 'nucleo.js', 'audio.js', 'detector.js',
   'capturar-worklet.js', 'detector-worker.js', 'aprender.js', 'estudos.js',
+  'formato-catalogo.js', 'catalogo-cliente.js', 'gerenciar.js',
 ]);
 
 function invalido(mensagem) {
@@ -32,7 +33,7 @@ function validarResumo(b) {
   if (b.mode !== 'practice' && b.mode !== 'learn') throw invalido('Somente prática com instrumento pode ser guardada; demonstrações não entram no histórico.');
   const campos = b.mode === 'learn' ? CAMPOS_APRENDER : CAMPOS_PRATICA;
   if (Object.keys(b).some((chave) => !campos.has(chave))) throw invalido('O resumo contém campos não permitidos.');
-  if (typeof b.chartId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,119}$/.test(b.chartId)) throw invalido('Identificador do arranjo inválido.');
+  if (typeof b.chartId !== 'string' || !/^[a-zA-Z0-9_-][a-zA-Z0-9_.:-]{0,119}$/.test(b.chartId)) throw invalido('Identificador do arranjo inválido.');
   if (typeof b.title !== 'string' || !b.title.trim() || b.title.length > 160 || /[\x00-\x1f\x7f<>]/.test(b.title)) throw invalido('Título do arranjo inválido.');
 
   const total = numero(b.total, 1, 10000, 'Total de notas', true);
@@ -41,6 +42,21 @@ function validarResumo(b) {
     chartId: b.chartId, title: b.title.trim(), total, hits,
     duration: numero(b.duration, 0.1, 7200, 'Duração'), mode: b.mode,
   };
+  // A referência enviada é mínima. Versão, obra e hash são resolvidos pelo
+  // servidor depois de confirmar a sessão e o acesso atual à obra.
+  if (Object.hasOwn(b, 'catalogRef')) {
+    const ref = b.catalogRef;
+    if (!ref || typeof ref !== 'object' || Array.isArray(ref)
+      || Object.keys(ref).length !== 4
+      || Object.keys(ref).some(k => !['arranjoId', 'versionId', 'from', 'to'].includes(k))
+      || !['arranjoId', 'versionId'].every(k => typeof ref[k] === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(ref[k]))) {
+      throw invalido('Referência do catálogo inválida.');
+    }
+    const from = numero(ref.from, 0, 900, 'Início do trecho');
+    const to = numero(ref.to, 0, 900, 'Fim do trecho');
+    if (to <= from) throw invalido('O trecho do catálogo precisa ter duração positiva.');
+    base.catalogRef = { arranjoId: ref.arranjoId, versionId: ref.versionId, from, to };
+  }
   // Aprender não tem penalidade temporal nem porcentagem de precisão.
   // Somente rodadas concluídas, com cada nota reconhecida ou pulada, são guardadas.
   if (b.mode === 'learn') {
@@ -105,12 +121,37 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/audio.js" defer></script>
 <script src="/music/tocar/aprender.js" defer></script>
 <script src="/music/tocar/estudos.js" defer></script>
+<script src="/music/tocar/formato-catalogo.js" defer></script>
+<script src="/music/tocar/catalogo-cliente.js" defer></script>
 <script src="/music/tocar/cliente.js" defer></script>`;
     res.set('Cache-Control', 'no-store').type('html').send(layout('Tocar junto · violão e guitarra | Musique', corpo, {
       caminho: '/music/tocar', noApp: estado.logado,
       descricao: 'Pratique violão ou guitarra pelo microfone, interface de áudio ou cabo Real Tone, com pista e afinador. Notas isoladas analisadas no seu aparelho.',
     }));
   });
+
+  // A página contém somente a interface. Dados e cada ação editorial exigem
+  // a sessão/assinatura e a propriedade da obra nas APIs do catálogo.
+  app.get('/music/tocar/gerenciar', opcional, (req, res) => {
+    const estado = { logado: !!req.usuario };
+    const corpo = `<link rel="stylesheet" href="/music/tocar/estilo.css">
+<main id="tocar-gestao" data-estado="${esc(JSON.stringify(estado))}">
+  <header class="tocar-cab"><p>Musique · seu Acervo</p><h1>Gerenciar arranjos</h1>
+  <p>Prepare uma versão, confira na pista e disponibilize para quem tem acesso à música.</p></header>
+  <p role="status">Preparando seus arranjos…</p>
+</main>
+<noscript><div class="wrap"><p>Ative o JavaScript para gerenciar os arranjos do seu Acervo.</p></div></noscript>
+<script src="/music/tocar/nucleo.js" defer></script>
+<script src="/music/tocar/formato-catalogo.js" defer></script>
+<script src="/music/tocar/estudos.js" defer></script>
+<script src="/music/tocar/gerenciar.js" defer></script>`;
+    res.set('Cache-Control', 'no-store').type('html').send(layout('Gerenciar arranjos | Musique', corpo, {
+      caminho: '/music/tocar/gerenciar', noApp: estado.logado,
+      descricao: 'Prepare, revise e publique arranjos para a prática com instrumento no Musique.',
+    }));
+  });
+
+  require('./rotas-catalogo').montar(app, { requireUsuario });
 
   // Rotas exatas impedem servir código do servidor, banco ou caminhos arbitrários.
   for (const arquivo of ARQUIVOS) {
@@ -142,11 +183,17 @@ function montar(app, { requireUsuario, opcional } = {}) {
     try { resumo = validarResumo(req.body); }
     catch (erro) { return res.status(400).json({ erro: erro.message }); }
     try {
+      if (resumo.catalogRef) {
+        resumo.catalogRef = require('./catalogo').resolverReferencia(req.usuario.id, resumo.catalogRef, resumo);
+      }
       const id = novoId(), criado_em = nowISO();
       db.prepare('INSERT INTO tocar_sessoes (id, usuario, resumo, criado_em) VALUES (?, ?, ?, ?)')
         .run(id, req.usuario.id, JSON.stringify(resumo), criado_em);
       res.status(201).json({ ok: true, sessao: { id, createdAt: criado_em, ...resumo, vale_nota: false }, indicacao: INDICACAO });
-    } catch (erro) { next(erro); }
+    } catch (erro) {
+      if (erro.status >= 400 && erro.status < 500) return res.status(erro.status).json({ erro: erro.message });
+      next(erro);
+    }
   });
 }
 
