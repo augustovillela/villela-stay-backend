@@ -8,7 +8,7 @@
     var o = opcoes || {};
     // Injeção usada somente pelos testes de ciclo de vida, sem microfone real.
     var g = o.ambiente || raiz;
-    var sessao = null, geracao = 0;
+    var sessao = null, geracao = 0, ganhoDb = 0;
     var status = { estado: 'parado', mensagem: 'Entrada de áudio desligada.' };
     function emitir(fn, valor) { if (typeof fn === 'function') { try { fn(valor); } catch (_) { /* UI não interrompe a liberação do microfone. */ } } }
     function informar(estado, mensagem, detalhes) {
@@ -34,6 +34,7 @@
         try { s.node.port.postMessage({ tipo: 'parar' }); s.node.disconnect(); s.node.port.close(); } catch (_) {}
       }
       if (s.source) { try { s.source.disconnect(); } catch (_) {} }
+      if (s.gain) { try { s.gain.disconnect(); } catch (_) {} }
       if (s.worker) { s.worker.onmessage = null; s.worker.onerror = null; s.worker.terminate(); }
       pararFaixas(s.stream);
       if (s.ctx) {
@@ -63,6 +64,25 @@
       return lista.filter(function (d) { return d.kind === 'audioinput'; }).map(function (d) {
         return { kind: 'audioinput', deviceId: d.deviceId, label: d.label || ('Entrada de áudio ' + (++indice)) };
       });
+    }
+    function aplicarGanho(s, imediato) {
+      var parametro = s.gain.gain, agora = s.ctx.currentTime;
+      var amplitude = Math.pow(10, ganhoDb / 20);
+      if (imediato) parametro.setValueAtTime(amplitude, agora);
+      else {
+        if (typeof parametro.cancelAndHoldAtTime === 'function') parametro.cancelAndHoldAtTime(agora);
+        else {
+          parametro.cancelScheduledValues(agora);
+          parametro.setValueAtTime(parametro.value, agora);
+        }
+        parametro.linearRampToValueAtTime(amplitude, agora + 0.02);
+      }
+    }
+    function definirGanhoDb(db) {
+      if (typeof db !== 'number' || !Number.isFinite(db)) return ganhoDb;
+      ganhoDb = Math.max(0, Math.min(18, db));
+      if (sessao && atual(sessao) && sessao.gain && sessao.ctx.state !== 'closed') aplicarGanho(sessao, false);
+      return ganhoDb;
     }
     // Cada retomada espera running por um prazo curto, inclusive a inicial.
     // Faixa ativa, sozinha, não prova que o navegador está processando áudio;
@@ -167,7 +187,12 @@
           catch (_) { falhar(s, 'Não foi possível processar a entrada de áudio. Conecte novamente.'); }
         };
         s.source = s.ctx.createMediaStreamSource(stream);
-        s.source.connect(s.node);
+        // Ganho só na entrada analisada; o Worklet continua produzindo zeros
+        // e os sons de apoio ligados à destination não passam por este nó.
+        s.gain = s.ctx.createGain();
+        aplicarGanho(s, true);
+        s.source.connect(s.gain);
+        s.gain.connect(s.node);
         s.node.connect(s.ctx.destination); // Worklet produz somente zeros.
         var configuracao = faixa.getSettings ? faixa.getSettings() : {};
         s.deviceId = configuracao.deviceId || deviceId || '';
@@ -208,7 +233,8 @@
       limpar(s);
       informar('parado', 'Entrada de áudio desligada.');
     }
-    return { iniciar: iniciar, dispositivos: dispositivos, parar: parar,
+    definirGanhoDb(o.ganhoDb);
+    return { iniciar: iniciar, dispositivos: dispositivos, parar: parar, definirGanhoDb: definirGanhoDb,
       contexto: function () { return sessao && !sessao.fechada ? sessao.ctx : null; },
       estado: function () { return Object.assign({}, status); } };
   }

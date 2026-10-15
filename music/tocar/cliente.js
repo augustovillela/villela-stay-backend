@@ -13,6 +13,7 @@
     instrument: 'violao', inputKind: 'microphone' };
   var COLORS = ['#e9a56a', '#e7ca64', '#70c9ae', '#79b7ed', '#b39cdd', '#e89cac'];
   var STRINGS = ['6 · mi', '5 · lá', '4 · ré', '3 · sol', '2 · si', '1 · mi'];
+  var captureGains = { microphone: 6, interface: 0, realtone: 0 };
   function el(tag, attrs, children) {
     var n = document.createElement(tag);
     Object.keys(attrs || {}).forEach(function (k) { if (k === 'text') n.textContent = attrs[k]; else n.setAttribute(k, attrs[k]); });
@@ -24,6 +25,25 @@
   function msg(value, error) { text('tj-status', value); $('tj-status').classList.toggle('tj-error', !!error); }
   function timeLabel(s) { s = Math.max(0, s || 0); return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0'); }
   function noteName(midi) { return ['Dó', 'Dó♯', 'Ré', 'Ré♯', 'Mi', 'Fá', 'Fá♯', 'Sol', 'Sol♯', 'Lá', 'Lá♯', 'Si'][((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1); }
+  function renderCaptureGain() {
+    var db = captureGains[state.inputKind];
+    var multiplier = (Math.round(Math.pow(10, db / 20) * 10) / 10).toLocaleString('pt-BR');
+    $('tj-gain').value = db;
+    text('tj-gain-value', db + ' dB · ' + multiplier + '×');
+    $('tj-gain').setAttribute('aria-valuetext', db + ' decibéis, aproximadamente ' + multiplier + ' vezes');
+  }
+  function changeCaptureGain() {
+    var db = Number($('tj-gain').value);
+    if (Number.isFinite(db)) {
+      db = Math.min(18, Math.max(0, Math.round(db / 3) * 3));
+      if (db !== captureGains[state.inputKind]) {
+        if (state.mode === 'practice') { stop(); msg('Nível ajustado. Inicie uma nova rodada.'); }
+        captureGains[state.inputKind] = db;
+        if (input) input.definirGanhoDb(db);
+      }
+    }
+    renderCaptureGain();
+  }
   function profile() {
     var microphone = state.inputKind === 'microphone';
     text('tj-instrument-label', state.instrument === 'violao' ? 'Violão' : 'Guitarra');
@@ -38,11 +58,13 @@
       ? 'Use fones: o microfone também pode captar o som do computador e gerar acertos indevidos. Na prática, os sons de apoio começam desligados. Um microfone ligado à interface também usa este modo.'
       : 'Confira o medidor tocando uma corda e ajuste o ganho sem saturar. Se estiver usando um microfone na interface, escolha o modo Microfone.');
     $('tj-connect').textContent = state.connected ? 'Desconectar' : microphone ? 'Ativar microfone' : 'Ativar entrada';
+    renderCaptureGain();
   }
   function changeProfile() {
     stop(); cancelCalibration(); if (input) input.parar();
     state.instrument = $('tj-instrument').value;
     state.inputKind = $('tj-connection-type').value;
+    if (input) input.definirGanhoDb(captureGains[state.inputKind]);
     $('tj-device').value = '';
     $('tj-metronome').checked = state.inputKind !== 'microphone';
     $('tj-backing').checked = state.inputKind !== 'microphone';
@@ -117,6 +139,7 @@
     $('tj-device').disabled = state.running || state.connecting; $('tj-chart-file').disabled = state.running; $('tj-audio-file').disabled = state.running;
     $('tj-instrument').disabled = state.running || state.connecting; $('tj-connection-type').disabled = state.running || state.connecting;
     $('tj-backing').disabled = state.running;
+    $('tj-gain').disabled = state.running || state.connecting || !!state.calibration;
     text('tj-clock', timeLabel(state.position) + ' / ' + timeLabel(chart.duration));
     $('tj-seek').value = Math.max(0, state.position);
   }
@@ -211,7 +234,7 @@
     updateTransport();
   }
   function audioInput() {
-    if (!input) input = Audio.criar({ onFrame: onFrame, onStatus: onStatus });
+    if (!input) input = Audio.criar({ onFrame: onFrame, onStatus: onStatus, ganhoDb: captureGains[state.inputKind] });
     return input;
   }
   async function refreshDevices() {
@@ -253,11 +276,13 @@
   function cancelCalibration() {
     if (state.calibration) { clearTimeout(state.calibration.timer); state.calibration = null; silence(); }
     $('tj-cal-panel').hidden = true;
+    updateTransport();
   }
   function calibrate() {
     cancelCalibration(); stop(); ctx = context(); ctx.resume();
     var startAt = ctx.currentTime + 1, step = 0.75;
     var cal = state.calibration = { start: startAt, step: step, offsets: [], last: -100, timer: null };
+    updateTransport();
     for (var i = 0; i < 12; i++) tone(87, startAt + i * step, 0.04, 0.08, 'sine');
     $('tj-cal-panel').hidden = false; $('tj-use-cal').disabled = true;
     text('tj-cal-result', 'Toque uma nota curta a cada clique. Precisamos de pelo menos 6 ataques.');
@@ -326,12 +351,13 @@
     '<div class="tj-stage"><div class="tj-stage-top"><span id="tj-mode">PRONTO PARA TOCAR</span><span>6 CORDAS / AFINAÇÃO PADRÃO</span></div><canvas id="tj-canvas" aria-label="Pista de notas de violão e guitarra. Uma tabela das notas está disponível abaixo."></canvas><span id="tj-count" aria-live="off"></span></div>'+
     '<div class="tj-transport"><div class="tj-seek-row"><label class="tj-sr" for="tj-seek">Posição na música</label><input id="tj-seek" type="range" min="0" step="0.1" value="0"><span id="tj-clock"></span></div><div class="tj-actions"><button id="tj-practice" class="tj-primary" disabled>▶ Praticar</button><button id="tj-demo">Ouvir demonstração</button><button id="tj-pause" disabled>Pausar</button><button id="tj-stop" aria-label="Parar e voltar ao início do trecho">■ Parar</button><label class="tj-speed">Velocidade<select id="tj-speed"><option value="0.5">50%</option><option value="0.75">75%</option><option value="1" selected>100%</option><option value="1.25">125%</option></select></label></div><div class="tj-options"><label><input type="checkbox" id="tj-metronome"> Metrônomo</label><label><input type="checkbox" id="tj-guide"> Nota-guia</label><label><input type="checkbox" id="tj-backing"> Acompanhamento</label><span id="tj-media-label">Acompanhamento do estudo</span></div></div>'+
     '<p id="tj-status" class="tj-status" role="status">Ouça a demonstração ou ative o microfone para começar.</p><div class="tj-score"><div><span>ACERTOS</span><strong id="tj-hits">—</strong></div><div><span>A REVER</span><strong id="tj-misses">—</strong></div><div><span>PRECISÃO</span><strong id="tj-accuracy">—</strong></div><div class="tj-score-note"><p id="tj-score-label"></p><button id="tj-save" disabled>Guardar rodada</button></div></div></section>'+
-    '<aside class="tj-sidebar"><section class="tj-panel"><p class="tj-step">01 / SEU INSTRUMENTO</p><h2 id="tj-input-title">Prepare o microfone</h2><div class="tj-input-choices"><label class="tj-field">Instrumento<select id="tj-instrument"><option value="violao" selected>Violão</option><option value="guitarra">Guitarra</option></select></label><label class="tj-field">Como captar o som<select id="tj-connection-type"><option value="microphone" selected>Microfone</option><option value="interface">Interface · instrumento por cabo</option><option value="realtone">Cabo USB Real Tone</option></select></label></div><p id="tj-input-help" class="tj-muted"></p><button id="tj-connect" class="tj-primary tj-wide">Ativar microfone</button><p id="tj-connection" class="tj-connection">Entrada desligada</p><label class="tj-field">Entrada de áudio<select id="tj-device"><option value="">Entrada padrão do sistema</option></select></label><p id="tj-listening-help" class="tj-capture-tip"></p><div class="tj-level"><label for="tj-meter" id="tj-input-level">Aguardando conexão</label><meter id="tj-meter" min="0" max="1" low="0.03" high="0.8" optimum="0.35" value="0"></meter></div><div class="tj-tuner"><span>AFINAÇÃO</span><strong id="tj-note">—</strong><small id="tj-cents">Aguardando sinal</small><div class="tj-tuner-line"><i id="tj-tuner-dot"></i></div></div></section>'+
+    '<aside class="tj-sidebar"><section class="tj-panel"><p class="tj-step">01 / SEU INSTRUMENTO</p><h2 id="tj-input-title">Prepare o microfone</h2><div class="tj-input-choices"><label class="tj-field">Instrumento<select id="tj-instrument"><option value="violao" selected>Violão</option><option value="guitarra">Guitarra</option></select></label><label class="tj-field">Como captar o som<select id="tj-connection-type"><option value="microphone" selected>Microfone</option><option value="interface">Interface · instrumento por cabo</option><option value="realtone">Cabo USB Real Tone</option></select></label></div><p id="tj-input-help" class="tj-muted"></p><button id="tj-connect" class="tj-primary tj-wide">Ativar microfone</button><p id="tj-connection" class="tj-connection">Entrada desligada</p><label class="tj-field">Entrada de áudio<select id="tj-device"><option value="">Entrada padrão do sistema</option></select></label><div class="tj-capture-gain"><div><label for="tj-gain">Nível de captação</label><output id="tj-gain-value" for="tj-gain"></output></div><input id="tj-gain" type="range" min="0" max="18" step="3" value="6" aria-describedby="tj-gain-help"><p id="tj-gain-help">Aumente se o violão estiver baixo. Reduza se houver ruído ou sinal alto. Pause a prática para ajustar.</p></div><p id="tj-listening-help" class="tj-capture-tip"></p><div class="tj-level"><label for="tj-meter" id="tj-input-level">Aguardando conexão</label><meter id="tj-meter" min="0" max="1" low="0.03" high="0.8" optimum="0.35" value="0"></meter></div><div class="tj-tuner"><span>AFINAÇÃO</span><strong id="tj-note">—</strong><small id="tj-cents">Aguardando sinal</small><div class="tj-tuner-line"><i id="tj-tuner-dot"></i></div></div></section>'+
     '<section class="tj-panel"><p class="tj-step">02 / SEU RITMO</p><h2>Pratique por partes</h2><div class="tj-range"><label>De (segundos)<input id="tj-from" type="number" min="0" step="0.1" value="0"></label><label>Até (segundos)<input id="tj-to" type="number" min="0.5" step="0.1"></label></div><label class="tj-check"><input id="tj-loop" type="checkbox"> Repetir este trecho</label><label class="tj-field">Compensação de atraso (ms)<input id="tj-offset" type="number" min="-500" max="500" step="5" value="0"></label><button id="tj-calibrate" class="tj-wide" disabled>Ajustar com cliques</button><div id="tj-cal-panel" hidden><p id="tj-cal-result"></p><button id="tj-use-cal" disabled>Usar estimativa</button><button id="tj-cancel-cal">Cancelar</button></div><p class="tj-small">A compensação corrige o sincronismo do feedback. Use fone com fio e valide o ajuste tocando.</p></section></aside></div>'+
     '<div class="tj-bottom"><details class="tj-panel"><summary>Praticar outra música</summary><p>Carregue um arranjo com notas e tempos e o áudio correspondente. Os arquivos ficam neste navegador.</p><div class="tj-files"><label>1. Arranjo JSON<input id="tj-chart-file" type="file" accept=".json,application/json"></label><label>2. Áudio da música<input id="tj-audio-file" type="file" accept="audio/*"></label></div><button id="tj-download">Baixar arranjo de exemplo</button><button id="tj-reset">Voltar ao estudo original</button><p class="tj-small">O MP3 sozinho não define as notas da pista. Este protótipo trabalha com notas isoladas, sem acordes simultâneos.</p></details><section class="tj-panel tj-history-panel"><h2>Sua prática</h2><p id="tj-history-label"></p><ul id="tj-history"></ul></section></div>'+
     '<details class="tj-panel tj-notes-panel"><summary>Notas do arranjo · versão em tabela</summary><p id="tj-table-note"></p><table><thead><tr><th>Tempo</th><th>Nota</th><th>Corda</th><th>Casa</th></tr></thead><tbody id="tj-notes"></tbody></table></details><p class="tj-footnote">Feedback de estudo, sem nota escolar. O áudio identifica a altura; corda e casa são posições sugeridas pelo arranjo. Reconhecimento de acordes não está incluído neste protótipo.</p>';
   on('tj-demo','click',function(){start('demo',false);});on('tj-practice','click',function(){start('practice',false);});
   on('tj-instrument','change',changeProfile);on('tj-connection-type','change',changeProfile);
+  on('tj-gain','input',changeCaptureGain);
   on('tj-pause','click',function(){if(state.running)pause();else start(state.mode,true);});on('tj-stop','click',function(){stop();cancelCalibration();msg('Pronto para uma nova rodada.');});
   on('tj-connect','click',connect);on('tj-device','change',function(){if(!input || !state.connected)return;pause();cancelCalibration();return activateInput();});
   on('tj-speed','change',function(){stop();state.speed=Number(this.value);if(media)media.playbackRate=state.speed;msg('Velocidade ajustada. Inicie uma nova rodada.');});

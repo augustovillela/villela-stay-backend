@@ -65,7 +65,7 @@ function montar(options = {}) {
   document.getElementById = id => document.ids.get(id) || null;
   const app = document.createElement('main'); app.setAttribute('id', 'tocar-app'); app.setAttribute('data-estado', JSON.stringify({ logado: !!options.logado }));
   let now = 0, sequence = 0;
-  const rafs = new Map(), timers = new Map(), contexts = [], oscillators = [], medias = [], requests = [], inputs = [], revoked = [];
+  const rafs = new Map(), timers = new Map(), contexts = [], oscillators = [], volumes = [], medias = [], requests = [], inputs = [], revoked = [];
   let audioFailure = options.audioFailure || null, pendingPlay = false;
   class Contexto {
     constructor() { this.currentTime = 0; this.state = 'running'; this.destination = {}; contexts.push(this); }
@@ -76,7 +76,7 @@ function montar(options = {}) {
       const o = { ctx, frequency: { value: 0 }, connect() {}, disconnect() {}, start(t) { this.when = t; }, stop(t) { this.stopAt = t ?? ctx.currentTime; } };
       oscillators.push(o); return o;
     }
-    createGain() { return { gain: { setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {}, disconnect() {} }; }
+    createGain() { return { gain: { setValueAtTime() {}, linearRampToValueAtTime(value) { volumes.push(value); }, exponentialRampToValueAtTime() {} }, connect() {}, disconnect() {} }; }
   }
   class Media {
     constructor(src) { this.src = src; this.paused = true; this.currentTime = 0; this.duration = 1000; this.playbackRate = 1; this.plays = 0; medias.push(this); }
@@ -93,12 +93,17 @@ function montar(options = {}) {
   const audio = { criar(callbacks) {
     const labels = { 'microfone-interno': 'Microfone (Realtek Audio)', 'real-tone': 'Rocksmith USB Guitar Adapter', 'interface-2': 'Interface USB 2' };
     const devices = () => Object.keys(labels).map(deviceId => ({ kind: 'audioinput', deviceId, label: labels[deviceId] }));
-    const i = { callbacks, calls: [], enumerations: 0, stopped: 0, currentContext: null, status: { estado: 'parado' },
+    const i = { callbacks, calls: [], gainDb: callbacks.ganhoDb, gainCalls: [], gainsAtStart: [], enumerations: 0, stopped: 0, currentContext: null, status: { estado: 'parado' },
+      definirGanhoDb(db) {
+        assert.equal(typeof db, 'number'); assert.ok(Number.isFinite(db));
+        this.gainCalls.push(db); this.gainDb = Math.min(18, Math.max(0, db)); return this.gainDb;
+      },
       async dispositivos() {
         this.enumerations++;
         return options.enumerate ? options.enumerate(this, devices()) : devices();
       },
       async iniciar(id) {
+        this.gainsAtStart.push(this.gainDb);
         this.calls.push(id); this.status = { estado: 'iniciando' }; callbacks.onStatus(this.status);
         if (audioFailure) { this.status = { estado: 'erro', mensagem: audioFailure }; callbacks.onStatus(this.status); throw new Error(audioFailure); }
         if (this.currentContext) this.currentContext.close();
@@ -156,7 +161,7 @@ function montar(options = {}) {
     const m = medias.at(-1); m.onloadedmetadata();
     $('tj-backing').checked = audible; await event('tj-backing', 'change'); return m;
   }
-  return { $, window, document, contexts, oscillators, medias, requests, inputs, revoked, event, settle, advance, chart, associatedAudio,
+  return { $, window, document, contexts, oscillators, volumes, medias, requests, inputs, revoked, event, settle, advance, chart, associatedAudio,
     pendingPlay(value) { pendingPlay = value; }, audioFailure(value) { audioFailure = value; } };
 }
 function pequeno() {
@@ -172,6 +177,82 @@ test('Padrão: violão pelo microfone, sem sons de apoio ligados', async () => {
   for (const id of ['tj-metronome', 'tj-guide', 'tj-backing']) assert.equal(h.$(id).checked, false, id);
   assert.equal(h.inputs[0].calls.length, 0); assert.equal(h.contexts.length, 0); await h.event('tj-connect', 'click');
   assert.equal(h.inputs[0].calls[0], undefined); assert.equal(h.$('tj-device').value, '');
+});
+
+test('Captação começa em 6 dB no microfone, com valor acessível de aproximadamente 2 vezes', async () => {
+  const h = montar(); const slider = h.$('tj-gain');
+  assert.equal(slider.value, '6'); assert.equal(slider.getAttribute('min'), '0'); assert.equal(slider.getAttribute('max'), '18'); assert.equal(slider.getAttribute('step'), '3');
+  assert.equal(h.inputs[0].callbacks.ganhoDb, 6); assert.equal(h.inputs[0].calls.length, 0);
+  assert.equal(h.$('tj-gain-value').textContent, '6 dB · 2×');
+  assert.equal(slider.getAttribute('aria-valuetext'), '6 decibéis, aproximadamente 2 vezes');
+  assert.equal(slider.getAttribute('aria-describedby'), 'tj-gain-help');
+  assert.match(h.$('tj-gain-help').textContent, /Reduza se houver ruído ou sinal alto/);
+});
+
+test('Captação guarda ajuste por modo e mantém valor ao trocar somente o instrumento', async () => {
+  const h = montar(); await h.event('tj-gain', 'input', '12');
+  await h.event('tj-connection-type', 'change', 'interface');
+  assert.equal(h.$('tj-gain').value, '0'); assert.equal(h.$('tj-gain-value').textContent, '0 dB · 1×'); assert.equal(h.inputs[0].gainDb, 0);
+  await h.event('tj-gain', 'input', '3'); await h.event('tj-connection-type', 'change', 'realtone');
+  assert.equal(h.$('tj-gain').value, '0'); assert.equal(h.inputs[0].gainDb, 0);
+  await h.event('tj-gain', 'input', '9'); await h.event('tj-connection-type', 'change', 'microphone');
+  assert.equal(h.$('tj-gain').value, '12'); assert.equal(h.inputs[0].gainDb, 12);
+  await h.event('tj-instrument', 'change', 'guitarra'); assert.equal(h.$('tj-gain').value, '12');
+  await h.event('tj-connection-type', 'change', 'interface'); assert.equal(h.$('tj-gain').value, '3');
+  await h.event('tj-connection-type', 'change', 'realtone'); assert.equal(h.$('tj-gain').value, '9');
+});
+
+test('Ajuste aplica ganho na captura ativa sem reiniciar e persiste ao reconectar', async () => {
+  const h = montar(); await h.event('tj-connect', 'click'); const input = h.inputs[0], context = input.currentContext;
+  await h.event('tj-gain', 'input', '9');
+  assert.equal(input.gainCalls.at(-1), 9); assert.equal(input.calls.length, 1); assert.equal(input.currentContext, context);
+  assert.equal(h.$('tj-gain-value').textContent, '9 dB · 2,8×'); assert.equal(h.oscillators.length, 0);
+  await h.event('tj-connect', 'click'); await h.event('tj-connect', 'click');
+  assert.deepEqual(input.gainsAtStart, [6, 9]); assert.equal(h.$('tj-gain').value, '9');
+});
+
+test('Captação limita valores e rejeita NaN ou infinito sem propagar ganho inválido', async () => {
+  const h = montar(); const input = h.inputs[0];
+  for (const [value, expected] of [['-6', 0], ['24', 18], ['14', 15], ['NaN', 15], ['Infinity', 15], ['texto', 15]]) {
+    await h.event('tj-gain', 'input', value);
+    assert.equal(h.$('tj-gain').value, String(expected)); assert.equal(input.gainDb, expected);
+    assert.doesNotMatch(h.$('tj-gain-value').textContent + h.$('tj-gain').getAttribute('aria-valuetext'), /NaN|Infinity/);
+  }
+  assert.ok(input.gainCalls.every(db => Number.isFinite(db) && db >= 0 && db <= 18 && db % 3 === 0));
+});
+
+test('Captação é bloqueada durante reprodução e calibração; erro ou cancelamento libera ajuste', async () => {
+  for (const mode of ['practice', 'demo']) {
+    const h = montar(); await h.chart(); await h.event('tj-connect', 'click');
+    await h.event('tj-' + mode, 'click'); assert.equal(h.$('tj-gain').disabled, true);
+    const calls = h.inputs[0].gainCalls.length; await h.event('tj-gain', 'input', '18'); assert.equal(h.inputs[0].gainCalls.length, calls);
+    await h.event('tj-stop', 'click'); assert.equal(h.$('tj-gain').disabled, false);
+    await h.event('tj-calibrate', 'click'); assert.equal(h.$('tj-gain').disabled, true);
+    await h.event('tj-cancel-cal', 'click'); assert.equal(h.$('tj-gain').disabled, false);
+    await h.event('tj-calibrate', 'click'); h.inputs[0].desconectar(); await h.settle(); assert.equal(h.$('tj-gain').disabled, false);
+    h.inputs[0].callbacks.onStatus({ estado: 'iniciando' }); assert.equal(h.$('tj-gain').disabled, true);
+    h.inputs[0].callbacks.onStatus({ estado: 'erro', mensagem: 'Falha de conexão.' }); assert.equal(h.$('tj-gain').disabled, false);
+  }
+});
+
+test('Mudar captação na prática pausada encerra julgamento para não misturar sensibilidades', async () => {
+  const h = montar({ logado: true }); await h.chart(); await h.event('tj-connect', 'click');
+  await h.event('tj-practice', 'click'); await h.advance(2.1); await h.event('tj-pause', 'click');
+  assert.equal(h.$('tj-gain').disabled, false); await h.event('tj-gain', 'input', '12');
+  assert.equal(h.$('tj-mode').textContent, 'PRONTO PARA TOCAR'); assert.equal(h.$('tj-hits').textContent, '—');
+  assert.equal(h.$('tj-pause').disabled, true); assert.equal(h.$('tj-save').disabled, true);
+  assert.match(h.$('tj-status').textContent, /nova rodada/); assert.equal(h.inputs[0].gainDb, 12);
+});
+
+test('Ganho de captação não altera volumes da demonstração sintetizada ou do arquivo local', async () => {
+  const volumes = [];
+  for (const db of [0, 18]) {
+    const h = montar(); await h.chart(); await h.event('tj-gain', 'input', String(db));
+    await h.event('tj-demo', 'click'); await h.advance(2.2); volumes.push(h.volumes);
+    await h.event('tj-stop', 'click'); const media = await h.associatedAudio();
+    await h.event('tj-demo', 'click'); await h.advance(2.2); assert.equal(media.volume, 0.65);
+  }
+  assert.ok(volumes[0].length > 4); assert.deepEqual(volumes[0], volumes[1]);
 });
 
 test('Entradas aparecem antes da captura, sem abrir microfone nem escolher dispositivo', async () => {

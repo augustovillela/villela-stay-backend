@@ -108,25 +108,43 @@ function ambiente() {
   const media = Object.assign(new Eventos(), { pedidos: [], lista: [{ kind: 'audioinput', deviceId: 'real-tone', label: trilha.label }],
     getUserMedia(pedido) { this.pedidos.push(pedido); return Promise.resolve(stream); },
     enumerateDevices() { return Promise.resolve(this.lista); } });
-  const contextos = [], workers = [], nodes = [];
+  const contextos = [], workers = [], nodes = [], ganhos = [], fontes = [];
+  class NoGrafo {
+    constructor() { this.conexoes = []; }
+    connect(destino) { this.conexoes.push(destino); }
+    disconnect() { this.disconnected = true; this.conexoes = []; }
+    enviar(amostras) { this.conexoes.forEach(destino => { if (destino.receber) destino.receber(amostras); }); }
+  }
   class Contexto extends Eventos {
-    constructor() { super(); this.state = 'suspended'; this.resumes = 0; this.sampleRate = 48000; this.destination = {}; this.audioWorklet = { addModule: async url => { assert.equal(url, '/music/tocar/capturar-worklet.js'); } }; contextos.push(this); }
+    constructor() { super(); this.state = 'suspended'; this.resumes = 0; this.currentTime = 10; this.sampleRate = 48000; this.destination = {}; this.audioWorklet = { addModule: async url => { assert.equal(url, '/music/tocar/capturar-worklet.js'); } }; contextos.push(this); }
     resume() { this.resumes++; this.state = 'running'; return Promise.resolve(); }
     close() { this.state = 'closed'; this.closed = true; return Promise.resolve(); }
-    createMediaStreamSource(s) { assert.equal(s, stream); return { connect() {}, disconnect() {} }; }
+    createMediaStreamSource(s) { assert.equal(s, stream); const fonte = new NoGrafo(); fontes.push(fonte); return fonte; }
+    createGain() {
+      const ganho = new NoGrafo();
+      // Simulação do fator já estabilizado; tempos da rampa são verificados
+      // separadamente, sem afirmar que isto reproduz hardware ou Web Audio.
+      ganho.gain = { value: 1, eventos: [],
+        setValueAtTime(valor, tempo) { this.value = valor; this.eventos.push(['set', valor, tempo]); },
+        cancelAndHoldAtTime(tempo) { this.eventos.push(['hold', tempo]); },
+        cancelScheduledValues(tempo) { this.eventos.push(['cancel', tempo]); },
+        linearRampToValueAtTime(valor, tempo) { this.value = valor; this.eventos.push(['ramp', valor, tempo]); } };
+      ganho.receber = amostras => ganho.enviar(amostras.map(valor => valor * ganho.gain.value));
+      ganhos.push(ganho); return ganho;
+    }
   }
   class Worker {
     constructor(url) { assert.equal(url, '/music/tocar/detector-worker.js'); this.frames = []; workers.push(this); setImmediate(() => { if (this.onmessage) this.onmessage({ data: { tipo: 'pronto' } }); }); }
     postMessage(msg) { this.frames.push(msg); }
     terminate() { this.terminated = true; }
   }
-  class Node {
-    constructor() { this.port = { messages: [], postMessage(msg) { this.messages.push(msg); }, close() { this.closed = true; } }; nodes.push(this); }
-    connect() {} disconnect() { this.disconnected = true; }
+  class Node extends NoGrafo {
+    constructor() { super(); this.port = { messages: [], postMessage(msg) { this.messages.push(msg); }, close() { this.closed = true; } }; nodes.push(this); }
+    receber(amostras) { this.amostras = amostras; }
   }
   const g = { isSecureContext: true, navigator: { mediaDevices: media }, AudioContext: Contexto,
     AudioWorkletNode: Node, Worker, setTimeout, clearTimeout };
-  return { g, trilha, stream, media, contextos, workers, nodes };
+  return { g, trilha, stream, media, contextos, workers, nodes, ganhos, fontes };
 }
 async function verificarAsync(nome, fn) { await fn(); testes++; console.log('OK', nome); }
 async function aguardar(condicao) {
@@ -150,10 +168,90 @@ function conferirLimpeza(a) {
   assert.equal(a.contextos[0].closed, true);
   assert.equal(a.contextos[0].eventos.size, 0);
   for (const worker of a.workers) assert.equal(worker.terminated, true);
+  for (const ganho of a.ganhos) assert.equal(ganho.disconnected, true);
+  for (const fonte of a.fontes) assert.equal(fonte.disconnected, true);
   assert.equal(a.media.eventos.size, 0);
   assert.equal(a.trilha.eventos.size, 0);
 }
 async function principal() {
+  await verificarAsync('Ganho padrão é unitário e atua exclusivamente entre entrada e Worklet', async () => {
+    const a = ambiente(), mic = Audio.criar({ ambiente: a.g });
+    await mic.iniciar();
+    assert.equal(a.ganhos[0].gain.value, 1);
+    assert.deepEqual(a.fontes[0].conexoes, [a.ganhos[0]]);
+    assert.deepEqual(a.ganhos[0].conexoes, [a.nodes[0]]);
+    assert.deepEqual(a.nodes[0].conexoes, [a.contextos[0].destination]);
+    const entrada = sinal(110);
+    a.fontes[0].enviar(entrada);
+    assert.deepEqual(a.nodes[0].amostras, entrada);
+    const apoio = a.contextos[0].createGain(); apoio.connect(a.contextos[0].destination);
+    mic.definirGanhoDb(18);
+    assert.equal(apoio.gain.value, 1, 'nó de saída independente não recebe ganho de entrada');
+    apoio.disconnect(); mic.parar(); conferirLimpeza(a);
+  });
+  await verificarAsync('Ganho configurado duplica amostras antes do Worklet; ajuste ativo usa rampa de 20 ms', async () => {
+    const a = ambiente(), dobroDb = 20 * Math.log10(2);
+    const mic = Audio.criar({ ambiente: a.g, ganhoDb: dobroDb });
+    await mic.iniciar();
+    assert.ok(Math.abs(a.ganhos[0].gain.value - 2) < 1e-12);
+    const entrada = sinal(110, 48000, [1], 0.1);
+    a.fontes[0].enviar(entrada);
+    assert.ok(a.nodes[0].amostras.every((valor, i) => Math.abs(valor - entrada[i] * 2) < 1e-7));
+    assert.equal(mic.definirGanhoDb(9), 9);
+    assert.deepEqual(a.ganhos[0].gain.eventos.slice(-2), [['hold', 10], ['ramp', Math.pow(10, 9 / 20), 10.02]]);
+    // Caminho compatível quando cancelAndHoldAtTime não existe.
+    delete a.ganhos[0].gain.cancelAndHoldAtTime;
+    mic.definirGanhoDb(0);
+    assert.deepEqual(a.ganhos[0].gain.eventos.slice(-3), [['cancel', 10], ['set', Math.pow(10, 9 / 20), 10], ['ramp', 1, 10.02]]);
+    mic.parar(); conferirLimpeza(a);
+  });
+  await verificarAsync('Ganho limita 0–18 dB, ignora valores inválidos e aceita ajuste antes de conectar', async () => {
+    const a = ambiente(), mic = Audio.criar({ ambiente: a.g, ganhoDb: NaN });
+    assert.equal(mic.definirGanhoDb(), 0);
+    assert.equal(mic.definirGanhoDb(-5), 0);
+    assert.equal(mic.definirGanhoDb(99), 18);
+    assert.equal(mic.definirGanhoDb(6), 6);
+    for (const invalido of [NaN, Infinity, -Infinity, '12', null, undefined, {}, true]) assert.equal(mic.definirGanhoDb(invalido), 6);
+    await mic.iniciar();
+    assert.ok(Math.abs(a.ganhos[0].gain.value - Math.pow(10, 6 / 20)) < 1e-12);
+    const eventos = a.ganhos[0].gain.eventos.length;
+    assert.equal(mic.definirGanhoDb(NaN), 6);
+    assert.equal(a.ganhos[0].gain.eventos.length, eventos, 'valor inválido não agenda automação');
+    mic.parar(); conferirLimpeza(a);
+  });
+  await verificarAsync('Ganho se mantém após reconectar e alterações não atingem o nó descartado', async () => {
+    const a = ambiente(), mic = Audio.criar({ ambiente: a.g, ganhoDb: 6 });
+    await mic.iniciar();
+    mic.definirGanhoDb(12); mic.parar();
+    const antigo = a.ganhos[0], eventosAntigos = antigo.gain.eventos.length;
+    assert.equal(antigo.disconnected, true);
+    assert.equal(mic.definirGanhoDb(), 12);
+    a.trilha.readyState = 'live'; // Nova abertura simulada do mesmo dispositivo.
+    await mic.iniciar();
+    assert.equal(a.ganhos.length, 2);
+    assert.ok(Math.abs(a.ganhos[1].gain.value - Math.pow(10, 12 / 20)) < 1e-12);
+    mic.definirGanhoDb(3);
+    assert.equal(antigo.gain.eventos.length, eventosAntigos);
+    assert.deepEqual(a.fontes[1].conexoes, [a.ganhos[1]]);
+    mic.parar();
+    assert.equal(a.ganhos[1].disconnected, true);
+    assert.equal(a.trilha.stops, 2);
+  });
+  await verificarAsync('Sinal sintético fraco cruza o piso com ganho; saturação após ganho continua rejeitada', async () => {
+    const a = ambiente(), mic = Audio.criar({ ambiente: a.g, ganhoDb: 6 });
+    await mic.iniciar();
+    const fraco = sinal(110, 48000, [1], 0.0045);
+    assert.equal(Detector.detectar(fraco, 48000).hz, null);
+    a.fontes[0].enviar(fraco);
+    const detectado = Detector.criar().analisar(a.nodes[0].amostras, 48000, 1);
+    afinação(detectado, 110); assert.equal(detectado.onset, true);
+    assert.ok(detectado.rms > 0.006);
+    mic.definirGanhoDb(18);
+    a.fontes[0].enviar(sinal(110, 48000, [1], 0.3));
+    const saturado = Detector.detectar(a.nodes[0].amostras, 48000);
+    assert.equal(saturado.hz, null); assert.ok(saturado.clipped > 0.08);
+    mic.parar(); conferirLimpeza(a);
+  });
   await verificarAsync('Ciclo: dispositivo exato, processamento desativado, callback e liberação total', async () => {
     const a = ambiente(), frames = [], estados = [];
     const mic = Audio.criar({ ambiente: a.g, onFrame: f => frames.push(f), onStatus: s => estados.push(s.estado) });
