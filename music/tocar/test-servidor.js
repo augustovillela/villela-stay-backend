@@ -31,6 +31,7 @@ app.use((erro, req, res, next) => res.status(erro.status || 500).json({ erro: er
 let server, base;
 
 const resumo = () => ({ chartId: 'estudo-guitarra-1', title: 'Meu estudo de guitarra', total: 4, hits: 3, misses: 1, accuracy: 75, speed: 0.75, offsetMs: 80, duration: 12, mode: 'practice' });
+const aprendizado = () => ({ chartId: 'estudo-cordas-soltas', title: 'Cordas soltas', total: 6, hits: 4, skipped: 2, duration: 35, mode: 'learn' });
 const enviar = (usuario, corpo, extra = {}) => fetch(base + '/music/api/tocar/sessoes', {
   method: 'POST', headers: { 'Content-Type': 'application/json', ...(usuario ? { 'x-test-user': usuario } : {}), ...extra }, body: JSON.stringify(corpo),
 });
@@ -58,6 +59,10 @@ test('página pública tem bootstrap escapado sem identidade e apenas scripts pr
   const html = await resposta.text();
   assert.match(html, /id="tocar-app" data-estado="\{&quot;logado&quot;:true\}"/);
   assert.match(html, /\/music\/tocar\/cliente\.js/);
+  for (const script of ['aprender', 'estudos']) {
+    assert.ok(html.includes('/music/tocar/' + script + '.js'));
+    assert.ok(html.indexOf('/music/tocar/' + script + '.js') < html.indexOf('/music/tocar/cliente.js'));
+  }
   assert.doesNotMatch(html, /nao-expor|<script>nome|laboratorio\.js|laboratorio-nucleo\.js/);
   const anonimo = await (await fetch(base + '/music/tocar')).text();
   assert.match(anonimo, /&quot;logado&quot;:false/);
@@ -72,17 +77,24 @@ test('demonstração pública usa exatamente o arranjo do núcleo', async () => 
 });
 
 test('arquivos de servidor e caminhos não autorizados não ficam públicos', async () => {
-  for (const arquivo of ['index.js', 'test-servidor.js', 'schema.sql', '%2e%2e%2fdb.js']) {
+  for (const arquivo of ['index.js', 'test-servidor.js', 'test-aprender.js', 'test-estudos.js', 'schema.sql', '%2e%2e%2fdb.js']) {
     assert.equal((await fetch(base + '/music/tocar/' + arquivo)).status, 404, arquivo);
   }
   const nucleo = await fetch(base + '/music/tocar/nucleo.js');
   assert.equal(nucleo.status, 200);
   assert.match(nucleo.headers.get('content-type'), /javascript/);
   assert.equal(nucleo.headers.get('x-content-type-options'), 'nosniff');
+  for (const arquivo of ['aprender.js', 'estudos.js']) {
+    const asset = await fetch(base + '/music/tocar/' + arquivo);
+    assert.equal(asset.status, 200);
+    assert.match(asset.headers.get('content-type'), /javascript/);
+    assert.equal(asset.headers.get('x-content-type-options'), 'nosniff');
+  }
 });
 
 test('salvar e consultar exigem autenticação', async () => {
   assert.equal((await enviar(null, resumo())).status, 401);
+  assert.equal((await enviar(null, aprendizado())).status, 401);
   assert.equal((await fetch(base + '/music/api/tocar/sessoes')).status, 401);
 });
 
@@ -122,6 +134,50 @@ test('arredondamento consistente e limites válidos são preservados', () => {
   const r = validarResumo({ ...resumo(), total: 3, hits: 1, misses: 2, accuracy: 33.3, speed: 0.25, offsetMs: -1000, duration: 0.1 });
   assert.equal(r.accuracy, 33.33);
   assert.equal(r.speed, 0.25);
+});
+
+test('aprender guarda reconhecidas e puladas, convive com histórico anterior e mantém isolamento', async () => {
+  const salvo = await enviar('aluno-aprender', aprendizado());
+  assert.equal(salvo.status, 201);
+  const { sessao } = await salvo.json();
+  assert.equal(sessao.mode, 'learn');
+  assert.equal(sessao.hits, 4);
+  assert.equal(sessao.skipped, 2);
+  assert.equal(sessao.vale_nota, false);
+  for (const campo of ['accuracy', 'misses', 'speed', 'offsetMs', 'usuario', 'audio']) assert.equal(campo in sessao, false, campo);
+  assert.equal((await enviar('aluno-aprender', resumo())).status, 201);
+  const lista = await (await fetch(base + '/music/api/tocar/sessoes', { headers: { 'x-test-user': 'aluno-aprender' } })).json();
+  assert.deepEqual(lista.sessoes.map(s => s.mode), ['practice', 'learn']);
+  assert.equal(lista.sessoes[0].accuracy, 75);
+  const outra = await (await fetch(base + '/music/api/tocar/sessoes', { headers: { 'x-test-user': 'aluno-aprender-outro' } })).json();
+  assert.deepEqual(outra.sessoes, []);
+  const exportacao = await (await fetch(base + '/music/api/lab/meus-dados', { headers: { 'x-test-user': 'aluno-aprender' } })).json();
+  assert.equal(exportacao.tocar_junto.length, 2);
+  assert.equal(exportacao.tocar_junto.find(s => s.mode === 'learn').skipped, 2);
+  assert.equal(excluirDe('aluno-aprender'), 2);
+  assert.deepEqual(dadosDe('aluno-aprender'), []);
+  assert.equal(dadosDe('aluno-a').length, 1);
+});
+
+test('aprender rejeita rodada incompleta, métricas temporais, áudio e tentativas de escolher usuário', async () => {
+  for (const alteracao of [
+    { total: 0 }, { total: 7 }, { hits: -1 }, { hits: 4.5 }, { skipped: '2' },
+    { skipped: -1 }, { skipped: 3 }, { skipped: null }, { duration: 0 }, { duration: 7201 },
+    { accuracy: 66.7 }, { misses: 2 }, { speed: 1 }, { offsetMs: 0 },
+    { audio: 'base64' }, { usuario: 'aluno-a' }, { pending: 1 }, { mode: 'demo' },
+  ]) {
+    assert.equal((await enviar('aluno-aprender-invalido', { ...aprendizado(), ...alteracao })).status, 400, JSON.stringify(alteracao));
+  }
+  for (const campo of ['total', 'hits', 'skipped', 'duration']) {
+    for (const valor of [NaN, Infinity, -Infinity]) {
+      assert.throws(() => validarResumo({ ...aprendizado(), [campo]: valor }), /inválido/);
+    }
+    const faltante = aprendizado(); delete faltante[campo];
+    assert.throws(() => validarResumo(faltante), /inválido/);
+  }
+  assert.deepEqual(dadosDe('aluno-aprender-invalido'), []);
+  assert.equal(validarResumo({ ...aprendizado(), hits: 0, skipped: 6, duration: 0.1 }).skipped, 6);
+  assert.equal(validarResumo({ ...aprendizado(), hits: 6, skipped: 0, duration: 7200 }).hits, 6);
 });
 
 test('exportação e exclusão completas afetam apenas o próprio usuário', async () => {

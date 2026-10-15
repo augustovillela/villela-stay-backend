@@ -6,6 +6,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const Core = require('./nucleo');
+const Aprender = require('./aprender');
+const Estudos = require('./estudos');
 
 class Eventos {
   constructor() { this.listeners = new Map(); }
@@ -128,8 +130,8 @@ function montar(options = {}) {
     return { ok: true, json: async () => ({ sessoes: options.history || [] }) };
   }
   const window = new Eventos();
-  Object.assign(window, { devicePixelRatio: 1, AudioContext: Contexto, Audio: Media, MusiqueTocarCore: Core, MusiqueTocarAudio: audio });
-  const sandbox = { window, document, console, fetch, Blob, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
+  Object.assign(window, { devicePixelRatio: 1, AudioContext: Contexto, Audio: Media, MusiqueTocarCore: Core, MusiqueTocarAudio: audio, MusiqueTocarAprender: Aprender, MusiqueTocarEstudos: Estudos });
+  const sandbox = { window, document, console, fetch, Blob, performance: { now: () => now * 1000 }, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
     requestAnimationFrame: fn => { const id = ++sequence; rafs.set(id, fn); return id; }, cancelAnimationFrame: id => rafs.delete(id),
     setTimeout: (fn, ms) => { const id = ++sequence; timers.set(id, { at: now + ms / 1000, fn }); return id; }, clearTimeout: id => timers.delete(id) };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'cliente.js'), 'utf8'), sandbox, { filename: 'cliente.js' });
@@ -503,6 +505,198 @@ test('Segundo plano pausa; saída da página fecha captura e revoga áudio local
   h.window.dispatch('pagehide'); await h.settle();
   assert.equal(h.inputs[0].stopped, 1); assert.ok(h.contexts.every(c => c.state === 'closed'));
   assert.ok(h.revoked.some(url => url.startsWith('blob:local-test-')));
+});
+
+async function aprender(h) {
+  await h.event('tj-study-mode', 'change', 'learn');
+  await h.event('tj-connect', 'click'); await h.event('tj-practice', 'click'); await h.advance(0.04);
+}
+async function tocarNota(h, midi, options = {}) {
+  const input = h.inputs[0], hz = 440 * 2 ** ((midi - 69) / 12);
+  for (let i = 0; i < 5; i++) {
+    input.frame({ hz, onset: i === 0 && options.onset !== false, ...(options.frame || {}) }); await h.advance(0.024);
+  }
+}
+test('Biblioteca tem sete estudos e mantém No ritmo como padrão sem abrir a captura', async () => {
+  const h = montar(); await h.settle(); const library = h.$('tj-study');
+  assert.equal(h.$('tj-study-mode').value, 'practice'); assert.equal(library.value, 'primeiro-riff-v1');
+  assert.equal(library.children.filter(o => o.value).length, 7); assert.equal(h.inputs[0].calls.length, 0);
+  await h.event('tj-study', 'change', 'cordas-soltas-v1');
+  assert.equal(h.$('tj-song-title').textContent, Estudos.obter('cordas-soltas-v1').title);
+  assert.match(h.$('tj-study-info').textContent, /Iniciante/); assert.match(h.$('tj-source').textContent, /original Musique/);
+  assert.equal(h.$('tj-section').value, ''); assert.equal(h.$('tj-from').value, '0');
+  assert.equal(h.$('tj-phrases').children[0].getAttribute('aria-pressed'), 'true');
+});
+test('Frases visuais e música inteira sincronizam intervalo, marca da pista e total de notas', async () => {
+  const h = montar({ logado: true }), c = pequeno(); c.sections = [{ id: 'primeira', title: 'Primeira corda', from: 0, to: 1 }, { id: 'segunda', title: 'Segunda corda', from: 1, to: 2 }];
+  await h.chart(c); const chips = h.$('tj-phrases').children;
+  assert.equal(chips.length, 3); chips[2].click(); await h.settle();
+  assert.equal(h.$('tj-section').value, '1'); assert.equal(h.$('tj-from').value, '1'); assert.equal(h.$('tj-to').value, '2');
+  assert.equal(chips[2].getAttribute('aria-pressed'), 'true'); assert.equal(chips[0].getAttribute('aria-pressed'), 'false');
+  assert.equal(h.$('tj-range-fill').style.left, '50%'); assert.equal(h.$('tj-range-fill').style.width, '50%');
+  assert.match(h.$('tj-range-label').textContent, /Segunda corda · 1.00 s a 2.00 s/);
+  await aprender(h); assert.match(h.$('tj-target').textContent, /Corda 5.*solta.*Lá2/);
+  assert.equal(chips[0].disabled, true); await h.event('tj-skip', 'click');
+  assert.equal(h.$('tj-misses').textContent, '1'); await h.event('tj-save', 'click');
+  assert.equal(JSON.parse(h.requests.find(r => r.opts.method === 'POST').opts.body).total, 1);
+  chips[0].click(); await h.settle(); assert.equal(h.$('tj-to').value, '2'); assert.equal(h.$('tj-from').value, '0');
+  assert.equal(h.$('tj-range-fill').style.width, '100%'); assert.equal(h.$('tj-hits').textContent, '—');
+  await h.event('tj-from', 'change', '0.5'); assert.equal(h.$('tj-section').value, 'custom');
+  assert.ok(chips.every(b => b.getAttribute('aria-pressed') === 'false'));
+});
+test('Aprender espera o alvo sem contagem, metrônomo, guia automática ou áudio associado', async () => {
+  for (const local of [false, true]) {
+    const h = montar(); await h.chart(); await h.event('tj-connection-type', 'change', 'interface');
+    const media = local ? await h.associatedAudio() : null; h.$('tj-guide').checked = true;
+    await aprender(h); const position = h.$('tj-seek').value; await h.advance(8);
+    assert.equal(h.oscillators.length, 0); if (media) assert.equal(media.plays, 0);
+    assert.equal(h.$('tj-count').textContent, ''); assert.equal(h.$('tj-seek').value, position);
+    assert.equal(h.$('tj-hits').textContent, '0'); assert.equal(h.$('tj-misses').textContent, '0');
+    assert.equal(h.$('tj-accuracy-panel').hidden, true); assert.equal(h.$('tj-misses-label').textContent, 'PULADAS');
+    for (const id of ['tj-metronome', 'tj-guide', 'tj-backing', 'tj-speed', 'tj-offset', 'tj-loop', 'tj-seek']) assert.equal(h.$(id).disabled, true, id);
+    assert.match(h.$('tj-target').textContent, /Corda 6.*solta.*Mi2/); assert.equal(h.$('tj-target').getAttribute('aria-live'), 'polite');
+  }
+});
+test('Aprender reconhece altura estável e passa ao próximo alvo, rejeitando baixa confiança, oitava e saturação', async () => {
+  const h = montar(); await h.chart(); await aprender(h);
+  await tocarNota(h, 52); await tocarNota(h, 40, { frame: { confidence: 0.4 } }); await tocarNota(h, 40, { frame: { clipped: 0.2 } });
+  assert.equal(h.$('tj-hits').textContent, '0'); await tocarNota(h, 40);
+  assert.equal(h.$('tj-hits').textContent, '1'); assert.match(h.$('tj-target').textContent, /Corda 5.*Lá2/);
+  assert.equal(h.$('tj-seek').value, '1'); assert.equal(h.$('tj-save').disabled, true);
+  await tocarNota(h, 45); assert.equal(h.$('tj-hits').textContent, '2'); assert.match(h.$('tj-target').textContent, /concluído/);
+  assert.equal(h.$('tj-demo').disabled, false); assert.equal(h.$('tj-save').disabled, true, 'Visitante não salva.');
+});
+test('Ouvir nota bloqueia guia, cauda e sustain; só ataque novo pode reconhecer depois', async () => {
+  const h = montar(); await h.chart(); await aprender(h); await h.event('tj-hear-note', 'click');
+  assert.equal(h.oscillators.length, 1); assert.equal(h.$('tj-hear-note').disabled, true); assert.equal(h.$('tj-skip').disabled, true);
+  await tocarNota(h, 40); await h.event('tj-hear-note', 'click'); assert.equal(h.oscillators.length, 1);
+  await h.advance(0.73); await tocarNota(h, 40, { onset: false });
+  assert.equal(h.$('tj-hits').textContent, '0'); assert.equal(h.$('tj-hear-note').disabled, false);
+  await tocarNota(h, 40); assert.equal(h.$('tj-hits').textContent, '1');
+});
+test('Pausa durante a referência preserva bloqueio da cauda ao continuar', async () => {
+  const h = montar(); await h.chart(); await aprender(h); await h.event('tj-hear-note', 'click');
+  await h.advance(0.1); await h.event('tj-pause', 'click'); await h.advance(0.1); await h.event('tj-pause', 'click');
+  await tocarNota(h, 40); assert.equal(h.$('tj-hits').textContent, '0'); assert.equal(h.$('tj-hear-note').disabled, true);
+  await h.advance(0.6); await tocarNota(h, 40, { onset: false }); assert.equal(h.$('tj-hits').textContent, '0');
+  await tocarNota(h, 40); assert.equal(h.$('tj-hits').textContent, '1');
+});
+test('Parar ou trocar frase durante a guia preserva bloqueio ao começar outra rodada', async () => {
+  for (const action of ['stop', 'section']) {
+    const h = montar(), c = pequeno(); c.sections = [{ id: 'primeira', title: 'Primeira', from: 0, to: 1 }];
+    await h.chart(c); await aprender(h); await h.event('tj-hear-note', 'click'); await h.advance(0.06);
+    await h.event('tj-stop', 'click'); if (action === 'section') await h.event('tj-section', 'change', '0');
+    await h.event('tj-practice', 'click'); await tocarNota(h, 40); assert.equal(h.$('tj-hits').textContent, '0');
+    await h.advance(0.7); await tocarNota(h, 40, { onset: false }); assert.equal(h.$('tj-hits').textContent, '0');
+    await tocarNota(h, 40); assert.equal(h.$('tj-hits').textContent, '1');
+  }
+});
+test('Cauda da demonstração sintetizada ou local não vira acerto ao iniciar aprender', async () => {
+  for (const local of [false, true]) {
+    const h = montar(); await h.chart(); if (local) await h.associatedAudio(); await h.event('tj-connect', 'click');
+    await h.event('tj-demo', 'click'); await h.advance(2.06); await h.event('tj-stop', 'click');
+    await h.event('tj-study-mode', 'change', 'learn'); await h.event('tj-practice', 'click'); await tocarNota(h, 40);
+    assert.equal(h.$('tj-hits').textContent, '0'); await h.advance(0.4); await tocarNota(h, 40, { onset: false });
+    assert.equal(h.$('tj-hits').textContent, '0'); await tocarNota(h, 40); assert.equal(h.$('tj-hits').textContent, '1');
+  }
+});
+test('Cauda atravessa mudança de contexto só pelo tempo restante e expira com contexto antigo fechado', async () => {
+  for (const [local, delay] of [[false, 0], [true, 0], [false, 2], [true, 2]]) {
+    const h = montar(); await h.chart(); if (local) await h.associatedAudio();
+    await h.event('tj-demo', 'click'); await h.advance(2.06); await h.event('tj-pause', 'click');
+    const demoContext = h.contexts[0]; demoContext.close();
+    await h.advance(delay); await h.event('tj-connect', 'click');
+    assert.notEqual(h.inputs[0].currentContext, demoContext);
+    await h.event('tj-study-mode', 'change', 'learn'); await h.event('tj-practice', 'click'); await h.advance(0.04);
+    await tocarNota(h, 40);
+    assert.equal(h.$('tj-hits').textContent, delay ? '1' : '0', 'Local=' + local + ', espera=' + delay);
+    if (!delay) {
+      await h.advance(0.4); await tocarNota(h, 40, { onset: false }); assert.equal(h.$('tj-hits').textContent, '0');
+      await tocarNota(h, 40); assert.equal(h.$('tj-hits').textContent, '1');
+    }
+  }
+});
+test('Pausa ignora frames; retomar rejeita frames antigos e exige nova entrada sem perder contagem', async () => {
+  const h = montar(); await h.chart(); await aprender(h); await tocarNota(h, 40);
+  await h.event('tj-pause', 'click'); const oldTime = h.inputs[0].currentContext.currentTime;
+  await tocarNota(h, 45); assert.equal(h.$('tj-hits').textContent, '1'); await h.advance(2);
+  await h.event('tj-pause', 'click'); h.inputs[0].frame({ audioTime: oldTime, hz: 110, onset: true });
+  await h.advance(0.04); await tocarNota(h, 45, { onset: false }); assert.equal(h.$('tj-hits').textContent, '1');
+  await tocarNota(h, 45); assert.equal(h.$('tj-hits').textContent, '2');
+});
+test('Notas repetidas exigem novo ataque e pular conta separadamente sem acerto automático', async () => {
+  const h = montar({ logado: true }), c = pequeno(); c.notes[1] = { ...c.notes[1], string: 6, midi: 40 };
+  await h.chart(c); await aprender(h); await tocarNota(h, 40);
+  await tocarNota(h, 40, { onset: false }); assert.equal(h.$('tj-hits').textContent, '1');
+  await h.event('tj-skip', 'click'); assert.equal(h.$('tj-hits').textContent, '1'); assert.equal(h.$('tj-misses').textContent, '1');
+  assert.match(h.$('tj-score-label').textContent, /2 de 2 notas · sem avaliação de ritmo/);
+  assert.equal(h.$('tj-save').disabled, false); assert.equal(h.$('tj-skip').disabled, true);
+});
+test('Resumo aprender é fechado, completo, sem precisão e mede tempo ativo excluindo pausa', async () => {
+  const h = montar({ logado: true }); await h.chart(); await aprender(h);
+  await tocarNota(h, 40); await h.advance(0.5); await h.event('tj-pause', 'click');
+  await h.advance(30); await h.event('tj-pause', 'click'); await h.advance(0.5); await h.event('tj-skip', 'click');
+  await h.event('tj-save', 'click'); await h.event('tj-save', 'click');
+  const posts = h.requests.filter(r => r.opts.method === 'POST'); assert.equal(posts.length, 1);
+  const payload = JSON.parse(posts[0].opts.body);
+  assert.deepEqual(Object.keys(payload).sort(), ['chartId', 'duration', 'hits', 'mode', 'skipped', 'title', 'total']);
+  assert.equal(payload.mode, 'learn'); assert.equal(payload.total, 2); assert.equal(payload.hits, 1); assert.equal(payload.skipped, 1);
+  assert.ok(payload.duration >= 1.1 && payload.duration < 1.3, 'Tempo ativo real: ' + payload.duration);
+});
+test('Uma nota pulada imediatamente ainda produz duração aceita pelo contrato do servidor', async () => {
+  const h = montar({ logado: true }), c = pequeno(); c.notes = c.notes.slice(0, 1);
+  await h.chart(c); await aprender(h); await h.event('tj-skip', 'click');
+  assert.equal(h.$('tj-save').disabled, false);
+  await h.event('tj-save', 'click');
+  const payload = JSON.parse(h.requests.find(r => r.opts.method === 'POST').opts.body);
+  assert.equal(payload.total, 1); assert.equal(payload.hits, 0); assert.equal(payload.skipped, 1);
+  assert.equal(payload.duration, 0.1); assert.equal(payload.mode, 'learn');
+});
+test('Reconexão recria o motor aprender para o novo relógio, sem reutilizar acertos', async () => {
+  const h = montar(); await h.chart(); await aprender(h); await tocarNota(h, 40); const oldContext = h.inputs[0].currentContext;
+  h.inputs[0].desconectar(); await h.settle(); assert.equal(h.$('tj-practice').disabled, true);
+  await h.event('tj-connect', 'click'); await h.event('tj-pause', 'click');
+  assert.notEqual(h.inputs[0].currentContext, oldContext); assert.equal(h.$('tj-hits').textContent, '0');
+  assert.match(h.$('tj-target').textContent, /Corda 6/); await h.advance(0.04); await tocarNota(h, 40);
+  assert.equal(h.$('tj-hits').textContent, '1');
+});
+test('Trocar ganho ou estudo durante pausa descarta a rodada aprender e áudio de outro estudo', async () => {
+  for (const change of ['gain', 'study']) {
+    const h = montar({ logado: true }); await h.chart(); const media = await h.associatedAudio(); await aprender(h); await tocarNota(h, 40);
+    await h.event('tj-pause', 'click'); await h.event(change === 'gain' ? 'tj-gain' : 'tj-study', change === 'gain' ? 'input' : 'change', change === 'gain' ? '12' : 'cordas-soltas-v1');
+    assert.equal(h.$('tj-hits').textContent, '—'); assert.equal(h.$('tj-save').disabled, true); assert.equal(h.$('tj-pause').disabled, true);
+    if (change === 'study') { assert.equal(media.src, ''); assert.equal(h.$('tj-section').value, ''); }
+  }
+});
+test('Trecho sem notas desabilita começar e guardar; demonstração continua disponível', async () => {
+  const h = montar({ logado: true }), c = pequeno(); c.sections = [{ id: 'vazio', title: 'Intervalo', from: 0.4, to: 0.9 }];
+  await h.chart(c); await h.event('tj-section', 'change', '0'); await h.event('tj-study-mode', 'change', 'learn'); await h.event('tj-connect', 'click');
+  assert.equal(h.$('tj-practice').disabled, true); assert.equal(h.$('tj-save').disabled, true); assert.equal(h.$('tj-demo').disabled, false);
+  await h.event('tj-section', 'change', ''); assert.equal(h.$('tj-practice').disabled, false);
+});
+test('Demonstração permanece audível ao selecionar aprender e não mistura resultados', async () => {
+  const h = montar(); await h.chart(); await h.event('tj-study-mode', 'change', 'learn');
+  await h.event('tj-demo', 'click'); await h.advance(2.3);
+  assert.ok(h.oscillators.length > 4); assert.equal(h.$('tj-learn-panel').hidden, true); assert.equal(h.$('tj-hits').textContent, '—');
+  await h.event('tj-stop', 'click'); assert.equal(h.$('tj-learn-panel').hidden, false);
+});
+test('Aprender completo não repete sozinho mesmo que loop do ritmo esteja marcado', async () => {
+  const h = montar(); await h.chart(); h.$('tj-loop').checked = true; await h.event('tj-loop', 'change'); await aprender(h);
+  await h.event('tj-skip', 'click'); await h.advance(0.04); await h.event('tj-skip', 'click'); await h.advance(4);
+  assert.equal(h.$('tj-misses').textContent, '2'); assert.equal(h.$('tj-demo').disabled, false); assert.equal(h.oscillators.length, 0);
+});
+test('Aprender limita a rodada a duas horas e reinicia ao continuar após o limite', async () => {
+  const h = montar(); await h.chart(); await aprender(h); await tocarNota(h, 40);
+  h.inputs[0].currentContext.currentTime = 7200.01; h.inputs[0].frame({ hz: 110, onset: true });
+  assert.match(h.$('tj-status').textContent, /duas horas/); assert.equal(h.$('tj-save').disabled, true);
+  assert.equal(h.$('tj-demo').disabled, false); await h.event('tj-pause', 'click');
+  assert.equal(h.$('tj-hits').textContent, '0'); assert.match(h.$('tj-target').textContent, /Corda 6/);
+});
+test('Histórico distingue aprender do ritmo sem inventar porcentagem de precisão', async () => {
+  const h = montar({ logado: true, history: [{ title: 'Aprender', mode: 'learn', hits: 3, skipped: 2, createdAt: '2026-10-15T12:00:00Z' }, { title: 'No ritmo', mode: 'practice', accuracy: 80, createdAt: '2026-10-15T12:00:00Z' }] });
+  await h.settle(); const list = h.$('tj-history');
+  assert.match(list.children[0].textContent, /3 reconhecidas · 2 puladas/); assert.doesNotMatch(list.children[0].textContent, /%|NaN/);
+  assert.match(list.children[1].textContent, /80%/);
 });
 
 (async () => {

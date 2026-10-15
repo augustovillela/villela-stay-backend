@@ -1,0 +1,115 @@
+// Estudos originais Musique. Dados de autoria: não são transcrições de músicas.
+// Cada consulta devolve um arranjo novo; editar uma cópia não muda a biblioteca.
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./nucleo'));
+  else root.MusiqueTocarEstudos = factory(root.MusiqueTocarCore);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Core) {
+  'use strict';
+  if (!Core || typeof Core.validarChart !== 'function' || typeof Core.demoChart !== 'function') {
+    throw new Error('Carregue MusiqueTocarCore antes da biblioteca de estudos.');
+  }
+
+  var TUNING = [40, 45, 50, 55, 59, 64];
+  // Eventos: [corda, casa, tempos]. Corda 1 é a mi aguda. Cada frase ocupa
+  // um ou dois compassos de 4 tempos; a pausa final de cada evento permite
+  // separar ataques, inclusive ao repetir a mesma altura.
+  var DEFINICOES = [
+    {
+      id: 'primeiro-riff-v1', title: 'Primeiro riff', level: 'Iniciante · revisão',
+      objective: 'Revisar as seis cordas e as primeiras casas no estudo original.',
+      original: true
+    },
+    {
+      id: 'cordas-soltas-v1', title: 'Cordas soltas', level: 'Iniciante · 1', bpm: 60,
+      objective: 'Reconhecer cada corda solta e fazer dois ataques separados, abafando entre eles.',
+      phrases: [
+        { title: 'Mi grave', notes: [[6, 0, 2], [6, 0, 2]] },
+        { title: 'Lá', notes: [[5, 0, 2], [5, 0, 2]] },
+        { title: 'Ré', notes: [[4, 0, 2], [4, 0, 2]] },
+        { title: 'Sol', notes: [[3, 0, 2], [3, 0, 2]] },
+        { title: 'Si', notes: [[2, 0, 2], [2, 0, 2]] },
+        { title: 'Mi aguda', notes: [[1, 0, 2], [1, 0, 2]] }
+      ]
+    },
+    {
+      id: 'cordas-vizinhas-v1', title: 'Cordas vizinhas', level: 'Iniciante · 2', bpm: 64,
+      objective: 'Alternar duas cordas vizinhas sem deixar a anterior soar junto.',
+      phrases: [
+        { title: 'Mi e lá graves', notes: [[6, 0, 1], [5, 0, 1], [6, 0, 1], [5, 0, 1], [6, 0, 1], [5, 0, 1], [6, 0, 1], [5, 0, 1]] },
+        { title: 'Ré e sol', notes: [[4, 0, 1], [3, 0, 1], [4, 0, 1], [3, 0, 1], [4, 0, 1], [3, 0, 1], [4, 0, 1], [3, 0, 1]] },
+        { title: 'Si e mi agudas', notes: [[2, 0, 1], [1, 0, 1], [2, 0, 1], [1, 0, 1], [2, 0, 1], [1, 0, 1], [2, 0, 1], [1, 0, 1]] }
+      ]
+    },
+    {
+      id: 'primeiras-casas-v1', title: 'Primeiras casas', level: 'Iniciante · 3', bpm: 66,
+      objective: 'Combinar cordas soltas e casas 1, 2 e 3, pressionando uma nota de cada vez.',
+      phrases: [
+        { title: 'Mi, fá sustenido e sol', notes: [[6, 0, 1], [6, 2, 1], [6, 3, 2], [6, 2, 1], [6, 0, 1], [5, 2, 2]] },
+        { title: 'Lá, si e dó', notes: [[5, 0, 1], [5, 2, 1], [5, 3, 2], [5, 2, 1], [5, 0, 1], [4, 2, 2]] },
+        { title: 'Ré, mi, sol e lá', notes: [[4, 0, 1], [4, 2, 1], [3, 0, 2], [3, 2, 1], [3, 0, 1], [4, 0, 2]] },
+        { title: 'Si, dó, ré e mi', notes: [[2, 0, 1], [2, 1, 1], [2, 3, 2], [1, 0, 1], [2, 3, 1], [2, 0, 2]] }
+      ]
+    },
+    {
+      id: 'pentatonica-mi-v1', title: 'Pentatônica em mi', level: 'Iniciante · 4', bpm: 72,
+      objective: 'Percorrer mi, sol, lá, si e ré em pequenas frases, sem mudar de posição.',
+      phrases: [
+        { title: 'Subida pelos graves', notes: [[6, 0, 1], [6, 3, 1], [5, 0, 1], [5, 2, 1], [4, 0, 1], [4, 2, 1], [3, 0, 1], [3, 2, 1]] },
+        { title: 'Chegada ao mi agudo', notes: [[2, 0, 1], [2, 3, 1], [1, 0, 1], [2, 3, 1], [2, 0, 1], [3, 2, 1], [3, 0, 1], [4, 2, 1]] },
+        { title: 'Volta aos graves', notes: [[4, 0, 1], [5, 2, 1], [5, 0, 1], [6, 3, 1], [6, 0, 1], [6, 3, 1], [5, 0, 1], [5, 2, 1]] },
+        { title: 'Resposta em mi', notes: [[4, 0, 1], [4, 2, 1], [3, 0, 1], [4, 2, 1], [4, 0, 1], [5, 2, 1], [6, 3, 1], [6, 0, 1]] }
+      ]
+    },
+    {
+      id: 'saltos-entre-cordas-v1', title: 'Saltos entre cordas', level: 'Iniciante · 5', bpm: 76,
+      objective: 'Pular uma corda com precisão e reconhecer a mesma nota em oitavas diferentes.',
+      phrases: [
+        { title: 'Oitavas de mi e lá', notes: [[6, 0, 1], [4, 2, 1], [6, 0, 1], [4, 2, 1], [5, 0, 1], [3, 2, 1], [5, 0, 1], [3, 2, 1]] },
+        { title: 'Oitavas de ré e sol', notes: [[4, 0, 1], [2, 3, 1], [4, 0, 1], [2, 3, 1], [3, 0, 1], [1, 3, 1], [3, 0, 1], [1, 3, 1]] },
+        { title: 'Retorno ao mi', notes: [[3, 2, 1], [5, 0, 1], [3, 2, 1], [5, 0, 1], [4, 2, 1], [6, 0, 1], [4, 2, 1], [6, 0, 1]] }
+      ]
+    },
+    {
+      id: 'frase-de-revisao-v1', title: 'Frase de revisão', level: 'Iniciante · 6', bpm: 80,
+      objective: 'Juntar ataques repetidos, primeiras casas, trocas de corda e pequenos saltos em mi menor.',
+      phrases: [
+        { title: 'Pergunta nos graves', notes: [[6, 0, 1], [6, 0, 1], [6, 3, 1], [5, 0, 1], [5, 2, 2], [4, 2, 2]] },
+        { title: 'Resposta nos agudos', notes: [[3, 0, 1], [3, 2, 1], [2, 0, 1], [2, 3, 1], [1, 0, 2], [2, 0, 2]] },
+        { title: 'Caminho de volta', notes: [[3, 2, 1], [3, 0, 1], [4, 2, 1], [4, 0, 1], [5, 2, 2], [6, 3, 2]] },
+        { title: 'Final em mi', notes: [[6, 0, 1], [4, 2, 1], [3, 0, 1], [4, 2, 1], [4, 0, 1], [5, 2, 1], [6, 3, 1], [6, 0, 1]] }
+      ]
+    }
+  ];
+
+  function construir(definicao) {
+    if (definicao.original) return Core.demoChart();
+    var beat = 60 / definicao.bpm, cursor = 0, notes = [], sections = [];
+    function segundos(tempos) { return Math.round((2 + tempos * beat) * 1000000) / 1000000; }
+    definicao.phrases.forEach(function (phrase, i) {
+      var inicio = cursor;
+      phrase.notes.forEach(function (event) {
+        var string = event[0], fret = event[1], tempos = event[2];
+        notes.push({ id: definicao.id + '-n' + (notes.length + 1), time: segundos(cursor),
+          duration: Math.round(tempos * beat * 0.72 * 1000000) / 1000000,
+          string: string, fret: fret, midi: TUNING[6 - string] + fret });
+        cursor += tempos;
+      });
+      sections.push({ id: definicao.id + '-f' + (i + 1), title: phrase.title, from: segundos(inicio), to: segundos(cursor) });
+    });
+    return Core.validarChart({ id: definicao.id, title: definicao.title, bpm: definicao.bpm,
+      duration: segundos(cursor) + 2, tuning: TUNING.slice(), notes: notes, sections: sections, metadata: { demo: true } });
+  }
+
+  function listar() {
+    return DEFINICOES.map(function (definicao) {
+      return { id: definicao.id, title: definicao.title, objective: definicao.objective,
+        level: definicao.level, chart: construir(definicao) };
+    });
+  }
+  function obter(id) {
+    var definicao = DEFINICOES.find(function (item) { return item.id === id; });
+    return definicao ? construir(definicao) : null;
+  }
+
+  return { listar: listar, obter: obter };
+});

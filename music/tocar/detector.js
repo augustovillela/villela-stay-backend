@@ -76,18 +76,29 @@
   }
 
   function criar() {
-    var energiaAnterior = 0, ultimoAtaque = -Infinity;
+    var energiaAnterior = 0, ultimoAtaque = -Infinity, candidato = null;
+    var PRAZO_ATAQUE = 0.075, DEBOUNCE_ATAQUE = 0.09, SUBIDA_ATAQUE = 1.65;
     return {
       analisar: function (amostras, taxa, audioTime) {
         var r = detectar(amostras, taxa);
         var tempo = Number.isFinite(audioTime) ? audioTime : 0;
-        var onset = r.hz !== null && r.confidence >= 0.85 && r.rms > PISO * 1.5 &&
-          r.rms > energiaAnterior * 1.65 && tempo - ultimoAtaque >= 0.09;
-        if (onset) ultimoAtaque = tempo;
+        // O transiente da palhetada pode elevar a energia antes de haver
+        // periodicidade. Guardar a subida por até 75 ms permite confirmá-la
+        // depois, sem renovar seu prazo nem reutilizar o mesmo candidato.
+        if (candidato && (tempo < candidato.tempo || tempo - candidato.tempo > PRAZO_ATAQUE + 1e-7 ||
+            r.clipped > 0.08 || r.rms <= PISO * 1.5 || r.rms <= candidato.energia * SUBIDA_ATAQUE)) candidato = null;
+        if (!candidato && r.clipped <= 0.08 && r.rms > PISO * 1.5 &&
+            r.rms > energiaAnterior * SUBIDA_ATAQUE && tempo - ultimoAtaque >= DEBOUNCE_ATAQUE) {
+          candidato = { tempo: tempo, energia: energiaAnterior };
+        }
+        var onset = candidato !== null && r.hz !== null && r.confidence >= 0.85;
+        var onsetTime = onset ? candidato.tempo : null;
+        if (onset) { ultimoAtaque = tempo; candidato = null; }
         energiaAnterior = r.rms;
-        return { audioTime: tempo, hz: r.hz, confidence: r.confidence, rms: r.rms, onset: onset, clipped: r.clipped };
+        return { audioTime: tempo, hz: r.hz, confidence: r.confidence, rms: r.rms,
+          onset: onset, onsetTime: onsetTime, clipped: r.clipped };
       },
-      reiniciar: function () { energiaAnterior = 0; ultimoAtaque = -Infinity; }
+      reiniciar: function () { energiaAnterior = 0; ultimoAtaque = -Infinity; candidato = null; }
     };
   }
   return { detectar: detectar, criar: criar, faixa: { min: MIN_HZ, max: MAX_HZ } };

@@ -8,10 +8,11 @@ const { db, novoId, nowISO } = require('../db');
 const { layout, esc } = require('../paginas');
 
 const INDICACAO = 'Indicação de treino calculada no seu aparelho; não é nota nem avaliação do professor.';
-const CAMPOS = new Set(['chartId', 'title', 'total', 'hits', 'misses', 'accuracy', 'speed', 'offsetMs', 'duration', 'mode']);
+const CAMPOS_PRATICA = new Set(['chartId', 'title', 'total', 'hits', 'misses', 'accuracy', 'speed', 'offsetMs', 'duration', 'mode']);
+const CAMPOS_APRENDER = new Set(['chartId', 'title', 'total', 'hits', 'skipped', 'duration', 'mode']);
 const ARQUIVOS = Object.freeze([
   'cliente.js', 'estilo.css', 'nucleo.js', 'audio.js', 'detector.js',
-  'capturar-worklet.js', 'detector-worker.js',
+  'capturar-worklet.js', 'detector-worker.js', 'aprender.js', 'estudos.js',
 ]);
 
 function invalido(mensagem) {
@@ -28,13 +29,25 @@ function numero(valor, minimo, maximo, nome, inteiro = false) {
 /** Contrato fechado: dados inesperados (inclusive áudio e id de usuário) são recusados. */
 function validarResumo(b) {
   if (!b || typeof b !== 'object' || Array.isArray(b)) throw invalido('Resumo de treino inválido.');
-  if (Object.keys(b).some((chave) => !CAMPOS.has(chave))) throw invalido('O resumo contém campos não permitidos.');
-  if (b.mode !== 'practice') throw invalido('Somente prática com instrumento pode ser guardada; demonstrações não entram no histórico.');
+  if (b.mode !== 'practice' && b.mode !== 'learn') throw invalido('Somente prática com instrumento pode ser guardada; demonstrações não entram no histórico.');
+  const campos = b.mode === 'learn' ? CAMPOS_APRENDER : CAMPOS_PRATICA;
+  if (Object.keys(b).some((chave) => !campos.has(chave))) throw invalido('O resumo contém campos não permitidos.');
   if (typeof b.chartId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,119}$/.test(b.chartId)) throw invalido('Identificador do arranjo inválido.');
   if (typeof b.title !== 'string' || !b.title.trim() || b.title.length > 160 || /[\x00-\x1f\x7f<>]/.test(b.title)) throw invalido('Título do arranjo inválido.');
 
   const total = numero(b.total, 1, 10000, 'Total de notas', true);
   const hits = numero(b.hits, 0, total, 'Acertos', true);
+  const base = {
+    chartId: b.chartId, title: b.title.trim(), total, hits,
+    duration: numero(b.duration, 0.1, 7200, 'Duração'), mode: b.mode,
+  };
+  // Aprender não tem penalidade temporal nem porcentagem de precisão.
+  // Somente rodadas concluídas, com cada nota reconhecida ou pulada, são guardadas.
+  if (b.mode === 'learn') {
+    const skipped = numero(b.skipped, 0, total, 'Notas puladas', true);
+    if (hits + skipped !== total) throw invalido('O total deve corresponder às notas reconhecidas e puladas.');
+    return { ...base, skipped };
+  }
   const misses = numero(b.misses, 0, total, 'Notas não reconhecidas', true);
   if (hits + misses !== total) throw invalido('O total deve corresponder aos acertos e às notas não reconhecidas.');
   numero(b.accuracy, 0, 100, 'Porcentagem');
@@ -44,13 +57,9 @@ function validarResumo(b) {
   if (Math.abs(b.accuracy - accuracy) > 0.051) throw invalido('A porcentagem não corresponde às notas informadas.');
 
   return {
-    chartId: b.chartId,
-    title: b.title.trim(),
-    total, hits, misses, accuracy,
+    ...base, misses, accuracy,
     speed: numero(b.speed, 0.25, 1.5, 'Velocidade'),
     offsetMs: numero(b.offsetMs, -1000, 1000, 'Compensação de atraso'),
-    duration: numero(b.duration, 0.1, 7200, 'Duração'),
-    mode: 'practice',
   };
 }
 
@@ -94,6 +103,8 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <noscript><div class="wrap"><p>Ative o JavaScript para abrir a pista e escutar seu violão ou guitarra.</p></div></noscript>
 <script src="/music/tocar/nucleo.js" defer></script>
 <script src="/music/tocar/audio.js" defer></script>
+<script src="/music/tocar/aprender.js" defer></script>
+<script src="/music/tocar/estudos.js" defer></script>
 <script src="/music/tocar/cliente.js" defer></script>`;
     res.set('Cache-Control', 'no-store').type('html').send(layout('Tocar junto · violão e guitarra | Musique', corpo, {
       caminho: '/music/tocar', noApp: estado.logado,
