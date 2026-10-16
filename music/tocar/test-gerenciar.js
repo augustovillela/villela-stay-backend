@@ -85,8 +85,25 @@ test('Importação inválida ou grande preserva rascunho anterior e impede escri
 });
 test('JSON puro e documento completo são importados sem alterar estudos originais',async()=>{
   const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await h.settle();await h.event('tg-work','change','obra-a');await importar(h,pequeno());assert.equal(h.$('tg-title').value,'Duas cordas');assert.match(h.$('tg-chart-info').textContent,/2 notas/);
-  const d=documento(pequeno(),'audio-b');await importar(h,d);assert.equal(h.$('tg-media').value,'audio-b');await h.event('tg-save','click');assert.equal(s.current.documento.mediaId,'audio-b');assert.equal(require('./estudos').obter('primeiro-riff-v1').metadata.demo,true);
+  const d=documento(pequeno(),'audio-b');d.mediaOffsetMs=1250;await importar(h,d);assert.equal(h.$('tg-media').value,'audio-b');assert.equal(h.$('tg-media-offset').value,'1250');await h.event('tg-save','click');assert.equal(s.current.documento.mediaId,'audio-b');assert.equal(s.current.documento.mediaOffsetMs,1250);assert.equal(require('./estudos').obter('primeiro-riff-v1').metadata.demo,true);
 });
+test('Deslocamento de mídia é acessível, acompanha o rascunho e zera ao trocar ou remover o áudio',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);
+  assert.equal(h.$('tg-media-offset').disabled,true);assert.match(h.$('tg-media-offset-help').textContent,/Escolha um áudio/);
+  await h.event('tg-media','change','audio-a');assert.equal(h.$('tg-media-offset').disabled,false);await h.event('tg-media-offset','input','1250');
+  assert.equal(h.$('tg-preview').hidden,true);await h.event('tg-save','click');assert.equal(s.current.documento.mediaOffsetMs,1250);
+  const payload=JSON.parse(h.requests.filter(r=>r.opts.method==='PUT').at(-1).opts.body);assert.equal(payload.documento.mediaOffsetMs,1250);
+  await h.event('tg-media','change','audio-b');assert.equal(h.$('tg-media-offset').value,'0');
+  await h.event('tg-media','change','');assert.equal(h.$('tg-media-offset').value,'0');assert.equal(h.$('tg-media-offset').disabled,true);
+  await h.event('tg-save','click');assert.equal(s.current.documento.mediaId,'');assert.equal(Object.prototype.hasOwnProperty.call(s.current.documento,'mediaOffsetMs'),false);
+  assert.equal(Object.prototype.hasOwnProperty.call(JSON.parse(h.requests.filter(r=>r.opts.method==='PUT').at(-1).opts.body).documento,'mediaOffsetMs'),false);
+});
+
+test('Deslocamento de mídia inválido não envia alteração',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);await h.event('tg-media','change','audio-a');await h.event('tg-media-offset','input','600001');await h.event('tg-save','click');
+  assert.equal(h.requests.filter(r=>r.opts.method==='PUT').length,0);assert.match(h.$('tg-status').textContent,/deslocamento de mídia/);
+});
+
 test('MIDI é analisado localmente e exige confirmação explícita antes de trocar o rascunho',async()=>{
   const s=servidor(),midi=importadorMidi(),h=montar({page:'gestao',logado:true,fetch:s.fetch,importador:midi});await abrir(h);const before=copy(s.current.documento);
   await analisarMidi(h);assert.equal(midi.calls.analisar.length,1);assert.equal(midi.calls.criar.length,0);assert.equal(h.$('tg-midi-preview').hidden,false);assert.match(h.$('tg-midi-info').textContent,/analisado localmente/);assert.equal(h.$('tg-save').disabled,true);assert.equal(h.$('tg-preview').hidden,true);assert.equal(h.$('tg-title').disabled,true);assert.equal(h.$('tg-json').disabled,true);assert.equal(h.$('te-note-fret').disabled,true);

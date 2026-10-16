@@ -9,7 +9,7 @@
   var NIVEIS = Object.freeze(['iniciante', 'intermediario', 'avancado']);
   var TECNICAS = Object.freeze(['notas-isoladas', 'cordas-soltas', 'troca-de-cordas', 'escalas', 'arpejos']);
   var LIMITE_BYTES = 1048576;
-  var CAMPOS = ['title', 'instrument', 'level', 'technique', 'objective', 'credits', 'mediaId', 'chart'];
+  var CAMPOS = ['title', 'instrument', 'level', 'technique', 'objective', 'credits', 'mediaId', 'mediaOffsetMs', 'chart'];
   var PADRAO = [40, 45, 50, 55, 59, 64];
 
   function exigir(ok, mensagem) { if (!ok) throw new Error(mensagem); }
@@ -59,6 +59,15 @@
     var mediaId = input.mediaId === undefined ? '' : input.mediaId;
     exigir(typeof mediaId === 'string' && (mediaId === '' || /^[a-zA-Z0-9_-]{1,64}$/.test(mediaId)),
       'Identificador da mídia inválido: deixe vazio ou use até 64 letras, números, _ ou -.');
+    var temMidia = mediaId !== '';
+    var temDeslocamento = Object.prototype.hasOwnProperty.call(input, 'mediaOffsetMs');
+    var mediaOffsetMs;
+    if (!temMidia) exigir(!temDeslocamento, 'O deslocamento de mídia só pode existir quando houver um áudio associado.');
+    else {
+      mediaOffsetMs = temDeslocamento ? input.mediaOffsetMs : 0;
+      exigir(Number.isSafeInteger(mediaOffsetMs) && mediaOffsetMs >= 0 && mediaOffsetMs <= 600000,
+        'O deslocamento de mídia deve ser um número inteiro de 0 a 600000 ms.');
+    }
     var chart = Core.validarChart(input.chart);
     exigir(chart.title === title, 'O título do documento deve ser igual ao título do arranjo (chart.title).');
     exigir(chart.tuning.every(function (midi, i) { return midi === PADRAO[i]; }),
@@ -66,8 +75,11 @@
     // Importar para o catálogo não atribui a autoria do estudo ao Musique.
     // Todo dado musical normalizado pelo núcleo permanece intacto.
     chart.metadata = { demo: false };
-    return { title: title, instrument: instrument, level: level, technique: technique,
-      objective: objective, credits: credits, mediaId: mediaId, chart: chart };
+    var documento = { title: title, instrument: instrument, level: level, technique: technique,
+      objective: objective, credits: credits, mediaId: mediaId };
+    if (temMidia) documento.mediaOffsetMs = mediaOffsetMs;
+    documento.chart = chart;
+    return documento;
   }
 
   return { validarDocumento: validarDocumento, INSTRUMENTOS: INSTRUMENTOS,

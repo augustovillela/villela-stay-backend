@@ -724,7 +724,7 @@ test('Histórico distingue aprender do ritmo sem inventar porcentagem de precis�
 });
 
 function resposta(data, status = 200) { return {ok:status>=200&&status<300,status,json:async()=>data}; }
-function documento(c = pequeno(), mediaId = '') { return {title:c.title,instrument:'violao',level:'iniciante',technique:'notas-isoladas',objective:'Praticar duas notas',credits:'Estudo de teste',mediaId,chart:c}; }
+function documento(c = pequeno(), mediaId = '', mediaOffsetMs) { const d={title:c.title,instrument:'violao',level:'iniciante',technique:'notas-isoladas',objective:'Praticar duas notas',credits:'Estudo de teste',mediaId,chart:c};if(mediaId&&mediaOffsetMs!==undefined)d.mediaOffsetMs=mediaOffsetMs;return d; }
 function itemCatalogo(id = 'arranjo-a', versionId = 'versao-1') { return {id,versionId,versionNumber:1,title:'Duas cordas',obra:{id:'obra-a',titulo:'Obra própria',artista:'Autor'},instrument:'violao',level:'iniciante',technique:'notas-isoladas',objective:'Praticar duas notas',credits:'Estudo de teste',hasAudio:false}; }
 function fetchCatalogo(extra) {
   return async(url,opts)=> {
@@ -793,6 +793,31 @@ test('Mídia remota atrasada não volta após mudar para um estudo',async()=>{
   let release;const h=montar({logado:true,fetch:fetchCatalogo(url=>url.endsWith('/audio')?new Promise(r=>{release=r;}):url.includes('/versoes/')?resposta({arranjo:itemCatalogo(),documento:documento(pequeno(),'audio-a')}):null)});await h.settle();
   const pending=h.$('tc-results').children[0].children.at(-1).click();await h.settle();await h.event('tj-study','change','cordas-soltas-v1');
   release(resposta({url:'https://audio.example.test/temporario',mime:'audio/mpeg',expiresIn:600}));await Promise.all(pending);assert.equal(h.medias.length,0);assert.equal(h.$('tj-remote-audio').hidden,true);
+});
+test('Mídia remota usa deslocamento do documento sem alterar a compensação de captura',async()=>{
+  const d=documento(pequeno(),'audio-a',1500);
+  const h=montar({logado:true,fetch:fetchCatalogo(url=>url.endsWith('/audio')?resposta({url:'https://audio.example.test/deslocada',mime:'audio/mpeg',expiresIn:600}):url.includes('/versoes/')?resposta({arranjo:itemCatalogo(),documento:d}):null)});
+  await abrirPrimeiro(h);const media=h.medias[0];media.duration=3.5;media.onloadedmetadata();
+  await h.event('tj-offset','change','300');await h.event('tj-demo','click');await h.advance(2.05);
+  assert.ok(media.currentTime>=1.5&&media.currentTime<1.7,'a mídia começa no ponto lógico mais o deslocamento');
+  await h.event('tj-seek','input','1');assert.equal(media.currentTime,2.5);
+  await h.event('tj-pause','click');await h.advance(.06);assert.ok(media.currentTime>=2.5&&media.currentTime<2.7);
+});
+test('Prévia do rascunho usa o mesmo deslocamento de mídia',async()=>{
+  const d=documento(pequeno(),'audio-a',1500);
+  const h=montar({logado:true,search:'?previa=arranjo-a&revisao=3',fetch:async url=>url.endsWith('/audio?revision=3')?resposta({url:'https://audio.example.test/previa-deslocada',mime:'audio/mpeg',expiresIn:600}):resposta({arranjo:{id:'arranjo-a',revision:3,documento:d}})});
+  await h.settle();await h.settle();await h.settle();const media=h.medias[0];assert.ok(media,'prévia sem mídia: '+h.$('tj-status').textContent+'; '+h.requests.map(r=>r.url).join(', '));media.duration=3.5;media.onloadedmetadata();await h.event('tj-demo','click');await h.advance(2.05);
+  assert.ok(media.currentTime>=1.5&&media.currentTime<1.7,'a prévia inicia a faixa no ponto alinhado ao arranjo');
+  await h.event('tj-seek','input','1');assert.equal(media.currentTime,2.5);
+});
+test('Mídia remota exige duração que cubra arranjo e deslocamento',async()=>{
+  for(const [duration,aceita] of [[3.39,false],[3.4,true]]){
+    const d=documento(pequeno(),'audio-a',1500);
+    const h=montar({logado:true,fetch:fetchCatalogo(url=>url.endsWith('/audio')?resposta({url:'https://audio.example.test/duracao-'+duration,mime:'audio/mpeg',expiresIn:600}):url.includes('/versoes/')?resposta({arranjo:itemCatalogo(),documento:d}):null)});
+    await abrirPrimeiro(h);const media=h.medias[0];media.duration=duration;media.onloadedmetadata();
+    assert.equal(media.src !== '',aceita,String(duration));
+    if(!aceita)assert.match(h.$('tj-status').textContent,/mais curto que o arranjo e seu alinhamento/);
+  }
 });
 test('Erro da faixa mostra recuperação; URL temporária é renovada sem gravar ou revogar URL remota',async()=>{
   let count=0;const h=montar({logado:true,fetch:fetchCatalogo(url=>url.endsWith('/audio')?resposta({url:'https://audio.example.test/'+(++count),mime:'audio/mpeg',expiresIn:600}):url.includes('/versoes/')?resposta({arranjo:itemCatalogo(),documento:documento(pequeno(),'audio-a')}):null)});

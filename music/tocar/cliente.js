@@ -130,9 +130,15 @@
   function current() {
     if (!state.running || !ctx || state.mode === 'learn') return state.position;
     if (media && withBacking() && mediaStarting) return state.position;
-    if (media && withBacking() && !media.paused && state.position >= state.from) return media.currentTime;
+    if (media && withBacking() && !media.paused && state.position >= state.from) return mediaToChart(media.currentTime);
     return state.start + (ctx.currentTime - state.origin) * state.speed;
   }
+  function mediaOffsetSeconds() {
+    return source && Number.isSafeInteger(source.mediaOffsetMs) && source.mediaOffsetMs >= 0 ? source.mediaOffsetMs / 1000 : 0;
+  }
+  function chartToMedia(time) { return Math.max(0, time + mediaOffsetSeconds()); }
+  function mediaToChart(time) { return Math.max(0, time - mediaOffsetSeconds()); }
+  function mediaDurationNeeded() { return chart.duration + mediaOffsetSeconds(); }
   function withBacking() { return state.mode === 'demo' || (state.mode !== 'learn' && $('tj-backing').checked); }
   function learnDuration() { return state.learnElapsed + (state.learnStartedAt === null || !ctx ? 0 : Math.max(0, ctx.currentTime - state.learnStartedAt)); }
   function learnTarget() {
@@ -205,7 +211,7 @@
   function stop(reset) {
     pause(); state.mode = 'idle'; state.judge = null; state.learner = null; state.learnContext = null; state.learnElapsed = 0; state.learnStartedAt = null; state.guideUntil = 0;
     if (reset !== false) state.position = state.from;
-    if (media) media.currentTime = Math.max(0, state.position);
+    if (media) media.currentTime = chartToMedia(Math.max(0, state.position));
     text('tj-mode', 'PRONTO PARA TOCAR'); text('tj-pause', 'Pausar'); updateScore(); updateTransport();
   }
   async function start(mode, resume) {
@@ -236,7 +242,7 @@
       if (mode === 'practice' && !state.judge.resumo().total) { stop(); msg('Este trecho não contém notas. Escolha um trecho do arranjo.', true); return; }
       state.mode = mode; state.start = state.position; state.origin = ctx.currentTime; state.running = true;
       state.endedAt = null; mediaStarting = false; scheduleReset(state.position, startWithCountIn);
-      if (media) { media.pause(); media.currentTime = Math.max(state.from, state.position); media.playbackRate = state.speed; }
+      if (media) { media.pause(); media.currentTime = chartToMedia(Math.max(state.from, state.position)); media.playbackRate = state.speed; }
       text('tj-mode', mode === 'demo' ? 'DEMONSTRAÇÃO · SEM AVALIAÇÃO' : mode === 'learn' ? 'APRENDER · NOTA POR NOTA' : 'PRÁTICA · NOTAS ISOLADAS');
       text('tj-pause', 'Pausar');
       msg(mode === 'demo' ? 'Observe os números das casas chegando à linha de tocar.' : mode === 'learn' ? 'Toque a nota indicada no seu tempo. Ouça a referência ou pule quando precisar.' : 'Toque uma nota por vez. A indicação de corda e casa vem do arranjo.');
@@ -323,7 +329,7 @@
       media.preload='metadata'; media.preservesPitch=true; media.mozPreservesPitch=true; media.webkitPreservesPitch=true; media.volume=0.65;media.playbackRate=state.speed;
       reference.expiresAt = performance.now() + Math.max(1, Math.min(600, Number(data.expiresIn) || 600)) * 1000;
       media.onerror=function(){if(selected!==media)return;pause();resetMedia();reference.expiresAt=0;msg('Não consegui reproduzir a faixa. Recarregue o áudio para tentar novamente.',true);};
-      media.onloadedmetadata=function(){if(selected!==media)return;if(!Number.isFinite(media.duration)||media.duration<chart.duration-0.1){pause();resetMedia();reference.expiresAt=0;msg('O áudio é mais curto que o arranjo. O responsável precisa revisar esta versão.',true);}};
+      media.onloadedmetadata=function(){if(selected!==media)return;if(!Number.isFinite(media.duration)||media.duration<mediaDurationNeeded()-0.1){pause();resetMedia();reference.expiresAt=0;msg('O áudio é mais curto que o arranjo e seu alinhamento. O responsável precisa revisar esta versão.',true);}};
       text('tj-media-label','Áudio associado à versão'); return true;
     } catch(e) { if(ticket===remoteTicket && remoteAudio===reference)msg('Áudio indisponível: '+e.message,true); return false; }
     finally{if(ticket===remoteTicket){remoteLoading=false;updateTransport();}}
@@ -337,7 +343,7 @@
       if(ticket!==chartTicket)return;
       if(!a || a.id!==item.id || a.versionId!==item.versionId)throw new Error('A versão recebida não corresponde à selecionada.');
       resetMedia(); remoteAudio=null;
-      applyChart(doc.chart,{kind:'catalog',arranjoId:a.id,versionId:a.versionId,versionNumber:a.versionNumber,objective:doc.objective,credits:doc.credits});
+      applyChart(doc.chart,{kind:'catalog',arranjoId:a.id,versionId:a.versionId,versionNumber:a.versionNumber,objective:doc.objective,credits:doc.credits,mediaOffsetMs:doc.mediaOffsetMs});
       msg('Versão '+a.versionNumber+' carregada. Escolha o trecho e o modo de prática.');
       if(doc.mediaId){remoteAudio={path:'/catalogo/'+encodeURIComponent(a.id)+'/versoes/'+encodeURIComponent(a.versionId)+'/audio',expiresAt:0};await loadRemoteAudio(remoteAudio);}
     } catch(e){if(ticket===chartTicket)msg('Não foi possível abrir este arranjo: '+e.message,true);}
@@ -352,7 +358,7 @@
       if(ticket!==chartTicket)return;
       if(!a || a.id!==id || a.revision!==revision)throw new Error('O rascunho mudou. Reabra a prévia pela gestão para revisar a versão atual.');
       var doc=Formato.validarDocumento(a.documento); previewReady=true;
-      applyChart(doc.chart,{kind:'preview',revision:revision,objective:doc.objective,credits:doc.credits});
+      applyChart(doc.chart,{kind:'preview',revision:revision,objective:doc.objective,credits:doc.credits,mediaOffsetMs:doc.mediaOffsetMs});
       msg('Prévia de revisão: apenas demonstração. Volte à gestão para publicar.');
       if(doc.mediaId){remoteAudio={path:'/gestao/arranjos/'+encodeURIComponent(id)+'/audio?revision='+revision,expiresAt:0};await loadRemoteAudio(remoteAudio);}
     }catch(e){if(ticket===chartTicket){previewReady=false;msg(e.message,true);}}
@@ -375,7 +381,7 @@
       if (state.endedAt !== null && ctx.currentTime - state.endedAt >= 0.4) ending();
       else {
         if (media && withBacking() && media.paused && !mediaStarting && p >= state.from && p < state.to) {
-          mediaStarting = true; media.currentTime = p;
+          mediaStarting = true; media.currentTime = chartToMedia(p);
           var playingMedia = media, playGeneration = generation;
           media.play().then(function () {
             if (!state.running || playingMedia !== media) playingMedia.pause();
@@ -586,7 +592,7 @@
   on('tj-speed','change',function(){stop();state.speed=Number(this.value);if(media)media.playbackRate=state.speed;msg('Velocidade ajustada. Inicie uma nova rodada.');});
   on('tj-loop','change',function(){state.loop=this.checked;});
   ['tj-from','tj-to'].forEach(function(id){on(id,'change',function(){var f=Number($('tj-from').value),t=Number($('tj-to').value);if(!Number.isFinite(f)||!Number.isFinite(t)||f<0||t>chart.duration||t-f<0.5){msg('Escolha um trecho válido de pelo menos meio segundo.',true);$('tj-from').value=state.from;$('tj-to').value=state.to;return;}state.from=f;state.to=t;$('tj-section').value='custom';stop();selectedRange();});});
-  on('tj-seek','input',function(){pause();state.position=Math.max(state.from,Math.min(state.to,Number(this.value)));state.mode='demo';if(media)media.currentTime=state.position;state.judge=null;updateScore();updateTransport();msg('Posição alterada. Continue a demonstração ou inicie uma nova prática.');});
+  on('tj-seek','input',function(){var requested=Number(this.value);pause();state.position=Math.max(state.from,Math.min(state.to,requested));state.mode='demo';if(media)media.currentTime=chartToMedia(state.position);state.judge=null;updateScore();updateTransport();msg('Posição alterada. Continue a demonstração ou inicie uma nova prática.');});
   on('tj-offset','change',function(){stop();state.offset=Math.max(-500,Math.min(500,Number(this.value)||0));this.value=state.offset;});
   on('tj-calibrate','click',calibrate);on('tj-use-cal','click',function(){if(!state.calibration||!Number.isFinite(state.calibration.estimate))return;state.offset=state.calibration.estimate;$('tj-offset').value=state.offset;cancelCalibration();msg('Compensação aplicada. Faça uma rodada para conferir.');});on('tj-cancel-cal','click',cancelCalibration);
   on('tj-save','click',save);
@@ -599,7 +605,7 @@
     media.onerror=function(){if(selectedMedia!==media)return;stop();resetMedia();msg('Não consegui ler este formato de áudio.',true);};
     media.onloadedmetadata=function(){
       if(selectedMedia!==media)return;
-      if(!Number.isFinite(media.duration)||media.duration<chart.duration-0.1){stop();resetMedia();msg('O áudio é mais curto que o arranjo. Confira os dois arquivos.',true);return;}
+      if(!Number.isFinite(media.duration)||media.duration<mediaDurationNeeded()-0.1){stop();resetMedia();msg('O áudio é mais curto que o arranjo e seu alinhamento. Confira os dois arquivos.',true);return;}
       text('tj-media-label',f.name);msg('Áudio associado ao arranjo. Confira o sincronismo na demonstração.');
     };this.value='';
   });

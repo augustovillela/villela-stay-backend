@@ -82,6 +82,22 @@ test('Referência de mídia é opcional e aceita somente IDs seguros, sem URLs o
   }
 });
 
+test('Deslocamento manual de mídia é versionável, limitado e só existe com áudio associado', () => {
+  const semMidia = Formato.validarDocumento(documento());
+  assert.equal(Object.prototype.hasOwnProperty.call(semMidia, 'mediaOffsetMs'), false);
+  const legado = Formato.validarDocumento({ ...documento(), mediaId: 'audio-a' });
+  assert.equal(legado.mediaOffsetMs, 0);
+  for (const mediaOffsetMs of [0, 1, 1250, 600000]) {
+    assert.equal(Formato.validarDocumento({ ...documento(), mediaId: 'audio-a', mediaOffsetMs }).mediaOffsetMs, mediaOffsetMs);
+  }
+  for (const mediaOffsetMs of [-1, 600001, 1.5, NaN, Infinity, -Infinity, '1250', null, {}, []]) {
+    assert.throws(() => Formato.validarDocumento({ ...documento(), mediaId: 'audio-a', mediaOffsetMs }), /deslocamento de mídia/, String(mediaOffsetMs));
+  }
+  for (const mediaOffsetMs of [0, 1, null]) {
+    assert.throws(() => Formato.validarDocumento({ ...documento(), mediaOffsetMs }), /só pode existir quando houver um áudio/, String(mediaOffsetMs));
+  }
+});
+
 test('Afinação padrão é obrigatória mesmo quando o núcleo aceitaria outra afinação coerente', () => {
   const input = documento(); input.chart.tuning[0] = 38; input.chart.notes[0].midi = 38;
   assert.doesNotThrow(() => Core.validarChart(input.chart));
@@ -136,6 +152,8 @@ test('Mesmo validador roda em UMD sem DOM, Buffer ou TextEncoder', () => {
   vm.runInNewContext(source, contexto);
   const browser = contexto.MusiqueTocarFormatoCatalogo;
   assert.deepEqual(JSON.parse(JSON.stringify(browser.validarDocumento(documento()))), Formato.validarDocumento(documento()));
+  const comMidia = documento(); comMidia.mediaId = 'audio-a'; comMidia.mediaOffsetMs = 1250;
+  assert.equal(browser.validarDocumento(comMidia).mediaOffsetMs, 1250);
   assert.equal(browser.LIMITE_BYTES, Formato.LIMITE_BYTES);
   const grande = documento(); grande.chart.metadata = { extra: '😀'.repeat(Formato.LIMITE_BYTES / 4) };
   assert.throws(() => browser.validarDocumento(grande), /no máximo 1 MB/);

@@ -30,12 +30,18 @@
       throw e; }
     return data;
   }
-  var fields = ['tg-work', 'tg-title', 'tg-instrument', 'tg-level', 'tg-technique', 'tg-objective', 'tg-credits', 'tg-media', 'tg-json', 'tg-midi', 'tg-musicxml', 'tg-example', 'tg-use-example'];
+  var fields = ['tg-work', 'tg-title', 'tg-instrument', 'tg-level', 'tg-technique', 'tg-objective', 'tg-credits', 'tg-media', 'tg-media-offset', 'tg-json', 'tg-midi', 'tg-musicxml', 'tg-example', 'tg-use-example'];
   function importacaoPendente() { return !!importacao; }
   function rotuloImportacao(item) { return item && item.tipo === 'musicxml' ? 'MusicXML/MXL' : 'MIDI'; }
   function render() {
     var pendente = importacaoPendente();
     fields.forEach(function (id) { $(id).disabled = busy || pendente || (id === 'tg-work' && !!current) || (editorPending && ['tg-json','tg-midi','tg-musicxml','tg-example','tg-use-example'].includes(id)); });
+    var temMidia = !!$('tg-media').value;
+    if (!temMidia) $('tg-media-offset').value = '0';
+    $('tg-media-offset').disabled = $('tg-media-offset').disabled || !temMidia;
+    $('tg-media-offset-help').textContent = temMidia
+      ? 'Informe o ponto do áudio que corresponde ao 0:00 do arranjo. A introdução anterior não entra na pista.'
+      : 'Escolha um áudio autorizado para ajustar o ponto correspondente ao início do arranjo.';
     if (editor) editor.bloquear(busy || pendente);
     $('tg-save').disabled = busy || !chart || !$('tg-work').value || conflict || editorPending || pendente;
     $('tg-publish').disabled = busy || !current || dirty || conflict || editorPending || pendente;
@@ -163,14 +169,21 @@
     $('tg-media').replaceChildren(node('option', 'Sem áudio associado · usar demonstração sintetizada', { value: '' }));
     if (d && d.mediaId) option($('tg-media'), d.mediaId, 'Mídia vinculada');
     $('tg-media').value = d ? d.mediaId : '';
+    $('tg-media-offset').value = d && d.mediaId && Number.isSafeInteger(d.mediaOffsetMs) ? String(d.mediaOffsetMs) : '0';
   }
   function readDocument() {
     if (editorPending) throw new Error('Aplique ou cancele os campos pendentes do editor antes de salvar ou baixar.');
     if (importacaoPendente()) throw new Error('Confirme ou cancele a importação pendente antes de salvar ou baixar.');
     if (!chart) throw new Error('Crie ou importe as notas do arranjo antes de salvar.');
     var copied = Core.validarChart(chart); copied.title = $('tg-title').value.trim();
-    return Formato.validarDocumento({ title: copied.title, instrument: $('tg-instrument').value, level: $('tg-level').value,
-      technique: $('tg-technique').value, objective: $('tg-objective').value.trim(), credits: $('tg-credits').value.trim(), mediaId: $('tg-media').value, chart: copied });
+    var mediaId = $('tg-media').value;
+    var documento = { title: copied.title, instrument: $('tg-instrument').value, level: $('tg-level').value,
+      technique: $('tg-technique').value, objective: $('tg-objective').value.trim(), credits: $('tg-credits').value.trim(), mediaId: mediaId, chart: copied };
+    if (mediaId) {
+      var deslocamento = $('tg-media-offset').value;
+      documento.mediaOffsetMs = deslocamento === '' ? null : Number(deslocamento);
+    }
+    return Formato.validarDocumento(documento);
   }
   async function loadMedia(workId, selected, offset) {
     var ticket = ++mediaTicket;
@@ -274,7 +287,7 @@
     '<p id="tg-status" class="tj-status" role="status"></p><p id="tg-login" hidden>Sua sessão terminou. <a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar no Musique</a></p><p id="tg-access" hidden>Seu acesso ao Musique precisa estar ativo. <a href="/music/app#conta">Ver assinatura</a></p><div class="tg-layout"><section class="tj-panel"><h2>Seus arranjos</h2><div class="tg-search"><label>Buscar arranjo<input id="tg-list-q" type="search"></label><button id="tg-list-search" type="button">Buscar</button></div><ul id="tg-list" class="tj-catalog-results"></ul><div class="tj-catalog-pages"><button id="tg-list-prev" disabled>Anterior</button><button id="tg-list-next" disabled>Próxima</button></div><button id="tg-new" type="button">Novo arranjo</button></section>' +
     '<section class="tj-panel"><h2>Rascunho e publicação</h2><p id="tg-version"></p><div class="tg-search"><label>Buscar obra própria<input id="tg-work-q" type="search"></label><button id="tg-work-search">Buscar obra</button></div><label class="tj-field">Obra do seu acervo<select id="tg-work"><option value="">Selecione uma obra do seu acervo</option></select></label><div class="tj-catalog-pages"><button id="tg-work-prev" disabled>Anterior</button><button id="tg-work-next" disabled>Próxima</button></div><p id="tg-work-empty" hidden>Nenhuma obra encontrada. <a href="/music/app#biblioteca">Abra o acervo para cadastrar uma obra.</a></p><p id="tg-visibility" class="tj-small"></p>' +
     '<div class="tg-grid"><label class="tj-field">Título do arranjo<input id="tg-title" maxlength="120"></label><label class="tj-field">Instrumento<select id="tg-instrument"></select></label><label class="tj-field">Nível<select id="tg-level"></select></label><label class="tj-field">Técnica<select id="tg-technique"></select></label></div>' +
-    '<label class="tj-field">Objetivo do estudo<input id="tg-objective" maxlength="500"></label><label class="tj-field">Autoria, créditos e procedência<input id="tg-credits" maxlength="500"></label><label class="tj-field">Áudio já vinculado à obra<select id="tg-media"><option value="">Sem áudio associado · usar demonstração sintetizada</option></select></label><button id="tg-media-more" type="button" hidden>Carregar mais áudios desta obra</button>' +
+    '<label class="tj-field">Objetivo do estudo<input id="tg-objective" maxlength="500"></label><label class="tj-field">Autoria, créditos e procedência<input id="tg-credits" maxlength="500"></label><label class="tj-field">Áudio já vinculado à obra<select id="tg-media"><option value="">Sem áudio associado · usar demonstração sintetizada</option></select></label><label class="tj-field">O 0:00 do arranjo ocorre em (ms)<input id="tg-media-offset" type="number" min="0" max="600000" step="1" inputmode="numeric" value="0" aria-describedby="tg-media-offset-help"></label><p id="tg-media-offset-help" class="tj-small"></p><button id="tg-media-more" type="button" hidden>Carregar mais áudios desta obra</button>' +
     '<p class="tj-small">Arquivos de áudio são geridos no acervo. Aqui entram apenas notas isoladas em afinação padrão; MP3 sozinho não cria um arranjo.</p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label><label class="tj-field">Importar MIDI (até 512 KiB, lido somente neste navegador)<input id="tg-midi" type="file" accept=".mid,.midi,audio/midi,audio/x-midi"></label><label class="tj-field">Importar MusicXML ou MXL (até 2 MiB, lido somente neste navegador)<input id="tg-musicxml" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/xml,text/xml"></label><section id="tg-midi-preview" class="tj-field" aria-live="polite" hidden><p id="tg-midi-info"></p><label><span id="tg-import-line-label">Linha MIDI</span><select id="tg-midi-candidates"><option value="">Escolha uma linha MIDI disponível</option></select></label><p id="tg-midi-detail" class="tj-small"></p><div class="tg-actions"><button id="tg-midi-confirm" type="button" disabled>Importar esta linha</button><button id="tg-midi-cancel" type="button">Cancelar importação MIDI</button></div></section>' +
     '<div class="tg-search"><label>Começar de um estudo original<select id="tg-example"></select></label><button id="tg-use-example" type="button">Usar cópia do estudo</button></div><p id="tg-chart-info"></p>' +
     '<div id="tg-editor"></div>' +
@@ -292,8 +305,10 @@
   Formato.TECNICAS.forEach(function (v) { option($('tg-technique'), v, v.replace(/-/g, ' ')); });
   Estudos.listar().forEach(function (s) { option($('tg-example'), s.id, s.title); });
   ['tg-title', 'tg-objective', 'tg-credits'].forEach(function (id) { $(id).addEventListener('input', changed); });
-  ['tg-instrument', 'tg-level', 'tg-technique', 'tg-media'].forEach(function (id) { $(id).addEventListener('change', changed); });
-  $('tg-work').addEventListener('change', function () { if (importacaoPendente()) return; ++workChoice; $('tg-media').replaceChildren(node('option','Sem áudio associado · usar demonstração sintetizada',{value:''})); changed(); return loadMedia(this.value, ''); });
+  ['tg-instrument', 'tg-level', 'tg-technique'].forEach(function (id) { $(id).addEventListener('change', changed); });
+  $('tg-media').addEventListener('change', function () { $('tg-media-offset').value = '0'; changed(); });
+  $('tg-media-offset').addEventListener('input', changed);
+  $('tg-work').addEventListener('change', function () { if (importacaoPendente()) return; ++workChoice; $('tg-media').replaceChildren(node('option','Sem áudio associado · usar demonstração sintetizada',{value:''})); $('tg-media-offset').value = '0'; changed(); return loadMedia(this.value, ''); });
   $('tg-media-more').addEventListener('click',function(){if(!busy&&!importacaoPendente()&&mediaWork===$('tg-work').value)return loadMedia(mediaWork,undefined,mediaOffset);});
   $('tg-json').addEventListener('change', async function () {
     if (busy || editorPending || importacaoPendente()) return;

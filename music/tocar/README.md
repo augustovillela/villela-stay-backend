@@ -83,12 +83,12 @@ Os dois formatos mantêm `vale_nota: false`, autenticação e isolamento por con
 O formato musical de `nucleo.js` permanece compatível. `formato-catalogo.js` valida um envelope fechado de até 1 MiB UTF-8:
 
 ```js
-{ title, instrument, level, technique, objective, credits, mediaId, chart }
+{ title, instrument, level, technique, objective, credits, mediaId, mediaOffsetMs, chart }
 ```
 
 `title` e `chart.title` devem corresponder. Instrumento: `violao` ou `guitarra`; nível: `iniciante`, `intermediario` ou `avancado`; técnica: `notas-isoladas`, `cordas-soltas`, `troca-de-cordas`, `escalas` ou `arpejos`. Objetivo e créditos são obrigatórios. O catálogo aceita somente afinação padrão de seis cordas, até 2.000 notas monofônicas e 900 segundos. Os metadados externos não alteram a avaliação da altura.
 
-A mídia opcional usa `midias` e `obra_midias` existentes: áudio pronto pertencente ao dono, anexado à mesma obra, sem URL externa livre. `catalogo.js` revalida acesso, remoção e vínculo antes de emitir uma URL R2 de 600 segundos. O navegador pode carregar o arranjo mesmo quando o áudio está indisponível e informa a falha; o MIME não garante que o codec seja reproduzível. Sem áudio anexado, a demonstração pode sintetizar as notas. Links de YouTube/Spotify não são arquivos de acompanhamento. Não há transcrição de MP3 nem novo serviço de armazenamento.
+A mídia opcional usa `midias` e `obra_midias` existentes: áudio pronto pertencente ao dono, anexado à mesma obra, sem URL externa livre. Quando há `mediaId`, `mediaOffsetMs` é um inteiro de 0 a 600.000 e indica o instante do áudio que corresponde ao 0:00 lógico do arranjo; a introdução anterior não entra na pista. Sem mídia, o campo não existe. O valor faz parte do rascunho e de cada snapshot publicado, mas é independente da compensação de captura escolhida pelo aluno. A faixa precisa ter duração suficiente para o arranjo somada a esse deslocamento. `catalogo.js` revalida acesso, remoção e vínculo antes de emitir uma URL R2 de 600 segundos. O navegador pode carregar o arranjo mesmo quando o áudio está indisponível e informa a falha; o MIME não garante que o codec seja reproduzível. Sem áudio anexado, a demonstração pode sintetizar as notas. Links de YouTube/Spotify não são arquivos de acompanhamento. Não há transcrição de MP3 nem novo serviço de armazenamento.
 
 `120-tocar-catalogo.sql` cria `tocar_arranjos` (rascunho, revisão otimista e ponteiro publicado) e `tocar_versoes` (snapshot, número e SHA-256). Um trigger impede UPDATE de versão publicada; exclusão por privacidade continua possível. Obra e identidade não são duplicadas. Os schemas rodam antes das migrations de tabelas antigas; os novos índices usam somente colunas das novas tabelas.
 
@@ -131,6 +131,10 @@ O gestor também aceita arquivos MusicXML, XML e MXL de até 2 MiB. A leitura e 
 A escolha continua explícita, agora por **parte + pauta + voz**. Pausas, divisions, backup, forward, mudanças de andamento, transposição cromática simples, TAB padrão consistente e ties lineares podem formar a linha. Uma TAB ausente ou inconsistente usa a posição sugerida na afinação padrão. `divisions` pode mudar no início de um novo compasso, mas uma mudança no meio do compasso é recusada para não deslocar durações entre vozes. Acordes/polifonia, percussão, grace/cue notes, microtons, transposição ambígua e conteúdo XML/ZIP malformado não são simplificados: a linha fica indisponível ou a análise falha com motivo visível. Repetições, voltas, segno e coda ficam uma única vez na ordem escrita; não há expansão automática da navegação.
 
 MIDI e MusicXML/MXL usam o mesmo painel de confirmação e o mesmo bloqueio contra respostas tardias. Enquanto um arquivo é lido ou espera confirmação, salvar, publicar, prévia, troca de obra e outros tipos de importação ficam bloqueados. Depois da confirmação, o responsável revisa as posições, preenche créditos/procedência e segue com **Salvar rascunho → Revisar na pista → Publicar nova versão**.
+
+## Alinhamento manual de mídia — Etapa C2d
+
+Ao associar um áudio autorizado no gestor, o responsável informa em milissegundos onde começa o 0:00 musical do arranjo. O campo é zerado ao trocar ou remover a mídia e fica desabilitado sem uma faixa associada. Na pista, iniciar, pausar, buscar, repetir trecho e validar a duração convertem entre a posição lógica do chart e a posição física do áudio. Assim, uma introdução gravada pode ser ignorada sem alterar tempos, notas ou resultados do arranjo. Não há waveform, busca automática de alinhamento, URL externa nem valores negativos nesta entrega.
 
 ## Verificação automatizada
 

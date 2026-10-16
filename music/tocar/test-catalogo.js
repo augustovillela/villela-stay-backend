@@ -136,6 +136,20 @@ test('publicação fixa documento/hash; editar rascunho não muda publicação e
   assert.deepEqual(Catalogo.obter(f.dono, f.a.id, v1), antes);
 });
 
+test('deslocamento de mídia pertence ao rascunho e ao snapshot imutável da versão', async () => {
+  const f = fixture(), midia = anexar(f);
+  f.a = Catalogo.salvar(f.dono, f.a.id, { revision: f.a.revision, documento: documento({ mediaId: midia.id, mediaOffsetMs: 1250 }) });
+  const v1 = publicar(f), primeiro = Catalogo.obter(f.dono, f.a.id);
+  assert.equal(primeiro.documento.mediaId, midia.id); assert.equal(primeiro.documento.mediaOffsetMs, 1250);
+  const hashPrimeiro = primeiro.arranjo.sha256;
+  f.a = Catalogo.salvar(f.dono, f.a.id, { revision: f.a.revision, documento: documento({ mediaId: midia.id, mediaOffsetMs: 2400 }) });
+  const v2 = publicar(f), segundo = Catalogo.obter(f.dono, f.a.id);
+  assert.notEqual(v1, v2); assert.equal(segundo.documento.mediaOffsetMs, 2400); assert.notEqual(segundo.arranjo.sha256, hashPrimeiro);
+  const antigo = Catalogo.obter(f.dono, f.a.id, v1);
+  assert.equal(antigo.documento.mediaOffsetMs, 1250); assert.equal(antigo.arranjo.sha256, hashPrimeiro);
+  assert.equal(crypto.createHash('sha256').update(JSON.stringify(segundo.documento)).digest('hex'), segundo.arranjo.sha256);
+});
+
 test('revisão otimista impede sobrescrita e publicação/retirada concorrentes', async () => {
   const f = fixture(), velha = f.a.revision;
   const salvo = await req('/gestao/arranjos/' + f.a.id, f.dono, 'PUT', { revision: velha, documento: documento({ title: 'Edição A' }) });
