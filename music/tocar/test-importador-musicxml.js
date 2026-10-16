@@ -8,6 +8,7 @@ const vm = require('node:vm');
 const zlib = require('node:zlib');
 const Importador = require('./importador-musicxml');
 const Core = require('./nucleo');
+const Perfis = require('./perfis');
 
 const encoder = new TextEncoder();
 const bytes = texto => encoder.encode(texto);
@@ -145,6 +146,34 @@ test('TAB inconsistente recorre à posição sugerida na afinação padrão', as
   assert.deepEqual(chart.notes[0], { id: 'musicxml-1', time: 0, duration: 0.5, string: 6, fret: 0, midi: 40 });
 });
 
+test('perfil baixo aceita Mi1 em MusicXML e MXL e preserva TAB de quatro cordas', async () => {
+  const tabBaixo = '<notations><technical><string>4</string><fret>5</fret></technical></notations>';
+  const partitura = medida(atributos()
+    + nota({ step: 'E', octave: 1 })
+    + nota({ step: 'A', octave: 1, extra: tabBaixo })
+    + nota({ step: 'G', octave: 2 })
+    + nota({ step: 'G', octave: 4 }));
+  const origem = bytes(xml(partitura));
+  const seisCordas = await Importador.analisar(origem);
+  assert.equal(seisCordas.candidates[0].valid, false);
+  assert.match(seisCordas.candidates[0].reason, /Mi2–Mi6/);
+
+  const baixo = await Importador.analisar(origem, { perfil: 'baixo' });
+  assert.equal(baixo.candidates[0].valid, true);
+  const chart = Importador.criarChart(baixo, baixo.candidates[0].id, { id: 'baixo-xml', title: 'Baixo XML', perfil: 'baixo' });
+  assert.deepEqual(chart.tuning, [28, 33, 38, 43]);
+  assert.deepEqual(chart.notes.map(notaImportada => [notaImportada.midi, notaImportada.string, notaImportada.fret]), [
+    [28, 4, 0], [33, 4, 5], [43, 1, 0], [67, 1, 24],
+  ]);
+  assert.deepEqual(Core.validarChart(chart), chart);
+  assert.throws(() => Importador.criarChart(baixo, baixo.candidates[0].id, { id: 'perfil-trocado', title: 'Perfil trocado', perfil: 'guitarra' }), /mesmo perfil/);
+
+  const analiseMxl = await Importador.analisar(mxl(xml(partitura), true), { perfil: 'baixo' });
+  assert.equal(analiseMxl.format, 'mxl');
+  assert.equal(analiseMxl.candidates[0].valid, true);
+  await assert.rejects(() => Importador.analisar(origem, { perfil: 'piano' }), /Perfil de instrumento desconhecido/);
+});
+
 test('repetições permanecem uma vez na ordem escrita, sem expansão automática', async () => {
   const primeira = medida(atributos() + nota({ step: 'E', octave: 2 }) + '<barline location="right"><repeat direction="backward"/></barline>', 1);
   const segunda = medida(nota({ step: 'A', octave: 2 }), 2);
@@ -254,7 +283,7 @@ test('interrompe DEFLATE quando os tamanhos ZIP declaram menos do que o fluxo pr
 test('o UMD analisa MusicXML no navegador sem CommonJS', async () => {
   const source = fs.readFileSync(path.join(__dirname, 'importador-musicxml.js'), 'utf8');
   const sandbox = {
-    window: { MusiqueTocarCore: Core, TextDecoder },
+    window: { MusiqueTocarCore: Core, MusiqueTocarPerfis: Perfis, TextDecoder },
     Uint8Array, ArrayBuffer, WeakMap, Number, Object, Math, Error,
   };
   vm.runInNewContext(source, sandbox);

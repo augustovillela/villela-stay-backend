@@ -27,6 +27,19 @@ test('Novo arranjo é válido: Mi2, 16 segundos, 90 BPM e identidades estáveis 
   assert.throws(() => Editor.novoChart(''), /Título/);
 });
 
+test('Novo arranjo de baixo começa na corda Mi grave e o editor usa quatro cordas', () => {
+  const baixo = Editor.novoChart('Linha de baixo', 'arranjo-baixo', 'baixo');
+  assert.deepEqual(baixo.tuning, [28, 33, 38, 43]);
+  assert.deepEqual(baixo.notes, [{ id: 'nota-editor-1', time: 0, duration: 0.5, string: 4, fret: 0, midi: 28 }]);
+  const motor = Editor.criar(baixo);
+  const criada = adicionar(motor, 2, 1, 5);
+  assert.equal(criada.chart.notes[1].midi, 48);
+  const antes = motor.obter();
+  assert.throws(() => motor.executar({ tipo: 'editarNota', id: criada.id, alteracoes: { string: 5 } }), /Corda inválida/);
+  assert.deepEqual(motor.obter(), antes);
+  assert.throws(() => Editor.novoChart('Linha de baixo', 'arranjo-invalido', 'piano'), /Perfil de instrumento desconhecido/);
+});
+
 test('Abrir preserva floats, IDs, afinação e frases normalizados sem arredondar à grade', () => {
   const chart = base();
   chart.notes[0].time = -0;
@@ -239,12 +252,13 @@ test('Operações desconhecidas, IDs ausentes e estruturas incompletas falham se
 
 test('UMD expõe o mesmo contrato em window independente de globalThis e exige o Core', () => {
   const source = fs.readFileSync(path.join(__dirname, 'editor-nucleo.js'), 'utf8');
-  const sandbox = { window: { MusiqueTocarCore: Core } };
+  const sandbox = { window: { MusiqueTocarCore: Core, MusiqueTocarPerfis: require('./perfis') } };
   vm.runInNewContext(source, sandbox);
   assert.equal(typeof sandbox.window.MusiqueTocarEditorCore.criar, 'function');
   assert.equal(sandbox.MusiqueTocarEditorCore, undefined);
   const web = sandbox.window.MusiqueTocarEditorCore;
   assert.deepEqual(JSON.parse(JSON.stringify(web.criar(base()).obter())), base());
+  assert.equal(web.novoChart('Baixo', 'baixo-web', 'baixo').notes[0].midi, 28);
   assert.notEqual(web.novoChart().id, web.novoChart().id, 'Fallback sem crypto mantém identidades distintas');
   assert.throws(() => vm.runInNewContext(source, { window: {} }), /Carregue MusiqueTocarCore/);
 });

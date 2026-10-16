@@ -4,7 +4,7 @@
   else root.MusiqueTocarAprender = factory(root.MusiqueTocarCore);
 })(typeof self !== 'undefined' ? self : this, function (Core) {
   'use strict';
-  var EPS = 1e-7, MEIA_JANELA = 0.032, MAX_INTERVALO = 0.075, SILENCIO = 0.03;
+  var EPS = 1e-7, MAX_INTERVALO = 0.075, SILENCIO = 0.03;
   function numero(v) { return typeof v === 'number' && Number.isFinite(v); }
   function objeto(v) { return v && typeof v === 'object' && !Array.isArray(v); }
   function copia(v) { return Object.assign({}, v); }
@@ -26,6 +26,7 @@
     var minConfidence = opt('minConfidence', 0.7, 0, 1);
     var minRms = opt('minRms', 0.003, 0.000001, 1);
     var centsTolerance = opt('centsTolerance', 45, 1, 50);
+    var meiaJanela = opt('windowMs', 64, 35, 250) / 2000;
     var gate = opt('now', 0, 0, Number.MAX_SAFE_INTEGER);
     var notes = chart.notes.filter(function (n) { return n.time >= from && n.time < to; });
     var states = notes.map(function (n) { return { id: n.id, status: 'pending' }; });
@@ -64,9 +65,9 @@
       var t = sample.audioTime;
       lastSample = t;
       if (!notes[index]) return null;
-      // audioTime marca o centro de uma janela de 64 ms. Só uma janela
+      // audioTime marca o centro da janela do perfil. Só uma janela
       // inteiramente posterior à guia/pausa pode iniciar uma confirmação.
-      if (t - MEIA_JANELA < gate - EPS) return null;
+      if (t - meiaJanela < gate - EPS) return null;
       var clipped = sample.clipped === undefined ? 0 : sample.clipped;
       var dadosValidos = numero(sample.rms) && sample.rms >= 0 &&
         numero(sample.confidence) && sample.confidence >= 0 && sample.confidence <= 1 &&
@@ -93,7 +94,7 @@
       var origem = sample.onsetTime === undefined ? t : sample.onsetTime;
       // A nota pode ter acertado antes da confirmação do ataque; sua origem
       // anterior ao acerto não autoriza repetir o mesmo alvo outra vez.
-      var onset = sample.onset === true && origem - MEIA_JANELA >= gate - EPS &&
+      var onset = sample.onset === true && origem - meiaJanela >= gate - EPS &&
         origem > lastHitTime + EPS && origem - lastOnset >= 0.06 - EPS;
       if (onset || afterSilence) {
         armed = true; segment = null;

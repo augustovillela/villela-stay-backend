@@ -1,10 +1,13 @@
 'use strict';
 // O Worklet só copia amostras. Detecção fica fora da thread de áudio.
 class MusiqueCapturar extends AudioWorkletProcessor {
-  constructor() {
+  constructor(options) {
     super();
-    this.tamanho = Math.ceil(sampleRate * 0.064);
-    this.passo = Math.ceil(sampleRate * 0.024);
+    const perfil = options && options.processorOptions || {};
+    const janelaMs = Number.isFinite(perfil.windowMs) && perfil.windowMs >= 35 && perfil.windowMs <= 250 ? perfil.windowMs : 64;
+    const passoMs = Number.isFinite(perfil.stepMs) && perfil.stepMs >= 8 && perfil.stepMs <= 120 ? perfil.stepMs : 24;
+    this.tamanho = Math.ceil(sampleRate * janelaMs / 1000);
+    this.passo = Math.min(this.tamanho, Math.ceil(sampleRate * passoMs / 1000));
     this.anel = new Float32Array(this.tamanho);
     this.posicao = 0;
     this.preenchidas = 0;

@@ -1,9 +1,9 @@
 // Edição de charts sem DOM, banco, áudio ou persistência. O núcleo musical
 // continua sendo a fonte da validação; não há quantização implícita.
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./nucleo'), root);
-  else root.MusiqueTocarEditorCore = factory(root.MusiqueTocarCore, root);
-})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this), function (Core, root) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./nucleo'), require('./perfis'), root);
+  else root.MusiqueTocarEditorCore = factory(root.MusiqueTocarCore, root.MusiqueTocarPerfis, root);
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this), function (Core, Perfis, root) {
   'use strict';
 
   if (!Core || typeof Core.validarChart !== 'function') throw new Error('Carregue MusiqueTocarCore antes do editor.');
@@ -44,19 +44,31 @@
     exigir(indice >= 0, 'A ' + nome + ' selecionada não existe neste arranjo.');
     return indice;
   }
-  function atualizarMidi(nota, chart) { nota.midi = chart.tuning[6 - nota.string] + nota.fret; }
+  function atualizarMidi(nota, chart) { nota.midi = chart.tuning[chart.tuning.length - nota.string] + nota.fret; }
+
+  function perfilNovo(idPerfil) {
+    if (idPerfil === undefined) return { tuning: [40, 45, 50, 55, 59, 64], strings: 6 };
+    exigir(Perfis && typeof Perfis.obter === 'function', 'Carregue os perfis de instrumento antes de criar o arranjo.');
+    exigir(typeof idPerfil === 'string', 'Informe um perfil de instrumento válido.');
+    var perfil = Perfis.obter(idPerfil);
+    exigir(perfil && Array.isArray(perfil.tuning) && perfil.tuning.length === perfil.strings &&
+      (perfil.strings === 4 || perfil.strings === 6), 'Perfil de instrumento desconhecido.');
+    return perfil;
+  }
 
   // A identidade nova não tem significado musical nem é usada como permissão.
   // O segundo argumento permite identidade explícita em importadores/testes.
   // Uma vez criado, o ID não é regenerado ao editar ou desfazer.
-  function novoChart(title, id) {
+  function novoChart(title, id, idPerfil) {
     if (id === undefined) {
       sequenciaChart++;
       id = 'arranjo-' + (root.crypto && typeof root.crypto.randomUUID === 'function'
         ? root.crypto.randomUUID() : Date.now().toString(36) + '-' + sequenciaChart.toString(36) + '-' + Math.random().toString(36).slice(2, 12));
     }
+    var perfil = perfilNovo(idPerfil);
     return Core.validarChart({ id: id, title: title === undefined ? 'Novo arranjo' : title, bpm: 90, duration: 16,
-      tuning: [40, 45, 50, 55, 59, 64], notes: [{ id: 'nota-editor-1', time: 0, duration: 0.5, string: 6, fret: 0, midi: 40 }],
+      tuning: perfil.tuning.slice(), notes: [{ id: 'nota-editor-1', time: 0, duration: 0.5,
+        string: perfil.strings, fret: 0, midi: perfil.tuning[0] }],
       sections: [], metadata: { demo: false } });
   }
 

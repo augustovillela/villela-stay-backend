@@ -59,10 +59,11 @@ test('página pública tem bootstrap escapado sem identidade e apenas scripts pr
   const html = await resposta.text();
   assert.match(html, /id="tocar-app" data-estado="\{&quot;logado&quot;:true\}"/);
   assert.match(html, /\/music\/tocar\/cliente\.js/);
-  for (const script of ['aprender', 'estudos', 'formato-catalogo', 'catalogo-cliente']) {
+  for (const script of ['perfis', 'nucleo', 'aprender', 'estudos', 'formato-catalogo', 'catalogo-cliente']) {
     assert.ok(html.includes('/music/tocar/' + script + '.js'));
     assert.ok(html.indexOf('/music/tocar/' + script + '.js') < html.indexOf('/music/tocar/cliente.js'));
   }
+  assert.ok(html.indexOf('/music/tocar/perfis.js') < html.indexOf('/music/tocar/nucleo.js'));
   assert.doesNotMatch(html, /nao-expor|<script>nome|laboratorio\.js|laboratorio-nucleo\.js/);
   const anonimo = await (await fetch(base + '/music/tocar')).text();
   assert.match(anonimo, /&quot;logado&quot;:false/);
@@ -84,7 +85,7 @@ test('arquivos de servidor e caminhos não autorizados não ficam públicos', as
   assert.equal(nucleo.status, 200);
   assert.match(nucleo.headers.get('content-type'), /javascript/);
   assert.equal(nucleo.headers.get('x-content-type-options'), 'nosniff');
-  for (const arquivo of ['aprender.js', 'estudos.js', 'formato-catalogo.js', 'catalogo-cliente.js', 'editor-nucleo.js', 'editor-cliente.js', 'importador-midi.js', 'importador-musicxml.js', 'waveform.js', 'waveform-cliente.js', 'gerenciar.js']) {
+  for (const arquivo of ['perfis.js', 'aprender.js', 'estudos.js', 'formato-catalogo.js', 'catalogo-cliente.js', 'editor-nucleo.js', 'editor-cliente.js', 'importador-midi.js', 'importador-musicxml.js', 'waveform.js', 'waveform-cliente.js', 'gerenciar.js']) {
     const asset = await fetch(base + '/music/tocar/' + arquivo);
     assert.equal(asset.status, 200);
     assert.match(asset.headers.get('content-type'), /javascript/);
@@ -104,7 +105,7 @@ test('gestão pública só entrega a interface e não incorpora identidade ou ob
     assert.match(html, /id="tocar-gestao"/);
     assert.match(html, /\/music\/tocar\/gerenciar\.js/);
     assert.match(html, /\/music\/tocar\/editor\.css/);
-    const scripts = ['nucleo', 'editor-nucleo', 'editor-cliente', 'importador-midi', 'importador-musicxml', 'waveform', 'waveform-cliente', 'gerenciar'].map(nome => html.indexOf('src="/music/tocar/' + nome + '.js"'));
+    const scripts = ['perfis', 'nucleo', 'editor-nucleo', 'editor-cliente', 'importador-midi', 'importador-musicxml', 'waveform', 'waveform-cliente', 'gerenciar'].map(nome => html.indexOf('src="/music/tocar/' + nome + '.js"'));
     assert.ok(scripts.every(posicao => posicao >= 0));
     assert.ok(scripts.every((posicao, i) => i === 0 || posicao > scripts[i - 1]), 'O núcleo e o editor devem carregar antes da integração do gestor.');
     assert.doesNotMatch(html, /nao-expor|<script>nome|editor-catalogo/);
@@ -472,6 +473,6 @@ test('entrada do Laboratório abre a rota própria, sem usar dispatcher de ferra
   }
   const CAT = require('../laboratorio/catalogo');
   const entrada = CAT.entradas().find((item) => item.url === '/music/tocar');
-  assert.equal(entrada.titulo, 'Tocar junto · violão e guitarra');
+  assert.equal(entrada.titulo, 'Tocar junto · violão, guitarra e contrabaixo');
   assert.ok(!CAT.FERRAMENTAS.some((item) => item.slug === 'tocar'));
 });

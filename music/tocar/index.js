@@ -1,4 +1,4 @@
-// Musique · Tocar junto — violão e guitarra, captura local e histórico de treino.
+// Musique · Tocar junto — violão, guitarra e contrabaixo, captura local e histórico de treino.
 // Não recebe áudio nem publica resultados. As medidas vêm do navegador:
 // são indicações autodeclaradas de treino, nunca nota ou classificação.
 'use strict';
@@ -11,7 +11,7 @@ const INDICACAO = 'Indicação de treino calculada no seu aparelho; não é nota
 const CAMPOS_PRATICA = new Set(['chartId', 'title', 'total', 'hits', 'misses', 'accuracy', 'speed', 'offsetMs', 'duration', 'mode', 'catalogRef']);
 const CAMPOS_APRENDER = new Set(['chartId', 'title', 'total', 'hits', 'skipped', 'duration', 'mode', 'catalogRef']);
 const ARQUIVOS = Object.freeze([
-  'cliente.js', 'estilo.css', 'nucleo.js', 'audio.js', 'detector.js',
+  'cliente.js', 'estilo.css', 'perfis.js', 'nucleo.js', 'audio.js', 'detector.js',
   'capturar-worklet.js', 'detector-worker.js', 'aprender.js', 'estudos.js',
   'formato-catalogo.js', 'catalogo-cliente.js', 'gerenciar.js',
   'editor-nucleo.js', 'editor-cliente.js', 'editor.css', 'importador-midi.js', 'importador-musicxml.js',
@@ -114,11 +114,12 @@ function montar(app, { requireUsuario, opcional } = {}) {
     const estado = { logado: !!req.usuario };
     const corpo = `<link rel="stylesheet" href="/music/tocar/estilo.css">
 <main id="tocar-app" data-estado="${esc(JSON.stringify(estado))}">
-  <header class="tocar-cab"><p>Musique · violão e guitarra</p><h1>Tocar junto</h1>
-  <p>Toque violão pelo microfone ou selecione uma interface de áudio ou cabo Real Tone. Afine e acompanhe notas isoladas na pista.</p></header>
+  <header class="tocar-cab"><p>Musique · violão, guitarra e contrabaixo</p><h1>Tocar junto</h1>
+  <p>Toque violão, guitarra ou contrabaixo pelo microfone ou selecione uma interface de áudio ou cabo Real Tone. Afine e acompanhe notas isoladas na pista.</p></header>
   <p role="status">Preparando a sala de prática…</p>
 </main>
-<noscript><div class="wrap"><p>Ative o JavaScript para abrir a pista e escutar seu violão ou guitarra.</p></div></noscript>
+<noscript><div class="wrap"><p>Ative o JavaScript para abrir a pista e escutar seu violão, guitarra ou contrabaixo.</p></div></noscript>
+<script src="/music/tocar/perfis.js" defer></script>
 <script src="/music/tocar/nucleo.js" defer></script>
 <script src="/music/tocar/audio.js" defer></script>
 <script src="/music/tocar/aprender.js" defer></script>
@@ -126,9 +127,9 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/formato-catalogo.js" defer></script>
 <script src="/music/tocar/catalogo-cliente.js" defer></script>
 <script src="/music/tocar/cliente.js" defer></script>`;
-    res.set('Cache-Control', 'no-store').type('html').send(layout('Tocar junto · violão e guitarra | Musique', corpo, {
+    res.set('Cache-Control', 'no-store').type('html').send(layout('Tocar junto · violão, guitarra e contrabaixo | Musique', corpo, {
       caminho: '/music/tocar', noApp: estado.logado,
-      descricao: 'Pratique violão ou guitarra pelo microfone, interface de áudio ou cabo Real Tone, com pista e afinador. Notas isoladas analisadas no seu aparelho.',
+      descricao: 'Pratique violão, guitarra ou contrabaixo pelo microfone, interface de áudio ou cabo Real Tone, com pista e afinador. Notas isoladas analisadas no seu aparelho.',
     }));
   });
 
@@ -144,6 +145,7 @@ function montar(app, { requireUsuario, opcional } = {}) {
   <p role="status">Preparando seus arranjos…</p>
 </main>
 <noscript><div class="wrap"><p>Ative o JavaScript para gerenciar os arranjos do seu Acervo.</p></div></noscript>
+<script src="/music/tocar/perfis.js" defer></script>
 <script src="/music/tocar/nucleo.js" defer></script>
 <script src="/music/tocar/formato-catalogo.js" defer></script>
 <script src="/music/tocar/estudos.js" defer></script>

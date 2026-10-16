@@ -1,16 +1,18 @@
 // Estudos originais Musique. Dados de autoria: não são transcrições de músicas.
 // Cada consulta devolve um arranjo novo; editar uma cópia não muda a biblioteca.
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./nucleo'));
-  else root.MusiqueTocarEstudos = factory(root.MusiqueTocarCore);
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (Core) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./nucleo'), require('./perfis'));
+  else root.MusiqueTocarEstudos = factory(root.MusiqueTocarCore, root.MusiqueTocarPerfis);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Core, Perfis) {
   'use strict';
   if (!Core || typeof Core.validarChart !== 'function' || typeof Core.demoChart !== 'function') {
     throw new Error('Carregue MusiqueTocarCore antes da biblioteca de estudos.');
   }
+  if (!Perfis || typeof Perfis.obter !== 'function') {
+    throw new Error('Carregue MusiqueTocarPerfis antes da biblioteca de estudos.');
+  }
 
-  var TUNING = [40, 45, 50, 55, 59, 64];
-  // Eventos: [corda, casa, tempos]. Corda 1 é a mi aguda. Cada frase ocupa
+  // Eventos: [corda, casa, tempos]. Corda 1 é sempre a mais aguda. Cada frase ocupa
   // um ou dois compassos de 4 tempos; a pausa final de cada evento permite
   // separar ataques, inclusive ao repetir a mesma altura.
   var DEFINICOES = [
@@ -78,11 +80,31 @@
         { title: 'Caminho de volta', notes: [[3, 2, 1], [3, 0, 1], [4, 2, 1], [4, 0, 1], [5, 2, 2], [6, 3, 2]] },
         { title: 'Final em mi', notes: [[6, 0, 1], [4, 2, 1], [3, 0, 1], [4, 2, 1], [4, 0, 1], [5, 2, 1], [6, 3, 1], [6, 0, 1]] }
       ]
+    },
+    {
+      id: 'baixo-pulsacao-v1', title: 'Pulsação no contrabaixo', level: 'Iniciante · baixo 1', bpm: 62,
+      instrument: 'baixo',
+      objective: 'Firmar a pulsação em mi, lá, ré e sol no contrabaixo de quatro cordas, abafando entre ataques.',
+      phrases: [
+        { title: 'Fundação em mi', notes: [[4, 0, 1], [4, 0, 1], [4, 3, 1], [4, 0, 1]] },
+        { title: 'Passo para lá', notes: [[4, 0, 1], [3, 0, 1], [3, 2, 1], [3, 0, 1]] },
+        { title: 'Ré e sol', notes: [[2, 0, 1], [2, 2, 1], [1, 0, 1], [2, 2, 1]] },
+        { title: 'Volta aos graves', notes: [[3, 2, 1], [4, 3, 1], [4, 0, 1], [4, 0, 1]] }
+      ]
     }
   ];
 
+  function perfilDa(definicao) {
+    var perfil = Perfis.obter(definicao.instrument || 'violao');
+    if (!perfil || !Array.isArray(perfil.tuning) || perfil.tuning.length !== perfil.strings) {
+      throw new Error('Perfil de instrumento inválido para o estudo.');
+    }
+    return perfil;
+  }
+
   function construir(definicao) {
     if (definicao.original) return Core.demoChart();
+    var perfil = perfilDa(definicao);
     var beat = 60 / definicao.bpm, cursor = 0, notes = [], sections = [];
     function segundos(tempos) { return Math.round((2 + tempos * beat) * 1000000) / 1000000; }
     definicao.phrases.forEach(function (phrase, i) {
@@ -91,19 +113,21 @@
         var string = event[0], fret = event[1], tempos = event[2];
         notes.push({ id: definicao.id + '-n' + (notes.length + 1), time: segundos(cursor),
           duration: Math.round(tempos * beat * 0.72 * 1000000) / 1000000,
-          string: string, fret: fret, midi: TUNING[6 - string] + fret });
+          string: string, fret: fret, midi: perfil.tuning[perfil.strings - string] + fret });
         cursor += tempos;
       });
       sections.push({ id: definicao.id + '-f' + (i + 1), title: phrase.title, from: segundos(inicio), to: segundos(cursor) });
     });
     return Core.validarChart({ id: definicao.id, title: definicao.title, bpm: definicao.bpm,
-      duration: segundos(cursor) + 2, tuning: TUNING.slice(), notes: notes, sections: sections, metadata: { demo: true } });
+      duration: segundos(cursor) + 2, tuning: perfil.tuning.slice(), notes: notes, sections: sections, metadata: { demo: true } });
   }
 
   function listar() {
     return DEFINICOES.map(function (definicao) {
-      return { id: definicao.id, title: definicao.title, objective: definicao.objective,
+      var estudo = { id: definicao.id, title: definicao.title, objective: definicao.objective,
         level: definicao.level, chart: construir(definicao) };
+      if (definicao.instrument) estudo.instrument = definicao.instrument;
+      return estudo;
     });
   }
   function obter(id) {

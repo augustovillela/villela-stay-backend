@@ -4,9 +4,22 @@
   else raiz.MusiqueTocarDetector = fabrica();
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
-  var MIN_HZ = 70, MAX_HZ = 1400, PISO = 0.004;
+  var PADRAO = Object.freeze({ minHz: 70, maxHz: 1400 });
+  var PISO = 0.004;
 
-  function detectar(amostras, taxa) {
+  // A faixa é escolhida pela interface a partir de um perfil conhecido. A
+  // normalização também mantém a API segura para quem usa o detector direto
+  // em testes: uma configuração incompleta volta ao comportamento histórico.
+  function configuracao(opcoes) {
+    var origem = opcoes && typeof opcoes === 'object' ? opcoes : {};
+    var min = Number.isFinite(origem.minHz) ? origem.minHz : PADRAO.minHz;
+    var max = Number.isFinite(origem.maxHz) ? origem.maxHz : PADRAO.maxHz;
+    if (min < 20 || min > 1000 || max <= min || max > 4000) return { minHz: PADRAO.minHz, maxHz: PADRAO.maxHz };
+    return { minHz: min, maxHz: max };
+  }
+
+  function detectar(amostras, taxa, opcoes) {
+    var faixa = configuracao(opcoes);
     var n = amostras && amostras.length || 0;
     var vazio = { hz: null, confidence: 0, rms: 0, clipped: 0 };
     if (!Number.isFinite(taxa) || taxa < 8000 || taxa > 192000 || n < taxa * 0.035 || n > taxa * 0.25) return vazio;
@@ -36,7 +49,7 @@
     // Também examinar períodos acima da faixa permitida: ignorá-los faria
     // uma senoide aguda aparecer como seu sub-harmônico dentro da faixa.
     var minimo = 2;
-    var maximo = Math.min(Math.ceil(sr / MIN_HZ), Math.floor(m / 2) - 1);
+    var maximo = Math.min(Math.ceil(sr / faixa.minHz), Math.floor(m / 2) - 1);
     var janela = m - maximo - 1;
     var diferencas = new Float64Array(maximo + 2), acumulado = 0;
     diferencas[0] = 1;
@@ -69,18 +82,19 @@
           atual.vale < melhor.vale * 0.45 && melhor.vale - atual.vale > 0.01) melhor = atual;
     }
     var hz = sr / melhor.periodo;
-    if (hz < MIN_HZ || hz > MAX_HZ) return resultado;
+    if (hz < faixa.minHz || hz > faixa.maxHz) return resultado;
     resultado.hz = hz;
     resultado.confidence = Math.max(0, Math.min(1, 1 - melhor.vale));
     return resultado;
   }
 
-  function criar() {
+  function criar(opcoes) {
+    var faixa = configuracao(opcoes);
     var energiaAnterior = 0, ultimoAtaque = -Infinity, candidato = null;
     var PRAZO_ATAQUE = 0.075, DEBOUNCE_ATAQUE = 0.09, SUBIDA_ATAQUE = 1.65;
     return {
       analisar: function (amostras, taxa, audioTime) {
-        var r = detectar(amostras, taxa);
+        var r = detectar(amostras, taxa, faixa);
         var tempo = Number.isFinite(audioTime) ? audioTime : 0;
         // O transiente da palhetada pode elevar a energia antes de haver
         // periodicidade. Guardar a subida por até 75 ms permite confirmá-la
@@ -101,5 +115,5 @@
       reiniciar: function () { energiaAnterior = 0; ultimoAtaque = -Infinity; candidato = null; }
     };
   }
-  return { detectar: detectar, criar: criar, faixa: { min: MIN_HZ, max: MAX_HZ } };
+  return { detectar: detectar, criar: criar, faixa: { min: PADRAO.minHz, max: PADRAO.maxHz }, configurar: configuracao };
 });

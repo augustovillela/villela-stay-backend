@@ -1,4 +1,4 @@
-/* Entrada local de guitarra. API pública: window.MusiqueTocarAudio.criar(). */
+/* Entrada local de instrumento. API pública: window.MusiqueTocarAudio.criar(). */
 (function (raiz, fabrica) {
   if (typeof module === 'object' && module.exports) module.exports = fabrica(raiz);
   else raiz.MusiqueTocarAudio = fabrica(raiz);
@@ -9,6 +9,18 @@
     // Injeção usada somente pelos testes de ciclo de vida, sem microfone real.
     var g = o.ambiente || raiz;
     var sessao = null, geracao = 0, ganhoDb = 0;
+    function perfilDetector(valor) {
+      var origem = valor && typeof valor === 'object' ? valor : {};
+      var minHz = Number.isFinite(origem.minHz) ? origem.minHz : 70;
+      var maxHz = Number.isFinite(origem.maxHz) ? origem.maxHz : 1400;
+      var windowMs = Number.isFinite(origem.windowMs) ? origem.windowMs : (Number.isFinite(origem.frameMs) ? origem.frameMs : 64);
+      var stepMs = Number.isFinite(origem.stepMs) ? origem.stepMs : 24;
+      if (minHz < 20 || minHz > 1000 || maxHz <= minHz || maxHz > 4000) { minHz = 70; maxHz = 1400; }
+      if (windowMs < 35 || windowMs > 250) windowMs = 64;
+      if (stepMs < 8 || stepMs > 120) stepMs = 24;
+      return { minHz: minHz, maxHz: maxHz, windowMs: windowMs, stepMs: Math.min(stepMs, windowMs) };
+    }
+    var detectorConfig = perfilDetector(o.detector);
     var status = { estado: 'parado', mensagem: 'Entrada de áudio desligada.' };
     function emitir(fn, valor) { if (typeof fn === 'function') { try { fn(valor); } catch (_) { /* UI não interrompe a liberação do microfone. */ } } }
     function informar(estado, mensagem, detalhes) {
@@ -157,6 +169,9 @@
             if (!atual(s)) return;
             var msg = evento.data || {};
             if (msg.tipo === 'pronto') {
+              try { s.worker.postMessage({ tipo: 'configurar', detector: detectorConfig }); }
+              catch (_) { reject(erro('Não foi possível configurar o detector de áudio. Recarregue a página e tente novamente.')); }
+            } else if (msg.tipo === 'configurado') {
               g.clearTimeout(s.timerPronto); s.timerPronto = null; s.rejeitarPronto = null; resolve();
             } else if (msg.tipo === 'erro') {
               falhar(s, 'O detector de áudio foi interrompido. Conecte novamente.');
@@ -174,7 +189,7 @@
         });
         await pronto;
         if (!atual(s)) throw cancelar();
-        s.node = new g.AudioWorkletNode(s.ctx, 'musique-capturar', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCount: 1, channelCountMode: 'explicit' });
+        s.node = new g.AudioWorkletNode(s.ctx, 'musique-capturar', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCount: 1, channelCountMode: 'explicit', processorOptions: { windowMs: detectorConfig.windowMs, stepMs: detectorConfig.stepMs } });
         s.node.onprocessorerror = function () { falhar(s, 'A captura de áudio foi interrompida. Conecte novamente.'); };
         s.node.port.onmessage = function (evento) {
           var msg = evento.data;

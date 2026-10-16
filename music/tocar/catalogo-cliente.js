@@ -21,7 +21,7 @@
     container.innerHTML = '<div class="tj-catalog-heading"><h2>Catálogo para tocar</h2><a href="/music/tocar/gerenciar">Gerenciar meus arranjos</a></div>' +
       '<p>Arranjos publicados de obras às quais sua conta tem acesso. Os estudos originais continuam disponíveis abaixo.</p>' +
       '<div class="tj-catalog-filters"><label>Buscar<input id="tc-q" type="search" maxlength="120" placeholder="Título ou artista"></label>' +
-      '<label>Instrumento<select id="tc-instrument"><option value="">Todos</option><option value="violao">Violão</option><option value="guitarra">Guitarra</option></select></label>' +
+      '<label>Instrumento<select id="tc-instrument"><option value="">Todos</option><option value="violao">Violão</option><option value="guitarra">Guitarra</option><option value="baixo">Contrabaixo</option></select></label>' +
       '<label>Nível<select id="tc-level"><option value="">Todos</option><option value="iniciante">Iniciante</option><option value="intermediario">Intermediário</option><option value="avancado">Avançado</option></select></label>' +
       '<label>Técnica<select id="tc-technique"><option value="">Todas</option><option value="notas-isoladas">Notas isoladas</option><option value="cordas-soltas">Cordas soltas</option><option value="troca-de-cordas">Troca de cordas</option><option value="escalas">Escalas</option><option value="arpejos">Arpejos</option></select></label>' +
       '<button id="tc-search" type="button">Buscar</button></div><p id="tc-status" role="status"></p><ul id="tc-results" class="tj-catalog-results"></ul>' +

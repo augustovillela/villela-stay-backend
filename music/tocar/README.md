@@ -1,25 +1,25 @@
-# Tocar junto — prática e aprendizado de violão e guitarra
+# Tocar junto — prática e aprendizado de violão, guitarra e contrabaixo
 
 Rota `/music/tocar`, integrada à sessão e à identidade visual do Musique. Acessível pelo Laboratório, pela página Praticar e pela busca. Implementação própria, com estudo original; não contém código, músicas nem recursos extraídos do Rocksmith+.
 
 ## Escopo
 
-- Violão e guitarra de seis cordas, afinação padrão Mi2–Lá2–Ré3–Sol3–Si3–Mi4, casas 0–24. Ambos usam o mesmo arranjo e reconhecimento de notas isoladas.
-- Entrada genérica escolhida pelo usuário: microfone para começar com o violão, interface de áudio ou cabo Real Tone, quando disponibilizados pelo sistema como entrada no navegador.
-- Captura com AudioWorklet, análise YIN em Worker, faixa 70–1400 Hz, sem monitorar o som capturado nos alto-falantes. Nenhum áudio é enviado ou gravado.
+- Violão e guitarra de seis cordas, afinação padrão Mi2–Lá2–Ré3–Sol3–Si3–Mi4, e contrabaixo de quatro cordas, Mi1–Lá1–Ré2–Sol2; todos com casas 0–24. Violão e guitarra compartilham o perfil de seis cordas.
+- Entrada genérica escolhida pelo usuário: microfone, interface de áudio ou cabo Real Tone, quando disponibilizados pelo sistema como entrada no navegador.
+- Captura com AudioWorklet e análise YIN em Worker, sem monitorar o som capturado nos alto-falantes. O perfil de seis cordas usa 70–1400 Hz e janela de 64 ms; o baixo usa 35–700 Hz e janela de 128 ms. Nenhum áudio é enviado ou gravado.
 - Pista de notas, afinador, demonstração, prática, contagem inicial, pausa, velocidades 50/75/100/125%, trecho repetido e compensação de atraso.
-- Modo Aprender nota por nota: espera a altura correta sem cobrar tempo, mostra a próxima nota/corda/casa e oferece ouvir ou pular. Frases selecionáveis e sete estudos originais, incluindo o Primeiro riff.
+- Modo Aprender nota por nota: espera a altura correta sem cobrar tempo, mostra a próxima nota/corda/casa e oferece ouvir ou pular. Frases selecionáveis e oito estudos originais: sete para seis cordas e um de pulsação para contrabaixo.
 - Resultado de treino para altura e início de notas isoladas; não verifica duração sustentada, técnica, posição real no braço ou acordes.
 - Arranjo JSON, MIDI monofônico ou MusicXML/MXL monofônico e áudio locais. Um MP3 sozinho não produz as notas da pista.
 - Resumo por conta, exportação e exclusão em `/music/api/lab/meus-dados`. Histórico não serve como nota, ranking ou prova de execução.
 
 Ao usar microfone, ouça o acompanhamento em fones, de preferência com fio. O microfone deve captar o instrumento: se captar também as notas do acompanhamento pelos alto-falantes, o sistema pode reconhecê-las e marcar acertos sem você tocar. Confira o medidor em silêncio e ajuste a posição do microfone e o ganho antes da prática. A escolha de interface de áudio ou Real Tone usa o mesmo seletor de entrada; o dispositivo precisa aparecer no navegador.
 
-O padrão escolhido é violão pelo microfone do computador. Na prática em modo Microfone, metrônomo, nota-guia e acompanhamento (inclusive arquivo local) começam desligados; a contagem inicial mantém quatro cliques e a demonstração sempre toca. Quem usa microfone conectado à interface deve escolher Microfone como forma de captação e a interface como dispositivo. A opção Interface é para instrumento ligado por cabo e pressupõe captação no violão. A captura recebe uma mistura mono do dispositivo; não há seleção de canal físico de uma interface multicanal nesta versão. Ao mudar instrumento ou forma de captação, a rodada e a entrada são encerradas, exigindo novo clique para ativar áudio.
+O padrão escolhido é violão pelo microfone do computador. Na prática em modo Microfone, metrônomo, nota-guia e acompanhamento (inclusive arquivo local) começam desligados; a contagem inicial mantém quatro cliques e a demonstração sempre toca. Quem usa microfone conectado à interface deve escolher Microfone como forma de captação e a interface como dispositivo. A opção Interface é para instrumento ligado por cabo e pressupõe captação no instrumento. A captura recebe uma mistura mono do dispositivo; não há seleção de canal físico de uma interface multicanal nesta versão. Ao mudar entre o perfil de seis cordas e o de baixo, ou ao mudar a forma de captação, a rodada e a entrada são encerradas, exigindo novo clique para ativar áudio.
 
 “Nível de captação” aplica ganho digital à entrada, de 0 a 18 dB em passos de 3 dB. Microfone começa em 6 dB (aproximadamente 2×); Interface e Real Tone começam em 0 dB (1×). O ajuste fica guardado por forma de captação enquanto esta página estiver aberta, inclusive ao reconectar ou trocar apenas o instrumento. Pode ser alterado com a entrada ativa e o transporte parado; fica bloqueado durante conexão, prática, demonstração e calibração. Se alterado durante uma prática pausada, encerra a rodada para não misturar sensibilidades no resultado. O medidor usa o sinal amplificado. Esse controle não aumenta o acompanhamento nem altera o ganho físico do dispositivo: amplifica também o ruído e pode saturar o sinal. Reduza diante de ruído ou sinal alto. Não há medição de relação sinal/ruído nem garantia de precisão ou nota decorrente do aumento.
 
-O catálogo administrado e a autoria visual de arranjos estão descritos abaixo. Os sete estudos originais continuam embutidos no código e podem servir de base para rascunhos próprios. Reconhecimento de acordes, efeitos de amplificador, dificuldade adaptativa, outros instrumentos e paridade com Rocksmith+ não estão incluídos.
+O catálogo administrado e a autoria visual de arranjos estão descritos abaixo. Os oito estudos originais continuam embutidos no código e podem servir de base para rascunhos próprios. Reconhecimento de acordes, efeitos de amplificador, dificuldade adaptativa, piano e paridade com Rocksmith+ não estão incluídos.
 
 ## Aprender nota por nota
 
@@ -40,10 +40,11 @@ Os botões de frase usam `sections` do arranjo e ajustam início/fim. Música in
 | Saltos entre cordas | Saltos e notas em oitavas diferentes | 76 |
 | Frase de revisão | Reunir repetições, casas e trocas de corda | 80 |
 | Primeiro riff | Estudo demonstrativo original, preservado | 90 |
+| Pulsação no contrabaixo | Firmar a pulsação em Mi, Lá, Ré e Sol com abafamento entre ataques | 62 |
 
 ## Arranjos
 
-Use “Baixar arranjo de exemplo” na página. Tempos em segundos da música original; `tuning` vai da corda grave à aguda; `string: 1` é a mi aguda e `fret: 0` é corda solta.
+Use “Baixar arranjo de exemplo” na página. Tempos em segundos da música original; `tuning` vai da corda grave à aguda; `string: 1` é sempre a corda mais aguda e `fret: 0` é corda solta. Os únicos perfis aceitos na pista e no catálogo são seis cordas `[40,45,50,55,59,64]` e baixo `[28,33,38,43]`.
 
 ```json
 {
@@ -57,11 +58,11 @@ Limites: 2.000 notas, 900 segundos, arranjo até 1 MB e áudio local até 100 MB
 
 ## Fluxo técnico
 
-`audio.js` gerencia permissão, dispositivos e descarte. `capturar-worklet.js` mantém janela de 64 ms e envia no máximo um quadro em trânsito. `detector-worker.js` executa `detector.js`; o resultado leva o instante central do quadro no relógio de áudio. `nucleo.js` valida arranjos e julga as medidas no ritmo. `aprender.js` mantém a máquina de estados de aprendizado com relógio de captura monotônico, separado da posição musical. `estudos.js` fornece charts originais e cópias independentes. `cliente.js` relaciona relógio, transporte, pista e feedback.
+`perfis.js` centraliza afinação, rótulos, faixa de detector e tamanho de janela. `audio.js` gerencia permissão, dispositivos e descarte. `capturar-worklet.js` usa janela de 64 ms no perfil de seis cordas ou 128 ms no baixo e envia no máximo um quadro em trânsito. `detector-worker.js` executa `detector.js`; o resultado leva o instante central do quadro no relógio de áudio. `nucleo.js` valida arranjos e julga as medidas no ritmo. `aprender.js` mantém a máquina de estados de aprendizado com relógio de captura monotônico, separado da posição musical. `estudos.js` fornece charts originais e cópias independentes. `cliente.js` relaciona relógio, transporte, pista e feedback.
 
 A lista de entradas é consultada ao abrir a página e após cada tentativa de conexão, mesmo quando ela falha; a escolha do usuário é preservada. Nomes podem ficar ocultos até a permissão do navegador. O contexto de áudio é criado após obter a faixa de captura e sua ativação tem espera limitada e cancelável. Faixa aberta e processamento ativo são verificados separadamente antes de anunciar a conexão.
 
-O detector mantém por até 75 ms uma subida de energia que ainda não tinha altura confiável no transiente da palhetada. A confirmação mantém os limiares anteriores (subida de 1,65×, confiança 0,85, debounce de 90 ms) e informa `onsetTime`, a origem do ataque. O aprendizado compara também essa origem, incluindo a meia janela de 32 ms, com o bloqueio de guia/retomada. Sustentações e candidatos expirados não devem criar ataques novos. Palhetadas pouco destacadas sobre um som ainda forte podem não superar o limiar; separar as notas e abafar a corda continua sendo útil. Os casos cobertos são sintéticos e não estabelecem precisão em repertório real.
+O detector mantém por até 75 ms uma subida de energia que ainda não tinha altura confiável no transiente da palhetada. A confirmação mantém os limiares anteriores (subida de 1,65×, confiança 0,85, debounce de 90 ms) e informa `onsetTime`, a origem do ataque. O aprendizado compara essa origem com metade da janela do perfil (32 ms em seis cordas, 64 ms no baixo) ao bloquear a guia ou uma retomada. Sustentações e candidatos expirados não devem criar ataques novos. Palhetadas pouco destacadas sobre um som ainda forte podem não superar o limiar; separar as notas e abafar a corda continua sendo útil. Os casos cobertos são sintéticos e não estabelecem precisão em repertório real.
 
 A compensação positiva subtrai atraso do instante captado. O juiz recebe segundos da música; estabilidade e tolerância também usam esse relógio. Ao mudar velocidade ou compensação, a rodada é encerrada para evitar misturar parâmetros. O transporte aguarda quadros atrasados antes de marcar ausências e encerrar a rodada. A calibração por cliques inclui a reação humana e não mede isoladamente a latência do dispositivo de entrada.
 
@@ -76,7 +77,7 @@ Os dois formatos mantêm `vale_nota: false`, autenticação e isolamento por con
 
 ## Catálogo de arranjos — Etapa B
 
-`/music/tocar` oferece catálogo com busca e filtros por instrumento, nível e técnica, além dos sete estudos originais. O catálogo exige a conta/assinatura do Musique e só mostra versões publicadas de obras que o usuário pode acessar no Acervo. A lista vazia ou indisponível não impede os estudos abertos e a importação local.
+`/music/tocar` oferece catálogo com busca e filtros por instrumento, nível e técnica, além dos oito estudos originais. O catálogo exige a conta/assinatura do Musique e só mostra versões publicadas de obras que o usuário pode acessar no Acervo. A lista vazia ou indisponível não impede os estudos abertos e a importação local.
 
 `/music/tocar/gerenciar` permite ao **dono da obra** selecionar uma música própria do Acervo, importar um chart JSON, preencher objetivo/créditos e salvar rascunho. Uma base dos estudos originais também pode ser usada. A prévia abre a pista em demonstração, sem captura automática e sem histórico. Publicar gera uma versão imutável; salvar alterações posteriores muda somente o rascunho. Retirar a publicação mantém versões e treinos históricos. Publicar o arranjo **não torna a obra pública**: a visibilidade e o compartilhamento continuam sendo definidos no Acervo. O detalhe da música no Acervo contém um link para a gestão.
 
@@ -86,7 +87,7 @@ O formato musical de `nucleo.js` permanece compatível. `formato-catalogo.js` va
 { title, instrument, level, technique, objective, credits, mediaId, mediaOffsetMs, chart }
 ```
 
-`title` e `chart.title` devem corresponder. Instrumento: `violao` ou `guitarra`; nível: `iniciante`, `intermediario` ou `avancado`; técnica: `notas-isoladas`, `cordas-soltas`, `troca-de-cordas`, `escalas` ou `arpejos`. Objetivo e créditos são obrigatórios. O catálogo aceita somente afinação padrão de seis cordas, até 2.000 notas monofônicas e 900 segundos. Os metadados externos não alteram a avaliação da altura.
+`title` e `chart.title` devem corresponder. Instrumento: `violao`, `guitarra` ou `baixo`; nível: `iniciante`, `intermediario` ou `avancado`; técnica: `notas-isoladas`, `cordas-soltas`, `troca-de-cordas`, `escalas` ou `arpejos`. Objetivo e créditos são obrigatórios. O catálogo aceita somente as afinações padrão de seis cordas ou de contrabaixo de quatro cordas, até 2.000 notas monofônicas e 900 segundos. Os metadados externos não alteram a avaliação da altura.
 
 A mídia opcional usa `midias` e `obra_midias` existentes: áudio pronto pertencente ao dono, anexado à mesma obra, sem URL externa livre. Quando há `mediaId`, `mediaOffsetMs` é um inteiro de 0 a 600.000 e indica o instante do áudio que corresponde ao 0:00 lógico do arranjo; a introdução anterior não entra na pista. Sem mídia, o campo não existe. O valor faz parte do rascunho e de cada snapshot publicado, mas é independente da compensação de captura escolhida pelo aluno. A faixa precisa ter duração suficiente para o arranjo somada a esse deslocamento. `catalogo.js` revalida acesso, remoção e vínculo antes de emitir uma URL R2 de 600 segundos. O navegador pode carregar o arranjo mesmo quando o áudio está indisponível e informa a falha; o MIME não garante que o codec seja reproduzível. Sem áudio anexado, a demonstração pode sintetizar as notas. Links de YouTube/Spotify não são arquivos de acompanhamento. Não há transcrição de MP3 nem novo serviço de armazenamento.
 
@@ -108,7 +109,7 @@ O backup/exclusão do Acervo inclui rascunhos e versões próprios. A exclusão 
 
 ## Editor visual — primeira entrega da Etapa C
 
-A gestão inclui uma linha do tempo de seis cordas, com grade do andamento e seleção de notas. O responsável pode começar com uma nota Mi2 editável, abrir um rascunho existente ou importar um JSON/estudo como base. Os campos de nota permitem alterar início e duração em segundos, corda e casa; a altura MIDI é derivada da afinação. Adicionar, duplicar e excluir continuam sujeitos à validação do chart inteiro. O arranjo precisa manter pelo menos uma nota.
+A gestão inclui uma linha do tempo de quatro ou seis cordas, com grade do andamento e seleção de notas. O responsável escolhe o instrumento antes de criar ou importar e começa com Mi1 no baixo ou Mi2 no perfil de seis cordas; um arranjo existente não muda de perfil silenciosamente. Os campos de nota permitem alterar início e duração em segundos, corda e casa; a altura MIDI é derivada da afinação. Adicionar, duplicar e excluir continuam sujeitos à validação do chart inteiro. O arranjo precisa manter pelo menos uma nota.
 
 Frases têm título, início e fim editáveis. BPM altera a grade de referência, sem deslocar notas nem modificar o áudio; duração total não pode cortar notas ou frases existentes. A navegação pela linha do tempo permite conferir partes de um arranjo longo sem mudar seus eventos. Os tempos importados não são quantizados ao abrir.
 
@@ -120,7 +121,7 @@ Use **Salvar rascunho → Revisar na pista** para conferir exatamente o chart pe
 
 ## Importação MIDI — Etapa C2b
 
-No gestor, o dono pode escolher um arquivo `.mid` ou `.midi` de até 512 KiB. O navegador o analisa localmente: o arquivo não é enviado, armazenado no Acervo nem usado como prova de autoria. A tela mostra cada linha por faixa e canal, sua extensão, quantidade de notas e o motivo de uma linha indisponível. Percussão, polifonia, pitch bend, notas abertas, notas fora de Mi2–Mi6, arquivo inválido e limites excedidos não são simplificados automaticamente.
+No gestor, o dono escolhe o perfil antes de escolher um arquivo `.mid` ou `.midi` de até 512 KiB. O navegador o analisa localmente: o arquivo não é enviado, armazenado no Acervo nem usado como prova de autoria. A tela mostra cada linha por faixa e canal, sua extensão, quantidade de notas e o motivo de uma linha indisponível. Percussão, polifonia, pitch bend, notas abertas, notas fora da extensão do perfil (Mi2–Mi6 em seis cordas; Mi1–Sol4 no baixo), arquivo inválido e limites excedidos não são simplificados automaticamente.
 
 O dono precisa escolher uma linha válida e clicar em **Importar esta linha**. Antes dessa confirmação, o chart, mídia, histórico de desfazer/refazer e rascunho existentes permanecem intactos; **Cancelar importação MIDI** libera o formulário sem alterar nada. A linha importada recebe posições sugeridas na afinação padrão, que podem ser corrigidas no editor. O importador mantém as mudanças de andamento da fonte em `tempoMap`; o BPM inicial continua disponível para compatibilidade e o editor não permite substituir apenas o primeiro BPM de um mapa variável.
 
@@ -128,13 +129,13 @@ O dono precisa escolher uma linha válida e clicar em **Importar esta linha**. A
 
 O gestor também aceita arquivos MusicXML, XML e MXL de até 2 MiB. A leitura e a conversão continuam locais: os bytes originais não vão para o servidor, não ficam no Acervo e não comprovam autoria ou licença. MusicXML direto precisa ser score-partwise UTF-8; MXL é aberto pelo META-INF/container.xml e pelo rootfile indicado, com limites para ZIP, tamanho expandido, caminhos inseguros, criptografia e ZIP64.
 
-A escolha continua explícita, agora por **parte + pauta + voz**. Pausas, divisions, backup, forward, mudanças de andamento, transposição cromática simples, TAB padrão consistente e ties lineares podem formar a linha. Uma TAB ausente ou inconsistente usa a posição sugerida na afinação padrão. `divisions` pode mudar no início de um novo compasso, mas uma mudança no meio do compasso é recusada para não deslocar durações entre vozes. Acordes/polifonia, percussão, grace/cue notes, microtons, transposição ambígua e conteúdo XML/ZIP malformado não são simplificados: a linha fica indisponível ou a análise falha com motivo visível. Repetições, voltas, segno e coda ficam uma única vez na ordem escrita; não há expansão automática da navegação.
+A escolha continua explícita, agora por **parte + pauta + voz** e pelo perfil já selecionado. Pausas, divisions, backup, forward, mudanças de andamento, transposição cromática simples, TAB padrão consistente e ties lineares podem formar a linha. Uma TAB ausente ou inconsistente usa a posição sugerida na afinação padrão do perfil. `divisions` pode mudar no início de um novo compasso, mas uma mudança no meio do compasso é recusada para não deslocar durações entre vozes. Acordes/polifonia, percussão, grace/cue notes, microtons, transposição ambígua e conteúdo XML/ZIP malformado não são simplificados: a linha fica indisponível ou a análise falha com motivo visível. Repetições, voltas, segno e coda ficam uma única vez na ordem escrita; não há expansão automática da navegação.
 
 MIDI e MusicXML/MXL usam o mesmo painel de confirmação e o mesmo bloqueio contra respostas tardias. Enquanto um arquivo é lido ou espera confirmação, salvar, publicar, prévia, troca de obra e outros tipos de importação ficam bloqueados. Depois da confirmação, o responsável revisa as posições, preenche créditos/procedência e segue com **Salvar rascunho → Revisar na pista → Publicar nova versão**.
 
 ## Alinhamento manual de mídia — Etapa C2d
 
-Ao associar um áudio autorizado no gestor, o responsável informa em milissegundos onde começa o 0:00 musical do arranjo. O campo é zerado ao trocar ou remover a mídia e fica desabilitado sem uma faixa associada. Na pista, iniciar, pausar, buscar, repetir trecho e validar a duração convertem entre a posição lógica do chart e a posição física do áudio. Assim, uma introdução gravada pode ser ignorada sem alterar tempos, notas ou resultados do arranjo. Não há waveform, busca automática de alinhamento, URL externa nem valores negativos nesta entrega.
+Ao associar um áudio autorizado no gestor, o responsável informa em milissegundos onde começa o 0:00 musical do arranjo. O campo é zerado ao trocar ou remover a mídia e fica desabilitado sem uma faixa associada. Na pista, iniciar, pausar, buscar, repetir trecho e validar a duração convertem entre a posição lógica do chart e a posição física do áudio. Assim, uma introdução gravada pode ser ignorada sem alterar tempos, notas ou resultados do arranjo. A etapa C2d não introduziu waveform, busca automática de alinhamento, URL externa nem valores negativos; a referência visual da C2e é descrita a seguir.
 
 ## Referência visual de mídia — Etapa C2e
 
@@ -149,7 +150,7 @@ npm.cmd run test:music-tocar
 npm.cmd run test:music
 ```
 
-Os testes usam sinais sintéticos, ambiente DOM simulado e SQLite temporário. Não substituem testes físicos com violão, guitarra, microfone, interface de áudio ou Real Tone. Nenhuma dependência foi acrescentada.
+Os testes usam sinais sintéticos, ambiente DOM simulado e SQLite temporário. Não substituem testes físicos com violão, guitarra, contrabaixo, microfone, interface de áudio ou Real Tone. Nenhuma dependência foi acrescentada.
 
 O usuário confirmou o funcionamento inicial com violão e microfone do computador em 15/10/2026, inclusive em ambiente com ruídos externos, e aprovou a publicação como nova prática. Isso valida o uso inicial, sem estabelecer uma medida de precisão ou latência. Continuam pendentes ensaios específicos de silêncio/ruído, calibração, loop e velocidades, além de interface de áudio e Real Tone. Comparar áudio local a 75% e 100%, testar desconexão e negar permissão. Usar fones com fio, confirmar que o acompanhamento sozinho não gera acertos, ajustar o ganho sem clipping e fechar outros aplicativos que estejam ocupando a entrada.
 

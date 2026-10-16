@@ -31,12 +31,13 @@ function importadorMidi(opcoes={}){
     {id:'t0-c0',track:0,channel:0,name:'Linha principal',noteCount:2,minMidi:40,maxMidi:45,duration:2,valid:true,reason:null},
     {id:'t1-c9',track:1,channel:9,name:'Bateria',noteCount:3,minMidi:36,maxMidi:42,duration:2,valid:false,reason:'Canal de percussão não pode ser importado.'},
   ]};
-  const calls={analisar:[],criar:[]};
-  return {calls,analisar(bytes){calls.analisar.push(bytes);if(opcoes.erro)throw opcoes.erro;return analysis;},criarChart(a,candidateId,config){
+  const calls={analisar:[],analiseOptions:[],criar:[]};
+  return {calls,analisar(bytes,config){calls.analisar.push(bytes);calls.analiseOptions.push(config);if(opcoes.erro)throw opcoes.erro;return analysis;},criarChart(a,candidateId,config){
     calls.criar.push({a,candidateId,config});if(opcoes.erroCriar)throw opcoes.erroCriar;
-    const chart={id:config.id,title:config.title,bpm:120,duration:2,tuning:[40,45,50,55,59,64],notes:[
-      {id:'midi-1',time:0,duration:.4,string:6,fret:0,midi:40},{id:'midi-2',time:1,duration:.4,string:5,fret:0,midi:45},
-    ]};if(opcoes.tempoMap)chart.tempoMap=copy(opcoes.tempoMap);return chart;
+    const baixo=config.perfil==='baixo';
+    const chart={id:config.id,title:config.title,bpm:120,duration:2,tuning:baixo?[28,33,38,43]:[40,45,50,55,59,64],notes:baixo?[
+      {id:'midi-1',time:0,duration:.4,string:2,fret:2,midi:40},{id:'midi-2',time:1,duration:.4,string:1,fret:2,midi:45},
+    ]:[{id:'midi-1',time:0,duration:.4,string:6,fret:0,midi:40},{id:'midi-2',time:1,duration:.4,string:5,fret:0,midi:45}]};if(opcoes.tempoMap)chart.tempoMap=copy(opcoes.tempoMap);return chart;
   }};
 }
 async function analisarMidi(h,file={size:8,name:'linha.mid',arrayBuffer:async()=>new Uint8Array([77,84,104,100]).buffer}){h.$('tg-midi').files=[file];await h.event('tg-midi','change');}
@@ -45,12 +46,13 @@ function importadorMusicXml(opcoes={}){
     {id:'p1-s1-v1',part:1,partId:'P1',staff:1,voice:'1',name:'Guitarra',noteCount:2,minMidi:40,maxMidi:45,duration:2,valid:true,reason:null},
     {id:'p1-s1-v2',part:1,partId:'P1',staff:1,voice:'2',name:'Acorde',noteCount:2,minMidi:40,maxMidi:47,duration:2,valid:false,reason:'A linha contém notas sobrepostas.'},
   ]};
-  const calls={analisar:[],criar:[]};
-  return {LIMITE_BYTES:2*1024*1024,calls,analisar(bytes){calls.analisar.push(bytes);if(opcoes.analisar)return opcoes.analisar(bytes,analysis);if(opcoes.erro)throw opcoes.erro;return analysis;},criarChart(a,candidateId,config){
+  const calls={analisar:[],analiseOptions:[],criar:[]};
+  return {LIMITE_BYTES:2*1024*1024,calls,analisar(bytes,config){calls.analisar.push(bytes);calls.analiseOptions.push(config);if(opcoes.analisar)return opcoes.analisar(bytes,analysis,config);if(opcoes.erro)throw opcoes.erro;return analysis;},criarChart(a,candidateId,config){
     calls.criar.push({a,candidateId,config});if(opcoes.erroCriar)throw opcoes.erroCriar;
-    return {id:config.id,title:config.title,bpm:120,duration:2,tuning:[40,45,50,55,59,64],notes:[
-      {id:'musicxml-1',time:0,duration:.4,string:6,fret:0,midi:40},{id:'musicxml-2',time:1,duration:.4,string:5,fret:0,midi:45},
-    ]};
+    const baixo=config.perfil==='baixo';
+    return {id:config.id,title:config.title,bpm:120,duration:2,tuning:baixo?[28,33,38,43]:[40,45,50,55,59,64],notes:baixo?[
+      {id:'musicxml-1',time:0,duration:.4,string:2,fret:2,midi:40},{id:'musicxml-2',time:1,duration:.4,string:1,fret:2,midi:45},
+    ]:[{id:'musicxml-1',time:0,duration:.4,string:6,fret:0,midi:40},{id:'musicxml-2',time:1,duration:.4,string:5,fret:0,midi:45}]};
   }};
 }
 async function analisarMusicXml(h,file={size:8,name:'linha.musicxml',arrayBuffer:async()=>new Uint8Array([60,63,120,109,108]).buffer}){h.$('tg-musicxml').files=[file];await h.event('tg-musicxml','change');}
@@ -88,6 +90,23 @@ test('Importação inválida ou grande preserva rascunho anterior e impede escri
 test('JSON puro e documento completo são importados sem alterar estudos originais',async()=>{
   const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await h.settle();await h.event('tg-work','change','obra-a');await importar(h,pequeno());assert.equal(h.$('tg-title').value,'Duas cordas');assert.match(h.$('tg-chart-info').textContent,/2 notas/);
   const d=documento(pequeno(),'audio-b');d.mediaOffsetMs=1250;await importar(h,d);assert.equal(h.$('tg-media').value,'audio-b');assert.equal(h.$('tg-media-offset').value,'1250');await h.event('tg-save','click');assert.equal(s.current.documento.mediaId,'audio-b');assert.equal(s.current.documento.mediaOffsetMs,1250);assert.equal(require('./estudos').obter('primeiro-riff-v1').metadata.demo,true);
+});
+test('JSON puro com afinação sem perfil preserva o chart anterior e não deixa estado parcial',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await h.settle();await h.event('tg-work','change','obra-a');await importar(h,pequeno());
+  const antes=h.$('tg-chart-info').textContent;
+  await importar(h,{id:'afinacao-incompativel',title:'Não substituir',bpm:90,duration:2,tuning:[30,35,40,45],notes:[{id:'n1',time:0,duration:.5,string:4,fret:0,midi:30}]});
+  assert.equal(h.$('tg-chart-info').textContent,antes);assert.equal(h.$('tg-instrument').value,'violao');assert.equal(h.$('te-note-string').children.length,6);assert.match(h.$('tg-status').textContent,/afinação padrão/);
+  await h.event('tg-objective','input','Preservar o arranjo anterior.');await h.event('tg-credits','input','Estudo original de teste.');await h.event('tg-save','click');
+  const salvo=JSON.parse(h.requests.find(r=>r.opts.method==='POST').opts.body).documento;assert.deepEqual(salvo.chart.tuning,[40,45,50,55,59,64]);
+});
+test('Gestão cria e importa contrabaixo de quatro cordas com o perfil selecionado',async()=>{
+  const s=servidor(),midi=importadorMidi(),h=montar({page:'gestao',logado:true,fetch:s.fetch,importador:midi});await h.settle();await h.event('tg-work','change','obra-a');
+  await h.event('tg-instrument','change','baixo');await h.event('te-new','click');
+  assert.equal(h.$('tg-instrument').value,'baixo');assert.equal(h.$('te-note-string').children.length,4);assert.equal(h.$('te-note-string').value,'4');assert.match(h.$('tg-chart-info').textContent,/contrabaixo de 4 cordas/);
+  await h.event('tg-objective','input','Firmar a pulsação nas cordas graves.');await h.event('tg-credits','input','Estudo original de teste.');await h.event('tg-save','click');
+  const salvo=JSON.parse(h.requests.find(r=>r.opts.method==='POST').opts.body).documento;assert.equal(salvo.instrument,'baixo');assert.deepEqual(salvo.chart.tuning,[28,33,38,43]);assert.equal(salvo.chart.notes[0].midi,28);
+  await analisarMidi(h);assert.equal(midi.calls.analiseOptions.at(-1).perfil,'baixo');await h.event('tg-midi-candidates','change','t0-c0');await h.event('tg-midi-confirm','click');
+  assert.equal(midi.calls.criar.at(-1).config.perfil,'baixo');assert.equal(h.$('tg-instrument').value,'baixo');assert.match(h.$('tg-chart-info').textContent,/contrabaixo de 4 cordas/);
 });
 test('Deslocamento de mídia é acessível, acompanha o rascunho e zera ao trocar ou remover o áudio',async()=>{
   const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);

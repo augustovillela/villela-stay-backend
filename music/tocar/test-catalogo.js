@@ -247,6 +247,25 @@ test('listas são paginadas, filtradas no snapshot correto e não levam charts',
   }
 });
 
+test('contrabaixo padrão de quatro cordas publica e aparece no filtro próprio', async () => {
+  const f = fixture();
+  const title = 'Pulsação no contrabaixo';
+  const bass = documento({ title, instrument: 'baixo', technique: 'notas-isoladas', objective: 'Firmar pulsação nas cordas graves.',
+    chart: { id: 'baixo-quatro-cordas', title, bpm: 64, duration: 4, tuning: [28, 33, 38, 43],
+      notes: [{ id: 'mi-1', time: 0, duration: 0.5, string: 4, fret: 0, midi: 28 }, { id: 'la-1', time: 1, duration: 0.5, string: 3, fret: 0, midi: 33 }],
+      sections: [{ id: 'fundacao', title: 'Fundação', from: 0, to: 4 }] } });
+  const criado = Catalogo.criar(f.dono, { obraId: f.obra.id, documento: bass });
+  Catalogo.publicar(f.dono, criado.id, { revision: criado.revision });
+  const filtrado = Catalogo.listar(f.dono, { instrument: 'baixo' });
+  assert.equal(filtrado.total, 1);
+  assert.equal(filtrado.arranjos[0].id, criado.id);
+  assert.equal(filtrado.arranjos[0].instrument, 'baixo');
+  const publico = await req('/catalogo?instrument=baixo', f.dono);
+  assert.equal(publico.status, 200);
+  assert.equal(publico.data.total, 1);
+  assert.equal(publico.data.arranjos[0].title, title);
+});
+
 test('obra pode ser preselecionada por id fora da primeira página, apenas por seu dono', async () => {
   const f = fixture();
   for (let i = 0; i < 51; i++) repo.Obras.criar({ dono: f.dono, titulo: 'Obra adicional ' + i });

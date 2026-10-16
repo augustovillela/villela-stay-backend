@@ -9,6 +9,7 @@ const Core = require('./nucleo');
 const Aprender = require('./aprender');
 const Estudos = require('./estudos');
 const Formato = require('./formato-catalogo');
+const Perfis = require('./perfis');
 
 class Eventos {
   constructor() { this.listeners = new Map(); }
@@ -57,7 +58,10 @@ class Elemento extends Eventos {
   click() { if (!this.disabled) return this.dispatch('click'); }
   getBoundingClientRect() { return { width: 900, height: 430 }; }
   getContext() {
-    if (!this.context) this.context = new Proxy({ createLinearGradient: () => ({ addColorStop() {} }) }, { get: (t, k) => k in t ? t[k] : (() => {}) });
+    if (!this.context) {
+      const context = { labels: [], createLinearGradient: () => ({ addColorStop() {} }), fillText(text) { this.labels.push(String(text)); } };
+      this.context = new Proxy(context, { get: (t, k) => k in t ? t[k] : (() => {}) });
+    }
     return this.context;
   }
 }
@@ -137,7 +141,7 @@ function montar(options = {}) {
     return { ok: true, json: async () => ({ sessoes: options.history || [], arranjos: [], total: 0 }) };
   }
   const window = new Eventos();
-  Object.assign(window, { devicePixelRatio: 1, location: {search: options.search || ''}, AudioContext: Contexto, Audio: Media, MusiqueTocarCore: Core, MusiqueTocarAudio: audio, MusiqueTocarAprender: Aprender, MusiqueTocarEstudos: Estudos, MusiqueTocarFormatoCatalogo: Formato });
+  Object.assign(window, { devicePixelRatio: 1, location: {search: options.search || ''}, AudioContext: Contexto, Audio: Media, MusiqueTocarCore: Core, MusiqueTocarAudio: audio, MusiqueTocarAprender: Aprender, MusiqueTocarEstudos: Estudos, MusiqueTocarFormatoCatalogo: Formato, MusiqueTocarPerfis: Perfis });
   const sandbox = { window, document, console, fetch, Blob, URLSearchParams, performance: { now: () => now * 1000 }, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
     requestAnimationFrame: fn => { const id = ++sequence; rafs.set(id, fn); return id; }, cancelAnimationFrame: id => rafs.delete(id),
     setTimeout: (fn, ms) => { const id = ++sequence; timers.set(id, { at: now + ms / 1000, fn }); return id; }, clearTimeout: id => timers.delete(id) };
@@ -555,6 +559,39 @@ test('Biblioteca tem sete estudos e mantém No ritmo como padrão sem abrir a ca
   assert.match(h.$('tj-study-info').textContent, /Iniciante/); assert.match(h.$('tj-source').textContent, /original Musique/);
   assert.equal(h.$('tj-section').value, ''); assert.equal(h.$('tj-from').value, '0');
   assert.equal(h.$('tj-phrases').children[0].getAttribute('aria-pressed'), 'true');
+});
+test('Contrabaixo usa quatro cordas, estudo próprio e detector de graves sem alterar o perfil de seis cordas', async () => {
+  const h = montar();
+  const entradaSeisCordas = h.inputs[0];
+  await h.event('tj-instrument', 'change', 'baixo');
+  const entradaBaixo = h.inputs.at(-1);
+  assert.notEqual(entradaBaixo, entradaSeisCordas);
+  assert.ok(entradaSeisCordas.stopped >= 1);
+  assert.deepEqual(entradaBaixo.callbacks.detector, { minHz: 35, maxHz: 700, frameMs: 128, windowMs: 128, stepMs: 48 });
+  assert.equal(h.$('tj-study').value, 'baixo-pulsacao-v1');
+  assert.deepEqual(h.$('tj-study').children.filter(option => option.value).map(option => option.value), ['baixo-pulsacao-v1']);
+  assert.equal(h.$('tj-stage-profile').textContent, '4 CORDAS / AFINAÇÃO PADRÃO');
+  assert.equal(h.$('tj-back').hidden, true);
+  assert.match(h.$('tj-canvas').getAttribute('aria-label'), /contrabaixo/i);
+  await h.advance(.02);
+  const labels = h.$('tj-canvas').getContext().labels;
+  assert.ok(labels.indexOf('4 · Mi grave') < labels.indexOf('3 · Lá'));
+  assert.ok(labels.indexOf('3 · Lá') < labels.indexOf('2 · Ré'));
+  assert.ok(labels.indexOf('2 · Ré') < labels.indexOf('1 · Sol'));
+  await h.event('tj-connect', 'click');
+  await h.event('tj-study-mode', 'change', 'learn');
+  await h.event('tj-practice', 'click');
+  await h.advance(.07);
+  await h.event('tj-hear-note', 'click');
+  await h.advance(.85);
+  assert.equal(h.$('tj-skip').disabled, true, 'a janela de 128 ms ainda protege a cauda da referência');
+  await h.advance(.02);
+  assert.equal(h.$('tj-skip').disabled, false);
+  await h.event('tj-stop', 'click');
+  await h.event('tj-instrument', 'change', 'guitarra');
+  assert.equal(h.$('tj-stage-profile').textContent, '6 CORDAS / AFINAÇÃO PADRÃO');
+  assert.equal(h.$('tj-study').children.filter(option => option.value).length, 7);
+  assert.deepEqual(h.inputs.at(-1).callbacks.detector, { minHz: 70, maxHz: 1400, frameMs: 64, windowMs: 64, stepMs: 24 });
 });
 test('Frases visuais e música inteira sincronizam intervalo, marca da pista e total de notas', async () => {
   const h = montar({ logado: true }), c = pequeno(); c.sections = [{ id: 'primeira', title: 'Primeira corda', from: 0, to: 1 }, { id: 'segunda', title: 'Segunda corda', from: 1, to: 2 }];

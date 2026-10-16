@@ -17,9 +17,18 @@ function documento() {
       sections: [{ id: 'frase-1', title: 'Primeira frase', from: 0, to: 5 }] } };
 }
 
+function documentoBaixo() {
+  return { title: 'Estudo de baixo', instrument: 'baixo', level: 'iniciante', technique: 'notas-isoladas',
+    objective: 'Tocar uma nota grave por vez.', credits: 'Exercício original de teste.', mediaId: '',
+    chart: { id: 'estudo-baixo', title: 'Estudo de baixo', bpm: 90, duration: 5,
+      tuning: [28, 33, 38, 43],
+      notes: [{ id: 'n1', time: 1, duration: 0.5, string: 4, fret: 0, midi: 28 }],
+      sections: [{ id: 'frase-1', title: 'Primeira frase', from: 0, to: 5 }] } };
+}
+
 test('Contrato exporta enums fixos e normaliza somente o envelope e autoria demonstrativa', () => {
   assert.deepEqual(Object.keys(Formato).sort(), ['INSTRUMENTOS', 'LIMITE_BYTES', 'NIVEIS', 'TECNICAS', 'validarDocumento'].sort());
-  assert.deepEqual(Formato.INSTRUMENTOS, ['violao', 'guitarra']);
+  assert.deepEqual(Formato.INSTRUMENTOS, ['violao', 'guitarra', 'baixo']);
   assert.deepEqual(Formato.NIVEIS, ['iniciante', 'intermediario', 'avancado']);
   assert.deepEqual(Formato.TECNICAS, ['notas-isoladas', 'cordas-soltas', 'troca-de-cordas', 'escalas', 'arpejos']);
   for (const valores of [Formato.INSTRUMENTOS, Formato.NIVEIS, Formato.TECNICAS]) assert.ok(Object.isFrozen(valores));
@@ -38,7 +47,8 @@ test('Contrato exporta enums fixos e normaliza somente o envelope e autoria demo
 
 test('Todos os estudos atuais passam sem alterar notas, tempos, seções ou identidade', () => {
   for (const estudo of Estudos.listar()) {
-    const input = { ...documento(), title: estudo.title, chart: estudo.chart };
+    const base = estudo.instrument === 'baixo' ? documentoBaixo() : documento();
+    const input = { ...base, instrument: estudo.instrument || base.instrument, title: estudo.title, chart: estudo.chart };
     const antes = JSON.stringify(input);
     const esperado = Core.validarChart(estudo.chart); esperado.metadata = { demo: false };
     assert.deepEqual(Formato.validarDocumento(input).chart, esperado, estudo.id);
@@ -48,7 +58,10 @@ test('Todos os estudos atuais passam sem alterar notas, tempos, seções ou iden
 
 test('Instrumento, nível e técnica aceitam somente os valores explícitos', () => {
   for (const [campo, valores] of [['instrument', Formato.INSTRUMENTOS], ['level', Formato.NIVEIS], ['technique', Formato.TECNICAS]]) {
-    for (const valor of valores) assert.equal(Formato.validarDocumento({ ...documento(), [campo]: valor })[campo], valor);
+    for (const valor of valores) {
+      const base = campo === 'instrument' && valor === 'baixo' ? documentoBaixo() : documento();
+      assert.equal(Formato.validarDocumento({ ...base, [campo]: valor })[campo], valor);
+    }
     for (const valor of ['', null, undefined, 1, {}, valores[0].toUpperCase(), valores[0] + ' ']) {
       assert.throws(() => Formato.validarDocumento({ ...documento(), [campo]: valor }), /inválido/);
     }
@@ -106,6 +119,21 @@ test('Afinação padrão é obrigatória mesmo quando o núcleo aceitaria outra 
   assert.deepEqual(Formato.validarDocumento(padrao).chart.tuning, [40, 45, 50, 55, 59, 64]);
 });
 
+test('Catálogo aceita somente a afinação padrão do contrabaixo de quatro cordas', () => {
+  const baixo = documentoBaixo();
+  const validado = Formato.validarDocumento(baixo);
+  assert.equal(validado.instrument, 'baixo');
+  assert.deepEqual(validado.chart.tuning, [28, 33, 38, 43]);
+  const diferente = documentoBaixo(); diferente.chart.tuning[0] = 29; diferente.chart.notes[0].midi = 29;
+  assert.doesNotThrow(() => Core.validarChart(diferente.chart));
+  assert.throws(() => Formato.validarDocumento(diferente), /afinação padrão/);
+  const seisCordas = documentoBaixo(); delete seisCordas.chart.tuning;
+  seisCordas.chart.notes[0] = { id: 'n1', time: 1, duration: 0.5, string: 6, fret: 0, midi: 40 };
+  assert.throws(() => Formato.validarDocumento(seisCordas), /afinação padrão/);
+  const instrumentoTrocado = documentoBaixo(); instrumentoTrocado.instrument = 'guitarra';
+  assert.throws(() => Formato.validarDocumento(instrumentoTrocado), /afinação padrão/);
+});
+
 test('Monofonia, coerência MIDI e limites musicais continuam sendo os do núcleo', () => {
   const sobreposto = documento(); sobreposto.chart.notes.push({ id: 'n2', time: 1.25, duration: 0.5, string: 5, fret: 0, midi: 45 });
   assert.throws(() => Formato.validarDocumento(sobreposto), /sobrepostas/);
@@ -148,7 +176,7 @@ test('Cópias independentes impedem edição de uma revisão de alterar outras o
 
 test('Mesmo validador roda em UMD sem DOM, Buffer ou TextEncoder', () => {
   const source = fs.readFileSync(path.join(__dirname, 'formato-catalogo.js'), 'utf8');
-  const contexto = { MusiqueTocarCore: Core };
+  const contexto = { MusiqueTocarCore: Core, MusiqueTocarPerfis: require('./perfis') };
   vm.runInNewContext(source, contexto);
   const browser = contexto.MusiqueTocarFormatoCatalogo;
   assert.deepEqual(JSON.parse(JSON.stringify(browser.validarDocumento(documento()))), Formato.validarDocumento(documento()));
@@ -159,4 +187,6 @@ test('Mesmo validador roda em UMD sem DOM, Buffer ou TextEncoder', () => {
   assert.throws(() => browser.validarDocumento(grande), /no máximo 1 MB/);
   const semNucleo = {}; vm.runInNewContext(source, semNucleo);
   assert.throws(() => semNucleo.MusiqueTocarFormatoCatalogo.validarDocumento(documento()), /núcleo de arranjos/);
+  const semPerfis = { MusiqueTocarCore: Core }; vm.runInNewContext(source, semPerfis);
+  assert.throws(() => semPerfis.MusiqueTocarFormatoCatalogo.validarDocumento(documento()), /perfis de instrumento/);
 });

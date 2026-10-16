@@ -138,6 +138,15 @@ verificar('Gate exclui janela de 64 ms e exige novo ataque após guia e cauda', 
   assert.equal(m.amostrar(quadro(2.248, 40)), null);
   assert.equal(m.amostrar(quadro(2.272, 40)).status, 'hit');
 });
+verificar('Gate acompanha janela de 128 ms do contrabaixo e não aceita a cauda da guia', () => {
+  const m = Aprender.criar(chart([40]), { windowMs: 128 });
+  m.bloquearAte(2);
+  assert.equal(m.amostrar(quadro(2.063, 40, { onset: true })), null, 'a janela ainda cruza o gate');
+  assert.equal(m.amostrar(quadro(2.064, 40, { onset: true })), null, 'o ataque pode começar no limite da janela');
+  assert.equal(m.amostrar(quadro(2.088, 40)), null);
+  assert.equal(m.amostrar(quadro(2.112, 40)), null);
+  assert.equal(m.amostrar(quadro(2.136, 40)).status, 'hit');
+});
 verificar('Bloqueio crescente não retrocede; silêncio antes do gate não rearma', () => {
   const m = Aprender.criar(chart([40]));
   m.bloquearAte(4); m.bloquearAte(2);
@@ -182,7 +191,7 @@ verificar('Recorte seleciona início das notas; intervalo sem notas já está co
 });
 verificar('Opções e chart inválidos rejeitados; configurações válidas controlam confirmação', () => {
   for (const options of [null, [], { from: -1 }, { to: 99 }, { from: 2, to: 2 }, { now: NaN }, { now: -1 },
-    { stableMs: 0 }, { stableMs: Infinity }, { minConfidence: 1.01 }, { minRms: 0 }, { centsTolerance: 51 }, { stableMs: '60' }]) {
+    { stableMs: 0 }, { stableMs: Infinity }, { minConfidence: 1.01 }, { minRms: 0 }, { centsTolerance: 51 }, { stableMs: '60' }, { windowMs: 34 }, { windowMs: 251 }]) {
     assert.throws(() => Aprender.criar(chart(), options));
   }
   assert.throws(() => Aprender.criar({}));

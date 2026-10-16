@@ -3,10 +3,14 @@
 const assert = require('node:assert/strict');
 const Editor = require('./editor-cliente');
 const { montar, pequeno } = require('./test-cliente');
-function setup(initial = pequeno()) {
+function baixo() {
+  return { id: 'teste-baixo-2-notas', title: 'Duas cordas de baixo', bpm: 120, duration: 2, tuning: [28, 33, 38, 43],
+    notes: [{ id: 'mi', time: 0, duration: .3, string: 4, fret: 0, midi: 28 }, { id: 'sol', time: 1, duration: .3, string: 1, fret: 0, midi: 43 }] };
+}
+function setup(initial = pequeno(), editorOptions = {}) {
   const h = montar(), container = h.document.createElement('section');
   const changes = [], pendings = [];
-  const editor = Editor.montar(container, {onChange:c=>changes.push(c),onPending:p=>pendings.push(p)});
+  const editor = Editor.montar(container, {...editorOptions, onChange:c=>changes.push(c), onPending:p=>pendings.push(p)});
   const prefix = [...h.document.ids.keys()].find(id=>/^te\d*-new$/.test(id)).slice(0,-3);
   const $ = id => h.$(prefix+id);
   function click(id) { const e=$(id);assert.ok(e,id);e.click(); }
@@ -32,7 +36,20 @@ test('Carregar e selecionar não mudam IDs, tempos fracionários, frases nem est
 test('Novo visual cria primeira Mi2 somente por ação explícita e não permite substituir chart carregado',()=>{
   const h=setup(null);assert.equal(h.editor.obter(),null);assert.equal(h.$('workspace').hidden,true);assert.equal(h.changes.length,0);
   h.click('new');const c=h.editor.obter();assert.equal(c.title,'Novo arranjo');assert.equal(c.notes.length,1);assert.equal(c.notes[0].midi,40);assert.equal(c.notes[0].string,6);assert.equal(c.notes[0].fret,0);
-  assert.equal(h.changes.length,1);assert.equal(h.$('new').hidden,true);assert.equal(h.$('delete').disabled,true);assert.match(h.$('note-pitch').textContent,/Mi2/);
+  assert.equal(h.changes.length,1);assert.equal(h.$('new').hidden,true);assert.equal(h.$('delete').disabled,true);assert.match(h.$('note-pitch').textContent,/Mi2/);assert.equal(h.$('timeline').getAttribute('aria-label'),'Linha do tempo com 6 cordas');assert.equal(h.$('note-string').children.length,6);
+});
+test('Pista, seletor, rótulos e cálculo MIDI acompanham as quatro cordas do contrabaixo',()=>{
+  const h=setup(baixo());
+  assert.equal(h.$('timeline').getAttribute('aria-label'),'Linha do tempo com 4 cordas');assert.match(h.$('instrument-description').textContent,/4 cordas/);
+  assert.deepEqual(h.$('string-labels').children.map(n=>n.textContent),['1 · Sol2','2 · Ré2','3 · Lá1','4 · Mi1']);
+  assert.deepEqual(h.$('note-string').children.map(n=>[n.value,n.textContent]),[['1','1 · Sol2'],['2','2 · Ré2'],['3','3 · Lá1'],['4','4 · Mi1']]);
+  assert.equal(h.$('notes').children.filter(n=>n.getAttribute('class')==='te-string').length,4);assert.equal(h.$('timeline-inner').style.height,'252px');assert.equal(h.$('notes').style.height,'184px');
+  h.input('note-string','4','change');h.input('note-fret','5');assert.match(h.$('note-pitch').textContent,/Lá1 · MIDI 33/);h.click('apply-note');assert.equal(h.editor.obter().notes[0].midi,33);
+});
+test('Novo visual usa o perfil informado pela gestão sem alterar o padrão de seis cordas',()=>{
+  const h=setup(null,{perfilAtual:()=> 'baixo'});h.click('new');const c=h.editor.obter();
+  assert.deepEqual(c.tuning,[28,33,38,43]);assert.deepEqual(c.notes,[{id:'nota-editor-1',time:0,duration:.5,string:4,fret:0,midi:28}]);
+  assert.equal(h.$('timeline').getAttribute('aria-label'),'Linha do tempo com 4 cordas');assert.equal(h.$('note-string').children.length,4);assert.match(h.$('note-pitch').textContent,/Mi1/);assert.match(h.$('status').textContent,/Mi1/);
 });
 test('Campos só alteram a nota ao aplicar e preservam ID calculando a altura pela corda e casa',()=>{
   const h=setup();const id=h.editor.obter().notes[0].id;h.input('note-string','5','change');h.input('note-fret','2');

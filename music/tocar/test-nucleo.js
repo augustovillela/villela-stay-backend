@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const Core = require('./nucleo');
+const Perfis = require('./perfis');
 let count = 0;
 function test(name, fn) { fn(); count++; console.log('ok ' + count + ' - ' + name); }
 const tuning = [40, 45, 50, 55, 59, 64];
@@ -36,6 +37,24 @@ test('demo original válida, 48 ids únicos e seis cordas', () => {
   assert.equal(d.metadata.demo, true);
   assert.ok(d.duration > 50 && d.duration < 65);
   assert.deepEqual(Core.validarChart(d), d);
+});
+
+test('perfis de seis cordas e baixo são cópias defensivas com aliases estáveis', () => {
+  const violao = Perfis.obter('violao');
+  const guitarra = Perfis.obter('guitarra');
+  const baixo = Perfis.obter('baixo');
+  assert.deepEqual(violao.tuning, [40, 45, 50, 55, 59, 64]);
+  assert.deepEqual(guitarra.tuning, violao.tuning);
+  assert.deepEqual(baixo.tuning, [28, 33, 38, 43]);
+  assert.equal(baixo.strings, 4);
+  assert.equal(baixo.rotulos[0], '1 · Sol');
+  assert.equal(baixo.detector.minHz, 35);
+  baixo.tuning[0] = 99; baixo.detector.minHz = 1;
+  assert.deepEqual(Perfis.obter('baixo').tuning, [28, 33, 38, 43]);
+  assert.equal(Perfis.obter('baixo').detector.minHz, 35);
+  assert.equal(Perfis.porAfinacao([28, 33, 38, 43]).id, 'baixo');
+  assert.equal(Perfis.porAfinacao([29, 34, 39, 44]), null);
+  assert.equal(Perfis.obter('piano'), null);
 });
 
 test('validação ordena sem alterar a entrada e não compartilha notas/afinação', () => {
@@ -89,6 +108,24 @@ test('corda 1 é mi aguda e MIDI deve concordar com casa e afinação', () => {
   assert.equal(Core.validarChart(d).notes[0].midi, 67);
   d.notes[0].midi = 55;
   assert.throws(() => Core.validarChart(d), /discordam/);
+});
+
+test('núcleo aceita baixo padrão de quatro cordas e calcula MIDI pela corda mais aguda', () => {
+  const baixo = {
+    id: 'baixo-teste', title: 'Linha de baixo', bpm: 90, duration: 4,
+    tuning: [28, 33, 38, 43], notes: [
+      { id: 'grave', time: 1, duration: 0.25, string: 4, fret: 0, midi: 28 },
+      { id: 'aguda', time: 2, duration: 0.25, string: 1, fret: 5, midi: 48 },
+    ]
+  };
+  const normalizado = Core.validarChart(baixo);
+  assert.deepEqual(normalizado.tuning, baixo.tuning);
+  assert.equal(normalizado.notes[0].midi, 28);
+  assert.equal(normalizado.notes[1].midi, 48);
+  const cordaInvalida = structuredClone(baixo); cordaInvalida.notes[0].string = 5;
+  assert.throws(() => Core.validarChart(cordaInvalida), /Corda inválida/);
+  const afinacaoInvalida = structuredClone(baixo); afinacaoInvalida.tuning.push(48);
+  assert.throws(() => Core.validarChart(afinacaoInvalida), /quatro ou seis/);
 });
 
 test('recusa polifonia, ids repetidos, duração fora do chart e campos inseguros', () => {

@@ -9,9 +9,9 @@ const Detector = require('./detector');
 const Audio = require('./audio');
 let testes = 0;
 function verificar(nome, fn) { fn(); testes++; console.log('OK', nome); }
-function sinal(hz, sr = 48000, harmonicos = [1], ganho = 0.3, fase = 0) {
+function sinal(hz, sr = 48000, harmonicos = [1], ganho = 0.3, fase = 0, segundos = 0.064) {
   const total = harmonicos.reduce((s, a) => s + Math.abs(a), 0);
-  return Float32Array.from({ length: Math.ceil(sr * 0.064) }, (_, i) =>
+  return Float32Array.from({ length: Math.ceil(sr * segundos) }, (_, i) =>
     ganho * harmonicos.reduce((s, a, h) => s + a * Math.sin(2 * Math.PI * hz * (h + 1) * i / sr + fase), 0) / total);
 }
 function afinação(r, esperado, cents = 8) {
@@ -49,6 +49,15 @@ verificar('Clipping forte não produz confiança falsa; distorção moderada man
 verificar('Faixa musical rejeita tons fora de 70–1400 Hz', () => {
   for (const hz of [40, 60, 1800, 4000]) assert.equal(Detector.detectar(sinal(hz), 48000).hz, null);
 });
+verificar('Perfil grave reconhece Mi1 e Lá1 com janela maior sem abrir a faixa padrão', () => {
+  const baixo = { minHz: 35, maxHz: 700 };
+  for (const sr of [44100, 48000, 96000]) {
+    for (const [midi, hz] of [[28, 41.2034], [33, 55]]) {
+      afinação(Detector.detectar(sinal(hz, sr, [0.2, 1, 0.45], 0.24, 0.4, 0.128), sr, baixo), hz, 14);
+    }
+  }
+  assert.equal(Detector.detectar(sinal(41.2034, 48000, [1], 0.2, 0, 0.128), 48000).hz, null);
+});
 verificar('Ataque é refratário, não se repete na sustentação e reaparece após silêncio', () => {
   const d = Detector.criar(), a = sinal(110);
   assert.equal(d.analisar(a, 48000, 1).onset, true);
@@ -79,6 +88,20 @@ verificar('Worklet: silêncio na saída, tempo por amostras e fila limitada a um
   capturador.port.onmessage({ data: { tipo: 'parar' } });
   assert.equal(capturador.process([[entrada]], [[saída]]), false);
 });
+verificar('Worklet recebe a janela longa do perfil de baixo', () => {
+  let Classe;
+  const mensagens = [];
+  class Base { constructor() { this.port = { postMessage: msg => mensagens.push(msg) }; } }
+  const sandbox = { AudioWorkletProcessor: Base, Float32Array, sampleRate: 48000, currentFrame: 96000,
+    registerProcessor: (nome, C) => { assert.equal(nome, 'musique-capturar'); Classe = C; } };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'capturar-worklet.js'), 'utf8'), sandbox);
+  const capturador = new Classe({ processorOptions: { windowMs: 128, stepMs: 48 } });
+  const entrada = new Float32Array(128).fill(0.4), saída = new Float32Array(128).fill(1);
+  for (let i = 0; i < 48; i++) { capturador.process([[entrada]], [[saída]]); sandbox.currentFrame += 128; }
+  assert.equal(mensagens.length, 1); assert.equal(new Float32Array(mensagens[0].buffer).length, 6144);
+  assert.equal(mensagens[0].audioTime, (96000 + 6144 - 3072) / 48000);
+  assert.ok(saída.every(x => x === 0));
+});
 verificar('Worker carrega o detector local e devolve id e relógio do quadro', () => {
   const mensagens = [];
   const sandbox = { Float32Array, postMessage: msg => mensagens.push(msg) };
@@ -90,9 +113,11 @@ verificar('Worker carrega o detector local e devolve id e relógio do quadro', (
   };
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'detector-worker.js'), 'utf8'), contexto);
   assert.equal(mensagens[0].tipo, 'pronto');
-  sandbox.onmessage({ data: { tipo: 'quadro', id: 7, sampleRate: 48000, audioTime: 12.5, buffer: sinal(110).buffer } });
-  assert.equal(mensagens[1].id, 7); assert.equal(mensagens[1].frame.audioTime, 12.5);
-  afinação(mensagens[1].frame, 110);
+  sandbox.onmessage({ data: { tipo: 'configurar', detector: { minHz: 35, maxHz: 700 } } });
+  assert.equal(mensagens[1].tipo, 'configurado');
+  sandbox.onmessage({ data: { tipo: 'quadro', id: 7, sampleRate: 48000, audioTime: 12.5, buffer: sinal(41.2034, 48000, [1], 0.2, 0, 0.128).buffer } });
+  assert.equal(mensagens[2].id, 7); assert.equal(mensagens[2].frame.audioTime, 12.5);
+  afinação(mensagens[2].frame, 41.2034, 14);
 });
 
 class Eventos {
@@ -135,11 +160,11 @@ function ambiente() {
   }
   class Worker {
     constructor(url) { assert.equal(url, '/music/tocar/detector-worker.js'); this.frames = []; workers.push(this); setImmediate(() => { if (this.onmessage) this.onmessage({ data: { tipo: 'pronto' } }); }); }
-    postMessage(msg) { this.frames.push(msg); }
+    postMessage(msg) { this.frames.push(msg); if (msg.tipo === 'configurar') setImmediate(() => { if (this.onmessage) this.onmessage({ data: { tipo: 'configurado' } }); }); }
     terminate() { this.terminated = true; }
   }
   class Node extends NoGrafo {
-    constructor() { super(); this.port = { messages: [], postMessage(msg) { this.messages.push(msg); }, close() { this.closed = true; } }; nodes.push(this); }
+    constructor(ctx, nome, opcoes) { super(); this.ctx = ctx; this.nome = nome; this.opcoes = opcoes; this.port = { messages: [], postMessage(msg) { this.messages.push(msg); }, close() { this.closed = true; } }; nodes.push(this); }
     receber(amostras) { this.amostras = amostras; }
   }
   const g = { isSecureContext: true, navigator: { mediaDevices: media }, AudioContext: Contexto,
@@ -265,7 +290,9 @@ async function principal() {
     const frame = { audioTime: 1, hz: 110, rms: 0.2, confidence: 0.99, onset: true };
     port.onmessage({ data: { tipo: 'quadro', id: 1, buffer: new ArrayBuffer(4) } });
     port.onmessage({ data: { tipo: 'quadro', id: 2, buffer: new ArrayBuffer(4) } });
-    assert.equal(worker.frames.length, 1);
+    assert.deepEqual(worker.frames[0], { tipo: 'configurar', detector: { minHz: 70, maxHz: 1400, windowMs: 64, stepMs: 24 } });
+    assert.equal(worker.frames.filter(msg => msg.tipo === 'quadro').length, 1);
+    assert.deepEqual(a.nodes[0].opcoes.processorOptions, { windowMs: 64, stepMs: 24 });
     worker.onmessage({ data: { tipo: 'quadro', id: 1, frame } });
     assert.equal(frames[0], frame); assert.equal(port.messages.at(-1).tipo, 'livre');
     mic.parar();

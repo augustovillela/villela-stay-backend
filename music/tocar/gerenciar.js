@@ -2,8 +2,8 @@
   'use strict';
   var app = document.getElementById('tocar-gestao');
   if (!app) return;
-  var Core = window.MusiqueTocarCore, Formato = window.MusiqueTocarFormatoCatalogo, Estudos = window.MusiqueTocarEstudos, Editor = window.MusiqueTocarEditor, ImportadorMidi = window.MusiqueTocarImportadorMidi, ImportadorMusicXML = window.MusiqueTocarImportadorMusicXML, WaveformCliente = window.MusiqueTocarWaveformCliente;
-  if (!Core || !Formato || !Estudos || !Editor || !ImportadorMidi || !ImportadorMusicXML || !WaveformCliente) { app.textContent = 'Não foi possível carregar a gestão. Recarregue a página.'; return; }
+  var Core = window.MusiqueTocarCore, Formato = window.MusiqueTocarFormatoCatalogo, Estudos = window.MusiqueTocarEstudos, Editor = window.MusiqueTocarEditor, ImportadorMidi = window.MusiqueTocarImportadorMidi, ImportadorMusicXML = window.MusiqueTocarImportadorMusicXML, WaveformCliente = window.MusiqueTocarWaveformCliente, Perfis = window.MusiqueTocarPerfis;
+  if (!Core || !Formato || !Estudos || !Editor || !ImportadorMidi || !ImportadorMusicXML || !WaveformCliente || !Perfis) { app.textContent = 'Não foi possível carregar a gestão. Recarregue a página.'; return; }
   var boot = JSON.parse(app.getAttribute('data-estado') || '{}');
   if (!boot.logado) { app.innerHTML='<h1>Gerenciar seus arranjos</h1><p>Entre na sua conta Musique para criar arranjos das obras do seu acervo.</p><a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar ou criar conta</a><p><a href="/music/tocar">Voltar aos estudos abertos</a></p>';return; }
   var current = null, chart = null, dirty = false, busy = false, conflict = false, editor = null, editorPending = false, waveform = null;
@@ -89,7 +89,8 @@
     $('tg-preview').setAttribute('href', current ? '/music/tocar?previa=' + encodeURIComponent(current.id) + '&revisao=' + current.revision : '#');
     $('tg-new').textContent = dirty || editorPending ? 'Descartar alterações e criar outro' : 'Novo arranjo';
     $('tg-version').textContent = (current ? 'Revisão de trabalho ' + current.revision + ' · ' + (current.publishedVersionId ? 'há uma versão publicada' : 'sem versão publicada') : 'Novo rascunho') + (dirty ? ' · alterações não salvas' : '') + (editorPending ? ' · aplique ou cancele os campos do editor' : '') + (pendente ? ' · confirme ou cancele a importação ' + rotuloImportacao(importacao) : '');
-    $('tg-chart-info').textContent = chart ? chart.notes.length + ' notas · ' + (chart.sections || []).length + ' frases · ' + chart.bpm + ' BPM · ' + chart.duration.toFixed(2) + ' s · afinação padrão' : 'Crie as notas no editor visual, importe um arranjo JSON ou escolha um estudo como ponto de partida.';
+    var perfil = chart && perfilDoChart(chart);
+    $('tg-chart-info').textContent = chart ? chart.notes.length + ' notas · ' + (chart.sections || []).length + ' frases · ' + chart.bpm + ' BPM · ' + chart.duration.toFixed(2) + ' s · ' + (perfil ? perfil.rotulo.toLowerCase() + ' em afinação padrão' : 'afinação incompatível') : 'Crie as notas no editor visual, importe um arranjo JSON ou escolha um estudo como ponto de partida.';
     var selected = works.find(function (w) { return w.id === $('tg-work').value; }) || (current && current.obra);
     $('tg-visibility').textContent = selected ? 'Obra: ' + selected.titulo + ' · visibilidade ' + (selected.visibilidade || 'conforme o acervo') + '. Publicar o arranjo mantém o acesso definido no acervo; não torna a obra pública.' : 'Escolha uma obra sua. As permissões continuam sendo as do acervo.';
     renderImportacaoPreview();
@@ -101,6 +102,18 @@
     render();
   }
   function option(select, value, label) { select.appendChild(node('option', label, { value: value })); }
+  function perfilSelecionado() { return Perfis.obter($('tg-instrument').value); }
+  function perfilDoChart(valor) { return valor && Perfis.porAfinacao(valor.tuning); }
+  function instrumentoDoPerfil(perfil, preferido) {
+    if (preferido && Perfis.obter(preferido) && Perfis.obter(preferido).id === perfil.id) return preferido;
+    return perfil.id === 'baixo' ? 'baixo' : 'violao';
+  }
+  function sincronizarInstrumentoDoChart(valor, preferido) {
+    var perfil = perfilDoChart(valor);
+    if (!perfil) throw new Error('O arranjo precisa usar a afinação padrão de violão/guitarra ou de contrabaixo de quatro cordas.');
+    $('tg-instrument').value = instrumentoDoPerfil(perfil, preferido || $('tg-instrument').value);
+    return perfil;
+  }
   function mesmaMusica(a, b) {
     if (!a || !b) return false;
     return ['id','bpm','duration','tuning','notes','sections','tempoMap'].every(function (key) { return JSON.stringify(a[key]) === JSON.stringify(b[key]); });
@@ -165,7 +178,8 @@
     }
   }
   function mostrarAnaliseImportacao(tipo, importador, analysis, fileName) {
-    importacao = { tipo: tipo, importador: importador, analysis: analysis, fileName: fileName || '', status: 'review' };
+    var perfil = importacao && importacao.perfil;
+    importacao = { tipo: tipo, importador: importador, analysis: analysis, fileName: fileName || '', perfil: perfil, status: 'review' };
     var select = $('tg-midi-candidates');
     select.replaceChildren(node('option', 'Escolha uma linha ' + (tipo === 'musicxml' ? 'MusicXML' : 'MIDI') + ' disponível', { value: '' }));
     // A seleção anterior nunca pode confirmar uma nova análise sem uma escolha explícita.
@@ -202,9 +216,10 @@
   function fillDocument(d, preserveEditor) {
     var keepHistory = preserveEditor && d && mesmaMusica(chart, d.chart);
     chart = d ? Core.validarChart(d.chart) : null;
-    if (editor && !keepHistory) editor.carregar(chart);
     $('tg-title').value = d ? d.title : '';
     $('tg-instrument').value = d ? d.instrument : 'violao';
+    if (chart) sincronizarInstrumentoDoChart(chart, d && d.instrument);
+    if (editor && !keepHistory) editor.carregar(chart);
     $('tg-level').value = d ? d.level : 'iniciante';
     $('tg-technique').value = d ? d.technique : 'notas-isoladas';
     $('tg-objective').value = d ? d.objective : ''; $('tg-credits').value = d ? d.credits : '';
@@ -344,6 +359,7 @@
     },
   });
   editor = Editor.montar($('tg-editor'), {
+    perfilAtual: function () { return $('tg-instrument').value; },
     onChange: function (next) {
       ++importTicket;
       if (!chart || !$('tg-title').value.trim()) $('tg-title').value = next.title;
@@ -351,12 +367,22 @@
     },
     onPending: function (pending) { editorPending = pending; if (pending) ++importTicket; render(); },
   });
-  Formato.INSTRUMENTOS.forEach(function (v) { option($('tg-instrument'), v, v === 'violao' ? 'Violão' : 'Guitarra'); });
+  Formato.INSTRUMENTOS.forEach(function (v) { option($('tg-instrument'), v, v === 'violao' ? 'Violão' : v === 'guitarra' ? 'Guitarra' : 'Contrabaixo de 4 cordas'); });
   Formato.NIVEIS.forEach(function (v) { option($('tg-level'), v, v); });
   Formato.TECNICAS.forEach(function (v) { option($('tg-technique'), v, v.replace(/-/g, ' ')); });
   Estudos.listar().forEach(function (s) { option($('tg-example'), s.id, s.title); });
   ['tg-title', 'tg-objective', 'tg-credits'].forEach(function (id) { $(id).addEventListener('input', changed); });
-  ['tg-instrument', 'tg-level', 'tg-technique'].forEach(function (id) { $(id).addEventListener('change', changed); });
+  $('tg-instrument').addEventListener('change', function () {
+    var selecionado = perfilSelecionado(), atual = chart && perfilDoChart(chart);
+    if (!selecionado) { this.value = 'violao'; message('Instrumento inválido.', true); return; }
+    if (atual && atual.id !== selecionado.id) {
+      this.value = instrumentoDoPerfil(atual, current && current.documento && current.documento.instrument);
+      message('Este arranjo já usa ' + atual.rotulo.toLowerCase() + '. Crie ou importe um novo arranjo para trocar de instrumento.', true);
+      render(); return;
+    }
+    changed();
+  });
+  ['tg-level', 'tg-technique'].forEach(function (id) { $(id).addEventListener('change', changed); });
   $('tg-media').addEventListener('change', function () { $('tg-media-offset').value = '0'; changed(); });
   $('tg-media-offset').addEventListener('input', changed);
   $('tg-work').addEventListener('change', function () { if (importacaoPendente()) return; ++workChoice; $('tg-media').replaceChildren(node('option','Sem áudio associado · usar demonstração sintetizada',{value:''})); $('tg-media-offset').value = '0'; changed(); return loadMedia(this.value, ''); });
@@ -368,7 +394,11 @@
       if (file.size > Formato.LIMITE_BYTES) throw new Error('O arquivo deve ter no máximo 1 MiB.');
       var parsed = JSON.parse(await file.text()); if (ticket !== importTicket) return;
       if (parsed.chart) { var doc=Formato.validarDocumento(parsed); ++mediaTicket;fillDocument(doc);loadMedia($('tg-work').value,doc.mediaId); }
-      else { chart = Core.validarChart(parsed); $('tg-title').value = chart.title; editor.carregar(chart); }
+      else {
+        var proximoChart = Core.validarChart(parsed);
+        sincronizarInstrumentoDoChart(proximoChart);
+        chart = proximoChart; $('tg-title').value = chart.title; editor.carregar(chart);
+      }
       limparImportacao();
       dirty = true; render(); message('Notas importadas. Confira objetivo, créditos, áudio e prévia antes de publicar.');
     } catch (e) { if (ticket === importTicket) message('Arranjo inválido: ' + e.message, true); }
@@ -377,13 +407,14 @@
   async function iniciarImportacao(tipo, file, importador, limite) {
     if (busy || editorPending || importacaoPendente() || !file) return;
     var ticket = ++importTicket, rotulo = tipo === 'musicxml' ? 'MusicXML/MXL' : 'MIDI', limiteTexto = limite === 512 * 1024 ? '512 KiB' : '2 MiB';
-    importacao = { tipo: tipo, importador: importador, analysis: null, fileName: file.name || '', status: 'reading' };
+    var perfil = $('tg-instrument').value;
+    importacao = { tipo: tipo, importador: importador, analysis: null, fileName: file.name || '', perfil: perfil, status: 'reading' };
     render();
     try {
       if (!Number.isFinite(file.size) || file.size < 0 || file.size > limite) throw new Error('O arquivo ' + rotulo + ' deve ter no máximo ' + limiteTexto + '.');
       if (typeof file.arrayBuffer !== 'function') throw new Error('Não foi possível ler este arquivo ' + rotulo + ' no navegador.');
       var bytes = new Uint8Array(await file.arrayBuffer()); if (ticket !== importTicket) return;
-      var analysis = await importador.analisar(bytes); if (ticket !== importTicket) return;
+      var analysis = await importador.analisar(bytes, { perfil: perfil }); if (ticket !== importTicket) return;
       if (!analysis || !Array.isArray(analysis.candidates)) throw new Error('O arquivo ' + rotulo + ' não trouxe linhas para revisar.');
       mostrarAnaliseImportacao(tipo, importador, analysis, file.name || ''); render();
       message(rotulo + ' analisado localmente. Escolha uma linha disponível e confirme a importação; o rascunho ainda não foi alterado.');
@@ -413,7 +444,7 @@
       var usarTitulo = tituloPodeVirDaImportacao();
       var title = usarTitulo ? tituloImportacaoSeguro(pendente.fileName, pendente.tipo, pendente.analysis.title) : $('tg-title').value.trim();
       var novoId = pendente.tipo === 'musicxml' ? 'musicxml-importado' : 'midi-importado';
-      var next = Core.validarChart(pendente.importador.criarChart(pendente.analysis, candidate.id, { id: chart && chart.id ? chart.id : novoId, title: title }));
+      var next = Core.validarChart(pendente.importador.criarChart(pendente.analysis, candidate.id, { id: chart && chart.id ? chart.id : novoId, title: title, perfil: pendente.perfil }));
       editor.carregar(next); ++importTicket; chart = next;
       if (usarTitulo) $('tg-title').value = title;
       limparImportacao(); dirty = true; render();
@@ -424,7 +455,7 @@
     if (busy || editorPending || importacaoPendente()) return;
     ++importTicket;
     var s = Estudos.listar().find(function (item) { return item.id === $('tg-example').value; }); if (!s) return;
-    chart = s.chart; editor.carregar(chart); $('tg-title').value = s.title; $('tg-objective').value = s.objective; $('tg-credits').value = 'Estudo original Musique';
+    chart = s.chart; sincronizarInstrumentoDoChart(chart, s.instrument); editor.carregar(chart); $('tg-title').value = s.title; $('tg-objective').value = s.objective; $('tg-credits').value = 'Estudo original Musique';
     limparImportacao(); $('tg-level').value = 'iniciante'; dirty = true; render(); message('Cópia do estudo carregada. A biblioteca original continua preservada.');
   });
   $('tg-save').addEventListener('click', function () { return mutate('save'); });

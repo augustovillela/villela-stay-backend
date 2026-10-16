@@ -4,7 +4,17 @@ importScripts('/music/tocar/detector.js');
 var detector = self.MusiqueTocarDetector.criar();
 self.onmessage = function (evento) {
   var mensagem = evento.data;
-  if (!mensagem || mensagem.tipo !== 'quadro') return;
+  if (!mensagem) return;
+  if (mensagem.tipo === 'configurar') {
+    try {
+      detector = self.MusiqueTocarDetector.criar(mensagem.detector);
+      self.postMessage({ tipo: 'configurado' });
+    } catch (_) {
+      self.postMessage({ tipo: 'erro', mensagem: 'Não foi possível configurar a análise de áudio.' });
+    }
+    return;
+  }
+  if (mensagem.tipo !== 'quadro') return;
   try {
     var frame = detector.analisar(new Float32Array(mensagem.buffer), mensagem.sampleRate, mensagem.audioTime);
     self.postMessage({ tipo: 'quadro', id: mensagem.id, frame: frame });

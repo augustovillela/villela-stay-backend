@@ -33,6 +33,33 @@
       renderControls();
     }
     function name(midi) { return NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1); }
+    function stringCount() { return chart && Array.isArray(chart.tuning) ? chart.tuning.length : 0; }
+    function stringsLabel() {
+      var total = stringCount();
+      return total + ' ' + (total === 1 ? 'corda' : 'cordas');
+    }
+    function stringLabel(string) {
+      return string + ' · ' + name(chart.tuning[stringCount() - string]);
+    }
+    function defaultString() { return stringCount() || 6; }
+    function renderStrings() {
+      var labels = $('string-labels'), select = $('note-string'), timeline = $('timeline');
+      labels.replaceChildren(); select.replaceChildren();
+      if (!chart) {
+        $('instrument-description').textContent = 'Uma nota por vez. Abra ou crie um arranjo para ver as cordas e a afinação.';
+        timeline.setAttribute('aria-label', 'Linha do tempo do arranjo');
+        $('timeline-inner').style.height = '344px'; $('notes').style.height = '276px';
+        return;
+      }
+      for (var string = 1; string <= stringCount(); string++) {
+        labels.appendChild(node('span', stringLabel(string)));
+        select.appendChild(node('option', stringLabel(string), { value: String(string) }));
+      }
+      $('instrument-description').textContent = 'Uma nota por vez, em ' + stringsLabel() + '. Edite e aplique os campos antes de salvar o rascunho.';
+      timeline.setAttribute('aria-label', 'Linha do tempo com ' + stringsLabel());
+      $('timeline-inner').style.height = (65 + stringCount() * 46 + 3) + 'px';
+      $('notes').style.height = (stringCount() * 46) + 'px';
+    }
     function selectedNote() { return chart && chart.notes.find(function (n) { return n.id === selectedId; }); }
     function selectedSection() { return chart && (chart.sections || []).find(function (s) { return s.id === sectionId; }); }
     function tempoEvents() {
@@ -68,8 +95,8 @@
     }
     function pitch() {
       var s = Number($('note-string').value), f = Number($('note-fret').value);
-      $('note-pitch').textContent = chart && Number.isInteger(s) && s >= 1 && s <= 6 && Number.isInteger(f) && f >= 0 && f <= 24 && $('note-fret').value !== ''
-        ? name(chart.tuning[6 - s] + f) + ' · MIDI ' + (chart.tuning[6 - s] + f) : 'Preencha corda e casa válidas.';
+      $('note-pitch').textContent = chart && Number.isInteger(s) && s >= 1 && s <= stringCount() && Number.isInteger(f) && f >= 0 && f <= 24 && $('note-fret').value !== ''
+        ? name(chart.tuning[stringCount() - s] + f) + ' · MIDI ' + (chart.tuning[stringCount() - s] + f) : 'Preencha corda e casa válidas.';
     }
     function fields(group, ids) {
       ids.forEach(function (id) {
@@ -119,7 +146,7 @@
     function fillNote(n) {
       $('note-time').value = n ? n.time : '';
       $('note-duration').value = n ? n.duration : '';
-      $('note-string').value = n ? n.string : 6;
+      $('note-string').value = n ? n.string : defaultString();
       $('note-fret').value = n ? n.fret : 0;
       $('apply-note').textContent = noteDraft ? 'Adicionar esta nota' : 'Aplicar alteração da nota';
       $('note-label').textContent = noteDraft ? 'Nova nota · ainda não aplicada' : n ? 'Nota ' + (chart.notes.findIndex(function (item) { return item.id === n.id; }) + 1) + ' de ' + chart.notes.length : 'Escolha uma nota';
@@ -161,7 +188,7 @@
         line.appendChild(node('span', t.toFixed(2) + ' s')); grid.appendChild(line);
         linhas++;
       }
-      for (var string = 1; string <= 6; string++) {
+      for (var string = 1; string <= stringCount(); string++) {
         var lane = node('span', null, { class: 'te-string', 'aria-hidden': 'true' });
         lane.style.top = ((string - 1) * 46 + 23) + 'px'; notes.appendChild(lane);
       }
@@ -190,7 +217,7 @@
       renderControls();
     }
     function renderChart() {
-      if (!chart) { renderControls(); return; }
+      if (!chart) { renderStrings(); renderControls(); return; }
       $('bpm').value = chart.bpm; $('duration').value = chart.duration;
       $('apply-meta').textContent = tempoVariavel() ? 'Aplicar duração' : 'Aplicar tempo';
       $('tempo-help').textContent = tempoVariavel()
@@ -198,6 +225,7 @@
         : 'Alterar BPM muda a grade; os tempos das notas não mudam automaticamente.';
       var sections = chart.sections || [];
       if (!sections.some(function (s) { return s.id === sectionId; })) sectionId = sections.length ? sections[0].id : null;
+      renderStrings();
       $('section').replaceChildren(node('option', 'Escolha uma frase', { value: '' }));
       sections.forEach(function (s) { $('section').appendChild(node('option', s.title + ' · ' + s.from + '–' + s.to + ' s', { value: s.id })); });
       $('section').value = sectionId || '';
@@ -236,7 +264,7 @@
     function draftNote(copy) {
       if (locked || !chart || pendingGroup) return;
       var n = selectedNote(); noteDraft = true;
-      fillNote({ time: n ? n.time + n.duration : viewStart, duration: copy && n ? n.duration : 0.5, string: copy && n ? n.string : 6, fret: copy && n ? n.fret : 0 });
+      fillNote({ time: n ? n.time + n.duration : viewStart, duration: copy && n ? n.duration : 0.5, string: copy && n ? n.string : defaultString(), fret: copy && n ? n.fret : 0 });
       pending('note'); message(copy ? 'Cópia preparada. Ajuste o início e aplique para criar uma nova nota.' : 'Preencha a nova nota e aplique. Se necessário, aumente antes a duração do arranjo.');
     }
     function updateWindow() {
@@ -248,20 +276,24 @@
       } catch (e) { message(e.message, true); }
     }
     container.classList.add ? container.classList.add('te-editor') : container.setAttribute('class', 'te-editor');
-    container.innerHTML = ('<div class="te-heading"><div><h3>Editor de notas</h3><p>Uma nota por vez, em seis cordas e afinação padrão. Edite e aplique os campos antes de salvar o rascunho.</p></div><button id="__new" type="button">Novo arranjo visual</button></div>' +
+    container.innerHTML = ('<div class="te-heading"><div><h3>Editor de notas</h3><p id="__instrument-description">Uma nota por vez. Abra ou crie um arranjo para ver as cordas e a afinação.</p></div><button id="__new" type="button">Novo arranjo visual</button></div>' +
       '<p id="__status" class="te-status" role="status">Abra um arranjo, importe JSON ou crie um novo aqui.</p><div id="__pending" class="te-pending" hidden><p>Há campos ainda não aplicados. Aplique a alteração ou descarte os campos para salvar e revisar na pista.</p><button id="__discard" type="button">Descartar campos não aplicados</button></div>' +
       '<div id="__workspace" hidden><div class="te-toolbar"><button id="__undo" type="button">Desfazer</button><button id="__redo" type="button">Refazer</button><span>Desfazer afeta notas, tempo e frases; objetivo e créditos ficam na gestão. O histórico é local desta edição e reinicia ao carregar um arranjo.</span></div>' +
       '<fieldset class="te-meta"><legend>Tempo do arranjo</legend><label>BPM<input id="__bpm" type="number" min="20" max="300" step="any"></label><label>Duração total (s)<input id="__duration" type="number" min="0.04" max="900" step="any"></label><button id="__apply-meta" type="button">Aplicar tempo</button><p id="__tempo-help">Alterar BPM muda a grade; os tempos das notas não mudam automaticamente.</p></fieldset>' +
       '<div class="te-view"><label>Janela a partir de (s)<input id="__window-start" type="number" min="0" step="any" value="0"></label><label>Zoom · segundos na janela<select id="__zoom"><option value="2">2 s</option><option value="4">4 s</option><option value="8" selected>8 s</option><option value="16">16 s</option><option value="32">32 s</option><option value="64">64 s</option></select></label><button id="__apply-window" class="te-show-window" type="button">Mostrar janela</button><button id="__window-prev" type="button" aria-label="Janela anterior">← Janela</button><button id="__window-next" type="button" aria-label="Próxima janela">Janela →</button></div>' +
-      '<p id="__window-label" class="te-caption"></p><div id="__timeline" class="te-timeline" tabindex="0" role="group" aria-label="Linha do tempo com seis cordas" aria-describedby="__visible"><div class="te-timeline-inner"><div class="te-string-labels" aria-hidden="true"><span>1 · mi</span><span>2 · si</span><span>3 · sol</span><span>4 · ré</span><span>5 · lá</span><span>6 · mi</span></div><div class="te-track"><div id="__phrases" class="te-phrases"></div><div id="__grid" class="te-grid"></div><div id="__notes" class="te-notes"></div></div></div></div><p id="__visible" class="te-caption"></p>' +
-      '<div class="te-editor-columns"><fieldset><legend id="__note-label">Nota selecionada</legend><div class="te-actions"><button id="__prev" type="button">Nota anterior</button><button id="__next" type="button">Próxima nota</button></div><div class="te-fields"><label>Início (s)<input id="__note-time" type="number" min="0" max="900" step="any"></label><label>Duração (s)<input id="__note-duration" type="number" min="0.04" max="60" step="any"></label><label>Corda<select id="__note-string"><option value="1">1 · mi aguda</option><option value="2">2 · si</option><option value="3">3 · sol</option><option value="4">4 · ré</option><option value="5">5 · lá</option><option value="6">6 · mi grave</option></select></label><label>Casa<input id="__note-fret" type="number" min="0" max="24" step="1"></label></div><p id="__note-pitch" class="te-pitch" aria-live="polite"></p><button id="__apply-note" type="button">Aplicar alteração da nota</button><div class="te-actions"><button id="__add" type="button">Adicionar nota</button><button id="__duplicate" type="button">Duplicar nota</button><button id="__delete" type="button">Excluir nota</button></div></fieldset>' +
+      '<p id="__window-label" class="te-caption"></p><div id="__timeline" class="te-timeline" tabindex="0" role="group" aria-label="Linha do tempo do arranjo" aria-describedby="__visible"><div id="__timeline-inner" class="te-timeline-inner"><div id="__string-labels" class="te-string-labels" aria-hidden="true"></div><div class="te-track"><div id="__phrases" class="te-phrases"></div><div id="__grid" class="te-grid"></div><div id="__notes" class="te-notes"></div></div></div></div><p id="__visible" class="te-caption"></p>' +
+      '<div class="te-editor-columns"><fieldset><legend id="__note-label">Nota selecionada</legend><div class="te-actions"><button id="__prev" type="button">Nota anterior</button><button id="__next" type="button">Próxima nota</button></div><div class="te-fields"><label>Início (s)<input id="__note-time" type="number" min="0" max="900" step="any"></label><label>Duração (s)<input id="__note-duration" type="number" min="0.04" max="60" step="any"></label><label>Corda<select id="__note-string"></select></label><label>Casa<input id="__note-fret" type="number" min="0" max="24" step="1"></label></div><p id="__note-pitch" class="te-pitch" aria-live="polite"></p><button id="__apply-note" type="button">Aplicar alteração da nota</button><div class="te-actions"><button id="__add" type="button">Adicionar nota</button><button id="__duplicate" type="button">Duplicar nota</button><button id="__delete" type="button">Excluir nota</button></div></fieldset>' +
       '<fieldset><legend>Frases para praticar</legend><label>Frase<select id="__section"><option value="">Escolha uma frase</option></select></label><label>Título da frase<input id="__section-title" type="text" maxlength="80"></label><div class="te-fields"><label>De (s)<input id="__section-from" type="number" min="0" step="any"></label><label>Até (s)<input id="__section-to" type="number" min="0" step="any"></label></div><button id="__apply-section" type="button">Aplicar alteração da frase</button><div class="te-actions"><button id="__add-section" type="button">Adicionar frase</button><button id="__delete-section" type="button">Excluir frase</button></div></fieldset></div><p class="te-caption">Clique numa nota para selecioná-la. Use as setas na pista ou os botões anterior e próxima. Ctrl/Cmd+Z e Ctrl/Cmd+Y funcionam aqui fora dos campos de texto; dentro dos campos, os atalhos continuam nativos.</p></div>').replace(/__/g, prefix);
     fields('meta', ['bpm', 'duration']);
     fields('note', ['note-time', 'note-duration', 'note-string', 'note-fret']);
     fields('section', ['section-title', 'section-from', 'section-to']);
     on('new', 'click', function () {
       if (locked || pendingGroup || chart) return;
-      carregar(Core.novoChart()); changed(); message('Novo arranjo com a primeira nota Mi2 criada. Complete título, objetivo e créditos na gestão.');
+      try {
+        var perfil = typeof options.perfilAtual === 'function' ? options.perfilAtual() : undefined;
+        carregar(Core.novoChart(undefined, undefined, perfil)); changed();
+        message('Novo arranjo com a primeira nota ' + name(chart.notes[0].midi) + ' criada. Complete título, objetivo e créditos na gestão.');
+      } catch (e) { message(e.message, true); }
     });
     on('discard', 'click', function () {
       if (locked || !pendingGroup) return;

@@ -7,15 +7,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const Core = require('./nucleo');
+const Perfis = require('./perfis');
 const Estudos = require('./estudos');
-const tuning = [40, 45, 50, 55, 59, 64];
+const tuningBaixo = Perfis.obter('baixo').tuning;
 const ids = ['primeiro-riff-v1', 'cordas-soltas-v1', 'cordas-vizinhas-v1', 'primeiras-casas-v1',
-  'pentatonica-mi-v1', 'saltos-entre-cordas-v1', 'frase-de-revisao-v1'];
+  'pentatonica-mi-v1', 'saltos-entre-cordas-v1', 'frase-de-revisao-v1', 'baixo-pulsacao-v1'];
 
-test('Primeiro riff é preservado integralmente junto a seis estudos distintos', () => {
+test('Primeiro riff é preservado integralmente junto aos estudos de seis cordas e ao contrabaixo', () => {
   const lista = Estudos.listar();
   assert.deepEqual(lista.map(item => item.id), ids);
-  assert.equal(new Set(lista.map(item => item.title)).size, 7);
+  assert.equal(new Set(lista.map(item => item.title)).size, 8);
   assert.deepEqual(lista[0].chart, Core.demoChart());
   assert.deepEqual(Estudos.obter('primeiro-riff-v1'), Core.demoChart());
   for (const item of lista) {
@@ -27,13 +28,16 @@ test('Primeiro riff é preservado integralmente junto a seis estudos distintos',
       assert.doesNotMatch(item[campo], /[<>\u0000-\u001f]/);
     }
   }
+  assert.equal(lista.find(item => item.id === 'baixo-pulsacao-v1').instrument, 'baixo');
+  assert.ok(lista.filter(item => item.instrument == null).every(item => item.chart.tuning.length === 6));
 });
 
-test('Todos os charts obedecem ao contrato, à afinação padrão e aos limites monofônicos', () => {
+test('Todos os charts obedecem ao contrato, ao perfil declarado e aos limites monofônicos', () => {
   for (const item of Estudos.listar()) {
     const chart = item.chart;
+    const perfil = item.instrument === 'baixo' ? Perfis.obter('baixo') : Perfis.obter('violao');
     assert.deepEqual(Core.validarChart(chart), chart);
-    assert.deepEqual(chart.tuning, tuning);
+    assert.deepEqual(chart.tuning, perfil.tuning);
     assert.equal(chart.metadata.demo, true);
     assert.ok(chart.notes.length > 0 && chart.notes.length <= 2000);
     assert.ok(chart.duration > 0 && chart.duration <= 900);
@@ -41,14 +45,15 @@ test('Todos os charts obedecem ao contrato, à afinação padrão e aos limites 
     for (let i = 0; i < chart.notes.length; i++) {
       const n = chart.notes[i];
       assert.ok(!noteIds.has(n.id)); noteIds.add(n.id);
-      assert.ok(Number.isInteger(n.string) && n.string >= 1 && n.string <= 6);
+      assert.ok(Number.isInteger(n.string) && n.string >= 1 && n.string <= perfil.strings);
       assert.ok(Number.isInteger(n.fret) && n.fret >= 0 && n.fret <= 3);
-      assert.equal(n.midi, tuning[6 - n.string] + n.fret);
+      assert.equal(n.midi, perfil.tuning[perfil.strings - n.string] + n.fret);
       assert.ok(n.time >= 0 && n.duration >= 0.04 && n.time + n.duration <= chart.duration);
       if (i) assert.ok(n.time > chart.notes[i - 1].time + chart.notes[i - 1].duration,
         'Existe espaço para abafar entre os ataques: ' + chart.id);
       const hz = 440 * 2 ** ((n.midi - 69) / 12);
-      assert.ok(hz >= 70 && hz <= 1400, 'Nota dentro da faixa de captura atual');
+      assert.ok(hz >= perfil.detector.minHz && hz <= perfil.detector.maxHz,
+        'Nota dentro da faixa de captura do perfil');
     }
   }
 });
@@ -72,8 +77,8 @@ test('Frases não vazias cobrem cada nota uma única vez sem cortar sua duraçã
   }
 });
 
-test('Estudos novos têm frases de 4/8 tempos e andamento gradual sem trocas de posição', () => {
-  const novos = Estudos.listar().slice(1);
+test('Estudos novos de seis cordas têm frases de 4/8 tempos e andamento gradual sem trocas de posição', () => {
+  const novos = Estudos.listar().filter(item => item.instrument == null).slice(1);
   let ultimoBpm = 0;
   for (const { chart } of novos) {
     assert.ok(chart.bpm >= 60 && chart.bpm <= 80 && chart.bpm > ultimoBpm);
@@ -83,6 +88,25 @@ test('Estudos novos têm frases de 4/8 tempos e andamento gradual sem trocas de 
       const tempos = (s.to - s.from) * chart.bpm / 60;
       assert.ok(Math.abs(tempos - 4) < 1e-5 || Math.abs(tempos - 8) < 1e-5);
     }
+  }
+});
+
+test('Estudo de contrabaixo usa as quatro cordas padrão, trechos curtos e notas monofônicas', () => {
+  const estudo = Estudos.listar().find(item => item.id === 'baixo-pulsacao-v1');
+  const chart = estudo.chart;
+  assert.equal(estudo.instrument, 'baixo');
+  assert.deepEqual(chart.tuning, tuningBaixo);
+  assert.equal(chart.bpm, 62);
+  assert.deepEqual([...new Set(chart.notes.map(n => n.string))].sort(), [1, 2, 3, 4]);
+  assert.ok(chart.notes.every(n => n.fret >= 0 && n.fret <= 3));
+  assert.equal(Math.min(...chart.notes.map(n => n.midi)), 28);
+  assert.ok(chart.notes.some(n => n.midi === 43));
+  for (const s of chart.sections) {
+    const tempos = (s.to - s.from) * chart.bpm / 60;
+    assert.ok(Math.abs(tempos - 4) < 1e-5);
+  }
+  for (let i = 1; i < chart.notes.length; i++) {
+    assert.ok(chart.notes[i].time >= chart.notes[i - 1].time + chart.notes[i - 1].duration);
   }
 });
 
@@ -148,6 +172,8 @@ test('Mutar uma lista ou um chart obtido não altera chamadas futuras nem outros
   lista[1].title = 'mudou'; lista[1].objective = 'mudou'; lista[1].level = 'mudou';
   lista[1].chart.notes[0].midi = 1; lista[1].chart.tuning[0] = 1;
   lista[1].chart.sections[0].title = 'mudou'; lista[1].chart.metadata.demo = false;
+  const baixo = lista.find(item => item.instrument === 'baixo');
+  baixo.instrument = 'mudou'; baixo.chart.notes[0].midi = 1; baixo.chart.tuning[0] = 1;
   lista.pop();
   const chart = Estudos.obter(ids[1]); chart.notes.length = 0; chart.sections.length = 0;
   assert.deepEqual(Estudos.listar(), esperado);
@@ -161,13 +187,16 @@ test('Busca é exata e identificadores desconhecidos não caem em propriedades d
   }
 });
 
-test('Mesma biblioteca roda no navegador sem CommonJS e depende do núcleo declarado', () => {
+test('Mesma biblioteca roda no navegador sem CommonJS e depende do núcleo e dos perfis declarados', () => {
   const contexto = vm.createContext({});
   const nucleo = fs.readFileSync(path.join(__dirname, 'nucleo.js'), 'utf8');
+  const perfis = fs.readFileSync(path.join(__dirname, 'perfis.js'), 'utf8');
   const estudos = fs.readFileSync(path.join(__dirname, 'estudos.js'), 'utf8');
   vm.runInContext(nucleo, contexto);
+  vm.runInContext(perfis, contexto);
   vm.runInContext(estudos, contexto);
   assert.equal(typeof contexto.MusiqueTocarEstudos.listar, 'function');
   assert.deepEqual(JSON.parse(JSON.stringify(contexto.MusiqueTocarEstudos.listar())), Estudos.listar());
   assert.throws(() => vm.runInNewContext(estudos, {}), /Carregue MusiqueTocarCore/);
+  assert.throws(() => vm.runInNewContext(estudos, { MusiqueTocarCore: Core }), /Carregue MusiqueTocarPerfis/);
 });

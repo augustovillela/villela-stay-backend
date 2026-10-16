@@ -7,6 +7,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const Importador = require('./importador-midi');
 const Core = require('./nucleo');
+const Perfis = require('./perfis');
 
 const bytesTexto = text => Array.from(text, ch => ch.charCodeAt(0));
 const u16 = value => [(value >>> 8) & 255, value & 255];
@@ -102,6 +103,27 @@ test('a posição sugerida prioriza a menor casa na afinação padrão', () => {
   ]);
 });
 
+test('perfil baixo aceita Mi1 e cria posições para quatro cordas sem alterar o padrão', () => {
+  const arquivo = smf({ tracks: [faixa([
+    ligar(0, 0, 28), desligar(480, 0, 28), ligar(0, 0, 33), desligar(480, 0, 33),
+    ligar(0, 0, 43), desligar(480, 0, 43), ligar(0, 0, 67), desligar(480, 0, 67), fim(),
+  ])] });
+  const seisCordas = Importador.analisar(arquivo);
+  assert.equal(candidato(seisCordas, 't0-c0').valid, false);
+  assert.match(candidato(seisCordas, 't0-c0').reason, /Mi2–Mi6/);
+
+  const baixo = Importador.analisar(arquivo, { perfil: 'baixo' });
+  assert.equal(candidato(baixo, 't0-c0').valid, true);
+  const chart = Importador.criarChart(baixo, 't0-c0', { id: 'baixo-midi', title: 'Baixo MIDI', perfil: 'baixo' });
+  assert.deepEqual(chart.tuning, [28, 33, 38, 43]);
+  assert.deepEqual(chart.notes.map(nota => [nota.midi, nota.string, nota.fret]), [
+    [28, 4, 0], [33, 3, 0], [43, 1, 0], [67, 1, 24],
+  ]);
+  assert.deepEqual(Core.validarChart(chart), chart);
+  assert.throws(() => Importador.criarChart(baixo, 't0-c0', { id: 'perfil-trocado', title: 'Perfil trocado', perfil: 'violao' }), /mesmo perfil/);
+  assert.throws(() => Importador.analisar(arquivo, { perfil: 'cinco-cordas' }), /Perfil de instrumento desconhecido/);
+});
+
 test('canal de percussão, sobreposição, nota aberta, pitch bend e extensão inválida são indisponíveis', () => {
   const percussao = Importador.analisar(smf({ tracks: [faixa([ligar(0, 9, 40), desligar(480, 9, 40), fim()])] }));
   assert.match(candidato(percussao, 't0-c9').reason, /percussão/);
@@ -166,7 +188,7 @@ test('análise é associada ao arquivo lido e o UMD funciona sem CommonJS', () =
   const analise = Importador.analisar(smf({ tracks: [faixa([ligar(0, 0, 40), desligar(480, 0, 40), fim()])] }));
   assert.throws(() => Importador.criarChart({ ...analise }, 't0-c0', { id: 'x', title: 'X' }), /Analise o arquivo novamente/);
   const source = fs.readFileSync(path.join(__dirname, 'importador-midi.js'), 'utf8');
-  const sandbox = { window: { MusiqueTocarCore: Core }, Uint8Array, ArrayBuffer, WeakMap, Number, Object, Math, Error };
+  const sandbox = { window: { MusiqueTocarCore: Core, MusiqueTocarPerfis: Perfis }, Uint8Array, ArrayBuffer, WeakMap, Number, Object, Math, Error };
   vm.runInNewContext(source, sandbox);
   assert.equal(typeof sandbox.window.MusiqueTocarImportadorMidi.analisar, 'function');
   const web = sandbox.window.MusiqueTocarImportadorMidi.analisar(smf({ tracks: [faixa([ligar(0, 0, 40), desligar(480, 0, 40), fim()])] }));

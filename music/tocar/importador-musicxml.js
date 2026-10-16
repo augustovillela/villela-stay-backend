@@ -1,9 +1,9 @@
 // Leitura local de MusicXML e MXL para o editor de Tocar junto.
 // O módulo não usa DOM, rede, banco, permissões ou conteúdo executável.
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./nucleo'), globalThis);
-  else root.MusiqueTocarImportadorMusicXML = factory(root.MusiqueTocarCore, root);
-})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this), function (Core, Ambiente) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./nucleo'), require('./perfis'), globalThis);
+  else root.MusiqueTocarImportadorMusicXML = factory(root.MusiqueTocarCore, root.MusiqueTocarPerfis, root);
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this), function (Core, Perfis, Ambiente) {
   'use strict';
 
   var LIMITE_BYTES = 2 * 1024 * 1024;
@@ -16,9 +16,6 @@
   var LIMITE_TEMPOS = 512;
   var BPM_MINIMO = 20;
   var BPM_MAXIMO = 300;
-  var MIDI_MINIMO = 40;
-  var MIDI_MAXIMO = 88;
-  var AFINACAO_PADRAO = [40, 45, 50, 55, 59, 64];
   var EPS = 1e-9;
   var analises = new WeakMap();
 
@@ -28,6 +25,46 @@
   function objeto(valor) { return valor && typeof valor === 'object' && !Array.isArray(valor); }
   function numero(valor) { return typeof valor === 'number' && Number.isFinite(valor); }
   function aproximado(a, b) { return Math.abs(a - b) <= EPS; }
+
+  function perfilPorId(id) {
+    exigir(Perfis && typeof Perfis.obter === 'function', 'Carregue MusiqueTocarPerfis antes de importar MusicXML.');
+    exigir(typeof id === 'string', 'Informe um perfil de instrumento válido.');
+    var origem = Perfis.obter(id);
+    exigir(origem && Array.isArray(origem.tuning), 'Perfil de instrumento desconhecido.');
+    exigir(Number.isInteger(origem.strings) && origem.strings >= 1 && origem.strings <= 6 && origem.tuning.length === origem.strings,
+      'Perfil de instrumento inválido.');
+    exigir(Number.isInteger(origem.frets) && origem.frets >= 0 && origem.frets <= 24, 'Perfil de instrumento inválido.');
+    var tuning = origem.tuning.slice();
+    tuning.forEach(function (midi, indice) {
+      exigir(Number.isInteger(midi) && midi >= 0 && midi <= 103, 'Perfil de instrumento inválido.');
+      if (indice) exigir(midi > tuning[indice - 1], 'Perfil de instrumento inválido.');
+    });
+    return { id: origem.id, tuning: tuning, strings: origem.strings, frets: origem.frets,
+      minMidi: tuning[0], maxMidi: tuning[tuning.length - 1] + origem.frets };
+  }
+  function perfilDaAnalise(opcoes) {
+    if (opcoes === undefined) return perfilPorId('violao');
+    if (typeof opcoes === 'string') return perfilPorId(opcoes);
+    exigir(objeto(opcoes) && Object.keys(opcoes).length === 1 && tem(opcoes, 'perfil'),
+      'Informe somente perfil para analisar o MusicXML.');
+    return perfilPorId(opcoes.perfil);
+  }
+  function mesmoPerfil(a, b) {
+    return a.strings === b.strings && a.frets === b.frets && a.tuning.length === b.tuning.length &&
+      a.tuning.every(function (midi, indice) { return midi === b.tuning[indice]; });
+  }
+  function perfilDaCriacao(opcoes, perfilDaOrigem) {
+    if (!tem(opcoes, 'perfil')) return perfilDaOrigem;
+    var solicitado = perfilPorId(opcoes.perfil);
+    exigir(mesmoPerfil(solicitado, perfilDaOrigem),
+      'O perfil do arranjo deve ser o mesmo perfil usado na análise MusicXML.');
+    return perfilDaOrigem;
+  }
+  function nomeMidi(midi) {
+    return ['Dó', 'Dó#', 'Ré', 'Ré#', 'Mi', 'Fá', 'Fá#', 'Sol', 'Sol#', 'Lá', 'Lá#', 'Si'][midi % 12] + (Math.floor(midi / 12) - 1);
+  }
+  function descricaoExtensao(perfil) { return nomeMidi(perfil.minMidi) + '–' + nomeMidi(perfil.maxMidi); }
+  function nomeDoInstrumento(perfil) { return perfil.strings === 4 ? 'baixo' : 'guitarra'; }
 
   function bytesDaEntrada(entrada) {
     var tag = Object.prototype.toString.call(entrada);
@@ -515,7 +552,7 @@
     return (octave + 1) * 12 + base + alter;
   }
 
-  function tabDaNota(no) {
+  function tabDaNota(no, perfil) {
     var notacoes = filho(no, 'notations');
     var tecnica = notacoes && filho(notacoes, 'technical');
     if (!tecnica) return null;
@@ -525,7 +562,7 @@
     try {
       var corda = inteiroTexto(stringNo, 'TAB string');
       var casa = inteiroTexto(fretNo, 'TAB fret');
-      if (corda < 1 || corda > 6 || casa < 0 || casa > 24) return { invalid: true };
+      if (corda < 1 || corda > perfil.strings || casa < 0 || casa > perfil.frets) return { invalid: true };
       return { string: corda, fret: casa };
     } catch (erro) { return { invalid: true }; }
   }
@@ -599,7 +636,7 @@
     linha.notes = resultado;
   }
 
-  function analisarParte(no, info, linhas, tempos) {
+  function analisarParte(no, info, linhas, tempos, perfil) {
     var divisions = null, inicioMedida = 0, ordem = 0;
     filhos(no, 'measure').forEach(function (medida) {
       var cursor = 0, maximo = 0, inicioPorLinha = Object.create(null), houveEventoNoCompasso = false;
@@ -675,7 +712,7 @@
         }
         if (duracao <= 0) adicionarProblema(linha, 'A linha contém nota sem duração positiva.');
         // TAB ausente ou inconsistente não impede a importação: use a mesma posição padrão do MIDI.
-        var tab = tabDaNota(item);
+        var tab = tabDaNota(item, perfil);
         var ties = tiposTie(item);
         linha.notes.push({ startBeat: inicioMedida + inicio, endBeat: inicioMedida + inicio + duracao, midiBase: midi,
           tab: tab && !tab.invalid ? tab : null, ties: ties, ordem: ordem++ });
@@ -722,18 +759,18 @@
     if (!relevantes.length) relevantes.push(copiarTempo(mapa[0]));
     return relevantes;
   }
-  function posicaoSugerida(midi) {
+  function posicaoSugerida(midi, perfil) {
     var opcoes = [];
-    for (var corda = 6; corda >= 1; corda--) {
-      var casa = midi - AFINACAO_PADRAO[6 - corda];
-      if (casa >= 0 && casa <= 24) opcoes.push({ string: corda, fret: casa });
+    for (var corda = perfil.strings; corda >= 1; corda--) {
+      var casa = midi - perfil.tuning[perfil.strings - corda];
+      if (casa >= 0 && casa <= perfil.frets) opcoes.push({ string: corda, fret: casa });
     }
     opcoes.sort(function (a, b) { return a.fret - b.fret || b.string - a.string; });
-    if (!opcoes.length) throw new Error('Não há posição de guitarra para MIDI ' + midi + '.');
+    if (!opcoes.length) throw new Error('Não há posição de ' + nomeDoInstrumento(perfil) + ' para MIDI ' + midi + '.');
     return opcoes[0];
   }
 
-  function finalizarLinhas(linhas, mapa) {
+  function finalizarLinhas(linhas, mapa, perfil) {
     return Object.keys(linhas).map(function (chave) {
       var linha = linhas[chave];
       linha.partIssues.forEach(function (problema) { adicionarProblema(linha, problema); });
@@ -742,8 +779,10 @@
         var semitones = 0;
         transposicoes.forEach(function (evento) { if (evento.beat <= nota.startBeat + EPS) semitones = evento.semitones; });
         nota.midi = nota.midiBase + semitones;
-        if (nota.midi < MIDI_MINIMO || nota.midi > MIDI_MAXIMO) adicionarProblema(linha, 'A linha contém notas fora da extensão Mi2–Mi6.');
-        if (nota.tab && AFINACAO_PADRAO[6 - nota.tab.string] + nota.tab.fret !== nota.midi) nota.tab = null;
+        if (nota.midi < perfil.minMidi || nota.midi > perfil.maxMidi) {
+          adicionarProblema(linha, 'A linha contém notas fora da extensão ' + descricaoExtensao(perfil) + '.');
+        }
+        if (nota.tab && perfil.tuning[perfil.strings - nota.tab.string] + nota.tab.fret !== nota.midi) nota.tab = null;
       });
       normalizarTies(linha);
       if (!linha.notes.length) adicionarProblema(linha, 'A linha não contém notas afinadas para importar.');
@@ -787,7 +826,8 @@
     return decodificarUtf8(await extrairZip(bytes, entradas[caminho], zip.inicioDiretorio), 'rootfile MusicXML');
   }
 
-  async function analisar(entrada) {
+  async function analisar(entrada, opcoes) {
+    var perfil = perfilDaAnalise(opcoes);
     var bytes = bytesDaEntrada(entrada);
     var formato = pareceZip(bytes) ? 'mxl' : 'musicxml';
     var xml = formato === 'mxl' ? await xmlDeMxl(bytes) : decodificarUtf8(bytes, 'o arquivo MusicXML');
@@ -809,10 +849,10 @@
       partesVistas[id] = true;
       var info = { id: id, indice: indice + 1, nome: nomes[id], issues: [],
         transposicoes: [{ beat: 0, semitones: 0, ordem: 0 }], ordemTransposicao: 1 };
-      analisarParte(parte, info, linhas, tempos);
+      analisarParte(parte, info, linhas, tempos, perfil);
     });
     var mapa = construirMapa(tempos);
-    var internas = finalizarLinhas(linhas, mapa);
+    var internas = finalizarLinhas(linhas, mapa, perfil);
     if (internas.length > 128) falhar('a partitura contém mais de 128 linhas.');
     if (internas.reduce(function (total, linha) { return total + linha.notes.length; }, 0) > 10000) {
       falhar('a partitura contém mais de 10.000 notas analisadas.');
@@ -825,7 +865,7 @@
     var duracao = internas.reduce(function (maior, linha) { return Math.max(maior, linha.duration || 0); }, 0);
     var analise = { format: formato, version: versao, title: parseTitulo(raiz), duration: duracao,
       tempoMap: mapa.map(copiarTempo), candidates: candidatos };
-    var privadas = { tempoMap: mapa.map(copiarTempo), candidates: Object.create(null) };
+    var privadas = { perfil: perfil, tempoMap: mapa.map(copiarTempo), candidates: Object.create(null) };
     internas.forEach(function (linha) { privadas.candidates[linha.id] = linha; });
     analises.set(analise, privadas);
     return analise;
@@ -834,24 +874,25 @@
   function criarChart(analise, candidateId, opcoes) {
     exigir(Core && typeof Core.validarChart === 'function', 'Carregue MusiqueTocarCore antes de criar um arranjo MusicXML.');
     exigir(typeof candidateId === 'string', 'Informe a linha MusicXML a importar.');
-    exigir(objeto(opcoes) && Object.keys(opcoes).every(function (chave) { return chave === 'id' || chave === 'title'; }),
-      'Informe somente id e title para criar o arranjo MusicXML.');
+    exigir(objeto(opcoes) && Object.keys(opcoes).every(function (chave) { return chave === 'id' || chave === 'title' || chave === 'perfil'; }),
+      'Informe somente id, title e perfil para criar o arranjo MusicXML.');
     var privado = analises.get(analise);
     exigir(privado, 'A análise MusicXML não pertence a este importador. Analise o arquivo novamente.');
     var linha = privado.candidates[candidateId];
     exigir(linha, 'A linha MusicXML escolhida não existe nesta análise.');
     exigir(linha.issues.length === 0, linha.issues[0] || 'Esta linha MusicXML não pode ser importada.');
+    var perfil = perfilDaCriacao(opcoes, privado.perfil);
     var notas = linha.notes.map(function (nota, indice) {
       var inicio = segundosNaBatida(nota.startBeat, privado.tempoMap);
       var fim = segundosNaBatida(nota.endBeat, privado.tempoMap);
-      var posicao = nota.tab || posicaoSugerida(nota.midi);
+      var posicao = nota.tab || posicaoSugerida(nota.midi, perfil);
       return { id: 'musicxml-' + (indice + 1), time: inicio, duration: fim - inicio,
         string: posicao.string, fret: posicao.fret, midi: nota.midi };
     });
     var duracao = linha.duration;
     var tempos = mapaRelevante(privado.tempoMap, duracao);
     var bruto = { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao,
-      tuning: AFINACAO_PADRAO.slice(), notes: notas, metadata: { demo: false } };
+      tuning: perfil.tuning.slice(), notes: notas, metadata: { demo: false } };
     if (tempos.length > 1) bruto.tempoMap = { version: 1, events: tempos };
     var chart = Core.validarChart(bruto);
     if (bruto.tempoMap && !tem(chart, 'tempoMap')) chart.tempoMap = { version: 1, events: tempos.map(copiarTempo) };

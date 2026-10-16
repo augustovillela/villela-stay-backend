@@ -70,8 +70,11 @@
       bpm: limite(input.bpm, 20, 300, 'BPM'), duration: limite(input.duration, 0.04, 900, 'Duração'),
       tuning: (input.tuning == null ? PADRAO : input.tuning), notes: [],
     };
-    exigir(Array.isArray(chart.tuning) && chart.tuning.length === 6, 'Afinação deve conter seis alturas MIDI, da corda grave à aguda.');
-    chart.tuning = chart.tuning.map(function (m) { exigir(Number.isInteger(m) && m >= 24 && m <= 88, 'Altura da afinação fora da faixa MIDI de guitarra (24–88).'); return m; });
+    exigir(Array.isArray(chart.tuning) && (chart.tuning.length === 4 || chart.tuning.length === 6), 'Afinação deve conter quatro ou seis alturas MIDI, da corda grave à aguda.');
+    chart.tuning = chart.tuning.map(function (m) {
+      exigir(Number.isInteger(m) && m >= 24 && m <= 88, 'Altura da afinação fora da faixa MIDI aceita (24–88).');
+      return m;
+    });
     validarTempoMap(input, chart);
     exigir(Array.isArray(input.notes) && input.notes.length > 0 && input.notes.length <= 2000, 'O arranjo deve ter de 1 a 2000 notas.');
     var ids = Object.create(null);
@@ -82,9 +85,10 @@
       var start = limite(n.time, 0, 900, 'Início da nota ' + nid);
       var dur = limite(n.duration, 0.04, 60, 'Duração da nota ' + nid);
       exigir(start + dur <= chart.duration + EPS, 'A nota ' + nid + ' ultrapassa a duração do arranjo.');
-      exigir(Number.isInteger(n.string) && n.string >= 1 && n.string <= 6, 'Corda inválida na nota ' + nid + ' (1 é a mi aguda).');
+      exigir(Number.isInteger(n.string) && n.string >= 1 && n.string <= chart.tuning.length,
+        'Corda inválida na nota ' + nid + ' (1 é a corda mais aguda).');
       exigir(Number.isInteger(n.fret) && n.fret >= 0 && n.fret <= 24, 'Casa inválida na nota ' + nid + ' (0–24).');
-      var midi = chart.tuning[6 - n.string] + n.fret;
+      var midi = chart.tuning[chart.tuning.length - n.string] + n.fret;
       exigir(Number.isInteger(n.midi) && n.midi === midi && midi <= 127, 'MIDI, corda, casa e afinação discordam na nota ' + nid + '.');
       return { id: nid, time: start, duration: dur, string: n.string, fret: n.fret, midi: midi };
     }).sort(function (a, b) { return a.time - b.time; });
