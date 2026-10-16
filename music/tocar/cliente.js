@@ -610,6 +610,28 @@
     var perfil = perfilDoChart(chart) || perfilDoInstrumento(state.instrument), totalCordas = perfil.strings;
     var top=h*0.12, bottom=h*0.86, far=w*0.24, near=w*0.88, center=w*0.5, p=state.position;
     g.clearRect(0,0,w,h); var bg=g.createLinearGradient(0,0,0,h); bg.addColorStop(0,'#111c2d');bg.addColorStop(1,'#1d2d40');g.fillStyle=bg;g.fillRect(0,0,w,h);
+    if (perfil.layout === 'drums') {
+      var pecas = perfil.drums || [], aheadDrums = 4.5, laneHeight = (bottom - top) / Math.max(1, pecas.length);
+      var resultDrums = {}, performanceDrums = state.mode === 'learn' ? state.learner : state.mode === 'practice' ? state.judge : null;
+      if (performanceDrums) performanceDrums.estados().forEach(function (s) { resultDrums[s.id] = s.status; });
+      pecas.forEach(function (drum, i) {
+        var y = top + laneHeight * (i + 0.5); g.strokeStyle = '#ccd8e41a'; g.lineWidth = d;
+        g.beginPath(); g.moveTo(w * 0.06, y + laneHeight / 2); g.lineTo(w * 0.94, y + laneHeight / 2); g.stroke();
+        g.fillStyle = '#a8bacb'; g.font = '600 ' + Math.max(10 * d, 12 * d) + 'px system-ui'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(drum.label, w * 0.03, y);
+      });
+      var beat = firstBeatAtOrAfter(chart, p), grid = 0;
+      for (; grid < 64; beat++) { var gt = timeAtBeat(chart, beat); if (gt >= p + aheadDrums) break; var gx = w * 0.1 + Math.max(0, (gt - p) / aheadDrums) * w * 0.82; g.strokeStyle = '#ffffff18'; g.beginPath(); g.moveTo(gx, top); g.lineTo(gx, bottom); g.stroke(); grid++; }
+      chart.notes.slice().reverse().forEach(function (n) {
+        if (n.time < state.from || n.time >= state.to) return; var dt = n.time - p; if (dt < -0.35 || dt > aheadDrums) return;
+        var di = pecas.findIndex(function (d) { return d.midi === n.midi; }); if (di < 0) return;
+        var x = w * 0.1 + Math.max(0, dt / aheadDrums) * w * 0.82, y = top + laneHeight * (di + 0.5), status = resultDrums[n.id];
+        g.globalAlpha = dt < 0 ? Math.max(0, 1 + dt / 0.35) : 1; g.fillStyle = status === 'hit' ? '#7ad7ac' : status === 'miss' || status === 'skipped' ? '#b36f70' : COLORS[di % COLORS.length];
+        g.beginPath(); g.roundRect(x - 16 * d, y - 11 * d, 32 * d, 22 * d, 5 * d); g.fill(); g.fillStyle = '#142337'; g.font = '700 ' + 12 * d + 'px system-ui'; g.textAlign = 'center'; g.fillText(status === 'hit' ? '✓' : String(n.velocity || 100), x, y + 1 * d); g.globalAlpha = 1;
+      });
+      g.strokeStyle = '#f2d4a0'; g.lineWidth = 2 * d; g.beginPath(); g.moveTo(w * 0.1, top); g.lineTo(w * 0.1, bottom); g.stroke();
+      g.fillStyle = '#dce5ed'; g.font = '500 ' + 11 * d + 'px system-ui'; g.textAlign = 'left'; g.fillText('PEÇAS MIDI · canal 10', w * 0.1, h * 0.08);
+      return;
+    }
     function point(lane, depth) { var k=1-depth, width=far+(near-far)*k*k; return [center-width/2+width*lane/totalCordas, top+(bottom-top)*k*k]; }
     for(var i=0;i<totalCordas;i++) { var a=point(i,1),b=point(i+1,1),c=point(i+1,0),e=point(i,0); g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.lineTo(c[0],c[1]);g.lineTo(e[0],e[1]);g.closePath();g.fillStyle=i%2?'#ffffff05':'#ffffff0a';g.fill(); }
     for(var lane=0;lane<=totalCordas;lane++) { var a=point(lane,1),b=point(lane,0);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.strokeStyle='#ccd8e41a';g.lineWidth=d;g.stroke(); }
