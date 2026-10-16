@@ -2,15 +2,15 @@
   'use strict';
   var app = document.getElementById('tocar-gestao');
   if (!app) return;
-  var Core = window.MusiqueTocarCore, Formato = window.MusiqueTocarFormatoCatalogo, Estudos = window.MusiqueTocarEstudos, Editor = window.MusiqueTocarEditor, ImportadorMidi = window.MusiqueTocarImportadorMidi, ImportadorMusicXML = window.MusiqueTocarImportadorMusicXML;
-  if (!Core || !Formato || !Estudos || !Editor || !ImportadorMidi || !ImportadorMusicXML) { app.textContent = 'Não foi possível carregar a gestão. Recarregue a página.'; return; }
+  var Core = window.MusiqueTocarCore, Formato = window.MusiqueTocarFormatoCatalogo, Estudos = window.MusiqueTocarEstudos, Editor = window.MusiqueTocarEditor, ImportadorMidi = window.MusiqueTocarImportadorMidi, ImportadorMusicXML = window.MusiqueTocarImportadorMusicXML, WaveformCliente = window.MusiqueTocarWaveformCliente;
+  if (!Core || !Formato || !Estudos || !Editor || !ImportadorMidi || !ImportadorMusicXML || !WaveformCliente) { app.textContent = 'Não foi possível carregar a gestão. Recarregue a página.'; return; }
   var boot = JSON.parse(app.getAttribute('data-estado') || '{}');
   if (!boot.logado) { app.innerHTML='<h1>Gerenciar seus arranjos</h1><p>Entre na sua conta Musique para criar arranjos das obras do seu acervo.</p><a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar ou criar conta</a><p><a href="/music/tocar">Voltar aos estudos abertos</a></p>';return; }
-  var current = null, chart = null, dirty = false, busy = false, conflict = false, editor = null, editorPending = false;
+  var current = null, chart = null, dirty = false, busy = false, conflict = false, editor = null, editorPending = false, waveform = null;
   var importacao = null;
-  var detailTicket = 0, mediaTicket = 0, importTicket = 0, worksTicket = 0, listTicket = 0;
+  var detailTicket = 0, mediaTicket = 0, importTicket = 0, worksTicket = 0, listTicket = 0, waveformTicket = 0;
   var worksOffset = 0, listOffset = 0, works = [], arrangements = [];
-  var mediaItems=[],mediaOffset=0,mediaWork='';
+  var mediaItems=[],mediaOffset=0,mediaWork='',waveformSource='';
   var BASE = '/music/api/tocar/gestao';
   var initialWork = new URLSearchParams(window.location ? window.location.search : '').get('obra');
   var workChoice = 0;
@@ -33,6 +33,43 @@
   var fields = ['tg-work', 'tg-title', 'tg-instrument', 'tg-level', 'tg-technique', 'tg-objective', 'tg-credits', 'tg-media', 'tg-media-offset', 'tg-json', 'tg-midi', 'tg-musicxml', 'tg-example', 'tg-use-example'];
   function importacaoPendente() { return !!importacao; }
   function rotuloImportacao(item) { return item && item.tipo === 'musicxml' ? 'MusicXML/MXL' : 'MIDI'; }
+  function motivoWaveform() {
+    if (!current) return 'Salve um rascunho com áudio associado para abrir a referência visual.';
+    if (busy) return 'Aguarde a operação atual antes de abrir a referência visual.';
+    if (conflict) return 'Recarregue a revisão salva antes de abrir a referência visual.';
+    if (editorPending) return 'Aplique ou cancele os campos pendentes do editor antes de abrir a referência visual.';
+    if (importacaoPendente()) return 'Confirme ou cancele a importação pendente antes de abrir a referência visual.';
+    if (dirty) return 'Salve o rascunho antes de abrir a referência visual do áudio.';
+    if (!current.documento || !current.documento.mediaId) return 'Associe um áudio autorizado e salve o rascunho para abrir a referência visual.';
+    return '';
+  }
+  function chaveWaveform() {
+    if (motivoWaveform()) return '';
+    return current.id + ':' + current.revision + ':' + current.documento.mediaId;
+  }
+  function atualizarWaveform() {
+    if (!waveform) return;
+    waveform.setOffset(Number($('tg-media-offset').value) || 0);
+    waveform.bloquear(busy || importacaoPendente());
+    var chave = chaveWaveform();
+    if (!chave) {
+      if (waveformSource) { waveformSource = ''; ++waveformTicket; waveform.limpar(motivoWaveform()); }
+      return;
+    }
+    if (chave === waveformSource) return;
+    waveformSource = chave;
+    var ticket = ++waveformTicket, id = current.id, revision = current.revision;
+    (async function () {
+      try {
+        var data = await api('/arranjos/' + encodeURIComponent(id) + '/audio?revision=' + encodeURIComponent(revision));
+        if (ticket !== waveformTicket || chave !== chaveWaveform()) return;
+        waveform.carregar(data);
+      } catch (e) {
+        if (ticket !== waveformTicket || chave !== chaveWaveform()) return;
+        waveform.falhar('Não foi possível abrir o áudio para alinhamento: ' + e.message);
+      }
+    })();
+  }
   function render() {
     var pendente = importacaoPendente();
     fields.forEach(function (id) { $(id).disabled = busy || pendente || (id === 'tg-work' && !!current) || (editorPending && ['tg-json','tg-midi','tg-musicxml','tg-example','tg-use-example'].includes(id)); });
@@ -56,8 +93,13 @@
     var selected = works.find(function (w) { return w.id === $('tg-work').value; }) || (current && current.obra);
     $('tg-visibility').textContent = selected ? 'Obra: ' + selected.titulo + ' · visibilidade ' + (selected.visibilidade || 'conforme o acervo') + '. Publicar o arranjo mantém o acesso definido no acervo; não torna a obra pública.' : 'Escolha uma obra sua. As permissões continuam sendo as do acervo.';
     renderImportacaoPreview();
+    atualizarWaveform();
   }
-  function changed() { ++importTicket; dirty = true; render(); }
+  function changed() {
+    ++importTicket; ++waveformTicket; waveformSource = ''; dirty = true;
+    if (waveform) waveform.limpar('Salve o rascunho antes de continuar o alinhamento visual.');
+    render();
+  }
   function option(select, value, label) { select.appendChild(node('option', label, { value: value })); }
   function mesmaMusica(a, b) {
     if (!a || !b) return false;
@@ -287,11 +329,20 @@
     '<p id="tg-status" class="tj-status" role="status"></p><p id="tg-login" hidden>Sua sessão terminou. <a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar no Musique</a></p><p id="tg-access" hidden>Seu acesso ao Musique precisa estar ativo. <a href="/music/app#conta">Ver assinatura</a></p><div class="tg-layout"><section class="tj-panel"><h2>Seus arranjos</h2><div class="tg-search"><label>Buscar arranjo<input id="tg-list-q" type="search"></label><button id="tg-list-search" type="button">Buscar</button></div><ul id="tg-list" class="tj-catalog-results"></ul><div class="tj-catalog-pages"><button id="tg-list-prev" disabled>Anterior</button><button id="tg-list-next" disabled>Próxima</button></div><button id="tg-new" type="button">Novo arranjo</button></section>' +
     '<section class="tj-panel"><h2>Rascunho e publicação</h2><p id="tg-version"></p><div class="tg-search"><label>Buscar obra própria<input id="tg-work-q" type="search"></label><button id="tg-work-search">Buscar obra</button></div><label class="tj-field">Obra do seu acervo<select id="tg-work"><option value="">Selecione uma obra do seu acervo</option></select></label><div class="tj-catalog-pages"><button id="tg-work-prev" disabled>Anterior</button><button id="tg-work-next" disabled>Próxima</button></div><p id="tg-work-empty" hidden>Nenhuma obra encontrada. <a href="/music/app#biblioteca">Abra o acervo para cadastrar uma obra.</a></p><p id="tg-visibility" class="tj-small"></p>' +
     '<div class="tg-grid"><label class="tj-field">Título do arranjo<input id="tg-title" maxlength="120"></label><label class="tj-field">Instrumento<select id="tg-instrument"></select></label><label class="tj-field">Nível<select id="tg-level"></select></label><label class="tj-field">Técnica<select id="tg-technique"></select></label></div>' +
-    '<label class="tj-field">Objetivo do estudo<input id="tg-objective" maxlength="500"></label><label class="tj-field">Autoria, créditos e procedência<input id="tg-credits" maxlength="500"></label><label class="tj-field">Áudio já vinculado à obra<select id="tg-media"><option value="">Sem áudio associado · usar demonstração sintetizada</option></select></label><label class="tj-field">O 0:00 do arranjo ocorre em (ms)<input id="tg-media-offset" type="number" min="0" max="600000" step="1" inputmode="numeric" value="0" aria-describedby="tg-media-offset-help"></label><p id="tg-media-offset-help" class="tj-small"></p><button id="tg-media-more" type="button" hidden>Carregar mais áudios desta obra</button>' +
+    '<label class="tj-field">Objetivo do estudo<input id="tg-objective" maxlength="500"></label><label class="tj-field">Autoria, créditos e procedência<input id="tg-credits" maxlength="500"></label><label class="tj-field">Áudio já vinculado à obra<select id="tg-media"><option value="">Sem áudio associado · usar demonstração sintetizada</option></select></label><label class="tj-field">O 0:00 do arranjo ocorre em (ms)<input id="tg-media-offset" type="number" min="0" max="600000" step="1" inputmode="numeric" value="0" aria-describedby="tg-media-offset-help"></label><p id="tg-media-offset-help" class="tj-small"></p><button id="tg-media-more" type="button" hidden>Carregar mais áudios desta obra</button><div id="tg-waveform"></div>' +
     '<p class="tj-small">Arquivos de áudio são geridos no acervo. Aqui entram apenas notas isoladas em afinação padrão; MP3 sozinho não cria um arranjo.</p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label><label class="tj-field">Importar MIDI (até 512 KiB, lido somente neste navegador)<input id="tg-midi" type="file" accept=".mid,.midi,audio/midi,audio/x-midi"></label><label class="tj-field">Importar MusicXML ou MXL (até 2 MiB, lido somente neste navegador)<input id="tg-musicxml" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/xml,text/xml"></label><section id="tg-midi-preview" class="tj-field" aria-live="polite" hidden><p id="tg-midi-info"></p><label><span id="tg-import-line-label">Linha MIDI</span><select id="tg-midi-candidates"><option value="">Escolha uma linha MIDI disponível</option></select></label><p id="tg-midi-detail" class="tj-small"></p><div class="tg-actions"><button id="tg-midi-confirm" type="button" disabled>Importar esta linha</button><button id="tg-midi-cancel" type="button">Cancelar importação MIDI</button></div></section>' +
     '<div class="tg-search"><label>Começar de um estudo original<select id="tg-example"></select></label><button id="tg-use-example" type="button">Usar cópia do estudo</button></div><p id="tg-chart-info"></p>' +
     '<div id="tg-editor"></div>' +
     '<div class="tg-actions"><button id="tg-save" type="button">Salvar rascunho</button><a id="tg-preview" target="_blank" rel="noopener" hidden>Revisar na pista ↗</a><button id="tg-publish" type="button" disabled>Publicar nova versão</button><button id="tg-withdraw" type="button" disabled>Retirar publicação</button><button id="tg-reload" type="button" disabled>Recarregar revisão salva (descarta alterações)</button><button id="tg-download" type="button">Baixar JSON do formulário</button></div><p class="tj-small">Publicar cria uma versão preservada. Editar depois prepara outro rascunho; retirar não apaga o histórico.</p><h3>Versões publicadas</h3><ul id="tg-versions"></ul></section></div>';
+  waveform = WaveformCliente.montar($('tg-waveform'), {
+    fetch: fetch,
+    onUsePosition: function (offsetMs) {
+      if (busy || conflict || importacaoPendente() || editorPending || !$('tg-media').value) return;
+      $('tg-media-offset').value = String(offsetMs);
+      changed();
+      message('O ponto atual do áudio foi copiado para o rascunho. Salve e revise antes de publicar.');
+    },
+  });
   editor = Editor.montar($('tg-editor'), {
     onChange: function (next) {
       ++importTicket;
@@ -401,5 +452,6 @@
     }catch(e){if(choice===workChoice)message('Não foi possível selecionar a obra: '+e.message,true);}
   }
   window.addEventListener('beforeunload', function (event) { if (dirty || editorPending || importacaoPendente()) { event.preventDefault(); event.returnValue = ''; } });
+  window.addEventListener('pagehide', function () { ++waveformTicket; waveformSource = ''; if (waveform) waveform.destruir(); });
   newDraft(); loadWorks(0); loadList(0); selectInitialWork();
 })();

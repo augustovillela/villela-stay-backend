@@ -74,6 +74,11 @@ function montar(options = {}) {
     constructor() { this.currentTime = 0; this.state = 'running'; this.destination = {}; contexts.push(this); }
     resume() { this.state = 'running'; return Promise.resolve(); }
     close() { this.state = 'closed'; return Promise.resolve(); }
+    decodeAudioData() {
+      if (options.waveformDecodeFailure) return Promise.reject(new Error('Codec indisponível'));
+      const samples = options.waveformSamples || new Float32Array([-.8, -.2, .3, .9]);
+      return Promise.resolve({ duration: options.waveformBufferDuration || 2, numberOfChannels: 1, getChannelData: () => samples });
+    }
     createOscillator() {
       const ctx = this;
       const o = { ctx, frequency: { value: 0 }, connect() {}, disconnect() {}, start(t) { this.when = t; }, stop(t) { this.stopAt = t ?? ctx.currentTime; } };
@@ -136,7 +141,7 @@ function montar(options = {}) {
   const sandbox = { window, document, console, fetch, Blob, URLSearchParams, performance: { now: () => now * 1000 }, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
     requestAnimationFrame: fn => { const id = ++sequence; rafs.set(id, fn); return id; }, cancelAnimationFrame: id => rafs.delete(id),
     setTimeout: (fn, ms) => { const id = ++sequence; timers.set(id, { at: now + ms / 1000, fn }); return id; }, clearTimeout: id => timers.delete(id) };
-  const scripts = options.page === 'gestao' ? ['editor-nucleo.js','editor-cliente.js','importador-midi.js','importador-musicxml.js'] : ['catalogo-cliente.js','cliente.js'];
+  const scripts = options.page === 'gestao' ? ['editor-nucleo.js','editor-cliente.js','importador-midi.js','importador-musicxml.js','waveform.js','waveform-cliente.js'] : ['catalogo-cliente.js','cliente.js'];
   scripts.forEach(file => vm.runInNewContext(fs.readFileSync(path.join(__dirname, file), 'utf8'), sandbox, { filename: file }));
   if (options.page === 'gestao') {
     if (options.importador) window.MusiqueTocarImportadorMidi = options.importador;

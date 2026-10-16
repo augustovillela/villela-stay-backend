@@ -116,7 +116,7 @@ Frases têm título, início e fim editáveis. BPM altera a grade de referência
 
 Os campos precisam ser aplicados ou cancelados antes de salvar, publicar, baixar ou abrir a prévia. Edições visuais invalidam uma importação de arquivo ainda pendente; durante salvamento a edição fica bloqueada. A página avisa ao sair com alterações não salvas. Salvar/publicar preserva o histórico local do editor quando o conteúdo musical retornado é igual; abrir outro arranjo, importar uma base ou recarregar a revisão salva reinicia esse histórico.
 
-Use **Salvar rascunho → Revisar na pista** para conferir exatamente o chart persistido, inclusive o áudio autorizado já associado. A versão que os alunos veem só muda após **Publicar nova versão**. Waveform, arrastar notas e reprodução de áudio dentro do editor continuam em incrementos posteriores da Etapa C, sem achatamento automático de polifonia.
+Use **Salvar rascunho → Revisar na pista** para conferir exatamente o chart persistido, inclusive o áudio autorizado já associado. A versão que os alunos veem só muda após **Publicar nova versão**. Arrastar notas e reprodução sincronizada dentro da linha do tempo continuam em incrementos posteriores da Etapa C, sem achatamento automático de polifonia.
 
 ## Importação MIDI — Etapa C2b
 
@@ -135,6 +135,12 @@ MIDI e MusicXML/MXL usam o mesmo painel de confirmação e o mesmo bloqueio cont
 ## Alinhamento manual de mídia — Etapa C2d
 
 Ao associar um áudio autorizado no gestor, o responsável informa em milissegundos onde começa o 0:00 musical do arranjo. O campo é zerado ao trocar ou remover a mídia e fica desabilitado sem uma faixa associada. Na pista, iniciar, pausar, buscar, repetir trecho e validar a duração convertem entre a posição lógica do chart e a posição física do áudio. Assim, uma introdução gravada pode ser ignorada sem alterar tempos, notas ou resultados do arranjo. Não há waveform, busca automática de alinhamento, URL externa nem valores negativos nesta entrega.
+
+## Referência visual de mídia — Etapa C2e
+
+Depois de salvar um rascunho sem alterações pendentes e com áudio autorizado associado, a gestão oferece um reprodutor para localizar o ponto que equivale ao 0:00 do arranjo. **Usar posição atual como 0:00 do arranjo** copia o instante para o campo `mediaOffsetMs`; salvar e publicar continuam sendo ações separadas. A canvas mostra waveform, playhead e marcador do deslocamento quando o navegador consegue ler e decodificar com segurança um áudio de até cinco minutos e 12 MiB. Arquivos maiores, codecs/origens que não permitem essa leitura e falhas de decodificação mantêm o reprodutor e o controle temporal acessíveis, sem tentar contornar CORS, armazenar a URL temporária ou transferir o áudio a outro serviço.
+
+A referência usa o endpoint autenticado da revisão salva e é descartada ao editar o rascunho, trocar/remover a mídia, iniciar importação, abrir outro arranjo, ocorrer conflito ou sair da página. Não cria upload, endpoint novo, migration, transcrição, sincronização automática, offset negativo ou alteração de `obra_midias.offset_ms`.
 
 ## Verificação automatizada
 

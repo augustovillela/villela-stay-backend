@@ -11,6 +11,8 @@ function servidor(extra) {
     if(url.includes('/obras?'))return resposta({obras:[work],total:1});
     if(url.endsWith('/obras/obra-a'))return resposta({obra:work});
     if(url.includes('/midias?'))return resposta({midias:[{id:'audio-a',titulo:'Faixa da obra',mime:'audio/mpeg'},{id:'audio-b',titulo:'Outra faixa',mime:'audio/wav'}]});
+    if(url.includes('/arranjos/arranjo-a/audio?'))return resposta({url:'https://audio.test/faixa-autorizada.mp3',mime:'audio/mpeg',expiresIn:600});
+    if(url.startsWith('https://audio.test/'))return {ok:true,headers:{get:name=>String(name).toLowerCase()==='content-length'?'4':null},arrayBuffer:async()=>new Uint8Array([1,2,3,4]).buffer};
     if(url.includes('/arranjos?'))return resposta({arranjos:[copy(current)],total:1});
     if(opts.method==='POST' && url.endsWith('/arranjos')){const b=JSON.parse(opts.body);current={...current,obra:work,documento:b.documento,title:b.documento.title,revision:1};return resposta({arranjo:copy(current)});}
     if(opts.method==='PUT'){const b=JSON.parse(opts.body);assert.equal(b.revision,current.revision);current={...current,documento:b.documento,title:b.documento.title,revision:current.revision+1};return resposta({arranjo:copy(current)});}
@@ -102,6 +104,35 @@ test('Deslocamento de mídia é acessível, acompanha o rascunho e zera ao troca
 test('Deslocamento de mídia inválido não envia alteração',async()=>{
   const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);await h.event('tg-media','change','audio-a');await h.event('tg-media-offset','input','600001');await h.event('tg-save','click');
   assert.equal(h.requests.filter(r=>r.opts.method==='PUT').length,0);assert.match(h.$('tg-status').textContent,/deslocamento de mídia/);
+});
+
+test('Referência visual usa somente a URL autorizada do rascunho salvo e copia a posição para o deslocamento',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);
+  await h.event('tg-media','change','audio-a');await h.event('tg-save','click');await h.settle();
+  const endpoint=h.requests.find(r=>r.url.includes('/gestao/arranjos/arranjo-a/audio?revision=2'));
+  assert.ok(endpoint,'a gestão pede uma URL temporária pela revisão atual');
+  const media=h.medias.at(-1);assert.ok(media);media.duration=2;media.onloadedmetadata();for(let i=0;i<3;i++)await h.settle();
+  assert.equal(h.$('tw-player').hidden,false,h.$('tw-status').textContent);assert.equal(h.$('tw-canvas').hidden,false);assert.equal(h.$('tw-position').max,'2000');
+  const antigo=media.ontimeupdate;media.currentTime=1.234;antigo();await h.event('tw-use','click');
+  assert.equal(h.$('tg-media-offset').value,'1234');assert.equal(h.$('tw-player').hidden,true);assert.equal(h.$('tg-save').disabled,false);
+  media.currentTime=.4;antigo();assert.match(h.$('tw-status').textContent,/Salve o rascunho/,'resposta antiga não reabre a referência');
+  await h.event('tg-save','click');assert.equal(s.current.documento.mediaOffsetMs,1234);
+});
+
+test('Áudio longo preserva o controle de posicionamento quando a waveform é intencionalmente limitada',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);
+  await h.event('tg-media','change','audio-a');await h.event('tg-save','click');await h.settle();
+  const media=h.medias.at(-1);media.duration=301;media.onloadedmetadata();await h.settle();
+  assert.equal(h.$('tw-player').hidden,false);assert.equal(h.$('tw-canvas').hidden,true);assert.equal(h.$('tw-position').disabled,false);
+  assert.match(h.$('tw-status').textContent,/até 5 minutos/);
+});
+
+test('Falha de codec deixa o reprodutor e o controle acessível sem fabricar uma waveform',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch,waveformDecodeFailure:true});await abrir(h);
+  await h.event('tg-media','change','audio-a');await h.event('tg-save','click');await h.settle();
+  const media=h.medias.at(-1);media.duration=2;media.onloadedmetadata();for(let i=0;i<3;i++)await h.settle();
+  assert.equal(h.$('tw-player').hidden,false);assert.equal(h.$('tw-canvas').hidden,true);assert.equal(h.$('tw-position').disabled,false);
+  assert.match(h.$('tw-status').textContent,/não foi possível desenhar a waveform/);
 });
 
 test('MIDI é analisado localmente e exige confirmação explícita antes de trocar o rascunho',async()=>{
