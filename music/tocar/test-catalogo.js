@@ -242,7 +242,7 @@ test('listas são paginadas, filtradas no snapshot correto e não levam charts',
     assert.doesNotMatch(JSON.stringify(dados), /"documento"|"chart"|"notes"|"chave"/);
   }
   assert.equal(Catalogo.listar(f.dono, { q: "%' OR 1=1 --" }).total, 0);
-  for (const query of ['limit=51', 'limit=0', 'limit=NaN', 'offset=-1', 'offset=0.5', 'instrument=piano', 'level=x', 'technique=x', 'q=x&q=y']) {
+  for (const query of ['limit=51', 'limit=0', 'limit=NaN', 'offset=-1', 'offset=0.5', 'instrument=teclado', 'level=x', 'technique=x', 'q=x&q=y']) {
     assert.equal((await req('/catalogo?' + query, f.dono)).status, 400, query);
   }
 });

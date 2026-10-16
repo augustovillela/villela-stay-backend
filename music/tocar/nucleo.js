@@ -116,10 +116,27 @@
     }
     return chart;
   }
+  function validarPiano(input) {
+    exigir(input.profile === 'piano-midi' && input.layout === 'piano', 'O arranjo de piano deve declarar profile piano-midi e layout piano.');
+    exigir(!tem(input, 'tuning'), 'Arranjo de piano não usa afinação.');
+    var chart = { id: id(input.id, 'id do arranjo'), title: texto(input.title, 'Título', 120), bpm: limite(input.bpm, 20, 300, 'BPM'), duration: limite(input.duration, 0.04, 900, 'Duração'), profile: 'piano-midi', layout: 'piano', notes: [] };
+    validarTempoMap(input, chart); exigir(Array.isArray(input.notes) && input.notes.length > 0 && input.notes.length <= 2000, 'O arranjo deve ter de 1 a 2000 notas.');
+    var ids = Object.create(null); chart.notes = input.notes.map(function (n, i) {
+      exigir(objeto(n), 'Nota de piano inválida.'); camposExatos(n, ['id','time','duration','midi','velocity'], 'Nota de piano ' + (i + 1));
+      var nid = id(n.id, 'id da nota ' + (i + 1)); exigir(!ids[nid], 'id de nota repetido: ' + nid); ids[nid] = true;
+      var start = limite(n.time, 0, 900, 'Início da nota ' + nid), dur = limite(n.duration, 0.02, 60, 'Duração da nota ' + nid);
+      exigir(start + dur <= chart.duration + EPS, 'A nota ultrapassa a duração do arranjo.'); exigir(Number.isInteger(n.midi) && n.midi >= 21 && n.midi <= 108, 'Tecla MIDI fora do piano de 88 teclas.'); exigir(Number.isInteger(n.velocity) && n.velocity >= 1 && n.velocity <= 127, 'Velocity inválida.');
+      return { id: nid, time: start, duration: dur, midi: n.midi, velocity: n.velocity };
+    }).sort(function (a,b) { return a.time-b.time || a.midi-b.midi; });
+    if (input.sections != null) chart.sections = input.sections.map(function (s) { return { id: id(s.id, 'id do trecho'), title: texto(s.title, 'Título do trecho', 80), from: limite(s.from,0,chart.duration,'Início do trecho'), to: limite(s.to,0,chart.duration,'Fim do trecho') }; });
+    if (input.metadata != null) chart.metadata = { demo: input.metadata.demo === true };
+    return chart;
+  }
 
   function validarChart(input) {
     exigir(objeto(input), 'O arranjo deve ser um objeto.');
     if (input.profile === 'bateria-midi' || input.layout === 'drums') return validarBateria(input);
+    if (input.profile === 'piano-midi' || input.layout === 'piano') return validarPiano(input);
     var chart = {
       id: id(input.id, 'id do arranjo'), title: texto(input.title, 'Título', 120),
       bpm: limite(input.bpm, 20, 300, 'BPM'), duration: limite(input.duration, 0.04, 900, 'Duração'),
@@ -192,7 +209,7 @@
 
   function criarJulgador(input, options) {
     var chart = validarChart(input), o = options || {};
-    if (chart.layout === 'drums') return criarJulgadorBateria(chart, o);
+    if (chart.layout === 'drums' || chart.layout === 'piano') return criarJulgadorBateria(chart, o);
     function opt(k, pad, min, max) { return limite(o[k] == null ? pad : o[k], min, max, k); }
     var offset = opt('offsetMs', 0, -2000, 2000) / 1000;
     var tolerance = opt('toleranceMs', 180, 20, 1000) / 1000;

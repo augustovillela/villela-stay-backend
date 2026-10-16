@@ -54,7 +54,7 @@ test('perfis de seis cordas e baixo são cópias defensivas com aliases estávei
   assert.equal(Perfis.obter('baixo').detector.minHz, 35);
   assert.equal(Perfis.porAfinacao([28, 33, 38, 43]).id, 'baixo');
   assert.equal(Perfis.porAfinacao([29, 34, 39, 44]), null);
-  assert.equal(Perfis.obter('piano'), null);
+  assert.equal(Perfis.obter('piano').layout, 'piano');
 });
 
 test('validação ordena sem alterar a entrada e não compartilha notas/afinação', () => {

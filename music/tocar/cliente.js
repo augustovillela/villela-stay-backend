@@ -38,12 +38,13 @@
     return Number.isFinite(ms) && ms >= 35 && ms <= 250 ? ms / 2000 : 0.032;
   }
   function nomeInstrumento(instrumento) {
-    return instrumento === 'baixo' ? 'Contrabaixo' : instrumento === 'bateria' ? 'Bateria eletrônica' : instrumento === 'guitarra' ? 'Guitarra' : 'Violão';
+    return instrumento === 'baixo' ? 'Contrabaixo' : instrumento === 'bateria' ? 'Bateria eletrônica' : instrumento === 'piano' ? 'Piano' : instrumento === 'guitarra' ? 'Guitarra' : 'Violão';
   }
   function instrumentoDoChart(perfil, origem) {
     if (origem && origem.instrument && perfilDoInstrumento(origem.instrument).id === perfil.id) return origem.instrument;
     if (perfil.id === 'baixo') return 'baixo';
     if (perfil.id === 'bateria-midi') return 'bateria';
+    if (perfil.id === 'piano-midi') return 'piano';
     return state.instrument === 'guitarra' ? 'guitarra' : 'violao';
   }
   function encerrarCapturaDoPerfilAnterior() {
@@ -101,22 +102,22 @@
     renderCaptureGain();
   }
   function profile() {
-    var perfil = perfilDoInstrumento(state.instrument), baixo = perfil.id === 'baixo', bateria = perfil.layout === 'drums';
+    var perfil = perfilDoInstrumento(state.instrument), baixo = perfil.id === 'baixo', bateria = perfil.layout === 'drums', piano = perfil.layout === 'piano';
     var microphone = state.inputKind === 'microphone';
     text('tj-instrument-label', nomeInstrumento(state.instrument));
-    $('tj-back').hidden = baixo || bateria;
+    $('tj-back').hidden = baixo || bateria || piano;
     if (!baixo) $('tj-back').href = '/music/tutor-braco?i=' + state.instrument;
-    text('tj-input-title', bateria ? 'Conecte a bateria eletrônica' : microphone ? 'Prepare o microfone' : state.inputKind === 'interface' ? 'Prepare a interface' : 'Prepare o Real Tone');
-    text('tj-input-help', bateria ? 'Use um navegador com Web MIDI e selecione a porta MIDI da sua bateria eletrônica.' : microphone
+    text('tj-input-title', bateria ? 'Conecte a bateria eletrônica' : piano ? 'Conecte o piano MIDI' : microphone ? 'Prepare o microfone' : state.inputKind === 'interface' ? 'Prepare a interface' : 'Prepare o Real Tone');
+    text('tj-input-help', bateria || piano ? 'Use um navegador com Web MIDI e selecione a porta MIDI do instrumento.' : microphone
       ? 'Use o microfone do computador, um USB ou um ligado à interface. Aproxime-o do instrumento em um ambiente silencioso. Toque uma corda por vez.'
       : state.inputKind === 'interface'
         ? 'Ligue o instrumento à entrada indicada para instrumento na interface. Selecione a interface na lista abaixo.'
         : 'Plugue o Real Tone na USB e no instrumento com saída para cabo. Selecione o adaptador Rocksmith na lista abaixo.');
-    text('tj-listening-help', bateria ? 'A prática usa as mensagens MIDI do canal de percussão; microfone e reconhecimento acústico ficam desativados neste perfil.' : microphone
+    text('tj-listening-help', bateria || piano ? 'A prática usa as mensagens MIDI do instrumento; microfone e reconhecimento acústico ficam desativados neste perfil.' : microphone
       ? 'Use fones: o microfone também pode captar o som do computador e gerar acertos indevidos. Na prática, os sons de apoio começam desligados. Um microfone ligado à interface também usa este modo.'
       : 'Confira o medidor tocando uma corda e ajuste o ganho sem saturar. Se estiver usando um microfone na interface, escolha o modo Microfone.');
-    $('tj-connect').textContent = state.connected ? 'Desconectar' : bateria ? 'Ativar MIDI' : microphone ? 'Ativar microfone' : 'Ativar entrada';
-    $('tj-gain').disabled = bateria; if (!bateria) renderCaptureGain();
+    $('tj-connect').textContent = state.connected ? 'Desconectar' : bateria || piano ? 'Ativar MIDI' : microphone ? 'Ativar microfone' : 'Ativar entrada';
+    $('tj-gain').disabled = bateria || piano; if (!bateria && !piano) renderCaptureGain();
   }
   function changeProfile() {
     var anterior = perfilDoInstrumento(state.instrument);
@@ -522,7 +523,7 @@
     var attempt = ++deviceRefresh;
     try {
       // Enumerar não abre o microfone nem pede permissão. Os nomes podem estar ocultos.
-      if (perfilDoInstrumento(state.instrument).layout === 'drums' && window.MusiqueTocarMidi) {
+      if ((perfilDoInstrumento(state.instrument).layout === 'drums' || perfilDoInstrumento(state.instrument).layout === 'piano') && window.MusiqueTocarMidi) {
         var midi = midiInput || (midiInput = window.MusiqueTocarMidi.criar({ onEvent: onMidiEvent, onStatus: onMidiStatus }));
         var portas = await midi.dispositivos();
         if (attempt !== deviceRefresh) return;
@@ -551,7 +552,7 @@
   async function activateInput() {
     $('tj-connect').disabled = true;
     try {
-      if (perfilDoInstrumento(state.instrument).layout === 'drums' && window.MusiqueTocarMidi) {
+      if ((perfilDoInstrumento(state.instrument).layout === 'drums' || perfilDoInstrumento(state.instrument).layout === 'piano') && window.MusiqueTocarMidi) {
         midiInput = midiInput || window.MusiqueTocarMidi.criar({ onEvent: onMidiEvent, onStatus: onMidiStatus });
         await midiInput.iniciar($('tj-device').value || undefined);
         state.connected = true; msg('MIDI conectado. Toque a bateria eletrônica para praticar.'); updateTransport(); return;
@@ -566,7 +567,7 @@
   function connect() {
     if(previewMode)return;
     pause(); cancelCalibration();
-    if (state.connected) { if (midiInput && perfilDoInstrumento(state.instrument).layout === 'drums') midiInput.parar(); else if (input) input.parar(); return; }
+    if (state.connected) { if (midiInput && (perfilDoInstrumento(state.instrument).layout === 'drums' || perfilDoInstrumento(state.instrument).layout === 'piano')) midiInput.parar(); else if (input) input.parar(); return; }
     return activateInput();
   }
   function cancelCalibration() {
@@ -610,8 +611,8 @@
     var perfil = perfilDoChart(chart) || perfilDoInstrumento(state.instrument), totalCordas = perfil.strings;
     var top=h*0.12, bottom=h*0.86, far=w*0.24, near=w*0.88, center=w*0.5, p=state.position;
     g.clearRect(0,0,w,h); var bg=g.createLinearGradient(0,0,0,h); bg.addColorStop(0,'#111c2d');bg.addColorStop(1,'#1d2d40');g.fillStyle=bg;g.fillRect(0,0,w,h);
-    if (perfil.layout === 'drums') {
-      var pecas = perfil.drums || [], aheadDrums = 4.5, laneHeight = (bottom - top) / Math.max(1, pecas.length);
+    if (perfil.layout === 'drums' || perfil.layout === 'piano') {
+      var pecas = perfil.layout === 'drums' ? (perfil.drums || []) : Array.from({ length: 12 }, function (_, i) { return { id: String(i), label: ['Dó','Dó♯','Ré','Ré♯','Mi','Fá','Fá♯','Sol','Sol♯','Lá','Lá♯','Si'][i], midi: i }; }), aheadDrums = 4.5, laneHeight = (bottom - top) / Math.max(1, pecas.length);
       var resultDrums = {}, performanceDrums = state.mode === 'learn' ? state.learner : state.mode === 'practice' ? state.judge : null;
       if (performanceDrums) performanceDrums.estados().forEach(function (s) { resultDrums[s.id] = s.status; });
       pecas.forEach(function (drum, i) {
@@ -623,7 +624,7 @@
       for (; grid < 64; beat++) { var gt = timeAtBeat(chart, beat); if (gt >= p + aheadDrums) break; var gx = w * 0.1 + Math.max(0, (gt - p) / aheadDrums) * w * 0.82; g.strokeStyle = '#ffffff18'; g.beginPath(); g.moveTo(gx, top); g.lineTo(gx, bottom); g.stroke(); grid++; }
       chart.notes.slice().reverse().forEach(function (n) {
         if (n.time < state.from || n.time >= state.to) return; var dt = n.time - p; if (dt < -0.35 || dt > aheadDrums) return;
-        var di = pecas.findIndex(function (d) { return d.midi === n.midi; }); if (di < 0) return;
+        var di = perfil.layout === 'piano' ? n.midi % 12 : pecas.findIndex(function (d) { return d.midi === n.midi; }); if (di < 0) return;
         var x = w * 0.1 + Math.max(0, dt / aheadDrums) * w * 0.82, y = top + laneHeight * (di + 0.5), status = resultDrums[n.id];
         g.globalAlpha = dt < 0 ? Math.max(0, 1 + dt / 0.35) : 1; g.fillStyle = status === 'hit' ? '#7ad7ac' : status === 'miss' || status === 'skipped' ? '#b36f70' : COLORS[di % COLORS.length];
         g.beginPath(); g.roundRect(x - 16 * d, y - 11 * d, 32 * d, 22 * d, 5 * d); g.fill(); g.fillStyle = '#142337'; g.font = '700 ' + 12 * d + 'px system-ui'; g.textAlign = 'center'; g.fillText(status === 'hit' ? '✓' : String(n.velocity || 100), x, y + 1 * d); g.globalAlpha = 1;
@@ -727,6 +728,7 @@
   text('tj-history-label',boot.logado?'Últimas rodadas guardadas nesta conta.':'Entre no Musique para guardar as rodadas na sua conta.');
   if(!boot.logado)$('tj-history').appendChild(el('li',{},[el('a',{href:'/music/entrar?voltar=%2Fmusic%2Ftocar',text:'Entrar ou criar conta'})]));
   if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'bateria'; })) $('tj-instrument').appendChild(el('option', { value: 'bateria', text: 'Bateria eletrônica' }));
+  if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'piano'; })) $('tj-instrument').appendChild(el('option', { value: 'piano', text: 'Piano MIDI' }));
   if (!Array.prototype.some.call($('tj-connection-type').children || [], function (o) { return o.value === 'midi'; })) $('tj-connection-type').appendChild(el('option', { value: 'midi', text: 'Web MIDI · bateria eletrônica' }));
   profile();applyChart(chart);if(previewMode)openPreview();else{refreshDevices();history();}tick();
 })();

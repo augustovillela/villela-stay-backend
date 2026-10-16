@@ -23,5 +23,5 @@ test('Perfis reconhecem somente afinações padrão completas', () => {
   assert.equal(Perfis.porAfinacao([28, 33, 38, 43]).id, 'baixo');
   assert.equal(Perfis.porAfinacao([28, 33, 38, 44]), null);
   assert.equal(Perfis.porAfinacao([28, 33, 38]), null);
-  assert.equal(Perfis.obter('piano'), null);
+  assert.equal(Perfis.obter('piano').layout, 'piano');
 });

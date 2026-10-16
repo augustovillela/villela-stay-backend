@@ -52,8 +52,9 @@
     ],
     detector: null
   });
-  var PERFIS = Object.freeze({ 'seis-cordas': SEIS_CORDAS, baixo: BAIXO, 'bateria-midi': BATERIA });
-  var ALIASES = Object.freeze({ violao: 'seis-cordas', guitarra: 'seis-cordas', 'seis-cordas': 'seis-cordas', baixo: 'baixo', bateria: 'bateria-midi', 'bateria-midi': 'bateria-midi' });
+  var PIANO = congelarPerfil({ id: 'piano-midi', rotulo: 'Piano MIDI', label: 'Piano MIDI', layout: 'piano', keys: 88, minMidi: 21, maxMidi: 108, detector: null });
+  var PERFIS = Object.freeze({ 'seis-cordas': SEIS_CORDAS, baixo: BAIXO, 'bateria-midi': BATERIA, 'piano-midi': PIANO });
+  var ALIASES = Object.freeze({ violao: 'seis-cordas', guitarra: 'seis-cordas', 'seis-cordas': 'seis-cordas', baixo: 'baixo', bateria: 'bateria-midi', 'bateria-midi': 'bateria-midi', piano: 'piano-midi', 'piano-midi': 'piano-midi' });
 
   function copia(perfil) {
     if (!perfil) return null;
@@ -68,6 +69,7 @@
       rotulos: perfil.rotulos ? perfil.rotulos.slice() : [],
       stringLabels: perfil.stringLabels ? perfil.stringLabels.slice() : [],
       drums: perfil.drums ? perfil.drums.map(function (drum) { return Object.assign({}, drum); }) : [],
+      keys: perfil.keys || 0, minMidi: perfil.minMidi || 0, maxMidi: perfil.maxMidi || 0,
       detector: perfil.detector ? Object.assign({}, perfil.detector) : null
     };
   }
@@ -87,6 +89,7 @@
   }
   function porChart(chart) {
     if (chart && (chart.profile === 'bateria-midi' || chart.layout === 'drums')) return copia(BATERIA);
+    if (chart && (chart.profile === 'piano-midi' || chart.layout === 'piano')) return copia(PIANO);
     return porAfinacao(chart && chart.tuning);
   }
 

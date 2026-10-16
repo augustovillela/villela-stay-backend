@@ -101,12 +101,21 @@
         { title: 'Caixa no contratempo', notes: [[36, 42], [42], [38, 42], [42]] },
         { title: 'Bumbo e caixa', notes: [[36, 42], [38, 42], [36, 42], [38, 42]] }
       ]
+    },
+    {
+      id: 'piano-pulsacao-v1', title: 'Pulsação no piano', level: 'Iniciante · piano 1', bpm: 72,
+      instrument: 'piano', objective: 'Praticar notas e acordes simples no teclado MIDI, mantendo o pulso.',
+      pianoPhrases: [
+        { title: 'Notas fundamentais', notes: [[48], [52], [55], [48]] },
+        { title: 'Acordes maiores', notes: [[48, 52, 55], [50, 54, 57], [48, 52, 55], [43, 47, 50]] },
+        { title: 'Resposta melódica', notes: [[60], [62], [64], [67], [64], [62], [60], [55]] }
+      ]
     }
   ];
 
   function perfilDa(definicao) {
     var perfil = Perfis.obter(definicao.instrument || 'violao');
-    if (perfil && perfil.layout === 'drums') return perfil;
+    if (perfil && (perfil.layout === 'drums' || perfil.layout === 'piano')) return perfil;
     if (!perfil || !Array.isArray(perfil.tuning) || perfil.tuning.length !== perfil.strings) {
       throw new Error('Perfil de instrumento inválido para o estudo.');
     }
@@ -117,7 +126,15 @@
     if (definicao.original) return Core.demoChart();
     var perfil = perfilDa(definicao);
     var beat = 60 / definicao.bpm, cursor = 0, notes = [], sections = [];
-    if (perfil.layout === 'drums') {
+    if (perfil.layout === 'drums' || perfil.layout === 'piano') {
+      if (perfil.layout === 'piano') {
+        definicao.pianoPhrases.forEach(function (phrase, i) {
+          var inicio = cursor;
+          phrase.notes.forEach(function (teclas) { teclas.forEach(function (midi) { notes.push({ id: definicao.id + '-n' + (notes.length + 1), time: Math.round((2 + cursor * beat) * 1000000) / 1000000, duration: Math.round(0.22 * beat * 1000000) / 1000000, midi: midi, velocity: 96 }); }); cursor += 1; });
+          sections.push({ id: definicao.id + '-f' + (i + 1), title: phrase.title, from: Math.round((2 + inicio * beat) * 1000000) / 1000000, to: Math.round((2 + cursor * beat) * 1000000) / 1000000 });
+        });
+        return Core.validarChart({ id: definicao.id, title: definicao.title, bpm: definicao.bpm, duration: Math.round((cursor * beat + 4) * 1000000) / 1000000, profile: 'piano-midi', layout: 'piano', notes: notes, sections: sections, metadata: { demo: true } });
+      }
       definicao.drumPhrases.forEach(function (phrase, i) {
         var inicio = cursor;
         phrase.notes.forEach(function (golpes) {
