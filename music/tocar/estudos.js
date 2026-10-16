@@ -93,6 +93,22 @@
       ]
     },
     {
+      id: 'cavaquinho-pulsacao-v1', title: 'Pulsação no cavaquinho', level: 'Iniciante · cavaquinho 1', bpm: 72,
+      instrument: 'cavaquinho', objective: 'Alternar as quatro cordas do cavaquinho na afinação Ré–Sol–Si–Ré.',
+      phrases: [
+        { title: 'Cordas soltas', notes: [[4, 0, 1], [3, 0, 1], [2, 0, 1], [1, 0, 1]] },
+        { title: 'Pequenas casas', notes: [[4, 0, 1], [4, 2, 1], [3, 0, 1], [3, 2, 1]] }
+      ]
+    },
+    {
+      id: 'bandolim-pulsacao-v1', title: 'Pulsação no bandolim', level: 'Iniciante · bandolim 1', bpm: 68,
+      instrument: 'bandolim', objective: 'Percorrer as cinco cordas do bandolim de cinco cordas com ataques regulares.',
+      phrases: [
+        { title: 'Cordas abertas', notes: [[5, 0, 1], [4, 0, 1], [3, 0, 1], [2, 0, 1], [1, 0, 1]] },
+        { title: 'Subida inicial', notes: [[5, 0, 1], [5, 2, 1], [4, 0, 1], [4, 2, 1], [3, 0, 1]] }
+      ]
+    },
+    {
       id: 'bateria-pulsacao-v1', title: 'Pulsação na bateria', level: 'Iniciante · bateria 1', bpm: 80,
       instrument: 'bateria',
       objective: 'Firmar bumbo, caixa e chimbal em um pulso simples de quatro tempos.',

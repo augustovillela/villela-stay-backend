@@ -11,12 +11,12 @@ const Perfis = require('./perfis');
 const Estudos = require('./estudos');
 const tuningBaixo = Perfis.obter('baixo').tuning;
 const ids = ['primeiro-riff-v1', 'cordas-soltas-v1', 'cordas-vizinhas-v1', 'primeiras-casas-v1',
-  'pentatonica-mi-v1', 'saltos-entre-cordas-v1', 'frase-de-revisao-v1', 'baixo-pulsacao-v1', 'bateria-pulsacao-v1', 'piano-pulsacao-v1'];
+  'pentatonica-mi-v1', 'saltos-entre-cordas-v1', 'frase-de-revisao-v1', 'baixo-pulsacao-v1', 'cavaquinho-pulsacao-v1', 'bandolim-pulsacao-v1', 'bateria-pulsacao-v1', 'piano-pulsacao-v1'];
 
 test('Primeiro riff é preservado integralmente junto aos estudos de seis cordas e ao contrabaixo', () => {
   const lista = Estudos.listar();
   assert.deepEqual(lista.map(item => item.id), ids);
-  assert.equal(new Set(lista.map(item => item.title)).size, 10);
+  assert.equal(new Set(lista.map(item => item.title)).size, 12);
   assert.deepEqual(lista[0].chart, Core.demoChart());
   assert.deepEqual(Estudos.obter('primeiro-riff-v1'), Core.demoChart());
   for (const item of lista) {
@@ -31,6 +31,8 @@ test('Primeiro riff é preservado integralmente junto aos estudos de seis cordas
   assert.equal(lista.find(item => item.id === 'baixo-pulsacao-v1').instrument, 'baixo');
   assert.equal(lista.find(item => item.id === 'bateria-pulsacao-v1').instrument, 'bateria');
   assert.equal(lista.find(item => item.id === 'piano-pulsacao-v1').instrument, 'piano');
+  assert.equal(lista.find(item => item.id === 'cavaquinho-pulsacao-v1').instrument, 'cavaquinho');
+  assert.equal(lista.find(item => item.id === 'bandolim-pulsacao-v1').instrument, 'bandolim');
   assert.ok(lista.filter(item => item.instrument == null).every(item => item.chart.tuning.length === 6));
 });
 
@@ -46,7 +48,7 @@ test('Todos os charts obedecem ao contrato, ao perfil declarado e aos limites mo
       assert.ok(chart.notes.every(n => (item.instrument === 'piano' || n.drum) && Number.isInteger(n.midi) && n.velocity >= 1 && n.velocity <= 127));
       continue;
     }
-    const perfil = item.instrument === 'baixo' ? Perfis.obter('baixo') : Perfis.obter('violao');
+    const perfil = item.instrument === 'baixo' ? Perfis.obter('baixo') : item.instrument === 'cavaquinho' ? Perfis.obter('cavaquinho') : item.instrument === 'bandolim' ? Perfis.obter('bandolim') : Perfis.obter('violao');
     assert.deepEqual(Core.validarChart(chart), chart);
     assert.deepEqual(chart.tuning, perfil.tuning);
     assert.equal(chart.metadata.demo, true);
