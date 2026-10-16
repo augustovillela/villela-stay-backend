@@ -35,6 +35,32 @@
     function name(midi) { return NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1); }
     function selectedNote() { return chart && chart.notes.find(function (n) { return n.id === selectedId; }); }
     function selectedSection() { return chart && (chart.sections || []).find(function (s) { return s.id === sectionId; }); }
+    function tempoEvents() {
+      return chart && chart.tempoMap ? chart.tempoMap.events : chart ? [{ time: 0, beat: 0, bpm: chart.bpm }] : [];
+    }
+    function tempoVariavel() { return !!(chart && chart.tempoMap && chart.tempoMap.events.length > 1); }
+    function beatAt(time) {
+      var eventos = tempoEvents(), atual = eventos[0];
+      eventos.forEach(function (evento) { if (evento.time <= time) atual = evento; });
+      return atual.beat + (time - atual.time) * atual.bpm / 60;
+    }
+    function timeAt(beat) {
+      var eventos = tempoEvents(), atual = eventos[0], i;
+      if (beat < atual.beat) return atual.time + (beat - atual.beat) * 60 / atual.bpm;
+      for (i = 1; i < eventos.length; i++) {
+        if (beat < eventos[i].beat) return atual.time + (beat - atual.beat) * 60 / atual.bpm;
+        atual = eventos[i];
+      }
+      return atual.time + (beat - atual.beat) * 60 / atual.bpm;
+    }
+    function firstBeatAtOrAfter(time, step) {
+      return Math.ceil((beatAt(time) - 1e-7) / step) * step;
+    }
+    function gradeLabel() {
+      if (!tempoVariavel()) return 'grade de ' + chart.bpm + ' BPM';
+      var mudancas = chart.tempoMap.events.length - 1;
+      return 'grade por batidas · andamento variável importado (' + mudancas + ' ' + (mudancas === 1 ? 'mudança' : 'mudanças') + ')';
+    }
     function number(id) {
       var raw = $(id).value.trim();
       if (!raw || !Number.isFinite(Number(raw))) throw new Error('Preencha os campos numéricos com valores válidos.');
@@ -63,6 +89,9 @@
         $(control.id).disabled = locked || !chart || (pendingGroup && pendingGroup !== control.group) ||
           (control.group === 'section' && !sectionId && !sectionDraft);
       });
+      // O mapa vindo do MIDI contém a relação completa entre segundos e
+      // batidas. Reescrever só seu primeiro BPM corromperia essa relação.
+      if (tempoVariavel()) $('bpm').disabled = true;
       $('new').disabled = locked || !!pendingGroup;
       $('new').hidden = !!chart;
       $('undo').disabled = locked || !!pendingGroup || !model || !model.podeDesfazer();
@@ -120,13 +149,17 @@
       if (!chart) return;
       fitWindow();
       var end = Math.min(chart.duration, viewStart + viewSpan), width = end - viewStart;
-      $('window-label').textContent = viewStart.toFixed(2) + ' s a ' + end.toFixed(2) + ' s · grade de ' + chart.bpm + ' BPM';
-      var beat = 60 / chart.bpm, step = Math.max(1, Math.ceil(width / beat / 60));
-      var first = Math.ceil(viewStart / (beat * step));
-      for (var k = first; k * beat * step <= end + 1e-7; k++) {
-        var t = k * beat * step, line = node('span', null, { class: 'te-beat', 'aria-hidden': 'true' });
+      $('window-label').textContent = viewStart.toFixed(2) + ' s a ' + end.toFixed(2) + ' s · ' + gradeLabel();
+      var spanBeats = Math.max(0, beatAt(end) - beatAt(viewStart));
+      var step = Math.max(1, Math.ceil(spanBeats / 60)), first = firstBeatAtOrAfter(viewStart, step), linhas = 0;
+      for (var k = first; linhas < 61; k += step) {
+        var t = timeAt(k);
+        if (t > end + 1e-7) break;
+        if (t < viewStart - 1e-7) continue;
+        var line = node('span', null, { class: 'te-beat', 'aria-hidden': 'true', 'data-beat': String(k) });
         line.style.left = ((t - viewStart) / width * 100) + '%';
         line.appendChild(node('span', t.toFixed(2) + ' s')); grid.appendChild(line);
+        linhas++;
       }
       for (var string = 1; string <= 6; string++) {
         var lane = node('span', null, { class: 'te-string', 'aria-hidden': 'true' });
@@ -159,6 +192,10 @@
     function renderChart() {
       if (!chart) { renderControls(); return; }
       $('bpm').value = chart.bpm; $('duration').value = chart.duration;
+      $('apply-meta').textContent = tempoVariavel() ? 'Aplicar duração' : 'Aplicar tempo';
+      $('tempo-help').textContent = tempoVariavel()
+        ? 'O andamento variável veio do MIDI. O BPM único não pode ser alterado; a duração total continua editável.'
+        : 'Alterar BPM muda a grade; os tempos das notas não mudam automaticamente.';
       var sections = chart.sections || [];
       if (!sections.some(function (s) { return s.id === sectionId; })) sectionId = sections.length ? sections[0].id : null;
       $('section').replaceChildren(node('option', 'Escolha uma frase', { value: '' }));
@@ -214,7 +251,7 @@
     container.innerHTML = ('<div class="te-heading"><div><h3>Editor de notas</h3><p>Uma nota por vez, em seis cordas e afinação padrão. Edite e aplique os campos antes de salvar o rascunho.</p></div><button id="__new" type="button">Novo arranjo visual</button></div>' +
       '<p id="__status" class="te-status" role="status">Abra um arranjo, importe JSON ou crie um novo aqui.</p><div id="__pending" class="te-pending" hidden><p>Há campos ainda não aplicados. Aplique a alteração ou descarte os campos para salvar e revisar na pista.</p><button id="__discard" type="button">Descartar campos não aplicados</button></div>' +
       '<div id="__workspace" hidden><div class="te-toolbar"><button id="__undo" type="button">Desfazer</button><button id="__redo" type="button">Refazer</button><span>Desfazer afeta notas, tempo e frases; objetivo e créditos ficam na gestão. O histórico é local desta edição e reinicia ao carregar um arranjo.</span></div>' +
-      '<fieldset class="te-meta"><legend>Tempo do arranjo</legend><label>BPM<input id="__bpm" type="number" min="20" max="300" step="any"></label><label>Duração total (s)<input id="__duration" type="number" min="0.04" max="900" step="any"></label><button id="__apply-meta" type="button">Aplicar tempo</button><p>Alterar BPM muda a grade; os tempos das notas não mudam automaticamente.</p></fieldset>' +
+      '<fieldset class="te-meta"><legend>Tempo do arranjo</legend><label>BPM<input id="__bpm" type="number" min="20" max="300" step="any"></label><label>Duração total (s)<input id="__duration" type="number" min="0.04" max="900" step="any"></label><button id="__apply-meta" type="button">Aplicar tempo</button><p id="__tempo-help">Alterar BPM muda a grade; os tempos das notas não mudam automaticamente.</p></fieldset>' +
       '<div class="te-view"><label>Janela a partir de (s)<input id="__window-start" type="number" min="0" step="any" value="0"></label><label>Zoom · segundos na janela<select id="__zoom"><option value="2">2 s</option><option value="4">4 s</option><option value="8" selected>8 s</option><option value="16">16 s</option><option value="32">32 s</option><option value="64">64 s</option></select></label><button id="__apply-window" class="te-show-window" type="button">Mostrar janela</button><button id="__window-prev" type="button" aria-label="Janela anterior">← Janela</button><button id="__window-next" type="button" aria-label="Próxima janela">Janela →</button></div>' +
       '<p id="__window-label" class="te-caption"></p><div id="__timeline" class="te-timeline" tabindex="0" role="group" aria-label="Linha do tempo com seis cordas" aria-describedby="__visible"><div class="te-timeline-inner"><div class="te-string-labels" aria-hidden="true"><span>1 · mi</span><span>2 · si</span><span>3 · sol</span><span>4 · ré</span><span>5 · lá</span><span>6 · mi</span></div><div class="te-track"><div id="__phrases" class="te-phrases"></div><div id="__grid" class="te-grid"></div><div id="__notes" class="te-notes"></div></div></div></div><p id="__visible" class="te-caption"></p>' +
       '<div class="te-editor-columns"><fieldset><legend id="__note-label">Nota selecionada</legend><div class="te-actions"><button id="__prev" type="button">Nota anterior</button><button id="__next" type="button">Próxima nota</button></div><div class="te-fields"><label>Início (s)<input id="__note-time" type="number" min="0" max="900" step="any"></label><label>Duração (s)<input id="__note-duration" type="number" min="0.04" max="60" step="any"></label><label>Corda<select id="__note-string"><option value="1">1 · mi aguda</option><option value="2">2 · si</option><option value="3">3 · sol</option><option value="4">4 · ré</option><option value="5">5 · lá</option><option value="6">6 · mi grave</option></select></label><label>Casa<input id="__note-fret" type="number" min="0" max="24" step="1"></label></div><p id="__note-pitch" class="te-pitch" aria-live="polite"></p><button id="__apply-note" type="button">Aplicar alteração da nota</button><div class="te-actions"><button id="__add" type="button">Adicionar nota</button><button id="__duplicate" type="button">Duplicar nota</button><button id="__delete" type="button">Excluir nota</button></div></fieldset>' +
@@ -230,7 +267,13 @@
       if (locked || !pendingGroup) return;
       noteDraft = false; sectionDraft = false; pending(null); renderChart(); message('Campos não aplicados descartados. O arranjo aplicado foi preservado.');
     });
-    on('apply-meta', 'click', function () { try { execute({ tipo: 'editarChart', alteracoes: { bpm: number('bpm'), duration: number('duration') } }, 'meta'); } catch (e) { message(e.message, true); } });
+    on('apply-meta', 'click', function () {
+      try {
+        var alteracoes = { duration: number('duration') };
+        if (!tempoVariavel()) alteracoes.bpm = number('bpm');
+        execute({ tipo: 'editarChart', alteracoes: alteracoes }, 'meta');
+      } catch (e) { message(e.message, true); }
+    });
     on('apply-note', 'click', function () {
       try {
         var values = { time: number('note-time'), duration: number('note-duration'), string: number('note-string'), fret: number('note-fret') };

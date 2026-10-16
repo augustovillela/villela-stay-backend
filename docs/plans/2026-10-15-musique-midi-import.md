@@ -23,13 +23,15 @@ O chart ganha `tempoMap` opcional:
 tempoMap: {
   version: 1,
   events: [
-    { time: 0, bpm: 120 },
-    { time: 14.5, bpm: 96 }
+    { time: 0, beat: 0, bpm: 120 },
+    { time: 14.5, beat: 29, bpm: 96 }
   ]
 }
 ```
 
 `bpm` conserva o primeiro evento para a compatibilidade de charts, catálogo, prévia e clientes antigos. Sem `tempoMap`, o comportamento de andamento constante não muda. Os eventos precisam começar em `time: 0`, usar BPM de 20 a 300, estar em ordem estrita e dentro da duração do chart. O normalizador preserva apenas o formato acima; campos extras são recusados.
+
+`beat` é o total de semínimas desde o início no ponto da mudança. Ele evita perder a fase da grade quando um evento MIDI ocorre no meio de uma semínima: a interface e o metrônomo conseguem localizar a próxima batida com a mesma relação de ticks da fonte. Os valores de `time` e `beat` crescem estritamente, o primeiro é zero e o mapa aceita no máximo 512 eventos; fontes acima desse limite são recusadas, nunca resumidas.
 
 Na interface, uma grade de `tempoMap` muda nos pontos importados. Enquanto houver mais de um evento, o campo de BPM único informa que o andamento veio do MIDI e não permite reescrever somente o primeiro valor. Notas, frases e duração continuam editáveis. O editor não cria nem apaga eventos de andamento nesta fatia.
 

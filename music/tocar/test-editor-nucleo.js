@@ -137,6 +137,20 @@ test('Alterar BPM afeta só metadado, não move notas ou frases nem muda o chart
   assert.deepEqual(motor.desfazer(), chart); assert.deepEqual(motor.refazer(), alterado);
 });
 
+test('Editar notas, frases e duração preserva mapa de andamento e histórico defensivo', () => {
+  const chart = base();
+  chart.bpm = 120;
+  chart.tempoMap = { version: 1, events: [{ time: 0, beat: 0, bpm: 120 }, { time: 4, beat: 8, bpm: 90 }] };
+  const motor = Editor.criar(chart);
+  const before = motor.obter();
+  const changed = motor.executar({ tipo: 'editarNota', id: before.notes[0].id, alteracoes: { fret: 2 } }).chart;
+  assert.deepEqual(changed.tempoMap, before.tempoMap);
+  changed.tempoMap.events[1].bpm = 40;
+  assert.equal(motor.obter().tempoMap.events[1].bpm, 90);
+  assert.deepEqual(motor.desfazer().tempoMap, before.tempoMap);
+  assert.deepEqual(motor.refazer().tempoMap, before.tempoMap);
+});
+
 test('Reduzir duração não corta notas/frases e limite de 900 segundos é efetivo', () => {
   const chart = base(); chart.sections = [{ id: 'fim', title: 'Até o fim', from: 0, to: 16 }];
   const motor = Editor.criar(chart);

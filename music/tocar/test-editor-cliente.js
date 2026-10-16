@@ -52,6 +52,13 @@ test('BPM só muda grade e duração não pode cortar notas silenciosamente',()=
   const c=pequeno();c.notes[0].time=.123456789;const h=setup(c);h.input('bpm','87.5');h.click('apply-meta');assert.equal(h.editor.obter().bpm,87.5);assert.deepEqual(h.editor.obter().notes,c.notes);assert.match(h.$('window-label').textContent,/87.5 BPM/);
   h.input('duration','1.1');h.click('apply-meta');assert.match(h.$('status').textContent,/ultrapassa/);assert.throws(()=>h.editor.obter(),/pendentes/);h.click('discard');assert.equal(h.editor.obter().duration,2);
 });
+test('Mapa MIDI variável desenha batidas por tempo, bloqueia BPM e preserva o mapa ao editar duração',()=>{
+  const c=pequeno();c.bpm=120;c.tempoMap={version:1,events:[{time:0,beat:0,bpm:120},{time:1,beat:2,bpm:60}]};
+  const h=setup(c);assert.equal(h.$('bpm').disabled,true);assert.equal(h.$('duration').disabled,false);assert.equal(h.$('apply-meta').textContent,'Aplicar duração');assert.match(h.$('tempo-help').textContent,/andamento variável veio do MIDI/);assert.match(h.$('window-label').textContent,/andamento variável importado/);
+  assert.deepEqual(h.$('grid').children.map(line=>line.getAttribute('data-beat')),['0','1','2','3']);assert.deepEqual(h.$('grid').children.map(line=>line.style.left),['0%','25%','50%','100%']);
+  h.input('duration','2.5');h.click('apply-meta');h.input('note-fret','2');h.click('apply-note');
+  assert.equal(h.editor.obter().bpm,120);assert.deepEqual(h.editor.obter().tempoMap,c.tempoMap);assert.equal(h.editor.obter().duration,2.5);
+});
 test('Adicionar, duplicar e excluir preservam outras notas e só criam cópia ao aplicar',()=>{
   const h=setup();h.click('add');assert.equal(h.changes.length,0);assert.throws(()=>h.editor.obter(),/pendentes/);h.input('note-time','.4');h.input('note-duration','.2');h.input('note-fret','3');h.click('apply-note');
   const added=h.editor.obter().notes.find(n=>n.time===.4);assert.ok(added);assert.equal(added.midi,43);h.click('duplicate');assert.equal(h.changes.length,1);h.input('note-time','.7');h.click('apply-note');

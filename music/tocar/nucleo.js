@@ -24,6 +24,44 @@
     exigir(numero(v) && v >= min && v <= max, nome + ' deve estar entre ' + min + ' e ' + max + '.');
     return v;
   }
+  function tem(obj, chave) { return Object.prototype.hasOwnProperty.call(obj, chave); }
+  function camposExatos(valor, esperados, nome) {
+    exigir(objeto(valor), nome + ' deve ser um objeto.');
+    var chaves = Object.keys(valor);
+    exigir(chaves.length === esperados.length && esperados.every(function (chave) { return tem(valor, chave); }), nome + ' contém campos inválidos.');
+  }
+  function validarTempoMap(input, chart) {
+    // A ausência mantém exatamente o contrato antigo. Quando presente, o
+    // mapa é deliberadamente fechado: a interface e o metrônomo dependem de
+    // tempo, batida e BPM serem a mesma medida que veio do MIDI.
+    if (!tem(input, 'tempoMap')) return;
+    var mapa = input.tempoMap;
+    camposExatos(mapa, ['version', 'events'], 'Mapa de andamento');
+    exigir(mapa.version === 1, 'Versão do mapa de andamento inválida.');
+    exigir(Array.isArray(mapa.events) && mapa.events.length >= 2 && mapa.events.length <= 512, 'Mapa de andamento deve conter de 2 a 512 eventos.');
+    var anterior = null, TOLERANCIA_MAPA_TEMPO = 0.000001;
+    chart.tempoMap = {
+      version: 1,
+      events: mapa.events.map(function (evento, indice) {
+        camposExatos(evento, ['time', 'beat', 'bpm'], 'Evento de andamento ' + (indice + 1));
+        var time = limite(evento.time, 0, chart.duration, 'Tempo do evento de andamento ' + (indice + 1));
+        var beat = evento.beat;
+        exigir(numero(beat) && beat >= 0, 'Batida do evento de andamento ' + (indice + 1) + ' deve ser um número não negativo.');
+        var bpm = limite(evento.bpm, 20, 300, 'BPM do evento de andamento ' + (indice + 1));
+        if (indice === 0) {
+          exigir(time === 0 && beat === 0, 'O primeiro evento de andamento deve começar em tempo e batida zero.');
+          exigir(bpm === chart.bpm, 'O BPM do arranjo deve ser igual ao primeiro evento de andamento.');
+        } else {
+          exigir(time > anterior.time && beat > anterior.beat, 'Eventos de andamento devem crescer estritamente em tempo e batida.');
+          var beatEsperado = anterior.beat + (time - anterior.time) * anterior.bpm / 60;
+          exigir(Math.abs(beat - beatEsperado) <= TOLERANCIA_MAPA_TEMPO,
+            'Tempo e batida do evento de andamento ' + (indice + 1) + ' não correspondem ao BPM anterior.');
+        }
+        anterior = { time: time, beat: beat, bpm: bpm };
+        return { time: time, beat: beat, bpm: bpm };
+      })
+    };
+  }
 
   function validarChart(input) {
     exigir(objeto(input), 'O arranjo deve ser um objeto.');
@@ -34,6 +72,7 @@
     };
     exigir(Array.isArray(chart.tuning) && chart.tuning.length === 6, 'Afinação deve conter seis alturas MIDI, da corda grave à aguda.');
     chart.tuning = chart.tuning.map(function (m) { exigir(Number.isInteger(m) && m >= 24 && m <= 88, 'Altura da afinação fora da faixa MIDI de guitarra (24–88).'); return m; });
+    validarTempoMap(input, chart);
     exigir(Array.isArray(input.notes) && input.notes.length > 0 && input.notes.length <= 2000, 'O arranjo deve ter de 1 a 2000 notas.');
     var ids = Object.create(null);
     chart.notes = input.notes.map(function (n, i) {

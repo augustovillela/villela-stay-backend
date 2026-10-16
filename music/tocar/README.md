@@ -10,7 +10,7 @@ Rota `/music/tocar`, integrada à sessão e à identidade visual do Musique. Ace
 - Pista de notas, afinador, demonstração, prática, contagem inicial, pausa, velocidades 50/75/100/125%, trecho repetido e compensação de atraso.
 - Modo Aprender nota por nota: espera a altura correta sem cobrar tempo, mostra a próxima nota/corda/casa e oferece ouvir ou pular. Frases selecionáveis e sete estudos originais, incluindo o Primeiro riff.
 - Resultado de treino para altura e início de notas isoladas; não verifica duração sustentada, técnica, posição real no braço ou acordes.
-- Arranjo JSON e áudio locais. Um MP3 sozinho não produz as notas da pista.
+- Arranjo JSON ou MIDI monofônico e áudio locais. Um MP3 sozinho não produz as notas da pista.
 - Resumo por conta, exportação e exclusão em `/music/api/lab/meus-dados`. Histórico não serve como nota, ranking ou prova de execução.
 
 Ao usar microfone, ouça o acompanhamento em fones, de preferência com fio. O microfone deve captar o instrumento: se captar também as notas do acompanhamento pelos alto-falantes, o sistema pode reconhecê-las e marcar acertos sem você tocar. Confira o medidor em silêncio e ajuste a posição do microfone e o ganho antes da prática. A escolha de interface de áudio ou Real Tone usa o mesmo seletor de entrada; o dispositivo precisa aparecer no navegador.
@@ -116,7 +116,13 @@ Frases têm título, início e fim editáveis. BPM altera a grade de referência
 
 Os campos precisam ser aplicados ou cancelados antes de salvar, publicar, baixar ou abrir a prévia. Edições visuais invalidam uma importação de arquivo ainda pendente; durante salvamento a edição fica bloqueada. A página avisa ao sair com alterações não salvas. Salvar/publicar preserva o histórico local do editor quando o conteúdo musical retornado é igual; abrir outro arranjo, importar uma base ou recarregar a revisão salva reinicia esse histórico.
 
-Use **Salvar rascunho → Revisar na pista** para conferir exatamente o chart persistido, inclusive o áudio autorizado já associado. A versão que os alunos veem só muda após **Publicar nova versão**. Esta entrega não inclui mapa de andamento variável, importadores MIDI/MusicXML, waveform, arrastar notas ou reprodução de áudio dentro do editor. São incrementos posteriores da Etapa C, sem achatamento automático de polifonia.
+Use **Salvar rascunho → Revisar na pista** para conferir exatamente o chart persistido, inclusive o áudio autorizado já associado. A versão que os alunos veem só muda após **Publicar nova versão**. Waveform, arrastar notas, MusicXML e reprodução de áudio dentro do editor continuam em incrementos posteriores da Etapa C, sem achatamento automático de polifonia.
+
+## Importação MIDI — Etapa C2b
+
+No gestor, o dono pode escolher um arquivo `.mid` ou `.midi` de até 512 KiB. O navegador o analisa localmente: o arquivo não é enviado, armazenado no Acervo nem usado como prova de autoria. A tela mostra cada linha por faixa e canal, sua extensão, quantidade de notas e o motivo de uma linha indisponível. Percussão, polifonia, pitch bend, notas abertas, notas fora de Mi2–Mi6, arquivo inválido e limites excedidos não são simplificados automaticamente.
+
+O dono precisa escolher uma linha válida e clicar em **Importar esta linha**. Antes dessa confirmação, o chart, mídia, histórico de desfazer/refazer e rascunho existentes permanecem intactos; **Cancelar importação MIDI** libera o formulário sem alterar nada. A linha importada recebe posições sugeridas na afinação padrão, que podem ser corrigidas no editor. O importador mantém as mudanças de andamento da fonte em `tempoMap`; o BPM inicial continua disponível para compatibilidade e o editor não permite substituir apenas o primeiro BPM de um mapa variável.
 
 ## Verificação automatizada
 

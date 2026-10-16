@@ -136,8 +136,12 @@ function montar(options = {}) {
   const sandbox = { window, document, console, fetch, Blob, URLSearchParams, performance: { now: () => now * 1000 }, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
     requestAnimationFrame: fn => { const id = ++sequence; rafs.set(id, fn); return id; }, cancelAnimationFrame: id => rafs.delete(id),
     setTimeout: (fn, ms) => { const id = ++sequence; timers.set(id, { at: now + ms / 1000, fn }); return id; }, clearTimeout: id => timers.delete(id) };
-  const scripts = options.page === 'gestao' ? ['editor-nucleo.js','editor-cliente.js','gerenciar.js'] : ['catalogo-cliente.js','cliente.js'];
+  const scripts = options.page === 'gestao' ? ['editor-nucleo.js','editor-cliente.js','importador-midi.js'] : ['catalogo-cliente.js','cliente.js'];
   scripts.forEach(file => vm.runInNewContext(fs.readFileSync(path.join(__dirname, file), 'utf8'), sandbox, { filename: file }));
+  if (options.page === 'gestao') {
+    if (options.importador) window.MusiqueTocarImportadorMidi = options.importador;
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'gerenciar.js'), 'utf8'), sandbox, { filename: 'gerenciar.js' });
+  }
   const $ = id => document.getElementById(id);
   async function settle() { for (let i = 0; i < 8; i++) await Promise.resolve(); }
   async function event(id, type, value) {
@@ -380,6 +384,22 @@ test('Contagem inicial toca quatro cliques mesmo com metrônomo desmarcado', asy
   const h = montar(); await h.chart(); h.$('tj-metronome').checked = false;
   await h.event('tj-demo', 'click'); await h.advance(1.85);
   assert.equal(h.oscillators.length, 4); assert.equal(h.$('tj-count').textContent, '1');
+});
+test('Mapa de andamento variável preserva a fase das batidas na contagem e no metrônomo', async () => {
+  const h = montar(), c = pequeno();
+  c.duration = 3; c.bpm = 120;
+  c.tempoMap = { version: 1, events: [{ time: 0, beat: 0, bpm: 120 }, { time: 1, beat: 2, bpm: 60 }] };
+  c.notes[1] = { ...c.notes[1], time: 2.6 };
+  c.sections = [{ id: 'depois-da-mudanca', title: 'Depois da mudança', from: 2.5, to: 3 }];
+  await h.chart(c); await h.event('tj-section', 'change', '0'); await h.event('tj-connect', 'click'); h.$('tj-metronome').checked = true;
+  assert.match(h.$('tj-song-info').textContent, /andamento variável/);
+  await h.event('tj-practice', 'click'); await h.advance(2.8);
+  const clicks = h.oscillators.filter(o => o.frequency.value > 800).map(o => o.when);
+  // A contagem começa na mesma fase da batida que o trecho: as pausas
+  // atravessam a mudança de 120 para 60 BPM em vez de manter 0,5 s fixos.
+  assert.ok(clicks.some(t => Math.abs(t - 1.75) < 0.08), 'Clique após a mudança de andamento.');
+  assert.equal(clicks.some(t => Math.abs(t - 1.5) < 0.08), false, 'Não deve inventar o clique constante de 120 BPM.');
+  assert.equal(h.$('tj-count').textContent, '');
 });
 test('Pausar a contagem e continuar preserva o tempo que ainda falta', async () => {
   const h = montar(); await h.chart(); await h.event('tj-demo', 'click'); await h.advance(0.7);

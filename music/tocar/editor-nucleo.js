@@ -20,6 +20,10 @@
     var c = { id: chart.id, title: chart.title, bpm: chart.bpm, duration: chart.duration,
       tuning: chart.tuning.slice(), notes: chart.notes.map(function (n) { return Object.assign({}, n); }) };
     if (has(chart, 'sections')) c.sections = chart.sections.map(function (s) { return Object.assign({}, s); });
+    // O mapa de andamento é parte da música importada. Notas, frases e
+    // duração podem mudar sem apagar a relação de batidas do MIDI original.
+    if (has(chart, 'tempoMap')) c.tempoMap = { version: chart.tempoMap.version,
+      events: chart.tempoMap.events.map(function (event) { return Object.assign({}, event); }) };
     if (has(chart, 'metadata')) c.metadata = Object.assign({}, chart.metadata);
     return c;
   }

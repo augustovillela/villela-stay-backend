@@ -2,11 +2,12 @@
   'use strict';
   var app = document.getElementById('tocar-gestao');
   if (!app) return;
-  var Core = window.MusiqueTocarCore, Formato = window.MusiqueTocarFormatoCatalogo, Estudos = window.MusiqueTocarEstudos, Editor = window.MusiqueTocarEditor;
-  if (!Core || !Formato || !Estudos || !Editor) { app.textContent = 'Não foi possível carregar a gestão. Recarregue a página.'; return; }
+  var Core = window.MusiqueTocarCore, Formato = window.MusiqueTocarFormatoCatalogo, Estudos = window.MusiqueTocarEstudos, Editor = window.MusiqueTocarEditor, ImportadorMidi = window.MusiqueTocarImportadorMidi;
+  if (!Core || !Formato || !Estudos || !Editor || !ImportadorMidi) { app.textContent = 'Não foi possível carregar a gestão. Recarregue a página.'; return; }
   var boot = JSON.parse(app.getAttribute('data-estado') || '{}');
   if (!boot.logado) { app.innerHTML='<h1>Gerenciar seus arranjos</h1><p>Entre na sua conta Musique para criar arranjos das obras do seu acervo.</p><a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar ou criar conta</a><p><a href="/music/tocar">Voltar aos estudos abertos</a></p>';return; }
   var current = null, chart = null, dirty = false, busy = false, conflict = false, editor = null, editorPending = false;
+  var midiAnalysis = null, midiFileName = '', midiPending = false;
   var detailTicket = 0, mediaTicket = 0, importTicket = 0, worksTicket = 0, listTicket = 0;
   var worksOffset = 0, listOffset = 0, works = [], arrangements = [];
   var mediaItems=[],mediaOffset=0,mediaWork='';
@@ -29,27 +30,96 @@
       throw e; }
     return data;
   }
-  var fields = ['tg-work', 'tg-title', 'tg-instrument', 'tg-level', 'tg-technique', 'tg-objective', 'tg-credits', 'tg-media', 'tg-json', 'tg-example', 'tg-use-example'];
+  var fields = ['tg-work', 'tg-title', 'tg-instrument', 'tg-level', 'tg-technique', 'tg-objective', 'tg-credits', 'tg-media', 'tg-json', 'tg-midi', 'tg-example', 'tg-use-example'];
   function render() {
-    fields.forEach(function (id) { $(id).disabled = busy || (id === 'tg-work' && !!current) || (editorPending && ['tg-json','tg-example','tg-use-example'].includes(id)); });
-    if (editor) editor.bloquear(busy);
-    $('tg-save').disabled = busy || !chart || !$('tg-work').value || conflict || editorPending;
-    $('tg-publish').disabled = busy || !current || dirty || conflict || editorPending;
-    $('tg-withdraw').disabled = busy || !current || !current.publishedVersionId || dirty || conflict || editorPending;
-    $('tg-new').disabled = busy; $('tg-reload').disabled = busy || !current;
-    $('tg-preview').hidden = !current || dirty || conflict || busy || editorPending;
+    fields.forEach(function (id) { $(id).disabled = busy || midiPending || (id === 'tg-work' && !!current) || (editorPending && ['tg-json','tg-midi','tg-example','tg-use-example'].includes(id)); });
+    if (editor) editor.bloquear(busy || midiPending);
+    $('tg-save').disabled = busy || !chart || !$('tg-work').value || conflict || editorPending || midiPending;
+    $('tg-publish').disabled = busy || !current || dirty || conflict || editorPending || midiPending;
+    $('tg-withdraw').disabled = busy || !current || !current.publishedVersionId || dirty || conflict || editorPending || midiPending;
+    $('tg-new').disabled = busy || midiPending; $('tg-reload').disabled = busy || !current || midiPending;
+    $('tg-download').disabled = busy || editorPending || midiPending;
+    $('tg-preview').hidden = !current || dirty || conflict || busy || editorPending || midiPending;
     $('tg-preview').setAttribute('href', current ? '/music/tocar?previa=' + encodeURIComponent(current.id) + '&revisao=' + current.revision : '#');
     $('tg-new').textContent = dirty || editorPending ? 'Descartar alterações e criar outro' : 'Novo arranjo';
-    $('tg-version').textContent = (current ? 'Revisão de trabalho ' + current.revision + ' · ' + (current.publishedVersionId ? 'há uma versão publicada' : 'sem versão publicada') : 'Novo rascunho') + (dirty ? ' · alterações não salvas' : '') + (editorPending ? ' · aplique ou cancele os campos do editor' : '');
+    $('tg-version').textContent = (current ? 'Revisão de trabalho ' + current.revision + ' · ' + (current.publishedVersionId ? 'há uma versão publicada' : 'sem versão publicada') : 'Novo rascunho') + (dirty ? ' · alterações não salvas' : '') + (editorPending ? ' · aplique ou cancele os campos do editor' : '') + (midiPending ? ' · confirme ou cancele a importação MIDI' : '');
     $('tg-chart-info').textContent = chart ? chart.notes.length + ' notas · ' + (chart.sections || []).length + ' frases · ' + chart.bpm + ' BPM · ' + chart.duration.toFixed(2) + ' s · afinação padrão' : 'Crie as notas no editor visual, importe um arranjo JSON ou escolha um estudo como ponto de partida.';
     var selected = works.find(function (w) { return w.id === $('tg-work').value; }) || (current && current.obra);
     $('tg-visibility').textContent = selected ? 'Obra: ' + selected.titulo + ' · visibilidade ' + (selected.visibilidade || 'conforme o acervo') + '. Publicar o arranjo mantém o acesso definido no acervo; não torna a obra pública.' : 'Escolha uma obra sua. As permissões continuam sendo as do acervo.';
+    renderMidiPreview();
   }
-  function changed() { dirty = true; render(); }
+  function changed() { ++importTicket; dirty = true; render(); }
   function option(select, value, label) { select.appendChild(node('option', label, { value: value })); }
   function mesmaMusica(a, b) {
     if (!a || !b) return false;
-    return ['id','bpm','duration','tuning','notes','sections'].every(function (key) { return JSON.stringify(a[key]) === JSON.stringify(b[key]); });
+    return ['id','bpm','duration','tuning','notes','sections','tempoMap'].every(function (key) { return JSON.stringify(a[key]) === JSON.stringify(b[key]); });
+  }
+  function candidatoMidiAtual() {
+    if (!midiAnalysis || !Array.isArray(midiAnalysis.candidates)) return null;
+    var id = $('tg-midi-candidates').value;
+    return midiAnalysis.candidates.find(function (candidate) { return candidate && candidate.id === id && candidate.valid === true; }) || null;
+  }
+  function textoCandidatoMidi(candidate) {
+    var faixa = Number.isInteger(candidate.track) ? candidate.track + 1 : '?';
+    var canal = Number.isInteger(candidate.channel) ? candidate.channel + 1 : '?';
+    var nome = typeof candidate.name === 'string' && candidate.name.trim() ? ' · ' + candidate.name.trim() : '';
+    var notas = Number.isInteger(candidate.noteCount) ? candidate.noteCount + ' notas' : 'notas não disponíveis';
+    var extensao = Number.isInteger(candidate.minMidi) && Number.isInteger(candidate.maxMidi) ? ' · MIDI ' + candidate.minMidi + '–' + candidate.maxMidi : '';
+    return 'Faixa ' + faixa + ' · canal ' + canal + nome + ' · ' + notas + extensao;
+  }
+  function descricaoMidi(analysis) {
+    var tempos = Array.isArray(analysis && analysis.tempoMap) ? analysis.tempoMap : [];
+    var mudancas = Math.max(0, tempos.length - 1);
+    var duracao = analysis && typeof analysis.duration === 'number' && Number.isFinite(analysis.duration) ? analysis.duration.toFixed(2) + ' s' : 'duração não disponível';
+    return 'Arquivo MIDI analisado localmente · formato ' + (analysis && analysis.format) + ' · ' + duracao + ' · ' + (mudancas ? mudancas + ' mudança' + (mudancas === 1 ? '' : 's') + ' de andamento preservada' + (mudancas === 1 ? '' : 's') : 'andamento constante') + '.';
+  }
+  function renderMidiPreview() {
+    var preview = $('tg-midi-preview');
+    if (!preview) return;
+    preview.hidden = !midiAnalysis;
+    if (!midiAnalysis) return;
+    var select = $('tg-midi-candidates'), candidate = candidatoMidiAtual();
+    select.disabled = busy;
+    $('tg-midi-confirm').disabled = busy || !midiPending || !candidate;
+    $('tg-midi-cancel').disabled = busy || !midiPending;
+    $('tg-midi-info').textContent = descricaoMidi(midiAnalysis);
+    if (!candidate) {
+      var unavailable = (midiAnalysis.candidates || []).filter(function (item) { return item && item.valid !== true; });
+      $('tg-midi-detail').textContent = unavailable.length ? 'Escolha uma linha disponível. As linhas indisponíveis mostram o motivo abaixo.' : 'Nenhuma linha MIDI foi encontrada neste arquivo.';
+    } else {
+      $('tg-midi-detail').textContent = textoCandidatoMidi(candidate) + ' · pronta para importar. A posição sugerida de cada nota poderá ser ajustada no editor.';
+    }
+  }
+  function mostrarAnaliseMidi(analysis, fileName) {
+    midiAnalysis = analysis; midiFileName = fileName || ''; midiPending = true;
+    var select = $('tg-midi-candidates');
+    select.replaceChildren(node('option', 'Escolha uma linha MIDI disponível', { value: '' }));
+    // A seleção anterior nunca pode confirmar uma nova análise sem uma escolha explícita.
+    select.value = '';
+    (analysis.candidates || []).forEach(function (candidate) {
+      if (!candidate || typeof candidate.id !== 'string') return;
+      var label = textoCandidatoMidi(candidate);
+      if (candidate.valid !== true) label += ' · indisponível: ' + (candidate.reason || 'linha incompatível');
+      var item = node('option', label, { value: candidate.id });
+      if (candidate.valid !== true) { item.disabled = true; item.setAttribute('disabled', ''); }
+      select.appendChild(item);
+    });
+  }
+  function limparImportacaoMidi() {
+    midiAnalysis = null; midiFileName = ''; midiPending = false;
+    var preview = $('tg-midi-preview');
+    if (preview) preview.hidden = true;
+    if ($('tg-midi')) $('tg-midi').value = '';
+    if ($('tg-midi-candidates')) $('tg-midi-candidates').value = '';
+  }
+  function tituloMidiSeguro(fileName) {
+    var base = String(fileName || '').replace(/\.[^.]*$/, '').replace(/[<>\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim();
+    if (!base) return 'Arranjo importado de MIDI';
+    return base.slice(0, 120).trim() || 'Arranjo importado de MIDI';
+  }
+  function tituloPodeVirDoMidi() {
+    var title = $('tg-title').value.trim();
+    return !title || title === 'Novo arranjo';
   }
   function fillDocument(d, preserveEditor) {
     var keepHistory = preserveEditor && d && mesmaMusica(chart, d.chart);
@@ -66,6 +136,7 @@
   }
   function readDocument() {
     if (editorPending) throw new Error('Aplique ou cancele os campos pendentes do editor antes de salvar ou baixar.');
+    if (midiPending) throw new Error('Confirme ou cancele a importação MIDI antes de salvar ou baixar.');
     if (!chart) throw new Error('Crie ou importe as notas do arranjo antes de salvar.');
     var copied = Core.validarChart(chart); copied.title = $('tg-title').value.trim();
     return Formato.validarDocumento({ title: copied.title, instrument: $('tg-instrument').value, level: $('tg-level').value,
@@ -133,7 +204,7 @@
   }
   async function loadDetail(id, discard) {
     if (busy) return;
-    if ((dirty || editorPending) && !discard) { message('Há alterações não salvas. Aplique ou cancele os campos do editor e salve, ou use “Descartar alterações e criar outro” antes de mudar de arranjo.', true); return; }
+    if ((dirty || editorPending || midiPending) && !discard) { message('Há alterações não salvas ou uma importação pendente. Confirme ou cancele o MIDI e salve, ou use “Descartar alterações e criar outro” antes de mudar de arranjo.', true); return; }
     var ticket = ++detailTicket; ++importTicket; busy = true; render();
     try { var data = await api('/arranjos/' + encodeURIComponent(id)); if (ticket === detailTicket) { accept(data.arranjo); message('Rascunho carregado. Alterar o conteúdo não muda a versão já publicada.'); } }
     catch (e) { if (ticket === detailTicket) message(e.message, true); }
@@ -142,6 +213,7 @@
   async function mutate(action) {
     if (busy || conflict) return;
     if (editorPending) { message('Aplique ou cancele os campos pendentes do editor antes de continuar.', true); return; }
+    if (midiPending) { message('Confirme ou cancele a importação MIDI antes de continuar.', true); return; }
     var id = current && current.id, method = 'POST', path = '/arranjos', body;
     try {
       if (action === 'save') {
@@ -163,17 +235,17 @@
     } finally { busy = false; render(); }
   }
   function newDraft() {
-    if (busy) return;
+    if (busy || midiPending) return;
     ++detailTicket; ++mediaTicket; ++importTicket; ++workChoice; current = null; dirty = false; conflict = false;
     mediaItems=[];mediaOffset=0;mediaWork='';$('tg-media-more').hidden=true;
-    fillDocument(null); $('tg-work').value = ''; $('tg-versions').replaceChildren(); render(); message('Escolha a obra e crie ou importe as notas do novo arranjo.');
+    limparImportacaoMidi(); fillDocument(null); $('tg-work').value = ''; $('tg-versions').replaceChildren(); render(); message('Escolha a obra e crie ou importe as notas do novo arranjo.');
   }
   app.innerHTML = '<div class="tj-heading"><div><p class="tj-eyebrow">MUSIQUE / SEU ACERVO</p><h1>Gerenciar arranjos</h1><p class="tj-intro">Prepare uma versão, revise na pista e publique para quem pode acessar a obra.</p></div><a href="/music/tocar">Voltar à prática</a></div>' +
     '<p id="tg-status" class="tj-status" role="status"></p><p id="tg-login" hidden>Sua sessão terminou. <a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar no Musique</a></p><p id="tg-access" hidden>Seu acesso ao Musique precisa estar ativo. <a href="/music/app#conta">Ver assinatura</a></p><div class="tg-layout"><section class="tj-panel"><h2>Seus arranjos</h2><div class="tg-search"><label>Buscar arranjo<input id="tg-list-q" type="search"></label><button id="tg-list-search" type="button">Buscar</button></div><ul id="tg-list" class="tj-catalog-results"></ul><div class="tj-catalog-pages"><button id="tg-list-prev" disabled>Anterior</button><button id="tg-list-next" disabled>Próxima</button></div><button id="tg-new" type="button">Novo arranjo</button></section>' +
     '<section class="tj-panel"><h2>Rascunho e publicação</h2><p id="tg-version"></p><div class="tg-search"><label>Buscar obra própria<input id="tg-work-q" type="search"></label><button id="tg-work-search">Buscar obra</button></div><label class="tj-field">Obra do seu acervo<select id="tg-work"><option value="">Selecione uma obra do seu acervo</option></select></label><div class="tj-catalog-pages"><button id="tg-work-prev" disabled>Anterior</button><button id="tg-work-next" disabled>Próxima</button></div><p id="tg-work-empty" hidden>Nenhuma obra encontrada. <a href="/music/app#biblioteca">Abra o acervo para cadastrar uma obra.</a></p><p id="tg-visibility" class="tj-small"></p>' +
     '<div class="tg-grid"><label class="tj-field">Título do arranjo<input id="tg-title" maxlength="120"></label><label class="tj-field">Instrumento<select id="tg-instrument"></select></label><label class="tj-field">Nível<select id="tg-level"></select></label><label class="tj-field">Técnica<select id="tg-technique"></select></label></div>' +
     '<label class="tj-field">Objetivo do estudo<input id="tg-objective" maxlength="500"></label><label class="tj-field">Autoria, créditos e procedência<input id="tg-credits" maxlength="500"></label><label class="tj-field">Áudio já vinculado à obra<select id="tg-media"><option value="">Sem áudio associado · usar demonstração sintetizada</option></select></label><button id="tg-media-more" type="button" hidden>Carregar mais áudios desta obra</button>' +
-    '<p class="tj-small">Arquivos de áudio são geridos no acervo. Aqui entram apenas notas isoladas em afinação padrão; MP3 sozinho não cria um arranjo.</p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label>' +
+    '<p class="tj-small">Arquivos de áudio são geridos no acervo. Aqui entram apenas notas isoladas em afinação padrão; MP3 sozinho não cria um arranjo.</p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label><label class="tj-field">Importar MIDI (até 512 KiB, lido somente neste navegador)<input id="tg-midi" type="file" accept=".mid,.midi,audio/midi,audio/x-midi"></label><section id="tg-midi-preview" class="tj-field" aria-live="polite" hidden><p id="tg-midi-info"></p><label>Linha MIDI<select id="tg-midi-candidates"><option value="">Escolha uma linha MIDI disponível</option></select></label><p id="tg-midi-detail" class="tj-small"></p><div class="tg-actions"><button id="tg-midi-confirm" type="button" disabled>Importar esta linha</button><button id="tg-midi-cancel" type="button">Cancelar importação MIDI</button></div></section>' +
     '<div class="tg-search"><label>Começar de um estudo original<select id="tg-example"></select></label><button id="tg-use-example" type="button">Usar cópia do estudo</button></div><p id="tg-chart-info"></p>' +
     '<div id="tg-editor"></div>' +
     '<div class="tg-actions"><button id="tg-save" type="button">Salvar rascunho</button><a id="tg-preview" target="_blank" rel="noopener" hidden>Revisar na pista ↗</a><button id="tg-publish" type="button" disabled>Publicar nova versão</button><button id="tg-withdraw" type="button" disabled>Retirar publicação</button><button id="tg-reload" type="button" disabled>Recarregar revisão salva (descarta alterações)</button><button id="tg-download" type="button">Baixar JSON do formulário</button></div><p class="tj-small">Publicar cria uma versão preservada. Editar depois prepara outro rascunho; retirar não apaga o histórico.</p><h3>Versões publicadas</h3><ul id="tg-versions"></ul></section></div>';
@@ -191,26 +263,60 @@
   Estudos.listar().forEach(function (s) { option($('tg-example'), s.id, s.title); });
   ['tg-title', 'tg-objective', 'tg-credits'].forEach(function (id) { $(id).addEventListener('input', changed); });
   ['tg-instrument', 'tg-level', 'tg-technique', 'tg-media'].forEach(function (id) { $(id).addEventListener('change', changed); });
-  $('tg-work').addEventListener('change', function () { ++workChoice; $('tg-media').replaceChildren(node('option','Sem áudio associado · usar demonstração sintetizada',{value:''})); changed(); return loadMedia(this.value, ''); });
-  $('tg-media-more').addEventListener('click',function(){if(mediaWork===$('tg-work').value)return loadMedia(mediaWork,undefined,mediaOffset);});
+  $('tg-work').addEventListener('change', function () { if (midiPending) return; ++workChoice; $('tg-media').replaceChildren(node('option','Sem áudio associado · usar demonstração sintetizada',{value:''})); changed(); return loadMedia(this.value, ''); });
+  $('tg-media-more').addEventListener('click',function(){if(!busy&&!midiPending&&mediaWork===$('tg-work').value)return loadMedia(mediaWork,undefined,mediaOffset);});
   $('tg-json').addEventListener('change', async function () {
-    if (busy || editorPending) return;
+    if (busy || editorPending || midiPending) return;
     var file = this.files[0]; if (!file) return; var ticket = ++importTicket;
     try {
       if (file.size > Formato.LIMITE_BYTES) throw new Error('O arquivo deve ter no máximo 1 MiB.');
       var parsed = JSON.parse(await file.text()); if (ticket !== importTicket) return;
       if (parsed.chart) { var doc=Formato.validarDocumento(parsed); ++mediaTicket;fillDocument(doc);loadMedia($('tg-work').value,doc.mediaId); }
       else { chart = Core.validarChart(parsed); $('tg-title').value = chart.title; editor.carregar(chart); }
+      limparImportacaoMidi();
       dirty = true; render(); message('Notas importadas. Confira objetivo, créditos, áudio e prévia antes de publicar.');
     } catch (e) { if (ticket === importTicket) message('Arranjo inválido: ' + e.message, true); }
     this.value = '';
   });
+  $('tg-midi').addEventListener('change', async function () {
+    if (busy || editorPending || midiPending) return;
+    var file = this.files[0]; this.value = ''; if (!file) return;
+    var ticket = ++importTicket;
+    try {
+      if (file.size > 512 * 1024) throw new Error('O arquivo MIDI deve ter no máximo 512 KiB.');
+      if (typeof file.arrayBuffer !== 'function') throw new Error('Não foi possível ler este arquivo MIDI no navegador.');
+      var bytes = new Uint8Array(await file.arrayBuffer()); if (ticket !== importTicket) return;
+      var analysis = ImportadorMidi.analisar(bytes); if (ticket !== importTicket) return;
+      if (!analysis || !Array.isArray(analysis.candidates)) throw new Error('O arquivo MIDI não trouxe linhas para revisar.');
+      mostrarAnaliseMidi(analysis, file.name || ''); render();
+      message('MIDI analisado localmente. Escolha uma linha disponível e confirme a importação; o rascunho ainda não foi alterado.');
+    } catch (e) { if (ticket === importTicket) message('MIDI inválido: ' + e.message, true); }
+  });
+  $('tg-midi-candidates').addEventListener('change', function () { renderMidiPreview(); });
+  $('tg-midi-cancel').addEventListener('click', function () {
+    if (busy || !midiPending) return;
+    ++importTicket; limparImportacaoMidi(); render(); message('Importação MIDI cancelada. O rascunho anterior foi preservado.');
+  });
+  $('tg-midi-confirm').addEventListener('click', function () {
+    if (busy || editorPending || !midiPending) return;
+    var candidate = candidatoMidiAtual();
+    if (!candidate) { message('Escolha uma linha MIDI disponível antes de importar.', true); return; }
+    try {
+      var usarTituloMidi = tituloPodeVirDoMidi();
+      var title = usarTituloMidi ? tituloMidiSeguro(midiFileName) : $('tg-title').value.trim();
+      var next = Core.validarChart(ImportadorMidi.criarChart(midiAnalysis, candidate.id, { id: chart && chart.id ? chart.id : 'midi-importado', title: title }));
+      editor.carregar(next); ++importTicket; chart = next;
+      if (usarTituloMidi) $('tg-title').value = title;
+      limparImportacaoMidi(); dirty = true; render();
+      message('Linha MIDI importada. Revise as posições no editor, salve o rascunho e confira na pista antes de publicar.');
+    } catch (e) { message('Não foi possível importar esta linha MIDI: ' + e.message, true); }
+  });
   $('tg-use-example').addEventListener('click', function () {
-    if (busy || editorPending) return;
+    if (busy || editorPending || midiPending) return;
     ++importTicket;
     var s = Estudos.listar().find(function (item) { return item.id === $('tg-example').value; }); if (!s) return;
     chart = s.chart; editor.carregar(chart); $('tg-title').value = s.title; $('tg-objective').value = s.objective; $('tg-credits').value = 'Estudo original Musique';
-    $('tg-level').value = 'iniciante'; dirty = true; render(); message('Cópia do estudo carregada. A biblioteca original continua preservada.');
+    limparImportacaoMidi(); $('tg-level').value = 'iniciante'; dirty = true; render(); message('Cópia do estudo carregada. A biblioteca original continua preservada.');
   });
   $('tg-save').addEventListener('click', function () { return mutate('save'); });
   $('tg-publish').addEventListener('click', function () { return mutate('publish'); });
@@ -229,13 +335,13 @@
   });
   async function selectInitialWork() {
     if(!initialWork)return;var choice=workChoice;
-    try{var data=await api('/obras/'+encodeURIComponent(initialWork));if(choice!==workChoice||current)return;
+    try{var data=await api('/obras/'+encodeURIComponent(initialWork));if(choice!==workChoice||current||midiPending)return;
       var w=data.obra;if(!w||w.id!==initialWork)throw new Error('Obra não encontrada no seu acervo.');
       if(!works.some(function(item){return item.id===w.id;}))works.push(w);
       if(!Array.prototype.some.call($('tg-work').children,function(n){return n.value===w.id;}))option($('tg-work'),w.id,w.titulo);
       $('tg-work').value=w.id;render();await loadMedia(w.id,'');
     }catch(e){if(choice===workChoice)message('Não foi possível selecionar a obra: '+e.message,true);}
   }
-  window.addEventListener('beforeunload', function (event) { if (dirty || editorPending) { event.preventDefault(); event.returnValue = ''; } });
+  window.addEventListener('beforeunload', function (event) { if (dirty || editorPending || midiPending) { event.preventDefault(); event.returnValue = ''; } });
   newDraft(); loadWorks(0); loadList(0); selectInitialWork();
 })();

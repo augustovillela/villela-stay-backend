@@ -24,6 +24,20 @@ function servidor(extra) {
 async function pronto(h){await h.settle();await h.event('tg-work','change','obra-a');await h.event('tg-use-example','click');}
 async function abrir(h){await h.settle();await Promise.all(h.$('tg-list').children[0].children.at(-1).click());await h.settle();}
 async function importar(h,doc){const text=JSON.stringify(doc);h.$('tg-json').files=[{size:Buffer.byteLength(text),text:async()=>text}];await h.event('tg-json','change');}
+function importadorMidi(opcoes={}){
+  const analysis=opcoes.analysis||{format:1,ppqn:480,duration:2,tempoMap:[{time:0,beat:0,bpm:120}],candidates:[
+    {id:'t0-c0',track:0,channel:0,name:'Linha principal',noteCount:2,minMidi:40,maxMidi:45,duration:2,valid:true,reason:null},
+    {id:'t1-c9',track:1,channel:9,name:'Bateria',noteCount:3,minMidi:36,maxMidi:42,duration:2,valid:false,reason:'Canal de percussão não pode ser importado.'},
+  ]};
+  const calls={analisar:[],criar:[]};
+  return {calls,analisar(bytes){calls.analisar.push(bytes);if(opcoes.erro)throw opcoes.erro;return analysis;},criarChart(a,candidateId,config){
+    calls.criar.push({a,candidateId,config});if(opcoes.erroCriar)throw opcoes.erroCriar;
+    const chart={id:config.id,title:config.title,bpm:120,duration:2,tuning:[40,45,50,55,59,64],notes:[
+      {id:'midi-1',time:0,duration:.4,string:6,fret:0,midi:40},{id:'midi-2',time:1,duration:.4,string:5,fret:0,midi:45},
+    ]};if(opcoes.tempoMap)chart.tempoMap=copy(opcoes.tempoMap);return chart;
+  }};
+}
+async function analisarMidi(h,file={size:8,name:'linha.mid',arrayBuffer:async()=>new Uint8Array([77,84,104,100]).buffer}){h.$('tg-midi').files=[file];await h.event('tg-midi','change');}
 const tests=[];function test(name,fn){tests.push({name,fn});}
 
 test('Visitante recebe entrada clara sem listar acervo, capturar ou mutar',async()=>{
@@ -58,6 +72,34 @@ test('Importação inválida ou grande preserva rascunho anterior e impede escri
 test('JSON puro e documento completo são importados sem alterar estudos originais',async()=>{
   const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await h.settle();await h.event('tg-work','change','obra-a');await importar(h,pequeno());assert.equal(h.$('tg-title').value,'Duas cordas');assert.match(h.$('tg-chart-info').textContent,/2 notas/);
   const d=documento(pequeno(),'audio-b');await importar(h,d);assert.equal(h.$('tg-media').value,'audio-b');await h.event('tg-save','click');assert.equal(s.current.documento.mediaId,'audio-b');assert.equal(require('./estudos').obter('primeiro-riff-v1').metadata.demo,true);
+});
+test('MIDI é analisado localmente e exige confirmação explícita antes de trocar o rascunho',async()=>{
+  const s=servidor(),midi=importadorMidi(),h=montar({page:'gestao',logado:true,fetch:s.fetch,importador:midi});await abrir(h);const before=copy(s.current.documento);
+  await analisarMidi(h);assert.equal(midi.calls.analisar.length,1);assert.equal(midi.calls.criar.length,0);assert.equal(h.$('tg-midi-preview').hidden,false);assert.match(h.$('tg-midi-info').textContent,/analisado localmente/);assert.equal(h.$('tg-save').disabled,true);assert.equal(h.$('tg-preview').hidden,true);assert.equal(h.$('tg-title').disabled,true);assert.equal(h.$('tg-json').disabled,true);assert.equal(h.$('te-note-fret').disabled,true);
+  const bateria=h.$('tg-midi-candidates').children.find(n=>n.value==='t1-c9');assert.equal(bateria.disabled,true);assert.match(bateria.textContent,/percussão/);assert.equal(h.$('tg-midi-confirm').disabled,true);
+  await h.event('tg-midi-candidates','change','t0-c0');assert.equal(h.$('tg-midi-confirm').disabled,false);assert.match(h.$('tg-midi-detail').textContent,/Linha principal/);assert.equal(midi.calls.criar.length,0);
+  await h.event('tg-midi-confirm','click');assert.equal(midi.calls.criar.length,1);assert.equal(midi.calls.criar[0].config.id,before.chart.id);assert.equal(h.$('tg-title').value,before.title);assert.match(h.$('tg-chart-info').textContent,/2 notas/);assert.equal(h.$('tg-midi-preview').hidden,true);assert.equal(h.$('tg-save').disabled,false);
+  await h.event('tg-save','click');assert.deepEqual(s.current.documento.chart.notes.map(n=>n.id),['midi-1','midi-2']);
+});
+test('MIDI só usa nome seguro do arquivo no título vazio ou padrão e cancelamento preserva o rascunho',async()=>{
+  const midi=importadorMidi(),h=montar({page:'gestao',logado:true,fetch:servidor().fetch,importador:midi});await h.settle();await h.event('tg-work','change','obra-a');await h.event('te-new','click');assert.equal(h.$('tg-title').value,'Novo arranjo');
+  await analisarMidi(h,{size:4,name:'Estudo <MIDI>.mid',arrayBuffer:async()=>new Uint8Array([1,2]).buffer});await h.event('tg-midi-candidates','change','t0-c0');await h.event('tg-midi-confirm','click');assert.equal(h.$('tg-title').value,'Estudo MIDI');
+  const antesCancelar=h.$('tg-chart-info').textContent;await analisarMidi(h);assert.equal(h.$('tg-midi-preview').hidden,false);await h.event('tg-midi-cancel','click');assert.equal(h.$('tg-midi-preview').hidden,true);assert.equal(h.$('tg-chart-info').textContent,antesCancelar);assert.equal(h.$('tg-title').disabled,false);assert.match(h.$('tg-status').textContent,/preservado/);
+});
+test('MIDI com mudanças de andamento segue intacto pelo rascunho até o salvamento',async()=>{
+  const tempoMap={version:1,events:[{time:0,beat:0,bpm:120},{time:1,beat:2,bpm:90}]};const s=servidor(),midi=importadorMidi({tempoMap}),h=montar({page:'gestao',logado:true,fetch:s.fetch,importador:midi});await abrir(h);
+  await analisarMidi(h);await h.event('tg-midi-candidates','change','t0-c0');await h.event('tg-midi-confirm','click');assert.match(h.$('tg-chart-info').textContent,/120 BPM/);await h.event('tg-save','click');assert.deepEqual(s.current.documento.chart.tempoMap,tempoMap);
+});
+test('MIDI inválido, grande ou tardio não altera o rascunho nem deixa seleção antiga importar',async()=>{
+  const falho=importadorMidi({erro:new Error('SMF truncado')});const h=montar({page:'gestao',logado:true,fetch:servidor().fetch,importador:falho});await abrir(h);const title=h.$('tg-title').value;
+  await analisarMidi(h);assert.equal(h.$('tg-midi-preview').hidden,true);assert.equal(h.$('tg-title').value,title);assert.match(h.$('tg-status').textContent,/MIDI inválido/);
+  let leu=false;await analisarMidi(h,{size:512*1024+1,name:'grande.mid',arrayBuffer:async()=>{leu=true;return new ArrayBuffer(0);}});assert.equal(leu,false);assert.equal(h.$('tg-title').value,title);assert.match(h.$('tg-status').textContent,/512 KiB/);
+  let release;h.$('tg-midi').files=[{size:8,name:'tardio.mid',arrayBuffer:()=>new Promise(resolve=>{release=resolve;})}];const pending=h.$('tg-midi').dispatch('change');await h.settle();await h.event('tg-title','input','Título mais novo');release(new Uint8Array([1]).buffer);await Promise.all(pending);assert.equal(h.$('tg-title').value,'Título mais novo');assert.equal(h.$('tg-midi-preview').hidden,true);assert.equal(falho.calls.criar.length,0);
+});
+test('Falha ao converter linha MIDI preserva rascunho e mantém confirmação ou cancelamento disponível',async()=>{
+  const midi=importadorMidi({erroCriar:new Error('Linha incompatível')});const h=montar({page:'gestao',logado:true,fetch:servidor().fetch,importador:midi});await abrir(h);const title=h.$('tg-title').value,notes=h.$('tg-chart-info').textContent;
+  await analisarMidi(h);await h.event('tg-midi-candidates','change','t0-c0');await h.event('tg-midi-confirm','click');assert.equal(h.$('tg-title').value,title);assert.equal(h.$('tg-chart-info').textContent,notes);assert.equal(h.$('tg-midi-preview').hidden,false);assert.equal(h.$('tg-midi-cancel').disabled,false);assert.match(h.$('tg-status').textContent,/Não foi possível importar/);
+  await h.event('tg-midi-cancel','click');assert.equal(h.$('tg-title').disabled,false);
 });
 test('Conflito de revisão preserva texto, bloqueia sobreposição e permite recarregar',async()=>{
   const s=servidor((url,opts)=>opts.method==='PUT'?resposta({erro:'Revisão mudou',revision:9},409):null),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);await h.event('tg-title','input','Trabalho ainda não salvo');await h.event('tg-save','click');

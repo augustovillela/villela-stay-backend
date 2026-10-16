@@ -15,7 +15,7 @@
   var referenceWallUntil = 0, outputWallUntil = 0;
   var state = { mode: 'idle', running: false, position: 0, origin: 0, start: 0, speed: 1,
     from: 0, to: chart.duration, loop: false, judge: null, lastFrame: null, offset: 0,
-    nextNote: 0, nextBeat: 0, saved: false, connected: false, connecting: false, calibration: null, endedAt: null,
+    nextNote: 0, nextBeat: 0, countInFirstBeat: null, saved: false, connected: false, connecting: false, calibration: null, endedAt: null,
     instrument: 'violao', inputKind: 'microphone', trainingMode: 'practice', learner: null,
     learnContext: null, learnElapsed: 0, learnStartedAt: null, guideUntil: 0 };
   var studies = Estudos.listar(), phraseButtons = [];
@@ -33,6 +33,34 @@
   function msg(value, error) { text('tj-status', value); $('tj-status').classList.toggle('tj-error', !!error); }
   function timeLabel(s) { s = Math.max(0, s || 0); return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0'); }
   function noteName(midi) { return ['Dó', 'Dó♯', 'Ré', 'Ré♯', 'Mi', 'Fá', 'Fá♯', 'Sol', 'Sol♯', 'Lá', 'Lá♯', 'Si'][((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1); }
+  function tempoEvents(c) {
+    return c.tempoMap ? c.tempoMap.events : [{ time: 0, beat: 0, bpm: c.bpm }];
+  }
+  function tempoAt(c, time) {
+    var eventos = tempoEvents(c), atual = eventos[0];
+    eventos.forEach(function (evento) { if (evento.time <= time) atual = evento; });
+    return atual;
+  }
+  function beatAt(c, time) {
+    var evento = tempoAt(c, time);
+    return evento.beat + (time - evento.time) * evento.bpm / 60;
+  }
+  function timeAtBeat(c, beat) {
+    var eventos = tempoEvents(c), atual = eventos[0], i;
+    if (beat < atual.beat) return atual.time + (beat - atual.beat) * 60 / atual.bpm;
+    for (i = 1; i < eventos.length; i++) {
+      if (beat < eventos[i].beat) return atual.time + (beat - atual.beat) * 60 / atual.bpm;
+      atual = eventos[i];
+    }
+    return atual.time + (beat - atual.beat) * 60 / atual.bpm;
+  }
+  function firstBeatAtOrAfter(c, time) { return Math.ceil(beatAt(c, time) - 1e-7); }
+  function countInStart(c, from) { return timeAtBeat(c, beatAt(c, from) - 4); }
+  function tempoLabel(c) {
+    if (!c.tempoMap || c.tempoMap.events.length < 2) return c.bpm + ' BPM';
+    var mudancas = c.tempoMap.events.length - 1;
+    return c.bpm + ' BPM inicial · andamento variável (' + mudancas + ' ' + (mudancas === 1 ? 'mudança' : 'mudanças') + ')';
+  }
   function renderCaptureGain() {
     var db = captureGains[state.inputKind];
     var multiplier = (Math.round(Math.pow(10, db / 20) * 10) / 10).toLocaleString('pt-BR');
@@ -160,10 +188,11 @@
     learnTarget();
   }
   function judgeReset() { state.judge = Core.criarJulgador(chart, { offsetMs: state.offset * state.speed, from: state.from, to: state.to }); state.saved = false; }
-  function scheduleReset(p) {
+  function scheduleReset(p, countIn) {
     state.nextNote = chart.notes.findIndex(function (n) { return n.time >= p - 0.01; });
     if (state.nextNote < 0) state.nextNote = chart.notes.length;
-    state.nextBeat = Math.ceil(p / (60 / chart.bpm));
+    state.nextBeat = countIn ? beatAt(chart, p) : firstBeatAtOrAfter(chart, p);
+    state.countInFirstBeat = countIn ? state.nextBeat : null;
   }
   function pause() {
     generation++; mediaStarting = false;
@@ -191,6 +220,7 @@
       if (attempt !== generation) return;
       if (resume && state.position >= state.to) resume = false;
       if (mode === 'learn' && (state.learnContext !== ctx || state.learnElapsed >= 7200)) resume = false;
+      var startWithCountIn = false;
       if (mode === 'learn') {
         if (!resume || !state.learner) {
           state.learner = Aprender.criar(chart, { from: state.from, to: state.to, now: ctx.currentTime });
@@ -202,10 +232,10 @@
         } else state.learner.retomar(Math.max(ctx.currentTime, state.guideUntil));
         if (!state.learner.resumo().total) { stop(); msg('Este trecho não contém notas. Escolha um trecho do arranjo.', true); return; }
         state.position = state.learner.alvo().time; state.learnStartedAt = ctx.currentTime;
-      } else if (!resume) { state.position = state.from - 4 * 60 / chart.bpm; judgeReset(); state.learner = null; }
+      } else if (!resume) { state.position = countInStart(chart, state.from); startWithCountIn = true; judgeReset(); state.learner = null; }
       if (mode === 'practice' && !state.judge.resumo().total) { stop(); msg('Este trecho não contém notas. Escolha um trecho do arranjo.', true); return; }
       state.mode = mode; state.start = state.position; state.origin = ctx.currentTime; state.running = true;
-      state.endedAt = null; mediaStarting = false; scheduleReset(state.position);
+      state.endedAt = null; mediaStarting = false; scheduleReset(state.position, startWithCountIn);
       if (media) { media.pause(); media.currentTime = Math.max(state.from, state.position); media.playbackRate = state.speed; }
       text('tj-mode', mode === 'demo' ? 'DEMONSTRAÇÃO · SEM AVALIAÇÃO' : mode === 'learn' ? 'APRENDER · NOTA POR NOTA' : 'PRÁTICA · NOTAS ISOLADAS');
       text('tj-pause', 'Pausar');
@@ -257,7 +287,7 @@
   function applyChart(c, origin) {
     if (c.tuning.some(function (m, i) { return m !== [40,45,50,55,59,64][i]; })) throw new Error('Neste protótipo, use violão ou guitarra de seis cordas em afinação padrão (Mi Lá Ré Sol Si Mi).');
     stop(); chart = c; source = origin || {kind:'study'}; state.from = 0; state.to = chart.duration; state.position = 0;
-    text('tj-song-title', chart.title); text('tj-song-info', chart.bpm + ' BPM · ' + chart.notes.length + ' notas · ' + timeLabel(chart.duration));
+    text('tj-song-title', chart.title); text('tj-song-info', tempoLabel(chart) + ' · ' + chart.notes.length + ' notas · ' + timeLabel(chart.duration));
     text('tj-source', source.kind === 'catalog' ? 'Catálogo · versão ' + source.versionNumber + ' · ' + source.credits : source.kind === 'preview' ? 'PRÉVIA DO RASCUNHO · revisão ' + source.revision + ' · sem captura ou avaliação' : source.kind === 'study' ? 'Estudo original Musique · acompanhamento sintetizado' : 'Arranjo importado neste navegador');
     $('tj-seek').max = chart.duration; $('tj-to').max = chart.duration; $('tj-from').max = chart.duration;
     $('tj-from').value = 0; $('tj-to').value = chart.duration.toFixed(2);
@@ -352,11 +382,15 @@
             if (playGeneration === generation && playingMedia === media) mediaStarting = false;
           }).catch(function (e) { if (playGeneration !== generation) return; mediaStarting = false; pause(); msg('O áudio não pôde tocar: ' + e.message, true); });
         }
-        var beat = 60 / chart.bpm, until = p + 0.14 * state.speed;
+        var until = p + 0.14 * state.speed;
         // Schedule a short look-ahead from the audio clock, never from animation frame count.
-        while (state.nextBeat * beat < until) {
-          var bt = state.nextBeat * beat;
-          if (bt < state.to && bt >= p - 0.02 && (bt < state.from || $('tj-metronome').checked)) tone(state.nextBeat % 4 === 0 ? 88 : 81, ctx.currentTime + Math.max(0.005, (bt - p) / state.speed), 0.045, 0.045, 'sine');
+        while (timeAtBeat(chart, state.nextBeat) < until) {
+          var bt = timeAtBeat(chart, state.nextBeat);
+          if (bt < state.to && bt >= p - 0.02 && (bt < state.from || $('tj-metronome').checked)) {
+            var accent = state.countInFirstBeat !== null && Math.abs(state.nextBeat - state.countInFirstBeat) < 1e-7;
+            tone(accent || Math.abs(state.nextBeat % 4) < 1e-7 ? 88 : 81, ctx.currentTime + Math.max(0.005, (bt - p) / state.speed), 0.045, 0.045, 'sine');
+          }
+          if (state.countInFirstBeat !== null && Math.abs(state.nextBeat - state.countInFirstBeat) < 1e-7) state.countInFirstBeat = null;
           state.nextBeat++;
         }
         if (!media || !withBacking()) {
@@ -365,13 +399,13 @@
             if (n.time >= state.from && n.time < state.to && n.time >= p - 0.02) {
               var at = ctx.currentTime + Math.max(0.005, (n.time - p) / state.speed);
               if (state.mode === 'demo' || $('tj-guide').checked) tone(n.midi, at, Math.min(n.duration / state.speed, 1.2), 0.075);
-              if (state.nextNote % 4 === 1 && (state.mode === 'demo' || $('tj-backing').checked)) tone(40, at, Math.min(beat / state.speed, 0.55), 0.032, 'sine');
+              if (state.nextNote % 4 === 1 && (state.mode === 'demo' || $('tj-backing').checked)) tone(40, at, Math.min((60 / tempoAt(chart, n.time).bpm) / state.speed, 0.55), 0.032, 'sine');
             }
           }
         }
         // The detector delivers a buffered window; let late frames arrive before expiring a target.
         if (state.mode === 'practice' && state.judge) { state.judge.avancar(p - 0.15 * state.speed); updateScore(); }
-        text('tj-count', p < state.from ? String(Math.max(1, Math.ceil((state.from - p) / beat))) : '');
+        text('tj-count', p < state.from ? String(Math.max(1, Math.ceil(beatAt(chart, state.from) - beatAt(chart, p) - 1e-7))) : '');
         updateTransport();
       }
     }
@@ -488,8 +522,8 @@
     function point(lane, depth) { var k=1-depth, width=far+(near-far)*k*k; return [center-width/2+width*lane/6, top+(bottom-top)*k*k]; }
     for(var i=0;i<6;i++) { var a=point(i,1),b=point(i+1,1),c=point(i+1,0),e=point(i,0); g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.lineTo(c[0],c[1]);g.lineTo(e[0],e[1]);g.closePath();g.fillStyle=i%2?'#ffffff05':'#ffffff0a';g.fill(); }
     for(var lane=0;lane<=6;lane++) { var a=point(lane,1),b=point(lane,0);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.strokeStyle='#ccd8e41a';g.lineWidth=d;g.stroke(); }
-    var ahead=4.5, beat=60/chart.bpm;
-    for(var t=Math.ceil(p/beat)*beat;t<p+ahead;t+=beat) { var dep=(t-p)/ahead;if(dep<0)continue;var a=point(0,dep),b=point(6,dep);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.strokeStyle='#ffffff13';g.stroke(); }
+    var ahead=4.5, nextBeat=firstBeatAtOrAfter(chart,p), gridLines=0;
+    for(;gridLines<64;nextBeat++) { var t=timeAtBeat(chart,nextBeat);if(t>=p+ahead)break;var dep=(t-p)/ahead;if(dep<0)continue;var a=point(0,dep),b=point(6,dep);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.strokeStyle='#ffffff13';g.stroke();gridLines++; }
     var result={}, performance=state.mode==='learn'?state.learner:state.mode==='practice'?state.judge:null; if(performance)performance.estados().forEach(function(s){result[s.id]=s.status;});
     chart.notes.slice().reverse().forEach(function(n){
       if(n.time<state.from||n.time>=state.to)return;var dt=n.time-p;if(dt < -0.35 || dt>ahead)return;

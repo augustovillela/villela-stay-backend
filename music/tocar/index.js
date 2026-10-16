@@ -14,7 +14,7 @@ const ARQUIVOS = Object.freeze([
   'cliente.js', 'estilo.css', 'nucleo.js', 'audio.js', 'detector.js',
   'capturar-worklet.js', 'detector-worker.js', 'aprender.js', 'estudos.js',
   'formato-catalogo.js', 'catalogo-cliente.js', 'gerenciar.js',
-  'editor-nucleo.js', 'editor-cliente.js', 'editor.css',
+  'editor-nucleo.js', 'editor-cliente.js', 'editor.css', 'importador-midi.js',
 ]);
 
 function invalido(mensagem) {
@@ -148,6 +148,7 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/estudos.js" defer></script>
 <script src="/music/tocar/editor-nucleo.js" defer></script>
 <script src="/music/tocar/editor-cliente.js" defer></script>
+<script src="/music/tocar/importador-midi.js" defer></script>
 <script src="/music/tocar/gerenciar.js" defer></script>`;
     res.set('Cache-Control', 'no-store').type('html').send(layout('Gerenciar arranjos | Musique', corpo, {
       caminho: '/music/tocar/gerenciar', noApp: estado.logado,

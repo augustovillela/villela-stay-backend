@@ -47,6 +47,43 @@ test('validação ordena sem alterar a entrada e não compartilha notas/afinaç�
   assert.equal(source.notes[1].fret, 0); assert.equal(source.tuning[0], 40);
 });
 
+test('tempoMap opcional preserva a medida MIDI fechada sem alterar charts antigos', () => {
+  const source = chart([note('n1', 1)], 4);
+  source.bpm = 120;
+  source.tempoMap = { version: 1, events: [
+    { time: 0, beat: 0, bpm: 120 },
+    { time: 1.25, beat: 2.5, bpm: 90 }
+  ] };
+  const normalized = Core.validarChart(source);
+  assert.deepEqual(normalized.tempoMap, source.tempoMap);
+  normalized.tempoMap.events[1].bpm = 80;
+  assert.equal(source.tempoMap.events[1].bpm, 90);
+  assert.equal(Object.prototype.hasOwnProperty.call(Core.validarChart(chart()), 'tempoMap'), false);
+});
+
+test('tempoMap recusa campos extras, eventos insuficientes, ordem inválida e BPM incompatível', () => {
+  function mapped() {
+    const d = chart([note('n1', 1)], 4);
+    d.bpm = 120;
+    d.tempoMap = { version: 1, events: [{ time: 0, beat: 0, bpm: 120 }, { time: 1, beat: 2, bpm: 90 }] };
+    return d;
+  }
+  let d = mapped(); d.tempoMap.extra = true;
+  assert.throws(() => Core.validarChart(d), /campos inválidos/);
+  d = mapped(); d.tempoMap.events = [d.tempoMap.events[0]];
+  assert.throws(() => Core.validarChart(d), /2 a 512/);
+  d = mapped(); d.tempoMap.events[1].beat = 0;
+  assert.throws(() => Core.validarChart(d), /crescer estritamente/);
+  d = mapped(); d.tempoMap.events[1].beat = 999;
+  assert.throws(() => Core.validarChart(d), /não correspondem ao BPM anterior/);
+  d = mapped(); d.tempoMap.events[1].time = 4.1;
+  assert.throws(() => Core.validarChart(d), /Tempo do evento/);
+  d = mapped(); d.tempoMap.events[0].bpm = 121;
+  assert.throws(() => Core.validarChart(d), /BPM do arranjo/);
+  d = mapped(); d.tempoMap.events = Array.from({ length: 513 }, (_, i) => ({ time: i / 1000, beat: i, bpm: 120 }));
+  assert.throws(() => Core.validarChart(d), /2 a 512/);
+});
+
 test('corda 1 é mi aguda e MIDI deve concordar com casa e afinação', () => {
   const d = chart([note('aguda', 1, 1, 3)]);
   assert.equal(Core.validarChart(d).notes[0].midi, 67);
