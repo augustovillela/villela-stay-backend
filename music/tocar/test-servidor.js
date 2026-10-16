@@ -169,6 +169,47 @@ test('edição de notas salva e reabre tempos fracionários, IDs e frases sem ar
   assert.deepEqual(chart.sections.map(s => [s.id, s.from, s.to]), [['frase-A', 0.125, 1.125], ['_frase-B', 1.375, 2.875]]);
 });
 
+for (const instrumento of ['piano', 'bateria']) test('editor '+instrumento+' mantém notas simultâneas entre criação, revisão, reabertura e versões publicadas', async () => {
+  const Editor = require('./editor-nucleo'), Formato = require('./formato-catalogo');
+  const dono = 'editor-midi-' + instrumento, title = 'Estudo MIDI de ' + instrumento;
+  const obra = require('../repo').Obras.criar({ dono, titulo: title, titularidade: 'propria' });
+  const model = Editor.criar(Editor.novoChart(title, 'arranjo-' + instrumento, instrumento));
+  const originalId = model.obter().notes[0].id, midi = instrumento === 'piano' ? 72 : 38;
+  model.executar({tipo:'editarNota', id:originalId, alteracoes:{time:.125, duration:.25, velocity:91}});
+  model.executar({tipo:'criarNota', nota:{time:.125, duration:.25, midi, velocity:67}});
+  model.executar({tipo:'criarFrase', frase:{title:'Duas notas simultâneas', from:0, to:2}});
+  const documento = Formato.validarDocumento({title,instrument:instrumento,level:'iniciante',technique:'notas-isoladas',
+    objective:'Praticar notas simultâneas com intensidades diferentes.',credits:'Arranjo original de teste.',mediaId:'',chart:model.obter()});
+  assert.equal(documento.chart.drums, undefined);assert.equal(documento.chart.tuning, undefined);
+  const criada = await catalogoHTTP(dono, '/gestao/arranjos', 'POST', {obraId:obra.id, documento});
+  assert.equal(criada.status,201,JSON.stringify(criada.body));
+  let atual = criada.body.arranjo;
+  assert.deepEqual(atual.documento,documento);
+  assert.deepEqual((await catalogoHTTP(dono,'/gestao/arranjos/'+atual.id)).body.arranjo.documento,documento);
+  assert.equal((await catalogoHTTP('outro-editor-midi','/gestao/arranjos/'+atual.id)).status,404);
+  const primeira = await catalogoHTTP(dono,'/gestao/arranjos/'+atual.id+'/publicar','POST',{revision:atual.revision});
+  assert.equal(primeira.status,200,JSON.stringify(primeira.body));atual=primeira.body.arranjo;
+  const primeiraVersionId=atual.publishedVersionId;
+  const publicada = await catalogoHTTP(dono,'/catalogo/'+atual.id);
+  assert.equal(publicada.status,200);assert.deepEqual(publicada.body.documento,documento);
+  const invalid = structuredClone(documento);invalid.chart.notes[0].velocity=0;
+  const recusada = await catalogoHTTP(dono,'/gestao/arranjos/'+atual.id,'PUT',{revision:atual.revision,documento:invalid});
+  assert.equal(recusada.status,400);assert.deepEqual((await catalogoHTTP(dono,'/gestao/arranjos/'+atual.id)).body.arranjo,atual);
+  // Reabre a versão persistida pelo mesmo modelo do editor e altera somente a intensidade.
+  const reopened = Editor.criar(atual.documento.chart);
+  reopened.executar({tipo:'editarNota',id:originalId,alteracoes:{velocity:84}});
+  const revisada = {...documento,chart:reopened.obter()};
+  const salva = await catalogoHTTP(dono,'/gestao/arranjos/'+atual.id,'PUT',{revision:atual.revision,documento:revisada});
+  assert.equal(salva.status,200,JSON.stringify(salva.body));
+  assert.equal(salva.body.arranjo.revision,atual.revision+1);atual=salva.body.arranjo;
+  assert.deepEqual(atual.documento,Formato.validarDocumento(revisada));
+  assert.deepEqual((await catalogoHTTP(dono,'/catalogo/'+atual.id)).body.documento,documento,'Salvar o rascunho não reescreve a versão publicada.');
+  const segunda = await catalogoHTTP(dono,'/gestao/arranjos/'+atual.id+'/publicar','POST',{revision:atual.revision});
+  assert.equal(segunda.status,200);assert.notEqual(segunda.body.arranjo.publishedVersionId,primeiraVersionId);
+  assert.deepEqual((await catalogoHTTP(dono,'/catalogo/'+atual.id)).body.documento,Formato.validarDocumento(revisada));
+  assert.deepEqual((await catalogoHTTP(dono,'/catalogo/'+atual.id+'/versoes/'+primeiraVersionId)).body.documento,documento);
+});
+
 test('edição inválida por sobreposição não altera revisão, rascunho ou versão publicada', async () => {
   const dono = 'editor-visual-atomico', f = await fixtureCatalogo(dono, 'Edição atômica');
   const documento = { ...f.documento, chart: chartEditado(f.documento.title) };

@@ -50,14 +50,26 @@
   }
   function atualizarMidi(nota, chart) { nota.midi = chart.tuning[chart.tuning.length - nota.string] + nota.fret; }
 
+  function atualizarPeca(nota, alteracoes) {
+    var perfil = Perfis.obter('bateria-midi');
+    var peca = perfil.drums.find(function (d) {
+      return has(alteracoes, 'midi') ? d.midi === nota.midi : d.id === nota.drum;
+    });
+    exigir(peca, 'Peça MIDI de bateria não suportada.');
+    if (has(alteracoes, 'midi') && has(alteracoes, 'drum')) {
+      exigir(peca.id === nota.drum, 'Peça e MIDI discordam na batida.');
+    }
+    nota.midi = peca.midi; nota.drum = peca.id;
+  }
+
   function perfilNovo(idPerfil) {
     if (idPerfil === undefined) return { tuning: [40, 45, 50, 55, 59, 64], strings: 6 };
     exigir(Perfis && typeof Perfis.obter === 'function', 'Carregue os perfis de instrumento antes de criar o arranjo.');
     exigir(typeof idPerfil === 'string', 'Informe um perfil de instrumento válido.');
     var perfil = Perfis.obter(idPerfil);
-    if (perfil && perfil.layout === 'drums') return perfil;
+    if (perfil && (perfil.layout === 'drums' || perfil.layout === 'piano')) return perfil;
     exigir(perfil && Array.isArray(perfil.tuning) && perfil.tuning.length === perfil.strings &&
-      (perfil.strings === 4 || perfil.strings === 6), 'Perfil de instrumento desconhecido.');
+      (perfil.strings === 4 || perfil.strings === 5 || perfil.strings === 6), 'Perfil de instrumento desconhecido.');
     return perfil;
   }
 
@@ -72,8 +84,12 @@
     }
     var perfil = perfilNovo(idPerfil);
     if (perfil.layout === 'drums') return Core.validarChart({ id: id, title: title === undefined ? 'Novo arranjo' : title, bpm: 90, duration: 16,
-      profile: perfil.id, layout: 'drums', drums: perfil.drums.map(function (d) { return Object.assign({}, d); }),
+      profile: perfil.id, layout: 'drums',
       notes: [{ id: 'nota-editor-1', time: 0, duration: 0.5, drum: perfil.drums[0].id, midi: perfil.drums[0].midi, velocity: 100 }],
+      sections: [], metadata: { demo: false } });
+    if (perfil.layout === 'piano') return Core.validarChart({ id: id, title: title === undefined ? 'Novo arranjo' : title, bpm: 90, duration: 16,
+      profile: perfil.id, layout: 'piano',
+      notes: [{ id: 'nota-editor-1', time: 0, duration: 0.5, midi: 60, velocity: 100 }],
       sections: [], metadata: { demo: false } });
     return Core.validarChart({ id: id, title: title === undefined ? 'Novo arranjo' : title, bpm: 90, duration: 16,
       tuning: perfil.tuning.slice(), notes: [{ id: 'nota-editor-1', time: 0, duration: 0.5,
@@ -101,8 +117,14 @@
         case 'criarNota':
           campos(op, ['tipo', 'nota'], ['nota'], 'Criar nota');
           if (candidato.layout === 'drums') {
-            campos(op.nota, ['time', 'duration', 'drum', 'midi', 'velocity'], ['time', 'duration', 'drum', 'midi', 'velocity'], 'Batida');
-            afetado = gerarId('nota-editor'); candidato.notes.push({ id: afetado, time: op.nota.time, duration: op.nota.duration, drum: op.nota.drum, midi: op.nota.midi, velocity: op.nota.velocity }); break;
+            campos(op.nota, ['time', 'duration', 'drum', 'midi', 'velocity'], ['time', 'duration', 'midi', 'velocity'], 'Batida');
+            afetado = gerarId('nota-editor');
+            var batida = Object.assign({ id: afetado }, op.nota);
+            atualizarPeca(batida, op.nota); candidato.notes.push(batida); break;
+          }
+          if (candidato.layout === 'piano') {
+            campos(op.nota, ['time', 'duration', 'midi', 'velocity'], ['time', 'duration', 'midi', 'velocity'], 'Nota de piano');
+            afetado = gerarId('nota-editor'); candidato.notes.push(Object.assign({ id: afetado }, op.nota)); break;
           }
           campos(op.nota, ['time', 'duration', 'string', 'fret'], ['time', 'duration', 'string', 'fret'], 'Nota');
           afetado = gerarId('nota-editor');
@@ -112,7 +134,11 @@
         case 'editarNota':
           campos(op, ['tipo', 'id', 'alteracoes'], ['id', 'alteracoes'], 'Editar nota');
           indice = localizar(candidato.notes, op.id, 'nota'); afetado = op.id;
-          if (candidato.layout === 'drums') { alterar(candidato.notes[indice], op.alteracoes, ['time', 'duration', 'drum', 'midi', 'velocity'], 'Alterações da batida'); break; }
+          if (candidato.layout === 'drums') {
+            alterar(candidato.notes[indice], op.alteracoes, ['time', 'duration', 'drum', 'midi', 'velocity'], 'Alterações da batida');
+            atualizarPeca(candidato.notes[indice], op.alteracoes); break;
+          }
+          if (candidato.layout === 'piano') { alterar(candidato.notes[indice], op.alteracoes, ['time', 'duration', 'midi', 'velocity'], 'Alterações da nota de piano'); break; }
           alterar(candidato.notes[indice], op.alteracoes, ['time', 'duration', 'string', 'fret'], 'Alterações da nota');
           atualizarMidi(candidato.notes[indice], candidato);
           break;

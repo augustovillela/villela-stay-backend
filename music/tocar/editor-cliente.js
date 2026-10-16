@@ -1,13 +1,13 @@
 // Editor visual local. Persistência, permissões e reprodução pertencem ao gestor.
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./editor-nucleo'));
-  else root.MusiqueTocarEditor = factory(root.MusiqueTocarEditorCore);
-})(typeof window !== 'undefined' ? window : globalThis, function (Core) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./editor-nucleo'), require('./perfis'));
+  else root.MusiqueTocarEditor = factory(root.MusiqueTocarEditorCore, root.MusiqueTocarPerfis);
+})(typeof window !== 'undefined' ? window : globalThis, function (Core, Perfis) {
   'use strict';
   var instances = 0, MAX_VISIBLE = 120;
   var NAMES = ['Dó', 'Dó♯', 'Ré', 'Ré♯', 'Mi', 'Fá', 'Fá♯', 'Sol', 'Sol♯', 'Lá', 'Lá♯', 'Si'];
   function montar(container, options) {
-    if (!Core) throw new Error('O núcleo do editor não foi carregado.');
+    if (!Core || !Perfis) throw new Error('O núcleo e os perfis do editor não foram carregados.');
     options = options || {};
     var doc = container.ownerDocument || document;
     var prefix = ++instances === 1 ? 'te-' : 'te' + instances + '-';
@@ -35,6 +35,15 @@
     function name(midi) { return NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1); }
     function stringCount() { return chart && Array.isArray(chart.tuning) ? chart.tuning.length : 0; }
     function midiLayout() { return !!(chart && (chart.layout === 'piano' || chart.layout === 'drums')); }
+    function profile() { return (chart && Perfis.porChart(chart)) || Perfis.obter('seis-cordas'); }
+    function drums() { return Perfis.obter('bateria-midi').drums; }
+    function drumAt(midi) { return drums().find(function (d) { return d.midi === midi; }); }
+    function noteName(n) { return chart.layout === 'drums' ? drumAt(n.midi).label : name(n.midi); }
+    function lanes() {
+      if (chart.layout === 'drums') return drums().map(function (d) { return { key: d.midi, label: d.label }; });
+      if (chart.layout === 'piano') return Array.from(new Set(chart.notes.map(function (n) { return n.midi; }))).sort(function (a, b) { return b - a; }).map(function (midi) { return { key: midi, label: name(midi) }; });
+      return Array.from({ length: stringCount() }, function (_, i) { return { key: i + 1, label: stringLabel(i + 1) }; });
+    }
     function stringsLabel() {
       if (chart && chart.layout === 'piano') return '88 teclas MIDI';
       if (chart && chart.layout === 'drums') return 'peças MIDI de bateria';
@@ -48,6 +57,13 @@
     function renderStrings() {
       var labels = $('string-labels'), select = $('note-string'), timeline = $('timeline');
       labels.replaceChildren(); select.replaceChildren();
+      timeline.classList.toggle('te-midi-timeline', midiLayout());
+      timeline.classList.toggle('te-drums-timeline', !!(chart && chart.layout === 'drums'));
+      $('note-position-label').textContent = midiLayout() ? (chart.layout === 'piano' ? 'Nota' : 'Peça') : 'Corda';
+      $('note-value-label').textContent = midiLayout() ? 'Intensidade (1–127)' : 'Casa';
+      $('note-fret').setAttribute('min', midiLayout() ? '1' : '0');
+      $('note-fret').setAttribute('max', midiLayout() ? '127' : String(profile().frets));
+      $('note-duration').setAttribute('min', midiLayout() ? '0.02' : '0.04');
       if (!chart) {
         $('instrument-description').textContent = 'Uma nota por vez. Abra ou crie um arranjo para ver as cordas e a afinação.';
         timeline.setAttribute('aria-label', 'Linha do tempo do arranjo');
@@ -55,19 +71,21 @@
         return;
       }
       if (midiLayout()) {
-        labels.appendChild(node('span', chart.layout === 'piano' ? 'Teclas MIDI' : 'Peças MIDI'));
-        select.appendChild(node('option', 'MIDI', { value: '0' }));
-        $('instrument-description').textContent = chart.layout === 'piano' ? 'Edite notas e acordes por MIDI, incluindo velocity.' : 'Edite batidas MIDI por peça e velocity.';
-        timeline.setAttribute('aria-label', 'Linha do tempo MIDI'); $('timeline-inner').style.height = '180px'; $('notes').style.height = '110px'; return;
+        if (chart.layout === 'piano') {
+          for (var midi = profile().minMidi; midi <= profile().maxMidi; midi++) select.appendChild(node('option', name(midi) + ' · MIDI ' + midi, { value: String(midi) }));
+        } else drums().forEach(function (d) { select.appendChild(node('option', d.label + ' · MIDI ' + d.midi, { value: String(d.midi) })); });
+        $('instrument-description').textContent = chart.layout === 'piano'
+          ? 'Escolha entre 88 teclas. A pista mostra as notas usadas, separadas por oitava. Para um acorde, adicione notas diferentes no mesmo instante.'
+          : 'Cada linha representa uma peça da bateria. Adicione peças diferentes no mesmo instante para criar batidas simultâneas.';
+      } else {
+        for (var string = 1; string <= stringCount(); string++) select.appendChild(node('option', stringLabel(string), { value: String(string) }));
+        $('instrument-description').textContent = 'Uma nota por vez, em ' + stringsLabel() + '. Edite e aplique os campos antes de salvar o rascunho.';
       }
-      for (var string = 1; string <= stringCount(); string++) {
-        labels.appendChild(node('span', stringLabel(string)));
-        select.appendChild(node('option', stringLabel(string), { value: String(string) }));
-      }
-      $('instrument-description').textContent = 'Uma nota por vez, em ' + stringsLabel() + '. Edite e aplique os campos antes de salvar o rascunho.';
       timeline.setAttribute('aria-label', 'Linha do tempo com ' + stringsLabel());
-      $('timeline-inner').style.height = (65 + stringCount() * 46 + 3) + 'px';
-      $('notes').style.height = (stringCount() * 46) + 'px';
+      var rows = lanes();
+      rows.forEach(function (row) { labels.appendChild(node('span', row.label)); });
+      $('timeline-inner').style.height = (65 + rows.length * 46 + 3) + 'px';
+      $('notes').style.height = (rows.length * 46) + 'px';
     }
     function selectedNote() { return chart && chart.notes.find(function (n) { return n.id === selectedId; }); }
     function selectedSection() { return chart && (chart.sections || []).find(function (s) { return s.id === sectionId; }); }
@@ -104,12 +122,14 @@
     }
     function pitch() {
       if (midiLayout()) {
-        var midi = Number($('note-string').value), velocity = $('note-fret').value || '—';
-        var drum = chart && chart.layout === 'drums' && (chart.drums || []).find(function (d) { return d.midi === midi; });
-        $('note-pitch').textContent = (drum ? drum.label + ' · ' : chart.layout === 'piano' ? name(midi) + ' · ' : '') + 'MIDI ' + (Number.isInteger(midi) ? midi : '—') + ' · velocity ' + velocity; return;
+        var midi = Number($('note-string').value), velocity = Number($('note-fret').value);
+        var validMidi = Number.isInteger(midi) && (chart.layout === 'drums' ? !!drumAt(midi) : midi >= profile().minMidi && midi <= profile().maxMidi);
+        $('note-pitch').textContent = validMidi && Number.isInteger(velocity) && velocity >= 1 && velocity <= 127
+          ? noteName({ midi: midi }) + ' · MIDI ' + midi + ' · intensidade ' + velocity : 'Escolha uma nota ou peça válida e intensidade de 1 a 127.';
+        return;
       }
       var s = Number($('note-string').value), f = Number($('note-fret').value);
-      $('note-pitch').textContent = chart && Number.isInteger(s) && s >= 1 && s <= stringCount() && Number.isInteger(f) && f >= 0 && f <= 24 && $('note-fret').value !== ''
+      $('note-pitch').textContent = chart && Number.isInteger(s) && s >= 1 && s <= stringCount() && Number.isInteger(f) && f >= 0 && f <= profile().frets && $('note-fret').value !== ''
         ? name(chart.tuning[stringCount() - s] + f) + ' · MIDI ' + (chart.tuning[stringCount() - s] + f) : 'Preencha corda e casa válidas.';
     }
     function fields(group, ids) {
@@ -202,20 +222,21 @@
         line.appendChild(node('span', t.toFixed(2) + ' s')); grid.appendChild(line);
         linhas++;
       }
-      for (var string = 1; string <= stringCount(); string++) {
+      var rows = lanes();
+      for (var row = 0; row < rows.length; row++) {
         var lane = node('span', null, { class: 'te-string', 'aria-hidden': 'true' });
-        lane.style.top = ((string - 1) * 46 + 23) + 'px'; notes.appendChild(lane);
+        lane.style.top = (row * 46 + 23) + 'px'; notes.appendChild(lane);
       }
       var visible = chart.notes.filter(function (n) { return n.time < end && n.time + n.duration > viewStart; });
       var displayed = visible.slice(0, MAX_VISIBLE), selected = visible.find(function (n) { return n.id === selectedId; });
       if (selected && !displayed.some(function (n) { return n.id === selected.id; })) displayed[displayed.length - 1] = selected;
       displayed.forEach(function (n) {
-        var label = 'Corda ' + n.string + ', casa ' + n.fret + ', ' + name(n.midi) + ', início ' + n.time + ' segundos, duração ' + n.duration + ' segundos';
-        var button = node('button', String(n.fret), { type: 'button', class: 'te-note', 'data-note-id': n.id, 'aria-label': label, 'aria-pressed': String(n.id === selectedId) });
+        var label = (midiLayout() ? noteName(n) + ', MIDI ' + n.midi + ', intensidade ' + n.velocity : 'Corda ' + n.string + ', casa ' + n.fret + ', ' + name(n.midi)) + ', início ' + n.time + ' segundos, duração ' + n.duration + ' segundos';
+        var button = node('button', midiLayout() ? noteName(n) : String(n.fret), { type: 'button', class: 'te-note', 'data-note-id': n.id, 'aria-label': label, title: label, 'aria-pressed': String(n.id === selectedId) });
         var start = Math.max(viewStart, n.time), finish = Math.min(end, n.time + n.duration);
         button.style.left = ((start - viewStart) / width * 100) + '%';
         button.style.width = ((finish - start) / width * 100) + '%';
-        button.style.top = ((n.string - 1) * 46 + 5) + 'px';
+        button.style.top = (rows.findIndex(function (row) { return row.key === (midiLayout() ? n.midi : n.string); }) * 46 + 5) + 'px';
         button.addEventListener('click', function () { selectNote(n.id, true); });
         notes.appendChild(button); noteButtons.push(button);
       });
@@ -227,8 +248,16 @@
       });
       $('visible').textContent = visible.length > MAX_VISIBLE
         ? 'Mostrando ' + MAX_VISIBLE + ' de ' + visible.length + ' notas nesta janela. Aproxime o zoom ou use Nota anterior e Próxima nota para alcançar todas.'
-        : visible.length + ' nota(s) nesta janela · ' + chart.notes.length + ' no arranjo. Corda 1 é a mais aguda; casa 0 é corda solta.';
+        : visible.length + ' nota(s) nesta janela · ' + chart.notes.length + ' no arranjo. ' + (midiLayout() ? (chart.layout === 'piano' ? 'Cada linha identifica uma nota e sua oitava.' : 'Cada linha identifica uma peça da bateria.') : 'A numeração segue a afinação mostrada; casa 0 é corda solta.');
       renderControls();
+      // Piano pode usar até 88 linhas. Mantenha a seleção dentro da pista
+      // sem deslocar a página ou tirar o foco do formulário.
+      var timeline = $('timeline');
+      if (midiLayout() && selected && timeline.clientHeight > 0) {
+        var top = 65 + rows.findIndex(function (row) { return row.key === selected.midi; }) * 46;
+        if (top < timeline.scrollTop) timeline.scrollTop = top;
+        else if (top + 46 > timeline.scrollTop + timeline.clientHeight) timeline.scrollTop = top + 46 - timeline.clientHeight;
+      }
     }
     function renderChart() {
       if (!chart) { renderStrings(); renderControls(); return; }
@@ -278,7 +307,10 @@
     function draftNote(copy) {
       if (locked || !chart || pendingGroup) return;
       var n = selectedNote(); noteDraft = true;
-      fillNote({ time: n ? n.time + n.duration : viewStart, duration: copy && n ? n.duration : 0.5, string: copy && n ? n.string : defaultString(), fret: copy && n ? n.fret : 0 });
+      var draft = { time: n ? n.time + n.duration : viewStart, duration: copy && n ? n.duration : 0.5 };
+      if (midiLayout()) { draft.midi = copy && n ? n.midi : chart.layout === 'drums' ? drums()[0].midi : 60; draft.velocity = copy && n ? n.velocity : 100; }
+      else { draft.string = copy && n ? n.string : defaultString(); draft.fret = copy && n ? n.fret : 0; }
+      fillNote(draft);
       pending('note'); message(copy ? 'Cópia preparada. Ajuste o início e aplique para criar uma nova nota.' : 'Preencha a nova nota e aplique. Se necessário, aumente antes a duração do arranjo.');
     }
     function updateWindow() {
@@ -296,7 +328,7 @@
       '<fieldset class="te-meta"><legend>Tempo do arranjo</legend><label>BPM<input id="__bpm" type="number" min="20" max="300" step="any"></label><label>Duração total (s)<input id="__duration" type="number" min="0.04" max="900" step="any"></label><button id="__apply-meta" type="button">Aplicar tempo</button><p id="__tempo-help">Alterar BPM muda a grade; os tempos das notas não mudam automaticamente.</p></fieldset>' +
       '<div class="te-view"><label>Janela a partir de (s)<input id="__window-start" type="number" min="0" step="any" value="0"></label><label>Zoom · segundos na janela<select id="__zoom"><option value="2">2 s</option><option value="4">4 s</option><option value="8" selected>8 s</option><option value="16">16 s</option><option value="32">32 s</option><option value="64">64 s</option></select></label><button id="__apply-window" class="te-show-window" type="button">Mostrar janela</button><button id="__window-prev" type="button" aria-label="Janela anterior">← Janela</button><button id="__window-next" type="button" aria-label="Próxima janela">Janela →</button></div>' +
       '<p id="__window-label" class="te-caption"></p><div id="__timeline" class="te-timeline" tabindex="0" role="group" aria-label="Linha do tempo do arranjo" aria-describedby="__visible"><div id="__timeline-inner" class="te-timeline-inner"><div id="__string-labels" class="te-string-labels" aria-hidden="true"></div><div class="te-track"><div id="__phrases" class="te-phrases"></div><div id="__grid" class="te-grid"></div><div id="__notes" class="te-notes"></div></div></div></div><p id="__visible" class="te-caption"></p>' +
-      '<div class="te-editor-columns"><fieldset><legend id="__note-label">Nota selecionada</legend><div class="te-actions"><button id="__prev" type="button">Nota anterior</button><button id="__next" type="button">Próxima nota</button></div><div class="te-fields"><label>Início (s)<input id="__note-time" type="number" min="0" max="900" step="any"></label><label>Duração (s)<input id="__note-duration" type="number" min="0.04" max="60" step="any"></label><label>Corda<select id="__note-string"></select></label><label>Casa<input id="__note-fret" type="number" min="0" max="24" step="1"></label></div><p id="__note-pitch" class="te-pitch" aria-live="polite"></p><button id="__apply-note" type="button">Aplicar alteração da nota</button><div class="te-actions"><button id="__add" type="button">Adicionar nota</button><button id="__duplicate" type="button">Duplicar nota</button><button id="__delete" type="button">Excluir nota</button></div></fieldset>' +
+      '<div class="te-editor-columns"><fieldset><legend id="__note-label">Nota selecionada</legend><div class="te-actions"><button id="__prev" type="button">Nota anterior</button><button id="__next" type="button">Próxima nota</button></div><div class="te-fields"><label>Início (s)<input id="__note-time" type="number" min="0" max="900" step="any"></label><label>Duração (s)<input id="__note-duration" type="number" min="0.04" max="60" step="any"></label><label><span id="__note-position-label">Corda</span><select id="__note-string"></select></label><label><span id="__note-value-label">Casa</span><input id="__note-fret" type="number" min="0" max="24" step="1"></label></div><p id="__note-pitch" class="te-pitch" aria-live="polite"></p><button id="__apply-note" type="button">Aplicar alteração da nota</button><div class="te-actions"><button id="__add" type="button">Adicionar nota</button><button id="__duplicate" type="button">Duplicar nota</button><button id="__delete" type="button">Excluir nota</button></div></fieldset>' +
       '<fieldset><legend>Frases para praticar</legend><label>Frase<select id="__section"><option value="">Escolha uma frase</option></select></label><label>Título da frase<input id="__section-title" type="text" maxlength="80"></label><div class="te-fields"><label>De (s)<input id="__section-from" type="number" min="0" step="any"></label><label>Até (s)<input id="__section-to" type="number" min="0" step="any"></label></div><button id="__apply-section" type="button">Aplicar alteração da frase</button><div class="te-actions"><button id="__add-section" type="button">Adicionar frase</button><button id="__delete-section" type="button">Excluir frase</button></div></fieldset></div><p class="te-caption">Clique numa nota para selecioná-la. Use as setas na pista ou os botões anterior e próxima. Ctrl/Cmd+Z e Ctrl/Cmd+Y funcionam aqui fora dos campos de texto; dentro dos campos, os atalhos continuam nativos.</p></div>').replace(/__/g, prefix);
     fields('meta', ['bpm', 'duration']);
     fields('note', ['note-time', 'note-duration', 'note-string', 'note-fret']);
@@ -306,7 +338,7 @@
       try {
         var perfil = typeof options.perfilAtual === 'function' ? options.perfilAtual() : undefined;
         carregar(Core.novoChart(undefined, undefined, perfil)); changed();
-        message('Novo arranjo com a primeira nota ' + name(chart.notes[0].midi) + ' criada. Complete título, objetivo e créditos na gestão.');
+        message('Novo arranjo com ' + noteName(chart.notes[0]) + '. Complete título, objetivo e créditos na gestão.');
       } catch (e) { message(e.message, true); }
     });
     on('discard', 'click', function () {
@@ -323,7 +355,7 @@
     on('apply-note', 'click', function () {
       try {
         var values = midiLayout() ? { time: number('note-time'), duration: number('note-duration'), midi: number('note-string'), velocity: number('note-fret') } : { time: number('note-time'), duration: number('note-duration'), string: number('note-string'), fret: number('note-fret') };
-        if (midiLayout() && chart.layout === 'drums') { var drum = (chart.drums || []).find(function (d) { return d.midi === values.midi; }); if (!drum) throw new Error('Escolha uma peça MIDI de bateria válida.'); values.drum = drum.id; }
+        if (midiLayout() && chart.layout === 'drums') { var drum = drumAt(values.midi); if (!drum) throw new Error('Escolha uma peça MIDI de bateria válida.'); values.drum = drum.id; }
         execute(noteDraft ? { tipo: 'criarNota', nota: values } : { tipo: 'editarNota', id: selectedId, alteracoes: values }, 'note');
       } catch (e) { message(e.message, true); }
     });

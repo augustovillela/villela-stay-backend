@@ -206,8 +206,8 @@ test('Mesma biblioteca roda no navegador sem CommonJS e depende do núcleo e dos
   const nucleo = fs.readFileSync(path.join(__dirname, 'nucleo.js'), 'utf8');
   const perfis = fs.readFileSync(path.join(__dirname, 'perfis.js'), 'utf8');
   const estudos = fs.readFileSync(path.join(__dirname, 'estudos.js'), 'utf8');
-  vm.runInContext(nucleo, contexto);
   vm.runInContext(perfis, contexto);
+  vm.runInContext(nucleo, contexto);
   vm.runInContext(estudos, contexto);
   assert.equal(typeof contexto.MusiqueTocarEstudos.listar, 'function');
   assert.deepEqual(JSON.parse(JSON.stringify(contexto.MusiqueTocarEstudos.listar())), Estudos.listar());

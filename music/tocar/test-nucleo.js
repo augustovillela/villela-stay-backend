@@ -271,11 +271,73 @@ test('sustain configurável e opções inválidas são recusadas', () => {
   assert.throws(() => Core.criarJulgador(chart(), { from: 2, to: 1 }), /fim/);
 });
 
-test('mesmo núcleo roda no navegador sem CommonJS nem dependências', () => {
-  const sandbox = { self: {} };
+function piano(notes) {
+  return { id: 'piano', title: 'Estudo de piano', profile: 'piano-midi', layout: 'piano', bpm: 90, duration: 8,
+    notes: notes || [{ id: 'do', time: 1, duration: 0.5, midi: 60, velocity: 100 }] };
+}
+
+test('piano preserva acordes e limites MIDI/velocity; mesma tecla admite somente notas consecutivas', () => {
+  const source = piano([
+    { id: 'aguda', time: 1, duration: 0.5, midi: 108, velocity: 127 },
+    { id: 'grave', time: 1, duration: 0.5, midi: 21, velocity: 1 },
+    { id: 'consecutiva', time: 1.5, duration: 0.5, midi: 21, velocity: 100 },
+  ]);
+  const normalizado = Core.validarChart(source);
+  assert.deepEqual(normalizado.notes.map(n => n.id), ['grave', 'aguda', 'consecutiva']);
+  assert.deepEqual(source.notes.map(n => n.id), ['aguda', 'grave', 'consecutiva']);
+  const repetida = structuredClone(source); repetida.notes[2].time = 1.49;
+  assert.throws(() => Core.validarChart(repetida), /mesma tecla/);
+  for (const campo of [{ midi: 20 }, { midi: 109 }, { midi: 60.5 }, { velocity: 0 }, { velocity: 128 }, { velocity: 90.5 }]) {
+    const invalido = piano(); Object.assign(invalido.notes[0], campo);
+    assert.throws(() => Core.validarChart(invalido));
+  }
+});
+
+test('piano valida tipo, quantidade, identidade e extensão dos trechos antes de normalizar', () => {
+  const frase = { id: 'tema', title: 'Tema', from: 1, to: 4 };
+  for (const sections of [{}, 'tema', 1, [null], [frase, frase],
+    [{ ...frase, from: 4 }], [{ ...frase, to: 0 }], [{ ...frase, to: 9 }],
+    [{ ...frase, from: -1 }], [{ ...frase, from: NaN }],
+    Array.from({ length: 101 }, (_, i) => ({ ...frase, id: 'tema-' + i }))]) {
+    assert.throws(() => Core.validarChart({ ...piano(), sections }));
+  }
+  const source = { ...piano(), sections: [{ ...frase, from: 4, to: 8 }, { ...frase, id: 'abertura', from: 0, to: 4 }] };
+  const normalizado = Core.validarChart(source);
+  assert.deepEqual(normalizado.sections.map(s => s.id), ['abertura', 'tema']);
+  assert.deepEqual(source.sections.map(s => s.id), ['tema', 'abertura']);
+  normalizado.sections[0].title = 'Alterada';
+  assert.equal(source.sections[1].title, 'Tema');
+  assert.throws(() => Core.validarChart({ ...piano(), metadata: [] }), /Metadados/);
+});
+
+test('casas máximas vêm do perfil no núcleo para todo consumidor do chart', () => {
+  for (const [nome, maxCasas] of [['ukulele', 15], ['cavaquinho', 17], ['bandolim-5', 24]]) {
+    const perfil = Perfis.obter(nome);
+    const source = chart(); source.tuning = perfil.tuning;
+    source.notes = [{ id: 'limite', time: 1, duration: 0.25, string: perfil.strings, fret: maxCasas, midi: perfil.tuning[0] + maxCasas }];
+    assert.equal(Core.validarChart(source).notes[0].fret, maxCasas);
+    source.notes[0].fret++; source.notes[0].midi++;
+    assert.ok(source.notes[0].midi <= 127);
+    assert.throws(() => Core.validarChart(source), /Casa inválida/);
+  }
+  const custom = chart(); custom.tuning = [39, 44, 49, 54, 58, 63];
+  custom.notes[0].fret = 24; custom.notes[0].midi = 63;
+  assert.equal(Perfis.porAfinacao(custom.tuning), null);
+  assert.equal(Core.validarChart(custom).notes[0].fret, 24, 'Afinação customizada mantém contrato de 24 casas');
+  custom.notes[0].fret++; custom.notes[0].midi++;
+  assert.throws(() => Core.validarChart(custom), /Casa inválida/);
+});
+
+test('mesmo núcleo roda no navegador sem CommonJS ou DOM e exige os perfis declarados', () => {
+  const sandbox = { self: null }; sandbox.self = sandbox;
+  vm.runInNewContext(fs.readFileSync(require.resolve('./perfis'), 'utf8'), sandbox);
   vm.runInNewContext(fs.readFileSync(require.resolve('./nucleo'), 'utf8'), sandbox);
   assert.equal(typeof sandbox.self.MusiqueTocarCore.criarJulgador, 'function');
   assert.equal(sandbox.self.MusiqueTocarCore.demoChart().notes.length, 48);
+  const source = chart(); source.tuning = Perfis.obter('ukulele').tuning;
+  source.notes = [{ id: 'limite', time: 1, duration: 0.25, string: 4, fret: 16, midi: 83 }];
+  assert.throws(() => sandbox.MusiqueTocarCore.validarChart(source), /Casa inválida/);
+  assert.throws(() => vm.runInNewContext(fs.readFileSync(require.resolve('./nucleo'), 'utf8'), { self: {} }), /Carregue MusiqueTocarPerfis/);
 });
 
 console.log(count + ' testes do núcleo Tocar passaram.');

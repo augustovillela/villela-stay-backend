@@ -123,4 +123,90 @@ test('Carga inválida preserva documento anterior e callbacks não são disparad
   h.editor.bloquear(true);h.editor.carregar(null);assert.equal(h.$('new').disabled,true);assert.equal(h.$('new').hidden,false);assert.equal(h.editor.obter(),null);
 });
 
+test('Piano novo oferece 88 teclas selecionáveis, limites e rótulos sem corda/casa',()=>{
+  const h=setup(null,{perfilAtual:()=> 'piano-midi'});h.click('new');
+  const c=h.editor.obter();assert.equal(c.layout,'piano');assert.equal(c.notes[0].midi,60);
+  const options=h.$('note-string').children;
+  assert.equal(options.length,88);assert.equal(options[0].value,'21');assert.equal(options.at(-1).value,'108');
+  assert.ok(options.some(o=>o.value===h.$('note-string').value),'nota carregada deve existir no select real');
+  assert.equal(h.$('note-position-label').textContent,'Nota');assert.match(h.$('note-value-label').textContent,/Intensidade/);
+  assert.equal(h.$('note-fret').getAttribute('min'),'1');assert.equal(h.$('note-fret').getAttribute('max'),'127');
+  assert.equal(h.$('note-duration').getAttribute('min'),'0.02');
+  assert.match(h.$('note-pitch').textContent,/Dó4/);assert.match(h.notes()[0].getAttribute('aria-label'),/Dó4, MIDI 60, intensidade 100/);
+  assert.doesNotMatch(h.notes()[0].getAttribute('aria-label'),/Corda|casa|undefined/);
+  h.input('note-string','21','change');h.input('note-fret','1');h.input('note-duration','0.02');h.click('apply-note');assert.equal(h.editor.obter().notes[0].midi,21);assert.equal(h.editor.obter().notes[0].duration,.02);
+  h.input('note-string','108','change');h.input('note-fret','127');h.click('apply-note');assert.equal(h.editor.obter().notes[0].midi,108);
+});
+
+test('Piano cria acorde, separa oitavas, duplica intensidade e restaura exclusão',()=>{
+  const h=setup(null,{perfilAtual:()=> 'piano-midi'});h.click('new');
+  h.input('note-fret','86');h.click('apply-note');
+  h.click('duplicate');assert.equal(h.$('note-string').value,'60');assert.equal(h.$('note-fret').value,'86');
+  h.input('note-time','0');h.input('note-string','72','change');h.click('apply-note');
+  const chord=h.editor.obter();assert.deepEqual(chord.notes.map(n=>[n.time,n.midi,n.velocity]),[[0,60,86],[0,72,86]]);
+  assert.deepEqual(h.$('string-labels').children.map(n=>n.textContent),['Dó5','Dó4']);
+  assert.equal(new Set(h.notes().map(n=>n.style.top)).size,2);assert.ok(h.notes().every(n=>/^\d+px$/.test(n.style.top)));
+  h.click('add');assert.equal(h.$('note-string').value,'60');assert.equal(h.$('note-fret').value,'100');
+  h.input('note-time','1');h.click('apply-note');assert.equal(h.editor.obter().notes.length,3);
+  h.click('delete');assert.deepEqual(h.editor.obter(),chord);h.click('undo');assert.equal(h.editor.obter().notes.length,3);
+  h.click('redo');assert.deepEqual(h.editor.obter(),chord);
+  h.editor.carregar(JSON.parse(JSON.stringify(chord)));assert.deepEqual(h.editor.obter(),chord);
+  assert.ok(h.$('note-string').children.some(o=>o.value===h.$('note-string').value));
+});
+
+test('Intensidade inválida e mesma tecla sobreposta preservam rascunho aplicado',()=>{
+  const h=setup(null,{perfilAtual:()=> 'piano-midi'});h.click('new');const original=h.editor.obter(),changes=h.changes.length;
+  for(const value of ['0','128','1.5','']){
+    h.input('note-fret',value);h.click('apply-note');assert.equal(h.changes.length,changes);assert.throws(()=>h.editor.obter(),/pendentes/);
+    h.click('discard');assert.deepEqual(h.editor.obter(),original);
+  }
+  h.click('duplicate');h.input('note-time','0');h.click('apply-note');assert.match(h.$('status').textContent,/sobrep/);
+  assert.equal(h.changes.length,changes);h.click('discard');assert.deepEqual(h.editor.obter(),original);
+});
+
+test('Bateria normalizada usa peças do perfil e permite batidas simultâneas, edição e histórico',()=>{
+  const h=setup(null,{perfilAtual:()=> 'bateria-midi'});h.click('new');
+  assert.equal(h.editor.obter().drums,undefined);assert.equal(h.$('note-string').children.length,10);
+  assert.ok(h.$('note-string').children.some(o=>o.value===h.$('note-string').value));assert.match(h.$('note-pitch').textContent,/Bumbo/);
+  assert.equal(h.$('note-position-label').textContent,'Peça');assert.equal(h.$('string-labels').children.length,10);
+  h.click('add');assert.equal(h.$('note-string').value,'36');assert.equal(h.$('note-fret').value,'100');
+  h.input('note-time','0');h.input('note-string','38','change');h.input('note-fret','90');h.click('apply-note');
+  assert.deepEqual(h.editor.obter().notes.map(n=>[n.time,n.midi,n.drum]),[[0,36,'bumbo'],[0,38,'caixa']]);
+  assert.equal(new Set(h.notes().map(n=>n.style.top)).size,2);assert.match(h.notes()[1].getAttribute('aria-label'),/Caixa, MIDI 38, intensidade 90/);
+  h.click('duplicate');assert.equal(h.$('note-string').value,'38');assert.equal(h.$('note-fret').value,'90');h.click('apply-note');
+  assert.equal(h.editor.obter().notes.length,3);h.input('note-string','42','change');h.click('apply-note');
+  const edited=h.editor.obter();assert.equal(edited.notes[2].drum,'chimbal-fechado');
+  h.click('delete');assert.equal(h.editor.obter().notes.length,2);h.click('undo');assert.deepEqual(h.editor.obter(),edited);
+  h.editor.carregar(JSON.parse(JSON.stringify(edited)));assert.equal(h.editor.obter().drums,undefined);
+  h.input('note-string','51','change');h.click('apply-note');assert.equal(h.editor.obter().notes.find(n=>n.drum==='ride').midi,51);
+});
+
+test('Trocar de MIDI para ukulele ou bandolim restaura campos, casas e linhas do perfil',()=>{
+  const h=setup(null,{perfilAtual:()=> 'piano-midi'});h.click('new');
+  for(const [perfil,cordas,casas] of [['ukulele',4,15],['cavaquinho',4,17],['bandolim-5',5,24]]){
+    h.editor.carregar(require('./editor-nucleo').novoChart(undefined,undefined,perfil));
+    assert.equal(h.$('note-position-label').textContent,'Corda');assert.equal(h.$('note-value-label').textContent,'Casa');
+    assert.equal(h.$('note-fret').getAttribute('min'),'0');assert.equal(h.$('note-fret').getAttribute('max'),String(casas));
+    assert.equal(h.$('note-duration').getAttribute('min'),'0.04');
+    assert.equal(h.$('note-string').children.length,cordas);assert.equal(h.$('timeline').classList.contains('te-midi-timeline'),false);
+    const before=h.editor.obter();h.input('note-fret',String(casas+1));h.click('apply-note');assert.throws(()=>h.editor.obter(),/pendentes/);h.click('discard');assert.deepEqual(h.editor.obter(),before);
+  }
+});
+
+test('Afinação customizada aceita pelo núcleo conserva as 24 casas e não falha no render',()=>{
+  const h=setup();const drop=pequeno();drop.id='drop-d';drop.tuning=[38,45,50,55,59,64];
+  drop.notes=drop.notes.map(n=>({...n,midi:drop.tuning[6-n.string]+n.fret}));
+  assert.doesNotThrow(()=>h.editor.carregar(drop));assert.equal(h.editor.obter().id,'drop-d');
+  assert.equal(h.$('note-fret').getAttribute('max'),'24');assert.match(h.$('note-pitch').textContent,/Ré2/);
+});
+
+test('Seleção de piano fora da altura visível rola só a pista para a oitava correta',()=>{
+  const h=setup(null);h.$('timeline').clientHeight=530;h.$('timeline').scrollTop=0;
+  const c=require('./editor-nucleo').novoChart(undefined,undefined,'piano-midi');
+  c.notes=Array.from({length:88},(_,i)=>({id:'p-'+i,time:0,duration:.5,midi:21+i,velocity:100}));
+  h.editor.carregar(c);assert.ok(h.$('timeline').scrollTop>3000);
+  for(let i=0;i<87;i++)h.click('next');
+  assert.equal(h.$('note-string').value,'108');assert.equal(h.$('timeline').scrollTop,65);
+});
+
 (async()=>{let failures=0;for(const t of tests){try{await t.fn();console.log('OK',t.name);}catch(e){failures++;console.error('FALHOU',t.name,'\n',e.stack);}}console.log(`${tests.length-failures}/${tests.length} verificações do editor visual passaram (DOM simulado).`);if(failures)process.exitCode=1;})();

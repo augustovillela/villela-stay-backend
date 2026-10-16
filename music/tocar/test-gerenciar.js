@@ -99,6 +99,42 @@ test('JSON puro com afinação sem perfil preserva o chart anterior e não deixa
   await h.event('tg-objective','input','Preservar o arranjo anterior.');await h.event('tg-credits','input','Estudo original de teste.');await h.event('tg-save','click');
   const salvo=JSON.parse(h.requests.find(r=>r.opts.method==='POST').opts.body).documento;assert.deepEqual(salvo.chart.tuning,[40,45,50,55,59,64]);
 });
+
+for (const formato of ['chart','documento']) test('Falha ao abrir '+formato+' no editor preserva campos, notas, histórico e próximo salvamento',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);
+  await h.event('tg-title','input','Meu trabalho ainda não salvo');
+  await h.event('te-note-fret','input','2');await h.event('te-apply-note','click');
+  const info=h.$('tg-chart-info').textContent,version=h.$('tg-version').textContent;
+  const EditorCore=h.window.MusiqueTocarEditorCore,criar=EditorCore.criar;
+  const chart=EditorCore.novoChart('Documento novo','importado-recusado','piano');
+  const incoming={...documento(),title:chart.title,instrument:'piano',objective:'Não substituir o objetivo.',credits:'Não substituir os créditos.',chart};
+  // É um documento válido: a recusa ocorre exatamente na fronteira do editor,
+  // não no validador JSON, para exercitar a preservação do estado no gestor.
+  assert.doesNotThrow(()=>require('./formato-catalogo').validarDocumento(copy(incoming)));
+  EditorCore.criar=value=>{if(value.id===chart.id)throw new Error('Editor indisponível para este arranjo');return criar(value);};
+  try{await importar(h,formato==='chart'?chart:incoming);}finally{EditorCore.criar=criar;}
+  assert.match(h.$('tg-status').textContent,/Editor indisponível/);
+  assert.equal(h.$('tg-title').value,'Meu trabalho ainda não salvo');assert.equal(h.$('tg-instrument').value,'violao');
+  assert.equal(h.$('tg-chart-info').textContent,info);assert.equal(h.$('tg-version').textContent,version);
+  assert.equal(h.$('te-note-fret').value,'2');assert.equal(h.$('te-undo').disabled,false);assert.equal(h.$('tg-publish').disabled,true);
+  await h.event('tg-save','click');assert.equal(s.current.documento.title,'Meu trabalho ainda não salvo');
+  assert.equal(s.current.documento.instrument,'violao');assert.equal(s.current.documento.chart.notes[0].fret,2);
+  assert.equal(s.current.documento.chart.id,'teste-2-notas');
+  await h.event('te-undo','click');await h.event('tg-save','click');assert.equal(s.current.documento.chart.notes[0].fret,0);
+});
+
+for (const instrumento of ['ukulele','cavaquinho']) test('JSON de '+instrumento+' além da última casa não substitui o arranjo anterior',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);
+  const perfil=require('./perfis').obter(instrumento);
+  const chart=require('./editor-nucleo').novoChart('Não substituir','casas-invalidas',instrumento);
+  chart.notes[0].fret=perfil.frets+1;chart.notes[0].midi+=perfil.frets+1;
+  const anterior=require('./formato-catalogo').validarDocumento(copy(s.current.documento));
+  for(const incoming of [chart,{...documento(),title:chart.title,instrument:instrumento,chart}]){
+    await importar(h,incoming);assert.match(h.$('tg-status').textContent,/inválido/);
+    assert.equal(h.$('tg-title').value,anterior.title);assert.equal(h.$('tg-instrument').value,'violao');assert.equal(h.$('te-note-fret').value,'0');
+    await h.event('tg-save','click');assert.deepEqual(s.current.documento,anterior);
+  }
+});
 test('Gestão cria e importa contrabaixo de quatro cordas com o perfil selecionado',async()=>{
   const s=servidor(),midi=importadorMidi(),h=montar({page:'gestao',logado:true,fetch:s.fetch,importador:midi});await h.settle();await h.event('tg-work','change','obra-a');
   await h.event('tg-instrument','change','baixo');await h.event('te-new','click');
@@ -263,6 +299,40 @@ test('Editar e salvar nota preserva ID, deriva altura e mantém desfazer após s
   await h.event('te-note-fret','input','3');await h.event('te-apply-note','click');assert.equal(h.$('tg-publish').disabled,true);await h.event('tg-save','click');
   assert.equal(s.current.documento.chart.notes[0].id,old.id);assert.equal(s.current.documento.chart.notes[0].midi,old.midi+3);assert.equal(h.$('te-undo').disabled,false);assert.equal(h.$('tg-publish').disabled,false);
   await h.event('te-undo','click');assert.equal(h.$('tg-publish').disabled,true);await h.event('tg-save','click');assert.deepEqual(s.current.documento.chart.notes[0],old);
+});
+
+for (const caso of [
+  {instrument:'piano',profile:'piano-midi',layout:'piano',first:72,second:60},
+  {instrument:'bateria',profile:'bateria-midi',layout:'drums',first:38,second:36},
+]) test('Editor de '+caso.instrument+' cria, edita simultâneas, salva, publica e reabre o contrato normalizado',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});
+  await h.settle();await h.event('tg-work','change','obra-a');await h.event('tg-instrument','change',caso.instrument);await h.event('te-new','click');
+  assert.doesNotMatch(h.$('tg-chart-info').textContent,/afinação padrão|incompatível/);
+  await h.event('tg-title','input','Estudo de '+caso.instrument);await h.event('tg-objective','input','Praticar notas simultâneas e intensidade.');await h.event('tg-credits','input','Arranjo original criado neste teste.');
+  await h.event('tg-save','click');
+  assert.equal(s.current.documento.instrument,caso.instrument);assert.equal(s.current.documento.chart.profile,caso.profile);assert.equal(s.current.documento.chart.layout,caso.layout);
+  const firstId=s.current.documento.chart.notes[0].id;
+  assert.equal(s.current.documento.chart.drums,undefined);assert.equal(s.current.documento.chart.tuning,undefined);
+  assert.ok(h.$('te-note-string').children.some(o=>String(o.value)===String(caso.first)),'O valor editável precisa existir no seletor real.');
+  await h.event('te-note-time','input','0.125');await h.event('te-note-duration','input','0.25');await h.event('te-note-string','change',String(caso.first));await h.event('te-note-fret','input','91');
+  assert.equal(h.$('tg-save').disabled,true);await h.event('te-apply-note','click');
+  await h.event('te-add','click');await h.event('te-note-time','input','0.125');await h.event('te-note-duration','input','0.25');await h.event('te-note-string','change',String(caso.second));await h.event('te-note-fret','input','67');await h.event('te-apply-note','click');
+  await h.event('tg-save','click');
+  const saved=copy(s.current.documento),notes=saved.chart.notes;
+  assert.equal(notes.length,2);assert.deepEqual(notes.map(n=>[n.time,n.duration,n.midi,n.velocity]),[[.125,.25,caso.second,67],[.125,.25,caso.first,91]]);
+  assert.equal(notes[1].id,firstId);assert.notEqual(notes[0].id,firstId);
+  for(const n of notes){assert.equal(n.string,undefined);assert.equal(n.fret,undefined);}
+  if(caso.layout==='drums')assert.deepEqual(notes.map(n=>n.drum),['bumbo','caixa']);
+  assert.equal(h.$('te-undo').disabled,false,'Salvar mantém o histórico do editor.');
+  const lastWrite=h.requests.filter(r=>r.opts.method==='PUT').at(-1);
+  assert.deepEqual(JSON.parse(lastWrite.opts.body).documento,saved);
+  await h.event('tg-publish','click');assert.equal(s.current.versions.length,1);assert.equal(h.$('tg-withdraw').disabled,false);
+  await h.event('tg-reload','click');assert.deepEqual(s.current.documento,saved);assert.equal(h.$('tg-instrument').value,caso.instrument);
+  assert.equal(h.$('te-note-string').value,String(caso.second));assert.equal(h.$('te-note-fret').value,'67');
+  assert.doesNotMatch(h.$('tg-editor').textContent,/Corda undefined|casa undefined|NaN/);
+  await h.event('te-next','click');await h.event('te-note-fret','input','84');await h.event('te-apply-note','click');await h.event('tg-save','click');
+  assert.equal(s.current.documento.chart.notes[1].velocity,84);assert.equal(s.current.documento.chart.notes[1].id,firstId);
+  await h.event('te-undo','click');await h.event('tg-save','click');assert.deepEqual(s.current.documento,saved);
 });
 test('Edição visual invalida importação de arquivo que terminou atrasada',async()=>{
   const h=montar({page:'gestao',logado:true,fetch:servidor().fetch});await abrir(h);let release;

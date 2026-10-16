@@ -2,11 +2,12 @@
 // banco, áudio ou usuário. A entrada é uma medida; corda/casa vêm do
 // arranjo, pois a mesma altura pode ser tocada em posições diferentes.
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.MusiqueTocarCore = factory();
-})(typeof self !== 'undefined' ? self : this, function () {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./perfis'));
+  else root.MusiqueTocarCore = factory(root.MusiqueTocarPerfis);
+})(typeof self !== 'undefined' ? self : this, function (Perfis) {
   'use strict';
 
+  if (!Perfis || typeof Perfis.porAfinacao !== 'function') throw new Error('Carregue MusiqueTocarPerfis antes do núcleo de arranjos.');
   var PADRAO = [40, 45, 50, 55, 59, 64]; // da corda grave à aguda
   var EPS = 1e-7;
   function exigir(ok, mensagem) { if (!ok) throw new Error(mensagem); }
@@ -128,8 +129,29 @@
       exigir(start + dur <= chart.duration + EPS, 'A nota ultrapassa a duração do arranjo.'); exigir(Number.isInteger(n.midi) && n.midi >= 21 && n.midi <= 108, 'Tecla MIDI fora do piano de 88 teclas.'); exigir(Number.isInteger(n.velocity) && n.velocity >= 1 && n.velocity <= 127, 'Velocity inválida.');
       return { id: nid, time: start, duration: dur, midi: n.midi, velocity: n.velocity };
     }).sort(function (a,b) { return a.time-b.time || a.midi-b.midi; });
-    if (input.sections != null) chart.sections = input.sections.map(function (s) { return { id: id(s.id, 'id do trecho'), title: texto(s.title, 'Título do trecho', 80), from: limite(s.from,0,chart.duration,'Início do trecho'), to: limite(s.to,0,chart.duration,'Fim do trecho') }; });
-    if (input.metadata != null) chart.metadata = { demo: input.metadata.demo === true };
+    // Uma tecla física não produz duas notas independentes sustentadas ao
+    // mesmo tempo. Acordes continuam permitidos entre alturas diferentes.
+    var fimPorMidi = Object.create(null);
+    chart.notes.forEach(function (n) {
+      exigir(fimPorMidi[n.midi] === undefined || n.time + EPS >= fimPorMidi[n.midi], 'Notas da mesma tecla se sobrepõem: ' + n.id + '.');
+      fimPorMidi[n.midi] = n.time + n.duration;
+    });
+    if (input.sections != null) {
+      exigir(Array.isArray(input.sections) && input.sections.length <= 100, 'Trechos inválidos (máximo 100).');
+      var secIds = Object.create(null);
+      chart.sections = input.sections.map(function (s) {
+        exigir(objeto(s), 'Trecho inválido.');
+        var sid = id(s.id, 'id do trecho'); exigir(!secIds[sid], 'id de trecho repetido: ' + sid); secIds[sid] = true;
+        var from = limite(s.from, 0, chart.duration, 'Início do trecho');
+        var to = limite(s.to, 0, chart.duration, 'Fim do trecho');
+        exigir(to > from, 'O fim do trecho deve vir depois do início.');
+        return { id: sid, title: texto(s.title, 'Título do trecho', 80), from: from, to: to };
+      }).sort(function (a, b) { return a.from - b.from; });
+    }
+    if (input.metadata != null) {
+      exigir(objeto(input.metadata), 'Metadados inválidos.');
+      chart.metadata = { demo: input.metadata.demo === true };
+    }
     return chart;
   }
 
@@ -147,6 +169,9 @@
       exigir(Number.isInteger(m) && m >= 24 && m <= 88, 'Altura da afinação fora da faixa MIDI aceita (24–88).');
       return m;
     });
+    var perfil = Perfis.porAfinacao(chart.tuning);
+    // Afinações customizadas mantêm o limite histórico de 24 casas.
+    var maxCasas = perfil ? perfil.frets : 24;
     validarTempoMap(input, chart);
     exigir(Array.isArray(input.notes) && input.notes.length > 0 && input.notes.length <= 2000, 'O arranjo deve ter de 1 a 2000 notas.');
     var ids = Object.create(null);
@@ -159,7 +184,7 @@
       exigir(start + dur <= chart.duration + EPS, 'A nota ' + nid + ' ultrapassa a duração do arranjo.');
       exigir(Number.isInteger(n.string) && n.string >= 1 && n.string <= chart.tuning.length,
         'Corda inválida na nota ' + nid + ' (1 é a corda mais aguda).');
-      exigir(Number.isInteger(n.fret) && n.fret >= 0 && n.fret <= 24, 'Casa inválida na nota ' + nid + ' (0–24).');
+      exigir(Number.isInteger(n.fret) && n.fret >= 0 && n.fret <= maxCasas, 'Casa inválida na nota ' + nid + ' (0–' + maxCasas + ').');
       var midi = chart.tuning[chart.tuning.length - n.string] + n.fret;
       exigir(Number.isInteger(n.midi) && n.midi === midi && midi <= 127, 'MIDI, corda, casa e afinação discordam na nota ' + nid + '.');
       return { id: nid, time: start, duration: dur, string: n.string, fret: n.fret, midi: midi };

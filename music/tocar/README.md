@@ -1,6 +1,12 @@
-# Tocar junto — prática e aprendizado de violão, guitarra e contrabaixo
+# Tocar junto — prática e autoria de arranjos
 
 Rota `/music/tocar`, integrada à sessão e à identidade visual do Musique. Acessível pelo Laboratório, pela página Praticar e pela busca. Implementação própria, com estudo original; não contém código, músicas nem recursos extraídos do Rocksmith+.
+
+## Estado atual — 16/10/2026
+
+O editor em `/music/tocar/gerenciar` permite criar, editar, duplicar, excluir, desfazer/refazer, salvar e reabrir arranjos de piano e bateria MIDI. Piano oferece 88 teclas (MIDI 21–108), com uma linha por altura usada, distinguindo oitavas. Bateria oferece as dez peças de `perfis.js`, sem depender de uma lista `drums` dentro do documento. Ambos aceitam eventos simultâneos em alturas/peças diferentes e intensidade de 1–127; sobreposição na mesma tecla/peça é recusada. Frases são validadas antes de alterar o documento. A persistência continua no catálogo existente com versões publicadas imutáveis.
+
+O fluxo foi conferido com testes de interface, API/SQLite e navegador real. A validação com piano e bateria eletrônica físicos continua pendente por decisão do usuário. Criar arranjos MIDI no editor não significa que todo o fluxo de prática/importação desses instrumentos já esteja concluído: veja [pendências e próximos passos](../../docs/plans/2026-10-16-musique-editor-midi-correcoes.md).
 
 ## Escopo
 
@@ -19,7 +25,7 @@ O padrão escolhido é violão pelo microfone do computador. Na prática em modo
 
 “Nível de captação” aplica ganho digital à entrada, de 0 a 18 dB em passos de 3 dB. Microfone começa em 6 dB (aproximadamente 2×); Interface e Real Tone começam em 0 dB (1×). O ajuste fica guardado por forma de captação enquanto esta página estiver aberta, inclusive ao reconectar ou trocar apenas o instrumento. Pode ser alterado com a entrada ativa e o transporte parado; fica bloqueado durante conexão, prática, demonstração e calibração. Se alterado durante uma prática pausada, encerra a rodada para não misturar sensibilidades no resultado. O medidor usa o sinal amplificado. Esse controle não aumenta o acompanhamento nem altera o ganho físico do dispositivo: amplifica também o ruído e pode saturar o sinal. Reduza diante de ruído ou sinal alto. Não há medição de relação sinal/ruído nem garantia de precisão ou nota decorrente do aumento.
 
-O catálogo administrado e a autoria visual de arranjos estão descritos abaixo. Os oito estudos originais continuam embutidos no código e podem servir de base para rascunhos próprios. Reconhecimento de acordes, efeitos de amplificador, dificuldade adaptativa, piano e paridade com Rocksmith+ não estão incluídos.
+O catálogo administrado e a autoria visual de arranjos estão descritos abaixo. Os estudos originais continuam embutidos no código e podem servir de base para rascunhos próprios. Reconhecimento de acordes pelo microfone, efeitos de amplificador, dificuldade adaptativa e paridade com Rocksmith+ não estão incluídos. O escopo de piano e bateria é descrito no estado atual acima.
 
 ## Aprender nota por nota
 
@@ -44,7 +50,7 @@ Os botões de frase usam `sections` do arranjo e ajustam início/fim. Música in
 
 ## Arranjos
 
-Use “Baixar arranjo de exemplo” na página. Tempos em segundos da música original; `tuning` vai da corda grave à aguda; `string: 1` é sempre a corda mais aguda e `fret: 0` é corda solta. Os únicos perfis aceitos na pista e no catálogo são seis cordas `[40,45,50,55,59,64]` e baixo `[28,33,38,43]`.
+Use “Baixar arranjo de exemplo” na página. Tempos em segundos da música original; `tuning` enumera as cordas da última para a primeira; `fret: 0` é corda solta. Nos perfis com afinação ascendente, a corda 1 é a mais aguda. O ukulele tradicional é reentrante (`[67,60,64,69]`), portanto a ordem não é estritamente de altura. Os demais perfis são seis cordas `[40,45,50,55,59,64]`, baixo `[28,33,38,43]`, cavaquinho `[50,55,59,62]` e bandolim de cinco cordas `[55,62,69,76,83]` (afinação ainda a confirmar com o usuário). Piano e bateria usam `profile`/`layout`, sem `tuning`.
 
 ```json
 {
@@ -54,7 +60,7 @@ Use “Baixar arranjo de exemplo” na página. Tempos em segundos da música or
 }
 ```
 
-Limites: 2.000 notas, 900 segundos, arranjo até 1 MB e áudio local até 100 MB. Notas não podem se sobrepor. O campo MIDI deve corresponder à afinação, corda e casa. A duração do áudio precisa cobrir o arranjo. A velocidade do áudio usa preservação de altura do navegador; deve ser conferida no equipamento real.
+Limites: 2.000 notas, 900 segundos, arranjo até 1 MB e áudio local até 100 MB. Cordas continuam monofônicas; piano/bateria aceitam simultaneidade entre teclas/peças diferentes. Em cordas, MIDI deve corresponder à afinação, corda e casa. As casas máximas do perfil são 15 para ukulele, 17 para cavaquinho e 24 para os demais; o núcleo e o editor aplicam a mesma validação. Arquivos antigos fora desses limites são recusados com mensagem, sem cortar notas ou trocar o arranjo já aberto. A duração do áudio precisa cobrir o arranjo. A velocidade do áudio usa preservação de altura do navegador; deve ser conferida no equipamento real.
 
 ## Fluxo técnico
 
@@ -87,7 +93,7 @@ O formato musical de `nucleo.js` permanece compatível. `formato-catalogo.js` va
 { title, instrument, level, technique, objective, credits, mediaId, mediaOffsetMs, chart }
 ```
 
-`title` e `chart.title` devem corresponder. Instrumento: `violao`, `guitarra` ou `baixo`; nível: `iniciante`, `intermediario` ou `avancado`; técnica: `notas-isoladas`, `cordas-soltas`, `troca-de-cordas`, `escalas` ou `arpejos`. Objetivo e créditos são obrigatórios. O catálogo aceita somente as afinações padrão de seis cordas ou de contrabaixo de quatro cordas, até 2.000 notas monofônicas e 900 segundos. Os metadados externos não alteram a avaliação da altura.
+`title` e `chart.title` devem corresponder. Instrumento: `violao`, `guitarra`, `baixo`, `cavaquinho`, `ukulele`, `bandolim`, `piano` ou `bateria`; nível: `iniciante`, `intermediario` ou `avancado`; técnica: `notas-isoladas`, `cordas-soltas`, `troca-de-cordas`, `escalas` ou `arpejos`. Objetivo e créditos são obrigatórios. O catálogo exige que a afinação ou o perfil MIDI corresponda ao instrumento declarado, até 2.000 notas e 900 segundos. Os metadados externos não alteram a avaliação da altura.
 
 A mídia opcional usa `midias` e `obra_midias` existentes: áudio pronto pertencente ao dono, anexado à mesma obra, sem URL externa livre. Quando há `mediaId`, `mediaOffsetMs` é um inteiro de 0 a 600.000 e indica o instante do áudio que corresponde ao 0:00 lógico do arranjo; a introdução anterior não entra na pista. Sem mídia, o campo não existe. O valor faz parte do rascunho e de cada snapshot publicado, mas é independente da compensação de captura escolhida pelo aluno. A faixa precisa ter duração suficiente para o arranjo somada a esse deslocamento. `catalogo.js` revalida acesso, remoção e vínculo antes de emitir uma URL R2 de 600 segundos. O navegador pode carregar o arranjo mesmo quando o áudio está indisponível e informa a falha; o MIME não garante que o codec seja reproduzível. Sem áudio anexado, a demonstração pode sintetizar as notas. Links de YouTube/Spotify não são arquivos de acompanhamento. Não há transcrição de MP3 nem novo serviço de armazenamento.
 

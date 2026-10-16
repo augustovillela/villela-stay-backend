@@ -37,7 +37,83 @@ test('Novo arranjo de baixo começa na corda Mi grave e o editor usa quatro cord
   const antes = motor.obter();
   assert.throws(() => motor.executar({ tipo: 'editarNota', id: criada.id, alteracoes: { string: 5 } }), /Corda inválida/);
   assert.deepEqual(motor.obter(), antes);
-  assert.throws(() => Editor.novoChart('Linha de baixo', 'arranjo-invalido', 'piano'), /Perfil de instrumento desconhecido/);
+  assert.throws(() => Editor.novoChart('Linha de baixo', 'arranjo-invalido', 'inexistente'), /Perfil de instrumento desconhecido/);
+});
+
+test('Editor aceita cinco cordas e respeita limites de casas dos perfis', () => {
+  for (const [perfil, cordas, casas] of [['bandolim-5', 5, 24], ['cavaquinho', 4, 17], ['ukulele', 4, 15]]) {
+    const chart = Editor.novoChart('Estudo', 'arranjo-' + perfil, perfil);
+    assert.equal(chart.tuning.length, cordas);
+    const motor = Editor.criar(chart);
+    const criada = adicionar(motor, 2, cordas, casas);
+    assert.equal(criada.chart.notes[1].midi, chart.tuning[0] + casas);
+    assert.throws(() => motor.executar({ tipo: 'editarNota', id: criada.id, alteracoes: { fret: casas + 1 } }), /Casa inválida/);
+    assert.deepEqual(motor.obter(), criada.chart);
+    assert.deepEqual(motor.desfazer(), chart);
+    assert.deepEqual(motor.refazer(), criada.chart);
+    const invalido = structuredClone(chart);
+    invalido.notes[0].fret = casas + 1;
+    invalido.notes[0].midi = chart.tuning[0] + casas + 1;
+    assert.throws(() => Editor.criar(invalido), /Casa inválida/);
+  }
+});
+
+test('Piano cria Dó4 e oferece criação, edição, duplicação, exclusão e histórico de acordes', () => {
+  const original = Editor.novoChart('Piano', 'arranjo-piano', 'piano');
+  assert.equal(original.profile, 'piano-midi'); assert.equal(original.layout, 'piano');
+  assert.equal(original.tuning, undefined);
+  assert.deepEqual(original.notes[0], { id: 'nota-editor-1', time: 0, duration: 0.5, midi: 60, velocity: 100 });
+  const motor = Editor.criar(original);
+  const acorde = motor.executar({ tipo: 'criarNota', nota: { time: 0, duration: 1, midi: 64, velocity: 90 } });
+  assert.equal(acorde.chart.notes.length, 2, 'Teclas diferentes podem soar juntas');
+  const editada = motor.executar({ tipo: 'editarNota', id: acorde.id, alteracoes: { midi: 67, velocity: 110, duration: 0.75 } });
+  assert.deepEqual(editada.chart.notes.find(n => n.id === acorde.id), { id: acorde.id, time: 0, duration: 0.75, midi: 67, velocity: 110 });
+  const duplicada = motor.executar({ tipo: 'duplicarNota', id: acorde.id, time: 0.75 });
+  assert.notEqual(duplicada.id, acorde.id);
+  assert.equal(duplicada.chart.notes.find(n => n.id === duplicada.id).midi, 67);
+  const excluida = motor.executar({ tipo: 'excluirNota', id: acorde.id });
+  assert.equal(excluida.chart.notes.length, 2);
+  for (const esperado of [duplicada.chart, editada.chart, acorde.chart, original]) assert.deepEqual(motor.desfazer(), esperado);
+  assert.equal(motor.desfazer(), null);
+  for (const esperado of [acorde.chart, editada.chart, duplicada.chart, excluida.chart]) assert.deepEqual(motor.refazer(), esperado);
+  assert.equal(motor.refazer(), null);
+  assert.deepEqual(Core.validarChart(motor.obter()), excluida.chart);
+});
+
+test('Piano aceita MIDI 21/108 e velocity 1/127; erros preservam dados, IDs e redo', () => {
+  const original = Editor.novoChart('Piano', 'piano-limites', 'piano-midi');
+  const motor = Editor.criar(original);
+  const baixa = motor.executar({ tipo: 'criarNota', nota: { time: 0, duration: 0.5, midi: 21, velocity: 1 } });
+  const alta = motor.executar({ tipo: 'criarNota', nota: { time: 0, duration: 0.5, midi: 108, velocity: 127 } });
+  assert.equal(alta.chart.notes[0].midi, 21); assert.equal(alta.chart.notes[2].midi, 108);
+  motor.desfazer();
+  for (const alteracoes of [{ midi: 20 }, { midi: 109 }, { midi: 60.5 }, { midi: NaN },
+    { velocity: 0 }, { velocity: 128 }, { velocity: 1.5 }, { velocity: Infinity },
+    { time: -1 }, { time: 16 }, { duration: 0.019 }, { duration: NaN },
+    { midi: 60 }, { string: 1 }, { fret: 2 }]) {
+    assert.throws(() => motor.executar({ tipo: 'editarNota', id: baixa.id, alteracoes }));
+    assert.deepEqual(motor.obter(), baixa.chart);
+    assert.equal(motor.podeRefazer(), true);
+  }
+  assert.throws(() => motor.executar({ tipo: 'duplicarNota', id: baixa.id, time: 0.25 }), /mesma tecla/);
+  assert.deepEqual(motor.refazer(), alta.chart);
+  const limpo = Editor.criar(original), comErro = Editor.criar(original);
+  const op = { tipo: 'criarNota', nota: { time: 1, duration: 0.25, midi: 64, velocity: 90 } };
+  assert.throws(() => comErro.executar({ ...op, nota: { ...op.nota, velocity: 0 } }), /Velocity/);
+  assert.equal(comErro.executar(op).id, limpo.executar(op).id);
+});
+
+test('Piano recusa trechos inválidos atomicamente inclusive ao reduzir a duração', () => {
+  const original = Editor.novoChart('Piano', 'piano-frases', 'piano');
+  const motor = Editor.criar(original);
+  const frase = motor.executar({ tipo: 'criarFrase', frase: { title: 'Final', from: 8, to: 16 } });
+  for (const alteracoes of [{ from: 16 }, { to: 8 }, { from: NaN }, { to: 17 }]) {
+    assert.throws(() => motor.executar({ tipo: 'editarFrase', id: frase.id, alteracoes }));
+    assert.deepEqual(motor.obter(), frase.chart);
+  }
+  assert.throws(() => editar(motor, { duration: 12 }), /trecho/);
+  assert.deepEqual(motor.desfazer(), original);
+  assert.deepEqual(motor.refazer(), frase.chart);
 });
 
 test('Novo arranjo de bateria usa peças MIDI e permite editar batidas sem cordas', () => {
@@ -53,6 +129,30 @@ test('Novo arranjo de bateria usa peças MIDI e permite editar batidas sem corda
   const duplicada = motor.executar({ tipo: 'duplicarNota', id: criada.id, time: 2 });
   assert.equal(duplicada.chart.notes.at(-1).time, 2);
   assert.deepEqual(Core.validarChart(duplicada.chart), duplicada.chart);
+});
+
+test('Bateria usa mapa do perfil mesmo sem chart.drums e recusa pares peça/MIDI inconsistentes', () => {
+  const bateria = Editor.novoChart('Bateria', 'bateria-mapa', 'bateria');
+  assert.equal(bateria.drums, undefined, 'O chart normalizado não inclui o mapa de apresentação');
+  const motor = Editor.criar(bateria);
+  const criada = motor.executar({ tipo: 'criarNota', nota: { time: 0, duration: 0.1, midi: 38, velocity: 110 } });
+  assert.equal(criada.chart.notes.find(n => n.id === criada.id).drum, 'caixa');
+  const editada = motor.executar({ tipo: 'editarNota', id: criada.id, alteracoes: { midi: 42 } });
+  assert.equal(editada.chart.notes.find(n => n.id === criada.id).drum, 'chimbal-fechado');
+  const porPeca = motor.executar({ tipo: 'editarNota', id: criada.id, alteracoes: { drum: 'ride' } });
+  assert.equal(porPeca.chart.notes.find(n => n.id === criada.id).midi, 51);
+  motor.desfazer();
+  for (const alteracoes of [{ midi: 37 }, { midi: 38, drum: 'bumbo' }, { drum: 'inexistente' }, { velocity: 0 }]) {
+    assert.throws(() => motor.executar({ tipo: 'editarNota', id: criada.id, alteracoes }));
+    assert.deepEqual(motor.obter(), editada.chart);
+    assert.equal(motor.podeRefazer(), true);
+  }
+  assert.throws(() => motor.executar({ tipo: 'criarNota', nota: { time: 1, duration: 0.1, midi: 38, drum: 'bumbo', velocity: 100 } }), /discordam/);
+  assert.deepEqual(motor.refazer(), porPeca.chart);
+  const duplicada = motor.executar({ tipo: 'duplicarNota', id: criada.id, time: 2 });
+  const excluida = motor.executar({ tipo: 'excluirNota', id: duplicada.id });
+  assert.deepEqual(motor.desfazer(), duplicada.chart);
+  assert.deepEqual(motor.refazer(), excluida.chart);
 });
 
 test('Abrir preserva floats, IDs, afinação e frases normalizados sem arredondar à grade', () => {
