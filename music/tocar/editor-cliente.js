@@ -35,6 +35,8 @@
     function name(midi) { return NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1); }
     function stringCount() { return chart && Array.isArray(chart.tuning) ? chart.tuning.length : 0; }
     function stringsLabel() {
+      if (chart && chart.layout === 'piano') return '88 teclas MIDI';
+      if (chart && chart.layout === 'drums') return 'peças MIDI de bateria';
       var total = stringCount();
       return total + ' ' + (total === 1 ? 'corda' : 'cordas');
     }
