@@ -10,13 +10,13 @@
   var previewMode = query.has('previa'), previewReady = !previewMode;
   var source = { kind: 'study' }, catalogUI = null, chartTicket = 0, chartLoading = false;
   var remoteAudio = null, remoteTicket = 0, remoteLoading = false, saving = null;
-  var chart = Core.demoChart(), input = null, demoContext = null, ctx = null, deviceRefresh = 0;
+  var chart = Core.demoChart(), input = null, midiInput = null, demoContext = null, ctx = null, deviceRefresh = 0;
   var media = null, mediaUrl = null, mediaStarting = false, raf = null, nodes = [], generation = 0;
   var referenceWallUntil = 0, outputWallUntil = 0;
   var state = { mode: 'idle', running: false, position: 0, origin: 0, start: 0, speed: 1,
     from: 0, to: chart.duration, loop: false, judge: null, lastFrame: null, offset: 0,
     nextNote: 0, nextBeat: 0, countInFirstBeat: null, saved: false, connected: false, connecting: false, calibration: null, endedAt: null,
-    instrument: 'violao', inputKind: 'microphone', trainingMode: 'practice', learner: null,
+    instrument: 'violao', inputKind: 'microphone', trainingMode: 'practice', learner: null, midiOrigin: 0,
     learnContext: null, learnElapsed: 0, learnStartedAt: null, guideUntil: 0 };
   var studies = Estudos.listar(), phraseButtons = [];
   var COLORS = ['#e9a56a', '#e7ca64', '#70c9ae', '#79b7ed', '#b39cdd', '#e89cac'];
@@ -274,6 +274,7 @@
       } else if (!resume) { state.position = countInStart(chart, state.from); startWithCountIn = true; judgeReset(); state.learner = null; }
       if (mode === 'practice' && !state.judge.resumo().total) { stop(); msg('Este trecho não contém notas. Escolha um trecho do arranjo.', true); return; }
       state.mode = mode; state.start = state.position; state.origin = ctx.currentTime; state.running = true;
+      state.midiOrigin = performance.now();
       state.endedAt = null; mediaStarting = false; scheduleReset(state.position, startWithCountIn);
       if (media) { media.pause(); media.currentTime = chartToMedia(Math.max(state.from, state.position)); media.playbackRate = state.speed; }
       text('tj-mode', mode === 'demo' ? 'DEMONSTRAÇÃO · SEM AVALIAÇÃO' : mode === 'learn' ? 'APRENDER · NOTA POR NOTA' : 'PRÁTICA · NOTAS ISOLADAS');
@@ -489,6 +490,21 @@
       state.judge.amostrar({ time: musicTime, hz: f.hz || 0, confidence: f.confidence, rms: f.rms, onset: f.onset });
     }
   }
+  function onMidiEvent(e) {
+    if (!state.running || state.mode !== 'practice' || !state.judge || !ctx || e.velocity === 0) return;
+    var stamp = Number.isFinite(e.time) ? e.time : performance.now();
+    var musicTime = state.start + (stamp - state.midiOrigin) / 1000 * state.speed;
+    state.judge.amostrar({ time: musicTime, midi: e.midi, velocity: e.velocity, channel: e.channel });
+    updateScore();
+  }
+  function onMidiStatus(s) {
+    state.connected = s.estado === 'conectado';
+    state.connecting = s.estado === 'iniciando';
+    text('tj-connection', s.estado === 'conectado' ? (s.nome || 'Entrada MIDI conectada') : s.mensagem || 'Entrada MIDI desligada');
+    if (s.estado === 'conectado') msg('MIDI conectado. Toque a bateria eletrônica para praticar.');
+    if (s.estado === 'erro' || s.estado === 'parado') { if (state.mode === 'practice' || state.mode === 'learn') pause(); text('tj-meter', ''); }
+    updateTransport();
+  }
   function onStatus(s) {
     state.connected = s.estado === 'conectado';
     state.connecting = s.estado === 'iniciando';
@@ -506,6 +522,15 @@
     var attempt = ++deviceRefresh;
     try {
       // Enumerar não abre o microfone nem pede permissão. Os nomes podem estar ocultos.
+      if (perfilDoInstrumento(state.instrument).layout === 'drums' && window.MusiqueTocarMidi) {
+        var midi = midiInput || (midiInput = window.MusiqueTocarMidi.criar({ onEvent: onMidiEvent, onStatus: onMidiStatus }));
+        var portas = await midi.dispositivos();
+        if (attempt !== deviceRefresh) return;
+        var ms = $('tj-device'), selectedMidi = ms.value;
+        ms.replaceChildren(el('option', { value: '', text: 'Primeira porta MIDI disponível' }));
+        portas.forEach(function (d) { ms.appendChild(el('option', { value: d.id, text: d.name })); });
+        ms.value = selectedMidi; return;
+      }
       var devices = await audioInput().dispositivos();
       if (attempt !== deviceRefresh) return;
       var select = $('tj-device'), selected = select.value;
@@ -526,6 +551,11 @@
   async function activateInput() {
     $('tj-connect').disabled = true;
     try {
+      if (perfilDoInstrumento(state.instrument).layout === 'drums' && window.MusiqueTocarMidi) {
+        midiInput = midiInput || window.MusiqueTocarMidi.criar({ onEvent: onMidiEvent, onStatus: onMidiStatus });
+        await midiInput.iniciar($('tj-device').value || undefined);
+        state.connected = true; msg('MIDI conectado. Toque a bateria eletrônica para praticar.'); updateTransport(); return;
+      }
       var devices = await audioInput().iniciar($('tj-device').value || undefined);
       var selected = input.estado().deviceId;
       var realTone = devices.find(function (d) { return /rocksmith|real.?tone/i.test(d.label || ''); });
@@ -536,7 +566,7 @@
   function connect() {
     if(previewMode)return;
     pause(); cancelCalibration();
-    if (state.connected) { input.parar(); return; }
+    if (state.connected) { if (midiInput && perfilDoInstrumento(state.instrument).layout === 'drums') midiInput.parar(); else if (input) input.parar(); return; }
     return activateInput();
   }
   function cancelCalibration() {
@@ -674,5 +704,7 @@
   window.addEventListener('pageshow',function(e){if(e.persisted && !raf)tick();});
   text('tj-history-label',boot.logado?'Últimas rodadas guardadas nesta conta.':'Entre no Musique para guardar as rodadas na sua conta.');
   if(!boot.logado)$('tj-history').appendChild(el('li',{},[el('a',{href:'/music/entrar?voltar=%2Fmusic%2Ftocar',text:'Entrar ou criar conta'})]));
+  if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'bateria'; })) $('tj-instrument').appendChild(el('option', { value: 'bateria', text: 'Bateria eletrônica' }));
+  if (!Array.prototype.some.call($('tj-connection-type').children || [], function (o) { return o.value === 'midi'; })) $('tj-connection-type').appendChild(el('option', { value: 'midi', text: 'Web MIDI · bateria eletrônica' }));
   profile();applyChart(chart);if(previewMode)openPreview();else{refreshDevices();history();}tick();
 })();
