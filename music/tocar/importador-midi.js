@@ -26,6 +26,7 @@
     var origem = Perfis.obter(id);
     exigir(origem, 'Perfil de instrumento desconhecido.');
     if (origem.layout === 'drums') return { id: origem.id, layout: 'drums', drums: origem.drums.slice(), minMidi: 0, maxMidi: 127 };
+    if (origem.layout === 'piano') return { id: origem.id, layout: 'piano', minMidi: origem.minMidi, maxMidi: origem.maxMidi };
     exigir(Array.isArray(origem.tuning), 'Perfil de instrumento inválido.');
     exigir(Number.isInteger(origem.strings) && origem.strings >= 1 && origem.strings <= 6 && origem.tuning.length === origem.strings,
       'Perfil de instrumento inválido.');
@@ -33,7 +34,7 @@
     var tuning = origem.tuning.slice();
     tuning.forEach(function (midi, indice) {
       exigir(Number.isInteger(midi) && midi >= 0 && midi <= 103, 'Perfil de instrumento inválido.');
-      if (indice) exigir(midi > tuning[indice - 1], 'Perfil de instrumento inválido.');
+      if (indice && origem.id !== 'ukulele') exigir(midi > tuning[indice - 1], 'Perfil de instrumento inválido.');
     });
     return { id: origem.id, tuning: tuning, strings: origem.strings, frets: origem.frets,
       minMidi: tuning[0], maxMidi: tuning[tuning.length - 1] + origem.frets };
@@ -61,7 +62,7 @@
     return ['Dó', 'Dó#', 'Ré', 'Ré#', 'Mi', 'Fá', 'Fá#', 'Sol', 'Sol#', 'Lá', 'Lá#', 'Si'][midi % 12] + (Math.floor(midi / 12) - 1);
   }
   function descricaoExtensao(perfil) { return nomeMidi(perfil.minMidi) + '–' + nomeMidi(perfil.maxMidi); }
-  function nomeDoInstrumento(perfil) { return perfil.strings === 4 ? 'baixo' : 'guitarra'; }
+  function nomeDoInstrumento(perfil) { return perfil.id === 'cavaquinho' ? 'cavaquinho' : perfil.id === 'ukulele' ? 'ukulele' : perfil.id === 'bandolim-5' ? 'bandolim' : perfil.strings === 4 ? 'baixo' : 'guitarra'; }
 
   function copiarTempo(evento) {
     return { time: evento.time, beat: evento.beat, bpm: evento.bpm };
