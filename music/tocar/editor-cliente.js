@@ -103,7 +103,11 @@
       return Number(raw);
     }
     function pitch() {
-      if (midiLayout()) { $('note-pitch').textContent = 'MIDI ' + ($('note-string').value || '—') + ' · velocity ' + ($('note-fret').value || '—'); return; }
+      if (midiLayout()) {
+        var midi = Number($('note-string').value), velocity = $('note-fret').value || '—';
+        var drum = chart && chart.layout === 'drums' && (chart.drums || []).find(function (d) { return d.midi === midi; });
+        $('note-pitch').textContent = (drum ? drum.label + ' · ' : chart.layout === 'piano' ? name(midi) + ' · ' : '') + 'MIDI ' + (Number.isInteger(midi) ? midi : '—') + ' · velocity ' + velocity; return;
+      }
       var s = Number($('note-string').value), f = Number($('note-fret').value);
       $('note-pitch').textContent = chart && Number.isInteger(s) && s >= 1 && s <= stringCount() && Number.isInteger(f) && f >= 0 && f <= 24 && $('note-fret').value !== ''
         ? name(chart.tuning[stringCount() - s] + f) + ' · MIDI ' + (chart.tuning[stringCount() - s] + f) : 'Preencha corda e casa válidas.';
