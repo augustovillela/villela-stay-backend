@@ -5,7 +5,7 @@
   else root.MusiqueTocarFormatoCatalogo = factory(root.MusiqueTocarCore, root.MusiqueTocarPerfis);
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (Core, Perfis) {
   'use strict';
-  var INSTRUMENTOS = Object.freeze(['violao', 'guitarra', 'baixo']);
+  var INSTRUMENTOS = Object.freeze(['violao', 'guitarra', 'baixo', 'bateria']);
   var NIVEIS = Object.freeze(['iniciante', 'intermediario', 'avancado']);
   var TECNICAS = Object.freeze(['notas-isoladas', 'cordas-soltas', 'troca-de-cordas', 'escalas', 'arpejos']);
   var LIMITE_BYTES = 1048576;
@@ -69,11 +69,15 @@
         'O deslocamento de mídia deve ser um número inteiro de 0 a 600000 ms.');
     }
     var perfil = Perfis.obter(instrument);
-    exigir(perfil && Array.isArray(perfil.tuning), 'Perfil do instrumento inválido.');
+    exigir(perfil && (perfil.layout === 'drums' || Array.isArray(perfil.tuning)), 'Perfil do instrumento inválido.');
     var chart = Core.validarChart(input.chart);
     exigir(chart.title === title, 'O título do documento deve ser igual ao título do arranjo (chart.title).');
-    exigir(chart.tuning.length === perfil.tuning.length && chart.tuning.every(function (midi, i) { return midi === perfil.tuning[i]; }),
-      'O catálogo aceita ' + perfil.rotulo.toLowerCase() + ' em afinação padrão.');
+    if (perfil.layout === 'drums') {
+      exigir(chart.profile === 'bateria-midi' && chart.layout === 'drums', 'O catálogo aceita somente arranjos de bateria no perfil de bateria MIDI.');
+    } else {
+      exigir(chart.tuning.length === perfil.tuning.length && chart.tuning.every(function (midi, i) { return midi === perfil.tuning[i]; }),
+        'O catálogo aceita ' + perfil.rotulo.toLowerCase() + ' em afinação padrão.');
+    }
     // Importar para o catálogo não atribui a autoria do estudo ao Musique.
     // Todo dado musical normalizado pelo núcleo permanece intacto.
     chart.metadata = { demo: false };

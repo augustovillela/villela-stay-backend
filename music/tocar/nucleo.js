@@ -63,8 +63,63 @@
     };
   }
 
+  var BATERIA = Object.freeze({
+    36: 'bumbo', 38: 'caixa', 42: 'chimbal-fechado', 46: 'chimbal-aberto',
+    45: 'tom-baixo', 47: 'tom-medio', 50: 'tom-alto', 41: 'surdo-baixo',
+    49: 'crash', 51: 'ride'
+  });
+
+  function validarBateria(input) {
+    exigir(input.profile === 'bateria-midi' && input.layout === 'drums', 'O arranjo de bateria deve declarar profile bateria-midi e layout drums.');
+    exigir(!tem(input, 'tuning'), 'Arranjo de bateria não usa afinação.');
+    var chart = {
+      id: id(input.id, 'id do arranjo'), title: texto(input.title, 'Título', 120),
+      bpm: limite(input.bpm, 20, 300, 'BPM'), duration: limite(input.duration, 0.04, 900, 'Duração'),
+      profile: 'bateria-midi', layout: 'drums', notes: []
+    };
+    validarTempoMap(input, chart);
+    exigir(Array.isArray(input.notes) && input.notes.length > 0 && input.notes.length <= 2000, 'O arranjo deve ter de 1 a 2000 golpes.');
+    var ids = Object.create(null);
+    chart.notes = input.notes.map(function (n, i) {
+      exigir(objeto(n), 'Golpe ' + (i + 1) + ' inválido.');
+      camposExatos(n, ['id', 'time', 'duration', 'drum', 'midi', 'velocity'], 'Golpe ' + (i + 1));
+      var nid = id(n.id, 'id do golpe ' + (i + 1));
+      exigir(!ids[nid], 'id de golpe repetido: ' + nid); ids[nid] = true;
+      var start = limite(n.time, 0, 900, 'Início do golpe ' + nid);
+      var dur = limite(n.duration, 0.02, 60, 'Duração do golpe ' + nid);
+      exigir(start + dur <= chart.duration + EPS, 'O golpe ' + nid + ' ultrapassa a duração do arranjo.');
+      exigir(typeof n.drum === 'string' && BATERIA[n.midi] === n.drum, 'Peça e MIDI discordam no golpe ' + nid + '.');
+      exigir(Number.isInteger(n.midi) && BATERIA[n.midi], 'MIDI de bateria não suportado no golpe ' + nid + '.');
+      exigir(Number.isInteger(n.velocity) && n.velocity >= 1 && n.velocity <= 127, 'Velocity inválida no golpe ' + nid + '.');
+      return { id: nid, time: start, duration: dur, drum: n.drum, midi: n.midi, velocity: n.velocity };
+    }).sort(function (a, b) { return a.time - b.time || a.midi - b.midi; });
+    var fimPorMidi = Object.create(null);
+    chart.notes.forEach(function (n) {
+      exigir(fimPorMidi[n.midi] === undefined || n.time + EPS >= fimPorMidi[n.midi], 'Golpes da mesma peça se sobrepõem: ' + n.id + '.');
+      fimPorMidi[n.midi] = n.time + n.duration;
+    });
+    if (input.sections != null) {
+      exigir(Array.isArray(input.sections) && input.sections.length <= 100, 'Trechos inválidos (máximo 100).');
+      var secIds = Object.create(null);
+      chart.sections = input.sections.map(function (s) {
+        exigir(objeto(s), 'Trecho inválido.');
+        var sid = id(s.id, 'id do trecho'); exigir(!secIds[sid], 'id de trecho repetido: ' + sid); secIds[sid] = true;
+        var from = limite(s.from, 0, chart.duration, 'Início do trecho');
+        var to = limite(s.to, 0, chart.duration, 'Fim do trecho');
+        exigir(to > from, 'O fim do trecho deve vir depois do início.');
+        return { id: sid, title: texto(s.title, 'Título do trecho', 80), from: from, to: to };
+      }).sort(function (a, b) { return a.from - b.from; });
+    }
+    if (input.metadata != null) {
+      exigir(objeto(input.metadata), 'Metadados inválidos.');
+      chart.metadata = { demo: input.metadata.demo === true };
+    }
+    return chart;
+  }
+
   function validarChart(input) {
     exigir(objeto(input), 'O arranjo deve ser um objeto.');
+    if (input.profile === 'bateria-midi' || input.layout === 'drums') return validarBateria(input);
     var chart = {
       id: id(input.id, 'id do arranjo'), title: texto(input.title, 'Título', 120),
       bpm: limite(input.bpm, 20, 300, 'BPM'), duration: limite(input.duration, 0.04, 900, 'Duração'),
@@ -137,6 +192,7 @@
 
   function criarJulgador(input, options) {
     var chart = validarChart(input), o = options || {};
+    if (chart.layout === 'drums') return criarJulgadorBateria(chart, o);
     function opt(k, pad, min, max) { return limite(o[k] == null ? pad : o[k], min, max, k); }
     var offset = opt('offsetMs', 0, -2000, 2000) / 1000;
     var tolerance = opt('toleranceMs', 180, 20, 1000) / 1000;
@@ -230,6 +286,45 @@
         trainingOnly: true };
     }
     return { amostrar: amostrar, avancar: avancar, resumo: resumo, estados: function () { return states.map(copy); } };
+  }
+
+  function criarJulgadorBateria(chart, o) {
+    function opt(k, pad, min, max) { return limite(o[k] == null ? pad : o[k], min, max, k); }
+    var offset = opt('offsetMs', 0, -2000, 2000) / 1000;
+    var tolerance = opt('toleranceMs', 180, 20, 1000) / 1000;
+    var from = opt('from', 0, 0, chart.duration), to = opt('to', chart.duration, 0, chart.duration);
+    exigir(to > from, 'O fim da prática deve vir depois do início.');
+    var notes = chart.notes.filter(function (n) { return n.time >= from && n.time < to; });
+    var states = notes.map(function (n) { return { id: n.id, status: 'pending' }; });
+    function copy(s) { return Object.assign({}, s); }
+    function expire(time) {
+      notes.forEach(function (n, i) {
+        if (states[i].status === 'pending' && time > n.time + tolerance + EPS) states[i] = { id: n.id, status: 'miss' };
+      });
+    }
+    function amostrar(evento) {
+      if (!objeto(evento) || !numero(evento.time) || !Number.isInteger(evento.midi) || evento.velocity === 0) return null;
+      var time = evento.time - offset;
+      expire(time);
+      var best = -1, distance = Infinity;
+      notes.forEach(function (n, i) {
+        var d = Math.abs(time - n.time);
+        if (states[i].status === 'pending' && n.midi === evento.midi && d <= tolerance + EPS && d < distance) { best = i; distance = d; }
+      });
+      if (best < 0) return null;
+      var target = notes[best];
+      states[best] = { id: target.id, status: 'hit', timingMs: Math.round((time - target.time) * 1000), velocity: evento.velocity };
+      return copy(states[best]);
+    }
+    function resumo() {
+      var hits = 0, misses = 0, timing = 0;
+      states.forEach(function (s) { if (s.status === 'hit') { hits++; timing += Math.abs(s.timingMs); } else if (s.status === 'miss') misses++; });
+      var done = hits + misses;
+      return { total: states.length, hits: hits, misses: misses, pending: states.length - done,
+        accuracy: done ? Math.round(1000 * hits / done) / 10 : 0, completion: states.length ? Math.round(1000 * done / states.length) / 10 : 0,
+        meanAbsTimingMs: hits ? Math.round(timing / hits) : null, meanAbsCents: null, trainingOnly: true };
+    }
+    return { amostrar: amostrar, avancar: function (time) { if (numero(time)) expire(time - offset); }, resumo: resumo, estados: function () { return states.map(copy); } };
   }
 
   return { validarChart: validarChart, demoChart: demoChart, criarJulgador: criarJulgador };

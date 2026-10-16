@@ -31,18 +31,19 @@
   function text(id, value) { $(id).textContent = value; }
   function msg(value, error) { text('tj-status', value); $('tj-status').classList.toggle('tj-error', !!error); }
   function perfilDoInstrumento(instrumento) { return Perfis.obter(instrumento) || Perfis.obter('violao'); }
-  function perfilDoChart(c) { return c && Perfis.porAfinacao(c.tuning); }
+  function perfilDoChart(c) { return c && (Perfis.porChart ? Perfis.porChart(c) : Perfis.porAfinacao(c.tuning)); }
   function meiaJanelaDetector() {
     var perfil = perfilDoChart(chart) || perfilDoInstrumento(state.instrument);
     var ms = perfil && perfil.detector && perfil.detector.windowMs;
     return Number.isFinite(ms) && ms >= 35 && ms <= 250 ? ms / 2000 : 0.032;
   }
   function nomeInstrumento(instrumento) {
-    return instrumento === 'baixo' ? 'Contrabaixo' : instrumento === 'guitarra' ? 'Guitarra' : 'Violão';
+    return instrumento === 'baixo' ? 'Contrabaixo' : instrumento === 'bateria' ? 'Bateria eletrônica' : instrumento === 'guitarra' ? 'Guitarra' : 'Violão';
   }
   function instrumentoDoChart(perfil, origem) {
     if (origem && origem.instrument && perfilDoInstrumento(origem.instrument).id === perfil.id) return origem.instrument;
     if (perfil.id === 'baixo') return 'baixo';
+    if (perfil.id === 'bateria-midi') return 'bateria';
     return state.instrument === 'guitarra' ? 'guitarra' : 'violao';
   }
   function encerrarCapturaDoPerfilAnterior() {
@@ -100,22 +101,22 @@
     renderCaptureGain();
   }
   function profile() {
-    var perfil = perfilDoInstrumento(state.instrument), baixo = perfil.id === 'baixo';
+    var perfil = perfilDoInstrumento(state.instrument), baixo = perfil.id === 'baixo', bateria = perfil.layout === 'drums';
     var microphone = state.inputKind === 'microphone';
     text('tj-instrument-label', nomeInstrumento(state.instrument));
-    $('tj-back').hidden = baixo;
+    $('tj-back').hidden = baixo || bateria;
     if (!baixo) $('tj-back').href = '/music/tutor-braco?i=' + state.instrument;
-    text('tj-input-title', microphone ? 'Prepare o microfone' : state.inputKind === 'interface' ? 'Prepare a interface' : 'Prepare o Real Tone');
-    text('tj-input-help', microphone
+    text('tj-input-title', bateria ? 'Conecte a bateria eletrônica' : microphone ? 'Prepare o microfone' : state.inputKind === 'interface' ? 'Prepare a interface' : 'Prepare o Real Tone');
+    text('tj-input-help', bateria ? 'Use um navegador com Web MIDI e selecione a porta MIDI da sua bateria eletrônica.' : microphone
       ? 'Use o microfone do computador, um USB ou um ligado à interface. Aproxime-o do instrumento em um ambiente silencioso. Toque uma corda por vez.'
       : state.inputKind === 'interface'
         ? 'Ligue o instrumento à entrada indicada para instrumento na interface. Selecione a interface na lista abaixo.'
         : 'Plugue o Real Tone na USB e no instrumento com saída para cabo. Selecione o adaptador Rocksmith na lista abaixo.');
-    text('tj-listening-help', microphone
+    text('tj-listening-help', bateria ? 'A prática usa as mensagens MIDI do canal de percussão; microfone e reconhecimento acústico ficam desativados neste perfil.' : microphone
       ? 'Use fones: o microfone também pode captar o som do computador e gerar acertos indevidos. Na prática, os sons de apoio começam desligados. Um microfone ligado à interface também usa este modo.'
       : 'Confira o medidor tocando uma corda e ajuste o ganho sem saturar. Se estiver usando um microfone na interface, escolha o modo Microfone.');
-    $('tj-connect').textContent = state.connected ? 'Desconectar' : microphone ? 'Ativar microfone' : 'Ativar entrada';
-    renderCaptureGain();
+    $('tj-connect').textContent = state.connected ? 'Desconectar' : bateria ? 'Ativar MIDI' : microphone ? 'Ativar microfone' : 'Ativar entrada';
+    $('tj-gain').disabled = bateria; if (!bateria) renderCaptureGain();
   }
   function changeProfile() {
     var anterior = perfilDoInstrumento(state.instrument);
@@ -346,9 +347,9 @@
     $('tj-study').value = study ? study.id : '';
     text('tj-study-info', study ? study.level + ' · ' + study.objective : source.objective || 'Arranjo importado neste navegador. Use notas isoladas na afinação indicada.');
     var table = $('tj-notes'); table.replaceChildren();
-    chart.notes.slice(0, 80).forEach(function (n) { table.appendChild(el('tr', {}, [el('td', { text: n.time.toFixed(2) + ' s' }), el('td', { text: noteName(n.midi) }), el('td', { text: String(n.string) }), el('td', { text: String(n.fret) })])); });
-    text('tj-table-note', chart.notes.length > 80 ? 'Primeiras 80 notas de ' + chart.notes.length + '. A pista usa o arranjo completo.' : 'Corda 1 é a mais aguda; corda ' + perfil.strings + ' é a mais grave.');
-    text('tj-stage-profile', perfil.strings + ' CORDAS / AFINAÇÃO PADRÃO');
+    chart.notes.slice(0, 80).forEach(function (n) { table.appendChild(el('tr', {}, [el('td', { text: n.time.toFixed(2) + ' s' }), el('td', { text: perfil.layout === 'drums' ? n.drum : noteName(n.midi) }), el('td', { text: perfil.layout === 'drums' ? 'MIDI ' + n.midi : String(n.string) }), el('td', { text: perfil.layout === 'drums' ? 'Vel. ' + n.velocity : String(n.fret) })])); });
+    text('tj-table-note', perfil.layout === 'drums' ? (chart.notes.length > 80 ? 'Primeiras 80 batidas de ' + chart.notes.length + '.' : 'As peças são recebidas pela entrada MIDI.') : chart.notes.length > 80 ? 'Primeiras 80 notas de ' + chart.notes.length + '. A pista usa o arranjo completo.' : 'Corda 1 é a mais aguda; corda ' + perfil.strings + ' é a mais grave.');
+    text('tj-stage-profile', perfil.layout === 'drums' ? 'BATERIA MIDI / CANAL 10' : perfil.strings + ' CORDAS / AFINAÇÃO PADRÃO');
     $('tj-canvas').setAttribute('aria-label', 'Pista de notas de ' + nomeInstrumento(proximo).toLowerCase() + '. Uma tabela das notas está disponível abaixo.');
     selectedRange(); updateScore(); updateTransport();
   }

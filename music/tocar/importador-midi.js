@@ -24,7 +24,9 @@
     exigir(Perfis && typeof Perfis.obter === 'function', 'Carregue MusiqueTocarPerfis antes de importar MIDI.');
     exigir(typeof id === 'string', 'Informe um perfil de instrumento válido.');
     var origem = Perfis.obter(id);
-    exigir(origem && Array.isArray(origem.tuning), 'Perfil de instrumento desconhecido.');
+    exigir(origem, 'Perfil de instrumento desconhecido.');
+    if (origem.layout === 'drums') return { id: origem.id, layout: 'drums', drums: origem.drums.slice(), minMidi: 0, maxMidi: 127 };
+    exigir(Array.isArray(origem.tuning), 'Perfil de instrumento inválido.');
     exigir(Number.isInteger(origem.strings) && origem.strings >= 1 && origem.strings <= 6 && origem.tuning.length === origem.strings,
       'Perfil de instrumento inválido.');
     exigir(Number.isInteger(origem.frets) && origem.frets >= 0 && origem.frets <= 24, 'Perfil de instrumento inválido.');
@@ -44,6 +46,7 @@
     return perfilPorId(opcoes.perfil);
   }
   function mesmoPerfil(a, b) {
+    if (a.layout === 'drums' || b.layout === 'drums') return a.layout === b.layout && a.id === b.id;
     return a.strings === b.strings && a.frets === b.frets && a.tuning.length === b.tuning.length &&
       a.tuning.every(function (midi, indice) { return midi === b.tuning[indice]; });
   }
@@ -121,19 +124,19 @@
     if (!faixa.canais[canal]) faixa.canais[canal] = novoCanal();
     return faixa.canais[canal];
   }
-  function registrarNotaAtiva(canal, midi, tick) {
+  function registrarNotaAtiva(canal, midi, tick, velocity) {
     canal.totalNotas++;
     canal.minMidi = canal.minMidi === null ? midi : Math.min(canal.minMidi, midi);
     canal.maxMidi = canal.maxMidi === null ? midi : Math.max(canal.maxMidi, midi);
     canal.ultimoTick = Math.max(canal.ultimoTick, tick);
-    canal.ativas.push({ midi: midi, tick: tick });
+    canal.ativas.push({ midi: midi, tick: tick, velocity: velocity });
   }
   function encerrarNota(canal, midi, tick) {
     canal.ultimoTick = Math.max(canal.ultimoTick, tick);
     var indice = canal.ativas.findIndex(function (nota) { return nota.midi === midi; });
     if (indice < 0) { canal.notaOrfa = true; return; }
     var inicio = canal.ativas.splice(indice, 1)[0];
-    canal.notas.push({ midi: midi, inicioTick: inicio.tick, fimTick: tick });
+    canal.notas.push({ midi: midi, inicioTick: inicio.tick, fimTick: tick, velocity: inicio.velocity });
   }
 
   function lerFaixa(bytes, inicio, fim, indiceFaixa, tempos) {
@@ -163,7 +166,7 @@
         if (tinhaStatus) dado1 = lerDado(bytes, estado);
         else { dado1 = primeiro; estado.cursor++; }
         if (tipo !== 0xc0 && tipo !== 0xd0) dado2 = lerDado(bytes, estado);
-        if (tipo === 0x90 && dado2 !== 0) registrarNotaAtiva(canal, dado1, tick);
+        if (tipo === 0x90 && dado2 !== 0) registrarNotaAtiva(canal, dado1, tick, dado2);
         else if (tipo === 0x80 || (tipo === 0x90 && dado2 === 0)) encerrarNota(canal, dado1, tick);
         else if (tipo === 0xe0) canal.pitchBend = true;
         continue;
@@ -240,6 +243,25 @@
     return evento.time + (tick - evento.tick) * 60 / evento.bpm / ppqn;
   }
   function motivoDoCanal(canal, numeroCanal, mapa, ppqn, perfil) {
+    if (perfil.layout === 'drums') {
+      if (numeroCanal !== 9) return 'A bateria MIDI deve estar no canal 10.';
+      if (canal.totalNotas === 0) return 'A linha não contém golpes MIDI para importar.';
+      if (canal.pitchBend) return 'A linha usa pitch bend, que não é representado neste arranjo.';
+      if (canal.notaOrfa) return 'A linha contém note-off sem note-on correspondente.';
+      if (canal.ativas.length) return 'A linha contém golpe sem note-off.';
+      var aceitos = Object.create(null);
+      perfil.drums.forEach(function (drum) { aceitos[drum.midi] = true; });
+      if (canal.notas.some(function (nota) { return !aceitos[nota.midi]; })) return 'A linha contém peças fora do mapeamento de bateria aceito.';
+      if (canal.totalNotas > LIMITE_NOTAS) return 'A linha tem mais de 2.000 golpes.';
+      var maxFim = 0, invalida = false;
+      canal.notas.forEach(function (nota) {
+        var duracaoDrum = segundosNoTick(nota.fimTick, mapa, ppqn) - segundosNoTick(nota.inicioTick, mapa, ppqn);
+        maxFim = Math.max(maxFim, nota.fimTick);
+        if (duracaoDrum < 0.02 - EPS || duracaoDrum > 60 + EPS) invalida = true;
+      });
+      if (invalida || segundosNoTick(maxFim, mapa, ppqn) > LIMITE_DURACAO + EPS) return 'A linha excede os limites de duração.';
+      return null;
+    }
     if (numeroCanal === 9) return 'Canal 10 é reservado para percussão.';
     if (canal.totalNotas === 0) return 'A linha não contém notas MIDI para importar.';
     if (canal.pitchBend) return 'A linha usa pitch bend, que não é representado neste arranjo.';
@@ -349,17 +371,24 @@
     exigir(candidatoPublico.valid, candidatoPublico.reason || 'Esta linha MIDI não pode ser importada.');
     var perfil = perfilDaCriacao(opcoes, privado.perfil);
 
-    var notas = canal.notas.slice().sort(function (a, b) { return a.inicioTick - b.inicioTick || a.fimTick - b.fimTick; }).map(function (nota, indice) {
+    var notas = canal.notas.slice().sort(function (a, b) { return a.inicioTick - b.inicioTick || a.midi - b.midi || a.fimTick - b.fimTick; }).map(function (nota, indice) {
       var inicio = segundosNoTick(nota.inicioTick, privado.tempoMap, privado.ppqn);
       var fim = segundosNoTick(nota.fimTick, privado.tempoMap, privado.ppqn);
+      if (perfil.layout === 'drums') {
+        var drum = perfil.drums.find(function (item) { return item.midi === nota.midi; });
+        return { id: 'midi-' + (indice + 1), time: inicio, duration: fim - inicio, drum: drum.id, midi: nota.midi, velocity: nota.velocity };
+      }
       var posicao = posicaoSugerida(nota.midi, perfil);
       return { id: 'midi-' + (indice + 1), time: inicio, duration: fim - inicio,
         string: posicao.string, fret: posicao.fret, midi: nota.midi };
     });
     var duracao = segundosNoTick(canal.ultimoTick, privado.tempoMap, privado.ppqn);
     var tempos = mapaRelevante(privado.tempoMap, duracao);
-    var bruto = { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao,
-      tuning: perfil.tuning.slice(), notes: notas, metadata: { demo: false } };
+    var bruto = perfil.layout === 'drums'
+      ? { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao,
+          profile: 'bateria-midi', layout: 'drums', notes: notas, metadata: { demo: false } }
+      : { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao,
+          tuning: perfil.tuning.slice(), notes: notas, metadata: { demo: false } };
     if (tempos.length > 1) bruto.tempoMap = { version: 1, events: tempos };
     var chart = Core.validarChart(bruto);
     // Enquanto clientes antigos ainda ignoram tempoMap, não descartamos a

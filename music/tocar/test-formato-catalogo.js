@@ -28,7 +28,7 @@ function documentoBaixo() {
 
 test('Contrato exporta enums fixos e normaliza somente o envelope e autoria demonstrativa', () => {
   assert.deepEqual(Object.keys(Formato).sort(), ['INSTRUMENTOS', 'LIMITE_BYTES', 'NIVEIS', 'TECNICAS', 'validarDocumento'].sort());
-  assert.deepEqual(Formato.INSTRUMENTOS, ['violao', 'guitarra', 'baixo']);
+  assert.deepEqual(Formato.INSTRUMENTOS, ['violao', 'guitarra', 'baixo', 'bateria']);
   assert.deepEqual(Formato.NIVEIS, ['iniciante', 'intermediario', 'avancado']);
   assert.deepEqual(Formato.TECNICAS, ['notas-isoladas', 'cordas-soltas', 'troca-de-cordas', 'escalas', 'arpejos']);
   for (const valores of [Formato.INSTRUMENTOS, Formato.NIVEIS, Formato.TECNICAS]) assert.ok(Object.isFrozen(valores));
@@ -47,7 +47,9 @@ test('Contrato exporta enums fixos e normaliza somente o envelope e autoria demo
 
 test('Todos os estudos atuais passam sem alterar notas, tempos, seções ou identidade', () => {
   for (const estudo of Estudos.listar()) {
-    const base = estudo.instrument === 'baixo' ? documentoBaixo() : documento();
+    const base = estudo.instrument === 'baixo' ? documentoBaixo() : estudo.instrument === 'bateria' ? {
+      ...documento(), instrument: 'bateria', chart: estudo.chart
+    } : documento();
     const input = { ...base, instrument: estudo.instrument || base.instrument, title: estudo.title, chart: estudo.chart };
     const antes = JSON.stringify(input);
     const esperado = Core.validarChart(estudo.chart); esperado.metadata = { demo: false };
@@ -59,7 +61,9 @@ test('Todos os estudos atuais passam sem alterar notas, tempos, seções ou iden
 test('Instrumento, nível e técnica aceitam somente os valores explícitos', () => {
   for (const [campo, valores] of [['instrument', Formato.INSTRUMENTOS], ['level', Formato.NIVEIS], ['technique', Formato.TECNICAS]]) {
     for (const valor of valores) {
-      const base = campo === 'instrument' && valor === 'baixo' ? documentoBaixo() : documento();
+      const base = campo === 'instrument' && valor === 'baixo' ? documentoBaixo() : campo === 'instrument' && valor === 'bateria' ? {
+        ...documento(), instrument: 'bateria', title: Estudos.obter('bateria-pulsacao-v1').title, chart: Estudos.obter('bateria-pulsacao-v1')
+      } : documento();
       assert.equal(Formato.validarDocumento({ ...base, [campo]: valor })[campo], valor);
     }
     for (const valor of ['', null, undefined, 1, {}, valores[0].toUpperCase(), valores[0] + ' ']) {
