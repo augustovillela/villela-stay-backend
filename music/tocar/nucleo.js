@@ -142,7 +142,7 @@
       bpm: limite(input.bpm, 20, 300, 'BPM'), duration: limite(input.duration, 0.04, 900, 'Duração'),
       tuning: (input.tuning == null ? PADRAO : input.tuning), notes: [],
     };
-    exigir(Array.isArray(chart.tuning) && (chart.tuning.length === 4 || chart.tuning.length === 6), 'Afinação deve conter quatro ou seis alturas MIDI, da corda grave à aguda.');
+    exigir(Array.isArray(chart.tuning) && (chart.tuning.length === 4 || chart.tuning.length === 5 || chart.tuning.length === 6), 'Afinação deve conter quatro, cinco ou seis alturas MIDI, da corda grave à aguda.');
     chart.tuning = chart.tuning.map(function (m) {
       exigir(Number.isInteger(m) && m >= 24 && m <= 88, 'Altura da afinação fora da faixa MIDI aceita (24–88).');
       return m;

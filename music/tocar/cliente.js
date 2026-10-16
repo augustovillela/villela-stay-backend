@@ -38,7 +38,7 @@
     return Number.isFinite(ms) && ms >= 35 && ms <= 250 ? ms / 2000 : 0.032;
   }
   function nomeInstrumento(instrumento) {
-    return instrumento === 'baixo' ? 'Contrabaixo' : instrumento === 'bateria' ? 'Bateria eletrônica' : instrumento === 'piano' ? 'Piano' : instrumento === 'guitarra' ? 'Guitarra' : 'Violão';
+    return instrumento === 'baixo' ? 'Contrabaixo' : instrumento === 'cavaquinho' ? 'Cavaquinho' : instrumento === 'bandolim' ? 'Bandolim' : instrumento === 'bateria' ? 'Bateria eletrônica' : instrumento === 'piano' ? 'Piano' : instrumento === 'guitarra' ? 'Guitarra' : 'Violão';
   }
   function instrumentoDoChart(perfil, origem) {
     if (origem && origem.instrument && perfilDoInstrumento(origem.instrument).id === perfil.id) return origem.instrument;
@@ -729,6 +729,8 @@
   if(!boot.logado)$('tj-history').appendChild(el('li',{},[el('a',{href:'/music/entrar?voltar=%2Fmusic%2Ftocar',text:'Entrar ou criar conta'})]));
   if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'bateria'; })) $('tj-instrument').appendChild(el('option', { value: 'bateria', text: 'Bateria eletrônica' }));
   if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'piano'; })) $('tj-instrument').appendChild(el('option', { value: 'piano', text: 'Piano MIDI' }));
+  if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'cavaquinho'; })) $('tj-instrument').appendChild(el('option', { value: 'cavaquinho', text: 'Cavaquinho' }));
+  if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'bandolim'; })) $('tj-instrument').appendChild(el('option', { value: 'bandolim', text: 'Bandolim de 5 cordas' }));
   if (!Array.prototype.some.call($('tj-connection-type').children || [], function (o) { return o.value === 'midi'; })) $('tj-connection-type').appendChild(el('option', { value: 'midi', text: 'Web MIDI · bateria eletrônica' }));
   profile();applyChart(chart);if(previewMode)openPreview();else{refreshDevices();history();}tick();
 })();

@@ -5,7 +5,7 @@
   else root.MusiqueTocarFormatoCatalogo = factory(root.MusiqueTocarCore, root.MusiqueTocarPerfis);
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (Core, Perfis) {
   'use strict';
-  var INSTRUMENTOS = Object.freeze(['violao', 'guitarra', 'baixo', 'bateria', 'piano']);
+  var INSTRUMENTOS = Object.freeze(['violao', 'guitarra', 'baixo', 'cavaquinho', 'bandolim', 'bateria', 'piano']);
   var NIVEIS = Object.freeze(['iniciante', 'intermediario', 'avancado']);
   var TECNICAS = Object.freeze(['notas-isoladas', 'cordas-soltas', 'troca-de-cordas', 'escalas', 'arpejos']);
   var LIMITE_BYTES = 1048576;

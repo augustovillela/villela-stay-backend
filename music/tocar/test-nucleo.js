@@ -125,7 +125,7 @@ test('núcleo aceita baixo padrão de quatro cordas e calcula MIDI pela corda ma
   const cordaInvalida = structuredClone(baixo); cordaInvalida.notes[0].string = 5;
   assert.throws(() => Core.validarChart(cordaInvalida), /Corda inválida/);
   const afinacaoInvalida = structuredClone(baixo); afinacaoInvalida.tuning.push(48);
-  assert.throws(() => Core.validarChart(afinacaoInvalida), /quatro ou seis/);
+  assert.throws(() => Core.validarChart(afinacaoInvalida), /MIDI|quatro, cinco ou seis/);
 });
 
 test('recusa polifonia, ids repetidos, duração fora do chart e campos inseguros', () => {

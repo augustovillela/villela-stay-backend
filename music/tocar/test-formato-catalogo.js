@@ -28,7 +28,7 @@ function documentoBaixo() {
 
 test('Contrato exporta enums fixos e normaliza somente o envelope e autoria demonstrativa', () => {
   assert.deepEqual(Object.keys(Formato).sort(), ['INSTRUMENTOS', 'LIMITE_BYTES', 'NIVEIS', 'TECNICAS', 'validarDocumento'].sort());
-  assert.deepEqual(Formato.INSTRUMENTOS, ['violao', 'guitarra', 'baixo', 'bateria', 'piano']);
+  assert.deepEqual(Formato.INSTRUMENTOS, ['violao', 'guitarra', 'baixo', 'cavaquinho', 'bandolim', 'bateria', 'piano']);
   assert.deepEqual(Formato.NIVEIS, ['iniciante', 'intermediario', 'avancado']);
   assert.deepEqual(Formato.TECNICAS, ['notas-isoladas', 'cordas-soltas', 'troca-de-cordas', 'escalas', 'arpejos']);
   for (const valores of [Formato.INSTRUMENTOS, Formato.NIVEIS, Formato.TECNICAS]) assert.ok(Object.isFrozen(valores));
@@ -61,7 +61,9 @@ test('Todos os estudos atuais passam sem alterar notas, tempos, seções ou iden
 test('Instrumento, nível e técnica aceitam somente os valores explícitos', () => {
   for (const [campo, valores] of [['instrument', Formato.INSTRUMENTOS], ['level', Formato.NIVEIS], ['technique', Formato.TECNICAS]]) {
     for (const valor of valores) {
-      const base = campo === 'instrument' && valor === 'baixo' ? documentoBaixo() : campo === 'instrument' && (valor === 'bateria' || valor === 'piano') ? {
+      const base = campo === 'instrument' && valor === 'baixo' ? documentoBaixo() : campo === 'instrument' && (valor === 'cavaquinho' || valor === 'bandolim') ? {
+        ...documento(), instrument: valor, chart: { ...documento().chart, tuning: valor === 'cavaquinho' ? [50,55,59,62] : [55,62,69,76,83], notes: [{ id: 'n1', time: 1, duration: 0.5, string: valor === 'cavaquinho' ? 4 : 5, fret: 0, midi: valor === 'cavaquinho' ? 50 : 55 }] }
+      } : campo === 'instrument' && (valor === 'bateria' || valor === 'piano') ? {
         ...documento(), instrument: valor, title: Estudos.obter(valor === 'bateria' ? 'bateria-pulsacao-v1' : 'piano-pulsacao-v1').title, chart: Estudos.obter(valor === 'bateria' ? 'bateria-pulsacao-v1' : 'piano-pulsacao-v1')
       } : documento();
       assert.equal(Formato.validarDocumento({ ...base, [campo]: valor })[campo], valor);
