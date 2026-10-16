@@ -101,6 +101,14 @@
       ]
     },
     {
+      id: 'ukulele-pulsacao-v1', title: 'Pulsação no ukulele', level: 'Iniciante · ukulele 1', bpm: 72,
+      instrument: 'ukulele', objective: 'Praticar as quatro cordas do ukulele na afinação tradicional Sol–Dó–Mi–Lá.',
+      phrases: [
+        { title: 'Cordas soltas', notes: [[4, 0, 1], [3, 0, 1], [2, 0, 1], [1, 0, 1]] },
+        { title: 'Primeiras casas', notes: [[4, 0, 1], [4, 2, 1], [3, 0, 1], [2, 0, 1]] }
+      ]
+    },
+    {
       id: 'bandolim-pulsacao-v1', title: 'Pulsação no bandolim', level: 'Iniciante · bandolim 1', bpm: 68,
       instrument: 'bandolim', objective: 'Percorrer as cinco cordas do bandolim de cinco cordas com ataques regulares.',
       phrases: [

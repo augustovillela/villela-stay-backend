@@ -39,6 +39,7 @@
     detector: { minHz: 35, maxHz: 700, frameMs: 128, windowMs: 128, stepMs: 48 }
   });
   var CAVAQUINHO = congelarPerfil({ id: 'cavaquinho', rotulo: 'Cavaquinho', label: 'Cavaquinho', tuning: [50, 55, 59, 62], strings: 4, frets: 17, rotulos: ['1 · Ré aguda', '2 · Si', '3 · Sol', '4 · Ré grave'], detector: { minHz: 120, maxHz: 1400, frameMs: 64, windowMs: 64, stepMs: 24 } });
+  var UKULELE = congelarPerfil({ id: 'ukulele', rotulo: 'Ukulele', label: 'Ukulele', tuning: [67, 60, 64, 69], strings: 4, frets: 15, rotulos: ['1 · Lá', '2 · Mi', '3 · Dó', '4 · Sol agudo'], detector: { minHz: 180, maxHz: 1400, frameMs: 64, windowMs: 64, stepMs: 24 } });
   var BANDOLIM = congelarPerfil({ id: 'bandolim-5', rotulo: 'Bandolim de 5 cordas', label: 'Bandolim de 5 cordas', tuning: [55, 62, 69, 76, 83], strings: 5, frets: 24, rotulos: ['1 · Si aguda', '2 · Mi', '3 · Lá', '4 · Ré', '5 · Sol grave'], detector: { minHz: 140, maxHz: 1600, frameMs: 64, windowMs: 64, stepMs: 24 } });
   var BATERIA = congelarPerfil({
     id: 'bateria-midi',
@@ -55,8 +56,8 @@
     detector: null
   });
   var PIANO = congelarPerfil({ id: 'piano-midi', rotulo: 'Piano MIDI', label: 'Piano MIDI', layout: 'piano', keys: 88, minMidi: 21, maxMidi: 108, detector: null });
-  var PERFIS = Object.freeze({ 'seis-cordas': SEIS_CORDAS, baixo: BAIXO, cavaquinho: CAVAQUINHO, 'bandolim-5': BANDOLIM, 'bateria-midi': BATERIA, 'piano-midi': PIANO });
-  var ALIASES = Object.freeze({ violao: 'seis-cordas', guitarra: 'seis-cordas', 'seis-cordas': 'seis-cordas', baixo: 'baixo', cavaquinho: 'cavaquinho', bandolim: 'bandolim-5', 'bandolim-5': 'bandolim-5', bateria: 'bateria-midi', 'bateria-midi': 'bateria-midi', piano: 'piano-midi', 'piano-midi': 'piano-midi' });
+  var PERFIS = Object.freeze({ 'seis-cordas': SEIS_CORDAS, baixo: BAIXO, cavaquinho: CAVAQUINHO, ukulele: UKULELE, 'bandolim-5': BANDOLIM, 'bateria-midi': BATERIA, 'piano-midi': PIANO });
+  var ALIASES = Object.freeze({ violao: 'seis-cordas', guitarra: 'seis-cordas', 'seis-cordas': 'seis-cordas', baixo: 'baixo', cavaquinho: 'cavaquinho', ukulele: 'ukulele', bandolim: 'bandolim-5', 'bandolim-5': 'bandolim-5', bateria: 'bateria-midi', 'bateria-midi': 'bateria-midi', piano: 'piano-midi', 'piano-midi': 'piano-midi' });
 
   function copia(perfil) {
     if (!perfil) return null;
@@ -88,6 +89,7 @@
     if (mesmaAfinacao(tuning, SEIS_CORDAS.tuning)) return copia(SEIS_CORDAS);
     if (mesmaAfinacao(tuning, BAIXO.tuning)) return copia(BAIXO);
     if (mesmaAfinacao(tuning, CAVAQUINHO.tuning)) return copia(CAVAQUINHO);
+    if (mesmaAfinacao(tuning, UKULELE.tuning)) return copia(UKULELE);
     if (mesmaAfinacao(tuning, BANDOLIM.tuning)) return copia(BANDOLIM);
     return null;
   }
