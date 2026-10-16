@@ -103,14 +103,14 @@
   }
   function option(select, value, label) { select.appendChild(node('option', label, { value: value })); }
   function perfilSelecionado() { return Perfis.obter($('tg-instrument').value); }
-  function perfilDoChart(valor) { return valor && Perfis.porAfinacao(valor.tuning); }
+  function perfilDoChart(valor) { return valor && (Perfis.porChart ? Perfis.porChart(valor) : Perfis.porAfinacao(valor.tuning)); }
   function instrumentoDoPerfil(perfil, preferido) {
     if (preferido && Perfis.obter(preferido) && Perfis.obter(preferido).id === perfil.id) return preferido;
-    return perfil.id === 'baixo' ? 'baixo' : 'violao';
+    return perfil.id === 'baixo' ? 'baixo' : perfil.id === 'cavaquinho' ? 'cavaquinho' : perfil.id === 'ukulele' ? 'ukulele' : perfil.id === 'bandolim-5' ? 'bandolim' : perfil.id === 'piano-midi' ? 'piano' : perfil.id === 'bateria-midi' ? 'bateria' : 'violao';
   }
   function sincronizarInstrumentoDoChart(valor, preferido) {
     var perfil = perfilDoChart(valor);
-    if (!perfil) throw new Error('O arranjo precisa usar a afinação padrão de violão/guitarra ou de contrabaixo de quatro cordas.');
+    if (!perfil) throw new Error('O arranjo precisa usar uma afinação padrão ou perfil MIDI compatível com o Musique.');
     $('tg-instrument').value = instrumentoDoPerfil(perfil, preferido || $('tg-instrument').value);
     return perfil;
   }
@@ -367,7 +367,7 @@
     },
     onPending: function (pending) { editorPending = pending; if (pending) ++importTicket; render(); },
   });
-  Formato.INSTRUMENTOS.forEach(function (v) { option($('tg-instrument'), v, v === 'violao' ? 'Violão' : v === 'guitarra' ? 'Guitarra' : 'Contrabaixo de 4 cordas'); });
+  Formato.INSTRUMENTOS.forEach(function (v) { option($('tg-instrument'), v, v === 'violao' ? 'Violão' : v === 'guitarra' ? 'Guitarra' : v === 'baixo' ? 'Contrabaixo de 4 cordas' : v === 'cavaquinho' ? 'Cavaquinho' : v === 'ukulele' ? 'Ukulele' : v === 'bandolim' ? 'Bandolim de 5 cordas' : v === 'piano' ? 'Piano MIDI' : 'Bateria eletrônica'); });
   Formato.NIVEIS.forEach(function (v) { option($('tg-level'), v, v); });
   Formato.TECNICAS.forEach(function (v) { option($('tg-technique'), v, v.replace(/-/g, ' ')); });
   Estudos.listar().forEach(function (s) { option($('tg-example'), s.id, s.title); });
