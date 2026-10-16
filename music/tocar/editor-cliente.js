@@ -34,6 +34,7 @@
     }
     function name(midi) { return NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1); }
     function stringCount() { return chart && Array.isArray(chart.tuning) ? chart.tuning.length : 0; }
+    function midiLayout() { return !!(chart && (chart.layout === 'piano' || chart.layout === 'drums')); }
     function stringsLabel() {
       if (chart && chart.layout === 'piano') return '88 teclas MIDI';
       if (chart && chart.layout === 'drums') return 'peças MIDI de bateria';
@@ -52,6 +53,12 @@
         timeline.setAttribute('aria-label', 'Linha do tempo do arranjo');
         $('timeline-inner').style.height = '344px'; $('notes').style.height = '276px';
         return;
+      }
+      if (midiLayout()) {
+        labels.appendChild(node('span', chart.layout === 'piano' ? 'Teclas MIDI' : 'Peças MIDI'));
+        select.appendChild(node('option', 'MIDI', { value: '0' }));
+        $('instrument-description').textContent = chart.layout === 'piano' ? 'Edite notas e acordes por MIDI, incluindo velocity.' : 'Edite batidas MIDI por peça e velocity.';
+        timeline.setAttribute('aria-label', 'Linha do tempo MIDI'); $('timeline-inner').style.height = '180px'; $('notes').style.height = '110px'; return;
       }
       for (var string = 1; string <= stringCount(); string++) {
         labels.appendChild(node('span', stringLabel(string)));
@@ -96,6 +103,7 @@
       return Number(raw);
     }
     function pitch() {
+      if (midiLayout()) { $('note-pitch').textContent = 'MIDI ' + ($('note-string').value || '—') + ' · velocity ' + ($('note-fret').value || '—'); return; }
       var s = Number($('note-string').value), f = Number($('note-fret').value);
       $('note-pitch').textContent = chart && Number.isInteger(s) && s >= 1 && s <= stringCount() && Number.isInteger(f) && f >= 0 && f <= 24 && $('note-fret').value !== ''
         ? name(chart.tuning[stringCount() - s] + f) + ' · MIDI ' + (chart.tuning[stringCount() - s] + f) : 'Preencha corda e casa válidas.';
@@ -148,8 +156,8 @@
     function fillNote(n) {
       $('note-time').value = n ? n.time : '';
       $('note-duration').value = n ? n.duration : '';
-      $('note-string').value = n ? n.string : defaultString();
-      $('note-fret').value = n ? n.fret : 0;
+      $('note-string').value = n ? (midiLayout() ? n.midi : n.string) : (midiLayout() ? 60 : defaultString());
+      $('note-fret').value = n ? (midiLayout() ? n.velocity : n.fret) : (midiLayout() ? 100 : 0);
       $('apply-note').textContent = noteDraft ? 'Adicionar esta nota' : 'Aplicar alteração da nota';
       $('note-label').textContent = noteDraft ? 'Nova nota · ainda não aplicada' : n ? 'Nota ' + (chart.notes.findIndex(function (item) { return item.id === n.id; }) + 1) + ' de ' + chart.notes.length : 'Escolha uma nota';
       pitch();
@@ -310,7 +318,8 @@
     });
     on('apply-note', 'click', function () {
       try {
-        var values = { time: number('note-time'), duration: number('note-duration'), string: number('note-string'), fret: number('note-fret') };
+        var values = midiLayout() ? { time: number('note-time'), duration: number('note-duration'), midi: number('note-string'), velocity: number('note-fret') } : { time: number('note-time'), duration: number('note-duration'), string: number('note-string'), fret: number('note-fret') };
+        if (midiLayout() && chart.layout === 'drums') { var drum = (chart.drums || []).find(function (d) { return d.midi === values.midi; }); if (!drum) throw new Error('Escolha uma peça MIDI de bateria válida.'); values.drum = drum.id; }
         execute(noteDraft ? { tipo: 'criarNota', nota: values } : { tipo: 'editarNota', id: selectedId, alteracoes: values }, 'note');
       } catch (e) { message(e.message, true); }
     });
