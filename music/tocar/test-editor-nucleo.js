@@ -40,6 +40,21 @@ test('Novo arranjo de baixo começa na corda Mi grave e o editor usa quatro cord
   assert.throws(() => Editor.novoChart('Linha de baixo', 'arranjo-invalido', 'piano'), /Perfil de instrumento desconhecido/);
 });
 
+test('Novo arranjo de bateria usa peças MIDI e permite editar batidas sem cordas', () => {
+  const bateria = Editor.novoChart('Bateria', 'arranjo-bateria', 'bateria');
+  assert.equal(bateria.layout, 'drums');
+  assert.equal(bateria.profile, 'bateria-midi');
+  assert.equal(bateria.notes[0].drum, 'bumbo');
+  const motor = Editor.criar(bateria);
+  const criada = motor.executar({ tipo: 'criarNota', nota: { time: 1, duration: 0.1, drum: 'caixa', midi: 38, velocity: 110 } });
+  assert.equal(criada.chart.notes.at(-1).midi, 38);
+  const editada = motor.executar({ tipo: 'editarNota', id: criada.id, alteracoes: { velocity: 90, drum: 'chimbal-fechado', midi: 42 } });
+  assert.equal(editada.chart.notes.find(n => n.id === criada.id).drum, 'chimbal-fechado');
+  const duplicada = motor.executar({ tipo: 'duplicarNota', id: criada.id, time: 2 });
+  assert.equal(duplicada.chart.notes.at(-1).time, 2);
+  assert.deepEqual(Core.validarChart(duplicada.chart), duplicada.chart);
+});
+
 test('Abrir preserva floats, IDs, afinação e frases normalizados sem arredondar à grade', () => {
   const chart = base();
   chart.notes[0].time = -0;

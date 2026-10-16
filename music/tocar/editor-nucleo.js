@@ -18,7 +18,11 @@
   }
   function copiar(chart) {
     var c = { id: chart.id, title: chart.title, bpm: chart.bpm, duration: chart.duration,
-      tuning: chart.tuning.slice(), notes: chart.notes.map(function (n) { return Object.assign({}, n); }) };
+      notes: chart.notes.map(function (n) { return Object.assign({}, n); }) };
+    if (chart.tuning) c.tuning = chart.tuning.slice();
+    if (chart.profile) c.profile = chart.profile;
+    if (chart.layout) c.layout = chart.layout;
+    if (chart.drums) c.drums = chart.drums.map(function (d) { return Object.assign({}, d); });
     if (has(chart, 'sections')) c.sections = chart.sections.map(function (s) { return Object.assign({}, s); });
     // O mapa de andamento é parte da música importada. Notas, frases e
     // duração podem mudar sem apagar a relação de batidas do MIDI original.
@@ -51,6 +55,7 @@
     exigir(Perfis && typeof Perfis.obter === 'function', 'Carregue os perfis de instrumento antes de criar o arranjo.');
     exigir(typeof idPerfil === 'string', 'Informe um perfil de instrumento válido.');
     var perfil = Perfis.obter(idPerfil);
+    if (perfil && perfil.layout === 'drums') return perfil;
     exigir(perfil && Array.isArray(perfil.tuning) && perfil.tuning.length === perfil.strings &&
       (perfil.strings === 4 || perfil.strings === 6), 'Perfil de instrumento desconhecido.');
     return perfil;
@@ -66,6 +71,10 @@
         ? root.crypto.randomUUID() : Date.now().toString(36) + '-' + sequenciaChart.toString(36) + '-' + Math.random().toString(36).slice(2, 12));
     }
     var perfil = perfilNovo(idPerfil);
+    if (perfil.layout === 'drums') return Core.validarChart({ id: id, title: title === undefined ? 'Novo arranjo' : title, bpm: 90, duration: 16,
+      profile: perfil.id, layout: 'drums', drums: perfil.drums.map(function (d) { return Object.assign({}, d); }),
+      notes: [{ id: 'nota-editor-1', time: 0, duration: 0.5, drum: perfil.drums[0].id, midi: perfil.drums[0].midi, velocity: 100 }],
+      sections: [], metadata: { demo: false } });
     return Core.validarChart({ id: id, title: title === undefined ? 'Novo arranjo' : title, bpm: 90, duration: 16,
       tuning: perfil.tuning.slice(), notes: [{ id: 'nota-editor-1', time: 0, duration: 0.5,
         string: perfil.strings, fret: 0, midi: perfil.tuning[0] }],
@@ -91,6 +100,10 @@
       switch (op.tipo) {
         case 'criarNota':
           campos(op, ['tipo', 'nota'], ['nota'], 'Criar nota');
+          if (candidato.layout === 'drums') {
+            campos(op.nota, ['time', 'duration', 'drum', 'midi', 'velocity'], ['time', 'duration', 'drum', 'midi', 'velocity'], 'Batida');
+            afetado = gerarId('nota-editor'); candidato.notes.push({ id: afetado, time: op.nota.time, duration: op.nota.duration, drum: op.nota.drum, midi: op.nota.midi, velocity: op.nota.velocity }); break;
+          }
           campos(op.nota, ['time', 'duration', 'string', 'fret'], ['time', 'duration', 'string', 'fret'], 'Nota');
           afetado = gerarId('nota-editor');
           var nota = { id: afetado, time: op.nota.time, duration: op.nota.duration, string: op.nota.string, fret: op.nota.fret };
@@ -99,6 +112,7 @@
         case 'editarNota':
           campos(op, ['tipo', 'id', 'alteracoes'], ['id', 'alteracoes'], 'Editar nota');
           indice = localizar(candidato.notes, op.id, 'nota'); afetado = op.id;
+          if (candidato.layout === 'drums') { alterar(candidato.notes[indice], op.alteracoes, ['time', 'duration', 'drum', 'midi', 'velocity'], 'Alterações da batida'); break; }
           alterar(candidato.notes[indice], op.alteracoes, ['time', 'duration', 'string', 'fret'], 'Alterações da nota');
           atualizarMidi(candidato.notes[indice], candidato);
           break;
