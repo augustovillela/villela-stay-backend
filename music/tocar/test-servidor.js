@@ -77,14 +77,14 @@ test('demonstração pública usa exatamente o arranjo do núcleo', async () => 
 });
 
 test('arquivos de servidor e caminhos não autorizados não ficam públicos', async () => {
-  for (const arquivo of ['index.js', 'catalogo.js', 'rotas-catalogo.js', 'test-catalogo.js', 'test-servidor.js', 'test-aprender.js', 'test-estudos.js', 'test-editor-nucleo.js', 'test-editor-cliente.js', 'test-importador-midi.js', 'schema.sql', '%2e%2e%2fdb.js']) {
+  for (const arquivo of ['index.js', 'catalogo.js', 'rotas-catalogo.js', 'test-catalogo.js', 'test-servidor.js', 'test-aprender.js', 'test-estudos.js', 'test-editor-nucleo.js', 'test-editor-cliente.js', 'test-importador-midi.js', 'test-importador-musicxml.js', 'schema.sql', '%2e%2e%2fdb.js']) {
     assert.equal((await fetch(base + '/music/tocar/' + arquivo)).status, 404, arquivo);
   }
   const nucleo = await fetch(base + '/music/tocar/nucleo.js');
   assert.equal(nucleo.status, 200);
   assert.match(nucleo.headers.get('content-type'), /javascript/);
   assert.equal(nucleo.headers.get('x-content-type-options'), 'nosniff');
-  for (const arquivo of ['aprender.js', 'estudos.js', 'formato-catalogo.js', 'catalogo-cliente.js', 'editor-nucleo.js', 'editor-cliente.js', 'importador-midi.js', 'gerenciar.js']) {
+  for (const arquivo of ['aprender.js', 'estudos.js', 'formato-catalogo.js', 'catalogo-cliente.js', 'editor-nucleo.js', 'editor-cliente.js', 'importador-midi.js', 'importador-musicxml.js', 'gerenciar.js']) {
     const asset = await fetch(base + '/music/tocar/' + arquivo);
     assert.equal(asset.status, 200);
     assert.match(asset.headers.get('content-type'), /javascript/);
@@ -104,7 +104,7 @@ test('gestão pública só entrega a interface e não incorpora identidade ou ob
     assert.match(html, /id="tocar-gestao"/);
     assert.match(html, /\/music\/tocar\/gerenciar\.js/);
     assert.match(html, /\/music\/tocar\/editor\.css/);
-    const scripts = ['nucleo', 'editor-nucleo', 'editor-cliente', 'importador-midi', 'gerenciar'].map(nome => html.indexOf('src="/music/tocar/' + nome + '.js"'));
+    const scripts = ['nucleo', 'editor-nucleo', 'editor-cliente', 'importador-midi', 'importador-musicxml', 'gerenciar'].map(nome => html.indexOf('src="/music/tocar/' + nome + '.js"'));
     assert.ok(scripts.every(posicao => posicao >= 0));
     assert.ok(scripts.every((posicao, i) => i === 0 || posicao > scripts[i - 1]), 'O núcleo e o editor devem carregar antes da integração do gestor.');
     assert.doesNotMatch(html, /nao-expor|<script>nome|editor-catalogo/);

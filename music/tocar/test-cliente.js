@@ -136,10 +136,11 @@ function montar(options = {}) {
   const sandbox = { window, document, console, fetch, Blob, URLSearchParams, performance: { now: () => now * 1000 }, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
     requestAnimationFrame: fn => { const id = ++sequence; rafs.set(id, fn); return id; }, cancelAnimationFrame: id => rafs.delete(id),
     setTimeout: (fn, ms) => { const id = ++sequence; timers.set(id, { at: now + ms / 1000, fn }); return id; }, clearTimeout: id => timers.delete(id) };
-  const scripts = options.page === 'gestao' ? ['editor-nucleo.js','editor-cliente.js','importador-midi.js'] : ['catalogo-cliente.js','cliente.js'];
+  const scripts = options.page === 'gestao' ? ['editor-nucleo.js','editor-cliente.js','importador-midi.js','importador-musicxml.js'] : ['catalogo-cliente.js','cliente.js'];
   scripts.forEach(file => vm.runInNewContext(fs.readFileSync(path.join(__dirname, file), 'utf8'), sandbox, { filename: file }));
   if (options.page === 'gestao') {
     if (options.importador) window.MusiqueTocarImportadorMidi = options.importador;
+    if (options.importadorMusicXml) window.MusiqueTocarImportadorMusicXML = options.importadorMusicXml;
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'gerenciar.js'), 'utf8'), sandbox, { filename: 'gerenciar.js' });
   }
   const $ = id => document.getElementById(id);

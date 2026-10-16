@@ -38,6 +38,20 @@ function importadorMidi(opcoes={}){
   }};
 }
 async function analisarMidi(h,file={size:8,name:'linha.mid',arrayBuffer:async()=>new Uint8Array([77,84,104,100]).buffer}){h.$('tg-midi').files=[file];await h.event('tg-midi','change');}
+function importadorMusicXml(opcoes={}){
+  const analysis=opcoes.analysis||{format:'musicxml',version:'4.0',title:'Estudo <XML>',duration:2,tempoMap:[{time:0,beat:0,bpm:120}],candidates:[
+    {id:'p1-s1-v1',part:1,partId:'P1',staff:1,voice:'1',name:'Guitarra',noteCount:2,minMidi:40,maxMidi:45,duration:2,valid:true,reason:null},
+    {id:'p1-s1-v2',part:1,partId:'P1',staff:1,voice:'2',name:'Acorde',noteCount:2,minMidi:40,maxMidi:47,duration:2,valid:false,reason:'A linha contém notas sobrepostas.'},
+  ]};
+  const calls={analisar:[],criar:[]};
+  return {LIMITE_BYTES:2*1024*1024,calls,analisar(bytes){calls.analisar.push(bytes);if(opcoes.analisar)return opcoes.analisar(bytes,analysis);if(opcoes.erro)throw opcoes.erro;return analysis;},criarChart(a,candidateId,config){
+    calls.criar.push({a,candidateId,config});if(opcoes.erroCriar)throw opcoes.erroCriar;
+    return {id:config.id,title:config.title,bpm:120,duration:2,tuning:[40,45,50,55,59,64],notes:[
+      {id:'musicxml-1',time:0,duration:.4,string:6,fret:0,midi:40},{id:'musicxml-2',time:1,duration:.4,string:5,fret:0,midi:45},
+    ]};
+  }};
+}
+async function analisarMusicXml(h,file={size:8,name:'linha.musicxml',arrayBuffer:async()=>new Uint8Array([60,63,120,109,108]).buffer}){h.$('tg-musicxml').files=[file];await h.event('tg-musicxml','change');}
 const tests=[];function test(name,fn){tests.push({name,fn});}
 
 test('Visitante recebe entrada clara sem listar acervo, capturar ou mutar',async()=>{
@@ -100,6 +114,31 @@ test('Falha ao converter linha MIDI preserva rascunho e mantém confirmação ou
   const midi=importadorMidi({erroCriar:new Error('Linha incompatível')});const h=montar({page:'gestao',logado:true,fetch:servidor().fetch,importador:midi});await abrir(h);const title=h.$('tg-title').value,notes=h.$('tg-chart-info').textContent;
   await analisarMidi(h);await h.event('tg-midi-candidates','change','t0-c0');await h.event('tg-midi-confirm','click');assert.equal(h.$('tg-title').value,title);assert.equal(h.$('tg-chart-info').textContent,notes);assert.equal(h.$('tg-midi-preview').hidden,false);assert.equal(h.$('tg-midi-cancel').disabled,false);assert.match(h.$('tg-status').textContent,/Não foi possível importar/);
   await h.event('tg-midi-cancel','click');assert.equal(h.$('tg-title').disabled,false);
+});
+test('MusicXML e MXL são analisados localmente, exigem linha explícita e usam título seguro somente no rascunho novo',async()=>{
+  const xml=importadorMusicXml({analysis:{format:'mxl',version:'4.0',title:'Estudo <XML>',duration:2,tempoMap:[{time:0,beat:0,bpm:120}],candidates:[
+    {id:'p1-s1-v1',part:1,partId:'P1',staff:1,voice:'1',name:'Guitarra',noteCount:2,minMidi:40,maxMidi:45,duration:2,valid:true,reason:null},
+    {id:'p1-s1-v2',part:1,partId:'P1',staff:1,voice:'2',name:'Acorde',noteCount:2,minMidi:40,maxMidi:47,duration:2,valid:false,reason:'A linha contém notas sobrepostas.'},
+  ]}}),h=montar({page:'gestao',logado:true,fetch:servidor().fetch,importadorMusicXml:xml});
+  await h.settle();await h.event('tg-work','change','obra-a');
+  await analisarMusicXml(h,{size:8,name:'ignorado.mxl',arrayBuffer:async()=>new Uint8Array([80,75]).buffer});
+  assert.equal(xml.calls.analisar.length,1);assert.equal(h.$('tg-midi-preview').hidden,false);assert.match(h.$('tg-midi-info').textContent,/MXL/);assert.match(h.$('tg-midi-info').textContent,/ordem escrita/);assert.match(h.$('tg-import-line-label').textContent,/MusicXML/);assert.equal(h.$('tg-midi-confirm').disabled,true);assert.equal(h.$('tg-midi').disabled,true);
+  const invalida=h.$('tg-midi-candidates').children.find(n=>n.value==='p1-s1-v2');assert.equal(invalida.disabled,true);assert.match(invalida.textContent,/pauta 1.*voz 2.*sobrepostas/);
+  await h.event('tg-midi-candidates','change','p1-s1-v1');await h.event('tg-midi-confirm','click');
+  assert.equal(xml.calls.criar.length,1);assert.equal(xml.calls.criar[0].config.id,'musicxml-importado');assert.equal(h.$('tg-title').value,'Estudo XML');assert.match(h.$('tg-chart-info').textContent,/2 notas/);assert.equal(h.$('tg-midi-preview').hidden,true);
+});
+test('Importação MusicXML pendente bloqueia MIDI e resultado tardio cancelado não sobrescreve o rascunho',async()=>{
+  let release;const xml=importadorMusicXml({analisar:()=>new Promise(r=>{release=r;})}),midi=importadorMidi(),h=montar({page:'gestao',logado:true,fetch:servidor().fetch,importador:midi,importadorMusicXml:xml});await abrir(h);
+  h.$('tg-musicxml').files=[{size:8,name:'tardio.musicxml',arrayBuffer:async()=>new Uint8Array([60]).buffer}];const pending=h.$('tg-musicxml').dispatch('change');await h.settle();
+  assert.equal(h.$('tg-midi').disabled,true);assert.equal(h.$('tg-save').disabled,true);assert.match(h.$('tg-midi-info').textContent,/Lendo MusicXML/);
+  await h.event('tg-midi-cancel','click');await analisarMidi(h);assert.equal(h.$('tg-midi-preview').hidden,false);assert.match(h.$('tg-midi-info').textContent,/MIDI analisado/);
+  release({format:'musicxml',version:'4.0',duration:2,tempoMap:[{time:0,beat:0,bpm:120}],candidates:[{id:'p1-s1-v1',part:1,staff:1,voice:'1',name:'Antiga',noteCount:1,minMidi:40,maxMidi:40,duration:.5,valid:true,reason:null}]});await Promise.all(pending);
+  assert.match(h.$('tg-midi-info').textContent,/MIDI analisado/);assert.ok(h.$('tg-midi-candidates').children.some(n=>n.value==='t0-c0'));
+});
+test('MusicXML grande ou inválido não lê bytes nem altera o rascunho',async()=>{
+  const xml=importadorMusicXml({erro:new Error('XML truncado')}),h=montar({page:'gestao',logado:true,fetch:servidor().fetch,importadorMusicXml:xml});await abrir(h);const titulo=h.$('tg-title').value;
+  let leu=false;await analisarMusicXml(h,{size:2*1024*1024+1,name:'grande.mxl',arrayBuffer:async()=>{leu=true;return new ArrayBuffer(0);}});assert.equal(leu,false);assert.match(h.$('tg-status').textContent,/2 MiB/);assert.equal(h.$('tg-title').value,titulo);
+  await analisarMusicXml(h);assert.match(h.$('tg-status').textContent,/MusicXML\/MXL inválido.*XML truncado/);assert.equal(h.$('tg-midi-preview').hidden,true);assert.equal(h.$('tg-title').value,titulo);
 });
 test('Conflito de revisão preserva texto, bloqueia sobreposição e permite recarregar',async()=>{
   const s=servidor((url,opts)=>opts.method==='PUT'?resposta({erro:'Revisão mudou',revision:9},409):null),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);await h.event('tg-title','input','Trabalho ainda não salvo');await h.event('tg-save','click');

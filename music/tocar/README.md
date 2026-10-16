@@ -10,7 +10,7 @@ Rota `/music/tocar`, integrada à sessão e à identidade visual do Musique. Ace
 - Pista de notas, afinador, demonstração, prática, contagem inicial, pausa, velocidades 50/75/100/125%, trecho repetido e compensação de atraso.
 - Modo Aprender nota por nota: espera a altura correta sem cobrar tempo, mostra a próxima nota/corda/casa e oferece ouvir ou pular. Frases selecionáveis e sete estudos originais, incluindo o Primeiro riff.
 - Resultado de treino para altura e início de notas isoladas; não verifica duração sustentada, técnica, posição real no braço ou acordes.
-- Arranjo JSON ou MIDI monofônico e áudio locais. Um MP3 sozinho não produz as notas da pista.
+- Arranjo JSON, MIDI monofônico ou MusicXML/MXL monofônico e áudio locais. Um MP3 sozinho não produz as notas da pista.
 - Resumo por conta, exportação e exclusão em `/music/api/lab/meus-dados`. Histórico não serve como nota, ranking ou prova de execução.
 
 Ao usar microfone, ouça o acompanhamento em fones, de preferência com fio. O microfone deve captar o instrumento: se captar também as notas do acompanhamento pelos alto-falantes, o sistema pode reconhecê-las e marcar acertos sem você tocar. Confira o medidor em silêncio e ajuste a posição do microfone e o ganho antes da prática. A escolha de interface de áudio ou Real Tone usa o mesmo seletor de entrada; o dispositivo precisa aparecer no navegador.
@@ -116,13 +116,21 @@ Frases têm título, início e fim editáveis. BPM altera a grade de referência
 
 Os campos precisam ser aplicados ou cancelados antes de salvar, publicar, baixar ou abrir a prévia. Edições visuais invalidam uma importação de arquivo ainda pendente; durante salvamento a edição fica bloqueada. A página avisa ao sair com alterações não salvas. Salvar/publicar preserva o histórico local do editor quando o conteúdo musical retornado é igual; abrir outro arranjo, importar uma base ou recarregar a revisão salva reinicia esse histórico.
 
-Use **Salvar rascunho → Revisar na pista** para conferir exatamente o chart persistido, inclusive o áudio autorizado já associado. A versão que os alunos veem só muda após **Publicar nova versão**. Waveform, arrastar notas, MusicXML e reprodução de áudio dentro do editor continuam em incrementos posteriores da Etapa C, sem achatamento automático de polifonia.
+Use **Salvar rascunho → Revisar na pista** para conferir exatamente o chart persistido, inclusive o áudio autorizado já associado. A versão que os alunos veem só muda após **Publicar nova versão**. Waveform, arrastar notas e reprodução de áudio dentro do editor continuam em incrementos posteriores da Etapa C, sem achatamento automático de polifonia.
 
 ## Importação MIDI — Etapa C2b
 
 No gestor, o dono pode escolher um arquivo `.mid` ou `.midi` de até 512 KiB. O navegador o analisa localmente: o arquivo não é enviado, armazenado no Acervo nem usado como prova de autoria. A tela mostra cada linha por faixa e canal, sua extensão, quantidade de notas e o motivo de uma linha indisponível. Percussão, polifonia, pitch bend, notas abertas, notas fora de Mi2–Mi6, arquivo inválido e limites excedidos não são simplificados automaticamente.
 
 O dono precisa escolher uma linha válida e clicar em **Importar esta linha**. Antes dessa confirmação, o chart, mídia, histórico de desfazer/refazer e rascunho existentes permanecem intactos; **Cancelar importação MIDI** libera o formulário sem alterar nada. A linha importada recebe posições sugeridas na afinação padrão, que podem ser corrigidas no editor. O importador mantém as mudanças de andamento da fonte em `tempoMap`; o BPM inicial continua disponível para compatibilidade e o editor não permite substituir apenas o primeiro BPM de um mapa variável.
+
+## Importação MusicXML e MXL — Etapa C2c
+
+O gestor também aceita arquivos MusicXML, XML e MXL de até 2 MiB. A leitura e a conversão continuam locais: os bytes originais não vão para o servidor, não ficam no Acervo e não comprovam autoria ou licença. MusicXML direto precisa ser score-partwise UTF-8; MXL é aberto pelo META-INF/container.xml e pelo rootfile indicado, com limites para ZIP, tamanho expandido, caminhos inseguros, criptografia e ZIP64.
+
+A escolha continua explícita, agora por **parte + pauta + voz**. Pausas, divisions, backup, forward, mudanças de andamento, transposição cromática simples, TAB padrão consistente e ties lineares podem formar a linha. Uma TAB ausente ou inconsistente usa a posição sugerida na afinação padrão. `divisions` pode mudar no início de um novo compasso, mas uma mudança no meio do compasso é recusada para não deslocar durações entre vozes. Acordes/polifonia, percussão, grace/cue notes, microtons, transposição ambígua e conteúdo XML/ZIP malformado não são simplificados: a linha fica indisponível ou a análise falha com motivo visível. Repetições, voltas, segno e coda ficam uma única vez na ordem escrita; não há expansão automática da navegação.
+
+MIDI e MusicXML/MXL usam o mesmo painel de confirmação e o mesmo bloqueio contra respostas tardias. Enquanto um arquivo é lido ou espera confirmação, salvar, publicar, prévia, troca de obra e outros tipos de importação ficam bloqueados. Depois da confirmação, o responsável revisa as posições, preenche créditos/procedência e segue com **Salvar rascunho → Revisar na pista → Publicar nova versão**.
 
 ## Verificação automatizada
 

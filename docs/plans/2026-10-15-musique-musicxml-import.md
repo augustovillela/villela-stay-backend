@@ -10,10 +10,10 @@ O corte permanece deliberado: não há transcrição automática de áudio, exec
 
 - O arquivo é lido apenas no navegador, até 2 MiB comprimidos ou diretos e com limite independente para o XML expandido. Seus bytes não são enviados, anexados ao Acervo, gravados no banco ou usados como prova de autoria ou licença.
 - Aceitar somente \`score-partwise\` MusicXML 3.x/4.x em UTF-8. Rejeitar \`score-timewise\`, opus, XML inválido, namespaces inesperados, instruções de processamento, DTD com subconjunto interno, entidades e conteúdo que exceda os limites definidos.
-- Uma linha selecionável é \`parte + pauta + voz\`. O gestor nunca escolhe uma voz ou parte automaticamente.
-- Ler \`divisions\`, \`note\`, \`rest\`, \`backup\`, \`forward\`, \`chord\`, alterações de andamento e transposição simples. Pausas avançam o cursor; acordes e sobreposição tornam somente aquele candidato indisponível.
+- Uma linha selecionável é \`parte + pauta + voz\`; voz aceita identificador textual seguro. O gestor nunca escolhe uma voz ou parte automaticamente.
+- Ler \`divisions\`, \`note\`, \`rest\`, \`backup\`, \`forward\`, \`chord\`, alterações de andamento e transposição simples. Pausas avançam o cursor; acordes e sobreposição tornam somente aquele candidato indisponível. \`divisions\` pode mudar no começo de um compasso; mudança depois de eventos do mesmo compasso é recusada para não aplicar uma resolução errada entre vozes.
 - A extensão importável continua Mi2–Mi6 (MIDI 40–88), até 2.000 notas, 900 segundos e 512 eventos de andamento. Duração de nota deve ficar entre 0,04 e 60 segundos.
-- Um \`<transpose>\` de parte com \`chromatic\` e \`octave-change\` inteiros é aplicado à altura. Transposição específica por pauta, dupla ou fracionária é recusada para não deslocar a digitação silenciosamente.
+- Um \`<transpose>\` de parte com \`chromatic\` e \`octave-change\` inteiros é aplicado à altura na posição musical da mudança, mesmo quando o XML usa \`backup\` entre vozes. Transposição específica por pauta, dupla ou fracionária é recusada para não deslocar a digitação silenciosamente.
 - TAB de guitarra (\`technical/string\` e \`technical/fret\`) é aproveitada somente quando está na afinação padrão, é internamente consistente e corresponde à altura calculada. Caso contrário, a posição é sugerida pela mesma regra da importação MIDI: menor casa e, no empate, a corda mais grave.
 - Notas de percussão/não afinadas, grace/cue notes, microtons, pitch fora da extensão, duração inválida, alturas ou cursores inseguros, polifonia, laços incompletos ou ramificados e conflitos de andamento são recusados com motivo visível.
 - Laços lineares de mesma parte/pauta/voz e mesma altura podem ser unidos em uma nota contínua. Repetições, voltas, segno, coda e navegação são importados na ordem escrita, sem expansão.
@@ -22,7 +22,7 @@ O corte permanece deliberado: não há transcrição automática de áudio, exec
 
 \`.mxl\` é um ZIP que contém \`META-INF/container.xml\`; o primeiro \`rootfile\` do container aponta para a partitura MusicXML. O leitor será deliberadamente pequeno e limitado:
 
-- aceitar somente entradas ZIP armazenadas ou DEFLATE bruto;
+- aceitar somente entradas ZIP armazenadas ou DEFLATE bruto, inclusive descritor de dados ZIP comum em geração por streaming;
 - localizar o diretório central, conferir limites, CRC/intervalos e extrair somente \`META-INF/container.xml\` e o rootfile selecionado;
 - recusar arquivo criptografado, ZIP64, métodos de compressão desconhecidos, caminhos absolutos, \`..\`, NUL, entradas duplicadas necessárias, rootfile ausente, arquivo excessivo ou razão de expansão incompatível com os limites;
 - usar \`DecompressionStream('deflate-raw')\` quando disponível; se o navegador não fornecer esse recurso, explicar que o usuário deve importar o MusicXML descompactado, sem tentar enviar o arquivo a servidor algum;
@@ -84,7 +84,7 @@ Importar MusicXML/MXL não atribui autoria nem licença ao Musique. Objetivo e c
 
 ## Aceite
 
-- MusicXML simples e MXL armazenado/DEFLATE produzem o mesmo chart para a mesma linha.
+- MusicXML simples e MXL armazenado/DEFLATE, com ou sem descritor de dados ZIP, produzem o mesmo chart para a mesma linha.
 - \`divisions\`, pausas, \`backup\`, \`forward\`, alterações de andamento, transposição de guitarra e TAB consistente geram tempos, alturas e posições corretos.
 - Múltiplas vozes, acordes, sobreposições, ties inválidos, percussão, microtons, extensões inválidas, XML malformado e conflitos de andamento são recusados sem alterar o rascunho.
 - ZIP criptografado/ZIP64, caminho inseguro, container/rootfile inválido, método de compressão desconhecido e expansão excessiva são recusados antes de formar uma partitura.
