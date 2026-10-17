@@ -347,13 +347,17 @@
         return filtro === 'todas' || (filtro === 'revisar' ? ['pronta', 'processando', 'pendente'].indexOf(x.status) >= 0 : x.status === filtro);
       });
       if (!itens.length) return lista.appendChild(C.estadoVazio(filtro === 'todas' ? 'Nenhuma importação ainda' : 'Nenhuma importação nesta categoria', '', C.botao('Encontrar ou importar', function () { C.ir('importar'); })));
+      function dataImportacao(valor) {
+        var data = new Date(valor);
+        return Number.isNaN(data.getTime()) ? 'data não informada' : data.toLocaleString('pt-BR');
+      }
       var li = el('div', { class: 'cf-lista' });
       itens.forEach(function (x) {
         var st = { pronta: ['pronta para revisar', 'av'], salva: ['salva', 'ok'], falhou: ['falhou', 'er'], processando: ['processando', ''], pendente: ['na fila', ''], descartada: ['descartada', ''] }[x.status] || [x.status, ''];
         var confImportacao = Number(x.confianca);
         var confTexto = Number.isFinite(confImportacao) && confImportacao > 0 ? 'confiança ' + Math.round(Math.max(0, Math.min(1, confImportacao)) * 100) + '%' : '';
         li.appendChild(el('div', { class: 'cf-linha-item' }, [el('div', { class: 'cresce' }, [el('b', { txt: x.entrada_resumo || x.tipo_entrada }),
-          el('span', { class: 'm', txt: [x.tipo_entrada, confTexto, new Date(x.criado_em).toLocaleString('pt-BR'), x.erro].filter(Boolean).join(' · ') })]), C.tag(st[0], st[1]),
+          el('span', { class: 'm', txt: [x.tipo_entrada, confTexto, dataImportacao(x.criado_em), x.erro].filter(Boolean).join(' · ') })]), C.tag(st[0], st[1]),
         x.status === 'pronta' ? C.botao('Revisar', function () { api('GET', '/importar/' + x.id).then(function (d) {
           if (d.candidatos && d.candidatos.length) { var box = C.limpar(); box.appendChild(el('h2', { txt: 'Resultados da busca' })); var b = el('div'); box.appendChild(b); mostrarCandidatos(d, b, {}); }
           else abrirPrevia(d, {});
