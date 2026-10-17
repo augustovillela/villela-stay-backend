@@ -485,7 +485,14 @@
       if (ticket !== pdfTicket || !dados) return;
       var detalhe = dados.tipo === 'cifra' ? 'cifra detectada; encaminhe o texto para ChordPro.' : dados.tipo === 'partitura' ? 'partitura detectada; a próxima etapa é OMR para MusicXML/MXL.' : 'tipo não identificado automaticamente; mantenha a revisão manual.';
       $('tg-pdf-info').textContent = 'PDF analisado: ' + detalhe + ' Ele continua apenas como referência visual.';
-      $('tg-pdf-omr').hidden = dados.tipo !== 'partitura';
+      $('tg-pdf-omr').hidden = true;
+      if (dados.tipo === 'partitura') {
+        fetch('/music/api/tocar/importar-pdf/omr/status', { credentials: 'same-origin' }).then(function (resposta) { return resposta.json(); }).then(function (status) {
+          if (ticket !== pdfTicket) return;
+          $('tg-pdf-omr').hidden = !status.disponivel;
+          if (!status.disponivel) $('tg-pdf-info').textContent += ' O trabalhador OMR não está disponível neste servidor; use a instalação local ou importe MusicXML/MXL.';
+        }).catch(function () { if (ticket === pdfTicket) $('tg-pdf-info').textContent += ' Não foi possível verificar a disponibilidade do OMR.'; });
+      }
       if (dados.tipo === 'cifra' && dados.texto) {
         $('tg-pdf-cifra').textContent = 'Prévia da cifra (somente leitura):\n' + dados.texto.slice(0, 12000);
         $('tg-pdf-cifra').hidden = false;

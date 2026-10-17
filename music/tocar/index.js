@@ -235,6 +235,10 @@ function montar(app, { requireUsuario, opcional } = {}) {
       res.json({ ok: true, nome: resultado.nome, arquivo: resultado.arquivo, extensao: resultado.extensao, musicxmlBase64: resultado.bytes.toString('base64') });
     } catch (erro) { next(erro); }
   });
+  app.get(B + '/importar-pdf/omr/status', requireUsuario, (req, res) => {
+    const { disponivel } = require('./omr');
+    res.json({ ok: true, disponivel: disponivel() });
+  });
 
   app.get(B + '/sessoes', requireUsuario, (req, res) => {
     res.json({ sessoes: historicoDe(req.usuario.id), indicacao: INDICACAO, vale_nota: false });
