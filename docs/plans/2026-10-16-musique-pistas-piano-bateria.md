@@ -19,7 +19,7 @@ O editor de arranjos permanece separado. Esta entrega segue diretamente essa cor
 
 ## Verificação e pendências
 
-Os testes usam arquivos sintéticos originais, DOM/relógios simulados, geometria pura e HTTP/SQLite temporário. A suíte Tocar junto passou com 208 testes do runner, incluindo importações MIDI/MusicXML, repetição simples, reunião de linhas e diagnóstico de finais alternativos. Não substituem teste com teclado MIDI, bateria eletrônica, interface ou cabo Real Tone.
+Os testes usam arquivos sintéticos originais, DOM/relógios simulados, geometria pura e HTTP/SQLite temporário. A suíte Tocar junto passou com 210 testes do runner, incluindo importações MIDI/MusicXML, pedais, repetição simples, finais alternativos numerados e reunião de linhas. Não substituem teste com teclado MIDI, bateria eletrônica, interface ou cabo Real Tone.
 
 O navegador real mostrou teclado completo, oitavas separadas, acordes e kit vertical. Também importou o MIDI sintético de piano, salvou, reabriu e abriu a prévia do rascunho na nova pista, mantendo quatro notas e uma mudança de andamento. Nenhum dado de teste foi criado em produção. Console sem erros nesse fluxo. O histórico de entrega e o commit efetivamente publicado ficam no prompt master v11 fora do repositório.
 
