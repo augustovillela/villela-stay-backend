@@ -684,8 +684,12 @@ async function rodar({ t, secao, req, assert }) {
     const falha = Importar.url('u-ana', { url: 'https://exemplo.com.br/privado/c' });
     await falha._promessa;
     await assert.rejects(() => Importar.reprocessar(falha.importacao.id, 'u-bruno'), /não encontrada/);
-    await Importar.reprocessar(falha.importacao.id, 'u-ana');
-    assert.equal(Importar.obter('u-ana', falha.importacao.id).importacao.status, 'falhou');
+    db.prepare('UPDATE importacoes SET progresso = 73 WHERE id = ?').run(falha.importacao.id);
+    const tentativa = Importar.reprocessar(falha.importacao.id, 'u-ana');
+    assert.equal(Importar.obter('u-ana', falha.importacao.id).importacao.progresso, 5);
+    await tentativa;
+    const novamente = Importar.obter('u-ana', falha.importacao.id);
+    assert.equal(novamente.importacao.status, 'falhou');
   });
 
   await t('BUSCA externa: uma fonte cai (500) e a outra responde — a busca NÃO cai, e a falha vem NOMEADA', async () => {

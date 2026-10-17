@@ -440,7 +440,7 @@ const Importar = {
     if (t.status === 'salva') throw erro('Importação já salva: reprocessar criaria cifra duplicada.', 409);
     if (t.tipo_entrada !== 'url') throw erro('Só importação por URL pode ser reprocessada (as outras exigem a entrada original).');
     const url = 'https://' + t.entrada_resumo;
-    db.prepare("UPDATE importacoes SET status = 'pendente', erro = '', atualizado_em = ? WHERE id = ?").run(nowISO(), id);
+    db.prepare("UPDATE importacoes SET status = 'pendente', progresso = 0, erro = '', resultado = '{}', atualizado_em = ? WHERE id = ?").run(nowISO(), id);
     const adaptador = fontes.paraUrl(url);
     return rodarEmSegundoPlano(id, async () => {
       const r = await rede.obter(url, { transporte: transporteTeste });
