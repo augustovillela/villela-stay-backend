@@ -608,6 +608,20 @@
     });
   }
 
+  function dinamicaDaDirecao(no, beat, dinamicas) {
+    filhos(no, 'sound').forEach(function (sound) {
+      if (!tem(sound.atributos, 'dynamics')) return;
+      var valor = Number(sound.atributos.dynamics);
+      if (Number.isFinite(valor)) dinamicas.push({ beat: beat, velocity: Math.max(1, Math.min(127, Math.round(1 + valor * 1.26))), ordem: dinamicas.length });
+    });
+    descendentes(no, 'dynamics').forEach(function (grupo) {
+      var nomes = grupo.filhos.filter(function (item) { return item.nome !== '#text'; }).map(function (item) { return item.nome.toLowerCase(); });
+      var nome = nomes[0];
+      var mapa = { ppp: 25, pp: 38, p: 52, mp: 66, mf: 80, f: 94, ff: 108, fff: 120, sf: 108, sfz: 114, fp: 78 };
+      if (mapa[nome] !== undefined) dinamicas.push({ beat: beat, velocity: mapa[nome], ordem: dinamicas.length });
+    });
+  }
+
   function normalizarTies(linha) {
     var notas = linha.notes.slice().sort(function (a, b) { return a.startBeat - b.startBeat || a.endBeat - b.endBeat || a.ordem - b.ordem; });
     var resultado = [], pendente = null;
@@ -638,7 +652,7 @@
     linha.notes = resultado;
   }
 
-  function analisarParte(no, info, linhas, tempos, perfil) {
+  function analisarParte(no, info, linhas, tempos, perfil, dinamicas) {
     var divisions = null, inicioMedida = 0, ordem = 0;
     filhos(no, 'measure').forEach(function (medida) {
       var cursor = 0, maximo = 0, inicioPorLinha = Object.create(null), houveEventoNoCompasso = false;
@@ -673,11 +687,13 @@
         if (item.nome === 'direction') {
           if (!divisions) falhar('a partitura usa direção antes de declarar divisions.');
           temposDaDirecao(item, inicioMedida + cursor, divisions, tempos);
+          dinamicaDaDirecao(item, inicioMedida + cursor, dinamicas);
           return;
         }
         if (item.nome === 'sound') {
           if (!divisions) falhar('a partitura usa andamento antes de declarar divisions.');
           temposDaDirecao({ filhos: [item], atributos: Object.create(null), texto: '' }, inicioMedida + cursor, divisions, tempos);
+          dinamicaDaDirecao(item, inicioMedida + cursor, dinamicas);
           return;
         }
         if (item.nome !== 'note') return;
@@ -786,7 +802,8 @@
     return opcoes[0];
   }
 
-  function finalizarLinhas(linhas, mapa, perfil) {
+  function finalizarLinhas(linhas, mapa, perfil, dinamicas) {
+    dinamicas.sort(function (a, b) { return a.beat - b.beat || a.ordem - b.ordem; });
     return Object.keys(linhas).map(function (chave) {
       var linha = linhas[chave];
       linha.partIssues.forEach(function (problema) { adicionarProblema(linha, problema); });
@@ -795,6 +812,11 @@
         var semitones = 0;
         transposicoes.forEach(function (evento) { if (evento.beat <= nota.startBeat + EPS) semitones = evento.semitones; });
         nota.midi = nota.midiBase + semitones;
+        if (perfil.piano) {
+          var velocity = 80;
+          dinamicas.forEach(function (evento) { if (evento.beat <= nota.startBeat + EPS) velocity = evento.velocity; });
+          nota.velocity = velocity;
+        }
         if (perfil.piano ? (nota.midi < 21 || nota.midi > 108) : !posicoesPossiveis(nota.midi, perfil).length) {
           adicionarProblema(linha, 'A linha contém notas fora da extensão ' + descricaoExtensao(perfil) + '.');
         }
@@ -856,7 +878,7 @@
     var namespace = raiz.atributos.xmlns;
     if (namespace && namespace !== 'http://www.musicxml.org/ns/musicxml') falhar('namespace MusicXML não é suportado.');
     if (raiz.atributos['xmlns:xlink'] && raiz.atributos['xmlns:xlink'] !== 'http://www.w3.org/1999/xlink') falhar('namespace xlink não é suportado.');
-    var nomes = mapaPartes(raiz), linhas = Object.create(null), tempos = [], partesVistas = Object.create(null);
+    var nomes = mapaPartes(raiz), linhas = Object.create(null), tempos = [], dinamicas = [], partesVistas = Object.create(null);
     var partes = filhos(raiz, 'part');
     if (!partes.length) falhar('score-partwise sem partes.');
     if (partes.length > 32) falhar('a partitura contém mais de 32 partes.');
@@ -866,10 +888,10 @@
       partesVistas[id] = true;
       var info = { id: id, indice: indice + 1, nome: nomes[id], issues: [],
         transposicoes: [{ beat: 0, semitones: 0, ordem: 0 }], ordemTransposicao: 1 };
-      analisarParte(parte, info, linhas, tempos, perfil);
+      analisarParte(parte, info, linhas, tempos, perfil, dinamicas);
     });
     var mapa = construirMapa(tempos);
-    var internas = finalizarLinhas(linhas, mapa, perfil);
+    var internas = finalizarLinhas(linhas, mapa, perfil, dinamicas);
     if (internas.length > 128) falhar('a partitura contém mais de 128 linhas.');
     if (internas.reduce(function (total, linha) { return total + linha.notes.length; }, 0) > 10000) {
       falhar('a partitura contém mais de 10.000 notas analisadas.');
@@ -901,7 +923,7 @@
     var perfil = perfilDaCriacao(opcoes, privado.perfil);
     var notas = linha.notes.map(function (nota, indice) {
       var inicio = segundosNaBatida(nota.startBeat, privado.tempoMap);
-      if (perfil.piano) return { id: 'musicxml-' + (indice + 1), time: inicio, duration: duracaoDaNota(nota, privado.tempoMap), midi: nota.midi, velocity: 80 };
+      if (perfil.piano) return { id: 'musicxml-' + (indice + 1), time: inicio, duration: duracaoDaNota(nota, privado.tempoMap), midi: nota.midi, velocity: nota.velocity || 80 };
       var posicao = nota.tab || posicaoSugerida(nota.midi, perfil);
       return { id: 'musicxml-' + (indice + 1), time: inicio, duration: duracaoDaNota(nota, privado.tempoMap),
         string: posicao.string, fret: posicao.fret, midi: nota.midi };

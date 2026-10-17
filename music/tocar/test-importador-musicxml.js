@@ -93,6 +93,7 @@ test('importa score-partwise simples localmente e sugere posição na guitarra',
 
 test('piano MusicXML preserva acorde simultâneo', async () => {
   const score = xml(medida(atributos()
+    + '<direction><direction-type><dynamics><f/></dynamics></direction-type></direction>'
     + nota({ step: 'C', octave: 4, duration: 4 })
     + nota({ step: 'E', octave: 4, duration: 4, extra: '<chord/>' })));
   const analysis = await Importador.analisar(bytes(score), { perfil: 'piano' });
@@ -100,6 +101,7 @@ test('piano MusicXML preserva acorde simultâneo', async () => {
   assert.equal(analysis.candidates[0].noteCount, 2);
   const chart = Importador.criarChart(analysis, analysis.candidates[0].id, { id: 'piano-acorde', title: 'Acorde', perfil: 'piano' });
   assert.equal(chart.layout, 'piano');
+  assert.equal(chart.notes[0].velocity, 94);
   assert.deepEqual(chart.notes.map((notaImportada) => [notaImportada.time, notaImportada.midi]), [[0, 60], [0, 64]]);
   assert.deepEqual(Core.validarChart(chart), chart);
 });
