@@ -22,6 +22,8 @@
 .cf-linha-item .cresce{flex:1;min-width:0}
 .cf-linha-item .cresce b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cf-linha-item .m{font-size:13px;color:var(--suave)}
+.cf-linha-item .cf-progresso{width:120px;height:8px;flex:0 0 120px}
+@media(max-width:640px){.cf-linha-item .cf-progresso{width:72px;flex-basis:72px}}
 .cf-tag{display:inline-block;background:#EEF2F7;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;color:var(--suave)}
 .cf-tag.ok{background:#ECFDF5;color:#0B6B3A}.cf-tag.av{background:#FEF3C7;color:#7A4E06}.cf-tag.er{background:#FEF2F2;color:#991B1B}
 .cf-skel{background:linear-gradient(90deg,#EEF1F5 25%,#F6F8FA 50%,#EEF1F5 75%);background-size:200% 100%;animation:cfsk 1.2s infinite;
