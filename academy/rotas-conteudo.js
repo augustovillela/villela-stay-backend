@@ -263,6 +263,10 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
     const prog = ct.Progresso.marcar(req.usuario.id, req.params.lessonId, req.body || {});
     res.json({ ok: true, progresso: prog });
   }));
+  // pulso de tempo de estudo (a cada 30 s com a aula aberta e a aba visível; ver ct.Tempo)
+  app.post('/academy/api/aluno/aulas/:lessonId/tempo', requireUsuario, requirePapel('aluno'), h((req, res) => {
+    res.json(ct.Tempo.pulso(req.usuario.id, req.params.lessonId));
+  }));
 
   // ============================ FASE 3: página de venda / avaliações / denúncias ============================
   // Próximos cursos: o que combina com o que o aluno já tem. Com ?product_id=<id>

@@ -2842,6 +2842,9 @@ async function main() {
   // ================= AMOSTRAS GRÁTIS (amostras.js): trechos públicos de vídeo =================
   await require('./testes-amostras').rodar({ t, req, base: () => BASE, emailProdutor: MARIA.email });
 
+  // ================= VISITAS IDENTIFICADAS + TEMPO NAS AULAS (nucleo/atribuicao-aluno.js, ct.Tempo, relatorio-visitas-alunos.js) =================
+  await require('./testes-visitas-alunos').rodar({ t, req, jars, emailProdutor: MARIA.email });
+
   // ================= CARTEIRA DE IA (carteira-ia.js) — por último: liga a cobrança =================
   await require('./testes-carteira-ia').rodar({ t, req, impId, jars });
 

@@ -15,6 +15,16 @@
   window.AcademyAluno = function (D) {
     var api = D.api, esc = D.esc, el = D.el, brl = D.brl, setView = D.setView, erroBox = D.erroBox;
     var C = null; // estado do curso aberto: {pid, d, aulas[], pa, i}
+    // Tempo nas aulas: um pulso a cada 30 s SÓ com o player na tela, uma aula
+    // liberada aberta e a aba visível. Quanto somar decide o servidor (ct.Tempo).
+    setInterval(function () {
+      try {
+        if (document.visibilityState !== 'visible' || !C || C.i < 0 || !el('al-nav')) return;
+        var a = C.aulas[C.i] && C.aulas[C.i].a;
+        if (!a || !a.liberada || !(C.d.matriculado || a.gratuita)) return;
+        api('POST', '/aluno/aulas/' + a.id + '/tempo', {}).catch(function () {});
+      } catch (e) { /* medir nunca atrapalha a aula */ }
+    }, 30000);
     // jornada do curso (fases 2 e 3): nível, selos, diagnóstico, Lab, desafio, simulações, ferramentas
     // Estude (academy\estudo): do programa à prova — plano, aula ativa, questões, cards e simulado
     var ES = window.AcademyEstude ? window.AcademyEstude({ api: api, esc: esc, el: el, setView: setView }) : null;

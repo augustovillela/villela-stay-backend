@@ -164,7 +164,7 @@ function landingHTML() {
 // tela — Atualizar" (app-cliente.js › conferirVersao); nunca recarrega sozinha. ⚠️ Alterou um arquivo de tela
 // (app-*.js, aluno.css, estude.css)? Suba o número dele aqui. O pacote dos motores (/academy/estude-motores.js) é
 // pedido pela própria tela (app-estudo.js › comMotores) e tem o `?v=` dele lá.
-const V_SCRIPTS = { jornada: 5, ecossistema: 3, carteira: 3, estude: 6, aluno: 12, app: 14 };
+const V_SCRIPTS = { jornada: 5, ecossistema: 3, carteira: 3, estude: 6, aluno: 13, app: 14 };
 const V_FOLHAS = { aluno: 5, estude: 4 };
 const script = (n) => `<script src="/academy/${n}.js?v=${V_SCRIPTS[n]}"></script>`;
 const folha = (n) => `<link rel="stylesheet" href="/academy/${n}.css?v=${V_FOLHAS[n]}">`;
@@ -982,7 +982,7 @@ const PRIVACIDADE = `<p>Tratamos dados pessoais conforme a LGPD (Lei 13.709/2018
   <h3>1. Dados que tratamos</h3>
   <ul><li><b>Cadastro:</b> coletamos o mínimo necessário — nome, e-mail, telefone e, para produtores/afiliados, dados de documento e pagamento para repasses.</li>
   <li><b>Compras:</b> pedidos, valores, recargas e o extrato do saldo de créditos de IA. Dados de cartão vão direto ao Mercado Pago, nunca aos nossos servidores.</li>
-  <li><b>Estudo:</b> progresso nas aulas, respostas e notas, certificados, anotações, marcações, tentativas, o que você escreve no caderno e na comunidade, e as mensagens ao Suporte.</li>
+  <li><b>Estudo:</b> progresso nas aulas, o tempo que você passa com cada aula aberta, respostas e notas, certificados, anotações, marcações, tentativas, o que você escreve no caderno e na comunidade, e as mensagens ao Suporte.</li>
   <li><b>Funções de IA:</b> as perguntas e os textos que você envia ao Tutor Villela e às demais funções de IA, e as respostas geradas.</li>
   <li><b>Pedidos pagos por uso:</b> o texto das respostas escritas; o áudio das respostas orais e a transcrição desse áudio; os arquivos PDF enviados (editais e provas) e o que deles for extraído; e os registros de discordância da correção.</li>
   <li><b>Acesso e segurança:</b> registros de sessão (data, endereço IP e navegador) e de auditoria.</li></ul>
@@ -1003,7 +1003,8 @@ const PRIVACIDADE = `<p>Tratamos dados pessoais conforme a LGPD (Lei 13.709/2018
   <p>Esses fornecedores podem tratar dados <b>fora do Brasil</b>.</p>
   <h3>4. Cookies e medição de visitas</h3>
   <ul><li>Usamos um cookie de sessão, necessário para manter você conectado.</li>
-  <li>Contamos as visitas às páginas públicas com medição própria, que não grava o endereço IP nem usa cookie.</li>
+  <li>Contamos as visitas às páginas com medição própria, que não grava o endereço IP. Para quem <b>não</b> está conectado, a contagem é anônima e não usa cookie.</li>
+  <li>Quando você está <b>conectado</b> à sua conta, um segundo cookie (só com o código da conta, protegido contra falsificação, e que não dá acesso a ela) associa à sua conta as páginas que você visita nos sites do Grupo Villela Stay — Academy, Livraria e sistemas — e medimos o tempo com a aula aberta. Usamos isso para entender o uso dos cursos e melhorar o conteúdo. As visitas associadas ficam guardadas por até 120 dias; o tempo nas aulas faz parte do seu histórico de estudo e vai na exportação dos seus dados. Ao sair da conta, o cookie é apagado.</li>
   <li>A página inicial pública (<a href="/academy">/academy</a>) carrega o Google Analytics, que pode gravar cookies e registrar dados de navegação, como páginas vistas e endereço IP. É possível bloqueá-lo nas configurações do navegador.</li></ul>
   <h3>5. Por quanto tempo guardamos</h3>
   <ul><li><b>Áudio da resposta oral:</b> fica guardado por <b>6 meses</b> a contar do envio e é apagado depois disso. A tela informa a data-limite e permite <b>baixar o próprio áudio</b> enquanto ele estiver disponível. A transcrição e a correção permanecem no seu histórico.</li>

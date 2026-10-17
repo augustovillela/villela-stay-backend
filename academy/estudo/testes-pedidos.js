@@ -245,7 +245,7 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     const pg = await req('GET', '/academy/app');
     assert.equal(pg.st, 200);
     // mecanismo de sempre: ?v=N na URL, dentro do HTML do painel (que o service worker nunca guarda — pwa.js: navegação é só rede)
-    for (const ref of ['/academy/estude.js?v=6', '/academy/estude.css?v=4', '/academy/aluno.js?v=12', '/academy/carteira.js?v=3', '/academy/jornada.js?v=5', '/academy/app.js?v=14', '/academy/ecossistema.js?v=3', '/academy/aluno.css?v=5']) {
+    for (const ref of ['/academy/estude.js?v=6', '/academy/estude.css?v=4', '/academy/aluno.js?v=13', '/academy/carteira.js?v=3', '/academy/jornada.js?v=5', '/academy/app.js?v=14', '/academy/ecossistema.js?v=3', '/academy/aluno.css?v=5']) {
       assert.ok(pg.texto.includes(`"${ref}"`), 'o painel não pede ' + ref);
     }
     for (const velho of ['estude.js?v=5"', 'estude.js?v=4"', 'estude.js?v=3"', 'estude.css?v=3"', 'aluno.js?v=11"', 'carteira.js?v=2"', 'jornada.js?v=4"', 'app.js?v=13"']) assert.ok(!pg.texto.includes(velho), 'sobrou a versão antiga: ' + velho);

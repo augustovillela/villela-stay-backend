@@ -31,6 +31,7 @@
 // =====================================================================
 'use strict';
 const jwt = require('jsonwebtoken');
+const atribuicao = require('./atribuicao-aluno');
 
 const COOKIE = 'academy_sess';
 const PATH = '/';                 // escopo novo: serve /academy e /music
@@ -48,6 +49,10 @@ const opcoes = (seguro = seguroPadrao()) => ({
 function emitir(res, token, seguro = seguroPadrao()) {
   res.clearCookie(COOKIE, { path: PATH_ANTIGO });
   res.cookie(COOKIE, token, opcoes(seguro));
+  // Junto da sessão vai o cookie de ATRIBUIÇÃO (só uid assinado, sem poder
+  // de login), para as visitas dos outros sites saberem que é este aluno.
+  // O token acabou de ser assinado por nós: decode basta para ler o uid.
+  try { const d = jwt.decode(token); if (d && d.uid) atribuicao.emitir(res, d.uid, seguro); } catch (_) { /* atribuição nunca derruba login */ }
 }
 
 /** Limpa nos dois escopos: quem faz logout tem de sair de verdade,
@@ -55,6 +60,7 @@ function emitir(res, token, seguro = seguroPadrao()) {
 function limpar(res) {
   res.clearCookie(COOKIE, { path: PATH });
   res.clearCookie(COOKIE, { path: PATH_ANTIGO });
+  atribuicao.limpar(res);
 }
 
 const assinar = (uid, jti, jwtSecret) => jwt.sign({ uid, jti }, jwtSecret, { expiresIn: '30d' });

@@ -30,6 +30,23 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
     res.json({ resumo: repo.Dashboard.plataforma(), pendentes: repo.Perfis.pendentes(), config: { comissoes: repo.Config.obter('comissoes', {}) } });
   }));
 
+  // 🎓 Visitas no Site dos Cursos — aluno a aluno (visitas identificadas + tempo nas aulas).
+  // Só admin: é relatório NOMINAL (nome, e-mail, comportamento) — LGPD, art. 6º, III.
+  app.get('/staff/api/academy/visitas-alunos', ...A, h((req, res) => res.json(require('./relatorio-visitas-alunos').montar({ dias: req.query.dias }))));
+  app.get('/staff/api/academy/visitas-alunos.csv', ...A, h((req, res) => {
+    const R = require('./relatorio-visitas-alunos');
+    const rel = R.montar({ dias: req.query.dias });
+    aud(req, 'relatorio.visitas-alunos.csv', 'users', '', `${rel.alunos.length} alunos, ${rel.periodo.dias} dias`);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="visitas-alunos-${rel.periodo.ate}.csv"`);
+    res.send(R.csv(rel));
+  }));
+  app.get('/staff/api/academy/visitas-alunos/:uid', ...A, h((req, res) => {
+    const d = require('./relatorio-visitas-alunos').detalhe(req.params.uid, { dias: req.query.dias });
+    if (!d) return res.status(404).json({ erro: 'Aluno não encontrado.' });
+    res.json(d);
+  }));
+
   // usuários
   app.get('/staff/api/academy/usuarios', ...A, h((req, res) => res.json({ usuarios: repo.Usuarios.listar(req.query) })));
   app.post('/staff/api/academy/usuarios/:id/papeis', ...A, h((req, res) => {

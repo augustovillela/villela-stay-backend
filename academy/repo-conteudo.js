@@ -1023,6 +1023,47 @@ const Progresso = {
   },
 };
 
+// TEMPO NAS AULAS — pulso do player enquanto a aula está aberta e a aba visível.
+// O servidor decide quanto somar: o intervalo real desde o último pulso aceito
+// (até 60 s); intervalo maior ou primeiro pulso = 30 s, o período do pulso.
+// Assim o cliente nunca acelera o relógio: mandar pulso mais rápido soma menos.
+const PULSO_SEG = 30;
+const PULSO_JANELA_SEG = 60;
+const Tempo = {
+  pulso(userId, lessonId, agora = new Date()) {
+    const aula = db.prepare('SELECT id, product_id, gratuita FROM lessons WHERE id = ?').get(lessonId);
+    if (!aula) throw new Error('Aula não encontrada.');
+    if (!aula.gratuita && !temAcesso(userId, aula.product_id)) throw new Error('Você não tem acesso a este produto.');
+    const dia = agora.toISOString().slice(0, 10);
+    // o último pulso do aluno em QUALQUER aula: trocar de aula não abre um segundo relógio paralelo
+    const ult = db.prepare('SELECT MAX(ultimo_pulso) u FROM study_time WHERE user_id = ?').get(userId).u;
+    const gap = ult ? (agora.getTime() - Date.parse(ult)) / 1000 : Infinity;
+    if (gap < 5) return { ok: true, somado: 0 };            // rajada: ignora sem gravar
+    const somar = Math.round(gap <= PULSO_JANELA_SEG ? gap : PULSO_SEG);
+    db.prepare(`INSERT INTO study_time (user_id, lesson_id, product_id, dia, segundos, pulsos, ultimo_pulso)
+      VALUES (?, ?, ?, ?, ?, 1, ?) ON CONFLICT(user_id, lesson_id, dia) DO UPDATE SET
+      segundos = segundos + excluded.segundos, pulsos = pulsos + 1, ultimo_pulso = excluded.ultimo_pulso`)
+      .run(userId, lessonId, aula.product_id, dia, somar, agora.toISOString());
+    return { ok: true, somado: somar };
+  },
+  /** Por aluno e curso no período: segundos, dias de estudo, aulas tocadas, último estudo. */
+  porAlunoCurso(de, ate) {
+    return db.prepare(`SELECT st.user_id, st.product_id, p.titulo AS produto_titulo,
+        SUM(st.segundos) AS segundos, COUNT(DISTINCT st.dia) AS dias, COUNT(DISTINCT st.lesson_id) AS aulas,
+        MAX(st.ultimo_pulso) AS ultimo
+      FROM study_time st LEFT JOIN products p ON p.id = st.product_id
+      WHERE st.dia >= ? AND st.dia <= ? GROUP BY st.user_id, st.product_id`).all(de, ate);
+  },
+  /** Aula a aula de um aluno no período (detalhe do relatório). */
+  porAula(userId, de, ate) {
+    return db.prepare(`SELECT st.product_id, st.lesson_id, l.titulo AS aula_titulo, l.ordem,
+        SUM(st.segundos) AS segundos, COUNT(DISTINCT st.dia) AS dias, MAX(st.ultimo_pulso) AS ultimo
+      FROM study_time st LEFT JOIN lessons l ON l.id = st.lesson_id
+      WHERE st.user_id = ? AND st.dia >= ? AND st.dia <= ?
+      GROUP BY st.product_id, st.lesson_id ORDER BY st.product_id, l.ordem`).all(userId, de, ate);
+  },
+};
+
 // ================= FASE 3 — marketplace público, página de venda, avaliações, denúncias =================
 
 // anexa as áreas de cada produto da lista numa consulta só (o cartão mostra até
@@ -1283,7 +1324,7 @@ const Denuncias = {
 module.exports = {
   TIPOS_PRODUTO, TIPOS_AULA, duracaoDeVideo, CATEGORIAS, CAT_ROT, catRotulo, Categorias, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
   PEDIDO_PDF_MAX_BYTES, PEDIDO_AUDIO_MAX_BYTES, PEDIDO_UPLOAD_EXPIRA_SEG, PEDIDO_PREFIXO, PEDIDO_PENDENTE_HORAS, PEDIDO_ORFA_HORAS,
-  Produtos, Conteudo, Midia, MateriaisCurso, Matriculas, Cortesia, Progresso, Liberacao, ARQUIVOS_DIR,
+  Produtos, Conteudo, Midia, MateriaisCurso, Matriculas, Cortesia, Progresso, Tempo, Liberacao, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
   temAcesso, Clube, Audiobook,
 };

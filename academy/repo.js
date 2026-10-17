@@ -180,6 +180,7 @@ const REGISTROS_DO_TITULAR = [
   ['matriculas', 'SELECT product_id, origem, status, criado_em FROM enrollments WHERE user_id = ? ORDER BY criado_em'],
   ['assinaturas', 'SELECT id, product_id, produto_titulo, valor_centavos, status, criado_em, ativa_em, cancelada_em FROM subscriptions WHERE user_id = ? ORDER BY criado_em'],
   ['progresso', 'SELECT product_id, lesson_id, concluida, posicao_seg, atualizado_em FROM student_progress WHERE user_id = ?'],
+  ['tempo_nas_aulas', 'SELECT product_id, lesson_id, dia, segundos FROM study_time WHERE user_id = ? ORDER BY dia'],
   ['certificados', 'SELECT id AS codigo, product_id, produto_titulo, aluno_nome, total_aulas, carga_horaria_min, emitido_em, revogado_em FROM certificates WHERE user_id = ?'],
   ['avaliacoes_de_curso', 'SELECT product_id, nota, texto, status, criado_em FROM reviews WHERE user_id = ?'],
   ['suporte', `SELECT t.id AS ticket, t.assunto, t.categoria, t.status, m.lado, m.texto, m.criado_em FROM support_tickets t

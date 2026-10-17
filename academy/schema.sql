@@ -524,3 +524,21 @@ CREATE TABLE IF NOT EXISTS categories (
   criado_em  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_categories_origem ON categories(origem);
+
+-- ---- TEMPO NAS AULAS (16/10/2026) ----
+-- Soma de segundos com a aula ABERTA e a aba VISÍVEL, por aluno, aula e dia.
+-- O cliente só manda o pulso; quanto somar decide o servidor (no máximo 45 s
+-- desde o último pulso), então ninguém infla o próprio tempo mandando número.
+-- `ultimo_pulso` é o instante do último pulso aceito (base do limite).
+CREATE TABLE IF NOT EXISTS study_time (
+  user_id      TEXT NOT NULL REFERENCES users(id),
+  lesson_id    TEXT NOT NULL,
+  product_id   TEXT NOT NULL,
+  dia          TEXT NOT NULL,              -- AAAA-MM-DD (UTC)
+  segundos     INTEGER DEFAULT 0,
+  pulsos       INTEGER DEFAULT 0,
+  ultimo_pulso TEXT NOT NULL,
+  PRIMARY KEY (user_id, lesson_id, dia)
+);
+CREATE INDEX IF NOT EXISTS idx_study_time_user ON study_time(user_id, product_id);
+CREATE INDEX IF NOT EXISTS idx_study_time_dia ON study_time(dia);
