@@ -85,7 +85,7 @@
     var perfilImportacao = perfilSelecionado();
     var midiInstrument = perfilImportacao && (perfilImportacao.layout === 'piano' || perfilImportacao.layout === 'drums');
     $('tg-import-help').textContent = midiInstrument
-      ? (perfilImportacao.layout === 'piano' ? 'Piano: MIDI ou MusicXML/MXL preservam acordes, oitavas e intensidades; pedal de sustentação e sostenuto ainda não são aceitos.' : 'Bateria: MIDI ou MusicXML/MXL preservam as peças mapeadas; MIDI continua exigindo canal 10.')
+      ? (perfilImportacao.layout === 'piano' ? 'Piano: MIDI ou MusicXML/MXL preservam acordes, oitavas, intensidades e pedais; repetições complexas continuam exigindo revisão.' : 'Bateria: MIDI ou MusicXML/MXL preservam as peças mapeadas; MIDI continua exigindo canal 10.')
       : 'MIDI, MusicXML e MXL importam uma linha de notas para a afinação selecionada. Confira as posições sugeridas antes de publicar.';
     var temMidia = !!$('tg-media').value;
     if (!temMidia) $('tg-media-offset').value = '0';
@@ -164,7 +164,7 @@
     var duracao = analysis && typeof analysis.duration === 'number' && Number.isFinite(analysis.duration) ? analysis.duration.toFixed(2) + ' s' : 'duração não disponível';
     var tipo = rotuloImportacao(importacao);
     var formato = importacao && importacao.tipo === 'musicxml' ? (analysis && analysis.format === 'mxl' ? 'MXL' : 'MusicXML ' + (analysis && analysis.version || '')) : 'formato ' + (analysis && analysis.format);
-    var navegacao = importacao && importacao.tipo === 'musicxml' ? ' Repetições, voltas e codas ficam somente na ordem escrita.' : '';
+    var navegacao = importacao && importacao.tipo === 'musicxml' ? ' Repetições simples e finais numerados compatíveis são expandidos; estruturas complexas recebem diagnóstico.' : '';
     return 'Arquivo ' + tipo + ' analisado localmente · ' + formato + ' · ' + duracao + ' · ' + (mudancas ? mudancas + ' mudança' + (mudancas === 1 ? '' : 's') + ' de andamento preservada' + (mudancas === 1 ? '' : 's') : 'andamento constante') + '.' + navegacao;
   }
   function renderImportacaoPreview() {

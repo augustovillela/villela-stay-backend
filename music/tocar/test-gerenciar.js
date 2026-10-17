@@ -225,7 +225,7 @@ test('MusicXML e MXL são analisados localmente, exigem linha explícita e usam 
   ]}}),h=montar({page:'gestao',logado:true,fetch:servidor().fetch,importadorMusicXml:xml});
   await h.settle();await h.event('tg-work','change','obra-a');
   await analisarMusicXml(h,{size:8,name:'ignorado.mxl',arrayBuffer:async()=>new Uint8Array([80,75]).buffer});
-  assert.equal(xml.calls.analisar.length,1);assert.equal(h.$('tg-midi-preview').hidden,false);assert.match(h.$('tg-midi-info').textContent,/MXL/);assert.match(h.$('tg-midi-info').textContent,/ordem escrita/);assert.match(h.$('tg-import-line-label').textContent,/MusicXML/);assert.equal(h.$('tg-midi-confirm').disabled,true);assert.equal(h.$('tg-midi').disabled,true);
+  assert.equal(xml.calls.analisar.length,1);assert.equal(h.$('tg-midi-preview').hidden,false);assert.match(h.$('tg-midi-info').textContent,/MXL/);assert.match(h.$('tg-midi-info').textContent,/Repetições simples/);assert.match(h.$('tg-import-line-label').textContent,/MusicXML/);assert.equal(h.$('tg-midi-confirm').disabled,true);assert.equal(h.$('tg-midi').disabled,true);
   const invalida=h.$('tg-midi-candidates').children.find(n=>n.value==='p1-s1-v2');assert.equal(invalida.disabled,true);assert.match(invalida.textContent,/pauta 1.*voz 2.*sobrepostas/);
   await h.event('tg-midi-candidates','change','p1-s1-v1');await h.event('tg-midi-confirm','click');
   assert.equal(xml.calls.criar.length,1);assert.equal(xml.calls.criar[0].config.id,'musicxml-importado');assert.equal(h.$('tg-title').value,'Estudo XML');assert.match(h.$('tg-chart-info').textContent,/2 notas/);assert.equal(h.$('tg-midi-preview').hidden,true);
