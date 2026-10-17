@@ -355,7 +355,7 @@
         dados = r; offset = (r.importacoes || []).length; maisDisponivel = r.paginacao ? !!r.paginacao.tem_mais : offset === 100; pintarLista();
       }).catch(function (e) {
         if (ticket !== carregamento) return;
-        lista.innerHTML = ''; lista.appendChild(C.estadoErro(e, C.telas.importacoes));
+        lista.innerHTML = ''; lista.appendChild(C.estadoErro(e, function () { carregar(filtrosServidor.indexOf(filtro) >= 0 ? filtro : ''); }));
       }).then(function () {
         if (ticket !== carregamento) return;
         atualizar.disabled = false; atualizar.textContent = 'Atualizar'; lista.setAttribute('aria-busy', 'false');
