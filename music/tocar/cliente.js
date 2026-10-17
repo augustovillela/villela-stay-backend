@@ -443,7 +443,12 @@
     $('tj-accuracy-panel').hidden = learning;
     text('tj-hits', r ? r.hits : '—'); text('tj-misses', r ? learning ? r.skipped : r.misses : '—');
     text('tj-accuracy', r && (r.hits + r.misses) ? Math.round(r.accuracy) + '%' : '—');
-    text('tj-score-label', r ? learning ? (r.hits + r.skipped) + ' de ' + r.total + ' notas · sem avaliação de ritmo' : 'Indicação de treino · ' + (r.hits + r.misses) + ' de ' + r.total + ' notas avaliadas' + (r.streak ? ' · sequência atual: ' + r.streak + ' · melhor: ' + r.bestStreak : '') : 'As marcas aparecem quando você pratica com a entrada de áudio ativada.');
+    var detalhe = '';
+    if (r && !learning) {
+      if (r.meanAbsTimingMs != null) detalhe += ' · tempo médio ±' + Math.round(r.meanAbsTimingMs) + ' ms';
+      if (r.meanAbsCents != null) detalhe += ' · desvio médio ' + Math.round(r.meanAbsCents) + ' cents';
+    }
+    text('tj-score-label', r ? learning ? (r.hits + r.skipped) + ' de ' + r.total + ' notas · sem avaliação de ritmo' : 'Indicação de treino · ' + (r.hits + r.misses) + ' de ' + r.total + ' notas avaliadas' + (r.streak ? ' · sequência atual: ' + r.streak + ' · melhor: ' + r.bestStreak : '') + detalhe : 'As marcas aparecem quando você pratica com a entrada de áudio ativada.');
     $('tj-save').disabled = previewMode || !!saving || !r || !r.total || r.pending > 0 || state.saved || state.running || !boot.logado;
   }
   function applyChart(c, origin) {
