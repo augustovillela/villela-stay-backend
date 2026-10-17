@@ -327,14 +327,16 @@
       if (v === 'falhou' || v === 'salva' || v === 'descartada') return carregar(v);
       pintarLista();
     }, 'Mostrar');
-    c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect, C.botao('Atualizar', function () {
+    var atualizar = C.botao('Atualizar', function () {
       carregar(filtro === 'falhou' || filtro === 'salva' || filtro === 'descartada' ? filtro : '');
-    }, 'sec')]));
+    }, 'sec');
+    c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect, atualizar]));
     c.appendChild(lista);
     function carregar(status) {
       var query = status ? '?status=' + encodeURIComponent(status) + '&limite=100' : '?limite=100';
+      atualizar.disabled = true;
       lista.innerHTML = ''; lista.appendChild(C.esqueleto(2));
-      api('GET', '/importar' + query).then(function (r) { dados = r; pintarLista(); }).catch(function (e) { lista.innerHTML = ''; lista.appendChild(C.estadoErro(e, C.telas.importacoes)); });
+      api('GET', '/importar' + query).then(function (r) { dados = r; pintarLista(); }).catch(function (e) { lista.innerHTML = ''; lista.appendChild(C.estadoErro(e, C.telas.importacoes)); }).then(function () { atualizar.disabled = false; });
     }
     function pintarLista() {
       lista.innerHTML = '';
