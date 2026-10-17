@@ -16,7 +16,7 @@ const ARQUIVOS = Object.freeze([
   'capturar-worklet.js', 'detector-worker.js', 'aprender.js', 'estudos.js', 'sessao-game.js',
   'formato-catalogo.js', 'formato-arranjo.js', 'catalogo-cliente.js', 'gerenciar.js',
   'editor-nucleo.js', 'editor-cliente.js', 'editor.css', 'importador-midi.js', 'importador-musicxml.js',
-  'waveform.js', 'waveform-cliente.js',
+  'waveform.js', 'waveform-cliente.js', 'campanha.js',
   'pista-piano.js', 'pista-bateria.js', 'sons.js', 'sons-manifesto.js', 'creditos-sons.html',
 ]);
 
@@ -163,7 +163,7 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/importador-midi.js" defer></script>
 <script src="/music/tocar/importador-musicxml.js" defer></script>
 <script src="/music/tocar/waveform.js" defer></script>
-<script src="/music/tocar/waveform-cliente.js" defer></script>
+<script src="/music/tocar/waveform-cliente.js" defer></script>\n<script src="/music/tocar/campanha.js" defer></script>
 <script src="/music/tocar/gerenciar.js" defer></script>`;
     res.set('Cache-Control', 'no-store').type('html').send(layout('Gerenciar arranjos | Musique', corpo, {
       caminho: '/music/tocar/gerenciar', noApp: estado.logado,
@@ -269,3 +269,4 @@ function montar(app, { requireUsuario, opcional } = {}) {
 }
 
 module.exports = { montar, validarResumo, historicoDe, dadosDe, excluirDe, INDICACAO };
+
