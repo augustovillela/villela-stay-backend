@@ -12,14 +12,15 @@ O editor de arranjos permanece separado. Esta entrega segue diretamente essa cor
 - Bateria: pistas verticais com destinos por peça e kit desenhado na base. Crash/ride ficam na fileira superior do kit. Chimbal aberto/fechado compartilha a peça física, com alvos distintos ○/×. As dez notas MIDI continuam distintas no avaliador.
 - Relógio, velocidade, pausa, busca, seleção de frases, catálogo e prévia usam o transporte existente. Demonstração funciona sem instrumento conectado. Tabela e mensagens são específicas do instrumento.
 - Pistas MIDI usam a largura da área de conteúdo. Em telas estreitas, há rolagem horizontal para manter teclado e kit legíveis. Aprender nota por nota permanece para cordas; os perfis MIDI usam No ritmo, pois o motor de Aprender acústico não suporta esses perfis.
-- Importação de piano MIDI preserva acordes, oitavas, duração, intensidade e mudanças de andamento. Uma faixa/canal por vez. Sustain/sostenuto ativos são diagnosticados como incompatíveis; não são descartados silenciosamente.
-- Ukulele tradicional reentrante aceita MIDI, MusicXML e MXL sem exigir afinação ascendente. TAB válida preserva posições; sugestões respeitam as 15 casas. XML/MXL de piano e bateria ainda não são suportados e o gestor informa isso.
+- Importação de piano MIDI preserva acordes, oitavas, duração, intensidade e mudanças de andamento. Quando há várias linhas válidas, o gestor oferece “Todas as linhas compatíveis”; sobreposição da mesma tecla mantém a opção composta indisponível. Sustain/sostenuto ativos são diagnosticados como incompatíveis; não são descartados silenciosamente.
+- Ukulele tradicional reentrante aceita MIDI, MusicXML e MXL sem exigir afinação ascendente. TAB válida preserva posições; sugestões respeitam as 15 casas. Piano e bateria também aceitam MusicXML/MXL; percussão `unpitched` usa o mapeamento `<midi-unpitched>` e somente as dez peças do kit são aceitas.
+- MusicXML/MXL oferece “Todas as linhas compatíveis” para piano e bateria. Repetições simples `forward`/`backward` com `times` de 2 a 8 são expandidas; finais alternativos (`ending`) ficam indisponíveis para revisão manual.
 - Limites de duração recebem apenas correção de resíduos numéricos próximos às fronteiras; notas realmente fora dos limites continuam recusadas.
 
 ## Verificação e pendências
 
-Os testes usam arquivos sintéticos originais, DOM/relógios simulados, geometria pura e HTTP/SQLite temporário. A suíte Tocar junto passou com 176 testes do runner (incluindo 78 verificações internas de cliente e 49 de gestão); a suíte musical geral passou com 481 verificações. `node site/build.js` concluiu. Não substituem teste com teclado MIDI, bateria eletrônica, interface ou cabo Real Tone.
+Os testes usam arquivos sintéticos originais, DOM/relógios simulados, geometria pura e HTTP/SQLite temporário. A suíte Tocar junto passou com 208 testes do runner, incluindo importações MIDI/MusicXML, repetição simples, reunião de linhas e diagnóstico de finais alternativos. Não substituem teste com teclado MIDI, bateria eletrônica, interface ou cabo Real Tone.
 
 O navegador real mostrou teclado completo, oitavas separadas, acordes e kit vertical. Também importou o MIDI sintético de piano, salvou, reabriu e abriu a prévia do rascunho na nova pista, mantendo quatro notas e uma mudança de andamento. Nenhum dado de teste foi criado em produção. Console sem erros nesse fluxo. O histórico de entrega e o commit efetivamente publicado ficam no prompt master v11 fora do repositório.
 
-Próximas etapas: revisar o ciclo de captura MIDI (NoteOff, canal, reconexão, relógio); estender Aprender a MIDI com semântica de acordes; representar pedais; importar piano MusicXML/MXL; validar afinação de bandolim e hardware quando o usuário puder.
+Próximas etapas: estender Aprender a MIDI com semântica de acordes; representar pedais; tratar finais alternativos MusicXML; validar afinação de bandolim e hardware quando o usuário puder.
