@@ -10,7 +10,7 @@ const path = require('node:path');
 const temporario = fs.mkdtempSync(path.join(os.tmpdir(), 'musique-tocar-test-'));
 process.env.DATA_DIR = temporario;
 const express = require('express');
-const { montar, validarResumo, validarCampanha, dadosDe, excluirDe } = require('./index');
+const { montar, validarResumo, validarCampanha, dadosDe, dadosCampanhasDe, excluirDe, excluirCampanhasDe } = require('./index');
 const Campanha = require('./campanha');
 const { db, DB_PATH } = require('../db');
 const app = express();
@@ -533,12 +533,20 @@ test('exportação e exclusão completas afetam apenas o próprio usuário', asy
 
 test('hooks de privacidade do Laboratório incluem Tocar junto e isolam contas', async () => {
   await enviar('aluno-a', resumo());
+  const campanha = Campanha.atualizar(Campanha.criar({ instrument: 'violao' }), 'primeiro-riff-v1', { completed: true, bestStreak: 3 });
+  const campanhaSalva = await fetch(base + '/music/api/tocar/campanha/violao', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-test-user': 'aluno-a' }, body: JSON.stringify(campanha),
+  });
+  assert.equal(campanhaSalva.status, 200);
   const exportar = await fetch(base + '/music/api/lab/meus-dados', { headers: { 'x-test-user': 'aluno-a' } });
   assert.equal(exportar.status, 200);
   const dados = await exportar.json();
   assert.equal(dados.tocar_junto.length, 1);
   assert.equal(dados.tocar_junto[0].chartId, 'estudo-guitarra-1');
   assert.equal(dados.tocar_junto[0].vale_nota, false);
+  assert.equal(dados.tocar_campanhas.length, 1);
+  assert.equal(dados.tocar_campanhas[0].instrumento, 'violao');
+  assert.equal(dados.tocar_campanhas[0].estado.progress['primeiro-riff-v1'].bestStreak, 3);
   const apagar = (confirmacao, usuario = 'aluno-a') => fetch(base + '/music/api/lab/meus-dados/excluir', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-test-user': usuario }, body: JSON.stringify({ confirmacao }),
   });
@@ -546,6 +554,8 @@ test('hooks de privacidade do Laboratório incluem Tocar junto e isolam contas',
   assert.equal(dadosDe('aluno-a').length, 1);
   assert.equal((await apagar('EXCLUIR')).status, 200);
   assert.deepEqual(dadosDe('aluno-a'), []);
+  assert.deepEqual(dadosCampanhasDe('aluno-a'), []);
+  assert.equal(excluirCampanhasDe('aluno-a'), 0);
   assert.equal(dadosDe('aluno-b').length, 1);
 });
 

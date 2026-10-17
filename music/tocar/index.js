@@ -107,8 +107,21 @@ function dadosDe(usuario) {
     .all(usuario).map(sessaoDe);
 }
 
+function dadosCampanhasDe(usuario) {
+  return db.prepare('SELECT instrumento, estado, atualizado_em FROM tocar_campanhas WHERE usuario = ? ORDER BY instrumento')
+    .all(usuario).map((linha) => ({
+      instrumento: linha.instrumento,
+      estado: JSON.parse(linha.estado),
+      atualizado_em: linha.atualizado_em,
+    }));
+}
+
 function excluirDe(usuario) {
   return db.prepare('DELETE FROM tocar_sessoes WHERE usuario = ?').run(usuario).changes;
+}
+
+function excluirCampanhasDe(usuario) {
+  return db.prepare('DELETE FROM tocar_campanhas WHERE usuario = ?').run(usuario).changes;
 }
 
 function montar(app, { requireUsuario, opcional } = {}) {
@@ -300,5 +313,5 @@ function montar(app, { requireUsuario, opcional } = {}) {
   });
 }
 
-module.exports = { montar, validarResumo, validarCampanha, historicoDe, dadosDe, excluirDe, INDICACAO };
+module.exports = { montar, validarResumo, validarCampanha, historicoDe, dadosDe, dadosCampanhasDe, excluirDe, excluirCampanhasDe, INDICACAO };
 
