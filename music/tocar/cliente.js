@@ -303,6 +303,7 @@
     generation++; mediaStarting = false; soundLoading = false;
     if (state.mode === 'learn' && state.learnStartedAt !== null) { state.learnElapsed = learnDuration(); state.learnStartedAt = null; }
     if (state.running) state.position = Math.min(state.to, current());
+    if (state.running && (state.mode === 'practice' || state.mode === 'learn')) updateCampaign(false);
     state.running = false; silence(); if (media) media.pause();
     text('tj-count', '');
     text('tj-pause', 'Continuar'); updateTransport();
