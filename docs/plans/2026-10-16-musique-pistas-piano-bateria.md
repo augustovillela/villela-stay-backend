@@ -14,7 +14,7 @@ O editor de arranjos permanece separado. Esta entrega segue diretamente essa cor
 - Pistas MIDI usam a largura da área de conteúdo. Em telas estreitas, há rolagem horizontal para manter teclado e kit legíveis. Aprender nota por nota via MIDI agrupa teclas ou pads com o mesmo instante e espera o grupo completo; No ritmo continua disponível para acompanhar o relógio.
 - Importação de piano MIDI preserva acordes, oitavas, duração, intensidade e mudanças de andamento. Quando há várias linhas válidas, o gestor oferece “Todas as linhas compatíveis”; sobreposição da mesma tecla mantém a opção composta indisponível. Sustain/sostenuto ativos são diagnosticados como incompatíveis; não são descartados silenciosamente.
 - Ukulele tradicional reentrante aceita MIDI, MusicXML e MXL sem exigir afinação ascendente. TAB válida preserva posições; sugestões respeitam as 15 casas. Piano e bateria também aceitam MusicXML/MXL; percussão `unpitched` usa o mapeamento `<midi-unpitched>` e somente as dez peças do kit são aceitas.
-- MusicXML/MXL oferece “Todas as linhas compatíveis” para piano e bateria. Repetições simples `forward`/`backward` com `times` de 2 a 8 são expandidas; finais alternativos (`ending`) ficam indisponíveis para revisão manual.
+- MusicXML/MXL oferece “Todas as linhas compatíveis” para piano e bateria. Repetições simples `forward`/`backward` com `times` de 2 a 8 são expandidas; pedais MusicXML de início/fim prolongam notas de piano; finais alternativos (`ending`) ficam indisponíveis para revisão manual.
 - Limites de duração recebem apenas correção de resíduos numéricos próximos às fronteiras; notas realmente fora dos limites continuam recusadas.
 
 ## Verificação e pendências
@@ -23,4 +23,4 @@ Os testes usam arquivos sintéticos originais, DOM/relógios simulados, geometri
 
 O navegador real mostrou teclado completo, oitavas separadas, acordes e kit vertical. Também importou o MIDI sintético de piano, salvou, reabriu e abriu a prévia do rascunho na nova pista, mantendo quatro notas e uma mudança de andamento. Nenhum dado de teste foi criado em produção. Console sem erros nesse fluxo. O histórico de entrega e o commit efetivamente publicado ficam no prompt master v11 fora do repositório.
 
-Próximas etapas: representar pedais; tratar finais alternativos MusicXML; validar afinação de bandolim e hardware quando o usuário puder.
+Próximas etapas: tratar finais alternativos MusicXML; validar afinação de bandolim e hardware quando o usuário puder.
