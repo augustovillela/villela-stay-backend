@@ -487,6 +487,12 @@
       $('tg-pdf-info').textContent = 'PDF analisado: ' + detalhe + ' Ele continua apenas como referência visual.';
       $('tg-pdf-omr').hidden = true;
       if (dados.tipo === 'partitura') {
+        var perfilAtual = perfilSelecionado();
+        var omrCompativel = perfilAtual && perfilAtual.layout !== 'piano' && perfilAtual.layout !== 'drums';
+        if (!omrCompativel) {
+          $('tg-pdf-info').textContent += ' Para piano ou bateria, use MIDI; o OMR de cordas ainda não importa polifonia de piano nem percussão.';
+          return;
+        }
         fetch('/music/api/tocar/importar-pdf/omr/status', { credentials: 'same-origin' }).then(function (resposta) { return resposta.json(); }).then(function (status) {
           if (ticket !== pdfTicket) return;
           $('tg-pdf-omr').hidden = !status.disponivel;
