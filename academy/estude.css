@@ -604,6 +604,21 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-lj-tese p{margin:4px 0 0}
 .es-ler p.es-lj-vsit{margin:8px 0 4px;font-size:.9rem}
 .es-lj-pag{justify-content:center;gap:12px;margin-top:10px}
+/* a situação do verbete na data do edital (auditoria AL, AL-04/AL-09): o selo, "não apurado" e a ressalva ao lado */
+.es-lj-vsit .es-selo,.es-lj-det .es-selo,.es-lj-resultados .es-selo{white-space:normal;line-height:1.3}
+.es-selo.es-lj-sed{background:#EEF1F6;color:#2b3a55}
+.es-lj-ressalva{font:600 .8rem/1.4 Inter,system-ui,sans-serif;color:#93470A}
+.es-lj-ved{margin:8px 0}.es-lj-ved>b{display:block;margin-bottom:4px}
+.es-ler .es-lj-citados,.es-lj-citados{font:400 .88rem/1.5 Inter,system-ui,sans-serif;background:#FFF1DB;border-radius:8px;padding:8px 10px;margin:6px 0 12px}
+.es-lj-pelo{display:inline-block;font:600 .72rem/1.3 Inter,system-ui,sans-serif;color:#5a6478;background:#F0F2F5;border-radius:99px;padding:2px 8px;margin-left:4px}
+/* o diploma inteiro em BLOCOS desenhados sob demanda (AL-10): o bloco ainda vazio guarda a altura estimada; o filtro
+   "Só o que o edital cobra" só liga .so-cob — esconde o que o edital não cobra e troca os cabeçalhos, sem redesenhar */
+.es-lj-diploma{overflow-anchor:none}
+.es-lj-bloco{display:flow-root} /* a margem dos filhos fica dentro do bloco: a altura medida é a ocupada (a compensação da rolagem não erra) */
+.es-lj-bloco[data-pend]{min-height:var(--h)}
+.es-lj-diploma.so-cob .es-lj-bloco[data-pend]{min-height:var(--hc)}
+.es-lj-diploma .h-cob,.es-lj-diploma.so-cob .h-todos,.es-lj-diploma.so-cob .es-lj-bloco.sem-cob,.es-lj-diploma.so-cob .es-lj-disp:not(.cobrado){display:none}
+.es-lj-diploma.so-cob .h-cob{display:block}
 @media (max-width:640px){
   .es-lj-parte.n1{padding-left:26px}.es-lj-parte.n2{padding-left:32px}.es-lj-parte.n3{padding-left:38px}
   .es-lj-disp,.es-lj-verb{padding:8px 6px 8px 8px}

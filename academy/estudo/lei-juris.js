@@ -202,9 +202,11 @@ const estadoDo = (escopoId) => (db.prepare('SELECT status FROM est_lj_estado WHE
 function garantirEstado(escopoId) { db.prepare('INSERT OR IGNORE INTO est_lj_estado (escopo_id, status, atualizado_em) VALUES (?, ?, ?)').run(escopoId, 'rascunho', nowISO()); }
 const hashDe = (o) => crypto.createHash('sha1').update(JSON.stringify(o)).digest('hex');
 
-// o que o índice de busca guarda de um dispositivo: rótulo e epígrafe no título; caput e partes no texto
+// o que o índice de busca guarda de um dispositivo: rótulo (com a parte do diploma: "ADCT") e epígrafe no título; caput e
+// partes no texto. VERSAO_INDICE entra no hash do diploma: mudar o que o índice guarda faz o próximo envio regravar.
+const VERSAO_INDICE = 2;
 function ftsDoDispositivo(diploma, x) {
-  const titulo = [diploma.sigla, x.rotulo, x.epigrafe].filter(Boolean).join(' ');
+  const titulo = [diploma.sigla, parteDoDiploma(x.id), x.rotulo, x.epigrafe].filter(Boolean).join(' ');
   const corpo = [x.texto].concat(x.partes.map(p => [p.rotulo, p.texto].filter(Boolean).join(' '))).filter(Boolean).join('\n');
   return [titulo, corpo];
 }
@@ -218,7 +220,7 @@ function importarDiploma(produto, dados = {}) {
   const { d, avisos } = validarDiploma(dados.diploma);
   const alterados = d.dispositivos.filter(x => APOS_EDITAL.includes(x.situacao) || x.partes.some(p => APOS_EDITAL.includes(p.situacao))).length;
   const artigos = d.dispositivos.length;
-  const hash = hashDe(d);
+  const hash = hashDe({ indice: VERSAO_INDICE, d });
   const porSituacao = {};
   for (const x of d.dispositivos) { porSituacao[x.situacao] = (porSituacao[x.situacao] || 0) + 1; for (const p of x.partes) porSituacao['parte:' + p.situacao] = (porSituacao['parte:' + p.situacao] || 0) + 1; }
   const r = transacao(() => {
@@ -265,6 +267,44 @@ function validarColecao(x, i, k) {
   return { id, nome: texto(x.nome, 300, c + '.nome', k, { obrigatorio: true }), tribunal: texto(x.tribunal, 40, c + '.tribunal', k, { obrigatorio: true }),
     fonte_url: url(x.fonte_url, c + '.fonte_url', k), consultado_em: data(x.consultado_em, c + '.consultado_em', k) };
 }
+// O QUE O VERBETE DIZ DA DATA DO EDITAL (auditoria AL, AL-04/AL-09/AL-15) — guardado em `edital_extra` (JSON), só com o
+// que veio: a nota da situação na data do edital (inclusive o "NÃO APURADO"), a marca de situação INFERIDA, a ressalva
+// (ex.: cancelado depois do edital por perda de eficácia desde 11/11/2017), a redação, o título e a tese na data do
+// edital (quando o verbete mudou depois dele) e o cancelamento parcial.
+function textoOuCampo(v, campo) { return v && typeof v === 'object' && !Array.isArray(v) ? v[campo] : v; }
+function extraDoEdital(x, c, k) {
+  const e = {};
+  const nota = texto(x.situacao_na_data_do_edital_nota, 3000, c + '.situacao_na_data_do_edital_nota', k);
+  if (nota) e.nota = nota;
+  if (x.situacao_na_data_do_edital_inferida === true) e.inferida = true;
+  const ressalva = texto(textoOuCampo(x.ressalva_na_data_do_edital, 'texto'), 1500, c + '.ressalva_na_data_do_edital', k);
+  if (ressalva) e.ressalva = ressalva;
+  const tx = texto(x.texto_na_data_do_edital, LIMITE.textoVerbete, c + '.texto_na_data_do_edital', k);
+  if (tx) e.texto = tx;
+  const ti = texto(x.titulo_na_data_do_edital, 3000, c + '.titulo_na_data_do_edital', k);
+  if (ti) e.titulo = ti;
+  const te = texto(textoOuCampo(x.tese_na_data_do_edital, 'tese'), 60000, c + '.tese_na_data_do_edital', k);
+  if (te) {
+    e.tese = te;
+    const dt = x.tese_na_data_do_edital && typeof x.tese_na_data_do_edital === 'object' ? s(x.tese_na_data_do_edital.data, 10) : '';
+    if (DATA.test(dt)) e.tese_data = dt;
+  }
+  if (x.cancelamento_parcial === true) e.cancelamento_parcial = true;
+  return e;
+}
+// "Cancelada por perda de eficácia a partir de 11.11.2017" (Res. TST 225/2025): na data do edital o verbete estava
+// formalmente vigente, mas já sem eficácia. Quando a coleta não traz a ressalva, ela sai da própria nota oficial.
+const PERDA_EFICACIA = /perda de efic[aá]cia a partir de (\d{1,2})[./](\d{1,2})[./](\d{4})/i;
+function ressalvaDoEdital(v, ex) {
+  if (ex.ressalva) return ex.ressalva;
+  if ((v.situacao_edital || '') !== 'vigente') return '';
+  const m = PERDA_EFICACIA.exec([v.situacao_detalhe, ex.nota].filter(Boolean).join(' '));
+  if (!m) return '';
+  const iso = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  if (iso >= DATA_EDITAL_PADRAO) return '';
+  const br = `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3]}`;
+  return ex.cancelamento_parcial ? `formalmente vigente; os itens cancelados já estavam sem eficácia desde ${br}` : `formalmente vigente, mas sem eficácia desde ${br}`;
+}
 function validarVerbete(x, i, k, colecoes) {
   const c = `itens[${i}]`;
   if (!x || typeof x !== 'object') { k.e(`${c}: objeto.`); return null; }
@@ -280,6 +320,7 @@ function validarVerbete(x, i, k, colecoes) {
     leading_case: texto(typeof x.leading_case === 'string' || x.leading_case == null ? x.leading_case : JSON.stringify(x.leading_case), 1000, c + '.leading_case', k),
     julgamento: texto(typeof x.julgamento === 'string' || x.julgamento == null ? x.julgamento : JSON.stringify(x.julgamento), 1000, c + '.julgamento', k),
     fonte_tipo: texto(x.fonte_tipo, 60, c + '.fonte_tipo', k), fonte_url: url(x.fonte_url, c + '.fonte_url', k), consultado_em: data(x.consultado_em, c + '.consultado_em', k),
+    extra: extraDoEdital(x, c, k),
   };
   if (v.tipo && !/^[A-Za-z_]{1,40}$/.test(v.tipo)) k.e(`${c}.tipo "${v.tipo}": letras e sublinhado.`);
   if (v.colecao && !colecoes.has(v.colecao)) k.e(`${c}.colecao "${v.colecao}": coleção não enviada neste lote nem importada antes.`);
@@ -315,12 +356,12 @@ function importarJurisprudencia(produto, dados = {}) {
     for (const c of cols) upCol.run(c.id, c.nome, c.tribunal, c.fonte_url, c.consultado_em);
     const atual = db.prepare('SELECT rowid AS rid, hash FROM est_lj_verbetes WHERE id = ?');
     const up = db.prepare(`INSERT INTO est_lj_verbetes (id, colecao, tipo, tribunal, orgao, numero, numero_ord, titulo, texto, tese, situacao, situacao_detalhe, situacao_edital,
-        historico, leading_case, julgamento, fonte_tipo, fonte_url, consultado_em, hash, importado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        historico, leading_case, julgamento, fonte_tipo, fonte_url, consultado_em, edital_extra, hash, importado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (id) DO UPDATE SET colecao = excluded.colecao, tipo = excluded.tipo, tribunal = excluded.tribunal, orgao = excluded.orgao, numero = excluded.numero,
         numero_ord = excluded.numero_ord, titulo = excluded.titulo, texto = excluded.texto, tese = excluded.tese, situacao = excluded.situacao,
         situacao_detalhe = excluded.situacao_detalhe, situacao_edital = excluded.situacao_edital, historico = excluded.historico, leading_case = excluded.leading_case,
         julgamento = excluded.julgamento, fonte_tipo = excluded.fonte_tipo, fonte_url = excluded.fonte_url, consultado_em = excluded.consultado_em,
-        hash = excluded.hash, importado_em = excluded.importado_em`);
+        edital_extra = excluded.edital_extra, hash = excluded.hash, importado_em = excluded.importado_em`);
     const ligar = db.prepare('INSERT OR IGNORE INTO est_lj_escopo_verbetes (escopo_id, verbete_id, ligado_em) VALUES (?, ?, ?)');
     const ftsDel = FTS ? db.prepare('DELETE FROM est_lj_fts_juris WHERE rowid = ?') : null;
     const ftsIns = FTS ? db.prepare('INSERT INTO est_lj_fts_juris (rowid, titulo, texto) VALUES (?, ?, ?)') : null;
@@ -331,7 +372,7 @@ function importarJurisprudencia(produto, dados = {}) {
       if (a && a.hash === hash) inalterados++;
       else {
         up.run(v.id, v.colecao, v.tipo, v.tribunal, v.orgao, v.numero, numeroOrd(v.numero), v.titulo, v.texto, v.tese, v.situacao, v.situacao_detalhe, v.situacao_edital,
-          v.historico, v.leading_case, v.julgamento, v.fonte_tipo, v.fonte_url, v.consultado_em, hash, nowISO());
+          v.historico, v.leading_case, v.julgamento, v.fonte_tipo, v.fonte_url, v.consultado_em, Object.keys(v.extra).length ? j.str(v.extra) : '', hash, nowISO());
         const rid = a ? a.rid : atual.get(v.id).rid; // ON CONFLICT DO UPDATE mantém o rowid: o índice é trocado no mesmo lugar
         if (FTS) { ftsDel.run(rid); ftsIns.run(rid, [v.tribunal, v.tipo.replace(/_/g, ' '), v.numero, v.titulo].filter(Boolean).join(' '), [v.texto, v.tese].filter(Boolean).join('\n')); }
         if (a) atualizados++; else novos++;
@@ -373,7 +414,7 @@ function importarVinculos(produto, dados = {}) {
     }
     return partesDe.get(ch);
   };
-  const faltantes = [], linhas = new Map(), codigosVistos = new Set();
+  const faltantes = [], linhas = new Map(), codigosVistos = new Set(), citados = new Map(), citadosFora = [];
   let ignorados = 0;
   const falta = (msg) => { ignorados++; if (faltantes.length < 200) faltantes.push(msg); };
   its.forEach((it, i) => {
@@ -388,6 +429,13 @@ function importarVinculos(produto, dados = {}) {
     const lei = it.legislacao == null ? [] : it.legislacao, jur = it.jurisprudencia == null ? [] : it.jurisprudencia;
     if (!Array.isArray(lei) || !Array.isArray(jur)) return k.e(`${c}: "legislacao" e "jurisprudencia" devem ser listas.`);
     if (lei.length + jur.length > LIMITE.refsPorItem) return k.e(`${c}: mais de ${LIMITE.refsPorItem} referências.`);
+    // o diploma que o ITEM cita sem artigo ("Lei de Execuções Fiscais"): a aba diz "o item cobra também" (AL-14)
+    const cit = it.diplomas_citados_no_edital == null ? [] : it.diplomas_citados_no_edital;
+    if (!Array.isArray(cit)) return k.e(`${c}.diplomas_citados_no_edital: deve ser lista.`);
+    for (const dc of cit.slice(0, 50).map(x => s(x, 80)).filter(Boolean)) {
+      if (diplomas.has(dc)) citados.set(cod + '|' + dc, { item: cod, diploma_id: dc });
+      else if (citadosFora.length < 50) citadosFora.push(`${cod}: ${dc}`);
+    }
     lei.forEach((x, n) => {
       const cc = `${c}.legislacao[${n}]`;
       const o = { diploma: s(x && x.diploma, 80), dispositivo: s(x && x.dispositivo, 120), parte: s(x && x.parte, 160), origem: s(x && x.origem, 20), confianca: s(x && x.confianca, 20) };
@@ -420,13 +468,16 @@ function importarVinculos(produto, dados = {}) {
     const apagados = db.prepare("DELETE FROM est_lj_vinculos WHERE escopo_id = ? AND (item = ? OR item LIKE ? || '.%')").run(escopo.id, disc, disc).changes;
     const ins = db.prepare(`INSERT INTO est_lj_vinculos (escopo_id, item, tipo, diploma_id, dispositivo_id, parte, verbete_id, origem, confianca, motivo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     for (const l of linhas.values()) ins.run(escopo.id, l.item, l.tipo, l.diploma_id, l.dispositivo_id, l.parte, l.verbete_id, l.origem, l.confianca, l.motivo);
+    db.prepare("DELETE FROM est_lj_item_diplomas WHERE escopo_id = ? AND (item = ? OR item LIKE ? || '.%')").run(escopo.id, disc, disc);
+    const insC = db.prepare('INSERT OR IGNORE INTO est_lj_item_diplomas (escopo_id, item, diploma_id) VALUES (?, ?, ?)');
+    for (const x of citados.values()) insC.run(escopo.id, x.item, x.diploma_id);
     return { apagados };
   });
   const comVinculo = new Set([...linhas.values()].map(l => l.item));
   const folhasSem = [...programa.values()].filter(i => i.folha && daDisc(i.codigo) && !comVinculo.has(i.codigo)).map(i => i.codigo);
   const ls = [...linhas.values()];
   return { escopo: escopo.slug, disciplina: disc, itens: comVinculo.size, legislacao: ls.filter(l => l.tipo === 'lei').length, jurisprudencia: ls.filter(l => l.tipo === 'juris').length,
-    substituidos: r.apagados, ignorados, faltantes, itens_sem_vinculo: folhasSem };
+    substituidos: r.apagados, ignorados, faltantes, itens_sem_vinculo: folhasSem, diplomas_citados: citados.size, diplomas_citados_fora_do_acervo: citadosFora };
 }
 
 // ---------------------------------------------------------------------
@@ -451,6 +502,7 @@ function remover(produto, dados = {}) {
     for (const id of dips) {
       out.vinculos += db.prepare("DELETE FROM est_lj_vinculos WHERE escopo_id = ? AND tipo = 'lei' AND diploma_id = ?").run(escopo.id, id).changes;
       out.diplomas += db.prepare('DELETE FROM est_lj_escopo_diplomas WHERE escopo_id = ? AND diploma_id = ?').run(escopo.id, id).changes;
+      db.prepare('DELETE FROM est_lj_item_diplomas WHERE escopo_id = ? AND diploma_id = ?').run(escopo.id, id);
       if (!db.prepare('SELECT 1 FROM est_lj_escopo_diplomas WHERE diploma_id = ? LIMIT 1').get(id)) {
         if (FTS) db.prepare('DELETE FROM est_lj_fts_lei WHERE rowid IN (SELECT rowid FROM est_lj_dispositivos WHERE diploma_id = ?)').run(id);
         out.apagados_do_acervo += db.prepare('DELETE FROM est_lj_diplomas WHERE id = ?').run(id).changes; // dispositivos saem em cascata
@@ -532,14 +584,41 @@ const marcasDe = (usuario, c, tipo, refs) => {
 };
 const diplomaPublico = (d) => ({ id: d.id, nome: d.nome, norma: d.norma, sigla: d.sigla, tipo: d.tipo, abrangencia: d.abrangencia, fonte_url: d.fonte_url,
   consultado_em: d.consultado_em, data_referencia_edital: d.data_edital, artigos: d.artigos, alterados_apos_edital: d.alterados });
+// A PARTE DO DIPLOMA que tem numeração própria (auditoria AL, AL-05): o ADCT dentro da CF ("adct-art-10"), um anexo
+// de tratado ("anexo-i-art-15"). O rótulo da fonte é só "Art. 10" — igual ao do corpo permanente —, então o que o
+// aluno lê (aba da aula, acervo, busca) passa a ser "ADCT, art. 10".
+function parteDoDiploma(id) {
+  const m = /^([a-z0-9-]+?)-art-/.exec(String(id || ''));
+  if (!m) return '';
+  if (m[1] === 'adct') return 'ADCT';
+  const an = /^anexo-([a-z0-9]+)$/.exec(m[1]);
+  if (an) return 'Anexo ' + an[1].toUpperCase();
+  return m[1].toUpperCase();
+}
+function rotuloCompleto(id, rotulo) {
+  const p = parteDoDiploma(id), r = String(rotulo || '');
+  if (!p || r.toUpperCase().startsWith(p.toUpperCase())) return r;
+  return p + ', ' + r.replace(/^Art(igo)?\b\.?/, (x) => x.toLowerCase());
+}
+// "ATO DAS DISPOSIÇÕES… — ATO DAS DISPOSIÇÕES…" (rótulo e nome iguais) vira um nível só
+const estruturaLimpa = (e) => String(e || '').split(' > ').map(seg => { const [a, b] = seg.split(' — '); return b && a.trim() === b.trim() ? a.trim() : seg; }).join(' > ');
 function dispositivoPublico(x) {
-  return { id: x.id, rotulo: x.rotulo, ordem: x.ordem, estrutura: x.estrutura, epigrafe: x.epigrafe, texto: x.texto, situacao: x.situacao, nota: x.nota,
+  const parte = parteDoDiploma(x.id);
+  return { id: x.id, rotulo: rotuloCompleto(x.id, x.rotulo), ...(parte ? { parte_do_diploma: parte } : {}), ordem: x.ordem, estrutura: estruturaLimpa(x.estrutura), epigrafe: x.epigrafe, texto: x.texto, situacao: x.situacao, nota: x.nota,
     alterado_por: j.parse(x.alterado_por, null), texto_na_data_do_edital: x.texto_edital == null ? null : x.texto_edital, edital_indisponivel: !!x.edital_indisponivel,
     partes: j.parse(x.partes, []) };
 }
+// o verbete como o aluno o lê — com o que a coleta diz da DATA DO EDITAL (AL-04/AL-09/AL-15): a nota, a marca de
+// situação inferida (não apurada na fonte), a ressalva, a redação/título/tese de então e o cancelamento parcial
+function camposDoEdital(v) {
+  const ex = j.parse(v.edital_extra, {}) || {};
+  return { situacao_na_data_do_edital_nota: ex.nota || '', situacao_na_data_do_edital_inferida: !!ex.inferida, ressalva_na_data_do_edital: ressalvaDoEdital(v, ex),
+    texto_na_data_do_edital: ex.texto || '', titulo_na_data_do_edital: ex.titulo || '', tese_na_data_do_edital: ex.tese || '', tese_na_data_do_edital_data: ex.tese_data || '',
+    cancelamento_parcial: !!ex.cancelamento_parcial };
+}
 const verbetePublico = (v) => ({ id: v.id, colecao: v.colecao, tipo: v.tipo, tribunal: v.tribunal, orgao: v.orgao, numero: v.numero, titulo: v.titulo, texto: v.texto, tese: v.tese,
   situacao: v.situacao, situacao_detalhe: v.situacao_detalhe, situacao_na_data_do_edital: v.situacao_edital, historico: v.historico, leading_case: v.leading_case,
-  julgamento: v.julgamento, fonte_url: v.fonte_url, consultado_em: v.consultado_em });
+  julgamento: v.julgamento, fonte_url: v.fonte_url, consultado_em: v.consultado_em, ...camposDoEdital(v) });
 const emLotes = (lista, fn) => { const out = []; for (let i = 0; i < lista.length; i += 500) out.push(...fn(lista.slice(i, i + 500))); return out; };
 const marcadores = (n) => Array(n).fill('?').join(',');
 
@@ -591,7 +670,15 @@ function legislacaoVinculada(usuario, produto, slugEscopo, q = {}) {
   // a CF primeiro, depois os códigos; dentro do mesmo tipo, o que o item mais usa
   const peso = (t) => ({ constituicao: 0, codigo: 1 }[t] ?? 2);
   diplomas.sort((a, b) => peso(a.tipo) - peso(b.tipo) || b.dispositivos.length - a.dispositivos.length || a.nome.localeCompare(b.nome, 'pt'));
-  return { unidade, itens: codigos.map(k => ({ codigo: k, texto: m.itens.get(k) || '' })), diplomas, total: refs.length, marcas: marcasDe(usuario, c, 'dispositivo', refs) };
+  // o diploma que o item cita sem artigo (AL-14): "o item cobra também: Lei 6.830/1980 (abrir no acervo)"
+  const cit = new Map();
+  if (codigos.length) for (const x of emLotes(codigos, (l) => db.prepare(`SELECT i.item, d.id, d.nome, d.sigla, d.norma FROM est_lj_item_diplomas i JOIN est_lj_escopo_diplomas ed ON ed.escopo_id = i.escopo_id AND ed.diploma_id = i.diploma_id
+      JOIN est_lj_diplomas d ON d.id = i.diploma_id WHERE i.escopo_id = ? AND i.item IN (${marcadores(l.length)})`).all(c.escopo.id, ...l))) {
+    if (!cit.has(x.id)) cit.set(x.id, { id: x.id, nome: x.nome, sigla: x.sigla, norma: x.norma, itens: [], na_aba: porDip.has(x.id) });
+    cit.get(x.id).itens.push(x.item);
+  }
+  const citados = [...cit.values()].map(x => ({ ...x, itens: [...new Set(x.itens)].sort() })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+  return { unidade, itens: codigos.map(k => ({ codigo: k, texto: m.itens.get(k) || '' })), diplomas, citados_no_edital: citados, total: refs.length, marcas: marcasDe(usuario, c, 'dispositivo', refs) };
 }
 
 // (b) a JURISPRUDÊNCIA do item: os verbetes vinculados, por tribunal e tipo, com a situação e a data
@@ -755,8 +842,22 @@ function verbete(usuario, produto, slugEscopo, id) {
     itens: Object.fromEntries(itens.map(i => [i, m.itens.get(i) || ''])), marcas: marcasDe(usuario, c, 'verbete', [v.id]) };
 }
 
-// (e) BUSCA ÚNICA nos dois acervos — o trecho achado vem entre MARCA_INI e MARCA_FIM
+// (e) BUSCA ÚNICA nos dois acervos — o trecho achado vem entre MARCA_INI e MARCA_FIM.
+// A ORDEM (auditoria AL de 17/10/2026, AL-08). Antes era só o `rank` do FTS: o bm25 favorece texto curto e todo token
+// vira prefixo, então "art. 477" punha o art. 477 da CLT em 20º, "Súmula 331" a do TST em 9º, e "justa causa" não
+// trazia os arts. 482 e 483 da CLT nos 60 primeiros. Agora:
+//   1. CONSULTA POR NÚMERO ("art. 477", "artigo 477 da CLT", "art 7 XXIX CF", "art. 10 do ADCT", "Súmula 331",
+//      "OJ 394", "Tema 1046", "SV 4", "ADI 5766") é reconhecida antes do FTS e o resultado EXATO vem no topo. Sem
+//      diploma na consulta, o do diploma mais usado pelo edital do percurso vem primeiro (CLT); sem tribunal, a ordem
+//      do acervo (TST, TRT-10, STF, STJ).
+//   2. TEXTO LIVRE: bm25 do FTS5 com peso maior no título (rótulo, epígrafe, número e título do verbete), a frase
+//      exata pesando mais que as palavras soltas, e peso para o que está VINCULADO a item do edital. O que o edital
+//      cobra no ITEM QUE TRATA DO ASSUNTO (o texto do item contém a busca) sobe — e entra mesmo sem a palavra no
+//      texto: o art. 483 da CLT não diz "justa causa", mas é o que o item 1.1.28 cobra sobre ela (`pelo_item`).
 const POR_BUSCA = 20;
+const PESO_TITULO = 6;        // bm25(fts, título, texto)
+const TETO_CANDIDATOS = 4000; // o FTS devolve no máximo isto (pelo bm25 cru) para a nova ordem
+const PESO_ITEM = 5;          // cada vínculo (até 4) com o item do edital que trata do assunto vale isto em bm25
 function trechoLike(txt, termos) {
   const t = String(txt || ''), base = semAcento(t);
   let i = -1;
@@ -765,44 +866,235 @@ function trechoLike(txt, termos) {
   const ini = Math.max(0, i - 70), fim = Math.min(t.length, i + 110);
   return (ini > 0 ? '…' : '') + t.slice(ini, fim) + (fim < t.length ? '…' : '');
 }
+const ROMANO = { i: 1, v: 5, x: 10, l: 50, c: 100 };
+function romano(t) {
+  if (!/^[ivxlc]{1,7}$/.test(t)) return 0;
+  let n = 0;
+  for (let i = 0; i < t.length; i++) { const a = ROMANO[t[i]], b = ROMANO[t[i + 1]] || 0; n += a < b ? -a : a; }
+  return n > 0 && n < 200 ? n : 0;
+}
+const VAZIAS = new Set(['da', 'do', 'de', 'dos', 'das', 'e', 'a', 'o', 'n', 'no', 'na', 'nos', 'nas', 'em', 'lei', 'inc', 'inciso', 'caput', 'alinea', 'art', 'artigo', 'nº', 'numero']);
+const RE_LEI = /^art(?:igo)?s?\.?\s*(\d{1,4})\s*(?:o|º|°)?(?:\s*-\s*([a-z])|([a-z]))?(?![a-z0-9])(.*)$/;
+const RE_JURIS = /^(sumulas? vinculantes?|sumulas?|sum\.?|sv|ojs?|orientacao jurisprudencial|pn|precedente normativo|temas?|irr|irdr|iac|iuj|adi|adpf|adc|ado|re|are|mi|ms|hc|rhc|aco|ar)\s*(?:n[o.º°]*\s*)?(\d{1,7})(?!\d)(.*)$/;
+const TEMAS = ['tema_rg', 'tema_repetitivo', 'tema_irr', 'tema_iac', 'tema_irdr'];
+function tiposDaConsulta(nome) {
+  if (/^(sumulas? vinculantes?|sv)$/.test(nome)) return ['sumula_vinculante'];
+  if (/^(sumulas?|sum\.?)$/.test(nome)) return ['sumula'];
+  if (/^(ojs?|orientacao jurisprudencial)$/.test(nome)) return ['oj'];
+  if (/^(pn|precedente normativo)$/.test(nome)) return ['precedente_normativo'];
+  if (/^temas?$/.test(nome)) return TEMAS;
+  if (nome === 'irr') return ['tema_irr'];
+  if (nome === 'irdr') return ['irdr', 'tema_irdr'];
+  if (nome === 'iac') return ['iac', 'tema_iac'];
+  if (nome === 'iuj') return ['iuj'];
+  return [nome.toUpperCase()]; // a classe processual do STF é o próprio tipo ("ADI 5766")
+}
+// O RECONHECIMENTO da consulta por número — puro (o teste o chama direto). Devolve
+//   { tipo: 'lei', numero, sufixo, adct, parte: { p, pu, inc, al }, dicas: [palavras que podem ser o diploma] }
+//   { tipo: 'juris', tipos, numero, tribunal, colecao, vinculante }   ou null (texto livre).
+function consultaPorNumero(q) {
+  let t = semAcento(s(q, 200)).replace(/(\d)\.(?=\d{3}\b)/g, '$1').replace(/\s+/g, ' ').trim();
+  const antes = /^([a-z][a-z0-9]{1,9}),?\s+(art(?:igo)?s?\.?\s*\d.*)$/.exec(t); // "ADCT, art. 10", "CLT art. 477"
+  if (antes) t = antes[2] + ' ' + antes[1];
+  let m = RE_LEI.exec(t);
+  if (m) {
+    const resto = m[4] || '';
+    const toks = resto.replace(/§/g, ' § ').split(/[^a-z0-9§]+/).filter(Boolean);
+    const parte = {}, dicas = [];
+    let adct = false;
+    for (let i = 0; i < toks.length; i++) {
+      const x = toks[i];
+      if (x === 'adct') { adct = true; continue; }
+      if (x === '§' && /^\d+$/.test(toks[i + 1] || '')) { parte.p = Number(toks[++i]); continue; }
+      if ((x === 'paragrafo' && toks[i + 1] === 'unico') || x === 'pu') { parte.pu = true; if (x === 'paragrafo') i++; continue; }
+      if (x === 'paragrafo' && /^\d+$/.test(toks[i + 1] || '')) { parte.p = Number(toks[++i]); continue; }
+      if (/^[a-h]$/.test(x) && (parte.inc || parte.p || parte.pu) && !parte.al) { parte.al = x; continue; }
+      if (VAZIAS.has(x)) continue;
+      const r = romano(x);
+      if (r && !parte.inc && !['cc', 'cl', 'cv'].includes(x)) { parte.inc = r; continue; }
+      dicas.push(x);
+    }
+    return { tipo: 'lei', numero: Number(m[1]), sufixo: m[2] || m[3] || '', adct, parte, dicas };
+  }
+  m = RE_JURIS.exec(t);
+  if (m) {
+    const resto = ' ' + (m[3] || '') + ' ';
+    let tipos = tiposDaConsulta(m[1]);
+    if (tipos[0] === 'sumula' && /\bvinculantes?\b/.test(resto)) tipos = ['sumula_vinculante'];
+    const tribunal = /\btst\b/.test(resto) ? 'TST' : /\btrt\s*-?\s*(10)?\b/.test(resto) ? 'TRT-10' : /\bstf\b/.test(resto) ? 'STF' : /\bstj\b/.test(resto) ? 'STJ' : '';
+    const colecao = /\bs?b?di\s*-?\s*1\b.*transit|\btransitoria\b/.test(resto) ? 'tst-oj-sdi1t' : /\bs?b?di\s*-?\s*1\b/.test(resto) ? 'tst-oj-sdi1'
+      : /\bs?b?di\s*-?\s*2\b/.test(resto) ? 'tst-oj-sdi2' : /\bsdc\b/.test(resto) ? 'tst-oj-sdc' : /\bpleno\b/.test(resto) ? 'tst-oj-pleno' : '';
+    return { tipo: 'juris', tipos, numero: Number(m[2]), tribunal: tribunal || (colecao ? 'TST' : ''), colecao };
+  }
+  return null;
+}
+// o id da parte citada ("art 7 XXIX" → art-7.inc29; "§ 2º" → .p2; "parágrafo único" → .pu)
+function idDaParte(did, p) {
+  if (!p || !(p.p || p.pu || p.inc)) return '';
+  return did + (p.p ? '.p' + p.p : p.pu ? '.pu' : '') + (p.inc ? '.inc' + p.inc : '') + (p.al ? '.' + p.al : '');
+}
+// o uso de cada diploma (e de cada coleção) pelo edital do percurso: quantos vínculos
+const usoDosDiplomas = (c) => new Map(db.prepare("SELECT diploma_id AS k, COUNT(*) AS n FROM est_lj_vinculos WHERE escopo_id = ? AND tipo = 'lei' GROUP BY diploma_id").all(c.escopo.id).map(x => [x.k, x.n]));
+const usoDasColecoes = (c) => new Map(db.prepare(`SELECT x.colecao AS k, COUNT(*) AS n FROM est_lj_vinculos v JOIN est_lj_verbetes x ON x.id = v.verbete_id
+  WHERE v.escopo_id = ? AND v.tipo = 'juris' GROUP BY x.colecao`).all(c.escopo.id).map(x => [x.k, x.n]));
+function exatosLei(c, cn) {
+  const did = (cn.adct ? 'adct-' : '') + 'art-' + cn.numero + cn.sufixo;
+  const linhas = db.prepare(`SELECT d.rowid AS rid, d.diploma_id, d.id, d.rotulo, d.situacao, d.texto, d.partes, p.nome, p.sigla, p.tipo FROM est_lj_dispositivos d
+    JOIN est_lj_escopo_diplomas ed ON ed.diploma_id = d.diploma_id AND ed.escopo_id = ? JOIN est_lj_diplomas p ON p.id = d.diploma_id WHERE d.id = ?`).all(c.escopo.id, did);
+  if (!linhas.length) return [];
+  const uso = usoDosDiplomas(c);
+  // o diploma pedido: a sigla ("clt", "cf", "cpc"), a Constituição pelo nome, o número da lei ("8213") ou o ADCT (é da CF)
+  const pedido = (x) => {
+    const sig = semAcento(x.sigla).replace(/[^a-z0-9]/g, ''), ids = x.diploma_id.split('-');
+    if (cn.adct && x.tipo === 'constituicao') return true;
+    return cn.dicas.some(t => t === sig || ids.includes(t) || (x.tipo === 'constituicao' && /^(constituicao|crfb|cf88)$/.test(t)));
+  };
+  const pid = idDaParte(did, cn.parte);
+  return linhas.map(x => ({ x, pedido: pedido(x), uso: uso.get(x.diploma_id) || 0 }))
+    .sort((a, b) => (b.pedido - a.pedido) || (b.uso - a.uso) || a.x.nome.localeCompare(b.x.nome, 'pt'))
+    .map(({ x }) => {
+      const p = pid ? j.parse(x.partes, []).find(y => y.id === pid) : null;
+      const trecho = p ? `${p.rotulo || p.caminho} ${p.texto}` : x.texto;
+      return { rid: x.rid, diploma_id: x.diploma_id, id: x.id, rotulo: rotuloCompleto(x.id, x.rotulo), situacao: x.situacao, nome: x.nome, sigla: x.sigla,
+        trecho: trecho.slice(0, 240) + (trecho.length > 240 ? '…' : ''), exato: true, ...(p ? { parte: p.id } : {}) };
+    });
+}
+function linhaJuris(v, trecho, extra = {}) {
+  const ed = camposDoEdital(v);
+  return { id: v.id, tribunal: v.tribunal, tipo: v.tipo, numero: v.numero, titulo: v.titulo, situacao: v.situacao, situacao_na_data_do_edital: v.situacao_edital,
+    situacao_na_data_do_edital_inferida: ed.situacao_na_data_do_edital_inferida, situacao_na_data_do_edital_nota: ed.situacao_na_data_do_edital_nota,
+    ressalva_na_data_do_edital: ed.ressalva_na_data_do_edital, cancelamento_parcial: ed.cancelamento_parcial, trecho, ...extra };
+}
+function exatosJuris(c, cn) {
+  const linhas = db.prepare(`SELECT v.rowid AS rid, v.* FROM est_lj_verbetes v JOIN est_lj_escopo_verbetes ev ON ev.verbete_id = v.id AND ev.escopo_id = ?
+    WHERE v.tipo IN (${marcadores(cn.tipos.length)}) AND v.numero_ord = ?`).all(c.escopo.id, ...cn.tipos, cn.numero);
+  if (!linhas.length) return [];
+  const uso = usoDasColecoes(c);
+  return linhas.sort((a, b) => ((b.tribunal === cn.tribunal) - (a.tribunal === cn.tribunal)) || ((b.colecao === cn.colecao) - (a.colecao === cn.colecao))
+      || ordemTribunal(a.tribunal) - ordemTribunal(b.tribunal) || ordemTipo(a.tipo) - ordemTipo(b.tipo) || (uso.get(b.colecao) || 0) - (uso.get(a.colecao) || 0) || a.id.localeCompare(b.id))
+    .map(v => ({ rid: v.rid, ...linhaJuris(v, (v.texto || v.tese || v.titulo || '').slice(0, 240), { exato: true }) }));
+}
+// os itens do edital que TRATAM do assunto buscado: o texto do item contém a frase (palavras inteiras pelo começo)
+const normalizar = (t) => ' ' + semAcento(t).replace(/[^\p{L}\p{N}]+/gu, ' ').trim() + ' ';
+function itensDoAssunto(c, termo) {
+  const frase = normalizar(termo).trim();
+  if (frase.length < 3) return [];
+  const m = mapaDoPercurso(c);
+  return [...m.itens.entries()].filter(([, tx]) => normalizar(tx).includes(' ' + frase)).map(([k]) => k);
+}
+// o que o edital cobra nesses itens: quantos vínculos cada dispositivo (ou verbete) tem com eles
+function cobradosNosItens(c, tipo, itens) {
+  const out = new Map();
+  if (!itens.length) return out;
+  const col = tipo === 'lei' ? "diploma_id || '|' || dispositivo_id" : 'verbete_id';
+  for (const x of emLotes(itens, (l) => db.prepare(`SELECT ${col} AS k, item FROM est_lj_vinculos WHERE escopo_id = ? AND tipo = ? AND item IN (${marcadores(l.length)})`).all(c.escopo.id, tipo, ...l))) {
+    if (!out.has(x.k)) out.set(x.k, { n: 0, itens: new Set() });
+    const o = out.get(x.k); o.n++; o.itens.add(x.item);
+  }
+  return out;
+}
+// quantos itens do edital vinculam cada dispositivo (ou verbete): o que o edital cobra em muitos itens é central
+const vinculadosDo = (c, tipo) => new Map(db.prepare(`SELECT ${tipo === 'lei' ? "diploma_id || '|' || dispositivo_id" : 'verbete_id'} AS k, COUNT(DISTINCT item) AS n FROM est_lj_vinculos WHERE escopo_id = ? AND tipo = ? GROUP BY k`).all(c.escopo.id, tipo).map(x => [x.k, x.n]));
+const centralidade = (n) => 1 + 0.15 * Math.min(n || 0, 10);
+// a ORDEM do texto livre num acervo: bm25 (título com peso) × (vinculado, frase exata) − o peso do item do assunto
+// (maior para o que o edital cobra em muitos itens: a centralidade)
+function ordenarLivre(c, tipo, termo, fq, itens) {
+  const T = tipo === 'lei' ? 'est_lj_fts_lei' : 'est_lj_fts_juris';
+  const de = tipo === 'lei'
+    ? `FROM ${T} f JOIN est_lj_dispositivos d ON d.rowid = f.rowid JOIN est_lj_escopo_diplomas ed ON ed.diploma_id = d.diploma_id AND ed.escopo_id = ? WHERE ${T} MATCH ?`
+    : `FROM ${T} f JOIN est_lj_verbetes v ON v.rowid = f.rowid JOIN est_lj_escopo_verbetes ev ON ev.verbete_id = v.id AND ev.escopo_id = ? WHERE ${T} MATCH ?`;
+  const chave = tipo === 'lei' ? "d.diploma_id || '|' || d.id" : 'v.id';
+  const total = db.prepare(`SELECT COUNT(*) AS n ${de}`).get(c.escopo.id, fq).n;
+  const hits = db.prepare(`SELECT f.rowid AS rid, ${chave} AS k, bm25(${T}, ${PESO_TITULO}, 1.0) AS s ${de} ORDER BY s LIMIT ${TETO_CANDIDATOS}`).all(c.escopo.id, fq);
+  const palavras = normalizar(termo).trim().split(' ');
+  const frase = palavras.length > 1 ? new Set(db.prepare(`SELECT f.rowid AS rid ${de}`).all(c.escopo.id, '"' + palavras.join(' ').replace(/"/g, '') + '"').map(x => x.rid)) : null;
+  const vinc = vinculadosDo(c, tipo), doItem = cobradosNosItens(c, tipo, itens);
+  const cand = new Map();
+  for (const h of hits) {
+    const it = doItem.get(h.k);
+    const nv = vinc.get(h.k) || 0;
+    const fator = 1 + (nv ? 0.5 : 0) + (frase && frase.has(h.rid) ? 1 : 0);
+    cand.set(h.k, { rid: h.rid, k: h.k, fts: true, score: h.s * fator - (it ? PESO_ITEM * Math.min(it.n, 4) * centralidade(nv) : 0), itens: it ? [...it.itens] : [] });
+  }
+  let soDoItem = 0;
+  for (const [k, it] of doItem) {
+    if (cand.has(k)) continue;
+    soDoItem++;
+    cand.set(k, { rid: 0, k, fts: false, score: -PESO_ITEM * Math.min(it.n, 4) * centralidade(vinc.get(k)), itens: [...it.itens] });
+  }
+  return { total: total + soDoItem, lista: [...cand.values()].sort((a, b) => a.score - b.score || a.k.localeCompare(b.k)) };
+}
 function busca(usuario, produto, slugEscopo, { q = '', onde = 'todos', pagina = 1 } = {}) {
   const c = abrirAcervo(usuario, produto, slugEscopo);
   const termo = s(q, 200);
   if (termo.length < 2) throw erro('Digite ao menos duas letras para buscar.');
   const pg = Math.max(1, Math.min(50, parseInt(pagina, 10) || 1)), off = (pg - 1) * POR_BUSCA;
   const fq = consultaFTS(termo);
-  const out = { q: termo, pagina: pg, por_pagina: POR_BUSCA, lei: [], juris: [], total_lei: 0, total_juris: 0 };
+  const cn = consultaPorNumero(termo);
+  const out = { q: termo, pagina: pg, por_pagina: POR_BUSCA, lei: [], juris: [], total_lei: 0, total_juris: 0, ...(cn ? { consulta: cn.tipo === 'lei' ? 'artigo' : 'verbete' } : {}) };
   const termos = termo.split(/\s+/).filter(Boolean).slice(0, 8);
   const like = (t) => '%' + t.replace(/[\\%_]/g, (x) => '\\' + x) + '%';
+  // o assunto pelo item do edital (só no texto livre: "art. 477" não é assunto)
+  const itens = cn ? [] : itensDoAssunto(c, termo);
   if (onde !== 'juris') {
+    const exatos = cn && cn.tipo === 'lei' ? exatosLei(c, cn) : [];
+    const ja = new Set(exatos.map(x => x.diploma_id + '|' + x.id));
     if (FTS && fq) {
-      const de = `FROM est_lj_fts_lei f JOIN est_lj_dispositivos d ON d.rowid = f.rowid JOIN est_lj_escopo_diplomas ed ON ed.diploma_id = d.diploma_id AND ed.escopo_id = ?
-        JOIN est_lj_diplomas p ON p.id = d.diploma_id WHERE est_lj_fts_lei MATCH ?`;
-      out.total_lei = db.prepare(`SELECT COUNT(*) AS n ${de}`).get(c.escopo.id, fq).n;
-      out.lei = db.prepare(`SELECT d.diploma_id, d.id, d.rotulo, d.situacao, p.nome, p.sigla, snippet(est_lj_fts_lei, 1, '${MARCA_INI}', '${MARCA_FIM}', '…', 24) AS trecho ${de} ORDER BY rank LIMIT ? OFFSET ?`)
-        .all(c.escopo.id, fq, POR_BUSCA, off);
+      const o = ordenarLivre(c, 'lei', termo, fq, itens);
+      const resto = o.lista.filter(x => !ja.has(x.k));
+      out.total_lei = exatos.length + resto.length + Math.max(0, o.total - o.lista.length);
+      const pagina = exatos.concat(resto).slice(off, off + POR_BUSCA);
+      const fts = pagina.filter(x => !x.exato && x.fts).map(x => x.rid);
+      const trechos = new Map(fts.length ? db.prepare(`SELECT rowid AS rid, snippet(est_lj_fts_lei, 1, '${MARCA_INI}', '${MARCA_FIM}', '…', 24) AS t FROM est_lj_fts_lei WHERE est_lj_fts_lei MATCH ? AND rowid IN (${marcadores(fts.length)})`)
+        .all(fq, ...fts).map(x => [x.rid, x.t]) : []);
+      const pares = pagina.filter(x => !x.exato).map(x => x.k.split('|'));
+      const linhas = new Map(pares.length ? db.prepare(`SELECT d.diploma_id || '|' || d.id AS k, d.diploma_id, d.id, d.rotulo, d.situacao, d.texto, p.nome, p.sigla
+        FROM est_lj_dispositivos d JOIN est_lj_diplomas p ON p.id = d.diploma_id WHERE ${pares.map(() => '(d.diploma_id = ? AND d.id = ?)').join(' OR ')}`).all(...pares.flat()).map(x => [x.k, x]) : []);
+      out.lei = pagina.map(x => {
+        if (x.exato) { const { rid, ...r } = x; return r; }
+        const d = linhas.get(x.k);
+        if (!d) return null;
+        return { diploma_id: d.diploma_id, id: d.id, rotulo: rotuloCompleto(d.id, d.rotulo), situacao: d.situacao, nome: d.nome, sigla: d.sigla,
+          trecho: x.fts ? (trechos.get(x.rid) || trechoLike(d.texto, termos)) : trechoLike(d.texto, termos), ...(x.itens.length ? { pelo_item: x.itens.sort() } : {}) };
+      }).filter(Boolean);
     } else {
       const cond = termos.map(() => "d.texto || ' ' || d.partes LIKE ? ESCAPE '\\'").join(' AND ');
       const de = `FROM est_lj_dispositivos d JOIN est_lj_escopo_diplomas ed ON ed.diploma_id = d.diploma_id AND ed.escopo_id = ? JOIN est_lj_diplomas p ON p.id = d.diploma_id WHERE ${cond}`;
       const as = termos.map(like);
-      out.total_lei = db.prepare(`SELECT COUNT(*) AS n ${de}`).get(c.escopo.id, ...as).n;
-      out.lei = db.prepare(`SELECT d.diploma_id, d.id, d.rotulo, d.situacao, d.texto, p.nome, p.sigla ${de} ORDER BY p.nome, d.ordem LIMIT ? OFFSET ?`).all(c.escopo.id, ...as, POR_BUSCA, off)
-        .map(({ texto: t, ...x }) => ({ ...x, trecho: trechoLike(t, termos) }));
+      const total = db.prepare(`SELECT COUNT(*) AS n ${de}`).get(c.escopo.id, ...as).n;
+      const lista = db.prepare(`SELECT d.diploma_id, d.id, d.rotulo, d.situacao, d.texto, p.nome, p.sigla ${de} ORDER BY p.nome, d.ordem LIMIT ? OFFSET ?`).all(c.escopo.id, ...as, POR_BUSCA, off)
+        .filter(x => !ja.has(x.diploma_id + '|' + x.id)).map(({ texto: t, ...x }) => ({ ...x, rotulo: rotuloCompleto(x.id, x.rotulo), trecho: trechoLike(t, termos) }));
+      out.total_lei = total + exatos.length;
+      out.lei = (pg === 1 ? exatos.map(({ rid, ...r }) => r) : []).concat(lista).slice(0, POR_BUSCA);
     }
   }
   if (onde !== 'lei') {
+    const exatos = cn && cn.tipo === 'juris' ? exatosJuris(c, cn) : [];
+    const ja = new Set(exatos.map(x => x.id));
     if (FTS && fq) {
-      const de = `FROM est_lj_fts_juris f JOIN est_lj_verbetes v ON v.rowid = f.rowid JOIN est_lj_escopo_verbetes ev ON ev.verbete_id = v.id AND ev.escopo_id = ? WHERE est_lj_fts_juris MATCH ?`;
-      out.total_juris = db.prepare(`SELECT COUNT(*) AS n ${de}`).get(c.escopo.id, fq).n;
-      out.juris = db.prepare(`SELECT v.id, v.tribunal, v.tipo, v.numero, v.titulo, v.situacao, snippet(est_lj_fts_juris, 1, '${MARCA_INI}', '${MARCA_FIM}', '…', 24) AS trecho ${de} ORDER BY rank LIMIT ? OFFSET ?`)
-        .all(c.escopo.id, fq, POR_BUSCA, off);
+      const o = ordenarLivre(c, 'juris', termo, fq, itens);
+      const resto = o.lista.filter(x => !ja.has(x.k));
+      out.total_juris = exatos.length + resto.length + Math.max(0, o.total - o.lista.length);
+      const pagina = exatos.concat(resto).slice(off, off + POR_BUSCA);
+      const fts = pagina.filter(x => !x.exato && x.fts).map(x => x.rid);
+      const trechos = new Map(fts.length ? db.prepare(`SELECT rowid AS rid, snippet(est_lj_fts_juris, 1, '${MARCA_INI}', '${MARCA_FIM}', '…', 24) AS t FROM est_lj_fts_juris WHERE est_lj_fts_juris MATCH ? AND rowid IN (${marcadores(fts.length)})`)
+        .all(fq, ...fts).map(x => [x.rid, x.t]) : []);
+      const ids = pagina.filter(x => !x.exato).map(x => x.k);
+      const linhas = new Map(ids.length ? db.prepare(`SELECT * FROM est_lj_verbetes WHERE id IN (${marcadores(ids.length)})`).all(...ids).map(v => [v.id, v]) : []);
+      out.juris = pagina.map(x => {
+        if (x.exato) { const { rid, ...r } = x; return r; }
+        const v = linhas.get(x.k);
+        if (!v) return null;
+        return linhaJuris(v, x.fts ? (trechos.get(x.rid) || trechoLike(v.texto, termos)) : trechoLike(v.texto || v.tese, termos), x.itens.length ? { pelo_item: x.itens.sort() } : {});
+      }).filter(Boolean);
     } else {
       const cond = termos.map(() => "(v.texto || ' ' || v.titulo || ' ' || v.tese) LIKE ? ESCAPE '\\'").join(' AND ');
       const de = `FROM est_lj_verbetes v JOIN est_lj_escopo_verbetes ev ON ev.verbete_id = v.id AND ev.escopo_id = ? WHERE ${cond}`;
       const as = termos.map(like);
-      out.total_juris = db.prepare(`SELECT COUNT(*) AS n ${de}`).get(c.escopo.id, ...as).n;
-      out.juris = db.prepare(`SELECT v.id, v.tribunal, v.tipo, v.numero, v.titulo, v.situacao, v.texto ${de} ORDER BY ${ORDEM_JURIS} LIMIT ? OFFSET ?`).all(c.escopo.id, ...as, POR_BUSCA, off)
-        .map(({ texto: t, ...x }) => ({ ...x, trecho: trechoLike(t, termos) }));
+      out.total_juris = db.prepare(`SELECT COUNT(*) AS n ${de}`).get(c.escopo.id, ...as).n + exatos.length;
+      const lista = db.prepare(`SELECT v.* ${de} ORDER BY ${ORDEM_JURIS} LIMIT ? OFFSET ?`).all(c.escopo.id, ...as, POR_BUSCA, off)
+        .filter(v => !ja.has(v.id)).map(v => linhaJuris(v, trechoLike(v.texto, termos)));
+      out.juris = (pg === 1 ? exatos.map(({ rid, ...r }) => r) : []).concat(lista).slice(0, POR_BUSCA);
     }
   }
   return out;
@@ -855,5 +1147,5 @@ module.exports = {
   // aluno
   abrirAcervo, resumoParaPainel, legislacaoVinculada, jurisprudenciaVinculada, acervoLegislacao, diplomaInteiro, acervoJurisprudencia, verbete, busca, marcar, marcas,
   // para os testes
-  validarDiploma, consultaFTS, temFTS, SITUACOES, SITUACOES_JURIS, CORES, LIMITE, POR_PAGINA, MARCA_INI, MARCA_FIM,
+  validarDiploma, consultaFTS, consultaPorNumero, rotuloCompleto, temFTS, SITUACOES, SITUACOES_JURIS, CORES, LIMITE, POR_PAGINA, MARCA_INI, MARCA_FIM,
 };

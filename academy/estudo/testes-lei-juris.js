@@ -319,7 +319,8 @@ async function rodar({ t, req }) {
     const r = await ana.get('/lei-juris/busca?q=rescisao');
     assert.equal(r.st, 200, r.texto);
     assert.ok(r.json.lei.some(x => x.diploma_id === 'clt-teste' && x.id === 'art-2'), 'achou o art. 2º');
-    assert.deepEqual(r.json.juris.map(x => x.id), ['tst-sum-4']);
+    // o verbete que tem a palavra vem primeiro; o que o item "Rescisão do contrato" cobra entra depois, com o porquê (AL-08)
+    assert.deepEqual(r.json.juris.map(x => [x.id, x.pelo_item || []]), [['tst-sum-4', ['1.1.1']], ['stf-sv-13', ['1.1.1']]]);
     assert.ok(r.json.lei[0].trecho.includes(LJ.MARCA_INI) && r.json.lei[0].trecho.includes(LJ.MARCA_FIM), 'o trecho vem marcado');
     assert.equal((await ana.get('/lei-juris/busca?q=a')).st, 400);
     const j1 = await ana.get('/lei-juris/busca?q=jornada&onde=juris');
@@ -328,6 +329,126 @@ async function rodar({ t, req }) {
     // aspas e operadores do FTS no texto do aluno não quebram a consulta
     assert.equal((await ana.get('/lei-juris/busca?q=' + encodeURIComponent('"rescisão" OR NEAR(*'))).st, 200);
     assert.equal(LJ.consultaFTS('aviso "prévio" -proporcional'), '"aviso"* "prévio"* "proporcional"*');
+  });
+
+  // ================= AUDITORIA AL (17/10/2026): ADCT, ordem da busca, data do edital no verbete =================
+  // um segundo código (texto curto, que o bm25 cru punha na frente) e uma Constituição com o ADCT
+  const CCT = { id: 'cc-teste', nome: 'Código de Teste', norma: 'Lei de teste', sigla: 'CCT', tipo: 'codigo', abrangencia: 'integral', fonte_url: 'https://www.planalto.gov.br/cc.htm', consultado_em: '2026-10-16',
+    estrutura: [], dispositivos: [
+      { id: 'art-2', rotulo: 'Art. 2º', ordem: 1, estrutura: '', texto: 'Art. 2 curto.', partes: [], situacao: 'vigente' },
+      { id: 'art-5', rotulo: 'Art. 5º', ordem: 2, estrutura: '', texto: 'A rescisão do contrato.', partes: [], situacao: 'vigente' }] };
+  const ADCT = 'ATO DAS DISPOSIÇÕES CONSTITUCIONAIS TRANSITÓRIAS';
+  const CFT = { id: 'cf-teste', nome: 'Constituição de Teste', norma: 'Constituição', sigla: 'CFT', tipo: 'constituicao', abrangencia: 'integral', fonte_url: 'https://www.planalto.gov.br/cf.htm', consultado_em: '2026-10-16',
+    estrutura: [{ tipo: 'titulo', rotulo: 'TÍTULO II', nome: 'DOS DIREITOS', ordem: 1 }, { tipo: 'parte', rotulo: ADCT, nome: ADCT, ordem: 2 }], dispositivos: [
+      { id: 'art-7', rotulo: 'Art. 7º', ordem: 1, estrutura: 'TÍTULO II — DOS DIREITOS', texto: 'São direitos dos trabalhadores:', situacao: 'vigente',
+        partes: [{ id: 'art-7.inc29', rotulo: 'XXIX', caminho: 'XXIX', texto: 'ação, quanto aos créditos resultantes das relações de trabalho, com prazo prescricional de cinco anos;', situacao: 'vigente' }] },
+      { id: 'art-10', rotulo: 'Art. 10', ordem: 2, estrutura: 'TÍTULO II — DOS DIREITOS', texto: 'É assegurada a participação dos trabalhadores nos colegiados.', partes: [], situacao: 'vigente' },
+      { id: 'adct-art-10', rotulo: 'Art. 10', ordem: 3, estrutura: ADCT + ' — ' + ADCT, texto: 'Até que seja promulgada a lei complementar, fica vedada a dispensa arbitrária da empregada gestante.', partes: [], situacao: 'vigente' }] };
+  await t('lei-juris · AL-05: o artigo do ADCT é "ADCT, art. 10" — na aba da aula, no acervo (com o ADCT como parte própria na navegação) e na busca; o item que cita o diploma sem artigo (AL-14)', async () => {
+    for (const d of [CCT, CFT]) assert.equal((await staff('diploma', { diploma: d })).st, 200);
+    const r = await staff('vinculos', { disciplina: '1.2', itens: [{ codigo: '1.2.1', legislacao: [{ diploma: 'cf-teste', dispositivo: 'adct-art-10', origem: 'aula', confianca: 'alta' }, { diploma: 'cf-teste', dispositivo: 'art-10', origem: 'aula', confianca: 'alta' }],
+      diplomas_citados_no_edital: ['clt-teste', 'diploma-que-nao-existe'] }] });
+    assert.equal(r.st, 200, r.texto);
+    assert.deepEqual([r.json.diplomas_citados, r.json.diplomas_citados_fora_do_acervo], [1, ['1.2.1: diploma-que-nao-existe']]);
+    const a = await ana.get('/legislacao/vinculada?unidade=aula-c');
+    const ds = a.json.diplomas[0].dispositivos;
+    assert.deepEqual(ds.map(x => [x.id, x.rotulo]), [['art-10', 'Art. 10'], ['adct-art-10', 'ADCT, art. 10']], 'o do ADCT não se confunde com o do corpo permanente');
+    assert.equal(ds[1].parte_do_diploma, 'ADCT');
+    assert.equal(ds[1].estrutura, ADCT, 'rótulo e nome iguais viram um nível só');
+    assert.deepEqual(a.json.citados_no_edital.map(x => [x.id, x.itens, x.na_aba]), [['clt-teste', ['1.2.1'], false]], 'o item cobra também a CLTT (sem artigo)');
+    const inteiro = await ana.get('/legislacao/cf-teste');
+    assert.equal(inteiro.json.dispositivos.find(x => x.id === 'adct-art-10').rotulo, 'ADCT, art. 10');
+    assert.ok(inteiro.json.dispositivos.filter(x => x.estrutura === ADCT).length === 1, 'o ADCT é uma seção própria do "Ir para…"');
+    assert.equal(LJ.rotuloCompleto('anexo-i-art-15', 'Artigo 15'), 'Anexo I, artigo 15');
+    const b = await ana.get('/lei-juris/busca?q=' + encodeURIComponent('art. 10 do ADCT') + '&onde=lei');
+    assert.deepEqual([b.json.lei[0].diploma_id, b.json.lei[0].id, b.json.lei[0].rotulo, b.json.lei[0].exato], ['cf-teste', 'adct-art-10', 'ADCT, art. 10', true]);
+    const c2 = await ana.get('/lei-juris/busca?q=' + encodeURIComponent('ADCT, art. 10') + '&onde=lei');
+    assert.equal(c2.json.lei[0].id, 'adct-art-10');
+  });
+
+  await t('lei-juris · AL-08: a busca reconhece a consulta por NÚMERO ("art. 477", "artigo 477 da CLT", "art 7 XXIX CF", "Súmula 331", "OJ 394", "Tema 1046", "SV 4") e põe o exato no topo', async () => {
+    const P = LJ.consultaPorNumero;
+    assert.deepEqual(P('art. 477'), { tipo: 'lei', numero: 477, sufixo: '', adct: false, parte: {}, dicas: [] });
+    assert.deepEqual(P('artigo 477 da CLT').dicas, ['clt']);
+    assert.deepEqual([P('art 7 XXIX CF').numero, P('art 7 XXIX CF').parte, P('art 7 XXIX CF').dicas], [7, { inc: 29 }, ['cf']]);
+    assert.deepEqual([P('art. 4º-A da Lei 6.019').sufixo, P('art. 4º-A da Lei 6.019').dicas], ['a', ['6019']]);
+    assert.deepEqual(P('art. 477, § 6º, a').parte, { p: 6, al: 'a' });
+    assert.deepEqual([P('Súmula 331').tipos, P('Súmula 331').numero, P('súmula 331 do STF').tribunal], [['sumula'], 331, 'STF']);
+    assert.deepEqual([P('OJ 394').tipos, P('OJ 4 da SBDI-2').colecao], [['oj'], 'tst-oj-sdi2']);
+    assert.deepEqual([P('Tema 1046').tipos.includes('tema_rg'), P('SV 4').tipos, P('súmula vinculante 4').tipos, P('ADI 5766').tipos], [true, ['sumula_vinculante'], ['sumula_vinculante'], ['ADI']]);
+    assert.equal(P('justa causa'), null);
+    assert.equal(P('arte'), null);
+    // "art. 2": o art. 2º da CLTT (o diploma que o edital mais usa) em 1º; o bm25 cru punha o do CCT (texto curto) na frente
+    let r = await ana.get('/lei-juris/busca?q=' + encodeURIComponent('art. 2') + '&onde=lei');
+    assert.equal(r.st, 200, r.texto);
+    assert.deepEqual(r.json.lei.slice(0, 2).map(x => [x.diploma_id, x.id, !!x.exato]), [['clt-teste', 'art-2', true], ['cc-teste', 'art-2', true]]);
+    assert.equal(r.json.consulta, 'artigo');
+    // com o diploma na consulta, ele vem primeiro
+    r = await ana.get('/lei-juris/busca?q=' + encodeURIComponent('artigo 2 do CCT') + '&onde=lei');
+    assert.deepEqual([r.json.lei[0].diploma_id, r.json.lei[0].id], ['cc-teste', 'art-2']);
+    // o inciso pedido vira o trecho
+    r = await ana.get('/lei-juris/busca?q=' + encodeURIComponent('art 7 XXIX CF') + '&onde=lei');
+    assert.deepEqual([r.json.lei[0].diploma_id, r.json.lei[0].id, r.json.lei[0].parte], ['cf-teste', 'art-7', 'art-7.inc29']);
+    assert.ok(r.json.lei[0].trecho.startsWith('XXIX ação'), r.json.lei[0].trecho);
+    // Súmula 331: a do TST em 1º (sem tribunal na consulta, a ordem do acervo: TST antes do STF); "do STF" inverte
+    assert.equal((await staff('jurisprudencia', { colecoes: [{ id: 'stf-sumulas', nome: 'Súmulas do STF', tribunal: 'STF', fonte_url: 'https://portal.stf.jus.br/', consultado_em: '2026-10-16' }],
+      itens: [VB(331, { titulo: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS. LEGALIDADE', texto: 'A contratação de trabalhadores por empresa interposta é ilegal, formando-se o vínculo diretamente com o tomador dos serviços.' }),
+        { id: 'stf-sum-331', colecao: 'stf-sumulas', tipo: 'sumula', tribunal: 'STF', numero: '331', texto: 'Curta.', situacao: 'vigente', fonte_url: 'https://portal.stf.jus.br/331', consultado_em: '2026-10-16' }] })).st, 200);
+    r = await ana.get('/lei-juris/busca?q=' + encodeURIComponent('Súmula 331') + '&onde=juris');
+    assert.deepEqual(r.json.juris.slice(0, 2).map(x => [x.id, !!x.exato]), [['tst-sum-331', true], ['stf-sum-331', true]]);
+    r = await ana.get('/lei-juris/busca?q=' + encodeURIComponent('súmula 331 do STF') + '&onde=juris');
+    assert.equal(r.json.juris[0].id, 'stf-sum-331');
+    r = await ana.get('/lei-juris/busca?q=' + encodeURIComponent('SV 13') + '&onde=juris');
+    assert.equal(r.json.juris[0].id, 'stf-sv-13');
+  });
+
+  await t('lei-juris · AL-08: texto livre — bm25 com peso no título e na frase exata, e o que o edital cobra no ITEM QUE TRATA DO ASSUNTO sobe (e entra mesmo sem a palavra, com "pelo_item")', async () => {
+    // "rescisão do contrato" é o texto do item 1.1.1: o art. 2º da CLTT (vinculado ao item) passa o art. 5º do CCT
+    // (texto curto, o primeiro do bm25 cru); o art. 1º da CLTT não tem "rescisão", mas é o que o item cobra
+    const r = await ana.get('/lei-juris/busca?q=' + encodeURIComponent('rescisão do contrato') + '&onde=lei');
+    assert.equal(r.st, 200, r.texto);
+    const ids = r.json.lei.map(x => x.diploma_id + '|' + x.id);
+    assert.ok(ids.indexOf('clt-teste|art-2') === 0, ids.join(' '));
+    assert.ok(ids.indexOf('clt-teste|art-2') < ids.indexOf('cc-teste|art-5'), 'o vinculado ao item do assunto antes do texto curto');
+    const a1 = r.json.lei.find(x => x.id === 'art-1' && x.diploma_id === 'clt-teste');
+    assert.ok(a1, 'o dispositivo que o item cobra entra mesmo sem a palavra: ' + ids.join(' '));
+    assert.deepEqual(a1.pelo_item, ['1.1.1']);
+    assert.equal(r.json.total_lei, r.json.lei.length);
+    assert.equal(r.json.consulta, undefined, 'texto livre não é consulta por número');
+  });
+
+  await t('lei-juris · AL-04/AL-09/AL-15: o verbete guarda e devolve o que a coleta diz da DATA DO EDITAL — nota, situação inferida (não apurada), ressalva (explícita ou da "perda de eficácia" anterior ao edital), redação/título/tese de então e cancelamento parcial', async () => {
+    const COLS = [{ id: 'tst-oj-sdi1', nome: 'OJs da SBDI-1', tribunal: 'TST', fonte_url: 'https://jurisprudencia.tst.jus.br/', consultado_em: '2026-10-16' },
+      { id: 'trt10-irdr', nome: 'IRDR do TRT-10', tribunal: 'TRT-10', fonte_url: 'https://pje.trt10.jus.br/', consultado_em: '2026-10-16' },
+      { id: 'stf-temas', nome: 'Temas do STF', tribunal: 'STF', fonte_url: 'https://portal.stf.jus.br/', consultado_em: '2026-10-16' }];
+    const B = (id, colecao, tipo, tribunal, numero, extra) => ({ id, colecao, tipo, tribunal, numero, texto: 'Texto de ' + id + '.', situacao: 'vigente', situacao_na_data_do_edital: 'vigente', fonte_url: 'https://x.jus.br/' + id, consultado_em: '2026-10-16', ...extra });
+    const r = await staff('jurisprudencia', { colecoes: COLS, itens: [
+      B('tst-oj-sdi1-394', 'tst-oj-sdi1', 'oj', 'TST', '394', { texto: 'A majoração do repouso deve repercutir no cálculo.', situacao_na_data_do_edital_nota: 'redação alterada depois do edital (2023-03-31)',
+        titulo_na_data_do_edital: 'RSR. NÃO REPERCUSSÃO', texto_na_data_do_edital: 'A majoração do repouso não repercute no cálculo.' }),
+      B('tst-sum-90', 'tst-sumulas', 'sumula', 'TST', '90', { situacao: 'cancelado', situacao_detalhe: 'Cancelada por perda de eficácia a partir de 11.11.2017, pela Lei 13.467/2017. Res. 225/2025' }),
+      B('tst-sum-91', 'tst-sumulas', 'sumula', 'TST', '91', { situacao: 'cancelado', ressalva_na_data_do_edital: 'sem eficácia desde 11/11/2017 (Res. 225/2025)' }),
+      B('tst-sum-6', 'tst-sumulas', 'sumula', 'TST', '6', { cancelamento_parcial: true, situacao_detalhe: 'Itens I e II cancelados por perda de eficácia a partir de 11.11.2017, Res. 225/2025' }),
+      B('trt10-irdr-7', 'trt10-irdr', 'irdr', 'TRT-10', '7', { situacao: 'suspenso', situacao_na_data_do_edital: 'suspenso', situacao_na_data_do_edital_inferida: true,
+        situacao_na_data_do_edital_nota: 'NÃO APURADO na data do edital: instauração sem data nas fontes lidas — usada a situação atual' }),
+      B('stf-tema-360', 'stf-temas', 'tema_rg', 'STF', '360', { tese: 'Tese de hoje.', tese_na_data_do_edital: { tese: 'Tese de 2018.', data: '2018-09-20', fonte: { url: 'https://portal.stf.jus.br/' } } }),
+      B('tst-sum-500', 'tst-sumulas', 'sumula', 'TST', '500', { situacao: 'cancelado', situacao_detalhe: 'Cancelada por perda de eficácia a partir de 10.10.2024.' })] });
+    assert.equal(r.st, 200, r.texto);
+    assert.ok(db.prepare("SELECT edital_extra FROM est_lj_verbetes WHERE id = 'tst-oj-sdi1-394'").get().edital_extra.includes('não repercute'), 'o campo foi preservado na importação');
+    assert.equal(db.prepare("SELECT edital_extra FROM est_lj_verbetes WHERE id = 'tst-sum-500'").get().edital_extra, '', 'sem nada da data do edital, a coluna fica vazia');
+    const v = async (id) => (await ana.get('/jurisprudencia/verbete/' + id)).json.verbete;
+    const oj = await v('tst-oj-sdi1-394');
+    assert.deepEqual([oj.titulo_na_data_do_edital, oj.texto_na_data_do_edital, oj.situacao_na_data_do_edital_nota], ['RSR. NÃO REPERCUSSÃO', 'A majoração do repouso não repercute no cálculo.', 'redação alterada depois do edital (2023-03-31)']);
+    assert.equal((await v('tst-sum-90')).ressalva_na_data_do_edital, 'formalmente vigente, mas sem eficácia desde 11/11/2017', 'a ressalva sai da nota oficial quando a coleta não a traz');
+    assert.equal((await v('tst-sum-91')).ressalva_na_data_do_edital, 'sem eficácia desde 11/11/2017 (Res. 225/2025)', 'a explícita vale');
+    assert.equal((await v('tst-sum-500')).ressalva_na_data_do_edital, '', 'perda de eficácia DEPOIS do edital não vira ressalva');
+    const s6 = await v('tst-sum-6');
+    assert.deepEqual([s6.cancelamento_parcial, s6.ressalva_na_data_do_edital], [true, 'formalmente vigente; os itens cancelados já estavam sem eficácia desde 11/11/2017']);
+    const ir = await v('trt10-irdr-7');
+    assert.deepEqual([ir.situacao_na_data_do_edital_inferida, /NÃO APURADO/.test(ir.situacao_na_data_do_edital_nota)], [true, true]);
+    assert.deepEqual([(await v('stf-tema-360')).tese_na_data_do_edital, (await v('stf-tema-360')).tese_na_data_do_edital_data], ['Tese de 2018.', '2018-09-20']);
+    // na busca, o resultado leva a ressalva junto do selo
+    const b = await ana.get('/lei-juris/busca?q=' + encodeURIComponent('Súmula 90') + '&onde=juris');
+    assert.deepEqual([b.json.juris[0].id, b.json.juris[0].ressalva_na_data_do_edital], ['tst-sum-90', 'formalmente vigente, mas sem eficácia desde 11/11/2017']);
   });
 
   // ================= MARCAÇÃO DE LEITURA =================
@@ -415,7 +536,7 @@ async function rodar({ t, req }) {
     assert.ok(/abaAula: ABA_AULA/.test(TELA) && /acervo: E\.antesDoAcervo/.test(TELA), 'o passo do histórico leva a aba de cada aula e a aula de onde o acervo veio (F5, Voltar)');
     assert.ok(/abrirAbaDaAula\(codigo, ABA_AULA\[codigo\] \|\| 'texto'\)/.test(TELA), 'a aula reabre na aba em que estava');
     assert.ok(/if \(E\.aba === 'unidade'\) E\.antesDoAcervo = \{ aba: 'unidade', arg: onde\.arg, y: yAntes \}/.test(TELA), 'o acervo guarda a aula e a rolagem');
-    assert.ok(/E\.veioDeLugar = \{ aba: E\.aba, arg: onde\.aba === E\.aba \? onde\.arg : undefined, y: yAntes \}/.test(TELA) && /\(veio === 'lei' \|\| veio === 'juris'\) && E\.veioDeLugar/.test(TELA), 'a aula volta ao diploma (ou à página da jurisprudência)');
+    assert.ok(/E\.veioDeLugar = \{ aba: E\.aba, arg: onde\.aba === E\.aba \? onde\.arg : undefined, y: yAntes, ancora: ancoraAntes \}/.test(TELA) && /\(veio === 'lei' \|\| veio === 'juris'\) && E\.veioDeLugar/.test(TELA), 'a aula volta ao diploma (ou à página da jurisprudência)');
     assert.ok(/ir\(a\.aba \|\| 'hoje', a\.arg, false, \{ voltando: true \}\)/.test(TELA), 'voltar não regrava "de onde vim"');
     assert.ok(/Voltar à aula/.test(TELA), 'o botão de volta à aula');
     // a leitura até o fim não conta com o texto escondido (aba de Legislação aberta)
@@ -444,6 +565,75 @@ async function rodar({ t, req }) {
     assert.equal(ctx.trechoAchado('a \u0002<b>x</b>\u0003 c'), 'a <mark>&lt;b&gt;x&lt;/b&gt;</mark> c');
   });
 
+  // a parte da tela que pinta o verbete, executada num `vm` com o que ela usa do resto do arquivo
+  function telaDoVerbete() {
+    const ctx = { esc: (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
+      dataBR: (d) => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '' };
+    vm.createContext(ctx);
+    const ini = TELA.indexOf('    var SIT_JURIS = {'), fim = TELA.indexOf('    function tipoJuris(');
+    vm.runInContext(TELA.slice(ini, fim), ctx);
+    for (const f of ['texto', 'rotuloSituacao', 'situacaoDoVerbete', 'redacaoDoEdital', 'notaDoEdital', 'pelaBusca', 'citadosDoItem']) vm.runInContext(funcaoDoFonte(TELA, f), ctx);
+    return ctx;
+  }
+  await t('lei-juris · tela AL-04/AL-09/AL-15/AL-03: o selo "Na data do edital" com a RESSALVA ao lado, "não apurado" quando inferida, "Parcialmente cancelada", a redação de então como nos dispositivos, e o incidente pendente sem o rótulo "Suspenso"', async () => {
+    const c = telaDoVerbete();
+    const ress = c.situacaoDoVerbete({ situacao: 'cancelado', situacao_na_data_do_edital: 'vigente', ressalva_na_data_do_edital: 'formalmente vigente, mas sem eficácia desde 11/11/2017' });
+    assert.ok(ress.includes('Na data do edital: Vigente') && ress.includes('— formalmente vigente, mas sem eficácia desde 11/11/2017'), ress);
+    // a ressalva aparece mesmo quando a situação de hoje é igual à da data do edital (cancelamento parcial)
+    const parc = c.situacaoDoVerbete({ situacao: 'vigente', situacao_na_data_do_edital: 'vigente', cancelamento_parcial: true, ressalva_na_data_do_edital: 'os itens cancelados já estavam sem eficácia' });
+    assert.ok(parc.includes('Parcialmente cancelada') && parc.includes('Na data do edital: Vigente') && parc.includes('os itens cancelados'), parc);
+    const nap = c.situacaoDoVerbete({ situacao: 'suspenso', tipo: 'irdr', situacao_na_data_do_edital: 'suspenso', situacao_na_data_do_edital_inferida: true, situacao_na_data_do_edital_nota: 'NÃO APURADO na data do edital: sem data' });
+    assert.ok(nap.includes('Na data do edital: não apurado') && nap.includes('Pendente de julgamento (processos suspensos)') && !/>Suspenso</.test(nap), nap);
+    const inf = c.situacaoDoVerbete({ situacao: 'pendente', situacao_na_data_do_edital: 'inexistente', situacao_na_data_do_edital_inferida: true, situacao_na_data_do_edital_nota: 'a numeração é sequencial' });
+    assert.ok(inf.includes('Na data do edital: Não existia') && inf.includes('não apurado na fonte (inferido)'), inf);
+    assert.equal(c.situacaoDoVerbete({ situacao: 'vigente', situacao_na_data_do_edital: 'vigente' }), '<span class="es-selo verde">Vigente</span>', 'sem nada a dizer, um selo só');
+    // a OJ 394: as duas redações, como nos dispositivos
+    const red = c.redacaoDoEdital({ titulo_na_data_do_edital: 'RSR. NÃO REPERCUSSÃO', texto_na_data_do_edital: 'não repercute <b>' });
+    assert.ok(red.includes('Na data do edital (05/01/2023) vigia outra redação') && red.includes('RSR. NÃO REPERCUSSÃO') && red.includes('não repercute &lt;b&gt;'), red);
+    assert.equal(c.redacaoDoEdital({ texto: 'só a de hoje' }), '');
+    assert.ok(c.redacaoDoEdital({ tese_na_data_do_edital: 'Tese de 2018.', tese_na_data_do_edital_data: '2018-09-20' }).includes('Tese (20/09/2018)'));
+    assert.ok(c.notaDoEdital({ situacao_na_data_do_edital_nota: 'redação alterada depois do edital', situacao_detalhe: 'Nova redação' }).includes('redação alterada depois do edital'));
+    assert.equal(c.notaDoEdital({ situacao_na_data_do_edital_nota: 'repetida', situacao_detalhe: 'x | repetida' }), '', 'a nota que o detalhe já diz não se repete');
+    // o corpo do verbete usa as duas
+    assert.ok(/redacaoDoEdital\(v\)/.test(funcaoDoFonte(TELA, 'corpoDoVerbete')) && /notaDoEdital\(v\)/.test(funcaoDoFonte(TELA, 'corpoDoVerbete')));
+    // a busca diz por que o resultado está ali; a aba diz o diploma que o item cita sem artigo (AL-14)
+    assert.ok(c.pelaBusca({ exato: true }).includes('o número pedido') && c.pelaBusca({ pelo_item: ['1.1.28'] }).includes('cobrado no item 1.1.28 do edital'));
+    assert.ok(c.citadosDoItem({ citados_no_edital: [{ id: 'lei-6830-1980', nome: 'Lei de Execuções Fiscais', norma: 'Lei nº 6.830', na_aba: false }] }).includes('O item cobra também:'));
+    assert.equal(c.citadosDoItem({ citados_no_edital: [{ id: 'x', nome: 'X', na_aba: true }] }), '', 'o diploma que já está na aba não se repete');
+    assert.ok(/\.es-lj-ressalva\{/.test(CSS) && /\.es-lj-vsit \.es-selo[^{]*\{white-space:normal/.test(CSS), 'o selo longo quebra em 375 px');
+  });
+
+  await t('lei-juris · tela AL-10: o diploma é desenhado em BLOCOS sob demanda (seção, até 25 dispositivos) e "Só o que o edital cobra" só liga uma classe — sem redesenhar', async () => {
+    const ctx = { esc: (x) => String(x == null ? '' : x) };
+    vm.createContext(ctx);
+    for (const f of ['cabecalhosDaEstrutura', 'blocosDoDiploma', 'alturaEstimada']) vm.runInContext(funcaoDoFonte(TELA, f), ctx);
+    vm.runInContext('var BLOCO_MAX = 25;', ctx);
+    const D = (n, est, cob) => ({ id: 'art-' + n, estrutura: est, texto: 'x'.repeat(80), cobrado: !!cob, partes: [] });
+    const lista = [D(1, 'T1'), D(2, 'T1 > C1', true)].concat(Array.from({ length: 30 }, (_, i) => D(3 + i, 'T1 > C2'))).concat([D(40, 'T2', true)]);
+    const bs = ctx.blocosDoDiploma(lista);
+    assert.deepEqual(bs.map(b => [b.ini, b.fim, b.cob]), [[0, 1, false], [1, 2, true], [2, 27, false], [27, 32, false], [32, 33, true]], 'um bloco por seção, e a seção grande em blocos de 25');
+    assert.deepEqual(bs.map(b => b.hTodos), ['<h4 class="es-lj-sec n0">T1</h4>', '<h4 class="es-lj-sec n1">C1</h4>', '<h4 class="es-lj-sec n1">C2</h4>', '', '<h4 class="es-lj-sec n0">T2</h4>']);
+    // com o filtro, os cabeçalhos são os que mudaram desde o ÚLTIMO bloco com algo cobrado
+    assert.deepEqual(bs.filter(b => b.cob).map(b => b.hCob), ['<h4 class="es-lj-sec n0">T1</h4><h4 class="es-lj-sec n1">C1</h4>', '<h4 class="es-lj-sec n0">T2</h4>']);
+    assert.ok(ctx.alturaEstimada(lista, bs[2], false, 40) > ctx.alturaEstimada(lista, bs[2], true, 40), 'a altura estimada com o filtro é a do que fica');
+    const fn = funcaoDoFonte(TELA, 'diplomaNaTela');
+    assert.ok(!/function pintar\(/.test(fn), 'nada redesenha o diploma inteiro');
+    assert.ok(/data-pend="1"/.test(fn) && /function desenhar\(n\)/.test(fn) && /function encher\(\)/.test(fn) && /addEventListener\('scroll', aoRolar/.test(fn), 'blocos vazios, desenhados quando chegam perto da tela');
+    const filtrar = fn.slice(fn.indexOf('function filtrar('), fn.indexOf("el('es-lj-todos')"));
+    assert.ok(/tx\.classList\.toggle\('so-cob', sim\)/.test(filtrar) && !/innerHTML/.test(filtrar), 'o filtro esconde e mostra, sem desenhar de novo');
+    assert.ok(/\.es-lj-diploma\.so-cob \.es-lj-disp:not\(\.cobrado\)/.test(CSS) && /\.es-lj-bloco\[data-pend\]\{min-height:var\(--h\)\}/.test(CSS) && /\.es-lj-diploma\.so-cob \.h-cob\{display:block\}/.test(CSS));
+  });
+
+  await t('lei-juris · tela AL-16: o passo que o aluno deixa guarda o lugar NA HORA (não 700 ms depois), e o diploma volta pela ÂNCORA (o dispositivo no topo da tela), não pelo pixel', async () => {
+    const irFn = funcaoDoFonte(TELA, 'ir');
+    assert.ok(/var ancoraAntes = ancoraAtual\(\);\s*if \(!como\.reabrindo\) \{ clearTimeout\(rolouTimer\); guardarPassoAgora\(\); \}/.test(irFn), 'guarda antes de trocar de tela');
+    assert.ok(/ancoraLei: ancoraAtual\(\)/.test(funcaoDoFonte(TELA, 'lembrancas')), 'o passo do histórico leva a âncora');
+    assert.ok(/E\.ancoraRepor = anc;/.test(funcaoDoFonte(TELA, 'voltarPara')) && /!anc\) reporRolagem\(a\.aba, a\.y\)/.test(funcaoDoFonte(TELA, 'voltarPara')), 'a volta da aula usa a âncora');
+    assert.ok(/if \(inicio\.aba === 'lei' && inicio\.arg && \(anc \|\| inicio\.y > 0\)\) \{ E\.reposicao = true; E\.ancoraRepor = anc; \}/.test(TELA), 'Voltar do navegador e F5: o dispositivo do endereço não puxa a tela');
+    assert.ok(/if \(ancora && blocoDe\[ancora\.id\] != null\) irPara\(ancora\.id, false, ancora\.dy\);/.test(funcaoDoFonte(TELA, 'diplomaNaTela')));
+    assert.ok(/data-lj-ref/.test(funcaoDoFonte(TELA, 'ancoraDoTexto')));
+  });
+
   await t('lei-juris · tela: leitura confortável e o celular — a tipografia do "Ler como livro" (.es-ler), texto que quebra, grades que cabem em 375 px; a versão do script e da folha subiu', async () => {
     assert.ok(/class="es-ler es-lj/.test(TELA), 'a leitura usa .es-ler (a mesma do "Ler como livro")');
     assert.ok(/\.es-lj-disp,\.es-lj-verb\{[^}]*overflow-wrap:anywhere/.test(CSS));
@@ -451,7 +641,7 @@ async function rodar({ t, req }) {
     assert.ok(/\.es-lj-resultados\{display:grid;grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,300px\),1fr\)\)/.test(CSS));
     assert.ok(/@media \(max-width:640px\)\{\n\s+\.es-lj-parte\.n1/.test(CSS), 'o recuo das partes encolhe no celular');
     const pg = ler('paginas.js');
-    assert.ok(/estude: 7,/.test(pg) && /V_FOLHAS = \{ aluno: 5, estude: 5 \}/.test(pg), 'estude.js?v=7 e estude.css?v=5');
+    assert.ok(/estude: 8,/.test(pg) && /V_FOLHAS = \{ aluno: 5, estude: 6 \}/.test(pg), 'estude.js?v=8 e estude.css?v=6');
   });
 }
 

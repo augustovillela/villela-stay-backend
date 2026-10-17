@@ -183,7 +183,8 @@
     // cada passo do histórico leva o que a tela LEMBRA (as disciplinas abertas e a rolagem de cada lista; de onde o
     // aluno veio para a aula, para o caderno, para a jornada): é o que sobrevive ao F5 e devolve ao mesmo lugar
     // (`abaAula`: em cada aula, a aba aberta — texto, legislação ou jurisprudência; `acervo`: a aula de onde o acervo foi aberto)
-    function lembrancas() { return { es: { lugares: LUGAR, veioDe: E.veioDe || '', porta: E.antesDaPorta || null, caderno: E.antesDoCaderno || null, leitor: E.antesDoLeitor || null, abaAula: ABA_AULA, acervo: E.antesDoAcervo || null } }; }
+    // (`ancoraLei`: no diploma inteiro, o dispositivo no topo da tela — a volta é por ele, não pelo pixel; ver diplomaNaTela)
+    function lembrancas() { return { es: { lugares: LUGAR, veioDe: E.veioDe || '', porta: E.antesDaPorta || null, caderno: E.antesDoCaderno || null, leitor: E.antesDoLeitor || null, abaAula: ABA_AULA, acervo: E.antesDoAcervo || null, ancoraLei: ancoraAtual() } }; }
     function rota(partes, substituir) { if (window.AcademyRota) window.AcademyRota.gravar(partes, substituir, lembrancas()); }
     // fechar a aba ou recarregar: o passo atual guarda a rolagem e as disciplinas abertas deste instante
     function guardarPassoAgora() {
@@ -235,8 +236,12 @@
           lerDisciplina(el('es-corpo'), inicio.extra, null, null, true);
         } else {
           // `pelaRota` (F5, Voltar): a tela está sendo REABERTA — o "de onde vim" é o que o passo lembrava, não a aba Hoje
+          // o DIPLOMA reaberto volta pela âncora que o passo guardou (o dispositivo no topo da tela) — e, sem ela, pela
+          // rolagem; nos dois casos o dispositivo do endereço ("clt~art-477") não puxa a tela para ele (AL-16)
+          var anc = inicio.aba === 'lei' && inicio.arg && lembrado && lembrado.ancoraLei && lembrado.ancoraLei.dip === String(inicio.arg).split('~')[0] ? lembrado.ancoraLei : null;
+          if (inicio.aba === 'lei' && inicio.arg && (anc || inicio.y > 0)) { E.reposicao = true; E.ancoraRepor = anc; }
           ir(inicio.aba || 'hoje', inicio.arg || undefined, !!inicio.substituir, { reabrindo: !!inicio.pelaRota, primeira: !inicio.pelaRota && !inicio.y });
-          if (inicio.y > 0) reporRolagem(inicio.aba || 'hoje', inicio.y); // depois do `ir`, que leva ao topo
+          if (inicio.y > 0 && !anc) reporRolagem(inicio.aba || 'hoje', inicio.y); // depois do `ir`, que leva ao topo
         }
       };
       // VOLTAR DO NAVEGADOR E F5 (réplica de 11/10/2026, R3-M9): a página é remontada pelo endereço, e o painel (365 KB
@@ -398,6 +403,10 @@
     // `como.primeira`: a primeira tela ao entrar no curso — começa do topo, com o cabeçalho à vista.
     function ir(aba, arg, substituir, como) {
       como = como || {};
+      // o passo que o aluno DEIXA guarda o lugar dele já (rolagem e, no diploma, a âncora): esperar os 700 ms do
+      // ouvinte da rolagem fazia o Voltar do navegador cair 1,4 tela acima (auditoria AL, AL-16)
+      var ancoraAntes = ancoraAtual();
+      if (!como.reabrindo) { clearTimeout(rolouTimer); guardarPassoAgora(); }
       pararRelogio();
       guardarLugar();
       novaTela();
@@ -411,7 +420,7 @@
         if (aba === 'unidade' && E.aba && E.aba !== 'unidade' && !(como.voltando && (E.aba === 'lei' || E.aba === 'juris'))) {
           E.veioDe = E.aba;
           // dos acervos de legislação e jurisprudência a aula volta ao MESMO lugar: o diploma (ou a página) e a rolagem
-          E.veioDeLugar = { aba: E.aba, arg: onde.aba === E.aba ? onde.arg : undefined, y: yAntes };
+          E.veioDeLugar = { aba: E.aba, arg: onde.aba === E.aba ? onde.arg : undefined, y: yAntes, ancora: ancoraAntes };
         }
         // o acervo aberto DE DENTRO DE UMA AULA guarda a aula e a rolagem dela: "← Voltar à aula" devolve lá, na mesma
         // aba (a de Legislação, se foi dela que o aluno saiu). Entrar no acervo por outra aba esquece a aula.
@@ -438,9 +447,13 @@
     // volta a um lugar guardado ({ aba, arg, y }): a tela e a rolagem em que o aluno estava
     function voltarPara(lugar) {
       var a = lugar || { aba: 'hoje' };
-      E.reposicao = a.aba === 'lei' && !!a.arg && a.y > 0; // quem abre um diploma num dispositivo não rola até ele: a rolagem guardada manda
+      // quem abre um diploma num dispositivo não rola até ele: o lugar guardado manda — a âncora (o dispositivo no topo
+      // da tela), ou a rolagem quando não há âncora
+      var anc = a.aba === 'lei' && a.arg && a.ancora && a.ancora.dip === String(a.arg).split('~')[0] ? a.ancora : null;
+      E.reposicao = a.aba === 'lei' && !!a.arg && (a.y > 0 || !!anc);
+      E.ancoraRepor = anc;
       ir(a.aba || 'hoje', a.arg, false, { voltando: true });
-      if (a.y > 0 && !(LISTAS[a.aba] && !a.arg)) reporRolagem(a.aba, a.y); // as listas repõem o próprio lugar
+      if (a.y > 0 && !(LISTAS[a.aba] && !a.arg) && !anc) reporRolagem(a.aba, a.y); // as listas repõem o próprio lugar
     }
     // "Voltar" de dentro da aula: para a tela de onde o aluno veio (lista de aulas, programa, mapas…), no ponto em que estava
     function voltarDaAula() {
@@ -4142,18 +4155,46 @@
       var nome = /^[A-Za-z]/.test(num) ? num : tipoJuris(v.tipo) + (num ? ' ' + num : '');
       return esc(v.tribunal) + ' · ' + esc(nome);
     }
+    // o incidente PENDENTE, com os processos suspensos, não é "Suspenso" (auditoria AL, AL-03)
+    function rotuloSituacao(sit, tipo) {
+      if (sit === 'suspenso' && /^(irdr|iac|iuj|tema_)/.test(tipo || '')) return 'Pendente de julgamento (processos suspensos)';
+      return SIT_JURIS[sit] || sit;
+    }
+    // A SITUAÇÃO DO VERBETE e a da DATA DO EDITAL (auditoria AL, AL-04/AL-09/AL-15): o selo de hoje ("Parcialmente
+    // cancelada" quando só itens caíram), o selo da data do edital, a RESSALVA ao lado dele ("formalmente vigente, mas
+    // sem eficácia desde 11/11/2017") e "não apurado" quando a situação na data do edital foi inferida, não lida na fonte.
     function situacaoDoVerbete(v) {
-      var sit = v.situacao || '', ed = v.situacao_na_data_do_edital || '';
-      return '<span class="es-selo ' + (SIT_JURIS_COR[sit] || '') + '">' + esc(SIT_JURIS[sit] || sit || 'sem situação') + '</span>' +
-        (ed && ed !== sit ? ' <span class="es-selo">Na data do edital: ' + esc(SIT_JURIS[ed] || ed) + '</span>' : '');
+      var sit = v.situacao || '', ed = v.situacao_na_data_do_edital || '', parcial = !!v.cancelamento_parcial && sit === 'vigente';
+      var nota = v.situacao_na_data_do_edital_nota || '', inferida = !!v.situacao_na_data_do_edital_inferida, ressalva = v.ressalva_na_data_do_edital || '';
+      var h = '<span class="es-selo ' + (parcial ? 'ambar' : (SIT_JURIS_COR[sit] || '')) + '">' + esc(parcial ? 'Parcialmente cancelada' : (rotuloSituacao(sit, v.tipo) || 'sem situação')) + '</span>';
+      if (inferida && /N[ÃA]O APURAD/i.test(nota)) return h + ' <span class="es-selo es-lj-sed" title="' + esc(nota) + '">Na data do edital: não apurado</span>';
+      if (!ed || (ed === sit && !ressalva && !inferida && !v.texto_na_data_do_edital && !parcial)) return h;
+      h += ' <span class="es-selo es-lj-sed">Na data do edital: ' + esc(rotuloSituacao(ed, v.tipo)) + '</span>';
+      if (inferida) h += ' <span class="es-selo es-lj-sed" title="' + esc(nota) + '">não apurado na fonte (inferido)</span>';
+      if (ressalva) h += ' <span class="es-lj-ressalva">— ' + esc(ressalva) + '</span>';
+      return h;
+    }
+    // a REDAÇÃO (e o título, a tese) na data do edital, quando o verbete mudou depois dele — como nos dispositivos
+    function redacaoDoEdital(v) {
+      if (!v.texto_na_data_do_edital && !v.titulo_na_data_do_edital && !v.tese_na_data_do_edital) return '';
+      return '<div class="es-lj-sit alt es-lj-ved" role="note"><b>Na data do edital (05/01/2023) vigia outra redação:</b>' +
+        (v.titulo_na_data_do_edital ? '<p class="es-lj-vt"><b>' + esc(v.titulo_na_data_do_edital) + '</b></p>' : '') +
+        (v.texto_na_data_do_edital ? '<div class="es-lj-vtx">' + texto(v.texto_na_data_do_edital) + '</div>' : '') +
+        (v.tese_na_data_do_edital ? '<div class="es-lj-tese"><span class="al-rotulo">Tese' + (v.tese_na_data_do_edital_data ? ' (' + dataBR(v.tese_na_data_do_edital_data) + ')' : '') + '</span>' + texto(v.tese_na_data_do_edital) + '</div>' : '') + '</div>';
+    }
+    // a nota da coleta sobre a data do edital, quando o detalhe oficial ainda não a diz
+    function notaDoEdital(v) {
+      var n = v.situacao_na_data_do_edital_nota || '';
+      if (!n || String(v.situacao_detalhe || '').indexOf(n) >= 0) return '';
+      return '<p class="es-lj-nota"><b>Na data do edital:</b> ' + esc(n) + '</p>';
     }
     function corpoDoVerbete(v, marcas, opc) {
       opc = opc || {};
       // (na lista da jurisprudência o título já está no resumo do item: `semTitulo`)
       return (v.titulo && v.titulo !== v.numero && !opc.semTitulo ? '<p class="es-lj-vt"><b>' + esc(v.titulo) + '</b></p>' : '') +
         (v.texto ? '<div class="es-lj-vtx">' + texto(v.texto) + '</div>' : '') +
-        (v.tese ? '<div class="es-lj-tese"><span class="al-rotulo">Tese</span>' + texto(v.tese) + '</div>' : '') +
-        '<p class="es-lj-vsit">' + situacaoDoVerbete(v) + (v.situacao_detalhe ? ' <span class="es-lj-nota">' + esc(v.situacao_detalhe) + '</span>' : '') + '</p>' +
+        (v.tese ? '<div class="es-lj-tese"><span class="al-rotulo">Tese</span>' + texto(v.tese) + '</div>' : '') + redacaoDoEdital(v) +
+        '<p class="es-lj-vsit">' + situacaoDoVerbete(v) + (v.situacao_detalhe ? ' <span class="es-lj-nota">' + esc(v.situacao_detalhe) + '</span>' : '') + '</p>' + notaDoEdital(v) +
         (v.orgao || v.julgamento || v.historico ? '<p class="es-lj-nota">' + [v.orgao, v.julgamento ? 'Julgamento: ' + v.julgamento : '', v.historico].filter(Boolean).map(esc).join(' · ') + '</p>' : '') +
         '<p class="es-lj-nota">' + (v.fonte_url ? '<a href="' + esc(v.fonte_url) + '" target="_blank" rel="noopener">Fonte oficial</a>' : 'Fonte oficial') + (v.consultado_em ? ' — consultada em ' + dataBR(v.consultado_em) : '') + '</p>' +
         '<div class="es-lj-acoes">' + botoesDeLeitura((marcas || {})[v.id]) +
@@ -4211,15 +4252,23 @@
       cx.setAttribute('data-carregado', codigo);
       (qual === 'lei' ? leiDaAula : jurisDaAula)(cx, codigo);
     }
+    // o diploma que o ITEM cita sem artigo ("Lei de Execuções Fiscais"): "O item cobra também: …" (auditoria AL, AL-14)
+    function citadosDoItem(r) {
+      var cs = (r.citados_no_edital || []).filter(function (d) { return !d.na_aba; });
+      if (!cs.length) return '';
+      return '<p class="es-lj-citados"><b>O item cobra também:</b> ' + cs.map(function (d) {
+        return '<button type="button" class="es-link" data-lj-dip="' + esc(d.id) + '">' + esc(d.nome) + (d.norma && d.norma !== d.nome ? ' (' + esc(d.norma) + ')' : '') + ' — abrir no acervo</button>';
+      }).join(' · ') + '</p>';
+    }
     function leiDaAula(cx, codigo) {
       cx.innerHTML = '<p class="al-sub">Carregando a legislação desta aula…</p>';
       api('GET', base() + '/legislacao/vinculada?unidade=' + encodeURIComponent(codigo)).then(function (r) {
         if (!document.body.contains(cx)) return;
         if (!r.diplomas.length) {
-          cx.innerHTML = '<div class="es-ler es-lj">' + itensDoTopo(r) + '<p class="al-sub">Nenhum dispositivo de lei está ligado a este item do edital ainda. A legislação inteira está no acervo.</p>' +
+          cx.innerHTML = '<div class="es-ler es-lj">' + itensDoTopo(r) + citadosDoItem(r) + '<p class="al-sub">Nenhum dispositivo de lei está ligado a este item do edital ainda. A legislação inteira está no acervo.</p>' +
             '<div class="es-linha"><button type="button" class="al-bt peq fan" data-lj-acervo="lei">⚖️ Abrir o acervo de legislação</button></div></div>';
         } else {
-          cx.innerHTML = '<div class="es-ler es-lj"><p class="es-lj-intro">A lei seca que este item do edital cobra, no texto da fonte oficial, sem comentário. O que o item cita fica destacado; o que mudou depois do edital traz a redação da data do edital ao lado.</p>' + itensDoTopo(r) +
+          cx.innerHTML = '<div class="es-ler es-lj"><p class="es-lj-intro">A lei seca que este item do edital cobra, no texto da fonte oficial, sem comentário. O que o item cita fica destacado; o que mudou depois do edital traz a redação da data do edital ao lado.</p>' + itensDoTopo(r) + citadosDoItem(r) +
             r.diplomas.map(function (d) {
               return '<section class="es-lj-dip"><h3>' + esc(d.nome) + '</h3><p class="es-ler-sub">' + esc(d.norma) + (d.fonte_url ? ' · <a href="' + esc(d.fonte_url) + '" target="_blank" rel="noopener">fonte oficial</a>' : '') + (d.consultado_em ? ' — consultada em ' + dataBR(d.consultado_em) : '') + '</p>' +
                 d.dispositivos.map(function (x) { return htmlDispositivo(d, x, r.marcas, { doItem: true }); }).join('') + '</section>';
@@ -4256,6 +4305,11 @@
         '<button type="submit" class="al-bt peq">Buscar nos dois acervos</button></form><div id="es-lj-res"></div>';
     }
     function trechoAchado(t) { return esc(t || '').replace(/\u0002/g, '<mark>').replace(/\u0003/g, '</mark>'); }
+    // por que o resultado está ali (auditoria AL, AL-08): o número pedido, ou o item do edital que trata do assunto
+    function pelaBusca(x) {
+      if (x.exato) return ' <span class="es-lj-pelo">o número pedido</span>';
+      return x.pelo_item && x.pelo_item.length ? ' <span class="es-lj-pelo">cobrado no item ' + x.pelo_item.slice(0, 3).map(esc).join(', ') + (x.pelo_item.length > 3 ? '…' : '') + ' do edital</span>' : '';
+    }
     function ligarBusca() {
       var f = el('es-lj-bf'); if (!f) return;
       var pg = 1;
@@ -4267,10 +4321,10 @@
         if (!mais) out.innerHTML = '<p class="al-sub">Buscando…</p>';
         api('GET', base() + '/lei-juris/busca?q=' + encodeURIComponent(q) + '&pagina=' + pg).then(function (r) {
           var lei = r.lei.map(function (x) {
-            return '<li><button type="button" class="es-link" data-lj-dip="' + esc(x.diploma_id + '~' + x.id) + '"><b>' + esc(x.sigla || x.nome) + ' — ' + esc(x.rotulo) + '</b></button>' + tagDoDispositivo(x.situacao) + '<span class="es-lj-trecho">' + trechoAchado(x.trecho) + '</span></li>';
+            return '<li><button type="button" class="es-link" data-lj-dip="' + esc(x.diploma_id + '~' + x.id) + '"><b>' + esc(x.sigla || x.nome) + ' — ' + esc(x.rotulo) + '</b></button>' + tagDoDispositivo(x.situacao) + pelaBusca(x) + '<span class="es-lj-trecho">' + trechoAchado(x.trecho) + '</span></li>';
           }).join('');
           var jur = r.juris.map(function (x) {
-            return '<li><button type="button" class="es-link" data-lj-verb="' + esc(x.id) + '"><b>' + cabecalhoDoVerbete(x) + '</b></button> ' + situacaoDoVerbete(x) + '<span class="es-lj-trecho">' + trechoAchado(x.trecho) + '</span></li>';
+            return '<li><button type="button" class="es-link" data-lj-verb="' + esc(x.id) + '"><b>' + cabecalhoDoVerbete(x) + '</b></button> ' + situacaoDoVerbete(x) + pelaBusca(x) + '<span class="es-lj-trecho">' + trechoAchado(x.trecho) + '</span></li>';
           }).join('');
           if (mais) {
             var ul1 = out.querySelector('[data-res="lei"]'), ul2 = out.querySelector('[data-res="juris"]');
@@ -4320,50 +4374,157 @@
       for (; i < b.length; i++) if (b[i]) out += '<h4 class="es-lj-sec n' + Math.min(i, 3) + '">' + esc(b[i]) + '</h4>';
       return out;
     }
+    // O DIPLOMA INTEIRO, DESENHADO SOB DEMANDA (auditoria AL de 17/10/2026, AL-10). O CC tem ~2 mil artigos: desenhar o
+    // diploma num innerHTML só punha 26 mil elementos na página (0,5 s na máquina de teste, 2 a 3 s num celular), e o
+    // filtro "Só o que o edital cobra" desenhava tudo de novo. Agora o diploma é dividido em BLOCOS (uma seção da
+    // estrutura, até BLOCO_MAX dispositivos), que nascem vazios com a altura estimada e são desenhados quando chegam
+    // perto da tela (rolagem contínua), quando o "Ir para…" ou a procura levam até eles, ou na volta ao lugar. O filtro
+    // só liga uma classe: o CSS esconde o que o edital não cobra e troca os cabeçalhos (os de cada modo vêm prontos).
+    // A VOLTA AO LUGAR é por ÂNCORA — o dispositivo no topo da tela e a distância dele ao topo —, não por pixel: com os
+    // blocos ainda estimados, o pixel não diz mais onde o aluno estava (auditoria AL, AL-16).
+    var BLOCO_MAX = 25, MARGEM_DESENHO = 1200;
+    function blocosDoDiploma(lista) {
+      var out = [], cur = null, antes = null, antesCob = null;
+      lista.forEach(function (x, i) {
+        var est = x.estrutura || '';
+        if (!cur || cur.est !== est || cur.fim - cur.ini >= BLOCO_MAX) { cur = { ini: i, fim: i, est: est, cob: false }; out.push(cur); }
+        cur.fim = i + 1;
+        if (x.cobrado) cur.cob = true;
+      });
+      // os cabeçalhos (título, capítulo, seção) que o bloco abre: um par para o diploma todo, outro para "só o cobrado"
+      out.forEach(function (b) {
+        b.hTodos = cabecalhosDaEstrutura(antes, b.est); antes = b.est;
+        b.hCob = b.cob ? cabecalhosDaEstrutura(antesCob, b.est) : ''; if (b.cob) antesCob = b.est;
+      });
+      return out;
+    }
+    // a altura de um bloco ainda não desenhado (para a barra de rolagem e a rolagem contínua não pularem)
+    function alturaEstimada(lista, b, soCobrado, cpl) {
+      var h = b.hTodos ? 44 : 0;
+      for (var i = b.ini; i < b.fim; i++) {
+        var x = lista[i], n = (x.texto || '').length + (x.epigrafe || '').length + 20;
+        if (soCobrado && !x.cobrado) continue;
+        (x.partes || []).forEach(function (p) { n += (p.texto || '').length + (p.nota || '').length + 12; });
+        h += 70 + Math.ceil(n / cpl) * 27 + (x.partes || []).length * 6;
+      }
+      return h;
+    }
+    // o dispositivo no topo da tela (o primeiro desenhado e visível cujo fim passa do topo) e a distância dele ao topo
+    function ancoraDoTexto(tx) {
+      if (!tx) return null;
+      var bs = tx.children;
+      for (var i = 0; i < bs.length; i++) {
+        var b = bs[i];
+        if (b.hasAttribute('data-pend') || !b.offsetParent) continue;
+        if (b.getBoundingClientRect().bottom <= 0) continue;
+        var arts = b.querySelectorAll('.es-lj-disp');
+        for (var k = 0; k < arts.length; k++) {
+          if (!arts[k].offsetParent) continue;
+          var r = arts[k].getBoundingClientRect();
+          if (r.bottom > 0) return { dip: tx.getAttribute('data-dip'), id: String(arts[k].getAttribute('data-lj-ref')).split('|')[1], dy: Math.round(r.top) };
+        }
+      }
+      return null;
+    }
+    // a âncora da tela atual, se ela for um diploma (o passo do histórico e a volta da aula a guardam)
+    function ancoraAtual() {
+      var tx = el('es-lj-texto');
+      if (!tx || E.aba !== 'lei' || !E.abaArg || tx.getAttribute('data-dip') !== String(E.abaArg).split('~')[0]) return null;
+      return ancoraDoTexto(tx);
+    }
     function diplomaNaTela(alvo, arg) {
       var partes = String(arg).split('~'), dip = partes[0], alvoDisp = partes[1] || '';
       var repor = !!E.reposicao; E.reposicao = false; // voltando de uma aula com a rolagem guardada: a rolagem manda, não o dispositivo
+      var ancora = E.ancoraRepor && E.ancoraRepor.dip === dip ? E.ancoraRepor : null; E.ancoraRepor = null;
       api('GET', base() + '/legislacao/' + encodeURIComponent(dip)).then(function (r) {
-        var d = r.diploma, soCobrados = false, achados = [], ia = -1;
-        var secoes = [], ult = null;
-        r.dispositivos.forEach(function (x) { if (x.estrutura && x.estrutura !== ult) { secoes.push({ est: x.estrutura, id: x.id }); } ult = x.estrutura; });
+        var d = r.diploma, lista = r.dispositivos, soCobrados = false, achados = [], ia = -1;
+        var secoes = [], ult = null, indice = {};
+        lista.forEach(function (x, i) { indice[x.id] = i; if (x.estrutura && x.estrutura !== ult) { secoes.push({ est: x.estrutura, id: x.id }); } ult = x.estrutura; });
         alvo.innerHTML = '<div class="jr-caixa es-lj-topo"><div class="es-linha">' + voltarAAula() + '<button type="button" class="al-bt peq fan" id="es-lj-todos">← Todos os diplomas</button></div>' +
           '<h3>' + esc(d.nome) + '</h3><p class="es-ler-sub">' + esc(d.norma) + (d.fonte_url ? ' · <a href="' + esc(d.fonte_url) + '" target="_blank" rel="noopener">fonte oficial (texto compilado)</a>' : '') + (d.consultado_em ? ' — consultada em ' + dataBR(d.consultado_em) : '') +
           ' · versão de referência do edital: ' + dataBR(d.data_referencia_edital) + '</p>' +
-          '<p class="al-fino">' + r.dispositivos.length + ' dispositivo(s)' + (d.abrangencia === 'trechos' ? ' — só os trechos que o curso usa' : '') + ' · <b>' + r.cobrados + ' cobrado(s) pelo edital</b> (destacados)' + (d.alterados_apos_edital ? ' · ' + d.alterados_apos_edital + ' alterado(s) depois do edital' : '') + '</p>' +
+          '<p class="al-fino">' + lista.length + ' dispositivo(s)' + (d.abrangencia === 'trechos' ? ' — só os trechos que o curso usa' : '') + ' · <b>' + r.cobrados + ' cobrado(s) pelo edital</b> (destacados)' + (d.alterados_apos_edital ? ' · ' + d.alterados_apos_edital + ' alterado(s) depois do edital' : '') + '</p>' +
           '<div class="es-lj-ferr">' + (secoes.length > 1 ? '<select id="es-lj-ir" aria-label="Ir para o título ou capítulo"><option value="">Ir para…</option>' + secoes.map(function (s2) {
             var seg = s2.est.split(' > '); return '<option value="' + esc(s2.id) + '">' + new Array(seg.length).join('  ') + esc(seg[seg.length - 1].slice(0, 90)) + '</option>';
           }).join('') + '</select>' : '') +
           (r.cobrados ? '<label class="es-lj-chk"><input type="checkbox" id="es-lj-so"> Só o que o edital cobra</label>' : '') +
           '<span class="es-lj-proc"><input type="search" id="es-lj-pq" maxlength="120" placeholder="Procurar neste diploma" aria-label="Procurar neste diploma"><button type="button" class="al-bt peq fan" id="es-lj-pb">Procurar</button><span class="al-fino" id="es-lj-pn"></span></span></div></div>' +
-          '<div class="es-ler es-lj es-lj-diploma" id="es-lj-texto"></div>';
-        function pintar() {
-          var antes = null;
-          el('es-lj-texto').innerHTML = r.dispositivos.filter(function (x) { return !soCobrados || x.cobrado; }).map(function (x) {
-            var h = cabecalhosDaEstrutura(antes, x.estrutura); antes = x.estrutura;
-            return h + htmlDispositivo(d, x, r.marcas, { acervo: true, titulos: r.aulas });
-          }).join('') || '<p class="al-sub">Nada a mostrar.</p>';
+          '<div class="es-ler es-lj es-lj-diploma" id="es-lj-texto" data-dip="' + esc(d.id) + '"></div>';
+        var tx = el('es-lj-texto'), blocos = blocosDoDiploma(lista), blocoDe = {};
+        var cpl = Math.max(28, Math.floor((tx.clientWidth || 340) / 8.6));
+        blocos.forEach(function (b, n) { for (var i = b.ini; i < b.fim; i++) blocoDe[lista[i].id] = n; });
+        tx.innerHTML = blocos.length ? blocos.map(function (b, n) {
+          return '<div class="es-lj-bloco' + (b.cob ? '' : ' sem-cob') + '" data-b="' + n + '" data-pend="1" style="--h:' + alturaEstimada(lista, b, false, cpl) + 'px;--hc:' + (b.cob ? alturaEstimada(lista, b, true, cpl) : 0) + 'px"></div>';
+        }).join('') : '<p class="al-sub">Nada a mostrar.</p>';
+        var nos = tx.children;
+        // desenha um bloco; se ele estava inteiro ACIMA da tela, a rolagem compensa a diferença de altura (o que o aluno
+        // está lendo não pula)
+        function desenhar(n) {
+          var bx = nos[n], b = blocos[n];
+          if (!bx || !b || !bx.hasAttribute('data-pend')) return;
+          var r0 = bx.getBoundingClientRect(), acima = r0.height > 0 && r0.bottom <= 0;
+          bx.innerHTML = (b.hTodos ? '<div class="h-todos">' + b.hTodos + '</div>' : '') + (b.hCob ? '<div class="h-cob">' + b.hCob + '</div>' : '') +
+            lista.slice(b.ini, b.fim).map(function (x) { return htmlDispositivo(d, x, r.marcas, { acervo: true, titulos: r.aulas }); }).join('');
+          bx.removeAttribute('data-pend');
+          if (acima) { var dh = bx.getBoundingClientRect().height - r0.height; if (dh) rolagem().scrollTop += dh; }
         }
-        function irPara(id, piscar) {
+        // a ROLAGEM CONTÍNUA: desenha os blocos que estão na tela ou a até MARGEM_DESENHO dela
+        var vivo = true;
+        function encher() {
+          if (!vivo) return;
+          if (!document.body.contains(tx)) { vivo = false; window.removeEventListener('scroll', aoRolar); return; }
+          var topo = -MARGEM_DESENHO, fundo = window.innerHeight + MARGEM_DESENHO;
+          for (var n = 0; n < nos.length; n++) {
+            if (!nos[n].hasAttribute('data-pend') || !nos[n].offsetParent) continue;
+            var rr = nos[n].getBoundingClientRect();
+            if (rr.bottom < topo) continue;
+            if (rr.top > fundo) break;
+            desenhar(n);
+          }
+        }
+        var tRolar = null;
+        function aoRolar() { clearTimeout(tRolar); tRolar = setTimeout(encher, 60); }
+        window.addEventListener('scroll', aoRolar, { passive: true });
+        function irPara(id, piscar, dy) {
+          var n = blocoDe[id];
+          if (n == null) return false;
+          desenhar(n); if (n > 0) desenhar(n - 1);
           var a = el('lj-' + d.id + '-' + id);
-          if (!a) return false;
-          a.scrollIntoView({ block: 'start' });
+          if (!a || !a.offsetParent) return false;
+          if (dy == null) a.scrollIntoView({ block: 'start' }); else rolagem().scrollTop += a.getBoundingClientRect().top - dy;
+          encher();
           if (piscar) { a.classList.add('pisca'); setTimeout(function () { a.classList.remove('pisca'); }, 2500); }
           return true;
         }
-        pintar();
+        function filtrar(sim) {
+          var a = ancoraDoTexto(tx);
+          soCobrados = sim; achados = []; ia = -1; el('es-lj-pn').textContent = '';
+          if (el('es-lj-so')) el('es-lj-so').checked = sim;
+          tx.classList.toggle('so-cob', sim); // esconder e mostrar, sem desenhar de novo
+          var x = a && el('lj-' + d.id + '-' + a.id);
+          if (x && x.offsetParent) { rolagem().scrollTop += x.getBoundingClientRect().top - a.dy; encher(); return; }
+          // o que o aluno lia saiu de vista (não é cobrado): vai ao próximo cobrado depois dele
+          for (var i = a ? indice[a.id] : lista.length; i < lista.length; i++) if (lista[i].cobrado) { irPara(lista[i].id, false, a.dy); return; }
+          if (tx.getBoundingClientRect().top < 0) tx.scrollIntoView({ block: 'start' });
+          encher();
+        }
         el('es-lj-todos').onclick = function () { ir('lei'); };
         if (el('es-lj-ir')) el('es-lj-ir').onchange = function () {
           var id = this.value; if (!id) return;
-          if (soCobrados && !el('lj-' + d.id + '-' + id)) { soCobrados = false; el('es-lj-so').checked = false; pintar(); }
+          if (soCobrados && !lista[indice[id]].cobrado) {
+            // com o filtro ligado, vai ao primeiro dispositivo cobrado da seção; seção sem nenhum desliga o filtro
+            var est = lista[indice[id]].estrutura || '', achou = '';
+            for (var i = indice[id]; i < lista.length && String(lista[i].estrutura || '').indexOf(est) === 0; i++) if (lista[i].cobrado) { achou = lista[i].id; break; }
+            if (achou) id = achou; else filtrar(false);
+          }
           irPara(id, false); this.value = '';
         };
-        if (el('es-lj-so')) el('es-lj-so').onchange = function () { soCobrados = this.checked; achados = []; ia = -1; el('es-lj-pn').textContent = ''; pintar(); };
+        if (el('es-lj-so')) el('es-lj-so').onchange = function () { filtrar(this.checked); };
         function procurar() {
           var t = semAcentoLJ(el('es-lj-pq').value.trim());
           if (t.length < 2) { el('es-lj-pn').textContent = 'Digite ao menos duas letras.'; return; }
           if (achados.t !== t) {
-            achados = r.dispositivos.filter(function (x) {
+            achados = lista.filter(function (x) {
               if (soCobrados && !x.cobrado) return false;
               return semAcentoLJ([x.rotulo, x.epigrafe, x.texto].concat((x.partes || []).map(function (p) { return p.rotulo + ' ' + p.texto; })).join(' ')).indexOf(t) >= 0;
             }).map(function (x) { return x.id; });
@@ -4377,8 +4538,12 @@
         el('es-lj-pb').onclick = procurar;
         el('es-lj-pq').onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); procurar(); } };
         ligarVoltarAAula();
-        ligarLeiJuris(el('es-lj-texto'), r.marcas || {});
-        if (alvoDisp && !repor) setTimeout(function () { irPara(alvoDisp, true); }, 30);
+        ligarLeiJuris(tx, r.marcas || {});
+        // onde abrir: a âncora guardada (Voltar, F5, volta da aula), o dispositivo pedido, ou o começo
+        if (ancora && blocoDe[ancora.id] != null) irPara(ancora.id, false, ancora.dy);
+        else if (alvoDisp && !repor && blocoDe[alvoDisp] != null) setTimeout(function () { irPara(alvoDisp, true); }, 30);
+        encher();
+        [150, 600, 1500].forEach(function (ms) { setTimeout(encher, ms); }); // a rolagem reposta depois (por pixel) também desenha o que está na tela
       }).catch(function (e) { falha(alvo, e); });
     }
     function semAcentoLJ(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }

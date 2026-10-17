@@ -968,6 +968,23 @@ const MIGRACOES = [
             PRIMARY KEY (user_id, escopo_id, tipo, ref)
           );`,
   },
+  {
+    // O QUE O VERBETE DIZ DA DATA DO EDITAL (auditoria AL de 17/10/2026, AL-04, AL-09 e AL-15). O importador descartava a
+    // nota da situação na data do edital (inclusive o "NÃO APURADO"), a marca de situação INFERIDA pela numeração, a
+    // ressalva (cancelado depois do edital por perda de eficácia retroativa), a redação, o título e a tese na data do
+    // edital (OJ 394 da SBDI-1) e o cancelamento parcial. Ficam numa coluna JSON só (`edital_extra`): são campos raros
+    // (a maior parte dos verbetes não tem nenhum) e só a tela os lê.
+    // O ITEM QUE CITA O DIPLOMA (AL-14): "Lei de Execuções Fiscais" no texto do item 2.1.15, sem artigo — o vínculo por
+    // dispositivo não existe, mas a aba diz "o item cobra também".
+    nome: 'estudo-lei-juris-edital-2026-10-17',
+    sql: `ALTER TABLE est_lj_verbetes ADD COLUMN edital_extra TEXT DEFAULT '';
+          CREATE TABLE IF NOT EXISTS est_lj_item_diplomas (
+            escopo_id   TEXT NOT NULL REFERENCES est_escopos(id),
+            item        TEXT NOT NULL,
+            diploma_id  TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, item, diploma_id)
+          );`,
+  },
 ];
 
 // Cada migração é ATÔMICA: os comandos dela e o registro em `migrations` entram na mesma transação. Antes, um

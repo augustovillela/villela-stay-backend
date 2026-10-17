@@ -164,8 +164,8 @@ function landingHTML() {
 // tela — Atualizar" (app-cliente.js › conferirVersao); nunca recarrega sozinha. ⚠️ Alterou um arquivo de tela
 // (app-*.js, aluno.css, estude.css)? Suba o número dele aqui. O pacote dos motores (/academy/estude-motores.js) é
 // pedido pela própria tela (app-estudo.js › comMotores) e tem o `?v=` dele lá.
-const V_SCRIPTS = { jornada: 5, ecossistema: 3, carteira: 3, estude: 7, aluno: 13, app: 14 };
-const V_FOLHAS = { aluno: 5, estude: 5 };
+const V_SCRIPTS = { jornada: 5, ecossistema: 3, carteira: 3, estude: 8, aluno: 13, app: 14 };
+const V_FOLHAS = { aluno: 5, estude: 6 };
 const script = (n) => `<script src="/academy/${n}.js?v=${V_SCRIPTS[n]}"></script>`;
 const folha = (n) => `<link rel="stylesheet" href="/academy/${n}.css?v=${V_FOLHAS[n]}">`;
 const VERSAO_TELA = Object.keys(V_FOLHAS).map(n => `${n}.${V_FOLHAS[n]}`).concat(Object.keys(V_SCRIPTS).map(n => `${n}.${V_SCRIPTS[n]}`)).join('-');
