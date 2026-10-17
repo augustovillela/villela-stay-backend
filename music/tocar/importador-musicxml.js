@@ -651,13 +651,24 @@
   }
 
   function medidasDaParte(no, info) {
-    var originais = filhos(no, 'measure'), resultado = [], inicioRepeticao = 0;
+    var originais = filhos(no, 'measure'), resultado = [], inicioRepeticao = 0, finaisTratados = false;
+    function finais(medida) {
+      var numeros = [];
+      filhos(medida, 'barline').forEach(function (barline) {
+        filhos(barline, 'ending').forEach(function (ending) {
+          var bruto = ending.atributos.number || '';
+          bruto.split(/[,\s]+/).filter(Boolean).forEach(function (numero) { if (/^\d+$/.test(numero)) numeros.push(Number(numero)); });
+        });
+      });
+      return numeros;
+    }
+    function medidaDaPassagem(medida, passagem) {
+      var numeros = finais(medida);
+      return !numeros.length || numeros.indexOf(passagem) >= 0;
+    }
     originais.forEach(function (medida) {
       resultado.push(medida);
       filhos(medida, 'barline').forEach(function (barline) {
-        if (filhos(barline, 'ending').length && info && info.issues.indexOf('A parte usa finais alternativos MusicXML, que precisam de revisão manual antes da importação.') < 0) {
-          info.issues.push('A parte usa finais alternativos MusicXML, que precisam de revisão manual antes da importação.');
-        }
         var repeticao = filho(barline, 'repeat');
         if (!repeticao) return;
         var direcao = repeticao.atributos.direction;
@@ -671,10 +682,21 @@
         if (!Number.isInteger(vezes) || vezes < 2 || vezes > 8) falhar('repeat times deve ser um inteiro entre 2 e 8.');
         var segmento = resultado.slice(inicioRepeticao, resultado.length);
         if (!segmento.length || segmento.length * vezes + resultado.length > 512) falhar('a expansão de repetições excede 512 compassos.');
-        for (var copia = 1; copia < vezes; copia++) segmento.forEach(function (item) { resultado.push(item); });
+        if (segmento.some(function (item) { return finais(item).length; })) finaisTratados = true;
+        if (segmento.some(function (item) { return finais(item).length && !medidaDaPassagem(item, 1); })) {
+          segmento = segmento.filter(function (item) { return medidaDaPassagem(item, 1); });
+          resultado.splice(inicioRepeticao, resultado.length - inicioRepeticao);
+          segmento.forEach(function (item) { resultado.push(item); });
+        }
+        for (var copia = 2; copia <= vezes; copia++) segmento.forEach(function (item) {
+          if (medidaDaPassagem(item, copia)) resultado.push(item);
+        });
         inicioRepeticao = resultado.length;
       });
     });
+    if (!finaisTratados && originais.some(function (item) { return finais(item).length; }) && info && info.issues.indexOf('A parte usa finais alternativos MusicXML, que precisam de revisão manual antes da importação.') < 0) {
+      info.issues.push('A parte usa finais alternativos MusicXML, que precisam de revisão manual antes da importação.');
+    }
     return resultado;
   }
 
