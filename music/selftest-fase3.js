@@ -525,6 +525,26 @@ async function rodar({ t, secao, req, assert, PROFESSORES }) {
     assert.ok(pag.texto.includes('/music/escolas.js'), 'a página não carrega as telas de escola');
   });
 
+  await t('o botão que a tela da turma cita EXISTE na Biblioteca e chama a rota da escola', async () => {
+    // 16/10/2026: "Material da turma" mandava o professor a um botão que
+    // não existia — o material só entrava pela API. A tela da turma e a
+    // da música têm de falar do MESMO botão.
+    const turma = await req('GET', '/music/escolas.js', { cru: true });
+    const bib = await req('GET', '/music/biblioteca.js', { cru: true });
+    assert.equal(bib.status, 200);
+    const rotulo = (turma.texto.match(/botão "([^"]+)"/) || [])[1];
+    assert.ok(rotulo, 'a tela da turma deixou de citar o botão');
+    assert.ok(bib.texto.includes("txt: '" + rotulo + "'"), 'a Biblioteca não tem o botão "' + rotulo + '"');
+    assert.ok(bib.texto.includes("'/escolas/' + selEscola.value + '/biblioteca'"),
+      'o botão tem de chamar POST /music/api/escolas/:id/biblioteca');
+    // só para quem leciona; obra de terceiro recebe explicação, não botão
+    assert.ok(/e\.papel === 'gestor' \|\| e\.papel === 'professor'/.test(bib.texto),
+      'o botão só aparece para gestor ou professor de escola');
+    assert.ok(/não entra na escola/.test(bib.texto), 'obra de terceiro tem de dizer por que não entra');
+    try { new Function(bib.texto); }
+    catch (e) { throw new Error('biblioteca.js não é JavaScript válido: ' + e.message); }
+  });
+
   await t('a tela diz as três coisas que o boletim NÃO faz', async () => {
     // O texto da tela é parte do contrato honesto (Q5). Se sumir, o
     // produto passa a prometer com o silêncio o que decidiu não fazer.
