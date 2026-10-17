@@ -320,7 +320,7 @@
   // IMPORTAÇÕES (lista e reprocessamento)
   // ---------------------------------------------------------------
   C.telas.importacoes = function () {
-    var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div'), carregamento = 0;
+    var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div'), carregamento = 0, timer = null, atualizacoesAutomaticas = 0;
     c.appendChild(el('h2', { txt: 'Importações' }));
     var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['falhou', 'Com falha'], ['salva', 'Salvas'], ['descartada', 'Descartadas']], filtro, function (v) {
       filtro = v;
@@ -333,7 +333,9 @@
     lista.setAttribute('aria-busy', 'false');
     c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect, atualizar]));
     c.appendChild(lista);
-    function carregar(status) {
+    function carregar(status, automatico) {
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (!automatico) atualizacoesAutomaticas = 0;
       var ticket = ++carregamento;
       var query = status ? '?status=' + encodeURIComponent(status) + '&limite=100' : '?limite=100';
       atualizar.disabled = true;
@@ -356,7 +358,11 @@
       var itens = (dados.importacoes || []).filter(function (x) {
         return filtro === 'todas' || (filtro === 'revisar' ? ['pronta', 'processando', 'pendente'].indexOf(x.status) >= 0 : x.status === filtro);
       });
-      if (!itens.length) return lista.appendChild(C.estadoVazio(filtro === 'todas' ? 'Nenhuma importação ainda' : 'Nenhuma importação nesta categoria', '', C.botao('Encontrar ou importar', function () { C.ir('importar'); })));
+      if (!itens.length) {
+        lista.appendChild(C.estadoVazio(filtro === 'todas' ? 'Nenhuma importação ainda' : 'Nenhuma importação nesta categoria', '', C.botao('Encontrar ou importar', function () { C.ir('importar'); })));
+        agendarAtualizacao();
+        return;
+      }
       function dataImportacao(valor) {
         var data = new Date(valor);
         return Number.isNaN(data.getTime()) ? 'data não informada' : data.toLocaleString('pt-BR');
@@ -376,6 +382,15 @@
         ['pronta', 'falhou'].indexOf(x.status) >= 0 ? C.botao('Descartar', function () { api('DELETE', '/importar/' + x.id).then(C.telas.importacoes); }, 'sec peq') : null]));
       });
       lista.appendChild(li);
+      agendarAtualizacao();
+    }
+    function agendarAtualizacao() {
+      var aguardando = (dados.importacoes || []).some(function (x) { return x.status === 'pendente' || x.status === 'processando'; });
+      if (!aguardando || atualizacoesAutomaticas >= 12) return;
+      timer = setTimeout(function () {
+        timer = null; atualizacoesAutomaticas += 1;
+        carregar(filtro === 'falhou' || filtro === 'salva' || filtro === 'descartada' ? filtro : '', true);
+      }, 5000);
     }
     carregar('');
   };
