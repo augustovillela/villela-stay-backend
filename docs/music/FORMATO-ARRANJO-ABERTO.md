@@ -38,7 +38,7 @@ Separar o conteúdo musical da interface e do áudio. Um arranjo pode ter vária
 
 ## Regras de normalização
 
-- `atMs`, `durationMs` e `durationMs` de seção são inteiros não negativos.
+- `atMs`, `durationMs` e os tempos de seção são inteiros não negativos.
 - `midi` fica entre 0 e 127; `velocity` fica entre 1 e 127.
 - Cordas usam índice humano começando em 1; `string` e `fret` só aparecem em instrumentos com braço.
 - Piano usa `midi` e não recebe `string`/`fret`.
