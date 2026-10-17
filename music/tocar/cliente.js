@@ -66,7 +66,7 @@
   function renderCampaign() {
     var panel = $('tj-campaign'); if (!panel || !Campaign) return;
     var lista = Campaign.listar(campaignState || { instrument: state.instrument });
-    var overview = Campaign.resumo(campaignState), bar = el('span', { class: 'tj-campaign-progress', role: 'progressbar', 'aria-label': 'Progresso da campanha', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(overview.percent) }); bar.style.width = overview.percent + '%';
+    var overview = Campaign.resumo(campaignState), bar = el('span', { id: 'tj-campaign-progress', class: 'tj-campaign-progress', role: 'progressbar', 'aria-label': 'Progresso da campanha', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(overview.percent) }); bar.style.width = overview.percent + '%';
     var heading = el('div', { class: 'tj-campaign-heading' }, [el('div', {}, [el('p', { class: 'tj-caption', text: 'CAMPANHA AUTORAL' }), el('h2', { text: 'Trilha de evolução' })]), el('span', { class: 'tj-campaign-count', text: overview.completed + '/' + overview.total + ' concluídas · ' + overview.badges + ' distintivos' })]);
     var exportButton = el('button', { type: 'button', class: 'tj-campaign-sync', text: 'Exportar' }); exportButton.addEventListener('click', exportCampaign);
     var importInput = el('input', { type: 'file', accept: '.json,application/json', hidden: '' }); importInput.addEventListener('change', function () { importCampaign(this.files && this.files[0]); this.value = ''; });
