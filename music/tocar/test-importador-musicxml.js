@@ -386,6 +386,13 @@ test('expande finais numerados 1 e 2 na repetição simples', async () => {
   assert.deepEqual(chart.notes.map(notaImportada => notaImportada.midi), [60, 62, 60, 64]);
 });
 
+test('diagnostica numeração ambígua em finais alternativos', async () => {
+  const score = xml(medida(atributos() + nota({ step: 'C', octave: 4 }) + '<barline location="right"><ending number="1-2" type="start"/></barline>'));
+  const analysis = await Importador.analisar(bytes(score), { perfil: 'piano' });
+  assert.equal(analysis.candidates[0].valid, false);
+  assert.match(analysis.candidates[0].reason, /numeração ambígua/);
+});
+
 test('aceita pedal MusicXML no piano', async () => {
   const score = xml(medida(atributos() + '<direction><direction-type><pedal type="start"/></direction-type></direction>' + nota({ step: 'C', octave: 4 })));
   const analysis = await Importador.analisar(bytes(score), { perfil: 'piano' });
