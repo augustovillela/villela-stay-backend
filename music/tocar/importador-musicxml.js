@@ -499,7 +499,7 @@
     if (!tem(linhas, chave)) {
       linhas[chave] = { id: 'p' + info.indice + '-s' + staff + '-v' + encodeURIComponent(String(voice)), part: info.indice, partId: info.id,
         staff: staff, voice: String(voice), name: info.nome, notes: [], issues: [], partIssues: info.issues,
-        transposicoes: info.transposicoes, ordem: 0 };
+        transposicoes: info.transposicoes, pedais: info.pedais, ordem: 0 };
     }
     return linhas[chave];
   }
@@ -742,9 +742,12 @@
         }
         if (item.nome === 'direction') {
           if (!divisions) falhar('a partitura usa direção antes de declarar divisions.');
-          if (descendentes(item, 'pedal').length) {
-            if (info.issues.indexOf('A parte usa pedal de sustentação MusicXML, ainda não representado no arranjo.') < 0) info.issues.push('A parte usa pedal de sustentação MusicXML, ainda não representado no arranjo.');
-          }
+          descendentes(item, 'pedal').forEach(function (pedal) {
+            var tipo = (pedal.atributos.type || '').toLowerCase();
+            if (tipo !== 'start' && tipo !== 'stop') { if (info.issues.indexOf('A parte usa mudança de pedal MusicXML que precisa de revisão manual.') < 0) info.issues.push('A parte usa mudança de pedal MusicXML que precisa de revisão manual.'); return; }
+            var numero = pedal.atributos.number === '2' ? 'sostenuto' : 'sustain';
+            info.pedais.push({ tipo: numero, evento: tipo, beat: inicioMedida + cursor });
+          });
           temposDaDirecao(item, inicioMedida + cursor, divisions, tempos);
           dinamicaDaDirecao(item, inicioMedida + cursor, dinamicas);
           return;
@@ -867,6 +870,21 @@
       var linha = linhas[chave];
       linha.partIssues.forEach(function (problema) { adicionarProblema(linha, problema); });
       var transposicoes = linha.transposicoes.slice().sort(function (a, b) { return a.beat - b.beat || a.ordem - b.ordem; });
+      if (perfil.layout === 'piano' && linha.pedais && linha.pedais.length) {
+        var ativos = Object.create(null), intervalos = [];
+        linha.pedais.slice().sort(function (a, b) { return a.beat - b.beat; }).forEach(function (pedal) {
+          if (pedal.evento === 'start') ativos[pedal.tipo] = pedal.beat;
+          else if (ativos[pedal.tipo] !== undefined) { intervalos.push({ tipo: pedal.tipo, inicio: ativos[pedal.tipo], fim: pedal.beat }); delete ativos[pedal.tipo]; }
+        });
+        var fimDaLinha = linha.notes.reduce(function (fim, nota) { return Math.max(fim, nota.endBeat); }, 0);
+        Object.keys(ativos).forEach(function (tipo) { intervalos.push({ tipo: tipo, inicio: ativos[tipo], fim: fimDaLinha }); });
+        linha.notes.forEach(function (nota) {
+          intervalos.forEach(function (pedal) {
+            var capturada = pedal.tipo === 'sostenuto' ? nota.startBeat < pedal.inicio + EPS && nota.endBeat > pedal.inicio - EPS : nota.endBeat > pedal.inicio - EPS;
+            if (capturada && nota.endBeat < pedal.fim - EPS) nota.endBeat = pedal.fim;
+          });
+        });
+      }
       linha.notes.forEach(function (nota) {
         var semitones = 0;
         transposicoes.forEach(function (evento) { if (evento.beat <= nota.startBeat + EPS) semitones = evento.semitones; });
@@ -970,7 +988,7 @@
       if (!id || !tem(nomes, id) || tem(partesVistas, id)) falhar('part com identificador inválido ou não declarado.');
       partesVistas[id] = true;
       var declaracao = nomes[id];
-      var info = { id: id, indice: indice + 1, nome: declaracao.nome, instrumentos: declaracao.instrumentos, issues: [],
+      var info = { id: id, indice: indice + 1, nome: declaracao.nome, instrumentos: declaracao.instrumentos, issues: [], pedais: [],
         transposicoes: [{ beat: 0, semitones: 0, ordem: 0 }], ordemTransposicao: 1 };
       analisarParte(parte, info, linhas, tempos, perfil, dinamicas);
     });
