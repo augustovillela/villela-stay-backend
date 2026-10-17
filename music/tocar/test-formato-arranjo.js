@@ -55,6 +55,14 @@ test('mescla trilhas de piano e bateria e exige seleção para cordas', () => {
   assert.equal(Formato.desnormalizar(cordas, { trackIndex: 1 }).notes.length, 1);
 });
 
+test('reconstrói batidas acumuladas em mapa de andamento variável', () => {
+  const aberto = Formato.normalizar({ chart: { ...guitarra(), bpm: 120, tempoMap: { version: 1, events: [{ time: 0, beat: 0, bpm: 120 }, { time: 2, beat: 4, bpm: 60 }] } } }, { instrument: 'guitarra' });
+  const mapa = Formato.desnormalizar(aberto).tempoMap.events;
+  assert.equal(mapa[0].beat, 0);
+  assert.equal(mapa[1].beat, 4);
+  assert.equal(mapa[1].bpm, 60);
+});
+
 test('exporta enum estável', () => {
   assert.deepEqual(Formato.INSTRUMENTOS, ['violao', 'guitarra', 'baixo', 'cavaquinho', 'ukulele', 'bandolim', 'piano', 'bateria']);
   assert.equal(Formato.MAX_EVENTOS, 10000);

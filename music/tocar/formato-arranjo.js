@@ -108,7 +108,12 @@
     else if (instrumentoId === 'bateria') { chart.profile = 'bateria-midi'; chart.layout = 'drums'; }
     else chart.tuning = Array.isArray(faixa.tuning) ? faixa.tuning.slice() : undefined;
     if (Array.isArray(documento.sections)) chart.sections = documento.sections.map(function (s) { return { id: texto(s.id, 'id da seção', 80), title: texto(s.title, 'título da seção', 120), from: numero(s.fromMs, 'início da seção', 0, 900000) / 1000, to: numero(s.toMs, 'fim da seção', 0, 900000) / 1000 }; });
-    if (documento.tempoMap && Array.isArray(documento.tempoMap.events) && documento.tempoMap.events.length > 1) chart.tempoMap = { version: 1, events: documento.tempoMap.events.map(function (e) { var time = numero(e.atMs, 'tempo do mapa', 0, 900000) / 1000; var bpm = numero(e.bpm, 'BPM do mapa', 20, 300); return { time: time, beat: time * bpm / 60, bpm: bpm }; }) };
+    if (documento.tempoMap && Array.isArray(documento.tempoMap.events) && documento.tempoMap.events.length > 1) {
+      var mapa = documento.tempoMap.events.map(function (e) { return { time: numero(e.atMs, 'tempo do mapa', 0, 900000) / 1000, bpm: numero(e.bpm, 'BPM do mapa', 20, 300) }; });
+      mapa.sort(function (a, b) { return a.time - b.time; });
+      var beat = 0, anterior = 0, bpmAnterior = chart.bpm;
+      chart.tempoMap = { version: 1, events: mapa.map(function (e) { beat += (e.time - anterior) * bpmAnterior / 60; anterior = e.time; var resultado = { time: e.time, beat: beat, bpm: e.bpm }; bpmAnterior = e.bpm; return resultado; }) };
+    }
     return Core.validarChart(chart);
   }
   return { normalizar: normalizar, desnormalizar: desnormalizar, INSTRUMENTOS: INSTRUMENTOS, MAX_EVENTOS: MAX_EVENTOS };
