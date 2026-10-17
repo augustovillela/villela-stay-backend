@@ -358,7 +358,7 @@
       lista.innerHTML = '';
       var total = (dados.importacoes || []).length;
       var aguardando = (dados.importacoes || []).filter(function (x) { return x.status === 'pendente' || x.status === 'processando'; }).length;
-      resumo.textContent = total + (total === 1 ? ' importação encontrada' : ' importações encontradas') + (aguardando ? ' · ' + aguardando + ' em processamento; atualização automática ativa.' : '.');
+      resumo.textContent = total + (total === 1 ? ' importação encontrada' : ' importações encontradas') + (total >= 100 ? ' · mostrando até 100; use os filtros para refinar.' : '') + (aguardando ? ' · ' + aguardando + ' em processamento; atualização automática ativa.' : '.');
       var itens = (dados.importacoes || []).filter(function (x) {
         return filtro === 'todas' || (filtro === 'revisar' ? ['pronta', 'processando', 'pendente'].indexOf(x.status) >= 0 : x.status === filtro);
       });
