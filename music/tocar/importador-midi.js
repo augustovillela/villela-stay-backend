@@ -120,7 +120,7 @@
   function novoCanal() {
     return { notas: [], ativas: [], totalNotas: 0, minMidi: null, maxMidi: null,
       pitchBend: false, pedalSustentacao: false, sostenuto: false, pedalAtivo: false,
-      sustentadas: [], notaOrfa: false, ultimoTick: 0 };
+      sostenutoAtivo: false, sustentadas: [], sustentadasSostenuto: [], notaOrfa: false, ultimoTick: 0 };
   }
   function canalDaFaixa(faixa, canal) {
     if (!faixa.canais[canal]) faixa.canais[canal] = novoCanal();
@@ -138,14 +138,27 @@
     var indice = canal.ativas.findIndex(function (nota) { return nota.midi === midi; });
     if (indice < 0) { canal.notaOrfa = true; return; }
     var inicio = canal.ativas.splice(indice, 1)[0];
-    if (canal.pedalAtivo) canal.sustentadas.push(inicio);
+    if (canal.pedalAtivo || inicio.sostenuto) {
+      if (canal.pedalAtivo) { inicio.sustain = true; canal.sustentadas.push(inicio); }
+      if (inicio.sostenuto) canal.sustentadasSostenuto.push(inicio);
+    }
     else canal.notas.push({ midi: midi, inicioTick: inicio.tick, fimTick: tick, velocity: inicio.velocity });
   }
   function liberarSustentadas(canal, tick) {
+    var restantes = [];
     canal.sustentadas.forEach(function (inicio) {
-      canal.notas.push({ midi: inicio.midi, inicioTick: inicio.tick, fimTick: tick, velocity: inicio.velocity });
+      inicio.sustain = false;
+      if (inicio.sostenuto) restantes.push(inicio);
+      else canal.notas.push({ midi: inicio.midi, inicioTick: inicio.tick, fimTick: tick, velocity: inicio.velocity });
     });
-    canal.sustentadas = [];
+    canal.sustentadas = restantes;
+  }
+  function liberarSostenuto(canal, tick) {
+    canal.sustentadasSostenuto.forEach(function (inicio) {
+      if (!inicio.sustain) canal.notas.push({ midi: inicio.midi, inicioTick: inicio.tick, fimTick: tick, velocity: inicio.velocity });
+      inicio.sostenuto = false;
+    });
+    canal.sustentadasSostenuto = [];
   }
 
   function lerFaixa(bytes, inicio, fim, indiceFaixa, tempos) {
@@ -183,7 +196,13 @@
           if (dado2 >= 64) canal.pedalAtivo = true;
           else { canal.pedalAtivo = false; liberarSustentadas(canal, tick); }
           canal.pedalSustentacao = true;
-        } else if (tipo === 0xb0 && dado1 === 66) canal.sostenuto = true;
+        } else if (tipo === 0xb0 && dado1 === 66) {
+          canal.sostenuto = true;
+          if (dado2 >= 64) {
+            canal.sostenutoAtivo = true;
+            canal.ativas.forEach(function (nota) { nota.sostenuto = true; });
+          } else { canal.sostenutoAtivo = false; liberarSostenuto(canal, tick); }
+        }
         continue;
       }
 
@@ -221,6 +240,7 @@
     if (!fimDeclarado) falhar('faixa sem metaevento de fim.');
     if (faixa.canais.length) faixa.canais.forEach(function (canal) {
       if (canal && canal.sustentadas.length) liberarSustentadas(canal, faixa.ultimoTick);
+      if (canal && canal.sustentadasSostenuto.length) liberarSostenuto(canal, faixa.ultimoTick);
     });
     return faixa;
   }
@@ -303,7 +323,6 @@
     if (numeroCanal === 9) return 'Canal 10 é reservado para percussão.';
     if (canal.totalNotas === 0) return 'A linha não contém notas MIDI para importar.';
     if (canal.pitchBend) return 'A linha usa pitch bend, que não é representado neste arranjo.';
-    if (perfil.layout === 'piano' && canal.sostenuto) return 'A linha usa sostenuto (CC66), ainda não representado neste arranjo. Exporte uma versão sem sostenuto para importar.';
     if (canal.notaOrfa) return 'A linha contém note-off sem note-on correspondente.';
     if (canal.ativas.length) return 'A linha contém nota sem note-off.';
     if (canal.minMidi < perfil.minMidi || canal.maxMidi > perfil.maxMidi) {
@@ -403,7 +422,7 @@
       var idsValidos = candidatos.filter(function (item) { return item.valid; }).map(function (item) { return item.id; });
       var canaisCompostos = idsValidos.map(function (id) { return privados.candidates[id]; }).filter(Boolean);
       if (canaisCompostos.length > 1) {
-        var canalComposto = { totalNotas: 0, minMidi: null, maxMidi: null, ultimoTick: 0, pitchBend: false, pedalSustentacao: false, sostenuto: false, notaOrfa: false, ativas: [], sustentadas: [], notas: [] };
+        var canalComposto = { totalNotas: 0, minMidi: null, maxMidi: null, ultimoTick: 0, pitchBend: false, pedalSustentacao: false, sostenuto: false, sostenutoAtivo: false, notaOrfa: false, ativas: [], sustentadas: [], sustentadasSostenuto: [], notas: [] };
         canaisCompostos.forEach(function (item) {
           canalComposto.totalNotas += item.canal.totalNotas;
           canalComposto.minMidi = canalComposto.minMidi === null ? item.canal.minMidi : Math.min(canalComposto.minMidi, item.canal.minMidi);

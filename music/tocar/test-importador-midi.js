@@ -268,7 +268,7 @@ test('piano recusa sobreposição da mesma tecla, canal 10, notas abertas, órf�
   }
 });
 
-test('piano prolonga notas com pedal CC64 e ainda diagnostica sostenuto CC66', () => {
+test('piano prolonga notas com pedal CC64 e sostenuto CC66', () => {
   for (const intensidade of [64, 127]) {
     const analise = Importador.analisar(smf({ tracks: [faixa([
       evento(0, 0xb0, 64, intensidade), ligar(0, 0, 60), desligar(480, 0, 60), evento(480, 0xb0, 64, 0), fim(),
@@ -278,10 +278,15 @@ test('piano prolonga notas com pedal CC64 e ainda diagnostica sostenuto CC66', (
     assert.equal(chart.notes[0].duration, 1);
   }
   const sostenuto = Importador.analisar(smf({ tracks: [faixa([
+    ligar(0, 0, 60), evento(0, 0xb0, 66, 127), desligar(480, 0, 60), evento(480, 0xb0, 66, 0), fim(),
+  ])] }), 'piano');
+  assert.equal(sostenuto.candidates[0].valid, true);
+  assert.equal(Importador.criarChart(sostenuto, 't0-c0', { id: 'sostenuto', title: 'Sostenuto' }).notes[0].duration, 1);
+  const semNota = Importador.analisar(smf({ tracks: [faixa([
     evento(0, 0xb0, 66, 127), ligar(0, 0, 60), desligar(480, 0, 60), evento(480, 0xb0, 66, 0), fim(),
   ])] }), 'piano');
-  assert.equal(sostenuto.candidates[0].valid, false);
-  assert.match(sostenuto.candidates[0].reason, /sostenuto.*CC66/);
+  assert.equal(semNota.candidates[0].valid, true);
+  assert.equal(Importador.criarChart(semNota, 't0-c0', { id: 'sem-sostenuto', title: 'Sem Sostenuto' }).notes[0].duration, 0.5);
   const desligado = Importador.analisar(smf({ tracks: [faixa([
     evento(0, 0xb0, 64, 63), ligar(0, 0, 60), desligar(480, 0, 60), evento(0, 0xb0, 64, 0), fim(),
   ])] }), 'piano');
@@ -310,7 +315,7 @@ test('piano mantém limites de 2.000 notas, 60 segundos por nota e 900 segundos 
 
 test('controles em outra faixa do mesmo canal preservam diagnósticos de piano', () => {
   const notas = faixa([ligar(0, 0, 60), desligar(480, 0, 60), fim()]);
-  for (const controle of [evento(0, 0xb0, 66, 127), evento(0, 0xe0, 0, 64)]) {
+  for (const controle of [evento(0, 0xe0, 0, 64)]) {
     const analise = Importador.analisar(smf({ format: 1, tracks: [faixa([controle, fim(960)]), notas] }), 'piano');
     assert.equal(candidato(analise, 't1-c0').valid, false);
     assert.match(candidato(analise, 't1-c0').reason, /pedal|sostenuto|pitch bend/);
