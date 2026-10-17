@@ -209,7 +209,9 @@
     var target = state.learner && state.mode === 'learn' ? state.learner.alvo() : null;
     var preview = chart.notes.find(function (n) { return n.time >= state.from && n.time < state.to; });
     var n = target || (state.mode === 'idle' ? preview : null);
-    var label = n ? 'Corda ' + n.string + ' · ' + (n.fret === 0 ? 'solta (casa 0)' : 'casa ' + n.fret) + ' · ' + noteName(n.midi) : state.mode === 'idle' ? 'Nenhuma nota neste trecho' : 'Trecho concluído';
+    var perfilAlvo = perfilDoChart(chart), midiAlvo = perfilAlvo && (perfilAlvo.layout === 'piano' || perfilAlvo.layout === 'drums');
+    var pecaAlvo = n && midiAlvo && perfilAlvo.layout === 'drums' && perfilAlvo.drums.find(function (p) { return p.midi === n.midi; });
+    var label = n ? midiAlvo ? (pecaAlvo ? pecaAlvo.label : 'Tecla ' + noteName(n.midi)) : 'Corda ' + n.string + ' · ' + (n.fret === 0 ? 'solta (casa 0)' : 'casa ' + n.fret) + ' · ' + noteName(n.midi) : state.mode === 'idle' ? 'Nenhuma nota neste trecho' : 'Trecho concluído';
     if ($('tj-target').textContent !== label) text('tj-target', label);
     if (target) state.position = target.time;
     $('tj-learn-panel').hidden = state.trainingMode !== 'learn' || state.mode === 'demo';
@@ -281,7 +283,6 @@
   async function start(mode, resume) {
     if (chartLoading || remoteLoading || soundLoading || !previewReady || (previewMode && mode !== 'demo')) return;
     var layout = perfilDoChart(chart).layout, midi = layout === 'piano' || layout === 'drums';
-    if (mode === 'learn' && midi) { msg('Para este instrumento, use a prática No ritmo ou a demonstração.', true); return; }
     if ((mode === 'practice' || mode === 'learn') && !state.connected) { msg(midi ? 'Ative a entrada MIDI antes de praticar.' : 'Ative o áudio e selecione o microfone ou a interface antes de praticar.', true); return; }
     cancelCalibration(); silence(); var attempt = ++generation;
     soundLoading = true; updateTransport();
@@ -305,8 +306,10 @@
       if (mode === 'learn') {
         if (!resume || !state.learner) {
           var perfilAprender = perfilDoChart(chart) || perfilDoInstrumento(state.instrument);
-          state.learner = Aprender.criar(chart, { from: state.from, to: state.to, now: ctx.currentTime,
-            windowMs: perfilAprender.detector.windowMs });
+          state.learner = midi && typeof Aprender.criarMidi === 'function'
+            ? Aprender.criarMidi(chart, { from: state.from, to: state.to, now: ctx.currentTime })
+            : Aprender.criar(chart, { from: state.from, to: state.to, now: ctx.currentTime,
+              windowMs: perfilAprender.detector.windowMs });
           state.learnContext = ctx; state.learnElapsed = 0; state.judge = null; state.saved = false;
           // Só o restante da cauda audível atravessa rodadas e trocas de contexto.
           // performance.now continua avançando quando o contexto antigo fecha.
@@ -532,7 +535,7 @@
     } else { text('tj-note', '—'); text('tj-cents', f.rms > 0.003 ? 'Toque uma nota isolada' : 'Aguardando sinal'); $('tj-tuner-dot').style.left = '50%'; }
     text('tj-input-level', f.clipped > 0.08 || f.rms > 0.35 ? 'Sinal alto · reduza o ganho' : f.rms > 0.003 ? 'Sinal recebido' : 'Entrada silenciosa');
     if (state.calibration && f.onset && f.hz && f.confidence >= 0.7) sampleCalibration(f);
-    if (state.running && state.mode === 'learn' && state.learner && ctx) {
+    if (state.running && state.mode === 'learn' && state.learner && ctx && !(perfilDoChart(chart).layout === 'piano' || perfilDoChart(chart).layout === 'drums')) {
       if (!expiredLearn()) advanceLearn(state.learner.amostrar(f));
     }
     if (state.running && !mediaStarting && state.mode === 'practice' && state.judge && ctx) {
@@ -541,9 +544,11 @@
     }
   }
   function onMidiEvent(e) {
-    if (!state.running || state.mode !== 'practice' || !state.judge || !ctx || e.velocity === 0) return;
+    if (!state.running || !ctx || e.velocity === 0) return;
     var stamp = Number.isFinite(e.time) ? e.time : performance.now();
     var musicTime = state.start + (stamp - state.midiOrigin) / 1000 * state.speed;
+    if (state.mode === 'learn' && state.learner) { advanceLearn(state.learner.amostrar({ audioTime: ctx.currentTime, midi: e.midi, velocity: e.velocity, channel: e.channel })); return; }
+    if (state.mode !== 'practice' || !state.judge) return;
     state.judge.amostrar({ time: musicTime, midi: e.midi, velocity: e.velocity, channel: e.channel });
     updateScore();
   }

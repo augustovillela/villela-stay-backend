@@ -121,5 +121,40 @@
       alvo: function () { return notes[index] ? copia(notes[index]) : null; },
       estados: function () { return states.map(copia); }, resumo: resumo };
   }
-  return { criar: criar };
+  function criarMidi(input, options) {
+    exigir(Core && typeof Core.validarChart === 'function', 'O núcleo de arranjos precisa estar carregado.');
+    var chart = Core.validarChart(input), o = options === undefined ? {} : options;
+    exigir(objeto(o), 'As opções de aprendizagem MIDI devem ser um objeto.');
+    var from = o.from === undefined ? 0 : o.from, to = o.to === undefined ? chart.duration : o.to;
+    exigir(tempo(from) && tempo(to) && to > from && to <= chart.duration, 'Intervalo MIDI inválido.');
+    var notes = chart.notes.filter(function (n) { return n.time >= from && n.time < to; });
+    var groups = [], states = [], groupIndex = 0, gate = tempo(o.now) ? o.now : 0, lastSample = -Infinity;
+    notes.forEach(function (note) {
+      var group = groups[groups.length - 1];
+      if (!group || Math.abs(group.time - note.time) > EPS) { group = { time: note.time, notes: [], midi: Object.create(null), received: Object.create(null) }; groups.push(group); }
+      group.notes.push(note); group.midi[note.midi] = true; states.push({ id: note.id, status: 'pending' });
+    });
+    function grupoAtual() { return groups[groupIndex] || null; }
+    function bloquearAte(t) { if (tempo(t)) { gate = Math.max(gate, t, lastSample); return true; } return false; }
+    function avancar(status, t) {
+      var group = grupoAtual(); if (!group || !tempo(t)) return null;
+      group.notes.forEach(function (note) { states[states.findIndex(function (s) { return s.id === note.id; })] = { id: note.id, status: status, audioTime: t }; });
+      groupIndex++; gate = Math.max(gate, t); return { id: group.notes[0].id, status: status, audioTime: t };
+    }
+    function amostrar(sample) {
+      if (!objeto(sample) || !tempo(sample.audioTime) || sample.audioTime < lastSample - EPS || !Number.isInteger(sample.midi)) return null;
+      lastSample = Math.max(lastSample, sample.audioTime);
+      if (sample.audioTime < gate - EPS) return null;
+      var group = grupoAtual(); if (!group || !group.midi[sample.midi]) return null;
+      group.received[sample.midi] = true;
+      var pronto = group.notes.every(function (note) { return group.received[note.midi]; });
+      return pronto ? avancar('hit', sample.audioTime) : null;
+    }
+    function pular(t) { if (!tempo(t) || t < lastSample || !grupoAtual()) return null; return avancar('skipped', t); }
+    function resumo() { var hits = states.filter(function (s) { return s.status === 'hit'; }).length, skipped = states.filter(function (s) { return s.status === 'skipped'; }).length; return { total: states.length, hits: hits, skipped: skipped, pending: states.length - hits - skipped, complete: groupIndex >= groups.length }; }
+    return { amostrar: amostrar, pular: pular, bloquearAte: bloquearAte, retomar: bloquearAte,
+      alvo: function () { var g = grupoAtual(); return g && g.notes[0] ? copia(g.notes[0]) : null; },
+      estados: function () { return states.map(copia); }, resumo: resumo };
+  }
+  return { criar: criar, criarMidi: criarMidi };
 });

@@ -297,6 +297,19 @@ verificar('Origem do ataque é válida, consumida uma vez e opcional para quadro
   }
   assert.equal(tocar(m, 10, 40, { onset: true }).length, 1, 'onset booleano sem origem continua aceito');
 });
+verificar('Aprender MIDI exige todas as teclas de um acorde simultâneo', () => {
+  const c = { id: 'piano-aprender', title: 'Piano', bpm: 120, duration: 2, profile: 'piano-midi', layout: 'piano', notes: [
+    { id: 'c', time: 0, duration: 0.5, midi: 60, velocity: 90 }, { id: 'e', time: 0, duration: 0.5, midi: 64, velocity: 90 },
+    { id: 'g', time: 1, duration: 0.5, midi: 67, velocity: 90 }
+  ] };
+  const m = Aprender.criarMidi(c, { now: 0 });
+  assert.equal(m.amostrar({ audioTime: 0.1, midi: 60, velocity: 90 }), null);
+  assert.equal(m.resumo().hits, 0);
+  assert.equal(m.amostrar({ audioTime: 0.1, midi: 64, velocity: 90 }).status, 'hit');
+  assert.equal(m.resumo().hits, 2);
+  assert.equal(m.amostrar({ audioTime: 0.2, midi: 67, velocity: 90 }).status, 'hit');
+  assert.equal(m.resumo().complete, true);
+});
 verificar('Confirmação tardia não reutiliza ataque cuja nota já acertou após silêncio', () => {
   const m = Aprender.criar(chart([40, 40]), { stableMs: 40 });
   m.retomar(0.8);
