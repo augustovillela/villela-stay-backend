@@ -3,7 +3,7 @@ services:
     name: villela-stay-backend
     runtime: node
     plan: starter   # plano pago: necessario para disco persistente
-    buildCommand: npm install && node scripts/setup-audiveris.js
+    buildCommand: npm install
     startCommand: node server.js
     healthCheckPath: /health
     # Disco persistente: guarda usuarios do Portal Staff, relatorios publicados,
@@ -113,12 +113,6 @@ services:
         sync: false
       - key: MUSIC_S3_REGION
         value: auto
-      # OMR: o build Linux baixa o pacote oficial Audiveris, verifica o SHA-256
-      # e o extrai no artefato. O caminho é relativo ao diretório da aplicação.
-      - key: AUDIVERIS_JAVA
-        value: vendor/audiveris/opt/audiveris/runtime/bin/java
-      - key: AUDIVERIS_APP_DIR
-        value: vendor/audiveris/opt/audiveris/app
 
       # ORIGENA (12o produto). Unico com banco PROPRIO (PostgreSQL) e todo
       # binario no R2 — os porquês estao em docs/origena/DECISIONS/ (repo-pai).
