@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const Sons = require('./sons');
+const Manifesto = require('./sons-manifesto');
 
 function parametro(value = 0) {
   return {
@@ -43,6 +44,21 @@ function contexto() {
     },
   };
 }
+
+test('manifesto de sons só referencia arquivos presentes no pacote', () => {
+  const base = path.join(__dirname, 'sons');
+  let quantidade = 0;
+  for (const banco of Object.values(Manifesto.banks)) {
+    for (const amostra of banco.samples) {
+      quantidade++;
+      const arquivo = path.join(base, amostra.file);
+      const stat = fs.statSync(arquivo);
+      assert.ok(stat.isFile(), amostra.file + ' não é um arquivo de som');
+      assert.ok(stat.size > 0, amostra.file + ' está vazio');
+    }
+  }
+  assert.equal(quantidade, 119);
+});
 function manifesto() {
   return { version: 1, banks: {
     piano: { kind: 'pitched', gain: 0.8, release: 0.25,
