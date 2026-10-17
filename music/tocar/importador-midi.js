@@ -161,7 +161,7 @@
     canal.sustentadasSostenuto = [];
   }
 
-  function lerFaixa(bytes, inicio, fim, indiceFaixa, tempos) {
+  function lerFaixa(bytes, inicio, fim, indiceFaixa, tempos, controlesGlobais) {
     var estado = { cursor: inicio, fim: fim }, tick = 0, statusCorrente = null, fimDeclarado = false;
     var faixa = { indice: indiceFaixa, nome: '', canais: [], ultimoTick: 0 };
     while (estado.cursor < fim) {
@@ -192,7 +192,13 @@
         if (tipo === 0x90 && dado2 !== 0) registrarNotaAtiva(canal, dado1, tick, dado2);
         else if (tipo === 0x80 || (tipo === 0x90 && dado2 === 0)) encerrarNota(canal, dado1, tick);
         else if (tipo === 0xe0) canal.pitchBend = true;
-        else if (tipo === 0xb0 && dado1 === 64) {
+        else if (tipo === 0xb0 && (dado1 === 64 || dado1 === 66)) {
+          if (controlesGlobais) {
+            if (!controlesGlobais[numeroCanal]) controlesGlobais[numeroCanal] = [];
+            controlesGlobais[numeroCanal].push({ tick: tick, controlador: dado1, valor: dado2 });
+          }
+        }
+        if (tipo === 0xb0 && dado1 === 64) {
           if (dado2 >= 64) canal.pedalAtivo = true;
           else { canal.pedalAtivo = false; liberarSustentadas(canal, tick); }
           canal.pedalSustentacao = true;
@@ -368,14 +374,14 @@
     if (divisao & 0x8000) falhar('divisão SMPTE não é aceita; use PPQN.');
     if (divisao === 0) falhar('PPQN deve ser maior que zero.');
 
-    var posicao = 14, tempos = [], faixas = [], ultimoTick = 0;
+    var posicao = 14, tempos = [], faixas = [], ultimoTick = 0, controlesGlobais = [];
     for (var i = 0; i < numeroFaixas; i++) {
       if (posicao + 8 > bytes.length || !assinatura(bytes, posicao, 'MTrk')) falhar('chunk MTrk ausente ou truncado.');
       var tamanhoFaixa = inteiro32(bytes, posicao + 4);
       posicao += 8;
       if (tamanhoFaixa > bytes.length - posicao) falhar('chunk MTrk truncado.');
       var fim = posicao + tamanhoFaixa;
-      var faixa = lerFaixa(bytes, posicao, fim, i, tempos);
+      var faixa = lerFaixa(bytes, posicao, fim, i, tempos, controlesGlobais);
       faixas.push(faixa);
       ultimoTick = Math.max(ultimoTick, faixa.ultimoTick);
       posicao = fim;
@@ -385,7 +391,33 @@
     // Controles atuam sobre o canal MIDI, mesmo quando um SMF formato 1 os
     // armazena em outra faixa. Não ofereça uma linha como fiel ao arquivo
     // quando sua sustentação ou altura depende desses controles externos.
+    function aplicarPedaisGlobais(canal, eventos) {
+      if (!eventos || !eventos.length || !canal.notas.length) return;
+      var ativos = Object.create(null), intervalos = [];
+      eventos.slice().sort(function (a, b) { return a.tick - b.tick; }).forEach(function (evento) {
+        var tipo = evento.controlador === 66 ? 'sostenuto' : 'sustain';
+        if (evento.valor >= 64) {
+          if (ativos[tipo] === undefined) ativos[tipo] = evento.tick;
+        } else if (ativos[tipo] !== undefined) {
+          intervalos.push({ tipo: tipo, inicio: ativos[tipo], fim: evento.tick }); delete ativos[tipo];
+        }
+      });
+      Object.keys(ativos).forEach(function (tipo) { intervalos.push({ tipo: tipo, inicio: ativos[tipo], fim: canal.ultimoTick }); });
+      canal.notas.forEach(function (nota) {
+        intervalos.forEach(function (pedal) {
+          var capturada = pedal.tipo === 'sostenuto' ? nota.inicioTick < pedal.inicio && nota.fimTick > pedal.inicio : nota.fimTick > pedal.inicio;
+          if (capturada && nota.fimTick < pedal.fim) nota.fimTick = pedal.fim;
+        });
+      });
+    }
     var controlesPorCanal = [];
+    controlesGlobais.forEach(function (eventos, numeroCanal) {
+      aplicarPedaisGlobais({ notas: faixas.flatMap(function (faixa) { return faixa.canais[numeroCanal] ? faixa.canais[numeroCanal].notas : []; }), ultimoTick: ultimoTick }, eventos);
+    });
+    faixas.forEach(function (faixa) { faixa.canais.forEach(function (canal) {
+      if (!canal) return;
+      canal.notas.forEach(function (nota) { canal.ultimoTick = Math.max(canal.ultimoTick, nota.fimTick); });
+    }); });
     faixas.forEach(function (faixa) {
       faixa.canais.forEach(function (canal, numeroCanal) {
         var controles = controlesPorCanal[numeroCanal] || (controlesPorCanal[numeroCanal] = {});

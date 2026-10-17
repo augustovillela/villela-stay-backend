@@ -323,7 +323,7 @@ test('controles em outra faixa do mesmo canal preservam diagnósticos de piano',
   }
   const pedal = Importador.analisar(smf({ format: 1, tracks: [faixa([evento(0, 0xb0, 64, 127), fim(960)]), notas] }), 'piano');
   assert.equal(candidato(pedal, 't1-c0').valid, true);
-  assert.equal(Importador.criarChart(pedal, 't1-c0', { id: 'pedal-externo', title: 'Pedal em outra faixa' }).notes[0].duration, 0.5);
+  assert.equal(Importador.criarChart(pedal, 't1-c0', { id: 'pedal-externo', title: 'Pedal em outra faixa' }).notes[0].duration, 1);
   const outroCanal = Importador.analisar(smf({ format: 1, tracks: [faixa([evento(0, 0xb1, 64, 127), fim(960)]), notas] }), 'piano');
   assert.equal(candidato(outroCanal, 't1-c0').valid, true);
   assert.equal(Importador.criarChart(outroCanal, 't1-c0', { id: 'outro-canal', title: 'Outro canal' }).notes.length, 1);
