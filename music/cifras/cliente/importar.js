@@ -329,13 +329,17 @@
     var atualizar = C.botao('Atualizar', function () {
       carregar(filtro === 'falhou' || filtro === 'salva' || filtro === 'descartada' ? filtro : '');
     }, 'sec');
+    lista.setAttribute('aria-live', 'polite');
+    lista.setAttribute('aria-busy', 'false');
     c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect, atualizar]));
     c.appendChild(lista);
     function carregar(status) {
       var query = status ? '?status=' + encodeURIComponent(status) + '&limite=100' : '?limite=100';
       atualizar.disabled = true;
+      atualizar.textContent = 'Atualizando…';
+      lista.setAttribute('aria-busy', 'true');
       lista.innerHTML = ''; lista.appendChild(C.esqueleto(2));
-      api('GET', '/importar' + query).then(function (r) { dados = r; pintarLista(); }).catch(function (e) { lista.innerHTML = ''; lista.appendChild(C.estadoErro(e, C.telas.importacoes)); }).then(function () { atualizar.disabled = false; });
+      api('GET', '/importar' + query).then(function (r) { dados = r; pintarLista(); }).catch(function (e) { lista.innerHTML = ''; lista.appendChild(C.estadoErro(e, C.telas.importacoes)); }).then(function () { atualizar.disabled = false; atualizar.textContent = 'Atualizar'; lista.setAttribute('aria-busy', 'false'); });
     }
     function pintarLista() {
       lista.innerHTML = '';
