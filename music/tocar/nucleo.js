@@ -320,11 +320,14 @@
         else if (s.status === 'miss') misses++;
       });
       var done = hits + misses;
+      var streak = 0, bestStreak = 0, run = 0;
+      states.forEach(function (s) { if (s.status === 'hit') { run++; streak = run; if (run > bestStreak) bestStreak = run; } else if (s.status === 'miss') run = 0; });
       return { total: states.length, hits: hits, misses: misses, pending: states.length - done,
         accuracy: done ? Math.round(1000 * hits / done) / 10 : 0,
         completion: states.length ? Math.round(1000 * done / states.length) / 10 : 0,
         meanAbsTimingMs: hits ? Math.round(timing / hits) : null,
         meanAbsCents: hits ? Math.round(cents / hits * 10) / 10 : null,
+        streak: streak, bestStreak: bestStreak,
         trainingOnly: true };
     }
     return { amostrar: amostrar, avancar: avancar, resumo: resumo, estados: function () { return states.map(copy); } };
@@ -362,9 +365,11 @@
       var hits = 0, misses = 0, timing = 0;
       states.forEach(function (s) { if (s.status === 'hit') { hits++; timing += Math.abs(s.timingMs); } else if (s.status === 'miss') misses++; });
       var done = hits + misses;
+      var streak = 0, bestStreak = 0, run = 0;
+      states.forEach(function (s) { if (s.status === 'hit') { run++; streak = run; if (run > bestStreak) bestStreak = run; } else if (s.status === 'miss') run = 0; });
       return { total: states.length, hits: hits, misses: misses, pending: states.length - done,
         accuracy: done ? Math.round(1000 * hits / done) / 10 : 0, completion: states.length ? Math.round(1000 * done / states.length) / 10 : 0,
-        meanAbsTimingMs: hits ? Math.round(timing / hits) : null, meanAbsCents: null, trainingOnly: true };
+        meanAbsTimingMs: hits ? Math.round(timing / hits) : null, meanAbsCents: null, streak: streak, bestStreak: bestStreak, trainingOnly: true };
     }
     return { amostrar: amostrar, avancar: function (time) { if (numero(time)) expire(time - offset); }, resumo: resumo, estados: function () { return states.map(copy); } };
   }
