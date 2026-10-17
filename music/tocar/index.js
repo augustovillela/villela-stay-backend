@@ -202,6 +202,27 @@ function montar(app, { requireUsuario, opcional } = {}) {
     } catch (erro) { next(erro); }
   });
 
+  // Analisa apenas a camada textual do PDF durante a importação. O arquivo é
+  // mantido em memória e não é salvo no acervo; a conversão de partitura
+  // continua dependendo de um trabalhador OMR configurado separadamente.
+  app.post(B + '/importar-pdf', requireUsuario, async (req, res, next) => {
+    if (!req.is('application/json')) return res.status(415).json({ erro: 'Envie o PDF como JSON em base64.' });
+    const corpo = req.body && req.body.base64;
+    if (typeof corpo !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(corpo) || corpo.length % 4 !== 0) {
+      return res.status(400).json({ erro: 'Base64 do PDF inválido.' });
+    }
+    let bytes;
+    try { bytes = Buffer.from(corpo, 'base64'); }
+    catch (_) { return res.status(400).json({ erro: 'Base64 do PDF inválido.' }); }
+    try {
+      const { analisarPdf, LIMITE_BYTES } = require('./importador-pdf');
+      if (bytes.length > LIMITE_BYTES) return res.status(400).json({ erro: 'O PDF deve ter no máximo 10 MiB.' });
+      const resultado = await analisarPdf(bytes, req.body.nome);
+      if (resultado.texto.length > 200000) resultado.texto = resultado.texto.slice(0, 200000);
+      res.json({ ok: true, ...resultado });
+    } catch (erro) { next(erro); }
+  });
+
   app.get(B + '/sessoes', requireUsuario, (req, res) => {
     res.json({ sessoes: historicoDe(req.usuario.id), indicacao: INDICACAO, vale_nota: false });
   });

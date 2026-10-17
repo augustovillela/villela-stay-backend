@@ -8,7 +8,7 @@
   if (!boot.logado) { app.innerHTML='<h1>Gerenciar seus arranjos</h1><p>Entre na sua conta Musique para criar arranjos das obras do seu acervo.</p><a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar ou criar conta</a><p><a href="/music/tocar">Voltar aos estudos abertos</a></p>';return; }
   var current = null, chart = null, dirty = false, busy = false, conflict = false, editor = null, editorPending = false, waveform = null, pdfObjectUrl = '';
   var importacao = null;
-  var detailTicket = 0, mediaTicket = 0, importTicket = 0, worksTicket = 0, listTicket = 0, waveformTicket = 0;
+  var detailTicket = 0, mediaTicket = 0, importTicket = 0, pdfTicket = 0, worksTicket = 0, listTicket = 0, waveformTicket = 0;
   var worksOffset = 0, listOffset = 0, works = [], arrangements = [];
   var mediaItems=[],mediaOffset=0,mediaWork='',waveformSource='';
   var BASE = '/music/api/tocar/gestao';
@@ -20,6 +20,15 @@
     Object.keys(attrs || {}).forEach(function (key) { n.setAttribute(key, attrs[key]); }); return n;
   }
   function message(value, error) { $('tg-status').textContent = value; $('tg-status').classList.toggle('tj-error', !!error); }
+  function base64De(bytes) { var texto = ''; for (var i = 0; i < bytes.length; i += 0x8000) texto += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(texto); }
+  async function analisarPdfNoServidor(file, ticket) {
+    var bytes = new Uint8Array(await file.arrayBuffer());
+    if (ticket !== pdfTicket) return null;
+    var resposta = await fetch('/music/api/tocar/importar-pdf', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: file.name || '', base64: base64De(bytes) }) });
+    var dados = await resposta.json();
+    if (!resposta.ok) throw new Error(dados.erro || 'Não foi possível analisar o PDF.');
+    return dados;
+  }
   async function api(path, method, body) {
     var options = { credentials: 'same-origin', method: method || 'GET' };
     if (body !== undefined) { options.headers = { 'Content-Type': 'application/json' }; options.body = JSON.stringify(body); }
@@ -466,7 +475,18 @@
     pdfObjectUrl = URL.createObjectURL(file);
     $('tg-pdf-info').textContent = 'PDF carregado como referência visual. Ele não altera as notas do arranjo.';
     $('tg-pdf-open').href = pdfObjectUrl; $('tg-pdf-open').hidden = false;
-    message('Partitura PDF pronta para consulta. Para gerar notas e som, importe também MIDI, MusicXML ou MXL.', false);
+    var ticket = ++pdfTicket;
+    message('Analisando a camada textual do PDF…', false);
+    analisarPdfNoServidor(file, ticket).then(function (dados) {
+      if (ticket !== pdfTicket || !dados) return;
+      var detalhe = dados.tipo === 'cifra' ? 'cifra detectada; encaminhe o texto para ChordPro.' : dados.tipo === 'partitura' ? 'partitura detectada; a próxima etapa é OMR para MusicXML/MXL.' : 'tipo não identificado automaticamente; mantenha a revisão manual.';
+      $('tg-pdf-info').textContent = 'PDF analisado: ' + detalhe + ' Ele continua apenas como referência visual.';
+      message('PDF analisado. ' + detalhe + ' Para gerar notas e som, importe MIDI, MusicXML ou MXL.', false);
+    }).catch(function (erro) {
+      if (ticket !== pdfTicket) return;
+      $('tg-pdf-info').textContent = 'PDF carregado como referência visual; a análise automática não ficou disponível.';
+      message('PDF pronto para consulta, mas não foi possível analisá-lo agora: ' + erro.message, true);
+    });
   });
   $('tg-midi-candidates').addEventListener('change', function () { renderImportacaoPreview(); });
   $('tg-midi-cancel').addEventListener('click', function () {
