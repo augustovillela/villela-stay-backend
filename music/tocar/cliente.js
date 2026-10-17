@@ -48,11 +48,30 @@
     } catch (_) { msg('Não foi possível sincronizar agora. O progresso local continua salvo.', true); }
     finally { var current = $('tj-campaign-sync'); if (current) { current.disabled = false; current.textContent = 'Sincronizar conta'; } }
   }
+  function exportCampaign() {
+    if (!Campaign || !campaignState) return;
+    var blob = new Blob([JSON.stringify(campaignState, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob), link = el('a', { href: url, download: 'musique-campanha-' + state.instrument + '.json' });
+    link.click(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); msg('Backup da campanha exportado.');
+  }
+  async function importCampaign(file) {
+    if (!file || !Campaign) return;
+    try {
+      if (file.size > 50000) throw new Error('O backup da campanha é grande demais.');
+      var imported = Campaign.criar(JSON.parse(await file.text()));
+      if (imported.instrument !== state.instrument) throw new Error('O backup pertence a outro instrumento.');
+      campaignState = Campaign.mesclar(campaignState, imported); saveCampaign(); renderCampaign(); msg('Backup da campanha importado e mesclado com segurança.');
+    } catch (error) { msg('Backup inválido: ' + error.message, true); }
+  }
   function renderCampaign() {
     var panel = $('tj-campaign'); if (!panel || !Campaign) return;
     var lista = Campaign.listar(campaignState || { instrument: state.instrument });
     var overview = Campaign.resumo(campaignState), bar = el('span', { class: 'tj-campaign-progress' }); bar.style.width = overview.percent + '%';
     var heading = el('div', { class: 'tj-campaign-heading' }, [el('div', {}, [el('p', { class: 'tj-caption', text: 'CAMPANHA AUTORAL' }), el('h2', { text: 'Trilha de evolução' })]), el('span', { class: 'tj-campaign-count', text: overview.completed + '/' + overview.total + ' concluídas · ' + overview.badges + ' distintivos' })]);
+    var exportButton = el('button', { type: 'button', class: 'tj-campaign-sync', text: 'Exportar' }); exportButton.addEventListener('click', exportCampaign);
+    var importInput = el('input', { type: 'file', accept: '.json,application/json', hidden: '' }); importInput.addEventListener('change', function () { importCampaign(this.files && this.files[0]); this.value = ''; });
+    var importButton = el('button', { type: 'button', class: 'tj-campaign-sync', text: 'Importar' }); importButton.addEventListener('click', function () { importInput.click(); });
+    heading.appendChild(exportButton); heading.appendChild(importButton); heading.appendChild(importInput);
     if (boot.logado) { var sync = el('button', { id: 'tj-campaign-sync', type: 'button', class: 'tj-campaign-sync', text: 'Sincronizar conta' }); sync.addEventListener('click', syncCampaign); heading.appendChild(sync); }
     panel.replaceChildren(heading, el('div', { class: 'tj-campaign-summary' }, [el('span', { class: 'tj-campaign-summary-label', text: overview.percent + '% da trilha' }), el('span', { class: 'tj-campaign-progress-track' }, [bar]), el('span', { class: 'tj-campaign-summary-label', text: overview.attempts + ' tentativas · melhor sequência: ' + overview.bestStreak })]));
     var list = el('ol', { class: 'tj-campaign-list' });
