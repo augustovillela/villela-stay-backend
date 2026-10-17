@@ -106,6 +106,19 @@ test('piano MusicXML preserva acorde simultâneo', async () => {
   assert.deepEqual(Core.validarChart(chart), chart);
 });
 
+test('bateria MusicXML importa midi-unpitched para as peças do perfil', async () => {
+  const score = '<?xml version="1.0"?><score-partwise version="3.1"><work><work-title>Bateria</work-title></work>'
+    + '<part-list><score-part id="P1"><part-name>Drums</part-name><score-instrument id="P1-I1"><instrument-name>Acoustic Bass Drum</instrument-name></score-instrument><midi-instrument id="P1-I1"><midi-unpitched>36</midi-unpitched></midi-instrument></score-part></part-list>'
+    + '<part id="P1"><measure number="1"><attributes><divisions>4</divisions></attributes>'
+    + '<note><unpitched><display-step>C</display-step><display-octave>3</display-octave></unpitched><instrument id="P1-I1"/><duration>4</duration><voice>1</voice></note>'
+    + '</measure></part></score-partwise>';
+  const analysis = await Importador.analisar(bytes(score), { perfil: 'bateria' });
+  assert.equal(analysis.candidates[0].valid, true);
+  const chart = Importador.criarChart(analysis, analysis.candidates[0].id, { id: 'drum-xml', title: 'Bateria XML' });
+  assert.deepEqual(chart.notes[0], { id: 'musicxml-1', time: 0, duration: 0.5, drum: 'bumbo', midi: 36, velocity: 80 });
+  assert.equal(chart.profile, 'bateria-midi');
+});
+
 test('mantém pausas, backup, forward e candidatos separados por pauta e voz', async () => {
   const partitura = medida(atributos()
     + '<note><rest/><duration>4</duration><voice>1</voice><staff>1</staff></note>'

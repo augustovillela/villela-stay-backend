@@ -84,10 +84,9 @@
     fields.forEach(function (id) { $(id).disabled = busy || pendente || (id === 'tg-work' && !!current) || (editorPending && ['tg-json','tg-midi','tg-musicxml','tg-example','tg-use-example'].includes(id)); });
     var perfilImportacao = perfilSelecionado();
     var midiInstrument = perfilImportacao && (perfilImportacao.layout === 'piano' || perfilImportacao.layout === 'drums');
-    if (midiInstrument) $('tg-musicxml').disabled = true;
     $('tg-import-help').textContent = midiInstrument
-      ? (perfilImportacao.layout === 'piano' ? 'Piano: use MIDI (.mid ou .midi). Acordes, oitavas e intensidades são preservados; pedal de sustentação e sostenuto ainda não são aceitos.' : 'Bateria: use MIDI (.mid ou .midi) no canal 10 com as peças oferecidas no editor.') + ' MusicXML/MXL está disponível para instrumentos de cordas.'
-      : 'MIDI, MusicXML e MXL importam uma linha de notas isoladas para a afinação selecionada. Confira as posições sugeridas antes de publicar.';
+      ? (perfilImportacao.layout === 'piano' ? 'Piano: MIDI ou MusicXML/MXL preservam acordes, oitavas e intensidades; pedal de sustentação e sostenuto ainda não são aceitos.' : 'Bateria: MIDI ou MusicXML/MXL preservam as peças mapeadas; MIDI continua exigindo canal 10.')
+      : 'MIDI, MusicXML e MXL importam uma linha de notas para a afinação selecionada. Confira as posições sugeridas antes de publicar.';
     var temMidia = !!$('tg-media').value;
     if (!temMidia) $('tg-media-offset').value = '0';
     $('tg-media-offset').disabled = $('tg-media-offset').disabled || !temMidia;
@@ -444,8 +443,9 @@
     var ticket = ++importTicket, rotulo = tipo === 'musicxml' ? 'MusicXML/MXL' : 'MIDI', limiteTexto = limite === 512 * 1024 ? '512 KiB' : '2 MiB';
     var perfil = $('tg-instrument').value;
     var perfilDoArquivo = Perfis.obter(perfil);
-    if (tipo === 'musicxml' && perfilDoArquivo && (perfilDoArquivo.layout === 'piano' || perfilDoArquivo.layout === 'drums')) {
-      message('MusicXML/MXL está disponível para instrumentos de cordas. Para piano ou bateria, escolha um arquivo MIDI (.mid ou .midi).', true); return;
+    if (tipo === 'musicxml' && perfilDoArquivo && perfilDoArquivo.layout === 'drums') {
+      // MusicXML/MXL pode conter percussão não afinada; o importador local
+      // mapeia midi-unpitched para as peças aceitas pelo perfil de bateria.
     }
     importacao = { tipo: tipo, importador: importador, analysis: null, fileName: file.name || '', perfil: perfil, status: 'reading' };
     render();
@@ -490,11 +490,8 @@
       $('tg-pdf-omr').hidden = true;
       if (dados.tipo === 'partitura') {
         var perfilAtual = perfilSelecionado();
-        var omrCompativel = perfilAtual && perfilAtual.layout !== 'drums';
-        if (!omrCompativel) {
-          $('tg-pdf-info').textContent += ' Para bateria, use MIDI; o OMR de partituras não importa percussão nesta etapa.';
-          return;
-        }
+        var omrCompativel = !!perfilAtual;
+        if (!omrCompativel) return;
         fetch('/music/api/tocar/importar-pdf/omr/status', { credentials: 'same-origin' }).then(function (resposta) { return resposta.json(); }).then(function (status) {
           if (ticket !== pdfTicket) return;
           $('tg-pdf-omr').hidden = !status.disponivel;

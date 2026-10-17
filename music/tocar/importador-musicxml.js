@@ -31,6 +31,7 @@
     exigir(typeof id === 'string', 'Informe um perfil de instrumento válido.');
     var origem = Perfis.obter(id);
     if (origem && origem.id === 'piano-midi') return { id: origem.id, label: origem.label, tuning: null, strings: 0, frets: 0, minMidi: 21, maxMidi: 108, piano: true };
+    if (origem && origem.id === 'bateria-midi') return { id: origem.id, label: origem.label, tuning: null, strings: 0, frets: 0, minMidi: 0, maxMidi: 127, drums: origem.drums.slice(), drumMidi: origem.drums.reduce(function (mapa, drum) { mapa[drum.midi] = drum.id; return mapa; }, Object.create(null)) };
     exigir(origem && Array.isArray(origem.tuning), 'Perfil de instrumento desconhecido.');
     exigir(Number.isInteger(origem.strings) && origem.strings >= 1 && origem.strings <= 6 && origem.tuning.length === origem.strings,
       'Perfil de instrumento inválido.');
@@ -51,7 +52,7 @@
     return perfilPorId(opcoes.perfil);
   }
   function mesmoPerfil(a, b) {
-    if (a.piano || b.piano) return !!a.piano && !!b.piano;
+    if (a.piano || b.piano || a.drums || b.drums) return !!a.piano === !!b.piano && !!a.drums === !!b.drums;
     return a.strings === b.strings && a.frets === b.frets && a.tuning.length === b.tuning.length &&
       a.tuning.every(function (midi, indice) { return midi === b.tuning[indice]; });
   }
@@ -477,7 +478,18 @@
     filhos(lista, 'score-part').forEach(function (item) {
       var id = textoSeguro(item.atributos.id, 64);
       if (!id || tem(resultado, id)) falhar('score-part com identificador inválido ou repetido.');
-      resultado[id] = textoSeguro(texto(filho(item, 'part-name'))) || 'Parte ' + id;
+      var instrumentos = Object.create(null);
+      filhos(item, 'midi-instrument').forEach(function (midi) {
+        var instrumentoId = textoSeguro(midi.atributos.id, 80);
+        var midiUnpitched = filho(midi, 'midi-unpitched');
+        if (instrumentoId && midiUnpitched) {
+          try {
+            var valor = inteiroTexto(midiUnpitched, 'midi-unpitched');
+            if (valor >= 0 && valor <= 127) instrumentos[instrumentoId] = valor;
+          } catch (erro) { /* o diagnóstico da nota tratará um instrumento sem MIDI */ }
+        }
+      });
+      resultado[id] = { nome: textoSeguro(texto(filho(item, 'part-name'))) || 'Parte ' + id, instrumentos: instrumentos };
     });
     return resultado;
   }
@@ -539,7 +551,23 @@
     }
   }
 
-  function midiDaNota(no) {
+  function midiDaNota(no, perfil, info) {
+    if (perfil && perfil.drums) {
+      var instrumento = filho(no, 'instrument');
+      var instrumentoId = instrumento && textoSeguro(instrumento.atributos.id, 80);
+      if (instrumentoId && info && info.instrumentos && Number.isInteger(info.instrumentos[instrumentoId])) return info.instrumentos[instrumentoId];
+      var unpitched = filho(no, 'unpitched');
+      if (!unpitched) return null;
+      var step = texto(filho(unpitched, 'display-step'));
+      var octaveNo = filho(unpitched, 'display-octave');
+      if (!/^[A-G]$/.test(step) || !octaveNo) return null;
+      try {
+        var oitava = inteiroTexto(octaveNo, 'display-octave');
+        var base = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[step];
+        var midiVisual = (oitava + 1) * 12 + base;
+        return perfil.drumMidi[midiVisual] ? midiVisual : null;
+      } catch (erro) { return null; }
+    }
     var pitch = filho(no, 'pitch');
     if (!pitch) return null;
     var step = texto(filho(pitch, 'step'));
@@ -722,15 +750,15 @@
           return;
         }
         if (grace || cue) adicionarProblema(linha, 'A linha contém grace ou cue note.');
-        if (filho(item, 'unpitched')) adicionarProblema(linha, 'A linha contém nota não afinada ou percussão.');
-        var midi = midiDaNota(item);
+        if (filho(item, 'unpitched') && !perfil.drums) adicionarProblema(linha, 'A linha contém nota não afinada ou percussão.');
+        var midi = midiDaNota(item, perfil, info);
         if (!Number.isInteger(midi)) {
-          adicionarProblema(linha, 'A linha contém altura MusicXML inválida.');
+          adicionarProblema(linha, perfil.drums ? 'A linha contém peça de percussão não mapeada.' : 'A linha contém altura MusicXML inválida.');
           return;
         }
         if (duracao <= 0) adicionarProblema(linha, 'A linha contém nota sem duração positiva.');
         // TAB ausente ou inconsistente não impede a importação: use a mesma posição padrão do MIDI.
-        var tab = tabDaNota(item, perfil);
+        var tab = perfil.drums ? null : tabDaNota(item, perfil);
         var ties = tiposTie(item);
         linha.notes.push({ startBeat: inicioMedida + inicio, endBeat: inicioMedida + inicio + duracao, midiBase: midi,
           tab: tab && !tab.invalid ? tab : null, ties: ties, ordem: ordem++ });
@@ -812,12 +840,12 @@
         var semitones = 0;
         transposicoes.forEach(function (evento) { if (evento.beat <= nota.startBeat + EPS) semitones = evento.semitones; });
         nota.midi = nota.midiBase + semitones;
-        if (perfil.piano) {
+        if (perfil.piano || perfil.drums) {
           var velocity = 80;
           dinamicas.forEach(function (evento) { if (evento.beat <= nota.startBeat + EPS) velocity = evento.velocity; });
           nota.velocity = velocity;
         }
-        if (perfil.piano ? (nota.midi < 21 || nota.midi > 108) : !posicoesPossiveis(nota.midi, perfil).length) {
+        if (perfil.piano ? (nota.midi < 21 || nota.midi > 108) : perfil.drums ? !perfil.drumMidi[nota.midi] : !posicoesPossiveis(nota.midi, perfil).length) {
           adicionarProblema(linha, 'A linha contém notas fora da extensão ' + descricaoExtensao(perfil) + '.');
         }
         if (!perfil.piano && nota.tab && perfil.tuning[perfil.strings - nota.tab.string] + nota.tab.fret !== nota.midi) nota.tab = null;
@@ -828,7 +856,7 @@
       if (linha.notes.length > LIMITE_NOTAS) adicionarProblema(linha, 'A linha tem mais de 2.000 notas.');
       var fimAnterior = -Infinity, minMidi = null, maxMidi = null, fim = 0;
       linha.notes.forEach(function (nota) {
-        if (!perfil.piano && nota.startBeat < fimAnterior - EPS) adicionarProblema(linha, 'A linha contém notas sobrepostas ou acordes.');
+      if (!perfil.piano && !perfil.drums && nota.startBeat < fimAnterior - EPS) adicionarProblema(linha, 'A linha contém notas sobrepostas ou acordes.');
         fimAnterior = Math.max(fimAnterior, nota.endBeat);
         minMidi = minMidi === null ? nota.midi : Math.min(minMidi, nota.midi);
         maxMidi = maxMidi === null ? nota.midi : Math.max(maxMidi, nota.midi);
@@ -886,7 +914,8 @@
       var id = textoSeguro(parte.atributos.id, 64);
       if (!id || !tem(nomes, id) || tem(partesVistas, id)) falhar('part com identificador inválido ou não declarado.');
       partesVistas[id] = true;
-      var info = { id: id, indice: indice + 1, nome: nomes[id], issues: [],
+      var declaracao = nomes[id];
+      var info = { id: id, indice: indice + 1, nome: declaracao.nome, instrumentos: declaracao.instrumentos, issues: [],
         transposicoes: [{ beat: 0, semitones: 0, ordem: 0 }], ordemTransposicao: 1 };
       analisarParte(parte, info, linhas, tempos, perfil, dinamicas);
     });
@@ -924,6 +953,7 @@
     var notas = linha.notes.map(function (nota, indice) {
       var inicio = segundosNaBatida(nota.startBeat, privado.tempoMap);
       if (perfil.piano) return { id: 'musicxml-' + (indice + 1), time: inicio, duration: duracaoDaNota(nota, privado.tempoMap), midi: nota.midi, velocity: nota.velocity || 80 };
+      if (perfil.drums) return { id: 'musicxml-' + (indice + 1), time: inicio, duration: duracaoDaNota(nota, privado.tempoMap), drum: perfil.drumMidi[nota.midi], midi: nota.midi, velocity: nota.velocity || 80 };
       var posicao = nota.tab || posicaoSugerida(nota.midi, perfil);
       return { id: 'musicxml-' + (indice + 1), time: inicio, duration: duracaoDaNota(nota, privado.tempoMap),
         string: posicao.string, fret: posicao.fret, midi: nota.midi };
@@ -932,6 +962,8 @@
     var tempos = mapaRelevante(privado.tempoMap, duracao);
     var bruto = perfil.piano
       ? { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao, profile: 'piano-midi', layout: 'piano', notes: notas, metadata: { demo: false } }
+      : perfil.drums
+      ? { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao, profile: 'bateria-midi', layout: 'drums', notes: notas, metadata: { demo: false } }
       : { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao, tuning: perfil.tuning.slice(), notes: notas, metadata: { demo: false } };
     if (tempos.length > 1) bruto.tempoMap = { version: 1, events: tempos };
     var chart = Core.validarChart(bruto);
