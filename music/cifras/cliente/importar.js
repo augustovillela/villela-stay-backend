@@ -399,7 +399,11 @@
         }, 'sec peq') : null]));
       });
       lista.appendChild(li);
-      if (maisDisponivel) lista.appendChild(C.botao(carregandoMais ? 'Carregando…' : 'Mostrar mais', carregarMais, 'sec'));
+      if (maisDisponivel) {
+        var mais = C.botao(carregandoMais ? 'Carregando…' : 'Mostrar mais', carregarMais, 'sec');
+        mais.disabled = carregandoMais;
+        lista.appendChild(mais);
+      }
       agendarAtualizacao();
     }
     function carregarMais() {
