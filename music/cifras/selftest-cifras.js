@@ -685,9 +685,12 @@ async function rodar({ t, secao, req, assert }) {
     await falha._promessa;
     await assert.rejects(() => Importar.reprocessar(falha.importacao.id, 'u-bruno'), /não encontrada/);
     db.prepare('UPDATE importacoes SET progresso = 73 WHERE id = ?').run(falha.importacao.id);
-    const tentativa = Importar.reprocessar(falha.importacao.id, 'u-ana');
-    assert.equal(Importar.obter('u-ana', falha.importacao.id).importacao.progresso, 5);
-    await tentativa;
+    const outro = await req('POST', `${B}/importar/${falha.importacao.id}/reprocessar`, { como: 'bruno' });
+    assert.equal(outro.status, 404);
+    const reenviada = await req('POST', `${B}/importar/${falha.importacao.id}/reprocessar`, { como: 'ana' });
+    assert.equal(reenviada.status, 200, JSON.stringify(reenviada.json));
+    assert.equal(reenviada.json.importacao.status, 'processando');
+    while (['pendente', 'processando'].includes(Importar.obter('u-ana', falha.importacao.id).importacao.status)) await new Promise((x) => setTimeout(x, 10));
     const novamente = Importar.obter('u-ana', falha.importacao.id);
     assert.equal(novamente.importacao.status, 'falhou');
   });
