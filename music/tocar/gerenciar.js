@@ -137,6 +137,7 @@
     return importacao.analysis.candidates.find(function (candidate) { return candidate && candidate.id === id && candidate.valid === true; }) || null;
   }
   function textoCandidatoMidi(candidate) {
+    if (candidate && candidate.id === '__todas__') return 'Todas as linhas compatíveis · ' + candidate.noteCount + ' notas' + (Number.isFinite(candidate.duration) ? ' · ' + candidate.duration.toFixed(2) + ' s' : '');
     var faixa = Number.isInteger(candidate.track) ? candidate.track + 1 : '?';
     var canal = Number.isInteger(candidate.channel) ? candidate.channel + 1 : '?';
     var nome = typeof candidate.name === 'string' && candidate.name.trim() ? ' · ' + candidate.name.trim() : '';

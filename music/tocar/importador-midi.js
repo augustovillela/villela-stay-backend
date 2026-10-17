@@ -381,6 +381,27 @@
         if (faixa.canais[canal]) privados.candidates['t' + faixa.indice + '-c' + canal] = { canal: faixa.canais[canal], numeroCanal: canal };
       }
     });
+    if ((perfil.layout === 'piano' || perfil.layout === 'drums') && candidatos.length > 1) {
+      var idsValidos = candidatos.filter(function (item) { return item.valid; }).map(function (item) { return item.id; });
+      var canaisCompostos = idsValidos.map(function (id) { return privados.candidates[id]; }).filter(Boolean);
+      if (canaisCompostos.length > 1) {
+        var canalComposto = { totalNotas: 0, minMidi: null, maxMidi: null, ultimoTick: 0, pitchBend: false, pedalSustentacao: false, notaOrfa: false, ativas: [], notas: [] };
+        canaisCompostos.forEach(function (item) {
+          canalComposto.totalNotas += item.canal.totalNotas;
+          canalComposto.minMidi = canalComposto.minMidi === null ? item.canal.minMidi : Math.min(canalComposto.minMidi, item.canal.minMidi);
+          canalComposto.maxMidi = canalComposto.maxMidi === null ? item.canal.maxMidi : Math.max(canalComposto.maxMidi, item.canal.maxMidi);
+          canalComposto.ultimoTick = Math.max(canalComposto.ultimoTick, item.canal.ultimoTick);
+          canalComposto.pitchBend = canalComposto.pitchBend || item.canal.pitchBend;
+          canalComposto.pedalSustentacao = canalComposto.pedalSustentacao || item.canal.pedalSustentacao;
+          item.canal.notas.forEach(function (nota) { canalComposto.notas.push(nota); });
+        });
+        var numeroCanalComposto = perfil.layout === 'drums' ? 9 : 0;
+        var motivoComposto = motivoDoCanal(canalComposto, numeroCanalComposto, mapaInterno, divisao, perfil);
+        privados.candidates.__todas__ = { canal: canalComposto, numeroCanal: numeroCanalComposto };
+        candidatos.push({ id: '__todas__', track: 0, channel: numeroCanalComposto, name: 'Todas as linhas compatíveis', noteCount: canalComposto.totalNotas,
+          minMidi: canalComposto.minMidi, maxMidi: canalComposto.maxMidi, duration: duracaoDaLinha(canalComposto, mapaInterno, divisao), valid: motivoComposto === null, reason: motivoComposto });
+      }
+    }
     analises.set(analise, privados);
     return analise;
   }

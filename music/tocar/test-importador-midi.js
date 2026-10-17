@@ -77,6 +77,18 @@ test('tempo em outra faixa e nota atravessando mudança preservam segundos, beat
   assert.equal(chart.notes[0].string, 5); assert.equal(chart.notes[0].fret, 0);
 });
 
+test('piano MIDI oferece todas as faixas compatíveis', () => {
+  const arquivo = smf({ format: 1, tracks: [
+    faixa([nome(0, 'Mão direita'), ligar(0, 0, 60, 90), desligar(480, 0, 60), fim()]),
+    faixa([nome(0, 'Mão esquerda'), ligar(0, 0, 48, 80), desligar(480, 0, 48), fim()]),
+  ] });
+  const analise = Importador.analisar(arquivo, { perfil: 'piano' });
+  const todas = candidato(analise, '__todas__');
+  assert.ok(todas); assert.equal(todas.valid, true); assert.equal(todas.noteCount, 2);
+  const chart = Importador.criarChart(analise, '__todas__', { id: 'piano-faixas', title: 'Piano completo' });
+  assert.deepEqual(chart.notes.map(nota => nota.midi), [48, 60]);
+});
+
 test('running status e note-on com velocidade zero encerram notas corretamente', () => {
   const arquivo = smf({ ppqn: 480, tracks: [faixa([
     ligar(0, 0, 45), evento(240, 45, 0), evento(0, 47, 64), evento(240, 47, 0), fim(),
