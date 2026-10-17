@@ -374,6 +374,13 @@ test('marca finais alternativos para revisão manual em vez de importar silencio
   assert.match(analysis.candidates[0].reason, /finais alternativos/);
 });
 
+test('marca pedal MusicXML para revisão manual', async () => {
+  const score = xml(medida(atributos() + '<direction><direction-type><pedal type="start"/></direction-type></direction>' + nota({ step: 'C', octave: 4 })));
+  const analysis = await Importador.analisar(bytes(score), { perfil: 'piano' });
+  assert.equal(analysis.candidates[0].valid, false);
+  assert.match(analysis.candidates[0].reason, /pedal de sustentação/);
+});
+
 test('atributos de transposição seguem o tempo musical mesmo após backup entre vozes', async () => {
   const partitura = medida(atributos()
     + nota({ step: 'E', octave: 3, voice: 1 })

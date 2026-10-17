@@ -742,6 +742,9 @@
         }
         if (item.nome === 'direction') {
           if (!divisions) falhar('a partitura usa direção antes de declarar divisions.');
+          if (descendentes(item, 'pedal').length) {
+            if (info.issues.indexOf('A parte usa pedal de sustentação MusicXML, ainda não representado no arranjo.') < 0) info.issues.push('A parte usa pedal de sustentação MusicXML, ainda não representado no arranjo.');
+          }
           temposDaDirecao(item, inicioMedida + cursor, divisions, tempos);
           dinamicaDaDirecao(item, inicioMedida + cursor, dinamicas);
           return;
