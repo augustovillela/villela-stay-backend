@@ -489,7 +489,10 @@
     analisarPdfNoServidor(file, ticket).then(function (dados) {
       if (ticket !== pdfTicket || !dados) return;
       var detalhe = dados.tipo === 'cifra' ? 'cifra detectada; encaminhe o texto para ChordPro.' : dados.tipo === 'partitura' ? 'partitura detectada; a próxima etapa é OMR para MusicXML/MXL.' : 'tipo não identificado automaticamente; mantenha a revisão manual.';
-      $('tg-pdf-info').textContent = 'PDF analisado: ' + detalhe + ' Ele continua apenas como referência visual.';
+      var confiancaPdf = Number(dados.confianca);
+      var leituraPdf = dados.metodo ? ' Método: ' + String(dados.metodo).replace(/[<>\u0000-\u001f\u007f]/g, '') + '.' : '';
+      var certezaPdf = Number.isFinite(confiancaPdf) ? ' Confiança estimada: ' + Math.round(Math.max(0, Math.min(1, confiancaPdf)) * 100) + '%.' : '';
+      $('tg-pdf-info').textContent = 'PDF analisado: ' + detalhe + leituraPdf + certezaPdf + ' Ele continua apenas como referência visual.';
       $('tg-pdf-omr').hidden = true;
       if (dados.tipo === 'partitura') {
         var perfilAtual = perfilSelecionado();
