@@ -523,8 +523,8 @@
       var dados = await resposta.json();
       if (!resposta.ok) throw new Error(dados.erro || 'Não foi possível criar a importação da cifra.');
       var id = dados.importacao && dados.importacao.id;
-      message('Cifra enviada ao importador ChordPro' + (id ? ' (' + id + ').' : '.') + ' Abra o importador para revisar e salvar.', false);
-      window.open('/music/app#cifras', '_blank', 'noopener');
+      message('Cifra enviada ao importador ChordPro' + (id ? ' (' + id + ').' : '.') + ' Abra Importações para revisar e salvar.', false);
+      window.open('/music/app#cifras/importacoes', '_blank', 'noopener');
     } catch (e) { message('Não foi possível enviar a cifra ao ChordPro: ' + e.message, true); }
     finally { this.disabled = false; }
   });
