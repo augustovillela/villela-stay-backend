@@ -657,14 +657,16 @@
       filhos(medida, 'barline').forEach(function (barline) {
         filhos(barline, 'ending').forEach(function (ending) {
           var bruto = ending.atributos.number || '';
-          bruto.split(/[,\s]+/).filter(Boolean).forEach(function (numero) { if (/^\d+$/.test(numero)) numeros.push(Number(numero)); });
+          var partes = bruto.split(/[,\s]+/).filter(Boolean);
+          if (!partes.length || partes.some(function (numero) { return !/^\d+$/.test(numero); })) numeros.push(null);
+          else partes.forEach(function (numero) { numeros.push(Number(numero)); });
         });
       });
       return numeros;
     }
     function medidaDaPassagem(medida, passagem) {
       var numeros = finais(medida);
-      return !numeros.length || numeros.indexOf(passagem) >= 0;
+      return !numeros.length || (numeros.indexOf(null) < 0 && numeros.indexOf(passagem) >= 0);
     }
     originais.forEach(function (medida) {
       resultado.push(medida);
@@ -695,7 +697,9 @@
         inicioRepeticao = resultado.length;
       });
     });
-    if (!finaisTratados && originais.some(function (item) { return finais(item).length; }) && info && info.issues.indexOf('A parte usa finais alternativos MusicXML, que precisam de revisão manual antes da importação.') < 0) {
+    if (originais.some(function (item) { return finais(item).some(function (numero) { return numero === null; }); }) && info && info.issues.indexOf('A parte usa finais alternativos MusicXML com numeração ambígua, que precisa de revisão manual antes da importação.') < 0) {
+      info.issues.push('A parte usa finais alternativos MusicXML com numeração ambígua, que precisa de revisão manual antes da importação.');
+    } else if (!finaisTratados && originais.some(function (item) { return finais(item).length; }) && info && info.issues.indexOf('A parte usa finais alternativos MusicXML, que precisam de revisão manual antes da importação.') < 0) {
       info.issues.push('A parte usa finais alternativos MusicXML, que precisam de revisão manual antes da importação.');
     }
     return resultado;
