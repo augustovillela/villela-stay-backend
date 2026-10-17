@@ -14,7 +14,7 @@ const CAMPOS_APRENDER = new Set(['chartId', 'title', 'total', 'hits', 'skipped',
 const ARQUIVOS = Object.freeze([
   'cliente.js', 'estilo.css', 'perfis.js', 'nucleo.js', 'midi.js', 'audio.js', 'detector.js',
   'capturar-worklet.js', 'detector-worker.js', 'aprender.js', 'estudos.js', 'sessao-game.js',
-  'formato-catalogo.js', 'catalogo-cliente.js', 'gerenciar.js',
+  'formato-catalogo.js', 'formato-arranjo.js', 'catalogo-cliente.js', 'gerenciar.js',
   'editor-nucleo.js', 'editor-cliente.js', 'editor.css', 'importador-midi.js', 'importador-musicxml.js',
   'waveform.js', 'waveform-cliente.js',
   'pista-piano.js', 'pista-bateria.js', 'sons.js', 'sons-manifesto.js', 'creditos-sons.html',
@@ -128,6 +128,7 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/aprender.js" defer></script>
 <script src="/music/tocar/estudos.js" defer></script>
 <script src="/music/tocar/formato-catalogo.js" defer></script>
+<script src="/music/tocar/formato-arranjo.js" defer></script>
 <script src="/music/tocar/catalogo-cliente.js" defer></script>
 <script src="/music/tocar/pista-piano.js" defer></script>
 <script src="/music/tocar/pista-bateria.js" defer></script>
@@ -155,6 +156,7 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/perfis.js" defer></script>
 <script src="/music/tocar/nucleo.js" defer></script>
 <script src="/music/tocar/formato-catalogo.js" defer></script>
+<script src="/music/tocar/formato-arranjo.js" defer></script>
 <script src="/music/tocar/estudos.js" defer></script>
 <script src="/music/tocar/editor-nucleo.js" defer></script>
 <script src="/music/tocar/editor-cliente.js" defer></script>
