@@ -424,7 +424,7 @@
     }
     function agendarAtualizacao() {
       var aguardando = (dados.importacoes || []).some(function (x) { return x.status === 'pendente' || x.status === 'processando'; });
-      if (!aguardando || atualizacoesAutomaticas >= 12) return;
+      if (!aguardando || offset > 0 || atualizacoesAutomaticas >= 12) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(function () {
         timer = null; atualizacoesAutomaticas += 1;
