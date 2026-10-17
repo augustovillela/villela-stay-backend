@@ -320,7 +320,7 @@
   // IMPORTAÇÕES (lista e reprocessamento)
   // ---------------------------------------------------------------
   C.telas.importacoes = function () {
-    var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div'), resumo = el('p', { class: 'cf-caption', 'aria-live': 'polite' }), carregamento = 0, timer = null, atualizacoesAutomaticas = 0, offset = 0, maisDisponivel = false, carregandoMais = false;
+    var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div'), resumo = el('p', { id: 'cf-importacoes-resumo', class: 'cf-caption', 'aria-live': 'polite' }), carregamento = 0, timer = null, atualizacoesAutomaticas = 0, offset = 0, maisDisponivel = false, carregandoMais = false;
     c.appendChild(el('h2', { txt: 'Importações' }));
     var filtrosServidor = ['falhou', 'salva', 'descartada', 'processando', 'pendente'];
     var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['pendente', 'Na fila'], ['processando', 'Em processamento'], ['falhou', 'Com falha'], ['salva', 'Salvas'], ['descartada', 'Descartadas']], filtro, function (v) {
@@ -331,6 +331,7 @@
     var atualizar = C.botao('Atualizar', function () {
       carregar(filtrosServidor.indexOf(filtro) >= 0 ? filtro : '');
     }, 'sec');
+    filtroSelect.setAttribute('aria-describedby', 'cf-importacoes-resumo');
     var limparFiltro = C.botao('Limpar filtro', function () {
       filtro = 'todas'; filtroSelect.value = 'todas'; limparFiltro.hidden = true; carregar('');
     }, 'sec');
