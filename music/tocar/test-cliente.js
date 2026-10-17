@@ -757,6 +757,14 @@ test('Demonstração permanece audível ao selecionar aprender e não mistura re
   assert.ok(h.voices.length > 0); assert.equal(h.$('tj-learn-panel').hidden, true); assert.equal(h.$('tj-hits').textContent, '—');
   await h.event('tj-stop', 'click'); assert.equal(h.$('tj-learn-panel').hidden, false);
 });
+test('Loop progressivo aumenta a velocidade entre voltas sem afetar aprender', async () => {
+  const h = montar(); await h.chart();
+  h.$('tj-loop').checked = true; await h.event('tj-loop', 'change');
+  h.$('tj-progressive-speed').checked = true; await h.event('tj-progressive-speed', 'change');
+  assert.equal(h.$('tj-progressive-speed').disabled, false);
+  await h.event('tj-demo', 'click'); await h.advance(4.6);
+  assert.notEqual(h.$('tj-speed').value, '0.5');
+});
 test('Aprender completo não repete sozinho mesmo que loop do ritmo esteja marcado', async () => {
   const h = montar(); await h.chart(); h.$('tj-loop').checked = true; await h.event('tj-loop', 'change'); await aprender(h);
   await h.event('tj-skip', 'click'); await h.advance(0.04); await h.event('tj-skip', 'click'); await h.advance(4);
