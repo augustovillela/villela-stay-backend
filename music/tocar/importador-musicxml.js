@@ -1,9 +1,9 @@
 // Leitura local de MusicXML e MXL para o editor de Tocar junto.
 // O módulo não usa DOM, rede, banco, permissões ou conteúdo executável.
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./nucleo'), require('./perfis'), globalThis);
-  else root.MusiqueTocarImportadorMusicXML = factory(root.MusiqueTocarCore, root.MusiqueTocarPerfis, root);
-})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this), function (Core, Perfis, Ambiente) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./nucleo'), require('./perfis'), globalThis, require('./formato-arranjo'));
+  else root.MusiqueTocarImportadorMusicXML = factory(root.MusiqueTocarCore, root.MusiqueTocarPerfis, root, root.MusiqueTocarFormatoArranjo);
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this), function (Core, Perfis, Ambiente, FormatoArranjo) {
   'use strict';
 
   var LIMITE_BYTES = 2 * 1024 * 1024;
@@ -1076,5 +1076,11 @@
     return chart;
   }
 
-  return { analisar: analisar, criarChart: criarChart, LIMITE_BYTES: LIMITE_BYTES, LIMITE_XML_BYTES: LIMITE_XML_BYTES };
+  function criarDocumento(analise, candidateId, opcoes) {
+    exigir(FormatoArranjo && typeof FormatoArranjo.normalizar === 'function', 'Carregue o formato aberto antes de criar o documento.');
+    opcoes = opcoes || {};
+    var chart = criarChart(analise, candidateId, opcoes);
+    return FormatoArranjo.normalizar({ chart: chart, sources: [{ format: analise.format === 'mxl' ? 'mxl' : 'musicxml', name: opcoes.sourceName || (analise.format === 'mxl' ? 'importacao.mxl' : 'importacao.musicxml'), sha256: opcoes.sourceSha256 || '' }] }, { id: opcoes.id, title: opcoes.title, instrument: opcoes.instrument || opcoes.perfil || 'violao' });
+  }
+  return { analisar: analisar, criarChart: criarChart, criarDocumento: criarDocumento, LIMITE_BYTES: LIMITE_BYTES, LIMITE_XML_BYTES: LIMITE_XML_BYTES };
 });
