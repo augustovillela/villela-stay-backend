@@ -775,5 +775,6 @@
   if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'ukulele'; })) $('tj-instrument').appendChild(el('option', { value: 'ukulele', text: 'Ukulele' }));
   if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'bandolim'; })) $('tj-instrument').appendChild(el('option', { value: 'bandolim', text: 'Bandolim de 5 cordas' }));
   if (!Array.prototype.some.call($('tj-connection-type').children || [], function (o) { return o.value === 'midi'; })) $('tj-connection-type').appendChild(el('option', { value: 'midi', text: 'Web MIDI · piano ou bateria' }));
+  if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', function () { refreshDevices(); });
   profile();applyChart(chart);if(previewMode)openPreview();else{refreshDevices();history();}tick();
 })();
