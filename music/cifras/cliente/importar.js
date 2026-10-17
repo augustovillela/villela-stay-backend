@@ -219,6 +219,7 @@
     c.appendChild(el('div', { class: 'linha' }, [conf !== null ? C.tag('confiança da leitura ' + Math.round(conf * 100) + '%', conf >= 0.85 ? 'ok' : conf < 0.6 ? 'er' : 'av') : null,
       r.qualidade ? C.tag('qualidade ' + r.qualidade.nota, r.qualidade.nota >= 75 ? 'ok' : 'av') : null,
       x.fonte && x.fonte.tipo ? C.tag('fonte: ' + ({ texto: 'texto colado', arquivo: 'arquivo', url: 'página', busca: 'busca' }[x.fonte.tipo] || x.fonte.tipo) + (x.fonte.adaptador ? ' · ' + x.fonte.adaptador : '') + (metodoFonte ? ' · leitura: ' + metodoFonte : '')) : null].filter(Boolean)));
+    if (conf !== null && conf < 0.85) c.appendChild(el('div', { class: 'alerta', txt: 'Leitura com confiança abaixo de 85%: confira cada acorde e a letra antes de salvar.' }));
     if (r.observacoes_ia) c.appendChild(el('div', { class: 'alerta', txt: 'Observação da leitura por IA: ' + r.observacoes_ia }));
     (x.fusao || []).forEach(function (dv) { c.appendChild(el('div', { class: 'alerta ' + (dv.aplicado ? 'bom' : ''), txt: dv.secao + ': "' + dv.linha + '" — ' + (dv.aplicado ? 'usado ' + dv.escolhido + ' (maioria)' : 'empate — ficou ' + dv.escolhido) })); });
     (r.ambiguidades || []).forEach(function (a) { c.appendChild(el('div', { class: 'alerta', txt: (a.linha ? 'Linha ' + a.linha + ': ' : '') + a.motivo + (a.texto ? ' "' + a.texto.trim().slice(0, 60) + '"' : '') })); });
