@@ -10,7 +10,8 @@ const path = require('node:path');
 const temporario = fs.mkdtempSync(path.join(os.tmpdir(), 'musique-tocar-test-'));
 process.env.DATA_DIR = temporario;
 const express = require('express');
-const { montar, validarResumo, dadosDe, excluirDe } = require('./index');
+const { montar, validarResumo, validarCampanha, dadosDe, excluirDe } = require('./index');
+const Campanha = require('./campanha');
 const { db, DB_PATH } = require('../db');
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -559,3 +560,11 @@ test('entrada do Laboratório abre a rota própria, sem usar dispatcher de ferra
   assert.equal(entrada.titulo, 'Tocar junto · violão, guitarra e contrabaixo');
   assert.ok(!CAT.FERRAMENTAS.some((item) => item.slug === 'tocar'));
 });
+
+test('campanha de conta valida estado, instrumento e limites antes de persistir', () => {
+  const estado = Campanha.criar({ instrument: 'violao' });
+  assert.deepEqual(validarCampanha(estado), estado);
+  assert.throws(() => validarCampanha(null), /Estado da campanha inválido/);
+});
+
+

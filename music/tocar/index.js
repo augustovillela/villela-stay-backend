@@ -7,6 +7,7 @@ const path = require('node:path');
 const { db, novoId, nowISO } = require('../db');
 const { layout, esc } = require('../paginas');
 const SONS = require('./sons-manifesto');
+const Campanha = require('./campanha');
 
 const INDICACAO = 'Indicação de treino calculada no seu aparelho; não é nota nem avaliação do professor.';
 const CAMPOS_PRATICA = new Set(['chartId', 'title', 'total', 'hits', 'misses', 'accuracy', 'speed', 'offsetMs', 'duration', 'mode', 'catalogRef']);
@@ -85,6 +86,13 @@ function validarResumo(b) {
 
 function sessaoDe(linha) {
   return { id: linha.id, createdAt: linha.criado_em, ...JSON.parse(linha.resumo), vale_nota: false };
+}
+
+function validarCampanha(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw invalido('Estado da campanha inválido.');
+  const estado = Campanha.criar(body);
+  if (JSON.stringify(estado).length > 50000) throw invalido('Estado da campanha excede o limite permitido.');
+  return estado;
 }
 
 function historicoDe(usuario, limite = 100) {
@@ -247,6 +255,27 @@ function montar(app, { requireUsuario, opcional } = {}) {
     res.json({ sessoes: historicoDe(req.usuario.id), indicacao: INDICACAO, vale_nota: false });
   });
 
+  app.get(B + '/campanha/:instrumento', requireUsuario, (req, res) => {
+    const instrumento = req.params.instrumento;
+    const linha = db.prepare('SELECT estado, atualizado_em FROM tocar_campanhas WHERE usuario = ? AND instrumento = ?').get(req.usuario.id, instrumento);
+    if (!linha) return res.json({ estado: Campanha.criar({ instrument: instrumento }), atualizado_em: null });
+    try { return res.json({ estado: validarCampanha(JSON.parse(linha.estado)), atualizado_em: linha.atualizado_em }); }
+    catch (_) { return res.json({ estado: Campanha.criar({ instrument: instrumento }), atualizado_em: null }); }
+  });
+
+  app.put(B + '/campanha/:instrumento', requireUsuario, (req, res) => {
+    if (!req.is('application/json')) return res.status(415).json({ erro: 'Envie o estado da campanha como JSON.' });
+    try {
+      const estado = validarCampanha(req.body);
+      if (estado.instrument !== req.params.instrumento) throw invalido('O instrumento da campanha não corresponde à rota.');
+      const atualizado = nowISO();
+      db.prepare(`INSERT INTO tocar_campanhas (usuario, instrumento, estado, atualizado_em) VALUES (?, ?, ?, ?)
+        ON CONFLICT(usuario, instrumento) DO UPDATE SET estado = excluded.estado, atualizado_em = excluded.atualizado_em`)
+        .run(req.usuario.id, estado.instrument, JSON.stringify(estado), atualizado);
+      return res.json({ ok: true, estado, atualizado_em: atualizado });
+    } catch (erro) { return res.status(erro.status >= 400 && erro.status < 500 ? erro.status : 400).json({ erro: erro.message }); }
+  });
+
   app.post(B + '/sessoes', requireUsuario, (req, res, next) => {
     if (!req.is('application/json')) return res.status(415).json({ erro: 'Envie o resumo como JSON.' });
     // Captura e cálculo são locais: a API só verifica a coerência do resumo,
@@ -269,5 +298,5 @@ function montar(app, { requireUsuario, opcional } = {}) {
   });
 }
 
-module.exports = { montar, validarResumo, historicoDe, dadosDe, excluirDe, INDICACAO };
+module.exports = { montar, validarResumo, validarCampanha, historicoDe, dadosDe, excluirDe, INDICACAO };
 
