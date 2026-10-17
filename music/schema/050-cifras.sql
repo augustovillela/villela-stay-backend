@@ -400,6 +400,7 @@ CREATE TABLE IF NOT EXISTS importacoes (
 );
 CREATE INDEX IF NOT EXISTS ix_importacoes_usuario ON importacoes(usuario, criado_em);
 CREATE INDEX IF NOT EXISTS ix_importacoes_usuario_atualizado ON importacoes(usuario, atualizado_em, criado_em);
+CREATE INDEX IF NOT EXISTS ix_importacoes_usuario_status_atualizado ON importacoes(usuario, status, atualizado_em, criado_em);
 CREATE INDEX IF NOT EXISTS ix_importacoes_status ON importacoes(status, atualizado_em);
 
 CREATE TABLE IF NOT EXISTS importacao_candidatos (
