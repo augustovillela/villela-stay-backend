@@ -2,7 +2,7 @@
   'use strict';
   var app = document.getElementById('tocar-gestao');
   if (!app) return;
-  var Core = window.MusiqueTocarCore, Formato = window.MusiqueTocarFormatoCatalogo, Estudos = window.MusiqueTocarEstudos, Editor = window.MusiqueTocarEditor, ImportadorMidi = window.MusiqueTocarImportadorMidi, ImportadorMusicXML = window.MusiqueTocarImportadorMusicXML, WaveformCliente = window.MusiqueTocarWaveformCliente, Perfis = window.MusiqueTocarPerfis;
+  var Core = window.MusiqueTocarCore, Formato = window.MusiqueTocarFormatoCatalogo, FormatoArranjo = window.MusiqueTocarFormatoArranjo, Estudos = window.MusiqueTocarEstudos, Editor = window.MusiqueTocarEditor, ImportadorMidi = window.MusiqueTocarImportadorMidi, ImportadorMusicXML = window.MusiqueTocarImportadorMusicXML, WaveformCliente = window.MusiqueTocarWaveformCliente, Perfis = window.MusiqueTocarPerfis;
   if (!Core || !Formato || !Estudos || !Editor || !ImportadorMidi || !ImportadorMusicXML || !WaveformCliente || !Perfis) { app.textContent = 'Não foi possível carregar a gestão. Recarregue a página.'; return; }
   var boot = JSON.parse(app.getAttribute('data-estado') || '{}');
   if (!boot.logado) { app.innerHTML='<h1>Gerenciar seus arranjos</h1><p>Entre na sua conta Musique para criar arranjos das obras do seu acervo.</p><a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar ou criar conta</a><p><a href="/music/tocar">Voltar aos estudos abertos</a></p>';return; }
@@ -39,7 +39,7 @@
       throw e; }
     return data;
   }
-  var fields = ['tg-work', 'tg-title', 'tg-instrument', 'tg-level', 'tg-technique', 'tg-objective', 'tg-credits', 'tg-media', 'tg-media-offset', 'tg-json', 'tg-midi', 'tg-musicxml', 'tg-pdf', 'tg-pdf-omr', 'tg-example', 'tg-use-example'];
+  var fields = ['tg-work', 'tg-title', 'tg-instrument', 'tg-level', 'tg-technique', 'tg-objective', 'tg-credits', 'tg-media', 'tg-media-offset', 'tg-json', 'tg-midi', 'tg-musicxml', 'tg-pdf', 'tg-pdf-omr', 'tg-example', 'tg-use-example', 'tg-download-open'];
   function importacaoPendente() { return !!importacao; }
   function rotuloImportacao(item) { return item && item.tipo === 'musicxml' ? 'MusicXML/MXL' : 'MIDI'; }
   function motivoWaveform() {
@@ -278,6 +278,11 @@
     }
     return Formato.validarDocumento(documento);
   }
+  function readOpenDocument() {
+    var legado = readDocument();
+    if (!FormatoArranjo || typeof FormatoArranjo.normalizar !== 'function') throw new Error('Formato aberto não carregado.');
+    return FormatoArranjo.normalizar({ chart: legado.chart }, { id: legado.chart.id, title: legado.title, instrument: legado.instrument });
+  }
   async function loadMedia(workId, selected, offset) {
     var ticket = ++mediaTicket;
     offset=offset||0;
@@ -384,7 +389,7 @@
     '<p class="tj-small">Arquivos de áudio são geridos no acervo. Crie notas para instrumentos de cordas, piano MIDI ou bateria eletrônica. MP3 sozinho não cria um arranjo.</p><p id="tg-import-help" class="tj-small"></p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label><label class="tj-field">Importar MIDI (até 512 KiB, lido somente neste navegador)<input id="tg-midi" type="file" accept=".mid,.midi,audio/midi,audio/x-midi"></label><label class="tj-field">Importar MusicXML ou MXL (até 2 MiB, lido somente neste navegador)<input id="tg-musicxml" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/xml,text/xml"></label><label class="tj-field">Importar PDF musical (até 10 MiB)<input id="tg-pdf" type="file" accept=".pdf,application/pdf"><span id="tg-pdf-info" class="tj-small"></span><a id="tg-pdf-open" target="_blank" rel="noopener" hidden> abrir PDF em nova aba ↗</a><button id="tg-pdf-omr" type="button" hidden>Converter partitura com OMR</button><a id="tg-pdf-omr-download" target="_blank" rel="noopener" download hidden>baixar MusicXML/MXL gerado ↗</a><pre id="tg-pdf-cifra" class="tj-small" hidden></pre><button id="tg-pdf-cifra-import" type="button" hidden>Enviar cifra extraída ao importador ChordPro</button><a href="/music/app#cifras" target="_blank" rel="noopener">Abrir o importador de Cifras</a></label><section id="tg-midi-preview" class="tj-field" aria-live="polite" hidden><p id="tg-midi-info"></p><label><span id="tg-import-line-label">Linha MIDI</span><select id="tg-midi-candidates"><option value="">Escolha uma linha MIDI disponível</option></select></label><p id="tg-midi-detail" class="tj-small"></p><div class="tg-actions"><button id="tg-midi-confirm" type="button" disabled>Importar esta linha</button><button id="tg-midi-cancel" type="button">Cancelar importação MIDI</button></div></section>' +
     '<div class="tg-search"><label>Começar de um estudo original<select id="tg-example"></select></label><button id="tg-use-example" type="button">Usar cópia do estudo</button></div><p id="tg-chart-info"></p>' +
     '<div id="tg-editor"></div>' +
-    '<div class="tg-actions"><button id="tg-save" type="button">Salvar rascunho</button><a id="tg-preview" target="_blank" rel="noopener" hidden>Revisar na pista ↗</a><button id="tg-publish" type="button" disabled>Publicar nova versão</button><button id="tg-withdraw" type="button" disabled>Retirar publicação</button><button id="tg-reload" type="button" disabled>Recarregar revisão salva (descarta alterações)</button><button id="tg-download" type="button">Baixar JSON do formulário</button></div><p class="tj-small">Publicar cria uma versão preservada. Editar depois prepara outro rascunho; retirar não apaga o histórico.</p><h3>Versões publicadas</h3><ul id="tg-versions"></ul></section></div>';
+    '<div class="tg-actions"><button id="tg-save" type="button">Salvar rascunho</button><a id="tg-preview" target="_blank" rel="noopener" hidden>Revisar na pista ↗</a><button id="tg-publish" type="button" disabled>Publicar nova versão</button><button id="tg-withdraw" type="button" disabled>Retirar publicação</button><button id="tg-reload" type="button" disabled>Recarregar revisão salva (descarta alterações)</button><button id="tg-download" type="button">Baixar JSON do formulário</button><button id="tg-download-open" type="button">Baixar formato aberto</button></div><p class="tj-small">Publicar cria uma versão preservada. Editar depois prepara outro rascunho; retirar não apaga o histórico.</p><h3>Versões publicadas</h3><ul id="tg-versions"></ul></section></div>';
   waveform = WaveformCliente.montar($('tg-waveform'), {
     fetch: fetch,
     onUsePosition: function (offsetMs) {
@@ -598,6 +603,10 @@
   $('tg-work-next').addEventListener('click', function () { return loadWorks(worksOffset + 50); });
   $('tg-download').addEventListener('click', function () {
     try { var url = URL.createObjectURL(new Blob([JSON.stringify(readDocument(), null, 2)], { type: 'application/json' })); node('a', null, { href: url, download: 'musique-rascunho.json' }).click(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); }
+    catch (e) { message(e.message, true); }
+  });
+  $('tg-download-open').addEventListener('click', function () {
+    try { var url = URL.createObjectURL(new Blob([JSON.stringify(readOpenDocument(), null, 2)], { type: 'application/json' })); node('a', null, { href: url, download: 'musique-arrangement-v1.json' }).click(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); }
     catch (e) { message(e.message, true); }
   });
   async function selectInitialWork() {
