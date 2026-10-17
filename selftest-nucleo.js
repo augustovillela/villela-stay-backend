@@ -849,7 +849,7 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
         if (!/\.(js|html)$/.test(e.name) || /selftest|^testes|\.test\./.test(e.name)) continue;
         const src = fs.readFileSync(p, 'utf8');
         for (const m of src.matchAll(/getUserMedia\(([^)]{0,200})/g)) {
-          if (/video\s*:/.test(m[1])) usos.camera++;
+          if (/video\s*:(?!\s*false\b)/.test(m[1])) usos.camera++;   // `video: false` é pedir SÓ áudio
           usos.microphone++;
         }
         if (/navigator\.geolocation/.test(src)) usos.geolocation++;
