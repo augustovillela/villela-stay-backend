@@ -322,9 +322,9 @@
   C.telas.importacoes = function () {
     var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div');
     c.appendChild(el('h2', { txt: 'Importações' }));
-    var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['falhou', 'Com falha'], ['salva', 'Salvas']], filtro, function (v) {
+    var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['falhou', 'Com falha'], ['salva', 'Salvas'], ['descartada', 'Descartadas']], filtro, function (v) {
       filtro = v;
-      if (v === 'falhou' || v === 'salva') return carregar(v);
+      if (v === 'falhou' || v === 'salva' || v === 'descartada') return carregar(v);
       pintarLista();
     }, 'Mostrar');
     c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect]));
