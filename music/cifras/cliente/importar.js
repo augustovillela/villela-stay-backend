@@ -320,7 +320,7 @@
   // IMPORTAÇÕES (lista e reprocessamento)
   // ---------------------------------------------------------------
   C.telas.importacoes = function () {
-    var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div'), carregamento = 0, timer = null, atualizacoesAutomaticas = 0;
+    var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div'), resumo = el('p', { class: 'cf-caption', 'aria-live': 'polite' }), carregamento = 0, timer = null, atualizacoesAutomaticas = 0;
     c.appendChild(el('h2', { txt: 'Importações' }));
     var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['falhou', 'Com falha'], ['salva', 'Salvas'], ['descartada', 'Descartadas']], filtro, function (v) {
       filtro = v;
@@ -332,6 +332,7 @@
     lista.setAttribute('aria-live', 'polite');
     lista.setAttribute('aria-busy', 'false');
     c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect, atualizar]));
+    c.appendChild(resumo);
     c.appendChild(lista);
     function carregar(status, automatico) {
       if (timer) { clearTimeout(timer); timer = null; }
@@ -355,6 +356,9 @@
     }
     function pintarLista() {
       lista.innerHTML = '';
+      var total = (dados.importacoes || []).length;
+      var aguardando = (dados.importacoes || []).filter(function (x) { return x.status === 'pendente' || x.status === 'processando'; }).length;
+      resumo.textContent = total + (total === 1 ? ' importação encontrada' : ' importações encontradas') + (aguardando ? ' · ' + aguardando + ' em processamento; atualização automática ativa.' : '.');
       var itens = (dados.importacoes || []).filter(function (x) {
         return filtro === 'todas' || (filtro === 'revisar' ? ['pronta', 'processando', 'pendente'].indexOf(x.status) >= 0 : x.status === filtro);
       });
