@@ -28,7 +28,7 @@ test('dados inválidos são normalizados e estudo bloqueado não pode ser inicia
 
 test('resumo calcula progresso, tentativas e distintivos', () => {
   let estado = Campanha.criar({ instrument: 'violao' });
-  assert.deepEqual(Campanha.resumo(estado), { instrument: 'violao', total: 7, completed: 0, available: 1, attempts: 0, badges: 0, bestStreak: 0, percent: 0 });
+  assert.deepEqual(Campanha.resumo(estado), { instrument: 'violao', total: 7, completed: 0, available: 1, attempts: 0, badges: 0, bestStreak: 0, percent: 0, next: { id: 'primeiro-riff-v1', title: 'Primeiro riff', position: 0, status: 'available' } });
   estado = Campanha.atualizar(estado, 'primeiro-riff-v1', { completed: true });
   const resumo = Campanha.resumo(estado);
   assert.equal(resumo.completed, 1); assert.equal(resumo.badges, 1); assert.equal(resumo.percent, 14); assert.equal(resumo.attempts, 1);

@@ -73,7 +73,8 @@
     var importButton = el('button', { type: 'button', class: 'tj-campaign-sync', text: 'Importar' }); importButton.addEventListener('click', function () { importInput.click(); });
     heading.appendChild(exportButton); heading.appendChild(importButton); heading.appendChild(importInput);
     if (boot.logado) { var sync = el('button', { id: 'tj-campaign-sync', type: 'button', class: 'tj-campaign-sync', text: 'Sincronizar conta' }); sync.addEventListener('click', syncCampaign); heading.appendChild(sync); }
-    panel.replaceChildren(heading, el('div', { class: 'tj-campaign-summary' }, [el('span', { class: 'tj-campaign-summary-label', text: overview.percent + '% da trilha' }), el('span', { class: 'tj-campaign-progress-track' }, [bar]), el('span', { class: 'tj-campaign-summary-label', text: overview.attempts + ' tentativas · melhor sequência: ' + overview.bestStreak })]));
+    var recomendacao = overview.next ? 'Próxima recomendação: ' + overview.next.title + (overview.next.position > 0 ? ' · retomar em ' + overview.next.position.toFixed(1) + ' s' : '') : 'Campanha concluída. Revise qualquer etapa para manter a prática.';
+    panel.replaceChildren(heading, el('div', { class: 'tj-campaign-summary' }, [el('span', { class: 'tj-campaign-summary-label', text: overview.percent + '% da trilha' }), el('span', { class: 'tj-campaign-progress-track' }, [bar]), el('span', { class: 'tj-campaign-summary-label', text: overview.attempts + ' tentativas · melhor sequência: ' + overview.bestStreak }), el('span', { class: 'tj-campaign-summary-label', text: recomendacao })]));
     var list = el('ol', { class: 'tj-campaign-list' });
     lista.forEach(function (item) {
       var label = item.status === 'completed' ? 'Concluída' : item.status === 'in_progress' ? 'Em andamento' : item.status === 'available' ? 'Disponível' : 'Bloqueada';
