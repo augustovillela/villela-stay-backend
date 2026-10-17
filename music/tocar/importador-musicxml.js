@@ -650,6 +650,31 @@
     });
   }
 
+  function medidasDaParte(no) {
+    var originais = filhos(no, 'measure'), resultado = [], inicioRepeticao = 0;
+    originais.forEach(function (medida) {
+      resultado.push(medida);
+      filhos(medida, 'barline').forEach(function (barline) {
+        var repeticao = filho(barline, 'repeat');
+        if (!repeticao) return;
+        var direcao = repeticao.atributos.direction;
+        if (direcao === 'forward') {
+          inicioRepeticao = resultado.length - 1;
+          return;
+        }
+        if (direcao !== 'backward') return;
+        var bruto = repeticao.atributos.times;
+        var vezes = bruto == null ? 2 : Number(bruto);
+        if (!Number.isInteger(vezes) || vezes < 2 || vezes > 8) falhar('repeat times deve ser um inteiro entre 2 e 8.');
+        var segmento = resultado.slice(inicioRepeticao, resultado.length);
+        if (!segmento.length || segmento.length * vezes + resultado.length > 512) falhar('a expansão de repetições excede 512 compassos.');
+        for (var copia = 1; copia < vezes; copia++) segmento.forEach(function (item) { resultado.push(item); });
+        inicioRepeticao = resultado.length;
+      });
+    });
+    return resultado;
+  }
+
   function normalizarTies(linha) {
     var notas = linha.notes.slice().sort(function (a, b) { return a.startBeat - b.startBeat || a.endBeat - b.endBeat || a.ordem - b.ordem; });
     var resultado = [], pendente = null;
@@ -682,7 +707,7 @@
 
   function analisarParte(no, info, linhas, tempos, perfil, dinamicas) {
     var divisions = null, inicioMedida = 0, ordem = 0;
-    filhos(no, 'measure').forEach(function (medida) {
+    medidasDaParte(no).forEach(function (medida) {
       var cursor = 0, maximo = 0, inicioPorLinha = Object.create(null), houveEventoNoCompasso = false;
       medida.filhos.forEach(function (item) {
         if (item.nome === 'attributes') {

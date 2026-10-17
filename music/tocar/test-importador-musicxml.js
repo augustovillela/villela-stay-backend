@@ -132,6 +132,16 @@ test('piano MusicXML oferece todas as vozes compatíveis em uma única linha', a
   assert.deepEqual(chart.notes.map(note => note.midi), [60, 64]);
 });
 
+test('expande repetição simples de compassos MusicXML', async () => {
+  const primeiro = medida(atributos() + nota({ step: 'C', octave: 4 }) + '<barline location="left"><repeat direction="forward"/></barline>');
+  const segundo = medida(nota({ step: 'D', octave: 4 }) + '<barline location="right"><repeat direction="backward" times="2"/></barline>', 2);
+  const analysis = await Importador.analisar(bytes(xml(primeiro + segundo)), { perfil: 'piano' });
+  assert.equal(analysis.candidates[0].noteCount, 4);
+  const chart = Importador.criarChart(analysis, analysis.candidates[0].id, { id: 'repeat', title: 'Repetição' });
+  assert.deepEqual(chart.notes.map(note => note.midi), [60, 62, 60, 62]);
+  assert.equal(chart.duration, 2);
+});
+
 test('mantém pausas, backup, forward e candidatos separados por pauta e voz', async () => {
   const partitura = medida(atributos()
     + '<note><rest/><duration>4</duration><voice>1</voice><staff>1</staff></note>'
@@ -349,12 +359,12 @@ test('ukulele mantém indisponíveis notas abaixo de Dó4 ou acima de Dó6 e rej
   }
 });
 
-test('repetições permanecem uma vez na ordem escrita, sem expansão automática', async () => {
+test('repetição sem marca de início repete desde o começo da parte', async () => {
   const primeira = medida(atributos() + nota({ step: 'E', octave: 2 }) + '<barline location="right"><repeat direction="backward"/></barline>', 1);
   const segunda = medida(nota({ step: 'A', octave: 2 }), 2);
   const analysis = await Importador.analisar(bytes(xml(primeira + segunda)));
   const chart = Importador.criarChart(analysis, analysis.candidates[0].id, { id: 'escrita', title: 'Ordem escrita' });
-  assert.deepEqual(chart.notes.map(notaImportada => [notaImportada.time, notaImportada.midi]), [[0, 40], [0.5, 45]]);
+  assert.deepEqual(chart.notes.map(notaImportada => [notaImportada.time, notaImportada.midi]), [[0, 40], [0.5, 40], [1, 45]]);
 });
 
 test('atributos de transposição seguem o tempo musical mesmo após backup entre vozes', async () => {
