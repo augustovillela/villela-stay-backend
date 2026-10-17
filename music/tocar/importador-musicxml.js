@@ -650,11 +650,14 @@
     });
   }
 
-  function medidasDaParte(no) {
+  function medidasDaParte(no, info) {
     var originais = filhos(no, 'measure'), resultado = [], inicioRepeticao = 0;
     originais.forEach(function (medida) {
       resultado.push(medida);
       filhos(medida, 'barline').forEach(function (barline) {
+        if (filhos(barline, 'ending').length && info && info.issues.indexOf('A parte usa finais alternativos MusicXML, que precisam de revisão manual antes da importação.') < 0) {
+          info.issues.push('A parte usa finais alternativos MusicXML, que precisam de revisão manual antes da importação.');
+        }
         var repeticao = filho(barline, 'repeat');
         if (!repeticao) return;
         var direcao = repeticao.atributos.direction;
@@ -707,7 +710,7 @@
 
   function analisarParte(no, info, linhas, tempos, perfil, dinamicas) {
     var divisions = null, inicioMedida = 0, ordem = 0;
-    medidasDaParte(no).forEach(function (medida) {
+    medidasDaParte(no, info).forEach(function (medida) {
       var cursor = 0, maximo = 0, inicioPorLinha = Object.create(null), houveEventoNoCompasso = false;
       medida.filhos.forEach(function (item) {
         if (item.nome === 'attributes') {

@@ -367,6 +367,13 @@ test('repetição sem marca de início repete desde o começo da parte', async (
   assert.deepEqual(chart.notes.map(notaImportada => [notaImportada.time, notaImportada.midi]), [[0, 40], [0.5, 40], [1, 45]]);
 });
 
+test('marca finais alternativos para revisão manual em vez de importar silenciosamente', async () => {
+  const score = xml(medida(atributos() + nota({ step: 'C', octave: 4 }) + '<barline location="right"><ending number="1" type="start"/></barline>'));
+  const analysis = await Importador.analisar(bytes(score), { perfil: 'piano' });
+  assert.equal(analysis.candidates[0].valid, false);
+  assert.match(analysis.candidates[0].reason, /finais alternativos/);
+});
+
 test('atributos de transposição seguem o tempo musical mesmo após backup entre vozes', async () => {
   const partitura = medida(atributos()
     + nota({ step: 'E', octave: 3, voice: 1 })
