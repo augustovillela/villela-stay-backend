@@ -626,6 +626,9 @@ async function rodar({ t, secao, req, assert }) {
       assert.equal(primeira.length, 1);
       assert.equal(segunda.length, 1);
       assert.notEqual(primeira[0].id, segunda[0].id);
+      db.prepare("UPDATE importacoes SET atualizado_em = '2099-01-02T00:00:00.000Z' WHERE id = ?").run(segunda[0].id);
+      db.prepare("UPDATE importacoes SET atualizado_em = '2099-01-01T00:00:00.000Z' WHERE id = ?").run(primeira[0].id);
+      assert.equal(Importar.listar('u-ana', { limite: 1, status: 'pronta' })[0].id, segunda[0].id);
     }
   });
 
