@@ -558,6 +558,7 @@
     text('tj-connection', s.estado === 'conectado' ? (s.nome || 'Entrada MIDI conectada') : s.mensagem || 'Entrada MIDI desligada');
     if (s.estado === 'conectado') msg('MIDI conectado. Toque seu instrumento para praticar.');
     if (s.estado === 'erro' || s.estado === 'parado') { if (state.mode === 'practice' || state.mode === 'learn') pause(); text('tj-meter', ''); }
+    if (s.estado === 'conectado' || s.estado === 'parado') refreshDevices();
     updateTransport();
   }
   function onStatus(s) {
