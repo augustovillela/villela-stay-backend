@@ -323,9 +323,18 @@
     api('GET', '/importar').then(function (r) {
       var c = C.limpar();
       c.appendChild(el('h2', { txt: 'Importações' }));
-      if (!r.importacoes.length) return c.appendChild(C.estadoVazio('Nenhuma importação ainda', '', C.botao('Encontrar ou importar', function () { C.ir('importar'); })));
-      var li = el('div', { class: 'cf-lista' });
-      r.importacoes.forEach(function (x) {
+      var filtro = 'todas';
+      var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['falhou', 'Com falha'], ['salva', 'Salvas']], filtro, function (v) { filtro = v; pintarLista(); }, 'Mostrar');
+      c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect]));
+      var lista = el('div'); c.appendChild(lista);
+      function pintarLista() {
+        lista.innerHTML = '';
+        var itens = (r.importacoes || []).filter(function (x) {
+          return filtro === 'todas' || (filtro === 'revisar' ? ['pronta', 'processando', 'pendente'].indexOf(x.status) >= 0 : x.status === filtro);
+        });
+        if (!itens.length) return lista.appendChild(C.estadoVazio(filtro === 'todas' ? 'Nenhuma importação ainda' : 'Nenhuma importação nesta categoria', '', C.botao('Encontrar ou importar', function () { C.ir('importar'); })));
+        var li = el('div', { class: 'cf-lista' });
+        itens.forEach(function (x) {
         var st = { pronta: ['pronta para revisar', 'av'], salva: ['salva', 'ok'], falhou: ['falhou', 'er'], processando: ['processando', ''], pendente: ['na fila', ''], descartada: ['descartada', ''] }[x.status] || [x.status, ''];
         var confImportacao = Number(x.confianca);
         var confTexto = Number.isFinite(confImportacao) && confImportacao > 0 ? 'confiança ' + Math.round(Math.max(0, Math.min(1, confImportacao)) * 100) + '%' : '';
@@ -337,8 +346,10 @@
         }).catch(C.erro); }, 'peq') : null,
         x.status === 'salva' && x.cifra_id ? C.botao('Abrir', function () { C.ir('cifra', x.cifra_id); }, 'sec peq') : null,
         ['pronta', 'falhou'].indexOf(x.status) >= 0 ? C.botao('Descartar', function () { api('DELETE', '/importar/' + x.id).then(C.telas.importacoes); }, 'sec peq') : null]));
-      });
-      c.appendChild(li);
+        });
+        lista.appendChild(li);
+      }
+      pintarLista();
     }).catch(function (e) { C.limpar().appendChild(C.estadoErro(e, C.telas.importacoes)); });
   };
 })(window);
