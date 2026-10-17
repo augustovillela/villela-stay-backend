@@ -434,7 +434,10 @@
     try {
       if (file.size > Formato.LIMITE_BYTES) throw new Error('O arquivo deve ter no máximo 1 MiB.');
       var parsed = JSON.parse(await file.text()); if (ticket !== importTicket) return;
-      if (parsed.chart) { var doc=Formato.validarDocumento(parsed); fillDocument(doc);++mediaTicket;loadMedia($('tg-work').value,doc.mediaId); }
+      if (parsed.schema === 'musique.arrangement.v1') {
+        var aberto = FormatoArranjo.desnormalizar(parsed), abertoInstrumento = instrumentoDoChart(aberto, parsed.tracks[0].instrument);
+        editor.carregar(aberto); chart = aberto; $('tg-title').value = aberto.title; $('tg-instrument').value = abertoInstrumento;
+      } else if (parsed.chart) { var doc=Formato.validarDocumento(parsed); fillDocument(doc);++mediaTicket;loadMedia($('tg-work').value,doc.mediaId); }
       else {
         var proximoChart = Core.validarChart(parsed);
         var proximoInstrumento = instrumentoDoChart(proximoChart);

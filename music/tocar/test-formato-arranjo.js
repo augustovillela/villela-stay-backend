@@ -36,6 +36,13 @@ test('rejeita fonte com caminho e nota fora dos limites', () => {
   assert.throws(() => Formato.normalizar({ chart: ruim }, { instrument: 'guitarra' }), /MIDI/);
 });
 
+test('o formato aberto exportado pode voltar ao chart do editor', () => {
+  const aberto = Formato.normalizar({ chart: guitarra() }, { instrument: 'guitarra' });
+  const chart = Formato.desnormalizar(aberto);
+  assert.equal(chart.title, 'Guitarra aberta');
+  assert.deepEqual(chart.notes[0], { id: 'open-1', time: 1, duration: 0.5, midi: 64, string: 1, fret: 0 });
+});
+
 test('exporta enum estável', () => {
   assert.deepEqual(Formato.INSTRUMENTOS, ['violao', 'guitarra', 'baixo', 'cavaquinho', 'ukulele', 'bandolim', 'piano', 'bateria']);
   assert.equal(Formato.MAX_EVENTOS, 10000);

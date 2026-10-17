@@ -82,5 +82,25 @@
     if (chart.tempoMap && Array.isArray(chart.tempoMap.events)) out.tempoMap = { version: 1, events: chart.tempoMap.events.map(function (e) { return { atMs: Math.round(numero(e.time, 'tempo do mapa', 0, 900) * 1000), bpm: numero(e.bpm, 'BPM do mapa', 20, 300) }; }) };
     return out;
   }
-  return { normalizar: normalizar, INSTRUMENTOS: INSTRUMENTOS, MAX_EVENTOS: MAX_EVENTOS };
+  function desnormalizar(documento) {
+    exigir(objeto(documento) && documento.schema === 'musique.arrangement.v1', 'schema de arranjo aberto desconhecido.');
+    exigir(Array.isArray(documento.tracks) && documento.tracks.length === 1, 'o editor atual importa uma trilha por vez.');
+    var faixa = documento.tracks[0], instrumentoId = instrumento(faixa.instrument);
+    var chart = { id: texto(documento.id, 'id', 80), title: texto(documento.title, 'título', 120), bpm: numero(documento.tempo && documento.tempo.bpm || 120, 'BPM', 20, 300), duration: numero(documento.durationMs, 'duração', 40, 900000) / 1000,
+      notes: (faixa.events || []).map(function (e, i) {
+        exigir(objeto(e) && e.type === 'note', 'evento ' + (i + 1) + ' não é uma nota.');
+        var n = { id: 'open-' + (i + 1), time: numero(e.atMs, 'tempo da nota', 0, 900000) / 1000, duration: numero(e.durationMs, 'duração da nota', 1, 60000) / 1000, midi: e.midi };
+        if (instrumentoId === 'bateria') n.drum = texto(e.drum, 'peça de bateria', 32);
+        else if (instrumentoId !== 'piano') { n.string = e.string; n.fret = e.fret; }
+        if (e.velocity !== undefined) n.velocity = e.velocity;
+        return n;
+      }), metadata: { demo: false } };
+    if (instrumentoId === 'piano') { chart.profile = 'piano-midi'; chart.layout = 'piano'; }
+    else if (instrumentoId === 'bateria') { chart.profile = 'bateria-midi'; chart.layout = 'drums'; }
+    else chart.tuning = Array.isArray(faixa.tuning) ? faixa.tuning.slice() : undefined;
+    if (Array.isArray(documento.sections)) chart.sections = documento.sections.map(function (s) { return { id: texto(s.id, 'id da seção', 80), title: texto(s.title, 'título da seção', 120), from: numero(s.fromMs, 'início da seção', 0, 900000) / 1000, to: numero(s.toMs, 'fim da seção', 0, 900000) / 1000 }; });
+    if (documento.tempoMap && Array.isArray(documento.tempoMap.events) && documento.tempoMap.events.length > 1) chart.tempoMap = { version: 1, events: documento.tempoMap.events.map(function (e) { var time = numero(e.atMs, 'tempo do mapa', 0, 900000) / 1000; var bpm = numero(e.bpm, 'BPM do mapa', 20, 300); return { time: time, beat: time * bpm / 60, bpm: bpm }; }) };
+    return Core.validarChart(chart);
+  }
+  return { normalizar: normalizar, desnormalizar: desnormalizar, INSTRUMENTOS: INSTRUMENTOS, MAX_EVENTOS: MAX_EVENTOS };
 });
