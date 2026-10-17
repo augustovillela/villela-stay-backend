@@ -223,6 +223,19 @@ function montar(app, { requireUsuario, opcional } = {}) {
     } catch (erro) { next(erro); }
   });
 
+  app.post(B + '/importar-pdf/omr', requireUsuario, async (req, res, next) => {
+    if (!req.is('application/json')) return res.status(415).json({ erro: 'Envie o PDF como JSON em base64.' });
+    const corpo = req.body && req.body.base64;
+    if (typeof corpo !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(corpo) || corpo.length % 4 !== 0) {
+      return res.status(400).json({ erro: 'Base64 do PDF inválido.' });
+    }
+    try {
+      const { converterPdf } = require('./omr');
+      const resultado = await converterPdf(Buffer.from(corpo, 'base64'), req.body.nome);
+      res.json({ ok: true, nome: resultado.nome, arquivo: resultado.arquivo, extensao: resultado.extensao, musicxmlBase64: resultado.bytes.toString('base64') });
+    } catch (erro) { next(erro); }
+  });
+
   app.get(B + '/sessoes', requireUsuario, (req, res) => {
     res.json({ sessoes: historicoDe(req.usuario.id), indicacao: INDICACAO, vale_nota: false });
   });
