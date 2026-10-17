@@ -232,6 +232,7 @@
     if (pdfOmrUrl) { URL.revokeObjectURL(pdfOmrUrl); pdfOmrUrl = ''; }
     if ($('tg-pdf-omr-download')) { $('tg-pdf-omr-download').hidden = true; $('tg-pdf-omr-download').removeAttribute('href'); }
     if ($('tg-pdf-cifra')) { $('tg-pdf-cifra').hidden = true; $('tg-pdf-cifra').textContent = ''; }
+    if ($('tg-pdf-cifra-import')) { $('tg-pdf-cifra-import').hidden = true; $('tg-pdf-cifra-import').disabled = false; }
   }
   function tituloImportacaoSeguro(fileName, tipo, tituloDaFonte) {
     var fonte = String(tituloDaFonte || '').replace(/[<>\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim();
@@ -380,7 +381,7 @@
     '<section class="tj-panel"><h2>Rascunho e publicação</h2><p id="tg-version"></p><div class="tg-search"><label>Buscar obra própria<input id="tg-work-q" type="search"></label><button id="tg-work-search">Buscar obra</button></div><label class="tj-field">Obra do seu acervo<select id="tg-work"><option value="">Selecione uma obra do seu acervo</option></select></label><div class="tj-catalog-pages"><button id="tg-work-prev" disabled>Anterior</button><button id="tg-work-next" disabled>Próxima</button></div><p id="tg-work-empty" hidden>Nenhuma obra encontrada. <a href="/music/app#biblioteca">Abra o acervo para cadastrar uma obra.</a></p><p id="tg-visibility" class="tj-small"></p>' +
     '<div class="tg-grid"><label class="tj-field">Título do arranjo<input id="tg-title" maxlength="120"></label><label class="tj-field">Instrumento<select id="tg-instrument"></select></label><label class="tj-field">Nível<select id="tg-level"></select></label><label class="tj-field">Técnica<select id="tg-technique"></select></label></div>' +
     '<label class="tj-field">Objetivo do estudo<input id="tg-objective" maxlength="500"></label><label class="tj-field">Autoria, créditos e procedência<input id="tg-credits" maxlength="500"></label><label class="tj-field">Áudio já vinculado à obra<select id="tg-media"><option value="">Sem áudio associado · usar demonstração sintetizada</option></select></label><label class="tj-field">O 0:00 do arranjo ocorre em (ms)<input id="tg-media-offset" type="number" min="0" max="600000" step="1" inputmode="numeric" value="0" aria-describedby="tg-media-offset-help"></label><p id="tg-media-offset-help" class="tj-small"></p><button id="tg-media-more" type="button" hidden>Carregar mais áudios desta obra</button><div id="tg-waveform"></div>' +
-    '<p class="tj-small">Arquivos de áudio são geridos no acervo. Crie notas para instrumentos de cordas, piano MIDI ou bateria eletrônica. MP3 sozinho não cria um arranjo.</p><p id="tg-import-help" class="tj-small"></p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label><label class="tj-field">Importar MIDI (até 512 KiB, lido somente neste navegador)<input id="tg-midi" type="file" accept=".mid,.midi,audio/midi,audio/x-midi"></label><label class="tj-field">Importar MusicXML ou MXL (até 2 MiB, lido somente neste navegador)<input id="tg-musicxml" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/xml,text/xml"></label><label class="tj-field">Importar PDF musical (até 10 MiB)<input id="tg-pdf" type="file" accept=".pdf,application/pdf"><span id="tg-pdf-info" class="tj-small"></span><a id="tg-pdf-open" target="_blank" rel="noopener" hidden> abrir PDF em nova aba ↗</a><button id="tg-pdf-omr" type="button" hidden>Converter partitura com OMR</button><a id="tg-pdf-omr-download" target="_blank" rel="noopener" download hidden>baixar MusicXML/MXL gerado ↗</a><pre id="tg-pdf-cifra" class="tj-small" hidden></pre><a href="/music/app#cifras" target="_blank" rel="noopener">Abrir o importador de Cifras</a></label><section id="tg-midi-preview" class="tj-field" aria-live="polite" hidden><p id="tg-midi-info"></p><label><span id="tg-import-line-label">Linha MIDI</span><select id="tg-midi-candidates"><option value="">Escolha uma linha MIDI disponível</option></select></label><p id="tg-midi-detail" class="tj-small"></p><div class="tg-actions"><button id="tg-midi-confirm" type="button" disabled>Importar esta linha</button><button id="tg-midi-cancel" type="button">Cancelar importação MIDI</button></div></section>' +
+    '<p class="tj-small">Arquivos de áudio são geridos no acervo. Crie notas para instrumentos de cordas, piano MIDI ou bateria eletrônica. MP3 sozinho não cria um arranjo.</p><p id="tg-import-help" class="tj-small"></p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label><label class="tj-field">Importar MIDI (até 512 KiB, lido somente neste navegador)<input id="tg-midi" type="file" accept=".mid,.midi,audio/midi,audio/x-midi"></label><label class="tj-field">Importar MusicXML ou MXL (até 2 MiB, lido somente neste navegador)<input id="tg-musicxml" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/xml,text/xml"></label><label class="tj-field">Importar PDF musical (até 10 MiB)<input id="tg-pdf" type="file" accept=".pdf,application/pdf"><span id="tg-pdf-info" class="tj-small"></span><a id="tg-pdf-open" target="_blank" rel="noopener" hidden> abrir PDF em nova aba ↗</a><button id="tg-pdf-omr" type="button" hidden>Converter partitura com OMR</button><a id="tg-pdf-omr-download" target="_blank" rel="noopener" download hidden>baixar MusicXML/MXL gerado ↗</a><pre id="tg-pdf-cifra" class="tj-small" hidden></pre><button id="tg-pdf-cifra-import" type="button" hidden>Enviar cifra extraída ao importador ChordPro</button><a href="/music/app#cifras" target="_blank" rel="noopener">Abrir o importador de Cifras</a></label><section id="tg-midi-preview" class="tj-field" aria-live="polite" hidden><p id="tg-midi-info"></p><label><span id="tg-import-line-label">Linha MIDI</span><select id="tg-midi-candidates"><option value="">Escolha uma linha MIDI disponível</option></select></label><p id="tg-midi-detail" class="tj-small"></p><div class="tg-actions"><button id="tg-midi-confirm" type="button" disabled>Importar esta linha</button><button id="tg-midi-cancel" type="button">Cancelar importação MIDI</button></div></section>' +
     '<div class="tg-search"><label>Começar de um estudo original<select id="tg-example"></select></label><button id="tg-use-example" type="button">Usar cópia do estudo</button></div><p id="tg-chart-info"></p>' +
     '<div id="tg-editor"></div>' +
     '<div class="tg-actions"><button id="tg-save" type="button">Salvar rascunho</button><a id="tg-preview" target="_blank" rel="noopener" hidden>Revisar na pista ↗</a><button id="tg-publish" type="button" disabled>Publicar nova versão</button><button id="tg-withdraw" type="button" disabled>Retirar publicação</button><button id="tg-reload" type="button" disabled>Recarregar revisão salva (descarta alterações)</button><button id="tg-download" type="button">Baixar JSON do formulário</button></div><p class="tj-small">Publicar cria uma versão preservada. Editar depois prepara outro rascunho; retirar não apaga o histórico.</p><h3>Versões publicadas</h3><ul id="tg-versions"></ul></section></div>';
@@ -503,6 +504,8 @@
       if (dados.tipo === 'cifra' && dados.texto) {
         $('tg-pdf-cifra').textContent = 'Prévia da cifra (somente leitura):\n' + dados.texto.slice(0, 12000);
         $('tg-pdf-cifra').hidden = false;
+        $('tg-pdf-cifra-import').hidden = false;
+        $('tg-pdf-cifra-import').dataset.texto = dados.texto.slice(0, 400000);
       }
       message('PDF analisado. ' + detalhe + ' Para gerar notas e som, importe MIDI, MusicXML ou MXL.', false);
     }).catch(function (erro) {
@@ -510,6 +513,20 @@
       $('tg-pdf-info').textContent = 'PDF carregado como referência visual; a análise automática não ficou disponível.';
       message('PDF pronto para consulta, mas não foi possível analisá-lo agora: ' + erro.message, true);
     });
+  });
+  $('tg-pdf-cifra-import').addEventListener('click', async function () {
+    var textoExtraido = this.dataset.texto || '';
+    if (!textoExtraido || busy) return;
+    this.disabled = true; message('Enviando a cifra extraída para o importador ChordPro…', false);
+    try {
+      var resposta = await fetch('/music/api/cifras/importar/texto', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto: textoExtraido, titulo: pdfFile && pdfFile.name ? pdfFile.name.replace(/\.pdf$/i, '') : 'Cifra importada do PDF', origem: 'pdf' }) });
+      var dados = await resposta.json();
+      if (!resposta.ok) throw new Error(dados.erro || 'Não foi possível criar a importação da cifra.');
+      var id = dados.importacao && dados.importacao.id;
+      message('Cifra enviada ao importador ChordPro' + (id ? ' (' + id + ').' : '.') + ' Abra o importador para revisar e salvar.', false);
+      window.open('/music/app#cifras', '_blank', 'noopener');
+    } catch (e) { message('Não foi possível enviar a cifra ao ChordPro: ' + e.message, true); }
+    finally { this.disabled = false; }
   });
   $('tg-pdf-omr').addEventListener('click', async function () {
     if (busy || editorPending || importacaoPendente() || !pdfFile) return;
