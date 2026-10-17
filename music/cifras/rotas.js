@@ -288,7 +288,7 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
     res.json(r);
   }));
   app.post(B + '/importar/lote', requireUsuario, limitar('importar-lote', 5), h(async (req, res) => res.json(await Importar.lote(U(req), req.body || {}))));
-  app.get(B + '/importar', requireUsuario, h(async (req, res) => res.json({ importacoes: Importar.listar(U(req), { limite: req.query.limite }) })));
+  app.get(B + '/importar', requireUsuario, h(async (req, res) => res.json({ importacoes: Importar.listar(U(req), { limite: req.query.limite, status: req.query.status }) })));
   app.get(B + '/importar/:id', requireUsuario, h(async (req, res) => res.json(Importar.obter(U(req), req.params.id))));
   app.get(B + '/importar/:id/candidatos/:cid', requireUsuario, h(async (req, res) => res.json(Importar.candidato(U(req), req.params.id, req.params.cid))));
   app.post(B + '/importar/:id/comparar', requireUsuario, h(async (req, res) => res.json(Importar.comparar(U(req), req.params.id, (req.body || {}).ids))));

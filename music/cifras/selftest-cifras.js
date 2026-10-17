@@ -611,6 +611,9 @@ async function rodar({ t, secao, req, assert }) {
     const segs = r.json.resultado.documento.secoes[0].linhas[0].segmentos;
     assert.deepEqual(segs.map((s) => s.acorde), ['G', 'D']);
     assert.equal(segs[1].texto, 'coisa');
+    const prontas = Importar.listar('u-ana', { limite: 100, status: 'pronta' });
+    assert.ok(prontas.length >= 1 && prontas.every((x) => x.status === 'pronta'));
+    assert.ok(Importar.listar('u-ana', { limite: 100, status: 'status-inexistente' }).length >= prontas.length);
   });
 
   await t('arquivo que mente a extensão é recusado', async () => {
