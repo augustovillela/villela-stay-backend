@@ -324,8 +324,7 @@
     c.appendChild(el('h2', { txt: 'Importações' }));
     var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['falhou', 'Com falha'], ['salva', 'Salvas'], ['descartada', 'Descartadas']], filtro, function (v) {
       filtro = v;
-      if (v === 'falhou' || v === 'salva' || v === 'descartada') return carregar(v);
-      pintarLista();
+      carregar(v === 'falhou' || v === 'salva' || v === 'descartada' ? v : '');
     }, 'Mostrar');
     var atualizar = C.botao('Atualizar', function () {
       carregar(filtro === 'falhou' || filtro === 'salva' || filtro === 'descartada' ? filtro : '');
