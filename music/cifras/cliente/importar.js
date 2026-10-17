@@ -385,7 +385,9 @@
         x.status === 'salva' && x.cifra_id ? C.botao('Abrir', function () { C.ir('cifra', x.cifra_id); }, 'sec peq') : null,
         x.status === 'falhou' && x.tipo_entrada === 'url' ? C.botao('Tentar novamente', function (ev) {
           ev.target.disabled = true; ev.target.textContent = 'Reenviando…';
-          api('POST', '/importar/' + x.id + '/reprocessar').then(C.telas.importacoes).catch(function (e) {
+          api('POST', '/importar/' + x.id + '/reprocessar').then(function () {
+            C.aviso('Importação reenviada para a fila.'); C.telas.importacoes();
+          }).catch(function (e) {
             ev.target.disabled = false; ev.target.textContent = 'Tentar novamente'; C.erro(e);
           });
         }, 'peq') : null,
