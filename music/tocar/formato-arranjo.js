@@ -116,5 +116,13 @@
     }
     return Core.validarChart(chart);
   }
-  return { normalizar: normalizar, desnormalizar: desnormalizar, INSTRUMENTOS: INSTRUMENTOS, MAX_EVENTOS: MAX_EVENTOS };
+  function validar(documento) {
+    exigir(objeto(documento), 'o documento aberto deve ser um objeto JSON.');
+    var serializado;
+    try { serializado = JSON.stringify(documento); } catch (_) { throw new Error('o documento aberto deve ser serializável.'); }
+    exigir(typeof serializado === 'string' && serializado.length <= 1048576, 'o documento aberto deve ter no máximo 1 MiB.');
+    desnormalizar(documento);
+    return true;
+  }
+  return { normalizar: normalizar, desnormalizar: desnormalizar, validar: validar, INSTRUMENTOS: INSTRUMENTOS, MAX_EVENTOS: MAX_EVENTOS };
 });

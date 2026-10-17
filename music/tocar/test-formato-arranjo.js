@@ -63,6 +63,13 @@ test('reconstrói batidas acumuladas em mapa de andamento variável', () => {
   assert.equal(mapa[1].bpm, 60);
 });
 
+test('valida o documento aberto antes de importá-lo', () => {
+  const aberto = Formato.normalizar({ chart: guitarra() }, { instrument: 'guitarra' });
+  assert.equal(Formato.validar(aberto), true);
+  assert.throws(() => Formato.validar({ ...aberto, schema: 'outro' }), /schema/);
+  assert.throws(() => Formato.validar({ ...aberto, tracks: [] }), /ao menos uma trilha/);
+});
+
 test('exporta enum estável', () => {
   assert.deepEqual(Formato.INSTRUMENTOS, ['violao', 'guitarra', 'baixo', 'cavaquinho', 'ukulele', 'bandolim', 'piano', 'bateria']);
   assert.equal(Formato.MAX_EVENTOS, 10000);
