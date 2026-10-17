@@ -54,7 +54,7 @@
     var overview = Campaign.resumo(campaignState), bar = el('span', { class: 'tj-campaign-progress' }); bar.style.width = overview.percent + '%';
     var heading = el('div', { class: 'tj-campaign-heading' }, [el('div', {}, [el('p', { class: 'tj-caption', text: 'CAMPANHA AUTORAL' }), el('h2', { text: 'Trilha de evolução' })]), el('span', { class: 'tj-campaign-count', text: overview.completed + '/' + overview.total + ' concluídas · ' + overview.badges + ' distintivos' })]);
     if (boot.logado) { var sync = el('button', { id: 'tj-campaign-sync', type: 'button', class: 'tj-campaign-sync', text: 'Sincronizar conta' }); sync.addEventListener('click', syncCampaign); heading.appendChild(sync); }
-    panel.replaceChildren(heading, el('div', { class: 'tj-campaign-summary' }, [el('span', { class: 'tj-campaign-summary-label', text: overview.percent + '% da trilha' }), el('span', { class: 'tj-campaign-progress-track' }, [bar]), el('span', { class: 'tj-campaign-summary-label', text: overview.attempts + ' tentativas' })]));
+    panel.replaceChildren(heading, el('div', { class: 'tj-campaign-summary' }, [el('span', { class: 'tj-campaign-summary-label', text: overview.percent + '% da trilha' }), el('span', { class: 'tj-campaign-progress-track' }, [bar]), el('span', { class: 'tj-campaign-summary-label', text: overview.attempts + ' tentativas · melhor sequência: ' + overview.bestStreak })]));
     var list = el('ol', { class: 'tj-campaign-list' });
     lista.forEach(function (item) {
       var label = item.status === 'completed' ? 'Concluída' : item.status === 'in_progress' ? 'Em andamento' : item.status === 'available' ? 'Disponível' : 'Bloqueada';

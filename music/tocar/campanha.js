@@ -78,7 +78,7 @@
   function proximo(state) { var base = recalcular(state), id = idsDa(base.instrument).find(function (item) { return base.progress[item].status !== 'completed'; }); return id ? retomar(base, id) : null; }
   function resumo(state) {
     var base = recalcular(state), ids = idsDa(base.instrument), concluidas = ids.filter(function (id) { return base.progress[id].status === 'completed'; });
-    return { instrument: base.instrument, total: ids.length, completed: concluidas.length, available: ids.filter(function (id) { return base.progress[id].status === 'available' || base.progress[id].status === 'in_progress'; }).length, attempts: ids.reduce(function (total, id) { return total + base.progress[id].attempts; }, 0), badges: concluidas.length, percent: Math.round(concluidas.length / ids.length * 100) };
+    return { instrument: base.instrument, total: ids.length, completed: concluidas.length, available: ids.filter(function (id) { return base.progress[id].status === 'available' || base.progress[id].status === 'in_progress'; }).length, attempts: ids.reduce(function (total, id) { return total + base.progress[id].attempts; }, 0), badges: concluidas.length, bestStreak: ids.reduce(function (best, id) { return Math.max(best, base.progress[id].bestStreak); }, 0), percent: Math.round(concluidas.length / ids.length * 100) };
   }
   function mesclar(left, right) {
     var a = recalcular(left), b = recalcular(right);
