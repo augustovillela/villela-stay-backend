@@ -1,5 +1,7 @@
 'use strict';
 const Catalogo = require('./catalogo');
+const { db } = require('../db');
+const Acompanhamento = require('../cifras/motor/acompanhamento');
 
 function montar(app, { requireUsuario } = {}) {
   if (typeof requireUsuario !== 'function') throw new Error('Catálogo precisa da sessão do Musique.');
@@ -32,6 +34,38 @@ function montar(app, { requireUsuario } = {}) {
     res.json(Catalogo.audioGestao(req.usuario.id, req.params.id, revision));
   }));
   app.post(B + '/gestao/arranjos', json, h((req, res) => res.status(201).json({ arranjo: Catalogo.criar(req.usuario.id, req.body) })));
+  app.post(B + '/gestao/acompanhamentos-cifras', json, h((req, res) => {
+    const body = req.body || {};
+    const instrumento = body.instrument === undefined ? 'violao' : body.instrument;
+    if (instrumento !== 'violao' && instrumento !== 'guitarra') {
+      const e = new Error('O acompanhamento rítmico de cifras aceita violão ou guitarra.'); e.status = 400; throw e;
+    }
+    const limite = body.limit === undefined ? 500 : Number(body.limit);
+    if (!Number.isSafeInteger(limite) || limite < 1 || limite > 500) {
+      const e = new Error('O limite deve ser um inteiro entre 1 e 500.'); e.status = 400; throw e;
+    }
+    const cifras = db.prepare(`SELECT c.id, c.documento, c.obra_id, o.titulo
+      FROM cifras c JOIN obras o ON o.id = c.obra_id
+      WHERE o.dono = ? AND o.removido_em = '' AND c.removido_em = ''
+      ORDER BY o.atualizado_em DESC, c.atualizado_em DESC, c.id LIMIT ?`).all(req.usuario.id, limite);
+    const criados = [], ignorados = [], erros = [];
+    for (const cifra of cifras) {
+      const titulo = String(cifra.titulo || 'Cifra') + ' · acompanhamento rítmico';
+      const existentes = db.prepare(`SELECT documento FROM tocar_arranjos WHERE obra_id = ?`).all(cifra.obra_id)
+        .some((row) => { try { const d = JSON.parse(row.documento); return d.instrument === instrumento && d.title === titulo; } catch (_) { return false; } });
+      if (existentes) { ignorados.push({ cifraId: cifra.id, obraId: cifra.obra_id, motivo: 'rascunho já existente' }); continue; }
+      try {
+        const doc = JSON.parse(cifra.documento);
+        const chart = Acompanhamento.gerar(doc, { id: 'cifra-' + cifra.id + '-ritmo', title: titulo });
+        const documento = { title: titulo, instrument: instrumento, level: 'iniciante', technique: 'troca-de-cordas',
+          objective: 'Acompanhamento rítmico aproximado gerado a partir da cifra. Revise as batidas antes de publicar.',
+          credits: 'Fonte: cifra do Acervo (' + cifra.id + '). Conversão automática por fundamentais em pulsos.', mediaId: '', chart };
+        const criado = Catalogo.criar(req.usuario.id, { obraId: cifra.obra_id, documento });
+        criados.push({ cifraId: cifra.id, obraId: cifra.obra_id, arranjoId: criado.id, titulo });
+      } catch (e) { erros.push({ cifraId: cifra.id, obraId: cifra.obra_id, erro: e.message }); }
+    }
+    res.status(200).json({ total: cifras.length, criados, ignorados, erros, aproximado: true });
+  }));
   app.put(B + '/gestao/arranjos/:id', json, h((req, res) => res.json({ arranjo: Catalogo.salvar(req.usuario.id, req.params.id, req.body) })));
   app.post(B + '/gestao/arranjos/:id/publicar', json, h((req, res) => res.json({ arranjo: Catalogo.publicar(req.usuario.id, req.params.id, req.body) })));
   app.post(B + '/gestao/arranjos/:id/retirar', json, h((req, res) => res.json({ arranjo: Catalogo.retirar(req.usuario.id, req.params.id, req.body) })));
