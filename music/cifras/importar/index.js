@@ -328,7 +328,7 @@ const Importar = {
     const permitidos = new Set(['pendente', 'processando', 'pronta', 'falhou', 'salva', 'descartada']);
     const filtro = String(status || '').trim();
     const args = [usuario];
-    let sql = 'SELECT id, status, progresso, erro, tipo_entrada, entrada_resumo, confianca, obra_id, cifra_id, criado_em FROM importacoes WHERE usuario = ?';
+    let sql = 'SELECT id, status, progresso, erro, tipo_entrada, entrada_resumo, confianca, obra_id, cifra_id, criado_em, atualizado_em FROM importacoes WHERE usuario = ?';
     if (permitidos.has(filtro)) { sql += ' AND status = ?'; args.push(filtro); }
     sql += ' ORDER BY criado_em DESC LIMIT ? OFFSET ?';
     args.push(Math.min(100, Math.max(1, Number(limite) || 30)));
