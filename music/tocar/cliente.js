@@ -71,7 +71,8 @@
   function updateCampaign(completed) {
     if (!Campaign || source.kind !== 'study' || !campaignState) return;
     var item = studies.find(function (study) { return study.chart.id === chart.id; }); if (!item) return;
-    try { campaignState = Campaign.atualizar(campaignState, item.id, { completed: !!completed, position: completed ? chart.duration : state.position }); saveCampaign(); renderCampaign(); } catch (_) {}
+    var fullArrangement = state.from <= 1e-6 && state.to >= chart.duration - 1e-6;
+    try { campaignState = Campaign.atualizar(campaignState, item.id, { completed: !!completed && fullArrangement, position: completed && fullArrangement ? chart.duration : state.position }); saveCampaign(); renderCampaign(); } catch (_) {}
   }
   var COLORS = ['#e9a56a', '#e7ca64', '#70c9ae', '#79b7ed', '#b39cdd', '#e89cac'];
   var captureGains = { microphone: 6, interface: 0, realtone: 0 };
