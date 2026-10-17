@@ -348,7 +348,7 @@ test('Salvar bloqueia edição até resposta e falha não apaga nota alterada ou
 test('MIDI real de piano atravessa confirmação, acorde, edição, salvamento, publicação e reabertura',async()=>{
   const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await h.settle();
   await h.event('tg-work','change','obra-a');await h.event('tg-instrument','change','piano');await h.event('te-new','click');
-  assert.equal(h.$('tg-musicxml').disabled,true);assert.match(h.$('tg-import-help').textContent,/pedal.*não são aceitos/);
+  assert.equal(h.$('tg-musicxml').disabled,false);assert.match(h.$('tg-import-help').textContent,/MusicXML\/MXL.*preservam acordes/);
   await h.event('tg-objective','input','Praticar acordes em oitavas diferentes.');await h.event('tg-credits','input','Arquivo sintético original de teste.');
   const bytes=require('./test-fixtures-importacao').pianoMidi();
   await analisarMidi(h,{size:bytes.length,name:'Piano de teste.mid',arrayBuffer:async()=>bytes.buffer});

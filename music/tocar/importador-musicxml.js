@@ -876,6 +876,30 @@
     });
   }
 
+  function linhaComTodasAsPartes(internas, perfil, mapa) {
+    if (!perfil.piano && !perfil.drums || internas.length < 2) return null;
+    var linhasValidas = internas.filter(function (linha) { return !linha.issues.length && linha.notes.length; });
+    if (linhasValidas.length < 2) return null;
+    var notas = [];
+    linhasValidas.forEach(function (linha) {
+      linha.notes.forEach(function (nota) { notas.push(Object.assign({}, nota, { ties: Object.assign({}, nota.ties) })); });
+    });
+    notas.sort(function (a, b) { return a.startBeat - b.startBeat || a.midi - b.midi || a.endBeat - b.endBeat || a.ordem - b.ordem; });
+    var fimPorMidi = Object.create(null), problemas = [];
+    notas.forEach(function (nota) {
+      if (fimPorMidi[nota.midi] !== undefined && nota.startBeat < fimPorMidi[nota.midi] - EPS) problemas.push('As linhas selecionadas sobrepõem a mesma ' + (perfil.drums ? 'peça' : 'tecla') + ' MIDI.');
+      fimPorMidi[nota.midi] = Math.max(fimPorMidi[nota.midi] || 0, nota.endBeat);
+    });
+    var linha = { id: '__todas__', part: 0, partId: '', staff: 0, voice: '*', name: 'Todas as linhas compatíveis', notes: notas,
+      issues: problemas.length ? [problemas[0]] : [], partIssues: [], transposicoes: [], ordem: 0, duration: 0, minMidi: null, maxMidi: null };
+    notas.forEach(function (nota) {
+      linha.duration = Math.max(linha.duration, segundosNaBatida(nota.endBeat, mapa));
+      linha.minMidi = linha.minMidi === null ? nota.midi : Math.min(linha.minMidi, nota.midi);
+      linha.maxMidi = linha.maxMidi === null ? nota.midi : Math.max(linha.maxMidi, nota.midi);
+    });
+    return linha;
+  }
+
   async function xmlDeMxl(bytes) {
     var zip = lerEntradasZip(bytes), entradas = zip.entradas;
     var container = entradas['META-INF/container.xml'];
@@ -921,6 +945,8 @@
     });
     var mapa = construirMapa(tempos);
     var internas = finalizarLinhas(linhas, mapa, perfil, dinamicas);
+    var linhaComposta = linhaComTodasAsPartes(internas, perfil, mapa);
+    if (linhaComposta) internas.push(linhaComposta);
     if (internas.length > 128) falhar('a partitura contém mais de 128 linhas.');
     if (internas.reduce(function (total, linha) { return total + linha.notes.length; }, 0) > 10000) {
       falhar('a partitura contém mais de 10.000 notas analisadas.');

@@ -145,6 +145,7 @@
     return 'Faixa ' + faixa + ' · canal ' + canal + nome + ' · ' + notas + extensao;
   }
   function textoCandidatoMusicXML(candidate) {
+    if (candidate && candidate.id === '__todas__') return 'Todas as linhas compatíveis · ' + candidate.noteCount + ' notas' + (Number.isFinite(candidate.duration) ? ' · ' + candidate.duration.toFixed(2) + ' s' : '');
     var parte = Number.isInteger(candidate.part) ? candidate.part : '?';
     var pauta = Number.isInteger(candidate.staff) ? candidate.staff : '?';
     var voz = candidate.voice == null ? '?' : String(candidate.voice);

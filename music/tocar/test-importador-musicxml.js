@@ -119,6 +119,19 @@ test('bateria MusicXML importa midi-unpitched para as peças do perfil', async (
   assert.equal(chart.profile, 'bateria-midi');
 });
 
+test('piano MusicXML oferece todas as vozes compatíveis em uma única linha', async () => {
+  const score = xml(medida(atributos()
+    + nota({ step: 'C', octave: 4, voice: 1 })
+    + '<backup><duration>4</duration></backup>'
+    + nota({ step: 'E', octave: 4, voice: 2 })));
+  const analysis = await Importador.analisar(bytes(score), { perfil: 'piano' });
+  const todas = analysis.candidates.find(item => item.id === '__todas__');
+  assert.ok(todas);
+  assert.equal(todas.valid, true);
+  const chart = Importador.criarChart(analysis, '__todas__', { id: 'piano-todas', title: 'Piano completo' });
+  assert.deepEqual(chart.notes.map(note => note.midi), [60, 64]);
+});
+
 test('mantém pausas, backup, forward e candidatos separados por pauta e voz', async () => {
   const partitura = medida(atributos()
     + '<note><rest/><duration>4</duration><voice>1</voice><staff>1</staff></note>'
