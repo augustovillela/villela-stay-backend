@@ -40,7 +40,7 @@
       var response = await fetch('/music/api/tocar/campanha/' + encodeURIComponent(state.instrument), { credentials: 'same-origin' });
       if (!response.ok) throw new Error('Não foi possível consultar a campanha.');
       var data = await response.json();
-      if (data && data.estado) campaignState = Campaign.criar(data.estado);
+      if (data && data.estado) campaignState = Campaign.mesclar(campaignState, data.estado);
       saveCampaign();
       var saved = await fetch('/music/api/tocar/campanha/' + encodeURIComponent(state.instrument), { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(campaignState) });
       if (!saved.ok) throw new Error('Não foi possível guardar a campanha.');

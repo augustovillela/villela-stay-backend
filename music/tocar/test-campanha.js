@@ -33,3 +33,15 @@ test('resumo calcula progresso, tentativas e distintivos', () => {
   const resumo = Campanha.resumo(estado);
   assert.equal(resumo.completed, 1); assert.equal(resumo.badges, 1); assert.equal(resumo.percent, 14); assert.equal(resumo.attempts, 1);
 });
+
+test('mesclar preserva o maior progresso local/remoto sem perder conclusão ou aproveitamento', () => {
+  let local = Campanha.criar({ instrument: 'violao' });
+  local = Campanha.atualizar(local, 'primeiro-riff-v1', { position: 5, accuracy: 70 });
+  let remoto = Campanha.criar({ instrument: 'violao' });
+  remoto = Campanha.atualizar(remoto, 'primeiro-riff-v1', { completed: true, accuracy: 82 });
+  const combinado = Campanha.mesclar(local, remoto);
+  assert.equal(combinado.progress['primeiro-riff-v1'].status, 'completed');
+  assert.equal(combinado.progress['primeiro-riff-v1'].bestAccuracy, 82);
+  assert.equal(Campanha.resumo(combinado).completed, 1);
+  assert.equal(Campanha.mesclar(local, Campanha.criar({ instrument: 'piano' })).instrument, 'violao');
+});

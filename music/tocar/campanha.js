@@ -79,5 +79,15 @@
     var base = recalcular(state), ids = idsDa(base.instrument), concluidas = ids.filter(function (id) { return base.progress[id].status === 'completed'; });
     return { instrument: base.instrument, total: ids.length, completed: concluidas.length, available: ids.filter(function (id) { return base.progress[id].status === 'available' || base.progress[id].status === 'in_progress'; }).length, attempts: ids.reduce(function (total, id) { return total + base.progress[id].attempts; }, 0), badges: concluidas.length, percent: Math.round(concluidas.length / ids.length * 100) };
   }
-  return { VERSION: VERSION, instrumentos: function () { return Object.keys(ORDEM); }, criar: criar, listar: listar, iniciar: iniciar, atualizar: atualizar, retomar: retomar, proximo: proximo, resumo: resumo };
+  function mesclar(left, right) {
+    var a = recalcular(left), b = recalcular(right);
+    if (a.instrument !== b.instrument) return a;
+    var merged = { instrument: a.instrument, progress: {} };
+    idsDa(a.instrument).forEach(function (id) {
+      var x = a.progress[id], y = b.progress[id], completed = x.status === 'completed' || y.status === 'completed';
+      merged.progress[id] = { status: completed ? 'completed' : x.status === 'in_progress' || y.status === 'in_progress' ? 'in_progress' : 'locked', position: Math.max(x.position, y.position), attempts: Math.max(x.attempts, y.attempts), bestAccuracy: x.bestAccuracy == null ? y.bestAccuracy : y.bestAccuracy == null ? x.bestAccuracy : Math.max(x.bestAccuracy, y.bestAccuracy) };
+    });
+    return recalcular(merged);
+  }
+  return { VERSION: VERSION, instrumentos: function () { return Object.keys(ORDEM); }, criar: criar, listar: listar, iniciar: iniciar, atualizar: atualizar, retomar: retomar, proximo: proximo, resumo: resumo, mesclar: mesclar };
 });
