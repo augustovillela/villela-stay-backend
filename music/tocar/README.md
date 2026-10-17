@@ -22,6 +22,7 @@ O fluxo foi conferido com testes de interface, API/SQLite e navegador real. A va
 - Arranjo JSON, MIDI monofônico ou MusicXML/MXL monofônico e áudio locais. Um MP3 sozinho não produz as notas da pista.
 - Resumo por conta, exportação e exclusão em `/music/api/lab/meus-dados`. Histórico não serve como nota, ranking ou prova de execução.
 - A campanha mostra uma meta diária simples de três rodadas, calculada a partir do histórico da conta no fuso local. Ela é um incentivo privado, não um ranking; visitantes recebem o convite para entrar.
+- A barra de progresso da campanha expõe função, nome e valor percentual para tecnologias assistivas.
 
 Ao usar microfone, ouça o acompanhamento em fones, de preferência com fio. O microfone deve captar o instrumento: se captar também as notas do acompanhamento pelos alto-falantes, o sistema pode reconhecê-las e marcar acertos sem você tocar. Confira o medidor em silêncio e ajuste a posição do microfone e o ganho antes da prática. A escolha de interface de áudio ou Real Tone usa o mesmo seletor de entrada; o dispositivo precisa aparecer no navegador.
 
