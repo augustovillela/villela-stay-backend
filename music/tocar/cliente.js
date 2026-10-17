@@ -4,7 +4,8 @@
   if (!app) return;
   var Core = window.MusiqueTocarCore, Audio = window.MusiqueTocarAudio, Aprender = window.MusiqueTocarAprender, Estudos = window.MusiqueTocarEstudos, Perfis = window.MusiqueTocarPerfis;
   var Piano = window.MusiqueTocarPiano, Bateria = window.MusiqueTocarBateria;
-  if (!Core || !Audio || !Aprender || !Estudos || !Perfis || !Piano || !Bateria) { app.textContent = 'Não foi possível carregar o modo de prática. Recarregue a página.'; return; }
+  var Sons = window.MusiqueTocarSons, Manifesto = window.MusiqueTocarSonsManifesto;
+  if (!Core || !Audio || !Aprender || !Estudos || !Perfis || !Piano || !Bateria || !Sons || !Manifesto) { app.textContent = 'Não foi possível carregar o modo de prática. Recarregue a página.'; return; }
   var boot = JSON.parse(app.getAttribute('data-estado') || '{}');
   var Catalogo = window.MusiqueTocarCatalogo, Formato = window.MusiqueTocarFormatoCatalogo;
   var query = new URLSearchParams(window.location ? window.location.search : '');
@@ -14,6 +15,7 @@
   var chart = Core.demoChart(), input = null, midiInput = null, demoContext = null, ctx = null, deviceRefresh = 0;
   var media = null, mediaUrl = null, mediaStarting = false, raf = null, nodes = [], generation = 0;
   var referenceWallUntil = 0, outputWallUntil = 0;
+  var sampler = null, samplerContext = null, samplerBank = null, soundLoading = false;
   var state = { mode: 'idle', running: false, position: 0, origin: 0, start: 0, speed: 1,
     from: 0, to: chart.duration, loop: false, judge: null, lastFrame: null, offset: 0,
     nextNote: 0, nextBeat: 0, countInFirstBeat: null, saved: false, connected: false, connecting: false, calibration: null, endedAt: null,
@@ -108,6 +110,7 @@
     var perfil = perfilDoInstrumento(state.instrument), baixo = perfil.id === 'baixo', bateria = perfil.layout === 'drums', piano = perfil.layout === 'piano';
     var microphone = state.inputKind === 'microphone';
     text('tj-instrument-label', nomeInstrumento(state.instrument));
+    text('tj-sound-label', state.instrument === 'cavaquinho' ? 'Som de cavaquinho adaptado de cordas dedilhadas' : state.instrument === 'bandolim' ? 'Som de bandolim adaptado, com vozes de cordas dobradas' : 'Som de ' + nomeInstrumento(state.instrument).toLowerCase().replace(' eletrônica', ' acústica') + ' com amostras gravadas');
     $('tj-back').hidden = baixo || bateria || piano;
     if (!baixo) $('tj-back').href = '/music/tutor-braco?i=' + state.instrument;
     text('tj-input-title', bateria ? 'Conecte a bateria eletrônica' : piano ? 'Conecte o piano MIDI' : microphone ? 'Prepare o microfone' : state.inputKind === 'interface' ? 'Prepare a interface' : 'Prepare o Real Tone');
@@ -160,9 +163,23 @@
   }
   function silence() {
     var now = performance.now() / 1000;
-    if (nodes.length) outputWallUntil = Math.min(outputWallUntil, now + 0.35);
+    if (nodes.length || sampler) outputWallUntil = Math.min(outputWallUntil, now + 0.35);
     if (media && !media.paused) outputWallUntil = Math.max(outputWallUntil, now + 0.35);
     nodes.forEach(function (n) { try { n.stop(); } catch (_) {} }); nodes = [];
+    if (sampler) sampler.parar();
+  }
+  function soundEngine() {
+    var group = state.instrument === 'cavaquinho' || state.instrument === 'bandolim' ? 'violao' : state.instrument;
+    if (!sampler || samplerContext !== ctx || samplerBank !== group) {
+      if (sampler) sampler.dispose();
+      sampler = Sons.criar(ctx, { manifest: Manifesto }); samplerContext = ctx; samplerBank = group;
+    }
+    return sampler;
+  }
+  function instrumentNote(n, when, duration) {
+    var voice = sampler.tocar(state.instrument, { midi: n.midi, when: when, duration: duration, velocity: n.velocity || 96 });
+    outputWallUntil = Math.max(outputWallUntil, performance.now() / 1000 + Math.max(0, when - ctx.currentTime) + duration + 0.35);
+    return voice;
   }
   function tone(midi, when, duration, volume, shape) {
     outputWallUntil = Math.max(outputWallUntil, performance.now() / 1000 + Math.max(0, when - ctx.currentTime) + duration + 0.35);
@@ -235,7 +252,7 @@
     state.guideUntil = ctx.currentTime + 0.8;
     referenceWallUntil = performance.now() / 1000 + 0.8;
     state.learner.bloquearAte(state.guideUntil);
-    tone(target.midi, ctx.currentTime + 0.005, 0.45, 0.075);
+    instrumentNote(target, ctx.currentTime + 0.005, 0.45);
     learnTarget();
   }
   function judgeReset() { state.judge = Core.criarJulgador(chart, { offsetMs: state.offset * state.speed, from: state.from, to: state.to }); state.saved = false; }
@@ -246,7 +263,7 @@
     state.countInFirstBeat = countIn ? state.nextBeat : null;
   }
   function pause() {
-    generation++; mediaStarting = false;
+    generation++; mediaStarting = false; soundLoading = false;
     if (state.mode === 'learn' && state.learnStartedAt !== null) { state.learnElapsed = learnDuration(); state.learnStartedAt = null; }
     if (state.running) state.position = Math.min(state.to, current());
     state.running = false; silence(); if (media) media.pause();
@@ -260,17 +277,26 @@
     text('tj-mode', 'PRONTO PARA TOCAR'); text('tj-pause', 'Pausar'); updateScore(); updateTransport();
   }
   async function start(mode, resume) {
-    if (chartLoading || remoteLoading || !previewReady || (previewMode && mode !== 'demo')) return;
+    if (chartLoading || remoteLoading || soundLoading || !previewReady || (previewMode && mode !== 'demo')) return;
     var layout = perfilDoChart(chart).layout, midi = layout === 'piano' || layout === 'drums';
     if (mode === 'learn' && midi) { msg('Para este instrumento, use a prática No ritmo ou a demonstração.', true); return; }
     if ((mode === 'practice' || mode === 'learn') && !state.connected) { msg(midi ? 'Ative a entrada MIDI antes de praticar.' : 'Ative o áudio e selecione o microfone ou a interface antes de praticar.', true); return; }
     cancelCalibration(); silence(); var attempt = ++generation;
+    soundLoading = true; updateTransport();
     try {
+      // Resume no gesto de clique, antes de qualquer download.
+      ctx = context(); await ctx.resume();
+      if (attempt !== generation) return;
       if (remoteAudio && (mode === 'demo' || (mode === 'practice' && $('tj-backing').checked)) && (!media || performance.now() >= remoteAudio.expiresAt)) {
         if (!await loadRemoteAudio(remoteAudio)) return;
       }
-      ctx = context(); await ctx.resume();
       if (attempt !== generation) return;
+      if (mode === 'learn' || ((!media || (mode !== 'demo' && !$('tj-backing').checked)) && (mode === 'demo' || $('tj-guide').checked))) {
+        msg('Preparando o som de ' + nomeInstrumento(state.instrument).toLowerCase() + '…');
+        await soundEngine().preparar(state.instrument, chart.notes);
+      }
+      if (attempt !== generation) return;
+      soundLoading = false;
       if (resume && state.position >= state.to) resume = false;
       if (mode === 'learn' && (state.learnContext !== ctx || state.learnElapsed >= 7200)) resume = false;
       var startWithCountIn = false;
@@ -297,7 +323,8 @@
       text('tj-pause', 'Pausar');
       msg(midi ? (layout === 'piano' ? 'Acompanhe as notas até as teclas correspondentes. Barras simultâneas indicam um acorde.' : 'Acompanhe as batidas até as peças da bateria. × indica chimbal fechado; ○ indica aberto.') : mode === 'demo' ? 'Observe os números das casas chegando à linha de tocar.' : mode === 'learn' ? 'Toque a nota indicada no seu tempo. Ouça a referência ou pule quando precisar.' : 'Toque uma nota por vez. A indicação de corda e casa vem do arranjo.');
       updateScore(); updateTransport();
-    } catch (e) { state.running = false; msg('Não consegui iniciar o áudio: ' + e.message, true); }
+    } catch (e) { if (attempt === generation) { state.running = false; msg('Não consegui preparar o áudio: ' + e.message + ' Tente novamente.', true); } }
+    finally { if (attempt === generation) { soundLoading = false; updateTransport(); } }
   }
   function updateTransport() {
     var perfil = perfilDoInstrumento(state.instrument), midi = perfil.layout === 'drums' || perfil.layout === 'piano';
@@ -322,7 +349,7 @@
     $('tj-audio-file').disabled = state.running || source.kind === 'catalog' || previewMode;
     $('tj-remote-audio').hidden = !remoteAudio;
     $('tj-remote-audio').disabled = state.running || chartLoading || remoteLoading;
-    if (chartLoading || remoteLoading || !previewReady) { $('tj-demo').disabled = true; $('tj-practice').disabled = true; if(!state.running)$('tj-pause').disabled=true; }
+    if (chartLoading || remoteLoading || soundLoading || !previewReady) { $('tj-demo').disabled = true; $('tj-practice').disabled = true; if(!state.running)$('tj-pause').disabled=true; }
     if (previewMode) {
       ['tj-connect','tj-practice','tj-calibrate','tj-device','tj-gain','tj-study-mode','tj-study','tj-chart-file','tj-reset','tj-instrument','tj-connection-type'].forEach(function(id){$(id).disabled=true;});
     }
@@ -350,7 +377,7 @@
     if (anterior.id !== perfil.id) encerrarCapturaDoPerfilAnterior();
     renderStudies(); profile(); state.from = 0; state.to = chart.duration; state.position = 0;
     text('tj-song-title', chart.title); text('tj-song-info', tempoLabel(chart) + ' · ' + chart.notes.length + ' notas · ' + timeLabel(chart.duration));
-    text('tj-source', source.kind === 'catalog' ? 'Catálogo · versão ' + source.versionNumber + ' · ' + source.credits : source.kind === 'preview' ? 'PRÉVIA DO RASCUNHO · revisão ' + source.revision + ' · sem captura ou avaliação' : source.kind === 'study' ? 'Estudo original Musique · acompanhamento sintetizado' : 'Arranjo importado neste navegador');
+    text('tj-source', source.kind === 'catalog' ? 'Catálogo · versão ' + source.versionNumber + ' · ' + source.credits : source.kind === 'preview' ? 'PRÉVIA DO RASCUNHO · revisão ' + source.revision + ' · sem captura ou avaliação' : source.kind === 'study' ? 'Estudo original Musique · sons de instrumentos' : 'Arranjo importado neste navegador');
     $('tj-seek').max = chart.duration; $('tj-to').max = chart.duration; $('tj-from').max = chart.duration;
     $('tj-from').value = 0; $('tj-to').value = chart.duration.toFixed(2);
     var section = $('tj-section'); section.replaceChildren(el('option', { value: '', text: 'Música inteira' }));
@@ -481,8 +508,7 @@
             var n = chart.notes[state.nextNote++];
             if (n.time >= state.from && n.time < state.to && n.time >= p - 0.02) {
               var at = ctx.currentTime + Math.max(0.005, (n.time - p) / state.speed);
-              if (state.mode === 'demo' || $('tj-guide').checked) tone(n.midi, at, Math.min(n.duration / state.speed, 1.2), 0.075);
-              if (state.nextNote % 4 === 1 && (state.mode === 'demo' || $('tj-backing').checked)) tone(40, at, Math.min((60 / tempoAt(chart, n.time).bpm) / state.speed, 0.55), 0.032, 'sine');
+              if (state.mode === 'demo' || $('tj-guide').checked) instrumentNote(n, at, n.duration / state.speed);
             }
           }
         }
@@ -694,18 +720,19 @@
     '<div class="tj-bottom"><details class="tj-panel"><summary>Praticar outra música</summary><p>Carregue um arranjo com notas e tempos e o áudio correspondente. Os arquivos ficam neste navegador.</p><div class="tj-files"><label>1. Arranjo JSON<input id="tj-chart-file" type="file" accept=".json,application/json"></label><label>2. Áudio da música<input id="tj-audio-file" type="file" accept="audio/*"></label></div><button id="tj-download">Baixar arranjo de exemplo</button><button id="tj-reset">Voltar ao estudo original</button><p class="tj-small">O MP3 sozinho não define as notas da pista. Cordas usam notas isoladas; piano e bateria MIDI aceitam notas simultâneas.</p></details><section class="tj-panel tj-history-panel"><h2>Sua prática</h2><p id="tj-history-label"></p><ul id="tj-history"></ul></section></div>'+
     '<details class="tj-panel tj-notes-panel"><summary>Notas do arranjo · versão em tabela</summary><p id="tj-table-note"></p><table><thead><tr><th>Tempo</th><th>Nota</th><th id="tj-table-third">Corda</th><th id="tj-table-fourth">Casa</th></tr></thead><tbody id="tj-notes"></tbody></table></details><p id="tj-footnote" class="tj-footnote"></p>';
   $('tj-media-label').parentNode.appendChild(el('button',{id:'tj-remote-audio',type:'button',text:'Recarregar áudio',hidden:''}));
+  app.appendChild(el('p', {class:'tj-footnote'}, [el('span',{id:'tj-sound-label'}), ' · ', el('a',{href:'/music/tocar/creditos-sons.html',target:'_blank',rel:'noopener',text:'Créditos dos sons'})]));
   renderStudies();
   if(previewMode){$('tj-catalog').hidden=true;$('tj-preview-notice').hidden=false;}
   else if(Catalogo)catalogUI=Catalogo.montar($('tj-catalog'),{loggedIn:!!boot.logado,onSelect:openCatalog});
   else $('tj-catalog').hidden=true;
-  on('tj-demo','click',function(){start('demo',false);});on('tj-practice','click',function(){start(state.trainingMode,false);});
+  on('tj-demo','click',function(){return start('demo',false);});on('tj-practice','click',function(){return start(state.trainingMode,false);});
   on('tj-study-mode','change',function(){stop();cancelCalibration();state.trainingMode=this.value==='learn'?'learn':'practice';updateScore();updateTransport();msg(state.trainingMode==='learn'?'Cada nota espera por você. Sem contagem, metrônomo ou acompanhamento; ouça a referência quando quiser.':'Acompanhe as notas no tempo da música.');});
   on('tj-study','change',function(){var estudoId=this.value,estudo=studies.find(function(item){return item.id===estudoId;}),c=Estudos.obter(estudoId);if(!c||previewMode)return;chooseChart(c,{kind:'study',instrument:estudo&&estudo.instrument,objective:estudo&&estudo.objective});msg('Estudo carregado. Escolha uma frase ou pratique a música inteira.');});
   on('tj-section','change',function(){selectSection(this.value);});
   on('tj-hear-note','click',hearNote);on('tj-skip','click',function(){if(state.running&&state.mode==='learn'&&state.learner&&ctx.currentTime>=state.guideUntil+meiaJanelaDetector()&&!expiredLearn())advanceLearn(state.learner.pular(ctx.currentTime));});
   on('tj-instrument','change',changeProfile);on('tj-connection-type','change',changeProfile);
   on('tj-gain','input',changeCaptureGain);
-  on('tj-pause','click',function(){if(state.running)pause();else start(state.mode,true);});on('tj-stop','click',function(){stop();cancelCalibration();msg('Pronto para uma nova rodada.');});
+  on('tj-pause','click',function(){if(state.running)pause();else return start(state.mode,true);});on('tj-stop','click',function(){stop();cancelCalibration();msg('Pronto para uma nova rodada.');});
   on('tj-connect','click',connect);on('tj-device','change',function(){if(!input || !state.connected)return;pause();cancelCalibration();return activateInput();});
   on('tj-speed','change',function(){stop();state.speed=Number(this.value);if(media)media.playbackRate=state.speed;msg('Velocidade ajustada. Inicie uma nova rodada.');});
   on('tj-loop','change',function(){state.loop=this.checked;});
@@ -731,7 +758,7 @@
   on('tj-reset','click',function(){if(previewMode)return;var perfil=perfilDoInstrumento(state.instrument),estudo=studies.find(function(item){var p=perfilDoChart(item.chart);return p&&p.id===perfil.id;});chooseChart(estudo?estudo.chart:Core.demoChart(),{kind:'study',instrument:estudo&&estudo.instrument,objective:estudo&&estudo.objective});msg('Estudo original carregado.');});
   on('tj-download','click',function(){var url=URL.createObjectURL(new Blob([JSON.stringify(chart,null,2)],{type:'application/json'}));var a=el('a',{href:url,download:'musique-arranjo.json'});a.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);});
   document.addEventListener('visibilitychange',function(){if(document.hidden){pause();cancelCalibration();msg('Pausado porque a página ficou em segundo plano.');}});
-  window.addEventListener('pagehide',function(){++chartTicket;++remoteTicket;chartLoading=false;remoteLoading=false;pause();cancelCalibration();if(input)input.parar();if(demoContext)demoContext.close();if(raf)cancelAnimationFrame(raf);raf=null;resetMedia();});
+  window.addEventListener('pagehide',function(){++chartTicket;++remoteTicket;chartLoading=false;remoteLoading=false;pause();cancelCalibration();if(input)input.parar();if(sampler){sampler.dispose();sampler=null;samplerContext=null;}if(demoContext)demoContext.close();if(raf)cancelAnimationFrame(raf);raf=null;resetMedia();});
   window.addEventListener('pageshow',function(e){if(e.persisted && !raf)tick();});
   text('tj-history-label',boot.logado?'Últimas rodadas guardadas nesta conta.':'Entre no Musique para guardar as rodadas na sua conta.');
   if(!boot.logado)$('tj-history').appendChild(el('li',{},[el('a',{href:'/music/entrar?voltar=%2Fmusic%2Ftocar',text:'Entrar ou criar conta'})]));

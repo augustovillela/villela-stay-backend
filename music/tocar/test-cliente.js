@@ -72,11 +72,11 @@ function montar(options = {}) {
   document.getElementById = id => document.ids.get(id) || null;
   const app = document.createElement('main'); app.setAttribute('id', options.page === 'gestao' ? 'tocar-gestao' : 'tocar-app'); app.setAttribute('data-estado', JSON.stringify({ logado: !!options.logado }));
   let now = 0, sequence = 0;
-  const rafs = new Map(), timers = new Map(), contexts = [], oscillators = [], volumes = [], medias = [], requests = [], inputs = [], revoked = [];
+  const rafs = new Map(), timers = new Map(), contexts = [], oscillators = [], voices = [], preparations = [], volumes = [], medias = [], requests = [], inputs = [], revoked = [];
   let audioFailure = options.audioFailure || null, pendingPlay = false;
   class Contexto {
-    constructor() { this.currentTime = 0; this.state = 'running'; this.destination = {}; contexts.push(this); }
-    resume() { this.state = 'running'; return Promise.resolve(); }
+    constructor() { this.currentTime = 0; this.state = 'running'; this.destination = {}; this.resumeCalls = 0; contexts.push(this); }
+    resume() { this.resumeCalls++; this.state = 'running'; return Promise.resolve(); }
     close() { this.state = 'closed'; return Promise.resolve(); }
     decodeAudioData() {
       if (options.waveformDecodeFailure) return Promise.reject(new Error('Codec indisponível'));
@@ -142,6 +142,17 @@ function montar(options = {}) {
   }
   const window = new Eventos();
   Object.assign(window, { devicePixelRatio: 1, location: {search: options.search || ''}, TextDecoder, TextEncoder, DecompressionStream, Blob, AudioContext: Contexto, Audio: Media, MusiqueTocarCore: Core, MusiqueTocarAudio: audio, MusiqueTocarAprender: Aprender, MusiqueTocarEstudos: Estudos, MusiqueTocarFormatoCatalogo: Formato, MusiqueTocarPerfis: Perfis });
+  // A integração verifica orquestração; PCM, afinação e envelopes são testados
+  // separadamente em test-sons.js e no navegador com os arquivos reais.
+  window.MusiqueTocarSonsManifesto = { version: 1, banks: {} };
+  window.MusiqueTocarSons = { criar(ctx) {
+    const own = [], ready = new Set();
+    const engine = {
+      async preparar(instrument, notes) { preparations.push({instrument, notes, ctx}); if (options.prepareSounds) await options.prepareSounds(instrument, notes); ready.add(instrument); },
+      tocar(instrument, note) { assert.ok(ready.has(instrument), 'Banco deve ser preparado antes de tocar: ' + instrument); const voice = {...note, instrument, ctx, stopAt: note.when + note.duration + .25, stop() {this.stopAt = ctx.currentTime;}}; own.push(voice); voices.push(voice); volumes.push(.65); return voice; },
+      parar() { own.forEach(v => v.stop()); }, dispose() { this.parar(); }
+    }; return engine;
+  } };
   const sandbox = { window, document, console, fetch, Blob, TextDecoder, TextEncoder, DecompressionStream, URLSearchParams, performance: { now: () => now * 1000 }, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
     requestAnimationFrame: fn => { const id = ++sequence; rafs.set(id, fn); return id; }, cancelAnimationFrame: id => rafs.delete(id),
     setTimeout: (fn, ms) => { const id = ++sequence; timers.set(id, { at: now + ms / 1000, fn }); return id; }, clearTimeout: id => timers.delete(id) };
@@ -180,7 +191,7 @@ function montar(options = {}) {
     const m = medias.at(-1); m.onloadedmetadata();
     $('tj-backing').checked = audible; await event('tj-backing', 'change'); return m;
   }
-  return { $, window, document, contexts, oscillators, volumes, medias, requests, inputs, revoked, event, settle, advance, chart, associatedAudio,
+  return { $, window, document, contexts, oscillators, voices, preparations, volumes, medias, requests, inputs, revoked, event, settle, advance, chart, associatedAudio,
     pendingPlay(value) { pendingPlay = value; }, audioFailure(value) { audioFailure = value; } };
 }
 function pequeno() {
@@ -379,7 +390,7 @@ test('Demonstração continua audível quando acompanhamento está desmarcado', 
     const h = montar(); await h.chart(); const media = local ? await h.associatedAudio('demo.wav', false) : null;
     assert.equal(h.$('tj-backing').checked, false); await h.event('tj-demo', 'click'); await h.advance(2.2);
     if (media) { assert.equal(media.plays, 1); assert.equal(media.paused, false); }
-    else assert.ok(h.oscillators.length > 4, 'A demo sintetiza notas além da contagem.');
+    else assert.ok(h.voices.length > 0, 'A demo toca amostras do instrumento além dos cliques de contagem.');
     assert.equal(h.$('tj-hits').textContent, '—');
   }
 });
@@ -634,8 +645,8 @@ test('Aprender reconhece altura estável e passa ao próximo alvo, rejeitando ba
 });
 test('Ouvir nota bloqueia guia, cauda e sustain; só ataque novo pode reconhecer depois', async () => {
   const h = montar(); await h.chart(); await aprender(h); await h.event('tj-hear-note', 'click');
-  assert.equal(h.oscillators.length, 1); assert.equal(h.$('tj-hear-note').disabled, true); assert.equal(h.$('tj-skip').disabled, true);
-  await tocarNota(h, 40); await h.event('tj-hear-note', 'click'); assert.equal(h.oscillators.length, 1);
+  assert.equal(h.voices.length, 1); assert.equal(h.$('tj-hear-note').disabled, true); assert.equal(h.$('tj-skip').disabled, true);
+  await tocarNota(h, 40); await h.event('tj-hear-note', 'click'); assert.equal(h.voices.length, 1);
   await h.advance(0.73); await tocarNota(h, 40, { onset: false });
   assert.equal(h.$('tj-hits').textContent, '0'); assert.equal(h.$('tj-hear-note').disabled, false);
   await tocarNota(h, 40); assert.equal(h.$('tj-hits').textContent, '1');
@@ -743,7 +754,7 @@ test('Trecho sem notas desabilita começar e guardar; demonstração continua di
 test('Demonstração permanece audível ao selecionar aprender e não mistura resultados', async () => {
   const h = montar(); await h.chart(); await h.event('tj-study-mode', 'change', 'learn');
   await h.event('tj-demo', 'click'); await h.advance(2.3);
-  assert.ok(h.oscillators.length > 4); assert.equal(h.$('tj-learn-panel').hidden, true); assert.equal(h.$('tj-hits').textContent, '—');
+  assert.ok(h.voices.length > 0); assert.equal(h.$('tj-learn-panel').hidden, true); assert.equal(h.$('tj-hits').textContent, '—');
   await h.event('tj-stop', 'click'); assert.equal(h.$('tj-learn-panel').hidden, false);
 });
 test('Aprender completo não repete sozinho mesmo que loop do ritmo esteja marcado', async () => {
@@ -796,7 +807,7 @@ test('Catálogo usa versão fixa, trata texto sem HTML e não confunde ID do est
   assert.equal(h.$('tj-study').value,'');assert.match(h.$('tj-source').textContent,/Catálogo · versão 1/);
   assert.ok(h.requests.some(r=>r.url.endsWith('/catalogo/arranjo-a/versoes/versao-1')));
   assert.equal(h.$('tj-audio-file').disabled,true);assert.equal(h.inputs[0].calls.length,0);
-  await h.event('tj-demo','click');await h.advance(5);assert.ok(h.oscillators.some(o=>o.frequency.value<200));
+  await h.event('tj-demo','click');await h.advance(5);assert.ok(h.voices.some(o=>o.midi<56));
 });
 test('Aprender em versão publicada guarda referência e intervalo, e trocar para estudo remove referência',async()=>{
   const h=montar({logado:true,fetch:fetchCatalogo()});await abrirPrimeiro(h);await aprender(h);
@@ -940,6 +951,132 @@ test('Bateria usa o desenho vertical do kit e não pede hardware para demonstra�
   assert.ok(frames.at(-1) > frames[0]);
   assert.equal(h.inputs.flatMap(i => i.calls).length, 0);
   assert.match(h.$('tj-status').textContent, /peças da bateria/);
+});
+
+test('Demonstração prepara e toca o banco dos oito instrumentos sem abrir captura', async () => {
+  for (const instrument of ['violao', 'guitarra', 'baixo', 'cavaquinho', 'ukulele', 'bandolim', 'piano', 'bateria']) {
+    const h = montar(); await h.event('tj-instrument', 'change', instrument);
+    h.$('tj-metronome').checked = false;
+    await h.event('tj-demo', 'click'); await h.advance(8);
+    assert.equal(h.preparations.length, 1, instrument);
+    assert.equal(h.preparations[0].instrument, instrument);
+    assert.ok(h.preparations[0].ctx.resumeCalls > 0, 'AudioContext ativado antes do download');
+    assert.ok(h.voices.length > 0, 'Faltaram notas após a contagem de ' + instrument);
+    assert.ok(h.voices.every(voice => voice.instrument === instrument), instrument);
+    assert.equal(h.voices[0].midi, h.preparations[0].notes[0].midi);
+    assert.equal(h.inputs.flatMap(input => input.calls).length, 0, instrument);
+    assert.equal(h.oscillators.length, 4, 'Apenas os quatro cliques da contagem; sem baixo artificial');
+  }
+});
+
+test('Piano original toca somente após a contagem e mantém as notas na ordem do arranjo', async () => {
+  const h = montar(); await h.event('tj-instrument', 'change', 'piano');
+  h.$('tj-metronome').checked = false;
+  await h.event('tj-demo', 'click'); await h.advance(4.9);
+  assert.equal(h.voices.length, 0, 'Não confundir os cliques iniciais com o som do piano');
+  await h.advance(.6);
+  assert.equal(h.voices.length, 1);
+  assert.equal(h.voices[0].midi, 48);
+  assert.ok(Math.abs(h.voices[0].when - (2 + 4 * 60 / 72)) < .03);
+  await h.advance(3.1);
+  assert.deepEqual(h.voices.slice(0, 4).map(voice => voice.midi), [48, 52, 55, 48]);
+  assert.ok(h.voices.slice(0, 4).every(voice => Math.abs(voice.duration - .183333) < 1e-6));
+});
+
+test('Piano entrega acordes, oitavas, intensidade e duração integral ao sampler na velocidade escolhida', async () => {
+  const h = montar(), notes = [
+    { id: 'grave', midi: 21, time: 1, duration: 3, velocity: 45 },
+    { id: 'do', midi: 60, time: 1, duration: 3, velocity: 96 },
+    { id: 'aguda', midi: 108, time: 1, duration: 3, velocity: 127 }
+  ];
+  await h.chart({ id: 'piano-acorde-longo', title: 'Três oitavas', bpm: 120, duration: 5, profile: 'piano-midi', layout: 'piano', notes });
+  await h.event('tj-speed', 'change', '.5'); await h.event('tj-demo', 'click'); await h.advance(6.1);
+  assert.equal(h.voices.length, 3);
+  assert.deepEqual(h.voices.map(voice => [voice.midi, voice.velocity, voice.duration]), notes.map(note => [note.midi, note.velocity, 6]));
+  assert.ok(h.voices.every(voice => voice.when === h.voices[0].when), 'Acorde deve iniciar simultaneamente');
+  assert.ok(Math.abs(h.voices[0].when - 6) < .03);
+  await h.event('tj-pause', 'click');
+  assert.ok(h.voices.every(voice => voice.stopAt <= voice.ctx.currentTime), 'Pausa interrompe notas longas');
+});
+
+test('Bateria entrega os dez alvos exatos e suas intensidades ao sampler sem converter MIDI em frequência', async () => {
+  const h = montar(), drums = Perfis.obter('bateria').drums;
+  const notes = drums.map((drum, i) => ({ id: 'peca-' + drum.midi, midi: drum.midi, drum: drum.id, time: i * .25, duration: .08, velocity: 50 + i * 7 }));
+  await h.chart({ id: 'kit-completo', title: 'Kit completo', bpm: 120, duration: 4, profile: 'bateria-midi', layout: 'drums', notes });
+  h.$('tj-metronome').checked = false;
+  await h.event('tj-demo', 'click'); await h.advance(4.5);
+  assert.equal(h.voices.length, 10);
+  assert.deepEqual(h.voices.map(voice => [voice.instrument, voice.midi, voice.duration, voice.velocity]), notes.map(note => ['bateria', note.midi, note.duration, note.velocity]));
+  assert.equal(h.oscillators.length, 4, 'Peças da bateria são amostras; osciladores ficam só na contagem');
+});
+
+test('Preparação pendente mantém relógio parado e Parar cancela o início tardio', async () => {
+  let release; const h = montar({ prepareSounds: () => new Promise(resolve => { release = resolve; }) });
+  await h.chart(); const pending = h.$('tj-demo').click(); await h.settle();
+  assert.match(h.$('tj-status').textContent, /Preparando o som/);
+  assert.equal(h.$('tj-demo').disabled, true); assert.equal(h.$('tj-pause').disabled, true);
+  assert.equal(h.$('tj-stop').disabled, false);
+  await h.advance(8); assert.equal(h.voices.length, 0); assert.equal(h.oscillators.length, 0);
+  await h.event('tj-stop', 'click'); const status = h.$('tj-status').textContent;
+  release(); await Promise.all(pending); await h.advance(3);
+  assert.equal(h.voices.length, 0); assert.equal(h.oscillators.length, 0);
+  assert.equal(h.$('tj-status').textContent, status);
+  assert.equal(h.$('tj-mode').textContent, 'PRONTO PARA TOCAR'); assert.equal(h.$('tj-demo').disabled, false);
+});
+
+test('Preparação atrasada do perfil anterior não toca nem sobrescreve a nova seleção', async () => {
+  for (const rejectOld of [false, true]) {
+    let resolve, reject;
+    const h = montar({ prepareSounds: instrument => instrument === 'piano' ? new Promise((a, b) => { resolve = a; reject = b; }) : undefined });
+    await h.event('tj-instrument', 'change', 'piano'); const pending = h.$('tj-demo').click(); await h.settle();
+    await h.event('tj-instrument', 'change', 'bateria'); await h.event('tj-demo', 'click');
+    const status = h.$('tj-status').textContent;
+    if (rejectOld) reject(new Error('Falha atrasada do piano')); else resolve();
+    await Promise.all(pending); await h.advance(6);
+    assert.equal(h.$('tj-status').textContent, status);
+    assert.equal(h.$('tj-instrument').value, 'bateria');
+    assert.ok(h.voices.length > 0); assert.ok(h.voices.every(voice => voice.instrument === 'bateria'));
+    assert.equal(h.$('tj-demo').disabled, true, 'Conclusão antiga não libera controles durante a rodada nova');
+  }
+});
+
+test('Falha ao carregar banco mostra recuperação e permite nova tentativa sem som genérico', async () => {
+  let attempts = 0;
+  const h = montar({ prepareSounds: async () => { if (++attempts === 1) throw new Error('Download indisponível'); } });
+  await h.chart(); await h.event('tj-demo', 'click'); await h.advance(3);
+  assert.match(h.$('tj-status').textContent, /Download indisponível.*Tente novamente/);
+  assert.equal(h.voices.length, 0); assert.equal(h.oscillators.length, 0);
+  assert.equal(h.$('tj-demo').disabled, false);
+  await h.event('tj-demo', 'click'); await h.advance(2.2);
+  assert.equal(attempts, 2); assert.equal(h.voices.length, 1);
+  assert.equal(h.voices[0].instrument, 'violao');
+  assert.doesNotMatch(h.$('tj-status').textContent, /Download indisponível/);
+});
+
+test('Áudio local ou publicado dispensa download de amostras e não duplica o instrumento', async () => {
+  for (const remote of [false, true]) {
+    const options = { prepareSounds: () => { throw new Error('Amostras não devem ser necessárias'); } };
+    if (remote) Object.assign(options, { logado: true, fetch: fetchCatalogo(url => url.endsWith('/audio') ? resposta({ url: 'https://audio.example.test/musica', mime: 'audio/mpeg', expiresIn: 600 }) : url.includes('/versoes/') ? resposta({ arranjo: itemCatalogo(), documento: documento(pequeno(), 'audio-a') }) : null) });
+    const h = montar(options);
+    if (remote) { await abrirPrimeiro(h); h.medias[0].onloadedmetadata(); }
+    else { await h.chart(); await h.associatedAudio('musica.wav', false); }
+    await h.event('tj-demo', 'click'); await h.advance(2.3);
+    assert.equal(h.preparations.length, 0); assert.equal(h.voices.length, 0);
+    assert.equal(h.medias.at(-1).plays, 1); assert.equal(h.medias.at(-1).paused, false);
+    assert.doesNotMatch(h.$('tj-status').textContent, /Não consegui preparar/);
+  }
+});
+
+test('Aprender carrega o instrumento mesmo com faixa associada e usa amostra na nota de referência', async () => {
+  const h = montar(); await h.chart(); await h.associatedAudio();
+  await h.event('tj-instrument', 'change', 'guitarra'); await aprender(h);
+  assert.equal(h.preparations.length, 1); assert.equal(h.preparations[0].instrument, 'guitarra');
+  assert.equal(h.voices.length, 0); assert.equal(h.medias[0].plays, 0);
+  await h.event('tj-hear-note', 'click');
+  assert.equal(h.voices.length, 1); assert.equal(h.voices[0].instrument, 'guitarra');
+  assert.equal(h.voices[0].midi, 40); assert.equal(h.voices[0].duration, .45);
+  assert.equal(h.$('tj-hear-note').disabled, true); assert.equal(h.oscillators.length, 0);
+  await h.event('tj-stop', 'click'); assert.ok(h.voices[0].stopAt <= h.voices[0].ctx.currentTime);
 });
 
 module.exports = { montar, pequeno, resposta, documento };

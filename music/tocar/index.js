@@ -6,6 +6,7 @@
 const path = require('node:path');
 const { db, novoId, nowISO } = require('../db');
 const { layout, esc } = require('../paginas');
+const SONS = require('./sons-manifesto');
 
 const INDICACAO = 'Indicação de treino calculada no seu aparelho; não é nota nem avaliação do professor.';
 const CAMPOS_PRATICA = new Set(['chartId', 'title', 'total', 'hits', 'misses', 'accuracy', 'speed', 'offsetMs', 'duration', 'mode', 'catalogRef']);
@@ -16,7 +17,7 @@ const ARQUIVOS = Object.freeze([
   'formato-catalogo.js', 'catalogo-cliente.js', 'gerenciar.js',
   'editor-nucleo.js', 'editor-cliente.js', 'editor.css', 'importador-midi.js', 'importador-musicxml.js',
   'waveform.js', 'waveform-cliente.js',
-  'pista-piano.js', 'pista-bateria.js',
+  'pista-piano.js', 'pista-bateria.js', 'sons.js', 'sons-manifesto.js', 'creditos-sons.html',
 ]);
 
 function invalido(mensagem) {
@@ -130,6 +131,8 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/catalogo-cliente.js" defer></script>
 <script src="/music/tocar/pista-piano.js" defer></script>
 <script src="/music/tocar/pista-bateria.js" defer></script>
+<script src="/music/tocar/sons-manifesto.js" defer></script>
+<script src="/music/tocar/sons.js" defer></script>
 <script src="/music/tocar/cliente.js" defer></script>`;
     res.set('Cache-Control', 'no-store').type('html').send(layout('Tocar junto · prática com instrumentos | Musique', corpo, {
       caminho: '/music/tocar', noApp: estado.logado,
@@ -167,6 +170,19 @@ function montar(app, { requireUsuario, opcional } = {}) {
   });
 
   require('./rotas-catalogo').montar(app, { requireUsuario });
+
+  // Somente amostras enumeradas no manifesto de distribuição ficam públicas.
+  const amostras = new Set(Object.values(SONS.banks).flatMap(b => b.samples.map(s => s.file)));
+  for (const arquivo of amostras) {
+    if (!/^[a-z0-9][a-z0-9_-]*\/[A-Za-z0-9][A-Za-z0-9_-]*\.mp3$/.test(arquivo)) throw new Error('Caminho de amostra inválido.');
+    app.get('/music/tocar/sons/' + arquivo, (req, res, next) => {
+      res.set('X-Content-Type-Options', 'nosniff');
+      res.sendFile(path.join(__dirname, 'sons', arquivo), { maxAge: 0 }, (erro) => {
+        if (erro && !res.headersSent) res.status(erro.status === 404 ? 404 : 500).type('text').send('Som indisponível.');
+        else if (erro) next(erro);
+      });
+    });
+  }
 
   // Rotas exatas impedem servir código do servidor, banco ou caminhos arbitrários.
   for (const arquivo of ARQUIVOS) {
