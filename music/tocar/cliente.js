@@ -13,7 +13,7 @@
   var source = { kind: 'study' }, catalogUI = null, chartTicket = 0, chartLoading = false;
   var remoteAudio = null, remoteTicket = 0, remoteLoading = false, saving = null;
   var chart = Core.demoChart(), input = null, midiInput = null, demoContext = null, ctx = null, deviceRefresh = 0;
-  var media = null, mediaUrl = null, mediaStarting = false, raf = null, nodes = [], generation = 0;
+  var media = null, mediaUrl = null, mediaStarting = false, raf = null, nodes = [], generation = 0, dailySessions = 0;
   var referenceWallUntil = 0, outputWallUntil = 0;
   var sampler = null, samplerContext = null, samplerBank = null, soundLoading = false, scheduledSoundUntil = 0;
   var state = { mode: 'idle', running: false, position: 0, origin: 0, start: 0, speed: 1,
@@ -74,7 +74,8 @@
     heading.appendChild(exportButton); heading.appendChild(importButton); heading.appendChild(importInput);
     if (boot.logado) { var sync = el('button', { id: 'tj-campaign-sync', type: 'button', class: 'tj-campaign-sync', text: 'Sincronizar conta' }); sync.addEventListener('click', syncCampaign); heading.appendChild(sync); }
     var recomendacao = overview.next ? 'Próxima recomendação: ' + overview.next.title + (overview.next.position > 0 ? ' · retomar em ' + overview.next.position.toFixed(1) + ' s' : '') : 'Campanha concluída. Revise qualquer etapa para manter a prática.';
-    panel.replaceChildren(heading, el('div', { class: 'tj-campaign-summary' }, [el('span', { class: 'tj-campaign-summary-label', text: overview.percent + '% da trilha' }), el('span', { class: 'tj-campaign-progress-track' }, [bar]), el('span', { class: 'tj-campaign-summary-label', text: overview.attempts + ' tentativas · melhor sequência: ' + overview.bestStreak }), el('span', { class: 'tj-campaign-summary-label', text: recomendacao })]));
+    var meta = boot.logado ? 'Meta diária: ' + Math.min(dailySessions, 3) + '/3 rodadas' : 'Entre para acompanhar sua meta diária.';
+    panel.replaceChildren(heading, el('div', { class: 'tj-campaign-summary' }, [el('span', { class: 'tj-campaign-summary-label', text: overview.percent + '% da trilha' }), el('span', { class: 'tj-campaign-progress-track' }, [bar]), el('span', { class: 'tj-campaign-summary-label', text: overview.attempts + ' tentativas · melhor sequência: ' + overview.bestStreak }), el('span', { class: 'tj-campaign-summary-label', text: recomendacao }), el('span', { class: 'tj-campaign-summary-label', text: meta })]));
     var list = el('ol', { class: 'tj-campaign-list' });
     lista.forEach(function (item) {
       var label = item.status === 'completed' ? 'Concluída' : item.status === 'in_progress' ? 'Em andamento' : item.status === 'available' ? 'Disponível' : 'Bloqueada';
@@ -801,6 +802,8 @@
   async function history() {
     if(!boot.logado)return;
     try {var res=await fetch('/music/api/tocar/sessoes',{credentials:'same-origin'});if(!res.ok)return;var data=await res.json();var list=$('tj-history');list.replaceChildren();
+      var hoje = new Date(); dailySessions = (data.sessoes || []).filter(function (s) { var d = new Date(s.createdAt); return Number.isFinite(d.getTime()) && d.getFullYear() === hoje.getFullYear() && d.getMonth() === hoje.getMonth() && d.getDate() === hoje.getDate(); }).length;
+      renderCampaign();
       (data.sessoes||[]).slice(0,5).forEach(function(s){var result=s.mode==='learn'?s.hits+' reconhecidas · '+s.skipped+' puladas':Math.round(s.accuracy)+'%';list.appendChild(el('li',{text:s.title+(s.catalogRef&&s.catalogRef.versionNumber?' · versão '+s.catalogRef.versionNumber:'')+' · '+result+' · '+new Date(s.createdAt).toLocaleDateString('pt-BR')}));});if(!list.children.length)list.appendChild(el('li',{text:'Sua primeira rodada guardada aparecerá aqui.'}));
     } catch(_) { text('tj-history-label','Histórico temporariamente indisponível.'); }
   }

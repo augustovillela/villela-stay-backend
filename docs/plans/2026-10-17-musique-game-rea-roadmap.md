@@ -20,7 +20,7 @@ O alvo local encontrado foi `C:\Program Files (x86)\Ubisoft\Ubisoft Game Launche
 
 ## Estado da implementação
 
-O núcleo de sessão e a campanha autoral já estão publicados. O repetidor de trecho agora oferece velocidade progressiva opcional entre 50%, 75%, 100% e 125%, sem habilitar essa alteração no modo Aprender. O feedback de prática também exibe médias de tempo e desvio em cents quando o julgador dispõe dessas medidas.
+O núcleo de sessão e a campanha autoral já estão publicados. O repetidor de trecho agora oferece velocidade progressiva opcional entre 50%, 75%, 100% e 125%, sem habilitar essa alteração no modo Aprender. O feedback de prática também exibe médias de tempo e desvio em cents quando o julgador dispõe dessas medidas. A campanha mostra uma meta diária privada de três rodadas baseada no histórico da própria conta.
 
 ## Primeira entrega de código
 
