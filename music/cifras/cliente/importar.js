@@ -320,7 +320,7 @@
   // IMPORTAÇÕES (lista e reprocessamento)
   // ---------------------------------------------------------------
   C.telas.importacoes = function () {
-    var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div');
+    var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div'), carregamento = 0;
     c.appendChild(el('h2', { txt: 'Importações' }));
     var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['falhou', 'Com falha'], ['salva', 'Salvas'], ['descartada', 'Descartadas']], filtro, function (v) {
       filtro = v;
@@ -334,12 +334,22 @@
     c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect, atualizar]));
     c.appendChild(lista);
     function carregar(status) {
+      var ticket = ++carregamento;
       var query = status ? '?status=' + encodeURIComponent(status) + '&limite=100' : '?limite=100';
       atualizar.disabled = true;
       atualizar.textContent = 'Atualizando…';
       lista.setAttribute('aria-busy', 'true');
       lista.innerHTML = ''; lista.appendChild(C.esqueleto(2));
-      api('GET', '/importar' + query).then(function (r) { dados = r; pintarLista(); }).catch(function (e) { lista.innerHTML = ''; lista.appendChild(C.estadoErro(e, C.telas.importacoes)); }).then(function () { atualizar.disabled = false; atualizar.textContent = 'Atualizar'; lista.setAttribute('aria-busy', 'false'); });
+      api('GET', '/importar' + query).then(function (r) {
+        if (ticket !== carregamento) return;
+        dados = r; pintarLista();
+      }).catch(function (e) {
+        if (ticket !== carregamento) return;
+        lista.innerHTML = ''; lista.appendChild(C.estadoErro(e, C.telas.importacoes));
+      }).then(function () {
+        if (ticket !== carregamento) return;
+        atualizar.disabled = false; atualizar.textContent = 'Atualizar'; lista.setAttribute('aria-busy', 'false');
+      });
     }
     function pintarLista() {
       lista.innerHTML = '';
