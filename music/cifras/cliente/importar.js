@@ -366,7 +366,8 @@
         return filtro === 'todas' || (filtro === 'revisar' ? ['pronta', 'processando', 'pendente'].indexOf(x.status) >= 0 : x.status === filtro);
       });
       if (!itens.length) {
-        lista.appendChild(C.estadoVazio(filtro === 'todas' ? 'Nenhuma importação ainda' : 'Nenhuma importação nesta categoria', '', C.botao('Encontrar ou importar', function () { C.ir('importar'); })));
+        var acaoVazio = filtro === 'todas' ? C.botao('Encontrar ou importar', function () { C.ir('importar'); }) : C.botao('Atualizar lista', function () { carregar(filtrosServidor.indexOf(filtro) >= 0 ? filtro : ''); });
+        lista.appendChild(C.estadoVazio(filtro === 'todas' ? 'Nenhuma importação ainda' : 'Nenhuma importação nesta categoria', '', acaoVazio));
         agendarAtualizacao();
         return;
       }
