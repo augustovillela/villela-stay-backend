@@ -64,6 +64,16 @@ test('página pública tem bootstrap escapado sem identidade e apenas scripts pr
     assert.ok(html.indexOf('/music/tocar/' + script + '.js') < html.indexOf('/music/tocar/cliente.js'));
   }
   assert.ok(html.indexOf('/music/tocar/perfis.js') < html.indexOf('/music/tocar/nucleo.js'));
+  for (const pista of ['pista-piano.js', 'pista-bateria.js']) {
+    assert.ok(html.indexOf('/music/tocar/' + pista) > 0);
+    assert.ok(html.indexOf('/music/tocar/' + pista) < html.indexOf('/music/tocar/cliente.js'));
+    const asset = await fetch(base + '/music/tocar/' + pista);
+    assert.equal(asset.status, 200);
+    assert.match(asset.headers.get('content-type'), /javascript/);
+  }
+  for (const privado of ['test-pista-piano.js','test-pista-bateria.js','test-fixtures-importacao.js']) {
+    assert.equal((await fetch(base + '/music/tocar/' + privado)).status, 404);
+  }
   assert.doesNotMatch(html, /nao-expor|<script>nome|laboratorio\.js|laboratorio-nucleo\.js/);
   const anonimo = await (await fetch(base + '/music/tocar')).text();
   assert.match(anonimo, /&quot;logado&quot;:false/);
@@ -208,6 +218,29 @@ for (const instrumento of ['piano', 'bateria']) test('editor '+instrumento+' man
   assert.equal(segunda.status,200);assert.notEqual(segunda.body.arranjo.publishedVersionId,primeiraVersionId);
   assert.deepEqual((await catalogoHTTP(dono,'/catalogo/'+atual.id)).body.documento,Formato.validarDocumento(revisada));
   assert.deepEqual((await catalogoHTTP(dono,'/catalogo/'+atual.id+'/versoes/'+primeiraVersionId)).body.documento,documento);
+});
+
+for (const tipo of ['piano-midi','ukulele-midi','ukulele-xml','ukulele-mxl']) test('arquivo '+tipo+' importado conserva notas e andamento na API, editor e publicação', async () => {
+  const fixtures=require('./test-fixtures-importacao'), piano=tipo==='piano-midi', xml=tipo==='ukulele-xml'||tipo==='ukulele-mxl';
+  const instrument=piano?'piano':'ukulele', title='Importação original '+tipo, dono='importacao-'+tipo;
+  const importador=require(xml?'./importador-musicxml':'./importador-midi');
+  const bytes=piano?fixtures.pianoMidi():tipo==='ukulele-mxl'?fixtures.ukuleleMXL():xml?fixtures.ukuleleXML():fixtures.ukuleleMidi();
+  const analysis=await importador.analisar(bytes,{perfil:instrument});
+  const candidate=analysis.candidates.find(c=>c.valid);assert.ok(candidate);
+  const chart=importador.criarChart(analysis,candidate.id,{id:'importado-'+tipo,title,perfil:instrument});
+  const documento=require('./formato-catalogo').validarDocumento({title,instrument,level:'iniciante',technique:'notas-isoladas',objective:'Praticar as notas importadas.',credits:'Arquivo sintético original de teste.',mediaId:'',chart});
+  const obra=require('../repo').Obras.criar({dono,titulo:title,titularidade:'propria'});
+  const created=await catalogoHTTP(dono,'/gestao/arranjos','POST',{obraId:obra.id,documento});assert.equal(created.status,201,JSON.stringify(created.body));
+  const stored=created.body.arranjo, opened=await catalogoHTTP(dono,'/gestao/arranjos/'+stored.id);
+  assert.deepEqual(opened.body.arranjo.documento,documento);
+  assert.deepEqual(require('./editor-nucleo').criar(opened.body.arranjo.documento.chart).obter(),chart);
+  if(piano){
+    assert.deepEqual(chart.notes.map(n=>[n.time,n.duration,n.midi,n.velocity]),[[.25,.75,60,52],[.25,.75,64,87],[.25,.75,72,113],[1,.5,69,75]]);
+    assert.deepEqual(chart.tempoMap,{version:1,events:[{time:0,beat:0,bpm:120},{time:.5,beat:1,bpm:60}]});
+  }else assert.deepEqual(chart.notes.map(n=>[n.midi,n.string,n.fret]),[[60,3,0],[64,2,0],[67,4,0],[69,1,0]]);
+  const publication=await catalogoHTTP(dono,'/gestao/arranjos/'+stored.id+'/publicar','POST',{revision:stored.revision});assert.equal(publication.status,200);
+  const published=await catalogoHTTP(dono,'/catalogo/'+stored.id);assert.equal(published.status,200);assert.deepEqual(published.body.documento,documento);
+  assert.equal((await catalogoHTTP('outra-conta-importacao','/catalogo/'+stored.id)).status,404);
 });
 
 test('edição inválida por sobreposição não altera revisão, rascunho ou versão publicada', async () => {

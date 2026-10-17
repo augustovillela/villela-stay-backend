@@ -345,4 +345,54 @@ test('Salvar bloqueia edição até resposta e falha não apaga nota alterada ou
   await h.event('te-note-fret','input','2');await h.event('te-apply-note','click');const pending=h.$('tg-save').click();await h.settle();assert.equal(h.$('te-note-fret').disabled,true);assert.equal(h.$('te-undo').disabled,true);
   release(resposta({erro:'Falha transitória'},500));await Promise.all(pending);assert.equal(h.$('te-note-fret').value,'2');assert.equal(h.$('te-undo').disabled,false);assert.equal(h.$('tg-save').disabled,false);
 });
+test('MIDI real de piano atravessa confirmação, acorde, edição, salvamento, publicação e reabertura',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await h.settle();
+  await h.event('tg-work','change','obra-a');await h.event('tg-instrument','change','piano');await h.event('te-new','click');
+  assert.equal(h.$('tg-musicxml').disabled,true);assert.match(h.$('tg-import-help').textContent,/pedal.*não são aceitos/);
+  await h.event('tg-objective','input','Praticar acordes em oitavas diferentes.');await h.event('tg-credits','input','Arquivo sintético original de teste.');
+  const bytes=require('./test-fixtures-importacao').pianoMidi();
+  await analisarMidi(h,{size:bytes.length,name:'Piano de teste.mid',arrayBuffer:async()=>bytes.buffer});
+  assert.match(h.$('tg-midi-detail').textContent,/Escolha uma linha disponível na lista/);
+  assert.equal(h.$('tg-save').disabled,true);assert.equal(h.$('te-note-label').textContent,'Nota 1 de 1');
+  assert.equal(h.requests.filter(r=>r.opts.method==='POST'||r.opts.method==='PUT').length,0);
+  await h.event('tg-midi-candidates','change','t1-c0');assert.equal(h.$('tg-midi-confirm').disabled,false);
+  assert.match(h.$('tg-midi-detail').textContent,/acordes.*intensidades/);assert.doesNotMatch(h.$('tg-midi-detail').textContent,/posição sugerida/);
+  await h.event('tg-midi-confirm','click');assert.match(h.$('tg-status').textContent,/importada/);
+  assert.equal(h.$('tg-instrument').value,'piano');assert.equal(h.$('te-note-label').textContent,'Nota 1 de 4');assert.equal(h.$('te-bpm').disabled,true);
+  assert.equal(h.$('te-note-string').children.length,88);assert.equal(h.$('te-note-fret').value,'52');
+  await h.event('te-note-fret','input','86');await h.event('te-apply-note','click');await h.event('tg-save','click');
+  const saved=copy(s.current.documento);
+  assert.equal(saved.instrument,'piano');assert.equal(saved.chart.layout,'piano');assert.equal(saved.chart.tuning,undefined);
+  assert.deepEqual(saved.chart.notes.map(n=>[n.time,n.duration,n.midi,n.velocity]),[[.25,.75,60,86],[.25,.75,64,87],[.25,.75,72,113],[1,.5,69,75]]);
+  assert.deepEqual(saved.chart.tempoMap,{version:1,events:[{time:0,beat:0,bpm:120},{time:.5,beat:1,bpm:60}]});
+  await h.event('tg-publish','click');await h.event('tg-reload','click');assert.deepEqual(s.current.documento,saved);
+  assert.equal(h.$('te-note-fret').value,'86');assert.equal(h.$('te-note-time').value,'0.25');assert.equal(h.$('te-bpm').disabled,true);
+});
+
+test('Acorde MIDI recusado no perfil de cordas não altera o documento salvo após cancelar',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await abrir(h);
+  const before=copy(s.current.documento),bytes=require('./test-fixtures-importacao').pianoMidi();
+  await analisarMidi(h,{size:bytes.length,name:'acorde.mid',arrayBuffer:async()=>bytes.buffer});
+  const line=h.$('tg-midi-candidates').children.find(n=>n.value==='t1-c0');assert.equal(line.disabled,true);assert.match(line.textContent,/sobrepostas/);
+  await h.event('tg-midi-candidates','change','t1-c0');assert.equal(h.$('tg-midi-confirm').disabled,true);
+  await h.event('tg-midi-confirm','click');assert.deepEqual(s.current.documento,before);
+  await h.event('tg-midi-cancel','click');await h.event('tg-save','click');assert.deepEqual(s.current.documento,require('./formato-catalogo').validarDocumento(before));
+});
+
+for(const tipo of ['midi','xml','mxl'])test('Importação real '+tipo+' do ukulele preserva cordas reentrantes ao salvar e reabrir',async()=>{
+  const s=servidor(),h=montar({page:'gestao',logado:true,fetch:s.fetch});await h.settle();
+  await h.event('tg-work','change','obra-a');await h.event('tg-instrument','change','ukulele');
+  assert.equal(h.$('tg-musicxml').disabled,false);
+  await h.event('tg-objective','input','Praticar as quatro cordas soltas.');await h.event('tg-credits','input','Notas originais de teste.');
+  const fixture=require('./test-fixtures-importacao'),bytes=tipo==='midi'?fixture.ukuleleMidi():tipo==='mxl'?fixture.ukuleleMXL():fixture.ukuleleXML();
+  h.$(tipo==='midi'?'tg-midi':'tg-musicxml').files=[{size:bytes.length,name:'ukulele.'+tipo,arrayBuffer:async()=>bytes.buffer}];
+  await h.event(tipo==='midi'?'tg-midi':'tg-musicxml','change');
+  const line=h.$('tg-midi-candidates').children.find(n=>n.value && !n.disabled);assert.ok(line,h.$('tg-status').textContent);
+  await h.event('tg-midi-candidates','change',line.value);assert.match(h.$('tg-midi-detail').textContent,/posição sugerida/);
+  await h.event('tg-midi-confirm','click');await h.event('tg-save','click');
+  const saved=copy(s.current.documento);assert.equal(saved.instrument,'ukulele');assert.deepEqual(saved.chart.tuning,[67,60,64,69]);
+  assert.deepEqual(saved.chart.notes.map(n=>[n.midi,n.string,n.fret]),[[60,3,0],[64,2,0],[67,4,0],[69,1,0]]);
+  await h.event('tg-reload','click');assert.equal(h.$('te-note-string').value,'3');assert.equal(h.$('te-note-fret').value,'0');assert.deepEqual(s.current.documento,saved);
+});
+
 (async()=>{let failures=0;for(const t of tests){try{await t.fn();console.log('OK',t.name);}catch(e){failures++;console.error('FALHOU',t.name,'\n',e.stack);}}console.log(`${tests.length-failures}/${tests.length} verificações da gestão passaram (DOM/HTTP simulados).`);if(failures)process.exitCode=1;})();

@@ -3,7 +3,8 @@
   var app = document.getElementById('tocar-app');
   if (!app) return;
   var Core = window.MusiqueTocarCore, Audio = window.MusiqueTocarAudio, Aprender = window.MusiqueTocarAprender, Estudos = window.MusiqueTocarEstudos, Perfis = window.MusiqueTocarPerfis;
-  if (!Core || !Audio || !Aprender || !Estudos || !Perfis) { app.textContent = 'Não foi possível carregar o modo de prática. Recarregue a página.'; return; }
+  var Piano = window.MusiqueTocarPiano, Bateria = window.MusiqueTocarBateria;
+  if (!Core || !Audio || !Aprender || !Estudos || !Perfis || !Piano || !Bateria) { app.textContent = 'Não foi possível carregar o modo de prática. Recarregue a página.'; return; }
   var boot = JSON.parse(app.getAttribute('data-estado') || '{}');
   var Catalogo = window.MusiqueTocarCatalogo, Formato = window.MusiqueTocarFormatoCatalogo;
   var query = new URLSearchParams(window.location ? window.location.search : '');
@@ -45,6 +46,8 @@
     if (perfil.id === 'baixo') return 'baixo';
     if (perfil.id === 'bateria-midi') return 'bateria';
     if (perfil.id === 'piano-midi') return 'piano';
+    if (perfil.id === 'cavaquinho' || perfil.id === 'ukulele') return perfil.id;
+    if (perfil.id === 'bandolim-5') return 'bandolim';
     return state.instrument === 'guitarra' ? 'guitarra' : 'violao';
   }
   function encerrarCapturaDoPerfilAnterior() {
@@ -118,6 +121,14 @@
       : 'Confira o medidor tocando uma corda e ajuste o ganho sem saturar. Se estiver usando um microfone na interface, escolha o modo Microfone.');
     $('tj-connect').textContent = state.connected ? 'Desconectar' : bateria || piano ? 'Ativar MIDI' : microphone ? 'Ativar microfone' : 'Ativar entrada';
     $('tj-gain').disabled = bateria || piano; if (!bateria && !piano) renderCaptureGain();
+    if (bateria || piano) { state.trainingMode = 'practice'; $('tj-study-mode').value = 'practice'; }
+    $('tj-study-mode').children[1].disabled = bateria || piano;
+    text('tj-learning-help', bateria || piano ? 'Acompanhe as notas que descem até o instrumento. Use Demonstração para conhecer a pista sem conectar o equipamento.' : 'No ritmo, acompanhe o tempo. Ao aprender, cada nota espera por você, sem avaliação de ritmo.');
+    text('tj-stage-help', piano ? 'As 88 teclas vão de Lá0 a Dó8. Toque quando a nota chegar ao teclado; o comprimento indica a duração. A iluminação acompanha o arranjo.' : bateria ? 'As notas descem até cada peça. No chimbal, × indica fechado e ○ indica aberto. Crash e ride ficam acima dos tambores, como na montagem da bateria.' : 'Acompanhe as casas até a linha de tocar. Casa 0 indica corda solta.');
+    text('tj-footnote', bateria || piano ? 'Indicação de treino, sem nota escolar. A demonstração mostra o arranjo; na prática, os acertos usam a entrada MIDI.' : 'Feedback de estudo, sem nota escolar. O áudio identifica a altura; corda e casa são posições sugeridas pelo arranjo. Reconhecimento de acordes pelo microfone não está incluído neste protótipo.');
+    $('tj-connection-type').value = bateria || piano ? 'midi' : state.inputKind;
+    app.setAttribute('data-layout', perfil.layout);
+    $('tj-stage').setAttribute('data-layout', perfil.layout);
   }
   function changeProfile() {
     var anterior = perfilDoInstrumento(state.instrument);
@@ -125,6 +136,8 @@
     state.instrument = $('tj-instrument').value;
     state.inputKind = $('tj-connection-type').value;
     var atual = perfilDoInstrumento(state.instrument);
+    if (atual.layout === 'piano' || atual.layout === 'drums') state.inputKind = 'midi';
+    else if (state.inputKind === 'midi') state.inputKind = 'microphone';
     if (anterior.id !== atual.id) {
       encerrarCapturaDoPerfilAnterior();
       var estudo = studies.find(function (item) { var p = perfilDoChart(item.chart); return p && p.id === atual.id; });
@@ -137,7 +150,7 @@
     $('tj-metronome').checked = state.inputKind !== 'microphone';
     $('tj-backing').checked = state.inputKind !== 'microphone';
     $('tj-guide').checked = false;
-    renderStudies(); profile(); refreshDevices(); msg('Entrada ajustada. Ative o áudio e selecione o dispositivo que vai usar.');
+    renderStudies(); profile(); updateTransport(); refreshDevices(); msg(atual.layout === 'piano' || atual.layout === 'drums' ? 'Instrumento selecionado. Veja a demonstração ou ative a entrada MIDI para praticar.' : 'Entrada ajustada. Ative o áudio e selecione o dispositivo que vai usar.');
   }
   function context() {
     var c = input && input.contexto();
@@ -248,7 +261,9 @@
   }
   async function start(mode, resume) {
     if (chartLoading || remoteLoading || !previewReady || (previewMode && mode !== 'demo')) return;
-    if ((mode === 'practice' || mode === 'learn') && !state.connected) { msg('Ative o áudio e selecione o microfone ou a interface antes de praticar.', true); return; }
+    var layout = perfilDoChart(chart).layout, midi = layout === 'piano' || layout === 'drums';
+    if (mode === 'learn' && midi) { msg('Para este instrumento, use a prática No ritmo ou a demonstração.', true); return; }
+    if ((mode === 'practice' || mode === 'learn') && !state.connected) { msg(midi ? 'Ative a entrada MIDI antes de praticar.' : 'Ative o áudio e selecione o microfone ou a interface antes de praticar.', true); return; }
     cancelCalibration(); silence(); var attempt = ++generation;
     try {
       if (remoteAudio && (mode === 'demo' || (mode === 'practice' && $('tj-backing').checked)) && (!media || performance.now() >= remoteAudio.expiresAt)) {
@@ -278,13 +293,14 @@
       state.midiOrigin = performance.now();
       state.endedAt = null; mediaStarting = false; scheduleReset(state.position, startWithCountIn);
       if (media) { media.pause(); media.currentTime = chartToMedia(Math.max(state.from, state.position)); media.playbackRate = state.speed; }
-      text('tj-mode', mode === 'demo' ? 'DEMONSTRAÇÃO · SEM AVALIAÇÃO' : mode === 'learn' ? 'APRENDER · NOTA POR NOTA' : 'PRÁTICA · NOTAS ISOLADAS');
+      text('tj-mode', mode === 'demo' ? 'DEMONSTRAÇÃO · SEM AVALIAÇÃO' : mode === 'learn' ? 'APRENDER · NOTA POR NOTA' : midi ? 'PRÁTICA · ENTRADA MIDI' : 'PRÁTICA · NOTAS ISOLADAS');
       text('tj-pause', 'Pausar');
-      msg(mode === 'demo' ? 'Observe os números das casas chegando à linha de tocar.' : mode === 'learn' ? 'Toque a nota indicada no seu tempo. Ouça a referência ou pule quando precisar.' : 'Toque uma nota por vez. A indicação de corda e casa vem do arranjo.');
+      msg(midi ? (layout === 'piano' ? 'Acompanhe as notas até as teclas correspondentes. Barras simultâneas indicam um acorde.' : 'Acompanhe as batidas até as peças da bateria. × indica chimbal fechado; ○ indica aberto.') : mode === 'demo' ? 'Observe os números das casas chegando à linha de tocar.' : mode === 'learn' ? 'Toque a nota indicada no seu tempo. Ouça a referência ou pule quando precisar.' : 'Toque uma nota por vez. A indicação de corda e casa vem do arranjo.');
       updateScore(); updateTransport();
     } catch (e) { state.running = false; msg('Não consegui iniciar o áudio: ' + e.message, true); }
   }
   function updateTransport() {
+    var perfil = perfilDoInstrumento(state.instrument), midi = perfil.layout === 'drums' || perfil.layout === 'piano';
     var learning = state.trainingMode === 'learn' && state.mode !== 'demo';
     var hasNotes = chart.notes.some(function (n) { return n.time >= state.from && n.time < state.to; });
     $('tj-practice').disabled = !state.connected || state.running || !hasNotes;
@@ -293,16 +309,16 @@
     $('tj-pause').disabled = state.mode === 'idle';
     $('tj-speed').disabled = state.running || learning;
     $('tj-from').disabled = state.running; $('tj-to').disabled = state.running;
-    $('tj-offset').disabled = state.running || learning; $('tj-calibrate').disabled = state.running || !state.connected || learning;
+    $('tj-offset').disabled = state.running || learning; $('tj-calibrate').disabled = state.running || !state.connected || learning || midi;
     $('tj-device').disabled = state.running || state.connecting; $('tj-chart-file').disabled = state.running; $('tj-audio-file').disabled = state.running;
-    $('tj-instrument').disabled = state.running || state.connecting; $('tj-connection-type').disabled = state.running || state.connecting;
+    $('tj-instrument').disabled = state.running || state.connecting; $('tj-connection-type').disabled = state.running || state.connecting || midi;
     $('tj-backing').disabled = state.running || learning;
     $('tj-metronome').disabled = state.running || learning; $('tj-guide').disabled = state.running || learning;
     $('tj-loop').disabled = state.running || learning; $('tj-seek').disabled = learning;
     $('tj-study-mode').disabled = state.running; $('tj-study').disabled = state.running; $('tj-section').disabled = state.running;
     phraseButtons.forEach(function (button) { button.disabled = state.running; });
     $('tj-reset').disabled = state.running;
-    $('tj-gain').disabled = state.running || state.connecting || !!state.calibration;
+    $('tj-gain').disabled = state.running || state.connecting || !!state.calibration || midi;
     $('tj-audio-file').disabled = state.running || source.kind === 'catalog' || previewMode;
     $('tj-remote-audio').hidden = !remoteAudio;
     $('tj-remote-audio').disabled = state.running || chartLoading || remoteLoading;
@@ -349,9 +365,14 @@
     $('tj-study').value = study ? study.id : '';
     text('tj-study-info', study ? study.level + ' · ' + study.objective : source.objective || 'Arranjo importado neste navegador. Use notas isoladas na afinação indicada.');
     var table = $('tj-notes'); table.replaceChildren();
-    chart.notes.slice(0, 80).forEach(function (n) { table.appendChild(el('tr', {}, [el('td', { text: n.time.toFixed(2) + ' s' }), el('td', { text: perfil.layout === 'drums' ? n.drum : noteName(n.midi) }), el('td', { text: perfil.layout === 'drums' ? 'MIDI ' + n.midi : String(n.string) }), el('td', { text: perfil.layout === 'drums' ? 'Vel. ' + n.velocity : String(n.fret) })])); });
-    text('tj-table-note', perfil.layout === 'drums' ? (chart.notes.length > 80 ? 'Primeiras 80 batidas de ' + chart.notes.length + '.' : 'As peças são recebidas pela entrada MIDI.') : chart.notes.length > 80 ? 'Primeiras 80 notas de ' + chart.notes.length + '. A pista usa o arranjo completo.' : 'Corda 1 é a mais aguda; corda ' + perfil.strings + ' é a mais grave.');
-    text('tj-stage-profile', perfil.layout === 'drums' ? 'BATERIA MIDI / CANAL 10' : perfil.strings + ' CORDAS / AFINAÇÃO PADRÃO');
+    var midi = perfil.layout === 'drums' || perfil.layout === 'piano';
+    chart.notes.slice(0, 80).forEach(function (n) {
+      var peca = perfil.layout === 'drums' && perfil.drums.find(function (p) { return p.midi === n.midi; });
+      table.appendChild(el('tr', {}, [el('td', { text: n.time.toFixed(2) + ' s' }), el('td', { text: peca ? peca.label : noteName(n.midi) }), el('td', { text: midi ? n.duration.toFixed(2) + ' s' : String(n.string) }), el('td', { text: midi ? String(n.velocity) : String(n.fret) })]));
+    });
+    text('tj-table-third', midi ? 'Duração' : 'Corda'); text('tj-table-fourth', midi ? 'Intensidade MIDI' : 'Casa');
+    text('tj-table-note', (chart.notes.length > 80 ? 'Primeiras 80 notas de ' + chart.notes.length + '. ' : '') + (perfil.layout === 'piano' ? 'Cada nome inclui a oitava: Dó4 e Dó5 correspondem a teclas diferentes.' : perfil.layout === 'drums' ? 'Cada linha identifica a peça, o momento e a intensidade da batida.' : perfil.id === 'ukulele' ? 'Afinação tradicional reentrante: cordas 4–1 em Sol4, Dó4, Mi4 e Lá4.' : 'Corda 1 é a mais aguda; corda ' + perfil.strings + ' é a mais grave.'));
+    text('tj-stage-profile', perfil.layout === 'drums' ? 'BATERIA MIDI / PISTAS VERTICAIS' : perfil.layout === 'piano' ? 'PIANO / 88 TECLAS · LÁ0–DÓ8' : perfil.strings + ' CORDAS / AFINAÇÃO PADRÃO');
     $('tj-canvas').setAttribute('aria-label', 'Pista de notas de ' + nomeInstrumento(proximo).toLowerCase() + '. Uma tabela das notas está disponível abaixo.');
     selectedRange(); updateScore(); updateTransport();
   }
@@ -502,7 +523,7 @@
     state.connected = s.estado === 'conectado';
     state.connecting = s.estado === 'iniciando';
     text('tj-connection', s.estado === 'conectado' ? (s.nome || 'Entrada MIDI conectada') : s.mensagem || 'Entrada MIDI desligada');
-    if (s.estado === 'conectado') msg('MIDI conectado. Toque a bateria eletrônica para praticar.');
+    if (s.estado === 'conectado') msg('MIDI conectado. Toque seu instrumento para praticar.');
     if (s.estado === 'erro' || s.estado === 'parado') { if (state.mode === 'practice' || state.mode === 'learn') pause(); text('tj-meter', ''); }
     updateTransport();
   }
@@ -555,7 +576,7 @@
       if ((perfilDoInstrumento(state.instrument).layout === 'drums' || perfilDoInstrumento(state.instrument).layout === 'piano') && window.MusiqueTocarMidi) {
         midiInput = midiInput || window.MusiqueTocarMidi.criar({ onEvent: onMidiEvent, onStatus: onMidiStatus });
         await midiInput.iniciar($('tj-device').value || undefined);
-        state.connected = true; msg('MIDI conectado. Toque a bateria eletrônica para praticar.'); updateTransport(); return;
+        state.connected = true; msg('MIDI conectado. Toque seu instrumento para praticar.'); updateTransport(); return;
       }
       var devices = await audioInput().iniciar($('tj-device').value || undefined);
       var selected = input.estado().deviceId;
@@ -612,25 +633,12 @@
     var top=h*0.12, bottom=h*0.86, far=w*0.24, near=w*0.88, center=w*0.5, p=state.position;
     g.clearRect(0,0,w,h); var bg=g.createLinearGradient(0,0,0,h); bg.addColorStop(0,'#111c2d');bg.addColorStop(1,'#1d2d40');g.fillStyle=bg;g.fillRect(0,0,w,h);
     if (perfil.layout === 'drums' || perfil.layout === 'piano') {
-      var pecas = perfil.layout === 'drums' ? (perfil.drums || []) : Array.from({ length: 12 }, function (_, i) { return { id: String(i), label: ['Dó','Dó♯','Ré','Ré♯','Mi','Fá','Fá♯','Sol','Sol♯','Lá','Lá♯','Si'][i], midi: i }; }), aheadDrums = 4.5, laneHeight = (bottom - top) / Math.max(1, pecas.length);
-      var resultDrums = {}, performanceDrums = state.mode === 'learn' ? state.learner : state.mode === 'practice' ? state.judge : null;
-      if (performanceDrums) performanceDrums.estados().forEach(function (s) { resultDrums[s.id] = s.status; });
-      pecas.forEach(function (drum, i) {
-        var y = top + laneHeight * (i + 0.5); g.strokeStyle = '#ccd8e41a'; g.lineWidth = d;
-        g.beginPath(); g.moveTo(w * 0.06, y + laneHeight / 2); g.lineTo(w * 0.94, y + laneHeight / 2); g.stroke();
-        g.fillStyle = '#a8bacb'; g.font = '600 ' + Math.max(10 * d, 12 * d) + 'px system-ui'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(drum.label, w * 0.03, y);
-      });
-      var beat = firstBeatAtOrAfter(chart, p), grid = 0;
-      for (; grid < 64; beat++) { var gt = timeAtBeat(chart, beat); if (gt >= p + aheadDrums) break; var gx = w * 0.1 + Math.max(0, (gt - p) / aheadDrums) * w * 0.82; g.strokeStyle = '#ffffff18'; g.beginPath(); g.moveTo(gx, top); g.lineTo(gx, bottom); g.stroke(); grid++; }
-      chart.notes.slice().reverse().forEach(function (n) {
-        if (n.time < state.from || n.time >= state.to) return; var dt = n.time - p; if (dt < -0.35 || dt > aheadDrums) return;
-        var di = perfil.layout === 'piano' ? n.midi % 12 : pecas.findIndex(function (d) { return d.midi === n.midi; }); if (di < 0) return;
-        var x = w * 0.1 + Math.max(0, dt / aheadDrums) * w * 0.82, y = top + laneHeight * (di + 0.5), status = resultDrums[n.id];
-        g.globalAlpha = dt < 0 ? Math.max(0, 1 + dt / 0.35) : 1; g.fillStyle = status === 'hit' ? '#7ad7ac' : status === 'miss' || status === 'skipped' ? '#b36f70' : COLORS[di % COLORS.length];
-        g.beginPath(); g.roundRect(x - 16 * d, y - 11 * d, 32 * d, 22 * d, 5 * d); g.fill(); g.fillStyle = '#142337'; g.font = '700 ' + 12 * d + 'px system-ui'; g.textAlign = 'center'; g.fillText(status === 'hit' ? '✓' : String(n.velocity || 100), x, y + 1 * d); g.globalAlpha = 1;
-      });
-      g.strokeStyle = '#f2d4a0'; g.lineWidth = 2 * d; g.beginPath(); g.moveTo(w * 0.1, top); g.lineTo(w * 0.1, bottom); g.stroke();
-      g.fillStyle = '#dce5ed'; g.font = '500 ' + 11 * d + 'px system-ui'; g.textAlign = 'left'; g.fillText('PEÇAS MIDI · canal 10', w * 0.1, h * 0.08);
+      var statuses = {}, performanceMidi = state.mode === 'practice' ? state.judge : null, beats = [];
+      if (performanceMidi) performanceMidi.estados().forEach(function (s) { statuses[s.id] = s.status; });
+      for (var beat = firstBeatAtOrAfter(chart, p), grid = 0; grid < 64; beat++, grid++) {
+        var gt = timeAtBeat(chart, beat); if (gt >= p + 4.5) break; beats.push(gt);
+      }
+      (perfil.layout === 'piano' ? Piano : Bateria).desenhar(g, { w:w, h:h, d:d, chart:chart, position:p, from:state.from, to:state.to, statuses:statuses, beats:beats, mode:state.mode, running:state.running });
       return;
     }
     function point(lane, depth) { var k=1-depth, width=far+(near-far)*k*k; return [center-width/2+width*lane/totalCordas, top+(bottom-top)*k*k]; }
@@ -673,18 +681,18 @@
       (data.sessoes||[]).slice(0,5).forEach(function(s){var result=s.mode==='learn'?s.hits+' reconhecidas · '+s.skipped+' puladas':Math.round(s.accuracy)+'%';list.appendChild(el('li',{text:s.title+(s.catalogRef&&s.catalogRef.versionNumber?' · versão '+s.catalogRef.versionNumber:'')+' · '+result+' · '+new Date(s.createdAt).toLocaleDateString('pt-BR')}));});if(!list.children.length)list.appendChild(el('li',{text:'Sua primeira rodada guardada aparecerá aqui.'}));
     } catch(_) { text('tj-history-label','Histórico temporariamente indisponível.'); }
   }
-  app.innerHTML = '<div class="tj-heading"><div><p class="tj-eyebrow">MUSIQUE / PRÁTICA COM INSTRUMENTO</p><h1>Tocar junto<span id="tj-instrument-label">Violão</span></h1><p class="tj-intro">Seu instrumento. Uma nota de cada vez. Um pouco melhor a cada rodada.</p></div><a id="tj-back" class="tj-back" href="/music/tutor-braco?i=violao">Tutor de braço ↗</a></div>'+
+  app.innerHTML = '<div class="tj-heading"><div><p class="tj-eyebrow">MUSIQUE / PRÁTICA COM INSTRUMENTO</p><h1>Tocar junto<span id="tj-instrument-label">Violão</span></h1><p class="tj-intro">Escolha seu instrumento e acompanhe as notas na pista.</p></div><a id="tj-back" class="tj-back" href="/music/tutor-braco?i=violao">Tutor de braço ↗</a></div>'+
     '<section id="tj-catalog" class="tj-panel tj-catalog"></section><p id="tj-preview-notice" class="tj-capture-tip" hidden>Prévia privada do rascunho · apenas demonstração, sem captura ou resultados. <a href="/music/tocar/gerenciar">Voltar à gestão</a></p>'+
     '<div class="tj-layout"><section class="tj-main" aria-label="Pista e reprodução"><div class="tj-song"><div class="tj-art" aria-hidden="true">♩</div><div><p id="tj-source" class="tj-caption"></p><h2 id="tj-song-title"></h2><p id="tj-song-info"></p></div><span class="tj-badge">PROTÓTIPO</span></div>'+
     '<div class="tj-study-controls"><label class="tj-field">Estudos<select id="tj-study" aria-describedby="tj-study-info"><option value="">Arranjo importado</option></select></label><label class="tj-field">Como praticar<select id="tj-study-mode" aria-describedby="tj-learning-help"><option value="practice" selected>No ritmo</option><option value="learn">Aprender nota por nota</option></select></label><p id="tj-study-info" class="tj-muted"></p><p id="tj-learning-help" class="tj-small">No ritmo, acompanhe o tempo. Ao aprender, cada nota espera por você, sem avaliação de ritmo.</p><div id="tj-phrases" class="tj-phrases" role="group" aria-label="Escolha uma frase ou a música inteira"></div></div>'+
-    '<div class="tj-stage"><div class="tj-stage-top"><span id="tj-mode">PRONTO PARA TOCAR</span><span id="tj-stage-profile">6 CORDAS / AFINAÇÃO PADRÃO</span></div><canvas id="tj-canvas" aria-label="Pista de notas de violão e guitarra. Uma tabela das notas está disponível abaixo."></canvas><span id="tj-count" aria-live="off"></span></div>'+
+    '<div id="tj-stage" class="tj-stage"><div class="tj-stage-top"><span id="tj-mode">PRONTO PARA TOCAR</span><span id="tj-stage-profile">6 CORDAS / AFINAÇÃO PADRÃO</span></div><div class="tj-stage-scroll" tabindex="0" role="region" aria-label="Pista do instrumento; use as setas para rolar em telas pequenas"><canvas id="tj-canvas" aria-describedby="tj-stage-help" aria-label="Pista de notas de violão e guitarra. Uma tabela das notas está disponível abaixo."></canvas></div><span id="tj-count" aria-live="off"></span><p id="tj-stage-help" class="tj-stage-help"></p></div>'+
     '<section id="tj-learn-panel" class="tj-learn-panel" aria-label="Nota para aprender" hidden><div><p class="tj-caption">SUA PRÓXIMA NOTA</p><h3 id="tj-target" aria-live="polite" aria-atomic="true"></h3><p id="tj-target-help"></p></div><div class="tj-learn-actions"><button id="tj-hear-note" aria-describedby="tj-guide-help" disabled>Ouvir nota</button><button id="tj-skip" disabled>Pular nota</button></div><p id="tj-guide-help" class="tj-small">A referência toca só quando você pede. Espere o som terminar e toque de novo; use fones. Corda e casa são sugestões do arranjo.</p></section>'+
     '<div class="tj-transport"><div class="tj-seek-row"><label class="tj-sr" for="tj-seek">Posição na música</label><input id="tj-seek" type="range" min="0" step="0.1" value="0"><span id="tj-clock"></span></div><div class="tj-actions"><button id="tj-practice" class="tj-primary" disabled>▶ Praticar</button><button id="tj-demo">Ouvir demonstração</button><button id="tj-pause" disabled>Pausar</button><button id="tj-stop" aria-label="Parar e voltar ao início do trecho">■ Parar</button><label class="tj-speed">Velocidade<select id="tj-speed"><option value="0.5">50%</option><option value="0.75">75%</option><option value="1" selected>100%</option><option value="1.25">125%</option></select></label></div><div class="tj-options"><label><input type="checkbox" id="tj-metronome"> Metrônomo</label><label><input type="checkbox" id="tj-guide"> Nota-guia</label><label><input type="checkbox" id="tj-backing"> Acompanhamento</label><span id="tj-media-label">Acompanhamento do estudo</span></div></div>'+
     '<div class="tj-range-overview"><div class="tj-range-track" aria-hidden="true"><span id="tj-range-fill"></span></div><p id="tj-range-label"></p></div><p id="tj-status" class="tj-status" role="status">Ouça a demonstração ou ative o microfone para começar.</p><div class="tj-score"><div><span id="tj-hits-label">ACERTOS</span><strong id="tj-hits">—</strong></div><div><span id="tj-misses-label">A REVER</span><strong id="tj-misses">—</strong></div><div id="tj-accuracy-panel"><span>PRECISÃO</span><strong id="tj-accuracy">—</strong></div><div class="tj-score-note"><p id="tj-score-label"></p><button id="tj-save" disabled>Guardar rodada</button></div></div></section>'+
     '<aside class="tj-sidebar"><section class="tj-panel"><p class="tj-step">01 / SEU INSTRUMENTO</p><h2 id="tj-input-title">Prepare o microfone</h2><div class="tj-input-choices"><label class="tj-field">Instrumento<select id="tj-instrument"><option value="violao" selected>Violão</option><option value="guitarra">Guitarra</option><option value="baixo">Contrabaixo de 4 cordas</option></select></label><label class="tj-field">Como captar o som<select id="tj-connection-type"><option value="microphone" selected>Microfone</option><option value="interface">Interface · instrumento por cabo</option><option value="realtone">Cabo USB Real Tone</option></select></label></div><p id="tj-input-help" class="tj-muted"></p><button id="tj-connect" class="tj-primary tj-wide">Ativar microfone</button><p id="tj-connection" class="tj-connection">Entrada desligada</p><label class="tj-field">Entrada de áudio<select id="tj-device"><option value="">Entrada padrão do sistema</option></select></label><div class="tj-capture-gain"><div><label for="tj-gain">Nível de captação</label><output id="tj-gain-value" for="tj-gain"></output></div><input id="tj-gain" type="range" min="0" max="18" step="3" value="6" aria-describedby="tj-gain-help"><p id="tj-gain-help">Aumente se o instrumento estiver baixo. Reduza se houver ruído ou sinal alto. Pause a prática para ajustar.</p></div><p id="tj-listening-help" class="tj-capture-tip"></p><div class="tj-level"><label for="tj-meter" id="tj-input-level">Aguardando conexão</label><meter id="tj-meter" min="0" max="1" low="0.03" high="0.8" optimum="0.35" value="0"></meter></div><div class="tj-tuner"><span>AFINAÇÃO</span><strong id="tj-note">—</strong><small id="tj-cents">Aguardando sinal</small><div class="tj-tuner-line"><i id="tj-tuner-dot"></i></div></div></section>'+
     '<section class="tj-panel"><p class="tj-step">02 / SEU TRECHO</p><h2>Pratique por partes</h2><label class="tj-field">Frase ou música inteira<select id="tj-section"></select></label><div class="tj-range"><label>De (segundos)<input id="tj-from" type="number" min="0" step="0.1" value="0"></label><label>Até (segundos)<input id="tj-to" type="number" min="0.5" step="0.1"></label></div><label class="tj-check"><input id="tj-loop" type="checkbox"> Repetir este trecho no ritmo</label><label class="tj-field">Compensação de atraso (ms)<input id="tj-offset" type="number" min="-500" max="500" step="5" value="0"></label><button id="tj-calibrate" class="tj-wide" disabled>Ajustar com cliques</button><div id="tj-cal-panel" hidden><p id="tj-cal-result"></p><button id="tj-use-cal" disabled>Usar estimativa</button><button id="tj-cancel-cal">Cancelar</button></div><p class="tj-small">A compensação corrige o sincronismo no modo No ritmo. Use fone com fio e valide o ajuste tocando.</p></section></aside></div>'+
-    '<div class="tj-bottom"><details class="tj-panel"><summary>Praticar outra música</summary><p>Carregue um arranjo com notas e tempos e o áudio correspondente. Os arquivos ficam neste navegador.</p><div class="tj-files"><label>1. Arranjo JSON<input id="tj-chart-file" type="file" accept=".json,application/json"></label><label>2. Áudio da música<input id="tj-audio-file" type="file" accept="audio/*"></label></div><button id="tj-download">Baixar arranjo de exemplo</button><button id="tj-reset">Voltar ao estudo original</button><p class="tj-small">O MP3 sozinho não define as notas da pista. Este protótipo trabalha com notas isoladas, sem acordes simultâneos.</p></details><section class="tj-panel tj-history-panel"><h2>Sua prática</h2><p id="tj-history-label"></p><ul id="tj-history"></ul></section></div>'+
-    '<details class="tj-panel tj-notes-panel"><summary>Notas do arranjo · versão em tabela</summary><p id="tj-table-note"></p><table><thead><tr><th>Tempo</th><th>Nota</th><th>Corda</th><th>Casa</th></tr></thead><tbody id="tj-notes"></tbody></table></details><p class="tj-footnote">Feedback de estudo, sem nota escolar. O áudio identifica a altura; corda e casa são posições sugeridas pelo arranjo. Reconhecimento de acordes não está incluído neste protótipo.</p>';
+    '<div class="tj-bottom"><details class="tj-panel"><summary>Praticar outra música</summary><p>Carregue um arranjo com notas e tempos e o áudio correspondente. Os arquivos ficam neste navegador.</p><div class="tj-files"><label>1. Arranjo JSON<input id="tj-chart-file" type="file" accept=".json,application/json"></label><label>2. Áudio da música<input id="tj-audio-file" type="file" accept="audio/*"></label></div><button id="tj-download">Baixar arranjo de exemplo</button><button id="tj-reset">Voltar ao estudo original</button><p class="tj-small">O MP3 sozinho não define as notas da pista. Cordas usam notas isoladas; piano e bateria MIDI aceitam notas simultâneas.</p></details><section class="tj-panel tj-history-panel"><h2>Sua prática</h2><p id="tj-history-label"></p><ul id="tj-history"></ul></section></div>'+
+    '<details class="tj-panel tj-notes-panel"><summary>Notas do arranjo · versão em tabela</summary><p id="tj-table-note"></p><table><thead><tr><th>Tempo</th><th>Nota</th><th id="tj-table-third">Corda</th><th id="tj-table-fourth">Casa</th></tr></thead><tbody id="tj-notes"></tbody></table></details><p id="tj-footnote" class="tj-footnote"></p>';
   $('tj-media-label').parentNode.appendChild(el('button',{id:'tj-remote-audio',type:'button',text:'Recarregar áudio',hidden:''}));
   renderStudies();
   if(previewMode){$('tj-catalog').hidden=true;$('tj-preview-notice').hidden=false;}
@@ -732,6 +740,6 @@
   if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'cavaquinho'; })) $('tj-instrument').appendChild(el('option', { value: 'cavaquinho', text: 'Cavaquinho' }));
   if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'ukulele'; })) $('tj-instrument').appendChild(el('option', { value: 'ukulele', text: 'Ukulele' }));
   if (!Array.prototype.some.call($('tj-instrument').children || [], function (o) { return o.value === 'bandolim'; })) $('tj-instrument').appendChild(el('option', { value: 'bandolim', text: 'Bandolim de 5 cordas' }));
-  if (!Array.prototype.some.call($('tj-connection-type').children || [], function (o) { return o.value === 'midi'; })) $('tj-connection-type').appendChild(el('option', { value: 'midi', text: 'Web MIDI · bateria eletrônica' }));
+  if (!Array.prototype.some.call($('tj-connection-type').children || [], function (o) { return o.value === 'midi'; })) $('tj-connection-type').appendChild(el('option', { value: 'midi', text: 'Web MIDI · piano ou bateria' }));
   profile();applyChart(chart);if(previewMode)openPreview();else{refreshDevices();history();}tick();
 })();

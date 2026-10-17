@@ -73,6 +73,12 @@
   function render() {
     var pendente = importacaoPendente();
     fields.forEach(function (id) { $(id).disabled = busy || pendente || (id === 'tg-work' && !!current) || (editorPending && ['tg-json','tg-midi','tg-musicxml','tg-example','tg-use-example'].includes(id)); });
+    var perfilImportacao = perfilSelecionado();
+    var midiInstrument = perfilImportacao && (perfilImportacao.layout === 'piano' || perfilImportacao.layout === 'drums');
+    if (midiInstrument) $('tg-musicxml').disabled = true;
+    $('tg-import-help').textContent = midiInstrument
+      ? (perfilImportacao.layout === 'piano' ? 'Piano: use MIDI (.mid ou .midi). Acordes, oitavas e intensidades são preservados; pedal de sustentação e sostenuto ainda não são aceitos.' : 'Bateria: use MIDI (.mid ou .midi) no canal 10 com as peças oferecidas no editor.') + ' MusicXML/MXL está disponível para instrumentos de cordas.'
+      : 'MIDI, MusicXML e MXL importam uma linha de notas isoladas para a afinação selecionada. Confira as posições sugeridas antes de publicar.';
     var temMidia = !!$('tg-media').value;
     if (!temMidia) $('tg-media-offset').value = '0';
     $('tg-media-offset').disabled = $('tg-media-offset').disabled || !temMidia;
@@ -171,9 +177,15 @@
     $('tg-midi-info').textContent = descricaoImportacao(importacao.analysis);
     if (!candidate) {
       var unavailable = (importacao.analysis.candidates || []).filter(function (item) { return item && item.valid !== true; });
-      $('tg-midi-detail').textContent = unavailable.length ? 'Escolha uma linha disponível. As linhas indisponíveis mostram o motivo abaixo.' : 'Nenhuma linha ' + tipo + ' foi encontrada neste arquivo.';
+      var available = (importacao.analysis.candidates || []).some(function (item) { return item && item.valid === true; });
+      $('tg-midi-detail').textContent = available ? 'Escolha uma linha disponível na lista e confirme para importar.' : unavailable.length ? 'As linhas deste arquivo estão indisponíveis; veja o motivo ao lado de cada linha.' : 'Nenhuma linha ' + tipo + ' foi encontrada neste arquivo.';
     } else {
-      $('tg-midi-detail').textContent = textoCandidato(candidate) + ' · pronta para importar. A posição sugerida de cada nota poderá ser ajustada no editor.';
+      var perfil = Perfis.obter(importacao.perfil);
+      var orientacao = perfil && perfil.layout === 'piano'
+        ? 'As teclas, os acordes, as durações e as intensidades serão preservados no editor.'
+        : perfil && perfil.layout === 'drums' ? 'As peças, os tempos e as intensidades serão preservados no editor.'
+          : 'A posição sugerida de cada nota poderá ser ajustada no editor.';
+      $('tg-midi-detail').textContent = textoCandidato(candidate) + ' · pronta para importar. ' + orientacao;
     }
   }
   function mostrarAnaliseImportacao(tipo, importador, analysis, fileName) {
@@ -347,7 +359,7 @@
     '<section class="tj-panel"><h2>Rascunho e publicação</h2><p id="tg-version"></p><div class="tg-search"><label>Buscar obra própria<input id="tg-work-q" type="search"></label><button id="tg-work-search">Buscar obra</button></div><label class="tj-field">Obra do seu acervo<select id="tg-work"><option value="">Selecione uma obra do seu acervo</option></select></label><div class="tj-catalog-pages"><button id="tg-work-prev" disabled>Anterior</button><button id="tg-work-next" disabled>Próxima</button></div><p id="tg-work-empty" hidden>Nenhuma obra encontrada. <a href="/music/app#biblioteca">Abra o acervo para cadastrar uma obra.</a></p><p id="tg-visibility" class="tj-small"></p>' +
     '<div class="tg-grid"><label class="tj-field">Título do arranjo<input id="tg-title" maxlength="120"></label><label class="tj-field">Instrumento<select id="tg-instrument"></select></label><label class="tj-field">Nível<select id="tg-level"></select></label><label class="tj-field">Técnica<select id="tg-technique"></select></label></div>' +
     '<label class="tj-field">Objetivo do estudo<input id="tg-objective" maxlength="500"></label><label class="tj-field">Autoria, créditos e procedência<input id="tg-credits" maxlength="500"></label><label class="tj-field">Áudio já vinculado à obra<select id="tg-media"><option value="">Sem áudio associado · usar demonstração sintetizada</option></select></label><label class="tj-field">O 0:00 do arranjo ocorre em (ms)<input id="tg-media-offset" type="number" min="0" max="600000" step="1" inputmode="numeric" value="0" aria-describedby="tg-media-offset-help"></label><p id="tg-media-offset-help" class="tj-small"></p><button id="tg-media-more" type="button" hidden>Carregar mais áudios desta obra</button><div id="tg-waveform"></div>' +
-    '<p class="tj-small">Arquivos de áudio são geridos no acervo. Crie notas para instrumentos de cordas, piano MIDI ou bateria eletrônica. MP3 sozinho não cria um arranjo.</p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label><label class="tj-field">Importar MIDI (até 512 KiB, lido somente neste navegador)<input id="tg-midi" type="file" accept=".mid,.midi,audio/midi,audio/x-midi"></label><label class="tj-field">Importar MusicXML ou MXL (até 2 MiB, lido somente neste navegador)<input id="tg-musicxml" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/xml,text/xml"></label><section id="tg-midi-preview" class="tj-field" aria-live="polite" hidden><p id="tg-midi-info"></p><label><span id="tg-import-line-label">Linha MIDI</span><select id="tg-midi-candidates"><option value="">Escolha uma linha MIDI disponível</option></select></label><p id="tg-midi-detail" class="tj-small"></p><div class="tg-actions"><button id="tg-midi-confirm" type="button" disabled>Importar esta linha</button><button id="tg-midi-cancel" type="button">Cancelar importação MIDI</button></div></section>' +
+    '<p class="tj-small">Arquivos de áudio são geridos no acervo. Crie notas para instrumentos de cordas, piano MIDI ou bateria eletrônica. MP3 sozinho não cria um arranjo.</p><p id="tg-import-help" class="tj-small"></p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label><label class="tj-field">Importar MIDI (até 512 KiB, lido somente neste navegador)<input id="tg-midi" type="file" accept=".mid,.midi,audio/midi,audio/x-midi"></label><label class="tj-field">Importar MusicXML ou MXL (até 2 MiB, lido somente neste navegador)<input id="tg-musicxml" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/xml,text/xml"></label><section id="tg-midi-preview" class="tj-field" aria-live="polite" hidden><p id="tg-midi-info"></p><label><span id="tg-import-line-label">Linha MIDI</span><select id="tg-midi-candidates"><option value="">Escolha uma linha MIDI disponível</option></select></label><p id="tg-midi-detail" class="tj-small"></p><div class="tg-actions"><button id="tg-midi-confirm" type="button" disabled>Importar esta linha</button><button id="tg-midi-cancel" type="button">Cancelar importação MIDI</button></div></section>' +
     '<div class="tg-search"><label>Começar de um estudo original<select id="tg-example"></select></label><button id="tg-use-example" type="button">Usar cópia do estudo</button></div><p id="tg-chart-info"></p>' +
     '<div id="tg-editor"></div>' +
     '<div class="tg-actions"><button id="tg-save" type="button">Salvar rascunho</button><a id="tg-preview" target="_blank" rel="noopener" hidden>Revisar na pista ↗</a><button id="tg-publish" type="button" disabled>Publicar nova versão</button><button id="tg-withdraw" type="button" disabled>Retirar publicação</button><button id="tg-reload" type="button" disabled>Recarregar revisão salva (descarta alterações)</button><button id="tg-download" type="button">Baixar JSON do formulário</button></div><p class="tj-small">Publicar cria uma versão preservada. Editar depois prepara outro rascunho; retirar não apaga o histórico.</p><h3>Versões publicadas</h3><ul id="tg-versions"></ul></section></div>';
@@ -411,6 +423,10 @@
     if (busy || editorPending || importacaoPendente() || !file) return;
     var ticket = ++importTicket, rotulo = tipo === 'musicxml' ? 'MusicXML/MXL' : 'MIDI', limiteTexto = limite === 512 * 1024 ? '512 KiB' : '2 MiB';
     var perfil = $('tg-instrument').value;
+    var perfilDoArquivo = Perfis.obter(perfil);
+    if (tipo === 'musicxml' && perfilDoArquivo && (perfilDoArquivo.layout === 'piano' || perfilDoArquivo.layout === 'drums')) {
+      message('MusicXML/MXL está disponível para instrumentos de cordas. Para piano ou bateria, escolha um arquivo MIDI (.mid ou .midi).', true); return;
+    }
     importacao = { tipo: tipo, importador: importador, analysis: null, fileName: file.name || '', perfil: perfil, status: 'reading' };
     render();
     try {
@@ -448,10 +464,12 @@
       var title = usarTitulo ? tituloImportacaoSeguro(pendente.fileName, pendente.tipo, pendente.analysis.title) : $('tg-title').value.trim();
       var novoId = pendente.tipo === 'musicxml' ? 'musicxml-importado' : 'midi-importado';
       var next = Core.validarChart(pendente.importador.criarChart(pendente.analysis, candidate.id, { id: chart && chart.id ? chart.id : novoId, title: title, perfil: pendente.perfil }));
+      var proximoInstrumento = instrumentoDoChart(next, pendente.perfil);
       editor.carregar(next); ++importTicket; chart = next;
+      $('tg-instrument').value = proximoInstrumento;
       if (usarTitulo) $('tg-title').value = title;
       limparImportacao(); dirty = true; render();
-      message('Linha ' + rotulo + ' importada. Revise as posições no editor, salve o rascunho e confira na pista antes de publicar.');
+      message('Linha ' + rotulo + ' importada. Revise as notas no editor, salve o rascunho e confira na pista antes de publicar.');
     } catch (e) { message('Não foi possível importar esta linha ' + rotulo + ': ' + e.message, true); }
   });
   $('tg-use-example').addEventListener('click', function () {

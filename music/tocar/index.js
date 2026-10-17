@@ -16,6 +16,7 @@ const ARQUIVOS = Object.freeze([
   'formato-catalogo.js', 'catalogo-cliente.js', 'gerenciar.js',
   'editor-nucleo.js', 'editor-cliente.js', 'editor.css', 'importador-midi.js', 'importador-musicxml.js',
   'waveform.js', 'waveform-cliente.js',
+  'pista-piano.js', 'pista-bateria.js',
 ]);
 
 function invalido(mensagem) {
@@ -127,8 +128,10 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/estudos.js" defer></script>
 <script src="/music/tocar/formato-catalogo.js" defer></script>
 <script src="/music/tocar/catalogo-cliente.js" defer></script>
+<script src="/music/tocar/pista-piano.js" defer></script>
+<script src="/music/tocar/pista-bateria.js" defer></script>
 <script src="/music/tocar/cliente.js" defer></script>`;
-    res.set('Cache-Control', 'no-store').type('html').send(layout('Tocar junto · violão, guitarra e contrabaixo | Musique', corpo, {
+    res.set('Cache-Control', 'no-store').type('html').send(layout('Tocar junto · prática com instrumentos | Musique', corpo, {
       caminho: '/music/tocar', noApp: estado.logado,
       descricao: 'Pratique violão, guitarra ou contrabaixo pelo microfone, interface de áudio ou cabo Real Tone, com pista e afinador. Notas isoladas analisadas no seu aparelho.',
     }));

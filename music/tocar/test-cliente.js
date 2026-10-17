@@ -141,11 +141,11 @@ function montar(options = {}) {
     return { ok: true, json: async () => ({ sessoes: options.history || [], arranjos: [], total: 0 }) };
   }
   const window = new Eventos();
-  Object.assign(window, { devicePixelRatio: 1, location: {search: options.search || ''}, AudioContext: Contexto, Audio: Media, MusiqueTocarCore: Core, MusiqueTocarAudio: audio, MusiqueTocarAprender: Aprender, MusiqueTocarEstudos: Estudos, MusiqueTocarFormatoCatalogo: Formato, MusiqueTocarPerfis: Perfis });
-  const sandbox = { window, document, console, fetch, Blob, URLSearchParams, performance: { now: () => now * 1000 }, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
+  Object.assign(window, { devicePixelRatio: 1, location: {search: options.search || ''}, TextDecoder, TextEncoder, DecompressionStream, Blob, AudioContext: Contexto, Audio: Media, MusiqueTocarCore: Core, MusiqueTocarAudio: audio, MusiqueTocarAprender: Aprender, MusiqueTocarEstudos: Estudos, MusiqueTocarFormatoCatalogo: Formato, MusiqueTocarPerfis: Perfis });
+  const sandbox = { window, document, console, fetch, Blob, TextDecoder, TextEncoder, DecompressionStream, URLSearchParams, performance: { now: () => now * 1000 }, URL: { createObjectURL: () => 'blob:local-test-' + (++sequence), revokeObjectURL: url => revoked.push(url) },
     requestAnimationFrame: fn => { const id = ++sequence; rafs.set(id, fn); return id; }, cancelAnimationFrame: id => rafs.delete(id),
     setTimeout: (fn, ms) => { const id = ++sequence; timers.set(id, { at: now + ms / 1000, fn }); return id; }, clearTimeout: id => timers.delete(id) };
-  const scripts = options.page === 'gestao' ? ['editor-nucleo.js','editor-cliente.js','importador-midi.js','importador-musicxml.js','waveform.js','waveform-cliente.js'] : ['catalogo-cliente.js','cliente.js'];
+  const scripts = options.page === 'gestao' ? ['editor-nucleo.js','editor-cliente.js','importador-midi.js','importador-musicxml.js','waveform.js','waveform-cliente.js'] : ['catalogo-cliente.js','pista-piano.js','pista-bateria.js','cliente.js'];
   scripts.forEach(file => vm.runInNewContext(fs.readFileSync(path.join(__dirname, file), 'utf8'), sandbox, { filename: file }));
   if (options.page === 'gestao') {
     if (options.importador) window.MusiqueTocarImportadorMidi = options.importador;
@@ -898,6 +898,48 @@ test('Resposta de guardar antiga não marca uma nova rodada como guardada',async
 test('Histórico do catálogo mostra versão e preserva sessões legadas',async()=>{
   const h=montar({logado:true,history:[{title:'Estudo',mode:'learn',hits:2,skipped:0,createdAt:'2026-10-15',catalogRef:{versionNumber:4}},{title:'Local',accuracy:80,createdAt:'2026-10-15'}]});await h.settle();
   assert.match(h.$('tj-history').children[0].textContent,/versão 4/);assert.doesNotMatch(h.$('tj-history').children[1].textContent,/versão/);
+});
+
+test('Piano mostra 88 teclas, tabela com duração e animação que respeita pausa e busca', async () => {
+  const h = montar();
+  await h.event('tj-study-mode', 'change', 'learn');
+  await h.event('tj-instrument', 'change', 'piano');
+  assert.equal(h.$('tocar-app').getAttribute('data-layout'), 'piano');
+  assert.match(h.$('tj-stage-profile').textContent, /88 TECLAS/);
+  assert.equal(h.$('tj-study-mode').value, 'practice');
+  assert.equal(h.$('tj-study-mode').children[1].disabled, true);
+  assert.equal(h.$('tj-table-third').textContent, 'Duração');
+  assert.doesNotMatch(h.$('tj-notes').textContent, /undefined/);
+  assert.doesNotMatch(h.$('tj-table-note').textContent, /corda/i);
+  const frames = [], desenhar = h.window.MusiqueTocarPiano.desenhar;
+  h.window.MusiqueTocarPiano.desenhar = (g, o) => { frames.push(o.position); return desenhar(g, o); };
+  await h.event('tj-demo', 'click'); await h.advance(.2);
+  assert.ok(frames.at(-1) > frames[0], 'Demonstração avança pelo relógio');
+  assert.match(h.$('tj-status').textContent, /teclas/);
+  await h.event('tj-pause', 'click'); const pausado = frames.at(-1);
+  await h.advance(.2); assert.equal(frames.at(-1), pausado);
+  await h.event('tj-seek', 'input', '8'); await h.advance(.02);
+  assert.equal(frames.at(-1), 8);
+  await h.event('tj-stop', 'click');
+  await h.event('tj-instrument', 'change', 'violao');
+  assert.equal(h.$('tj-study-mode').children[1].disabled, false);
+  assert.equal(h.$('tj-table-third').textContent, 'Corda');
+  assert.equal(h.$('tj-stage').getAttribute('data-layout'), 'fretboard');
+});
+
+test('Bateria usa o desenho vertical do kit e não pede hardware para demonstração', async () => {
+  const h = montar(); await h.event('tj-instrument', 'change', 'bateria');
+  const frames = [], desenhar = h.window.MusiqueTocarBateria.desenhar;
+  h.window.MusiqueTocarBateria.desenhar = (g, o) => { frames.push(o.position); return desenhar(g, o); };
+  assert.match(h.$('tj-stage-help').textContent, /Crash e ride/);
+  assert.match(h.$('tj-stage-profile').textContent, /VERTICAIS/);
+  assert.equal(h.$('tj-table-fourth').textContent, 'Intensidade MIDI');
+  assert.match(h.$('tj-notes').textContent, /Chimbal fechado/);
+  assert.equal(h.$('tj-gain').disabled, true);
+  await h.event('tj-demo', 'click'); await h.advance(.15);
+  assert.ok(frames.at(-1) > frames[0]);
+  assert.equal(h.inputs.flatMap(i => i.calls).length, 0);
+  assert.match(h.$('tj-status').textContent, /peças da bateria/);
 });
 
 module.exports = { montar, pequeno, resposta, documento };

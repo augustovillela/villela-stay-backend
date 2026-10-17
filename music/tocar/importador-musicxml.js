@@ -35,12 +35,12 @@
       'Perfil de instrumento inválido.');
     exigir(Number.isInteger(origem.frets) && origem.frets >= 0 && origem.frets <= 24, 'Perfil de instrumento inválido.');
     var tuning = origem.tuning.slice();
-    tuning.forEach(function (midi, indice) {
+    tuning.forEach(function (midi) {
       exigir(Number.isInteger(midi) && midi >= 0 && midi <= 103, 'Perfil de instrumento inválido.');
-      if (indice) exigir(midi > tuning[indice - 1], 'Perfil de instrumento inválido.');
     });
-    return { id: origem.id, tuning: tuning, strings: origem.strings, frets: origem.frets,
-      minMidi: tuning[0], maxMidi: tuning[tuning.length - 1] + origem.frets };
+    // A ordem identifica as cordas físicas e deve permanecer intacta em afinações reentrantes.
+    return { id: origem.id, label: origem.label, tuning: tuning, strings: origem.strings, frets: origem.frets,
+      minMidi: Math.min.apply(null, tuning), maxMidi: Math.max.apply(null, tuning) + origem.frets };
   }
   function perfilDaAnalise(opcoes) {
     if (opcoes === undefined) return perfilPorId('violao');
@@ -64,7 +64,7 @@
     return ['Dó', 'Dó#', 'Ré', 'Ré#', 'Mi', 'Fá', 'Fá#', 'Sol', 'Sol#', 'Lá', 'Lá#', 'Si'][midi % 12] + (Math.floor(midi / 12) - 1);
   }
   function descricaoExtensao(perfil) { return nomeMidi(perfil.minMidi) + '–' + nomeMidi(perfil.maxMidi); }
-  function nomeDoInstrumento(perfil) { return perfil.strings === 4 ? 'baixo' : 'guitarra'; }
+  function nomeDoInstrumento(perfil) { return perfil.label || perfil.id; }
 
   function bytesDaEntrada(entrada) {
     var tag = Object.prototype.toString.call(entrada);
@@ -753,19 +753,33 @@
     }
     return evento.time + (beat - evento.beat) * 60 / evento.bpm;
   }
+  function normalizarFronteiras(duracao, minimo, maximo) {
+    // A subtração de tempos e a soma de compassos podem deixar resíduos binários
+    // nas fronteiras. Não arredondamos durações musicais entre esses limites.
+    if (Math.abs(duracao - minimo) <= EPS) return minimo;
+    if (Math.abs(duracao - maximo) <= EPS) return maximo;
+    return duracao;
+  }
+  function duracaoDaNota(nota, mapa) {
+    return normalizarFronteiras(segundosNaBatida(nota.endBeat, mapa) - segundosNaBatida(nota.startBeat, mapa), 0.04, 60);
+  }
   function copiarTempo(evento) { return { time: evento.time, beat: evento.beat, bpm: evento.bpm }; }
   function mapaRelevante(mapa, duracao) {
     var relevantes = mapa.filter(function (evento) { return evento.time < duracao - EPS; }).map(copiarTempo);
     if (!relevantes.length) relevantes.push(copiarTempo(mapa[0]));
     return relevantes;
   }
-  function posicaoSugerida(midi, perfil) {
+  function posicoesPossiveis(midi, perfil) {
     var opcoes = [];
     for (var corda = perfil.strings; corda >= 1; corda--) {
       var casa = midi - perfil.tuning[perfil.strings - corda];
       if (casa >= 0 && casa <= perfil.frets) opcoes.push({ string: corda, fret: casa });
     }
     opcoes.sort(function (a, b) { return a.fret - b.fret || b.string - a.string; });
+    return opcoes;
+  }
+  function posicaoSugerida(midi, perfil) {
+    var opcoes = posicoesPossiveis(midi, perfil);
     if (!opcoes.length) throw new Error('Não há posição de ' + nomeDoInstrumento(perfil) + ' para MIDI ' + midi + '.');
     return opcoes[0];
   }
@@ -779,7 +793,7 @@
         var semitones = 0;
         transposicoes.forEach(function (evento) { if (evento.beat <= nota.startBeat + EPS) semitones = evento.semitones; });
         nota.midi = nota.midiBase + semitones;
-        if (nota.midi < perfil.minMidi || nota.midi > perfil.maxMidi) {
+        if (!posicoesPossiveis(nota.midi, perfil).length) {
           adicionarProblema(linha, 'A linha contém notas fora da extensão ' + descricaoExtensao(perfil) + '.');
         }
         if (nota.tab && perfil.tuning[perfil.strings - nota.tab.string] + nota.tab.fret !== nota.midi) nota.tab = null;
@@ -794,15 +808,16 @@
         fimAnterior = Math.max(fimAnterior, nota.endBeat);
         minMidi = minMidi === null ? nota.midi : Math.min(minMidi, nota.midi);
         maxMidi = maxMidi === null ? nota.midi : Math.max(maxMidi, nota.midi);
-        var inicioSegundos = segundosNaBatida(nota.startBeat, mapa);
         var fimSegundos = segundosNaBatida(nota.endBeat, mapa);
-        if (fimSegundos - inicioSegundos < 0.04 - EPS || fimSegundos - inicioSegundos > 60 + EPS) {
+        var duracaoNota = duracaoDaNota(nota, mapa);
+        if (duracaoNota < 0.04 || duracaoNota > 60) {
           adicionarProblema(linha, 'A linha contém duração de nota fora do intervalo de 0,04 a 60 segundos.');
         }
         fim = Math.max(fim, fimSegundos);
       });
-      if (fim > LIMITE_DURACAO + EPS) adicionarProblema(linha, 'A linha excede a duração máxima de 900 segundos.');
-      linha.duration = fim;
+      linha.duration = normalizarFronteiras(fim, 0.04, LIMITE_DURACAO);
+      if (linha.duration < 0.04) adicionarProblema(linha, 'A linha deve durar ao menos 0,04 segundos.');
+      if (linha.duration > LIMITE_DURACAO) adicionarProblema(linha, 'A linha excede a duração máxima de 900 segundos.');
       linha.minMidi = minMidi;
       linha.maxMidi = maxMidi;
       return linha;
@@ -884,9 +899,8 @@
     var perfil = perfilDaCriacao(opcoes, privado.perfil);
     var notas = linha.notes.map(function (nota, indice) {
       var inicio = segundosNaBatida(nota.startBeat, privado.tempoMap);
-      var fim = segundosNaBatida(nota.endBeat, privado.tempoMap);
       var posicao = nota.tab || posicaoSugerida(nota.midi, perfil);
-      return { id: 'musicxml-' + (indice + 1), time: inicio, duration: fim - inicio,
+      return { id: 'musicxml-' + (indice + 1), time: inicio, duration: duracaoDaNota(nota, privado.tempoMap),
         string: posicao.string, fret: posicao.fret, midi: nota.midi };
     });
     var duracao = linha.duration;

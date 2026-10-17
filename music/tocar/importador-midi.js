@@ -37,7 +37,7 @@
       if (indice && origem.id !== 'ukulele') exigir(midi > tuning[indice - 1], 'Perfil de instrumento inválido.');
     });
     return { id: origem.id, tuning: tuning, strings: origem.strings, frets: origem.frets,
-      minMidi: tuning[0], maxMidi: tuning[tuning.length - 1] + origem.frets };
+      minMidi: Math.min.apply(Math, tuning), maxMidi: Math.max.apply(Math, tuning) + origem.frets };
   }
   function perfilDaAnalise(opcoes) {
     if (opcoes === undefined) return perfilPorId('violao');
@@ -47,7 +47,7 @@
     return perfilPorId(opcoes.perfil);
   }
   function mesmoPerfil(a, b) {
-    if (a.layout === 'drums' || b.layout === 'drums') return a.layout === b.layout && a.id === b.id;
+    if (a.layout || b.layout) return a.layout === b.layout && a.id === b.id;
     return a.strings === b.strings && a.frets === b.frets && a.tuning.length === b.tuning.length &&
       a.tuning.every(function (midi, indice) { return midi === b.tuning[indice]; });
   }
@@ -119,7 +119,7 @@
   }
   function novoCanal() {
     return { notas: [], ativas: [], totalNotas: 0, minMidi: null, maxMidi: null,
-      pitchBend: false, notaOrfa: false, ultimoTick: 0 };
+      pitchBend: false, pedalSustentacao: false, notaOrfa: false, ultimoTick: 0 };
   }
   function canalDaFaixa(faixa, canal) {
     if (!faixa.canais[canal]) faixa.canais[canal] = novoCanal();
@@ -170,6 +170,7 @@
         if (tipo === 0x90 && dado2 !== 0) registrarNotaAtiva(canal, dado1, tick, dado2);
         else if (tipo === 0x80 || (tipo === 0x90 && dado2 === 0)) encerrarNota(canal, dado1, tick);
         else if (tipo === 0xe0) canal.pitchBend = true;
+        else if (tipo === 0xb0 && (dado1 === 64 || dado1 === 66) && dado2 >= 64) canal.pedalSustentacao = true;
         continue;
       }
 
@@ -243,7 +244,24 @@
     }
     return evento.time + (tick - evento.tick) * 60 / evento.bpm / ppqn;
   }
+  function duracaoDaNota(nota, mapa, ppqn, minimo) {
+    var duracao = segundosNoTick(nota.fimTick, mapa, ppqn) - segundosNoTick(nota.inicioTick, mapa, ppqn);
+    // Subtrair tempos absolutos pode produzir 0,01999999999999996 em uma
+    // nota de 0,02 s. Corrigimos apenas ruído numérico nas duas fronteiras.
+    if (Math.abs(duracao - minimo) <= EPS) return minimo;
+    if (Math.abs(duracao - 60) <= EPS) return 60;
+    return duracao;
+  }
+  function duracaoDaLinha(canal, mapa, ppqn) {
+    var duracao = segundosNoTick(canal.ultimoTick, mapa, ppqn);
+    // A soma dos segmentos de andamento também acumula ruído binário.
+    // Use a mesma fronteira exata no diagnóstico e na criação do arranjo.
+    if (Math.abs(duracao - 0.04) <= EPS) return 0.04;
+    if (Math.abs(duracao - LIMITE_DURACAO) <= EPS) return LIMITE_DURACAO;
+    return duracao;
+  }
   function motivoDoCanal(canal, numeroCanal, mapa, ppqn, perfil) {
+    var duracaoLinha = duracaoDaLinha(canal, mapa, ppqn);
     if (perfil.layout === 'drums') {
       if (numeroCanal !== 9) return 'A bateria MIDI deve estar no canal 10.';
       if (canal.totalNotas === 0) return 'A linha não contém golpes MIDI para importar.';
@@ -254,18 +272,22 @@
       perfil.drums.forEach(function (drum) { aceitos[drum.midi] = true; });
       if (canal.notas.some(function (nota) { return !aceitos[nota.midi]; })) return 'A linha contém peças fora do mapeamento de bateria aceito.';
       if (canal.totalNotas > LIMITE_NOTAS) return 'A linha tem mais de 2.000 golpes.';
-      var maxFim = 0, invalida = false;
-      canal.notas.forEach(function (nota) {
-        var duracaoDrum = segundosNoTick(nota.fimTick, mapa, ppqn) - segundosNoTick(nota.inicioTick, mapa, ppqn);
-        maxFim = Math.max(maxFim, nota.fimTick);
-        if (duracaoDrum < 0.02 - EPS || duracaoDrum > 60 + EPS) invalida = true;
+      var invalida = false, sobreposta = false, fimPorPeca = Object.create(null);
+      canal.notas.slice().sort(function (a, b) { return a.inicioTick - b.inicioTick; }).forEach(function (nota) {
+        var duracaoDrum = duracaoDaNota(nota, mapa, ppqn, 0.02);
+        if (fimPorPeca[nota.midi] !== undefined && nota.inicioTick < fimPorPeca[nota.midi]) sobreposta = true;
+        fimPorPeca[nota.midi] = nota.fimTick;
+        if (duracaoDrum < 0.02 || duracaoDrum > 60) invalida = true;
       });
-      if (invalida || segundosNoTick(maxFim, mapa, ppqn) > LIMITE_DURACAO + EPS) return 'A linha excede os limites de duração.';
+      if (sobreposta) return 'A linha contém golpes sobrepostos da mesma peça.';
+      if (duracaoLinha < 0.04) return 'A linha deve durar ao menos 0,04 segundos.';
+      if (invalida || duracaoLinha > LIMITE_DURACAO) return 'A linha excede os limites de duração.';
       return null;
     }
     if (numeroCanal === 9) return 'Canal 10 é reservado para percussão.';
     if (canal.totalNotas === 0) return 'A linha não contém notas MIDI para importar.';
     if (canal.pitchBend) return 'A linha usa pitch bend, que não é representado neste arranjo.';
+    if (perfil.layout === 'piano' && canal.pedalSustentacao) return 'A linha usa pedal de sustentação (CC64) ou sostenuto (CC66), ainda não representado neste arranjo. Exporte uma versão sem pedal para importar.';
     if (canal.notaOrfa) return 'A linha contém note-off sem note-on correspondente.';
     if (canal.ativas.length) return 'A linha contém nota sem note-off.';
     if (canal.minMidi < perfil.minMidi || canal.maxMidi > perfil.maxMidi) {
@@ -273,18 +295,21 @@
     }
     if (canal.totalNotas > LIMITE_NOTAS) return 'A linha tem mais de 2.000 notas.';
     var notas = canal.notas.slice().sort(function (a, b) { return a.inicioTick - b.inicioTick || a.fimTick - b.fimTick; });
-    var fimAnterior = -Infinity;
+    var fimAnterior = -Infinity, fimPorTecla = Object.create(null), minimo = perfil.layout === 'piano' ? 0.02 : 0.04;
     for (var i = 0; i < notas.length; i++) {
       var nota = notas[i];
-      if (nota.inicioTick < fimAnterior) return 'A linha contém notas sobrepostas.';
+      if (perfil.layout === 'piano') {
+        if (fimPorTecla[nota.midi] !== undefined && nota.inicioTick < fimPorTecla[nota.midi]) return 'A linha contém notas sobrepostas da mesma tecla.';
+        fimPorTecla[nota.midi] = nota.fimTick;
+      } else if (nota.inicioTick < fimAnterior) return 'A linha contém notas sobrepostas.';
       fimAnterior = Math.max(fimAnterior, nota.fimTick);
-      var duracao = segundosNoTick(nota.fimTick, mapa, ppqn) - segundosNoTick(nota.inicioTick, mapa, ppqn);
-      if (duracao < 0.04 - EPS || duracao > 60 + EPS) {
-        return 'A linha contém duração de nota fora do intervalo de 0,04 a 60 segundos.';
+      var duracao = duracaoDaNota(nota, mapa, ppqn, minimo);
+      if (duracao < minimo || duracao > 60) {
+        return 'A linha contém duração de nota fora do intervalo de ' + (minimo === 0.02 ? '0,02' : '0,04') + ' a 60 segundos.';
       }
     }
-    var duracaoLinha = segundosNoTick(canal.ultimoTick, mapa, ppqn);
-    if (duracaoLinha > LIMITE_DURACAO + EPS) return 'A linha excede a duração máxima de 900 segundos.';
+    if (duracaoLinha < 0.04) return 'A linha deve durar ao menos 0,04 segundos.';
+    if (duracaoLinha > LIMITE_DURACAO) return 'A linha excede a duração máxima de 900 segundos.';
     return null;
   }
   function resumoDoCanal(faixa, numeroCanal, mapa, ppqn, perfil) {
@@ -292,7 +317,7 @@
     var motivo = motivoDoCanal(canal, numeroCanal, mapa, ppqn, perfil);
     return { id: 't' + faixa.indice + '-c' + numeroCanal, track: faixa.indice, channel: numeroCanal,
       name: faixa.nome, noteCount: canal.totalNotas, minMidi: canal.minMidi, maxMidi: canal.maxMidi,
-      duration: segundosNoTick(canal.ultimoTick, mapa, ppqn), valid: motivo === null, reason: motivo };
+      duration: duracaoDaLinha(canal, mapa, ppqn), valid: motivo === null, reason: motivo };
   }
 
   function analisar(entrada, opcoes) {
@@ -322,6 +347,23 @@
     }
     if (posicao !== bytes.length) falhar('há dados ou chunks extras após as faixas declaradas.');
 
+    // Controles atuam sobre o canal MIDI, mesmo quando um SMF formato 1 os
+    // armazena em outra faixa. Não ofereça uma linha como fiel ao arquivo
+    // quando sua sustentação ou altura depende desses controles externos.
+    var controlesPorCanal = [];
+    faixas.forEach(function (faixa) {
+      faixa.canais.forEach(function (canal, numeroCanal) {
+        var controles = controlesPorCanal[numeroCanal] || (controlesPorCanal[numeroCanal] = {});
+        controles.pitchBend = controles.pitchBend || canal.pitchBend;
+        controles.pedalSustentacao = controles.pedalSustentacao || canal.pedalSustentacao;
+      });
+    });
+    faixas.forEach(function (faixa) {
+      faixa.canais.forEach(function (canal, numeroCanal) {
+        canal.pitchBend = Boolean(controlesPorCanal[numeroCanal].pitchBend);
+        canal.pedalSustentacao = Boolean(controlesPorCanal[numeroCanal].pedalSustentacao);
+      });
+    });
     var mapaInterno = construirMapa(tempos, divisao);
     var candidatos = [];
     faixas.forEach(function (faixa) {
@@ -336,7 +378,7 @@
     }), candidates: Object.create(null) };
     faixas.forEach(function (faixa) {
       for (var canal = 0; canal < faixa.canais.length; canal++) {
-        if (faixa.canais[canal]) privados.candidates['t' + faixa.indice + '-c' + canal] = faixa.canais[canal];
+        if (faixa.canais[canal]) privados.candidates['t' + faixa.indice + '-c' + canal] = { canal: faixa.canais[canal], numeroCanal: canal };
       }
     });
     analises.set(analise, privados);
@@ -355,7 +397,7 @@
   }
   function mapaRelevante(mapa, duracao) {
     var relevantes = mapa.filter(function (evento) { return evento.time < duracao - EPS; });
-    // Uma nota válida dura ao menos 0,04 s, portanto o evento inicial sempre cabe.
+    // Uma linha válida dura ao menos 0,04 s, portanto o evento inicial sempre cabe.
     if (!relevantes.length) relevantes.push(mapa[0]);
     return relevantes.map(copiarTempo);
   }
@@ -366,28 +408,30 @@
       'Informe somente id, title e perfil para criar o arranjo MIDI.');
     var privado = analises.get(analise);
     exigir(privado, 'A análise MIDI não pertence a este importador. Analise o arquivo novamente.');
-    var candidatoPublico = analise.candidates.find(function (candidato) { return candidato.id === candidateId; });
-    var canal = privado.candidates[candidateId];
-    exigir(candidatoPublico && canal, 'A linha MIDI escolhida não existe nesta análise.');
-    exigir(candidatoPublico.valid, candidatoPublico.reason || 'Esta linha MIDI não pode ser importada.');
+    var candidatoPrivado = possui(privado.candidates, candidateId) && privado.candidates[candidateId];
+    exigir(candidatoPrivado, 'A linha MIDI escolhida não existe nesta análise.');
     var perfil = perfilDaCriacao(opcoes, privado.perfil);
+    var canal = candidatoPrivado.canal;
+    var motivo = motivoDoCanal(canal, candidatoPrivado.numeroCanal, privado.tempoMap, privado.ppqn, perfil);
+    exigir(motivo === null, motivo);
 
     var notas = canal.notas.slice().sort(function (a, b) { return a.inicioTick - b.inicioTick || a.midi - b.midi || a.fimTick - b.fimTick; }).map(function (nota, indice) {
       var inicio = segundosNoTick(nota.inicioTick, privado.tempoMap, privado.ppqn);
-      var fim = segundosNoTick(nota.fimTick, privado.tempoMap, privado.ppqn);
+      var duracaoNota = duracaoDaNota(nota, privado.tempoMap, privado.ppqn, perfil.layout ? 0.02 : 0.04);
       if (perfil.layout === 'drums') {
         var drum = perfil.drums.find(function (item) { return item.midi === nota.midi; });
-        return { id: 'midi-' + (indice + 1), time: inicio, duration: fim - inicio, drum: drum.id, midi: nota.midi, velocity: nota.velocity };
+        return { id: 'midi-' + (indice + 1), time: inicio, duration: duracaoNota, drum: drum.id, midi: nota.midi, velocity: nota.velocity };
       }
+      if (perfil.layout === 'piano') return { id: 'midi-' + (indice + 1), time: inicio, duration: duracaoNota, midi: nota.midi, velocity: nota.velocity };
       var posicao = posicaoSugerida(nota.midi, perfil);
-      return { id: 'midi-' + (indice + 1), time: inicio, duration: fim - inicio,
+      return { id: 'midi-' + (indice + 1), time: inicio, duration: duracaoNota,
         string: posicao.string, fret: posicao.fret, midi: nota.midi };
     });
-    var duracao = segundosNoTick(canal.ultimoTick, privado.tempoMap, privado.ppqn);
+    var duracao = duracaoDaLinha(canal, privado.tempoMap, privado.ppqn);
     var tempos = mapaRelevante(privado.tempoMap, duracao);
-    var bruto = perfil.layout === 'drums'
+    var bruto = perfil.layout === 'drums' || perfil.layout === 'piano'
       ? { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao,
-          profile: 'bateria-midi', layout: 'drums', notes: notas, metadata: { demo: false } }
+          profile: perfil.id, layout: perfil.layout, notes: notas, metadata: { demo: false } }
       : { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao,
           tuning: perfil.tuning.slice(), notes: notas, metadata: { demo: false } };
     if (tempos.length > 1) bruto.tempoMap = { version: 1, events: tempos };

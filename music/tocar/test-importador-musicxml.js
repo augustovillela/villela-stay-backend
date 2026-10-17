@@ -174,6 +174,135 @@ test('perfil baixo aceita Mi1 em MusicXML e MXL e preserva TAB de quatro cordas'
   await assert.rejects(() => Importador.analisar(origem, { perfil: 'piano' }), /Perfil de instrumento desconhecido/);
 });
 
+test('ukulele reentrante importa cordas soltas de MusicXML e MXL sem reordenar a afinação', async () => {
+  const score = xml(medida(atributos()
+    + nota({ step: 'C', octave: 4 })
+    + nota({ step: 'E', octave: 4 })
+    + nota({ step: 'G', octave: 4 })
+    + nota({ step: 'A', octave: 4 })
+    + nota({ step: 'F', octave: 4 })));
+  for (const entrada of [bytes(score), mxl(score, false), mxl(score, true)]) {
+    const intacta = new Uint8Array(entrada);
+    const analysis = await Importador.analisar(entrada, { perfil: 'ukulele' });
+    assert.equal(analysis.candidates[0].valid, true);
+    assert.equal(analysis.candidates[0].minMidi, 60);
+    assert.equal(analysis.candidates[0].maxMidi, 69);
+    const chart = Importador.criarChart(analysis, analysis.candidates[0].id,
+      { id: 'ukulele-soltas', title: 'Ukulele soltas', perfil: 'ukulele' });
+    assert.deepEqual(chart.tuning, [67, 60, 64, 69]);
+    assert.deepEqual(chart.notes.map(n => [n.midi, n.string, n.fret]), [
+      [60, 3, 0], [64, 2, 0], [67, 4, 0], [69, 1, 0], [65, 2, 1],
+    ]);
+    assert.deepEqual(Core.validarChart(chart), chart);
+    assert.deepEqual(entrada, intacta, 'A análise não deve alterar os bytes do arquivo.');
+    assert.deepEqual(Perfis.obter('ukulele').tuning, [67, 60, 64, 69]);
+  }
+});
+
+test('ukulele preserva TAB válida e limita posições sugeridas às 15 casas do perfil', async () => {
+  const tab = (string, fret) => '<notations><technical><string>' + string + '</string><fret>' + fret + '</fret></technical></notations>';
+  const score = xml(medida(atributos()
+    + nota({ step: 'G', octave: 4, extra: tab(3, 7) })
+    + nota({ step: 'A', octave: 4, extra: tab(4, 2) })
+    + nota({ step: 'C', octave: 6, extra: tab(2, 20) })
+    + nota({ step: 'C', octave: 4, extra: tab(4, 0) })));
+  for (const entrada of [bytes(score), mxl(score, true)]) {
+    const analysis = await Importador.analisar(entrada, 'ukulele');
+    assert.equal(analysis.candidates[0].valid, true);
+    const chart = Importador.criarChart(analysis, analysis.candidates[0].id, { id: 'ukulele-tab', title: 'TAB ukulele' });
+    assert.deepEqual(chart.notes.map(n => [n.midi, n.string, n.fret]), [
+      [67, 3, 7], [69, 4, 2], [84, 1, 15], [60, 3, 0],
+    ]);
+    assert.ok(chart.notes.every(n => n.fret >= 0 && n.fret <= 15));
+    assert.deepEqual(Core.validarChart(chart), chart);
+    assert.throws(() => Importador.criarChart(analysis, analysis.candidates[0].id,
+      { id: 'perfil-trocado', title: 'Perfil trocado', perfil: 'baixo' }), /mesmo perfil/);
+  }
+});
+
+test('MusicXML e MXL mantêm notas de 40 ms importáveis sem estender a duração da música', async () => {
+  const score = xml(medida('<attributes><divisions>25</divisions></attributes><direction><sound tempo="120"/></direction>'
+    + Array.from({ length: 4 }, () => nota({ step: 'C', octave: 4, duration: 2 })).join('')));
+  for (const entrada of [bytes(score), mxl(score, true)]) {
+    const analysis = await Importador.analisar(entrada, 'ukulele');
+    assert.equal(analysis.candidates[0].valid, true);
+    assert.equal(analysis.duration, 0.16);
+    const chart = Importador.criarChart(analysis, analysis.candidates[0].id, { id: 'notas-curtas', title: 'Notas de 40 ms' });
+    chart.notes.forEach((n, indice) => assert.ok(Math.abs(n.time - indice * 0.04) < 1e-12));
+    assert.deepEqual(chart.notes.map(n => n.duration), [0.04, 0.04, 0.04, 0.04]);
+    assert.equal(chart.duration, 0.16);
+    assert.deepEqual(Core.validarChart(chart), chart);
+  }
+});
+
+test('normaliza somente resíduos nas fronteiras de 60 e 900 segundos', async () => {
+  const pausa = duration => '<note><rest/><duration>' + duration + '</duration><voice>1</voice><staff>1</staff></note>';
+  const prefixo = '<attributes><divisions>25</divisions></attributes><direction><sound tempo="120"/></direction>';
+  // 4,04 + 60 resulta em uma duração calculada de 60,00000000000001 s.
+  const scoreNota = xml(medida(prefixo + pausa(202) + nota({ step: 'C', octave: 4, duration: 3000 })));
+  const analiseNota = await Importador.analisar(bytes(scoreNota), 'ukulele');
+  assert.equal(analiseNota.candidates[0].valid, true);
+  const chartNota = Importador.criarChart(analiseNota, analiseNota.candidates[0].id, { id: 'nota-limite', title: 'Nota de 60 s' });
+  assert.equal(chartNota.notes[0].duration, 60);
+  assert.equal(chartNota.notes[0].time, 4.04);
+  assert.ok(Math.abs(chartNota.duration - 64.04) < 1e-12);
+
+  // As somas de batidas deixam o fim em 900,0000000000001 s antes da normalização.
+  const pausasCurtas = Array.from({ length: 114 }, () => pausa(2)).join('');
+  const scoreTotal = xml(medida(prefixo + pausasCurtas + pausa(45000 - 3000 - 114 * 2)
+    + nota({ step: 'C', octave: 4, duration: 3000 })));
+  for (const entrada of [bytes(scoreTotal), mxl(scoreTotal, true)]) {
+    const analysis = await Importador.analisar(entrada, 'ukulele');
+    assert.equal(analysis.candidates[0].valid, true);
+    assert.equal(analysis.duration, 900);
+    const chart = Importador.criarChart(analysis, analysis.candidates[0].id, { id: 'tempo-limite', title: 'Arranjo de 900 s' });
+    assert.equal(chart.duration, 900);
+    assert.deepEqual(Core.validarChart(chart), chart);
+  }
+});
+
+test('durações realmente fora dos limites continuam indisponíveis após a normalização', async () => {
+  const prefixo = '<attributes><divisions>25000</divisions></attributes><direction><sound tempo="120"/></direction>';
+  const pausa = duration => '<note><rest/><duration>' + duration + '</duration><voice>1</voice><staff>1</staff></note>';
+  const casos = [
+    { conteudo: nota({ step: 'C', octave: 4, duration: 1999 }), motivo: /duração de nota/ }, // 0,03998 s
+    { conteudo: nota({ step: 'C', octave: 4, duration: 3000001 }), motivo: /duração de nota/ }, // 60,00002 s
+    { conteudo: pausa(44998001) + nota({ step: 'C', octave: 4, duration: 2000 }), motivo: /900 segundos/ },
+  ];
+  for (const caso of casos) {
+    for (const entrada of [bytes(xml(medida(prefixo + caso.conteudo))), mxl(xml(medida(prefixo + caso.conteudo)), true)]) {
+      const analysis = await Importador.analisar(entrada, 'ukulele');
+      assert.equal(analysis.candidates[0].valid, false);
+      assert.match(analysis.candidates[0].reason, caso.motivo);
+      assert.throws(() => Importador.criarChart(analysis, analysis.candidates[0].id,
+        { id: 'duracao-invalida', title: 'Duração inválida' }), caso.motivo);
+    }
+  }
+});
+
+test('ukulele mantém indisponíveis notas abaixo de Dó4 ou acima de Dó6 e rejeita análise adulterada', async () => {
+  const valida = await Importador.analisar(bytes(xml(medida(atributos() + nota({ step: 'C', octave: 4 })))), 'ukulele');
+  const opcoes = { id: 'ukulele-preservado', title: 'Ukulele preservado' };
+  const chartAnterior = Importador.criarChart(valida, valida.candidates[0].id, opcoes);
+  const snapshot = JSON.stringify(chartAnterior);
+  for (const fora of [{ step: 'B', octave: 3 }, { step: 'D', octave: 6 }]) {
+    const score = xml(medida(atributos() + nota(fora)));
+    for (const entrada of [bytes(score), mxl(score, true)]) {
+      const intacta = new Uint8Array(entrada);
+      const analysis = await Importador.analisar(entrada, 'ukulele');
+      assert.equal(analysis.candidates[0].valid, false);
+      assert.match(analysis.candidates[0].reason, /fora da extensão Dó4–Dó6/);
+      analysis.candidates[0].valid = true;
+      analysis.candidates[0].reason = null;
+      assert.throws(() => Importador.criarChart(analysis, analysis.candidates[0].id,
+        { id: 'ukulele-fora', title: 'Ukulele fora' }), /fora da extensão Dó4–Dó6/);
+      assert.deepEqual(entrada, intacta);
+      assert.equal(JSON.stringify(chartAnterior), snapshot);
+      assert.deepEqual(Importador.criarChart(valida, valida.candidates[0].id, opcoes), chartAnterior);
+    }
+  }
+});
+
 test('repetições permanecem uma vez na ordem escrita, sem expansão automática', async () => {
   const primeira = medida(atributos() + nota({ step: 'E', octave: 2 }) + '<barline location="right"><repeat direction="backward"/></barline>', 1);
   const segunda = medida(nota({ step: 'A', octave: 2 }), 2);
