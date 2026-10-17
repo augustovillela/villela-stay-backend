@@ -16,6 +16,7 @@ O fluxo foi conferido com testes de interface, API/SQLite e navegador real. A va
 - Entrada genérica escolhida pelo usuário: microfone, interface de áudio ou cabo Real Tone, quando disponibilizados pelo sistema como entrada no navegador.
 - Captura com AudioWorklet e análise YIN em Worker, sem monitorar o som capturado nos alto-falantes. O perfil de seis cordas usa 70–1400 Hz e janela de 64 ms; o baixo usa 35–700 Hz e janela de 128 ms. Nenhum áudio é enviado ou gravado.
 - Pista de notas, afinador, demonstração, prática, contagem inicial, pausa, velocidades 50/75/100/125%, trecho repetido e compensação de atraso.
+- O repetidor de trecho pode aumentar a velocidade automaticamente a cada volta, seguindo 50% → 75% → 100% → 125%. A opção fica disponível somente no modo No ritmo e não altera o modo Aprender.
 - Modo Aprender nota por nota: espera a altura correta sem cobrar tempo, mostra a próxima nota/corda/casa e oferece ouvir ou pular. Frases selecionáveis e oito estudos originais: sete para seis cordas e um de pulsação para contrabaixo.
 - Resultado de treino para altura e início de notas isoladas; não verifica duração sustentada, técnica, posição real no braço ou acordes.
 - Arranjo JSON, MIDI monofônico ou MusicXML/MXL monofônico e áudio locais. Um MP3 sozinho não produz as notas da pista.

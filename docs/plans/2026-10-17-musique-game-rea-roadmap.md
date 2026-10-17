@@ -18,6 +18,10 @@ O alvo local encontrado foi `C:\Program Files (x86)\Ubisoft\Ubisoft Game Launche
 8. **Experiência social:** sessões compartilhadas, professor/aluno e desafios com charts autorizados; sincronização só depois que o modo local estiver estável.
 9. **Desempenho e publicação:** carregamento progressivo, fallback para dispositivos fracos, acessibilidade, telemetria mínima e validação em Chrome/Firefox/Edge e nos equipamentos disponíveis.
 
+## Estado da implementação
+
+O núcleo de sessão e a campanha autoral já estão publicados. O repetidor de trecho agora oferece velocidade progressiva opcional entre 50%, 75%, 100% e 125%, sem habilitar essa alteração no modo Aprender. O feedback de prática também exibe médias de tempo e desvio em cents quando o julgador dispõe dessas medidas.
+
 ## Primeira entrega de código
 
 A próxima implementação deve extrair uma máquina de estados de sessão reutilizável do cliente atual, sem alterar o contrato de histórico nem a prática já publicada. Ela deve cobrir os estados `idle`, `preparing`, `count-in`, `running`, `paused`, `completed`, `failed` e `disposed`, com transições explícitas e tickets para invalidar respostas antigas. Depois disso, a campanha autoral poderá consumir o mesmo núcleo para liberar estudos sem duplicar a lógica do Tocar junto.
