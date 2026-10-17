@@ -4,6 +4,7 @@
 //   de LOG operacional de alto volume (webhooks/pagamentos/notificações/IA/
 //   acessos). NÃO toca em audit_logs (compliance, baixo volume, retenção longa).
 // - tamanhoDir: bytes usados no DATA_DIR (para o alarme de disco).
+// - capacidadeDisco: tamanho total do volume do DATA_DIR (o limite do alarme).
 // Genérico: só apaga onde a tabela E a coluna de data existem (introspecção).
 // =====================================================================
 'use strict';
@@ -77,4 +78,17 @@ function tamanhoDir(dir) {
   return total;
 }
 
-module.exports = { purgarEventosAntigos, tamanhoDir, encontrarDbs, PURGAS };
+// Tamanho TOTAL do volume onde o diretório mora, lido do próprio sistema de
+// arquivos. Existe para o alarme de disco nunca mais ficar preso a um número
+// escrito no código: o disco foi ampliado de 1 GB para 5 GB em 10/2026 e o
+// alarme seguiu medindo contra 1 GB, avisando "disco quase cheio" todo dia.
+// Devolve 0 quando não dá para ler (quem chama cai no padrão).
+function capacidadeDisco(dir) {
+  try {
+    const s = fs.statfsSync(dir);
+    const bytes = Number(s.blocks) * Number(s.bsize);
+    return Number.isFinite(bytes) && bytes > 0 ? bytes : 0;
+  } catch { return 0; }
+}
+
+module.exports = { purgarEventosAntigos, tamanhoDir, capacidadeDisco, encontrarDbs, PURGAS };

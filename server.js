@@ -5451,8 +5451,12 @@ app.use((req, res, next) => {
 // MANUTENCAO_OFF=1 desliga tudo; SNAPSHOTS_OFF/SNAPSHOTS_MANTER/PURGA_DIAS/DISK_LIMIT_MB ajustam.
 if (process.env.MANUTENCAO_OFF !== '1') {
   const { snapshotTodos } = require('./snapshots');
-  const { purgarEventosAntigos, tamanhoDir } = require('./manutencao');
-  const LIMITE_MB = Number(process.env.DISK_LIMIT_MB) || 1024; // disco do Render = 1GB
+  const { purgarEventosAntigos, tamanhoDir, capacidadeDisco } = require('./manutencao');
+  // Limite = tamanho REAL do volume, lido a cada rodada — ampliar o disco no Render já
+  // move o alarme sozinho. DISK_LIMIT_MB só vale se o volume não puder ser lido; o
+  // padrão final é o disco atual (5 GB desde 10/2026; antes era 1 GB e o alarme ficou
+  // avisando "quase cheio" depois da ampliação).
+  const limiteMB = () => Math.round(capacidadeDisco(DATA_DIR) / 1048576) || Number(process.env.DISK_LIMIT_MB) || 5120;
   const rodarManutencao = async () => {
     try {
       if (process.env.SNAPSHOTS_OFF !== '1') {
@@ -5462,10 +5466,11 @@ if (process.env.MANUTENCAO_OFF !== '1') {
       const purga = purgarEventosAntigos(DATA_DIR, { dias: Number(process.env.PURGA_DIAS) || 90 });
       if (purga.totalApagado) console.log('[manutencao] purga:', purga.totalApagado, 'evento(s) antigos', JSON.stringify(purga.detalhe));
       const usadoMB = Math.round(tamanhoDir(DATA_DIR) / 1048576);
+      const LIMITE_MB = limiteMB();
       const pct = Math.round((usadoMB / LIMITE_MB) * 100);
       console.log(`[manutencao] disco: ${usadoMB}MB / ${LIMITE_MB}MB (${pct}%)`);
       if (pct >= 80) {
-        try { await alertaAugusto(`Disco do backend em ${pct}% (${usadoMB}MB de ${LIMITE_MB}MB). Os 7 SaaS compartilham este volume — verifique/limpe antes de encher.`); } catch {}
+        try { await alertaAugusto(`Disco do backend em ${pct}% (${usadoMB}MB de ${LIMITE_MB}MB). Todos os sistemas do grupo compartilham este volume — verifique/limpe antes de encher.`); } catch {}
       }
     } catch (e) { console.error('[manutencao] erro:', e.message); }
   };
