@@ -680,15 +680,16 @@
         var bruto = repeticao.atributos.times;
         var vezes = bruto == null ? 2 : Number(bruto);
         if (!Number.isInteger(vezes) || vezes < 2 || vezes > 8) falhar('repeat times deve ser um inteiro entre 2 e 8.');
-        var segmento = resultado.slice(inicioRepeticao, resultado.length);
-        if (!segmento.length || segmento.length * vezes + resultado.length > 512) falhar('a expansão de repetições excede 512 compassos.');
-        if (segmento.some(function (item) { return finais(item).length; })) finaisTratados = true;
-        if (segmento.some(function (item) { return finais(item).length && !medidaDaPassagem(item, 1); })) {
-          segmento = segmento.filter(function (item) { return medidaDaPassagem(item, 1); });
+        var segmentoCompleto = resultado.slice(inicioRepeticao, resultado.length);
+        if (!segmentoCompleto.length || segmentoCompleto.length * vezes + resultado.length > 512) falhar('a expansão de repetições excede 512 compassos.');
+        if (segmentoCompleto.some(function (item) { return finais(item).length; })) finaisTratados = true;
+        var segmento = segmentoCompleto;
+        if (segmentoCompleto.some(function (item) { return finais(item).length && !medidaDaPassagem(item, 1); })) {
+          segmento = segmentoCompleto.filter(function (item) { return medidaDaPassagem(item, 1); });
           resultado.splice(inicioRepeticao, resultado.length - inicioRepeticao);
           segmento.forEach(function (item) { resultado.push(item); });
         }
-        for (var copia = 2; copia <= vezes; copia++) segmento.forEach(function (item) {
+        for (var copia = 2; copia <= vezes; copia++) segmentoCompleto.forEach(function (item) {
           if (medidaDaPassagem(item, copia)) resultado.push(item);
         });
         inicioRepeticao = resultado.length;

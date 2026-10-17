@@ -374,6 +374,18 @@ test('marca finais alternativos para revisão manual em vez de importar silencio
   assert.match(analysis.candidates[0].reason, /finais alternativos/);
 });
 
+test('expande finais numerados 1 e 2 na repetição simples', async () => {
+  const score = xml(
+    medida(atributos() + nota({ step: 'C', octave: 4 }) + '<barline location="right"><repeat direction="forward"/></barline>', 1)
+    + medida(nota({ step: 'D', octave: 4 }) + '<barline location="right"><ending number="1" type="start"/></barline>', 2)
+    + medida(nota({ step: 'E', octave: 4 }) + '<barline location="right"><ending number="2" type="start"/><repeat direction="backward"/></barline>', 3)
+  );
+  const analysis = await Importador.analisar(bytes(score), { perfil: 'piano' });
+  assert.equal(analysis.candidates[0].valid, true);
+  const chart = Importador.criarChart(analysis, analysis.candidates[0].id, { id: 'finais', title: 'Finais' });
+  assert.deepEqual(chart.notes.map(notaImportada => notaImportada.midi), [60, 62, 60, 64]);
+});
+
 test('aceita pedal MusicXML no piano', async () => {
   const score = xml(medida(atributos() + '<direction><direction-type><pedal type="start"/></direction-type></direction>' + nota({ step: 'C', octave: 4 })));
   const analysis = await Importador.analisar(bytes(score), { perfil: 'piano' });
