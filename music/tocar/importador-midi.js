@@ -119,7 +119,8 @@
   }
   function novoCanal() {
     return { notas: [], ativas: [], totalNotas: 0, minMidi: null, maxMidi: null,
-      pitchBend: false, pedalSustentacao: false, notaOrfa: false, ultimoTick: 0 };
+      pitchBend: false, pedalSustentacao: false, sostenuto: false, pedalAtivo: false,
+      sustentadas: [], notaOrfa: false, ultimoTick: 0 };
   }
   function canalDaFaixa(faixa, canal) {
     if (!faixa.canais[canal]) faixa.canais[canal] = novoCanal();
@@ -137,7 +138,14 @@
     var indice = canal.ativas.findIndex(function (nota) { return nota.midi === midi; });
     if (indice < 0) { canal.notaOrfa = true; return; }
     var inicio = canal.ativas.splice(indice, 1)[0];
-    canal.notas.push({ midi: midi, inicioTick: inicio.tick, fimTick: tick, velocity: inicio.velocity });
+    if (canal.pedalAtivo) canal.sustentadas.push(inicio);
+    else canal.notas.push({ midi: midi, inicioTick: inicio.tick, fimTick: tick, velocity: inicio.velocity });
+  }
+  function liberarSustentadas(canal, tick) {
+    canal.sustentadas.forEach(function (inicio) {
+      canal.notas.push({ midi: inicio.midi, inicioTick: inicio.tick, fimTick: tick, velocity: inicio.velocity });
+    });
+    canal.sustentadas = [];
   }
 
   function lerFaixa(bytes, inicio, fim, indiceFaixa, tempos) {
@@ -164,13 +172,18 @@
         statusCorrente = status;
         var tipo = status & 0xf0, numeroCanal = status & 0x0f;
         var canal = canalDaFaixa(faixa, numeroCanal);
+        canal.ultimoTick = Math.max(canal.ultimoTick, tick);
         if (tinhaStatus) dado1 = lerDado(bytes, estado);
         else { dado1 = primeiro; estado.cursor++; }
         if (tipo !== 0xc0 && tipo !== 0xd0) dado2 = lerDado(bytes, estado);
         if (tipo === 0x90 && dado2 !== 0) registrarNotaAtiva(canal, dado1, tick, dado2);
         else if (tipo === 0x80 || (tipo === 0x90 && dado2 === 0)) encerrarNota(canal, dado1, tick);
         else if (tipo === 0xe0) canal.pitchBend = true;
-        else if (tipo === 0xb0 && (dado1 === 64 || dado1 === 66) && dado2 >= 64) canal.pedalSustentacao = true;
+        else if (tipo === 0xb0 && dado1 === 64) {
+          if (dado2 >= 64) canal.pedalAtivo = true;
+          else { canal.pedalAtivo = false; liberarSustentadas(canal, tick); }
+          canal.pedalSustentacao = true;
+        } else if (tipo === 0xb0 && dado1 === 66) canal.sostenuto = true;
         continue;
       }
 
@@ -206,6 +219,9 @@
       }
     }
     if (!fimDeclarado) falhar('faixa sem metaevento de fim.');
+    if (faixa.canais.length) faixa.canais.forEach(function (canal) {
+      if (canal && canal.sustentadas.length) liberarSustentadas(canal, faixa.ultimoTick);
+    });
     return faixa;
   }
 
@@ -287,7 +303,7 @@
     if (numeroCanal === 9) return 'Canal 10 é reservado para percussão.';
     if (canal.totalNotas === 0) return 'A linha não contém notas MIDI para importar.';
     if (canal.pitchBend) return 'A linha usa pitch bend, que não é representado neste arranjo.';
-    if (perfil.layout === 'piano' && canal.pedalSustentacao) return 'A linha usa pedal de sustentação (CC64) ou sostenuto (CC66), ainda não representado neste arranjo. Exporte uma versão sem pedal para importar.';
+    if (perfil.layout === 'piano' && canal.sostenuto) return 'A linha usa sostenuto (CC66), ainda não representado neste arranjo. Exporte uma versão sem sostenuto para importar.';
     if (canal.notaOrfa) return 'A linha contém note-off sem note-on correspondente.';
     if (canal.ativas.length) return 'A linha contém nota sem note-off.';
     if (canal.minMidi < perfil.minMidi || canal.maxMidi > perfil.maxMidi) {
@@ -356,12 +372,14 @@
         var controles = controlesPorCanal[numeroCanal] || (controlesPorCanal[numeroCanal] = {});
         controles.pitchBend = controles.pitchBend || canal.pitchBend;
         controles.pedalSustentacao = controles.pedalSustentacao || canal.pedalSustentacao;
+        controles.sostenuto = controles.sostenuto || canal.sostenuto;
       });
     });
     faixas.forEach(function (faixa) {
       faixa.canais.forEach(function (canal, numeroCanal) {
         canal.pitchBend = Boolean(controlesPorCanal[numeroCanal].pitchBend);
         canal.pedalSustentacao = Boolean(controlesPorCanal[numeroCanal].pedalSustentacao);
+        canal.sostenuto = Boolean(controlesPorCanal[numeroCanal].sostenuto);
       });
     });
     var mapaInterno = construirMapa(tempos, divisao);
@@ -385,7 +403,7 @@
       var idsValidos = candidatos.filter(function (item) { return item.valid; }).map(function (item) { return item.id; });
       var canaisCompostos = idsValidos.map(function (id) { return privados.candidates[id]; }).filter(Boolean);
       if (canaisCompostos.length > 1) {
-        var canalComposto = { totalNotas: 0, minMidi: null, maxMidi: null, ultimoTick: 0, pitchBend: false, pedalSustentacao: false, notaOrfa: false, ativas: [], notas: [] };
+        var canalComposto = { totalNotas: 0, minMidi: null, maxMidi: null, ultimoTick: 0, pitchBend: false, pedalSustentacao: false, sostenuto: false, notaOrfa: false, ativas: [], sustentadas: [], notas: [] };
         canaisCompostos.forEach(function (item) {
           canalComposto.totalNotas += item.canal.totalNotas;
           canalComposto.minMidi = canalComposto.minMidi === null ? item.canal.minMidi : Math.min(canalComposto.minMidi, item.canal.minMidi);
@@ -393,6 +411,7 @@
           canalComposto.ultimoTick = Math.max(canalComposto.ultimoTick, item.canal.ultimoTick);
           canalComposto.pitchBend = canalComposto.pitchBend || item.canal.pitchBend;
           canalComposto.pedalSustentacao = canalComposto.pedalSustentacao || item.canal.pedalSustentacao;
+          canalComposto.sostenuto = canalComposto.sostenuto || item.canal.sostenuto;
           item.canal.notas.forEach(function (nota) { canalComposto.notas.push(nota); });
         });
         var numeroCanalComposto = perfil.layout === 'drums' ? 9 : 0;
