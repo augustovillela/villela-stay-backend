@@ -34,7 +34,10 @@ const { Musicas, Cifras, qualidade, semelhanca, erro, normalizar } = require('..
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const MAX_TEXTO = 400000;
-const MAX_ARQUIVO = 8 * 1024 * 1024;
+// O gestor de arranjos e o importador de Cifras compartilham o limite de
+// 10 MiB para PDF/TXT/DOCX/imagem. O body JSON do servidor permanece em 15 MB
+// para acomodar o base64 sem aceitar arquivos arbitrariamente grandes.
+const MAX_ARQUIVO = 10 * 1024 * 1024;
 const TEMPO_TAREFA_MS = 45000;
 let rodando = 0;
 const MAX_SIMULTANEAS = 3;
@@ -189,7 +192,7 @@ const Importar = {
     flags.exigir('cifras.importar.texto');
     const buf = Buffer.from(String(base64 || ''), 'base64');
     if (!buf.length) throw erro('Arquivo vazio.');
-    if (buf.length > MAX_ARQUIVO) throw erro('Arquivo acima de 8 MB.');
+    if (buf.length > MAX_ARQUIVO) throw erro('Arquivo acima de 10 MiB.');
     const tp = ext.tipoDeArquivo(nome, buf);
     if (tp.tipo === 'recusado') throw erro(tp.motivo, 415);
     const id = criarTarefa(usuario, tp.tipo === 'imagem' ? 'imagem' : 'arquivo', s(nome, 120), { lote });

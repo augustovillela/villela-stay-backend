@@ -138,7 +138,7 @@
 
   function abaArquivo(area, extra) {
     var zona = el('div', { class: 'cf-estado', tabindex: '0', role: 'button', 'aria-label': 'Escolher arquivos', style: 'cursor:pointer' },
-      [el('b', { txt: 'Arraste arquivos aqui ou toque para escolher' }), el('span', { txt: 'TXT, ChordPro, DOCX, PDF ou foto (vários = importação em lote). Até 8 MB cada.' })]);
+      [el('b', { txt: 'Arraste arquivos aqui ou toque para escolher' }), el('span', { txt: 'TXT, ChordPro, DOCX, PDF ou foto (vários = importação em lote). Até 10 MiB cada.' })]);
     var input = el('input', { type: 'file', multiple: 'multiple', accept: '.txt,.cho,.chopro,.chordpro,.crd,.pro,.docx,.pdf,image/*', style: 'display:none' });
     var saida = el('div');
     zona.onclick = function () { input.click(); };
@@ -161,7 +161,7 @@
     function enviar(lista) {
       var arqs = Array.prototype.slice.call(lista || []);
       if (!arqs.length) return;
-      if (arqs.some(function (f) { return f.size > 8 * 1024 * 1024; })) return C.aviso('Há arquivo acima de 8 MB.');
+      if (arqs.some(function (f) { return f.size > 10 * 1024 * 1024; })) return C.aviso('Há arquivo acima de 10 MiB.');
       saida.innerHTML = ''; saida.appendChild(C.esqueleto(arqs.length));
       Promise.all(arqs.map(function (f) { return lerBase64(f).then(function (b) { return { nome: f.name, base64: b }; }); })).then(function (itens) {
         if (itens.length === 1) {
