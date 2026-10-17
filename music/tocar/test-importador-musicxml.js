@@ -91,6 +91,19 @@ test('importa score-partwise simples localmente e sugere posição na guitarra',
   assert.equal('tempoMap' in chart, false);
 });
 
+test('piano MusicXML preserva acorde simultâneo', async () => {
+  const score = xml(medida(atributos()
+    + nota({ step: 'C', octave: 4, duration: 4 })
+    + nota({ step: 'E', octave: 4, duration: 4, extra: '<chord/>' })));
+  const analysis = await Importador.analisar(bytes(score), { perfil: 'piano' });
+  assert.equal(analysis.candidates[0].valid, true);
+  assert.equal(analysis.candidates[0].noteCount, 2);
+  const chart = Importador.criarChart(analysis, analysis.candidates[0].id, { id: 'piano-acorde', title: 'Acorde', perfil: 'piano' });
+  assert.equal(chart.layout, 'piano');
+  assert.deepEqual(chart.notes.map((notaImportada) => [notaImportada.time, notaImportada.midi]), [[0, 60], [0, 64]]);
+  assert.deepEqual(Core.validarChart(chart), chart);
+});
+
 test('mantém pausas, backup, forward e candidatos separados por pauta e voz', async () => {
   const partitura = medida(atributos()
     + '<note><rest/><duration>4</duration><voice>1</voice><staff>1</staff></note>'
