@@ -680,6 +680,14 @@ async function rodar({ t, secao, req, assert }) {
     assert.match(ob.importacao.erro, /interna/);
   });
 
+  await t('reprocessamento de URL exige o dono da importação', async () => {
+    const falha = Importar.url('u-ana', { url: 'https://exemplo.com.br/privado/c' });
+    await falha._promessa;
+    await assert.rejects(() => Importar.reprocessar(falha.importacao.id, 'u-bruno'), /não encontrada/);
+    await Importar.reprocessar(falha.importacao.id, 'u-ana');
+    assert.equal(Importar.obter('u-ana', falha.importacao.id).importacao.status, 'falhou');
+  });
+
   await t('BUSCA externa: uma fonte cai (500) e a outra responde — a busca NÃO cai, e a falha vem NOMEADA', async () => {
     rede._limpar();
     const r = Importar.buscar('u-ana', { titulo: 'Wave', artista: 'Tom Jobim' });
