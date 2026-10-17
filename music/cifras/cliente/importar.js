@@ -347,7 +347,7 @@
       lista.innerHTML = ''; lista.appendChild(C.esqueleto(2));
       api('GET', '/importar' + query).then(function (r) {
         if (ticket !== carregamento) return;
-        dados = r; offset = (r.importacoes || []).length; maisDisponivel = offset === 100; pintarLista();
+        dados = r; offset = (r.importacoes || []).length; maisDisponivel = r.paginacao ? !!r.paginacao.tem_mais : offset === 100; pintarLista();
       }).catch(function (e) {
         if (ticket !== carregamento) return;
         lista.innerHTML = ''; lista.appendChild(C.estadoErro(e, C.telas.importacoes));
@@ -420,7 +420,7 @@
       api('GET', '/importar' + query).then(function (r) {
         var novos = r.importacoes || [];
         dados.importacoes = (dados.importacoes || []).concat(novos);
-        offset += novos.length; maisDisponivel = novos.length === 100;
+        offset += novos.length; maisDisponivel = r.paginacao ? !!r.paginacao.tem_mais : novos.length === 100;
       }).catch(C.erro).then(function () { carregandoMais = false; pintarLista(); });
     }
     function agendarAtualizacao() {

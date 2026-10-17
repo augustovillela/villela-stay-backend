@@ -614,6 +614,11 @@ async function rodar({ t, secao, req, assert }) {
     const prontas = Importar.listar('u-ana', { limite: 100, status: 'pronta' });
     assert.ok(prontas.length >= 1 && prontas.every((x) => x.status === 'pronta'));
     assert.ok(Importar.listar('u-ana', { limite: 100, status: 'status-inexistente' }).length >= prontas.length);
+    const paginaApi = await req('GET', B + '/importar?limite=1&offset=0&status=pronta', { como: 'ana' });
+    assert.equal(paginaApi.status, 200);
+    assert.equal(paginaApi.json.paginacao.limite, 1);
+    assert.equal(paginaApi.json.paginacao.offset, 0);
+    assert.equal(typeof paginaApi.json.paginacao.tem_mais, 'boolean');
     if (prontas.length > 1) {
       const primeira = Importar.listar('u-ana', { limite: 1, status: 'pronta', offset: 0 });
       const segunda = Importar.listar('u-ana', { limite: 1, status: 'pronta', offset: 1 });

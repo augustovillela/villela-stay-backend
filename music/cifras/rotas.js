@@ -292,7 +292,12 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
     const usuario = U(req); Importar.reprocessar(req.params.id, usuario);
     res.json({ ok: true, importacao: Importar.obter(usuario, req.params.id).importacao });
   }));
-  app.get(B + '/importar', requireUsuario, h(async (req, res) => res.json({ importacoes: Importar.listar(U(req), { limite: req.query.limite, offset: req.query.offset, status: req.query.status }) })));
+  app.get(B + '/importar', requireUsuario, h(async (req, res) => {
+    const limite = Math.min(100, Math.max(1, Math.floor(Number(req.query.limite) || 30)));
+    const offset = Math.min(10000, Math.max(0, Math.floor(Number(req.query.offset) || 0)));
+    const importacoes = Importar.listar(U(req), { limite, offset, status: req.query.status });
+    res.json({ importacoes, paginacao: { limite, offset, tem_mais: importacoes.length === limite } });
+  }));
   app.get(B + '/importar/:id', requireUsuario, h(async (req, res) => res.json(Importar.obter(U(req), req.params.id))));
   app.get(B + '/importar/:id/candidatos/:cid', requireUsuario, h(async (req, res) => res.json(Importar.candidato(U(req), req.params.id, req.params.cid))));
   app.post(B + '/importar/:id/comparar', requireUsuario, h(async (req, res) => res.json(Importar.comparar(U(req), req.params.id, (req.body || {}).ids))));
