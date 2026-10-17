@@ -383,6 +383,9 @@
           else abrirPrevia(d, {});
         }).catch(C.erro); }, 'peq') : null,
         x.status === 'salva' && x.cifra_id ? C.botao('Abrir', function () { C.ir('cifra', x.cifra_id); }, 'sec peq') : null,
+        x.status === 'falhou' && x.tipo_entrada === 'url' ? C.botao('Tentar novamente', function () {
+          api('POST', '/importar/' + x.id + '/reprocessar').then(C.telas.importacoes).catch(C.erro);
+        }, 'peq') : null,
         ['pronta', 'falhou'].indexOf(x.status) >= 0 ? C.botao('Descartar', function () {
           C.confirmar('Descartar importação?', 'Esta importação será removida da fila de revisão e não poderá ser recuperada por esta tela.', 'Descartar').then(function (ok) {
             if (ok) api('DELETE', '/importar/' + x.id).then(C.telas.importacoes).catch(C.erro);
