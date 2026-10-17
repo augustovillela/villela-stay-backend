@@ -327,7 +327,9 @@
       if (v === 'falhou' || v === 'salva' || v === 'descartada') return carregar(v);
       pintarLista();
     }, 'Mostrar');
-    c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect]));
+    c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect, C.botao('Atualizar', function () {
+      carregar(filtro === 'falhou' || filtro === 'salva' || filtro === 'descartada' ? filtro : '');
+    }, 'sec')]));
     c.appendChild(lista);
     function carregar(status) {
       var query = status ? '?status=' + encodeURIComponent(status) + '&limite=100' : '?limite=100';
