@@ -323,14 +323,16 @@ const Importar = {
       criado_em: t.criado_em, atualizado_em: t.atualizado_em }, resultado, candidatos: cands };
   },
 
-  listar(usuario, { limite = 30, status = '' } = {}) {
+  listar(usuario, { limite = 30, status = '', offset = 0 } = {}) {
     recuperarPresas();
     const permitidos = new Set(['pendente', 'processando', 'pronta', 'falhou', 'salva', 'descartada']);
     const filtro = String(status || '').trim();
     const args = [usuario];
     let sql = 'SELECT id, status, progresso, erro, tipo_entrada, entrada_resumo, confianca, obra_id, cifra_id, criado_em FROM importacoes WHERE usuario = ?';
     if (permitidos.has(filtro)) { sql += ' AND status = ?'; args.push(filtro); }
-    sql += ' ORDER BY criado_em DESC LIMIT ?'; args.push(Math.min(100, Number(limite) || 30));
+    sql += ' ORDER BY criado_em DESC LIMIT ? OFFSET ?';
+    args.push(Math.min(100, Math.max(1, Number(limite) || 30)));
+    args.push(Math.min(10000, Math.max(0, Math.floor(Number(offset) || 0))));
     return db.prepare(sql).all(...args);
   },
 

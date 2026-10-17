@@ -320,7 +320,7 @@
   // IMPORTAÇÕES (lista e reprocessamento)
   // ---------------------------------------------------------------
   C.telas.importacoes = function () {
-    var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div'), resumo = el('p', { class: 'cf-caption', 'aria-live': 'polite' }), carregamento = 0, timer = null, atualizacoesAutomaticas = 0;
+    var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div'), resumo = el('p', { class: 'cf-caption', 'aria-live': 'polite' }), carregamento = 0, timer = null, atualizacoesAutomaticas = 0, offset = 0, maisDisponivel = false, carregandoMais = false;
     c.appendChild(el('h2', { txt: 'Importações' }));
     var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['falhou', 'Com falha'], ['salva', 'Salvas'], ['descartada', 'Descartadas']], filtro, function (v) {
       filtro = v;
@@ -337,15 +337,16 @@
     function carregar(status, automatico) {
       if (timer) { clearTimeout(timer); timer = null; }
       if (!automatico) atualizacoesAutomaticas = 0;
+      offset = 0; maisDisponivel = false;
       var ticket = ++carregamento;
-      var query = status ? '?status=' + encodeURIComponent(status) + '&limite=100' : '?limite=100';
+      var query = status ? '?status=' + encodeURIComponent(status) + '&limite=100&offset=0' : '?limite=100&offset=0';
       atualizar.disabled = true;
       atualizar.textContent = 'Atualizando…';
       lista.setAttribute('aria-busy', 'true');
       lista.innerHTML = ''; lista.appendChild(C.esqueleto(2));
       api('GET', '/importar' + query).then(function (r) {
         if (ticket !== carregamento) return;
-        dados = r; pintarLista();
+        dados = r; offset = (r.importacoes || []).length; maisDisponivel = offset === 100; pintarLista();
       }).catch(function (e) {
         if (ticket !== carregamento) return;
         lista.innerHTML = ''; lista.appendChild(C.estadoErro(e, C.telas.importacoes));
@@ -358,7 +359,7 @@
       lista.innerHTML = '';
       var total = (dados.importacoes || []).length;
       var aguardando = (dados.importacoes || []).filter(function (x) { return x.status === 'pendente' || x.status === 'processando'; }).length;
-      resumo.textContent = total + (total === 1 ? ' importação encontrada' : ' importações encontradas') + (total >= 100 ? ' · mostrando até 100; use os filtros para refinar.' : '') + (aguardando ? ' · ' + aguardando + ' em processamento; atualização automática ativa.' : '.');
+      resumo.textContent = total + (total === 1 ? ' importação encontrada' : ' importações encontradas') + (maisDisponivel ? ' · há mais resultados disponíveis.' : '') + (aguardando ? ' · ' + aguardando + ' em processamento; atualização automática ativa.' : '.');
       var itens = (dados.importacoes || []).filter(function (x) {
         return filtro === 'todas' || (filtro === 'revisar' ? ['pronta', 'processando', 'pendente'].indexOf(x.status) >= 0 : x.status === filtro);
       });
@@ -398,7 +399,20 @@
         }, 'sec peq') : null]));
       });
       lista.appendChild(li);
+      if (maisDisponivel) lista.appendChild(C.botao(carregandoMais ? 'Carregando…' : 'Mostrar mais', carregarMais, 'sec'));
       agendarAtualizacao();
+    }
+    function carregarMais() {
+      if (carregandoMais || !maisDisponivel) return;
+      carregandoMais = true;
+      var status = filtro === 'falhou' || filtro === 'salva' || filtro === 'descartada' ? filtro : '';
+      var query = (status ? '?status=' + encodeURIComponent(status) : '?') + 'limite=100&offset=' + (offset + 100);
+      pintarLista();
+      api('GET', '/importar' + query).then(function (r) {
+        var novos = r.importacoes || [];
+        dados.importacoes = (dados.importacoes || []).concat(novos);
+        offset += novos.length; maisDisponivel = novos.length === 100;
+      }).catch(C.erro).then(function () { carregandoMais = false; pintarLista(); });
     }
     function agendarAtualizacao() {
       var aguardando = (dados.importacoes || []).some(function (x) { return x.status === 'pendente' || x.status === 'processando'; });
