@@ -651,7 +651,7 @@
   }
 
   function medidasDaParte(no, info) {
-    var originais = filhos(no, 'measure'), resultado = [], inicioRepeticao = 0, finaisTratados = false;
+    var originais = filhos(no, 'measure'), resultado = [], inicioRepeticao = 0, finaisTratados = false, repeticaoAberta = false;
     function finais(medida) {
       var numeros = [];
       filhos(medida, 'barline').forEach(function (barline) {
@@ -675,7 +675,9 @@
         if (!repeticao) return;
         var direcao = repeticao.atributos.direction;
         if (direcao === 'forward') {
-          inicioRepeticao = resultado.length - 1;
+          if (repeticaoAberta) {
+            if (info && info.issues.indexOf('A parte usa repetições MusicXML aninhadas ou sobrepostas, que precisam de revisão manual antes da importação.') < 0) info.issues.push('A parte usa repetições MusicXML aninhadas ou sobrepostas, que precisam de revisão manual antes da importação.');
+          } else { inicioRepeticao = resultado.length - 1; repeticaoAberta = true; }
           return;
         }
         if (direcao !== 'backward') return;
@@ -695,6 +697,7 @@
           if (medidaDaPassagem(item, copia)) resultado.push(item);
         });
         inicioRepeticao = resultado.length;
+        repeticaoAberta = false;
       });
     });
     if (originais.some(function (item) { return finais(item).some(function (numero) { return numero === null; }); }) && info && info.issues.indexOf('A parte usa finais alternativos MusicXML com numeração ambígua, que precisa de revisão manual antes da importação.') < 0) {
