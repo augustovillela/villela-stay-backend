@@ -71,7 +71,16 @@ test('página pública tem bootstrap escapado sem identidade e apenas scripts pr
     assert.equal(asset.status, 200);
     assert.match(asset.headers.get('content-type'), /javascript/);
   }
-  for (const privado of ['test-pista-piano.js','test-pista-bateria.js','test-fixtures-importacao.js']) {
+  const sonsManifesto = await fetch(base + '/music/tocar/sons-manifesto.js');
+  assert.equal(sonsManifesto.status, 200);
+  assert.match(sonsManifesto.headers.get('content-type'), /javascript/);
+  const sons = await fetch(base + '/music/tocar/sons/piano/C4.mp3');
+  assert.equal(sons.status, 200);
+  assert.match(sons.headers.get('content-type'), /audio\/mpeg/);
+  const creditos = await fetch(base + '/music/tocar/creditos-sons.html');
+  assert.equal(creditos.status, 200);
+  assert.match(await creditos.text(), /Salamander Grand Piano/);
+  for (const privado of ['test-pista-piano.js','test-pista-bateria.js','test-fixtures-importacao.js', 'sons-manifesto.json', 'sons/piano/nao-existe.mp3']) {
     assert.equal((await fetch(base + '/music/tocar/' + privado)).status, 404);
   }
   assert.doesNotMatch(html, /nao-expor|<script>nome|laboratorio\.js|laboratorio-nucleo\.js/);

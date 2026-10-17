@@ -141,51 +141,63 @@
       "samples": [
         {
           "midi": 40,
-          "file": "violao/E2.mp3"
+          "file": "violao/E2.mp3",
+          "offsetSeconds": 0.042875
         },
         {
           "midi": 43,
-          "file": "violao/G2.mp3"
+          "file": "violao/G2.mp3",
+          "offsetSeconds": 0.041813
         },
         {
           "midi": 46,
-          "file": "violao/As2.mp3"
+          "file": "violao/As2.mp3",
+          "offsetSeconds": 0.043833
         },
         {
           "midi": 49,
-          "file": "violao/Cs3.mp3"
+          "file": "violao/Cs3.mp3",
+          "offsetSeconds": 0.041167
         },
         {
           "midi": 52,
-          "file": "violao/E3.mp3"
+          "file": "violao/E3.mp3",
+          "offsetSeconds": 0.036083
         },
         {
           "midi": 55,
-          "file": "violao/G3.mp3"
+          "file": "violao/G3.mp3",
+          "offsetSeconds": 0.040979
         },
         {
           "midi": 58,
-          "file": "violao/As3.mp3"
+          "file": "violao/As3.mp3",
+          "offsetSeconds": 0.039646
         },
         {
           "midi": 61,
-          "file": "violao/Cs4.mp3"
+          "file": "violao/Cs4.mp3",
+          "offsetSeconds": 0.04
         },
         {
           "midi": 64,
-          "file": "violao/E4.mp3"
+          "file": "violao/E4.mp3",
+          "offsetSeconds": 0.044083
         },
         {
           "midi": 67,
-          "file": "violao/G4.mp3"
+          "file": "violao/G4.mp3",
+          "offsetSeconds": 0.047104
         },
         {
           "midi": 70,
-          "file": "violao/As4.mp3"
+          "file": "violao/As4.mp3",
+          "offsetSeconds": 0.045021
         },
         {
           "midi": 74,
-          "file": "violao/D5.mp3"
+          "file": "violao/D5.mp3",
+          "offsetSeconds": 0.045979
         }
       ]
     },
@@ -196,67 +208,83 @@
       "samples": [
         {
           "midi": 40,
-          "file": "guitarra/E2.mp3"
+          "file": "guitarra/E2.mp3",
+          "offsetSeconds": 0.021312
         },
         {
           "midi": 42,
-          "file": "guitarra/Fs2.mp3"
+          "file": "guitarra/Fs2.mp3",
+          "offsetSeconds": 0.021271
         },
         {
           "midi": 45,
-          "file": "guitarra/A2.mp3"
+          "file": "guitarra/A2.mp3",
+          "offsetSeconds": 0.02125
         },
         {
           "midi": 48,
-          "file": "guitarra/C3.mp3"
+          "file": "guitarra/C3.mp3",
+          "offsetSeconds": 0.021562
         },
         {
           "midi": 51,
-          "file": "guitarra/Ds3.mp3"
+          "file": "guitarra/Ds3.mp3",
+          "offsetSeconds": 0.021312
         },
         {
           "midi": 54,
-          "file": "guitarra/Fs3.mp3"
+          "file": "guitarra/Fs3.mp3",
+          "offsetSeconds": 0.021354
         },
         {
           "midi": 57,
-          "file": "guitarra/A3.mp3"
+          "file": "guitarra/A3.mp3",
+          "offsetSeconds": 0.021292
         },
         {
           "midi": 60,
-          "file": "guitarra/C4.mp3"
+          "file": "guitarra/C4.mp3",
+          "offsetSeconds": 0.021667
         },
         {
           "midi": 63,
-          "file": "guitarra/Ds4.mp3"
+          "file": "guitarra/Ds4.mp3",
+          "offsetSeconds": 0.021292
         },
         {
           "midi": 66,
-          "file": "guitarra/Fs4.mp3"
+          "file": "guitarra/Fs4.mp3",
+          "offsetSeconds": 0.021396
         },
         {
           "midi": 69,
-          "file": "guitarra/A4.mp3"
+          "file": "guitarra/A4.mp3",
+          "offsetSeconds": 0.021542
         },
         {
           "midi": 72,
-          "file": "guitarra/C5.mp3"
+          "file": "guitarra/C5.mp3",
+          "offsetSeconds": 0.021771
         },
         {
           "midi": 75,
-          "file": "guitarra/Ds5.mp3"
+          "file": "guitarra/Ds5.mp3",
+          "offsetSeconds": 0.021417
         },
         {
           "midi": 78,
-          "file": "guitarra/Fs5.mp3"
+          "file": "guitarra/Fs5.mp3",
+          "offsetSeconds": 0.022333
         },
         {
           "midi": 81,
-          "file": "guitarra/A5.mp3"
+          "file": "guitarra/A5.mp3",
+          "offsetSeconds": 0.02175
         },
         {
           "midi": 84,
-          "file": "guitarra/C6.mp3"
+          "file": "guitarra/C6.mp3",
+          "offsetSeconds": 0.021521
         }
       ]
     },
@@ -267,59 +295,73 @@
       "samples": [
         {
           "midi": 28,
-          "file": "baixo/E1.mp3"
+          "file": "baixo/E1.mp3",
+          "offsetSeconds": 0.021375
         },
         {
           "midi": 31,
-          "file": "baixo/G1.mp3"
+          "file": "baixo/G1.mp3",
+          "offsetSeconds": 0.021375
         },
         {
           "midi": 34,
-          "file": "baixo/As1.mp3"
+          "file": "baixo/As1.mp3",
+          "offsetSeconds": 0.021271
         },
         {
           "midi": 37,
-          "file": "baixo/Cs2.mp3"
+          "file": "baixo/Cs2.mp3",
+          "offsetSeconds": 0.021292
         },
         {
           "midi": 40,
-          "file": "baixo/E2.mp3"
+          "file": "baixo/E2.mp3",
+          "offsetSeconds": 0.021354
         },
         {
           "midi": 43,
-          "file": "baixo/G2.mp3"
+          "file": "baixo/G2.mp3",
+          "offsetSeconds": 0.021312
         },
         {
           "midi": 46,
-          "file": "baixo/As2.mp3"
+          "file": "baixo/As2.mp3",
+          "offsetSeconds": 0.021396
         },
         {
           "midi": 49,
-          "file": "baixo/Cs3.mp3"
+          "file": "baixo/Cs3.mp3",
+          "offsetSeconds": 0.02125
         },
         {
           "midi": 52,
-          "file": "baixo/E3.mp3"
+          "file": "baixo/E3.mp3",
+          "offsetSeconds": 0.021458
         },
         {
           "midi": 55,
-          "file": "baixo/G3.mp3"
+          "file": "baixo/G3.mp3",
+          "offsetSeconds": 0.021312
         },
         {
           "midi": 58,
-          "file": "baixo/As3.mp3"
+          "file": "baixo/As3.mp3",
+          "offsetSeconds": 0.021271
         },
         {
           "midi": 61,
-          "file": "baixo/Cs4.mp3"
+          "file": "baixo/Cs4.mp3",
+          "offsetSeconds": 0.021333
         },
         {
           "midi": 64,
-          "file": "baixo/E4.mp3"
+          "file": "baixo/E4.mp3",
+          "offsetSeconds": 0.02125
         },
         {
           "midi": 67,
-          "file": "baixo/G4.mp3"
+          "file": "baixo/G4.mp3",
+          "offsetSeconds": 0.021271
         }
       ]
     },
@@ -399,51 +441,63 @@
       "samples": [
         {
           "midi": 40,
-          "file": "violao/E2.mp3"
+          "file": "violao/E2.mp3",
+          "offsetSeconds": 0.042875
         },
         {
           "midi": 43,
-          "file": "violao/G2.mp3"
+          "file": "violao/G2.mp3",
+          "offsetSeconds": 0.041813
         },
         {
           "midi": 46,
-          "file": "violao/As2.mp3"
+          "file": "violao/As2.mp3",
+          "offsetSeconds": 0.043833
         },
         {
           "midi": 49,
-          "file": "violao/Cs3.mp3"
+          "file": "violao/Cs3.mp3",
+          "offsetSeconds": 0.041167
         },
         {
           "midi": 52,
-          "file": "violao/E3.mp3"
+          "file": "violao/E3.mp3",
+          "offsetSeconds": 0.036083
         },
         {
           "midi": 55,
-          "file": "violao/G3.mp3"
+          "file": "violao/G3.mp3",
+          "offsetSeconds": 0.040979
         },
         {
           "midi": 58,
-          "file": "violao/As3.mp3"
+          "file": "violao/As3.mp3",
+          "offsetSeconds": 0.039646
         },
         {
           "midi": 61,
-          "file": "violao/Cs4.mp3"
+          "file": "violao/Cs4.mp3",
+          "offsetSeconds": 0.04
         },
         {
           "midi": 64,
-          "file": "violao/E4.mp3"
+          "file": "violao/E4.mp3",
+          "offsetSeconds": 0.044083
         },
         {
           "midi": 67,
-          "file": "violao/G4.mp3"
+          "file": "violao/G4.mp3",
+          "offsetSeconds": 0.047104
         },
         {
           "midi": 70,
-          "file": "violao/As4.mp3"
+          "file": "violao/As4.mp3",
+          "offsetSeconds": 0.045021
         },
         {
           "midi": 74,
-          "file": "violao/D5.mp3"
+          "file": "violao/D5.mp3",
+          "offsetSeconds": 0.045979
         }
       ]
     },
@@ -454,51 +508,63 @@
       "samples": [
         {
           "midi": 40,
-          "file": "violao/E2.mp3"
+          "file": "violao/E2.mp3",
+          "offsetSeconds": 0.042875
         },
         {
           "midi": 43,
-          "file": "violao/G2.mp3"
+          "file": "violao/G2.mp3",
+          "offsetSeconds": 0.041813
         },
         {
           "midi": 46,
-          "file": "violao/As2.mp3"
+          "file": "violao/As2.mp3",
+          "offsetSeconds": 0.043833
         },
         {
           "midi": 49,
-          "file": "violao/Cs3.mp3"
+          "file": "violao/Cs3.mp3",
+          "offsetSeconds": 0.041167
         },
         {
           "midi": 52,
-          "file": "violao/E3.mp3"
+          "file": "violao/E3.mp3",
+          "offsetSeconds": 0.036083
         },
         {
           "midi": 55,
-          "file": "violao/G3.mp3"
+          "file": "violao/G3.mp3",
+          "offsetSeconds": 0.040979
         },
         {
           "midi": 58,
-          "file": "violao/As3.mp3"
+          "file": "violao/As3.mp3",
+          "offsetSeconds": 0.039646
         },
         {
           "midi": 61,
-          "file": "violao/Cs4.mp3"
+          "file": "violao/Cs4.mp3",
+          "offsetSeconds": 0.04
         },
         {
           "midi": 64,
-          "file": "violao/E4.mp3"
+          "file": "violao/E4.mp3",
+          "offsetSeconds": 0.044083
         },
         {
           "midi": 67,
-          "file": "violao/G4.mp3"
+          "file": "violao/G4.mp3",
+          "offsetSeconds": 0.047104
         },
         {
           "midi": 70,
-          "file": "violao/As4.mp3"
+          "file": "violao/As4.mp3",
+          "offsetSeconds": 0.045021
         },
         {
           "midi": 74,
-          "file": "violao/D5.mp3"
+          "file": "violao/D5.mp3",
+          "offsetSeconds": 0.045979
         }
       ],
       "doubled": true
