@@ -274,6 +274,9 @@ function painelInteiro(usuario, produto, slugEscopo) {
     // CHAVE GERAL dos pedidos pagos (estudo_pedidos): sem ela, a aba "Escrita e oral" e as entradas de importar
     // prova e de ler edital não existem para este aluno — a tela não as desenha
     pedidos_disponiveis: pedidosLiberados(usuario),
+    // LEGISLAÇÃO E JURISPRUDÊNCIA (ADR-0014): o acervo existe para este aluno? Sem ele (`null`), a tela não desenha as
+    // abas "Legislação" e "Jurisprudência" nem as da aula. Rascunho só o revisor vê (estudo/lei-juris.js).
+    lei_juris: require('./lei-juris').resumoParaPainel(c),
     regra_pontuacao: escopo.regra_pontuacao,
     revisoes: { hoje: fila.hoje.length, adiadas: fila.adiadas },
     desempenho: {

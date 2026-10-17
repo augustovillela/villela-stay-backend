@@ -182,7 +182,8 @@
     // ---------------- casca ----------------
     // cada passo do histórico leva o que a tela LEMBRA (as disciplinas abertas e a rolagem de cada lista; de onde o
     // aluno veio para a aula, para o caderno, para a jornada): é o que sobrevive ao F5 e devolve ao mesmo lugar
-    function lembrancas() { return { es: { lugares: LUGAR, veioDe: E.veioDe || '', porta: E.antesDaPorta || null, caderno: E.antesDoCaderno || null, leitor: E.antesDoLeitor || null } }; }
+    // (`abaAula`: em cada aula, a aba aberta — texto, legislação ou jurisprudência; `acervo`: a aula de onde o acervo foi aberto)
+    function lembrancas() { return { es: { lugares: LUGAR, veioDe: E.veioDe || '', porta: E.antesDaPorta || null, caderno: E.antesDoCaderno || null, leitor: E.antesDoLeitor || null, abaAula: ABA_AULA, acervo: E.antesDoAcervo || null } }; }
     function rota(partes, substituir) { if (window.AcademyRota) window.AcademyRota.gravar(partes, substituir, lembrancas()); }
     // fechar a aba ou recarregar: o passo atual guarda a rolagem e as disciplinas abertas deste instante
     function guardarPassoAgora() {
@@ -212,7 +213,8 @@
       // vazia, e é daqui que voltam as disciplinas abertas; e o "de onde vim" de CADA passo é o daquele passo
       var lembrado = inicio.es || null, ch = chavePercurso(slug);
       if (lembrado && lembrado.lugares && !LUGARES[ch]) LUGARES[ch] = lembrado.lugares;
-      if (lembrado) { E.veioDe = lembrado.veioDe || E.veioDe; E.antesDaPorta = lembrado.porta || E.antesDaPorta; E.antesDoCaderno = lembrado.caderno || E.antesDoCaderno; }
+      if (lembrado) { E.veioDe = lembrado.veioDe || E.veioDe; E.antesDaPorta = lembrado.porta || E.antesDaPorta; E.antesDoCaderno = lembrado.caderno || E.antesDoCaderno; E.antesDoAcervo = lembrado.acervo || E.antesDoAcervo; }
+      if (lembrado && lembrado.abaAula) Object.keys(lembrado.abaAula).forEach(function (k) { if (!ABA_AULA[k]) ABA_AULA[k] = lembrado.abaAula[k]; });
       // o leitor reaberto pelo endereço (F5, Voltar) sabe de onde tinha sido aberto — é o que o passo dele lembrava
       E.antesDoLeitor = inicio.aba === 'aulas' && inicio.arg === 'ler' && lembrado && lembrado.leitor ? lembrado.leitor : null;
       LUGAR = LUGARES[ch] || (LUGARES[ch] = {});
@@ -310,14 +312,15 @@
         if (depois) depois();
       }).catch(function (e) { if (v === VEZ && b === base()) falha(el('es-corpo'), e); });
     }
-    var ABAS = [['hoje', 'Hoje'], ['aulas', 'Aulas'], ['mapas', 'Mapas'], ['cobrado', 'Mais cobrado'], ['programa', 'Programa'], ['praticar', 'Praticar'], ['escrita', 'Escrita e oral'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
+    // "Legislação" e "Jurisprudência" (ADR-0014) só existem com o acervo aberto a este aluno (painel.lei_juris)
+    var ABAS = [['hoje', 'Hoje'], ['aulas', 'Aulas'], ['mapas', 'Mapas'], ['cobrado', 'Mais cobrado'], ['programa', 'Programa'], ['lei', 'Legislação'], ['juris', 'Jurisprudência'], ['praticar', 'Praticar'], ['escrita', 'Escrita e oral'], ['erros', 'Erros'], ['cards', 'Cards'], ['prova', 'Prova'], ['plano', 'Plano']];
     // As abas são ABAS também para o leitor de tela (réplica de 11/10/2026, baixa 4): `role="tablist"`/`"tab"` e
     // `aria-selected` na aba aberta — antes a aba atual só se distinguia pela cor. A aula, o caderno, a jornada e as
     // ferramentas não são abas: com elas na tela, nenhuma aba fica selecionada.
     function abas() {
       var cx = el('es-abas');
       cx.setAttribute('role', 'tablist'); cx.setAttribute('aria-label', 'Seções do percurso');
-      cx.innerHTML = ABAS.filter(function (x) { return x[0] !== 'escrita' || temPedidos(); }).map(function (x) { return '<button type="button" role="tab" aria-selected="false" aria-controls="es-corpo" data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('');
+      cx.innerHTML = ABAS.filter(function (x) { return x[0] !== 'escrita' || temPedidos(); }).filter(function (x) { return (x[0] !== 'lei' && x[0] !== 'juris') || temLeiJuris(x[0]); }).map(function (x) { return '<button type="button" role="tab" aria-selected="false" aria-controls="es-corpo" data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('');
       cada(cx, 'button', function (b) { b.onclick = function () { ir(b.getAttribute('data-a')); }; });
       marcarAba(E.aba);
     }
@@ -327,7 +330,7 @@
     }
     // O LUGAR de cada aba: quais disciplinas estavam abertas e onde a página estava rolada. Sem isso, voltar da
     // aula para a lista devolve ao topo, com a primeira disciplina aberta — "volta ao princípio" (Augusto, 10/10/2026).
-    var LUGAR = {}, LUGARES = {}, ONDE = {}, LISTAS = { aulas: 1, mapas: 1, programa: 1, cobrado: 1, escrita: 1 }, PORTAS = { jornada: 1, ferramentas: 1 };
+    var LUGAR = {}, LUGARES = {}, ONDE = {}, LISTAS = { aulas: 1, mapas: 1, programa: 1, cobrado: 1, escrita: 1, lei: 1, juris: 1 }, PORTAS = { jornada: 1, ferramentas: 1 };
     function rolagem() { return document.scrollingElement || document.documentElement; }
     // `E.dentro`: o corpo NÃO é a lista — é o leitor ("Ler a disciplina") ou "Minhas marcações", abertos por cima
     // dela na mesma aba. Guardar o lugar ali gravava o DOM do leitor (nenhuma disciplina aberta, rolagem 0), e
@@ -401,8 +404,21 @@
       var yAntes = rolagem().scrollTop, onde = ONDE[chavePercurso(E.slug)] || {};
       // link antigo, favorito ou retorno de pagamento para a aba que este aluno não tem: cai na aba Hoje
       if (aba === 'escrita' && !temPedidos()) { aba = 'hoje'; arg = undefined; }
+      if ((aba === 'lei' || aba === 'juris') && !temLeiJuris(aba)) { aba = 'hoje'; arg = undefined; } // acervo fechado (ou link velho)
       if (!como.reabrindo) {
-        if (aba === 'unidade' && E.aba && E.aba !== 'unidade') E.veioDe = E.aba;
+        // (o "← Voltar à aula" do acervo devolve à aula SEM fazer do acervo o "de onde vim" dela: o Voltar da aula
+        // continua levando aonde levava antes de o aluno abrir a lei)
+        if (aba === 'unidade' && E.aba && E.aba !== 'unidade' && !(como.voltando && (E.aba === 'lei' || E.aba === 'juris'))) {
+          E.veioDe = E.aba;
+          // dos acervos de legislação e jurisprudência a aula volta ao MESMO lugar: o diploma (ou a página) e a rolagem
+          E.veioDeLugar = { aba: E.aba, arg: onde.aba === E.aba ? onde.arg : undefined, y: yAntes };
+        }
+        // o acervo aberto DE DENTRO DE UMA AULA guarda a aula e a rolagem dela: "← Voltar à aula" devolve lá, na mesma
+        // aba (a de Legislação, se foi dela que o aluno saiu). Entrar no acervo por outra aba esquece a aula.
+        if ((aba === 'lei' || aba === 'juris') && !como.voltando) {
+          if (E.aba === 'unidade') E.antesDoAcervo = { aba: 'unidade', arg: onde.arg, y: yAntes };
+          else if (E.aba !== 'lei' && E.aba !== 'juris') E.antesDoAcervo = null;
+        }
         // o caderno devolve a quem o abriu — aba, aula e ROLAGEM
         if (aba === 'caderno' && E.aba !== 'caderno') E.antesDoCaderno = { aba: onde.aba || E.aba, arg: onde.arg, y: yAntes };
         // Minha jornada e Ferramentas são PORTAS (não são abas): guardam de onde o aluno veio — aba, aula e rolagem — para devolvê-lo lá
@@ -416,18 +432,20 @@
       var alvo = el('es-corpo');
       alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
       if (!document.querySelector('.es-kd')) document.documentElement.style.overflow = ''; // o leitor de tela cheia saiu de cena
-      ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, praticar: praticar, escrita: escrita, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade, caderno: caderno, jornada: jornada, ferramentas: ferramentas }[aba] || hoje)(alvo, arg);
+      ({ hoje: hoje, aulas: aulas, mapas: mapas, cobrado: maisCobrado, programa: programa, lei: acervoLei, juris: acervoJuris, praticar: praticar, escrita: escrita, erros: erros, cards: cards, prova: prova, plano: plano, unidade: unidade, caderno: caderno, jornada: jornada, ferramentas: ferramentas }[aba] || hoje)(alvo, arg);
       if (LISTAS[aba] && !E.abaArg) reporLugar(aba, alvo, como.primeira); else irAoConteudo(como.primeira);
     }
     // volta a um lugar guardado ({ aba, arg, y }): a tela e a rolagem em que o aluno estava
     function voltarPara(lugar) {
       var a = lugar || { aba: 'hoje' };
-      ir(a.aba || 'hoje', a.arg);
+      E.reposicao = a.aba === 'lei' && !!a.arg && a.y > 0; // quem abre um diploma num dispositivo não rola até ele: a rolagem guardada manda
+      ir(a.aba || 'hoje', a.arg, false, { voltando: true });
       if (a.y > 0 && !(LISTAS[a.aba] && !a.arg)) reporRolagem(a.aba, a.y); // as listas repõem o próprio lugar
     }
     // "Voltar" de dentro da aula: para a tela de onde o aluno veio (lista de aulas, programa, mapas…), no ponto em que estava
     function voltarDaAula() {
       var veio = E.veioDe;
+      if ((veio === 'lei' || veio === 'juris') && E.veioDeLugar && E.veioDeLugar.aba === veio) { voltarPara(E.veioDeLugar); return; }
       if (veio && veio !== 'unidade') ir(veio); else ir('aulas');
     }
 
@@ -1661,6 +1679,8 @@
           '<button class="al-bt fan" id="es-un-livro">📖 Ler como livro</button>' +
           '<button class="al-bt fan" id="es-un-pr2">✍️ Praticar esta matéria</button>' +
           '<button class="al-bt fan" id="es-un-vt2">← Voltar</button></div>' +
+          // ADR-0014: ao lado do texto, a LEGISLAÇÃO e a JURISPRUDÊNCIA do item — abas que trocam só o que se lê aqui
+          abasDaAula() + '<div id="es-un-p-texto" role="tabpanel">' +
           '<p class="al-rotulo es-un-txt">Texto da aula</p>' + sel +
           u.blocos.map(function (b) {
             return '<section class="es-bloco ' + b.tipo + '"><h4>' + esc(b.titulo || BLOCO[b.tipo]) + '</h4><div class="es-un-ler">' + textoMarcado(b.texto, [], u.destaques) + '</div>' +
@@ -1671,7 +1691,8 @@
               '</section>';
           }).join('') +
           // o fim do TEXTO da aula: quando ele entra na tela, a leitura foi até o fim (`ligarFimDaLeitura`)
-          '<span id="es-un-fim" aria-hidden="true"></span>' +
+          '<span id="es-un-fim" aria-hidden="true"></span></div>' +
+          (temLeiJuris() ? '<div id="es-un-p-lei" class="es-un-painel" role="tabpanel" hidden></div><div id="es-un-p-juris" class="es-un-painel" role="tabpanel" hidden></div>' : '') +
           // o quiz mora DENTRO da aula, como nos outros cursos; as questões vêm do banco e são respondidas aqui
           '<section class="es-bloco es-quiz" id="es-un-quiz" data-aula="' + esc(codigo) + '"><h4>Quiz desta aula</h4><div id="es-un-quiz-cx"><p class="al-sub">Procurando as questões desta aula…</p></div></section>' +
           '<section class="es-bloco es-nota-aula"><h4>Minhas anotações desta aula</h4>' +
@@ -1693,6 +1714,9 @@
           }).catch(function (e) { var cx = el('es-un-video'); if (cx) cx.innerHTML = '<p class="al-fino">Não foi possível carregar a videoaula: ' + esc(e.message) + '</p>'; });
         }
         cada(alvo, '[data-nv]', function (b) { b.onclick = function () { unidade(alvo, codigo, b.getAttribute('data-nv')); }; });
+        // a aba que estava aberta nesta aula volta aberta ("quero voltar para onde estava")
+        cada(alvo, '[data-ua]', function (b) { b.onclick = function () { abrirAbaDaAula(codigo, b.getAttribute('data-ua')); }; });
+        if (temLeiJuris()) abrirAbaDaAula(codigo, ABA_AULA[codigo] || 'texto');
         ligarCadernoDaAula(alvo, codigo, u);
         ligarFimDaLeitura(codigo, u.lida);
         quizDaAula(el('es-un-quiz-cx'), codigo, u.conta_pela_leitura);
@@ -1880,6 +1904,7 @@
       function ver() {
         if (el('es-un-fim') !== fim) { parar(); return; } // o aluno saiu desta aula
         if (Date.now() - desde < LEITURA_MIN_MS) return;
+        if (!fim.offsetParent && fim.getClientRects().length === 0) return; // o texto está escondido (aba Legislação ou Jurisprudência aberta): não é leitura
         if (fim.getBoundingClientRect().top > (window.innerHeight || document.documentElement.clientHeight)) return; // ainda não chegou ao fim
         parar();
         api('PUT', base() + '/unidades/' + encodeURIComponent(codigo) + '/lida').then(function (x) { if (x.estudada) carregar(); })
@@ -4028,6 +4053,390 @@
         btA.onclick = previaAgora;
       }
       carregar();
+    }
+
+    // ================= LEGISLAÇÃO E JURISPRUDÊNCIA (ADR-0014; servidor em estudo/lei-juris.js) =================
+    // Na aula: duas abas ao lado do texto — a lei seca e os verbetes que o item do edital cobra, sem comentário.
+    // No curso: dois acervos — a legislação inteira (diploma por diploma, navegável) e a jurisprudência (filtros,
+    // busca, páginas) —, a busca única nos dois e a marcação de leitura do aluno (lido; grifo amarelo ou verde).
+    // "Quero voltar para onde estava": a aula lembra a aba aberta (ABA_AULA) e o acervo aberto de dentro de uma
+    // aula lembra a aula e a rolagem (E.antesDoAcervo) — o "← Voltar à aula" e o Voltar da aula devolvem lá.
+    var ABA_AULA = {};
+    var LJ = { jf: { pagina: 1 }, busca: '', filtroDip: '' };
+    function temLeiJuris(qual) {
+      var x = E.painel && E.painel.lei_juris;
+      if (!x) return false;
+      return qual === 'lei' ? !!x.legislacao : qual === 'juris' ? !!x.jurisprudencia : !!(x.legislacao || x.jurisprudencia);
+    }
+    var SIT_DISP = { revogado: 'Revogado', vetado: 'Vetado', alterado_apos_edital: 'Alterado depois do edital', incluido_apos_edital: 'Incluído depois do edital', revogado_apos_edital: 'Revogado depois do edital' };
+    var SIT_JURIS = { vigente: 'Vigente', cancelado: 'Cancelado', convertido: 'Convertido', alterado: 'Alterado', superado: 'Superado', suspenso: 'Suspenso', revogado: 'Revogado',
+      julgado: 'Julgado', merito_julgado: 'Mérito julgado', pendente: 'Pendente de julgamento', prejudicado: 'Prejudicado', encerrado: 'Encerrado', extinto: 'Extinto', sem_tese: 'Sem tese',
+      incluido_apos_edital: 'Editado depois do edital', alterado_apos_edital: 'Alterado depois do edital', cancelado_apos_edital: 'Cancelado depois do edital', sem_informacao: 'Sem informação', inexistente: 'Não existia' };
+    var SIT_JURIS_COR = { vigente: 'verde', merito_julgado: 'verde', julgado: 'verde', cancelado: 'verm', superado: 'verm', revogado: 'verm', cancelado_apos_edital: 'verm', extinto: 'verm', prejudicado: 'verm',
+      convertido: 'ambar', alterado: 'ambar', alterado_apos_edital: 'ambar', suspenso: 'ambar', incluido_apos_edital: 'ambar', pendente: 'azul' };
+    var TIPO_JURIS = { sumula: 'Súmula', sumula_vinculante: 'Súmula Vinculante', oj: 'Orientação Jurisprudencial', precedente_normativo: 'Precedente Normativo', tema_rg: 'Tema de Repercussão Geral',
+      tema_repetitivo: 'Tema Repetitivo', tema_irr: 'Tema de Recurso Repetitivo (IRR)', tema_iac: 'Tema de IAC', tema_irdr: 'Tema de IRDR', irdr: 'IRDR', iac: 'IAC', iuj: 'Uniformização de Jurisprudência (IUJ)',
+      arginc: 'Arguição de Inconstitucionalidade', acordao: 'Acórdão' };
+    function tipoJuris(t) { return TIPO_JURIS[t] || t; }
+    // "em 16/10/2026", "em 10/2026" ou "em 1966": a data da norma que alterou vem com o que a fonte diz
+    function dataNorma(d) {
+      d = String(d || '');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return 'em ' + dataBR(d);
+      if (/^\d{4}-\d{2}$/.test(d)) return 'em ' + d.slice(5, 7) + '/' + d.slice(0, 4);
+      return /^\d{4}$/.test(d) ? 'em ' + d : '';
+    }
+    function pelaNorma(n) { n = String(n || ''); return n ? (/^(decreto|ato|provimento|regimento|tratado|ajuste)/i.test(n) ? 'pelo ' : 'pela ') + n : ''; }
+    // A SITUAÇÃO, sempre explícita: "Alterado em 16/10/2026 pela Emenda Constitucional nº 141 — na data do edital: …"
+    function situacaoDoDispositivo(x, dataEdital) {
+      var sit = x.situacao, ap = x.alterado_por || null;
+      if (!sit || sit === 'vigente') return '';
+      if (sit === 'revogado' || sit === 'vetado') return '';
+      var quem = [ap ? dataNorma(ap.data) : '', ap ? pelaNorma(ap.norma) : ''].filter(Boolean).join(' ');
+      var ed = x.texto_na_data_do_edital, naData = '';
+      if (ed) naData = ' — <span>na data do edital' + (dataEdital ? ' (' + dataBR(dataEdital) + ')' : '') + ':</span> <q class="es-lj-ed">' + esc(ed) + '</q>';
+      else if (x.edital_indisponivel || x.texto_na_data_do_edital_indisponivel) naData = ' — <span>a redação na data do edital não está disponível na fonte.</span>';
+      if (sit === 'alterado_apos_edital') return '<p class="es-lj-sit alt" role="note"><b>Alterado' + (quem ? ' ' + esc(quem) : ' depois do edital') + '</b>' + (naData || ' — a redação acima é posterior ao edital.') + '</p>';
+      if (sit === 'incluido_apos_edital') return '<p class="es-lj-sit alt" role="note"><b>Incluído' + (quem ? ' ' + esc(quem) : ' depois do edital') + '</b> — não existia na data do edital.</p>';
+      if (sit === 'revogado_apos_edital') return '<p class="es-lj-sit rev" role="note"><b>Revogado' + (quem ? ' ' + esc(quem) : ' depois do edital') + '</b>' + (naData || ' — vigorava na data do edital.') + '</p>';
+      return '';
+    }
+    function tagDoDispositivo(sit) { return sit && sit !== 'vigente' ? ' <span class="es-lj-tag ' + (/revogado|vetado/.test(sit) ? 'rev' : 'alt') + '">' + esc(SIT_DISP[sit] || sit) + '</span>' : ''; }
+    function botoesDeLeitura(m) {
+      m = m || {};
+      return '<span class="es-lj-marca"><button type="button" class="es-lj-bt' + (m.lido ? ' on' : '') + '" data-lj-lido aria-pressed="' + (m.lido ? 'true' : 'false') + '" title="Marcar como lido">✓ Lido</button>' +
+        '<button type="button" class="es-lj-bt cor amarelo' + (m.cor === 'amarelo' ? ' on' : '') + '" data-lj-cor="amarelo" aria-pressed="' + (m.cor === 'amarelo' ? 'true' : 'false') + '" title="Grifar em amarelo" aria-label="Grifar em amarelo"></button>' +
+        '<button type="button" class="es-lj-bt cor verde' + (m.cor === 'verde' ? ' on' : '') + '" data-lj-cor="verde" aria-pressed="' + (m.cor === 'verde' ? 'true' : 'false') + '" title="Grifar em verde" aria-label="Grifar em verde"></button></span>';
+    }
+    function linksDeAulas(aulas, titulos) {
+      if (!aulas || !aulas.length) return '';
+      return '<span class="es-lj-aulas"><span class="al-fino">Nas aulas:</span> ' + aulas.slice(0, 8).map(function (a) {
+        return '<button type="button" class="es-link" data-lj-aula="' + esc(a) + '">📖 ' + esc((titulos && titulos[a]) || a) + '</button>';
+      }).join(' ') + (aulas.length > 8 ? ' <span class="al-fino">e mais ' + (aulas.length - 8) + '</span>' : '') + '</span>';
+    }
+    // um DISPOSITIVO em texto seco: rótulo, caput, partes (as que o item cita, destacadas), a nota oficial e a situação
+    function htmlDispositivo(dip, x, marcas, opc) {
+      opc = opc || {};
+      var ref = dip.id + '|' + x.id, m = (marcas || {})[ref] || {}, citadas = {};
+      (x.citadas || []).forEach(function (p) { citadas[p] = 1; });
+      var vazio = function (o) { return !o.texto && /revogado|vetado/.test(o.situacao || ''); };
+      var partes = (x.partes || []).map(function (p) {
+        var nivel = Math.max(0, String(p.id).slice(String(x.id).length + 1).split('.').length - 1);
+        return '<p class="es-lj-parte n' + Math.min(nivel, 3) + ' sit-' + esc(p.situacao) + (citadas[p.id] ? ' citada' : '') + '"><b>' + esc(p.rotulo || p.caminho) + '</b> ' +
+          (vazio(p) ? '<i>(' + esc(SIT_DISP[p.situacao] || p.situacao) + ')</i>' : esc(p.texto) + tagDoDispositivo(/revogado|vetado/.test(p.situacao) ? p.situacao : '')) +
+          (p.nota ? ' <span class="es-lj-nota">' + esc(p.nota) + '</span>' : '') + '</p>' + situacaoDoDispositivo(p, dip.data_referencia_edital);
+      }).join('');
+      var cls = 'es-lj-disp sit-' + esc(x.situacao) + (m.cor ? ' grifo-' + esc(m.cor) : '') + (m.lido ? ' lido' : '') + (opc.acervo && x.cobrado ? ' cobrado' : '');
+      return '<article class="' + cls + '" id="lj-' + esc(dip.id) + '-' + esc(x.id) + '" data-lj-tipo="dispositivo" data-lj-ref="' + esc(ref) + '">' +
+        (x.epigrafe ? '<p class="es-lj-epi">' + esc(x.epigrafe) + '</p>' : '') +
+        '<p class="es-lj-caput"><b class="es-lj-rot">' + esc(x.rotulo) + '</b> ' + (vazio(x) ? '<i>(' + esc(SIT_DISP[x.situacao] || x.situacao) + ')</i>' : esc(x.texto) + tagDoDispositivo(x.situacao)) +
+        (x.nota ? ' <span class="es-lj-nota">' + esc(x.nota) + '</span>' : '') + '</p>' + situacaoDoDispositivo(x, dip.data_referencia_edital) + partes +
+        '<div class="es-lj-acoes">' + botoesDeLeitura(m) +
+        (opc.acervo && x.cobrado ? '<span class="es-lj-cob" title="Itens do edital que cobram este dispositivo">Edital: ' + (x.itens || []).map(esc).join(', ') + '</span>' + linksDeAulas(x.aulas, opc.titulos) : '') +
+        (opc.doItem ? '<button type="button" class="es-link" data-lj-dip="' + esc(dip.id + '~' + x.id) + '">Ver no diploma inteiro →</button>' : '') +
+        '</div></article>';
+    }
+    // um VERBETE (súmula, OJ, tema, precedente…): o texto oficial, a tese, a situação com a data e a fonte
+    function cabecalhoDoVerbete(v) {
+      var num = String(v.numero || '');
+      // "ADI 5766" já diz o tipo; "1" (súmula 1) não
+      var nome = /^[A-Za-z]/.test(num) ? num : tipoJuris(v.tipo) + (num ? ' ' + num : '');
+      return esc(v.tribunal) + ' · ' + esc(nome);
+    }
+    function situacaoDoVerbete(v) {
+      var sit = v.situacao || '', ed = v.situacao_na_data_do_edital || '';
+      return '<span class="es-selo ' + (SIT_JURIS_COR[sit] || '') + '">' + esc(SIT_JURIS[sit] || sit || 'sem situação') + '</span>' +
+        (ed && ed !== sit ? ' <span class="es-selo">Na data do edital: ' + esc(SIT_JURIS[ed] || ed) + '</span>' : '');
+    }
+    function corpoDoVerbete(v, marcas, opc) {
+      opc = opc || {};
+      // (na lista da jurisprudência o título já está no resumo do item: `semTitulo`)
+      return (v.titulo && v.titulo !== v.numero && !opc.semTitulo ? '<p class="es-lj-vt"><b>' + esc(v.titulo) + '</b></p>' : '') +
+        (v.texto ? '<div class="es-lj-vtx">' + texto(v.texto) + '</div>' : '') +
+        (v.tese ? '<div class="es-lj-tese"><span class="al-rotulo">Tese</span>' + texto(v.tese) + '</div>' : '') +
+        '<p class="es-lj-vsit">' + situacaoDoVerbete(v) + (v.situacao_detalhe ? ' <span class="es-lj-nota">' + esc(v.situacao_detalhe) + '</span>' : '') + '</p>' +
+        (v.orgao || v.julgamento || v.historico ? '<p class="es-lj-nota">' + [v.orgao, v.julgamento ? 'Julgamento: ' + v.julgamento : '', v.historico].filter(Boolean).map(esc).join(' · ') + '</p>' : '') +
+        '<p class="es-lj-nota">' + (v.fonte_url ? '<a href="' + esc(v.fonte_url) + '" target="_blank" rel="noopener">Fonte oficial</a>' : 'Fonte oficial') + (v.consultado_em ? ' — consultada em ' + dataBR(v.consultado_em) : '') + '</p>' +
+        '<div class="es-lj-acoes">' + botoesDeLeitura((marcas || {})[v.id]) +
+        ((v.itens || []).length ? '<span class="es-lj-cob">Edital: ' + v.itens.map(esc).join(', ') + '</span>' : '') + linksDeAulas(v.aulas, opc.titulos) +
+        (opc.doItem ? '<button type="button" class="es-link" data-lj-verb="' + esc(v.id) + '">Abrir no acervo →</button>' : '') + '</div>';
+    }
+    function htmlVerbete(v, marcas, opc) {
+      var m = (marcas || {})[v.id] || {};
+      return '<article class="es-lj-verb' + (m.cor ? ' grifo-' + esc(m.cor) : '') + (m.lido ? ' lido' : '') + ' sit-' + esc(v.situacao) + '" id="lj-v-' + esc(v.id) + '" data-lj-tipo="verbete" data-lj-ref="' + esc(v.id) + '">' +
+        '<h5 class="es-lj-vcab">' + cabecalhoDoVerbete(v) + '</h5>' + corpoDoVerbete(v, marcas, opc) + '</article>';
+    }
+    // um ouvinte só por tela: marcar lido/grifo, abrir a aula, o diploma, o verbete
+    function ligarLeiJuris(alvo, marcas) {
+      alvo.onclick = function (ev) {
+        var b = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+        if (!b || !alvo.contains(b)) return;
+        if (b.hasAttribute('data-lj-aula')) { ir('unidade', b.getAttribute('data-lj-aula')); return; }
+        if (b.hasAttribute('data-lj-dip')) { ir('lei', b.getAttribute('data-lj-dip')); return; }
+        if (b.hasAttribute('data-lj-verb')) { ir('juris', b.getAttribute('data-lj-verb')); return; }
+        if (!b.hasAttribute('data-lj-lido') && !b.hasAttribute('data-lj-cor')) return;
+        var art = b.closest('[data-lj-ref]'); if (!art) return;
+        var tipo = art.getAttribute('data-lj-tipo'), ref = art.getAttribute('data-lj-ref'), m = marcas[ref] || { lido: false, cor: '' };
+        var corpo = { tipo: tipo, ref: ref };
+        if (b.hasAttribute('data-lj-lido')) corpo.lido = !m.lido; else { var cor = b.getAttribute('data-lj-cor'); corpo.cor = m.cor === cor ? '' : cor; }
+        b.disabled = true;
+        api('PUT', base() + '/lei-juris/marcas', corpo).then(function (r) {
+          b.disabled = false;
+          marcas[ref] = { lido: r.marca.lido, cor: r.marca.cor };
+          art.classList.toggle('lido', !!r.marca.lido);
+          ['amarelo', 'verde'].forEach(function (c) { art.classList.toggle('grifo-' + c, r.marca.cor === c); });
+          var cx = art.querySelector('.es-lj-marca');
+          if (cx) cx.outerHTML = botoesDeLeitura(marcas[ref]);
+        }).catch(function (e) { b.disabled = false; b.title = e.message; window.alert(e.message); });
+      };
+    }
+    function itensDoTopo(r) {
+      return (r.itens || []).length ? '<p class="es-ler-item">' + r.itens.map(function (x) { return '<b>' + esc(x.codigo) + '</b> ' + esc(x.texto); }).join(' · ') + '</p>' : '';
+    }
+    // ---- na AULA: as abas "Texto da aula", "Legislação" e "Jurisprudência" ----
+    function abasDaAula() {
+      if (!temLeiJuris()) return '';
+      return '<div class="es-un-abas" role="tablist" aria-label="O que ler nesta aula"><button type="button" role="tab" data-ua="texto">📄 Texto da aula</button>' +
+        (temLeiJuris('lei') ? '<button type="button" role="tab" data-ua="lei">⚖️ Legislação</button>' : '') +
+        (temLeiJuris('juris') ? '<button type="button" role="tab" data-ua="juris">🏛️ Jurisprudência</button>' : '') + '</div>';
+    }
+    function abrirAbaDaAula(codigo, qual) {
+      if (!el('es-un-p-texto')) return;
+      if (qual !== 'lei' && qual !== 'juris') qual = 'texto';
+      if (qual !== 'texto' && !temLeiJuris(qual)) qual = 'texto';
+      ABA_AULA[codigo] = qual;
+      ['texto', 'lei', 'juris'].forEach(function (k) { var p = el('es-un-p-' + k); if (p) p.hidden = k !== qual; });
+      cada(document, '.es-un-abas [data-ua]', function (b) { var on = b.getAttribute('data-ua') === qual; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+      var cx = el('es-un-p-' + qual);
+      if (qual === 'texto' || !cx || cx.getAttribute('data-carregado') === codigo) return;
+      cx.setAttribute('data-carregado', codigo);
+      (qual === 'lei' ? leiDaAula : jurisDaAula)(cx, codigo);
+    }
+    function leiDaAula(cx, codigo) {
+      cx.innerHTML = '<p class="al-sub">Carregando a legislação desta aula…</p>';
+      api('GET', base() + '/legislacao/vinculada?unidade=' + encodeURIComponent(codigo)).then(function (r) {
+        if (!document.body.contains(cx)) return;
+        if (!r.diplomas.length) {
+          cx.innerHTML = '<div class="es-ler es-lj">' + itensDoTopo(r) + '<p class="al-sub">Nenhum dispositivo de lei está ligado a este item do edital ainda. A legislação inteira está no acervo.</p>' +
+            '<div class="es-linha"><button type="button" class="al-bt peq fan" data-lj-acervo="lei">⚖️ Abrir o acervo de legislação</button></div></div>';
+        } else {
+          cx.innerHTML = '<div class="es-ler es-lj"><p class="es-lj-intro">A lei seca que este item do edital cobra, no texto da fonte oficial, sem comentário. O que o item cita fica destacado; o que mudou depois do edital traz a redação da data do edital ao lado.</p>' + itensDoTopo(r) +
+            r.diplomas.map(function (d) {
+              return '<section class="es-lj-dip"><h3>' + esc(d.nome) + '</h3><p class="es-ler-sub">' + esc(d.norma) + (d.fonte_url ? ' · <a href="' + esc(d.fonte_url) + '" target="_blank" rel="noopener">fonte oficial</a>' : '') + (d.consultado_em ? ' — consultada em ' + dataBR(d.consultado_em) : '') + '</p>' +
+                d.dispositivos.map(function (x) { return htmlDispositivo(d, x, r.marcas, { doItem: true }); }).join('') + '</section>';
+            }).join('') + '</div>';
+        }
+        ligarLeiJuris(cx, r.marcas || {});
+        cada(cx, '[data-lj-acervo]', function (b) { b.onclick = function (ev) { ev.stopPropagation(); ir(b.getAttribute('data-lj-acervo')); }; });
+      }).catch(function (e) { cx.removeAttribute('data-carregado'); falha(cx, e); });
+    }
+    function jurisDaAula(cx, codigo) {
+      cx.innerHTML = '<p class="al-sub">Carregando a jurisprudência desta aula…</p>';
+      api('GET', base() + '/jurisprudencia/vinculada?unidade=' + encodeURIComponent(codigo)).then(function (r) {
+        if (!document.body.contains(cx)) return;
+        if (!r.tribunais.length) {
+          cx.innerHTML = '<div class="es-ler es-lj">' + itensDoTopo(r) + '<p class="al-sub">Nenhum verbete está ligado a este item do edital ainda. A jurisprudência inteira do curso está no acervo.</p>' +
+            '<div class="es-linha"><button type="button" class="al-bt peq fan" data-lj-acervo="juris">🏛️ Abrir o acervo de jurisprudência</button></div></div>';
+        } else {
+          cx.innerHTML = '<div class="es-ler es-lj"><p class="es-lj-intro">Súmulas, orientações, precedentes, temas e julgados que este item do edital cobra, como o tribunal os publicou, com a situação de cada um.</p>' + itensDoTopo(r) +
+            r.tribunais.map(function (t) {
+              return '<section class="es-lj-dip"><h3>' + esc(t.tribunal) + '</h3>' + t.tipos.map(function (g) {
+                return '<h4 class="es-lj-sec">' + esc(tipoJuris(g.tipo)) + '</h4>' + g.verbetes.map(function (v) { return htmlVerbete(v, r.marcas, { doItem: true }); }).join('');
+              }).join('') + '</section>';
+            }).join('') + '</div>';
+        }
+        ligarLeiJuris(cx, r.marcas || {});
+        cada(cx, '[data-lj-acervo]', function (b) { b.onclick = function (ev) { ev.stopPropagation(); ir(b.getAttribute('data-lj-acervo')); }; });
+      }).catch(function (e) { cx.removeAttribute('data-carregado'); falha(cx, e); });
+    }
+    // ---- os ACERVOS ----
+    function voltarAAula() { return E.antesDoAcervo ? '<button type="button" class="al-bt peq fan" id="es-lj-volta-aula">← Voltar à aula</button>' : ''; }
+    function ligarVoltarAAula() { if (el('es-lj-volta-aula')) el('es-lj-volta-aula').onclick = function () { voltarPara(E.antesDoAcervo); }; }
+    function caixaDeBusca() {
+      return '<form class="es-lj-busca" id="es-lj-bf" role="search"><input type="search" id="es-lj-bq" maxlength="200" placeholder="Buscar na legislação e na jurisprudência (ex.: aviso prévio proporcional)" aria-label="Buscar nos dois acervos" value="' + esc(LJ.busca) + '">' +
+        '<button type="submit" class="al-bt peq">Buscar nos dois acervos</button></form><div id="es-lj-res"></div>';
+    }
+    function trechoAchado(t) { return esc(t || '').replace(/\u0002/g, '<mark>').replace(/\u0003/g, '</mark>'); }
+    function ligarBusca() {
+      var f = el('es-lj-bf'); if (!f) return;
+      var pg = 1;
+      function buscar(mais) {
+        var q = el('es-lj-bq').value.trim(), out = el('es-lj-res');
+        LJ.busca = q;
+        if (q.length < 2) { out.innerHTML = q ? '<p class="al-fino">Digite ao menos duas letras.</p>' : ''; return; }
+        pg = mais ? pg + 1 : 1;
+        if (!mais) out.innerHTML = '<p class="al-sub">Buscando…</p>';
+        api('GET', base() + '/lei-juris/busca?q=' + encodeURIComponent(q) + '&pagina=' + pg).then(function (r) {
+          var lei = r.lei.map(function (x) {
+            return '<li><button type="button" class="es-link" data-lj-dip="' + esc(x.diploma_id + '~' + x.id) + '"><b>' + esc(x.sigla || x.nome) + ' — ' + esc(x.rotulo) + '</b></button>' + tagDoDispositivo(x.situacao) + '<span class="es-lj-trecho">' + trechoAchado(x.trecho) + '</span></li>';
+          }).join('');
+          var jur = r.juris.map(function (x) {
+            return '<li><button type="button" class="es-link" data-lj-verb="' + esc(x.id) + '"><b>' + cabecalhoDoVerbete(x) + '</b></button> ' + situacaoDoVerbete(x) + '<span class="es-lj-trecho">' + trechoAchado(x.trecho) + '</span></li>';
+          }).join('');
+          if (mais) {
+            var ul1 = out.querySelector('[data-res="lei"]'), ul2 = out.querySelector('[data-res="juris"]');
+            if (ul1) ul1.insertAdjacentHTML('beforeend', lei);
+            if (ul2) ul2.insertAdjacentHTML('beforeend', jur);
+          } else {
+            out.innerHTML = '<div class="es-lj-resultados"><div><h4>Legislação <span class="al-fino">(' + r.total_lei + ')</span></h4><ul data-res="lei">' + (lei || '<li class="al-fino">Nada encontrado.</li>') + '</ul></div>' +
+              '<div><h4>Jurisprudência <span class="al-fino">(' + r.total_juris + ')</span></h4><ul data-res="juris">' + (jur || '<li class="al-fino">Nada encontrado.</li>') + '</ul></div></div><div class="es-linha" id="es-lj-mais-cx"></div>';
+          }
+          var resta = Math.max(r.total_lei, r.total_juris) > pg * r.por_pagina;
+          el('es-lj-mais-cx').innerHTML = resta ? '<button type="button" class="al-bt peq fan" id="es-lj-mais">Mais resultados</button>' : '';
+          if (el('es-lj-mais')) el('es-lj-mais').onclick = function () { buscar(true); };
+        }).catch(function (e) { falha(out, e); });
+      }
+      f.onsubmit = function (e) { e.preventDefault(); buscar(false); };
+      // os resultados (data-lj-dip, data-lj-verb) são atendidos pelo ouvinte da tela inteira (acervoLei › ligarLeiJuris)
+      if (LJ.busca.length >= 2) buscar(false); // voltou de um resultado: a busca reaparece
+    }
+    function acervoLei(alvo, arg) {
+      if (arg) return diplomaNaTela(alvo, arg);
+      api('GET', base() + '/legislacao').then(function (r) {
+        alvo.innerHTML = '<div class="jr-caixa es-lj-topo"><div class="es-linha">' + voltarAAula() + '</div><h3>⚖️ Legislação</h3><p class="al-sub">A lei seca de tudo o que o edital cobra: ' + r.total + ' diploma(s), no texto compilado da fonte oficial, sem comentário. ' +
+          'O que mudou depois do edital vem marcado, com a redação da data do edital ao lado. Em cada diploma, os dispositivos que o edital cobra aparecem destacados, com o link para as aulas que os usam.</p>' + caixaDeBusca() + '</div>' +
+          '<div class="jr-caixa"><label class="es-lj-filtro"><span class="al-fino">Procurar diploma pelo nome</span><input type="search" id="es-lj-fd" maxlength="120" value="' + esc(LJ.filtroDip) + '" placeholder="ex.: CLT, Código Civil, 8.036"></label><div id="es-lj-dips"></div></div>';
+        function pintar() {
+          var t = (el('es-lj-fd').value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+          LJ.filtroDip = el('es-lj-fd').value;
+          var lista = r.diplomas.filter(function (d) { return !t || (d.nome + ' ' + d.norma + ' ' + d.sigla + ' ' + d.id).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').indexOf(t) >= 0; });
+          el('es-lj-dips').innerHTML = lista.length ? lista.map(function (d) {
+            return '<button type="button" class="es-lj-dcard" data-lj-dip="' + esc(d.id) + '"><b>' + esc(d.nome) + '</b>' + (d.sigla ? ' <span class="al-fino">(' + esc(d.sigla) + ')</span>' : '') +
+              '<span class="al-fino">' + esc(d.norma) + '</span><span class="es-lj-dnum">' + d.artigos + ' dispositivo(s)' + (d.abrangencia === 'trechos' ? ' (trechos)' : '') +
+              (d.cobrados ? ' · <b>' + d.cobrados + ' cobrado(s) pelo edital</b>' : '') + (d.alterados_apos_edital ? ' · <span class="es-lj-tag alt">' + d.alterados_apos_edital + ' alterado(s) depois do edital</span>' : '') + '</span></button>';
+          }).join('') : '<p class="al-sub">Nenhum diploma com esse nome.</p>';
+        }
+        el('es-lj-fd').oninput = pintar;
+        pintar();
+        ligarVoltarAAula();
+        ligarBusca();
+        ligarLeiJuris(alvo, {});
+      }).catch(function (e) { falha(alvo, e); });
+    }
+    // os títulos, capítulos e seções que um dispositivo abre (só os níveis que mudaram desde o anterior)
+    function cabecalhosDaEstrutura(antes, agora) {
+      var a = String(antes || '').split(' > '), b = String(agora || '').split(' > '), i = 0, out = '';
+      if (!agora) return '';
+      while (i < a.length && i < b.length && a[i] === b[i]) i++;
+      for (; i < b.length; i++) if (b[i]) out += '<h4 class="es-lj-sec n' + Math.min(i, 3) + '">' + esc(b[i]) + '</h4>';
+      return out;
+    }
+    function diplomaNaTela(alvo, arg) {
+      var partes = String(arg).split('~'), dip = partes[0], alvoDisp = partes[1] || '';
+      var repor = !!E.reposicao; E.reposicao = false; // voltando de uma aula com a rolagem guardada: a rolagem manda, não o dispositivo
+      api('GET', base() + '/legislacao/' + encodeURIComponent(dip)).then(function (r) {
+        var d = r.diploma, soCobrados = false, achados = [], ia = -1;
+        var secoes = [], ult = null;
+        r.dispositivos.forEach(function (x) { if (x.estrutura && x.estrutura !== ult) { secoes.push({ est: x.estrutura, id: x.id }); } ult = x.estrutura; });
+        alvo.innerHTML = '<div class="jr-caixa es-lj-topo"><div class="es-linha">' + voltarAAula() + '<button type="button" class="al-bt peq fan" id="es-lj-todos">← Todos os diplomas</button></div>' +
+          '<h3>' + esc(d.nome) + '</h3><p class="es-ler-sub">' + esc(d.norma) + (d.fonte_url ? ' · <a href="' + esc(d.fonte_url) + '" target="_blank" rel="noopener">fonte oficial (texto compilado)</a>' : '') + (d.consultado_em ? ' — consultada em ' + dataBR(d.consultado_em) : '') +
+          ' · versão de referência do edital: ' + dataBR(d.data_referencia_edital) + '</p>' +
+          '<p class="al-fino">' + r.dispositivos.length + ' dispositivo(s)' + (d.abrangencia === 'trechos' ? ' — só os trechos que o curso usa' : '') + ' · <b>' + r.cobrados + ' cobrado(s) pelo edital</b> (destacados)' + (d.alterados_apos_edital ? ' · ' + d.alterados_apos_edital + ' alterado(s) depois do edital' : '') + '</p>' +
+          '<div class="es-lj-ferr">' + (secoes.length > 1 ? '<select id="es-lj-ir" aria-label="Ir para o título ou capítulo"><option value="">Ir para…</option>' + secoes.map(function (s2) {
+            var seg = s2.est.split(' > '); return '<option value="' + esc(s2.id) + '">' + new Array(seg.length).join('  ') + esc(seg[seg.length - 1].slice(0, 90)) + '</option>';
+          }).join('') + '</select>' : '') +
+          (r.cobrados ? '<label class="es-lj-chk"><input type="checkbox" id="es-lj-so"> Só o que o edital cobra</label>' : '') +
+          '<span class="es-lj-proc"><input type="search" id="es-lj-pq" maxlength="120" placeholder="Procurar neste diploma" aria-label="Procurar neste diploma"><button type="button" class="al-bt peq fan" id="es-lj-pb">Procurar</button><span class="al-fino" id="es-lj-pn"></span></span></div></div>' +
+          '<div class="es-ler es-lj es-lj-diploma" id="es-lj-texto"></div>';
+        function pintar() {
+          var antes = null;
+          el('es-lj-texto').innerHTML = r.dispositivos.filter(function (x) { return !soCobrados || x.cobrado; }).map(function (x) {
+            var h = cabecalhosDaEstrutura(antes, x.estrutura); antes = x.estrutura;
+            return h + htmlDispositivo(d, x, r.marcas, { acervo: true, titulos: r.aulas });
+          }).join('') || '<p class="al-sub">Nada a mostrar.</p>';
+        }
+        function irPara(id, piscar) {
+          var a = el('lj-' + d.id + '-' + id);
+          if (!a) return false;
+          a.scrollIntoView({ block: 'start' });
+          if (piscar) { a.classList.add('pisca'); setTimeout(function () { a.classList.remove('pisca'); }, 2500); }
+          return true;
+        }
+        pintar();
+        el('es-lj-todos').onclick = function () { ir('lei'); };
+        if (el('es-lj-ir')) el('es-lj-ir').onchange = function () {
+          var id = this.value; if (!id) return;
+          if (soCobrados && !el('lj-' + d.id + '-' + id)) { soCobrados = false; el('es-lj-so').checked = false; pintar(); }
+          irPara(id, false); this.value = '';
+        };
+        if (el('es-lj-so')) el('es-lj-so').onchange = function () { soCobrados = this.checked; achados = []; ia = -1; el('es-lj-pn').textContent = ''; pintar(); };
+        function procurar() {
+          var t = semAcentoLJ(el('es-lj-pq').value.trim());
+          if (t.length < 2) { el('es-lj-pn').textContent = 'Digite ao menos duas letras.'; return; }
+          if (achados.t !== t) {
+            achados = r.dispositivos.filter(function (x) {
+              if (soCobrados && !x.cobrado) return false;
+              return semAcentoLJ([x.rotulo, x.epigrafe, x.texto].concat((x.partes || []).map(function (p) { return p.rotulo + ' ' + p.texto; })).join(' ')).indexOf(t) >= 0;
+            }).map(function (x) { return x.id; });
+            achados.t = t; ia = -1;
+          }
+          if (!achados.length) { el('es-lj-pn').textContent = 'Nada encontrado.'; return; }
+          ia = (ia + 1) % achados.length;
+          irPara(achados[ia], true);
+          el('es-lj-pn').textContent = (ia + 1) + ' de ' + achados.length + (achados.length > 1 ? ' — Procurar de novo vai ao próximo' : '');
+        }
+        el('es-lj-pb').onclick = procurar;
+        el('es-lj-pq').onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); procurar(); } };
+        ligarVoltarAAula();
+        ligarLeiJuris(el('es-lj-texto'), r.marcas || {});
+        if (alvoDisp && !repor) setTimeout(function () { irPara(alvoDisp, true); }, 30);
+      }).catch(function (e) { falha(alvo, e); });
+    }
+    function semAcentoLJ(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+    function acervoJuris(alvo, arg) {
+      if (arg) return verbeteNaTela(alvo, arg);
+      var f = LJ.jf, qs = ['tribunal', 'colecao', 'tipo', 'situacao', 'disciplina', 'q', 'pagina'].filter(function (k) { return f[k]; }).map(function (k) { return k + '=' + encodeURIComponent(f[k]); }).join('&');
+      api('GET', base() + '/jurisprudencia' + (qs ? '?' + qs : '')).then(function (r) {
+        var fc = r.facetas, sel = function (k, rot, ops) {
+          return '<label class="es-lj-filtro"><span class="al-fino">' + rot + '</span><select data-jf="' + k + '"><option value="">Todos</option>' + ops.map(function (o) {
+            return '<option value="' + esc(o.valor) + '"' + (String(f[k] || '') === String(o.valor) ? ' selected' : '') + '>' + esc(o.rot) + ' (' + o.n + ')</option>';
+          }).join('') + '</select></label>';
+        };
+        var filtrado = ['tribunal', 'colecao', 'tipo', 'situacao', 'disciplina', 'q'].some(function (k) { return f[k]; });
+        alvo.innerHTML = '<div class="jr-caixa es-lj-topo"><div class="es-linha">' + voltarAAula() + '</div><h3>🏛️ Jurisprudência</h3><p class="al-sub">Súmulas, orientações jurisprudenciais, precedentes normativos, teses e temas do TST, do TRT da 10ª Região, do STF e do STJ pertinentes ao curso, e os julgados que as aulas citam — como o tribunal os publicou, sem comentário, com a situação de cada um.</p>' +
+          '<form class="es-lj-filtros" id="es-jf">' +
+          sel('tribunal', 'Tribunal', fc.tribunais.map(function (o) { return { valor: o.valor, rot: o.valor, n: o.n }; })) +
+          sel('colecao', 'Coleção', fc.colecoes.map(function (o) { return { valor: o.valor, rot: o.nome, n: o.n }; })) +
+          sel('tipo', 'Tipo', fc.tipos.map(function (o) { return { valor: o.valor, rot: tipoJuris(o.valor), n: o.n }; })) +
+          sel('situacao', 'Situação', fc.situacoes.map(function (o) { return { valor: o.valor, rot: SIT_JURIS[o.valor] || o.valor || 'sem situação', n: o.n }; })) +
+          sel('disciplina', 'Disciplina', fc.disciplinas.map(function (o) { return { valor: o.valor, rot: o.valor + ' ' + o.nome, n: o.n }; })) +
+          '<label class="es-lj-filtro es-lj-q"><span class="al-fino">Texto</span><input type="search" data-jf="q" maxlength="200" value="' + esc(f.q || '') + '" placeholder="Palavras no texto, na tese ou no número"></label>' +
+          '<div class="es-linha"><button type="submit" class="al-bt peq">Filtrar</button>' + (filtrado ? '<button type="button" class="al-bt peq fan" id="es-jf-limpa">Limpar os filtros</button>' : '') +
+          '<button type="button" class="al-bt peq fan" id="es-jf-busca">Buscar também na legislação</button></div></form></div>' +
+          '<div class="jr-caixa"><p class="al-fino" id="es-jf-total">' + r.total + ' verbete(s)' + (filtrado ? ' com estes filtros' : '') + (r.paginas > 1 ? ' · página ' + r.pagina + ' de ' + r.paginas : '') + '</p>' +
+          '<div class="es-ler es-lj" id="es-jf-lista">' + (r.itens.length ? r.itens.map(function (v) {
+            var m = r.marcas[v.id] || {};
+            return '<details class="es-lj-det' + (m.cor ? ' grifo-' + esc(m.cor) : '') + (m.lido ? ' lido' : '') + '" data-lj-tipo="verbete" data-lj-ref="' + esc(v.id) + '"><summary><span class="es-lj-vcab">' + cabecalhoDoVerbete(v) + '</span> ' + situacaoDoVerbete(v) +
+              (v.titulo && v.titulo !== v.numero ? '<span class="es-lj-vres">' + esc(v.titulo.slice(0, 220)) + '</span>' : '') + '</summary>' + corpoDoVerbete(v, r.marcas, { titulos: r.aulas, semTitulo: v.titulo.length <= 220 }) + '</details>';
+          }).join('') : '<p class="al-sub">Nenhum verbete com estes filtros.</p>') + '</div>' +
+          (r.paginas > 1 ? '<div class="es-linha es-lj-pag"><button type="button" class="al-bt peq fan" data-jf-pg="' + (r.pagina - 1) + '"' + (r.pagina > 1 ? '' : ' disabled') + '>← Anterior</button><span class="al-fino">Página ' + r.pagina + ' de ' + r.paginas + '</span><button type="button" class="al-bt peq fan" data-jf-pg="' + (r.pagina + 1) + '"' + (r.pagina < r.paginas ? '' : ' disabled') + '>Próxima →</button></div>' : '') + '</div>';
+        function recarregar(p) {
+          LJ.jf.pagina = p || 1;
+          LUGAR.juris = null; // filtro novo: as disciplinas abertas e a rolagem de antes não valem mais
+          novaTela(); alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
+          acervoJuris(alvo);
+          if (el('es-abas')) el('es-abas').scrollIntoView({ block: 'start' });
+        }
+        el('es-jf').onsubmit = function (e) {
+          e.preventDefault();
+          cada(el('es-jf'), '[data-jf]', function (c) { LJ.jf[c.getAttribute('data-jf')] = c.value.trim(); });
+          recarregar(1);
+        };
+        cada(el('es-jf'), 'select[data-jf]', function (c) { c.onchange = function () { el('es-jf').onsubmit({ preventDefault: function () {} }); }; });
+        if (el('es-jf-limpa')) el('es-jf-limpa').onclick = function () { LJ.jf = { pagina: 1 }; recarregar(1); };
+        el('es-jf-busca').onclick = function () { LJ.busca = (LJ.jf.q || '').trim(); ir('lei'); };
+        cada(alvo, '[data-jf-pg]', function (b) { b.onclick = function () { recarregar(Number(b.getAttribute('data-jf-pg'))); }; });
+        ligarVoltarAAula();
+        ligarLeiJuris(el('es-jf-lista'), r.marcas || {});
+      }).catch(function (e) { falha(alvo, e); });
+    }
+    function verbeteNaTela(alvo, id) {
+      api('GET', base() + '/jurisprudencia/verbete/' + encodeURIComponent(id)).then(function (r) {
+        alvo.innerHTML = '<div class="jr-caixa es-lj-topo"><div class="es-linha">' + voltarAAula() + '<button type="button" class="al-bt peq fan" id="es-lj-todos">← Toda a jurisprudência</button></div></div>' +
+          '<div class="es-ler es-lj" id="es-lj-v1">' + htmlVerbete(r.verbete, r.marcas, { titulos: r.aulas }) + '</div>';
+        el('es-lj-todos').onclick = function () { ir('juris'); };
+        ligarVoltarAAula();
+        ligarLeiJuris(el('es-lj-v1'), r.marcas || {});
+      }).catch(function (e) { falha(alvo, e); });
     }
 
     // `guardarLugar`: quem tira o aluno do Estude para uma tela do curso (audiobook, desafio, material…) chama

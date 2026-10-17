@@ -169,6 +169,8 @@ const TEXTOS_DO_ALUNO = [
   ['est_anotacoes', 'SELECT escopo_id, questao_id, texto, atualizado_em FROM est_anotacoes WHERE user_id = ?'],
   ['est_tentativas_bloco', 'SELECT escopo_id, unidade, bloco, texto, atualizado_em FROM est_tentativas_bloco WHERE user_id = ?'],
   ['est_notas_aula', 'SELECT escopo_id, unidade, texto, atualizado_em FROM est_notas_aula WHERE user_id = ?'],
+  // a marcação de leitura da legislação e da jurisprudência (lido, grifo): não é texto, mas é do aluno — sai inteira
+  ['est_lj_marcas', 'SELECT escopo_id, tipo, ref, lido, cor, atualizado_em FROM est_lj_marcas WHERE user_id = ?'],
   ['est_pedidos', 'SELECT product_id, tipo, estado, questao_id, entrada, resultado, contestacao, criado_em FROM est_pedidos WHERE user_id = ?',
     "UPDATE est_pedidos SET entrada = '{}', resultado = '', contestacao = '', erro = '' WHERE user_id = ?"],
 ];

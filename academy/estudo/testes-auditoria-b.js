@@ -26,7 +26,8 @@ async function rodar({ t, req, impId, mpFetch, base }) {
   const ped = require('./pedidos');
   const pdf = require('./pdf');
   const pontuacao = require('./pontuacao');
-  const ler = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+  // CRLF → LF: as regex de tela daqui procuram "\n"; o app-aluno.js passou a ser gravado com CRLF em 16/10/2026 (90826b5)
+  const ler = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8').replace(/\r\n/g, '\n');
   const lerRaiz = (f) => fs.readFileSync(path.join(__dirname, '..', '..', f), 'utf8');
 
   console.log('\n— estudo/segunda revisão de 11/10/2026: exclusão de conta × assinatura, certificado revogável, escrita que não se perde, régua com transição, tetos de leitura e de falha, LGPD, dicas, acessibilidade —');

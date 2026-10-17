@@ -84,6 +84,30 @@ const ESCOPO = () => ({
     { competencia: 'resolver-conflito', frente: 'Duas fontes divergem. Qual é o primeiro passo?', verso: 'Apontar o conflito e verificar qual prevalece, antes de responder.' }],
 });
 
+// LEI E VERBETES FICTÍCIOS (ADR-0014) — no formato do contrato (lei-juris\BRIEF-pacote.md), só para ver a tela
+const LEI_DEMO = () => ({ id: 'lei-demo', nome: 'Lei Fictícia de Prazos e Fontes', norma: 'Lei de demonstração nº 1, de 2020', sigla: 'LFPF', tipo: 'lei', abrangencia: 'integral',
+  fonte_url: 'https://www.planalto.gov.br/', consultado_em: daqui(-1), data_referencia_edital: daqui(-10),
+  estrutura: [{ tipo: 'capitulo', rotulo: 'CAPÍTULO I', nome: 'DAS FONTES', ordem: 1 }, { tipo: 'capitulo', rotulo: 'CAPÍTULO II', nome: 'DOS PRAZOS', ordem: 2 }],
+  dispositivos: [
+    { id: 'art-1', rotulo: 'Art. 1º', ordem: 1, estrutura: 'CAPÍTULO I — DAS FONTES', texto: 'A informação só se considera confirmada quando o texto-base a afirma expressamente.', partes: [], situacao: 'vigente', nota: '' },
+    { id: 'art-2', rotulo: 'Art. 2º', ordem: 2, estrutura: 'CAPÍTULO I — DAS FONTES', texto: 'A ausência de menção não autoriza nem proíbe:', situacao: 'vigente', nota: '(Redação dada pela Lei de demonstração nº 2, de 2021)', partes: [
+      { id: 'art-2.inc1', caminho: 'I', rotulo: 'I –', texto: 'a conclusão que o texto não sustenta;', situacao: 'vigente', nota: '' },
+      { id: 'art-2.p2', caminho: '§ 2º', rotulo: '§ 2º', texto: 'Em caso de dúvida, prevalece a fonte mais recente, salvo disposição expressa em contrário.', situacao: 'alterado_apos_edital', nota: '(Redação dada pela Emenda Constitucional nº 141, de 2026)', alterado_por: { norma: 'Emenda Constitucional nº 141', data: '2026-10-16' }, texto_na_data_do_edital: 'Em caso de dúvida, prevalece a fonte mais recente.' },
+      { id: 'art-2.p3', caminho: '§ 3º', rotulo: '§ 3º', texto: '', situacao: 'revogado', nota: '(Revogado pela Lei de demonstração nº 3, de 2022)' }] },
+    { id: 'art-3', rotulo: 'Art. 3º', ordem: 3, estrutura: 'CAPÍTULO I — DAS FONTES', texto: 'Havendo conflito entre duas fontes fornecidas, o intérprete aponta o conflito antes de escolher.', partes: [], situacao: 'vigente', nota: '' },
+    { id: 'art-4', rotulo: 'Art. 4º', ordem: 4, estrutura: 'CAPÍTULO I — DAS FONTES', texto: '', partes: [], situacao: 'revogado', nota: '(Revogado pela Lei de demonstração nº 3, de 2022)' },
+    { id: 'art-5', rotulo: 'Art. 5º', ordem: 5, estrutura: 'CAPÍTULO II — DOS PRAZOS', texto: 'Os prazos contam-se em dias corridos, excluído o dia do começo e incluído o do vencimento.', partes: [], situacao: 'vigente', nota: '' },
+    { id: 'art-5a', rotulo: 'Art. 5º-A', ordem: 6, estrutura: 'CAPÍTULO II — DOS PRAZOS', texto: 'Nos prazos em dias úteis, não se contam sábados, domingos e feriados.', partes: [], situacao: 'incluido_apos_edital', nota: '(Incluído pela Lei de demonstração nº 9, de 2025)', alterado_por: { norma: 'Lei de demonstração nº 9', data: '2025-03-01' } }] });
+const JURIS_DEMO = () => ({
+  colecoes: [{ id: 'demo-sumulas', nome: 'Súmulas fictícias', tribunal: 'TST', fonte_url: 'https://jurisprudencia.tst.jus.br/', consultado_em: daqui(-1) },
+    { id: 'demo-ojs', nome: 'Orientações fictícias', tribunal: 'TST', fonte_url: 'https://jurisprudencia.tst.jus.br/', consultado_em: daqui(-1) },
+    { id: 'demo-temas', nome: 'Temas fictícios', tribunal: 'STF', fonte_url: 'https://portal.stf.jus.br/', consultado_em: daqui(-1) }],
+  itens: [
+    { id: 'demo-sum-1', colecao: 'demo-sumulas', tipo: 'sumula', tribunal: 'TST', numero: '1', titulo: 'INFORMAÇÃO NÃO CONFIRMADA', texto: 'A afirmação que o texto-base não contém não pode ser tida como confirmada.', situacao: 'vigente', situacao_na_data_do_edital: 'vigente', fonte_url: 'https://jurisprudencia.tst.jus.br/', consultado_em: daqui(-1) },
+    { id: 'demo-sum-2', colecao: 'demo-sumulas', tipo: 'sumula', tribunal: 'TST', numero: '2', titulo: 'CONFLITO DE FONTES', texto: 'No conflito entre fontes, prevalece a mais antiga.', situacao: 'cancelado', situacao_detalhe: 'Cancelada pela Res. fictícia 1/2024, DEJT 10/05/2024', situacao_na_data_do_edital: 'vigente', fonte_url: 'https://jurisprudencia.tst.jus.br/', consultado_em: daqui(-1) },
+    { id: 'demo-oj-3', colecao: 'demo-ojs', tipo: 'oj', tribunal: 'TST', numero: '3', titulo: 'PRAZO. DIAS ÚTEIS', texto: 'O prazo em dias úteis não corre em feriado local comprovado.', situacao: 'vigente', fonte_url: 'https://jurisprudencia.tst.jus.br/', consultado_em: daqui(-1) },
+    { id: 'demo-tema-7', colecao: 'demo-temas', tipo: 'tema_rg', tribunal: 'STF', numero: '7', titulo: 'Fontes divergentes em processo administrativo.', texto: 'Recurso em que se discute qual fonte prevalece quando duas normas divergem.', tese: 'Na divergência entre fontes, cabe ao intérprete indicar o conflito e fundamentar a escolha.', situacao: 'merito_julgado', situacao_detalhe: 'Mérito julgado em 2024 (fictício).', fonte_url: 'https://portal.stf.jus.br/', consultado_em: daqui(-1) }] });
+
 const srv = app.listen(PORTA, async () => {
   const B = `http://127.0.0.1:${PORTA}`;
   const post = async (p, corpo, extra = {}) => {
@@ -107,6 +131,16 @@ const srv = app.listen(PORTA, async () => {
     db.prepare('UPDATE users SET cortesia = 1 WHERE email = ?').run(ALUNA.email);
     await post('/staff/api/academy/estudo/importar', { ...dono, ...ESCOPO() }, k);
     await post('/staff/api/academy/estudo/status', { ...dono, escopo: 'demonstracao', status: 'publicado', unidades: 'publicado', cards: 'publicado', questoes: 'disponivel' }, k);
+    // LEGISLAÇÃO E JURISPRUDÊNCIA (ADR-0014): um diploma e quatro verbetes FICTÍCIOS, ligados aos itens e já abertos à aluna
+    const lj = (c, corpo) => post('/staff/api/academy/estudo/lei-juris/' + c, { ...dono, escopo: 'demonstracao', ...corpo }, k);
+    await lj('diploma', { diploma: LEI_DEMO() });
+    await lj('jurisprudencia', JURIS_DEMO());
+    await lj('vinculos', { disciplina: '1', itens: [
+      { codigo: '1.1', legislacao: [{ diploma: 'lei-demo', dispositivo: 'art-1', origem: 'edital', confianca: 'alta' }, { diploma: 'lei-demo', dispositivo: 'art-2', parte: 'art-2.p2', origem: 'aula', confianca: 'alta' }],
+        jurisprudencia: [{ id: 'demo-sum-1', origem: 'aula', confianca: 'alta' }, { id: 'demo-sum-2', origem: 'leitura', confianca: 'conferida', motivo: 'trata da informação não confirmada' }, { id: 'demo-tema-7', origem: 'aula', confianca: 'alta' }] },
+      { codigo: '1.2', legislacao: [{ diploma: 'lei-demo', dispositivo: 'art-3', origem: 'aula', confianca: 'alta' }], jurisprudencia: [{ id: 'demo-sum-2', origem: 'aula', confianca: 'alta' }] }] });
+    await lj('vinculos', { disciplina: '2', itens: [{ codigo: '2.1', legislacao: [{ diploma: 'lei-demo', dispositivo: 'art-5', origem: 'aula', confianca: 'alta' }, { diploma: 'lei-demo', dispositivo: 'art-5a', origem: 'aula', confianca: 'alta' }], jurisprudencia: [{ id: 'demo-oj-3', origem: 'aula', confianca: 'alta' }] }] });
+    await lj('status', { status: 'publicado' });
     // CARTEIRA DE IA na demonstração: cobrança ligada com câmbio FICTÍCIO, IA simulada (nenhum
     // provedor é chamado, nada é gasto) e R$ 2,00 de crédito para ver o aceite e o extrato.
     const carteira = require('../../carteira-ia');

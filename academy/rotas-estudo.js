@@ -12,6 +12,7 @@ const est = require('./estudo/repo');
 const al = require('./estudo/aluno');
 const ped = require('./estudo/pedidos');
 const jr = require('./estudo/jornada-estude');
+const lj = require('./estudo/lei-juris');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 // `extra` leva o que a tela precisa para oferecer saída (ex.: quantas questões há de fato)
@@ -127,6 +128,20 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.post(`${base}/pedidos/:pedido/previa`, ...AL, h((req, res) => { semCache(res); res.json({ ok: true, ...ped.previaDoEdital(...a(req), req.params.pedido, b(req)) }); }));
   // falta saldo: recarga do valor que falta, ligada ao pedido — creditou, o pedido começa sozinho
   app.post(`${base}/pedidos/:pedido/recarga`, ...AL, h(async (req, res) => { res.json({ ok: true, ...(await ped.recarga(...a(req), req.params.pedido, b(req), baseUrl(req))) }); }));
+  // ---- LEGISLAÇÃO E JURISPRUDÊNCIA POR ITEM DO EDITAL (ADR-0014; estudo/lei-juris.js) — nada aqui é cobrado ----
+  // a lei seca e os verbetes que a AULA (`?unidade=`) ou o ITEM do programa (`?item=`) cobram
+  app.get(`${base}/legislacao/vinculada`, ...AL, h((req, res) => { semCache(res); res.json(lj.legislacaoVinculada(...a(req), { unidade: s(req.query.unidade, 80), item: s(req.query.item, 40) })); }));
+  app.get(`${base}/jurisprudencia/vinculada`, ...AL, h((req, res) => { semCache(res); res.json(lj.jurisprudenciaVinculada(...a(req), { unidade: s(req.query.unidade, 80), item: s(req.query.item, 40) })); }));
+  // os acervos: a lista dos diplomas (`?q=` filtra pelo nome) e o diploma INTEIRO por demanda; a jurisprudência com filtros e páginas
+  app.get(`${base}/legislacao`, ...AL, h((req, res) => { semCache(res); res.json(lj.acervoLegislacao(...a(req), { q: req.query.q })); }));
+  app.get(`${base}/legislacao/:diploma`, ...AL, h((req, res) => { semCache(res); res.json(lj.diplomaInteiro(...a(req), req.params.diploma)); }));
+  app.get(`${base}/jurisprudencia`, ...AL, h((req, res) => { semCache(res); const q = req.query; res.json(lj.acervoJurisprudencia(...a(req), { tribunal: q.tribunal, colecao: q.colecao, tipo: q.tipo, situacao: q.situacao, disciplina: q.disciplina, q: q.q, pagina: q.pagina })); }));
+  app.get(`${base}/jurisprudencia/verbete/:id`, ...AL, h((req, res) => { semCache(res); res.json(lj.verbete(...a(req), req.params.id)); }));
+  // a busca única nos dois acervos (`?onde=lei|juris|todos`)
+  app.get(`${base}/lei-juris/busca`, ...AL, h((req, res) => { semCache(res); res.json(lj.busca(...a(req), { q: req.query.q, onde: s(req.query.onde, 10) || 'todos', pagina: req.query.pagina })); }));
+  // a marcação de leitura do aluno: { tipo: dispositivo|verbete, ref, lido?, cor? } — só dele
+  app.get(`${base}/lei-juris/marcas`, ...AL, h((req, res) => { semCache(res); res.json(lj.marcas(...a(req), { tipo: req.query.tipo })); }));
+  app.put(`${base}/lei-juris/marcas`, ...AL, h((req, res) => { res.json(lj.marcar(...a(req), b(req))); }));
 }
 
 function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin }) {
@@ -196,6 +211,26 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
     const r = ped.resolverContestacao(req.params.id, { resposta: (req.body || {}).resposta, quem: quem(req) });
     aud(req, 'estudo.pedido.contestacao', r.pedido.id, '');
     res.json({ ok: true, ...r });
+  }));
+  // LEGISLAÇÃO E JURISPRUDÊNCIA (ADR-0014; contrato em dados\estude\concursos\…\lei-juris\BRIEF-pacote.md). Ordem de envio:
+  // os diplomas (um por envio) → a jurisprudência (lotes de até 500) → os vínculos (por disciplina) → o status.
+  // Tudo nasce em RASCUNHO (só dono e admin veem); abrir aos alunos é o `status` publicado, depois da auditoria.
+  const ljRota = (caminho, acao, fn) => app.post('/staff/api/academy/estudo/lei-juris/' + caminho, ...PA, h((req, res) => {
+    const b = req.body || {};
+    const { produto } = imp.produtorDono(b);
+    const r = fn(produto, b);
+    aud(req, 'estudo.lei-juris.' + acao, produto.id, JSON.stringify({ ...r, avisos: undefined, faltantes: undefined, vinculos_orfaos_exemplos: undefined, itens_sem_vinculo: undefined }));
+    res.json({ ok: true, ...r });
+  }));
+  ljRota('diploma', 'diploma', lj.importarDiploma);
+  ljRota('jurisprudencia', 'jurisprudencia', lj.importarJurisprudencia);
+  ljRota('vinculos', 'vinculos', lj.importarVinculos);
+  ljRota('status', 'status', lj.definirEstado);
+  ljRota('remover', 'remover', lj.remover);
+  app.get('/staff/api/academy/estudo/lei-juris/resumo', ...PA, h((req, res) => {
+    const { produto } = imp.produtorDono(req.query || {});
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(lj.resumoStaff(produto, req.query.escopo));
   }));
   // o programa inteiro com o destino de cada item — é a auditoria do edital
   app.get('/staff/api/academy/estudo/cobertura', ...PA, h((req, res) => {

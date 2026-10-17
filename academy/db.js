@@ -852,6 +852,122 @@ const MIGRACOES = [
     nome: 'ia-log-indice-por-data-2026-10-12',
     sql: `CREATE INDEX IF NOT EXISTS idx_ai_quando ON ai_usage_logs(quando);`,
   },
+  {
+    // LEGISLAÇÃO E JURISPRUDÊNCIA POR ITEM DO EDITAL (ADR-0014; código em estudo/lei-juris.js). O texto mora UMA vez
+    // (o diploma e o verbete são do acervo, não do curso); o que é do percurso é o VÍNCULO: quais diplomas e verbetes
+    // ele usa (`est_lj_escopo_*`), qual item do edital cobra qual dispositivo/verbete (`est_lj_vinculos`) e se o acervo
+    // já está aberto aos alunos (`est_lj_estado`, nasce em rascunho). A marcação de leitura (lido, grifo em duas cores)
+    // é do aluno: exportação e exclusão pela lista de textos do titular (repo.js › TEXTOS_DO_ALUNO).
+    // O índice de busca (FTS5) é criado por estudo/lei-juris.js, fora da migração: se o SQLite não tiver FTS5, a
+    // busca cai para LIKE e a subida do servidor não para.
+    nome: 'estudo-lei-juris-2026-10-17',
+    sql: `CREATE TABLE IF NOT EXISTS est_lj_diplomas (
+            id            TEXT PRIMARY KEY,
+            nome          TEXT NOT NULL,
+            norma         TEXT DEFAULT '',
+            sigla         TEXT DEFAULT '',
+            tipo          TEXT NOT NULL,
+            abrangencia   TEXT NOT NULL,
+            fonte_url     TEXT DEFAULT '',
+            consultado_em TEXT DEFAULT '',
+            data_edital   TEXT DEFAULT '',
+            estrutura     TEXT DEFAULT '[]',
+            artigos       INTEGER DEFAULT 0,
+            alterados     INTEGER DEFAULT 0,
+            hash          TEXT NOT NULL,
+            importado_em  TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_dispositivos (
+            diploma_id    TEXT NOT NULL REFERENCES est_lj_diplomas(id) ON DELETE CASCADE,
+            id            TEXT NOT NULL,
+            ordem         INTEGER NOT NULL,
+            rotulo        TEXT NOT NULL,
+            estrutura     TEXT DEFAULT '',
+            epigrafe      TEXT DEFAULT '',
+            texto         TEXT DEFAULT '',
+            partes        TEXT DEFAULT '[]',
+            situacao      TEXT NOT NULL,
+            nota          TEXT DEFAULT '',
+            alterado_por  TEXT DEFAULT '',
+            texto_edital  TEXT,
+            edital_indisponivel INTEGER DEFAULT 0,
+            PRIMARY KEY (diploma_id, id)
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_lj_disp_ordem ON est_lj_dispositivos (diploma_id, ordem);
+          CREATE TABLE IF NOT EXISTS est_lj_escopo_diplomas (
+            escopo_id   TEXT NOT NULL REFERENCES est_escopos(id),
+            diploma_id  TEXT NOT NULL REFERENCES est_lj_diplomas(id) ON DELETE CASCADE,
+            ligado_em   TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, diploma_id)
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_colecoes (
+            id            TEXT PRIMARY KEY,
+            nome          TEXT NOT NULL,
+            tribunal      TEXT NOT NULL,
+            fonte_url     TEXT DEFAULT '',
+            consultado_em TEXT DEFAULT ''
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_verbetes (
+            id              TEXT PRIMARY KEY,
+            colecao         TEXT NOT NULL REFERENCES est_lj_colecoes(id),
+            tipo            TEXT NOT NULL,
+            tribunal        TEXT NOT NULL,
+            orgao           TEXT DEFAULT '',
+            numero          TEXT DEFAULT '',
+            numero_ord      INTEGER DEFAULT 0,
+            titulo          TEXT DEFAULT '',
+            texto           TEXT DEFAULT '',
+            tese            TEXT DEFAULT '',
+            situacao        TEXT DEFAULT '',
+            situacao_detalhe TEXT DEFAULT '',
+            situacao_edital TEXT DEFAULT '',
+            historico       TEXT DEFAULT '',
+            leading_case    TEXT DEFAULT '',
+            julgamento      TEXT DEFAULT '',
+            fonte_tipo      TEXT DEFAULT '',
+            fonte_url       TEXT DEFAULT '',
+            consultado_em   TEXT DEFAULT '',
+            hash            TEXT NOT NULL,
+            importado_em    TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_lj_verb_ordem ON est_lj_verbetes (tribunal, colecao, numero_ord);
+          CREATE TABLE IF NOT EXISTS est_lj_escopo_verbetes (
+            escopo_id   TEXT NOT NULL REFERENCES est_escopos(id),
+            verbete_id  TEXT NOT NULL REFERENCES est_lj_verbetes(id) ON DELETE CASCADE,
+            ligado_em   TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, verbete_id)
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_vinculos (
+            escopo_id      TEXT NOT NULL REFERENCES est_escopos(id),
+            item           TEXT NOT NULL,
+            tipo           TEXT NOT NULL,
+            diploma_id     TEXT DEFAULT '',
+            dispositivo_id TEXT DEFAULT '',
+            parte          TEXT DEFAULT '',
+            verbete_id     TEXT DEFAULT '',
+            origem         TEXT DEFAULT '',
+            confianca      TEXT DEFAULT '',
+            motivo         TEXT DEFAULT '',
+            PRIMARY KEY (escopo_id, item, tipo, diploma_id, dispositivo_id, parte, verbete_id)
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_lj_vinc_disp ON est_lj_vinculos (escopo_id, diploma_id, dispositivo_id);
+          CREATE INDEX IF NOT EXISTS ix_est_lj_vinc_verb ON est_lj_vinculos (escopo_id, verbete_id);
+          CREATE TABLE IF NOT EXISTS est_lj_estado (
+            escopo_id     TEXT PRIMARY KEY REFERENCES est_escopos(id),
+            status        TEXT NOT NULL DEFAULT 'rascunho',
+            atualizado_em TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_marcas (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            tipo          TEXT NOT NULL,
+            ref           TEXT NOT NULL,
+            lido          INTEGER DEFAULT 0,
+            cor           TEXT DEFAULT '',
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, escopo_id, tipo, ref)
+          );`,
+  },
 ];
 
 // Cada migração é ATÔMICA: os comandos dela e o registro em `migrations` entram na mesma transação. Antes, um
