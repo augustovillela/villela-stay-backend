@@ -8,7 +8,7 @@ O editor em `/music/tocar/gerenciar` permite criar, editar, duplicar, excluir, d
 
 Na tela de prática, piano agora mostra as 88 teclas (52 brancas e 36 pretas), com notas descendo para a tecla exata e barras de duração. Bateria usa pistas verticais e kit na base: chimbal/caixa à esquerda, bumbo central, tons/surdo à direita, crash acima à esquerda e ride acima à direita. A demonstração funciona sem hardware. Pausa, busca, velocidade e frases continuam usando o mesmo relógio. Em telas estreitas há rolagem horizontal. O destaque das teclas indica notas do arranjo, não uma confirmação física de tecla pressionada.
 
-O fluxo foi conferido com testes de interface, API/SQLite e navegador real. A validação com piano e bateria eletrônica físicos continua pendente por decisão do usuário. Os perfis MIDI usam No ritmo; Aprender nota por nota ainda é restrito às cordas. Veja [escopo e pendências atuais](../../docs/plans/2026-10-16-musique-pistas-piano-bateria.md).
+O fluxo foi conferido com testes de interface, API/SQLite e navegador real. A validação com piano e bateria eletrônica físicos continua pendente por decisão do usuário. Piano e bateria MIDI usam No ritmo ou Aprender nota por nota; este último exige todas as teclas de um acorde ou todos os pads de um grupo simultâneo. Veja [escopo e pendências atuais](../../docs/plans/2026-10-16-musique-pistas-piano-bateria.md).
 
 ## Escopo
 
@@ -31,7 +31,7 @@ O catálogo administrado e a autoria visual de arranjos estão descritos abaixo.
 
 ## Aprender nota por nota
 
-Escolha um estudo, a música inteira ou uma frase e altere o modo para Aprender nota por nota. Ative a entrada de áudio e inicie. A pista espera a próxima nota e aceita somente a altura na oitava indicada. O texto informa nota, corda e casa; a posição física é uma sugestão do arranjo, não algo que o microfone comprova. Não há limite de tempo por nota nem penalidade por espera.
+Escolha um estudo, a música inteira ou uma frase e altere o modo para Aprender nota por nota. Ative a entrada correspondente e inicie. Em cordas, a pista espera a altura correta; em piano e bateria, espera todas as teclas ou pads do grupo simultâneo. O texto informa nota, corda e casa ou a peça MIDI; não há limite de tempo por nota nem penalidade por espera.
 
 O acompanhamento e os sons automáticos ficam desligados neste modo, inclusive arquivos locais. Use Ouvir nota para uma referência sob demanda. O reconhecimento fica bloqueado durante a referência e sua cauda; quadros da janela bloqueada são descartados e exige-se novo ataque depois dela. Use fones para evitar que a referência retorne pelo microfone. Notas iguais consecutivas exigem novo ataque ou silêncio seguido de outra execução; uma mudança estável de altura pode reconhecer a nota seguinte diferente.
 

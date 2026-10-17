@@ -126,7 +126,7 @@
     $('tj-gain').disabled = bateria || piano; if (!bateria && !piano) renderCaptureGain();
     if (bateria || piano) { state.trainingMode = 'practice'; $('tj-study-mode').value = 'practice'; }
     $('tj-study-mode').children[1].disabled = bateria || piano;
-    text('tj-learning-help', bateria || piano ? 'Acompanhe as notas que descem até o instrumento. Use Demonstração para conhecer a pista sem conectar o equipamento.' : 'No ritmo, acompanhe o tempo. Ao aprender, cada nota espera por você, sem avaliação de ritmo.');
+    text('tj-learning-help', bateria || piano ? 'No ritmo, acompanhe o tempo. Em Aprender, cada tecla ou grupo de pads espera sua entrada MIDI, sem avaliação de ritmo.' : 'No ritmo, acompanhe o tempo. Ao aprender, cada nota espera por você, sem avaliação de ritmo.');
     text('tj-stage-help', piano ? 'As 88 teclas vão de Lá0 a Dó8. Toque quando a nota chegar ao teclado; o comprimento indica a duração. A iluminação acompanha o arranjo.' : bateria ? 'As notas descem até cada peça. No chimbal, × indica fechado e ○ indica aberto. Crash e ride ficam acima dos tambores, como na montagem da bateria.' : 'Acompanhe as casas até a linha de tocar. Casa 0 indica corda solta.');
     text('tj-footnote', bateria || piano ? 'Indicação de treino, sem nota escolar. A demonstração mostra o arranjo; na prática, os acertos usam a entrada MIDI.' : 'Feedback de estudo, sem nota escolar. O áudio identifica a altura; corda e casa são posições sugeridas pelo arranjo. Reconhecimento de acordes pelo microfone não está incluído neste protótipo.');
     $('tj-connection-type').value = bateria || piano ? 'midi' : state.inputKind;
