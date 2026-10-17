@@ -246,6 +246,11 @@
     var title = $('tg-title').value.trim();
     return !title || title === 'Novo arranjo';
   }
+  async function sha256Hex(bytes) {
+    if (!window.crypto || !window.crypto.subtle || !window.crypto.subtle.digest) return '';
+    var buffer = await window.crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(buffer)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
   function fillDocument(d, preserveEditor) {
     var keepHistory = preserveEditor && d && mesmaMusica(chart, d.chart);
     var next = d ? Core.validarChart(d.chart) : null;
@@ -467,6 +472,7 @@
       if (!Number.isFinite(file.size) || file.size < 0 || file.size > limite) throw new Error('O arquivo ' + rotulo + ' deve ter no máximo ' + limiteTexto + '.');
       if (typeof file.arrayBuffer !== 'function') throw new Error('Não foi possível ler este arquivo ' + rotulo + ' no navegador.');
       var bytes = new Uint8Array(await file.arrayBuffer()); if (ticket !== importTicket) return;
+      importacao.sha256 = await sha256Hex(bytes); if (ticket !== importTicket) return;
       var analysis = await importador.analisar(bytes, { perfil: perfil }); if (ticket !== importTicket) return;
       if (!analysis || !Array.isArray(analysis.candidates)) throw new Error('O arquivo ' + rotulo + ' não trouxe linhas para revisar.');
       mostrarAnaliseImportacao(tipo, importador, analysis, file.name || ''); render();
@@ -582,7 +588,7 @@
       var next = Core.validarChart(pendente.importador.criarChart(pendente.analysis, candidate.id, { id: chart && chart.id ? chart.id : novoId, title: title, perfil: pendente.perfil }));
       var proximoInstrumento = instrumentoDoChart(next, pendente.perfil);
       editor.carregar(next); ++importTicket; chart = next;
-      openSources = [{ format: pendente.tipo === 'musicxml' ? (pendente.analysis.format === 'mxl' ? 'mxl' : 'musicxml') : 'midi', name: String(pendente.fileName || 'importacao.' + pendente.tipo), sha256: '' }];
+      openSources = [{ format: pendente.tipo === 'musicxml' ? (pendente.analysis.format === 'mxl' ? 'mxl' : 'musicxml') : 'midi', name: String(pendente.fileName || 'importacao.' + pendente.tipo), sha256: pendente.sha256 || '' }];
       $('tg-instrument').value = proximoInstrumento;
       if (usarTitulo) $('tg-title').value = title;
       limparImportacao(); dirty = true; render();
