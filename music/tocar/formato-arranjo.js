@@ -82,17 +82,26 @@
     if (chart.tempoMap && Array.isArray(chart.tempoMap.events)) out.tempoMap = { version: 1, events: chart.tempoMap.events.map(function (e) { return { atMs: Math.round(numero(e.time, 'tempo do mapa', 0, 900) * 1000), bpm: numero(e.bpm, 'BPM do mapa', 20, 300) }; }) };
     return out;
   }
-  function desnormalizar(documento) {
+  function desnormalizar(documento, opcoes) {
     exigir(objeto(documento) && documento.schema === 'musique.arrangement.v1', 'schema de arranjo aberto desconhecido.');
-    exigir(Array.isArray(documento.tracks) && documento.tracks.length === 1, 'o editor atual importa uma trilha por vez.');
-    var faixa = documento.tracks[0], instrumentoId = instrumento(faixa.instrument);
+    opcoes = opcoes || {};
+    exigir(Array.isArray(documento.tracks) && documento.tracks.length > 0, 'o documento precisa de ao menos uma trilha.');
+    var indice = opcoes.trackIndex === undefined ? null : opcoes.trackIndex;
+    if (indice !== null) exigir(Number.isInteger(indice) && indice >= 0 && indice < documento.tracks.length, 'trilha selecionada inválida.');
+    var faixas = indice === null ? documento.tracks.slice() : [documento.tracks[indice]];
+    var instrumentoId = instrumento(faixas[0].instrument);
+    exigir(faixas.every(function (f) { return objeto(f) && f.instrument === instrumentoId; }), 'todas as trilhas mescladas devem usar o mesmo instrumento.');
+    if (faixas.length > 1 && instrumentoId !== 'piano' && instrumentoId !== 'bateria') exigir(indice !== null, 'o editor importa uma trilha de cordas por vez.');
+    var faixa = faixas[0];
+    var eventos = faixas.reduce(function (todos, f) { return todos.concat(Array.isArray(f.events) ? f.events : []); }, []);
     var chart = { id: texto(documento.id, 'id', 80), title: texto(documento.title, 'título', 120), bpm: numero(documento.tempo && documento.tempo.bpm || 120, 'BPM', 20, 300), duration: numero(documento.durationMs, 'duração', 40, 900000) / 1000,
-      notes: (faixa.events || []).map(function (e, i) {
+      notes: eventos.map(function (e, i) {
         exigir(objeto(e) && e.type === 'note', 'evento ' + (i + 1) + ' não é uma nota.');
         var n = { id: 'open-' + (i + 1), time: numero(e.atMs, 'tempo da nota', 0, 900000) / 1000, duration: numero(e.durationMs, 'duração da nota', 1, 60000) / 1000, midi: e.midi };
         if (instrumentoId === 'bateria') n.drum = texto(e.drum, 'peça de bateria', 32);
         else if (instrumentoId !== 'piano') { n.string = e.string; n.fret = e.fret; }
         if (e.velocity !== undefined) n.velocity = e.velocity;
+        else if (instrumentoId === 'piano' || instrumentoId === 'bateria') n.velocity = 80;
         return n;
       }), metadata: { demo: false } };
     if (instrumentoId === 'piano') { chart.profile = 'piano-midi'; chart.layout = 'piano'; }

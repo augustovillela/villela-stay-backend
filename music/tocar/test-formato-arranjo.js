@@ -43,6 +43,18 @@ test('o formato aberto exportado pode voltar ao chart do editor', () => {
   assert.deepEqual(chart.notes[0], { id: 'open-1', time: 1, duration: 0.5, midi: 64, string: 1, fret: 0 });
 });
 
+test('mescla trilhas de piano e bateria e exige seleção para cordas', () => {
+  const aberto = Formato.normalizar({ chart: guitarra() }, { instrument: 'guitarra' });
+  const piano = { ...aberto, title: 'Piano', sections: [], tracks: [
+    { id: 'p1', instrument: 'piano', events: [{ type: 'note', atMs: 0, durationMs: 500, midi: 60 }] },
+    { id: 'p2', instrument: 'piano', events: [{ type: 'note', atMs: 1000, durationMs: 500, midi: 64 }] }
+  ], durationMs: 2000 };
+  assert.equal(Formato.desnormalizar(piano).notes.length, 2);
+  const cordas = { ...aberto, tracks: [aberto.tracks[0], { ...aberto.tracks[0], id: 'g2' }] };
+  assert.throws(() => Formato.desnormalizar(cordas), /trilha de cordas/);
+  assert.equal(Formato.desnormalizar(cordas, { trackIndex: 1 }).notes.length, 1);
+});
+
 test('exporta enum estável', () => {
   assert.deepEqual(Formato.INSTRUMENTOS, ['violao', 'guitarra', 'baixo', 'cavaquinho', 'ukulele', 'bandolim', 'piano', 'bateria']);
   assert.equal(Formato.MAX_EVENTOS, 10000);
