@@ -25,3 +25,11 @@ test('dados inválidos são normalizados e estudo bloqueado não pode ser inicia
   const estado = Campanha.criar({ instrument: 'desconhecido', progress: { 'primeiro-riff-v1': { position: -4, bestAccuracy: 130 } } });
   assert.equal(estado.instrument, 'violao'); assert.equal(estado.progress['primeiro-riff-v1'].position, 0); assert.equal(estado.progress['primeiro-riff-v1'].bestAccuracy, null); assert.throws(() => Campanha.atualizar(estado, 'cordas-soltas-v1', { position: 1 }), /bloqueado/); assert.throws(() => Campanha.atualizar(estado, 'nao-existe', {}), /não pertence/);
 });
+
+test('resumo calcula progresso, tentativas e distintivos', () => {
+  let estado = Campanha.criar({ instrument: 'violao' });
+  assert.deepEqual(Campanha.resumo(estado), { instrument: 'violao', total: 7, completed: 0, available: 1, attempts: 0, badges: 0, percent: 0 });
+  estado = Campanha.atualizar(estado, 'primeiro-riff-v1', { completed: true });
+  const resumo = Campanha.resumo(estado);
+  assert.equal(resumo.completed, 1); assert.equal(resumo.badges, 1); assert.equal(resumo.percent, 14); assert.equal(resumo.attempts, 1);
+});
