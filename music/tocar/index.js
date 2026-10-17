@@ -13,7 +13,7 @@ const CAMPOS_PRATICA = new Set(['chartId', 'title', 'total', 'hits', 'misses', '
 const CAMPOS_APRENDER = new Set(['chartId', 'title', 'total', 'hits', 'skipped', 'duration', 'mode', 'catalogRef']);
 const ARQUIVOS = Object.freeze([
   'cliente.js', 'estilo.css', 'perfis.js', 'nucleo.js', 'midi.js', 'audio.js', 'detector.js',
-  'capturar-worklet.js', 'detector-worker.js', 'aprender.js', 'estudos.js',
+  'capturar-worklet.js', 'detector-worker.js', 'aprender.js', 'estudos.js', 'sessao-game.js',
   'formato-catalogo.js', 'catalogo-cliente.js', 'gerenciar.js',
   'editor-nucleo.js', 'editor-cliente.js', 'editor.css', 'importador-midi.js', 'importador-musicxml.js',
   'waveform.js', 'waveform-cliente.js',

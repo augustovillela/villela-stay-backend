@@ -34,7 +34,7 @@
     "verificar:kids": "node kids/verificar-producao.js",
     "test:finance": "node financeiro/selftest.js",
     "test:music": "node music/selftest.js",
-    "test:music-tocar": "node --test music/tocar/test-perfis.js music/tocar/test-nucleo.js music/tocar/test-audio.js music/tocar/test-aprender.js music/tocar/test-estudos.js music/tocar/test-formato-catalogo.js music/tocar/test-catalogo.js music/tocar/test-servidor.js music/tocar/test-cliente.js music/tocar/test-sons.js music/tocar/test-gerenciar.js music/tocar/test-editor-nucleo.js music/tocar/test-editor-cliente.js music/tocar/test-importador-midi.js music/tocar/test-importador-musicxml.js music/tocar/test-waveform.js music/tocar/test-midi.js music/tocar/test-pista-piano.js music/tocar/test-pista-bateria.js",
+    "test:music-tocar": "node --test music/tocar/test-perfis.js music/tocar/test-nucleo.js music/tocar/test-audio.js music/tocar/test-aprender.js music/tocar/test-estudos.js music/tocar/test-formato-catalogo.js music/tocar/test-catalogo.js music/tocar/test-servidor.js music/tocar/test-cliente.js music/tocar/test-sons.js music/tocar/test-gerenciar.js music/tocar/test-editor-nucleo.js music/tocar/test-editor-cliente.js music/tocar/test-importador-midi.js music/tocar/test-importador-musicxml.js music/tocar/test-waveform.js music/tocar/test-midi.js music/tocar/test-pista-piano.js music/tocar/test-pista-bateria.js music/tocar/test-sessao-game.js",
     "test:music-tocar-pdf": "node --test music/tocar/test-importador-pdf.js",
     "test:music-omr": "node --test music/tocar/test-omr.js",
     "music:omr": "node scripts/omr-pdf.js",
