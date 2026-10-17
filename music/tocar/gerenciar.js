@@ -6,7 +6,7 @@
   if (!Core || !Formato || !Estudos || !Editor || !ImportadorMidi || !ImportadorMusicXML || !WaveformCliente || !Perfis) { app.textContent = 'Não foi possível carregar a gestão. Recarregue a página.'; return; }
   var boot = JSON.parse(app.getAttribute('data-estado') || '{}');
   if (!boot.logado) { app.innerHTML='<h1>Gerenciar seus arranjos</h1><p>Entre na sua conta Musique para criar arranjos das obras do seu acervo.</p><a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar ou criar conta</a><p><a href="/music/tocar">Voltar aos estudos abertos</a></p>';return; }
-  var current = null, chart = null, dirty = false, busy = false, conflict = false, editor = null, editorPending = false, waveform = null, pdfObjectUrl = '';
+  var current = null, chart = null, dirty = false, busy = false, conflict = false, editor = null, editorPending = false, waveform = null, pdfObjectUrl = '', pdfFile = null;
   var importacao = null;
   var detailTicket = 0, mediaTicket = 0, importTicket = 0, pdfTicket = 0, worksTicket = 0, listTicket = 0, waveformTicket = 0;
   var worksOffset = 0, listOffset = 0, works = [], arrangements = [];
@@ -39,7 +39,7 @@
       throw e; }
     return data;
   }
-  var fields = ['tg-work', 'tg-title', 'tg-instrument', 'tg-level', 'tg-technique', 'tg-objective', 'tg-credits', 'tg-media', 'tg-media-offset', 'tg-json', 'tg-midi', 'tg-musicxml', 'tg-pdf', 'tg-example', 'tg-use-example'];
+  var fields = ['tg-work', 'tg-title', 'tg-instrument', 'tg-level', 'tg-technique', 'tg-objective', 'tg-credits', 'tg-media', 'tg-media-offset', 'tg-json', 'tg-midi', 'tg-musicxml', 'tg-pdf', 'tg-pdf-omr', 'tg-example', 'tg-use-example'];
   function importacaoPendente() { return !!importacao; }
   function rotuloImportacao(item) { return item && item.tipo === 'musicxml' ? 'MusicXML/MXL' : 'MIDI'; }
   function motivoWaveform() {
@@ -222,10 +222,12 @@
     if ($('tg-midi-candidates')) $('tg-midi-candidates').value = '';
   }
   function limparPdf() {
+    pdfFile = null; ++pdfTicket;
     if (pdfObjectUrl) { URL.revokeObjectURL(pdfObjectUrl); pdfObjectUrl = ''; }
     if ($('tg-pdf')) $('tg-pdf').value = '';
     if ($('tg-pdf-info')) $('tg-pdf-info').textContent = '';
     if ($('tg-pdf-open')) { $('tg-pdf-open').hidden = true; $('tg-pdf-open').removeAttribute('href'); }
+    if ($('tg-pdf-omr')) $('tg-pdf-omr').hidden = true;
   }
   function tituloImportacaoSeguro(fileName, tipo, tituloDaFonte) {
     var fonte = String(tituloDaFonte || '').replace(/[<>\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim();
@@ -374,7 +376,7 @@
     '<section class="tj-panel"><h2>Rascunho e publicação</h2><p id="tg-version"></p><div class="tg-search"><label>Buscar obra própria<input id="tg-work-q" type="search"></label><button id="tg-work-search">Buscar obra</button></div><label class="tj-field">Obra do seu acervo<select id="tg-work"><option value="">Selecione uma obra do seu acervo</option></select></label><div class="tj-catalog-pages"><button id="tg-work-prev" disabled>Anterior</button><button id="tg-work-next" disabled>Próxima</button></div><p id="tg-work-empty" hidden>Nenhuma obra encontrada. <a href="/music/app#biblioteca">Abra o acervo para cadastrar uma obra.</a></p><p id="tg-visibility" class="tj-small"></p>' +
     '<div class="tg-grid"><label class="tj-field">Título do arranjo<input id="tg-title" maxlength="120"></label><label class="tj-field">Instrumento<select id="tg-instrument"></select></label><label class="tj-field">Nível<select id="tg-level"></select></label><label class="tj-field">Técnica<select id="tg-technique"></select></label></div>' +
     '<label class="tj-field">Objetivo do estudo<input id="tg-objective" maxlength="500"></label><label class="tj-field">Autoria, créditos e procedência<input id="tg-credits" maxlength="500"></label><label class="tj-field">Áudio já vinculado à obra<select id="tg-media"><option value="">Sem áudio associado · usar demonstração sintetizada</option></select></label><label class="tj-field">O 0:00 do arranjo ocorre em (ms)<input id="tg-media-offset" type="number" min="0" max="600000" step="1" inputmode="numeric" value="0" aria-describedby="tg-media-offset-help"></label><p id="tg-media-offset-help" class="tj-small"></p><button id="tg-media-more" type="button" hidden>Carregar mais áudios desta obra</button><div id="tg-waveform"></div>' +
-    '<p class="tj-small">Arquivos de áudio são geridos no acervo. Crie notas para instrumentos de cordas, piano MIDI ou bateria eletrônica. MP3 sozinho não cria um arranjo.</p><p id="tg-import-help" class="tj-small"></p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label><label class="tj-field">Importar MIDI (até 512 KiB, lido somente neste navegador)<input id="tg-midi" type="file" accept=".mid,.midi,audio/midi,audio/x-midi"></label><label class="tj-field">Importar MusicXML ou MXL (até 2 MiB, lido somente neste navegador)<input id="tg-musicxml" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/xml,text/xml"></label><label class="tj-field">Abrir partitura PDF para referência (até 10 MiB)<input id="tg-pdf" type="file" accept=".pdf,application/pdf"><span id="tg-pdf-info" class="tj-small"></span><a id="tg-pdf-open" target="_blank" rel="noopener" hidden> abrir partitura em nova aba ↗</a></label><section id="tg-midi-preview" class="tj-field" aria-live="polite" hidden><p id="tg-midi-info"></p><label><span id="tg-import-line-label">Linha MIDI</span><select id="tg-midi-candidates"><option value="">Escolha uma linha MIDI disponível</option></select></label><p id="tg-midi-detail" class="tj-small"></p><div class="tg-actions"><button id="tg-midi-confirm" type="button" disabled>Importar esta linha</button><button id="tg-midi-cancel" type="button">Cancelar importação MIDI</button></div></section>' +
+    '<p class="tj-small">Arquivos de áudio são geridos no acervo. Crie notas para instrumentos de cordas, piano MIDI ou bateria eletrônica. MP3 sozinho não cria um arranjo.</p><p id="tg-import-help" class="tj-small"></p><label class="tj-field">Importar arranjo JSON (até 1 MiB)<input id="tg-json" type="file" accept=".json,application/json"></label><label class="tj-field">Importar MIDI (até 512 KiB, lido somente neste navegador)<input id="tg-midi" type="file" accept=".mid,.midi,audio/midi,audio/x-midi"></label><label class="tj-field">Importar MusicXML ou MXL (até 2 MiB, lido somente neste navegador)<input id="tg-musicxml" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/xml,text/xml"></label><label class="tj-field">Abrir partitura PDF para referência e conversão OMR (até 10 MiB)<input id="tg-pdf" type="file" accept=".pdf,application/pdf"><span id="tg-pdf-info" class="tj-small"></span><a id="tg-pdf-open" target="_blank" rel="noopener" hidden> abrir partitura em nova aba ↗</a><button id="tg-pdf-omr" type="button" hidden>Converter partitura com OMR</button></label><section id="tg-midi-preview" class="tj-field" aria-live="polite" hidden><p id="tg-midi-info"></p><label><span id="tg-import-line-label">Linha MIDI</span><select id="tg-midi-candidates"><option value="">Escolha uma linha MIDI disponível</option></select></label><p id="tg-midi-detail" class="tj-small"></p><div class="tg-actions"><button id="tg-midi-confirm" type="button" disabled>Importar esta linha</button><button id="tg-midi-cancel" type="button">Cancelar importação MIDI</button></div></section>' +
     '<div class="tg-search"><label>Começar de um estudo original<select id="tg-example"></select></label><button id="tg-use-example" type="button">Usar cópia do estudo</button></div><p id="tg-chart-info"></p>' +
     '<div id="tg-editor"></div>' +
     '<div class="tg-actions"><button id="tg-save" type="button">Salvar rascunho</button><a id="tg-preview" target="_blank" rel="noopener" hidden>Revisar na pista ↗</a><button id="tg-publish" type="button" disabled>Publicar nova versão</button><button id="tg-withdraw" type="button" disabled>Retirar publicação</button><button id="tg-reload" type="button" disabled>Recarregar revisão salva (descarta alterações)</button><button id="tg-download" type="button">Baixar JSON do formulário</button></div><p class="tj-small">Publicar cria uma versão preservada. Editar depois prepara outro rascunho; retirar não apaga o histórico.</p><h3>Versões publicadas</h3><ul id="tg-versions"></ul></section></div>';
@@ -472,6 +474,7 @@
     if (file.size > 10 * 1024 * 1024 || (file.type && file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name || ''))) {
       message('A partitura PDF deve ter no máximo 10 MiB e usar a extensão .pdf.', true); return;
     }
+    pdfFile = file;
     pdfObjectUrl = URL.createObjectURL(file);
     $('tg-pdf-info').textContent = 'PDF carregado como referência visual. Ele não altera as notas do arranjo.';
     $('tg-pdf-open').href = pdfObjectUrl; $('tg-pdf-open').hidden = false;
@@ -481,12 +484,31 @@
       if (ticket !== pdfTicket || !dados) return;
       var detalhe = dados.tipo === 'cifra' ? 'cifra detectada; encaminhe o texto para ChordPro.' : dados.tipo === 'partitura' ? 'partitura detectada; a próxima etapa é OMR para MusicXML/MXL.' : 'tipo não identificado automaticamente; mantenha a revisão manual.';
       $('tg-pdf-info').textContent = 'PDF analisado: ' + detalhe + ' Ele continua apenas como referência visual.';
+      $('tg-pdf-omr').hidden = dados.tipo !== 'partitura';
       message('PDF analisado. ' + detalhe + ' Para gerar notas e som, importe MIDI, MusicXML ou MXL.', false);
     }).catch(function (erro) {
       if (ticket !== pdfTicket) return;
       $('tg-pdf-info').textContent = 'PDF carregado como referência visual; a análise automática não ficou disponível.';
       message('PDF pronto para consulta, mas não foi possível analisá-lo agora: ' + erro.message, true);
     });
+  });
+  $('tg-pdf-omr').addEventListener('click', async function () {
+    if (busy || editorPending || importacaoPendente() || !pdfFile) return;
+    var ticket = ++pdfTicket, botao = this;
+    botao.disabled = true; message('Executando OMR e preparando o MusicXML…', false);
+    try {
+      var bytes = new Uint8Array(await pdfFile.arrayBuffer());
+      var resposta = await fetch('/music/api/tocar/importar-pdf/omr', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: pdfFile.name || '', base64: base64De(bytes) }) });
+      var dados = await resposta.json();
+      if (ticket !== pdfTicket) return;
+      if (!resposta.ok) throw new Error(dados.erro || 'Não foi possível converter a partitura.');
+      var raw = Uint8Array.from(atob(dados.musicxmlBase64 || ''), function (c) { return c.charCodeAt(0); });
+      var analysis = await ImportadorMusicXML.analisar(raw, { perfil: $('tg-instrument').value });
+      if (ticket !== pdfTicket) return;
+      mostrarAnaliseImportacao('musicxml', ImportadorMusicXML, analysis, dados.arquivo || 'partitura-omr.mxl'); render();
+      message('OMR concluído. Escolha uma pauta/voz e confirme; o rascunho ainda não foi alterado.', false);
+    } catch (e) { if (ticket === pdfTicket) message('OMR não concluído: ' + e.message, true); }
+    finally { if (ticket === pdfTicket) botao.disabled = false; }
   });
   $('tg-midi-candidates').addEventListener('change', function () { renderImportacaoPreview(); });
   $('tg-midi-cancel').addEventListener('click', function () {
