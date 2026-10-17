@@ -439,6 +439,7 @@ const Importar = {
     const t = db.prepare('SELECT * FROM importacoes WHERE id = ?').get(id);
     if (!t) throw erro('Importação não encontrada.', 404);
     if (usuario && t.usuario !== usuario) throw erro('Importação não encontrada.', 404);
+    if (usuario && t.status !== 'falhou') throw erro('Só importações que falharam podem ser reenviadas.', 409);
     if (t.status === 'salva') throw erro('Importação já salva: reprocessar criaria cifra duplicada.', 409);
     if (t.tipo_entrada !== 'url') throw erro('Só importação por URL pode ser reprocessada (as outras exigem a entrada original).');
     const url = 'https://' + t.entrada_resumo;

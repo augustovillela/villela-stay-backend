@@ -709,6 +709,10 @@ async function rodar({ t, secao, req, assert }) {
     while (['pendente', 'processando'].includes(Importar.obter('u-ana', falha.importacao.id).importacao.status)) await new Promise((x) => setTimeout(x, 10));
     const novamente = Importar.obter('u-ana', falha.importacao.id);
     assert.equal(novamente.importacao.status, 'falhou');
+    const pronta = Importar.url('u-ana', { url: 'https://www.cifraclub.com.br/tom-jobim/wave/' });
+    await pronta._promessa;
+    assert.equal(Importar.obter('u-ana', pronta.importacao.id).importacao.status, 'pronta');
+    await assert.rejects(() => Importar.reprocessar(pronta.importacao.id, 'u-ana'), /Só importações que falharam/);
   });
 
   await t('BUSCA externa: uma fonte cai (500) e a outra responde — a busca NÃO cai, e a falha vem NOMEADA', async () => {
