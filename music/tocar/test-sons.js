@@ -58,7 +58,7 @@ function resposta() { return { ok: true, arrayBuffer: async () => new ArrayBuffe
 function montar(opcoes = {}) {
   const ctx = opcoes.ctx || contexto(), manifest = opcoes.manifest || manifesto(), requests = [];
   const buscar = opcoes.fetch || (async (url, init) => { requests.push({ url, init }); return resposta(); });
-  return { ctx, manifest, requests, engine: Sons.criar(ctx, { manifest, fetch: buscar }) };
+  return { ctx, manifest, requests, engine: Sons.criar(ctx, { manifest, fetch: buscar, navigator: opcoes.navigator }) };
 }
 function quase(a, b) { assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`); }
 async function flush() { await new Promise(resolve => setImmediate(resolve)); }
@@ -310,6 +310,15 @@ test('limita a quatro downloads globais inclusive entre preparações concorrent
   }
   await Promise.all([a, b]); assert.equal(maximo, 4); assert.equal(h.ctx.decodes, 12);
   h.engine.dispose();
+});
+
+test('adapta downloads, polifonia e prazo para conexão ou dispositivo limitado', async () => {
+  const h = montar({ navigator: { connection: { effectiveType: '2g', saveData: true }, hardwareConcurrency: 2, deviceMemory: 2 } });
+  assert.deepEqual(h.engine.diagnosticoDesempenho(), { nome: 'econômico', limiteVozes: 24, limiteDownloads: 2, tempoDownload: 30000 });
+  h.engine.dispose();
+  const rápido = montar({ navigator: { connection: { effectiveType: '4g' }, hardwareConcurrency: 8, deviceMemory: 8 } });
+  assert.deepEqual(rápido.engine.diagnosticoDesempenho(), { nome: 'completo', limiteVozes: 48, limiteDownloads: 4, tempoDownload: 15000 });
+  rápido.engine.dispose();
 });
 
 test('dispose aborta downloads pendentes e rejeita a fila sem iniciar novas requisições', async () => {

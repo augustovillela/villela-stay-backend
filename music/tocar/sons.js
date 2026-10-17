@@ -8,12 +8,28 @@
   var BASE = '/music/tocar/sons/';
   var ARQUIVO = /^[a-z0-9][a-z0-9_-]*\/[A-Za-z0-9][A-Za-z0-9_-]*\.(?:mp3|ogg|wav)$/;
   var LIMITE_VOZES = 48, LIMITE_DOWNLOADS = 4, TEMPO_DOWNLOAD = 15000, TAMANHO_MAXIMO = 12 * 1024 * 1024;
+  function perfilDesempenho(opcoes) {
+    var nav = opcoes && opcoes.navigator || (typeof navigator !== 'undefined' ? navigator : null) || {};
+    var conexao = nav.connection || nav.mozConnection || nav.webkitConnection || {};
+    var tipo = typeof conexao.effectiveType === 'string' ? conexao.effectiveType.toLowerCase() : '';
+    var lento = conexao.saveData === true || tipo === 'slow-2g' || tipo === '2g';
+    var moderado = tipo === '3g';
+    var nucleos = Number(nav.hardwareConcurrency), memoria = Number(nav.deviceMemory);
+    if (Number.isFinite(nucleos) && nucleos > 0 && nucleos <= 2) lento = true;
+    else if (Number.isFinite(nucleos) && nucleos <= 4) moderado = true;
+    if (Number.isFinite(memoria) && memoria > 0 && memoria <= 2) lento = true;
+    else if (Number.isFinite(memoria) && memoria <= 4) moderado = true;
+    if (lento) return { nome: 'econômico', limiteVozes: 24, limiteDownloads: 2, tempoDownload: 30000 };
+    if (moderado) return { nome: 'equilibrado', limiteVozes: 32, limiteDownloads: 3, tempoDownload: 22000 };
+    return { nome: 'completo', limiteVozes: LIMITE_VOZES, limiteDownloads: LIMITE_DOWNLOADS, tempoDownload: TEMPO_DOWNLOAD };
+  }
   function finito(n) { return typeof n === 'number' && Number.isFinite(n); }
   function midiValido(n) { return Number.isInteger(n) && n >= 0 && n <= 127; }
   function proprio(obj, chave) { return Object.prototype.hasOwnProperty.call(obj, chave); }
 
   function criar(ctx, opcoes) {
     opcoes = opcoes || {};
+    var desempenho = perfilDesempenho(opcoes);
     var manifesto = opcoes.manifest;
     var buscar = opcoes.fetch || (typeof fetch === 'function' ? fetch.bind(globalThis) : null);
     if (!ctx || typeof ctx.createBufferSource !== 'function' || typeof ctx.createGain !== 'function' ||
@@ -95,7 +111,7 @@
         temporizador = setTimeout(function () {
           if (controle) controle.abort();
           reject(new Error('O carregamento do som demorou demais. Tente novamente.'));
-        }, TEMPO_DOWNLOAD);
+        }, desempenho.tempoDownload);
         Promise.resolve().then(function () {
           return buscar(BASE + file, { credentials: 'same-origin', signal: controle ? controle.signal : undefined });
         }).then(function (resposta) {
@@ -117,7 +133,7 @@
       });
     }
     function despachar() {
-      while (!encerrado && downloads < LIMITE_DOWNLOADS && fila.length) {
+      while (!encerrado && downloads < desempenho.limiteDownloads && fila.length) {
         executar(fila.shift());
       }
     }
@@ -210,7 +226,7 @@
       quando = Math.max(ctx.currentTime, quando);
       vozes.slice().forEach(function (v) { if (v.end <= ctx.currentTime) limpar(v); });
       var camadas = b.doubled ? 2 : 1;
-      while (vozes.length + camadas > LIMITE_VOZES) {
+      while (vozes.length + camadas > desempenho.limiteVozes) {
         var maisAntiga = vozes.reduce(function (a, v) { return v.when < a.when ? v : a; });
         pararVoz(maisAntiga); limpar(maisAntiga);
       }
@@ -273,7 +289,10 @@
       try { master.disconnect(); } catch (_) {}
       bancos = Object.create(null); buffers = Object.create(null); promessas = Object.create(null);
     }
-    return { preparar: preparar, tocar: tocar, parar: parar, dispose: dispose };
+    return { preparar: preparar, tocar: tocar, parar: parar, dispose: dispose,
+      diagnosticoDesempenho: function () { return { nome: desempenho.nome,
+        limiteVozes: desempenho.limiteVozes, limiteDownloads: desempenho.limiteDownloads,
+        tempoDownload: desempenho.tempoDownload }; } };
   }
   return { criar: criar };
 });
