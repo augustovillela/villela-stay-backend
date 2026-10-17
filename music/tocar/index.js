@@ -134,6 +134,7 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/pista-bateria.js" defer></script>
 <script src="/music/tocar/sons-manifesto.js" defer></script>
 <script src="/music/tocar/sons.js" defer></script>
+<script src="/music/tocar/campanha.js" defer></script>
 <script src="/music/tocar/cliente.js" defer></script>`;
     res.set('Cache-Control', 'no-store').type('html').send(layout('Tocar junto · prática com instrumentos | Musique', corpo, {
       caminho: '/music/tocar', noApp: estado.logado,

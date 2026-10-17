@@ -7,7 +7,7 @@
   var Sons = window.MusiqueTocarSons, Manifesto = window.MusiqueTocarSonsManifesto;
   if (!Core || !Audio || !Aprender || !Estudos || !Perfis || !Piano || !Bateria || !Sons || !Manifesto) { app.textContent = 'Não foi possível carregar o modo de prática. Recarregue a página.'; return; }
   var boot = JSON.parse(app.getAttribute('data-estado') || '{}');
-  var Catalogo = window.MusiqueTocarCatalogo, Formato = window.MusiqueTocarFormatoCatalogo;
+  var Catalogo = window.MusiqueTocarCatalogo, Formato = window.MusiqueTocarFormatoCatalogo, Campaign = window.MusiqueTocarCampanha;
   var query = new URLSearchParams(window.location ? window.location.search : '');
   var previewMode = query.has('previa'), previewReady = !previewMode;
   var source = { kind: 'study' }, catalogUI = null, chartTicket = 0, chartLoading = false;
@@ -22,6 +22,39 @@
     instrument: 'violao', inputKind: 'microphone', trainingMode: 'practice', learner: null, midiOrigin: 0,
     learnContext: null, learnElapsed: 0, learnStartedAt: null, guideUntil: 0 };
   var studies = Estudos.listar(), phraseButtons = [];
+  var campaignState = Campaign ? Campaign.criar({ instrument: state.instrument }) : null;
+  function campaignStorageKey(instrument) { return 'musique.campanha.v1.' + instrument; }
+  function loadCampaign() {
+    if (!Campaign) return null;
+    var raw = null;
+    try { raw = window.localStorage && window.localStorage.getItem(campaignStorageKey(state.instrument)); } catch (_) {}
+    try { campaignState = Campaign.criar(raw ? JSON.parse(raw) : { instrument: state.instrument }); }
+    catch (_) { campaignState = Campaign.criar({ instrument: state.instrument }); }
+    return campaignState;
+  }
+  function saveCampaign() { if (!Campaign || !campaignState) return; try { window.localStorage.setItem(campaignStorageKey(state.instrument), JSON.stringify(campaignState)); } catch (_) {} }
+  function renderCampaign() {
+    var panel = $('tj-campaign'); if (!panel || !Campaign) return;
+    var lista = Campaign.listar(campaignState || { instrument: state.instrument });
+    panel.replaceChildren(el('div', { class: 'tj-campaign-heading' }, [el('div', {}, [el('p', { class: 'tj-caption', text: 'CAMPANHA AUTORAL' }), el('h2', { text: 'Trilha de evolução' })]), el('span', { class: 'tj-campaign-count', text: lista.filter(function (item) { return item.status === 'completed'; }).length + '/' + lista.length + ' concluídas' })]));
+    var list = el('ol', { class: 'tj-campaign-list' });
+    lista.forEach(function (item) {
+      var label = item.status === 'completed' ? 'Concluída' : item.status === 'in_progress' ? 'Em andamento' : item.status === 'available' ? 'Disponível' : 'Bloqueada';
+      var action = item.status === 'locked' ? el('span', { class: 'tj-campaign-status', text: '🔒 ' + label }) : el('button', { type: 'button', class: 'tj-campaign-action', text: item.status === 'in_progress' ? 'Continuar' : item.status === 'completed' ? 'Revisar' : 'Começar' });
+      if (action.tagName === 'BUTTON') action.addEventListener('click', function () {
+        var estudo = Estudos.obter(item.id); if (!estudo) return;
+        campaignState = item.status === 'completed' ? Campaign.criar(campaignState) : Campaign.iniciar(campaignState, item.id);
+        saveCampaign(); $('tj-study').value = item.id; chooseChart(estudo, { kind: 'study', instrument: state.instrument, objective: item.objective }); renderCampaign(); msg(item.status === 'in_progress' ? 'Campanha retomada. Continue do ponto salvo.' : 'Etapa da campanha carregada.');
+      });
+      list.appendChild(el('li', { class: 'tj-campaign-item ' + item.status }, [el('div', {}, [el('strong', { text: item.order + '. ' + item.title }), el('small', { text: item.level + ' · ' + item.objective })]), action]));
+    });
+    panel.appendChild(list);
+  }
+  function updateCampaign(completed) {
+    if (!Campaign || source.kind !== 'study' || !campaignState) return;
+    var item = studies.find(function (study) { return study.chart.id === chart.id; }); if (!item) return;
+    try { campaignState = Campaign.atualizar(campaignState, item.id, { completed: !!completed, position: completed ? chart.duration : state.position }); saveCampaign(); renderCampaign(); } catch (_) {}
+  }
   var COLORS = ['#e9a56a', '#e7ca64', '#70c9ae', '#79b7ed', '#b39cdd', '#e89cac'];
   var captureGains = { microphone: 6, interface: 0, realtone: 0 };
   function el(tag, attrs, children) {
@@ -153,7 +186,7 @@
     $('tj-metronome').checked = state.inputKind !== 'microphone';
     $('tj-backing').checked = state.inputKind !== 'microphone';
     $('tj-guide').checked = false;
-    renderStudies(); profile(); updateTransport(); refreshDevices(); msg(atual.layout === 'piano' || atual.layout === 'drums' ? 'Instrumento selecionado. Veja a demonstração ou ative a entrada MIDI para praticar.' : 'Entrada ajustada. Ative o áudio e selecione o dispositivo que vai usar.');
+    renderStudies(); loadCampaign(); renderCampaign(); profile(); updateTransport(); refreshDevices(); msg(atual.layout === 'piano' || atual.layout === 'drums' ? 'Instrumento selecionado. Veja a demonstração ou ative a entrada MIDI para praticar.' : 'Entrada ajustada. Ative o áudio e selecione o dispositivo que vai usar.');
   }
   function context() {
     var c = input && input.contexto();
@@ -221,7 +254,7 @@
     text('tj-target-help', gated ? 'Espere o som de referência terminar e toque a nota novamente.' : state.running ? 'Toque uma nota clara. A próxima aparece quando esta for reconhecida.' : target ? 'Prática pausada. Continue quando estiver pronto para tocar novamente.' : state.mode === 'learn' ? 'Você chegou ao fim deste trecho.' : preview ? 'Ative a entrada e comece a aprender. Você pode pausar a qualquer momento.' : 'Escolha outra frase ou a música inteira.');
   }
   function finishLearn() {
-    pause(); state.position = state.to; updateScore(); updateTransport();
+    pause(); state.position = state.to; updateCampaign(true); updateScore(); updateTransport();
     msg('Trecho concluído: notas reconhecidas e puladas abaixo. O ritmo não foi avaliado.');
   }
   function expiredLearn() {
@@ -380,7 +413,7 @@
     var anterior = perfilDoInstrumento(state.instrument), proximo = instrumentoDoChart(perfil, source);
     state.instrument = proximo; $('tj-instrument').value = proximo;
     if (anterior.id !== perfil.id) encerrarCapturaDoPerfilAnterior();
-    renderStudies(); profile(); state.from = 0; state.to = chart.duration; state.position = 0;
+    renderStudies(); loadCampaign(); renderCampaign(); profile(); state.from = 0; state.to = chart.duration; state.position = 0;
     text('tj-song-title', chart.title); text('tj-song-info', tempoLabel(chart) + ' · ' + chart.notes.length + ' notas · ' + timeLabel(chart.duration));
     text('tj-source', source.kind === 'catalog' ? 'Catálogo · versão ' + source.versionNumber + ' · ' + source.credits : source.kind === 'preview' ? 'PRÉVIA DO RASCUNHO · revisão ' + source.revision + ' · sem captura ou avaliação' : source.kind === 'study' ? 'Estudo original Musique · sons de instrumentos' : 'Arranjo importado neste navegador');
     $('tj-seek').max = chart.duration; $('tj-to').max = chart.duration; $('tj-from').max = chart.duration;
@@ -426,6 +459,7 @@
       select.appendChild(el('option', { value: study.id, text: study.title }));
     });
     if (Array.prototype.some.call(select.children, function (option) { return option.value === escolhido; })) select.value = escolhido;
+    loadCampaign(); renderCampaign();
   }
   async function loadRemoteAudio(reference) {
     var ticket = ++remoteTicket; remoteLoading=true;updateTransport();
@@ -478,7 +512,7 @@
     if (state.mode === 'practice' && state.judge) state.judge.avancar(state.to + 1);
     updateScore();
     if (state.loop) { msg('Trecho concluído. Nova rodada após a contagem.'); start(state.mode, false); }
-    else { msg(state.mode === 'practice' ? 'Rodada concluída. Confira sua indicação de treino abaixo.' : 'Demonstração concluída. Ative a entrada de áudio para praticar.'); updateTransport(); }
+    else { if (state.mode === 'practice') updateCampaign(true); msg(state.mode === 'practice' ? 'Rodada concluída. Confira sua indicação de treino abaixo.' : 'Demonstração concluída. Ative a entrada de áudio para praticar.'); updateTransport(); }
   }
   function tick() {
     if (state.running && state.mode === 'learn') {
@@ -718,6 +752,7 @@
   app.innerHTML = '<div class="tj-heading"><div><p class="tj-eyebrow">MUSIQUE / PRÁTICA COM INSTRUMENTO</p><h1>Tocar junto<span id="tj-instrument-label">Violão</span></h1><p class="tj-intro">Escolha seu instrumento e acompanhe as notas na pista.</p></div><a id="tj-back" class="tj-back" href="/music/tutor-braco?i=violao">Tutor de braço ↗</a></div>'+
     '<section id="tj-catalog" class="tj-panel tj-catalog"></section><p id="tj-preview-notice" class="tj-capture-tip" hidden>Prévia privada do rascunho · apenas demonstração, sem captura ou resultados. <a href="/music/tocar/gerenciar">Voltar à gestão</a></p>'+
     '<div class="tj-layout"><section class="tj-main" aria-label="Pista e reprodução"><div class="tj-song"><div class="tj-art" aria-hidden="true">♩</div><div><p id="tj-source" class="tj-caption"></p><h2 id="tj-song-title"></h2><p id="tj-song-info"></p></div><span class="tj-badge">PROTÓTIPO</span></div>'+
+    '<section id="tj-campaign" class="tj-panel tj-campaign" aria-label="Campanha autoral"></section>'+
     '<div class="tj-study-controls"><label class="tj-field">Estudos<select id="tj-study" aria-describedby="tj-study-info"><option value="">Arranjo importado</option></select></label><label class="tj-field">Como praticar<select id="tj-study-mode" aria-describedby="tj-learning-help"><option value="practice" selected>No ritmo</option><option value="learn">Aprender nota por nota</option></select></label><p id="tj-study-info" class="tj-muted"></p><p id="tj-learning-help" class="tj-small">No ritmo, acompanhe o tempo. Ao aprender, cada nota espera por você, sem avaliação de ritmo.</p><div id="tj-phrases" class="tj-phrases" role="group" aria-label="Escolha uma frase ou a música inteira"></div></div>'+
     '<div id="tj-stage" class="tj-stage"><div class="tj-stage-top"><span id="tj-mode">PRONTO PARA TOCAR</span><span id="tj-stage-profile">6 CORDAS / AFINAÇÃO PADRÃO</span></div><div class="tj-stage-scroll" tabindex="0" role="region" aria-label="Pista do instrumento; use as setas para rolar em telas pequenas"><canvas id="tj-canvas" aria-describedby="tj-stage-help" aria-label="Pista de notas de violão e guitarra. Uma tabela das notas está disponível abaixo."></canvas></div><span id="tj-count" aria-live="off"></span><p id="tj-stage-help" class="tj-stage-help"></p></div>'+
     '<section id="tj-learn-panel" class="tj-learn-panel" aria-label="Nota para aprender" hidden><div><p class="tj-caption">SUA PRÓXIMA NOTA</p><h3 id="tj-target" aria-live="polite" aria-atomic="true"></h3><p id="tj-target-help"></p></div><div class="tj-learn-actions"><button id="tj-hear-note" aria-describedby="tj-guide-help" disabled>Ouvir nota</button><button id="tj-skip" disabled>Pular nota</button></div><p id="tj-guide-help" class="tj-small">A referência toca só quando você pede. Espere o som terminar e toque de novo; use fones. Corda e casa são sugestões do arranjo.</p></section>'+
