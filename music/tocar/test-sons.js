@@ -321,6 +321,25 @@ test('adapta downloads, polifonia e prazo para conexão ou dispositivo limitado'
   rápido.engine.dispose();
 });
 
+test('carrega variantes opcionais por dinâmica e alterna round-robin', async () => {
+  const manifest = manifesto();
+  manifest.banks.violao.samples = [
+    { midi: 40, file: 'violao/forte-a.mp3', velocityMin: 90, velocityMax: 127, roundRobin: 1 },
+    { midi: 40, file: 'violao/forte-b.mp3', velocityMin: 90, velocityMax: 127, roundRobin: 2 },
+    { midi: 40, file: 'violao/fraco.mp3', velocityMin: 1, velocityMax: 89 },
+  ];
+  const h = montar({ manifest });
+  const preparado = await h.engine.preparar('violao', [{ midi: 40, velocity: 110 }]);
+  assert.equal(preparado.amostras, 3);
+  h.engine.tocar('violao', { midi: 40, velocity: 110 });
+  h.engine.tocar('violao', { midi: 40, velocity: 110 });
+  assert.equal(h.ctx.sources.length, 2, 'as duas notas de mesma intensidade devem ser reproduzidas');
+  assert.deepEqual(h.requests.map(r => r.url).sort(), [
+    '/music/tocar/sons/violao/forte-a.mp3', '/music/tocar/sons/violao/forte-b.mp3', '/music/tocar/sons/violao/fraco.mp3'
+  ]);
+  h.engine.dispose();
+});
+
 test('dispose aborta downloads pendentes e rejeita a fila sem iniciar novas requisições', async () => {
   const m = manifesto();
   m.banks.piano.samples = Array.from({ length: 8 }, (_, i) => ({ midi: 48 + i, file: `piano/n${48 + i}.mp3` }));

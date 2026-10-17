@@ -42,6 +42,7 @@
     if (!buscar) throw new Error('Não foi possível carregar os sons dos instrumentos.');
 
     var bancos = Object.create(null), buffers = Object.create(null), promessas = Object.create(null);
+    var rodadas = Object.create(null);
     var fila = [], downloads = 0, pedidos = [], vozes = [], encerrado = false;
     var master = ctx.createGain(), compressor = ctx.createDynamicsCompressor();
     master.gain.value = 0.65;
@@ -72,31 +73,52 @@
           (original.doubled !== undefined && typeof original.doubled !== 'boolean')) {
         throw new Error('O volume ou a duração do banco de sons é inválido.');
       }
-      var vistos = Object.create(null);
+      var vistos = Object.create(null), vistosRaiz = Object.create(null);
       var amostras = original.samples.map(function (s) {
         var tuneCents = s && s.tuneCents === undefined ? 0 : s && s.tuneCents;
         var offsetSeconds = s && s.offsetSeconds === undefined ? 0 : s && s.offsetSeconds;
+        var velocityMin = s && s.velocityMin === undefined ? 1 : s && s.velocityMin;
+        var velocityMax = s && s.velocityMax === undefined ? 127 : s && s.velocityMax;
+        var roundRobin = s && s.roundRobin === undefined ? 0 : s && s.roundRobin;
         if (!s || !midiValido(s.midi) || vistos[s.midi] || typeof s.file !== 'string' || !ARQUIVO.test(s.file) ||
-            !finito(tuneCents) || Math.abs(tuneCents) > 100 || !finito(offsetSeconds) || offsetSeconds < 0 || offsetSeconds > 1) {
+            !finito(tuneCents) || Math.abs(tuneCents) > 100 || !finito(offsetSeconds) || offsetSeconds < 0 || offsetSeconds > 1 ||
+            !Number.isInteger(velocityMin) || velocityMin < 1 || velocityMin > 127 || !Number.isInteger(velocityMax) ||
+            velocityMax < velocityMin || velocityMax > 127 || !Number.isInteger(roundRobin) || roundRobin < 0) {
           throw new Error('Uma amostra do banco de sons é inválida.');
         }
-        vistos[s.midi] = true;
+        var identidade = s.midi + '|' + s.file;
+        if (vistos[identidade]) throw new Error('Uma amostra do banco de sons está duplicada.');
+        if (vistosRaiz[s.midi] && velocityMin === 1 && velocityMax === 127 && roundRobin === 0 && !s.group) {
+          throw new Error('Uma amostra do banco de sons está duplicada.');
+        }
+        vistos[identidade] = true;
+        vistosRaiz[s.midi] = true;
         return { midi: s.midi, file: s.file, tuneCents: tuneCents, offsetSeconds: offsetSeconds,
+          velocityMin: velocityMin, velocityMax: velocityMax, roundRobin: roundRobin,
           group: typeof s.group === 'string' ? s.group : null };
       }).sort(function (a, b) { return a.midi - b.midi; });
       bancos[instrumento] = { kind: original.kind, gain: ganho, release: release,
         doubled: original.kind === 'pitched' && original.doubled === true, samples: amostras };
       return bancos[instrumento];
     }
-    function escolher(b, midi) {
+    function variantes(b, midi) {
       if (!midiValido(midi)) throw new Error('A nota MIDI do som é inválida.');
-      var melhor = null, distancia = Infinity;
+      var distancia = Infinity;
       b.samples.forEach(function (s) {
         var d = Math.abs(s.midi - midi);
-        if (d < distancia) { melhor = s; distancia = d; }
+        if (d < distancia) distancia = d;
       });
       if (b.kind === 'drums' && distancia !== 0) throw new Error('Esta peça da bateria não tem uma amostra de som.');
-      return melhor;
+      return b.samples.filter(function (s) { return Math.abs(s.midi - midi) === distancia; });
+    }
+    function escolher(b, midi, velocidade) {
+      var todas = variantes(b, midi);
+      var candidatas = todas.filter(function (s) { return velocidade >= s.velocityMin && velocidade <= s.velocityMax; });
+      if (!candidatas.length) candidatas = todas;
+      var chave = midi + '|' + candidatas.map(function (s) { return s.file; }).join(',');
+      var indice = rodadas[chave] || 0;
+      rodadas[chave] = indice + 1;
+      return candidatas[indice % candidatas.length];
     }
     function baixar(file) {
       var controle = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -167,9 +189,10 @@
       var arquivos = Object.create(null);
       notas.forEach(function (nota) {
         var midi = typeof nota === 'number' ? nota : nota && nota.midi;
-        var amostra = escolher(b, midi);
-        if (!arquivos[amostra.file]) arquivos[amostra.file] = [];
-        if (arquivos[amostra.file].indexOf(amostra) < 0) arquivos[amostra.file].push(amostra);
+        variantes(b, midi).forEach(function (amostra) {
+          if (!arquivos[amostra.file]) arquivos[amostra.file] = [];
+          if (arquivos[amostra.file].indexOf(amostra) < 0) arquivos[amostra.file].push(amostra);
+        });
       });
       await Promise.all(Object.keys(arquivos).map(async function (file) {
         var buffer = await carregar(file);
@@ -213,7 +236,6 @@
     function tocar(instrumento, nota) {
       var b = banco(instrumento);
       nota = nota || {};
-      var amostra = escolher(b, nota.midi), buffer = buffers[amostra.file];
       var quando = nota.when === undefined ? ctx.currentTime : nota.when;
       var duracao = nota.duration === undefined ? 0.5 : nota.duration;
       var velocidade = nota.velocity === undefined ? 96 : nota.velocity;
@@ -221,6 +243,7 @@
           !finito(velocidade) || velocidade < 1 || velocidade > 127) {
         throw new Error('O instante, a duração ou a intensidade do som é inválido.');
       }
+      var amostra = escolher(b, nota.midi, velocidade), buffer = buffers[amostra.file];
       if (!buffer) throw new Error('Prepare os sons do instrumento antes de iniciar a reprodução.');
       if (amostra.offsetSeconds >= buffer.duration) throw new Error('O início da amostra está fora da duração do som.');
       quando = Math.max(ctx.currentTime, quando);
