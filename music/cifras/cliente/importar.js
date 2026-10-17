@@ -365,7 +365,7 @@
       lista.innerHTML = '';
       var total = (dados.importacoes || []).length;
       var aguardando = (dados.importacoes || []).filter(function (x) { return x.status === 'pendente' || x.status === 'processando'; }).length;
-      var acompanhamento = aguardando ? (offset > 0 ? ' · ' + aguardando + ' em processamento; atualização automática pausada após paginação.' : ' · ' + aguardando + ' em processamento; atualização automática ativa.') : '.';
+      var acompanhamento = aguardando ? (offset > 0 ? ' · ' + aguardando + ' em processamento; atualização automática pausada após paginação.' : atualizacoesAutomaticas >= 12 ? ' · ' + aguardando + ' em processamento; atualização automática pausada após 12 ciclos. Use Atualizar.' : ' · ' + aguardando + ' em processamento; atualização automática ativa.') : '.';
       var rotuloTotal = maisDisponivel ? (total === 1 ? ' importação carregada' : ' importações carregadas') : (total === 1 ? ' importação encontrada' : ' importações encontradas');
       resumo.textContent = total + rotuloTotal + (maisDisponivel ? ' · há mais resultados disponíveis.' : '') + acompanhamento;
       var itens = (dados.importacoes || []).filter(function (x) {
