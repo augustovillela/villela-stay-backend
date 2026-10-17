@@ -360,7 +360,8 @@
       lista.innerHTML = '';
       var total = (dados.importacoes || []).length;
       var aguardando = (dados.importacoes || []).filter(function (x) { return x.status === 'pendente' || x.status === 'processando'; }).length;
-      resumo.textContent = total + (total === 1 ? ' importação encontrada' : ' importações encontradas') + (maisDisponivel ? ' · há mais resultados disponíveis.' : '') + (aguardando ? ' · ' + aguardando + ' em processamento; atualização automática ativa.' : '.');
+      var acompanhamento = aguardando ? (offset > 0 ? ' · ' + aguardando + ' em processamento; atualização automática pausada após paginação.' : ' · ' + aguardando + ' em processamento; atualização automática ativa.') : '.';
+      resumo.textContent = total + (total === 1 ? ' importação encontrada' : ' importações encontradas') + (maisDisponivel ? ' · há mais resultados disponíveis.' : '') + acompanhamento;
       var itens = (dados.importacoes || []).filter(function (x) {
         return filtro === 'todas' || (filtro === 'revisar' ? ['pronta', 'processando', 'pendente'].indexOf(x.status) >= 0 : x.status === filtro);
       });
