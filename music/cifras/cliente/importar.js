@@ -411,6 +411,7 @@
     }
     function carregarMais() {
       if (carregandoMais || !maisDisponivel) return;
+      if (timer) { clearTimeout(timer); timer = null; }
       carregandoMais = true;
       var status = filtrosServidor.indexOf(filtro) >= 0 ? filtro : '';
       var query = (status ? '?status=' + encodeURIComponent(status) : '?') + 'limite=100&offset=' + (offset + 100);
@@ -424,6 +425,7 @@
     function agendarAtualizacao() {
       var aguardando = (dados.importacoes || []).some(function (x) { return x.status === 'pendente' || x.status === 'processando'; });
       if (!aguardando || atualizacoesAutomaticas >= 12) return;
+      if (timer) clearTimeout(timer);
       timer = setTimeout(function () {
         timer = null; atualizacoesAutomaticas += 1;
         carregar(filtrosServidor.indexOf(filtro) >= 0 ? filtro : '', true);
