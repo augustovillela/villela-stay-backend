@@ -377,8 +377,10 @@
         var st = { pronta: ['pronta para revisar', 'av'], salva: ['salva', 'ok'], falhou: ['falhou', 'er'], processando: ['processando', ''], pendente: ['na fila', ''], descartada: ['descartada', ''] }[x.status] || [x.status, ''];
         var confImportacao = Number(x.confianca);
         var confTexto = Number.isFinite(confImportacao) && confImportacao > 0 ? 'confiança ' + Math.round(Math.max(0, Math.min(1, confImportacao)) * 100) + '%' : '';
+        var progressoImportacao = Number(x.progresso);
+        var progressoTexto = ['pendente', 'processando'].indexOf(x.status) >= 0 && Number.isFinite(progressoImportacao) ? 'progresso ' + Math.round(Math.max(0, Math.min(100, progressoImportacao))) + '%' : '';
         li.appendChild(el('div', { class: 'cf-linha-item' }, [el('div', { class: 'cresce' }, [el('b', { txt: x.entrada_resumo || x.tipo_entrada }),
-          el('span', { class: 'm', txt: [x.tipo_entrada, confTexto, dataImportacao(x.criado_em), x.erro].filter(Boolean).join(' · ') })]), C.tag(st[0], st[1]),
+          el('span', { class: 'm', txt: [x.tipo_entrada, progressoTexto, confTexto, dataImportacao(x.criado_em), x.erro].filter(Boolean).join(' · ') })]), C.tag(st[0], st[1]),
         x.status === 'pronta' ? C.botao('Revisar', function () { api('GET', '/importar/' + x.id).then(function (d) {
           if (d.candidatos && d.candidatos.length) { var box = C.limpar(); box.appendChild(el('h2', { txt: 'Resultados da busca' })); var b = el('div'); box.appendChild(b); mostrarCandidatos(d, b, {}); }
           else abrirPrevia(d, {});
