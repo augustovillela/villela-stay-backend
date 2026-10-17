@@ -325,14 +325,19 @@
     var filtrosServidor = ['falhou', 'salva', 'descartada', 'processando', 'pendente'];
     var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['pendente', 'Na fila'], ['processando', 'Em processamento'], ['falhou', 'Com falha'], ['salva', 'Salvas'], ['descartada', 'Descartadas']], filtro, function (v) {
       filtro = v;
+      limparFiltro.hidden = filtro === 'todas';
       carregar(filtrosServidor.indexOf(v) >= 0 ? v : '');
     }, 'Mostrar');
     var atualizar = C.botao('Atualizar', function () {
       carregar(filtrosServidor.indexOf(filtro) >= 0 ? filtro : '');
     }, 'sec');
+    var limparFiltro = C.botao('Limpar filtro', function () {
+      filtro = 'todas'; filtroSelect.value = 'todas'; limparFiltro.hidden = true; carregar('');
+    }, 'sec');
+    limparFiltro.hidden = true;
     lista.setAttribute('aria-live', 'polite');
     lista.setAttribute('aria-busy', 'false');
-    c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect, atualizar]));
+    c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect, atualizar, limparFiltro]));
     c.appendChild(resumo);
     c.appendChild(lista);
     function carregar(status, automatico) {
