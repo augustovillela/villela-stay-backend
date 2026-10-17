@@ -12,7 +12,7 @@ test('iniciar e retomar preservam posição sem mutar o estado original', () => 
   const estado = Campanha.criar({ instrument: 'guitarra' });
   const iniciado = Campanha.iniciar(estado, 'primeiro-riff-v1');
   const atualizado = Campanha.atualizar(iniciado, 'primeiro-riff-v1', { position: 3.5, accuracy: 82 });
-  assert.equal(estado.progress['primeiro-riff-v1'].status, 'available'); assert.equal(atualizado.progress['primeiro-riff-v1'].status, 'in_progress'); assert.equal(atualizado.progress['primeiro-riff-v1'].position, 3.5); assert.equal(atualizado.progress['primeiro-riff-v1'].bestAccuracy, 82); assert.equal(Campanha.retomar(atualizado, 'primeiro-riff-v1').position, 3.5);
+  assert.equal(estado.progress['primeiro-riff-v1'].status, 'available'); assert.equal(atualizado.progress['primeiro-riff-v1'].status, 'in_progress'); assert.equal(atualizado.progress['primeiro-riff-v1'].position, 3.5); assert.equal(atualizado.progress['primeiro-riff-v1'].bestAccuracy, 82); assert.equal(atualizado.progress['primeiro-riff-v1'].bestStreak, 0); assert.equal(Campanha.retomar(atualizado, 'primeiro-riff-v1').position, 3.5);
 });
 test('concluir uma etapa desbloqueia somente a próxima', () => {
   let estado = Campanha.criar({ instrument: 'violao' }); estado = Campanha.atualizar(estado, 'primeiro-riff-v1', { completed: true, accuracy: 91 }); const lista = Campanha.listar(estado);
@@ -45,3 +45,4 @@ test('mesclar preserva o maior progresso local/remoto sem perder conclusão ou a
   assert.equal(Campanha.resumo(combinado).completed, 1);
   assert.equal(Campanha.mesclar(local, Campanha.criar({ instrument: 'piano' })).instrument, 'violao');
 });
+

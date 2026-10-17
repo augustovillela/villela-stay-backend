@@ -25,13 +25,13 @@
   function recompensa(estudo, index, completed) {
     return { id: 'distintivo-' + estudo.id, title: index === 0 ? 'Primeiro passo' : 'Etapa ' + (index + 1) + ' dominada', description: 'Conclua esta etapa da trilha para desbloquear o distintivo.', unlocked: !!completed };
   }
-  function registroInicial() { return { status: 'locked', position: 0, attempts: 0, bestAccuracy: null }; }
+  function registroInicial() { return { status: 'locked', position: 0, attempts: 0, bestAccuracy: null, bestStreak: 0 }; }
   function estadoBase(input) {
     input = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
     var inst = instrumento(input.instrument), progress = {}, origem = input.progress && typeof input.progress === 'object' && !Array.isArray(input.progress) ? input.progress : {};
     idsDa(inst).forEach(function (id) {
       var valor = origem[id] && typeof origem[id] === 'object' ? origem[id] : {};
-      progress[id] = Object.assign(registroInicial(), { status: valor.status === 'completed' || valor.status === 'in_progress' ? valor.status : 'locked', position: Number.isFinite(valor.position) && valor.position >= 0 ? valor.position : 0, attempts: Number.isInteger(valor.attempts) && valor.attempts >= 0 ? valor.attempts : 0, bestAccuracy: Number.isFinite(valor.bestAccuracy) && valor.bestAccuracy >= 0 && valor.bestAccuracy <= 100 ? valor.bestAccuracy : null });
+      progress[id] = Object.assign(registroInicial(), { status: valor.status === 'completed' || valor.status === 'in_progress' ? valor.status : 'locked', position: Number.isFinite(valor.position) && valor.position >= 0 ? valor.position : 0, attempts: Number.isInteger(valor.attempts) && valor.attempts >= 0 ? valor.attempts : 0, bestAccuracy: Number.isFinite(valor.bestAccuracy) && valor.bestAccuracy >= 0 && valor.bestAccuracy <= 100 ? valor.bestAccuracy : null, bestStreak: Number.isInteger(valor.bestStreak) && valor.bestStreak >= 0 ? valor.bestStreak : 0 });
     });
     return { version: VERSION, instrument: inst, progress: progress };
   }
@@ -64,6 +64,7 @@
     if (Number.isFinite(patch.position)) item.position = Math.max(0, Math.min(chart.duration, patch.position));
     if (Number.isInteger(patch.attempts) && patch.attempts >= 0) item.attempts = patch.attempts; else item.attempts += 1;
     if (Number.isFinite(patch.accuracy) && patch.accuracy >= 0 && patch.accuracy <= 100) item.bestAccuracy = item.bestAccuracy == null ? patch.accuracy : Math.max(item.bestAccuracy, patch.accuracy);
+    if (Number.isInteger(patch.bestStreak) && patch.bestStreak >= 0) item.bestStreak = Math.max(item.bestStreak, patch.bestStreak);
     if (item.status === 'completed') item.position = chart.duration;
     return recalcular(base);
   }
@@ -85,7 +86,7 @@
     var merged = { instrument: a.instrument, progress: {} };
     idsDa(a.instrument).forEach(function (id) {
       var x = a.progress[id], y = b.progress[id], completed = x.status === 'completed' || y.status === 'completed';
-      merged.progress[id] = { status: completed ? 'completed' : x.status === 'in_progress' || y.status === 'in_progress' ? 'in_progress' : 'locked', position: Math.max(x.position, y.position), attempts: Math.max(x.attempts, y.attempts), bestAccuracy: x.bestAccuracy == null ? y.bestAccuracy : y.bestAccuracy == null ? x.bestAccuracy : Math.max(x.bestAccuracy, y.bestAccuracy) };
+      merged.progress[id] = { status: completed ? 'completed' : x.status === 'in_progress' || y.status === 'in_progress' ? 'in_progress' : 'locked', position: Math.max(x.position, y.position), attempts: Math.max(x.attempts, y.attempts), bestAccuracy: x.bestAccuracy == null ? y.bestAccuracy : y.bestAccuracy == null ? x.bestAccuracy : Math.max(x.bestAccuracy, y.bestAccuracy), bestStreak: Math.max(x.bestStreak, y.bestStreak) };
     });
     return recalcular(merged);
   }
