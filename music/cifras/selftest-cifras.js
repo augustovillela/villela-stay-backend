@@ -606,6 +606,8 @@ async function rodar({ t, secao, req, assert }) {
     const b64 = Buffer.from(await pdf.save()).toString('base64');
     const r = await req('POST', B + '/importar/arquivo', { como: 'ana', corpo: { nome: 'c.pdf', base64: b64 } });
     assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.resultado.fonte.tipo, 'arquivo');
+    assert.equal(r.json.resultado.fonte.metodo, 'pdf');
     const segs = r.json.resultado.documento.secoes[0].linhas[0].segmentos;
     assert.deepEqual(segs.map((s) => s.acorde), ['G', 'D']);
     assert.equal(segs[1].texto, 'coisa');

@@ -215,9 +215,10 @@
     var c = C.limpar();
     c.appendChild(el('h2', { txt: 'Revise antes de salvar' }));
     var conf = r.confianca !== undefined ? r.confianca : null;
+    var metodoFonte = x.fonte && x.fonte.metodo ? ({ pdf: 'PDF com texto', 'pdf.texto': 'texto extraído do PDF', docx: 'DOCX', txt: 'TXT', 'ia.ler_imagem': 'OCR por IA', colado: 'texto colado' }[x.fonte.metodo] || x.fonte.metodo) : '';
     c.appendChild(el('div', { class: 'linha' }, [conf !== null ? C.tag('confiança da leitura ' + Math.round(conf * 100) + '%', conf >= 0.85 ? 'ok' : conf < 0.6 ? 'er' : 'av') : null,
       r.qualidade ? C.tag('qualidade ' + r.qualidade.nota, r.qualidade.nota >= 75 ? 'ok' : 'av') : null,
-      x.fonte && x.fonte.tipo ? C.tag('fonte: ' + ({ texto: 'texto colado', arquivo: 'arquivo', url: 'página', busca: 'busca' }[x.fonte.tipo] || x.fonte.tipo) + (x.fonte.adaptador ? ' · ' + x.fonte.adaptador : '')) : null].filter(Boolean)));
+      x.fonte && x.fonte.tipo ? C.tag('fonte: ' + ({ texto: 'texto colado', arquivo: 'arquivo', url: 'página', busca: 'busca' }[x.fonte.tipo] || x.fonte.tipo) + (x.fonte.adaptador ? ' · ' + x.fonte.adaptador : '') + (metodoFonte ? ' · leitura: ' + metodoFonte : '')) : null].filter(Boolean)));
     if (r.observacoes_ia) c.appendChild(el('div', { class: 'alerta', txt: 'Observação da leitura por IA: ' + r.observacoes_ia }));
     (x.fusao || []).forEach(function (dv) { c.appendChild(el('div', { class: 'alerta ' + (dv.aplicado ? 'bom' : ''), txt: dv.secao + ': "' + dv.linha + '" — ' + (dv.aplicado ? 'usado ' + dv.escolhido + ' (maioria)' : 'empate — ficou ' + dv.escolhido) })); });
     (r.ambiguidades || []).forEach(function (a) { c.appendChild(el('div', { class: 'alerta', txt: (a.linha ? 'Linha ' + a.linha + ': ' : '') + a.motivo + (a.texto ? ' "' + a.texto.trim().slice(0, 60) + '"' : '') })); });
