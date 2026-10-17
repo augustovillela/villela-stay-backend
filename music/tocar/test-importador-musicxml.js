@@ -393,6 +393,17 @@ test('diagnostica numeração ambígua em finais alternativos', async () => {
   assert.match(analysis.candidates[0].reason, /numeração ambígua/);
 });
 
+test('diagnostica repetições MusicXML aninhadas', async () => {
+  const score = xml(
+    medida(atributos() + nota({ step: 'C', octave: 4 }) + '<barline location="right"><repeat direction="forward"/></barline>', 1)
+    + medida(nota({ step: 'D', octave: 4 }) + '<barline location="right"><repeat direction="forward"/></barline>', 2)
+    + medida(nota({ step: 'E', octave: 4 }) + '<barline location="right"><repeat direction="backward"/></barline>', 3)
+  );
+  const analysis = await Importador.analisar(bytes(score), { perfil: 'piano' });
+  assert.equal(analysis.candidates[0].valid, false);
+  assert.match(analysis.candidates[0].reason, /repetições MusicXML aninhadas/);
+});
+
 test('aceita pedal MusicXML no piano', async () => {
   const score = xml(medida(atributos() + '<direction><direction-type><pedal type="start"/></direction-type></direction>' + nota({ step: 'C', octave: 4 })));
   const analysis = await Importador.analisar(bytes(score), { perfil: 'piano' });
