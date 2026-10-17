@@ -414,6 +414,7 @@
       if (carregandoMais || !maisDisponivel) return;
       if (timer) { clearTimeout(timer); timer = null; }
       carregandoMais = true;
+      lista.setAttribute('aria-busy', 'true');
       var status = filtrosServidor.indexOf(filtro) >= 0 ? filtro : '';
       var query = (status ? '?status=' + encodeURIComponent(status) : '?') + 'limite=100&offset=' + (offset + 100);
       pintarLista();
@@ -421,7 +422,7 @@
         var novos = r.importacoes || [];
         dados.importacoes = (dados.importacoes || []).concat(novos);
         offset += novos.length; maisDisponivel = r.paginacao ? !!r.paginacao.tem_mais : novos.length === 100;
-      }).catch(C.erro).then(function () { carregandoMais = false; pintarLista(); });
+      }).catch(C.erro).then(function () { carregandoMais = false; lista.setAttribute('aria-busy', 'false'); pintarLista(); });
     }
     function agendarAtualizacao() {
       var aguardando = (dados.importacoes || []).some(function (x) { return x.status === 'pendente' || x.status === 'processando'; });
