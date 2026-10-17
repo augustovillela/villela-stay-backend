@@ -877,6 +877,19 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal(db.prepare('SELECT tipo FROM cifra_fontes WHERE obra_id = ?').get(s.json.obra_id).tipo, 'audio');
   });
 
+  await t('texto extraído de PDF: preserva procedência, confiança reduzida e aviso de revisão', async () => {
+    const r = await req('POST', B + '/importar/texto', { como: 'ana', corpo: { texto: '[C]Yesterday [G]all my troubles', titulo: 'Yesterday', origem: 'pdf' } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.importacao.tipo, 'pdf');
+    assert.equal(r.json.resultado.fonte.tipo, 'arquivo');
+    assert.equal(r.json.resultado.fonte.metodo, 'pdf.texto');
+    assert.equal(r.json.resultado.confianca, 0.9);
+    assert.match(r.json.resultado.ambiguidades[0].motivo, /PDF/);
+    const s = await req('POST', `${B}/importar/${r.json.importacao.id}/salvar`, { como: 'ana', corpo: { destino: 'nova_musica', meta: { titulo: 'Yesterday' } } });
+    assert.equal(s.status, 200, JSON.stringify(s.json));
+    assert.equal(db.prepare('SELECT tipo FROM cifra_fontes WHERE obra_id = ?').get(s.json.obra_id).tipo, 'arquivo');
+  });
+
   await t('funções puras do cliente: linha ⇄ caracteres do editor (propriedade) e visão transposta', async () => {
     const motor = (await req('GET', '/music/motor-cifras.js', { cru: true })).texto;
     const cliente = (await req('GET', '/music/cifras.js', { cru: true })).texto;

@@ -170,12 +170,15 @@ const Importar = {
     // Rascunho gerado pelo ÁUDIO no navegador (croma + Viterbi, motor/audio.js):
     // a procedência diz isso, e a confiança da análise baixa a da prévia.
     const audio = origem === 'audio';
-    const id = criarTarefa(usuario, audio ? 'audio' : (pareceChordPro(texto) ? 'chordpro' : 'texto'), s(titulo || String(texto).split('\n')[0], 120));
+    const pdf = origem === 'pdf';
+    const tipoEntrada = audio ? 'audio' : (pdf ? 'pdf' : (pareceChordPro(texto) ? 'chordpro' : 'texto'));
+    const id = criarTarefa(usuario, tipoEntrada, s(titulo || String(texto).split('\n')[0], 120));
     try {
       const p = previa(usuario, texto, { dica: { titulo, artista },
-        fonte: audio ? { tipo: 'audio', metodo: 'transcricao.croma', bpm: Number(bpm) || 0 } : { tipo: 'texto', metodo: 'colado' },
-        confiancaBase: audio ? Math.max(0.05, Math.min(1, Number(confianca) || 0.5)) : 1 });
+        fonte: audio ? { tipo: 'audio', metodo: 'transcricao.croma', bpm: Number(bpm) || 0 } : (pdf ? { tipo: 'arquivo', metodo: 'pdf.texto' } : { tipo: 'texto', metodo: 'colado' }),
+        confiancaBase: audio ? Math.max(0.05, Math.min(1, Number(confianca) || 0.5)) : (pdf ? 0.9 : 1) });
       if (audio) p.ambiguidades.unshift({ linha: 0, texto: '', motivo: 'Rascunho tirado do ÁUDIO: os acordes são estimativa (maiores e menores). Confira no instrumento antes de usar.' });
+      if (pdf) p.ambiguidades.unshift({ linha: 0, texto: '', motivo: 'Texto extraído de PDF: confira acordes, linhas e quebras antes de salvar.' });
       concluir(id, p, { confianca: p.confianca });
       return Importar.obter(usuario, id);
     } catch (e) { falhar(id, e); throw e; }
