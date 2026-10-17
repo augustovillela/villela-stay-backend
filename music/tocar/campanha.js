@@ -16,6 +16,15 @@
   function instrumento(valor) { return ORDEM[valor] ? valor : 'violao'; }
   function idsDa(valor) { return ORDEM[instrumento(valor)].slice(); }
   function catalogo() { return new Map(Estudos.listar().map(function (estudo) { return [estudo.id, estudo]; })); }
+  function desafio(estudo, index) {
+    var layout = estudo.chart && estudo.chart.layout;
+    var nivel = index + 1;
+    var acao = layout === 'piano' ? 'Toque todas as teclas e acordes do arranjo.' : layout === 'drums' ? 'Mantenha bumbo, caixa e chimbal no pulso.' : 'Toque cada nota indicada com ataque claro.';
+    return { id: estudo.id + '-desafio', level: 'Nível ' + nivel, objective: acao, target: 'Concluir o arranjo completo', metric: 'conclusao' };
+  }
+  function recompensa(estudo, index, completed) {
+    return { id: 'distintivo-' + estudo.id, title: index === 0 ? 'Primeiro passo' : 'Etapa ' + (index + 1) + ' dominada', description: 'Conclua esta etapa da trilha para desbloquear o distintivo.', unlocked: !!completed };
+  }
   function registroInicial() { return { status: 'locked', position: 0, attempts: 0, bestAccuracy: null }; }
   function estadoBase(input) {
     input = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
@@ -40,7 +49,7 @@
     var base = recalcular(state || { instrument: wantedInstrument }), porId = catalogo();
     return idsDa(base.instrument).map(function (id, index) {
       var estudo = porId.get(id), item = copiar(estudo);
-      item.order = index + 1; item.status = base.progress[id].status; item.progress = copiar(base.progress[id]); item.unlocked = item.status === 'available' || item.status === 'in_progress';
+      item.order = index + 1; item.status = base.progress[id].status; item.progress = copiar(base.progress[id]); item.unlocked = item.status === 'available' || item.status === 'in_progress'; item.challenge = desafio(item, index); item.reward = recompensa(item, index, item.status === 'completed');
       return item;
     });
   }

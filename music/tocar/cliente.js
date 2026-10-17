@@ -46,7 +46,7 @@
         campaignState = item.status === 'completed' ? Campaign.criar(campaignState) : Campaign.iniciar(campaignState, item.id);
         saveCampaign(); $('tj-study').value = item.id; chooseChart(estudo, { kind: 'study', instrument: state.instrument, objective: item.objective }); renderCampaign(); msg(item.status === 'in_progress' ? 'Campanha retomada. Continue do ponto salvo.' : 'Etapa da campanha carregada.');
       });
-      list.appendChild(el('li', { class: 'tj-campaign-item ' + item.status }, [el('div', {}, [el('strong', { text: item.order + '. ' + item.title }), el('small', { text: item.level + ' · ' + item.objective })]), action]));
+      list.appendChild(el('li', { class: 'tj-campaign-item ' + item.status }, [el('div', {}, [el('strong', { text: item.order + '. ' + item.title }), el('small', { text: item.challenge.level + ' · ' + item.challenge.objective }), el('small', { class: 'tj-campaign-reward', text: (item.reward.unlocked ? '✓ ' : '✦ ') + item.reward.title })]), action]));
     });
     panel.appendChild(list);
   }
