@@ -322,12 +322,13 @@
   C.telas.importacoes = function () {
     var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div'), resumo = el('p', { class: 'cf-caption', 'aria-live': 'polite' }), carregamento = 0, timer = null, atualizacoesAutomaticas = 0, offset = 0, maisDisponivel = false, carregandoMais = false;
     c.appendChild(el('h2', { txt: 'Importações' }));
-    var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['falhou', 'Com falha'], ['salva', 'Salvas'], ['descartada', 'Descartadas']], filtro, function (v) {
+    var filtrosServidor = ['falhou', 'salva', 'descartada', 'processando', 'pendente'];
+    var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['pendente', 'Na fila'], ['processando', 'Em processamento'], ['falhou', 'Com falha'], ['salva', 'Salvas'], ['descartada', 'Descartadas']], filtro, function (v) {
       filtro = v;
-      carregar(v === 'falhou' || v === 'salva' || v === 'descartada' ? v : '');
+      carregar(filtrosServidor.indexOf(v) >= 0 ? v : '');
     }, 'Mostrar');
     var atualizar = C.botao('Atualizar', function () {
-      carregar(filtro === 'falhou' || filtro === 'salva' || filtro === 'descartada' ? filtro : '');
+      carregar(filtrosServidor.indexOf(filtro) >= 0 ? filtro : '');
     }, 'sec');
     lista.setAttribute('aria-live', 'polite');
     lista.setAttribute('aria-busy', 'false');
@@ -411,7 +412,7 @@
     function carregarMais() {
       if (carregandoMais || !maisDisponivel) return;
       carregandoMais = true;
-      var status = filtro === 'falhou' || filtro === 'salva' || filtro === 'descartada' ? filtro : '';
+      var status = filtrosServidor.indexOf(filtro) >= 0 ? filtro : '';
       var query = (status ? '?status=' + encodeURIComponent(status) : '?') + 'limite=100&offset=' + (offset + 100);
       pintarLista();
       api('GET', '/importar' + query).then(function (r) {
@@ -425,7 +426,7 @@
       if (!aguardando || atualizacoesAutomaticas >= 12) return;
       timer = setTimeout(function () {
         timer = null; atualizacoesAutomaticas += 1;
-        carregar(filtro === 'falhou' || filtro === 'salva' || filtro === 'descartada' ? filtro : '', true);
+        carregar(filtrosServidor.indexOf(filtro) >= 0 ? filtro : '', true);
       }, 5000);
     }
     carregar('');
