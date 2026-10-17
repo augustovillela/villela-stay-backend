@@ -30,6 +30,7 @@
     exigir(Perfis && typeof Perfis.obter === 'function', 'Carregue MusiqueTocarPerfis antes de importar MusicXML.');
     exigir(typeof id === 'string', 'Informe um perfil de instrumento válido.');
     var origem = Perfis.obter(id);
+    if (origem && origem.id === 'piano-midi') return { id: origem.id, label: origem.label, tuning: null, strings: 0, frets: 0, minMidi: 21, maxMidi: 108, piano: true };
     exigir(origem && Array.isArray(origem.tuning), 'Perfil de instrumento desconhecido.');
     exigir(Number.isInteger(origem.strings) && origem.strings >= 1 && origem.strings <= 6 && origem.tuning.length === origem.strings,
       'Perfil de instrumento inválido.');
@@ -50,6 +51,7 @@
     return perfilPorId(opcoes.perfil);
   }
   function mesmoPerfil(a, b) {
+    if (a.piano || b.piano) return !!a.piano && !!b.piano;
     return a.strings === b.strings && a.frets === b.frets && a.tuning.length === b.tuning.length &&
       a.tuning.every(function (midi, indice) { return midi === b.tuning[indice]; });
   }
@@ -793,10 +795,10 @@
         var semitones = 0;
         transposicoes.forEach(function (evento) { if (evento.beat <= nota.startBeat + EPS) semitones = evento.semitones; });
         nota.midi = nota.midiBase + semitones;
-        if (!posicoesPossiveis(nota.midi, perfil).length) {
+        if (perfil.piano ? (nota.midi < 21 || nota.midi > 108) : !posicoesPossiveis(nota.midi, perfil).length) {
           adicionarProblema(linha, 'A linha contém notas fora da extensão ' + descricaoExtensao(perfil) + '.');
         }
-        if (nota.tab && perfil.tuning[perfil.strings - nota.tab.string] + nota.tab.fret !== nota.midi) nota.tab = null;
+        if (!perfil.piano && nota.tab && perfil.tuning[perfil.strings - nota.tab.string] + nota.tab.fret !== nota.midi) nota.tab = null;
       });
       normalizarTies(linha);
       if (!linha.notes.length) adicionarProblema(linha, 'A linha não contém notas afinadas para importar.');
@@ -804,7 +806,7 @@
       if (linha.notes.length > LIMITE_NOTAS) adicionarProblema(linha, 'A linha tem mais de 2.000 notas.');
       var fimAnterior = -Infinity, minMidi = null, maxMidi = null, fim = 0;
       linha.notes.forEach(function (nota) {
-        if (nota.startBeat < fimAnterior - EPS) adicionarProblema(linha, 'A linha contém notas sobrepostas ou acordes.');
+        if (!perfil.piano && nota.startBeat < fimAnterior - EPS) adicionarProblema(linha, 'A linha contém notas sobrepostas ou acordes.');
         fimAnterior = Math.max(fimAnterior, nota.endBeat);
         minMidi = minMidi === null ? nota.midi : Math.min(minMidi, nota.midi);
         maxMidi = maxMidi === null ? nota.midi : Math.max(maxMidi, nota.midi);
@@ -850,7 +852,7 @@
     var raiz = parseXml(xml);
     if (raiz.nome !== 'score-partwise') falhar('aceitamos somente score-partwise.');
     var versao = raiz.atributos.version;
-    if (!/^([34]\.0|3\.1)$/.test(versao || '')) falhar('aceitamos MusicXML 3.0, 3.1 ou 4.0.');
+    if (!/^(?:3\.0|3\.1|4\.0(?:\.\d+)?)$/.test(versao || '')) falhar('aceitamos MusicXML 3.0, 3.1 ou 4.0.x.');
     var namespace = raiz.atributos.xmlns;
     if (namespace && namespace !== 'http://www.musicxml.org/ns/musicxml') falhar('namespace MusicXML não é suportado.');
     if (raiz.atributos['xmlns:xlink'] && raiz.atributos['xmlns:xlink'] !== 'http://www.w3.org/1999/xlink') falhar('namespace xlink não é suportado.');
@@ -899,14 +901,16 @@
     var perfil = perfilDaCriacao(opcoes, privado.perfil);
     var notas = linha.notes.map(function (nota, indice) {
       var inicio = segundosNaBatida(nota.startBeat, privado.tempoMap);
+      if (perfil.piano) return { id: 'musicxml-' + (indice + 1), time: inicio, duration: duracaoDaNota(nota, privado.tempoMap), midi: nota.midi, velocity: 80 };
       var posicao = nota.tab || posicaoSugerida(nota.midi, perfil);
       return { id: 'musicxml-' + (indice + 1), time: inicio, duration: duracaoDaNota(nota, privado.tempoMap),
         string: posicao.string, fret: posicao.fret, midi: nota.midi };
     });
     var duracao = linha.duration;
     var tempos = mapaRelevante(privado.tempoMap, duracao);
-    var bruto = { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao,
-      tuning: perfil.tuning.slice(), notes: notas, metadata: { demo: false } };
+    var bruto = perfil.piano
+      ? { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao, profile: 'piano-midi', layout: 'piano', notes: notas, metadata: { demo: false } }
+      : { id: opcoes.id, title: opcoes.title, bpm: tempos[0].bpm, duration: duracao, tuning: perfil.tuning.slice(), notes: notas, metadata: { demo: false } };
     if (tempos.length > 1) bruto.tempoMap = { version: 1, events: tempos };
     var chart = Core.validarChart(bruto);
     if (bruto.tempoMap && !tem(chart, 'tempoMap')) chart.tempoMap = { version: 1, events: tempos.map(copiarTempo) };

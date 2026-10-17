@@ -171,7 +171,12 @@ test('perfil baixo aceita Mi1 em MusicXML e MXL e preserva TAB de quatro cordas'
   const analiseMxl = await Importador.analisar(mxl(xml(partitura), true), { perfil: 'baixo' });
   assert.equal(analiseMxl.format, 'mxl');
   assert.equal(analiseMxl.candidates[0].valid, true);
-  await assert.rejects(() => Importador.analisar(origem, { perfil: 'piano' }), /Perfil de instrumento desconhecido/);
+  const piano = await Importador.analisar(origem, { perfil: 'piano' });
+  assert.equal(piano.candidates[0].valid, true);
+  const pianoChart = Importador.criarChart(piano, piano.candidates[0].id, { id: 'piano-xml', title: 'Piano XML', perfil: 'piano' });
+  assert.equal(pianoChart.layout, 'piano');
+  assert.equal(pianoChart.notes[0].velocity, 80);
+  assert.deepEqual(Core.validarChart(pianoChart), pianoChart);
 });
 
 test('ukulele reentrante importa cordas soltas de MusicXML e MXL sem reordenar a afinação', async () => {
