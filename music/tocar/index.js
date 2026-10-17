@@ -266,8 +266,10 @@ function montar(app, { requireUsuario, opcional } = {}) {
   app.put(B + '/campanha/:instrumento', requireUsuario, (req, res) => {
     if (!req.is('application/json')) return res.status(415).json({ erro: 'Envie o estado da campanha como JSON.' });
     try {
-      const estado = validarCampanha(req.body);
-      if (estado.instrument !== req.params.instrumento) throw invalido('O instrumento da campanha não corresponde à rota.');
+      const enviado = validarCampanha(req.body);
+      if (enviado.instrument !== req.params.instrumento) throw invalido('O instrumento da campanha não corresponde à rota.');
+      const anterior = db.prepare('SELECT estado FROM tocar_campanhas WHERE usuario = ? AND instrumento = ?').get(req.usuario.id, enviado.instrument);
+      const estado = anterior ? Campanha.mesclar(validarCampanha(JSON.parse(anterior.estado)), enviado) : enviado;
       const atualizado = nowISO();
       db.prepare(`INSERT INTO tocar_campanhas (usuario, instrumento, estado, atualizado_em) VALUES (?, ?, ?, ?)
         ON CONFLICT(usuario, instrumento) DO UPDATE SET estado = excluded.estado, atualizado_em = excluded.atualizado_em`)

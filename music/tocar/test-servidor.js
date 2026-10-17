@@ -568,3 +568,19 @@ test('campanha de conta valida estado, instrumento e limites antes de persistir'
 });
 
 
+
+test('campanha HTTP mescla gravações concorrentes e isola contas', async () => {
+  let local = Campanha.criar({ instrument: 'violao' });
+  local.progress['primeiro-riff-v1'].status = 'in_progress'; local.progress['primeiro-riff-v1'].position = 4;
+  const primeira = await fetch(base + '/music/api/tocar/campanha/violao', { method: 'PUT', headers: { 'x-test-user': 'campanha-a', 'Content-Type': 'application/json' }, body: JSON.stringify(local) });
+  assert.equal(primeira.status, 200);
+  let remoto = Campanha.atualizar(Campanha.criar({ instrument: 'violao' }), 'primeiro-riff-v1', { completed: true, bestStreak: 5 });
+  const segunda = await fetch(base + '/music/api/tocar/campanha/violao', { method: 'PUT', headers: { 'x-test-user': 'campanha-a', 'Content-Type': 'application/json' }, body: JSON.stringify(remoto) });
+  const salvo = await segunda.json();
+  assert.equal(segunda.status, 200); assert.equal(salvo.estado.progress['primeiro-riff-v1'].status, 'completed'); assert.equal(salvo.estado.progress['primeiro-riff-v1'].bestStreak, 5);
+  const leitura = await (await fetch(base + '/music/api/tocar/campanha/violao', { headers: { 'x-test-user': 'campanha-a' } })).json();
+  assert.equal(leitura.estado.progress['primeiro-riff-v1'].status, 'completed');
+  const outro = await (await fetch(base + '/music/api/tocar/campanha/violao', { headers: { 'x-test-user': 'campanha-b' } })).json();
+  assert.equal(outro.estado.progress['primeiro-riff-v1'].status, 'available');
+  assert.equal((await fetch(base + '/music/api/tocar/campanha/violao')).status, 401);
+});
