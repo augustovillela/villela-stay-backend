@@ -23,4 +23,4 @@ Os testes usam arquivos sintéticos originais, DOM/relógios simulados, geometri
 
 O navegador real mostrou teclado completo, oitavas separadas, acordes e kit vertical. Também importou o MIDI sintético de piano, salvou, reabriu e abriu a prévia do rascunho na nova pista, mantendo quatro notas e uma mudança de andamento. Nenhum dado de teste foi criado em produção. Console sem erros nesse fluxo. O histórico de entrega e o commit efetivamente publicado ficam no prompt master v11 fora do repositório.
 
-Próximas etapas: tratar estruturas complexas de finais alternativos MusicXML; validar afinação de bandolim e hardware quando o usuário puder.
+Pendências adiadas: validar afinação de bandolim e testar fisicamente teclado MIDI, bateria eletrônica, interface de áudio, microfone e cabo Real Tone quando o usuário tiver os equipamentos disponíveis. O desenvolvimento de software pode continuar sem esses testes.
