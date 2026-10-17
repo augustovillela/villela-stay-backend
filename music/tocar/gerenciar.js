@@ -6,7 +6,7 @@
   if (!Core || !Formato || !Estudos || !Editor || !ImportadorMidi || !ImportadorMusicXML || !WaveformCliente || !Perfis) { app.textContent = 'Não foi possível carregar a gestão. Recarregue a página.'; return; }
   var boot = JSON.parse(app.getAttribute('data-estado') || '{}');
   if (!boot.logado) { app.innerHTML='<h1>Gerenciar seus arranjos</h1><p>Entre na sua conta Musique para criar arranjos das obras do seu acervo.</p><a href="/music/entrar?voltar=%2Fmusic%2Ftocar%2Fgerenciar">Entrar ou criar conta</a><p><a href="/music/tocar">Voltar aos estudos abertos</a></p>';return; }
-  var current = null, chart = null, dirty = false, busy = false, conflict = false, editor = null, editorPending = false, waveform = null, pdfObjectUrl = '', pdfFile = null, pdfOmrUrl = '';
+  var current = null, chart = null, dirty = false, busy = false, conflict = false, editor = null, editorPending = false, waveform = null, pdfObjectUrl = '', pdfFile = null, pdfOmrUrl = '', openSources = [];
   var importacao = null;
   var detailTicket = 0, mediaTicket = 0, importTicket = 0, pdfTicket = 0, worksTicket = 0, listTicket = 0, waveformTicket = 0;
   var worksOffset = 0, listOffset = 0, works = [], arrangements = [];
@@ -254,6 +254,7 @@
     // o formulário após sua validação para nunca salvar notas diferentes da tela.
     if (editor && !keepHistory) editor.carregar(next);
     chart = next;
+    openSources = [];
     $('tg-title').value = d ? d.title : '';
     $('tg-instrument').value = instrument;
     $('tg-level').value = d ? d.level : 'iniciante';
@@ -281,7 +282,7 @@
   function readOpenDocument() {
     var legado = readDocument();
     if (!FormatoArranjo || typeof FormatoArranjo.normalizar !== 'function') throw new Error('Formato aberto não carregado.');
-    return FormatoArranjo.normalizar({ chart: legado.chart }, { id: legado.chart.id, title: legado.title, instrument: legado.instrument });
+    return FormatoArranjo.normalizar({ chart: legado.chart, sources: openSources }, { id: legado.chart.id, title: legado.title, instrument: legado.instrument });
   }
   async function loadMedia(workId, selected, offset) {
     var ticket = ++mediaTicket;
@@ -378,7 +379,7 @@
   function newDraft() {
     if (busy || importacaoPendente()) return;
     ++detailTicket; ++mediaTicket; ++importTicket; ++workChoice; current = null; dirty = false; conflict = false;
-    mediaItems=[];mediaOffset=0;mediaWork='';$('tg-media-more').hidden=true;
+    mediaItems=[];mediaOffset=0;mediaWork='';openSources=[];$('tg-media-more').hidden=true;
     limparImportacao(); fillDocument(null); $('tg-work').value = ''; $('tg-versions').replaceChildren(); render(); message('Escolha a obra e crie ou importe as notas do novo arranjo.');
   }
   app.innerHTML = '<div class="tj-heading"><div><p class="tj-eyebrow">MUSIQUE / SEU ACERVO</p><h1>Gerenciar arranjos</h1><p class="tj-intro">Prepare uma versão, revise na pista e publique para quem pode acessar a obra.</p></div><a href="/music/tocar">Voltar à prática</a></div>' +
@@ -438,6 +439,7 @@
         FormatoArranjo.validar(parsed);
         var aberto = FormatoArranjo.desnormalizar(parsed), abertoInstrumento = instrumentoDoChart(aberto, parsed.tracks[0].instrument);
         editor.carregar(aberto); chart = aberto; $('tg-title').value = aberto.title; $('tg-instrument').value = abertoInstrumento;
+        openSources = Array.isArray(parsed.sources) ? parsed.sources.slice() : [];
       } else if (parsed.chart) { var doc=Formato.validarDocumento(parsed); fillDocument(doc);++mediaTicket;loadMedia($('tg-work').value,doc.mediaId); }
       else {
         var proximoChart = Core.validarChart(parsed);
@@ -580,6 +582,7 @@
       var next = Core.validarChart(pendente.importador.criarChart(pendente.analysis, candidate.id, { id: chart && chart.id ? chart.id : novoId, title: title, perfil: pendente.perfil }));
       var proximoInstrumento = instrumentoDoChart(next, pendente.perfil);
       editor.carregar(next); ++importTicket; chart = next;
+      openSources = [{ format: pendente.tipo === 'musicxml' ? (pendente.analysis.format === 'mxl' ? 'mxl' : 'musicxml') : 'midi', name: String(pendente.fileName || 'importacao.' + pendente.tipo), sha256: '' }];
       $('tg-instrument').value = proximoInstrumento;
       if (usarTitulo) $('tg-title').value = title;
       limparImportacao(); dirty = true; render();
