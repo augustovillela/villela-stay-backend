@@ -26,3 +26,5 @@
 .tj-campaign-item .tj-campaign-reward{color:#9b7542}.tj-campaign-item.completed .tj-campaign-reward{color:#397354}
 
 .tj-campaign-summary{display:flex;align-items:center;gap:10px;margin-top:12px}.tj-campaign-summary-label{font-size:10px;color:#80643c;white-space:nowrap}.tj-campaign-progress-track{height:6px;flex:1;background:#eadfca;border-radius:99px;overflow:hidden}.tj-campaign-progress{display:block;height:100%;background:#b4874d;border-radius:99px;transition:width .2s ease}
+
+.tj-campaign-sync{min-height:30px!important;padding:6px 9px!important;font-size:10px!important;color:#80643c!important;border-color:#d8c4a2!important}.tj-campaign-sync:disabled{opacity:.55}

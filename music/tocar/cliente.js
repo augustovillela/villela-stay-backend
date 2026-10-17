@@ -33,11 +33,28 @@
     return campaignState;
   }
   function saveCampaign() { if (!Campaign || !campaignState) return; try { window.localStorage.setItem(campaignStorageKey(state.instrument), JSON.stringify(campaignState)); } catch (_) {} }
+  async function syncCampaign() {
+    if (!Campaign || !campaignState || !boot.logado) return;
+    var button = $('tj-campaign-sync'); if (button) { button.disabled = true; button.textContent = 'Sincronizando…'; }
+    try {
+      var response = await fetch('/music/api/tocar/campanha/' + encodeURIComponent(state.instrument), { credentials: 'same-origin' });
+      if (!response.ok) throw new Error('Não foi possível consultar a campanha.');
+      var data = await response.json();
+      if (data && data.estado) campaignState = Campaign.criar(data.estado);
+      saveCampaign();
+      var saved = await fetch('/music/api/tocar/campanha/' + encodeURIComponent(state.instrument), { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(campaignState) });
+      if (!saved.ok) throw new Error('Não foi possível guardar a campanha.');
+      renderCampaign(); msg('Progresso da campanha sincronizado com a sua conta.');
+    } catch (_) { msg('Não foi possível sincronizar agora. O progresso local continua salvo.', true); }
+    finally { var current = $('tj-campaign-sync'); if (current) { current.disabled = false; current.textContent = 'Sincronizar conta'; } }
+  }
   function renderCampaign() {
     var panel = $('tj-campaign'); if (!panel || !Campaign) return;
     var lista = Campaign.listar(campaignState || { instrument: state.instrument });
     var overview = Campaign.resumo(campaignState), bar = el('span', { class: 'tj-campaign-progress' }); bar.style.width = overview.percent + '%';
-    panel.replaceChildren(el('div', { class: 'tj-campaign-heading' }, [el('div', {}, [el('p', { class: 'tj-caption', text: 'CAMPANHA AUTORAL' }), el('h2', { text: 'Trilha de evolução' })]), el('span', { class: 'tj-campaign-count', text: overview.completed + '/' + overview.total + ' concluídas · ' + overview.badges + ' distintivos' })]), el('div', { class: 'tj-campaign-summary' }, [el('span', { class: 'tj-campaign-summary-label', text: overview.percent + '% da trilha' }), el('span', { class: 'tj-campaign-progress-track' }, [bar]), el('span', { class: 'tj-campaign-summary-label', text: overview.attempts + ' tentativas' })]));
+    var heading = el('div', { class: 'tj-campaign-heading' }, [el('div', {}, [el('p', { class: 'tj-caption', text: 'CAMPANHA AUTORAL' }), el('h2', { text: 'Trilha de evolução' })]), el('span', { class: 'tj-campaign-count', text: overview.completed + '/' + overview.total + ' concluídas · ' + overview.badges + ' distintivos' })]);
+    if (boot.logado) { var sync = el('button', { id: 'tj-campaign-sync', type: 'button', class: 'tj-campaign-sync', text: 'Sincronizar conta' }); sync.addEventListener('click', syncCampaign); heading.appendChild(sync); }
+    panel.replaceChildren(heading, el('div', { class: 'tj-campaign-summary' }, [el('span', { class: 'tj-campaign-summary-label', text: overview.percent + '% da trilha' }), el('span', { class: 'tj-campaign-progress-track' }, [bar]), el('span', { class: 'tj-campaign-summary-label', text: overview.attempts + ' tentativas' })]));
     var list = el('ol', { class: 'tj-campaign-list' });
     lista.forEach(function (item) {
       var label = item.status === 'completed' ? 'Concluída' : item.status === 'in_progress' ? 'Em andamento' : item.status === 'available' ? 'Disponível' : 'Bloqueada';
