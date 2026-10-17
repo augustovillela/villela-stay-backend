@@ -55,6 +55,18 @@ Os botões de frase usam `sections` do arranjo e ajustam início/fim. Música in
 
 ## Arranjos
 
+### Acompanhamento rítmico a partir de cifra
+
+Na visualização de uma cifra do Acervo, **Rascunho rítmico** baixa um JSON
+compatível com o editor de `/music/tocar/gerenciar`. O conversor usa o BPM da
+cifra (ou 90 quando ausente), coloca uma batida por troca de acorde e cria um
+ataque monofônico da fundamental em posição simples de violão. O documento
+carrega `metadata.aproximado: true` e a lista de acordes não reconhecidos.
+Importe o JSON no gerenciamento, confira os tempos, substitua ou acrescente as
+cordas do acompanhamento e só então salve/publice. A cifra não contém, por si
+ só, a divisão rítmica exata, as vozes simultâneas ou a gravação do
+acompanhamento; essa revisão continua sendo necessária.
+
 Use “Baixar arranjo de exemplo” na página. Tempos em segundos da música original; `tuning` enumera as cordas da última para a primeira; `fret: 0` é corda solta. Nos perfis com afinação ascendente, a corda 1 é a mais aguda. O ukulele tradicional é reentrante (`[67,60,64,69]`), portanto a ordem não é estritamente de altura. Os demais perfis são seis cordas `[40,45,50,55,59,64]`, baixo `[28,33,38,43]`, cavaquinho `[50,55,59,62]` e bandolim de cinco cordas `[55,62,69,76,83]` (afinação ainda a confirmar com o usuário). Piano e bateria usam `profile`/`layout`, sem `tuning`.
 
 ```json

@@ -32,6 +32,7 @@ const repertorio = require('../repertorio');
 const D = require('./motor/documento');
 const I = require('./motor/instrumentos');
 const H = require('./motor/harmonia');
+const Acompanhamento = require('./motor/acompanhamento');
 
 const { Musicas, Cifras, Arranjos, Preferencias, Visoes, Favoritos, Uso, Voicings, Midias } = acervo;
 
@@ -173,6 +174,20 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
 
   // ------------------------------------------------------------ cifras
   app.get(B + '/cifras/:id', requireUsuario, h(async (req, res) => res.json(Cifras.completa(U(req), req.params.id, { arranjoId: String(req.query.arranjo || '') }))));
+  // Exporta um rascunho monofônico para o editor Tocar junto. A cifra não
+  // contém a divisão rítmica completa; o arquivo é marcado como aproximado
+  // e sempre precisa ser revisado antes de salvar/publicar.
+  app.get(B + '/cifras/:id/acompanhamento-ritmico', requireUsuario, h(async (req, res) => {
+    const completa = Cifras.completa(U(req), req.params.id, { arranjoId: String(req.query.arranjo || '') });
+    const chart = Acompanhamento.gerar(completa.documento, {
+      bpm: req.query.bpm,
+      title: (completa.musica && completa.musica.titulo ? completa.musica.titulo : 'Cifra') + ' · acompanhamento rítmico',
+      id: 'cifra-' + req.params.id + '-ritmo',
+    });
+    res.set('Content-Type', 'application/json; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(chart.id)}.json"`);
+    res.json(chart);
+  }));
   app.put(B + '/cifras/:id', requireUsuario, h(async (req, res) => res.json(Cifras.salvar(U(req), req.params.id, req.body || {}))));
   app.patch(B + '/cifras/:id', requireUsuario, h(async (req, res) => res.json({ ok: true, cifra: Cifras.editarDados(U(req), req.params.id, req.body || {}) })));
   app.delete(B + '/cifras/:id', requireUsuario, h(async (req, res) => { Cifras.remover(U(req), req.params.id); res.json({ ok: true }); }));
