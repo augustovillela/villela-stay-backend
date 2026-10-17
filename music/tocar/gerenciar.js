@@ -488,7 +488,8 @@
     message('Analisando a camada textual do PDF…', false);
     analisarPdfNoServidor(file, ticket).then(function (dados) {
       if (ticket !== pdfTicket || !dados) return;
-      var detalhe = dados.tipo === 'cifra' ? 'cifra detectada; encaminhe o texto para ChordPro.' : dados.tipo === 'partitura' ? 'partitura detectada; a próxima etapa é OMR para MusicXML/MXL.' : 'tipo não identificado automaticamente; mantenha a revisão manual.';
+      var pdfSemTexto = dados.metodo === 'pdf-sem-texto' || dados.proximo === 'ocr-ou-omr';
+      var detalhe = pdfSemTexto ? 'PDF escaneado ou sem camada de texto; a cifra precisa de OCR e a partitura precisa de OMR.' : dados.tipo === 'cifra' ? 'cifra detectada; encaminhe o texto para ChordPro.' : dados.tipo === 'partitura' ? 'partitura detectada; a próxima etapa é OMR para MusicXML/MXL.' : 'tipo não identificado automaticamente; mantenha a revisão manual.';
       var confiancaPdf = Number(dados.confianca);
       var leituraPdf = dados.metodo ? ' Método: ' + String(dados.metodo).replace(/[<>\u0000-\u001f\u007f]/g, '') + '.' : '';
       var certezaPdf = Number.isFinite(confiancaPdf) ? ' Confiança estimada: ' + Math.round(Math.max(0, Math.min(1, confiancaPdf)) * 100) + '%.' : '';
@@ -510,7 +511,7 @@
         $('tg-pdf-cifra-import').hidden = false;
         $('tg-pdf-cifra-import').dataset.texto = dados.texto.slice(0, 400000);
       }
-      message('PDF analisado. ' + detalhe + ' Para gerar notas e som, importe MIDI, MusicXML ou MXL.', false);
+      message('PDF analisado. ' + detalhe + (pdfSemTexto ? ' Use um OCR para cifra ou importe MusicXML/MXL quando já tiver a partitura digital.' : ' Para gerar notas e som, importe MIDI, MusicXML ou MXL.'), false);
     }).catch(function (erro) {
       if (ticket !== pdfTicket) return;
       $('tg-pdf-info').textContent = 'PDF carregado como referência visual; a análise automática não ficou disponível.';
