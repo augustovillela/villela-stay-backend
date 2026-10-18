@@ -354,8 +354,9 @@
     function render() {
       C.gravarUrl(st); C.limpar(alvo);
       var campo = el('input', { type: 'text', value: st.acordeTexto, placeholder: 'Ex.: Cmaj7, F, Bm7(b5)' }); campo.value = st.acordeTexto;
-      var raio = el('select', {}, [1, 2, 3].map(function (n) { return el('option', { value: String(n), txt: n + ' semitom' + (n > 1 ? 's' : '') }); })); raio.value = st.raio;
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo' }, [el('span', { txt: 'Acorde de partida' }), campo]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Raio' }), raio]), el('button', { type: 'button', class: 'btn', txt: 'Explorar vizinhos', onclick: function () { st.acordeTexto = campo.value; st.raio = raio.value; render(); } })]));
+       var raio = el('select', {}, [1, 2, 3].map(function (n) { return el('option', { value: String(n), txt: n + ' semitom' + (n > 1 ? 's' : '') }); })); raio.value = st.raio;
+       var arquivo = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar acordes vizinhos JSON' }); arquivo.onchange = function () { var f = arquivo.files && arquivo.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); if (!j.partida) throw new Error('O JSON não contém o acorde de partida.'); st.acordeTexto = String(j.partida); st.raio = Math.max(1, Math.min(3, Number(j.raio) || 1)); render(); C.aviso('Acordes vizinhos importados.'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
+       alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo' }, [el('span', { txt: 'Acorde de partida' }), campo]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Raio' }), raio]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Importar JSON' }), arquivo]), el('button', { type: 'button', class: 'btn', txt: 'Explorar vizinhos', onclick: function () { st.acordeTexto = campo.value; st.raio = raio.value; render(); } })]));
       var r = gerar(); if (!r.base) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite um acorde válido, por exemplo C, Am7 ou G7.' })); return; }
       var baseNs = A.notas(naOitava(r.base.fundamental, 3), r.base.id) || [];
       alvo.appendChild(el('div', { class: 'lab-resultado' }, [el('p', { txt: 'Partida: ' + A.simbolo(r.base.fundamental, r.base.id) + ' · ' + baseNs.map(rot).join(', ') }), el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir partida', onclick: function () { C.Som.tocar(baseNs.map(N.midi), { modo: 'harmonico' }); } })]));
@@ -373,9 +374,10 @@
     function campo(t, m) { return T.campo(N.deSlug(t) || N.ler(t), m) || []; }
     function render() {
       C.gravarUrl(st); C.limpar(alvo);
-      var cfg = [['t1', 'm1', 'Tonalidade 1'], ['t2', 'm2', 'Tonalidade 2'], ['t3', 'm3', 'Tonalidade 3']];
+       var cfg = [['t1', 'm1', 'Tonalidade 1'], ['t2', 'm2', 'Tonalidade 2'], ['t3', 'm3', 'Tonalidade 3']];
       var controles = cfg.map(function (x) { var md = modo(st[x[1]], x[1]); md.value = st[x[1]]; md.onchange = function () { st[x[1]] = md.value; render(); }; var tn = C.selTonica(st[x[0]], function (v) { st[x[0]] = v; render(); }); return el('fieldset', { class: 'lab-campo' }, [el('legend', { txt: x[2] }), tn, md]); });
-      alvo.appendChild(el('div', { class: 'lab-controles' }, controles));
+       var arquivo = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar pivôs JSON' }); arquivo.onchange = function () { var f = arquivo.files && arquivo.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); if (!Array.isArray(j.tonalidades) || j.tonalidades.length < 3) throw new Error('O JSON não contém três tonalidades.'); j.tonalidades.slice(0, 3).forEach(function (x, i) { if (x.modo === 'maior' || x.modo === 'menor') st['m' + (i + 1)] = x.modo; if (x.tonica) { var sl = N.slug(String(x.tonica)); if (sl) st['t' + (i + 1)] = sl; } }); render(); C.aviso('Tonalidades importadas.'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
+       alvo.appendChild(el('div', { class: 'lab-controles' }, controles.concat([el('label', { class: 'lab-campo' }, [el('span', { txt: 'Importar JSON' }), arquivo])] )));
       var cs = cfg.map(function (x) { return campo(st[x[0]], st[x[1]]); });
       var por = {}; cs.forEach(function (c, i) { c.forEach(function (g) { por[g.simbolo] = por[g.simbolo] || []; por[g.simbolo][i] = g; }); });
       var simbolos = Object.keys(por).sort(function (a, b) { return a.localeCompare(b); });
