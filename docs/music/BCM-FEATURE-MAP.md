@@ -30,6 +30,7 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 - **Groove reproduzível**: o metrônomo com variações usa uma semente editável; a mesma configuração gera as mesmas omissões na prévia e no MIDI exportado.
 - **Grafo espacial**: o Grafo harmônico oferece uma perspectiva 3D opcional, preservando a leitura 2D e a interação por teclado.
 - **Mandala espacial**: a Mandala harmônica também oferece perspectiva 3D opcional, mantendo os nós radiais e seus controles acessíveis.
+- **Teclado isomórfico exportável**: a disposição Wicki-Hayden pode ser baixada em SVG ou PNG para estudo e impressão.
 
 ## Roadmap funcional
 
