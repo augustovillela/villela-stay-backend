@@ -331,6 +331,7 @@
       var linhas = [];
       for (var i = 0; i < acs.length - 1; i++) { var c = comum(acs[i], acs[i + 1]); linhas.push(el('tr', {}, [el('td', { txt: A.simbolo(acs[i].fundamental, acs[i].id) }), el('td', { txt: A.simbolo(acs[i + 1].fundamental, acs[i + 1].id) }), el('td', { txt: c.length ? c.map(function (p) { return rot(N.deClasse(p)); }).join(', ') : 'nenhuma' }), el('td', { txt: distancia(acs[i], acs[i + 1]) + ' semitons médios' })])); }
       alvo.appendChild(el('div', { class: 'lab-resultado' }, [el('p', { txt: 'Quanto maior o número de notas em comum e menor a distância, mais suave tende a ser a ligação. Use isso como ponto de partida para inversões, suspensões e substituições.' }), el('table', { class: 'lab-tabela' }, [el('thead', {}, [el('tr', {}, ['De', 'Para', 'Notas em comum', 'Distância'].map(function (x) { return el('th', { scope: 'col', txt: x }); }))]), el('tbody', {}, linhas)])]));
+       alvo.appendChild(el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar mapa JSON', onclick: function () { C.baixar('mapa-harmonia.json', 'application/json', JSON.stringify({ acordes: acs.map(function (a) { return A.simbolo(a.fundamental, a.id); }), ligacoes: acs.slice(0, -1).map(function (a, i) { var b = acs[i + 1], c = comum(a, b); return { de: A.simbolo(a.fundamental, a.id), para: A.simbolo(b.fundamental, b.id), notas_em_comum: c.map(function (p) { return rot(N.deClasse(p)); }), distancia_media_semitons: distancia(a, b) }; }), criado_em: new Date().toISOString() }, null, 2)); } }));
     }
     render();
   };
