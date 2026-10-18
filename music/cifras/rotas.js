@@ -33,6 +33,7 @@ const D = require('./motor/documento');
 const I = require('./motor/instrumentos');
 const H = require('./motor/harmonia');
 const Acompanhamento = require('./motor/acompanhamento');
+const ArranjoMultifaixa = require('./motor/arranjo-multifaixa');
 
 const { Musicas, Cifras, Arranjos, Preferencias, Visoes, Favoritos, Uso, Voicings, Midias } = acervo;
 
@@ -187,6 +188,18 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
     res.set('Content-Type', 'application/json; charset=utf-8');
     res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(chart.id)}.json"`);
     res.json(chart);
+  }));
+  app.get(B + '/cifras/:id/arranjo-multifaixa', requireUsuario, h(async (req, res) => {
+    const completa = Cifras.completa(U(req), req.params.id, { arranjoId: String(req.query.arranjo || '') });
+    const pacote = ArranjoMultifaixa.gerar(completa.documento, {
+      bpm: req.query.bpm,
+      title: (completa.musica && completa.musica.titulo ? completa.musica.titulo : 'Cifra') + ' · arranjo multifaixa',
+      id: 'cifra-' + req.params.id + '-multifaixa',
+      sourceName: String((completa.musica && completa.musica.titulo) || 'cifra') + '.musique.cifra',
+    });
+    res.set('Content-Type', 'application/json; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(pacote.id)}.json"`);
+    res.json(pacote);
   }));
   app.put(B + '/cifras/:id', requireUsuario, h(async (req, res) => res.json(Cifras.salvar(U(req), req.params.id, req.body || {}))));
   app.patch(B + '/cifras/:id', requireUsuario, h(async (req, res) => res.json({ ok: true, cifra: Cifras.editarDados(U(req), req.params.id, req.body || {}) })));

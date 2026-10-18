@@ -67,6 +67,14 @@ cordas do acompanhamento e só então salve/publice. A cifra não contém, por s
  só, a divisão rítmica exata, as vozes simultâneas ou a gravação do
 acompanhamento; essa revisão continua sendo necessária.
 
+O botão **Arranjo multifaixa** baixa um pacote aberto com quatro trilhas
+geradas da mesma harmonia: violão-alvo, baixo, piano e bateria. Ele é uma base
+de produção para tocar junto; a versão atual usa um pulso por troca de acorde,
+um padrão simples de bumbo/caixa/chimbal e voicings básicos de piano. O pacote
+preserva a cifra como fonte e informa `metadata.aproximado: true`. O editor de
+arranjos de cordas continua sendo monofaixa; a reprodução multifaixa exige o
+player de pacote, que será a próxima integração do Tocar junto.
+
 Use “Baixar arranjo de exemplo” na página. Tempos em segundos da música original; `tuning` enumera as cordas da última para a primeira; `fret: 0` é corda solta. Nos perfis com afinação ascendente, a corda 1 é a mais aguda. O ukulele tradicional é reentrante (`[67,60,64,69]`), portanto a ordem não é estritamente de altura. Os demais perfis são seis cordas `[40,45,50,55,59,64]`, baixo `[28,33,38,43]`, cavaquinho `[50,55,59,62]` e bandolim de cinco cordas `[55,62,69,76,83]` (afinação ainda a confirmar com o usuário). Piano e bateria usam `profile`/`layout`, sem `tuning`.
 
 ```json

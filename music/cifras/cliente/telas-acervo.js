@@ -524,6 +524,7 @@
       var mais = el('div', { class: 'cf-mais linha', style: 'margin:0' });
       if (d.pode && d.pode.editar) mais.appendChild(C.botao('✏️ Editar cifra', function () { C.ir('editor', d.cifra.id); }, 'peq'));
       mais.appendChild(el('a', { class: 'cf-bt sec peq', href: '/music/api/cifras/cifras/' + encodeURIComponent(d.cifra.id) + '/acompanhamento-ritmico', download: '', title: 'Baixa um rascunho aproximado com fundamentais em pulsos; importe-o em Gerenciar arranjos e revise antes de publicar.', txt: '🎸 Rascunho rítmico' }));
+      mais.appendChild(el('a', { class: 'cf-bt sec peq', href: '/music/api/cifras/cifras/' + encodeURIComponent(d.cifra.id) + '/arranjo-multifaixa', download: '', title: 'Baixa um pacote aberto com violão-alvo, baixo, piano e bateria gerados a partir da harmonia; revise antes de usar.', txt: '🎛️ Arranjo multifaixa' }));
       mais.appendChild(C.botao('🎧 Smart Play', function () { if (C.SmartPlay.ativo()) { C.SmartPlay.player(true); C.SmartPlay.tocar(); } else C.aviso('Esta música ainda não tem áudio: use o player embaixo para procurar no YouTube ou adicionar um MP3.'); }, 'peq'));
       mais.appendChild(C.botao('Palco', function () { C.palcoUmaMusica(estado); }, 'sec peq'));
       mais.appendChild(sel([['', 'Mais…'], ['exibicao', 'Exibição'], ['historico', 'Histórico de versões'], ['praticar', 'Praticar'], ['comentarios', 'Comentários e notas'],
