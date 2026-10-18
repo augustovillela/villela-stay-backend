@@ -36,6 +36,7 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 - **Mapa vertical de bateria**: pads posicionam crash, ride, chimbal, caixa, bumbo, tons e acessórios como um kit físico, com disparo por toque.
 - **Bateria eletrônica via MIDI**: a ferramenta aceita notas de entrada de controladores e mapeia os golpes do kit para os sons do Musique em tempo real.
 - **Gravação de bateria MIDI**: uma performance recebida ao vivo pode ser registrada e baixada como MIDI para reabrir em um sequenciador ou DAW.
+- **Intercâmbio de padrões de bateria**: grades completas podem ser exportadas e importadas em JSON, preservando passos, compasso e nome do estudo.
 
 ## Roadmap funcional
 
