@@ -660,6 +660,9 @@ async function rodar({ t, req }) {
     const pos = ctx.decisaoDoDispositivo({ situacao: 'inconstitucional_apos_edital', decisao_stf: [{ ...dec, data: '2025-06-17', texto_repristinado: '' }] }, '2024-02-07', 'data de corte da objetiva');
     assert.ok(pos.includes('posterior à data de corte da objetiva (07/02/2024): na data, o texto vigorava.') && !pos.includes('Redação que volta'), pos);
     assert.ok(ctx.tagDoDispositivo('inconstitucional_apos_edital').includes('rev'));
+    // vigência RESTABELECIDA depois da data (ADI 7231: o texto estava revogado nela) — não diz que "vigorava"
+    const rest = ctx.decisaoDoDispositivo({ situacao: 'alterado_apos_edital', decisao_stf: [{ ...dec, data: '2025-06-17', texto_repristinado: '' }] }, '2023-01-05');
+    assert.ok(rest.includes('posterior à data do edital (05/01/2023).') && !rest.includes('vigorava'), rest);
     assert.equal(ctx.decisaoDoDispositivo({ situacao: 'vigente' }, '2023-01-05'), '');
     assert.ok(ctx.situacaoDoDispositivo({ situacao: 'inconstitucional' }, '2023-01-05').includes('Declarado inconstitucional (STF)'), 'sem decisão: o aviso seco');
     assert.equal(ctx.situacaoDoDispositivo({ situacao: 'inconstitucional', decisao_stf: [dec] }, '2023-01-05'), '', 'com decisão: o aviso é o da decisão (não duplica)');

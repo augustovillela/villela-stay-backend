@@ -4131,8 +4131,11 @@
       var ds = x.decisao_stf || [];
       if (!ds.length) return '';
       var total = /^inconstitucional/.test(x.situacao || '');
+      // "na data, o texto vigorava" só quando é verdade: texto vigente ou declarado depois. Num texto que mudou depois da
+      // data (ex.: a vigência RESTABELECIDA pela decisão, ADI 7231), a situação já diz o que valia nela.
+      var vigorava = x.situacao === 'vigente' || x.situacao === 'inconstitucional_apos_edital';
       return ds.map(function (d) {
-        var depois = dataRef && d.data && d.data > dataRef ? ' — <span>posterior à ' + (rotulo ? esc(rotulo) : 'data do edital') + ' (' + dataBR(dataRef) + '): na data, o texto vigorava.</span>' : '';
+        var depois = dataRef && d.data && d.data > dataRef ? ' — <span>posterior à ' + (rotulo ? esc(rotulo) : 'data do edital') + ' (' + dataBR(dataRef) + ')' + (vigorava ? ': na data, o texto vigorava.' : '.') + '</span>' : '';
         return '<div class="es-lj-sit ' + (total ? 'rev' : 'alt') + ' es-lj-stf" role="note"><p><b>' + esc(TEC_STF[d.tecnica] || d.tecnica) + ' (STF)</b>' + (d.data ? ' em ' + dataBR(d.data) : '') + depois +
           (d.alcance ? ' <span class="al-fino">Alcance: ' + esc(d.alcance) + '.</span>' : '') + (d.efeito ? ' <span>Efeito: ' + esc(d.efeito) + '.</span>' : '') + '</p>' +
           (d.trecho ? '<p><q class="es-lj-ed">' + esc(d.trecho) + '</q></p>' : '') +
