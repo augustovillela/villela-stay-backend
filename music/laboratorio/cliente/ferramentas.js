@@ -427,6 +427,28 @@
     render();
   };
 
+  F['superestruturas-acordes'] = function (alvo, st) {
+    st.notasTexto = st.notasTexto || 'C, E';
+    function lerNotas() { return st.notasTexto.split(/[;,\s]+/).map(function (x) { return N.ler(x.trim()); }).filter(Boolean).slice(0, 4); }
+    function buscar(ns) {
+      var pcs = ns.map(N.pc).filter(function (p, i, a) { return a.indexOf(p) === i; }), out = [];
+      if (pcs.length < 2) return out;
+      for (var r = 0; r < 12; r++) A.CATALOGO.forEach(function (c) { var f = N.deClasse(r), notas = A.notas(f, c.id) || [], cp = notas.map(N.pc); if (pcs.every(function (p) { return cp.indexOf(p) >= 0; })) out.push({ simbolo: A.simbolo(f, c.id), id: c.id, fundamental: f, notas: notas }); });
+      return out.slice(0, 80);
+    }
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo);
+      var inp = el('input', { type: 'text', class: 'lab-textarea', value: st.notasTexto, placeholder: 'Ex.: C, E, Bb' }); inp.value = st.notasTexto;
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Notas essenciais' }), inp]), el('button', { type: 'button', class: 'btn', txt: 'Encontrar acordes', onclick: function () { st.notasTexto = inp.value; render(); } })]));
+      var ns = lerNotas(), res = buscar(ns);
+      if (ns.length < 2) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Informe pelo menos duas notas.' })); return; }
+      alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Notas procuradas: ' + ns.map(rot).join(' · ') + '. Os resultados contêm todas elas; as demais notas funcionam como cor e tensão.' }));
+      alvo.appendChild(el('div', { class: 'lab-super-grid' }, res.map(function (x) { return el('article', { class: 'lab-super-card' }, [el('h3', { txt: x.simbolo }), el('p', { txt: x.notas.map(rot).join(' · ') }), el('button', { type: 'button', class: 'btn sec', txt: '▶ Ouvir', onclick: function () { C.Som.tocar(x.notas.map(N.midi), { modo: 'harmonico' }); } })]); })));
+      if (!res.length) alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Nenhum acorde do catálogo contém exatamente esse conjunto. Tente remover uma nota ou usar uma grafia enarmônica.' }));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------
