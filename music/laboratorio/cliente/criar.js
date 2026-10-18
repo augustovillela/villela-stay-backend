@@ -79,7 +79,18 @@
         C.aviso(n ? n + ' entrada(s) MIDI conectada(s).' : 'Nenhum teclado MIDI encontrado.');
       }).catch(function () { C.aviso('O acesso ao MIDI foi negado.'); });
     } });
-    alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(pintar), C.selTimbre(), midiBtn]));
+    function exportarPiano(png) {
+      var svg = box.innerHTML;
+      if (!svg) return;
+      if (png) C.baixarPng('piano-virtual-musique.png', svg, 1800, 900);
+      else C.baixar('piano-virtual-musique.svg', 'image/svg+xml', svg);
+    }
+    function exportarHistorico() {
+      if (!historico.length || !C.midiArquivo) { C.aviso('Toque algumas notas antes de exportar o MIDI.', 'erro'); return; }
+      var ev = historico.map(function (m, i) { return { t: i * 2, dur: 2, midi: m, vel: 82 }; });
+      C.baixar('piano-virtual-musique.mid', 'audio/midi', C.midiArquivo(ev, 80, 4));
+    }
+    alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(pintar), C.selTimbre(), midiBtn, el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano SVG', onclick: function () { exportarPiano(false); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano PNG', onclick: function () { exportarPiano(true); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar notas MIDI', onclick: exportarHistorico })]));
     alvo.appendChild(box); alvo.appendChild(acordeTxt); alvo.appendChild(info);
     pintar();
   };
