@@ -19,6 +19,7 @@ const ARQUIVOS = Object.freeze([
   'editor-nucleo.js', 'editor-cliente.js', 'editor.css', 'importador-midi.js', 'importador-musicxml.js',
   'waveform.js', 'waveform-cliente.js', 'campanha.js',
   'pista-piano.js', 'pista-bateria.js', 'sons.js', 'sons-manifesto.js', 'creditos-sons.html',
+  'audio-arranjo.js',
 ]);
 
 function invalido(mensagem) {
@@ -156,6 +157,7 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/sons-manifesto.js" defer></script>
 <script src="/music/tocar/sons.js" defer></script>
 <script src="/music/tocar/campanha.js" defer></script>
+<script src="/music/tocar/audio-arranjo.js" defer></script>
 <script src="/music/tocar/cliente.js" defer></script>`;
     res.set('Cache-Control', 'no-store').type('html').send(layout('Tocar junto · prática com instrumentos | Musique', corpo, {
       caminho: '/music/tocar', noApp: estado.logado,
