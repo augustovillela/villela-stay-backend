@@ -452,6 +452,78 @@ async function rodar({ t, req }) {
   });
 
   // ================= MARCAÇÃO DE LEITURA =================
+  // ================= DECLARADO INCONSTITUCIONAL (ADR-0014; varredura de 18/10/2026) =================
+  const DEC = (extra = {}) => ({ verbete: 'stf-tema-1075', tecnica: 'inconstitucional', alcance: 'integral (redação da Lei 9.494/1997)', data: '2021-04-08',
+    efeito: 'repristina a redação original', texto_repristinado: 'A sentença civil fará coisa julgada erga omnes, exceto se a ação for julgada improcedente por deficiência de provas.',
+    trecho: 'I - É inconstitucional a redação do art. 16 da Lei 7.347/1985, alterada pela Lei 9.494/1997, sendo repristinada sua redação original', ...extra });
+  const DIP_STF = (dispositivos) => ({ id: 'lei-stf-teste', nome: 'Lei de Teste do STF', norma: 'Lei de teste', sigla: 'LST', tipo: 'lei', abrangencia: 'integral',
+    fonte_url: 'https://www.planalto.gov.br/stf-teste.htm', consultado_em: '2026-10-18', data_referencia_edital: '2023-01-05', estrutura: [],
+    dispositivos: dispositivos || [
+      { id: 'art-1', rotulo: 'Art. 1º', ordem: 1, texto: 'A sentença fará coisa julgada nos limites da competência territorial do órgão prolator.', partes: [], situacao: 'inconstitucional',
+        nota: '(Redação dada pela Lei nº 9.494, de 10.9.1997)', alterado_por: null, texto_na_data_do_edital: null, decisao_stf: [DEC()] },
+      { id: 'art-2', rotulo: 'Art. 2º', ordem: 2, texto: 'Incide a contribuição sobre:', situacao: 'vigente', nota: '', alterado_por: null, texto_na_data_do_edital: null, partes: [
+        { id: 'art-2.p1', caminho: '§ 1º', rotulo: '§ 1º', texto: '', situacao: 'inconstitucional_apos_edital', nota: '(Vide ADI 9999)', alterado_por: null, texto_na_data_do_edital: null,
+          decisao_stf: [{ verbete: 'stf-adi-9999', tecnica: 'inconstitucional', alcance: 'integral', data: '2023-06-13', efeito: 'ex tunc', trecho: 'declarar a inconstitucionalidade do § 1º' }] },
+        { id: 'art-2.p2', caminho: '§ 2º', rotulo: '§ 2º', texto: 'O salário-maternidade é base de cálculo, salvo o salário-maternidade.', situacao: 'vigente', nota: '', alterado_por: null, texto_na_data_do_edital: null,
+          decisao_stf: [{ verbete: 'stf-tema-72', tecnica: 'inconstitucional_parcial', alcance: 'expressão "salvo o salário-maternidade"', data: '2020-08-05', efeito: '', trecho: 'a parte final em que se lê "salvo o salário-maternidade"' },
+            { norma: 'Resolução do Senado Federal nº 10/2016', tecnica: 'execucao_suspensa', data: '2016-03-30', trecho: 'Execução suspensa pela Resolução do Senado Federal nº 10, de 2016' }] },
+      ] },
+      { id: 'art-3', rotulo: 'Art. 3º', ordem: 3, texto: 'Esta Lei entra em vigor na data de sua publicação.', partes: [], situacao: 'vigente', nota: '', alterado_por: null, texto_na_data_do_edital: null },
+    ] });
+
+  await t('lei-juris · inconstitucional (ADR-0014): situações novas e decisao_stf aceitas, guardadas e devolvidas (dispositivo e parte); formato errado recusa; verbete fora do acervo é aviso; reenvio idempotente', async () => {
+    // formato errado: técnica fora da lista, sem trecho, sem verbete nem norma, data em outro formato, não-lista
+    const ruim = DIP_STF([{ id: 'art-1', rotulo: 'Art. 1º', texto: 'x', partes: [{ id: 'art-1.p1', rotulo: '§ 1º', texto: 'y', situacao: 'inconstitucional', decisao_stf: { verbete: 'stf-x' } }], situacao: 'inconstitucional',
+      decisao_stf: [{ verbete: 'stf-x', tecnica: 'derrubado', data: '08/04/2021', trecho: '' }, { tecnica: 'inconstitucional', data: '2021-04-08', trecho: 'x' }] }]);
+    let r = await staff('diploma', { diploma: ruim });
+    assert.equal(r.st, 400, r.texto);
+    const errs = r.texto;
+    for (const f of ['derrubado', 'decisao_stf[0].data', 'decisao_stf[0].trecho', 'decisao_stf[1]: informe', 'partes[0].decisao_stf: deve ser lista']) assert.ok(errs.includes(f), 'falta o erro: ' + f + ' — ' + errs);
+    assert.equal(contar("SELECT COUNT(*) n FROM est_lj_diplomas WHERE id = 'lei-stf-teste'"), 0, 'nada gravado');
+    // situação nova sem decisão: aceita, com aviso
+    r = await staff('diploma', { diploma: DIP_STF([{ id: 'art-1', rotulo: 'Art. 1º', texto: 'x', partes: [], situacao: 'inconstitucional' }]) });
+    assert.equal(r.st, 200, r.texto);
+    assert.ok(r.json.avisos.some(a => /art-1: situação "inconstitucional" sem decisao_stf/.test(a)), JSON.stringify(r.json.avisos));
+    // o diploma de verdade
+    r = await staff('diploma', { diploma: DIP_STF() });
+    assert.equal(r.st, 200, r.texto);
+    assert.deepEqual([r.json.declarados_inconstitucionais, r.json.com_decisao_stf, r.json.alterados_apos_edital, r.json.por_situacao.inconstitucional, r.json.por_situacao['parte:inconstitucional_apos_edital']], [2, 3, 0, 1, 1],
+      'inconstitucional não conta como "alterado depois do edital"');
+    assert.ok(r.json.avisos.some(a => /verbete\(s\) fora do acervo de jurisprudência: .*stf-tema-1075/.test(a)), 'verbete que não está no acervo: aviso, não erro');
+    assert.ok(!r.json.avisos.some(a => /alterado_por\.data/.test(a)), 'inconstitucional_apos_edital não pede a data da norma que alterou');
+    assert.deepEqual(JSON.parse(db.prepare("SELECT decisao_stf FROM est_lj_dispositivos WHERE diploma_id = 'lei-stf-teste' AND id = 'art-1'").get().decisao_stf), [DEC()], 'a coluna nova guarda a lista');
+    assert.equal(db.prepare("SELECT decisao_stf FROM est_lj_dispositivos WHERE diploma_id = 'lei-stf-teste' AND id = 'art-3'").get().decisao_stf, '');
+    assert.equal((await staff('diploma', { diploma: DIP_STF() })).json.inalterado, true, 'o mesmo conteúdo não regrava');
+    assert.ok(LJ.SITUACOES.includes('inconstitucional') && LJ.SITUACOES.includes('inconstitucional_apos_edital'));
+    // a API do aluno devolve a decisão — no dispositivo e na parte; sem decisão, sem a chave
+    const g = await ana.get('/legislacao/lei-stf-teste');
+    assert.equal(g.st, 200, g.texto);
+    const pd = Object.fromEntries(g.json.dispositivos.map(x => [x.id, x]));
+    assert.deepEqual([pd['art-1'].situacao, pd['art-1'].decisao_stf], ['inconstitucional', [DEC()]]);
+    assert.equal(pd['art-1'].texto, DIP_STF().dispositivos[0].texto, 'o texto do Planalto continua guardado e mostrado');
+    assert.deepEqual(pd['art-2'].partes.map(p => [p.id, p.situacao, (p.decisao_stf || []).map(z => z.tecnica)]),
+      [['art-2.p1', 'inconstitucional_apos_edital', ['inconstitucional']], ['art-2.p2', 'vigente', ['inconstitucional_parcial', 'execucao_suspensa']]]);
+    assert.equal(pd['art-2'].partes[1].decisao_stf[1].norma, 'Resolução do Senado Federal nº 10/2016');
+    assert.ok(!('decisao_stf' in pd['art-3']) && !('decisao_stf' in pd['art-2']));
+  });
+
+  await t('lei-juris · inconstitucional por PERCURSO (ADR-0015): com data própria, a data da 1ª decisão diz se, nela, já era inconstitucional', async () => {
+    const naData = async (dataRef) => {
+      db.prepare('UPDATE est_escopos SET data_referencia = ? WHERE id = ?').run(dataRef, eid());
+      const g = await ana.get('/legislacao/lei-stf-teste');
+      assert.equal(g.st, 200, g.texto);
+      const pd = Object.fromEntries(g.json.dispositivos.map(x => [x.id, x]));
+      return [pd['art-1'].situacao, pd['art-2'].partes[0].situacao, pd['art-2'].partes[1].situacao, pd['art-3'].situacao, !!(pd['art-1'].decisao_stf || []).length];
+    };
+    try {
+      assert.deepEqual(await naData(''), ['inconstitucional', 'inconstitucional_apos_edital', 'vigente', 'vigente', true], 'sem data própria: o acervo como está');
+      assert.deepEqual(await naData('2024-02-07'), ['inconstitucional', 'inconstitucional', 'vigente', 'vigente', true], 'corte de B (07/02/2024): a decisão de 13/06/2023 já existia');
+      assert.deepEqual(await naData('2020-01-01'), ['inconstitucional_apos_edital', 'inconstitucional_apos_edital', 'vigente', 'vigente', true], 'antes de 08/04/2021: vigorava; a decisão é posterior');
+    } finally { db.prepare("UPDATE est_escopos SET data_referencia = '' WHERE id = ?").run(eid()); }
+    const r = await staff('remover', { diplomas: ['lei-stf-teste'] });
+    assert.deepEqual([r.st, r.json.apagados_do_acervo], [200, 1]);
+  });
+
   await t('lei-juris: marcação de leitura — lido e grifo em duas cores, por dispositivo e por verbete; de quem marcou e de mais ninguém; desmarcar tudo apaga', async () => {
     let r = await ana.put('/lei-juris/marcas', { tipo: 'dispositivo', ref: 'clt-teste|art-2', lido: true, cor: 'amarelo' });
     assert.equal(r.st, 200, r.texto);
@@ -565,6 +637,34 @@ async function rodar({ t, req }) {
     assert.equal(ctx.trechoAchado('a \u0002<b>x</b>\u0003 c'), 'a <mark>&lt;b&gt;x&lt;/b&gt;</mark> c');
   });
 
+  await t('lei-juris · tela: declarado inconstitucional — selo vermelho "Declarado inconstitucional (STF)", a nota com o trecho da tese, o botão do verbete, a redação repristinada; parcial em âmbar; parte sem texto nunca em branco', async () => {
+    const ctx = { esc: (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
+      dataBR: (d) => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '' };
+    vm.createContext(ctx);
+    vm.runInContext(TELA.slice(TELA.indexOf('    var SIT_DISP = {'), TELA.indexOf('    var SIT_JURIS = {')), ctx);
+    for (const f of ['dataNorma', 'pelaNorma', 'situacaoDoDispositivo', 'tagDoDispositivo', 'decisaoDoDispositivo', 'botoesDeLeitura', 'linksDeAulas', 'htmlDispositivo']) vm.runInContext(funcaoDoFonte(TELA, f), ctx);
+    const dec = { verbete: 'stf-tema-1075', tecnica: 'inconstitucional', alcance: 'integral', data: '2021-04-08', efeito: 'repristina a redação original', texto_repristinado: 'Redação de 1985.', trecho: 'É inconstitucional a redação <b>' };
+    assert.ok(ctx.tagDoDispositivo('inconstitucional').includes('class="es-lj-tag rev">Declarado inconstitucional (STF)'), 'selo vermelho');
+    const h = ctx.htmlDispositivo({ id: 'lei-x', data_referencia_edital: '2023-01-05' }, { id: 'art-16', rotulo: 'Art. 16', texto: 'A sentença…', situacao: 'inconstitucional', decisao_stf: [dec],
+      partes: [{ id: 'art-16.p1', rotulo: '§ 1º', texto: '', situacao: 'inconstitucional', decisao_stf: [dec] },
+        { id: 'art-16.p2', rotulo: '§ 2º', texto: '.', situacao: 'vigente', nota: '(Declarado inconstitucional pela ADI 5766)' },
+        { id: 'art-16.p3', rotulo: '§ 3º', texto: 'Texto com a expressão.', situacao: 'vigente', decisao_stf: [{ verbete: 'stf-adi-5492', tecnica: 'inconstitucional_parcial', alcance: 'expressão "de banco oficial"', data: '2023-04-27', trecho: 'declarar inconstitucional a expressão' }] }] }, {}, {});
+    assert.ok(h.includes('Declarado inconstitucional (STF)</b> em 08/04/2021') && h.includes('Efeito: repristina a redação original'), h);
+    assert.ok(h.includes('<q class="es-lj-ed">É inconstitucional a redação &lt;b&gt;</q>'), 'o trecho da tese, escapado');
+    assert.ok(h.includes('Redação que volta a valer:</span> <q class="es-lj-ed">Redação de 1985.</q>'));
+    assert.ok(h.includes('data-lj-verb="stf-tema-1075"'), 'o link para o verbete usa o data-lj-verb que o ouvinte da tela já atende');
+    assert.ok(h.includes('<i>(Declarado inconstitucional (STF))</i>'), 'parte declarada sem texto');
+    assert.ok(h.includes('<b>§ 2º</b> <i>(texto não reproduzido na fonte oficial)</i>'), 'parte vigente sem texto (ou ".") não sai em branco');
+    assert.ok(/es-lj-sit alt es-lj-stf[^]*Declarado inconstitucional em parte \(STF\)<\/b> em 27\/04\/2023[^]*expressão &quot;de banco oficial&quot;/.test(h), 'parcial: âmbar, com o alcance');
+    // posterior à data de referência do percurso
+    const pos = ctx.decisaoDoDispositivo({ situacao: 'inconstitucional_apos_edital', decisao_stf: [{ ...dec, data: '2025-06-17', texto_repristinado: '' }] }, '2024-02-07', 'data de corte da objetiva');
+    assert.ok(pos.includes('posterior à data de corte da objetiva (07/02/2024): na data, o texto vigorava.') && !pos.includes('Redação que volta'), pos);
+    assert.ok(ctx.tagDoDispositivo('inconstitucional_apos_edital').includes('rev'));
+    assert.equal(ctx.decisaoDoDispositivo({ situacao: 'vigente' }, '2023-01-05'), '');
+    assert.ok(ctx.situacaoDoDispositivo({ situacao: 'inconstitucional' }, '2023-01-05').includes('Declarado inconstitucional (STF)'), 'sem decisão: o aviso seco');
+    assert.equal(ctx.situacaoDoDispositivo({ situacao: 'inconstitucional', decisao_stf: [dec] }, '2023-01-05'), '', 'com decisão: o aviso é o da decisão (não duplica)');
+  });
+
   // a parte da tela que pinta o verbete, executada num `vm` com o que ela usa do resto do arquivo
   function telaDoVerbete() {
     const ctx = { esc: (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
@@ -641,7 +741,7 @@ async function rodar({ t, req }) {
     assert.ok(/\.es-lj-resultados\{display:grid;grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,300px\),1fr\)\)/.test(CSS));
     assert.ok(/@media \(max-width:640px\)\{\n\s+\.es-lj-parte\.n1/.test(CSS), 'o recuo das partes encolhe no celular');
     const pg = ler('paginas.js');
-    assert.ok(/estude: 9,/.test(pg) && /V_FOLHAS = \{ aluno: 5, estude: 6 \}/.test(pg), 'estude.js?v=9 e estude.css?v=6');
+    assert.ok(/estude: 10,/.test(pg) && /V_FOLHAS = \{ aluno: 5, estude: 6 \}/.test(pg), 'estude.js?v=10 e estude.css?v=6');
   });
 }
 

@@ -1028,6 +1028,14 @@ const MIGRACOES = [
             PRIMARY KEY (escopo_id, verbete_id)
           );`,
   },
+  {
+    // DISPOSITIVO DECLARADO INCONSTITUCIONAL PELO STF (ADR-0014; varredura de 18/10/2026). `decisao_stf` é uma lista
+    // JSON ([{ verbete, tecnica, alcance, data, efeito, texto_repristinado?, modulacao?, norma?, trecho }]) — o
+    // dispositivo pode ter mais de uma decisão; nas PARTES ela vai dentro do JSON de `partes`. O texto do Planalto
+    // continua guardado: a decisão é um aviso sobre ele, não a troca dele.
+    nome: 'estudo-lei-juris-decisao-stf-2026-10-18',
+    sql: `ALTER TABLE est_lj_dispositivos ADD COLUMN decisao_stf TEXT DEFAULT '';`,
+  },
 ];
 
 // Cada migração é ATÔMICA: os comandos dela e o registro em `migrations` entram na mesma transação. Antes, um

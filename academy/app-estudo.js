@@ -4081,7 +4081,12 @@
       if (!x) return false;
       return qual === 'lei' ? !!x.legislacao : qual === 'juris' ? !!x.jurisprudencia : !!(x.legislacao || x.jurisprudencia);
     }
-    var SIT_DISP = { revogado: 'Revogado', vetado: 'Vetado', alterado_apos_edital: 'Alterado depois do edital', incluido_apos_edital: 'Incluído depois do edital', revogado_apos_edital: 'Revogado depois do edital' };
+    var SIT_DISP = { revogado: 'Revogado', vetado: 'Vetado', alterado_apos_edital: 'Alterado depois do edital', incluido_apos_edital: 'Incluído depois do edital', revogado_apos_edital: 'Revogado depois do edital',
+      inconstitucional: 'Declarado inconstitucional (STF)', inconstitucional_apos_edital: 'Declarado inconstitucional (STF) depois do edital' };
+    // a TÉCNICA da decisão do STF sobre o dispositivo (ADR-0014): só a declaração total muda a situação; as outras
+    // deixam o texto vigente e a leitura correta depende da decisão
+    var TEC_STF = { inconstitucional: 'Declarado inconstitucional', inconstitucional_parcial: 'Declarado inconstitucional em parte', sem_reducao: 'Inconstitucionalidade sem redução de texto',
+      interpretacao_conforme: 'Interpretação conforme a Constituição', nao_recepcao: 'Não recepcionado pela Constituição de 1988', execucao_suspensa: 'Execução suspensa pelo Senado Federal' };
     var SIT_JURIS = { vigente: 'Vigente', cancelado: 'Cancelado', convertido: 'Convertido', alterado: 'Alterado', superado: 'Superado', suspenso: 'Suspenso', revogado: 'Revogado',
       julgado: 'Julgado', merito_julgado: 'Mérito julgado', pendente: 'Pendente de julgamento', prejudicado: 'Prejudicado', encerrado: 'Encerrado', extinto: 'Extinto', sem_tese: 'Sem tese',
       incluido_apos_edital: 'Editado depois do edital', alterado_apos_edital: 'Alterado depois do edital', cancelado_apos_edital: 'Cancelado depois do edital', sem_informacao: 'Sem informação', inexistente: 'Não existia' };
@@ -4106,6 +4111,8 @@
       var sit = x.situacao, ap = x.alterado_por || null;
       if (!sit || sit === 'vigente') return '';
       if (sit === 'revogado' || sit === 'vetado') return '';
+      // o declarado inconstitucional tem o aviso na decisão (decisaoDoDispositivo); sem ela, o aviso seco
+      if (/^inconstitucional/.test(sit)) return x.decisao_stf && x.decisao_stf.length ? '' : '<p class="es-lj-sit rev" role="note"><b>' + esc(SIT_DISP[sit]) + '</b></p>';
       var quem = [ap ? dataNorma(ap.data) : '', ap ? pelaNorma(ap.norma) : ''].filter(Boolean).join(' ');
       var naRef = rotulo ? 'na ' + esc(rotulo) : 'na data do edital', depois = rotulo ? ' depois da ' + esc(rotulo) : ' depois do edital';
       var ed = x.texto_na_data_do_edital, naData = '';
@@ -4116,7 +4123,24 @@
       if (sit === 'revogado_apos_edital') return '<p class="es-lj-sit rev" role="note"><b>Revogado' + (quem ? ' ' + esc(quem) : depois) + '</b>' + (naData || ' — vigorava ' + naRef + '.') + '</p>';
       return '';
     }
-    function tagDoDispositivo(sit) { return sit && sit !== 'vigente' ? ' <span class="es-lj-tag ' + (/revogado|vetado/.test(sit) ? 'rev' : 'alt') + '">' + esc(SIT_DISP[sit] || sit) + '</span>' : ''; }
+    function tagDoDispositivo(sit) { return sit && sit !== 'vigente' ? ' <span class="es-lj-tag ' + (/revogado|vetado|inconstitucional/.test(sit) ? 'rev' : 'alt') + '">' + esc(SIT_DISP[sit] || sit) + '</span>' : ''; }
+    // A DECISÃO DO STF sobre o dispositivo ou a parte (ADR-0014): técnica, data (e se é posterior à data de referência
+    // do percurso), alcance, efeito, o trecho da tese, a modulação, a redação que volta a valer (repristinação) e o
+    // botão do verbete. Vermelho quando a situação é a declaração total; âmbar quando o texto continua valendo.
+    function decisaoDoDispositivo(x, dataRef, rotulo) {
+      var ds = x.decisao_stf || [];
+      if (!ds.length) return '';
+      var total = /^inconstitucional/.test(x.situacao || '');
+      return ds.map(function (d) {
+        var depois = dataRef && d.data && d.data > dataRef ? ' — <span>posterior à ' + (rotulo ? esc(rotulo) : 'data do edital') + ' (' + dataBR(dataRef) + '): na data, o texto vigorava.</span>' : '';
+        return '<div class="es-lj-sit ' + (total ? 'rev' : 'alt') + ' es-lj-stf" role="note"><p><b>' + esc(TEC_STF[d.tecnica] || d.tecnica) + ' (STF)</b>' + (d.data ? ' em ' + dataBR(d.data) : '') + depois +
+          (d.alcance ? ' <span class="al-fino">Alcance: ' + esc(d.alcance) + '.</span>' : '') + (d.efeito ? ' <span>Efeito: ' + esc(d.efeito) + '.</span>' : '') + '</p>' +
+          (d.trecho ? '<p><q class="es-lj-ed">' + esc(d.trecho) + '</q></p>' : '') +
+          (d.modulacao ? '<p><span>Modulação: ' + esc(d.modulacao) + '</span></p>' : '') +
+          (d.texto_repristinado ? '<p><span>Redação que volta a valer:</span> <q class="es-lj-ed">' + esc(d.texto_repristinado) + '</q></p>' : '') +
+          (d.verbete ? '<p><button type="button" class="es-link" data-lj-verb="' + esc(d.verbete) + '">Ver a decisão no acervo de jurisprudência →</button></p>' : d.norma ? '<p class="al-fino">' + esc(d.norma) + '</p>' : '') + '</div>';
+      }).join('');
+    }
     function botoesDeLeitura(m) {
       m = m || {};
       return '<span class="es-lj-marca"><button type="button" class="es-lj-bt' + (m.lido ? ' on' : '') + '" data-lj-lido aria-pressed="' + (m.lido ? 'true' : 'false') + '" title="Marcar como lido">✓ Lido</button>' +
@@ -4134,18 +4158,22 @@
       opc = opc || {};
       var ref = dip.id + '|' + x.id, m = (marcas || {})[ref] || {}, citadas = {};
       (x.citadas || []).forEach(function (p) { citadas[p] = 1; });
-      var vazio = function (o) { return !o.texto && /revogado|vetado/.test(o.situacao || ''); };
+      // sem texto (ou só "."): revogado, vetado, declarado inconstitucional — ou a fonte não reproduz o texto. Nunca em branco.
+      var vazio = function (o) { return /^[\s.]*$/.test(o.texto || ''); };
+      var rotuloVazio = function (o) { return SIT_DISP[o.situacao] || 'texto não reproduzido na fonte oficial'; };
       var partes = (x.partes || []).map(function (p) {
         var nivel = Math.max(0, String(p.id).slice(String(x.id).length + 1).split('.').length - 1);
         return '<p class="es-lj-parte n' + Math.min(nivel, 3) + ' sit-' + esc(p.situacao) + (citadas[p.id] ? ' citada' : '') + '"><b>' + esc(p.rotulo || p.caminho) + '</b> ' +
-          (vazio(p) ? '<i>(' + esc(SIT_DISP[p.situacao] || p.situacao) + ')</i>' : esc(p.texto) + tagDoDispositivo(/revogado|vetado/.test(p.situacao) ? p.situacao : '')) +
-          (p.nota ? ' <span class="es-lj-nota">' + esc(p.nota) + '</span>' : '') + '</p>' + situacaoDoDispositivo(p, dip.data_referencia_edital, dip.rotulo_data_referencia);
+          (vazio(p) ? '<i>(' + esc(rotuloVazio(p)) + ')</i>' : esc(p.texto) + tagDoDispositivo(/revogado|vetado|inconstitucional/.test(p.situacao) ? p.situacao : '')) +
+          (p.nota ? ' <span class="es-lj-nota">' + esc(p.nota) + '</span>' : '') + '</p>' + situacaoDoDispositivo(p, dip.data_referencia_edital, dip.rotulo_data_referencia) +
+          decisaoDoDispositivo(p, dip.data_referencia_edital, dip.rotulo_data_referencia);
       }).join('');
       var cls = 'es-lj-disp sit-' + esc(x.situacao) + (m.cor ? ' grifo-' + esc(m.cor) : '') + (m.lido ? ' lido' : '') + (opc.acervo && x.cobrado ? ' cobrado' : '');
       return '<article class="' + cls + '" id="lj-' + esc(dip.id) + '-' + esc(x.id) + '" data-lj-tipo="dispositivo" data-lj-ref="' + esc(ref) + '">' +
         (x.epigrafe ? '<p class="es-lj-epi">' + esc(x.epigrafe) + '</p>' : '') +
-        '<p class="es-lj-caput"><b class="es-lj-rot">' + esc(x.rotulo) + '</b> ' + (vazio(x) ? '<i>(' + esc(SIT_DISP[x.situacao] || x.situacao) + ')</i>' : esc(x.texto) + tagDoDispositivo(x.situacao)) +
-        (x.nota ? ' <span class="es-lj-nota">' + esc(x.nota) + '</span>' : '') + '</p>' + situacaoDoDispositivo(x, dip.data_referencia_edital, dip.rotulo_data_referencia) + partes +
+        '<p class="es-lj-caput"><b class="es-lj-rot">' + esc(x.rotulo) + '</b> ' + (vazio(x) ? (x.partes && x.partes.length && !SIT_DISP[x.situacao] ? '' : '<i>(' + esc(rotuloVazio(x)) + ')</i>') : esc(x.texto) + tagDoDispositivo(x.situacao)) +
+        (x.nota ? ' <span class="es-lj-nota">' + esc(x.nota) + '</span>' : '') + '</p>' + situacaoDoDispositivo(x, dip.data_referencia_edital, dip.rotulo_data_referencia) +
+        decisaoDoDispositivo(x, dip.data_referencia_edital, dip.rotulo_data_referencia) + partes +
         '<div class="es-lj-acoes">' + botoesDeLeitura(m) +
         (opc.acervo && x.cobrado ? '<span class="es-lj-cob" title="Itens do edital que cobram este dispositivo">Edital: ' + (x.itens || []).map(esc).join(', ') + '</span>' + linksDeAulas(x.aulas, opc.titulos) : '') +
         (opc.doItem ? '<button type="button" class="es-link" data-lj-dip="' + esc(dip.id + '~' + x.id) + '">Ver no diploma inteiro →</button>' : '') +

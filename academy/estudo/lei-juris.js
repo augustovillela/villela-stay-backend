@@ -36,8 +36,15 @@ const { erro } = R;
 const TIPOS_DIPLOMA = ['constituicao', 'codigo', 'lei', 'lei_complementar', 'decreto_lei', 'decreto', 'medida_provisoria', 'emenda', 'resolucao',
   'instrucao_normativa', 'portaria', 'norma_regulamentadora', 'tratado', 'outro'];
 const ABRANGENCIAS = ['integral', 'trechos'];
-const SITUACOES = ['vigente', 'revogado', 'vetado', 'alterado_apos_edital', 'incluido_apos_edital', 'revogado_apos_edital'];
-const APOS_EDITAL = ['alterado_apos_edital', 'incluido_apos_edital', 'revogado_apos_edital'];
+// `inconstitucional`: o STF declarou (ou não recepcionou, ou o Senado suspendeu) o dispositivo ou a parte INTEIRO antes
+// da data de referência do acervo; `inconstitucional_apos_edital`: a mesma coisa, depois dela (ADR-0014, varredura de
+// 18/10/2026). Declaração parcial, sem redução e interpretação conforme NÃO mudam a situação: ficam `vigente` com
+// `decisao_stf` preenchido. O texto do Planalto continua guardado e é mostrado com o selo.
+const SITUACOES = ['vigente', 'revogado', 'vetado', 'alterado_apos_edital', 'incluido_apos_edital', 'revogado_apos_edital', 'inconstitucional', 'inconstitucional_apos_edital'];
+const APOS_EDITAL = ['alterado_apos_edital', 'incluido_apos_edital', 'revogado_apos_edital', 'inconstitucional_apos_edital'];
+const INCONSTITUCIONAL = ['inconstitucional', 'inconstitucional_apos_edital'];
+const TECNICAS_STF = ['inconstitucional', 'inconstitucional_parcial', 'sem_reducao', 'interpretacao_conforme', 'nao_recepcao', 'execucao_suspensa'];
+const MAX_DECISOES = 12;
 // a situação do VERBETE (o contrato não fecha uma lista: esta é a da coleta J1–J3; nome novo entra aqui, de propósito)
 const SITUACOES_JURIS = ['vigente', 'cancelado', 'convertido', 'alterado', 'superado', 'suspenso', 'revogado', 'julgado', 'merito_julgado', 'pendente',
   'prejudicado', 'encerrado', 'extinto', 'sem_tese', 'incluido_apos_edital', 'alterado_apos_edital', 'cancelado_apos_edital', 'sem_informacao'];
@@ -119,6 +126,29 @@ function alteradoPor(v, campo, k) {
   if (d && !DATA_NORMA.test(d)) k.e(`${campo}.data: AAAA-MM-DD, AAAA-MM ou AAAA.`);
   return { norma, data: d };
 }
+// a decisão do STF sobre o dispositivo/parte (ADR-0014): lista; `verbete` OU `norma` (Resolução do Senado); `trecho`
+// copiado da tese/dispositivo. Verbete que não está no acervo de jurisprudência é AVISO (como o vínculo órfão), não erro.
+function decisaoStf(v, campo, k) {
+  if (v == null) return null;
+  if (!Array.isArray(v)) { k.e(`${campo}: deve ser lista de decisões ou null.`); return null; }
+  if (v.length > MAX_DECISOES) k.e(`${campo}: mais de ${MAX_DECISOES} decisões.`);
+  const out = v.slice(0, MAX_DECISOES).map((x, i) => {
+    const c = `${campo}[${i}]`;
+    if (!x || typeof x !== 'object' || Array.isArray(x)) { k.e(`${c}: objeto.`); return null; }
+    const o = { verbete: texto(x.verbete, 160, c + '.verbete', k), tecnica: texto(x.tecnica, 40, c + '.tecnica', k, { obrigatorio: true }),
+      alcance: texto(x.alcance, 600, c + '.alcance', k), data: data(x.data, c + '.data', k, { obrigatorio: true }), efeito: texto(x.efeito, 600, c + '.efeito', k),
+      trecho: texto(x.trecho, 1500, c + '.trecho', k, { obrigatorio: true }) };
+    if (o.verbete && !ID_VERBETE.test(o.verbete)) k.e(`${c}.verbete "${o.verbete}": id de verbete inválido.`);
+    if (o.tecnica && !TECNICAS_STF.includes(o.tecnica)) k.e(`${c}.tecnica "${o.tecnica}": deve ser ${TECNICAS_STF.join('|')}.`);
+    const tr = texto(x.texto_repristinado, LIMITE.textoParte, c + '.texto_repristinado', k), mod = texto(x.modulacao, 1500, c + '.modulacao', k), norma = texto(x.norma, 300, c + '.norma', k);
+    if (!o.verbete && !norma) k.e(`${c}: informe "verbete" ou "norma".`);
+    if (tr) o.texto_repristinado = tr;
+    if (mod) o.modulacao = mod;
+    if (norma) o.norma = norma;
+    return o;
+  }).filter(Boolean);
+  return out.length ? out : null;
+}
 // "Brasília, 1º de maio de 1943…" colado ao último artigo (o contrato pede que não venha)
 const ASSINATURA = /\bBras[ií]lia,\s+\d{1,2}[ºo°]?\s+de\s+[a-zç]+\s+de\s+\d{4}/i;
 
@@ -163,8 +193,11 @@ function validarDiploma(d) {
       situacao: sit, nota: texto(x.nota, 1500, c + '.nota', k), alterado_por: alteradoPor(x.alterado_por, c + '.alterado_por', k),
       texto_edital: x.texto_na_data_do_edital == null ? null : texto(x.texto_na_data_do_edital, LIMITE.texto, c + '.texto_na_data_do_edital', k),
       edital_indisponivel: x.texto_na_data_do_edital_indisponivel === true,
+      decisao_stf: decisaoStf(x.decisao_stf, c + '.decisao_stf', k),
     };
-    if (APOS_EDITAL.includes(sit) && !(disp.alterado_por && disp.alterado_por.data)) k.a(`${did}: situação "${sit}" sem a data da norma que alterou (alterado_por.data).`);
+    if (!disp.decisao_stf) delete disp.decisao_stf; // sem a chave: o hash do diploma sem decisão não muda com esta versão
+    if (INCONSTITUCIONAL.includes(sit) && !disp.decisao_stf) k.a(`${did}: situação "${sit}" sem decisao_stf (a tela não tem o que mostrar).`);
+    if (APOS_EDITAL.includes(sit) && !INCONSTITUCIONAL.includes(sit) && !(disp.alterado_por && disp.alterado_por.data)) k.a(`${did}: situação "${sit}" sem a data da norma que alterou (alterado_por.data).`);
     if (x.partes != null && !Array.isArray(x.partes)) k.e(`${c}.partes: deve ser lista.`);
     const ps = Array.isArray(x.partes) ? x.partes : [];
     if (ps.length > LIMITE.partes) k.e(`${c}.partes: ${ps.length} passa do teto de ${LIMITE.partes}.`);
@@ -177,10 +210,13 @@ function validarDiploma(d) {
       vistos.add(pid);
       const psit = texto(p.situacao, 30, cp + '.situacao', k, { obrigatorio: true });
       if (psit && !SITUACOES.includes(psit)) k.e(`${cp}.situacao "${psit}": deve ser ${SITUACOES.join('|')}.`);
+      const pdec = decisaoStf(p.decisao_stf, cp + '.decisao_stf', k);
+      if (INCONSTITUCIONAL.includes(psit) && !pdec) k.a(`${pid}: situação "${psit}" sem decisao_stf (a tela não tem o que mostrar).`);
       return { id: pid, caminho: texto(p.caminho, 300, cp + '.caminho', k), rotulo: texto(p.rotulo, 120, cp + '.rotulo', k), texto: texto(p.texto, LIMITE.textoParte, cp + '.texto', k),
         situacao: psit, nota: texto(p.nota, 1500, cp + '.nota', k), alterado_por: alteradoPor(p.alterado_por, cp + '.alterado_por', k),
         texto_na_data_do_edital: p.texto_na_data_do_edital == null ? null : texto(p.texto_na_data_do_edital, LIMITE.textoParte, cp + '.texto_na_data_do_edital', k),
-        ...(p.texto_na_data_do_edital_indisponivel === true ? { texto_na_data_do_edital_indisponivel: true } : {}) };
+        ...(p.texto_na_data_do_edital_indisponivel === true ? { texto_na_data_do_edital_indisponivel: true } : {}),
+        ...(pdec ? { decisao_stf: pdec } : {}) };
     }).filter(Boolean);
     return disp;
   }).filter(Boolean);
@@ -218,7 +254,15 @@ function ftsDoDispositivo(diploma, x) {
 function importarDiploma(produto, dados = {}) {
   const escopo = escopoDoCurso(produto, dados.escopo);
   const { d, avisos } = validarDiploma(dados.diploma);
-  const alterados = d.dispositivos.filter(x => APOS_EDITAL.includes(x.situacao) || x.partes.some(p => APOS_EDITAL.includes(p.situacao))).length;
+  const mudouDepois = (sit) => APOS_EDITAL.includes(sit) && !INCONSTITUCIONAL.includes(sit);
+  const alterados = d.dispositivos.filter(x => mudouDepois(x.situacao) || x.partes.some(p => mudouDepois(p.situacao))).length;
+  // dispositivos/partes com decisão do STF: os declarados (situação) e os que só têm a decisão (parcial, conforme)
+  const comDecisao = [].concat(...d.dispositivos.map(x => [x].concat(x.partes))).filter(x => x.decisao_stf);
+  const inconstitucionais = comDecisao.filter(x => INCONSTITUCIONAL.includes(x.situacao)).length;
+  // o verbete citado na decisão tem de estar no acervo de jurisprudência — senão é aviso (o botão da tela não abre nada)
+  const temVerbete = db.prepare('SELECT 1 FROM est_lj_verbetes WHERE id = ?');
+  const semVerbete = [...new Set([].concat(...comDecisao.map(x => x.decisao_stf.map(z => z.verbete).filter(Boolean))))].filter(v => !temVerbete.get(v));
+  if (semVerbete.length) avisos.push(`decisao_stf: ${semVerbete.length} verbete(s) fora do acervo de jurisprudência: ${semVerbete.slice(0, 20).join(', ')}.`);
   const artigos = d.dispositivos.length;
   const hash = hashDe({ indice: VERSAO_INDICE, d });
   const porSituacao = {};
@@ -238,11 +282,12 @@ function importarDiploma(produto, dados = {}) {
         fonte_url = excluded.fonte_url, consultado_em = excluded.consultado_em, data_edital = excluded.data_edital, estrutura = excluded.estrutura,
         artigos = excluded.artigos, alterados = excluded.alterados, hash = excluded.hash, importado_em = excluded.importado_em`)
       .run(d.id, d.nome, d.norma, d.sigla, d.tipo, d.abrangencia, d.fonte_url, d.consultado_em, d.data_edital, j.str(d.estrutura), artigos, alterados, hash, nowISO());
-    const ins = db.prepare(`INSERT INTO est_lj_dispositivos (diploma_id, id, ordem, rotulo, estrutura, epigrafe, texto, partes, situacao, nota, alterado_por, texto_edital, edital_indisponivel)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    const ins = db.prepare(`INSERT INTO est_lj_dispositivos (diploma_id, id, ordem, rotulo, estrutura, epigrafe, texto, partes, situacao, nota, alterado_por, texto_edital, edital_indisponivel, decisao_stf)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     const fts = FTS ? db.prepare('INSERT INTO est_lj_fts_lei (rowid, titulo, texto) VALUES (?, ?, ?)') : null;
     for (const x of d.dispositivos) {
-      const rr = ins.run(d.id, x.id, x.ordem, x.rotulo, x.estrutura, x.epigrafe, x.texto, j.str(x.partes), x.situacao, x.nota, x.alterado_por ? j.str(x.alterado_por) : '', x.texto_edital, x.edital_indisponivel ? 1 : 0);
+      const rr = ins.run(d.id, x.id, x.ordem, x.rotulo, x.estrutura, x.epigrafe, x.texto, j.str(x.partes), x.situacao, x.nota, x.alterado_por ? j.str(x.alterado_por) : '', x.texto_edital, x.edital_indisponivel ? 1 : 0,
+        x.decisao_stf ? j.str(x.decisao_stf) : '');
       if (fts) fts.run(Number(rr.lastInsertRowid), ...ftsDoDispositivo(d, x));
     }
     return { inalterado: false, substituiu: !!antes, ligado_agora: ligar() };
@@ -251,7 +296,7 @@ function importarDiploma(produto, dados = {}) {
   const orfaos = db.prepare(`SELECT v.escopo_id, v.item, v.dispositivo_id FROM est_lj_vinculos v LEFT JOIN est_lj_dispositivos d ON d.diploma_id = v.diploma_id AND d.id = v.dispositivo_id
     WHERE v.tipo = 'lei' AND v.diploma_id = ? AND d.id IS NULL`).all(d.id);
   return { diploma: d.id, escopo: escopo.slug, ...r, dispositivos: artigos, partes: d.dispositivos.reduce((n, x) => n + x.partes.length, 0),
-    alterados_apos_edital: alterados, por_situacao: porSituacao, vinculos_orfaos: orfaos.length, vinculos_orfaos_exemplos: orfaos.slice(0, 20), avisos, busca: FTS ? 'fts5' : 'like' };
+    alterados_apos_edital: alterados, declarados_inconstitucionais: inconstitucionais, com_decisao_stf: comDecisao.length, por_situacao: porSituacao, vinculos_orfaos: orfaos.length, vinculos_orfaos_exemplos: orfaos.slice(0, 20), avisos, busca: FTS ? 'fts5' : 'like' };
 }
 
 // ---------------------------------------------------------------------
@@ -673,6 +718,12 @@ function ajusteDoDiploma(c, d) {
   return (o) => {
     const r = proprios.get(o.id);
     if (r) return { situacao: r.situacao, texto_na_data_do_edital: r.texto == null ? null : r.texto, edital_indisponivel: false, nota_na_data_de_referencia: r.nota || '' };
+    // declarado inconstitucional: o TEXTO não muda com a data — só se, nela, a decisão já existia (a data da 1ª decisão
+    // da lista). Antes dela, `inconstitucional_apos_edital` (vigia na data; a tela mostra a decisão como posterior).
+    if (INCONSTITUCIONAL.includes(o.situacao)) {
+      const dd = (Array.isArray(o.decisao_stf) && o.decisao_stf[0] && o.decisao_stf[0].data) || '';
+      return { situacao: DATA.test(dd) ? (dd <= ref.data ? 'inconstitucional' : 'inconstitucional_apos_edital') : o.situacao, texto_na_data_do_edital: null, edital_indisponivel: false };
+    }
     if (!APOS_EDITAL.includes(o.situacao)) return { situacao: o.situacao, texto_na_data_do_edital: null, edital_indisponivel: false };
     const dt = (o.alterado_por && o.alterado_por.data) || '';
     if (DATA.test(dt) && dt <= ref.data && ref.data >= dataAcervo) return { situacao: o.situacao === 'revogado_apos_edital' ? 'revogado' : 'vigente', texto_na_data_do_edital: null, edital_indisponivel: false };
@@ -685,8 +736,12 @@ function situacaoNaReferencia(c, diplomaId, id, situacao) {
   const d = db.prepare('SELECT id, data_edital FROM est_lj_diplomas WHERE id = ?').get(diplomaId);
   const aj = d && ajusteDoDiploma(c, d);
   if (!aj) return situacao;
-  const x = db.prepare('SELECT alterado_por FROM est_lj_dispositivos WHERE diploma_id = ? AND id = ?').get(diplomaId, id);
-  return aj({ id, situacao, alterado_por: x ? j.parse(x.alterado_por, null) : null }).situacao;
+  const x = db.prepare('SELECT alterado_por, decisao_stf FROM est_lj_dispositivos WHERE diploma_id = ? AND id = ?').get(diplomaId, id);
+  if (x) return aj({ id, situacao, alterado_por: j.parse(x.alterado_por, null), decisao_stf: j.parse(x.decisao_stf, null) }).situacao;
+  // uma PARTE (art-28.p2): os campos dela moram no JSON de partes do dispositivo
+  const pai = db.prepare('SELECT partes FROM est_lj_dispositivos WHERE diploma_id = ? AND id = ?').get(diplomaId, String(id).split('.')[0]);
+  const p = pai ? (j.parse(pai.partes, []) || []).find(z => z.id === id) : null;
+  return aj({ id, situacao, alterado_por: p ? p.alterado_por || null : null, decisao_stf: p ? p.decisao_stf || null : null }).situacao;
 }
 // o verbete na data do percurso: os campos "na data do edital" de `camposDoEdital`, refeitos para ela
 function ajusteDoVerbete(c, v) {
@@ -734,11 +789,13 @@ function dispositivoPublico(x, aj = null) {
   const o = { id: x.id, rotulo: rotuloCompleto(x.id, x.rotulo), ...(parte ? { parte_do_diploma: parte } : {}), ordem: x.ordem, estrutura: estruturaLimpa(x.estrutura), epigrafe: x.epigrafe, texto: x.texto, situacao: x.situacao, nota: x.nota,
     alterado_por: j.parse(x.alterado_por, null), texto_na_data_do_edital: x.texto_edital == null ? null : x.texto_edital, edital_indisponivel: !!x.edital_indisponivel,
     partes: j.parse(x.partes, []) };
+  const dec = j.parse(x.decisao_stf, null);
+  if (Array.isArray(dec) && dec.length) o.decisao_stf = dec;
   if (!aj) return o;
   // a data do percurso não é a do acervo (ADR-0015): situação e redação "na data" refeitas — o dispositivo e cada parte
-  Object.assign(o, aj({ id: o.id, situacao: o.situacao, alterado_por: o.alterado_por }));
+  Object.assign(o, aj({ id: o.id, situacao: o.situacao, alterado_por: o.alterado_por, decisao_stf: o.decisao_stf || null }));
   o.partes = o.partes.map(p => {
-    const z = aj({ id: p.id, situacao: p.situacao, alterado_por: p.alterado_por || null });
+    const z = aj({ id: p.id, situacao: p.situacao, alterado_por: p.alterado_por || null, decisao_stf: p.decisao_stf || null });
     const { texto_na_data_do_edital_indisponivel, ...resto } = p;
     return { ...resto, situacao: z.situacao, texto_na_data_do_edital: z.texto_na_data_do_edital, ...(z.edital_indisponivel ? { texto_na_data_do_edital_indisponivel: true } : {}),
       ...(z.nota_na_data_de_referencia ? { nota_na_data_de_referencia: z.nota_na_data_de_referencia } : {}) };
