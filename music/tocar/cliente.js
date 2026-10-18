@@ -16,7 +16,7 @@
   var media = null, mediaUrl = null, mediaStarting = false, raf = null, nodes = [], generation = 0, dailySessions = 0;
   var referenceWallUntil = 0, outputWallUntil = 0;
   var sampler = null, samplerContext = null, samplerBank = null, soundLoading = false, scheduledSoundUntil = 0;
-  var backingPackage = null, backingNext = Object.create(null);
+  var backingPackage = null, backingNext = Object.create(null), backingPrepared = Object.create(null);
   var state = { mode: 'idle', running: false, position: 0, origin: 0, start: 0, speed: 1,
     from: 0, to: chart.duration, loop: false, judge: null, lastFrame: null, offset: 0,
     nextNote: 0, nextBeat: 0, countInFirstBeat: null, saved: false, connected: false, connecting: false, calibration: null, endedAt: null,
@@ -267,6 +267,16 @@
     osc.connect(gain); gain.connect(ctx.destination); osc.start(when); osc.stop(when + duration + 0.03); nodes.push(osc);
     osc.onended = function () { osc.disconnect(); gain.disconnect(); var i = nodes.indexOf(osc); if (i >= 0) nodes.splice(i, 1); };
   }
+  async function prepareBacking() {
+    if (!backingPackage) return;
+    var engine = soundEngine();
+    var tracks = (backingPackage.tracks || []).filter(function (track) { return track.instrument !== 'violao' && !backingPrepared[track.instrument]; });
+    for (var i = 0; i < tracks.length; i++) {
+      var track = tracks[i];
+      await engine.preparar(track.instrument, (track.events || []).map(function (event) { return { midi: event.midi }; }));
+      backingPrepared[track.instrument] = true;
+    }
+  }
   function scheduleBacking(position, until) {
     if (!backingPackage || state.mode === 'learn') return;
     (backingPackage.tracks || []).forEach(function (track) {
@@ -278,9 +288,15 @@
         if (t >= state.from && t < state.to && t >= position - 0.02) {
           var midi = Number(e.midi), dur = Math.max(0.04, Number(e.durationMs || 80) / 1000 / state.speed);
           var volume = track.instrument === 'bateria' ? 0.055 : track.instrument === 'piano' ? 0.035 : 0.045;
-          var shape = track.instrument === 'bateria' ? 'square' : track.instrument === 'piano' ? 'sine' : 'triangle';
           var at = ctx.currentTime + Math.max(0.005, (t - position) / state.speed);
-          tone(midi, at, dur, volume, shape);
+          if (backingPrepared[track.instrument] && sampler) {
+            var voice = sampler.tocar(track.instrument, { midi: midi, when: at, duration: dur, velocity: e.velocity || 96 });
+            if (voice && Number.isFinite(voice.endTime)) scheduledSoundUntil = Math.max(scheduledSoundUntil, voice.endTime);
+            outputWallUntil = Math.max(outputWallUntil, performance.now() / 1000 + Math.max(0, at - ctx.currentTime) + dur + 0.35);
+          } else {
+            var shape = track.instrument === 'bateria' ? 'square' : track.instrument === 'piano' ? 'sine' : 'triangle';
+            tone(midi, at, dur, volume, shape);
+          }
         }
       }
       backingNext[key] = index;
@@ -393,6 +409,10 @@
       if (mode === 'learn' || ((!media || (mode !== 'demo' && !$('tj-backing').checked)) && (mode === 'demo' || $('tj-guide').checked))) {
         msg('Preparando o som de ' + nomeInstrumento(state.instrument).toLowerCase() + '…');
         await soundEngine().preparar(state.instrument, chart.notes);
+      }
+      if (backingPackage && mode !== 'learn' && $('tj-backing').checked && !media) {
+        msg('Preparando os sons do acompanhamento…');
+        await prepareBacking();
       }
       if (attempt !== generation) return;
       soundLoading = false;
@@ -513,6 +533,7 @@
   function chooseChart(c, origin) {
     ++chartTicket; ++remoteTicket; chartLoading = false; remoteLoading=false; remoteAudio = null;
     if (!origin || origin.kind !== 'multitrack') backingPackage = null;
+    backingPrepared = Object.create(null);
     resetMedia(); applyChart(c, origin);
   }
   function renderStudies() {
