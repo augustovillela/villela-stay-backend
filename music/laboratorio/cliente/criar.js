@@ -192,8 +192,11 @@
     var tabela = el('div', { class: 'lab-grade-passos', role: 'grid', 'aria-label': 'Grade de passos' });
     var mapa = el('div', { class: 'lab-bateria-pads', role: 'group', 'aria-label': 'Mapa da bateria' });
     var info = el('p', { class: 'lab-info', 'aria-live': 'polite' });
+    var teclas = { a: 'bumbo', s: 'caixa', d: 'chimbal', f: 'tom', g: 'crash', h: 'ride', j: 'aberto', k: 'ganza' };
+    function tocarPad(id, vel) { if (C.Som.bateria[id]) C.Som.bateria[id](C.Som.audio().currentTime + 0.01, vel || 0.9); }
     var posicoes = { crash: 'crash', ride: 'ride', chimbal: 'chimbal', caixa: 'caixa', aro: 'aro', palma: 'palma', bumbo: 'bumbo', tom: 'tom', aberto: 'aberto', agogo: 'agogo', ganza: 'ganza' };
-    FAIXAS.concat([{ id: 'crash', nome: 'Crash' }, { id: 'ride', nome: 'Ride' }]).forEach(function (fx) { mapa.appendChild(el('button', { type: 'button', class: 'lab-bateria-pad lab-bateria-' + (posicoes[fx.id] || fx.id), txt: fx.nome, 'aria-label': 'Tocar ' + fx.nome, onclick: function () { C.Som.bateria[fx.id](C.Som.audio().currentTime + 0.01, 0.9); } })); });
+    FAIXAS.concat([{ id: 'crash', nome: 'Crash' }, { id: 'ride', nome: 'Ride' }]).forEach(function (fx) { mapa.appendChild(el('button', { type: 'button', class: 'lab-bateria-pad lab-bateria-' + (posicoes[fx.id] || fx.id), txt: fx.nome, 'aria-label': 'Tocar ' + fx.nome, onclick: function () { tocarPad(fx.id); } })); });
+    d.addEventListener('keydown', function (e) { if (e.repeat || (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) return; var id = teclas[e.key.toLowerCase()]; if (id) { e.preventDefault(); tocarPad(id, 0.9); } });
     function guardar() { C.guardar('batidas2', { grade: grade, passos: passos, porTempo: porTempo, nome: nomePadrao }); }
     function tem(f, i) { return grade[f].indexOf(i) >= 0; }
     function pintar() {
@@ -265,7 +268,7 @@
     alvo.appendChild(info);
     alvo.appendChild(mapa);
     alvo.appendChild(tabela);
-    alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada linha é um som; cada coluna, um passo. Os padrões prontos são referências simplificadas de cada estilo (cada um tem muitas variações regionais), não transcrições de gravação. O MIDI exportado usa o canal 10 (percussão).' }));
+    alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada linha é um som; cada coluna, um passo. Nos pads, use A bumbo · S caixa · D chimbal · F tom · G crash · H ride · J chimbal aberto · K ganzá. Os padrões prontos são referências simplificadas de cada estilo (cada um tem muitas variações regionais), não transcrições de gravação. O MIDI exportado usa o canal 10 (percussão).' }));
     pintar();
   };
 
