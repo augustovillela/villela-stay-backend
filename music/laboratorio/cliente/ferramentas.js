@@ -502,6 +502,21 @@
     render();
   };
 
+  F['policordes'] = function (alvo, st) {
+    st.a1 = st.a1 || 'C'; st.a2 = st.a2 || 'D';
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo);
+      var i1 = el('input', { type: 'text', value: st.a1, placeholder: 'C' }); i1.value = st.a1;
+      var i2 = el('input', { type: 'text', value: st.a2, placeholder: 'D' }); i2.value = st.a2;
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo' }, [el('span', { txt: 'Acorde inferior' }), i1]), el('span', { class: 'lab-policorde-sinal', txt: '+' }), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Acorde superior' }), i2]), el('button', { type: 'button', class: 'btn', txt: 'Combinar', onclick: function () { st.a1 = i1.value; st.a2 = i2.value; render(); } })]));
+      var a = A.ler(st.a1), b = A.ler(st.a2); if (!a || !b) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite dois acordes válidos, por exemplo C e D.' })); return; }
+      var baixo = A.notas(naOitava(a.fundamental, 3), a.id) || [], alto = A.notas(naOitava(b.fundamental, 4), b.id) || [], todos = baixo.concat(alto), pcs = todos.map(N.pc).filter(function (p, i, x) { return x.indexOf(p) === i; }), nomes = A.identificar(todos).slice(0, 6);
+      alvo.appendChild(el('div', { class: 'lab-policorde-pilhas' }, [el('div', { class: 'lab-super-card' }, [el('h3', { txt: A.simbolo(a.fundamental, a.id) }), el('p', { txt: baixo.map(rot).join(' · ') })]), el('div', { class: 'lab-policorde-sinal', txt: '+' }), el('div', { class: 'lab-super-card' }, [el('h3', { txt: A.simbolo(b.fundamental, b.id) }), el('p', { txt: alto.map(rot).join(' · ') })])]));
+      alvo.appendChild(el('div', { class: 'lab-resultado' }, [el('p', { txt: 'Conjunto combinado: ' + pcs.map(function (p) { return rot(N.deClasse(p)); }).join(' · ') }), el('p', { txt: nomes.length ? 'Possíveis leituras: ' + nomes.map(function (x) { return x.simbolo; }).join(', ') : 'O conjunto é tratado como policorde, sem uma leitura única no catálogo.' }), el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir policorde', onclick: function () { C.Som.tocar(todos.map(N.midi), { modo: 'harmonico', dur: 1.8 }); } })]));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------
