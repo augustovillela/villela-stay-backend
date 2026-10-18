@@ -580,6 +580,19 @@
     render();
   };
 
+  F['harmonizador-de-melodia'] = function (alvo, st) {
+    st.tonica = st.tonica || 'do'; st.modo = st.modo || 'maior'; st.notasTexto = st.notasTexto || 'C, D, E, G';
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo); var inp = el('textarea', { rows: 2, class: 'lab-textarea' }); inp.value = st.notasTexto;
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selTonica(st.tonica, function (v) { st.tonica = v; render(); }), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Modo' }), (function () { var s = el('select', {}, ['maior', 'menor'].map(function (x) { return el('option', { value: x, txt: x }); })); s.value = st.modo; s.onchange = function () { st.modo = s.value; render(); }; return s; })()]), el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Notas da melodia' }), inp]), el('button', { type: 'button', class: 'btn', txt: 'Harmonizar', onclick: function () { st.notasTexto = inp.value; render(); } })]));
+      var mel = st.notasTexto.split(/[;,\s]+/).map(function (x) { return N.ler(x.trim()); }).filter(Boolean), campo = T.campo(tonicaDe(st), st.modo) || [];
+      if (!mel.length) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite notas separadas por vírgulas.' })); return; }
+      var linhas = mel.map(function (n) { var cand = campo.filter(function (g) { return g.notas.map(N.pc).indexOf(N.pc(n)) >= 0; }); return el('div', { class: 'lab-harm-linha' }, [el('strong', { txt: rot(n) }), el('span', { txt: '→' })].concat(cand.map(function (g) { return el('button', { type: 'button', class: 'lab-chip-botao', txt: g.simbolo, title: g.funcao_nome, onclick: function () { C.Som.tocar((A.notas(naOitava(g.fundamental, 3), g.acorde) || []).map(N.midi), { modo: 'harmonico' }); } }); }))); });
+      alvo.appendChild(el('div', { class: 'lab-harm-linhas' }, linhas)); alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada linha mostra os acordes do campo harmônico que contêm a nota da melodia. Escolha pelo contexto, baixo e movimento entre acordes.' }));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------

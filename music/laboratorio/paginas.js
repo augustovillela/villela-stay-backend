@@ -338,6 +338,7 @@ function relacionados(slug) {
     'metronomo-distorcido': ['/music/criar/metronomo-progressivo', '/music/criar/batidas', '/music/referencia/ritmo-e-groove'],
     'atlas-escalas': ['/music/explorar/comparar-modos', '/music/explorar/braco', '/music/referencia/formulas-de-escalas'],
     'arranjo-quatro-vozes': ['/music/criar/editor-de-progressao', '/music/criar/mapa-harmonia', '/music/aprender/contraponto'],
+    'harmonizador-de-melodia': ['/music/criar/arranjo-quatro-vozes', '/music/criar/editor-de-progressao', '/music/referencia/graus-e-funcoes'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
