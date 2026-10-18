@@ -48,6 +48,7 @@ const JS = `
         c.appendChild(el('h2', { txt: '\u{1F4DA} Minha biblioteca' }));
         c.appendChild(el('p', { class: 'sub', txt:
           'O que está aqui é seu e fica privado. Busque pelo título, pelo compositor, por etiqueta - ou por um trecho da LETRA.' }));
+        inserirPainelVocal(c, '');
 
         // busca
         var busca = el('input', { type: 'search', placeholder: 'Buscar (ex.: "o sol na janela")', value: f.q || '' });
@@ -157,6 +158,7 @@ const JS = `
       c.appendChild(el('button', { class: 'btn sec peq', txt: '< Biblioteca', onclick: function () { verBiblioteca(); } }));
       c.appendChild(el('h2', { txt: d.obra.titulo }));
       if (d.obra.compositor) c.appendChild(el('p', { class: 'sub', txt: d.obra.compositor }));
+      inserirPainelVocal(c, '');
 
       if (!d.arranjos.length) {
         c.appendChild(el('p', { class: 'vazio', txt: 'Nenhum arranjo ainda.' }));
@@ -202,6 +204,16 @@ const JS = `
       c.appendChild(escola);
       blocoEscola(escola, d.obra);
     }).catch(function (e) { erro(e.message); });
+  }
+
+  function inserirPainelVocal(container, cifraId) {
+    var C = window.MusiqueCifras;
+    if (!C || !C.Voz) return;
+    var area = el('div', { class: 'cf-voz-area' });
+    container.appendChild(area);
+    fetch('/music/api/cifras/perfil-vocal').then(function (r) { return r.json(); }).then(function (d) {
+      area.appendChild(C.Voz.painel(cifraId || '', d.perfil));
+    }).catch(function () { area.appendChild(C.Voz.painel(cifraId || '', null)); });
   }
 
   // ---- compartilhar com a escola (Fase 3) ----
