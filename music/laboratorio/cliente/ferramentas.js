@@ -319,8 +319,10 @@
       C.gravarUrl(st); C.limpar(alvo);
       var entrada = el('textarea', { rows: 2, class: 'lab-textarea', value: st.texto, 'aria-label': 'Sequência de acordes' });
       entrada.value = st.texto;
+       var arquivo = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar mapa JSON' }); arquivo.onchange = function () { var f = arquivo.files && arquivo.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); var lista = Array.isArray(j.acordes) ? j.acordes : (Array.isArray(j.progressao) ? j.progressao : []); if (!lista.length) throw new Error('O JSON não contém uma progressão.'); st.texto = lista.map(String).join(', '); render(); C.aviso('Progressão importada no mapa.'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
       alvo.appendChild(el('div', { class: 'lab-controles' }, [
         el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Acordes (separe por vírgulas)' }), entrada]),
+         el('label', { class: 'lab-campo' }, [el('span', { txt: 'Importar JSON' }), arquivo]),
         el('button', { type: 'button', class: 'btn', txt: 'Atualizar mapa', onclick: function () { st.texto = entrada.value; render(); } }),
         el('button', { type: 'button', class: 'btn sec', txt: '▶ Ouvir sequência', onclick: function () { lerAcordes().forEach(function (a, i) { C.Som.tocar((A.notas(naOitava(a.fundamental, 3), a.id) || []).map(N.midi), { modo: 'harmonico', dur: 0.7, quando: i * 0.8 }); }); } })
       ]));
