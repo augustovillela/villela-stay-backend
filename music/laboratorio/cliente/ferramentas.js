@@ -588,7 +588,9 @@
       var mel = st.notasTexto.split(/[;,\s]+/).map(function (x) { return N.ler(x.trim()); }).filter(Boolean), campo = T.campo(tonicaDe(st), st.modo) || [];
       if (!mel.length) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite notas separadas por vírgulas.' })); return; }
       var linhas = mel.map(function (n) { var cand = campo.filter(function (g) { return g.notas.map(N.pc).indexOf(N.pc(n)) >= 0; }); return el('div', { class: 'lab-harm-linha' }, [el('strong', { txt: rot(n) }), el('span', { txt: '→' })].concat(cand.map(function (g) { return el('button', { type: 'button', class: 'lab-chip-botao', txt: g.simbolo, title: g.funcao_nome, onclick: function () { C.Som.tocar((A.notas(naOitava(g.fundamental, 3), g.acorde) || []).map(N.midi), { modo: 'harmonico' }); } }); }))); });
-      alvo.appendChild(el('div', { class: 'lab-harm-linhas' }, linhas)); alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada linha mostra os acordes do campo harmônico que contêm a nota da melodia. Escolha pelo contexto, baixo e movimento entre acordes.' }));
+      alvo.appendChild(el('div', { class: 'lab-harm-linhas' }, linhas));
+      alvo.appendChild(el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar melodia MIDI', onclick: function () { if (!C.midiArquivo) return; var ev = mel.map(function (n, i) { return { t: i * 4, dur: 4, midi: N.midi(n), vel: 82 }; }); C.baixar('melodia-musique.mid', 'audio/midi', C.midiArquivo(ev, 80, 4)); } }));
+      alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada linha mostra os acordes do campo harmônico que contêm a nota da melodia. Escolha pelo contexto, baixo e movimento entre acordes.' }));
     }
     render();
   };
