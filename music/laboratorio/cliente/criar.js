@@ -186,7 +186,10 @@
     FAIXAS.forEach(function (f) { if (!grade[f.id]) grade[f.id] = []; });
     var bpm = st.bpm || 100, swing = 0, ag = null;
     var tabela = el('div', { class: 'lab-grade-passos', role: 'grid', 'aria-label': 'Grade de passos' });
+    var mapa = el('div', { class: 'lab-bateria-pads', role: 'group', 'aria-label': 'Mapa da bateria' });
     var info = el('p', { class: 'lab-info', 'aria-live': 'polite' });
+    var posicoes = { crash: 'crash', ride: 'ride', chimbal: 'chimbal', caixa: 'caixa', aro: 'aro', palma: 'palma', bumbo: 'bumbo', tom: 'tom', aberto: 'aberto', agogo: 'agogo', ganza: 'ganza' };
+    FAIXAS.concat([{ id: 'crash', nome: 'Crash' }, { id: 'ride', nome: 'Ride' }]).forEach(function (fx) { mapa.appendChild(el('button', { type: 'button', class: 'lab-bateria-pad lab-bateria-' + (posicoes[fx.id] || fx.id), txt: fx.nome, 'aria-label': 'Tocar ' + fx.nome, onclick: function () { C.Som.bateria[fx.id](C.Som.audio().currentTime + 0.01, 0.9); } })); });
     function guardar() { C.guardar('batidas2', { grade: grade, passos: passos, porTempo: porTempo, nome: nomePadrao }); }
     function tem(f, i) { return grade[f].indexOf(i) >= 0; }
     function pintar() {
@@ -239,6 +242,7 @@
         exportar(st, 'musique-batida.mid', 'audio/midi', midiArquivo(ev, bpm, porTempo));
       } })]));
     alvo.appendChild(info);
+    alvo.appendChild(mapa);
     alvo.appendChild(tabela);
     alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada linha é um som; cada coluna, um passo. Os padrões prontos são referências simplificadas de cada estilo (cada um tem muitas variações regionais), não transcrições de gravação. O MIDI exportado usa o canal 10 (percussão).' }));
     pintar();
