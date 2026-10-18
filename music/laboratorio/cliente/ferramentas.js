@@ -563,6 +563,23 @@
     render();
   };
 
+  F['arranjo-quatro-vozes'] = function (alvo, st) {
+    st.texto = st.texto || 'C, Am, F, G';
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo); var inp = el('textarea', { rows: 2, class: 'lab-textarea' }); inp.value = st.texto;
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Progressão' }), inp]), el('button', { type: 'button', class: 'btn', txt: 'Gerar arranjo', onclick: function () { st.texto = inp.value; render(); } })]));
+      var acs = st.texto.split(/[;,\n]+/).map(function (x) { return A.ler(x.trim()); }).filter(Boolean).slice(0, 12), anterior = null, vozes = [];
+      acs.forEach(function (a) { var c = A.conduzir(anterior, a.fundamental, a.id), ns = c ? c.notas.slice() : (A.notas(naOitava(a.fundamental, 4), a.id) || []).slice(); ns.sort(function (x, y) { return N.midi(x) - N.midi(y); }); while (ns.length < 3) ns.push(ns[ns.length - 1] || naOitava(a.fundamental, 4)); vozes.push({ a: a, ns: ns.slice(-3), baixo: N.comOitava(a.baixo || a.fundamental, 2) }); anterior = ns; });
+      if (!vozes.length) return;
+      var cab = [el('th', { scope: 'col', txt: 'Voz' })].concat(vozes.map(function (v) { return el('th', { scope: 'col', txt: A.simbolo(v.a.fundamental, v.a.id) }); }));
+      var rows = ['Soprano', 'Alto', 'Tenor', 'Baixo'].map(function (nome, i) { return el('tr', {}, [el('th', { scope: 'row', txt: nome })].concat(vozes.map(function (v) { var n = i === 3 ? v.baixo : v.ns[Math.min(i, v.ns.length - 1)]; return el('td', { txt: rot(n) }); }))); });
+      alvo.appendChild(el('table', { class: 'lab-tabela' }, [el('thead', {}, [el('tr', {}, cab)]), el('tbody', {}, rows)]));
+      alvo.appendChild(el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir arranjo', onclick: function () { var dur = 1.1; vozes.forEach(function (v, i) { var ns = v.ns.concat([v.baixo]); setTimeout(function () { C.Som.tocar(ns.map(N.midi), { modo: 'harmonico', dur: dur * 0.95 }); }, i * dur * 1000); }); } }));
+      alvo.appendChild(el('p', { class: 'lab-dica', txt: 'As três vozes superiores são conduzidas pelo menor movimento disponível; o baixo marca a fundamental ou inversão.' }));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------
