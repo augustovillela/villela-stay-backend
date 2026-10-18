@@ -234,6 +234,8 @@
     var selCiclo = el('select', { id: 'lab-ciclo' }, [['16:4', '4/4 (16 semicolcheias)'], ['12:4', '3/4 (12 semicolcheias)'], ['8:4', '2/4 (8 semicolcheias)'], ['12:3', '12/8 ou 2×6/8 (12 colcheias)']].map(function (o) { return el('option', { value: o[0], txt: o[1] }); }));
     selCiclo.value = passos + ':' + porTempo;
     selCiclo.onchange = function () { var p = selCiclo.value.split(':').map(Number); passos = p[0]; porTempo = p[1]; FAIXAS.forEach(function (f) { grade[f.id] = grade[f.id].filter(function (i) { return i < passos; }); }); nomePadrao = ''; guardar(); pintar(); reiniciar(); };
+    var importarJson = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar padrão de bateria JSON' });
+    importarJson.onchange = function () { var f = importarJson.files && importarJson.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); if (!j.grade || typeof j.grade !== 'object') throw new Error('JSON sem grade de bateria.'); grade = vazio(); FAIXAS.forEach(function (fx) { grade[fx.id] = Array.isArray(j.grade[fx.id]) ? j.grade[fx.id].map(Number).filter(function (i) { return i >= 0 && i < 32; }) : []; }); passos = Number(j.passos) || 16; porTempo = Number(j.porTempo) || 4; nomePadrao = String(j.nome || ''); selCiclo.value = passos + ':' + porTempo; guardar(); pintar(); C.aviso('Padrão de bateria importado.'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
     var gravando = false, inicioGravacao = 0, eventosGravados = [], gravarBtn = el('button', { type: 'button', class: 'btn sec', txt: '● Gravar MIDI ao vivo', onclick: function () {
       if (gravando) { gravando = false; gravarBtn.textContent = '● Gravar MIDI ao vivo'; if (eventosGravados.length) C.baixar('bateria-midi-musique.mid', 'audio/midi', midiArquivo(eventosGravados, bpm, porTempo)); C.aviso(eventosGravados.length ? eventosGravados.length + ' golpe(s) gravado(s) e exportado(s).' : 'Nenhum golpe foi gravado.'); return; }
       eventosGravados = []; inicioGravacao = performance.now(); gravando = true; gravarBtn.textContent = '■ Parar e baixar MIDI'; C.aviso('Gravação MIDI iniciada. Toque na bateria eletrônica.');
@@ -253,6 +255,8 @@
       el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-ciclo', txt: 'Compasso' }), selCiclo]),
       el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { grade = vazio(); nomePadrao = ''; guardar(); pintar(); } }),
       midiBtn, gravarBtn,
+      el('label', { class: 'btn sec', txt: 'Importar JSON', }, [importarJson]),
+      el('button', { type: 'button', class: 'btn sec', txt: 'Exportar JSON', onclick: function () { C.baixar('bateria-musique.json', 'application/json', JSON.stringify({ nome: nomePadrao, passos: passos, porTempo: porTempo, grade: grade, criado_em: new Date().toISOString() }, null, 2)); } }),
       el('button', { type: 'button', class: 'btn sec', txt: 'Exportar MIDI', onclick: function () {
         var ev = [];
         for (var rep = 0; rep < 4; rep++) FAIXAS.forEach(function (fx) { grade[fx.id].forEach(function (i) { ev.push({ t: rep * passos + i, dur: 1, midi: fx.midi, canal: 9 }); }); });
