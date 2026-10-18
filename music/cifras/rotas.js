@@ -36,6 +36,7 @@ const Acompanhamento = require('./motor/acompanhamento');
 const ArranjoMultifaixa = require('./motor/arranjo-multifaixa');
 const voz = require('../voz');
 const { Riffs, chartDeTab, INSTRUMENTOS: RIFF_INSTRUMENTOS, DIFICULDADES: RIFF_DIFICULDADES, ORIGENS: RIFF_ORIGENS } = require('../riffs');
+const riffsCatalogo = require('../riffs-catalogo');
 
 const { Musicas, Cifras, Arranjos, Preferencias, Visoes, Favoritos, Uso, Voicings, Midias } = acervo;
 
@@ -142,6 +143,7 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
   app.get(B + '/riffs', requireUsuario, h(async (req, res) => {
     res.json({ ...Riffs.listar(U(req), req.query || {}), instrumentos: RIFF_INSTRUMENTOS, dificuldades: RIFF_DIFICULDADES, origens: RIFF_ORIGENS });
   }));
+  app.get(B + '/riffs-catalogo', requireUsuario, h(async (req, res) => res.json(riffsCatalogo.listar(req.query || {}))));
   app.post(B + '/riffs', requireUsuario, h(async (req, res) => {
     res.status(201).json(Riffs.criar(U(req), req.body || {}));
   }));

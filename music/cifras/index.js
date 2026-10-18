@@ -12,10 +12,12 @@ const flags = require('./flags');
 const ia = require('./ia');
 const { recuperarPresas } = require('./importar');
 const { registrarRotasCifras } = require('./rotas');
+const riffsCatalogo = require('../riffs-catalogo');
 
 function montar(app, deps) {
   flags.semear();
   ia.semear();
+  riffsCatalogo.semear();
   // Importação que estava rodando quando o servidor reiniciou vira falha
   // VISÍVEL ("tente de novo"), em vez de "processando" para sempre.
   recuperarPresas();

@@ -23,7 +23,10 @@
     c.appendChild(el('p', { class: 'cf-ajuda', txt: 'Guarde riffs autorais, de domínio público ou com licença compatível. A tablatura usa o mesmo visual das cifras e pode abrir no Tocar junto.' }));
     c.appendChild(C.botao('+ Novo riff', function () { novo(c); }));
     var lista = el('div', { class: 'cf-lista', style: 'margin-top:12px' }); c.appendChild(lista); lista.appendChild(C.esqueleto(3));
-    api('GET', '/riffs', null, { cache: 'riffs' }).then(function (d) { lista.innerHTML = ''; if (!d.itens || !d.itens.length) return lista.appendChild(C.estadoVazio('Nenhum riff guardado', 'Cole a primeira tablatura para começar.', C.botao('+ Novo riff', function () { novo(c); }))); d.itens.forEach(function (r) { lista.appendChild(cartao(r, function () { abrir(r.id, c); })); }); }).catch(function (e) { lista.replaceChildren(C.estadoErro(e)); });
+    api('GET', '/riffs', null, { cache: 'riffs' }).then(function (d) { lista.innerHTML = ''; if (!d.itens || !d.itens.length) lista.appendChild(C.estadoVazio('Nenhum riff guardado', 'Cole a primeira tablatura para começar.', C.botao('+ Novo riff', function () { novo(c); }))); else d.itens.forEach(function (r) { lista.appendChild(cartao(r, function () { abrir(r.id, c); })); });
+      var catalogo = el('div', { class: 'cf-lista', style: 'margin-top:22px' }); c.appendChild(el('h3', { txt: 'Catálogo de referência · 100 riffs' })); c.appendChild(el('p', { class: 'cf-ajuda', txt: 'Escolha um título para importar uma tablatura própria ou autorizada. O catálogo não substitui o conteúdo da sua versão.' })); c.appendChild(catalogo);
+      return api('GET', '/riffs-catalogo').then(function (x) { (x.itens || []).forEach(function (item) { catalogo.appendChild(el('div', { class: 'cf-linha-item' }, [el('div', { class: 'cresce' }, [el('b', { txt: item.titulo }), el('span', { class: 'm', txt: item.artista + ' · ' + item.dificuldade })]), el('span', { class: 'cf-tag', txt: 'Importar' })])); }); });
+    }).catch(function (e) { lista.replaceChildren(C.estadoErro(e)); });
   };
   function novo(c) {
     c.innerHTML = ''; c.appendChild(el('h2', { txt: 'Novo riff' }));
