@@ -598,10 +598,12 @@
     function gerar() { var c = T.campo(tonicaDe(st), st.modo) || []; st.lista = []; var anterior = -1; for (var i = 0; i < Number(st.tamanho); i++) { var op = c.filter(function (_, k) { return k !== anterior; }), g = op[Math.floor(Math.random() * op.length)]; if (!g) break; st.lista.push(g.simbolo); anterior = c.indexOf(g); } }
     function render() {
       C.gravarUrl(st); C.limpar(alvo); var tam = el('select', {}, [3, 4, 6, 8].map(function (n) { return el('option', { value: n, txt: n + ' acordes' }); })); tam.value = st.tamanho;
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selTonica(st.tonica, function (v) { st.tonica = v; gerar(); render(); }), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Tamanho' }), tam]), el('button', { type: 'button', class: 'btn', txt: '🎲 Gerar', onclick: function () { st.tamanho = Number(tam.value); gerar(); render(); } })]));
+      var modo = el('select', {}, ['maior', 'menor'].map(function (x) { return el('option', { value: x, txt: x }); })); modo.value = st.modo; modo.onchange = function () { st.modo = modo.value; gerar(); render(); };
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selTonica(st.tonica, function (v) { st.tonica = v; gerar(); render(); }), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Modo' }), modo]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Tamanho' }), tam]), el('button', { type: 'button', class: 'btn', txt: '🎲 Gerar', onclick: function () { st.tamanho = Number(tam.value); gerar(); render(); } })]));
       if (!st.lista.length) gerar();
       var nos = st.lista.map(function (s, i) { var a = A.ler(s); return el('button', { type: 'button', class: 'lab-mapa-no', title: 'Ouvir ' + s, txt: s, onclick: function () { if (a) C.Som.tocar((A.notas(naOitava(a.fundamental, 3), a.id) || []).map(N.midi), { modo: 'harmonico' }); } }); });
       alvo.appendChild(el('div', { class: 'lab-mapa-linha' }, nos));
+      alvo.appendChild(el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir sequência', onclick: function () { st.lista.map(A.ler).filter(Boolean).forEach(function (a, i) { setTimeout(function () { C.Som.tocar((A.notas(naOitava(a.fundamental, 3), a.id) || []).map(N.midi), { modo: 'harmonico', dur: 0.75 }); }, i * 800); }); } }));
       alvo.appendChild(el('p', { class: 'lab-dica', txt: 'O gerador evita repetir o grau imediatamente anterior, mas a sequência é um rascunho: ajuste o baixo, as inversões e o ritmo.' }));
     }
     render();
