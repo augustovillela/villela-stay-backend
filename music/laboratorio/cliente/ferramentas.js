@@ -609,6 +609,20 @@
     render();
   };
 
+  F['grafo-harmonico'] = function (alvo, st) {
+    st.texto = st.texto || 'C, Am, F, G';
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo); var inp = el('textarea', { rows: 2, class: 'lab-textarea' }); inp.value = st.texto;
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Progressão' }), inp]), el('button', { type: 'button', class: 'btn', txt: 'Atualizar grafo', onclick: function () { st.texto = inp.value; render(); } })]));
+      var acs = st.texto.split(/[;,\n]+/).map(function (x) { return A.ler(x.trim()); }).filter(Boolean).slice(0, 16); if (!acs.length) return;
+      var W = 820, H = 300, cx = W / 2, cy = H / 2, rx = Math.min(330, 35 * acs.length), ry = 95, pts = acs.map(function (_, i) { var a = (Math.PI * 2 * i / acs.length) - Math.PI / 2; return { x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }; });
+      var s = ['<svg xmlns="http://www.w3.org/2000/svg" class="lab-grafo-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Grafo harmônico">']; for (var i = 0; i < pts.length - 1; i++) s.push('<line x1="' + pts[i].x.toFixed(1) + '" y1="' + pts[i].y.toFixed(1) + '" x2="' + pts[i + 1].x.toFixed(1) + '" y2="' + pts[i + 1].y.toFixed(1) + '" stroke="#8db1cf" stroke-width="3"/>'); pts.forEach(function (p, i) { s.push('<g data-i="' + i + '" tabindex="0" role="button" aria-label="' + D.esc(A.simbolo(acs[i].fundamental, acs[i].id)) + '"><circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="30" fill="#fff" stroke="#14213d" stroke-width="2"/><text x="' + p.x.toFixed(1) + '" y="' + (p.y + 5).toFixed(1) + '" text-anchor="middle" font-family="Arial" font-size="14">' + D.esc(A.simbolo(acs[i].fundamental, acs[i].id)) + '</text></g>'); }); s.push('</svg>');
+      var box = svg(s.join('')); box.addEventListener('click', function (e) { var g = e.target.closest('[data-i]'); if (!g) return; var a = acs[Number(g.getAttribute('data-i'))]; C.Som.tocar((A.notas(naOitava(a.fundamental, 3), a.id) || []).map(N.midi), { modo: 'harmonico' }); });
+      alvo.appendChild(box); alvo.appendChild(el('p', { class: 'lab-dica', txt: 'As linhas representam o percurso informado. Clique em um nó para ouvir o acorde e use o mapa de harmonia para comparar distâncias.' }));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------
