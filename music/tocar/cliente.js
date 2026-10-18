@@ -16,6 +16,7 @@
   var media = null, mediaUrl = null, mediaStarting = false, raf = null, nodes = [], generation = 0, dailySessions = 0;
   var referenceWallUntil = 0, outputWallUntil = 0;
   var sampler = null, samplerContext = null, samplerBank = null, soundLoading = false, scheduledSoundUntil = 0;
+  var backingPackage = null, backingNext = Object.create(null);
   var state = { mode: 'idle', running: false, position: 0, origin: 0, start: 0, speed: 1,
     from: 0, to: chart.duration, loop: false, judge: null, lastFrame: null, offset: 0,
     nextNote: 0, nextBeat: 0, countInFirstBeat: null, saved: false, connected: false, connecting: false, calibration: null, endedAt: null,
@@ -242,6 +243,7 @@
     nodes.forEach(function (n) { try { n.stop(); } catch (_) {} }); nodes = [];
     if (sampler) sampler.parar();
     scheduledSoundUntil = 0;
+    backingNext = Object.create(null);
   }
   function soundEngine() {
     var group = state.instrument === 'cavaquinho' || state.instrument === 'bandolim' ? 'violao' : state.instrument;
@@ -264,6 +266,25 @@
     gain.gain.linearRampToValueAtTime(volume, when + 0.008); gain.gain.exponentialRampToValueAtTime(0.0001, when + Math.max(0.025, duration));
     osc.connect(gain); gain.connect(ctx.destination); osc.start(when); osc.stop(when + duration + 0.03); nodes.push(osc);
     osc.onended = function () { osc.disconnect(); gain.disconnect(); var i = nodes.indexOf(osc); if (i >= 0) nodes.splice(i, 1); };
+  }
+  function scheduleBacking(position, until) {
+    if (!backingPackage || state.mode === 'learn') return;
+    (backingPackage.tracks || []).forEach(function (track) {
+      if (track.instrument === 'violao') return;
+      var events = Array.isArray(track.events) ? track.events : [], key = track.id || track.instrument;
+      var index = backingNext[key] || 0;
+      while (index < events.length && Number(events[index].atMs) / 1000 < until) {
+        var e = events[index++], t = Number(e.atMs) / 1000;
+        if (t >= state.from && t < state.to && t >= position - 0.02) {
+          var midi = Number(e.midi), dur = Math.max(0.04, Number(e.durationMs || 80) / 1000 / state.speed);
+          var volume = track.instrument === 'bateria' ? 0.055 : track.instrument === 'piano' ? 0.035 : 0.045;
+          var shape = track.instrument === 'bateria' ? 'square' : track.instrument === 'piano' ? 'sine' : 'triangle';
+          var at = ctx.currentTime + Math.max(0.005, (t - position) / state.speed);
+          tone(midi, at, dur, volume, shape);
+        }
+      }
+      backingNext[key] = index;
+    });
   }
   function current() {
     if (!state.running || !ctx || state.mode === 'learn') return state.position;
@@ -462,7 +483,7 @@
     if (anterior.id !== perfil.id) encerrarCapturaDoPerfilAnterior();
     renderStudies(); loadCampaign(); renderCampaign(); profile(); state.from = 0; state.to = chart.duration; state.position = 0;
     text('tj-song-title', chart.title); text('tj-song-info', tempoLabel(chart) + ' · ' + chart.notes.length + ' notas · ' + timeLabel(chart.duration));
-    text('tj-source', source.kind === 'catalog' ? 'Catálogo · versão ' + source.versionNumber + ' · ' + source.credits : source.kind === 'preview' ? 'PRÉVIA DO RASCUNHO · revisão ' + source.revision + ' · sem captura ou avaliação' : source.kind === 'study' ? 'Estudo original Musique · sons de instrumentos' : 'Arranjo importado neste navegador');
+    text('tj-source', source.kind === 'catalog' ? 'Catálogo · versão ' + source.versionNumber + ' · ' + source.credits : source.kind === 'preview' ? 'PRÉVIA DO RASCUNHO · revisão ' + source.revision + ' · sem captura ou avaliação' : source.kind === 'multitrack' ? 'Cifra · acompanhamento automático multifaixa' : source.kind === 'study' ? 'Estudo original Musique · sons de instrumentos' : 'Arranjo importado neste navegador');
     $('tj-seek').max = chart.duration; $('tj-to').max = chart.duration; $('tj-from').max = chart.duration;
     $('tj-from').value = 0; $('tj-to').value = chart.duration.toFixed(2);
     var section = $('tj-section'); section.replaceChildren(el('option', { value: '', text: 'Música inteira' }));
@@ -491,6 +512,7 @@
   function resetMedia() { mediaStarting = false; if (media) { media.onloadedmetadata = null; media.onerror = null; media.pause(); media.removeAttribute('src'); media.load(); } media = null; if (mediaUrl) URL.revokeObjectURL(mediaUrl); mediaUrl = null; text('tj-media-label', 'Sem faixa de acompanhamento'); }
   function chooseChart(c, origin) {
     ++chartTicket; ++remoteTicket; chartLoading = false; remoteLoading=false; remoteAudio = null;
+    if (!origin || origin.kind !== 'multitrack') backingPackage = null;
     resetMedia(); applyChart(c, origin);
   }
   function renderStudies() {
@@ -554,6 +576,23 @@
     }catch(e){if(ticket===chartTicket){previewReady=false;msg(e.message,true);}}
     finally{if(ticket===chartTicket){chartLoading=false;updateTransport();}}
   }
+  async function openCifra() {
+    var id = query.get('cifra'), ticket = ++chartTicket;
+    if (!id) return;
+    chartLoading = true; updateTransport(); msg('Gerando o arranjo multifaixa da cifra…');
+    try {
+      var resposta = await fetch('/music/api/cifras/cifras/' + encodeURIComponent(id) + '/arranjo-multifaixa', { credentials: 'same-origin' });
+      var pacote = await resposta.json(); if (!resposta.ok) throw new Error(pacote.erro || 'Cifra não encontrada.');
+      var faixa = (pacote.tracks || []).find(function (t) { return t.instrument === 'violao'; });
+      if (!faixa || !Array.isArray(faixa.events) || !faixa.events.length) throw new Error('A cifra não gerou uma trilha de violão.');
+      var chart = Core.validarChart({ id: pacote.id + '-guia', title: pacote.title, bpm: pacote.tempo.bpm, duration: pacote.durationMs / 1000,
+        tuning: faixa.tuning, notes: faixa.events.map(function (e, i) { return { id: 'multi-' + i, time: e.atMs / 1000, duration: e.durationMs / 1000, string: e.string, fret: e.fret, midi: e.midi }; }), sections: [{ id: 'cifra-inteira', title: 'Cifra inteira', from: 0, to: pacote.durationMs / 1000 }] });
+      if (ticket !== chartTicket) return;
+      backingPackage = pacote; chooseChart(chart, { kind: 'multitrack', instrument: 'violao', objective: 'Acompanhamento automático com baixo, piano e bateria.', credits: 'Arranjo multifaixa gerado da cifra.' });
+      $('tj-backing').checked = true; msg('Arranjo multifaixa carregado. Clique em Ouvir demonstração ou ative o microfone para praticar.');
+    } catch (e) { if (ticket === chartTicket) msg('Não foi possível carregar a cifra: ' + e.message, true); }
+    finally { if (ticket === chartTicket) { chartLoading = false; updateTransport(); } }
+  }
   function ending() {
     state.position = state.to; state.running = false; silence(); if (media) media.pause();
     if (state.mode === 'practice' && state.judge) state.judge.avancar(state.to + 1);
@@ -588,6 +627,7 @@
           }).catch(function (e) { if (playGeneration !== generation) return; mediaStarting = false; pause(); msg('O áudio não pôde tocar: ' + e.message, true); });
         }
         var until = p + 0.14 * state.speed;
+        if ($('tj-backing').checked) scheduleBacking(p, until);
         // Schedule a short look-ahead from the audio clock, never from animation frame count.
         while (timeAtBeat(chart, state.nextBeat) < until) {
           var bt = timeAtBeat(chart, state.nextBeat);
@@ -873,5 +913,5 @@
   if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', function () {
     refreshDevices().then(function () { if (!state.connected) msg('Lista de entradas atualizada. Confira o microfone ou a interface selecionada.'); });
   });
-  profile();applyChart(chart);if(previewMode)openPreview();else{refreshDevices();history();}tick();
+  profile();applyChart(chart);if(previewMode)openPreview();else{refreshDevices();history();if(query.has('cifra'))openCifra();}tick();
 })();
