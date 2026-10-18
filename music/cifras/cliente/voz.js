@@ -20,6 +20,7 @@
     var instr = el('p', { txt: 'O teste toca notas simples. Cante “ah” ou “ô” sustentando cada nota; o áudio é analisado apenas neste navegador.' });
     var iniciar = C.botao(perfilInicial ? '🎤 Reavaliar minha voz' : '🎤 Avaliar extensão vocal', iniciarTeste, 'peq');
     box.appendChild(el('b', { txt: 'Extensão e conforto vocal' })); box.appendChild(status); box.appendChild(instr); box.appendChild(iniciar);
+    box.appendChild(curso(cifraId, perfilInicial));
     function iniciarTeste() {
       iniciar.disabled = true; status.textContent = 'Preparando microfone…';
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { status.textContent = 'Este navegador não oferece acesso ao microfone.'; iniciar.disabled = false; return; }
@@ -33,6 +34,34 @@
       }).catch(function () { status.textContent = 'O microfone não foi autorizado. Permita o acesso e tente novamente.'; iniciar.disabled = false; });
     }
     return box;
+  }
+  function curso(cifraId, perfil) {
+    var area = el('div', { class: 'cf-voz-curso', style: 'margin-top:14px;padding-top:12px;border-top:1px solid #e5e7eb' });
+    var andamento = el('span', { class: 'm', txt: '' });
+    area.appendChild(el('b', { txt: 'Minicurso de canto' }));
+    area.appendChild(el('p', { class: 'm', txt: 'Pratique por poucos minutos. As notas de referência saem nos alto-falantes; cante junto sem forçar.' }));
+    var linha = el('div', { class: 'linha' });
+    var exercicios = [
+      ['Aquecimento', [60, 62, 64, 65, 67], 'Suba e desça suavemente em “ah”.'],
+      ['Sustentação', [60], 'Sustente a vogal por quatro segundos, respirando sem apertar a garganta.'],
+      ['Afinação', [60, 64, 67], 'Repita cada nota e tente terminar no mesmo centro de altura.'],
+      ['Prática no tom', [perfil && perfil.regiao_min_midi ? Math.round((perfil.regiao_min_midi + perfil.regiao_max_midi) / 2) : 60], 'Use esta região confortável para cantar a primeira frase da cifra.'],
+    ];
+    exercicios.forEach(function (ex) {
+      var b = C.botao('▶ ' + ex[0], function () { tocarExercicio(ex, b); }, 'sec peq'); linha.appendChild(b);
+    });
+    area.appendChild(linha); area.appendChild(andamento);
+    function tocarExercicio(ex, botao) {
+      botao.disabled = true; andamento.textContent = ex[2];
+      var AC = global.AudioContext || global.webkitAudioContext; if (!AC) { andamento.textContent = 'Seu navegador não oferece áudio Web.'; botao.disabled = false; return; }
+      var ctx = new AC(), i = 0, dur = ex[1].length === 1 ? 4200 : 700;
+      function proxima() {
+        if (i >= ex[1].length) { ctx.close(); botao.disabled = false; andamento.textContent = ex[2] + ' · exercício concluído.'; try { var k = 'musique.canto.' + ex[0]; localStorage.setItem(k, String(Number(localStorage.getItem(k) || 0) + 1)); } catch (_) {} return; }
+        var o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = 440 * Math.pow(2, (ex[1][i] - 69) / 12); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.05, ctx.currentTime + .03); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur / 1000 - .04); o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + dur / 1000); i++; setTimeout(proxima, dur + 90);
+      }
+      proxima();
+    }
+    return area;
   }
   function botao() {
     var b = el('button', { type: 'button', class: 'cf-voz-atalho', txt: '🎤 Perfil vocal', title: 'Abrir o perfil vocal' });
