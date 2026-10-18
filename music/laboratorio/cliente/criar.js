@@ -247,6 +247,11 @@
       if (gravando) { gravando = false; gravarBtn.textContent = '● Gravar MIDI ao vivo'; if (eventosGravados.length) C.baixar('bateria-midi-musique.mid', 'audio/midi', midiArquivo(eventosGravados, bpm, porTempo)); C.aviso(eventosGravados.length ? eventosGravados.length + ' golpe(s) gravado(s) e exportado(s).' : 'Nenhum golpe foi gravado.'); return; }
       eventosGravados = []; inicioGravacao = performance.now(); gravando = true; gravarBtn.textContent = '■ Parar e baixar MIDI'; C.aviso('Gravação MIDI iniciada. Toque na bateria eletrônica.');
     } });
+    function idNotaBateria(nota) { if (nota === 49) return 'crash'; if (nota === 51) return 'ride'; var fx = FAIXAS.filter(function (x) { return x.midi === nota; })[0]; return fx && fx.id; }
+    var ouvirGravacao = el('button', { type: 'button', class: 'btn sec', txt: '▶ Ouvir gravação', onclick: function () { if (!eventosGravados.length) { C.aviso('Grave ou importe uma performance antes de ouvir.', 'erro'); return; } eventosGravados.forEach(function (e) { var id = idNotaBateria(e.midi); if (id) setTimeout(function () { tocarPad(id, (e.vel || 88) / 127); }, Math.max(0, e.t * 60 / bpm / porTempo * 1000)); }); } });
+    var exportarGravacao = el('button', { type: 'button', class: 'btn sec', txt: '⬇ Performance JSON', onclick: function () { if (!eventosGravados.length) { C.aviso('Grave uma performance antes de exportar o JSON.', 'erro'); return; } C.baixar('bateria-performance-musique.json', 'application/json', JSON.stringify({ bpm: bpm, porTempo: porTempo, eventos: eventosGravados, criado_em: new Date().toISOString() }, null, 2)); } });
+    var importarGravacao = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar performance de bateria JSON' });
+    importarGravacao.onchange = function () { var f = importarGravacao.files && importarGravacao.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); if (!Array.isArray(j.eventos) || !j.eventos.length) throw new Error('JSON sem eventos de bateria.'); eventosGravados = j.eventos.filter(function (e) { return e && Number.isFinite(Number(e.t)) && Number.isFinite(Number(e.midi)); }).map(function (e) { return { t: Number(e.t), dur: Number(e.dur) || 1, midi: Number(e.midi), vel: Number(e.vel) || 88 }; }); if (!eventosGravados.length) throw new Error('Nenhum evento válido.'); C.aviso(eventosGravados.length + ' golpe(s) importado(s).'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
     var midiBtn = el('button', { type: 'button', class: 'btn sec', txt: 'Conectar bateria MIDI', onclick: function () {
       if (!navigator.requestMIDIAccess) { C.aviso('Este navegador não oferece Web MIDI. A bateria continua disponível pelos pads e pela grade.'); return; }
       navigator.requestMIDIAccess().then(function (acc) {
@@ -261,7 +266,7 @@
       el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-swing', txt: 'Swing (4/4)' }), sw, lsw]),
       el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-ciclo', txt: 'Compasso' }), selCiclo]),
       el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { grade = vazio(); nomePadrao = ''; guardar(); pintar(); } }),
-      midiBtn, gravarBtn,
+      midiBtn, gravarBtn, ouvirGravacao, exportarGravacao, el('label', { class: 'btn sec', txt: 'Importar performance JSON' }, [importarGravacao]),
       el('label', { class: 'btn sec', txt: 'Importar JSON', }, [importarJson]),
       el('button', { type: 'button', class: 'btn sec', txt: 'Exportar JSON', onclick: function () { C.baixar('bateria-musique.json', 'application/json', JSON.stringify({ nome: nomePadrao, passos: passos, porTempo: porTempo, grade: grade, criado_em: new Date().toISOString() }, null, 2)); } }),
       el('button', { type: 'button', class: 'btn sec', txt: 'Exportar MIDI', onclick: function () {
