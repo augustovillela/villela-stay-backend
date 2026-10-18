@@ -620,6 +620,21 @@
     } catch (e) { if (ticket === chartTicket) msg('Não foi possível carregar a cifra: ' + e.message, true); }
     finally { if (ticket === chartTicket) { chartLoading = false; updateTransport(); } }
   }
+  async function openRiff() {
+    var id = query.get('riff'), ticket = ++chartTicket;
+    if (!id) return;
+    chartLoading = true; updateTransport(); msg('Carregando a tablatura…');
+    try {
+      var resposta = await fetch('/music/api/cifras/riffs/' + encodeURIComponent(id) + '/chart', { credentials: 'same-origin' });
+      var pacote = await resposta.json(); if (!resposta.ok) throw new Error(pacote.erro || 'Riff não encontrado.');
+      var c = Core.validarChart(pacote);
+      if (ticket !== chartTicket) return;
+      chooseChart(c, { kind: 'riff', instrument: 'guitarra', objective: 'Praticar riff pela tablatura.', credits: 'Tablatura do acervo de riffs.' });
+      $('tj-backing').checked = false;
+      msg('Riff carregado. Clique em Ouvir demonstração ou conecte sua guitarra.');
+    } catch (e) { if (ticket === chartTicket) msg('Não foi possível carregar o riff: ' + e.message, true); }
+    finally { if (ticket === chartTicket) { chartLoading = false; updateTransport(); } }
+  }
   function ending() {
     state.position = state.to; state.running = false; silence(); if (media) media.pause();
     if (state.mode === 'practice' && state.judge) state.judge.avancar(state.to + 1);
@@ -930,5 +945,5 @@
   if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', function () {
     refreshDevices().then(function () { if (!state.connected) msg('Lista de entradas atualizada. Confira o microfone ou a interface selecionada.'); });
   });
-  profile();applyChart(chart);if(previewMode)openPreview();else{refreshDevices();history();if(query.has('cifra'))openCifra();}tick();
+  profile();applyChart(chart);if(previewMode)openPreview();else{refreshDevices();history();if(query.has('cifra'))openCifra();else if(query.has('riff'))openRiff();}tick();
 })();

@@ -35,6 +35,7 @@ const H = require('./motor/harmonia');
 const Acompanhamento = require('./motor/acompanhamento');
 const ArranjoMultifaixa = require('./motor/arranjo-multifaixa');
 const voz = require('../voz');
+const { Riffs, chartDeTab, INSTRUMENTOS: RIFF_INSTRUMENTOS, DIFICULDADES: RIFF_DIFICULDADES, ORIGENS: RIFF_ORIGENS } = require('../riffs');
 
 const { Musicas, Cifras, Arranjos, Preferencias, Visoes, Favoritos, Uso, Voicings, Midias } = acervo;
 
@@ -133,6 +134,32 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
       flags: flags.publicas(), ia: ia.disponiveis(u), preferencias: Preferencias.obter(u),
       instrumentos: I.catalogo(), total: Musicas.contar(u),
     });
+  }));
+
+  // ------------------------------------------------------------ riffs e tablaturas
+  // Acervo privado, versionado e separado das cifras. O documento usa o
+  // mesmo motor de tablatura para que a exibição seja idêntica à da cifra.
+  app.get(B + '/riffs', requireUsuario, h(async (req, res) => {
+    res.json({ ...Riffs.listar(U(req), req.query || {}), instrumentos: RIFF_INSTRUMENTOS, dificuldades: RIFF_DIFICULDADES, origens: RIFF_ORIGENS });
+  }));
+  app.post(B + '/riffs', requireUsuario, h(async (req, res) => {
+    res.status(201).json(Riffs.criar(U(req), req.body || {}));
+  }));
+  app.get(B + '/riffs/:id', requireUsuario, h(async (req, res) => res.json(Riffs.detalhe(U(req), req.params.id))));
+  app.post(B + '/riffs/:id/versoes', requireUsuario, h(async (req, res) => res.status(201).json(Riffs.adicionarVersao(U(req), req.params.id, req.body || {}))));
+  app.get(B + '/riffs/:id/chart', requireUsuario, h(async (req, res) => {
+    const detalhe = Riffs.detalhe(U(req), req.params.id);
+    res.json(chartDeTab(detalhe.documento, { bpm: req.query.bpm || detalhe.riff.bpm, title: detalhe.riff.titulo, id: 'riff-' + detalhe.riff.id }));
+  }));
+  app.get(B + '/riffs/:id/arranjo-multifaixa', requireUsuario, h(async (req, res) => {
+    const detalhe = Riffs.detalhe(U(req), req.params.id);
+    const pacote = ArranjoMultifaixa.gerar(detalhe.documento, {
+      bpm: req.query.bpm || detalhe.riff.bpm,
+      title: detalhe.riff.titulo + ' · riff', id: 'riff-' + req.params.id + '-multifaixa',
+      sourceName: detalhe.riff.titulo + '.musique.riff',
+    });
+    pacote.metadata = Object.assign({}, pacote.metadata, { origem: 'musique.riff', riffId: detalhe.riff.id, tablatura: true });
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Content-Disposition', `attachment; filename="${encodeURIComponent(pacote.id)}.json"`).json(pacote);
   }));
 
   app.get(B + '/instrumentos', requireUsuario, (req, res) => res.json({ instrumentos: I.catalogo() }));

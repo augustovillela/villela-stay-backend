@@ -263,6 +263,10 @@ body.cf-em-palco{overflow:hidden}
 .cf-player .linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .cf-marcas{display:flex;gap:4px;flex-wrap:wrap}
 .cf-marcas button{background:#EEF2F7;border:0;border-radius:8px;padding:6px 10px;cursor:pointer;min-height:36px}
+.cf-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:12px 0}
+.cf-campo{display:flex;flex-direction:column;gap:4px;font:600 12px Inter,sans-serif;color:var(--muted,#64748B)}
+.cf-campo input,.cf-campo select,.cf-campo textarea{box-sizing:border-box;width:100%;min-height:40px;border:1px solid var(--borda);border-radius:9px;padding:8px 10px;background:#fff;color:var(--graphite);font:15px Inter,sans-serif}
+.cf-campo textarea{font-family:ui-monospace,Consolas,monospace}
 
 /* A regra genérica ".peq" (texto cinza) do app vencia o branco do botão
    escuro pequeno — em TODAS as telas, não só aqui. Contraste de volta. */

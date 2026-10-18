@@ -195,7 +195,7 @@
   // ---------------------------------------------------------------
   var TELAS = [
     ['inicio', 'Início'], ['biblioteca', 'Biblioteca'], ['importar', 'Encontrar ou importar'], ['setlists', 'Setlists'],
-    ['bandas', 'Bandas'], ['vivo', 'Ao vivo'], ['acordes', 'Acordes'], ['downloads', 'Offline'], ['importacoes', 'Importações'],
+    ['bandas', 'Bandas'], ['riffs', 'Riffs e tablaturas'], ['vivo', 'Ao vivo'], ['acordes', 'Acordes'], ['downloads', 'Offline'], ['importacoes', 'Importações'],
     ['preferencias', 'Preferências'],
   ];
   // Ícone e cor de cada funcionalidade: os mesmos no menu e nos atalhos do Início.
@@ -205,6 +205,7 @@
     importar: { ico: '🔎', fundo: '#E0F2FE', cor: '#0369A1' },
     setlists: { ico: '📋', fundo: '#FFEDD5', cor: '#C2410C' },
     bandas: { ico: '👥', fundo: '#FCE7F3', cor: '#BE185D' },
+    riffs: { ico: '🎸', fundo: '#FEF3C7', cor: '#92400E' },
     vivo: { ico: '📡', fundo: '#FFE4E6', cor: '#BE123C' },
     acordes: { ico: '🎸', fundo: '#DCFCE7', cor: '#15803D' },
     downloads: { ico: '📴', fundo: '#F1F5F9', cor: '#334155' },
