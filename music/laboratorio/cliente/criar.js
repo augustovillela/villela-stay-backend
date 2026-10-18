@@ -47,7 +47,7 @@
   // ------------------------------------------------------------------
   F['piano-virtual'] = function (alvo, st) {
     var MAPA = { a: 0, w: 1, s: 2, e: 3, d: 4, f: 5, t: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12, o: 13, l: 14, p: 15, 'ç': 16 };
-    var base = 60, piano88 = false, soando = {}, historico = [];
+    var base = 60, piano88 = false, soando = {}, historico = [], gravando = false, inicioGravacao = 0, eventosGravados = [];
     var info = el('p', { class: 'lab-info', 'aria-live': 'polite', txt: 'Toque com o mouse, com o dedo ou com as teclas A W S E D F T G Y H U J K. Z e X mudam a oitava.' });
     var box = el('div', { class: 'lab-svgbox' });
     var acordeTxt = el('p', { class: 'lab-acorde-atual', 'aria-live': 'polite' });
@@ -58,7 +58,7 @@
       var r = ms.length >= 2 ? A.identificar(ms) : [];
       acordeTxt.textContent = r.length ? 'Acorde: ' + r.slice(0, 3).map(function (x) { return x.simbolo; }).join(' ou ') : '';
     }
-    function tocar(m) { C.Som.tocar([m], { dur: 1.2 }); soando[m] = 1; historico.push(m); if (historico.length > 16) historico.shift(); info.textContent = 'Última: ' + rot(N.deMidi(m)) + ' ' + N.deMidi(m).oitava + ' · sequência: ' + historico.slice(-8).map(function (x) { return rot(N.deMidi(x)); }).join(' '); pintar(); }
+    function tocar(m) { C.Som.tocar([m], { dur: 1.2 }); soando[m] = 1; historico.push(m); if (historico.length > 16) historico.shift(); if (gravando) eventosGravados.push({ t: Math.max(0, (performance.now() - inicioGravacao) / 1000 * 80 / 60 * 4), dur: 1, midi: m, vel: 88 }); info.textContent = 'Última: ' + rot(N.deMidi(m)) + ' ' + N.deMidi(m).oitava + ' · sequência: ' + historico.slice(-8).map(function (x) { return rot(N.deMidi(x)); }).join(' '); pintar(); }
     function soltar(m) { delete soando[m]; pintar(); }
     box.addEventListener('pointerdown', function (e) { var k = e.target.closest('[data-midi]'); if (!k) return; e.preventDefault(); var m = Number(k.dataset.midi); tocar(m); var up = function () { soltar(m); w.removeEventListener('pointerup', up); }; w.addEventListener('pointerup', up); });
     box.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset && e.target.dataset.midi) { e.preventDefault(); var m = Number(e.target.dataset.midi); tocar(m); setTimeout(function () { soltar(m); }, 300); } });
@@ -90,8 +90,12 @@
       var ev = historico.map(function (m, i) { return { t: i * 2, dur: 2, midi: m, vel: 82 }; });
       C.baixar('piano-virtual-musique.mid', 'audio/midi', C.midiArquivo(ev, 80, 4));
     }
+    var gravarBtn = el('button', { type: 'button', class: 'btn sec', txt: '● Gravar performance', onclick: function () {
+      if (gravando) { gravando = false; gravarBtn.textContent = '● Gravar performance'; if (eventosGravados.length) C.baixar('piano-performance-musique.mid', 'audio/midi', C.midiArquivo(eventosGravados, 80, 4)); C.aviso(eventosGravados.length ? eventosGravados.length + ' nota(s) gravada(s) e exportada(s).' : 'Nenhuma nota foi gravada.'); return; }
+      eventosGravados = []; inicioGravacao = performance.now(); gravando = true; gravarBtn.textContent = '■ Parar e baixar MIDI'; C.aviso('Gravação iniciada. Toque o piano.');
+    } });
     var modo88 = el('button', { type: 'button', class: 'btn sec', 'aria-pressed': 'false', txt: '◇ Piano de 88 teclas', onclick: function () { piano88 = !piano88; modo88.setAttribute('aria-pressed', piano88 ? 'true' : 'false'); modo88.textContent = piano88 ? '◇ Voltar ao piano compacto' : '◇ Piano de 88 teclas'; pintar(); } });
-    alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(pintar), C.selTimbre(), modo88, midiBtn, el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano SVG', onclick: function () { exportarPiano(false); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano PNG', onclick: function () { exportarPiano(true); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar notas MIDI', onclick: exportarHistorico })]));
+    alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(pintar), C.selTimbre(), modo88, midiBtn, gravarBtn, el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano SVG', onclick: function () { exportarPiano(false); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano PNG', onclick: function () { exportarPiano(true); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar notas MIDI', onclick: exportarHistorico })]));
     alvo.appendChild(box); alvo.appendChild(acordeTxt); alvo.appendChild(info);
     pintar();
   };
