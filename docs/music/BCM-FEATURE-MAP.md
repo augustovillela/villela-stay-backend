@@ -26,6 +26,7 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 - **Arranjo a quatro vozes e harmonizador de melodia**: condução de vozes, sugestões diatônicas e exportação MIDI.
 - **Intercâmbio de estudos**: exportação JSON de progressões, mapas, grafos, mandalas, piano rolls, escalas, shapes, arranjos, harmonizações, espectros e policordes; os editores de progressão, grafo, mandala, piano roll, gerador, arranjo e harmonizador também reabrem esses JSONs.
 - **Imagens para aula**: exportação PNG em alta resolução para o editor de braço, grafo harmônico, mandala, piano roll e atlas de escalas, além dos SVGs editáveis.
+- **Reabertura de análises**: shapes de braço, escalas, superestruturas, intervalos, espectros, policordes, acordes vizinhos, tonalidades, harmonizador de melodia e grooves do metrônomo podem ser importados pelo próprio laboratório.
 
 ## Roadmap funcional
 
