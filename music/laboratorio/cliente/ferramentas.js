@@ -486,6 +486,22 @@
     render();
   };
 
+  F['visualizador-frequencia'] = function (alvo, st) {
+    st.acordeTexto = st.acordeTexto || 'C'; st.harmonicos = st.harmonicos || 8;
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo);
+      var inp = el('input', { type: 'text', value: st.acordeTexto, placeholder: 'Nota ou acorde, ex.: Cmaj7' }); inp.value = st.acordeTexto;
+      var qtd = el('input', { type: 'number', min: 1, max: 16, value: st.harmonicos }); qtd.value = st.harmonicos;
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo' }, [el('span', { txt: 'Nota ou acorde' }), inp]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Harmônicos por nota' }), qtd]), el('button', { type: 'button', class: 'btn', txt: 'Atualizar espectro', onclick: function () { st.acordeTexto = inp.value; st.harmonicos = Math.max(1, Math.min(16, Number(qtd.value) || 8)); render(); } })]));
+      var a = A.ler(st.acordeTexto), ns = a ? (A.notas(naOitava(a.fundamental, 4), a.id) || []) : [N.ler(st.acordeTexto)]; ns = ns.filter(Boolean); if (!ns.length) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite uma nota ou acorde válido.' })); return; }
+      var dados = []; ns.forEach(function (n) { AC.serieHarmonica(n, Number(st.harmonicos) || 8).forEach(function (h) { dados.push({ h: h, base: rot(n) }); }); });
+      var max = Math.max.apply(Math, dados.map(function (x) { return x.h.hz; }));
+      alvo.appendChild(el('div', { class: 'lab-frequencias' }, dados.map(function (x) { var alt = Math.max(10, Math.round(130 * Math.log(1 + x.h.hz) / Math.log(1 + max))); return el('button', { type: 'button', class: 'lab-frequencia-barra', style: 'height:' + alt + 'px', title: x.base + ' · ' + x.h.harmonico + 'º harmônico', onclick: function () { C.Som.tocarHz([x.h.hz], { dur: 0.7 }); } }, [el('span', { txt: x.h.harmonico }), el('small', { txt: Math.round(x.h.hz) + ' Hz' })]); })));
+      alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Clique em uma barra para ouvir o componente. A altura é uma escala visual logarítmica; o espectro real depende do timbre e da execução.' }));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------

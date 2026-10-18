@@ -332,6 +332,7 @@ function relacionados(slug) {
     'superestruturas-acordes': ['/music/explorar/identificar-acorde', '/music/explorar/acordes-vizinhos', '/music/referencia/extensoes'],
     'intervalos-do-acorde': ['/music/explorar/superestruturas-acordes', '/music/referencia/intervalos', '/music/praticar/intervalo-ouvido'],
     'editor-de-braco': ['/music/explorar/braco', '/music/explorar/acordes-vizinhos', '/music/referencia/afinacoes'],
+    'visualizador-frequencia': ['/music/explorar/serie-harmonica', '/music/explorar/intervalos-do-acorde', '/music/referencia/frequencias'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
