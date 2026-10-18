@@ -128,6 +128,11 @@
 .lab-roll-grade{flex:1;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(25% - 1px),#dce7f2 calc(25% - 1px),#dce7f2 25%)}
 .lab-roll-barra{position:absolute;height:22px;border:1px solid var(--navy);border-radius:5px;background:#8dc8ff;color:#102a43;font-size:11px;overflow:hidden;cursor:pointer}
 .lab-roll-barra:hover,.lab-roll-barra:focus-visible{background:#ffd166;outline:2px solid var(--navy)}
+.lab-mandala{position:relative;width:min(86vw,420px);height:min(86vw,420px);margin:20px auto;border-radius:50%;border:2px solid #aac8df;background:radial-gradient(circle,#fff 0 20%,#edf5fc 21% 48%,#d8e9f7 49% 50%,#f8fbff 51%);}
+.lab-mandala::before,.lab-mandala::after{content:'';position:absolute;inset:16%;border:1px dashed #8db1cf;border-radius:50%;}.lab-mandala::after{inset:32%;border-style:solid;opacity:.55}
+.lab-mandala-centro{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;border-radius:50%;padding:18px 10px;background:var(--navy);color:#fff;font-size:11px;letter-spacing:.08em}
+.lab-mandala-no{position:absolute;left:50%;top:50%;margin:-17px -35px;width:70px;height:34px;border:2px solid var(--navy);border-radius:999px;background:#fff;color:var(--navy);font-weight:700;cursor:pointer;z-index:3}
+.lab-mandala-no:hover,.lab-mandala-no:focus-visible{background:#ffd166;outline:3px solid #8dc8ff}
 .lab-check{display:flex;gap:6px;align-items:center;font-size:14px;min-height:40px}
 .btn.sec{background:#fff;color:var(--navy);border:1px solid var(--navy)}
 .lab-resumo{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:14px 16px;margin:0 0 12px}

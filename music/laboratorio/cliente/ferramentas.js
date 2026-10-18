@@ -410,6 +410,23 @@
     render();
   };
 
+  F['mandala-harmonica'] = function (alvo, st) {
+    st.texto = st.texto || 'C, Am, F, G';
+    function acs() { return st.texto.split(/[;,\n]+/).map(function (x) { return A.ler(x.trim()); }).filter(Boolean).slice(0, 12); }
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo);
+      var txt = el('textarea', { rows: 2, class: 'lab-textarea', 'aria-label': 'Acordes da mandala' }); txt.value = st.texto;
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Progressão' }), txt]), el('button', { type: 'button', class: 'btn', txt: 'Atualizar mandala', onclick: function () { st.texto = txt.value; render(); } })]));
+      var lista = acs(); if (!lista.length) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite acordes separados por vírgula.' })); return; }
+      var mandala = el('div', { class: 'lab-mandala', role: 'img', 'aria-label': 'Mandala de acordes' });
+      mandala.appendChild(el('div', { class: 'lab-mandala-centro', txt: 'HARMONIA' }));
+      lista.forEach(function (a, i) { var ang = (360 / lista.length) * i - 90; var ns = A.notas(naOitava(a.fundamental, 4), a.id) || []; var comum = i ? (A.notas(naOitava(lista[i - 1].fundamental, 4), lista[i - 1].id) || []).map(N.pc).filter(function (p) { return ns.map(N.pc).indexOf(p) >= 0; }) : []; mandala.appendChild(el('button', { type: 'button', class: 'lab-mandala-no', style: 'transform:rotate(' + ang + 'deg) translateY(-132px) rotate(' + (-ang) + 'deg)', title: comum.length ? comum.length + ' nota(s) em comum com o anterior' : 'Ouvir acorde', txt: A.simbolo(a.fundamental, a.id), onclick: function () { C.Som.tocar(ns.map(N.midi), { modo: 'harmonico' }); } })); });
+      alvo.appendChild(mandala);
+      alvo.appendChild(el('p', { class: 'lab-dica' }, ['Os acordes giram em torno de um centro comum. Passe o cursor sobre cada nó para ver a relação com o acorde anterior; clique para ouvir.']));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------

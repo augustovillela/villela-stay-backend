@@ -328,6 +328,7 @@ function relacionados(slug) {
     'acordes-vizinhos': ['/music/criar/mapa-harmonia', '/music/referencia/cadencias-e-progressoes', '/music/referencia/formulas-de-acordes'],
     'harmonizador-tonalidades': ['/music/criar/mapa-harmonia', '/music/aprender/campo-harmonico', '/music/referencia/tonalidades'],
     'piano-roll-harmonico': ['/music/criar/progressoes', '/music/criar/mapa-harmonia', '/music/explorar/piano'],
+    'mandala-harmonica': ['/music/criar/mapa-harmonia', '/music/explorar/harmonizador-tonalidades', '/music/explorar/circulo-de-quintas'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
