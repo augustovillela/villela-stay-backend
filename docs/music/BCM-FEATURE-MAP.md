@@ -51,4 +51,3 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 
 As páginas públicas foram usadas como referência de escopo e comportamento. A implementação do Musique mantém identidade visual, textos, dados e código próprios.
 
-
