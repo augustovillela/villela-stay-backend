@@ -530,6 +530,22 @@
     render();
   };
 
+  F['metronomo-distorcido'] = function (alvo, st) {
+    st.bpm = st.bpm || 80; st.swing = st.swing || 0; st.omitir = st.omitir || 0; var ag = null;
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo);
+      var bpm = el('input', { type: 'range', min: 30, max: 220, value: st.bpm }); bpm.value = st.bpm;
+      var swing = el('input', { type: 'range', min: 0, max: 65, value: st.swing }); swing.value = st.swing;
+      var omit = el('input', { type: 'range', min: 0, max: 75, value: st.omitir }); omit.value = st.omitir;
+      var info = el('p', { class: 'lab-dica', txt: 'BPM ' + st.bpm + ' · swing ' + st.swing + '% · omissões ' + st.omitir + '%' });
+      function atualizar() { st.bpm = Number(bpm.value); st.swing = Number(swing.value); st.omitir = Number(omit.value); info.textContent = 'BPM ' + st.bpm + ' · swing ' + st.swing + '% · omissões ' + st.omitir + '%'; }
+      [bpm, swing, omit].forEach(function (x) { x.oninput = atualizar; });
+      var botao = el('button', { type: 'button', class: 'btn', txt: '▶ Iniciar', onclick: function () { atualizar(); if (ag) { C.Som.parar(); ag = null; botao.textContent = '▶ Iniciar'; return; } var por = 4; ag = C.Som.agendador({ bpm: st.bpm, porTempo: por, passos: 64, swing: st.swing / 100, aoPasso: function (i, q) { var forte = i % por === 0, perdido = !forte && Math.random() * 100 < st.omitir; if (!perdido) C.Som.bateria.clique(q, forte ? 0.9 : 0.55, forte); }, umaVez: false }); botao.textContent = '■ Parar'; } });
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo' }, [el('span', { txt: 'Andamento' }), bpm]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Swing' }), swing]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Omissões' }), omit]), botao])); alvo.appendChild(info);
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------
