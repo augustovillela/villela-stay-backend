@@ -34,6 +34,7 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 - **Xilofone exportável**: a sequência de notas do xilofone pode ser baixada em SVG ou PNG para estudo, impressão e compartilhamento.
 - **Piano virtual exportável**: o teclado virtual oferece modo compacto e modo completo de 88 teclas; ambos podem ser baixados em SVG, PNG e MIDI a partir da sequência tocada.
 - **Mapa vertical de bateria**: pads posicionam crash, ride, chimbal, caixa, bumbo, tons e acessórios como um kit físico, com disparo por toque.
+- **Bateria eletrônica via MIDI**: a ferramenta aceita notas de entrada de controladores e mapeia os golpes do kit para os sons do Musique em tempo real.
 
 ## Roadmap funcional
 
