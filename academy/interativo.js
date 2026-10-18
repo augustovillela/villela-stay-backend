@@ -85,20 +85,43 @@ function rotuloEstude(rotulo) {
   const m = RE_ROTULO_ESTUDE.exec(String(rotulo || ''));
   return m ? { escopo: m[1], unidade: m[2], rotulo: String(rotulo).slice(m[0].length) } : { escopo: '', unidade: '', rotulo: String(rotulo || '') };
 }
-const temBase = (productId) => !!db.prepare('SELECT 1 FROM tutor_trechos WHERE product_id = ? LIMIT 1').get(productId);
+// AULA INCLUÍDA DE OUTRO CURSO (ADR-0015): o percurso B lista aulas que moram no percurso A, de outro produto. O Tutor
+// de B acha os trechos dessas aulas CONSULTANDO os trechos do produto de A — nada é copiado. Só entram os trechos
+// rotulados `[est:<slug de A>/<aula incluída>]` e sem `lesson_id` (o resto do curso A não vaza para B); no índice de
+// B o trecho passa a responder pelo percurso B (`est_escopo` = slug de B), como as outras aulas dele.
+function inclusoesDoTutor(productId) {
+  return db.prepare(`SELECT b.slug AS slug_b, a.slug AS slug_a, a.product_id AS produto_a, i.unidade_codigo AS codigo
+    FROM est_escopo_inclusoes i JOIN est_escopos b ON b.id = i.escopo_id JOIN est_escopos a ON a.id = i.origem_escopo_id
+    WHERE b.product_id = ? AND b.dono_user_id = '' ORDER BY i.escopo_id, i.ordem, i.unidade_codigo`).all(productId);
+}
+const temBase = (productId) => !!db.prepare('SELECT 1 FROM tutor_trechos WHERE product_id = ? LIMIT 1').get(productId)
+  || (inclusoesDoTutor(productId).length > 0 && indice(productId).docs.length > 0);
 const INDICES_EM_MEMORIA = 40; // quantos cursos ficam com o índice de busca do Tutor montado ao mesmo tempo
 const _indice = new Map(); // productId → {versao, docs:[{id, tf:Map, len}], df:Map, media}
 const _versao = new Map();
 function invalidar(productId) { _versao.set(productId, (_versao.get(productId) || 0) + 1); }
 function indice(productId) {
-  const v = _versao.get(productId) || 0;
+  // a versão do índice de B inclui a dos produtos de origem e a própria lista de inclusões: trocar a base de A ou a
+  // lista refaz o índice de B na próxima pergunta
+  const incl = inclusoesDoTutor(productId);
+  const origens = [...new Set(incl.map(x => x.produto_a))].filter(p => p !== productId);
+  const v = [_versao.get(productId) || 0, ...origens.map(p => p + ':' + (_versao.get(p) || 0)), incl.map(x => x.slug_b + '>' + x.slug_a + '/' + x.codigo).join(',')].join('|');
   const ja = _indice.get(productId);
   if (ja && ja.versao === v) return ja;
-  const linhas = db.prepare('SELECT id, lesson_id, fonte, rotulo, ini_seg, ordem, texto FROM tutor_trechos WHERE product_id = ? ORDER BY ordem').all(productId);
+  const linhas = db.prepare('SELECT id, lesson_id, fonte, rotulo, ini_seg, ordem, texto FROM tutor_trechos WHERE product_id = ? ORDER BY ordem').all(productId)
+    .map(cru => { const re = rotuloEstude(cru.rotulo); return { ...cru, rotulo: re.rotulo, est_escopo: re.escopo, est_unidade: re.unidade }; });
+  if (incl.length) {
+    const quer = new Map(); // "slug de A/aula" → [slugs de B]
+    for (const x of incl) { const k = x.slug_a + '/' + x.codigo; if (!quer.has(k)) quer.set(k, []); quer.get(k).push(x.slug_b); }
+    for (const pa of [...new Set(incl.map(x => x.produto_a))]) {
+      for (const cru of db.prepare("SELECT id, lesson_id, fonte, rotulo, ini_seg, ordem, texto FROM tutor_trechos WHERE product_id = ? AND COALESCE(lesson_id, '') = '' AND rotulo LIKE '[est:%' ORDER BY ordem").all(pa)) {
+        const re = rotuloEstude(cru.rotulo);
+        for (const slugB of quer.get(re.escopo + '/' + re.unidade) || []) linhas.push({ ...cru, rotulo: re.rotulo, est_escopo: slugB, est_unidade: re.unidade, incluido_de: re.escopo });
+      }
+    }
+  }
   const df = new Map();
-  const docs = linhas.map(cru => {
-    const re = rotuloEstude(cru.rotulo);
-    const l = { ...cru, rotulo: re.rotulo, est_escopo: re.escopo, est_unidade: re.unidade }; // o prefixo sai do que se lê e do que se busca
+  const docs = linhas.map(l => {
     const tf = new Map();
     const tk = tokens(l.rotulo + ' ' + l.texto);
     for (const w of tk) tf.set(w, (tf.get(w) || 0) + 1);
@@ -446,8 +469,10 @@ function contextoTutor(usuario, produto, pergunta, lessonId, estude = null) {
   // AULA DO ESTUDE EM RASCUNHO (auditoria de 11/10/2026): o trecho rotulado `[est:percurso/aula]` de aula ainda não
   // publicada entrava na busca geral do curso para qualquer aluno — o Tutor contava a aula antes de ela existir.
   // Só quem revisa o curso (dono e admin) conversa sobre rascunho.
-  const noArDoEstude = podeRevisar(usuario, produto) ? null : new Set(db.prepare(`SELECT e.slug || '|' || u.codigo AS k FROM est_unidades u JOIN est_escopos e ON e.id = u.escopo_id
-    WHERE e.product_id = ? AND e.dono_user_id = '' AND e.status = 'publicado' AND u.status = 'publicado'`).all(produto.id).map(r => r.k));
+  // (as aulas EFETIVAS de cada percurso publicado: as próprias e as incluídas de outro curso, ADR-0015 — a incluída
+  // conta como publicada quando está publicada na ORIGEM)
+  const noArDoEstude = podeRevisar(usuario, produto) ? null : new Set(require('./estudo/repo').Escopos.doProduto(produto.id, ['publicado'])
+    .flatMap(e => require('./estudo/repo').unidades(e.id, ['publicado']).map(u => e.slug + '|' + u.codigo)));
   const publicadaNoEstude = (d) => !d.est_unidade || !noArDoEstude || noArDoEstude.has(d.est_escopo + '|' + d.est_unidade);
   // quem não comprou só conversa sobre as aulas de degustação — livro e aulas pagas ficam fora
   const permitido = (d) => publicadaNoEstude(d) && !travada(d.lesson_id) && (acesso || (d.lesson_id && gratis.has(d.lesson_id)));

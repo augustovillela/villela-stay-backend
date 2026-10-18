@@ -588,7 +588,7 @@ async function rodar({ t, req }) {
     assert.ok(inf.includes('Na data do edital: Não existia') && inf.includes('não apurado na fonte (inferido)'), inf);
     assert.equal(c.situacaoDoVerbete({ situacao: 'vigente', situacao_na_data_do_edital: 'vigente' }), '<span class="es-selo verde">Vigente</span>', 'sem nada a dizer, um selo só');
     // a OJ 394: as duas redações, como nos dispositivos
-    const red = c.redacaoDoEdital({ titulo_na_data_do_edital: 'RSR. NÃO REPERCUSSÃO', texto_na_data_do_edital: 'não repercute <b>' });
+    const red = c.redacaoDoEdital({ titulo_na_data_do_edital: 'RSR. NÃO REPERCUSSÃO', texto_na_data_do_edital: 'não repercute <b>', data_referencia: '2023-01-05' }); // a data vem da API (ADR-0015)
     assert.ok(red.includes('Na data do edital (05/01/2023) vigia outra redação') && red.includes('RSR. NÃO REPERCUSSÃO') && red.includes('não repercute &lt;b&gt;'), red);
     assert.equal(c.redacaoDoEdital({ texto: 'só a de hoje' }), '');
     assert.ok(c.redacaoDoEdital({ tese_na_data_do_edital: 'Tese de 2018.', tese_na_data_do_edital_data: '2018-09-20' }).includes('Tese (20/09/2018)'));

@@ -351,7 +351,12 @@ function unidadeDoEstudo(produto, dados) {
   if (!escopo) throw new Error('Escopo não encontrado neste produto.');
   const cod = est.slug(dados.unidade);
   const un = db.prepare('SELECT id, codigo, titulo FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, cod);
-  if (!un) throw new Error(`Unidade "${cod}" não existe neste escopo.`);
+  if (!un) {
+    // aula INCLUÍDA de outro percurso (ADR-0015): o vídeo mora na origem — sobe lá, e o percurso que inclui o vê
+    const inc = est.inclusoes(escopo.id).find(i => i.unidade_codigo === cod);
+    if (inc) throw new Error(`A aula "${cod}" é incluída de ${inc.origem_slug}: o vídeo dela sobe no percurso de origem (o curso que a inclui passa a vê-lo sozinho).`);
+    throw new Error(`Unidade "${cod}" não existe neste escopo.`);
+  }
   return { escopo, un };
 }
 function iniciarVideoEstudo(dados = {}) {

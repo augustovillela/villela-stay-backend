@@ -985,6 +985,49 @@ const MIGRACOES = [
             PRIMARY KEY (escopo_id, item, diploma_id)
           );`,
   },
+  {
+    // CURSO QUE REÚNE AULAS DE OUTRO ESCOPO (ADR-0015; leitura em estudo/repo.js). A aula continua morando no escopo de
+    // origem (uma linha só em est_unidades); o escopo B a LISTA aqui e traduz os itens do edital A para os do edital B
+    // (`itens_destino`). Corrigir a aula em A corrige em B; a visibilidade segue o status da aula em A.
+    // DATA DE REFERÊNCIA POR ESCOPO (ADR-0015, item 8): `data_referencia` vazia = a data do acervo (05/01/2023, a do
+    // curso de Juiz); `rotulo_data_referencia` é o nome que a tela dá a ela ("data do edital", "data de corte da
+    // objetiva"). O texto "na data" que é próprio de um escopo (data diferente da do acervo) mora em
+    // `est_lj_escopo_textos` (dispositivo) e `est_lj_escopo_verbete_textos` (verbete) — o acervo continua único.
+    nome: 'estudo-inclusoes-e-data-por-escopo-2026-10-17',
+    sql: `CREATE TABLE IF NOT EXISTS est_escopo_inclusoes (
+            escopo_id        TEXT NOT NULL REFERENCES est_escopos(id),
+            origem_escopo_id TEXT NOT NULL REFERENCES est_escopos(id),
+            unidade_codigo   TEXT NOT NULL,
+            ordem            INTEGER DEFAULT 0,
+            itens_destino    TEXT DEFAULT '[]',
+            atualizado_em    TEXT DEFAULT '',
+            PRIMARY KEY (escopo_id, origem_escopo_id, unidade_codigo)
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_incl_origem ON est_escopo_inclusoes (origem_escopo_id, unidade_codigo);
+          ALTER TABLE est_escopos ADD COLUMN data_referencia TEXT DEFAULT '';
+          ALTER TABLE est_escopos ADD COLUMN rotulo_data_referencia TEXT DEFAULT '';
+          CREATE TABLE IF NOT EXISTS est_lj_escopo_textos (
+            escopo_id      TEXT NOT NULL REFERENCES est_escopos(id),
+            diploma_id     TEXT NOT NULL,
+            dispositivo_id TEXT NOT NULL,          -- o dispositivo ou a parte (art-2.p1)
+            situacao       TEXT NOT NULL,          -- a situação na data de referência do escopo
+            texto          TEXT,                   -- a redação na data de referência (null = a vigente)
+            nota           TEXT DEFAULT '',
+            atualizado_em  TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, diploma_id, dispositivo_id)
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_escopo_verbete_textos (
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            verbete_id    TEXT NOT NULL,
+            situacao      TEXT NOT NULL,           -- a situação do verbete na data de referência do escopo
+            texto         TEXT DEFAULT '',
+            titulo        TEXT DEFAULT '',
+            tese          TEXT DEFAULT '',
+            nota          TEXT DEFAULT '',
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, verbete_id)
+          );`,
+  },
 ];
 
 // Cada migração é ATÔMICA: os comandos dela e o registro em `migrations` entram na mesma transação. Antes, um

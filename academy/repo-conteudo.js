@@ -612,8 +612,14 @@ const Midia = {
       -- Vídeo de aula do ESTUDE: não é aula do curso (não goteja), exige matrícula no curso que hospeda o
       -- percurso, e só vale para aula PUBLICADA — vídeo de aula em rascunho não se entrega pela URL.
       UNION SELECT '' AS lesson_id, e.product_id, 0 AS gratuita FROM est_unidades u JOIN est_escopos e ON e.id = u.escopo_id
-            WHERE u.video_media_id = ? AND u.status = 'publicado' AND e.status = 'publicado'`)
-      .all(mediaId, mediaId, mediaId, mediaId, mediaId);
+            WHERE u.video_media_id = ? AND u.status = 'publicado' AND e.status = 'publicado'
+      -- …e a aula INCLUÍDA em percurso de outro curso (ADR-0015): quem tem o curso que a inclui também a assiste.
+      -- A aula segue o status dela na origem; o percurso que a inclui tem de estar publicado e ser do curso.
+      UNION SELECT '' AS lesson_id, b.product_id, 0 AS gratuita FROM est_unidades u
+            JOIN est_escopo_inclusoes i ON i.origem_escopo_id = u.escopo_id AND i.unidade_codigo = u.codigo
+            JOIN est_escopos b ON b.id = i.escopo_id
+            WHERE u.video_media_id = ? AND u.status = 'publicado' AND b.status = 'publicado' AND b.dono_user_id = ''`)
+      .all(mediaId, mediaId, mediaId, mediaId, mediaId, mediaId);
     for (const r of refs) {
       if (r.gratuita) return true; // degustação
       if (!temAcesso(usuario.id, r.product_id)) continue; // matrícula ou assinatura (clube)
@@ -1213,8 +1219,8 @@ const Marketplace = {
     const { aulasPorDisciplina } = require('./estudo/aluno');
     const r = { percursos: escopos.length, aulas: 0, videos: 0, video_seg: 0, questoes: 0, cards: 0, disciplinas: 0, grupos: [] };
     for (const e of escopos) {
-      const uns = db.prepare(`SELECT codigo, titulo, itens, video_media_id, video_duracao_seg FROM est_unidades
-        WHERE escopo_id = ? AND status = 'publicado' ORDER BY ordem`).all(e.id).map(u => ({ ...u, itens: j.parse(u.itens, []) }));
+      // as aulas EFETIVAS publicadas (as próprias e as incluídas de outro percurso — ADR-0015), em colunas leves
+      const uns = R.unidadesLeves(e.id, ['publicado']);
       if (!uns.length) continue;
       // a regra de "qual é a disciplina desta aula" é a do aluno (uma só no sistema); a cobertura inteira
       // (questão por item) não é calculada: o agrupamento só precisa do código e do texto de cada item
@@ -1238,7 +1244,8 @@ const Marketplace = {
     // DISTINCT: a mesma questão ligada a dois percursos do curso é uma questão só
     r.questoes = db.prepare(`SELECT COUNT(DISTINCT q.id) n FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id
       WHERE v.escopo_id IN (${m}) AND q.situacao = 'disponivel'`).get(...ids).n;
-    r.cards = db.prepare(`SELECT COUNT(*) n FROM est_cards WHERE escopo_id IN (${m}) AND status = 'publicado'`).get(...ids).n;
+    // os cards do percurso, com os herdados das aulas incluídas (um card contado uma vez só)
+    r.cards = new Set(escopos.flatMap(e => R.cards(e.id, ['publicado']).map(k => k.id))).size;
     return r;
   },
 };

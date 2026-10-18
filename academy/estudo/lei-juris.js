@@ -295,13 +295,13 @@ function extraDoEdital(x, c, k) {
 // "Cancelada por perda de eficácia a partir de 11.11.2017" (Res. TST 225/2025): na data do edital o verbete estava
 // formalmente vigente, mas já sem eficácia. Quando a coleta não traz a ressalva, ela sai da própria nota oficial.
 const PERDA_EFICACIA = /perda de efic[aá]cia a partir de (\d{1,2})[./](\d{1,2})[./](\d{4})/i;
-function ressalvaDoEdital(v, ex) {
+function ressalvaDoEdital(v, ex, dataRef = DATA_EDITAL_PADRAO) {
   if (ex.ressalva) return ex.ressalva;
   if ((v.situacao_edital || '') !== 'vigente') return '';
   const m = PERDA_EFICACIA.exec([v.situacao_detalhe, ex.nota].filter(Boolean).join(' '));
   if (!m) return '';
   const iso = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
-  if (iso >= DATA_EDITAL_PADRAO) return '';
+  if (iso >= dataRef) return '';
   const br = `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3]}`;
   return ex.cancelamento_parcial ? `formalmente vigente; os itens cancelados já estavam sem eficácia desde ${br}` : `formalmente vigente, mas sem eficácia desde ${br}`;
 }
@@ -520,6 +520,67 @@ function remover(produto, dados = {}) {
     return out;
   });
 }
+// O TEXTO "NA DATA" PRÓPRIO DO PERCURSO (ADR-0015, item 8) — para o percurso cuja data de referência não é a do acervo
+// (`escopo.data_referencia`, gravada pela importação do Estude). Contrato:
+//   { escopo, substituir?: true,
+//     dispositivos: [{ diploma, id (dispositivo ou parte), situacao, texto_na_data (null = a redação vigente), nota }],
+//     verbetes:     [{ id, situacao_na_data, texto_na_data, titulo_na_data, tese_na_data, nota }] }
+// O dispositivo e o verbete têm de estar no acervo DO PERCURSO. `substituir` apaga antes os textos próprios do tipo que
+// veio (dispositivos e/ou verbetes). Nada vai para o acervo: ele continua único.
+const MAX_TEXTOS = 5000;
+function importarTextosDoEscopo(produto, dados = {}) {
+  const escopo = escopoDoCurso(produto, dados.escopo);
+  if (!DATA.test(escopo.data_referencia || '')) throw erro('Este percurso usa a data do acervo — informe escopo.data_referencia na importação do Estude antes de mandar texto próprio.', 409);
+  const k = coletor();
+  const ds = Array.isArray(dados.dispositivos) ? dados.dispositivos : [], vs = Array.isArray(dados.verbetes) ? dados.verbetes : [];
+  if (!ds.length && !vs.length && dados.substituir !== true) throw erro('Informe "dispositivos" e/ou "verbetes".');
+  if (ds.length + vs.length > MAX_TEXTOS) throw erro(`no máximo ${MAX_TEXTOS} textos por envio.`);
+  const partesDe = new Map();
+  const existe = (dip, id) => {
+    if (!db.prepare('SELECT 1 FROM est_lj_escopo_diplomas WHERE escopo_id = ? AND diploma_id = ?').get(escopo.id, dip)) return false;
+    if (db.prepare('SELECT 1 FROM est_lj_dispositivos WHERE diploma_id = ? AND id = ?').get(dip, id)) return true;
+    const base = id.split('.')[0];
+    const k2 = dip + '|' + base;
+    if (!partesDe.has(k2)) { const x = db.prepare('SELECT partes FROM est_lj_dispositivos WHERE diploma_id = ? AND id = ?').get(dip, base); partesDe.set(k2, new Set((x ? j.parse(x.partes, []) : []).map(p => p.id))); }
+    return partesDe.get(k2).has(id);
+  };
+  const disp = ds.map((x, i) => {
+    const c = `dispositivos[${i}]`;
+    if (!x || typeof x !== 'object') { k.e(`${c}: objeto.`); return null; }
+    const o = { diploma: texto(x.diploma, 80, c + '.diploma', k, { obrigatorio: true }), id: texto(x.id, 160, c + '.id', k, { obrigatorio: true }),
+      situacao: texto(x.situacao, 30, c + '.situacao', k, { obrigatorio: true }), texto: x.texto_na_data == null ? null : texto(x.texto_na_data, LIMITE.texto, c + '.texto_na_data', k),
+      nota: texto(x.nota, 1500, c + '.nota', k) };
+    if (o.situacao && !SITUACOES.includes(o.situacao)) k.e(`${c}.situacao "${o.situacao}": deve ser ${SITUACOES.join('|')}.`);
+    if (o.diploma && o.id && !existe(o.diploma, o.id)) k.e(`${c}: "${o.diploma}|${o.id}" não está no acervo deste percurso.`);
+    return o;
+  }).filter(Boolean);
+  const verb = vs.map((x, i) => {
+    const c = `verbetes[${i}]`;
+    if (!x || typeof x !== 'object') { k.e(`${c}: objeto.`); return null; }
+    const o = { id: texto(x.id, 160, c + '.id', k, { obrigatorio: true }), situacao: texto(x.situacao_na_data, 60, c + '.situacao_na_data', k, { obrigatorio: true }),
+      texto: texto(x.texto_na_data, LIMITE.textoVerbete, c + '.texto_na_data', k), titulo: texto(x.titulo_na_data, 3000, c + '.titulo_na_data', k),
+      tese: texto(x.tese_na_data, 60000, c + '.tese_na_data', k), nota: texto(x.nota, 3000, c + '.nota', k) };
+    if (o.situacao && !SITUACOES_JURIS_EDITAL.includes(o.situacao)) k.e(`${c}.situacao_na_data "${o.situacao}": deve ser ${SITUACOES_JURIS_EDITAL.join('|')}.`);
+    if (o.id && !db.prepare('SELECT 1 FROM est_lj_escopo_verbetes WHERE escopo_id = ? AND verbete_id = ?').get(escopo.id, o.id)) k.e(`${c}: o verbete "${o.id}" não está no acervo deste percurso.`);
+    return o;
+  }).filter(Boolean);
+  k.falhar('Textos recusados');
+  const agora = nowISO();
+  return transacao(() => {
+    const out = { escopo: escopo.slug, data_referencia: escopo.data_referencia, dispositivos: 0, verbetes: 0, apagados: 0 };
+    if (dados.substituir === true) {
+      if (ds.length || !vs.length) out.apagados += db.prepare('DELETE FROM est_lj_escopo_textos WHERE escopo_id = ?').run(escopo.id).changes;
+      if (vs.length || !ds.length) out.apagados += db.prepare('DELETE FROM est_lj_escopo_verbete_textos WHERE escopo_id = ?').run(escopo.id).changes;
+    }
+    const insD = db.prepare(`INSERT INTO est_lj_escopo_textos (escopo_id, diploma_id, dispositivo_id, situacao, texto, nota, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (escopo_id, diploma_id, dispositivo_id) DO UPDATE SET situacao = excluded.situacao, texto = excluded.texto, nota = excluded.nota, atualizado_em = excluded.atualizado_em`);
+    for (const o of disp) out.dispositivos += insD.run(escopo.id, o.diploma, o.id, o.situacao, o.texto, o.nota, agora).changes;
+    const insV = db.prepare(`INSERT INTO est_lj_escopo_verbete_textos (escopo_id, verbete_id, situacao, texto, titulo, tese, nota, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (escopo_id, verbete_id) DO UPDATE SET situacao = excluded.situacao, texto = excluded.texto, titulo = excluded.titulo, tese = excluded.tese, nota = excluded.nota, atualizado_em = excluded.atualizado_em`);
+    for (const o of verb) out.verbetes += insV.run(escopo.id, o.id, o.situacao, o.texto, o.titulo, o.tese, o.nota, agora).changes;
+    return out;
+  });
+}
 function resumoStaff(produto, slugEscopo) {
   const escopo = escopoDoCurso(produto, slugEscopo);
   const e = escopo.id;
@@ -534,6 +595,9 @@ function resumoStaff(produto, slugEscopo) {
   const orfaos = db.prepare(`SELECT COUNT(*) AS n FROM est_lj_vinculos v LEFT JOIN est_lj_dispositivos d ON d.diploma_id = v.diploma_id AND d.id = v.dispositivo_id
     WHERE v.escopo_id = ? AND v.tipo = 'lei' AND d.id IS NULL`).get(e).n;
   return { escopo: escopo.slug, status: estadoDo(e), busca: FTS ? 'fts5' : 'like', diplomas, colecoes,
+    // ADR-0015: a data de referência do percurso (vazia = a do acervo) e quantos textos "na data" são próprios dele
+    data_referencia: escopo.data_referencia || '', rotulo_data_referencia: escopo.rotulo_data_referencia || '',
+    textos_proprios: { dispositivos: db.prepare('SELECT COUNT(*) n FROM est_lj_escopo_textos WHERE escopo_id = ?').get(e).n, verbetes: db.prepare('SELECT COUNT(*) n FROM est_lj_escopo_verbete_textos WHERE escopo_id = ?').get(e).n },
     vinculos: Object.fromEntries(vinc.map(x => [x.tipo, { vinculos: x.n, itens: x.itens }])), vinculos_orfaos: orfaos,
     itens_folha: folhas.length, itens_sem_vinculo: folhas.filter(i => !comVinculo.has(i.codigo)).map(i => i.codigo) };
 }
@@ -582,8 +646,71 @@ const marcasDe = (usuario, c, tipo, refs) => {
   }
   return out;
 };
-const diplomaPublico = (d) => ({ id: d.id, nome: d.nome, norma: d.norma, sigla: d.sigla, tipo: d.tipo, abrangencia: d.abrangencia, fonte_url: d.fonte_url,
-  consultado_em: d.consultado_em, data_referencia_edital: d.data_edital, artigos: d.artigos, alterados_apos_edital: d.alterados });
+// =====================================================================
+// DATA DE REFERÊNCIA POR ESCOPO (ADR-0015, item 8). O acervo é um só e guarda a situação e a redação na data dele
+// (05/01/2023, o edital do curso de Juiz). Um percurso com OUTRA data (`est_escopos.data_referencia`, ex.: o corte da
+// objetiva do MPT) lê a situação e a redação "na data" assim:
+//   1. o texto PRÓPRIO do percurso, quando o staff o mandou (`est_lj_escopo_textos` / `est_lj_escopo_verbete_textos`);
+//   2. sem ele, o que dá para AFIRMAR a partir do acervo: dispositivo alterado/incluído/revogado depois da data do
+//      acervo por norma com data completa ANTERIOR (ou igual) à data do percurso já vigorava assim nela; verbete que não
+//      mudou desde a data do acervo (situação igual, sem redação anterior) estava igual nela;
+//   3. o resto fica "não disponível / não apurado" — nunca a redação de outra data com o rótulo desta.
+// Percurso sem data própria (o curso de Juiz) lê o acervo exatamente como antes.
+// =====================================================================
+function referencia(c) {
+  return R.memo(`lj:ref:${c.escopo.id}`, () => {
+    const e = c.escopo, propria = DATA.test(e.data_referencia || '') ? e.data_referencia : '';
+    return { escopoId: e.id, propria, data: propria || DATA_EDITAL_PADRAO, rotuloProprio: s(e.rotulo_data_referencia, 80), rotulo: s(e.rotulo_data_referencia, 80) || 'data do edital' };
+  });
+}
+const mesmaDoAcervo = (ref, dataAcervo) => !ref.propria || ref.propria === (dataAcervo || DATA_EDITAL_PADRAO);
+// o ajuste dos dispositivos de UM diploma para a data do percurso (null = a do acervo vale como está)
+function ajusteDoDiploma(c, d) {
+  const ref = referencia(c), dataAcervo = d.data_edital || DATA_EDITAL_PADRAO;
+  if (mesmaDoAcervo(ref, dataAcervo)) return null;
+  const proprios = R.memo(`lj:txt:${ref.escopoId}:${d.id}`, () => new Map(db.prepare('SELECT dispositivo_id, situacao, texto, nota FROM est_lj_escopo_textos WHERE escopo_id = ? AND diploma_id = ?')
+    .all(ref.escopoId, d.id).map(r => [r.dispositivo_id, r])));
+  return (o) => {
+    const r = proprios.get(o.id);
+    if (r) return { situacao: r.situacao, texto_na_data_do_edital: r.texto == null ? null : r.texto, edital_indisponivel: false, nota_na_data_de_referencia: r.nota || '' };
+    if (!APOS_EDITAL.includes(o.situacao)) return { situacao: o.situacao, texto_na_data_do_edital: null, edital_indisponivel: false };
+    const dt = (o.alterado_por && o.alterado_por.data) || '';
+    if (DATA.test(dt) && dt <= ref.data && ref.data >= dataAcervo) return { situacao: o.situacao === 'revogado_apos_edital' ? 'revogado' : 'vigente', texto_na_data_do_edital: null, edital_indisponivel: false };
+    return { situacao: o.situacao, texto_na_data_do_edital: null, edital_indisponivel: true };
+  };
+}
+// só a SITUAÇÃO de um dispositivo na data do percurso — para as linhas da busca
+function situacaoNaReferencia(c, diplomaId, id, situacao) {
+  if (!referencia(c).propria) return situacao;
+  const d = db.prepare('SELECT id, data_edital FROM est_lj_diplomas WHERE id = ?').get(diplomaId);
+  const aj = d && ajusteDoDiploma(c, d);
+  if (!aj) return situacao;
+  const x = db.prepare('SELECT alterado_por FROM est_lj_dispositivos WHERE diploma_id = ? AND id = ?').get(diplomaId, id);
+  return aj({ id, situacao, alterado_por: x ? j.parse(x.alterado_por, null) : null }).situacao;
+}
+// o verbete na data do percurso: os campos "na data do edital" de `camposDoEdital`, refeitos para ela
+function ajusteDoVerbete(c, v) {
+  const ref = referencia(c);
+  const base = { data_referencia: ref.data, rotulo_data_referencia: ref.rotuloProprio }; // sem nome próprio, a tela diz "data do edital"
+  if (mesmaDoAcervo(ref, DATA_EDITAL_PADRAO)) return base;
+  const r = db.prepare('SELECT situacao, texto, titulo, tese, nota FROM est_lj_escopo_verbete_textos WHERE escopo_id = ? AND verbete_id = ?').get(ref.escopoId, v.id);
+  const ex = j.parse(v.edital_extra, {}) || {};
+  if (r) return { ...base, situacao_na_data_do_edital: r.situacao, situacao_na_data_do_edital_nota: r.nota || '', situacao_na_data_do_edital_inferida: false,
+    ressalva_na_data_do_edital: '', texto_na_data_do_edital: r.texto || '', titulo_na_data_do_edital: r.titulo || '', tese_na_data_do_edital: r.tese || '', tese_na_data_do_edital_data: '' };
+  const naoMudou = ref.data >= DATA_EDITAL_PADRAO && v.situacao_edital && v.situacao_edital === v.situacao && !ex.texto && !ex.titulo && !ex.tese && !ex.inferida;
+  if (naoMudou) return { ...base, ressalva_na_data_do_edital: ressalvaDoEdital(v, ex, ref.data) };
+  return { ...base, situacao_na_data_do_edital: '', situacao_na_data_do_edital_inferida: true, ressalva_na_data_do_edital: '',
+    situacao_na_data_do_edital_nota: `NÃO APURADO para a ${ref.rotulo} deste curso (${ref.data.split('-').reverse().join('/')}).`,
+    texto_na_data_do_edital: '', titulo_na_data_do_edital: '', tese_na_data_do_edital: '', tese_na_data_do_edital_data: '' };
+}
+
+const diplomaPublico = (d, c = null) => {
+  const ref = c ? referencia(c) : null, mesma = !ref || mesmaDoAcervo(ref, d.data_edital);
+  return { id: d.id, nome: d.nome, norma: d.norma, sigla: d.sigla, tipo: d.tipo, abrangencia: d.abrangencia, fonte_url: d.fonte_url,
+    consultado_em: d.consultado_em, data_referencia_edital: mesma ? d.data_edital : ref.data, rotulo_data_referencia: ref ? ref.rotuloProprio : '', artigos: d.artigos,
+    // a contagem do acervo é da data DELE: com outra data, não é mostrada (seria o número de outra data)
+    alterados_apos_edital: mesma ? d.alterados : null };
+};
 // A PARTE DO DIPLOMA que tem numeração própria (auditoria AL, AL-05): o ADCT dentro da CF ("adct-art-10"), um anexo
 // de tratado ("anexo-i-art-15"). O rótulo da fonte é só "Art. 10" — igual ao do corpo permanente —, então o que o
 // aluno lê (aba da aula, acervo, busca) passa a ser "ADCT, art. 10".
@@ -602,11 +729,21 @@ function rotuloCompleto(id, rotulo) {
 }
 // "ATO DAS DISPOSIÇÕES… — ATO DAS DISPOSIÇÕES…" (rótulo e nome iguais) vira um nível só
 const estruturaLimpa = (e) => String(e || '').split(' > ').map(seg => { const [a, b] = seg.split(' — '); return b && a.trim() === b.trim() ? a.trim() : seg; }).join(' > ');
-function dispositivoPublico(x) {
+function dispositivoPublico(x, aj = null) {
   const parte = parteDoDiploma(x.id);
-  return { id: x.id, rotulo: rotuloCompleto(x.id, x.rotulo), ...(parte ? { parte_do_diploma: parte } : {}), ordem: x.ordem, estrutura: estruturaLimpa(x.estrutura), epigrafe: x.epigrafe, texto: x.texto, situacao: x.situacao, nota: x.nota,
+  const o = { id: x.id, rotulo: rotuloCompleto(x.id, x.rotulo), ...(parte ? { parte_do_diploma: parte } : {}), ordem: x.ordem, estrutura: estruturaLimpa(x.estrutura), epigrafe: x.epigrafe, texto: x.texto, situacao: x.situacao, nota: x.nota,
     alterado_por: j.parse(x.alterado_por, null), texto_na_data_do_edital: x.texto_edital == null ? null : x.texto_edital, edital_indisponivel: !!x.edital_indisponivel,
     partes: j.parse(x.partes, []) };
+  if (!aj) return o;
+  // a data do percurso não é a do acervo (ADR-0015): situação e redação "na data" refeitas — o dispositivo e cada parte
+  Object.assign(o, aj({ id: o.id, situacao: o.situacao, alterado_por: o.alterado_por }));
+  o.partes = o.partes.map(p => {
+    const z = aj({ id: p.id, situacao: p.situacao, alterado_por: p.alterado_por || null });
+    const { texto_na_data_do_edital_indisponivel, ...resto } = p;
+    return { ...resto, situacao: z.situacao, texto_na_data_do_edital: z.texto_na_data_do_edital, ...(z.edital_indisponivel ? { texto_na_data_do_edital_indisponivel: true } : {}),
+      ...(z.nota_na_data_de_referencia ? { nota_na_data_de_referencia: z.nota_na_data_de_referencia } : {}) };
+  });
+  return o;
 }
 // o verbete como o aluno o lê — com o que a coleta diz da DATA DO EDITAL (AL-04/AL-09/AL-15): a nota, a marca de
 // situação inferida (não apurada na fonte), a ressalva, a redação/título/tese de então e o cancelamento parcial
@@ -616,9 +753,9 @@ function camposDoEdital(v) {
     texto_na_data_do_edital: ex.texto || '', titulo_na_data_do_edital: ex.titulo || '', tese_na_data_do_edital: ex.tese || '', tese_na_data_do_edital_data: ex.tese_data || '',
     cancelamento_parcial: !!ex.cancelamento_parcial };
 }
-const verbetePublico = (v) => ({ id: v.id, colecao: v.colecao, tipo: v.tipo, tribunal: v.tribunal, orgao: v.orgao, numero: v.numero, titulo: v.titulo, texto: v.texto, tese: v.tese,
+const verbetePublico = (v, c) => ({ id: v.id, colecao: v.colecao, tipo: v.tipo, tribunal: v.tribunal, orgao: v.orgao, numero: v.numero, titulo: v.titulo, texto: v.texto, tese: v.tese,
   situacao: v.situacao, situacao_detalhe: v.situacao_detalhe, situacao_na_data_do_edital: v.situacao_edital, historico: v.historico, leading_case: v.leading_case,
-  julgamento: v.julgamento, fonte_url: v.fonte_url, consultado_em: v.consultado_em, ...camposDoEdital(v) });
+  julgamento: v.julgamento, fonte_url: v.fonte_url, consultado_em: v.consultado_em, ...camposDoEdital(v), ...ajusteDoVerbete(c, v) });
 const emLotes = (lista, fn) => { const out = []; for (let i = 0; i < lista.length; i += 500) out.push(...fn(lista.slice(i, i + 500))); return out; };
 const marcadores = (n) => Array(n).fill('?').join(',');
 
@@ -661,10 +798,11 @@ function legislacaoVinculada(usuario, produto, slugEscopo, q = {}) {
     const linhas = emLotes([...dm.keys()], (l) => db.prepare(`SELECT * FROM est_lj_dispositivos WHERE diploma_id = ? AND id IN (${marcadores(l.length)})`).all(dip, ...l))
       .sort((a, b) => a.ordem - b.ordem);
     if (!linhas.length) continue;
-    diplomas.push({ ...diplomaPublico(d), dispositivos: linhas.map(x => {
+    const aj = ajusteDoDiploma(c, d);
+    diplomas.push({ ...diplomaPublico(d, c), dispositivos: linhas.map(x => {
       const cit = dm.get(x.id);
       refs.push(dip + '|' + x.id);
-      return { ...dispositivoPublico(x), citado_inteiro: cit.inteiro, citadas: [...cit.partes], itens: [...cit.itens].sort() };
+      return { ...dispositivoPublico(x, aj), citado_inteiro: cit.inteiro, citadas: [...cit.partes], itens: [...cit.itens].sort() };
     }) });
   }
   // a CF primeiro, depois os códigos; dentro do mesmo tipo, o que o item mais usa
@@ -689,7 +827,7 @@ function jurisprudenciaVinculada(usuario, produto, slugEscopo, q = {}) {
     JOIN est_lj_verbetes x ON x.id = v.verbete_id WHERE v.escopo_id = ? AND v.tipo = 'juris' AND v.item IN (${marcadores(l.length)})`).all(c.escopo.id, ...l)) : [];
   const por = new Map();
   for (const v of vs) {
-    if (!por.has(v.id)) por.set(v.id, { ...verbetePublico(v), numero_ord: v.numero_ord, itens: new Set(), motivos: new Set() });
+    if (!por.has(v.id)) por.set(v.id, { ...verbetePublico(v, c), numero_ord: v.numero_ord, itens: new Set(), motivos: new Set() });
     por.get(v.id).itens.add(v.item);
     if (v.motivo) por.get(v.id).motivos.add(v.motivo);
   }
@@ -717,7 +855,7 @@ function acervoLegislacao(usuario, produto, slugEscopo, { q = '' } = {}) {
   if (termo) ds = ds.filter(d => termo.split(/\s+/).every(t => semAcento([d.nome, d.norma, d.sigla, d.id].join(' ')).includes(t)));
   const peso = (t) => ({ constituicao: 0, codigo: 1 }[t] ?? 2);
   ds.sort((a, b) => peso(a.tipo) - peso(b.tipo) || (b.cobrados > 0) - (a.cobrados > 0) || a.nome.localeCompare(b.nome, 'pt'));
-  return { total, diplomas: ds.map(d => ({ ...diplomaPublico(d), cobrados: d.cobrados })) };
+  return { total, diplomas: ds.map(d => ({ ...diplomaPublico(d, c), cobrados: d.cobrados })) };
 }
 function diplomaInteiro(usuario, produto, slugEscopo, diplomaId) {
   const c = abrirAcervo(usuario, produto, slugEscopo);
@@ -733,9 +871,10 @@ function diplomaInteiro(usuario, produto, slugEscopo, diplomaId) {
     if (v.parte) x.partes.add(v.parte); else x.inteiro = true;
   }
   const aulasUsadas = new Set();
+  const aj = ajusteDoDiploma(c, d);
   const dispositivos = db.prepare('SELECT * FROM est_lj_dispositivos WHERE diploma_id = ? ORDER BY ordem').all(id).map(x => {
     const cb = cob.get(x.id);
-    const o = dispositivoPublico(x);
+    const o = dispositivoPublico(x, aj);
     if (cb) {
       const itens = [...cb.itens].sort();
       const aulas = [...new Set(itens.flatMap(it => m.aulasDe(it)))];
@@ -749,7 +888,7 @@ function diplomaInteiro(usuario, produto, slugEscopo, diplomaId) {
   for (const mk of db.prepare("SELECT ref, lido, cor FROM est_lj_marcas WHERE user_id = ? AND escopo_id = ? AND tipo = 'dispositivo' AND substr(ref, 1, ?) = ?").all(usuario.id, c.escopo.id, pref.length, pref)) {
     marcas[mk.ref] = { lido: !!mk.lido, cor: mk.cor || '' };
   }
-  return { diploma: { ...diplomaPublico(d), estrutura: j.parse(d.estrutura, []) }, dispositivos, cobrados: cob.size,
+  return { diploma: { ...diplomaPublico(d, c), estrutura: j.parse(d.estrutura, []) }, dispositivos, cobrados: cob.size,
     aulas: Object.fromEntries([...aulasUsadas].map(a => [a, m.titulos.get(a) || a])), itens: Object.fromEntries([...new Set([...cob.values()].flatMap(x => [...x.itens]))].map(i => [i, m.itens.get(i) || ''])), marcas };
 }
 
@@ -803,7 +942,7 @@ function acervoJurisprudencia(usuario, produto, slugEscopo, f = {}) {
     const its = [...(itensDe.get(v.id) || [])].sort();
     const aulas = [...new Set(its.flatMap(it => m.aulasDe(it)))];
     aulas.forEach(a => aulasUsadas.add(a));
-    return { ...verbetePublico(v), itens: its, aulas };
+    return { ...verbetePublico(v, c), itens: its, aulas };
   });
   return { total, pagina, paginas, por_pagina: POR_PAGINA, filtros: aplicados, itens, facetas: facetasJuris(c),
     aulas: Object.fromEntries([...aulasUsadas].map(a => [a, m.titulos.get(a) || a])), marcas: marcasDe(usuario, c, 'verbete', ids) };
@@ -838,7 +977,7 @@ function verbete(usuario, produto, slugEscopo, id) {
   const m = mapaDoPercurso(c);
   const itens = db.prepare("SELECT DISTINCT item FROM est_lj_vinculos WHERE escopo_id = ? AND tipo = 'juris' AND verbete_id = ? ORDER BY item").all(c.escopo.id, v.id).map(x => x.item);
   const aulas = [...new Set(itens.flatMap(it => m.aulasDe(it)))];
-  return { verbete: { ...verbetePublico(v), itens, aulas }, aulas: Object.fromEntries(aulas.map(a => [a, m.titulos.get(a) || a])),
+  return { verbete: { ...verbetePublico(v, c), itens, aulas }, aulas: Object.fromEntries(aulas.map(a => [a, m.titulos.get(a) || a])),
     itens: Object.fromEntries(itens.map(i => [i, m.itens.get(i) || ''])), marcas: marcasDe(usuario, c, 'verbete', [v.id]) };
 }
 
@@ -959,9 +1098,9 @@ function exatosLei(c, cn) {
         trecho: trecho.slice(0, 240) + (trecho.length > 240 ? '…' : ''), exato: true, ...(p ? { parte: p.id } : {}) };
     });
 }
-function linhaJuris(v, trecho, extra = {}) {
-  const ed = camposDoEdital(v);
-  return { id: v.id, tribunal: v.tribunal, tipo: v.tipo, numero: v.numero, titulo: v.titulo, situacao: v.situacao, situacao_na_data_do_edital: v.situacao_edital,
+function linhaJuris(c, v, trecho, extra = {}) {
+  const ed = { ...camposDoEdital(v), situacao_na_data_do_edital: v.situacao_edital, ...ajusteDoVerbete(c, v) };
+  return { id: v.id, tribunal: v.tribunal, tipo: v.tipo, numero: v.numero, titulo: v.titulo, situacao: v.situacao, situacao_na_data_do_edital: ed.situacao_na_data_do_edital,
     situacao_na_data_do_edital_inferida: ed.situacao_na_data_do_edital_inferida, situacao_na_data_do_edital_nota: ed.situacao_na_data_do_edital_nota,
     ressalva_na_data_do_edital: ed.ressalva_na_data_do_edital, cancelamento_parcial: ed.cancelamento_parcial, trecho, ...extra };
 }
@@ -972,7 +1111,7 @@ function exatosJuris(c, cn) {
   const uso = usoDasColecoes(c);
   return linhas.sort((a, b) => ((b.tribunal === cn.tribunal) - (a.tribunal === cn.tribunal)) || ((b.colecao === cn.colecao) - (a.colecao === cn.colecao))
       || ordemTribunal(a.tribunal) - ordemTribunal(b.tribunal) || ordemTipo(a.tipo) - ordemTipo(b.tipo) || (uso.get(b.colecao) || 0) - (uso.get(a.colecao) || 0) || a.id.localeCompare(b.id))
-    .map(v => ({ rid: v.rid, ...linhaJuris(v, (v.texto || v.tese || v.titulo || '').slice(0, 240), { exato: true }) }));
+    .map(v => ({ rid: v.rid, ...linhaJuris(c, v, (v.texto || v.tese || v.titulo || '').slice(0, 240), { exato: true }) }));
 }
 // os itens do edital que TRATAM do assunto buscado: o texto do item contém a frase (palavras inteiras pelo começo)
 const normalizar = (t) => ' ' + semAcento(t).replace(/[^\p{L}\p{N}]+/gu, ' ').trim() + ' ';
@@ -1085,7 +1224,7 @@ function busca(usuario, produto, slugEscopo, { q = '', onde = 'todos', pagina = 
         if (x.exato) { const { rid, ...r } = x; return r; }
         const v = linhas.get(x.k);
         if (!v) return null;
-        return linhaJuris(v, x.fts ? (trechos.get(x.rid) || trechoLike(v.texto, termos)) : trechoLike(v.texto || v.tese, termos), x.itens.length ? { pelo_item: x.itens.sort() } : {});
+        return linhaJuris(c, v, x.fts ? (trechos.get(x.rid) || trechoLike(v.texto, termos)) : trechoLike(v.texto || v.tese, termos), x.itens.length ? { pelo_item: x.itens.sort() } : {});
       }).filter(Boolean);
     } else {
       const cond = termos.map(() => "(v.texto || ' ' || v.titulo || ' ' || v.tese) LIKE ? ESCAPE '\\'").join(' AND ');
@@ -1093,10 +1232,12 @@ function busca(usuario, produto, slugEscopo, { q = '', onde = 'todos', pagina = 
       const as = termos.map(like);
       out.total_juris = db.prepare(`SELECT COUNT(*) AS n ${de}`).get(c.escopo.id, ...as).n + exatos.length;
       const lista = db.prepare(`SELECT v.* ${de} ORDER BY ${ORDEM_JURIS} LIMIT ? OFFSET ?`).all(c.escopo.id, ...as, POR_BUSCA, off)
-        .filter(v => !ja.has(v.id)).map(v => linhaJuris(v, trechoLike(v.texto, termos)));
+        .filter(v => !ja.has(v.id)).map(v => linhaJuris(c, v, trechoLike(v.texto, termos)));
       out.juris = (pg === 1 ? exatos.map(({ rid, ...r }) => r) : []).concat(lista).slice(0, POR_BUSCA);
     }
   }
+  // percurso com data de referência própria (ADR-0015): a situação de cada dispositivo achado é a DELA
+  if (out.lei && referencia(c).propria) out.lei = out.lei.map(x => ({ ...x, situacao: situacaoNaReferencia(c, x.diploma_id, x.id, x.situacao) }));
   return out;
 }
 
@@ -1143,7 +1284,7 @@ function marcas(usuario, produto, slugEscopo, { tipo = '' } = {}) {
 
 module.exports = {
   // staff
-  importarDiploma, importarJurisprudencia, importarVinculos, definirEstado, remover, resumoStaff,
+  importarDiploma, importarJurisprudencia, importarVinculos, definirEstado, remover, resumoStaff, importarTextosDoEscopo,
   // aluno
   abrirAcervo, resumoParaPainel, legislacaoVinculada, jurisprudenciaVinculada, acervoLegislacao, diplomaInteiro, acervoJurisprudencia, verbete, busca, marcar, marcas,
   // para os testes

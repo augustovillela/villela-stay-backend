@@ -4100,17 +4100,20 @@
     }
     function pelaNorma(n) { n = String(n || ''); return n ? (/^(decreto|ato|provimento|regimento|tratado|ajuste)/i.test(n) ? 'pelo ' : 'pela ') + n : ''; }
     // A SITUAÇÃO, sempre explícita: "Alterado em 16/10/2026 pela Emenda Constitucional nº 141 — na data do edital: …"
-    function situacaoDoDispositivo(x, dataEdital) {
+    // (a data e o NOME dela vêm da API, por percurso — ADR-0015: "data do edital" no curso de Juiz, "data de corte da
+    // objetiva" no do MPT; sem nome, vale "data do edital")
+    function situacaoDoDispositivo(x, dataEdital, rotulo) {
       var sit = x.situacao, ap = x.alterado_por || null;
       if (!sit || sit === 'vigente') return '';
       if (sit === 'revogado' || sit === 'vetado') return '';
       var quem = [ap ? dataNorma(ap.data) : '', ap ? pelaNorma(ap.norma) : ''].filter(Boolean).join(' ');
+      var naRef = rotulo ? 'na ' + esc(rotulo) : 'na data do edital', depois = rotulo ? ' depois da ' + esc(rotulo) : ' depois do edital';
       var ed = x.texto_na_data_do_edital, naData = '';
-      if (ed) naData = ' — <span>na data do edital' + (dataEdital ? ' (' + dataBR(dataEdital) + ')' : '') + ':</span> <q class="es-lj-ed">' + esc(ed) + '</q>';
-      else if (x.edital_indisponivel || x.texto_na_data_do_edital_indisponivel) naData = ' — <span>a redação na data do edital não está disponível na fonte.</span>';
-      if (sit === 'alterado_apos_edital') return '<p class="es-lj-sit alt" role="note"><b>Alterado' + (quem ? ' ' + esc(quem) : ' depois do edital') + '</b>' + (naData || ' — a redação acima é posterior ao edital.') + '</p>';
-      if (sit === 'incluido_apos_edital') return '<p class="es-lj-sit alt" role="note"><b>Incluído' + (quem ? ' ' + esc(quem) : ' depois do edital') + '</b> — não existia na data do edital.</p>';
-      if (sit === 'revogado_apos_edital') return '<p class="es-lj-sit rev" role="note"><b>Revogado' + (quem ? ' ' + esc(quem) : ' depois do edital') + '</b>' + (naData || ' — vigorava na data do edital.') + '</p>';
+      if (ed) naData = ' — <span>' + naRef + (dataEdital ? ' (' + dataBR(dataEdital) + ')' : '') + ':</span> <q class="es-lj-ed">' + esc(ed) + '</q>';
+      else if (x.edital_indisponivel || x.texto_na_data_do_edital_indisponivel) naData = ' — <span>a redação ' + naRef + ' não está disponível na fonte.</span>';
+      if (sit === 'alterado_apos_edital') return '<p class="es-lj-sit alt" role="note"><b>Alterado' + (quem ? ' ' + esc(quem) : depois) + '</b>' + (naData || ' — a redação acima é posterior ' + (rotulo ? 'à ' + esc(rotulo) : 'ao edital') + '.') + '</p>';
+      if (sit === 'incluido_apos_edital') return '<p class="es-lj-sit alt" role="note"><b>Incluído' + (quem ? ' ' + esc(quem) : depois) + '</b> — não existia ' + naRef + '.</p>';
+      if (sit === 'revogado_apos_edital') return '<p class="es-lj-sit rev" role="note"><b>Revogado' + (quem ? ' ' + esc(quem) : depois) + '</b>' + (naData || ' — vigorava ' + naRef + '.') + '</p>';
       return '';
     }
     function tagDoDispositivo(sit) { return sit && sit !== 'vigente' ? ' <span class="es-lj-tag ' + (/revogado|vetado/.test(sit) ? 'rev' : 'alt') + '">' + esc(SIT_DISP[sit] || sit) + '</span>' : ''; }
@@ -4136,13 +4139,13 @@
         var nivel = Math.max(0, String(p.id).slice(String(x.id).length + 1).split('.').length - 1);
         return '<p class="es-lj-parte n' + Math.min(nivel, 3) + ' sit-' + esc(p.situacao) + (citadas[p.id] ? ' citada' : '') + '"><b>' + esc(p.rotulo || p.caminho) + '</b> ' +
           (vazio(p) ? '<i>(' + esc(SIT_DISP[p.situacao] || p.situacao) + ')</i>' : esc(p.texto) + tagDoDispositivo(/revogado|vetado/.test(p.situacao) ? p.situacao : '')) +
-          (p.nota ? ' <span class="es-lj-nota">' + esc(p.nota) + '</span>' : '') + '</p>' + situacaoDoDispositivo(p, dip.data_referencia_edital);
+          (p.nota ? ' <span class="es-lj-nota">' + esc(p.nota) + '</span>' : '') + '</p>' + situacaoDoDispositivo(p, dip.data_referencia_edital, dip.rotulo_data_referencia);
       }).join('');
       var cls = 'es-lj-disp sit-' + esc(x.situacao) + (m.cor ? ' grifo-' + esc(m.cor) : '') + (m.lido ? ' lido' : '') + (opc.acervo && x.cobrado ? ' cobrado' : '');
       return '<article class="' + cls + '" id="lj-' + esc(dip.id) + '-' + esc(x.id) + '" data-lj-tipo="dispositivo" data-lj-ref="' + esc(ref) + '">' +
         (x.epigrafe ? '<p class="es-lj-epi">' + esc(x.epigrafe) + '</p>' : '') +
         '<p class="es-lj-caput"><b class="es-lj-rot">' + esc(x.rotulo) + '</b> ' + (vazio(x) ? '<i>(' + esc(SIT_DISP[x.situacao] || x.situacao) + ')</i>' : esc(x.texto) + tagDoDispositivo(x.situacao)) +
-        (x.nota ? ' <span class="es-lj-nota">' + esc(x.nota) + '</span>' : '') + '</p>' + situacaoDoDispositivo(x, dip.data_referencia_edital) + partes +
+        (x.nota ? ' <span class="es-lj-nota">' + esc(x.nota) + '</span>' : '') + '</p>' + situacaoDoDispositivo(x, dip.data_referencia_edital, dip.rotulo_data_referencia) + partes +
         '<div class="es-lj-acoes">' + botoesDeLeitura(m) +
         (opc.acervo && x.cobrado ? '<span class="es-lj-cob" title="Itens do edital que cobram este dispositivo">Edital: ' + (x.itens || []).map(esc).join(', ') + '</span>' + linksDeAulas(x.aulas, opc.titulos) : '') +
         (opc.doItem ? '<button type="button" class="es-link" data-lj-dip="' + esc(dip.id + '~' + x.id) + '">Ver no diploma inteiro →</button>' : '') +
@@ -4166,10 +4169,11 @@
     function situacaoDoVerbete(v) {
       var sit = v.situacao || '', ed = v.situacao_na_data_do_edital || '', parcial = !!v.cancelamento_parcial && sit === 'vigente';
       var nota = v.situacao_na_data_do_edital_nota || '', inferida = !!v.situacao_na_data_do_edital_inferida, ressalva = v.ressalva_na_data_do_edital || '';
+      var naRef = v.rotulo_data_referencia ? 'Na ' + esc(v.rotulo_data_referencia) + ': ' : 'Na data do edital: ';
       var h = '<span class="es-selo ' + (parcial ? 'ambar' : (SIT_JURIS_COR[sit] || '')) + '">' + esc(parcial ? 'Parcialmente cancelada' : (rotuloSituacao(sit, v.tipo) || 'sem situação')) + '</span>';
-      if (inferida && /N[ÃA]O APURAD/i.test(nota)) return h + ' <span class="es-selo es-lj-sed" title="' + esc(nota) + '">Na data do edital: não apurado</span>';
+      if (inferida && /N[ÃA]O APURAD/i.test(nota)) return h + ' <span class="es-selo es-lj-sed" title="' + esc(nota) + '">' + naRef + 'não apurado</span>';
       if (!ed || (ed === sit && !ressalva && !inferida && !v.texto_na_data_do_edital && !parcial)) return h;
-      h += ' <span class="es-selo es-lj-sed">Na data do edital: ' + esc(rotuloSituacao(ed, v.tipo)) + '</span>';
+      h += ' <span class="es-selo es-lj-sed">' + naRef + esc(rotuloSituacao(ed, v.tipo)) + '</span>';
       if (inferida) h += ' <span class="es-selo es-lj-sed" title="' + esc(nota) + '">não apurado na fonte (inferido)</span>';
       if (ressalva) h += ' <span class="es-lj-ressalva">— ' + esc(ressalva) + '</span>';
       return h;
@@ -4177,7 +4181,9 @@
     // a REDAÇÃO (e o título, a tese) na data do edital, quando o verbete mudou depois dele — como nos dispositivos
     function redacaoDoEdital(v) {
       if (!v.texto_na_data_do_edital && !v.titulo_na_data_do_edital && !v.tese_na_data_do_edital) return '';
-      return '<div class="es-lj-sit alt es-lj-ved" role="note"><b>Na data do edital (05/01/2023) vigia outra redação:</b>' +
+      // a data vem da API (a do percurso — ADR-0015); antes a data do curso de Juiz ficava fixa no texto
+      return '<div class="es-lj-sit alt es-lj-ved" role="note"><b>' + (v.rotulo_data_referencia ? 'Na ' + esc(v.rotulo_data_referencia) : 'Na data do edital') +
+        (v.data_referencia ? ' (' + dataBR(v.data_referencia) + ')' : '') + ' vigia outra redação:</b>' +
         (v.titulo_na_data_do_edital ? '<p class="es-lj-vt"><b>' + esc(v.titulo_na_data_do_edital) + '</b></p>' : '') +
         (v.texto_na_data_do_edital ? '<div class="es-lj-vtx">' + texto(v.texto_na_data_do_edital) + '</div>' : '') +
         (v.tese_na_data_do_edital ? '<div class="es-lj-tese"><span class="al-rotulo">Tese' + (v.tese_na_data_do_edital_data ? ' (' + dataBR(v.tese_na_data_do_edital_data) + ')' : '') + '</span>' + texto(v.tese_na_data_do_edital) + '</div>' : '') + '</div>';
@@ -4186,7 +4192,7 @@
     function notaDoEdital(v) {
       var n = v.situacao_na_data_do_edital_nota || '';
       if (!n || String(v.situacao_detalhe || '').indexOf(n) >= 0) return '';
-      return '<p class="es-lj-nota"><b>Na data do edital:</b> ' + esc(n) + '</p>';
+      return '<p class="es-lj-nota"><b>' + (v.rotulo_data_referencia ? 'Na ' + esc(v.rotulo_data_referencia) : 'Na data do edital') + ':</b> ' + esc(n) + '</p>';
     }
     function corpoDoVerbete(v, marcas, opc) {
       opc = opc || {};
@@ -4442,7 +4448,7 @@
         lista.forEach(function (x, i) { indice[x.id] = i; if (x.estrutura && x.estrutura !== ult) { secoes.push({ est: x.estrutura, id: x.id }); } ult = x.estrutura; });
         alvo.innerHTML = '<div class="jr-caixa es-lj-topo"><div class="es-linha">' + voltarAAula() + '<button type="button" class="al-bt peq fan" id="es-lj-todos">← Todos os diplomas</button></div>' +
           '<h3>' + esc(d.nome) + '</h3><p class="es-ler-sub">' + esc(d.norma) + (d.fonte_url ? ' · <a href="' + esc(d.fonte_url) + '" target="_blank" rel="noopener">fonte oficial (texto compilado)</a>' : '') + (d.consultado_em ? ' — consultada em ' + dataBR(d.consultado_em) : '') +
-          ' · versão de referência do edital: ' + dataBR(d.data_referencia_edital) + '</p>' +
+          (d.rotulo_data_referencia ? ' · versão de referência (' + esc(d.rotulo_data_referencia) + '): ' : ' · versão de referência do edital: ') + dataBR(d.data_referencia_edital) + '</p>' +
           '<p class="al-fino">' + lista.length + ' dispositivo(s)' + (d.abrangencia === 'trechos' ? ' — só os trechos que o curso usa' : '') + ' · <b>' + r.cobrados + ' cobrado(s) pelo edital</b> (destacados)' + (d.alterados_apos_edital ? ' · ' + d.alterados_apos_edital + ' alterado(s) depois do edital' : '') + '</p>' +
           '<div class="es-lj-ferr">' + (secoes.length > 1 ? '<select id="es-lj-ir" aria-label="Ir para o título ou capítulo"><option value="">Ir para…</option>' + secoes.map(function (s2) {
             var seg = s2.est.split(' > '); return '<option value="' + esc(s2.id) + '">' + new Array(seg.length).join('  ') + esc(seg[seg.length - 1].slice(0, 90)) + '</option>';

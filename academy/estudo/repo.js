@@ -106,24 +106,118 @@ function itens(escopo, versao = escopo.versao) {
   return memo(`itens:${escopo.id}:${versao}`, () => db.prepare('SELECT * FROM est_itens WHERE escopo_id = ? AND versao = ? ORDER BY ordem').all(escopo.id, versao)
     .map(i => ({ ...i, folha: !!i.folha, esforco_min: j.parse(i.esforco, null) })));
 }
-function competencias(escopoId) {
-  return memo(`comps:${escopoId}`, () => db.prepare('SELECT * FROM est_competencias WHERE escopo_id = ? ORDER BY ordem').all(escopoId)
-    .map(c => ({ ...c, essencial: !!c.essencial, criterios: j.parse(c.criterios, []), depende_de: j.parse(c.depende_de, []), erros_comuns: j.parse(c.erros_comuns, []) })));
+
+// ---------------------------------------------------------------------
+// INCLUSÕES (ADR-0015) — o escopo B LISTA aulas que moram no escopo A, sem copiar. A aula incluída aparece em B com
+// os itens do edital B (`itens_destino`), a ordem de B e um marcador `origem`; o status, o texto, os níveis, o vídeo
+// e a versão continuam sendo os da linha de A (corrigir em A corrige em B; publicar B não mexe em A). Só aula PRÓPRIA
+// de A se inclui (sem cadeia A → B → C). As competências dessas aulas, e os cards delas, são HERDADOS de A (só
+// leitura); o progresso do aluno (evidência, régua, revisão) fica gravado no escopo B.
+// ---------------------------------------------------------------------
+function inclusoes(escopoId) {
+  return memo(`incl:${escopoId}`, () => db.prepare(`SELECT i.*, e.slug AS origem_slug, e.product_id AS origem_product_id FROM est_escopo_inclusoes i
+      JOIN est_escopos e ON e.id = i.origem_escopo_id WHERE i.escopo_id = ? ORDER BY i.ordem, i.unidade_codigo`).all(escopoId)
+    .map(r => ({ ...r, itens_destino: j.parse(r.itens_destino, []) })));
 }
-const vinculos = (escopoId) => memo(`vins:${escopoId}`, () => db.prepare('SELECT * FROM est_vinculos WHERE escopo_id = ?').all(escopoId));
+const abrirCompetencia = (c) => ({ ...c, essencial: !!c.essencial, criterios: j.parse(c.criterios, []), depende_de: j.parse(c.depende_de, []), erros_comuns: j.parse(c.erros_comuns, []) });
+const competenciasProprias = (escopoId) => memo(`compsp:${escopoId}`, () => db.prepare('SELECT * FROM est_competencias WHERE escopo_id = ? ORDER BY ordem').all(escopoId).map(abrirCompetencia));
+// as competências que as aulas incluídas trazem de cada escopo de origem: Map(origem_escopo_id → Set(código))
+function competenciasHerdadasPorOrigem(escopoId) {
+  return memo(`compsh:${escopoId}`, () => {
+    const m = new Map();
+    for (const i of inclusoes(escopoId)) {
+      const u = db.prepare('SELECT competencias FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(i.origem_escopo_id, i.unidade_codigo);
+      if (!u) continue;
+      if (!m.has(i.origem_escopo_id)) m.set(i.origem_escopo_id, new Set());
+      for (const c of j.parse(u.competencias, [])) m.get(i.origem_escopo_id).add(c);
+    }
+    return m;
+  });
+}
+// próprias + herdadas (estas com `herdada_de`); a dependência que aponta para fora do percurso é cortada — não se
+// pode exigir do aluno de B uma competência que B não tem
+function competencias(escopoId) {
+  return memo(`comps:${escopoId}`, () => {
+    const proprias = competenciasProprias(escopoId);
+    const herd = competenciasHerdadasPorOrigem(escopoId);
+    if (!herd.size) return proprias;
+    const ja = new Set(proprias.map(c => c.codigo)), extras = [];
+    for (const [origem, codigos] of herd) {
+      for (const c of competenciasProprias(origem)) if (codigos.has(c.codigo) && !ja.has(c.codigo)) { ja.add(c.codigo); extras.push({ ...c, herdada_de: origem }); }
+    }
+    return proprias.concat(extras.map(c => ({ ...c, depende_de: c.depende_de.filter(d => ja.has(d)) })));
+  });
+}
+// item ↔ competência: os de B e, para cada aula incluída, os itens de destino × as competências da aula (herdados)
+const vinculos = (escopoId) => memo(`vins:${escopoId}`, () => {
+  const proprios = db.prepare('SELECT * FROM est_vinculos WHERE escopo_id = ?').all(escopoId);
+  const incl = inclusoes(escopoId);
+  if (!incl.length) return proprios;
+  const ja = new Set(proprios.map(v => v.item_codigo + '|' + v.competencia_codigo)), extras = [];
+  for (const i of incl) {
+    const u = db.prepare('SELECT competencias FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(i.origem_escopo_id, i.unidade_codigo);
+    if (!u) continue;
+    for (const it of i.itens_destino) for (const c of j.parse(u.competencias, [])) {
+      if (ja.has(it + '|' + c)) continue;
+      ja.add(it + '|' + c);
+      extras.push({ escopo_id: escopoId, item_codigo: it, competencia_codigo: c, justificativa: `Herdado da aula "${i.unidade_codigo}" de ${i.origem_slug}, incluída neste percurso.`, estado_revisao: 'sugerido', herdado: true });
+    }
+  }
+  return proprios.concat(extras);
+});
 const abrirUnidade = (u) => ({ ...u, competencias: j.parse(u.competencias, []), itens: j.parse(u.itens, []), blocos: j.parse(u.blocos, []), fontes: j.parse(u.fontes, []), midias: j.parse(u.midias, []),
   niveis: j.parse(u.niveis, {}), vespera: j.parse(u.vespera, {}), destaques: j.parse(u.destaques, []), animacoes: j.parse(u.animacoes, {}) });
 // a digital da aula: tudo o que muda quando a linha muda, sem ler os textos grandes
 const DIGITAL_UNIDADE = `ordem || '|' || status || '|' || versao || '|' || atualizado_em || '|' || tempo_min || '|' || video_media_id || '|' || video_duracao_seg || '|' || codigo || '|' || titulo || '|' || competencias || '|' || itens
   || '|' || octet_length(blocos) || '|' || octet_length(fontes) || '|' || octet_length(midias) || '|' || octet_length(niveis) || '|' || octet_length(vespera) || '|' || octet_length(destaques) || '|' || octet_length(animacoes)`;
-function unidades(escopoId, vis) {
-  return memo(`uns:${escopoId}:${vis.join(',')}`, () => porDigital('est_unidades',
+// as aulas PRÓPRIAS do escopo (o que mora nele) — quem escreve (importar, status, vídeo) e quem fala da origem usa esta
+function unidadesProprias(escopoId, vis) {
+  return memo(`unsp:${escopoId}:${vis.join(',')}`, () => porDigital('est_unidades',
     db.prepare(`SELECT id, ${DIGITAL_UNIDADE} AS digital FROM est_unidades WHERE escopo_id = ? AND status IN (${vis.map(() => '?').join(',')}) ORDER BY ordem`).all(escopoId, ...vis), abrirUnidade));
+}
+// a aula de A como B a lê: itens de B, ordem de B e de onde veio (o objeto guardado de A fica intacto)
+const comoIncluida = (u, i) => Object.freeze({ ...u, itens: i.itens_destino.slice(), ordem: i.ordem,
+  origem: { escopo_id: i.origem_escopo_id, escopo_slug: i.origem_slug, product_id: i.origem_product_id } });
+function incluidas(escopoId, vis) {
+  const incl = inclusoes(escopoId);
+  if (!incl.length) return [];
+  const m = vis.map(() => '?').join(',');
+  const leves = [], porId = new Map();
+  for (const i of incl) {
+    const l = db.prepare(`SELECT id, ${DIGITAL_UNIDADE} AS digital FROM est_unidades WHERE escopo_id = ? AND codigo = ? AND status IN (${m})`).get(i.origem_escopo_id, i.unidade_codigo, ...vis);
+    if (l) { leves.push(l); porId.set(l.id, i); }
+  }
+  return porDigital('est_unidades', leves, abrirUnidade).map(u => comoIncluida(u, porId.get(u.id)));
+}
+// as aulas EFETIVAS do percurso: as próprias e as incluídas, na ordem (empate: a própria primeiro)
+function unidades(escopoId, vis) {
+  return memo(`uns:${escopoId}:${vis.join(',')}`, () => {
+    const proprias = unidadesProprias(escopoId, vis), inc = incluidas(escopoId, vis);
+    if (!inc.length) return proprias;
+    return proprias.map((u, k) => ({ u, k, p: 0 })).concat(inc.map((u, k) => ({ u, k, p: 1 })))
+      .sort((a, b) => (a.u.ordem - b.u.ordem) || (a.p - b.p) || (a.k - b.k)).map(x => x.u);
+  });
 }
 // UMA aula pelo código: a tela da aula, a nota, a tentativa e o vídeo não precisam das outras 250
 function unidadePorCodigo(escopoId, vis, codigo) {
-  const l = db.prepare(`SELECT id, ${DIGITAL_UNIDADE} AS digital FROM est_unidades WHERE escopo_id = ? AND codigo = ? AND status IN (${vis.map(() => '?').join(',')})`).get(escopoId, codigo, ...vis);
-  return l ? porDigital('est_unidades', [l], abrirUnidade)[0] : null;
+  const m = vis.map(() => '?').join(',');
+  const l = db.prepare(`SELECT id, ${DIGITAL_UNIDADE} AS digital FROM est_unidades WHERE escopo_id = ? AND codigo = ? AND status IN (${m})`).get(escopoId, codigo, ...vis);
+  if (l) return porDigital('est_unidades', [l], abrirUnidade)[0];
+  const i = inclusoes(escopoId).find(x => x.unidade_codigo === codigo);
+  if (!i) return null;
+  const o = db.prepare(`SELECT id, ${DIGITAL_UNIDADE} AS digital FROM est_unidades WHERE escopo_id = ? AND codigo = ? AND status IN (${m})`).get(i.origem_escopo_id, codigo, ...vis);
+  return o ? comoIncluida(porDigital('est_unidades', [o], abrirUnidade)[0], i) : null;
+}
+// versão leve (só colunas pequenas, sem abrir os blocos) para a página pública de venda: próprias + incluídas
+function unidadesLeves(escopoId, vis) {
+  const m = vis.map(() => '?').join(',');
+  const proprias = db.prepare(`SELECT codigo, titulo, itens, ordem, video_media_id, video_duracao_seg FROM est_unidades WHERE escopo_id = ? AND status IN (${m}) ORDER BY ordem`).all(escopoId, ...vis)
+    .map(u => ({ ...u, itens: j.parse(u.itens, []) }));
+  const inc = db.prepare(`SELECT u.codigo, u.titulo, i.itens_destino AS itens, i.ordem, u.video_media_id, u.video_duracao_seg FROM est_escopo_inclusoes i
+      JOIN est_unidades u ON u.escopo_id = i.origem_escopo_id AND u.codigo = i.unidade_codigo WHERE i.escopo_id = ? AND u.status IN (${m}) ORDER BY i.ordem, i.unidade_codigo`).all(escopoId, ...vis)
+    .map(u => ({ ...u, itens: j.parse(u.itens, []), incluida: true }));
+  if (!inc.length) return proprias;
+  return proprias.map((u, k) => ({ u, k, p: 0 })).concat(inc.map((u, k) => ({ u, k, p: 1 }))).sort((a, b) => (a.u.ordem - b.u.ordem) || (a.p - b.p) || (a.k - b.k)).map(x => x.u);
 }
 
 // Competências que o aluno PODE demonstrar hoje: têm ao menos uma questão corrigível, fora da
@@ -131,14 +225,17 @@ function unidadePorCodigo(escopoId, vis, codigo) {
 // leitura, disciplina ainda sem banco) não pode travar a "próxima tarefa": nunca sairia de "não avaliada".
 function competenciasComPratica(escopoId, situacoes = ['disponivel']) {
   const m = situacoes.map(() => '?').join(',');
-  return memo(`pratica:${escopoId}:${situacoes.join(',')}`, () => new Set(db.prepare(`
-    SELECT v.codigo AS codigo FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
-      WHERE v.escopo_id = ? AND v.alvo = 'competencia' AND q.corrigivel = 1 AND q.uso != 'reservada' AND q.situacao IN (${m})
-    UNION
-    SELECT k.competencia_codigo FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
-      JOIN est_vinculos k ON k.escopo_id = v.escopo_id AND k.item_codigo = v.codigo
-      WHERE v.escopo_id = ? AND v.alvo = 'item' AND q.corrigivel = 1 AND q.uso != 'reservada' AND q.situacao IN (${m})`)
-    .all(escopoId, ...situacoes, escopoId, ...situacoes).map(r => r.codigo)));
+  // (o item → competência vem de `vinculos`, que soma os herdados das aulas incluídas — ADR-0015)
+  return memo(`pratica:${escopoId}:${situacoes.join(',')}`, () => {
+    const doItem = new Map();
+    for (const k of vinculos(escopoId)) { if (!doItem.has(k.item_codigo)) doItem.set(k.item_codigo, []); doItem.get(k.item_codigo).push(k.competencia_codigo); }
+    const out = new Set();
+    for (const r of db.prepare(`SELECT DISTINCT v.alvo, v.codigo FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
+        WHERE v.escopo_id = ? AND q.corrigivel = 1 AND q.uso != 'reservada' AND q.situacao IN (${m})`).all(escopoId, ...situacoes)) {
+      if (r.alvo === 'competencia') out.add(r.codigo); else if (r.alvo === 'item') for (const c of doItem.get(r.codigo) || []) out.add(c);
+    }
+    return out;
+  });
 }
 
 // ADR-0005 — níveis derivados do nível 100 (a explicação dos blocos) e véspera por foco.
@@ -214,12 +311,26 @@ function competenciasDaQuestao(questaoId, escopoId) {
   if (MEMO) return competenciasDasQuestoes(escopoId).get(questaoId) || [];
   const v = db.prepare('SELECT alvo, codigo FROM est_questao_vinculos WHERE questao_id = ? AND escopo_id = ?').all(questaoId, escopoId);
   const diretas = v.filter(x => x.alvo === 'competencia').map(x => x.codigo);
-  const pelosItens = v.filter(x => x.alvo === 'item').flatMap(x =>
-    db.prepare('SELECT competencia_codigo c FROM est_vinculos WHERE escopo_id = ? AND item_codigo = ?').all(escopoId, x.codigo).map(r => r.c));
+  const vins = v.some(x => x.alvo === 'item') ? vinculos(escopoId) : [];
+  const pelosItens = v.filter(x => x.alvo === 'item').flatMap(x => vins.filter(k => k.item_codigo === x.codigo).map(k => k.competencia_codigo));
   return [...new Set([...diretas, ...pelosItens])];
 }
+// os cards do percurso: os de B e os das competências herdadas, com o status que têm em A (`herdado_de`)
 function cards(escopoId, vis) {
-  return memo(`cards:${escopoId}:${vis.join(',')}`, () => db.prepare(`SELECT * FROM est_cards WHERE escopo_id = ? AND status IN (${vis.map(() => '?').join(',')}) ORDER BY ordem`).all(escopoId, ...vis));
+  return memo(`cards:${escopoId}:${vis.join(',')}`, () => {
+    const m = vis.map(() => '?').join(',');
+    const proprios = db.prepare(`SELECT * FROM est_cards WHERE escopo_id = ? AND status IN (${m}) ORDER BY ordem`).all(escopoId, ...vis);
+    const herd = competenciasHerdadasPorOrigem(escopoId);
+    if (!herd.size) return proprios;
+    const deB = new Set(competenciasProprias(escopoId).map(c => c.codigo));
+    const extras = [];
+    for (const [origem, codigos] of herd) {
+      for (const k of db.prepare(`SELECT * FROM est_cards WHERE escopo_id = ? AND status IN (${m}) ORDER BY ordem`).all(origem, ...vis)) {
+        if (codigos.has(k.competencia_codigo) && !deB.has(k.competencia_codigo)) extras.push({ ...k, herdado_de: origem });
+      }
+    }
+    return proprios.concat(extras);
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -310,6 +421,67 @@ function criarParticular(produto, usuario, titulo, resumo = '') {
   return Escopos.obter(id);
 }
 
+// INCLUSÕES (ADR-0015) — `inclusoes: [{ origem_escopo_slug, origem_produto_id, unidade_codigo, ordem, itens_destino }]`.
+// A origem tem de ser escopo DO CURSO (nunca percurso de aluno), do MESMO produtor, e a aula tem de ser PRÓPRIA dela.
+// Os itens de destino são do programa de B. O código não pode colidir com aula própria de B nem com aula incluída de
+// outra origem; a competência que a aula traz não pode colidir com competência própria de B nem com a de outra origem.
+// `inclusoes_substituir: true` faz da lista enviada a lista inteira (o que não veio sai); sem ele, é upsert.
+const MAX_INCLUSOES = 3000;
+function importarInclusoes(produto, escopo, dados, codItem, rel, agora, dono) {
+  if (dono || escopo.dono_user_id) throw erro('Percurso particular não inclui aulas de outro percurso.', 409);
+  const lst = Array.isArray(dados.inclusoes) ? dados.inclusoes : [];
+  if (lst.length > MAX_INCLUSOES) throw erro(`no máximo ${MAX_INCLUSOES} inclusões por envio.`);
+  const proprias = new Set(db.prepare('SELECT codigo FROM est_unidades WHERE escopo_id = ?').all(escopo.id).map(r => r.codigo));
+  const compsDeB = new Set(competenciasProprias(escopo.id).map(c => c.codigo));
+  const vistas = new Map();
+  const prontas = lst.map((x, k) => {
+    const onde = `inclusão ${k + 1}`;
+    if (!x || typeof x !== 'object') throw erro(`${onde}: objeto.`);
+    const p = db.prepare('SELECT id, producer_id FROM products WHERE id = ?').get(s(x.origem_produto_id, 40) || produto.id);
+    if (!p) throw erro(`${onde}: produto de origem não encontrado.`, 404);
+    if (p.producer_id !== produto.producer_id) throw erro(`${onde}: a aula de origem é de outro produtor — só se incluem aulas do mesmo produtor.`, 403);
+    const origem = Escopos.doCursoPorSlug(p.id, slug(x.origem_escopo_slug));
+    if (!origem) throw erro(`${onde}: percurso de origem "${s(x.origem_escopo_slug, 60)}" não encontrado nesse produto.`, 404);
+    if (origem.id === escopo.id) throw erro(`${onde}: o percurso não inclui aula de si mesmo.`);
+    const codigo = slug(x.unidade_codigo);
+    const u = codigo && db.prepare('SELECT competencias FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(origem.id, codigo);
+    if (!u) throw erro(`${onde}: a aula "${codigo}" não existe em ${origem.slug} (só se inclui aula própria do percurso de origem).`, 404);
+    if (proprias.has(codigo)) throw erro(`${onde}: "${codigo}" já é código de aula própria deste percurso.`, 409);
+    if (vistas.has(codigo)) throw erro(`${onde}: a aula "${codigo}" veio duas vezes na lista.`, 409);
+    vistas.set(codigo, origem.id);
+    const itensDestino = lista(x.itens_destino, 60, 40);
+    itensDestino.forEach(c => { if (!codItem.has(c)) throw erro(`${onde}: item de destino "${c}" não existe no programa vigente deste percurso.`); });
+    for (const c of j.parse(u.competencias, [])) if (compsDeB.has(c)) throw erro(`${onde}: a aula traz a competência "${c}", que já é competência própria deste percurso.`, 409);
+    return { origem, codigo, itensDestino, ordem: x.ordem };
+  });
+  rel.inclusoes = { novas: 0, atualizadas: 0, removidas: 0 };
+  if (dados.inclusoes_substituir === true) {
+    const ficam = new Set(prontas.map(x => x.origem.id + '|' + x.codigo));
+    for (const r of db.prepare('SELECT origem_escopo_id, unidade_codigo FROM est_escopo_inclusoes WHERE escopo_id = ?').all(escopo.id)) {
+      if (!ficam.has(r.origem_escopo_id + '|' + r.unidade_codigo)) rel.inclusoes.removidas += db.prepare('DELETE FROM est_escopo_inclusoes WHERE escopo_id = ? AND origem_escopo_id = ? AND unidade_codigo = ?').run(escopo.id, r.origem_escopo_id, r.unidade_codigo).changes;
+    }
+  }
+  const maxOrdem = Math.max(-1, ...[db.prepare('SELECT MAX(ordem) m FROM est_unidades WHERE escopo_id = ?').get(escopo.id).m, db.prepare('SELECT MAX(ordem) m FROM est_escopo_inclusoes WHERE escopo_id = ?').get(escopo.id).m].filter(v => v != null));
+  let prox = maxOrdem + 1;
+  for (const x of prontas) {
+    const outra = db.prepare('SELECT 1 FROM est_escopo_inclusoes WHERE escopo_id = ? AND unidade_codigo = ? AND origem_escopo_id != ?').get(escopo.id, x.codigo, x.origem.id);
+    if (outra) throw erro(`a aula "${x.codigo}" já está incluída a partir de outro percurso — o código tem de ser único neste percurso.`, 409);
+    const atual = db.prepare('SELECT ordem FROM est_escopo_inclusoes WHERE escopo_id = ? AND origem_escopo_id = ? AND unidade_codigo = ?').get(escopo.id, x.origem.id, x.codigo);
+    const ordem = x.ordem != null && x.ordem !== '' && Number.isFinite(Number(x.ordem)) ? Math.round(Number(x.ordem)) : atual ? atual.ordem : prox++;
+    db.prepare(`INSERT INTO est_escopo_inclusoes (escopo_id, origem_escopo_id, unidade_codigo, ordem, itens_destino, atualizado_em) VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT (escopo_id, origem_escopo_id, unidade_codigo) DO UPDATE SET ordem = excluded.ordem, itens_destino = excluded.itens_destino, atualizado_em = excluded.atualizado_em`)
+      .run(escopo.id, x.origem.id, x.codigo, ordem, j.str(x.itensDestino), agora);
+    rel.inclusoes[atual ? 'atualizadas' : 'novas']++;
+  }
+  // a mesma competência vinda de DOIS percursos de origem: a evidência do aluno (por código) não saberia de qual é
+  const dono_ = new Map();
+  for (const [origem, codigos] of competenciasHerdadasPorOrigem(escopo.id)) for (const c of codigos) {
+    if (dono_.has(c) && dono_.get(c) !== origem) throw erro(`a competência "${c}" viria de dois percursos de origem diferentes — inclua aulas de um só, ou renomeie a competência na origem.`, 409);
+    dono_.set(c, origem);
+  }
+  rel.inclusoes.total = db.prepare('SELECT COUNT(*) n FROM est_escopo_inclusoes WHERE escopo_id = ?').get(escopo.id).n;
+}
+
 // `opcoes` só existe para o caminho interno (aplicar uma prova importada por pedido — pedidos.js):
 //   dono      o usuário dono do percurso PARTICULAR de destino (sem ele, percurso particular é intocável)
 //   autor     de quem são as questões (est_questoes.producer_id); padrão: o produtor do curso
@@ -350,6 +522,9 @@ function importar_(produto, dados = {}, opcoes = {}) {
     if (e.resumo != null) set('resumo', s(e.resumo, 2000));
     if (e.perfil != null) set('perfil', j.str(e.perfil));
     if (e.data_alvo != null) { if (e.data_alvo && !/^\d{4}-\d{2}-\d{2}$/.test(e.data_alvo)) throw erro('escopo.data_alvo deve ser AAAA-MM-DD.'); set('data_alvo', s(e.data_alvo, 10)); }
+    // ADR-0015, item 8: a data de referência da legislação e da jurisprudência (vazia = a do acervo) e o nome dela na tela
+    if (e.data_referencia != null) { if (e.data_referencia && !/^\d{4}-\d{2}-\d{2}$/.test(e.data_referencia)) throw erro('escopo.data_referencia deve ser AAAA-MM-DD (ou vazia, para a data do acervo).'); set('data_referencia', s(e.data_referencia, 10)); }
+    if (e.rotulo_data_referencia != null) set('rotulo_data_referencia', s(e.rotulo_data_referencia, 80));
     if (e.regra_pontuacao != null) {
       const regra = normalizarRegra(e.regra_pontuacao);
       // desconto por erro sem dizer de onde veio a regra é palpite — e palpite muda nota
@@ -391,7 +566,9 @@ function importar_(produto, dados = {}, opcoes = {}) {
     // uma para outra. Regra: "ordem" explícita vale; sem ela, quem já existe fica onde
     // está e quem é novo entra depois do último do escopo, na sequência do pedido.
     const ordenador = (tabela) => {
-      const m = db.prepare(`SELECT MAX(ordem) m FROM ${tabela} WHERE escopo_id = ?`).get(escopo.id).m;
+      let m = db.prepare(`SELECT MAX(ordem) m FROM ${tabela} WHERE escopo_id = ?`).get(escopo.id).m;
+      // a aula nova sem ordem entra depois também das INCLUÍDAS (ADR-0015): elas dividem a mesma sequência
+      if (tabela === 'est_unidades') { const mi = db.prepare('SELECT MAX(ordem) m FROM est_escopo_inclusoes WHERE escopo_id = ?').get(escopo.id).m; if (mi != null && (m == null || mi > m)) m = mi; }
       let prox = m == null ? 0 : m + 1;
       return (cru, atual) => {
         if (cru != null && cru !== '' && Number.isFinite(Number(cru))) return Math.round(Number(cru));
@@ -408,6 +585,9 @@ function importar_(produto, dados = {}, opcoes = {}) {
         if (resultado.length < 20) throw erro(`competência ${codigo}: descreva o resultado observável ("Diante de…, o aluno…").`);
         return { codigo, ordem: c.ordem, resultado, criterios: lista(c.criterios, 12, 400), depende_de: lista(c.depende_de, 12, 60).map(slug), erros_comuns: lista(c.erros_comuns, 12, 400), essencial: c.essencial === false ? 0 : 1 };
       });
+      // competência própria com o código de uma HERDADA (aula incluída) faria duas competências com um nome só
+      const herdadas = new Set(competencias(escopo.id).filter(c => c.herdada_de).map(c => c.codigo));
+      prontas.forEach(c => { if (herdadas.has(c.codigo)) throw erro(`competência ${c.codigo}: já vem herdada de uma aula incluída de outro percurso — use outro código.`, 409); });
       const todos = new Set([...competencias(escopo.id).map(c => c.codigo), ...prontas.map(c => c.codigo)]);
       prontas.forEach(c => c.depende_de.forEach(d => { if (!todos.has(d)) throw erro(`competência ${c.codigo}: depende de "${d}", que não existe.`); }));
       ordenar(prontas); // recusa dependência circular
@@ -428,6 +608,7 @@ function importar_(produto, dados = {}, opcoes = {}) {
         }
       }
     }
+    if (dados.inclusoes || dados.inclusoes_substituir === true) importarInclusoes(produto, escopo, dados, codItem, rel, agora, dono);
     const codComp = new Set(competencias(escopo.id).map(c => c.codigo));
 
     if (dados.vinculos) {
@@ -447,8 +628,11 @@ function importar_(produto, dados = {}, opcoes = {}) {
     if (dados.unidades) {
       rel.unidades = { novas: 0, atualizadas: 0 };
       const ordemUn = ordenador('est_unidades');
+      const codIncluidas = new Set(inclusoes(escopo.id).map(x => x.unidade_codigo));
       for (const [i, cru] of (Array.isArray(dados.unidades) ? dados.unidades : []).entries()) {
         const u = validarUnidade(cru, i, codComp, codItem);
+        // ADR-0015: o código de aula INCLUÍDA é dela — aula própria com o mesmo código seria duas aulas com um endereço
+        if (codIncluidas.has(u.codigo)) throw erro(`unidade ${i + 1}: o código "${u.codigo}" é de uma aula incluída de outro percurso — use outro código (ou tire a inclusão).`, 409);
         const atual = db.prepare('SELECT id, ordem, blocos, versao, niveis, vespera, destaques, animacoes FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, u.codigo);
         const ord = ordemUn(cru.ordem, atual);
         const campos = [u.titulo, j.str(u.competencias), j.str(u.itens), j.str(u.blocos), j.str(u.fontes), j.str(u.midias), u.tempo_min];
@@ -680,6 +864,10 @@ function resumo(productId) {
       versoes: n('SELECT versao, documento, criado_em FROM est_versoes WHERE escopo_id = ? ORDER BY versao').map(v => ({ ...v, documento: j.parse(v.documento, {}) })),
       competencias: competencias(e.id).length,
       unidades: n('SELECT status, COUNT(*) n FROM est_unidades WHERE escopo_id = ? GROUP BY status'),
+      // ADR-0015: as aulas incluídas de outro percurso, pelo status que têm LÁ (a origem manda)
+      incluidas: n(`SELECT u.status, COUNT(*) n FROM est_escopo_inclusoes i JOIN est_unidades u ON u.escopo_id = i.origem_escopo_id AND u.codigo = i.unidade_codigo
+        WHERE i.escopo_id = ? GROUP BY u.status`),
+      data_referencia: e.data_referencia || '', rotulo_data_referencia: e.rotulo_data_referencia || '',
       questoes: n(`SELECT q.situacao, q.origem, COUNT(DISTINCT q.id) n FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id WHERE v.escopo_id = ? GROUP BY q.situacao, q.origem`),
       // videoaulas: quantas aulas têm o vídeo ligado, e se o arquivo está confirmado no storage
       videos: db.prepare(`SELECT u.codigo, u.status, u.video_media_id AS media_id, m.storage, m.confirmado, m.tamanho, m.mime
@@ -693,6 +881,6 @@ function resumo(productId) {
 }
 
 module.exports = {
-  Escopos, Questoes, itens, competencias, vinculos, unidades, unidadePorCodigo, cards, competenciasDaQuestao, competenciasDasQuestoes, comCache, memo, limparCache, esquecer,
+  Escopos, Questoes, itens, competencias, vinculos, unidades, unidadePorCodigo, cards, inclusoes, unidadesProprias, unidadesLeves, competenciasDaQuestao, competenciasDasQuestoes, comCache, memo, limparCache, esquecer,
   importar, criarParticular, PARTICULARES_MAX, validarUnidade, definirStatus, cobertura, resumo, competenciasComPratica, questoesDoEscopo, slug, erro, STATUS, TIPOS, EXTENSOES, BLOCOS,
 };

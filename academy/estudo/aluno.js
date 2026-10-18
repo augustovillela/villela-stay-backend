@@ -698,8 +698,9 @@ function todosOsCards(usuario, produto, slugEscopo) {
   if (!c.revisor) throw erro('A lista completa é só para quem revisa o curso.', 403);
   // o título que o revisor reconhece é o da aula; a competência só tem o enunciado do resultado
   const titulos = new Map();
-  for (const u of db.prepare('SELECT titulo, competencias FROM est_unidades WHERE escopo_id = ? ORDER BY ordem').all(c.escopo.id)) {
-    for (const cod of j.parse(u.competencias, [])) if (!titulos.has(cod)) titulos.set(cod, u.titulo);
+  // (as aulas EFETIVAS do percurso, em qualquer status — as incluídas de outro percurso também: ADR-0015)
+  for (const u of R.unidades(c.escopo.id, R.STATUS)) {
+    for (const cod of u.competencias) if (!titulos.has(cod)) titulos.set(cod, u.titulo);
   }
   const grupos = [];
   for (const k of R.cards(c.escopo.id, c.vis)) {

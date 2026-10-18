@@ -227,6 +227,8 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
   ljRota('vinculos', 'vinculos', lj.importarVinculos);
   ljRota('status', 'status', lj.definirEstado);
   ljRota('remover', 'remover', lj.remover);
+  // ADR-0015: a situação e a redação "na data" PRÓPRIAS de um percurso com data de referência diferente da do acervo
+  ljRota('textos-do-escopo', 'textos-do-escopo', lj.importarTextosDoEscopo);
   app.get('/staff/api/academy/estudo/lei-juris/resumo', ...PA, h((req, res) => {
     const { produto } = imp.produtorDono(req.query || {});
     res.setHeader('Cache-Control', 'no-store');
