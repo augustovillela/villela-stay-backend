@@ -47,13 +47,13 @@
   // ------------------------------------------------------------------
   F['piano-virtual'] = function (alvo, st) {
     var MAPA = { a: 0, w: 1, s: 2, e: 3, d: 4, f: 5, t: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12, o: 13, l: 14, p: 15, 'ç': 16 };
-    var base = 60, soando = {}, historico = [];
+    var base = 60, piano88 = false, soando = {}, historico = [];
     var info = el('p', { class: 'lab-info', 'aria-live': 'polite', txt: 'Toque com o mouse, com o dedo ou com as teclas A W S E D F T G Y H U J K. Z e X mudam a oitava.' });
     var box = el('div', { class: 'lab-svgbox' });
     var acordeTxt = el('p', { class: 'lab-acorde-atual', 'aria-live': 'polite' });
     function pintar() {
       var dd = {}; Object.keys(soando).forEach(function (m) { dd[m] = { rotulo: rot(N.deMidi(Number(m))), tipo: 'nota' }; });
-      box.innerHTML = D.piano({ de: base - 12, ate: base + 16, destaques: dd, interativo: true, rotulos: 'dos', notacao: C.notacao, titulo: 'Piano virtual' });
+      box.innerHTML = D.piano({ de: piano88 ? 21 : base - 12, ate: piano88 ? 108 : base + 16, destaques: dd, interativo: true, rotulos: 'dos', notacao: C.notacao, titulo: piano88 ? 'Piano virtual · 88 teclas' : 'Piano virtual' });
       var ms = Object.keys(soando).map(Number).sort(function (a, b) { return a - b; });
       var r = ms.length >= 2 ? A.identificar(ms) : [];
       acordeTxt.textContent = r.length ? 'Acorde: ' + r.slice(0, 3).map(function (x) { return x.simbolo; }).join(' ou ') : '';
@@ -82,7 +82,7 @@
     function exportarPiano(png) {
       var svg = box.innerHTML;
       if (!svg) return;
-      if (png) C.baixarPng('piano-virtual-musique.png', svg, 1800, 900);
+      if (png) C.baixarPng('piano-virtual-musique.png', svg, piano88 ? 2640 : 1800, 900);
       else C.baixar('piano-virtual-musique.svg', 'image/svg+xml', svg);
     }
     function exportarHistorico() {
@@ -90,7 +90,8 @@
       var ev = historico.map(function (m, i) { return { t: i * 2, dur: 2, midi: m, vel: 82 }; });
       C.baixar('piano-virtual-musique.mid', 'audio/midi', C.midiArquivo(ev, 80, 4));
     }
-    alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(pintar), C.selTimbre(), midiBtn, el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano SVG', onclick: function () { exportarPiano(false); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano PNG', onclick: function () { exportarPiano(true); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar notas MIDI', onclick: exportarHistorico })]));
+    var modo88 = el('button', { type: 'button', class: 'btn sec', 'aria-pressed': 'false', txt: '◇ Piano de 88 teclas', onclick: function () { piano88 = !piano88; modo88.setAttribute('aria-pressed', piano88 ? 'true' : 'false'); modo88.textContent = piano88 ? '◇ Voltar ao piano compacto' : '◇ Piano de 88 teclas'; pintar(); } });
+    alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(pintar), C.selTimbre(), modo88, midiBtn, el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano SVG', onclick: function () { exportarPiano(false); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano PNG', onclick: function () { exportarPiano(true); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar notas MIDI', onclick: exportarHistorico })]));
     alvo.appendChild(box); alvo.appendChild(acordeTxt); alvo.appendChild(info);
     pintar();
   };
