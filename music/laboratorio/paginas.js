@@ -334,6 +334,7 @@ function relacionados(slug) {
     'editor-de-braco': ['/music/explorar/braco', '/music/explorar/acordes-vizinhos', '/music/referencia/afinacoes'],
     'visualizador-frequencia': ['/music/explorar/serie-harmonica', '/music/explorar/intervalos-do-acorde', '/music/referencia/frequencias'],
     policordes: ['/music/explorar/superestruturas-acordes', '/music/explorar/intervalos-do-acorde', '/music/criar/mapa-harmonia'],
+    'editor-de-progressao': ['/music/criar/mapa-harmonia', '/music/explorar/acordes-vizinhos', '/music/criar/piano-roll-harmonico'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
