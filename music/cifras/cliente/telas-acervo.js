@@ -552,6 +552,7 @@
       mais.appendChild(el('a', { class: 'cf-bt sec peq', href: '/music/api/cifras/cifras/' + encodeURIComponent(d.cifra.id) + '/arranjo-multifaixa', download: '', title: 'Baixa um pacote aberto com violão-alvo, baixo, piano e bateria gerados a partir da harmonia; revise antes de usar.', txt: '🎛️ Arranjo multifaixa' }));
       mais.appendChild(el('a', { class: 'cf-bt sec peq', href: '/music/tocar?cifra=' + encodeURIComponent(d.cifra.id), title: 'Abre esta cifra diretamente no Tocar junto com acompanhamento automático.', txt: '▶️ Abrir no Tocar junto' }));
       mais.appendChild(C.botao('🎧 Smart Play', function () { if (C.SmartPlay.ativo()) { C.SmartPlay.player(true); C.SmartPlay.tocar(); } else C.aviso('Esta música ainda não tem áudio: use o player embaixo para procurar no YouTube ou adicionar um MP3.'); }, 'peq'));
+      mais.appendChild(C.botao('🎼 Simplificar / rearmonizar', function () { abrirPainel('arranjar'); }, 'peq'));
       mais.appendChild(C.botao('Palco', function () { C.palcoUmaMusica(estado); }, 'sec peq'));
       mais.appendChild(sel([['', 'Mais…'], ['exibicao', 'Exibição'], ['historico', 'Histórico de versões'], ['praticar', 'Praticar'], ['comentarios', 'Comentários e notas'],
         ['exportar', 'Exportar / imprimir'], ['compartilhar', 'Link e QR Code'], ['arranjo', 'Arranjos'], ['setlist', 'Adicionar a setlist'], ['original', 'Ver original importado'],
