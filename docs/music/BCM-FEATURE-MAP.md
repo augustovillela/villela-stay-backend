@@ -32,7 +32,7 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 - **Mandala espacial**: a Mandala harmônica também oferece perspectiva 3D opcional, mantendo os nós radiais e seus controles acessíveis.
 - **Teclado isomórfico exportável**: a disposição Wicki-Hayden pode ser baixada em SVG ou PNG para estudo e impressão.
 - **Xilofone exportável**: a sequência de notas do xilofone pode ser baixada em SVG ou PNG para estudo, impressão e compartilhamento.
-- **Piano virtual exportável**: o teclado virtual oferece modo compacto e modo completo de 88 teclas; ambos podem ser baixados em SVG, PNG e MIDI a partir da sequência tocada, incluindo gravação temporizada da performance e exportação JSON.
+- **Piano virtual exportável**: o teclado virtual oferece modo compacto e modo completo de 88 teclas; ambos podem ser baixados em SVG, PNG e MIDI a partir da sequência tocada, incluindo gravação temporizada, exportação JSON e reabertura com reprodução.
 - **Mapa vertical de bateria**: pads posicionam crash, ride, chimbal, caixa, bumbo, tons e acessórios como um kit físico, com disparo por toque ou atalhos A–K.
 - **Bateria eletrônica via MIDI**: a ferramenta aceita notas de entrada de controladores e mapeia os golpes do kit para os sons do Musique em tempo real.
 - **Gravação de bateria MIDI**: uma performance recebida ao vivo pode ser registrada e baixada como MIDI para reabrir em um sequenciador ou DAW.
