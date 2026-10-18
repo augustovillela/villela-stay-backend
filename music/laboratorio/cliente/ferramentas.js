@@ -549,6 +549,20 @@
     render();
   };
 
+  F['atlas-escalas'] = function (alvo, st) {
+    st.tonica = st.tonica || 'do'; st.escala = st.escala || 'maior'; st.instrumento = st.instrumento || 'violao'; st.afinacao = st.afinacao || 'padrao';
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo); var t = tonicaDe(st), t4 = naOitava(t, 4), e = E.porId(st.escala) || E.porId('maior'), ns = E.notas(t4, e.id) || [];
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selTonica(st.tonica, function (v) { st.tonica = v; render(); }), C.selEscala(st.escala, function (v) { st.escala = v; render(); })]));
+      var pcs = ns.map(N.pc), itens = pcs.map(function (p, i) { return { rotulo: rot(N.deClasse(p)), dado: i, tipo: i === 0 ? 'ativo' : 'nota', acessivel: rot(N.deClasse(p)) }; });
+      var box = svg(D.anel({ itens: itens, poligono: pcs, titulo: rot(t) + ' ' + e.nome, centro: e.nome, descricao: 'Fórmula: ' + e.formula + ' · passos: ' + E.passos(e.id).join(' ') }));
+      box.addEventListener('click', function (ev) { var g = ev.target.closest('[data-i]'); if (g) C.Som.tocar([60 + pcs[Number(g.getAttribute('data-i'))]], { dur: 0.5 }); });
+      alvo.appendChild(el('div', { class: 'lab-grade-2' }, [el('figure', { class: 'lab-fig lab-fig-circ' }, [box]), el('div', {}, [el('h2', { txt: rot(t) + ' ' + e.nome }), el('p', { txt: 'Notas: ' + ns.map(rot).join(' · ') }), el('p', { txt: 'Fórmula: ' + e.formula + ' · passos: ' + E.passos(e.id).join(' ') }), el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir escala', onclick: function () { C.Som.tocar(ns.concat([N.comOitava(t4, t4.oitava + 1)]).map(N.midi), { dur: 0.35 }); } })])]));
+      alvo.appendChild(bracoSvg(ns, t4, { instrumento: st.instrumento, afinacao: st.afinacao, casas: 12 }, null));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------
