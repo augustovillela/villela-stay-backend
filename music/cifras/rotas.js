@@ -34,6 +34,7 @@ const I = require('./motor/instrumentos');
 const H = require('./motor/harmonia');
 const Acompanhamento = require('./motor/acompanhamento');
 const ArranjoMultifaixa = require('./motor/arranjo-multifaixa');
+const voz = require('../voz');
 
 const { Musicas, Cifras, Arranjos, Preferencias, Visoes, Favoritos, Uso, Voicings, Midias } = acervo;
 
@@ -91,6 +92,15 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
   });
   const U = (req) => req.usuario.id;
   const B = '/music/api/cifras';
+
+  // Perfil vocal: o navegador envia somente medidas agregadas da tentativa.
+  // O áudio e o acesso ao microfone nunca atravessam esta API.
+  app.get(B + '/perfil-vocal', requireUsuario, h(async (req, res) => {
+    res.json({ perfil: voz.perfil(U(req)), historico: voz.historico(U(req), 10) });
+  }));
+  app.post(B + '/perfil-vocal/avaliacoes', requireUsuario, h(async (req, res) => {
+    res.status(201).json({ ok: true, perfil: voz.registrar(U(req), req.body || {}) });
+  }));
 
   // ------------------------------------------------------------ motor e cliente
   app.get('/music/motor-cifras.js', (req, res) => {

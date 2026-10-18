@@ -440,6 +440,14 @@
     if ((d.nao_reconhecidos || []).length) cab.appendChild(el('div', { class: 'alerta', txt: 'O motor não reconheceu ' + d.nao_reconhecidos.length + ' acorde(s): ' + d.nao_reconhecidos.join(', ') + '. Eles aparecem sublinhados e transpõem só pela nota fundamental.' }));
     if (d.rascunho) cab.appendChild(el('div', { class: 'alerta', html: 'Você tem um rascunho não salvo desta cifra (' + esc(C.data(d.rascunho.atualizado_em)) + ').' }, [C.botao('Continuar editando', function () { C.ir('editor', d.cifra.id); }, 'sec peq')]));
     c.appendChild(cab);
+    // O perfil vocal é reutilizado entre cifras; uma nova avaliação é opcional.
+    if (C.Voz && !d._offline) {
+      var vozArea = el('div', { class: 'cf-voz-area' });
+      c.appendChild(vozArea);
+      api('GET', '/perfil-vocal', null, { cache: 'perfil-vocal' }).then(function (r) {
+        vozArea.appendChild(C.Voz.painel(d.cifra.id, r.perfil));
+      }).catch(function () { vozArea.appendChild(C.Voz.painel(d.cifra.id, null)); });
+    }
 
     var ferr = el('div', { class: 'cf-ferr', role: 'toolbar', 'aria-label': 'Ferramentas da cifra' });
     c.appendChild(ferr);
