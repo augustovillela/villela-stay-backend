@@ -232,6 +232,7 @@ const JS = `
       if (!escolas.length) return;
       box.appendChild(el('h3', { txt: 'Escola' }));
       if (obra.titularidade === 'terceiro_privado') {
+        box.appendChild(el('p', { class: 'sub', txt: 'Esta obra é de terceiro e não entra na escola. Compartilhe apenas música que seja sua.' }));
         return;
       }
       box.appendChild(el('button', { class: 'btn', txt: 'Compartilhar com a escola', onclick: function () {
