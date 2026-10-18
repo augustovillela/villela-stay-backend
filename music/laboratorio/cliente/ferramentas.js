@@ -457,6 +457,7 @@
       if (ns.length < 2) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Informe pelo menos duas notas.' })); return; }
       alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Notas procuradas: ' + ns.map(rot).join(' · ') + '. Os resultados contêm todas elas; as demais notas funcionam como cor e tensão.' }));
       alvo.appendChild(el('div', { class: 'lab-super-grid' }, res.map(function (x) { return el('article', { class: 'lab-super-card' }, [el('h3', { txt: x.simbolo }), el('p', { txt: x.notas.map(rot).join(' · ') }), el('button', { type: 'button', class: 'btn sec', txt: '▶ Ouvir', onclick: function () { C.Som.tocar(x.notas.map(N.midi), { modo: 'harmonico' }); } })]); })));
+       alvo.appendChild(el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar superestruturas JSON', onclick: function () { C.baixar('superestruturas-acordes.json', 'application/json', JSON.stringify({ notas_essenciais: ns.map(function (n) { return { nota: rot(n), midi: N.midi(n) }; }), resultados: res.map(function (x) { return { acorde: x.simbolo, notas: x.notas.map(function (n) { return { nota: rot(n), midi: N.midi(n) }; }) }; }), criado_em: new Date().toISOString() }, null, 2)); } }));
       if (!res.length) alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Nenhum acorde do catálogo contém exatamente esse conjunto. Tente remover uma nota ou usar uma grafia enarmônica.' }));
     }
     render();
@@ -473,6 +474,7 @@
       for (var i = 0; i < ns.length; i++) for (var j = i + 1; j < ns.length; j++) { var iv = I.entre(ns[i], ns[j]); if (iv) pares.push({ de: ns[i], para: ns[j], iv: iv }); }
       alvo.appendChild(el('p', { class: 'lab-dica', txt: A.simbolo(a.fundamental, a.id) + ' · ' + ns.map(rot).join(' · ') }));
       alvo.appendChild(el('div', { class: 'lab-intervalos-grid' }, pares.map(function (p) { return el('button', { type: 'button', class: 'lab-intervalo-card', title: p.iv.nome, onclick: function () { C.Som.tocar([N.midi(p.de), N.midi(p.para)], { modo: 'harmonico', dur: 0.9 }); } }, [el('strong', { txt: p.iv.curto }), el('span', { txt: rot(p.de) + ' → ' + rot(p.para) }), el('small', { txt: p.iv.semitons + ' semitons · ' + p.iv.nome })]); })));
+       alvo.appendChild(el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar intervalos JSON', onclick: function () { C.baixar('intervalos-do-acorde.json', 'application/json', JSON.stringify({ acorde: A.simbolo(a.fundamental, a.id), notas: ns.map(function (n) { return { nota: rot(n), midi: N.midi(n) }; }), intervalos: pares.map(function (p) { return { de: rot(p.de), para: rot(p.para), semitons: p.iv.semitons, nome: p.iv.nome, simbolo: p.iv.curto }; }), criado_em: new Date().toISOString() }, null, 2)); } }));
       if (!pares.length) alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Esse acorde não tem pares de notas suficientes para comparar.' }));
     }
     render();
