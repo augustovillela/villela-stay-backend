@@ -32,6 +32,7 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 - **Mandala espacial**: a Mandala harmônica também oferece perspectiva 3D opcional, mantendo os nós radiais e seus controles acessíveis.
 - **Teclado isomórfico exportável**: a disposição Wicki-Hayden pode ser baixada em SVG ou PNG para estudo e impressão.
 - **Xilofone exportável**: a sequência de notas do xilofone pode ser baixada em SVG ou PNG para estudo, impressão e compartilhamento.
+- **Piano virtual exportável**: o teclado virtual pode ser baixado em SVG, PNG e MIDI a partir da sequência tocada.
 
 ## Roadmap funcional
 
