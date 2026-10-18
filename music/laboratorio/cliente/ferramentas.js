@@ -482,6 +482,7 @@
       var box = svg(D.braco({ afinacao: afin, casas: Number(st.casas) || 12, destaques: dest, interativo: true, notacao: C.notacao, titulo: 'Editor de ' + ins.nome }));
       box.addEventListener('click', function (e) { var k = e.target.closest('[data-midi]'); if (k) C.Som.tocar([Number(k.dataset.midi)], { modo: 'dedilhado', dur: 1.1 }); });
       alvo.appendChild(el('figure', { class: 'lab-fig' }, [box, el('figcaption', { txt: A.simbolo(a.fundamental, a.id) + ' · clique em uma posição para ouvir.' })]));
+      alvo.appendChild(el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar braço SVG', onclick: function () { C.baixar('editor-de-braco.svg', 'image/svg+xml', box.innerHTML); } }));
       var linhas = []; for (var c = 0; c < afin.midi.length; c++) { var p = pos.filter(function (x) { return x.corda === c; }).sort(function (x, y) { return x.casa - y.casa; })[0]; linhas.push((afin.nomes && afin.nomes[c] ? afin.nomes[c] : 'corda ' + (c + 1)) + ': ' + (p ? p.casa : 'x')); }
       alvo.appendChild(el('pre', { class: 'lab-tablatura', txt: linhas.join('\n') }));
     }
