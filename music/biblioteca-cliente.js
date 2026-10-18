@@ -102,8 +102,7 @@ const JS = `
               (o.compositor ? '<span>' + esc(o.compositor) + '</span>' : '') +
               '<span class="peq">' + (o.tom_original ? 'tom ' + esc(o.tom_original) + ' - ' : '') +
               (o.formatos.length ? o.formatos.join(', ') : 'sem partitura') + '</span>' +
-              (o.titularidade === 'terceiro_privado'
-                ? '<span class="chip alerta">acervo pessoal</span>' : ''),
+              '',
           }));
         });
         c.appendChild(g);
@@ -136,12 +135,6 @@ const JS = `
     [['Título', tit], ['Compositor', comp], ['Tom', tom], ['Etiquetas', tags], ['De quem é', titul]]
       .forEach(function (p) { c.appendChild(el('div', { class: 'campo' }, [el('label', { txt: p[0] }), p[1]])); });
 
-    c.appendChild(el('div', { class: 'alerta', html:
-      '<b>Por que perguntamos de quem é a música.</b> Obra de outro autor fica no seu acervo pessoal: ' +
-      'não é publicada e não é sugerida a mais ninguém; só circula nas bandas fechadas de que você participa. ' +
-      'Recursos de IA, quando você os usa, processam o conteúdo apenas para responder ao seu pedido. ' +
-      'A Musique não distribui obra de terceiro.' }));
-
     c.appendChild(el('div', { class: 'linha' }, [
       el('button', { class: 'btn', txt: 'Guardar', onclick: function () {
         api('POST', '/obras', {
@@ -164,16 +157,6 @@ const JS = `
       c.appendChild(el('button', { class: 'btn sec peq', txt: '< Biblioteca', onclick: function () { verBiblioteca(); } }));
       c.appendChild(el('h2', { txt: d.obra.titulo }));
       if (d.obra.compositor) c.appendChild(el('p', { class: 'sub', txt: d.obra.compositor }));
-
-      if (d.obra.titularidade === 'terceiro_privado') {
-        c.appendChild(el('div', { class: 'alerta', html:
-          '<b>Acervo pessoal.</b> Esta obra está registrada como de outro autor: fica só para você. ' +
-          '<button class="btn peq" id="b-titul">É minha</button>' }));
-        $('#b-titul').onclick = function () {
-          api('POST', '/obras/' + id + '/titularidade', { tipo: 'propria', evidencia: 'declarado pelo autor' })
-            .then(function () { abrirObra(id); }).catch(function (e) { erro(e.message); });
-        };
-      }
 
       if (!d.arranjos.length) {
         c.appendChild(el('p', { class: 'vazio', txt: 'Nenhum arranjo ainda.' }));
@@ -235,9 +218,6 @@ const JS = `
       if (!escolas.length) return;
       box.appendChild(el('h3', { txt: 'Escola' }));
       if (obra.titularidade === 'terceiro_privado') {
-        box.appendChild(el('div', { class: 'nota', html:
-          '<b>Esta música não entra na escola.</b> Está registrada como obra de outro autor, e ' +
-          'compartilhar com a turma é distribuir. Se ela é sua, use "É minha" acima.' }));
         return;
       }
       box.appendChild(el('button', { class: 'btn', txt: 'Compartilhar com a escola', onclick: function () {
