@@ -118,6 +118,9 @@
 .lab-mapa-no{position:relative;border:2px solid var(--navy);border-radius:999px;background:#fff;color:var(--navy);font-weight:700;padding:10px 16px;cursor:pointer;box-shadow:0 2px 5px #14213d22}
 .lab-mapa-no:not(:last-child)::after{content:'→';position:absolute;right:-17px;color:var(--muted);font-weight:400}
 .lab-mapa-no:hover,.lab-mapa-no:focus-visible{background:var(--navy);color:#fff;outline:3px solid #8dc8ff}
+.lab-vizinhos{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:16px 0}
+.lab-vizinho{border:1px solid var(--borda);border-radius:12px;padding:12px;background:#fff;box-shadow:0 2px 5px #14213d14}
+.lab-vizinho h3{margin:0 0 6px;color:var(--navy)}
 .lab-check{display:flex;gap:6px;align-items:center;font-size:14px;min-height:40px}
 .btn.sec{background:#fff;color:var(--navy);border:1px solid var(--navy)}
 .lab-resumo{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:14px 16px;margin:0 0 12px}

@@ -335,6 +335,35 @@
     render();
   };
 
+  F['acordes-vizinhos'] = function (alvo, st) {
+    st.acordeTexto = st.acordeTexto || 'C';
+    st.raio = st.raio || '1';
+    function gerar() {
+      var base = A.ler(st.acordeTexto), raio = Math.max(1, Math.min(3, Number(st.raio) || 1));
+      if (!base) return { base: null, itens: [] };
+      var ns = A.notas(naOitava(base.fundamental, 4), base.id) || [], orig = ns.map(N.pc), vistos = {};
+      var itens = [];
+      ns.forEach(function (n, ni) { for (var d = 1; d <= raio; d++) [-1, 1].forEach(function (dir) {
+        var teste = ns.map(N.midi), j = teste.indexOf(N.midi(n)); if (j < 0) j = ni; teste[j] += dir * d;
+        var achados = A.identificar(teste).filter(function (x) { return x.exata; });
+        achados.forEach(function (x) { var chave = x.fundamental.li + ':' + x.fundamental.alt + ':' + x.id; if (vistos[chave]) return; vistos[chave] = 1; var xpcs = (A.notas(x.fundamental, x.id) || []).map(N.pc); itens.push({ a: x, movida: rot(n) + (dir < 0 ? ' ↓' : ' ↑') + d, comum: orig.filter(function (p) { return xpcs.indexOf(p) >= 0; }).length }); });
+      }); });
+      return { base: base, itens: itens.slice(0, 24) };
+    }
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo);
+      var campo = el('input', { type: 'text', value: st.acordeTexto, placeholder: 'Ex.: Cmaj7, F, Bm7(b5)' }); campo.value = st.acordeTexto;
+      var raio = el('select', {}, [1, 2, 3].map(function (n) { return el('option', { value: String(n), txt: n + ' semitom' + (n > 1 ? 's' : '') }); })); raio.value = st.raio;
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo' }, [el('span', { txt: 'Acorde de partida' }), campo]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Raio' }), raio]), el('button', { type: 'button', class: 'btn', txt: 'Explorar vizinhos', onclick: function () { st.acordeTexto = campo.value; st.raio = raio.value; render(); } })]));
+      var r = gerar(); if (!r.base) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite um acorde válido, por exemplo C, Am7 ou G7.' })); return; }
+      var baseNs = A.notas(naOitava(r.base.fundamental, 3), r.base.id) || [];
+      alvo.appendChild(el('div', { class: 'lab-resultado' }, [el('p', { txt: 'Partida: ' + A.simbolo(r.base.fundamental, r.base.id) + ' · ' + baseNs.map(rot).join(', ') }), el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir partida', onclick: function () { C.Som.tocar(baseNs.map(N.midi), { modo: 'harmonico' }); } })]));
+      alvo.appendChild(el('div', { class: 'lab-vizinhos' }, r.itens.map(function (x) { var ns2 = A.notas(naOitava(x.a.fundamental, 3), x.a.id) || []; return el('article', { class: 'lab-vizinho' }, [el('h3', { txt: A.simbolo(x.a.fundamental, x.a.id) }), el('p', { txt: 'Moveu ' + x.movida + ' · ' + x.comum + ' nota(s) em comum' }), el('p', { class: 'lab-dica', txt: ns2.map(rot).join(' · ') }), el('button', { type: 'button', class: 'btn sec', txt: '▶ Ouvir', onclick: function () { C.Som.tocar(ns2.map(N.midi), { modo: 'harmonico' }); } })]); })));
+      if (!r.itens.length) alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Nenhum nome de acorde do catálogo foi encontrado nesse raio. Tente aumentar para dois ou três semitons.' }));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------
