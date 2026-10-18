@@ -34,5 +34,13 @@
     }
     return box;
   }
-  C.Voz = { painel: painel, perfilTexto: perfilTexto };
+  function botao() {
+    var b = el('button', { type: 'button', class: 'cf-voz-atalho', txt: '🎤 Perfil vocal', title: 'Abrir o perfil vocal' });
+    b.onclick = function () {
+      var p = document.querySelector('.cf-voz-painel');
+      if (p) p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+    return b;
+  }
+  C.Voz = { painel: painel, perfilTexto: perfilTexto, botao: botao };
 })(window);
