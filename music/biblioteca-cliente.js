@@ -211,9 +211,11 @@ const JS = `
     if (!C || !C.Voz) return;
     var area = el('div', { class: 'cf-voz-area' });
     container.appendChild(area);
+    area.appendChild(C.Voz.painel(cifraId || '', null));
     fetch('/music/api/cifras/perfil-vocal').then(function (r) { return r.json(); }).then(function (d) {
+      area.innerHTML = '';
       area.appendChild(C.Voz.painel(cifraId || '', d.perfil));
-    }).catch(function () { area.appendChild(C.Voz.painel(cifraId || '', null)); });
+    }).catch(function () {});
   }
 
   // ---- compartilhar com a escola (Fase 3) ----

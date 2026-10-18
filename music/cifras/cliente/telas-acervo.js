@@ -459,9 +459,11 @@
     if (C.Voz && !d._offline) {
       var vozArea = el('div', { class: 'cf-voz-area' });
       c.appendChild(vozArea);
+      vozArea.appendChild(C.Voz.painel(d.cifra.id, null));
       api('GET', '/perfil-vocal', null, { cache: 'perfil-vocal' }).then(function (r) {
+        vozArea.innerHTML = '';
         vozArea.appendChild(C.Voz.painel(d.cifra.id, r.perfil));
-      }).catch(function () { vozArea.appendChild(C.Voz.painel(d.cifra.id, null)); });
+      }).catch(function () {});
     }
 
     var ferr = el('div', { class: 'cf-ferr', role: 'toolbar', 'aria-label': 'Ferramentas da cifra' });
