@@ -555,7 +555,7 @@
       mais.appendChild(C.botao('Palco', function () { C.palcoUmaMusica(estado); }, 'sec peq'));
       mais.appendChild(sel([['', 'Mais…'], ['exibicao', 'Exibição'], ['historico', 'Histórico de versões'], ['praticar', 'Praticar'], ['comentarios', 'Comentários e notas'],
         ['exportar', 'Exportar / imprimir'], ['compartilhar', 'Link e QR Code'], ['arranjo', 'Arranjos'], ['setlist', 'Adicionar a setlist'], ['original', 'Ver original importado'],
-        ['avaliar', 'Avaliar / propor correção'], ['graus', 'Análise em graus (Laboratório)']].concat(C.temIA('revisar_harmonia') ? [['ia_harmonia', 'IA: revisar harmonia']] : []).concat(C.temIA('guia_instrumento') ? [['ia_guia', 'IA: guia do instrumento']] : []),
+        ['avaliar', 'Avaliar / propor correção'], ['arranjar', 'Simplificar / rearmonizar'], ['graus', 'Análise em graus (Laboratório)']].concat(C.temIA('revisar_harmonia') ? [['ia_harmonia', 'IA: revisar harmonia']] : []).concat(C.temIA('guia_instrumento') ? [['ia_guia', 'IA: guia do instrumento']] : []),
       '', function (x) { abrirPainel(x); }, 'Mais ações'));
       ferr.appendChild(mais);
     }
@@ -963,6 +963,47 @@
       var m = el('input', { type: 'text', placeholder: 'Motivo' });
       C.modal('Denunciar', m, [{ txt: 'Cancelar' }, { txt: 'Enviar', fn: function () { api('POST', '/denuncias', { alvo_tipo: 'cifra', alvo_id: d.cifra.id, motivo: m.value }).then(function () { C.aviso('Denúncia enviada à moderação.'); }).catch(C.erro); } }]);
     }, 'sec peq')]));
+  };
+
+  C.paineis.arranjar = function (p, estado) {
+    var doc = estado.d.documento;
+    p.appendChild(el('h3', { txt: 'Simplificar ou rearmonizar' }));
+    p.appendChild(el('p', { class: 'm', txt: 'A cifra original permanece intacta. Gere uma variação, confira a prévia e salve como nova cifra da mesma música.' }));
+    var modo = sel([['simples', 'Para iniciantes'], ['sofisticado', 'Rearmonização sofisticada']], 'simples', atualizar, 'Tipo de variação');
+    var nivel = sel([[1, 'Leve: remover tensões'], [2, 'Intermediário: tríades'], [3, 'Básico: acordes essenciais']], 2, atualizar, 'Nível de simplificação');
+    p.appendChild(el('div', { class: 'linha' }, [modo, nivel]));
+    var preview = el('div', { class: 'cf-painel' }); p.appendChild(preview);
+    var info = el('p', { class: 'm' }); p.appendChild(info);
+    var salvar = C.botao('Salvar como nova cifra', function () {
+      var nome = modo.value === 'simples' ? 'Versão para iniciantes' : 'Rearmonização sofisticada';
+      api('POST', '/cifras/' + estado.d.cifra.id + '/variacoes', { documento: variacao(), nome: nome, descricao: 'Gerada na ferramenta Simplificar / rearmonizar.' })
+        .then(function (r) { C.aviso('Variação salva.'); C.ir('cifra', r.cifra.id); }).catch(C.erro);
+    });
+    p.appendChild(salvar);
+    function sofisticar(txt) {
+      var m = String(txt || '').match(/^([A-G](?:#|b)?)(m|min)?$/);
+      if (m) return m[1] + (m[2] ? 'm7' : 'maj7');
+      if (/^[A-G](?:#|b)?sus[24]$/.test(txt)) return txt.replace(/sus/, '7sus');
+      return txt;
+    }
+    function variacao() {
+      if (modo.value === 'simples') return M.documento.simplificar(doc, Number(nivel.value)).documento;
+      var out = JSON.parse(JSON.stringify(doc)), qtd = 0;
+      (out.secoes || []).forEach(function (sc) { (sc.linhas || []).forEach(function (ln) { (ln.segmentos || []).forEach(function (sg) {
+        if (sg.acorde) { var novo = sofisticar(sg.acorde); if (novo !== sg.acorde) { sg.acorde = novo; qtd++; } }
+      }); }); });
+      out.meta = Object.assign({}, out.meta, { observacao: 'Rearmonização sofisticada gerada pelo Musique' });
+      out.__mudancas = qtd;
+      return out;
+    }
+    function atualizar() {
+      var d2 = variacao(); preview.innerHTML = '';
+      preview.appendChild(R.cifra(d2, { modo: 'letra_cifra', familia: 'mono', fonte: 16, espacamento: 1.35, colunas: 1 }));
+      var qtd = d2.__mudancas || 0; delete d2.__mudancas;
+      info.textContent = modo.value === 'simples' ? 'Nível ' + nivel.value + ': acordes complexos são reduzidos para formas mais fáceis.' : qtd + ' acorde(s) receberam sétima ou suspensão para ampliar a cor harmônica.';
+    }
+    nivel.style.display = ''; modo.onchange = function () { nivel.style.display = modo.value === 'simples' ? '' : 'none'; atualizar(); };
+    atualizar();
   };
 
   C.paineis.ia_harmonia = function (p, estado) {

@@ -214,6 +214,17 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
   app.put(B + '/cifras/:id', requireUsuario, h(async (req, res) => res.json(Cifras.salvar(U(req), req.params.id, req.body || {}))));
   app.patch(B + '/cifras/:id', requireUsuario, h(async (req, res) => res.json({ ok: true, cifra: Cifras.editarDados(U(req), req.params.id, req.body || {}) })));
   app.delete(B + '/cifras/:id', requireUsuario, h(async (req, res) => { Cifras.remover(U(req), req.params.id); res.json({ ok: true }); }));
+  app.post(B + '/cifras/:id/variacoes', requireUsuario, h(async (req, res) => {
+    const base = Cifras.porId(req.params.id);
+    if (!base) return res.status(404).json({ erro: 'Cifra não encontrada.' });
+    const d = req.body || {};
+    const variacao = Cifras.criar(U(req), base.obra_id, {
+      documento: d.documento, nome: String(d.nome || 'Variação harmônica').slice(0, 120),
+      descricao: String(d.descricao || 'Variação criada a partir da cifra original.').slice(0, 300),
+      tipo_revisao: 'variacao', status: 'rascunho', tom: d.tom || base.tom,
+    });
+    res.status(201).json({ ok: true, cifra: variacao.cifra, musica: variacao.musica });
+  }));
   app.get(B + '/cifras/:id/original', requireUsuario, h(async (req, res) => res.json(Cifras.original(U(req), req.params.id))));
   app.get(B + '/cifras/:id/revisoes', requireUsuario, h(async (req, res) => res.json({ revisoes: Cifras.revisoes(U(req), req.params.id).map((r) => ({ ...r, autor_nome: nomeDe(r.autor) })) })));
   app.get(B + '/cifras/:id/revisoes/:n', requireUsuario, h(async (req, res) => res.json(Cifras.revisao(U(req), req.params.id, req.params.n))));
