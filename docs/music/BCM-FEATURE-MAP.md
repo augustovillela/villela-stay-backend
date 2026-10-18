@@ -10,6 +10,21 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 
 **Mapa de harmonia** (`/music/criar/mapa-harmonia`) transforma uma sequência como `C, Am, F, G` em uma linha de acordes tocáveis. Para cada ligação, mostra notas em comum e uma distância média em semitons. Isso cria uma base explicável para estudar proximidade entre acordes, inversões, suspensões e rearmonização.
 
+## Entregas já implementadas nesta frente
+
+- **Acordes vizinhos**: alternativas por movimento de semitom, com notas compartilhadas e áudio.
+- **Harmonizador de tonalidades**: três campos harmônicos comparados e acordes-pivô destacados.
+- **Piano roll harmônico**: barras de notas, reprodução e exportação SVG.
+- **Mandala harmônica**: disposição radial de acordes e exportação SVG.
+- **Superestruturas e policordes**: busca de acordes que contêm notas dadas e combinação de duas camadas.
+- **Intervalos do acorde**: relações internas entre todas as notas, com áudio.
+- **Editor de braço**: posições de acordes para cordas, tablatura textual e exportação SVG.
+- **Visualizador de frequência**: fundamentais e harmônicos clicáveis.
+- **Editor e gerador de progressões**: nós reordenáveis, geração maior/menor e exportação MIDI.
+- **Metrônomo distorcido**: swing e omissões graduais para treino do pulso.
+- **Atlas de escalas**: fórmula, relógio cromático, piano e braço.
+- **Arranjo a quatro vozes e harmonizador de melodia**: condução de vozes, sugestões diatônicas e exportação MIDI.
+
 ## Roadmap funcional
 
 1. **Harmonia ilustrada**: mapa de funções, campo harmônico, círculo de quintas, dominantes secundárias, empréstimos modais e rotas de modulação.
