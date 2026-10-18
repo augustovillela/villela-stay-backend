@@ -35,7 +35,7 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 - **Piano virtual exportável**: o teclado virtual oferece modo compacto e modo completo de 88 teclas; ambos podem ser baixados em SVG, PNG e MIDI a partir da sequência tocada, incluindo gravação temporizada, exportação JSON e reabertura com reprodução.
 - **Mapa vertical de bateria**: pads posicionam crash, ride, chimbal, caixa, bumbo, tons e acessórios como um kit físico, com disparo por toque ou atalhos A–K.
 - **Bateria eletrônica via MIDI**: a ferramenta aceita notas de entrada de controladores e mapeia os golpes do kit para os sons do Musique em tempo real.
-- **Gravação de bateria MIDI**: uma performance recebida ao vivo pode ser registrada e baixada como MIDI para reabrir em um sequenciador ou DAW.
+- **Gravação de bateria MIDI**: uma performance recebida ao vivo pode ser registrada, baixada como MIDI ou JSON e reaberta para reprodução no próprio laboratório.
 - **Intercâmbio de padrões de bateria**: grades completas podem ser exportadas e importadas em JSON, preservando passos, compasso e nome do estudo.
 
 ## Roadmap funcional
