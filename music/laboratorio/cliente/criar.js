@@ -230,11 +230,15 @@
     var selCiclo = el('select', { id: 'lab-ciclo' }, [['16:4', '4/4 (16 semicolcheias)'], ['12:4', '3/4 (12 semicolcheias)'], ['8:4', '2/4 (8 semicolcheias)'], ['12:3', '12/8 ou 2×6/8 (12 colcheias)']].map(function (o) { return el('option', { value: o[0], txt: o[1] }); }));
     selCiclo.value = passos + ':' + porTempo;
     selCiclo.onchange = function () { var p = selCiclo.value.split(':').map(Number); passos = p[0]; porTempo = p[1]; FAIXAS.forEach(function (f) { grade[f.id] = grade[f.id].filter(function (i) { return i < passos; }); }); nomePadrao = ''; guardar(); pintar(); reiniciar(); };
+    var gravando = false, inicioGravacao = 0, eventosGravados = [], gravarBtn = el('button', { type: 'button', class: 'btn sec', txt: '● Gravar MIDI ao vivo', onclick: function () {
+      if (gravando) { gravando = false; gravarBtn.textContent = '● Gravar MIDI ao vivo'; if (eventosGravados.length) C.baixar('bateria-midi-musique.mid', 'audio/midi', midiArquivo(eventosGravados, bpm, porTempo)); C.aviso(eventosGravados.length ? eventosGravados.length + ' golpe(s) gravado(s) e exportado(s).' : 'Nenhum golpe foi gravado.'); return; }
+      eventosGravados = []; inicioGravacao = performance.now(); gravando = true; gravarBtn.textContent = '■ Parar e baixar MIDI'; C.aviso('Gravação MIDI iniciada. Toque na bateria eletrônica.');
+    } });
     var midiBtn = el('button', { type: 'button', class: 'btn sec', txt: 'Conectar bateria MIDI', onclick: function () {
       if (!navigator.requestMIDIAccess) { C.aviso('Este navegador não oferece Web MIDI. A bateria continua disponível pelos pads e pela grade.'); return; }
       navigator.requestMIDIAccess().then(function (acc) {
         var porNota = { 49: 'crash', 51: 'ride' }; FAIXAS.forEach(function (fx) { porNota[fx.midi] = fx.id; }); var n = 0;
-        acc.inputs.forEach(function (inp) { n++; inp.onmidimessage = function (msg) { var d = msg.data || [], status = d[0] & 0xf0, nota = d[1], vel = d[2]; if (status !== 0x90 || !vel) return; var id = porNota[nota]; if (id && C.Som.bateria[id]) C.Som.bateria[id](C.Som.audio().currentTime + 0.01, Math.min(1, vel / 100)); }; });
+        acc.inputs.forEach(function (inp) { n++; inp.onmidimessage = function (msg) { var d = msg.data || [], status = d[0] & 0xf0, nota = d[1], vel = d[2]; if (status !== 0x90 || !vel) return; var id = porNota[nota]; if (id && C.Som.bateria[id]) { C.Som.bateria[id](C.Som.audio().currentTime + 0.01, Math.min(1, vel / 100)); if (gravando) eventosGravados.push({ t: Math.max(0, (performance.now() - inicioGravacao) / 1000 * bpm / 60 * porTempo), dur: 1, midi: nota, canal: 9, vel: vel }); } }; });
         C.aviso(n ? n + ' entrada(s) MIDI conectada(s). Toque a bateria eletrônica.' : 'Nenhuma entrada MIDI encontrada.');
       }).catch(function () { C.aviso('O acesso ao MIDI foi negado.'); });
     } });
@@ -244,7 +248,7 @@
       el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-swing', txt: 'Swing (4/4)' }), sw, lsw]),
       el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-ciclo', txt: 'Compasso' }), selCiclo]),
       el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { grade = vazio(); nomePadrao = ''; guardar(); pintar(); } }),
-      midiBtn,
+      midiBtn, gravarBtn,
       el('button', { type: 'button', class: 'btn sec', txt: 'Exportar MIDI', onclick: function () {
         var ev = [];
         for (var rep = 0; rep < 4; rep++) FAIXAS.forEach(function (fx) { grade[fx.id].forEach(function (i) { ev.push({ t: rep * passos + i, dur: 1, midi: fx.midi, canal: 9 }); }); });
