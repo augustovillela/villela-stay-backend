@@ -29,6 +29,7 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 - **Reabertura de análises**: shapes de braço, escalas, superestruturas, intervalos, espectros, policordes, acordes vizinhos, tonalidades, harmonizador de melodia e grooves do metrônomo podem ser importados pelo próprio laboratório.
 - **Groove reproduzível**: o metrônomo com variações usa uma semente editável; a mesma configuração gera as mesmas omissões na prévia e no MIDI exportado.
 - **Grafo espacial**: o Grafo harmônico oferece uma perspectiva 3D opcional, preservando a leitura 2D e a interação por teclado.
+- **Mandala espacial**: a Mandala harmônica também oferece perspectiva 3D opcional, mantendo os nós radiais e seus controles acessíveis.
 
 ## Roadmap funcional
 
