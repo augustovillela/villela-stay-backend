@@ -137,6 +137,7 @@
 .lab-super-card{border:1px solid var(--borda);border-radius:12px;padding:12px;background:#fff}.lab-super-card h3{margin:0;color:var(--navy)}
 .lab-intervalos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:16px 0}
 .lab-intervalo-card{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:12px;border:1px solid var(--borda);border-radius:12px;background:#fff;color:var(--graphite);text-align:left;cursor:pointer}.lab-intervalo-card strong{font-size:22px;color:var(--navy)}.lab-intervalo-card small{color:var(--muted)}.lab-intervalo-card:hover,.lab-intervalo-card:focus-visible{border-color:var(--navy);background:#edf5fc;outline:2px solid #8dc8ff}
+.lab-tablatura{padding:12px;border-radius:10px;background:#102a43;color:#e8f1f8;overflow:auto;font:14px ui-monospace,Consolas,monospace}
 .lab-check{display:flex;gap:6px;align-items:center;font-size:14px;min-height:40px}
 .btn.sec{background:#fff;color:var(--navy);border:1px solid var(--navy)}
 .lab-resumo{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:14px 16px;margin:0 0 12px}

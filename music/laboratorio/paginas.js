@@ -331,6 +331,7 @@ function relacionados(slug) {
     'mandala-harmonica': ['/music/criar/mapa-harmonia', '/music/explorar/harmonizador-tonalidades', '/music/explorar/circulo-de-quintas'],
     'superestruturas-acordes': ['/music/explorar/identificar-acorde', '/music/explorar/acordes-vizinhos', '/music/referencia/extensoes'],
     'intervalos-do-acorde': ['/music/explorar/superestruturas-acordes', '/music/referencia/intervalos', '/music/praticar/intervalo-ouvido'],
+    'editor-de-braco': ['/music/explorar/braco', '/music/explorar/acordes-vizinhos', '/music/referencia/afinacoes'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],

@@ -465,6 +465,27 @@
     render();
   };
 
+  F['editor-de-braco'] = function (alvo, st) {
+    st.instrumento = st.instrumento || 'violao'; st.afinacao = st.afinacao || 'padrao'; st.acordeTexto = st.acordeTexto || 'C'; st.casas = st.casas || 12;
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo); var ins = INS.instrumento(st.instrumento); if (!ins) { st.instrumento = 'violao'; ins = INS.instrumento(st.instrumento); }
+      var afs = Object.keys(ins.afinacoes || {}).map(function (k) { return { valor: k, rotulo: ins.afinacoes[k].nome }; }); if (!ins.afinacoes[st.afinacao]) st.afinacao = afs[0] && afs[0].valor || 'padrao';
+      var inp = el('input', { type: 'text', value: st.acordeTexto, placeholder: 'Acorde, ex.: Am7' }); inp.value = st.acordeTexto;
+      var inst = C.select('lab-editor-inst', 'Instrumento', Object.keys(INS.CORDAS).map(function (k) { return { valor: k, rotulo: INS.CORDAS[k].nome }; }), st.instrumento, function (v) { st.instrumento = v; st.afinacao = 'padrao'; render(); });
+      var af = C.select('lab-editor-af', 'Afinação', afs, st.afinacao, function (v) { st.afinacao = v; render(); });
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [inst, af, el('label', { class: 'lab-campo' }, [el('span', { txt: 'Acorde' }), inp]), el('button', { type: 'button', class: 'btn', txt: 'Atualizar braço', onclick: function () { st.acordeTexto = inp.value; render(); } })]));
+      var a = A.ler(st.acordeTexto); if (!a) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite um acorde válido.' })); return; }
+      var ns = A.notas(naOitava(a.fundamental, 4), a.id) || [], pcs = ns.map(N.pc), afin = INS.afinacao(st.instrumento, st.afinacao), pos = INS.posicoes(afin, pcs, Number(st.casas) || 12), por = {}; ns.forEach(function (n) { por[N.pc(n)] = n; });
+      var dest = pos.map(function (p) { return { corda: p.corda, casa: p.casa, rotulo: rot(por[p.pc]), tipo: p.pc === N.pc(a.fundamental) ? 'raiz' : 'nota' }; });
+      var box = svg(D.braco({ afinacao: afin, casas: Number(st.casas) || 12, destaques: dest, interativo: true, notacao: C.notacao, titulo: 'Editor de ' + ins.nome }));
+      box.addEventListener('click', function (e) { var k = e.target.closest('[data-midi]'); if (k) C.Som.tocar([Number(k.dataset.midi)], { modo: 'dedilhado', dur: 1.1 }); });
+      alvo.appendChild(el('figure', { class: 'lab-fig' }, [box, el('figcaption', { txt: A.simbolo(a.fundamental, a.id) + ' · clique em uma posição para ouvir.' })]));
+      var linhas = []; for (var c = 0; c < afin.midi.length; c++) { var p = pos.filter(function (x) { return x.corda === c; }).sort(function (x, y) { return x.casa - y.casa; })[0]; linhas.push((afin.nomes && afin.nomes[c] ? afin.nomes[c] : 'corda ' + (c + 1)) + ': ' + (p ? p.casa : 'x')); }
+      alvo.appendChild(el('pre', { class: 'lab-tablatura', txt: linhas.join('\n') }));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------
