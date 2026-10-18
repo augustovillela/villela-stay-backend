@@ -46,7 +46,8 @@ const INCONSTITUCIONAL = ['inconstitucional', 'inconstitucional_apos_edital'];
 const TECNICAS_STF = ['inconstitucional', 'inconstitucional_parcial', 'sem_reducao', 'interpretacao_conforme', 'nao_recepcao', 'execucao_suspensa'];
 const MAX_DECISOES = 12;
 // a situação do VERBETE (o contrato não fecha uma lista: esta é a da coleta J1–J3; nome novo entra aqui, de propósito)
-const SITUACOES_JURIS = ['vigente', 'cancelado', 'convertido', 'alterado', 'superado', 'suspenso', 'revogado', 'julgado', 'merito_julgado', 'pendente',
+// `emitida` (18/10/2026): opinião consultiva (Corte IDH) não é julgada — é emitida; não é caso contencioso
+const SITUACOES_JURIS = ['vigente', 'cancelado', 'convertido', 'alterado', 'superado', 'suspenso', 'revogado', 'julgado', 'emitida', 'merito_julgado', 'pendente',
   'prejudicado', 'encerrado', 'extinto', 'sem_tese', 'incluido_apos_edital', 'alterado_apos_edital', 'cancelado_apos_edital', 'sem_informacao'];
 const SITUACOES_JURIS_EDITAL = SITUACOES_JURIS.concat(['inexistente']);
 const ORIGENS = ['edital', 'aula', 'questao', 'leitura'];

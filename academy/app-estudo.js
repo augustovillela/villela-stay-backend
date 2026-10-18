@@ -4088,9 +4088,9 @@
     var TEC_STF = { inconstitucional: 'Declarado inconstitucional', inconstitucional_parcial: 'Declarado inconstitucional em parte', sem_reducao: 'Inconstitucionalidade sem redução de texto',
       interpretacao_conforme: 'Interpretação conforme a Constituição', nao_recepcao: 'Não recepcionado pela Constituição de 1988', execucao_suspensa: 'Execução suspensa pelo Senado Federal' };
     var SIT_JURIS = { vigente: 'Vigente', cancelado: 'Cancelado', convertido: 'Convertido', alterado: 'Alterado', superado: 'Superado', suspenso: 'Suspenso', revogado: 'Revogado',
-      julgado: 'Julgado', merito_julgado: 'Mérito julgado', pendente: 'Pendente de julgamento', prejudicado: 'Prejudicado', encerrado: 'Encerrado', extinto: 'Extinto', sem_tese: 'Sem tese',
+      julgado: 'Julgado', emitida: 'Emitida', merito_julgado: 'Mérito julgado', pendente: 'Pendente de julgamento', prejudicado: 'Prejudicado', encerrado: 'Encerrado', extinto: 'Extinto', sem_tese: 'Sem tese',
       incluido_apos_edital: 'Editado depois do edital', alterado_apos_edital: 'Alterado depois do edital', cancelado_apos_edital: 'Cancelado depois do edital', sem_informacao: 'Sem informação', inexistente: 'Não existia' };
-    var SIT_JURIS_COR = { vigente: 'verde', merito_julgado: 'verde', julgado: 'verde', cancelado: 'verm', superado: 'verm', revogado: 'verm', cancelado_apos_edital: 'verm', extinto: 'verm', prejudicado: 'verm',
+    var SIT_JURIS_COR = { vigente: 'verde', merito_julgado: 'verde', julgado: 'verde', emitida: 'verde', cancelado: 'verm', superado: 'verm', revogado: 'verm', cancelado_apos_edital: 'verm', extinto: 'verm', prejudicado: 'verm',
       convertido: 'ambar', alterado: 'ambar', alterado_apos_edital: 'ambar', suspenso: 'ambar', incluido_apos_edital: 'ambar', pendente: 'azul' };
     var TIPO_JURIS = { sumula: 'Súmula', sumula_vinculante: 'Súmula Vinculante', oj: 'Orientação Jurisprudencial', precedente_normativo: 'Precedente Normativo', tema_rg: 'Tema de Repercussão Geral',
       tema_repetitivo: 'Tema Repetitivo', tema_irr: 'Tema de Recurso Repetitivo (IRR)', tema_iac: 'Tema de IAC', tema_irdr: 'Tema de IRDR', irdr: 'IRDR', iac: 'IAC', iuj: 'Uniformização de Jurisprudência (IUJ)',

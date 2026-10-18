@@ -193,6 +193,58 @@ async function rodar({ t, req }) {
     assert.equal((await status(pidB, { escopo: SB, unidades: 'publicado' })).st, 200);
   });
 
+  await t('inclusões/questões: o lote de situação de um percurso NÃO toca a questão compartilhada com outro (vínculo M:N) — nos dois sentidos; muda só as próprias e diz quantas pulou e onde mais estão', async () => {
+    const ALTS = (i) => [{ texto: `certa ${i}`, correta: true, explicacao: 'Certa: é a regra.' }, { texto: `errada ${i}a`, correta: false, explicacao: 'Errada: é a exceção.' }, { texto: `errada ${i}b`, correta: false, explicacao: 'Errada: é outro instituto.' }];
+    const Q = (nome, comp, item) => ({ tipo: 'objetiva', origem: 'autoral', enunciado: `Inclusões, questão ${nome}: qual é a regra aplicável ao ponto?`, alternativas: ALTS(nome), competencias: [comp],
+      itens: [{ codigo: item, justificativa: 'A questão trata do item.' }] });
+    // A: duas só dele e duas que o B também vai usar; publicadas em lote ANTES de existir o compartilhamento
+    let r = await importar(pidA, { escopo: { slug: SA }, questoes: [Q('a1', 'ca-1', '1.1.1'), Q('a2', 'ca-2', '1.1.2'), Q('s1', 'ca-1', '1.1.1'), Q('s2', 'ca-2', '1.1.2')] });
+    assert.equal(r.st, 200, r.texto); assert.equal(r.json.importado.questoes.novas, 4);
+    r = await status(pidA, { escopo: SA, questoes: 'disponivel' });
+    assert.deepEqual([r.json.alterados.questoes, r.json.alterados.questoes_puladas], [4, undefined], 'sem compartilhamento, o lote de A é o de sempre');
+    // B: as duas de A pelo vínculo (mesmos dados → duplicadas, só ganha vínculo) + uma própria
+    r = await importar(pidB, { escopo: { slug: SB }, questoes: [Q('s1', 'ca-1', '2.1.1'), Q('s2', 'ca-2', '2.1.2'), Q('b1', 'cb-1', '2.1.9')] });
+    assert.equal(r.st, 200, r.texto); assert.deepEqual([r.json.importado.questoes.novas, r.json.importado.questoes.duplicadas, r.json.importado.questoes.atualizadas], [1, 2, 0]);
+    const id = (nome) => db.prepare('SELECT id FROM est_questoes WHERE dados LIKE ?').get(`%Inclusões, questão ${nome}:%`).id;
+    const foto = (nomes) => nomes.map(n => db.prepare('SELECT situacao, versao, atualizado_em, dados FROM est_questoes WHERE id = ?').get(id(n)));
+    const sit = (nome) => db.prepare('SELECT situacao FROM est_questoes WHERE id = ?').get(id(nome)).situacao;
+    const compartilhadas = foto(['s1', 's2']);
+    assert.deepEqual(compartilhadas.map(x => x.situacao), ['disponivel', 'disponivel']);
+    assert.equal(sit('b1'), 'rascunho');
+    const pulou = (alt, slug, pid) => {
+      assert.equal(alt.questoes_puladas.n, 2, JSON.stringify(alt));
+      assert.ok(/compartilhada/.test(alt.questoes_puladas.motivo));
+      assert.deepEqual(alt.questoes_puladas.tambem_em, [{ escopo: slug, produto_id: pid, questoes: 2 }]);
+    };
+    // B publica, suspende e arquiva em lote: só a b1 muda; as compartilhadas ficam como estão (situação, versão e data)
+    for (const s of ['disponivel', 'suspensa', 'rascunho']) {
+      r = await status(pidB, { escopo: SB, questoes: s });
+      assert.equal(r.st, 200, r.texto);
+      assert.equal(r.json.alterados.questoes, 1, `${s}: só a própria de B`);
+      pulou(r.json.alterados, SA, pidA);
+      assert.equal(sit('b1'), s);
+      assert.deepEqual(foto(['s1', 's2']), compartilhadas, `${s}: a compartilhada não mudou nem de data`);
+    }
+    // A em lote (o outro sentido): suspender A muda as duas próprias de A e pula as que B usa
+    const soDeA = foto(['a1', 'a2']).map(x => x.situacao);
+    r = await status(pidA, { escopo: SA, questoes: 'suspensa' });
+    assert.equal(r.json.alterados.questoes, 2, 'só a1 e a2');
+    pulou(r.json.alterados, SB, pidB);
+    assert.deepEqual([sit('a1'), sit('a2')], ['suspensa', 'suspensa']);
+    assert.deepEqual(foto(['s1', 's2']), compartilhadas, 'o lote de A também não decide pelo B');
+    r = await status(pidA, { escopo: SA, questoes: 'disponivel' });
+    assert.equal(r.json.alterados.questoes, 2);
+    assert.deepEqual([sit('a1'), sit('a2')], soDeA, 'A volta a ser como era');
+    // arquivar em lote no B: a própria vai para o histórico, a compartilhada fica — e arquivada não volta por lote
+    r = await status(pidB, { escopo: SB, questoes: 'arquivada' });
+    assert.deepEqual([r.json.alterados.questoes, sit('b1')], [1, 'arquivada']);
+    assert.deepEqual(foto(['s1', 's2']), compartilhadas);
+    r = await status(pidB, { escopo: SB, questoes: 'disponivel' });
+    assert.deepEqual([r.json.alterados.questoes, sit('b1')], [0, 'arquivada'], 'arquivada só volta por ato próprio, como sempre');
+    // o aluno de A continua vendo as quatro de A disponíveis
+    assert.deepEqual(R.questoesDoEscopo(eA()).filter(q => q.situacao === 'disponivel').length, 4);
+  });
+
   // ================= vídeo, venda e Tutor =================
   await t('inclusões: o VÍDEO da aula incluída é liberado a quem tem B (ou A) — não a quem não tem nenhum, nem com B em rascunho', async () => {
     const maria = uid(PROD), agora = new Date().toISOString();

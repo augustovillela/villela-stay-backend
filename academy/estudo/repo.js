@@ -765,10 +765,26 @@ function definirStatus_(produto, dados = {}) {
   }
   if (st(dados.unidades)) r.unidades = db.prepare('UPDATE est_unidades SET status = ?, atualizado_em = ? WHERE escopo_id = ?').run(dados.unidades, nowISO(), escopo.id).changes;
   if (st(dados.cards)) r.cards = db.prepare('UPDATE est_cards SET status = ? WHERE escopo_id = ?').run(dados.cards, escopo.id).changes;
-  // publicar em lote não ressuscita questão ARQUIVADA (versão superada por correção): ela só volta por ato próprio
+  // publicar em lote não ressuscita questão ARQUIVADA (versão superada por correção): ela só volta por ato próprio.
+  // QUESTÃO COMPARTILHADA NÃO MUDA PELO LOTE (ADR-0015, 18/10/2026): a questão é UMA linha, e o vínculo M:N a põe em
+  // mais de um percurso (912 autorais do Juiz servem ao Procurador). Mudar a situação dela pelo lote de um escopo
+  // mudaria também no outro — publicar, suspender ou arquivar B em lote mexeria em A. Por isso o lote só toca a questão
+  // ligada SÓ a este escopo; a que tem vínculo com QUALQUER outro escopo fica como está, nos dois sentidos (lote de A
+  // não mexe na que B usa), e a resposta diz quantas foram puladas, por quê e onde mais estão.
   if (banco.SITUACOES.includes(dados.questoes)) {
-    r.questoes = db.prepare(`UPDATE est_questoes SET situacao = ?, atualizado_em = ? WHERE producer_id = ? AND situacao != 'arquivada' AND id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?)`)
-      .run(dados.questoes, nowISO(), produto.producer_id, escopo.id).changes;
+    const doLote = `SELECT DISTINCT v.questao_id FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
+      WHERE v.escopo_id = ? AND q.producer_id = ? AND q.situacao != 'arquivada'`;
+    const outros = db.prepare(`SELECT e.slug, e.product_id, COUNT(DISTINCT o.questao_id) n FROM est_questao_vinculos o JOIN est_escopos e ON e.id = o.escopo_id
+      WHERE o.escopo_id != ? AND o.questao_id IN (${doLote}) GROUP BY e.id ORDER BY n DESC, e.slug`).all(escopo.id, escopo.id, produto.producer_id);
+    const puladas = outros.length ? db.prepare(`SELECT COUNT(*) n FROM (${doLote}) x
+      WHERE EXISTS (SELECT 1 FROM est_questao_vinculos o WHERE o.questao_id = x.questao_id AND o.escopo_id != ?)`).get(escopo.id, produto.producer_id, escopo.id).n : 0;
+    r.questoes = db.prepare(`UPDATE est_questoes SET situacao = ?, atualizado_em = ? WHERE producer_id = ? AND situacao != 'arquivada'
+        AND id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?)
+        AND NOT EXISTS (SELECT 1 FROM est_questao_vinculos o WHERE o.questao_id = est_questoes.id AND o.escopo_id != ?)`)
+      .run(dados.questoes, nowISO(), produto.producer_id, escopo.id, escopo.id).changes;
+    if (puladas) r.questoes_puladas = { n: puladas,
+      motivo: 'questão compartilhada com outro percurso (vínculo M:N): a situação é uma só para todos, e o lote de um percurso não decide pelo outro. Ficou como estava.',
+      tambem_em: outros.map(o => ({ escopo: o.slug, produto_id: o.product_id, questoes: o.n })) };
   }
   if (REVISAO.includes(dados.vinculos)) {
     r.vinculos = db.prepare('UPDATE est_vinculos SET estado_revisao = ? WHERE escopo_id = ?').run(dados.vinculos, escopo.id).changes

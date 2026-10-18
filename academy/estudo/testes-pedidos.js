@@ -245,12 +245,12 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     const pg = await req('GET', '/academy/app');
     assert.equal(pg.st, 200);
     // mecanismo de sempre: ?v=N na URL, dentro do HTML do painel (que o service worker nunca guarda — pwa.js: navegação é só rede)
-    for (const ref of ['/academy/estude.js?v=10', '/academy/estude.css?v=6', '/academy/aluno.js?v=13', '/academy/carteira.js?v=3', '/academy/jornada.js?v=5', '/academy/app.js?v=14', '/academy/ecossistema.js?v=3', '/academy/aluno.css?v=5']) {
+    for (const ref of ['/academy/estude.js?v=11', '/academy/estude.css?v=6', '/academy/aluno.js?v=13', '/academy/carteira.js?v=3', '/academy/jornada.js?v=5', '/academy/app.js?v=14', '/academy/ecossistema.js?v=3', '/academy/aluno.css?v=5']) {
       assert.ok(pg.texto.includes(`"${ref}"`), 'o painel não pede ' + ref);
     }
     for (const velho of ['estude.js?v=7"', 'estude.css?v=5"', 'estude.js?v=6"', 'estude.css?v=4"', 'estude.js?v=5"', 'estude.js?v=4"', 'estude.js?v=3"', 'estude.css?v=3"', 'aluno.js?v=11"', 'carteira.js?v=2"', 'jornada.js?v=4"', 'app.js?v=13"']) assert.ok(!pg.texto.includes(velho), 'sobrou a versão antiga: ' + velho);
     // os motores das Ferramentas saem sempre frescos (no-cache): a versão deles na URL não precisa mudar
-    const js = await req('GET', '/academy/estude.js?v=10');
+    const js = await req('GET', '/academy/estude.js?v=11');
     assert.ok(js.st === 200 && js.texto.includes('function temPedidos()') && js.texto.includes('function ligarFimDaLeitura('), 'o arquivo servido é o novo');
   });
 
@@ -1514,8 +1514,9 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     assert.ok(!tela.includes('A correção não apontou, na sua resposta, um trecho que sustente este nível'), 'o texto antigo saiu');
     const pag = require('../paginas');
     // (6 = auditoria C de 12/10/2026: a prévia do edital mostra a disciplina que vira subárea, o que muda de lugar e o bloqueio do programa em dobro;
-    //  7 = ADR-0014, 17/10/2026: as abas e os acervos de legislação e jurisprudência)
-    assert.ok(/-estude.10-/.test(pag.VERSAO_TELA), 'arquivo de tela alterado → versão nova: ' + pag.VERSAO_TELA);
+    //  7 = ADR-0014, 17/10/2026: as abas e os acervos de legislação e jurisprudência;
+    //  11 = 18/10/2026: a situação "Emitida" da opinião consultiva no acervo de jurisprudência)
+    assert.ok(/-estude.11-/.test(pag.VERSAO_TELA), 'arquivo de tela alterado → versão nova: ' + pag.VERSAO_TELA);
   });
 
   await t('pedidos: a tela tem a aba "Escrita e oral", diz "estimativa" junto da nota e trata o orçamento, o pagamento e a espera', async () => {
