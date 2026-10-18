@@ -364,6 +364,30 @@
     render();
   };
 
+  F['harmonizador-tonalidades'] = function (alvo, st) {
+    st.t1 = st.t1 || 'do'; st.t2 = st.t2 || 'sol'; st.t3 = st.t3 || 'fa';
+    st.m1 = st.m1 || 'maior'; st.m2 = st.m2 || 'maior'; st.m3 = st.m3 || 'maior';
+    function modo(valor, chave) { return el('select', {}, ['maior', 'menor'].map(function (x) { return el('option', { value: x, txt: x === 'maior' ? 'maior' : 'menor' }); })); }
+    function campo(t, m) { return T.campo(N.deSlug(t) || N.ler(t), m) || []; }
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo);
+      var cfg = [['t1', 'm1', 'Tonalidade 1'], ['t2', 'm2', 'Tonalidade 2'], ['t3', 'm3', 'Tonalidade 3']];
+      var controles = cfg.map(function (x) { var md = modo(st[x[1]], x[1]); md.value = st[x[1]]; md.onchange = function () { st[x[1]] = md.value; render(); }; var tn = C.selTonica(st[x[0]], function (v) { st[x[0]] = v; render(); }); return el('fieldset', { class: 'lab-campo' }, [el('legend', { txt: x[2] }), tn, md]); });
+      alvo.appendChild(el('div', { class: 'lab-controles' }, controles));
+      var cs = cfg.map(function (x) { return campo(st[x[0]], st[x[1]]); });
+      var por = {}; cs.forEach(function (c, i) { c.forEach(function (g) { por[g.simbolo] = por[g.simbolo] || []; por[g.simbolo][i] = g; }); });
+      var simbolos = Object.keys(por).sort(function (a, b) { return a.localeCompare(b); });
+      var comuns = simbolos.filter(function (s) { return por[s].filter(Boolean).length >= 2; });
+      var tabela = simbolos.map(function (s) { return el('tr', {}, [el('th', { scope: 'row', txt: s })].concat(cfg.map(function (_, i) { var g = por[s][i]; return el('td', { class: g ? 'lab-acorde-comum' : '', txt: g ? g.romano + ' · ' + g.funcao : '—' }); }))); });
+      var cab = el('tr', {}, [el('th', { scope: 'col', txt: 'Acorde' })].concat(cfg.map(function (x) { return el('th', { scope: 'col', txt: x[2] }); })));
+      alvo.appendChild(el('div', { class: 'lab-resultado' }, [
+        el('p', { txt: comuns.length + ' acorde(s) aparecem em pelo menos duas tonalidades. Eles podem servir como pivôs de modulação.' }),
+        el('table', { class: 'lab-tabela' }, [el('thead', {}, [cab]), el('tbody', {}, tabela)])
+      ]));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------

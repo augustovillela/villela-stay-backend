@@ -326,6 +326,7 @@ function relacionados(slug) {
     progressoes: ['/music/aprender/campo-harmonico', '/music/praticar/campo-grau', '/music/referencia/cadencias-e-progressoes'],
     'mapa-harmonia': ['/music/criar/progressoes', '/music/explorar/acordes-vizinhos', '/music/aprender/campo-harmonico'],
     'acordes-vizinhos': ['/music/criar/mapa-harmonia', '/music/referencia/cadencias-e-progressoes', '/music/referencia/formulas-de-acordes'],
+    'harmonizador-tonalidades': ['/music/criar/mapa-harmonia', '/music/aprender/campo-harmonico', '/music/referencia/tonalidades'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
