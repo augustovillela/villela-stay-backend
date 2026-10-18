@@ -426,7 +426,8 @@
     function render() {
       C.gravarUrl(st); C.limpar(alvo);
       var txt = el('textarea', { rows: 2, class: 'lab-textarea', 'aria-label': 'Acordes da mandala' }); txt.value = st.texto;
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Progressão' }), txt]), el('button', { type: 'button', class: 'btn', txt: 'Atualizar mandala', onclick: function () { st.texto = txt.value; render(); } })]));
+      var arquivo = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar mandala JSON' }); arquivo.onchange = function () { var f = arquivo.files && arquivo.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); var lista = Array.isArray(j.acordes) ? j.acordes : (Array.isArray(j.progressao) ? j.progressao : []); if (!lista.length) throw new Error('O JSON não contém acordes.'); st.texto = lista.map(String).join(', '); render(); C.aviso('Progressão importada na mandala.'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Progressão' }), txt]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Importar JSON' }), arquivo]), el('button', { type: 'button', class: 'btn', txt: 'Atualizar mandala', onclick: function () { st.texto = txt.value; render(); } })]));
       var lista = acs(); if (!lista.length) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite acordes separados por vírgula.' })); return; }
       var mandala = el('div', { class: 'lab-mandala', role: 'img', 'aria-label': 'Mandala de acordes' });
       mandala.appendChild(el('div', { class: 'lab-mandala-centro', txt: 'HARMONIA' }));
