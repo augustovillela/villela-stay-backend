@@ -359,6 +359,7 @@
       var baseNs = A.notas(naOitava(r.base.fundamental, 3), r.base.id) || [];
       alvo.appendChild(el('div', { class: 'lab-resultado' }, [el('p', { txt: 'Partida: ' + A.simbolo(r.base.fundamental, r.base.id) + ' · ' + baseNs.map(rot).join(', ') }), el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir partida', onclick: function () { C.Som.tocar(baseNs.map(N.midi), { modo: 'harmonico' }); } })]));
       alvo.appendChild(el('div', { class: 'lab-vizinhos' }, r.itens.map(function (x) { var ns2 = A.notas(naOitava(x.a.fundamental, 3), x.a.id) || []; return el('article', { class: 'lab-vizinho' }, [el('h3', { txt: A.simbolo(x.a.fundamental, x.a.id) }), el('p', { txt: 'Moveu ' + x.movida + ' · ' + x.comum + ' nota(s) em comum' }), el('p', { class: 'lab-dica', txt: ns2.map(rot).join(' · ') }), el('button', { type: 'button', class: 'btn sec', txt: '▶ Ouvir', onclick: function () { C.Som.tocar(ns2.map(N.midi), { modo: 'harmonico' }); } })]); })));
+       alvo.appendChild(el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar acordes vizinhos JSON', onclick: function () { C.baixar('acordes-vizinhos.json', 'application/json', JSON.stringify({ partida: A.simbolo(r.base.fundamental, r.base.id), raio: Number(st.raio) || 1, vizinhos: r.itens.map(function (x) { return { acorde: A.simbolo(x.a.fundamental, x.a.id), movimento: x.movida, notas_em_comum: x.comum, notas: (A.notas(naOitava(x.a.fundamental, 3), x.a.id) || []).map(function (n) { return { nota: rot(n), midi: N.midi(n) }; }) }; }), criado_em: new Date().toISOString() }, null, 2)); } }));
       if (!r.itens.length) alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Nenhum nome de acorde do catálogo foi encontrado nesse raio. Tente aumentar para dois ou três semitons.' }));
     }
     render();
@@ -384,6 +385,7 @@
         el('p', { txt: comuns.length + ' acorde(s) aparecem em pelo menos duas tonalidades. Eles podem servir como pivôs de modulação.' }),
         el('table', { class: 'lab-tabela' }, [el('thead', {}, [cab]), el('tbody', {}, tabela)])
       ]));
+       alvo.appendChild(el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar pivôs JSON', onclick: function () { C.baixar('harmonizador-tonalidades.json', 'application/json', JSON.stringify({ tonalidades: cfg.map(function (x) { return { nome: x[2], tonica: st[x[0]], modo: st[x[1]] }; }), acordes_comuns: comuns, tabela: simbolos.map(function (s) { return { acorde: s, tonalidades: cfg.map(function (_, i) { var g = por[s][i]; return g ? { romano: g.romano, funcao: g.funcao } : null; }) }; }), criado_em: new Date().toISOString() }, null, 2)); } }));
     }
     render();
   };
