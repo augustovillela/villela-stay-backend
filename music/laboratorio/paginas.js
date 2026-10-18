@@ -340,7 +340,7 @@ function relacionados(slug) {
     'arranjo-quatro-vozes': ['/music/criar/editor-de-progressao', '/music/criar/mapa-harmonia', '/music/aprender/contraponto'],
     'harmonizador-de-melodia': ['/music/criar/arranjo-quatro-vozes', '/music/criar/editor-de-progressao', '/music/referencia/graus-e-funcoes'],
     'gerador-de-progressao': ['/music/criar/editor-de-progressao', '/music/criar/mapa-harmonia', '/music/explorar/harmonizador-tonalidades'],
-    'grafo-harmonico': ['/music/criar/mapa-harmonia', '/music/criar/mandala-harmonica', '/music/explorar/acordes-vizinhos'],
+    'grafo-harmonico': ['/music/criar/mapa-harmonia', '/music/explorar/mandala-harmonica', '/music/explorar/acordes-vizinhos'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
