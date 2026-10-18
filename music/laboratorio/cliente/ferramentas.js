@@ -299,6 +299,42 @@
     render();
   };
 
+  // Mapa visual de harmonia: uma leitura simples de condução de vozes,
+  // inspirada em mapas de vizinhança, sem depender de uma imagem externa.
+  F['mapa-harmonia'] = function (alvo, st) {
+    st.texto = st.texto || 'C, Am, F, G';
+    function lerAcordes() {
+      return st.texto.split(/[;,\n]+/).map(function (x) { return A.ler(x.trim()); }).filter(Boolean).slice(0, 16);
+    }
+    function pcs(ac) {
+      return (A.notas(naOitava(ac.fundamental, 4), ac.id) || []).map(N.pc).filter(function (x, i, a) { return a.indexOf(x) === i; });
+    }
+    function comum(a, b) { return pcs(a).filter(function (p) { return pcs(b).indexOf(p) >= 0; }); }
+    function distancia(a, b) {
+      var x = pcs(a), y = pcs(b), soma = 0;
+      x.forEach(function (p) { var d = Math.min.apply(Math, y.map(function (q) { var z = Math.abs(p - q) % 12; return Math.min(z, 12 - z); })); soma += isFinite(d) ? d : 6; });
+      return Math.round((soma / Math.max(1, x.length)) * 10) / 10;
+    }
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo);
+      var entrada = el('textarea', { rows: 2, class: 'lab-textarea', value: st.texto, 'aria-label': 'Sequência de acordes' });
+      entrada.value = st.texto;
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [
+        el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Acordes (separe por vírgulas)' }), entrada]),
+        el('button', { type: 'button', class: 'btn', txt: 'Atualizar mapa', onclick: function () { st.texto = entrada.value; render(); } }),
+        el('button', { type: 'button', class: 'btn sec', txt: '▶ Ouvir sequência', onclick: function () { lerAcordes().forEach(function (a, i) { C.Som.tocar((A.notas(naOitava(a.fundamental, 3), a.id) || []).map(N.midi), { modo: 'harmonico', dur: 0.7, quando: i * 0.8 }); }); } })
+      ]));
+      var acs = lerAcordes();
+      if (!acs.length) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite pelo menos dois acordes, por exemplo: C, Am, F, G.' })); return; }
+      var nodes = acs.map(function (a, i) { return el('button', { type: 'button', class: 'lab-mapa-no', title: 'Ouvir ' + A.simbolo(a.fundamental, a.id), txt: A.simbolo(a.fundamental, a.id), onclick: function () { C.Som.tocar((A.notas(naOitava(a.fundamental, 3), a.id) || []).map(N.midi), { modo: 'harmonico' }); } }); });
+      alvo.appendChild(el('div', { class: 'lab-mapa-linha', role: 'list', 'aria-label': 'Acordes da sequência' }, nodes));
+      var linhas = [];
+      for (var i = 0; i < acs.length - 1; i++) { var c = comum(acs[i], acs[i + 1]); linhas.push(el('tr', {}, [el('td', { txt: A.simbolo(acs[i].fundamental, acs[i].id) }), el('td', { txt: A.simbolo(acs[i + 1].fundamental, acs[i + 1].id) }), el('td', { txt: c.length ? c.map(function (p) { return rot(N.deClasse(p)); }).join(', ') : 'nenhuma' }), el('td', { txt: distancia(acs[i], acs[i + 1]) + ' semitons médios' })])); }
+      alvo.appendChild(el('div', { class: 'lab-resultado' }, [el('p', { txt: 'Quanto maior o número de notas em comum e menor a distância, mais suave tende a ser a ligação. Use isso como ponto de partida para inversões, suspensões e substituições.' }), el('table', { class: 'lab-tabela' }, [el('thead', {}, [el('tr', {}, ['De', 'Para', 'Notas em comum', 'Distância'].map(function (x) { return el('th', { scope: 'col', txt: x }); }))]), el('tbody', {}, linhas)])]));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------
