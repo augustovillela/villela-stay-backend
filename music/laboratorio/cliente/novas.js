@@ -412,6 +412,8 @@
     });
     alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(function () { C.limpar(alvo); F.xilofone(alvo); })]));
     alvo.appendChild(box);
+     function exportarXilofone(png) { var W = notas.length * 62, H = 250, s = ['<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><rect width="100%" height="100%" fill="#f8fbff"/>']; notas.forEach(function (m, i) { var n = N.deMidi(m), h = 220 - i * 8, y = H - h - 12; s.push('<rect x="' + (i * 62 + 6) + '" y="' + y + '" width="50" height="' + h + '" rx="5" fill="' + CORES[n.li] + '" stroke="#14213d"/><text x="' + (i * 62 + 31) + '" y="' + (H - 20) + '" text-anchor="middle" font-family="Arial" font-size="14">' + D.esc(rot(n)) + '</text>'); }); s.push('</svg>'); var txt = s.join(''); if (png) C.baixarPng('xilofone-musique.png', txt, W * 2, H * 2); else C.baixar('xilofone-musique.svg', 'image/svg+xml', txt); }
+     alvo.appendChild(el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar xilofone SVG', onclick: function () { exportarXilofone(false); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar xilofone PNG', onclick: function () { exportarXilofone(true); } })]));
     alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada nota tem uma cor (dó vermelho, ré laranja…) e a mesma cor volta na oitava de cima. As lâminas menores soam mais agudo — como no instrumento de verdade.' }));
   };
 
