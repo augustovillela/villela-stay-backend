@@ -589,8 +589,9 @@
   F['arranjo-quatro-vozes'] = function (alvo, st) {
     st.texto = st.texto || 'C, Am, F, G';
     function render() {
-      C.gravarUrl(st); C.limpar(alvo); var inp = el('textarea', { rows: 2, class: 'lab-textarea' }); inp.value = st.texto;
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Progressão' }), inp]), el('button', { type: 'button', class: 'btn', txt: 'Gerar arranjo', onclick: function () { st.texto = inp.value; render(); } })]));
+       C.gravarUrl(st); C.limpar(alvo); var inp = el('textarea', { rows: 2, class: 'lab-textarea' }); inp.value = st.texto;
+       var arquivo = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar arranjo JSON' }); arquivo.onchange = function () { var f = arquivo.files && arquivo.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); var lista = Array.isArray(j.acordes) ? j.acordes : (Array.isArray(j.progressao) ? j.progressao : []); if (!lista.length) throw new Error('O JSON não contém uma progressão.'); st.texto = lista.map(String).join(', '); render(); C.aviso('Progressão carregada no arranjo.'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
+       alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Progressão' }), inp]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Importar JSON' }), arquivo]), el('button', { type: 'button', class: 'btn', txt: 'Gerar arranjo', onclick: function () { st.texto = inp.value; render(); } })]));
       var acs = st.texto.split(/[;,\n]+/).map(function (x) { return A.ler(x.trim()); }).filter(Boolean).slice(0, 12), anterior = null, vozes = [];
       acs.forEach(function (a) { var c = A.conduzir(anterior, a.fundamental, a.id), ns = c ? c.notas.slice() : (A.notas(naOitava(a.fundamental, 4), a.id) || []).slice(); ns.sort(function (x, y) { return N.midi(x) - N.midi(y); }); while (ns.length < 3) ns.push(ns[ns.length - 1] || naOitava(a.fundamental, 4)); vozes.push({ a: a, ns: ns.slice(-3), baixo: N.comOitava(a.baixo || a.fundamental, 2) }); anterior = ns; });
       if (!vozes.length) return;
