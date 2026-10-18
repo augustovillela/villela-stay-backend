@@ -641,7 +641,7 @@ async function rodar({ t, req }) {
     assert.ok(/\.es-lj-resultados\{display:grid;grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,300px\),1fr\)\)/.test(CSS));
     assert.ok(/@media \(max-width:640px\)\{\n\s+\.es-lj-parte\.n1/.test(CSS), 'o recuo das partes encolhe no celular');
     const pg = ler('paginas.js');
-    assert.ok(/estude: 8,/.test(pg) && /V_FOLHAS = \{ aluno: 5, estude: 6 \}/.test(pg), 'estude.js?v=8 e estude.css?v=6');
+    assert.ok(/estude: 9,/.test(pg) && /V_FOLHAS = \{ aluno: 5, estude: 6 \}/.test(pg), 'estude.js?v=9 e estude.css?v=6');
   });
 }
 
