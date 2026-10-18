@@ -449,6 +449,22 @@
     render();
   };
 
+  F['intervalos-do-acorde'] = function (alvo, st) {
+    st.acordeTexto = st.acordeTexto || 'Cmaj7';
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo);
+      var inp = el('input', { type: 'text', class: 'lab-textarea', value: st.acordeTexto, placeholder: 'Ex.: Cmaj7, Dm7, G7(b9)' }); inp.value = st.acordeTexto;
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Acorde' }), inp]), el('button', { type: 'button', class: 'btn', txt: 'Analisar intervalos', onclick: function () { st.acordeTexto = inp.value; render(); } })]));
+      var a = A.ler(st.acordeTexto); if (!a) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite um acorde válido.' })); return; }
+      var ns = A.notas(naOitava(a.fundamental, 4), a.id) || [], pares = [];
+      for (var i = 0; i < ns.length; i++) for (var j = i + 1; j < ns.length; j++) { var iv = I.entre(ns[i], ns[j]); if (iv) pares.push({ de: ns[i], para: ns[j], iv: iv }); }
+      alvo.appendChild(el('p', { class: 'lab-dica', txt: A.simbolo(a.fundamental, a.id) + ' · ' + ns.map(rot).join(' · ') }));
+      alvo.appendChild(el('div', { class: 'lab-intervalos-grid' }, pares.map(function (p) { return el('button', { type: 'button', class: 'lab-intervalo-card', title: p.iv.nome, onclick: function () { C.Som.tocar([N.midi(p.de), N.midi(p.para)], { modo: 'harmonico', dur: 0.9 }); } }, [el('strong', { txt: p.iv.curto }), el('span', { txt: rot(p.de) + ' → ' + rot(p.para) }), el('small', { txt: p.iv.semitons + ' semitons · ' + p.iv.nome })]); })));
+      if (!pares.length) alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Esse acorde não tem pares de notas suficientes para comparar.' }));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------
