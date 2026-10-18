@@ -569,6 +569,7 @@
       var box = svg(D.anel({ itens: itens, poligono: pcs, titulo: rot(t) + ' ' + e.nome, centro: e.nome, descricao: 'Fórmula: ' + e.formula + ' · passos: ' + E.passos(e.id).join(' ') }));
       box.addEventListener('click', function (ev) { var g = ev.target.closest('[data-i]'); if (g) C.Som.tocar([60 + pcs[Number(g.getAttribute('data-i'))]], { dur: 0.5 }); });
       alvo.appendChild(el('div', { class: 'lab-grade-2' }, [el('figure', { class: 'lab-fig lab-fig-circ' }, [box]), el('div', {}, [el('h2', { txt: rot(t) + ' ' + e.nome }), el('p', { txt: 'Notas: ' + ns.map(rot).join(' · ') }), el('p', { txt: 'Fórmula: ' + e.formula + ' · passos: ' + E.passos(e.id).join(' ') }), el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir escala', onclick: function () { C.Som.tocar(ns.concat([N.comOitava(t4, t4.oitava + 1)]).map(N.midi), { dur: 0.35 }); } })])]));
+       alvo.appendChild(el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar escala SVG', onclick: function () { C.baixar('atlas-' + e.id + '.svg', 'image/svg+xml', box.innerHTML); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar escala PNG', onclick: function () { C.baixarPng('atlas-' + e.id + '.png', box.innerHTML, 1200, 700); } })]));
       alvo.appendChild(bracoSvg(ns, t4, { instrumento: st.instrumento, afinacao: st.afinacao, casas: 12 }, null));
     }
     render();
