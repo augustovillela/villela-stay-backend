@@ -39,6 +39,7 @@
       var d = C.estado.inicio || {};
       var c = C.limpar();
       c.appendChild(el('h2', { txt: 'Cifras' }));
+      inserirPainelVocal(c, '');
       if (d._offline) c.appendChild(el('div', { class: 'cf-offline', txt: 'Sem internet: mostrando a última cópia guardada (' + new Date(d._copia_de).toLocaleString('pt-BR') + ').' }));
       // Barra de comando: busca, ou linguagem natural quando a IA estiver ligada
       var q = el('input', { type: 'search', placeholder: C.temIA('comando') ? 'Busque ou peça: "abrir Wave em Ré", "transpor para G"' : 'Buscar música, artista ou trecho da letra', 'aria-label': 'Buscar' });
@@ -128,6 +129,7 @@
     f = Object.assign({ ordem: 'titulo' }, f || {});
     var c = C.limpar();
     c.appendChild(el('h2', { txt: f.lixeira ? 'Lixeira' : 'Biblioteca de músicas' }));
+    inserirPainelVocal(c, '');
     var q = el('input', { type: 'search', placeholder: 'Título, artista, compositor, tag ou trecho da letra', value: f.q || '', 'aria-label': 'Buscar na biblioteca' });
     var lista = el('div', { class: 'cf-lista', 'aria-live': 'polite' });
     var filtros = el('div', { class: 'cf-barra' });
@@ -181,6 +183,19 @@
     }
     carregar(true);
   };
+
+  // Entrada central do perfil vocal: aparece ao abrir Minhas cifras, mesmo
+  // antes de o músico escolher uma música. A avaliação continua opcional.
+  function inserirPainelVocal(container, cifraId) {
+    if (!C.Voz) return;
+    var area = el('div', { class: 'cf-voz-area' });
+    container.appendChild(area);
+    api('GET', '/perfil-vocal', null, { cache: 'perfil-vocal' }).then(function (r) {
+      area.appendChild(C.Voz.painel(cifraId || '', r.perfil));
+    }).catch(function () {
+      area.appendChild(C.Voz.painel(cifraId || '', null));
+    });
+  }
 
   function itemMusica(x, f) {
     var linha = el('div', { class: 'cf-linha-item' });
