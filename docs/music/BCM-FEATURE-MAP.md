@@ -28,6 +28,7 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 - **Imagens para aula**: exportação PNG em alta resolução para o editor de braço, grafo harmônico, mandala, piano roll e atlas de escalas, além dos SVGs editáveis.
 - **Reabertura de análises**: shapes de braço, escalas, superestruturas, intervalos, espectros, policordes, acordes vizinhos, tonalidades, harmonizador de melodia e grooves do metrônomo podem ser importados pelo próprio laboratório.
 - **Groove reproduzível**: o metrônomo com variações usa uma semente editável; a mesma configuração gera as mesmas omissões na prévia e no MIDI exportado.
+- **Grafo espacial**: o Grafo harmônico oferece uma perspectiva 3D opcional, preservando a leitura 2D e a interação por teclado.
 
 ## Roadmap funcional
 
