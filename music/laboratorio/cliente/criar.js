@@ -197,7 +197,7 @@
     var mapa = el('div', { class: 'lab-bateria-pads', role: 'group', 'aria-label': 'Mapa da bateria' });
     var info = el('p', { class: 'lab-info', 'aria-live': 'polite' });
     var teclas = { a: 'bumbo', s: 'caixa', d: 'chimbal', f: 'tom', g: 'crash', h: 'ride', j: 'aberto', k: 'ganza' };
-    function tocarPad(id, vel) { if (C.Som.bateria[id]) C.Som.bateria[id](C.Som.audio().currentTime + 0.01, vel || 0.9); }
+    function tocarPad(id, vel) { if (C.Som.bateria[id]) { C.Som.bateria[id](C.Som.audio().currentTime + 0.01, vel || 0.9); var pad = C.$('.lab-bateria-' + id, mapa); if (pad) { pad.classList.add('ativo'); setTimeout(function () { pad.classList.remove('ativo'); }, 110); } } }
     var posicoes = { crash: 'crash', ride: 'ride', chimbal: 'chimbal', caixa: 'caixa', aro: 'aro', palma: 'palma', bumbo: 'bumbo', tom: 'tom', aberto: 'aberto', agogo: 'agogo', ganza: 'ganza' };
     FAIXAS.concat([{ id: 'crash', nome: 'Crash' }, { id: 'ride', nome: 'Ride' }]).forEach(function (fx) { mapa.appendChild(el('button', { type: 'button', class: 'lab-bateria-pad lab-bateria-' + (posicoes[fx.id] || fx.id), txt: fx.nome, 'aria-label': 'Tocar ' + fx.nome, onclick: function () { tocarPad(fx.id); } })); });
     d.addEventListener('keydown', function (e) { if (e.repeat || (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) return; var id = teclas[e.key.toLowerCase()]; if (id) { e.preventDefault(); tocarPad(id, 0.9); } });
