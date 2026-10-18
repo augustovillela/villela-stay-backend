@@ -388,6 +388,28 @@
     render();
   };
 
+  F['piano-roll-harmonico'] = function (alvo, st) {
+    st.texto = st.texto || 'C, Am, F, G'; st.bpm = st.bpm || 80;
+    function acordes() { return st.texto.split(/[;,\n]+/).map(function (x) { return A.ler(x.trim()); }).filter(Boolean).slice(0, 16); }
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo);
+      var txt = el('textarea', { rows: 2, class: 'lab-textarea', 'aria-label': 'Progressão para o piano roll' }); txt.value = st.texto;
+      var bpm = el('input', { type: 'number', min: 30, max: 220, value: st.bpm, 'aria-label': 'BPM' }); bpm.value = st.bpm;
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Acordes' }), txt]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'BPM' }), bpm]), el('button', { type: 'button', class: 'btn', txt: 'Atualizar', onclick: function () { st.texto = txt.value; st.bpm = Math.max(30, Math.min(220, Number(bpm.value) || 80)); render(); } })]));
+      var acs = acordes(); if (!acs.length) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite uma progressão, como C, Am, F, G.' })); return; }
+      var notas = []; acs.forEach(function (a, i) { (A.notas(naOitava(a.fundamental, 4), a.id) || []).forEach(function (n) { notas.push({ midi: N.midi(n), nome: rot(n), passo: i, acorde: A.simbolo(a.fundamental, a.id) }); }); });
+      var lo = Math.min.apply(Math, notas.map(function (x) { return x.midi; })) - 1, hi = Math.max.apply(Math, notas.map(function (x) { return x.midi; })) + 1, altura = Math.max(1, hi - lo + 1);
+      var roll = el('div', { class: 'lab-roll', role: 'img', 'aria-label': 'Piano roll da progressão' });
+      for (var m = hi; m >= lo; m--) { var linha = el('div', { class: 'lab-roll-linha' }); linha.appendChild(el('span', { class: 'lab-roll-nota', txt: rot(N.deMidi(m)) })); linha.appendChild(el('div', { class: 'lab-roll-grade' })); roll.appendChild(linha); }
+      notas.forEach(function (x) { var barra = el('button', { type: 'button', class: 'lab-roll-barra', title: x.acorde + ' · ' + x.nome, txt: x.nome, style: 'left:' + (x.passo * 100 / acs.length) + '%;width:' + (100 / acs.length - 1) + '%;bottom:' + ((x.midi - lo) * 100 / altura) + '%', onclick: function () { C.Som.tocar([x.midi], { dur: 0.6 }); } }); roll.appendChild(barra); });
+      alvo.appendChild(el('div', { class: 'lab-roll-cabecalho' }, acs.map(function (a) { return el('span', { txt: A.simbolo(a.fundamental, a.id) }); })));
+      alvo.appendChild(roll);
+      alvo.appendChild(el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir progressão', onclick: function () { var dur = 60 / st.bpm * 2; acs.forEach(function (a, i) { setTimeout(function () { C.Som.tocar((A.notas(naOitava(a.fundamental, 3), a.id) || []).map(N.midi), { modo: 'harmonico', dur: dur * 0.9 }); }, i * dur * 1000); }); } }));
+      alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada coluna representa um acorde. As barras alinhadas mostram a altura das notas e ajudam a enxergar notas comuns e caminhos melódicos.' }));
+    }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------

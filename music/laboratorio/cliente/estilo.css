@@ -121,6 +121,13 @@
 .lab-vizinhos{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:16px 0}
 .lab-vizinho{border:1px solid var(--borda);border-radius:12px;padding:12px;background:#fff;box-shadow:0 2px 5px #14213d14}
 .lab-vizinho h3{margin:0 0 6px;color:var(--navy)}
+.lab-roll-cabecalho{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));margin:12px 0 0;padding-left:58px;text-align:center;font-weight:700;color:var(--navy)}
+.lab-roll{position:relative;height:360px;margin:0 0 14px;border:1px solid var(--borda);border-radius:12px;overflow:hidden;background:#f8fbff}
+.lab-roll-linha{height:calc(100% / 36);display:flex;border-bottom:1px solid #dce7f2}
+.lab-roll-nota{width:58px;padding:2px 5px;font-size:11px;color:var(--muted);background:#fff;border-right:1px solid var(--borda)}
+.lab-roll-grade{flex:1;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(25% - 1px),#dce7f2 calc(25% - 1px),#dce7f2 25%)}
+.lab-roll-barra{position:absolute;height:22px;border:1px solid var(--navy);border-radius:5px;background:#8dc8ff;color:#102a43;font-size:11px;overflow:hidden;cursor:pointer}
+.lab-roll-barra:hover,.lab-roll-barra:focus-visible{background:#ffd166;outline:2px solid var(--navy)}
 .lab-check{display:flex;gap:6px;align-items:center;font-size:14px;min-height:40px}
 .btn.sec{background:#fff;color:var(--navy);border:1px solid var(--navy)}
 .lab-resumo{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:14px 16px;margin:0 0 12px}
