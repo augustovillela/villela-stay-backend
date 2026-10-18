@@ -324,6 +324,8 @@ function relacionados(slug) {
     'identificar-acorde': ['/music/aprender/triades', '/music/praticar/acorde-identificar', '/music/referencia/formulas-de-acordes'],
     'identificar-escala': ['/music/aprender/escala-maior', '/music/praticar/escala-identificar', '/music/referencia/formulas-de-escalas'],
     progressoes: ['/music/aprender/campo-harmonico', '/music/praticar/campo-grau', '/music/referencia/cadencias-e-progressoes'],
+    'mapa-harmonia': ['/music/criar/progressoes', '/music/explorar/acordes-vizinhos', '/music/aprender/campo-harmonico'],
+    'acordes-vizinhos': ['/music/criar/mapa-harmonia', '/music/referencia/cadencias-e-progressoes', '/music/referencia/formulas-de-acordes'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
