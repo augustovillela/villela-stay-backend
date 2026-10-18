@@ -456,8 +456,9 @@
     }
     function render() {
       C.gravarUrl(st); C.limpar(alvo);
-      var inp = el('input', { type: 'text', class: 'lab-textarea', value: st.notasTexto, placeholder: 'Ex.: C, E, Bb' }); inp.value = st.notasTexto;
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Notas essenciais' }), inp]), el('button', { type: 'button', class: 'btn', txt: 'Encontrar acordes', onclick: function () { st.notasTexto = inp.value; render(); } })]));
+       var inp = el('input', { type: 'text', class: 'lab-textarea', value: st.notasTexto, placeholder: 'Ex.: C, E, Bb' }); inp.value = st.notasTexto;
+       var arquivo = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar superestruturas JSON' }); arquivo.onchange = function () { var f = arquivo.files && arquivo.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result), ns = Array.isArray(j.notas_essenciais) ? j.notas_essenciais : []; if (!ns.length) throw new Error('O JSON não contém notas essenciais.'); st.notasTexto = ns.map(function (n) { return n.nota || n; }).join(', '); render(); C.aviso('Notas essenciais importadas.'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
+       alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Notas essenciais' }), inp]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Importar JSON' }), arquivo]), el('button', { type: 'button', class: 'btn', txt: 'Encontrar acordes', onclick: function () { st.notasTexto = inp.value; render(); } })]));
       var ns = lerNotas(), res = buscar(ns);
       if (ns.length < 2) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Informe pelo menos duas notas.' })); return; }
       alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Notas procuradas: ' + ns.map(rot).join(' · ') + '. Os resultados contêm todas elas; as demais notas funcionam como cor e tensão.' }));
@@ -472,8 +473,9 @@
     st.acordeTexto = st.acordeTexto || 'Cmaj7';
     function render() {
       C.gravarUrl(st); C.limpar(alvo);
-      var inp = el('input', { type: 'text', class: 'lab-textarea', value: st.acordeTexto, placeholder: 'Ex.: Cmaj7, Dm7, G7(b9)' }); inp.value = st.acordeTexto;
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Acorde' }), inp]), el('button', { type: 'button', class: 'btn', txt: 'Analisar intervalos', onclick: function () { st.acordeTexto = inp.value; render(); } })]));
+       var inp = el('input', { type: 'text', class: 'lab-textarea', value: st.acordeTexto, placeholder: 'Ex.: Cmaj7, Dm7, G7(b9)' }); inp.value = st.acordeTexto;
+       var arquivo = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar intervalos JSON' }); arquivo.onchange = function () { var f = arquivo.files && arquivo.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); if (!j.acorde) throw new Error('O JSON não contém um acorde.'); st.acordeTexto = String(j.acorde); render(); C.aviso('Acorde importado para análise.'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
+       alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Acorde' }), inp]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Importar JSON' }), arquivo]), el('button', { type: 'button', class: 'btn', txt: 'Analisar intervalos', onclick: function () { st.acordeTexto = inp.value; render(); } })]));
       var a = A.ler(st.acordeTexto); if (!a) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite um acorde válido.' })); return; }
       var ns = A.notas(naOitava(a.fundamental, 4), a.id) || [], pares = [];
       for (var i = 0; i < ns.length; i++) for (var j = i + 1; j < ns.length; j++) { var iv = I.entre(ns[i], ns[j]); if (iv) pares.push({ de: ns[i], para: ns[j], iv: iv }); }
