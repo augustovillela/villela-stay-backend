@@ -109,6 +109,21 @@
     setTimeout(function () { URL.revokeObjectURL(u); }, 2000);
   };
 
+  /** Converte um SVG gerado pelo laboratório em PNG no navegador. */
+  C.baixarPng = function (nome, svgTexto, largura, altura) {
+    try {
+      var b = new Blob([svgTexto], { type: 'image/svg+xml;charset=utf-8' });
+      var u = URL.createObjectURL(b), img = new Image();
+      img.onload = function () {
+        var c = d.createElement('canvas'); c.width = largura || img.naturalWidth || 1200; c.height = altura || img.naturalHeight || 800;
+        var ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(function (png) { if (png) C.baixar(nome, 'image/png', png); else C.aviso('O navegador não conseguiu criar o PNG.', 'erro'); URL.revokeObjectURL(u); }, 'image/png');
+      };
+      img.onerror = function () { URL.revokeObjectURL(u); C.aviso('Não consegui converter a visualização para PNG.', 'erro'); };
+      img.src = u;
+    } catch (e) { C.aviso('Não consegui exportar PNG: ' + e.message, 'erro'); }
+  };
+
   // ---- delegação global: qualquer botão .lab-ouvir toca ----
   d.addEventListener('click', function (ev) {
     var b = ev.target.closest && ev.target.closest('.lab-ouvir');
