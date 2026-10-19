@@ -92,8 +92,11 @@
   E.seguir = function (raiz, o) {
     o = o || {};
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.reject(new Error('Este navegador não dá acesso ao microfone.'));
-    var ctrl = { ativo: true };
+    var ctrl = { ativo: true }, saiuDurantePermissao = false, vigiarPermissao = function () { saiuDurantePermissao = true; };
+    global.addEventListener('pagehide', vigiarPermissao);
     return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(function (stream) {
+      global.removeEventListener('pagehide', vigiarPermissao);
+      if (saiuDurantePermissao) { stream.getTracks().forEach(function (t) { t.stop(); }); throw new Error('A página foi fechada antes da permissão do microfone.'); }
       var Ctx = global.AudioContext || global.webkitAudioContext;
       var ctx = new Ctx(), fonte = ctx.createMediaStreamSource(stream), an = ctx.createAnalyser();
       an.fftSize = 8192; an.smoothingTimeConstant = 0.3;
@@ -142,7 +145,7 @@
       };
       global.addEventListener('pagehide', ctrl.parar);
       return ctrl;
-    });
+    }).catch(function (err) { global.removeEventListener('pagehide', vigiarPermissao); throw err; });
   };
 
   /** Botão "🎤" pronto para a leitura e para o palco. */
