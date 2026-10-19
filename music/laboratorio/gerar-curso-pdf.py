@@ -66,10 +66,15 @@ def build(data, output):
     }
     doc = BaseDocTemplate(output, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=18*mm, bottomMargin=20*mm, title='Teoria musical completa - Musique', author='Equipe Musique')
     doc.addPageTemplates([PageTemplate(id='normal', frames=[Frame(20*mm, 19*mm, PAGE_W-40*mm, PAGE_H-37*mm, id='f')], onPage=header_footer)])
-    story = [Spacer(1, 25*mm), Paragraph('TEORIA MUSICAL COMPLETA', styles['title']), Paragraph('Do zero ao avançado', styles['subtitle']), Spacer(1, 10*mm), diagram('progressao', 'Conhecer|Ouvir|Aplicar|Criar'), Spacer(1, 15*mm), Paragraph('Um livro de estudo para ver, ouvir e usar a música no instrumento, na voz e no arranjo.', styles['quote']), Paragraph('Edição ilustrada do currículo do Musique · versão 1.1', styles['small']), PageBreak()]
-    story += [Paragraph('Como usar este livro', styles['h1']), Paragraph('Cada etapa alterna uma ideia, uma imagem mental, uma escuta e uma pequena ação. Estude devagar, volte às páginas que pedem prática e registre o que mudou no seu ouvido ou no seu instrumento.', styles['body'])]
     niveis = data.get('niveis', [])
     licoes = {x['slug']: x for x in data.get('licoes', [])}
+    story = [Spacer(1, 25*mm), Paragraph('TEORIA MUSICAL COMPLETA', styles['title']), Paragraph('Do zero ao avançado', styles['subtitle']), Spacer(1, 10*mm), diagram('progressao', 'Conhecer|Ouvir|Aplicar|Criar'), Spacer(1, 15*mm), Paragraph('Um livro de estudo para ver, ouvir e usar a música no instrumento, na voz e no arranjo.', styles['quote']), Paragraph('Edição ilustrada do currículo do Musique · versão 1.1', styles['small']), PageBreak()]
+    story += [Paragraph('Como usar este livro', styles['h1']), Paragraph('Cada etapa alterna uma ideia, uma imagem mental, uma escuta e uma pequena ação. Estude devagar, volte às páginas que pedem prática e registre o que mudou no seu ouvido ou no seu instrumento.', styles['body']), Paragraph('Mapa do percurso', styles['h1'])]
+    for nivel in niveis:
+        story.append(Paragraph(f"<b>Nível {nivel['ordem'] + 1} · {nivel['nome']}</b> — {plain(nivel['resumo'])}", styles['body']))
+        for modulo in nivel.get('modulos', []):
+            story.append(Paragraph(' · ' + modulo['nome'] + f' ({len(modulo.get("licoes", []))} lições)', styles['small']))
+    story.append(PageBreak())
     for nivel in niveis:
         story += [Paragraph(f"Nível {nivel['ordem'] + 1} · {nivel['nome']}", styles['h1']), Paragraph(plain(nivel['resumo']), styles['body'])]
         for modulo in nivel.get('modulos', []):
@@ -98,7 +103,16 @@ def build(data, output):
                     story.append(Paragraph('□ ' + item, styles['body']))
                 story += [Spacer(1, 5*mm), Paragraph('<b>Registro livre</b>', styles['h2']), Table([['', ''], ['', ''], ['', ''], ['', '']], colWidths=[(PAGE_W-40*mm)/2]*2, rowHeights=[18*mm]*4, style=TableStyle([('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#D9E2EC')), ('BACKGROUND', (0,0), (-1,-1), colors.white)])), PageBreak()]
         story.append(PageBreak())
-    story += [Paragraph('Projeto final', styles['h1']), Paragraph('Escolha uma música ou crie uma peça curta. Registre tonalidade, andamento, compasso, forma, progressão harmônica, motivo melódico, dinâmica e uma revisão concreta. O objetivo é justificar escolhas e produzir algo que outra pessoa consiga ouvir, ler ou tocar.', styles['body']), Spacer(1, 8*mm), diagram('progressao', 'Ouvir|Analisar|Decidir|Tocar|Revisar'), Paragraph('O estudo continua depois do último capítulo: repertório, arranjo, composição, percepção e tecnologia são caminhos que se cruzam.', styles['quote'])]
+    story += [Paragraph('Projeto final', styles['h1']), Paragraph('Escolha uma música ou crie uma peça curta. Registre tonalidade, andamento, compasso, forma, progressão harmônica, motivo melódico, dinâmica e uma revisão concreta. O objetivo é justificar escolhas e produzir algo que outra pessoa consiga ouvir, ler ou tocar.', styles['body']), Spacer(1, 8*mm), diagram('progressao', 'Ouvir|Analisar|Decidir|Tocar|Revisar'), Paragraph('O estudo continua depois do último capítulo: repertório, arranjo, composição, percepção e tecnologia são caminhos que se cruzam.', styles['quote']), PageBreak(), Paragraph('Glossário de consulta', styles['h1']), Paragraph('Use este índice para voltar ao conceito dentro do percurso. Os termos são agrupados a partir das lições publicadas e apontam para o vocabulário usado no Musique.', styles['body'])]
+    termos = sorted({t.strip() for l in licoes.values() for t in (l.get('termos', '') or '').replace(',', ' ').split() if len(t.strip()) > 2}, key=lambda x: x.lower())
+    for i in range(0, len(termos), 4):
+        story.append(Paragraph(' · '.join(termos[i:i+4]), styles['small']))
+    story += [Spacer(1, 8*mm), Paragraph('Índice de lições', styles['h1'])]
+    for nivel in niveis:
+        story.append(Paragraph(f"<b>{nivel['nome']}</b>", styles['h2']))
+        for modulo in nivel.get('modulos', []):
+            nomes = [licoes[s]['titulo'] for s in modulo.get('licoes', []) if s in licoes]
+            if nomes: story.append(Paragraph(modulo['nome'] + ': ' + ' · '.join(nomes), styles['small']))
     doc.build(story)
 
 if __name__ == '__main__':
