@@ -128,6 +128,7 @@ ${relacionados(f.slug)}`;
       descricao: CT.CURSO.descricao,
       trilhas: CT.CURSO.trilhas,
       recursos: { html: '/music/curso-teoria', markdown: '/music/curso-teoria.md', pdf: '/music/curso-teoria.pdf' },
+      formatosDisponiveis: ['musique-html', 'livro-markdown', 'livro-pdf', 'villela-academy-json'],
       formatosPlanejados: ['musique-html', 'livro-markdown', 'villela-academy-json'],
       niveis: CT.CURSO.niveis.map((n) => ({ ...n, modulos: n.modulos.map((m) => ({ ...m, licoes: m.licoes.map((slug) => { const l = porSlug[slug]; return l ? { slug, titulo: l.titulo, resumo: l.resumo, nivel: l.nivel, prereq: l.prereq, url: `/music/aprender/${slug}` } : { slug, estado: 'planejada' }; }) })) })),
     };
