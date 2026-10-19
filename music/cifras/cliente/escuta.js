@@ -131,7 +131,9 @@
         if (o.aoStatus) o.aoStatus(p.silencio ? 'ouvindo… (silêncio)' : 'ouvindo · ' + (elementos[seg.indice] ? elementos[seg.indice].firstChild.textContent : ''), p.confianca || 0);
       }, 110);
       ctrl.parar = function () {
+        if (!ctrl.ativo) return;
         ctrl.ativo = false; clearInterval(timer);
+        global.removeEventListener('pagehide', ctrl.parar);
         stream.getTracks().forEach(function (t) { t.stop(); });
         try { ctx.close(); } catch (_) { /* ok */ }
         raiz.querySelectorAll('.cf-a.ouvindo').forEach(function (x) { x.classList.remove('ouvindo'); });
