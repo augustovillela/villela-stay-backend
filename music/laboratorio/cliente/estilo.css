@@ -477,3 +477,6 @@
 .lab-campo-seta{padding:0 2px;color:#315b80;background:#fff}
 .lab-mandala-global-modulacao{stroke:#d97706;stroke-width:3;opacity:.75;stroke-dasharray:7 5}
 .lab-mandala-global-legenda{fill:#8a4b08;text-anchor:middle;font:600 11px Inter,system-ui,sans-serif}
+/* Acordes vizinhos permanecem visíveis em amarelo, mesmo antes da seleção */
+.lab-mandala-rede .lab-mandala-no[data-grupo*="vizinho"]{border-color:#d4a72c;background:#fff3bf;color:#7c5b00;box-shadow:0 3px 0 #f3d36a}
+.lab-mandala-rede .lab-mandala-no[data-grupo*="vizinho"].ativo{background:#ffd166;border-color:#8a4b08;color:#5b4200}
