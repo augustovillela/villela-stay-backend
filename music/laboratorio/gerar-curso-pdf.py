@@ -181,7 +181,12 @@ class CourseDocTemplate(BaseDocTemplate):
 def plain(value):
     value = re.sub(r'<br\s*/?>', '\n', value or '')
     value = re.sub(r'<[^>]+>', '', value)
-    return html.unescape(value).strip()
+    value = html.unescape(value)
+    # Helvetica não possui os símbolos musicais Unicode usados na versão
+    # web. Sem esta conversão o ReportLab desenha quadrados pretos no PDF.
+    value = (value.replace('♯', '#').replace('♭', 'b').replace('♮', 'natural')
+                  .replace('𝄪', '##').replace('𝄫', 'bb'))
+    return value.strip()
 
 def header_footer(canvas, doc):
     canvas.saveState()
@@ -267,7 +272,7 @@ def diagram(kind, label):
     # espaçamento e a largura mínima são calculados para que cinco etapas
     # também caibam inteiras, sem cortar o último cartão na margem direita.
     gap = 4*mm
-    bw = max(16*mm, (w - gap * (len(itens) + 1)) / max(1, len(itens)))
+    bw = max(12*mm, (w - gap * (len(itens) + 1)) / max(1, len(itens)))
     colors_nodes = [NAVY, GOLD, colors.HexColor('#3A4A66'), colors.HexColor('#6B5B95'), colors.HexColor('#9B5C4A')]
     for i, item in enumerate(itens):
         x = gap + i * (bw + gap)
@@ -402,11 +407,17 @@ def build(data, output):
                 if bullets:
                     block.append(Paragraph('<b>Prática</b>', styles['small']))
                     block.extend([Paragraph('• ' + x, styles['body']) for x in bullets[:6]])
-                story.append(KeepTogether(block))
+                # KeepTogether criava páginas totalmente vazias quando um
+                # bloco maior que a área útil era empurrado para a página
+                # seguinte e o PageBreak seguinte era aplicado de novo.
+                # Elementos livres permitem a quebra natural sem desperdício.
+                story.extend(block)
                 # Uma página por lição mantém a leitura contínua. A prática
                 # já aparece junto do conteúdo, sem uma página vazia separada.
                 story.append(PageBreak())
-        story.append(PageBreak())
+        # Cada lição já termina com PageBreak. Inserir outro aqui criava uma
+        # página vazia entre níveis sempre que a última lição ocupava uma
+        # página inteira.
     story += [Paragraph('Cadernos de aprofundamento', styles['h1']), Paragraph('Leituras contínuas que conectam os conceitos do percurso e ajudam a formar uma visão musical ampla.', styles['body'])]
     for titulo, primeiro, segundo in CAPITULOS_PROFUNDIDADE:
         capitulo = Paragraph(titulo, styles['h2'])
