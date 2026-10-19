@@ -12,6 +12,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (BaseDocTemplate, Frame, PageTemplate, Paragraph,
                                 PageBreak, Spacer, Table, TableStyle, KeepTogether)
+from reportlab.graphics.shapes import Drawing, Rect, String, Line, Polygon
 
 PAGE_W, PAGE_H = A4
 NAVY = colors.HexColor('#102A43')
@@ -37,19 +38,26 @@ def header_footer(canvas, doc):
     canvas.restoreState()
 
 def diagram(kind, label):
-    rows = []
-    if kind == 'progressao':
-        rows = [[Paragraph(f'<b>{i+1}</b><br/>{plain(s)}', styles['diagram']) for i, s in enumerate(label.split('|'))]]
-    else:
-        rows = [[Paragraph(f'<b>{plain(label)}</b>', styles['diagram'])]]
-    t = Table(rows, colWidths=[(PAGE_W-40*mm)/max(1, len(rows[0]))]*len(rows[0]))
-    t.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), PALE), ('BOX', (0,0), (-1,-1), 0.8, TEAL),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.white), ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'), ('TOPPADDING', (0,0), (-1,-1), 10),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
-    ]))
-    return t
+    itens = [plain(s) for s in label.split('|')] if kind == 'progressao' else [plain(label)]
+    w, h = PAGE_W - 40*mm, 38*mm
+    d = Drawing(w, h)
+    gap = 7*mm
+    bw = max(24*mm, (w - gap * (len(itens) + 1)) / max(1, len(itens)))
+    colors_nodes = [TEAL, GOLD, NAVY, colors.HexColor('#7A5195'), colors.HexColor('#C75146')]
+    for i, item in enumerate(itens):
+        x = gap + i * (bw + gap)
+        y = 10*mm
+        c = colors_nodes[i % len(colors_nodes)]
+        d.add(Rect(x, y, bw, 16*mm, rx=5, ry=5, fillColor=PALE, strokeColor=c, strokeWidth=1.4))
+        d.add(String(x + bw/2, y + 11*mm, str(i + 1), fontName='Helvetica-Bold', fontSize=10, fillColor=c, textAnchor='middle'))
+        # Quebra visual simples para manter rótulos longos legíveis.
+        texto = item if len(item) <= 18 else item[:17] + '…'
+        d.add(String(x + bw/2, y + 5*mm, texto, fontName='Helvetica', fontSize=8.5, fillColor=NAVY, textAnchor='middle'))
+        if i < len(itens) - 1:
+            x1 = x + bw + 1.5*mm; x2 = x + bw + gap - 1.5*mm; ym = y + 8*mm
+            d.add(Line(x1, ym, x2, ym, strokeColor=MUTED, strokeWidth=1.1))
+            d.add(Polygon([x2, ym, x2-3, ym+2.2, x2-3, ym-2.2], fillColor=MUTED, strokeColor=MUTED))
+    return d
 
 def build(data, output):
     global styles
@@ -88,7 +96,7 @@ def build(data, output):
                     if b.get('t') == 'p': block.append(Paragraph(plain(b.get('html','')), styles['body']))
                     elif b.get('t') == 'lista': bullets.extend([plain(x) for x in b.get('itens', [])])
                     elif b.get('t') == 'visual':
-                        v = b.get('v') or {}; label = ' → '.join(v.get('simbolos', [])) if v.get('simbolos') else v.get('legenda', 'Mapa visual da ideia')
+                        v = b.get('v') or {}; label = '|'.join(v.get('simbolos', [])) if v.get('simbolos') else v.get('legenda', 'Mapa visual da ideia')
                         block.append(diagram(v.get('tipo','mapa'), label))
                         block.append(Spacer(1, 4))
                 if bullets:
