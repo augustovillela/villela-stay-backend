@@ -470,3 +470,10 @@
 .lab-sep-info{margin:8px 0}
 .lab-sep-fatos{padding-left:20px;margin:6px 0 10px}
 .lab-sep-fatos li{margin:3px 0}
+/* Caminhos harmônicos: linha de execução e modulação entre campos */
+.lab-campo-linha{position:relative}
+.lab-campo-linha::before{content:'';position:absolute;left:28px;right:28px;top:50%;border-top:3px solid #8db1cf;z-index:0}
+.lab-campo-linha .lab-atlas-acorde,.lab-campo-seta{position:relative;z-index:1}
+.lab-campo-seta{padding:0 2px;color:#315b80;background:#fff}
+.lab-mandala-global-modulacao{stroke:#d97706;stroke-width:3;opacity:.75;stroke-dasharray:7 5}
+.lab-mandala-global-legenda{fill:#8a4b08;text-anchor:middle;font:600 11px Inter,system-ui,sans-serif}
