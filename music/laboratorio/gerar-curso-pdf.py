@@ -11,7 +11,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (BaseDocTemplate, Frame, PageTemplate, Paragraph,
-                                PageBreak, Spacer, Table, TableStyle, KeepTogether)
+                                PageBreak, Spacer, Table, TableStyle, KeepTogether,
+                                NextPageTemplate)
 from reportlab.graphics.shapes import Drawing, Rect, String, Line, Polygon, Ellipse
 
 PAGE_W, PAGE_H = A4
@@ -43,6 +44,64 @@ def header_footer(canvas, doc):
     canvas.setFillColor(MUTED)
     canvas.drawString(18*mm, 9*mm, 'Musique · por Villela Music')
     canvas.drawRightString(PAGE_W-18*mm, 9*mm, f'{doc.page}')
+    canvas.restoreState()
+
+def cover_page(canvas, doc):
+    """Capa editorial do livro, alinhada à identidade do Musique."""
+    canvas.saveState()
+    canvas.setFillColor(NAVY)
+    canvas.rect(0, 0, PAGE_W, PAGE_H, stroke=0, fill=1)
+    canvas.setFillColor(GOLD)
+    canvas.rect(0, PAGE_H-8*mm, PAGE_W, 8*mm, stroke=0, fill=1)
+    canvas.setFillColor(colors.white)
+    canvas.setFont('Times-Bold', 30)
+    canvas.drawString(24*mm, PAGE_H-38*mm, 'Villela')
+    canvas.setFillColor(GOLD)
+    canvas.setFont('Helvetica-Bold', 15)
+    canvas.drawString(25*mm, PAGE_H-48*mm, 'M U S I Q U E')
+    canvas.setFillColor(colors.HexColor('#D9E2EC'))
+    canvas.setFont('Helvetica', 8.5)
+    canvas.drawString(25*mm, PAGE_H-56*mm, 'VILLELA MUSIC  ·  VILLELA STAY')
+
+    # Mapa musical abstrato: linhas de pauta, notas e conexões entre ideias.
+    cx, cy = PAGE_W-65*mm, PAGE_H/2 + 8*mm
+    canvas.setStrokeColor(colors.HexColor('#5D6E8C'))
+    canvas.setLineWidth(0.7)
+    for j in range(5):
+        canvas.line(24*mm, cy+42*mm-j*5*mm, PAGE_W-18*mm, cy+42*mm-j*5*mm)
+    nodes = [(0, 0, 'C'), (28, 18, 'G'), (47, 0, 'D'), (28, -24, 'A'), (-4, -20, 'F'), (-25, 2, 'Bb')]
+    points = []
+    for dx, dy, label in nodes:
+        x, y = cx + dx*mm, cy + dy*mm
+        points.append((x, y))
+    canvas.setStrokeColor(colors.HexColor('#C9A227'))
+    canvas.setLineWidth(1.3)
+    for i in range(len(points)):
+        x1, y1 = points[i]; x2, y2 = points[(i+1) % len(points)]
+        canvas.line(x1, y1, x2, y2)
+    for (x, y), (_, _, label) in zip(points, nodes):
+        canvas.setFillColor(NAVY); canvas.setStrokeColor(GOLD); canvas.setLineWidth(1.2)
+        canvas.circle(x, y, 7*mm, stroke=1, fill=1)
+        canvas.setFillColor(colors.white); canvas.setFont('Helvetica-Bold', 11)
+        canvas.drawCentredString(x, y-1.5*mm, label)
+
+    canvas.setFillColor(colors.white)
+    canvas.setFont('Times-Bold', 27)
+    canvas.drawString(24*mm, PAGE_H/2-28*mm, 'TEORIA MUSICAL')
+    canvas.setFillColor(GOLD)
+    canvas.setFont('Helvetica-Bold', 16)
+    canvas.drawString(25*mm, PAGE_H/2-40*mm, 'COMPLETA')
+    canvas.setFillColor(colors.HexColor('#E7EDF5'))
+    canvas.setFont('Helvetica', 14)
+    canvas.drawString(25*mm, PAGE_H/2-53*mm, 'Do zero ao avançado')
+    canvas.setFillColor(colors.HexColor('#B8C6DA'))
+    canvas.setFont('Helvetica', 10.5)
+    canvas.drawString(25*mm, PAGE_H/2-66*mm, 'Conhecer · Ouvir · Aplicar · Criar')
+    canvas.setFillColor(GOLD)
+    canvas.rect(25*mm, PAGE_H/2-73*mm, 42*mm, 1.4*mm, stroke=0, fill=1)
+    canvas.setFillColor(colors.HexColor('#B8C6DA'))
+    canvas.setFont('Helvetica', 9)
+    canvas.drawString(25*mm, 20*mm, 'Um livro ilustrado do Musique · Villela Music')
     canvas.restoreState()
 
 def diagram(kind, label):
@@ -144,11 +203,13 @@ def build(data, output):
         'quote': ParagraphStyle('quote', parent=ss['BodyText'], fontSize=11, leading=16, textColor=NAVY, leftIndent=10, borderColor=GOLD, borderWidth=2, borderPadding=8, spaceBefore=8, spaceAfter=10),
     }
     doc = BaseDocTemplate(output, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=18*mm, bottomMargin=20*mm, title='Teoria musical completa - Musique', author='Equipe Musique')
-    doc.addPageTemplates([PageTemplate(id='normal', frames=[Frame(20*mm, 19*mm, PAGE_W-40*mm, PAGE_H-37*mm, id='f')], onPage=header_footer)])
+    doc.addPageTemplates([
+        PageTemplate(id='cover', frames=[Frame(0, 0, PAGE_W, PAGE_H, id='cover-frame')], onPage=cover_page),
+        PageTemplate(id='normal', frames=[Frame(20*mm, 19*mm, PAGE_W-40*mm, PAGE_H-37*mm, id='f')], onPage=header_footer),
+    ])
     niveis = data.get('niveis', [])
     licoes = {x['slug']: x for x in data.get('licoes', [])}
-    story = [Spacer(1, 25*mm), Paragraph('TEORIA MUSICAL COMPLETA', styles['title']), Paragraph('Do zero ao avançado', styles['subtitle']), Spacer(1, 10*mm), diagram('progressao', 'Conhecer|Ouvir|Aplicar|Criar'), Spacer(1, 15*mm), Paragraph('Um livro de estudo para ver, ouvir e usar a música no instrumento, na voz e no arranjo.', styles['quote']), Paragraph('Edição ilustrada do currículo do Musique · versão 1.1', styles['small']), PageBreak()]
-    story += [Paragraph('Como usar este livro', styles['h1']), Paragraph('Cada etapa alterna uma ideia, uma imagem mental, uma escuta e uma pequena ação. Estude devagar, volte às páginas que pedem prática e registre o que mudou no seu ouvido ou no seu instrumento.', styles['body']), Paragraph('Mapa do percurso', styles['h1'])]
+    story = [NextPageTemplate('normal'), PageBreak(), Paragraph('Como usar este livro', styles['h1']), Paragraph('Cada etapa alterna uma ideia, uma imagem mental, uma escuta e uma pequena ação. Estude devagar, volte às páginas que pedem prática e registre o que mudou no seu ouvido ou no seu instrumento.', styles['body']), Paragraph('Mapa do percurso', styles['h1'])]
     for nivel in niveis:
         story.append(Paragraph(f"<b>Nível {nivel['ordem'] + 1} · {nivel['nome']}</b> — {plain(nivel['resumo'])}", styles['body']))
         for modulo in nivel.get('modulos', []):
