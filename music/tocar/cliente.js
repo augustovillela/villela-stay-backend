@@ -27,6 +27,13 @@
   var studies = Estudos.listar(), phraseButtons = [];
   var campaignState = Campaign ? Campaign.criar({ instrument: state.instrument }) : null;
   function campaignStorageKey(instrument) { return 'musique.campanha.v1.' + instrument; }
+  function polyphonicStorageKey(instrument) { return 'musique.polifonico.v1.' + instrument; }
+  function polyphonicPreference(instrument) {
+    try { return window.localStorage && window.localStorage.getItem(polyphonicStorageKey(instrument)) === '1'; } catch (_) { return false; }
+  }
+  function savePolyphonicPreference(instrument, enabled) {
+    try { if (window.localStorage) window.localStorage.setItem(polyphonicStorageKey(instrument), enabled ? '1' : '0'); } catch (_) {}
+  }
   function loadCampaign() {
     if (!Campaign) return null;
     var raw = null;
@@ -205,7 +212,8 @@
     $('tj-study-mode').children[1].disabled = bateria || piano;
     text('tj-learning-help', bateria || piano ? 'No ritmo, acompanhe o tempo. Em Aprender, cada tecla ou grupo de pads espera sua entrada MIDI, sem avaliação de ritmo.' : 'No ritmo, acompanhe o tempo. Ao aprender, cada nota espera por você, sem avaliação de ritmo.');
     text('tj-stage-help', piano ? 'As 88 teclas vão de Lá0 a Dó8. Toque quando a nota chegar ao teclado; o comprimento indica a duração. A iluminação acompanha o arranjo.' : bateria ? 'As notas descem até cada peça. No chimbal, × indica fechado e ○ indica aberto. Crash e ride ficam acima dos tambores, como na montagem da bateria.' : 'Acompanhe as casas até a linha de tocar. Casa 0 indica corda solta.');
-    text('tj-footnote', bateria || piano ? 'Indicação de treino, sem nota escolar. A demonstração mostra o arranjo; na prática, os acertos usam a entrada MIDI.' : 'Feedback de estudo, sem nota escolar. O áudio identifica a altura; corda e casa são posições sugeridas pelo arranjo. Reconhecimento de acordes pelo microfone não está incluído neste protótipo.');
+    text('tj-footnote', bateria || piano ? 'Indicação de treino, sem nota escolar. A demonstração mostra o arranjo; na prática, os acertos usam a entrada MIDI.' : 'Feedback de estudo, sem nota escolar. O áudio identifica a altura; corda e casa são posições sugeridas pelo arranjo. O reconhecimento polifônico por microfone é experimental e opcional.');
+    var polyphonic = $('tj-polyphonic'); if (polyphonic && !state.connected && !state.running) polyphonic.checked = polyphonicPreference(state.instrument);
     $('tj-connection-type').value = bateria || piano ? 'midi' : state.inputKind;
     app.setAttribute('data-layout', perfil.layout);
     $('tj-stage').setAttribute('data-layout', perfil.layout);
@@ -975,7 +983,7 @@
   on('tj-section','change',function(){selectSection(this.value);});
   on('tj-hear-note','click',hearNote);on('tj-skip','click',function(){if(state.running&&state.mode==='learn'&&state.learner&&ctx.currentTime>=state.guideUntil+meiaJanelaDetector()&&!expiredLearn())advanceLearn(state.learner.pular(ctx.currentTime));});
   on('tj-instrument','change',changeProfile);on('tj-connection-type','change',changeProfile);
-  on('tj-polyphonic','change',function(){ if (input) { input.parar(); input = null; } updateTransport(); msg(this.checked ? 'Reconhecimento de acordes ativado. A análise é experimental e local.' : 'Reconhecimento de acordes desativado.'); });
+  on('tj-polyphonic','change',function(){ savePolyphonicPreference(state.instrument, this.checked); if (input) { input.parar(); input = null; } updateTransport(); msg(this.checked ? 'Reconhecimento de acordes ativado. A análise é experimental e local.' : 'Reconhecimento de acordes desativado.'); });
   on('tj-gain','input',changeCaptureGain);
   on('tj-pause','click',function(){if(state.running)pause();else return start(state.mode,true);});on('tj-stop','click',function(){stop();cancelCalibration();msg('Pronto para uma nova rodada.');});
   on('tj-connect','click',connect);on('tj-device','change',function(){if(!input || !state.connected)return;pause();cancelCalibration();return activateInput();});
