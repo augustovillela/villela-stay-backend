@@ -184,6 +184,21 @@
     m.appendChild(b);
   }
 
+  // ---- progresso local do curso de teoria ----
+  function progressoCurso() {
+    var chave = 'musique-curso-teoria-concluidas-v1', concluidas = {};
+    try { concluidas = JSON.parse(w.localStorage.getItem(chave) || '{}') || {}; } catch (_) { concluidas = {}; }
+    function salvar() { try { w.localStorage.setItem(chave, JSON.stringify(concluidas)); } catch (_) { /* armazenamento indisponível */ } }
+    function atualizar() {
+      var links = C.$$('.curso-modulo a[data-curso-slug]'), total = links.length, feitos = 0;
+      links.forEach(function (a) { var ok = !!concluidas[a.getAttribute('data-curso-slug')]; a.classList.toggle('curso-feito', ok); var li = a.closest('li'); if (li) li.classList.toggle('curso-item-feito', ok); if (ok) feitos++; });
+      var painel = C.$('#curso-progresso'); if (painel) painel.textContent = total ? 'Progresso neste navegador: ' + feitos + ' de ' + total + ' lições concluídas (' + Math.round(feitos / total * 100) + '%).' : 'As primeiras lições serão adicionadas em breve.';
+      var b = C.$('.curso-concluir'); if (b) { var slug = b.getAttribute('data-curso-licao'), ok = !!concluidas[slug]; b.setAttribute('aria-pressed', ok ? 'true' : 'false'); b.textContent = ok ? '✓ Lição concluída — desfazer' : 'Marcar lição como concluída'; }
+    }
+    var botao = C.$('.curso-concluir'); if (botao) botao.onclick = function () { var slug = botao.getAttribute('data-curso-licao'); if (concluidas[slug]) delete concluidas[slug]; else concluidas[slug] = new Date().toISOString(); salvar(); atualizar(); C.aviso(concluidas[slug] ? 'Lição concluída neste navegador.' : 'Lição reaberta.'); };
+    atualizar();
+  }
+
   // ---- barra de rolagem também EM CIMA das tabelas largas (atlas) ----
   // Uma faixa fina acima da tabela, do mesmo comprimento, rola junto com a
   // de baixo: dá para ir para os lados sem descer até o fim da tabela.
@@ -212,6 +227,7 @@
     buscaViva();
     botaoFavorito();
     botaoAula();
+    progressoCurso();
     var main = C.$('#lab-main');
     if (!main) return;
     var slug = main.getAttribute('data-ferramenta');
