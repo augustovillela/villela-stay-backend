@@ -229,8 +229,11 @@
         return { rotulo: C.nomeNota(N.ler(c.maior)) + (c.alt ? '/' + C.nomeNota(N.ler(c.alt)) : ''), sub: q ? Math.abs(q) + (q > 0 ? '♯' : '♭') : '', dado: 'M' + i, acessivel: T.nome(N.ler(c.maior), 'maior'),
           tipo: sel.modo === 'maior' && sel.i === i ? 'ativo' : (Math.abs(((i - sel.i) + 12) % 12) === 1 || Math.abs(((sel.i - i) + 12) % 12) === 1) ? 'vizinho' : '' }; });
       var internos = ordem.map(function (i) { var c = T.CIRCULO[i]; return { rotulo: C.nomeNota(N.ler(c.menor)) + 'm', dado: 'm' + i, acessivel: T.nome(N.ler(c.menor), 'menor'), tipo: sel.modo === 'menor' && sel.i === i ? 'ativo' : '' }; });
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [
-        el('button', { type: 'button', class: 'btn sec', 'aria-pressed': quartas ? 'true' : 'false', txt: quartas ? 'Ver como quintas ↻' : 'Ver como quartas ↺', onclick: function () { quartas = !quartas; render(); } }), C.selNotacao(render)]));
+      var modoTitulo = quartas ? 'Círculo de quartas' : 'Círculo de quintas';
+      var modoDescricao = quartas ? 'Sentido anti-horário: cada passo desce uma quinta (equivale a subir uma quarta).' : 'Sentido horário: cada passo sobe uma quinta. As menores relativas ficam no anel interno.';
+      alvo.appendChild(el('div', { class: 'lab-circulo-modo', role: 'status', 'aria-live': 'polite' }, [el('strong', { txt: 'Exibindo: ' + modoTitulo }), el('span', { txt: modoDescricao })]));
+      alvo.appendChild(el('div', { class: 'lab-controles lab-circulo-controles' }, [
+        el('button', { type: 'button', class: 'btn lab-circulo-toggle', 'aria-pressed': quartas ? 'true' : 'false', 'aria-label': quartas ? 'Alternar para círculo de quintas' : 'Alternar para círculo de quartas', txt: quartas ? 'Mostrar círculo de quintas ↻' : 'Mostrar círculo de quartas ↺', onclick: function () { quartas = !quartas; render(); } }), C.selNotacao(render)]));
       var box = svg(D.anel({ itens: itens, interno: internos, interativo: true, titulo: quartas ? 'Círculo de quartas' : 'Círculo de quintas', centro: quartas ? 'quartas ↺' : 'quintas ↻', descricao: 'Tons maiores por fora, relativos menores por dentro. Selecione um tom.' }));
       box.addEventListener('click', escolher); box.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); escolher(e); } });
       function escolher(e) { var g = e.target.closest('[data-i]'); if (!g) return; var v = g.getAttribute('data-i'); sel = { i: Number(v.slice(1)), modo: v[0] === 'M' ? 'maior' : 'menor' }; render(); var f = C.$('.lab-circ-info h2'); if (f) f.focus(); }

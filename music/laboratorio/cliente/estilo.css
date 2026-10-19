@@ -487,3 +487,9 @@
 .lab-mandala-global-no-grupo{cursor:pointer;outline:none}
 .lab-mandala-global-no-grupo:focus .lab-mandala-global-no,.lab-mandala-global-no-grupo:hover .lab-mandala-global-no{stroke:#14213d;stroke-width:3}
 .lab-mandala-global-card-foco{border-color:#d97706;box-shadow:0 0 0 4px #ffd16666,0 8px 22px #14213d20}
+.lab-circulo-modo{display:flex;flex-direction:column;gap:4px;margin:0 0 10px;padding:14px 16px;border:2px solid #315b80;border-radius:14px;background:linear-gradient(135deg,#edf5fc,#fff);color:#14213d}
+.lab-circulo-modo strong{font:700 18px Inter,system-ui,sans-serif;color:#14213d}
+.lab-circulo-modo span{font-size:14px;color:#315b80}
+.lab-circulo-controles{border-color:#8db1cf;background:#f8fbff}
+.lab-circulo-toggle{font-weight:800;box-shadow:0 3px 0 #8db1cf}
+.lab-circulo-toggle[aria-pressed="true"]{background:#d97706;color:#fff;border-color:#92400e;box-shadow:0 3px 0 #92400e}
