@@ -199,6 +199,11 @@
     atualizar();
   }
 
+  function filtrosCurso() {
+    var botoes = C.$$('.curso-filtro'); if (!botoes.length) return;
+    botoes.forEach(function (b) { b.onclick = function () { var filtro = b.getAttribute('data-curso-filtro'); botoes.forEach(function (x) { var ativo = x === b; x.classList.toggle('ativo', ativo); x.setAttribute('aria-selected', ativo ? 'true' : 'false'); }); C.$$('.curso-modulo li[data-curso-trilhas]').forEach(function (item) { item.hidden = filtro !== 'todos' && item.getAttribute('data-curso-trilhas').split(' ').indexOf(filtro) < 0; }); }; });
+  }
+
   // ---- barra de rolagem também EM CIMA das tabelas largas (atlas) ----
   // Uma faixa fina acima da tabela, do mesmo comprimento, rola junto com a
   // de baixo: dá para ir para os lados sem descer até o fim da tabela.
@@ -228,6 +233,7 @@
     botaoFavorito();
     botaoAula();
     progressoCurso();
+    filtrosCurso();
     var main = C.$('#lab-main');
     if (!main) return;
     var slug = main.getAttribute('data-ferramenta');
