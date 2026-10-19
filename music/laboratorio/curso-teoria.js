@@ -40,7 +40,7 @@ const CURSO = {
   id: 'teoria-musical-completa',
   titulo: 'Teoria musical completa',
   subtitulo: 'Do zero ao avançado',
-  versao: '1.0',
+  versao: '1.1',
   descricao: 'Um percurso progressivo para conhecer, ouvir e aplicar música no instrumento, na voz e no arranjo.',
   trilhas: [
     { id: 'conhecer', nome: 'Conhecer', resumo: 'Conceitos, símbolos e mapas.' },
