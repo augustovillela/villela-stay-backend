@@ -146,14 +146,16 @@
 
   /** Botão "🎤" pronto para a leitura e para o palco. */
   E.botaoSeguir = function (obterRaiz, rolar, aoStatus) {
-    var atual = null;
+    var atual = null, pendente = false;
     var b = el('button', { type: 'button', txt: '🎤', title: 'Seguir pelo microfone (experimental)', 'aria-label': 'Seguir pelo microfone (experimental)', 'aria-pressed': 'false' });
     b.onclick = function () {
       if (atual) { atual.parar(); atual = null; b.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-label', 'Seguir pelo microfone (experimental)'); b.title = 'Seguir pelo microfone (experimental)'; b.textContent = '🎤'; return; }
+      if (pendente) return;
+      pendente = true; b.setAttribute('aria-busy', 'true'); b.textContent = '🎤…';
       E.seguir(obterRaiz(), { rolar: rolar, aoStatus: aoStatus }).then(function (c) {
-        atual = c; b.setAttribute('aria-pressed', 'true'); b.setAttribute('aria-label', 'Parar acompanhamento pelo microfone'); b.title = 'Parar acompanhamento pelo microfone'; b.textContent = '🎤●';
+        pendente = false; b.setAttribute('aria-busy', 'false'); atual = c; b.setAttribute('aria-pressed', 'true'); b.setAttribute('aria-label', 'Parar acompanhamento pelo microfone'); b.title = 'Parar acompanhamento pelo microfone'; b.textContent = '🎤●';
         C.aviso('Seguindo pelo microfone (EXPERIMENTAL): a cifra rola quando o acorde muda. Toque num acorde para recomeçar dali. Nada é gravado nem enviado.');
-      }).catch(function (e) { C.aviso(e && e.name === 'NotAllowedError' ? 'Sem permissão para o microfone.' : (e.message || 'Microfone indisponível.')); });
+      }).catch(function (e) { pendente = false; b.setAttribute('aria-busy', 'false'); b.textContent = '🎤'; C.aviso(e && e.name === 'NotAllowedError' ? 'Sem permissão para o microfone.' : (e.message || 'Microfone indisponível.')); });
     };
     b.recomecar = function () { if (atual && atual.recomecar) atual.recomecar(); };
     b.parar = function () { if (atual) { atual.parar(); atual = null; } b.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-label', 'Seguir pelo microfone (experimental)'); b.title = 'Seguir pelo microfone (experimental)'; b.textContent = '🎤'; };
