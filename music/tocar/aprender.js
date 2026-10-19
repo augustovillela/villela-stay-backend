@@ -154,6 +154,7 @@
     function resumo() { var hits = states.filter(function (s) { return s.status === 'hit'; }).length, skipped = states.filter(function (s) { return s.status === 'skipped'; }).length; return { total: states.length, hits: hits, skipped: skipped, pending: states.length - hits - skipped, complete: groupIndex >= groups.length }; }
     return { amostrar: amostrar, pular: pular, bloquearAte: bloquearAte, retomar: bloquearAte,
       alvo: function () { var g = grupoAtual(); return g && g.notes[0] ? copia(g.notes[0]) : null; },
+      grupo: function () { var g = grupoAtual(); return g ? g.notes.map(copia) : []; },
       estados: function () { return states.map(copia); }, resumo: resumo };
   }
   return { criar: criar, criarMidi: criarMidi };

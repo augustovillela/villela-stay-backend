@@ -325,7 +325,9 @@
     var n = target || (state.mode === 'idle' ? preview : null);
     var perfilAlvo = perfilDoChart(chart), midiAlvo = perfilAlvo && (perfilAlvo.layout === 'piano' || perfilAlvo.layout === 'drums');
     var pecaAlvo = n && midiAlvo && perfilAlvo.layout === 'drums' && perfilAlvo.drums.find(function (p) { return p.midi === n.midi; });
-    var label = n ? midiAlvo ? (pecaAlvo ? pecaAlvo.label : 'Tecla ' + noteName(n.midi)) : 'Corda ' + n.string + ' · ' + (n.fret === 0 ? 'solta (casa 0)' : 'casa ' + n.fret) + ' · ' + noteName(n.midi) : state.mode === 'idle' ? 'Nenhuma nota neste trecho' : 'Trecho concluído';
+    var grupoAlvo = state.learner && midiAlvo && perfilAlvo.layout === 'piano' && typeof state.learner.grupo === 'function' ? state.learner.grupo() : [];
+    var acorde = grupoAlvo.length >= 3 && window.MusiqueTocarAcordes ? window.MusiqueTocarAcordes.identificar(grupoAlvo) : null;
+    var label = n ? midiAlvo ? (pecaAlvo ? pecaAlvo.label : acorde ? 'Acorde ' + acorde.symbol + ' · ' + grupoAlvo.length + ' teclas' : grupoAlvo.length > 1 ? 'Acorde · ' + grupoAlvo.length + ' teclas' : 'Tecla ' + noteName(n.midi)) : 'Corda ' + n.string + ' · ' + (n.fret === 0 ? 'solta (casa 0)' : 'casa ' + n.fret) + ' · ' + noteName(n.midi) : state.mode === 'idle' ? 'Nenhuma nota neste trecho' : 'Trecho concluído';
     if ($('tj-target').textContent !== label) text('tj-target', label);
     if (target) state.position = target.time;
     $('tj-learn-panel').hidden = state.trainingMode !== 'learn' || state.mode === 'demo';
