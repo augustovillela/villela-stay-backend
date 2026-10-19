@@ -429,6 +429,21 @@ const LICOES = [
     ],
     refs: ['omt'],
   },
+  {
+    slug: 'projeto-final', titulo: 'Projeto final: ouvir, analisar e criar', nivel: 'avançado', prereq: ['harmonia-popular', 'contraponto', 'articulacao-e-dinamica'], termos: 'projeto final analise composicao arranjo teoria musical repertorio',
+    resumo: 'Integre leitura, percepção, harmonia, forma e arranjo em uma peça curta autoral ou em uma análise documentada.',
+    blocos: [
+      { t: 'p', html: 'O projeto final fecha o percurso com uma tarefa que se parece com a prática real: escolha uma música do seu acervo ou crie uma peça curta e registre <strong>o que você ouve, como a música se organiza e quais decisões tomou</strong>.' },
+      { t: 'lista', itens: ['Defina tonalidade, andamento, compasso e instrumento principal.', 'Registre a forma: introdução, seções, repetições, contrastes e cadências.', 'Escreva a progressão harmônica com graus e, quando fizer sentido, extensões ou empréstimos.', 'Descreva pelo menos um motivo melódico, uma escolha de dinâmica e uma ideia de arranjo.', 'Toque, cante ou exporte um rascunho e anote uma revisão concreta para a próxima versão.'] },
+      { t: 'visual', v: { tipo: 'progressao', simbolos: ['escutar', 'mapear', 'explicar', 'criar', 'revisar'], graus: ['1', '2', '3', '4', '5'], legenda: 'Ciclo do projeto final: a teoria volta para a prática.' } },
+      { t: 'p', html: 'Não é necessário produzir uma gravação profissional. O critério é conseguir justificar suas escolhas com o vocabulário do curso e mostrar uma versão que outra pessoa consiga ouvir, ler ou tocar.' },
+      { t: 'ferramenta', slug: 'progressoes' },
+      { t: 'ferramenta', slug: 'pozzoli-ritmos' },
+      { t: 'praticar', tipo: 'campo-grau', nivel: 3 },
+      { t: 'aprofundar', html: 'Depois do projeto, escolha uma nova trilha: repertório, arranjo, composição, percepção ou tecnologia. O curso termina como currículo; o estudo continua como prática.' },
+    ],
+    refs: ['omt', 'kostka'],
+  },
 ];
 
 const POR_SLUG = Object.fromEntries(LICOES.map((l) => [l.slug, l]));

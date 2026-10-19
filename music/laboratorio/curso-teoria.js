@@ -10,29 +10,29 @@ const NIVEIS = [
   { id: 'fundamentos', ordem: 1, nome: 'Fundamentos da linguagem', resumo: 'Leia o básico e sinta o pulso antes de tocar.', status: 'disponivel', modulos: [
     { id: 'leitura-e-ritmo', nome: 'Leitura e ritmo', objetivo: 'Ler pauta, claves, figuras, pausas, pulso e compasso.', licoes: ['primeira-leitura-ritmica', 'primeira-leitura-melodica', 'tons-e-semitons', 'pauta-e-claves', 'figuras-e-pausas', 'pulso-e-compasso'] },
   ] },
-  { id: 'leitura-percepcao', ordem: 2, nome: 'Leitura e percepção', resumo: 'Conecte o que vê, ouve, canta e toca.', status: 'em-construcao', modulos: [
+  { id: 'leitura-percepcao', ordem: 2, nome: 'Leitura e percepção', resumo: 'Conecte o que vê, ouve, canta e toca.', status: 'disponivel', modulos: [
     { id: 'intervalos-ouvido', nome: 'Intervalos e ouvido relativo', objetivo: 'Ouvir distâncias e reconhecer relações entre notas.', licoes: ['intervalos', 'ouvido-absoluto'] },
   ] },
-  { id: 'escalas-tonalidades', ordem: 3, nome: 'Escalas e tonalidades', resumo: 'Entenda tons, armaduras e modos como mapas de possibilidades.', status: 'em-construcao', modulos: [
+  { id: 'escalas-tonalidades', ordem: 3, nome: 'Escalas e tonalidades', resumo: 'Entenda tons, armaduras e modos como mapas de possibilidades.', status: 'disponivel', modulos: [
     { id: 'mapas-tonais', nome: 'Escalas, armaduras e modos', objetivo: 'Construir escalas e localizar centros tonais.', licoes: ['escala-maior', 'escalas-menores', 'armaduras', 'modos'] },
   ] },
-  { id: 'harmonia-funcional', ordem: 4, nome: 'Harmonia funcional', resumo: 'Veja como acordes criam tensão, direção e repouso.', status: 'em-construcao', modulos: [
+  { id: 'harmonia-funcional', ordem: 4, nome: 'Harmonia funcional', resumo: 'Veja como acordes criam tensão, direção e repouso.', status: 'disponivel', modulos: [
     { id: 'acordes-e-campo', nome: 'Acordes e campo harmônico', objetivo: 'Formar tríades, tétrades e analisar graus.', licoes: ['triades', 'campo-harmonico', 'tetrades'] },
   ] },
-  { id: 'melodia-forma', ordem: 5, nome: 'Melodia e forma', resumo: 'Organize ideias musicais em frases, motivos e seções.', status: 'em-construcao', modulos: [
+  { id: 'melodia-forma', ordem: 5, nome: 'Melodia e forma', resumo: 'Organize ideias musicais em frases, motivos e seções.', status: 'disponivel', modulos: [
     { id: 'estrutura', nome: 'Estrutura musical', objetivo: 'Reconhecer motivos, frases, cadências e formas.', licoes: ['frase-e-forma', 'notas-fora-da-harmonia'] },
   ] },
-  { id: 'harmonia-aplicada', ordem: 6, nome: 'Harmonia aplicada', resumo: 'Use extensões, empréstimos, modulações e baixo cifrado.', status: 'em-construcao', modulos: [
+  { id: 'harmonia-aplicada', ordem: 6, nome: 'Harmonia aplicada', resumo: 'Use extensões, empréstimos, modulações e baixo cifrado.', status: 'disponivel', modulos: [
     { id: 'cores-e-movimento', nome: 'Cores e movimento harmônico', objetivo: 'Aplicar recursos de repertório popular e tonal.', licoes: ['harmonia-popular', 'emprestimo-e-modulacao', 'baixo-cifrado'] },
   ] },
-  { id: 'arranjo-pratica', ordem: 7, nome: 'Arranjo e prática de conjunto', resumo: 'Transforme análise em partes tocáveis e decisões de interpretação.', status: 'planejado', modulos: [
+  { id: 'arranjo-pratica', ordem: 7, nome: 'Arranjo e prática de conjunto', resumo: 'Transforme análise em partes tocáveis e decisões de interpretação.', status: 'disponivel', modulos: [
     { id: 'textura-expressao', nome: 'Textura, contraponto e expressão', objetivo: 'Distribuir vozes e escolher articulação e dinâmica.', licoes: ['articulacao-e-dinamica', 'contraponto'] },
   ] },
-  { id: 'tecnologia-musical', ordem: 8, nome: 'Tecnologia musical', resumo: 'Aplique teoria no áudio, MIDI, gravação e ferramentas digitais.', status: 'planejado', modulos: [
+  { id: 'tecnologia-musical', ordem: 8, nome: 'Tecnologia musical', resumo: 'Aplique teoria no áudio, MIDI, gravação e ferramentas digitais.', status: 'disponivel', modulos: [
     { id: 'som-e-tecnologia', nome: 'Som e tecnologia', objetivo: 'Relacionar acústica, afinação e produção musical.', licoes: ['acustica', 'doze-sons'] },
   ] },
-  { id: 'criacao-analise', ordem: 9, nome: 'Criação e análise avançada', resumo: 'Componha, arranje e explique escolhas com autonomia.', status: 'planejado', modulos: [
-    { id: 'projeto-final', nome: 'Projeto final', objetivo: 'Analisar e criar uma peça usando os recursos do curso.', licoes: [] },
+  { id: 'criacao-analise', ordem: 9, nome: 'Criação e análise avançada', resumo: 'Componha, arranje e explique escolhas com autonomia.', status: 'disponivel', modulos: [
+    { id: 'projeto-final', nome: 'Projeto final', objetivo: 'Analisar e criar uma peça usando os recursos do curso.', licoes: ['projeto-final'] },
   ] },
 ];
 
