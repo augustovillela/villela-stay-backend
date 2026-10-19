@@ -160,8 +160,8 @@ function circuloDeQuintas({ ativo = null, modo = 'maior' } = {}) {
   });
   const internos = T.CIRCULO.map((c, i) => ({ rotulo: cif(N.ler(c.menor)) + 'm', tipo: ativo != null && i === ativo && modo === 'menor' ? 'ativo' : '', dado: 'm' + i,
     acessivel: T.nome(N.ler(c.menor), 'menor') }));
-  return D.anel({ itens, interno: internos, titulo: 'Círculo de quintas', centro: 'quintas ↻',
-    descricao: 'Tons maiores por fora e relativos menores por dentro; no sentido horário, cada passo sobe uma quinta e acrescenta um sustenido.', interativo: true });
+  return D.anel({ itens, interno: internos, titulo: 'Círculo de quintas e quartas', centro: 'quintas ↻',
+    descricao: 'Tons maiores por fora e relativos menores por dentro. Use o controle da página para alternar entre o sentido das quintas e o das quartas.', interativo: true });
 }
 
 function tabelaCampo(tonica, modo, { tetrades = false, variante } = {}) {
