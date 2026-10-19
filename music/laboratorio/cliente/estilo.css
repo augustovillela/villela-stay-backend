@@ -116,6 +116,9 @@
 .curso-modulo li a{font-weight:600;color:var(--navy)}
 .curso-modulo li span{font-size:13px;color:var(--suave)}
 .curso-planejada{color:#64748B;font-style:italic}
+.curso-contexto{margin:14px 0;padding:12px 15px;background:#EEF2FF;border:1px solid #C7D2FE;border-left:4px solid var(--navy);border-radius:10px;max-width:760px}
+.curso-contexto p{font-size:14px!important;margin:3px 0;color:#334155}
+.curso-contexto a{color:var(--navy);font-weight:600}
 @media (max-width:640px){.curso-nivel-cab{display:block}.curso-status{display:inline-block;margin-top:10px}}
 .lab-licao{max-width:820px}
 .lab-licao p{font-size:17px}

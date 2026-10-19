@@ -146,6 +146,7 @@ ${relacionados(f.slug)}`;
     if (i < 0) return naoAchou(res, 'esta lição');
     const l = ls[i];
     const ant = ls[i - 1]; const prox = ls[i + 1];
+    const contextoCurso = CT.POR_LICAO[l.slug];
     const pre = l.prereq.map((s) => L.POR_SLUG[s]).filter(Boolean);
     let conteudo;
     if (l.aberta) {
@@ -153,7 +154,8 @@ ${relacionados(f.slug)}`;
     } else {
       conteudo = bloco(l.blocos[0]) + portao(ACESSO.pode('licoes-completas', ctxDe(req)));
     }
-    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Lição ${l.ordem} de ${ls.length} · ${esc(l.nivel)}</p><h1>${esc(l.titulo)}</h1><p class="lab-lead">${esc(l.resumo)}</p>
+    const cursoPainel = contextoCurso ? `<aside class="curso-contexto" aria-label="Contexto no curso"><p class="lab-cab-tipo">Curso de teoria musical</p><p><a href="/music/curso-teoria#nivel-${esc(contextoCurso.nivel.id)}">Nível ${contextoCurso.nivel.ordem}: ${esc(contextoCurso.nivel.nome)}</a> · <strong>${esc(contextoCurso.modulo.nome)}</strong></p><p>${esc(contextoCurso.modulo.objetivo)}</p></aside>` : '';
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Lição ${l.ordem} de ${ls.length} · ${esc(l.nivel)}</p><h1>${esc(l.titulo)}</h1><p class="lab-lead">${esc(l.resumo)}</p>${cursoPainel}
 ${pre.length ? `<p class="lab-prereq">Antes, ajuda ter visto: ${pre.map((p) => `<a href="/music/aprender/${esc(p.slug)}">${esc(p.titulo)}</a>`).join(', ')}.</p>` : ''}</header>
 <article class="lab-licao">${conteudo}</article>
 <footer class="lab-licao-rodape"><p class="lab-autoria">Autoria: ${esc(L.AUTORIA.autor)} · Revisão técnica: ${esc(L.AUTORIA.revisao_tecnica)} · Revisão pedagógica: ${esc(L.AUTORIA.revisao_pedagogica)} · ${esc(L.AUTORIA.revisado_em)}</p>
