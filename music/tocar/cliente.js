@@ -431,7 +431,7 @@
     var history = $('tj-midi-chord-history'), piano = perfilDoInstrumento(state.instrument).layout === 'piano', historyKey = polyphonicHistory.join('\u0000');
     if (history) {
       if (piano) history.hidden = true;
-      else { if (historyKey !== polyphonicHistoryKey) { history.replaceChildren.apply(history, polyphonicHistory.map(function (item) { return el('li', { text: item }); })); polyphonicHistoryKey = historyKey; } history.hidden = !polyphonicHistory.length; }
+      else { if (historyKey !== polyphonicHistoryKey) { history.replaceChildren.apply(history, polyphonicHistory.map(function (item) { var m = /confiança (\d+)%/.exec(item), n = m ? Number(m[1]) / 100 : 0, level = m ? (n >= 0.65 ? 'high' : n >= 0.4 ? 'medium' : 'low') : ''; return el('li', { text: item, class: level ? 'tj-confidence-' + level : '' }); })); polyphonicHistoryKey = historyKey; } history.hidden = !polyphonicHistory.length; }
     }
     var clear = $('tj-midi-chord-clear'); if (clear) clear.hidden = piano || !polyphonicHistory.length;
   }
