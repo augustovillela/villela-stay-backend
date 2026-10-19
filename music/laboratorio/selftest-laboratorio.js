@@ -545,6 +545,12 @@ async function rodar({ t, secao, req, assert }) {
     assert.ok(cursoSlugs.every((slug) => L.POR_SLUG[slug]), 'toda lição planejada tem conteúdo publicado');
     const pdf = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'output', 'pdf', 'curso-teoria-musical.pdf'));
     assert.ok(pdf.length > 100000 && pdf.subarray(0, 5).toString() === '%PDF-', 'livro PDF ilustrado está publicado e válido');
+    const cj = await req('GET', '/music/curso-teoria.json', { como: 'ana', cru: true });
+    const cursoJson = JSON.parse(cj.texto);
+    assert.equal(cursoJson.schema, 'musique.course.v1');
+    const jsonSlugs = cursoJson.niveis.flatMap((n) => n.modulos.flatMap((m) => m.licoes.map((l) => l.slug)));
+    assert.deepEqual(jsonSlugs.sort(), cursoSlugs.slice().sort(), 'JSON curricular acompanha o catálogo');
+    assert.ok(cursoJson.niveis.every((n) => n.modulos.every((m) => m.licoes.every((l) => l.url === '/music/aprender/' + l.slug))), 'JSON expõe URLs canônicas das lições');
     const hp = await req('GET', '/music/aprender/harmonia-popular', { como: 'ana', cru: true }); assert.match(hp.texto, /data-sequencia=/); assert.match(hp.texto, /Db7/);
     const ti = await req('GET', '/music/aprender/treino-intervalos', { como: 'ana', cru: true }); assert.match(ti.texto, /\/music\/referencia\/intervalos/);
     const md = await req('GET', '/music/curso-teoria.md', { como: 'ana', cru: true }); assert.match(md.texto, /\[.*Piano e notas.*\]\(\/music\/explorar\/piano\)/);
