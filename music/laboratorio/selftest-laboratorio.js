@@ -25,6 +25,7 @@ async function rodar({ t, secao, req, assert }) {
   const ACESSO = require('./acesso');
   const PG = require('./paginas');
   const L = require('./licoes');
+  const CT = require('./curso-teoria');
   const { db } = require('../db');
   const nm = (ns) => ns.map((n) => N.nome(n, { oitava: false })).join(' ');
   const TONICAS = []; for (let li = 0; li < 7; li++) [-1, 0, 1].forEach((alt) => TONICAS.push({ li, alt, oitava: null }));
@@ -539,6 +540,9 @@ async function rodar({ t, secao, req, assert }) {
     for (const u of novas) { const r = await req('GET', '/music/' + u, { cru: true }); assert.equal(r.status, 200, u); }
     assert.equal(L.LICOES.length, 97);
     for (const l of L.LICOES.slice(15)) { const r = await req('GET', '/music/aprender/' + l.slug, { como: 'ana', cru: true }); assert.equal(r.status, 200, l.slug); assert.ok(!/undefined|NaN/.test(r.texto.replace(/<script[\s\S]*?<\/script>/g, '')), l.slug); }
+    const cursoSlugs = CT.CURSO.niveis.flatMap((n) => n.modulos.flatMap((m) => m.licoes));
+    assert.equal(new Set(cursoSlugs).size, cursoSlugs.length, 'curso sem lições duplicadas');
+    assert.ok(cursoSlugs.every((slug) => L.POR_SLUG[slug]), 'toda lição planejada tem conteúdo publicado');
     const hp = await req('GET', '/music/aprender/harmonia-popular', { como: 'ana', cru: true }); assert.match(hp.texto, /data-sequencia=/); assert.match(hp.texto, /Db7/);
     const ti = await req('GET', '/music/aprender/treino-intervalos', { como: 'ana', cru: true }); assert.match(ti.texto, /\/music\/referencia\/intervalos/);
     const md = await req('GET', '/music/curso-teoria.md', { como: 'ana', cru: true }); assert.match(md.texto, /\[.*Piano e notas.*\]\(\/music\/explorar\/piano\)/);
