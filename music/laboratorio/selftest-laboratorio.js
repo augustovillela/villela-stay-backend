@@ -225,6 +225,7 @@ async function rodar({ t, secao, req, assert }) {
       'cadencia-ouvido': (q) => { const c = T.CADENCIAS.find((x) => x.id === q.resposta); return !!c && q.audio.sequencia.length === 3 && q.opcoes.some((o) => o.valor === q.resposta); },
       'transposicao': (q) => { const m = q.enunciado.match(/^Transponha (.+) de (.+) maior para (.+) maior\.$/); const de = m[1].split(' ').map(A.ler), para = q.resposta.split(' ').map(A.ler); const semi = N.mod(N.pc(N.ler(m[3])) - N.pc(N.ler(m[2])), 12); return de.length === para.length && de.every((x, i) => N.mod(N.pc(x.fundamental) + semi, 12) === N.pc(para[i].fundamental) && x.id === para[i].id); },
       'escala-no-braco': (q) => { const m = q.enunciado.match(/notas de (.+?) (maior|menor natural|pentatônica maior|pentatônica menor|dórico|mixolídio) \(/); const e = E.CATALOGO.find((x) => x.nome === m[2]); return E.notas(N.ler(m[1]), e.id).map(N.pc).sort((a, b) => a - b).join(',') === q.resposta; },
+      'ciclo-musical': (q) => { const m = q.enunciado.match(/^Depois de (.+), qual é a próxima/); const seq = q.visual.simbolos; const i = seq.indexOf(m && m[1]); return i >= 0 && q.resposta === seq[(i + 1) % seq.length].toLowerCase(); },
     };
     assert.deepEqual(Object.keys(verif).sort(), X.LISTA.map((x) => x.id).sort(), 'todo tipo de exercício tem verificação independente');
     let n = 0;
@@ -536,7 +537,7 @@ async function rodar({ t, secao, req, assert }) {
     const novas = ['explorar/comparar-modos', 'explorar/piano-isomorfico', 'explorar/serie-dodecafonica', 'criar/afinador-cordas', 'criar/extensao-vocal', 'criar/metronomo-progressivo',
       'criar/mini-maquina', 'criar/motivos', 'criar/xilofone', 'criar/gerador-de-bumbo', 'referencia/solfejo'];
     for (const u of novas) { const r = await req('GET', '/music/' + u, { cru: true }); assert.equal(r.status, 200, u); }
-    assert.equal(L.LICOES.length, 24);
+    assert.equal(L.LICOES.length, 97);
     for (const l of L.LICOES.slice(15)) { const r = await req('GET', '/music/aprender/' + l.slug, { como: 'ana', cru: true }); assert.equal(r.status, 200, l.slug); assert.ok(!/undefined|NaN/.test(r.texto.replace(/<script[\s\S]*?<\/script>/g, '')), l.slug); }
     const hp = await req('GET', '/music/aprender/harmonia-popular', { como: 'ana', cru: true }); assert.match(hp.texto, /data-sequencia=/); assert.match(hp.texto, /Db7/);
     const cp = await req('GET', '/music/aprender/contraponto', { como: 'ana', cru: true }); assert.match(cp.texto, /class="lab-svg lab-pauta"/);
@@ -583,7 +584,7 @@ async function rodar({ t, secao, req, assert }) {
   await t('COBERTURA: toda ferramenta, jogo, referência e lição do catálogo tem página; toda lição aponta para exercício existente', async () => {
     L.LICOES.forEach((l) => {
       l.blocos.filter((b) => b.t === 'praticar').forEach((b) => assert.ok(X.TIPOS[b.tipo], l.slug + ' → ' + b.tipo));
-      l.blocos.filter((b) => b.t === 'ferramenta').forEach((b) => assert.ok(CAT.FERRAMENTAS.find((f) => f.slug === b.slug), l.slug + ' → ' + b.slug));
+      l.blocos.filter((b) => b.t === 'ferramenta').forEach((b) => assert.ok(CAT.FERRAMENTAS.find((f) => f.slug === b.slug) || CAT.REFERENCIAS.find((f) => f.slug === b.slug), l.slug + ' → ' + b.slug));
       l.prereq.forEach((p) => assert.ok(L.POR_SLUG[p], l.slug + ' pré-requisito ' + p));
       assert.ok(l.blocos.some((b) => b.t === 'visual' || b.t === 'ouvir' || b.t === 'praticar'), l.slug + ' tem ver/ouvir/praticar');
     });
