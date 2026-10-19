@@ -138,6 +138,7 @@
         try { ctx.close(); } catch (_) { /* ok */ }
         raiz.querySelectorAll('.cf-a.ouvindo').forEach(function (x) { x.classList.remove('ouvindo'); });
         if (o.aoStatus) o.aoStatus('', 0);
+        if (o.aoParar) o.aoParar();
       };
       global.addEventListener('pagehide', ctrl.parar);
       return ctrl;
@@ -152,7 +153,7 @@
       if (atual) { atual.parar(); atual = null; b.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-label', 'Seguir pelo microfone (experimental)'); b.title = 'Seguir pelo microfone (experimental)'; b.textContent = '🎤'; return; }
       if (pendente) return;
       pendente = true; b.setAttribute('aria-busy', 'true'); b.textContent = '🎤…';
-      E.seguir(obterRaiz(), { rolar: rolar, aoStatus: aoStatus }).then(function (c) {
+      E.seguir(obterRaiz(), { rolar: rolar, aoStatus: aoStatus, aoParar: function () { atual = null; b.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-label', 'Seguir pelo microfone (experimental)'); b.title = 'Seguir pelo microfone (experimental)'; b.textContent = '🎤'; } }).then(function (c) {
         pendente = false; b.setAttribute('aria-busy', 'false'); atual = c; b.setAttribute('aria-pressed', 'true'); b.setAttribute('aria-label', 'Parar acompanhamento pelo microfone'); b.title = 'Parar acompanhamento pelo microfone'; b.textContent = '🎤●';
         C.aviso('Seguindo pelo microfone (EXPERIMENTAL): a cifra rola quando o acorde muda. Toque num acorde para recomeçar dali. Nada é gravado nem enviado.');
       }).catch(function (e) { pendente = false; b.setAttribute('aria-busy', 'false'); b.textContent = '🎤'; C.aviso(e && e.name === 'NotAllowedError' ? 'Sem permissão para o microfone.' : (e.message || 'Microfone indisponível.')); });
