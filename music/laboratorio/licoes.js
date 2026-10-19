@@ -443,6 +443,20 @@ const LICOES = [
     refs: ['omt', 'priolli'],
   },
   {
+    slug: 'ditado-melodico', titulo: 'Ditado melódico: ouvir antes de escrever', nivel: 'intermediário', prereq: ['treino-intervalos', 'primeira-leitura-melodica'], termos: 'ditado melodico percepcao escrita leitura ouvido relativo frase',
+    resumo: 'Aprenda a transformar uma pequena frase ouvida em direção, graus e notas escritas.',
+    blocos: [
+      { t: 'p', html: 'No ditado melódico, você não precisa capturar tudo de uma vez. Primeiro encontre o <strong>pulso</strong>, depois cante a nota de chegada e só então escreva o desenho entre elas. A memória melhora quando você divide a frase em pequenos grupos.' },
+      { t: 'ouvir', rotulo: 'Frase curta para ouvir e cantar', midis: [60, 62, 64, 67, 64, 62, 60], dur: 0.42, passo: 0.48, modo: 'melodico' },
+      { t: 'lista', itens: ['Ouça a frase inteira sem escrever.', 'Marque a primeira nota e o pulso.', 'Anote apenas a direção: sobe, desce ou repete.', 'Use o intervalo para conferir cada salto.', 'Toque ou cante sua escrita e compare com a gravação.'] },
+      { t: 'visual', v: { tipo: 'pauta', clave: 'sol', notas: ['C4', 'D4', 'E4', 'G4', 'E4', 'D4', 'C4'], rotular: true } },
+      { t: 'praticar', tipo: 'nota-na-pauta', nivel: 2 },
+      { t: 'ferramenta', slug: 'pauta' },
+      { t: 'p', html: 'Uma transcrição é uma hipótese que você testa com o ouvido. Se a frase estiver correta, a direção, o ritmo e os pontos de repouso continuam reconhecíveis mesmo quando você muda o instrumento.' },
+    ],
+    refs: ['omt', 'priolli'],
+  },
+  {
     slug: 'projeto-final', titulo: 'Projeto final: ouvir, analisar e criar', nivel: 'avançado', prereq: ['harmonia-popular', 'contraponto', 'articulacao-e-dinamica'], termos: 'projeto final analise composicao arranjo teoria musical repertorio',
     resumo: 'Integre leitura, percepção, harmonia, forma e arranjo em uma peça curta autoral ou em uma análise documentada.',
     blocos: [

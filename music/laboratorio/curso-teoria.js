@@ -11,7 +11,7 @@ const NIVEIS = [
     { id: 'leitura-e-ritmo', nome: 'Leitura e ritmo', objetivo: 'Ler pauta, claves, figuras, pausas, pulso e compasso.', licoes: ['primeira-leitura-ritmica', 'primeira-leitura-melodica', 'tons-e-semitons', 'pauta-e-claves', 'figuras-e-pausas', 'pulso-e-compasso'] },
   ] },
   { id: 'leitura-percepcao', ordem: 2, nome: 'Leitura e percepção', resumo: 'Conecte o que vê, ouve, canta e toca.', status: 'disponivel', modulos: [
-    { id: 'intervalos-ouvido', nome: 'Intervalos e ouvido relativo', objetivo: 'Ouvir distâncias e reconhecer relações entre notas.', licoes: ['intervalos', 'treino-intervalos', 'ouvido-absoluto'] },
+    { id: 'intervalos-ouvido', nome: 'Intervalos e ouvido relativo', objetivo: 'Ouvir distâncias e reconhecer relações entre notas.', licoes: ['intervalos', 'treino-intervalos', 'ditado-melodico', 'ouvido-absoluto'] },
   ] },
   { id: 'escalas-tonalidades', ordem: 3, nome: 'Escalas e tonalidades', resumo: 'Entenda tons, armaduras e modos como mapas de possibilidades.', status: 'disponivel', modulos: [
     { id: 'mapas-tonais', nome: 'Escalas, armaduras e modos', objetivo: 'Construir escalas e localizar centros tonais.', licoes: ['escala-maior', 'escalas-menores', 'armaduras', 'modos'] },
