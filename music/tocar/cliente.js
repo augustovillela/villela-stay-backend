@@ -13,7 +13,7 @@
   var previewMode = query.has('previa'), previewReady = !previewMode;
   var source = { kind: 'study' }, catalogUI = null, chartTicket = 0, chartLoading = false;
   var remoteAudio = null, remoteTicket = 0, remoteLoading = false, saving = null;
-  var chart = Core.demoChart(), input = null, midiInput = null, midiHeld = Object.create(null), polyphonicLabel = '', polyphonicCandidate = '', polyphonicCount = 0, polyphonicConfidence = 0, polyphonicHistory = [], demoContext = null, ctx = null, deviceRefresh = 0;
+  var chart = Core.demoChart(), input = null, midiInput = null, midiHeld = Object.create(null), polyphonicLabel = '', polyphonicCandidate = '', polyphonicCount = 0, polyphonicConfidence = 0, polyphonicHistory = [], polyphonicHistoryKey = '', demoContext = null, ctx = null, deviceRefresh = 0;
   var media = null, mediaUrl = null, mediaStarting = false, raf = null, nodes = [], generation = 0, dailySessions = 0;
   var referenceWallUntil = 0, outputWallUntil = 0;
   var sampler = null, samplerContext = null, samplerBank = null, soundLoading = false, scheduledSoundUntil = 0;
@@ -405,7 +405,7 @@
     pause(); state.mode = 'idle'; state.judge = null; state.learner = null; state.learnContext = null; state.learnElapsed = 0; state.learnStartedAt = null; state.guideUntil = 0;
     if (reset !== false) state.position = state.from;
     if (media) media.currentTime = chartToMedia(Math.max(0, state.position));
-    midiHeld = Object.create(null); polyphonicLabel = ''; polyphonicCandidate = ''; polyphonicCount = 0; polyphonicConfidence = 0; polyphonicHistory = []; updateMidiChord(); updatePolyphonicLabel('');
+    midiHeld = Object.create(null); polyphonicLabel = ''; polyphonicCandidate = ''; polyphonicCount = 0; polyphonicConfidence = 0; polyphonicHistory = []; polyphonicHistoryKey = ''; updateMidiChord(); updatePolyphonicLabel('');
     text('tj-mode', 'PRONTO PARA TOCAR'); text('tj-pause', 'Pausar'); updateScore(); updateTransport();
   }
   function updateMidiChord() {
@@ -428,10 +428,14 @@
     if (polyphonicCount >= 2 && polyphonicLabel !== label) { polyphonicLabel = label; polyphonicConfidence = Number.isFinite(confidence) ? confidence : 0; polyphonicHistory.unshift(label); polyphonicHistory = polyphonicHistory.slice(0, 5); }
     else if (polyphonicLabel === label && Number.isFinite(confidence)) polyphonicConfidence = polyphonicConfidence * 0.7 + confidence * 0.3;
     var node = $('tj-midi-chord'); if (node && perfilDoInstrumento(state.instrument).layout !== 'piano') { node.textContent = polyphonicLabel; node.hidden = !polyphonicLabel; node.setAttribute('data-confidence', polyphonicConfidence >= 0.65 ? 'high' : polyphonicConfidence >= 0.4 ? 'medium' : 'low'); node.setAttribute('aria-label', polyphonicLabel); }
-    var history = $('tj-midi-chord-history'); if (history && perfilDoInstrumento(state.instrument).layout !== 'piano') { history.replaceChildren.apply(history, polyphonicHistory.map(function (item) { return el('li', { text: item }); })); history.hidden = !polyphonicHistory.length; }
+    var history = $('tj-midi-chord-history'), piano = perfilDoInstrumento(state.instrument).layout === 'piano', historyKey = polyphonicHistory.join('\u0000');
+    if (history) {
+      if (piano) history.hidden = true;
+      else { if (historyKey !== polyphonicHistoryKey) { history.replaceChildren.apply(history, polyphonicHistory.map(function (item) { return el('li', { text: item }); })); polyphonicHistoryKey = historyKey; } history.hidden = !polyphonicHistory.length; }
+    }
     var clear = $('tj-midi-chord-clear'); if (clear) clear.hidden = !polyphonicHistory.length;
   }
-  function clearPolyphonicHistory() { polyphonicHistory = []; polyphonicLabel = ''; polyphonicCandidate = ''; polyphonicCount = 0; updatePolyphonicLabel(''); }
+  function clearPolyphonicHistory() { polyphonicHistory = []; polyphonicHistoryKey = ''; polyphonicLabel = ''; polyphonicCandidate = ''; polyphonicCount = 0; updatePolyphonicLabel(''); }
   async function start(mode, resume) {
     if (chartLoading || remoteLoading || soundLoading || !previewReady || (previewMode && mode !== 'demo')) return;
     var layout = perfilDoChart(chart).layout, midi = layout === 'piano' || layout === 'drums';
@@ -803,7 +807,7 @@
     state.connecting = s.estado === 'iniciando';
     text('tj-connection', s.estado === 'conectado' ? (s.nome || 'Entrada MIDI conectada') : s.mensagem || 'Entrada MIDI desligada');
     if (s.estado === 'conectado') msg('MIDI conectado. Toque seu instrumento para praticar.');
-    if (s.estado === 'erro' || s.estado === 'parado') { midiHeld = Object.create(null); polyphonicLabel = ''; polyphonicCandidate = ''; polyphonicCount = 0; polyphonicConfidence = 0; polyphonicHistory = []; updateMidiChord(); updatePolyphonicLabel(''); if (state.mode === 'practice' || state.mode === 'learn') pause(); text('tj-meter', ''); }
+    if (s.estado === 'erro' || s.estado === 'parado') { midiHeld = Object.create(null); polyphonicLabel = ''; polyphonicCandidate = ''; polyphonicCount = 0; polyphonicConfidence = 0; polyphonicHistory = []; polyphonicHistoryKey = ''; updateMidiChord(); updatePolyphonicLabel(''); if (state.mode === 'practice' || state.mode === 'learn') pause(); text('tj-meter', ''); }
     if (s.estado === 'conectado' || s.estado === 'parado') refreshDevices();
     updateTransport();
   }
