@@ -92,6 +92,19 @@ const LICOES = [
     refs: ['med', 'priolli'],
   },
   {
+    slug: 'primeira-leitura-melodica', titulo: 'Primeira leitura melódica', nivel: 'iniciante', prereq: ['primeira-leitura-ritmica'], termos: 'leitura melodica pauta clave sol notas solfejo primeira vista',
+    resumo: 'Leia uma pequena linha na clave de sol, mantendo o pulso e reconhecendo o desenho da melodia.',
+    blocos: [
+      { t: 'p', html: 'Uma leitura melódica junta duas tarefas: saber <strong>quando</strong> a nota acontece e saber <strong>qual altura</strong> produzir. Primeiro bata o pulso; depois fale os nomes das notas; só então cante ou toque. Separar as tarefas reduz a ansiedade e deixa o erro visível.' },
+      { t: 'visual', v: { tipo: 'pauta', clave: 'sol', notas: ['C4', 'D4', 'E4', 'D4', 'C4'], rotular: true } },
+      { t: 'ouvir', rotulo: 'Ouça a linha antes de ler', midis: [60, 62, 64, 62, 60], dur: 0.42, modo: 'melodico' },
+      { t: 'lista', itens: ['Olhe o primeiro e o último som para perceber o ponto de partida e chegada.', 'Observe se a linha sobe, desce ou repete.', 'Conte o pulso sem interromper quando houver uma pausa.', 'Repita em andamento lento e aumente a velocidade apenas quando a forma estiver estável.'] },
+      { t: 'praticar', tipo: 'nota-na-pauta', nivel: 1 },
+      { t: 'ferramenta', slug: 'pauta' },
+    ],
+    refs: ['med', 'priolli'],
+  },
+  {
     slug: 'som-e-nota', titulo: 'Som, altura e nota', nivel: 'iniciante', prereq: [], termos: 'som altura duracao intensidade timbre frequencia',
     resumo: 'O que o ouvido percebe num som — altura, duração, intensidade e timbre — e o que é uma nota.',
     blocos: [
