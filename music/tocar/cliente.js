@@ -13,7 +13,7 @@
   var previewMode = query.has('previa'), previewReady = !previewMode;
   var source = { kind: 'study' }, catalogUI = null, chartTicket = 0, chartLoading = false;
   var remoteAudio = null, remoteTicket = 0, remoteLoading = false, saving = null;
-  var chart = Core.demoChart(), input = null, midiInput = null, midiHeld = Object.create(null), polyphonicLabel = '', polyphonicCandidate = '', polyphonicCount = 0, polyphonicHistory = [], demoContext = null, ctx = null, deviceRefresh = 0;
+  var chart = Core.demoChart(), input = null, midiInput = null, midiHeld = Object.create(null), polyphonicLabel = '', polyphonicCandidate = '', polyphonicCount = 0, polyphonicConfidence = 0, polyphonicHistory = [], demoContext = null, ctx = null, deviceRefresh = 0;
   var media = null, mediaUrl = null, mediaStarting = false, raf = null, nodes = [], generation = 0, dailySessions = 0;
   var referenceWallUntil = 0, outputWallUntil = 0;
   var sampler = null, samplerContext = null, samplerBank = null, soundLoading = false, scheduledSoundUntil = 0;
@@ -405,7 +405,7 @@
     pause(); state.mode = 'idle'; state.judge = null; state.learner = null; state.learnContext = null; state.learnElapsed = 0; state.learnStartedAt = null; state.guideUntil = 0;
     if (reset !== false) state.position = state.from;
     if (media) media.currentTime = chartToMedia(Math.max(0, state.position));
-    midiHeld = Object.create(null); polyphonicLabel = ''; polyphonicCandidate = ''; polyphonicCount = 0; polyphonicHistory = []; updateMidiChord(); updatePolyphonicLabel('');
+    midiHeld = Object.create(null); polyphonicLabel = ''; polyphonicCandidate = ''; polyphonicCount = 0; polyphonicConfidence = 0; polyphonicHistory = []; updateMidiChord(); updatePolyphonicLabel('');
     text('tj-mode', 'PRONTO PARA TOCAR'); text('tj-pause', 'Pausar'); updateScore(); updateTransport();
   }
   function updateMidiChord() {
@@ -419,14 +419,14 @@
       var chord = Acordes.identificar(values);
       label = chord ? 'Acorde reconhecido: ' + chord.symbol : 'Notas simultâneas: ' + values.map(noteName).join(' · ');
     } else if (values.length) label = 'Notas pressionadas: ' + values.map(noteName).join(' · ');
-    var node = $('tj-midi-chord'); if (node) { node.textContent = label; node.hidden = !label; }
+    var node = $('tj-midi-chord'); if (node) { node.textContent = label; node.hidden = !label; node.setAttribute('data-confidence', ''); }
   }
-  function updatePolyphonicLabel(label) {
-    if (!label) { polyphonicCandidate = ''; polyphonicCount = 0; polyphonicLabel = ''; }
+  function updatePolyphonicLabel(label, confidence) {
+    if (!label) { polyphonicCandidate = ''; polyphonicCount = 0; polyphonicLabel = ''; polyphonicConfidence = 0; }
     else if (label === polyphonicCandidate) polyphonicCount++;
     else { polyphonicCandidate = label; polyphonicCount = 1; }
-    if (polyphonicCount >= 2 && polyphonicLabel !== label) { polyphonicLabel = label; polyphonicHistory.unshift(label); polyphonicHistory = polyphonicHistory.slice(0, 5); }
-    var node = $('tj-midi-chord'); if (node && perfilDoInstrumento(state.instrument).layout !== 'piano') { node.textContent = polyphonicLabel; node.hidden = !polyphonicLabel; }
+    if (polyphonicCount >= 2 && polyphonicLabel !== label) { polyphonicLabel = label; polyphonicConfidence = Number.isFinite(confidence) ? confidence : 0; polyphonicHistory.unshift(label); polyphonicHistory = polyphonicHistory.slice(0, 5); }
+    var node = $('tj-midi-chord'); if (node && perfilDoInstrumento(state.instrument).layout !== 'piano') { node.textContent = polyphonicLabel; node.hidden = !polyphonicLabel; node.setAttribute('data-confidence', polyphonicConfidence >= 0.65 ? 'high' : polyphonicConfidence >= 0.4 ? 'medium' : 'low'); }
     var history = $('tj-midi-chord-history'); if (history && perfilDoInstrumento(state.instrument).layout !== 'piano') { history.replaceChildren.apply(history, polyphonicHistory.map(function (item) { return el('li', { text: item }); })); history.hidden = !polyphonicHistory.length; }
     var clear = $('tj-midi-chord-clear'); if (clear) clear.hidden = !polyphonicHistory.length;
   }
@@ -774,7 +774,7 @@
       var confidence = Math.round(Math.max(0, Math.min(1, poly.confidence)) * 100);
       chordLabel = recognized ? 'Acorde detectado: ' + recognized.symbol + ' · confiança ' + confidence + '%' : 'Notas simultâneas: ' + poly.midis.map(noteName).join(' · ') + ' · confiança ' + confidence + '%';
     }
-    updatePolyphonicLabel(chordLabel);
+    updatePolyphonicLabel(chordLabel, poly && poly.confidence);
     if (state.calibration && f.onset && f.hz && f.confidence >= 0.7) sampleCalibration(f);
     if (state.running && state.mode === 'learn' && state.learner && ctx && !(perfilDoChart(chart).layout === 'piano' || perfilDoChart(chart).layout === 'drums')) {
       if (!expiredLearn()) advanceLearn(state.learner.amostrar(f));
@@ -802,7 +802,7 @@
     state.connecting = s.estado === 'iniciando';
     text('tj-connection', s.estado === 'conectado' ? (s.nome || 'Entrada MIDI conectada') : s.mensagem || 'Entrada MIDI desligada');
     if (s.estado === 'conectado') msg('MIDI conectado. Toque seu instrumento para praticar.');
-    if (s.estado === 'erro' || s.estado === 'parado') { midiHeld = Object.create(null); polyphonicLabel = ''; polyphonicCandidate = ''; polyphonicCount = 0; polyphonicHistory = []; updateMidiChord(); updatePolyphonicLabel(''); if (state.mode === 'practice' || state.mode === 'learn') pause(); text('tj-meter', ''); }
+    if (s.estado === 'erro' || s.estado === 'parado') { midiHeld = Object.create(null); polyphonicLabel = ''; polyphonicCandidate = ''; polyphonicCount = 0; polyphonicConfidence = 0; polyphonicHistory = []; updateMidiChord(); updatePolyphonicLabel(''); if (state.mode === 'practice' || state.mode === 'learn') pause(); text('tj-meter', ''); }
     if (s.estado === 'conectado' || s.estado === 'parado') refreshDevices();
     updateTransport();
   }
