@@ -373,7 +373,8 @@
     state.guideUntil = ctx.currentTime + 0.8;
     referenceWallUntil = performance.now() / 1000 + 0.8;
     state.learner.bloquearAte(state.guideUntil);
-    instrumentNote(target, ctx.currentTime + 0.005, 0.45);
+    var grupo = typeof state.learner.grupo === 'function' ? state.learner.grupo() : [target];
+    grupo.forEach(function (nota) { instrumentNote(nota, ctx.currentTime + 0.005, 0.45); });
     learnTarget();
   }
   function judgeReset() { state.judge = Core.criarJulgador(chart, { offsetMs: state.offset * state.speed, from: state.from, to: state.to }); state.saved = false; }
