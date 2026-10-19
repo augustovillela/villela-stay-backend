@@ -537,3 +537,11 @@
 .lab-circulo-controles{border-color:#8db1cf;background:#f8fbff}
 .lab-circulo-toggle{font-weight:800;box-shadow:0 3px 0 #8db1cf}
 .lab-circulo-toggle[aria-pressed="true"]{background:#d97706;color:#fff;border-color:#92400e;box-shadow:0 3px 0 #92400e}
+
+/* Laboratório de ritmos originais */
+.pozzoli-exercicio{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:18px;margin:14px 0}
+.pozzoli-grade{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-height:92px;padding:18px 16px;border-radius:14px;background:linear-gradient(135deg,#14213d,#243b5a);color:#fff;font-size:42px;letter-spacing:3px;overflow-x:auto}
+.pozzoli-fig{display:inline-grid;place-items:center;min-width:42px;height:58px;color:#fff}
+.pozzoli-fig.pausa{color:#9fb4ca;opacity:.9}
+.pozzoli-oculto{font-size:28px;letter-spacing:5px;color:#bfd2e4}
+.pozzoli-exercicio .lab-dica{margin-bottom:0}

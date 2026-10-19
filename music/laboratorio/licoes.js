@@ -88,6 +88,7 @@ const LICOES = [
       { t: 'p', html: 'Bata palmas apenas no primeiro e no terceiro pulso, mantendo a contagem completa. Depois faça o mesmo no segundo e no quarto. Essa alternância ajuda a sentir onde o pulso está mesmo quando a música não toca em todas as batidas.' },
       { t: 'praticar', tipo: 'ritmo-completar', nivel: 2 },
       { t: 'ferramenta', slug: 'batidas' },
+      { t: 'ferramenta', slug: 'pozzoli-ritmos' },
     ],
     refs: ['med', 'priolli'],
   },
