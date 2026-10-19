@@ -215,7 +215,12 @@ ${l.refs && l.refs.length ? `<details class="lab-det"><summary>Para ler mais</su
       const seq = Array.isArray(b.midis[0]);
       return `<p class="lab-ouvir-bloco">${seq ? `<button type="button" class="lab-ouvir" data-sequencia="${esc(JSON.stringify(b.midis))}"><span aria-hidden="true">▶</span> ${esc(b.rotulo)}</button>` : ouvir(b.midis, { rotulo: b.rotulo, modo: b.modo, dur: b.dur, vel: b.vel, passo: b.passo })}</p>`;
     }
-    if (b.t === 'ferramenta') { const f = CAT.FERRAMENTAS.find((x) => x.slug === b.slug); return f ? `<p class="lab-ferr-link"><a href="/music/${f.ambiente}/${f.slug}"><span aria-hidden="true">${esc(f.icone)}</span> Experimente: ${esc(f.nome)}</a> — ${esc(f.resumo)}</p>` : ''; }
+    if (b.t === 'ferramenta') {
+      const f = CAT.FERRAMENTAS.find((x) => x.slug === b.slug) || CAT.REFERENCIAS.find((x) => x.slug === b.slug);
+      if (!f) return '';
+      const href = f.ambiente ? `/music/${f.ambiente}/${f.slug}` : `/music/referencia/${f.slug}`;
+      return `<p class="lab-ferr-link"><a href="${href}"><span aria-hidden="true">${esc(f.icone)}</span> Experimente: ${esc(f.nome)}</a> — ${esc(f.resumo)}</p>`;
+    }
     if (b.t === 'praticar') { const x = X.TIPOS[b.tipo]; return x ? `<div class="lab-mini-pratica" data-tipo="${esc(b.tipo)}" data-nivel="${esc(b.nivel || 1)}"><p><strong>Pratique:</strong> ${esc(x.nome)} (${esc(x.niveis[(b.nivel || 1) - 1])}) — <a href="/music/praticar/${esc(b.tipo)}?nivel=${esc(b.nivel || 1)}">abrir o exercício</a></p></div>` : ''; }
     return '';
   }
