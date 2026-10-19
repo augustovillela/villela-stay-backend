@@ -552,6 +552,8 @@ async function rodar({ t, secao, req, assert }) {
     const jsonSlugs = cursoJson.niveis.flatMap((n) => n.modulos.flatMap((m) => m.licoes.map((l) => l.slug)));
     assert.deepEqual(jsonSlugs.sort(), cursoSlugs.slice().sort(), 'JSON curricular acompanha o catálogo');
     assert.ok(cursoJson.niveis.every((n) => n.modulos.every((m) => m.licoes.every((l) => l.url === '/music/aprender/' + l.slug))), 'JSON expõe URLs canônicas das lições');
+    const livro = await req('GET', '/music/curso-teoria.pdf', { cru: true });
+    assert.equal(livro.status, 200); assert.match(livro.headers.get('content-type') || '', /application\/pdf/);
     const hp = await req('GET', '/music/aprender/harmonia-popular', { como: 'ana', cru: true }); assert.match(hp.texto, /data-sequencia=/); assert.match(hp.texto, /Db7/);
     const ti = await req('GET', '/music/aprender/treino-intervalos', { como: 'ana', cru: true }); assert.match(ti.texto, /\/music\/referencia\/intervalos/);
     const md = await req('GET', '/music/curso-teoria.md', { como: 'ana', cru: true }); assert.match(md.texto, /\[.*Piano e notas.*\]\(\/music\/explorar\/piano\)/);
