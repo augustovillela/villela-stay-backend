@@ -425,7 +425,7 @@
   };
 
   F['mandala-harmonica'] = function (alvo, st) {
-    st.tonica = st.tonica || 'C'; st.modo = st.modo || 'maior'; st.mandalaFonte = st.mandalaFonte || 'todos';
+    st.tonica = st.tonica || 'C'; st.modo = st.modo || 'maior'; st.mandalaFonte = st.mandalaFonte || 'todos'; st.mapaGlobal = !!st.mapaGlobal;
     function pc(n) { return N.pc(n); }
     function chave(f, id) { return pc(f) + ':' + id; }
     function adicionar(lista, f, id, grupo, grau) {
@@ -449,6 +449,14 @@
     }
     function relacao(a, b) { var comum = a.notas.filter(function (n) { return b.notas.indexOf(n) >= 0; }).length; return { comum: comum, distancia: a.notas.reduce(function (s, n) { return s + Math.min.apply(Math, b.notas.map(function (m) { var d = Math.abs(n - m); return Math.min(d, 12 - d); })); }, 0) / Math.max(1, a.notas.length) }; }
     function acs() { return (st.texto || '').split(/[;,\n]+/).map(function (x) { return A.ler(x.trim()); }).filter(Boolean); }
+    function renderGlobal() {
+      var campos = T.usuais(), mapa = el('div', { class: 'lab-mandala-global' });
+      var svgEl = el('svg', { class: 'lab-mandala-global-svg', viewBox: '0 0 920 420', role: 'img', 'aria-label': 'Mapa dos 24 campos harmônicos' });
+      var cx = 460, cy = 210, raio = 170; campos.forEach(function (campo, i) { var ang = i / campos.length * Math.PI * 2 - Math.PI / 2, x = cx + raio * Math.cos(ang), y = cy + raio * Math.sin(ang); var linha = el('line', { x1: cx, y1: cy, x2: x, y2: y, class: 'lab-mandala-global-linha' }); svgEl.appendChild(linha); });
+      svgEl.appendChild(el('circle', { cx: cx, cy: cy, r: 48, class: 'lab-mandala-global-centro' })); svgEl.appendChild(el('text', { x: cx, y: cy + 5, class: 'lab-mandala-global-centro-txt', txt: '24 CAMPOS' })); mapa.appendChild(svgEl);
+      var lista = el('div', { class: 'lab-mandala-global-lista' }); campos.forEach(function (campo, i) { var c = T.campo(campo.tonica, campo.modo, { tetrades: false }) || [], nome = T.nome(campo.tonica, campo.modo); var card = el('article', { class: 'lab-mandala-global-card' }, [el('h3', { txt: nome }), el('p', { class: 'lab-dica', txt: 'I · ii · iii · IV · V · vi · vii°' })]); var chips = el('div', { class: 'lab-atlas-chips' }); c.forEach(function (x) { var ac = { fundamental: x.fundamental, id: x.acorde, nome: x.simbolo || A.simbolo(x.fundamental, x.acorde), notas: A.notas(naOitava(x.fundamental, 4), x.acorde) || [] }; chips.appendChild(el('button', { type: 'button', class: 'lab-atlas-acorde ' + (x.funcao === 'dominante' ? 'global-dominante' : ''), title: nome + ' · ' + (x.romano || ''), txt: ac.nome, onclick: function () { tocarAcorde(ac); } })); }); card.appendChild(chips); lista.appendChild(card); }); mapa.appendChild(lista); alvo.appendChild(mapa); alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Mapa global: 24 campos harmônicos × 7 acordes = 168 acordes diatônicos. Ative o modo local para explorar vizinhos e caminhos de uma tonalidade.' }));
+    }
+    function tocarAcorde(x) { C.Som.tocar(x.notas.map(N.midi), { modo: 'harmonico', dur: 1.1 }); }
     function render() {
       C.gravarUrl(st); C.limpar(alvo);
       var txt = el('textarea', { rows: 2, class: 'lab-textarea', 'aria-label': 'Acordes da mandala' }); txt.value = st.texto || '';
@@ -456,7 +464,9 @@
       var tonica = el('input', { type: 'text', class: 'lab-input', value: C.nomeNota(tonicaDe(st)), 'aria-label': 'Tônica da mandala', placeholder: 'C' });
       var modo = el('select', { class: 'lab-select', 'aria-label': 'Modo da mandala' }); ['maior', 'menor'].forEach(function (m) { modo.appendChild(el('option', { value: m, txt: m === 'maior' ? 'Maior' : 'Menor', selected: st.modo === m })); });
       var filtro = el('select', { class: 'lab-select', 'aria-label': 'Filtro da rede' }); [['todos', 'Todos os grupos'], ['diatônico', 'Campo diatônico'], ['paralelo', 'Empréstimos paralelos'], ['dominante secundária', 'Dominantes secundárias'], ['vizinho', 'Vizinhos']].forEach(function (p) { filtro.appendChild(el('option', { value: p[0], txt: p[1], selected: st.mandalaFonte === p[0] })); });
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo' }, [el('span', { txt: 'Tônica' }), tonica]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Modo' }), modo]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Mostrar' }), filtro]), el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Progressão opcional' }), txt]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Importar JSON' }), arquivo]), el('button', { type: 'button', class: 'btn', txt: 'Gerar rede', onclick: function () { st.tonica = tonica.value; st.modo = modo.value; st.mandalaFonte = filtro.value; st.texto = txt.value; render(); } })]));
+      var global = el('input', { type: 'checkbox', 'aria-label': 'Mostrar todos os campos harmônicos' }); global.checked = st.mapaGlobal; global.onchange = function () { st.mapaGlobal = global.checked; render(); };
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo' }, [el('span', { txt: 'Tônica' }), tonica]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Modo' }), modo]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Mostrar' }), filtro]), el('label', { class: 'lab-check' }, [global, el('span', { txt: 'Mapa global (24 campos)' })]), el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Progressão opcional' }), txt]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Importar JSON' }), arquivo]), el('button', { type: 'button', class: 'btn', txt: 'Gerar rede', onclick: function () { st.tonica = tonica.value; st.modo = modo.value; st.mandalaFonte = filtro.value; st.texto = txt.value; render(); } })]));
+      if (st.mapaGlobal) { renderGlobal(); return; }
       var lista = rede().filter(function (n) { return st.mandalaFonte === 'todos' || n.grupos.indexOf(st.mandalaFonte) >= 0; });
       if (!lista.length) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Nenhum acorde encontrado para este filtro.' })); return; }
       var mandala = el('div', { class: 'lab-mandala lab-mandala-rede', role: 'application', 'aria-label': 'Rede harmônica com acordes vizinhos' });
