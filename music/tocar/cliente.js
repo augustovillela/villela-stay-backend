@@ -401,6 +401,10 @@
     text('tj-mode', 'PRONTO PARA TOCAR'); text('tj-pause', 'Pausar'); updateScore(); updateTransport();
   }
   function updateMidiChord() {
+    if (perfilDoInstrumento(state.instrument).layout !== 'piano') {
+      var nonPiano = $('tj-midi-chord'); if (nonPiano) { nonPiano.textContent = ''; nonPiano.hidden = true; }
+      return;
+    }
     var values = Object.keys(midiHeld).map(function (n) { return Number(n); }).filter(Number.isInteger).sort(function (a, b) { return a - b; });
     var label = '';
     if (values.length >= 3 && Acordes) {
