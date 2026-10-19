@@ -41,6 +41,18 @@ const LICOES = [
     refs: ['priolli'],
   },
   {
+    slug: 'escuta-ativa-e-pulso', titulo: 'Escuta ativa e pulso', nivel: 'iniciante', prereq: ['como-estudar-musica'], termos: 'escuta ativa pulso tempo ritmo silencio batida',
+    resumo: 'Aprenda a encontrar a batida, contar em ciclos e ouvir o silêncio entre os sons.',
+    blocos: [
+      { t: 'p', html: 'Antes de ler uma partitura, encontre o <strong>pulso</strong>: a batida regular que organiza o tempo. Ele pode estar explícito na bateria ou escondido na respiração de uma frase. Bata o pé sem acelerar e observe se os sons da música pousam em cima, antes ou depois dessa batida.' },
+      { t: 'ouvir', rotulo: 'Ouça oito pulsos iguais', midis: [60, 60, 60, 60, 60, 60, 60, 60], dur: 0.18, passo: 0.5, modo: 'melodico' },
+      { t: 'lista', itens: ['<strong>Pulso:</strong> a batida regular que você consegue marcar.', '<strong>Andamento:</strong> a velocidade do pulso.', '<strong>Ritmo:</strong> a combinação de durações e silêncios sobre o pulso.', '<strong>Compasso:</strong> um agrupamento recorrente de pulsos, como 2, 3 ou 4.'] },
+      { t: 'p', html: 'Faça três escutas da mesma música: na primeira marque apenas o pulso; na segunda conte grupos de quatro; na terceira tente cantar uma nota longa enquanto a batida continua. Se perder a contagem, volte ao silêncio e recomece sem acelerar.' },
+      { t: 'praticar', tipo: 'ritmo-completar', nivel: 1 },
+    ],
+    refs: ['med', 'priolli'],
+  },
+  {
     slug: 'som-e-nota', titulo: 'Som, altura e nota', nivel: 'iniciante', prereq: [], termos: 'som altura duracao intensidade timbre frequencia',
     resumo: 'O que o ouvido percebe num som — altura, duração, intensidade e timbre — e o que é uma nota.',
     blocos: [
