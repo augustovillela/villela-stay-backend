@@ -5,7 +5,7 @@
  * continua em licoes.js; este arquivo descreve percurso, objetivos e estado. */
 const NIVEIS = [
   { id: 'primeiros-passos', ordem: 0, nome: 'Primeiros passos', resumo: 'Comece do zero: som, notas, nomes e um jeito de estudar música.', status: 'disponivel', modulos: [
-    { id: 'som-e-mapa', nome: 'Som e mapa musical', objetivo: 'Criar uma rotina de estudo, encontrar o pulso, cantar e reconhecer altura, duração e o nome das notas.', licoes: ['como-estudar-musica', 'escuta-ativa-e-pulso', 'cantar-e-localizar-notas', 'som-e-nota', 'alfabeto-musical', 'revisao-primeiros-passos'] },
+    { id: 'som-e-mapa', nome: 'Som e mapa musical', objetivo: 'Criar uma rotina de estudo, encontrar o pulso, cantar e reconhecer altura, duração e o nome das notas.', guias: ['como-estudar-musica', 'escuta-ativa-e-pulso', 'cantar-e-localizar-notas', 'som-e-nota', 'alfabeto-musical'], licoes: ['como-estudar-musica', 'escuta-ativa-e-pulso', 'cantar-e-localizar-notas', 'som-e-nota', 'alfabeto-musical', 'revisao-primeiros-passos'] },
   ] },
   { id: 'fundamentos', ordem: 1, nome: 'Fundamentos da linguagem', resumo: 'Leia o básico e sinta o pulso antes de tocar.', status: 'disponivel', modulos: [
     { id: 'leitura-e-ritmo', nome: 'Leitura e ritmo', objetivo: 'Ler pauta, claves, figuras, pausas, pulso e compasso.', licoes: ['primeira-leitura-ritmica', 'primeira-leitura-melodica', 'tons-e-semitons', 'pauta-e-claves', 'figuras-e-pausas', 'pulso-e-compasso'] },
