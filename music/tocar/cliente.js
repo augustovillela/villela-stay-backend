@@ -410,7 +410,7 @@
   }
   function updateMidiChord() {
     if (perfilDoInstrumento(state.instrument).layout !== 'piano') {
-      var nonPiano = $('tj-midi-chord'); if (nonPiano) { nonPiano.textContent = ''; nonPiano.hidden = true; }
+      var nonPiano = $('tj-midi-chord'); if (nonPiano) { nonPiano.textContent = ''; nonPiano.hidden = true; nonPiano.setAttribute('data-confidence', ''); }
       return;
     }
     var values = Object.keys(midiHeld).map(function (n) { return Number(n); }).filter(Number.isInteger).sort(function (a, b) { return a - b; });
