@@ -96,6 +96,27 @@
 .lab-trilha li.fechada .lab-trilha-n{background:#94A3B8}
 .lab-trilha-t{font-weight:600;color:var(--navy)}
 .lab-trilha-r{font-size:14px;color:var(--suave)}
+.curso-trilhas{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0 24px}
+.curso-trilhas div{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:4px}
+.curso-trilhas strong{color:var(--navy)}
+.curso-trilhas span{font-size:14px;color:var(--suave)}
+.curso-nivel{margin:28px 0;padding:18px;background:#F8FAFC;border:1px solid var(--borda);border-radius:var(--raio)}
+.curso-nivel-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.curso-nivel-cab h2{margin:2px 0 5px}
+.curso-nivel-cab p{margin:0;color:var(--suave)}
+.curso-status{white-space:nowrap;border-radius:999px;padding:5px 10px;font:600 12px Inter,sans-serif;background:#E8F5EE;color:#0F5D3C}
+.curso-status-em-construcao{background:#FEF3C7;color:#7A4E06}
+.curso-status-planejado{background:#E2E8F0;color:#475569}
+.curso-modulos{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:16px}
+.curso-modulo{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:14px}
+.curso-modulo h3{margin:0 0 5px;color:var(--navy);font-size:18px}
+.curso-modulo p{font-size:14px;color:var(--suave);margin:0 0 8px}
+.curso-modulo ul{list-style:none;padding:0;margin:0}
+.curso-modulo li{border-top:1px solid #E2E8F0;padding:8px 0;display:flex;flex-direction:column;gap:2px}
+.curso-modulo li a{font-weight:600;color:var(--navy)}
+.curso-modulo li span{font-size:13px;color:var(--suave)}
+.curso-planejada{color:#64748B;font-style:italic}
+@media (max-width:640px){.curso-nivel-cab{display:block}.curso-status{display:inline-block;margin-top:10px}}
 .lab-licao{max-width:820px}
 .lab-licao p{font-size:17px}
 .lab-ferr-link{background:#fff;border:1px dashed var(--navy);border-radius:10px;padding:10px 14px}

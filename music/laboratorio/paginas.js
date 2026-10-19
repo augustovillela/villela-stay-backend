@@ -10,6 +10,7 @@ const { esc, pt, ouvir, pagina, naoAchou, visual, cartoes, portao, N, E, A, T, I
 const TE = require('./paginas-teoria');
 const RF = require('./paginas-referencia');
 const L = require('./licoes');
+const CT = require('./curso-teoria');
 const ACESSO = require('./acesso');
 
 // ------------------------------------------------------------------
@@ -51,6 +52,7 @@ function registrar(app, { opcional, contextoDe }) {
 <div class="lab-busca-linha"><input id="lab-q" name="q" type="search" placeholder="Ex.: ré dórico, G7(9), terça maior, campo harmônico de Mi" autocomplete="off" aria-describedby="lab-q-dica">
 <button class="btn" type="submit">Buscar</button></div><p id="lab-q-dica" class="lab-dica">Aceita nomes em português ou em cifra, com ou sem acento.</p>
 <ul class="lab-sugestoes" id="lab-sugestoes" aria-live="polite"></ul></form></header>
+<p class="lab-destaque-tutor"><a href="/music/curso-teoria"><span aria-hidden="true">🎓</span> <strong>Novo: Curso de teoria musical</strong> — do zero ao avançado, em níveis, módulos e três trilhas de aprendizagem.</a></p>
 <section class="lab-caminhos" aria-labelledby="caminhos"><h2 id="caminhos" class="sr">Três caminhos</h2>
 <a class="lab-caminho" href="/music/explorar"><span class="lab-caminho-ico" aria-hidden="true">⚡</span><strong>Usar agora</strong><span>Afinar, contar BPM, ver um acorde, transpor. Abre direto, sem cadastro.</span></a>
 <a class="lab-caminho" href="/music/aprender"><span class="lab-caminho-ico" aria-hidden="true">📘</span><strong>Aprender passo a passo</strong><span>Uma trilha na ordem certa, do som ao campo harmônico, com prática em cada lição.</span></a>
@@ -114,9 +116,24 @@ ${relacionados(f.slug)}`;
   });
 
   // ------------------------------------------------------------ aprender
+  app.get('/music/curso-teoria', opcional, (req, res) => {
+    const ctx = ctxDe(req);
+    const ls = licoesComAcesso(ctx);
+    const porSlug = Object.fromEntries(ls.map((l) => [l.slug, l]));
+    const statusNome = { disponivel: 'Conteúdo disponível', 'em-construcao': 'Em desenvolvimento', planejado: 'Próxima etapa' };
+    const niveis = CT.CURSO.niveis.map((n) => {
+      const total = n.modulos.reduce((a, m) => a + m.licoes.length, 0);
+      const prontas = n.modulos.reduce((a, m) => a + m.licoes.filter((s) => porSlug[s]).length, 0);
+      const modulos = n.modulos.map((m) => `<article class="curso-modulo"><h3>${esc(m.nome)}</h3><p>${esc(m.objetivo)}</p>${m.licoes.length ? `<ul>${m.licoes.map((s) => { const l = porSlug[s]; return l ? `<li><a href="/music/aprender/${esc(s)}">${esc(l.titulo)}</a><span>${esc(l.resumo)}</span></li>` : `<li class="curso-planejada"><span>${esc(s.replace(/-/g, ' '))}</span><span>lição planejada</span></li>`; }).join('')}</ul>` : '<p class="curso-planejada">Projeto final será desenvolvido após os fundamentos.</p>'}</article>`).join('');
+      return `<section class="curso-nivel" id="nivel-${esc(n.id)}"><div class="curso-nivel-cab"><div><p class="lab-cab-tipo">Nível ${n.ordem}</p><h2>${esc(n.nome)}</h2><p>${esc(n.resumo)}</p></div><span class="curso-status curso-status-${esc(n.status)}">${esc(statusNome[n.status] || n.status)} · ${prontas}/${total} lições</span></div><div class="curso-modulos">${modulos}</div></section>`;
+    }).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso editorial · versão ${esc(CT.CURSO.versao)}</p><h1>${esc(CT.CURSO.titulo)}</h1><p class="lab-lead">${esc(CT.CURSO.descricao)} ${esc(CT.CURSO.subtitulo)}.</p><p class="lab-nota-convencao">O mesmo currículo será a base do curso interativo do Musique, do futuro livro e da formação da Villela Academy. As lições já publicadas abrem no formato de texto, visualização, áudio e prática.</p></header><section aria-labelledby="trilhas"><h2 id="trilhas">Três trilhas em cada nível</h2><div class="curso-trilhas">${CT.CURSO.trilhas.map((t) => `<div><strong>${esc(t.nome)}</strong><span>${esc(t.resumo)}</span></div>`).join('')}</div></section>${niveis}<p class="lab-nota-convencao"><a href="/music/aprender">Ver a trilha linear de lições →</a></p>`;
+    pagina(res, { titulo: 'Curso de teoria musical — do zero ao avançado | Musique', descricao: CT.CURSO.descricao, caminho: '/music/curso-teoria', corpo, trilha: [['Aprender', '/music/aprender'], ['Curso completo']] });
+  });
+
   app.get('/music/aprender', opcional, (req, res) => {
     const ls = licoesComAcesso(ctxDe(req));
-    const corpo = `<header class="lab-cab"><h1>Aprender passo a passo</h1><p class="lab-lead">Uma trilha na ordem dos pré-requisitos. Cada lição explica, mostra, toca e termina num exercício. As ${ACESSO.LICOES_ABERTAS} primeiras são abertas; a trilha completa faz parte da assinatura.</p></header>
+    const corpo = `<header class="lab-cab"><h1>Aprender passo a passo</h1><p class="lab-lead">Uma trilha na ordem dos pré-requisitos. Cada lição explica, mostra, toca e termina num exercício. As ${ACESSO.LICOES_ABERTAS} primeiras são abertas; a trilha completa faz parte da assinatura.</p><p><a class="btn" href="/music/curso-teoria">Ver o curso completo por níveis</a></p></header>
 <ol class="lab-trilha">${ls.map((l) => `<li class="${l.aberta ? '' : 'fechada'}"><a href="/music/aprender/${esc(l.slug)}"><span class="lab-trilha-n">${l.ordem}</span>
 <span class="lab-trilha-t">${esc(l.titulo)} ${l.aberta ? '' : '<span class="lab-selo">assinatura</span>'}</span><span class="lab-trilha-r">${esc(l.resumo)} <em>${esc(l.nivel)}</em></span></a></li>`).join('')}</ol>
 <p class="lab-nota-convencao">Quer ir direto a um assunto? As <a href="/music/referencia">referências</a> são abertas e cobrem cada tema.</p>`;
@@ -362,7 +379,7 @@ function relacionados(slug) {
 
 /** URLs públicas e CANÔNICAS para o sitemap (nunca as enarmônicas). */
 function urlsDoSitemap() {
-  const u = ['/laboratorio', '/aprender', '/explorar', '/criar', '/praticar', '/tutor-braco', '/tocar', '/transcrever'].concat(require('./separar').SUSPENSA ? [] : ['/separar']).concat([ '/jogar', '/referencia', '/ensinar', '/escalas', '/acordes', '/intervalos', '/notas']).map((x) => '/music' + x);
+  const u = ['/laboratorio', '/aprender', '/curso-teoria', '/explorar', '/criar', '/praticar', '/tutor-braco', '/tocar', '/transcrever'].concat(require('./separar').SUSPENSA ? [] : ['/separar']).concat([ '/jogar', '/referencia', '/ensinar', '/escalas', '/acordes', '/intervalos', '/notas']).map((x) => '/music' + x);
   CAT.FERRAMENTAS.forEach((f) => u.push(`/music/${f.ambiente}/${f.slug}`));
   CAT.REFERENCIAS.forEach((r) => u.push('/music/referencia/' + r.slug));
   CAT.JOGOS.forEach((j) => u.push('/music/jogar/' + j.slug));
