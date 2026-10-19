@@ -477,3 +477,8 @@
 .lab-campo-seta{padding:0 2px;color:#315b80;background:#fff}
 .lab-mandala-global-modulacao{stroke:#d97706;stroke-width:3;opacity:.75;stroke-dasharray:7 5}
 .lab-mandala-global-legenda{fill:#8a4b08;text-anchor:middle;font:600 11px Inter,system-ui,sans-serif}
+.lab-mandala-global-relativa{stroke:#d4a72c;stroke-width:4;opacity:.9}
+.lab-mandala-global-no{fill:#fff;stroke:#315b80;stroke-width:2}
+.lab-mandala-global-no.maior{fill:#e8f1f8;stroke:#315b80}
+.lab-mandala-global-no.menor{fill:#fff7df;stroke:#d97706}
+.lab-mandala-global-no-txt{fill:#14213d;text-anchor:middle;font:700 9px Inter,system-ui,sans-serif}
