@@ -116,6 +116,23 @@ ${relacionados(f.slug)}`;
   });
 
   // ------------------------------------------------------------ aprender
+  app.get('/music/curso-teoria.json', opcional, (req, res) => {
+    const ls = licoesComAcesso(ctxDe(req));
+    const porSlug = Object.fromEntries(ls.map((l) => [l.slug, l]));
+    const documento = {
+      schema: 'musique.course.v1',
+      id: CT.CURSO.id,
+      titulo: CT.CURSO.titulo,
+      subtitulo: CT.CURSO.subtitulo,
+      versao: CT.CURSO.versao,
+      descricao: CT.CURSO.descricao,
+      trilhas: CT.CURSO.trilhas,
+      formatosPlanejados: ['musique-html', 'livro-markdown', 'villela-academy-json'],
+      niveis: CT.CURSO.niveis.map((n) => ({ ...n, modulos: n.modulos.map((m) => ({ ...m, licoes: m.licoes.map((slug) => { const l = porSlug[slug]; return l ? { slug, titulo: l.titulo, resumo: l.resumo, nivel: l.nivel, prereq: l.prereq, url: `/music/aprender/${slug}` } : { slug, estado: 'planejada' }; }) })) })),
+    };
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+
   app.get('/music/curso-teoria', opcional, (req, res) => {
     const ctx = ctxDe(req);
     const ls = licoesComAcesso(ctx);
