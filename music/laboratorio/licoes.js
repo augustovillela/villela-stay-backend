@@ -29,6 +29,18 @@ const REFS = {
 
 const LICOES = [
   {
+    slug: 'como-estudar-musica', titulo: 'Como estudar música', nivel: 'iniciante', prereq: [], termos: 'estudo rotina pratica escuta instrumento teoria objetivo',
+    resumo: 'Um método simples para alternar ouvir, entender, praticar e registrar o que você aprendeu.',
+    blocos: [
+      { t: 'p', html: 'Estudar música não é decorar uma lista de nomes. É repetir um ciclo: <strong>ouvir</strong> uma ideia, <strong>entender</strong> como ela se organiza, <strong>tocar ou cantar</strong> devagar e depois <strong>usar</strong> a ideia numa música. O curso acompanha esse ciclo em todas as etapas.' },
+      { t: 'lista', itens: ['<strong>Escute:</strong> cante ou toque antes de tentar explicar.', '<strong>Observe:</strong> localize notas, pulsos, acordes e repetições.', '<strong>Pratique:</strong> reduza o andamento e faça poucas repetições atentas.', '<strong>Registre:</strong> escreva uma frase sobre o que funcionou e o que precisa voltar.'] },
+      { t: 'p', html: 'Uma sessão curta e frequente costuma render mais que uma sessão longa e distraída. Comece com cinco minutos de escuta, dez de uma habilidade específica e cinco aplicando-a a uma música. Ajuste os tempos ao seu dia: a constância é parte da técnica.' },
+      { t: 'visual', v: { tipo: 'progressao', simbolos: ['ouvir', 'entender', 'praticar', 'aplicar'], graus: ['1', '2', '3', '4'], legenda: 'O ciclo de estudo do Musique.' } },
+      { t: 'p', html: 'Ao terminar, não procure apenas a sensação de ter acertado. Pergunte: <em>o que consigo fazer agora que não conseguia antes?</em> Essa resposta orienta a próxima lição e transforma prática em progresso.' },
+    ],
+    refs: ['priolli'],
+  },
+  {
     slug: 'som-e-nota', titulo: 'Som, altura e nota', nivel: 'iniciante', prereq: [], termos: 'som altura duracao intensidade timbre frequencia',
     resumo: 'O que o ouvido percebe num som — altura, duração, intensidade e timbre — e o que é uma nota.',
     blocos: [
