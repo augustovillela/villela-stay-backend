@@ -541,6 +541,7 @@ async function rodar({ t, secao, req, assert }) {
     for (const l of L.LICOES.slice(15)) { const r = await req('GET', '/music/aprender/' + l.slug, { como: 'ana', cru: true }); assert.equal(r.status, 200, l.slug); assert.ok(!/undefined|NaN/.test(r.texto.replace(/<script[\s\S]*?<\/script>/g, '')), l.slug); }
     const hp = await req('GET', '/music/aprender/harmonia-popular', { como: 'ana', cru: true }); assert.match(hp.texto, /data-sequencia=/); assert.match(hp.texto, /Db7/);
     const ti = await req('GET', '/music/aprender/treino-intervalos', { como: 'ana', cru: true }); assert.match(ti.texto, /\/music\/referencia\/intervalos/);
+    const md = await req('GET', '/music/curso-teoria.md', { como: 'ana', cru: true }); assert.match(md.texto, /\[.*Piano e notas.*\]\(\/music\/explorar\/piano\)/);
     const cp = await req('GET', '/music/aprender/contraponto', { como: 'ana', cru: true }); assert.match(cp.texto, /class="lab-svg lab-pauta"/);
     const X2 = X.LISTA.map((x) => x.id); ['leitura-primeira-vista', 'ditado-ritmico', 'ditado-duas-vozes', 'cadencia-ouvido', 'transposicao', 'escala-no-braco'].forEach((id) => assert.ok(X2.includes(id), id));
     assert.match(PG.clienteJs(), /Modo aula/);
