@@ -263,8 +263,11 @@ def diagram(kind, label):
     itens = [plain(s) for s in label.split('|')] if kind == 'progressao' else [plain(label)]
     w, h = PAGE_W - 40*mm, 38*mm
     d = Drawing(w, h)
-    gap = 7*mm
-    bw = max(24*mm, (w - gap * (len(itens) + 1)) / max(1, len(itens)))
+    # O formato 16 x 23 cm tem uma área útil mais estreita que A4. O
+    # espaçamento e a largura mínima são calculados para que cinco etapas
+    # também caibam inteiras, sem cortar o último cartão na margem direita.
+    gap = 4*mm
+    bw = max(16*mm, (w - gap * (len(itens) + 1)) / max(1, len(itens)))
     colors_nodes = [NAVY, GOLD, colors.HexColor('#3A4A66'), colors.HexColor('#6B5B95'), colors.HexColor('#9B5C4A')]
     for i, item in enumerate(itens):
         x = gap + i * (bw + gap)
