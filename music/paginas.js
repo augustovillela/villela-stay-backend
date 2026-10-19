@@ -265,6 +265,7 @@ const CSS_TOPO = `.mq-topo{background:#1B2A4A;color:#fff}.mq-topo *{box-sizing:b
 const LAB_SECOES = /^\/music\/(laboratorio|aprender|explorar|praticar|jogar|criar|referencia|escalas|acordes|tonalidades|intervalos|notas|ensinar|buscar|atividade)(\/|$)/;
 function secaoDe(caminho) {
   const c = String(caminho || '');
+  if (/^\/music\/curso-teoria(\/|$)/.test(c)) return 'teoria';
   if (LAB_SECOES.test(c)) return 'laboratorio';
   if (/^\/music\/(cifras-publicas|p\/|c\/)/.test(c)) return 'cifras';
   if (/^\/music\/ferramentas/.test(c)) return 'ferramentas';
@@ -274,7 +275,7 @@ function cabecalho({ noApp = false, atual = '' } = {}) {
   const item = (id, url, txt) => `<a href="${url}"${atual === id ? ' aria-current="page"' : ''}>${txt}</a>`;
   return `<style>${CSS_TOPO}</style><header class="mq-topo"><div class="mq-w">
   <a class="mq-marca" href="/music">Musique<small>por Villela Music</small></a>
-  <nav aria-label="Musique">${item('laboratorio', '/music/laboratorio', 'Laboratório')} ${item('cifras', '/music/cifras-publicas', 'Cifras')} ${item('ferramentas', '/music/ferramentas', 'Ferramentas')}
+  <nav aria-label="Musique">${item('teoria', '/music/curso-teoria', 'Teoria')} ${item('laboratorio', '/music/laboratorio', 'Laboratório')} ${item('cifras', '/music/cifras-publicas', 'Cifras')} ${item('ferramentas', '/music/ferramentas', 'Ferramentas')}
        ${noApp ? '<a href="/music/app#conta">Minha conta</a>' : '<a href="/music/entrar">Entrar</a>'}</nav>
 </div></header>`;
 }
