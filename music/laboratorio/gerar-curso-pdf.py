@@ -8,7 +8,6 @@ import sys
 import unicodedata
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
-from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (BaseDocTemplate, Frame, PageTemplate, Paragraph,
@@ -17,7 +16,10 @@ from reportlab.platypus import (BaseDocTemplate, Frame, PageTemplate, Paragraph,
 from reportlab.platypus.tableofcontents import TableOfContents
 from reportlab.graphics.shapes import Drawing, Rect, String, Line, Polygon, Ellipse
 
-PAGE_W, PAGE_H = A4
+# Formato de corte solicitado para impressão na UICLAP: 16 x 23 cm.
+# As dimensões são mantidas em pontos para que capa, cabeçalho, rodapé,
+# mapas e molduras usem exatamente a mesma área útil do documento.
+PAGE_W, PAGE_H = 160 * mm, 230 * mm
 NAVY = colors.HexColor('#1B2A4A')
 GOLD = colors.HexColor('#C9A227')
 PALE = colors.HexColor('#F8F9FA')
@@ -355,7 +357,7 @@ def build(data, output):
         'diagram': ParagraphStyle('diagram', parent=ss['BodyText'], fontSize=9, leading=12, textColor=NAVY, alignment=TA_CENTER),
         'quote': ParagraphStyle('quote', parent=ss['BodyText'], fontSize=11, leading=16, textColor=NAVY, leftIndent=10, borderColor=GOLD, borderWidth=2, borderPadding=8, spaceBefore=8, spaceAfter=10),
     }
-    doc = CourseDocTemplate(output, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=18*mm, bottomMargin=20*mm, title='Teoria musical completa - Musique', author='Equipe Musique')
+    doc = CourseDocTemplate(output, pagesize=(PAGE_W, PAGE_H), leftMargin=20*mm, rightMargin=20*mm, topMargin=18*mm, bottomMargin=20*mm, title='Teoria musical completa - Musique', author='Equipe Musique')
     doc.addPageTemplates([
         PageTemplate(id='cover', frames=[Frame(0, 0, PAGE_W, PAGE_H, id='cover-frame')], onPage=cover_page),
         PageTemplate(id='normal', frames=[Frame(20*mm, 19*mm, PAGE_W-40*mm, PAGE_H-37*mm, id='f')], onPage=header_footer),
