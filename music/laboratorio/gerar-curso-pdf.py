@@ -90,6 +90,13 @@ def build(data, output):
                     block.append(Paragraph('<b>Prática</b>', styles['small']))
                     block.extend([Paragraph('• ' + x, styles['body']) for x in bullets[:6]])
                 story.append(KeepTogether(block))
+                # Cada aula ganha uma página de ateliê própria. Ela não é
+                # enchimento: transforma a leitura em uma entrega observável
+                # e deixa espaço físico para o estudante registrar tentativas.
+                story += [PageBreak(), Paragraph(f"Ateliê · {l['titulo']}", styles['h1']), Paragraph('Volte ao conceito, faça o exercício sem consultar a resposta e registre evidências. Use esta página para anotar notas, contagens, decisões de arranjo ou perguntas para a próxima sessão.', styles['body']), Paragraph('<b>Checklist de saída</b>', styles['h2'])]
+                for item in ['Consigo explicar a ideia com minhas palavras.', 'Consigo reconhecer ou cantar o exemplo.', 'Consigo aplicar a ideia em uma música ou exercício.', 'Registrei um erro, uma descoberta e o próximo passo.']:
+                    story.append(Paragraph('□ ' + item, styles['body']))
+                story += [Spacer(1, 5*mm), Paragraph('<b>Registro livre</b>', styles['h2']), Table([['', ''], ['', ''], ['', ''], ['', '']], colWidths=[(PAGE_W-40*mm)/2]*2, rowHeights=[18*mm]*4, style=TableStyle([('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#D9E2EC')), ('BACKGROUND', (0,0), (-1,-1), colors.white)])), PageBreak()]
         story.append(PageBreak())
     story += [Paragraph('Projeto final', styles['h1']), Paragraph('Escolha uma música ou crie uma peça curta. Registre tonalidade, andamento, compasso, forma, progressão harmônica, motivo melódico, dinâmica e uma revisão concreta. O objetivo é justificar escolhas e produzir algo que outra pessoa consiga ouvir, ler ou tocar.', styles['body']), Spacer(1, 8*mm), diagram('progressao', 'Ouvir|Analisar|Decidir|Tocar|Revisar'), Paragraph('O estudo continua depois do último capítulo: repertório, arranjo, composição, percepção e tecnologia são caminhos que se cruzam.', styles['quote'])]
     doc.build(story)

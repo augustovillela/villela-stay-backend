@@ -474,5 +474,8 @@ const LICOES = [
 ];
 
 const POR_SLUG = Object.fromEntries(LICOES.map((l) => [l.slug, l]));
+const EXPANDIDAS = require('./licoes-expandidas').EXPANDIDAS;
+const TODAS_LICOES = LICOES.concat(EXPANDIDAS);
+const POR_SLUG_COMPLETO = Object.fromEntries(TODAS_LICOES.map((l) => [l.slug, l]));
 
-module.exports = { LICOES, POR_SLUG, AUTORIA, REFS };
+module.exports = { LICOES: TODAS_LICOES, POR_SLUG: POR_SLUG_COMPLETO, AUTORIA, REFS };

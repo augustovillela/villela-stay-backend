@@ -36,6 +36,20 @@ const NIVEIS = [
   ] },
 ];
 
+// A primeira edição ampliada acrescenta prática deliberada e conteúdos que
+// não cabiam na trilha inicial. Os slugs continuam no mesmo catálogo para
+// alimentar página, livro e Academy sem duplicar texto.
+NIVEIS[0].modulos.push({ id: 'rotina-e-escuta', nome: 'Rotina, corpo e escuta', objetivo: 'Criar atenção, memória e vocabulário a partir do som.', licoes: ['rotina-de-escuta', 'mapa-do-instrumento', 'pulso-no-corpo', 'pergunta-musical', 'diario-de-pratica'] });
+NIVEIS[1].modulos.push({ id: 'som-e-fisica', nome: 'Som e matéria', objetivo: 'Relacionar fonte, frequência, envelope, ruído e silêncio.', licoes: ['timbre-e-fonte', 'frequencia-e-altura', 'envelope-do-som', 'ruido-e-silencio', 'notas-e-oitavas', 'enharmonia-na-pratica'] });
+NIVEIS[1].modulos.push({ id: 'ritmo-aplicado', nome: 'Ritmo aplicado', objetivo: 'Internalizar subdivisão, síncope, anacruse e polirritmia.', licoes: ['subdivisao-binaria', 'subdivisao-ternaria', 'sincopa-e-contratempo', 'anacruse-e-levare', 'quialteras', 'polirritmia-basica'] });
+NIVEIS[2].modulos.push({ id: 'leitura-e-ditado', nome: 'Leitura e ditado', objetivo: 'Ler armaduras, claves, intervalos e escrever o que se ouve.', licoes: ['leitura-de-armaduras', 'claves-e-registro', 'intervalo-numero-qualidade', 'inversao-de-intervalos', 'solfejo-movel', 'ditado-ritmico-progressivo', 'ditado-harmonico'] });
+NIVEIS[3].modulos.push({ id: 'escalas-aplicadas', nome: 'Escalas em contexto', objetivo: 'Construir, ouvir e transpor escalas, modos e tonalidades.', licoes: ['escala-maior-construcao', 'menor-natural', 'menor-harmonica-melodica', 'modos-e-nota-caracteristica', 'pentatonica-e-blues', 'circulo-quintas-aplicado', 'transposicao-metodo'] });
+NIVEIS[4].modulos.push({ id: 'harmonia-na-pratica', nome: 'Harmonia na prática', objetivo: 'Construir acordes, funções, cadências e condução.', licoes: ['triades-e-inversoes', 'tetrades-e-guia', 'funcoes-tonais', 'cadencias', 'dominantes-secundarias', 'emprestimo-modal', 'substituicao-tritono', 'extensoes-e-tensoes', 'modulacao-pivot'] });
+NIVEIS[5].modulos.push({ id: 'melodia-e-forma', nome: 'Melodia, forma e textura', objetivo: 'Desenvolver ideias melódicas e compreender sua organização.', licoes: ['melodia-e-acorde', 'motivo-e-variacao', 'frase-periodo', 'forma-da-cancao', 'notas-nao-harmonicas', 'contraponto-especies', 'quatro-vozes', 'textura-musical'] });
+NIVEIS[7].modulos.push({ id: 'arranjo-real', nome: 'Arranjo real', objetivo: 'Transformar funções musicais em partes tocáveis.', licoes: ['groove-e-secao-ritmica', 'voicings-para-teclado', 'violao-e-guitarra-arranjo', 'cordas-dedilhadas-no-arranjo', 'voz-e-tessitura', 'bateria-e-mapa-vertical', 'arranjo-por-camadas'] });
+NIVEIS[8].modulos.push({ id: 'arquivos-e-escuta', nome: 'Arquivos, MIDI e produção', objetivo: 'Usar ferramentas digitais sem perder a escuta musical.', licoes: ['midi-e-eventos', 'musicxml-e-partitura', 'piano-roll-e-groove', 'escuta-critica-gravacao'] });
+NIVEIS[9].modulos.push({ id: 'autoria-e-portfolio', nome: 'Autoria e portfólio', objetivo: 'Criar, analisar, revisar e apresentar trabalho autoral.', licoes: ['motivo-para-composicao', 'improvisacao-com-alvos', 'analise-completa-repertorio', 'projeto-composicao-arranjo', 'portfolio-e-autoavaliacao'] });
+
 const CURSO = {
   id: 'teoria-musical-completa',
   titulo: 'Teoria musical completa',
