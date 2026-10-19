@@ -85,9 +85,9 @@
       if (action.tagName === 'BUTTON') action.addEventListener('click', function () {
         var estudo = Estudos.obter(item.id); if (!estudo) return;
         campaignState = item.status === 'completed' ? Campaign.criar(campaignState) : Campaign.iniciar(campaignState, item.id);
-        saveCampaign(); $('tj-study').value = item.id; chooseChart(estudo, { kind: 'study', instrument: state.instrument, objective: item.objective }); renderCampaign(); msg(item.status === 'in_progress' ? 'Campanha retomada. Continue do ponto salvo.' : 'Etapa da campanha carregada.');
+        saveCampaign(); $('tj-study').value = item.id; $('tj-speed').value = String(item.adaptive.speed); state.speed = item.adaptive.speed; chooseChart(estudo, { kind: 'study', instrument: state.instrument, objective: item.objective }); renderCampaign(); msg((item.status === 'in_progress' ? 'Campanha retomada. ' : 'Etapa da campanha carregada. ') + 'Velocidade adaptativa sugerida: ' + item.adaptive.label + ' — ' + item.adaptive.reason + '.');
       });
-      list.appendChild(el('li', { class: 'tj-campaign-item ' + item.status }, [el('div', {}, [el('strong', { text: item.order + '. ' + item.title }), el('small', { text: item.challenge.level + ' · ' + item.challenge.objective }), el('small', { class: 'tj-campaign-reward', text: (item.reward.unlocked ? '✓ ' : '✦ ') + item.reward.title })]), action]));
+      list.appendChild(el('li', { class: 'tj-campaign-item ' + item.status }, [el('div', {}, [el('strong', { text: item.order + '. ' + item.title }), el('small', { text: item.challenge.level + ' · ' + item.challenge.objective }), el('small', { class: 'tj-campaign-adaptive', text: 'Sugestão: ' + item.adaptive.label + ' · ' + item.adaptive.reason }), el('small', { class: 'tj-campaign-reward', text: (item.reward.unlocked ? '✓ ' : '✦ ') + item.reward.title })]), action]));
     });
     panel.appendChild(list);
   }
@@ -96,7 +96,7 @@
     var item = studies.find(function (study) { return study.chart.id === chart.id; }); if (!item) return;
     var fullArrangement = state.from <= 1e-6 && state.to >= chart.duration - 1e-6;
     var resumo = state.judge && state.mode === 'practice' ? state.judge.resumo() : null;
-    try { campaignState = Campaign.atualizar(campaignState, item.id, { completed: !!completed && fullArrangement, position: completed && fullArrangement ? chart.duration : state.position, bestStreak: resumo && resumo.bestStreak }); saveCampaign(); renderCampaign(); } catch (_) {}
+    try { campaignState = Campaign.atualizar(campaignState, item.id, { completed: !!completed && fullArrangement, position: completed && fullArrangement ? chart.duration : state.position, accuracy: resumo && resumo.accuracy, bestStreak: resumo && resumo.bestStreak }); saveCampaign(); renderCampaign(); } catch (_) {}
   }
   var COLORS = ['#e9a56a', '#e7ca64', '#70c9ae', '#79b7ed', '#b39cdd', '#e89cac'];
   var captureGains = { microphone: 6, interface: 0, realtone: 0 };

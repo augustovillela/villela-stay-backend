@@ -26,6 +26,11 @@
     return { id: 'distintivo-' + estudo.id, title: index === 0 ? 'Primeiro passo' : 'Etapa ' + (index + 1) + ' dominada', description: 'Conclua esta etapa da trilha para desbloquear o distintivo.', unlocked: !!completed };
   }
   function registroInicial() { return { status: 'locked', position: 0, attempts: 0, bestAccuracy: null, bestStreak: 0 }; }
+  function adaptacao(item) {
+    var accuracy = item && Number.isFinite(item.bestAccuracy) ? item.bestAccuracy : null;
+    var speed = accuracy == null ? 0.5 : accuracy < 70 ? 0.5 : accuracy < 85 ? 0.75 : accuracy < 95 ? 1 : 1.25;
+    return { speed: speed, label: Math.round(speed * 100) + '%', reason: accuracy == null ? 'comece devagar' : accuracy < 85 ? 'consolide a precisão' : accuracy < 95 ? 'aumente gradualmente' : 'teste o andamento completo' };
+  }
   function estadoBase(input) {
     input = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
     var inst = instrumento(input.instrument), progress = {}, origem = input.progress && typeof input.progress === 'object' && !Array.isArray(input.progress) ? input.progress : {};
@@ -49,7 +54,7 @@
     var base = recalcular(state || { instrument: wantedInstrument }), porId = catalogo();
     return idsDa(base.instrument).map(function (id, index) {
       var estudo = porId.get(id), item = copiar(estudo);
-      item.order = index + 1; item.status = base.progress[id].status; item.progress = copiar(base.progress[id]); item.unlocked = item.status === 'available' || item.status === 'in_progress'; item.challenge = desafio(item, index); item.reward = recompensa(item, index, item.status === 'completed');
+      item.order = index + 1; item.status = base.progress[id].status; item.progress = copiar(base.progress[id]); item.unlocked = item.status === 'available' || item.status === 'in_progress'; item.challenge = desafio(item, index); item.reward = recompensa(item, index, item.status === 'completed'); item.adaptive = adaptacao(item.progress);
       return item;
     });
   }
@@ -91,5 +96,5 @@
     });
     return recalcular(merged);
   }
-  return { VERSION: VERSION, instrumentos: function () { return Object.keys(ORDEM); }, criar: criar, listar: listar, iniciar: iniciar, atualizar: atualizar, retomar: retomar, proximo: proximo, resumo: resumo, mesclar: mesclar };
+  return { VERSION: VERSION, instrumentos: function () { return Object.keys(ORDEM); }, criar: criar, listar: listar, iniciar: iniciar, atualizar: atualizar, retomar: retomar, proximo: proximo, resumo: resumo, mesclar: mesclar, adaptacao: function (state, id) { var base = recalcular(state), item = base.progress[id]; return adaptacao(item); } };
 });

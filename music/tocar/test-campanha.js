@@ -34,6 +34,15 @@ test('resumo calcula progresso, tentativas e distintivos', () => {
   assert.equal(resumo.completed, 1); assert.equal(resumo.badges, 1); assert.equal(resumo.percent, 14); assert.equal(resumo.attempts, 1);
 });
 
+test('campanha sugere velocidade adaptativa a partir do melhor aproveitamento', () => {
+  let estado = Campanha.criar({ instrument: 'violao' });
+  assert.equal(Campanha.adaptacao(estado, 'primeiro-riff-v1').speed, 0.5);
+  estado = Campanha.atualizar(estado, 'primeiro-riff-v1', { accuracy: 88 });
+  assert.equal(Campanha.adaptacao(estado, 'primeiro-riff-v1').speed, 1);
+  estado = Campanha.atualizar(estado, 'primeiro-riff-v1', { accuracy: 97 });
+  assert.equal(Campanha.adaptacao(estado, 'primeiro-riff-v1').label, '125%');
+});
+
 test('mesclar preserva o maior progresso local/remoto sem perder conclusão ou aproveitamento', () => {
   let local = Campanha.criar({ instrument: 'violao' });
   local = Campanha.atualizar(local, 'primeiro-riff-v1', { position: 5, accuracy: 70 });
