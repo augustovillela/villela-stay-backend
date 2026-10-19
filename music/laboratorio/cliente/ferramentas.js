@@ -425,23 +425,58 @@
   };
 
   F['mandala-harmonica'] = function (alvo, st) {
-    st.texto = st.texto || 'C, Am, F, G';
-    function acs() { return st.texto.split(/[;,\n]+/).map(function (x) { return A.ler(x.trim()); }).filter(Boolean).slice(0, 12); }
+    st.tonica = st.tonica || 'C'; st.modo = st.modo || 'maior'; st.mandalaFonte = st.mandalaFonte || 'todos';
+    function pc(n) { return N.pc(n); }
+    function chave(f, id) { return pc(f) + ':' + id; }
+    function adicionar(lista, f, id, grupo, grau) {
+      var c = A.porId(id); if (!c || !f) return;
+      var k = chave(f, id), x = lista.filter(function (n) { return n.chave === k; })[0];
+      if (x) { if (x.grupos.indexOf(grupo) < 0) x.grupos.push(grupo); if (grau && !x.grau) x.grau = grau; return; }
+      lista.push({ chave: k, fundamental: N.semOitava(f), id: id, grupos: [grupo], grau: grau || '', notas: (A.notas(N.semOitava(f), id) || []).map(pc) });
+    }
+    function rede() {
+      var ton = tonicaDe(st), modo = st.modo, out = [], campo = T.campo(ton, modo, { tetrades: false }) || [];
+      campo.forEach(function (x) { adicionar(out, x.fundamental, x.acorde || (x.modo === 'menor' ? 'menor' : 'maior'), 'diatônico', x.romano || String(x.grau)); });
+      var paralelo = T.campo(ton, modo === 'maior' ? 'menor' : 'maior', { tetrades: false }) || [];
+      paralelo.forEach(function (x) { adicionar(out, x.fundamental, x.acorde || (modo === 'maior' ? 'menor' : 'maior'), 'paralelo', x.romano || String(x.grau)); });
+      campo.forEach(function (x) { adicionar(out, x.fundamental, '7', 'dominante secundária', 'V/' + (x.romano || x.grau)); });
+      // Vizinhos de duas notas: a rede prioriza tríades, como a referência visual.
+      var base = out.slice();
+      for (var r = 0; r < 12; r++) { adicionar(out, N.deClasse(r), 'maior', 'vizinho', ''); adicionar(out, N.deClasse(r), 'menor', 'vizinho', ''); }
+      var centro = pc(ton);
+      out.sort(function (a, b) { var ga = a.grupos.indexOf('diatônico') >= 0 ? 0 : a.grupos.indexOf('paralelo') >= 0 ? 1 : a.grupos.indexOf('dominante secundária') >= 0 ? 2 : 3; var gb = b.grupos.indexOf('diatônico') >= 0 ? 0 : b.grupos.indexOf('paralelo') >= 0 ? 1 : b.grupos.indexOf('dominante secundária') >= 0 ? 2 : 3; return ga - gb || ((a.notas.indexOf(centro) < 0) - (b.notas.indexOf(centro) < 0)); });
+      return out.slice(0, 50);
+    }
+    function relacao(a, b) { var comum = a.notas.filter(function (n) { return b.notas.indexOf(n) >= 0; }).length; return { comum: comum, distancia: a.notas.reduce(function (s, n) { return s + Math.min.apply(Math, b.notas.map(function (m) { var d = Math.abs(n - m); return Math.min(d, 12 - d); })); }, 0) / Math.max(1, a.notas.length) }; }
+    function acs() { return (st.texto || '').split(/[;,\n]+/).map(function (x) { return A.ler(x.trim()); }).filter(Boolean); }
     function render() {
       C.gravarUrl(st); C.limpar(alvo);
-      var txt = el('textarea', { rows: 2, class: 'lab-textarea', 'aria-label': 'Acordes da mandala' }); txt.value = st.texto;
+      var txt = el('textarea', { rows: 2, class: 'lab-textarea', 'aria-label': 'Acordes da mandala' }); txt.value = st.texto || '';
       var arquivo = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar mandala JSON' }); arquivo.onchange = function () { var f = arquivo.files && arquivo.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); var lista = Array.isArray(j.acordes) ? j.acordes : (Array.isArray(j.progressao) ? j.progressao : []); if (!lista.length) throw new Error('O JSON não contém acordes.'); st.texto = lista.map(String).join(', '); render(); C.aviso('Progressão importada na mandala.'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
-      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Progressão' }), txt]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Importar JSON' }), arquivo]), el('button', { type: 'button', class: 'btn', txt: 'Atualizar mandala', onclick: function () { st.texto = txt.value; render(); } })]));
-      var lista = acs(); if (!lista.length) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Digite acordes separados por vírgula.' })); return; }
-      var mandala = el('div', { class: 'lab-mandala', role: 'img', 'aria-label': 'Mandala de acordes' });
-      mandala.appendChild(el('div', { class: 'lab-mandala-centro', txt: 'HARMONIA' }));
-      lista.forEach(function (a, i) { var ang = (360 / lista.length) * i - 90; var ns = A.notas(naOitava(a.fundamental, 4), a.id) || []; var comum = i ? (A.notas(naOitava(lista[i - 1].fundamental, 4), lista[i - 1].id) || []).map(N.pc).filter(function (p) { return ns.map(N.pc).indexOf(p) >= 0; }) : []; mandala.appendChild(el('button', { type: 'button', class: 'lab-mandala-no', style: 'transform:rotate(' + ang + 'deg) translateY(-132px) rotate(' + (-ang) + 'deg)', title: comum.length ? comum.length + ' nota(s) em comum com o anterior' : 'Ouvir acorde', txt: A.simbolo(a.fundamental, a.id), onclick: function () { C.Som.tocar(ns.map(N.midi), { modo: 'harmonico' }); } })); });
-      alvo.appendChild(mandala);
+      var tonica = el('input', { type: 'text', class: 'lab-input', value: C.nomeNota(tonicaDe(st)), 'aria-label': 'Tônica da mandala', placeholder: 'C' });
+      var modo = el('select', { class: 'lab-select', 'aria-label': 'Modo da mandala' }); ['maior', 'menor'].forEach(function (m) { modo.appendChild(el('option', { value: m, txt: m === 'maior' ? 'Maior' : 'Menor', selected: st.modo === m })); });
+      var filtro = el('select', { class: 'lab-select', 'aria-label': 'Filtro da rede' }); [['todos', 'Todos os grupos'], ['diatônico', 'Campo diatônico'], ['paralelo', 'Empréstimos paralelos'], ['dominante secundária', 'Dominantes secundárias'], ['vizinho', 'Vizinhos']].forEach(function (p) { filtro.appendChild(el('option', { value: p[0], txt: p[1], selected: st.mandalaFonte === p[0] })); });
+      alvo.appendChild(el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo' }, [el('span', { txt: 'Tônica' }), tonica]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Modo' }), modo]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Mostrar' }), filtro]), el('label', { class: 'lab-campo lab-campo-largo' }, [el('span', { txt: 'Progressão opcional' }), txt]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Importar JSON' }), arquivo]), el('button', { type: 'button', class: 'btn', txt: 'Gerar rede', onclick: function () { st.tonica = tonica.value; st.modo = modo.value; st.mandalaFonte = filtro.value; st.texto = txt.value; render(); } })]));
+      var lista = rede().filter(function (n) { return st.mandalaFonte === 'todos' || n.grupos.indexOf(st.mandalaFonte) >= 0; });
+      if (!lista.length) { alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Nenhum acorde encontrado para este filtro.' })); return; }
+      var mandala = el('div', { class: 'lab-mandala lab-mandala-rede', role: 'application', 'aria-label': 'Rede harmônica com acordes vizinhos' });
+      var largura = 920, altura = 680, cx = largura / 2, cy = altura / 2, pos = [];
+      lista.forEach(function (a, i) { var anel = i < 7 ? 0 : i < 21 ? 1 : i < 37 ? 2 : 3, total = anel === 0 ? 7 : anel === 1 ? 14 : anel === 2 ? 16 : Math.max(1, lista.length - 37), idx = anel === 0 ? i : i - (anel === 1 ? 7 : anel === 2 ? 21 : 37), raio = [0, 105, 205, 300][anel], ang = anel === 0 ? -Math.PI / 2 : (idx / total) * Math.PI * 2 - Math.PI / 2; pos.push({ x: cx + (raio ? raio * Math.cos(ang) : 0), y: cy + (raio ? raio * Math.sin(ang) : 0) }); });
+      var svgEl = el('svg', { class: 'lab-mandala-svg', viewBox: '0 0 ' + largura + ' ' + altura, role: 'img', 'aria-label': 'Conexões de proximidade entre acordes' });
+      var arestas = []; for (var i = 0; i < lista.length; i++) for (var j = i + 1; j < lista.length; j++) { var rr = relacao(lista[i], lista[j]); if (rr.comum >= 2 || rr.distancia <= 1.5) arestas.push({ a: i, b: j, r: rr }); }
+      arestas.forEach(function (e) { var l = el('line', { x1: pos[e.a].x, y1: pos[e.a].y, x2: pos[e.b].x, y2: pos[e.b].y, class: 'lab-mandala-aresta', 'data-a': e.a, 'data-b': e.b }); svgEl.appendChild(l); });
+      mandala.appendChild(svgEl); mandala.appendChild(el('div', { class: 'lab-mandala-centro', txt: C.nomeNota(tonicaDe(st)) + ' ' + (st.modo === 'maior' ? 'MAIOR' : 'MENOR') }));
+      var selecionado = -1, caminho = [];
+      function marcar(i) { selecionado = i; mandala.querySelectorAll('.lab-mandala-no').forEach(function (n, k) { n.classList.toggle('ativo', k === i || caminho.indexOf(k) >= 0); }); mandala.querySelectorAll('.lab-mandala-aresta').forEach(function (l) { l.classList.toggle('ativo', caminho.some(function (x, k) { return k < caminho.length - 1 && ((x === Number(l.dataset.a) && caminho[k + 1] === Number(l.dataset.b)) || (x === Number(l.dataset.b) && caminho[k + 1] === Number(l.dataset.a))); })); }); }
+      function caminhoAte(alvoIdx) { if (selecionado < 0 || selecionado === alvoIdx) { caminho = [alvoIdx]; marcar(alvoIdx); return; } var fila = [[selecionado]], vistos = {}; vistos[selecionado] = 1; while (fila.length) { var pth = fila.shift(), u = pth[pth.length - 1]; if (u === alvoIdx) { caminho = pth; marcar(alvoIdx); return; } arestas.forEach(function (e) { var v = e.a === u ? e.b : e.b === u ? e.a : -1; if (v >= 0 && !vistos[v]) { vistos[v] = 1; fila.push(pth.concat(v)); } }); } caminho = [selecionado, alvoIdx]; marcar(alvoIdx); }
+      lista.forEach(function (a, i) { var ns = A.notas(naOitava(a.fundamental, 4), a.id) || []; var no = el('button', { type: 'button', class: 'lab-mandala-no', style: 'left:' + (pos[i].x / largura * 100) + '%;top:' + (pos[i].y / altura * 100) + '%', title: a.grupos.join(' · ') + ' · ' + relacao(a, lista[Math.max(0, i - 1)]).comum + ' notas em comum', txt: A.simbolo(a.fundamental, a.id), onclick: function () { if (selecionado >= 0 && selecionado !== i) caminhoAte(i); else { selecionado = i; caminho = [i]; marcar(i); } C.Som.tocar(ns.map(N.midi), { modo: 'harmonico' }); } }); no.dataset.grupo = a.grupos.join(','); mandala.appendChild(no); });
+      alvo.appendChild(mandala); alvo.appendChild(el('p', { class: 'lab-dica', txt: 'A rede mostra até 50 acordes. Clique em um acorde para ouvi-lo; clique em outro para destacar o caminho mais curto entre os dois. As linhas mais fortes ligam acordes que compartilham duas notas.' }));
        var modo3d = false; var alternar3d = el('button', { type: 'button', class: 'btn sec', 'aria-pressed': 'false', txt: '◇ Perspectiva 3D', onclick: function () { modo3d = !modo3d; mandala.classList.toggle('lab-mandala-3d', modo3d); alternar3d.setAttribute('aria-pressed', modo3d ? 'true' : 'false'); alternar3d.textContent = modo3d ? '◇ Voltar ao 2D' : '◇ Perspectiva 3D'; } });
       function exportarMandala(png) {
-        var s = ['<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><rect width="100%" height="100%" fill="#f8fbff"/><circle cx="300" cy="300" r="220" fill="none" stroke="#aac8df" stroke-width="2"/><circle cx="300" cy="300" r="145" fill="none" stroke="#8db1cf" stroke-dasharray="4 4"/>'];
-        lista.forEach(function (a, i) { var ang = (360 / lista.length) * i - 90, rad = ang * Math.PI / 180, x = 300 + 220 * Math.cos(rad), y = 300 + 220 * Math.sin(rad); s.push('<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="28" fill="#fff" stroke="#14213d"/><text x="' + x.toFixed(1) + '" y="' + (y + 5).toFixed(1) + '" text-anchor="middle" font-family="Arial" font-size="13">' + D.esc(A.simbolo(a.fundamental, a.id)) + '</text>'); });
-        s.push('<circle cx="300" cy="300" r="48" fill="#14213d"/><text x="300" y="305" text-anchor="middle" fill="#fff" font-family="Arial" font-size="12">HARMONIA</text></svg>');
+        var s = ['<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="850" viewBox="0 0 920 680"><rect width="100%" height="100%" fill="#f8fbff"/>'];
+        arestas.forEach(function (e) { s.push('<line x1="' + pos[e.a].x.toFixed(1) + '" y1="' + pos[e.a].y.toFixed(1) + '" x2="' + pos[e.b].x.toFixed(1) + '" y2="' + pos[e.b].y.toFixed(1) + '" stroke="#b7cce0" stroke-width="' + (e.r.comum >= 2 ? 2 : 1) + '"/>'); });
+        lista.forEach(function (a, i) { s.push('<circle cx="' + pos[i].x.toFixed(1) + '" cy="' + pos[i].y.toFixed(1) + '" r="24" fill="#fff" stroke="#14213d"/><text x="' + pos[i].x.toFixed(1) + '" y="' + (pos[i].y + 5).toFixed(1) + '" text-anchor="middle" font-family="Arial" font-size="11">' + D.esc(A.simbolo(a.fundamental, a.id)) + '</text>'); });
+        s.push('<circle cx="' + cx + '" cy="' + cy + '" r="44" fill="#14213d"/><text x="' + cx + '" y="' + (cy + 5) + '" text-anchor="middle" fill="#fff" font-family="Arial" font-size="12">' + D.esc(C.nomeNota(tonicaDe(st))) + '</text></svg>');
         var svgTexto = s.join(''); if (png) C.baixarPng('mandala-harmonica.png', svgTexto, 1200, 1200); else C.baixar('mandala-harmonica.svg', 'image/svg+xml', svgTexto);
       }
        alvo.appendChild(el('div', { class: 'lab-acoes' }, [alternar3d, el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar mandala SVG', onclick: function () { exportarMandala(false); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar mandala PNG', onclick: function () { exportarMandala(true); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar mandala JSON', onclick: function () { C.baixar('mandala-harmonica.json', 'application/json', JSON.stringify({ acordes: lista.map(function (a, i) { var ns = A.notas(naOitava(a.fundamental, 4), a.id) || []; var anterior = i ? (A.notas(naOitava(lista[i - 1].fundamental, 4), lista[i - 1].id) || []) : []; var pcs = anterior.map(N.pc); return { ordem: i + 1, simbolo: A.simbolo(a.fundamental, a.id), notas: ns.map(function (n) { return { nota: rot(n), midi: N.midi(n) }; }), notas_em_comum_com_anterior: ns.filter(function (n) { return pcs.indexOf(N.pc(n)) >= 0; }).map(rot) }; }), criado_em: new Date().toISOString() }, null, 2)); } })]));
