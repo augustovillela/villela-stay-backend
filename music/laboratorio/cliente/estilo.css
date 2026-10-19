@@ -484,3 +484,6 @@
 .lab-mandala-global-no-txt{fill:#14213d;text-anchor:middle;font:700 9px Inter,system-ui,sans-serif}
 .lab-mandala-global-centro-txt{font-size:11px;letter-spacing:.02em}
 .lab-mandala-global-legenda{fill:#7c2d12;font-size:10px}
+.lab-mandala-global-no-grupo{cursor:pointer;outline:none}
+.lab-mandala-global-no-grupo:focus .lab-mandala-global-no,.lab-mandala-global-no-grupo:hover .lab-mandala-global-no{stroke:#14213d;stroke-width:3}
+.lab-mandala-global-card-foco{border-color:#d97706;box-shadow:0 0 0 4px #ffd16666,0 8px 22px #14213d20}
