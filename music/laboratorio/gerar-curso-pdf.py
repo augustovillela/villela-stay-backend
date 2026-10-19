@@ -12,7 +12,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (BaseDocTemplate, Frame, PageTemplate, Paragraph,
                                 PageBreak, Spacer, Table, TableStyle, KeepTogether)
-from reportlab.graphics.shapes import Drawing, Rect, String, Line, Polygon
+from reportlab.graphics.shapes import Drawing, Rect, String, Line, Polygon, Ellipse
 
 PAGE_W, PAGE_H = A4
 NAVY = colors.HexColor('#1B2A4A')
@@ -67,6 +67,69 @@ def diagram(kind, label):
             d.add(Polygon([x2, ym, x2-3, ym+2.2, x2-3, ym-2.2], fillColor=MUTED, strokeColor=MUTED))
     return d
 
+def visual_diagram(value):
+    """Render the same visual concepts used by the interactive lessons.
+
+    The first PDF edition used a generic placeholder for every visual type.
+    That made pages with a pauta or piano lesson look as if the illustration
+    were missing. Keep the drawings lightweight and vector-based so the book
+    remains printable and does not depend on a music font.
+    """
+    value = value or {}
+    kind = value.get('tipo', 'mapa')
+    w = PAGE_W - 40*mm
+    if kind == 'pauta':
+        h = 42*mm
+        d = Drawing(w, h)
+        left, right = 18*mm, w - 12*mm
+        y0, gap = 28*mm, 3.2*mm
+        for i in range(5):
+            d.add(Line(left, y0 - i*gap, right, y0 - i*gap, strokeColor=NAVY, strokeWidth=0.8))
+        d.add(String(4*mm, y0-2*gap, 'clave ' + str(value.get('clave', 'sol')), fontName='Helvetica-Bold', fontSize=8, fillColor=GOLD))
+        notas = value.get('notas') or []
+        names = {'C':'dó','D':'ré','E':'mi','F':'fá','G':'sol','A':'lá','B':'si'}
+        # Approximate staff position from the letter and octave. The drawing
+        # is explanatory; the interactive lesson remains the precise source.
+        steps = {'C':-6,'D':-5,'E':-4,'F':-3,'G':-2,'A':-1,'B':0}
+        for i, note in enumerate(notas):
+            m = re.match(r'([A-G])([#b]?)(-?\d+)', str(note))
+            if not m: continue
+            letter, accidental, octave = m.group(1), m.group(2), int(m.group(3))
+            step = steps[letter] + (octave - 4) * 7
+            x = left + 16*mm + i * min(18*mm, (right-left-20*mm)/max(1, len(notas)-1))
+            y = y0 - (step + 2) * gap / 2
+            d.add(Ellipse(x, y, 2.4*mm, 1.8*mm, fillColor=GOLD, strokeColor=NAVY, strokeWidth=0.8))
+            if step < -5 or step > 4:
+                d.add(Line(x-4*mm, y, x+4*mm, y, strokeColor=NAVY, strokeWidth=0.8))
+            label = names.get(letter, letter) + accidental
+            d.add(String(x, 5*mm, label, fontName='Helvetica', fontSize=7.5, fillColor=NAVY, textAnchor='middle'))
+        return d
+    if kind == 'piano':
+        h = 34*mm
+        d = Drawing(w, h)
+        start, end = int(value.get('de', 60)), int(value.get('ate', 72))
+        white = [m for m in range(start, end + 1) if m % 12 in (0,2,4,5,7,9,11)]
+        keyw = (w - 20*mm) / max(1, len(white)); x0 = 10*mm
+        marked = {int(x[0]) for x in (value.get('marcar') or []) if isinstance(x, list) and x}
+        names = {0:'dó',2:'ré',4:'mi',5:'fá',7:'sol',9:'lá',11:'si'}
+        for i, midi in enumerate(white):
+            x = x0 + i*keyw
+            fill = GOLD if midi in marked else colors.white
+            d.add(Rect(x, 10*mm, keyw-0.5, 17*mm, fillColor=fill, strokeColor=NAVY, strokeWidth=0.6))
+            d.add(String(x+keyw/2, 5*mm, names[midi%12], fontName='Helvetica', fontSize=7, fillColor=NAVY, textAnchor='middle'))
+        for i, midi in enumerate(range(start, end + 1)):
+            if midi % 12 in (1,3,6,8,10):
+                prior = sum(1 for m in range(start, midi) if m % 12 in (0,2,4,5,7,9,11))
+                x = x0 + prior*keyw - keyw*0.3
+                d.add(Rect(x, 17*mm, keyw*0.6, 10*mm, fillColor=NAVY, strokeColor=NAVY, strokeWidth=0.5))
+        d.add(String(w/2, 31*mm, 'vizinhas = semitom · duas teclas = tom', fontName='Helvetica', fontSize=8, fillColor=NAVY, textAnchor='middle'))
+        return d
+    if kind == 'figuras':
+        return diagram('progressao', 'semibreve|mínima|semínima|colcheia|pausa')
+    label = value.get('legenda', 'Mapa visual da ideia')
+    if value.get('simbolos'): label = '|'.join(value['simbolos'])
+    return diagram(kind, label)
+
 def build(data, output):
     global styles
     ss = getSampleStyleSheet()
@@ -104,8 +167,7 @@ def build(data, output):
                     if b.get('t') == 'p': block.append(Paragraph(plain(b.get('html','')), styles['body']))
                     elif b.get('t') == 'lista': bullets.extend([plain(x) for x in b.get('itens', [])])
                     elif b.get('t') == 'visual':
-                        v = b.get('v') or {}; label = '|'.join(v.get('simbolos', [])) if v.get('simbolos') else v.get('legenda', 'Mapa visual da ideia')
-                        block.append(diagram(v.get('tipo','mapa'), label))
+                        block.append(visual_diagram(b.get('v') or {}))
                         block.append(Spacer(1, 4))
                 if bullets:
                     block.append(Paragraph('<b>Prática</b>', styles['small']))
