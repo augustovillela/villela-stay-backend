@@ -101,6 +101,7 @@
 .curso-trilhas strong{color:var(--navy)}
 .curso-trilhas span{font-size:14px;color:var(--suave)}
 .curso-numeros{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.curso-numeros span{background:#F0F7F8;border:1px solid #C7E3E5;border-radius:999px;padding:7px 12px;color:var(--navy);font-size:13px}.curso-numeros strong{font-size:16px;color:#007C83}.curso-filtros-ajuda{margin:18px 0 8px;color:var(--suave);font-size:14px}.curso-filtros{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}.curso-filtro{border:1px solid var(--borda);border-radius:999px;background:#fff;color:var(--navy);padding:8px 13px;font:600 13px Inter,sans-serif;cursor:pointer}.curso-filtro:hover,.curso-filtro:focus-visible,.curso-filtro.ativo{background:var(--navy);color:#fff;border-color:var(--navy)}.curso-filtro-status{min-height:20px;margin:8px 0 0;color:var(--suave);font-size:13px}
+.curso-licao-trilhas{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px}.curso-licao-trilhas span{border-radius:999px;padding:5px 9px;background:#F0F7F8;border:1px solid #C7E3E5;color:#007C83;font:600 12px Inter,sans-serif}
 .curso-nivel{margin:28px 0;padding:18px;background:#F8FAFC;border:1px solid var(--borda);border-radius:var(--raio)}
 .curso-nivel-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .curso-nivel-meta{display:flex;flex-direction:column;align-items:flex-end;gap:7px}.curso-nivel-progresso{font-size:12px;font-weight:600;color:#64748B}

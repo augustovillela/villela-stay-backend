@@ -181,6 +181,10 @@ ${relacionados(f.slug)}`;
     const l = ls[i];
     const ant = ls[i - 1]; const prox = ls[i + 1];
     const contextoCurso = CT.POR_LICAO[l.slug];
+    const tiposLicao = (l.blocos || []).map((b) => b.t);
+    const trilhasLicao = ['conhecer'];
+    if (tiposLicao.indexOf('ouvir') >= 0 || tiposLicao.indexOf('visual') >= 0) trilhasLicao.push('ouvir');
+    if (tiposLicao.indexOf('praticar') >= 0 || tiposLicao.indexOf('ferramenta') >= 0 || tiposLicao.indexOf('lista') >= 0) trilhasLicao.push('aplicar');
     const pre = l.prereq.map((s) => L.POR_SLUG[s]).filter(Boolean);
     let conteudo;
     if (l.aberta) {
@@ -190,7 +194,7 @@ ${relacionados(f.slug)}`;
     }
     const cursoPainel = contextoCurso ? `<aside class="curso-contexto" aria-label="Contexto no curso"><p class="lab-cab-tipo">Curso de teoria musical</p><p><a href="/music/curso-teoria#nivel-${esc(contextoCurso.nivel.id)}">Nível ${contextoCurso.nivel.ordem}: ${esc(contextoCurso.nivel.nome)}</a> · <strong>${esc(contextoCurso.modulo.nome)}</strong></p><p>${esc(contextoCurso.modulo.objetivo)}</p></aside>` : '';
     const concluir = contextoCurso ? `<div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(l.slug)}" aria-pressed="false">Marcar lição como concluída</button><span>O progresso fica salvo neste navegador.</span></div>` : '';
-    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Lição ${l.ordem} de ${ls.length} · ${esc(l.nivel)}</p><h1>${esc(l.titulo)}</h1><p class="lab-lead">${esc(l.resumo)}</p>${cursoPainel}
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Lição ${l.ordem} de ${ls.length} · ${esc(l.nivel)}</p><h1>${esc(l.titulo)}</h1><p class="lab-lead">${esc(l.resumo)}</p><div class="curso-licao-trilhas" aria-label="Habilidades praticadas">${trilhasLicao.map((t) => `<span>${esc(t === 'ouvir' ? 'Ouvir e reconhecer' : t === 'aplicar' ? 'Aplicar' : 'Conhecer')}</span>`).join('')}</div>${cursoPainel}
 ${pre.length ? `<p class="lab-prereq">Antes, ajuda ter visto: ${pre.map((p) => `<a href="/music/aprender/${esc(p.slug)}">${esc(p.titulo)}</a>`).join(', ')}.</p>` : ''}</header>
 <article class="lab-licao">${conteudo}</article>${concluir}
 <footer class="lab-licao-rodape"><p class="lab-autoria">Autoria: ${esc(L.AUTORIA.autor)} · Revisão técnica: ${esc(L.AUTORIA.revisao_tecnica)} · Revisão pedagógica: ${esc(L.AUTORIA.revisao_pedagogica)} · ${esc(L.AUTORIA.revisado_em)}</p>
