@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
@@ -22,6 +23,67 @@ PALE = colors.HexColor('#F8F9FA')
 ICE_BLUE = colors.HexColor('#ECEFF5')
 INK = colors.HexColor('#1F2933')
 MUTED = colors.HexColor('#5B6478')
+
+GLOSSARIO = {
+    'acorde': 'Conjunto de três ou mais notas ouvidas simultaneamente, organizado a partir de uma fundamental.',
+    'acústica': 'Estudo físico do som: vibração, frequência, amplitude, ressonância e propagação.',
+    'andamento': 'Velocidade do pulso musical, normalmente indicada em batidas por minuto (BPM).',
+    'anacruse': 'Nota ou grupo de notas que começa antes do primeiro tempo forte do compasso.',
+    'armadura': 'Conjunto de sustenidos ou bemóis junto à clave que indica a tonalidade predominante.',
+    'arranjo': 'Decisão de distribuir melodia, harmonia, ritmo, timbres e dinâmica para uma execução.',
+    'articulação': 'Modo como uma nota começa, se mantém e termina: ligada, destacada, acentuada ou curta.',
+    'cadência': 'Progressão que marca pontuação, chegada ou suspensão dentro de uma frase harmônica.',
+    'campo': 'Conjunto de acordes formado a partir das notas de uma escala; também chamado campo harmônico.',
+    'clave': 'Símbolo que fixa a altura de uma linha da pauta e permite nomear as demais notas.',
+    'compasso': 'Agrupamento regular de pulsos, indicado por uma fórmula como 4/4, 3/4 ou 6/8.',
+    'contraponto': 'Combinação de linhas melódicas independentes que formam uma textura coerente.',
+    'cromatismo': 'Uso de notas ou movimentos por semitom entre as notas da escala principal.',
+    'duração': 'Tempo durante o qual um som ou silêncio permanece.',
+    'dinâmica': 'Variação de intensidade sonora, como piano, forte, crescendo e diminuendo.',
+    'ditado': 'Exercício em que o estudante ouve e registra ritmo, melodia ou harmonia.',
+    'dominante': 'Quinto grau da escala; em tonalidade, cria tensão que costuma resolver na tônica.',
+    'enarmonia': 'Relação entre nomes diferentes para o mesmo som, como dó sustenido e ré bemol.',
+    'escala': 'Sequência ordenada de notas que define um campo de alturas e suas relações.',
+    'estabilidade': 'Sensação de repouso ou segurança de uma nota, acorde ou região musical.',
+    'figura': 'Símbolo que representa uma duração escrita, como semínima, mínima ou colcheia.',
+    'forma': 'Organização das seções de uma música, como introdução, verso, refrão, ponte e coda.',
+    'frequência': 'Número de vibrações por segundo, medido em hertz; relaciona-se à altura percebida.',
+    'fundamental': 'Nota que dá nome a um acorde ou intervalo e serve como referência estrutural.',
+    'grau': 'Posição de uma nota dentro de uma escala, contada a partir da tônica.',
+    'harmônico': 'Componente de frequência múltipla da fundamental que contribui para o timbre.',
+    'harmonia': 'Relação simultânea entre notas e acordes e o movimento de tensão e repouso que produzem.',
+    'intervalo': 'Distância entre duas notas, medida por número e qualidade, como terça maior ou quinta justa.',
+    'intensidade': 'Percepção de força ou volume de um som, relacionada à amplitude da vibração.',
+    'inversão': 'Acorde ou intervalo reorganizado para que outra nota, e não a fundamental, fique no baixo.',
+    'melodia': 'Sucessão organizada de notas percebida como uma linha musical.',
+    'metrônomo': 'Ferramenta que produz pulsos regulares para orientar o andamento e a prática.',
+    'modo': 'Rotação ou organização particular de uma escala, com uma nota característica e uma cor própria.',
+    'modulação': 'Mudança de centro tonal durante uma peça ou trecho musical.',
+    'motivo': 'Pequena ideia rítmica ou melódica que pode ser repetida, variada e desenvolvida.',
+    'oitava': 'Intervalo entre duas notas com o dobro ou a metade da frequência; ambas recebem o mesmo nome.',
+    'pauta': 'Sistema de cinco linhas e quatro espaços onde alturas e ritmos são escritos.',
+    'pentatônica': 'Escala formada por cinco notas; a pentatônica maior e a menor são comuns em melodias e improvisação.',
+    'polirritmia': 'Sobreposição de padrões rítmicos diferentes que compartilham o mesmo pulso.',
+    'pulso': 'Batida regular que organiza o tempo e pode ser marcada pelo corpo ou pelo metrônomo.',
+    'quiáltera': 'Divisão irregular do pulso, como três notas ocupando o espaço de duas.',
+    'ritmo': 'Organização de durações, ataques e silêncios ao longo do tempo.',
+    'semitom': 'Menor distância entre duas notas vizinhas no sistema temperado.',
+    'síncope': 'Deslocamento do acento esperado para uma parte fraca do pulso ou do compasso.',
+    'solfejo': 'Prática de cantar ou falar as notas observando suas alturas e durações.',
+    'timbre': 'Qualidade que diferencia sons de mesma altura e intensidade produzidos por fontes distintas.',
+    'tonalidade': 'Sistema em torno de uma tônica, com escala, acordes e relações de atração definidos.',
+    'tônica': 'Primeiro grau da escala e centro de repouso de uma tonalidade.',
+    'transposição': 'Transferência de uma melodia, acorde ou trecho para outra altura mantendo suas relações.',
+    'tríade': 'Acorde de três notas formado por fundamental, terça e quinta.',
+    'tétrade': 'Acorde de quatro notas, geralmente uma tríade acrescida de uma sétima.',
+    'tensão': 'Sensação de instabilidade que cria expectativa de movimento ou resolução.',
+    'voz': 'Linha musical individual; também o instrumento humano usado para produzir alturas e palavras.',
+}
+
+def chave_termo(value):
+    return ''.join(c for c in unicodedata.normalize('NFD', str(value).lower()) if unicodedata.category(c) != 'Mn')
+
+GLOSSARIO_NORMALIZADO = {chave_termo(k): v for k, v in GLOSSARIO.items()}
 
 def plain(value):
     value = re.sub(r'<br\s*/?>', '\n', value or '')
@@ -244,8 +306,14 @@ def build(data, output):
         story.append(PageBreak())
     story += [Paragraph('Projeto final', styles['h1']), Paragraph('Escolha uma música ou crie uma peça curta. Registre tonalidade, andamento, compasso, forma, progressão harmônica, motivo melódico, dinâmica e uma revisão concreta. O objetivo é justificar escolhas e produzir algo que outra pessoa consiga ouvir, ler ou tocar.', styles['body']), Spacer(1, 8*mm), diagram('progressao', 'Ouvir|Analisar|Decidir|Tocar|Revisar'), Paragraph('O estudo continua depois do último capítulo: repertório, arranjo, composição, percepção e tecnologia são caminhos que se cruzam.', styles['quote']), PageBreak(), Paragraph('Glossário de consulta', styles['h1']), Paragraph('Use este índice para voltar ao conceito dentro do percurso. Os termos são agrupados a partir das lições publicadas e apontam para o vocabulário usado no Musique.', styles['body'])]
     termos = sorted({t.strip() for l in licoes.values() for t in (l.get('termos', '') or '').replace(',', ' ').split() if len(t.strip()) > 2}, key=lambda x: x.lower())
-    for i in range(0, len(termos), 4):
-        story.append(Paragraph(' · '.join(termos[i:i+4]), styles['small']))
+    # O índice antigo era apenas uma nuvem de palavras. Agora cada entrada
+    # funciona como consulta: termo, significado e relação com a prática.
+    for termo in termos:
+        significado = GLOSSARIO_NORMALIZADO.get(chave_termo(termo))
+        if significado:
+            story.append(Paragraph(f'<b>{html.escape(termo)}</b> — {html.escape(significado)}', styles['small']))
+    story.append(Spacer(1, 5*mm))
+    story.append(Paragraph('Os termos são retomados nas lições correspondentes; use os links do curso para ver exemplos, ouvir e praticar cada conceito.', styles['small']))
     story += [Spacer(1, 8*mm), Paragraph('Índice de lições', styles['h1'])]
     for nivel in niveis:
         story.append(Paragraph(f"<b>{nivel['nome']}</b>", styles['h2']))
