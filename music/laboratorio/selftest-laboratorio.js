@@ -543,6 +543,8 @@ async function rodar({ t, secao, req, assert }) {
     const cursoSlugs = CT.CURSO.niveis.flatMap((n) => n.modulos.flatMap((m) => m.licoes));
     assert.equal(new Set(cursoSlugs).size, cursoSlugs.length, 'curso sem lições duplicadas');
     assert.ok(cursoSlugs.every((slug) => L.POR_SLUG[slug]), 'toda lição planejada tem conteúdo publicado');
+    const pdf = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'output', 'pdf', 'curso-teoria-musical.pdf'));
+    assert.ok(pdf.length > 100000 && pdf.subarray(0, 5).toString() === '%PDF-', 'livro PDF ilustrado está publicado e válido');
     const hp = await req('GET', '/music/aprender/harmonia-popular', { como: 'ana', cru: true }); assert.match(hp.texto, /data-sequencia=/); assert.match(hp.texto, /Db7/);
     const ti = await req('GET', '/music/aprender/treino-intervalos', { como: 'ana', cru: true }); assert.match(ti.texto, /\/music\/referencia\/intervalos/);
     const md = await req('GET', '/music/curso-teoria.md', { como: 'ana', cru: true }); assert.match(md.texto, /\[.*Piano e notas.*\]\(\/music\/explorar\/piano\)/);
