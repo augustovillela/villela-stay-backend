@@ -53,6 +53,19 @@ const LICOES = [
     refs: ['med', 'priolli'],
   },
   {
+    slug: 'cantar-e-localizar-notas', titulo: 'Cantar e localizar notas', nivel: 'iniciante', prereq: ['escuta-ativa-e-pulso'], termos: 'cantar voz nota afinacao referencia localizar teclado solfejo',
+    resumo: 'Use uma nota de referência, cante pequenas relações e encontre o mesmo som no instrumento.',
+    blocos: [
+      { t: 'p', html: 'A voz é o primeiro instrumento de qualquer estudante. Escolha uma nota confortável, ouça-a duas vezes e cante “ah” junto. Não é preciso cantar alto: procure combinar a <strong>altura</strong>, isto é, fazer a vibração da sua voz coincidir com a nota de referência.' },
+      { t: 'ouvir', rotulo: 'Ouça uma pequena frase para cantar', midis: [60, 62, 64, 62, 60], dur: 0.42, modo: 'melodico' },
+      { t: 'p', html: 'Depois de cantar a frase, procure as notas no teclado ou no instrumento. Subir um degrau significa ir para uma nota mais aguda; descer significa ir para uma mais grave. O objetivo inicial é reconhecer a direção e a distância aproximada, não acertar o nome de todas as notas.' },
+      { t: 'lista', itens: ['Ouça a referência sem cantar.', 'Cante a primeira nota em “ah” ou “ô”.', 'Repita a frase devagar, respirando entre as ideias.', 'Localize a nota inicial no piano, violão ou outro instrumento.'] },
+      { t: 'ferramenta', slug: 'piano' },
+      { t: 'praticar', tipo: 'nota-no-teclado', nivel: 1 },
+    ],
+    refs: ['priolli', 'omt'],
+  },
+  {
     slug: 'som-e-nota', titulo: 'Som, altura e nota', nivel: 'iniciante', prereq: [], termos: 'som altura duracao intensidade timbre frequencia',
     resumo: 'O que o ouvido percebe num som — altura, duração, intensidade e timbre — e o que é uma nota.',
     blocos: [
