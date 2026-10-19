@@ -14,6 +14,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import (BaseDocTemplate, Frame, PageTemplate, Paragraph,
                                 PageBreak, Spacer, Table, TableStyle, KeepTogether,
                                 NextPageTemplate)
+from reportlab.platypus.tableofcontents import TableOfContents
 from reportlab.graphics.shapes import Drawing, Rect, String, Line, Polygon, Ellipse
 
 PAGE_W, PAGE_H = A4
@@ -84,6 +85,12 @@ def chave_termo(value):
     return ''.join(c for c in unicodedata.normalize('NFD', str(value).lower()) if unicodedata.category(c) != 'Mn')
 
 GLOSSARIO_NORMALIZADO = {chave_termo(k): v for k, v in GLOSSARIO.items()}
+
+class CourseDocTemplate(BaseDocTemplate):
+    """Documento com índice automático construído em duas passagens."""
+    def afterFlowable(self, flowable):
+        if isinstance(flowable, Paragraph) and getattr(flowable, '_toc_level', None) is not None:
+            self.notify('TOCEntry', (flowable._toc_level, flowable.getPlainText(), self.page))
 
 def plain(value):
     value = re.sub(r'<br\s*/?>', '\n', value or '')
@@ -264,7 +271,7 @@ def build(data, output):
         'diagram': ParagraphStyle('diagram', parent=ss['BodyText'], fontSize=9, leading=12, textColor=NAVY, alignment=TA_CENTER),
         'quote': ParagraphStyle('quote', parent=ss['BodyText'], fontSize=11, leading=16, textColor=NAVY, leftIndent=10, borderColor=GOLD, borderWidth=2, borderPadding=8, spaceBefore=8, spaceAfter=10),
     }
-    doc = BaseDocTemplate(output, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=18*mm, bottomMargin=20*mm, title='Teoria musical completa - Musique', author='Equipe Musique')
+    doc = CourseDocTemplate(output, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=18*mm, bottomMargin=20*mm, title='Teoria musical completa - Musique', author='Equipe Musique')
     doc.addPageTemplates([
         PageTemplate(id='cover', frames=[Frame(0, 0, PAGE_W, PAGE_H, id='cover-frame')], onPage=cover_page),
         PageTemplate(id='normal', frames=[Frame(20*mm, 19*mm, PAGE_W-40*mm, PAGE_H-37*mm, id='f')], onPage=header_footer),
@@ -284,7 +291,9 @@ def build(data, output):
             for slug in modulo.get('licoes', []):
                 l = licoes.get(slug)
                 if not l: continue
-                block = [Paragraph(l['titulo'], styles['h2']), Paragraph(plain(l.get('resumo','')), styles['body'])]
+                titulo = Paragraph(l['titulo'], styles['h2'])
+                titulo._toc_level = 0
+                block = [titulo, Paragraph(plain(l.get('resumo','')), styles['body'])]
                 bullets = []
                 for b in l.get('blocos', []):
                     if b.get('t') == 'p': block.append(Paragraph(plain(b.get('html','')), styles['body']))
@@ -296,13 +305,9 @@ def build(data, output):
                     block.append(Paragraph('<b>Prática</b>', styles['small']))
                     block.extend([Paragraph('• ' + x, styles['body']) for x in bullets[:6]])
                 story.append(KeepTogether(block))
-                # Cada aula ganha uma página de ateliê própria. Ela não é
-                # enchimento: transforma a leitura em uma entrega observável
-                # e deixa espaço físico para o estudante registrar tentativas.
-                story += [PageBreak(), Paragraph(f"Ateliê · {l['titulo']}", styles['h1']), Paragraph('Volte ao conceito, faça o exercício sem consultar a resposta e registre evidências. Use esta página para anotar notas, contagens, decisões de arranjo ou perguntas para a próxima sessão.', styles['body']), Paragraph('<b>Checklist de saída</b>', styles['h2'])]
-                for item in ['Consigo explicar a ideia com minhas palavras.', 'Consigo reconhecer ou cantar o exemplo.', 'Consigo aplicar a ideia em uma música ou exercício.', 'Registrei um erro, uma descoberta e o próximo passo.']:
-                    story.append(Paragraph('□ ' + item, styles['body']))
-                story += [Spacer(1, 5*mm), Paragraph('<b>Registro livre</b>', styles['h2']), Table([['', ''], ['', ''], ['', ''], ['', '']], colWidths=[(PAGE_W-40*mm)/2]*2, rowHeights=[18*mm]*4, style=TableStyle([('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#D9E2EC')), ('BACKGROUND', (0,0), (-1,-1), colors.white)])), PageBreak()]
+                # Uma página por lição mantém a leitura contínua. A prática
+                # já aparece junto do conteúdo, sem uma página vazia separada.
+                story.append(PageBreak())
         story.append(PageBreak())
     story += [Paragraph('Projeto final', styles['h1']), Paragraph('Escolha uma música ou crie uma peça curta. Registre tonalidade, andamento, compasso, forma, progressão harmônica, motivo melódico, dinâmica e uma revisão concreta. O objetivo é justificar escolhas e produzir algo que outra pessoa consiga ouvir, ler ou tocar.', styles['body']), Spacer(1, 8*mm), diagram('progressao', 'Ouvir|Analisar|Decidir|Tocar|Revisar'), Paragraph('O estudo continua depois do último capítulo: repertório, arranjo, composição, percepção e tecnologia são caminhos que se cruzam.', styles['quote']), PageBreak(), Paragraph('Glossário de consulta', styles['h1']), Paragraph('Use este índice para voltar ao conceito dentro do percurso. Os termos são agrupados a partir das lições publicadas e apontam para o vocabulário usado no Musique.', styles['body'])]
     termos = sorted({t.strip() for l in licoes.values() for t in (l.get('termos', '') or '').replace(',', ' ').split() if len(t.strip()) > 2}, key=lambda x: x.lower())
@@ -314,13 +319,10 @@ def build(data, output):
             story.append(Paragraph(f'<b>{html.escape(termo)}</b> — {html.escape(significado)}', styles['small']))
     story.append(Spacer(1, 5*mm))
     story.append(Paragraph('Os termos são retomados nas lições correspondentes; use os links do curso para ver exemplos, ouvir e praticar cada conceito.', styles['small']))
-    story += [Spacer(1, 8*mm), Paragraph('Índice de lições', styles['h1'])]
-    for nivel in niveis:
-        story.append(Paragraph(f"<b>{nivel['nome']}</b>", styles['h2']))
-        for modulo in nivel.get('modulos', []):
-            nomes = [licoes[s]['titulo'] for s in modulo.get('licoes', []) if s in licoes]
-            if nomes: story.append(Paragraph(modulo['nome'] + ': ' + ' · '.join(nomes), styles['small']))
-    doc.build(story)
+    toc = TableOfContents()
+    toc.levelStyles = [ParagraphStyle('toc1', parent=styles['small'], fontName='Helvetica', fontSize=9.5, leading=13, leftIndent=0, firstLineIndent=0, rightIndent=12*mm, spaceAfter=2)]
+    story += [Spacer(1, 8*mm), Paragraph('Índice de lições', styles['h1']), Paragraph('Consulte o número da página para abrir diretamente a explicação de cada lição.', styles['body']), toc]
+    doc.multiBuild(story)
 
 if __name__ == '__main__':
     if len(sys.argv) != 3: raise SystemExit('uso: gerar-curso-pdf.py entrada.json saida.pdf')
