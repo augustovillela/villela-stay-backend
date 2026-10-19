@@ -3,6 +3,8 @@
 importScripts('/music/tocar/detector.js');
 var detector = self.MusiqueTocarDetector.criar();
 var polyphonic = false;
+var polyphonicTick = 0;
+var lastPolyphonic = null;
 self.onmessage = function (evento) {
   var mensagem = evento.data;
   if (!mensagem) return;
@@ -10,6 +12,8 @@ self.onmessage = function (evento) {
     try {
       detector = self.MusiqueTocarDetector.criar(mensagem.detector);
       polyphonic = !!(mensagem.detector && mensagem.detector.polyphonic);
+      polyphonicTick = 0;
+      lastPolyphonic = null;
       if (polyphonic && !self.MusiqueTocarPolifonico) importScripts('/music/tocar/polifonico.js');
       self.postMessage({ tipo: 'configurado' });
     } catch (_) {
@@ -21,7 +25,10 @@ self.onmessage = function (evento) {
   try {
     var samples = new Float32Array(mensagem.buffer);
     var frame = detector.analisar(samples, mensagem.sampleRate, mensagem.audioTime);
-    if (polyphonic && self.MusiqueTocarPolifonico) frame.polyphonic = self.MusiqueTocarPolifonico.analisar(samples, mensagem.sampleRate, { minMidi: 28, maxMidi: 88 });
+    if (polyphonic && self.MusiqueTocarPolifonico) {
+      if ((polyphonicTick++ % 2) === 0) lastPolyphonic = self.MusiqueTocarPolifonico.analisar(samples, mensagem.sampleRate, { minMidi: 28, maxMidi: 88 });
+      frame.polyphonic = lastPolyphonic;
+    }
     self.postMessage({ tipo: 'quadro', id: mensagem.id, frame: frame });
   } catch (_) {
     self.postMessage({ tipo: 'erro', mensagem: 'Não foi possível analisar a entrada de áudio. Conecte novamente.' });
