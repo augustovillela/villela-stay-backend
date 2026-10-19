@@ -551,9 +551,19 @@
     text('tj-study-info', study ? study.level + ' · ' + study.objective : source.objective || 'Arranjo importado neste navegador. Use notas isoladas na afinação indicada.');
     var table = $('tj-notes'); table.replaceChildren();
     var midi = perfil.layout === 'drums' || perfil.layout === 'piano';
+    var gruposPiano = Object.create(null);
+    if (perfil.layout === 'piano') chart.notes.forEach(function (nota) {
+      var chave = String(nota.time);
+      (gruposPiano[chave] || (gruposPiano[chave] = [])).push(nota);
+    });
+    var vistosPiano = Object.create(null);
     chart.notes.slice(0, 80).forEach(function (n) {
       var peca = perfil.layout === 'drums' && perfil.drums.find(function (p) { return p.midi === n.midi; });
-      table.appendChild(el('tr', {}, [el('td', { text: n.time.toFixed(2) + ' s' }), el('td', { text: peca ? peca.label : noteName(n.midi) }), el('td', { text: midi ? n.duration.toFixed(2) + ' s' : String(n.string) }), el('td', { text: midi ? String(n.velocity) : String(n.fret) })]));
+      var chord = null, key = String(n.time);
+      if (perfil.layout === 'piano' && !vistosPiano[key]) { chord = Acordes && gruposPiano[key].length >= 3 ? Acordes.identificar(gruposPiano[key]) : null; vistosPiano[key] = true; }
+      var noteLabel = peca ? peca.label : noteName(n.midi);
+      if (chord) noteLabel += ' · ' + chord.symbol;
+      table.appendChild(el('tr', {}, [el('td', { text: n.time.toFixed(2) + ' s' }), el('td', { text: noteLabel }), el('td', { text: midi ? n.duration.toFixed(2) + ' s' : String(n.string) }), el('td', { text: midi ? String(n.velocity) : String(n.fret) })]));
     });
     text('tj-table-third', midi ? 'Duração' : 'Corda'); text('tj-table-fourth', midi ? 'Intensidade MIDI' : 'Casa');
     text('tj-table-note', (chart.notes.length > 80 ? 'Primeiras 80 notas de ' + chart.notes.length + '. ' : '') + (perfil.layout === 'piano' ? 'Cada nome inclui a oitava: Dó4 e Dó5 correspondem a teclas diferentes.' : perfil.layout === 'drums' ? 'Cada linha identifica a peça, o momento e a intensidade da batida.' : perfil.id === 'ukulele' ? 'Afinação tradicional reentrante: cordas 4–1 em Sol4, Dó4, Mi4 e Lá4.' : 'Corda 1 é a mais aguda; corda ' + perfil.strings + ' é a mais grave.'));
