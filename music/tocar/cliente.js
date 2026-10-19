@@ -410,7 +410,7 @@
   }
   function updateMidiChord() {
     if (perfilDoInstrumento(state.instrument).layout !== 'piano') {
-      var nonPiano = $('tj-midi-chord'); if (nonPiano) { nonPiano.textContent = ''; nonPiano.hidden = true; nonPiano.setAttribute('data-confidence', ''); }
+      var nonPiano = $('tj-midi-chord'); if (nonPiano) { nonPiano.textContent = ''; nonPiano.hidden = true; nonPiano.setAttribute('data-confidence', ''); nonPiano.setAttribute('aria-label', ''); }
       return;
     }
     var values = Object.keys(midiHeld).map(function (n) { return Number(n); }).filter(Number.isInteger).sort(function (a, b) { return a - b; });
@@ -419,7 +419,7 @@
       var chord = Acordes.identificar(values);
       label = chord ? 'Acorde reconhecido: ' + chord.symbol : 'Notas simultâneas: ' + values.map(noteName).join(' · ');
     } else if (values.length) label = 'Notas pressionadas: ' + values.map(noteName).join(' · ');
-    var node = $('tj-midi-chord'); if (node) { node.textContent = label; node.hidden = !label; node.setAttribute('data-confidence', ''); }
+    var node = $('tj-midi-chord'); if (node) { node.textContent = label; node.hidden = !label; node.setAttribute('data-confidence', ''); node.setAttribute('aria-label', label); }
   }
   function updatePolyphonicLabel(label, confidence) {
     if (!label) { polyphonicCandidate = ''; polyphonicCount = 0; polyphonicLabel = ''; polyphonicConfidence = 0; }
@@ -427,7 +427,7 @@
     else { polyphonicCandidate = label; polyphonicCount = 1; }
     if (polyphonicCount >= 2 && polyphonicLabel !== label) { polyphonicLabel = label; polyphonicConfidence = Number.isFinite(confidence) ? confidence : 0; polyphonicHistory.unshift(label); polyphonicHistory = polyphonicHistory.slice(0, 5); }
     else if (polyphonicLabel === label && Number.isFinite(confidence)) polyphonicConfidence = polyphonicConfidence * 0.7 + confidence * 0.3;
-    var node = $('tj-midi-chord'); if (node && perfilDoInstrumento(state.instrument).layout !== 'piano') { node.textContent = polyphonicLabel; node.hidden = !polyphonicLabel; node.setAttribute('data-confidence', polyphonicConfidence >= 0.65 ? 'high' : polyphonicConfidence >= 0.4 ? 'medium' : 'low'); }
+    var node = $('tj-midi-chord'); if (node && perfilDoInstrumento(state.instrument).layout !== 'piano') { node.textContent = polyphonicLabel; node.hidden = !polyphonicLabel; node.setAttribute('data-confidence', polyphonicConfidence >= 0.65 ? 'high' : polyphonicConfidence >= 0.4 ? 'medium' : 'low'); node.setAttribute('aria-label', polyphonicLabel); }
     var history = $('tj-midi-chord-history'); if (history && perfilDoInstrumento(state.instrument).layout !== 'piano') { history.replaceChildren.apply(history, polyphonicHistory.map(function (item) { return el('li', { text: item }); })); history.hidden = !polyphonicHistory.length; }
     var clear = $('tj-midi-chord-clear'); if (clear) clear.hidden = !polyphonicHistory.length;
   }
