@@ -768,7 +768,8 @@
     var poly = f.polyphonic, chordLabel = '';
     if (poly && poly.midis && poly.midis.length >= 3 && poly.confidence >= 0.25 && Acordes) {
       var recognized = Acordes.identificar(poly.midis);
-      chordLabel = recognized ? 'Acorde detectado: ' + recognized.symbol : 'Notas simultâneas: ' + poly.midis.map(noteName).join(' · ');
+      var confidence = Math.round(Math.max(0, Math.min(1, poly.confidence)) * 100);
+      chordLabel = recognized ? 'Acorde detectado: ' + recognized.symbol + ' · confiança ' + confidence + '%' : 'Notas simultâneas: ' + poly.midis.map(noteName).join(' · ') + ' · confiança ' + confidence + '%';
     }
     updatePolyphonicLabel(chordLabel);
     if (state.calibration && f.onset && f.hz && f.confidence >= 0.7) sampleCalibration(f);
