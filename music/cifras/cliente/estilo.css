@@ -286,3 +286,4 @@ body.cf-em-palco{overflow:hidden}
 /* acorde que o microfone está ouvindo agora (experimental) */
 .cf-a.ouvindo{background:rgba(201,162,39,.35);border-radius:4px;box-shadow:0 0 0 3px rgba(201,162,39,.35)}
 .cf-palco .cf-a.ouvindo{background:rgba(255,201,77,.28);box-shadow:0 0 0 3px rgba(255,201,77,.28)}
+.cf-escuta-info[data-confidence="low"]{color:#855442}.cf-escuta-info[data-confidence="medium"]{color:#75612b}.cf-escuta-info[data-confidence="high"]{color:#2d6847}
