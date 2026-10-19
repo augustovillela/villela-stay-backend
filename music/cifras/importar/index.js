@@ -435,7 +435,7 @@ const Importar = {
   },
 
   /** Reprocessar: só o que tem entrada reconstituível (URL). */
-  reprocessar(id, usuario) {
+  async reprocessar(id, usuario) {
     const t = db.prepare('SELECT * FROM importacoes WHERE id = ?').get(id);
     if (!t) throw erro('Importação não encontrada.', 404);
     if (usuario && t.usuario !== usuario) throw erro('Importação não encontrada.', 404);
@@ -445,11 +445,12 @@ const Importar = {
     const url = 'https://' + t.entrada_resumo;
     db.prepare("UPDATE importacoes SET status = 'pendente', progresso = 0, erro = '', resultado = '{}', atualizado_em = ? WHERE id = ?").run(nowISO(), id);
     const adaptador = fontes.paraUrl(url);
-    return rodarEmSegundoPlano(id, async () => {
+    void rodarEmSegundoPlano(id, async () => {
       const r = await rede.obter(url, { transporte: transporteTeste });
       const x = adaptador.extrair(r.texto, r.url);
       return previa(t.usuario, x.texto, { dica: x, fonte: { tipo: 'url', url: r.url, adaptador: adaptador.id, metodo: x.metodo }, confiancaBase: x.confianca });
     });
+    return true;
   },
 
   resumoStaff() {
