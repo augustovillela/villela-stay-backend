@@ -33,4 +33,5 @@
 .tj-campaign-adaptive{color:#397354!important}
 .tj-midi-chord{width:100%;margin:13px 0 0;padding:9px 8px;border:1px solid #d8e3e2;border-radius:7px;background:#f1f7f6;color:#28595a;font-size:11px;font-weight:650;transition:border-color .18s ease,background-color .18s ease,color .18s ease}.tj-midi-chord[data-confidence="low"]{border-color:#d8b6a8;background:#fff8f4;color:#855442}.tj-midi-chord[data-confidence="medium"]{border-color:#d9c995;background:#fffdf1;color:#75612b}.tj-midi-chord[data-confidence="high"]{border-color:#b7d8c6;background:#f2fbf5;color:#2d6847}
 .tj-midi-chord-history{list-style:none;width:100%;margin:8px 0 0;padding:0;color:#718391;font-size:10px;line-height:1.6}.tj-midi-chord-history li{padding-left:8px;border-left:2px solid #d8e3e2}
+.tj-confidence-legend{width:100%;margin:5px 0 0;color:#718391;font-size:9px}.tj-confidence-legend span{display:inline-block;margin-right:7px;font-weight:700}.tj-confidence-high{color:#2d6847}.tj-confidence-medium{color:#75612b}.tj-confidence-low{color:#855442}
 .tj-midi-chord-clear{min-height:28px!important;margin-top:7px;padding:5px 8px!important;font-size:10px!important}
