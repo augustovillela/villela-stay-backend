@@ -15,12 +15,12 @@ from reportlab.platypus import (BaseDocTemplate, Frame, PageTemplate, Paragraph,
 from reportlab.graphics.shapes import Drawing, Rect, String, Line, Polygon
 
 PAGE_W, PAGE_H = A4
-NAVY = colors.HexColor('#102A43')
-TEAL = colors.HexColor('#007C83')
-GOLD = colors.HexColor('#D89B2B')
-PALE = colors.HexColor('#EEF6F7')
-INK = colors.HexColor('#243B53')
-MUTED = colors.HexColor('#52606D')
+NAVY = colors.HexColor('#1B2A4A')
+GOLD = colors.HexColor('#C9A227')
+PALE = colors.HexColor('#F8F9FA')
+ICE_BLUE = colors.HexColor('#ECEFF5')
+INK = colors.HexColor('#1F2933')
+MUTED = colors.HexColor('#5B6478')
 
 def plain(value):
     value = re.sub(r'<br\s*/?>', '\n', value or '')
@@ -29,11 +29,19 @@ def plain(value):
 
 def header_footer(canvas, doc):
     canvas.saveState()
+    canvas.setFillColor(NAVY)
+    canvas.rect(0, PAGE_H-8*mm, PAGE_W, 8*mm, stroke=0, fill=1)
+    canvas.setFillColor(GOLD)
+    canvas.rect(0, PAGE_H-8*mm, PAGE_W, 1.1*mm, stroke=0, fill=1)
+    canvas.setFont('Helvetica-Bold', 8)
+    canvas.setFillColor(colors.white)
+    canvas.drawString(18*mm, PAGE_H-5.5*mm, 'MUSIQUE  ·  VILLELA MUSIC  ·  VILLELA STAY')
     canvas.setStrokeColor(colors.HexColor('#D9E2EC'))
     canvas.line(18*mm, 14*mm, PAGE_W-18*mm, 14*mm)
     canvas.setFont('Helvetica', 8)
     canvas.setFillColor(MUTED)
-    canvas.drawString(18*mm, 9*mm, 'Musique · Teoria musical completa')
+    canvas.setFillColor(MUTED)
+    canvas.drawString(18*mm, 9*mm, 'Musique · por Villela Music')
     canvas.drawRightString(PAGE_W-18*mm, 9*mm, f'{doc.page}')
     canvas.restoreState()
 
@@ -43,12 +51,12 @@ def diagram(kind, label):
     d = Drawing(w, h)
     gap = 7*mm
     bw = max(24*mm, (w - gap * (len(itens) + 1)) / max(1, len(itens)))
-    colors_nodes = [TEAL, GOLD, NAVY, colors.HexColor('#7A5195'), colors.HexColor('#C75146')]
+    colors_nodes = [NAVY, GOLD, colors.HexColor('#3A4A66'), colors.HexColor('#6B5B95'), colors.HexColor('#9B5C4A')]
     for i, item in enumerate(itens):
         x = gap + i * (bw + gap)
         y = 10*mm
         c = colors_nodes[i % len(colors_nodes)]
-        d.add(Rect(x, y, bw, 16*mm, rx=5, ry=5, fillColor=PALE, strokeColor=c, strokeWidth=1.4))
+        d.add(Rect(x, y, bw, 16*mm, rx=5, ry=5, fillColor=ICE_BLUE, strokeColor=c, strokeWidth=1.4))
         d.add(String(x + bw/2, y + 11*mm, str(i + 1), fontName='Helvetica-Bold', fontSize=10, fillColor=c, textAnchor='middle'))
         # Quebra visual simples para manter rótulos longos legíveis.
         texto = item if len(item) <= 18 else item[:17] + '…'
@@ -63,14 +71,14 @@ def build(data, output):
     global styles
     ss = getSampleStyleSheet()
     styles = {
-        'title': ParagraphStyle('title', parent=ss['Title'], fontName='Helvetica-Bold', fontSize=26, leading=31, textColor=NAVY, alignment=TA_CENTER, spaceAfter=10),
-        'subtitle': ParagraphStyle('subtitle', parent=ss['Normal'], fontSize=15, leading=20, textColor=TEAL, alignment=TA_CENTER, spaceAfter=22),
-        'h1': ParagraphStyle('h1', parent=ss['Heading1'], fontName='Helvetica-Bold', fontSize=19, leading=23, textColor=NAVY, spaceBefore=10, spaceAfter=8),
-        'h2': ParagraphStyle('h2', parent=ss['Heading2'], fontName='Helvetica-Bold', fontSize=14, leading=18, textColor=TEAL, spaceBefore=8, spaceAfter=5),
+        'title': ParagraphStyle('title', parent=ss['Title'], fontName='Times-Bold', fontSize=26, leading=31, textColor=NAVY, alignment=TA_CENTER, spaceAfter=10),
+        'subtitle': ParagraphStyle('subtitle', parent=ss['Normal'], fontName='Helvetica', fontSize=15, leading=20, textColor=NAVY, alignment=TA_CENTER, spaceAfter=22),
+        'h1': ParagraphStyle('h1', parent=ss['Heading1'], fontName='Times-Bold', fontSize=19, leading=23, textColor=NAVY, spaceBefore=10, spaceAfter=8),
+        'h2': ParagraphStyle('h2', parent=ss['Heading2'], fontName='Helvetica-Bold', fontSize=14, leading=18, textColor=NAVY, spaceBefore=8, spaceAfter=5),
         'body': ParagraphStyle('body', parent=ss['BodyText'], fontSize=10.5, leading=15, textColor=INK, spaceAfter=7),
         'small': ParagraphStyle('small', parent=ss['BodyText'], fontSize=9, leading=12, textColor=MUTED),
         'diagram': ParagraphStyle('diagram', parent=ss['BodyText'], fontSize=9, leading=12, textColor=NAVY, alignment=TA_CENTER),
-        'quote': ParagraphStyle('quote', parent=ss['BodyText'], fontSize=11, leading=16, textColor=TEAL, leftIndent=10, borderColor=GOLD, borderWidth=2, borderPadding=8, spaceBefore=8, spaceAfter=10),
+        'quote': ParagraphStyle('quote', parent=ss['BodyText'], fontSize=11, leading=16, textColor=NAVY, leftIndent=10, borderColor=GOLD, borderWidth=2, borderPadding=8, spaceBefore=8, spaceAfter=10),
     }
     doc = BaseDocTemplate(output, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=18*mm, bottomMargin=20*mm, title='Teoria musical completa - Musique', author='Equipe Musique')
     doc.addPageTemplates([PageTemplate(id='normal', frames=[Frame(20*mm, 19*mm, PAGE_W-40*mm, PAGE_H-37*mm, id='f')], onPage=header_footer)])
