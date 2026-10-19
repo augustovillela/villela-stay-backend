@@ -548,6 +548,7 @@ async function rodar({ t, secao, req, assert }) {
     const cj = await req('GET', '/music/curso-teoria.json', { como: 'ana', cru: true });
     const cursoJson = JSON.parse(cj.texto);
     assert.equal(cursoJson.schema, 'musique.course.v1');
+    assert.deepEqual(cursoJson.recursos, { html: '/music/curso-teoria', markdown: '/music/curso-teoria.md', pdf: '/music/curso-teoria.pdf' });
     const jsonSlugs = cursoJson.niveis.flatMap((n) => n.modulos.flatMap((m) => m.licoes.map((l) => l.slug)));
     assert.deepEqual(jsonSlugs.sort(), cursoSlugs.slice().sort(), 'JSON curricular acompanha o catálogo');
     assert.ok(cursoJson.niveis.every((n) => n.modulos.every((m) => m.licoes.every((l) => l.url === '/music/aprender/' + l.slug))), 'JSON expõe URLs canônicas das lições');
