@@ -66,6 +66,19 @@ const LICOES = [
     refs: ['priolli', 'omt'],
   },
   {
+    slug: 'revisao-primeiros-passos', titulo: 'Revisão: primeiros passos', nivel: 'iniciante', prereq: ['alfabeto-musical', 'cantar-e-localizar-notas'], termos: 'revisao primeiros passos checklist fundamentos escuta pulso nota',
+    resumo: 'Confira o que você já consegue ouvir, cantar, contar e localizar antes de avançar.',
+    blocos: [
+      { t: 'p', html: 'Esta revisão não é uma prova de velocidade. Use-a para perceber quais fundamentos já estão confortáveis e quais merecem mais uma volta. Se você consegue explicar uma ideia, ouvi-la e aplicá-la no instrumento, está pronto para seguir.' },
+      { t: 'lista', itens: ['Consigo diferenciar grave e agudo e explicar o que é altura.', 'Consigo marcar um pulso sem acelerar por alguns compassos.', 'Consigo cantar uma nota de referência e perceber se subi ou desci.', 'Consigo reconhecer dó–ré–mi… e C–D–E… no teclado.', 'Consigo localizar uma nota inicial no instrumento que estudo.'] },
+      { t: 'ferramenta', slug: 'laboratorio' },
+      { t: 'praticar', tipo: 'nota-no-teclado', nivel: 1 },
+      { t: 'praticar', tipo: 'ritmo-completar', nivel: 1 },
+      { t: 'p', html: 'Quando terminar, escreva uma frase no seu caderno: “Hoje eu consigo…”. Depois abra a próxima etapa, <a href="/music/aprender/tons-e-semitons">Teclado, tons, semitons e acidentes</a>, e comece a observar as distâncias entre as notas.' },
+    ],
+    refs: ['priolli'],
+  },
+  {
     slug: 'som-e-nota', titulo: 'Som, altura e nota', nivel: 'iniciante', prereq: [], termos: 'som altura duracao intensidade timbre frequencia',
     resumo: 'O que o ouvido percebe num som — altura, duração, intensidade e timbre — e o que é uma nota.',
     blocos: [
