@@ -37,6 +37,7 @@ O laboratório já oferece piano, pauta, braço de instrumentos, círculos de qu
 - **Bateria eletrônica via MIDI**: a ferramenta aceita notas de entrada de controladores e mapeia os golpes do kit para os sons do Musique em tempo real.
 - **Gravação de bateria MIDI**: uma performance recebida ao vivo pode ser registrada, baixada como MIDI ou JSON e reaberta para reprodução no próprio laboratório.
 - **Intercâmbio de padrões de bateria**: grades completas podem ser exportadas e importadas em JSON, preservando passos, compasso e nome do estudo.
+- **Atlas visual de harmonia**: uma entrada central reúne campo harmônico, acordes vizinhos, empréstimo modal, tensões e atalhos para piano e braço do instrumento, com imagens didáticas e áudio em cada cartão.
 
 ## Roadmap funcional
 

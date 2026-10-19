@@ -329,6 +329,7 @@ function relacionados(slug) {
     'harmonizador-tonalidades': ['/music/criar/mapa-harmonia', '/music/aprender/campo-harmonico', '/music/referencia/tonalidades'],
     'piano-roll-harmonico': ['/music/criar/progressoes', '/music/criar/mapa-harmonia', '/music/explorar/piano'],
     'mandala-harmonica': ['/music/criar/mapa-harmonia', '/music/explorar/harmonizador-tonalidades', '/music/explorar/circulo-de-quintas'],
+    'atlas-harmonia-visual': ['/music/explorar/mandala-harmonica', '/music/aprender/campo-harmonico', '/music/explorar/atlas-escalas'],
     'superestruturas-acordes': ['/music/explorar/identificar-acorde', '/music/explorar/acordes-vizinhos', '/music/referencia/extensoes'],
     'intervalos-do-acorde': ['/music/explorar/superestruturas-acordes', '/music/referencia/intervalos', '/music/praticar/intervalo-ouvido'],
     'editor-de-braco': ['/music/explorar/braco', '/music/explorar/acordes-vizinhos', '/music/referencia/afinacoes'],

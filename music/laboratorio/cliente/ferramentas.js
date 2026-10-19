@@ -485,6 +485,31 @@
     render();
   };
 
+  F['atlas-harmonia-visual'] = function (alvo, st) {
+    st.tonica = st.tonica || 'C'; st.modo = st.modo || 'maior';
+    function acorde(t, id) { return { f: t, id: id, nome: A.simbolo(t, id), notas: A.notas(naOitava(t, 4), id) || [] }; }
+    function tocar(x) { C.Som.tocar(x.notas.map(N.midi), { modo: 'harmonico', dur: 1.1 }); }
+    function cartao(titulo, subtitulo, corpo, classe) { return el('section', { class: 'lab-atlas-cartao ' + (classe || '') }, [el('div', { class: 'lab-atlas-cartao-cab' }, [el('span', { class: 'lab-atlas-num', txt: titulo.slice(0, 1) }), el('div', {}, [el('h2', { txt: titulo }), el('p', { class: 'lab-dica', txt: subtitulo })])]), corpo]); }
+    function chips(xs, grupo) { return el('div', { class: 'lab-atlas-chips' }, xs.map(function (x) { return el('button', { type: 'button', class: 'lab-atlas-acorde ' + (grupo || ''), title: 'Ouvir ' + x.nome, txt: x.nome, onclick: function () { tocar(x); } }); })); }
+    function atualizar() { st.tonica = tonica.value || 'C'; st.modo = modo.value; render(); }
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo); var tonica = el('input', { type: 'text', class: 'lab-input', value: C.nomeNota(tonicaDe(st)), 'aria-label': 'Tônica do atlas', placeholder: 'C' }); var modo = el('select', { class: 'lab-select', 'aria-label': 'Modo do atlas' }); ['maior', 'menor'].forEach(function (m) { modo.appendChild(el('option', { value: m, txt: m === 'maior' ? 'Maior' : 'Menor', selected: st.modo === m })); });
+      alvo.appendChild(el('div', { class: 'lab-atlas-intro' }, [el('span', { class: 'lab-atlas-selo', txt: 'ATLAS VISUAL' }), el('h1', { txt: 'Veja a harmonia antes de decorá-la' }), el('p', { txt: 'Escolha uma tonalidade. Cada painel transforma uma ideia musical em uma imagem para ouvir, comparar e experimentar.' }), el('div', { class: 'lab-controles' }, [el('label', { class: 'lab-campo' }, [el('span', { txt: 'Tônica' }), tonica]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Modo' }), modo]), el('button', { type: 'button', class: 'btn', txt: 'Atualizar atlas', onclick: atualizar })])]));
+      var t = tonicaDe(st), campo = T.campo(t, st.modo, { tetrades: false }) || [], paralelo = T.campo(t, st.modo === 'maior' ? 'menor' : 'maior', { tetrades: false }) || [];
+      var diatonicos = campo.map(function (x) { return acorde(x.fundamental, x.acorde); }), vizinhos = []; diatonicos.forEach(function (x) { for (var r = 0; r < 12; r++) ['maior', 'menor'].forEach(function (id) { var y = acorde(N.deClasse(r), id), comum = x.notas.map(N.pc).filter(function (p) { return y.notas.map(N.pc).indexOf(p) >= 0; }).length; if (comum >= 2 && !vizinhos.some(function (z) { return z.nome === y.nome; })) vizinhos.push(y); }); });
+      var campoBox = el('div', { class: 'lab-atlas-campo' }, [el('div', { class: 'lab-atlas-graus', txt: 'I   ii   iii   IV   V   vi   vii°' }), chips(diatonicos, 'diatonico')]);
+      alvo.appendChild(cartao('Campo harmônico', 'A família de acordes da tonalidade. As cores separam tônica, preparação e dominante.', campoBox, 'lab-atlas-campo-card'));
+      var vizSvg = el('div', { class: 'lab-atlas-vizinhos' }); var base = diatonicos[0], pares = vizinhos.slice(0, 10); pares.forEach(function (x, i) { var item = el('button', { type: 'button', class: 'lab-atlas-viz-card', title: 'Ouvir transição ' + base.nome + ' → ' + x.nome, onclick: function () { tocar(base); setTimeout(function () { tocar(x); }, 550); } }, [el('strong', { txt: x.nome }), el('span', { txt: '2 notas em comum' }), el('small', { txt: 'mova uma nota' })]); vizSvg.appendChild(item); });
+      alvo.appendChild(cartao('Acordes vizinhos', 'Uma troca pequena pode levar a outro caminho. O botão toca o acorde de partida e o vizinho.', vizSvg, 'lab-atlas-viz-card-wrap'));
+      var caminhos = [acorde(t, 'maior'), acorde(t, '7M'), acorde(t, '7M9'), acorde(t, '9'), acorde(t, '13')]; var tensoes = el('div', { class: 'lab-atlas-tensoes' }); caminhos.forEach(function (x, i) { tensoes.appendChild(el('button', { type: 'button', class: 'lab-atlas-tensao', title: 'Ouvir ' + x.nome, onclick: function () { tocar(x); } }, [el('span', { class: 'lab-atlas-tensao-num', txt: String(i) }), el('strong', { txt: x.nome }), el('small', { txt: i === 0 ? 'tríade' : i === 1 ? 'cor' : i === 2 ? 'abertura' : i === 3 ? 'tensão' : 'brilho' })])); if (i < caminhos.length - 1) tensoes.appendChild(el('span', { class: 'lab-atlas-seta', txt: '→' })); });
+      alvo.appendChild(cartao('Cores e tensões', 'A mesma fundamental pode ganhar novas funções e cores sem perder sua identidade.', tensoes, 'lab-atlas-tensoes-card'));
+      var modal = paralelo.slice(0, 7).map(function (x) { return acorde(x.fundamental, x.acorde); }); alvo.appendChild(cartao('Empréstimo modal', 'Acordes do modo paralelo criam contraste: toque um deles e depois volte ao campo principal.', chips(modal, 'paralelo'), 'lab-atlas-modal-card'));
+      var instrumento = el('div', { class: 'lab-atlas-instrumentos' }); instrumento.appendChild(el('button', { type: 'button', class: 'btn sec', txt: 'Ver ' + diatonicos[0].nome + ' no piano', onclick: function () { location.href = '/music/explorar/piano?t=' + N.slug(t) + '&a=maior'; } })); instrumento.appendChild(el('button', { type: 'button', class: 'btn sec', txt: 'Ver no braço do violão', onclick: function () { location.href = '/music/explorar/braco?t=' + N.slug(t) + '&a=maior'; } })); alvo.appendChild(cartao('Leve para o instrumento', 'A imagem vira prática: abra o acorde no piano ou no braço e toque junto.', instrumento, 'lab-atlas-inst-card'));
+      alvo.appendChild(el('p', { class: 'lab-dica', txt: 'O atlas é um ponto de partida visual. Use os botões para ouvir, depois abra o desenho do instrumento e pratique.' }));
+    }
+    render();
+  };
+
   F['superestruturas-acordes'] = function (alvo, st) {
     st.notasTexto = st.notasTexto || 'C, E';
     function lerNotas() { return st.notasTexto.split(/[;,\s]+/).map(function (x) { return N.ler(x.trim()); }).filter(Boolean).slice(0, 4); }
