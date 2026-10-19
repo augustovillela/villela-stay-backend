@@ -79,6 +79,19 @@ const LICOES = [
     refs: ['priolli'],
   },
   {
+    slug: 'primeira-leitura-ritmica', titulo: 'Primeira leitura rítmica', nivel: 'iniciante', prereq: ['revisao-primeiros-passos'], termos: 'leitura ritmica figura pausa pulso contagem compasso iniciante',
+    resumo: 'Transforme uma sequência de pulsos em figuras e pausas que você consegue ler e executar.',
+    blocos: [
+      { t: 'p', html: 'Na leitura rítmica, não comece pela figura isolada: comece pelo pulso. Conte <strong>1 2 3 4</strong> em voz baixa e encaixe cada som nesse espaço. Uma figura ocupa parte ou todo o pulso; uma pausa é o espaço em que você continua contando sem produzir som.' },
+      { t: 'lista', itens: ['A <strong>semínima</strong> ocupa um pulso em um compasso simples.', 'A <strong>mínima</strong> ocupa dois pulsos.', 'Duas <strong>colcheias</strong> dividem um pulso em duas partes iguais.', 'A pausa tem duração própria: o silêncio também é escrito e contado.'] },
+      { t: 'ouvir', rotulo: 'Ouça uma sequência regular', midis: [60, 60, 60, 60, 60, 60, 60, 60], dur: 0.16, passo: 0.5, modo: 'melodico' },
+      { t: 'p', html: 'Bata palmas apenas no primeiro e no terceiro pulso, mantendo a contagem completa. Depois faça o mesmo no segundo e no quarto. Essa alternância ajuda a sentir onde o pulso está mesmo quando a música não toca em todas as batidas.' },
+      { t: 'praticar', tipo: 'ritmo-completar', nivel: 2 },
+      { t: 'ferramenta', slug: 'batidas' },
+    ],
+    refs: ['med', 'priolli'],
+  },
+  {
     slug: 'som-e-nota', titulo: 'Som, altura e nota', nivel: 'iniciante', prereq: [], termos: 'som altura duracao intensidade timbre frequencia',
     resumo: 'O que o ouvido percebe num som — altura, duração, intensidade e timbre — e o que é uma nota.',
     blocos: [

@@ -8,7 +8,7 @@ const NIVEIS = [
     { id: 'som-e-mapa', nome: 'Som e mapa musical', objetivo: 'Criar uma rotina de estudo, encontrar o pulso, cantar e reconhecer altura, duração e o nome das notas.', licoes: ['como-estudar-musica', 'escuta-ativa-e-pulso', 'cantar-e-localizar-notas', 'som-e-nota', 'alfabeto-musical', 'revisao-primeiros-passos'] },
   ] },
   { id: 'fundamentos', ordem: 1, nome: 'Fundamentos da linguagem', resumo: 'Leia o básico e sinta o pulso antes de tocar.', status: 'disponivel', modulos: [
-    { id: 'leitura-e-ritmo', nome: 'Leitura e ritmo', objetivo: 'Ler pauta, claves, figuras, pausas, pulso e compasso.', licoes: ['tons-e-semitons', 'pauta-e-claves', 'figuras-e-pausas', 'pulso-e-compasso'] },
+    { id: 'leitura-e-ritmo', nome: 'Leitura e ritmo', objetivo: 'Ler pauta, claves, figuras, pausas, pulso e compasso.', licoes: ['primeira-leitura-ritmica', 'tons-e-semitons', 'pauta-e-claves', 'figuras-e-pausas', 'pulso-e-compasso'] },
   ] },
   { id: 'leitura-percepcao', ordem: 2, nome: 'Leitura e percepção', resumo: 'Conecte o que vê, ouve, canta e toca.', status: 'em-construcao', modulos: [
     { id: 'intervalos-ouvido', nome: 'Intervalos e ouvido relativo', objetivo: 'Ouvir distâncias e reconhecer relações entre notas.', licoes: ['intervalos', 'ouvido-absoluto'] },
