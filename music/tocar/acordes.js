@@ -17,6 +17,13 @@
     { quality: 'minor7', suffix: 'm7', intervals: [0, 3, 7, 10], priority: 1 },
     { quality: 'halfDiminished7', suffix: 'm7b5', intervals: [0, 3, 6, 10], priority: 2 },
     { quality: 'diminished7', suffix: 'dim7', intervals: [0, 3, 6, 9], priority: 2 },
+    { quality: 'major6', suffix: '6', intervals: [0, 4, 7, 9], priority: 2 },
+    { quality: 'minor6', suffix: 'm6', intervals: [0, 3, 7, 9], priority: 2 },
+    { quality: 'add9', suffix: 'add9', intervals: [0, 2, 4, 7], priority: 2 },
+    { quality: 'dominant9', suffix: '9', intervals: [0, 2, 4, 7, 10], priority: 2 },
+    { quality: 'major9', suffix: 'maj9', intervals: [0, 2, 4, 7, 11], priority: 2 },
+    { quality: 'minor9', suffix: 'm9', intervals: [0, 2, 3, 7, 10], priority: 2 },
+    { quality: 'sixNine', suffix: '6/9', intervals: [0, 2, 4, 7, 9], priority: 3 },
   ];
   function uniquePitches(notes) {
     var seen = Object.create(null), values = [];
@@ -40,8 +47,12 @@
       if (same(expected, pcs)) matches.push({ rootPc: rootPc, quality: q, inversion: lowest === undefined ? 0 : ((lowest % 12 + 12) % 12 - rootPc + 12) % 12 });
     });
     if (!matches.length) return null;
+    var bassPc = lowest === undefined ? -1 : ((lowest % 12) + 12) % 12;
     matches.sort(function (a, b) {
-      return a.quality.priority - b.quality.priority || a.quality.intervals.length - b.quality.intervals.length || a.rootPc - b.rootPc;
+      // Em conjuntos ambíguos (C6 = Am7), a nota mais grave é a âncora
+      // musical mais útil para a leitura ao vivo.
+      return (a.rootPc === bassPc ? 0 : 1) - (b.rootPc === bassPc ? 0 : 1) ||
+        a.quality.priority - b.quality.priority || a.quality.intervals.length - b.quality.intervals.length || a.rootPc - b.rootPc;
     });
     var found = matches[0];
     return { rootPc: found.rootPc, rootName: NAMES[found.rootPc], symbol: NAMES[found.rootPc] + found.quality.suffix,
