@@ -433,7 +433,7 @@
       if (piano) history.hidden = true;
       else { if (historyKey !== polyphonicHistoryKey) { history.replaceChildren.apply(history, polyphonicHistory.map(function (item) { return el('li', { text: item }); })); polyphonicHistoryKey = historyKey; } history.hidden = !polyphonicHistory.length; }
     }
-    var clear = $('tj-midi-chord-clear'); if (clear) clear.hidden = !polyphonicHistory.length;
+    var clear = $('tj-midi-chord-clear'); if (clear) clear.hidden = piano || !polyphonicHistory.length;
   }
   function clearPolyphonicHistory() { polyphonicHistory = []; polyphonicHistoryKey = ''; polyphonicLabel = ''; polyphonicCandidate = ''; polyphonicCount = 0; updatePolyphonicLabel(''); }
   async function start(mode, resume) {
