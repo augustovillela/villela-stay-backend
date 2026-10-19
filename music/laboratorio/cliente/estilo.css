@@ -550,5 +550,7 @@
 .pozzoli-compasso{display:flex;flex-wrap:wrap;align-items:center;gap:3px;min-height:58px;padding:8px 6px;border-left:2px solid #9fb4ca;background:#1c3150;color:#fff;font-size:25px;letter-spacing:1px}
 .pozzoli-compasso small{width:100%;font-size:10px;color:#bfd2e4;letter-spacing:0}
 .pozzoli-compasso.atual{background:#8a4b08;box-shadow:0 0 0 3px #ffd166 inset}
+.pozzoli-compasso.tocando{outline:3px solid #fff;outline-offset:-3px;background:#b5651d}
+.pozzoli-fig.ativo{color:#ffe066;text-shadow:0 0 10px #ffe066;transform:scale(1.16)}
 @media (max-width:700px){.pozzoli-serie{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.pozzoli-serie{grid-template-columns:1fr}}
