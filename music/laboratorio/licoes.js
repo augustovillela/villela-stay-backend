@@ -430,6 +430,19 @@ const LICOES = [
     refs: ['omt'],
   },
   {
+    slug: 'treino-intervalos', titulo: 'Treino de intervalos pelo ouvido', nivel: 'iniciante', prereq: ['intervalos'], termos: 'intervalos ouvido relativo treino audicao melodia distancia reconhecimento',
+    resumo: 'Transforme a tabela de intervalos em relações que você consegue cantar, reconhecer e aplicar.',
+    blocos: [
+      { t: 'p', html: 'Para treinar intervalos, use sempre uma <strong>nota de referência</strong>. O intervalo não é uma etiqueta isolada: é o caminho entre duas alturas. Cante a primeira nota, imagine a segunda e só então confira a resposta.' },
+      { t: 'ouvir', rotulo: 'Referência, terça maior, quinta e oitava', midis: [[60], [60, 64], [60, 67], [60, 72]], dur: 0.55, modo: 'melodico' },
+      { t: 'lista', itens: ['Cante a referência em “ah”.', 'Diga se a segunda nota parece próxima, aberta ou muito distante.', 'Associe a sensação ao número do intervalo.', 'Repita começando em outra nota para não decorar apenas o timbre de dó.'] },
+      { t: 'praticar', tipo: 'intervalo-ouvido', nivel: 2 },
+      { t: 'ferramenta', slug: 'intervalos' },
+      { t: 'p', html: 'O objetivo desta etapa é ouvir relações, não desenvolver ouvido absoluto. Com o tempo, você poderá usar a mesma habilidade para afinar, tirar melodias de ouvido e entender o movimento de uma linha.' },
+    ],
+    refs: ['omt', 'priolli'],
+  },
+  {
     slug: 'projeto-final', titulo: 'Projeto final: ouvir, analisar e criar', nivel: 'avançado', prereq: ['harmonia-popular', 'contraponto', 'articulacao-e-dinamica'], termos: 'projeto final analise composicao arranjo teoria musical repertorio',
     resumo: 'Integre leitura, percepção, harmonia, forma e arranjo em uma peça curta autoral ou em uma análise documentada.',
     blocos: [
