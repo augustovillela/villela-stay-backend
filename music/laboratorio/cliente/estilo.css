@@ -100,7 +100,7 @@
 .curso-trilhas div{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:4px}
 .curso-trilhas strong{color:var(--navy)}
 .curso-trilhas span{font-size:14px;color:var(--suave)}
-.curso-filtros{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}.curso-filtro{border:1px solid var(--borda);border-radius:999px;background:#fff;color:var(--navy);padding:8px 13px;font:600 13px Inter,sans-serif;cursor:pointer}.curso-filtro:hover,.curso-filtro:focus-visible,.curso-filtro.ativo{background:var(--navy);color:#fff;border-color:var(--navy)}
+.curso-filtros-ajuda{margin:18px 0 8px;color:var(--suave);font-size:14px}.curso-filtros{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}.curso-filtro{border:1px solid var(--borda);border-radius:999px;background:#fff;color:var(--navy);padding:8px 13px;font:600 13px Inter,sans-serif;cursor:pointer}.curso-filtro:hover,.curso-filtro:focus-visible,.curso-filtro.ativo{background:var(--navy);color:#fff;border-color:var(--navy)}.curso-filtro-status{min-height:20px;margin:8px 0 0;color:var(--suave);font-size:13px}
 .curso-nivel{margin:28px 0;padding:18px;background:#F8FAFC;border:1px solid var(--borda);border-radius:var(--raio)}
 .curso-nivel-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .curso-nivel-meta{display:flex;flex-direction:column;align-items:flex-end;gap:7px}.curso-nivel-progresso{font-size:12px;font-weight:600;color:#64748B}

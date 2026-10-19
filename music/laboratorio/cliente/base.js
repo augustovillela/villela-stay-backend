@@ -203,7 +203,16 @@
 
   function filtrosCurso() {
     var botoes = C.$$('.curso-filtro'); if (!botoes.length) return;
-    botoes.forEach(function (b) { b.onclick = function () { var filtro = b.getAttribute('data-curso-filtro'); botoes.forEach(function (x) { var ativo = x === b; x.classList.toggle('ativo', ativo); x.setAttribute('aria-selected', ativo ? 'true' : 'false'); }); C.$$('.curso-modulo li[data-curso-trilhas]').forEach(function (item) { item.hidden = filtro !== 'todos' && item.getAttribute('data-curso-trilhas').split(' ').indexOf(filtro) < 0; }); }; });
+    var itens = C.$$('.curso-modulo li[data-curso-trilhas]'), status = C.$('#curso-filtro-status');
+    var nomes = { todos: 'Todas', conhecer: 'Conhecer', ouvir: 'Ouvir e reconhecer', aplicar: 'Aplicar' };
+    function aplicar(filtro) {
+      var visiveis = 0;
+      itens.forEach(function (item) { var mostra = filtro === 'todos' || item.getAttribute('data-curso-trilhas').split(' ').indexOf(filtro) >= 0; item.hidden = !mostra; if (mostra) visiveis++; });
+      botoes.forEach(function (x) { var id = x.getAttribute('data-curso-filtro'); x.classList.toggle('ativo', id === filtro); x.setAttribute('aria-selected', id === filtro ? 'true' : 'false'); });
+      if (status) status.textContent = (nomes[filtro] || filtro) + ': ' + visiveis + (visiveis === 1 ? ' lição visível.' : ' lições visíveis.') + (filtro === 'todos' ? ' Escolha uma trilha para filtrar.' : ' Clique em “Todas” para voltar a ver o curso inteiro.');
+    }
+    botoes.forEach(function (b) { b.onclick = function () { aplicar(b.getAttribute('data-curso-filtro')); }; });
+    aplicar('todos');
   }
 
   // ---- barra de rolagem também EM CIMA das tabelas largas (atlas) ----
