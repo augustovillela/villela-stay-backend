@@ -147,6 +147,7 @@ function montar(app, { requireUsuario, opcional } = {}) {
 <script src="/music/tocar/nucleo.js" defer></script>
 <script src="/music/tocar/midi.js" defer></script>
 <script src="/music/tocar/acordes.js" defer></script>
+<script src="/music/tocar/polifonico.js" defer></script>
 <script src="/music/tocar/audio.js" defer></script>
 <script src="/music/tocar/aprender.js" defer></script>
 <script src="/music/tocar/estudos.js" defer></script>

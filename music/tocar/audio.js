@@ -18,7 +18,9 @@
       if (minHz < 20 || minHz > 1000 || maxHz <= minHz || maxHz > 4000) { minHz = 70; maxHz = 1400; }
       if (windowMs < 35 || windowMs > 250) windowMs = 64;
       if (stepMs < 8 || stepMs > 120) stepMs = 24;
-      return { minHz: minHz, maxHz: maxHz, windowMs: windowMs, stepMs: Math.min(stepMs, windowMs) };
+      var config = { minHz: minHz, maxHz: maxHz, windowMs: windowMs, stepMs: Math.min(stepMs, windowMs) };
+      if (origem.polyphonic === true) config.polyphonic = true;
+      return config;
     }
     var detectorConfig = perfilDetector(o.detector);
     var status = { estado: 'parado', mensagem: 'Entrada de áudio desligada.' };
