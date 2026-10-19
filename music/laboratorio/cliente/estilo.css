@@ -103,6 +103,7 @@
 .curso-filtros{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}.curso-filtro{border:1px solid var(--borda);border-radius:999px;background:#fff;color:var(--navy);padding:8px 13px;font:600 13px Inter,sans-serif;cursor:pointer}.curso-filtro:hover,.curso-filtro:focus-visible,.curso-filtro.ativo{background:var(--navy);color:#fff;border-color:var(--navy)}
 .curso-nivel{margin:28px 0;padding:18px;background:#F8FAFC;border:1px solid var(--borda);border-radius:var(--raio)}
 .curso-nivel-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.curso-nivel-meta{display:flex;flex-direction:column;align-items:flex-end;gap:7px}.curso-nivel-progresso{font-size:12px;font-weight:600;color:#64748B}
 .curso-nivel-cab h2{margin:2px 0 5px}
 .curso-nivel-cab p{margin:0;color:var(--suave)}
 .curso-status{white-space:nowrap;border-radius:999px;padding:5px 10px;font:600 12px Inter,sans-serif;background:#E8F5EE;color:#0F5D3C}
@@ -119,12 +120,13 @@
 .curso-tags{font-size:11px;color:#64748B;letter-spacing:.02em}
 .curso-planejada{color:#64748B;font-style:italic}
 .curso-progresso{display:inline-block;margin:8px 0;padding:8px 12px;background:#E8F5EE;border:1px solid #BBF7D0;border-radius:999px;color:#14532D;font-size:14px;font-weight:600}
+.curso-proxima{margin:2px 0 8px;padding:10px 13px;background:#FFF7DF;border:1px solid #FDE68A;border-radius:10px;color:#7A4E06;max-width:760px}.curso-proxima a{color:#7A4E06;font-weight:700}
 .curso-concluir-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0;padding:12px 14px;background:#F8FAFC;border:1px solid var(--borda);border-radius:12px;max-width:820px}.curso-concluir{border:1px solid var(--navy);border-radius:999px;background:#fff;color:var(--navy);padding:8px 14px;font:600 14px Inter,sans-serif;cursor:pointer}.curso-concluir[aria-pressed="true"]{background:#E8F5EE;border-color:#15803D;color:#14532D}.curso-concluir-wrap span{font-size:13px;color:var(--suave)}
 .curso-modulo li.curso-item-feito{background:#F0FDF4;border-radius:8px;padding-left:8px}.curso-modulo a.curso-feito{text-decoration:line-through;color:#166534}
 .curso-contexto{margin:14px 0;padding:12px 15px;background:#EEF2FF;border:1px solid #C7D2FE;border-left:4px solid var(--navy);border-radius:10px;max-width:760px}
 .curso-contexto p{font-size:14px!important;margin:3px 0;color:#334155}
 .curso-contexto a{color:var(--navy);font-weight:600}
-@media (max-width:640px){.curso-nivel-cab{display:block}.curso-status{display:inline-block;margin-top:10px}}
+@media (max-width:640px){.curso-nivel-cab{display:block}.curso-nivel-meta{align-items:flex-start}.curso-status{display:inline-block;margin-top:10px}}
 .lab-licao{max-width:820px}
 .lab-licao p{font-size:17px}
 .lab-ferr-link{background:#fff;border:1px dashed var(--navy);border-radius:10px;padding:10px 14px}
