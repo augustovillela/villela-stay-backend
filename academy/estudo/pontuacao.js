@@ -57,10 +57,51 @@ function normalizarRegra(r) {
     // critério cadastrado" — antes o nulo virava 0, e todo mundo "atingia o critério"
     aprovacao: r.aprovacao && (num(r.aprovacao.min_pct, null) != null || num(r.aprovacao.min_pontos, null) != null) ? { min_pct: num(r.aprovacao.min_pct, null), min_pontos: num(r.aprovacao.min_pontos, null) } : null,
     fonte: String(r.fonte || ''),
-    formato: normalizarFormato(r.formato)
+    formato: normalizarFormato(r.formato),
+    // de que campo da questão sai o bloco desta regra: 'bloco' (o usual) ou 'disciplina' (prova repartida por
+    // disciplina, como o ENAM: 16 de Constitucional, 10 de Administrativo...). Quem lê é a montagem da prova (aluno.js).
+    bloco_por: r.bloco_por === 'disciplina' ? 'disciplina' : 'bloco',
+    // o nome da linha geral quando há linhas a mais (`aprovacao.rotulo`; ex.: "ampla concorrência")
+    rotulo_geral: String((r.aprovacao && r.aprovacao.rotulo) || '').trim().slice(0, 160),
+    // LINHAS DE CORTE A MAIS, mostradas ao lado da geral, que NUNCA decidem o `aprovado`: o corte de quem concorre
+    // por cota depende de uma declaração do candidato, e o Estude não pergunta isso (dado sensível) — mostra as duas.
+    cortes_adicionais: normalizarCortes(r.cortes_adicionais, !!(r.aprovacao && (num(r.aprovacao.min_pct, null) != null || num(r.aprovacao.min_pontos, null) != null))),
+    // REGRAS POR RAIZ DO PROGRAMA (ADR-0016): a prova montada só com questões de uma raiz que tem regra própria (a
+    // trilha ENAM dentro do curso do TJDFT) é corrigida pela regra dela. Aqui só a lista; a regra vem de `regraDaRaiz`.
+    raizes: normalizarRaizes(r.regras_por_raiz)
   };
   if (regra.valor_certa <= 0) throw new Error('regra de pontuação: valor_certa deve ser positivo.');
   return regra;
+}
+// [{ rotulo, min_pct?, min_pontos? }] — cada linha precisa de nome e de número; sem a linha geral não há linha a mais
+function normalizarCortes(lista, temGeral) {
+  if (lista == null) return [];
+  if (!Array.isArray(lista)) throw new Error('regra de pontuação: cortes_adicionais deve ser uma lista.');
+  if (lista.length && !temGeral) throw new Error('regra de pontuação: cortes_adicionais exige a linha geral (aprovacao).');
+  return lista.map(function (c, i) {
+    var x = { rotulo: String((c && c.rotulo) || '').trim().slice(0, 160), min_pct: num(c && c.min_pct, null), min_pontos: num(c && c.min_pontos, null) };
+    if (!x.rotulo) throw new Error('regra de pontuação: cortes_adicionais[' + i + '] sem "rotulo".');
+    if (x.min_pct == null && x.min_pontos == null) throw new Error('regra de pontuação: cortes_adicionais[' + i + '] sem min_pct nem min_pontos.');
+    return x;
+  });
+}
+// { "<código da raiz>": regra } — uma camada só: a regra da raiz não tem `regras_por_raiz` dentro
+function normalizarRaizes(m) {
+  if (m == null) return [];
+  if (typeof m !== 'object' || Array.isArray(m)) throw new Error('regra de pontuação: regras_por_raiz deve ser um objeto { "<raiz do programa>": regra }.');
+  return Object.keys(m).map(function (k) {
+    var sub = m[k];
+    if (!String(k).trim()) throw new Error('regra de pontuação: regras_por_raiz tem raiz sem código.');
+    if (!sub || typeof sub !== 'object' || Array.isArray(sub)) throw new Error('regra de pontuação: a regra da raiz ' + k + ' deve ser um objeto.');
+    if (sub.regras_por_raiz != null) throw new Error('regra de pontuação: a regra da raiz ' + k + ' não pode ter regras_por_raiz (uma camada só).');
+    normalizarRegra(sub); // a regra da raiz passa pelas mesmas travas
+    return String(k);
+  });
+}
+// a regra CRUA da raiz (a que se congela na prova), ou null se a raiz não tem regra própria
+function regraDaRaiz(regraCrua, raiz) {
+  var m = regraCrua && regraCrua.regras_por_raiz;
+  return m && typeof m === 'object' && !Array.isArray(m) && Object.prototype.hasOwnProperty.call(m, raiz) ? m[raiz] : null;
 }
 
 // FORMATO DA PROVA (opcional na regra): quantas questões a prova do edital tem, e quantas por bloco.
@@ -208,11 +249,21 @@ function corrigir(itens, respostas, regraCrua) {
       && (regra.aprovacao.min_pontos == null || liquida >= regra.aprovacao.min_pontos)
       && minimos.every(function (m) { return m.atendido !== false; });
   }
-  return {
+  var saida = {
     nota_bruta: bruta, descontados: descontados, nota_liquida: liquida, maximo: maximo, pct_liquido: pct(liquida, maximo),
     certas: soma('certas'), erradas: soma('erradas'), erros_contados: erros, abstencoes: soma('abstencoes'), em_branco: soma('em_branco'), anuladas: soma('anuladas'),
     por_bloco: lista, minimos: minimos, aprovado: aprovado, por_item: porItem, regra: regra
   };
+  // as LINHAS DE CORTE lado a lado (só quando a regra tem linha a mais): a geral e as adicionais, cada uma com o seu
+  // "atingiu". O `aprovado` continua o da linha geral.
+  if (regra.aprovacao && regra.cortes_adicionais.length) {
+    var atinge = function (c) {
+      return (c.min_pct == null || pct(liquida, maximo) >= c.min_pct) && (c.min_pontos == null || liquida >= c.min_pontos) && minimos.every(function (m) { return m.atendido !== false; });
+    };
+    saida.cortes = [{ rotulo: regra.rotulo_geral || 'geral', min_pct: regra.aprovacao.min_pct, min_pontos: regra.aprovacao.min_pontos, atingido: aprovado }]
+      .concat(regra.cortes_adicionais.map(function (c) { return junta(c, { atingido: atinge(c) }); }));
+  }
+  return saida;
 }
 
-module.exports = { corrigir: corrigir, normalizarRegra: normalizarRegra, situacaoDoItem: situacaoDoItem, blocosDaRegra: blocosDaRegra, repartirPorBloco: repartirPorBloco, formatoDaProva: formatoDaProva, ABSTENCAO: ABSTENCAO, SITUACOES: SITUACOES };
+module.exports = { corrigir: corrigir, normalizarRegra: normalizarRegra, situacaoDoItem: situacaoDoItem, blocosDaRegra: blocosDaRegra, repartirPorBloco: repartirPorBloco, formatoDaProva: formatoDaProva, regraDaRaiz: regraDaRaiz, ABSTENCAO: ABSTENCAO, SITUACOES: SITUACOES };

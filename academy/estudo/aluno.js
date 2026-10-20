@@ -588,7 +588,7 @@ function bancoDeQuestoes(usuario, produto, slugEscopo) {
   }
   const oficiais_resumo = { questoes: of.length, provas: provas.size, lista_provas: [...provas.entries()].map(([nome, n]) => ({ nome, n })).sort((a, b) => a.nome.localeCompare(b.nome)),
     bancas: [...bancasOf.entries()].map(([valor, n]) => ({ valor, n })).sort((a, b) => b.n - a.n), ano_de: anos.length ? Math.min(...anos) : 0, ano_ate: anos.length ? Math.max(...anos) : 0 };
-  return { total: lista.length, oficiais: of.length, oficiais_resumo, banca_do_edital: doEdital, formato: formatoDoPercurso(c.escopo), ...banco.facetas(lista) };
+  return { total: lista.length, oficiais: of.length, oficiais_resumo, banca_do_edital: doEdital, formato: formatoDoPercurso(c.escopo), provas_por_raiz: provasPorRaiz(c.escopo, lista), ...banco.facetas(lista) };
 }
 
 function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, erradas = false, origem = '', ...resto } = {}) {
@@ -744,10 +744,53 @@ function avaliarCard(usuario, produto, slugEscopo, cardId, resultado) {
 // ---------------------------------------------------------------------
 const abrirTentativa = (r) => r && { ...r, congelado: j.parse(r.congelado, {}), respostas: j.parse(r.respostas, {}), resultado: j.parse(r.resultado, null) };
 // O FORMATO do percurso para o simulado: os blocos da regra com o peso de cada um e, se cadastrado, o total do edital
-function formatoDoPercurso(escopo) {
-  let f = null;
-  try { f = pontuacao.blocosDaRegra(escopo.regra_pontuacao || {}); } catch (e) { f = null; } // regra torta não derruba a tela
+function formatoDoPercurso(escopo) { return formatoDaRegra(escopo.regra_pontuacao || {}); }
+function blocosSeguros(regra) { try { return pontuacao.blocosDaRegra(regra || {}); } catch (e) { return null; } } // regra torta não derruba a tela
+function formatoDaRegra(regra) {
+  const f = blocosSeguros(regra);
   return f && { origem: f.origem, questoes: f.questoes, blocos: f.blocos.map(b => b.bloco), exemplo: pontuacao.repartirPorBloco(f.questoes || SIMULADO_QUESTOES_PADRAO, f.blocos) };
+}
+// REGRA POR RAIZ DO PROGRAMA (ADR-0016). A regra do percurso pode trazer `regras_por_raiz` ({ ENAM: regra }): a prova
+// montada SÓ com questões de uma dessas raízes é corrigida pela regra dela (a trilha ENAM do curso do TJDFT: 80
+// questões, 70 % de acerto, sem mínimo por bloco); o resto segue a regra do percurso. A questão É DA RAIZ quando se
+// liga direto a um item dela (sem item direto, quando as competências dela cobrem um item dela). Pode ser de duas: as
+// questões oficiais do ENAM do curso C ligam-se ao item ENAM.* E ao item equivalente do XLIV, para servirem aos dois
+// — por isso "da raiz" é "ligada a item da raiz", e não "ligada só a ela". Questão do ENAM não entra no simulado do
+// XLIV mesmo assim: lá a prova é repartida pelos blocos I/II/III, e o bloco dela é "ENAM".
+function regraNormalSegura(regra) { try { return pontuacao.normalizarRegra(regra || {}); } catch (e) { return null; } }
+function raizesComRegra(escopo) { const n = regraNormalSegura(escopo.regra_pontuacao); return n ? n.raizes : []; }
+function raizesDasQuestoes(escopo) {
+  return R.memo(`qraizes:${escopo.id}:${escopo.versao}`, () => {
+    const pai = new Map(R.itens(escopo).map(i => [i.codigo, i.pai || '']));
+    const raizDe = (cod) => { let c = cod, k = 0; while (pai.get(c) && k++ < 50) c = pai.get(c); return pai.has(c) ? c : ''; };
+    const doComp = new Map();
+    for (const v of R.vinculos(escopo.id)) { if (!doComp.has(v.competencia_codigo)) doComp.set(v.competencia_codigo, new Set()); doComp.get(v.competencia_codigo).add(v.item_codigo); }
+    const diretos = new Map(), comps = new Map();
+    for (const v of db.prepare('SELECT questao_id q, alvo, codigo FROM est_questao_vinculos WHERE escopo_id = ?').all(escopo.id)) {
+      const m = v.alvo === 'item' ? diretos : comps;
+      if (!m.has(v.q)) m.set(v.q, []);
+      m.get(v.q).push(v.codigo);
+    }
+    const r = new Map();
+    for (const q of new Set([...diretos.keys(), ...comps.keys()])) {
+      const itensQ = diretos.has(q) ? diretos.get(q) : comps.get(q).flatMap(k => [...(doComp.get(k) || [])]);
+      r.set(q, [...new Set(itensQ.map(raizDe).filter(Boolean))]);
+    }
+    return r;
+  });
+}
+const daRaiz = (raizes, qid, raiz) => (raizes.get(qid) || []).includes(raiz);
+// de que campo da questão sai o bloco na regra da prova (`bloco_por`: o ENAM reparte por disciplina)
+const blocoDe = (q, porDisciplina) => porDisciplina ? q.disciplina || q.bloco || '' : q.bloco || q.disciplina || '';
+// as provas com regra própria que este percurso oferece, para a tela "Montar a prova"
+function provasPorRaiz(escopo, lista) {
+  const raizes = raizesComRegra(escopo);
+  if (!raizes.length) return [];
+  const texto = new Map(R.itens(escopo).map(i => [i.codigo, i.texto])), rq = raizesDasQuestoes(escopo);
+  return raizes.map(raiz => {
+    const regra = pontuacao.regraDaRaiz(escopo.regra_pontuacao, raiz);
+    return { raiz, titulo: texto.get(raiz) || raiz, regra, formato: formatoDaRegra(regra), questoes: lista.filter(q => daRaiz(rq, q.id, raiz)).length };
+  });
 }
 const SIMULADO_QUESTOES_PADRAO = 100; // o tamanho que a tela sugere para o simulado quando a regra não cadastra o total
 const SIMULADO_PCT_RESERVADAS = 50;   // % das vagas de cada bloco do simulado que vão para questões reservadas inéditas (ver `iniciarTentativa`)
@@ -761,10 +804,14 @@ function provaAberta(usuario, escopo) {
 }
 const tentativaDe = (usuario, id) => abrirTentativa(db.prepare('SELECT * FROM est_tentativas WHERE id = ? AND user_id = ?').get(s(id, 40), usuario.id));
 
-function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', competencias = [], n = 10, duracao_min = 0, aceitar_menos = false, ...resto } = {}) {
+function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', competencias = [], n = 10, duracao_min = 0, aceitar_menos = false, raiz = '', ...resto } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
   const eixo = banco.filtroDeEixos(resto);
   if (!MODOS_TENTATIVA.includes(modo)) throw erro(`modo deve ser ${MODOS_TENTATIVA.join('|')}.`);
+  // prova de uma RAIZ com regra própria (ADR-0016): só questões dessa raiz, corrigidas pela regra dela
+  const raizPedida = s(raiz, 60);
+  if (raizPedida && !raizesComRegra(c.escopo).includes(raizPedida)) throw erro(`"${raizPedida}" não é uma prova com regra própria neste percurso.`);
+  const rq = raizPedida || raizesComRegra(c.escopo).length ? raizesDasQuestoes(c.escopo) : null;
   // só prova aberta segura outra prova: o diagnóstico pode ficar dias em andamento (faz-se em partes) sem travar o treino e o simulado
   const aberta = abrirTentativa(db.prepare(`SELECT * FROM est_tentativas WHERE user_id = ? AND escopo_id = ? AND estado = 'em_andamento' AND modo IN (${MODOS_TENTATIVA.map(() => '?').join(',')})`).get(usuario.id, c.escopo.id, ...MODOS_TENTATIVA));
   if (aberta) {
@@ -776,7 +823,11 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   let elegiveis = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes }).filter(q => q.corrigivel)
     .map(q => ({ q, comps: compsDe.get(q.id) || [] }))
     .filter(x => !filtro.size || x.comps.some(k => filtro.has(k)))
-    .filter(x => banco.casaEixos(x.q, eixo)); // simulado só com a banca (órgão, cargo, período) escolhida
+    .filter(x => banco.casaEixos(x.q, eixo)) // simulado só com a banca (órgão, cargo, período) escolhida
+    .filter(x => !raizPedida || daRaiz(rq, x.q.id, raizPedida));
+  // a regra que MONTA a prova: a da raiz pedida ou a do percurso (a raiz detectada depois do sorteio troca só a correção)
+  let regraProva = raizPedida ? pontuacao.regraDaRaiz(c.escopo.regra_pontuacao, raizPedida) : c.escopo.regra_pontuacao || {};
+  const porDisc = (rg) => (regraNormalSegura(rg) || {}).bloco_por === 'disciplina';
   // percurso sem questão nenhuma (só o programa do edital): não é "faltou questão para o filtro" — é dizer o que falta
   if (!elegiveis.length && !filtro.size && !banco.temFiltroDeEixos(eixo)) {
     throw erro(c.particular && pedidosLiberados(usuario) ? 'Este percurso ainda não tem questões — importe uma prova em PDF (aba Escrita e oral › Importar prova) para montar a prova.' : c.particular ? 'Este percurso ainda não tem questões.' : 'Este percurso ainda não tem questões de correção automática.', 409);
@@ -798,9 +849,11 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   // mínimo do edital (0,9 ponto) era inalcançável. Com matéria escolhida, a prova é um recorte: não há o que repartir.
   // (banco sem o campo `bloco` nas questões — nenhuma cai em bloco da regra — não tem como repartir: sai o sorteio
   // geral, e o resultado dirá "fora do formato do edital")
-  let fmt = modo === 'simulado' && !filtro.size ? formatoDoPercurso(c.escopo) && pontuacao.blocosDaRegra(c.escopo.regra_pontuacao || {}) : null;
-  if (fmt && !elegiveis.some(x => fmt.blocos.some(b => b.bloco === (x.q.bloco || '')))) fmt = null;
-  const partes = fmt ? pontuacao.repartirPorBloco(pedido, fmt.blocos).map(p => ({ ...p, lista: elegiveis.filter(x => (x.q.bloco || '') === p.bloco) })) : null;
+  // (na regra da raiz com `bloco_por: 'disciplina'`, o bloco é a disciplina da questão — o quadro do ENAM)
+  const pd = porDisc(regraProva), blocoNaProva = (q) => pd ? q.disciplina || '' : q.bloco || '';
+  let fmt = modo === 'simulado' && !filtro.size ? blocosSeguros(regraProva) : null;
+  if (fmt && !elegiveis.some(x => fmt.blocos.some(b => b.bloco === blocoNaProva(x.q)))) fmt = null;
+  const partes = fmt ? pontuacao.repartirPorBloco(pedido, fmt.blocos).map(p => ({ ...p, lista: elegiveis.filter(x => blocoNaProva(x.q) === p.bloco) })) : null;
   const faltas = partes ? partes.filter(p => p.lista.length < p.questoes).map(p => ({ bloco: p.bloco, pedidas: p.questoes, elegiveis: p.lista.length })) : [];
   // faltou questão: a lacuna é dita, nunca preenchida com repetição ou filtro afrouxado em silêncio
   if (partes && faltas.length && !aceitar_menos) {
@@ -842,14 +895,22 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   if (!escolhidas.length) throw erro('Não há questões disponíveis para esta prova.', 409);
   // a prova por blocos sai na ordem dos blocos do edital; dentro disso, questões do mesmo texto-base ficam juntas
   const ordemBloco = partes ? new Map(partes.map((p, i) => [p.bloco, i])) : null;
-  const ordem = [...escolhidas].sort((a, b) => (ordemBloco ? ordemBloco.get(a.q.bloco || '') - ordemBloco.get(b.q.bloco || '') : 0) || (a.q.grupo || '~').localeCompare(b.q.grupo || '~'));
+  const ordem = [...escolhidas].sort((a, b) => (ordemBloco ? ordemBloco.get(blocoNaProva(a.q)) - ordemBloco.get(blocoNaProva(b.q)) : 0) || (a.q.grupo || '~').localeCompare(b.q.grupo || '~'));
+  // sem raiz pedida: prova que saiu SÓ com questões de uma raiz com regra própria (o aluno escolheu uma matéria do
+  // ENAM, por exemplo) é corrigida pela regra dessa raiz — a do percurso cobraria blocos que ela não tem
+  let raizDaProva = raizPedida;
+  if (!raizDaProva && rq) {
+    const cabe = raizesComRegra(c.escopo).filter(rz => ordem.length && ordem.every(x => daRaiz(rq, x.q.id, rz))), unica = cabe.length === 1 ? cabe[0] : '';
+    if (unica) { raizDaProva = unica; regraProva = pontuacao.regraDaRaiz(c.escopo.regra_pontuacao, unica); }
+  }
+  const pdFinal = porDisc(regraProva);
   const duracao = Math.round(Number(duracao_min) || 0) || Math.max(5, Math.ceil(ordem.reduce((t, x) => t + (x.q.tempo_estimado_seg || 180), 0) / 60));
   const inicio = new Date();
   const congelado = {
-    modo, duracao_min: duracao, regra: c.escopo.regra_pontuacao || {}, escopo_versao: c.escopo.versao, filtro: eixo,
+    modo, duracao_min: duracao, regra: regraProva || {}, escopo_versao: c.escopo.versao, filtro: eixo, ...(raizDaProva ? { raiz: raizDaProva } : {}),
     por_bloco: partes ? partes.map(p => ({ bloco: p.bloco, pedidas: p.questoes, questoes: Math.min(p.questoes, p.lista.length) })) : null,
     // o bloco da pontuação é o campo `bloco` da questão; sem ele, a disciplina serve de bloco
-    itens: ordem.map(x => ({ id: x.q.id, versao: x.q.versao, gabarito: banco.gabaritoDe(x.q), bloco: x.q.bloco || x.q.disciplina || '', competencias: x.comps, publico: banco.paraAluno(x.q, id) })),
+    itens: ordem.map(x => ({ id: x.q.id, versao: x.q.versao, gabarito: banco.gabaritoDe(x.q), bloco: blocoDe(x.q, pdFinal), competencias: x.comps, publico: banco.paraAluno(x.q, id) })),
   };
   db.prepare(`INSERT INTO est_tentativas (id, user_id, escopo_id, modo, congelado, inicio_em, prazo_em) VALUES (?, ?, ?, ?, ?, ?, ?)`)
     .run(id, usuario.id, c.escopo.id, modo, j.str(congelado), inicio.toISOString(), new Date(inicio.getTime() + duracao * 60e3).toISOString());
@@ -892,7 +953,8 @@ function resultadoParaAluno(t) {
   const v = vereditoDe(t);
   const veredito = v.veredito || (r.aprovado === null ? 'sem_criterio' : r.aprovado ? 'atingiu' : 'nao_atingiu');
   // `aprovado` só vai quando há veredito: fora do formato, o número cru da regra enganaria
-  return { ...r, itens, veredito, veredito_motivos: v.motivos, no_formato: v.no_formato, aprovado: v.no_formato ? r.aprovado : null,
+  // as linhas de corte (geral e cotista) só valem com veredito — fora do formato, enganariam como o `aprovado`
+  return { ...r, itens, veredito, veredito_motivos: v.motivos, no_formato: v.no_formato, aprovado: v.no_formato ? r.aprovado : null, cortes: v.no_formato ? r.cortes : undefined, raiz: t.congelado.raiz || undefined,
     respondidas: (r.certas || 0) + (r.erradas || 0) + (r.abstencoes || 0), total: (t.congelado.itens || []).length };
 }
 function paraAlunoTentativa(t) {

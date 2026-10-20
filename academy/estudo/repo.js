@@ -14,7 +14,9 @@ const { db, transacao, nowISO, novoId, j } = require('../db');
 const edital = require('./edital');
 const banco = require('./banco');
 const { ordenar } = require('./plano');
-const { normalizarRegra } = require('./pontuacao');
+const pontuacao = require('./pontuacao');
+// regra torta é erro de quem importa (400), não do servidor
+const normalizarRegra = (r) => { try { return pontuacao.normalizarRegra(r); } catch (x) { throw erro(x.message); } };
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const slug = (v) => s(v, 60).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -529,6 +531,11 @@ function importar_(produto, dados = {}, opcoes = {}) {
       const regra = normalizarRegra(e.regra_pontuacao);
       // desconto por erro sem dizer de onde veio a regra é palpite — e palpite muda nota
       if ((regra.desconto || regra.aprovacao || regra.minimos.length) && !regra.fonte) throw erro('escopo.regra_pontuacao: informe a "fonte" (edital/regulamento e artigo) da regra.');
+      // ADR-0016: a regra de cada RAIZ do programa tem a mesma exigência de fonte (a raiz é conferida depois do programa)
+      for (const raiz of regra.raizes) {
+        const sub = normalizarRegra(pontuacao.regraDaRaiz(e.regra_pontuacao, raiz));
+        if ((sub.desconto || sub.aprovacao || sub.minimos.length) && !sub.fonte) throw erro(`escopo.regra_pontuacao.regras_por_raiz.${raiz}: informe a "fonte" (edital/regulamento e artigo) da regra.`);
+      }
       set('regra_pontuacao', j.str(e.regra_pontuacao));
     }
 
@@ -560,6 +567,13 @@ function importar_(produto, dados = {}, opcoes = {}) {
       }
     }
     const codItem = new Set(escopo.versao ? itens(escopo).map(i => i.codigo) : []);
+    // ADR-0016: regra por raiz só para nó RAIZ (sem pai) do programa vigente — chave torta não vira regra que nunca vale
+    if (e.regra_pontuacao != null) {
+      const raizes = new Set(escopo.versao ? itens(escopo).filter(i => !i.pai).map(i => i.codigo) : []);
+      for (const raiz of normalizarRegra(e.regra_pontuacao).raizes) {
+        if (!raizes.has(raiz)) throw erro(`escopo.regra_pontuacao.regras_por_raiz: "${raiz}" não é raiz do programa deste percurso${raizes.size ? ` (raízes: ${[...raizes].join(', ')})` : ' (o percurso não tem programa)'}.`);
+      }
+    }
 
     // ORDEM em importação por partes (uma disciplina por envio): o índice dentro do
     // pedido colidiria com o das outras disciplinas e a "próxima tarefa" saltaria de

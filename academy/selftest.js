@@ -2840,6 +2840,8 @@ async function main() {
   await require('./estudo/testes-lei-juris').rodar({ t, req });
   // ================= CURSO QUE REÚNE AULAS DE OUTRO ESCOPO (ADR-0015): inclusões, herança, vídeo, Tutor, venda e data de referência por escopo =================
   await require('./estudo/testes-inclusoes').rodar({ t, req });
+  // ================= REGRA DE PONTUAÇÃO POR RAIZ DO PROGRAMA (ADR-0016): a trilha ENAM com a regra dela, duas linhas de corte =================
+  await require('./estudo/testes-regra-por-raiz').rodar({ t, req });
   // ================= PÁGINA DE VENDA (frente P): números do percurso do Estude, descrição com lista, og:image com a medida real, compra à vista no celular =================
   await require('./testes-pagina-venda').rodar({ t, req });
 

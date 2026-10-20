@@ -2675,6 +2675,14 @@
       });
       if (r.aprovacao && r.aprovacao.min_pct != null) t.push('mínimo de ' + r.aprovacao.min_pct + '%');
       if (r.aprovacao && r.aprovacao.min_pontos != null) t.push('mínimo geral de ' + pts(r.aprovacao.min_pontos));
+      // linhas de corte a mais (ADR-0016): mostradas lado a lado, sem perguntar ao aluno em qual delas ele concorre
+      var rotG = (r.aprovacao && r.aprovacao.rotulo) || r.rotulo_geral; // a regra crua traz `aprovacao.rotulo`; a normalizada, `rotulo_geral`
+      if (r.aprovacao && rotG && (r.cortes_adicionais || []).length) t[t.length - 1] += ' (' + rotG + ')';
+      (r.cortes_adicionais || []).forEach(function (c) {
+        var x = [c.min_pontos != null ? pts(c.min_pontos) : '', c.min_pct != null ? num(c.min_pct) + '%' : ''].filter(Boolean).join(' e ');
+        if (x && c.rotulo) t.push('para ' + c.rotulo + ': ' + x);
+      });
+      if (r.bloco_por === 'disciplina') t.push('questões repartidas por disciplina');
       if (!t.length) t.push('1 ponto por acerto, sem desconto');
       else if (!desconta) t.splice(v !== 1 ? 1 : 0, 0, 'sem desconto por erro');
       return t.join('; ') + (r.fonte ? ' (fonte: ' + r.fonte + ')' : '');
@@ -2705,7 +2713,10 @@
         '<label class="es-campo">Duração em minutos<input id="es-pv-dur" type="number" min="0" max="600" placeholder="automática"></label>' +
         '<label class="es-campo">Matéria (disciplina e ponto do edital)<select id="es-pv-comp"><option value="">Todas as matérias</option>' + opcoesComp('') + '</select></label></div>' +
         '<div class="es-form es-eixos" id="es-pv-eixos"></div><p class="al-fino" id="es-pv-eixos-nota"></p>' +
-        '<p class="al-fino"><b>Regra de nota deste percurso:</b> ' + esc(regraTxt(p.regra_pontuacao)) + '</p>' +
+        // PROVA COM REGRA PRÓPRIA (ADR-0016): a trilha ENAM do curso do TJDFT tem a regra dela — o seletor só aparece
+        // quando o percurso oferece alguma (o servidor manda `provas_por_raiz` no banco)
+        '<div class="es-form" id="es-pv-raiz-cx" hidden><label class="es-campo">Prova<select id="es-pv-raiz"></select></label></div>' +
+        '<p class="al-fino" id="es-pv-regra"><b>Regra de nota deste percurso:</b> ' + esc(regraTxt(p.regra_pontuacao)) + '</p>' +
         '<p class="al-fino" id="es-pv-formato"></p>' +
         '<div class="es-linha"><button class="al-bt" id="es-pv-ir">Começar</button></div><div id="es-pv-msg"></div></div>';
       // SIMULADO NO FORMATO DO EDITAL: os blocos da regra na proporção do edital (o servidor reparte e sorteia por
@@ -2735,6 +2746,20 @@
       comBanco(function (b) {
         if (!el('es-pv-eixos')) return;
         fmt = b.formato || null; dizerFormato();
+        var raizes = b.provas_por_raiz || [];
+        if (raizes.length && el('es-pv-raiz')) {
+          el('es-pv-raiz').innerHTML = '<option value="">Prova do edital do percurso</option>' + raizes.map(function (x) {
+            return '<option value="' + esc(x.raiz) + '">' + esc(x.titulo) + ' (' + x.questoes + ' questões no banco)</option>';
+          }).join('');
+          el('es-pv-raiz-cx').hidden = false;
+          el('es-pv-raiz').onchange = function () {
+            var v = el('es-pv-raiz').value, x = raizes.filter(function (y) { return y.raiz === v; })[0];
+            fmt = x ? x.formato || null : b.formato || null;
+            el('es-pv-regra').innerHTML = '<b>Regra de nota ' + (x ? 'desta prova' : 'deste percurso') + ':</b> ' + esc(regraTxt(x ? x.regra : p.regra_pontuacao));
+            if (fmt && !nTocado) el('es-pv-n').value = el('es-pv-modo').value === 'simulado' && !el('es-pv-comp').value ? (fmt.questoes || 100) : 10;
+            dizerFormato();
+          };
+        }
         el('es-pv-eixos').innerHTML = seletoresDeEixo(b, 'es-pv-x-', {});
         if (el('es-pv-eixos').innerHTML) el('es-pv-eixos-nota').textContent = 'Escolha a banca do seu edital para fazer a prova só com questões dela. Banca, órgão, cargo e ano são das questões de prova oficial: com um deles marcado, as questões autorais ficam de fora.';
         // percurso sem questão: não há prova a montar — dizer isso antes de o aluno apertar "Começar"
@@ -2747,7 +2772,7 @@
       });
       function iniciar(aceitar) {
         var comp = el('es-pv-comp').value, fe = eixosEscolhidos('es-pv-x-');
-        api('POST', base() + '/tentativas', { banca: fe.banca || '', orgao: fe.orgao || '', cargo: fe.cargo || '', ano_de: Number(fe.ano_de) || 0, modo: el('es-pv-modo').value, n: Number(el('es-pv-n').value) || 10, duracao_min: Number(el('es-pv-dur').value) || 0, competencias: comp ? [comp] : [], aceitar_menos: !!aceitar })
+        api('POST', base() + '/tentativas', { banca: fe.banca || '', orgao: fe.orgao || '', cargo: fe.cargo || '', ano_de: Number(fe.ano_de) || 0, modo: el('es-pv-modo').value, n: Number(el('es-pv-n').value) || 10, duracao_min: Number(el('es-pv-dur').value) || 0, competencias: comp ? [comp] : [], aceitar_menos: !!aceitar, raiz: el('es-pv-raiz') ? el('es-pv-raiz').value : '' })
           .then(function (t) { executar(alvo, t); if (window.innerWidth <= LARGURA_CELULAR) irAoConteudo(false); }) // no celular, "Começar" leva à primeira questão
           .catch(function (e) {
             // faltou questão (no total ou num BLOCO do formato do edital): o servidor diz quantas há; a escolha de reduzir é do aluno
@@ -2902,6 +2927,14 @@
         : r.veredito ? '<p class="al-fino">Este percurso não tem nota de corte cadastrada — por isso não há "aprovado" ou "reprovado" aqui.</p>'
         // (resultado de antes desta regra, sem o campo: mantém a leitura antiga)
         : r.aprovado === null ? '<p class="al-fino">Este percurso não tem nota de corte cadastrada — por isso não há "aprovado" ou "reprovado" aqui.</p>' : '<p><b>' + (r.aprovado ? 'Atingiu o critério cadastrado.' : 'Não atingiu o critério cadastrado.') + '</b></p>';
+      // DUAS LINHAS DE CORTE (ADR-0016; ENAM: 70 % na ampla concorrência, 50 % para pessoas autodeclaradas negras,
+      // indígenas, quilombolas ou com deficiência): o Estude não pergunta em qual o aluno concorre — mostra as duas
+      if ((r.veredito === 'atingiu' || r.veredito === 'nao_atingiu') && (r.cortes || []).length > 1) {
+        veredito = '<p><b>Linhas de corte desta prova</b> (a regra tem mais de uma; vale a da sua forma de concorrer):</p><ul class="es-cortes">' + r.cortes.map(function (c) {
+          var x = [c.min_pontos != null ? num(c.min_pontos) + ' pontos' : '', c.min_pct != null ? num(c.min_pct) + '%' : ''].filter(Boolean).join(' e ');
+          return '<li>' + esc(maiuscula(c.rotulo)) + ' (' + x + '): <b>' + (c.atingido ? 'atingiu' : 'não atingiu') + '</b></li>';
+        }).join('') + '</ul>';
+      }
       var acertos = r.certas + ' de ' + (r.total || (r.certas + r.erradas + r.em_branco + (r.abstencoes || 0) + (r.anuladas || 0))) + (r.certas === 1 ? ' acerto' : ' acertos');
       alvo.innerHTML = '<div class="jr-caixa"><h3>Resultado' + (r.expirada ? ' — o prazo terminou' : '') + '</h3>' +
         (r.expirada ? '<p class="es-aviso">O tempo acabou antes do envio. Valeram as respostas que já estavam salvas no servidor.</p>' : '') +
