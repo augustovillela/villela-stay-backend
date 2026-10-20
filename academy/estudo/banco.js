@@ -22,6 +22,10 @@ const ORIGENS = ['oficial', 'adaptada', 'autoral', 'relato'];
 const GABARITOS = ['definitivo', 'preliminar', 'alterado', 'anulada', 'sem_gabarito_oficial', 'pedagogico'];
 const SITUACOES = ['rascunho', 'revisao', 'disponivel', 'suspensa', 'arquivada'];
 const USOS = ['aprendizagem', 'revisao', 'reservada']; // reservada = só entra em simulado/aferição
+// SELO DE VIGÊNCIA (ADR-0009, item 4; ADR-0017). Opcional — questão sem ele é a de sempre. `superada` = o gabarito
+// da época hoje está errado por norma ou decisão posterior: a questão fica para ESTUDO ("O que mudou", com a nota de
+// `vigencia` explicando a mudança) e FORA de toda correção automática. `vigente` e `afetada` só registram a triagem.
+const VIGENCIAS = ['vigente', 'afetada', 'superada'];
 const LETRAS = 'abcdefghij';
 
 function validarProcedencia(q, onde) {
@@ -58,6 +62,8 @@ function validarQuestao(q, i = 0) {
   let gabSit = s(q.gabarito_situacao, 24) || (proc.origem === 'oficial' ? '' : 'pedagogico');
   if (!GABARITOS.includes(gabSit)) throw new Error(`${onde}: gabarito_situacao deve ser ${GABARITOS.join('|')}.`);
   if (proc.origem !== 'oficial' && ['definitivo', 'preliminar', 'alterado'].includes(gabSit)) throw new Error(`${onde}: só questão oficial tem gabarito de banca; use "pedagogico".`);
+  const vigSit = s(q.vigencia_situacao, 20);
+  if (vigSit && !VIGENCIAS.includes(vigSit)) throw new Error(`${onde}: vigencia_situacao deve ser ${VIGENCIAS.join('|')} (ou ausente).`);
 
   const r = {
     tipo, enunciado, apoio: s(q.apoio, 20000), grupo: s(q.grupo, 60), ordem_fixa: !!q.ordem_fixa,
@@ -72,6 +78,8 @@ function validarQuestao(q, i = 0) {
     // cortada no meio da palavra (ficava "…não tem mais verbete que a susten"): corta na fronteira de frase ou de
     // palavra e leva reticências — o mesmo espírito dos outros campos (cortar, não recusar), sem deixar toco.
     vigencia: cortarNaFronteira(q.vigencia, MAX_VIGENCIA),
+    // só grava a chave quando vem: questão sem selo guarda os MESMOS dados de antes (reimportar não gera versão nova)
+    ...(vigSit ? { vigencia_situacao: vigSit } : {}),
     pistas: (Array.isArray(q.pistas) ? q.pistas : []).map(p => s(p, 500)).filter(Boolean).slice(0, 5),
     alternativas: [], rubrica: [],
   };
@@ -97,7 +105,10 @@ function validarQuestao(q, i = 0) {
     r.espelho_oficial = !!q.espelho_oficial && proc.origem === 'oficial';
     r.erros_criticos = (Array.isArray(q.erros_criticos) ? q.erros_criticos : []).map(e => s(e, 300)).filter(Boolean).slice(0, 8);
   }
-  r.corrigivel = FECHADOS.includes(tipo) && !['anulada', 'sem_gabarito_oficial'].includes(gabSit);
+  // superada sem a nota não ensina nada: o aluno veria um gabarito errado sem saber por quê
+  if (vigSit === 'superada' && !r.vigencia) throw new Error(`${onde}: questão superada exige a nota de "vigencia" (o que mudou e por quê).`);
+  // o selo NÃO entra no hash (enunciado, apoio e alternativas): marcar a questão como superada a atualiza, não a duplica
+  r.corrigivel = FECHADOS.includes(tipo) && !['anulada', 'sem_gabarito_oficial'].includes(gabSit) && vigSit !== 'superada';
   r.hash = hashQuestao(r);
   return r;
 }
@@ -177,6 +188,7 @@ function paraAluno(q, semente) {
   };
 }
 
+const superada = (q) => !!q && q.vigencia_situacao === 'superada';
 const gabaritoDe = (q) => {
   const certas = q.alternativas.filter(a => a.correta).map(a => a.id);
   return q.tipo === 'multipla' ? certas : certas[0];
@@ -230,4 +242,4 @@ function facetas(lista) {
   return { bancas: lista_(conta.banca), orgaos: lista_(conta.orgao), cargos: lista_(conta.cargo), anos: lista_(conta.ano, true), materias: lista_(conta.materia) };
 }
 
-module.exports = { semPontuacaoDeLista, bancaCanonica, eixos, filtroDeEixos, temFiltroDeEixos, casaEixos, facetas, validarQuestao, validarProcedencia, hashQuestao, embaralhar, cortarNaFronteira, MAX_VIGENCIA, paraAluno, gabaritoDe, TIPOS, FECHADOS, ORIGENS, GABARITOS, SITUACOES, USOS };
+module.exports = { semPontuacaoDeLista, bancaCanonica, eixos, filtroDeEixos, temFiltroDeEixos, casaEixos, facetas, validarQuestao, validarProcedencia, hashQuestao, embaralhar, cortarNaFronteira, MAX_VIGENCIA, paraAluno, gabaritoDe, superada, TIPOS, FECHADOS, ORIGENS, GABARITOS, SITUACOES, USOS, VIGENCIAS };

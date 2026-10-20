@@ -67,6 +67,8 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.get(`${base}/praticar`, ...AL, h((req, res) => { semCache(res); res.json(al.praticar(...a(req), { competencia: req.query.competencia, n: req.query.n, erradas: req.query.erradas === '1', origem: s(req.query.origem, 20),
     banca: req.query.banca, orgao: req.query.orgao, cargo: req.query.cargo, ano_de: req.query.ano_de, ano_ate: req.query.ano_ate })); }));
   app.get(`${base}/banco`, ...AL, h((req, res) => { semCache(res); res.json(al.bancoDeQuestoes(...a(req))); }));
+  // "O que mudou" (ADR-0017): questões com gabarito superado, só para leitura — não registra nada
+  app.get(`${base}/o-que-mudou`, ...AL, h((req, res) => { semCache(res); res.json(al.oQueMudou(...a(req))); }));
   // caderno de erros: a última resposta foi erro; a anotação é do próprio aluno
   app.get(`${base}/erros`, ...AL, h((req, res) => { semCache(res); res.json(al.erros(...a(req), { pagina: req.query.pagina })); }));
   app.put(`${base}/questoes/:questao/anotacao`, ...AL, h((req, res) => { res.json(al.anotar(...a(req), req.params.questao, b(req).texto, lido(req))); }));

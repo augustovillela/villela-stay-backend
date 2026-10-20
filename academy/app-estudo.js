@@ -2511,19 +2511,25 @@
     }
     function praticar(alvo, competencia) {
       novaTela(); // trocar o filtro repinta: a lista do filtro anterior não entra por cima
+      if (competencia === '__mudou__') return oQueMudou(alvo);
       var origem = '', eixo = {};
       if (competencia && typeof competencia === 'object') { origem = competencia.origem || ''; eixo = competencia.eixo || {}; competencia = competencia.competencia || ''; }
       var comps = E.painel.competencias, erradas = competencia === '__erradas__';
       competencia = erradas ? '' : (competencia || '');
       alvo.innerHTML = '<div class="jr-caixa"><div class="es-linha"><label class="es-campo">Matéria (disciplina e ponto do edital)<select id="es-pr-comp"><option value="">Todas as matérias</option>' +
         opcoesComp(competencia) +
-        '</select></label><label class="es-campo es-pr-of"><input type="checkbox" id="es-pr-of"' + (origem === 'oficial' ? ' checked' : '') + '> Só questões de prova oficial</label></div><div class="es-linha es-eixos" id="es-pr-eixos"></div><div id="es-pr"></div></div>';
+        '</select></label><label class="es-campo es-pr-of"><input type="checkbox" id="es-pr-of"' + (origem === 'oficial' ? ' checked' : '') + '> Só questões de prova oficial</label></div><div class="es-linha es-eixos" id="es-pr-eixos"></div><div id="es-pr-mudou"></div><div id="es-pr"></div></div>';
       var denovo = function () { praticar(alvo, { competencia: el('es-pr-comp').value, origem: el('es-pr-of').checked ? 'oficial' : '', eixo: eixosEscolhidos('es-pr-x-') }); };
       el('es-pr-comp').onchange = denovo; el('es-pr-of').onchange = denovo;
       if (competencia !== '__erradas__') comBanco(function (b) {
         if (!el('es-pr-eixos')) return;
         el('es-pr-eixos').innerHTML = seletoresDeEixo(b, 'es-pr-x-', eixo);
         cada(el('es-pr-eixos'), 'select', function (c) { c.onchange = denovo; });
+        // questões com gabarito superado ficam fora daqui: a tela diz que existem e onde lê-las
+        if (b.superadas && el('es-pr-mudou')) {
+          el('es-pr-mudou').innerHTML = '<p class="al-fino">📜 ' + b.superadas + (b.superadas === 1 ? ' questão oficial teve o gabarito superado' : ' questões oficiais tiveram o gabarito superado') + ' por lei ou decisão posterior — ficam fora da correção. <button class="es-link" id="es-pr-mud">Ver o que mudou</button></p>';
+          el('es-pr-mud').onclick = function () { ir('praticar', '__mudou__'); };
+        }
       });
       var out = el('es-pr');
       if (erradas) el('es-pr-comp').parentNode.parentNode.innerHTML = '<p class="al-rotulo">Refazendo o caderno de erros</p>';
@@ -2550,6 +2556,31 @@
         }
         mostrar();
       }).catch(function (e) { falha(out, e); });
+    }
+
+    // o gabarito comentado do "O que mudou", só leitura — o mesmo desenho do caderno de erros, com a marca "gabarito da época"
+    function gabaritoComentado(q, resumo, marca) {
+      return '<details><summary>' + esc(resumo) + '</summary>' + q.alternativas.map(function (a) {
+        return '<p class="es-alt-lida ' + (a.correta ? 'certa' : '') + '"><b>' + esc(a.id) + ')' + (a.correta ? esc(marca) : '') + '</b> ' + esc(a.texto) + (a.explicacao ? '<span class="es-expl">' + esc(a.explicacao) + '</span>' : '') + '</p>';
+      }).join('') + (q.comentario ? '<p>' + esc(q.comentario) + '</p>' : '') + notaDeVigencia(q.vigencia) + '</details>';
+    }
+
+    // ================= O QUE MUDOU (ADR-0017) =================
+    // questões oficiais com o gabarito da época SUPERADO por norma ou decisão posterior: para ler, sem responder —
+    // não pontuam, não entram em treino, simulado, aferição, estatística de acerto nem retomada
+    function oQueMudou(alvo) {
+      alvo.innerHTML = '<p class="al-sub">Carregando…</p>';
+      api('GET', base() + '/o-que-mudou').then(function (r) {
+        alvo.innerHTML = '<div class="jr-caixa"><p class="al-rotulo">Praticar</p><h3>O que mudou <span class="es-selo ambar">' + r.total + '</span></h3>' +
+          '<p class="al-sub">Questões de provas oficiais cujo gabarito <b>foi superado</b> por lei ou decisão posterior. Estão aqui para você ver o que a banca cobrava e o que mudou — <b>não valem ponto</b> e não entram no treino, no simulado nem nas suas estatísticas. Abra o gabarito da época e leia a nota de vigência.</p>' +
+          '<div class="es-linha"><button class="al-bt peq fan" id="es-mud-volta">← Voltar ao Praticar</button></div></div>' +
+          (r.total ? r.questoes.map(function (q) {
+            return '<div class="jr-caixa es-mudou">' + procedencia(q) + '<p class="al-fino"><span class="es-selo ambar">gabarito superado</span>' + (q.disciplina ? ' · ' + esc(q.disciplina) : '') + '</p>' +
+              (q.apoio ? '<div class="es-apoio">' + texto(q.apoio) + '</div>' : '') + '<div class="es-enun">' + texto(q.enunciado) + '</div>' +
+              gabaritoComentado(q, 'Ver o gabarito da época e o que mudou', ' · gabarito da época') + '</div>';
+          }).join('') : '<div class="jr-caixa"><p class="al-sub">Este percurso não tem questão com gabarito superado.</p></div>');
+        el('es-mud-volta').onclick = function () { ir('praticar'); };
+      }).catch(function (e) { falha(alvo, e); });
     }
 
     // ================= CADERNO DE ERROS =================

@@ -75,6 +75,8 @@ const vistasDe = (userId) => R.memo(`evs:vistas:${userId}`, () => new Set(db.pre
 // as questões que o aluno ENXERGA neste percurso (situação visível para ele): questão retirada do banco não conta em nada
 const questoesVivas = (c) => R.memo(`vivas:${c.escopo.id}:${c.situacoes.join(',')}`, () => new Set(db.prepare(`SELECT DISTINCT q.id FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id
     WHERE v.escopo_id = ? AND q.situacao IN (${c.situacoes.map(() => '?').join(',')})`).all(c.escopo.id, ...c.situacoes).map(r => r.id)));
+// questão SUPERADA (ADR-0017) sai do caderno de erros: não dá para refazê-la (está fora da correção) — ela vive em "O que mudou"
+const questoesSuperadas = (c) => R.memo(`superadas:${c.escopo.id}:${c.situacoes.join(',')}`, () => new Set(R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes }).filter(banco.superada).map(q => q.id)));
 
 function reagendar(userId, escopo, alvo, alvoId, resultado) {
   const atual = db.prepare('SELECT passo FROM est_revisoes WHERE user_id = ? AND escopo_id = ? AND alvo = ? AND alvo_id = ?').get(userId, escopo.id, alvo, alvoId);
@@ -500,7 +502,7 @@ function solucaoDoBloco(usuario, produto, slugEscopo, codigo, n, tentativa) {
 // `c` (o contexto do aluno): com ele, questão RETIRADA do banco sai da conta — o painel dizia "1 questão no caderno
 // de erros", o caderno abria vazio e a medalha "Caderno de erros zerado" ficava impossível naquela disciplina.
 function errosPendentes(userId, escopoId, c = null) {
-  const vivas = c ? questoesVivas(c) : null;
+  const vivas = c ? questoesVivas(c) : null, superadas = c ? questoesSuperadas(c) : null;
   const por = new Map();
   for (const e of evidencias(userId, escopoId)) {
     if (e.origem !== 'questao') continue;
@@ -509,7 +511,7 @@ function errosPendentes(userId, escopoId, c = null) {
     x.pendente = !e.acerto; x.ultima = e.criado_em; // as evidências vêm em ordem: a última manda
     por.set(e.ref_id, x);
   }
-  return [...por.values()].filter(x => x.pendente && (!vivas || vivas.has(x.id))).map(x => ({ id: x.id, erros: x.erros.size, ultima: x.ultima })).sort((a, b) => b.ultima.localeCompare(a.ultima));
+  return [...por.values()].filter(x => x.pendente && (!vivas || vivas.has(x.id)) && (!superadas || !superadas.has(x.id))).map(x => ({ id: x.id, erros: x.erros.size, ultima: x.ultima })).sort((a, b) => b.ultima.localeCompare(a.ultima));
 }
 const anotacaoDe = (userId, questaoId) => (db.prepare('SELECT texto FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(userId, questaoId) || {}).texto || '';
 const anotacaoEm = (userId, questaoId) => (db.prepare('SELECT atualizado_em FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(userId, questaoId) || {}).atualizado_em || '';
@@ -588,7 +590,21 @@ function bancoDeQuestoes(usuario, produto, slugEscopo) {
   }
   const oficiais_resumo = { questoes: of.length, provas: provas.size, lista_provas: [...provas.entries()].map(([nome, n]) => ({ nome, n })).sort((a, b) => a.nome.localeCompare(b.nome)),
     bancas: [...bancasOf.entries()].map(([valor, n]) => ({ valor, n })).sort((a, b) => b.n - a.n), ano_de: anos.length ? Math.min(...anos) : 0, ano_ate: anos.length ? Math.max(...anos) : 0 };
-  return { total: lista.length, oficiais: of.length, oficiais_resumo, banca_do_edital: doEdital, formato: formatoDoPercurso(c.escopo), provas_por_raiz: provasPorRaiz(c.escopo, lista), ...banco.facetas(lista) };
+  const superadas = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes }).filter(banco.superada).length;
+  return { total: lista.length, oficiais: of.length, superadas, oficiais_resumo, banca_do_edital: doEdital, formato: formatoDoPercurso(c.escopo), provas_por_raiz: provasPorRaiz(c.escopo, lista), ...banco.facetas(lista) };
+}
+
+// O QUE MUDOU (ADR-0009, item 4; ADR-0017) — as questões oficiais cujo gabarito da época foi SUPERADO por norma ou
+// decisão posterior. Só leitura, como o "gabarito comentado" do caderno de erros: enunciado, alternativas com o
+// gabarito DA ÉPOCA, explicações, comentário e a nota de vigência. Não registra evidência, não agenda retomada, não
+// conta acerto nem entra em treino, simulado, aferição ou quiz (lá fora, `corrigivel` = 0 já as tira).
+function oQueMudou(usuario, produto, slugEscopo) {
+  const c = abrir(usuario, produto, slugEscopo);
+  const lista = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes }).filter(banco.superada)
+    .sort((a, b) => String(a.disciplina || '').localeCompare(String(b.disciplina || '')) || banco.eixos(a).ano - banco.eixos(b).ano || String((a.procedencia || {}).numero_original || '').localeCompare(String((b.procedencia || {}).numero_original || ''), undefined, { numeric: true }));
+  return { total: lista.length, questoes: lista.map(q => ({ id: q.id, tipo: q.tipo, enunciado: q.enunciado, apoio: q.apoio, disciplina: q.disciplina, origem: q.origem, procedencia: q.procedencia,
+    competencias: R.competenciasDaQuestao(q.id, c.escopo.id), gabarito_situacao: q.gabarito_situacao, vigencia_situacao: q.vigencia_situacao, vigencia: q.vigencia,
+    alternativas: q.alternativas.map(a => ({ id: a.id, texto: a.texto, correta: a.correta, explicacao: a.explicacao })), comentario: q.comentario })) };
 }
 
 function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, erradas = false, origem = '', ...resto } = {}) {
@@ -637,6 +653,7 @@ function pedirPista(usuario, produto, slugEscopo, questaoId) {
 function responder(usuario, produto, slugEscopo, questaoId, { resposta, confianca, tempo_seg, modo, painel: comPainel } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
   const { q, comps } = questaoDoEscopo(c, questaoId);
+  if (banco.superada(q)) throw erro('O gabarito desta questão foi superado por norma ou decisão posterior: ela fica em "O que mudou", para estudo, fora da correção.');
   if (!q.corrigivel) throw erro('Esta questão não tem correção automática (aberta, anulada ou sem gabarito confirmado).');
   if (q.uso === 'reservada') throw erro('Questão reservada para simulado.', 403);
   if (questoesEmProvaAberta(usuario.id, c.escopo.id).has(q.id)) throw erro('Esta questão está numa prova sua em andamento: responda-a na prova. O gabarito aparece na correção, depois de enviar.', 409);
@@ -1390,7 +1407,7 @@ module.exports = {
   guardarTentativa, anotarAula, caderno, quizDaAula, registrarVideo, registrarLeitura, conclusao, progressoDoCurso, aulaEstudada, reguaDeEstudo, MODOS_DE_AFERICAO,
   QUIZ_DA_AULA, VIDEO_ASSISTIDO_PCT, PROVA_TOLERANCIA_SEG, SIMULADO_PCT_RESERVADAS, SEPARADOR_DE_ABAS, questoesEmProvaAberta, CERT_PCT_AULAS_ESTUDADAS, CERT_PROVAS_ENVIADAS, CERT_MODOS_DE_PROVA, CERT_SIMULADO_PCT_RESPONDIDAS, CERT_SIMULADO_QUESTOES_MIN, MODOS_DE_ESTUDO,
   CARDS_NOVOS_DIA, ERROS_POR_PAGINA, simuladoQueConta, provaAberta, formatoDoPercurso, vereditoDe, vistasDe, corrigirTentativa,
-  contexto, abrir, escopos, painel, unidade, animacoes, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, bancoDeQuestoes, pedirPista, responder, erros, anotar,
+  contexto, abrir, escopos, painel, unidade, animacoes, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, bancoDeQuestoes, oQueMudou, pedirPista, responder, erros, anotar,
   cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,
   // para a jornada do Estude (jornada-estude.js): o diagnóstico é uma tentativa, e o nível, os selos e as medalhas saem das mesmas evidências

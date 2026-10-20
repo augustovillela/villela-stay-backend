@@ -142,7 +142,7 @@ async function rodar({ t, req }) {
   await t('regra por raiz (ADR-0016): a tela — seletor de prova com regra própria, a regra escrita com as duas linhas, o resultado com as duas linhas de corte', async () => {
     const tela = ler('app-estudo.js');
     for (const pedaco of ['id="es-pv-raiz"', 'b.provas_por_raiz', "raiz: el('es-pv-raiz')", 'r.cortes_adicionais', 'Linhas de corte desta prova', 'r.rotulo_geral']) assert.ok(tela.includes(pedaco), 'falta na tela: ' + pedaco);
-    assert.ok(/estude: 12,/.test(ler('paginas.js')), 'estude.js sobe para v=12');
+    assert.ok(/estude: (1[2-9]|[2-9][0-9]),/.test(ler('paginas.js')), 'estude.js sobe para v=12 (ou depois)');
   });
 }
 

@@ -2842,6 +2842,8 @@ async function main() {
   await require('./estudo/testes-inclusoes').rodar({ t, req });
   // ================= REGRA DE PONTUAÇÃO POR RAIZ DO PROGRAMA (ADR-0016): a trilha ENAM com a regra dela, duas linhas de corte =================
   await require('./estudo/testes-regra-por-raiz').rodar({ t, req });
+  // ================= QUESTÃO SUPERADA (ADR-0017): gabarito da época para estudo ("O que mudou"), fora de toda correção =================
+  await require('./estudo/testes-questao-superada').rodar({ t, req });
   // ================= PÁGINA DE VENDA (frente P): números do percurso do Estude, descrição com lista, og:image com a medida real, compra à vista no celular =================
   await require('./testes-pagina-venda').rodar({ t, req });
 
