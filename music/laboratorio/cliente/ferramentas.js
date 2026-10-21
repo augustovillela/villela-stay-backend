@@ -671,6 +671,52 @@
     render();
   };
 
+  // Composição original do Musique: uma grade de graus relativos que pode
+  // ser transposta sem reescrever a ideia. O estado fica na URL e também
+  // pode ser salvo no navegador; nenhuma música de terceiros é incorporada.
+  F['compositor-visual'] = function (alvo, st) {
+    st.tonica = st.tonica || 'do'; st.modo = st.modo || 'maior'; st.bpm = Number(st.bpm) || 92;
+    st.compassos = Array.isArray(st.compassos) && st.compassos.length ? st.compassos : [0, 4, 5, 3, 0, 4, 5, 3];
+    st.melodia = Array.isArray(st.melodia) && st.melodia.length ? st.melodia : [0, 2, 4, 2, 0, 2, 4, 6];
+    function campo() { return T.campo(tonicaDe(st), st.modo) || []; }
+    function tocarCompasso(i, c) {
+      var g = c[i], n = c[i] == null ? null : (A.notas(naOitava(g.fundamental, 3), g.acorde) || []).map(N.midi);
+      if (n && n.length) C.Som.tocar(n, { modo: 'harmonico', dur: 60 / st.bpm * 3.5, vel: 0.58 });
+      var m = st.melodia[i], escala = E.notas(naOitava(tonicaDe(st), 4), st.modo === 'menor' ? 'menor-natural' : 'maior') || [];
+      if (m != null && escala[m]) setTimeout(function () { C.Som.tocar([N.midi(escala[m])], { dur: 60 / st.bpm * 0.8, vel: 0.82 }); }, 90);
+    }
+    function render() {
+      C.gravarUrl(st); C.limpar(alvo); var c = campo();
+      var modo = el('select', {}, ['maior', 'menor'].map(function (x) { return el('option', { value: x, txt: x === 'maior' ? 'Maior' : 'Menor', selected: st.modo === x }); }));
+      modo.onchange = function () { st.modo = modo.value; render(); };
+      var bpm = el('input', { type: 'number', min: 40, max: 220, step: 1, value: st.bpm, class: 'lab-input', 'aria-label': 'BPM' });
+      bpm.onchange = function () { st.bpm = Math.max(40, Math.min(220, Number(bpm.value) || 92)); render(); };
+      var salvar = el('button', { type: 'button', class: 'btn sec', txt: '💾 Salvar rascunho' });
+      salvar.onclick = function () { try { localStorage.setItem('musique-compositor-visual-v1', JSON.stringify({ tonica: st.tonica, modo: st.modo, bpm: st.bpm, compassos: st.compassos, melodia: st.melodia })); C.aviso('Rascunho salvo neste navegador.'); } catch (_) { C.aviso('Não consegui salvar neste navegador.', 'erro'); } };
+      var carregar = el('button', { type: 'button', class: 'btn sec', txt: '↥ Carregar rascunho' });
+      carregar.onclick = function () { try { var x = JSON.parse(localStorage.getItem('musique-compositor-visual-v1') || 'null'); if (!x) return C.aviso('Ainda não há rascunho salvo.'); Object.keys(x).forEach(function (k) { st[k] = x[k]; }); render(); C.aviso('Rascunho carregado.'); } catch (_) { C.aviso('Rascunho inválido.', 'erro'); } };
+      var tocar = el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir sequência' }); var ativo = false, timer = null;
+      tocar.onclick = function () { if (ativo) { ativo = false; clearInterval(timer); tocar.textContent = '▶ Ouvir sequência'; return; } ativo = true; var i = 0; tocar.textContent = '■ Parar'; var passo = function () { if (!ativo) return; tocarCompasso(i, c); i = (i + 1) % st.compassos.length; timer = setTimeout(passo, 60000 / st.bpm * 4); }; passo(); };
+      alvo.appendChild(el('div', { class: 'lab-controles compositor-controles' }, [C.selTonica(st.tonica, function (v) { st.tonica = v; render(); }), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Modo' }), modo]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'BPM' }), bpm]), tocar, salvar, carregar]));
+      alvo.appendChild(el('p', { class: 'lab-dica', txt: 'A ideia fica em graus (I, ii, V…), então mudar a tônica transpõe os acordes e a melodia juntos. Clique em um acorde para ouvir apenas aquele compasso.' }));
+      var grade = el('div', { class: 'lab-compositor-grade', role: 'list', 'aria-label': 'Linha do tempo de composição' });
+      var nomes = c.map(function (g) { return g.simbolo; });
+      st.compassos.forEach(function (g, i) {
+        var cs = el('select', { class: 'lab-compositor-select', 'aria-label': 'Acorde do compasso ' + (i + 1) });
+        c.forEach(function (x, k) { cs.appendChild(el('option', { value: k, txt: x.romano + ' · ' + x.simbolo, selected: Number(g) === k })); });
+        cs.onchange = function () { st.compassos[i] = Number(cs.value); render(); };
+        var ms = el('select', { class: 'lab-compositor-select', 'aria-label': 'Melodia do compasso ' + (i + 1) });
+        ['— pausa', '1º grau', '2º grau', '3º grau', '4º grau', '5º grau', '6º grau', '7º grau'].forEach(function (x, k) { ms.appendChild(el('option', { value: k ? k - 1 : '', txt: x, selected: (g == null ? '' : Number(st.melodia[i])) === (k ? k - 1 : '') })); });
+        ms.onchange = function () { st.melodia[i] = ms.value === '' ? null : Number(ms.value); render(); };
+        var ouvirNo = el('button', { type: 'button', class: 'lab-compositor-ouvir', title: 'Ouvir compasso ' + (i + 1), txt: '▶', onclick: function () { tocarCompasso(i, c); } });
+        grade.appendChild(el('article', { class: 'lab-compositor-celula lab-func-' + String(c[g].funcao || 'tônica').replace(/[^a-z]/gi, '-'), role: 'listitem' }, [el('strong', { txt: 'Compasso ' + (i + 1) }), cs, el('span', { class: 'lab-compositor-melodia', txt: 'Melodia' }), ms, ouvirNo]));
+      });
+      alvo.appendChild(grade);
+      alvo.appendChild(el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn sec', txt: '↻ Nova ideia', onclick: function () { st.compassos = [0, 4, 5, 3, 0, 4, 5, 3]; st.melodia = [0, 2, 4, 2, 0, 2, 4, 6]; render(); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar JSON', onclick: function () { C.baixar('compositor-visual-musique.json', 'application/json', JSON.stringify({ schema: 'musique.compositor.v1', tonica: C.nomeNota(tonicaDe(st)), modo: st.modo, bpm: st.bpm, compassos: st.compassos.map(function (x) { return c[x].romano; }), acordes: st.compassos.map(function (x) { return c[x].simbolo; }), melodia: st.melodia, criado_em: new Date().toISOString() }, null, 2)); } })]));
+    }
+    render();
+  };
+
   F['metronomo-distorcido'] = function (alvo, st) {
     st.bpm = st.bpm || 80; st.swing = st.swing || 0; st.omitir = st.omitir || 0; st.semente = st.semente || 17; var ag = null;
     function render() {

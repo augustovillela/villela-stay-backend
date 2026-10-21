@@ -401,6 +401,7 @@ function relacionados(slug) {
     'visualizador-frequencia': ['/music/explorar/serie-harmonica', '/music/explorar/intervalos-do-acorde', '/music/referencia/frequencias'],
     policordes: ['/music/explorar/superestruturas-acordes', '/music/explorar/intervalos-do-acorde', '/music/criar/mapa-harmonia'],
     'editor-de-progressao': ['/music/criar/mapa-harmonia', '/music/explorar/acordes-vizinhos', '/music/criar/piano-roll-harmonico'],
+    'compositor-visual': ['/music/criar/editor-de-progressao', '/music/criar/harmonizador-de-melodia', '/music/aprender/campo-harmonico'],
     'metronomo-distorcido': ['/music/criar/metronomo-progressivo', '/music/criar/batidas', '/music/referencia/ritmo-e-groove'],
     'atlas-escalas': ['/music/explorar/comparar-modos', '/music/explorar/braco', '/music/referencia/formulas-de-escalas'],
     'arranjo-quatro-vozes': ['/music/criar/editor-de-progressao', '/music/criar/mapa-harmonia', '/music/aprender/contraponto'],
