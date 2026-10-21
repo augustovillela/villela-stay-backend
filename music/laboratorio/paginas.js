@@ -42,7 +42,7 @@ function registrar(app, { opcional, contextoDe }) {
 
   // ---------------------------------------------------------------- hub
   app.get('/music/laboratorio', (req, res) => {
-    const destaque = ['laboratorio', 'piano', 'braco', 'circulo-de-quintas', 'identificar-acorde', 'transpositor', 'bpm', 'batidas'];
+    const destaque = ['laboratorio', 'piano', 'braco', 'circulo-de-quintas', 'identificar-acorde', 'transpositor', 'bpm', 'batidas', 'tendencias-harmonicas'];
     const f = (s) => CAT.FERRAMENTAS.find((x) => x.slug === s);
     const corpo = `
 <header class="lab-hero"><p class="lab-cab-tipo">Laboratório Musical</p>
