@@ -836,6 +836,20 @@
     render();
   };
 
+  F['tendencias-harmonicas'] = function (alvo, st) {
+    st.tonica = st.tonica || 'do';
+    var padroes = [
+      { nome: 'Pop circular', graus: [0, 4, 5, 3], roman: 'I · V · vi · IV', nota: 'Equilíbrio entre repouso, tensão e retorno.' },
+      { nome: 'Cadência clássica', graus: [1, 4, 0], roman: 'ii · V · I', nota: 'Preparação, dominante e resolução.' },
+      { nome: 'Ciclo suave', graus: [0, 5, 3, 4], roman: 'I · vi · IV · V', nota: 'Movimento contínuo com retorno ao dominante.' },
+      { nome: 'Menor relativo', graus: [5, 3, 0, 4], roman: 'vi · IV · I · V', nota: 'Começa no relativo menor e abre para a tônica.' },
+      { nome: 'Plagal ampliada', graus: [0, 3, 0, 4], roman: 'I · IV · I · V', nota: 'Alternância entre tônica e subdominante.' },
+    ];
+    function tocar(p, c) { p.graus.forEach(function (x, i) { var g = c[x]; if (g) setTimeout(function () { C.Som.tocar((A.notas(naOitava(g.fundamental, 3), g.acorde) || []).map(N.midi), { modo: 'harmonico', dur: 0.75 }); }, i * 800); }); }
+    function render() { C.gravarUrl(st); C.limpar(alvo); var c = T.campo(tonicaDe(st), 'maior') || []; alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selTonica(st.tonica, function (v) { st.tonica = v; render(); })])); var lista = el('div', { class: 'lab-tendencias-lista' }); padroes.forEach(function (p) { var acordes = p.graus.map(function (x) { return c[x] ? c[x].simbolo : ''; }); var ouvir = el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir', onclick: function () { tocar(p, c); } }); var abrir = el('a', { class: 'btn sec', href: '/music/criar/compositor-visual?tonica=' + encodeURIComponent(st.tonica), txt: 'Abrir no compositor' }); lista.appendChild(el('article', { class: 'lab-tendencia-card' }, [el('div', {}, [el('h3', { txt: p.nome }), el('p', { class: 'lab-graus-destaque', txt: p.roman }), el('p', { txt: p.nota }), el('p', { class: 'lab-dica', txt: acordes.join(' · ') } )]), el('div', { class: 'lab-acoes' }, [ouvir, abrir])])); }); alvo.appendChild(lista); }
+    render();
+  };
+
   // ------------------------------------------------------------------
   // Identificadores
   // ------------------------------------------------------------------
