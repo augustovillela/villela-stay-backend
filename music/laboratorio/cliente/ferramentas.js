@@ -678,10 +678,12 @@
     st.tonica = st.tonica || 'do'; st.modo = st.modo || 'maior'; st.bpm = Number(st.bpm) || 92;
     st.compassos = Array.isArray(st.compassos) && st.compassos.length ? st.compassos : [0, 4, 5, 3, 0, 4, 5, 3];
     st.melodia = Array.isArray(st.melodia) && st.melodia.length ? st.melodia : [0, 2, 4, 2, 0, 2, 4, 6];
+    st.secoes = Array.isArray(st.secoes) && st.secoes.length ? st.secoes : ['Intro', 'Intro', 'Verso', 'Verso', 'Refrão', 'Refrão', 'Ponte', 'Refrão'];
+    st.duracoes = Array.isArray(st.duracoes) && st.duracoes.length ? st.duracoes : st.compassos.map(function () { return 4; });
     function campo() { return T.campo(tonicaDe(st), st.modo) || []; }
     function tocarCompasso(i, c) {
       var g = c[i], n = c[i] == null ? null : (A.notas(naOitava(g.fundamental, 3), g.acorde) || []).map(N.midi);
-      if (n && n.length) C.Som.tocar(n, { modo: 'harmonico', dur: 60 / st.bpm * 3.5, vel: 0.58 });
+      if (n && n.length) C.Som.tocar(n, { modo: 'harmonico', dur: 60 / st.bpm * ((Number(st.duracoes[i]) || 4) - 0.25), vel: 0.58 });
       var m = st.melodia[i], escala = E.notas(naOitava(tonicaDe(st), 4), st.modo === 'menor' ? 'menor-natural' : 'maior') || [];
       if (m != null && escala[m]) setTimeout(function () { C.Som.tocar([N.midi(escala[m])], { dur: 60 / st.bpm * 0.8, vel: 0.82 }); }, 90);
     }
@@ -696,12 +698,19 @@
       var carregar = el('button', { type: 'button', class: 'btn sec', txt: '↥ Carregar rascunho' });
       carregar.onclick = function () { try { var x = JSON.parse(localStorage.getItem('musique-compositor-visual-v1') || 'null'); if (!x) return C.aviso('Ainda não há rascunho salvo.'); Object.keys(x).forEach(function (k) { st[k] = x[k]; }); render(); C.aviso('Rascunho carregado.'); } catch (_) { C.aviso('Rascunho inválido.', 'erro'); } };
       var tocar = el('button', { type: 'button', class: 'lab-ouvir', txt: '▶ Ouvir sequência' }); var ativo = false, timer = null;
-      tocar.onclick = function () { if (ativo) { ativo = false; clearInterval(timer); tocar.textContent = '▶ Ouvir sequência'; return; } ativo = true; var i = 0; tocar.textContent = '■ Parar'; var passo = function () { if (!ativo) return; tocarCompasso(i, c); i = (i + 1) % st.compassos.length; timer = setTimeout(passo, 60000 / st.bpm * 4); }; passo(); };
-      alvo.appendChild(el('div', { class: 'lab-controles compositor-controles' }, [C.selTonica(st.tonica, function (v) { st.tonica = v; render(); }), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Modo' }), modo]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'BPM' }), bpm]), tocar, salvar, carregar]));
+      tocar.onclick = function () { if (ativo) { ativo = false; clearTimeout(timer); tocar.textContent = '▶ Ouvir sequência'; return; } ativo = true; var i = 0; tocar.textContent = '■ Parar'; var passo = function () { if (!ativo) return; tocarCompasso(i, c); i = (i + 1) % st.compassos.length; timer = setTimeout(passo, 60000 / st.bpm * (Number(st.duracoes[(i + st.compassos.length - 1) % st.compassos.length]) || 4)); }; passo(); };
+      var adicionar = el('button', { type: 'button', class: 'btn sec', txt: '+ Compasso', onclick: function () { st.compassos.push(0); st.melodia.push(0); st.secoes.push('Novo'); st.duracoes.push(4); render(); } });
+      var remover = el('button', { type: 'button', class: 'btn sec', txt: '− Compasso', disabled: st.compassos.length <= 1, onclick: function () { if (st.compassos.length > 1) { st.compassos.pop(); st.melodia.pop(); st.secoes.pop(); st.duracoes.pop(); render(); } } });
+      alvo.appendChild(el('div', { class: 'lab-controles compositor-controles' }, [C.selTonica(st.tonica, function (v) { st.tonica = v; render(); }), el('label', { class: 'lab-campo' }, [el('span', { txt: 'Modo' }), modo]), el('label', { class: 'lab-campo' }, [el('span', { txt: 'BPM' }), bpm]), tocar, adicionar, remover, salvar, carregar]));
       alvo.appendChild(el('p', { class: 'lab-dica', txt: 'A ideia fica em graus (I, ii, V…), então mudar a tônica transpõe os acordes e a melodia juntos. Clique em um acorde para ouvir apenas aquele compasso.' }));
       var grade = el('div', { class: 'lab-compositor-grade', role: 'list', 'aria-label': 'Linha do tempo de composição' });
       var nomes = c.map(function (g) { return g.simbolo; });
       st.compassos.forEach(function (g, i) {
+        var secao = el('input', { class: 'lab-compositor-secao', type: 'text', value: st.secoes[i] || 'Seção', maxlength: 24, 'aria-label': 'Seção do compasso ' + (i + 1) });
+        secao.onchange = function () { st.secoes[i] = secao.value.trim() || 'Seção'; };
+        var dur = el('select', { class: 'lab-compositor-duracao', 'aria-label': 'Duração do compasso ' + (i + 1) });
+        [2, 3, 4, 6, 8].forEach(function (x) { dur.appendChild(el('option', { value: x, txt: x + ' tempos', selected: Number(st.duracoes[i]) === x })); });
+        dur.onchange = function () { st.duracoes[i] = Number(dur.value); render(); };
         var cs = el('select', { class: 'lab-compositor-select', 'aria-label': 'Acorde do compasso ' + (i + 1) });
         c.forEach(function (x, k) { cs.appendChild(el('option', { value: k, txt: x.romano + ' · ' + x.simbolo, selected: Number(g) === k })); });
         cs.onchange = function () { st.compassos[i] = Number(cs.value); render(); };
@@ -709,10 +718,10 @@
         ['— pausa', '1º grau', '2º grau', '3º grau', '4º grau', '5º grau', '6º grau', '7º grau'].forEach(function (x, k) { ms.appendChild(el('option', { value: k ? k - 1 : '', txt: x, selected: (g == null ? '' : Number(st.melodia[i])) === (k ? k - 1 : '') })); });
         ms.onchange = function () { st.melodia[i] = ms.value === '' ? null : Number(ms.value); render(); };
         var ouvirNo = el('button', { type: 'button', class: 'lab-compositor-ouvir', title: 'Ouvir compasso ' + (i + 1), txt: '▶', onclick: function () { tocarCompasso(i, c); } });
-        grade.appendChild(el('article', { class: 'lab-compositor-celula lab-func-' + String(c[g].funcao || 'tônica').replace(/[^a-z]/gi, '-'), role: 'listitem' }, [el('strong', { txt: 'Compasso ' + (i + 1) }), cs, el('span', { class: 'lab-compositor-melodia', txt: 'Melodia' }), ms, ouvirNo]));
+        grade.appendChild(el('article', { class: 'lab-compositor-celula lab-func-' + String(c[g].funcao || 'tônica').replace(/[^a-z]/gi, '-'), role: 'listitem' }, [el('strong', { txt: 'Compasso ' + (i + 1) }), secao, cs, dur, el('span', { class: 'lab-compositor-melodia', txt: 'Melodia' }), ms, ouvirNo]));
       });
       alvo.appendChild(grade);
-      alvo.appendChild(el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn sec', txt: '↻ Nova ideia', onclick: function () { st.compassos = [0, 4, 5, 3, 0, 4, 5, 3]; st.melodia = [0, 2, 4, 2, 0, 2, 4, 6]; render(); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar JSON', onclick: function () { C.baixar('compositor-visual-musique.json', 'application/json', JSON.stringify({ schema: 'musique.compositor.v1', tonica: C.nomeNota(tonicaDe(st)), modo: st.modo, bpm: st.bpm, compassos: st.compassos.map(function (x) { return c[x].romano; }), acordes: st.compassos.map(function (x) { return c[x].simbolo; }), melodia: st.melodia, criado_em: new Date().toISOString() }, null, 2)); } })]));
+      alvo.appendChild(el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn sec', txt: '↻ Nova ideia', onclick: function () { st.compassos = [0, 4, 5, 3, 0, 4, 5, 3]; st.melodia = [0, 2, 4, 2, 0, 2, 4, 6]; st.secoes = ['Intro', 'Intro', 'Verso', 'Verso', 'Refrão', 'Refrão', 'Ponte', 'Refrão']; st.duracoes = [4, 4, 4, 4, 4, 4, 4, 4]; render(); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar JSON', onclick: function () { C.baixar('compositor-visual-musique.json', 'application/json', JSON.stringify({ schema: 'musique.compositor.v2', tonica: C.nomeNota(tonicaDe(st)), modo: st.modo, bpm: st.bpm, compassos: st.compassos.map(function (x, i) { return { secao: st.secoes[i] || 'Seção', duracao: Number(st.duracoes[i]) || 4, grau: c[x].romano, acorde: c[x].simbolo, melodia: st.melodia[i] }; }), criado_em: new Date().toISOString() }, null, 2)); } })]));
     }
     render();
   };

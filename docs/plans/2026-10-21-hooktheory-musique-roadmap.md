@@ -30,9 +30,11 @@ Route: `/music/criar/compositor-visual`
 - Save/load a local draft and export a portable JSON document.
 - Entry in the Criar catalog, search index, related links, and sitemap.
 
-### Phase 2 — Rich arrangement editor
+### Phase 2 — Rich arrangement editor (núcleo inicial implementado)
 
-- Variable-length sections (intro, verse, chorus, bridge, outro).
+- Variable-length sections (intro, verse, chorus, bridge, outro): the visual
+  composer now supports adding/removing measures, naming sections, and choosing
+  2, 3, 4, 6, or 8 beats per cell.
 - Multiple melody voices, bass pattern, drum lane, lyrics, and markers.
 - Per-cell duration, inversion, slash bass, voicing, velocity, and articulation.
 - MIDI import/export and MusicXML export using the existing Musique parsers.

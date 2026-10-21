@@ -544,6 +544,8 @@
 .lab-compositor-grade{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;margin:14px 0}
 .lab-compositor-celula{display:flex;flex-direction:column;gap:7px;padding:12px;border:2px solid var(--borda);border-radius:12px;background:#fff;box-shadow:0 3px 9px #14213d12}
 .lab-compositor-celula strong{font-size:13px;color:var(--suave)}
+.lab-compositor-secao{font-weight:700;border:0;border-bottom:1px dashed var(--borda);padding:2px 0;color:var(--navy);background:transparent;width:100%}
+.lab-compositor-duracao{font-size:12px}
 .lab-compositor-celula .lab-compositor-select{width:100%;min-height:38px}
 .lab-compositor-melodia{font-size:12px;color:var(--suave);margin-top:3px}
 .lab-compositor-ouvir{align-self:flex-start;border:1px solid var(--borda);border-radius:999px;background:var(--ice);color:var(--navy);padding:6px 11px;cursor:pointer}
