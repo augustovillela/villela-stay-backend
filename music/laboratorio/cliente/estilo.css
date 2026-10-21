@@ -541,8 +541,10 @@
 .lab-circulo-toggle[aria-pressed="true"]{background:#d97706;color:#fff;border-color:#92400e;box-shadow:0 3px 0 #92400e}
 
 /* Compositor visual: timeline simples, legível e responsiva. */
-.lab-compositor-grade{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;margin:14px 0}
+.lab-compositor-grade{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;margin:14px 0}
 .lab-compositor-celula{display:flex;flex-direction:column;gap:7px;padding:12px;border:2px solid var(--borda);border-radius:12px;background:#fff;box-shadow:0 3px 9px #14213d12}
+.lab-compositor-celula{min-width:150px;flex-basis:150px}
+.lab-compositor-celula.tocando{border-color:#d97706;box-shadow:0 0 0 4px #ffd16666,0 5px 14px #14213d30;transform:translateY(-2px)}
 .lab-compositor-celula strong{font-size:13px;color:var(--suave)}
 .lab-compositor-secao{font-weight:700;border:0;border-bottom:1px dashed var(--borda);padding:2px 0;color:var(--navy);background:transparent;width:100%}
 .lab-compositor-duracao{font-size:12px}
@@ -552,8 +554,7 @@
 .lab-func-tonica,.lab-func-tônica{border-color:#2f855a;background:#f0fff4}
 .lab-func-dominante{border-color:#c05621;background:#fffaf0}
 .lab-func-subdominante{border-color:#2b6cb0;background:#ebf8ff}
-@media (max-width:760px){.lab-compositor-grade{grid-template-columns:repeat(2,minmax(140px,1fr))}}
-@media (max-width:440px){.lab-compositor-grade{grid-template-columns:1fr}}
+@media (max-width:440px){.lab-compositor-celula{flex-basis:100%}}
 
 /* Laboratório de ritmos originais */
 .pozzoli-exercicio{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:18px;margin:14px 0}
