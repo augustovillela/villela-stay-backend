@@ -551,6 +551,9 @@
 .lab-compositor-celula .lab-compositor-select{width:100%;min-height:38px}
 .lab-compositor-melodia{font-size:12px;color:var(--suave);margin-top:3px}
 .lab-compositor-ouvir{align-self:flex-start;border:1px solid var(--borda);border-radius:999px;background:var(--ice);color:var(--navy);padding:6px 11px;cursor:pointer}
+.lab-compositor-paleta{margin:14px 0;padding:14px;border:1px solid var(--borda);border-radius:12px;background:#f8fbff}
+.lab-compositor-paleta h3{margin:0 0 4px;color:var(--navy)}
+.lab-compositor-sugestoes{display:flex;flex-wrap:wrap;gap:7px}
 .lab-func-tonica,.lab-func-tônica{border-color:#2f855a;background:#f0fff4}
 .lab-func-dominante{border-color:#c05621;background:#fffaf0}
 .lab-func-subdominante{border-color:#2b6cb0;background:#ebf8ff}
