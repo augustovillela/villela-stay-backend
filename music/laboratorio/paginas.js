@@ -107,12 +107,12 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
     if (!f) return naoAchou(res, 'esta ferramenta');
     const ctx = ctxDe(req);
     const estado = { ...estadoInicial(req.query), exportar: ACESSO.pode('exportar', ctx).ok };
-    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">${esc(req.params.amb === 'criar' ? 'Criar' : 'Explorar')}</p><h1><span aria-hidden="true">${esc(f.icone)}</span> ${esc(f.nome)}</h1><p class="lab-lead">${esc(f.resumo)}</p></header>
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">${esc(req.params.amb === 'criar' ? 'Criar' : (req.params.amb === 'praticar' ? 'Praticar' : 'Explorar'))}</p><h1><span aria-hidden="true">${esc(f.icone)}</span> ${esc(f.nome)}</h1><p class="lab-lead">${esc(f.resumo)}</p></header>
 <div id="lab-ferramenta" class="lab-ferramenta" aria-live="polite">${ssrFerramenta(f.slug, estado)}</div>
 <noscript><p class="lab-nota-convencao">Esta ferramenta precisa de JavaScript para tocar e mudar. As páginas de <a href="/music/escalas">escalas</a>, <a href="/music/acordes">acordes</a> e <a href="/music/referencia">referências</a> funcionam sem ele.</p></noscript>
 ${relacionados(f.slug)}`;
     pagina(res, { titulo: `${f.nome} — Laboratório Musical | Musique`, descricao: f.resumo, caminho: `/music/${f.ambiente}/${f.slug}`, corpo, ferramenta: f.slug, estado,
-      trilha: [[req.params.amb === 'criar' ? 'Criar' : 'Explorar', '/music/' + req.params.amb], [f.nome]] });
+      trilha: [[req.params.amb === 'criar' ? 'Criar' : (req.params.amb === 'praticar' ? 'Praticar' : 'Explorar'), '/music/' + req.params.amb], [f.nome]] });
   });
 
   // ------------------------------------------------------------ aprender
@@ -227,6 +227,15 @@ ${l.refs && l.refs.length ? `<details class="lab-det"><summary>Para ler mais</su
     return '';
   }
 
+  app.get('/music/praticar/desafio-acordes', opcional, (req, res) => {
+    const f = CAT.FERRAMENTAS.find((x) => x.slug === 'desafio-acordes' && x.ambiente === 'praticar');
+    const ctx = ctxDe(req);
+    const estado = { ...estadoInicial(req.query), exportar: ACESSO.pode('exportar', ctx).ok };
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Praticar</p><h1><span aria-hidden="true">${esc(f.icone)}</span> ${esc(f.nome)}</h1><p class="lab-lead">${esc(f.resumo)}</p></header>
+<div id="lab-ferramenta" class="lab-ferramenta" aria-live="polite">${ssrFerramenta(f.slug, estado)}</div>
+${relacionados(f.slug)}`;
+    pagina(res, { titulo: `${f.nome} — Laboratório Musical | Musique`, descricao: f.resumo, caminho: '/music/praticar/desafio-acordes', corpo, ferramenta: f.slug, estado, trilha: [['Praticar', '/music/praticar'], [f.nome]] });
+  });
   // ------------------------------------------------------------ praticar
   app.get('/music/praticar', (req, res) => {
     const porHab = {};
@@ -409,6 +418,7 @@ function relacionados(slug) {
     'gerador-de-progressao': ['/music/criar/editor-de-progressao', '/music/criar/mapa-harmonia', '/music/explorar/harmonizador-tonalidades'],
     'grafo-harmonico': ['/music/criar/mapa-harmonia', '/music/explorar/mandala-harmonica', '/music/explorar/acordes-vizinhos'],
     'tendencias-harmonicas': ['/music/criar/compositor-visual', '/music/criar/progressoes', '/music/aprender/cadencias'],
+    'desafio-acordes': ['/music/explorar/identificar-acorde', '/music/praticar/intervalo-ouvido', '/music/aprender/acordes'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
