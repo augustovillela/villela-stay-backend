@@ -343,21 +343,21 @@
       alvo.appendChild(el('p', { txt: 'Toque nos graus para montar a sequência:' }));
       alvo.appendChild(el('div', { class: 'lab-graus' }, campo.map(function (g) {
         return el('button', { type: 'button', class: 'lab-grau lab-func-' + g.funcao, onclick: function () { graus.push(g.grau); if (graus.length > 16) graus.shift(); C.Som.tocar(A.notas(naOitava(g.fundamental, 3), g.acorde).map(N.midi), { modo: 'harmonico', dur: 0.9 }); render(); } },
-          [el('strong', { txt: g.romano }), el('span', { txt: g.simbolo }), el('small', { txt: g.funcao })]);
+          [el('strong', { txt: g.romano.toUpperCase() }), el('span', { txt: g.simbolo }), el('small', { txt: g.funcao })]);
       })));
       var acs = T.realizar(t, modo, graus, { tetrades: tetrades });
       var vozes = []; var ant = null;
       acs.forEach(function (g) { var c = A.conduzir(ant, g.fundamental, g.acorde); vozes.push(c ? c.notas : A.notas(naOitava(g.fundamental, 3), g.acorde)); ant = vozes[vozes.length - 1]; });
       var seqTxt = acs.map(function (g) { return g.simbolo; }).join(' → ');
       alvo.appendChild(el('div', { class: 'lab-resumo' }, [el('h2', { txt: seqTxt || 'Escolha os graus' }),
-        el('p', { txt: acs.map(function (g) { return g.romano + ' (' + g.funcao + ')'; }).join(' – ') }),
+        el('p', { txt: acs.map(function (g) { return g.romano.toUpperCase() + ' (' + g.funcao + ')'; }).join(' – ') }),
         el('div', { class: 'lab-acoes' }, [
           el('button', { type: 'button', class: 'btn', txt: '▶ Ouvir (condução de vozes)', onclick: function () { var a = C.Som.audio(), dur = 60 / bpm * 2; vozes.forEach(function (v, i) { v.forEach(function (n) { C.Som.voz(C.Som.FREQ(N.midi(n)), a.currentTime + 0.05 + i * dur, dur * 0.95, { vel: 0.14 }); }); C.Som.voz(C.Som.FREQ(N.midi(N.comOitava(acs[i].fundamental, 2))), a.currentTime + 0.05 + i * dur, dur * 0.95, { vel: 0.18 }); }); historico.unshift(seqTxt); historico = historico.filter(function (x, k) { return historico.indexOf(x) === k; }).slice(0, 8); C.guardar('progressoes-hist', historico); } }),
           el('button', { type: 'button', class: 'btn sec', txt: 'Desfazer', onclick: function () { graus.pop(); render(); } }),
           el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { graus = []; render(); } }),
           el('button', { type: 'button', class: 'btn sec', txt: 'Exportar ChordPro', onclick: function () {
             var cp = '{title: Progressão em ' + T.nome(t, modo) + '}\n{key: ' + N.nome(t, { oitava: false }) + (modo === 'menor' ? 'm' : '') + '}\n'
-              + '{comment: ' + acs.map(function (g) { return g.romano; }).join(' – ') + '}\n' + acs.map(function (g) { return '[' + g.simbolo + ']'; }).join(' ') + '\n';
+              + '{comment: ' + acs.map(function (g) { return g.romano.toUpperCase(); }).join(' – ') + '}\n' + acs.map(function (g) { return '[' + g.simbolo + ']'; }).join(' ') + '\n';
             exportar(st, 'progressao-' + N.slug(t) + '.cho', 'text/plain', cp);
           } }),
           el('a', { href: '/music/criar/transpositor', txt: 'Transpor →' })])]));
