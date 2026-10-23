@@ -138,7 +138,7 @@
 
   function abaArquivo(area, extra) {
     var zona = el('div', { class: 'cf-estado', tabindex: '0', role: 'button', 'aria-label': 'Escolher arquivos', style: 'cursor:pointer' },
-      [el('b', { txt: 'Arraste arquivos aqui ou toque para escolher' }), el('span', { txt: 'TXT, ChordPro, DOCX, PDF ou foto (vários = importação em lote). Até 8 MB cada.' })]);
+      [el('b', { txt: 'Arraste arquivos aqui ou toque para escolher' }), el('span', { txt: 'TXT, ChordPro, DOCX, PDF ou foto (vários = importação em lote). Até 10 MiB cada.' })]);
     var input = el('input', { type: 'file', multiple: 'multiple', accept: '.txt,.cho,.chopro,.chordpro,.crd,.pro,.docx,.pdf,image/*', style: 'display:none' });
     var saida = el('div');
     zona.onclick = function () { input.click(); };
@@ -161,7 +161,7 @@
     function enviar(lista) {
       var arqs = Array.prototype.slice.call(lista || []);
       if (!arqs.length) return;
-      if (arqs.some(function (f) { return f.size > 8 * 1024 * 1024; })) return C.aviso('Há arquivo acima de 8 MB.');
+      if (arqs.some(function (f) { return f.size > 10 * 1024 * 1024; })) return C.aviso('Há arquivo acima de 10 MiB.');
       saida.innerHTML = ''; saida.appendChild(C.esqueleto(arqs.length));
       Promise.all(arqs.map(function (f) { return lerBase64(f).then(function (b) { return { nome: f.name, base64: b }; }); })).then(function (itens) {
         if (itens.length === 1) {
@@ -215,9 +215,11 @@
     var c = C.limpar();
     c.appendChild(el('h2', { txt: 'Revise antes de salvar' }));
     var conf = r.confianca !== undefined ? r.confianca : null;
+    var metodoFonte = x.fonte && x.fonte.metodo ? ({ pdf: 'PDF com texto', 'pdf.texto': 'texto extraído do PDF', docx: 'DOCX', txt: 'TXT', 'ia.ler_imagem': 'OCR por IA', colado: 'texto colado' }[x.fonte.metodo] || x.fonte.metodo) : '';
     c.appendChild(el('div', { class: 'linha' }, [conf !== null ? C.tag('confiança da leitura ' + Math.round(conf * 100) + '%', conf >= 0.85 ? 'ok' : conf < 0.6 ? 'er' : 'av') : null,
       r.qualidade ? C.tag('qualidade ' + r.qualidade.nota, r.qualidade.nota >= 75 ? 'ok' : 'av') : null,
-      x.fonte && x.fonte.tipo ? C.tag('fonte: ' + ({ texto: 'texto colado', arquivo: 'arquivo', url: 'página', busca: 'busca' }[x.fonte.tipo] || x.fonte.tipo) + (x.fonte.adaptador ? ' · ' + x.fonte.adaptador : '')) : null].filter(Boolean)));
+      x.fonte && x.fonte.tipo ? C.tag('fonte: ' + ({ texto: 'texto colado', arquivo: 'arquivo', url: 'página', busca: 'busca' }[x.fonte.tipo] || x.fonte.tipo) + (x.fonte.adaptador ? ' · ' + x.fonte.adaptador : '') + (metodoFonte ? ' · leitura: ' + metodoFonte : '')) : null].filter(Boolean)));
+    if (conf !== null && conf < 0.85) c.appendChild(el('div', { class: 'alerta', txt: 'Leitura com confiança abaixo de 85%: confira cada acorde e a letra antes de salvar.' }));
     if (r.observacoes_ia) c.appendChild(el('div', { class: 'alerta', txt: 'Observação da leitura por IA: ' + r.observacoes_ia }));
     (x.fusao || []).forEach(function (dv) { c.appendChild(el('div', { class: 'alerta ' + (dv.aplicado ? 'bom' : ''), txt: dv.secao + ': "' + dv.linha + '" — ' + (dv.aplicado ? 'usado ' + dv.escolhido + ' (maioria)' : 'empate — ficou ' + dv.escolhido) })); });
     (r.ambiguidades || []).forEach(function (a) { c.appendChild(el('div', { class: 'alerta', txt: (a.linha ? 'Linha ' + a.linha + ': ' : '') + a.motivo + (a.texto ? ' "' + a.texto.trim().slice(0, 60) + '"' : '') })); });
@@ -318,23 +320,131 @@
   // IMPORTAÇÕES (lista e reprocessamento)
   // ---------------------------------------------------------------
   C.telas.importacoes = function () {
-    api('GET', '/importar').then(function (r) {
-      var c = C.limpar();
-      c.appendChild(el('h2', { txt: 'Importações' }));
-      if (!r.importacoes.length) return c.appendChild(C.estadoVazio('Nenhuma importação ainda', '', C.botao('Encontrar ou importar', function () { C.ir('importar'); })));
+    var c = C.limpar(), filtro = 'todas', dados = { importacoes: [] }, lista = el('div'), resumo = el('p', { id: 'cf-importacoes-resumo', class: 'cf-caption', 'aria-live': 'polite' }), carregamento = 0, timer = null, atualizacoesAutomaticas = 0, offset = 0, maisDisponivel = false, carregandoMais = false;
+    c.appendChild(el('h2', { txt: 'Importações' }));
+    var filtrosServidor = ['falhou', 'salva', 'descartada', 'processando', 'pendente'];
+    var filtroSelect = C.sel([['todas', 'Todas'], ['revisar', 'Aguardando revisão'], ['pendente', 'Na fila'], ['processando', 'Em processamento'], ['falhou', 'Com falha'], ['salva', 'Salvas'], ['descartada', 'Descartadas']], filtro, function (v) {
+      filtro = v;
+      limparFiltro.hidden = filtro === 'todas';
+      carregar(filtrosServidor.indexOf(v) >= 0 ? v : '');
+    }, 'Mostrar');
+    var atualizar = C.botao('Atualizar', function () {
+      carregar(filtrosServidor.indexOf(filtro) >= 0 ? filtro : '');
+    }, 'sec');
+    filtroSelect.setAttribute('aria-describedby', 'cf-importacoes-resumo');
+    var limparFiltro = C.botao('Limpar filtro', function () {
+      filtro = 'todas'; filtroSelect.value = 'todas'; limparFiltro.hidden = true; carregar('');
+    }, 'sec');
+    limparFiltro.hidden = true;
+    lista.setAttribute('aria-live', 'polite');
+    lista.setAttribute('aria-busy', 'false');
+    c.appendChild(el('div', { class: 'cf-barra' }, [filtroSelect, atualizar, limparFiltro]));
+    c.appendChild(resumo);
+    c.appendChild(lista);
+    function carregar(status, automatico) {
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (!automatico) atualizacoesAutomaticas = 0;
+      offset = 0; maisDisponivel = false;
+      var ticket = ++carregamento;
+      var query = status ? '?status=' + encodeURIComponent(status) + '&limite=100&offset=0' : '?limite=100&offset=0';
+      atualizar.disabled = true;
+      atualizar.textContent = 'Atualizando…';
+      lista.setAttribute('aria-busy', 'true');
+      lista.innerHTML = ''; lista.appendChild(C.esqueleto(2));
+      api('GET', '/importar' + query).then(function (r) {
+        if (ticket !== carregamento) return;
+        dados = r; offset = (r.importacoes || []).length; maisDisponivel = r.paginacao ? !!r.paginacao.tem_mais : offset === 100; pintarLista();
+      }).catch(function (e) {
+        if (ticket !== carregamento) return;
+        lista.innerHTML = ''; lista.appendChild(C.estadoErro(e, function () { carregar(filtrosServidor.indexOf(filtro) >= 0 ? filtro : ''); }));
+      }).then(function () {
+        if (ticket !== carregamento) return;
+        atualizar.disabled = false; atualizar.textContent = 'Atualizar'; lista.setAttribute('aria-busy', 'false');
+      });
+    }
+    function pintarLista() {
+      lista.innerHTML = '';
+      var total = (dados.importacoes || []).length;
+      var aguardando = (dados.importacoes || []).filter(function (x) { return x.status === 'pendente' || x.status === 'processando'; }).length;
+      var acompanhamento = aguardando ? (offset > 0 ? ' · ' + aguardando + ' em processamento; atualização automática pausada após paginação.' : atualizacoesAutomaticas >= 12 ? ' · ' + aguardando + ' em processamento; atualização automática pausada após 12 ciclos. Use Atualizar.' : ' · ' + aguardando + ' em processamento; atualização automática ativa.') : '.';
+      var rotuloTotal = maisDisponivel ? (total === 1 ? ' importação carregada' : ' importações carregadas') : (total === 1 ? ' importação encontrada' : ' importações encontradas');
+      var nomesFiltro = { revisar: 'Aguardando revisão', pendente: 'Na fila', processando: 'Em processamento', falhou: 'Com falha', salva: 'Salvas', descartada: 'Descartadas' };
+      resumo.textContent = total + rotuloTotal + (filtro !== 'todas' ? ' · filtro: ' + nomesFiltro[filtro] : '') + (maisDisponivel ? ' · há mais resultados disponíveis.' : '') + acompanhamento;
+      var itens = (dados.importacoes || []).filter(function (x) {
+        return filtro === 'todas' || (filtro === 'revisar' ? ['pronta', 'processando', 'pendente'].indexOf(x.status) >= 0 : x.status === filtro);
+      });
+      if (!itens.length) {
+        var acaoVazio = filtro === 'todas' ? C.botao('Encontrar ou importar', function () { C.ir('importar'); }) : C.botao('Atualizar lista', function () { carregar(filtrosServidor.indexOf(filtro) >= 0 ? filtro : ''); });
+        lista.appendChild(C.estadoVazio(filtro === 'todas' ? 'Nenhuma importação ainda' : 'Nenhuma importação nesta categoria', '', acaoVazio));
+        agendarAtualizacao();
+        return;
+      }
+      function dataImportacao(valor) {
+        var data = new Date(valor);
+        return Number.isNaN(data.getTime()) ? 'data não informada' : data.toLocaleString('pt-BR');
+      }
       var li = el('div', { class: 'cf-lista' });
-      r.importacoes.forEach(function (x) {
+      itens.forEach(function (x) {
         var st = { pronta: ['pronta para revisar', 'av'], salva: ['salva', 'ok'], falhou: ['falhou', 'er'], processando: ['processando', ''], pendente: ['na fila', ''], descartada: ['descartada', ''] }[x.status] || [x.status, ''];
+        var confImportacao = Number(x.confianca);
+        var confTexto = Number.isFinite(confImportacao) && confImportacao > 0 ? 'confiança ' + Math.round(Math.max(0, Math.min(1, confImportacao)) * 100) + '%' : '';
+        var progressoImportacao = Number(x.progresso);
+        var temProgresso = ['pendente', 'processando'].indexOf(x.status) >= 0 && Number.isFinite(progressoImportacao);
+        var progressoValor = temProgresso ? Math.round(Math.max(0, Math.min(100, progressoImportacao))) : 0;
+        var progressoTexto = temProgresso ? 'progresso ' + progressoValor + '%' : '';
+        var progressoBarra = temProgresso ? el('progress', { class: 'cf-progresso', max: '100', value: String(progressoValor), title: 'Progresso da importação: ' + progressoValor + '%', 'aria-label': 'Progresso da importação ' + progressoValor + '%' }) : null;
         li.appendChild(el('div', { class: 'cf-linha-item' }, [el('div', { class: 'cresce' }, [el('b', { txt: x.entrada_resumo || x.tipo_entrada }),
-          el('span', { class: 'm', txt: [x.tipo_entrada, new Date(x.criado_em).toLocaleString('pt-BR'), x.erro].filter(Boolean).join(' · ') })]), C.tag(st[0], st[1]),
+          el('span', { class: 'm', txt: [x.tipo_entrada, progressoTexto, confTexto, 'atualizada ' + dataImportacao(x.atualizado_em || x.criado_em), x.erro].filter(Boolean).join(' · ') })]), C.tag(st[0], st[1]), progressoBarra,
         x.status === 'pronta' ? C.botao('Revisar', function () { api('GET', '/importar/' + x.id).then(function (d) {
           if (d.candidatos && d.candidatos.length) { var box = C.limpar(); box.appendChild(el('h2', { txt: 'Resultados da busca' })); var b = el('div'); box.appendChild(b); mostrarCandidatos(d, b, {}); }
           else abrirPrevia(d, {});
         }).catch(C.erro); }, 'peq') : null,
         x.status === 'salva' && x.cifra_id ? C.botao('Abrir', function () { C.ir('cifra', x.cifra_id); }, 'sec peq') : null,
-        ['pronta', 'falhou'].indexOf(x.status) >= 0 ? C.botao('Descartar', function () { api('DELETE', '/importar/' + x.id).then(C.telas.importacoes); }, 'sec peq') : null]));
+        x.status === 'falhou' && x.tipo_entrada === 'url' ? C.botao('Tentar novamente', function (ev) {
+          ev.target.disabled = true; ev.target.textContent = 'Reenviando…';
+          api('POST', '/importar/' + x.id + '/reprocessar').then(function () {
+            C.aviso('Importação reenviada para a fila.'); C.telas.importacoes();
+          }).catch(function (e) {
+            ev.target.disabled = false; ev.target.textContent = 'Tentar novamente'; C.erro(e);
+          });
+        }, 'peq') : null,
+        ['pronta', 'falhou'].indexOf(x.status) >= 0 ? C.botao('Descartar', function () {
+          C.confirmar('Descartar importação?', 'Esta importação será removida da fila de revisão e não poderá ser recuperada por esta tela.', 'Descartar').then(function (ok) {
+            if (ok) api('DELETE', '/importar/' + x.id).then(C.telas.importacoes).catch(C.erro);
+          });
+        }, 'sec peq') : null]));
       });
-      c.appendChild(li);
-    }).catch(function (e) { C.limpar().appendChild(C.estadoErro(e, C.telas.importacoes)); });
+      lista.appendChild(li);
+      if (maisDisponivel) {
+        var mais = C.botao(carregandoMais ? 'Carregando…' : 'Mostrar mais', carregarMais, 'sec');
+        mais.disabled = carregandoMais;
+        lista.appendChild(mais);
+      }
+      agendarAtualizacao();
+    }
+    function carregarMais() {
+      if (carregandoMais || !maisDisponivel) return;
+      if (timer) { clearTimeout(timer); timer = null; }
+      carregandoMais = true;
+      lista.setAttribute('aria-busy', 'true');
+      var status = filtrosServidor.indexOf(filtro) >= 0 ? filtro : '';
+      var query = (status ? '?status=' + encodeURIComponent(status) : '?') + 'limite=100&offset=' + (offset + 100);
+      pintarLista();
+      api('GET', '/importar' + query).then(function (r) {
+        var novos = r.importacoes || [];
+        dados.importacoes = (dados.importacoes || []).concat(novos);
+        offset += novos.length; maisDisponivel = r.paginacao ? !!r.paginacao.tem_mais : novos.length === 100;
+      }).catch(C.erro).then(function () { carregandoMais = false; lista.setAttribute('aria-busy', 'false'); pintarLista(); });
+    }
+    function agendarAtualizacao() {
+      var aguardando = (dados.importacoes || []).some(function (x) { return x.status === 'pendente' || x.status === 'processando'; });
+      if (!aguardando || offset > 0 || atualizacoesAutomaticas >= 12) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () {
+        timer = null; atualizacoesAutomaticas += 1;
+        carregar(filtrosServidor.indexOf(filtro) >= 0 ? filtro : '', true);
+      }, 5000);
+    }
+    carregar('');
   };
 })(window);

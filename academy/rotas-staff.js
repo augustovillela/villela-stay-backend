@@ -10,7 +10,7 @@ const repo = require('./repo');
 
 function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrAdmin, jwtSecret }) {
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || (req.viaChave ? 'chave-de-publicacao' : 'plataforma'));
+  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || (req.viaChave ? (req.rotuloChave || 'chave-de-publicacao') : 'plataforma'));
   const A = [requireAuth, requireAdmin];
   // PA: admin do portal OU PUBLISH_KEY (automação local). Sem a injeção, cai em A —
   // nunca afrouxa sozinho. Usado só nas rotas de importação/leitura de produtores.
@@ -28,6 +28,23 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
   // visão geral da plataforma
   app.get('/staff/api/academy/dashboard', ...A, h((req, res) => {
     res.json({ resumo: repo.Dashboard.plataforma(), pendentes: repo.Perfis.pendentes(), config: { comissoes: repo.Config.obter('comissoes', {}) } });
+  }));
+
+  // 🎓 Visitas no Site dos Cursos — aluno a aluno (visitas identificadas + tempo nas aulas).
+  // Só admin: é relatório NOMINAL (nome, e-mail, comportamento) — LGPD, art. 6º, III.
+  app.get('/staff/api/academy/visitas-alunos', ...A, h((req, res) => res.json(require('./relatorio-visitas-alunos').montar({ dias: req.query.dias }))));
+  app.get('/staff/api/academy/visitas-alunos.csv', ...A, h((req, res) => {
+    const R = require('./relatorio-visitas-alunos');
+    const rel = R.montar({ dias: req.query.dias });
+    aud(req, 'relatorio.visitas-alunos.csv', 'users', '', `${rel.alunos.length} alunos, ${rel.periodo.dias} dias`);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="visitas-alunos-${rel.periodo.ate}.csv"`);
+    res.send(R.csv(rel));
+  }));
+  app.get('/staff/api/academy/visitas-alunos/:uid', ...A, h((req, res) => {
+    const d = require('./relatorio-visitas-alunos').detalhe(req.params.uid, { dias: req.query.dias });
+    if (!d) return res.status(404).json({ erro: 'Aluno não encontrado.' });
+    res.json(d);
   }));
 
   // usuários
@@ -71,12 +88,23 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
     res.json({ ok: true, lembretes_enviados: n });
   }));
 
+  // Uso de IA por aluno (SÓ LEITURA): perguntas, bloqueios pelo limite diário, tokens e custo — o relatório
+  // semanal (stays\academy-ia-uso.ps1) lê com a chave para o Augusto calibrar o limite com números.
+  app.get('/staff/api/academy/ia-uso', ...PA, h((req, res) => res.json(require('./ia').Logs.porUsuario(req.query.dias))));
+  // Custos de IA da plataforma (SÓ LEITURA): quem pagou cada dólar — aluno, isento, franquia ou falha absorvida —, por
+  // agente, modelo e dia, mais cortesias e saldo das carteiras. Lido pelo relatório semanal de despesas de sistemas.
+  app.get('/staff/api/academy/ia-custos', ...PA, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json(require('./ia').Logs.custos(req.query.dias)); }));
+  // Quem gera o custo (SÓ LEITURA): isentos, créditos de cortesia, cortesia de curso que usa IA e os maiores consumidores.
+  app.get('/staff/api/academy/ia-custos/pessoas', ...PA, h((req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json(require('./ia').Logs.pessoas(req.query.dias)); }));
+
   // config comercial (comissões padrão etc.)
   app.get('/staff/api/academy/config', ...A, h((req, res) => res.json({ comissoes: repo.Config.obter('comissoes', {}) })));
   app.post('/staff/api/academy/config', ...A, h((req, res) => {
     const { chave, valor } = req.body || {};
     if (!chave) return res.status(400).json({ erro: 'Informe chave e valor.' });
-    repo.Config.salvar(String(chave), valor);
+    // estudo_pedidos tem validação e porta próprias (estudo/pedidos.js): ligar para todos só com sessão de admin
+    if (String(chave) === 'estudo_pedidos') require('./estudo/pedidos').salvarConfigPedidos(valor, { admin: !req.viaChave && !!req.user && req.user.papel === 'admin' });
+    else repo.Config.salvar(String(chave), String(chave) === 'ia_cobranca' ? require('./carteira-ia').prepararConfig(valor) : valor);
     aud(req, 'config.salvar', 'platform_settings', String(chave), '');
     res.json({ ok: true });
   }));

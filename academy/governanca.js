@@ -77,25 +77,80 @@ const DoisFA = {
 };
 
 // ------------------------------------------------------------ certificados
+// A frase que o certificado do curso que hospeda o Estude TRAZ, visível, no certificado e na página pública de
+// verificação (decisão do Augusto, 11/10/2026). Os outros cursos mantêm a redação que já tinham.
+const FRASE_CURSO_LIVRE = 'Curso livre. Certificado emitido pela Villela Academy, sem validade para o MEC.';
+// a data do certificado é a do FUSO DE BRASÍLIA: emitido às 22 h do dia 10 não sai com o dia 11 (que é o do UTC)
+const FUSO_BR_MS = 3 * 3600e3;
+function dataBrasilia(iso) {
+  const d = new Date(new Date(iso).getTime() - FUSO_BR_MS);
+  if (isNaN(d)) return { iso: '', br: '', ano: 0, mes: 0 };
+  const dia = d.toISOString().slice(0, 10);
+  return { iso: dia, br: dia.split('-').reverse().join('/'), ano: d.getUTCFullYear(), mes: d.getUTCMonth() + 1 };
+}
 const Certificados = {
-  // emite quando o aluno tem acesso e concluiu 100% das aulas
+  dataBrasilia,
+  // emite quando o aluno tem acesso e concluiu 100% das aulas — ou, no curso que hospeda o ESTUDE, quando
+  // cumpre o critério do percurso (estudo/aluno.js › conclusao). Em nenhum caso é certificado de "aprovação".
   emitir(usuario, productId) {
     const p = ct.Produtos.obter(productId);
-    if (!p || !ct.temAcesso(usuario.id, p.id)) throw new Error('Você não tem acesso a este produto.');
-    const prog = ct.Progresso.doProduto(usuario.id, p.id);
-    if (!prog.total_aulas || prog.pct < 100) throw new Error(`Conclua todas as aulas antes de emitir (${prog.concluidas}/${prog.total_aulas}).`);
+    if (!p || !ct.temAcesso(usuario.id, p.id)) { const e = new Error('Você não tem acesso a este produto.'); e.status = 403; throw e; }
+    // Curso que hospeda o ESTUDE tem uma aula-casca e centenas de aulas no percurso: "100 % das aulas" aqui
+    // seria concluir a casca e levar o certificado do curso inteiro. Para ele a casca NÃO conta: vale o
+    // critério do percurso publicado (todas as aulas estudadas + prova completa enviada).
+    // IDEMPOTENTE: quem já tem o certificado recebe o MESMO, antes de qualquer conferência — o percurso que ganhou
+    // uma aula depois da emissão não transforma "me dê o meu certificado" em 409. (Certificado REVOGADO não é
+    // devolvido: segue para a conferência e, cumprida a regra de hoje, volta a valer com o mesmo código.)
     const existente = db.prepare('SELECT * FROM certificates WHERE user_id = ? AND product_id = ?').get(usuario.id, p.id);
-    if (existente) return existente;
+    if (existente && !existente.revogado_em) return existente;
+    let prog, tipo = '', carga = 0;
+    if (require('./estudo/repo').Escopos.temDoCurso(p.id)) {
+      const c = require('./estudo/aluno').conclusao(usuario.id, p.id);
+      if (!c.cumprido) { const e = new Error(c.falta_txt); e.status = 409; e.extra = { conclusao: c }; throw e; }
+      prog = { total_aulas: c.total_aulas }; tipo = 'estude'; carga = c.carga_horaria_min;
+    } else {
+      prog = ct.Progresso.doProduto(usuario.id, p.id);
+      // aulas INTEIRAS, não o percentual arredondado: 199 de 200 arredondam para 100 %
+      if (!prog.total_aulas || prog.concluidas < prog.total_aulas) throw new Error(`Conclua todas as aulas antes de emitir (${prog.concluidas}/${prog.total_aulas}).`);
+    }
     const produtor = db.prepare('SELECT nome_publico FROM producer_profiles WHERE user_id = ?').get(p.producer_id);
+    if (existente) { // estava revogado e a regra de hoje está cumprida: volta a valer, com o mesmo código e a data de agora
+      db.prepare(`UPDATE certificates SET revogado_em = '', revogado_motivo = '', aluno_nome = ?, produto_titulo = ?, produtor_nome = ?, total_aulas = ?, emitido_em = ?, tipo = ?, carga_horaria_min = ? WHERE id = ?`)
+        .run(usuario.nome, p.titulo, (produtor && produtor.nome_publico) || '', prog.total_aulas, nowISO(), tipo, carga, existente.id);
+      repo.Auditoria.registrar({ quem: usuario.id, acao: 'certificado.reemitir', entidade: 'certificates', entidade_id: existente.id, detalhe: p.titulo });
+      return db.prepare('SELECT * FROM certificates WHERE id = ?').get(existente.id);
+    }
     const codigo = 'VA-' + crypto.randomBytes(6).toString('hex').toUpperCase();
-    db.prepare(`INSERT INTO certificates (id, user_id, product_id, aluno_nome, produto_titulo, produtor_nome, total_aulas, emitido_em)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(codigo, usuario.id, p.id, usuario.nome, p.titulo, (produtor && produtor.nome_publico) || '', prog.total_aulas, nowISO());
+    db.prepare(`INSERT INTO certificates (id, user_id, product_id, aluno_nome, produto_titulo, produtor_nome, total_aulas, emitido_em, tipo, carga_horaria_min)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(codigo, usuario.id, p.id, usuario.nome, p.titulo, (produtor && produtor.nome_publico) || '', prog.total_aulas, nowISO(), tipo, carga);
     repo.Auditoria.registrar({ quem: usuario.id, acao: 'certificado.emitir', entidade: 'certificates', entidade_id: codigo, detalhe: p.titulo });
     return db.prepare('SELECT * FROM certificates WHERE id = ?').get(codigo);
   },
   porCodigo(codigo) { return db.prepare('SELECT * FROM certificates WHERE id = ?').get(s(codigo, 30)) || null; },
   doAluno(userId) { return db.prepare('SELECT * FROM certificates WHERE user_id = ? ORDER BY emitido_em DESC').all(userId); },
+  // REVOGAÇÃO (segunda revisão, 11/10/2026, A2): o registro fica (o código continua respondendo), mas a página
+  // pública diz "certificado revogado" e NÃO mostra o nome. `productId` vazio = todos os do usuário.
+  revogar(userId, productId, motivo) {
+    const r = db.prepare(`UPDATE certificates SET revogado_em = ?, revogado_motivo = ? WHERE user_id = ? AND revogado_em = ''${productId ? ' AND product_id = ?' : ''}`)
+      .run(...[nowISO(), s(motivo, 120), userId].concat(productId ? [productId] : []));
+    if (r.changes) repo.Auditoria.registrar({ quem: 'sistema', acao: 'certificado.revogar', entidade: 'certificates', entidade_id: s(productId || userId, 40), detalhe: s(motivo, 120) });
+    return Number(r.changes) || 0;
+  },
+  // o acesso ao produto foi tirado (reembolso, matrícula ou cortesia revogada): revoga SE a pessoa ficou sem
+  // acesso nenhum àquele produto — quem perde a cortesia mas comprou o curso continua com o certificado.
+  revogarSeSemAcesso(userId, productId, motivo) {
+    if (!userId || !productId || ct.temAcesso(userId, productId)) return 0;
+    return this.revogar(userId, productId, motivo);
+  },
+  // várias matrículas caíram de uma vez (cortesia total, cortesia do Musique): confere certificado por certificado
+  revogarOndeSemAcesso(userId, motivo) {
+    let n = 0;
+    for (const c of db.prepare("SELECT product_id FROM certificates WHERE user_id = ? AND revogado_em = ''").all(userId)) n += this.revogarSeSemAcesso(userId, c.product_id, motivo);
+    return n;
+  },
+  // EXCLUSÃO DA CONTA (LGPD): o nome sai do certificado; a página pública passa a dizer que o titular removeu os dados
+  esquecerTitular(userId) { return Number(db.prepare("UPDATE certificates SET aluno_nome = '' WHERE user_id = ?").run(userId).changes) || 0; },
 };
 
 // ------------------------------------------------------------ tickets de suporte
@@ -175,4 +230,4 @@ const Relatorios = {
   },
 };
 
-module.exports = { DoisFA, Certificados, Tickets, Relatorios, totpAgora, totpConfere, base32Encode };
+module.exports = { DoisFA, Certificados, FRASE_CURSO_LIVRE, Tickets, Relatorios, totpAgora, totpConfere, base32Encode };

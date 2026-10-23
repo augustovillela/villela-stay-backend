@@ -606,9 +606,30 @@ async function rodar({ t, secao, req, assert }) {
     const b64 = Buffer.from(await pdf.save()).toString('base64');
     const r = await req('POST', B + '/importar/arquivo', { como: 'ana', corpo: { nome: 'c.pdf', base64: b64 } });
     assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.resultado.fonte.tipo, 'arquivo');
+    assert.equal(r.json.resultado.fonte.metodo, 'pdf');
     const segs = r.json.resultado.documento.secoes[0].linhas[0].segmentos;
     assert.deepEqual(segs.map((s) => s.acorde), ['G', 'D']);
     assert.equal(segs[1].texto, 'coisa');
+    const prontas = Importar.listar('u-ana', { limite: 100, status: 'pronta' });
+    assert.ok(prontas.length >= 1 && prontas.every((x) => x.status === 'pronta'));
+    assert.ok(prontas.every((x) => typeof x.atualizado_em === 'string' && x.atualizado_em.length > 0));
+    assert.ok(Importar.listar('u-ana', { limite: 100, status: 'status-inexistente' }).length >= prontas.length);
+    const paginaApi = await req('GET', B + '/importar?limite=1&offset=0&status=pronta', { como: 'ana' });
+    assert.equal(paginaApi.status, 200);
+    assert.equal(paginaApi.json.paginacao.limite, 1);
+    assert.equal(paginaApi.json.paginacao.offset, 0);
+    assert.equal(typeof paginaApi.json.paginacao.tem_mais, 'boolean');
+    if (prontas.length > 1) {
+      const primeira = Importar.listar('u-ana', { limite: 1, status: 'pronta', offset: 0 });
+      const segunda = Importar.listar('u-ana', { limite: 1, status: 'pronta', offset: 1 });
+      assert.equal(primeira.length, 1);
+      assert.equal(segunda.length, 1);
+      assert.notEqual(primeira[0].id, segunda[0].id);
+      db.prepare("UPDATE importacoes SET atualizado_em = '2099-01-02T00:00:00.000Z' WHERE id = ?").run(segunda[0].id);
+      db.prepare("UPDATE importacoes SET atualizado_em = '2099-01-01T00:00:00.000Z' WHERE id = ?").run(primeira[0].id);
+      assert.equal(Importar.listar('u-ana', { limite: 1, status: 'pronta' })[0].id, segunda[0].id);
+    }
   });
 
   await t('arquivo que mente a extensão é recusado', async () => {
@@ -673,6 +694,25 @@ async function rodar({ t, secao, req, assert }) {
     const ob = Importar.obter('u-ana', b.importacao.id);
     assert.equal(ob.importacao.status, 'falhou');
     assert.match(ob.importacao.erro, /interna/);
+  });
+
+  await t('reprocessamento de URL exige o dono da importação', async () => {
+    const falha = Importar.url('u-ana', { url: 'https://exemplo.com.br/privado/c' });
+    await falha._promessa;
+    await assert.rejects(() => Importar.reprocessar(falha.importacao.id, 'u-bruno'), /não encontrada/);
+    db.prepare('UPDATE importacoes SET progresso = 73 WHERE id = ?').run(falha.importacao.id);
+    const outro = await req('POST', `${B}/importar/${falha.importacao.id}/reprocessar`, { como: 'bruno' });
+    assert.equal(outro.status, 404);
+    const reenviada = await req('POST', `${B}/importar/${falha.importacao.id}/reprocessar`, { como: 'ana' });
+    assert.equal(reenviada.status, 200, JSON.stringify(reenviada.json));
+    assert.equal(reenviada.json.importacao.status, 'processando');
+    while (['pendente', 'processando'].includes(Importar.obter('u-ana', falha.importacao.id).importacao.status)) await new Promise((x) => setTimeout(x, 10));
+    const novamente = Importar.obter('u-ana', falha.importacao.id);
+    assert.equal(novamente.importacao.status, 'falhou');
+    const pronta = Importar.url('u-ana', { url: 'https://www.cifraclub.com.br/tom-jobim/wave/' });
+    await pronta._promessa;
+    assert.equal(Importar.obter('u-ana', pronta.importacao.id).importacao.status, 'pronta');
+    await assert.rejects(() => Importar.reprocessar(pronta.importacao.id, 'u-ana'), /Só importações que falharam/);
   });
 
   await t('BUSCA externa: uma fonte cai (500) e a outra responde — a busca NÃO cai, e a falha vem NOMEADA', async () => {
@@ -875,6 +915,19 @@ async function rodar({ t, secao, req, assert }) {
     const s = await req('POST', `${B}/importar/${r.json.importacao.id}/salvar`, { como: 'ana', corpo: { destino: 'nova_musica', meta: { titulo: 'Da gravação' } } });
     assert.equal(s.status, 200, JSON.stringify(s.json));
     assert.equal(db.prepare('SELECT tipo FROM cifra_fontes WHERE obra_id = ?').get(s.json.obra_id).tipo, 'audio');
+  });
+
+  await t('texto extraído de PDF: preserva procedência, confiança reduzida e aviso de revisão', async () => {
+    const r = await req('POST', B + '/importar/texto', { como: 'ana', corpo: { texto: '[C]Yesterday [G]all my troubles', titulo: 'Yesterday', origem: 'pdf' } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.importacao.tipo, 'pdf');
+    assert.equal(r.json.resultado.fonte.tipo, 'arquivo');
+    assert.equal(r.json.resultado.fonte.metodo, 'pdf.texto');
+    assert.equal(r.json.resultado.confianca, 0.9);
+    assert.match(r.json.resultado.ambiguidades[0].motivo, /PDF/);
+    const s = await req('POST', `${B}/importar/${r.json.importacao.id}/salvar`, { como: 'ana', corpo: { destino: 'nova_musica', meta: { titulo: 'Yesterday' } } });
+    assert.equal(s.status, 200, JSON.stringify(s.json));
+    assert.equal(db.prepare('SELECT tipo FROM cifra_fontes WHERE obra_id = ?').get(s.json.obra_id).tipo, 'arquivo');
   });
 
   await t('funções puras do cliente: linha ⇄ caracteres do editor (propriedade) e visão transposta', async () => {

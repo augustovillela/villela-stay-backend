@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-09-26T07:47:36.270Z",
+  "coletadoEm": "2026-10-12T10:10:22.101Z",
   "livros": [
     {
       "slug": "chatgpt-ai-na-pratica",
@@ -158,6 +158,19 @@
       "url": "https://livros.villelastay.com.br/livros/o-locador-inteligente"
     },
     {
+      "slug": "o-locador-inteligente-na-era-da-ia",
+      "titulo": "O Locador Inteligente na era da Inteligência Artificial",
+      "subtitulo": "Claude AI na Prática para Hospedagens",
+      "resumo": "Claude AI na Prática para Hospedagens: 50 capítulos que mostram como sair da operação artesanal e montar uma empresa de hospedagem assistida por inteligência artificial — sem perder o controle sobre dinheiro, calendário e a conversa com o hóspede.",
+      "categoria": "Tecnologia e IA",
+      "capa": "https://livros.villelastay.com.br/assets/livros/o-locador-inteligente-na-era-da-ia.jpg",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 14900,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/o-locador-inteligente-na-era-da-ia"
+    },
+    {
       "slug": "pilotagem-de-drones-na-pratica-dji-mini-3",
       "titulo": "Pilotagem de Drones na Prática - DJI Mini 3",
       "subtitulo": "Do primeiro voo à filmagem profissional com DJI Mini 3 - Segurança, legislação e operações em Brasília",
@@ -186,11 +199,115 @@
   ],
   "cursos": [
     {
+      "slug": "decoracao-de-interiores-na-pratica",
+      "titulo": "Decoração de Interiores na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 8 minutos, cada uma com o artigo da aula em PDF, com checklists e fichas, para decorar a unidade que recebe hóspedes: do programa e da planta em escala à montagem, à foto do ambiente pronto e à conservação entre estadias. Coleção Viver de Chácara.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/E4gcvQH53kXK?v=8S9CNYm9fbG9",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/decoracao-de-interiores-na-pratica"
+    },
+    {
+      "slug": "juiz-do-trabalho-trt-10a-regiao-concurso-paradigma",
+      "titulo": "Juiz do Trabalho — Magistratura do Trabalho (TRT 10ª Região)",
+      "resumo": "Preparação pelo programa oficial do concurso nacional da Magistratura do Trabalho (Edital 1/2023, CSJT/FGV): 251 aulas com videoaula e audiobook, 1.632 questões comentadas (628 de provas oficiais), cards, mapas mentais, prova com relógio e plano no seu tempo. Acesso por 1 ano.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/uD4HwcKoS0Gq?v=EurJawigxHC4",
+      "preco": 98000,
+      "url": "https://academia.villelastay.com.br/academy/cursos/juiz-do-trabalho-trt-10a-regiao-concurso-paradigma"
+    },
+    {
+      "slug": "construcao-com-conteineres-na-pratica",
+      "titulo": "Construção com Contêineres na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 8 minutos, cada uma com o artigo da aula em PDF, com checklists e fichas, para decidir, contratar e fiscalizar uma construção com contêiner na chácara, do estudo do lugar à entrega da unidade. Coleção Viver de Chácara.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/Lygb_RFT_QXp?v=gGZwD55Sp5r-",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/construcao-com-conteineres-na-pratica"
+    },
+    {
+      "slug": "pedreiro-completo-na-pratica",
+      "titulo": "Pedreiro Completo na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 8 minutos, cada uma com o artigo da aula em PDF, com checklists e fichas, para planejar, executar e conferir uma obra pequena e não estrutural, e para saber o que contratar e o que só fiscalizar. Coleção Viver de Chácara.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/sxcLeiXlUR2k?v=e9q_H23orPXC",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/pedreiro-completo-na-pratica"
+    },
+    {
+      "slug": "paisagismo-na-pratica",
+      "titulo": "Paisagismo na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF, com checklists e fichas, para ler o terreno, escolher plantas pelo comportamento, implantar na ordem certa e manter um jardim que cabe no tempo que você tem. Coleção Viver de Chácara.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/m44KZpSp8OGW?v=go6Z976W4kSj",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/paisagismo-na-pratica"
+    },
+    {
+      "slug": "piscineiro-na-pratica",
+      "titulo": "Piscineiro na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF, com checklists e roteiros, para cuidar de uma piscina de chácara com método e segurança, ou para saber avaliar o serviço de quem você contrata. Coleção Viver de Chácara.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/rjjBZd0gMLqR?v=_8uEI2z2asDM",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/piscineiro-na-pratica"
+    },
+    {
+      "slug": "o-homem-contemporaneo",
+      "titulo": "O Homem Contemporâneo",
+      "resumo": "25 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF e uma prática de 21 dias, para organizar mente, corpo, valores, dinheiro e trabalho num sistema só. Baseado no livro do autor.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/n0gEBhqq8Iac?v=5cTZJt1HfXtA",
+      "preco": 14500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/o-homem-contemporaneo"
+    },
+    {
+      "slug": "o-homem-essencial",
+      "titulo": "O Homem Essencial",
+      "resumo": "24 videoaulas animadas sobre caráter, domínio de si, relações, trabalho, lucidez e sentido — com os grandes pensadores pelo nome, o artigo de cada aula em PDF e uma prática de 21 dias. Baseado no livro do autor.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/_0Lm3CGHBZZi?v=Q8UQTUJkGMck",
+      "preco": 14500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/o-homem-essencial"
+    },
+    {
+      "slug": "conexoes-de-sucesso-formacao-para-o-mundo-real",
+      "titulo": "Conexões de Sucesso — Formação para o Mundo Real",
+      "resumo": "Formação de 40 aulas para jovens de 15 a 25 anos: pensar com método, comunicar, operar IA com critério, vender, entender dinheiro e ser dono de um resultado. Com 21 tarefas de consequência real e um plano de 12 meses.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/C__iYGeLK16q?v=hxbpXzaIpizp",
+      "preco": 9500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/conexoes-de-sucesso-formacao-para-o-mundo-real"
+    },
+    {
+      "slug": "a-segunda-onda-da-ia",
+      "titulo": "A Segunda Onda da IA",
+      "resumo": "25 videoaulas animadas, de cerca de dez minutos, para quem já usa ChatGPT, Claude ou Gemini e quer o próximo patamar: projetar, operar e governar sistemas de inteligência artificial. Cada aula traz o artigo em PDF, com o código, as tabelas e os laboratórios do livro.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/oDHHVDjOm_tp?v=p1Cmybjp6UF9",
+      "preco": 14500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/a-segunda-onda-da-ia"
+    },
+    {
+      "slug": "google-ai-na-pratica",
+      "titulo": "Google AI na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF — com prompts e checklists — para usar o Gemini e o ecossistema de inteligência artificial do Google com método, no dia a dia, no estudo e no trabalho. Baseado no livro do autor.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/aurLkdbxXuyH?v=QQpT4gWDckmD",
+      "preco": 8500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/google-ai-na-pratica"
+    },
+    {
+      "slug": "claude-ai-na-pratica-juridica",
+      "titulo": "Claude AI na Prática Jurídica",
+      "resumo": "22 aulas para advogados: prompts e contexto jurídico, controle de qualidade, processos, bases de conhecimento, agentes, publicações e prazos, peças, provas, contratos, negociação e a implantação do escritório operado por IA. Videoaulas + artigo e slides de cada aula.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/rfWHmnoCD005?v=wb8_T987heIG",
+      "preco": 13500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica-juridica"
+    },
+    {
+      "slug": "o-locador-inteligente-na-era-da-inteligencia-artificial",
+      "titulo": "O Locador Inteligente na era da Inteligência Artificial",
+      "resumo": "24 videoaulas animadas, de cerca de 9 minutos, cada uma com o artigo da aula em PDF — com prompts e checklists — para tirar a sua hospedagem por temporada da operação artesanal e operar com processo, dados e inteligência artificial. Baseado no livro do autor.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/oFKpJl1z4mUg?v=dSr7Bk3zNWi6",
+      "preco": 12500,
+      "url": "https://academia.villelastay.com.br/academy/cursos/o-locador-inteligente-na-era-da-inteligencia-artificial"
+    },
+    {
       "slug": "chatgpt-ai-na-pratica",
       "titulo": "ChatGPT AI na Prática",
       "resumo": "22 aulas em vídeo, com artigo e apresentação de cada uma: do prompt que funciona ao ChatGPT operando a sua empresa por Codex, agentes e automações. Baseado no livro ChatGPT AI na Prática, com os casos reais da Villela Stay.",
       "capa": "https://academia.villelastay.com.br/academy/capa/E0_QNGzSvT9s?v=XaFnrMRAbWgM",
-      "preco": 25900,
+      "preco": 8500,
       "url": "https://academia.villelastay.com.br/academy/cursos/chatgpt-ai-na-pratica"
     },
     {
@@ -198,16 +315,8 @@
       "titulo": "Claude AI na Prática",
       "resumo": "22 módulos, aulas em vídeo, 22 artigos e 22 apresentações: do primeiro prompt ao time de agentes que opera a sua empresa. Baseado no livro Claude AI na Prática, com os casos reais da Villela Stay.",
       "capa": "https://academia.villelastay.com.br/academy/capa/kRkjahncniMF?v=db_1sznG_WxD",
-      "preco": 29000,
+      "preco": 8500,
       "url": "https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica"
-    },
-    {
-      "slug": "claude-ai-na-pratica-juridica",
-      "titulo": "Claude AI na Prática Jurídica",
-      "resumo": "22 aulas para advogados: prompts e contexto jurídico, controle de qualidade, processos, bases de conhecimento, agentes, publicações e prazos, peças, provas, contratos, negociação e a implantação do escritório operado por IA. Videoaulas + artigo e slides de cada aula.",
-      "capa": "https://academia.villelastay.com.br/academy/capa/rfWHmnoCD005?v=wb8_T987heIG",
-      "preco": 35000,
-      "url": "https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica-juridica"
     }
   ]
 }

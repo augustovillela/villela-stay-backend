@@ -8,7 +8,7 @@
 // já sai filtrada, porque filtro que mora só na tela vaza.
 // =====================================================================
 'use strict';
-const { db, nowISO, novoId, j } = require('./db');
+const { db, nowISO, novoId, j, transacao } = require('./db');
 const direitos = require('./direitos');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -136,11 +136,14 @@ const Obras = {
     const o = Obras.porId(id);
     if (!o) throw new Error('Obra não encontrada.');
     if (o.dono !== dono) throw new Error('Esta obra não é sua.');
-    const arranjos = db.prepare('SELECT id FROM arranjos WHERE obra_id = ?').all(id);
-    for (const a of arranjos) db.prepare('DELETE FROM partituras WHERE arranjo_id = ?').run(a.id);
-    db.prepare('DELETE FROM arranjos WHERE obra_id = ?').run(id);
-    db.prepare('DELETE FROM obras WHERE id = ?').run(id);
-    direitos.registrar({ ator: dono, acao: 'obra.excluida', alvo: id, detalhe: { titulo: o.titulo } });
+    transacao(() => {
+      require('./tocar/catalogo').excluirDaObra(id, dono);
+      const arranjos = db.prepare('SELECT id FROM arranjos WHERE obra_id = ?').all(id);
+      for (const a of arranjos) db.prepare('DELETE FROM partituras WHERE arranjo_id = ?').run(a.id);
+      db.prepare('DELETE FROM arranjos WHERE obra_id = ?').run(id);
+      db.prepare('DELETE FROM obras WHERE id = ?').run(id);
+      direitos.registrar({ ator: dono, acao: 'obra.excluida', alvo: id, detalhe: { titulo: o.titulo } });
+    });
     return true;
   },
 };

@@ -18,7 +18,7 @@ const ACAD = {
   abas() {
     return [['painel', '📊 Painel'], ['aprovacoes', '✅ Aprovações'], ['pedidos', '🧾 Pedidos'],
       ['assinaturas', '🔁 Assinaturas'], ['comissoes', '💸 Comissões'], ['tickets', '🎧 Suporte'],
-      ['moderacao', '🚩 Moderação'], ['leads', '📩 Leads'], ['config', '⚙️ Config'], ['logs', '📜 Logs']];
+      ['moderacao', '🚩 Moderação'], ['leads', '📩 Leads'], ['ia', '🤖 Créditos de IA'], ['config', '⚙️ Config'], ['logs', '📜 Logs']];
   },
   render() {
     const abas = ACAD.abas().map(([id, r]) => `<button class="btn ${ACAD.tab === id ? '' : 'secund'} peq" onclick="ACAD.ir('${id}')">${r}</button>`).join(' ');
@@ -32,7 +32,7 @@ const ACAD = {
     try {
       await ({ painel: ACAD.vPainel, aprovacoes: ACAD.vAprovacoes, pedidos: ACAD.vPedidos, assinaturas: ACAD.vAssinaturas,
         comissoes: ACAD.vComissoes, tickets: ACAD.vTickets, moderacao: ACAD.vModeracao, leads: ACAD.vLeads,
-        config: ACAD.vConfig, logs: ACAD.vLogs }[ACAD.tab])();
+        ia: ACAD.vIA, config: ACAD.vConfig, logs: ACAD.vLogs }[ACAD.tab])();
     } catch (e) { ACAD.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
 
@@ -205,6 +205,118 @@ const ACAD = {
     ACAD.body().innerHTML = `<div class="card">${leads.length ? tabela(['Quando', 'Nome', 'E-mail', 'Interesse', 'Mensagem', 'Status'], leads.map(l => [
       ACAD.dt(l.criado_em), esc(l.nome), esc(l.email), ACAD.chip(l.interesse), esc(l.mensagem || ''), ACAD.chip(l.status),
     ])) : '<p class="vazio">Nenhum lead ainda.</p>'}</div>`;
+  },
+
+  // -------------------------------------------------------- CRÉDITOS DE IA (carteira-ia.js)
+  // Todo uso de provedor de IA sai do saldo do usuário (regra de 08/10/2026). Aqui o dono liga a
+  // cobrança, dá crédito de cortesia a quem quiser e vê quanto entrou, quanto foi consumido e o custo.
+  async vIA() {
+    const p = await ACAD.api('GET', '/ia/carteiras');
+    // CHAVE GERAL dos pedidos pagos do Estude (estudo/pedidos.js): só a sessão de admin liga para todos.
+    const pc = await ACAD.api('GET', '/estudo/pedidos-config').catch(() => null);
+    const pe = pc ? pc.estudo_pedidos : null;
+    const c = p.config, t = p.total;
+    const kpi = (rot, val) => `<div class="card" style="min-width:150px;flex:1"><div class="sub">${rot}</div><div style="font-size:1.4rem;font-weight:700">${val}</div></div>`;
+    const local = c.virada_em ? new Date(c.virada_em).toLocaleString('pt-BR') : '';
+    ACAD.body().innerHTML = `
+      <div class="card" style="${c.ativa ? '' : 'border-color:var(--alerta)'}"><h3>${c.ativa ? '🟢 Cobrança de IA ligada' : '⚪ Cobrança de IA desligada'}</h3>
+        <p class="sub">${c.ativa
+          ? 'Tutor, mentor, lapidar e ferramentas do produtor saem do saldo de quem usa. Antes de gerar, o usuário vê o valor máximo e confirma; paga só o que foi usado.'
+          : (c.ligada ? '⚠️ Você ligou a cobrança, mas ela está SUSPENSA por falta de câmbio válido. ' : '') + 'Enquanto desligada, vale o limite diário antigo e ninguém paga pelo uso.'}</p>
+        <p class="sub"><b>Câmbio em uso: ${c.cambio_brl_usd ? 'R$ ' + Number(c.cambio_brl_usd).toFixed(4) + ' por US$' : '— nenhum —'}</b>
+          ${c.cambio_origem === 'ptax' ? `· PTAX de venda ${Number(c.ptax.valor).toFixed(4)} (cotação de ${esc(String(c.ptax.cotado_em).slice(0, 10).split('-').reverse().join('/'))}, buscada em ${new Date(c.ptax.buscado_em).toLocaleString('pt-BR')}) + ${c.cambio_folga_pct}% de folga` : c.cambio_origem === 'fixo' ? '· valor fixo' : ''}
+          ${c.cambio_aviso ? `<br><span style="color:var(--alerta)">⚠️ ${esc(c.cambio_aviso)}</span>` : ''}
+          ${c.ptax && c.ptax.erro && c.ptax.erro_em > (c.ptax.buscado_em || '') ? `<br><span style="color:var(--alerta)">Última busca falhou (${new Date(c.ptax.erro_em).toLocaleString('pt-BR')}): ${esc(c.ptax.erro)}</span>` : ''}
+          <button class="btn secund peq" type="button" onclick="ACAD.buscarPTAX()">🔄 Buscar PTAX agora</button></p>
+        <form class="form" id="acad-ia-cfg"><div class="hi-grid">
+          <label>Câmbio <select id="aia-modo"><option value="ptax" ${c.cambio_modo === 'ptax' ? 'selected' : ''}>PTAX do dia (Banco Central) + folga</option><option value="fixo" ${c.cambio_modo === 'fixo' ? 'selected' : ''}>Valor fixo</option></select></label>
+          <label>Folga sobre o PTAX (%) — cobre IOF e spread do cartão <input id="aia-folga" type="number" step="0.5" min="0" max="100" value="${c.cambio_folga_pct}"></label>
+          <label>Câmbio fixo (R$ por US$) — reserva se o Banco Central cair <input id="aia-cambio" type="number" step="0.01" min="0" value="${c.cambio_fixo || ''}" placeholder="ex.: 5.50"></label>
+          <label>Margem sobre o custo (%) <input id="aia-margem" type="number" step="1" min="0" value="${c.margem_pct}"></label>
+          <label>Pacotes de recarga (R$, separados por vírgula) <input id="aia-pacotes" value="${c.pacotes_centavos.map(v => v / 100).join(', ')}"></label>
+          <label>Isentos (${c.isentos.length} — e-mails separados por vírgula ou ponto e vírgula) <textarea id="aia-isentos" rows="3" placeholder="a sua conta e quem mais você decidir">${esc(c.isentos.join(', '))}</textarea></label></div>
+          <p class="sub">Virada: ${local ? '<b>' + esc(local) + '</b> — quem tinha matrícula antes disso mantém as consultas grátis do dia naquele curso; matrícula posterior paga tudo.' : 'será gravada no momento em que você ligar a cobrança. Quem já tiver matrícula até lá mantém as consultas grátis do dia naquele curso.'}</p>
+          <label style="display:flex;gap:.5rem;align-items:center"><input id="aia-ativa" type="checkbox" style="width:auto" ${c.ativa ? 'checked' : ''}> Cobrança ligada</label>
+          <button class="btn peq" type="submit">Salvar</button><p id="aia-msg" class="sub"></p></form></div>
+      ${pe ? `<div class="card" id="acad-ped-card" style="${pe.ativos ? '' : 'border-color:var(--alerta)'}"><h3>${pe.ativos ? '🟢 Pedidos pagos do Estude ligados' : '⚪ Pedidos pagos do Estude desligados'}</h3>
+        <p class="sub">Correção de discursiva, peça e oral, importação de prova em PDF e leitura de edital em PDF. ${pe.ativos
+          ? 'Todo aluno com acesso ao curso vê a aba “Escrita e oral” e pode pedir; cada pedido mostra o orçamento antes e sai do saldo de créditos de IA.'
+          : 'Enquanto desligados, só veem o serviço os e-mails liberados abaixo e os isentos da cobrança de IA.'}${c.ativa ? '' : ' <b>A cobrança de IA está desligada: sem ela os pedidos ficam indisponíveis.</b>'}</p>
+        <form class="form" id="acad-ped-cfg">
+          <label>Liberados para teste (${pe.liberados.length} — e-mails separados por vírgula) <textarea id="aped-lib" rows="2" placeholder="contas que podem pedir antes de abrir para todos">${esc(pe.liberados.join(', '))}</textarea></label>
+          <label style="display:flex;gap:.5rem;align-items:center"><input id="aped-ativos" type="checkbox" style="width:auto" ${pe.ativos ? 'checked' : ''} ${pc.pode_ligar || pe.ativos ? '' : 'disabled'}> Pedidos pagos ligados para todos os alunos</label>
+          <button class="btn peq" type="submit">Salvar</button><p id="aped-msg" class="sub">${pc.pode_ligar ? '' : 'Ligar para todos exige sessão de administrador.'}</p></form></div>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.6rem 0">
+        ${kpi('Saldo em aberto', t.saldo)}${kpi('Carregado (pago)', t.carregado)}${kpi('Cortesia dada', t.cortesia)}${kpi('Consumido', t.consumido)}${kpi('Custo no provedor', 'US$ ' + Number(t.custo_provedor_usd).toFixed(2))}</div>
+      <div class="card"><h3>🎁 Dar crédito a um usuário</h3>
+        <form class="form" id="acad-ia-cred"><div class="hi-grid">
+          <label>E-mail da conta na Academy <input id="acr-email" type="email" required></label>
+          <label>Valor (R$) <input id="acr-valor" type="number" step="0.01" required placeholder="ex.: 20"></label>
+          <label>Tipo <select id="acr-tipo"><option value="cortesia">Cortesia (crédito)</option><option value="ajuste">Ajuste (aceita valor negativo)</option></select></label>
+          <label>Motivo (aparece no extrato do usuário) <input id="acr-motivo" required maxlength="200"></label></div>
+          <button class="btn peq" type="submit">Creditar</button><p id="acr-msg" class="sub"></p></form></div>
+      <div class="card"><h3>👛 Carteiras</h3>${p.carteiras.length ? tabela(['Usuário', 'E-mail', 'Saldo', 'Carregado', 'Cortesia', 'Consumido', 'Último movimento'],
+        p.carteiras.map(x => [esc(x.nome || '—'), esc(x.email || '—'), '<b>' + esc(x.saldo_txt) + '</b>', esc(x.carregado_txt), esc(x.cortesia_txt), esc(x.consumido_txt), new Date(x.ultimo).toLocaleString('pt-BR')])) : '<p class="vazio">Ninguém tem movimento ainda.</p>'}</div>
+      <div class="card"><h3>📝 Créditos manuais</h3>${p.creditos_manuais.length ? tabela(['Quando', 'E-mail', 'Tipo', 'Valor', 'Motivo', 'Quem'],
+        p.creditos_manuais.map(x => [new Date(x.criado_em).toLocaleString('pt-BR'), esc(x.email || '—'), ACAD.chip(x.tipo), esc(x.valor), esc(x.detalhe), esc(x.quem)])) : '<p class="vazio">Nenhum crédito manual.</p>'}</div>`;
+    const lista = (id) => document.getElementById(id).value.split(',').map(x => x.trim()).filter(Boolean);
+    document.getElementById('acad-ia-cfg').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = document.getElementById('aia-msg');
+      const ativa = document.getElementById('aia-ativa').checked;
+      const cambio = Number(document.getElementById('aia-cambio').value) || 0;
+      if (ativa && !c.ligada && !confirm('Ligar a cobrança de IA agora?\n\nA partir deste momento, quem se matricular paga pelo uso do Tutor e das ferramentas de IA. Quem já tem matrícula mantém as consultas grátis do dia no curso que já tinha.')) return;
+      try {
+        await ACAD.api('POST', '/config', { chave: 'ia_cobranca', valor: {
+          ativa, cambio_modo: document.getElementById('aia-modo').value, cambio_folga_pct: Number(document.getElementById('aia-folga').value),
+          cambio_brl_usd: cambio, margem_pct: Number(document.getElementById('aia-margem').value),
+          pacotes_centavos: lista('aia-pacotes').map(v => Math.round(Number(v.replace(',', '.')) * 100)).filter(v => v > 0),
+          isentos: document.getElementById('aia-isentos').value, // o servidor separa, limpa e valida
+          // a virada é o instante em que a cobrança foi ligada pela primeira vez — e não muda mais
+          virada_em: c.virada_em || (ativa ? new Date().toISOString() : '') } });
+        ACAD.pintar();
+      } catch (e) { msg.textContent = e.message; }
+    };
+    const fPed = document.getElementById('acad-ped-cfg');
+    if (fPed) fPed.onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = document.getElementById('aped-msg');
+      const ativos = document.getElementById('aped-ativos').checked;
+      if (ativos && !pe.ativos && !confirm('Ligar os pedidos pagos do Estude para TODOS os alunos agora?\n\nCorreção de discursiva, peça e oral, prova em PDF e edital em PDF passam a aparecer para quem tem acesso ao curso. Cada pedido mostra o orçamento antes e é descontado do saldo de créditos de IA.')) return;
+      // SÓ A DIFERENÇA vai ao servidor (auditoria C de 12/10/2026, C-20). Antes o POST levava a lista INTEIRA que estava
+      // na tela: o liberado que um agente acrescentasse pela chave entre o carregamento da aba e o clique em Salvar era
+      // apagado pela lista velha. Agora vai o que ESTA tela acrescentou (`liberar`) e o que tirou (`remover`), contra a
+      // lista que ela carregou — o servidor aplica sobre a lista de AGORA. Quem não mexeu na lista não manda lista.
+      const emails = (v) => [...new Set(String(v == null ? '' : v).split(/[,;\s]+/).map(x => x.trim().toLowerCase()).filter(Boolean))];
+      const carregados = emails(pe.liberados.join(',')), naTela = emails(document.getElementById('aped-lib').value);
+      const corpo = { ativos };
+      const liberar = naTela.filter(x => !carregados.includes(x)), remover = carregados.filter(x => !naTela.includes(x));
+      if (liberar.length) corpo.liberar = liberar.join(', ');
+      if (remover.length) corpo.remover = remover.join(', ');
+      try {
+        await ACAD.api('POST', '/estudo/pedidos-config', corpo);
+        ACAD.pintar();
+      } catch (e) { msg.textContent = e.message; }
+    };
+    document.getElementById('acad-ia-cred').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = document.getElementById('acr-msg');
+      const email = document.getElementById('acr-email').value.trim(), valor = Number(document.getElementById('acr-valor').value);
+      if (!confirm(`Creditar R$ ${valor.toFixed(2)} para ${email}?`)) return;
+      try {
+        const r = await ACAD.api('POST', '/ia/creditos', { email, valor_centavos: Math.round(valor * 100), motivo: document.getElementById('acr-motivo').value, tipo: document.getElementById('acr-tipo').value });
+        alert(`Feito. Saldo de ${r.email}: ${r.saldo}`);
+        ACAD.pintar();
+      } catch (e) { msg.textContent = e.message; }
+    };
+  },
+
+  async buscarPTAX() {
+    try {
+      const r = await ACAD.api('POST', '/ia/ptax');
+      alert(r.ok ? `PTAX de venda: ${r.valor} (${r.cotado_em}). Câmbio em uso: R$ ${Number(r.cambio.valor).toFixed(4)}.` : `O Banco Central não respondeu: ${r.erro}`);
+      ACAD.pintar();
+    } catch (e) { alert(e.message); }
   },
 
   // -------------------------------------------------------- CONFIG

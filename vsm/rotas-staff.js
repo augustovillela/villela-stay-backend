@@ -12,7 +12,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviar
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
   const quem = (req) => (req.user && (req.user.nome || req.user.email)) || 'plataforma';
   const A = [requireAuth, requireAdmin]; // guarda de admin da plataforma
-  const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
+  const h = (fn) => (req, res) => Promise.resolve().then(() => fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
   const aud = (req, acao, ent, id, det) => repo.Auditoria.registrar({ quem: quem(req), acao, entidade: ent, entidade_id: id, detalhe: det, ip: ipDe(req) });
   // Domínio público do produto (NÃO o host interno do Render). Links de acesso saem sempre por aqui.
   const BASE = (process.env.VSM_BASE_URL || 'https://manager.villelastay.com.br').replace(/\/+$/, '');
@@ -87,7 +87,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviar
 
   // ---- ACESSOS DE CORTESIA / BETA (teste sem pagamento; vitalício até o dono revogar) ----
   app.get('/staff/api/vsm/cortesia', ...A, h((req, res) => {
-    res.json({ acessos: repo.Tenants.listar({ status: 'cortesia', limite: 500 }) });
+    res.json({ acessos: repo.Tenants.listar({ cortesia: true, limite: 500 }) });
   }));
   app.post('/staff/api/vsm/cortesia', ...A, h((req, res) => {
     const b = req.body || {};

@@ -34,6 +34,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const app = express();
+app.disable('x-powered-by'); // não anunciar o framework (auditoria de 11/10/2026, M5)
 app.set('trust proxy', 1); // Render põe 1 proxy na frente → req.ip = IP real do cliente (não o X-Forwarded-For forjável)
 app.use(express.json({ limit: '15mb' })); // 15mb p/ aceitar PDFs em base64 no upload de relatórios
 app.use(express.urlencoded({ extended: true, limit: '1mb' })); // form-urlencoded (ex.: ingestão do Make → CRM)
@@ -85,9 +86,32 @@ const CSP_POLITICA = [
   "report-uri /csp-report",
 ].join("; ");
 
+// Permissions-Policy (auditoria de 11/10/2026, M5): fecha o que NENHUM produto usa e deixa para a própria
+// origem o que algum produto usa. Conferido por grep no repositório antes de fechar:
+//   microphone       getUserMedia({ audio }) no Estude (prova oral), Musique, Origena e Voz -> (self)
+//   display-capture  getDisplayMedia no Laboratório do Musique (transcrever)               -> (self)
+//   midi             requestMIDIAccess no Musique (palco e Laboratório)                     -> (self)
+//   screen-wake-lock wakeLock no Musique (biblioteca e palco)                               -> (self)
+//   sensores         DeviceOrientation no tour 360 (giroscópio do celular)                  -> (self)
+//   camera, geolocation, payment, usb, bluetooth, serial, hid: nenhum uso -> ()
+//     (a foto do staff é <input type="file" capture>, que esta política não governa; o Mercado Pago é
+//      redirecionamento, não a Payment Request API)
+// DE PROPÓSITO FORA DA LISTA: fullscreen, autoplay, picture-in-picture, encrypted-media, clipboard-write
+// e web-share. A aula embute vídeo de terceiro em <iframe allow="autoplay; fullscreen; picture-in-picture">;
+// listar esses recursos como (self) tiraria a tela cheia do player. Sem listar, vale o padrão do navegador.
+// Regra para quem mexer: recurso novo de navegador num produto -> conferir esta linha (o selftest do núcleo
+// varre o código e quebra se alguém usar microfone, câmera ou localização que a política fecha).
+const PERMISSIONS_POLICY = [
+  'camera=()', 'microphone=(self)', 'geolocation=()', 'display-capture=(self)',
+  'midi=(self)', 'screen-wake-lock=(self)',
+  'accelerometer=(self)', 'gyroscope=(self)', 'magnetometer=(self)',
+  'payment=()', 'usb=()', 'bluetooth=()', 'serial=()', 'hid=()',
+].join(', ');
+
 // Cabeçalhos de segurança (equivalente leve ao helmet, sem dependência nova)
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Permissions-Policy', PERMISSIONS_POLICY);
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // HSTS: sem ele, o PRIMEIRO acesso de cada navegador ainda pode sair em http
@@ -186,9 +210,21 @@ app.post('/csp-report', express.json({ type: ['application/csp-report', 'applica
   } catch (e) { /* relatorio malformado nao derruba nada */ }
 });
 
-app.get('/health', (req, res) => res.json({
-  ok: true, servico: 'villela-stay-backend',
-  commit: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7),
+// PUBLICO: so o que o Render (health check), o Test-StaffPortal e a conferencia de
+// deploy precisam — vivo, servico e commit curto. A branch, o ambiente e os
+// sinalizadores de segredo nao revelam segredo nenhum, mas dizem a quem esta
+// fazendo reconhecimento o que esta armado e o que nao esta (auditoria de
+// 11/10/2026, B7). Continuam existindo, pelo mesmo endereco, para quem manda a
+// PUBLISH_KEY no cabecalho x-publish-key — a mesma chave das rotinas locais.
+app.get('/health', (req, res) => {
+  const publico = {
+    ok: true, servico: 'villela-stay-backend',
+    commit: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7),
+  };
+  const chave = req.headers['x-publish-key'];
+  if (!(process.env.PUBLISH_KEY && chave && tokensIguais(chave, process.env.PUBLISH_KEY))) return res.json(publico);
+  res.json({
+  ...publico,
   branch: process.env.RENDER_GIT_BRANCH || 'local',
   // Se a conferencia de assinatura do webhook do MP esta ARMADA. Sem isto, a
   // unica forma de saber era esperar um webhook chegar e procurar um aviso no
@@ -205,7 +241,8 @@ app.get('/health', (req, res) => res.json({
   ambiente: EM_PRODUCAO ? (process.env.NODE_ENV || 'render') : (process.env.NODE_ENV || 'local'),
   // a MESMA constante que arma a guarda do boot: uma verdade só
   guardas_de_producao_armadas: EM_PRODUCAO,
-}));
+  });
+});
 
 // Disponibilidade e preços de um anúncio (o site consome este endpoint)
 app.get('/api/disponibilidade/:listingId', async (req, res) => {
@@ -752,6 +789,26 @@ function requirePublishOrAdmin(req, res, next) {
   return requireAuth(req, res, () => requireAdmin(req, res, next));
 }
 
+// Tokens de API temporários (nucleo/tokens-api.js) para o que mora aqui no server.js. Lista FECHADA:
+// rota da PUBLISH_KEY que não está aqui recusa token. O código e as páginas do site NÃO passam por
+// API — vão ao ar por commit no master; para isso o acesso é pelo GitHub, não por este token.
+const tokensApi = require('./nucleo/tokens-api');
+tokensApi.registrarSistema('portal', {
+  rotulo: '📋 Portal Staff — relatórios', base: '/staff/api/relatorios',
+  escopos: { leitura: 'Listar os relatórios da área.', publicar: 'Publicar (upsert) relatório na área.' },
+  rotas: [['GET', '', 'leitura'], ['POST', '', 'publicar']],
+  // o token vale para UMA área: relatório de outra área (jurídico, financeiro...) fica fora do alcance
+  dono: { campo: 'area', rotulo: 'Área do portal (ex.: ti, marketing)', padrao: 'ti',
+    validar(v) { const a = String(v).trim().toLowerCase(); if (!AREA_IDS.has(a)) throw new Error(`Área inválida: ${a}.`); return a; } },
+});
+tokensApi.registrarSistema('site', {
+  rotulo: '🌐 Site villelastay.com.br — FAQ', base: '/staff/api/faq',
+  escopos: { publicar: 'Substituir a FAQ oficial do site (lista inteira).' },
+  rotas: [['PUT', '', 'publicar']],
+});
+const guardaPortal = tokensApi.guarda('portal', requirePublishOrSession);
+const guardaSite = tokensApi.guarda('site', requirePublishOrSession);
+
 // Nunca cachear respostas da API do portal — o navegador pode guardar GETs sem
 // Cache-Control e mostrar conteúdo antigo (ex.: texto desatualizado de um relatório).
 app.use('/staff/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -800,7 +857,7 @@ function reacentua(s) {
 }
 
 // Publicar (sessão com a área, ou script local com x-publish-key)
-app.post('/staff/api/relatorios', requirePublishOrSession, (req, res) => {
+app.post('/staff/api/relatorios', guardaPortal, (req, res) => {
   const d = req.body || {};
   const area = String(d.area || '').trim();
   if (!AREA_IDS.has(area)) return res.status(400).json({ erro: 'Área inválida.' });
@@ -852,7 +909,7 @@ app.post('/staff/api/relatorios/reacentuar', requirePublishOrSession, (req, res)
 });
 
 // Listar (sessão filtra pelas áreas do usuário; a PUBLISH_KEY vê tudo — ferramenta de manutenção)
-app.get('/staff/api/relatorios', requirePublishOrSession, (req, res) => {
+app.get('/staff/api/relatorios', guardaPortal, (req, res) => {
   const todas = lerRelatorios();
   const lista = (req.viaChave ? todas : todas.filter(r => areasDoUsuario(req.user).includes(r.area)))
     .filter(r => !req.query.area || r.area === req.query.area)
@@ -3158,7 +3215,7 @@ app.delete('/staff/api/compras/registro/:id', requirePublishOrSession, (req, res
 app.get('/staff/api/faq', requireAuth, (req, res) => {
   res.json({ itens: lerJSON('faq.json', []) });
 });
-app.put('/staff/api/faq', requirePublishOrSession, (req, res) => {
+app.put('/staff/api/faq', guardaSite, (req, res) => {
   if (!req.viaChave && !(req.user && (req.user.papel === 'admin' || podeArea(req.user, 'marketing')))) return res.status(403).json({ erro: 'Acesso restrito (Marketing/admin).' });
   const itens = Array.isArray(req.body && req.body.itens) ? req.body.itens : null;
   if (!itens) return res.status(400).json({ erro: 'Envie a lista de perguntas (itens).' });
@@ -4599,6 +4656,11 @@ try { require('./nucleo/crm-legado').montar(app, { requirePublishOrSession, pode
 try { require('./nucleo/hospede-financeiro').montar(app, { requireHospede, requireAuth, requirePublishOrAdmin, resumoConta, mpFetch, AREA_HOSPEDE_URL, lerAvaliacoes, lerIndicacoes, lerFidConfig, motorFidelidade, lerLancamentos, salvarLancamentos, atualizarJSON, lerHospedes, novoId, alertaAugusto }); } catch (e) { console.error('[nucleo/hospede-financeiro] falha ao montar:', e.message); }
 try { require('./nucleo/staff-core').montar(app, { requireAuth, requireAdmin, loginBloqueado, registraFalha, limpaFalhas, lerUsuarios, salvarUsuarios, JWT_SECRET, COOKIE_SECURE, semSenha, areasDoUsuario, AREAS, AREA_IDS, novoId, registrarAuditoria }); } catch (e) { console.error('[nucleo/staff-core] falha ao montar:', e.message); }
 try { require('./nucleo/hospede').montar(app, { loginBloqueado, registraFalha, limpaFalhas, normFone, lerHospedes, salvarHospedes, setCookieHospede, semSenhaHosp, HOSP_COOKIE, requireHospede, stays, semAcento, novoId, getStaysClientes, JWT_SECRET, AREA_HOSPEDE_URL, enviarEmail, escHtml, reservasDoHospede, lerPropInfo, resumoConta, lerConteudo, lerEvaKB, EVA_KB_BUDGET, registrarUsoEva, lerPedidosHosp, salvarPedidosHosp, lerServicos, lerFidConfig, SECOES_CONTEUDO, lerJSON, salvarJSON, alertaAugusto, appendJsonl, itensBillaveis, reciboHtml, lerAvaliacoes, salvarAvaliacoes, hojeISO, codigoDoHospede, lerIndicacoes, salvarIndicacoes, infoPropriedade, RAIZ: __dirname }); } catch (e) { console.error('[nucleo/hospede] falha ao montar:', e.message); }
+// Despesas dos sistemas (só leitura): IA, armazenamento, pagamentos e envios por sistema — lido pelo relatório semanal com a chave.
+try { require('./nucleo/despesas-sistemas').montar(app, { requirePublishOrAdmin }); } catch (e) { console.error('[nucleo/despesas-sistemas] falha ao montar:', e.message); }
+// Tokens de API temporários (🔑 no Portal Staff): emissão/revogação só por sessão de admin; cada sistema
+// entra com a própria lista de rotas (registrarSistema) e troca a guarda da PUBLISH_KEY. Ver nucleo/tokens-api.js.
+try { tokensApi.montar(app, { requireAuth, requireAdmin, registrarAuditoria }); } catch (e) { console.error('[nucleo/tokens-api] falha ao montar:', e.message); }
 
 try { require('./pwa').montar(app); } catch (e) { console.error('[pwa] falha ao montar módulo:', e.message); }
 
@@ -4648,6 +4710,17 @@ try {
     hospedes: { listar: lerHospedes, push: (id, payload) => enviarPush(id, payload) },
   });
 } catch (e) { console.error('[comunicados] falha ao montar módulo:', e.message); }
+
+// =========================== Clientes do grupo (alunos, compradores, assinantes) ===========================
+// Portal Staff → 👥 Clientes: uma tela com quem comprou livro, quem estuda na Academy e quem assina
+// cada sistema. SOMENTE LEITURA e só com SESSÃO DE ADMIN — de propósito NÃO recebe a PUBLISH_KEY
+// (chave de automação não lê base de clientes). Os e-mails da equipe do staff marcam conta interna.
+try {
+  require('./clientes').montar(app, {
+    requireAuth, requireAdmin, registrarAuditoria,
+    emailsInternos: () => lerUsuarios().map((u) => u.email),
+  });
+} catch (e) { console.error('[clientes] falha ao montar módulo:', e.message); }
 
 // =========================== Livraria Villela (loja de livros) ===========================
 // Loja pública server-rendered (SEO) + Portal Staff (Gestão de Livros) + webhook próprio.
@@ -4709,7 +4782,13 @@ try {
       podeModulo: (mod) => legalSaas.repo.podeModulo(u.tenant_id, mod),
     };
   };
-  require('./legal').montarAssinante(app, { express, assinanteDeReq, jwtSecret: JWT_SECRET });
+  // usuários do escritório no formato que a tela Equipe do núcleo espera; o id casa com o
+  // req.user.id que a ponte monta ('assinante:' + uid), para o perfil atribuído valer no login
+  const usuariosDoTenant = (tenantLegal) => legalSaas.repo.Tenants.usuariosPorSlug(String(tenantLegal || '').replace(/^esc-/, ''))
+    .map(u => ({ id: 'assinante:' + u.id, nome: u.nome || u.email, email: u.email, papel: u.papel === 'admin' ? 'admin' : 'membro', areas: ['juridico'], ativo: true }));
+  require('./legal').montarAssinante(app, { express, assinanteDeReq, jwtSecret: JWT_SECRET, usuariosDoTenant });
+  // IA de escritório assinante: chave própria OU crédito pré-pago (reserva antes, cobra o real depois)
+  require('./legal').llm.configurarPortao((tenantLegal) => legalSaas.creditos.portaoDoTenant(tenantLegal));
 } catch (e) { console.error('[legal-saas] falha ao montar módulo:', e.message); }
 
 // =========================== Villela Docs Intelligence (SaaS de gestão documental) ===========================
@@ -5395,8 +5474,12 @@ app.use((req, res, next) => {
 // MANUTENCAO_OFF=1 desliga tudo; SNAPSHOTS_OFF/SNAPSHOTS_MANTER/PURGA_DIAS/DISK_LIMIT_MB ajustam.
 if (process.env.MANUTENCAO_OFF !== '1') {
   const { snapshotTodos } = require('./snapshots');
-  const { purgarEventosAntigos, tamanhoDir } = require('./manutencao');
-  const LIMITE_MB = Number(process.env.DISK_LIMIT_MB) || 1024; // disco do Render = 1GB
+  const { purgarEventosAntigos, tamanhoDir, capacidadeDisco } = require('./manutencao');
+  // Limite = tamanho REAL do volume, lido a cada rodada — ampliar o disco no Render já
+  // move o alarme sozinho. DISK_LIMIT_MB só vale se o volume não puder ser lido; o
+  // padrão final é o disco atual (5 GB desde 10/2026; antes era 1 GB e o alarme ficou
+  // avisando "quase cheio" depois da ampliação).
+  const limiteMB = () => Math.round(capacidadeDisco(DATA_DIR) / 1048576) || Number(process.env.DISK_LIMIT_MB) || 5120;
   const rodarManutencao = async () => {
     try {
       if (process.env.SNAPSHOTS_OFF !== '1') {
@@ -5406,10 +5489,11 @@ if (process.env.MANUTENCAO_OFF !== '1') {
       const purga = purgarEventosAntigos(DATA_DIR, { dias: Number(process.env.PURGA_DIAS) || 90 });
       if (purga.totalApagado) console.log('[manutencao] purga:', purga.totalApagado, 'evento(s) antigos', JSON.stringify(purga.detalhe));
       const usadoMB = Math.round(tamanhoDir(DATA_DIR) / 1048576);
+      const LIMITE_MB = limiteMB();
       const pct = Math.round((usadoMB / LIMITE_MB) * 100);
       console.log(`[manutencao] disco: ${usadoMB}MB / ${LIMITE_MB}MB (${pct}%)`);
       if (pct >= 80) {
-        try { await alertaAugusto(`Disco do backend em ${pct}% (${usadoMB}MB de ${LIMITE_MB}MB). Os 7 SaaS compartilham este volume — verifique/limpe antes de encher.`); } catch {}
+        try { await alertaAugusto(`Disco do backend em ${pct}% (${usadoMB}MB de ${LIMITE_MB}MB). Todos os sistemas do grupo compartilham este volume — verifique/limpe antes de encher.`); } catch {}
       }
     } catch (e) { console.error('[manutencao] erro:', e.message); }
   };

@@ -1,0 +1,747 @@
+{
+ "_nota": "Gerado por blogfig_gerar.py (posicao e escolha da figura aberta conferidas a mao). \"secao\" e \"apos\" ancoram a figura no artigo; \"aberta\": true = camada publica.",
+ "_hub": [
+  "fig-01-01",
+  "fig-03-07",
+  "fig-06-06",
+  "fig-07-04"
+ ],
+ "01-funcao-e-anatomia": [
+  {
+   "id": "fig-01-02",
+   "arq": "piscineiro-na-pratica-fig-01-02.webp",
+   "w": 1200,
+   "h": 1181,
+   "legenda": "O skimmer, na borda, à altura da linha d'água: a folha que flutua é puxada para o cesto.",
+   "aberta": false,
+   "secao": "Do tanque à borda: onde a água é recolhida",
+   "apos": "Na borda, na altura da linha d'água, fica o skimmer. É uma abertura qu"
+  },
+  {
+   "id": "fig-01-03",
+   "arq": "piscineiro-na-pratica-fig-01-03.webp",
+   "w": 1200,
+   "h": 1328,
+   "legenda": "Filtro de areia em corte: a água entra suja por cima, atravessa a areia e sai limpa por baixo.",
+   "aberta": false,
+   "secao": "Na casa de máquinas: pré-filtro, bomba, filtro e válvula",
+   "apos": "Depois da bomba vem o filtro. Na maior parte das piscinas de chácara é"
+  },
+  {
+   "id": "fig-01-04",
+   "arq": "piscineiro-na-pratica-fig-01-04.webp",
+   "w": 1200,
+   "h": 698,
+   "legenda": "A casa de máquinas: pré-filtro, bomba, filtro com a válvula seletora, registros e quadro elétrico.",
+   "aberta": false,
+   "secao": "Na casa de máquinas: pré-filtro, bomba, filtro e válvula",
+   "apos": "Em cima do filtro, ou ao lado, fica a válvula seletora. A alavanca esc"
+  },
+  {
+   "id": "fig-01-01",
+   "arq": "piscineiro-na-pratica-fig-01-01.webp",
+   "w": 1200,
+   "h": 501,
+   "legenda": "O caminho da água: sai do tanque pelo skimmer e pelo ralo de fundo, passa pela bomba e pelo filtro e volta pelos retornos.",
+   "aberta": true,
+   "secao": "Os retornos e o abrigo do equipamento",
+   "apos": "Os retornos são os bocais por onde a água filtrada volta ao tanque. A "
+  },
+  {
+   "id": "fig-01-05",
+   "arq": "piscineiro-na-pratica-fig-01-05.webp",
+   "w": 1200,
+   "h": 326,
+   "legenda": "A piscina da chácara e o que a cerca: árvore que solta folhas, estrada de terra e chuva forte.",
+   "aberta": false,
+   "secao": "A piscina da chácara não é a piscina da cidade",
+   "apos": "A árvore por perto dá sombra boa e folha o ano inteiro. Folha que afun"
+  },
+  {
+   "id": "fig-00-01",
+   "arq": "piscineiro-na-pratica-fig-00-01.webp",
+   "w": 1200,
+   "h": 837,
+   "legenda": "A piscina da Chácara-Modelo, vista de cima e em corte: 8 metros por 4 e 41.600 litros.",
+   "aberta": false,
+   "secao": "A Chácara-Modelo",
+   "apos": "Para que as contas tenham números, o curso trabalha com a piscina da C"
+  }
+ ],
+ "02-seguranca-quimica": [
+  {
+   "id": "fig-02-03",
+   "arq": "piscineiro-na-pratica-fig-02-03.webp",
+   "w": 1200,
+   "h": 670,
+   "legenda": "Dois cloros de tipos diferentes, o granulado e a pastilha: cada um em seu lugar, separados.",
+   "aberta": false,
+   "secao": "Nunca misture dois produtos",
+   "apos": "A surpresa está em que a regra vale para dois cloros. Muita gente pens"
+  },
+  {
+   "id": "fig-02-04",
+   "arq": "piscineiro-na-pratica-fig-02-04.webp",
+   "w": 1200,
+   "h": 326,
+   "legenda": "Uma medida para cada produto, identificada com o nome dele.",
+   "aberta": true,
+   "secao": "Cloro e ácido separados, uma medida por produto, embalagem original",
+   "apos": "O contato entre cloro e ácido libera gás cloro, que queima o pulmão. A"
+  },
+  {
+   "id": "fig-02-05",
+   "arq": "piscineiro-na-pratica-fig-02-05.webp",
+   "w": 1200,
+   "h": 1201,
+   "legenda": "As cinco informações do rótulo: substância ativa e concentração, finalidade, dose, símbolos de perigo e o que fazer em caso de acidente.",
+   "aberta": false,
+   "secao": "O rótulo e a ficha de dados de segurança",
+   "apos": "O nome da substância ativa e a concentração dizem o que o produto é, e"
+  },
+  {
+   "id": "fig-02-06",
+   "arq": "piscineiro-na-pratica-fig-02-06.webp",
+   "w": 1200,
+   "h": 721,
+   "legenda": "O depósito em ordem: cloros de um lado, ácidos do outro, líquidos embaixo e sólidos em cima.",
+   "aberta": false,
+   "secao": "O depósito",
+   "apos": "Dentro do depósito, a lógica é de separação: ácidos de um lado e cloro"
+  }
+ ],
+ "03-seguranca-dos-banhistas": [
+  {
+   "id": "fig-02-01",
+   "arq": "piscineiro-na-pratica-fig-02-01.webp",
+   "w": 972,
+   "h": 434,
+   "legenda": "A barreira física vem primeiro: cerca com portão que fecha sozinho.",
+   "aberta": false,
+   "secao": "Afogamento: barreira, adulto e regra",
+   "apos": "A medida mais eficaz é a barreira física: cerca com portão que fecha s"
+  },
+  {
+   "id": "fig-02-02",
+   "arq": "piscineiro-na-pratica-fig-02-02.webp",
+   "w": 1200,
+   "h": 758,
+   "legenda": "A tampa do ralo de fundo, vista de cima: inteira e presa, à esquerda; quebrada, solta ou faltando, à direita.",
+   "aberta": false,
+   "secao": "O que depende de olho e de atitude",
+   "apos": "A primeira regra é a mais dura. Com a tampa do ralo quebrada, solta ou"
+  },
+  {
+   "id": "fig-02-07",
+   "arq": "piscineiro-na-pratica-fig-02-07.webp",
+   "w": 1200,
+   "h": 714,
+   "legenda": "Interditar é pôr uma barreira e um aviso na entrada da piscina.",
+   "aberta": true,
+   "secao": "Interditar é barreira e aviso",
+   "apos": "Interditar é pôr uma barreira e um aviso. Para quem hospeda, a interdi"
+  }
+ ],
+ "04-volume-e-filtracao": [
+  {
+   "id": "fig-05-04",
+   "arq": "piscineiro-na-pratica-fig-05-04.webp",
+   "w": 1200,
+   "h": 326,
+   "legenda": "O circuito anda no ritmo da peça mais lenta: por isso se usa a menor das duas vazões.",
+   "aberta": false,
+   "secao": "Vazão: a menor das duas",
+   "apos": "A bomba tem uma vazão e o filtro tem outra. Use a menor das duas. Uma "
+  },
+  {
+   "id": "fig-03-01",
+   "arq": "piscineiro-na-pratica-fig-03-01.webp",
+   "w": 1200,
+   "h": 501,
+   "legenda": "A água filtrada volta pelos retornos e se junta à que ainda não passou pelo filtro.",
+   "aberta": false,
+   "secao": "Um ciclo não é a receita de horas por dia",
+   "apos": "Há uma leitura errada muito comum nesse número. A água filtrada volta "
+  },
+  {
+   "id": "fig-03-07",
+   "arq": "piscineiro-na-pratica-fig-03-07.webp",
+   "w": 1200,
+   "h": 1115,
+   "legenda": "As três condições da alga: pouco cloro livre, água parada e sol. Onde as três se encontram, a água fica verde.",
+   "aberta": true,
+   "secao": "Algas: três condições juntas",
+   "apos": "Algas são plantas microscópicas. Seus esporos chegam pelo ar e pela ch"
+  }
+ ],
+ "05-equilibrio-e-desinfeccao": [
+  {
+   "id": "fig-03-02",
+   "arq": "piscineiro-na-pratica-fig-03-02.webp",
+   "w": 1200,
+   "h": 443,
+   "legenda": "O pH é a posição do barco; a alcalinidade é a âncora que o mantém no lugar.",
+   "aberta": false,
+   "secao": "Alcalinidade total: a âncora do pH",
+   "apos": "O livro usa uma imagem que ajuda: se o pH é a posição de um barco, a a"
+  },
+  {
+   "id": "fig-03-03",
+   "arq": "piscineiro-na-pratica-fig-03-03.webp",
+   "w": 1200,
+   "h": 363,
+   "legenda": "À esquerda, o cloro livre, disponível para desinfetar; à direita, o cloro combinado, que já reagiu. A soma dos dois é o cloro total.",
+   "aberta": false,
+   "secao": "Cloro livre, combinado e total",
+   "apos": "Na água, o cloro se divide em duas situações. O cloro livre está dispo"
+  },
+  {
+   "id": "fig-03-04",
+   "arq": "piscineiro-na-pratica-fig-03-04.webp",
+   "w": 1200,
+   "h": 450,
+   "legenda": "O sol destrói o cloro livre; o estabilizante funciona como um guarda-sol sobre ele.",
+   "aberta": false,
+   "secao": "Estabilizante: o protetor solar do cloro",
+   "apos": "O sol destrói o cloro livre. O ácido cianúrico, também chamado estabil"
+  },
+  {
+   "id": "fig-03-05",
+   "arq": "piscineiro-na-pratica-fig-03-05.webp",
+   "w": 1200,
+   "h": 348,
+   "legenda": "Dureza baixa: a água desgasta o rejunte. Dureza alta: uma crosta branca se forma na linha d'água.",
+   "aberta": false,
+   "secao": "Dureza cálcica e a água de poço",
+   "apos": "Com a dureza baixa, a água fica com fome de cálcio e o retira de onde "
+  },
+  {
+   "id": "fig-03-06",
+   "arq": "piscineiro-na-pratica-fig-03-06.webp",
+   "w": 1200,
+   "h": 455,
+   "legenda": "A alcalinidade segura o pH; o pH libera ou trava o cloro; o estabilizante protege o cloro do sol; a dureza protege o revestimento.",
+   "aberta": true,
+   "secao": "Como os parâmetros se seguram",
+   "apos": "A alcalinidade segura o pH. O pH libera ou trava o cloro. O estabiliza"
+  }
+ ],
+ "06-casa-de-maquinas": [
+  {
+   "id": "fig-04-03",
+   "arq": "piscineiro-na-pratica-fig-04-03.webp",
+   "w": 1200,
+   "h": 698,
+   "legenda": "A casa de máquinas, peça por peça: registros, pré-filtro, bomba, filtro, válvula seletora, manômetro e quadro elétrico.",
+   "aberta": true,
+   "secao": "O trecho do circuito que ninguém olha",
+   "apos": "O circuito é sempre o mesmo: a água sai do tanque pelo skimmer e pelo "
+  },
+  {
+   "id": "fig-04-01",
+   "arq": "piscineiro-na-pratica-fig-04-01.webp",
+   "w": 1200,
+   "h": 710,
+   "legenda": "O manômetro com a marca a caneta da pressão normal; o ponteiro pode ficar abaixo, na marca ou acima dela.",
+   "aberta": false,
+   "secao": "Manômetro: o painel da piscina",
+   "apos": "Quando a pressão sobe, o filtro está segurando sujeira e ficando satur"
+  },
+  {
+   "id": "fig-04-02",
+   "arq": "piscineiro-na-pratica-fig-04-02.webp",
+   "w": 1200,
+   "h": 384,
+   "legenda": "Os registros são parecidos entre si: uma etiqueta em cada um diz qual linha ele abre e fecha.",
+   "aberta": false,
+   "secao": "Registros com etiqueta",
+   "apos": "Os registros abrem e fecham cada linha: a do skimmer, a do ralo de fun"
+  }
+ ],
+ "07-acessorios-e-testes": [
+  {
+   "id": "fig-04-04",
+   "arq": "piscineiro-na-pratica-fig-04-04.webp",
+   "w": 1200,
+   "h": 922,
+   "legenda": "Estojo de reagentes: o tubo cheio até a marca e a cor da amostra comparada com a escala.",
+   "aberta": true,
+   "secao": "Três instrumentos de teste",
+   "apos": "No estojo de reagentes, você enche o tubo com água da piscina, pinga o"
+  }
+ ],
+ "08-produtos-e-armazenamento": [
+  {
+   "id": "fig-04-06",
+   "arq": "piscineiro-na-pratica-fig-04-06.webp",
+   "w": 1200,
+   "h": 262,
+   "legenda": "As nove embalagens do inventário da Chácara-Modelo, entre elas um clarificante vencido e dois frascos sem rótulo.",
+   "aberta": false,
+   "secao": "Abertura",
+   "apos": "Na Chácara-Modelo, um dia alguém tirou tudo da prateleira e contou: no"
+  },
+  {
+   "id": "fig-04-05",
+   "arq": "piscineiro-na-pratica-fig-04-05.webp",
+   "w": 1176,
+   "h": 1636,
+   "legenda": "No rótulo, procure a linha da substância ativa: é ela, e não a marca, que diz o que o produto é.",
+   "aberta": true,
+   "secao": "Desinfetantes: a substância, não a marca",
+   "apos": "Os cloros não são todos iguais. Alguns já trazem estabilizante na fórm"
+  }
+ ],
+ "09-inspecionar-e-registrar": [
+  {
+   "id": "fig-05-05",
+   "arq": "piscineiro-na-pratica-fig-05-05.webp",
+   "w": 1200,
+   "h": 399,
+   "legenda": "A ordem da inspeção, de fora para dentro: o entorno, o tanque e a casa de máquinas.",
+   "aberta": true,
+   "secao": "Olhar com método, sempre na mesma ordem",
+   "apos": "A ordem proposta no livro vai de fora para dentro. Começa pelo entorno"
+  },
+  {
+   "id": "fig-05-06",
+   "arq": "piscineiro-na-pratica-fig-05-06.webp",
+   "w": 1200,
+   "h": 838,
+   "legenda": "A marca do nível na parede, com a data: na visita seguinte ela mostra quanto a água desceu.",
+   "aberta": false,
+   "secao": "A marca do nível",
+   "apos": "Terminada a volta, faça a marca do nível: fita adesiva ou lápis de cer"
+  }
+ ],
+ "10-volume-e-rotina": [
+  {
+   "id": "fig-05-01",
+   "arq": "piscineiro-na-pratica-fig-05-01.webp",
+   "w": 1200,
+   "h": 1071,
+   "legenda": "A profundidade se mede do fundo até a linha d'água, e não até a beirada: a parede seca não conta.",
+   "aberta": true,
+   "secao": "Abertura",
+   "apos": "Alguém encosta a ponta da trena no fundo da piscina, sobe pela parede "
+  },
+  {
+   "id": "fig-05-02",
+   "arq": "piscineiro-na-pratica-fig-05-02.webp",
+   "w": 1200,
+   "h": 837,
+   "legenda": "Comprimento e largura medidos por cima; a profundidade, com uma haste, na parte mais rasa e na mais funda.",
+   "aberta": false,
+   "secao": "A conta do volume",
+   "apos": "Em piscina com fundo inclinado, a profundidade se mede em dois pontos,"
+  },
+  {
+   "id": "fig-05-03",
+   "arq": "piscineiro-na-pratica-fig-05-03.webp",
+   "w": 1200,
+   "h": 844,
+   "legenda": "O volume anotado na porta do depósito, à vista de quem for cuidar da piscina.",
+   "aberta": false,
+   "secao": "Conferir e tirar o número da cabeça",
+   "apos": "Depois, anote o volume em lugar visível: na porta do depósito e na pri"
+  }
+ ],
+ "11-peneirar-escovar-bordas": [
+  {
+   "id": "fig-06-01",
+   "arq": "piscineiro-na-pratica-fig-06-01.webp",
+   "w": 1200,
+   "h": 763,
+   "legenda": "Peneirar a favor do vento: ele junta as folhas num canto, e a peneira rasa vai até elas em movimentos longos.",
+   "aberta": true,
+   "secao": "Peneirar a superfície",
+   "apos": "Comece pela superfície, com a peneira rasa, e trabalhe a favor do vent"
+  },
+  {
+   "id": "fig-06-03",
+   "arq": "piscineiro-na-pratica-fig-06-03.webp",
+   "w": 1200,
+   "h": 812,
+   "legenda": "Escovar as paredes de cima para baixo, em faixas que se sobrepõem, insistindo em cantos, degraus e bocais.",
+   "aberta": false,
+   "secao": "A ordem da escova",
+   "apos": "Insista onde a água circula pouco: cantos, degraus, atrás da escada, e"
+  }
+ ],
+ "12-aspiracao-e-modo": [
+  {
+   "id": "fig-06-04",
+   "arq": "piscineiro-na-pratica-fig-06-04.webp",
+   "w": 1200,
+   "h": 679,
+   "legenda": "A mangueira do aspirador cheia de água, com a ponta livre diante de um retorno, antes de ser ligada ao bocal.",
+   "aberta": true,
+   "secao": "A montagem: encher a mangueira de água",
+   "apos": "Depois, encha a mangueira de água, e há dois jeitos de fazer isso. Um "
+  },
+  {
+   "id": "fig-06-05",
+   "arq": "piscineiro-na-pratica-fig-06-05.webp",
+   "w": 1200,
+   "h": 501,
+   "legenda": "Aspirar drenando: a água sai do aspirador, passa pela bomba e vai para o esgoto, e o nível da piscina desce.",
+   "aberta": false,
+   "secao": "Filtrando ou drenando",
+   "apos": "Aspirando drenando, a água vai direto para o esgoto, sem passar pelo f"
+  }
+ ],
+ "13-valvulas-bomba-e-filtro": [
+  {
+   "id": "fig-06-02",
+   "arq": "piscineiro-na-pratica-fig-06-02.webp",
+   "w": 1200,
+   "h": 361,
+   "legenda": "A limpeza do pré-filtro em quatro quadros: fechar os registros, abrir a tampa, retirar o cesto, esvaziar e enxaguar.",
+   "aberta": false,
+   "secao": "O pré-filtro da bomba",
+   "apos": "O pré-filtro é o copo com tampa, quase sempre transparente, que fica l"
+  },
+  {
+   "id": "fig-06-06",
+   "arq": "piscineiro-na-pratica-fig-06-06.webp",
+   "w": 1200,
+   "h": 960,
+   "legenda": "A válvula seletora vista de cima, com as seis posições; a alavanca só muda de lugar com a bomba desligada.",
+   "aberta": true,
+   "secao": "O gesto da alavanca",
+   "apos": "Alavanca parada entre duas posições deixa a água ir para dois lugares "
+  }
+ ],
+ "14-retrolavagem-e-reposicao": [
+  {
+   "id": "fig-06-07",
+   "arq": "piscineiro-na-pratica-fig-06-07.webp",
+   "w": 1200,
+   "h": 1328,
+   "legenda": "Retrolavagem: a água entra por baixo, levanta a areia e leva a sujeira para o esgoto.",
+   "aberta": true,
+   "secao": "Retrolavar até o visor clarear",
+   "apos": "Leve a válvula para retrolavar e ligue a bomba. Olhe o visor, o copinh"
+  },
+  {
+   "id": "fig-06-08",
+   "arq": "piscineiro-na-pratica-fig-06-08.webp",
+   "w": 1200,
+   "h": 683,
+   "legenda": "Na reposição, a ponta da mangueira fica fora da água, presa na borda.",
+   "aberta": false,
+   "secao": "Repor água: quatro cuidados",
+   "apos": "O segundo quase ninguém conhece. Mantenha a ponta da mangueira fora da"
+  }
+ ],
+ "16-coleta-e-testes": [
+  {
+   "id": "fig-07-01",
+   "arq": "piscineiro-na-pratica-fig-07-01.webp",
+   "w": 1200,
+   "h": 733,
+   "legenda": "O ponto de coleta fica longe dos retornos e do skimmer, que aparecem marcados como zonas a evitar.",
+   "aberta": true,
+   "secao": "A coleta: bomba, lugar e profundidade",
+   "apos": "O primeiro cuidado é a bomba, que deve estar ligada há algum tempo. Co"
+  },
+  {
+   "id": "fig-07-02",
+   "arq": "piscineiro-na-pratica-fig-07-02.webp",
+   "w": 1200,
+   "h": 339,
+   "legenda": "A coleta em três gestos: frasco de boca para baixo, braço mergulhado, virada lá embaixo para encher.",
+   "aberta": false,
+   "secao": "A coleta: bomba, lugar e profundidade",
+   "apos": "Antes disso, enxágue o tubo com a própria água da piscina e esteja de "
+  },
+  {
+   "id": "fig-07-03",
+   "arq": "piscineiro-na-pratica-fig-07-03.webp",
+   "w": 1200,
+   "h": 1101,
+   "legenda": "A leitura da cor: o tubo ao lado da escala, contra um fundo branco.",
+   "aberta": false,
+   "secao": "O teste: a bula manda",
+   "apos": "A leitura tem hora. Leia no tempo que a bula indica, nem antes nem mui"
+  }
+ ],
+ "17-ajustes-de-equilibrio": [
+  {
+   "id": "fig-07-04",
+   "arq": "piscineiro-na-pratica-fig-07-04.webp",
+   "w": 1200,
+   "h": 756,
+   "legenda": "A ordem de correção, degrau por degrau: alcalinidade, depois pH, depois cloro.",
+   "aberta": true,
+   "secao": "A ordem: alcalinidade, pH, cloro",
+   "apos": "Há também uma razão prática. Os produtos que mexem na alcalinidade mex"
+  },
+  {
+   "id": "fig-07-05",
+   "arq": "piscineiro-na-pratica-fig-07-05.webp",
+   "w": 1200,
+   "h": 709,
+   "legenda": "Da quantidade calculada, aplica-se uma parte; o restante espera a nova medição.",
+   "aberta": false,
+   "secao": "Aplicar uma parte, do jeito do rótulo",
+   "apos": "Este é o passo que separa quem conhece a piscina de quem está adivinha"
+  }
+ ],
+ "18-rotina-e-corretivo": [
+  {
+   "id": "fig-07-06",
+   "arq": "piscineiro-na-pratica-fig-07-06.webp",
+   "w": 1200,
+   "h": 326,
+   "legenda": "Com cloro aplicado só no dia da visita, o cloro livre sobe e depois cai até zero no meio da semana.",
+   "aberta": true,
+   "secao": "Cloro na quarta-feira",
+   "apos": "O cloro livre é consumido pelos banhistas, pela matéria orgânica que c"
+  }
+ ],
+ "19-agua-verde-e-turva": [
+  {
+   "id": "fig-08-01",
+   "arq": "piscineiro-na-pratica-fig-08-01.webp",
+   "w": 1200,
+   "h": 1098,
+   "legenda": "A alga se protege com uma camada viscosa; a escova abre essa camada e a expõe ao cloro.",
+   "aberta": true,
+   "secao": "Água verde: primeiro a casa de máquinas e a escova",
+   "apos": "O livro descreve a recuperação em doze passos, reproduzidos no materia"
+  },
+  {
+   "id": "fig-08-02",
+   "arq": "piscineiro-na-pratica-fig-08-02.webp",
+   "w": 1200,
+   "h": 529,
+   "legenda": "A recuperação em quatro momentos: água verde, azul turvo, sujeira decantada e, por fim, a água de volta.",
+   "aberta": false,
+   "secao": "Do verde ao turvo: retirar a alga morta",
+   "apos": "Em algum momento a água passa de verde para um azul turvo, meio acinze"
+  },
+  {
+   "id": "fig-08-05",
+   "arq": "piscineiro-na-pratica-fig-08-05.webp",
+   "w": 1200,
+   "h": 1011,
+   "legenda": "A água faz peso contra o solo; sem ela, a água do terreno pode empurrar o tanque para cima.",
+   "aberta": false,
+   "secao": "Esvaziar não é recomeçar do zero",
+   "apos": "Sem a água dentro do tanque, a piscina de fibra pode ser empurrada par"
+  }
+ ],
+ "20-diagnostico-e-ambiente-rural": [
+  {
+   "id": "fig-09-01",
+   "arq": "piscineiro-na-pratica-fig-09-01.webp",
+   "w": 1200,
+   "h": 507,
+   "legenda": "Pressão abaixo do normal: a água não está chegando à bomba, em destaque. O obstáculo está antes dela.",
+   "aberta": true,
+   "secao": "Baixa vazão: o manômetro divide o problema em dois",
+   "apos": "Com pressão abaixo do normal, a água não está chegando à bomba. Confer"
+  },
+  {
+   "id": "fig-09-02",
+   "arq": "piscineiro-na-pratica-fig-09-02.webp",
+   "w": 1200,
+   "h": 507,
+   "legenda": "Pressão acima do normal: o obstáculo está depois da bomba, no filtro ou no retorno.",
+   "aberta": false,
+   "secao": "Baixa vazão: o manômetro divide o problema em dois",
+   "apos": "Com pressão acima do normal, a água não consegue sair do filtro. Quase"
+  },
+  {
+   "id": "fig-09-03",
+   "arq": "piscineiro-na-pratica-fig-09-03.webp",
+   "w": 1200,
+   "h": 1230,
+   "legenda": "Onde o ar costuma entrar no pré-filtro: a tampa, o anel de vedação e as conexões.",
+   "aberta": false,
+   "secao": "Entrada de ar e a bomba que não pega",
+   "apos": "Se a bomba liga, faz barulho e não puxa água, o primeiro gesto é desli"
+  },
+  {
+   "id": "fig-09-04",
+   "arq": "piscineiro-na-pratica-fig-09-04.webp",
+   "w": 1200,
+   "h": 833,
+   "legenda": "O balde no degrau, com as duas marcas: a piscina baixou mais do que a água do balde.",
+   "aberta": false,
+   "secao": "A perda que não se vê: o balde, duas vezes",
+   "apos": "Se o teste do balde deu positivo, ele é repetido com a bomba desligada"
+  },
+  {
+   "id": "fig-09-05",
+   "arq": "piscineiro-na-pratica-fig-09-05.webp",
+   "w": 1200,
+   "h": 867,
+   "legenda": "O nível desceu e parou na altura de um retorno: é ali o ponto suspeito.",
+   "aberta": false,
+   "secao": "A perda que não se vê: o balde, duas vezes",
+   "apos": "Se o teste do balde deu positivo, ele é repetido com a bomba desligada"
+  },
+  {
+   "id": "fig-08-03",
+   "arq": "piscineiro-na-pratica-fig-08-03.webp",
+   "w": 1200,
+   "h": 489,
+   "legenda": "Chuva forte sobre a piscina: a água turva e as folhas vão para dentro.",
+   "aberta": false,
+   "secao": "O clima da chácara entra no diagnóstico",
+   "apos": "A chuva forte altera o pH e a alcalinidade. Depois dela: peneirar, lim"
+  },
+  {
+   "id": "fig-09-06",
+   "arq": "piscineiro-na-pratica-fig-09-06.webp",
+   "w": 1200,
+   "h": 890,
+   "legenda": "A ficha da chamada à assistência: o que acontece e desde quando, a pressão normal e a de agora, o que já foi conferido.",
+   "aberta": false,
+   "secao": "A casa de máquinas rural e a chamada bem-feita",
+   "apos": "Uma chamada bem-feita à assistência diz o que acontece e desde quando,"
+  }
+ ],
+ "21-planos-e-regimes": [
+  {
+   "id": "fig-05-07",
+   "arq": "piscineiro-na-pratica-fig-05-07.webp",
+   "w": 1200,
+   "h": 188,
+   "legenda": "A casa de fim de semana: preparo antes da chegada, uso, saída e, nos dias vazios, a bomba no temporizador.",
+   "aberta": true,
+   "secao": "Uso contínuo e fim de semana",
+   "apos": "No regime de fim de semana, o ponto crítico é a semana vazia, e não o "
+  }
+ ],
+ "22-custos-e-contrato": [
+  {
+   "id": "fig-10-01",
+   "arq": "piscineiro-na-pratica-fig-10-01.webp",
+   "w": 1200,
+   "h": 839,
+   "legenda": "A perda medida na marca do nível: a lâmina de água que saiu é o que se transforma em litros.",
+   "aberta": false,
+   "secao": "Produtos e água",
+   "apos": "A segunda é a água. Entra aqui o que evaporou, o que foi embora na lav"
+  },
+  {
+   "id": "fig-10-02",
+   "arq": "piscineiro-na-pratica-fig-10-02.webp",
+   "w": 1200,
+   "h": 820,
+   "legenda": "As cinco parcelas do custo mensal, sem valores: a mão de obra costuma ser a maior, e a de produtos é a que mais varia.",
+   "aberta": true,
+   "secao": "Mão de obra e reserva",
+   "apos": "Somadas as cinco, o valor importa menos do que a proporção. Na maior p"
+  },
+  {
+   "id": "fig-10-03",
+   "arq": "piscineiro-na-pratica-fig-10-03.webp",
+   "w": 1200,
+   "h": 463,
+   "legenda": "O ponto de pedido: quando o estoque desce até a linha, compra-se.",
+   "aberta": false,
+   "secao": "Estoque e ponto de pedido",
+   "apos": "Antes da alta temporada e das férias, reforce o desinfetante e o produ"
+  },
+  {
+   "id": "fig-10-04",
+   "arq": "piscineiro-na-pratica-fig-10-04.webp",
+   "w": 1200,
+   "h": 567,
+   "legenda": "Propostas lado a lado, com as mesmas linhas: o que cada uma inclui fica à vista.",
+   "aberta": false,
+   "secao": "Para quem contrata: a proposta comparável",
+   "apos": "A lista inteira do que pedir está no material de apoio, com o que fica"
+  },
+  {
+   "id": "fig-10-05",
+   "arq": "piscineiro-na-pratica-fig-10-05.webp",
+   "w": 1200,
+   "h": 523,
+   "legenda": "Em área rural, o caminho até a chácara costuma tomar mais tempo do que o serviço na beira da piscina.",
+   "aberta": false,
+   "secao": "Para quem presta o serviço: preço e contrato",
+   "apos": "O custo de uma visita tem quatro pedaços: o tempo na piscina, o desloc"
+  }
+ ],
+ "23-relatorio-e-liberacao": [
+  {
+   "id": "fig-10-06",
+   "arq": "piscineiro-na-pratica-fig-10-06.webp",
+   "w": 1200,
+   "h": 1064,
+   "legenda": "O relatório da visita, sempre no mesmo formato: uma linha para cada informação.",
+   "aberta": true,
+   "secao": "O relatório da visita",
+   "apos": "O relatório registra a data, com a hora de chegada e a de saída, e o q"
+  },
+  {
+   "id": "fig-08-04",
+   "arq": "piscineiro-na-pratica-fig-08-04.webp",
+   "w": 1200,
+   "h": 812,
+   "legenda": "No fundo claro, o caco de vidro quase não aparece: só o facho de luz o revela.",
+   "aberta": false,
+   "secao": "Durante a estadia e depois de um evento",
+   "apos": "Se a estadia é longa ou o grupo é grande, marque uma visita no meio do"
+  }
+ ],
+ "24-plano-da-chacara-modelo": [
+  {
+   "id": "fig-11-03",
+   "arq": "piscineiro-na-pratica-fig-11-03.webp",
+   "w": 1200,
+   "h": 472,
+   "legenda": "A rotina de um regime de uso: cada tarefa com frequência, responsável e substituto.",
+   "aberta": true,
+   "secao": "Segunda parte: a rotina",
+   "apos": "Na Chácara-Modelo, os dois regimes naturais são o fim de semana da fam"
+  },
+  {
+   "id": "fig-11-04",
+   "arq": "piscineiro-na-pratica-fig-11-04.webp",
+   "w": 1200,
+   "h": 948,
+   "legenda": "A lista do estoque: para cada produto, substância, função, quantidade mínima e ponto de pedido.",
+   "aberta": false,
+   "secao": "Terceira parte: o estoque",
+   "apos": "A lista de produtos traz substância, função, quantidade mínima e ponto"
+  },
+  {
+   "id": "fig-11-05",
+   "arq": "piscineiro-na-pratica-fig-11-05.webp",
+   "w": 1200,
+   "h": 1050,
+   "legenda": "O protocolo de emergência, em uma página: onde se desliga a bomba, os telefones, o que fazer e quem interdita.",
+   "aberta": false,
+   "secao": "Quinta parte: o protocolo de emergência",
+   "apos": "Quem recorre ao protocolo está com pressa e não vai folhear documento."
+  }
+ ],
+ "25-avaliacao-de-caso": [
+  {
+   "id": "fig-08-06",
+   "arq": "piscineiro-na-pratica-fig-08-06.webp",
+   "w": 1200,
+   "h": 131,
+   "legenda": "As três semanas de casa fechada: o temporizador desarma no segundo dia, chove forte duas vezes e a água escurece.",
+   "aberta": true,
+   "secao": "Abertura",
+   "apos": "Janeiro. A casa da Chácara-Modelo ficou três semanas fechada. No segun"
+  },
+  {
+   "id": "fig-11-01",
+   "arq": "piscineiro-na-pratica-fig-11-01.webp",
+   "w": 1200,
+   "h": 616,
+   "legenda": "Na casa fechada, uma passada do caseiro; com hóspedes, o caseiro cobre de segunda a sexta e o fim de semana precisa de alguém designado.",
+   "aberta": false,
+   "secao": "Mais um exercício: o cronograma de quatro semanas",
+   "apos": "Na semana com hóspedes, o caseiro mede e peneira nos dias dele, e algu"
+  }
+ ]
+}

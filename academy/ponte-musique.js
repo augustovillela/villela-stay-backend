@@ -55,6 +55,7 @@ function criar({ jwtSecret, enviarEmail, baseUrl = 'https://academia.villelastay
       if (!u) return { revogadas: 0 };
       const r = db.prepare(`UPDATE enrollments SET status = 'revogada'
         WHERE user_id = ? AND origem = 'cortesia' AND criado_por = ? AND status = 'ativa'`).run(u.id, MARCA);
+      require('./governanca').Certificados.revogarOndeSemAcesso(u.id, 'cortesia do Musique encerrada');
       repo.Auditoria.registrar({ quem: MARCA, acao: 'cortesia.musique.revogar', entidade: 'users', entidade_id: u.id, detalhe: `${r.changes} matrícula(s)` });
       return { revogadas: r.changes };
     },

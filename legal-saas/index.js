@@ -13,6 +13,7 @@
 'use strict';
 const repo = require('./repo');
 const billing = require('./billing');
+const creditos = require('./creditos');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasCliente } = require('./rotas-cliente');
 const { registrarPaginas } = require('./paginas');
@@ -28,6 +29,16 @@ function montar(app, injected = {}) {
   repo.semear(); // planos + feature flags (upsert idempotente; preserva preços editados)
   const notificar = (m) => Promise.resolve((alertaAugusto || (async () => {}))(m)).catch(() => {});
   billing.configurar({ mpFetch, notificar });
+  // créditos de IA: cofre da chave própria, Mercado Pago para a recarga e validação da chave no provedor
+  creditos.configurar({
+    segredo: jwtSecret, mp: billing.mp, mpAtivo: billing.ativo, notificar,
+    validarChave: injected.validarChaveIA || (async (apiKey) => {
+      const Anthropic = require('@anthropic-ai/sdk');
+      await new Anthropic({ apiKey }).models.list({ limit: 1 }); // gratuito; 401 = chave recusada
+      return true;
+    }),
+  });
+  if (!(mpFetch && mpFetch.__mock)) iniciarCambio(); // suíte de testes não vai à rede
 
   registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviarEmail });
   registrarRotasCliente(app, { jwtSecret, enviarEmail });
@@ -69,4 +80,15 @@ function iniciarRotinas(notificar) {
   console.log(`[legal-saas] ciclo de vida agendado p/ ~${hora}h de Brasília`);
 }
 
-module.exports = { montar, repo, billing };
+// cotação do dólar (PTAX/BCB) para converter o custo da IA: ao subir e a cada 6 h.
+// Falha de rede mantém a última cotação gravada; sem nenhuma, a IA por crédito fica pausada.
+let _timerCambio = null;
+function iniciarCambio() {
+  if (String(process.env.LEGALSAAS_ROTINAS || 'on').toLowerCase() === 'off' || process.env.NODE_ENV === 'test') return;
+  const rodar = () => creditos.atualizarCambio().catch(e => console.warn('[legal-saas] câmbio (PTAX) não atualizado:', e.message));
+  rodar();
+  _timerCambio = setInterval(rodar, 6 * 3600 * 1000);
+  if (_timerCambio.unref) _timerCambio.unref();
+}
+
+module.exports = { montar, repo, billing, creditos };

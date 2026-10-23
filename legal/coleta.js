@@ -17,7 +17,7 @@
 // Tudo logado em integration_logs; disparo manual pelas rotas.
 // =====================================================================
 'use strict';
-const { db, nowISO, comTenant, listarTenants } = require('./db');
+const { db, nowISO, comTenant, listarTenants, tenantAtual, TENANT_PADRAO } = require('./db');
 const repo = require('./repo');
 const llm = require('./llm');
 const ia = require('./ia');
@@ -191,11 +191,66 @@ function oabsDaEquipe() {
     const numero = (s2.replace(/\./g, '').match(/(\d{3,6})/) || [])[1];
     if (uf && numero) lista.push({ nome: u.nome, numero, uf });
   }
-  if (process.env.LEGAL_OAB && process.env.LEGAL_OAB_UF) {
+  // a OAB do ambiente é a do escritório interno: nunca entra na coleta de um assinante
+  if (tenantAtual() === TENANT_PADRAO && process.env.LEGAL_OAB && process.env.LEGAL_OAB_UF) {
     lista.push({ nome: 'env', numero: String(process.env.LEGAL_OAB).replace(/\D/g, ''), uf: process.env.LEGAL_OAB_UF.toUpperCase() });
   }
   const vistos = new Set();
   return lista.filter(o => { const k = o.uf + o.numero; if (vistos.has(k)) return false; vistos.add(k); return true; });
+}
+
+// Grava as comunicações do DJEN de UMA OAB no banco do tenant corrente (dedupe
+// por hash em Publicacoes.criar; vínculo ao processo pelo CNJ). Uma só
+// implementação: serve à coleta do servidor e ao runner local.
+function ingerirComunicacoes(oab, itens) {
+  let novas = 0;
+  for (const it of (Array.isArray(itens) ? itens : [])) {
+    if (!it) continue;
+    const texto = String(it.texto || it.textoComunicacao || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const numeroProc = repo.normCNJ(it.numero_processo || it.numeroprocessocommascara || '');
+    const kase = numeroProc ? db.prepare('SELECT id FROM cases WHERE numero_cnj = ?').get(numeroProc) : null;
+    const res = repo.Publicacoes.criar({
+      fonte: 'djen', data_publicacao: String(it.data_disponibilizacao || it.dataDisponibilizacao || it.datadisponibilizacao || '').slice(0, 10),
+      orgao: [it.siglaTribunal || it.siglatribunal, it.nomeOrgao || it.nomeorgao].filter(Boolean).join(' — '),
+      texto: (numeroProc ? numeroProc + ' · ' : '') + texto,
+      match_por: 'oab:' + oab.uf + oab.numero, tem_prazo: /prazo|intima[çc][ãa]o|cita[çc][ãa]o/i.test(texto),
+      case_id: kase ? kase.id : '', payload_raw: { id: it.id, tipo: it.tipoComunicacao || it.tipodocumento },
+    }, 'coleta');
+    if (!res.duplicado) novas++;
+  }
+  return { total: (Array.isArray(itens) ? itens : []).filter(Boolean).length, novas };
+}
+
+// ENTREGA DO RUNNER LOCAL (o DJEN bloqueia o IP do servidor): recebe as
+// comunicações de uma OAB do escritório corrente. Recusa OAB que não seja da
+// equipe DESTE escritório — o runner só entrega o que o servidor mandou buscar.
+// ⚠️ O runner manda cada publicação no MESMO formato de sempre (texto =
+// "<numero> - <texto>"): o dedupe é hash de fonte|data|texto, então mudar o
+// formato reimportaria como "novas" as publicações que já estão no banco.
+async function receberDoRunner({ oab, publicacoes, erro, periodo } = {}) {
+  const numero = String((oab && oab.numero) || '').replace(/\D/g, ''), uf = String((oab && oab.uf) || '').toUpperCase();
+  const dona = oabsDaEquipe().find(o => o.numero === numero && o.uf === uf);
+  if (!dona) throw new Error('Esta OAB não está cadastrada na equipe deste escritório.');
+  const chave = 'coleta-publicacoes:' + uf + numero;
+  if (erro) { repo.Integracoes.log('djen-local', chave, 'erro', String(erro).slice(0, 300), 0); return { total: 0, novas: 0, erro: true }; }
+  const r = { total: 0, novas: 0 };
+  for (const p of (Array.isArray(publicacoes) ? publicacoes : [])) {
+    if (!p || !String(p.texto || '').trim()) continue;
+    r.total++;
+    const res = repo.Publicacoes.criar({
+      fonte: 'djen', data_publicacao: String(p.data_publicacao || '').slice(0, 10), orgao: p.orgao, texto: p.texto,
+      match_por: 'oab:' + uf + numero, tem_prazo: !!p.tem_prazo, payload_raw: p.payload_raw || null,
+    }, 'coleta');
+    if (!res.duplicado) r.novas++;
+  }
+  repo.Integracoes.log('djen-local', chave, 'ok', `runner local${periodo ? ', período ' + String(periodo).slice(0, 40) : ''}: ${r.total} comunicação(ões), ${r.novas} nova(s)`, r.novas);
+  if (r.novas > 0) {
+    await notif.notificarEquipe({
+      titulo: `${r.novas} publicação(ões) nova(s) no DJEN`, corpo: 'Triagem pendente no painel jurídico (aba Publicações).',
+      ref_tipo: 'publication', ref_id: '', whatsapp: true,
+    }).catch(() => {});
+  }
+  return r;
 }
 
 async function coletarPublicacoes({ dias = 3 } = {}) {
@@ -213,19 +268,7 @@ async function coletarPublicacoes({ dias = 3 } = {}) {
       const r = await fetchJSON(url);
       const itens = r.items || r.itens || [];
       total += itens.length;
-      for (const it of itens) {
-        const texto = String(it.texto || it.textoComunicacao || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-        const numeroProc = repo.normCNJ(it.numero_processo || it.numeroprocessocommascara || '');
-        const kase = numeroProc ? db.prepare('SELECT id FROM cases WHERE numero_cnj = ?').get(numeroProc) : null;
-        const res = repo.Publicacoes.criar({
-          fonte: 'djen', data_publicacao: String(it.data_disponibilizacao || it.datadisponibilizacao || '').slice(0, 10),
-          orgao: [it.siglaTribunal || it.siglatribunal, it.nomeOrgao || it.nomeorgao].filter(Boolean).join(' — '),
-          texto: (numeroProc ? numeroProc + ' · ' : '') + texto,
-          match_por: 'oab:' + oab.uf + oab.numero, tem_prazo: /prazo|intima[çc][ãa]o|cita[çc][ãa]o/i.test(texto),
-          case_id: kase ? kase.id : '', payload_raw: { id: it.id, tipo: it.tipoComunicacao || it.tipodocumento },
-        }, 'coleta');
-        if (!res.duplicado) novas++;
-      }
+      novas += ingerirComunicacoes(oab, itens).novas;
     } catch (e) { erros++; repo.Integracoes.log('djen', 'coleta-publicacoes:' + oab.uf + oab.numero, 'erro', e.message, 0); }
   }
   repo.Integracoes.log('djen', 'coleta-publicacoes', erros && !total ? 'erro' : 'ok',
@@ -272,6 +315,7 @@ async function digestClientes() {
 // ---------------------------------------------------------------------
 async function processarFila(limite = 5) {
   if (!llm.ativo()) return { processadas: 0, detalhe: 'modo fila — o agente local processa' };
+  if (!llm.podeRodarRotina()) return { processadas: 0, detalhe: 'sem saldo de IA — a fila aguarda recarga' };
   const pendentes = repo.IA.pendentes(limite);
   let ok = 0, erro = 0;
   for (const q of pendentes) {
@@ -396,5 +440,5 @@ function iniciarRotinas() {
 module.exports = {
   aliasTribunal, classificarMovimento, consultarDataJud, coletaEmAndamento,
   coletarAndamentos, coletarPublicacoes, digestClientes, processarFila,
-  rotinaDiaria, iniciarRotinas, oabsDaEquipe, manutencaoLivro,
+  rotinaDiaria, iniciarRotinas, oabsDaEquipe, manutencaoLivro, ingerirComunicacoes, receberDoRunner,
 };

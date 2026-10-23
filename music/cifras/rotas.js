@@ -32,6 +32,11 @@ const repertorio = require('../repertorio');
 const D = require('./motor/documento');
 const I = require('./motor/instrumentos');
 const H = require('./motor/harmonia');
+const Acompanhamento = require('./motor/acompanhamento');
+const ArranjoMultifaixa = require('./motor/arranjo-multifaixa');
+const voz = require('../voz');
+const { Riffs, chartDeTab, INSTRUMENTOS: RIFF_INSTRUMENTOS, DIFICULDADES: RIFF_DIFICULDADES, ORIGENS: RIFF_ORIGENS } = require('../riffs');
+const riffsCatalogo = require('../riffs-catalogo');
 
 const { Musicas, Cifras, Arranjos, Preferencias, Visoes, Favoritos, Uso, Voicings, Midias } = acervo;
 
@@ -90,6 +95,15 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
   const U = (req) => req.usuario.id;
   const B = '/music/api/cifras';
 
+  // Perfil vocal: o navegador envia somente medidas agregadas da tentativa.
+  // O áudio e o acesso ao microfone nunca atravessam esta API.
+  app.get(B + '/perfil-vocal', requireUsuario, h(async (req, res) => {
+    res.json({ perfil: voz.perfil(U(req)), historico: voz.historico(U(req), 10) });
+  }));
+  app.post(B + '/perfil-vocal/avaliacoes', requireUsuario, h(async (req, res) => {
+    res.status(201).json({ ok: true, perfil: voz.registrar(U(req), req.body || {}) });
+  }));
+
   // ------------------------------------------------------------ motor e cliente
   app.get('/music/motor-cifras.js', (req, res) => {
     res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'no-cache').send(motorJs());
@@ -121,6 +135,33 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
       flags: flags.publicas(), ia: ia.disponiveis(u), preferencias: Preferencias.obter(u),
       instrumentos: I.catalogo(), total: Musicas.contar(u),
     });
+  }));
+
+  // ------------------------------------------------------------ riffs e tablaturas
+  // Acervo privado, versionado e separado das cifras. O documento usa o
+  // mesmo motor de tablatura para que a exibição seja idêntica à da cifra.
+  app.get(B + '/riffs', requireUsuario, h(async (req, res) => {
+    res.json({ ...Riffs.listar(U(req), req.query || {}), instrumentos: RIFF_INSTRUMENTOS, dificuldades: RIFF_DIFICULDADES, origens: RIFF_ORIGENS });
+  }));
+  app.get(B + '/riffs-catalogo', requireUsuario, h(async (req, res) => res.json(riffsCatalogo.listar(req.query || {}))));
+  app.post(B + '/riffs', requireUsuario, h(async (req, res) => {
+    res.status(201).json(Riffs.criar(U(req), req.body || {}));
+  }));
+  app.get(B + '/riffs/:id', requireUsuario, h(async (req, res) => res.json(Riffs.detalhe(U(req), req.params.id))));
+  app.post(B + '/riffs/:id/versoes', requireUsuario, h(async (req, res) => res.status(201).json(Riffs.adicionarVersao(U(req), req.params.id, req.body || {}))));
+  app.get(B + '/riffs/:id/chart', requireUsuario, h(async (req, res) => {
+    const detalhe = Riffs.detalhe(U(req), req.params.id);
+    res.json(chartDeTab(detalhe.documento, { bpm: req.query.bpm || detalhe.riff.bpm, title: detalhe.riff.titulo, id: 'riff-' + detalhe.riff.id }));
+  }));
+  app.get(B + '/riffs/:id/arranjo-multifaixa', requireUsuario, h(async (req, res) => {
+    const detalhe = Riffs.detalhe(U(req), req.params.id);
+    const pacote = ArranjoMultifaixa.gerar(detalhe.documento, {
+      bpm: req.query.bpm || detalhe.riff.bpm,
+      title: detalhe.riff.titulo + ' · riff', id: 'riff-' + req.params.id + '-multifaixa',
+      sourceName: detalhe.riff.titulo + '.musique.riff',
+    });
+    pacote.metadata = Object.assign({}, pacote.metadata, { origem: 'musique.riff', riffId: detalhe.riff.id, tablatura: true });
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Content-Disposition', `attachment; filename="${encodeURIComponent(pacote.id)}.json"`).json(pacote);
   }));
 
   app.get(B + '/instrumentos', requireUsuario, (req, res) => res.json({ instrumentos: I.catalogo() }));
@@ -173,9 +214,46 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
 
   // ------------------------------------------------------------ cifras
   app.get(B + '/cifras/:id', requireUsuario, h(async (req, res) => res.json(Cifras.completa(U(req), req.params.id, { arranjoId: String(req.query.arranjo || '') }))));
+  // Exporta um rascunho monofônico para o editor Tocar junto. A cifra não
+  // contém a divisão rítmica completa; o arquivo é marcado como aproximado
+  // e sempre precisa ser revisado antes de salvar/publicar.
+  app.get(B + '/cifras/:id/acompanhamento-ritmico', requireUsuario, h(async (req, res) => {
+    const completa = Cifras.completa(U(req), req.params.id, { arranjoId: String(req.query.arranjo || '') });
+    const chart = Acompanhamento.gerar(completa.documento, {
+      bpm: req.query.bpm,
+      title: (completa.musica && completa.musica.titulo ? completa.musica.titulo : 'Cifra') + ' · acompanhamento rítmico',
+      id: 'cifra-' + req.params.id + '-ritmo',
+    });
+    res.set('Content-Type', 'application/json; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(chart.id)}.json"`);
+    res.json(chart);
+  }));
+  app.get(B + '/cifras/:id/arranjo-multifaixa', requireUsuario, h(async (req, res) => {
+    const completa = Cifras.completa(U(req), req.params.id, { arranjoId: String(req.query.arranjo || '') });
+    const pacote = ArranjoMultifaixa.gerar(completa.documento, {
+      bpm: req.query.bpm,
+      title: (completa.musica && completa.musica.titulo ? completa.musica.titulo : 'Cifra') + ' · arranjo multifaixa',
+      id: 'cifra-' + req.params.id + '-multifaixa',
+      sourceName: String((completa.musica && completa.musica.titulo) || 'cifra') + '.musique.cifra',
+    });
+    res.set('Content-Type', 'application/json; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(pacote.id)}.json"`);
+    res.json(pacote);
+  }));
   app.put(B + '/cifras/:id', requireUsuario, h(async (req, res) => res.json(Cifras.salvar(U(req), req.params.id, req.body || {}))));
   app.patch(B + '/cifras/:id', requireUsuario, h(async (req, res) => res.json({ ok: true, cifra: Cifras.editarDados(U(req), req.params.id, req.body || {}) })));
   app.delete(B + '/cifras/:id', requireUsuario, h(async (req, res) => { Cifras.remover(U(req), req.params.id); res.json({ ok: true }); }));
+  app.post(B + '/cifras/:id/variacoes', requireUsuario, h(async (req, res) => {
+    const base = Cifras.porId(req.params.id);
+    if (!base) return res.status(404).json({ erro: 'Cifra não encontrada.' });
+    const d = req.body || {};
+    const variacao = Cifras.criar(U(req), base.obra_id, {
+      documento: d.documento, nome: String(d.nome || 'Variação harmônica').slice(0, 120),
+      descricao: String(d.descricao || 'Variação criada a partir da cifra original.').slice(0, 300),
+      tipo_revisao: 'variacao', status: 'rascunho', tom: d.tom || base.tom,
+    });
+    res.status(201).json({ ok: true, cifra: variacao.cifra, musica: variacao.musica });
+  }));
   app.get(B + '/cifras/:id/original', requireUsuario, h(async (req, res) => res.json(Cifras.original(U(req), req.params.id))));
   app.get(B + '/cifras/:id/revisoes', requireUsuario, h(async (req, res) => res.json({ revisoes: Cifras.revisoes(U(req), req.params.id).map((r) => ({ ...r, autor_nome: nomeDe(r.autor) })) })));
   app.get(B + '/cifras/:id/revisoes/:n', requireUsuario, h(async (req, res) => res.json(Cifras.revisao(U(req), req.params.id, req.params.n))));
@@ -288,7 +366,16 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
     res.json(r);
   }));
   app.post(B + '/importar/lote', requireUsuario, limitar('importar-lote', 5), h(async (req, res) => res.json(await Importar.lote(U(req), req.body || {}))));
-  app.get(B + '/importar', requireUsuario, h(async (req, res) => res.json({ importacoes: Importar.listar(U(req), { limite: req.query.limite }) })));
+  app.post(B + '/importar/:id/reprocessar', requireUsuario, limitar('importar-reprocessar', 10), h(async (req, res) => {
+    const usuario = U(req); await Importar.reprocessar(req.params.id, usuario);
+    res.json({ ok: true, importacao: Importar.obter(usuario, req.params.id).importacao });
+  }));
+  app.get(B + '/importar', requireUsuario, h(async (req, res) => {
+    const limite = Math.min(100, Math.max(1, Math.floor(Number(req.query.limite) || 30)));
+    const offset = Math.min(10000, Math.max(0, Math.floor(Number(req.query.offset) || 0)));
+    const importacoes = Importar.listar(U(req), { limite, offset, status: req.query.status });
+    res.json({ importacoes, paginacao: { limite, offset, tem_mais: importacoes.length === limite } });
+  }));
   app.get(B + '/importar/:id', requireUsuario, h(async (req, res) => res.json(Importar.obter(U(req), req.params.id))));
   app.get(B + '/importar/:id/candidatos/:cid', requireUsuario, h(async (req, res) => res.json(Importar.candidato(U(req), req.params.id, req.params.cid))));
   app.post(B + '/importar/:id/comparar', requireUsuario, h(async (req, res) => res.json(Importar.comparar(U(req), req.params.id, (req.body || {}).ids))));

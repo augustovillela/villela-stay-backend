@@ -10,6 +10,7 @@ const { esc, pt, ouvir, pagina, naoAchou, visual, cartoes, portao, N, E, A, T, I
 const TE = require('./paginas-teoria');
 const RF = require('./paginas-referencia');
 const L = require('./licoes');
+const CT = require('./curso-teoria');
 const ACESSO = require('./acesso');
 
 // ------------------------------------------------------------------
@@ -41,7 +42,7 @@ function registrar(app, { opcional, contextoDe }) {
 
   // ---------------------------------------------------------------- hub
   app.get('/music/laboratorio', (req, res) => {
-    const destaque = ['laboratorio', 'piano', 'braco', 'circulo-de-quintas', 'identificar-acorde', 'transpositor', 'bpm', 'batidas'];
+    const destaque = ['laboratorio', 'piano', 'braco', 'circulo-de-quintas', 'identificar-acorde', 'transpositor', 'bpm', 'batidas', 'tendencias-harmonicas'];
     const f = (s) => CAT.FERRAMENTAS.find((x) => x.slug === s);
     const corpo = `
 <header class="lab-hero"><p class="lab-cab-tipo">Laboratório Musical</p>
@@ -51,12 +52,14 @@ function registrar(app, { opcional, contextoDe }) {
 <div class="lab-busca-linha"><input id="lab-q" name="q" type="search" placeholder="Ex.: ré dórico, G7(9), terça maior, campo harmônico de Mi" autocomplete="off" aria-describedby="lab-q-dica">
 <button class="btn" type="submit">Buscar</button></div><p id="lab-q-dica" class="lab-dica">Aceita nomes em português ou em cifra, com ou sem acento.</p>
 <ul class="lab-sugestoes" id="lab-sugestoes" aria-live="polite"></ul></form></header>
+<p class="lab-destaque-tutor"><a href="/music/curso-teoria"><span aria-hidden="true">🎓</span> <strong>Novo: Curso de teoria musical</strong> — do zero ao avançado, em níveis, módulos e três trilhas de aprendizagem.</a></p>
 <section class="lab-caminhos" aria-labelledby="caminhos"><h2 id="caminhos" class="sr">Três caminhos</h2>
 <a class="lab-caminho" href="/music/explorar"><span class="lab-caminho-ico" aria-hidden="true">⚡</span><strong>Usar agora</strong><span>Afinar, contar BPM, ver um acorde, transpor. Abre direto, sem cadastro.</span></a>
 <a class="lab-caminho" href="/music/aprender"><span class="lab-caminho-ico" aria-hidden="true">📘</span><strong>Aprender passo a passo</strong><span>Uma trilha na ordem certa, do som ao campo harmônico, com prática em cada lição.</span></a>
 <a class="lab-caminho" href="/music/explorar/laboratorio"><span class="lab-caminho-ico" aria-hidden="true">🧪</span><strong>Experimentar livre</strong><span>Tônica, escala e acorde num lugar só: tudo muda junto.</span></a></section>
 ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/music/separar"><span aria-hidden="true">🎚️</span> <strong>Novo: Separar trilhas</strong> — tire a voz, a bateria, o baixo, a guitarra ou o piano de uma música e toque junto.</a></p>\n'}<p class="lab-destaque-tutor"><a href="/music/tutor-braco"><span aria-hidden="true">🎸</span> <strong>Novo: Tutor de braço</strong> — escalas e desenhos no seu instrumento de cordas, com um tutor que toca, escuta e corrige nota e tempo.</a></p>
 <p class="lab-destaque-tutor"><a href="/music/transcrever"><span aria-hidden="true">🎧</span> <strong>Novo: Transcrever música</strong> — acordes por compasso, tom, andamento e melodia de um arquivo de áudio ou do que toca numa aba (YouTube incluso).</a></p>
+<p class="lab-destaque-tutor"><a href="/music/tocar"><span aria-hidden="true">🎸</span> <strong>Tocar junto · violão, guitarra e contrabaixo</strong> — use o microfone, uma interface de áudio ou o cabo Real Tone, afine e acompanhe notas isoladas na pista.</a></p>
 <section class="lab-comecar" aria-labelledby="comecar-t"><h2 id="comecar-t">Por onde começar?</h2>
 <p>Três perguntas, e o Musique mostra o caminho que combina com você. Dá para mudar quando quiser.</p>
 <form id="lab-perfil" class="lab-controles">
@@ -104,18 +107,69 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
     if (!f) return naoAchou(res, 'esta ferramenta');
     const ctx = ctxDe(req);
     const estado = { ...estadoInicial(req.query), exportar: ACESSO.pode('exportar', ctx).ok };
-    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">${esc(req.params.amb === 'criar' ? 'Criar' : 'Explorar')}</p><h1><span aria-hidden="true">${esc(f.icone)}</span> ${esc(f.nome)}</h1><p class="lab-lead">${esc(f.resumo)}</p></header>
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">${esc(req.params.amb === 'criar' ? 'Criar' : (req.params.amb === 'praticar' ? 'Praticar' : 'Explorar'))}</p><h1><span aria-hidden="true">${esc(f.icone)}</span> ${esc(f.nome)}</h1><p class="lab-lead">${esc(f.resumo)}</p></header>
 <div id="lab-ferramenta" class="lab-ferramenta" aria-live="polite">${ssrFerramenta(f.slug, estado)}</div>
 <noscript><p class="lab-nota-convencao">Esta ferramenta precisa de JavaScript para tocar e mudar. As páginas de <a href="/music/escalas">escalas</a>, <a href="/music/acordes">acordes</a> e <a href="/music/referencia">referências</a> funcionam sem ele.</p></noscript>
 ${relacionados(f.slug)}`;
     pagina(res, { titulo: `${f.nome} — Laboratório Musical | Musique`, descricao: f.resumo, caminho: `/music/${f.ambiente}/${f.slug}`, corpo, ferramenta: f.slug, estado,
-      trilha: [[req.params.amb === 'criar' ? 'Criar' : 'Explorar', '/music/' + req.params.amb], [f.nome]] });
+      trilha: [[req.params.amb === 'criar' ? 'Criar' : (req.params.amb === 'praticar' ? 'Praticar' : 'Explorar'), '/music/' + req.params.amb], [f.nome]] });
   });
 
   // ------------------------------------------------------------ aprender
+  app.get('/music/curso-teoria.json', opcional, (req, res) => {
+    const ls = licoesComAcesso(ctxDe(req));
+    const porSlug = Object.fromEntries(ls.map((l) => [l.slug, l]));
+    const documento = {
+      schema: 'musique.course.v1',
+      id: CT.CURSO.id,
+      titulo: CT.CURSO.titulo,
+      subtitulo: CT.CURSO.subtitulo,
+      versao: CT.CURSO.versao,
+      descricao: CT.CURSO.descricao,
+      trilhas: CT.CURSO.trilhas,
+      recursos: { html: '/music/curso-teoria', markdown: '/music/curso-teoria.md', pdf: '/music/curso-teoria.pdf' },
+      formatosDisponiveis: ['musique-html', 'livro-markdown', 'livro-pdf', 'villela-academy-json'],
+      formatosPlanejados: ['musique-html', 'livro-markdown', 'villela-academy-json'],
+      niveis: CT.CURSO.niveis.map((n) => ({ ...n, modulos: n.modulos.map((m) => ({ ...m, licoes: m.licoes.map((slug) => { const l = porSlug[slug]; return l ? { slug, titulo: l.titulo, resumo: l.resumo, nivel: l.nivel, prereq: l.prereq, url: `/music/aprender/${slug}` } : { slug, estado: 'planejada' }; }) })) })),
+    };
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+
+  app.get('/music/curso-teoria.md', opcional, (req, res) => {
+    const ls = licoesComAcesso(ctxDe(req));
+    const texto = (html) => String(html || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    const blocos = (l) => (l.blocos || []).map((b) => { if (b.t === 'p' || b.t === 'aprofundar') return texto(b.html); if (b.t === 'lista') return b.itens.map((x) => '- ' + texto(x)).join('\n'); if (b.t === 'visual') return '_[Visualização interativa do Musique: ' + (b.v && b.v.tipo || 'diagrama') + ']_'; if (b.t === 'ouvir') return '_[Exemplo sonoro: ' + (b.rotulo || 'ouvir') + ']_'; if (b.t === 'praticar') return '_[Exercício prático: ' + b.tipo + ']_'; if (b.t === 'ferramenta') { const f = CAT.FERRAMENTAS.find((x) => x.slug === b.slug) || CAT.REFERENCIAS.find((x) => x.slug === b.slug); if (!f) return '_[Ferramenta relacionada: ' + b.slug + ']_'; const href = f.ambiente ? `/music/${f.ambiente}/${f.slug}` : `/music/referencia/${f.slug}`; return `[${f.icone || ''} ${f.nome}](${href}) — ${f.resumo}`; } return ''; }).filter(Boolean).join('\n\n');
+    const linhas = ['# ' + CT.CURSO.titulo, '', CT.CURSO.descricao, '', '> Edição editorial gerada a partir do currículo do Musique. As visualizações, sons e exercícios permanecem interativos na plataforma.', ''];
+    CT.CURSO.niveis.forEach((n) => { linhas.push('## Nível ' + n.ordem + ' — ' + n.nome, '', n.resumo, ''); n.modulos.forEach((m) => { linhas.push('### ' + m.nome, '', '**Objetivo:** ' + m.objetivo, ''); m.licoes.forEach((slug) => { const l = ls.find((x) => x.slug === slug); if (!l) { linhas.push('#### ' + slug.replace(/-/g, ' ') + ' *(planejada)*', ''); return; } linhas.push('#### ' + l.titulo, '', l.resumo, '', blocos(l), ''); }); }); });
+    res.set('Content-Type', 'text/markdown; charset=utf-8').set('Content-Disposition', 'attachment; filename="curso-teoria-musical.md"').set('Cache-Control', 'no-cache').send(linhas.join('\n'));
+  });
+
+  app.get('/music/curso-teoria.pdf', (req, res) => {
+    const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', 'curso-teoria-musical.pdf');
+    if (!fs.existsSync(pdf)) return res.status(404).send('PDF ainda não foi gerado.');
+    res.set('Content-Type', 'application/pdf').set('Content-Disposition', 'inline; filename="curso-teoria-musical.pdf"').set('Cache-Control', 'no-cache').sendFile(pdf);
+  });
+
+  app.get('/music/curso-teoria', opcional, (req, res) => {
+    const ctx = ctxDe(req);
+    const ls = licoesComAcesso(ctx);
+    const porSlug = Object.fromEntries(ls.map((l) => [l.slug, l]));
+    const totalCursoLicoes = CT.CURSO.niveis.reduce((n, x) => n + x.modulos.reduce((m, y) => m + y.licoes.length, 0), 0);
+    const totalCursoModulos = CT.CURSO.niveis.reduce((n, x) => n + x.modulos.length, 0);
+    const statusNome = { disponivel: 'Conteúdo disponível', 'em-construcao': 'Em desenvolvimento', planejado: 'Próxima etapa' };
+    const niveis = CT.CURSO.niveis.map((n) => {
+      const total = n.modulos.reduce((a, m) => a + m.licoes.length, 0);
+      const prontas = n.modulos.reduce((a, m) => a + m.licoes.filter((s) => porSlug[s]).length, 0);
+      const modulos = n.modulos.map((m) => { const guias = (m.guias || []).map((s) => porSlug[s]).filter(Boolean); return `<article class="curso-modulo"><h3>${esc(m.nome)}</h3><p>${esc(m.objetivo)}</p>${guias.length ? `<div class="curso-guias"><strong>Comece por estas aulas:</strong><div>${guias.map((l) => `<a href="/music/aprender/${esc(l.slug)}">${esc(l.titulo)}</a>`).join('')}</div></div>` : ''}${m.licoes.length ? `<ul>${m.licoes.map((s) => { const l = porSlug[s]; if (!l) return `<li class="curso-planejada"><span>${esc(s.replace(/-/g, ' '))}</span><span>lição planejada</span></li>`; const tipos = (l.blocos || []).map((b) => b.t).filter(Boolean); const trilhas = ['conhecer']; if (tipos.indexOf('ouvir') >= 0) trilhas.push('ouvir'); if (tipos.indexOf('praticar') >= 0 || tipos.indexOf('ferramenta') >= 0) trilhas.push('aplicar'); return `<li data-curso-item="${esc(s)}" data-curso-trilhas="${esc(trilhas.join(' '))}"><a data-curso-slug="${esc(s)}" href="/music/aprender/${esc(s)}">${esc(l.titulo)}</a><span>${esc(l.resumo)}</span><small class="curso-tags">${trilhas.map((t) => esc(t === 'ouvir' ? 'Ouvir e reconhecer' : t === 'aplicar' ? 'Aplicar' : 'Conhecer')).join(' · ')}</small></li>`; }).join('')}</ul>` : '<p class="curso-planejada">O projeto final integra análise, criação e arranjo após os fundamentos.</p>'}</article>`; }).join('');
+      return `<section class="curso-nivel" id="nivel-${esc(n.id)}" data-curso-nivel="${esc(n.id)}"><div class="curso-nivel-cab"><div><p class="lab-cab-tipo">Nível ${n.ordem}</p><h2>${esc(n.nome)}</h2><p>${esc(n.resumo)}</p></div><div class="curso-nivel-meta"><span class="curso-status curso-status-${esc(n.status)}">${esc(statusNome[n.status] || n.status)} · ${prontas}/${total} lições</span><span class="curso-nivel-progresso" data-curso-nivel-progresso="${esc(n.id)}">0% concluído</span></div></div><div class="curso-modulos">${modulos}</div></section>`;
+    }).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso editorial · versão ${esc(CT.CURSO.versao)}</p><h1>${esc(CT.CURSO.titulo)}</h1><p class="lab-lead">${esc(CT.CURSO.descricao)} ${esc(CT.CURSO.subtitulo)}.</p><div class="curso-numeros" aria-label="Dimensão do curso"><span><strong>${CT.CURSO.niveis.length}</strong> níveis</span><span><strong>${totalCursoModulos}</strong> módulos</span><span><strong>${totalCursoLicoes}</strong> lições</span><span><strong>3</strong> trilhas</span></div><p class="lab-nota-convencao">O mesmo currículo será a base do curso interativo do Musique, do futuro livro e da formação da Villela Academy. As lições já publicadas abrem no formato de texto, visualização, áudio e prática.</p><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><div id="curso-proxima" class="curso-proxima" aria-live="polite"></div><p><a class="btn sec" href="/music/curso-teoria.pdf">⬇ Abrir livro ilustrado em PDF</a></p></header><section aria-labelledby="trilhas"><h2 id="trilhas">Três trilhas em cada nível</h2><div class="curso-trilhas">${CT.CURSO.trilhas.map((t) => `<div><strong>${esc(t.nome)}</strong><span>${esc(t.resumo)}</span></div>`).join('')}</div><p class="curso-filtros-ajuda">Use os botões para mostrar apenas as lições daquela forma de estudo: <strong>Conhecer</strong> explica os conceitos, <strong>Ouvir e reconhecer</strong> treina a percepção, e <strong>Aplicar</strong> leva à prática.</p><div class="curso-filtros" role="tablist" aria-label="Filtrar trilha"><button type="button" class="curso-filtro ativo" data-curso-filtro="todos" aria-selected="true">Todas</button>${CT.CURSO.trilhas.map((t) => `<button type="button" class="curso-filtro" data-curso-filtro="${esc(t.id)}" aria-selected="false">${esc(t.nome)}</button>`).join('')}</div><p id="curso-filtro-status" class="curso-filtro-status" aria-live="polite"></p></section>${niveis}<p class="lab-nota-convencao"><a href="/music/aprender">Ver a trilha linear de lições →</a></p>`;
+    pagina(res, { titulo: 'Curso de teoria musical — do zero ao avançado | Musique', descricao: CT.CURSO.descricao, caminho: '/music/curso-teoria', corpo, trilha: [['Aprender', '/music/aprender'], ['Curso completo']] });
+  });
+
   app.get('/music/aprender', opcional, (req, res) => {
     const ls = licoesComAcesso(ctxDe(req));
-    const corpo = `<header class="lab-cab"><h1>Aprender passo a passo</h1><p class="lab-lead">Uma trilha na ordem dos pré-requisitos. Cada lição explica, mostra, toca e termina num exercício. As ${ACESSO.LICOES_ABERTAS} primeiras são abertas; a trilha completa faz parte da assinatura.</p></header>
+    const corpo = `<header class="lab-cab"><h1>Aprender passo a passo</h1><p class="lab-lead">Uma trilha na ordem dos pré-requisitos. Cada lição explica, mostra, toca e termina num exercício. As ${ACESSO.LICOES_ABERTAS} primeiras são abertas; a trilha completa faz parte da assinatura.</p><p><a class="btn" href="/music/curso-teoria">Ver o curso completo por níveis</a></p></header>
 <ol class="lab-trilha">${ls.map((l) => `<li class="${l.aberta ? '' : 'fechada'}"><a href="/music/aprender/${esc(l.slug)}"><span class="lab-trilha-n">${l.ordem}</span>
 <span class="lab-trilha-t">${esc(l.titulo)} ${l.aberta ? '' : '<span class="lab-selo">assinatura</span>'}</span><span class="lab-trilha-r">${esc(l.resumo)} <em>${esc(l.nivel)}</em></span></a></li>`).join('')}</ol>
 <p class="lab-nota-convencao">Quer ir direto a um assunto? As <a href="/music/referencia">referências</a> são abertas e cobrem cada tema.</p>`;
@@ -128,6 +182,11 @@ ${relacionados(f.slug)}`;
     if (i < 0) return naoAchou(res, 'esta lição');
     const l = ls[i];
     const ant = ls[i - 1]; const prox = ls[i + 1];
+    const contextoCurso = CT.POR_LICAO[l.slug];
+    const tiposLicao = (l.blocos || []).map((b) => b.t);
+    const trilhasLicao = ['conhecer'];
+    if (tiposLicao.indexOf('ouvir') >= 0 || tiposLicao.indexOf('visual') >= 0) trilhasLicao.push('ouvir');
+    if (tiposLicao.indexOf('praticar') >= 0 || tiposLicao.indexOf('ferramenta') >= 0 || tiposLicao.indexOf('lista') >= 0) trilhasLicao.push('aplicar');
     const pre = l.prereq.map((s) => L.POR_SLUG[s]).filter(Boolean);
     let conteudo;
     if (l.aberta) {
@@ -135,9 +194,11 @@ ${relacionados(f.slug)}`;
     } else {
       conteudo = bloco(l.blocos[0]) + portao(ACESSO.pode('licoes-completas', ctxDe(req)));
     }
-    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Lição ${l.ordem} de ${ls.length} · ${esc(l.nivel)}</p><h1>${esc(l.titulo)}</h1><p class="lab-lead">${esc(l.resumo)}</p>
+    const cursoPainel = contextoCurso ? `<aside class="curso-contexto" aria-label="Contexto no curso"><p class="lab-cab-tipo">Curso de teoria musical</p><p><a href="/music/curso-teoria#nivel-${esc(contextoCurso.nivel.id)}">Nível ${contextoCurso.nivel.ordem}: ${esc(contextoCurso.nivel.nome)}</a> · <strong>${esc(contextoCurso.modulo.nome)}</strong></p><p>${esc(contextoCurso.modulo.objetivo)}</p></aside>` : '';
+    const concluir = contextoCurso ? `<div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(l.slug)}" aria-pressed="false">Marcar lição como concluída</button><span>O progresso fica salvo neste navegador.</span></div>` : '';
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Lição ${l.ordem} de ${ls.length} · ${esc(l.nivel)}</p><h1>${esc(l.titulo)}</h1><p class="lab-lead">${esc(l.resumo)}</p><div class="curso-licao-trilhas" aria-label="Habilidades praticadas">${trilhasLicao.map((t) => `<span>${esc(t === 'ouvir' ? 'Ouvir e reconhecer' : t === 'aplicar' ? 'Aplicar' : 'Conhecer')}</span>`).join('')}</div>${cursoPainel}
 ${pre.length ? `<p class="lab-prereq">Antes, ajuda ter visto: ${pre.map((p) => `<a href="/music/aprender/${esc(p.slug)}">${esc(p.titulo)}</a>`).join(', ')}.</p>` : ''}</header>
-<article class="lab-licao">${conteudo}</article>
+<article class="lab-licao">${conteudo}</article>${concluir}
 <footer class="lab-licao-rodape"><p class="lab-autoria">Autoria: ${esc(L.AUTORIA.autor)} · Revisão técnica: ${esc(L.AUTORIA.revisao_tecnica)} · Revisão pedagógica: ${esc(L.AUTORIA.revisao_pedagogica)} · ${esc(L.AUTORIA.revisado_em)}</p>
 ${l.refs && l.refs.length ? `<details class="lab-det"><summary>Para ler mais</summary><ul>${l.refs.map((r) => `<li>${esc(L.REFS[r])}</li>`).join('')}</ul></details>` : ''}
 <nav class="lab-licao-nav" aria-label="Lições">${ant ? `<a href="/music/aprender/${esc(ant.slug)}">← ${esc(ant.titulo)}</a>` : '<span></span>'}${prox ? `<a href="/music/aprender/${esc(prox.slug)}">${esc(prox.titulo)} →</a>` : ''}</nav></footer>`;
@@ -156,18 +217,32 @@ ${l.refs && l.refs.length ? `<details class="lab-det"><summary>Para ler mais</su
       const seq = Array.isArray(b.midis[0]);
       return `<p class="lab-ouvir-bloco">${seq ? `<button type="button" class="lab-ouvir" data-sequencia="${esc(JSON.stringify(b.midis))}"><span aria-hidden="true">▶</span> ${esc(b.rotulo)}</button>` : ouvir(b.midis, { rotulo: b.rotulo, modo: b.modo, dur: b.dur, vel: b.vel, passo: b.passo })}</p>`;
     }
-    if (b.t === 'ferramenta') { const f = CAT.FERRAMENTAS.find((x) => x.slug === b.slug); return f ? `<p class="lab-ferr-link"><a href="/music/${f.ambiente}/${f.slug}"><span aria-hidden="true">${esc(f.icone)}</span> Experimente: ${esc(f.nome)}</a> — ${esc(f.resumo)}</p>` : ''; }
+    if (b.t === 'ferramenta') {
+      const f = CAT.FERRAMENTAS.find((x) => x.slug === b.slug) || CAT.REFERENCIAS.find((x) => x.slug === b.slug);
+      if (!f) return '';
+      const href = f.ambiente ? `/music/${f.ambiente}/${f.slug}` : `/music/referencia/${f.slug}`;
+      return `<p class="lab-ferr-link"><a href="${href}"><span aria-hidden="true">${esc(f.icone)}</span> Experimente: ${esc(f.nome)}</a> — ${esc(f.resumo)}</p>`;
+    }
     if (b.t === 'praticar') { const x = X.TIPOS[b.tipo]; return x ? `<div class="lab-mini-pratica" data-tipo="${esc(b.tipo)}" data-nivel="${esc(b.nivel || 1)}"><p><strong>Pratique:</strong> ${esc(x.nome)} (${esc(x.niveis[(b.nivel || 1) - 1])}) — <a href="/music/praticar/${esc(b.tipo)}?nivel=${esc(b.nivel || 1)}">abrir o exercício</a></p></div>` : ''; }
     return '';
   }
 
+  app.get('/music/praticar/desafio-acordes', opcional, (req, res) => {
+    const f = CAT.FERRAMENTAS.find((x) => x.slug === 'desafio-acordes' && x.ambiente === 'praticar');
+    const ctx = ctxDe(req);
+    const estado = { ...estadoInicial(req.query), exportar: ACESSO.pode('exportar', ctx).ok };
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Praticar</p><h1><span aria-hidden="true">${esc(f.icone)}</span> ${esc(f.nome)}</h1><p class="lab-lead">${esc(f.resumo)}</p></header>
+<div id="lab-ferramenta" class="lab-ferramenta" aria-live="polite">${ssrFerramenta(f.slug, estado)}</div>
+${relacionados(f.slug)}`;
+    pagina(res, { titulo: `${f.nome} — Laboratório Musical | Musique`, descricao: f.resumo, caminho: '/music/praticar/desafio-acordes', corpo, ferramenta: f.slug, estado, trilha: [['Praticar', '/music/praticar'], [f.nome]] });
+  });
   // ------------------------------------------------------------ praticar
   app.get('/music/praticar', (req, res) => {
     const porHab = {};
     X.LISTA.forEach((x) => { (porHab[x.habilidade] = porHab[x.habilidade] || []).push(x); });
     const NOMES = { leitura: 'Leitura', intervalos: 'Intervalos', percepcao: 'Percepção (ouvido)', acordes: 'Acordes', escalas: 'Escalas', tonalidades: 'Tonalidades', teclado: 'Teclado', harmonia: 'Harmonia', ritmo: 'Ritmo', instrumentos: 'Instrumentos' };
     const corpo = `<header class="lab-cab"><h1>Praticar</h1><p class="lab-lead">Exercícios gerados na hora, com explicação de cada erro. Sem conta, você faz sessões de demonstração de ${ACESSO.DEMO_QUESTOES} questões; assinantes guardam o progresso, sobem de nível sozinhos e recebem revisão espaçada.</p></header>
-<section><h2>Técnica no instrumento</h2>${cartoes([{ nome: 'Tutor de braço', icone: '🎸', resumo: 'Escalas, desenhos, arpejos e cromático no violão, guitarra, baixo, ukulele, cavaquinho e bandolim — o tutor mostra, toca, escuta e corrige.', url: '/music/tutor-braco' }, { nome: 'Transcrever música', icone: '🎧', resumo: 'Acordes por compasso, tom, BPM e melodia de um áudio ou de uma aba — para tirar a música e tocar junto.', url: '/music/transcrever' }].concat(require('./separar').SUSPENSA ? [] : [{ nome: 'Separar trilhas', icone: '🎚️', resumo: 'Tire a voz, a bateria, o baixo, a guitarra ou o piano de uma música e treine tocando junto.', url: '/music/separar' }]))}</section>
+<section><h2>Técnica no instrumento</h2>${cartoes([{ nome: 'Tocar junto · violão, guitarra e contrabaixo', icone: '🎸', resumo: 'Microfone, interface de áudio ou Real Tone: escolha a entrada, afine e acompanhe notas isoladas na pista. Estudos originais e arranjos locais.', url: '/music/tocar' }, { nome: 'Tutor de braço', icone: '🎸', resumo: 'Escalas, desenhos, arpejos e cromático no violão, guitarra, baixo, ukulele, cavaquinho e bandolim — o tutor mostra, toca, escuta e corrige.', url: '/music/tutor-braco' }, { nome: 'Transcrever música', icone: '🎧', resumo: 'Acordes por compasso, tom, BPM e melodia de um áudio ou de uma aba — para tirar a música e tocar junto.', url: '/music/transcrever' }].concat(require('./separar').SUSPENSA ? [] : [{ nome: 'Separar trilhas', icone: '🎚️', resumo: 'Tire a voz, a bateria, o baixo, a guitarra ou o piano de uma música e treine tocando junto.', url: '/music/separar' }]))}</section>
 ${Object.keys(porHab).map((h) => `<section><h2>${esc(NOMES[h] || h)}</h2>${cartoes(porHab[h].map((x) => ({ nome: x.nome, icone: x.auditivo ? '👂' : '✏️', resumo: x.niveis.join(' · '), url: '/music/praticar/' + x.id })))}</section>`).join('')}
 <p><a href="/music/jogar">Prefere contra o relógio? Veja os jogos →</a></p>`;
     pagina(res, { titulo: 'Exercícios de teoria musical e percepção — Musique', descricao: 'Leitura de notas, intervalos, acordes, escalas, armaduras, campo harmônico, ritmo e percepção auditiva, com explicação de cada erro.', caminho: '/music/praticar', corpo, trilha: [['Praticar']] });
@@ -323,6 +398,27 @@ function relacionados(slug) {
     'identificar-acorde': ['/music/aprender/triades', '/music/praticar/acorde-identificar', '/music/referencia/formulas-de-acordes'],
     'identificar-escala': ['/music/aprender/escala-maior', '/music/praticar/escala-identificar', '/music/referencia/formulas-de-escalas'],
     progressoes: ['/music/aprender/campo-harmonico', '/music/praticar/campo-grau', '/music/referencia/cadencias-e-progressoes'],
+    'mapa-harmonia': ['/music/criar/progressoes', '/music/explorar/acordes-vizinhos', '/music/aprender/campo-harmonico'],
+    'acordes-vizinhos': ['/music/criar/mapa-harmonia', '/music/referencia/cadencias-e-progressoes', '/music/referencia/formulas-de-acordes'],
+    'harmonizador-tonalidades': ['/music/criar/mapa-harmonia', '/music/aprender/campo-harmonico', '/music/referencia/tonalidades'],
+    'piano-roll-harmonico': ['/music/criar/progressoes', '/music/criar/mapa-harmonia', '/music/explorar/piano'],
+    'mandala-harmonica': ['/music/criar/mapa-harmonia', '/music/explorar/harmonizador-tonalidades', '/music/explorar/circulo-de-quintas'],
+    'atlas-harmonia-visual': ['/music/explorar/mandala-harmonica', '/music/aprender/campo-harmonico', '/music/explorar/atlas-escalas'],
+    'superestruturas-acordes': ['/music/explorar/identificar-acorde', '/music/explorar/acordes-vizinhos', '/music/referencia/extensoes'],
+    'intervalos-do-acorde': ['/music/explorar/superestruturas-acordes', '/music/referencia/intervalos', '/music/praticar/intervalo-ouvido'],
+    'editor-de-braco': ['/music/explorar/braco', '/music/explorar/acordes-vizinhos', '/music/referencia/afinacoes'],
+    'visualizador-frequencia': ['/music/explorar/serie-harmonica', '/music/explorar/intervalos-do-acorde', '/music/referencia/frequencias'],
+    policordes: ['/music/explorar/superestruturas-acordes', '/music/explorar/intervalos-do-acorde', '/music/criar/mapa-harmonia'],
+    'editor-de-progressao': ['/music/criar/mapa-harmonia', '/music/explorar/acordes-vizinhos', '/music/criar/piano-roll-harmonico'],
+    'compositor-visual': ['/music/criar/editor-de-progressao', '/music/criar/harmonizador-de-melodia', '/music/aprender/campo-harmonico'],
+    'metronomo-distorcido': ['/music/criar/metronomo-progressivo', '/music/criar/batidas', '/music/referencia/ritmo-e-groove'],
+    'atlas-escalas': ['/music/explorar/comparar-modos', '/music/explorar/braco', '/music/referencia/formulas-de-escalas'],
+    'arranjo-quatro-vozes': ['/music/criar/editor-de-progressao', '/music/criar/mapa-harmonia', '/music/aprender/contraponto'],
+    'harmonizador-de-melodia': ['/music/criar/arranjo-quatro-vozes', '/music/criar/editor-de-progressao', '/music/referencia/graus-e-funcoes'],
+    'gerador-de-progressao': ['/music/criar/editor-de-progressao', '/music/criar/mapa-harmonia', '/music/explorar/harmonizador-tonalidades'],
+    'grafo-harmonico': ['/music/criar/mapa-harmonia', '/music/explorar/mandala-harmonica', '/music/explorar/acordes-vizinhos'],
+    'tendencias-harmonicas': ['/music/criar/compositor-visual', '/music/criar/progressoes', '/music/aprender/cadencias'],
+    'desafio-acordes': ['/music/explorar/identificar-acorde', '/music/praticar/intervalo-ouvido', '/music/aprender/acordes'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
@@ -343,7 +439,7 @@ function relacionados(slug) {
 
 /** URLs públicas e CANÔNICAS para o sitemap (nunca as enarmônicas). */
 function urlsDoSitemap() {
-  const u = ['/laboratorio', '/aprender', '/explorar', '/criar', '/praticar', '/tutor-braco', '/transcrever'].concat(require('./separar').SUSPENSA ? [] : ['/separar']).concat([ '/jogar', '/referencia', '/ensinar', '/escalas', '/acordes', '/intervalos', '/notas']).map((x) => '/music' + x);
+  const u = ['/laboratorio', '/aprender', '/curso-teoria', '/explorar', '/criar', '/praticar', '/tutor-braco', '/tocar', '/transcrever'].concat(require('./separar').SUSPENSA ? [] : ['/separar']).concat([ '/jogar', '/referencia', '/ensinar', '/escalas', '/acordes', '/intervalos', '/notas']).map((x) => '/music' + x);
   CAT.FERRAMENTAS.forEach((f) => u.push(`/music/${f.ambiente}/${f.slug}`));
   CAT.REFERENCIAS.forEach((r) => u.push('/music/referencia/' + r.slug));
   CAT.JOGOS.forEach((j) => u.push('/music/jogar/' + j.slug));

@@ -1,0 +1,352 @@
+{
+ "01-responder-e-agir": [
+  [
+   "Qual a diferença entre inteligência artificial, modelo de linguagem e agente de IA?",
+   "Inteligência artificial é o campo inteiro da computação que cria sistemas capazes de compreender linguagem, reconhecer imagens, aprender padrões e tomar decisões. Dentro dele está o modelo, o sistema treinado que produz o resultado. Um tipo de modelo é o LLM, o grande modelo de linguagem, treinado com muito texto para compreender e gerar conteúdo. O aplicativo que você abre é o produto, com tela, histórico e arquivos em volta do modelo. Já o agente recebe um objetivo, decide as etapas, usa ferramentas, confere o resultado e continua até chegar lá. Em resumo: o modelo pensa e gera, o agente age."
+  ],
+  [
+   "Quais cuidados tomar antes de deixar uma IA executar tarefas sozinha?",
+   "Três proteções precisam estar no lugar. A primeira é permissão explícita: a ferramenta só alcança o que você autorizou, e nunca se autoriza tudo para descobrir depois do que ela precisava. A segunda é aprovação humana para o que não volta atrás, como enviar, publicar, comprar, apagar ou pagar. Se a ferramenta pede confirmação antes dessas ações, não desligue isso por pressa. A terceira é ter uma alternativa manual, porque automação sem plano B vira dependência. A regra que junta as três: quanto mais irreversível a ação, mais humano precisa haver na frente dela."
+  ],
+  [
+   "Como saber se uma tarefa pode ser delegada para a IA?",
+   "Faça três perguntas, nesta ordem. O que eu quero de volta: um texto, uma informação, uma decisão ou uma coisa feita? Se é uma coisa feita, a IA está saindo do papel de assistente. O que pode dar errado, e isso volta atrás? Se volta, dá para soltar a rédea; se não volta, ponha a sua aprovação no meio. A terceira é a mais importante: eu saberia perceber o erro? Se você não domina o assunto o bastante para farejar uma resposta errada, não delegue a execução. Delegue o rascunho e revise você mesmo, porque a IA erra com muita confiança."
+  ]
+ ],
+ "02-as-sete-gavetas": [
+  [
+   "Por que existem tantos produtos com o nome Gemini e como entender cada um?",
+   "Gemini é o nome de um aplicativo, de modelos, de recursos, de um agente e de uma plataforma empresarial. Muita confusão com IA é só problema de nome. O método é perguntar em qual de sete gavetas o nome cai: modelo, que é o motor; aplicativo, onde você entra e usa; recurso, uma função dentro do aplicativo; agente, que executa etapas sozinho dentro de limites; plataforma de desenvolvimento, onde se constrói com os modelos; serviço empresarial, com contrato e auditoria; e experimento, que pode nunca virar produto. Os nomes mudam o tempo todo, as gavetas não."
+  ],
+  [
+   "Como saber quais modelos e recursos do Gemini a minha conta tem acesso?",
+   "Abra o aplicativo e olhe o seletor de modelo, no alto da tela. O que aparece ali é o que a sua conta alcança hoje. Se um nome que você leu não está lá, há três explicações: ele mudou de nome, depende de um plano que você não assina ou não chegou ao Brasil. Depois, teste um recurso de verdade em vez de ler sobre ele. Por fim, anote numa folha, com a data, o que você tem e o que ouviu falar e não tem. Em poucos meses ela estará desatualizada, e perceber isso já faz parte do aprendizado."
+  ],
+  [
+   "Qual é o jeito certo de conversar com o Gemini para ter respostas melhores?",
+   "O erro mais comum é usar o Gemini como se usa a busca, com uma pergunta solta em cada conversa nova, sem contexto e sem arquivo. O que funciona é o oposto: uma conversa por assunto, com o material dentro. Se você está organizando uma mudança, abra uma conversa só para isso, anexe o orçamento, a planta e a lista de móveis, e volte a ela ao longo da semana. Use o clipe de anexo, porque assim a IA responde sobre o documento e não sobre a sua descrição dele. Para assunto que você não quer guardar, use a conversa temporária."
+  ]
+ ],
+ "03-estimar-nao-e-saber": [
+  [
+   "Por que a IA erra números, datas e citações com tanta segurança?",
+   "Porque um modelo de linguagem não consulta uma tabela quando responde. Ele leu uma quantidade enorme de texto, aprendeu padrões e compõe a resposta palavra por palavra, escolhendo a continuação mais plausível. Isso o torna ótimo para reescrever, resumir, traduzir, explicar e organizar. E frágil em número exato, data, citação literal, contagem, fato recente e assunto raro ou local. A resposta soa certa porque parecer certa é exatamente o que ele foi treinado para fazer. Plausível não é verdadeiro. Novas versões melhoram a taxa de acerto, mas o mecanismo continua o mesmo."
+  ],
+  [
+   "O que é janela de contexto e por que a IA esquece o começo da conversa?",
+   "A janela de contexto é quanto o modelo consegue ter na mesa de uma vez: a sua pergunta, o histórico da conversa e os arquivos anexados. Tudo é medido em tokens, pedaços de texto entre a sílaba e a palavra, e é em tokens que o uso é cobrado e limitado. Quando a mesa lota, o que entrou primeiro sai. Não é falta de atenção, é a mesa cheia. Por isso, numa conversa muito longa, vale abrir uma nova e colar um resumo do que importa. Anexar arquivo enorme para uma pergunta pequena também deixa tudo mais lento e caro."
+  ],
+  [
+   "Como saber se posso confiar em uma resposta da IA antes de usar?",
+   "Passe a resposta por três perguntas rápidas. É composição ou consulta? Se traz número, data, nome próprio ou citação, é consulta, e consulta pede uma fonte; sem ela, trate como palpite bem-vestido. É recente? Se o assunto mudou há pouco, o modelo pode estar respondendo com o mundo de ontem, então ele vai à web ou você vai. É raro? Tema muito específico, local ou de nicho tem menos padrão para o modelo se apoiar, e é onde ele mais inventa. Para somar, contar ou buscar registro exato, peça que ele execute a conta com planilha ou código."
+  ]
+ ],
+ "04-pedir-e-iterar": [
+  [
+   "Como escrever um bom prompt para a IA?",
+   "Trate o prompt como instrução de trabalho, não como senha mágica. Um pedido completo pode ter sete blocos: função, objetivo, contexto, regras, estilo, formato e tarefa. Em pedido curto, dois ou três resolvem. Os que mais fazem falta são o formato, que diz como a resposta deve chegar, e as regras, que dizem o que não pode acontecer. Quando você não declara algo, o modelo decide pelo caminho mais comum, e o resultado sai genérico. Um ou dois exemplos do que você considera bom e um critério de sucesso que dê para conferir também melhoram muito o resultado."
+  ],
+  [
+   "Prometer recompensa ou dizer que é urgente melhora a resposta da IA?",
+   "Não. A régua é simples: funciona o que acrescenta informação e não funciona o que acrescenta emoção. Prometer gorjeta ou dizer que o assunto é muito importante para a sua carreira é folclore. Dizer o formato exato da saída, anexar o documento em vez de descrevê-lo, dar exemplos e dizer o que não fazer funcionam, porque restrição é informação. Pedir que a IA aja como um especialista mundial é quase inútil; dizer especialista em quê e para quem muda o resultado. E uma persona muda o vocabulário e o tom, não dá competência nova ao modelo."
+  ],
+  [
+   "O que fazer quando a resposta da IA não ficou boa?",
+   "Não escreva apenas melhore, porque ela muda sem saber para onde. Siga o ciclo de tentativa, diagnóstico e pedido melhor. Antes de pedir de novo, dê nome ao defeito: genérico, prolixo, tom errado, inventou, fora do alvo ou raso. Cada defeito aponta a parte que faltou no pedido, como contexto, formato, estilo ou regras. O pedido melhor traz o defeito nomeado e a correção, com público, fatos concretos e um critério verificável. Se a conversa ficou poluída, abra outra com um resumo do que já foi decidido. Lá pela terceira ou quarta tentativa, avalie se o problema não é falta de material."
+  ]
+ ],
+ "05-privacidade-e-uso-responsavel": [
+  [
+   "O Google lê ou guarda o que eu escrevo no Gemini?",
+   "Segundo a Central de Privacidade dos apps do Gemini, com a atividade ligada, que é o padrão, as conversas ficam salvas na sua conta, e o prazo de exclusão automática pode ser encurtado. Com a atividade desligada ou numa conversa temporária, elas ainda ficam guardadas por pouco tempo. Além disso, revisores treinados analisam uma parte das conversas, desvinculadas da conta. E o que foi separado para revisão fica retido por mais tempo e não some quando você apaga o histórico. Os prazos mudam, então confira na Central. Por isso, a proteção real está em decidir o que entra antes de colar."
+  ],
+  [
+   "Posso colar documentos com dados de clientes ou alunos em uma IA?",
+   "Antes de colar, faça três perguntas. Tem dado de outra pessoa aqui, como nome, documento, telefone, nota, laudo ou foto? Se tem, o dado é de quem ele identifica. Isso precisa mesmo estar aqui para o trabalho sair? Quase nunca precisa: troque nomes por marcadores como [ALUNO 1] ou [CLIENTE] e reponha à mão depois. Se isto vazasse, quem se machucaria? Se for outra pessoa, tire o que identifica. É o que a LGPD chama de minimização. Senha, token, documento de identidade, cartão, dado de criança e informação sob sigilo profissional não entram nunca."
+  ],
+  [
+   "Quais riscos de segurança existem ao usar IA que pouca gente conhece?",
+   "Três se destacam. O primeiro é o erro com cara de autoridade: a IA às vezes erra com segurança, e isso vira risco quando a resposta errada vira ação, como um remédio, uma cláusula ou um número no imposto. A proteção é conferir antes de agir. O segundo é a instrução escondida em material de terceiro: ao ler um site ou PDF de fora, o texto dele também é lido como instrução. Se a IA tem permissão para agir, abra e leia o material antes. O terceiro é usar rosto ou voz de pessoa real sem autorização expressa dela."
+  ]
+ ],
+ "06-gemini-live": [
+  [
+   "Qual a diferença entre o Gemini Live e o ditado por voz no celular?",
+   "No ditado, você fala, recebe o texto, corrige e envia. É um jeito de digitar sem usar o teclado. O Gemini Live é uma conversa falada contínua, com ida e volta, como numa ligação. Você fala, ele responde falando, e você pode interromper no meio da resposta para corrigir o rumo ou acrescentar detalhes. Ele para quando você começa a falar. Quem confunde os dois fica esperando a vez, como se gravasse um áudio, e acha a experiência estranha. Se você só quer escrever sem digitar, use o ditado. Se quer conversar, perguntar e ajustar na hora, use o Live."
+  ],
+  [
+   "Como usar a câmera do celular com o Gemini para entender um objeto ou resolver um problema em casa?",
+   "Aponte a câmera para o que você quer entender e fale uma frase inteira, com contexto, como falaria com uma pessoa ao lado. Diga onde você está, o que aconteceu e o que quer saber: o que é aquilo, se é urgente e qual o próximo passo. Peça também que ele diga quando não tiver certeza. Se ele começar a explicar a coisa errada, interrompa. Evite o estilo telegrama de buscador, que gera resposta genérica. Prefira um ambiente calmo ou fone. E o que precisar ficar registrado, continue por escrito depois, porque é no texto que você copia, edita e guarda."
+  ],
+  [
+   "O que conferir antes de mostrar a câmera ou a tela do celular para uma IA?",
+   "A câmera vê o quadro inteiro, e não só o objeto da pergunta. Antes de apontar, olhe o enquadramento: documento aberto na mesa, crachá, quadro branco com senha, tela de computador ao fundo. Ao compartilhar a tela, tudo o que estiver visível entra na conversa, incluindo abas abertas e notificações que aparecerem no meio. Feche o que não é do assunto antes de começar. Peça permissão antes de incluir outra pessoa, seja um colega de reunião ou uma criança que passa atrás. Lembre ainda que a conversa falada fica guardada na sua atividade. Se o assunto não deve ficar registrado, use a conversa temporária."
+  ]
+ ],
+ "07-escrever-resumir-e-comunicar": [
+  [
+   "Como usar IA para escrever um e-mail difícil sem que o texto pareça feito por máquina?",
+   "Inverta o pedido. Em vez de mandar a IA escrever o e-mail, descreva a situação: quem é o destinatário, a história entre vocês, o que precisa acontecer depois da leitura e o que você não pode dizer, como acusar ou prometer prazo. Peça o plano: os pontos que o texto precisa cobrir, a ordem e a armadilha de tom mais provável. Escreva você, com as suas palavras, mesmo que fique tosco. Depois peça crítica, e não reescrita: o que está confuso, o que soa agressivo, o que falta. Corrija e leia em voz alta. Se você não falaria assim, ninguém deveria ler assim."
+  ],
+  [
+   "Como pedir para a IA resumir um contrato ou documento longo de um jeito útil?",
+   "Não peça só \"resuma isto\". A máquina não sabe o que importa para você e entrega um resumo neutro, que esconde os pontos ruins na média. Diga para que o resumo serve: para decidir se você assina, para explicar o assunto numa reunião em poucos minutos ou para mostrar só o que mudou em relação à versão anterior. Faça também a pergunta que quase ninguém faz: o que neste documento pode me prejudicar? Uma pergunta com direção encontra as cláusulas que importam. E trate o resumo como ponto de partida da leitura. Se você vai assinar, leia o documento, começando pelos trechos apontados."
+  ],
+  [
+   "Como saber se uma tradução feita por inteligência artificial ficou boa?",
+   "Comece dando contexto antes de pedir a tradução. Diga o destino: quem vai ler e para quê, porque traduzir um texto qualquer é diferente de traduzir um e-mail comercial para um cliente que você nunca viu. Avise o que não deve ser traduzido, como nome de produto, termo técnico da sua área ou expressão jurídica brasileira. Em trechos difíceis, peça opções com a diferença de registro entre elas e decida você. Depois faça a conferência: peça que a IA traduza o resultado de volta para o português, sem olhar o original. Se voltar diferente do que você quis dizer, a tradução tem problema."
+  ]
+ ],
+ "08-planejar-a-vida-viagens-e-projetos": [
+  [
+   "Por que o roteiro de viagem que a IA monta sai caro e cansativo?",
+   "Quase sempre o problema está no pedido, e não na resposta. Sem as restrições reais, a máquina planeja para uma família imaginária. Antes de pedir, escreva cinco coisas. O dinheiro, com valor total em reais e o que ele inclui. O tempo real, descontando deslocamento, com horário de chegada e de partida. As pessoas, com idade, ritmo e limitações. O inegociável, uma coisa por pessoa. E o que já está decidido, como data comprada ou hospedagem reservada. Um bom pedido é desconfortavelmente específico. Se você não se sentiu meio ridículo de tão detalhado, faltou informação."
+  ],
+  [
+   "Qual a melhor ordem para pedir um roteiro de viagem a uma IA?",
+   "Não comece pelo roteiro. Primeiro peça a estrutura: com aquele orçamento e aquelas pessoas, qual a divisão razoável entre passagem, hospedagem, comida e passeios, e quantos destinos cabem nos dias disponíveis. Essa resposta corta cedo as ideias que não cabem no dinheiro ou no tempo. Só então peça o roteiro dia a dia, com uma regra explícita de no máximo uma atividade principal por dia. Depois peça uma versão com 30% a menos e veja o que se perde, porque isso revela o que importava. Por fim, peça o plano B para dias de chuva e o que cortar primeiro se o dinheiro acabar."
+  ],
+  [
+   "Posso confiar nos preços de passagem e hotel que o Gemini mostra?",
+   "Use a pesquisa para entender o formato da viagem, e não para fechar a compra. Ela ajuda a ver a rota possível, a faixa de preço e os dias que saem mais baratos. Mas preço de passagem muda rápido, então todo número do roteiro precisa ser conferido na fonte antes de virar compromisso: valor, horário, se o lugar abre naquele dia e se exige reserva. Compre no site da companhia ou do hotel. O Gemini pesquisa, e quem decide e paga é você. Também não espere que ele reserve, cancele ou faça check-in por você. Confira na Ajuda oficial o que o recurso faz hoje."
+  ]
+ ],
+ "09-deep-research-canvas-e-gems": [
+  [
+   "Quando vale a pena usar o Deep Research do Gemini em vez da conversa comum?",
+   "O Deep Research não responde na hora. Ele monta um plano, navega, lê e volta com um relatório com fontes, e essa demora é justamente o que ele oferece. Use para decidir alguma coisa: uma compra cara, a escolha entre duas escolas ou dois planos, a preparação para uma reunião, uma decisão que você vai precisar defender depois. Para pergunta simples ou assunto que muda de hora em hora, a conversa comum ou a Busca resolvem mais rápido. Antes de iniciar, leia o plano de pesquisa que ele apresenta, corte os tópicos que não interessam e acrescente a pergunta que realmente importa para você."
+  ],
+  [
+   "Para que serve o Canvas do Gemini e quando usar?",
+   "O Canvas resolve um problema comum: numa conversa, cada nova versão do texto vira uma mensagem nova, e depois de várias rodadas a versão boa se perde lá em cima. No Canvas, o texto fica num painel ao lado e as alterações acontecem no próprio documento. É como editar um arquivo em vez de receber fotocópias. Use quando o texto vai passar por várias revisões, tem estrutura com seções e ordem ou vai virar documento de verdade. Para resposta curta ou para pedir uma opinião, fique na conversa. Combina bem com o método de escrever você as frases e pedir crítica à IA."
+  ],
+  [
+   "Como criar um Gem no Gemini que realmente funcione?",
+   "Escreva as instruções com sete blocos: função, objetivo, contexto, regras, estilo, formato e tarefa. A estrutura oficial é mais curta, mas são as regras e o estilo que fazem o Gem soar como você. Anexe arquivos de conhecimento que descrevam o seu trabalho, lembrando que eles ficam disponíveis em todo uso, então prefira versões resumidas e sem nomes de terceiros. Crie um Gem para cada tipo de tarefa e só para o que se repete. Para testar, faça um pedido sem dar contexto. Se a resposta vier no seu tom e com as suas regras, está pronto. Atualize sempre que precisar explicar algo de novo."
+  ]
+ ],
+ "10-a-ia-que-conhece-voce": [
+  [
+   "Vale a pena conectar o Gmail e o Google Fotos ao Gemini?",
+   "Conectar seus aplicativos permite perguntar em linguagem comum e receber a resposta a partir do que está na sua conta, como achar um orçamento antigo no e-mail. É útil, e por isso pede decisão consciente. A permissão é dada aplicativo por aplicativo e pode ser desligada a qualquer momento. Comece pelo menos sensível, use alguns dias e só depois avance. Deixe o e-mail por último, porque ele guarda sua vida financeira, médica e profissional, além de mensagens de outras pessoas. Fotos trazem rostos, inclusive de crianças, e localização. Depois de um mês, revise e desligue o que não se pagou."
+  ],
+  [
+   "Como pedir uma fórmula de planilha para a IA e entender o que ela faz?",
+   "Descreva em português o que precisa calcular, do jeito que explicaria a uma pessoa. Diga quais são as colunas, em que linha os dados começam e quais são os casos especiais, como célula vazia, texto onde deveria haver número ou datas em formatos diferentes. Esses casos causam quase todo erro de planilha. Peça uma única fórmula e a explicação de cada parte. Assim você aprende e consegue adaptar depois, em vez de só colar. Por fim, teste com um dado propositalmente errado e veja o que quebra. Se a planilha já está aberta, faça isso dentro do próprio aplicativo."
+  ],
+  [
+   "Como encontrar um comprovante ou documento que fotografei e não acho mais?",
+   "Trate a sua biblioteca de fotos como um arquivo de documentos. Muita gente fotografa comprovante, receita, etiqueta, placa ou número de série e nunca mais encontra rolando a galeria. Em vez de procurar pela data, que você raramente lembra, procure por descrição. Descreva o que aparece na imagem, e não o que a foto significa para você: a etiqueta da máquina de lavar, o papel com um número, a anotação num quadro. Se aparecerem várias candidatas, compare. Se nada aparecer, tente outras formas de descrever a mesma coisa. Depois, junte os documentos achados num álbum para encontrá-los rápido da próxima vez."
+  ]
+ ],
+ "11-o-briefing-do-dia": [
+  [
+   "Como montar um briefing matinal com IA usando só o que eu já tenho na minha conta?",
+   "Crie um assistente com regras fixas, como um Gem, e toda manhã cole nele só o assunto e o remetente dos e-mails da noite, mais os compromissos do dia copiados da agenda. Peça que organize tudo em quatro seções, sempre na mesma ordem: o que é inadiável hoje, quem está esperando por você, o que você decidiu ontem que faria hoje e o que pode ignorar sem culpa. Limite cada seção a poucos itens e exija uma última linha com a primeira ação do dia. É manual, mas leva cerca de noventa segundos. O que faz o briefing funcionar são as regras que você escreveu, não a automação."
+  ],
+  [
+   "Por que meu resumo diário feito por IA marca quase tudo como urgente?",
+   "Quase sempre porque você não definiu, por escrito, o que é urgente para você. Sem essa definição, a IA trata como urgente qualquer assunto com ponto de exclamação, e a sua vida não funciona assim. Urgência é critério pessoal: se você não define, delega o critério. Escreva exemplos concretos, como prazo que vence logo ou cliente esperando resposta há mais de um dia, e liste também o que nunca é urgente, como newsletter, promoção e cobrança já agendada. Depois, amarre o briefing a um gatilho fixo, como o primeiro café, e ajuste as instruções toda sexta, olhando o que ele chamou de urgente sem ser e o que deixou passar."
+  ],
+  [
+   "Como saber se organizar a semana com ajuda de IA realmente me deu mais tempo?",
+   "Meça antes de mudar qualquer coisa. No domingo, anote três números da semana que passou, mesmo por estimativa: quanto tempo levava por dia até saber o que fazer primeiro, quantas vezes abriu a caixa de entrada sem responder nada e quantas coisas ficaram para depois por esquecimento, não por escolha. Durante a semana, faça o briefing de manhã, uma triagem no meio do dia e feche o dia à noite em três linhas: o que ficou pendente, o que decidiu e não executou e a primeira coisa de amanhã. No domingo seguinte, meça de novo e pergunte o que deixou de fazer que teria feito antes. Se a resposta for nada, você ganhou tarefas, não tempo."
+  ]
+ ],
+ "12-gemini-spark-delegar-com-limites": [
+  [
+   "Qual a diferença entre pedir algo a um chatbot e delegar uma tarefa a um agente de IA?",
+   "Quando você pede algo a um chatbot, o erro termina numa resposta que você lê antes de usar. Um agente executa: organiza arquivos, monta planilhas, vigia um assunto e trabalha em segundo plano, inclusive quando você não está olhando. Aí o erro deixa de ser um texto ruim e vira uma consequência, que pode chegar a outra pessoa, ao seu dinheiro ou aos seus arquivos antes que você veja. Isso não impede delegar, mas muda o jeito. Quem delega escreve os limites antes, com a cabeça fria, autoriza só o acesso mínimo que a tarefa exige e marca datas para conferir o que foi feito."
+  ],
+  [
+   "Qual é uma boa primeira tarefa para entregar a um agente de IA com segurança?",
+   "Uma que passe em três critérios obrigatórios. Reversível, para que você desfaça em minutos se sair errado. Sem envio, para que nada saia da sua conta para outra pessoa. Sem dinheiro, sem compra nem pagamento. Bons candidatos são organizar uma pasta bagunçada, montar uma planilha com arquivos que você já tem ou monitorar um assunto e avisar quando algo acontecer. Esse último costuma ser a melhor estreia, porque um agente que vigia custa menos atenção do que um que produz. Evite começar por qualquer coisa que responda a alguém, que apague ou em que você não saiba dizer como era antes. E não delegue o que não saberia refazer à mão."
+  ],
+  [
+   "Como definir limites e acompanhar um agente de IA para ele não fazer o que não deve?",
+   "Antes de configurar, escreva meia página com quatro blocos: o que o agente pode fazer sozinho, o que ele mostra antes de concluir, o que nunca faz e como você desfaz. Se a lista do que nunca faz tiver menos de quatro itens, faltou pensar nos casos ruins. \"Seja cuidadoso\" não é limite; limite é concreto e verificável. Descubra também onde vê o que ele fez, como interrompe e como desfaz. Nunca desligue a confirmação para ação irreversível, como enviar, pagar ou apagar. Acompanhe a primeira execução inteira, confira de novo na terceira e na décima, anote cada uma e, no fim da semana, compare o registro com os limites escritos."
+  ]
+ ],
+ "13-ai-search": [
+  [
+   "Qual a diferença entre os links, o resumo gerado e o modo de conversa na Busca do Google?",
+   "Hoje a mesma página mostra três camadas. A lista de links continua lá, mais abaixo, e é o caminho mais direto quando você já sabe aonde quer chegar. No topo aparece o resumo gerado, que lê várias páginas e compõe uma resposta, com as fontes ao lado ou logo abaixo. E há o modo de conversa, em que você pergunta, refina e pergunta de novo. O resumo serve para entender rápido; a conversa, para explorar e comparar. Nela, escreva a pergunta inteira, com contexto, e diga o país. Uma resposta sem país pode estar descrevendo a regra de outro lugar, e não avisar."
+  ],
+  [
+   "Posso confiar no resumo de IA que aparece no topo da pesquisa do Google?",
+   "Na maioria das vezes ele está certo, mas uma resposta que você não sabe de onde veio é uma resposta que você não consegue defender. O método tem dois passos. Primeiro, clique nas fontes que o resumo mostra; nas primeiras semanas, em todas. Você vai notar que às vezes a fonte diz menos do que o resumo afirma, e que de vez em quando é um site qualquer, não a autoridade no assunto. Segundo, para o que importa, vá à fonte primária: lei no site oficial, preço na loja, especificação no fabricante, bula na bula. Um resumo sobre um documento não é o documento."
+  ],
+  [
+   "Quando não devo usar um resumo gerado por IA na busca para decidir ou provar algo?",
+   "Antes de repassar qualquer coisa lida num resumo gerado, pergunte a si mesmo: se me perguntarem quem disse isso, eu sei responder? Se não, ainda falta abrir a fonte, conferir a data e chegar ao original. Em decisão médica, jurídica ou financeira, o resumo ajuda a entender e a formular perguntas, mas quem decide é quem responde pelo que assina. Para o que muda por hora, como preço, disponibilidade e horário, confirme sempre na fonte. Quando você precisa do texto literal, como uma cláusula, um artigo de lei ou uma posologia, leia o original. E a captura de tela de um resumo gerado não é documento para ninguém."
+  ]
+ ],
+ "14-estudar-com-as-suas-fontes": [
+  [
+   "Por que estudar no Gemini Notebook, o antigo NotebookLM, é diferente de perguntar ao Gemini comum?",
+   "O Notebook responde só com o material que você entregou e mostra o trecho exato de onde tirou cada resposta. O assistente comum responde com tudo o que aprendeu, e você não sabe de onde veio cada pedaço. Para quem estuda, a pergunta deixa de ser \"isso é verdade?\" e vira \"isso está no meu material?\". Há uma armadilha: os cadernos também aparecem dentro do app Gemini, e por lá a resposta pode incluir pesquisa na web sem aviso na tela. Quando a rastreabilidade importa, como em prova, trabalho ou contrato, trabalhe dentro do próprio Notebook. Esse comportamento pode mudar com o produto, então reconfira."
+  ],
+  [
+   "Como escolher e organizar as fontes de um caderno de estudo com IA?",
+   "Escolha antes de subir qualquer coisa. De cinco a dez fontes boas valem mais do que trinta ruins, e uma delas deve ser difícil de propósito, como o texto original, a norma ou o artigo, porque material só mastigado ensina a reconhecer, não a entender. Faça um caderno por assunto, para a ferramenta não misturar contextos. Converta PDF escaneado para texto, senão ele vira uma fonte muda, ignorada sem dar erro. Depois, antes de perguntar, peça o panorama: o que as fontes cobrem, onde concordam, onde divergem e o que não está lá. Se esse último bloco vier vazio, desconfie. Fonte ruim entra, resposta ruim sai, com citação bonita."
+  ],
+  [
+   "Como usar IA para estudar de forma ativa e revisar os meus próprios erros?",
+   "Depois de estudar um tópico, explique de volta com as suas palavras e peça que a IA aponte o que você errou, sem reescrever a sua explicação. Anote os erros num documento à parte e, uma vez por semana, suba esse registro como fonte nova no caderno, pedindo questões focadas só no que você ainda não domina. Assim o caderno passa a estudar você. Nos testes, exija alternativas erradas plausíveis, construídas a partir de confusões reais; se você acerta tudo de olhos fechados, elas estão ruins. Confira as citações, porque às vezes o trecho sustenta menos do que a frase. E marque três revisões no mesmo dia: em dois dias, em uma semana e em um mês."
+  ]
+ ],
+ "15-pesquisa-defensavel": [
+  [
+   "Quais são as etapas de uma pesquisa bem feita usando inteligência artificial?",
+   "São cinco, nesta ordem: a pergunta, recortada e com país; as fontes, escolhidas por critério; a leitura crítica; a síntese, com cada afirmação amarrada à sua origem; e a verificação do que vai virar decisão. A IA acelera muito a leitura e a síntese. As outras três continuam com você, e são elas que separam pesquisa de coleta de opinião. Pesquisar não é achar: é achar, conferir e conseguir mostrar de onde veio. Um relatório que você não consegue defender é opinião com aparência de trabalho. Antes de começar, escreva qual resposta faria você mudar de ideia. Sem isso, você só está procurando confirmação, e vai achar."
+  ],
+  [
+   "Como fazer uma pergunta de pesquisa para a IA não responder sobre o mercado de outro país?",
+   "Toda pergunta sobre regra, preço ou prática precisa de país e de data. Uma pergunta vaga, como \"cláusula de exclusividade é ruim?\", pode receber uma resposta longa e convincente sobre o mercado de outro país, sem nenhum aviso. Recorte a dúvida com quatro elementos: o recorte do assunto, o país, o seu papel na situação e o que exatamente você quer saber. Por exemplo, perguntar o que essa cláusula implica para um tradutor técnico autônomo no Brasil e que contrapartidas são usuais. Se ainda não conhece os termos certos, use primeiro uma busca em modo de conversa para descobrir o vocabulário, as normas e os órgãos envolvidos."
+  ],
+  [
+   "Como verificar uma pesquisa feita com IA antes de tomar uma decisão importante?",
+   "Confira fora as três afirmações em que a decisão se apoia. Fora quer dizer fora: não pergunte de novo à mesma IA, porque ela repete o erro com a mesma confiança, e a repetição parece confirmação. Suba um nível na escada de fontes. Se você tem uma reportagem, procure o documento; se tem o documento, confirme que é a versão em vigor. Em compra de valor alto, procure quem reclamou. O teste final é simples: alguém que discorda de você conseguiria checar cada afirmação sem te perguntar nada? Pare quando as fontes começarem a se repetir e a resposta deixar de mudar as suas conclusões. Em assunto jurídico, médico ou tributário, leve as perguntas ao profissional."
+  ]
+ ],
+ "16-professores-alunos-e-a-ia": [
+  [
+   "Detector de texto gerado por IA funciona para pegar cola de aluno?",
+   "Não é uma base segura para decidir nada sobre um aluno. Há três problemas. O detector erra, e o erro tem nome: falso positivo, que acusa um inocente. Ele erra mais com quem escreve de modo formal, com quem escreve em segunda língua e com alunos neurodivergentes. Além disso, cada nova geração de modelos deixa a detecção menos confiável. E, mesmo que funcionasse sem falhas, responderia se houve IA, quando a pergunta que importa é se houve aprendizado. O dano de uma acusação injusta é maior que o de uma cola que passou. A saída é mudar o formato da avaliação."
+  ],
+  [
+   "Como fazer uma avaliação que a IA não resolva pelo aluno?",
+   "Use formatos que exigem presença. A defesa oral de cinco minutos é o método mais antigo e mais eficaz: quem não fez o trabalho não consegue sustentá-lo numa conversa. Avaliar o processo também funciona, olhando rascunho, fontes escolhidas e versões descartadas, porque a IA entrega o produto pronto, mas não um histórico de decisões. Outra opção é exigir o material da sala como fonte, como a discussão de uma aula ou um experimento da turma. Pedir que o aluno aplique o conceito à própria rua, família ou trabalho e pedir uma declaração de como usou a IA completam a lista. Nenhum desses formatos depende de tecnologia."
+  ],
+  [
+   "Qual a diferença entre usar IA para estudar e fazer cola?",
+   "A linha não passa por usar ou não usar. Passa por quem fez o trabalho de pensar. Pedir que a IA explique um conceito de outro jeito é legítimo; pedir que escreva o trabalho, não. Pedir crítica do seu texto é legítimo; pedir que reescreva e entregar como seu, não. Um teste simples ajuda: você conseguiria defender o trabalho numa conversa de cinco minutos, sem consultar nada? Se a resposta for não, o trabalho não é seu. Para estudar de verdade, peça a explicação de três formas, pare na que funcionar e depois explique de volta com as suas palavras, pedindo que apontem o que você errou."
+  ]
+ ],
+ "17-dirigir-a-ia-criativa": [
+  [
+   "Como escrever um briefing antes de gerar imagem com IA?",
+   "Escreva cinco linhas antes de abrir qualquer ferramenta. O que é a peça. Para quem, pensando numa pessoa concreta e não no público em geral. Onde vai aparecer, porque isso decide a proporção, e proporção definida depois destrói o enquadramento aprovado. O que a pessoa precisa sentir ou fazer, lembrando que achar bonito não é objetivo; entrar na loja ou perguntar o preço é. E o que não pode aparecer, como marca de terceiro, pessoa identificável ou elemento fora da identidade. Quem pula da ideia direto para o prompt costuma receber uma imagem bonita e inútil, que poderia ser de qualquer negócio."
+  ],
+  [
+   "Por que usar adjetivo no prompt de imagem dá resultado genérico?",
+   "Porque o modelo aprendeu o sentido de palavras como elegante, aconchegante ou moderno com a média da internet, e o resultado sai médio. A solução é trocar a impressão pela decisão concreta. Em vez de elegante, peça fundo liso, uma cor só e muito espaço vazio. Em vez de aconchegante, luz de fim de tarde entrando de lado, com sombras longas. Melhor ainda é mostrar uma referência: a foto do produto real, uma imagem com a luz que você quer copiar ou uma peça antiga da marca. Pense nas decisões que toda imagem tem: enquadramento, ponto de vista, luz, fundo e cor."
+  ],
+  [
+   "Como fazer várias imagens com IA que pareçam da mesma marca?",
+   "Trate a geração como conversa, não como loteria. Gere a primeira peça sabendo que é rascunho e corrija uma coisa por vez, dizendo o defeito e não o desejo: \"escureça o fundo\" funciona melhor que \"deixe mais dramático\". Quando aprovar a primeira, use essa imagem como referência de estilo para a segunda e a terceira. É isso que transforma três imagens numa campanha. Registre o que funcionou, como paleta, tipo de luz, enquadramento e o prompt inteiro. Peça as imagens sem texto e escreva por cima num editor, porque acento e cedilha ainda são ponto fraco. E pare quando a peça já resolve o objetivo do briefing."
+  ]
+ ],
+ "18-video-tomada-por-tomada": [
+  [
+   "Dá para gerar um vídeo inteiro de 30 segundos com IA de uma vez só?",
+   "Não do jeito que muita gente imagina. O modelo de vídeo entrega tomadas curtas, de poucos segundos, e a peça maior nasce da montagem. O caminho é escrever as tomadas antes, gerar cada uma e juntar num editor. Um exemplo de meio minuto em quatro tomadas: a primeira estabelece o lugar, a segunda aproxima, a terceira mostra um detalhe de perto e a quarta fecha. O que mantém a unidade entre elas é a imagem de referência e a paleta definidas no briefing. Outro cuidado: o vídeo gerado não fica guardado para sempre no servidor, então baixe no mesmo dia o que prestar."
+  ],
+  [
+   "Por que gerar a imagem antes do vídeo com IA?",
+   "Porque, se você só descreve o objeto em palavras, o modelo inventa um qualquer. Se você gera a imagem antes, aprova e usa como primeiro quadro, o que aparece no vídeo é o seu objeto. Também dá para entregar o último quadro, e o modelo preenche o caminho entre os dois. Além do controle, há economia: errar uma imagem custa segundos, errar um vídeo custa minutos e mais créditos. Por isso, rascunhe no modelo mais barato e deixe o caro para a versão final. Em cada tomada, defina o que se move, a luz e o som, e use um único movimento de câmera."
+  ],
+  [
+   "Como editar um vídeo gerado por IA sem estragar a cena?",
+   "Diga o que muda e diga o que não pode mudar. Por exemplo: troque o vaso por um de cerâmica branca, mantendo a mesma luz, o mesmo enquadramento e o mesmo movimento de câmera. A segunda parte da frase é a que salva a cena, porque modelo de vídeo altera coisas em silêncio. Faça uma mudança por vez e, no fim do pedido, mande o modelo listar tudo o que alterou, inclusive o que você não pediu. Depois assista com calma procurando erros de física e continuidade: sombra que não acompanha, objeto que atravessa outro, mão que ganha um dedo. Trocar uma pessoa no vídeo exige autorização por escrito."
+  ]
+ ],
+ "19-som-musica-e-voz": [
+  [
+   "Como pedir uma trilha sonora para vídeo a uma IA de música?",
+   "Peça com decisões, não com adjetivos, porque algo alegre e moderno leva ao genérico. Defina a função da trilha: sustentar, marcar ritmo, criar tensão ou dar respiro. Descreva a instrumentação de verdade, como violão dedilhado e um baixo discreto, em vez de só acústico. Indique andamento e energia, diga se tem voz e peça a duração exata da peça, para a faixa terminar resolvida em vez de cortada no meio. Se houver locução por cima, peça uma trilha de fundo, sem vocais e sem melodia forte na faixa média, que é onde mora a voz humana. Ouça com atenção antes de publicar."
+  ],
+  [
+   "Posso clonar a voz de outra pessoa com inteligência artificial?",
+   "Só com autorização explícita e por escrito, sem exceção, nem para mãe, sócio ou só de teste. Clonar a própria voz é decisão sua e faz sentido para narrar uma série ou para acessibilidade. Fazer alguém dizer o que não disse não tem versão aceitável. A voz identifica uma pessoa como uma impressão digital, e a LGPD trata dado biométrico como dado pessoal sensível. Não use áudio de terceiro como referência, nem de WhatsApp ou de reunião, que costuma ter outras pessoas dentro. Guarde a autorização, que vale mais que o arquivo, e declare quando a voz sintética puder passar por real. Em caso concreto, consulte um advogado."
+  ],
+  [
+   "Quando é melhor não usar música gerada por IA no vídeo?",
+   "Quando o vídeo vai ser monetizado e você ainda não leu os termos de uso comercial, porque as regras para música gerada mudam e cada plataforma de vídeo tem as suas. Também quando existe uma trilha licenciada que resolve, já que um banco de música pode ser mais rápido e mais seguro do ponto de vista jurídico. E nunca peça uma música no estilo de uma canção famosa. Para negócio pequeno, vale outra lembrança: antes de pensar em locução sintética, experimente a voz do dono, gravada no celular. Ela costuma convencer mais. Em qualquer caso, a trilha deve entrar no planejamento desde o briefing, e não como última etapa."
+  ]
+ ],
+ "20-synthid-e-publicacao": [
+  [
+   "Se o verificador do Google não detectou IA, a imagem é verdadeira?",
+   "Não. O verificador só reconhece conteúdo marcado com SynthID, a marca d'água invisível que a IA do Google coloca no que gera. Se a resposta é sim, é prova forte de que o conteúdo foi gerado ou editado pela IA do Google. Se a resposta é que não detectou, pode ser foto real, imagem de outra ferramenta de IA ou montagem feita à mão. A ferramenta confirma, mas não inocenta. Usar a ausência da marca como prova de autenticidade é erro de lógica e ajuda a espalhar desinformação. Também não é perícia: para processo ou denúncia, procure um profissional."
+  ],
+  [
+   "Qual a diferença entre SynthID e C2PA?",
+   "O SynthID é uma marca d'água imperceptível embutida no próprio conteúdo. Ela resiste a corte, filtro e compressão, mas só cobre o que veio da IA do Google. O C2PA é um padrão aberto, mantido por um consórcio de empresas, que anexa ao arquivo uma espécie de certidão de origem: quem criou, com que ferramenta e o que mudou depois. Vale para vários fabricantes, mas a credencial pode se perder quando o arquivo é reprocessado. Um responde se aquilo veio da IA do Google; o outro, de onde veio e o que mudou. Verificação séria olha os dois, além da coerência interna e do contexto."
+  ],
+  [
+   "Preciso avisar que uma imagem foi feita com IA?",
+   "A regra cabe numa frase: se alguém pode achar que aquilo aconteceu, diga que não aconteceu. Ilustração de post, fundo decorativo e arte conceitual não exigem aviso. Foto de produto que o cliente vai receber, imagem de pessoa e voz sintética que pode passar por humana pedem declaração. Material jornalístico, científico ou probatório, sempre. Declarar protege você: quem declara não pode ser pego escondendo, e cliente que recebe algo diferente da foto não volta. Rosto de pessoa real exige autorização escrita. E guarde seus originais com data, que são a melhor defesa contra quem disser que uma foto verdadeira sua é IA."
+  ]
+ ],
+ "21-de-usuario-a-operador": [
+  [
+   "Como começar a construir coisas com inteligência artificial sem quebrar tudo?",
+   "Quando você sai do aplicativo pronto e passa a construir, o teto sobe e o chão desaparece. O que segura você é o método, em quatro movimentos. Peça uma mudança por vez, com objetivo claro. Crie um ponto de retorno antes de começar e a cada etapa que der certo, como o save do videogame. Olhe o tamanho do que mudou: se pediu para trocar uma cor e vinte arquivos foram alterados, algo saiu do rumo. E saiba parar: se três tentativas seguidas pioraram, volte ao último ponto bom e reformule o pedido. Vinte pedidos pequenos e conferidos chegam mais longe do que um pedido gigante."
+  ],
+  [
+   "Qual deve ser o meu primeiro projeto de automação com IA?",
+   "A menor coisa útil. O critério tem três partes. Ela resolve um problema seu, real, que você faz à mão e detesta. Cabe em uns dez minutos de trabalho manual, para você conseguir testar comparando o resultado das duas formas. E não manda nada para ninguém nem gasta dinheiro. Servem tarefas como renomear arquivos por um padrão, extrair dados de notas fiscais para uma planilha ou classificar mensagens em categorias. Projetos como um sistema para a empresa, um site completo ou um robô que responde clientes costumam morrer no meio. Liste tarefas com verbo e tempo semanal, e não áreas como financeiro."
+  ],
+  [
+   "Posso usar dados reais de clientes no Google AI Studio gratuito?",
+   "Não. Nos serviços sem cobrança da Gemini API, os termos dizem que o Google pode usar o conteúdo para melhorar seus produtos e que revisores humanos podem ler a entrada e a saída. O próprio Google pede que não se envie informação sensível, confidencial ou pessoal nesse ambiente. Na prática, construa com dados de mentira: nada de contrato de cliente, planilha com CPF, senha ou segredo da empresa. Dado fictício precisa ser fictício de verdade, porque trocar só o sobrenome não anonimiza um cadastro. Quando o protótipo funcionar, decida se vale migrar para o serviço pago, que tem outra política, e confira os termos vigentes."
+  ]
+ ],
+ "22-agentes-por-dentro": [
+  [
+   "O que é um agente de IA e como ele funciona por dentro?",
+   "Um agente não é uma IA mais inteligente. É um modelo com quatro ingredientes: um objetivo, que é um resultado e não uma pergunta; ferramentas, como buscar na web, ler arquivo ou executar código; memória de trabalho, que guarda o que já tentou e evita andar em círculos; e permissões, que dizem o que ele alcança e o que depende de você. Ele roda num laço: planeja um passo, executa, observa o resultado e corrige, até chegar ao objetivo ou bater num limite. Não há mágica nem intenção. Há um modelo escolhendo a próxima ferramenta com base no que aconteceu antes."
+  ],
+  [
+   "Como definir com segurança as permissões de um agente de IA?",
+   "Desenhe no papel antes de o agente existir. Descreva a tarefa com verbo, e não a área: cuidar do financeiro exige acesso a tudo, enquanto ler os boletos de uma pasta e montar uma planilha exige quase nada. Aplique o menor privilégio, com uma justificativa ligada à tarefa para cada acesso. Coloque aprovação humana antes do que não tem volta, como enviar, publicar, comprar, apagar e pagar, porque o agente erra e constrói em cima do erro. Defina um teto de gasto, já que cada volta do laço custa. E configure a lista de endereços de rede permitidos para tarefa séria."
+  ],
+  [
+   "Qual a diferença entre MCP, A2A e ADK em agentes de IA?",
+   "Cada sigla cabe numa imagem. O MCP é a tomada padronizada entre a IA e as ferramentas: liga o modelo a e-mail, agenda, arquivos ou banco de dados, e qualquer sistema com o plugue certo encaixa em qualquer IA que aceite o padrão. É aberto, não é tecnologia do Google. O A2A é o idioma comum entre agentes, usado para combinar quem faz o quê; como é um padrão ainda imaturo e sujeito a mudanças, a recomendação é aprender o conceito e adiar a dependência. O ADK é a caixa de ferramentas de quem programa agentes, um framework de código aberto do Google."
+  ]
+ ],
+ "23-o-que-dura-e-onde-roda": [
+  [
+   "Como avaliar se uma ferramenta de IA pode ser descontinuada antes de depender dela?",
+   "Faça as perguntas de dependência antes de construir algo importante. Qual é o meu custo de troca se ela sumir amanhã? Um protótipo não custa nada para refazer; um processo diário custa muito. O que é proprietário ali? Consigo exportar o meu trabalho? Ela continua no discurso principal do fabricante, nas conferências e páginas de destaque? Existe um plano B que eu saberia executar? Ferramenta grande de fabricante grande também sai do ar, então não vale pensar que ela não vai acabar. Prototipe em qualquer coisa e construa o que importa sobre o que você consegue levar embora. E exporte hoje."
+  ],
+  [
+   "Vale a pena rodar um modelo de IA local no próprio computador?",
+   "Compensa em poucas situações. A principal é quando o dado não pode sair, por sigilo profissional, prontuário, contabilidade de terceiros ou exigência contratual. Também ajuda sem internet confiável, com volume enorme de tarefa simples ou para aprender. Fora disso, a nuvem costuma ganhar em qualidade e em trabalho. Modelo aberto, como a família Gemma, não é código aberto no sentido tradicional, não é de graça, porque você paga com máquina, energia e tempo, e não tem a mesma qualidade. E local protege um elo, não a corrente: quem acessa a máquina e as obrigações da LGPD continuam valendo."
+  ],
+  [
+   "Como saber se uma novidade de IA anunciada já é algo que eu posso usar?",
+   "Separe três gavetas: pesquisa, produto e plataforma. Pesquisa impressiona, mas não tem plano, preço nem suporte. Produto é o que você abre e alguém responde se quebrar. Plataforma é onde outros constroem. Diante da manchete, pergunte: é artigo, demonstração ou produto? Quem pode usar hoje? O que exatamente foi medido? Qual a distância até a minha vida? Superar especialistas numa tarefa específica não é superar especialistas. Se a resposta for pesquisadores selecionados, a distância pode ser de anos. Avalie a ferramenta, e não a marca do laboratório. Entusiasmo com pesquisa, decisão com produto."
+  ]
+ ],
+ "24-dois-projetos-reais": [
+  [
+   "Como planejar uma campanha de marketing com IA para um negócio pequeno?",
+   "Campanha não é um monte de posts bonitos, é uma promessa repetida para uma pessoa específica. Descreva o cliente como pessoa, com quem viaja, quanto gasta e, principalmente, a objeção que impede a compra. Escreva uma mensagem única, em uma frase, que responda a essa objeção em vez de elogiar o produto. Pesquise o que os concorrentes prometem, do que as pessoas reclamam e que datas da cidade mexem com a procura. Monte um calendário de duas semanas que misture prova, objeção, utilidade, oferta e lado humano, com no máximo duas ofertas. Meça por um número ligado a dinheiro, anotado antes de publicar."
+  ],
+  [
+   "Posso usar imagem gerada por IA para mostrar meu imóvel ou produto no anúncio?",
+   "Não para o que o cliente vai receber. Hóspede que chega e encontra uma casa diferente da imagem não volta, e conta. A IA serve para ilustração, fundo e composição; a câmera serve para o que a pessoa vai encontrar. Sem boas fotos, fotografe na primeira semana, e um celular resolve. Se usar peças conceituais, deixe claro que são ilustrações. Foto ou depoimento de cliente só entra com autorização registrada, inclusive do hóspede simpático que disse pode postar. Confira também o fundo das fotos reais, onde podem aparecer documentos, telas ou placas de carro."
+  ],
+  [
+   "Qual etapa de um processo da empresa devo automatizar primeiro?",
+   "Comece descrevendo o processo como ele é, não como deveria ser: para cada etapa, quem faz, o que produz, quanto tempo leva e o que dá errado. Depois pergunte, para cada uma: se ninguém conferir, quando o erro aparece? Escolha uma etapa só, com alta repetição, baixo risco, erro visível rápido e que você saiba fazer à mão. A mais dolorosa costuma ser a mais arriscada. Tudo que envia mensagem a pessoa real, publica, apaga ou paga passa por aprovação humana. Escreva o que fica de fora, a alternativa manual, três métricas medidas antes e uma data de revisão."
+  ]
+ ],
+ "25-plano-de-trinta-dias": [
+  [
+   "Como montar um plano de 30 dias para começar a usar IA no trabalho?",
+   "Divida em quatro semanas, com uma entrega concluída por semana, usando o que você já tem. Na primeira, faça o inventário do que sua conta alcança, escreva três prompts de bolso e transforme o melhor num Gem. Na segunda, meça três números de antes, monte briefing e triagem e rode a rotina. Na terceira, produza três peças com a mesma identidade. Na quarta, escolha entre construir a menor coisa útil com dados fictícios ou executar um projeto que resolva seu problema mais caro. O plano cabe no tempo real que você tem. Se só der para uma semana, faça a segunda."
+  ],
+  [
+   "Como revisar o que mudou depois de um mês usando IA?",
+   "Reserve um dia para revisão e outro para escolher o próximo passo. Na revisão, responda quatro perguntas com números: o que uso toda semana agora e não usava há um mês? O que tentei e abandonei, e por quê? Que permissões concedi e ainda não revisei? Quanto tempo recuperei? A revisão de permissões importa porque acesso amplo esquecido continua ligado. No dia seguinte, escolha um único problema real para os próximos trinta dias e atualize a folha do que você tem hoje, com a data. Comparar essa folha com a do início é a forma mais honesta de medir o que mudou."
+  ],
+  [
+   "O que continua valendo no uso de IA quando as ferramentas mudam de nome?",
+   "Ficam três ideias. Plausível não é verdadeiro: a resposta soa certa porque foi treinada para isso, então verificar é método. Anúncio não é lançamento: o que existe lá fora não está automaticamente disponível para você. Quanto mais irreversível a ação, mais humano na frente dela. Ficam também quatro perguntas: isto está disponível para mim, hoje, aqui? De onde veio essa resposta? O que acontece se estiver errada? Eu saberia refazer à mão? E antes de automatizar, organize, porque a IA amplifica o que encontra, tanto a ordem quanto o caos. Botões mudam, o método permanece."
+  ]
+ ]
+}

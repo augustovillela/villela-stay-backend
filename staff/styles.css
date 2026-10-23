@@ -517,6 +517,12 @@ tr:last-child td { border-bottom: none; }
 .vs-tabela .suave { color: var(--concreto-claro); }
 .vs-linha-site { cursor: pointer; }
 .vs-linha-site:hover { background: #f4f8fa; }
+/* 🎓 alunos dos cursos: linha clicável abre o detalhe aula a aula logo abaixo */
+.vs-linha-aluno { cursor: pointer; }
+.vs-linha-aluno:hover { background: #f4f8fa; }
+.vs-alunos td { vertical-align: top; }
+.vs-curso { font-size: .84rem; line-height: 1.35; margin-bottom: 2px; }
+.vs-detalhe-aluno > td { background: #fafcfd; padding: 12px; }
 
 /* rankings em barra */
 .vs-barras { display: flex; flex-direction: column; gap: 7px; }

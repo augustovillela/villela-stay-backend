@@ -61,7 +61,10 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecre
   // ---- ACESSOS DE CORTESIA / BETA (teste sem pagamento; liberado até a plataforma revogar) ----
   // Contrato idêntico ao dos demais produtos (tela central de cortesia).
   r.get('/cortesia', h(async (req, res) => {
-    res.json({ acessos: repo.listarTenantsPlataforma().filter(t => t.status === 'cortesia') });
+    // vigentes E revogadas (senão a revogada some da lista e não dá para reativar)
+    const nasceuCortesia = repo.tenantsNascidosCortesia();
+    res.json({ acessos: repo.listarTenantsPlataforma().filter(t => t.status === 'cortesia'
+      || (nasceuCortesia.has(t.id) && (t.status === 'suspensa' || t.status === 'cancelada'))) });
   }));
   r.post('/cortesia', requireAdmin, h(async (req, res) => {
     const b = req.body || {};

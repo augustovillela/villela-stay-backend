@@ -48,6 +48,7 @@ const JS = `
         c.appendChild(el('h2', { txt: '\u{1F4DA} Minha biblioteca' }));
         c.appendChild(el('p', { class: 'sub', txt:
           'O que está aqui é seu e fica privado. Busque pelo título, pelo compositor, por etiqueta - ou por um trecho da LETRA.' }));
+        inserirPainelVocal(c, '');
 
         // busca
         var busca = el('input', { type: 'search', placeholder: 'Buscar (ex.: "o sol na janela")', value: f.q || '' });
@@ -102,8 +103,7 @@ const JS = `
               (o.compositor ? '<span>' + esc(o.compositor) + '</span>' : '') +
               '<span class="peq">' + (o.tom_original ? 'tom ' + esc(o.tom_original) + ' - ' : '') +
               (o.formatos.length ? o.formatos.join(', ') : 'sem partitura') + '</span>' +
-              (o.titularidade === 'terceiro_privado'
-                ? '<span class="chip alerta">acervo pessoal</span>' : ''),
+              '',
           }));
         });
         c.appendChild(g);
@@ -136,12 +136,6 @@ const JS = `
     [['Título', tit], ['Compositor', comp], ['Tom', tom], ['Etiquetas', tags], ['De quem é', titul]]
       .forEach(function (p) { c.appendChild(el('div', { class: 'campo' }, [el('label', { txt: p[0] }), p[1]])); });
 
-    c.appendChild(el('div', { class: 'alerta', html:
-      '<b>Por que perguntamos de quem é a música.</b> Obra de outro autor fica no seu acervo pessoal: ' +
-      'não é publicada e não é sugerida a mais ninguém; só circula nas bandas fechadas de que você participa. ' +
-      'Recursos de IA, quando você os usa, processam o conteúdo apenas para responder ao seu pedido. ' +
-      'A Musique não distribui obra de terceiro.' }));
-
     c.appendChild(el('div', { class: 'linha' }, [
       el('button', { class: 'btn', txt: 'Guardar', onclick: function () {
         api('POST', '/obras', {
@@ -164,16 +158,7 @@ const JS = `
       c.appendChild(el('button', { class: 'btn sec peq', txt: '< Biblioteca', onclick: function () { verBiblioteca(); } }));
       c.appendChild(el('h2', { txt: d.obra.titulo }));
       if (d.obra.compositor) c.appendChild(el('p', { class: 'sub', txt: d.obra.compositor }));
-
-      if (d.obra.titularidade === 'terceiro_privado') {
-        c.appendChild(el('div', { class: 'alerta', html:
-          '<b>Acervo pessoal.</b> Esta obra está registrada como de outro autor: fica só para você. ' +
-          '<button class="btn peq" id="b-titul">É minha</button>' }));
-        $('#b-titul').onclick = function () {
-          api('POST', '/obras/' + id + '/titularidade', { tipo: 'propria', evidencia: 'declarado pelo autor' })
-            .then(function () { abrirObra(id); }).catch(function (e) { erro(e.message); });
-        };
-      }
+      inserirPainelVocal(c, '');
 
       if (!d.arranjos.length) {
         c.appendChild(el('p', { class: 'vazio', txt: 'Nenhum arranjo ainda.' }));
@@ -214,7 +199,86 @@ const JS = `
         api('POST', '/obras/' + id + '/arranjos', { nome: nome })
           .then(function () { abrirObra(id); }).catch(function (e) { erro(e.message); });
       } }));
+
+      var escola = el('div', { id: 'b-escola' });
+      c.appendChild(escola);
+      blocoEscola(escola, d.obra);
     }).catch(function (e) { erro(e.message); });
+  }
+
+  function inserirPainelVocal(container, cifraId) {
+    var C = window.MusiqueCifras;
+    if (!C || !C.Voz) return;
+    var area = el('div', { class: 'cf-voz-area' });
+    container.appendChild(area);
+    area.appendChild(C.Voz.painel(cifraId || '', null));
+    fetch('/music/api/cifras/perfil-vocal').then(function (r) { return r.json(); }).then(function (d) {
+      area.innerHTML = '';
+      area.appendChild(C.Voz.painel(cifraId || '', d.perfil));
+    }).catch(function () {});
+  }
+
+  // ---- compartilhar com a escola (Fase 3) ----
+  // A tela "Material da turma" manda o professor para ESTE botao. Ele so
+  // aparece para quem leciona em alguma escola (gestor ou professor); a
+  // decisao de verdade e do servidor (organizacoes.js + direitos.js), e a
+  // tela so evita oferecer o que vai ser recusado. Obra de terceiro nao
+  // entra em escola: no lugar do botao, a tela diz por que.
+  function blocoEscola(box, obra) {
+    api('GET', '/escolas').then(function (r) {
+      var escolas = (r.trabalho || []).filter(function (e) {
+        return e.papel === 'gestor' || e.papel === 'professor';
+      });
+      if (!escolas.length) return;
+      box.appendChild(el('h3', { txt: 'Escola' }));
+      if (obra.titularidade === 'terceiro_privado') {
+        box.appendChild(el('p', { class: 'sub', txt: 'Esta obra é de terceiro e não entra na escola. Compartilhe apenas música que seja sua.' }));
+        return;
+      }
+      box.appendChild(el('button', { class: 'btn', txt: 'Compartilhar com a escola', onclick: function () {
+        formEscola(box, obra, escolas);
+      } }));
+    }).catch(function () { /* sem escolas: a biblioteca segue sem o botao */ });
+  }
+
+  function formEscola(box, obra, escolas) {
+    box.innerHTML = '';
+    box.appendChild(el('h3', { txt: 'Compartilhar com a escola' }));
+    box.appendChild(el('p', { class: 'sub', txt: 'A música aparece em "Material da turma" para os alunos.' }));
+    var selEscola = el('select');
+    escolas.forEach(function (e) { selEscola.appendChild(el('option', { value: e.id, txt: e.nome })); });
+    var selTurma = el('select');
+    var nota = el('input', { placeholder: 'Nota para a turma (opcional)' });
+    function turmas() {
+      selTurma.innerHTML = '';
+      selTurma.appendChild(el('option', { value: '', txt: 'todas as turmas da escola' }));
+      api('GET', '/escolas/' + selEscola.value).then(function (d) {
+        (d.turmas || []).filter(function (t) { return t.status !== 'encerrada'; }).forEach(function (t) {
+          selTurma.appendChild(el('option', { value: t.id, txt: 'turma: ' + t.nome }));
+        });
+      }).catch(function (e) { erro(e.message); });
+    }
+    selEscola.onchange = turmas;
+    turmas();
+    if (escolas.length > 1) box.appendChild(el('div', { class: 'campo' }, [el('label', { txt: 'Escola' }), selEscola]));
+    else box.appendChild(el('p', { html: 'Escola: <b>' + esc(escolas[0].nome) + '</b>' }));
+    box.appendChild(el('div', { class: 'campo' }, [el('label', { txt: 'Para quem' }), selTurma]));
+    box.appendChild(el('div', { class: 'campo' }, [el('label', { txt: 'Nota' }), nota]));
+    box.appendChild(el('div', { class: 'linha' }, [
+      el('button', { class: 'btn', txt: 'Compartilhar', onclick: function () {
+        api('POST', '/escolas/' + selEscola.value + '/biblioteca',
+          { obra_id: obra.id, turma_id: selTurma.value, nota: nota.value })
+          .then(function () {
+            var nomeEscola = selEscola.options[selEscola.selectedIndex].text;
+            box.innerHTML = '';
+            blocoEscola(box, obra);
+            aviso('"' + obra.titulo + '" está no material de ' + nomeEscola
+              + (selTurma.value ? ' (' + selTurma.options[selTurma.selectedIndex].text + ')' : '') + '.');
+          })
+          .catch(function (e) { erro('Não compartilhei: ' + e.message); });
+      } }),
+      el('button', { class: 'btn sec', txt: 'Cancelar', onclick: function () { box.innerHTML = ''; blocoEscola(box, obra); } }),
+    ]));
   }
 
   function novaCifra(arranjoId, obraId) {

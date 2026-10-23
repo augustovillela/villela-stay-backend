@@ -29,6 +29,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { fork } = require('child_process');
+const atribuicao = require('./atribuicao-aluno');
 
 const ARQ_HITS = 'hits.jsonl';
 const ARQ_HIST = 'visitas-historico.json';   // dias antigos já agregados
@@ -281,7 +282,7 @@ function utmDe(query) {
 
 function criarRegistrador(DATA_DIR, geo) {
   const arquivo = path.join(DATA_DIR, ARQ_HITS);
-  return function registrar({ produto, caminho, ref, utm, ua, ip, aceitaIdioma }) {
+  return function registrar({ produto, caminho, ref, utm, ua, ip, aceitaIdioma, uid }) {
     try {
       const info = uaInfo(ua);
       const loc = info.bot ? null : geo.consultar(ip);      // robô não gasta consulta de localidade
@@ -297,6 +298,9 @@ function criarRegistrador(DATA_DIR, geo) {
         pais: loc ? loc.pais : '', uf: loc ? loc.uf : '', cidade: loc ? loc.cidade : '',
         vid: info.bot ? '' : vidDe(ip, ua),
         bot: info.bot,
+        // Só aluno LOGADO na Academy (cookie vs_aluno assinado). Visitante
+        // sem conta não tem uid: segue anônimo. Ver atribuicao-aluno.js.
+        uid: (!info.bot && uid) ? String(uid).slice(0, 64) : undefined,
         _recebido: new Date().toISOString(),
       };
       fs.appendFileSync(arquivo, JSON.stringify(linha) + '\n');
@@ -333,6 +337,7 @@ function criarMiddleware(registrar) {
           ua: req.headers['user-agent'] || '',
           ip: req.ip,
           aceitaIdioma: req.headers['accept-language'] || '',
+          uid: atribuicao.ler(req),
         });
       } catch { /* analytics jamais atrapalha a resposta */ }
     });
@@ -415,6 +420,44 @@ function calcularSessoes(hits) {
     fechar();
   }
   return { sessoes, rejeicoes, paginas, entradas, saidas };
+}
+
+/**
+ * Visitas por ALUNO identificado (só linhas com `uid`, que só existe para
+ * quem estava logado na Academy). Sessão = mesma regra das visitas
+ * anônimas (intervalo < 30 min). Robô nunca tem uid.
+ * Devolve { [uid]: { paginas, sessoes, dias, primeira, ultima, porProduto } }.
+ */
+function visitasPorUid(DATA_DIR, de, ate) {
+  const porUid = {};
+  for (const bruto of lerLinhas(DATA_DIR)) {
+    if (!bruto || !bruto.uid || bruto.bot) continue;
+    const d = diaDe(bruto);
+    if ((de && d < de) || (ate && d > ate)) continue;
+    (porUid[bruto.uid] = porUid[bruto.uid] || []).push(bruto);
+  }
+  const out = {};
+  for (const [uid, lista] of Object.entries(porUid)) {
+    lista.sort((a, b) => String(a._recebido).localeCompare(String(b._recebido)));
+    const porProduto = {};
+    const dias = new Set();
+    let sessoes = 0, anterior = 0;
+    for (const h of lista) {
+      const t = Date.parse(h._recebido || '') || 0;
+      if (!anterior || (t - anterior) > JANELA_SESSAO_MIN * 60000) sessoes++;
+      anterior = t;
+      dias.add(diaDe(h));
+      const id = h.produto || 'outro';
+      const p = porProduto[id] = porProduto[id] || { id, nome: NOME_PRODUTO[id] || id, emoji: EMOJI_PRODUTO[id] || '🌐', paginas: 0, ultima: '' };
+      p.paginas++; p.ultima = h._recebido;
+    }
+    out[uid] = {
+      paginas: lista.length, sessoes, dias: dias.size,
+      primeira: lista[0]._recebido, ultima: lista[lista.length - 1]._recebido,
+      porProduto: Object.values(porProduto).sort((a, b) => b.paginas - a.paginas),
+    };
+  }
+  return out;
 }
 
 /** Todas as contas de um conjunto de visitas, numa passada só. */
@@ -514,6 +557,7 @@ function rotacionar(DATA_DIR) {
 // MONTAGEM: middleware + rotas do Portal Staff
 // =====================================================================
 module.exports.PRODUTOS = PRODUTOS;
+module.exports.visitasPorUid = visitasPorUid;
 module.exports.NOME_PRODUTO = NOME_PRODUTO;
 module.exports.produtoDe = produtoDe;
 module.exports.canalDe = canalDe;

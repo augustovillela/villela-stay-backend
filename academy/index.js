@@ -24,7 +24,10 @@ const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasInterativo, registrarRotasInterativoStaff } = require('./rotas-interativo');
 const { registrarRotasJornada, registrarRotasJornadaStaff } = require('./rotas-jornada');
 const { registrarRotasEcossistema, registrarRotasEcossistemaStaff, rotinaLembretes } = require('./rotas-ecossistema');
+const { registrarRotasEstudo, registrarRotasEstudoStaff } = require('./rotas-estudo');
+const { registrarRotasAmostras, registrarRotasAmostrasStaff } = require('./rotas-amostras');
 const { registrarPaginas } = require('./paginas');
+const tokensApi = require('./tokens-api');
 const webhookMP = require('../nucleo/webhook-mp');
 
 function montar(app, injected = {}) {
@@ -51,7 +54,25 @@ function montar(app, injected = {}) {
   } catch (e) { /* SEO é acessório: nunca derruba a montagem do módulo */ }
   const notificar = (m) => Promise.resolve((alertaAugusto || (async () => {}))(m)).catch(() => {});
   billing.configurar({ mpFetch, notificar });
+  const carteiraIA = require('./carteira-ia');
+  carteiraIA.configurar({ mpFetch, notificar }); // recarga da carteira de IA + alerta de câmbio parado
+  // PTAX do dia (câmbio da cobrança de IA): ao subir e a cada 6 horas. O resultado vai para o log
+  // do serviço — é como se confere, depois de um deploy, se o Banco Central responde dali.
+  if (String(process.env.ACADEMY_ROTINAS || 'on').toLowerCase() !== 'off') {
+    const ptax = () => carteiraIA.atualizarPTAX()
+      .then(r => console.log(r.ok ? `[academy] PTAX atualizado: ${r.valor} (${r.cotado_em})` : `[academy] PTAX NÃO atualizou: ${r.erro}`)).catch(() => {});
+    const t0 = setTimeout(ptax, 8000); if (t0.unref) t0.unref();
+    const tp = setInterval(ptax, 6 * 3600e3); if (tp.unref) tp.unref();
+  }
   require('./storage').configurar({ segredo: jwtSecret }); // URLs assinadas (F7)
+  // EXPURGO do áudio da prova oral (guarda de 6 meses — estudo/pedidos.js): ao subir e uma vez por dia.
+  // Falha do armazenamento não derruba nada: o que não saiu hoje sai amanhã.
+  if (String(process.env.ACADEMY_ROTINAS || 'on').toLowerCase() !== 'off') {
+    const expurgo = () => require('./estudo/pedidos').expurgarAudios()
+      .then(r => { if (r.vencidos) console.log(`[academy] áudios de prova oral fora do prazo: ${r.apagados} apagado(s), ${r.falhas} falha(s)`); }).catch(() => {});
+    const te0 = setTimeout(expurgo, 20000); if (te0.unref) te0.unref();
+    const te = setInterval(expurgo, 24 * 3600e3); if (te.unref) te.unref();
+  }
   const emails = require('./emails');
   emails.configurar({ enviarEmail: injected.enviarEmail }); // e-mails transacionais (F8)
 
@@ -86,7 +107,20 @@ function montar(app, injected = {}) {
     });
   }
 
-  registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrAdmin, jwtSecret });
+  // ABA ABERTA DURANTE UM DEPLOY: toda resposta da API diz qual versão da TELA o servidor está servindo
+  // (paginas.VERSAO_TELA — muda quando sobe o ?v= de qualquer arquivo de tela). A página compara com a versão
+  // com que foi carregada e, se for outra, mostra "Há uma versão nova — Atualizar" (app-cliente.js › conferirVersao).
+  app.use('/academy/api', (req, res, next) => { const v = require('./paginas').VERSAO_TELA; if (v) res.setHeader('X-Academy-Tela', v); next(); });
+
+  // o aceite de valor da IA (cabecalho X-IA-Aceite) vale para a requisicao inteira; precisa vir antes das rotas
+  app.use('/academy/api', require('./ia').middlewareAceite);
+
+  // Token de API temporário (nucleo/tokens-api.js; lista desta casa em tokens-api.js): aceito SÓ onde a
+  // PUBLISH_KEY já valia, e só nas rotas da lista. Sem token no pedido, a guarda é a de sempre.
+  // Emitir/revogar = sessão de admin no Portal Staff (🔑 Tokens de API).
+  tokensApi.registrar();
+  const guardaPA = requirePublishOrAdmin ? require('../nucleo/tokens-api').guarda(tokensApi.SISTEMA, requirePublishOrAdmin) : undefined;
+  registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrAdmin: guardaPA, jwtSecret });
   registrarRotasCheckoutStaff(app, { requireAuth, requireAdmin });
   const cliente = registrarRotasCliente(app, { jwtSecret });
   registrarRotasConteudo(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
@@ -100,11 +134,15 @@ function montar(app, injected = {}) {
   registrarRotasGovernanca(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
   registrarRotasGovernancaStaff(app, { requireAuth, requireAdmin });
   registrarRotasInterativo(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
-  registrarRotasInterativoStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
+  registrarRotasInterativoStaff(app, { requirePublishOrAdmin: guardaPA, requireAuth, requireAdmin });
   registrarRotasJornada(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
-  registrarRotasJornadaStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
+  registrarRotasJornadaStaff(app, { requirePublishOrAdmin: guardaPA, requireAuth, requireAdmin });
   registrarRotasEcossistema(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
-  registrarRotasEcossistemaStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
+  registrarRotasEcossistemaStaff(app, { requirePublishOrAdmin: guardaPA, requireAuth, requireAdmin });
+  registrarRotasEstudo(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
+  registrarRotasEstudoStaff(app, { requirePublishOrAdmin: guardaPA, requireAuth, requireAdmin });
+  registrarRotasAmostras(app); // amostras grátis: leitura pública (depois do no-store padrão de /academy/api)
+  registrarRotasAmostrasStaff(app, { requirePublishOrAdmin: guardaPA, requireAuth, requireAdmin });
   registrarPaginas(app, { notificar });
 
   // webhook do Mercado Pago (200 rápido; processamento assíncrono e idempotente)

@@ -710,7 +710,7 @@ function music(t) {
     <td><span class="mq-barra"><i class="js-cresce-x" style="width:${largura}%"></i></span></td>
   </tr>`;
 
-  return chrome('music.villelastay.com.br', t('Biblioteca', 'Library', 'Biblioteca')) + `
+  return chrome('musique.villelastay.com.br', t('Biblioteca', 'Library', 'Biblioteca')) + `
 <div class="mq-corpo">
   ${nav('MUSIQUE', [
     ['🎼', t('Biblioteca', 'Library', 'Biblioteca'), true],

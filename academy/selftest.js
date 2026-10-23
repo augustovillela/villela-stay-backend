@@ -77,13 +77,14 @@ app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 const academy = require('./index');
 academy.montar(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, alertaAugusto, enviarEmail, mpFetch, jwtSecret: 'seg-teste' });
+require('../nucleo/tokens-api').montar(app, { requireAuth, requireAdmin }); // 🔑 gestão dos tokens (no servidor real, server.js monta)
 const espera = (ms) => new Promise(r => setTimeout(r, ms));
 
 let BASE = '', ok = 0, falhas = [];
 // jars de cookie por "pessoa" (cada usuário de teste tem a própria sessão)
 const jars = {};
-async function req(m, p, { corpo, user = 'adm', jar, ip, chave, semUser } = {}) {
-  const headers = { 'Content-Type': 'application/json', 'x-test-user': user, 'x-forwarded-for': ip || '10.0.0.1' };
+async function req(m, p, { corpo, user = 'adm', jar, ip, chave, semUser, cab } = {}) {
+  const headers = { 'Content-Type': 'application/json', 'x-test-user': user, 'x-forwarded-for': ip || '10.0.0.1', ...(cab || {}) };
   if (chave) headers['x-publish-key'] = chave === true ? PUBLISH_KEY_TESTE : chave;
   if (semUser) headers['x-test-user'] = 'ninguem-logado'; // sem sessão de staff: o mock devolve 401
   if (jar && jars[jar]) headers.Cookie = Object.entries(jars[jar]).map(([k, v]) => `${k}=${v}`).join('; ');
@@ -1129,7 +1130,9 @@ async function main() {
   });
   await t('status da IA + estruturar curso e APLICAR cria módulos/aulas rascunho', async () => {
     const st = await req('GET', '/academy/api/ia/status', { jar: 'maria' });
-    assert.equal(st.st, 200); assert.ok(st.json.ativo); assert.equal(st.json.limite_dia, 30);
+    assert.equal(st.st, 200); assert.ok(st.json.ativo); assert.equal(st.json.limite_dia, 5, 'padrão de 5/dia (decisão de 03/10/2026)');
+    // a bateria faz mais de 5 chamadas de IA com o mesmo usuário: sobe a cota só dentro do teste
+    await req('POST', '/staff/api/academy/config', { corpo: { chave: 'ia', valor: { consultas_dia: 30 } } });
     const novo = await req('POST', '/academy/api/produtor/produtos', { jar: 'maria', corpo: { titulo: 'Curso via IA', tipo: 'curso', preco_centavos: 5000 } });
     const nid = novo.json.produto.id;
     const r = await req('POST', '/academy/api/ia/produtor/estruturar', { jar: 'maria', corpo: { product_id: nid, tema: 'gestão' } });
@@ -1169,6 +1172,14 @@ async function main() {
     assert.equal((await req('POST', '/academy/api/ia/aluno/perguntar', { jar: 'ana', corpo: { product_id: prodId, pergunta: 'mais uma' } })).st, 200);
     const r = await req('POST', '/academy/api/ia/aluno/perguntar', { jar: 'ana', corpo: { product_id: prodId, pergunta: 'estourou?' } });
     assert.equal(r.st, 429);
+    assert.ok(/limite da sua assinatura/.test(r.json.erro || ''), 'o aviso ao aluno fala do limite da assinatura');
+    // o bloqueio fica registrado e aparece no relatório por aluno (sem custo)
+    const uso = await req('GET', '/staff/api/academy/ia-uso?dias=7');
+    assert.equal(uso.st, 200);
+    assert.equal(uso.json.limite_dia, 2);
+    const anaUso = uso.json.alunos.find(a => a.bloqueios > 0);
+    assert.ok(anaUso && anaUso.dias_no_limite === 1 && anaUso.perguntas >= 2, 'ana aparece com 1 dia no limite');
+    assert.ok(uso.json.total.alunos_que_bateram_limite >= 1);
     await req('POST', '/staff/api/academy/config', { corpo: { chave: 'ia', valor: { consultas_dia: 30 } } });
   });
 
@@ -1272,6 +1283,12 @@ async function main() {
     // aparece na listagem, marcado como cortesia ativo
     const item = (await req('GET', '/staff/api/academy/cortesia')).json.acessos.find(a => a.id === uid);
     assert.ok(item && item.produtos_liberados >= 1 && item.ativo === true, 'listado como cortesia ativo');
+    assert.equal(item.total, true, 'cortesia do staff = acesso total');
+    // cortesia POR CURSO (a que o produtor dá): sem o flag, mas ATIVA — não pode aparecer como revogada
+    const porCurso = ct.Cortesia.acharOuCriarUsuario({ nome: 'Por Curso', email: 'porcurso@selftest.br' }).usuario;
+    ct.Matriculas.criar(pagoId, porCurso.email, 'produtor', 'cortesia');
+    const itemPC = (await req('GET', '/staff/api/academy/cortesia')).json.acessos.find(x => x.id === porCurso.id);
+    assert.ok(itemPC && itemPC.ativo === true && itemPC.status === 'ativo' && itemPC.total === false && itemPC.produtos_liberados === 1, 'cortesia por curso listada como ativa');
     // o link definir-senha realmente define a senha e permite login
     const tok = decodeURIComponent(c.json.acesso.definir_senha_url.split('token=')[1]);
     assert.equal((await req('POST', '/academy/api/senha/redefinir', { corpo: { token: tok, senha: 'senha-cortesia-1' } })).st, 200);
@@ -1314,7 +1331,11 @@ async function main() {
     assert.ok(r.texto.includes(`/academy/cursos/${slug}"`), 'apontando para a própria página');
     assert.ok(r.texto.includes('name="robots" content="index,follow,max-image-preview:large"'), 'preview grande liberado');
     assert.ok(r.texto.includes('twitter:card'), 'cartão do Twitter/X');
-    assert.ok(r.texto.includes('og:image:width'), 'dimensão da imagem — sem ela o WhatsApp corta');
+    // (auditoria de 11/10/2026-b, P-B1) a dimensão declarada é a REAL da capa, lida do arquivo. A capa deste curso de
+    // teste não é imagem de verdade: sem medida conhecida a página OMITE a dimensão — declarar 1200×630 numa capa
+    // 1920×1080 era o defeito. A dimensão real de PNG e JPEG é conferida em testes-pagina-venda.js.
+    assert.ok(r.texto.includes('property="og:image"'), 'a imagem do cartão vai sempre');
+    assert.ok(!r.texto.includes('og:image:width'), 'capa que não se sabe medir sai sem dimensão declarada');
     const bruto = r.texto.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
     assert.ok(bruto, 'tem JSON-LD');
     const dados = JSON.parse(bruto[1]);
@@ -1539,7 +1560,8 @@ async function main() {
     assert.ok(r.texto.includes('pv-compra'), 'cartão de compra');
     assert.ok(r.texto.includes('pv-curr'), 'currículo em sanfona');
     assert.ok(r.texto.includes('/academy/publico.css'), 'CSS das páginas públicas');
-    assert.ok(/Certificado com validação pública/.test(r.texto), 'o que o aluno leva');
+    assert.ok(/Certificado da Villela Academy/.test(r.texto), 'o que o aluno leva');
+    assert.ok(!/validação pública/i.test(r.texto), 'a página não fala mais em "validação pública" (Augusto, 08/10/2026)');
   });
   await t('landing mostra o catálogo (site comercial sem curso na home não vende)', async () => {
     const r = await req('GET', '/academy');
@@ -1586,6 +1608,30 @@ async function main() {
     assert.equal(vis.st, 200, 'o produto é do produtor informado');
     assert.deepEqual(vis.json.estrutura[0].aulas.map(a => a.titulo), ['Aula A1', 'Aula A2'], 'ordem das aulas preservada');
     assert.equal(vis.json.estrutura[0].aulas[0].duracao_seg, 600);
+  });
+
+  await t('duração do curso = soma só dos VÍDEOS (PDF de 900 s e áudio não inflam o total)', async () => {
+    const corpo = CURSO();
+    corpo.produto.titulo = 'Curso Duracao So Video';
+    corpo.modulos = [
+      { titulo: 'Aula 1', aulas: [
+        { titulo: 'Videoaula', tipo: 'video', duracao_seg: 600 },
+        { titulo: 'Artigo da aula', tipo: 'pdf', duracao_seg: 900 },
+        { titulo: 'Revisão animada', tipo: 'video', duracao_seg: 120 },
+      ] },
+      { titulo: 'Aula 2', aulas: [
+        { titulo: 'Artigo da aula', tipo: 'pdf', duracao_seg: 700 },
+        { titulo: 'Áudio da aula', tipo: 'audio', duracao_seg: 300 },
+        { titulo: 'Leitura', tipo: 'texto', duracao_seg: 200 },
+      ] },
+    ];
+    const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.resumo.duracao_total_min, 12, 'resumo da importação: 600 + 120 s de vídeo');
+    const resumo = require('./repo-conteudo').Marketplace.resumoConteudo(r.json.produto.id);
+    assert.equal(resumo.total_seg, 720, 'total do curso = só os vídeos');
+    assert.deepEqual(resumo.modulos.map(m => m.duracao_seg), [720, 0], 'módulo só com PDF/áudio/texto soma zero');
+    assert.equal(resumo.modulos[1].aulas[0].duracao_seg, 700, 'a duração do item continua gravada (só não soma)');
   });
 
   await t('importar de novo ATUALIZA e não duplica', async () => {
@@ -2150,6 +2196,46 @@ async function main() {
     assert.equal(pub.st, 200, pub.texto);
     assert.equal((await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'caio' })).json.acesso, false, 'quem não comprou não tem jornada');
     assert.equal((await req('GET', `/academy/api/aluno/cursos/${impId}/lab`, { jar: 'caio' })).st, 403);
+  });
+
+  await t('ferramentas: cada curso grava os SEUS exemplos (placeholders) e o app recebe pelo painel', async () => {
+    const fe = require('./ferramentas');
+    // as chaves do app (PB/AG) e as do servidor não podem divergir
+    const fonte = require('fs').readFileSync(require('path').join(__dirname, 'app-jornada.js'), 'utf8');
+    const chaves = (nome) => {
+      const bloco = fonte.split(`var ${nome} = [`)[1].split('];')[0];
+      return [...bloco.matchAll(/^\s*\['(\w+)'/gm)].map(m => m[1]);
+    };
+    assert.deepEqual(chaves('PB'), fe.CAMPOS.prompt, 'campos do Prompt Builder');
+    assert.deepEqual(chaves('AG'), fe.CAMPOS.agente, 'campos do gerador de agentes');
+    assert.ok(fonte.includes('esc(dica(c))'), 'o exemplo do curso entra (escapado) no placeholder');
+
+    let p = (await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'olga' })).json;
+    assert.deepEqual(p.ferramentas, {}, 'sem config → app usa o padrão');
+    await req('POST', '/staff/api/academy/gotejamento', { semUser: true, chave: true, corpo: EST({ ativo: true, aulas_por_periodo: 2, periodo_dias: 7 }) });
+    const corpo = EST({ ferramentas: {
+      prompt: { funcao: 'Ex.: assistente jurídico de família', objetivo: '  Ex.: minuta de alimentos  ', inventado: 'x' },
+      agente: { nome: 'Ex.: Agente de prazos', nunca: 'Ex.: nunca protocola sozinho' },
+      outro: {},
+    } });
+    assert.equal((await req('POST', '/staff/api/academy/ferramentas', { semUser: true, corpo })).st, 401, 'sem chave não grava');
+    const r = await req('POST', '/staff/api/academy/ferramentas', { semUser: true, chave: true, corpo });
+    assert.equal(r.st, 200, r.texto);
+    assert.deepEqual(r.json.ignorados.sort(), ['outro', 'prompt.inventado']);
+    assert.equal(r.json.ferramentas.prompt.objetivo, 'Ex.: minuta de alimentos');
+    p = (await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'olga' })).json;
+    assert.deepEqual(p.ferramentas, r.json.ferramentas, 'o painel do aluno entrega os exemplos do curso');
+    const g = await req('GET', `/staff/api/academy/ferramentas?produtor_email=${encodeURIComponent(MARIA.email)}&produto_id=${impId}`, { semUser: true, chave: true });
+    assert.deepEqual(g.json.ferramentas, r.json.ferramentas, 'o GET do staff devolve o mesmo objeto');
+    const cfg = require('./repo-conteudo').Produtos.obter(impId).config;
+    assert.equal(cfg.gotejamento.periodo_dias, 7, 'gravar exemplos não apaga o resto do config');
+    assert.equal((await req('POST', '/staff/api/academy/ferramentas', { semUser: true, chave: true,
+      corpo: EST({ ferramentas: { prompt: { funcao: ['não', 'texto'] } } }) })).st, 400, 'só texto');
+    const z = await req('POST', '/staff/api/academy/ferramentas', { semUser: true, chave: true, corpo: EST({ ferramentas: null }) });
+    assert.deepEqual(z.json.ferramentas, {}, 'null volta ao padrão');
+    const cfg2 = require('./repo-conteudo').Produtos.obter(impId).config;
+    assert.ok(!('ferramentas' in cfg2) && cfg2.gotejamento, 'apaga só a chave ferramentas');
+    await req('POST', '/staff/api/academy/gotejamento', { semUser: true, chave: true, corpo: EST({ ativo: false }) });
   });
 
   await t('diagnóstico: sem gabarito no navegador, corrige no servidor, dá nível e trilha; é feito uma vez só', async () => {
@@ -2737,6 +2823,49 @@ async function main() {
     assert.equal(emails.length, 1, 'conta já existente não recebe outro e-mail');
     assert.equal(ponte.revogar({ email: 'ninguem@t.com' }).revogadas, 0);
   });
+
+  // ================= ESTUDO (academy\estudo\) =================
+  await require('./estudo/testes').rodar({ t, req, EST, impId });
+  // ESTUDO · paridade com os outros cursos (barra do curso, quiz na aula, caderno, certificado, Tutor por aula, áudio da oral, LGPD)
+  await require('./estudo/testes-paridade').rodar({ t, req });
+  // ================= JORNADA do Estude e FERRAMENTAS do concurseiro (paridade, etapa 2): diagnóstico, nível, selos, medalhas, pontuação, prazo e cronograma =================
+  await require('./estudo/testes-jornada-estude').rodar({ t, req });
+
+  // ================= AUDITORIA de 11/10/2026 (caminho do aluno): sorteio sem viés, simulado no formato do edital, prova em andamento, questão sem competência, vigência, ordem fixa, desempenho =================
+  await require('./estudo/testes-auditoria').rodar({ t, req });
+  // ================= SEGUNDA REVISÃO de 11/10/2026 (docs/estudo/auditoria-2026-10-11-b): exclusão × assinatura, certificado revogável, escrita que não se perde, régua com transição, tetos de leitura e de falha, LGPD, dicas, acessibilidade =================
+  await require('./estudo/testes-auditoria-b').rodar({ t, req, impId, mpFetch, base: () => BASE });
+  // ================= RÉPLICA de 11/10/2026 (r-replica-regressao.md): motores em ES5, veredito pelo formato, duas abas, painel enxuto, celular e as baixas =================
+  await require('./estudo/testes-auditoria-b2').rodar({ t, req });
+  // ================= LEGISLAÇÃO E JURISPRUDÊNCIA por item do edital (ADR-0014): importação, acervos, busca, situação, marcação de leitura, LGPD e tela =================
+  await require('./estudo/testes-lei-juris').rodar({ t, req });
+  // ================= CURSO QUE REÚNE AULAS DE OUTRO ESCOPO (ADR-0015): inclusões, herança, vídeo, Tutor, venda e data de referência por escopo =================
+  await require('./estudo/testes-inclusoes').rodar({ t, req });
+  // ================= REGRA DE PONTUAÇÃO POR RAIZ DO PROGRAMA (ADR-0016): a trilha ENAM com a regra dela, duas linhas de corte =================
+  await require('./estudo/testes-regra-por-raiz').rodar({ t, req });
+  // ================= QUESTÃO SUPERADA (ADR-0017): gabarito da época para estudo ("O que mudou"), fora de toda correção =================
+  await require('./estudo/testes-questao-superada').rodar({ t, req });
+  // ================= PÁGINA DE VENDA (frente P): números do percurso do Estude, descrição com lista, og:image com a medida real, compra à vista no celular =================
+  await require('./testes-pagina-venda').rodar({ t, req });
+
+  // ================= AMOSTRAS GRÁTIS (amostras.js): trechos públicos de vídeo =================
+  await require('./testes-amostras').rodar({ t, req, base: () => BASE, emailProdutor: MARIA.email });
+
+  // ================= VISITAS IDENTIFICADAS + TEMPO NAS AULAS (nucleo/atribuicao-aluno.js, ct.Tempo, relatorio-visitas-alunos.js) =================
+  await require('./testes-visitas-alunos').rodar({ t, req, jars, emailProdutor: MARIA.email });
+
+  // ================= TOKENS DE API TEMPORÁRIOS (nucleo/tokens-api.js + tokens-api.js) =================
+  await require('./testes-tokens-api').rodar({ t, req, app, emailProdutor: MARIA.email });
+
+  // ================= CARTEIRA DE IA (carteira-ia.js) — por último: liga a cobrança =================
+  await require('./testes-carteira-ia').rodar({ t, req, impId, jars });
+
+  // ================= PEDIDOS PAGOS do Estude (estudo\pedidos.js, ADR-0010) — depois da carteira: usam a virada e religam a cobrança =================
+  await require('./estudo/testes-pedidos').rodar({ t, req, EST, impId, mpFetch });
+  // ESTUDO · importar prova em PDF e percurso particular (ADR-0010, fase 3): liga a cobrança de novo e a desliga ao fim
+  await require('./estudo/testes-prova').rodar({ t, req, EST, impId });
+  // ESTUDO · ler edital em PDF (ADR-0010, fase 4): faixa sugerida sem provedor, leitura em lotes, árvore do programa e aplicar
+  await require('./estudo/testes-edital').rodar({ t, req, EST, impId });
 
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);

@@ -96,8 +96,9 @@ seu escritório. Os módulos disponíveis dependem do seu plano. As principais f
 - Consultas de pesquisa e apoio jurídico respondidas com **fontes citadas**;
 - Geração de peças e análise de contratos por IA;
 - **Tudo que a IA produz nasce como rascunho/MINUTA**, com aviso expresso, e só avança com
-  aprovação humana. A IA não protocola, não envia e não assina nada. A quantidade de
-  consultas de IA por mês depende do plano.
+  aprovação humana. A IA não protocola, não envia e não assina nada. A IA é paga por
+  uso (crédito pré-pago ou chave de API própria), em **Painel → 🤖 Créditos de IA**: o custo
+  máximo é reservado antes de cada tarefa e só o que foi usado é cobrado.
 
 ### Peças e contratos
 
@@ -123,8 +124,8 @@ Os planos vigentes estão sempre em `/juridico#planos`. Os valores de lançament
 | Escritório | R$ 799/mês | Banca estabelecida: tudo liberado, API e marca própria |
 | Enterprise | Sob consulta | Grandes escritórios e departamentos jurídicos |
 
-Cada plano define módulos e limites (advogados, processos ativos, consultas de IA/mês,
-armazenamento e clientes no portal). Acompanhe seu consumo na aba **📊 Uso**. Os preços são de
+Cada plano define módulos e limites (advogados, processos ativos, armazenamento e clientes
+no portal). A IA é cobrada por uso, à parte da mensalidade. Acompanhe seu consumo na aba **📊 Uso**. Os preços são de
 lançamento e podem ser ajustados — confira sempre a página de planos.
 
 **Assinatura e cobrança:** na aba **💳 Plano** você vê o plano atual, o status e o próximo

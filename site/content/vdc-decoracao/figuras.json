@@ -1,0 +1,1046 @@
+{
+ "_nota": "Gerado por dados/cursos/vdc-decoracao/blog/decBL_figuras.py (posicao e escolha da imagem aberta conferidas a mao). \"secao\" e \"apos\" ancoram a imagem no artigo; \"aberta\": true = camada publica. \"rotulo\" troca o \"Figura n\" pela etiqueta da foto (Foto F-nn, Antes A-nn, Antes e depois), porque o texto do artigo cita as fotos por esse codigo.",
+ "_hub": [
+  "F-01",
+  "par-02",
+  "F-10",
+  "par-11",
+  "F-17",
+  "F-14"
+ ],
+ "01-decorar-para-hospedes": [
+  {
+   "id": "F-01",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f01.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A frente dos quartos vista do pátio: fachada escura, moldura de madeira em cada vão, cortina clara por dentro do vidro, vasos de barro em grupo e plantas pendentes sob o beiral. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-01",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-01 é pr",
+   "curta": "A frente dos quartos, vista do pátio. Imagem conceitual gerada por IA."
+  },
+  {
+   "id": "fig-01-01",
+   "arq": "decoracao-de-interiores-na-pratica-fig-01-01.webp",
+   "w": 1200,
+   "h": 656,
+   "legenda": "O hóspede parado à porta, com a mala na mão, e as três coisas que ele ainda não sabe: onde acende a luz, onde larga a mala e onde fica o banheiro",
+   "aberta": false,
+   "secao": "Abertura",
+   "apos": "Um hóspede está parado à porta de um quarto, de noite, com a mala na m"
+  },
+  {
+   "id": "fig-01-02",
+   "arq": "decoracao-de-interiores-na-pratica-fig-01-02.webp",
+   "w": 1200,
+   "h": 887,
+   "legenda": "O núcleo de hospedagem em planta, sem cotas: os dois quartos gêmeos, um espelho do outro (o quarto B à esquerda do quarto A, para quem olha do pátio), a cozinha comum e o pátio com a piscina no meio",
+   "aberta": false,
+   "secao": "O exemplo: a área de hóspedes da Chácara-Modelo",
+   "apos": "A área de hóspedes da Chácara-Modelo é um núcleo com dois quartos gême"
+  },
+  {
+   "id": "fig-01-03",
+   "arq": "decoracao-de-interiores-na-pratica-fig-01-03.webp",
+   "w": 1200,
+   "h": 299,
+   "legenda": "As oito etapas em linha, sobre o calendário do Cerrado, com a montagem posta nos meses da seca",
+   "aberta": false,
+   "secao": "As oito etapas, e por que a ordem importa",
+   "apos": "As três primeiras etapas são de papel: programa e lugares de dormir; m"
+  }
+ ],
+ "02-lugares-de-dormir": [
+  {
+   "id": "F-03",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f03.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A sala-quarto com o beliche: roupa de cama branca, uma manta de cor em cada cama, uma luz para cada lugar de dormir e a chapa clara sem nada preso. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-03",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-03 é pr"
+  },
+  {
+   "id": "fig-05-01",
+   "arq": "decoracao-de-interiores-na-pratica-fig-05-01.webp",
+   "w": 1200,
+   "h": 515,
+   "legenda": "O contador de lugares de dormir sobre a planta de um quarto: 2 + 4 + 1 + 1 = 8; ao lado, os dois quartos e os 16 do conjunto",
+   "aberta": false,
+   "secao": "A conta do quarto do exemplo",
+   "apos": "A cama king , na suíte, tem 2 lugares. O beliche de casal, que são dua"
+  }
+ ],
+ "03-seguranca-e-limites": [
+  {
+   "id": "par-03",
+   "arq": "decoracao-de-interiores-na-pratica-foto-par03.jpg",
+   "w": 1400,
+   "h": 467,
+   "legenda": "À esquerda, a foto de antes, o ambiente como estava. A sala-quarto com o beliche, como estava: a estante, o frigobar, a mesa na parede e uma luz só, no teto. À direita, o depois. A sala-quarto com o beliche: roupa de cama branca, uma manta de cor em cada cama, uma luz para cada lugar de dormir e a chapa clara sem nada preso. Imagem conceitual gerada por IA.",
+   "rotulo": "Antes e depois",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-03 é pr"
+  },
+  {
+   "id": "fig-02-01",
+   "arq": "decoracao-de-interiores-na-pratica-fig-02-01.webp",
+   "w": 1200,
+   "h": 803,
+   "legenda": "As três figuras do livro, lado a lado: o leitor, que mede e arruma; o contratado, que monta e fixa; o profissional, que responde pelas instalações",
+   "aberta": false,
+   "secao": "Três colunas: de quem é cada serviço",
+   "apos": "A primeira é o que você faz: medir, escolher e arrumar o que é solto. "
+  },
+  {
+   "id": "fig-02-02",
+   "arq": "decoracao-de-interiores-na-pratica-fig-02-02.webp",
+   "w": 1200,
+   "h": 698,
+   "legenda": "O beliche de casal sendo montado pelo contratado, com o manual aberto ao lado, e o leitor conferindo de fora",
+   "aberta": false,
+   "secao": "O beliche: uma regra única",
+   "apos": "O beliche é montado por contratado, conforme o manual do fabricante, e"
+  },
+  {
+   "id": "fig-02-03",
+   "arq": "decoracao-de-interiores-na-pratica-fig-02-03.webp",
+   "w": 1200,
+   "h": 1107,
+   "legenda": "O percurso noturno do beliche ao banheiro, com o sofá-cama e a cama auxiliar abertos e apenas a luz que o hóspede tem",
+   "aberta": false,
+   "secao": "Os riscos de quem anda: o percurso noturno",
+   "apos": "No quarto do exemplo, isso significa sair do beliche, passar pela cama"
+  },
+  {
+   "id": "fig-02-04",
+   "arq": "decoracao-de-interiores-na-pratica-fig-02-04.webp",
+   "w": 1200,
+   "h": 1197,
+   "legenda": "O mapa de riscos sobre a planta do quarto-modelo: o beliche, o vidro do box, o painel de vidro da entrada, a água quente, o tapete e o caminho até o banheiro",
+   "aberta": false,
+   "secao": "A vistoria de riscos, em uma folha",
+   "apos": "Com a planta na mão, marque cada peça de risco e escreva de quem é o s"
+  },
+  {
+   "id": "A-03",
+   "arq": "decoracao-de-interiores-na-pratica-foto-a03.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A sala-quarto com o beliche, como estava: a estante, o frigobar, a mesa na parede e uma luz só, no teto. É o ambiente como estava, antes da proposta de decoração.",
+   "rotulo": "Antes A-03",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-03 é pr"
+  },
+  {
+   "id": "F-03",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f03.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A sala-quarto com o beliche: roupa de cama branca, uma manta de cor em cada cama, uma luz para cada lugar de dormir e a chapa clara sem nada preso. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-03",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-03 é pr"
+  }
+ ],
+ "04-escala-e-ponto-focal": [
+  {
+   "id": "F-07",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f07.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Proposta de decoração para a suíte, no quarto B: a cama como ponto focal, com cabeceira de fibra, uma luminária de piso de cada lado e a parede vazia acima. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-07",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-07 é pr"
+  },
+  {
+   "id": "fig-03-01",
+   "arq": "decoracao-de-interiores-na-pratica-fig-03-01.webp",
+   "w": 1200,
+   "h": 693,
+   "legenda": "Elevação de uma parede do quarto-modelo, com os três conceitos apontados: o ponto focal, a repetição de um material e o trecho de respiro, sem nada pendurado",
+   "aberta": false,
+   "secao": "Repetição e respiro: o vazio é parte do projeto",
+   "apos": "Repetição é usar a mesma coisa mais de uma vez: a mesma madeira, a mes"
+  },
+  {
+   "id": "fig-03-02",
+   "arq": "decoracao-de-interiores-na-pratica-fig-03-02.webp",
+   "w": 1200,
+   "h": 351,
+   "legenda": "O mesmo ambiente em duas versões: cheio, com objetos em todas as superfícies, e editado, com um ponto focal, as superfícies vazias e a passagem à vista",
+   "aberta": false,
+   "secao": "Repetição e respiro: o vazio é parte do projeto",
+   "apos": "Respiro não quer dizer tudo vazio: quer dizer decidir o que fica. E no"
+  }
+ ],
+ "05-uma-linguagem-so": [
+  {
+   "id": "F-18",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f18.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Um canto de leitura no pátio: uma poltrona suspensa de fibra como ponto focal e, em volta, a madeira, o tecido claro e o barro que já estão no resto do lugar. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-18",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro"
+  },
+  {
+   "id": "fig-03-03",
+   "arq": "decoracao-de-interiores-na-pratica-fig-03-03.webp",
+   "w": 1200,
+   "h": 378,
+   "legenda": "Quatro faixas, uma para cada dimensão da cor: matiz, valor, saturação e temperatura, cada uma variando do começo ao fim da faixa",
+   "aberta": false,
+   "secao": "Quatro palavras para descrever qualquer cor",
+   "apos": "Matiz é o nome da cor na roda das cores: vermelho, amarelo, verde, azu"
+  },
+  {
+   "id": "fig-03-04",
+   "arq": "decoracao-de-interiores-na-pratica-fig-03-04.webp",
+   "w": 1200,
+   "h": 282,
+   "legenda": "Uma linguagem só: os mesmos três materiais (a superfície pintada de claro, a madeira e o tecido branco) repetidos nos dois quartos gêmeos, lado a lado, um em espelho do outro",
+   "aberta": false,
+   "secao": "Segunda pergunta: o que se repete?",
+   "apos": "No exemplo, os materiais são três: a superfície pintada de claro, a ma"
+  },
+  {
+   "id": "F-02",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f02.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Proposta de decoração para a suíte: a cama fora do canto, com cabeceira estofada, tapete de fibra por baixo, cortina clara do teto ao piso e a mesa fixa com uma cadeira. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-02",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro"
+  }
+ ],
+ "06-medicao-e-inventario": [
+  {
+   "id": "F-04",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f04.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A sala-quarto pelo lado do sofá: as peças conversam entre si, menos a cadeira de escritório, que veio de outro lugar. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-04",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A cadeira de esc"
+  },
+  {
+   "id": "fig-05-02",
+   "arq": "decoracao-de-interiores-na-pratica-fig-05-02.webp",
+   "w": 1200,
+   "h": 313,
+   "legenda": "O levantamento: o croqui à mão, a trena esticada diante de uma parede, a foto dessa parede e a planta em escala nascendo do croqui",
+   "aberta": false,
+   "secao": "O croqui e a foto com a trena",
+   "apos": "Há um jeito de fotografar que poupa uma viagem: cada parede de frente,"
+  },
+  {
+   "id": "fig-05-04",
+   "arq": "decoracao-de-interiores-na-pratica-fig-05-04.webp",
+   "w": 1200,
+   "h": 502,
+   "legenda": "A ficha de inventário se preenchendo linha a linha, com os seis campos, e, ao fim, a foto do ambiente pronto e a pasta de manuais ao lado",
+   "aberta": false,
+   "secao": "A ficha de inventário e o campo que mais fica em branco",
+   "apos": "A ficha de inventário tem os seus campos nesta ordem: ambiente, item, "
+  }
+ ],
+ "07-o-quarto-modelo-em-planta": [
+  {
+   "id": "F-19",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f19.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Proposta de decoração para a suíte, à noite: cortina fechada, luz de teto, um abajur de cada lado da cama e uma luminária de piso, todas no mesmo tom. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-19",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-19 é pr"
+  },
+  {
+   "id": "fig-05-03",
+   "arq": "decoracao-de-interiores-na-pratica-fig-05-03.webp",
+   "w": 1200,
+   "h": 1018,
+   "legenda": "A planta do quarto-modelo (o quarto A), de 6,00 m × 4,80 m, em duas faixas de 2,40 m, com os móveis numerados de 01 a 09; em número, só as medidas dadas e as de referência",
+   "aberta": false,
+   "secao": "Os nove móveis, numerados de 01 a 09",
+   "apos": "Na suíte, a cama king fica na ponta oposta ao banheiro, que a planta c"
+  }
+ ],
+ "08-a-paleta-que-se-repoe": [
+  {
+   "id": "F-02",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f02.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Proposta de decoração para a suíte: a cama fora do canto, com cabeceira estofada, tapete de fibra por baixo, cortina clara do teto ao piso e a mesa fixa com uma cadeira. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-02",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro"
+  },
+  {
+   "id": "fig-07-01",
+   "arq": "decoracao-de-interiores-na-pratica-fig-07-01.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "A paleta do exemplo em duas faixas, a base (claro, duas madeiras, escuro e branco) e o acento (barro e verde profundo), ao lado da mesma amostra de cor na parede em três momentos do dia: de manhã, no meio da tarde e à noite, com a lâmpada",
+   "aberta": false,
+   "secao": "A paleta do exemplo, em quatro partes",
+   "apos": "A base clara, de branco e de areia, está nas paredes, no teto, nas cor"
+  },
+  {
+   "id": "F-03",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f03.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A sala-quarto com o beliche: roupa de cama branca, uma manta de cor em cada cama, uma luz para cada lugar de dormir e a chapa clara sem nada preso. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-03",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro"
+  }
+ ],
+ "09-os-cinco-filtros": [
+  {
+   "id": "F-05",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f05.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A sala-quarto pelo lado do sofá-cama: estofado de cor média, almofadas lisas, fibra nos cestos e no tapete, e o frigobar ao lado da estante. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-05",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: Na foto F-05, ca"
+  },
+  {
+   "id": "fig-04-01",
+   "arq": "decoracao-de-interiores-na-pratica-fig-04-01.webp",
+   "w": 1200,
+   "h": 360,
+   "legenda": "O sofá-cama do quarto-modelo recebendo cinco carimbos, um por pergunta, cada um com a fonte da resposta ao lado",
+   "aberta": false,
+   "secao": "O sofá-cama do quarto-modelo, pergunta por pergunta",
+   "apos": "Aguenta? A pergunta vai para o fabricante: o mecanismo foi feito para "
+  },
+  {
+   "id": "fig-04-02",
+   "arq": "decoracao-de-interiores-na-pratica-fig-04-02.webp",
+   "w": 1200,
+   "h": 639,
+   "legenda": "A etiqueta de um colchão de espuma, ampliada, com quatro campos destacados: as dimensões, a composição, a data de fabricação e os cuidados de conservação",
+   "aberta": false,
+   "secao": "Colchão: a etiqueta e três regras de compra",
+   "apos": "Segundo o Inmetro, o colchão de espuma traz etiqueta permanente com as"
+  },
+  {
+   "id": "fig-04-03",
+   "arq": "decoracao-de-interiores-na-pratica-fig-04-03.webp",
+   "w": 1200,
+   "h": 335,
+   "legenda": "A mesma parede revestida de três maneiras, lado a lado: placa grande com junta discreta, placa pequena com junta marcada e placa brilhante refletindo a janela",
+   "aberta": false,
+   "secao": "A aparência da placa: tamanho, junta e brilho",
+   "apos": "O título Pedreiro Completo na Prática ensina a assentar. Aqui se escol"
+  }
+ ],
+ "10-painel-e-especificacao": [
+  {
+   "id": "F-22",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f22.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Um painel de referências sobre a mesa: quatro tecidos, uma placa cor de barro, uma corda de fibra, uma régua de madeira e três cartões de cor. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-22",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "Antes de comprar, o painel mostra se as peças vão parecer de um lugar "
+  }
+ ],
+ "11-a-suite": [
+  {
+   "id": "par-02",
+   "arq": "decoracao-de-interiores-na-pratica-foto-par02.jpg",
+   "w": 1400,
+   "h": 467,
+   "legenda": "À esquerda, a foto de antes, o ambiente como estava. A suíte, como estava: a cama encostada no canto, sem cabeceira, a mesa fixa com uma cadeira e a persiana na janela. À direita, o depois. Proposta de decoração para a suíte: a cama fora do canto, com cabeceira estofada, tapete de fibra por baixo, cortina clara do teto ao piso e a mesa fixa com uma cadeira. Imagem conceitual gerada por IA.",
+   "rotulo": "Antes e depois",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro",
+   "curta": "A suíte, antes e depois: o antes é o ambiente como estava; o depois, imagem conceitual gerada por IA."
+  },
+  {
+   "id": "fig-06-01",
+   "arq": "decoracao-de-interiores-na-pratica-fig-06-01.webp",
+   "w": 1200,
+   "h": 710,
+   "legenda": "A suíte em planta: a cama de 1,93 m, medida de referência, na faixa de 2,40 m, encostada num canto e sem cabeceira, e os 0,47 m que sobram somando os dois lados, postos de um lado só",
+   "aberta": false,
+   "secao": "A largura: a conta da cama",
+   "apos": "A faixa tem 2,40 m. A cama, na planta de referência, tem 1,93 m de lar"
+  },
+  {
+   "id": "fig-06-02",
+   "arq": "decoracao-de-interiores-na-pratica-fig-06-02.webp",
+   "w": 1200,
+   "h": 806,
+   "legenda": "O trecho L entre o banheiro e os pés da cama, em planta, com a estante (e), a mesa (t) e os arcos das duas portas de abrir: o da porta da divisória, dentro da suíte, e o da porta do banheiro, dentro do banheiro",
+   "aberta": false,
+   "secao": "As duas portas e o teste da porta que abre inteira",
+   "apos": "A suíte tem duas portas de abrir. A que vem da sala-quarto abre para d"
+  },
+  {
+   "id": "A-02",
+   "arq": "decoracao-de-interiores-na-pratica-foto-a02.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A suíte, como estava: a cama encostada no canto, sem cabeceira, a mesa fixa com uma cadeira e a persiana na janela. É o ambiente como estava, antes da proposta de decoração.",
+   "rotulo": "Antes A-02",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro"
+  },
+  {
+   "id": "F-02",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f02.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Proposta de decoração para a suíte: a cama fora do canto, com cabeceira estofada, tapete de fibra por baixo, cortina clara do teto ao piso e a mesa fixa com uma cadeira. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-02",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro"
+  },
+  {
+   "id": "F-07",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f07.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Proposta de decoração para a suíte, no quarto B: a cama como ponto focal, com cabeceira de fibra, uma luminária de piso de cada lado e a parede vazia acima. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-07",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro"
+  }
+ ],
+ "12-a-sala-quarto": [
+  {
+   "id": "par-09",
+   "arq": "decoracao-de-interiores-na-pratica-foto-par09.jpg",
+   "w": 1400,
+   "h": 467,
+   "legenda": "À esquerda, a foto de antes, o ambiente como estava. A guarda de roupa, como estava: a estante aberta de madeira ainda vazia, a televisão no alto e os controles sobre a mesa. À direita, o depois. A guarda de roupa aberta, na suíte: cabides de madeira iguais, mantas à vista e um suporte de mala dobrável ao lado. Imagem conceitual gerada por IA.",
+   "rotulo": "Antes e depois",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro"
+  },
+  {
+   "id": "fig-06-03",
+   "arq": "decoracao-de-interiores-na-pratica-fig-06-03.webp",
+   "w": 1200,
+   "h": 796,
+   "legenda": "A sala-quarto de dia, em planta: sofá-cama fechado, com os 0,40 m até a parede da frente; mesa de 2,00 m; estante de livros, junto à porta da suíte, com os 2,12 m diante dela; frigobar, entre a estante e o beliche; beliche; meio desimpedido",
+   "aberta": false,
+   "secao": "De dia: as contas de subtrair",
+   "apos": "A estante de livros mede, pela mesma referência, 0,95 m × 0,28 m em pl"
+  },
+  {
+   "id": "fig-06-04",
+   "arq": "decoracao-de-interiores-na-pratica-fig-06-04.webp",
+   "w": 1200,
+   "h": 648,
+   "legenda": "A sala-quarto de noite, em planta: sofá-cama e cama auxiliar abertos, a mesa fixa e o caminho que sobra até a porta da suíte, sem número",
+   "aberta": false,
+   "secao": "De noite: tudo abre ao mesmo tempo",
+   "apos": "De noite, o sofá-cama aberto, a cama auxiliar puxada de baixo do belic"
+  },
+  {
+   "id": "A-09",
+   "arq": "decoracao-de-interiores-na-pratica-foto-a09.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A guarda de roupa, como estava: a estante aberta de madeira ainda vazia, a televisão no alto e os controles sobre a mesa. É o ambiente como estava, antes da proposta de decoração.",
+   "rotulo": "Antes A-09",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro"
+  },
+  {
+   "id": "F-09",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f09.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A guarda de roupa aberta, na suíte: cabides de madeira iguais, mantas à vista e um suporte de mala dobrável ao lado. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-09",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro"
+  },
+  {
+   "id": "F-03",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f03.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A sala-quarto com o beliche: roupa de cama branca, uma manta de cor em cada cama, uma luz para cada lugar de dormir e a chapa clara sem nada preso. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-03",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos são pro"
+  }
+ ],
+ "13-o-banheiro-compacto": [
+  {
+   "id": "par-06",
+   "arq": "decoracao-de-interiores-na-pratica-foto-par06.jpg",
+   "w": 1400,
+   "h": 467,
+   "legenda": "À esquerda, a foto de antes, o ambiente como estava. O banheiro, como estava: pia, vaso e box em sequência, uma prateleira acima do vaso e nenhum lugar para pendurar toalha. À direita, o depois. O banheiro com um toalheiro de chão, em forma de escada de madeira, apoiado junto ao box: o primeiro dos dois caminhos para as toalhas. Imagem conceitual gerada por IA.",
+   "rotulo": "Antes e depois",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto é propost"
+  },
+  {
+   "id": "fig-06-05",
+   "arq": "decoracao-de-interiores-na-pratica-fig-06-05.webp",
+   "w": 1200,
+   "h": 1185,
+   "legenda": "O banheiro do quarto A, de 1,40 m × 2,30 m, em planta, com a pia, o vaso e o box de 1,00 m de largura em sequência, na parede de frente para a porta; o arco da porta, que abre para dentro, sem cota; nenhum porta-toalhas; e o percurso desde o beliche",
+   "aberta": false,
+   "secao": "O banheiro: as medidas e as peças numa parede só",
+   "apos": "As peças ficam numa parede só, a que está de frente para a porta: a pi"
+  },
+  {
+   "id": "A-06",
+   "arq": "decoracao-de-interiores-na-pratica-foto-a06.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "O banheiro, como estava: pia, vaso e box em sequência, uma prateleira acima do vaso e nenhum lugar para pendurar toalha. É o ambiente como estava, antes da proposta de decoração.",
+   "rotulo": "Antes A-06",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto é propost"
+  },
+  {
+   "id": "F-06",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f06.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "O banheiro com um toalheiro de chão, em forma de escada de madeira, apoiado junto ao box: o primeiro dos dois caminhos para as toalhas. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-06",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto é propost"
+  }
+ ],
+ "14-a-cozinha-comum": [
+  {
+   "id": "F-10",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f10.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A cozinha comum pelo lado da guarda: a bancada de refeições ao longo do vidro, a marcenaria no lado fechado e o meio desimpedido. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-10",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto é propost",
+   "curta": "A cozinha comum, com a bancada de refeições ao longo do vidro. Imagem conceitual gerada por IA."
+  },
+  {
+   "id": "fig-06-06",
+   "arq": "decoracao-de-interiores-na-pratica-fig-06-06.webp",
+   "w": 1200,
+   "h": 449,
+   "legenda": "A cozinha no contêiner, em planta: as duas pontas, o meio desimpedido, o lado de vidro para o deque, com a bancada de refeições ao longo dele, e a passagem com as letras r e b",
+   "aberta": false,
+   "secao": "As duas pontas e o meio vazio",
+   "apos": "O meio fica vazio. Ele é a passagem entre as pontas e a saída para o d"
+  }
+ ],
+ "15-a-cozinha-equipada": [
+  {
+   "id": "F-21",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f21.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Louça branca, copo liso e talher de um modelo só, sobre a mesa de madeira. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-21",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As peças da imag"
+  },
+  {
+   "id": "fig-09-02",
+   "arq": "decoracao-de-interiores-na-pratica-fig-09-02.webp",
+   "w": 1200,
+   "h": 618,
+   "legenda": "O contador dos utensílios: os lugares de dormir somados à folga f, dezoito peças iguais de um mesmo item no exemplo, e a etiqueta \"um modelo só\"",
+   "aberta": false,
+   "secao": "A conta do individual: lugares mais a folga f",
+   "apos": "A cozinha comum do exemplo serve aos dois quartos, que somam 16 lugare"
+  }
+ ],
+ "16-iluminacao-em-camadas": [
+  {
+   "id": "par-11",
+   "arq": "decoracao-de-interiores-na-pratica-foto-par11.jpg",
+   "w": 1400,
+   "h": 467,
+   "legenda": "À esquerda, a foto de antes, o ambiente como estava. A cozinha comum pelo lado da pia, como estava: uma luz só, a do cordão de lâmpadas no teto, e a bancada de refeições só com as cadeiras. À direita, o depois. A cozinha comum pelo lado da pia: pendentes de fibra sobre a bancada de refeições, luz sob o armário e uma luminária de piso ao fundo. Imagem conceitual gerada por IA.",
+   "rotulo": "Antes e depois",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-19 é pr",
+   "curta": "A cozinha comum, antes e depois: o antes é o ambiente como estava; o depois, imagem conceitual gerada por IA."
+  },
+  {
+   "id": "fig-07-03",
+   "arq": "decoracao-de-interiores-na-pratica-fig-07-03.webp",
+   "w": 1200,
+   "h": 633,
+   "legenda": "As quatro camadas de luz em corte do quarto-modelo: geral no teto, de tarefa junto à cama e à mesa, de destaque sobre a estante e decorativa em uma luminária de mesa",
+   "aberta": false,
+   "secao": "As quatro camadas de luz e o trabalho de cada uma",
+   "apos": "A luz geral permite andar, limpar e achar as coisas. Costuma vir do te"
+  },
+  {
+   "id": "fig-07-05",
+   "arq": "decoracao-de-interiores-na-pratica-fig-07-05.webp",
+   "w": 1200,
+   "h": 498,
+   "legenda": "O mapa de luz e de tomadas sobre a planta do quarto-modelo de 6,00 m × 4,80 m, com os pontos existentes em uma cor e os pedidos numerados em outra",
+   "aberta": false,
+   "secao": "O mapa de luz e de tomadas: desenhar e percorrer de noite",
+   "apos": "Sobre uma cópia da planta do quarto, de 6,00 m × 4,80 m, marque cada p"
+  },
+  {
+   "id": "F-19",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f19.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Proposta de decoração para a suíte, à noite: cortina fechada, luz de teto, um abajur de cada lado da cama e uma luminária de piso, todas no mesmo tom. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-19",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-19 é pr"
+  },
+  {
+   "id": "A-11",
+   "arq": "decoracao-de-interiores-na-pratica-foto-a11.jpg",
+   "w": 1400,
+   "h": 1045,
+   "legenda": "A cozinha comum pelo lado da pia, como estava: uma luz só, a do cordão de lâmpadas no teto, e a bancada de refeições só com as cadeiras. É o ambiente como estava, antes da proposta de decoração.",
+   "rotulo": "Antes A-11",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-19 é pr"
+  },
+  {
+   "id": "F-11",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f11.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A cozinha comum pelo lado da pia: pendentes de fibra sobre a bancada de refeições, luz sob o armário e uma luminária de piso ao fundo. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-11",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-19 é pr"
+  }
+ ],
+ "17-cortinas-e-tapetes": [
+  {
+   "id": "F-17",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f17.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A frente de dois quartos, com as cortinas abertas: de fora se vê a cama inteira, e os vasos em grupo ficam entre um vão e outro. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-17",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-17 most",
+   "curta": "A frente de dois quartos, com as cortinas abertas. Imagem conceitual gerada por IA."
+  },
+  {
+   "id": "fig-07-02",
+   "arq": "decoracao-de-interiores-na-pratica-fig-07-02.webp",
+   "w": 1200,
+   "h": 421,
+   "legenda": "O painel de vidro da entrada visto do pátio, de dia e de noite, com a cortina aberta e fechada, mostrando quem vê e quem é visto",
+   "aberta": false,
+   "secao": "O vidro em três horas: ilumina, expõe e acorda",
+   "apos": "De dia, o vidro ilumina. O painel da entrada clareia a faixa inteira d"
+  },
+  {
+   "id": "fig-04-04",
+   "arq": "decoracao-de-interiores-na-pratica-fig-04-04.webp",
+   "w": 1200,
+   "h": 446,
+   "legenda": "Três tapetes pelos cinco filtros: um grosso e pesado, um pequeno e solto na passagem, e um rente ao piso, junto à porta de entrada",
+   "aberta": false,
+   "secao": "Tapetes: três casos e uma regra",
+   "apos": "A regra tem dois lados: ou o tapete é grande e fica preso sob os pés d"
+  },
+  {
+   "id": "F-02",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f02.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Proposta de decoração para a suíte: a cama fora do canto, com cabeceira estofada, tapete de fibra por baixo, cortina clara do teto ao piso e a mesa fixa com uma cadeira. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-02",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto F-17 most"
+  }
+ ],
+ "18-enxoval": [
+  {
+   "id": "F-20",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f20.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "O enxoval na prateleira: roupa de cama e toalhas brancas, de um modelo só, e as mantas de cor em pilha separada. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-20",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos F-07 e "
+  },
+  {
+   "id": "fig-09-01",
+   "arq": "decoracao-de-interiores-na-pratica-fig-09-01.webp",
+   "w": 1200,
+   "h": 585,
+   "legenda": "O contador do enxoval: as cinco camas de um quarto multiplicadas por j e as oito pessoas multiplicadas por j, com o resultado do exemplo ao lado de um campo em branco para o j do leitor",
+   "aberta": false,
+   "secao": "A quantidade, com a letra j",
+   "apos": "No exemplo, adotamos três jogos por cama e por pessoa: um em uso, um l"
+  },
+  {
+   "id": "F-07",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f07.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Proposta de decoração para a suíte, no quarto B: a cama como ponto focal, com cabeceira de fibra, uma luminária de piso de cada lado e a parede vazia acima. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-07",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos F-07 e "
+  },
+  {
+   "id": "F-02",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f02.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Proposta de decoração para a suíte: a cama fora do canto, com cabeceira estofada, tapete de fibra por baixo, cortina clara do teto ao piso e a mesa fixa com uma cadeira. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-02",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As fotos F-07 e "
+  }
+ ],
+ "19-o-patio-e-as-plantas": [
+  {
+   "id": "par-15",
+   "arq": "decoracao-de-interiores-na-pratica-foto-par15.jpg",
+   "w": 1400,
+   "h": 467,
+   "legenda": "À esquerda, a foto de antes, o ambiente como estava. O estar sob o pergolado, num dia de limpeza: os sofás no lugar, a rede presa aos pilares e o material de serviço ainda no piso. À direita, o depois. O estar sob o pergolado: sofás de madeira e corda, um tapete de fibra que delimita o grupo e três vasos de barro juntos, ao pé do pilar. Imagem conceitual gerada por IA.",
+   "rotulo": "Antes e depois",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As lanternas com"
+  },
+  {
+   "id": "fig-08-01",
+   "arq": "decoracao-de-interiores-na-pratica-fig-08-01.webp",
+   "w": 1200,
+   "h": 888,
+   "legenda": "O pátio em planta, sem cotas, com as quatro zonas em cores diferentes: a circulação coberta junto às fachadas, o estar e as refeições sob o pergolado, a borda da piscina e as entradas das unidades",
+   "aberta": false,
+   "secao": "As quatro zonas e a passagem",
+   "apos": "No exemplo são quatro zonas. A circulação coberta é a faixa junto às f"
+  },
+  {
+   "id": "fig-08-02",
+   "arq": "decoracao-de-interiores-na-pratica-fig-08-02.webp",
+   "w": 1200,
+   "h": 866,
+   "legenda": "Planta como móvel: três vasos do mesmo modelo, com plantas genéricas de porte alto, médio e baixo, em grupo diante de uma fachada de contêiner, com a passagem aberta ao lado",
+   "aberta": false,
+   "secao": "Planta como móvel: porte, recipiente e grupo",
+   "apos": "A terceira é o grupo: um alto, um médio e um baixo, no mesmo modelo de"
+  },
+  {
+   "id": "fig-08-03",
+   "arq": "decoracao-de-interiores-na-pratica-fig-08-03.webp",
+   "w": 1200,
+   "h": 622,
+   "legenda": "Vaso pendente no pergolado, em ponto previsto pela estrutura: o contratado na escada, o leitor no chão conferindo de onde a água escorre, sem ninguém sentado embaixo",
+   "aberta": false,
+   "secao": "Planta pendurada é carga pendurada",
+   "apos": "Um vaso com terra molhada pesa, balança com o vento e fica acima da ca"
+  },
+  {
+   "id": "fig-08-04",
+   "arq": "decoracao-de-interiores-na-pratica-fig-08-04.webp",
+   "w": 1200,
+   "h": 684,
+   "legenda": "A borda da piscina em planta, sem cotas: a faixa de circulação desimpedida em volta da água, os grupos de vasos fora dela e uma seta mostrando o vento que leva a folha para longe da piscina",
+   "aberta": false,
+   "secao": "Perto da água: três critérios de posição",
+   "apos": "O primeiro critério: fora da faixa de circulação da borda. Em volta da"
+  },
+  {
+   "id": "fig-08-05",
+   "arq": "decoracao-de-interiores-na-pratica-fig-08-05.webp",
+   "w": 1200,
+   "h": 581,
+   "legenda": "O contador de vasos: n vasos somando n compromissos de rega, com um campo em branco ao lado de cada um e a pergunta \"quem rega?\"",
+   "aberta": false,
+   "secao": "Quem rega quando a casa está vazia",
+   "apos": "Multiplique, e escreva ao lado de cada compromisso quem o cumpre: nome"
+  },
+  {
+   "id": "A-15",
+   "arq": "decoracao-de-interiores-na-pratica-foto-a15.jpg",
+   "w": 1400,
+   "h": 1045,
+   "legenda": "O estar sob o pergolado, num dia de limpeza: os sofás no lugar, a rede presa aos pilares e o material de serviço ainda no piso. É o ambiente como estava, antes da proposta de decoração.",
+   "rotulo": "Antes A-15",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As lanternas com"
+  },
+  {
+   "id": "F-15",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f15.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "O estar sob o pergolado: sofás de madeira e corda, um tapete de fibra que delimita o grupo e três vasos de barro juntos, ao pé do pilar. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-15",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As lanternas com"
+  },
+  {
+   "id": "F-12",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f12.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "O pátio visto de um dos estares: pergolado de toras com tecido claro, mesa de refeições, piscina com deque e vasos de barro em grupo. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-12",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As lanternas com"
+  }
+ ],
+ "20-o-ambiente-que-se-explica": [
+  {
+   "id": "F-09",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f09.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A guarda de roupa aberta, na suíte: cabides de madeira iguais, mantas à vista e um suporte de mala dobrável ao lado. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-09",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: Na foto F-09, o "
+  },
+  {
+   "id": "fig-07-04",
+   "arq": "decoracao-de-interiores-na-pratica-fig-07-04.webp",
+   "w": 1200,
+   "h": 1206,
+   "legenda": "O caminho do hóspede da entrada à cama, com o interruptor ao alcance da mão, a tomada ao lado da cama e os três controles nos seus lugares fixos",
+   "aberta": false,
+   "secao": "Instalar-se: a tomada e a roupa",
+   "apos": "Parada 7: achar a tomada ao lado da cama. Deite em cada cama e estenda"
+  },
+  {
+   "id": "fig-09-04",
+   "arq": "decoracao-de-interiores-na-pratica-fig-09-04.webp",
+   "w": 1200,
+   "h": 973,
+   "legenda": "O percurso do hóspede desenhado sobre a planta do quarto-modelo e do pátio, sem cotas, com as doze paradas numeradas da chegada com a mala ao fechamento da casa",
+   "aberta": false,
+   "secao": "O método: um percurso, com três anotações por parada",
+   "apos": "São doze paradas, da chegada com a mala ao fechamento da casa. Em cada"
+  }
+ ],
+ "21-dois-quartos-gemeos": [
+  {
+   "id": "F-08",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f08.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A sala-quarto do quarto B: as mesmas peças e as mesmas cores da foto F-03, do capítulo 2, com os lados trocados. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-08",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As duas fotos sã"
+  },
+  {
+   "id": "fig-09-03",
+   "arq": "decoracao-de-interiores-na-pratica-fig-09-03.webp",
+   "w": 1200,
+   "h": 417,
+   "legenda": "Os dois quartos gêmeos em planta, lado a lado, sem cotas, um em espelho do outro (o quarto B à esquerda do quarto A, para quem olha do pátio), ligados a uma única lista de inventário; a foto de referência de um aparece invertida no outro, e a porta de cada banheiro abre para dentro, com a mão trocada (dobradiça à esquerda de quem entra no A, à direita no B); sem porta-toalhas",
+   "aberta": false,
+   "secao": "Um projeto, feito duas vezes",
+   "apos": "Os dois quartos são um projeto feito duas vezes. O quarto A é o da pla"
+  },
+  {
+   "id": "F-03",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f03.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A sala-quarto com o beliche: roupa de cama branca, uma manta de cor em cada cama, uma luz para cada lugar de dormir e a chapa clara sem nada preso. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-03",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: As duas fotos sã"
+  }
+ ],
+ "22-orcamento-e-etapas": [
+  {
+   "id": "F-22",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f22.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "Um painel de referências sobre a mesa: quatro tecidos, uma placa cor de barro, uma corda de fibra, uma régua de madeira e três cartões de cor. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-22",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "Antes de pedir preço, a lista de compras se confere pela paleta: a reg"
+  },
+  {
+   "id": "fig-10-04",
+   "arq": "decoracao-de-interiores-na-pratica-fig-10-04.webp",
+   "w": 1200,
+   "h": 617,
+   "legenda": "A planilha de catorze linhas, com a coluna de quantidade preenchida, as três de cotação e a de preço em branco, e, ao lado, as duas fórmulas com letras",
+   "aberta": false,
+   "secao": "Uma planilha de quantidades, em catorze linhas",
+   "apos": "Cada linha tem cinco colunas: a quantidade, três cotações e o preço es"
+  }
+ ],
+ "23-montagem-e-fotografia": [
+  {
+   "id": "F-23",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f23.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "A bandeja de chegada sobre a cama: duas toalhas brancas, água, copos, um vaso pequeno e um cartão. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-23",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: A foto é propost"
+  },
+  {
+   "id": "fig-10-01",
+   "arq": "decoracao-de-interiores-na-pratica-fig-10-01.webp",
+   "w": 1200,
+   "h": 362,
+   "legenda": "A ordem da montagem em três faixas: os profissionais primeiro, os contratados em seguida e o leitor por último, com os móveis soltos; nas duas primeiras faixas o leitor aparece só conferindo, de fora",
+   "aberta": false,
+   "secao": "A ordem da montagem, em três tempos",
+   "apos": "A montagem do exemplo é feita na seca. Na chuva, o tecido demora a sec"
+  },
+  {
+   "id": "fig-10-02",
+   "arq": "decoracao-de-interiores-na-pratica-fig-10-02.webp",
+   "w": 1200,
+   "h": 323,
+   "legenda": "O mesmo ponto de vista da sala-quarto, antes e depois da montagem: a segunda cena mostra o ambiente como o hóspede o encontra, com as camas feitas e nada posto só para a foto",
+   "aberta": false,
+   "secao": "A foto mostra o que o hóspede encontra",
+   "apos": "A foto mostra o que o hóspede encontra. Nada de cenário montado só par"
+  }
+ ],
+ "24-conservacao-e-correcoes": [
+  {
+   "id": "par-13",
+   "arq": "decoracao-de-interiores-na-pratica-foto-par13.jpg",
+   "w": 1400,
+   "h": 467,
+   "legenda": "À esquerda, a foto de antes, o ambiente como estava. As mesas altas com banquetas, como estavam: em fila, sob o pergolado, de frente para a piscina. À direita, o depois. As mesas altas com banquetas, sob o pergolado, e um grupo de três vasos de barro marcando o centro. Imagem conceitual gerada por IA.",
+   "rotulo": "Antes e depois",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: Na F-13, tudo, m"
+  },
+  {
+   "id": "fig-10-03",
+   "arq": "decoracao-de-interiores-na-pratica-fig-10-03.webp",
+   "w": 1200,
+   "h": 216,
+   "legenda": "O calendário de conservação no ano do Cerrado: a faixa da chuva e a faixa da seca, com o que se confere antes da chuva, durante, depois dela e na seca, sem frequência em número",
+   "aberta": false,
+   "secao": "O calendário de conservação: a chuva e a seca",
+   "apos": "Antes da chuva, olhe o que fica do lado de fora e encharca: as almofad"
+  },
+  {
+   "id": "A-13",
+   "arq": "decoracao-de-interiores-na-pratica-foto-a13.jpg",
+   "w": 1400,
+   "h": 1400,
+   "legenda": "As mesas altas com banquetas, como estavam: em fila, sob o pergolado, de frente para a piscina. É o ambiente como estava, antes da proposta de decoração.",
+   "rotulo": "Antes A-13",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: Na F-13, tudo, m"
+  },
+  {
+   "id": "F-13",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f13.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "As mesas altas com banquetas, sob o pergolado, e um grupo de três vasos de barro marcando o centro. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-13",
+   "aberta": false,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: Na F-13, tudo, m"
+  }
+ ],
+ "25-o-exemplo-inteiro": [
+  {
+   "id": "F-14",
+   "arq": "decoracao-de-interiores-na-pratica-foto-f14.jpg",
+   "w": 1400,
+   "h": 939,
+   "legenda": "O pátio pronto, da mesa posta à frente dos quartos: use esta imagem para treinar a leitura. Imagem conceitual gerada por IA.",
+   "rotulo": "Foto F-14",
+   "aberta": true,
+   "secao": "Decorar na prática",
+   "apos": "O que não se copia da foto, e de quem é cada serviço: Na F-14, o cordã",
+   "curta": "A piscina e as espreguiçadeiras, vistas do pátio. Imagem conceitual gerada por IA."
+  },
+  {
+   "id": "fig-11-01",
+   "arq": "decoracao-de-interiores-na-pratica-fig-11-01.webp",
+   "w": 1200,
+   "h": 888,
+   "legenda": "O exemplo inteiro, pronto, em planta e sem cotas: os dois quartos gêmeos, um em espelho do outro, a cozinha comum e o pátio com a piscina no meio e as plantas",
+   "aberta": false,
+   "secao": "O exemplo inteiro: um caso de ensino",
+   "apos": "São dois quartos-modelo gêmeos, um em espelho do outro, uma cozinha co"
+  }
+ ]
+}

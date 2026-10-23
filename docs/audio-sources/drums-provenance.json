@@ -1,0 +1,212 @@
+{
+  "name": "Virtuosity Drums — Musique practice subset",
+  "author": "Versilian Studios LLC and Karoryfer Samples; performance by Austin McMahon",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "officialSource": "https://versilian-studios.com/virtuosity-drums/",
+  "repository": "https://github.com/sfzinstruments/virtuosity_drums",
+  "commit": "9f04cf9a734527edfbb0a4eee1f674e45bbf71bc",
+  "format": "MP3 VBR quality 2, 48000 Hz, stereo, original full release tails",
+  "samples": [
+    {
+      "midi": 36,
+      "file": "36-bumbo.mp3",
+      "bytes": 19412,
+      "sha256": "8bbab14a3ffcaacd533eefea7f9807254469f2b69075d27bb154b02e60da4fa3",
+      "duration": 2.359479,
+      "peak": 0.364233,
+      "rms": 0.032334,
+      "trimmedLeadingSeconds": 0.0,
+      "pitchShiftSemitones": 0,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/kickmic/kick/kickmic_kick_snon_vl4_rr1.flac",
+          "sha256": "3b9026557c757edeccd26467ff420fceb787902dd94f7f9b2b12b2581faa17e5",
+          "gain": 0.65
+        },
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/kick/oh_kick_snon_vl4_rr1.flac",
+          "sha256": "48254fc11d8daab4601283205f0c0b7dcb6374f120aff4bda2191462ce2dde2d",
+          "gain": 0.55
+        }
+      ],
+      "modifications": "Microphone mix/gain as listed; leading silence trim; 10 ms final fade; MP3 conversion"
+    },
+    {
+      "midi": 38,
+      "file": "38-caixa.mp3",
+      "bytes": 20276,
+      "sha256": "ba6e256148d54c8edbf53f52a737896cdad53ed31b827dffd9a99ecdff75de39",
+      "duration": 1.867375,
+      "peak": 0.331067,
+      "rms": 0.010669,
+      "trimmedLeadingSeconds": 0.00475,
+      "pitchShiftSemitones": 0,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/snare/snaremic_snare_center_vl28.flac",
+          "sha256": "f4a29c85cc19af4e18ff55f0e5e1e758e2dd78ed780dbd745c351937a42cec65",
+          "gain": 0.85
+        },
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/snare/oh_snare_center_vl28.flac",
+          "sha256": "58f273440da5633a93b5011901f01c0a7b1063284e3110bd4f765e27b2f5baba",
+          "gain": 0.6
+        }
+      ],
+      "modifications": "Microphone mix/gain as listed; leading silence trim; 10 ms final fade; MP3 conversion"
+    },
+    {
+      "midi": 42,
+      "file": "42-chimbal-fechado.mp3",
+      "bytes": 14036,
+      "sha256": "a1a110da17e432084a28a59c50f46be82792e9a86f4beead1840b6e515ccac5a",
+      "duration": 0.777708,
+      "peak": 0.278762,
+      "rms": 0.007544,
+      "trimmedLeadingSeconds": 0.003333,
+      "pitchShiftSemitones": 0,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_closed_vl4_rr1.flac",
+          "sha256": "163b306f52ebe55017e46a7b664b8438458bd7becc01553309a2f441c0bd452b",
+          "gain": 0.8
+        }
+      ],
+      "modifications": "Microphone mix/gain as listed; leading silence trim; 10 ms final fade; MP3 conversion"
+    },
+    {
+      "midi": 46,
+      "file": "46-chimbal-aberto.mp3",
+      "bytes": 141260,
+      "sha256": "3dca467f895eb958d066055fd2aceadcd460d909503f7e0b91987c4c55686aca",
+      "duration": 11.411125,
+      "peak": 0.569197,
+      "rms": 0.006406,
+      "trimmedLeadingSeconds": 0.00325,
+      "pitchShiftSemitones": 0,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_open_vl4_rr1.flac",
+          "sha256": "784687e70ed0adf17229a38f4347674ac4283a0dd85def26c556a5e9be3b1ffc",
+          "gain": 0.65
+        }
+      ],
+      "modifications": "Microphone mix/gain as listed; leading silence trim; 10 ms final fade; MP3 conversion"
+    },
+    {
+      "midi": 45,
+      "file": "45-tom-baixo.mp3",
+      "bytes": 34796,
+      "sha256": "60030e36237c95c3195b0e12d771304603af41a5a5c439483c942520b4b05e41",
+      "duration": 4.339875,
+      "peak": 0.355091,
+      "rms": 0.019461,
+      "trimmedLeadingSeconds": 0.005604,
+      "pitchShiftSemitones": 0,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ltom/oh_ltom_center_vl13.flac",
+          "sha256": "77c816b4fc1f892518f96fb511879939fc8045a5f01c2346973a4cd61f62644d",
+          "gain": 1.3
+        }
+      ],
+      "modifications": "Microphone mix/gain as listed; leading silence trim; 10 ms final fade; MP3 conversion"
+    },
+    {
+      "midi": 47,
+      "file": "47-tom-medio.mp3",
+      "bytes": 21020,
+      "sha256": "24fc7358ffd1665c0fe654dab1acd8522d3859904779d73eaeda3a8be610ee19",
+      "duration": 2.284625,
+      "peak": 0.442372,
+      "rms": 0.030731,
+      "trimmedLeadingSeconds": 0.004854,
+      "pitchShiftSemitones": -3,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl13.flac",
+          "sha256": "0a54429e26cfedcadad58d580af98978c53e4971f59af9f1f0158a79dcc37381",
+          "gain": 0.85
+        }
+      ],
+      "modifications": "Microphone mix/gain as listed; leading silence trim; 10 ms final fade; MP3 conversion; offline resampling -3 semitones"
+    },
+    {
+      "midi": 50,
+      "file": "50-tom-alto.mp3",
+      "bytes": 19124,
+      "sha256": "87c3efd48383a21855c0585df10b728d59dcf428084ffee70fd5c2b12026e99a",
+      "duration": 1.921125,
+      "peak": 0.434971,
+      "rms": 0.030733,
+      "trimmedLeadingSeconds": 0.004854,
+      "pitchShiftSemitones": 0,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl13.flac",
+          "sha256": "0a54429e26cfedcadad58d580af98978c53e4971f59af9f1f0158a79dcc37381",
+          "gain": 0.85
+        }
+      ],
+      "modifications": "Microphone mix/gain as listed; leading silence trim; 10 ms final fade; MP3 conversion"
+    },
+    {
+      "midi": 41,
+      "file": "41-surdo-baixo.mp3",
+      "bytes": 44108,
+      "sha256": "5f876f860b16814d53c075ed62172d01a1d1e96b8fb39c8dda57fe3e3ad1daeb",
+      "duration": 5.467854,
+      "peak": 0.352578,
+      "rms": 0.019452,
+      "trimmedLeadingSeconds": 0.005604,
+      "pitchShiftSemitones": -4,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ltom/oh_ltom_center_vl13.flac",
+          "sha256": "77c816b4fc1f892518f96fb511879939fc8045a5f01c2346973a4cd61f62644d",
+          "gain": 1.3
+        }
+      ],
+      "modifications": "Microphone mix/gain as listed; leading silence trim; 10 ms final fade; MP3 conversion; offline resampling -4 semitones"
+    },
+    {
+      "midi": 49,
+      "file": "49-crash.mp3",
+      "bytes": 196796,
+      "sha256": "abf1ba4db9fb7fee19cb57058ff81425bf54572a5ec2fb075a34056e8e8fbf99",
+      "duration": 14.104188,
+      "peak": 0.28263,
+      "rms": 0.012383,
+      "trimmedLeadingSeconds": 0.003042,
+      "pitchShiftSemitones": 0,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/crash/oh_crash_crash_vl3_rr1.flac",
+          "sha256": "28ac4dc5c130175555ef54009f9186e418a664c544c1f996058b5acd3b85ccb9",
+          "gain": 1.5
+        }
+      ],
+      "modifications": "Microphone mix/gain as listed; leading silence trim; 10 ms final fade; MP3 conversion"
+    },
+    {
+      "midi": 51,
+      "file": "51-ride.mp3",
+      "bytes": 121820,
+      "sha256": "136b051338636e010c15fe44b3f494532768a33ce40e53d3e768faee807bfb05",
+      "duration": 7.771479,
+      "peak": 0.305243,
+      "rms": 0.002128,
+      "trimmedLeadingSeconds": 0.003063,
+      "pitchShiftSemitones": 0,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ride/oh_ride_ride_vl3_rr1.flac",
+          "sha256": "855f22d2408439f7944c056dab306003b8fc172310c92b37b63a6aef21aa4f5c",
+          "gain": 1.1
+        }
+      ],
+      "modifications": "Microphone mix/gain as listed; leading silence trim; 10 ms final fade; MP3 conversion"
+    }
+  ]
+}

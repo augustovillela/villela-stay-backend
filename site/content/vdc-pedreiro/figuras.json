@@ -1,0 +1,449 @@
+{
+ "_nota": "Gerado por blogfig_gerar.py (posicao e escolha da figura aberta conferidas a mao). \"secao\" e \"apos\" ancoram a figura no artigo; \"aberta\": true = camada publica.",
+ "_hub": [
+  "fig-04-03",
+  "fig-06-02",
+  "fig-07-01",
+  "fig-09-01"
+ ],
+ "01-oficio-e-sequencia": [
+  {
+   "id": "fig-01-02",
+   "arq": "pedreiro-completo-na-pratica-fig-01-02.webp",
+   "w": 1200,
+   "h": 505,
+   "legenda": "A planta da Chácara-Modelo, com o depósito e o caminho de pedestres da entrada em destaque",
+   "aberta": true,
+   "secao": "A obra que acompanha o curso",
+   "apos": "A Chácara-Modelo é a propriedade de exemplo desta coleção. Lá existe u"
+  },
+  {
+   "id": "fig-01-01",
+   "arq": "pedreiro-completo-na-pratica-fig-01-01.webp",
+   "w": 1200,
+   "h": 228,
+   "legenda": "O calendário do Cerrado: os meses de chuva, os de seca e a janela de obra externa marcada",
+   "aberta": false,
+   "secao": "Três tipos de serviço e o calendário do Cerrado",
+   "apos": "Na propriedade rural, o acesso pela estrada de terra, a distância do f"
+  },
+  {
+   "id": "fig-01-04",
+   "arq": "pedreiro-completo-na-pratica-fig-01-04.webp",
+   "w": 1200,
+   "h": 697,
+   "legenda": "As três figuras do livro, lado a lado: quem faz, quem é contratado e quem assina o projeto",
+   "aberta": false,
+   "secao": "A regra de parada e as três colunas",
+   "apos": "Dela sai a tabela do curso. Todo serviço citado pertence a uma de três"
+  }
+ ],
+ "02-seguranca-no-canteiro": [
+  {
+   "id": "fig-02-01",
+   "arq": "pedreiro-completo-na-pratica-fig-02-01.webp",
+   "w": 1200,
+   "h": 454,
+   "legenda": "Quem faz com o conjunto de proteção: óculos, luvas, máscara, protetor auricular e calçado fechado, conforme a tarefa da tabela",
+   "aberta": true,
+   "secao": "Primeiro o canteiro, depois o equipamento",
+   "apos": "O que se veste muda com a tarefa. Para misturar argamassa, óculos, luv"
+  },
+  {
+   "id": "fig-02-02",
+   "arq": "pedreiro-completo-na-pratica-fig-02-02.webp",
+   "w": 1200,
+   "h": 417,
+   "legenda": "O canteiro certo e o errado: caminho livre e material empilhado baixo de um lado; entulho espalhado e extensão na água do outro",
+   "aberta": false,
+   "secao": "O canteiro tem limite",
+   "apos": "O material fica empilhado baixo, em chão firme, sem fechar passagem ne"
+  },
+  {
+   "id": "fig-00-01",
+   "arq": "pedreiro-completo-na-pratica-fig-00-01.webp",
+   "w": 1200,
+   "h": 880,
+   "legenda": "Os três símbolos de risco do livro e, embaixo, as três figuras: quem faz, quem é contratado e quem assina o projeto",
+   "aberta": false,
+   "secao": "A altura: pés no chão ou plataforma baixa e estável",
+   "apos": "Três símbolos marcam o limite do seu serviço. A mão espalmada quer diz"
+  },
+  {
+   "id": "fig-02-03",
+   "arq": "pedreiro-completo-na-pratica-fig-02-03.webp",
+   "w": 1200,
+   "h": 854,
+   "legenda": "O canteiro isolado e sinalizado, com o entulho separado por tipo em três grupos identificados",
+   "aberta": false,
+   "secao": "O entulho, o caseiro e o fim do dia",
+   "apos": "A Resolução Conama nº 307/2002 trata dos resíduos da construção. Ela s"
+  }
+ ],
+ "03-medir-e-conferir": [
+  {
+   "id": "fig-03-01",
+   "arq": "pedreiro-completo-na-pratica-fig-03-01.webp",
+   "w": 1200,
+   "h": 510,
+   "legenda": "Os instrumentos de conferência em uso: prumo, nível de bolha, nível de mangueira, linha, esquadro e o triângulo de lados 3, 4 e 5",
+   "aberta": true,
+   "secao": "Medir um cômodo, do desenho às cotas",
+   "apos": "Nenhuma parede fica perfeita, e as normas dizem quanto desvio se aceit"
+  }
+ ],
+ "04-plantas-e-cotas": [
+  {
+   "id": "fig-03-02",
+   "arq": "pedreiro-completo-na-pratica-fig-03-02.webp",
+   "w": 1200,
+   "h": 390,
+   "legenda": "O depósito em planta, corte e elevação, com as cotas da reforma: parede nova, porta nova, porta de entrada e ralo da sala A",
+   "aberta": true,
+   "secao": "Ler os três desenhos juntos",
+   "apos": "Três perguntas sobre o depósito mostram a diferença. Onde fica o ralo?"
+  }
+ ],
+ "05-estrutura-e-vedacao": [
+  {
+   "id": "fig-01-03",
+   "arq": "pedreiro-completo-na-pratica-fig-01-03.webp",
+   "w": 1200,
+   "h": 718,
+   "legenda": "A casa em corte e o caminho das cargas, do telhado ao solo: figura para ler, não para executar",
+   "aberta": true,
+   "secao": "O caminho das cargas",
+   "apos": "O trajeto que o peso faz até o chão chama-se caminho das cargas. O tel"
+  },
+  {
+   "id": "fig-03-03",
+   "arq": "pedreiro-completo-na-pratica-fig-03-03.webp",
+   "w": 1200,
+   "h": 889,
+   "legenda": "Uma fundação em corte, com a parede sobre ela e o solo embaixo: figura para ler, não para executar",
+   "aberta": false,
+   "secao": "Acrescentar peso, o solo e a terra que fica de pé",
+   "apos": "O solo é o último elo e o menos visível. Ele muda de um terreno para o"
+  }
+ ],
+ "06-ferramentas-por-funcao": [
+  {
+   "id": "fig-04-01",
+   "arq": "pedreiro-completo-na-pratica-fig-04-01.webp",
+   "w": 1200,
+   "h": 454,
+   "legenda": "O conjunto mínimo de ferramentas, pelos cinco grupos, com quem faz de óculos, luvas e calçado fechado",
+   "aberta": true,
+   "secao": "Cinco grupos, uma caixa e um carrinho",
+   "apos": "Para a reforma do depósito da Chácara-Modelo, que é o exemplo do livro"
+  }
+ ],
+ "07-cimento-argamassa-concreto": [
+  {
+   "id": "fig-04-02",
+   "arq": "pedreiro-completo-na-pratica-fig-04-02.webp",
+   "w": 1200,
+   "h": 801,
+   "legenda": "O saco de argamassa lido: as setas apontam o uso indicado, a quantidade de água e a validade com o lote",
+   "aberta": true,
+   "secao": "O saco lido",
+   "apos": "O uso indicado diz onde o produto pode e onde não pode ser aplicado: i"
+  }
+ ],
+ "08-blocos-e-revestimentos": [
+  {
+   "id": "fig-04-03",
+   "arq": "pedreiro-completo-na-pratica-fig-04-03.webp",
+   "w": 1200,
+   "h": 702,
+   "legenda": "A parede em corte, camada por camada: bloco, junta de assentamento, chapisco, emboço e reboco",
+   "aberta": true,
+   "secao": "As argamassas, cada uma com o seu serviço",
+   "apos": "A argamassa de assentamento une os blocos. O chapisco é a camada ásper"
+  }
+ ],
+ "09-visita-e-marcacao": [
+  {
+   "id": "fig-05-01",
+   "arq": "pedreiro-completo-na-pratica-fig-05-01.webp",
+   "w": 1200,
+   "h": 961,
+   "legenda": "A marcação em planta: a linha a 1,50 m da lateral, medida até a face acabada e conferida na frente e no fundo",
+   "aberta": true,
+   "secao": "A posição da parede: dois pontos e uma linha",
+   "apos": "Essa linha é a face acabada da parede nova: 1,50 m é a medida livre da"
+  }
+ ],
+ "10-quantitativos-e-logistica": [
+  {
+   "id": "fig-05-02",
+   "arq": "pedreiro-completo-na-pratica-fig-05-02.webp",
+   "w": 1200,
+   "h": 977,
+   "legenda": "A parede em elevação com os blocos contados fiada a fiada, o vão em branco e a conta fechando em 151 blocos",
+   "aberta": false,
+   "secao": "Os blocos: dois caminhos, um número",
+   "apos": "Módulo é o bloco mais a junta. O livro usa junta de 10 mm, que é a da "
+  },
+  {
+   "id": "fig-05-03",
+   "arq": "pedreiro-completo-na-pratica-fig-05-03.webp",
+   "w": 1200,
+   "h": 824,
+   "legenda": "O quadro de etapas da reforma do depósito, com as dez etapas na ordem e nenhuma riscada",
+   "aberta": true,
+   "secao": "Logística e as dez etapas",
+   "apos": "Programe a entrega pela ordem de uso: o bloco e a argamassa de assenta"
+  },
+  {
+   "id": "fig-05-04",
+   "arq": "pedreiro-completo-na-pratica-fig-05-04.webp",
+   "w": 1200,
+   "h": 325,
+   "legenda": "A reforma posta no calendário do Cerrado e das reservas, com o caminho da entrada na seca",
+   "aberta": false,
+   "secao": "Dois calendários e três testes",
+   "apos": "O primeiro calendário é o do Cerrado. Obra externa e concreto ficam me"
+  }
+ ],
+ "11-base-e-primeira-fiada": [
+  {
+   "id": "fig-06-01",
+   "arq": "pedreiro-completo-na-pratica-fig-06-01.webp",
+   "w": 1200,
+   "h": 372,
+   "legenda": "A primeira fiada a seco, com dois blocos, o vão e nove blocos sobre a linha, e depois assentada por quem faz",
+   "aberta": true,
+   "secao": "A fiada a seco e o assentamento",
+   "apos": "O terceiro passo é dispor a fiada a seco. Coloque os blocos entre as l"
+  }
+ ],
+ "12-elevacao-e-amarracao": [
+  {
+   "id": "fig-06-02",
+   "arq": "pedreiro-completo-na-pratica-fig-06-02.webp",
+   "w": 1200,
+   "h": 931,
+   "legenda": "A parede subindo com a linha esticada entre as marcas do escantilhão e as juntas verticais desencontradas; quem faz trabalha com os pés no chão",
+   "aberta": true,
+   "secao": "O escantilhão e a linha",
+   "apos": "Posto no prumo, que é a verticalidade, em cada ponta da parede, o esca"
+  }
+ ],
+ "13-vaos-vergas-e-encontros": [
+  {
+   "id": "fig-06-03",
+   "arq": "pedreiro-completo-na-pratica-fig-06-03.webp",
+   "w": 1200,
+   "h": 483,
+   "legenda": "O vão com a verga apoiada dos dois lados e, ao lado, o mesmo vão sem verga, com a fissura saindo dos cantos",
+   "aberta": true,
+   "secao": "A verga e a contraverga",
+   "apos": "Segundo o caderno de vergas do SINAPI, a referência pública de orçamen"
+  }
+ ],
+ "14-instalacoes-e-compatibilizacao": [
+  {
+   "id": "fig-06-04",
+   "arq": "pedreiro-completo-na-pratica-fig-06-04.webp",
+   "w": 1200,
+   "h": 677,
+   "legenda": "Em corte, o encunhamento entre a parede nova e a laje e o encontro com um pilar: figura para ler, não para executar",
+   "aberta": true,
+   "secao": "O encontro com a laje: o encunhamento",
+   "apos": "Entre a última fiada e a laje fica um espaço, e o preenchimento dele s"
+  }
+ ],
+ "15-conferencia-da-alvenaria": [
+  {
+   "id": "fig-09-02",
+   "arq": "pedreiro-completo-na-pratica-fig-09-02.webp",
+   "w": 1200,
+   "h": 494,
+   "legenda": "Os cinco pontos de conferência da parede nova, cada um com o seu instrumento: prumo, nível sobre a régua, linha, juntas e encontros",
+   "aberta": true,
+   "secao": "Os mesmos cinco pontos, para a parede feita e para a contratada",
+   "apos": "Inspecionar é percorrer o serviço pronto com uma lista, sempre na mesm"
+  }
+ ],
+ "16-chapisco-emboco-e-reboco": [
+  {
+   "id": "fig-07-01",
+   "arq": "pedreiro-completo-na-pratica-fig-07-01.webp",
+   "w": 1200,
+   "h": 729,
+   "legenda": "Taliscas e mestras na parede nova e a régua sarrafeando o emboço de baixo para cima, por quem executa com proteção",
+   "aberta": true,
+   "secao": "Taliscas e mestras",
+   "apos": "As guias são as taliscas e as mestras. Talisca é um pequeno calço, de "
+  }
+ ],
+ "17-contrapiso-e-caimentos": [
+  {
+   "id": "fig-07-02",
+   "arq": "pedreiro-completo-na-pratica-fig-07-02.webp",
+   "w": 1200,
+   "h": 592,
+   "legenda": "O piso da sala A em corte: o caimento leva a gota da porta nova ao ralo, e a régua com nível confere",
+   "aberta": true,
+   "secao": "Marcar o caimento a partir do ralo",
+   "apos": "Em seguida vem a porta nova, que é o ponto mais alto. O caimento multi"
+  },
+  {
+   "id": "fig-08-02",
+   "arq": "pedreiro-completo-na-pratica-fig-08-02.webp",
+   "w": 1200,
+   "h": 525,
+   "legenda": "O caminho de pedestres em corte: solo compactado, base, areia de assentamento, bloquetes, guias laterais e o caimento levando a água para um lado",
+   "aberta": false,
+   "secao": "O caminho da entrada: piso intertravado",
+   "apos": "O caminho também cai para um dos lados, conforme a norma ou o projeto."
+  }
+ ],
+ "18-paginacao-e-assentamento": [
+  {
+   "id": "fig-07-03",
+   "arq": "pedreiro-completo-na-pratica-fig-07-03.webp",
+   "w": 1200,
+   "h": 1418,
+   "legenda": "A paginação da sala A: placas inteiras, faixas de corte junto à lateral e ao fundo, ralo no canto e cordões de argamassa colante",
+   "aberta": true,
+   "secao": "Onde ficam os cortes",
+   "apos": "As placas inteiras partem da soleira, da parede nova e da parede da fr"
+  }
+ ],
+ "19-rejunte-e-selante": [
+  {
+   "id": "fig-07-04",
+   "arq": "pedreiro-completo-na-pratica-fig-07-04.webp",
+   "w": 1200,
+   "h": 611,
+   "legenda": "As três juntas do piso: a de assentamento com rejunte, a de movimentação com material flexível e a de encontro, escondida pelo rodapé",
+   "aberta": true,
+   "secao": "Três tipos de junta no mesmo piso",
+   "apos": "A junta de movimentação é um corte que atravessa o revestimento, preen"
+  }
+ ],
+ "20-umidade-e-reparos": [
+  {
+   "id": "fig-03-04",
+   "arq": "pedreiro-completo-na-pratica-fig-03-04.webp",
+   "w": 1200,
+   "h": 777,
+   "legenda": "Uma parede em corte: a umidade do solo sobe pelo pé e a mancha aparece no revestimento",
+   "aberta": true,
+   "secao": "De onde vem a água: quatro origens",
+   "apos": "Naquela parede, a água vem do solo . A parede em contato com o chão úm"
+  },
+  {
+   "id": "fig-08-01",
+   "arq": "pedreiro-completo-na-pratica-fig-08-01.webp",
+   "w": 1200,
+   "h": 592,
+   "legenda": "O piso da borda da piscina em corte: o caimento leva a água para fora do tanque, até a sarjeta",
+   "aberta": false,
+   "secao": "Do lado de fora",
+   "apos": "Sarjeta é a faixa rebaixada, ao longo de um piso ou de um caminho, por"
+  },
+  {
+   "id": "fig-08-03",
+   "arq": "pedreiro-completo-na-pratica-fig-08-03.webp",
+   "w": 1200,
+   "h": 649,
+   "legenda": "A fissura superficial do reboco, em mapa, ao lado da trinca que atravessa a parede: esta é para ler, não para executar",
+   "aberta": false,
+   "secao": "Fissura superficial e trinca que atravessa",
+   "apos": "A fissura só se repara depois de registrada e acompanhada, como ensina"
+  }
+ ],
+ "21-controle-de-qualidade": [
+  {
+   "id": "fig-09-01",
+   "arq": "pedreiro-completo-na-pratica-fig-09-01.webp",
+   "w": 1200,
+   "h": 621,
+   "legenda": "O mapa de defeitos na parede e no piso: fissuras, mancha de umidade no pé da parede, eflorescência e placa descolada",
+   "aberta": true,
+   "secao": "Umidade, eflorescência e descolamento",
+   "apos": "A umidade aparece como mancha escura, tinta que empola, reboco que esf"
+  },
+  {
+   "id": "fig-09-03",
+   "arq": "pedreiro-completo-na-pratica-fig-09-03.webp",
+   "w": 1200,
+   "h": 446,
+   "legenda": "A ficha de inspeção preenchida, com itens conformes e não conformes, e a foto da fissura com a régua encostada e a data",
+   "aberta": false,
+   "secao": "A prova: a ficha, as fotos e as datas",
+   "apos": "A prova é a ficha de inspeção, com as fotos e as datas. O registro fot"
+  }
+ ],
+ "22-orcamento-e-preco": [
+  {
+   "id": "fig-10-01",
+   "arq": "pedreiro-completo-na-pratica-fig-10-01.webp",
+   "w": 1200,
+   "h": 551,
+   "legenda": "A planilha da reforma: serviço, quantidade, perda, quantidade a comprar, horas de referência e a coluna de preço em branco",
+   "aberta": false,
+   "secao": "A coluna de preço e a forma do preço",
+   "apos": "Na planilha pronta, cada linha é um serviço, com a sua quantidade, a s"
+  }
+ ],
+ "23-proposta-e-medicao": [
+  {
+   "id": "fig-10-02",
+   "arq": "pedreiro-completo-na-pratica-fig-10-02.webp",
+   "w": 1200,
+   "h": 575,
+   "legenda": "O quadro de etapas com a medição: as etapas feitas e conferidas riscadas, as seguintes em aberto",
+   "aberta": false,
+   "secao": "A coluna “Conferida por” e o ralo",
+   "apos": "Há um serviço que entra na medição sem ser uma das dez etapas: a adequ"
+  },
+  {
+   "id": "fig-10-03",
+   "arq": "pedreiro-completo-na-pratica-fig-10-03.webp",
+   "w": 1200,
+   "h": 557,
+   "legenda": "A entrega da reforma: o contratado e o proprietário diante da parede e do piso prontos, com a ficha de aceite preenchida",
+   "aberta": true,
+   "secao": "O aceite, com a ficha na mão",
+   "apos": "A ficha termina na limpeza e na entrega: entulho separado e com destin"
+  }
+ ],
+ "24-execucao-acompanhada": [
+  {
+   "id": "fig-11-01",
+   "arq": "pedreiro-completo-na-pratica-fig-11-01.webp",
+   "w": 1200,
+   "h": 513,
+   "legenda": "O depósito em planta e em corte, com todas as camadas ligadas; laje e paredes existentes são para ler, não para executar",
+   "aberta": false,
+   "secao": "Da sétima à décima etapa: piso, rejunte, reparos e aceite",
+   "apos": "Nona, os reparos, conferidos um a um contra a lista da inspeção inicia"
+  },
+  {
+   "id": "fig-11-02",
+   "arq": "pedreiro-completo-na-pratica-fig-11-02.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "O quadro de etapas da reforma completo, da marcação ao aceite, com todas as etapas riscadas",
+   "aberta": true,
+   "secao": "Da sétima à décima etapa: piso, rejunte, reparos e aceite",
+   "apos": "Ao longo de todas elas, uma rotina não muda: o diário do dia é preench"
+  }
+ ],
+ "25-avaliacao-e-plano": [
+  {
+   "id": "fig-11-03",
+   "arq": "pedreiro-completo-na-pratica-fig-11-03.webp",
+   "w": 1200,
+   "h": 529,
+   "legenda": "A rubrica aplicada ao projeto: as dez páginas de um lado e os seis critérios do outro",
+   "aberta": true,
+   "secao": "Os seis critérios",
+   "apos": "Depois vêm a técnica e o planejamento. Na técnica: medidas conferidas,"
+  }
+ ]
+}

@@ -87,6 +87,23 @@
     },
   };
 
+  TIPOS['ciclo-musical'] = {
+    nome: 'Ciclo de estudo musical', habilidade: 'pratica', mede: 'sequencia', niveis: ['ordem das quatro etapas', 'decisão seguinte', 'aplicação do ciclo'],
+    gerar: function (r, nivel) {
+      var etapas = ['ouvir', 'entender', 'praticar', 'aplicar'];
+      var rotulos = { ouvir: 'Ouvir', entender: 'Entender', praticar: 'Praticar', aplicar: 'Aplicar' };
+      var i = inteiro(r, 0, etapas.length - 1), atual = etapas[i], certa = etapas[(i + 1) % etapas.length];
+      var dis = etapas.filter(function (x) { return x !== certa; }).map(function (x) { return { valor: x, rotulo: rotulos[x] }; });
+      return {
+        enunciado: 'Depois de ' + rotulos[atual] + ', qual é a próxima etapa do ciclo?',
+        visual: { tipo: 'progressao', simbolos: etapas.map(function (x) { return rotulos[x]; }), graus: ['1', '2', '3', '4'], legenda: 'Ouvir → entender → praticar → aplicar.' },
+        opcoes: opcoes(r, { valor: certa, rotulo: rotulos[certa] }, dis), resposta: certa,
+        explicar: function () { return 'O ciclo de estudo segue ' + etapas.map(function (x) { return rotulos[x].toLowerCase(); }).join(' → ') + '. Depois de ' + rotulos[atual].toLowerCase() + ', vem ' + rotulos[certa].toLowerCase() + '.'; },
+        revisar: { rotulo: 'Como estudar música', url: '/music/aprender/como-estudar-musica' },
+      };
+    },
+  };
+
   var IV_NIVEL = [['2M', '3M', '3m', '4J', '5J', '8J'], ['2m', '2M', '3m', '3M', '4J', '4A', '5d', '5J', '6m', '6M', '7m', '7M', '8J'],
     ['2m', '2M', '2A', '3m', '3M', '3d', '4J', '4A', '4d', '5d', '5J', '5A', '6m', '6M', '6A', '7m', '7M', '7d', '8J']];
   var RAIZES_IV = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B3', 'Bb3', 'Eb4', 'F#4', 'Ab4', 'C#4'];

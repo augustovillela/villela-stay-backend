@@ -210,11 +210,31 @@
   // ---------------- post-it "você sabia?" ----------------
   // Uma dica por abertura, sempre uma nova. É o manual que ninguém lê,
   // servido em pedaços — por isso vem com passo a passo, não com teoria.
+  // O curso aberto: o app marca <html data-vs-curso="<id>"> ao entrar num curso
+  // e tira ao sair, avisando com o evento "vs:contexto". Sem curso aberto, o
+  // servidor só sorteia dicas gerais; com curso, as gerais + as DELE.
+  function cursoAberto() { return document.documentElement.getAttribute('data-vs-curso') || ''; }
+  // <html data-vs-so-curso="1"> (o Estude marca): a tela aberta pede SÓ as dicas do curso — as gerais falam de
+  // recursos que ela não tem. O servidor então sorteia só as do curso, sem gastar dica geral como vista.
+  function soDoCurso() { return document.documentElement.hasAttribute('data-vs-so-curso'); }
+  function qsCurso() { var c = cursoAberto(); return c ? '?curso=' + encodeURIComponent(c) + (soDoCurso() ? '&so_curso=1' : '') : ''; }
+  var cursosComPostIt = {};
+  // <html data-vs-aguarde="1">: o app está ABRINDO uma tela (um curso, vindo do endereço) e ainda não sabe dizer
+  // qual é o contexto. O post-it espera — sortear agora gastaria uma dica geral numa tela que não é a dela.
+  // Com teto: página que esqueça a marca não fica sem dica para sempre.
+  var buscandoPostIt = false, esperas = 0;
   function mostrarPostIt() {
-    if (!bt || document.querySelector('.vsc-post') || document.querySelector('.vsc-dica')) return;
-    silencioso(api('GET', '/dicas/proxima')).then(function (r) {
+    if (!bt || buscandoPostIt || document.querySelector('.vsc-post') || document.querySelector('.vsc-dica')) return;
+    if (document.documentElement.hasAttribute('data-vs-aguarde') && esperas < 12) { esperas++; setTimeout(mostrarPostIt, 800); return; }
+    esperas = 0;
+    var c = cursoAberto();
+    if (c) cursosComPostIt[c] = true;
+    // a trava vale DURANTE a busca: dois pedidos seguidos (a abertura e a entrada no curso) punham dois post-its
+    buscandoPostIt = true;
+    silencioso(api('GET', '/dicas/proxima' + qsCurso())).then(function (r) {
+      buscandoPostIt = false;
       var d = r && r.dica;
-      if (!d) return;
+      if (!d || document.querySelector('.vsc-post')) return;
       E.dica = d;
       var el = document.createElement('div');
       el.className = 'vsc-post'; el.setAttribute('role', 'note'); el.style.position = 'fixed';
@@ -396,10 +416,12 @@
   // ---------------- aba Dicas (o manual, em pedaços) ----------------
   function pintarDicas(corpo) {
     corpo.innerHTML = '<div class="vsc-vz">Carregando…</div>';
-    api('GET', '/dicas').then(function (r) {
+    api('GET', '/dicas' + qsCurso()).then(function (r) {
       var itens = r.itens || [];
-      corpo.innerHTML = (itens.length ? itens.map(function (d) {
-        return '<div class="vsc-it"><h4>💡 ' + esc(d.titulo) + (d.vista ? '' : ' <span class="vsc-st a">nova</span>') + '</h4>' +
+      // Fora de curso, só as gerais: avisa onde moram as dicas de cada curso.
+      var nota = (r.tem_cursos && !r.curso) ? '<p class="vsc-vz" style="padding:10px 14px 0;text-align:left">As dicas de cada curso aparecem quando você abre o curso.</p>' : '';
+      corpo.innerHTML = nota + (itens.length ? itens.map(function (d) {
+        return '<div class="vsc-it"><h4>💡 ' + esc(d.titulo) + (d.do_curso ? ' <span class="vsc-st">deste curso</span>' : '') + (d.vista ? '' : ' <span class="vsc-st a">nova</span>') + '</h4>' +
           (d.corpo ? '<p>' + esc(d.corpo) + '</p>' : '') +
           ((d.passos || []).length ? '<ol style="margin:0 0 4px;padding-left:20px">' + d.passos.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ol>' : '') +
           (linkSeguro(d.link_url) ? '<a href="' + esc(d.link_url) + '" target="_blank" rel="noopener">' + esc(d.link_rotulo || 'Ver como') + ' →</a>' : '') + '</div>';
@@ -452,6 +474,14 @@
     // Apps de página única fazem login sem recarregar: olha de novo quando a aba volta ao foco.
     document.addEventListener('visibilitychange', function () { if (!document.hidden) atualizar(); });
     window.addEventListener('vs:sessao', atualizar);
+    // Entrar num curso é uma "abertura" daquele curso: uma dica dele, uma vez
+    // por curso a cada carga da página (não a cada aula).
+    window.addEventListener('vs:contexto', function () {
+      var c = cursoAberto();
+      if (E.aberto && E.aba === 'dicas') pintarPainel();
+      if (!c || cursosComPostIt[c] || !E.viuPostIt) return;
+      setTimeout(function () { if (cursoAberto() === c && !cursosComPostIt[c]) mostrarPostIt(); }, 1200);
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();

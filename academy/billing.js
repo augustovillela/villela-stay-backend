@@ -118,6 +118,11 @@ async function criarCheckout(usuario, productId, baseUrl, refCodigo) {
 // aplica o resultado de um pagamento do MP a um pedido (idempotente)
 function aplicarPagamento(pay) {
   const ref = String(pay.external_reference || '');
+  if (ref.startsWith('academy-ia:')) { // recarga da carteira de IA (carteira-ia.js credita, idempotente)
+    db.prepare('INSERT INTO payment_events (quando, order_id, mp_payment_id, status, payload) VALUES (?, ?, ?, ?, ?)')
+      .run(nowISO(), 'ia:' + ref.slice('academy-ia:'.length), s(pay.id, 40), s(pay.status, 30), j.str(pay).slice(0, 8000));
+    return require('./carteira-ia').aplicarPagamento(pay);
+  }
   if (ref.startsWith('academy-sub:')) { // cobrança recorrente de assinatura
     const sub = Assinaturas.obter(ref.slice('academy-sub:'.length));
     if (!sub) return { resultado: 'ignorado' };
@@ -176,6 +181,8 @@ function aplicarReembolso(order, { motivo, quem, mp_refund_id } = {}) {
       .run(novoId(), order.id, order.valor_centavos, s(motivo, 300), s(quem, 80), s(mp_refund_id, 60), nowISO());
     const e = db.prepare("SELECT id FROM enrollments WHERE user_id = ? AND product_id = ? AND status = 'ativa'").get(order.user_id, order.product_id);
     if (e) db.prepare("UPDATE enrollments SET status = 'revogada' WHERE id = ?").run(e.id);
+    // a compra foi desfeita: o certificado daquele produto deixa de valer (a página pública passa a dizer "revogado")
+    require('./governanca').Certificados.revogarSeSemAcesso(order.user_id, order.product_id, 'reembolso');
     af.Comissoes.cancelarDoPedido(order.id); // reembolso/chargeback bloqueia a comissão
   });
   repo.Auditoria.registrar({ quem: s(quem, 80), acao: 'pedido.reembolsar', entidade: 'orders', entidade_id: order.id, detalhe: s(motivo, 200) });
@@ -293,11 +300,17 @@ function registrarCobrancaAssinatura(sub, pay) {
   return { resultado: 'cobranca-registrada' };
 }
 
-// cancelamento (assinante, admin ou staff): cancela no MP e localmente
-async function cancelarAssinatura(subId, quem) {
+// cancelamento (assinante, admin ou staff): cancela no MP e localmente.
+// `exigirProvedor` (exclusão da conta): assinatura que JÁ cobra no Mercado Pago só é dada por cancelada se o
+// Mercado Pago confirmou. Sem ele (provedor fora do ar ou não configurado) o cancelamento "só aqui" deixaria a
+// cobrança correndo numa conta em que o titular não entra mais.
+async function cancelarAssinatura(subId, quem, { exigirProvedor = false } = {}) {
   const sub = Assinaturas.obter(subId);
   if (!sub) throw new Error('Assinatura não encontrada.');
   if (['cancelada'].includes(sub.status)) return { ok: true, status: sub.status };
+  if (exigirProvedor && sub.mp_preapproval_id && sub.status !== 'pendente' && !ativo()) {
+    throw new Error('Mercado Pago indisponível: a assinatura não pôde ser cancelada no provedor.');
+  }
   if (sub.mp_preapproval_id && ativo()) {
     try { await _mpFetch(`/preapproval/${sub.mp_preapproval_id}`, { method: 'PUT', body: JSON.stringify({ status: 'cancelled' }) }); }
     catch (e) { if (sub.status !== 'pendente') throw e; } // pendente pode nem existir no MP
@@ -342,7 +355,22 @@ async function conferirPedido(orderId) {
   return { status: Pedidos.obter(orderId).status };
 }
 
+// EXCLUSÃO DA CONTA (LGPD): antes de anonimizar, toda assinatura viva do titular é cancelada NO PROVEDOR, pelo
+// mesmo caminho do cancelamento comum. → { canceladas: [ids], falhas: [{ id, produto, erro }] }. Quem chama só
+// anonimiza se `falhas` vier vazio: conta excluída com cobrança correndo é o pior dos dois mundos.
+async function cancelarAssinaturasDoTitular(userId, quem) {
+  const r = { canceladas: [], falhas: [] };
+  const vivas = db.prepare("SELECT * FROM subscriptions WHERE user_id = ? AND status != 'cancelada' ORDER BY criado_em").all(userId);
+  for (const sub of vivas) {
+    try { await cancelarAssinatura(sub.id, quem, { exigirProvedor: true }); r.canceladas.push(sub.id); }
+    catch (e) { r.falhas.push({ id: sub.id, produto: sub.produto_titulo, erro: s(e && e.message, 200) }); }
+  }
+  return r;
+}
+const avisarDono = (m) => Promise.resolve(_notificar(m)).catch(() => {});
+
 module.exports = {
+  cancelarAssinaturasDoTitular, avisarDono,
   configurar, ativo, Pedidos, criarCheckout, processarWebhook, conferirPedido, reembolsar, aplicarPagamento,
   Assinaturas, criarAssinatura, cancelarAssinatura, aplicarPreapproval,
 };

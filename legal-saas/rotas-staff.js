@@ -8,12 +8,13 @@ const jwt = require('jsonwebtoken');
 const repo = require('./repo');
 const billing = require('./billing');
 const push = require('./push');
+const creditos = require('./creditos');
 
 function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviarEmail }) {
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
   const quem = (req) => (req.user && (req.user.nome || req.user.email)) || 'plataforma';
   const A = [requireAuth, requireAdmin]; // guarda de admin da plataforma
-  const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
+  const h = (fn) => (req, res) => Promise.resolve().then(() => fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
   const aud = (req, acao, ent, id, det) => repo.Auditoria.registrar({ quem: quem(req), acao, entidade: ent, entidade_id: id, detalhe: det, ip: ipDe(req) });
   // Domínio público do produto (NÃO o host interno do Render). Links de acesso saem sempre por aqui.
   const BASE = (process.env.LEGAL_SAAS_BASE_URL || 'https://juridico.villelastay.com.br').replace(/\/+$/, '');
@@ -90,7 +91,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviar
 
   // ---- ACESSOS DE CORTESIA / BETA (teste sem pagamento; vitalício até o dono revogar) ----
   app.get('/staff/api/legal-saas/cortesia', ...A, h((req, res) => {
-    res.json({ acessos: repo.Tenants.listar({ status: 'cortesia', limite: 500 }) });
+    res.json({ acessos: repo.Tenants.listar({ cortesia: true, limite: 500 }) });
   }));
   app.post('/staff/api/legal-saas/cortesia', ...A, h((req, res) => {
     const b = req.body || {};
@@ -122,6 +123,30 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviar
     const t = repo.Tenants.mudarStatus(req.params.id, 'cortesia', quem(req), 'cortesia reativada');
     aud(req, 'cortesia.reativar', 'tenants', req.params.id, t.nome);
     res.json({ ok: true, tenant: t });
+  }));
+
+  // ---- CRÉDITOS DE IA: margem, câmbio, saldos e acerto manual (só admin, com sessão) ----
+  app.get('/staff/api/legal-saas/ia-creditos', ...A, h((req, res) => res.json(creditos.resumoPlataforma())));
+  app.patch('/staff/api/legal-saas/ia-creditos/config', ...A, h((req, res) => {
+    const cfg = creditos.Config.atualizar(req.body || {});
+    aud(req, 'ia.config', 'ia_config', '', JSON.stringify(req.body || {}).slice(0, 200));
+    res.json({ ok: true, config: cfg, cambio: creditos.cambio() });
+  }));
+  app.post('/staff/api/legal-saas/ia-creditos/cambio/atualizar', ...A, h(async (req, res) => {
+    const v = await creditos.atualizarCambio();
+    res.json({ ok: true, cambio_auto: v, config: creditos.Config.ler(), cambio: creditos.cambio() });
+  }));
+  app.get('/staff/api/legal-saas/tenants/:id/ia-creditos', ...A, h((req, res) => {
+    res.json({ ...creditos.Carteira.saldo(req.params.id), extrato: creditos.Carteira.extrato(req.params.id, 60), chave: creditos.Chaves.resumo(req.params.id) });
+  }));
+  // acerto manual: pagamento recebido por fora (Pix direto), estorno ou correção. Motivo obrigatório.
+  app.post('/staff/api/legal-saas/tenants/:id/ia-creditos/ajuste', ...A, h((req, res) => {
+    if (req.viaChave) return res.status(403).json({ erro: 'Ajuste de créditos exige sessão de administrador.' });
+    if (!repo.Tenants.obter(req.params.id)) return res.status(404).json({ erro: 'Escritório não encontrado.' });
+    const b = req.body || {};
+    const r = creditos.Carteira.ajustar(req.params.id, Math.round(Number(b.valor_centavos) || 0), b.motivo, quem(req));
+    aud(req, 'ia.ajuste', 'ia_movimentos', req.params.id, `${b.valor_centavos} centavos — ${String(b.motivo || '').slice(0, 150)}`);
+    res.json({ ok: true, ...r });
   }));
 
   // ---- custo por cliente / margem ----

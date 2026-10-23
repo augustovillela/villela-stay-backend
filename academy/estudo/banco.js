@@ -1,0 +1,245 @@
+// =====================================================================
+// Villela Academy — ESTUDO · regras do BANCO DE QUESTÕES. Puro.
+//
+// A trava central é a PROCEDÊNCIA (prompt mestre, seção 10.2). Quatro
+// origens que nunca se misturam:
+//   oficial   questão de prova real — exige banca/órgão, concurso, ano e fonte
+//   adaptada  mexida a partir de uma oficial — exige dizer de qual e o que mudou
+//   autoral   escrita para o curso (por gente ou por IA) — NÃO leva banca
+//   relato    reconstrução de prova oral por candidato — nunca vira "oficial"
+// "Inspirada no estilo da banca" é autoral com `inspirada_em`; atribuir à
+// banca uma questão inventada é o erro que este arquivo existe para barrar.
+// =====================================================================
+'use strict';
+const crypto = require('crypto');
+const { normal } = require('./edital');
+
+const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
+
+const TIPOS = ['objetiva', 'multipla', 'certo_errado', 'curta', 'discursiva', 'peca', 'oral'];
+const FECHADOS = ['objetiva', 'multipla', 'certo_errado'];
+const ORIGENS = ['oficial', 'adaptada', 'autoral', 'relato'];
+const GABARITOS = ['definitivo', 'preliminar', 'alterado', 'anulada', 'sem_gabarito_oficial', 'pedagogico'];
+const SITUACOES = ['rascunho', 'revisao', 'disponivel', 'suspensa', 'arquivada'];
+const USOS = ['aprendizagem', 'revisao', 'reservada']; // reservada = só entra em simulado/aferição
+// SELO DE VIGÊNCIA (ADR-0009, item 4; ADR-0017). Opcional — questão sem ele é a de sempre. `superada` = o gabarito
+// da época hoje está errado por norma ou decisão posterior: a questão fica para ESTUDO ("O que mudou", com a nota de
+// `vigencia` explicando a mudança) e FORA de toda correção automática. `vigente` e `afetada` só registram a triagem.
+const VIGENCIAS = ['vigente', 'afetada', 'superada'];
+const LETRAS = 'abcdefghij';
+
+function validarProcedencia(q, onde) {
+  const p = q.procedencia || {};
+  const pr = {
+    banca: s(p.banca, 80), comissao: s(p.comissao, 120), orgao: s(p.orgao, 120), cargo: s(p.cargo, 120),
+    concurso: s(p.concurso, 160), ano: Math.round(Number(p.ano) || 0), etapa: s(p.etapa, 60),
+    caderno: s(p.caderno, 40), numero_original: s(p.numero_original, 20), fonte: s(p.fonte, 400),
+    adaptada_de: s(p.adaptada_de, 300), alteracao: s(p.alteracao, 400), inspirada_em: s(p.inspirada_em, 200),
+    grau_verificacao: s(p.grau_verificacao, 80), consultado_em: s(p.consultado_em, 10),
+  };
+  const origem = s(q.origem, 12);
+  if (!ORIGENS.includes(origem)) throw new Error(`${onde}: origem deve ser ${ORIGENS.join('|')}.`);
+  const ia = !!q.gerada_por_ia;
+  if (origem === 'oficial') {
+    if (ia) throw new Error(`${onde}: questão gerada por IA não pode ter origem oficial.`);
+    if (!(pr.banca || pr.orgao) || !pr.concurso || !pr.ano || !pr.fonte) throw new Error(`${onde}: questão oficial exige banca ou órgão, concurso, ano e fonte.`);
+  } else if (origem === 'adaptada') {
+    if (!pr.adaptada_de || !pr.alteracao) throw new Error(`${onde}: questão adaptada exige "adaptada_de" e "alteracao" (o que mudou).`);
+  } else if (origem === 'autoral') {
+    if (pr.banca || pr.concurso || pr.numero_original) throw new Error(`${onde}: questão autoral não leva banca nem concurso — use "inspirada_em" se for o caso.`);
+  } else if (!pr.fonte || !pr.grau_verificacao) throw new Error(`${onde}: relato exige fonte e grau_verificacao.`);
+  return { origem, gerada_por_ia: ia, procedencia: pr };
+}
+
+function validarQuestao(q, i = 0) {
+  const onde = `questão ${i + 1}`;
+  if (!q || typeof q !== 'object') throw new Error(`${onde}: inválida.`);
+  const tipo = s(q.tipo || 'objetiva', 20);
+  if (!TIPOS.includes(tipo)) throw new Error(`${onde}: tipo deve ser ${TIPOS.join('|')}.`);
+  const enunciado = s(q.enunciado, 12000);
+  if (enunciado.length < 10) throw new Error(`${onde}: enunciado muito curto.`);
+  const proc = validarProcedencia(q, onde);
+  let gabSit = s(q.gabarito_situacao, 24) || (proc.origem === 'oficial' ? '' : 'pedagogico');
+  if (!GABARITOS.includes(gabSit)) throw new Error(`${onde}: gabarito_situacao deve ser ${GABARITOS.join('|')}.`);
+  if (proc.origem !== 'oficial' && ['definitivo', 'preliminar', 'alterado'].includes(gabSit)) throw new Error(`${onde}: só questão oficial tem gabarito de banca; use "pedagogico".`);
+  const vigSit = s(q.vigencia_situacao, 20);
+  if (vigSit && !VIGENCIAS.includes(vigSit)) throw new Error(`${onde}: vigencia_situacao deve ser ${VIGENCIAS.join('|')} (ou ausente).`);
+
+  const r = {
+    tipo, enunciado, apoio: s(q.apoio, 20000), grupo: s(q.grupo, 60), ordem_fixa: !!q.ordem_fixa,
+    ...proc, gabarito_situacao: gabSit, comentario: s(q.comentario, 6000),
+    // bloco = a divisão que a REGRA DE PONTUAÇÃO usa (mínimo por bloco); não é a disciplina —
+    // no concurso da magistratura do trabalho o Bloco I reúne cinco disciplinas
+    area: s(q.area, 80), bloco: s(q.bloco, 20), disciplina: s(q.disciplina, 80), assunto: s(q.assunto, 120), subassunto: s(q.subassunto, 120),
+    dificuldade_estimada: Math.min(5, Math.max(0, Math.round(Number(q.dificuldade_estimada) || 0))),
+    tempo_estimado_seg: Math.max(0, Math.round(Number(q.tempo_estimado_seg) || 0)),
+    uso: USOS.includes(q.uso) ? q.uso : 'aprendizagem',
+    // ex.: "desatualizada desde a Lei X" — separa simulação histórica de estudo atual. Nota maior que o limite NÃO é
+    // cortada no meio da palavra (ficava "…não tem mais verbete que a susten"): corta na fronteira de frase ou de
+    // palavra e leva reticências — o mesmo espírito dos outros campos (cortar, não recusar), sem deixar toco.
+    vigencia: cortarNaFronteira(q.vigencia, MAX_VIGENCIA),
+    // só grava a chave quando vem: questão sem selo guarda os MESMOS dados de antes (reimportar não gera versão nova)
+    ...(vigSit ? { vigencia_situacao: vigSit } : {}),
+    pistas: (Array.isArray(q.pistas) ? q.pistas : []).map(p => s(p, 500)).filter(Boolean).slice(0, 5),
+    alternativas: [], rubrica: [],
+  };
+
+  if (FECHADOS.includes(tipo)) {
+    const alts = Array.isArray(q.alternativas) ? q.alternativas : [];
+    if (alts.length < 2 || alts.length > LETRAS.length) throw new Error(`${onde}: de 2 a ${LETRAS.length} alternativas.`);
+    r.alternativas = alts.map((a, k) => {
+      const texto = s(a && a.texto, 3000);
+      if (!texto) throw new Error(`${onde}: alternativa ${k + 1} sem texto.`);
+      return { id: LETRAS[k], texto, correta: !!(a && a.correta), explicacao: s(a && a.explicacao, 2000) };
+    });
+    const certas = r.alternativas.filter(a => a.correta).length;
+    if (gabSit === 'anulada' || gabSit === 'sem_gabarito_oficial') {
+      // sem gabarito confiável: a questão entra para leitura, fora da correção automática
+    } else if (tipo === 'multipla' ? certas < 1 : certas !== 1) throw new Error(`${onde}: ${tipo === 'multipla' ? 'ao menos uma' : 'exatamente uma'} alternativa correta.`);
+    // questão escrita para o curso tem de explicar por que cada distrator falha
+    if (proc.origem !== 'oficial' && r.alternativas.some(a => !a.explicacao)) throw new Error(`${onde}: toda alternativa precisa de explicação.`);
+  } else {
+    const rub = Array.isArray(q.rubrica) ? q.rubrica : [];
+    r.rubrica = rub.map(c => ({ criterio: s(c && c.criterio, 200), peso: Math.max(1, Math.round(Number(c && c.peso) || 1)), nivel3: s(c && c.nivel3, 600) })).filter(c => c.criterio);
+    if (r.rubrica.length < 2) throw new Error(`${onde}: questão aberta exige rubrica com ao menos 2 critérios.`);
+    r.espelho_oficial = !!q.espelho_oficial && proc.origem === 'oficial';
+    r.erros_criticos = (Array.isArray(q.erros_criticos) ? q.erros_criticos : []).map(e => s(e, 300)).filter(Boolean).slice(0, 8);
+  }
+  // superada sem a nota não ensina nada: o aluno veria um gabarito errado sem saber por quê
+  if (vigSit === 'superada' && !r.vigencia) throw new Error(`${onde}: questão superada exige a nota de "vigencia" (o que mudou e por quê).`);
+  // o selo NÃO entra no hash (enunciado, apoio e alternativas): marcar a questão como superada a atualiza, não a duplica
+  r.corrigivel = FECHADOS.includes(tipo) && !['anulada', 'sem_gabarito_oficial'].includes(gabSit) && vigSit !== 'superada';
+  r.hash = hashQuestao(r);
+  return r;
+}
+
+// Corta um texto longo em até `max` caracteres sem partir palavra: prefere o fim da última frase que caiba
+// (desde que sobre ao menos 60 % do limite); senão, o último espaço. Sempre termina em reticências quando cortou.
+const MAX_VIGENCIA = 300;
+function cortarNaFronteira(v, max) {
+  const t = String(v == null ? '' : v).trim().replace(/\s+/g, ' ');
+  if (t.length <= max) return t;
+  const janela = t.slice(0, max - 2); // lugar para " …"
+  const frase = Math.max(janela.lastIndexOf('. '), janela.lastIndexOf('; '), janela.lastIndexOf('! '), janela.lastIndexOf('? '));
+  if (frase >= max * 0.6) return janela.slice(0, frase + 1) + ' …';
+  const palavra = janela.lastIndexOf(' ');
+  return (palavra > 0 ? janela.slice(0, palavra) : janela).replace(/[\s,;:–—-]+$/, '') + '…';
+}
+
+// Mesma questão em outro caderno (alternativas em outra ordem) = mesmo hash.
+function hashQuestao(q) {
+  const alts = (q.alternativas || []).map(a => normal(a.texto)).sort().join('\u0001');
+  return crypto.createHash('sha1').update(normal(q.enunciado) + '\u0002' + normal(q.apoio || '') + '\u0002' + alts).digest('hex').slice(0, 20);
+}
+
+// Embaralha por semente (aluno + tentativa): mesma semente, mesma ordem — é o que deixa a prova reproduzível.
+// SEM VIÉS (auditoria de 11/10/2026): antes a posição saía de UM byte (`h[k] % (i + 1)`, 0 a 255) — em lista
+// com mais de 256 itens, o que estava além da posição 256 só trocava com as 256 primeiras, e o simulado quase não
+// trazia prova oficial nem o Bloco III. Agora é Fisher–Yates com inteiro de 32 bits tirado de um fluxo SHA-256
+// (semente + contador) e AMOSTRAGEM POR REJEIÇÃO: o número que cairia na sobra de 2^32 % n é descartado, para
+// nenhuma posição ser mais provável que outra.
+function sorteador(semente) {
+  const base = crypto.createHash('sha256').update(String(semente)).digest();
+  let bloco = Buffer.alloc(0), k = 0, n = 0;
+  const u32 = () => {
+    if (k + 4 > bloco.length) { const c = Buffer.alloc(4); c.writeUInt32BE(n++); bloco = crypto.createHash('sha256').update(base).update(c).digest(); k = 0; }
+    const v = bloco.readUInt32BE(k); k += 4; return v;
+  };
+  // inteiro uniforme em [0, max)
+  return (max) => {
+    const limite = 0x100000000 - (0x100000000 % max);
+    for (;;) { const v = u32(); if (v < limite) return v % max; }
+  };
+}
+function embaralhar(lista, semente) {
+  const r = [...lista], ate = sorteador(semente);
+  for (let i = r.length - 1; i > 0; i--) {
+    const jx = ate(i + 1);
+    [r[i], r[jx]] = [r[jx], r[i]];
+  }
+  return r;
+}
+
+// O que vai ao navegador ANTES da resposta: nunca `correta`, `explicacao`, comentário ou rubrica interna — nem a nota
+// de `vigencia`: em parte das questões ela cita a norma que só a alternativa correta traz (auditoria de 11/10/2026).
+// A vigência vai depois: na resposta do Praticar/quiz e na correção comentada da prova.
+// `ordem_fixa` (alternativa "nenhuma das anteriores", comentário que cita letra do caderno): a ordem é a do caderno,
+// em TODO caminho — prática, quiz, prova e diagnóstico passam por aqui, e a correção mostra a ordem congelada.
+// PONTUAÇÃO DE LISTA (réplica de 11/10/2026, baixa 6): em 752 questões as alternativas a–d terminam em ";" e a última
+// em "." — é a pontuação do caderno. Embaralhadas, o ponto final caía no meio ("A … apenas; · B … apenas. · C …;") e
+// denunciava qual era a última do caderno. Quando a questão É embaralhada e as alternativas têm essa pontuação de
+// lista (todas terminam em ";" ou ".", e ao menos uma em ";"), a EXIBIÇÃO sai com todas em ponto final. O dado e o
+// hash não mudam; questão de ordem fixa e certo/errado saem como estão no caderno.
+const FIM_DE_ITEM_DE_LISTA = /\s*;\s*(?:e|ou)?\s*$/i;
+function semPontuacaoDeLista(alts) {
+  const textos = alts.map(a => String(a.texto == null ? '' : a.texto).trimEnd());
+  if (alts.length < 3 || !textos.some(t => FIM_DE_ITEM_DE_LISTA.test(t)) || !textos.every(t => FIM_DE_ITEM_DE_LISTA.test(t) || /\.$/.test(t))) return alts;
+  return alts.map((a, i) => ({ ...a, texto: textos[i].replace(FIM_DE_ITEM_DE_LISTA, '.') }));
+}
+function paraAluno(q, semente) {
+  const alts = q.ordem_fixa || q.tipo === 'certo_errado' ? q.alternativas : semPontuacaoDeLista(embaralhar(q.alternativas, semente + ':' + q.id));
+  return {
+    id: q.id, tipo: q.tipo, enunciado: q.enunciado, apoio: q.apoio, grupo: q.grupo,
+    alternativas: alts.map(a => ({ id: a.id, texto: a.texto })),
+    rubrica_publica: (q.rubrica || []).map(c => ({ criterio: c.criterio, peso: c.peso })),
+    origem: q.origem, gerada_por_ia: q.gerada_por_ia, gabarito_situacao: q.gabarito_situacao, ordem_fixa: !!q.ordem_fixa,
+    procedencia: q.origem === 'autoral' ? { inspirada_em: q.procedencia.inspirada_em } : q.procedencia,
+    pistas_disponiveis: (q.pistas || []).length,
+  };
+}
+
+const superada = (q) => !!q && q.vigencia_situacao === 'superada';
+const gabaritoDe = (q) => {
+  const certas = q.alternativas.filter(a => a.correta).map(a => a.id);
+  return q.tipo === 'multipla' ? certas : certas[0];
+};
+
+// ---------------------------------------------------------------------
+// EIXOS DO BANCO (ADR-0009) — cargo, matéria, banca/organizadora, órgão e ano, num vocabulário único.
+// O caderno de cada concurso escreve a banca e o órgão de um jeito; o filtro precisa de UM nome.
+// O assunto é o vínculo com o programa (item do edital / competência) e já tem filtro próprio.
+// ---------------------------------------------------------------------
+const semAcento = (t) => String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const COMISSAO = 'Comissão do próprio tribunal';
+const BANCAS = [[/\bfgv\b|getulio vargas/, 'FGV'], [/\bfcc\b|carlos chagas/, 'FCC'], [/cespe|cebraspe/, 'Cebraspe (Cespe)'], [/comiss|proprio tribunal|propria corte/, COMISSAO]];
+function bancaCanonica(p) {
+  const b = semAcento(p.banca);
+  if (!b) return p.orgao || p.comissao ? COMISSAO : '';
+  const achada = BANCAS.find(([re]) => re.test(b));
+  return achada ? achada[1] : s(p.banca, 80);
+}
+function orgaoCanonico(p) {
+  const o = semAcento(p.orgao || p.concurso);
+  const trt = o.match(/tribunal regional do trabalho da (\d+)|\btrt[\s-]*(\d+)/);
+  if (trt) return 'TRT-' + Number(trt[1] || trt[2]);
+  if (/conselho superior da justica do trabalho|\bcsjt\b|concurso (publico )?nacional/.test(o)) return 'CSJT (concurso nacional)';
+  return s(p.orgao, 120);
+}
+function cargoCanonico(p) {
+  const c = semAcento(p.cargo);
+  if (/ju[ií]z.*trabalho/.test(c)) return 'Juiz do Trabalho Substituto';
+  return s(p.cargo, 120);
+}
+function eixos(q) {
+  const p = q.procedencia || {};
+  // banca, órgão, cargo e ano são da PROVA: questão autoral não tem (e "inspirada em" não é procedência)
+  if (q.origem !== 'oficial') return { banca: '', orgao: '', cargo: '', ano: 0, materia: s(q.disciplina, 120) };
+  return { banca: bancaCanonica(p), orgao: orgaoCanonico(p), cargo: cargoCanonico(p), ano: Math.round(Number(p.ano) || 0), materia: s(q.disciplina, 120) };
+}
+const filtroDeEixos = (o = {}) => ({ banca: s(o.banca, 80), orgao: s(o.orgao, 120), cargo: s(o.cargo, 120), ano_de: Math.round(Number(o.ano_de) || 0), ano_ate: Math.round(Number(o.ano_ate) || 0) });
+const temFiltroDeEixos = (f) => !!(f.banca || f.orgao || f.cargo || f.ano_de || f.ano_ate);
+function casaEixos(q, f) {
+  if (!temFiltroDeEixos(f)) return true;
+  const e = eixos(q);
+  return (!f.banca || e.banca === f.banca) && (!f.orgao || e.orgao === f.orgao) && (!f.cargo || e.cargo === f.cargo)
+    && (!f.ano_de || e.ano >= f.ano_de) && (!f.ano_ate || (e.ano && e.ano <= f.ano_ate));
+}
+// quantas questões há em cada valor de cada eixo — é o que a tela oferece para filtrar
+function facetas(lista) {
+  const conta = { banca: new Map(), orgao: new Map(), cargo: new Map(), ano: new Map(), materia: new Map() };
+  for (const q of lista) { const e = eixos(q); for (const k of Object.keys(conta)) if (e[k]) conta[k].set(e[k], (conta[k].get(e[k]) || 0) + 1); }
+  const lista_ = (m, porNumero) => [...m.entries()].map(([valor, n]) => ({ valor, n })).sort((a, b) => porNumero ? b.valor - a.valor : b.n - a.n || String(a.valor).localeCompare(String(b.valor)));
+  return { bancas: lista_(conta.banca), orgaos: lista_(conta.orgao), cargos: lista_(conta.cargo), anos: lista_(conta.ano, true), materias: lista_(conta.materia) };
+}
+
+module.exports = { semPontuacaoDeLista, bancaCanonica, eixos, filtroDeEixos, temFiltroDeEixos, casaEixos, facetas, validarQuestao, validarProcedencia, hashQuestao, embaralhar, cortarNaFronteira, MAX_VIGENCIA, paraAluno, gabaritoDe, superada, TIPOS, FECHADOS, ORIGENS, GABARITOS, SITUACOES, USOS, VIGENCIAS };

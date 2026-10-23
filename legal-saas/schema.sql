@@ -222,3 +222,63 @@ CREATE TABLE IF NOT EXISTS push_subs (
   criado_em  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_push_subs_tenant ON push_subs(tenant_id);
+
+-- ---- CRÉDITOS DE IA (pré-pago) + CHAVE PRÓPRIA — ver creditos.js ----
+-- Dinheiro em centavos inteiros. ia_movimentos é só-acréscimo (razão).
+CREATE TABLE IF NOT EXISTS ia_config (
+  chave         TEXT PRIMARY KEY,   -- margem_pct | cambio_modo | cambio_manual | cambio_auto | cambio_auto_em | recarga_minima_centavos
+  valor         TEXT NOT NULL,
+  atualizado_em TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ia_carteiras (
+  tenant_id          TEXT PRIMARY KEY,
+  saldo_centavos     INTEGER NOT NULL DEFAULT 0,
+  reservado_centavos INTEGER NOT NULL DEFAULT 0,   -- preso em tarefas em andamento
+  atualizado_em      TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ia_movimentos (
+  id                  TEXT PRIMARY KEY,
+  tenant_id           TEXT NOT NULL,
+  tipo                TEXT NOT NULL,              -- recarga | consumo | ajuste
+  valor_centavos      INTEGER NOT NULL,           -- + entra, − sai
+  saldo_apos_centavos INTEGER NOT NULL,
+  ref                 TEXT DEFAULT '',            -- mp:<payment_id> | reserva:<id> | ajuste:<id>
+  detalhe             TEXT DEFAULT '',            -- JSON
+  criado_em           TEXT NOT NULL,
+  criado_por          TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_ia_mov_tenant ON ia_movimentos(tenant_id, criado_em);
+-- o mesmo pagamento nunca vira crédito duas vezes
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ia_mov_recarga_ref ON ia_movimentos(ref) WHERE tipo = 'recarga';
+CREATE TABLE IF NOT EXISTS ia_reservas (
+  id               TEXT PRIMARY KEY,
+  tenant_id        TEXT NOT NULL,
+  valor_centavos   INTEGER NOT NULL,              -- custo máximo estimado
+  cobrado_centavos INTEGER NOT NULL DEFAULT 0,    -- custo real, na liquidação
+  status           TEXT NOT NULL,                 -- aberta | liquidada | cancelada | expirada
+  detalhe          TEXT DEFAULT '',
+  criado_em        TEXT NOT NULL,
+  fechado_em       TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_ia_reservas_status ON ia_reservas(status, criado_em);
+CREATE TABLE IF NOT EXISTS ia_recargas (
+  id               TEXT PRIMARY KEY,
+  tenant_id        TEXT NOT NULL,
+  valor_centavos   INTEGER NOT NULL,
+  status           TEXT NOT NULL,                 -- pendente | paga
+  mp_preference_id TEXT DEFAULT '',
+  mp_payment_id    TEXT DEFAULT '',
+  link             TEXT DEFAULT '',
+  criado_em        TEXT NOT NULL,
+  pago_em          TEXT DEFAULT '',
+  criado_por       TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_ia_recargas_tenant ON ia_recargas(tenant_id, criado_em);
+CREATE TABLE IF NOT EXISTS ia_chaves (
+  tenant_id     TEXT PRIMARY KEY,
+  provedor      TEXT NOT NULL,                    -- anthropic
+  chave_cifrada TEXT NOT NULL,                    -- AES-256-GCM (iv.tag.ct em base64); nunca em claro
+  final4        TEXT NOT NULL,
+  criado_em     TEXT NOT NULL,
+  criado_por    TEXT DEFAULT ''
+);

@@ -34,7 +34,10 @@ const { Musicas, Cifras, qualidade, semelhanca, erro, normalizar } = require('..
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const MAX_TEXTO = 400000;
-const MAX_ARQUIVO = 8 * 1024 * 1024;
+// O gestor de arranjos e o importador de Cifras compartilham o limite de
+// 10 MiB para PDF/TXT/DOCX/imagem. O body JSON do servidor permanece em 15 MB
+// para acomodar o base64 sem aceitar arquivos arbitrariamente grandes.
+const MAX_ARQUIVO = 10 * 1024 * 1024;
 const TEMPO_TAREFA_MS = 45000;
 let rodando = 0;
 const MAX_SIMULTANEAS = 3;
@@ -170,12 +173,15 @@ const Importar = {
     // Rascunho gerado pelo ÁUDIO no navegador (croma + Viterbi, motor/audio.js):
     // a procedência diz isso, e a confiança da análise baixa a da prévia.
     const audio = origem === 'audio';
-    const id = criarTarefa(usuario, audio ? 'audio' : (pareceChordPro(texto) ? 'chordpro' : 'texto'), s(titulo || String(texto).split('\n')[0], 120));
+    const pdf = origem === 'pdf';
+    const tipoEntrada = audio ? 'audio' : (pdf ? 'pdf' : (pareceChordPro(texto) ? 'chordpro' : 'texto'));
+    const id = criarTarefa(usuario, tipoEntrada, s(titulo || String(texto).split('\n')[0], 120));
     try {
       const p = previa(usuario, texto, { dica: { titulo, artista },
-        fonte: audio ? { tipo: 'audio', metodo: 'transcricao.croma', bpm: Number(bpm) || 0 } : { tipo: 'texto', metodo: 'colado' },
-        confiancaBase: audio ? Math.max(0.05, Math.min(1, Number(confianca) || 0.5)) : 1 });
+        fonte: audio ? { tipo: 'audio', metodo: 'transcricao.croma', bpm: Number(bpm) || 0 } : (pdf ? { tipo: 'arquivo', metodo: 'pdf.texto' } : { tipo: 'texto', metodo: 'colado' }),
+        confiancaBase: audio ? Math.max(0.05, Math.min(1, Number(confianca) || 0.5)) : (pdf ? 0.9 : 1) });
       if (audio) p.ambiguidades.unshift({ linha: 0, texto: '', motivo: 'Rascunho tirado do ÁUDIO: os acordes são estimativa (maiores e menores). Confira no instrumento antes de usar.' });
+      if (pdf) p.ambiguidades.unshift({ linha: 0, texto: '', motivo: 'Texto extraído de PDF: confira acordes, linhas e quebras antes de salvar.' });
       concluir(id, p, { confianca: p.confianca });
       return Importar.obter(usuario, id);
     } catch (e) { falhar(id, e); throw e; }
@@ -186,7 +192,7 @@ const Importar = {
     flags.exigir('cifras.importar.texto');
     const buf = Buffer.from(String(base64 || ''), 'base64');
     if (!buf.length) throw erro('Arquivo vazio.');
-    if (buf.length > MAX_ARQUIVO) throw erro('Arquivo acima de 8 MB.');
+    if (buf.length > MAX_ARQUIVO) throw erro('Arquivo acima de 10 MiB.');
     const tp = ext.tipoDeArquivo(nome, buf);
     if (tp.tipo === 'recusado') throw erro(tp.motivo, 415);
     const id = criarTarefa(usuario, tp.tipo === 'imagem' ? 'imagem' : 'arquivo', s(nome, 120), { lote });
@@ -317,10 +323,17 @@ const Importar = {
       criado_em: t.criado_em, atualizado_em: t.atualizado_em }, resultado, candidatos: cands };
   },
 
-  listar(usuario, { limite = 30 } = {}) {
+  listar(usuario, { limite = 30, status = '', offset = 0 } = {}) {
     recuperarPresas();
-    return db.prepare('SELECT id, status, progresso, erro, tipo_entrada, entrada_resumo, confianca, obra_id, cifra_id, criado_em FROM importacoes WHERE usuario = ? ORDER BY criado_em DESC LIMIT ?')
-      .all(usuario, Math.min(100, Number(limite) || 30));
+    const permitidos = new Set(['pendente', 'processando', 'pronta', 'falhou', 'salva', 'descartada']);
+    const filtro = String(status || '').trim();
+    const args = [usuario];
+    let sql = 'SELECT id, status, progresso, erro, tipo_entrada, entrada_resumo, confianca, obra_id, cifra_id, criado_em, atualizado_em FROM importacoes WHERE usuario = ?';
+    if (permitidos.has(filtro)) { sql += ' AND status = ?'; args.push(filtro); }
+    sql += ' ORDER BY atualizado_em DESC, criado_em DESC LIMIT ? OFFSET ?';
+    args.push(Math.min(100, Math.max(1, Number(limite) || 30)));
+    args.push(Math.min(10000, Math.max(0, Math.floor(Number(offset) || 0))));
+    return db.prepare(sql).all(...args);
   },
 
   /** A prévia de um candidato da busca externa (para abrir/comparar). */
@@ -421,20 +434,23 @@ const Importar = {
     return true;
   },
 
-  /** Reprocessar (staff): só o que tem entrada reconstituível (URL). */
-  reprocessar(id) {
+  /** Reprocessar: só o que tem entrada reconstituível (URL). */
+  async reprocessar(id, usuario) {
     const t = db.prepare('SELECT * FROM importacoes WHERE id = ?').get(id);
     if (!t) throw erro('Importação não encontrada.', 404);
+    if (usuario && t.usuario !== usuario) throw erro('Importação não encontrada.', 404);
+    if (usuario && t.status !== 'falhou') throw erro('Só importações que falharam podem ser reenviadas.', 409);
     if (t.status === 'salva') throw erro('Importação já salva: reprocessar criaria cifra duplicada.', 409);
     if (t.tipo_entrada !== 'url') throw erro('Só importação por URL pode ser reprocessada (as outras exigem a entrada original).');
     const url = 'https://' + t.entrada_resumo;
-    db.prepare("UPDATE importacoes SET status = 'pendente', erro = '', atualizado_em = ? WHERE id = ?").run(nowISO(), id);
+    db.prepare("UPDATE importacoes SET status = 'pendente', progresso = 0, erro = '', resultado = '{}', atualizado_em = ? WHERE id = ?").run(nowISO(), id);
     const adaptador = fontes.paraUrl(url);
-    return rodarEmSegundoPlano(id, async () => {
+    void rodarEmSegundoPlano(id, async () => {
       const r = await rede.obter(url, { transporte: transporteTeste });
       const x = adaptador.extrair(r.texto, r.url);
       return previa(t.usuario, x.texto, { dica: x, fonte: { tipo: 'url', url: r.url, adaptador: adaptador.id, metodo: x.metodo }, confiancaBase: x.confianca });
     });
+    return true;
   },
 
   resumoStaff() {

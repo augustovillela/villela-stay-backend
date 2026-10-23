@@ -9,7 +9,7 @@
 // enviarEmail/enviarWhatsApp/alertaAugusto são INJETADOS pelo server.js.
 // =====================================================================
 'use strict';
-const { db, nowISO, novoId, j } = require('./db');
+const { db, nowISO, novoId, j, tenantAtual, TENANT_PADRAO } = require('./db');
 
 let _canais = { enviarEmail: async () => false, enviarWhatsApp: async () => false, alertaAugusto: async () => {} };
 function configurar(canais) { _canais = { ..._canais, ...canais }; }
@@ -55,7 +55,9 @@ async function notificarCliente(clientId, { titulo, corpo, ref_tipo, ref_id }) {
 // Notificação interna para a equipe (aparece nos alertas) + WhatsApp do Augusto
 async function notificarEquipe({ titulo, corpo, ref_tipo, ref_id, whatsapp = true }) {
   gravar({ destinatario_tipo: 'user', destinatario: 'equipe', canal: 'interna', titulo, corpo, ref_tipo, ref_id, status: 'pendente' });
-  if (whatsapp) await _canais.alertaAugusto(`⚖️ ${s(titulo, 150)} — ${s(corpo, 300)}`).catch(() => {});
+  // SIGILO: o WhatsApp é o do Augusto, então só o escritório INTERNO o aciona. Alerta de
+  // escritório assinante (nome de cliente, trecho de mensagem) fica no sino do próprio escritório.
+  if (whatsapp && tenantAtual() === TENANT_PADRAO) await _canais.alertaAugusto(`⚖️ ${s(titulo, 150)} — ${s(corpo, 300)}`).catch(() => {});
 }
 
 const Notificacoes = {

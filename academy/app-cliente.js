@@ -31,18 +31,109 @@
     alvo.textContent = texto;
   }
 
+  // ABA ABERTA DURANTE UM DEPLOY: toda resposta da API traz a versão da tela que o servidor está servindo
+  // (cabeçalho X-Academy-Tela); a página sabe a versão com que foi carregada (window.ACADEMY_TELA). Diferentes →
+  // um aviso discreto, com o botão "Atualizar". NUNCA recarrega sozinha: o aluno pode estar no meio de uma prova
+  // ou com um texto em edição — quem decide a hora é ele.
+  var avisouVersao = false;
+  function conferirVersao(r) {
+    try {
+      var nova = r && r.headers && r.headers.get('X-Academy-Tela'), minha = window.ACADEMY_TELA;
+      if (!nova || !minha || nova === minha || avisouVersao) return;
+      avisouVersao = true;
+      var a = document.createElement('div');
+      a.id = 'ac-versao'; a.setAttribute('role', 'status');
+      a.style.cssText = 'position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9500;max-width:calc(100% - 24px);background:#1B2A4A;color:#fff;border-radius:99px;padding:8px 8px 8px 16px;font:500 .86rem Inter,sans-serif;box-shadow:0 10px 30px rgba(16,24,40,.3);display:flex;gap:10px;align-items:center';
+      a.innerHTML = '<span>Há uma versão nova desta tela.</span>' +
+        '<button type="button" id="ac-versao-ir" style="border:0;border-radius:99px;padding:6px 14px;background:#D97706;color:#fff;font:600 .84rem Inter,sans-serif;cursor:pointer">Atualizar</button>' +
+        '<button type="button" id="ac-versao-x" aria-label="Fechar o aviso de versão nova" style="border:0;background:none;color:#fff;font-size:1.1rem;cursor:pointer;padding:0 8px">×</button>';
+      document.body.appendChild(a);
+      el('ac-versao-ir').onclick = function () {
+        // no meio de uma prova, ou com algo ainda por salvar, o aluno confirma antes
+        if (document.body.classList.contains('es-em-prova') && !window.confirm('Você está no meio de uma prova. As respostas já salvas ficam guardadas e a prova continua de onde parou. Atualizar agora?')) return;
+        location.reload();
+      };
+      el('ac-versao-x').onclick = function () { if (a.parentNode) a.parentNode.removeChild(a); };
+    } catch (e) { /* aviso é cortesia */ }
+  }
   // SEQ cresce a cada troca de aba: leitura que volta depois de o usuário já
   // ter mudado de aba não pinta por cima da aba nova.
   var SEQ = 0;
-  function api(m, p, b) {
-    var meu = SEQ;
-    return fetch('/academy/api' + p, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined })
-      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d && d.erro || ('erro ' + r.status)); return d; }); })
+  // IA paga (carteira-ia.js): quando o servidor responde 402 com um orçamento, o usuário
+  // vê o valor e decide; aceito, a MESMA chamada é refeita levando o valor no cabeçalho
+  // X-IA-Aceite. É aqui, e não em cada tela, para nenhuma função de IA ficar sem a pergunta.
+  function api(m, p, b, aceite) {
+    var meu = SEQ, CI = window.AcademyCarteiraUI, cab = { 'Content-Type': 'application/json' };
+    var teto = aceite || (CI ? CI.aceiteGuardado() : 0);
+    if (teto) cab['X-IA-Aceite'] = String(teto);
+    return fetch('/academy/api' + p, { method: m, headers: cab, body: b ? JSON.stringify(b) : undefined })
+      .then(function (r) { conferirVersao(r); return r.json().then(function (d) {
+        if (r.status === 402 && d && d.orcamento_milesimos && CI && !aceite) {
+          return CI.pedir(d).then(function (ok) {
+            if (!ok) throw new Error(d.motivo === 'saldo_insuficiente' ? 'Sem saldo de IA para esta ação — nada foi cobrado.' : 'Ação cancelada — nada foi cobrado.');
+            return api(m, p, b, d.orcamento_milesimos);
+          });
+        }
+        // o erro leva o código e o corpo da resposta: quem trata um caso (ex.: 409 de duas abas, com o texto que está
+        // no servidor — app-estudo.js › salvarSozinho) lê `e.status` e `e.dados`; para os demais nada muda
+        if (!r.ok) { var falhou = new Error(d && d.erro || ('erro ' + r.status)); falhou.status = r.status; falhou.dados = d || null; throw falhou; }
+        // houve cobrança nesta chamada: mostra quanto saiu de verdade
+        if (CI && teto && m !== 'GET' && /\/(tutor|ia|lab|ferramentas|pedidos)\b/.test(p) && !/\/ia\/carteira/.test(p)) setTimeout(CI.depois, 300);
+        return d;
+      }); })
       .then(function (d) { return (m === 'GET' && meu !== SEQ) ? new Promise(function () {}) : d; });
   }
   var root = function () { return el('app'); };
   var view = function () { return el('c'); };
   function setView(html) { var v = view(); if (v) v.innerHTML = html; }
+
+  // ROTA — o endereço diz onde o usuário está (#/aluno, #/curso/<id>, #/curso/<id>/estude/<percurso>/<aba>…).
+  // Sem isso, F5 e o botão Voltar devolviam à primeira tela e o aluno tinha de achar a aula de novo.
+  // Enquanto uma rota está sendo APLICADA ninguém grava: reabrir a tela não pode empilhar histórico.
+  var ROTA = { aplicando: false };
+  function rotaAtual() {
+    var h = String(location.hash || '');
+    if (h.indexOf('#/') !== 0) return [];
+    try { return h.slice(2).split('/').map(decodeURIComponent).filter(function (x) { return x !== ''; }); } catch (e) { return []; }
+  }
+  // "VOLTAR PARA ONDE ESTAVA, SEMPRE" (auditoria de 11/10/2026): cada passo do histórico leva um ESTADO — a rolagem
+  // em que o aluno deixou aquela tela (`y`) e o que a tela quiser lembrar (`es`: disciplinas abertas, de onde veio).
+  // O estado mora no próprio histórico do navegador (history.state): sobrevive ao F5 e ao Voltar, e não usa
+  // localStorage. A rolagem é gravada no passo ATUAL no instante em que se sai dele para um passo novo.
+  function copia(o) { var n = {}, k; for (k in (o || {})) if (Object.prototype.hasOwnProperty.call(o, k)) n[k] = o[k]; return n; }
+  function rolagemAgora() { try { return (document.scrollingElement || document.documentElement).scrollTop || 0; } catch (e) { return 0; } }
+  function guardarNoPasso(dados) {
+    try { var st = copia(history.state), k; for (k in dados) st[k] = dados[k]; history.replaceState(st, '', location.href); } catch (e) { /* sem histórico, só não guarda o lugar */ }
+  }
+  function gravarRota(partes, substituir, estado) {
+    if (ROTA.aplicando) return;
+    var h = '#/' + partes.map(function (x) { return encodeURIComponent(String(x)); }).join('/');
+    if (h === location.hash) { if (estado) guardarNoPasso(estado); return; } // mesmo endereço: só atualiza o que a tela lembra
+    if (!substituir) guardarNoPasso({ y: rolagemAgora() });
+    try { history[substituir ? 'replaceState' : 'pushState'](estado || null, '', h); } catch (e) { /* sem histórico, só não guarda o lugar */ }
+  }
+  // Uma tela que NÃO muda o endereço (as portas da barra do curso: Largada, Simulações, Lab, material, audiobook…)
+  // entra no histórico como um passo a mais no MESMO endereço: o Voltar do navegador devolve ao passo de baixo,
+  // que tem o endereço e a rolagem de onde o aluno saiu — e não a um passo antes dele.
+  function empilhar(estado) {
+    try {
+      var y = rolagemAgora(), st = copia(history.state), k;
+      guardarNoPasso({ y: y });
+      st.y = y; for (k in (estado || {})) st[k] = estado[k];
+      history.pushState(st, '', location.href);
+      return true;
+    } catch (e) { return false; }
+  }
+  // `sobrepostos`: telas por cima da página (aula interativa, mapa que se desenha) que empilharam um passo só para o
+  // Voltar fechá-las. Enquanto houver uma, o Voltar é DELAS: o painel não remonta a página — qualquer que seja a
+  // ordem em que o navegador avisa os ouvintes.
+  // A ROLAGEM é reposta pela própria tela SÓ no Estude (ele carrega e depois rola). Nas outras telas do painel
+  // (produtor, afiliado, biblioteca, conta) quem repõe é o navegador — com o modo manual valendo para o painel
+  // inteiro, o Voltar passava a abrir essas telas sempre no topo. O Estude liga ao abrir e desliga ao sair.
+  function rolagemManual(sim) { try { if ('scrollRestoration' in history) history.scrollRestoration = sim ? 'manual' : 'auto'; } catch (e) { /* navegador sem o recurso */ } }
+  window.AcademyRota = { ler: rotaAtual, gravar: gravarRota, guardar: guardarNoPasso, empilhar: empilhar, estado: function () { return copia(history.state); }, sobrepostos: 0, rolagemManual: rolagemManual };
+  // o endereço é do Estude (F5 ou link direto): a rolagem já nasce manual, antes de o navegador tentar repor
+  if (/\/estude\//.test(String(location.hash || ''))) rolagemManual(true);
   function esqueleto() {
     return '<div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--linha"></div>' +
       '<div class="vx-skel vx-skel--bloco"></div>';
@@ -67,6 +158,11 @@
 
   // ---------------- login / cadastro / boot ----------------
   function bootAcademy() {
+    // F5 com tela sobreposta ou com uma porta do Estude aberta: o passo do topo é o da tela que não volta
+    try {
+      var st0 = history.state;
+      if (!bootAcademy.pulou && st0 && (st0.esSobreposto || st0.porta)) { bootAcademy.pulou = true; pularPassoFantasma(); }
+    } catch (e) { /* sem histórico */ }
     api('GET', '/me').then(render).catch(function () {
       (location.hash === '#cadastro' ? renderCadastro : renderLogin)();
     });
@@ -77,8 +173,8 @@
     var itens = [
       'Aulas em vídeo com material para baixar e usar no trabalho',
       'Seu progresso salvo, do celular ao computador',
-      'Certificado com código de validação pública',
-      'Acesso vitalício ao que você comprar',
+      'Certificado da Villela Academy',
+      'Acesso de 1 ano ao que você comprar',
     ];
     var tick = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
     return '<div class="vitrine"><p class="al-rotulo" style="color:var(--al-ouro)">Villela Academy</p>' +
@@ -143,7 +239,16 @@
     };
     el('b-log').onclick = function (e) { e.preventDefault(); renderLogin(); };
   }
-  function sair() { api('POST', '/logout').catch(function () {}).then(function () { location.hash = ''; location.reload(); }); }
+  // SAIR também esvazia o que o aparelho guardou para o modo offline (o cache do service worker): em aparelho
+  // compartilhado, a próxima pessoa não pode abrir o app sem rede e ver a tela de quem saiu.
+  function limparCacheDoAparelho() {
+    try { if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ tipo: 'limpar-cache' }); } catch (e) { /* sem service worker */ }
+    try {
+      if (!window.caches) return Promise.resolve();
+      return caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k.indexOf('villela-pwa-academy-') === 0; }).map(function (k) { return caches.delete(k); })); }).catch(function () {});
+    } catch (e) { return Promise.resolve(); }
+  }
+  function sair() { api('POST', '/logout').catch(function () {}).then(limparCacheDoAparelho).then(function () { location.hash = ''; location.reload(); }); }
 
   // ---------------- shell autenticado ----------------
   // [id, grupo do menu, ícone, rótulo, view] — o papel do usuário decide quais entram
@@ -212,20 +317,67 @@
       '<span aria-hidden="true">›</span><span>' + esc(c[1]) + '</span></div>' +
       '<h1>' + c[2] + ' ' + esc(c[3]) + '</h1>';
   }
-  function irPara(id) {
+  function irPara(id, semVista) {
     ABA = MAPA_VIEWS[id] ? id : 'aluno';
     SEQ++;
+    // Trocar de aba sai do curso: o post-it de dicas volta a só sortear as gerais.
+    try {
+      if (document.documentElement.hasAttribute('data-vs-curso')) {
+        document.documentElement.removeAttribute('data-vs-curso');
+        window.dispatchEvent(new CustomEvent('vs:contexto'));
+      }
+    } catch (e) { /* sem o widget, nada a fazer */ }
     Array.prototype.forEach.call(document.querySelectorAll('#ac-nav [data-nav]'), function (b) {
       if (b.getAttribute('data-nav') === ABA) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
     });
     pintarCabecalho();
+    // sair do Estude por aqui (menu do painel) também desliga o relógio da prova, o microfone e a marca "em prova"
+    if (!semVista && window.AcademyEstudeSair) { try { window.AcademyEstudeSair(); } catch (e) { /* o Estude não estava aberto */ } }
     setView(esqueleto());
+    if (semVista) return; // quem chamou vai pôr a própria tela (ex.: reabrir um curso pela rota)
+    gravarRota([ABA], !rotaAtual().length);
     (MAPA_VIEWS[ABA] || vAluno)();
   }
+  // Reabre a tela que o endereço descreve. Devolve false se o endereço não diz nada que se reconheça.
+  function aplicarRota() {
+    var r = rotaAtual();
+    if (!r.length) return false;
+    try { document.documentElement.style.overflow = ''; } catch (e) { /* leitor de tela cheia que ficou para trás */ }
+    ROTA.aplicando = true;
+    try {
+      if (r[0] === 'curso' && r[1]) {
+        var a = aluno();
+        if (!a) return false;
+        irPara('aluno', true);
+        // o estado do passo (rolagem e o que o Estude lembrava) vai junto: é o que devolve o aluno ao MESMO lugar
+        var st = history.state || {};
+        a.curso(r[1], r[2] === 'aula' && r[3] ? r[3] : undefined, r[2] === 'estude' && r[3] ? { estude: { slug: r[3], aba: r[4] || 'hoje', arg: r[5] || '', extra: r[6] || '', y: Number(st.y) || 0, es: st.es || null, pelaRota: true } } : null);
+        return true;
+      }
+      if (MAPA_VIEWS[r[0]]) { ROTA.aplicando = false; irPara(r[0]); return true; }
+      return false;
+    } finally { ROTA.aplicando = false; }
+  }
+  // PASSO FANTASMA: uma tela sobreposta (aula animada, mapa) empilha um passo no MESMO endereço só para o Voltar
+  // fechá-la. Depois de fechada — ou de um F5 —, esse passo continua no histórico: o Avançar caía nele e a página
+  // era remontada (um quiz pela metade se perdia), e o F5 deixava um Voltar que "não fazia nada". Agora o passo
+  // fantasma é PULADO: volta-se ao passo de baixo, sem remontar nada.
+  var pulandoPasso = false;
+  function pularPassoFantasma() { pulandoPasso = true; try { history.back(); } catch (e) { pulandoPasso = false; } }
+  window.addEventListener('popstate', function () {
+    if (pulandoPasso) { pulandoPasso = false; return; } // chegou ao passo de baixo: a tela já é a dele
+    if (window.AcademyRota.sobrepostos > 0) return; // o Voltar é da tela sobreposta (ela se fecha; a página fica como está)
+    if (history.state && history.state.esSobreposto) return pularPassoFantasma(); // o Avançar caiu no passo de uma tela que já fechou
+    if (!ME || !el('c')) return;
+    if (aplicarRota()) return;
+    ROTA.aplicando = true;
+    try { irPara('aluno'); } finally { ROTA.aplicando = false; }
+  });
 
   function render(me) {
     ME = me;
+    if (window.AcademyCarteiraUI) window.AcademyCarteiraUI.iniciar({ api: api, esc: esc, irParaConta: function () { irPara('conta'); } });
     var papeis = me.papeis_ativos || [];
     var tabs = tabsDoUsuario(me);
     MAPA_VIEWS = {};
@@ -278,7 +430,7 @@
     ligarNav(me);
     pintarBotaoPush();
     pintarBotaoInstalar();
-    irPara(ABA);
+    if (!aplicarRota()) irPara(ABA);
   }
 
   // ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
@@ -1447,6 +1599,8 @@
 
       secaoHTML('recibo', 'Minhas compras', 'pagamentos e reembolsos', '<div id="c-compras"><p class="al-sub">Carregando…</p></div>') +
 
+      secaoHTML('recibo', 'Créditos de IA', 'saldo do Tutor, do mentor e das ferramentas', '<div id="c-ia"><p class="al-sub">Carregando…</p></div>') +
+
       secaoHTML('chapeu2', 'Meus certificados', 'emitidos ao concluir 100% de um curso',
         '<div id="c-certs"><p class="al-sub">Carregando…</p></div>') +
 
@@ -1491,6 +1645,7 @@
     api('GET', '/aluno/certificados').then(function (d) {
       el('c-certs').innerHTML = d.certificados.length
         ? d.certificados.map(function (c) {
+          if (c.revogado_em) return '<div class="lin">🎓 ' + esc(c.produto_titulo) + ' <span class="chip">' + esc(c.id) + '</span> · <b>revogado</b> em ' + dt(c.revogado_em) + ' (o acesso ao curso foi encerrado)</div>';
           return '<div class="lin">🎓 <a href="/academy/certificados/' + esc(c.id) + '" target="_blank">' + esc(c.produto_titulo) + '</a> <span class="chip">' + esc(c.id) + '</span> · ' + dt(c.emitido_em) + '</div>';
         }).join('')
         : '<p class="sub" style="text-align:left">Conclua 100% de um curso para emitir o certificado.</p>';
@@ -1545,6 +1700,7 @@
         }).join('') + '</table>'
         : '<p class="sub" style="text-align:left">Nenhuma compra ainda — explore o <a href="/academy/marketplace">marketplace</a>.</p>';
     }).catch(function (e) { el('c-compras').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+    if (window.AcademyCarteiraUI) window.AcademyCarteiraUI.secao(el('c-ia'));
     el('b-salvar').onclick = function () {
       api('PATCH', '/me', { nome: val('c-nome'), telefone: val('c-tel') }).then(bootAcademy).catch(function (e) { el('c-msg').textContent = e.message; });
     };

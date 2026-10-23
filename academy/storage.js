@@ -35,8 +35,12 @@ const s3Ativo = () => { const c = s3cfg(); return !!(c.endpoint && c.bucket && c
 const sha256hex = (b) => crypto.createHash('sha256').update(b).digest('hex');
 const hmac = (k, m) => crypto.createHmac('sha256', k).update(m).digest();
 
-// pura e testável: gera URL presignada p/ GET|PUT|HEAD de uma chave no bucket
-function presignS3(cfg, metodo, key, segundos, { mime } = {}) {
+// pura e testável: gera URL presignada p/ GET|PUT|HEAD de uma chave no bucket.
+// `tamanho` (só o envio de PEDIDO o passa): o `content-length` entra na ASSINATURA — a URL só aceita um corpo
+// com exatamente aquele número de bytes; qualquer outro tamanho o bucket recusa (403). Sem ele, a URL é a de sempre.
+function presignS3(cfg, metodo, key, segundos, { mime, tamanho } = {}) {
+  const bytes = Math.floor(Number(tamanho) || 0);
+  const assinados = bytes > 0 ? 'content-length;host' : 'host';
   const url = new URL(cfg.endpoint);
   const host = url.host;
   const caminho = `/${cfg.bucket}/${key.split('/').map(encodeURIComponent).join('/')}`;
@@ -49,10 +53,10 @@ function presignS3(cfg, metodo, key, segundos, { mime } = {}) {
     ['X-Amz-Credential', `${cfg.key}/${escopo}`],
     ['X-Amz-Date', amzDate],
     ['X-Amz-Expires', String(Math.max(1, Math.min(604800, segundos || 600)))],
-    ['X-Amz-SignedHeaders', 'host'],
+    ['X-Amz-SignedHeaders', assinados],
   ];
   const query = q.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).sort().join('&');
-  const reqCanonica = [metodo, caminho, query, `host:${host}\n`, 'host', 'UNSIGNED-PAYLOAD'].join('\n');
+  const reqCanonica = [metodo, caminho, query, `${bytes > 0 ? `content-length:${bytes}\n` : ''}host:${host}\n`, assinados, 'UNSIGNED-PAYLOAD'].join('\n');
   const aAssinar = ['AWS4-HMAC-SHA256', amzDate, escopo, sha256hex(reqCanonica)].join('\n');
   const kData = hmac('AWS4' + cfg.secret, dataCurta);
   const kRegiao = hmac(kData, cfg.region);
@@ -75,6 +79,23 @@ async function s3Existe(key) {
   return r.ok ? { tamanho: parseInt(r.headers.get('content-length'), 10) || 0 } : null;
 }
 
+// apaga um objeto do bucket (envio de pedido reprovado na conferência: não fica lixo de aluno no storage).
+// Idempotente: objeto que já não existe (404) conta como apagado.
+async function s3Apagar(key) {
+  const u = presignS3(s3cfg(), 'DELETE', key, 300);
+  const r = await fetch(u, { method: 'DELETE' });
+  if (!r.ok && r.status !== 404) throw new Error(`Storage S3 recusou a remoção (${r.status}).`);
+}
+// remove do driver em que o arquivo está; nunca lança (quem chama já está tratando outra falha).
+// Devolve `true` só quando o arquivo SAIU (ou já não existia). Objeto do bucket com o bucket desconfigurado
+// NÃO foi apagado: responde `false` — quem expurga não marca "apagado" e tenta de novo na próxima passada.
+async function apagar(rel, onde) {
+  try {
+    if (onde === 's3') { if (!s3Ativo()) return false; await s3Apagar(rel); } else fs.rmSync(path.join(ARQUIVOS_DIR, rel), { force: true });
+    return true;
+  } catch (_) { return false; }
+}
+
 // ---------------- URL assinada do driver LOCAL (HMAC próprio) ----------------
 function assinaturaLocal(mediaId, uid, expEpoch) {
   return crypto.createHmac('sha256', _segredo).update(`${mediaId}.${uid}.${expEpoch}`).digest('base64url');
@@ -92,7 +113,11 @@ function validarLocalAssinada(mediaId, { u, e, s } = {}) {
 }
 
 // ---------------- driver unificado ----------------
-function salvarLocal(rel, buffer) { fs.writeFileSync(path.join(ARQUIVOS_DIR, rel), buffer); }
+function salvarLocal(rel, buffer) {
+  const destino = path.join(ARQUIVOS_DIR, rel);
+  if (rel.includes('/')) fs.mkdirSync(path.dirname(destino), { recursive: true }); // caminho com pasta (ex.: pedidos/…)
+  fs.writeFileSync(destino, buffer);
+}
 async function salvar(rel, buffer, mime) {
   if (s3Ativo()) { await s3Put(rel, buffer, mime); return 's3'; }
   salvarLocal(rel, buffer); return 'local';
@@ -108,6 +133,6 @@ function urlDeLeitura(media, uid, segundos) {
 }
 
 module.exports = {
-  configurar, s3Ativo, s3cfg, presignS3, s3Put, s3Existe,
+  configurar, s3Ativo, s3cfg, presignS3, s3Put, s3Existe, s3Apagar, apagar,
   salvar, caminhoLocal, urlDeLeitura, validarLocalAssinada, ARQUIVOS_DIR,
 };

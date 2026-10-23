@@ -316,11 +316,11 @@
     var met = new C.Metronomo();
     // Microfone (experimental): o elemento é criado UMA vez — o topo é
     // redesenhado o tempo todo e não pode derrubar a escuta.
-    var escutaInfo = el('span', { class: 'prox', 'aria-live': 'polite' });
+    var escutaInfo = el('span', { class: 'prox cf-escuta-info', 'aria-live': 'polite' });
     var mic = C.Escuta.botaoSeguir(function () { return corpo; }, function (linha) {
       rolagem.interromper();
       corpo.scrollTo({ top: Math.max(0, linha.offsetTop - corpo.clientHeight * 0.35), behavior: 'smooth' });
-    }, function (txt, conf) { escutaInfo.textContent = txt ? '🎤 ' + txt + (conf ? ' · ' + Math.round(conf * 100) + '%' : '') + ' · experimental' : ''; });
+    }, function (txt, conf) { var nivel = conf >= 0.65 ? 'high' : conf >= 0.4 ? 'medium' : 'low'; escutaInfo.textContent = txt ? '🎤 ' + txt + (conf ? ' · ' + Math.round(conf * 100) + '%' : '') + ' · experimental' : ''; escutaInfo.setAttribute('data-confidence', txt ? nivel : ''); escutaInfo.setAttribute('aria-label', txt ? escutaInfo.textContent : ''); });
 
     // wake lock: celular que apaga no meio do refrão é pior que papel.
     var trava = null;

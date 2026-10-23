@@ -19,6 +19,10 @@ const ARQUIVOS_DIR = storage.ARQUIVOS_DIR; // privado; NUNCA servido estático
 
 const TIPOS_PRODUTO = ['curso', 'ebook', 'pdf', 'audio', 'pacote', 'mentoria', 'clube'];
 const TIPOS_AULA = ['video', 'texto', 'pdf', 'audio', 'arquivo', 'link'];
+// Só vídeo conta na duração do curso (página de venda, JSON-LD, app do aluno).
+// Áudio fica de fora: na Academy o áudio é a versão ouvida das videoaulas
+// (audiobook) — somá-lo contaria o mesmo conteúdo duas vezes.
+const duracaoDeVideo = (a) => (a && a.tipo === 'video' ? Math.max(0, Number(a.duracao_seg) || 0) : 0);
 // o slug é a chave (URL, banco, filtro) e NÃO muda; CAT_ROT é só o rótulo de tela, com acento
 const CATEGORIAS = ['negocios', 'marketing', 'vendas', 'tecnologia', 'inteligencia-artificial',
   'direito', 'gestao-documental', 'aluguel-temporada', 'hospedagem', 'gastronomia', 'eventos',
@@ -222,6 +226,17 @@ const Produtos = {
     return lib.normalizar(config);
   },
 
+  // exemplos do Prompt Builder / gerador de agentes deste curso (já normalizados
+  // por ferramentas.normalizar). null apaga e o app volta ao padrão.
+  definirFerramentas(id, ferramentas) {
+    const p = this.obter(id);
+    if (!p) throw new Error('Produto não encontrado.');
+    const config = { ...(p.config && typeof p.config === 'object' ? p.config : {}) };
+    if (ferramentas) config.ferramentas = ferramentas; else delete config.ferramentas;
+    db.prepare('UPDATE products SET config = ?, atualizado_em = ? WHERE id = ?').run(j.str(config), nowISO(), id);
+    return config.ferramentas || null;
+  },
+
   // transição editorial validada por papel (produtor|admin)
   transicionar(id, novoStatus, { comoPapel, producerId, motivo } = {}) {
     const p = comoPapel === 'produtor' ? this.obterDoDono(id, producerId) : this.obter(id);
@@ -401,6 +416,22 @@ const Conteudo = {
 // vídeo só via upload-grande (direto ao bucket, F7); nunca por base64
 const MIMES_VIDEO = { 'video/mp4': '.mp4', 'video/webm': '.webm' };
 const UPLOAD_GRANDE_MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB (vai direto ao S3)
+// arquivo que o ALUNO envia para um pedido pago do Estude (ADR-0010): PDF até 40 MB, áudio até 4 MB
+const MIMES_PEDIDO = { 'application/pdf': '.pdf', 'audio/webm': '.webm', 'audio/mp4': '.m4a', 'audio/ogg': '.ogg', 'audio/mpeg': '.mp3', 'audio/wav': '.wav' };
+const PEDIDO_PDF_MAX_BYTES = 40 * 1024 * 1024;
+// Áudio de pedido: a resposta oral vai até 5 minutos, e 5 minutos de voz cabem com muita folga em 4 MB
+// (o gravador da tela usa ~32 kbps ≈ 1,2 MB; 4 MB são 5 min a ~100 kbps). Os 15 MB da ADR eram HORAS de
+// Opus — e a transcrição é cobrada no máximo pelo teto de 5 min: a diferença ficava com a plataforma.
+const PEDIDO_AUDIO_MAX_BYTES = 4 * 1024 * 1024;
+const PEDIDO_UPLOAD_EXPIRA_SEG = 600; // validade da URL de envio direto ao storage (10 min)
+// A ORIGEM da mídia de pedido fica no próprio caminho: todo arquivo que entra pelo envio de pedido é gravado
+// sob `pedidos/` — é o servidor que escreve o caminho, nunca quem envia. É por essa marca que a cota de envio,
+// a limpeza do que ficou solto e a exclusão do titular sabem o que é "arquivo de pedido" e o que é material de
+// curso do produtor (que NUNCA entra nessas contas). Arquivo de pedido anterior a esta marca (sem o prefixo)
+// não é alcançado pela limpeza automática — só pelo pedido que o cita.
+const PEDIDO_PREFIXO = 'pedidos/';
+const PEDIDO_PENDENTE_HORAS = 1;      // envio grande iniciado e NÃO confirmado: registro e objeto saem depois disto
+const PEDIDO_ORFA_HORAS = 24;         // arquivo enviado que não virou pedido nenhum: sai depois disto
 
 const Midia = {
   // checagem PURA (não grava nada): a importação valida o payload inteiro com ela
@@ -454,6 +485,109 @@ const Midia = {
     return this.obter(id);
   },
 
+  // ARQUIVO DE PEDIDO (Estude, ADR-0010): o que o ALUNO envia para pedir um serviço pago — o áudio da
+  // resposta oral e, depois, o PDF da prova ou do edital. Lista própria de tipos e de tamanhos; o
+  // arquivo é de quem enviou e nada o referencia, então `podeAcessar` só o abre ao dono e ao admin.
+  validarArquivoDePedido({ mime, tamanho }) {
+    mime = s(mime, 100).toLowerCase().split(';')[0].trim(); // o gravador do navegador manda "audio/webm;codecs=opus"
+    const ext = MIMES_PEDIDO[mime];
+    if (!ext) throw new Error('Tipo de arquivo não aceito para pedido (PDF ou áudio webm, m4a, ogg, mp3, wav).');
+    const max = mime === 'application/pdf' ? PEDIDO_PDF_MAX_BYTES : PEDIDO_AUDIO_MAX_BYTES;
+    tamanho = parseInt(tamanho, 10) || 0;
+    if (!tamanho) throw new Error('Arquivo vazio.');
+    if (tamanho > max) throw new Error(mime === 'application/pdf' ? `Arquivo acima de ${Math.round(max / 1048576)} MB.` : `Áudio acima de ${Math.round(max / 1048576)} MB — a resposta oral vai até 5 minutos.`);
+    return { mime, ext, max };
+  },
+  // pequeno (cabe no corpo JSON): base64, como o upload do produtor
+  async salvarDePedido(ownerUserId, { nome, mime: mimeBruto, conteudo_base64 }) {
+    const buffer = Buffer.from(String(conteudo_base64 || ''), 'base64');
+    const { mime, ext } = Midia.validarArquivoDePedido({ mime: mimeBruto, tamanho: buffer.length });
+    if (buffer.length > UPLOAD_MAX_BYTES) throw new Error('Arquivo acima de 10 MB: use o envio direto ao storage.');
+    const id = novoId();
+    const rel = PEDIDO_PREFIXO + id + ext;
+    const onde = await storage.salvar(rel, buffer, mime);
+    db.prepare('INSERT INTO media_files (id, owner_user_id, nome, mime, tamanho, sha256, file_path, storage, confirmado, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)')
+      .run(id, ownerUserId, s(nome, 200) || rel, mime, buffer.length, crypto.createHash('sha256').update(buffer).digest('hex'), rel, onde, nowISO());
+    return { id, tamanho: buffer.length, mime };
+  },
+  // grande (PDF): presigned PUT direto ao bucket; confirma-se com `confirmarUploadDePedido`.
+  // A URL vale pouco (PEDIDO_UPLOAD_EXPIRA_SEG): ela não fixa o tamanho, e uma URL que vale uma hora
+  // deixava o aluno confirmar 1 MB e reenviar 2 GB por cima. O tamanho que vale é o conferido na leitura.
+  iniciarUploadDePedido(ownerUserId, { nome, mime: mimeBruto, tamanho }) {
+    if (!storage.s3Ativo()) throw new Error('O envio de arquivo grande está indisponível no momento (storage externo não configurado).');
+    const { mime, ext } = Midia.validarArquivoDePedido({ mime: mimeBruto, tamanho });
+    const id = novoId();
+    const rel = PEDIDO_PREFIXO + id + ext;
+    db.prepare("INSERT INTO media_files (id, owner_user_id, nome, mime, tamanho, file_path, storage, confirmado, criado_em) VALUES (?, ?, ?, ?, ?, ?, 's3', 0, ?)")
+      .run(id, ownerUserId, s(nome, 200) || rel, mime, parseInt(tamanho, 10), rel, nowISO());
+    // o tamanho declarado vai na ASSINATURA: a URL não aceita corpo de outro tamanho (antes, aceitava até o limite de um PUT)
+    return { id, upload_url: storage.presignS3(storage.s3cfg(), 'PUT', rel, PEDIDO_UPLOAD_EXPIRA_SEG, { tamanho: parseInt(tamanho, 10) }), expira_seg: PEDIDO_UPLOAD_EXPIRA_SEG };
+  },
+  // Confirma o envio grande de um pedido: o arquivo é CONFERIDO antes de valer. O tamanho é o que chegou
+  // ao bucket, não o declarado; reprovado, somem o registro e o objeto — nada fica "confirmado" à espera.
+  async confirmarUploadDePedido(id, ownerUserId) {
+    const m = this.obterMesmoPendente(id);
+    if (!m || m.owner_user_id !== ownerUserId) throw new Error('Upload não encontrado.');
+    if (m.confirmado) return m;
+    const obj = await storage.s3Existe(m.file_path);
+    if (!obj) throw new Error('Arquivo ainda não chegou ao storage — envie e confirme de novo.');
+    try { Midia.validarArquivoDePedido({ mime: m.mime, tamanho: obj.tamanho }); }
+    catch (e) { await Midia.descartarDePedido(m); throw e; }
+    db.prepare('UPDATE media_files SET confirmado = 1, tamanho = ? WHERE id = ?').run(obj.tamanho, id);
+    return this.obter(id);
+  },
+  // apaga o registro e o objeto de um arquivo de pedido que não serve (só o que NADA referencia: é do aluno, para pedido)
+  async descartarDePedido(m) {
+    db.prepare('DELETE FROM media_files WHERE id = ?').run(m.id);
+    await storage.apagar(m.file_path, m.storage);
+  },
+  // nasceu de um envio de pedido? (a marca é o caminho, escrito pelo servidor — ver PEDIDO_PREFIXO)
+  dePedido(m) { return !!m && String(m.file_path || '').startsWith(PEDIDO_PREFIXO); },
+  // Alguma aula, material, capa, videoaula do Estude ou faixa de audiobook aponta para esta mídia? Quem apaga
+  // arquivo "de pedido" confere isto antes: mídia que o curso usa não é de pedido, por mais que um pedido a cite.
+  // (Na dúvida — tabela que não deu para ler — responde que SIM: errar para o lado de não apagar.)
+  referenciada(mediaId) {
+    const id = String(mediaId || '');
+    if (!id) return false;
+    const fontes = ['SELECT 1 FROM lessons WHERE media_id = ?', 'SELECT 1 FROM lesson_materials WHERE media_id = ?', 'SELECT 1 FROM products WHERE capa_media_id = ?',
+      'SELECT 1 FROM product_materials WHERE media_id = ?', 'SELECT 1 FROM est_unidades WHERE video_media_id = ?', 'SELECT 1 FROM audiobook_faixas WHERE media_id = ?'];
+    try { return fontes.some(sql => !!db.prepare(sql + ' LIMIT 1').get(id)); } catch (_) { return true; }
+  },
+  // Os BYTES de uma mídia, lidos pelo servidor (transcrição do áudio; PDF da prova e do edital): do disco
+  // no driver local, ou do bucket por URL presignada de leitura. Quem chama já conferiu de quem é o
+  // arquivo — aqui não há sessão. O tamanho gravado no registro NÃO é confiável (o objeto pode ter sido
+  // trocado depois de confirmado): confere-se o `content-length` e lê-se em fluxo, com corte em `maxBytes`.
+  async lerBytes(m, maxBytes = PEDIDO_PDF_MAX_BYTES) {
+    const grande = () => { const e = new Error('Arquivo grande demais para ser lido.'); e.status = 422; return e; };
+    if (!m) throw new Error('Arquivo não encontrado.');
+    if (m.tamanho > maxBytes) throw grande();
+    if (m.storage === 's3') {
+      if (!storage.s3Ativo()) throw new Error('Storage externo indisponível.');
+      const r = await fetch(storage.presignS3(storage.s3cfg(), 'GET', m.file_path, 300), { signal: AbortSignal.timeout(120000) });
+      if (!r.ok) throw new Error(`O storage não entregou o arquivo (${r.status}).`);
+      const cancelar = () => { try { if (r.body && r.body.cancel) r.body.cancel().catch(() => {}); } catch (_) { /* já fechado */ } };
+      if (Number(r.headers.get('content-length')) > maxBytes) { cancelar(); throw grande(); }
+      if (!r.body || !r.body.getReader) { const buf = Buffer.from(await r.arrayBuffer()); if (buf.length > maxBytes) throw grande(); return buf; }
+      // em fluxo: o cabeçalho pode faltar (ou mentir) — para de ler no primeiro byte além do limite
+      const leitor = r.body.getReader(), partes = [];
+      let total = 0;
+      for (;;) {
+        const { done, value } = await leitor.read();
+        if (done) break;
+        total += value.length;
+        if (total > maxBytes) { try { await leitor.cancel(); } catch (_) { /* já fechado */ } throw grande(); }
+        partes.push(Buffer.from(value));
+      }
+      return Buffer.concat(partes, total);
+    }
+    const caminho = storage.caminhoLocal(m.file_path);
+    let tamanho;
+    // o erro do sistema traz o caminho do servidor: quem pediu só precisa saber que o arquivo não está lá
+    try { tamanho = fs.statSync(caminho).size; } catch (_) { const e = new Error('O arquivo não está mais no armazenamento — envie de novo.'); e.status = 422; throw e; }
+    if (tamanho > maxBytes) throw grande();
+    return fs.readFileSync(caminho);
+  },
+
   obter(id) { return db.prepare('SELECT * FROM media_files WHERE id = ? AND confirmado = 1').get(id) || null; },
   obterMesmoPendente(id) { return db.prepare('SELECT * FROM media_files WHERE id = ?').get(id) || null; },
   caminhoAbsoluto(m) { return storage.caminhoLocal(m.file_path); },
@@ -474,8 +608,18 @@ const Midia = {
       -- Material do CURSO: não é aula, então não goteja (lesson_id vazio), mas
       -- exige matrícula como qualquer conteúdo pago. Sem esta linha o arquivo
       -- apareceria na prateleira e daria 404 no clique.
-      UNION SELECT '' AS lesson_id, m.product_id, 0 AS gratuita FROM product_materials m WHERE m.media_id = ?`)
-      .all(mediaId, mediaId, mediaId, mediaId);
+      UNION SELECT '' AS lesson_id, m.product_id, 0 AS gratuita FROM product_materials m WHERE m.media_id = ?
+      -- Vídeo de aula do ESTUDE: não é aula do curso (não goteja), exige matrícula no curso que hospeda o
+      -- percurso, e só vale para aula PUBLICADA — vídeo de aula em rascunho não se entrega pela URL.
+      UNION SELECT '' AS lesson_id, e.product_id, 0 AS gratuita FROM est_unidades u JOIN est_escopos e ON e.id = u.escopo_id
+            WHERE u.video_media_id = ? AND u.status = 'publicado' AND e.status = 'publicado'
+      -- …e a aula INCLUÍDA em percurso de outro curso (ADR-0015): quem tem o curso que a inclui também a assiste.
+      -- A aula segue o status dela na origem; o percurso que a inclui tem de estar publicado e ser do curso.
+      UNION SELECT '' AS lesson_id, b.product_id, 0 AS gratuita FROM est_unidades u
+            JOIN est_escopo_inclusoes i ON i.origem_escopo_id = u.escopo_id AND i.unidade_codigo = u.codigo
+            JOIN est_escopos b ON b.id = i.escopo_id
+            WHERE u.video_media_id = ? AND u.status = 'publicado' AND b.status = 'publicado' AND b.dono_user_id = ''`)
+      .all(mediaId, mediaId, mediaId, mediaId, mediaId, mediaId);
     for (const r of refs) {
       if (r.gratuita) return true; // degustação
       if (!temAcesso(usuario.id, r.product_id)) continue; // matrícula ou assinatura (clube)
@@ -718,6 +862,8 @@ const Matriculas = {
     const e = db.prepare('SELECT * FROM enrollments WHERE id = ? AND product_id = ?').get(enrollmentId, productId);
     if (!e) throw new Error('Matrícula não encontrada.');
     db.prepare("UPDATE enrollments SET status = 'revogada' WHERE id = ?").run(enrollmentId);
+    // (require tardio: governanca → repo-conteudo) sem acesso ao produto, o certificado dele deixa de valer
+    require('./governanca').Certificados.revogarSeSemAcesso(e.user_id, e.product_id, 'matrícula revogada');
   },
   doProduto(productId) {
     return db.prepare(`SELECT e.*, u.nome, u.email FROM enrollments e JOIN users u ON u.id = e.user_id
@@ -820,6 +966,7 @@ const Cortesia = {
     if (!this.ehCortesia(userId)) throw new Error('Este usuário não tem acesso de cortesia.');
     db.prepare('UPDATE users SET cortesia = 0, atualizado_em = ? WHERE id = ?').run(nowISO(), userId);
     const r = db.prepare("UPDATE enrollments SET status = 'revogada' WHERE user_id = ? AND origem = 'cortesia' AND status = 'ativa'").run(userId);
+    require('./governanca').Certificados.revogarOndeSemAcesso(userId, 'cortesia revogada'); // (require tardio)
     return { revogadas: r.changes };
   },
 
@@ -840,9 +987,11 @@ const Cortesia = {
       WHERE u.cortesia = 1
          OR EXISTS (SELECT 1 FROM enrollments e WHERE e.user_id = u.id AND e.origem = 'cortesia')
       ORDER BY u.criado_em DESC LIMIT 500`).all()
-      .map(r => ({ id: r.id, nome: r.nome, email: r.email, criado_em: r.criado_em,
-        produtos_liberados: r.produtos_liberados, ativo: r.cortesia === 1,
-        status: r.cortesia === 1 ? 'ativo' : 'revogado' }));
+      // ATIVO = acesso total (flag) OU ao menos um curso de cortesia ativo. A cortesia que o
+      // produtor dá por curso não liga o flag: só pelo flag, ela aparecia como "revogada".
+      .map(r => { const ativo = r.cortesia === 1 || r.produtos_liberados > 0; return { id: r.id, nome: r.nome, email: r.email, criado_em: r.criado_em,
+        produtos_liberados: r.produtos_liberados, total: r.cortesia === 1, ativo,
+        status: ativo ? 'ativo' : 'revogado' }; });
   },
 };
 
@@ -877,6 +1026,47 @@ const Progresso = {
       p.titulo AS produto_titulo, p.capa_media_id
       FROM student_progress sp JOIN lessons l ON l.id = sp.lesson_id JOIN products p ON p.id = sp.product_id
       WHERE sp.user_id = ? ORDER BY sp.atualizado_em DESC LIMIT 1`).get(userId) || null;
+  },
+};
+
+// TEMPO NAS AULAS — pulso do player enquanto a aula está aberta e a aba visível.
+// O servidor decide quanto somar: o intervalo real desde o último pulso aceito
+// (até 60 s); intervalo maior ou primeiro pulso = 30 s, o período do pulso.
+// Assim o cliente nunca acelera o relógio: mandar pulso mais rápido soma menos.
+const PULSO_SEG = 30;
+const PULSO_JANELA_SEG = 60;
+const Tempo = {
+  pulso(userId, lessonId, agora = new Date()) {
+    const aula = db.prepare('SELECT id, product_id, gratuita FROM lessons WHERE id = ?').get(lessonId);
+    if (!aula) throw new Error('Aula não encontrada.');
+    if (!aula.gratuita && !temAcesso(userId, aula.product_id)) throw new Error('Você não tem acesso a este produto.');
+    const dia = agora.toISOString().slice(0, 10);
+    // o último pulso do aluno em QUALQUER aula: trocar de aula não abre um segundo relógio paralelo
+    const ult = db.prepare('SELECT MAX(ultimo_pulso) u FROM study_time WHERE user_id = ?').get(userId).u;
+    const gap = ult ? (agora.getTime() - Date.parse(ult)) / 1000 : Infinity;
+    if (gap < 5) return { ok: true, somado: 0 };            // rajada: ignora sem gravar
+    const somar = Math.round(gap <= PULSO_JANELA_SEG ? gap : PULSO_SEG);
+    db.prepare(`INSERT INTO study_time (user_id, lesson_id, product_id, dia, segundos, pulsos, ultimo_pulso)
+      VALUES (?, ?, ?, ?, ?, 1, ?) ON CONFLICT(user_id, lesson_id, dia) DO UPDATE SET
+      segundos = segundos + excluded.segundos, pulsos = pulsos + 1, ultimo_pulso = excluded.ultimo_pulso`)
+      .run(userId, lessonId, aula.product_id, dia, somar, agora.toISOString());
+    return { ok: true, somado: somar };
+  },
+  /** Por aluno e curso no período: segundos, dias de estudo, aulas tocadas, último estudo. */
+  porAlunoCurso(de, ate) {
+    return db.prepare(`SELECT st.user_id, st.product_id, p.titulo AS produto_titulo,
+        SUM(st.segundos) AS segundos, COUNT(DISTINCT st.dia) AS dias, COUNT(DISTINCT st.lesson_id) AS aulas,
+        MAX(st.ultimo_pulso) AS ultimo
+      FROM study_time st LEFT JOIN products p ON p.id = st.product_id
+      WHERE st.dia >= ? AND st.dia <= ? GROUP BY st.user_id, st.product_id`).all(de, ate);
+  },
+  /** Aula a aula de um aluno no período (detalhe do relatório). */
+  porAula(userId, de, ate) {
+    return db.prepare(`SELECT st.product_id, st.lesson_id, l.titulo AS aula_titulo, l.ordem,
+        SUM(st.segundos) AS segundos, COUNT(DISTINCT st.dia) AS dias, MAX(st.ultimo_pulso) AS ultimo
+      FROM study_time st LEFT JOIN lessons l ON l.id = st.lesson_id
+      WHERE st.user_id = ? AND st.dia >= ? AND st.dia <= ?
+      GROUP BY st.product_id, st.lesson_id ORDER BY st.product_id, l.ordem`).all(userId, de, ate);
   },
 };
 
@@ -936,7 +1126,10 @@ const Marketplace = {
   // `excluir` são os produtos que ele JÁ tem — recomendar o que já foi comprado é o
   // erro clássico dessas vitrines. Sem afinidade nenhuma, cai no catálogo recente
   // (melhor mostrar algo bom do que uma prateleira vazia).
-  recomendados({ excluir = [], categorias = [], tags = [], produtores = [], n = 6 } = {}) {
+  // `soDaCategoria` (página de venda): só entra quem divide ALGUMA área com o curso. Sem ele, um curso
+  // sozinho na sua área recebia como "relacionados" os três mais recentes do catálogo — Direito ao lado de
+  // Paisagismo, sob o título "de quem estuda o mesmo assunto" (auditoria de 11/10/2026, B6).
+  recomendados({ excluir = [], categorias = [], tags = [], produtores = [], n = 6, soDaCategoria = false } = {}) {
     const fora = new Set((excluir || []).filter(Boolean));
     const cat = new Set((categorias || []).filter(Boolean));
     const pro = new Set((produtores || []).filter(Boolean));
@@ -954,7 +1147,8 @@ const Marketplace = {
         : (pro.has(r.producer_id) ? `Do mesmo autor: ${r.produtor_nome}`
           : (emComum.length ? `Também sobre ${emComum[0]}` : 'Em destaque na Academy'));
       return { ...r, tags: minhas, score, motivo };
-    })).sort((a, b) => b.score - a.score || String(b.atualizado_em || '').localeCompare(String(a.atualizado_em || '')))
+    })).filter(r => !soDaCategoria || (r.categorias || [r.categoria]).some(c => cat.has(c)))
+      .sort((a, b) => b.score - a.score || String(b.atualizado_em || '').localeCompare(String(a.atualizado_em || '')))
       .slice(0, Math.min(parseInt(n, 10) || 6, 24));
   },
 
@@ -982,20 +1176,77 @@ const Marketplace = {
       titulo: a.titulo, tipo: a.tipo, duracao_seg: a.duracao_seg || 0,
       gratuita: !!a.gratuita, materiais: porAula.get(a.id) || 0,
     });
+    // duração do curso = soma dos VÍDEOS (videoaula e revisão animada são
+    // tipo 'video'). PDF, texto, áudio, arquivo e link NÃO contam: o "Artigo
+    // da aula" em PDF carrega 600–900 s de leitura estimada e inflava o total
+    // (decisão do Augusto, 04/10/2026). Ver duracaoDeVideo().
+    const segVideo = (lista) => lista.reduce((n, a) => n + duracaoDeVideo(a), 0);
     return {
       total_aulas: aulas.length,
       total_videos: aulas.filter(a => a.tipo === 'video').length,
-      total_seg: aulas.reduce((n, a) => n + (a.duracao_seg || 0), 0),
+      total_seg: segVideo(aulas),
       total_materiais: mats.reduce((n, x) => n + x.n, 0),
       modulos: modulos.map(m => ({
         titulo: m.titulo,
         aulas: aulas.filter(a => a.module_id === m.id).map(nAula),
-        duracao_seg: aulas.filter(a => a.module_id === m.id).reduce((n, a) => n + (a.duracao_seg || 0), 0),
+        duracao_seg: segVideo(aulas.filter(a => a.module_id === m.id)),
         // módulo só de Villela Express é biblioteca bônus, não aula da grade
         extra: aulas.some(a => a.module_id === m.id) && aulas.filter(a => a.module_id === m.id).every(a => a.formato === 'express'),
       })),
       total_express: aulas.filter(a => a.formato === 'express').length,
+      // curso que hospeda o Estude: os números de verdade estão no percurso, não na casca acima
+      estude: this.resumoDoEstude(productId),
     };
+  },
+
+  // o curso tem quiz PUBLICADO em alguma aula? Quem pergunta é o aviso do que o preço inclui: "o quiz" só é
+  // prometido onde existe (auditoria de 11/10/2026, B2). Quiz em rascunho o aluno não vê — não conta.
+  temQuiz(productId) {
+    return !!db.prepare("SELECT 1 FROM aula_quiz WHERE product_id = ? AND status = 'publicado' LIMIT 1").get(productId);
+  },
+
+  // CURSO QUE HOSPEDA O ESTUDE (auditoria de 11/10/2026, A1). A casca do curso tem um módulo e uma aula
+  // ("Comece por aqui"); o conteúdo vendido mora no percurso do Estude. Contada pela casca, a página de venda
+  // dizia "1 aula" em cinco lugares, ao lado de uma descrição que promete 251. Aqui a conta é a do percurso,
+  // com a MESMA régua do certificado (`estudo\aluno.js › conclusao`): só escopo PUBLICADO do curso — percurso
+  // particular de aluno fica fora em `Escopos.doProduto` — e só aula publicada. Questão conta a `disponivel`;
+  // card, o publicado. `null` = curso comum (ou percurso ainda sem aula no ar): vale a casca.
+  // Página pública: só contagens e nomes de disciplina, lidos em colunas leves — nenhum texto de aula é aberto.
+  resumoDoEstude(productId) {
+    const R = require('./estudo/repo'); // tardio: `estudo\aluno.js` importa este arquivo
+    const escopos = R.Escopos.doProduto(productId, ['publicado']);
+    if (!escopos.length) return null;
+    const { aulasPorDisciplina } = require('./estudo/aluno');
+    const r = { percursos: escopos.length, aulas: 0, videos: 0, video_seg: 0, questoes: 0, cards: 0, disciplinas: 0, grupos: [] };
+    for (const e of escopos) {
+      // as aulas EFETIVAS publicadas (as próprias e as incluídas de outro percurso — ADR-0015), em colunas leves
+      const uns = R.unidadesLeves(e.id, ['publicado']);
+      if (!uns.length) continue;
+      // a regra de "qual é a disciplina desta aula" é a do aluno (uma só no sistema); a cobertura inteira
+      // (questão por item) não é calculada: o agrupamento só precisa do código e do texto de cada item
+      const { grupos } = aulasPorDisciplina({ escopo: e, vis: ['publicado'] }, { cob: { por_item: e.versao ? R.itens(e) : [] }, uns });
+      const temDisciplina = grupos.some(g => g.codigo);
+      for (const g of grupos) {
+        const comVideo = g.aulas.filter(u => u.video_media_id);
+        r.grupos.push({
+          percurso: e.titulo, disciplina: !!g.codigo,
+          // programa sem nível de disciplina (percurso por assunto): o grupo é o próprio percurso
+          nome: g.codigo || temDisciplina ? g.nome : e.titulo,
+          aulas: g.aulas.length, videos: comVideo.length,
+          video_seg: comVideo.reduce((n, u) => n + Math.max(0, Number(u.video_duracao_seg) || 0), 0),
+        });
+        if (g.codigo) r.disciplinas++;
+      }
+    }
+    for (const g of r.grupos) { r.aulas += g.aulas; r.videos += g.videos; r.video_seg += g.video_seg; }
+    if (!r.aulas) return null;
+    const ids = escopos.map(e => e.id), m = ids.map(() => '?').join(',');
+    // DISTINCT: a mesma questão ligada a dois percursos do curso é uma questão só
+    r.questoes = db.prepare(`SELECT COUNT(DISTINCT q.id) n FROM est_questoes q JOIN est_questao_vinculos v ON v.questao_id = q.id
+      WHERE v.escopo_id IN (${m}) AND q.situacao = 'disponivel'`).get(...ids).n;
+    // os cards do percurso, com os herdados das aulas incluídas (um card contado uma vez só)
+    r.cards = new Set(escopos.flatMap(e => R.cards(e.id, ['publicado']).map(k => k.id))).size;
+    return r;
   },
 };
 
@@ -1009,10 +1260,11 @@ const SalesPages = {
     const limpo = {
       headline: s(secoes.headline, 200), subheadline: s(secoes.subheadline, 300),
       video_url: s(secoes.video_url, 300), promessa: s(secoes.promessa, 1000),
-      beneficios: lista(secoes.beneficios, 12).map(x => s(x, 200)).filter(Boolean),
+      beneficios: lista(secoes.beneficios, 12).map(x => s(x, 300)).filter(Boolean),
       para_quem: lista(secoes.para_quem, 10).map(x => s(x, 200)).filter(Boolean),
-      aprender: lista(secoes.aprender, 15).map(x => s(x, 200)).filter(Boolean),
-      bonus: lista(secoes.bonus, 8).map(x => s(x, 200)).filter(Boolean),
+      // 40 itens: uma linha por aula (o Conexões tem 40); 12 bônus: o pacote padrão já usa 8 — Augusto, 03/10/2026
+      aprender: lista(secoes.aprender, 40).map(x => s(x, 200)).filter(Boolean),
+      bonus: lista(secoes.bonus, 12).map(x => s(x, 300)).filter(Boolean),
       depoimentos: lista(secoes.depoimentos, 10).map(x => ({ nome: s(x && x.nome, 80), texto: s(x && x.texto, 500) })).filter(x => x.texto),
       faq: lista(secoes.faq, 12).map(x => ({ p: s(x && x.p, 200), r: s(x && x.r, 800) })).filter(x => x.p && x.r),
       garantia_texto: s(secoes.garantia_texto, 500),
@@ -1077,8 +1329,9 @@ const Denuncias = {
 };
 
 module.exports = {
-  TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, CAT_ROT, catRotulo, Categorias, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
-  Produtos, Conteudo, Midia, MateriaisCurso, Matriculas, Cortesia, Progresso, Liberacao, ARQUIVOS_DIR,
+  TIPOS_PRODUTO, TIPOS_AULA, duracaoDeVideo, CATEGORIAS, CAT_ROT, catRotulo, Categorias, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
+  PEDIDO_PDF_MAX_BYTES, PEDIDO_AUDIO_MAX_BYTES, PEDIDO_UPLOAD_EXPIRA_SEG, PEDIDO_PREFIXO, PEDIDO_PENDENTE_HORAS, PEDIDO_ORFA_HORAS,
+  Produtos, Conteudo, Midia, MateriaisCurso, Matriculas, Cortesia, Progresso, Tempo, Liberacao, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
   temAcesso, Clube, Audiobook,
 };

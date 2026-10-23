@@ -1,0 +1,954 @@
+{
+  "profiles": {
+    "violao": {
+      "profile": "violao",
+      "sourceCollection": "nbrosowsky/tonejs-instruments/guitar-acoustic",
+      "sourceCommit": "622c2f1c32c8cfce4158ddc3eb26e518ddef37e5",
+      "license": "CC-BY-3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "author": "University of Iowa / Lawrence Fritts; sample editing by N.P. Brosowsky",
+      "sampledInstrument": "guitar-acoustic",
+      "playbackMidiRange": [
+        40,
+        88
+      ],
+      "recordedRootsRange": [
+        40,
+        74
+      ],
+      "bytes": 2144434,
+      "notes": "Selection copied byte-for-byte from pinned source. One velocity layer. Closest-root pitch shift required. Roots outside the recorded range are extrapolated.",
+      "samples": [
+        {
+          "midi": 40,
+          "note": "E2",
+          "file": "violao/E2.mp3",
+          "bytes": 260448,
+          "sha256": "917820984d1bb0b7712b4f2c42a9694efbb2479ccede45aa78af73811fc6818d",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/E2.mp3",
+          "sourceGitBlobSha1": "1c127045e63a896f3457dfe6618331fce56d9c87",
+          "tuneCents": 0
+        },
+        {
+          "midi": 43,
+          "note": "G2",
+          "file": "violao/G2.mp3",
+          "bytes": 332438,
+          "sha256": "9be6ff1387ec947afedb80244ae9321ca9606ce57c2671c3f50a07f6bdcd4f73",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/G2.mp3",
+          "sourceGitBlobSha1": "0b7e207ca5e4586c571a061772ffee1329f6ab76",
+          "tuneCents": 0
+        },
+        {
+          "midi": 46,
+          "note": "A#2",
+          "file": "violao/As2.mp3",
+          "bytes": 267334,
+          "sha256": "c18a73a24012b54144ce69e1671a2bae927b20c5f5f6963802b718f3b15fd7d4",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/As2.mp3",
+          "sourceGitBlobSha1": "33d9e4305def9ccd8e44e2b0148d0812fa67d5fd",
+          "tuneCents": 0
+        },
+        {
+          "midi": 49,
+          "note": "C#3",
+          "file": "violao/Cs3.mp3",
+          "bytes": 303642,
+          "sha256": "fa6ba9fe6a9671166a6e64464c1697a567145aecc0c9e5dea4f0dbb07cc8bb50",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/Cs3.mp3",
+          "sourceGitBlobSha1": "707e4c4dfb75d38c2fbfcf992438d11f6f68bad2",
+          "tuneCents": 0
+        },
+        {
+          "midi": 52,
+          "note": "E3",
+          "file": "violao/E3.mp3",
+          "bytes": 246050,
+          "sha256": "ffd6add4d02e0c9e45af59db231af77274b83602762878a9b1945210ae04bef5",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/E3.mp3",
+          "sourceGitBlobSha1": "1dc00f5503c0c823ea996a83b3c2c01c91c36a60",
+          "tuneCents": 0
+        },
+        {
+          "midi": 55,
+          "note": "G3",
+          "file": "violao/G3.mp3",
+          "bytes": 137752,
+          "sha256": "8a8ddf06e2d4824f5086e6ad0cf32371da6afc594bf2efd9bb5ec9a2dfe9c040",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/G3.mp3",
+          "sourceGitBlobSha1": "3155b2b98440cf39479656e514494e406e9c7c96",
+          "tuneCents": 0
+        },
+        {
+          "midi": 58,
+          "note": "A#3",
+          "file": "violao/As3.mp3",
+          "bytes": 105200,
+          "sha256": "fa417b5b5d84d7808dded5922dbd5222b67f6724a2a35b4b05cb1990a500c6c6",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/As3.mp3",
+          "sourceGitBlobSha1": "befeb8e0093c18d73ef833e0fcdecb10ee1f0e3e",
+          "tuneCents": 0
+        },
+        {
+          "midi": 61,
+          "note": "C#4",
+          "file": "violao/Cs4.mp3",
+          "bytes": 103322,
+          "sha256": "220a4f2b31b1e5bd12cbbbc8d4e91d6e95d24ea62a5c3eabbd323c059c2aff7d",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/Cs4.mp3",
+          "sourceGitBlobSha1": "52b104803b12e016d542c237edd6982e72fd69ba",
+          "tuneCents": 0
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "file": "violao/E4.mp3",
+          "bytes": 109582,
+          "sha256": "3b02f5448695ac92f257ea9e36ba77be1b1b4a08f62a549b95c7ea9f5303ce14",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/E4.mp3",
+          "sourceGitBlobSha1": "4b22dcd424038c8f4632dc810cea7c1574a12180",
+          "tuneCents": 0
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "file": "violao/G4.mp3",
+          "bytes": 102696,
+          "sha256": "f26371971ba4e34431a709985b3d09ef74be441a6c49612e085f7f8eaf825ef4",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/G4.mp3",
+          "sourceGitBlobSha1": "f2442ff4492f189c0203d1b72ef85a54ba5fb856",
+          "tuneCents": 0
+        },
+        {
+          "midi": 70,
+          "note": "A#4",
+          "file": "violao/As4.mp3",
+          "bytes": 97688,
+          "sha256": "ccd50d5271ac5b47b3bb422d10386d60a6ddaac6972085414eb2f1ab98137e23",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/As4.mp3",
+          "sourceGitBlobSha1": "2d0972a4e99c8389ec0200c60d4d63ede2c1b9ea",
+          "tuneCents": 0
+        },
+        {
+          "midi": 74,
+          "note": "D5",
+          "file": "violao/D5.mp3",
+          "bytes": 78282,
+          "sha256": "c9d74d19e672780b7b6e9eb4468b31b5fee6642f20df724198b232f7c78af4f1",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/D5.mp3",
+          "sourceGitBlobSha1": "0d0b357235b43bf01f926e49b403a9421af0d461",
+          "tuneCents": 0
+        }
+      ]
+    },
+    "guitarra": {
+      "profile": "guitarra",
+      "sourceCollection": "nbrosowsky/tonejs-instruments/guitar-electric",
+      "sourceCommit": "622c2f1c32c8cfce4158ddc3eb26e518ddef37e5",
+      "license": "CC-BY-3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "author": "Karoryfer Samples; sample editing by N.P. Brosowsky",
+      "sampledInstrument": "guitar-electric",
+      "playbackMidiRange": [
+        40,
+        88
+      ],
+      "recordedRootsRange": [
+        40,
+        84
+      ],
+      "bytes": 1643136,
+      "notes": "Selection copied byte-for-byte from pinned source. One velocity layer. Closest-root pitch shift required. Roots outside the recorded range are extrapolated.",
+      "samples": [
+        {
+          "midi": 40,
+          "note": "E2",
+          "file": "guitarra/E2.mp3",
+          "bytes": 102696,
+          "sha256": "7dd2be5de9d91dcd7f525ef8e1bfc8d77ffc27ac98faeb61e5eea0357ce42b75",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/E2.mp3",
+          "sourceGitBlobSha1": "ba3babd8199bb75e124c7591261cc8915c343260",
+          "tuneCents": 0
+        },
+        {
+          "midi": 42,
+          "note": "F#2",
+          "file": "guitarra/Fs2.mp3",
+          "bytes": 102696,
+          "sha256": "217477bb8e08f0f8e6f8d4fc8d660cf22e0538425ae0172b6d023e3bd853d869",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/Fs2.mp3",
+          "sourceGitBlobSha1": "abb6ac1b9dc37dcd00660caf38ae945ee1a9a4e7",
+          "tuneCents": 0
+        },
+        {
+          "midi": 45,
+          "note": "A2",
+          "file": "guitarra/A2.mp3",
+          "bytes": 102696,
+          "sha256": "cef8d3fe2cb17c36e4e9a96a002613aac15fe6224ef3d09e91ba23cc3555b910",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/A2.mp3",
+          "sourceGitBlobSha1": "94b709f2deb2357dea3079befdbc02d714ff082a",
+          "tuneCents": 0
+        },
+        {
+          "midi": 48,
+          "note": "C3",
+          "file": "guitarra/C3.mp3",
+          "bytes": 102696,
+          "sha256": "4859bcaf12f9bf953bdcdbfbbbac18c86516b3f0566b8ea0a2b195ba7beb09a9",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/C3.mp3",
+          "sourceGitBlobSha1": "c392ca25ed3effa906afb28b05043487854aca54",
+          "tuneCents": 0
+        },
+        {
+          "midi": 51,
+          "note": "D#3",
+          "file": "guitarra/Ds3.mp3",
+          "bytes": 102696,
+          "sha256": "0b6e69576b898eb61460a4b2b32ba4bcd4943a95035ba5794c19abdffc0208a0",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/Ds3.mp3",
+          "sourceGitBlobSha1": "bfda1c182c425004e527ca40b4e1f47b5daaf8b1",
+          "tuneCents": 0
+        },
+        {
+          "midi": 54,
+          "note": "F#3",
+          "file": "guitarra/Fs3.mp3",
+          "bytes": 102696,
+          "sha256": "c8ac921a460d64d162a79e0c7174ddabec7b7d501ddcf875efe81c84ae160b8e",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/Fs3.mp3",
+          "sourceGitBlobSha1": "a407873a5fba4980aa275c7dce16cd708cb0487e",
+          "tuneCents": 0
+        },
+        {
+          "midi": 57,
+          "note": "A3",
+          "file": "guitarra/A3.mp3",
+          "bytes": 102696,
+          "sha256": "b840f271794efc3efcce886d71d1ee57cf6d524b6da1be15b1429f6bc8fe2f45",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/A3.mp3",
+          "sourceGitBlobSha1": "47a0605e877cb0e9197128d01f3e1fd4640408e9",
+          "tuneCents": 0
+        },
+        {
+          "midi": 60,
+          "note": "C4",
+          "file": "guitarra/C4.mp3",
+          "bytes": 102696,
+          "sha256": "b2252b95bbea34faba9d7800c1ab1c819d548d18d0cbada7882395fdc34e2617",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/C4.mp3",
+          "sourceGitBlobSha1": "5414233fc028be1d31b620cc2da5e2a9ba78f579",
+          "tuneCents": 0
+        },
+        {
+          "midi": 63,
+          "note": "D#4",
+          "file": "guitarra/Ds4.mp3",
+          "bytes": 102696,
+          "sha256": "0d9d732faa3ec958c9e537a8bcc4421077150362617266636407ee7a93ca11eb",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/Ds4.mp3",
+          "sourceGitBlobSha1": "fe691d62cc148e2938272c77b661229a4fe5cc11",
+          "tuneCents": 0
+        },
+        {
+          "midi": 66,
+          "note": "F#4",
+          "file": "guitarra/Fs4.mp3",
+          "bytes": 102696,
+          "sha256": "ff8045e8c863e3cad7a6094f32b672893ddc98a00de88460ef114d99f3e7c016",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/Fs4.mp3",
+          "sourceGitBlobSha1": "930384ded8dcadcd92b951daec01b16151598660",
+          "tuneCents": 0
+        },
+        {
+          "midi": 69,
+          "note": "A4",
+          "file": "guitarra/A4.mp3",
+          "bytes": 102696,
+          "sha256": "a817ca1ebdbdc32d0011044c41d906438cc1b0358a0adb6373f2f26d140e5cb2",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/A4.mp3",
+          "sourceGitBlobSha1": "ecc225924e8f7c8bd4699ec70ea56644d58371bd",
+          "tuneCents": 0
+        },
+        {
+          "midi": 72,
+          "note": "C5",
+          "file": "guitarra/C5.mp3",
+          "bytes": 102696,
+          "sha256": "6b0671195f6d82b2fdf8afab8d1883554d2c0fb7d99cc935adc609c2816397f3",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/C5.mp3",
+          "sourceGitBlobSha1": "3813ab5c9ddbf60b67abdda62a6f2b58401022c2",
+          "tuneCents": 0
+        },
+        {
+          "midi": 75,
+          "note": "D#5",
+          "file": "guitarra/Ds5.mp3",
+          "bytes": 102696,
+          "sha256": "f8c690e0fa3fd235196673e6ef32a5929534c70bc9eaaa5a7632e39cca263cf4",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/Ds5.mp3",
+          "sourceGitBlobSha1": "dde41510dfda783f707fd506d3ae1813b31cc8da",
+          "tuneCents": 0
+        },
+        {
+          "midi": 78,
+          "note": "F#5",
+          "file": "guitarra/Fs5.mp3",
+          "bytes": 102696,
+          "sha256": "ded100a22902ef51c6ef634dfcefdedd278b96322f5d7b31dd8d2f400b78d0ba",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/Fs5.mp3",
+          "sourceGitBlobSha1": "db5a18f09f63873456cf83c1d69f03b3e1fee0d6",
+          "tuneCents": 0
+        },
+        {
+          "midi": 81,
+          "note": "A5",
+          "file": "guitarra/A5.mp3",
+          "bytes": 102696,
+          "sha256": "19756be9ea1b21ced2d519886a4d812665855b4f0a56509535ecc3bedebeb2c8",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/A5.mp3",
+          "sourceGitBlobSha1": "d93829c54ae226e7df3749e9f7d28c27337285a7",
+          "tuneCents": 0
+        },
+        {
+          "midi": 84,
+          "note": "C6",
+          "file": "guitarra/C6.mp3",
+          "bytes": 102696,
+          "sha256": "0d170c00a32045de1a7e71ea6c14cfb78cb16cebe7706066b0cf5c4f45797415",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-electric/C6.mp3",
+          "sourceGitBlobSha1": "881ecc56f25f8f4c8ba4320083ce040aa8e24144",
+          "tuneCents": 0
+        }
+      ]
+    },
+    "baixo": {
+      "profile": "baixo",
+      "sourceCollection": "nbrosowsky/tonejs-instruments/bass-electric",
+      "sourceCommit": "622c2f1c32c8cfce4158ddc3eb26e518ddef37e5",
+      "license": "CC-BY-3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "author": "Karoryfer Samples; sample editing by N.P. Brosowsky",
+      "sampledInstrument": "bass-electric",
+      "playbackMidiRange": [
+        28,
+        67
+      ],
+      "recordedRootsRange": [
+        28,
+        67
+      ],
+      "bytes": 4267890,
+      "notes": "Selection copied byte-for-byte from pinned source. One velocity layer. Closest-root pitch shift required. Roots outside the recorded range are extrapolated.",
+      "samples": [
+        {
+          "midi": 28,
+          "note": "E1",
+          "file": "baixo/E1.mp3",
+          "bytes": 450752,
+          "sha256": "41fd91721398a47c6afa030feb324a1cd981ffac7da9bd313b775ad4f7b1a24c",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/E1.mp3",
+          "sourceGitBlobSha1": "c4796273b34cba80beeeb62da4342c557454141f",
+          "tuneCents": 0
+        },
+        {
+          "midi": 31,
+          "note": "G1",
+          "file": "baixo/G1.mp3",
+          "bytes": 428216,
+          "sha256": "fd14e6e099056b6f0ff4433ef1d86358bffe7916f90c7ed2c6a7e2b0b4186cc6",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/G1.mp3",
+          "sourceGitBlobSha1": "6f631af88e8737b150997d4f1d80af1e2d65c4ce",
+          "tuneCents": 0
+        },
+        {
+          "midi": 34,
+          "note": "A#1",
+          "file": "baixo/As1.mp3",
+          "bytes": 405680,
+          "sha256": "45bdecf48711f9f0455b2256d1b1b3bfa41a1950d70eab64ef2a28da6c2e605b",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/As1.mp3",
+          "sourceGitBlobSha1": "d657b2d676b67fe11536b6e89a793b1edabdf23c",
+          "tuneCents": 0
+        },
+        {
+          "midi": 37,
+          "note": "C#2",
+          "file": "baixo/Cs2.mp3",
+          "bytes": 361234,
+          "sha256": "7558885c23cf0a313c9651b7b2e11fd297902bb063db6b003748156ca9c07e9f",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/Cs2.mp3",
+          "sourceGitBlobSha1": "8b1eeb47bf4819c171866df7f3e8b8d89a1d47c9",
+          "tuneCents": 0
+        },
+        {
+          "midi": 40,
+          "note": "E2",
+          "file": "baixo/E2.mp3",
+          "bytes": 316162,
+          "sha256": "6a3c12185068beb22fc3225e1f2216f1f7440f4ba32a97dc8476c068df8307e8",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/E2.mp3",
+          "sourceGitBlobSha1": "52c5169c94d9e2d5d910a8b6a910bd3fd2f8bffa",
+          "tuneCents": 0
+        },
+        {
+          "midi": 43,
+          "note": "G2",
+          "file": "baixo/G2.mp3",
+          "bytes": 316162,
+          "sha256": "b5990f64a7094c946b0e88a47280649bab1ea0bff8f1ae1c420a97c1c2996cd2",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/G2.mp3",
+          "sourceGitBlobSha1": "08bb3d47157c53e5e162aba958866d4807b90bdd",
+          "tuneCents": 0
+        },
+        {
+          "midi": 46,
+          "note": "A#2",
+          "file": "baixo/As2.mp3",
+          "bytes": 316162,
+          "sha256": "c6f79e3e05bad4e41e2858b3acbd3edbee4e399529a7a97b9ade411080eac4b4",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/As2.mp3",
+          "sourceGitBlobSha1": "c5a2f9370636397369c300b37d1ba3fb7ed28ccc",
+          "tuneCents": 0
+        },
+        {
+          "midi": 49,
+          "note": "C#3",
+          "file": "baixo/Cs3.mp3",
+          "bytes": 316162,
+          "sha256": "5bd48a1633be2aae2d1032e7c304afa98568d947dc0bc0efa630bc2569a4dc7d",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/Cs3.mp3",
+          "sourceGitBlobSha1": "b7d1bd4768a0c37e6f195bc488d7d11e1620825c",
+          "tuneCents": 0
+        },
+        {
+          "midi": 52,
+          "note": "E3",
+          "file": "baixo/E3.mp3",
+          "bytes": 248554,
+          "sha256": "489482662d6fe265fb306f0acbad35ad775c699c7d7ae5485c3b3f583234d4a7",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/E3.mp3",
+          "sourceGitBlobSha1": "cf042068048a208062b03feebac11a862ea4d8bd",
+          "tuneCents": 0
+        },
+        {
+          "midi": 55,
+          "note": "G3",
+          "file": "baixo/G3.mp3",
+          "bytes": 248554,
+          "sha256": "4c2f27ab0836f56e239fe30cca70e5c182157a5ff7b658bc19eb1169aeaf0a2e",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/G3.mp3",
+          "sourceGitBlobSha1": "e9f782aa1315682e06bfe56c173241c26ef60f42",
+          "tuneCents": 0
+        },
+        {
+          "midi": 58,
+          "note": "A#3",
+          "file": "baixo/As3.mp3",
+          "bytes": 248554,
+          "sha256": "72bf18ddd24a9d52663ada69249880946fb6d62cae5e14158750f438db2a176d",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/As3.mp3",
+          "sourceGitBlobSha1": "ab24fe3ee16085e1871598746a558df4974ee054",
+          "tuneCents": 0
+        },
+        {
+          "midi": 61,
+          "note": "C#4",
+          "file": "baixo/Cs4.mp3",
+          "bytes": 248554,
+          "sha256": "2d72028b1af2ed42783f9cb905c5f5ec8b211032350c1c27c771bd4beaf04d16",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/Cs4.mp3",
+          "sourceGitBlobSha1": "21aa51170b4f2dbf9e0f9613f9928adacb12e799",
+          "tuneCents": 0
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "file": "baixo/E4.mp3",
+          "bytes": 181572,
+          "sha256": "59cdf868d2707b91946996e505b7311c6091c22b97aa170f316aa4156280d19d",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/E4.mp3",
+          "sourceGitBlobSha1": "bb0a3f4256ad2c7c5a2031b7a19ecb15af04519a",
+          "tuneCents": 0
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "file": "baixo/G4.mp3",
+          "bytes": 181572,
+          "sha256": "24c0d0ec8411e62e090c3e37b90e30d213e42897f728c810841cd2ede6d31a62",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/bass-electric/G4.mp3",
+          "sourceGitBlobSha1": "a81ffc3a5ca82645bad55403b85577fc36b54f67",
+          "tuneCents": 0
+        }
+      ]
+    },
+    "ukulele": {
+      "profile": "ukulele",
+      "sourceCollection": "freepats/ukulele1",
+      "sourceCommit": "86d345f6f7b79a106ace98eca0da19b087786dba",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "author": "Mateusz Dabrowski / FreePats",
+      "sampledInstrument": "Flight Fireball tenor ukulele",
+      "playbackMidiRange": [
+        60,
+        84
+      ],
+      "recordedRootsRange": [
+        60,
+        84
+      ],
+      "bytes": 321788,
+      "notes": "13 recorded pitches; MP3 conversion. SFZ pitch corrections preserved as tuneCents. No percussive articulations included.",
+      "samples": [
+        {
+          "midi": 60,
+          "note": "C4",
+          "file": "ukulele/C4.mp3",
+          "bytes": 36620,
+          "sha256": "dee8dd8473b058046eda3744a5fdd79bd05fc9acfd19d9729850929f4d857496",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/C4.flac",
+          "sourceSha256": "aa23ee3722f8f418c7078243b4e1e2cb8022ff7c9e94801098cf3aa1694ec4b4",
+          "sourceGitBlobSha1": "5c1eb21f662f1645ead971df34bdba0fc7b6a67c",
+          "tuneCents": -5,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 62,
+          "note": "D4",
+          "file": "ukulele/D4.mp3",
+          "bytes": 36500,
+          "sha256": "30538611e894e5151d307c169f61fa8d79bb7d6b328716ac1c5cc7bd2677d966",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/D4.flac",
+          "sourceSha256": "113ecda48383232739edbc471c2ed6be5bf3999be0075c7fa6d6bd0e98edfe98",
+          "sourceGitBlobSha1": "b579ab2c266d3091df21d492bf370323c28704ed",
+          "tuneCents": -8,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "file": "ukulele/E4.mp3",
+          "bytes": 37868,
+          "sha256": "a20b3dd6d83beec1949c6390d6cc2d50739d049e959a331a9e9fbf8aefcd12a6",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/E4.flac",
+          "sourceSha256": "8d5ea8c5ca9cddca9d5af0c37b8e022fddc71444d0f81718695c9de706d8908e",
+          "sourceGitBlobSha1": "70e5b7e5e33a8ab812dc9aa0b648b8c74ba13ef1",
+          "tuneCents": -2,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 66,
+          "note": "F#4",
+          "file": "ukulele/Fs4.mp3",
+          "bytes": 22220,
+          "sha256": "d9060a0840b723187837cdf9fcb8bca27b715d0cb2dbe27856ceb3ee180ccdcd",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/F%234.flac",
+          "sourceSha256": "5b4a82c7c8c9e57185e2510771a06df25c225fd78487e54b79d960f08c6e2653",
+          "sourceGitBlobSha1": "9ea0b514a184386d93d8a558db92cea8eeaf2402",
+          "tuneCents": -11,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "file": "ukulele/G4.mp3",
+          "bytes": 21356,
+          "sha256": "e679fd43ab13b544be7b1551212454808e5d049dad494d55402c96cea42d19b8",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/G4.flac",
+          "sourceSha256": "e1952cca1c74d0dbab6053c081eda7f79e1eb2f11c1bd485aafdd51f77df1e93",
+          "sourceGitBlobSha1": "5867ae6db21d498f412c0d3ddba3db005a34c7c7",
+          "tuneCents": -1,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 69,
+          "note": "A4",
+          "file": "ukulele/A4.mp3",
+          "bytes": 35396,
+          "sha256": "63f089770c0f9f80230117cced0a9b8fa43863a2756d4d7bb4c9321d8af55f43",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/A4.flac",
+          "sourceSha256": "ce575bc244682dfc6499a68e6ebb1195f043cc14dc49a8c2e4ea7e384bd2f114",
+          "sourceGitBlobSha1": "ab4afcdecc5ca1e0ac75af5a7efd0a8752251c82",
+          "tuneCents": 0,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 71,
+          "note": "B4",
+          "file": "ukulele/B4.mp3",
+          "bytes": 24236,
+          "sha256": "44da45383373ed645e581982e82f9dcb5d231fe39589c0e456d292114f75bf30",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/B4.flac",
+          "sourceSha256": "04102fb6c825f6ec23c4c08b89b34aba1412109d2e3950eb2399decd53ad49ae",
+          "sourceGitBlobSha1": "f945a40238edbb5bb3da547e729ccd5cc15553d6",
+          "tuneCents": 0,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 73,
+          "note": "C#5",
+          "file": "ukulele/Cs5.mp3",
+          "bytes": 24044,
+          "sha256": "c5912f6f1ee5ef75d2f52ea3ee57df4a86b48ebb461ec151cc6f3c8f17756012",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/C%235.flac",
+          "sourceSha256": "604a9de9ab270294fa123cd9bf175fedaf295c63a9305e7cb3e187b666a6798e",
+          "sourceGitBlobSha1": "e28acbc172b7091051f3b3375e2fc741f830f17f",
+          "tuneCents": 0,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 75,
+          "note": "D#5",
+          "file": "ukulele/Ds5.mp3",
+          "bytes": 15308,
+          "sha256": "40d336039513ef64667dea7230b29595e969075fd50cbdd004281ed74ab2c33f",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/D%235.flac",
+          "sourceSha256": "0a6e011f0ef5d96ef51554cb5daaad788ec3240b723b4846411698194ff2f2b0",
+          "sourceGitBlobSha1": "803b8431ce1bd91e193fe45f2b27702f0cf9550b",
+          "tuneCents": 3,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 77,
+          "note": "F5",
+          "file": "ukulele/F5.mp3",
+          "bytes": 16460,
+          "sha256": "c85a6031f0f9aeca7504b9e2bb77e0f5c0dd7dbe852deec9876acab3a00add3d",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/F5.flac",
+          "sourceSha256": "5b85d224cee53fba23fda855ff34b919553bfc9df9ee1990df68aeff59857bc3",
+          "sourceGitBlobSha1": "f7690cf318883677412dd13b18372b0e010a9c29",
+          "tuneCents": 4,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 79,
+          "note": "G5",
+          "file": "ukulele/G5.mp3",
+          "bytes": 18380,
+          "sha256": "b31168a0610c4d4da850222c0de905c678e30b8b87ea796bc1e3e78fb586bcb0",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/G5.flac",
+          "sourceSha256": "429f4ab8c6fff45041c7d688341a2d0af2710036a72505ad62198a1e6188c226",
+          "sourceGitBlobSha1": "86f0e9428a1cd8385bfa5d24b2bf8bea2c245795",
+          "tuneCents": 6,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 81,
+          "note": "A5",
+          "file": "ukulele/A5.mp3",
+          "bytes": 20060,
+          "sha256": "3caadb0347c640d10e1e1a646219336191e7c1cac13e9a525f1a72f47a34c7da",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/A5.flac",
+          "sourceSha256": "877bcb793b9c7320777c0b164b78444a39c9b93da6ddafc95da5e91b085bccc7",
+          "sourceGitBlobSha1": "7e4ef59bc7660c94bfd4d9169be616432aeae3fe",
+          "tuneCents": 8,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        },
+        {
+          "midi": 84,
+          "note": "C6",
+          "file": "ukulele/C6.mp3",
+          "bytes": 13340,
+          "sha256": "40deacd5fdecaefb2d97cff4f6e06111b97db62267a8c3e6fcc7af53de2418dc",
+          "source": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/samples/C6.flac",
+          "sourceSha256": "e397e1a73588074f9d636f9b128fbca8c52fd08df89cc893c5467f9256ea02cd",
+          "sourceGitBlobSha1": "d94f50f7bb9e0f5aceacf3d87abc9ee09c2b7f5d",
+          "tuneCents": 4,
+          "changes": "FLAC to MP3 VBR quality 2, original channel count and sample rate; no trimming, normalization or pitch correction applied. Apply tuneCents during playback."
+        }
+      ]
+    },
+    "cavaquinho": {
+      "profile": "cavaquinho",
+      "adapted": true,
+      "baseProfile": "violao",
+      "playbackMidiRange": [
+        50,
+        84
+      ],
+      "recordedRootsRange": [
+        40,
+        74
+      ],
+      "license": "CC-BY-3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "sourceCommit": "622c2f1c32c8cfce4158ddc3eb26e518ddef37e5",
+      "notes": "Proposed adapted steel acoustic guitar timbre; NOT recordings of this instrument. No additional files created. Cavaquinho: shorter decay/release. Bandolim: paired voices, slight detune/offset. High notes extrapolate D5; this remains an audible limitation.",
+      "samples": [
+        {
+          "midi": 40,
+          "note": "E2",
+          "file": "violao/E2.mp3",
+          "bytes": 260448,
+          "sha256": "917820984d1bb0b7712b4f2c42a9694efbb2479ccede45aa78af73811fc6818d",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/E2.mp3",
+          "sourceGitBlobSha1": "1c127045e63a896f3457dfe6618331fce56d9c87",
+          "tuneCents": 0
+        },
+        {
+          "midi": 43,
+          "note": "G2",
+          "file": "violao/G2.mp3",
+          "bytes": 332438,
+          "sha256": "9be6ff1387ec947afedb80244ae9321ca9606ce57c2671c3f50a07f6bdcd4f73",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/G2.mp3",
+          "sourceGitBlobSha1": "0b7e207ca5e4586c571a061772ffee1329f6ab76",
+          "tuneCents": 0
+        },
+        {
+          "midi": 46,
+          "note": "A#2",
+          "file": "violao/As2.mp3",
+          "bytes": 267334,
+          "sha256": "c18a73a24012b54144ce69e1671a2bae927b20c5f5f6963802b718f3b15fd7d4",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/As2.mp3",
+          "sourceGitBlobSha1": "33d9e4305def9ccd8e44e2b0148d0812fa67d5fd",
+          "tuneCents": 0
+        },
+        {
+          "midi": 49,
+          "note": "C#3",
+          "file": "violao/Cs3.mp3",
+          "bytes": 303642,
+          "sha256": "fa6ba9fe6a9671166a6e64464c1697a567145aecc0c9e5dea4f0dbb07cc8bb50",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/Cs3.mp3",
+          "sourceGitBlobSha1": "707e4c4dfb75d38c2fbfcf992438d11f6f68bad2",
+          "tuneCents": 0
+        },
+        {
+          "midi": 52,
+          "note": "E3",
+          "file": "violao/E3.mp3",
+          "bytes": 246050,
+          "sha256": "ffd6add4d02e0c9e45af59db231af77274b83602762878a9b1945210ae04bef5",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/E3.mp3",
+          "sourceGitBlobSha1": "1dc00f5503c0c823ea996a83b3c2c01c91c36a60",
+          "tuneCents": 0
+        },
+        {
+          "midi": 55,
+          "note": "G3",
+          "file": "violao/G3.mp3",
+          "bytes": 137752,
+          "sha256": "8a8ddf06e2d4824f5086e6ad0cf32371da6afc594bf2efd9bb5ec9a2dfe9c040",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/G3.mp3",
+          "sourceGitBlobSha1": "3155b2b98440cf39479656e514494e406e9c7c96",
+          "tuneCents": 0
+        },
+        {
+          "midi": 58,
+          "note": "A#3",
+          "file": "violao/As3.mp3",
+          "bytes": 105200,
+          "sha256": "fa417b5b5d84d7808dded5922dbd5222b67f6724a2a35b4b05cb1990a500c6c6",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/As3.mp3",
+          "sourceGitBlobSha1": "befeb8e0093c18d73ef833e0fcdecb10ee1f0e3e",
+          "tuneCents": 0
+        },
+        {
+          "midi": 61,
+          "note": "C#4",
+          "file": "violao/Cs4.mp3",
+          "bytes": 103322,
+          "sha256": "220a4f2b31b1e5bd12cbbbc8d4e91d6e95d24ea62a5c3eabbd323c059c2aff7d",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/Cs4.mp3",
+          "sourceGitBlobSha1": "52b104803b12e016d542c237edd6982e72fd69ba",
+          "tuneCents": 0
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "file": "violao/E4.mp3",
+          "bytes": 109582,
+          "sha256": "3b02f5448695ac92f257ea9e36ba77be1b1b4a08f62a549b95c7ea9f5303ce14",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/E4.mp3",
+          "sourceGitBlobSha1": "4b22dcd424038c8f4632dc810cea7c1574a12180",
+          "tuneCents": 0
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "file": "violao/G4.mp3",
+          "bytes": 102696,
+          "sha256": "f26371971ba4e34431a709985b3d09ef74be441a6c49612e085f7f8eaf825ef4",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/G4.mp3",
+          "sourceGitBlobSha1": "f2442ff4492f189c0203d1b72ef85a54ba5fb856",
+          "tuneCents": 0
+        },
+        {
+          "midi": 70,
+          "note": "A#4",
+          "file": "violao/As4.mp3",
+          "bytes": 97688,
+          "sha256": "ccd50d5271ac5b47b3bb422d10386d60a6ddaac6972085414eb2f1ab98137e23",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/As4.mp3",
+          "sourceGitBlobSha1": "2d0972a4e99c8389ec0200c60d4d63ede2c1b9ea",
+          "tuneCents": 0
+        },
+        {
+          "midi": 74,
+          "note": "D5",
+          "file": "violao/D5.mp3",
+          "bytes": 78282,
+          "sha256": "c9d74d19e672780b7b6e9eb4468b31b5fee6642f20df724198b232f7c78af4f1",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/D5.mp3",
+          "sourceGitBlobSha1": "0d0b357235b43bf01f926e49b403a9421af0d461",
+          "tuneCents": 0
+        }
+      ]
+    },
+    "bandolim": {
+      "profile": "bandolim",
+      "adapted": true,
+      "baseProfile": "violao",
+      "playbackMidiRange": [
+        48,
+        91
+      ],
+      "recordedRootsRange": [
+        40,
+        74
+      ],
+      "license": "CC-BY-3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "sourceCommit": "622c2f1c32c8cfce4158ddc3eb26e518ddef37e5",
+      "notes": "Proposed adapted steel acoustic guitar timbre; NOT recordings of this instrument. No additional files created. Cavaquinho: shorter decay/release. Bandolim: paired voices, slight detune/offset. High notes extrapolate D5; this remains an audible limitation.",
+      "samples": [
+        {
+          "midi": 40,
+          "note": "E2",
+          "file": "violao/E2.mp3",
+          "bytes": 260448,
+          "sha256": "917820984d1bb0b7712b4f2c42a9694efbb2479ccede45aa78af73811fc6818d",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/E2.mp3",
+          "sourceGitBlobSha1": "1c127045e63a896f3457dfe6618331fce56d9c87",
+          "tuneCents": 0
+        },
+        {
+          "midi": 43,
+          "note": "G2",
+          "file": "violao/G2.mp3",
+          "bytes": 332438,
+          "sha256": "9be6ff1387ec947afedb80244ae9321ca9606ce57c2671c3f50a07f6bdcd4f73",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/G2.mp3",
+          "sourceGitBlobSha1": "0b7e207ca5e4586c571a061772ffee1329f6ab76",
+          "tuneCents": 0
+        },
+        {
+          "midi": 46,
+          "note": "A#2",
+          "file": "violao/As2.mp3",
+          "bytes": 267334,
+          "sha256": "c18a73a24012b54144ce69e1671a2bae927b20c5f5f6963802b718f3b15fd7d4",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/As2.mp3",
+          "sourceGitBlobSha1": "33d9e4305def9ccd8e44e2b0148d0812fa67d5fd",
+          "tuneCents": 0
+        },
+        {
+          "midi": 49,
+          "note": "C#3",
+          "file": "violao/Cs3.mp3",
+          "bytes": 303642,
+          "sha256": "fa6ba9fe6a9671166a6e64464c1697a567145aecc0c9e5dea4f0dbb07cc8bb50",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/Cs3.mp3",
+          "sourceGitBlobSha1": "707e4c4dfb75d38c2fbfcf992438d11f6f68bad2",
+          "tuneCents": 0
+        },
+        {
+          "midi": 52,
+          "note": "E3",
+          "file": "violao/E3.mp3",
+          "bytes": 246050,
+          "sha256": "ffd6add4d02e0c9e45af59db231af77274b83602762878a9b1945210ae04bef5",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/E3.mp3",
+          "sourceGitBlobSha1": "1dc00f5503c0c823ea996a83b3c2c01c91c36a60",
+          "tuneCents": 0
+        },
+        {
+          "midi": 55,
+          "note": "G3",
+          "file": "violao/G3.mp3",
+          "bytes": 137752,
+          "sha256": "8a8ddf06e2d4824f5086e6ad0cf32371da6afc594bf2efd9bb5ec9a2dfe9c040",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/G3.mp3",
+          "sourceGitBlobSha1": "3155b2b98440cf39479656e514494e406e9c7c96",
+          "tuneCents": 0
+        },
+        {
+          "midi": 58,
+          "note": "A#3",
+          "file": "violao/As3.mp3",
+          "bytes": 105200,
+          "sha256": "fa417b5b5d84d7808dded5922dbd5222b67f6724a2a35b4b05cb1990a500c6c6",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/As3.mp3",
+          "sourceGitBlobSha1": "befeb8e0093c18d73ef833e0fcdecb10ee1f0e3e",
+          "tuneCents": 0
+        },
+        {
+          "midi": 61,
+          "note": "C#4",
+          "file": "violao/Cs4.mp3",
+          "bytes": 103322,
+          "sha256": "220a4f2b31b1e5bd12cbbbc8d4e91d6e95d24ea62a5c3eabbd323c059c2aff7d",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/Cs4.mp3",
+          "sourceGitBlobSha1": "52b104803b12e016d542c237edd6982e72fd69ba",
+          "tuneCents": 0
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "file": "violao/E4.mp3",
+          "bytes": 109582,
+          "sha256": "3b02f5448695ac92f257ea9e36ba77be1b1b4a08f62a549b95c7ea9f5303ce14",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/E4.mp3",
+          "sourceGitBlobSha1": "4b22dcd424038c8f4632dc810cea7c1574a12180",
+          "tuneCents": 0
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "file": "violao/G4.mp3",
+          "bytes": 102696,
+          "sha256": "f26371971ba4e34431a709985b3d09ef74be441a6c49612e085f7f8eaf825ef4",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/G4.mp3",
+          "sourceGitBlobSha1": "f2442ff4492f189c0203d1b72ef85a54ba5fb856",
+          "tuneCents": 0
+        },
+        {
+          "midi": 70,
+          "note": "A#4",
+          "file": "violao/As4.mp3",
+          "bytes": 97688,
+          "sha256": "ccd50d5271ac5b47b3bb422d10386d60a6ddaac6972085414eb2f1ab98137e23",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/As4.mp3",
+          "sourceGitBlobSha1": "2d0972a4e99c8389ec0200c60d4d63ede2c1b9ea",
+          "tuneCents": 0
+        },
+        {
+          "midi": 74,
+          "note": "D5",
+          "file": "violao/D5.mp3",
+          "bytes": 78282,
+          "sha256": "c9d74d19e672780b7b6e9eb4468b31b5fee6642f20df724198b232f7c78af4f1",
+          "source": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/guitar-acoustic/D5.mp3",
+          "sourceGitBlobSha1": "0d0b357235b43bf01f926e49b403a9421af0d461",
+          "tuneCents": 0
+        }
+      ]
+    }
+  },
+  "sourceDocuments": {
+    "tonejs-README.md": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/README.md",
+    "tonejs-source-info.txt": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/sample-source-info.txt",
+    "tonejs-LICENSE-code.md": "https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/LICENSE.md",
+    "ukulele-README.txt": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/README.txt",
+    "ukulele-LICENSE.txt": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/LICENSE.txt",
+    "ukulele.sfz": "https://raw.githubusercontent.com/freepats/ukulele1/86d345f6f7b79a106ace98eca0da19b087786dba/Ukulele%2020260811.sfz",
+    "iowa-source.html": "https://theremin.music.uiowa.edu/MIS.html",
+    "karoryfer-source.html": "https://shop.karoryfer.com/pages/free-samples",
+    "CC-BY-3.0.html": "https://creativecommons.org/licenses/by/3.0/",
+    "CC0-1.0.html": "https://creativecommons.org/publicdomain/zero/1.0/"
+  }
+}

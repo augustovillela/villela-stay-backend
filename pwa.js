@@ -119,9 +119,18 @@ function manifestDe(p) {
 
 // Network-first: online é sempre fresco; offline serve a última cópia em cache.
 // NUNCA cacheia caminhos de API (dados vivos) nem métodos de escrita.
+// 11/10/2026 (segunda revisão do Estude) — três mudanças, as mínimas, valem para todos os produtos:
+//   · a "tela inicial" guardada para o modo offline é SÓ a resposta da própria tela inicial. Antes, QUALQUER
+//     navegação com resposta 200 era gravada sob a chave da tela inicial — inclusive página renderizada no servidor
+//     com dado do usuário (o caderno do aluno, com o que ele escreveu) —, e reaparecia offline para a próxima
+//     pessoa no mesmo aparelho, mesmo depois do logout (a Cache API ignora `no-store`);
+//   · a página pode mandar limpar o cache (mensagem { tipo: 'limpar-cache' }) — é o que o logout faz;
+//   · arquivo versionado (?v=N) substitui as versões antigas do MESMO arquivo, e o nome do cache subiu (v3): o
+//     `activate` apaga o cache anterior inteiro, onde conviviam estude.js?v=1 e ?v=3.
 function swDe(p) {
   return `'use strict';
-const CACHE = 'villela-pwa-${p.slug}-v2';
+const CACHE = 'villela-pwa-${p.slug}-v3';
+const INICIO = new URL('${p.inicio}', location.origin).pathname;
 self.addEventListener('install', (e) => { self.skipWaiting(); });
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -143,8 +152,15 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     fetch(req)
       .then((resp) => {
-        if (resp && resp.ok && !ehNavegacao) { const copy = resp.clone(); caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {}); }
-        if (resp && resp.ok && req.mode === 'navigate') {     // guarda so a tela inicial, p/ offline
+        if (resp && resp.ok && !ehNavegacao) {
+          const copy = resp.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy).then(() => {
+            if (!url.search) return;                         // arquivo versionado: as outras versoes dele saem
+            return c.keys().then((ks) => Promise.all(ks.filter((k) => { const u = new URL(k.url); return u.pathname === url.pathname && u.search !== url.search; }).map((k) => c.delete(k))));
+          })).catch(() => {});
+        }
+        // guarda so a tela inicial, p/ offline — e so quando a navegacao E a da tela inicial (nunca outra pagina)
+        if (resp && resp.ok && req.mode === 'navigate' && url.pathname === INICIO) {
           const copia = resp.clone();
           caches.open(CACHE).then((c) => c.put('${p.inicio}', copia)).catch(() => {});
         }
@@ -158,6 +174,11 @@ self.addEventListener('fetch', (e) => {
         return new Response('', { status: 503 });
       }))
   );
+});
+
+/* Logout (ou troca de conta): a pagina manda esquecer tudo o que este aparelho guardou. */
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.tipo === 'limpar-cache') e.waitUntil(caches.delete(CACHE));
 });
 
 /* Web Push: recebe a notificação e abre o painel no clique (padrão do app do hóspede). */

@@ -181,6 +181,8 @@ function visitasHtml(d) {
 
   <div class="vs-abas">
     ${[['origem', '🧭 Origem'], ['local', '📍 Localidade'], ['publico', '📱 Público'], ['paginas', '📄 Páginas'], ['funil', '🎯 Funil'], ['casas', '🏡 Casas']]
+      // relatório nominal dos alunos: só admin (a rota responde 403 aos demais)
+      .concat(ESTADO.me && ESTADO.me.papel === 'admin' ? [['alunos', '🎓 Alunos dos cursos']] : [])
       .map(([id, rot]) => `<button data-aba="${id}" class="${VIS.aba === id ? 'ativa' : ''}">${rot}</button>`).join('')}
   </div>
   <div id="vs-aba" class="vs-caixa">${visitasAbaHtml(VIS.aba, d)}</div>
@@ -222,6 +224,7 @@ function visitasAbaHtml(aba, d) {
     </div>`;
   if (aba === 'funil') return '<p class="vazio">Carregando funil…</p>';
   if (aba === 'casas') return '<p class="vazio">Carregando casas…</p>';
+  if (aba === 'alunos') return '<p class="vazio">Carregando alunos…</p>';
   return '';
 }
 
@@ -232,6 +235,7 @@ function ligarAbasVisitas() {
     $('#vs-aba').innerHTML = visitasAbaHtml(VIS.aba, VIS.dados);
     if (VIS.aba === 'funil') carregarFunilVisitas();
     if (VIS.aba === 'casas') carregarCasasVisitas();
+    if (VIS.aba === 'alunos') carregarAlunosVisitas();
   });
   document.querySelectorAll('.vs-linha-site').forEach(tr => tr.onclick = () => {
     VIS.produto = tr.dataset.produto;
@@ -240,6 +244,7 @@ function ligarAbasVisitas() {
   });
   if (VIS.aba === 'funil') carregarFunilVisitas();
   if (VIS.aba === 'casas') carregarCasasVisitas();
+  if (VIS.aba === 'alunos') carregarAlunosVisitas();
 }
 
 /** Funil por canal: visita → lead → reserva. É o que diz qual origem dá dinheiro. */
@@ -281,4 +286,73 @@ async function carregarCasasVisitas() {
       </table></div>
       ${c.aviso ? `<p class="vs-nota">${esc(c.aviso)}</p>` : ''}`;
   } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+/** Tempo legível: 1h05, 12min, menos de 1min. */
+const visTempo = (seg) => {
+  seg = Math.round(seg || 0);
+  if (seg < 60) return seg ? '<1min' : '—';
+  const h = Math.floor(seg / 3600), m = Math.floor((seg % 3600) / 60);
+  return h ? `${h}h${String(m).padStart(2, '0')}` : `${m}min`;
+};
+
+/** 🎓 Visitas no Site dos Cursos: aluno a aluno — visitas identificadas + tempo nas aulas. */
+async function carregarAlunosVisitas() {
+  const alvo = $('#vs-aba'); if (!alvo) return;
+  try {
+    const d = await api('GET', `/academy/visitas-alunos?dias=${VIS.dias}`);
+    const r = d.resumo;
+    VIS.alunos = d;
+    alvo.innerHTML = `
+      <h3 class="vs-h3">🎓 Visitas no Site dos Cursos</h3>
+      <div class="cards vs-cards-alunos">
+        <div class="card"><div class="n">${visNum(r.alunos)}</div><div class="rot">Alunos identificados</div></div>
+        <div class="card"><div class="n">${visNum(r.alunos_estudando)}</div><div class="rot">Estudaram no período</div></div>
+        <div class="card"><div class="n">${visTempo(r.tempo_total_seg)}</div><div class="rot">Tempo total nas aulas</div></div>
+        <div class="card"><div class="n">${visNum(r.sessoes)}</div><div class="rot">Visitas (sessões)</div></div>
+      </div>
+      <p><button class="btn peq secund" id="vs-alunos-csv">⬇ Exportar CSV dos alunos</button></p>
+      <div class="vs-rolagem"><table class="vs-tabela vs-alunos">
+        <thead><tr><th>Aluno</th><th class="num">Visitas</th><th class="num">Cursos</th><th class="num">Livros</th><th class="num">Sistemas</th>
+          <th>Cursos usados</th><th class="num">Tempo nas aulas</th><th>Última atividade</th></tr></thead>
+        <tbody>${d.alunos.length ? d.alunos.map(a => `<tr class="vs-linha-aluno" data-uid="${esc(a.id)}" title="Ver aula a aula">
+          <td><b>${esc(a.nome || '(sem nome)')}</b><br><small class="suave">${esc(a.email)}</small></td>
+          <td class="num">${visNum(a.visitas.sessoes)}<br><small class="suave">${visNum(a.visitas.paginas)} pág.</small></td>
+          <td class="num">${visNum(a.visitas.porGrupo.cursos)}</td>
+          <td class="num">${visNum(a.visitas.porGrupo.livros)}</td>
+          <td class="num">${visNum(a.visitas.porGrupo.sistemas)}</td>
+          <td>${a.cursos.length ? a.cursos.map(c => `<div class="vs-curso"><b>${esc(c.titulo)}</b> · ${visTempo(c.segundos)} · ${c.concluidas}/${c.total_aulas} aulas (${c.pct}%)</div>`).join('') : '<span class="suave">—</span>'}</td>
+          <td class="num"><b>${visTempo(a.tempo_total_seg)}</b></td>
+          <td class="suave">${esc(dataBr(a.ultima_atividade))}</td></tr>
+          <tr class="vs-detalhe-aluno" data-det="${esc(a.id)}" hidden><td colspan="8"></td></tr>`).join('')
+          : '<tr><td colspan="8" class="vazio">Nenhum aluno logado visitou os sites ou estudou no período.</td></tr>'}
+        </tbody>
+      </table></div>
+      <p class="vs-nota">Só aparece aluno com conta na Academy que estava <b>logado</b>: visitante sem conta segue anônimo.
+      "Visitas" = sessões (páginas com menos de 30 min entre elas); Cursos/Livros/Sistemas = páginas vistas em cada um.
+      O tempo conta só com a aula aberta e a aba visível. Medição e identificação começaram em ${esc(dataBr(d.desde + 'T12:00:00Z').split(' ')[0])}.</p>`;
+    $('#vs-alunos-csv').onclick = () => window.open(`/staff/api/academy/visitas-alunos.csv?dias=${VIS.dias}`, '_blank');
+    document.querySelectorAll('.vs-linha-aluno').forEach(tr => tr.onclick = () => abrirDetalheAluno(tr.dataset.uid));
+  } catch (e) {
+    alvo.innerHTML = `<p class="erro">${esc(e.status === 403 ? 'Relatório nominal: só administrador.' : e.message)}</p>`;
+  }
+}
+
+async function abrirDetalheAluno(uid) {
+  const linha = document.querySelector(`.vs-detalhe-aluno[data-det="${CSS.escape(uid)}"]`);
+  if (!linha) return;
+  if (!linha.hidden) { linha.hidden = true; return; }
+  linha.hidden = false;
+  const td = linha.firstElementChild;
+  td.innerHTML = '<p class="vazio">Carregando…</p>';
+  try {
+    const d = await api('GET', `/academy/visitas-alunos/${encodeURIComponent(uid)}?dias=${VIS.dias}`);
+    const sites = (d.visitas && d.visitas.porProduto) || [];
+    td.innerHTML = `<div class="vs-duas">
+      <div><h3 class="vs-h3">Aula a aula</h3>${d.aulas.length ? `<table class="vs-tabela"><thead><tr><th>Aula</th><th class="num">Tempo</th><th class="num">Dias</th><th>Último estudo</th></tr></thead><tbody>
+        ${d.aulas.map(x => `<tr><td>${esc(x.aula_titulo || x.lesson_id)}</td><td class="num">${visTempo(x.segundos)}</td><td class="num">${x.dias}</td><td class="suave">${esc(dataBr(x.ultimo))}</td></tr>`).join('')}
+        </tbody></table>` : '<p class="vazio">Não abriu aula no período.</p>'}</div>
+      <div><h3 class="vs-h3">Sites visitados</h3>${visBarras(sites.map(p => ({ k: `${p.emoji} ${p.nome}`, n: p.paginas })), 'Nenhuma visita identificada no período.')}</div>
+    </div>`;
+  } catch (e) { td.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }

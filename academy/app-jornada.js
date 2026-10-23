@@ -49,10 +49,15 @@
     }
 
     // ---------------- tela da jornada ----------------
-    function abrir(pid, titulo, aba, voltar, irAula) {
+    // `opcoes` (quem abre de dentro do Estude): { so: [abas que este curso mostra], rotuloVoltar }. Com `so`, as
+    // abas fora da lista NÃO aparecem — é como o curso que hospeda o Estude esconde o cartão de XP da jornada
+    // comum ("Minha jornada", que conta por aula do curso) e as Ferramentas de curso de IA.
+    function abrir(pid, titulo, aba, voltar, irAula, opcoes) {
+      opcoes = opcoes || {};
       J.pid = pid; J.titulo = titulo; J.voltar = voltar; J.irAula = irAula; J.aba = aba || 'visao';
-      setView('<div class="al jr"><a href="#" class="al-volta" id="jr-volta">← Voltar às aulas</a>' +
-        '<div class="jr-cab"><p class="al-rotulo">Jornada do curso</p><h2>' + esc(titulo) + '</h2></div>' +
+      J.so = Array.isArray(opcoes.so) ? opcoes.so : null;
+      setView('<div class="al jr"><a href="#" class="al-volta" id="jr-volta">← ' + esc(opcoes.rotuloVoltar || 'Voltar às aulas') + '</a>' +
+        '<div class="jr-cab"><p class="al-rotulo">' + (J.so ? 'Do curso' : 'Jornada do curso') + '</p><h2>' + esc(titulo) + '</h2></div>' +
         '<div class="est-abas jr-abas" id="jr-abas"></div><div class="jr-corpo" id="jr-corpo"><p class="al-sub">Carregando…</p></div></div>');
       el('jr-volta').onclick = function (e) { e.preventDefault(); voltar(); };
       window.scrollTo(0, 0);
@@ -71,6 +76,10 @@
       if (s.simulacoes) lista.push(['simulacoes', 'Simulações']);
       lista.push(['ferramentas', 'Ferramentas']);
       if (s.recursos) lista.push(['recursos', 'Cheat sheets e templates']);
+      if (J.so) {
+        lista = lista.filter(function (x) { return J.so.indexOf(x[0]) >= 0; });
+        if (!lista.some(function (x) { return x[0] === J.aba; })) J.aba = lista.length ? lista[0][0] : '';
+      }
       el('jr-abas').innerHTML = lista.map(function (x) {
         return '<button data-a="' + x[0] + '"' + (x[0] === J.aba ? ' class="on"' : '') + '>' + esc(x[1]) +
           (s[x[0]] === 'rascunho' ? ' <span class="marca-rasc">rascunho</span>' : '') + '</button>';
@@ -78,6 +87,7 @@
       Array.prototype.forEach.call(el('jr-abas').querySelectorAll('button'), function (b) { b.onclick = function () { ir(b.getAttribute('data-a')); }; });
     }
     function ir(aba) {
+      if (J.so && J.so.indexOf(aba) < 0) { el('jr-corpo').innerHTML = '<p class="al-sub">Este curso ainda não tem este conteúdo.</p>'; return; }
       J.aba = aba;
       Array.prototype.forEach.call(el('jr-abas').querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-a') === aba); });
       var alvo = el('jr-corpo');
@@ -165,6 +175,8 @@
           if (falta) { el('av-res').innerHTML = '<span class="erro">Faltam ' + falta + '.</span>'; return; }
           bt.disabled = true;
           api('POST', '/aluno/cursos/' + J.pid + '/avaliacao/' + momento, { respostas: resp }).then(function (r) {
+            // o diagnóstico diz só o que você acertou: o gabarito comentado fica para o teste final (as questões são as mesmas)
+            if (r.gabarito_no_final && el('av-res')) el('av-res').insertAdjacentHTML('afterend', '<p class="al-fino">As questões voltam no teste final: por isso o diagnóstico mostra o que você acertou, e o gabarito comentado aparece na correção do teste final.</p>');
             r.correcao.forEach(function (c) {
               var fs = alvo.querySelector('fieldset[data-q="' + c.id + '"]');
               Array.prototype.forEach.call(fs.querySelectorAll('.qz-alt'), function (lb, k) {
@@ -279,7 +291,7 @@
         clearTimeout(timer);
         salvar().then(function () { return api('POST', '/aluno/cursos/' + J.pid + '/lab/' + m.id + '/mentor'); }).then(function (r) {
           el('jr-fb').innerHTML = fbHtml(r.feedback);
-          el('jr-m-msg').textContent = r.restantes + ' consulta(s) de IA restante(s) hoje.';
+          el('jr-m-msg').textContent = (window.AcademyCarteiraUI ? window.AcademyCarteiraUI.rodape(r.restantes) : r.restantes + ' consulta(s) de IA restante(s) hoje.');
         }).catch(function (er) { el('jr-m-msg').innerHTML = '<span class="erro">' + esc(er.message) + '</span>'; }).then(function () { bt.disabled = false; });
       };
     }
@@ -383,6 +395,7 @@
     }
 
     // ================= FERRAMENTAS: Prompt Builder e gerador de agentes =================
+    // as chaves (1º item) espelham academy/ferramentas.js (CAMPOS) — o curso troca só o 3º item (exemplo)
     var PB = [
       ['funcao', 'Função — quem a IA deve ser', 'Ex.: copywriter de hospedagens de luxo; assistente jurídico de um escritório de família'],
       ['objetivo', 'Objetivo — o que você quer', 'Ex.: criar um anúncio para WhatsApp que gere pedidos de orçamento'],
@@ -446,11 +459,15 @@
     }
     function ferramenta(alvo, tipo) {
       var campos = tipo === 'agente' ? AG : PB, montar = tipo === 'agente' ? montarAgente : montarPrompt;
+      // exemplos do CURSO (products.config.ferramentas, via painel): trocam só o
+      // texto de exemplo do campo — campos, prompt montado e IA não mudam
+      var exCurso = ((J.painel || {}).ferramentas || {})[tipo === 'agente' ? 'agente' : 'prompt'] || {};
+      var dica = function (c) { return typeof exCurso[c[0]] === 'string' && exCurso[c[0]] ? exCurso[c[0]] : c[2]; };
       var salvo = {}; try { salvo = JSON.parse(pref(tipo) || '{}') || {}; } catch (e) { salvo = {}; }
       alvo.innerHTML = '<div class="jr-ferr"><div class="jr-form">' + campos.map(function (c) {
         var longo = /contexto|regras|exemplo|fontes|rotina|categorias|alertas|confirmar|nunca/.test(c[0]);
-        return '<label><b>' + esc(c[1]) + '</b>' + (longo ? '<textarea rows="3" data-c="' + c[0] + '" placeholder="' + esc(c[2]) + '">' + esc(salvo[c[0]] || '') + '</textarea>'
-          : '<input data-c="' + c[0] + '" placeholder="' + esc(c[2]) + '" value="' + esc(salvo[c[0]] || '') + '">') + '</label>';
+        return '<label><b>' + esc(c[1]) + '</b>' + (longo ? '<textarea rows="3" data-c="' + c[0] + '" placeholder="' + esc(dica(c)) + '">' + esc(salvo[c[0]] || '') + '</textarea>'
+          : '<input data-c="' + c[0] + '" placeholder="' + esc(dica(c)) + '" value="' + esc(salvo[c[0]] || '') + '">') + '</label>';
       }).join('') + '<button class="al-bt peq fan" id="jr-f-limpa">Limpar campos</button></div>' +
         '<div class="jr-saida"><div class="cd-prompt-cab"><b>' + (tipo === 'agente' ? 'Prompt master do agente' : 'Seu prompt') + '</b>' +
         '<span><button class="al-bt peq fan" id="jr-f-copia">Copiar</button> <button class="al-bt peq" id="jr-f-ia">✨ Lapidar com IA</button></span></div>' +
@@ -467,7 +484,7 @@
         api('POST', '/aluno/cursos/' + J.pid + '/ferramentas/refinar', { tipo: tipo, texto: el('jr-f-txt').textContent }).then(function (r) {
           res.innerHTML = '<div class="cd-prompt" style="margin-top:12px"><div class="cd-prompt-cab"><b>Versão lapidada</b><button class="al-bt peq fan" id="jr-f-copia2">Copiar</button></div><pre>' + esc(r.texto) + '</pre></div>' +
             ((r.mudancas || []).length ? '<p><b>O que mudou:</b></p><ul>' + r.mudancas.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
-            '<p class="al-fino">' + r.restantes + ' consulta(s) de IA restante(s) hoje. Revise antes de usar.</p>';
+            '<p class="al-fino">' + (window.AcademyCarteiraUI ? window.AcademyCarteiraUI.rodape(r.restantes) : r.restantes + ' consulta(s) de IA restante(s) hoje.') + ' Revise antes de usar.</p>';
           el('jr-f-copia2').onclick = function () { copiar(r.texto, this); };
         }).catch(function (e) { res.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; }).then(function () { bt.disabled = false; });
       };

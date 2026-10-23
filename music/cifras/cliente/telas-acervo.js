@@ -39,6 +39,7 @@
       var d = C.estado.inicio || {};
       var c = C.limpar();
       c.appendChild(el('h2', { txt: 'Cifras' }));
+      inserirPainelVocal(c, '');
       if (d._offline) c.appendChild(el('div', { class: 'cf-offline', txt: 'Sem internet: mostrando a última cópia guardada (' + new Date(d._copia_de).toLocaleString('pt-BR') + ').' }));
       // Barra de comando: busca, ou linguagem natural quando a IA estiver ligada
       var q = el('input', { type: 'search', placeholder: C.temIA('comando') ? 'Busque ou peça: "abrir Wave em Ré", "transpor para G"' : 'Buscar música, artista ou trecho da letra', 'aria-label': 'Buscar' });
@@ -54,6 +55,7 @@
       var ATALHOS = [
         ['importar', 'Encontrar ou importar', 'Cifra por link, arquivo, foto ou busca'],
         ['biblioteca', 'Minha biblioteca', (d.total || 0) + ' música(s) no acervo'],
+        ['riffs', 'Riffs e tablaturas', 'Cole, visualize e pratique riffs'],
         ['acordes', 'Acordes', 'Dicionário dos acordes das suas músicas'],
         ['setlists', 'Setlists', 'Monte o repertório do show'],
         ['bandas', 'Bandas', 'Cifras compartilhadas com o grupo'],
@@ -128,6 +130,7 @@
     f = Object.assign({ ordem: 'titulo' }, f || {});
     var c = C.limpar();
     c.appendChild(el('h2', { txt: f.lixeira ? 'Lixeira' : 'Biblioteca de músicas' }));
+    inserirPainelVocal(c, '');
     var q = el('input', { type: 'search', placeholder: 'Título, artista, compositor, tag ou trecho da letra', value: f.q || '', 'aria-label': 'Buscar na biblioteca' });
     var lista = el('div', { class: 'cf-lista', 'aria-live': 'polite' });
     var filtros = el('div', { class: 'cf-barra' });
@@ -181,6 +184,19 @@
     }
     carregar(true);
   };
+
+  // Entrada central do perfil vocal: aparece ao abrir Minhas cifras, mesmo
+  // antes de o músico escolher uma música. A avaliação continua opcional.
+  function inserirPainelVocal(container, cifraId) {
+    if (!C.Voz) return;
+    var area = el('div', { class: 'cf-voz-area' });
+    container.appendChild(area);
+    api('GET', '/perfil-vocal', null, { cache: 'perfil-vocal' }).then(function (r) {
+      area.appendChild(C.Voz.painel(cifraId || '', r.perfil));
+    }).catch(function () {
+      area.appendChild(C.Voz.painel(cifraId || '', null));
+    });
+  }
 
   function itemMusica(x, f) {
     var linha = el('div', { class: 'cf-linha-item' });
@@ -271,6 +287,7 @@
       acoes.appendChild(C.botao(d.favorita ? '★ Favorita' : '☆ Favoritar', function () { api('POST', '/musicas/' + id + '/favorito').then(function () { T.musica(id); }); }, 'sec'));
       acoes.appendChild(C.botao('+ Nova versão', function () { C.ir('importar', null, { obra_id: id, titulo: m.titulo, artista: m.artista }); }, 'sec'));
       if (d.sou_dono) {
+        if (!d.removida) acoes.appendChild(el('a', { class: 'cf-bt sec', href: '/music/tocar/gerenciar?obra=' + encodeURIComponent(id), txt: 'Arranjos do Tocar junto' }));
         acoes.appendChild(C.botao('Editar dados', function () { editarDados(d); }, 'sec'));
         acoes.appendChild(C.botao('Compartilhar com banda', function () { compartilharComBanda(d); }, 'sec'));
         acoes.appendChild(C.botao(d.removida ? 'Restaurar' : 'Mover para a lixeira', function () {
@@ -439,6 +456,16 @@
     if ((d.nao_reconhecidos || []).length) cab.appendChild(el('div', { class: 'alerta', txt: 'O motor não reconheceu ' + d.nao_reconhecidos.length + ' acorde(s): ' + d.nao_reconhecidos.join(', ') + '. Eles aparecem sublinhados e transpõem só pela nota fundamental.' }));
     if (d.rascunho) cab.appendChild(el('div', { class: 'alerta', html: 'Você tem um rascunho não salvo desta cifra (' + esc(C.data(d.rascunho.atualizado_em)) + ').' }, [C.botao('Continuar editando', function () { C.ir('editor', d.cifra.id); }, 'sec peq')]));
     c.appendChild(cab);
+    // O perfil vocal é reutilizado entre cifras; uma nova avaliação é opcional.
+    if (C.Voz && !d._offline) {
+      var vozArea = el('div', { class: 'cf-voz-area' });
+      c.appendChild(vozArea);
+      vozArea.appendChild(C.Voz.painel(d.cifra.id, null));
+      api('GET', '/perfil-vocal', null, { cache: 'perfil-vocal' }).then(function (r) {
+        vozArea.innerHTML = '';
+        vozArea.appendChild(C.Voz.painel(d.cifra.id, r.perfil));
+      }).catch(function () {});
+    }
 
     var ferr = el('div', { class: 'cf-ferr', role: 'toolbar', 'aria-label': 'Ferramentas da cifra' });
     c.appendChild(ferr);
@@ -522,11 +549,16 @@
         bt('−', function () { rolagem.ajustar(-5); salvarVisao(); }, 'Mais devagar'), el('b', { txt: String(rolagem.velocidade) }), bt('+', function () { rolagem.ajustar(5); salvarVisao(); }, 'Mais rápido'), estado.mic]));
       var mais = el('div', { class: 'cf-mais linha', style: 'margin:0' });
       if (d.pode && d.pode.editar) mais.appendChild(C.botao('✏️ Editar cifra', function () { C.ir('editor', d.cifra.id); }, 'peq'));
+      mais.appendChild(el('a', { class: 'cf-bt sec peq', href: '/music/api/cifras/cifras/' + encodeURIComponent(d.cifra.id) + '/acompanhamento-ritmico', download: '', title: 'Baixa um rascunho aproximado com fundamentais em pulsos; importe-o em Gerenciar arranjos e revise antes de publicar.', txt: '🎸 Rascunho rítmico' }));
+      mais.appendChild(el('a', { class: 'cf-bt sec peq', href: '/music/api/cifras/cifras/' + encodeURIComponent(d.cifra.id) + '/arranjo-multifaixa', download: '', title: 'Baixa um pacote aberto com violão-alvo, baixo, piano e bateria gerados a partir da harmonia; revise antes de usar.', txt: '🎛️ Arranjo multifaixa' }));
+      mais.appendChild(el('a', { class: 'cf-bt sec peq', href: '/music/tocar?cifra=' + encodeURIComponent(d.cifra.id), title: 'Abre esta cifra diretamente no Tocar junto com acompanhamento automático.', txt: '▶️ Abrir no Tocar junto' }));
       mais.appendChild(C.botao('🎧 Smart Play', function () { if (C.SmartPlay.ativo()) { C.SmartPlay.player(true); C.SmartPlay.tocar(); } else C.aviso('Esta música ainda não tem áudio: use o player embaixo para procurar no YouTube ou adicionar um MP3.'); }, 'peq'));
+      mais.appendChild(C.botao('🎼 Simplificar / rearmonizar', function () { abrirPainel('arranjar'); }, 'peq'));
+      mais.appendChild(C.botao('🎸 Riffs e tablaturas', function () { C.ir('riffs'); }, 'peq'));
       mais.appendChild(C.botao('Palco', function () { C.palcoUmaMusica(estado); }, 'sec peq'));
       mais.appendChild(sel([['', 'Mais…'], ['exibicao', 'Exibição'], ['historico', 'Histórico de versões'], ['praticar', 'Praticar'], ['comentarios', 'Comentários e notas'],
         ['exportar', 'Exportar / imprimir'], ['compartilhar', 'Link e QR Code'], ['arranjo', 'Arranjos'], ['setlist', 'Adicionar a setlist'], ['original', 'Ver original importado'],
-        ['avaliar', 'Avaliar / propor correção'], ['graus', 'Análise em graus (Laboratório)']].concat(C.temIA('revisar_harmonia') ? [['ia_harmonia', 'IA: revisar harmonia']] : []).concat(C.temIA('guia_instrumento') ? [['ia_guia', 'IA: guia do instrumento']] : []),
+        ['avaliar', 'Avaliar / propor correção'], ['arranjar', 'Simplificar / rearmonizar'], ['graus', 'Análise em graus (Laboratório)']].concat(C.temIA('revisar_harmonia') ? [['ia_harmonia', 'IA: revisar harmonia']] : []).concat(C.temIA('guia_instrumento') ? [['ia_guia', 'IA: guia do instrumento']] : []),
       '', function (x) { abrirPainel(x); }, 'Mais ações'));
       ferr.appendChild(mais);
     }
@@ -934,6 +966,47 @@
       var m = el('input', { type: 'text', placeholder: 'Motivo' });
       C.modal('Denunciar', m, [{ txt: 'Cancelar' }, { txt: 'Enviar', fn: function () { api('POST', '/denuncias', { alvo_tipo: 'cifra', alvo_id: d.cifra.id, motivo: m.value }).then(function () { C.aviso('Denúncia enviada à moderação.'); }).catch(C.erro); } }]);
     }, 'sec peq')]));
+  };
+
+  C.paineis.arranjar = function (p, estado) {
+    var doc = estado.d.documento;
+    p.appendChild(el('h3', { txt: 'Simplificar ou rearmonizar' }));
+    p.appendChild(el('p', { class: 'm', txt: 'A cifra original permanece intacta. Gere uma variação, confira a prévia e salve como nova cifra da mesma música.' }));
+    var modo = sel([['simples', 'Para iniciantes'], ['sofisticado', 'Rearmonização sofisticada']], 'simples', atualizar, 'Tipo de variação');
+    var nivel = sel([[1, 'Leve: remover tensões'], [2, 'Intermediário: tríades'], [3, 'Básico: acordes essenciais']], 2, atualizar, 'Nível de simplificação');
+    p.appendChild(el('div', { class: 'linha' }, [modo, nivel]));
+    var preview = el('div', { class: 'cf-painel' }); p.appendChild(preview);
+    var info = el('p', { class: 'm' }); p.appendChild(info);
+    var salvar = C.botao('Salvar como nova cifra', function () {
+      var nome = modo.value === 'simples' ? 'Versão para iniciantes' : 'Rearmonização sofisticada';
+      api('POST', '/cifras/' + estado.d.cifra.id + '/variacoes', { documento: variacao(), nome: nome, descricao: 'Gerada na ferramenta Simplificar / rearmonizar.' })
+        .then(function (r) { C.aviso('Variação salva.'); C.ir('cifra', r.cifra.id); }).catch(C.erro);
+    });
+    p.appendChild(salvar);
+    function sofisticar(txt) {
+      var m = String(txt || '').match(/^([A-G](?:#|b)?)(m|min)?$/);
+      if (m) return m[1] + (m[2] ? 'm7' : 'maj7');
+      if (/^[A-G](?:#|b)?sus[24]$/.test(txt)) return txt.replace(/sus/, '7sus');
+      return txt;
+    }
+    function variacao() {
+      if (modo.value === 'simples') return M.documento.simplificar(doc, Number(nivel.value)).documento;
+      var out = JSON.parse(JSON.stringify(doc)), qtd = 0;
+      (out.secoes || []).forEach(function (sc) { (sc.linhas || []).forEach(function (ln) { (ln.segmentos || []).forEach(function (sg) {
+        if (sg.acorde) { var novo = sofisticar(sg.acorde); if (novo !== sg.acorde) { sg.acorde = novo; qtd++; } }
+      }); }); });
+      out.meta = Object.assign({}, out.meta, { observacao: 'Rearmonização sofisticada gerada pelo Musique' });
+      out.__mudancas = qtd;
+      return out;
+    }
+    function atualizar() {
+      var d2 = variacao(); preview.innerHTML = '';
+      preview.appendChild(R.cifra(d2, { modo: 'letra_cifra', familia: 'mono', fonte: 16, espacamento: 1.35, colunas: 1 }));
+      var qtd = d2.__mudancas || 0; delete d2.__mudancas;
+      info.textContent = modo.value === 'simples' ? 'Nível ' + nivel.value + ': acordes complexos são reduzidos para formas mais fáceis.' : qtd + ' acorde(s) receberam sétima ou suspensão para ampliar a cor harmônica.';
+    }
+    nivel.style.display = ''; modo.onchange = function () { nivel.style.display = modo.value === 'simples' ? '' : 'none'; atualizar(); };
+    atualizar();
   };
 
   C.paineis.ia_harmonia = function (p, estado) {

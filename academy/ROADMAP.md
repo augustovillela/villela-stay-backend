@@ -103,7 +103,7 @@ didática + quiz sugerido baseado SÓ no conteúdo real), **suporte ao aluno**
 executivo do admin (KPIs reais → análise). Guardrails: nunca inventa, avisa
 quando falta informação, saída é SUGESTÃO (aplicar é ação humana). Uso logado
 em `ai_usage_logs` (tokens + custo estimado, visível no staff) e **limite
-diário por usuário** (config `ia.consultas_dia`, padrão 30 → 429). 96 testes.
+diário por usuário** (config `ia.consultas_dia`, padrão 30 → 429; **5 desde 03/10/2026**, com aviso ao aluno e relatório por aluno em `/staff/api/academy/ia-uso`). 96 testes.
 
 ## ✅ FASE 10 — Governança (CONCLUÍDA 09/07/2026)
 Entregue: **certificados de conclusão** (100% das aulas → código único

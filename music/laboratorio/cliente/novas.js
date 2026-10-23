@@ -392,6 +392,7 @@
       box.addEventListener('click', function (e) { var g = e.target.closest('[data-midi]'); if (g) C.Som.tocar([Number(g.dataset.midi)], { dur: 0.8 }); });
       box.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset && e.target.dataset.midi) { e.preventDefault(); C.Som.tocar([Number(e.target.dataset.midi)], { dur: 0.8 }); } });
       alvo.appendChild(el('figure', { class: 'lab-fig' }, [box, el('figcaption', { txt: 'Disposição Wicki-Hayden: para a direita, +1 tom; na diagonal para cima e à direita, +1 quinta; para cima e à esquerda, +1 quarta. Uma forma de acorde vale em QUALQUER tom — mude a tônica e veja o desenho se repetir.' })]));
+       alvo.appendChild(el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar teclado SVG', onclick: function () { C.baixar('teclado-isomorfico.svg', 'image/svg+xml', box.innerHTML); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar teclado PNG', onclick: function () { C.baixarPng('teclado-isomorfico.png', box.innerHTML, 1600, 900); } })]));
     }
     render();
   };
@@ -411,6 +412,8 @@
     });
     alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(function () { C.limpar(alvo); F.xilofone(alvo); })]));
     alvo.appendChild(box);
+     function exportarXilofone(png) { var W = notas.length * 62, H = 250, s = ['<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><rect width="100%" height="100%" fill="#f8fbff"/>']; notas.forEach(function (m, i) { var n = N.deMidi(m), h = 220 - i * 8, y = H - h - 12; s.push('<rect x="' + (i * 62 + 6) + '" y="' + y + '" width="50" height="' + h + '" rx="5" fill="' + CORES[n.li] + '" stroke="#14213d"/><text x="' + (i * 62 + 31) + '" y="' + (H - 20) + '" text-anchor="middle" font-family="Arial" font-size="14">' + D.esc(rot(n)) + '</text>'); }); s.push('</svg>'); var txt = s.join(''); if (png) C.baixarPng('xilofone-musique.png', txt, W * 2, H * 2); else C.baixar('xilofone-musique.svg', 'image/svg+xml', txt); }
+     alvo.appendChild(el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar xilofone SVG', onclick: function () { exportarXilofone(false); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar xilofone PNG', onclick: function () { exportarXilofone(true); } })]));
     alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada nota tem uma cor (dó vermelho, ré laranja…) e a mesma cor volta na oitava de cima. As lâminas menores soam mais agudo — como no instrumento de verdade.' }));
   };
 

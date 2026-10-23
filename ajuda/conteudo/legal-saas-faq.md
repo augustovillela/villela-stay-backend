@@ -21,9 +21,21 @@ são preservados.
 ### Quanto custa?
 
 Os valores de lançamento publicados são: Essencial R$ 149/mês, Profissional R$ 349/mês,
-Escritório R$ 799/mês e Enterprise sob consulta. Cada plano tem limites de advogados,
-processos ativos e consultas de IA/mês. Os preços podem ser ajustados — consulte sempre a
-página de planos em `/juridico#planos`.
+Escritório R$ 799/mês e Enterprise sob consulta. Cada plano tem limites de advogados
+e processos ativos. A IA é paga por uso, à parte (veja "Como funciona a cobrança da IA?").
+Os preços podem ser ajustados — consulte sempre a página de planos em `/juridico#planos`.
+
+### Como funciona a cobrança da IA?
+
+A IA não está incluída na mensalidade: é paga por uso, em qualquer plano, inclusive no período
+de teste e em contas de cortesia. Há dois caminhos, em **Painel → 🤖 Créditos de IA**:
+
+- **Crédito pré-pago** — o administrador recarrega por Pix ou cartão. Antes de cada tarefa o
+  sistema reserva o custo máximo; ao terminar, cobra só o que foi usado e devolve a diferença.
+  Sem saldo, a tarefa não é executada. O extrato mostra cada cobrança.
+- **Chave própria** — se o escritório tem conta no provedor de IA (Anthropic, Claude Console),
+  pode cadastrar a própria chave de API. A IA passa a sair pela conta do escritório e deixa de
+  consumir crédito. Assinatura pessoal do Claude (Pro/Max) não serve para isso.
 
 ### Como é feita a cobrança? Posso cancelar?
 
@@ -64,8 +76,9 @@ com o escritório pelo portal.
 
 ### Quantos advogados posso cadastrar?
 
-Depende do plano — os limites de advogados, processos ativos, consultas de IA, armazenamento
-e clientes no portal variam por plano e aparecem na página de planos e na aba Uso do painel.
+Depende do plano — os limites de advogados, processos ativos, armazenamento e clientes no
+portal variam por plano e aparecem na página de planos e na aba Uso do painel. As pessoas são
+adicionadas em **Painel → 👥 Equipe**; o perfil e a OAB de cada uma, em **⚖️ Meu Jurídico → Equipe**.
 
 ### Posso migrar de outro sistema?
 

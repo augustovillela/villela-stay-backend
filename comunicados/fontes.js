@@ -249,6 +249,22 @@ const FONTES = [
     cursosDoUsuario: (ref) => dbDe('academy').prepare(
       `SELECT product_id id FROM enrollments WHERE user_id = ? AND status = 'ativa'
        UNION SELECT id FROM products WHERE producer_id = ? AND status IN ('publicado', 'aprovado')`).all(String(ref), String(ref)).map((r) => r.id),
+    // TEM o curso, pela MESMA regra de acesso da Academy (repo-conteudo.temAcesso) + o produtor dono: matrícula
+    // ativa, CORTESIA total (o sinalizador da conta, sem linha de matrícula), assinatura ativa do produto ou de um
+    // clube que o inclui. Antes só matrícula e produtor valiam: quem entrava por cortesia, assinatura ou clube
+    // nunca recebia dica do curso (segunda revisão do Estude, 11/10/2026, D2).
+    temCurso: (ref, curso) => !!dbDe('academy').prepare(
+      `SELECT 1 WHERE EXISTS (SELECT 1 FROM enrollments WHERE user_id = ?1 AND product_id = ?2 AND status = 'ativa')
+          OR EXISTS (SELECT 1 FROM products WHERE id = ?2 AND producer_id = ?1 AND status IN ('publicado', 'aprovado'))
+          OR EXISTS (SELECT 1 FROM users u JOIN products p ON p.id = ?2 WHERE u.id = ?1 AND u.cortesia = 1 AND u.status = 'ativo' AND p.status IN ('publicado', 'aprovado'))
+          OR EXISTS (SELECT 1 FROM subscriptions WHERE user_id = ?1 AND product_id = ?2 AND status = 'ativa')
+          OR EXISTS (SELECT 1 FROM subscriptions s JOIN club_items ci ON ci.club_product_id = s.product_id WHERE s.user_id = ?1 AND s.status = 'ativa' AND ci.product_id = ?2)`)
+      .get(String(ref), String(curso)),
+    // Curso que hospeda o ESTUDE (percurso publicado, que não é particular de um aluno): a tela dele não é a do
+    // curso comum, e as dicas GERAIS falam de recursos que ela não tem. Quem decide é o SERVIDOR: antes dependia de
+    // o app marcar a página a tempo — com a rede lenta, a dica geral saía dentro do Estude e ficava gravada como vista (D1).
+    soDicasDoCurso: (curso) => !!dbDe('academy').prepare(
+      "SELECT 1 FROM est_escopos WHERE product_id = ? AND status = 'publicado' AND COALESCE(dono_user_id, '') = '' LIMIT 1").get(String(curso)),
     // O sino da Academy já existe (e espelha em push): o comunicado entra nele.
     nativo: (ref, c) => require('../academy/emails').Notificacoes.criar(ref, c.titulo, c.corpo.slice(0, 500), c.link_url || '/academy/app'),
   },
@@ -555,4 +571,12 @@ const catalogo = () => FONTES.map((f) => ({
   tem_cursos: !!f.cursos,
 }));
 
-module.exports = { configurar, obter, todas, catalogo, perfil, pushUsuario, temPush, situacaoDeVarios, cursosDe, cursosDoUsuario, ehContaDeDemonstracao, _int: { uidDoCookie } };
+// A pessoa TEM este curso? A fonte que souber responde direto (`temCurso`); as demais, pela lista de cursos dela.
+const temCurso = (chave, ref, curso) => {
+  const f = obter(chave);
+  try { return (f && f.temCurso) ? !!f.temCurso(ref, curso) : cursosDoUsuario(chave, ref).map(String).includes(String(curso)); } catch (_) { return false; }
+};
+// Este curso só recebe as dicas DELE (nunca as gerais do sistema)? Só a fonte sabe; sem resposta, não.
+const soDicasDoCurso = (chave, curso) => { const f = obter(chave); try { return !!(f && f.soDicasDoCurso && curso && f.soDicasDoCurso(curso)); } catch (_) { return false; } };
+
+module.exports = { configurar, obter, todas, catalogo, perfil, pushUsuario, temPush, situacaoDeVarios, cursosDe, cursosDoUsuario, temCurso, soDicasDoCurso, ehContaDeDemonstracao, _int: { uidDoCookie } };

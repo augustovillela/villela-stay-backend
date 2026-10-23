@@ -47,18 +47,18 @@
   // ------------------------------------------------------------------
   F['piano-virtual'] = function (alvo, st) {
     var MAPA = { a: 0, w: 1, s: 2, e: 3, d: 4, f: 5, t: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12, o: 13, l: 14, p: 15, 'ç': 16 };
-    var base = 60, soando = {}, historico = [];
+    var base = 60, piano88 = false, soando = {}, historico = [], gravando = false, inicioGravacao = 0, eventosGravados = [];
     var info = el('p', { class: 'lab-info', 'aria-live': 'polite', txt: 'Toque com o mouse, com o dedo ou com as teclas A W S E D F T G Y H U J K. Z e X mudam a oitava.' });
     var box = el('div', { class: 'lab-svgbox' });
     var acordeTxt = el('p', { class: 'lab-acorde-atual', 'aria-live': 'polite' });
     function pintar() {
       var dd = {}; Object.keys(soando).forEach(function (m) { dd[m] = { rotulo: rot(N.deMidi(Number(m))), tipo: 'nota' }; });
-      box.innerHTML = D.piano({ de: base - 12, ate: base + 16, destaques: dd, interativo: true, rotulos: 'dos', notacao: C.notacao, titulo: 'Piano virtual' });
+      box.innerHTML = D.piano({ de: piano88 ? 21 : base - 12, ate: piano88 ? 108 : base + 16, destaques: dd, interativo: true, rotulos: 'dos', notacao: C.notacao, titulo: piano88 ? 'Piano virtual · 88 teclas' : 'Piano virtual' });
       var ms = Object.keys(soando).map(Number).sort(function (a, b) { return a - b; });
       var r = ms.length >= 2 ? A.identificar(ms) : [];
       acordeTxt.textContent = r.length ? 'Acorde: ' + r.slice(0, 3).map(function (x) { return x.simbolo; }).join(' ou ') : '';
     }
-    function tocar(m) { C.Som.tocar([m], { dur: 1.2 }); soando[m] = 1; historico.push(m); if (historico.length > 16) historico.shift(); info.textContent = 'Última: ' + rot(N.deMidi(m)) + ' ' + N.deMidi(m).oitava + ' · sequência: ' + historico.slice(-8).map(function (x) { return rot(N.deMidi(x)); }).join(' '); pintar(); }
+    function tocar(m) { C.Som.tocar([m], { dur: 1.2 }); soando[m] = 1; historico.push(m); if (historico.length > 16) historico.shift(); if (gravando) eventosGravados.push({ t: Math.max(0, (performance.now() - inicioGravacao) / 1000 * 80 / 60 * 4), dur: 1, midi: m, vel: 88 }); info.textContent = 'Última: ' + rot(N.deMidi(m)) + ' ' + N.deMidi(m).oitava + ' · sequência: ' + historico.slice(-8).map(function (x) { return rot(N.deMidi(x)); }).join(' '); pintar(); }
     function soltar(m) { delete soando[m]; pintar(); }
     box.addEventListener('pointerdown', function (e) { var k = e.target.closest('[data-midi]'); if (!k) return; e.preventDefault(); var m = Number(k.dataset.midi); tocar(m); var up = function () { soltar(m); w.removeEventListener('pointerup', up); }; w.addEventListener('pointerup', up); });
     box.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset && e.target.dataset.midi) { e.preventDefault(); var m = Number(e.target.dataset.midi); tocar(m); setTimeout(function () { soltar(m); }, 300); } });
@@ -79,7 +79,27 @@
         C.aviso(n ? n + ' entrada(s) MIDI conectada(s).' : 'Nenhum teclado MIDI encontrado.');
       }).catch(function () { C.aviso('O acesso ao MIDI foi negado.'); });
     } });
-    alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(pintar), C.selTimbre(), midiBtn]));
+    function exportarPiano(png) {
+      var svg = box.innerHTML;
+      if (!svg) return;
+      if (png) C.baixarPng('piano-virtual-musique.png', svg, piano88 ? 2640 : 1800, 900);
+      else C.baixar('piano-virtual-musique.svg', 'image/svg+xml', svg);
+    }
+    function exportarHistorico() {
+      if (!historico.length || !C.midiArquivo) { C.aviso('Toque algumas notas antes de exportar o MIDI.', 'erro'); return; }
+      var ev = historico.map(function (m, i) { return { t: i * 2, dur: 2, midi: m, vel: 82 }; });
+      C.baixar('piano-virtual-musique.mid', 'audio/midi', C.midiArquivo(ev, 80, 4));
+    }
+    var gravarBtn = el('button', { type: 'button', class: 'btn sec', txt: '● Gravar performance', onclick: function () {
+      if (gravando) { gravando = false; gravarBtn.textContent = '● Gravar performance'; if (eventosGravados.length) C.baixar('piano-performance-musique.mid', 'audio/midi', C.midiArquivo(eventosGravados, 80, 4)); C.aviso(eventosGravados.length ? eventosGravados.length + ' nota(s) gravada(s) e exportada(s).' : 'Nenhuma nota foi gravada.'); return; }
+      eventosGravados = []; inicioGravacao = performance.now(); gravando = true; gravarBtn.textContent = '■ Parar e baixar MIDI'; C.aviso('Gravação iniciada. Toque o piano.');
+    } });
+    var exportarPerformance = el('button', { type: 'button', class: 'btn sec', txt: '⬇ Performance JSON', onclick: function () { if (!eventosGravados.length) { C.aviso('Grave uma performance antes de exportar o JSON.', 'erro'); return; } C.baixar('piano-performance-musique.json', 'application/json', JSON.stringify({ bpm: 80, eventos: eventosGravados, criado_em: new Date().toISOString() }, null, 2)); } });
+    var importarPerformance = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar performance JSON' });
+    importarPerformance.onchange = function () { var f = importarPerformance.files && importarPerformance.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); if (!Array.isArray(j.eventos) || !j.eventos.length) throw new Error('JSON sem eventos de piano.'); eventosGravados = j.eventos.filter(function (e) { return e && Number.isFinite(Number(e.t)) && Number.isFinite(Number(e.midi)); }).map(function (e) { return { t: Number(e.t), dur: Number(e.dur) || 1, midi: Number(e.midi), vel: Number(e.vel) || 88 }; }); if (!eventosGravados.length) throw new Error('Nenhum evento válido.'); C.aviso(eventosGravados.length + ' nota(s) importada(s).'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
+    var ouvirPerformance = el('button', { type: 'button', class: 'btn sec', txt: '▶ Ouvir performance', onclick: function () { if (!eventosGravados.length) { C.aviso('Importe ou grave uma performance antes de ouvir.', 'erro'); return; } eventosGravados.forEach(function (e) { setTimeout(function () { C.Som.tocar([e.midi], { dur: Math.max(0.15, (e.dur || 1) * 60 / 80 / 4 * 0.9), vel: (e.vel || 88) / 127 }); }, Math.max(0, e.t * 60 / 80 / 4 * 1000)); }); } });
+    var modo88 = el('button', { type: 'button', class: 'btn sec', 'aria-pressed': 'false', txt: '◇ Piano de 88 teclas', onclick: function () { piano88 = !piano88; modo88.setAttribute('aria-pressed', piano88 ? 'true' : 'false'); modo88.textContent = piano88 ? '◇ Voltar ao piano compacto' : '◇ Piano de 88 teclas'; pintar(); } });
+    alvo.appendChild(el('div', { class: 'lab-controles' }, [C.selNotacao(pintar), C.selTimbre(), modo88, midiBtn, gravarBtn, ouvirPerformance, exportarPerformance, el('label', { class: 'btn sec', txt: 'Importar JSON' }, [importarPerformance]), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano SVG', onclick: function () { exportarPiano(false); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Baixar piano PNG', onclick: function () { exportarPiano(true); } }), el('button', { type: 'button', class: 'btn sec', txt: '⬇ Exportar notas MIDI', onclick: exportarHistorico })]));
     alvo.appendChild(box); alvo.appendChild(acordeTxt); alvo.appendChild(info);
     pintar();
   };
@@ -174,7 +194,13 @@
     FAIXAS.forEach(function (f) { if (!grade[f.id]) grade[f.id] = []; });
     var bpm = st.bpm || 100, swing = 0, ag = null;
     var tabela = el('div', { class: 'lab-grade-passos', role: 'grid', 'aria-label': 'Grade de passos' });
+    var mapa = el('div', { class: 'lab-bateria-pads', role: 'group', 'aria-label': 'Mapa da bateria' });
     var info = el('p', { class: 'lab-info', 'aria-live': 'polite' });
+    var teclas = { a: 'bumbo', s: 'caixa', d: 'chimbal', f: 'tom', g: 'crash', h: 'ride', j: 'aberto', k: 'ganza' };
+    function tocarPad(id, vel) { if (C.Som.bateria[id]) { C.Som.bateria[id](C.Som.audio().currentTime + 0.01, vel || 0.9); var pad = C.$('.lab-bateria-' + id, mapa); if (pad) { pad.classList.add('ativo'); setTimeout(function () { pad.classList.remove('ativo'); }, 110); } } }
+    var posicoes = { crash: 'crash', ride: 'ride', chimbal: 'chimbal', caixa: 'caixa', aro: 'aro', palma: 'palma', bumbo: 'bumbo', tom: 'tom', aberto: 'aberto', agogo: 'agogo', ganza: 'ganza' };
+    FAIXAS.concat([{ id: 'crash', nome: 'Crash' }, { id: 'ride', nome: 'Ride' }]).forEach(function (fx) { mapa.appendChild(el('button', { type: 'button', class: 'lab-bateria-pad lab-bateria-' + (posicoes[fx.id] || fx.id), txt: fx.nome, 'aria-label': 'Tocar ' + fx.nome, onclick: function () { tocarPad(fx.id); } })); });
+    d.addEventListener('keydown', function (e) { if (e.repeat || (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) return; var id = teclas[e.key.toLowerCase()]; if (id) { e.preventDefault(); tocarPad(id, 0.9); } });
     function guardar() { C.guardar('batidas2', { grade: grade, passos: passos, porTempo: porTempo, nome: nomePadrao }); }
     function tem(f, i) { return grade[f].indexOf(i) >= 0; }
     function pintar() {
@@ -215,20 +241,43 @@
     var selCiclo = el('select', { id: 'lab-ciclo' }, [['16:4', '4/4 (16 semicolcheias)'], ['12:4', '3/4 (12 semicolcheias)'], ['8:4', '2/4 (8 semicolcheias)'], ['12:3', '12/8 ou 2×6/8 (12 colcheias)']].map(function (o) { return el('option', { value: o[0], txt: o[1] }); }));
     selCiclo.value = passos + ':' + porTempo;
     selCiclo.onchange = function () { var p = selCiclo.value.split(':').map(Number); passos = p[0]; porTempo = p[1]; FAIXAS.forEach(function (f) { grade[f.id] = grade[f.id].filter(function (i) { return i < passos; }); }); nomePadrao = ''; guardar(); pintar(); reiniciar(); };
+    var importarJson = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar padrão de bateria JSON' });
+    importarJson.onchange = function () { var f = importarJson.files && importarJson.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); if (!j.grade || typeof j.grade !== 'object') throw new Error('JSON sem grade de bateria.'); grade = vazio(); FAIXAS.forEach(function (fx) { grade[fx.id] = Array.isArray(j.grade[fx.id]) ? j.grade[fx.id].map(Number).filter(function (i) { return i >= 0 && i < 32; }) : []; }); passos = Number(j.passos) || 16; porTempo = Number(j.porTempo) || 4; nomePadrao = String(j.nome || ''); selCiclo.value = passos + ':' + porTempo; guardar(); pintar(); C.aviso('Padrão de bateria importado.'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
+    var gravando = false, inicioGravacao = 0, eventosGravados = [], gravarBtn = el('button', { type: 'button', class: 'btn sec', txt: '● Gravar MIDI ao vivo', onclick: function () {
+      if (gravando) { gravando = false; gravarBtn.textContent = '● Gravar MIDI ao vivo'; if (eventosGravados.length) C.baixar('bateria-midi-musique.mid', 'audio/midi', midiArquivo(eventosGravados, bpm, porTempo)); C.aviso(eventosGravados.length ? eventosGravados.length + ' golpe(s) gravado(s) e exportado(s).' : 'Nenhum golpe foi gravado.'); return; }
+      eventosGravados = []; inicioGravacao = performance.now(); gravando = true; gravarBtn.textContent = '■ Parar e baixar MIDI'; C.aviso('Gravação MIDI iniciada. Toque na bateria eletrônica.');
+    } });
+    function idNotaBateria(nota) { if (nota === 49) return 'crash'; if (nota === 51) return 'ride'; var fx = FAIXAS.filter(function (x) { return x.midi === nota; })[0]; return fx && fx.id; }
+    var ouvirGravacao = el('button', { type: 'button', class: 'btn sec', txt: '▶ Ouvir gravação', onclick: function () { if (!eventosGravados.length) { C.aviso('Grave ou importe uma performance antes de ouvir.', 'erro'); return; } eventosGravados.forEach(function (e) { var id = idNotaBateria(e.midi); if (id) setTimeout(function () { tocarPad(id, (e.vel || 88) / 127); }, Math.max(0, e.t * 60 / bpm / porTempo * 1000)); }); } });
+    var exportarGravacao = el('button', { type: 'button', class: 'btn sec', txt: '⬇ Performance JSON', onclick: function () { if (!eventosGravados.length) { C.aviso('Grave uma performance antes de exportar o JSON.', 'erro'); return; } C.baixar('bateria-performance-musique.json', 'application/json', JSON.stringify({ bpm: bpm, porTempo: porTempo, eventos: eventosGravados, criado_em: new Date().toISOString() }, null, 2)); } });
+    var importarGravacao = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Importar performance de bateria JSON' });
+    importarGravacao.onchange = function () { var f = importarGravacao.files && importarGravacao.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { try { var j = JSON.parse(rd.result); if (!Array.isArray(j.eventos) || !j.eventos.length) throw new Error('JSON sem eventos de bateria.'); eventosGravados = j.eventos.filter(function (e) { return e && Number.isFinite(Number(e.t)) && Number.isFinite(Number(e.midi)); }).map(function (e) { return { t: Number(e.t), dur: Number(e.dur) || 1, midi: Number(e.midi), vel: Number(e.vel) || 88 }; }); if (!eventosGravados.length) throw new Error('Nenhum evento válido.'); C.aviso(eventosGravados.length + ' golpe(s) importado(s).'); } catch (e) { C.aviso('Não consegui importar: ' + e.message, 'erro'); } }; rd.readAsText(f); };
+    var midiBtn = el('button', { type: 'button', class: 'btn sec', txt: 'Conectar bateria MIDI', onclick: function () {
+      if (!navigator.requestMIDIAccess) { C.aviso('Este navegador não oferece Web MIDI. A bateria continua disponível pelos pads e pela grade.'); return; }
+      navigator.requestMIDIAccess().then(function (acc) {
+        var porNota = { 49: 'crash', 51: 'ride' }; FAIXAS.forEach(function (fx) { porNota[fx.midi] = fx.id; }); var n = 0;
+        acc.inputs.forEach(function (inp) { n++; inp.onmidimessage = function (msg) { var d = msg.data || [], status = d[0] & 0xf0, nota = d[1], vel = d[2]; if (status !== 0x90 || !vel) return; var id = porNota[nota]; if (id && C.Som.bateria[id]) { C.Som.bateria[id](C.Som.audio().currentTime + 0.01, Math.min(1, vel / 100)); if (gravando) eventosGravados.push({ t: Math.max(0, (performance.now() - inicioGravacao) / 1000 * bpm / 60 * porTempo), dur: 1, midi: nota, canal: 9, vel: vel }); } }; });
+        C.aviso(n ? n + ' entrada(s) MIDI conectada(s). Toque a bateria eletrônica.' : 'Nenhuma entrada MIDI encontrada.');
+      }).catch(function () { C.aviso('O acesso ao MIDI foi negado.'); });
+    } });
     alvo.appendChild(el('div', { class: 'lab-controles' }, [botao,
       el('div', { class: 'lab-campo lab-campo-largo' }, [el('label', { for: 'lab-padrao', txt: 'Padrão pronto' }), selP]),
       el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-bpm', txt: 'BPM' }), bpmIn]),
       el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-swing', txt: 'Swing (4/4)' }), sw, lsw]),
       el('div', { class: 'lab-campo' }, [el('label', { for: 'lab-ciclo', txt: 'Compasso' }), selCiclo]),
       el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { grade = vazio(); nomePadrao = ''; guardar(); pintar(); } }),
+      midiBtn, gravarBtn, ouvirGravacao, exportarGravacao, el('label', { class: 'btn sec', txt: 'Importar performance JSON' }, [importarGravacao]),
+      el('label', { class: 'btn sec', txt: 'Importar JSON', }, [importarJson]),
+      el('button', { type: 'button', class: 'btn sec', txt: 'Exportar JSON', onclick: function () { C.baixar('bateria-musique.json', 'application/json', JSON.stringify({ nome: nomePadrao, passos: passos, porTempo: porTempo, grade: grade, criado_em: new Date().toISOString() }, null, 2)); } }),
       el('button', { type: 'button', class: 'btn sec', txt: 'Exportar MIDI', onclick: function () {
         var ev = [];
         for (var rep = 0; rep < 4; rep++) FAIXAS.forEach(function (fx) { grade[fx.id].forEach(function (i) { ev.push({ t: rep * passos + i, dur: 1, midi: fx.midi, canal: 9 }); }); });
         exportar(st, 'musique-batida.mid', 'audio/midi', midiArquivo(ev, bpm, porTempo));
       } })]));
     alvo.appendChild(info);
+    alvo.appendChild(mapa);
     alvo.appendChild(tabela);
-    alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada linha é um som; cada coluna, um passo. Os padrões prontos são referências simplificadas de cada estilo (cada um tem muitas variações regionais), não transcrições de gravação. O MIDI exportado usa o canal 10 (percussão).' }));
+    alvo.appendChild(el('p', { class: 'lab-dica', txt: 'Cada linha é um som; cada coluna, um passo. Nos pads, use A bumbo · S caixa · D chimbal · F tom · G crash · H ride · J chimbal aberto · K ganzá. Os padrões prontos são referências simplificadas de cada estilo (cada um tem muitas variações regionais), não transcrições de gravação. O MIDI exportado usa o canal 10 (percussão).' }));
     pintar();
   };
 
@@ -294,21 +343,21 @@
       alvo.appendChild(el('p', { txt: 'Toque nos graus para montar a sequência:' }));
       alvo.appendChild(el('div', { class: 'lab-graus' }, campo.map(function (g) {
         return el('button', { type: 'button', class: 'lab-grau lab-func-' + g.funcao, onclick: function () { graus.push(g.grau); if (graus.length > 16) graus.shift(); C.Som.tocar(A.notas(naOitava(g.fundamental, 3), g.acorde).map(N.midi), { modo: 'harmonico', dur: 0.9 }); render(); } },
-          [el('strong', { txt: g.romano }), el('span', { txt: g.simbolo }), el('small', { txt: g.funcao })]);
+          [el('strong', { txt: g.romano.toUpperCase() }), el('span', { txt: g.simbolo }), el('small', { txt: g.funcao })]);
       })));
       var acs = T.realizar(t, modo, graus, { tetrades: tetrades });
       var vozes = []; var ant = null;
       acs.forEach(function (g) { var c = A.conduzir(ant, g.fundamental, g.acorde); vozes.push(c ? c.notas : A.notas(naOitava(g.fundamental, 3), g.acorde)); ant = vozes[vozes.length - 1]; });
       var seqTxt = acs.map(function (g) { return g.simbolo; }).join(' → ');
       alvo.appendChild(el('div', { class: 'lab-resumo' }, [el('h2', { txt: seqTxt || 'Escolha os graus' }),
-        el('p', { txt: acs.map(function (g) { return g.romano + ' (' + g.funcao + ')'; }).join(' – ') }),
+        el('p', { txt: acs.map(function (g) { return g.romano.toUpperCase() + ' (' + g.funcao + ')'; }).join(' – ') }),
         el('div', { class: 'lab-acoes' }, [
           el('button', { type: 'button', class: 'btn', txt: '▶ Ouvir (condução de vozes)', onclick: function () { var a = C.Som.audio(), dur = 60 / bpm * 2; vozes.forEach(function (v, i) { v.forEach(function (n) { C.Som.voz(C.Som.FREQ(N.midi(n)), a.currentTime + 0.05 + i * dur, dur * 0.95, { vel: 0.14 }); }); C.Som.voz(C.Som.FREQ(N.midi(N.comOitava(acs[i].fundamental, 2))), a.currentTime + 0.05 + i * dur, dur * 0.95, { vel: 0.18 }); }); historico.unshift(seqTxt); historico = historico.filter(function (x, k) { return historico.indexOf(x) === k; }).slice(0, 8); C.guardar('progressoes-hist', historico); } }),
           el('button', { type: 'button', class: 'btn sec', txt: 'Desfazer', onclick: function () { graus.pop(); render(); } }),
           el('button', { type: 'button', class: 'btn sec', txt: 'Limpar', onclick: function () { graus = []; render(); } }),
           el('button', { type: 'button', class: 'btn sec', txt: 'Exportar ChordPro', onclick: function () {
             var cp = '{title: Progressão em ' + T.nome(t, modo) + '}\n{key: ' + N.nome(t, { oitava: false }) + (modo === 'menor' ? 'm' : '') + '}\n'
-              + '{comment: ' + acs.map(function (g) { return g.romano; }).join(' – ') + '}\n' + acs.map(function (g) { return '[' + g.simbolo + ']'; }).join(' ') + '\n';
+              + '{comment: ' + acs.map(function (g) { return g.romano.toUpperCase(); }).join(' – ') + '}\n' + acs.map(function (g) { return '[' + g.simbolo + ']'; }).join(' ') + '\n';
             exportar(st, 'progressao-' + N.slug(t) + '.cho', 'text/plain', cp);
           } }),
           el('a', { href: '/music/criar/transpositor', txt: 'Transpor →' })])]));

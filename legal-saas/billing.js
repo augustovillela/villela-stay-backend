@@ -164,6 +164,12 @@ async function processarWebhook(body, query) {
     } else if (tipo === 'payment') {
       const pay = await mp(`/v1/payments/${id}`);
       const ref = String(pay.external_reference || '');
+      // recarga de créditos de IA (pagamento avulso) — nada a ver com a mensalidade
+      if (ref.startsWith('legalsaas-ia:')) {
+        const r = require('./creditos').Recargas.confirmarPagamento(pay);
+        repo.evento((r && r.tenant_id) || ref.split(':')[1] || '', 'webhook.mp.recarga-ia', id, { status: pay.status, ok: !!(r && r.ok), duplicado: !!(r && r.duplicado), motivo: (r && r.motivo) || '' });
+        return { ok: true, recarga: r };
+      }
       const tenantId = ref.startsWith('legalsaas:') ? ref.split(':')[1] : '';
       if (tenantId && pay.status === 'approved') { const r = registrarPagamento(tenantId, String(pay.id)); repo.evento(tenantId, 'webhook.mp.payment', id, { status: pay.status, resultado: r && r.resultado }); }
     }
@@ -192,6 +198,6 @@ function processarCicloDeVida() {
 }
 
 module.exports = {
-  configurar, ativo, estado, assinar, cancelarAssinatura, trocarPlano,
+  configurar, ativo, mp, estado, assinar, cancelarAssinatura, trocarPlano,
   aplicarPreapproval, registrarPagamento, processarWebhook, processarCicloDeVida, gerarFatura,
 };

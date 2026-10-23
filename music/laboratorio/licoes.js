@@ -29,6 +29,83 @@ const REFS = {
 
 const LICOES = [
   {
+    slug: 'como-estudar-musica', titulo: 'Como estudar música', nivel: 'iniciante', prereq: [], termos: 'estudo rotina pratica escuta instrumento teoria objetivo',
+    resumo: 'Um método simples para alternar ouvir, entender, praticar e registrar o que você aprendeu.',
+    blocos: [
+      { t: 'p', html: 'Estudar música não é decorar uma lista de nomes. É repetir um ciclo: <strong>ouvir</strong> uma ideia, <strong>entender</strong> como ela se organiza, <strong>tocar ou cantar</strong> devagar e depois <strong>usar</strong> a ideia numa música. O curso acompanha esse ciclo em todas as etapas.' },
+      { t: 'lista', itens: ['<strong>Escute:</strong> cante ou toque antes de tentar explicar.', '<strong>Observe:</strong> localize notas, pulsos, acordes e repetições.', '<strong>Pratique:</strong> reduza o andamento e faça poucas repetições atentas.', '<strong>Registre:</strong> escreva uma frase sobre o que funcionou e o que precisa voltar.'] },
+      { t: 'p', html: 'Uma sessão curta e frequente costuma render mais que uma sessão longa e distraída. Comece com cinco minutos de escuta, dez de uma habilidade específica e cinco aplicando-a a uma música. Ajuste os tempos ao seu dia: a constância é parte da técnica.' },
+      { t: 'visual', v: { tipo: 'progressao', simbolos: ['ouvir', 'entender', 'praticar', 'aplicar'], graus: ['1', '2', '3', '4'], legenda: 'O ciclo de estudo do Musique.' } },
+      { t: 'p', html: 'Ao terminar, não procure apenas a sensação de ter acertado. Pergunte: <em>o que consigo fazer agora que não conseguia antes?</em> Essa resposta orienta a próxima lição e transforma prática em progresso.' },
+    ],
+    refs: ['priolli'],
+  },
+  {
+    slug: 'escuta-ativa-e-pulso', titulo: 'Escuta ativa e pulso', nivel: 'iniciante', prereq: ['como-estudar-musica'], termos: 'escuta ativa pulso tempo ritmo silencio batida',
+    resumo: 'Aprenda a encontrar a batida, contar em ciclos e ouvir o silêncio entre os sons.',
+    blocos: [
+      { t: 'p', html: 'Antes de ler uma partitura, encontre o <strong>pulso</strong>: a batida regular que organiza o tempo. Ele pode estar explícito na bateria ou escondido na respiração de uma frase. Bata o pé sem acelerar e observe se os sons da música pousam em cima, antes ou depois dessa batida.' },
+      { t: 'ouvir', rotulo: 'Ouça oito pulsos iguais', midis: [60, 60, 60, 60, 60, 60, 60, 60], dur: 0.18, passo: 0.5, modo: 'melodico' },
+      { t: 'lista', itens: ['<strong>Pulso:</strong> a batida regular que você consegue marcar.', '<strong>Andamento:</strong> a velocidade do pulso.', '<strong>Ritmo:</strong> a combinação de durações e silêncios sobre o pulso.', '<strong>Compasso:</strong> um agrupamento recorrente de pulsos, como 2, 3 ou 4.'] },
+      { t: 'p', html: 'Faça três escutas da mesma música: na primeira marque apenas o pulso; na segunda conte grupos de quatro; na terceira tente cantar uma nota longa enquanto a batida continua. Se perder a contagem, volte ao silêncio e recomece sem acelerar.' },
+      { t: 'praticar', tipo: 'ritmo-completar', nivel: 1 },
+    ],
+    refs: ['med', 'priolli'],
+  },
+  {
+    slug: 'cantar-e-localizar-notas', titulo: 'Cantar e localizar notas', nivel: 'iniciante', prereq: ['escuta-ativa-e-pulso'], termos: 'cantar voz nota afinacao referencia localizar teclado solfejo',
+    resumo: 'Use uma nota de referência, cante pequenas relações e encontre o mesmo som no instrumento.',
+    blocos: [
+      { t: 'p', html: 'A voz é o primeiro instrumento de qualquer estudante. Escolha uma nota confortável, ouça-a duas vezes e cante “ah” junto. Não é preciso cantar alto: procure combinar a <strong>altura</strong>, isto é, fazer a vibração da sua voz coincidir com a nota de referência.' },
+      { t: 'ouvir', rotulo: 'Ouça uma pequena frase para cantar', midis: [60, 62, 64, 62, 60], dur: 0.42, modo: 'melodico' },
+      { t: 'p', html: 'Depois de cantar a frase, procure as notas no teclado ou no instrumento. Subir um degrau significa ir para uma nota mais aguda; descer significa ir para uma mais grave. O objetivo inicial é reconhecer a direção e a distância aproximada, não acertar o nome de todas as notas.' },
+      { t: 'lista', itens: ['Ouça a referência sem cantar.', 'Cante a primeira nota em “ah” ou “ô”.', 'Repita a frase devagar, respirando entre as ideias.', 'Localize a nota inicial no piano, violão ou outro instrumento.'] },
+      { t: 'ferramenta', slug: 'piano' },
+      { t: 'praticar', tipo: 'nota-no-teclado', nivel: 1 },
+    ],
+    refs: ['priolli', 'omt'],
+  },
+  {
+    slug: 'revisao-primeiros-passos', titulo: 'Revisão: primeiros passos', nivel: 'iniciante', prereq: ['alfabeto-musical', 'cantar-e-localizar-notas'], termos: 'revisao primeiros passos checklist fundamentos escuta pulso nota',
+    resumo: 'Confira o que você já consegue ouvir, cantar, contar e localizar antes de avançar.',
+    blocos: [
+      { t: 'p', html: 'Esta revisão não é uma prova de velocidade. Use-a para perceber quais fundamentos já estão confortáveis e quais merecem mais uma volta. Se você consegue explicar uma ideia, ouvi-la e aplicá-la no instrumento, está pronto para seguir.' },
+      { t: 'lista', itens: ['Consigo diferenciar grave e agudo e explicar o que é altura.', 'Consigo marcar um pulso sem acelerar por alguns compassos.', 'Consigo cantar uma nota de referência e perceber se subi ou desci.', 'Consigo reconhecer dó–ré–mi… e C–D–E… no teclado.', 'Consigo localizar uma nota inicial no instrumento que estudo.'] },
+      { t: 'ferramenta', slug: 'laboratorio' },
+      { t: 'praticar', tipo: 'nota-no-teclado', nivel: 1 },
+      { t: 'praticar', tipo: 'ritmo-completar', nivel: 1 },
+      { t: 'p', html: 'Quando terminar, escreva uma frase no seu caderno: “Hoje eu consigo…”. Depois abra a próxima etapa, <a href="/music/aprender/tons-e-semitons">Teclado, tons, semitons e acidentes</a>, e comece a observar as distâncias entre as notas.' },
+    ],
+    refs: ['priolli'],
+  },
+  {
+    slug: 'primeira-leitura-ritmica', titulo: 'Primeira leitura rítmica', nivel: 'iniciante', prereq: ['revisao-primeiros-passos'], termos: 'leitura ritmica figura pausa pulso contagem compasso iniciante',
+    resumo: 'Transforme uma sequência de pulsos em figuras e pausas que você consegue ler e executar.',
+    blocos: [
+      { t: 'p', html: 'Na leitura rítmica, não comece pela figura isolada: comece pelo pulso. Conte <strong>1 2 3 4</strong> em voz baixa e encaixe cada som nesse espaço. Uma figura ocupa parte ou todo o pulso; uma pausa é o espaço em que você continua contando sem produzir som.' },
+      { t: 'lista', itens: ['A <strong>semínima</strong> ocupa um pulso em um compasso simples.', 'A <strong>mínima</strong> ocupa dois pulsos.', 'Duas <strong>colcheias</strong> dividem um pulso em duas partes iguais.', 'A pausa tem duração própria: o silêncio também é escrito e contado.'] },
+      { t: 'ouvir', rotulo: 'Ouça uma sequência regular', midis: [60, 60, 60, 60, 60, 60, 60, 60], dur: 0.16, passo: 0.5, modo: 'melodico' },
+      { t: 'p', html: 'Bata palmas apenas no primeiro e no terceiro pulso, mantendo a contagem completa. Depois faça o mesmo no segundo e no quarto. Essa alternância ajuda a sentir onde o pulso está mesmo quando a música não toca em todas as batidas.' },
+      { t: 'praticar', tipo: 'ritmo-completar', nivel: 2 },
+      { t: 'ferramenta', slug: 'batidas' },
+      { t: 'ferramenta', slug: 'pozzoli-ritmos' },
+    ],
+    refs: ['med', 'priolli'],
+  },
+  {
+    slug: 'primeira-leitura-melodica', titulo: 'Primeira leitura melódica', nivel: 'iniciante', prereq: ['primeira-leitura-ritmica'], termos: 'leitura melodica pauta clave sol notas solfejo primeira vista',
+    resumo: 'Leia uma pequena linha na clave de sol, mantendo o pulso e reconhecendo o desenho da melodia.',
+    blocos: [
+      { t: 'p', html: 'Uma leitura melódica junta duas tarefas: saber <strong>quando</strong> a nota acontece e saber <strong>qual altura</strong> produzir. Primeiro bata o pulso; depois fale os nomes das notas; só então cante ou toque. Separar as tarefas reduz a ansiedade e deixa o erro visível.' },
+      { t: 'visual', v: { tipo: 'pauta', clave: 'sol', notas: ['C4', 'D4', 'E4', 'D4', 'C4'], rotular: true } },
+      { t: 'ouvir', rotulo: 'Ouça a linha antes de ler', midis: [60, 62, 64, 62, 60], dur: 0.42, modo: 'melodico' },
+      { t: 'lista', itens: ['Olhe o primeiro e o último som para perceber o ponto de partida e chegada.', 'Observe se a linha sobe, desce ou repete.', 'Conte o pulso sem interromper quando houver uma pausa.', 'Repita em andamento lento e aumente a velocidade apenas quando a forma estiver estável.'] },
+      { t: 'praticar', tipo: 'nota-na-pauta', nivel: 1 },
+      { t: 'ferramenta', slug: 'pauta' },
+    ],
+    refs: ['med', 'priolli'],
+  },
+  {
     slug: 'som-e-nota', titulo: 'Som, altura e nota', nivel: 'iniciante', prereq: [], termos: 'som altura duracao intensidade timbre frequencia',
     resumo: 'O que o ouvido percebe num som — altura, duração, intensidade e timbre — e o que é uma nota.',
     blocos: [
@@ -352,8 +429,53 @@ const LICOES = [
     ],
     refs: ['omt'],
   },
+  {
+    slug: 'treino-intervalos', titulo: 'Treino de intervalos pelo ouvido', nivel: 'iniciante', prereq: ['intervalos'], termos: 'intervalos ouvido relativo treino audicao melodia distancia reconhecimento',
+    resumo: 'Transforme a tabela de intervalos em relações que você consegue cantar, reconhecer e aplicar.',
+    blocos: [
+      { t: 'p', html: 'Para treinar intervalos, use sempre uma <strong>nota de referência</strong>. O intervalo não é uma etiqueta isolada: é o caminho entre duas alturas. Cante a primeira nota, imagine a segunda e só então confira a resposta.' },
+      { t: 'ouvir', rotulo: 'Referência, terça maior, quinta e oitava', midis: [[60], [60, 64], [60, 67], [60, 72]], dur: 0.55, modo: 'melodico' },
+      { t: 'lista', itens: ['Cante a referência em “ah”.', 'Diga se a segunda nota parece próxima, aberta ou muito distante.', 'Associe a sensação ao número do intervalo.', 'Repita começando em outra nota para não decorar apenas o timbre de dó.'] },
+      { t: 'praticar', tipo: 'intervalo-ouvido', nivel: 2 },
+      { t: 'ferramenta', slug: 'intervalos' },
+      { t: 'p', html: 'O objetivo desta etapa é ouvir relações, não desenvolver ouvido absoluto. Com o tempo, você poderá usar a mesma habilidade para afinar, tirar melodias de ouvido e entender o movimento de uma linha.' },
+    ],
+    refs: ['omt', 'priolli'],
+  },
+  {
+    slug: 'ditado-melodico', titulo: 'Ditado melódico: ouvir antes de escrever', nivel: 'intermediário', prereq: ['treino-intervalos', 'primeira-leitura-melodica'], termos: 'ditado melodico percepcao escrita leitura ouvido relativo frase',
+    resumo: 'Aprenda a transformar uma pequena frase ouvida em direção, graus e notas escritas.',
+    blocos: [
+      { t: 'p', html: 'No ditado melódico, você não precisa capturar tudo de uma vez. Primeiro encontre o <strong>pulso</strong>, depois cante a nota de chegada e só então escreva o desenho entre elas. A memória melhora quando você divide a frase em pequenos grupos.' },
+      { t: 'ouvir', rotulo: 'Frase curta para ouvir e cantar', midis: [60, 62, 64, 67, 64, 62, 60], dur: 0.42, passo: 0.48, modo: 'melodico' },
+      { t: 'lista', itens: ['Ouça a frase inteira sem escrever.', 'Marque a primeira nota e o pulso.', 'Anote apenas a direção: sobe, desce ou repete.', 'Use o intervalo para conferir cada salto.', 'Toque ou cante sua escrita e compare com a gravação.'] },
+      { t: 'visual', v: { tipo: 'pauta', clave: 'sol', notas: ['C4', 'D4', 'E4', 'G4', 'E4', 'D4', 'C4'], rotular: true } },
+      { t: 'praticar', tipo: 'nota-na-pauta', nivel: 2 },
+      { t: 'ferramenta', slug: 'pauta' },
+      { t: 'p', html: 'Uma transcrição é uma hipótese que você testa com o ouvido. Se a frase estiver correta, a direção, o ritmo e os pontos de repouso continuam reconhecíveis mesmo quando você muda o instrumento.' },
+    ],
+    refs: ['omt', 'priolli'],
+  },
+  {
+    slug: 'projeto-final', titulo: 'Projeto final: ouvir, analisar e criar', nivel: 'avançado', prereq: ['harmonia-popular', 'contraponto', 'articulacao-e-dinamica'], termos: 'projeto final analise composicao arranjo teoria musical repertorio',
+    resumo: 'Integre leitura, percepção, harmonia, forma e arranjo em uma peça curta autoral ou em uma análise documentada.',
+    blocos: [
+      { t: 'p', html: 'O projeto final fecha o percurso com uma tarefa que se parece com a prática real: escolha uma música do seu acervo ou crie uma peça curta e registre <strong>o que você ouve, como a música se organiza e quais decisões tomou</strong>.' },
+      { t: 'lista', itens: ['Defina tonalidade, andamento, compasso e instrumento principal.', 'Registre a forma: introdução, seções, repetições, contrastes e cadências.', 'Escreva a progressão harmônica com graus e, quando fizer sentido, extensões ou empréstimos.', 'Descreva pelo menos um motivo melódico, uma escolha de dinâmica e uma ideia de arranjo.', 'Toque, cante ou exporte um rascunho e anote uma revisão concreta para a próxima versão.'] },
+      { t: 'visual', v: { tipo: 'progressao', simbolos: ['escutar', 'mapear', 'explicar', 'criar', 'revisar'], graus: ['1', '2', '3', '4', '5'], legenda: 'Ciclo do projeto final: a teoria volta para a prática.' } },
+      { t: 'p', html: 'Não é necessário produzir uma gravação profissional. O critério é conseguir justificar suas escolhas com o vocabulário do curso e mostrar uma versão que outra pessoa consiga ouvir, ler ou tocar.' },
+      { t: 'ferramenta', slug: 'progressoes' },
+      { t: 'ferramenta', slug: 'pozzoli-ritmos' },
+      { t: 'praticar', tipo: 'campo-grau', nivel: 3 },
+      { t: 'aprofundar', html: 'Depois do projeto, escolha uma nova trilha: repertório, arranjo, composição, percepção ou tecnologia. O curso termina como currículo; o estudo continua como prática.' },
+    ],
+    refs: ['omt', 'kostka'],
+  },
 ];
 
 const POR_SLUG = Object.fromEntries(LICOES.map((l) => [l.slug, l]));
+const EXPANDIDAS = require('./licoes-expandidas').EXPANDIDAS;
+const TODAS_LICOES = LICOES.concat(EXPANDIDAS);
+const POR_SLUG_COMPLETO = Object.fromEntries(TODAS_LICOES.map((l) => [l.slug, l]));
 
-module.exports = { LICOES, POR_SLUG, AUTORIA, REFS };
+module.exports = { LICOES: TODAS_LICOES, POR_SLUG: POR_SLUG_COMPLETO, AUTORIA, REFS };

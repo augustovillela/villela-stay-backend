@@ -13,8 +13,9 @@ const imp = require('./importacao');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const h = (fn) => (req, res) => {
-  try { Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ erro: e.message })); }
-  catch (e) { res.status(e.status || 400).json({ erro: e.message }); }
+  // `extra` leva o orcamento da IA (402): a tela precisa do valor para pedir o aceite
+  try { Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ erro: e.message, ...(e.extra || {}) })); }
+  catch (e) { res.status(e.status || 400).json({ erro: e.message, ...(e.extra || {}) }); }
 };
 const escHtml = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -35,11 +36,22 @@ function registrarRotasInterativo(app, { requireUsuario, requirePapel }) {
     const acesso = ct.temAcesso(req.usuario.id, p.id) || it.podeRevisar(req.usuario, p);
     const aula = b.lesson_id ? ct.Produtos.estrutura(p.id).flatMap(m => m.aulas).find(a => a.id === s(b.lesson_id, 40)) : null;
     if (!acesso && !(aula && aula.gratuita)) return res.status(403).json({ erro: 'O Tutor Villela é para quem tem acesso ao curso.' });
-    const trechos = it.contextoTutor(req.usuario, p, pergunta, aula ? aula.id : '');
+    // DENTRO DO ESTUDE a tela manda `estude: { escopo, unidade }`. A aula só pesa se o aluno a vê (mesma porta do
+    // Estude); e, sem base importada para o curso, o Tutor NÃO responde ali — o agente antigo só conhece a
+    // aula-casca e responderia Direito sem conteúdo nenhum. (A tela nem mostra a esfera nesse caso.)
+    let estude = null, unidadeTitulo = '';
+    if (b.estude && typeof b.estude === 'object') {
+      if (!it.temBase(p.id)) return res.status(409).json({ erro: 'O Tutor deste curso ainda não está disponível: a base de conhecimento dele ainda não foi publicada.' });
+      try {
+        const u = require('./estudo/aluno').unidade(req.usuario, p, s(b.estude.escopo, 60), s(b.estude.unidade, 60));
+        estude = { escopo: require('./estudo/repo').slug(b.estude.escopo), unidade: u.codigo }; unidadeTitulo = u.titulo;
+      } catch (_) { estude = null; } // sem aula aberta (ou aula que ele não vê): pergunta sobre o curso inteiro
+    }
+    const trechos = it.contextoTutor(req.usuario, p, pergunta, aula ? aula.id : '', estude);
     let r;
     if (trechos.length || !acesso) {
       r = await ia.Agentes.tutor(req.usuario.id, p, {
-        pergunta, trechos, historico: it.historico(req.usuario.id, p.id), aulaAtual: aula ? aula.titulo : '',
+        pergunta, trechos, historico: it.historico(req.usuario.id, p.id), aulaAtual: aula ? aula.titulo : unidadeTitulo,
       });
     } else { // curso ainda sem base própria: o tutor antigo, pelo texto das aulas
       const x = await ia.Agentes.suporte(req.usuario.id, p, pergunta);
@@ -47,7 +59,8 @@ function registrarRotasInterativo(app, { requireUsuario, requirePapel }) {
     }
     // só as fontes que existem no contexto — e sem o texto do trecho (é conteúdo pago)
     const usadas = (Array.isArray(r.fontes) ? r.fontes : []).map(n => trechos.find(t => t.n === Number(n))).filter(Boolean)
-      .map(t => ({ n: t.n, fonte: t.fonte, aula: t.aula, lesson_id: t.lesson_id, rotulo: t.rotulo, ini_seg: t.ini_seg }));
+      .map(t => ({ n: t.n, fonte: t.fonte, aula: t.aula, lesson_id: t.lesson_id, rotulo: t.rotulo, ini_seg: t.ini_seg,
+        ...(t.est_unidade ? { estude: { escopo: t.est_escopo, unidade: t.est_unidade } } : {}) }));
     const resposta = s(r.resposta, 6000);
     it.registrarConversa(req.usuario.id, p.id, aula ? aula.id : '', pergunta, resposta, usadas);
     repo.Auditoria.registrar({ quem: req.usuario.id, acao: 'ia.tutor', entidade: 'ia', entidade_id: p.id, detalhe: pergunta.slice(0, 120), ip: '' });
@@ -60,6 +73,9 @@ function registrarRotasInterativo(app, { requireUsuario, requirePapel }) {
   app.get('/academy/api/aluno/tutor/:productId/conversa', ...AL, h((req, res) => {
     const p = produtoVisivel(req.params.productId);
     if (!p) return res.status(404).json({ erro: 'Curso não encontrado.' });
+    // (réplica de 11/10/2026, R2-B7) a conversa é de quem tem o curso — ou de quem está na degustação de um curso com
+    // aula gratuita, que é quando a tela a pede. Sem uma coisa nem outra, 403: antes respondia 200 a qualquer conta.
+    if (!it.podeConversar(req.usuario, p)) return res.status(403).json({ erro: 'O Tutor atende quem tem acesso ao curso.' });
     res.json({ conversa: it.conversas(req.usuario.id, p.id, req.query.n), ativo: ia.ativo(),
       restantes: Math.max(0, ia.limiteDia() - ia.usadasHoje(req.usuario.id)) });
   }));
@@ -115,7 +131,7 @@ function registrarRotasInterativo(app, { requireUsuario, requirePapel }) {
 
 function registrarRotasInterativoStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin }) {
   const PA = requirePublishOrAdmin ? [requirePublishOrAdmin] : [requireAuth, requireAdmin];
-  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || (req.viaChave ? 'chave-de-publicacao' : 'plataforma'));
+  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || (req.viaChave ? (req.rotuloChave || 'chave-de-publicacao') : 'plataforma'));
   const aud = (req, acao, id, det) => repo.Auditoria.registrar({ quem: quem(req), acao, entidade: 'interativo', entidade_id: s(id, 40), detalhe: det, ip: '' });
   app.post('/staff/api/academy/interativo/importar', ...PA, h((req, res) => {
     const b = req.body || {};

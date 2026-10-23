@@ -1,0 +1,207 @@
+{
+ "titulo": "Paisagismo na Prática",
+ "subtitulo": "Jardins, acessos, áreas de lazer e hospedagem em chácaras do Cerrado",
+ "total": 25,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "O mercado do paisagismo e as etapas de um serviço",
+   "sub": "Paisagismo e jardinagem, a Chácara-Modelo, as quatro funções de um jardim e as quatro etapas de um serviço, do briefing à manutenção.",
+   "capitulos": "Capítulo 1 e elementos iniciais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "Segurança, EPIs e organização do canteiro",
+   "sub": "Os riscos do trabalho no jardim e a linha entre o que você faz, o que contrata e o que depende de profissional habilitado ou de autorização.",
+   "capitulos": "Capítulo 2 e elementos iniciais (Avisos importantes)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "Princípios de composição paisagística",
+   "sub": "Os sete princípios de composição e os quatro materiais com que eles trabalham: cor, textura, volume e sazonalidade.",
+   "capitulos": "Capítulo 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "Sol, sombra, clima, solo e drenagem",
+   "sub": "Como ler sol e sombra, vento, chuva, declive, microclimas e solo antes de escolher qualquer planta, nas duas estações do Cerrado.",
+   "capitulos": "Capítulos 3 e 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "Briefing, medição, croqui e registro do local",
+   "sub": "Perguntar para que a área serve, medir com a trena, desenhar o croqui e registrar fotos, acessos e interferências antes de comprar qualquer planta.",
+   "capitulos": "Capítulo 5 e elementos finais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "Como escolher espécies adequadas ao ambiente",
+   "sub": "Seis critérios para escolher cada planta pelo que ela será quando adulta, e a ficha de seleção de espécies para preencher com o viveirista.",
+   "capitulos": "Capítulos 3 e 4",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "Árvores, arbustos, forrações, trepadeiras e gramados",
+   "sub": "Os seis grupos de plantas e o trabalho que cada um faz no jardim, os acompanhamentos vendidos no viveiro e o exame da muda, que começa pela raiz.",
+   "capitulos": "Capítulo 4",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "Solos, substratos, adubos e cobertura morta",
+   "sub": "O solo do Cerrado, a análise que vem antes de qualquer saco de adubo, para que serve cada insumo e que ferramentas comprar, alugar ou contratar.",
+   "capitulos": "Capítulo 4",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "Setorização, circulação, privacidade e pontos focais",
+   "sub": "Dividir o terreno pelo uso, seguir o trajeto real, criar lugares de ficar, enquadrar e filtrar as vistas e escolher um só ponto de contraste.",
+   "capitulos": "Capítulos 3 e 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "Planta simplificada, quantitativos e cronograma",
+   "sub": "Estilo e paleta, a planta com as copas no tamanho adulto, as contas de quantidade e o cronograma montado a partir da data do plantio.",
+   "capitulos": "Capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "Limpeza, marcação e preparo do terreno",
+   "sub": "A ordem das onze etapas da implantação, a limpeza que protege o que fica e a marcação do projeto no chão, com três conferências antes de cavar.",
+   "capitulos": "Capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "Preparo do solo e construção de canteiros",
+   "sub": "Soltar a área toda, corrigir conforme a análise, preparar a terra, dar caminho à água da chuva e dar forma aos canteiros antes do plantio.",
+   "capitulos": "Capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "Plantio correto de mudas e tutoramento",
+   "sub": "Do recebimento das mudas à cobertura do solo: o berço, o colo no nível do chão, a ordem por porte, o tutor e a primeira rega.",
+   "capitulos": "Capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Implantação e recuperação de gramados",
+   "sub": "A grama copia o chão: a base, as placas e o teste do canto no gramado novo; no antigo, corrigir a causa da falha antes de replantar.",
+   "capitulos": "Capítulos 4, 6 e 9",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "Vasos, jardins verticais e espaços compactos",
+   "sub": "Cada vaso é um compromisso de rega: como montar, quantos ter, o que fazer com pouco espaço e as três perguntas antes do jardim vertical.",
+   "capitulos": "Capítulos 4, 6 e 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "Irrigação manual, gotejamento e microaspersão",
+   "sub": "A rega calculada para agosto: setores, a água medida com o balde, as formas de regar e a fronteira entre o que você instala e o que é do eletricista.",
+   "capitulos": "Capítulo 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Iluminação e acabamentos do jardim",
+   "sub": "Pouca luz, bem colocada: o teste da lanterna, o que pedir e conferir do eletricista, e os critérios de borda, caminho, pedrisco, deck e banco.",
+   "capitulos": "Capítulo 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "Paisagismo da casa, da entrada e da área de lazer",
+   "sub": "O método é o mesmo em cada lugar da propriedade; mudam as respostas a quatro perguntas: quem usa, quando, para quê e quem mantém.",
+   "capitulos": "Capítulo 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "Paisagismo para pousadas, eventos e hospedagens rurais",
+   "sub": "Quando o lugar recebe público, o jardim faz parte do serviço: escala, orientação e desgaste, plantas seguras, caminho acessível e água.",
+   "capitulos": "Capítulo 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "Manutenção, poda, adubação e diagnóstico de problemas",
+   "sub": "Manter bem é olhar com método e agir cedo: o caderno do jardim, o ano do Cerrado em quatro períodos, a ordem do diagnóstico e o manejo antes do produto.",
+   "capitulos": "Capítulo 9 e elementos finais (calendário-base de manutenção)",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "Levantamento de custos e lista de compras",
+   "sub": "Do escopo ao orçamento por etapa: memorial, lista de compras, perdas, horas de mão de obra e a estrada, sem nenhum valor em reais.",
+   "capitulos": "Capítulo 10",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "Formação de preço, proposta e contrato",
+   "sub": "Como pedir e comparar propostas, como formar o preço de um serviço de jardim e o que um contrato de manutenção responde por escrito.",
+   "capitulos": "Capítulo 10",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "Como apresentar, implantar e entregar o projeto",
+   "sub": "Cronograma apoiado nas duas estações, conferência da implantação, inspeção de dia e de noite, o papel que fica com o dono, aceite e garantia de pega.",
+   "capitulos": "Capítulos 6, 7 e 10 e elementos finais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "Desenvolvimento do paisagismo da Chácara-Modelo",
+   "sub": "Os três exercícios e os sete entregáveis do projeto integrador: briefing, croqui, paleta, espécies, implantação, orçamento e manutenção.",
+   "capitulos": "Capítulo 11 e elementos finais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 25,
+   "titulo": "Apresentação, avaliação e plano de evolução profissional",
+   "sub": "O teste final do projeto, os seis critérios de avaliação, a revisão em duas datas do ano, as frentes de trabalho e o que vem depois do curso.",
+   "capitulos": "Capítulos 1 e 11, elementos iniciais e elementos finais",
+   "gravada": true,
+   "tem_artigo": true
+  }
+ ]
+}

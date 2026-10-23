@@ -242,8 +242,8 @@ const JS = `
       if (membro && (d.papel === 'gestor' || d.papel === 'professor')) {
         c.appendChild(el('div', { class: 'nota', html:
           '<b>Só entra música que é sua.</b> Cifra e partitura de terceiro não vão para a turma: '
-          + 'distribuir para trinta alunos é distribuir. Compartilhe pela Biblioteca, no botao '
-          + '"Compartilhar com a escola" da música.' }));
+          + 'distribuir para trinta alunos é distribuir. Para pôr material aqui, abra a música na aba '
+          + 'Biblioteca e use o botão "Compartilhar com a escola".' }));
       }
 
       // ---- alunos ----

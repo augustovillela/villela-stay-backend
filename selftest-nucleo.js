@@ -78,13 +78,20 @@ global.fetch = async (url, opts) => {
 require('./server.js'); // sobe e escuta em PORT
 
 // --- cliente HTTP de teste (node:http) ---
+// UMA CONEXÃO POR PEDIDO (sem keep-alive). O servidor roda NESTE processo: um teste com trecho síncrono longo (a
+// varredura de arquivos da Permissions-Policy, os bcrypt.hashSync) segura o laço de eventos; se passa de 6 s
+// (keepAliveTimeout de 5 s + 1 s de folga do Node 24), o servidor fecha a conexão ociosa assim que o laço volta —
+// e o pedido seguinte, já escrito nela pelo agente global, morria com `read ECONNRESET`. Foi o que derrubou, uma
+// vez em 12/10/2026, os dois testes do coletor de CSP (os primeiros depois da varredura). Reproduzido à parte:
+// 6,5 s de laço preso → ECONNRESET com o agente padrão; nenhum com este.
+const SEM_REUSO = new http.Agent({ keepAlive: false });
 function req(method, pth, { json, cookie, headers } = {}) {
   return new Promise((resolve, reject) => {
     const body = json !== undefined ? JSON.stringify(json) : null;
     const h = Object.assign({ Accept: 'application/json' }, headers || {});
     if (body) { h['Content-Type'] = 'application/json'; h['Content-Length'] = Buffer.byteLength(body); }
     if (cookie) h['Cookie'] = cookie;
-    const r = http.request(BASE + pth, { method, headers: h }, (res) => {
+    const r = http.request(BASE + pth, { method, headers: h, agent: SEM_REUSO }, (res) => {
       let data = ''; res.on('data', c => (data += c));
       res.on('end', () => { let j = null; try { j = JSON.parse(data); } catch {} resolve({ status: res.statusCode, json: j, text: data, headers: res.headers, setCookie: res.headers['set-cookie'] || [] }); });
     });
@@ -241,7 +248,17 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
 
   // ---------- Auth / sessão ----------
   await t('/health diz qual commit esta no ar (push nao e o mesmo que estar no ar)', async () => {
-    const r = await req('GET', '/health');
+    // PÚBLICO (auditoria de 11/10/2026, B7): vivo, serviço e commit curto — e mais nada. Branch, ambiente e
+    // sinalizadores de segredo são informação de reconhecimento: só saem para quem manda a PUBLISH_KEY.
+    const pub = await req('GET', '/health');
+    assert.equal(pub.status, 200);
+    assert.deepEqual(Object.keys(pub.json).sort(), ['commit', 'ok', 'servico'], 'sem chave, o health só diz que está vivo e qual commit');
+    assert.ok(pub.json.ok, "o health tem de continuar dizendo ok");
+    assert.equal(pub.json.servico, 'villela-stay-backend', 'o Test-StaffPortal (publicar-staff.ps1) lê o serviço');
+    assert.ok(pub.json.commit.length > 0 && pub.json.commit.length <= 7, 'commit em forma curta');
+    const errada = await req('GET', '/health', { headers: { 'x-publish-key': 'chave-errada' } });
+    assert.deepEqual(Object.keys(errada.json).sort(), ['commit', 'ok', 'servico'], 'chave errada vale o mesmo que chave nenhuma');
+    const r = await req('GET', '/health', { headers: { 'x-publish-key': process.env.PUBLISH_KEY } });
     assert.equal(r.status, 200);
     assert.ok(r.json.ok, "o health tem de continuar dizendo ok");
     assert.equal(typeof r.json.commit, 'string', 'sem o commit nao da para conferir o que ficou live');
@@ -307,6 +324,55 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal((await req('GET', '/staff/api/relatorios', { headers: { 'x-publish-key': 'pk-test' } })).status, 200);
     assert.equal((await req('GET', '/staff/api/relatorios', { headers: { 'x-publish-key': 'errada' } })).status, 401);
     assert.equal((await req('GET', '/staff/api/relatorios')).status, 401);
+  });
+  // Tokens de API temporários (nucleo/tokens-api.js): emitidos só por sessão de admin; valem para UM
+  // sistema e só nas rotas da lista dele. Portal = uma área só; site = a FAQ.
+  await t('Tokens de API: só admin emite; portal fica na área do token; site só na FAQ; lista fechada', async () => {
+    const emitir = (corpo, op) => req('POST', '/staff/api/tokens-api', { json: corpo, ...op });
+    const corpoPortal = { sistema: 'portal', nome: 'Codex portal', dono: 'ti', escopos: ['leitura', 'publicar'], horas: 1 };
+    assert.equal((await emitir(corpoPortal, { headers: { 'x-publish-key': 'pk-test' } })).status, 401, 'a PUBLISH_KEY não emite');
+    assert.equal((await emitir(corpoPortal, { cookie: opCookie })).status, 403, 'membro não emite');
+    assert.equal((await emitir({ ...corpoPortal, dono: 'nao-existe' }, { cookie: adminCookie })).status, 400, 'área inválida');
+    const ep = await emitir(corpoPortal, { cookie: adminCookie });
+    assert.equal(ep.status, 200, JSON.stringify(ep.json));
+    assert.match(ep.json.token, /^vst_/);
+    const tp = { authorization: 'Bearer ' + ep.json.token };
+
+    const pub = await req('POST', '/staff/api/relatorios', { headers: tp, json: { area: 'ti', titulo: 'Relatório pelo token', texto: 'oi' } });
+    assert.equal(pub.status, 200, JSON.stringify(pub.json));
+    assert.equal((await req('POST', '/staff/api/relatorios', { headers: tp, json: { area: 'juridico', titulo: 'x', texto: 'x' } })).status, 403, 'outra área');
+    const lista = await req('GET', '/staff/api/relatorios?area=ti', { headers: tp });
+    assert.equal(lista.status, 200);
+    assert.ok(lista.json.relatorios.length && lista.json.relatorios.every(r => r.area === 'ti'));
+    assert.equal((await req('GET', '/staff/api/relatorios', { headers: tp })).status, 403, 'sem a área, não lista tudo');
+    const id = pub.json.relatorio ? pub.json.relatorio.id : (pub.json.id || '');
+    if (id) assert.equal((await req('DELETE', '/staff/api/relatorios/' + id, { headers: tp })).status, 401, 'apagar não está na lista');
+    assert.equal((await req('PUT', '/staff/api/faq', { headers: tp, json: { itens: [] } })).status, 403, 'token do portal não abre o site');
+    assert.equal((await req('GET', '/staff/api/notas', { headers: tp })).status, 401, 'rota fora da lista não vê token');
+
+    const es = await emitir({ sistema: 'site', nome: 'Codex FAQ', escopos: ['publicar'] }, { cookie: adminCookie });
+    assert.equal(es.status, 200, JSON.stringify(es.json));
+    const faq = await req('PUT', '/staff/api/faq', { headers: { 'x-api-token': es.json.token }, json: { itens: [{ pergunta: 'P?', resposta: 'R.' }] } });
+    assert.equal(faq.status, 200, JSON.stringify(faq.json));
+
+    const rv = await req('POST', '/staff/api/tokens-api/' + ep.json.registro.id + '/revogar', { cookie: adminCookie });
+    assert.equal(rv.json.registro.situacao, 'revogado');
+    assert.equal((await req('GET', '/staff/api/relatorios?area=ti', { headers: tp })).status, 401, 'revogado para na hora');
+    const painel = await req('GET', '/staff/api/tokens-api', { cookie: adminCookie });
+    assert.ok(['portal', 'site'].every(x => painel.json.sistemas.some(y => y.id === x)));
+    assert.ok(!painel.text.includes(es.json.token), 'a listagem nunca devolve o token');
+  });
+  // A base de clientes (dado pessoal de todos os sistemas) é a exceção: a chave de
+  // automação, que abre quase tudo no staff, NÃO abre esta — nem a lista, nem o CSV.
+  await t('Clientes: só sessão de admin — anônimo=401, membro=403, PUBLISH_KEY=403, admin=200 sem cache', async () => {
+    for (const rota of ['/staff/api/clientes', '/staff/api/clientes.csv']) {
+      assert.equal((await req('GET', rota)).status, 401, rota + ' anônimo');
+      assert.equal((await req('GET', rota, { cookie: opCookie })).status, 403, rota + ' membro');
+      assert.equal((await req('GET', rota, { headers: { 'x-publish-key': 'pk-test' } })).status, 403, rota + ' só com a chave');
+      const ok = await req('GET', rota, { cookie: adminCookie });
+      assert.equal(ok.status, 200, rota + ' admin');
+      assert.match(String(ok.headers['cache-control']), /no-store/, rota + ' sem cache');
+    }
   });
   await t('ADMIN_KEY: /api/eventos com chave certa=200, errada=401', async () => {
     assert.equal((await req('GET', '/api/eventos', { headers: { 'x-admin-key': 'ak-test' } })).status, 200);
@@ -789,6 +855,55 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.ok(ro.includes("object-src 'none'"), 'object-src é o que barra plugin antigo');
   });
 
+  await t('M5: não anuncia o Express e manda Permissions-Policy compatível com o que os produtos usam', async () => {
+    const r = await req('GET', '/health');
+    assert.ok(!('x-powered-by' in r.headers), 'x-powered-by exposto: ' + r.headers['x-powered-by']);
+    const pp = r.headers['permissions-policy'];
+    assert.ok(pp, 'sem Permissions-Policy');
+    const mapa = Object.fromEntries(String(pp).split(',').map((d) => d.trim().split('=')));
+    // fechado para todo mundo: ninguém usa
+    for (const rec of ['camera', 'geolocation', 'payment', 'usb', 'bluetooth', 'serial', 'hid']) assert.equal(mapa[rec], '()', rec + ' devia estar fechado');
+    // aberto só para a própria origem: algum produto usa
+    for (const rec of ['microphone', 'display-capture', 'midi', 'screen-wake-lock', 'gyroscope', 'accelerometer']) assert.equal(mapa[rec], '(self)', rec + ' é usado por produto da casa');
+    // NÃO listados: o player de vídeo embutido (iframe de terceiro) depende do padrão do navegador
+    for (const rec of ['fullscreen', 'autoplay', 'picture-in-picture', 'encrypted-media', 'clipboard-write', 'web-share']) assert.ok(!(rec in mapa), rec + ' listado tira recurso do vídeo embutido');
+    assert.ok(!/\*/.test(pp), 'curinga abre o recurso para qualquer iframe');
+    // vai também em página de produto e em 404, não só no /health
+    for (const rota of ['/academy/termos', '/rota-que-nao-existe']) {
+      const o = await req('GET', rota);
+      assert.equal(o.headers['permissions-policy'], pp, rota);
+      assert.ok(!('x-powered-by' in o.headers), rota);
+    }
+    // A política tem de acompanhar o CÓDIGO: varre o que é servido ao navegador e confere que nada do que ela
+    // fecha é usado — e que o microfone, que o Estude e o Musique usam, continua aberto para a própria origem.
+    const usos = { camera: 0, microphone: 0, geolocation: 0, 'display-capture': 0, midi: 0, 'screen-wake-lock': 0, payment: 0, usb: 0 };
+    const FORA = new Set(['node_modules', '.git', 'data', 'dist']);
+    const varrer = (dir) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (FORA.has(e.name) || e.name.startsWith('.wt')) continue;
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) { varrer(p); continue; }
+        if (!/\.(js|html)$/.test(e.name) || /selftest|^testes|\.test\./.test(e.name)) continue;
+        const src = fs.readFileSync(p, 'utf8');
+        for (const m of src.matchAll(/getUserMedia\(([^)]{0,200})/g)) {
+          if (/video\s*:(?!\s*false\b)/.test(m[1])) usos.camera++;   // `video: false` é pedir SÓ áudio
+          usos.microphone++;
+        }
+        if (/navigator\.geolocation/.test(src)) usos.geolocation++;
+        if (/getDisplayMedia/.test(src)) usos['display-capture']++;
+        if (/requestMIDIAccess/.test(src)) usos.midi++;
+        if (/wakeLock/.test(src)) usos['screen-wake-lock']++;
+        if (/new PaymentRequest/.test(src)) usos.payment++;
+        if (/navigator\.(usb|bluetooth|serial|hid)\b/.test(src)) usos.usb++;
+      }
+    };
+    varrer(__dirname);
+    assert.ok(usos.microphone > 0, 'a varredura não achou o getUserMedia do Estude: o teste está cego');
+    assert.ok(fs.readFileSync(path.join(__dirname, 'academy', 'app-estudo.js'), 'utf8').includes('getUserMedia({ audio: true }'), 'a prova oral do Estude grava áudio');
+    for (const rec of ['camera', 'geolocation', 'payment', 'usb']) assert.equal(usos[rec], 0, `algum arquivo passou a usar ${rec}: abrir na Permissions-Policy (server.js) antes de publicar`);
+    for (const rec of ['microphone', 'display-capture', 'midi', 'screen-wake-lock']) if (usos[rec]) assert.equal(mapa[rec], '(self)', rec);
+  });
+
   await t('o coletor de CSP grava a violação e responde 204', async () => {
     const antes = (lerData('csp-violacoes.jsonl') === null) ? 0 : 0;
     const r = await req('POST', '/csp-report', { json: { 'csp-report': {
@@ -830,6 +945,276 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     const semTls = await req('GET', '/health', { headers: { 'X-Forwarded-Proto': 'http' } });
     assert.ok(!(semTls.headers && semTls.headers['strict-transport-security']),
       'HSTS em resposta http não vale nada e só confunde');
+  });
+
+  // ---------- Despesas dos sistemas (nucleo/despesas-sistemas.js): leitura única para o relatório semanal ----------
+  const ROTA_DESP = '/staff/api/despesas-sistemas';
+  const sis = (r, chave) => r.json.sistemas.find(s => s.sistema === chave);
+  await t('despesas-sistemas: sem credencial → 401; chave errada → 401; sessão que não é admin → 403', async () => {
+    assert.equal((await req('GET', ROTA_DESP)).status, 401);
+    assert.equal((await req('GET', ROTA_DESP, { headers: { 'x-publish-key': 'errada' } })).status, 401);
+    assert.equal((await req('GET', ROTA_DESP, { cookie: opCookie })).status, 403);
+  });
+
+  await t('despesas-sistemas: com a chave (ou sessão de admin) → 200 com a lista de sistemas, sem cache', async () => {
+    const r = await req('GET', ROTA_DESP, { headers: { 'x-publish-key': 'pk-test' } });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.dias, 7, 'o padrão é 7 dias');
+    assert.ok(/no-store/.test(String(r.headers['cache-control'] || '')), 'resposta sem no-store');
+    assert.ok(Array.isArray(r.json.sistemas) && r.json.sistemas.length >= 15, 'lista de sistemas curta demais');
+    for (const chave of ['academy', 'legal-saas', 'vdocs', 'vpe', 'crm', 'finance', 'origena', 'music', 'hospede', 'livraria', 'cozinhe']) {
+      const s = sis(r, chave);
+      assert.ok(s, 'faltou o sistema ' + chave);
+      assert.equal(typeof s.medido, 'boolean');
+      assert.ok(s.medido || s.motivo, chave + ' sem medida e sem motivo');
+    }
+    assert.ok(sis(r, 'academy').medido && sis(r, 'academy').ia, 'a Academy tem de vir medida (Logs.custos)');
+    assert.equal(sis(r, 'cozinhe').medido, false, 'o Cozinhe mora fora deste backend');
+    assert.ok(Array.isArray(r.json.nao_medido) && r.json.nao_medido.length, 'faltou a lista do que ninguém registra');
+    assert.ok(r.json.total && typeof r.json.total.ia_custo_usd === 'number' && typeof r.json.total.pagamentos_bruto_brl === 'number');
+    assert.ok(!/@/.test(JSON.stringify(r.json)), 'a resposta não pode levar e-mail');
+    assert.equal((await req('GET', ROTA_DESP + '?dias=99999', { headers: { 'x-publish-key': 'pk-test' } })).json.dias, 366, 'o teto é 366 dias');
+    assert.equal((await req('GET', ROTA_DESP, { cookie: adminCookie })).status, 200, 'sessão de admin também lê');
+  });
+
+  await t('despesas-sistemas: um coletor que quebra não derruba os outros', async () => {
+    const D = require('./nucleo/despesas-sistemas');
+    const vdocs = D.COLETORES.find(c => c.sistema === 'vdocs');
+    const r = await D.resumo(7, { coletores: [
+      { sistema: 'quebrado', nome: 'Quebrado', coletar() { throw new Error('no such table: nada'); } },
+      { sistema: 'recusa', nome: 'Promessa recusada', coletar: async () => { throw new Error('conexão caiu'); } },
+      vdocs,
+    ] });
+    assert.equal(r.sistemas.length, 3);
+    // (auditoria C, C-14) o motivo diz a CLASSE da falha — o texto cru da exceção fica no log do servidor, não na resposta
+    assert.equal(r.sistemas[0].medido, false); assert.equal(r.sistemas[0].motivo, 'falha ao ler: tabela ausente', 'o motivo tem de dizer o que falhou');
+    assert.equal(r.sistemas[1].medido, false); assert.equal(r.sistemas[1].motivo, 'falha ao ler: erro inesperado');
+    assert.equal(r.sistemas[2].medido, true, 'o coletor seguinte tem de seguir de pé');
+    assert.equal(r.total.sistemas_medidos, 1); assert.equal(r.total.sistemas_nao_medidos, 2);
+  });
+
+  // ---------- auditoria C de 12/10/2026 (C-06, C-14, C-15, C-18) ----------
+  await t('despesas-sistemas (C-14): o texto da exceção NÃO sai na resposta — caminho de arquivo, e-mail e mensagem do banco ficam no log; sai a classe da falha', async () => {
+    const D = require('./nucleo/despesas-sistemas');
+    const erros = [];
+    const antigo = console.error; console.error = (...a) => { erros.push(a.join(' ')); };
+    let r;
+    try {
+      r = await D.resumo(7, { coletores: [
+        { sistema: 'modulo', nome: 'Módulo ausente', coletar() { return require('./nao-existe-mesmo/db'); } },
+        { sistema: 'pessoal', nome: 'Erro com dado', coletar() { throw new Error('UNIQUE constraint failed: users.email (fulano.de.tal@exemplo.com) em /opt/render/project/src/academy/db.js'); } },
+        { sistema: 'categoria', nome: 'Falha numa categoria', coletar() { const notas = []; let ia = null; try { throw new Error('no such column: segredo em C:\\Users\\alguem\\dados\\x.db'); } catch (e) { notas.push('IA: não deu para ler (' + D._int.classeDoErro(e) + ')'); } return { ia, armazenamento: { arquivos: 1, bytes: 10, no_r2: null, no_disco: null, fonte: 'teste' }, notas }; } },
+        { sistema: 'fora', nome: 'Sem o que medir', coletar() { throw Object.assign(new Error('mora em outro serviço: este processo não enxerga o banco dele'), { naoMedido: true }); } },
+      ] });
+    } finally { console.error = antigo; }
+    assert.deepEqual(r.sistemas.map(s => s.motivo), ['falha ao ler: módulo não carregou', 'falha ao ler: restrição do banco', '', 'mora em outro serviço: este processo não enxerga o banco dele'], 'o motivo que NÓS escrevemos (não medido) continua inteiro');
+    const resposta = JSON.stringify(r);
+    assert.ok(!/@|exemplo\.com|\/opt\/render|Require stack|Users\\\\|\.db\b|segredo|UNIQUE|constraint failed/i.test(resposta), 'vazou texto de exceção na resposta: ' + resposta.slice(0, 400));
+    assert.ok(erros.some(e => /fulano\.de\.tal@exemplo\.com/.test(e) && /\[despesas-sistemas\] pessoal: restrição do banco/.test(e)) && erros.some(e => /nao-existe-mesmo/.test(e)), 'o detalhe vai para o log do servidor, com o sistema e a classe');
+    assert.deepEqual(['no such table: x', 'SQLITE_BUSY: database is locked', 'unable to open database file', 'Unexpected token } in JSON', 'qualquer outra coisa'].map(m => D._int.classeDoErro(new Error(m))),
+      ['tabela ausente', 'banco ocupado', 'banco ou arquivo indisponível', 'arquivo ilegível', 'erro inesperado']);
+    // a rota: o 500 também não leva o texto
+    const fonte = fs.readFileSync(path.join(__dirname, 'nucleo', 'despesas-sistemas.js'), 'utf8');
+    assert.ok(!/e\.message\)\s*\.replace\(\/\\s\+\/g, ' '\)\.slice\(0, 160\)/.test(fonte) && /detalhe: curto\(e, 'rota'\)/.test(fonte));
+  });
+
+  await t('despesas-sistemas (C-06): o prazo vale para o que dá — coletor assíncrono é cortado e PARA; prazo total vencido, o resto não roda; coletor síncrono lento sai com a nota; e a rota responde do CACHE, divide a leitura em curso e limita as leituras novas', async () => {
+    const D = require('./nucleo/despesas-sistemas');
+    const dormir = (ms) => new Promise(ok => setTimeout(ok, ms));
+    const ocupar = (ms) => { const f = Date.now() + ms; while (Date.now() < f) { /* consulta síncrona demorada */ } };
+    const antigo = console.error; console.error = () => {};
+    try {
+      // (1) assíncrono que passa do prazo: "tempo esgotado" — e o laço dele recebe o sinal e para
+      let voltas = 0, parou = false;
+      const lerFamilias = async (ctx) => { for (let k = 0; k < 200; k++) { if (ctx.sinal.vencido) { parou = true; throw new Error('parei'); } voltas++; await dormir(15); } return { ia: { chamadas: 1, custo_usd: 1 }, notas: [] }; };
+      let r = await D.resumo(7, { prazoMs: 80, coletores: [{ sistema: 'lento-async', nome: 'Assíncrono lento', coletar: lerFamilias }, { sistema: 'depois', nome: 'O seguinte', coletar: () => ({ ia: { chamadas: 2, custo_usd: 0.5 }, notas: [] }) }] });
+      assert.deepEqual([r.sistemas[0].medido, r.sistemas[0].motivo, r.sistemas[0].usa_ia, r.sistemas[1].medido, r.total.ia_chamadas], [false, 'falha ao ler: tempo esgotado', 'falha_de_leitura', true, 2]);
+      await dormir(60);
+      const noCorte = voltas;
+      await dormir(120);
+      assert.ok(parou && voltas === noCorte && voltas < 30, `o laço parou quando o prazo venceu (${voltas} voltas de 200) — antes seguia rodando em segundo plano`);
+      // a Origena de verdade confere o sinal a cada família
+      let familiasLidas = 0;
+      const sinal = { vencido: false };
+      const origenaFalsa = { db: { configurado: () => true, todas: async () => [{ id: 'f1' }, { id: 'f2' }, { id: 'f3' }] },
+        tenancy: { comEscopo: async () => { familiasLidas++; sinal.vencido = true; return { ledger: [], arquivos: { n: 0, b: 0 }, pedidos: { n: 0, s: 0 } }; } } };
+      const eo = await D._int.origena({ desde: new Date().toISOString(), sinal }, origenaFalsa).then(() => null, (e) => e);
+      assert.deepEqual([familiasLidas, !!(eo && eo.tempoEsgotado)], [1, true], 'vencido o prazo, a segunda família já não é lida');
+      // (2) síncrono lento: não há como cortar — o resultado vale, e a linha diz que passou do prazo
+      r = await D.resumo(7, { prazoMs: 40, coletores: [{ sistema: 'lento-sync', nome: 'Síncrono lento', coletar() { ocupar(120); return { ia: { chamadas: 1, custo_usd: 1 }, notas: ['nota do coletor'] }; } }] });
+      assert.deepEqual([r.sistemas[0].medido, r.sistemas[0].motivo, r.sistemas[0].notas.length, /^leitura lenta: \d+ ms, acima do prazo de 40 ms \(consulta síncrona não pode ser interrompida/.test(r.sistemas[0].notas[1])], [true, '', 2, true]);
+      // (3) prazo TOTAL: o primeiro coletor (síncrono) gastou tudo → os seguintes NÃO rodam nesta chamada
+      let rodou = 0;
+      r = await D.resumo(7, { prazoTotalMs: 60, coletores: [{ sistema: 'a', nome: 'A', coletar() { ocupar(100); return { ia: { chamadas: 1, custo_usd: 1 }, notas: [] }; } },
+        { sistema: 'b', nome: 'B', coletar() { rodou++; return { ia: { chamadas: 9, custo_usd: 9 }, notas: [] }; } }, { sistema: 'c', nome: 'C', coletar() { rodou++; return {}; } }] });
+      assert.deepEqual([rodou, r.sistemas.map(s => s.medido), /^não lido nesta rodada: o prazo total/.test(r.sistemas[1].motivo), r.total.ia_chamadas, r.nao_medido.some(n => /^2 sistema\(s\) não foram lidos nesta rodada/.test(n))], [0, [true, false, false], true, 1, true]);
+      assert.ok(typeof r.levou_ms === 'number' && r.levou_ms >= 100);
+    } finally { console.error = antigo; }
+
+    // (4) o CACHE: uma leitura por `dias`, dividida por quem chega junto, com teto de leituras novas por minuto
+    let leituras = 0, relogio = 1000000;
+    const C = D._int.novoCache({ leitor: async (d) => { leituras++; await dormir(20); return { dias: d, gerado_em: 'g' + leituras }; }, cacheMs: 300000, porMinuto: 3, agora: () => relogio });
+    const [a, b] = await Promise.all([C.ler('7'), C.ler(7)]);
+    assert.deepEqual([leituras, a.gerado_em, b.gerado_em, a.em_cache, a.dias], [1, 'g1', 'g1', false, 7], 'duas chamadas simultâneas: UMA leitura');
+    const c2 = await C.ler(7);
+    assert.deepEqual([leituras, c2.gerado_em, c2.em_cache, c2.cache_expira_em], [1, 'g1', true, new Date(1000000 + 300000).toISOString()], 'dentro de 5 minutos: a mesma resposta, sem ler de novo');
+    await C.ler(30); await C.ler(99999);
+    assert.deepEqual([leituras, (await C.ler(366)).em_cache], [3, true], 'cada `dias` tem a sua; 99999 é 366');
+    const recusa = await C.ler(60).then(() => null, (e) => e);
+    assert.deepEqual([recusa && recusa.status, leituras, recusa && recusa.espere_seg > 0 && recusa.espere_seg <= 60], [429, 3, true], 'a quarta leitura NOVA no mesmo minuto é recusada (as do cache continuam respondendo)');
+    assert.equal((await C.ler(7)).em_cache, true);
+    relogio += 61000;
+    assert.deepEqual([(await C.ler(60)).em_cache, leituras], [false, 4], 'passado o minuto, volta a ler');
+    relogio += 300000;
+    assert.deepEqual([(await C.ler(7)).gerado_em, leituras], ['g5', 5], 'vencidos os 5 minutos, lê de novo');
+    // leitura que falha não fica guardada (nem trava o `dias`)
+    let vez = 0;
+    const F = D._int.novoCache({ leitor: async () => { if (!vez++) throw new Error('caiu'); return { dias: 7 }; }, porMinuto: 5 });
+    assert.equal((await F.ler(7).then(() => 'ok', () => 'erro')), 'erro');
+    assert.equal((await F.ler(7)).em_cache, false);
+    // a rota usa o cache: a segunda chamada devolve a mesma leitura; e o 429 leva Retry-After
+    D._int.limparCache();
+    const chave = { headers: { 'x-publish-key': 'pk-test' } };
+    const r1 = await req('GET', ROTA_DESP + '?dias=3', chave), r2 = await req('GET', ROTA_DESP + '?dias=3', chave);
+    assert.deepEqual([r1.status, r1.json.em_cache, r2.json.em_cache, r2.json.gerado_em === r1.json.gerado_em], [200, false, true, true]);
+    let ultima = null;
+    for (let d = 100; d < 100 + 8; d++) { ultima = await req('GET', ROTA_DESP + '?dias=' + d, chave); if (ultima.status === 429) break; }
+    assert.deepEqual([ultima.status, Number(ultima.headers['retry-after']) > 0, /Muitas leituras novas/.test(ultima.json.erro)], [429, true, true], 'quem repete `dias` diferentes em laço é barrado');
+    assert.equal((await req('GET', ROTA_DESP + '?dias=3', chave)).status, 200, 'o que está no cache segue respondendo');
+    D._int.limparCache();
+    const fonte = fs.readFileSync(path.join(__dirname, 'nucleo', 'despesas-sistemas.js'), 'utf8');
+    assert.ok(/await cederOLaco\(\);/.test(fonte) && /NÃO corta esses coletores/.test(fonte), 'entre os coletores o laço é devolvido; e o cabeçalho diz o que o prazo não faz');
+  });
+
+  await t('despesas-sistemas (C-15 e C-18): o Legal é lido SÓ para leitura (sem abrir o banco pelo módulo, sem migrar, sem deixar conexão aberta); e cada sistema DECLARA se usa IA', async () => {
+    const D = require('./nucleo/despesas-sistemas');
+    const L = require('./legal/db');
+    const { DatabaseSync } = require('node:sqlite');
+    // um escritório com banco "antigo": tem as tabelas, não tem a tabela de migrações — abrir pelo módulo o migraria
+    const dir = L.dirDoTenant('audcescritorio');
+    fs.mkdirSync(dir, { recursive: true });
+    const arq = path.join(dir, 'legal.db');
+    const novo = new DatabaseSync(arq);
+    novo.exec(`CREATE TABLE ai_agent_runs (id TEXT PRIMARY KEY, modelo TEXT, input_tokens INTEGER, output_tokens INTEGER, cache_read_tokens INTEGER, custo_centavos_usd INTEGER, quando TEXT);
+      CREATE TABLE document_versions (id TEXT PRIMARY KEY, tamanho INTEGER);
+      INSERT INTO ai_agent_runs VALUES ('r1', 'mock', 1000, 500, 0, 7, '${new Date().toISOString()}');
+      INSERT INTO document_versions VALUES ('d1', 4096);`);
+    novo.close();
+    // … e um escritório cujo banco ainda não tem a tabela: fica de fora, com nota, sem derrubar os outros
+    const dir2 = L.dirDoTenant('audcvazio');
+    fs.mkdirSync(dir2, { recursive: true });
+    const vazio = new DatabaseSync(path.join(dir2, 'legal.db')); vazio.exec('CREATE TABLE outra (x INTEGER);'); vazio.close();
+    const legal = D.COLETORES.find(c => c.sistema === 'legal-saas');
+    const antes = fs.statSync(arq).mtimeMs, comTenant = L.comTenant;
+    const antigoErr = console.error; console.error = () => {};
+    let usouOModulo = 0, r;
+    L.comTenant = (...a) => { usouOModulo++; return comTenant(...a); };
+    try { r = await D.resumo(7, { coletores: [legal] }); } finally { L.comTenant = comTenant; console.error = antigoErr; }
+    const s = r.sistemas[0];
+    assert.equal(usouOModulo, 0, 'a leitura não passa por legal/db.js › comTenant (que abriria, migraria e guardaria a conexão)');
+    assert.ok(s.ia && s.ia.chamadas >= 1 && s.ia.custo_usd >= 0.07 && s.armazenamento.bytes >= 4096 && s.usa_ia === 'sim', JSON.stringify(s).slice(0, 300));
+    assert.ok(s.notas.some(n => /^IA: 1 escritório\(s\) ficaram de fora/.test(n)) && s.notas.some(n => /^armazenamento: 1 escritório\(s\) ficaram de fora/.test(n)), s.notas.join(' | '));
+    const conf = new DatabaseSync(arq, { readOnly: true });
+    const tabelas = conf.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map(x => x.name);
+    conf.close();
+    assert.deepEqual([tabelas, fs.statSync(arq).mtimeMs], [['ai_agent_runs', 'document_versions'], antes], 'nenhuma tabela criada, nenhuma migração rodada, arquivo intocado');
+    fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(dir2, { recursive: true, force: true }); // conexão fechada: no Windows o arquivo aberto não sairia
+    assert.ok(!fs.existsSync(arq), 'o banco foi FECHADO depois da leitura');
+
+    // C-18 — o campo `usa_ia`, por sistema
+    D._int.limparCache();
+    const todos = await req('GET', ROTA_DESP, { headers: { 'x-publish-key': 'pk-test' } });
+    const usa = Object.fromEntries(todos.json.sistemas.map(x => [x.sistema, x.usa_ia]));
+    assert.deepEqual([usa.academy, usa.livraria, usa.vsm, usa.vitrine, usa.comunicados, usa['alta-vista'], usa.closet, usa.kids, usa.voz, usa.cozinhe],
+      ['sim', 'nao', 'nao', 'nao', 'nao', 'nao', 'sim_sem_registro', 'sim_sem_registro', 'sim_sem_registro', ''], 'quem não usa, quem usa e não grava, e quem não se sabe (não medido) — sem depender de frase nas notas');
+    assert.ok(todos.json.sistemas.every(x => ['sim', 'nao', 'sim_sem_registro', 'falha_de_leitura', ''].includes(x.usa_ia)));
+    // sistema cuja leitura de IA FALHOU não vira "usa IA e não registra"
+    const antigo2 = console.error; console.error = () => {};
+    let q;
+    try { q = await D.resumo(7, { coletores: [{ sistema: 'x', nome: 'X', coletar() { throw new Error('no such table: ai_runs'); } }, { sistema: 'novo', nome: 'Sistema novo', coletar: () => ({ armazenamento: { arquivos: 0, bytes: 0, no_r2: null, no_disco: null, fonte: 't' }, notas: [] }) }] }); }
+    finally { console.error = antigo2; }
+    assert.deepEqual(q.sistemas.map(x => x.usa_ia), ['falha_de_leitura', ''], 'falha de leitura é falha de leitura; sistema novo que não declarou fica em branco — o relatório não acusa por omissão');
+    D._int.limparCache();
+  });
+
+  await t('despesas-sistemas: soma certo sobre linhas plantadas (IA e arquivos do Docs, uso da Eva) e respeita o período', async () => {
+    const chave = { headers: { 'x-publish-key': 'pk-test' } };
+    // (a rota guarda a resposta por 5 minutos e limita as leituras novas — auditoria C, C-06: este teste planta linhas
+    // e lê de novo, então esvazia o cache a cada mudança, como faria o relógio)
+    const limparCache = require('./nucleo/despesas-sistemas')._int.limparCache;
+    limparCache();
+    const antes = sis(await req('GET', ROTA_DESP + '?dias=30', chave), 'vdocs');
+    const vdb = require('./vdocs/db').db;
+    const iso = (diasAtras) => new Date(Date.now() - diasAtras * 864e5).toISOString();
+    const run = vdb.prepare('INSERT INTO ai_runs (id, tenant_id, modelo, input_tokens, output_tokens, custo_centavos_usd, duracao_ms, status, detalhe, criado_em) VALUES (?,?,?,?,?,?,?,?,?,?)');
+    // modelo "mock" = preço fixo de 3/15 por milhão (academy/ia.js): 1.000 de entrada + 500 de saída = US$ 0,0105
+    run.run('desp-1', 'conta-a', 'mock', 1000, 500, 12, 0, 'ok', '', iso(1));
+    run.run('desp-2', 'conta-b', 'mock', 1000, 500, 30, 0, 'ok', '', iso(2));
+    run.run('desp-velha', 'conta-c', 'mock', 1000, 500, 999, 0, 'ok', '', iso(40));   // fora dos 30 dias
+    vdb.prepare('INSERT INTO document_versions (id, tenant_id, document_id, numero, nome_arquivo, mime, tamanho, sha256, file_path, criado_em) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .run('desp-arq', 'conta-a', 'doc-1', 1, 'a.pdf', 'application/pdf', 1500, 'x', 'conta-a/x', iso(1));
+    const dia = (diasAtras) => iso(diasAtras).slice(0, 10);
+    fs.writeFileSync(path.join(DATA_DIR, 'eva-uso.json'), JSON.stringify({ porDia: {
+      [dia(1)]: { in: 100, out: 50, msgs: 3, custoUSD: 0.0123 }, [dia(60)]: { in: 9, out: 9, msgs: 9, custoUSD: 9 } } }));
+
+    // envios da central: 2 e-mails e 1 WhatsApp ao Musique dentro do período; o aviso no app e o pendente não contam
+    const cdb = require('./comunicados/db').db;
+    cdb.prepare("INSERT INTO comunicados (id, titulo, corpo, categoria, criado_em, atualizado_em) VALUES ('desp-com', 'Aviso', 'Corpo', 'novidade', ?, ?)").run(iso(1), iso(1));
+    const ent = cdb.prepare("INSERT INTO entregas (comunicado_id, canal, chave, produto, usuario_ref, status, atualizado_em) VALUES ('desp-com', ?, ?, 'music', ?, ?, ?)");
+    ent.run('email', 'k1', 'u1', 'enviado', iso(1)); ent.run('email', 'k2', 'u2', 'enviado', iso(2));
+    ent.run('whatsapp', 'k3', 'u1', 'enviado', iso(1)); ent.run('whatsapp', 'k4', 'u2', 'pendente', iso(1));
+    ent.run('app', 'k5', 'u1', 'lido', iso(1)); ent.run('email', 'k6', 'u3', 'enviado', iso(45));
+
+    assert.equal((await req('GET', ROTA_DESP + '?dias=30', chave)).json.em_cache, true, 'sem esvaziar, a rota devolveria a leitura de antes das linhas plantadas');
+    limparCache();
+    const r30 = await req('GET', ROTA_DESP + '?dias=30', chave);
+    assert.deepEqual([sis(r30, 'music').mensagens.email, sis(r30, 'music').mensagens.whatsapp], [2, 1], 'envios do Musique pela central');
+    const v = sis(r30, 'vdocs');
+    const perto = (a, b) => Math.abs(a - b) < 1e-9;
+    assert.equal(v.ia.chamadas - antes.ia.chamadas, 2, 'duas chamadas dentro do período');
+    assert.ok(perto(v.ia.custo_usd - antes.ia.custo_usd, 0.42), 'custo gravado: 12 + 30 centavos = US$ 0,42 (veio ' + v.ia.custo_usd + ')');
+    assert.ok(perto(v.ia.custo_por_tokens_usd - antes.ia.custo_por_tokens_usd, 0.021), 'custo pelos tokens: 2 × 0,0105 (veio ' + v.ia.custo_por_tokens_usd + ')');
+    assert.equal(v.ia.custo_estimado_por_tokens, false, 'o Docs grava o custo: não é estimativa');
+    assert.equal(v.ia.usuarios - antes.ia.usuarios, 2, 'duas contas distintas');
+    assert.equal(v.ia.bancado_pela_plataforma_usd, v.ia.custo_usd, 'IA incluída no plano: tudo bancado pela plataforma');
+    assert.equal(v.armazenamento.bytes - antes.armazenamento.bytes, 1500);
+    assert.equal(v.armazenamento.arquivos - antes.armazenamento.arquivos, 1);
+    const h = sis(r30, 'hospede');
+    assert.equal(h.ia.chamadas, 3); assert.equal(h.ia.custo_usd, 0.0123, 'a Eva de 60 dias atrás fica fora dos 30');
+    assert.ok(perto(r30.json.total.ia_custo_usd, r30.json.sistemas.reduce((s, x) => s + ((x.ia && x.ia.custo_usd) || 0) + ((x.google && x.google.custo_usd) || 0), 0)), 'o total de IA tem de bater com a soma dos sistemas');
+    // 60 dias: a linha velha do Docs entra (US$ 9,99 a mais)
+    const v60 = sis(await req('GET', ROTA_DESP + '?dias=60', chave), 'vdocs');
+    assert.ok(perto(v60.ia.custo_usd - v.ia.custo_usd, 9.99), 'com 60 dias a linha velha tem de entrar');
+  });
+
+  await t('despesas-sistemas: Origena (Postgres) — sem banco não é medida; com banco soma por família sem dado pessoal', async () => {
+    const D = require('./nucleo/despesas-sistemas');
+    const origena = D.COLETORES.find(c => c.sistema === 'origena');
+    const sem = await D.resumo(7, { coletores: [origena], origena: { db: { configurado: () => false } } });
+    assert.equal(sem.sistemas[0].medido, false); assert.ok(/não está configurado/.test(sem.sistemas[0].motivo));
+    // banco e escopo de mentira: duas famílias; o que cada consulta devolve é decidido pelo texto dela
+    const dados = {
+      f1: { ledger: [{ provider: 'anthropic', model: 'mock', tokens_in: 1000, tokens_out: 200, custo_centavos: 30, creditos_cobrados: 10 }], n: 4, b: '1000', pn: 1, ps: '4990' },
+      f2: { ledger: [{ provider: 'anthropic', model: 'mock', tokens_in: 1000, tokens_out: 200, custo_centavos: 30, creditos_cobrados: 10 },
+        { provider: 'google', model: 'gemini-x', tokens_in: 700, tokens_out: 0, custo_centavos: 5, creditos_cobrados: 2 }], n: 1, b: '250', pn: 0, ps: '0' },
+    };
+    const falso = {
+      db: { configurado: () => true, todas: async () => [{ id: 'f1' }, { id: 'f2' }] },
+      tenancy: { comEscopo: async (id, fn) => fn({
+        todas: async () => dados[id].ledger,
+        uma: async (sql) => (/FROM orders/.test(sql) ? { n: dados[id].pn, s: dados[id].ps } : { n: dados[id].n, b: dados[id].b }),
+      }) },
+    };
+    const o = (await D.resumo(7, { coletores: [origena], origena: falso })).sistemas[0];
+    assert.equal(o.medido, true);
+    assert.equal(o.ia.chamadas, 2); assert.equal(o.ia.usuarios, 2);
+    assert.equal(o.ia.custo_usd, 0.012, '2 × (1.000 × 3 + 200 × 15) ÷ 1e6'); assert.equal(o.ia.custo_estimado_por_tokens, true);
+    assert.equal(o.ia.custo_estimado_registrado_brl, 0.6); assert.equal(o.ia.creditos_cobrados, 20);
+    assert.equal(o.google.chamadas, 1); assert.equal(o.google.custo_usd, null, 'sem tabela de preços do Google não há custo em dólar');
+    assert.equal(o.google.tokens_entrada, 700);
+    assert.deepEqual([o.armazenamento.arquivos, o.armazenamento.bytes, o.armazenamento.no_r2.bytes], [5, 1250, 1250]);
+    assert.deepEqual([o.pagamentos.aprovados, o.pagamentos.bruto_brl, o.pagamentos.taxa_medida], [1, 49.9, false]);
+    assert.ok(!/f1|f2/.test(JSON.stringify(o)), 'id de família não pode sair na resposta');
   });
 
   // ---------- A1: sessão que não morria na troca de senha ----------

@@ -358,12 +358,697 @@ const MIGRACOES = [
     sql: `INSERT OR IGNORE INTO categories (slug, rotulo, origem, ordem, criado_em)
           VALUES ('musica', 'Música', 'sistema', 15, '2026-09-28T00:00:00.000Z');`,
   },
+  { // Categoria CONCURSOS PÚBLICOS: a série dos percursos do Estude por edital (ordem do Augusto, 09/10/2026).
+    // É do sistema para aparecer no filtro da vitrine assim que o primeiro curso for publicado.
+    nome: 'categoria-concursos-publicos-2026-10-09',
+    sql: `INSERT OR IGNORE INTO categories (slug, rotulo, origem, ordem, criado_em)
+          VALUES ('concursos-publicos', 'Concursos Públicos', 'sistema', 16, '2026-10-09T00:00:00.000Z');`,
+  },
+  // ESTUDO (academy\estudo\): o motor que leva de um assunto ou de um edital a
+  // aprendizagem demonstrada. O ESCOPO é a unidade: um programa de itens
+  // versionado (retificação = versão nova, a antiga fica), competências,
+  // unidades de aula ativa, banco de questões com procedência e cards.
+  // O estado de cada competência NÃO tem tabela — é derivado de est_evidencias
+  // (mesma decisão do XP da jornada). Só a agenda de revisão guarda estado.
+  {
+    nome: 'estudo-fundacao-2026-10-08',
+    sql: `CREATE TABLE IF NOT EXISTS est_escopos (
+            id              TEXT PRIMARY KEY,
+            product_id      TEXT NOT NULL REFERENCES products(id),
+            slug            TEXT NOT NULL,
+            tipo            TEXT NOT NULL,           -- assunto | edital
+            titulo          TEXT NOT NULL,
+            nivel           TEXT DEFAULT '',         -- nível de abordagem pedido
+            extensao        TEXT DEFAULT '',         -- micro | modulo | curso | preparacao
+            resumo          TEXT DEFAULT '',
+            perfil          TEXT DEFAULT '{}',       -- concurso: carreira, órgão, cargo, banca, etapas, fontes
+            regra_pontuacao TEXT DEFAULT '{}',       -- vem do edital-alvo, com fonte (pontuacao.js)
+            data_alvo       TEXT DEFAULT '',         -- AAAA-MM-DD; vazio = sem prova marcada
+            versao          INTEGER DEFAULT 0,       -- versão vigente do programa
+            status          TEXT DEFAULT 'rascunho', -- rascunho (só dono/admin) | publicado
+            criado_em       TEXT NOT NULL,
+            atualizado_em   TEXT NOT NULL,
+            UNIQUE (product_id, slug)
+          );
+          CREATE TABLE IF NOT EXISTS est_versoes (
+            escopo_id TEXT NOT NULL REFERENCES est_escopos(id),
+            versao    INTEGER NOT NULL,
+            documento TEXT DEFAULT '{}',             -- nome, url, data, tipo (edital|retificacao|autoral)
+            diff      TEXT DEFAULT '{}',             -- o que mudou em relação à versão anterior
+            criado_em TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, versao)
+          );
+          CREATE TABLE IF NOT EXISTS est_itens (
+            escopo_id   TEXT NOT NULL REFERENCES est_escopos(id),
+            versao      INTEGER NOT NULL,
+            codigo      TEXT NOT NULL,               -- numeração original do programa
+            pai         TEXT DEFAULT '',
+            ordem       INTEGER DEFAULT 0,
+            texto       TEXT NOT NULL,               -- texto ORIGINAL, nunca resumido
+            hash        TEXT NOT NULL,
+            localizacao TEXT DEFAULT '',             -- documento, página, trecho
+            pendente    TEXT DEFAULT '',             -- leitura incerta (OCR, regra ambígua)
+            peso        REAL DEFAULT 0,
+            esforco     TEXT DEFAULT '',             -- JSON [min, max] em minutos; vazio = sem estimativa
+            folha       INTEGER DEFAULT 1,
+            PRIMARY KEY (escopo_id, versao, codigo)
+          );
+          CREATE TABLE IF NOT EXISTS est_competencias (
+            escopo_id    TEXT NOT NULL REFERENCES est_escopos(id),
+            codigo       TEXT NOT NULL,
+            ordem        INTEGER DEFAULT 0,
+            resultado    TEXT NOT NULL,              -- "Diante de X, o aluno executará Y..."
+            criterios    TEXT DEFAULT '[]',
+            depende_de   TEXT DEFAULT '[]',
+            erros_comuns TEXT DEFAULT '[]',
+            essencial    INTEGER DEFAULT 1,
+            versao       INTEGER DEFAULT 1,
+            PRIMARY KEY (escopo_id, codigo)
+          );
+          CREATE TABLE IF NOT EXISTS est_vinculos (   -- item do programa ↔ competência
+            escopo_id          TEXT NOT NULL REFERENCES est_escopos(id),
+            item_codigo        TEXT NOT NULL,
+            competencia_codigo TEXT NOT NULL,
+            justificativa      TEXT DEFAULT '',
+            estado_revisao     TEXT DEFAULT 'sugerido', -- sugerido | revisado
+            PRIMARY KEY (escopo_id, item_codigo, competencia_codigo)
+          );
+          CREATE TABLE IF NOT EXISTS est_unidades (
+            id            TEXT PRIMARY KEY,
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            codigo        TEXT NOT NULL,
+            ordem         INTEGER DEFAULT 0,
+            titulo        TEXT NOT NULL,
+            competencias  TEXT DEFAULT '[]',
+            itens         TEXT DEFAULT '[]',
+            blocos        TEXT NOT NULL,             -- a aula ativa: desafio, explicação, exemplo, prática...
+            fontes        TEXT DEFAULT '[]',
+            midias        TEXT DEFAULT '[]',         -- [{tipo, estado: planejado|roteirizado|gerado|revisado|publicado}]
+            tempo_min     INTEGER DEFAULT 0,
+            versao        INTEGER DEFAULT 1,
+            status        TEXT DEFAULT 'rascunho',
+            atualizado_em TEXT NOT NULL,
+            UNIQUE (escopo_id, codigo)
+          );
+          CREATE TABLE IF NOT EXISTS est_questoes (   -- o banco é do PRODUTOR; o vínculo é que o liga a um escopo
+            id            TEXT PRIMARY KEY,
+            producer_id   TEXT NOT NULL REFERENCES users(id),
+            hash          TEXT NOT NULL,             -- dedup: reimportar a prova não infla o acervo
+            versao        INTEGER DEFAULT 1,
+            tipo          TEXT NOT NULL,
+            origem        TEXT NOT NULL,             -- oficial | adaptada | autoral | relato
+            uso           TEXT DEFAULT 'aprendizagem', -- aprendizagem | revisao | reservada
+            corrigivel    INTEGER DEFAULT 0,
+            situacao      TEXT DEFAULT 'rascunho',   -- rascunho | revisao | disponivel | suspensa | arquivada
+            dados         TEXT NOT NULL,             -- JSON validado por banco.js (gabarito fica AQUI, no servidor)
+            criado_em     TEXT NOT NULL,
+            atualizado_em TEXT NOT NULL,
+            UNIQUE (producer_id, hash)
+          );
+          CREATE TABLE IF NOT EXISTS est_questao_vinculos (
+            questao_id     TEXT NOT NULL REFERENCES est_questoes(id),
+            escopo_id      TEXT NOT NULL REFERENCES est_escopos(id),
+            alvo           TEXT NOT NULL,            -- competencia | item
+            codigo         TEXT NOT NULL,
+            justificativa  TEXT DEFAULT '',
+            estado_revisao TEXT DEFAULT 'sugerido',
+            PRIMARY KEY (questao_id, escopo_id, alvo, codigo)
+          );
+          CREATE INDEX IF NOT EXISTS idx_estqv_escopo ON est_questao_vinculos(escopo_id, alvo, codigo);
+          CREATE TABLE IF NOT EXISTS est_cards (
+            id                 TEXT PRIMARY KEY,
+            escopo_id          TEXT NOT NULL REFERENCES est_escopos(id),
+            codigo             TEXT NOT NULL,
+            ordem              INTEGER DEFAULT 0,
+            competencia_codigo TEXT NOT NULL,
+            frente             TEXT NOT NULL,
+            verso              TEXT NOT NULL,
+            explicacao         TEXT DEFAULT '',
+            fonte              TEXT DEFAULT '',
+            status             TEXT DEFAULT 'rascunho',
+            UNIQUE (escopo_id, codigo)
+          );
+          CREATE TABLE IF NOT EXISTS est_evidencias (
+            id                 TEXT PRIMARY KEY,
+            user_id            TEXT NOT NULL REFERENCES users(id),
+            escopo_id          TEXT NOT NULL,
+            competencia_codigo TEXT NOT NULL,
+            competencia_versao INTEGER DEFAULT 1,
+            origem             TEXT NOT NULL,        -- questao | card
+            ref_id             TEXT NOT NULL,
+            ref_versao         INTEGER DEFAULT 1,
+            tentativa_id       TEXT DEFAULT '',
+            modo               TEXT NOT NULL,        -- estudo | pratica | avaliacao
+            acerto             INTEGER NOT NULL,
+            pistas             INTEGER DEFAULT 0,
+            ajuda_humana       INTEGER DEFAULT 0,
+            inedita            INTEGER DEFAULT 0,    -- o aluno nunca tinha visto este item
+            tempo_seg          INTEGER DEFAULT 0,
+            confianca          TEXT DEFAULT '',      -- baixa | media | alta (declarada antes da correção)
+            criado_em          TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_estev_user ON est_evidencias(user_id, escopo_id, competencia_codigo);
+          CREATE INDEX IF NOT EXISTS idx_estev_ref ON est_evidencias(user_id, ref_id);
+          CREATE TABLE IF NOT EXISTS est_ajudas (     -- pistas pedidas desde a última resposta: quem conta é o servidor
+            user_id    TEXT NOT NULL REFERENCES users(id),
+            questao_id TEXT NOT NULL,
+            n          INTEGER DEFAULT 0,
+            PRIMARY KEY (user_id, questao_id)
+          );
+          CREATE TABLE IF NOT EXISTS est_revisoes (
+            user_id          TEXT NOT NULL REFERENCES users(id),
+            escopo_id        TEXT NOT NULL,
+            alvo             TEXT NOT NULL,          -- competencia | card
+            alvo_id          TEXT NOT NULL,
+            passo            INTEGER DEFAULT 0,
+            vencimento       TEXT DEFAULT '',        -- AAAA-MM-DD; vazio = sem retomada antes da prova
+            ultimo_resultado TEXT DEFAULT '',
+            atualizado_em    TEXT NOT NULL,
+            PRIMARY KEY (user_id, escopo_id, alvo, alvo_id)
+          );
+          CREATE TABLE IF NOT EXISTS est_tentativas (
+            id          TEXT PRIMARY KEY,
+            user_id     TEXT NOT NULL REFERENCES users(id),
+            escopo_id   TEXT NOT NULL,
+            modo        TEXT NOT NULL,               -- treino | simulado
+            congelado   TEXT NOT NULL,               -- itens, versões, ordem, gabarito e regra fixados no início
+            inicio_em   TEXT NOT NULL,
+            prazo_em    TEXT NOT NULL,               -- o relógio é do servidor
+            respostas   TEXT DEFAULT '{}',
+            salvo_em    TEXT DEFAULT '',
+            enviado_em  TEXT DEFAULT '',
+            resultado   TEXT DEFAULT '',
+            estado      TEXT DEFAULT 'em_andamento'  -- em_andamento | enviada | expirada
+          );
+          CREATE INDEX IF NOT EXISTS idx_esttent_user ON est_tentativas(user_id, escopo_id, estado);
+          CREATE TABLE IF NOT EXISTS est_planos (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            escopo_id     TEXT NOT NULL,
+            entrada       TEXT NOT NULL,             -- disponibilidade, indisponíveis, data-alvo, margem
+            plano         TEXT NOT NULL,
+            historico     TEXT DEFAULT '[]',         -- o que mudou a cada replanejamento
+            versao        INTEGER DEFAULT 1,
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, escopo_id)
+          );`,
+  },
+  // CARTEIRA DE IA (carteira-ia.js): saldo pré-pago que paga o uso de provedor de
+  // IA. O saldo é a SOMA do razão, em milésimos de real. O índice único parcial
+  // é a idempotência da recarga: o mesmo pagamento não credita duas vezes.
+  {
+    nome: 'ia-carteira-2026-10-08',
+    sql: `CREATE TABLE IF NOT EXISTS ia_movimentos (
+            id        TEXT PRIMARY KEY,
+            user_id   TEXT NOT NULL REFERENCES users(id),
+            tipo      TEXT NOT NULL,   -- recarga | cortesia | ajuste | reserva | acerto | estorno | estorno_recarga
+            milesimos INTEGER NOT NULL, -- R$ × 1000; crédito positivo, débito negativo
+            ref       TEXT DEFAULT '',  -- recarga: id da recarga · uso: id que liga reserva e acerto
+            detalhe   TEXT DEFAULT '',
+            quem      TEXT DEFAULT '',
+            criado_em TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_iamov_user ON ia_movimentos(user_id, criado_em);
+          CREATE INDEX IF NOT EXISTS idx_iamov_ref ON ia_movimentos(ref);
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_iamov_recarga ON ia_movimentos(tipo, ref) WHERE tipo IN ('recarga', 'estorno_recarga');
+          CREATE TABLE IF NOT EXISTS ia_recargas (
+            id               TEXT PRIMARY KEY,
+            user_id          TEXT NOT NULL REFERENCES users(id),
+            valor_centavos   INTEGER NOT NULL,
+            status           TEXT DEFAULT 'pendente', -- pendente | paga | recusada | cancelada | reembolsada
+            mp_preference_id TEXT DEFAULT '',
+            mp_payment_id    TEXT DEFAULT '',
+            criado_em        TEXT NOT NULL,
+            pago_em          TEXT DEFAULT ''
+          );
+          ALTER TABLE ai_usage_logs ADD COLUMN cobranca TEXT DEFAULT '';   -- '' (antes da carteira) | franquia | paga | isento
+          ALTER TABLE ai_usage_logs ADD COLUMN milesimos INTEGER DEFAULT 0; -- o que foi debitado do usuário
+          ALTER TABLE ai_usage_logs ADD COLUMN product_id TEXT DEFAULT '';`,
+  },
+  {
+    // ADR-0005: níveis do material (50/25/10 % derivados do nível 100 = blocos) e
+    // pacotes de véspera por foco (objetiva | escrita | oral). Derivados guardam a
+    // versão da unidade de que saíram: mudou o 100, o derivado fica desatualizado.
+    nome: 'estudo-niveis-2026-10-09',
+    sql: `ALTER TABLE est_unidades ADD COLUMN niveis TEXT DEFAULT '{}';
+          ALTER TABLE est_unidades ADD COLUMN vespera TEXT DEFAULT '{}';`,
+  },
+  {
+    // ADR-0007 — caderno de erros: a anotação do próprio aluno sobre a questão ("por que errei",
+    // "por que cada alternativa está certa ou errada"). É dele: uma por questão, reescrita quando muda.
+    nome: 'estudo-anotacoes-2026-10-09',
+    sql: `CREATE TABLE IF NOT EXISTS est_anotacoes (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            questao_id    TEXT NOT NULL,
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            texto         TEXT NOT NULL,
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, questao_id)
+          );`,
+  },
+  {
+    // Marca-texto da leitura: o trecho que o aluno grifou, com cor e anotação. Âncora no texto cru do
+    // bloco (aula, bloco, início, fim) + o próprio trecho, para reencontrá-lo se a aula for reescrita.
+    nome: 'estudo-marcacoes-2026-10-09',
+    sql: `CREATE TABLE IF NOT EXISTS est_marcacoes (
+            id             TEXT PRIMARY KEY,
+            user_id        TEXT NOT NULL REFERENCES users(id),
+            escopo_id      TEXT NOT NULL REFERENCES est_escopos(id),
+            unidade        TEXT NOT NULL,
+            bloco          INTEGER NOT NULL,
+            inicio         INTEGER NOT NULL,
+            fim            INTEGER NOT NULL,
+            texto          TEXT NOT NULL,
+            cor            TEXT NOT NULL,
+            nota           TEXT DEFAULT '',
+            versao_unidade INTEGER DEFAULT 1,
+            criado_em      TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_marcacoes_aluno ON est_marcacoes (user_id, escopo_id);`,
+  },
+  {
+    // Destaques: as frases da aula que o autor quer em negrito na leitura (ordem do Augusto, 10/10/2026:
+    // "negrito nas frases mais importantes, nos assuntos em destaque"). Lista de trechos LITERAIS do texto.
+    nome: 'estudo-destaques-2026-10-10',
+    sql: `ALTER TABLE est_unidades ADD COLUMN destaques TEXT DEFAULT '[]';`,
+  },
+  {
+    // VÍDEO DA AULA do Estude: a videoaula animada (MP4) de cada unidade. O arquivo é uma mídia da
+    // Academy (bucket privado); quem autoriza a entrega é Midia.podeAcessar, pela matrícula no curso.
+    nome: 'estudo-video-da-aula-2026-10-10',
+    sql: `ALTER TABLE est_unidades ADD COLUMN video_media_id TEXT DEFAULT '';
+          ALTER TABLE est_unidades ADD COLUMN video_duracao_seg INTEGER DEFAULT 0;
+          CREATE INDEX IF NOT EXISTS ix_est_unidades_video ON est_unidades (video_media_id);`,
+  },
+  {
+    // AULAS ANIMADAS (estudo de vídeo, formatos sem avatar): o roteiro do fluxo, do caso para decidir e
+    // dos erros da banca de cada aula. O tocador é da tela; aqui mora só o roteiro, em JSON.
+    nome: 'estudo-animacoes-2026-10-10',
+    sql: `ALTER TABLE est_unidades ADD COLUMN animacoes TEXT DEFAULT '{}';`,
+  },
+  {
+    // AMOSTRAS GRÁTIS: trechos curtos de vídeo, PÚBLICOS, um por aula (ou do curso). Tabela
+    // PRÓPRIA de propósito — não é `media_files`: a rota pública só enxerga esta tabela, então
+    // não há id de mídia de aula paga que ela consiga servir. Identidade = (produto, chave):
+    // reenviar a mesma chave SUBSTITUI. Os arquivos moram sob o prefixo `amostras/` do storage.
+    nome: 'amostras-gratis-2026-10-09',
+    sql: `CREATE TABLE IF NOT EXISTS amostras (
+            id            TEXT PRIMARY KEY,
+            product_id    TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+            chave         TEXT NOT NULL,           -- 'aula-3' | 'curso' | livre
+            aula_num      INTEGER DEFAULT 0,       -- 0 = amostra do curso, sem aula
+            chamada       TEXT NOT NULL,           -- título curto
+            ponte         TEXT DEFAULT '',         -- frase de convite para o curso
+            duracao_seg   INTEGER DEFAULT 0,
+            ordem         INTEGER DEFAULT 0,
+            video_path    TEXT NOT NULL,           -- sempre amostras/<produto>/...
+            video_mime    TEXT NOT NULL,
+            video_tamanho INTEGER NOT NULL,
+            video_storage TEXT DEFAULT 'local',    -- local | s3
+            video_sha256  TEXT DEFAULT '',         -- reenviar o MESMO arquivo não troca nada nem sobe a versão
+            capa_path     TEXT DEFAULT '',
+            capa_mime     TEXT DEFAULT '',
+            capa_tamanho  INTEGER DEFAULT 0,
+            capa_storage  TEXT DEFAULT 'local',
+            capa_sha256   TEXT DEFAULT '',
+            versao        INTEGER DEFAULT 1,       -- sobe a cada troca de arquivo (chave de cache ?v=)
+            criado_em     TEXT NOT NULL,
+            atualizado_em TEXT NOT NULL
+          );
+          CREATE UNIQUE INDEX IF NOT EXISTS ux_amostras_produto_chave ON amostras (product_id, chave);`,
+  },
+  {
+    // PEDIDOS PAGOS do Estude (ADR-0010): tudo o que o usuário pede e que gasta com provedor —
+    // correção de discursiva/peça, oral gravada e, depois, prova e edital em PDF. Quatro momentos:
+    // criar (nada cobrado) → orçamento → confirmar (reserva do teto) → resultado (acerto ou estorno).
+    // `ref` é a reserva na carteira de IA; `entrada` guarda o que o aluno enviou e NUNCA vai a log.
+    // A recarga "do valor que falta" aponta para o pedido que ela destrava (ia_recargas.pedido_id).
+    nome: 'estudo-pedidos-2026-10-11',
+    sql: `CREATE TABLE IF NOT EXISTS est_pedidos (
+            id                  TEXT PRIMARY KEY,
+            user_id             TEXT NOT NULL REFERENCES users(id),
+            product_id          TEXT NOT NULL REFERENCES products(id),
+            escopo_id           TEXT DEFAULT '',     -- vazio: pedido que ainda não pertence a um percurso (edital novo)
+            tipo                TEXT NOT NULL,       -- correcao | oral | prova | edital
+            estado              TEXT NOT NULL DEFAULT 'orcado', -- orcado | processando | pronto | aplicado | falhou | cancelado
+            questao_id          TEXT DEFAULT '',     -- correção e oral: a questão aberta (índice do histórico)
+            entrada             TEXT NOT NULL DEFAULT '{}',
+            orcamento_milesimos INTEGER DEFAULT 0,   -- o teto calculado
+            aceite_milesimos    INTEGER DEFAULT 0,   -- o teto que o usuário viu e aceitou
+            cobrado_milesimos   INTEGER DEFAULT 0,   -- o que saiu de verdade (≤ aceite)
+            ref                 TEXT DEFAULT '',     -- reserva em ia_movimentos
+            resultado           TEXT DEFAULT '',
+            erro                TEXT DEFAULT '',
+            contestacao         TEXT DEFAULT '',     -- { motivo, em } — aparece no staff; sem devolução automática
+            criado_em           TEXT NOT NULL,
+            atualizado_em       TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_estped_user ON est_pedidos (user_id, product_id, criado_em);
+          CREATE INDEX IF NOT EXISTS idx_estped_estado ON est_pedidos (estado);
+          ALTER TABLE ia_recargas ADD COLUMN pedido_id TEXT DEFAULT '';`,
+  },
+  {
+    // ADR-0010, fase 3 — PERCURSO PARTICULAR e importação de prova em PDF.
+    // `dono_user_id`: escopo que só o dono vê (nunca listado para outro aluno, nem no resumo do produtor).
+    // `progresso`: em que lote está o trabalho longo de um pedido ({ etapa, feito, total }) — a tela acompanha.
+    nome: 'estudo-percurso-particular-2026-10-11',
+    sql: `ALTER TABLE est_escopos ADD COLUMN dono_user_id TEXT DEFAULT '';
+          CREATE INDEX IF NOT EXISTS idx_estesc_dono ON est_escopos (product_id, dono_user_id);
+          ALTER TABLE est_pedidos ADD COLUMN progresso TEXT DEFAULT '';`,
+  },
+  {
+    // PARIDADE com os outros cursos (docs\estudo\paridade-com-os-outros-cursos.md, etapa 1) — o que o aluno
+    // ESCREVE e onde ele PAROU dentro de cada aula do Estude. Três tabelas pequenas, todas dele:
+    //   est_tentativas_bloco  a tentativa escrita em cada bloco de ação (desafio, recordação, prática, aplicação)
+    //                         antes de ver a solução — antes só se conferia o tamanho e o texto era descartado
+    //   est_notas_aula        "Minhas anotações desta aula": uma nota livre por aula
+    //   est_aula_estado       quando abriu a aula por último (o "Continuar" da biblioteca) e o vídeo dela:
+    //                         posição e se assistiu (a partir de 90 %). Sem texto livre.
+    nome: 'estudo-paridade-caderno-2026-10-11',
+    sql: `CREATE TABLE IF NOT EXISTS est_tentativas_bloco (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            unidade       TEXT NOT NULL,
+            bloco         INTEGER NOT NULL,
+            texto         TEXT NOT NULL,
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, escopo_id, unidade, bloco)
+          );
+          CREATE TABLE IF NOT EXISTS est_notas_aula (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            unidade       TEXT NOT NULL,
+            texto         TEXT NOT NULL,
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, escopo_id, unidade)
+          );
+          CREATE TABLE IF NOT EXISTS est_aula_estado (
+            user_id         TEXT NOT NULL REFERENCES users(id),
+            escopo_id       TEXT NOT NULL REFERENCES est_escopos(id),
+            unidade         TEXT NOT NULL,
+            aberta_em       TEXT DEFAULT '',
+            video_pos_seg   INTEGER DEFAULT 0,
+            video_assistido INTEGER DEFAULT 0,
+            video_em        TEXT DEFAULT '',
+            PRIMARY KEY (user_id, escopo_id, unidade)
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_aula_estado_aberta ON est_aula_estado (user_id, aberta_em);`,
+  },
+  {
+    // CERTIFICADO do curso que hospeda o Estude (decisão do Augusto, 11/10/2026: "emite certificado da Villela
+    // Academy, sem validade para o MEC"): o registro guarda de que TIPO é (o texto do certificado muda) e a carga
+    // horária, que é a soma dos tempos das aulas do percurso no dia da emissão. Os outros cursos ficam como eram.
+    // ÁUDIO DA PROVA ORAL: guardado por 6 meses (AUDIO_ORAL_RETENCAO_DIAS, em estudo/pedidos.js) e apagado depois;
+    // o pedido registra quando — a transcrição e a correção continuam nele.
+    nome: 'estudo-certificado-e-audio-oral-2026-10-11',
+    sql: `ALTER TABLE certificates ADD COLUMN tipo TEXT DEFAULT '';              -- '' (curso comum) | estude
+          ALTER TABLE certificates ADD COLUMN carga_horaria_min INTEGER DEFAULT 0;
+          ALTER TABLE est_pedidos ADD COLUMN audio_apagado_em TEXT DEFAULT '';`,
+  },
+  {
+    // AULA SEM QUESTÃO NEM CARD (estudo/aluno.js › aulaEstudada): quando o aluno chegou ao fim do texto da aula.
+    // É o que deixa essa aula contar como estudada — sem isto ela travaria o certificado para sempre.
+    nome: 'estudo-aula-lida-2026-10-11',
+    sql: `ALTER TABLE est_aula_estado ADD COLUMN lida_em TEXT DEFAULT '';`,
+  },
+  {
+    // PROVA EM ANDAMENTO (auditoria de 11/10/2026): a questão em que o aluno estava — recarregar a página ou voltar
+    // pela aba Prova retoma NELA, não na primeira.
+    nome: 'estudo-tentativa-posicao-2026-10-11',
+    sql: `ALTER TABLE est_tentativas ADD COLUMN posicao INTEGER DEFAULT 0;`,
+  },
+  {
+    // A TENTATIVA É DO BLOCO, NÃO DA POSIÇÃO: a digital do enunciado do bloco em que o aluno escreveu — reimportar a
+    // aula com os blocos em outra ordem não cola mais o texto dele no exercício errado (estudo/aluno.js › tentativasNoLugar).
+    nome: 'estudo-tentativa-bloco-ref-2026-10-11',
+    sql: `ALTER TABLE est_tentativas_bloco ADD COLUMN bloco_ref TEXT DEFAULT '';`,
+  },
+  {
+    // SEGUNDA REVISÃO de 11/10/2026 (docs\estudo\auditoria-2026-10-11-b):
+    //  · certificado REVOGÁVEL (A2): reembolso e revogação de acesso deixam o registro, mas a página pública passa
+    //    a dizer "certificado revogado", sem o nome;
+    //  · `est_leituras` (R3): cada TENTATIVA de abrir um PDF para orçar — é o que o teto diário conta (antes contava
+    //    o pedido criado, e o PDF que estourava a leitura não criava pedido: o teto nunca saía do zero);
+    //  · `est_midia_remover` (LGPD): arquivo cuja linha de mídia já saiu do banco e que ainda precisa sair do
+    //    armazenamento — se a remoção falhar, a passada diária tenta de novo (antes ficava no bucket, sem registro).
+    nome: 'auditoria-b-certificado-leituras-2026-10-11',
+    sql: `ALTER TABLE certificates ADD COLUMN revogado_em TEXT DEFAULT '';
+          ALTER TABLE certificates ADD COLUMN revogado_motivo TEXT DEFAULT '';
+          CREATE TABLE IF NOT EXISTS est_leituras (
+            id       TEXT PRIMARY KEY,
+            user_id  TEXT NOT NULL,
+            tipo     TEXT NOT NULL,          -- prova | edital
+            quando   TEXT NOT NULL,
+            desfecho TEXT DEFAULT 'lendo'    -- lendo | ok | falhou
+          );
+          CREATE INDEX IF NOT EXISTS idx_estleit_user ON est_leituras (user_id, tipo, quando);
+          CREATE TABLE IF NOT EXISTS est_midia_remover (
+            id         TEXT PRIMARY KEY,     -- o id que a mídia tinha
+            dados      TEXT NOT NULL,        -- a linha da mídia (onde o arquivo mora)
+            criado_em  TEXT NOT NULL,
+            tentativas INTEGER DEFAULT 0
+          );`,
+  },
+  {
+    // RÉGUA NOVA SEM PERDER O QUE JÁ ERA DO ALUNO (R6). A régua de "aula estudada" passou a exigir que o aluno tenha
+    // ABERTO a aula (`aberta_em`). Quem estudou até 10/10 respondendo questão ou card da competência da aula, sem
+    // abrir a tela dela, perderia de uma vez "Estudados por você", o selo bronze, a liberação do teste final e o que
+    // falta para o certificado. Esta migração roda UMA vez: para cada (aluno, percurso, aula) com evidência de ESTUDO
+    // ou PRÁTICA de uma competência da aula anterior a 11/10/2026 (00:00 de Brasília), a aula fica marcada como
+    // aberta e lida nessa data. Resposta de PROVA (modo 'avaliacao') não entra — é o que a régua nova quis tirar.
+    // Dali em diante vale a régua nova. Não mexe em quem já tinha `aberta_em`/`lida_em`.
+    nome: 'estudo-regua-transicao-2026-10-11',
+    sql: `INSERT INTO est_aula_estado (user_id, escopo_id, unidade, aberta_em, lida_em)
+          SELECT DISTINCT e.user_id, e.escopo_id, u.codigo, '2026-10-11T03:00:00.000Z', '2026-10-11T03:00:00.000Z'
+            FROM est_evidencias e
+            JOIN est_unidades u ON u.escopo_id = e.escopo_id
+            JOIN json_each(u.competencias) k ON k.value = e.competencia_codigo
+           WHERE e.criado_em < '2026-10-11T03:00:00.000Z' AND e.competencia_codigo != '' AND e.modo IN ('estudo', 'pratica')
+              AND EXISTS (SELECT 1 FROM users x WHERE x.id = e.user_id) AND EXISTS (SELECT 1 FROM est_escopos y WHERE y.id = e.escopo_id)
+          ON CONFLICT (user_id, escopo_id, unidade) DO UPDATE SET
+            aberta_em = CASE WHEN COALESCE(est_aula_estado.aberta_em, '') = '' THEN excluded.aberta_em ELSE est_aula_estado.aberta_em END,
+            lida_em   = CASE WHEN COALESCE(est_aula_estado.lida_em, '') = '' THEN excluded.lida_em ELSE est_aula_estado.lida_em END;`,
+  },
+  {
+    // DUAS ABAS, NOTA DA MARCAÇÃO (réplica de 11/10/2026, M5): a anotação de um grifo era a única escrita de texto do
+    // aluno sem data de alteração — a aba aberta antes gravava a nota velha (ou vazia) por cima da outra, sem aviso.
+    // Com `atualizado_em`, o servidor confere o que a tela leu, como já faz com a nota da aula, a tentativa do bloco e
+    // a anotação da questão. Marcação antiga fica com '' ("nunca alterada"), que é o que a tela dela leu.
+    nome: 'estudo-marcacao-atualizado-em-2026-10-11',
+    sql: `ALTER TABLE est_marcacoes ADD COLUMN atualizado_em TEXT DEFAULT '';`,
+  },
+  {
+    // FALHA ABSORVIDA DENTRO DE TRABALHO QUE DEU CERTO (réplica de 11/10/2026, R4-2). A tentativa que falhou deixou de
+    // ser cobrada do aluno: a plataforma absorve. O log de uso guarda, na linha 'ok', quanto desse custo foi absorvido
+    // — é o que os tetos de falha por conta somam. Sem isso, quem força o 1º modelo a cortar a resposta faria a
+    // plataforma absorver sem limite, com o trabalho sempre "dando certo".
+    nome: 'ia-custo-absorvido-2026-10-11',
+    sql: `ALTER TABLE ai_usage_logs ADD COLUMN absorvido_centavos_usd REAL DEFAULT 0;`,
+  },
+  {
+    // ÍNDICE POR DATA NO LOG DE USO (auditoria C de 12/10/2026, C-07). O único índice era `idx_ai_user (user_id, quando)`,
+    // que não serve a filtro só por data: os relatórios de custo (`Logs.custos`, `Logs.pessoas`) e os tetos de valor
+    // absorvido (`custoDeFalhasGlobalUSD`, lido a CADA pedido pago e a cada segunda leitura de correção) varriam a
+    // tabela inteira. Medido com 1 milhão de linhas: 0,3 s por pedido só nessa consulta, com o servidor parado.
+    nome: 'ia-log-indice-por-data-2026-10-12',
+    sql: `CREATE INDEX IF NOT EXISTS idx_ai_quando ON ai_usage_logs(quando);`,
+  },
+  {
+    // LEGISLAÇÃO E JURISPRUDÊNCIA POR ITEM DO EDITAL (ADR-0014; código em estudo/lei-juris.js). O texto mora UMA vez
+    // (o diploma e o verbete são do acervo, não do curso); o que é do percurso é o VÍNCULO: quais diplomas e verbetes
+    // ele usa (`est_lj_escopo_*`), qual item do edital cobra qual dispositivo/verbete (`est_lj_vinculos`) e se o acervo
+    // já está aberto aos alunos (`est_lj_estado`, nasce em rascunho). A marcação de leitura (lido, grifo em duas cores)
+    // é do aluno: exportação e exclusão pela lista de textos do titular (repo.js › TEXTOS_DO_ALUNO).
+    // O índice de busca (FTS5) é criado por estudo/lei-juris.js, fora da migração: se o SQLite não tiver FTS5, a
+    // busca cai para LIKE e a subida do servidor não para.
+    nome: 'estudo-lei-juris-2026-10-17',
+    sql: `CREATE TABLE IF NOT EXISTS est_lj_diplomas (
+            id            TEXT PRIMARY KEY,
+            nome          TEXT NOT NULL,
+            norma         TEXT DEFAULT '',
+            sigla         TEXT DEFAULT '',
+            tipo          TEXT NOT NULL,
+            abrangencia   TEXT NOT NULL,
+            fonte_url     TEXT DEFAULT '',
+            consultado_em TEXT DEFAULT '',
+            data_edital   TEXT DEFAULT '',
+            estrutura     TEXT DEFAULT '[]',
+            artigos       INTEGER DEFAULT 0,
+            alterados     INTEGER DEFAULT 0,
+            hash          TEXT NOT NULL,
+            importado_em  TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_dispositivos (
+            diploma_id    TEXT NOT NULL REFERENCES est_lj_diplomas(id) ON DELETE CASCADE,
+            id            TEXT NOT NULL,
+            ordem         INTEGER NOT NULL,
+            rotulo        TEXT NOT NULL,
+            estrutura     TEXT DEFAULT '',
+            epigrafe      TEXT DEFAULT '',
+            texto         TEXT DEFAULT '',
+            partes        TEXT DEFAULT '[]',
+            situacao      TEXT NOT NULL,
+            nota          TEXT DEFAULT '',
+            alterado_por  TEXT DEFAULT '',
+            texto_edital  TEXT,
+            edital_indisponivel INTEGER DEFAULT 0,
+            PRIMARY KEY (diploma_id, id)
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_lj_disp_ordem ON est_lj_dispositivos (diploma_id, ordem);
+          CREATE TABLE IF NOT EXISTS est_lj_escopo_diplomas (
+            escopo_id   TEXT NOT NULL REFERENCES est_escopos(id),
+            diploma_id  TEXT NOT NULL REFERENCES est_lj_diplomas(id) ON DELETE CASCADE,
+            ligado_em   TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, diploma_id)
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_colecoes (
+            id            TEXT PRIMARY KEY,
+            nome          TEXT NOT NULL,
+            tribunal      TEXT NOT NULL,
+            fonte_url     TEXT DEFAULT '',
+            consultado_em TEXT DEFAULT ''
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_verbetes (
+            id              TEXT PRIMARY KEY,
+            colecao         TEXT NOT NULL REFERENCES est_lj_colecoes(id),
+            tipo            TEXT NOT NULL,
+            tribunal        TEXT NOT NULL,
+            orgao           TEXT DEFAULT '',
+            numero          TEXT DEFAULT '',
+            numero_ord      INTEGER DEFAULT 0,
+            titulo          TEXT DEFAULT '',
+            texto           TEXT DEFAULT '',
+            tese            TEXT DEFAULT '',
+            situacao        TEXT DEFAULT '',
+            situacao_detalhe TEXT DEFAULT '',
+            situacao_edital TEXT DEFAULT '',
+            historico       TEXT DEFAULT '',
+            leading_case    TEXT DEFAULT '',
+            julgamento      TEXT DEFAULT '',
+            fonte_tipo      TEXT DEFAULT '',
+            fonte_url       TEXT DEFAULT '',
+            consultado_em   TEXT DEFAULT '',
+            hash            TEXT NOT NULL,
+            importado_em    TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_lj_verb_ordem ON est_lj_verbetes (tribunal, colecao, numero_ord);
+          CREATE TABLE IF NOT EXISTS est_lj_escopo_verbetes (
+            escopo_id   TEXT NOT NULL REFERENCES est_escopos(id),
+            verbete_id  TEXT NOT NULL REFERENCES est_lj_verbetes(id) ON DELETE CASCADE,
+            ligado_em   TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, verbete_id)
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_vinculos (
+            escopo_id      TEXT NOT NULL REFERENCES est_escopos(id),
+            item           TEXT NOT NULL,
+            tipo           TEXT NOT NULL,
+            diploma_id     TEXT DEFAULT '',
+            dispositivo_id TEXT DEFAULT '',
+            parte          TEXT DEFAULT '',
+            verbete_id     TEXT DEFAULT '',
+            origem         TEXT DEFAULT '',
+            confianca      TEXT DEFAULT '',
+            motivo         TEXT DEFAULT '',
+            PRIMARY KEY (escopo_id, item, tipo, diploma_id, dispositivo_id, parte, verbete_id)
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_lj_vinc_disp ON est_lj_vinculos (escopo_id, diploma_id, dispositivo_id);
+          CREATE INDEX IF NOT EXISTS ix_est_lj_vinc_verb ON est_lj_vinculos (escopo_id, verbete_id);
+          CREATE TABLE IF NOT EXISTS est_lj_estado (
+            escopo_id     TEXT PRIMARY KEY REFERENCES est_escopos(id),
+            status        TEXT NOT NULL DEFAULT 'rascunho',
+            atualizado_em TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_marcas (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            tipo          TEXT NOT NULL,
+            ref           TEXT NOT NULL,
+            lido          INTEGER DEFAULT 0,
+            cor           TEXT DEFAULT '',
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, escopo_id, tipo, ref)
+          );`,
+  },
+  {
+    // O QUE O VERBETE DIZ DA DATA DO EDITAL (auditoria AL de 17/10/2026, AL-04, AL-09 e AL-15). O importador descartava a
+    // nota da situação na data do edital (inclusive o "NÃO APURADO"), a marca de situação INFERIDA pela numeração, a
+    // ressalva (cancelado depois do edital por perda de eficácia retroativa), a redação, o título e a tese na data do
+    // edital (OJ 394 da SBDI-1) e o cancelamento parcial. Ficam numa coluna JSON só (`edital_extra`): são campos raros
+    // (a maior parte dos verbetes não tem nenhum) e só a tela os lê.
+    // O ITEM QUE CITA O DIPLOMA (AL-14): "Lei de Execuções Fiscais" no texto do item 2.1.15, sem artigo — o vínculo por
+    // dispositivo não existe, mas a aba diz "o item cobra também".
+    nome: 'estudo-lei-juris-edital-2026-10-17',
+    sql: `ALTER TABLE est_lj_verbetes ADD COLUMN edital_extra TEXT DEFAULT '';
+          CREATE TABLE IF NOT EXISTS est_lj_item_diplomas (
+            escopo_id   TEXT NOT NULL REFERENCES est_escopos(id),
+            item        TEXT NOT NULL,
+            diploma_id  TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, item, diploma_id)
+          );`,
+  },
+  {
+    // CURSO QUE REÚNE AULAS DE OUTRO ESCOPO (ADR-0015; leitura em estudo/repo.js). A aula continua morando no escopo de
+    // origem (uma linha só em est_unidades); o escopo B a LISTA aqui e traduz os itens do edital A para os do edital B
+    // (`itens_destino`). Corrigir a aula em A corrige em B; a visibilidade segue o status da aula em A.
+    // DATA DE REFERÊNCIA POR ESCOPO (ADR-0015, item 8): `data_referencia` vazia = a data do acervo (05/01/2023, a do
+    // curso de Juiz); `rotulo_data_referencia` é o nome que a tela dá a ela ("data do edital", "data de corte da
+    // objetiva"). O texto "na data" que é próprio de um escopo (data diferente da do acervo) mora em
+    // `est_lj_escopo_textos` (dispositivo) e `est_lj_escopo_verbete_textos` (verbete) — o acervo continua único.
+    nome: 'estudo-inclusoes-e-data-por-escopo-2026-10-17',
+    sql: `CREATE TABLE IF NOT EXISTS est_escopo_inclusoes (
+            escopo_id        TEXT NOT NULL REFERENCES est_escopos(id),
+            origem_escopo_id TEXT NOT NULL REFERENCES est_escopos(id),
+            unidade_codigo   TEXT NOT NULL,
+            ordem            INTEGER DEFAULT 0,
+            itens_destino    TEXT DEFAULT '[]',
+            atualizado_em    TEXT DEFAULT '',
+            PRIMARY KEY (escopo_id, origem_escopo_id, unidade_codigo)
+          );
+          CREATE INDEX IF NOT EXISTS ix_est_incl_origem ON est_escopo_inclusoes (origem_escopo_id, unidade_codigo);
+          ALTER TABLE est_escopos ADD COLUMN data_referencia TEXT DEFAULT '';
+          ALTER TABLE est_escopos ADD COLUMN rotulo_data_referencia TEXT DEFAULT '';
+          CREATE TABLE IF NOT EXISTS est_lj_escopo_textos (
+            escopo_id      TEXT NOT NULL REFERENCES est_escopos(id),
+            diploma_id     TEXT NOT NULL,
+            dispositivo_id TEXT NOT NULL,          -- o dispositivo ou a parte (art-2.p1)
+            situacao       TEXT NOT NULL,          -- a situação na data de referência do escopo
+            texto          TEXT,                   -- a redação na data de referência (null = a vigente)
+            nota           TEXT DEFAULT '',
+            atualizado_em  TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, diploma_id, dispositivo_id)
+          );
+          CREATE TABLE IF NOT EXISTS est_lj_escopo_verbete_textos (
+            escopo_id     TEXT NOT NULL REFERENCES est_escopos(id),
+            verbete_id    TEXT NOT NULL,
+            situacao      TEXT NOT NULL,           -- a situação do verbete na data de referência do escopo
+            texto         TEXT DEFAULT '',
+            titulo        TEXT DEFAULT '',
+            tese          TEXT DEFAULT '',
+            nota          TEXT DEFAULT '',
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (escopo_id, verbete_id)
+          );`,
+  },
+  {
+    // DISPOSITIVO DECLARADO INCONSTITUCIONAL PELO STF (ADR-0014; varredura de 18/10/2026). `decisao_stf` é uma lista
+    // JSON ([{ verbete, tecnica, alcance, data, efeito, texto_repristinado?, modulacao?, norma?, trecho }]) — o
+    // dispositivo pode ter mais de uma decisão; nas PARTES ela vai dentro do JSON de `partes`. O texto do Planalto
+    // continua guardado: a decisão é um aviso sobre ele, não a troca dele.
+    nome: 'estudo-lei-juris-decisao-stf-2026-10-18',
+    sql: `ALTER TABLE est_lj_dispositivos ADD COLUMN decisao_stf TEXT DEFAULT '';`,
+  },
 ];
 
+// Cada migração é ATÔMICA: os comandos dela e o registro em `migrations` entram na mesma transação. Antes, um
+// processo morto entre dois `ALTER TABLE ADD COLUMN` deixava a migração pela metade e sem registro — e a subida
+// seguinte parava em "duplicate column". (O DDL do SQLite é transacional: o ROLLBACK desfaz o ALTER.)
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;
-  db.exec(m.sql);
-  db.prepare('INSERT INTO migrations (nome, aplicada_em) VALUES (?, ?)').run(m.nome, new Date().toISOString());
+  db.exec('BEGIN');
+  try {
+    db.exec(m.sql);
+    db.prepare('INSERT INTO migrations (nome, aplicada_em) VALUES (?, ?)').run(m.nome, new Date().toISOString());
+    db.exec('COMMIT');
+  } catch (e) { try { db.exec('ROLLBACK'); } catch (_) { /* nada aberto */ } throw e; }
 }
 
 const nowISO = () => new Date().toISOString();
@@ -383,4 +1068,7 @@ const j = {
   str(o) { try { return JSON.stringify(o == null ? null : o); } catch { return 'null'; } },
 };
 
-module.exports = { db, transacao, nowISO, novoId, j, DATA_DIR, MOD_DIR, DB_PATH };
+// (o SQL de uma migração pelo nome — é como o teste reaplica a de transição da régua sobre dados antigos e novos)
+const sqlDaMigracao = (nome) => (MIGRACOES.find(m => m.nome === nome) || {}).sql || '';
+
+module.exports = { db, transacao, nowISO, novoId, j, DATA_DIR, MOD_DIR, DB_PATH, sqlDaMigracao };

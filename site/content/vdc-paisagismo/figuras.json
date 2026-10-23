@@ -1,0 +1,809 @@
+{
+ "_nota": "Gerado por blogfig_gerar.py (posicao e escolha da figura aberta conferidas a mao). \"secao\" e \"apos\" ancoram a figura no artigo; \"aberta\": true = camada publica.",
+ "_hub": [
+  "fig-03-01",
+  "fig-04-04",
+  "fig-06-05",
+  "fig-03-03"
+ ],
+ "01-usos-e-etapas": [
+  {
+   "id": "fig-01-01",
+   "arq": "paisagismo-na-pratica-fig-01-01.webp",
+   "w": 1200,
+   "h": 516,
+   "legenda": "Planta baixa da Chácara-Modelo: casa com varanda, piscina de 8 m por 4 m, gramado, árvore grande e estrada de terra",
+   "aberta": false,
+   "secao": "A Chácara-Modelo",
+   "apos": "A casa é térrea, com telhado de barro e varanda. A piscina é retangula"
+  },
+  {
+   "id": "fig-01-02",
+   "arq": "paisagismo-na-pratica-fig-01-02.webp",
+   "w": 1200,
+   "h": 516,
+   "legenda": "A entrada da propriedade em destaque na planta: uma faixa de 12 m por 5 m, com 60 m², junto à estrada de terra",
+   "aberta": false,
+   "secao": "A Chácara-Modelo",
+   "apos": "A área projetada aula por aula é a entrada da propriedade, uma faixa d"
+  },
+  {
+   "id": "fig-01-03",
+   "arq": "paisagismo-na-pratica-fig-01-03.webp",
+   "w": 1200,
+   "h": 242,
+   "legenda": "O ano do Cerrado em duas faixas: a chuva, de outubro a abril, e a seca, de maio a setembro. Agosto cai em plena seca",
+   "aberta": false,
+   "secao": "O Cerrado como referência",
+   "apos": "A Chácara-Modelo fica no Cerrado, e o curso inteiro usa essa região co"
+  },
+  {
+   "id": "fig-01-04",
+   "arq": "paisagismo-na-pratica-fig-01-04.webp",
+   "w": 1200,
+   "h": 587,
+   "legenda": "As quatro etapas de um serviço, em ordem, cada uma com o documento que produz: briefing, projeto, implantação e manutenção",
+   "aberta": true,
+   "secao": "As quatro etapas de um serviço",
+   "apos": "O briefing é a conversa que define uso, gosto, tempo disponível para m"
+  },
+  {
+   "id": "fig-01-05",
+   "arq": "paisagismo-na-pratica-fig-01-05.webp",
+   "w": 1200,
+   "h": 516,
+   "legenda": "A propriedade inteira desenhada a lápis, num plano único; as áreas ganham cor uma a uma, a cada estação chuvosa",
+   "aberta": false,
+   "secao": "Uma área por estação chuvosa",
+   "apos": "Pense a propriedade toda no papel e implante uma área por estação chuv"
+  }
+ ],
+ "02-seguranca-e-epis": [
+  {
+   "id": "fig-02-01",
+   "arq": "paisagismo-na-pratica-fig-02-01.webp",
+   "w": 1200,
+   "h": 253,
+   "legenda": "O percurso do sol no dia: serviço pesado no começo da manhã e no fim da tarde; o meio do dia fica para a sombra",
+   "aberta": false,
+   "secao": "O corpo é a primeira ferramenta",
+   "apos": "Na chuva, o calor úmido cansa depressa. Na seca, o ar muito seco engan"
+  },
+  {
+   "id": "fig-02-02",
+   "arq": "paisagismo-na-pratica-fig-02-02.webp",
+   "w": 1200,
+   "h": 440,
+   "legenda": "O operador de roçadeira equipado, entre a proteção que basta para plantar e capinar e a lista maior que a roçadeira pede",
+   "aberta": false,
+   "secao": "Proteção por tarefa e ferramenta afiada",
+   "apos": "Para plantar e capinar bastam luvas, calçado fechado, chapéu e calça c"
+  },
+  {
+   "id": "fig-02-03",
+   "arq": "paisagismo-na-pratica-fig-02-03.webp",
+   "w": 1200,
+   "h": 849,
+   "legenda": "Árvore grande com galho sobre o telhado e perto dos fios: a área embaixo é isolada, e o serviço é da equipe especializada",
+   "aberta": false,
+   "secao": "Motosserra, altura e árvore grande",
+   "apos": "Antes de qualquer poda, olhe para cima. Galho perto da rede elétrica o"
+  },
+  {
+   "id": "fig-02-04",
+   "arq": "paisagismo-na-pratica-fig-02-04.webp",
+   "w": 1200,
+   "h": 838,
+   "legenda": "Corte do solo sob o canteiro marcado: tubo de irrigação, eletroduto e cano de água passam na linha onde a pá ia entrar",
+   "aberta": true,
+   "secao": "Eletricidade e o que está enterrado",
+   "apos": "A instalação elétrica é de eletricista habilitado. A sua parte vem ant"
+  },
+  {
+   "id": "fig-02-05",
+   "arq": "paisagismo-na-pratica-fig-02-05.webp",
+   "w": 1200,
+   "h": 1369,
+   "legenda": "O armário do depósito: defensivos e adubos em prateleiras separadas, na embalagem original, fora do chão e com cadeado",
+   "aberta": false,
+   "secao": "Adubos, corretivos e defensivos",
+   "apos": "Guardar também é segurança: embalagem original, com rótulo, nada no ch"
+  },
+  {
+   "id": "fig-02-06",
+   "arq": "paisagismo-na-pratica-fig-02-06.webp",
+   "w": 1200,
+   "h": 812,
+   "legenda": "Propriedade com córrego ao fundo: a faixa junto à água pode ser área de preservação; consulte o órgão ambiental antes de qualquer serviço",
+   "aberta": false,
+   "secao": "Quem está por perto e o que depende de autorização",
+   "apos": "Corte e poda drástica de árvore podem exigir autorização, mesmo dentro"
+  }
+ ],
+ "03-principios-de-composicao": [
+  {
+   "id": "fig-03-01",
+   "arq": "paisagismo-na-pratica-fig-03-01.webp",
+   "w": 1200,
+   "h": 370,
+   "legenda": "Um canteiro composto com poucas espécies repetidas em grupos e um único volume alto: ritmo, contraste e unidade no mesmo desenho",
+   "aberta": true,
+   "secao": "Contraste e unidade",
+   "apos": "Contraste é a diferença que chama a atenção: folha larga ao lado de fo"
+  },
+  {
+   "id": "fig-03-02",
+   "arq": "paisagismo-na-pratica-fig-03-02.webp",
+   "w": 1200,
+   "h": 657,
+   "legenda": "Os três andares do jardim em vista lateral: o chão, com gramado e forrações; o meio, com arbustos; e o alto, com árvores e palmeiras",
+   "aberta": false,
+   "secao": "Volume: os três andares",
+   "apos": "O volume se organiza em três andares. No chão ficam o gramado e as for"
+  }
+ ],
+ "04-ler-o-lugar": [
+  {
+   "id": "fig-11-01",
+   "arq": "paisagismo-na-pratica-fig-11-01.webp",
+   "w": 1200,
+   "h": 377,
+   "legenda": "O mesmo canteiro ao pé do muro em junho, coberto pela sombra, e em dezembro, com sol em cheio: uma visita só engana",
+   "aberta": false,
+   "secao": "Abertura",
+   "apos": "Em junho, um canteiro encostado no muro passa o dia inteiro na sombra,"
+  },
+  {
+   "id": "fig-00-01",
+   "arq": "paisagismo-na-pratica-fig-00-01.webp",
+   "w": 1200,
+   "h": 516,
+   "legenda": "A Chácara-Modelo vista de cima: a casa com varanda, a piscina, o gramado, a árvore grande e a estrada de terra na chegada",
+   "aberta": false,
+   "secao": "O lugar vence",
+   "apos": "O exemplo é a Chácara-Modelo, a propriedade do curso, na faixa da entr"
+  },
+  {
+   "id": "fig-03-04",
+   "arq": "paisagismo-na-pratica-fig-03-04.webp",
+   "w": 1200,
+   "h": 668,
+   "legenda": "O muro e o canteiro ao sul dele: no inverno, sol baixo e sombra comprida sobre o canteiro; no verão, sol quase a pino",
+   "aberta": false,
+   "secao": "O sol ao longo do ano",
+   "apos": "Nos meses de inverno o sol passa mais baixo e inclinado para o norte: "
+  },
+  {
+   "id": "fig-03-05",
+   "arq": "paisagismo-na-pratica-fig-03-05.webp",
+   "w": 1200,
+   "h": 355,
+   "legenda": "Seis quadros da Chácara-Modelo: as sombras às nove, ao meio-dia e às três da tarde, num dia de céu limpo e na outra estação",
+   "aberta": false,
+   "secao": "O sol ao longo do ano",
+   "apos": "A leitura se faz num dia de céu limpo, anotando onde bate sol e onde h"
+  },
+  {
+   "id": "fig-03-06",
+   "arq": "paisagismo-na-pratica-fig-03-06.webp",
+   "w": 1200,
+   "h": 333,
+   "legenda": "Três terrenos em corte sob a chuva: no quase plano a água empoça; no suave, escoa sobre solo coberto; no forte, abre sulcos",
+   "aberta": true,
+   "secao": "Declive e drenagem",
+   "apos": "Mede-se o declive com duas estacas, uma linha, um nível de bolha e uma"
+  },
+  {
+   "id": "fig-03-07",
+   "arq": "paisagismo-na-pratica-fig-03-07.webp",
+   "w": 1200,
+   "h": 516,
+   "legenda": "Os microclimas da Chácara-Modelo marcados na planta: sob a árvore grande, na baixada e na borda da estrada, onde a poeira cobre as folhas",
+   "aberta": false,
+   "secao": "Microclimas",
+   "apos": "Cada canto é um microclima. Ao pé da face de um muro que recebe o sol,"
+  }
+ ],
+ "05-briefing-e-croqui": [
+  {
+   "id": "fig-05-01",
+   "arq": "paisagismo-na-pratica-fig-05-01.webp",
+   "w": 1200,
+   "h": 568,
+   "legenda": "A medição da entrada, na ordem: primeiro o contorno, com todos os lados; depois as duas diagonais, de canto a canto",
+   "aberta": false,
+   "secao": "A medição tem ordem",
+   "apos": "Em seguida entram os pontos fixos: portão, mourão, muro, poste, árvore"
+  },
+  {
+   "id": "fig-05-02",
+   "arq": "paisagismo-na-pratica-fig-05-02.webp",
+   "w": 1200,
+   "h": 812,
+   "legenda": "Triangulação: a distância da árvore até dois cantos de um mesmo lado fixa o ponto no desenho, sem aparelho",
+   "aberta": false,
+   "secao": "A medição tem ordem",
+   "apos": "Para pôr uma árvore no lugar certo do desenho, mede-se a distância del"
+  },
+  {
+   "id": "fig-05-03",
+   "arq": "paisagismo-na-pratica-fig-05-03.webp",
+   "w": 1200,
+   "h": 812,
+   "legenda": "O croqui feito no local: contorno ocupando a folha, cada medida ao lado da sua linha, o norte, a data e quem mediu",
+   "aberta": true,
+   "secao": "O croqui",
+   "apos": "Tudo o que foi medido vai para o croqui. Desenhe o contorno ocupando a"
+  },
+  {
+   "id": "fig-05-04",
+   "arq": "paisagismo-na-pratica-fig-05-04.webp",
+   "w": 1200,
+   "h": 565,
+   "legenda": "O mapa básico em papel quadriculado, na escala de 1 para 50: a entrada vira um retângulo de 24 cm por 10 cm",
+   "aberta": false,
+   "secao": "As fotos e o mapa básico",
+   "apos": "Em casa, o croqui vira o mapa básico: o desenho passado a limpo em pap"
+  },
+  {
+   "id": "fig-05-05",
+   "arq": "paisagismo-na-pratica-fig-05-05.webp",
+   "w": 1200,
+   "h": 568,
+   "legenda": "O mapa da entrada com acessos e interferências: a rede elétrica, a tubulação enterrada, a divisa e a visão de quem sai de carro",
+   "aberta": false,
+   "secao": "Acessos e interferências",
+   "apos": "Interferência é tudo o que limita o que você pode plantar e cavar. Ent"
+  }
+ ],
+ "06-escolher-especies": [
+  {
+   "id": "fig-04-01",
+   "arq": "paisagismo-na-pratica-fig-04-01.webp",
+   "w": 1200,
+   "h": 657,
+   "legenda": "Anos depois do plantio: a muda posta a dois passos da varanda virou árvore, e a copa encosta no telhado",
+   "aberta": false,
+   "secao": "Abertura",
+   "apos": "No viveiro, toda muda cabe no porta-malas. Ela vem num saquinho, bate "
+  },
+  {
+   "id": "fig-04-05",
+   "arq": "paisagismo-na-pratica-fig-04-05.webp",
+   "w": 1200,
+   "h": 799,
+   "legenda": "No croqui em escala, o círculo da copa adulta: quando ele encosta no telhado ou alcança a rede elétrica, a planta está no lugar errado",
+   "aberta": true,
+   "secao": "Primeiro critério: o porte adulto",
+   "apos": "A primeira pergunta é que altura e que largura de copa a planta atinge"
+  },
+  {
+   "id": "fig-03-08",
+   "arq": "paisagismo-na-pratica-fig-03-08.webp",
+   "w": 1200,
+   "h": 657,
+   "legenda": "A mesma árvore em três tempos ao lado da casa: muda, jovem e adulta. É o porte adulto que decide o lugar",
+   "aberta": false,
+   "secao": "Primeiro critério: o porte adulto",
+   "apos": "Se o círculo encosta no telhado, cobre a piscina ou alcança a rede elé"
+  },
+  {
+   "id": "fig-04-06",
+   "arq": "paisagismo-na-pratica-fig-04-06.webp",
+   "w": 1200,
+   "h": 470,
+   "legenda": "Duas raízes em corte: a que desce e a que se espalha perto da superfície, levanta o piso e segue na direção do cano",
+   "aberta": false,
+   "secao": "A raiz e a quem perguntar cada afastamento",
+   "apos": "O quarto critério é a raiz. Ela desce ou se espalha perto da superfíci"
+  }
+ ],
+ "07-grupos-e-mudas": [
+  {
+   "id": "fig-04-04",
+   "arq": "paisagismo-na-pratica-fig-04-04.webp",
+   "w": 1200,
+   "h": 453,
+   "legenda": "O jardim em camadas, da mais alta para a mais baixa: árvores, palmeiras, trepadeiras, arbustos, forrações e gramado",
+   "aberta": true,
+   "secao": "O jardim se monta em camadas",
+   "apos": "São seis grupos: árvores, palmeiras, arbustos, forrações, trepadeiras "
+  },
+  {
+   "id": "fig-04-07",
+   "arq": "paisagismo-na-pratica-fig-04-07.webp",
+   "w": 1200,
+   "h": 614,
+   "legenda": "O exame da raiz: o torrão inteiro, com raízes claras e distribuídas, e a raiz enrolada em espiral, que pode continuar assim depois de plantada",
+   "aberta": false,
+   "secao": "O exame da muda começa pela raiz",
+   "apos": "O torrão deve sair inteiro, com raízes claras e bem distribuídas. Raiz"
+  }
+ ],
+ "08-solo-e-insumos": [
+  {
+   "id": "fig-04-02",
+   "arq": "paisagismo-na-pratica-fig-04-02.webp",
+   "w": 1200,
+   "h": 901,
+   "legenda": "Corte do solo típico do Cerrado: profundo, bem drenado e de boa estrutura, com a raiz descendo e a água passando",
+   "aberta": false,
+   "secao": "O solo que você tem: estrutura e química",
+   "apos": "Os solos mais comuns do Cerrado são profundos, bem drenados e de boa e"
+  },
+  {
+   "id": "fig-04-03",
+   "arq": "paisagismo-na-pratica-fig-04-03.webp",
+   "w": 1200,
+   "h": 470,
+   "legenda": "O canteiro coberto nas duas estações: na seca, a cobertura segura a umidade junto à raiz; na chuva, protege a terra da enxurrada",
+   "aberta": true,
+   "secao": "Terra vegetal, substrato e cobertura morta",
+   "apos": "A cobertura morta é a camada de material seco, como casca, palha ou fo"
+  }
+ ],
+ "09-setores-e-circulacao": [
+  {
+   "id": "fig-03-03",
+   "arq": "paisagismo-na-pratica-fig-03-03.webp",
+   "w": 1200,
+   "h": 516,
+   "legenda": "A planta da Chácara-Modelo com os três setores em cores, os trajetos de quem anda e de quem roda e as setas das vistas",
+   "aberta": true,
+   "secao": "O projeto começa pelo que se mantém",
+   "apos": "Nada do que foi decidido até aqui é planta ainda. Mas é o que vai dize"
+  }
+ ],
+ "10-planta-e-cronograma": [
+  {
+   "id": "fig-05-06",
+   "arq": "paisagismo-na-pratica-fig-05-06.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "A planta da entrada dividida em quatro partes, cada uma com a sua área: caminho, canteiro junto à estrada, canteiro da árvore e gramado",
+   "aberta": false,
+   "secao": "A planta simplificada",
+   "apos": "Na entrada da Chácara-Modelo, que mede 12 m por 5 m, a divisão ficou a"
+  },
+  {
+   "id": "fig-05-07",
+   "arq": "paisagismo-na-pratica-fig-05-07.webp",
+   "w": 1200,
+   "h": 570,
+   "legenda": "O canteiro da árvore, de 6 m², com as mudas de forração distribuídas em grade: a conta de mudas por área sai do desenho",
+   "aberta": false,
+   "secao": "Três contas que saem das áreas",
+   "apos": "A primeira conta é a das mudas por área. Divide-se a área do canteiro "
+  },
+  {
+   "id": "fig-05-08",
+   "arq": "paisagismo-na-pratica-fig-05-08.webp",
+   "w": 1200,
+   "h": 338,
+   "legenda": "O cronograma de trás para a frente: o plantio em outubro e novembro e, antes dele, o papel, a obra, o preparo e a encomenda",
+   "aberta": true,
+   "secao": "O calendário montado de trás para a frente",
+   "apos": "Andando para trás a partir do plantio, a seca inteira é tempo de papel"
+  }
+ ],
+ "11-limpeza-e-marcacao": [
+  {
+   "id": "fig-06-02",
+   "arq": "paisagismo-na-pratica-fig-06-02.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "A entrada riscada no chão: os limites das quatro partes, uma estaca com etiqueta em cada planta e o círculo da copa adulta",
+   "aberta": true,
+   "secao": "As plantas também entram na marcação",
+   "apos": "Na entrada da Chácara-Modelo, a marcação reproduz a divisão da planta "
+  }
+ ],
+ "12-solo-e-canteiros": [
+  {
+   "id": "fig-06-03",
+   "arq": "paisagismo-na-pratica-fig-06-03.webp",
+   "w": 1200,
+   "h": 310,
+   "legenda": "O solo em três situações: compactado, com a água escorrendo; solto só no buraco, com a raiz presa; solto e corrigido na área toda",
+   "aberta": true,
+   "secao": "Preparar",
+   "apos": "A diferença aparece em três situações. No solo compactado, a água esco"
+  },
+  {
+   "id": "fig-06-04",
+   "arq": "paisagismo-na-pratica-fig-06-04.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "A entrada vista de cima: a enxurrada da estrada de terra encontra a valeta gramada junto à divisa e é desviada antes do canteiro",
+   "aberta": false,
+   "secao": "Drenagem superficial e onde ela termina",
+   "apos": "Há um limite claro. O que cabe a você é a drenagem superficial: acerta"
+  }
+ ],
+ "13-plantio-e-tutoramento": [
+  {
+   "id": "fig-06-05",
+   "arq": "paisagismo-na-pratica-fig-06-05.webp",
+   "w": 1200,
+   "h": 838,
+   "legenda": "O berço em corte: largo e raso, torrão sobre fundo firme e colo no nível do solo, conferido com o cabo da enxada",
+   "aberta": true,
+   "secao": "Conferir o colo e plantar",
+   "apos": "Para conferir o colo, deite o cabo da enxada atravessado sobre o berço"
+  },
+  {
+   "id": "fig-06-06",
+   "arq": "paisagismo-na-pratica-fig-06-06.webp",
+   "w": 1200,
+   "h": 838,
+   "legenda": "A primeira rega, dentro da bacia, assenta a terra em volta das raízes; a estaca do tutor fica fora do torrão",
+   "aberta": false,
+   "secao": "A primeira rega assenta a terra",
+   "apos": "A primeira rega tem uma função que as outras não têm: assentar a terra"
+  }
+ ],
+ "14-gramados": [
+  {
+   "id": "fig-06-07",
+   "arq": "paisagismo-na-pratica-fig-06-07.webp",
+   "w": 1200,
+   "h": 686,
+   "legenda": "As placas de grama assentadas em desencontro, como tijolos, a partir de um barbante esticado",
+   "aberta": true,
+   "secao": "As placas",
+   "apos": "A primeira regra é de calendário: placa empilhada esquenta e amarela, "
+  },
+  {
+   "id": "fig-09-06",
+   "arq": "paisagismo-na-pratica-fig-09-06.webp",
+   "w": 1200,
+   "h": 686,
+   "legenda": "O gramado falhado visto de cima, com três causas: a sombra da copa que cresceu, a trilha do pisoteio e o ponto que empoça",
+   "aberta": false,
+   "secao": "A causa está na falha",
+   "apos": "Diante do gramado que falha, o impulso é comprar placa e remendar. O l"
+  }
+ ],
+ "15-vasos-e-espacos-compactos": [
+  {
+   "id": "fig-06-08",
+   "arq": "paisagismo-na-pratica-fig-06-08.webp",
+   "w": 1200,
+   "h": 838,
+   "legenda": "O vaso em corte, montado de baixo para cima: furo de drenagem, camada drenante, manta, substrato, colo no nível e borda livre para a água",
+   "aberta": false,
+   "secao": "A montagem, de baixo para cima",
+   "apos": "Dentro do vaso entra substrato, uma mistura preparada, mais leve. Terr"
+  },
+  {
+   "id": "fig-08-04",
+   "arq": "paisagismo-na-pratica-fig-08-04.webp",
+   "w": 1200,
+   "h": 838,
+   "legenda": "A alternativa ao jardim vertical: a trepadeira plantada no chão, com a raiz na terra, conduzida numa treliça afastada da parede",
+   "aberta": true,
+   "secao": "A alternativa da treliça",
+   "apos": "Se alguma das três perguntas ficar sem resposta, o livro aponta outro "
+  }
+ ],
+ "16-irrigacao": [
+  {
+   "id": "fig-07-02",
+   "arq": "paisagismo-na-pratica-fig-07-02.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "Os setores de irrigação sobre a planta da entrada, cada um com uma cor: canteiro junto à estrada, canteiro da árvore e gramado",
+   "aberta": true,
+   "secao": "Setorizar",
+   "apos": "Planta não bebe por calendário. A muda recém-plantada pede rega freque"
+  },
+  {
+   "id": "fig-07-03",
+   "arq": "paisagismo-na-pratica-fig-07-03.webp",
+   "w": 1200,
+   "h": 846,
+   "legenda": "O método do balde: a torneira toda aberta, um balde de volume conhecido e o relógio marcando o tempo de enchimento",
+   "aberta": false,
+   "secao": "Medir a água com um balde",
+   "apos": "O método cabe num balde. Abra totalmente a torneira que vai alimentar "
+  },
+  {
+   "id": "fig-07-04",
+   "arq": "paisagismo-na-pratica-fig-07-04.webp",
+   "w": 1200,
+   "h": 593,
+   "legenda": "Gotejamento em corte: a linha junto às plantas, sob a cobertura morta, com o filtro no começo e a água entregue direto no solo",
+   "aberta": false,
+   "secao": "Gotejamento",
+   "apos": "O gotejamento combina com canteiros de arbustos e forrações, com cerca"
+  },
+  {
+   "id": "fig-07-01",
+   "arq": "paisagismo-na-pratica-fig-07-01.webp",
+   "w": 1200,
+   "h": 555,
+   "legenda": "A rega serviu? Abra a terra ao lado da planta: úmida até a profundidade das raízes, ou molhada só na casca",
+   "aberta": false,
+   "secao": "O solo confere a rega, e o papel cobre a ausência",
+   "apos": "Algumas horas depois de regar, abra a terra com a pá de jardim, ao lad"
+  }
+ ],
+ "17-iluminacao-e-acabamentos": [
+  {
+   "id": "fig-07-05",
+   "arq": "paisagismo-na-pratica-fig-07-05.webp",
+   "w": 1200,
+   "h": 316,
+   "legenda": "A entrada à noite em dois quadros: clareada por inteiro, com ofuscamento; e com poucos pontos baixos, o caminho marcado e a árvore em destaque",
+   "aberta": false,
+   "secao": "Esconder a lâmpada e deixar o escuro trabalhar",
+   "apos": "O primeiro princípio é iluminar o que se olha e esconder a lâmpada. O "
+  },
+  {
+   "id": "fig-07-06",
+   "arq": "paisagismo-na-pratica-fig-07-06.webp",
+   "w": 1200,
+   "h": 663,
+   "legenda": "A borda entre a grama e o canteiro, em corte: rente ao gramado, funda para barrar os ramos rasteiros e firme sobre a base",
+   "aberta": false,
+   "secao": "Bordas e caminhos",
+   "apos": "A borda entre a grama e o canteiro segue três critérios. Rente ao gram"
+  },
+  {
+   "id": "fig-07-07",
+   "arq": "paisagismo-na-pratica-fig-07-07.webp",
+   "w": 1200,
+   "h": 663,
+   "legenda": "O pedrisco em corte: solo, manta permeável, pedra e a borda em volta, que impede a pedra de migrar para a grama",
+   "aberta": true,
+   "secao": "Pedrisco: parece que não dá trabalho",
+   "apos": "O pedrisco cobre o solo onde não se quer planta nem grama: a faixa jun"
+  }
+ ],
+ "18-casa-entrada-e-lazer": [
+  {
+   "id": "fig-08-01",
+   "arq": "paisagismo-na-pratica-fig-08-01.webp",
+   "w": 1200,
+   "h": 567,
+   "legenda": "A entrada da Chácara-Modelo: um elemento alto e único marca o portão, e a mesma planta, repetida, conduz o olhar ao longo do caminho",
+   "aberta": true,
+   "secao": "A chegada: os três trabalhos da entrada",
+   "apos": "O primeiro trabalho é mostrar onde se entra. Quem vem pela estrada de "
+  },
+  {
+   "id": "fig-08-02",
+   "arq": "paisagismo-na-pratica-fig-08-02.webp",
+   "w": 1200,
+   "h": 325,
+   "legenda": "A entrada em duas versões: como ficou no projeto, com 30 m² de gramado, e com forração no lugar dele",
+   "aberta": false,
+   "secao": "A entrada em números: o gramado onde ninguém pisa",
+   "apos": "Gramado é a parte do jardim que mais consome tempo, água e máquina. On"
+  },
+  {
+   "id": "fig-08-03",
+   "arq": "paisagismo-na-pratica-fig-08-03.webp",
+   "w": 1200,
+   "h": 760,
+   "legenda": "A área gourmet vista de cima e o que observar na hora do uso: sol da tarde, fumaça e a vista da mesa",
+   "aberta": false,
+   "secao": "Na área gourmet, manda quem fica sentado",
+   "apos": "Na área gourmet, o critério é o conforto de quem fica sentado por hora"
+  },
+  {
+   "id": "fig-08-07",
+   "arq": "paisagismo-na-pratica-fig-08-07.webp",
+   "w": 1200,
+   "h": 706,
+   "legenda": "A piscina da Chácara-Modelo e a árvore grande ao lado: observe para que lado o vento leva o que cai",
+   "aberta": false,
+   "secao": "O entorno da piscina: perguntas no lugar de um número",
+   "apos": "Na Chácara-Modelo, a árvore grande fica a seis metros da piscina. Esse"
+  }
+ ],
+ "19-pousadas-e-eventos": [
+  {
+   "id": "fig-08-05",
+   "arq": "paisagismo-na-pratica-fig-08-05.webp",
+   "w": 1200,
+   "h": 384,
+   "legenda": "O gramado de eventos com três decisões do projeto: por onde entra o serviço, onde a tenda é montada e o trecho de sacrifício",
+   "aberta": true,
+   "secao": "O desgaste se define no projeto",
+   "apos": "O desgaste é o que mais pega de surpresa. Por isso o projeto já diz po"
+  },
+  {
+   "id": "fig-08-06",
+   "arq": "paisagismo-na-pratica-fig-08-06.webp",
+   "w": 1200,
+   "h": 779,
+   "legenda": "O lugar da foto: fundo limpo, moldura de galhos e chão firme para a pessoa; atrás, o fio e a caixa-d'água a esconder",
+   "aberta": false,
+   "secao": "Casamento, retiro e o lugar da foto",
+   "apos": "O espaço fotogênico tem três partes: um fundo limpo, uma moldura, que "
+  },
+  {
+   "id": "fig-08-08",
+   "arq": "paisagismo-na-pratica-fig-08-08.webp",
+   "w": 1200,
+   "h": 253,
+   "legenda": "O caminho em corte: a roda anda no piso firme e contínuo e trava no pedrisco solto; em vermelho, o galho na altura do rosto",
+   "aberta": false,
+   "secao": "O caminho que serve a todos, e os limites",
+   "apos": "São quatro critérios, listados no material de apoio. Dois pedem atençã"
+  }
+ ],
+ "20-manutencao-e-diagnostico": [
+  {
+   "id": "fig-09-01",
+   "arq": "paisagismo-na-pratica-fig-09-01.webp",
+   "w": 1200,
+   "h": 597,
+   "legenda": "O ano do jardim no Cerrado: as duas estações, os quatro períodos e o que se faz em cada um",
+   "aberta": true,
+   "secao": "O ano do Cerrado em quatro períodos",
+   "apos": "O ano tem duas metades, divididas em quatro períodos. No início das ch"
+  },
+  {
+   "id": "fig-09-02",
+   "arq": "paisagismo-na-pratica-fig-09-02.webp",
+   "w": 1200,
+   "h": 516,
+   "legenda": "A volta de observação na Chácara-Modelo: sempre o mesmo percurso, com paradas para olhar folha, broto, caule e solo",
+   "aberta": false,
+   "secao": "As rotinas e a volta de observação",
+   "apos": "Dela, a tarefa que mais rende é a volta de observação. Ande sempre pel"
+  },
+  {
+   "id": "fig-09-03",
+   "arq": "paisagismo-na-pratica-fig-09-03.webp",
+   "w": 1200,
+   "h": 316,
+   "legenda": "O teste do dedo, com a superfície seca e úmido embaixo; a rega rápida, de raiz rasa; e a rega funda, de raiz descendo",
+   "aberta": false,
+   "secao": "Rega: quem responde é o solo",
+   "apos": "Quando e quanto regar se decide pelo teste do dedo. Se o solo está úmi"
+  },
+  {
+   "id": "fig-09-04",
+   "arq": "paisagismo-na-pratica-fig-09-04.webp",
+   "w": 1200,
+   "h": 624,
+   "legenda": "O corte de poda certo, junto à base do galho, e os dois errados: o toco deixado e o corte rente que fere o tronco",
+   "aberta": false,
+   "secao": "Poda tem motivo, e tem limite",
+   "apos": "A limpeza tira o que está seco, quebrado ou doente. A condução orienta"
+  },
+  {
+   "id": "fig-09-05",
+   "arq": "paisagismo-na-pratica-fig-09-05.webp",
+   "w": 1200,
+   "h": 339,
+   "legenda": "Os sete degraus do manejo integrado, do identificar ao produto: o último degrau só se sobe com orientação técnica",
+   "aberta": false,
+   "secao": "Manejo integrado antes do produto",
+   "apos": "Produto é o último degrau, e só com orientação: o que o rótulo indica,"
+  }
+ ],
+ "21-custos-e-compras": [
+  {
+   "id": "fig-10-01",
+   "arq": "paisagismo-na-pratica-fig-10-01.webp",
+   "w": 1200,
+   "h": 597,
+   "legenda": "O escopo da entrada: o que será feito na faixa de 12 m por 5 m e, fora da linha, o que não está incluído",
+   "aberta": false,
+   "secao": "Orçamento sem escopo é palpite",
+   "apos": "Antes de qualquer número vem o escopo. Para a entrada da Chácara-Model"
+  },
+  {
+   "id": "fig-10-02",
+   "arq": "paisagismo-na-pratica-fig-10-02.webp",
+   "w": 1200,
+   "h": 283,
+   "legenda": "A conta em três passos, com os números de exemplo: a quantidade calculada, a quantidade com a margem e o arredondamento para caixas fechadas",
+   "aberta": false,
+   "secao": "Perda e embalagem",
+   "apos": "Um exemplo, só para mostrar a conta. Nos dois canteiros da entrada da "
+  },
+  {
+   "id": "fig-10-03",
+   "arq": "paisagismo-na-pratica-fig-10-03.webp",
+   "w": 1200,
+   "h": 709,
+   "legenda": "A estrada no orçamento: os trajetos entre a chácara, o viveiro e a loja, que entram como viagens de compra, frete e viagens de serviço",
+   "aberta": true,
+   "secao": "A estrada entra na conta",
+   "apos": "Conte os quilômetros e conte o tempo. Juntar as compras em menos viage"
+  }
+ ],
+ "22-preco-e-proposta": [
+  {
+   "id": "fig-10-04",
+   "arq": "paisagismo-na-pratica-fig-10-04.webp",
+   "w": 1200,
+   "h": 502,
+   "legenda": "Duas propostas postas lado a lado, com as mesmas linhas: os vazios de uma delas aparecem na hora",
+   "aberta": false,
+   "secao": "O mesmo pedido para todos",
+   "apos": "Depois, ponha as propostas lado a lado, com as mesmas linhas: o que es"
+  },
+  {
+   "id": "fig-10-05",
+   "arq": "paisagismo-na-pratica-fig-10-05.webp",
+   "w": 1200,
+   "h": 456,
+   "legenda": "As duas armadilhas que se repetem: o preço menor com muda menor e a proposta sem preparo de solo",
+   "aberta": true,
+   "secao": "O que está fora e as duas armadilhas",
+   "apos": "Duas armadilhas se repetem. A primeira é o preço menor com muda menor:"
+  }
+ ],
+ "23-implantar-e-entregar": [
+  {
+   "id": "fig-10-06",
+   "arq": "paisagismo-na-pratica-fig-10-06.webp",
+   "w": 1200,
+   "h": 694,
+   "legenda": "O cronograma em barras, com as dependências: o plantio espera o preparo do solo, que espera o laudo",
+   "aberta": true,
+   "secao": "O cronograma e as duas estações",
+   "apos": "As etapas seguem a ordem da implantação. No cronograma se marcam as de"
+  }
+ ],
+ "24-projeto-integrador": [
+  {
+   "id": "fig-11-02",
+   "arq": "paisagismo-na-pratica-fig-11-02.webp",
+   "w": 1200,
+   "h": 574,
+   "legenda": "A planta simplificada da entrada, a mesma do capítulo 5: o caminho, o canteiro junto à estrada, o canteiro da árvore e o gramado",
+   "aberta": false,
+   "secao": "Três exercícios antes do projeto",
+   "apos": "Nenhuma coluna daquela ficha é a cor da flor. A flor entra depois, par"
+  },
+  {
+   "id": "fig-11-03",
+   "arq": "paisagismo-na-pratica-fig-11-03.webp",
+   "w": 1200,
+   "h": 516,
+   "legenda": "A Chácara-Modelo como área do projeto: a entrada, a casa com varanda, a piscina e a estrada de terra",
+   "aberta": true,
+   "secao": "Sobre qual área",
+   "apos": "A entrada da Chácara-Modelo fica no Cerrado, com chuva de outubro a ab"
+  },
+  {
+   "id": "fig-11-04",
+   "arq": "paisagismo-na-pratica-fig-11-04.webp",
+   "w": 1200,
+   "h": 907,
+   "legenda": "O croqui da entrada, o segundo entregável: as medidas e, por cima delas, a leitura do lugar, com o caminho da água",
+   "aberta": false,
+   "secao": "Briefing, croqui e paleta",
+   "apos": "O croqui é a planta em escala, com medidas, norte, construções, redes "
+  }
+ ],
+ "25-avaliacao-e-proximo-passo": [
+  {
+   "id": "fig-11-05",
+   "arq": "paisagismo-na-pratica-fig-11-05.webp",
+   "w": 1200,
+   "h": 1246,
+   "legenda": "O ciclo do projeto: é avaliado por alguém de fora, é corrigido e volta para a sua mão, para ser revisto",
+   "aberta": false,
+   "secao": "Um jardim não se termina",
+   "apos": "O projeto é avaliado, corrigido e depois volta para a sua mão duas vez"
+  },
+  {
+   "id": "fig-11-06",
+   "arq": "paisagismo-na-pratica-fig-11-06.webp",
+   "w": 1200,
+   "h": 242,
+   "legenda": "As duas datas de revisão no calendário do Cerrado: uma no fim da estação chuvosa, outra no fim da seca",
+   "aberta": true,
+   "secao": "Duas datas e três perguntas",
+   "apos": "Marque duas datas no ano: uma no fim da estação chuvosa, outra no fim "
+  }
+ ]
+}

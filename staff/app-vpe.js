@@ -14,7 +14,7 @@ const VP = {
 
   abrir(tab) { if (tab) VP.tab = tab; VP.render(); },
   render() {
-    const abas = [['visao', '📊 Visão'], ['tenants', '🏢 Empresas'], ['planos', '📦 Planos'], ['leads', '📥 Leads'], ['auditoria', '📜 Auditoria']]
+    const abas = [['visao', '📊 Visão'], ['tenants', '🏢 Empresas'], ['planos', '📦 Planos'], ['cortesia', '🎟️ Cortesia'], ['leads', '📥 Leads'], ['auditoria', '📜 Auditoria']]
       .map(([id, rot]) => `<button class="btn ${VP.tab === id ? '' : 'secund'} peq" onclick="VP.ir('${id}')">${rot}</button>`).join(' ');
     conteudo().innerHTML = cabecalho('📋 Villela Projects & Events', 'Administração da plataforma de gestão de projetos e eventos. Produto: <a href="/vpe" target="_blank">/vpe</a> · painel: <a href="/vpe/app" target="_blank">/vpe/app</a>.')
       + `<div class="card" style="display:flex;flex-wrap:wrap;gap:.4rem">${abas}</div><div id="vp-body"><p class="sub">Carregando…</p></div>`;
@@ -24,7 +24,7 @@ const VP = {
   body() { return document.getElementById('vp-body'); },
   async pintar() {
     try {
-      const v = { visao: VP.vVisao, tenants: VP.vTenants, planos: VP.vPlanos, leads: VP.vLeads, auditoria: VP.vAuditoria }[VP.tab];
+      const v = { visao: VP.vVisao, tenants: VP.vTenants, planos: VP.vPlanos, cortesia: VP.vCortesia, leads: VP.vLeads, auditoria: VP.vAuditoria }[VP.tab];
       if (v) await v();
     } catch (e) { VP.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
@@ -66,6 +66,9 @@ const VP = {
         + `<a href="${esc(a.painel_url)}" target="_blank">abrir painel ↗</a>`;
     } catch (e) { out.innerHTML = `<span style="color:var(--alerta)">${esc(e.message)}</span>`; }
   },
+
+  // componente comum: app-cortesia.js
+  async vCortesia() { await cortesiaPainel(VP.body(), 'vpe'); },
 
   async vTenants() {
     const { tenants } = await VP.api('GET', '/tenants');

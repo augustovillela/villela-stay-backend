@@ -111,6 +111,9 @@ function montar(app, injected = {}) {
   // páginas gerais para que as rotas dele não sejam engolidas.
   require('./laboratorio').montar(app, { requireUsuario: sessaoDoModulo.requireUsuario, opcional: sessaoDoModulo.opcional,
     ehDocente, buscarContaPorEmail, buscarContaPorId });
+  // Tocar junto tem captura e interface próprias; compartilha a identidade
+  // do Musique e os mecanismos de exportação/exclusão do Laboratório.
+  require('./tocar').montar(app, { requireUsuario: sessaoDoModulo.requireUsuario, opcional: sessaoDoModulo.opcional });
   registrarPaginas(app);
   // Rotina da assinatura: tolerância vencida tira o acesso; curso novo
   // publicado chega a quem assina. De hora em hora, e 1 min após subir.

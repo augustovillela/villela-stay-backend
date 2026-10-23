@@ -10,6 +10,7 @@ const { db, nowISO } = require('./db');
 const repo = require('./repo');
 const billing = require('./billing');
 const push = require('./push');
+const creditos = require('./creditos');
 
 const COOKIE = 'jur_saas';
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -17,7 +18,7 @@ const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
   const seguro = process.env.NODE_ENV !== 'development';
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0].trim();
-  const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
+  const h = (fn) => (req, res) => Promise.resolve().then(() => fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
 
   // rate limit login
   const tentativas = new Map();
@@ -126,6 +127,58 @@ function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
     if (req.assinante.papel !== 'admin') return res.status(403).json({ erro: 'Apenas admin.' });
     const id = repo.Tenants.addWorkspace(req.assinante.tenant_id, s((req.body || {}).nome, 120));
     res.json({ ok: true, id });
+  }));
+
+  // ---- EQUIPE do escritório: o administrador convida, desativa e reenvia o link ----
+  // O perfil jurídico (advogado, estagiário…) e a OAB de cada um ficam em
+  // ⚖️ Meu Jurídico → Equipe, a MESMA tela do escritório interno.
+  const BASE = (process.env.LEGAL_SAAS_BASE_URL || 'https://juridico.villelastay.com.br').replace(/\/+$/, '');
+  const soAdmin = (req, res, next) => req.assinante.papel === 'admin' ? next() : res.status(403).json({ erro: 'Apenas o administrador do escritório gerencia a equipe.' });
+  const linkSenha = (uid) => `${BASE}/juridico/definir-senha?token=${jwt.sign({ tipo: 'legalsaas-setup', uid }, jwtSecret, { expiresIn: '30d' })}`;
+  app.get('/juridico/api/usuarios', requireAssinante, h(async (req, res) => {
+    res.json({ usuarios: repo.Tenants.usuarios(req.assinante.tenant_id), vagas: repo.Tenants.vagasUsuarios(req.assinante.tenant_id), eu: req.assinante.id, admin: req.assinante.papel === 'admin' });
+  }));
+  app.post('/juridico/api/usuarios', requireAssinante, soAdmin, h(async (req, res) => {
+    const b = req.body || {};
+    const id = repo.Tenants.addUsuario(req.assinante.tenant_id, { nome: s(b.nome, 120), email: s(b.email, 120), papel: b.papel });
+    res.json({ ok: true, id, definir_senha_url: linkSenha(id), validade_link: '30 dias' });
+  }));
+  app.post('/juridico/api/usuarios/:id/link', requireAssinante, soAdmin, h(async (req, res) => {
+    const u = repo.Tenants.usuarios(req.assinante.tenant_id).find(x => x.id === req.params.id);
+    if (!u) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+    res.json({ ok: true, email: u.email, definir_senha_url: linkSenha(u.id), validade_link: '30 dias' });
+  }));
+  app.patch('/juridico/api/usuarios/:id', requireAssinante, soAdmin, h(async (req, res) => {
+    const b = req.body || {};
+    if (req.params.id === req.assinante.id && b.ativo === false) return res.status(400).json({ erro: 'Você não pode desativar o próprio acesso.' });
+    res.json({ ok: true, usuario: repo.Tenants.mudarUsuario(req.assinante.tenant_id, req.params.id, { ativo: b.ativo, papel: b.papel }) });
+  }));
+
+  // ---- CRÉDITOS DE IA e CHAVE PRÓPRIA (ver creditos.js) ----
+  // Todo usuário do escritório VÊ saldo e extrato; só o administrador recarrega ou mexe na chave.
+  const precosIA = () => {
+    const llm = require('../legal/llm');
+    const cfg = creditos.Config.ler(), cam = creditos.cambio();
+    const p = llm.PRECOS[llm.MODELOS[0]] || { in: 5, out: 25 };
+    const porMilhao = (usd) => cam ? Math.ceil(usd * cam * (1 + cfg.margem_pct / 100) * 100) : 0; // centavos por 1 milhão de tokens
+    return { modelo: llm.MODELOS[0], cambio_ok: !!cam, recarga_minima_centavos: cfg.recarga_minima_centavos,
+      entrada_centavos_por_milhao: porMilhao(p.in), saida_centavos_por_milhao: porMilhao(p.out),
+      teto_saida_centavos: cam ? creditos.centavosDe(llm.MAX_TOKENS * p.out) : 0 };
+  };
+  app.get('/juridico/api/ia/creditos', requireAssinante, h(async (req, res) => {
+    const tid = req.assinante.tenant_id;
+    res.json({ ...creditos.Carteira.saldo(tid), extrato: creditos.Carteira.extrato(tid, 40), recargas: creditos.Recargas.listar(tid, 10),
+      chave: creditos.Chaves.resumo(tid), precos: precosIA(), pagamento_online: billing.ativo(), admin: req.assinante.papel === 'admin' });
+  }));
+  app.post('/juridico/api/ia/recarga', requireAssinante, soAdmin, h(async (req, res) => {
+    const r = await creditos.Recargas.criar(req.assinante.tenant_id, Math.round(Number((req.body || {}).valor_centavos) || 0), { email: req.assinante.email, baseUrl: BASE });
+    res.json({ ok: true, ...r });
+  }));
+  app.put('/juridico/api/ia/chave', requireAssinante, soAdmin, h(async (req, res) => {
+    res.json({ ok: true, chave: await creditos.Chaves.salvar(req.assinante.tenant_id, (req.body || {}).chave, req.assinante.email) });
+  }));
+  app.delete('/juridico/api/ia/chave', requireAssinante, soAdmin, h(async (req, res) => {
+    res.json({ ok: true, chave: creditos.Chaves.remover(req.assinante.tenant_id) });
   }));
 
   return { requireAssinante, COOKIE };

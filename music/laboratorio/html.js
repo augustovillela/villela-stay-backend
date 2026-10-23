@@ -131,8 +131,9 @@ function visual(v) {
   }
   if (v.tipo === 'progressao') {
     const acs = v.simbolos.map((s) => ({ s, a: A.ler(s) }));
+    const ePedagogica = acs.every(({ a }) => !a);
     let ant = null;
-    const seq = acs.map(({ a }) => {
+    const seq = ePedagogica ? [60, 62, 64, 67].slice(0, acs.length).map((m) => [m]) : acs.map(({ a }) => {
       if (!a) return [];
       const c = A.conduzir(ant, a.fundamental, a.id);
       const ns = c ? c.notas : A.notas(N.comOitava(a.fundamental, 4), a.id);
@@ -141,7 +142,7 @@ function visual(v) {
       return [N.midi(N.comOitava(baixo, 2))].concat(ns.map(N.midi));
     });
     return `<figure class="lab-fig lab-prog"><p class="lab-prog-acordes">${acs.map(({ s, a }, i) => (a ? `<a href="${CAT.urlAcorde(a.fundamental, a.id)}">${esc(s)}</a>` : esc(s)) + (v.graus ? ` <small>${esc(v.graus[i] || '')}</small>` : '')).join(' → ')}</p>
-      <figcaption>${v.legenda ? esc(v.legenda) + ' ' : ''}<button type="button" class="lab-ouvir" data-sequencia="${esc(JSON.stringify(seq))}"><span aria-hidden="true">▶</span> Ouvir</button></figcaption></figure>`;
+      <figcaption>${v.legenda ? esc(v.legenda) + ' ' : ''}<button type="button" class="lab-ouvir" data-sequencia="${esc(JSON.stringify(seq))}"><span aria-hidden="true">▶</span> ${ePedagogica ? 'Ouvir ciclo' : 'Ouvir'}</button></figcaption></figure>`;
   }
   if (v.tipo === 'campo') return tabelaCampo(N.ler(v.tonica), v.modo, { tetrades: v.tetrades });
   if (v.tipo === 'circulo-quintas') return `<figure class="lab-fig lab-fig-circ">${circuloDeQuintas({})}</figure>`;
@@ -160,8 +161,8 @@ function circuloDeQuintas({ ativo = null, modo = 'maior' } = {}) {
   });
   const internos = T.CIRCULO.map((c, i) => ({ rotulo: cif(N.ler(c.menor)) + 'm', tipo: ativo != null && i === ativo && modo === 'menor' ? 'ativo' : '', dado: 'm' + i,
     acessivel: T.nome(N.ler(c.menor), 'menor') }));
-  return D.anel({ itens, interno: internos, titulo: 'Círculo de quintas', centro: 'quintas ↻',
-    descricao: 'Tons maiores por fora e relativos menores por dentro; no sentido horário, cada passo sobe uma quinta e acrescenta um sustenido.', interativo: true });
+  return D.anel({ itens, interno: internos, titulo: 'Círculo de quintas e quartas', centro: 'quintas ↻',
+    descricao: 'Tons maiores por fora e relativos menores por dentro. Use o controle da página para alternar entre o sentido das quintas e o das quartas.', interativo: true });
 }
 
 function tabelaCampo(tonica, modo, { tetrades = false, variante } = {}) {

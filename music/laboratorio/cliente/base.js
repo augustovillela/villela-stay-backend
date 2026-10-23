@@ -109,6 +109,21 @@
     setTimeout(function () { URL.revokeObjectURL(u); }, 2000);
   };
 
+  /** Converte um SVG gerado pelo laboratório em PNG no navegador. */
+  C.baixarPng = function (nome, svgTexto, largura, altura) {
+    try {
+      var b = new Blob([svgTexto], { type: 'image/svg+xml;charset=utf-8' });
+      var u = URL.createObjectURL(b), img = new Image();
+      img.onload = function () {
+        var c = d.createElement('canvas'); c.width = largura || img.naturalWidth || 1200; c.height = altura || img.naturalHeight || 800;
+        var ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(function (png) { if (png) C.baixar(nome, 'image/png', png); else C.aviso('O navegador não conseguiu criar o PNG.', 'erro'); URL.revokeObjectURL(u); }, 'image/png');
+      };
+      img.onerror = function () { URL.revokeObjectURL(u); C.aviso('Não consegui converter a visualização para PNG.', 'erro'); };
+      img.src = u;
+    } catch (e) { C.aviso('Não consegui exportar PNG: ' + e.message, 'erro'); }
+  };
+
   // ---- delegação global: qualquer botão .lab-ouvir toca ----
   d.addEventListener('click', function (ev) {
     var b = ev.target.closest && ev.target.closest('.lab-ouvir');
@@ -169,6 +184,37 @@
     m.appendChild(b);
   }
 
+  // ---- progresso local do curso de teoria ----
+  function progressoCurso() {
+    var chave = 'musique-curso-teoria-concluidas-v1', concluidas = {};
+    try { concluidas = JSON.parse(w.localStorage.getItem(chave) || '{}') || {}; } catch (_) { concluidas = {}; }
+    function salvar() { try { w.localStorage.setItem(chave, JSON.stringify(concluidas)); } catch (_) { /* armazenamento indisponível */ } }
+    function atualizar() {
+      var links = C.$$('.curso-modulo a[data-curso-slug]'), total = links.length, feitos = 0;
+      links.forEach(function (a) { var ok = !!concluidas[a.getAttribute('data-curso-slug')]; a.classList.toggle('curso-feito', ok); var li = a.closest('li'); if (li) li.classList.toggle('curso-item-feito', ok); if (ok) feitos++; });
+      var painel = C.$('#curso-progresso'); if (painel) painel.textContent = total ? 'Progresso neste navegador: ' + feitos + ' de ' + total + ' lições concluídas (' + Math.round(feitos / total * 100) + '%).' : 'As primeiras lições serão adicionadas em breve.';
+      C.$$('.curso-nivel[data-curso-nivel]').forEach(function (nivel) { var ls = nivel.querySelectorAll('a[data-curso-slug]'), n = 0; Array.prototype.forEach.call(ls, function (a) { if (concluidas[a.getAttribute('data-curso-slug')]) n++; }); var p = nivel.querySelector('[data-curso-nivel-progresso]'); if (p) p.textContent = ls.length ? n + '/' + ls.length + ' · ' + Math.round(n / ls.length * 100) + '%' : 'sem lições publicadas'; });
+      var proxima = C.$('#curso-proxima'); if (proxima) { var n = links.length && Array.prototype.find.call(links, function (a) { return !concluidas[a.getAttribute('data-curso-slug')]; }); if (n) { proxima.innerHTML = '<strong>Próxima lição recomendada:</strong> '; proxima.appendChild(C.el('a', { href: n.href, txt: n.textContent })); } else proxima.textContent = total ? 'Curso concluído neste navegador. Revise qualquer nível quando quiser.' : ''; }
+      var b = C.$('.curso-concluir'); if (b) { var slug = b.getAttribute('data-curso-licao'), ok = !!concluidas[slug]; b.setAttribute('aria-pressed', ok ? 'true' : 'false'); b.textContent = ok ? '✓ Lição concluída — desfazer' : 'Marcar lição como concluída'; }
+    }
+    var botao = C.$('.curso-concluir'); if (botao) botao.onclick = function () { var slug = botao.getAttribute('data-curso-licao'); if (concluidas[slug]) delete concluidas[slug]; else concluidas[slug] = new Date().toISOString(); salvar(); atualizar(); C.aviso(concluidas[slug] ? 'Lição concluída neste navegador.' : 'Lição reaberta.'); };
+    atualizar();
+  }
+
+  function filtrosCurso() {
+    var botoes = C.$$('.curso-filtro'); if (!botoes.length) return;
+    var itens = C.$$('.curso-modulo li[data-curso-trilhas]'), status = C.$('#curso-filtro-status');
+    var nomes = { todos: 'Todas', conhecer: 'Conhecer', ouvir: 'Ouvir e reconhecer', aplicar: 'Aplicar' };
+    function aplicar(filtro) {
+      var visiveis = 0;
+      itens.forEach(function (item) { var mostra = filtro === 'todos' || item.getAttribute('data-curso-trilhas').split(' ').indexOf(filtro) >= 0; item.hidden = !mostra; if (mostra) visiveis++; });
+      botoes.forEach(function (x) { var id = x.getAttribute('data-curso-filtro'); x.classList.toggle('ativo', id === filtro); x.setAttribute('aria-selected', id === filtro ? 'true' : 'false'); });
+      if (status) status.textContent = (nomes[filtro] || filtro) + ': ' + visiveis + (visiveis === 1 ? ' lição visível.' : ' lições visíveis.') + (filtro === 'todos' ? ' Escolha uma trilha para filtrar.' : ' Clique em “Todas” para voltar a ver o curso inteiro.');
+    }
+    botoes.forEach(function (b) { b.onclick = function () { aplicar(b.getAttribute('data-curso-filtro')); }; });
+    aplicar('todos');
+  }
+
   // ---- barra de rolagem também EM CIMA das tabelas largas (atlas) ----
   // Uma faixa fina acima da tabela, do mesmo comprimento, rola junto com a
   // de baixo: dá para ir para os lados sem descer até o fim da tabela.
@@ -197,6 +243,8 @@
     buscaViva();
     botaoFavorito();
     botaoAula();
+    progressoCurso();
+    filtrosCurso();
     var main = C.$('#lab-main');
     if (!main) return;
     var slug = main.getAttribute('data-ferramenta');

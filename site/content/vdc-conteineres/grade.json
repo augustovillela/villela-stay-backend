@@ -1,0 +1,207 @@
+{
+ "titulo": "Construção com Contêineres na Prática",
+ "subtitulo": "Planejamento, contratação e fiscalização de casas, studios e pequenas villas",
+ "total": 25,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "Construção com contêineres: possibilidades e limitações",
+   "sub": "O contêiner é uma caixa de carga: para abrigar gente, depende de onze etapas, e a compra é a quarta.",
+   "capitulos": "Capítulo 1 e elementos iniciais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "Casas, quitinetes e villas: escolha do modelo de negócio",
+   "sub": "Cada nome de unidade é um programa, e o uso muda o programa antes de mudar a decoração.",
+   "capitulos": "Capítulo 1, com a abertura do capítulo 10",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "Equipe técnica, licenciamento e documentação",
+   "sub": "Cada serviço tem uma coluna, cada responsável tem um registro na pasta, e a consulta ao órgão vem antes da compra.",
+   "capitulos": "Capítulo 2",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "Estrutura do contêiner e riscos das modificações",
+   "sub": "A lateral ondulada faz parte da estrutura: cada corte tira um pedaço dela, e o que repõe é o reforço que o projeto calcula.",
+   "capitulos": "Capítulo 3 e elementos iniciais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "Segurança em transporte, içamento, corte e montagem",
+   "sub": "Nesses serviços, a sua segurança é um lugar e uma pasta: atrás da linha de isolamento, com os documentos conferidos antes.",
+   "capitulos": "Capítulo 2, com trechos do capítulo 6 e dos elementos iniciais",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "Como avaliar a chácara e escolher o ponto de implantação",
+   "sub": "O lugar vem antes do contêiner: compare os pontos pelo que se observa, descreva o caminho na ficha de acesso e peça a resposta por escrito.",
+   "capitulos": "Capítulo 4 e capítulo 11",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "Implantação, sol, ventilação, privacidade e acessos",
+   "sub": "Antes de qualquer isolante, quatro decisões mudam o calor da caixa: sombra, cor, ventilação e orientação. Depois, a caixa entra no terreno, no papel.",
+   "capitulos": "Capítulo 3 e capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "Tipos, inspeção, procedência e compra do contêiner",
+   "sub": "Compra-se a caixa pelo que a vistoria mostra e o documento declara; comprada, ela vai primeiro para a higienização profissional.",
+   "capitulos": "Capítulo 3, capítulo 4 e capítulo 2",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "Programa, layout e compatibilização preliminar",
+   "sub": "O comprimento se divide em zonas que fecham a conta; a largura é o recurso escasso, e cada centímetro de camada sai dela.",
+   "capitulos": "Capítulo 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "Orçamento, cronograma, riscos e contratação",
+   "sub": "Proposta se compara linha por linha, e paga-se a etapa conferida, e não a data que chegou.",
+   "capitulos": "Capítulo 5, capítulo 10 e capítulo 11",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "Preparação do terreno, drenagem e infraestrutura",
+   "sub": "O terreno não é aplainado para receber a caixa: a água é levada para longe dos apoios, e o nível vem deles.",
+   "capitulos": "Capítulo 6, com um trecho do capítulo 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "Fundações e apoios: critérios para projeto e fiscalização",
+   "sub": "A base do contêiner é fundação: quem escolhe é o projeto, e o que cabe a você são duas perguntas, feitas com o responsável presente.",
+   "capitulos": "Capítulo 4 e capítulo 6",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "Transporte, recebimento, posicionamento e nivelamento",
+   "sub": "O dia do içamento se decide na véspera, no papel; no dia, o seu lugar é atrás da linha, e a sua conferência vem depois da liberação.",
+   "capitulos": "Capítulo 6, com trechos do capítulo 3 e do capítulo 4",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Cortes, reforços e tratamento anticorrosivo",
+   "sub": "Nenhuma abertura se decide na oficina: ela vem desenhada, e a sua parte é conferir contra o desenho e fotografar antes da tinta.",
+   "capitulos": "Capítulo 6, com trechos do capítulo 3 e do capítulo 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "Cobertura, fachadas, esquadrias e proteção contra água",
+   "sub": "Um segundo telhado recebe o sol e a chuva no lugar da chapa, e a água se confere nos encontros.",
+   "capitulos": "Capítulo 7, com trechos do capítulo 4, do capítulo 3 e do capítulo 2",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "Isolamento térmico e controle de condensação",
+   "sub": "A camada que separa o aço de quem está dentro tem de ser contínua: você pergunta, anota a resposta do projetista e confere antes do forro.",
+   "capitulos": "Capítulo 7 e capítulo 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Desempenho acústico e privacidade",
+   "sub": "O som passa por onde a camada é interrompida e por onde passa ar; a privacidade se confere sentado e deitado, nos dois sentidos.",
+   "capitulos": "Capítulo 7, capítulo 8, capítulo 5 e capítulo 3",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "Coordenação das instalações elétricas e hidrossanitárias",
+   "sub": "Você não instala nem testa: coordena a ordem dos ofícios, faz as perguntas e só deixa a parede fechar com foto, teste e assinatura.",
+   "capitulos": "Capítulo 7",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "Revestimentos, cozinha, banheiro e mobiliário",
+   "sub": "Numa caixa estreita, o acabamento se escolhe pela largura que sobrou depois do forro e se fixa no forro e na estrutura auxiliar, nunca na chapa.",
+   "capitulos": "Capítulo 8",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "Inspeção, patologias e plano de manutenção",
+   "sub": "Você descreve e registra, com data e régua; a causa é de quem dá laudo; e nove sinais não esperam a próxima visita.",
+   "capitulos": "Capítulo 9",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "Projeto de moradia ou quitinetes para locação mensal na chácara",
+   "sub": "Morar é outro programa na mesma caixa; em linha, as unidades poupam caminho e perdem privacidade, e mais de uma unidade pede nova consulta.",
+   "capitulos": "Capítulo 8 e capítulo 1",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "Projeto de pequenas villas para plataformas de hospedagem e turismo rural",
+   "sub": "Em volta de um pátio, as unidades ganham um lugar de encontro e perdem silêncio; e mais de uma unidade pede nova consulta ao órgão.",
+   "capitulos": "Capítulo 8 e capítulo 1",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "Operação, custos, ocupação e experiência do hóspede",
+   "sub": "Quatro contas com letras, em três cenários que são seus, e o que precisa estar pronto, conferido e na pasta no dia da entrega.",
+   "capitulos": "Capítulo 10, com trechos do capítulo 8 e do capítulo 9",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "Desenvolvimento da implantação na Chácara-Modelo",
+   "sub": "A obra de exemplo percorrida pelas onze etapas, com quem responde por cada uma e o que se confere antes da seguinte.",
+   "capitulos": "Capítulo 11 e elementos finais, com as onze etapas dos capítulos 1 e 5",
+   "gravada": true,
+   "tem_artigo": true
+  },
+  {
+   "n": 25,
+   "titulo": "Apresentação, análise de viabilidade e próximos passos",
+   "sub": "O plano está pronto quando outra pessoa o entende sem você ao lado, e a conta vale pelo que diz no cenário de ocupação baixa.",
+   "capitulos": "Capítulo 11 e capítulo 10, com trechos do capítulo 5, dos elementos iniciais e dos elementos finais",
+   "gravada": true,
+   "tem_artigo": true
+  }
+ ]
+}

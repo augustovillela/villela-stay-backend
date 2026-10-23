@@ -1,0 +1,77 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const Core = require('./nucleo');
+const Estudos = require('./estudos');
+const Formato = require('./formato-arranjo');
+
+function guitarra() {
+  return { id: 'g-1', title: 'Guitarra aberta', bpm: 90, duration: 4, tuning: [40, 45, 50, 55, 59, 64],
+    notes: [{ id: 'n1', time: 1, duration: 0.5, string: 1, fret: 0, midi: 64 }],
+    sections: [{ id: 'intro', title: 'Introdução', from: 0, to: 4 }] };
+}
+
+test('normaliza guitarra para o contrato aberto', () => {
+  const out = Formato.normalizar({ chart: guitarra(), sources: [{ format: 'midi', name: 'estudo.mid', sha256: 'abc' }] }, { instrument: 'guitarra' });
+  assert.equal(out.schema, 'musique.arrangement.v1');
+  assert.equal(out.tracks[0].events[0].atMs, 1000);
+  assert.equal(out.tracks[0].events[0].string, 1);
+  assert.equal(out.sections[0].toMs, 4000);
+  assert.equal(out.sources[0].name, 'estudo.mid');
+});
+
+test('normaliza piano e bateria sem exigir corda/casa', () => {
+  const piano = Estudos.obter('piano-pulsacao-v1');
+  const bateria = Estudos.obter('bateria-pulsacao-v1');
+  const p = Formato.normalizar({ chart: piano }, { instrument: 'piano' });
+  const b = Formato.normalizar({ chart: bateria }, { instrument: 'bateria' });
+  assert.equal(p.tracks[0].events[0].type, 'note');
+  assert.equal(p.tracks[0].events[0].string, undefined);
+  assert.equal(b.tracks[0].events[0].drum !== undefined, true);
+});
+
+test('rejeita fonte com caminho e nota fora dos limites', () => {
+  assert.throws(() => Formato.normalizar({ chart: guitarra(), sources: [{ format: 'midi', name: '../estudo.mid' }] }, { instrument: 'guitarra' }), /caminho/);
+  const ruim = guitarra(); ruim.notes[0].midi = 200;
+  assert.throws(() => Formato.normalizar({ chart: ruim }, { instrument: 'guitarra' }), /MIDI/);
+});
+
+test('o formato aberto exportado pode voltar ao chart do editor', () => {
+  const aberto = Formato.normalizar({ chart: guitarra() }, { instrument: 'guitarra' });
+  const chart = Formato.desnormalizar(aberto);
+  assert.equal(chart.title, 'Guitarra aberta');
+  assert.deepEqual(chart.notes[0], { id: 'open-1', time: 1, duration: 0.5, midi: 64, string: 1, fret: 0 });
+});
+
+test('mescla trilhas de piano e bateria e exige seleção para cordas', () => {
+  const aberto = Formato.normalizar({ chart: guitarra() }, { instrument: 'guitarra' });
+  const piano = { ...aberto, title: 'Piano', sections: [], tracks: [
+    { id: 'p1', instrument: 'piano', events: [{ type: 'note', atMs: 0, durationMs: 500, midi: 60 }] },
+    { id: 'p2', instrument: 'piano', events: [{ type: 'note', atMs: 1000, durationMs: 500, midi: 64 }] }
+  ], durationMs: 2000 };
+  assert.equal(Formato.desnormalizar(piano).notes.length, 2);
+  const cordas = { ...aberto, tracks: [aberto.tracks[0], { ...aberto.tracks[0], id: 'g2' }] };
+  assert.throws(() => Formato.desnormalizar(cordas), /trilha de cordas/);
+  assert.equal(Formato.desnormalizar(cordas, { trackIndex: 1 }).notes.length, 1);
+});
+
+test('reconstrói batidas acumuladas em mapa de andamento variável', () => {
+  const aberto = Formato.normalizar({ chart: { ...guitarra(), bpm: 120, tempoMap: { version: 1, events: [{ time: 0, beat: 0, bpm: 120 }, { time: 2, beat: 4, bpm: 60 }] } } }, { instrument: 'guitarra' });
+  const mapa = Formato.desnormalizar(aberto).tempoMap.events;
+  assert.equal(mapa[0].beat, 0);
+  assert.equal(mapa[1].beat, 4);
+  assert.equal(mapa[1].bpm, 60);
+});
+
+test('valida o documento aberto antes de importá-lo', () => {
+  const aberto = Formato.normalizar({ chart: guitarra() }, { instrument: 'guitarra' });
+  assert.equal(Formato.validar(aberto), true);
+  assert.throws(() => Formato.validar({ ...aberto, schema: 'outro' }), /schema/);
+  assert.throws(() => Formato.validar({ ...aberto, tracks: [] }), /ao menos uma trilha/);
+});
+
+test('exporta enum estável', () => {
+  assert.deepEqual(Formato.INSTRUMENTOS, ['violao', 'guitarra', 'baixo', 'cavaquinho', 'ukulele', 'bandolim', 'piano', 'bateria']);
+  assert.equal(Formato.MAX_EVENTOS, 10000);
+  assert.ok(Core);
+});

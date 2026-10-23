@@ -496,7 +496,9 @@
   // ---------------------------------------------------------------
   // Comandos de voz
   // ---------------------------------------------------------------
-  var V = C.Voz = {};
+  // Preserve the vocal profile API initialized by cliente/voz.js; Smart Play
+  // only adds its voice-command helpers to the same namespace.
+  var V = C.Voz = C.Voz || {};
   var Reconhecer = global.SpeechRecognition || global.webkitSpeechRecognition;
   V.disponivel = function () { return !!Reconhecer; };
   var ouvindo = null;
