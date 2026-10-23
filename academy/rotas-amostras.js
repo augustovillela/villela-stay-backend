@@ -178,7 +178,7 @@ function registrarRotasAmostrasStaff(app, { requirePublishOrAdmin, requireAuth, 
     try { Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message })); }
     catch (e) { res.status(400).json({ erro: e.message }); }
   };
-  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || (req.viaChave ? 'chave-de-publicacao' : 'plataforma'));
+  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || (req.viaChave ? (req.rotuloChave || 'chave-de-publicacao') : 'plataforma'));
   const aud = (req, acao, id, det) => repo.Auditoria.registrar({ quem: quem(req), papel: 'staff', acao, entidade: 'amostras', entidade_id: s(id, 40), detalhe: s(det, 300), ip: '' });
   const resposta = (produto) => ({
     produto: { id: produto.id, titulo: produto.titulo, slug: produto.slug, status: produto.status },

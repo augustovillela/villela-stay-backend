@@ -27,6 +27,7 @@ const { registrarRotasEcossistema, registrarRotasEcossistemaStaff, rotinaLembret
 const { registrarRotasEstudo, registrarRotasEstudoStaff } = require('./rotas-estudo');
 const { registrarRotasAmostras, registrarRotasAmostrasStaff } = require('./rotas-amostras');
 const { registrarPaginas } = require('./paginas');
+const tokensApi = require('./tokens-api');
 const webhookMP = require('../nucleo/webhook-mp');
 
 function montar(app, injected = {}) {
@@ -114,7 +115,12 @@ function montar(app, injected = {}) {
   // o aceite de valor da IA (cabecalho X-IA-Aceite) vale para a requisicao inteira; precisa vir antes das rotas
   app.use('/academy/api', require('./ia').middlewareAceite);
 
-  registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrAdmin, jwtSecret });
+  // Token de API temporário (nucleo/tokens-api.js; lista desta casa em tokens-api.js): aceito SÓ onde a
+  // PUBLISH_KEY já valia, e só nas rotas da lista. Sem token no pedido, a guarda é a de sempre.
+  // Emitir/revogar = sessão de admin no Portal Staff (🔑 Tokens de API).
+  tokensApi.registrar();
+  const guardaPA = requirePublishOrAdmin ? require('../nucleo/tokens-api').guarda(tokensApi.SISTEMA, requirePublishOrAdmin) : undefined;
+  registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrAdmin: guardaPA, jwtSecret });
   registrarRotasCheckoutStaff(app, { requireAuth, requireAdmin });
   const cliente = registrarRotasCliente(app, { jwtSecret });
   registrarRotasConteudo(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
@@ -128,15 +134,15 @@ function montar(app, injected = {}) {
   registrarRotasGovernanca(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
   registrarRotasGovernancaStaff(app, { requireAuth, requireAdmin });
   registrarRotasInterativo(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
-  registrarRotasInterativoStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
+  registrarRotasInterativoStaff(app, { requirePublishOrAdmin: guardaPA, requireAuth, requireAdmin });
   registrarRotasJornada(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
-  registrarRotasJornadaStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
+  registrarRotasJornadaStaff(app, { requirePublishOrAdmin: guardaPA, requireAuth, requireAdmin });
   registrarRotasEcossistema(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
-  registrarRotasEcossistemaStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
+  registrarRotasEcossistemaStaff(app, { requirePublishOrAdmin: guardaPA, requireAuth, requireAdmin });
   registrarRotasEstudo(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
-  registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
+  registrarRotasEstudoStaff(app, { requirePublishOrAdmin: guardaPA, requireAuth, requireAdmin });
   registrarRotasAmostras(app); // amostras grátis: leitura pública (depois do no-store padrão de /academy/api)
-  registrarRotasAmostrasStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
+  registrarRotasAmostrasStaff(app, { requirePublishOrAdmin: guardaPA, requireAuth, requireAdmin });
   registrarPaginas(app, { notificar });
 
   // webhook do Mercado Pago (200 rápido; processamento assíncrono e idempotente)

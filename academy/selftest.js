@@ -77,6 +77,7 @@ app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 const academy = require('./index');
 academy.montar(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, alertaAugusto, enviarEmail, mpFetch, jwtSecret: 'seg-teste' });
+require('../nucleo/tokens-api').montar(app, { requireAuth, requireAdmin }); // 🔑 gestão dos tokens (no servidor real, server.js monta)
 const espera = (ms) => new Promise(r => setTimeout(r, ms));
 
 let BASE = '', ok = 0, falhas = [];
@@ -2852,6 +2853,9 @@ async function main() {
 
   // ================= VISITAS IDENTIFICADAS + TEMPO NAS AULAS (nucleo/atribuicao-aluno.js, ct.Tempo, relatorio-visitas-alunos.js) =================
   await require('./testes-visitas-alunos').rodar({ t, req, jars, emailProdutor: MARIA.email });
+
+  // ================= TOKENS DE API TEMPORÁRIOS (nucleo/tokens-api.js + tokens-api.js) =================
+  await require('./testes-tokens-api').rodar({ t, req, app, emailProdutor: MARIA.email });
 
   // ================= CARTEIRA DE IA (carteira-ia.js) — por último: liga a cobrança =================
   await require('./testes-carteira-ia').rodar({ t, req, impId, jars });

@@ -10,7 +10,7 @@ const repo = require('./repo');
 
 function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrAdmin, jwtSecret }) {
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || (req.viaChave ? 'chave-de-publicacao' : 'plataforma'));
+  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || (req.viaChave ? (req.rotuloChave || 'chave-de-publicacao') : 'plataforma'));
   const A = [requireAuth, requireAdmin];
   // PA: admin do portal OU PUBLISH_KEY (automação local). Sem a injeção, cai em A —
   // nunca afrouxa sozinho. Usado só nas rotas de importação/leitura de produtores.
