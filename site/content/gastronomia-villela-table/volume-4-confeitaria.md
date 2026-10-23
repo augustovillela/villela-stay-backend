@@ -305,3 +305,57 @@ Monte vitrine com quatro produtos, identificando ingredientes, alergênicos e co
 
 ### Aula 80 — Projeto final de confeitaria
 Produza portfólio com cinco itens: ficha, formulação, fotos de etapas, custo, validade, embalagem, desenho de vitrine e análise sensorial. A aprovação exige precisão, segurança, repetibilidade, equilíbrio e capacidade de justificar todas as decisões.
+
+## Caderno de fichas de confeitaria
+
+### Ficha 1 — Pão de ló de baunilha
+
+**Rendimento:** uma forma de 20 cm. **Ingredientes:** 180 g de ovos, 120 g de açúcar, 120 g de farinha peneirada e baunilha. **Processo:** aqueça ovos e açúcar suavemente; bata até volume; incorpore farinha em movimentos envolventes; asse em forno pré-aquecido. **Controle:** pesar a massa, registrar altura e evitar abrir o forno cedo. **Uso:** bolos montados e entremets.
+
+### Ficha 2 — Massa sablée
+
+**Rendimento:** uma torta de 20 cm. **Ingredientes:** 200 g de farinha, 100 g de manteiga fria, 70 g de açúcar, 40 g de ovo e sal. **Processo:** faça arenamento; una sem sovar; descanse refrigerado; abra entre folhas; forre; gele novamente; asse com peso e depois sem peso. **Diagnóstico:** retração indica excesso de trabalho ou descanso insuficiente.
+
+### Ficha 3 — Creme confeiteiro
+
+**Rendimento:** 500 g. **Ingredientes:** 400 g de leite, 80 g de gemas, 80 g de açúcar, 35 g de amido e baunilha. **Processo:** aqueça leite; misture gemas, açúcar e amido; tempere; retorne ao fogo até borbulhar e cozinhar o amido; cubra em contato e resfrie rapidamente. **Controle:** não armazenar morno; registrar validade sob refrigeração adequada.
+
+### Ficha 4 — Ganache básica
+
+**Rendimento:** 500 g. **Ingredientes:** 300 g de chocolate, 180 g de creme e 20 g de manteiga. **Processo:** aqueça creme sem ferver; despeje sobre chocolate; emulsione do centro para fora; incorpore manteiga; cristalize em recipiente raso. **Variação:** altere proporção para recheio firme ou cobertura fluida e registre textura.
+
+### Ficha 5 — Merengue italiano
+
+**Rendimento:** aproximadamente 450 g. **Ingredientes:** 100 g de claras e 200 g de açúcar divididos conforme método, água suficiente para calda. **Processo:** bata claras; cozinhe calda até ponto adequado; verta em fio fino; bata até resfriar. **Controle:** tigela sem gordura, açúcar dissolvido e temperatura registrada. **Uso:** mousses, tortas e acabamento.
+
+### Ficha 6 — Mousse de chocolate
+
+**Rendimento:** seis porções. **Ingredientes:** 250 g de chocolate, 120 g de creme aquecido, 250 g de creme batido em ponto macio e 2 g de gelatina quando necessária. **Processo:** faça ganache; resfrie até temperatura compatível; incorpore creme em duas etapas; porcione e estabilize. **Diagnóstico:** mousse granulada ou pesada indica diferença de temperatura ou incorporação agressiva.
+
+### Ficha 7 — Compota de fruta ácida
+
+**Rendimento:** 400 g. **Ingredientes:** 500 g de fruta, 100 g de açúcar, 10 g de suco cítrico e pectina conforme formulação. **Processo:** cozinhe parte da fruta; adicione açúcar e pectina dispersa; concentre sem destruir aroma; finalize com acidez; resfrie. **Controle:** pesar antes e depois e observar água livre após 24 horas.
+
+### Ficha 8 — Caramelo salgado
+
+**Rendimento:** 350 g. **Ingredientes:** 180 g de açúcar, 120 g de creme aquecido, 40 g de manteiga e sal. **Processo:** faça caramelo seco progressivo; adicione creme em pequenas porções com proteção; reduza; incorpore manteiga e sal. **Segurança:** vapor e respingos causam queimadura; use panela alta e luvas adequadas.
+
+### Ficha 9 — Temperagem de chocolate
+
+**Rendimento:** conforme lote. **Processo:** derreta chocolate; resfrie e reaqueça dentro da curva correspondente ao tipo; teste em papel ou espátula; molde ou banhe somente após o teste. **Controle:** registrar temperaturas reais, brilho, contração, estalo e manchas após cristalização.
+
+### Ficha 10 — Entremet de fruta e chocolate
+
+**Rendimento:** uma forma de 16 cm. **Componentes:** base assada, inserto de fruta, mousse de chocolate, cobertura e acabamento. **Processo:** produza componentes em ordem; congele cada camada quando necessário; desenforme; cubra na temperatura correta; descongele sob refrigeração. **Entrega:** corte transversal, custo, validade testada e instrução de transporte.
+
+### Quadro de controle de confeitaria
+
+| Produto | Peso inicial | Peso final | Temperatura crítica | Validade testada | Alergênicos | Embalagem |
+|---|---:|---:|---:|---|---|---|
+|  |  |  |  |  |  |  |
+|  |  |  |  |  |  |  |
+|  |  |  |  |  |  |  |
+
+### Exercício de precisão
+
+Escolha três fichas, produza meia fórmula, registre todas as temperaturas e pese o rendimento. Faça uma alteração controlada em cada produto, compare com a fórmula original e escreva a decisão técnica. Inclua uma análise de alergênicos e um plano de conservação que não prometa validade além do que foi testado.
