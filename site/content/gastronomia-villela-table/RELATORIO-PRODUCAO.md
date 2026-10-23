@@ -4,11 +4,11 @@
 
 | Volume | Tema | Páginas medidas | Meta aproximada | Situação |
 |---|---|---:|---:|---|
-| 1 | Fundamentos, técnicas e utensílios | 19 | 100 | em expansão |
-| 2 | Gastronomia brasileira e regional | 12 | 100 | em expansão |
-| 3 | Gastronomia internacional | 11 | 100 | em expansão |
-| 4 | Confeitaria profissional | 11 | 100 | em expansão |
-| 5 | Panificação, fermentação e forno caseiro | 13 | 100 | em expansão |
+| 1 | Fundamentos, técnicas e utensílios | 102 | 100 | meta atingida, revisão editorial |
+| 2 | Gastronomia brasileira e regional | 83 | 100 | próximo da meta |
+| 3 | Gastronomia internacional | 77 | 100 | em expansão |
+| 4 | Confeitaria profissional | 79 | 100 | em expansão |
+| 5 | Panificação, fermentação e forno caseiro | 87 | 100 | próximo da meta |
 
 ## Entregas verificadas
 
