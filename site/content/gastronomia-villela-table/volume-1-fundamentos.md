@@ -566,3 +566,59 @@ O laboratório só é aprovado quando o estudante consegue justificar as escolha
 ### Aula 20 — Avaliação e portfólio
 
 **Objetivo:** demonstrar domínio dos fundamentos e capacidade de reflexão profissional. Entregue o projeto completo, uma autoavaliação e evidências dos testes. A rubrica considera segurança e higiene, organização, domínio de cortes e cocção, sabor, textura, apresentação, custo, sustentabilidade e capacidade de repetir o resultado. **Defesa:** explique uma decisão que funcionou, uma falha encontrada e a alteração que faria em novo lote. **Resultado esperado:** portfólio compreensível por outro cozinheiro, com documentação suficiente para reproduzir o prato sem instrução oral.
+
+## Caderno de receitas e fichas técnicas — Volume 1
+
+As fichas abaixo são modelos de produção. Os pesos devem ser conferidos na balança, o rendimento deve ser medido depois da execução e o custo deve ser atualizado com os preços reais do fornecedor. A receita é uma hipótese de trabalho até que seja testada na cozinha do estudante.
+
+### Ficha 1 — Fundo vegetal claro
+
+**Rendimento:** aproximadamente 700 ml. **Ingredientes:** 250 g de cebola, 150 g de cenoura, 100 g de salsão, 1,2 l de água fria, 1 folha de louro, talos de salsa e 4 grãos de pimenta. **Processo:** corte os vegetais de forma regular; coloque tudo em panela fria; cubra com a água; aqueça até início de fervura; mantenha calor baixo por 45 a 60 minutos; retire espuma quando necessário; coe sem pressionar; pese o rendimento e resfrie rapidamente em recipiente raso. **Controle:** não dourar os vegetais; fervura agressiva turva o líquido. **Aplicação:** sopas, molhos, arroz e braseados.
+
+### Ficha 2 — Sopa cremosa de legumes
+
+**Rendimento:** quatro porções de 250 ml. **Ingredientes:** 300 g de abóbora, 150 g de cenoura, 100 g de cebola, 20 ml de óleo, 800 ml de fundo, 40 ml de creme ou alternativa, sal e acidez a gosto. **Processo:** sue a cebola sem queimar; adicione legumes; cubra com fundo; cozinhe até maciez; bata com cuidado; coe se desejar textura fina; ajuste sal, acidez e viscosidade. **Controle:** registre peso antes e depois; não corrija molho ralo apenas com creme. **Serviço:** 60–65 °C, com elemento crocante separado até a montagem.
+
+### Ficha 3 — Vinagreta estável
+
+**Rendimento:** 120 g. **Ingredientes:** 30 g de vinagre, 5 g de mostarda, 75 g de óleo, 8 g de água, sal e pimenta. **Processo:** misture ácido, mostarda e temperos; incorpore óleo em fio; ajuste com água; prove em folha neutra. **Controle:** registre tempo de estabilidade em repouso e agite antes do uso. **Aplicação:** saladas, legumes mornos e peixe frio. **Variação:** substitua parte do ácido por suco cítrico e compare aroma e permanência.
+
+### Ficha 4 — Legumes assados e molho de iogurte
+
+**Rendimento:** quatro porções. **Ingredientes:** 400 g de legumes em cortes regulares, 25 g de óleo, sal, 120 g de iogurte, 10 g de suco cítrico, ervas e alho. **Processo:** seque os legumes; tempere sem excesso; espalhe em assadeira sem sobrepor; asse a 200 °C até dourar e manter estrutura; misture o molho frio e mantenha separado. **Controle:** pese antes e depois; registre cor e textura. **Erro comum:** vapor excessivo por assadeira cheia.
+
+### Ficha 5 — Arroz de absorção
+
+**Rendimento:** aproximadamente 600 g cozidos. **Ingredientes:** 200 g de arroz, 300 g de água ou fundo, 20 g de cebola, 10 g de óleo e sal. **Processo:** sue cebola; junte arroz e envolva; adicione líquido quente; tampe; cozinhe em fogo baixo; desligue e descanse 10 minutos antes de soltar. **Controle:** registre variedade, panela, evaporação e peso final. **Aplicação:** acompanhamento, base de tigela ou guarnição de molho.
+
+### Ficha 6 — Lentilha aromática
+
+**Rendimento:** quatro porções de acompanhamento. **Ingredientes:** 200 g de lentilha, 700 ml de água, 80 g de cebola, 60 g de cenoura, louro, sal e 10 ml de vinagre. **Processo:** selecione e lave; cozinhe com aromáticos até maciez sem desmanchar; tempere o líquido durante a cocção; escorra apenas se necessário; finalize com acidez. **Controle:** não adicionar ácido cedo se isso prolongar o amolecimento. **Registro:** peso seco, peso cozido e tempo total.
+
+### Ficha 7 — Filé de peixe na frigideira
+
+**Rendimento:** duas porções de 150 g. **Ingredientes:** 300 g de filé, 15 g de óleo, 20 g de manteiga, limão, sal e ervas. **Processo:** seque o peixe; tempere próximo ao fogo; aqueça frigideira; doure primeiro o lado de apresentação; vire com espátula; finalize com manteiga e ervas; descanse brevemente. **Controle:** registre espessura, temperatura interna recomendada para o produto e perda de massa. **Segurança:** mantenha cadeia fria e utensílios exclusivos para alimento cru.
+
+### Ficha 8 — Frango assado com jus simples
+
+**Rendimento:** quatro porções. **Ingredientes:** 800 g de frango em cortes uniformes, 150 g de cebola e cenoura, 400 ml de fundo, 15 ml de óleo, ervas e temperos. **Processo:** seque e tempere; doure a superfície; asse até atingir ponto seguro; retire a proteína; deglaceie a assadeira com fundo; reduza e coe; descanse e fatie. **Controle:** registre temperatura no centro, tempo de descanso e rendimento após os ossos e perdas.
+
+### Ficha 9 — Massa fresca básica
+
+**Rendimento:** quatro porções. **Ingredientes:** 200 g de farinha, 2 ovos médios, 2 g de sal e farinha para abrir. **Processo:** forme um poço; incorpore ovos gradualmente; sove até homogeneizar; cubra e descanse 30 minutos; abra progressivamente; corte; cozinhe em água abundante e finalize no molho. **Controle:** registre espessura, tempo de cocção e absorção de molho. **Diagnóstico:** massa que encolhe precisa de mais descanso; massa seca exige revisão da hidratação.
+
+### Ficha 10 — Creme inglês de baunilha
+
+**Rendimento:** aproximadamente 450 g. **Ingredientes:** 300 g de leite, 120 g de creme, 70 g de gemas, 70 g de açúcar e baunilha. **Processo:** aqueça líquidos; misture gemas e açúcar sem incorporar ar em excesso; tempere a mistura gradualmente; retorne ao fogo baixo mexendo continuamente; retire ao atingir consistência de napê; coe e resfrie rapidamente. **Controle:** não ferver; registre temperatura e viscosidade. **Aplicação:** sobremesa empratada, frutas e bolos.
+
+### Quadro de registro de teste
+
+| Data | Receita | Rendimento previsto | Rendimento real | Temperatura | Tempo | Ajuste para o próximo lote |
+|---|---|---:|---:|---:|---:|---|
+|  |  |  |  |  |  |  |
+|  |  |  |  |  |  |  |
+|  |  |  |  |  |  |  |
+
+### Exercício de ficha profissional
+
+Escolha três fichas, produza meia receita e preencha o quadro de registro. Calcule custo por porção com valores reais, fotografe mise en place, processo e resultado, e peça a outra pessoa que execute uma das fichas somente a partir do texto. Anote todas as dúvidas que surgirem: elas revelam onde a documentação ainda precisa ser mais precisa.
