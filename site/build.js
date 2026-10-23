@@ -105,6 +105,20 @@ if (fs.existsSync(path.join(__dirname, 'src', 'og-home.jpg'))) fs.copyFileSync(p
 // estático não serve (dava 404) e é uma prancha de manual de marca, não um cartão.
 const TEM_OG_PRODUTOS = fs.existsSync(path.join(__dirname, 'src', 'og-produtos.jpg'));
 if (TEM_OG_PRODUTOS) fs.copyFileSync(path.join(__dirname, 'src', 'og-produtos.jpg'), path.join(DIST, 'og-produtos.jpg'));
+// /eleicao (colinha das Eleições 2026) saiu do ar em 22/10/2026 — art. 57-C, § 1º, I, da Lei 9.504/97.
+// Apagar o arquivo NÃO basta: o Static Site do Render continua servindo arquivo de deploy anterior
+// (guarda os antigos para quem ainda tem a versão velha aberta). Por isso os três caminhos que
+// existiram são SOBRESCRITOS com uma página mínima, fora do Google. Não remover enquanto o Render
+// guardar os arquivos antigos.
+{
+  const retirada = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow">'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1"><title>Página retirada | Villela Stay</title></head>'
+    + '<body style="font-family:system-ui,sans-serif;max-width:560px;margin:15vh auto;padding:0 16px;text-align:center">'
+    + '<h1>Página retirada</h1><p>Este conteúdo não está mais disponível.</p><p><a href="/">Ir para a Villela Stay</a></p></body></html>';
+  fs.mkdirSync(path.join(DIST, 'eleicao'), { recursive: true });
+  fs.writeFileSync(path.join(DIST, 'eleicao', 'index.html'), retirada);
+  fs.writeFileSync(path.join(DIST, 'eleicao.html'), retirada);
+}
 // Marca oficial: lockup V-Portal (símbolo negativo sobre o topo navy) + wordmark Lora/Inter
 const MARCA = `<a class="marca" href="/"><img class="logo-v" src="/assets/brand/villela-stay/logo-negativo.svg" width="56" height="56" alt="Villela Stay — Hospedagens Inteligentes" fetchpriority="high"><span class="marca-txt">Villela<span class="marca-desc">Stay</span></span></a>`;
 // Função (não const string) para traduzir por idioma — é avaliada dentro do loop, quando t() já existe.
