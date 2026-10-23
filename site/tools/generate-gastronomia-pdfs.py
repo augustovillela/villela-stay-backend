@@ -73,6 +73,9 @@ def story_for(text, title):
                 ], colWidths=[42*mm, 70*mm, 38*mm])
                 worksheet.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f1e5d8')),('GRID',(0,0),(-1,-1),.25,colors.HexColor('#cbb9a5')),('FONTSIZE',(0,0),(-1,-1),7.5),('SPAN',(1,1),(2,1)),('SPAN',(1,2),(2,2)),('VALIGN',(0,0),(-1,-1),'TOP'),('BOTTOMPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),6)]))
                 story += [Spacer(1, 4), worksheet, Spacer(1, 7)]
+                lesson_match = re.match(r'### Aula (\d+)', block)
+                if 'Fundamentos' not in title and lesson_match and int(lesson_match.group(1)) % 3 == 0:
+                    story.append(PageBreak())
         elif block.startswith('|'):
             rows = []
             for line in block.splitlines():
