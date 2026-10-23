@@ -62,6 +62,8 @@ def story_for(text, title):
         if block.startswith('## '):
             story.append(Paragraph(inline(block[3:]), styles['VillelaH1']))
         elif block.startswith('### '):
+            if block.startswith('### Aula ') or block.startswith('### Ficha ') or block.startswith('### Laboratório '):
+                story.append(PageBreak())
             story.append(Paragraph(inline(block[4:]), styles['VillelaH2']))
         elif block.startswith('|'):
             rows = []
