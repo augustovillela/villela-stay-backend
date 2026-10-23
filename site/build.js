@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v23'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v24'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -6207,6 +6207,37 @@ self.addEventListener('fetch', (event) => {
 `;
 fs.writeFileSync(path.join(DIST, 'sw.js'), sw);
 
+// ------------------------- série Gastronomia Villela Table -------------------------
+// Os cinco PDFs do curso têm páginas HTML próprias, no mesmo padrão das séries
+// editoriais do site. O conteúdo detalhado dos capítulos entra progressivamente;
+// a estrutura pública já nasce navegável e preparada para os materiais.
+const GASTRO_DIR = path.join(__dirname, 'content', 'gastronomia-villela-table');
+const GASTRO_AULAS_DIR = path.join(GASTRO_DIR, 'aulas');
+const GASTRO_GRADE = JSON.parse(fs.readFileSync(path.join(GASTRO_DIR, 'grade.json'), 'utf8'));
+const GASTRO_PATHS = [];
+const GASTRO_CSS = `.gastro-hero{background:linear-gradient(135deg,#17251f,#8a4f28);color:#fff}.gastro-hero h1{max-width:850px}.gastro-volumes{max-width:1100px;margin:32px auto;padding:0 20px}.gastro-pdf{display:inline-block;margin-top:14px;padding:10px 15px;border-radius:999px;background:#8a4f28;color:#fff;text-decoration:none;font-weight:700}.gastro-pdf:hover{background:#b96d38}`;
+const gastroLinks = `<div class="cap-faixa"><a class="cap-ad cap-ad-curso" href="${GASTRO_GRADE.curso}" target="_blank" rel="noopener"><span class="cap-ad-icone">🎓</span><span class="cap-ad-txt"><strong>Curso completo de Gastronomia Villela Table</strong><span>Formação de Augusto Villela no Villela Academy.</span></span><span class="cap-ad-btn">Ver o curso →</span></a><a class="cap-ad cap-ad-livro" href="${GASTRO_GRADE.livros}" target="_blank" rel="noopener"><span class="cap-ad-icone">📚</span><span class="cap-ad-txt"><strong>Coleção Villela Table</strong><span>Os cinco volumes da formação.</span></span><span class="cap-ad-btn">Ver os livros →</span></a></div>`;
+const gastroCards = GASTRO_GRADE.volumes.map(v => `<a class="cap-card" href="/gastronomia-villela-table/${v.slug}/"><span class="n">Volume ${v.n}</span><h3>${esc(v.titulo)}</h3><p>Material HTML de apoio ao PDF, com índice, práticas e referências para o curso.</p><span class="min">Abrir volume →</span></a>`).join('');
+fs.mkdirSync(path.join(DIST, 'gastronomia-villela-table'), { recursive: true });
+for (const v of GASTRO_GRADE.volumes) {
+  const caminho = `/gastronomia-villela-table/${v.slug}/`;
+  fs.mkdirSync(path.join(DIST, 'gastronomia-villela-table', v.slug), { recursive: true });
+  GASTRO_PATHS.push(caminho);
+  const i = v.n - 1;
+  const ant = GASTRO_GRADE.volumes[i - 1], prox = GASTRO_GRADE.volumes[i + 1];
+  const nav = `<nav class="cap-irmaos" aria-label="Outros volumes">${ant ? `<a class="cap-irmao cap-irmao-ant" href="/gastronomia-villela-table/${ant.slug}/"><span class="rot">← Volume ${ant.n}</span><span class="tit">${esc(ant.titulo)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}<a class="cap-irmao cap-irmao-indice" href="/gastronomia-villela-table/"><span class="rot">☰ Índice</span><span class="tit">Cinco volumes</span></a>${prox ? `<a class="cap-irmao cap-irmao-prox" href="/gastronomia-villela-table/${prox.slug}/"><span class="rot">Volume ${prox.n} →</span><span class="tit">${esc(prox.titulo)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}</nav>`;
+  const corpo = `<div class="cap"><header class="cap-hero gastro-hero"><div class="in"><nav class="cap-trilha"><a href="/blog.html">Blog</a> <span>›</span> <a href="/gastronomia-villela-table/">Gastronomia Villela Table</a> <span>›</span> <span>Volume ${v.n}</span></nav><h1>Volume ${v.n}: ${esc(v.titulo)}</h1><p class="sub">Material HTML de apoio ao PDF da Formação Completa em Gastronomia Villela Table, de Augusto Villela.</p><div class="meta">Leitura de apoio · Volume ${v.n} de 5</div></div></header>${gastroLinks}<section class="gastro-volumes"><h2>Sobre este volume</h2><p>Este HTML organiza o PDF, apresenta seus objetivos e reúne a navegação para os demais volumes da coleção.</p><p><a class="gastro-pdf" href="${GASTRO_GRADE.livros}" target="_blank" rel="noopener">Acessar materiais da coleção →</a></p><h2>Conteúdo do volume</h2><p>O conteúdo completo, as fichas práticas e as ilustrações serão disponibilizados junto ao PDF correspondente após a revisão editorial.</p>${nav}</section>${gastroLinks}</div>`;
+  fs.writeFileSync(path.join(DIST, 'gastronomia-villela-table', v.slug, 'index.html'), layout(`Volume ${v.n}: ${v.titulo} | Villela Table`, `${v.titulo}: material HTML de apoio ao curso de Gastronomia Villela Table, de Augusto Villela.`, corpo, { caminho, semIdiomas: true, extraHead: `<style>${GASTRO_CSS}</style>` }));
+}
+const gastroHub = `<div class="cap"><section class="cap-hub-hero gastro-hero"><h1>Gastronomia Villela Table <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Formação Completa em Gastronomia</span></h1><p>Uma coleção em cinco volumes, de Augusto Villela, com técnicas, cultura, cozinha brasileira e internacional, confeitaria e panificação.</p></section><nav class="cap-trilha cap-trilha-hub"><a href="/blog.html">Blog</a> <span>›</span> <span>Gastronomia Villela Table</span></nav>${gastroLinks}<section class="cap-sumario-hub"><h2>Índice da coleção</h2><p>Os cinco PDFs do curso, cada um com seu HTML de apoio.</p></section><div class="cap-grade">${gastroCards}</div>${gastroLinks}</div>`;
+fs.writeFileSync(path.join(DIST, 'gastronomia-villela-table', 'index.html'), layout('Gastronomia Villela Table — Formação Completa | Villela Stay', 'Formação Completa em Gastronomia Villela Table, de Augusto Villela: cinco volumes com técnicas, gastronomia brasileira e internacional, confeitaria e panificação.', gastroHub, { caminho: '/gastronomia-villela-table/', semIdiomas: true, extraHead: `<style>${GASTRO_CSS}</style>` }));
+if (fs.existsSync(GASTRO_AULAS_DIR)) {
+  for (const nome of fs.readdirSync(GASTRO_AULAS_DIR).filter(n => n.endsWith('.html'))) {
+    fs.copyFileSync(path.join(GASTRO_AULAS_DIR, nome), path.join(DIST, 'gastronomia-villela-table', nome));
+  }
+}
+GASTRO_PATHS.unshift('/gastronomia-villela-table/');
+
 // ------------------------- sitemap.xml e robots.txt -------------------------
 const hoje = new Date().toISOString().slice(0, 10);
 // Rotas com prioridade/frequência por tipo de página (ajuda o crawler a priorizar)
@@ -6240,6 +6271,7 @@ const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
 ${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
+${GASTRO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/gastronomia-villela-table/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 

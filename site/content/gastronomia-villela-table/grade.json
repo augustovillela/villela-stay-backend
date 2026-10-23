@@ -1,0 +1,14 @@
+{
+  "slug": "gastronomia-villela-table",
+  "titulo": "Gastronomia Villela Table — Formação Completa",
+  "autor": "Augusto Villela",
+  "curso": "https://academia.villelastay.com.br/academy/marketplace",
+  "livros": "https://livros.villelastay.com.br/livros",
+  "volumes": [
+    { "n": 1, "slug": "fundamentos-tecnicas-e-utensilios", "titulo": "Fundamentos, técnicas e utensílios" },
+    { "n": 2, "slug": "gastronomia-brasileira-e-regional", "titulo": "Gastronomia brasileira e regional" },
+    { "n": 3, "slug": "gastronomia-internacional", "titulo": "Gastronomia internacional" },
+    { "n": 4, "slug": "confeitaria-profissional", "titulo": "Confeitaria profissional" },
+    { "n": 5, "slug": "panificacao-e-fermentacao", "titulo": "Panificação, fermentação e forno caseiro" }
+  ]
+}
