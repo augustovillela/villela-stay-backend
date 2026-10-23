@@ -65,6 +65,14 @@ def story_for(text, title):
             if block.startswith('### Aula ') or block.startswith('### Ficha ') or block.startswith('### Laboratório '):
                 story.append(PageBreak())
             story.append(Paragraph(inline(block[4:]), styles['VillelaH2']))
+            if block.startswith('### Aula '):
+                worksheet = Table([
+                    ['Registro da prática', 'Data: ____________', 'Lote: ____________'],
+                    ['Resultado observado', '______________________________________________', ''],
+                    ['Correção para o próximo teste', '______________________________________________', ''],
+                ], colWidths=[42*mm, 70*mm, 38*mm])
+                worksheet.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f1e5d8')),('GRID',(0,0),(-1,-1),.25,colors.HexColor('#cbb9a5')),('FONTSIZE',(0,0),(-1,-1),7.5),('SPAN',(1,1),(2,1)),('SPAN',(1,2),(2,2)),('VALIGN',(0,0),(-1,-1),'TOP'),('BOTTOMPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),6)]))
+                story += [Spacer(1, 4), worksheet, Spacer(1, 7)]
         elif block.startswith('|'):
             rows = []
             for line in block.splitlines():
