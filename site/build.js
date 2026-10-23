@@ -6213,6 +6213,7 @@ fs.writeFileSync(path.join(DIST, 'sw.js'), sw);
 // a estrutura pública já nasce navegável e preparada para os materiais.
 const GASTRO_DIR = path.join(__dirname, 'content', 'gastronomia-villela-table');
 const GASTRO_AULAS_DIR = path.join(GASTRO_DIR, 'aulas');
+const GASTRO_ILLUSTRATIONS_DIR = path.join(GASTRO_DIR, 'ilustracoes');
 const GASTRO_GRADE = JSON.parse(fs.readFileSync(path.join(GASTRO_DIR, 'grade.json'), 'utf8'));
 const GASTRO_PATHS = [];
 const GASTRO_CSS = `.gastro-hero{background:linear-gradient(135deg,#17251f,#8a4f28);color:#fff}.gastro-hero h1{max-width:850px}.gastro-volumes{max-width:1100px;margin:32px auto;padding:0 20px}.gastro-pdf{display:inline-block;margin-top:14px;padding:10px 15px;border-radius:999px;background:#8a4f28;color:#fff;text-decoration:none;font-weight:700}.gastro-pdf:hover{background:#b96d38}`;
@@ -6235,6 +6236,9 @@ if (fs.existsSync(GASTRO_AULAS_DIR)) {
   for (const nome of fs.readdirSync(GASTRO_AULAS_DIR).filter(n => n.endsWith('.html'))) {
     fs.copyFileSync(path.join(GASTRO_AULAS_DIR, nome), path.join(DIST, 'gastronomia-villela-table', nome));
   }
+}
+if (fs.existsSync(GASTRO_ILLUSTRATIONS_DIR)) {
+  fs.cpSync(GASTRO_ILLUSTRATIONS_DIR, path.join(DIST, 'gastronomia-villela-table', 'ilustracoes'), { recursive: true });
 }
 GASTRO_PATHS.unshift('/gastronomia-villela-table/');
 
