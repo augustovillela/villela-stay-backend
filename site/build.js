@@ -6238,7 +6238,7 @@ const gastroHub = `<div class="cap"><section class="cap-hub-hero gastro-hero"><h
 fs.writeFileSync(path.join(DIST, 'gastronomia-villela-table', 'index.html'), layout('Gastronomia Villela Table — Formação Completa | Villela Stay', 'Formação Completa em Gastronomia Villela Table, de Augusto Villela: cinco volumes com técnicas, gastronomia brasileira e internacional, confeitaria e panificação.', gastroHub, { caminho: '/gastronomia-villela-table/', semIdiomas: true, extraHead: `<style>${GASTRO_CSS}</style>` }));
 fs.writeFileSync(path.join(DIST, 'gastronomia-villela-table', 'index.html'), '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/blog/formacao-completa-gastronomia-villela-table.html"><link rel="canonical" href="https://villelastay.com.br/blog/formacao-completa-gastronomia-villela-table.html"><title>Formação Completa em Gastronomia — Villela Table</title></head><body><p>Redirecionando para a entrada principal do curso… <a href="/blog/formacao-completa-gastronomia-villela-table.html">abrir curso</a></p></body></html>');
 if (fs.existsSync(GASTRO_AULAS_DIR)) {
-  for (const nome of fs.readdirSync(GASTRO_AULAS_DIR).filter(n => n.endsWith('.html'))) {
+  for (const nome of fs.readdirSync(GASTRO_AULAS_DIR).filter(n => n.endsWith('.html') && n !== 'index.html')) {
     fs.copyFileSync(path.join(GASTRO_AULAS_DIR, nome), path.join(DIST, 'gastronomia-villela-table', nome));
   }
 }
