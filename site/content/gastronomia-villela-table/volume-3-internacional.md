@@ -311,3 +311,39 @@ Prepare cereal hidratado e ensopado lento. Registre líquido, tampa, redução, 
 
 ### Aula 60 — Projeto comparativo internacional
 Crie menu comparando três regiões sem misturar referências superficialmente. Explique princípios comuns e diferenças de ingrediente, serviço e contexto; entregue fichas, fontes, custos e alternativas.
+
+## Caderno de fichas internacionais
+
+### Ficha 1 — Fundo claro clássico
+**Rendimento:** 800 ml. **Ingredientes:** 500 g de ossos ou aparas apropriadas, 250 g de vegetais aromáticos, 1,2 l de água fria e ervas. **Processo:** branqueie quando indicado; cubra com água; aqueça lentamente; retire impurezas; coe e resfrie. Registre claridade, aroma e rendimento.
+
+### Ficha 2 — Molho branco e derivação
+**Rendimento:** 500 g. **Ingredientes:** 30 g de manteiga, 30 g de farinha, 500 g de leite, sal e especiarias. **Processo:** faça roux claro; incorpore leite gradualmente; cozinhe até retirar sabor farináceo; coe; transforme parte em molho com queijo ou ervas. Grumos indicam incorporação inadequada.
+
+### Ficha 3 — Risoto de base
+**Rendimento:** quatro porções. **Ingredientes:** 320 g de arroz apropriado, 1 l de fundo quente, 100 g de cebola, 60 g de manteiga e 70 g de queijo. **Processo:** sue cebola; torre o arroz; adicione fundo aos poucos; mexa até al dente; faça mantecatura. Registre absorção, ponto e tempo de serviço.
+
+### Ficha 4 — Massa fresca e molho emulsificado
+**Rendimento:** quatro porções. **Ingredientes:** 300 g de farinha, 3 ovos, 250 g de molho, 40 g de gordura e água de cocção. **Processo:** descanse e abra a massa; cozinhe; finalize molho com água de cocção e gordura. Molho que não adere exige emulsão ou redução adequadas.
+
+### Ficha 5 — Legumes mediterrâneos assados
+**Rendimento:** quatro porções. **Ingredientes:** 600 g de legumes, 40 ml de azeite, ervas, sal e 20 ml de ácido. **Processo:** corte regular; seque; asse sem sobrepor; tempere com ácido no final. Registre caramelização, textura e peso inicial e final.
+
+### Ficha 6 — Arroz aromático com especiarias
+**Rendimento:** seis porções. **Ingredientes:** 300 g de arroz, 450 ml de líquido, 30 g de gordura, cebola e especiarias. **Processo:** perfume especiarias sem queimar; torre arroz; adicione líquido; cozinhe por absorção e descanse. Compare especiarias tostadas e não tostadas.
+
+### Ficha 7 — Caldo aromático asiático
+**Rendimento:** quatro tigelas. **Ingredientes:** 1,2 l de água, aromáticos, 300 g de vegetais e 200 g de massa ou arroz. **Processo:** faça infusão controlada; coe; ajuste sal e acidez; cozinhe guarnições separadamente; monte no serviço.
+
+### Ficha 8 — Salteado de wok ou frigideira
+**Rendimento:** quatro porções. **Ingredientes:** 500 g de vegetais e proteína ou tofu, 30 ml de óleo, 60 ml de molho e aromáticos. **Processo:** corte tudo antes; aqueça bem; cozinhe em pequenas porções; devolva ao fogo. Excesso de carga causa vapor em vez de douramento.
+
+### Ficha 9 — Pasta de grão com tahine
+**Rendimento:** 500 g. **Ingredientes:** 300 g de grão cozido, 60 g de tahine, 50 ml de limão, 40 ml de água, alho e sal. **Processo:** processe; incorpore tahine; ajuste líquido e acidez; refrigere. Registre textura e estabilidade após 24 horas.
+
+### Ficha 10 — Cereal hidratado com tajine vegetal
+**Rendimento:** quatro porções. **Ingredientes:** 250 g de cereal, líquido conforme absorção, 500 g de legumes, especiarias e 30 ml de gordura. **Processo:** hidrate cereal; cozinhe legumes lentamente com tampa; ajuste redução; solte e sirva. Compare cocção seca e úmida.
+
+### Exercício de comparação técnica
+
+Escolha duas fichas de regiões diferentes e identifique o princípio comum: redução, emulsão, calor intenso, cocção gradual, fermentação ou controle de textura. Escreva adaptação com ingrediente brasileiro, preservando o método e declarando a mudança cultural.
