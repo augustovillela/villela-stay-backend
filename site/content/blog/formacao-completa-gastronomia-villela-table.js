@@ -1,4 +1,8 @@
 // Série editorial — Formação Completa em Gastronomia Villela Table
+const fs = require('fs');
+const path = require('path');
+const aulasDir = path.join(__dirname, '..', 'gastronomia-villela-table', 'aulas');
+const aulasCards = fs.existsSync(aulasDir) ? fs.readdirSync(aulasDir).filter(n => /^\d+-.*\.html$/.test(n)).sort((a, b) => Number(a.match(/^\d+/)[0]) - Number(b.match(/^\d+/)[0])).map(nome => { const n = Number(nome.match(/^\d+/)[0]); const titulo = nome.replace(/^\d+-/, '').replace(/\.html$/, '').replace(/-/g, ' '); return `<a href="/gastronomia-villela-table/${nome}" style="display:block;padding:20px;border-radius:14px;background:#f4eee7;color:#3a2418;text-decoration:none;border:1px solid #dfc9b5"><strong>Aula ${n}</strong><br>${titulo.charAt(0).toUpperCase() + titulo.slice(1)}<br><span>Estudar aula →</span></a>`; }).join('') : '';
 module.exports = {
   slug: 'formacao-completa-gastronomia-villela-table',
   tema: 'Gastronomia',
@@ -31,14 +35,8 @@ module.exports = {
 </ol>
 
 <h2>Índice da coleção</h2>
-<p>Escolha um volume para abrir a versão HTML navegável, com aulas, práticas e materiais de apoio:</p>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin:24px 0">
-  <a href="/gastronomia-villela-table/fundamentos-tecnicas-e-utensilios/" style="display:block;padding:22px;border-radius:14px;background:#f4eee7;color:#3a2418;text-decoration:none;border:1px solid #dfc9b5"><strong>Volume 1</strong><br>Fundamentos, técnicas e utensílios<br><span> abrir volume →</span></a>
-  <a href="/gastronomia-villela-table/gastronomia-brasileira-e-regional/" style="display:block;padding:22px;border-radius:14px;background:#f4eee7;color:#3a2418;text-decoration:none;border:1px solid #dfc9b5"><strong>Volume 2</strong><br>Gastronomia brasileira e regional<br><span> abrir volume →</span></a>
-  <a href="/gastronomia-villela-table/gastronomia-internacional/" style="display:block;padding:22px;border-radius:14px;background:#f4eee7;color:#3a2418;text-decoration:none;border:1px solid #dfc9b5"><strong>Volume 3</strong><br>Gastronomia internacional<br><span> abrir volume →</span></a>
-  <a href="/gastronomia-villela-table/confeitaria-profissional/" style="display:block;padding:22px;border-radius:14px;background:#f4eee7;color:#3a2418;text-decoration:none;border:1px solid #dfc9b5"><strong>Volume 4</strong><br>Confeitaria profissional<br><span> abrir volume →</span></a>
-  <a href="/gastronomia-villela-table/panificacao-e-fermentacao/" style="display:block;padding:22px;border-radius:14px;background:#f4eee7;color:#3a2418;text-decoration:none;border:1px solid #dfc9b5"><strong>Volume 5</strong><br>Panificação, fermentação e forno caseiro<br><span> abrir volume →</span></a>
-</div>
+<p>As 100 aulas estão reunidas nesta única entrada navegável:</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin:24px 0">${aulasCards}</div>
 
 <h2>O método Villela Table</h2>
 <p>Cada módulo combina explicação, demonstração, execução guiada, análise de problemas e desafio de portfólio. A proposta é compreender o porquê de cada decisão: temperatura, textura, tempo, aproveitamento, apresentação e serviço.</p>
