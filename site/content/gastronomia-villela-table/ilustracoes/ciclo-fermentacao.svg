@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" role="img" aria-labelledby="title desc">
+  <title id="title">Ciclo de fermentação da massa</title>
+  <desc id="desc">Ciclo de quatro etapas: mistura, fermentação, modelagem e forno.</desc>
+  <rect width="1000" height="700" fill="#faf7f1"/>
+  <text x="500" y="65" text-anchor="middle" font-family="Georgia,serif" font-size="34" fill="#173b45">Ciclo de fermentação</text>
+  <g font-family="Arial,sans-serif" text-anchor="middle" font-size="21">
+    <circle cx="500" cy="175" r="95" fill="#e6f0ed" stroke="#173b45" stroke-width="4"/><text x="500" y="168" fill="#173b45">Mistura</text><text x="500" y="198" font-size="16" fill="#333">hidratar e unir</text>
+    <circle cx="770" cy="350" r="95" fill="#fff1df" stroke="#9b4f2f" stroke-width="4"/><text x="770" y="343" fill="#9b4f2f">Fermentação</text><text x="770" y="373" font-size="16" fill="#333">tempo e temperatura</text>
+    <circle cx="500" cy="525" r="95" fill="#e9edf5" stroke="#354c76" stroke-width="4"/><text x="500" y="518" fill="#354c76">Modelagem</text><text x="500" y="548" font-size="16" fill="#333">tensão e corte</text>
+    <circle cx="230" cy="350" r="95" fill="#f5e8e2" stroke="#8a3f2f" stroke-width="4"/><text x="230" y="343" fill="#8a3f2f">Forno</text><text x="230" y="373" font-size="16" fill="#333">calor e vapor</text>
+  </g>
+  <g stroke="#9b4f2f" stroke-width="4" fill="none"><path d="M570 210Q680 225 710 285"/><path d="M710 415Q680 480 570 505"/><path d="M430 505Q320 480 290 415"/><path d="M290 285Q320 225 430 210"/></g>
+  <g fill="#9b4f2f"><path d="M700 278l20 5-12 17z"/><path d="M580 492l-12 18-8-19z"/><path d="M300 423l-20-5 12-17z"/><path d="M420 218l12-18 8 19z"/></g>
+  <text x="500" y="650" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#555">Observe volume, temperatura, aroma, elasticidade e estrutura em cada etapa.</text>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Mapa de controle de temperatura na cozinha</title>
+  <desc id="desc">Diagrama didático mostrando medição, registro, decisão e serviço.</desc>
+  <rect width="1200" height="620" fill="#faf7f1"/>
+  <text x="600" y="68" text-anchor="middle" font-family="Georgia,serif" font-size="34" fill="#173b45">Controle de temperatura</text>
+  <text x="600" y="105" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#555">medir → registrar → decidir → servir</text>
+  <g font-family="Arial,sans-serif" font-size="20" text-anchor="middle">
+    <rect x="70" y="200" width="240" height="170" rx="18" fill="#e6f0ed" stroke="#173b45" stroke-width="3"/>
+    <text x="190" y="250" fill="#173b45">1. Medir</text><text x="190" y="290" fill="#333">produto</text><text x="190" y="320" fill="#333">equipamento</text><text x="190" y="350" fill="#333">ambiente</text>
+    <rect x="350" y="200" width="240" height="170" rx="18" fill="#fff1df" stroke="#9b4f2f" stroke-width="3"/>
+    <text x="470" y="250" fill="#9b4f2f">2. Registrar</text><text x="470" y="290" fill="#333">hora</text><text x="470" y="320" fill="#333">temperatura</text><text x="470" y="350" fill="#333">lote</text>
+    <rect x="630" y="200" width="240" height="170" rx="18" fill="#e9edf5" stroke="#354c76" stroke-width="3"/>
+    <text x="750" y="250" fill="#354c76">3. Decidir</text><text x="750" y="290" fill="#333">continuar</text><text x="750" y="320" fill="#333">corrigir</text><text x="750" y="350" fill="#333">descartar</text>
+    <rect x="910" y="200" width="220" height="170" rx="18" fill="#f5e8e2" stroke="#8a3f2f" stroke-width="3"/>
+    <text x="1020" y="250" fill="#8a3f2f">4. Servir</text><text x="1020" y="290" fill="#333">ponto</text><text x="1020" y="320" fill="#333">tempo</text><text x="1020" y="350" fill="#333">segurança</text>
+  </g>
+  <g stroke="#9b4f2f" stroke-width="4" fill="none"><path d="M310 285h35"/><path d="M590 285h35"/><path d="M870 285h35"/></g>
+  <g fill="#9b4f2f"><path d="M340 275l18 10-18 10z"/><path d="M620 275l18 10-18 10z"/><path d="M900 275l18 10-18 10z"/></g>
+  <text x="600" y="500" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#555">A decisão depende do alimento, do processo e do contexto — não de um número isolado.</text>
+</svg>
