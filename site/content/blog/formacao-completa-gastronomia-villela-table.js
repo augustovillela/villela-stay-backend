@@ -3,7 +3,7 @@ module.exports = {
   slug: 'formacao-completa-gastronomia-villela-table',
   tema: 'Gastronomia',
   emoji: '🍽️',
-  titulo: 'Formação Completa em Gastronomia — Villela Table | Augusto Villela',
+  titulo: 'Formação Completa em Gastronomia — Villela Table | Villela Stay',
   descricao: 'Uma formação completa em gastronomia, com técnicas profissionais, cozinha brasileira e internacional, confeitaria, panificação e criação culinária.',
   h1: 'Formação Completa em Gastronomia — Villela Table',
   dek: 'Técnica, cultura e prática culinária em uma jornada criada por Augusto Villela.',
@@ -44,6 +44,20 @@ module.exports = {
 <h2>Acompanhe a formação</h2>
 <p>O curso está sendo organizado no <a href="https://academia.villelastay.com.br/academy/marketplace">Villela Academy</a>. As videoaulas animadas serão acrescentadas após a revisão e aprovação dos conteúdos.</p>
 <p><strong>Villela Table:</strong> gastronomia, técnica e cultura para aprender, praticar e criar.</p>
+
+<div class="artigo-cta">
+  <span class="artigo-cta-tag">Aprofunde o estudo</span>
+  <h2>Formação Completa em Gastronomia — Villela Table</h2>
+  <p>Acompanhe a formação no Villela Academy e conheça a Coleção Completa de Gastronomia, escrita por Augusto Villela.</p>
+  <p class="artigo-cta-links">
+    <a href="https://academia.villelastay.com.br/academy/marketplace" target="_blank" rel="noopener">Ver a formação no Villela Academy</a>
+    <a href="https://livros.villelastay.com.br/livros" target="_blank" rel="noopener">Conhecer os livros</a>
+  </p>
+</div>
+
+<div class="tea-aviso tea-aviso-fim">
+  <p><strong>Nota editorial.</strong> Conteúdo original de <strong>Augusto Villela</strong>, desenvolvido para a coleção Villela Table e para a formação correspondente no Villela Academy.</p>
+</div>
 `,
 };
 
