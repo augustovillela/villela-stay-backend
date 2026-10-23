@@ -372,3 +372,57 @@ Monte linha de três produtos, calculando custo líquido, energia, mão de obra,
 
 ### Aula 100 — Projeto final de panificação e portfólio
 Produza três pães complementares, documentando fórmula, fermentação, modelagem, forno, rendimento, custo, validade, fotos e análise sensorial. A aprovação exige repetibilidade, segurança, domínio técnico, organização e capacidade de justificar cada decisão.
+
+## Caderno de fichas de panificação
+
+### Ficha 1 — Pão branco de forno caseiro
+
+**Rendimento:** um pão de aproximadamente 750 g. **Fórmula:** 500 g de farinha, 325 g de água, 10 g de sal, 15 g de açúcar, 25 g de gordura e fermento conforme orientação do fabricante. **Processo:** misture, descanse, desenvolva glúten, fermente até expansão adequada, modele, faça segunda fermentação e asse com forno pré-aquecido. **Controle:** registrar temperatura final da massa, volume, tempo e peso após resfriamento.
+
+### Ficha 2 — Pão de alta hidratação
+
+**Rendimento:** dois pães pequenos. **Fórmula:** 500 g de farinha, 375 g de água, 10 g de sal e fermento. **Processo:** misture sem tentar secar a massa com farinha adicional; faça descansos e dobras; fermente em recipiente untado; modele com tensão mínima; asse em panela ou assadeira com vapor seguro. **Diagnóstico:** massa espalhada pode indicar excesso de hidratação, farinha fraca ou fermentação prolongada.
+
+### Ficha 3 — Fermento natural básico
+
+**Rendimento:** fermento para um lote. **Processo:** alimente uma pequena cultura com partes registradas de fermento, água e farinha; marque nível; observe crescimento, aroma e tempo de pico. Use somente quando demonstrar força consistente. **Controle:** temperatura ambiente, horário, proporção, volume e acidez percebida devem ser anotados diariamente.
+
+### Ficha 4 — Pão de fermentação natural
+
+**Rendimento:** um pão de 800 g. **Fórmula:** 500 g de farinha, 350 g de água, 100 g de fermento natural ativo e 10 g de sal. **Processo:** faça autólise quando pertinente; incorpore fermento e sal; conduza fermentação em bloco com dobras; modele; faça fermentação final; asse com vapor seguro. **Entrega:** diário completo, corte do miolo e ajuste para o próximo lote.
+
+### Ficha 5 — Poolish
+
+**Rendimento:** pré-fermento para um lote. **Fórmula:** partes iguais de farinha e água, com pequena quantidade de fermento. **Processo:** misture sem desenvolver glúten; cubra; observe bolhas e ponto de maturação; incorpore à massa final. **Controle:** não usar após colapso intenso ou odor inadequado; registrar temperatura e tempo.
+
+### Ficha 6 — Focaccia
+
+**Rendimento:** uma assadeira média. **Fórmula:** 500 g de farinha, 400 g de água, 10 g de sal, 30 g de azeite e fermento. **Processo:** misture e faça dobras; fermente; transfira para assadeira untada; espalhe sem rasgar; faça depressões; cubra com salmoura e asse até base dourada. **Controle:** registrar espessura, expansão e absorção de azeite.
+
+### Ficha 7 — Pão de queijo
+
+**Rendimento:** aproximadamente 25 unidades. **Ingredientes:** 250 g de polvilho, 100 g de líquido quente, 60 g de gordura, 100 g de queijo e ovos conforme absorção. **Processo:** escalde, amasse, incorpore queijo e ovos gradualmente; porcione; asse sem abrir o forno cedo. **Diagnóstico:** massa líquida ou pão que murcha exige revisão do escaldamento, ovos e temperatura.
+
+### Ficha 8 — Pão doce enriquecido
+
+**Rendimento:** oito unidades. **Fórmula:** 500 g de farinha, 200 g de líquido, 2 ovos, 70 g de açúcar, 60 g de manteiga, sal e fermento. **Processo:** desenvolva massa antes de incorporar toda a gordura; fermente; modele; pincele; asse até cor e estrutura. **Controle:** registrar maciez após 24 e 48 horas e condição da embalagem.
+
+### Ficha 9 — Pão rústico de panela
+
+**Rendimento:** um pão de 800 g. **Fórmula:** 500 g de farinha, 350 g de água, 10 g de sal e fermento ou fermento natural. **Processo:** fermente com dobras; pré-aqueça panela compatível; transfira com cuidado; asse tampado para expansão e destampado para cor. **Segurança:** use luvas adequadas e apoie a panela em superfície resistente ao calor.
+
+### Ficha 10 — Produção de lote para venda
+
+**Rendimento:** 30 unidades de 80 g. **Processo:** escale a fórmula; pese porções; organize fermentação, modelagem, forno, resfriamento e embalagem. Calcule perdas, energia, mão de obra, embalagem e margem. **Entrega:** ficha mestra, cronograma, plano de contingência e instrução de conservação para o cliente.
+
+### Quadro de controle de panificação
+
+| Lote | Farinha | Hidratação | Temp. massa | Fermentação | Forno | Peso final | Observação |
+|---|---:|---:|---:|---|---|---:|---|
+|  |  |  |  |  |  |  |  |
+|  |  |  |  |  |  |  |  |
+|  |  |  |  |  |  |  |  |
+
+### Exercício de padronização
+
+Produza o mesmo pão em duas temperaturas ambientes ou usando dois métodos de forno. Compare volume, casca, miolo, aroma, perda de massa, custo e tempo. Atualize a ficha com uma faixa de fermentação e uma instrução clara para outra pessoa repetir o resultado no mesmo tipo de forno.
