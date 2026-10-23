@@ -789,6 +789,26 @@ function requirePublishOrAdmin(req, res, next) {
   return requireAuth(req, res, () => requireAdmin(req, res, next));
 }
 
+// Tokens de API temporários (nucleo/tokens-api.js) para o que mora aqui no server.js. Lista FECHADA:
+// rota da PUBLISH_KEY que não está aqui recusa token. O código e as páginas do site NÃO passam por
+// API — vão ao ar por commit no master; para isso o acesso é pelo GitHub, não por este token.
+const tokensApi = require('./nucleo/tokens-api');
+tokensApi.registrarSistema('portal', {
+  rotulo: '📋 Portal Staff — relatórios', base: '/staff/api/relatorios',
+  escopos: { leitura: 'Listar os relatórios da área.', publicar: 'Publicar (upsert) relatório na área.' },
+  rotas: [['GET', '', 'leitura'], ['POST', '', 'publicar']],
+  // o token vale para UMA área: relatório de outra área (jurídico, financeiro...) fica fora do alcance
+  dono: { campo: 'area', rotulo: 'Área do portal (ex.: ti, marketing)', padrao: 'ti',
+    validar(v) { const a = String(v).trim().toLowerCase(); if (!AREA_IDS.has(a)) throw new Error(`Área inválida: ${a}.`); return a; } },
+});
+tokensApi.registrarSistema('site', {
+  rotulo: '🌐 Site villelastay.com.br — FAQ', base: '/staff/api/faq',
+  escopos: { publicar: 'Substituir a FAQ oficial do site (lista inteira).' },
+  rotas: [['PUT', '', 'publicar']],
+});
+const guardaPortal = tokensApi.guarda('portal', requirePublishOrSession);
+const guardaSite = tokensApi.guarda('site', requirePublishOrSession);
+
 // Nunca cachear respostas da API do portal — o navegador pode guardar GETs sem
 // Cache-Control e mostrar conteúdo antigo (ex.: texto desatualizado de um relatório).
 app.use('/staff/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -837,7 +857,7 @@ function reacentua(s) {
 }
 
 // Publicar (sessão com a área, ou script local com x-publish-key)
-app.post('/staff/api/relatorios', requirePublishOrSession, (req, res) => {
+app.post('/staff/api/relatorios', guardaPortal, (req, res) => {
   const d = req.body || {};
   const area = String(d.area || '').trim();
   if (!AREA_IDS.has(area)) return res.status(400).json({ erro: 'Área inválida.' });
@@ -889,7 +909,7 @@ app.post('/staff/api/relatorios/reacentuar', requirePublishOrSession, (req, res)
 });
 
 // Listar (sessão filtra pelas áreas do usuário; a PUBLISH_KEY vê tudo — ferramenta de manutenção)
-app.get('/staff/api/relatorios', requirePublishOrSession, (req, res) => {
+app.get('/staff/api/relatorios', guardaPortal, (req, res) => {
   const todas = lerRelatorios();
   const lista = (req.viaChave ? todas : todas.filter(r => areasDoUsuario(req.user).includes(r.area)))
     .filter(r => !req.query.area || r.area === req.query.area)
@@ -3195,7 +3215,7 @@ app.delete('/staff/api/compras/registro/:id', requirePublishOrSession, (req, res
 app.get('/staff/api/faq', requireAuth, (req, res) => {
   res.json({ itens: lerJSON('faq.json', []) });
 });
-app.put('/staff/api/faq', requirePublishOrSession, (req, res) => {
+app.put('/staff/api/faq', guardaSite, (req, res) => {
   if (!req.viaChave && !(req.user && (req.user.papel === 'admin' || podeArea(req.user, 'marketing')))) return res.status(403).json({ erro: 'Acesso restrito (Marketing/admin).' });
   const itens = Array.isArray(req.body && req.body.itens) ? req.body.itens : null;
   if (!itens) return res.status(400).json({ erro: 'Envie a lista de perguntas (itens).' });
@@ -4638,6 +4658,9 @@ try { require('./nucleo/staff-core').montar(app, { requireAuth, requireAdmin, lo
 try { require('./nucleo/hospede').montar(app, { loginBloqueado, registraFalha, limpaFalhas, normFone, lerHospedes, salvarHospedes, setCookieHospede, semSenhaHosp, HOSP_COOKIE, requireHospede, stays, semAcento, novoId, getStaysClientes, JWT_SECRET, AREA_HOSPEDE_URL, enviarEmail, escHtml, reservasDoHospede, lerPropInfo, resumoConta, lerConteudo, lerEvaKB, EVA_KB_BUDGET, registrarUsoEva, lerPedidosHosp, salvarPedidosHosp, lerServicos, lerFidConfig, SECOES_CONTEUDO, lerJSON, salvarJSON, alertaAugusto, appendJsonl, itensBillaveis, reciboHtml, lerAvaliacoes, salvarAvaliacoes, hojeISO, codigoDoHospede, lerIndicacoes, salvarIndicacoes, infoPropriedade, RAIZ: __dirname }); } catch (e) { console.error('[nucleo/hospede] falha ao montar:', e.message); }
 // Despesas dos sistemas (só leitura): IA, armazenamento, pagamentos e envios por sistema — lido pelo relatório semanal com a chave.
 try { require('./nucleo/despesas-sistemas').montar(app, { requirePublishOrAdmin }); } catch (e) { console.error('[nucleo/despesas-sistemas] falha ao montar:', e.message); }
+// Tokens de API temporários (🔑 no Portal Staff): emissão/revogação só por sessão de admin; cada sistema
+// entra com a própria lista de rotas (registrarSistema) e troca a guarda da PUBLISH_KEY. Ver nucleo/tokens-api.js.
+try { tokensApi.montar(app, { requireAuth, requireAdmin, registrarAuditoria }); } catch (e) { console.error('[nucleo/tokens-api] falha ao montar:', e.message); }
 
 try { require('./pwa').montar(app); } catch (e) { console.error('[pwa] falha ao montar módulo:', e.message); }
 

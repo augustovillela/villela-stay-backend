@@ -82,7 +82,7 @@ function registrarRotasEcossistema(app, { requireUsuario, requirePapel }) {
 
 function registrarRotasEcossistemaStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin }) {
   const PA = requirePublishOrAdmin ? [requirePublishOrAdmin] : [requireAuth, requireAdmin];
-  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || (req.viaChave ? 'chave-de-publicacao' : 'plataforma'));
+  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || (req.viaChave ? (req.rotuloChave || 'chave-de-publicacao') : 'plataforma'));
   const aud = (req, acao, id, det) => repo.Auditoria.registrar({ quem: quem(req), acao, entidade: 'ecossistema', entidade_id: s(id, 40), detalhe: s(det, 500), ip: '' });
   const produtor = (dados = {}) => {
     const email = s(dados.produtor_email, 120).toLowerCase();

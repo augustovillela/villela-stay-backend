@@ -325,6 +325,43 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal((await req('GET', '/staff/api/relatorios', { headers: { 'x-publish-key': 'errada' } })).status, 401);
     assert.equal((await req('GET', '/staff/api/relatorios')).status, 401);
   });
+  // Tokens de API temporários (nucleo/tokens-api.js): emitidos só por sessão de admin; valem para UM
+  // sistema e só nas rotas da lista dele. Portal = uma área só; site = a FAQ.
+  await t('Tokens de API: só admin emite; portal fica na área do token; site só na FAQ; lista fechada', async () => {
+    const emitir = (corpo, op) => req('POST', '/staff/api/tokens-api', { json: corpo, ...op });
+    const corpoPortal = { sistema: 'portal', nome: 'Codex portal', dono: 'ti', escopos: ['leitura', 'publicar'], horas: 1 };
+    assert.equal((await emitir(corpoPortal, { headers: { 'x-publish-key': 'pk-test' } })).status, 401, 'a PUBLISH_KEY não emite');
+    assert.equal((await emitir(corpoPortal, { cookie: opCookie })).status, 403, 'membro não emite');
+    assert.equal((await emitir({ ...corpoPortal, dono: 'nao-existe' }, { cookie: adminCookie })).status, 400, 'área inválida');
+    const ep = await emitir(corpoPortal, { cookie: adminCookie });
+    assert.equal(ep.status, 200, JSON.stringify(ep.json));
+    assert.match(ep.json.token, /^vst_/);
+    const tp = { authorization: 'Bearer ' + ep.json.token };
+
+    const pub = await req('POST', '/staff/api/relatorios', { headers: tp, json: { area: 'ti', titulo: 'Relatório pelo token', texto: 'oi' } });
+    assert.equal(pub.status, 200, JSON.stringify(pub.json));
+    assert.equal((await req('POST', '/staff/api/relatorios', { headers: tp, json: { area: 'juridico', titulo: 'x', texto: 'x' } })).status, 403, 'outra área');
+    const lista = await req('GET', '/staff/api/relatorios?area=ti', { headers: tp });
+    assert.equal(lista.status, 200);
+    assert.ok(lista.json.relatorios.length && lista.json.relatorios.every(r => r.area === 'ti'));
+    assert.equal((await req('GET', '/staff/api/relatorios', { headers: tp })).status, 403, 'sem a área, não lista tudo');
+    const id = pub.json.relatorio ? pub.json.relatorio.id : (pub.json.id || '');
+    if (id) assert.equal((await req('DELETE', '/staff/api/relatorios/' + id, { headers: tp })).status, 401, 'apagar não está na lista');
+    assert.equal((await req('PUT', '/staff/api/faq', { headers: tp, json: { itens: [] } })).status, 403, 'token do portal não abre o site');
+    assert.equal((await req('GET', '/staff/api/notas', { headers: tp })).status, 401, 'rota fora da lista não vê token');
+
+    const es = await emitir({ sistema: 'site', nome: 'Codex FAQ', escopos: ['publicar'] }, { cookie: adminCookie });
+    assert.equal(es.status, 200, JSON.stringify(es.json));
+    const faq = await req('PUT', '/staff/api/faq', { headers: { 'x-api-token': es.json.token }, json: { itens: [{ pergunta: 'P?', resposta: 'R.' }] } });
+    assert.equal(faq.status, 200, JSON.stringify(faq.json));
+
+    const rv = await req('POST', '/staff/api/tokens-api/' + ep.json.registro.id + '/revogar', { cookie: adminCookie });
+    assert.equal(rv.json.registro.situacao, 'revogado');
+    assert.equal((await req('GET', '/staff/api/relatorios?area=ti', { headers: tp })).status, 401, 'revogado para na hora');
+    const painel = await req('GET', '/staff/api/tokens-api', { cookie: adminCookie });
+    assert.ok(['portal', 'site'].every(x => painel.json.sistemas.some(y => y.id === x)));
+    assert.ok(!painel.text.includes(es.json.token), 'a listagem nunca devolve o token');
+  });
   // A base de clientes (dado pessoal de todos os sistemas) é a exceção: a chave de
   // automação, que abre quase tudo no staff, NÃO abre esta — nem a lista, nem o CSV.
   await t('Clientes: só sessão de admin — anônimo=401, membro=403, PUBLISH_KEY=403, admin=200 sem cache', async () => {
