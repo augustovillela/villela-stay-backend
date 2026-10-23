@@ -9369,6 +9369,14 @@ self.addEventListener('fetch', (event) => {
 `;
 fs.writeFileSync(path.join(DIST, 'sw.js'), sw);
 
+// ------------------------- série Gastronomia Villela Table -------------------------
+const GASTRO_SRC = path.join(__dirname, 'content', 'gastronomia-villela-table');
+const GASTRO_OUT = path.join(DIST, 'gastronomia-villela-table');
+fs.mkdirSync(GASTRO_OUT, { recursive: true });
+const GASTRO_PATHS = fs.readdirSync(GASTRO_SRC).filter(f => f.endsWith('.html'));
+for (const file of GASTRO_PATHS) fs.copyFileSync(path.join(GASTRO_SRC, file), path.join(GASTRO_OUT, file));
+GASTRO_PATHS.unshift('index.html');
+
 // ------------------------- sitemap.xml e robots.txt -------------------------
 const hoje = new Date().toISOString().slice(0, 10);
 // Rotas com prioridade/frequência por tipo de página (ajuda o crawler a priorizar)
@@ -9386,6 +9394,7 @@ const rotas = [
   { loc: '/posse-2027.html', changefreq: 'weekly', priority: '0.7' },
   { loc: '/blog.html', changefreq: 'weekly', priority: '0.7' },
   ...BLOG.map(a => ({ loc: `/blog/${a.slug}.html`, changefreq: 'monthly', priority: '0.6' })),
+  ...GASTRO_PATHS.map(f => ({ loc: `/gastronomia-villela-table/${f === 'index.html' ? '' : f}`, changefreq: 'monthly', priority: f === 'index.html' ? '0.7' : '0.6' })),
   { loc: '/nossa-historia.html', changefreq: 'monthly', priority: '0.5' },
   { loc: '/guia.html', changefreq: 'monthly', priority: '0.4' },
   { loc: '/regras.html', changefreq: 'monthly', priority: '0.4' },
