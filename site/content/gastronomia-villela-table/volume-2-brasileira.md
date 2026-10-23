@@ -335,3 +335,49 @@ Prepare conserva ou fermentado adequado às condições reais de armazenamento e
 
 ### Aula 40 — Menu do Sul e projeto regional
 Apresente menu completo do Sul com pesquisa, fichas, fornecedores, custos, cronograma, alternativa alimentar, desenho de montagem e serviço. A avaliação final considera território, técnica, segurança, sustentabilidade, hospitalidade e capacidade de repetir o resultado.
+
+## Caderno de fichas regionais brasileiras
+
+### Ficha 1 — Caldo de mandioca com ervas
+
+**Rendimento:** quatro porções. **Ingredientes:** 500 g de mandioca descascada, 1 l de fundo, 100 g de cebola, 80 g de tomate, ervas e 20 ml de óleo. **Processo:** cozinhe a mandioca até maciez; refogue aromáticos; junte fundo e mandioca; bata parte para criar corpo e mantenha parte em pedaços. **Controle:** registre variedade, tempo e rendimento; descarte qualquer parte inadequada. **Contexto:** descreva a referência regional e identifique a adaptação feita.
+
+### Ficha 2 — Peixe amazônico com caldo aromático
+
+**Rendimento:** quatro porções. **Ingredientes:** 600 g de pescado de fornecedor regularizado, 500 ml de caldo, 150 g de tomate, 100 g de cebola, ervas e acidez. **Processo:** faça base aromática; adicione caldo; incorpore peixe somente quando o líquido estiver pronto; cozinhe até ponto seguro e sirva imediatamente. **Controle:** cadeia fria, espessura, temperatura e perda de massa. **Variação:** substitua por vegetal firme e registre o que muda.
+
+### Ficha 3 — Feijão nordestino com abóbora
+
+**Rendimento:** seis porções. **Ingredientes:** 300 g de feijão, 300 g de abóbora, 100 g de cebola, alho, cominho e 1,2 l de água. **Processo:** hidrate quando apropriado; cozinhe feijão até quase macio; adicione abóbora em cubos; finalize com tempero refogado e acidez. **Controle:** pesar seco e cozido, registrar tempo e manter textura dos dois componentes.
+
+### Ficha 4 — Cuscuz de milho com legumes
+
+**Rendimento:** quatro porções. **Ingredientes:** 250 g de flocos de milho, 220 ml de água, 150 g de legumes, 30 ml de óleo e sal. **Processo:** hidrate sem encharcar; descanse; cozinhe no vapor; solte os grãos; misture legumes previamente salteados. **Diagnóstico:** cuscuz quebradiço indica pouca hidratação; empapado indica excesso de água ou compactação.
+
+### Ficha 5 — Conserva de maxixe ou vegetal sazonal
+
+**Rendimento:** dois frascos pequenos. **Ingredientes:** 400 g de vegetal, 250 ml de vinagre, 250 ml de água, 20 g de sal, açúcar opcional e aromáticos. **Processo:** higienize, corte e branqueie quando indicado; prepare líquido; envase em recipiente adequado; resfrie e mantenha refrigerado. **Controle:** datar lote, registrar pH quando disponível e nunca declarar validade sem teste.
+
+### Ficha 6 — Arroz de pequi ou adaptação aromática
+
+**Rendimento:** seis porções. **Ingredientes:** 300 g de arroz, 600 ml de fundo, 100 g de cebola, ingrediente aromático regional em quantidade segura e 20 ml de óleo. **Processo:** refogue; envolva o arroz; adicione líquido; cozinhe por absorção; descanse e finalize. **Atenção:** ingredientes com caroço ou espinhos exigem serviço que evite acidentes e informação clara ao convidado.
+
+### Ficha 7 — Queijo, quitanda e acompanhamento fresco
+
+**Rendimento:** oito unidades. **Ingredientes:** 250 g de polvilho ou farinha apropriada, 150 g de queijo, 2 ovos, 80 ml de líquido e sal. **Processo:** hidrate ou escalde conforme a fórmula; incorpore ovos e queijo; porcione; asse até expansão e cor. **Controle:** registrar fornecedor, temperatura do forno, peso por unidade e comportamento após resfriamento.
+
+### Ficha 8 — Legumes do litoral com leite de coco
+
+**Rendimento:** quatro porções. **Ingredientes:** 500 g de legumes ou pescado, 200 ml de leite de coco, 150 g de tomate, cebola, ervas e acidez. **Processo:** construa base; adicione leite de coco sem fervura agressiva; incorpore ingrediente principal no momento correto; ajuste sal e acidez. **Diagnóstico:** separação pode resultar de calor excessivo ou redução inadequada.
+
+### Ficha 9 — Carne ou vegetal na brasa com vinagrete
+
+**Rendimento:** quatro porções. **Ingredientes:** 600 g de proteína ou vegetal firme, 40 g de salmoura ou tempero, 150 g de tomate, cebola e 40 g de vinagrete. **Processo:** acenda brasa segura; controle distância e calor; marque, vire e descanse; sirva com vinagrete separado. **Registro:** temperatura, tempo, peso antes e depois e consumo de combustível.
+
+### Ficha 10 — Menu regional de três etapas
+
+**Entrada:** conserva ou salada de ingrediente local. **Principal:** cereal ou raiz, leguminosa e componente proteico ou vegetal. **Sobremesa:** fruta ou doce regional com acidez. Para dez pessoas, calcule compras, perdas, cronograma, louça, temperatura e alternativa alimentar. Inclua fornecedores, pesquisa de origem, custo por porção e texto de apresentação que diferencie tradição de criação autoral.
+
+### Exercício de documentação cultural
+
+Escolha duas fichas e escreva uma página sobre território, nomes, fontes consultadas, sazonalidade, quem produz e quais adaptações foram necessárias. O estudante deve ser capaz de explicar o prato sem transformar a cultura em elemento decorativo ou atribuir autoria indevida.
