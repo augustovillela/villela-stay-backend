@@ -6,6 +6,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
 from reportlab.lib import colors
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTENT = ROOT / 'content' / 'gastronomia-villela-table'
@@ -43,7 +45,16 @@ def footer(canvas, doc):
     canvas.restoreState()
 
 def story_for(text, title):
-    story = [Spacer(1, 35*mm), Paragraph('VILLELA TABLE', styles['VillelaSmall']), Spacer(1, 5*mm), Paragraph(title, styles['VillelaTitle']), Paragraph('Formação completa em gastronomia · Autor: Augusto Villela', styles['VillelaBody']), PageBreak()]
+    story = [Spacer(1, 35*mm), Paragraph('VILLELA TABLE', styles['VillelaSmall']), Spacer(1, 5*mm), Paragraph(title, styles['VillelaTitle']), Paragraph('Formação completa em gastronomia · Autor: Augusto Villela', styles['VillelaBody'])]
+    if 'Fundamentos' in title:
+        drawing = svg2rlg(str(CONTENT / 'ilustracoes' / 'controle-temperatura.svg'))
+        scale = (155*mm) / drawing.width; drawing.scale(scale, scale); drawing.width *= scale; drawing.height *= scale
+        story += [Spacer(1, 8*mm), drawing]
+    elif 'Panificação' in title:
+        drawing = svg2rlg(str(CONTENT / 'ilustracoes' / 'ciclo-fermentacao.svg'))
+        scale = (145*mm) / drawing.width; drawing.scale(scale, scale); drawing.width *= scale; drawing.height *= scale
+        story += [Spacer(1, 8*mm), drawing]
+    story += [PageBreak()]
     for block in re.split(r'\n\s*\n', text):
         block = block.strip()
         if not block or block.startswith('# '):
