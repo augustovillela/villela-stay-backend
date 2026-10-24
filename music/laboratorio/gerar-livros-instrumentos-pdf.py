@@ -8,11 +8,12 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, PageBreak, Table, TableStyle
 from reportlab.platypus.tableofcontents import TableOfContents
-from reportlab.graphics.shapes import Drawing, Rect, Circle, Line, String, Polygon, Ellipse
+from reportlab.graphics.shapes import Drawing, Rect, Circle, Line, String, Polygon, Ellipse, Image as ShapeImage
 from reportlab.lib import colors
 
 OUT = Path(__file__).resolve().parents[2] / 'output' / 'pdf'
 OUT.mkdir(parents=True, exist_ok=True)
+ASSETS = Path(__file__).with_name('assets')
 
 CAPITULOS = [
     ('01', 'Som, postura e mapa de estudo', 'Prepare o corpo, estabilize o instrumento e aprenda a ouvir a diferença entre som limpo, ruído e tensão. O primeiro estudo é curto: cordas soltas, respiração livre e registro do que mudou.'),
@@ -142,27 +143,27 @@ def rodape(canvas, doc):
 
 def capa_arte(titulo, foco, instrumento):
     d = Drawing(336, 430)
-    navy, blue, gold, green = colors.HexColor('#17344D'), colors.HexColor('#245B78'), colors.HexColor('#D97706'), colors.HexColor('#1D7A61')
-    d.add(Rect(0, 0, 336, 430, fillColor=navy, strokeColor=navy))
-    d.add(Circle(260, 285, 116, fillColor=colors.Color(1,1,1,alpha=.055), strokeColor=None))
-    d.add(Circle(260, 285, 76, fillColor=colors.Color(1,1,1,alpha=.04), strokeColor=None))
-    d.add(String(28, 392, 'MUSIQUE · VILLELA MUSIC', fontName='Helvetica-Bold', fontSize=10, fillColor=colors.HexColor('#F5DFB2'), letterSpacing=1.3))
-    d.add(String(28, 350, 'COLEÇÃO DE', fontName='Helvetica-Bold', fontSize=10, fillColor=colors.HexColor('#C7E8D4'), letterSpacing=1.5))
-    d.add(String(28, 318, 'VIOLÃO  ·  GUITARRA', fontName='Helvetica-Bold', fontSize=17, fillColor=colors.white))
-    d.add(String(28, 278, titulo, fontName='Helvetica-Bold', fontSize=17, fillColor=colors.white))
-    d.add(String(28, 252, foco, fontName='Helvetica', fontSize=9.5, fillColor=colors.HexColor('#DCEAF0')))
-    # Ilustração vetorial do instrumento: corpo, braço, escala, cordas e marcações.
-    corpo = colors.HexColor('#B86B3D') if instrumento == 'violão' else colors.HexColor('#7B8FA3')
-    d.add(Ellipse(253, 123, 54, 76, fillColor=corpo, strokeColor=colors.HexColor('#F5DFB2'), strokeWidth=2))
-    d.add(Ellipse(253, 158, 35, 40, fillColor=corpo, strokeColor=colors.HexColor('#F5DFB2'), strokeWidth=1.5))
-    d.add(Circle(253, 128, 19, fillColor=navy, strokeColor=colors.HexColor('#F5DFB2'), strokeWidth=2))
-    d.add(Rect(246, 186, 14, 132, fillColor=colors.HexColor('#5B6478'), strokeColor=colors.HexColor('#F5DFB2'), strokeWidth=1))
-    d.add(Rect(242, 313, 22, 25, fillColor=colors.HexColor('#5B6478'), strokeColor=colors.HexColor('#F5DFB2'), strokeWidth=1))
-    for x in [247, 250, 253, 256, 259]: d.add(Line(x, 188, x, 335, strokeColor=colors.HexColor('#F8F9FA'), strokeWidth=.65))
-    for y in [205, 222, 239, 256, 273, 290, 307]: d.add(Line(246, y, 260, y, strokeColor=navy, strokeWidth=.8))
-    for x, y in [(250, 218), (256, 252), (250, 286)]: d.add(Circle(x, y, 2.2, fillColor=gold, strokeColor=None))
-    d.add(String(28, 54, 'OUVIR · COMPREENDER · PRATICAR · TOCAR', fontName='Helvetica-Bold', fontSize=9, fillColor=colors.HexColor('#F5DFB2')))
-    d.add(String(28, 30, 'Livro didático ilustrado · Volume da coleção Musique', fontName='Helvetica', fontSize=8.5, fillColor=colors.HexColor('#DCEAF0')))
+    navy, gold, ink = colors.HexColor('#14283D'), colors.HexColor('#D98B3A'), colors.HexColor('#182C3C')
+    asset = ASSETS / ('capa-violao.png' if instrumento == 'violão' else 'capa-guitarra.png' if instrumento == 'guitarra' else 'capa-colecao.png')
+    if asset.exists(): d.add(ShapeImage(0, 0, 336, 430, str(asset)))
+    else: d.add(Rect(0, 0, 336, 430, fillColor=navy, strokeColor=navy))
+    # Painel translúcido para que o título permaneça legível sobre a arte.
+    d.add(Rect(0, 0, 154, 430, fillColor=colors.Color(0.04,0.10,0.16,alpha=.88), strokeColor=None))
+    d.add(String(22, 394, 'MUSIQUE', fontName='Helvetica-Bold', fontSize=13, fillColor=colors.HexColor('#F5DFB2'), letterSpacing=1.6))
+    d.add(String(22, 378, 'VILLELA MUSIC', fontName='Helvetica', fontSize=7.5, fillColor=colors.HexColor('#C7E8D4'), letterSpacing=1.2))
+    d.add(Rect(22, 344, 54, 3, fillColor=gold, strokeColor=None))
+    nome = 'VIOLÃO' if instrumento == 'violão' else 'GUITARRA' if instrumento == 'guitarra' else 'VIOLÃO\nE GUITARRA'
+    linhas = nome.split('\n')
+    for i, linha in enumerate(linhas): d.add(String(22, 306-i*31, linha, fontName='Helvetica-Bold', fontSize=20 if instrumento != 'coleção' else 18, fillColor=colors.white))
+    ysub = 242 if len(linhas) == 1 else 214
+    d.add(String(22, ysub, 'CURSO COMPLETO', fontName='Helvetica-Bold', fontSize=9, fillColor=colors.HexColor('#F5DFB2'), letterSpacing=.8))
+    d.add(String(22, ysub-25, 'técnica · teoria · repertório', fontName='Helvetica', fontSize=8.5, fillColor=colors.HexColor('#DCEAF0')))
+    d.add(String(22, 72, 'AUGUSTO VILLELA', fontName='Helvetica-Bold', fontSize=8.5, fillColor=colors.HexColor('#F5DFB2'), letterSpacing=.8))
+    d.add(String(22, 56, 'Edição didática Musique', fontName='Helvetica', fontSize=7.5, fillColor=colors.HexColor('#C7E8D4')))
+    d.add(Rect(160, 0, 176, 62, fillColor=colors.Color(0.96,0.94,0.89,alpha=.88), strokeColor=None))
+    d.add(String(170, 44, 'OUVIR  ·  COMPREENDER  ·  PRATICAR', fontName='Helvetica-Bold', fontSize=8.2, fillColor=ink))
+    d.add(String(170, 27, 'Livro didático ilustrado · coleção Musique', fontName='Helvetica', fontSize=7.8, fillColor=colors.HexColor('#526673')))
+    d.add(String(170, 12, foco, fontName='Helvetica', fontSize=6.8, fillColor=colors.HexColor('#526673')))
     return d
 
 def gerar(nome, titulo, foco, capitulos):
