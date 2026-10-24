@@ -54,11 +54,11 @@ const SUBNAV = () => `<nav class="lab-sub" aria-label="Navegação Musical">
     <a class="lab-sub-curso" href="/music/criar/curso-violao-livro"><span aria-hidden="true">🪕</span> Violão</a>
     <a class="lab-sub-curso" href="/music/criar/curso-guitarra-edicao"><span aria-hidden="true">🎸</span> Guitarra</a>
     <a class="lab-sub-curso" href="/music/curso-bateria"><span aria-hidden="true">🥁</span> Bateria</a>
-    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🎸</span> Contrabaixo <small>em breve</small></span>
-    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🎹</span> Piano <small>em breve</small></span>
-    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Ukulele <small>em breve</small></span>
-    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Cavaquinho <small>em breve</small></span>
-    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Bandolim <small>em breve</small></span>
+    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🎸</span> Contrabaixo</span>
+    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🎹</span> Piano</span>
+    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Ukulele</span>
+    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Cavaquinho</span>
+    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Bandolim</span>
   </div>
   <div class="wrap lab-sub-ferramentas">
     <a class="lab-sub-home" href="/music/laboratorio"><span aria-hidden="true">🧪</span> Laboratório</a>
