@@ -51,6 +51,10 @@
     var tab = 'e|--0--1--3--1--0--|\nB|------------------|\nG|------------------|\nD|------------------|\nA|------------------|\nE|------------------|';
     var notas = 'Mi4 · Fá4 · Sol4 · Fá4 · Mi4';
     var midis = [64, 65, 67, 65, 64];
+    var soma = String(c.id || '').split('').reduce(function (n, ch) { return n + ch.charCodeAt(0); }, 0), desloc = soma % 8, baseMidi = 60 + (soma % 12), padrao = [0, 2, 4, 2, 0].map(function (x, i) { return x + desloc + (i === 2 && soma % 2 ? 1 : 0); });
+    midis = padrao.map(function (x) { return baseMidi + x; });
+    tab = 'e|--' + padrao.join('--') + '--|\nB|------------------|\nG|------------------|\nD|------------------|\nA|------------------|\nE|------------------|';
+    notas = midis.map(function (m) { return C.nomeNota(m, true); }).join(' · ');
     if (c.id.indexOf('acord') >= 0 || c.id.indexOf('voicing') >= 0) { tab = 'e|--0-----0-----|\nB|--1-----1-----|\nG|--0-----0-----|\nD|--2-----2-----|\nA|--3-----3-----|\nE|--------------|'; notas = 'Dó–mi–sol–dó–mi · duas repetições do acorde'; midis = [60, 64, 67, 72, 76, 60, 64, 67, 72, 76]; }
     else if (c.id.indexOf('ritmo') >= 0 || c.id.indexOf('levada') >= 0 || c.id.indexOf('riffs') >= 0) { tab = 'e|x---x-x---x---|\nB|x---x-x---x---|\nG|x---x-x---x---|\nD|x---x-x---x---|\nA|x---x-x---x---|\nE|x---x-x---x---|\n   1 e 2 e 3 e 4 e'; notas = 'Quatro ataques · tempos 1, 2&, 3 e 4'; midis = [60, 60, 60, 60]; }
     else if (c.id.indexOf('bends') >= 0 || c.id.indexOf('solos') >= 0 || c.id.indexOf('escala') >= 0 || c.id.indexOf('pentatonica') >= 0) { tab = 'e|----------------5-8-|\nB|------------5-8-----|\nG|--------5-7---------|\nD|----5-7-------------|\nA|5-7-----------------|\nE|--------------------|'; notas = 'Ré3 · Mi3 · Sol3 · Lá3 · Dó4 · Ré4 · Mi4 · Sol4 · Lá4 · Dó5'; midis = [50, 52, 55, 57, 60, 62, 64, 67, 69, 72]; }
