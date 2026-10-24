@@ -620,7 +620,7 @@
 .curso-guitarra-aula-card-texto small{font-size:11px;color:#607387;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .curso-guitarra-aula-marca{font-size:20px;font-weight:800;color:#9fb1c1}
 .curso-guitarra-aula-card.concluida .curso-guitarra-aula-marca{color:#2f855a}
-.curso-guitarra-aula-corpo{scroll-margin-top:24px;padding:24px;border:1px solid #d7e3ef;border-radius:17px;background:linear-gradient(135deg,#fff,#f7fbff);box-shadow:0 6px 18px rgba(20,33,61,.08)}
+.curso-guitarra-aula-corpo{scroll-margin-top:90px;padding:24px;border:1px solid #d7e3ef;border-radius:17px;background:linear-gradient(135deg,#fff,#f7fbff);box-shadow:0 6px 18px rgba(20,33,61,.08)}
 .curso-guitarra-aula-corpo h3{margin:4px 0 8px;color:var(--navy);font-size:25px}
 .curso-guitarra-aula-texto{max-width:760px;font-size:16px;line-height:1.7;color:#293b4c}
 .curso-guitarra-aula-pratica{margin-top:20px;padding:16px 18px;border-left:4px solid var(--gold);border-radius:10px;background:#fff9df}

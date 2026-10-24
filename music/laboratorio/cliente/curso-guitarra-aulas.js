@@ -28,7 +28,13 @@
     if (!w.document) return;
     w.setTimeout(function () {
       var corpo = alvo.querySelector('.curso-guitarra-aula-corpo');
-      if (corpo && corpo.scrollIntoView) corpo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (corpo) {
+        var nav = w.document.querySelector('.lab-sub');
+        var margem = (nav ? nav.getBoundingClientRect().height : 0) + 14;
+        var topo = corpo.getBoundingClientRect().top + (w.pageYOffset || w.scrollY || 0) - margem;
+        if (w.scrollTo) w.scrollTo({ top: Math.max(0, topo), behavior: 'smooth' });
+        else if (corpo.scrollIntoView) corpo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
       var titulo = corpo && corpo.querySelector('h3');
       if (titulo) titulo.setAttribute('tabindex', '-1');
       if (titulo && titulo.focus) w.setTimeout(function () { titulo.focus({ preventScroll: true }); }, 250);
