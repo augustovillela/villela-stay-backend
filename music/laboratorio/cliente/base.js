@@ -25,7 +25,14 @@
   C.$$ = function (s, r) { return [].slice.call((r || d).querySelectorAll(s)); };
   C.limpar = function (e) { while (e.firstChild) e.removeChild(e.firstChild); return e; };
 
-  C.guardar = function (k, v) { try { localStorage.setItem('musique-lab:' + k, JSON.stringify(v)); } catch (_) { /* sem armazenamento: tudo bem */ } };
+  var jornadaSyncTimer = null;
+  C.guardar = function (k, v) {
+    try { localStorage.setItem('musique-lab:' + k, JSON.stringify(v)); } catch (_) { /* sem armazenamento: tudo bem */ }
+    var sincronizaveis = { 'jornada-guitarra': 1, 'jornada-guitarra-favoritos': 1, 'curso-guitarra-perfil': 1, 'curso-guitarra-plano': 1, 'curso-guitarra-diario': 1, 'repertorio-checkpoints': 1, 'aquecimento-guitarra-sessoes': 1, 'temporizador-estudo-sessoes': 1, 'checkin-semanal-guitarra': 1 };
+    if (sincronizaveis[k] && C.Jornada && !C.Jornada._aplicando && C.Jornada.sync) {
+      clearTimeout(jornadaSyncTimer); jornadaSyncTimer = setTimeout(function () { C.Jornada.sync(false).catch(function () {}); }, 700);
+    }
+  };
   C.lerLocal = function (k, padrao) { try { var v = localStorage.getItem('musique-lab:' + k); return v == null ? padrao : JSON.parse(v); } catch (_) { return padrao; } };
 
   /** API do Musique. 401/402 viram erro com mensagem legível. */
@@ -37,6 +44,67 @@
           return j;
         });
       });
+  };
+
+  // Estado prático do aluno: cópia local para uso offline + snapshot na
+  // conta para retomar a jornada em qualquer dispositivo autenticado.
+  C.Jornada = {
+    snapshot: function () {
+      var teoria = {};
+      try { teoria = JSON.parse(w.localStorage.getItem('musique-curso-teoria-concluidas-v1') || '{}') || {}; } catch (_) { teoria = {}; }
+      return {
+        jornada: C.lerLocal('jornada-guitarra', {}),
+        favoritos: C.lerLocal('jornada-guitarra-favoritos', {}),
+        curso: {
+          perfil: C.lerLocal('curso-guitarra-perfil', null),
+          plano: C.lerLocal('curso-guitarra-plano', null),
+          diario: C.lerLocal('curso-guitarra-diario', [])
+        },
+        repertorio: C.lerLocal('repertorio-checkpoints', []),
+        aquecimentos: Number(C.lerLocal('aquecimento-guitarra-sessoes', 0)) || 0,
+        sessoes_focadas: Number(C.lerLocal('temporizador-estudo-sessoes', 0)) || 0,
+        checkin: C.lerLocal('checkin-semanal-guitarra', {}),
+        curso_teoria: teoria
+      };
+    },
+    aplicar: function (p) {
+      if (!p || typeof p !== 'object') return;
+      this._aplicando = true;
+      if (p.jornada && typeof p.jornada === 'object') C.guardar('jornada-guitarra', p.jornada);
+      if (p.favoritos && typeof p.favoritos === 'object') C.guardar('jornada-guitarra-favoritos', p.favoritos);
+      var curso = p.curso && typeof p.curso === 'object' ? p.curso : {};
+      if (curso.perfil) C.guardar('curso-guitarra-perfil', curso.perfil);
+      if (curso.plano) C.guardar('curso-guitarra-plano', curso.plano);
+      if (Array.isArray(curso.diario)) C.guardar('curso-guitarra-diario', curso.diario);
+      if (Array.isArray(p.repertorio)) C.guardar('repertorio-checkpoints', p.repertorio);
+      if (p.aquecimentos != null) C.guardar('aquecimento-guitarra-sessoes', Number(p.aquecimentos) || 0);
+      if (p.sessoes_focadas != null) C.guardar('temporizador-estudo-sessoes', Number(p.sessoes_focadas) || 0);
+      if (p.checkin && typeof p.checkin === 'object') C.guardar('checkin-semanal-guitarra', p.checkin);
+      if (p.curso_teoria && typeof p.curso_teoria === 'object') {
+        try { w.localStorage.setItem('musique-curso-teoria-concluidas-v1', JSON.stringify(p.curso_teoria)); } catch (_) {}
+      }
+      this._aplicando = false;
+    },
+    sync: function (avisar) {
+      var self = this;
+      return C.api('PUT', '/music/api/lab/jornada-guitarra', self.snapshot()).then(function (r) {
+        try { w.localStorage.setItem('musique-jornada-sync-em', r.atualizado_em || new Date().toISOString()); } catch (_) {}
+        if (avisar) C.aviso('Progresso sincronizado na sua conta.');
+        return r;
+      }).catch(function (e) {
+        // Sem login/assinatura ou sem rede, o snapshot local continua válido.
+        if (avisar) C.aviso(e.status === 401 ? 'Entre na sua conta para sincronizar o progresso.' : e.status === 402 ? 'A sincronização da jornada faz parte da assinatura.' : 'Sem conexão: o progresso continua salvo neste navegador.', 'erro');
+        throw e;
+      });
+    },
+    carregar: function () {
+      var self = this;
+      return C.api('GET', '/music/api/lab/jornada-guitarra').then(function (r) {
+        if (r.progresso) self.aplicar(r.progresso);
+        try { w.localStorage.setItem('musique-jornada-sync-em', r.atualizado_em || ''); } catch (_) {}
+        return r;
+      });
+    }
   };
 
   var avisoT = null;
@@ -188,7 +256,7 @@
   function progressoCurso() {
     var chave = 'musique-curso-teoria-concluidas-v1', concluidas = {};
     try { concluidas = JSON.parse(w.localStorage.getItem(chave) || '{}') || {}; } catch (_) { concluidas = {}; }
-    function salvar() { try { w.localStorage.setItem(chave, JSON.stringify(concluidas)); } catch (_) { /* armazenamento indisponível */ } }
+    function salvar() { try { w.localStorage.setItem(chave, JSON.stringify(concluidas)); } catch (_) { /* armazenamento indisponível */ } if (C.Jornada && C.Jornada.sync) C.Jornada.sync(false).catch(function () {}); }
     function atualizar() {
       var links = C.$$('.curso-modulo a[data-curso-slug]'), total = links.length, feitos = 0;
       links.forEach(function (a) { var ok = !!concluidas[a.getAttribute('data-curso-slug')]; a.classList.toggle('curso-feito', ok); var li = a.closest('li'); if (li) li.classList.toggle('curso-item-feito', ok); if (ok) feitos++; });

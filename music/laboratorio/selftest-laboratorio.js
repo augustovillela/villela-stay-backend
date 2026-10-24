@@ -366,6 +366,14 @@ async function rodar({ t, secao, req, assert }) {
     await req('POST', '/music/api/lab/favoritos', { como: 'ana', corpo: { url: '/music/escalas/re/dorico', titulo: 'Ré dórico' } });
     assert.equal((await req('GET', '/music/api/lab/favoritos', { como: 'ana' })).json.favoritos.length, 1);
     assert.equal((await req('GET', '/music/api/lab/favoritos', { como: 'bruno' })).json.favoritos.length, 0);
+    assert.equal((await req('GET', '/music/api/lab/jornada-guitarra')).status, 401);
+    const jornada = { jornada: { instrumento: 'violao', nivel: 'iniciante', sessoes: 3, concluidas: { 'Postura': true } }, curso: { diario: [{ data: '2026-10-24', minutos: 20 }] }, repertorio: [{ nome: 'Minha música', concluida: true }], aquecimentos: 2, sessoes_focadas: 4 };
+    const js = await req('PUT', '/music/api/lab/jornada-guitarra', { como: 'ana', corpo: jornada });
+    assert.equal(js.status, 200); assert.equal(js.json.progresso.jornada.sessoes, 3);
+    const ja = await req('GET', '/music/api/lab/jornada-guitarra', { como: 'ana' });
+    assert.equal(ja.json.progresso.jornada.instrumento, 'violao');
+    assert.equal((await req('GET', '/music/api/lab/jornada-guitarra', { como: 'bruno' })).json.progresso, null, 'a jornada da Ana não aparece para o Bruno');
+    assert.equal((await req('PUT', '/music/api/lab/jornada-guitarra', { como: 'ana', corpo: { curso: { diario: 'invalido' } } })).status, 200, 'payload parcial continua válido');
     const j = await req('POST', '/music/api/lab/jogos', { como: 'ana', corpo: { jogo: 'caca-a-nota', dia: '2026-09-28', pontos: 120 } });
     await req('POST', '/music/api/lab/jogos', { como: 'ana', corpo: { jogo: 'caca-a-nota', dia: '2026-09-28', pontos: 80 } });
     assert.equal(j.json.melhor, 120); assert.equal((await req('GET', '/music/api/lab/jogos/caca-a-nota', { como: 'ana' })).json.melhor, 120, 'a pior rodada não apaga a melhor');
@@ -377,6 +385,7 @@ async function rodar({ t, secao, req, assert }) {
     assert.ok(ex.json.tentativas_excluidas >= 2);
     assert.equal(db.prepare("SELECT COUNT(*) AS n FROM tentativas WHERE usuario = 'u-ana' AND tipo LIKE 'lab:%'").get().n, 0);
     assert.equal(db.prepare("SELECT COUNT(*) AS n FROM tentativas WHERE usuario = 'u-bruno' AND tipo LIKE 'lab:%'").get().n, 1, 'os dados do Bruno ficam');
+    assert.equal((await req('GET', '/music/api/lab/jornada-guitarra', { como: 'ana' })).json.progresso, null, 'a exclusão LGPD remove a jornada sincronizada');
     assert.ok(/lab\\\/meus-dados/.test(require('fs').readFileSync(require('path').join(__dirname, '..', 'sessao.js'), 'utf8')), 'LGPD do Laboratório não fica refém da assinatura (SEM_PAGAR)');
   });
 

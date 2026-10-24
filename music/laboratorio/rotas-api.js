@@ -117,6 +117,37 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     res.json({ ok: true });
   }));
 
+  // ---- jornada de violão/guitarra: sincronização entre dispositivos ----
+  app.get(B + '/jornada-guitarra', requireUsuario, h(async (req, res) => {
+    const row = db.prepare('SELECT dados, atualizado_em FROM lab_jornada_progresso WHERE usuario = ?').get(req.usuario.id);
+    let progresso = null;
+    if (row) {
+      try { progresso = JSON.parse(row.dados || '{}'); } catch (_) { progresso = null; }
+    }
+    res.json({ progresso, atualizado_em: row ? row.atualizado_em : '' });
+  }));
+  app.put(B + '/jornada-guitarra', requireUsuario, h(async (req, res) => {
+    const b = req.body && typeof req.body === 'object' ? req.body : {};
+    const dados = {
+      versao: 1,
+      jornada: b.jornada && typeof b.jornada === 'object' ? b.jornada : {},
+      favoritos: b.favoritos && typeof b.favoritos === 'object' ? b.favoritos : {},
+      curso: b.curso && typeof b.curso === 'object' ? b.curso : {},
+      repertorio: Array.isArray(b.repertorio) ? b.repertorio.slice(0, 100) : [],
+      aquecimentos: Math.max(0, Math.min(1000000, Number(b.aquecimentos) || 0)),
+      sessoes_focadas: Math.max(0, Math.min(1000000, Number(b.sessoes_focadas) || 0)),
+      checkin: b.checkin && typeof b.checkin === 'object' ? b.checkin : {},
+      curso_teoria: b.curso_teoria && typeof b.curso_teoria === 'object' ? b.curso_teoria : {},
+    };
+    const texto = JSON.stringify(dados);
+    if (texto.length > 250000) throw erro(400, 'O progresso excede o limite permitido.');
+    const quando = nowISO();
+    db.prepare(`INSERT INTO lab_jornada_progresso (usuario, dados, atualizado_em) VALUES (?,?,?)
+                ON CONFLICT(usuario) DO UPDATE SET dados = excluded.dados, atualizado_em = excluded.atualizado_em`)
+      .run(req.usuario.id, texto, quando);
+    res.json({ ok: true, progresso: dados, atualizado_em: quando });
+  }));
+
   // ---- favoritos ----
   app.get(B + '/favoritos', requireUsuario, h(async (req, res) => {
     res.json({ favoritos: db.prepare('SELECT url, titulo, criado_em FROM lab_favoritos WHERE usuario = ? ORDER BY criado_em DESC').all(req.usuario.id) });
@@ -163,6 +194,7 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
       favoritos: db.prepare('SELECT * FROM lab_favoritos WHERE usuario = ?').all(u),
       jogos: db.prepare('SELECT * FROM lab_jogos WHERE usuario = ?').all(u),
       perfil: db.prepare('SELECT * FROM lab_perfil WHERE usuario = ?').get(u) || null,
+      jornada_guitarra: db.prepare('SELECT dados, atualizado_em FROM lab_jornada_progresso WHERE usuario = ?').get(u) || null,
       atividades_criadas: db.prepare('SELECT id, titulo, config, criado_em FROM lab_atividades WHERE professor = ?').all(u),
       tutor_de_braco: require('./tutor-braco').dadosDe(u),
       tocar_junto: require('../tocar').dadosDe(u),
@@ -178,6 +210,7 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     db.prepare('DELETE FROM lab_favoritos WHERE usuario = ?').run(u);
     db.prepare('DELETE FROM lab_jogos WHERE usuario = ?').run(u);
     db.prepare('DELETE FROM lab_perfil WHERE usuario = ?').run(u);
+    db.prepare('DELETE FROM lab_jornada_progresso WHERE usuario = ?').run(u);
     require('./tutor-braco').excluirDe(u);
     require('../tocar').excluirDe(u);
     require('../tocar').excluirCampanhasDe(u);

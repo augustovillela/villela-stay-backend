@@ -56,3 +56,12 @@ CREATE TABLE IF NOT EXISTS lab_perfil (
   objetivo      TEXT NOT NULL DEFAULT '',
   atualizado_em TEXT NOT NULL DEFAULT ''
 );
+
+-- Snapshot sincronizado das jornadas práticas do aluno. O navegador mantém
+-- uma cópia local para funcionar offline; esta tabela permite retomar a
+-- mesma jornada em outro dispositivo autenticado.
+CREATE TABLE IF NOT EXISTS lab_jornada_progresso (
+  usuario       TEXT PRIMARY KEY,
+  dados         TEXT NOT NULL DEFAULT '{}',
+  atualizado_em TEXT NOT NULL DEFAULT ''
+);
