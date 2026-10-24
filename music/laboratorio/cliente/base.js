@@ -28,7 +28,7 @@
   var jornadaSyncTimer = null;
   C.guardar = function (k, v) {
     try { localStorage.setItem('musique-lab:' + k, JSON.stringify(v)); } catch (_) { /* sem armazenamento: tudo bem */ }
-    var sincronizaveis = { 'jornada-guitarra': 1, 'jornada-guitarra-favoritos': 1, 'curso-guitarra-perfil': 1, 'curso-guitarra-plano': 1, 'curso-guitarra-diario': 1, 'curso-guitarra-aulas-v1': 1, 'acordes-guitarra-progresso': 1, 'laboratorio-batidas-progresso': 1, 'tecnicas-guitarra-progresso': 1, 'repertorio-checkpoints': 1, 'aquecimento-guitarra-sessoes': 1, 'temporizador-estudo-sessoes': 1, 'checkin-semanal-guitarra': 1 };
+    var sincronizaveis = { 'jornada-guitarra': 1, 'jornada-guitarra-favoritos': 1, 'curso-guitarra-perfil': 1, 'curso-guitarra-plano': 1, 'curso-guitarra-diario': 1, 'curso-guitarra-aulas-v1': 1, 'acordes-guitarra-progresso': 1, 'laboratorio-batidas-progresso': 1, 'tecnicas-guitarra-progresso': 1, 'improvisacao-guitarra-progresso': 1, 'repertorio-checkpoints': 1, 'aquecimento-guitarra-sessoes': 1, 'temporizador-estudo-sessoes': 1, 'checkin-semanal-guitarra': 1 };
     if (sincronizaveis[k] && C.Jornada && !C.Jornada._aplicando && C.Jornada.sync) {
       clearTimeout(jornadaSyncTimer); jornadaSyncTimer = setTimeout(function () { C.Jornada.sync(false).catch(function () {}); }, 700);
     }
@@ -68,7 +68,8 @@
         curso_teoria: teoria,
         acordes_guitarra: C.lerLocal('acordes-guitarra-progresso', {}),
         laboratorio_batidas: C.lerLocal('laboratorio-batidas-progresso', {}),
-        tecnicas_guitarra: C.lerLocal('tecnicas-guitarra-progresso', {})
+        tecnicas_guitarra: C.lerLocal('tecnicas-guitarra-progresso', {}),
+        improvisacao_guitarra: C.lerLocal('improvisacao-guitarra-progresso', {})
       };
     },
     aplicar: function (p) {
@@ -84,6 +85,7 @@
       if (p.acordes_guitarra && typeof p.acordes_guitarra === 'object') C.guardar('acordes-guitarra-progresso', p.acordes_guitarra);
       if (p.laboratorio_batidas && typeof p.laboratorio_batidas === 'object') C.guardar('laboratorio-batidas-progresso', p.laboratorio_batidas);
       if (p.tecnicas_guitarra && typeof p.tecnicas_guitarra === 'object') C.guardar('tecnicas-guitarra-progresso', p.tecnicas_guitarra);
+      if (p.improvisacao_guitarra && typeof p.improvisacao_guitarra === 'object') C.guardar('improvisacao-guitarra-progresso', p.improvisacao_guitarra);
       if (Array.isArray(p.repertorio)) C.guardar('repertorio-checkpoints', p.repertorio);
       if (p.aquecimentos != null) C.guardar('aquecimento-guitarra-sessoes', Number(p.aquecimentos) || 0);
       if (p.sessoes_focadas != null) C.guardar('temporizador-estudo-sessoes', Number(p.sessoes_focadas) || 0);

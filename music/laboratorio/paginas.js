@@ -17,7 +17,7 @@ const ACESSO = require('./acesso');
 // Arquivos do cliente: núcleo (isomórfico) + app + estilo
 // ------------------------------------------------------------------
 const NUCLEO_ARQS = ['notas', 'intervalos', 'escalas', 'acordes', 'tonalidades', 'ritmo', 'pauta', 'instrumentos', 'acustica', 'motivos', 'batidas', 'desenho', 'exercicios', 'digitacoes', 'tutor', 'transcricao', 'separacao'];
-const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'curso-guitarra-aulas', 'acordes-guitarra', 'tecnicas-guitarra', 'criar', 'novas', 'praticar', 'ensinar', 'tutor', 'transcrever', 'separar'];
+const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'curso-guitarra-aulas', 'acordes-guitarra', 'tecnicas-guitarra', 'improvisacao-guitarra', 'criar', 'novas', 'praticar', 'ensinar', 'tutor', 'transcrever', 'separar'];
 let _cache = {};
 function arquivo(chave, fn) { if (!_cache[chave] || process.env.NODE_ENV === 'development') _cache[chave] = fn(); return _cache[chave]; }
 const ler = (...p) => fs.readFileSync(path.join(__dirname, ...p), 'utf8');
@@ -425,6 +425,7 @@ function relacionados(slug) {
     'curso-guitarra-aulas': ['/music/criar/jornada-guitarra', '/music/criar/curso-guitarra', '/music/criar/acordes-guitarra', '/music/tutor-braco'],
     'acordes-guitarra': ['/music/criar/curso-guitarra-aulas', '/music/criar/troca-acordes', '/music/tutor-braco'],
     'tecnicas-guitarra': ['/music/criar/jornada-guitarra', '/music/tutor-braco', '/music/criar/rotina-ouvido-guitarra'],
+    'improvisacao-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/mapa-braco-guitarra', '/music/tutor-braco'],
     'troca-acordes': ['/music/criar/curso-guitarra', '/music/tocar', '/music/tutor-braco'],
     'laboratorio-batidas': ['/music/criar/troca-acordes', '/music/criar/batidas', '/music/tocar'],
     'desmontar-musica': ['/music/criar/curso-guitarra', '/music/criar/troca-acordes', '/music/tocar'],
