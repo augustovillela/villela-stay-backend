@@ -17,7 +17,7 @@ const ACESSO = require('./acesso');
 // Arquivos do cliente: núcleo (isomórfico) + app + estilo
 // ------------------------------------------------------------------
 const NUCLEO_ARQS = ['notas', 'intervalos', 'escalas', 'acordes', 'tonalidades', 'ritmo', 'pauta', 'instrumentos', 'acustica', 'motivos', 'batidas', 'desenho', 'exercicios', 'digitacoes', 'tutor', 'transcricao', 'separacao'];
-const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'curso-guitarra-aulas', 'acordes-guitarra', 'tecnicas-guitarra', 'improvisacao-guitarra', 'criar', 'novas', 'praticar', 'ensinar', 'tutor', 'transcrever', 'separar'];
+const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'curso-guitarra-aulas', 'curso-guitarra-livro', 'acordes-guitarra', 'tecnicas-guitarra', 'improvisacao-guitarra', 'criar', 'novas', 'praticar', 'ensinar', 'tutor', 'transcrever', 'separar'];
 let _cache = {};
 function arquivo(chave, fn) { if (!_cache[chave] || process.env.NODE_ENV === 'development') _cache[chave] = fn(); return _cache[chave]; }
 const ler = (...p) => fs.readFileSync(path.join(__dirname, ...p), 'utf8');
@@ -423,6 +423,7 @@ function relacionados(slug) {
     'professor-piano': ['/music/criar/piano-virtual', '/music/criar/compositor-visual', '/music/praticar/nota-no-teclado'],
     'curso-guitarra': ['/music/criar/curso-guitarra-aulas', '/music/tutor-braco', '/music/criar/batidas', '/music/tocar'],
     'curso-guitarra-aulas': ['/music/criar/jornada-guitarra', '/music/criar/curso-guitarra', '/music/criar/acordes-guitarra', '/music/tutor-braco'],
+    'curso-guitarra-livro': ['/music/criar/curso-guitarra-aulas', '/music/criar/jornada-guitarra', '/music/criar/acordes-guitarra', '/music/criar/laboratorio-batidas'],
     'acordes-guitarra': ['/music/criar/curso-guitarra-aulas', '/music/criar/troca-acordes', '/music/tutor-braco'],
     'tecnicas-guitarra': ['/music/criar/jornada-guitarra', '/music/tutor-braco', '/music/criar/rotina-ouvido-guitarra'],
     'improvisacao-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/mapa-braco-guitarra', '/music/tutor-braco'],
