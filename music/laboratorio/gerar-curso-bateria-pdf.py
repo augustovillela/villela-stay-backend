@@ -80,6 +80,73 @@ def figure(kind='kit', label='Mapa de estudo'):
     d.scale(.70, .70); d.width = 329; d.height = 81
     return d
 
+def figura_tema(n, titulo):
+    """Ilustração semântica própria de cada capítulo; não reutiliza um cartão genérico."""
+    d = Drawing(329, 81); bg = colors.HexColor('#EEF5F6')
+    d.add(Rect(0,0,329,81,rx=7,ry=7,fillColor=bg,strokeColor=colors.HexColor('#C7DCE4')))
+    def txt(x,y,s,size=7.5,col=NAVY,anchor='middle'):
+        d.add(String(x,y,s,fontName='Helvetica-Bold',fontSize=size,fillColor=col,textAnchor=anchor))
+    def box(x,y,w,h,s,col=BLUE):
+        d.add(Rect(x,y,w,h,rx=3,ry=3,fillColor=col,strokeColor=NAVY,strokeWidth=.7)); txt(x+w/2,y+h/2-2,s,6.5,colors.white)
+    def line(x1,y1,x2,y2,col=GOLD,w=2): d.add(Line(x1,y1,x2,y2,strokeColor=col,strokeWidth=w))
+    temas = {
+      1: ('kit', ['BANCO','CAIXA','BUMBO','PRATOS']), 2: ('pulse',['1','e','2','e','3','e','4','e']),
+      3: ('groove',['BUMBO','CAIXA','CHIMBAL']), 4: ('rebote',['PREPARAR','ATACAR','REBOTAR','RETORNAR']),
+      5: ('fill',['GROOVE','VIRADA','TEMPO 1']), 6: ('rock',['BUMBO','2/4','CAIXA','4/4']),
+      7: ('dynamic',['pp','p','mf','f','ff']), 8: ('independ',['MÃO D','MÃO E','PÉ D','PÉ E']),
+      9: ('read',['TA','TA','TI-TI','PAUSA']), 10: ('six8',['1-la-li','2-la-li']),
+      11: ('shuffle',['LONGA','curta','LONGA','curta']), 12: ('funk',['X','·','x','·','X','·','x']),
+      13: ('song',['INTRO','VERSO','REFRÃO','PONTE']), 14: ('blues',['FRASE','RESPOSTA','ESPAÇO']),
+      15: ('pedal',['CALCANHAR','PONTA','REBOTE']), 16: ('rudiment',['CAIXA','TOM','PRATO']),
+      17: ('melodic',['grave','meio','agudo','volta']), 18: ('limit',['4 COMP.','1 IDEIA','1 PAUSA']),
+      19: ('click',['CLIQUE','ATRÁS','JUNTO','À FRENTE']), 20: ('record',['MIC','GRAVE','OUÇA','AJUSTE']),
+      21: ('brasil',['SAMBA','BAIÃO','MARACATU']), 22: ('latin',['CONTRATEMPO','ESPAÇO','PULSO']),
+      23: ('arrange',['INTRO','A','B','FINAL']), 24: ('perform',['ENTRADA','FORMA','ERRO','RETORNO']),
+      25: ('routine',['5 MIN','5 MIN','5 MIN','5 MIN']), 26: ('project',['ESCOLHER','ENSaiar','GRAVAR','TOCAR'])}
+    kind, labels = temas[n]
+    if kind in ('kit','groove','rock','dynamic','independ','rudiment','brasil','latin'):
+        for i,s in enumerate(labels): box(15+i*45,31,35,22,s,GOLD if i in (0,len(labels)-1) else BLUE)
+        for i in range(len(labels)-1): line(51+i*45,42,58+i*45,42,BLUE,1.3)
+    elif kind in ('pulse','shuffle','funk','click'):
+        for i,s in enumerate(labels):
+            x=22+i*40; h=29 if (i%2==0 or kind=='click' and i in (1,5)) else 15
+            line(x,28,x,28+h,GOLD if h>20 else BLUE,2); d.add(Circle(x,28+h,3,fillColor=GOLD if h>20 else BLUE,strokeColor=NAVY))
+            txt(x,16,s,5.8)
+    elif kind in ('rebote','fill','song','blues','pedal','melodic','limit','record','arrange','perform','routine','project'):
+        for i,s in enumerate(labels):
+            x=18+i*(300/max(1,len(labels))); w=48 if len(labels)<=4 else 38
+            box(x,31,w,22,s,GOLD if i==len(labels)-1 else BLUE)
+            if i<len(labels)-1: line(x+w,42,x+w+8,42,GOLD,1.3)
+    elif kind=='read':
+        for y in [28,34,40,46,52]: line(25,y,160,y,BLUE,.7)
+        for i in range(4): d.add(Circle(48+i*28,42+(i%2)*9,4,fillColor=GOLD,strokeColor=NAVY))
+        box(205,31,42,22,'LER',BLUE); box(260,31,42,22,'TOCAR',GOLD)
+    elif kind=='six8':
+        d.add(Circle(104,42,25,fillColor=BLUE,strokeColor=NAVY)); d.add(Circle(225,42,25,fillColor=GOLD,strokeColor=NAVY)); txt(104,40,'1-la-li',8,colors.white); txt(225,40,'2-la-li',8,colors.white); line(130,42,198,42,NAVY,2)
+    d.add(String(164,7,f'Figura {n} · {titulo[:52]}',fontName='Helvetica',fontSize=6.5,fillColor=MUTED,textAnchor='middle'))
+    return d
+
+def figura_rudimento(n, familia, nome):
+    d = Drawing(329,81); d.add(Rect(0,0,329,81,rx=7,ry=7,fillColor=PALE,strokeColor=colors.HexColor('#C7DCE4')))
+    def txt(x,y,s,size=7,col=NAVY): d.add(String(x,y,s,fontName='Helvetica-Bold',fontSize=size,fillColor=col,textAnchor='middle'))
+    if familia == 'Roll':
+        for i in range(12): d.add(Circle(45+i*22,42,4 if i%2 else 6,fillColor=GOLD if i%2==0 else BLUE,strokeColor=NAVY))
+        txt(164,17,'ATAQUES IGUAIS · ACENTO NO INÍCIO',7)
+    elif familia == 'Flam':
+        for x in [65,105,145,185,225,265]: d.add(Circle(x,40,7 if x%2 else 3,fillColor=GOLD if x%2 else BLUE,strokeColor=NAVY))
+        txt(164,17,'NOTA DE APOIO BAIXA + NOTA PRINCIPAL',7)
+    elif familia == 'Drag':
+        for i,x in enumerate([55,68,105,118,155,168,205,218,255,268]): d.add(Circle(x,42,3 if i%2==0 else 7,fillColor=BLUE if i%2==0 else GOLD,strokeColor=NAVY))
+        txt(164,17,'ARRASTO CONTROLADO ANTES DO ATAQUE',7)
+    elif familia == 'Paradiddle':
+        for i,s in enumerate('RLRRLRLL'): txt(60+i*30,42,s,10,GOLD if i in (0,4) else BLUE)
+        txt(164,17,'ALTERNÂNCIA + REPETIÇÃO + ACENTO',7)
+    else:
+        for i in range(5): boxx=35+i*65; d.add(Rect(boxx,30,42,23,fillColor=GOLD if i in (0,3) else BLUE,strokeColor=NAVY)); txt(boxx+21,38,str(i+1),8,colors.white)
+        txt(164,17,'CÉLULA RÍTMICA APLICADA AO KIT',7)
+    d.add(String(164,67,f'{n:02d} · {nome[:48]}',fontName='Helvetica-Bold',fontSize=8,fillColor=NAVY,textAnchor='middle'))
+    return d
+
 def rodape(canvas, doc):
     canvas.saveState(); canvas.setFont('Helvetica',8); canvas.setFillColor(MUTED)
     canvas.drawCentredString(PAGE[0]/2, 9*mm, f'Musique · Villela Music · Curso de bateria · página {doc.page}')
@@ -125,14 +192,14 @@ STY_DEFS = {
 STY = {'brand': STY['brand'], 'publisher': STY['publisher'], 'cover': STY['cover'], 'cover_small': STY['cover_small'], 'cover_sub': STY['cover_sub'], 'author': STY['author'], 'series': STY['series'], 'h1': STY['book_h1'], 'h2': STY['book_h2'], 'body': STY['book_body'], 'small': STY['book_small'], 'meta': STY['book_meta'], 'center': STY['center']}
 
 def chapter_pages(story, n, title, summary, phase):
-    story += [Paragraph(f'CAPÍTULO {n:02d} · {phase.upper()}', STY['meta']), Paragraph(title, STY['h1']), Paragraph(summary, STY['body']), figure('kit' if n%3==1 else 'pulse' if n%3==2 else 'hands', f'Figura {n}. Organização visual do estudo: {title}.'), Spacer(1,4*mm)]
+    story += [Paragraph(f'CAPÍTULO {n:02d} · {phase.upper()}', STY['meta']), Paragraph(title, STY['h1']), Paragraph(summary, STY['body']), figura_tema(n, title), Spacer(1,4*mm)]
     story += [Paragraph('Ideia central', STY['h2']), Paragraph(f'Este capítulo transforma {summary.lower()} em uma sequência de decisões observáveis. Antes de aumentar a velocidade, confirme postura, pulso, som e recuperação. O baterista não pratica apenas notas: pratica a relação entre intenção, gesto, ataque, duração e espaço.', STY['body']), Paragraph('Escuta guiada', STY['h2']), Paragraph('Toque uma versão simples durante quatro compassos. Depois repita reduzindo o volume e escute o que permanece: o pulso, a regularidade dos ataques, a diferença entre acento e nota de apoio e o momento exato em que a coordenação se desfaz. Registre uma frase sobre o que ouviu.', STY['body']), Paragraph('Prática em camadas', STY['h2']), Paragraph('1. Marque o pulso com o pé. 2. Fale a subdivisão. 3. Toque apenas a camada principal. 4. Acrescente um membro por vez. 5. Faça quatro compassos e descanse quatro. 6. Grave uma tomada curta. Só avance quando três repetições forem limpas, relaxadas e musicalmente reconhecíveis.', STY['body']), PageBreak()]
     story += [Paragraph(f'{n:02d} · AULA DE APLICAÇÃO', STY['meta']), Paragraph(title, STY['h1']), figure('grid', 'Mapa de aplicação: manter o pulso enquanto a camada musical muda.'), Paragraph('Exercício principal', STY['h2']), Paragraph(f'Use 60 BPM na primeira rodada e faça oito ciclos. No segundo bloco, mantenha o mesmo andamento e altere somente uma variável: dinâmica, distribuição no kit, acento, abertura do chimbal ou desenho do bumbo. No terceiro bloco, toque junto com uma música simples e preserve a forma. O objetivo é perceber que técnica só se torna conhecimento quando sobrevive ao contexto musical.', STY['body']), Paragraph('Diagnóstico', STY['h2']), Paragraph('Se o pulso acelera, reduza a quantidade de notas. Se o som perde clareza, diminua a força e aproxime o gesto da pele. Se um membro domina, isole a camada fraca. Se a virada não retorna ao tempo 1, conte em voz alta e marque a última subdivisão antes de recomeçar.', STY['body']), Paragraph('Registro de domínio', STY['h2']), Paragraph('Data: ____________________   BPM limpo: __________   Três repetições:  □  □  □\nO que funcionou: ________________________________________________________________\nPróxima decisão: ________________________________________________________________', STY['body']), PageBreak()]
 
 def rudimento_page(story, n, name):
     family = 'Roll' if 'Roll' in name else 'Flam' if 'Flam' in name else 'Drag' if 'Drag' in name or 'Ruff' in name else 'Paradiddle' if 'Paradiddle' in name else 'Ratamacue' if 'Ratamacue' in name else 'Coordenação'
     sticking = 'R L alternado, com acento na primeira nota do grupo.' if family in ('Roll','Coordenação') else 'Nota principal em maiúscula; nota de apoio baixa e próxima da pele.' if family == 'Flam' else 'Duas notas de arrasto baixas antes da nota principal.' if family == 'Drag' else 'Célula com alternância e repetição, mantendo a acentuação definida.'
-    story += [Paragraph(f'RUDIMENTO {n:02d} · {family.upper()}', STY['meta']), Paragraph(name, STY['h1']), figure('hands', f'Figura {n}. Gesto, rebote e ponto de retorno do {name}.'), Paragraph('Leitura do movimento', STY['h2']), Paragraph(f'O {name} deve ser estudado como uma célula regular, não como uma sequência de baquetadas improvisadas. {sticking} Mantenha as baquetas em trajetórias verticais curtas, sem cruzar, com a mão que não toca preparada para o próximo ataque. O som de cada nota deve ser reconhecível e o retorno ao primeiro tempo deve acontecer sem hesitação.', STY['body']), Paragraph('Facilitadores', STY['h2']), Paragraph('Preparar: movimento pequeno e relaxado. Isolar: caixa e uma única subdivisão. Alternar: inverter a mão inicial. Orquestrar: caixa, tons e prato sem alterar o ritmo. Musicalizar: inserir em uma virada ou groove. Acelerar com critério: subir 5 BPM somente após três repetições limpas. Diagnosticar: gravar e ouvir. Registrar: anotar BPM, tensão e clareza.', STY['body']), Paragraph('Cartão de prática', STY['h2']), Paragraph('BPM inicial: 50   Meta inicial: 100   Séries: 3   Repetições limpas: 3\nSticking: '+sticking+'\nErro para observar: não transformar o retorno, o arrasto ou a nota de apoio em um novo acento.', STY['body']), Paragraph('Aplicação no kit', STY['h2']), Paragraph('Comece na caixa. Depois distribua o primeiro acento na caixa, a resposta no tom alto e a conclusão no tom baixo. Volte à caixa no tempo 1. O desenho do kit pode mudar; a pulsação e a célula do rudimento não.', STY['body']), PageBreak()]
+    story += [Paragraph(f'RUDIMENTO {n:02d} · {family.upper()}', STY['meta']), Paragraph(name, STY['h1']), figura_rudimento(n, family, name), Paragraph('Leitura do movimento', STY['h2']), Paragraph(f'O {name} deve ser estudado como uma célula regular, não como uma sequência de baquetadas improvisadas. {sticking} Mantenha as baquetas em trajetórias verticais curtas, sem cruzar, com a mão que não toca preparada para o próximo ataque. O som de cada nota deve ser reconhecível e o retorno ao primeiro tempo deve acontecer sem hesitação.', STY['body']), Paragraph('Facilitadores', STY['h2']), Paragraph('Preparar: movimento pequeno e relaxado. Isolar: caixa e uma única subdivisão. Alternar: inverter a mão inicial. Orquestrar: caixa, tons e prato sem alterar o ritmo. Musicalizar: inserir em uma virada ou groove. Acelerar com critério: subir 5 BPM somente após três repetições limpas. Diagnosticar: gravar e ouvir. Registrar: anotar BPM, tensão e clareza.', STY['body']), Paragraph('Cartão de prática', STY['h2']), Paragraph('BPM inicial: 50   Meta inicial: 100   Séries: 3   Repetições limpas: 3\nSticking: '+sticking+'\nErro para observar: não transformar o retorno, o arrasto ou a nota de apoio em um novo acento.', STY['body']), Paragraph('Aplicação no kit', STY['h2']), Paragraph('Comece na caixa. Depois distribua o primeiro acento na caixa, a resposta no tom alto e a conclusão no tom baixo. Volte à caixa no tempo 1. O desenho do kit pode mudar; a pulsação e a célula do rudimento não.', STY['body']), PageBreak()]
 
 def gerar():
     story = capa()
