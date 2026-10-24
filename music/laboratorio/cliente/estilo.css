@@ -636,7 +636,7 @@
 .acorde-guitarra-legenda{font-size:10px;color:#718096;text-align:center}
 .acorde-guitarra-sem-forma{min-height:174px;display:grid;place-items:center;margin:0;color:#718096;font-size:12px;text-align:center}
 .acorde-guitarra-card small{min-height:34px;color:#607387;line-height:1.35}
-.acorde-guitarra-card .btn{align-self:flex-start}
+.acorde-guitarra-card .btn{align-self:flex-start}.acorde-guitarra-acoes{gap:6px;flex-wrap:wrap}.acorde-guitarra-acoes .btn{flex:1 1 auto}
 .lab-batida-padrao{position:relative;overflow:hidden}
 .lab-batida-tipo{display:inline-block;padding:4px 8px;border-radius:999px;background:#e7f0f8;color:#315b80;font-size:11px;font-weight:800;letter-spacing:.04em}
 .tecnicas-guitarra-controles{grid-template-columns:minmax(220px,2fr) minmax(110px,1fr) auto}
