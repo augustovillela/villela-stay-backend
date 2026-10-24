@@ -6,7 +6,7 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import SimpleDocTemplate, BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, PageBreak, Table, TableStyle, Preformatted
+from reportlab.platypus import SimpleDocTemplate, BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, PageBreak, Table, TableStyle, Preformatted, NextPageTemplate
 from reportlab.platypus.tableofcontents import TableOfContents
 from reportlab.graphics.shapes import Drawing, Rect, Circle, Line, String, Polygon, Ellipse, Image as ShapeImage
 from reportlab.lib import colors
@@ -164,6 +164,17 @@ def rodape(canvas, doc):
     canvas.drawCentredString(80*mm, 10*mm, f'Musique · Villela Music · página {doc.page}')
     canvas.restoreState()
 
+def capa_canvas(canvas, doc, asset, instrumento, foco):
+    canvas.saveState(); canvas.drawImage(str(asset), 0, 0, width=160*mm, height=230*mm, preserveAspectRatio=False, mask='auto')
+    canvas.setFillColor(colors.Color(.04,.10,.16,.88)); canvas.rect(0,0,74*mm,230*mm,fill=1,stroke=0)
+    canvas.setFillColor(colors.HexColor('#F5DFB2')); canvas.setFont('Helvetica-Bold',13); canvas.drawString(10*mm,214*mm,'MUSIQUE')
+    canvas.setFillColor(colors.HexColor('#C7E8D4')); canvas.setFont('Helvetica',7.5); canvas.drawString(10*mm,208*mm,'VILLELA MUSIC')
+    canvas.setFillColor(colors.white); canvas.setFont('Helvetica-Bold',20); canvas.drawString(10*mm,184*mm,instrumento.upper())
+    canvas.setFillColor(colors.HexColor('#F5DFB2')); canvas.setFont('Helvetica-Bold',9); canvas.drawString(10*mm,169*mm,'CURSO COMPLETO')
+    canvas.setFillColor(colors.HexColor('#DCEAF0')); canvas.setFont('Helvetica',8); canvas.drawString(10*mm,161*mm,'técnica · teoria · repertório')
+    canvas.setFillColor(colors.HexColor('#F5DFB2')); canvas.setFont('Helvetica-Bold',8.5); canvas.drawString(10*mm,21*mm,'AUGUSTO VILLELA')
+    canvas.setFillColor(colors.HexColor('#C7E8D4')); canvas.setFont('Helvetica',7.5); canvas.drawString(10*mm,15*mm,'Edição didática Musique'); canvas.restoreState()
+
 def capa_arte(titulo, foco, instrumento):
     d = Drawing(336, 430)
     navy, gold, ink = colors.HexColor('#14283D'), colors.HexColor('#D98B3A'), colors.HexColor('#182C3C')
@@ -187,6 +198,7 @@ def capa_arte(titulo, foco, instrumento):
     d.add(String(170, 44, 'OUVIR  ·  COMPREENDER  ·  PRATICAR', fontName='Helvetica-Bold', fontSize=8.2, fillColor=ink))
     d.add(String(170, 27, 'Livro didático ilustrado · coleção Musique', fontName='Helvetica', fontSize=7.8, fillColor=colors.HexColor('#526673')))
     d.add(String(170, 12, foco, fontName='Helvetica', fontSize=6.8, fillColor=colors.HexColor('#526673')))
+    d.scale((160*mm)/336, (230*mm)/430); d.width = 160*mm; d.height = 230*mm
     return d
 
 def gerar(nome, titulo, foco, capitulos):
@@ -202,7 +214,8 @@ def gerar(nome, titulo, foco, capitulos):
     instrumento = 'violão' if 'violão' in titulo and 'guitarra' not in titulo else 'guitarra' if 'guitarra' in titulo and 'violão' not in titulo else 'coleção'
     toc = TableOfContents()
     toc.levelStyles = [ParagraphStyle('toc1', parent=body, fontSize=10.5, leading=15, leftIndent=0, firstLineIndent=0, spaceAfter=5)]
-    story += [Spacer(1, 6*mm), capa_arte(titulo, foco, instrumento), PageBreak(), Paragraph('Índice', h1), toc]
+    capa_asset = ASSETS / ('capa-violao.png' if instrumento == 'violão' else 'capa-guitarra.png' if instrumento == 'guitarra' else 'capa-colecao.png')
+    story += [Spacer(1,1), NextPageTemplate('livro'), PageBreak(), Paragraph('Índice', h1), toc]
     story.append(PageBreak())
     for item in capitulos:
         num, tit, texto = item[:3]
@@ -230,7 +243,8 @@ def gerar(nome, titulo, foco, capitulos):
         def __init__(self, filename, **kw):
             super().__init__(filename, **kw)
             frame = Frame(self.leftMargin, self.bottomMargin, self.width, self.height, id='normal')
-            self.addPageTemplates([PageTemplate(id='livro', frames=[frame], onPage=rodape)])
+            capa_frame = Frame(self.leftMargin, self.bottomMargin, self.width, self.height, id='capa')
+            self.addPageTemplates([PageTemplate(id='capa', frames=[capa_frame], onPage=lambda canvas, doc: capa_canvas(canvas, doc, capa_asset, instrumento, foco)), PageTemplate(id='livro', frames=[frame], onPage=rodape)])
         def afterFlowable(self, flowable):
             if isinstance(flowable, Paragraph) and flowable.style.name == 'capitulo_titulo':
                 self.notify('TOCEntry', (0, flowable.getPlainText(), self.page))

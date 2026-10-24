@@ -7,7 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (BaseDocTemplate, Frame, Image, PageBreak, Paragraph,
-                                PageTemplate, Spacer, Table, TableStyle)
+                                PageTemplate, Spacer, Table, TableStyle, NextPageTemplate)
 from reportlab.graphics.shapes import Drawing, Rect, Circle, Ellipse, Line, String, Polygon
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -152,10 +152,20 @@ def rodape(canvas, doc):
     canvas.drawCentredString(PAGE[0]/2, 9*mm, f'Musique · Villela Music · Curso de bateria · página {doc.page}')
     canvas.restoreState()
 
+def capa_canvas(canvas, doc):
+    canvas.saveState(); canvas.drawImage(str(ASSET), 0, 0, width=PAGE[0], height=PAGE[1], preserveAspectRatio=False, mask='auto')
+    canvas.setFillColor(colors.Color(.04,.08,.13,.82)); canvas.rect(0,0,82*mm,PAGE[1],fill=1,stroke=0)
+    canvas.setFillColor(colors.HexColor('#F5DFB2')); canvas.setFont('Helvetica-Bold',13); canvas.drawString(8*mm,PAGE[1]-14*mm,'MUSIQUE')
+    canvas.setFillColor(colors.HexColor('#C7E8D4')); canvas.setFont('Helvetica',7.5); canvas.drawString(8*mm,PAGE[1]-20*mm,'VILLELA MUSIC')
+    canvas.setFillColor(colors.white); canvas.setFont('Helvetica-Bold',28); canvas.drawString(8*mm,PAGE[1]-50*mm,'BATERIA')
+    canvas.setFillColor(colors.HexColor('#F5DFB2')); canvas.setFont('Helvetica-Bold',10); canvas.drawString(8*mm,PAGE[1]-59*mm,'CURSO COMPLETO')
+    canvas.setFillColor(colors.HexColor('#DCEAF0')); canvas.setFont('Helvetica',9); canvas.drawString(8*mm,PAGE[1]-68*mm,'pulso · groove · rudimentos · performance')
+    canvas.setFillColor(colors.HexColor('#F5DFB2')); canvas.setFont('Helvetica-Bold',9); canvas.drawString(8*mm,20*mm,'AUGUSTO VILLELA')
+    canvas.setFillColor(colors.HexColor('#C7E8D4')); canvas.setFont('Helvetica',8); canvas.drawString(8*mm,14*mm,'Livro didático ilustrado · coleção Musique'); canvas.restoreState()
+
 def capa():
     story=[]
-    if ASSET.exists(): story.append(Image(str(ASSET), width=124*mm, height=180*mm))
-    story += [Spacer(1,-172*mm), Paragraph('MUSIQUE', STY['brand']), Paragraph('VILLELA MUSIC', STY['publisher']), Spacer(1,12*mm), Paragraph('BATERIA', STY['cover']), Paragraph('CURSO COMPLETO', STY['cover_small']), Paragraph('pulso · groove · rudimentos · performance', STY['cover_sub']), Spacer(1,75*mm), Paragraph('AUGUSTO VILLELA', STY['author']), Paragraph('Livro didático ilustrado · coleção Musique', STY['series']), PageBreak()]
+    story += [Spacer(1,1), NextPageTemplate('book'), PageBreak()]
     return story
 
 STY = getSampleStyleSheet()
@@ -216,7 +226,7 @@ def gerar():
         story += [Paragraph(f'DIÁRIO DE ESTUDO · SEMANA {semana}', STY['meta']), Paragraph('Evidências e decisões', STY['h1']), figure('grid', 'Ouvir · tocar · gravar · comparar · decidir'), Paragraph('Sessão 1 · foco: ____________________ · BPM: ______ · repetições limpas: ______', STY['body']), Paragraph('Sessão 2 · foco: ____________________ · BPM: ______ · repetições limpas: ______', STY['body']), Paragraph('Sessão 3 · foco: ____________________ · BPM: ______ · repetições limpas: ______', STY['body']), Paragraph('O que ouvi com clareza:\n________________________________________________________________________________\n________________________________________________________________________________\n\nO que vou modificar no próximo encontro:\n________________________________________________________________________________\n________________________________________________________________________________\n\nAssinatura: ____________________________________________', STY['body']), PageBreak()]
     class Doc(BaseDocTemplate):
         def __init__(self, filename, **kw):
-            super().__init__(filename, **kw); frame=Frame(self.leftMargin,self.bottomMargin,self.width,self.height,id='normal'); self.addPageTemplates([PageTemplate(id='book',frames=[frame],onPage=rodape)])
+            super().__init__(filename, **kw); frame=Frame(self.leftMargin,self.bottomMargin,self.width,self.height,id='normal'); capa_frame=Frame(self.leftMargin,self.bottomMargin,self.width,self.height,id='capa'); self.addPageTemplates([PageTemplate(id='capa',frames=[capa_frame],onPage=capa_canvas), PageTemplate(id='book',frames=[frame],onPage=rodape)])
     doc=Doc(str(OUT/'curso-bateria.pdf'),pagesize=PAGE,leftMargin=18*mm,rightMargin=18*mm,topMargin=18*mm,bottomMargin=18*mm,title='Curso completo de bateria',author='Musique · Villela Music')
     doc.build(story)
     print(f'gerado {OUT / "curso-bateria.pdf"}')
