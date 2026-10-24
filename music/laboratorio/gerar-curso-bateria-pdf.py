@@ -63,14 +63,13 @@ def imagem_editorial(path, legenda):
     return [img, Paragraph(legenda, STY['small']), Spacer(1, 2*mm)]
 
 def imagem_tema(n, titulo):
-    if n == 1:
-        return imagem_editorial(IMG_POSTURA, 'Postura, banco, distância e mapa do kit: o corpo prepara o som.')
-    if n in (2, 3, 5, 6, 10, 11, 12, 13, 14, 17, 18, 21, 22, 23, 24, 26):
-        return imagem_editorial(IMG_KIT, f'Aplicação musical: {titulo.lower()}.')
-    return imagem_editorial(IMG_MAOS, f'Técnica aplicada: {titulo.lower()}.')
+    # As ilustrações anteriores foram retiradas até existir uma versão didática aprovada.
+    return []
 
 def imagem_rudimento(n, familia, nome):
-    return imagem_editorial(IMG_MAOS, f'{n:02d}. {nome} · família {familia}: mãos, baquetas e caixa em foco.')
+    # Não manter imagens genéricas nos rudimentos: cada figura futura deverá explicar
+    # o sticking, os acentos e a trajetória específicos daquele rudimento.
+    return []
 
 def figure(kind='kit', label='Mapa de estudo'):
     d = Drawing(470, 115)
