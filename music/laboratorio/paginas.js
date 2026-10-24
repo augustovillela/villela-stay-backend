@@ -17,7 +17,7 @@ const ACESSO = require('./acesso');
 // Arquivos do cliente: núcleo (isomórfico) + app + estilo
 // ------------------------------------------------------------------
 const NUCLEO_ARQS = ['notas', 'intervalos', 'escalas', 'acordes', 'tonalidades', 'ritmo', 'pauta', 'instrumentos', 'acustica', 'motivos', 'batidas', 'desenho', 'exercicios', 'digitacoes', 'tutor', 'transcricao', 'separacao'];
-const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'curso-guitarra-aulas', 'curso-guitarra-especificos', 'curso-guitarra-livro', 'painel-estudos-guitarra', 'diagnostico-habilidades-guitarra', 'plano-estudo-guitarra', 'acordes-guitarra', 'tecnicas-guitarra', 'improvisacao-guitarra', 'criar', 'novas', 'praticar', 'ensinar', 'tutor', 'transcrever', 'separar'];
+const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'curso-guitarra-aulas', 'curso-guitarra-especificos', 'curso-guitarra-livro', 'painel-estudos-guitarra', 'diagnostico-habilidades-guitarra', 'plano-estudo-guitarra', 'registro-sessao-guitarra', 'acordes-guitarra', 'tecnicas-guitarra', 'improvisacao-guitarra', 'criar', 'novas', 'praticar', 'ensinar', 'tutor', 'transcrever', 'separar'];
 let _cache = {};
 function arquivo(chave, fn) { if (!_cache[chave] || process.env.NODE_ENV === 'development') _cache[chave] = fn(); return _cache[chave]; }
 const ler = (...p) => fs.readFileSync(path.join(__dirname, ...p), 'utf8');
@@ -436,6 +436,7 @@ function relacionados(slug) {
     'painel-estudos-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/diagnostico-habilidades-guitarra', '/music/criar/curso-guitarra-livro', '/music/criar/checkin-semanal-guitarra', '/music/tutor-braco'],
     'diagnostico-habilidades-guitarra': ['/music/criar/painel-estudos-guitarra', '/music/criar/jornada-guitarra', '/music/criar/progresso-guitarra'],
     'plano-estudo-guitarra': ['/music/criar/painel-estudos-guitarra', '/music/criar/diagnostico-habilidades-guitarra', '/music/criar/checkin-semanal-guitarra'],
+    'registro-sessao-guitarra': ['/music/criar/plano-estudo-guitarra', '/music/criar/checkin-semanal-guitarra', '/music/criar/progresso-guitarra'],
     'rotina-ouvido-guitarra': ['/music/criar/jornada-guitarra', '/music/praticar/intervalo-ouvido', '/music/tutor-braco'],
     'mapa-braco-guitarra': ['/music/criar/jornada-guitarra', '/music/tutor-braco', '/music/criar/rotina-ouvido-guitarra'],
     'checkin-semanal-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/curso-guitarra', '/music/criar/troca-acordes'],
