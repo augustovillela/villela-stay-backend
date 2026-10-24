@@ -826,7 +826,7 @@
       return '/music/api/cifras/cifras/' + d.cifra.id + '/exportar/' + fmt + '?' + q.join('&');
     }
     p.appendChild(el('div', { class: 'linha' }, [['pdf', 'PDF'], ['txt', 'TXT'], ['chordpro', 'ChordPro'], ['json', 'JSON']].map(function (x) {
-      var a = el('a', { class: 'btn sec', href: '#', txt: x[1] }); a.onclick = function (ev) { ev.preventDefault(); location.href = url(x[0]); }; return a;
+      var a = el('a', { class: 'btn sec', href: '#', txt: x[1] }); a.onclick = function (ev) { ev.preventDefault(); if (x[0] !== 'json') { location.href = url(x[0]); return; } fetch(url('json')).then(function (r) { if (!r.ok) throw new Error('Não consegui gerar o JSON (' + r.status + ').'); return r.json(); }).then(function (dados) { return C.baixarJson('cifra-' + d.cifra.id + '.json', dados); }).catch(C.erro); }; return a;
     }).concat([C.botao('Imprimir esta tela', function () { global.print(); }, 'sec')])));
   };
 

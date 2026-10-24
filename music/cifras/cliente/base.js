@@ -99,6 +99,22 @@
   function semRede() { var e = new Error('Sem conexão com a internet.'); e.semRede = true; return e; }
   C.api = api;
 
+  // Exportações JSON das Cifras também ficam guardadas na conta. O download
+  // continua sendo oferecido como cópia portátil.
+  C.salvarJson = function (nome, dados) {
+    return fetch('/music/api/lab/arquivos-json', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: nome, dados: dados }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) { var e = new Error(d.erro || ('Erro ' + r.status)); e.status = r.status; throw e; } return d; }); });
+  };
+  C.baixarJson = function (nome, dados) {
+    var texto = JSON.stringify(dados, null, 2);
+    return C.salvarJson(nome, dados).then(function () { C.aviso('JSON salvo na sua conta e baixado.'); }, function (e) {
+      C.aviso(e.status === 401 ? 'JSON baixado. Entre na sua conta para guardá-lo no Musique.' : 'JSON baixado; não consegui atualizar a cópia na conta.', 'erro');
+    }).then(function () {
+      var blob = new Blob([texto], { type: 'application/json;charset=utf-8' }), u = URL.createObjectURL(blob), a = el('a', { href: u, download: nome });
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 2000);
+    });
+  };
+
   // ---------------------------------------------------------------
   // Fila de alterações offline
   // ---------------------------------------------------------------

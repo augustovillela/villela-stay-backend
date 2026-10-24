@@ -119,7 +119,8 @@
       }, 'sec'));
       if (s.pode_conduzir && C.estado.flags['cifras.vivo'] !== false) acoes.appendChild(C.botao('Iniciar sessão ao vivo', function () { api('POST', '/vivo', { repertorio_id: id }).then(function (x) { C.ir('maestro', x.sessao.id); }).catch(C.erro); }, 'sec'));
       acoes.appendChild(C.sel([['', 'Mais…'], ['pdf', 'Exportar PDF'], ['txt', 'Exportar TXT'], ['json', 'Exportar pacote (JSON)'], ['link', 'Link e QR Code'], ['duplicar', 'Duplicar'], ['modelo', rep.modelo ? 'Deixar de ser modelo' : 'Usar como modelo'], ['historico', 'Histórico'], ['excluir', 'Excluir']], '', function (v) {
-        if (v === 'pdf' || v === 'txt' || v === 'json') location.href = '/music/api/cifras/setlists/' + id + '/exportar/' + v + (v === 'pdf' ? '?diagramas=1' : '');
+        if (v === 'pdf' || v === 'txt') location.href = '/music/api/cifras/setlists/' + id + '/exportar/' + v + (v === 'pdf' ? '?diagramas=1' : '');
+        else if (v === 'json') fetch('/music/api/cifras/setlists/' + id + '/exportar/json').then(function (r) { if (!r.ok) throw new Error('Não consegui gerar o JSON (' + r.status + ').'); return r.json(); }).then(function (dados) { return C.baixarJson('setlist-' + id + '.json', dados); }).catch(C.erro);
         else if (v === 'link') api('POST', '/links', { alvo_tipo: 'setlist', alvo_id: id, dias: 30 }).then(function (r) { var b = el('div'); C.mostrarLink(b, location.origin + r.url); C.modal('Link do setlist', b); }).catch(C.erro);
         else if (v === 'duplicar') api('POST', '/setlists/' + id + '/duplicar', {}).then(function (r) { C.ir('setlist', r.repertorio.id); }).catch(C.erro);
         else if (v === 'modelo') api('PATCH', '/setlists/' + id, { modelo: !rep.modelo }).then(function () { T.setlist(id); }).catch(C.erro);
