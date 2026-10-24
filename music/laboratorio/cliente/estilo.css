@@ -15,6 +15,8 @@
 .lab-sub-home{font-weight:600!important;color:var(--navy)!important}
 .lab-sub-curso{font-weight:700!important;color:var(--navy)!important;background:#e8f1fb;border:1px solid #b8d0ea}
 .lab-sub-curso:hover,.lab-sub-curso:focus-visible{background:#d7e8f8!important;box-shadow:0 0 0 2px rgba(39,96,153,.15)}
+.lab-destaque-cursos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
+@media (max-width:640px){.lab-destaque-cursos{grid-template-columns:1fr}}
 .lab-busca-mini{margin-left:auto;min-width:180px}
 .lab-busca-mini input{width:100%;border:1px solid var(--borda);border-radius:999px;padding:7px 12px;font:14px Inter,sans-serif}
 .lab-migalhas{font-size:14px;color:var(--suave);margin:4px 0 10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}

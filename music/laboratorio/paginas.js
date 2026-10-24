@@ -53,6 +53,7 @@ function registrar(app, { opcional, contextoDe }) {
 <button class="btn" type="submit">Buscar</button></div><p id="lab-q-dica" class="lab-dica">Aceita nomes em português ou em cifra, com ou sem acento.</p>
 <ul class="lab-sugestoes" id="lab-sugestoes" aria-live="polite"></ul></form></header>
 <p class="lab-destaque-tutor"><a href="/music/curso-teoria"><span aria-hidden="true">🎓</span> <strong>Novo: Curso de teoria musical</strong> — do zero ao avançado, em níveis, módulos e três trilhas de aprendizagem.</a></p>
+<div class="lab-destaque-cursos"><a class="lab-destaque-tutor" href="/music/criar/jornada-guitarra?i=violao"><span aria-hidden="true">🎸</span> <strong>Curso de Violão</strong> — jornada guiada, exercícios recorrentes e repertório.</a><a class="lab-destaque-tutor" href="/music/criar/jornada-guitarra?i=guitarra"><span aria-hidden="true">🎸</span> <strong>Curso de Guitarra</strong> — a mesma base, com trilha própria de prática.</a></div>
 <section class="lab-caminhos" aria-labelledby="caminhos"><h2 id="caminhos" class="sr">Três caminhos</h2>
 <a class="lab-caminho" href="/music/explorar"><span class="lab-caminho-ico" aria-hidden="true">⚡</span><strong>Usar agora</strong><span>Afinar, contar BPM, ver um acorde, transpor. Abre direto, sem cadastro.</span></a>
 <a class="lab-caminho" href="/music/aprender"><span class="lab-caminho-ico" aria-hidden="true">📘</span><strong>Aprender passo a passo</strong><span>Uma trilha na ordem certa, do som ao campo harmônico, com prática em cada lição.</span></a>
