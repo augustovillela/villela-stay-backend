@@ -7,7 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
-from reportlab.graphics.shapes import Drawing, Rect, Circle, Line, String, Polygon
+from reportlab.graphics.shapes import Drawing, Rect, Circle, Line, String, Polygon, Ellipse
 from reportlab.lib import colors
 
 OUT = Path(__file__).resolve().parents[2] / 'output' / 'pdf'
@@ -92,21 +92,29 @@ def rodape(canvas, doc):
     canvas.drawCentredString(80*mm, 10*mm, f'Musique · Villela Music · página {doc.page}')
     canvas.restoreState()
 
-def capa_arte(titulo, foco):
-    d = Drawing(480, 220)
+def capa_arte(titulo, foco, instrumento):
+    d = Drawing(336, 430)
     navy, blue, gold, green = colors.HexColor('#17344D'), colors.HexColor('#245B78'), colors.HexColor('#D97706'), colors.HexColor('#1D7A61')
-    d.add(Rect(0, 0, 480, 220, rx=18, ry=18, fillColor=navy, strokeColor=navy))
-    d.add(Circle(395, 115, 88, fillColor=colors.Color(1,1,1,alpha=.07), strokeColor=None))
-    d.add(Circle(395, 115, 58, fillColor=colors.Color(1,1,1,alpha=.05), strokeColor=None))
-    for y in [48, 72, 96, 120, 144, 168]: d.add(Line(275, y, 470, y, strokeColor=colors.HexColor('#DCEAF0'), strokeWidth=1.3))
-    for x in [310, 350, 390, 430]: d.add(Line(x, 35, x, 181, strokeColor=colors.HexColor('#DCEAF0'), strokeWidth=1))
-    for x, y, c in [(310,96,green),(350,144,gold),(390,72,green),(430,120,gold)]: d.add(Circle(x,y,8,fillColor=c,strokeColor=navy,strokeWidth=2))
-    d.add(String(28, 181, 'MUSIQUE · VILLELA MUSIC', fontName='Helvetica-Bold', fontSize=10, fillColor=colors.HexColor('#F5DFB2'), letterSpacing=1.5))
-    d.add(String(28, 131, titulo, fontName='Helvetica-Bold', fontSize=22, fillColor=colors.white))
-    d.add(String(28, 101, 'COLEÇÃO DE INSTRUMENTOS', fontName='Helvetica-Bold', fontSize=9, fillColor=colors.HexColor('#C7E8D4'), letterSpacing=1.2))
-    d.add(String(28, 72, foco, fontName='Helvetica', fontSize=10, fillColor=colors.HexColor('#DCEAF0')))
-    d.add(String(28, 34, 'OUVIR · COMPREENDER · PRATICAR · TOCAR', fontName='Helvetica-Bold', fontSize=9, fillColor=colors.HexColor('#F5DFB2')))
-    d.scale(.70, .70); d.width = 336; d.height = 154
+    d.add(Rect(0, 0, 336, 430, fillColor=navy, strokeColor=navy))
+    d.add(Circle(260, 285, 116, fillColor=colors.Color(1,1,1,alpha=.055), strokeColor=None))
+    d.add(Circle(260, 285, 76, fillColor=colors.Color(1,1,1,alpha=.04), strokeColor=None))
+    d.add(String(28, 392, 'MUSIQUE · VILLELA MUSIC', fontName='Helvetica-Bold', fontSize=10, fillColor=colors.HexColor('#F5DFB2'), letterSpacing=1.3))
+    d.add(String(28, 350, 'COLEÇÃO DE', fontName='Helvetica-Bold', fontSize=10, fillColor=colors.HexColor('#C7E8D4'), letterSpacing=1.5))
+    d.add(String(28, 318, 'VIOLÃO  ·  GUITARRA', fontName='Helvetica-Bold', fontSize=17, fillColor=colors.white))
+    d.add(String(28, 278, titulo, fontName='Helvetica-Bold', fontSize=17, fillColor=colors.white))
+    d.add(String(28, 252, foco, fontName='Helvetica', fontSize=9.5, fillColor=colors.HexColor('#DCEAF0')))
+    # Ilustração vetorial do instrumento: corpo, braço, escala, cordas e marcações.
+    corpo = colors.HexColor('#B86B3D') if instrumento == 'violão' else colors.HexColor('#7B8FA3')
+    d.add(Ellipse(253, 123, 54, 76, fillColor=corpo, strokeColor=colors.HexColor('#F5DFB2'), strokeWidth=2))
+    d.add(Ellipse(253, 158, 35, 40, fillColor=corpo, strokeColor=colors.HexColor('#F5DFB2'), strokeWidth=1.5))
+    d.add(Circle(253, 128, 19, fillColor=navy, strokeColor=colors.HexColor('#F5DFB2'), strokeWidth=2))
+    d.add(Rect(246, 186, 14, 132, fillColor=colors.HexColor('#5B6478'), strokeColor=colors.HexColor('#F5DFB2'), strokeWidth=1))
+    d.add(Rect(242, 313, 22, 25, fillColor=colors.HexColor('#5B6478'), strokeColor=colors.HexColor('#F5DFB2'), strokeWidth=1))
+    for x in [247, 250, 253, 256, 259]: d.add(Line(x, 188, x, 335, strokeColor=colors.HexColor('#F8F9FA'), strokeWidth=.65))
+    for y in [205, 222, 239, 256, 273, 290, 307]: d.add(Line(246, y, 260, y, strokeColor=navy, strokeWidth=.8))
+    for x, y in [(250, 218), (256, 252), (250, 286)]: d.add(Circle(x, y, 2.2, fillColor=gold, strokeColor=None))
+    d.add(String(28, 54, 'OUVIR · COMPREENDER · PRATICAR · TOCAR', fontName='Helvetica-Bold', fontSize=9, fillColor=colors.HexColor('#F5DFB2')))
+    d.add(String(28, 30, 'Livro didático ilustrado · Volume da coleção Musique', fontName='Helvetica', fontSize=8.5, fillColor=colors.HexColor('#DCEAF0')))
     return d
 
 def gerar(nome, titulo, foco, capitulos):
@@ -117,7 +125,8 @@ def gerar(nome, titulo, foco, capitulos):
     body = ParagraphStyle('body', parent=estilos['BodyText'], fontSize=10.5, leading=16, textColor=colors.HexColor('#1F2933'), spaceAfter=10)
     meta = ParagraphStyle('meta', parent=body, fontSize=8, textColor=colors.HexColor('#8A4B08'))
     story = []
-    story += [Spacer(1, 25*mm), capa_arte(titulo, foco), Spacer(1, 6*mm), Paragraph('Livro ilustrado da coleção Musique · Villela Music', subt), PageBreak(), Paragraph('Índice', h1)]
+    instrumento = 'violão' if 'violão' in titulo and 'guitarra' not in titulo else 'guitarra' if 'guitarra' in titulo and 'violão' not in titulo else 'coleção'
+    story += [Spacer(1, 6*mm), capa_arte(titulo, foco, instrumento), PageBreak(), Paragraph('Índice', h1)]
     story += [Paragraph(f'{num} · {tit}', body) for num, tit, _ in capitulos]
     story.append(PageBreak())
     for num, tit, texto in capitulos:
