@@ -195,7 +195,7 @@ ${relacionados(f.slug)}`;
     const documento = {
       schema: 'musique.course.v1', id: CB.CURSO.id, titulo: CB.CURSO.titulo, subtitulo: CB.CURSO.subtitulo,
       versao: CB.CURSO.versao, descricao: CB.CURSO.descricao, trilhas: CB.CURSO.trilhas,
-      recursos: { html: '/music/curso-bateria', markdown: '/music/curso-bateria.md' },
+      recursos: { html: '/music/curso-bateria', markdown: '/music/curso-bateria.md', pdf: '/music/curso-bateria.pdf' },
       rudimentos: CB.RUDIMENTOS, fases: CB.CURSO.fases,
       capitulos: CB.capitulos.map((c) => ({ ...c, url: `/music/curso-bateria/${c.slug}`, licao: LB.POR_SLUG[c.slug] ? true : false })),
     };
@@ -241,10 +241,36 @@ ${relacionados(f.slug)}`;
     res.set('Content-Type', 'text/markdown; charset=utf-8').set('Content-Disposition', 'attachment; filename="curso-bateria.md"').set('Cache-Control', 'no-cache').send(linhas.join('\n'));
   });
 
+  app.get('/music/curso-bateria.pdf', opcional, async (req, res) => {
+    try {
+      const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+      const pdf = await PDFDocument.create();
+      const fonte = await pdf.embedFont(StandardFonts.Helvetica);
+      const negrito = await pdf.embedFont(StandardFonts.HelveticaBold);
+      const margem = 48;
+      const largura = 595.28;
+      const altura = 841.89;
+      const linhas = [];
+      const limpar = (texto) => String(texto || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+      const adicionar = (texto, estilo = 'body') => { const limite = estilo === 'titulo' ? 70 : 92; const palavras = limpar(texto).split(/\s+/); let linha = ''; palavras.forEach((palavra) => { const teste = linha ? linha + ' ' + palavra : palavra; if (teste.length > limite) { if (linha) linhas.push({ texto: linha, estilo }); linha = palavra; } else linha = teste; }); if (linha) linhas.push({ texto: linha, estilo }); linhas.push({ texto: '', estilo: 'space' }); };
+      linhas.push({ texto: 'MUSIQUE · VILLELA MUSIC', estilo: 'marca' }, { texto: CB.CURSO.titulo, estilo: 'capa' }, { texto: CB.CURSO.subtitulo, estilo: 'subtitulo' }, { texto: '', estilo: 'space' });
+      adicionar(CB.CURSO.descricao, 'body');
+      CB.CURSO.fases.forEach(([id, nome, ns]) => { linhas.push({ texto: nome, estilo: 'titulo' }); ns.forEach((n) => { const c = CB.capitulos[n - 1]; const l = LB.POR_SLUG[c.slug]; adicionar(`${c.numero}. ${c.titulo}`, 'subtitulo'); adicionar(c.resumo); if (l) l.blocos.forEach((b) => { if (b.t === 'p') adicionar(limpar(b.html)); else if (b.t === 'lista') b.itens.forEach((x) => adicionar('• ' + limpar(x))); else if (b.t === 'praticar') adicionar(`Prática: ${b.bpmInicial}–${b.bpmMeta} BPM. Rudimento de apoio: ${b.rudimento}.`); }); }); });
+      linhas.push({ texto: 'Trilha de 40 rudimentos', estilo: 'titulo' });
+      CB.RUDIMENTOS.forEach((r) => { adicionar(`${r.numero}. ${r.nome}`, 'subtitulo'); adicionar(`Sticking: ${r.sticking}. Meta: ${r.bpmStart}–${r.bpmTarget} BPM. ${r.kitApplication}`); adicionar(`Erro comum: ${r.commonError}. Checkpoint: ${r.checkpoint}`); });
+      let paginaAtual = null; let y = 0;
+      const novaPagina = () => { paginaAtual = pdf.addPage([largura, altura]); y = altura - 58; paginaAtual.drawText('Musique · Curso de bateria', { x: margem, y: 24, size: 8, font: fonte, color: rgb(.35, .4, .48) }); };
+      novaPagina();
+      linhas.forEach((item) => { if (item.estilo === 'space') { y -= 8; return; } const size = item.estilo === 'capa' ? 25 : item.estilo === 'marca' ? 10 : item.estilo === 'titulo' ? 16 : item.estilo === 'subtitulo' ? 12 : 9.5; const font = ['capa', 'marca', 'titulo', 'subtitulo'].includes(item.estilo) ? negrito : fonte; const color = item.estilo === 'marca' ? rgb(.78, .63, .15) : item.estilo === 'capa' ? rgb(.1, .18, .29) : rgb(.12, .16, .2); if (y < 58) novaPagina(); paginaAtual.drawText(item.texto, { x: margem, y, size, font, color, maxWidth: largura - margem * 2, lineHeight: size * 1.35 }); y -= size * 1.65; });
+      const bytes = await pdf.save();
+      res.set('Content-Type', 'application/pdf').set('Content-Disposition', 'inline; filename="curso-bateria.pdf"').set('Cache-Control', 'no-cache').send(Buffer.from(bytes));
+    } catch (erro) { res.status(500).send('Não foi possível gerar o PDF do curso de bateria.'); }
+  });
+
   app.get('/music/curso-bateria', opcional, (req, res) => {
     const fases = CB.CURSO.fases.map(([id, nome, ns]) => `<section class="curso-nivel" id="nivel-${esc(id)}" data-curso-nivel="${esc(id)}"><div class="curso-nivel-cab"><div><p class="lab-cab-tipo">Trilha de bateria</p><h2>${esc(nome)}</h2><p>Progressão original de bateria do Musique.</p></div><span class="curso-nivel-progresso" data-curso-nivel-progresso="${esc(id)}">0% concluído</span></div><div class="curso-modulos"><article class="curso-modulo"><ul>${ns.map((n) => { const c = CB.capitulos[n - 1]; return `<li data-curso-trilhas="conhecer ouvir aplicar"><a data-curso-slug="${esc(c.slug)}" href="/music/curso-bateria/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.resumo)}</span></li>`; }).join('')}</ul></article></div></section>`).join('');
     const rudimentosCurso = CB.RUDIMENTOS.map((r) => `<article class="curso-modulo curso-rudimento" data-rudimento="${r.numero}"><h3>${r.numero}. ${esc(r.nome)}</h3><p><strong>Sticking:</strong> ${esc(r.sticking)} · <strong>Meta:</strong> ${r.bpmStart}–${r.bpmTarget} BPM · <strong>Prática:</strong> ${r.practiceMinutes} min</p><p><strong>Aplicação:</strong> ${esc(r.kitApplication)}</p><p><strong>Erro comum:</strong> ${esc(r.commonError)}</p><p><strong>Checkpoint:</strong> ${esc(r.checkpoint)}</p><p class="lab-nota-convencao"><strong>Facilitadores:</strong> ${r.facilitadores.map((f) => esc(f.replace(/-/g, ' '))).join(' · ')}</p><p><a class="btn sec" href="/music/curso-bateria/rudimentos/${esc(r.slug)}">Estudar este rudimento</a></p></article>`).join('');
-    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso editorial · versão ${esc(CB.CURSO.versao)}</p><h1>${esc(CB.CURSO.titulo)}</h1><p class="lab-lead">${esc(CB.CURSO.descricao)} ${esc(CB.CURSO.subtitulo)}.</p><div class="curso-numeros" aria-label="Dimensão do curso"><span><strong>4</strong> fases</span><span><strong>26</strong> capítulos</span><span><strong>40</strong> rudimentos</span><span><strong>3</strong> trilhas</span></div><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><p><a class="btn sec" href="/music/curso-bateria.md">⬇ Baixar edição Markdown</a> <a class="btn sec" href="/music/curso-bateria/rudimentos">🥁 Abrir trilha de rudimentos</a></p></header><section aria-labelledby="trilhas"><h2 id="trilhas">Três trilhas de aprendizagem</h2><div class="curso-trilhas">${CB.CURSO.trilhas.map((t) => `<div><strong>${esc(t.nome)}</strong><span>${esc(t.resumo)}</span></div>`).join('')}</div></section>${fases}<section><h2>Trilha de 40 rudimentos</h2><p>Estude cada rudimento com facilitadores: preparar, isolar, alternar, orquestrar, musicalizar, acelerar com critério, diagnosticar e registrar.</p><div class="curso-modulos">${rudimentosCurso}</div></section>`;
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso editorial · versão ${esc(CB.CURSO.versao)}</p><h1>${esc(CB.CURSO.titulo)}</h1><p class="lab-lead">${esc(CB.CURSO.descricao)} ${esc(CB.CURSO.subtitulo)}.</p><div class="curso-numeros" aria-label="Dimensão do curso"><span><strong>4</strong> fases</span><span><strong>26</strong> capítulos</span><span><strong>40</strong> rudimentos</span><span><strong>3</strong> trilhas</span></div><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><p><a class="btn" href="/music/curso-bateria.pdf">📄 Abrir livro em PDF</a> <a class="btn sec" href="/music/curso-bateria.md">⬇ Baixar edição Markdown</a> <a class="btn sec" href="/music/curso-bateria/rudimentos">🥁 Abrir trilha de rudimentos</a></p></header><section aria-labelledby="trilhas"><h2 id="trilhas">Três trilhas de aprendizagem</h2><div class="curso-trilhas">${CB.CURSO.trilhas.map((t) => `<div><strong>${esc(t.nome)}</strong><span>${esc(t.resumo)}</span></div>`).join('')}</div></section>${fases}<section><h2>Trilha de 40 rudimentos</h2><p>Estude cada rudimento com facilitadores: preparar, isolar, alternar, orquestrar, musicalizar, acelerar com critério, diagnosticar e registrar.</p><div class="curso-modulos">${rudimentosCurso}</div></section>`;
     pagina(res, { titulo: 'Curso de bateria — do zero à performance | Musique', descricao: CB.CURSO.descricao, caminho: '/music/curso-bateria', corpo, trilha: [['Aprender', '/music/aprender'], ['Curso de bateria']] });
   });
 
