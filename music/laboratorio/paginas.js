@@ -251,7 +251,7 @@ ${relacionados(f.slug)}`;
       const largura = 595.28;
       const altura = 841.89;
       const linhas = [];
-      const limpar = (texto) => String(texto || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+      const limpar = (texto) => String(texto || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/[→←↔]/g, '->').replace(/[•·]/g, '-').trim();
       const adicionar = (texto, estilo = 'body') => { const limite = estilo === 'titulo' ? 70 : 92; const palavras = limpar(texto).split(/\s+/); let linha = ''; palavras.forEach((palavra) => { const teste = linha ? linha + ' ' + palavra : palavra; if (teste.length > limite) { if (linha) linhas.push({ texto: linha, estilo }); linha = palavra; } else linha = teste; }); if (linha) linhas.push({ texto: linha, estilo }); linhas.push({ texto: '', estilo: 'space' }); };
       linhas.push({ texto: 'MUSIQUE · VILLELA MUSIC', estilo: 'marca' }, { texto: CB.CURSO.titulo, estilo: 'capa' }, { texto: CB.CURSO.subtitulo, estilo: 'subtitulo' }, { texto: '', estilo: 'space' });
       adicionar(CB.CURSO.descricao, 'body');
