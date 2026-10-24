@@ -84,6 +84,7 @@ def ilustracao(num, titulo, foco):
         d.add(String(x, 57, label, textAnchor='middle', fontName='Helvetica-Bold', fontSize=8, fillColor=colors.white))
         if i < len(labels) - 1: d.add(Line(x + 23, 61, x + width - 23, 61, strokeColor=colors.HexColor(gold), strokeWidth=2))
     d.add(String(240, 18, f'Mapa do capítulo {num} · {titulo[:58]}', textAnchor='middle', fontName='Helvetica', fontSize=8.5, fillColor=colors.HexColor(navy)))
+    d.scale(.70, .70); d.width = 336; d.height = 78
     return d
 
 def rodape(canvas, doc):
@@ -105,6 +106,7 @@ def capa_arte(titulo, foco):
     d.add(String(28, 101, 'COLEÇÃO DE INSTRUMENTOS', fontName='Helvetica-Bold', fontSize=9, fillColor=colors.HexColor('#C7E8D4'), letterSpacing=1.2))
     d.add(String(28, 72, foco, fontName='Helvetica', fontSize=10, fillColor=colors.HexColor('#DCEAF0')))
     d.add(String(28, 34, 'OUVIR · COMPREENDER · PRATICAR · TOCAR', fontName='Helvetica-Bold', fontSize=9, fillColor=colors.HexColor('#F5DFB2')))
+    d.scale(.70, .70); d.width = 336; d.height = 154
     return d
 
 def gerar(nome, titulo, foco, capitulos):
@@ -119,14 +121,17 @@ def gerar(nome, titulo, foco, capitulos):
     story += [Paragraph(f'{num} · {tit}', body) for num, tit, _ in capitulos]
     story.append(PageBreak())
     for num, tit, texto in capitulos:
-        detalhes = DETALHES.get(num, [])
         story += [Paragraph(f'Capítulo {num}', meta), Paragraph(tit, h1), ilustracao(num, tit, foco), Spacer(1, 3*mm)]
+        vistos = set()
+        rotulos = ['A ideia central', 'O que ouvir', 'Como praticar', 'Aplicação musical', 'Critério de domínio']
         for i, paragrafo in enumerate(texto):
-            rotulo = 'Visão geral' if i == 0 else ('Aprofundamento ' + str(i))
-            story += [Paragraph(rotulo, ParagraphStyle('secao' + num + str(i), parent=estilos['Heading2'], fontSize=12, leading=15, textColor=colors.HexColor('#245B78'), spaceBefore=7, spaceAfter=4)), Paragraph(paragrafo, body)]
-        for i, paragrafo in enumerate(detalhes):
-            story += [Paragraph(['Escuta guiada', 'Aplicação no instrumento', 'Critério de domínio', 'Revisão'][i % 4], ParagraphStyle('det' + num + str(i), parent=estilos['Heading2'], fontSize=12, leading=15, textColor=colors.HexColor('#245B78'), spaceBefore=7, spaceAfter=4)), Paragraph(paragrafo, body)]
-        story += [Paragraph('<b>Ligação com o Musique</b>: abra o mapa visual e o exercício indicados no capítulo digital para ouvir, praticar e registrar o resultado.', body), Spacer(1, 6*mm), PageBreak()]
+            paragrafo = str(paragrafo).strip()
+            if not paragrafo or paragrafo in vistos: continue
+            vistos.add(paragrafo)
+            rotulo = rotulos[i] if i < len(rotulos) else 'Continuação'
+            estilo_secao = ParagraphStyle('secao' + num + str(i), parent=estilos['Heading2'], fontSize=12, leading=15, textColor=colors.HexColor('#245B78'), spaceBefore=7, spaceAfter=4)
+            story += [Paragraph(rotulo, estilo_secao), Paragraph(paragrafo, body)]
+        story += [Paragraph('<b>Próximo passo no Musique</b>: abra a ferramenta indicada no capítulo, ouça o exemplo, execute a prática e registre uma evidência antes de avançar.', body), Spacer(1, 6*mm), PageBreak()]
     SimpleDocTemplate(str(OUT / nome), pagesize=(160*mm,230*mm), rightMargin=18*mm, leftMargin=18*mm, topMargin=18*mm, bottomMargin=18*mm, title=titulo, author='Musique · Villela Music').build(story, onFirstPage=rodape, onLaterPages=rodape)
 
 dados_path = Path(__file__).with_name('livros-instrumentos-conteudo.json')
