@@ -82,6 +82,10 @@
       var acordes = el('li', { class: 'lab-jornada-item' }, [el('span', { class: 'lab-jornada-icone', 'aria-hidden': 'true', txt: '🎼' }), el('span', { class: 'lab-jornada-textos' }, [el('a', { href: '/music/criar/acordes-guitarra', txt: 'Laboratório de acordes' }), el('small', { txt: 'Técnica · abertos, pestanas e sétimas.' })])]);
       ul.insertBefore(acordes, ul.firstChild);
     }
+    if (!ul.querySelector('a[href="/music/criar/tecnicas-guitarra"]')) {
+      var tecnicas = el('li', { class: 'lab-jornada-item' }, [el('span', { class: 'lab-jornada-icone', 'aria-hidden': 'true', txt: '〰️' }), el('span', { class: 'lab-jornada-textos' }, [el('a', { href: '/music/criar/tecnicas-guitarra', txt: 'Técnicas de articulação' }), el('small', { txt: 'Técnica · ligados, bends, slides e vibrato.' })])]);
+      ul.insertBefore(tecnicas, ul.firstChild);
+    }
   }
   if (w.document) {
     w.document.addEventListener('DOMContentLoaded', function () {

@@ -639,6 +639,14 @@
 .acorde-guitarra-card .btn{align-self:flex-start}
 .lab-batida-padrao{position:relative;overflow:hidden}
 .lab-batida-tipo{display:inline-block;padding:4px 8px;border-radius:999px;background:#e7f0f8;color:#315b80;font-size:11px;font-weight:800;letter-spacing:.04em}
+.tecnicas-guitarra-controles{grid-template-columns:minmax(220px,2fr) minmax(110px,1fr) auto}
+.tecnicas-guitarra-lista{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:18px 0}
+.tecnica-guitarra-chip{display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 7px;border:1px solid #d7e3ef;border-radius:13px;background:#fff;color:var(--navy);cursor:pointer;font:600 13px Inter,sans-serif}
+.tecnica-guitarra-chip strong{font-size:25px;color:#315b80}
+.tecnica-guitarra-chip small{color:#2f855a;font-size:14px}.tecnica-guitarra-chip.ativa{border-color:#d97706;box-shadow:0 0 0 3px #ffd16666}.tecnica-guitarra-chip.concluida{background:#f0fff4}
+.tecnica-guitarra-detalhe{position:relative}.tecnica-guitarra-sinal{float:right;font-size:40px;color:#d97706;font-weight:700}
+@media(max-width:800px){.tecnicas-guitarra-lista{grid-template-columns:repeat(3,minmax(0,1fr))}.tecnicas-guitarra-controles{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.tecnicas-guitarra-lista{grid-template-columns:repeat(2,minmax(0,1fr))}.tecnicas-guitarra-controles{grid-template-columns:1fr}}
 .acordes-guitarra-treino{margin-top:20px;padding:20px;border:1px solid #d7b84b;border-radius:16px;background:#fff9df}
 .acordes-guitarra-treino h3{margin-top:0;color:var(--navy)}
 @media(max-width:800px){.acordes-guitarra-controles{grid-template-columns:repeat(2,minmax(0,1fr))}.acordes-guitarra-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
