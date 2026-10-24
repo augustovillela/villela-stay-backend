@@ -80,6 +80,23 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
     pagina(res, { titulo: 'Laboratório Musical — teoria musical visual, interativa e em português | Musique', descricao: 'Escalas, acordes, intervalos, tonalidades, pauta, piano, braço do violão e círculo de quintas — para ver, ouvir e praticar. Ferramentas abertas, em português.', caminho: '/music/laboratorio', corpo, ferramenta: 'hub' });
   });
 
+  // -------------------------------------------------------------- cursos
+  app.get('/music/cursos', (req, res) => {
+    const cursos = [
+      { nome: 'Teoria musical', icone: '🎓', cor: '#5865a8', resumo: 'Notas, ritmo, escalas, acordes, leitura e ouvido.', url: '/music/curso-teoria', ativo: true },
+      { nome: 'Violão', icone: '🎸', cor: '#4f7d67', resumo: 'Postura, acordes, batidas, repertório e prática guiada.', url: '/music/criar/curso-violao-livro', ativo: true },
+      { nome: 'Guitarra', icone: '🎸', cor: '#8a5a72', resumo: 'Técnica, timbre, riffs, solos e linguagem de guitarra.', url: '/music/criar/curso-guitarra-edicao', ativo: true },
+      { nome: 'Bateria', icone: '🥁', cor: '#a66b42', resumo: 'Groove, coordenação, leitura e trilha dos 40 rudimentos.', url: '/music/curso-bateria', ativo: true },
+      { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Em preparação: teclado, harmonia, acompanhamento e leitura.', url: '', ativo: false },
+      { nome: 'Cavaquinho', icone: '🪕', cor: '#9a7650', resumo: 'Em preparação: levadas, acordes e repertório brasileiro.', url: '', ativo: false },
+      { nome: 'Ukulele', icone: '🪕', cor: '#6d8060', resumo: 'Em preparação: acordes, batidas e primeiras canções.', url: '', ativo: false },
+      { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Em preparação: palhetada, melodias e choro.', url: '', ativo: false },
+    ];
+    const cards = cursos.map((c) => `<${c.ativo ? 'a href="' + c.url + '"' : 'div'} class="curso-card ${c.ativo ? 'curso-card-ativo' : 'curso-card-futuro'}" style="--curso-cor:${c.cor}"><span class="curso-card-icone" aria-hidden="true">${c.icone}</span><span class="curso-card-corpo"><strong>${esc(c.nome)}</strong><span>${esc(c.resumo)}</span></span><small>${c.ativo ? 'Abrir curso →' : 'Em breve'}</small></${c.ativo ? 'a' : 'div'}>`).join('');
+    const corpo = `<header class="lab-cab cursos-hero"><p class="lab-cab-tipo">Formação musical</p><h1>Cursos</h1><p class="lab-lead">Escolha um instrumento ou comece pela teoria. Cada curso tem seu próprio percurso, materiais e práticas.</p></header><section class="cursos-grid" aria-label="Catálogo de cursos">${cards}</section><p class="lab-dica cursos-nota">Novos cursos serão publicados nesta mesma página conforme o conteúdo ficar pronto.</p>`;
+    pagina(res, { titulo: 'Cursos de música — Musique', descricao: 'Cursos de teoria, violão, guitarra, bateria e outros instrumentos no Musique.', caminho: '/music/cursos', corpo, trilha: [['Cursos']] });
+  });
+
   // ---- pontes vindas das Cifras: acorde e tom por texto de cifra ----
   app.get('/music/laboratorio/acorde', (req, res) => {
     const txt = String(req.query.c || '').slice(0, 30);
