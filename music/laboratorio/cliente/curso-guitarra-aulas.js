@@ -23,12 +23,22 @@
     { id: 'dinamica-e-fraseado', nivel: 'intermediario', titulo: 'Dinâmica e fraseado', resumo: 'Faça o acompanhamento respirar e a melodia dizer algo.', texto: ['Marque onde a frase cresce e onde repousa. O mesmo padrão de batida pode soar diferente apenas pela dinâmica.', 'Toque uma melodia cantando-a mentalmente. Respire nas pausas e não acelere para chegar à próxima nota.', 'Grave uma tomada curta e compare intenção, pulso e volume. O registro é uma ferramenta de observação, não uma prova.'], pratica: 'Toque quatro compassos suaves, quatro fortes e quatro crescendo, sem alterar o BPM.', ferramenta: '/music/tocar' },
     { id: 'ponte-violao-guitarra', nivel: 'avancado', titulo: 'Do violão à guitarra: mesma música, outra abordagem', resumo: 'Adapte técnica, timbre e função sem perder a estrutura musical.', texto: ['O violão pode sustentar ritmo e harmonia com ataque acústico. A guitarra pode ocupar espaços com power chords, voicings, riffs ou linhas melódicas.', 'Escolha o timbre depois de decidir a função. Distorção, delay e reverb devem esclarecer a frase, não esconder falta de precisão.', 'Compare a mesma seção em três papéis: acompanhamento, resposta melódica e textura.'], pratica: 'Escolha uma progressão de quatro acordes e crie uma versão acústica e uma versão elétrica com a mesma forma.', ferramenta: '/music/tocar' }
   ];
+  function irParaAula(alvo) {
+    if (!w.document) return;
+    w.setTimeout(function () {
+      var corpo = alvo.querySelector('.curso-guitarra-aula-corpo');
+      if (corpo && corpo.scrollIntoView) corpo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      var titulo = corpo && corpo.querySelector('h3');
+      if (titulo) titulo.setAttribute('tabindex', '-1');
+      if (titulo && titulo.focus) w.setTimeout(function () { titulo.focus({ preventScroll: true }); }, 250);
+    }, 0);
+  }
   function render(alvo, st) {
     st.indice = Math.max(0, Math.min(AULAS.length - 1, Number(st.indice) || 0));
     st.concluidas = st.concluidas || C.lerLocal('curso-guitarra-aulas-v1', {});
     var atual = AULAS[st.indice], feitos = AULAS.filter(function (a) { return !!st.concluidas[a.id]; }).length;
     C.limpar(alvo);
-    alvo.appendChild(el('header', { class: 'lab-cab curso-guitarra-aulas-cab' }, [el('h2', { txt: 'Aulas sequenciais de violão e guitarra' }), el('p', { class: 'lab-lead', txt: 'Do primeiro som à improvisação: avance na ordem, pratique na ferramenta indicada e registre cada conquista.' }), el('p', { class: 'lab-dica', txt: feitos + ' de ' + AULAS.length + ' aulas concluídas · a mesma base serve ao violão e à guitarra.' })]));
+    alvo.appendChild(el('header', { class: 'lab-cab curso-guitarra-aulas-cab' }, [el('h2', { txt: 'Aulas sequenciais de violão e guitarra' }), el('p', { class: 'lab-lead', txt: 'Do primeiro som à improvisação: avance na ordem, pratique na ferramenta indicada e registre cada conquista.' }), el('p', { class: 'lab-dica', txt: feitos + ' de ' + AULAS.length + ' aulas concluídas · a mesma base serve ao violão e à guitarra.' }), el('p', { class: 'curso-guitarra-aulas-instrucao', txt: 'Escolha uma aula acima. O conteúdo selecionado será mostrado automaticamente abaixo.' })]));
     var barra = el('div', { class: 'curso-guitarra-aulas-progresso', role: 'progressbar', 'aria-label': 'Progresso das aulas', 'aria-valuemin': '0', 'aria-valuemax': String(AULAS.length), 'aria-valuenow': String(feitos) });
     barra.appendChild(el('span', { style: 'width:' + Math.round(feitos / AULAS.length * 100) + '%' }));
     alvo.appendChild(barra);
@@ -39,15 +49,15 @@
       b.appendChild(el('span', { class: 'curso-guitarra-aula-numero', txt: String(i + 1).padStart(2, '0') }));
       b.appendChild(el('span', { class: 'curso-guitarra-aula-card-texto' }, [el('strong', { txt: a.titulo }), el('small', { txt: a.nivel + ' · ' + a.resumo })]));
       b.appendChild(el('span', { class: 'curso-guitarra-aula-marca', 'aria-hidden': 'true', txt: concluida ? '✓' : '›' }));
-      b.onclick = function () { st.indice = i; render(alvo, st); };
+      b.onclick = function () { st.indice = i; render(alvo, st); irParaAula(alvo); };
       lista.appendChild(b);
     });
     alvo.appendChild(lista);
-    var corpo = el('article', { class: 'curso-guitarra-aula-corpo' }, [el('p', { class: 'lab-cab-tipo', txt: 'Aula ' + (st.indice + 1) + ' · ' + atual.nivel }), el('h3', { txt: atual.titulo }), el('p', { class: 'lab-lead', txt: atual.resumo }), el('div', { class: 'curso-guitarra-aula-texto' }, atual.texto.map(function (p) { return el('p', { txt: p }); })), el('aside', { class: 'curso-guitarra-aula-pratica' }, [el('strong', { txt: 'Prática da aula' }), el('p', { txt: atual.pratica }), el('a', { class: 'btn sec', href: atual.ferramenta, txt: 'Abrir ferramenta relacionada' })])]);
+    var corpo = el('article', { id: 'curso-guitarra-aula-atual', class: 'curso-guitarra-aula-corpo', 'aria-live': 'polite' }, [el('p', { class: 'lab-cab-tipo', txt: 'Aula ' + (st.indice + 1) + ' · ' + atual.nivel }), el('h3', { txt: atual.titulo }), el('p', { class: 'lab-lead', txt: atual.resumo }), el('div', { class: 'curso-guitarra-aula-texto' }, atual.texto.map(function (p) { return el('p', { txt: p }); })), el('aside', { class: 'curso-guitarra-aula-pratica' }, [el('strong', { txt: 'Prática da aula' }), el('p', { txt: atual.pratica }), el('a', { class: 'btn sec', href: atual.ferramenta, txt: 'Abrir ferramenta relacionada' })])]);
     var acoes = el('div', { class: 'lab-acoes curso-guitarra-aula-acoes' });
-    if (st.indice > 0) acoes.appendChild(el('button', { type: 'button', class: 'btn sec', txt: '← Aula anterior', onclick: function () { st.indice -= 1; render(alvo, st); } }));
+    if (st.indice > 0) acoes.appendChild(el('button', { type: 'button', class: 'btn sec', txt: '← Aula anterior', onclick: function () { st.indice -= 1; render(alvo, st); irParaAula(alvo); } }));
     acoes.appendChild(el('button', { type: 'button', class: 'btn', txt: st.concluidas[atual.id] ? '✓ Aula concluída — desfazer' : 'Marcar aula como concluída', 'aria-pressed': st.concluidas[atual.id] ? 'true' : 'false', onclick: function () { if (st.concluidas[atual.id]) delete st.concluidas[atual.id]; else st.concluidas[atual.id] = new Date().toISOString(); C.guardar('curso-guitarra-aulas-v1', st.concluidas); if (C.Jornada) C.Jornada.sync(false).catch(function () {}); render(alvo, st); } }));
-    if (st.indice < AULAS.length - 1) acoes.appendChild(el('button', { type: 'button', class: 'btn sec', txt: 'Próxima aula →', onclick: function () { st.indice += 1; render(alvo, st); } }));
+    if (st.indice < AULAS.length - 1) acoes.appendChild(el('button', { type: 'button', class: 'btn sec', txt: 'Próxima aula →', onclick: function () { st.indice += 1; render(alvo, st); irParaAula(alvo); } }));
     alvo.appendChild(corpo); alvo.appendChild(acoes);
   }
   F['curso-guitarra-aulas'] = function (alvo, st) { render(alvo, st); };
