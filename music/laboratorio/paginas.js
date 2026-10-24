@@ -420,6 +420,7 @@ function relacionados(slug) {
     'tendencias-harmonicas': ['/music/criar/compositor-visual', '/music/criar/progressoes', '/music/aprender/cadencias'],
     'desafio-acordes': ['/music/explorar/identificar-acorde', '/music/praticar/intervalo-ouvido', '/music/aprender/acordes'],
     'professor-piano': ['/music/criar/piano-virtual', '/music/criar/compositor-visual', '/music/praticar/nota-no-teclado'],
+    'curso-guitarra': ['/music/tutor-braco', '/music/criar/batidas', '/music/tocar'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
