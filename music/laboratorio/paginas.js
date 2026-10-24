@@ -11,6 +11,8 @@ const TE = require('./paginas-teoria');
 const RF = require('./paginas-referencia');
 const L = require('./licoes');
 const CT = require('./curso-teoria');
+const CB = require('./curso-bateria');
+const LB = require('./licoes-bateria');
 const ACESSO = require('./acesso');
 
 // ------------------------------------------------------------------
@@ -53,6 +55,7 @@ function registrar(app, { opcional, contextoDe }) {
 <button class="btn" type="submit">Buscar</button></div><p id="lab-q-dica" class="lab-dica">Aceita nomes em português ou em cifra, com ou sem acento.</p>
 <ul class="lab-sugestoes" id="lab-sugestoes" aria-live="polite"></ul></form></header>
 <p class="lab-destaque-tutor"><a href="/music/curso-teoria"><span aria-hidden="true">🎓</span> <strong>Novo: Curso de teoria musical</strong> — do zero ao avançado, em níveis, módulos e três trilhas de aprendizagem.</a></p>
+<p class="lab-destaque-tutor"><a href="/music/curso-bateria"><span aria-hidden="true">🥁</span> <strong>Novo: Curso de bateria</strong> — do primeiro pulso à performance, com 40 rudimentos e facilitadores de treino.</a></p>
 <section class="lab-caminhos" aria-labelledby="caminhos"><h2 id="caminhos" class="sr">Três caminhos</h2>
 <a class="lab-caminho" href="/music/explorar"><span class="lab-caminho-ico" aria-hidden="true">⚡</span><strong>Usar agora</strong><span>Afinar, contar BPM, ver um acorde, transpor. Abre direto, sem cadastro.</span></a>
 <a class="lab-caminho" href="/music/aprender"><span class="lab-caminho-ico" aria-hidden="true">📘</span><strong>Aprender passo a passo</strong><span>Uma trilha na ordem certa, do som ao campo harmônico, com prática em cada lição.</span></a>
@@ -133,6 +136,61 @@ ${relacionados(f.slug)}`;
       niveis: CT.CURSO.niveis.map((n) => ({ ...n, modulos: n.modulos.map((m) => ({ ...m, licoes: m.licoes.map((slug) => { const l = porSlug[slug]; return l ? { slug, titulo: l.titulo, resumo: l.resumo, nivel: l.nivel, prereq: l.prereq, url: `/music/aprender/${slug}` } : { slug, estado: 'planejada' }; }) })) })),
     };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+
+  // ------------------------------------------------------------ curso de bateria
+  // Currículo isolado: não altera a trilha de teoria nem as rotas dos demais instrumentos.
+  app.get('/music/curso-bateria.json', opcional, (req, res) => {
+    const documento = {
+      schema: 'musique.course.v1', id: CB.CURSO.id, titulo: CB.CURSO.titulo, subtitulo: CB.CURSO.subtitulo,
+      versao: CB.CURSO.versao, descricao: CB.CURSO.descricao, trilhas: CB.CURSO.trilhas,
+      recursos: { html: '/music/curso-bateria', markdown: '/music/curso-bateria.md' },
+      rudimentos: CB.RUDIMENTOS, fases: CB.CURSO.fases,
+      capitulos: CB.capitulos.map((c) => ({ ...c, url: `/music/curso-bateria/${c.slug}`, licao: LB.POR_SLUG[c.slug] ? true : false })),
+    };
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+
+  app.get('/music/curso-bateria.academy.json', opcional, (req, res) => {
+    const modulos = CB.CURSO.fases.map(([id, nome, ns]) => ({ titulo: nome, aulas: ns.map((n) => { const c = CB.capitulos[n - 1]; const l = LB.POR_SLUG[c.slug]; return { titulo: c.titulo, tipo: 'texto', gratuita: n <= 2, conteudo: l.blocos.map((b) => b.t === 'p' ? b.html : b.t === 'lista' ? b.itens.map((x) => '- ' + x).join('\n') : b.t === 'praticar' ? `Prática: ${b.bpmInicial}–${b.bpmMeta} BPM; rudimento de apoio: ${b.rudimento}.` : '').filter(Boolean).join('\n\n') }; }) }));
+    modulos.push({ titulo: 'Trilha de 40 rudimentos', aulas: CB.RUDIMENTOS.map((r) => ({ titulo: `${r.numero}. ${r.nome}`, tipo: 'texto', conteudo: `Facilitadores: ${r.facilitadores.join(', ')}. Pratique na caixa, alterne superfícies, orquestre no kit e registre três repetições limpas.` })) });
+    const exportacao = { produtor_email: null, produto: { titulo: CB.CURSO.titulo, subtitulo: CB.CURSO.subtitulo, tipo: 'curso', categoria: 'musica', descricao_curta: CB.CURSO.descricao, garantia_dias: 7 }, modulos, pagina_venda: { headline: 'Aprenda bateria do primeiro pulso à performance.', beneficios: ['26 capítulos progressivos', '40 rudimentos com facilitadores', 'prática mensurável e projeto final'] }, metadados: { origem: 'musique', status: 'rascunho', requer_produtor_email_antes_de_importar: true } };
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(exportacao, null, 2));
+  });
+
+  app.get('/music/curso-bateria/rudimentos.json', opcional, (req, res) => {
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify({ curso: CB.CURSO.id, facilitadores: CB.RUDIMENTOS[0].facilitadores, rudimentos: CB.RUDIMENTOS }, null, 2));
+  });
+
+  app.get('/music/curso-bateria/rudimentos', opcional, (req, res) => {
+    const cards = CB.RUDIMENTOS.map((r) => `<article class="curso-modulo"><h2>${r.numero}. ${esc(r.nome)}</h2><p><strong>Sticking:</strong> ${esc(r.sticking)}</p><p><strong>Andamento:</strong> ${r.bpmStart}–${r.bpmTarget} BPM · <strong>Prática:</strong> ${r.practiceMinutes} minutos</p><p><strong>Aplicação:</strong> ${esc(r.kitApplication)}</p><p><strong>Erro para observar:</strong> ${esc(r.commonError)}</p><p><strong>Checkpoint:</strong> ${esc(r.checkpoint)}</p><p class="lab-nota-convencao"><strong>Facilitadores:</strong> ${r.facilitadores.map((f) => esc(f.replace(/-/g, ' '))).join(' · ')}</p></article>`).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de bateria · trilha técnica</p><h1>40 rudimentos de bateria</h1><p class="lab-lead">Uma sequência de cartões curtos para preparar, isolar, alternar, orquestrar, musicalizar, acelerar com critério, diagnosticar e registrar.</p><p><a class="btn sec" href="/music/curso-bateria/rudimentos.json">⬇ Dados estruturados</a></p></header><section class="curso-modulos">${cards}</section>`;
+    pagina(res, { titulo: '40 rudimentos de bateria — Musique', descricao: 'Trilha técnica com 40 rudimentos, facilitadores e checkpoints.', caminho: '/music/curso-bateria/rudimentos', corpo, trilha: [['Aprender', '/music/aprender'], ['Curso de bateria', '/music/curso-bateria'], ['Rudimentos']] });
+  });
+
+  app.get('/music/curso-bateria.md', opcional, (req, res) => {
+    const linhas = ['# ' + CB.CURSO.titulo, '', CB.CURSO.descricao, '', '> Currículo original de bateria do Musique, com trilha de rudimentos e facilitadores.', ''];
+    CB.CURSO.fases.forEach(([id, nome, ns]) => {
+      linhas.push(`## ${nome}`, '');
+      ns.forEach((n) => { const c = CB.capitulos[n - 1]; const l = LB.POR_SLUG[c.slug]; linhas.push(`### ${c.numero}. ${c.titulo}`, '', c.resumo, '', l.blocos.filter((b) => b.t === 'p' || b.t === 'lista').map((b) => b.t === 'p' ? b.html.replace(/<[^>]+>/g, '') : b.itens.map((x) => '- ' + x).join('\n')).join('\n\n'), ''); });
+    });
+    linhas.push('## Trilha de rudimentos', '', ...CB.RUDIMENTOS.map((r) => `${r.numero}. ${r.nome} — facilitadores: ${r.facilitadores.join(', ')}`));
+    res.set('Content-Type', 'text/markdown; charset=utf-8').set('Content-Disposition', 'attachment; filename="curso-bateria.md"').set('Cache-Control', 'no-cache').send(linhas.join('\n'));
+  });
+
+  app.get('/music/curso-bateria', opcional, (req, res) => {
+    const fases = CB.CURSO.fases.map(([id, nome, ns]) => `<section class="curso-nivel" id="nivel-${esc(id)}" data-curso-nivel="${esc(id)}"><div class="curso-nivel-cab"><div><p class="lab-cab-tipo">Trilha de bateria</p><h2>${esc(nome)}</h2><p>Progressão original de bateria do Musique.</p></div><span class="curso-nivel-progresso" data-curso-nivel-progresso="${esc(id)}">0% concluído</span></div><div class="curso-modulos"><article class="curso-modulo"><ul>${ns.map((n) => { const c = CB.capitulos[n - 1]; return `<li data-curso-trilhas="conhecer ouvir aplicar"><a data-curso-slug="${esc(c.slug)}" href="/music/curso-bateria/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.resumo)}</span></li>`; }).join('')}</ul></article></div></section>`).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso editorial · versão ${esc(CB.CURSO.versao)}</p><h1>${esc(CB.CURSO.titulo)}</h1><p class="lab-lead">${esc(CB.CURSO.descricao)} ${esc(CB.CURSO.subtitulo)}.</p><div class="curso-numeros" aria-label="Dimensão do curso"><span><strong>4</strong> fases</span><span><strong>26</strong> capítulos</span><span><strong>40</strong> rudimentos</span><span><strong>3</strong> trilhas</span></div><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><p><a class="btn sec" href="/music/curso-bateria.md">⬇ Baixar edição Markdown</a> <a class="btn sec" href="/music/curso-bateria/rudimentos">🥁 Abrir trilha de rudimentos</a></p></header><section aria-labelledby="trilhas"><h2 id="trilhas">Três trilhas de aprendizagem</h2><div class="curso-trilhas">${CB.CURSO.trilhas.map((t) => `<div><strong>${esc(t.nome)}</strong><span>${esc(t.resumo)}</span></div>`).join('')}</div></section>${fases}<section><h2>Trilha de 40 rudimentos</h2><p>Estude com facilitadores: preparar, isolar, alternar, orquestrar, musicalizar, acelerar com critério, diagnosticar e registrar.</p><ol>${CB.RUDIMENTOS.map((r) => `<li>${esc(r.nome)}</li>`).join('')}</ol></section>`;
+    pagina(res, { titulo: 'Curso de bateria — do zero à performance | Musique', descricao: CB.CURSO.descricao, caminho: '/music/curso-bateria', corpo, trilha: [['Aprender', '/music/aprender'], ['Curso de bateria']] });
+  });
+
+  app.get('/music/curso-bateria/:slug', opcional, (req, res) => {
+    const l = LB.POR_SLUG[req.params.slug];
+    if (!l) return naoAchou(res, 'esta lição de bateria');
+    const c = CB.capitulos.find((x) => x.slug === l.slug);
+    const conteudo = l.blocos.map((b) => b.t === 'p' ? `<p>${b.html}</p>` : b.t === 'lista' ? `<ul>${b.itens.map((x) => `<li>${x}</li>`).join('')}</ul>` : b.t === 'aprofundar' ? `<details class="lab-det lab-aprofundar"><summary>Aprofundar</summary><p>${esc(b.html)}</p></details>` : b.t === 'praticar' ? `<section class="lab-pratica"><h2>Prática orientada</h2><p>Comece em ${b.bpmInicial} BPM e avance até ${b.bpmMeta} BPM somente após três repetições limpas. Rudimento de apoio: ${esc(b.rudimento)}.</p></section>` : b.t === 'ferramenta' ? `<p class="lab-ferr-link"><a href="/music/criar/${esc(b.slug)}">🎛️ Experimente no Musique: ${esc(b.slug.replace(/-/g, ' '))}</a></p>` : '').join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Capítulo ${c.numero} de 26 · ${esc(c.nivel)}</p><h1>${esc(l.titulo)}</h1><p class="lab-lead">${esc(l.resumo)}</p><aside class="curso-contexto"><p>Curso de bateria · ${esc(c.faseNome)}</p><p>O progresso, a prática e os facilitadores fazem parte da mesma trilha.</p></aside></header><article class="lab-licao">${conteudo}</article><div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(l.slug)}" aria-pressed="false">Marcar capítulo como concluído</button><span>O progresso fica salvo neste navegador.</span></div><nav class="lab-licao-nav"><a href="/music/curso-bateria">← Voltar ao curso</a></nav>`;
+    pagina(res, { titulo: `${l.titulo} — bateria | Musique`, descricao: l.resumo, caminho: '/music/curso-bateria/' + l.slug, corpo, trilha: [['Aprender', '/music/aprender'], ['Curso de bateria', '/music/curso-bateria'], [l.titulo]] });
   });
 
   app.get('/music/curso-teoria.md', opcional, (req, res) => {
@@ -439,7 +497,7 @@ function relacionados(slug) {
 
 /** URLs públicas e CANÔNICAS para o sitemap (nunca as enarmônicas). */
 function urlsDoSitemap() {
-  const u = ['/laboratorio', '/aprender', '/curso-teoria', '/explorar', '/criar', '/praticar', '/tutor-braco', '/tocar', '/transcrever'].concat(require('./separar').SUSPENSA ? [] : ['/separar']).concat([ '/jogar', '/referencia', '/ensinar', '/escalas', '/acordes', '/intervalos', '/notas']).map((x) => '/music' + x);
+  const u = ['/laboratorio', '/aprender', '/curso-teoria', '/curso-bateria', '/curso-bateria.json', '/curso-bateria.md', '/curso-bateria.academy.json', '/curso-bateria/rudimentos', '/curso-bateria/rudimentos.json', '/explorar', '/criar', '/praticar', '/tutor-braco', '/tocar', '/transcrever'].concat(require('./separar').SUSPENSA ? [] : ['/separar']).concat([ '/jogar', '/referencia', '/ensinar', '/escalas', '/acordes', '/intervalos', '/notas']).map((x) => '/music' + x);
   CAT.FERRAMENTAS.forEach((f) => u.push(`/music/${f.ambiente}/${f.slug}`));
   CAT.REFERENCIAS.forEach((r) => u.push('/music/referencia/' + r.slug));
   CAT.JOGOS.forEach((j) => u.push('/music/jogar/' + j.slug));
