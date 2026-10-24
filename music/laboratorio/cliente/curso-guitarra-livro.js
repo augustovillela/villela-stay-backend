@@ -62,13 +62,14 @@
     var notas = 'Mi4 · Fá4 · Sol4 · Fá4 · Mi4';
     var midis = [64, 65, 67, 65, 64];
     var ataques = null;
+    var ataquesQuando = null;
     var soma = String(c.id || '').split('').reduce(function (n, ch) { return n + ch.charCodeAt(0); }, 0), desloc = soma % 8, baseMidi = 60 + (soma % 12), padrao = [0, 2, 4, 2, 0].map(function (x, i) { return x + desloc + (i === 2 && soma % 2 ? 1 : 0); });
     midis = padrao.map(function (x) { return baseMidi + x; });
     tab = tabDaSequencia(midis);
     notas = midis.map(function (m) { return C.nomeNota(m, true); }).join(' · ');
     if (c.id.indexOf('acord') >= 0) { tab = 'e|--0-----0-----|\nB|--1-----1-----|\nG|--0-----2-----|\nD|--2-----2-----|\nA|--3-----0-----|\nE|--------------|'; notas = 'C maior → Am · duas formas abertas'; midis = [48, 52, 55, 60, 64, 45, 50, 55, 60, 64]; ataques = [[48, 52, 55, 60, 64], [45, 50, 55, 60, 64]]; }
     else if (c.id.indexOf('voicing') >= 0) { tab = 'e|--3-----2-----|\nB|--0-----3-----|\nG|--0-----2-----|\nD|--0-----0-----|\nA|--2-----------|\nE|--3-----------|'; notas = 'G maior → D maior · voicings em regiões diferentes'; midis = [43, 47, 50, 55, 59, 67, 50, 57, 62, 66]; ataques = [[43, 47, 50, 55, 59, 67], [50, 57, 62, 66]]; }
-    else if (c.id.indexOf('ritmo') >= 0 || c.id.indexOf('levada') >= 0 || c.id.indexOf('riffs') >= 0) { tab = 'e|x---x-x---x---|\nB|x---x-x---x---|\nG|x---x-x---x---|\nD|x---x-x---x---|\nA|x---x-x---x---|\nE|x---x-x---x---|\n   1 e 2 e 3 e 4 e'; notas = 'Quatro ataques do acorde · seis cordas · tempos 1, 2&, 3 e 4'; midis = [40, 45, 50, 55, 59, 64]; ataques = [midis, midis, midis, midis]; }
+    else if (c.id.indexOf('ritmo') >= 0 || c.id.indexOf('levada') >= 0 || c.id.indexOf('riffs') >= 0) { tab = 'e|x---x-x---x---|\nB|x---x-x---x---|\nG|x---x-x---x---|\nD|x---x-x---x---|\nA|x---x-x---x---|\nE|x---x-x---x---|\n   1 e 2 e 3 e 4 e'; notas = 'Quatro ataques do acorde · seis cordas · tempos 1, 2, 2& e 4'; midis = [40, 45, 50, 55, 59, 64]; ataques = [midis, midis, midis, midis]; ataquesQuando = [0, .62, .93, 1.86]; }
     else if (c.id.indexOf('bends') >= 0 || c.id.indexOf('solos') >= 0 || c.id.indexOf('escala') >= 0 || c.id.indexOf('pentatonica') >= 0) { tab = 'e|----------------5-8-|\nB|------------5-8-----|\nG|--------5-7---------|\nD|----5-7-------------|\nA|5-7-----------------|\nE|--------------------|'; notas = 'Ré3 · Mi3 · Sol3 · Lá3 · Dó4 · Ré4 · Mi4 · Sol4 · Lá4 · Dó5'; midis = [50, 52, 55, 57, 60, 62, 64, 67, 69, 72]; }
     var curados = {
       fundamentos: ['e|--0-----|\nB|--0-----|\nG|--0-----|\nD|--0-----|\nA|--0-----|\nE|--0-----|', 'Cordas soltas · seis ataques', [40, 45, 50, 55, 59, 64]],
@@ -94,8 +95,8 @@
     if (c.id === 'estilos-violao') ataques = [[48, 52, 55, 60, 64], [50, 57, 62, 66]];
     if (c.id === 'guitarra-eletrica') ataques = [[48, 55, 60], [50, 57, 62]];
     if (c.id === 'palhetada-riffs') ataques = [[40, 47, 52], [40, 47, 52], [43, 50, 55], [43, 50, 55]];
-    if (c.id === 'pulso') ataques = [[64], [55], [64], [55]];
-    function tocar() { if (!C.Som) return; if (ataques) { C.Som.parar(); ataques.forEach(function (grupo, i) { setTimeout(function () { C.Som.tocar(grupo, { modo: 'harmonico', dur: .9, vel: .9, timbre: 'pluck' }); }, i * 1.05); }); } else C.Som.tocar(midis, { modo: 'melodico', dur: .42, passo: .55 }); }
+    if (c.id === 'pulso') { ataques = [[64], [55], [64], [55]]; ataquesQuando = [0, .62, 1.24, 1.86]; }
+    function tocar() { if (!C.Som) return; if (ataques) { C.Som.parar(); ataques.forEach(function (grupo, i) { setTimeout(function () { C.Som.tocar(grupo, { modo: 'harmonico', dur: .9, vel: .9, timbre: 'pluck' }); }, (ataquesQuando ? ataquesQuando[i] : i * 1.05) * 1000); }); } else C.Som.tocar(midis, { modo: 'melodico', dur: .42, passo: .55 }); }
     return el('section', { class: 'curso-livro-material' }, [el('div', { class: 'curso-livro-material-cab' }, [el('h4', { txt: 'Exemplo musical original' }), el('span', { class: 'curso-livro-material-tipo', txt: 'tablatura · notas · áudio fiel' })]), el('pre', { class: 'curso-livro-tab', 'aria-label': 'Exemplo de tablatura', txt: tab }), el('p', { class: 'curso-livro-notas', txt: 'Notas e intenção: ' + notas }), el('p', { class: 'curso-livro-material-dica', txt: 'O botão reproduz exatamente as notas escritas na tablatura, na mesma ordem e com o mesmo número de ataques. Conte o pulso para estudar a duração entre eles.' }), el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn sec', txt: '▶ Ouvir tablatura', onclick: tocar }), el('button', { type: 'button', class: 'btn sec', txt: '■ Parar', onclick: function () { if (C.Som) C.Som.parar(); } })])]);
   }
   function render(alvo, st) {
