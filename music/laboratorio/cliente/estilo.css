@@ -586,15 +586,15 @@
 @media (max-width:900px){.pozzoli-serie{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (max-width:700px){.pozzoli-serie{grid-template-columns:repeat(3,minmax(0,1fr))}.pozzoli-compasso{font-size:19px}}
 @media (max-width:480px){.pozzoli-serie{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.lab-prof-piano-cena{position:relative;margin:18px 0;padding:14px 14px 26px;border:1px solid var(--borda);border-radius:16px;background:linear-gradient(180deg,#101b32,#1b2a4a);overflow:hidden;min-height:210px}
+.lab-prof-piano-cena{position:relative;margin:18px 0;padding:14px 14px 26px;border:1px solid var(--borda);border-radius:16px;background:linear-gradient(180deg,#101b32,#1b2a4a);overflow:hidden;min-height:360px}
 .lab-prof-piano-legenda{position:relative;z-index:2;color:#dce3f0;font-size:13px;margin-bottom:8px}
-.lab-prof-piano-pista{position:relative;height:150px;margin:0 8px;border-left:1px solid rgba(255,255,255,.12);border-right:1px solid rgba(255,255,255,.12);background:repeating-linear-gradient(90deg,transparent 0,transparent calc(12.5% - 1px),rgba(255,255,255,.08) 12.5%)}
+.lab-prof-piano-pista{position:relative;height:300px;margin:0 8px;border-left:1px solid rgba(255,255,255,.12);border-right:1px solid rgba(255,255,255,.12);background:repeating-linear-gradient(90deg,transparent 0,transparent calc(12.5% - 1px),rgba(255,255,255,.08) 12.5%)}
 .lab-prof-piano-nota{position:absolute;top:12px;transform:translateX(-50%);min-width:48px;padding:8px 10px;border-radius:10px;background:#5e739b;color:#fff;text-align:center;font-weight:700;box-shadow:0 8px 18px rgba(0,0,0,.25);transition:top .25s,opacity .25s,transform .25s}
-.lab-prof-piano-nota.ativa{top:108px;background:#e2b93b;color:#15223a;transform:translateX(-50%) scale(1.12);box-shadow:0 0 0 4px rgba(226,185,59,.22),0 8px 18px rgba(0,0,0,.3)}
-.lab-prof-piano-nota.concluida{opacity:.35;top:136px}
+.lab-prof-piano-nota.ativa{background:#e2b93b;color:#15223a;transform:translateX(-50%) scale(1.12);box-shadow:0 0 0 4px rgba(226,185,59,.22),0 8px 18px rgba(0,0,0,.3)}
+.lab-prof-piano-nota.concluida{opacity:.28}
 .lab-prof-piano-linha{position:absolute;left:14px;right:14px;bottom:24px;height:3px;background:#e2b93b;box-shadow:0 0 12px rgba(226,185,59,.6)}
-@media (max-width:680px){.lab-prof-piano-cena{padding:10px 8px 22px}.lab-prof-piano-nota{min-width:38px;padding:7px 5px;font-size:12px}}
-.lab-prof-piano-teclas{display:grid;grid-template-columns:repeat(13,minmax(34px,1fr));gap:2px;margin:12px 0;padding:10px;background:#121b2d;border-radius:12px}
-.lab-prof-piano-tecla{min-height:56px;border:1px solid #b8c3d6;border-radius:0 0 7px 7px;background:#fff;color:#17233b;font-weight:700;cursor:pointer;box-shadow:0 4px 0 #aab5c8}
+@media (max-width:680px){.lab-prof-piano-cena{padding:10px 8px 22px;min-height:330px}.lab-prof-piano-pista{height:270px}.lab-prof-piano-nota{min-width:38px;padding:7px 5px;font-size:12px}.lab-prof-piano-tecla{flex-basis:24px;height:126px}.lab-prof-piano-tecla.preta{height:84px;margin:0 -8px}.lab-prof-piano-tecla.branca{padding-top:94px}}
+.lab-prof-piano-teclas{display:flex;overflow-x:auto;gap:1px;margin:12px 0;padding:12px;background:#121b2d;border-radius:12px;min-height:164px}
+.lab-prof-piano-tecla{flex:0 0 28px;height:138px;margin:0;border:1px solid #b8c3d6;border-radius:0 0 7px 7px;background:#fff;color:#17233b;font-weight:700;cursor:pointer;box-shadow:0 4px 0 #aab5c8}.lab-prof-piano-tecla.preta{height:94px;margin:0 -9px;background:#17233b;color:#fff;border-color:#07101f;z-index:2}.lab-prof-piano-tecla.branca{padding-top:105px}
 .lab-prof-piano-tecla:hover,.lab-prof-piano-tecla:focus{background:#f4e3a1;outline:2px solid #e2b93b;outline-offset:1px}
 @media (max-width:680px){.lab-prof-piano-teclas{grid-template-columns:repeat(7,minmax(34px,1fr))}.lab-prof-piano-tecla{min-height:48px;font-size:12px}}
