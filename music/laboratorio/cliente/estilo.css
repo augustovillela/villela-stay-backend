@@ -17,6 +17,11 @@
 .lab-sub-curso:hover,.lab-sub-curso:focus-visible{background:#d7e8f8!important;box-shadow:0 0 0 2px rgba(39,96,153,.15)}
 .lab-destaque-cursos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
 @media (max-width:640px){.lab-destaque-cursos{grid-template-columns:1fr}}
+.lab-jornada-lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0;list-style:none}
+.lab-jornada-item{display:flex;align-items:center;gap:10px;background:#f7fbff;border:1px solid #cfe0ef;border-radius:12px;padding:10px 12px;min-height:46px}
+.lab-jornada-item a{font-weight:650;color:var(--navy);text-decoration:none}.lab-jornada-item a:hover,.lab-jornada-item a:focus-visible{text-decoration:underline}
+.lab-jornada-icone{font-size:1.35rem;line-height:1;flex:0 0 auto}
+@media (max-width:640px){.lab-jornada-lista{grid-template-columns:1fr}}
 .lab-busca-mini{margin-left:auto;min-width:180px}
 .lab-busca-mini input{width:100%;border:1px solid var(--borda);border-radius:999px;padding:7px 12px;font:14px Inter,sans-serif}
 .lab-migalhas{font-size:14px;color:var(--suave);margin:4px 0 10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
