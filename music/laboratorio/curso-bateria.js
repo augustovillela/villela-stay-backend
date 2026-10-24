@@ -67,11 +67,27 @@ const RUDIMENTOS = [
   'Single Stroke Roll with accents', 'Inverted Paradiddle',
 ].map((nome, i) => {
   const n = i + 1;
+  const padroes = [
+    ['R','L','R','L','R','L','R','L'], ['R','L','R','L','R','L','R','L'], ['R','L','R','L','R','L','R'],
+    ['R','r','L','l','R','r','L','l'], ['R','L','R','L','R','L'], ['R','R','L','L','R','R','L','L'],
+    ['R','L','R','L','R','L','R','L'], ['R','L','R','L','R','L','R','L'], ['R','L','R','L','R','L','R','L'],
+    ['R','L','R','L','R','L','R','L'], ['R','L','R','L','R','L','R','L'], ['R','L','R','L','R','L','R','L'],
+    ['R','L','R','L','R','L','R','L'], ['R','L','R','L','R','L','R','L'], ['R','L','R','L','R','L','R','L'],
+    ['fR','L','R','L','fR','L','R','L'], ['fR','L','R','L','fL','R','L','R'], ['fR','R','L','R','fL','L','R','L'],
+    ['fR','r','L','R','fL','l','R','L'], ['fR','R','L','R','fL','L','R','L'], ['fR','R','L','R','fL','L','R','L'],
+    ['fR','r','fL','l','R','L','R','L'], ['fR','R','L','fR','L','R','L','R'], ['fR','L','R','fL','R','L','R','L'],
+    ['fR','r','R','L','fL','l','L','R'], ['gR','gR','R','L','gL','gL','L','R'], ['gR','gR','R','L','gL','gL','L','R'],
+    ['gR','gR','R','L','gL','gL','L','R'], ['gL','gL','L','R','gR','gR','R','L'], ['gR','gR','R','L','gL','gL','L','R'],
+    ['gR','gR','R','L','gL','gL','L','R'], ['gR','gR','R','L','gL','gL','L','R'], ['R','L','R','R','L','R','L','L'],
+    ['R','L','R','R','L','R','L','L'], ['R','L','R','R','L','R','L','L'], ['R','L','R','R','L','R','L','L'],
+    ['R','L','R','R','L','R','L','L'], ['gR','gR','R','L','gL','gL','L','R'], ['gR','gR','R','L','gL','gL','L','R'],
+    ['gR','gR','R','L','gL','gL','L','R'], ['R','L','R','L','R','L','R','L'], ['R','L','R','R','L','R','L','L'],
+  ];
   const stickings = n <= 15 ? 'R L alternado; acentue a primeira nota de cada grupo' : n <= 25 ? 'R l / L r com a nota principal em maiúscula' : n <= 31 ? 'R R L / L L R; mantenha o arrasto baixo' : 'R L R R / L R L L conforme a célula';
   const aplicacoes = n <= 15 ? 'Caixa → tom alto → tom baixo, retornando à caixa no tempo 1.' : n <= 25 ? 'Acentos na caixa e notas de apoio no tom, com prato no início da frase.' : 'Bumbo nos acentos, caixa nas notas principais e tom como resposta.';
   const erros = n <= 15 ? 'Acelerar o grupo final ou perder a igualdade entre as mãos.' : n <= 25 ? 'Transformar a nota de apoio em acento e endurecer o movimento.' : 'Arrastar notas sem subdivisão clara ou antecipar o próximo tempo.';
   const slug = nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  return { id: `rudimento-${n}`, numero: n, nome, slug, sticking: stickings, bpmStart: n <= 15 ? 50 : 45, bpmTarget: n <= 15 ? 100 : 90, kitApplication: aplicacoes, commonError: erros, practiceMinutes: 5, checkpoint: 'Grave três repetições limpas, sem tensão, e registre o BPM que permaneceu estável.', facilitadores: ['preparar', 'isolar', 'alternar', 'orquestrar', 'musicalizar', 'acelerar-com-criterio', 'diagnosticar', 'registrar'] };
+  return { id: `rudimento-${n}`, numero: n, nome, slug, sticking: stickings, padrao: padroes[i], bpmStart: n <= 15 ? 50 : 45, bpmTarget: n <= 15 ? 100 : 90, kitApplication: aplicacoes, commonError: erros, practiceMinutes: 5, checkpoint: 'Grave três repetições limpas, sem tensão, e registre o BPM que permaneceu estável.', facilitadores: ['preparar', 'isolar', 'alternar', 'orquestrar', 'musicalizar', 'acelerar-com-criterio', 'diagnosticar', 'registrar'] };
 });
 
 const CURSO = {
