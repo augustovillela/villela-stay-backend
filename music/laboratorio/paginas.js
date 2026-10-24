@@ -427,6 +427,7 @@ function relacionados(slug) {
     'jornada-guitarra': ['/music/criar/curso-guitarra', '/music/criar/troca-acordes', '/music/criar/laboratorio-batidas'],
     'rotina-ouvido-guitarra': ['/music/criar/jornada-guitarra', '/music/praticar/intervalo-ouvido', '/music/tutor-braco'],
     'mapa-braco-guitarra': ['/music/criar/jornada-guitarra', '/music/tutor-braco', '/music/criar/rotina-ouvido-guitarra'],
+    'checkin-semanal-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/curso-guitarra', '/music/criar/troca-acordes'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
