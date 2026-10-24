@@ -646,7 +646,8 @@
 .tecnica-guitarra-chip small{color:#2f855a;font-size:14px}.tecnica-guitarra-chip.ativa{border-color:#d97706;box-shadow:0 0 0 3px #ffd16666}.tecnica-guitarra-chip.concluida{background:#f0fff4}
 .tecnica-guitarra-detalhe{position:relative}.tecnica-guitarra-sinal{float:right;font-size:40px;color:#d97706;font-weight:700}
 .improvisacao-guitarra-controles{grid-template-columns:minmax(240px,2fr) minmax(110px,1fr) auto}
-.improvisacao-guitarra-acordes{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.improvisacao-guitarra-acordes span{padding:9px 16px;border-radius:999px;background:#e7f0f8;border:1px solid #b8cee1;color:var(--navy);font-weight:800}.improvisacao-guitarra-guia{border-left:4px solid #d97706}.improvisacao-guitarra-passos{margin-top:18px}
+.improvisacao-guitarra-acordes{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}.improvisacao-guitarra-acordes span{padding:9px 16px;border-radius:14px;background:#e7f0f8;border:1px solid #b8cee1;color:var(--navy);font-weight:800}.improvisacao-guitarra-acorde{display:flex;flex-direction:column;gap:2px;min-width:108px}.improvisacao-guitarra-acorde small{font-size:.72rem;font-weight:600;line-height:1.2;color:#486276}.improvisacao-guitarra-guia{border-left:4px solid #d97706}.improvisacao-guitarra-passos{margin-top:18px}
+.acorde-guitarra-sensacao{display:block;margin:4px 0 8px;color:#8a4b08;font-size:.78rem;font-weight:700;line-height:1.25}
 @media(max-width:680px){.improvisacao-guitarra-controles{grid-template-columns:1fr 1fr}.improvisacao-guitarra-controles .btn{grid-column:1 / -1}}
 @media(max-width:440px){.improvisacao-guitarra-controles{grid-template-columns:1fr}}
 @media(max-width:800px){.tecnicas-guitarra-lista{grid-template-columns:repeat(3,minmax(0,1fr))}.tecnicas-guitarra-controles{grid-template-columns:1fr 1fr}}
