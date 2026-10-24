@@ -87,14 +87,35 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
       { nome: 'Violão', icone: '🎸', cor: '#4f7d67', resumo: 'Postura, acordes, batidas, repertório e prática guiada.', url: '/music/criar/curso-violao-livro', ativo: true },
       { nome: 'Guitarra', icone: '🎸', cor: '#8a5a72', resumo: 'Técnica, timbre, riffs, solos e linguagem de guitarra.', url: '/music/criar/curso-guitarra-edicao', ativo: true },
       { nome: 'Bateria', icone: '🥁', cor: '#a66b42', resumo: 'Groove, coordenação, leitura e trilha dos 40 rudimentos.', url: '/music/curso-bateria', ativo: true },
-      { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Em preparação: teclado, harmonia, acompanhamento e leitura.', url: '', ativo: false },
-      { nome: 'Cavaquinho', icone: '🪕', cor: '#9a7650', resumo: 'Em preparação: levadas, acordes e repertório brasileiro.', url: '', ativo: false },
-      { nome: 'Ukulele', icone: '🪕', cor: '#6d8060', resumo: 'Em preparação: acordes, batidas e primeiras canções.', url: '', ativo: false },
-      { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Em preparação: palhetada, melodias e choro.', url: '', ativo: false },
+      { nome: 'Contrabaixo', icone: '🎸', cor: '#3f7180', resumo: 'Em preparação: groove, linhas, técnica e fundamento.', url: '/music/curso-contrabaixo', ativo: false },
+      { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Em preparação: teclado, harmonia, acompanhamento e leitura.', url: '/music/curso-piano', ativo: false },
+      { nome: 'Cavaquinho', icone: '🪕', cor: '#9a7650', resumo: 'Em preparação: levadas, acordes e repertório brasileiro.', url: '/music/curso-cavaquinho', ativo: false },
+      { nome: 'Ukulele', icone: '🪕', cor: '#6d8060', resumo: 'Em preparação: acordes, batidas e primeiras canções.', url: '/music/curso-ukulele', ativo: false },
+      { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Em preparação: palhetada, melodias e choro.', url: '/music/curso-bandolim', ativo: false },
     ];
-    const cards = cursos.map((c) => `<${c.ativo ? 'a href="' + c.url + '"' : 'div'} class="curso-card ${c.ativo ? 'curso-card-ativo' : 'curso-card-futuro'}" style="--curso-cor:${c.cor}"><span class="curso-card-icone" aria-hidden="true">${c.icone}</span><span class="curso-card-corpo"><strong>${esc(c.nome)}</strong><span>${esc(c.resumo)}</span></span><small>${c.ativo ? 'Abrir curso →' : 'Em breve'}</small></${c.ativo ? 'a' : 'div'}>`).join('');
+    const cards = cursos.map((c) => { const tag = c.url ? 'a href="' + c.url + '"' : 'div'; return `<${tag} class="curso-card ${c.ativo ? 'curso-card-ativo' : 'curso-card-futuro'}" style="--curso-cor:${c.cor}"><span class="curso-card-icone" aria-hidden="true">${c.icone}</span><span class="curso-card-corpo"><strong>${esc(c.nome)}</strong><span>${esc(c.resumo)}</span></span><small>${c.ativo ? 'Abrir curso →' : 'Em breve →'}</small></${c.url ? 'a' : 'div'}>`; }).join('');
     const corpo = `<header class="lab-cab cursos-hero"><p class="lab-cab-tipo">Formação musical</p><h1>Cursos</h1><p class="lab-lead">Escolha um instrumento ou comece pela teoria. Cada curso tem seu próprio percurso, materiais e práticas.</p></header><section class="cursos-grid" aria-label="Catálogo de cursos">${cards}</section><p class="lab-dica cursos-nota">Novos cursos serão publicados nesta mesma página conforme o conteúdo ficar pronto.</p>`;
     pagina(res, { titulo: 'Cursos de música — Musique', descricao: 'Cursos de teoria, violão, guitarra, bateria e outros instrumentos no Musique.', caminho: '/music/cursos', corpo, trilha: [['Cursos']] });
+  });
+
+  // Páginas de apresentação dos próximos instrumentos: a rota existe para
+  // que o aluno possa conhecer a proposta, mas o conteúdo continua fechado
+  // até a publicação do curso.
+  const cursosEmBreve = [
+    ['contrabaixo', 'Contrabaixo', 'Groove, linhas, técnica e fundamento.'],
+    ['piano', 'Piano', 'Teclado, harmonia, acompanhamento e leitura.'],
+    ['ukulele', 'Ukulele', 'Acordes, batidas e primeiras canções.'],
+    ['cavaquinho', 'Cavaquinho', 'Levadas, acordes e repertório brasileiro.'],
+    ['bandolim', 'Bandolim', 'Palhetada, melodias e choro.'],
+  ];
+  cursosEmBreve.forEach(([slug, nome, proposta]) => {
+    app.get(`/music/curso-${slug}`, (req, res) => pagina(res, {
+      titulo: `Curso de ${nome} em breve — Musique`,
+      descricao: `Curso de ${nome} em preparação no Musique: ${proposta}`,
+      caminho: `/music/curso-${slug}`,
+      corpo: `<header class="lab-cab curso-breve-corpo"><p class="lab-cab-tipo">Formação musical · próxima turma</p><h1>Curso de ${esc(nome)}</h1><p class="lab-lead">${esc(proposta)}</p><p class="curso-breve-selo" role="status">Em breve</p><p>Estamos preparando o conteúdo, as práticas e os materiais deste instrumento. Volte em breve para acompanhar a publicação.</p><p><a class="btn sec" href="/music/cursos">← Voltar aos cursos</a></p></header>`,
+      trilha: [['Cursos'], [nome]],
+    }));
   });
 
   // ---- pontes vindas das Cifras: acorde e tom por texto de cifra ----
