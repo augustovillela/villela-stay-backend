@@ -28,15 +28,25 @@ function ouvir(midis, { rotulo = 'Ouvir', modo = 'melodico', classe = '', dur = 
   return `<button type="button" class="lab-ouvir ${esc(classe)}" data-midis="${esc(JSON.stringify(midis))}" data-modo="${esc(modo)}"${dur ? ` data-dur="${esc(dur)}"` : ''}${vel ? ` data-vel="${esc(vel)}"` : ''}${passo ? ` data-passo="${esc(passo)}"` : ''}><span aria-hidden="true">▶</span> ${esc(rotulo)}</button>`;
 }
 
-const SUBNAV = () => `<nav class="lab-sub" aria-label="Laboratório Musical"><div class="wrap">
-  <a class="lab-sub-home" href="/music/laboratorio"><span aria-hidden="true">🧪</span> Laboratório</a>
-  <a class="lab-sub-curso" href="/music/criar/curso-violao-livro"><span aria-hidden="true">🪕</span> Curso de Violão</a>
-  <a class="lab-sub-curso" href="/music/criar/curso-guitarra-edicao"><span aria-hidden="true">🎸</span> Curso de Guitarra</a>
-  <a class="lab-sub-curso lab-sub-jornada" href="/music/criar/jornada-guitarra"><span aria-hidden="true">🧭</span> Jornada</a>
-  ${CAT.AMBIENTES.map((a) => `<a href="${a.url}"><span aria-hidden="true">${a.icone}</span> ${esc(a.nome)}</a>`).join('')}
-  <form class="lab-busca-mini" action="/music/buscar" role="search"><label class="sr" for="lab-q-top">Buscar no Laboratório</label>
-    <input id="lab-q-top" name="q" type="search" placeholder="Buscar: dó#, 3M, G7(9)…" autocomplete="off"></form>
-</div></nav>`;
+const SUBNAV = () => `<nav class="lab-sub" aria-label="Navegação Musical">
+  <div class="wrap lab-sub-cursos" aria-label="Cursos">
+    <span class="lab-sub-cursos-titulo">Cursos</span>
+    <a class="lab-sub-curso" href="/music/criar/curso-violao-livro"><span aria-hidden="true">🪕</span> Violão</a>
+    <a class="lab-sub-curso" href="/music/criar/curso-guitarra-edicao"><span aria-hidden="true">🎸</span> Guitarra</a>
+    <a class="lab-sub-curso" href="/music/curso-bateria"><span aria-hidden="true">🥁</span> Bateria</a>
+    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🎸</span> Contrabaixo <small>em breve</small></span>
+    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🎹</span> Piano <small>em breve</small></span>
+    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Ukulele <small>em breve</small></span>
+    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Cavaquinho <small>em breve</small></span>
+    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Bandolim <small>em breve</small></span>
+  </div>
+  <div class="wrap lab-sub-ferramentas">
+    <a class="lab-sub-home" href="/music/laboratorio"><span aria-hidden="true">🧪</span> Laboratório</a>
+    ${CAT.AMBIENTES.map((a) => `<a href="${a.url}"><span aria-hidden="true">${a.icone}</span> ${esc(a.nome)}</a>`).join('')}
+    <form class="lab-busca-mini" action="/music/buscar" role="search"><label class="sr" for="lab-q-top">Buscar no Laboratório</label>
+      <input id="lab-q-top" name="q" type="search" placeholder="Buscar: dó#, 3M, G7(9)…" autocomplete="off"></form>
+  </div>
+</nav>`;
 
 /**
  * Casca de toda página do Laboratório. `estado`: objeto que o cliente

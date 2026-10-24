@@ -10,6 +10,7 @@
 .lab-cab-tipo{font:600 12px Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8A6D12;margin:0}
 .lab-sub{background:#fff;border-bottom:1px solid var(--borda);position:sticky;top:0;z-index:20}
 .lab-sub .wrap{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:6px 20px}
+.lab-sub-cursos{border-bottom:1px solid #e4ebf1}.lab-sub-cursos-titulo{font:800 12px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);margin-right:4px}.lab-sub-ferramentas{padding-top:4px!important;padding-bottom:4px!important}.lab-sub-curso-futuro{opacity:.7;cursor:default}.lab-sub-curso-futuro small{font-size:10px;font-weight:600;color:var(--suave)}
 .lab-sub a{white-space:nowrap;text-decoration:none;color:var(--graphite);font:500 14px Inter,sans-serif;padding:8px 10px;border-radius:8px}
 .lab-sub a:hover,.lab-sub a:focus-visible{background:var(--ice)}
 .lab-sub-home{font-weight:600!important;color:var(--navy)!important}
