@@ -637,6 +637,8 @@
 .acorde-guitarra-sem-forma{min-height:174px;display:grid;place-items:center;margin:0;color:#718096;font-size:12px;text-align:center}
 .acorde-guitarra-card small{min-height:34px;color:#607387;line-height:1.35}
 .acorde-guitarra-card .btn{align-self:flex-start}
+.lab-batida-padrao{position:relative;overflow:hidden}
+.lab-batida-tipo{display:inline-block;padding:4px 8px;border-radius:999px;background:#e7f0f8;color:#315b80;font-size:11px;font-weight:800;letter-spacing:.04em}
 .acordes-guitarra-treino{margin-top:20px;padding:20px;border:1px solid #d7b84b;border-radius:16px;background:#fff9df}
 .acordes-guitarra-treino h3{margin-top:0;color:var(--navy)}
 @media(max-width:800px){.acordes-guitarra-controles{grid-template-columns:repeat(2,minmax(0,1fr))}.acordes-guitarra-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
