@@ -5,7 +5,9 @@
   var GRUPOS = {
     abertos: { nome: 'Acordes abertos', descricao: 'Formas iniciais para acompanhar músicas.', itens: ['C', 'G', 'D', 'A', 'E', 'Am', 'Em', 'Dm'] },
     pestanas: { nome: 'Pestanas e formas móveis', descricao: 'Formas que viajam pelo braço com uma fundamental clara.', itens: ['F', 'Bm', 'Bb', 'C#m'] },
-    setimas: { nome: 'Acordes com sétima', descricao: 'Cores e direções para pop, blues, MPB e acompanhamento.', itens: ['A7', 'D7', 'E7', 'G7', 'C7', 'Am7', 'Em7', 'C7M'] }
+    setimas: { nome: 'Acordes com sétima', descricao: 'Cores e direções para pop, blues, MPB e acompanhamento.', itens: ['A7', 'D7', 'E7', 'G7', 'C7', 'Am7', 'Em7', 'C7M'] },
+    diminutos: { nome: 'Diminutos e meio-diminutos', descricao: 'Acordes de passagem e tensão: ouça a instabilidade e sua resolução.', itens: ['Cdim', 'Ddim', 'Edim', 'F#dim', 'Cdim7', 'Dm7b5', 'Bm7b5'] },
+    suspensos: { nome: 'Suspensos e adicionados', descricao: 'Acordes coloridos que abrem espaço antes da terça ou acrescentam a nona.', itens: ['Asus4', 'Dsus4', 'Esus4', 'Csus2', 'Gsus4', 'Cadd9', 'Dadd9', 'Gadd9'] }
   };
   function acorde(txt) { return A.ler(txt); }
   function tocar(txt) { var a = acorde(txt), ns = a && A.notas(N.comOitava(a.fundamental, 3), a.id); if (ns && C.Som) C.Som.tocar(ns.map(N.midi), { modo: 'harmonico', dur: 1.2 }); }
@@ -18,7 +20,11 @@
     Am: [-1, 0, 2, 2, 1, 0], Em: [0, 2, 2, 0, 0, 0], Dm: [-1, -1, 0, 2, 3, 1], F: [1, 3, 3, 2, 1, 1],
     Bm: [-1, 2, 4, 4, 3, 2], Bb: [1, 3, 3, 2, 1, 1], 'C#m': [-1, 4, 6, 6, 5, 4], A7: [-1, 0, 2, 0, 2, 0],
     D7: [-1, -1, 0, 2, 1, 2], E7: [0, 2, 0, 1, 0, 0], G7: [3, 2, 0, 0, 0, 1], C7: [-1, 3, 2, 3, 1, 0],
-    Am7: [-1, 0, 2, 0, 1, 0], Em7: [0, 2, 0, 0, 0, 0], C7M: [-1, 3, 2, 0, 0, 0]
+    Am7: [-1, 0, 2, 0, 1, 0], Em7: [0, 2, 0, 0, 0, 0], C7M: [-1, 3, 2, 0, 0, 0],
+    Cdim: [-1, 3, 4, 2, 4, -1], Ddim: [-1, -1, 0, 1, 0, 1], Edim: [0, 1, 2, 0, 2, 0], 'F#dim': [2, 3, 4, 2, 4, 2],
+    Cdim7: [-1, 3, 4, 2, 4, 2], Dm7b5: [-1, -1, 0, 1, 1, 1], Bm7b5: [-1, 2, 3, 2, 3, -1],
+    Asus4: [-1, 0, 2, 2, 3, 0], Dsus4: [-1, -1, 0, 2, 3, 3], Esus4: [0, 2, 2, 2, 0, 0], Csus2: [-1, 3, 0, 0, 1, 0],
+    Gsus4: [3, 3, 0, 0, 1, 3], Cadd9: [-1, 3, 2, 0, 3, 0], Dadd9: [-1, -1, 0, 2, 3, 0], Gadd9: [3, 0, 0, 2, 0, 3]
   };
   function diagrama(txt) {
     var forma = FORMAS[txt]; if (!forma) return el('p', { class: 'acorde-guitarra-sem-forma', txt: 'Diagrama em preparação.' });
