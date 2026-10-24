@@ -30,8 +30,9 @@ function ouvir(midis, { rotulo = 'Ouvir', modo = 'melodico', classe = '', dur = 
 
 const SUBNAV = () => `<nav class="lab-sub" aria-label="Laboratório Musical"><div class="wrap">
   <a class="lab-sub-home" href="/music/laboratorio"><span aria-hidden="true">🧪</span> Laboratório</a>
-  <a class="lab-sub-curso" href="/music/criar/jornada-guitarra?i=violao"><span aria-hidden="true">🎸</span> Curso de Violão</a>
-  <a class="lab-sub-curso" href="/music/criar/jornada-guitarra?i=guitarra"><span aria-hidden="true">🎸</span> Curso de Guitarra</a>
+  <a class="lab-sub-curso" href="/music/criar/curso-violao-livro"><span aria-hidden="true">🪕</span> Curso de Violão</a>
+  <a class="lab-sub-curso" href="/music/criar/curso-guitarra-edicao"><span aria-hidden="true">🎸</span> Curso de Guitarra</a>
+  <a class="lab-sub-curso lab-sub-jornada" href="/music/criar/jornada-guitarra"><span aria-hidden="true">🧭</span> Jornada</a>
   ${CAT.AMBIENTES.map((a) => `<a href="${a.url}"><span aria-hidden="true">${a.icone}</span> ${esc(a.nome)}</a>`).join('')}
   <form class="lab-busca-mini" action="/music/buscar" role="search"><label class="sr" for="lab-q-top">Buscar no Laboratório</label>
     <input id="lab-q-top" name="q" type="search" placeholder="Buscar: dó#, 3M, G7(9)…" autocomplete="off"></form>
