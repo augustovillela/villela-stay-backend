@@ -64,27 +64,74 @@ DETALHES = {
 }
 
 def ilustracao(num, titulo, foco):
-    """Mapa vetorial original: uma imagem pequena, legível e ligada ao capítulo."""
+    """Mapa vetorial original e temático; cada capítulo usa uma metáfora visual própria."""
     d = Drawing(480, 112)
-    navy, blue, gold, green, pale = '#17344D', '#245B78', '#D97706', '#1D7A61', '#EAF4F7'
-    d.add(Rect(0, 0, 480, 112, rx=12, ry=12, fillColor=colors.HexColor(pale), strokeColor=colors.HexColor('#C7DCE4')))
-    labels = {
-        '01': ['CORPO', 'INSTRUMENTO', 'SOM'], '02': ['PULSO', 'SUBDIVISÃO', 'SILÊNCIO'],
-        '03': ['FUND.', '3ª', '5ª'], '04': ['FORMA', 'DEDO-GUIA', 'TROCA'], '05': ['CORDA', 'CASA', 'DURAÇÃO'],
-        '06': ['TÔNICA', 'NOTAS', 'ALVO'], '07': ['ATAQUE', 'ARTICULAÇÃO', 'TIMBRE'], '08': ['SEÇÃO', 'MOTIVO', 'RESOLUÇÃO'],
-        '09': ['AQUECER', 'ESTUDAR', 'REGISTRAR'], '10': ['AFINAR', 'COMPARAR', 'OUVIR'], '11': ['SEMITOM', 'INTERVALO', 'NOME'],
-        '12': ['I', 'IV', 'V', 'I'], '13': ['BAIXO', 'HARMONIA', 'MELODIA'], '14': ['POP', 'FOLK', 'REGGAE'],
-        '15': ['VOZ COMUM', 'MOVIMENTO', 'NOVO ACORDE'], '16': ['MÃO', 'GANHO', 'ESPAÇO'], '17': ['ATAQUE', 'PAUSA', 'RETORNO'],
-        '18': ['CANTAR', 'PROCURAR', 'CONFERIR'], '19': ['BASE', 'CAMADA', 'ARRANJO'], '20': ['IDEIA', 'VARIAÇÃO', 'FORMA']
-    }.get(num, ['OUVIR', 'COMPREENDER', 'APLICAR'])
-    width = 430 / max(1, len(labels) - 1)
-    for i, label in enumerate(labels):
-        x = 28 + i * width
-        fill = colors.HexColor(green if i == 0 else gold if i == len(labels) - 1 else blue)
-        d.add(Circle(x, 61, 22, fillColor=fill, strokeColor=colors.HexColor(navy), strokeWidth=1.4))
-        d.add(String(x, 57, label, textAnchor='middle', fontName='Helvetica-Bold', fontSize=8, fillColor=colors.white))
-        if i < len(labels) - 1: d.add(Line(x + 23, 61, x + width - 23, 61, strokeColor=colors.HexColor(gold), strokeWidth=2))
-    d.add(String(240, 18, f'Mapa do capítulo {num} · {titulo[:58]}', textAnchor='middle', fontName='Helvetica', fontSize=8.5, fillColor=colors.HexColor(navy)))
+    navy, blue, gold, green, pale, ink = '#17344D', '#245B78', '#D97706', '#1D7A61', '#EAF4F7', '#243746'
+    d.add(Rect(0, 0, 480, 112, rx=8, ry=8, fillColor=colors.HexColor(pale), strokeColor=colors.HexColor('#C7DCE4')))
+    def txt(x, y, s, size=8, color=navy, anchor='middle', bold=True):
+        d.add(String(x, y, s, textAnchor=anchor, fontName='Helvetica-Bold' if bold else 'Helvetica', fontSize=size, fillColor=colors.HexColor(color)))
+    def arrow(x1, y1, x2, y2, color=gold):
+        d.add(Line(x1, y1, x2, y2, strokeColor=colors.HexColor(color), strokeWidth=1.8))
+        d.add(Polygon([x2, y2, x2-5, y2+3, x2-3, y2-4], fillColor=colors.HexColor(color), strokeColor=None))
+    def fretboard(x, y, w=190, h=56, markers=()):
+        d.add(Rect(x, y, w, h, fillColor=colors.HexColor('#D7E5EA'), strokeColor=colors.HexColor(navy), strokeWidth=1.2))
+        for j in range(1, 6): d.add(Line(x + j*w/6, y, x + j*w/6, y+h, strokeColor=colors.HexColor('#8BA4B0'), strokeWidth=.8))
+        for j in range(1, 6): d.add(Line(x, y + j*h/6, x+w, y + j*h/6, strokeColor=colors.HexColor(navy), strokeWidth=.7))
+        for string, fret, label in markers:
+            xx = x + (fret+.5)*w/6; yy = y + (5-string+.5)*h/6
+            d.add(Rect(xx-5, yy-5, 10, 10, fillColor=colors.HexColor(gold if label != 'T' else green), strokeColor=colors.HexColor(navy), strokeWidth=.7))
+            txt(xx, yy-2.5, label, 6, '#FFFFFF')
+    if num == '01':
+        d.add(Line(75, 22, 75, 82, strokeColor=colors.HexColor(navy), strokeWidth=3)); d.add(Line(75, 82, 112, 98, strokeColor=colors.HexColor(navy), strokeWidth=3)); d.add(Line(75, 58, 46, 42, strokeColor=colors.HexColor(navy), strokeWidth=3)); d.add(Line(75, 22, 52, 10, strokeColor=colors.HexColor(navy), strokeWidth=3)); d.add(Line(75, 22, 102, 10, strokeColor=colors.HexColor(navy), strokeWidth=3))
+        d.add(Rect(118, 35, 90, 12, fillColor=colors.HexColor('#B86B3D'), strokeColor=colors.HexColor(navy))); d.add(Line(128, 47, 180, 91, strokeColor=colors.HexColor(navy), strokeWidth=6)); arrow(220, 62, 292, 62, green); txt(244, 72, 'POSTURA', 8); txt(347, 72, 'ATAQUE', 8); txt(424, 72, 'ESCUTA', 8); arrow(301, 62, 332, 62); arrow(365, 62, 400, 62)
+    elif num == '02':
+        for y in [39, 49, 59, 69, 79]: d.add(Line(30, y, 445, y, strokeColor=colors.HexColor(blue), strokeWidth=.8))
+        for x, h in [(60,20),(110,12),(150,20),(200,12),(250,20),(300,12),(350,20),(400,12)]: d.add(Line(x, 69, x, 69+h, strokeColor=colors.HexColor(navy), strokeWidth=2)); d.add(Rect(x-4, 67+h, 8, 5, fillColor=colors.HexColor(gold), strokeColor=None))
+        txt(30, 22, '1', 7); txt(135, 22, 'e', 7); txt(238, 22, '2', 7); txt(342, 22, 'e', 7); txt(430, 22, '4', 7); txt(240, 95, 'PULSO → SUBDIVISÃO → SILÊNCIO', 8)
+    elif num in ('03','04','06','09','14','16'):
+        markers = {'03':[(0,0,'R'),(1,2,'3'),(2,2,'5'),(3,3,'R'),(4,4,'3'),(5,5,'5')], '04':[(0,0,'A'),(1,1,'B'),(2,2,'C'),(3,3,'D'),(4,4,'E')], '06':[(0,0,'T'),(1,2,'2'),(2,4,'3'),(3,5,'5'),(4,3,'6')], '09':[(0,0,'E'),(1,2,'A'),(2,2,'D'),(3,1,'G'),(4,3,'B'),(5,0,'E')], '14':[(0,1,'1'),(1,2,'2'),(2,3,'3'),(3,4,'4')], '16':[(0,1,'↓'),(1,2,'↑'),(2,3,'×'),(3,4,'↓'),(4,5,'×')]}.get(num, [])
+        fretboard(28, 27, 270, 58, markers); arrow(320, 56, 365, 56); txt(405, 76, {'03':'FUND. · 3ª · 5ª','04':'DEDO-GUIA → TROCA','06':'TÔNICA · GRAUS · ALVO','09':'AFINAR · COMPARAR','14':'VOICING · VOZ COMUM','16':'ATAQUE · PAUSA'}[num], 8); txt(405, 43, 'braço como mapa', 8, blue, bold=False)
+    elif num == '05':
+        for y in [72, 78, 84, 90, 96]: d.add(Line(30, y, 215, y, strokeColor=colors.HexColor(navy), strokeWidth=.8))
+        for x, y in [(52,84),(82,78),(112,90),(142,84),(172,72)]: d.add(Line(x, y, x, y+12, strokeColor=colors.HexColor(gold), strokeWidth=1.5)); d.add(Rect(x-4,y+10,8,5,fillColor=colors.HexColor(gold),strokeColor=None))
+        for y in [28,36,44,52,60,68]: d.add(Line(270, y, 445, y, strokeColor=colors.HexColor(blue), strokeWidth=.8))
+        for x, label in [(292,'0'),(324,'2'),(356,'0'),(388,'3'),(420,'1')]: txt(x, 47, label, 9, green)
+        txt(120, 18, 'PAUTA · ALTURA + DURAÇÃO', 8); txt(355, 18, 'TAB · CORDA + CASA', 8)
+    elif num == '15':
+        for i, label in enumerate(['MÃO','CAPTADOR','GANHO','EQ','EFEITO']):
+            x = 30 + i*88; d.add(Rect(x, 43, 68, 30, fillColor=colors.HexColor(green if i == 0 else gold if i == 4 else blue), strokeColor=colors.HexColor(navy))); txt(x+34,54,label,7,'#FFFFFF')
+            if i < 4: arrow(x+69,58,x+83,58)
+        txt(240, 92, 'CADEIA DE SINAL · FUNÇÃO ANTES DO TIMBRE', 8)
+    elif num == '07':
+        d.add(Line(35, 54, 245, 54, strokeColor=colors.HexColor(navy), strokeWidth=2)); d.add(Line(35, 48, 245, 48, strokeColor=colors.HexColor(navy), strokeWidth=2)); d.add(Polygon([120,54,150,88,180,54], fillColor=None, strokeColor=colors.HexColor(gold), strokeWidth=2)); arrow(265, 58, 315, 58); txt(290, 75, 'ARTICULAR', 8); d.add(Rect(335, 34, 35, 42, fillColor=colors.HexColor(blue), strokeColor=colors.HexColor(navy))); d.add(Rect(385, 34, 35, 42, fillColor=colors.HexColor(gold), strokeColor=colors.HexColor(navy))); txt(352, 22, 'LIMPO', 7); txt(402, 22, 'COR', 7)
+    elif num in ('08','13','17','18','19','20'):
+        labels = {'08':['INTRO','VERSO','REFRÃO','FINAL'],'13':['POP','FOLK','REGGAE','BLUES'],'17':['CANTAR','PROCURAR','CONFERIR','MEMÓRIA'],'18':['BASE','BAIXO','MELODIA','TEXTURA'],'19':['IDEIA','REPETIR','VARIAR','FORMA'],'20':['AQUECER','ESTUDAR','TOCAR','REVISAR']}[num]
+        x=28
+        for i,label in enumerate(labels):
+            w=92; d.add(Rect(x, 42, w, 34, fillColor=colors.HexColor(green if i==0 else gold if i==len(labels)-1 else blue), strokeColor=colors.HexColor(navy), strokeWidth=1)); txt(x+w/2,57,label,8,'#FFFFFF');
+            if i<len(labels)-1: arrow(x+w,59,x+w+10,59)
+            x += 105
+        txt(240, 22, {'08':'FORMA → MOTIVO → RESOLUÇÃO','13':'LEVADA → ESPAÇO → FUNÇÃO','17':'OUVIDO TRANSFORMA SOM EM MAPA','18':'CAMADAS QUE SE OUVEM','19':'CONTRASTE SEM PERDER A IDEIA','20':'ROTINA COM EVIDÊNCIA'}[num],8,navy)
+    elif num == '10':
+        d.add(Line(38, 57, 435, 57, strokeColor=colors.HexColor(navy), strokeWidth=2))
+        for i in range(13):
+            x=45+i*31; d.add(Line(x,49,x,65,strokeColor=colors.HexColor(gold if i in (0,3,7,12) else blue),strokeWidth=2)); txt(x,78,str(i),7,green if i==0 else navy)
+        txt(45,31,'T',8,green); txt(138,31,'3ª',8); txt(262,31,'5ª',8); txt(418,31,'8ª',8); txt(240,94,'SEMITONS → INTERVALO → NOME',8)
+    elif num == '11':
+        xs=[40,145,250,355,440]; labs=['I','IV','V','I','✓']; cols=[green,blue,gold,green,green]
+        for i,(x,lab,col) in enumerate(zip(xs,labs,cols)): d.add(Rect(x-25,43,50,30,fillColor=colors.HexColor(col),strokeColor=colors.HexColor(navy))); txt(x,54,lab,13,'#FFFFFF');
+        for i in range(len(xs)-1): arrow(xs[i]+27,58,xs[i+1]-28,58)
+        txt(240,22,'REPOUSO → PREPARAÇÃO → TENSÃO → RESOLUÇÃO',8)
+    elif num == '12':
+        for y,label,col in [(78,'MELODIA',gold),(56,'HARMONIA',blue),(34,'BAIXO',green)]:
+            d.add(Line(35,y,442,y,strokeColor=colors.HexColor(col),strokeWidth=2)); txt(25,y-3,label,7,col,'end')
+        for x in [90,145,200,255,310,365,420]: d.add(Rect(x-3,30+(x%3)*18,6,6,fillColor=colors.HexColor(gold),strokeColor=None))
+        txt(240,96,'CAMADAS INDEPENDENTES QUE FORMAM UM ARRANJO',8)
+    elif num == '14':
+        fretboard(35, 32, 170, 48, [(0,0,'C'),(1,1,'E'),(2,2,'G')]); fretboard(275, 32, 170, 48, [(0,0,'C'),(1,0,'E'),(2,1,'G')]); arrow(215,56,265,56); txt(120,20,'FORMA ABERTA',8); txt(360,20,'VOICING PRÓXIMO',8)
+    else:
+        txt(240,60,'OUVIR  →  COMPREENDER  →  APLICAR',11,blue)
+    d.add(String(240, 8, f'Figura {num} · {titulo[:58]}', textAnchor='middle', fontName='Helvetica', fontSize=8.5, fillColor=colors.HexColor(navy)))
     d.scale(.70, .70); d.width = 336; d.height = 78
     return d
 
