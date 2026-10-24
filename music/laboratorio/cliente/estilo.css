@@ -22,6 +22,7 @@
 .lab-jornada-item a{font-weight:650;color:var(--navy);text-decoration:none}.lab-jornada-item a:hover,.lab-jornada-item a:focus-visible{text-decoration:underline}
 .lab-jornada-icone{font-size:1.35rem;line-height:1;flex:0 0 auto}
 .lab-jornada-textos{display:flex;flex-direction:column;gap:2px}.lab-jornada-textos small{color:#526579;font-size:12px}
+.lab-jornada-favorito{margin-left:auto;min-width:34px;padding:5px 8px;font-size:18px;line-height:1}
 @media (max-width:640px){.lab-jornada-lista{grid-template-columns:1fr}}
 .lab-busca-mini{margin-left:auto;min-width:180px}
 .lab-busca-mini input{width:100%;border:1px solid var(--borda);border-radius:999px;padding:7px 12px;font:14px Inter,sans-serif}
