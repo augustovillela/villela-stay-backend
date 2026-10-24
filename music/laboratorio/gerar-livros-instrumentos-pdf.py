@@ -6,7 +6,8 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, PageBreak, Table, TableStyle
+from reportlab.platypus.tableofcontents import TableOfContents
 from reportlab.graphics.shapes import Drawing, Rect, Circle, Line, String, Polygon, Ellipse
 from reportlab.lib import colors
 
@@ -122,15 +123,17 @@ def gerar(nome, titulo, foco, capitulos):
     capa = ParagraphStyle('capa', parent=estilos['Title'], fontName='Helvetica-Bold', fontSize=26, leading=32, alignment=TA_CENTER, textColor=colors.HexColor('#FFFFFF'), spaceAfter=18)
     subt = ParagraphStyle('subt', parent=estilos['Normal'], fontSize=12, leading=18, alignment=TA_CENTER, textColor=colors.HexColor('#DCEAF0'))
     h1 = ParagraphStyle('h1', parent=estilos['Heading1'], fontSize=19, leading=24, textColor=colors.HexColor('#1B2A4A'), spaceBefore=8, spaceAfter=10)
+    capitulo_titulo = ParagraphStyle('capitulo_titulo', parent=h1)
     body = ParagraphStyle('body', parent=estilos['BodyText'], fontSize=10.5, leading=16, textColor=colors.HexColor('#1F2933'), spaceAfter=10)
     meta = ParagraphStyle('meta', parent=body, fontSize=8, textColor=colors.HexColor('#8A4B08'))
     story = []
     instrumento = 'violão' if 'violão' in titulo and 'guitarra' not in titulo else 'guitarra' if 'guitarra' in titulo and 'violão' not in titulo else 'coleção'
-    story += [Spacer(1, 6*mm), capa_arte(titulo, foco, instrumento), PageBreak(), Paragraph('Índice', h1)]
-    story += [Paragraph(f'{num} · {tit}', body) for num, tit, _ in capitulos]
+    toc = TableOfContents()
+    toc.levelStyles = [ParagraphStyle('toc1', parent=body, fontSize=10.5, leading=15, leftIndent=0, firstLineIndent=0, spaceAfter=5)]
+    story += [Spacer(1, 6*mm), capa_arte(titulo, foco, instrumento), PageBreak(), Paragraph('Índice', h1), toc]
     story.append(PageBreak())
     for num, tit, texto in capitulos:
-        story += [Paragraph(f'Capítulo {num}', meta), Paragraph(tit, h1), ilustracao(num, tit, foco), Spacer(1, 3*mm)]
+        story += [Paragraph(f'Capítulo {num}', meta), Paragraph(tit, capitulo_titulo), ilustracao(num, tit, foco), Spacer(1, 3*mm)]
         vistos = set()
         rotulos = ['A ideia central', 'O que ouvir', 'Como praticar', 'Aplicação musical', 'Critério de domínio']
         for i, paragrafo in enumerate(texto):
@@ -141,7 +144,16 @@ def gerar(nome, titulo, foco, capitulos):
             estilo_secao = ParagraphStyle('secao' + num + str(i), parent=estilos['Heading2'], fontSize=12, leading=15, textColor=colors.HexColor('#245B78'), spaceBefore=7, spaceAfter=4)
             story += [Paragraph(rotulo, estilo_secao), Paragraph(paragrafo, body)]
         story += [Paragraph('<b>Próximo passo no Musique</b>: abra a ferramenta indicada no capítulo, ouça o exemplo, execute a prática e registre uma evidência antes de avançar.', body), Spacer(1, 6*mm), PageBreak()]
-    SimpleDocTemplate(str(OUT / nome), pagesize=(160*mm,230*mm), rightMargin=18*mm, leftMargin=18*mm, topMargin=18*mm, bottomMargin=18*mm, title=titulo, author='Musique · Villela Music').build(story, onFirstPage=rodape, onLaterPages=rodape)
+    class LivroDocTemplate(BaseDocTemplate):
+        def __init__(self, filename, **kw):
+            super().__init__(filename, **kw)
+            frame = Frame(self.leftMargin, self.bottomMargin, self.width, self.height, id='normal')
+            self.addPageTemplates([PageTemplate(id='livro', frames=[frame], onPage=rodape)])
+        def afterFlowable(self, flowable):
+            if isinstance(flowable, Paragraph) and flowable.style.name == 'capitulo_titulo':
+                self.notify('TOCEntry', (0, flowable.getPlainText(), self.page))
+    doc = LivroDocTemplate(str(OUT / nome), pagesize=(160*mm,230*mm), rightMargin=18*mm, leftMargin=18*mm, topMargin=18*mm, bottomMargin=18*mm, title=titulo, author='Musique · Villela Music')
+    doc.multiBuild(story)
 
 dados_path = Path(__file__).with_name('livros-instrumentos-conteudo.json')
 if dados_path.exists():
