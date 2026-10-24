@@ -242,6 +242,8 @@ ${relacionados(f.slug)}`;
   });
 
   app.get('/music/curso-bateria.pdf', opcional, async (req, res) => {
+    const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', 'curso-bateria.pdf');
+    if (require('fs').existsSync(pdf)) return res.set('Content-Type', 'application/pdf').set('Content-Disposition', 'inline; filename="curso-bateria.pdf"').set('Cache-Control', 'no-cache').sendFile(pdf);
     try {
       const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
       const pdf = await PDFDocument.create();
