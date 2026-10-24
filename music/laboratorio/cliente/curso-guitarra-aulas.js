@@ -73,9 +73,15 @@
   function linkarNaJornada() {
     var main = w.document && w.document.querySelector('#lab-main[data-ferramenta="jornada-guitarra"]');
     var ul = main && main.querySelector('.lab-jornada-lista');
-    if (!ul || ul.querySelector('a[href="/music/criar/curso-guitarra-aulas"]')) return;
-    var item = el('li', { class: 'lab-jornada-item' }, [el('span', { class: 'lab-jornada-icone', 'aria-hidden': 'true', txt: '📘' }), el('span', { class: 'lab-jornada-textos' }, [el('a', { href: '/music/criar/curso-guitarra-aulas', txt: 'Aulas sequenciais de violão e guitarra' }), el('small', { txt: 'Curso · do primeiro som à improvisação.' })])]);
-    ul.insertBefore(item, ul.firstChild);
+    if (!ul) return;
+    if (!ul.querySelector('a[href="/music/criar/curso-guitarra-aulas"]')) {
+      var item = el('li', { class: 'lab-jornada-item' }, [el('span', { class: 'lab-jornada-icone', 'aria-hidden': 'true', txt: '📘' }), el('span', { class: 'lab-jornada-textos' }, [el('a', { href: '/music/criar/curso-guitarra-aulas', txt: 'Aulas sequenciais de violão e guitarra' }), el('small', { txt: 'Curso · do primeiro som à improvisação.' })])]);
+      ul.insertBefore(item, ul.firstChild);
+    }
+    if (!ul.querySelector('a[href="/music/criar/acordes-guitarra"]')) {
+      var acordes = el('li', { class: 'lab-jornada-item' }, [el('span', { class: 'lab-jornada-icone', 'aria-hidden': 'true', txt: '🎼' }), el('span', { class: 'lab-jornada-textos' }, [el('a', { href: '/music/criar/acordes-guitarra', txt: 'Laboratório de acordes' }), el('small', { txt: 'Técnica · abertos, pestanas e sétimas.' })])]);
+      ul.insertBefore(acordes, ul.firstChild);
+    }
   }
   if (w.document) {
     w.document.addEventListener('DOMContentLoaded', function () {

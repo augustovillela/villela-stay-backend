@@ -28,7 +28,7 @@
   var jornadaSyncTimer = null;
   C.guardar = function (k, v) {
     try { localStorage.setItem('musique-lab:' + k, JSON.stringify(v)); } catch (_) { /* sem armazenamento: tudo bem */ }
-    var sincronizaveis = { 'jornada-guitarra': 1, 'jornada-guitarra-favoritos': 1, 'curso-guitarra-perfil': 1, 'curso-guitarra-plano': 1, 'curso-guitarra-diario': 1, 'curso-guitarra-aulas-v1': 1, 'repertorio-checkpoints': 1, 'aquecimento-guitarra-sessoes': 1, 'temporizador-estudo-sessoes': 1, 'checkin-semanal-guitarra': 1 };
+    var sincronizaveis = { 'jornada-guitarra': 1, 'jornada-guitarra-favoritos': 1, 'curso-guitarra-perfil': 1, 'curso-guitarra-plano': 1, 'curso-guitarra-diario': 1, 'curso-guitarra-aulas-v1': 1, 'acordes-guitarra-progresso': 1, 'repertorio-checkpoints': 1, 'aquecimento-guitarra-sessoes': 1, 'temporizador-estudo-sessoes': 1, 'checkin-semanal-guitarra': 1 };
     if (sincronizaveis[k] && C.Jornada && !C.Jornada._aplicando && C.Jornada.sync) {
       clearTimeout(jornadaSyncTimer); jornadaSyncTimer = setTimeout(function () { C.Jornada.sync(false).catch(function () {}); }, 700);
     }
@@ -65,7 +65,8 @@
         aquecimentos: Number(C.lerLocal('aquecimento-guitarra-sessoes', 0)) || 0,
         sessoes_focadas: Number(C.lerLocal('temporizador-estudo-sessoes', 0)) || 0,
         checkin: C.lerLocal('checkin-semanal-guitarra', {}),
-        curso_teoria: teoria
+        curso_teoria: teoria,
+        acordes_guitarra: C.lerLocal('acordes-guitarra-progresso', {})
       };
     },
     aplicar: function (p) {
@@ -78,6 +79,7 @@
       if (curso.plano) C.guardar('curso-guitarra-plano', curso.plano);
       if (Array.isArray(curso.diario)) C.guardar('curso-guitarra-diario', curso.diario);
       if (curso.aulas && typeof curso.aulas === 'object') C.guardar('curso-guitarra-aulas-v1', curso.aulas);
+      if (p.acordes_guitarra && typeof p.acordes_guitarra === 'object') C.guardar('acordes-guitarra-progresso', p.acordes_guitarra);
       if (Array.isArray(p.repertorio)) C.guardar('repertorio-checkpoints', p.repertorio);
       if (p.aquecimentos != null) C.guardar('aquecimento-guitarra-sessoes', Number(p.aquecimentos) || 0);
       if (p.sessoes_focadas != null) C.guardar('temporizador-estudo-sessoes', Number(p.sessoes_focadas) || 0);
