@@ -53,7 +53,8 @@
       var colunas = ns.map(function () { return nomesCordas.map(function () { return '--'; }); });
       ns.forEach(function (m, i) {
         var candidatos = cordas.map(function (aberta, j) { return { j: j, casa: m - aberta }; }).filter(function (x) { return x.casa >= 0 && x.casa <= 12; });
-        var escolhido = candidatos.length ? candidatos[i % candidatos.length] : { j: 0, casa: Math.max(0, m - cordas[0]) };
+        var alvo = i % cordas.length;
+        var escolhido = candidatos.length ? candidatos.reduce(function (melhor, atual) { return Math.abs(atual.j - alvo) < Math.abs(melhor.j - alvo) ? atual : melhor; }) : { j: 0, casa: Math.max(0, m - cordas[0]) };
         colunas[i][escolhido.j] = String(escolhido.casa);
       });
       return nomesCordas.map(function (nome, j) { return nome + '|' + colunas.map(function (coluna) { return coluna[j]; }).join('---') + '|'; }).join('\n');
@@ -63,7 +64,7 @@
     var midis = [64, 65, 67, 65, 64];
     var ataques = null;
     var ataquesQuando = null;
-    var soma = String(c.id || '').split('').reduce(function (n, ch) { return n + ch.charCodeAt(0); }, 0), desloc = soma % 8, baseMidi = 60 + (soma % 12), padrao = [0, 2, 4, 2, 0].map(function (x, i) { return x + desloc + (i === 2 && soma % 2 ? 1 : 0); });
+    var soma = String(c.id || '').split('').reduce(function (n, ch) { return n + ch.charCodeAt(0); }, 0), desloc = soma % 8, baseMidi = 60 + (soma % 12), desenho = soma % 3 === 0 ? [0, 2, 4, 7, 9] : soma % 3 === 1 ? [0, 3, 5, 7, 10] : [0, 2, 5, 7, 9], padrao = desenho.map(function (x) { return x + desloc; });
     midis = padrao.map(function (x) { return baseMidi + x; });
     tab = tabDaSequencia(midis);
     notas = midis.map(function (m) { return C.nomeNota(m, true); }).join(' · ');
