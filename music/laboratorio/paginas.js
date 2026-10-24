@@ -431,6 +431,7 @@ function relacionados(slug) {
     'checkin-semanal-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/curso-guitarra', '/music/criar/troca-acordes'],
     'repertorio-checkpoints': ['/music/criar/jornada-guitarra', '/music/criar/desmontar-musica', '/music/tocar'],
     'progresso-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/checkin-semanal-guitarra', '/music/criar/repertorio-checkpoints'],
+    'aquecimento-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/troca-acordes', '/music/tutor-braco'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
