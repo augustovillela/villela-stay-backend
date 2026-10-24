@@ -17,7 +17,7 @@ const ACESSO = require('./acesso');
 // Arquivos do cliente: núcleo (isomórfico) + app + estilo
 // ------------------------------------------------------------------
 const NUCLEO_ARQS = ['notas', 'intervalos', 'escalas', 'acordes', 'tonalidades', 'ritmo', 'pauta', 'instrumentos', 'acustica', 'motivos', 'batidas', 'desenho', 'exercicios', 'digitacoes', 'tutor', 'transcricao', 'separacao'];
-const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'criar', 'novas', 'praticar', 'ensinar', 'tutor', 'transcrever', 'separar'];
+const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'curso-guitarra-aulas', 'criar', 'novas', 'praticar', 'ensinar', 'tutor', 'transcrever', 'separar'];
 let _cache = {};
 function arquivo(chave, fn) { if (!_cache[chave] || process.env.NODE_ENV === 'development') _cache[chave] = fn(); return _cache[chave]; }
 const ler = (...p) => fs.readFileSync(path.join(__dirname, ...p), 'utf8');
@@ -421,7 +421,8 @@ function relacionados(slug) {
     'tendencias-harmonicas': ['/music/criar/compositor-visual', '/music/criar/progressoes', '/music/aprender/cadencias'],
     'desafio-acordes': ['/music/explorar/identificar-acorde', '/music/praticar/intervalo-ouvido', '/music/aprender/acordes'],
     'professor-piano': ['/music/criar/piano-virtual', '/music/criar/compositor-visual', '/music/praticar/nota-no-teclado'],
-    'curso-guitarra': ['/music/tutor-braco', '/music/criar/batidas', '/music/tocar'],
+    'curso-guitarra': ['/music/criar/curso-guitarra-aulas', '/music/tutor-braco', '/music/criar/batidas', '/music/tocar'],
+    'curso-guitarra-aulas': ['/music/criar/jornada-guitarra', '/music/criar/curso-guitarra', '/music/tutor-braco'],
     'troca-acordes': ['/music/criar/curso-guitarra', '/music/tocar', '/music/tutor-braco'],
     'laboratorio-batidas': ['/music/criar/troca-acordes', '/music/criar/batidas', '/music/tocar'],
     'desmontar-musica': ['/music/criar/curso-guitarra', '/music/criar/troca-acordes', '/music/tocar'],

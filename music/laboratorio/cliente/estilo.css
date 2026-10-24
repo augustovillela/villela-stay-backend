@@ -604,6 +604,28 @@
 #lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type button:hover{background:#315b80;transform:translateY(-1px)}
 @media(max-width:680px){#lab-main[data-ferramenta="jornada-guitarra"] .lab-tendencias-lista .lab-tendencia-card{grid-template-columns:1fr;padding:16px 16px 16px 20px}#lab-main[data-ferramenta="jornada-guitarra"] .lab-tendencias-lista .lab-tendencia-card a.btn,#lab-main[data-ferramenta="jornada-guitarra"] .lab-tendencias-lista .lab-tendencia-card button.btn{grid-column:1;width:100%}}
 @media(max-width:680px){#lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type{grid-template-columns:1fr;padding:14px}#lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type button{width:100%}}
+
+/* Curso sequencial de violão e guitarra. */
+.curso-guitarra-aulas-progresso{height:10px;margin:12px 0 20px;border-radius:999px;background:#e5edf5;overflow:hidden}
+.curso-guitarra-aulas-progresso span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#2f855a,var(--gold));transition:width .2s ease}
+.curso-guitarra-aulas-lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0 22px}
+.curso-guitarra-aula-card{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;width:100%;padding:13px 15px;border:1px solid #d7e3ef;border-radius:13px;background:#fff;color:var(--navy);text-align:left;cursor:pointer;box-shadow:0 3px 9px rgba(20,33,61,.05);transition:transform .18s,box-shadow .18s,border-color .18s}
+.curso-guitarra-aula-card:hover{transform:translateY(-1px);box-shadow:0 7px 15px rgba(20,33,61,.1);border-color:#9fb8cf}
+.curso-guitarra-aula-card.atual{border-color:#d7b84b;box-shadow:0 6px 16px rgba(201,162,39,.16);outline:2px solid rgba(201,162,39,.16);outline-offset:1px}
+.curso-guitarra-aula-card.concluida{border-color:#b8d8c6;background:#fbfffc}
+.curso-guitarra-aula-numero{font-size:12px;font-weight:850;color:#7890a6;letter-spacing:.06em}
+.curso-guitarra-aula-card-texto{min-width:0;display:flex;flex-direction:column;gap:3px}
+.curso-guitarra-aula-card-texto strong{font-size:14px;line-height:1.25}
+.curso-guitarra-aula-card-texto small{font-size:11px;color:#607387;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.curso-guitarra-aula-marca{font-size:20px;font-weight:800;color:#9fb1c1}
+.curso-guitarra-aula-card.concluida .curso-guitarra-aula-marca{color:#2f855a}
+.curso-guitarra-aula-corpo{padding:24px;border:1px solid #d7e3ef;border-radius:17px;background:linear-gradient(135deg,#fff,#f7fbff);box-shadow:0 6px 18px rgba(20,33,61,.08)}
+.curso-guitarra-aula-corpo h3{margin:4px 0 8px;color:var(--navy);font-size:25px}
+.curso-guitarra-aula-texto{max-width:760px;font-size:16px;line-height:1.7;color:#293b4c}
+.curso-guitarra-aula-pratica{margin-top:20px;padding:16px 18px;border-left:4px solid var(--gold);border-radius:10px;background:#fff9df}
+.curso-guitarra-aula-pratica p{margin:7px 0 12px}
+.curso-guitarra-aula-acoes{margin-top:14px;justify-content:space-between}
+@media(max-width:680px){.curso-guitarra-aulas-lista{grid-template-columns:1fr}.curso-guitarra-aula-corpo{padding:18px}.curso-guitarra-aula-acoes{display:grid;grid-template-columns:1fr;gap:8px}.curso-guitarra-aula-acoes .btn{width:100%}}
 .lab-func-tonica,.lab-func-tônica{border-color:#2f855a;background:#f0fff4}
 .lab-func-dominante{border-color:#c05621;background:#fffaf0}
 .lab-func-subdominante{border-color:#2b6cb0;background:#ebf8ff}
