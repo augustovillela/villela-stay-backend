@@ -204,7 +204,9 @@ def gerar(nome, titulo, foco, capitulos):
     toc.levelStyles = [ParagraphStyle('toc1', parent=body, fontSize=10.5, leading=15, leftIndent=0, firstLineIndent=0, spaceAfter=5)]
     story += [Spacer(1, 6*mm), capa_arte(titulo, foco, instrumento), PageBreak(), Paragraph('Índice', h1), toc]
     story.append(PageBreak())
-    for num, tit, texto in capitulos:
+    for item in capitulos:
+        num, tit, texto = item[:3]
+        links = item[3] if len(item) > 3 else []
         story += [Paragraph(f'Capítulo {num}', meta), Paragraph(tit, capitulo_titulo), ilustracao(num, tit, foco), Spacer(1, 3*mm)]
         if num in EXEMPLOS:
             story += [Paragraph('Exemplo musical do capítulo', ParagraphStyle('exh' + num, parent=estilos['Heading2'], fontSize=12, leading=15, textColor=colors.HexColor('#245B78'), spaceBefore=5, spaceAfter=3)), Preformatted(EXEMPLOS[num], exemplo)]
@@ -217,7 +219,13 @@ def gerar(nome, titulo, foco, capitulos):
             rotulo = rotulos[i] if i < len(rotulos) else 'Continuação'
             estilo_secao = ParagraphStyle('secao' + num + str(i), parent=estilos['Heading2'], fontSize=12, leading=15, textColor=colors.HexColor('#245B78'), spaceBefore=7, spaceAfter=4)
             story += [Paragraph(rotulo, estilo_secao), Paragraph(paragrafo, body)]
-        story += [Paragraph('<b>Próximo passo no Musique</b>: abra a ferramenta indicada no capítulo, ouça o exemplo, execute a prática e registre uma evidência antes de avançar.', body), Spacer(1, 6*mm), PageBreak()]
+        story.append(Paragraph('<b>Próximo passo no Musique</b>: abra a ferramenta indicada, ouça o exemplo, execute a prática e registre uma evidência antes de avançar.', body))
+        if links:
+            link_lines = ['<b>Continue no Musique:</b>']
+            for label, url, kind in links[:4]:
+                link_lines.append(f'• <link href="https://musique.villelastay.com.br{url}" color="#245B78"><u>{label}</u></link> <font color="#8A4B08">({kind})</font>')
+            story.append(Paragraph('<br/>'.join(link_lines), body))
+        story += [Spacer(1, 6*mm), PageBreak()]
     class LivroDocTemplate(BaseDocTemplate):
         def __init__(self, filename, **kw):
             super().__init__(filename, **kw)
@@ -238,7 +246,7 @@ if dados_path.exists():
         itens = list(base)
         for edicao in edicoes:
             itens += especificos.get(edicao, [])
-        return [(f'{i + 1:02d}', c['titulo'], c.get('texto', [])) for i, c in enumerate(itens)]
+        return [(f'{i + 1:02d}', c['titulo'], c.get('texto', []), c.get('links', [])) for i, c in enumerate(itens)]
 else:
     colecao = lambda edicoes: CAPITULOS
 gerar('curso-violao.pdf', 'Livro digital de violão', 'acompanhamento, levadas, dedilhados e repertório', colecao(['violao']))
