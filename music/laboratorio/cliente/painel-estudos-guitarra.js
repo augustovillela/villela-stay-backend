@@ -5,6 +5,7 @@
   var ABAS = [['visao', 'Visão geral'], ['material', 'Material complementar'], ['quiz', 'Quiz'], ['caderno', 'Caderno de trabalho']];
   var FERRAMENTAS = [
     ['🎸', 'Minha jornada', '/music/criar/jornada-guitarra', 'Sequência, nível e fundamentos recorrentes.'],
+    ['🗓️', 'Plano de hoje', '/music/criar/plano-estudo-guitarra', 'Sessão dirigida em blocos, com duração e conclusão.'],
     ['🧭', 'Diagnóstico', '/music/criar/diagnostico-habilidades-guitarra', 'Avalie ritmo, acordes, técnica, ouvido e repertório.'],
     ['🧪', 'Musique Lab', '/music/explorar/laboratorio', 'Veja tônica, escala, acorde, pauta e braço juntos.'],
     ['🔥', 'Desafio de 21 dias', '#desafio-21', 'Uma prática curta por dia, com continuidade salva.'],
