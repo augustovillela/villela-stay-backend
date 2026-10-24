@@ -12,7 +12,10 @@
         "Comece pelo corpo: apoie o instrumento sem apertar, mantenha o punho alinhado e permita que a respiração continue durante o ataque. Grave dez segundos de cordas soltas e descreva o som, o ruído e a sensação física.",
         "O primeiro mapa do aluno é a relação entre gesto e resultado. Toque a mesma corda com polpa, unha e palheta; compare brilho, volume e duração. A escolha correta é a que produz o som pedido sem tensão desnecessária.",
         "Estude em ciclos curtos: ouvir, repetir, pausar e registrar. Um registro útil anota andamento, número de repetições limpas, ruído percebido e a próxima mudança concreta.",
-        "Domínio: você consegue preparar o instrumento, produzir seis sons limpos e explicar o que mudou entre uma tentativa e outra."
+        "Domínio: você consegue preparar o instrumento, produzir seis sons limpos e explicar o que mudou entre uma tentativa e outra.",
+        "Antes de estudar acordes, faça um inventário do instrumento: nomes das cordas, sentido das casas, posição confortável e altura da correia. Diga cada nome enquanto toca a corda correspondente.",
+        "Use um ciclo de três tomadas: uma sem metrônomo, uma com quatro pulsos e uma gravada. Compare apenas um critério por vez — ruído, duração ou tensão — para saber o que realmente mudou.",
+        "Não avance porque o exercício parece fácil. Avance quando conseguir repetir o mesmo som em três dias diferentes e explicar qual ajuste corporal produziu o resultado."
       ],
       "visual": "postura",
       "links": [
@@ -46,7 +49,10 @@
         "O pulso é uma referência contínua, não apenas o clique do metrônomo. Caminhe ou balance a mão marcando quatro tempos e conte “1 e 2 e 3 e 4 e” sem tocar; só depois distribua ataques.",
         "Treine três camadas: semínimas, colcheias e síncopes. Na síncope, o movimento da mão continua mesmo quando não há som. O silêncio precisa ter duração tão precisa quanto o ataque.",
         "Use um acorde confortável e grave quatro compassos. Confira se o primeiro tempo está estável, se o contratempo não corre e se a troca de acorde não interrompe o movimento.",
-        "Domínio: você mantém o pulso por dois minutos, atravessa uma pausa sem acelerar e consegue voltar ao tempo depois de uma troca."
+        "Domínio: você mantém o pulso por dois minutos, atravessa uma pausa sem acelerar e consegue voltar ao tempo depois de uma troca.",
+        "Subdivida falando e batendo o pé antes de acrescentar a mão direita. Em 4/4, o movimento para baixo pode marcar os pulsos e o movimento para cima as subdivisões, mesmo quando não há ataque.",
+        "Pratique uma troca de acorde no quarto tempo e outra no primeiro tempo do compasso seguinte. O objetivo é preparar a mão antes da mudança sem antecipar o som.",
+        "Se o metrônomo parecer confortável, reduza a quantidade de ataques e preserve o pulso. A estabilidade aparece quando você consegue tocar menos, não apenas quando consegue tocar mais rápido."
       ],
       "visual": "pulso",
       "links": [
@@ -85,7 +91,10 @@
         "Aprenda a ler um diagrama em ordem: nome, corda mais grave, casas, dedos, cordas abertas e cordas que não devem soar. Toque cada corda isoladamente antes de raspar o acorde inteiro.",
         "Comece com C, G, D, A, E, Am, Em e Dm. Para cada forma, diga a fundamental, identifique a terça e a quinta e observe quais notas se repetem nas cordas.",
         "O acorde só está pronto quando três verificações passam: todas as notas soam, a mão permanece relaxada e a forma pode ser preparada antes do pulso sem interromper a música.",
-        "Domínio: você monta oito acordes abertos, identifica suas fundamentais e troca entre quatro pares sem perder quatro tempos."
+        "Domínio: você monta oito acordes abertos, identifica suas fundamentais e troca entre quatro pares sem perder quatro tempos.",
+        "Para cada acorde, identifique fundamental, terça e quinta e depois localize quais cordas repetem essas notas. Isso transforma o desenho em uma estrutura que pode ser transportada.",
+        "Monte a forma sem tocar, confira dedo por dedo e só então faça um ataque lento. Se uma corda falhar, toque apenas essa corda e corrija o contato antes de repetir o acorde inteiro.",
+        "Organize os acordes por função em uma música: tônica, preparação e dominante. O aluno deve saber por que a cifra aparece, não apenas qual desenho apertar."
       ],
       "visual": "acorde",
       "links": [
@@ -124,7 +133,10 @@
         "Uma troca eficiente começa antes do próximo tempo. Prepare a forma durante o último movimento do acorde anterior e procure dedos-guia que permanecem ou se deslocam por apenas uma casa.",
         "Para pestanas, reduza a tarefa: pressione duas cordas, confira a afinação, acrescente outras duas e só então forme o acorde completo. Se a mão endurecer, diminua a pressão e revise o polegar.",
         "Compare C–Am, G–D, E–A e F–C. Conte em voz alta, faça ciclos de trinta segundos e descanse. Velocidade só entra depois de três ciclos sem ruído.",
-        "Domínio: você identifica o dedo que mais atrasa a troca, corrige o movimento e executa cinco ciclos limpos no andamento escolhido."
+        "Domínio: você identifica o dedo que mais atrasa a troca, corrige o movimento e executa cinco ciclos limpos no andamento escolhido.",
+        "Escolha uma mudança difícil e divida-a em três movimentos: soltar pressão, deslocar a mão e pousar os dedos. Treine cada movimento em câmera lenta antes de unir.",
+        "Use a técnica de troca silenciosa: faça o movimento entre dois cliques sem produzir som e toque apenas no clique seguinte. Assim a mão aprende a chegar antes do pulso.",
+        "Para pestanas, confira primeiro as duas cordas externas, depois acrescente as internas. Pare diante de dor ou formigamento; técnica não é suportar desconforto."
       ],
       "visual": "trocas",
       "links": [
@@ -163,7 +175,10 @@
         "Na tablatura, leia corda, casa, duração e articulação juntos. Antes de tocar, fale as casas e marque as subdivisões; isso evita transformar uma sequência visual em uma corrida automática.",
         "Na partitura, a posição da nota e o acidente indicam altura e grafia. Encontre a mesma nota em duas regiões do braço e compare timbre, digitação e preparação para o próximo gesto.",
         "Escolha uma frase curta, leia sem instrumento, toque em andamento lento e depois confira com o áudio. Marque onde você precisou parar: esse trecho vira o foco da próxima sessão.",
-        "Domínio: você lê quatro compassos sem interromper o pulso e consegue explicar por que escolheu aquela posição."
+        "Domínio: você lê quatro compassos sem interromper o pulso e consegue explicar por que escolheu aquela posição.",
+        "Leia o ritmo batendo palmas e diga as casas sem instrumento. Depois toque apenas as primeiras notas de cada tempo para confirmar que a estrutura foi compreendida.",
+        "Compare uma digitação com corda solta e outra em posição fechada. A escolha depende de timbre, continuidade, afinação e do gesto que vem depois.",
+        "Marque na partitura onde respirar e na tablatura onde trocar de posição. Uma boa leitura antecipa o movimento e evita que cada nota seja uma surpresa."
       ],
       "visual": "leitura",
       "links": [
@@ -202,7 +217,10 @@
         "Localize a tônica em mais de uma corda antes de iniciar o desenho. Toque a escala em grupos de três e quatro notas, depois retorne à tônica por caminhos diferentes.",
         "A pentatônica serve para limitar escolhas e ouvir melhor. Termine frases em notas do acorde, altere o ritmo e deixe espaços; uma escala só vira música quando há direção.",
         "Relacione cada desenho a graus, intervalos e acordes. Em vez de memorizar apenas casas, diga “tônica, terça, quarta, quinta” enquanto toca.",
-        "Domínio: você toca uma escala em duas regiões, encontra a tônica sem consultar o desenho e improvisa quatro compassos com começo, desenvolvimento e resolução."
+        "Domínio: você toca uma escala em duas regiões, encontra a tônica sem consultar o desenho e improvisa quatro compassos com começo, desenvolvimento e resolução.",
+        "Construa a escala por graus e não só por desenho: tônica, segunda, terça, quinta e oitava. Cante cada grau antes de tocar para associar a posição à função.",
+        "Faça uma frase de quatro notas, repita-a deslocando o ritmo e termine em uma nota do acorde. A limitação cria intenção e impede que o estudo vire corrida.",
+        "Pratique a mesma ideia em duas regiões do braço. Se a frase continuar reconhecível, você aprendeu a linguagem e não apenas uma forma visual."
       ],
       "visual": "escala",
       "links": [
@@ -241,7 +259,10 @@
         "Isole uma articulação por vez. No hammer-on e pull-off, a mão direita não deve compensar a falta de energia da esquerda; no slide, a nota de chegada precisa ser afinada; no bend, compare com a nota-alvo.",
         "Pratique sem efeitos, em andamento confortável e com gravação. Depois acrescente ganho ou delay e verifique se o efeito ampliou a intenção ou apenas escondeu ruído.",
         "Vibrato começa depois de a nota estabilizar. Varie largura e velocidade, mas mantenha o centro da nota. A dinâmica deve ser planejada como parte da frase.",
-        "Domínio: você executa a técnica escolhida três vezes afinada, sem ruído excessivo e dentro do pulso."
+        "Domínio: você executa a técnica escolhida três vezes afinada, sem ruído excessivo e dentro do pulso.",
+        "Para um bend, toque primeiro a nota de chegada e memorize-a. Depois faça o movimento lentamente e pare quando o ouvido reconhecer a mesma altura.",
+        "No hammer-on e pull-off, mantenha a mão direita silenciosa e observe se a segunda nota tem volume suficiente. No slide, mantenha a pressão constante até chegar.",
+        "Grave a técnica limpa e com efeito. Se o efeito esconder afinação ou ruído, reduza o ganho e volte ao controle da mão."
       ],
       "visual": "tecnicas",
       "links": [
@@ -280,7 +301,10 @@
         "Desmonte cada música em entrada, verso, refrão, ponte e final. Aprenda a transição entre seções antes de tentar a execução inteira; a forma é uma habilidade própria.",
         "Organize a semana em manutenção, aquisição e performance. Mantenha exercícios recorrentes, aprenda um trecho novo e termine com uma tomada completa sem parar.",
         "Use checkpoints observáveis: andamento limpo, número de erros recuperados, estabilidade das trocas, dinâmica e memória da letra ou da forma.",
-        "Domínio: você toca a música inteira, recupera um erro sem interromper e consegue explicar qual habilidade ainda precisa de manutenção."
+        "Domínio: você toca a música inteira, recupera um erro sem interromper e consegue explicar qual habilidade ainda precisa de manutenção.",
+        "Escolha uma música com dificuldade um pouco acima do seu nível e escreva o mapa: introdução, verso, refrão, ponte, final. Cada seção recebe um objetivo pequeno.",
+        "Pratique a entrada da seção seguinte antes de dominar a anterior. A continuidade depende das transições, não apenas de tocar cada trecho isoladamente.",
+        "Faça uma tomada completa por semana. Anote onde perdeu forma, pulso ou conforto e transforme apenas um desses pontos no foco da próxima sessão."
       ],
       "visual": "repertorio",
       "links": [
@@ -320,7 +344,10 @@
       "texto": [
         "Afine sempre antes de estudar. A afinação padrão é E–A–D–G–B–E, da corda mais grave à mais aguda; outras afinações são ferramentas musicais e devem ser nomeadas para que você saiba o que mudou.",
         "Troque cordas gastas, limpe o instrumento com produtos adequados e observe trastes, tarraxas, ponte e cabo. Problemas mecânicos não devem ser compensados apertando mais a mão.",
-        "Use o afinador como referência e, depois, confira acordes e oitavas pelo ouvido. A afinação é uma habilidade auditiva, não apenas uma luz verde no aplicativo."
+        "Use o afinador como referência e, depois, confira acordes e oitavas pelo ouvido. A afinação é uma habilidade auditiva, não apenas uma luz verde no aplicativo.",
+        "Afine de ouvido em pares de oitavas depois de usar o afinador. Se as batidas diminuem quando duas notas iguais soam juntas, a afinação está se aproximando.",
+        "Observe sinais de manutenção: trastejamento, ruído de jack, tarraxa frouxa e corda que perde altura. Registre o problema antes de tentar corrigi-lo.",
+        "Aprenda a trocar uma corda mantendo as outras estáveis. O cuidado com o instrumento protege tanto o som quanto a confiança do ouvido."
       ],
       "visual": "afinacao",
       "links": [
@@ -350,7 +377,10 @@
       "texto": [
         "As doze classes de altura se repetem em oitavas. Um semitom é a menor distância usada no sistema temperado; dois semitons formam um tom. No braço, cada casa normalmente representa um semitom.",
         "Intervalos têm número e qualidade: segunda, terça, quarta, quinta, sexta, sétima e oitava podem ser maiores, menores, justos, aumentados ou diminutos. O número vem das letras; a qualidade vem da distância real.",
-        "Nomear o intervalo ajuda a ouvir sua função. Terças definem maior e menor; quintas dão estabilidade; sétimas criam direção; tensões alteram a cor sem apagar a identidade do acorde."
+        "Nomear o intervalo ajuda a ouvir sua função. Terças definem maior e menor; quintas dão estabilidade; sétimas criam direção; tensões alteram a cor sem apagar a identidade do acorde.",
+        "Conte letras e semitons separadamente. Dó–Ré usa duas letras e dois semitons; Dó–Ré♭ continua sendo uma segunda, mas muda de qualidade.",
+        "No braço, toque a nota de referência e localize o intervalo em outra corda. Depois faça o caminho inverso: ouça a distância e encontre a posição sem olhar.",
+        "Use terças para comparar maior e menor, quintas para estabilidade e sétimas para tensão. A classificação só se torna musical quando você consegue ouvir a diferença."
       ],
       "visual": "intervalos",
       "links": [
@@ -380,7 +410,10 @@
       "texto": [
         "Um campo harmônico organiza acordes construídos sobre as notas de uma escala. Em maior, a sequência básica é I, ii, iii, IV, V, vi e vii°. A qualidade muda, mas os graus continuam sendo a referência.",
         "Tônica é repouso; predominante prepara; dominante cria tensão e costuma apontar de volta para a tônica. Essas funções são tendências, não uma prisão: ritmo, melodia e contexto podem inverter a sensação.",
-        "Aprenda a ouvir progressões como caminhos. A mesma sequência em outro tom conserva os graus, mas muda as notas e as formas."
+        "Aprenda a ouvir progressões como caminhos. A mesma sequência em outro tom conserva os graus, mas muda as notas e as formas.",
+        "Escreva a escala de Dó maior e empilhe terças para obter C, Dm, Em, F, G, Am e B°. Depois transporte o mesmo padrão para outra tonalidade.",
+        "Toque I–IV–V–I e pare em cada acorde. Diga “repouso”, “preparação”, “tensão” e “resolução” antes de continuar.",
+        "Crie uma progressão de oito compassos usando quatro graus. Verifique se a melodia e a função dos acordes continuam claras quando você muda o tom."
       ],
       "visual": "campo",
       "links": [
@@ -415,7 +448,10 @@
       "texto": [
         "No dedilhado, o polegar costuma cuidar das cordas graves e os dedos das cordas agudas. O mais importante é a regularidade do ciclo, não a força de cada dedo.",
         "Arpejo pode significar tocar as notas de um acorde em sequência; fingerstyle acrescenta baixo, melodia e preenchimento. Comece com um baixo estável e poucas notas agudas.",
-        "O silêncio entre os padrões revela se a mão está antecipando ou atrasando. Grave o exercício e escute o pulso antes de avaliar a velocidade."
+        "O silêncio entre os padrões revela se a mão está antecipando ou atrasando. Grave o exercício e escute o pulso antes de avaliar a velocidade.",
+        "Separe o exercício em três faixas: polegar sozinho, dedos sem polegar e a combinação. O pulso deve permanecer igual nas três versões.",
+        "Use um baixo alternado de duas notas e acrescente a melodia apenas no segundo compasso. Se a melodia correr, volte a tocar somente o baixo.",
+        "Grave cada camada separadamente e depois juntas. O objetivo é ouvir três funções, não produzir muitas notas ao mesmo tempo."
       ],
       "visual": "dedilhado",
       "links": [
@@ -450,7 +486,10 @@
       "texto": [
         "No pop, clareza e repetição sustentam a canção. No folk, baixos alternados e dedilhados criam movimento. No reggae, o contratempo é tão importante quanto o acorde.",
         "MPB explora síncope, inversões e voicings; sertanejo trabalha levadas e respostas; blues usa dominante, shuffle e chamada-resposta. Estude cada estilo ouvindo onde o músico não toca.",
-        "O acompanhamento não compete com a voz. Escolha registro, dinâmica e densidade conforme a seção da música."
+        "O acompanhamento não compete com a voz. Escolha registro, dinâmica e densidade conforme a seção da música.",
+        "Toque a mesma progressão em quatro compassos de pop, folk e reggae. Marque no papel onde o ataque acontece e onde o silêncio cria espaço.",
+        "No samba e na MPB, pratique a síncope sem aumentar força. No sertanejo, compare a célula de base com o preenchimento do refrão.",
+        "Escolha uma música real para cada padrão e explique qual elemento do estilo aparece: contratempo, baixo alternado, shuffle ou densidade."
       ],
       "visual": "estilos",
       "links": [
@@ -485,7 +524,10 @@
       "texto": [
         "Um mesmo acorde pode aparecer em várias regiões. Inversões trocam a nota do baixo; voicings escolhem quais notas ficam próximas; condução de vozes procura o menor movimento entre acordes.",
         "Na guitarra, formas compactas nas quatro cordas agudas liberam espaço para baixo e voz. No violão, baixos alternados podem definir a direção sem tornar o acorde pesado.",
-        "Ouça as notas comuns entre dois acordes. Elas funcionam como pontes e ajudam a escolher uma digitação confortável."
+        "Ouça as notas comuns entre dois acordes. Elas funcionam como pontes e ajudam a escolher uma digitação confortável.",
+        "Escreva as notas de C, Am, F e G e circule as notas comuns entre cada par. Depois procure formas que mantenham essas notas na mesma corda.",
+        "Compare baixo fundamental e primeira inversão. C/E não é apenas outra forma: ele altera a linha do baixo e pode ligar C a F com menos movimento.",
+        "Toque a progressão com voz superior cantada. Se a voz superior salta sem necessidade, experimente outra inversão."
       ],
       "visual": "voicings",
       "links": [
@@ -520,7 +562,10 @@
       "texto": [
         "Palheta, captador, volume, ganho, equalização, efeitos e amplificação formam uma cadeia. Altere uma variável por vez para saber o que realmente mudou.",
         "Som limpo revela articulação e afinação; overdrive acrescenta compressão e harmônicos; distorção aumenta a densidade e também evidencia ruídos. O ganho não substitui uma mão precisa.",
-        "Escolha a função antes do timbre: base, riff, resposta, textura ou solo. Depois ajuste ataque, abafamento, sustentação e espaço para ocupar o arranjo."
+        "Escolha a função antes do timbre: base, riff, resposta, textura ou solo. Depois ajuste ataque, abafamento, sustentação e espaço para ocupar o arranjo.",
+        "Teste a mesma frase com captador da ponte e do braço em volume igual. Descreva ataque, graves, médios e sustentação antes de escolher.",
+        "Ajuste ganho, equalização e efeitos em ordem. Se mudar tudo ao mesmo tempo, você não saberá qual decisão criou o resultado.",
+        "Toque com uma base e retire o solo. Um timbre adequado é aquele que deixa a função audível dentro do conjunto."
       ],
       "visual": "timbre",
       "links": [
@@ -555,7 +600,10 @@
       "texto": [
         "Palhetada alternada reduz esforço e mantém o pulso. Riffs podem usar cordas soltas, power chords, cromatismo e síncopes, mas todos dependem de subdivisão clara.",
         "O palm mute controla a duração das cordas graves. Abafamento da mão esquerda elimina ressonâncias das cordas vizinhas. Treine o silêncio com a mesma atenção dada ao ataque.",
-        "Comece com duas notas e um ritmo. Aumente a complexidade apenas quando o padrão sobreviver a repetições sem acelerar."
+        "Comece com duas notas e um ritmo. Aumente a complexidade apenas quando o padrão sobreviver a repetições sem acelerar.",
+        "Escreva a direção da palheta sobre cada ataque e pratique apenas o movimento. Depois acrescente notas abafadas e, por fim, cordas diferentes.",
+        "Um riff precisa sobreviver sem distorção. Toque limpo para conferir sincronização e ruído antes de aumentar ganho.",
+        "Use metrônomo em andamentos diferentes e conte as pausas. A pausa é parte do desenho e não um espaço vazio."
       ],
       "visual": "riff",
       "links": [
@@ -590,7 +638,10 @@
       "texto": [
         "Cante uma nota antes de procurá-la. A voz cria uma intenção; a mão testa hipóteses. Comece por melodias curtas e marque onde a frase repousa.",
         "Para transcrever acordes, ouça primeiro o baixo, depois a qualidade maior ou menor e por fim tensões e inversões. Não tente nomear tudo de uma vez.",
-        "Registre tom provável, andamento, estrutura e trechos difíceis. A transcrição é uma forma de escuta detalhada e também prepara o repertório."
+        "Registre tom provável, andamento, estrutura e trechos difíceis. A transcrição é uma forma de escuta detalhada e também prepara o repertório.",
+        "Cante uma frase usando “lá” e marque o primeiro e o último som. Só então procure a primeira nota no braço.",
+        "Para uma progressão, encontre o baixo de cada acorde e compare a terça. Essa ordem reduz palpites e organiza a escuta.",
+        "Revise a transcrição no dia seguinte sem ouvir a gravação. A diferença entre memória e registro mostra o que precisa ser treinado."
       ],
       "visual": "ouvido",
       "links": [
@@ -625,7 +676,10 @@
       "texto": [
         "Uma gravação começa com um pulso confiável e uma forma clara. Grave primeiro uma base simples; depois adicione baixo, segunda guitarra, melodia ou textura.",
         "Deixe espaço entre as camadas. Duas partes que ocupam o mesmo registro podem mascarar uma à outra; inversões, oitavas e panoramas ajudam a separar funções.",
-        "Compare a tomada com a intenção original. O objetivo não é apagar toda imperfeição, mas identificar quais detalhes ajudam a música e quais distraem."
+        "Compare a tomada com a intenção original. O objetivo não é apagar toda imperfeição, mas identificar quais detalhes ajudam a música e quais distraem.",
+        "Defina andamento e contagem antes de gravar. Uma tomada tecnicamente limpa não resolve uma forma mal planejada.",
+        "Use uma faixa por função e deixe alguns compassos de silêncio para ouvir o espaço. Dobre uma parte apenas quando ela acrescentar algo.",
+        "Nomeie arquivos por data, tom e BPM. Comparar tomadas organizadas torna o progresso visível e evita repetir erros."
       ],
       "visual": "gravacao",
       "links": [
@@ -660,7 +714,10 @@
       "texto": [
         "Comece por uma ideia curta: ritmo, baixo, melodia, acorde ou texto. Depois defina repetição e contraste. Uma forma compreensível permite que a surpresa seja percebida.",
         "Rearmonizar é trocar o caminho mantendo a função, a melodia ou a emoção. Acordes vizinhos, dominantes secundárias, empréstimos modais e inversões devem ser ouvidos em contexto.",
-        "A teoria serve à decisão. Se uma substituição torna a frase menos cantável ou a forma menos clara, ela talvez não seja melhor para aquela música."
+        "A teoria serve à decisão. Se uma substituição torna a frase menos cantável ou a forma menos clara, ela talvez não seja melhor para aquela música.",
+        "Colete cinco motivos curtos e escolha um pelo ritmo, não pela quantidade de notas. Repita-o até que o ouvido consiga antecipá-lo.",
+        "Crie contraste trocando registro, dinâmica, acorde ou silêncio. Não altere tudo ao mesmo tempo: a forma precisa mostrar o que mudou.",
+        "Teste a mesma melodia com uma harmonia simples e uma rearmonizada. Mantenha a versão que serve melhor à intenção da canção."
       ],
       "visual": "composicao",
       "links": [
@@ -695,7 +752,10 @@
       "texto": [
         "Uma execução completa exige preparar entradas, transições, finais, pausas e recuperação de erros. Treine a continuidade, não apenas os trechos confortáveis.",
         "Divida a semana entre aquecimento, técnica, repertório, ouvido, criação e revisão. Exercícios recorrentes continuam importantes em todos os níveis porque mantêm coordenação e pulso.",
-        "Use registros objetivos: BPM limpo, número de tomadas, ruídos, estabilidade, memória da forma e conforto físico. O progresso aparece na consistência, não apenas na velocidade máxima."
+        "Use registros objetivos: BPM limpo, número de tomadas, ruídos, estabilidade, memória da forma e conforto físico. O progresso aparece na consistência, não apenas na velocidade máxima.",
+        "Faça um ritual de entrada: afinar, respirar, contar e visualizar a primeira seção. Isso reduz decisões durante a execução.",
+        "Treine recuperação: pare de propósito, retome no próximo primeiro tempo e mantenha a expressão. O público percebe continuidade mais do que pequenos erros.",
+        "Revise a gravação com uma lista fixa: pulso, forma, limpeza, dinâmica e conforto. Escolha apenas um item para corrigir na próxima sessão."
       ],
       "visual": "performance",
       "links": [
@@ -1142,49 +1202,73 @@
       "Comece pelo corpo: apoie o instrumento sem apertar, mantenha o punho alinhado e permita que a respiração continue durante o ataque. Grave dez segundos de cordas soltas e descreva o som, o ruído e a sensação física.",
       "O primeiro mapa do aluno é a relação entre gesto e resultado. Toque a mesma corda com polpa, unha e palheta; compare brilho, volume e duração. A escolha correta é a que produz o som pedido sem tensão desnecessária.",
       "Estude em ciclos curtos: ouvir, repetir, pausar e registrar. Um registro útil anota andamento, número de repetições limpas, ruído percebido e a próxima mudança concreta.",
-      "Domínio: você consegue preparar o instrumento, produzir seis sons limpos e explicar o que mudou entre uma tentativa e outra."
+      "Domínio: você consegue preparar o instrumento, produzir seis sons limpos e explicar o que mudou entre uma tentativa e outra.",
+      "Antes de estudar acordes, faça um inventário do instrumento: nomes das cordas, sentido das casas, posição confortável e altura da correia. Diga cada nome enquanto toca a corda correspondente.",
+      "Use um ciclo de três tomadas: uma sem metrônomo, uma com quatro pulsos e uma gravada. Compare apenas um critério por vez — ruído, duração ou tensão — para saber o que realmente mudou.",
+      "Não avance porque o exercício parece fácil. Avance quando conseguir repetir o mesmo som em três dias diferentes e explicar qual ajuste corporal produziu o resultado."
     ],
     "pulso": [
       "O pulso é uma referência contínua, não apenas o clique do metrônomo. Caminhe ou balance a mão marcando quatro tempos e conte “1 e 2 e 3 e 4 e” sem tocar; só depois distribua ataques.",
       "Treine três camadas: semínimas, colcheias e síncopes. Na síncope, o movimento da mão continua mesmo quando não há som. O silêncio precisa ter duração tão precisa quanto o ataque.",
       "Use um acorde confortável e grave quatro compassos. Confira se o primeiro tempo está estável, se o contratempo não corre e se a troca de acorde não interrompe o movimento.",
-      "Domínio: você mantém o pulso por dois minutos, atravessa uma pausa sem acelerar e consegue voltar ao tempo depois de uma troca."
+      "Domínio: você mantém o pulso por dois minutos, atravessa uma pausa sem acelerar e consegue voltar ao tempo depois de uma troca.",
+      "Subdivida falando e batendo o pé antes de acrescentar a mão direita. Em 4/4, o movimento para baixo pode marcar os pulsos e o movimento para cima as subdivisões, mesmo quando não há ataque.",
+      "Pratique uma troca de acorde no quarto tempo e outra no primeiro tempo do compasso seguinte. O objetivo é preparar a mão antes da mudança sem antecipar o som.",
+      "Se o metrônomo parecer confortável, reduza a quantidade de ataques e preserve o pulso. A estabilidade aparece quando você consegue tocar menos, não apenas quando consegue tocar mais rápido."
     ],
     "acordes": [
       "Aprenda a ler um diagrama em ordem: nome, corda mais grave, casas, dedos, cordas abertas e cordas que não devem soar. Toque cada corda isoladamente antes de raspar o acorde inteiro.",
       "Comece com C, G, D, A, E, Am, Em e Dm. Para cada forma, diga a fundamental, identifique a terça e a quinta e observe quais notas se repetem nas cordas.",
       "O acorde só está pronto quando três verificações passam: todas as notas soam, a mão permanece relaxada e a forma pode ser preparada antes do pulso sem interromper a música.",
-      "Domínio: você monta oito acordes abertos, identifica suas fundamentais e troca entre quatro pares sem perder quatro tempos."
+      "Domínio: você monta oito acordes abertos, identifica suas fundamentais e troca entre quatro pares sem perder quatro tempos.",
+      "Para cada acorde, identifique fundamental, terça e quinta e depois localize quais cordas repetem essas notas. Isso transforma o desenho em uma estrutura que pode ser transportada.",
+      "Monte a forma sem tocar, confira dedo por dedo e só então faça um ataque lento. Se uma corda falhar, toque apenas essa corda e corrija o contato antes de repetir o acorde inteiro.",
+      "Organize os acordes por função em uma música: tônica, preparação e dominante. O aluno deve saber por que a cifra aparece, não apenas qual desenho apertar."
     ],
     "trocas": [
       "Uma troca eficiente começa antes do próximo tempo. Prepare a forma durante o último movimento do acorde anterior e procure dedos-guia que permanecem ou se deslocam por apenas uma casa.",
       "Para pestanas, reduza a tarefa: pressione duas cordas, confira a afinação, acrescente outras duas e só então forme o acorde completo. Se a mão endurecer, diminua a pressão e revise o polegar.",
       "Compare C–Am, G–D, E–A e F–C. Conte em voz alta, faça ciclos de trinta segundos e descanse. Velocidade só entra depois de três ciclos sem ruído.",
-      "Domínio: você identifica o dedo que mais atrasa a troca, corrige o movimento e executa cinco ciclos limpos no andamento escolhido."
+      "Domínio: você identifica o dedo que mais atrasa a troca, corrige o movimento e executa cinco ciclos limpos no andamento escolhido.",
+      "Escolha uma mudança difícil e divida-a em três movimentos: soltar pressão, deslocar a mão e pousar os dedos. Treine cada movimento em câmera lenta antes de unir.",
+      "Use a técnica de troca silenciosa: faça o movimento entre dois cliques sem produzir som e toque apenas no clique seguinte. Assim a mão aprende a chegar antes do pulso.",
+      "Para pestanas, confira primeiro as duas cordas externas, depois acrescente as internas. Pare diante de dor ou formigamento; técnica não é suportar desconforto."
     ],
     "leitura": [
       "Na tablatura, leia corda, casa, duração e articulação juntos. Antes de tocar, fale as casas e marque as subdivisões; isso evita transformar uma sequência visual em uma corrida automática.",
       "Na partitura, a posição da nota e o acidente indicam altura e grafia. Encontre a mesma nota em duas regiões do braço e compare timbre, digitação e preparação para o próximo gesto.",
       "Escolha uma frase curta, leia sem instrumento, toque em andamento lento e depois confira com o áudio. Marque onde você precisou parar: esse trecho vira o foco da próxima sessão.",
-      "Domínio: você lê quatro compassos sem interromper o pulso e consegue explicar por que escolheu aquela posição."
+      "Domínio: você lê quatro compassos sem interromper o pulso e consegue explicar por que escolheu aquela posição.",
+      "Leia o ritmo batendo palmas e diga as casas sem instrumento. Depois toque apenas as primeiras notas de cada tempo para confirmar que a estrutura foi compreendida.",
+      "Compare uma digitação com corda solta e outra em posição fechada. A escolha depende de timbre, continuidade, afinação e do gesto que vem depois.",
+      "Marque na partitura onde respirar e na tablatura onde trocar de posição. Uma boa leitura antecipa o movimento e evita que cada nota seja uma surpresa."
     ],
     "escalas": [
       "Localize a tônica em mais de uma corda antes de iniciar o desenho. Toque a escala em grupos de três e quatro notas, depois retorne à tônica por caminhos diferentes.",
       "A pentatônica serve para limitar escolhas e ouvir melhor. Termine frases em notas do acorde, altere o ritmo e deixe espaços; uma escala só vira música quando há direção.",
       "Relacione cada desenho a graus, intervalos e acordes. Em vez de memorizar apenas casas, diga “tônica, terça, quarta, quinta” enquanto toca.",
-      "Domínio: você toca uma escala em duas regiões, encontra a tônica sem consultar o desenho e improvisa quatro compassos com começo, desenvolvimento e resolução."
+      "Domínio: você toca uma escala em duas regiões, encontra a tônica sem consultar o desenho e improvisa quatro compassos com começo, desenvolvimento e resolução.",
+      "Construa a escala por graus e não só por desenho: tônica, segunda, terça, quinta e oitava. Cante cada grau antes de tocar para associar a posição à função.",
+      "Faça uma frase de quatro notas, repita-a deslocando o ritmo e termine em uma nota do acorde. A limitação cria intenção e impede que o estudo vire corrida.",
+      "Pratique a mesma ideia em duas regiões do braço. Se a frase continuar reconhecível, você aprendeu a linguagem e não apenas uma forma visual."
     ],
     "tecnicas": [
       "Isole uma articulação por vez. No hammer-on e pull-off, a mão direita não deve compensar a falta de energia da esquerda; no slide, a nota de chegada precisa ser afinada; no bend, compare com a nota-alvo.",
       "Pratique sem efeitos, em andamento confortável e com gravação. Depois acrescente ganho ou delay e verifique se o efeito ampliou a intenção ou apenas escondeu ruído.",
       "Vibrato começa depois de a nota estabilizar. Varie largura e velocidade, mas mantenha o centro da nota. A dinâmica deve ser planejada como parte da frase.",
-      "Domínio: você executa a técnica escolhida três vezes afinada, sem ruído excessivo e dentro do pulso."
+      "Domínio: você executa a técnica escolhida três vezes afinada, sem ruído excessivo e dentro do pulso.",
+      "Para um bend, toque primeiro a nota de chegada e memorize-a. Depois faça o movimento lentamente e pare quando o ouvido reconhecer a mesma altura.",
+      "No hammer-on e pull-off, mantenha a mão direita silenciosa e observe se a segunda nota tem volume suficiente. No slide, mantenha a pressão constante até chegar.",
+      "Grave a técnica limpa e com efeito. Se o efeito esconder afinação ou ruído, reduza o ganho e volte ao controle da mão."
     ],
     "repertorio": [
       "Desmonte cada música em entrada, verso, refrão, ponte e final. Aprenda a transição entre seções antes de tentar a execução inteira; a forma é uma habilidade própria.",
       "Organize a semana em manutenção, aquisição e performance. Mantenha exercícios recorrentes, aprenda um trecho novo e termine com uma tomada completa sem parar.",
       "Use checkpoints observáveis: andamento limpo, número de erros recuperados, estabilidade das trocas, dinâmica e memória da letra ou da forma.",
-      "Domínio: você toca a música inteira, recupera um erro sem interromper e consegue explicar qual habilidade ainda precisa de manutenção."
+      "Domínio: você toca a música inteira, recupera um erro sem interromper e consegue explicar qual habilidade ainda precisa de manutenção.",
+      "Escolha uma música com dificuldade um pouco acima do seu nível e escreva o mapa: introdução, verso, refrão, ponte, final. Cada seção recebe um objetivo pequeno.",
+      "Pratique a entrada da seção seguinte antes de dominar a anterior. A continuidade depende das transições, não apenas de tocar cada trecho isoladamente.",
+      "Faça uma tomada completa por semana. Anote onde perdeu forma, pulso ou conforto e transforme apenas um desses pontos no foco da próxima sessão."
     ],
     "violao-levadas-brasileiras": [
       "No baião, alterne baixo e acorde pensando em uma conversa entre polegar e dedos. O baixo marca o chão; o ataque agudo responde sem cobrir a voz.",
@@ -1257,6 +1341,66 @@
       "Crie um motivo de duas ou três notas e varie apenas o ritmo. Depois altere registro e articulação sem perder a identidade.",
       "Grave perguntas e respostas de dois compassos. Deixe espaço para a harmonia aparecer e termine frases em notas estáveis.",
       "Domínio: você improvisa oito compassos com alvo, motivo, pausa e resolução audíveis."
+    ],
+    "afinacao-manutencao": [
+      "Afine de ouvido em pares de oitavas depois de usar o afinador. Se as batidas diminuem quando duas notas iguais soam juntas, a afinação está se aproximando.",
+      "Observe sinais de manutenção: trastejamento, ruído de jack, tarraxa frouxa e corda que perde altura. Registre o problema antes de tentar corrigi-lo.",
+      "Aprenda a trocar uma corda mantendo as outras estáveis. O cuidado com o instrumento protege tanto o som quanto a confiança do ouvido."
+    ],
+    "notas-intervalos": [
+      "Conte letras e semitons separadamente. Dó–Ré usa duas letras e dois semitons; Dó–Ré♭ continua sendo uma segunda, mas muda de qualidade.",
+      "No braço, toque a nota de referência e localize o intervalo em outra corda. Depois faça o caminho inverso: ouça a distância e encontre a posição sem olhar.",
+      "Use terças para comparar maior e menor, quintas para estabilidade e sétimas para tensão. A classificação só se torna musical quando você consegue ouvir a diferença."
+    ],
+    "campo-harmonico": [
+      "Escreva a escala de Dó maior e empilhe terças para obter C, Dm, Em, F, G, Am e B°. Depois transporte o mesmo padrão para outra tonalidade.",
+      "Toque I–IV–V–I e pare em cada acorde. Diga “repouso”, “preparação”, “tensão” e “resolução” antes de continuar.",
+      "Crie uma progressão de oito compassos usando quatro graus. Verifique se a melodia e a função dos acordes continuam claras quando você muda o tom."
+    ],
+    "dedilhado": [
+      "Separe o exercício em três faixas: polegar sozinho, dedos sem polegar e a combinação. O pulso deve permanecer igual nas três versões.",
+      "Use um baixo alternado de duas notas e acrescente a melodia apenas no segundo compasso. Se a melodia correr, volte a tocar somente o baixo.",
+      "Grave cada camada separadamente e depois juntas. O objetivo é ouvir três funções, não produzir muitas notas ao mesmo tempo."
+    ],
+    "estilos-violao": [
+      "Toque a mesma progressão em quatro compassos de pop, folk e reggae. Marque no papel onde o ataque acontece e onde o silêncio cria espaço.",
+      "No samba e na MPB, pratique a síncope sem aumentar força. No sertanejo, compare a célula de base com o preenchimento do refrão.",
+      "Escolha uma música real para cada padrão e explique qual elemento do estilo aparece: contratempo, baixo alternado, shuffle ou densidade."
+    ],
+    "voicings": [
+      "Escreva as notas de C, Am, F e G e circule as notas comuns entre cada par. Depois procure formas que mantenham essas notas na mesma corda.",
+      "Compare baixo fundamental e primeira inversão. C/E não é apenas outra forma: ele altera a linha do baixo e pode ligar C a F com menos movimento.",
+      "Toque a progressão com voz superior cantada. Se a voz superior salta sem necessidade, experimente outra inversão."
+    ],
+    "guitarra-eletrica": [
+      "Teste a mesma frase com captador da ponte e do braço em volume igual. Descreva ataque, graves, médios e sustentação antes de escolher.",
+      "Ajuste ganho, equalização e efeitos em ordem. Se mudar tudo ao mesmo tempo, você não saberá qual decisão criou o resultado.",
+      "Toque com uma base e retire o solo. Um timbre adequado é aquele que deixa a função audível dentro do conjunto."
+    ],
+    "palhetada-riffs": [
+      "Escreva a direção da palheta sobre cada ataque e pratique apenas o movimento. Depois acrescente notas abafadas e, por fim, cordas diferentes.",
+      "Um riff precisa sobreviver sem distorção. Toque limpo para conferir sincronização e ruído antes de aumentar ganho.",
+      "Use metrônomo em andamentos diferentes e conte as pausas. A pausa é parte do desenho e não um espaço vazio."
+    ],
+    "ouvido": [
+      "Cante uma frase usando “lá” e marque o primeiro e o último som. Só então procure a primeira nota no braço.",
+      "Para uma progressão, encontre o baixo de cada acorde e compare a terça. Essa ordem reduz palpites e organiza a escuta.",
+      "Revise a transcrição no dia seguinte sem ouvir a gravação. A diferença entre memória e registro mostra o que precisa ser treinado."
+    ],
+    "gravacao": [
+      "Defina andamento e contagem antes de gravar. Uma tomada tecnicamente limpa não resolve uma forma mal planejada.",
+      "Use uma faixa por função e deixe alguns compassos de silêncio para ouvir o espaço. Dobre uma parte apenas quando ela acrescentar algo.",
+      "Nomeie arquivos por data, tom e BPM. Comparar tomadas organizadas torna o progresso visível e evita repetir erros."
+    ],
+    "composicao": [
+      "Colete cinco motivos curtos e escolha um pelo ritmo, não pela quantidade de notas. Repita-o até que o ouvido consiga antecipá-lo.",
+      "Crie contraste trocando registro, dinâmica, acorde ou silêncio. Não altere tudo ao mesmo tempo: a forma precisa mostrar o que mudou.",
+      "Teste a mesma melodia com uma harmonia simples e uma rearmonizada. Mantenha a versão que serve melhor à intenção da canção."
+    ],
+    "performance": [
+      "Faça um ritual de entrada: afinar, respirar, contar e visualizar a primeira seção. Isso reduz decisões durante a execução.",
+      "Treine recuperação: pare de propósito, retome no próximo primeiro tempo e mantenha a expressão. O público percebe continuidade mais do que pequenos erros.",
+      "Revise a gravação com uma lista fixa: pulso, forma, limpeza, dinâmica e conforto. Escolha apenas um item para corrigir na próxima sessão."
     ]
   }
 }
