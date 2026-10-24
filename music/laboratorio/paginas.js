@@ -264,7 +264,7 @@ ${relacionados(f.slug)}`;
       linhas.forEach((item) => { if (item.estilo === 'space') { y -= 8; return; } const size = item.estilo === 'capa' ? 25 : item.estilo === 'marca' ? 10 : item.estilo === 'titulo' ? 16 : item.estilo === 'subtitulo' ? 12 : 9.5; const font = ['capa', 'marca', 'titulo', 'subtitulo'].includes(item.estilo) ? negrito : fonte; const color = item.estilo === 'marca' ? rgb(.78, .63, .15) : item.estilo === 'capa' ? rgb(.1, .18, .29) : rgb(.12, .16, .2); if (y < 58) novaPagina(); paginaAtual.drawText(item.texto, { x: margem, y, size, font, color, maxWidth: largura - margem * 2, lineHeight: size * 1.35 }); y -= size * 1.65; });
       const bytes = await pdf.save();
       res.set('Content-Type', 'application/pdf').set('Content-Disposition', 'inline; filename="curso-bateria.pdf"').set('Cache-Control', 'no-cache').send(Buffer.from(bytes));
-    } catch (erro) { res.status(500).send('Não foi possível gerar o PDF do curso de bateria.'); }
+    } catch (erro) { console.error('[music] falha ao gerar PDF do curso de bateria', erro); res.status(500).send('Não foi possível gerar o PDF do curso de bateria.'); }
   });
 
   app.get('/music/curso-bateria', opcional, (req, res) => {
