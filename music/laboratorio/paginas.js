@@ -423,6 +423,7 @@ function relacionados(slug) {
     'curso-guitarra': ['/music/tutor-braco', '/music/criar/batidas', '/music/tocar'],
     'troca-acordes': ['/music/criar/curso-guitarra', '/music/tocar', '/music/tutor-braco'],
     'laboratorio-batidas': ['/music/criar/troca-acordes', '/music/criar/batidas', '/music/tocar'],
+    'desmontar-musica': ['/music/criar/curso-guitarra', '/music/criar/troca-acordes', '/music/tocar'],
     transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
     bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
