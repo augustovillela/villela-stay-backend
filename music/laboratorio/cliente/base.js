@@ -316,6 +316,37 @@
   }
   C.barraDeCima = barraDeCima;
 
+  // Expõe o estado de cada etapa da jornada para estilos e tecnologias assistivas.
+  // A ferramenta monta os cartões de forma assíncrona (após carregar o progresso),
+  // portanto observamos o painel até que os cartões estejam disponíveis.
+  function aprimorarJornada(slug, alvo) {
+    if (slug !== 'jornada-guitarra' || !alvo) return;
+    var aplicar = function () {
+      var cards = alvo.querySelectorAll('.lab-tendencias-lista .lab-tendencia-card');
+      if (!cards.length) return;
+      Array.prototype.forEach.call(cards, function (card) {
+        var dica = card.querySelector('.lab-dica');
+        var texto = (dica && dica.textContent || '').toLowerCase();
+        var status = texto.indexOf('conclu') >= 0 ? 'concluida' : texto.indexOf('estude') >= 0 ? 'atual' : 'proxima';
+        card.setAttribute('data-status', status);
+        card.setAttribute('aria-label', (card.querySelector('strong') || {}).textContent || 'Etapa da jornada');
+        if (dica) { dica.classList.add('lab-jornada-status'); dica.setAttribute('role', 'status'); }
+        var estudo = card.querySelector('a');
+        if (estudo) estudo.classList.add('lab-jornada-estudo');
+        var concluir = card.querySelector('button');
+        if (concluir) {
+          concluir.classList.add('lab-jornada-concluir');
+          concluir.setAttribute('aria-pressed', status === 'concluida' ? 'true' : 'false');
+        }
+        if (status === 'atual') card.setAttribute('aria-current', 'step');
+        else card.removeAttribute('aria-current');
+      });
+    };
+    aplicar();
+    if (w.MutationObserver) new MutationObserver(aplicar).observe(alvo, { childList: true, subtree: true });
+    else w.setTimeout(aplicar, 250);
+  }
+
   d.addEventListener('DOMContentLoaded', function () {
     barraDeCima();
     // tabelas que as ferramentas montam depois (matriz, relatórios) também ganham a barra
@@ -337,5 +368,6 @@
     if (f && alvo) {
       try { f(alvo, estado); } catch (e) { alvo.appendChild(C.el('p', { class: 'lab-erro', txt: 'A ferramenta não abriu: ' + e.message })); if (w.console) console.error(e); }
     }
+    aprimorarJornada(slug, alvo);
   });
 })(window, document);
