@@ -6,7 +6,7 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import SimpleDocTemplate, BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, PageBreak, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, PageBreak, Table, TableStyle, Preformatted
 from reportlab.platypus.tableofcontents import TableOfContents
 from reportlab.graphics.shapes import Drawing, Rect, Circle, Line, String, Polygon, Ellipse, Image as ShapeImage
 from reportlab.lib import colors
@@ -62,6 +62,29 @@ DETALHES = {
     '18': ['Gravação começa com pulso e forma. Grave uma base simples, confira a continuidade e adicione camadas apenas quando a primeira função estiver clara.', 'Baixo, segunda guitarra, melodia e textura precisam de registros diferentes. Inversões, oitavas e panoramas separam camadas sem aumentar volume indiscriminadamente.', 'Compare tomadas com atenção a ruído, entradas, finais e espaços. Não corrija tudo: preserve detalhes que servem à música e elimine os que distraem.', 'Domínio: produzir quatro compassos com três camadas distinguíveis e explicar a função de cada uma.'],
     '19': ['Composição começa por uma ideia curta: ritmo, baixo, melodia, acorde ou texto. Repetição permite reconhecer; contraste faz a forma avançar.', 'Rearmonização troca o caminho mantendo função, melodia ou emoção. Use inversões, dominantes secundárias e empréstimos modais apenas depois de ouvir a versão simples.', 'Teste a mesma melodia sobre duas progressões. Registre onde a frase fica mais cantável, mais tensa ou menos clara.', 'Domínio: escrever oito compassos, criar uma variação e justificar duas escolhas harmônicas.'],
     '20': ['Uma apresentação confiável prepara entrada, transição, pausa, final e recuperação de erro. Treine a continuidade: um erro não precisa interromper a música.', 'Divida a semana entre aquecimento, técnica, repertório, ouvido, criação e revisão. Exercícios recorrentes continuam importantes porque mantêm coordenação e pulso.', 'Use evidências: BPM limpo, tomadas completas, ruídos, estabilidade, memória da forma e conforto físico. Compare registros semanais em vez de confiar apenas na sensação.', 'Domínio: tocar uma música inteira, registrar três evidências e escolher um foco específico para a próxima sessão.'],
+}
+
+EXEMPLOS = {
+    '01': 'Cordas soltas\nE|---------0-|  A|---------0-|  D|---------0-|\nConte 1 2 3 4 e deixe cada som terminar antes do próximo ataque.',
+    '02': 'Pulso em 4/4\n↓   ↓ ↑   ↑ ↓ ↑\n1   2 e   3 e 4 e\nMantenha o movimento da mão também nas pausas.',
+    '03': 'Progressão de acordes abertos\n| C       | G       | Am      | Em      |\n| 1 2 3 4 | 1 2 3 4 | 1 2 3 4 | 1 2 3 4 |\nConfira a corda mais aguda de cada forma.',
+    '04': 'Troca com dedo-guia\nC       Am      F       G\ne|--0-------0-------1-------3--|\nB|--1-------1-------1-------0--|\nMantenha o pulso enquanto a mão muda.',
+    '05': 'Tablatura com duração\ne|--0---3-1-0-----|\nB|------------3-1-|\n   1   2 e 3   4\nLeia casa, corda e espaço antes de tocar.',
+    '06': 'Pentatônica de Lá menor\ne|----------------5-8-|\nB|------------5-8-----|\nG|--------5-7---------|\nTermine no A e varie o ritmo da frase.',
+    '07': 'Articulação\ne|--5h7--7p5--5/8--8b(10)--|\n   hammer pull slide bend\nToque a nota-alvo antes de fazer o bend.',
+    '08': 'Mapa de uma canção\nINTRO (4) → VERSO (8) → REFRÃO (8) → PONTE (4) → FINAL (4)\nToque cada bloco e pratique a transição entre eles.',
+    '09': 'Afinação padrão\n6ª E  ·  5ª A  ·  4ª D  ·  3ª G  ·  2ª B  ·  1ª E\nCompare a mesma nota em duas posições do braço.',
+    '10': 'Intervalos em uma corda\nA|--0--1--2--4--5--7--|\n    R  m2  M2  M3  P4  P5\nCante a distância antes de nomeá-la.',
+    '11': 'Funções no campo harmônico de Dó\nI       IV      V       I\nC       F       G       C\nrepouso → prepara → tensão → resolve',
+    '12': 'Fingerstyle em duas camadas\n   p   i   m   a\ne|-----0-------0-|\nB|---1---1---1---|\nA|-0-------------|\nMantenha o baixo regular enquanto a melodia respira.',
+    '13': 'Uma progressão, três estilos\nPOP:   ↓   ↓ ↑   ↑ ↓ ↑\nFOLK:  baixo - 3 - 2 - 1\nREGGAE:   (silêncio)  X  (silêncio)  X\nO espaço define o caráter.',
+    '14': 'Condução de vozes\nC/E   →   F   →   G\ne|--0-----1-----3--|\nB|--1-----1-----0--|\nG|--0-----2-----0--|\nEscolha a forma que move menos notas.',
+    '15': 'Cadeia de sinal\nMÃO → PALHETA → CAPTADOR → GANHO → EQ → ESPAÇO\nAltere uma etapa por vez e grave a mesma frase.',
+    '16': 'Riff com abafamento\nE|--0-0-x-0---3-0-x-0--|\n    ↓ ↓   ↓   ↓ ↓   ↓\nConte as pausas como parte do riff.',
+    '17': 'Treino de ouvido\nCante:  G  A  B  D\nEncontre: G|--0--2--4--7--|\nDepois confira a direção e o ritmo, não apenas os nomes.',
+    '18': 'Arranjo em camadas\n1. Base:    | C | G | Am | F |\n2. Baixo:   notas fundamentais\n3. Melodia: respostas entre as frases\nCada camada deve continuar audível sozinha.',
+    '19': 'Motivo e variação\nMotivo:    e|--0-1-3--|\nVariação:  e|--3-1-0--|\nRepita o ritmo e mude apenas a direção melódica.',
+    '20': 'Tomada completa\nEntrada → verso → refrão → pausa → final\nSe errar, mantenha o pulso e retome no próximo primeiro tempo.\nRegistre BPM, forma e conforto físico.'
 }
 
 def ilustracao(num, titulo, foco):
@@ -174,6 +197,7 @@ def gerar(nome, titulo, foco, capitulos):
     capitulo_titulo = ParagraphStyle('capitulo_titulo', parent=h1)
     body = ParagraphStyle('body', parent=estilos['BodyText'], fontSize=10.5, leading=16, textColor=colors.HexColor('#1F2933'), spaceAfter=10)
     meta = ParagraphStyle('meta', parent=body, fontSize=8, textColor=colors.HexColor('#8A4B08'))
+    exemplo = ParagraphStyle('exemplo', parent=estilos['Code'], fontName='Courier', fontSize=8.4, leading=11, textColor=colors.HexColor('#17344D'), backColor=colors.HexColor('#EEF5F6'), borderColor=colors.HexColor('#B8D1D8'), borderWidth=.6, borderPadding=7, spaceBefore=4, spaceAfter=8)
     story = []
     instrumento = 'violão' if 'violão' in titulo and 'guitarra' not in titulo else 'guitarra' if 'guitarra' in titulo and 'violão' not in titulo else 'coleção'
     toc = TableOfContents()
@@ -182,6 +206,8 @@ def gerar(nome, titulo, foco, capitulos):
     story.append(PageBreak())
     for num, tit, texto in capitulos:
         story += [Paragraph(f'Capítulo {num}', meta), Paragraph(tit, capitulo_titulo), ilustracao(num, tit, foco), Spacer(1, 3*mm)]
+        if num in EXEMPLOS:
+            story += [Paragraph('Exemplo musical do capítulo', ParagraphStyle('exh' + num, parent=estilos['Heading2'], fontSize=12, leading=15, textColor=colors.HexColor('#245B78'), spaceBefore=5, spaceAfter=3)), Preformatted(EXEMPLOS[num], exemplo)]
         vistos = set()
         rotulos = ['A ideia central', 'O que ouvir', 'Como praticar', 'Aplicação musical', 'Critério de domínio']
         for i, paragrafo in enumerate(texto):
