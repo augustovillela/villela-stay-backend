@@ -96,6 +96,18 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
   // --------------------------------------------------------- ambientes
   app.get('/music/explorar', (req, res) => indiceFerramentas(res, 'explorar', 'Explorar', 'Visualizações que conversam entre si: mude a tônica e tudo acompanha.'));
   app.get('/music/criar', (req, res) => indiceFerramentas(res, 'criar', 'Criar', 'Instrumentos e ferramentas de estúdio de bolso, tocados no navegador. Sem gravação, sem envio: o som fica no seu aparelho.'));
+  const livrosInstrumentosPdf = {
+    'curso-violao-livro': ['curso-violao.pdf', 'curso-violao.pdf'],
+    'curso-guitarra-edicao': ['curso-guitarra.pdf', 'curso-guitarra.pdf'],
+    'curso-guitarra-livro': ['curso-violao-guitarra.pdf', 'curso-violao-guitarra.pdf'],
+  };
+  Object.entries(livrosInstrumentosPdf).forEach(([slug, [arquivo, nome]]) => {
+    app.get(`/music/criar/${slug}.pdf`, (req, res) => {
+      const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', arquivo);
+      if (!fs.existsSync(pdf)) return res.status(404).send('PDF ainda não foi gerado.');
+      res.set('Content-Type', 'application/pdf').set('Content-Disposition', `inline; filename="${nome}"`).set('Cache-Control', 'no-cache').sendFile(pdf);
+    });
+  });
   function indiceFerramentas(res, amb, nome, lead) {
     const lista = CAT.FERRAMENTAS.filter((x) => x.ambiente === amb);
     pagina(res, { titulo: `${nome} — Laboratório Musical | Musique`, descricao: lead, caminho: '/music/' + amb,
@@ -149,19 +161,6 @@ ${relacionados(f.slug)}`;
     const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', 'curso-teoria-musical.pdf');
     if (!fs.existsSync(pdf)) return res.status(404).send('PDF ainda não foi gerado.');
     res.set('Content-Type', 'application/pdf').set('Content-Disposition', 'inline; filename="curso-teoria-musical.pdf"').set('Cache-Control', 'no-cache').sendFile(pdf);
-  });
-
-  const livrosInstrumentosPdf = {
-    'curso-violao-livro': ['curso-violao.pdf', 'curso-violao.pdf'],
-    'curso-guitarra-edicao': ['curso-guitarra.pdf', 'curso-guitarra.pdf'],
-    'curso-guitarra-livro': ['curso-violao-guitarra.pdf', 'curso-violao-guitarra.pdf'],
-  };
-  Object.entries(livrosInstrumentosPdf).forEach(([slug, [arquivo, nome]]) => {
-    app.get(`/music/criar/${slug}.pdf`, (req, res) => {
-      const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', arquivo);
-      if (!fs.existsSync(pdf)) return res.status(404).send('PDF ainda não foi gerado.');
-      res.set('Content-Type', 'application/pdf').set('Content-Disposition', `inline; filename="${nome}"`).set('Cache-Control', 'no-cache').sendFile(pdf);
-    });
   });
 
   app.get('/music/curso-teoria', opcional, (req, res) => {
