@@ -14,6 +14,7 @@ assert.deepEqual(capitulos.map((c) => c.numero), Array.from({ length: 26 }, (_, 
 assert.equal(CURSO.fases.reduce((sum, fase) => sum + fase[2].length, 0), 26);
 assert(RUDIMENTOS.every((r) => r.facilitadores.length === 8));
 assert(RUDIMENTOS.every((r) => r.sticking && r.bpmStart > 0 && r.bpmTarget >= r.bpmStart && r.kitApplication && r.commonError && r.practiceMinutes > 0 && r.checkpoint));
+assert(RUDIMENTOS.every((r) => r.movimentoDescricao && r.somDescricao && r.animacaoPrompt.includes(r.nome) && r.audioPrompt.includes(r.nome) && r.gestos.length === r.padrao.length));
 assert(capitulos.every((c) => POR_SLUG[c.slug]));
 assert(LICOES.every((l) => Array.isArray(l.prereq) && Array.isArray(l.blocos) && l.blocos.length >= 6));
 assert(LICOES.every((l) => l.blocos.some((b) => b.t === 'praticar')));

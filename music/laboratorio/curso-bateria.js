@@ -92,6 +92,24 @@ const RUDIMENTOS = [
   return { id: `rudimento-${n}`, numero: n, nome, slug, sticking: stickings, padrao: padroes[i], gestos, familia, bpmStart: n <= 15 ? 50 : 45, bpmTarget: n <= 15 ? 100 : 90, kitApplication: aplicacoes, commonError: erros, practiceMinutes: 5, checkpoint: 'Grave três repetições limpas, sem tensão, e registre o BPM que permaneceu estável.', facilitadores: ['preparar', 'isolar', 'alternar', 'orquestrar', 'musicalizar', 'acelerar-com-criterio', 'diagnosticar', 'registrar'] };
 });
 
+const MOVIMENTOS_RUDIMENTOS = {
+  roll: 'Alternância contínua: a baqueta da mão ativa desce verticalmente até a pele e retorna antes da próxima mão. As duas baquetas permanecem paralelas, separadas e sem cruzamento.',
+  'bounce-double': 'Duas pancadas da mesma mão no mesmo lado da caixa: primeiro golpe controlado, segundo golpe de rebote curto. A outra mão espera e só entra no próximo grupo.',
+  'roll-grouped': 'Alternância em grupos com o primeiro ataque mais alto e os ataques seguintes menores. O grupo termina claramente antes de reiniciar no outro lado.',
+  flam: 'Golpe de apoio baixo imediatamente antes do golpe principal mais alto. As duas baquetas descem em sequência muito próxima, permanecem em seus lados e nunca se cruzam.',
+  drag: 'Dois golpes preparatórios baixos e próximos, seguidos de um golpe principal mais alto. O arrasto é visível como três alturas diferentes no mesmo lado.',
+  paradiddle: 'Alternância R-L seguida de dois golpes da mesma mão, depois espelhada. A repetição da mão fica visualmente evidente antes da troca.',
+  ratamacue: 'Arrasto preparatório baixo, ataque principal acentuado e resposta alternada. O acento sobe mais e a preparação permanece próxima da pele.',
+  accented: 'Alternância regular com acentos destacados: ataques acentuados sobem mais, ataques de apoio sobem menos, sempre em trilhas laterais fixas.',
+};
+RUDIMENTOS.forEach((r) => {
+  const gestoTexto = r.gestos.map((g, i) => `${i + 1}: mão ${g.mao === 'R' ? 'direita' : 'esquerda'}, ${g.token.charAt(0) === 'f' ? 'flam' : g.token.charAt(0) === 'g' ? 'nota fantasma/drag' : 'golpe normal'}, altura ${g.altura}px`).join('; ');
+  r.movimentoDescricao = MOVIMENTOS_RUDIMENTOS[r.familia];
+  r.somDescricao = `Caixa acústica com ataque ${r.familia === 'accented' ? 'acentuado e contraste de dinâmica' : r.familia}, pele e esteira audíveis; eventos sincronizados: ${gestoTexto}.`;
+  r.animacaoPrompt = `Animação didática vista de cima, enquadramento fixo de uma caixa de bateria centralizada. Ensinar o rudimento ${r.numero}. ${r.nome}. ${r.movimentoDescricao} Mostrar duas mãos humanas e duas baquetas de madeira, uma trilha fixa à esquerda e outra à direita, sem cruzar. Sincronizar cada descida com a partitura, destacar a mão ativa e respeitar esta sequência exata: ${gestoTexto}. Fundo limpo, sem texto inventado, sem baquetas extras, sem movimento lateral.`;
+  r.audioPrompt = `Áudio didático de caixa de bateria para ${r.numero}. ${r.nome}. Gravar/sintetizar uma caixa realista com pele e esteira, sem metrônomo dominante. Executar exatamente os eventos: ${gestoTexto}. Diferenciar golpes acentuados, normais, ghost notes, flams e drags por intensidade e microtempo. Manter o BPM ${r.bpmStart}–${r.bpmTarget}.`;
+});
+
 const CURSO = {
   id: 'curso-bateria-livro', titulo: 'Livro digital de bateria', subtitulo: 'Do primeiro pulso à performance completa', versao: '1.0',
   descricao: 'Formação progressiva de bateria, do primeiro som ao nível intermediário, com grooves, leitura, rudimentos, repertório e performance.',
