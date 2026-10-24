@@ -19,6 +19,17 @@ const AC = require('./nucleo/acustica');
 const CAT = require('./catalogo');
 
 const esc = D.esc;
+function bannerCurso(caminho) {
+  const bateria = /^\/music\/curso-bateria/.test(String(caminho || ''));
+  const teoria = /^\/music\/curso-teoria/.test(String(caminho || ''));
+  if (!bateria && !teoria) return '';
+  const instrumento = bateria ? 'Bateria' : 'Teoria musical';
+  const icone = bateria ? '🥁' : '🎼';
+  const cor = bateria ? '#a66b42' : '#5865a8';
+  const apoio = bateria ? 'pulso · groove · rudimentos' : 'ouvir · compreender · aplicar';
+  const id = bateria ? 'bateria' : 'teoria';
+  return `<section class="curso-banner" style="--curso-banner-cor:${cor}" aria-label="${esc(instrumento)}"><div class="curso-banner-arte"><svg viewBox="0 0 900 230" role="img" aria-label="Ilustração de ${esc(instrumento)}"><defs><linearGradient id="curso-grad-${id}" x1="0" x2="1"><stop stop-color="${cor}"/><stop offset="1" stop-color="#1B2A4A"/></linearGradient></defs><rect width="900" height="230" rx="22" fill="url(#curso-grad-${id})"/><circle cx="770" cy="54" r="82" fill="#fff" opacity=".08"/><circle cx="120" cy="190" r="130" fill="#fff" opacity=".06"/><text x="64" y="92" fill="#fff" font-size="52" font-family="Georgia,serif" font-weight="600">${esc(instrumento)}</text><text x="66" y="132" fill="#e6f1f7" font-size="20" font-family="Arial,sans-serif">${esc(apoio)}</text><text x="742" y="155" fill="#fff" font-size="86" text-anchor="middle">${icone}</text><path d="M64 177h310M64 189h230M64 201h150" stroke="#fff" stroke-width="3" opacity=".45"/></svg></div><p class="curso-banner-legenda">Um percurso visual para estudar ${esc(instrumento)} dentro do Musique.</p></section>`;
+}
 const pt = (n) => N.nome(n, { notacao: 'pt', glifo: true, oitava: false });
 const ptO = (n) => N.nome(n, { notacao: 'pt', glifo: true });
 const cif = (n) => N.nome(n, { glifo: true, oitava: false });
@@ -55,12 +66,13 @@ const SUBNAV = () => `<nav class="lab-sub" aria-label="Navegação Musical">
  */
 function pagina(res, { titulo, descricao = '', caminho, corpo, ferramenta = '', estado = null, trilha = [], jsonld = null, status = 200, indexar = true }) {
   const migalhas = trilha.length ? `<nav class="lab-migalhas" aria-label="Você está em"><a href="/music/laboratorio">Laboratório</a>${trilha.map(([t, u]) => ` <span aria-hidden="true">›</span> ${u ? `<a href="${esc(u)}">${esc(t)}</a>` : `<span aria-current="page">${esc(t)}</span>`}`).join('')}</nav>` : '';
+  const corpoFinal = bannerCurso(caminho) + corpo;
   const html = layout(titulo, `
 <link rel="stylesheet" href="/music/laboratorio.css">
 ${SUBNAV()}
 <main class="wrap lab" id="lab-main"${ferramenta ? ` data-ferramenta="${esc(ferramenta)}"` : ''}${estado ? ` data-estado="${esc(JSON.stringify(estado))}"` : ''}>
 ${migalhas}
-${corpo}
+${corpoFinal}
 </main>
 <div class="lab-som" id="lab-som" hidden><button type="button" id="lab-parar" class="lab-parar">■ Parar o som</button>
   <label>Volume <input type="range" id="lab-volume" min="0" max="100" value="45" aria-label="Volume"></label></div>
