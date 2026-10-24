@@ -595,7 +595,15 @@
 #lab-main[data-ferramenta="jornada-guitarra"] .lab-tendencias-lista .lab-tendencia-card[data-status="proxima"] .lab-jornada-status{background:#f1f5f9;color:#526579}
 #lab-main[data-ferramenta="jornada-guitarra"] .lab-tendencias-lista .lab-tendencia-card[aria-current="step"]{outline:3px solid rgba(201,162,39,.22);outline-offset:2px}
 #lab-main[data-ferramenta="jornada-guitarra"] .lab-tendencias-lista .lab-tendencia-card[data-status="concluida"] .lab-jornada-concluir{color:#17633f;border-color:#b8d8c6}
+#lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;align-items:end;gap:14px;margin:18px 0 16px;padding:16px 18px;border:1px solid #d7e3ef;border-radius:16px;background:linear-gradient(135deg,#f8fbff,#eef5fb);box-shadow:0 5px 16px rgba(20,33,61,.08)}
+#lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type .lab-campo{gap:6px}
+#lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type .lab-campo>span{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#526579}
+#lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type .lab-select{min-height:42px;border-color:#b9cde0;background:#fff;color:var(--navy);font-weight:700;box-shadow:0 2px 5px rgba(20,33,61,.06)}
+#lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type .lab-select:focus{border-color:var(--gold);outline:3px solid rgba(201,162,39,.2)}
+#lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type button{min-height:42px;padding:10px 18px;border:0;border-radius:10px;background:var(--navy);color:#fff;font-size:13px;font-weight:800;box-shadow:0 3px 8px rgba(20,33,61,.2);cursor:pointer;white-space:nowrap}
+#lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type button:hover{background:#315b80;transform:translateY(-1px)}
 @media(max-width:680px){#lab-main[data-ferramenta="jornada-guitarra"] .lab-tendencias-lista .lab-tendencia-card{grid-template-columns:1fr;padding:16px 16px 16px 20px}#lab-main[data-ferramenta="jornada-guitarra"] .lab-tendencias-lista .lab-tendencia-card a.btn,#lab-main[data-ferramenta="jornada-guitarra"] .lab-tendencias-lista .lab-tendencia-card button.btn{grid-column:1;width:100%}}
+@media(max-width:680px){#lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type{grid-template-columns:1fr;padding:14px}#lab-main[data-ferramenta="jornada-guitarra"] #lab-ferramenta>.lab-controles:first-of-type button{width:100%}}
 .lab-func-tonica,.lab-func-tônica{border-color:#2f855a;background:#f0fff4}
 .lab-func-dominante{border-color:#c05621;background:#fffaf0}
 .lab-func-subdominante{border-color:#2b6cb0;background:#ebf8ff}
