@@ -171,7 +171,19 @@
     });
   };
 
+  C.salvarJson = function (nome, dados) {
+    var valor = dados;
+    try { valor = typeof dados === 'string' ? JSON.parse(dados) : dados; } catch (_) { return Promise.reject(new Error('JSON inválido.')); }
+    try { localStorage.setItem('musique-lab-json:' + nome, JSON.stringify(valor)); } catch (_) { /* cópia local opcional */ }
+    return C.api('PUT', '/music/api/lab/arquivos-json', { nome: nome, dados: valor });
+  };
   C.baixar = function (nome, tipo, dados) {
+    var ehJson = /json/i.test(tipo || '') || /\.json$/i.test(nome || '');
+    if (ehJson && C.salvarJson) {
+      C.salvarJson(nome, dados).then(function () { C.aviso('JSON salvo na sua conta e baixado.'); }).catch(function (e) {
+        C.aviso(e.status === 401 ? 'JSON baixado. Entre na sua conta para também guardá-lo no Musique.' : e.status === 402 ? 'JSON baixado. A cópia na conta faz parte da assinatura.' : 'JSON baixado; a cópia na conta não pôde ser atualizada.', 'erro');
+      });
+    }
     var b = new Blob([dados], { type: tipo }); var u = URL.createObjectURL(b);
     var a = C.el('a', { href: u, download: nome }); d.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(u); }, 2000);

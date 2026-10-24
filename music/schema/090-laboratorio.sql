@@ -65,3 +65,15 @@ CREATE TABLE IF NOT EXISTS lab_jornada_progresso (
   dados         TEXT NOT NULL DEFAULT '{}',
   atualizado_em TEXT NOT NULL DEFAULT ''
 );
+
+-- Arquivos JSON gerados pelas ferramentas (performances, mapas, arranjos,
+-- progressões e exportações). O download continua disponível, mas a cópia
+-- principal também fica associada à conta para ser retomada depois.
+CREATE TABLE IF NOT EXISTS lab_arquivos_json (
+  usuario       TEXT NOT NULL,
+  nome          TEXT NOT NULL,
+  dados         TEXT NOT NULL DEFAULT '{}',
+  criado_em     TEXT NOT NULL DEFAULT '',
+  atualizado_em TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (usuario, nome)
+);

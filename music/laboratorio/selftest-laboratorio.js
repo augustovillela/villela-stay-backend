@@ -373,6 +373,10 @@ async function rodar({ t, secao, req, assert }) {
     const ja = await req('GET', '/music/api/lab/jornada-guitarra', { como: 'ana' });
     assert.equal(ja.json.progresso.jornada.instrumento, 'violao');
     assert.equal((await req('GET', '/music/api/lab/jornada-guitarra', { como: 'bruno' })).json.progresso, null, 'a jornada da Ana não aparece para o Bruno');
+    const ar = await req('PUT', '/music/api/lab/arquivos-json', { como: 'ana', corpo: { nome: 'mapa-harmonia.json', dados: { acordes: ['C', 'G', 'Am'] } } });
+    assert.equal(ar.status, 200); assert.equal((await req('GET', '/music/api/lab/arquivos-json', { como: 'ana' })).json.arquivos[0].dados.acordes[1], 'G');
+    assert.equal((await req('GET', '/music/api/lab/arquivos-json', { como: 'bruno' })).json.arquivos.length, 0, 'JSON salvo pela Ana não aparece para o Bruno');
+    assert.equal((await req('PUT', '/music/api/lab/arquivos-json', { como: 'ana', corpo: { nome: 'invalido.txt', dados: {} } })).status, 400);
     assert.equal((await req('PUT', '/music/api/lab/jornada-guitarra', { como: 'ana', corpo: { curso: { diario: 'invalido' } } })).status, 200, 'payload parcial continua válido');
     const j = await req('POST', '/music/api/lab/jogos', { como: 'ana', corpo: { jogo: 'caca-a-nota', dia: '2026-09-28', pontos: 120 } });
     await req('POST', '/music/api/lab/jogos', { como: 'ana', corpo: { jogo: 'caca-a-nota', dia: '2026-09-28', pontos: 80 } });
@@ -386,6 +390,7 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal(db.prepare("SELECT COUNT(*) AS n FROM tentativas WHERE usuario = 'u-ana' AND tipo LIKE 'lab:%'").get().n, 0);
     assert.equal(db.prepare("SELECT COUNT(*) AS n FROM tentativas WHERE usuario = 'u-bruno' AND tipo LIKE 'lab:%'").get().n, 1, 'os dados do Bruno ficam');
     assert.equal((await req('GET', '/music/api/lab/jornada-guitarra', { como: 'ana' })).json.progresso, null, 'a exclusão LGPD remove a jornada sincronizada');
+    assert.equal((await req('GET', '/music/api/lab/arquivos-json', { como: 'ana' })).json.arquivos.length, 0, 'a exclusão LGPD remove os JSONs salvos');
     assert.ok(/lab\\\/meus-dados/.test(require('fs').readFileSync(require('path').join(__dirname, '..', 'sessao.js'), 'utf8')), 'LGPD do Laboratório não fica refém da assinatura (SEM_PAGAR)');
   });
 

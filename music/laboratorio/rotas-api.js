@@ -148,6 +148,31 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     res.json({ ok: true, progresso: dados, atualizado_em: quando });
   }));
 
+  // ---- JSON gerado pelas ferramentas: salvar na conta ----
+  app.get(B + '/arquivos-json', requireUsuario, h(async (req, res) => {
+    const linhas = db.prepare('SELECT nome, dados, criado_em, atualizado_em FROM lab_arquivos_json WHERE usuario = ? ORDER BY atualizado_em DESC').all(req.usuario.id);
+    res.json({ arquivos: linhas.map((x) => { let dados = {}; try { dados = JSON.parse(x.dados || '{}'); } catch (_) {} return { ...x, dados }; }) });
+  }));
+  app.put(B + '/arquivos-json', requireUsuario, h(async (req, res) => {
+    const b = req.body || {};
+    const nome = s(b.nome, 160);
+    if (!/^[a-z0-9][a-z0-9._-]*\.json$/i.test(nome)) throw erro(400, 'Nome de JSON inválido.');
+    const dados = b.dados && typeof b.dados === 'object' ? b.dados : null;
+    if (!dados) throw erro(400, 'O JSON precisa ser um objeto.');
+    const texto = JSON.stringify(dados);
+    if (texto.length > 250000) throw erro(400, 'O JSON excede o limite permitido.');
+    const agora = nowISO();
+    db.prepare(`INSERT INTO lab_arquivos_json (usuario, nome, dados, criado_em, atualizado_em) VALUES (?,?,?,?,?)
+                ON CONFLICT(usuario, nome) DO UPDATE SET dados = excluded.dados, atualizado_em = excluded.atualizado_em`)
+      .run(req.usuario.id, nome, texto, agora, agora);
+    res.json({ ok: true, nome, atualizado_em: agora });
+  }));
+  app.delete(B + '/arquivos-json', requireUsuario, h(async (req, res) => {
+    const nome = s((req.body || {}).nome || req.query.nome, 160);
+    db.prepare('DELETE FROM lab_arquivos_json WHERE usuario = ? AND nome = ?').run(req.usuario.id, nome);
+    res.json({ ok: true });
+  }));
+
   // ---- favoritos ----
   app.get(B + '/favoritos', requireUsuario, h(async (req, res) => {
     res.json({ favoritos: db.prepare('SELECT url, titulo, criado_em FROM lab_favoritos WHERE usuario = ? ORDER BY criado_em DESC').all(req.usuario.id) });
@@ -195,6 +220,7 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
       jogos: db.prepare('SELECT * FROM lab_jogos WHERE usuario = ?').all(u),
       perfil: db.prepare('SELECT * FROM lab_perfil WHERE usuario = ?').get(u) || null,
       jornada_guitarra: db.prepare('SELECT dados, atualizado_em FROM lab_jornada_progresso WHERE usuario = ?').get(u) || null,
+      arquivos_json: db.prepare('SELECT nome, dados, criado_em, atualizado_em FROM lab_arquivos_json WHERE usuario = ?').all(u),
       atividades_criadas: db.prepare('SELECT id, titulo, config, criado_em FROM lab_atividades WHERE professor = ?').all(u),
       tutor_de_braco: require('./tutor-braco').dadosDe(u),
       tocar_junto: require('../tocar').dadosDe(u),
@@ -211,6 +237,7 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     db.prepare('DELETE FROM lab_jogos WHERE usuario = ?').run(u);
     db.prepare('DELETE FROM lab_perfil WHERE usuario = ?').run(u);
     db.prepare('DELETE FROM lab_jornada_progresso WHERE usuario = ?').run(u);
+    db.prepare('DELETE FROM lab_arquivos_json WHERE usuario = ?').run(u);
     require('./tutor-braco').excluirDe(u);
     require('../tocar').excluirDe(u);
     require('../tocar').excluirCampanhasDe(u);
