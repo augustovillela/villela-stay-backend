@@ -25,5 +25,7 @@ assert(LICOES.every((l) => Array.isArray(l.prereq) && Array.isArray(l.blocos) &&
 assert(LICOES.every((l) => l.blocos.some((b) => b.t === 'praticar')));
 assert(LICOES.every((l) => l.blocos.some((b) => b.t === 'aprofundar')));
 assert(LICOES.every((l) => l.blocos.some((b) => b.t === 'ferramenta' && b.slug)));
+assert(LICOES.every((l) => l.blocos.filter((b) => b.t === 'praticar').every((b) => b.rudimento && b.rudimento.nome && b.rudimento.nome !== '[object Object]')));
+assert(LICOES.every((l) => l.blocos.filter((b) => b.t === 'aprofundar').every((b) => !b.html.includes('[object Object]'))));
 
 console.log(JSON.stringify({ ok: true, curso: CURSO.id, capitulos: capitulos.length, rudimentos: RUDIMENTOS.length, facilitadores: RUDIMENTOS[0].facilitadores.length }));

@@ -28,7 +28,7 @@ const LICOES = capitulos.map((c, i) => {
       { t: 'praticar', tipo: 'bateria', bpmInicial, bpmMeta, rudimento },
       { t: 'ferramenta', slug: ferramentas[i] },
       { t: 'lista', itens: ['Acelerar antes de conseguir três repetições estáveis.', 'Confundir força com controle.', 'Praticar o gesto isolado e esquecer o pulso.'] },
-      { t: 'aprofundar', html: `Facilitador recomendado: preparar → isolar → alternar → orquestrar → musicalizar → acelerar com critério → diagnosticar → registrar. Rudimento de apoio: ${rudimento}. Cartão: ${RUDIMENTOS[i % RUDIMENTOS.length].sticking}; ${RUDIMENTOS[i % RUDIMENTOS.length].bpmStart}–${RUDIMENTOS[i % RUDIMENTOS.length].bpmTarget} BPM; ${RUDIMENTOS[i % RUDIMENTOS.length].practiceMinutes} minutos.` },
+      { t: 'aprofundar', html: `Facilitador recomendado: preparar → isolar → alternar → orquestrar → musicalizar → acelerar com critério → diagnosticar → registrar. Rudimento de apoio: ${rudimento.nome}. Cartão: ${rudimento.sticking}; ${rudimento.bpmStart}–${rudimento.bpmTarget} BPM; ${rudimento.practiceMinutes} minutos.` },
     ],
   };
 });
