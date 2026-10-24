@@ -7,6 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
+from reportlab.graphics.shapes import Drawing, Rect, Circle, Line, String, Polygon
 from reportlab.lib import colors
 
 OUT = Path(__file__).resolve().parents[2] / 'output' / 'pdf'
@@ -61,10 +62,50 @@ DETALHES = {
     '20': ['Uma apresentação confiável prepara entrada, transição, pausa, final e recuperação de erro. Treine a continuidade: um erro não precisa interromper a música.', 'Divida a semana entre aquecimento, técnica, repertório, ouvido, criação e revisão. Exercícios recorrentes continuam importantes porque mantêm coordenação e pulso.', 'Use evidências: BPM limpo, tomadas completas, ruídos, estabilidade, memória da forma e conforto físico. Compare registros semanais em vez de confiar apenas na sensação.', 'Domínio: tocar uma música inteira, registrar três evidências e escolher um foco específico para a próxima sessão.'],
 }
 
+def ilustracao(num, titulo, foco):
+    """Mapa vetorial original: uma imagem pequena, legível e ligada ao capítulo."""
+    d = Drawing(480, 112)
+    navy, blue, gold, green, pale = '#17344D', '#245B78', '#D97706', '#1D7A61', '#EAF4F7'
+    d.add(Rect(0, 0, 480, 112, rx=12, ry=12, fillColor=colors.HexColor(pale), strokeColor=colors.HexColor('#C7DCE4')))
+    labels = {
+        '01': ['CORPO', 'INSTRUMENTO', 'SOM'], '02': ['PULSO', 'SUBDIVISÃO', 'SILÊNCIO'],
+        '03': ['FUND.', '3ª', '5ª'], '04': ['FORMA', 'DEDO-GUIA', 'TROCA'], '05': ['CORDA', 'CASA', 'DURAÇÃO'],
+        '06': ['TÔNICA', 'NOTAS', 'ALVO'], '07': ['ATAQUE', 'ARTICULAÇÃO', 'TIMBRE'], '08': ['SEÇÃO', 'MOTIVO', 'RESOLUÇÃO'],
+        '09': ['AQUECER', 'ESTUDAR', 'REGISTRAR'], '10': ['AFINAR', 'COMPARAR', 'OUVIR'], '11': ['SEMITOM', 'INTERVALO', 'NOME'],
+        '12': ['I', 'IV', 'V', 'I'], '13': ['BAIXO', 'HARMONIA', 'MELODIA'], '14': ['POP', 'FOLK', 'REGGAE'],
+        '15': ['VOZ COMUM', 'MOVIMENTO', 'NOVO ACORDE'], '16': ['MÃO', 'GANHO', 'ESPAÇO'], '17': ['ATAQUE', 'PAUSA', 'RETORNO'],
+        '18': ['CANTAR', 'PROCURAR', 'CONFERIR'], '19': ['BASE', 'CAMADA', 'ARRANJO'], '20': ['IDEIA', 'VARIAÇÃO', 'FORMA']
+    }.get(num, ['OUVIR', 'COMPREENDER', 'APLICAR'])
+    width = 430 / max(1, len(labels) - 1)
+    for i, label in enumerate(labels):
+        x = 28 + i * width
+        fill = colors.HexColor(green if i == 0 else gold if i == len(labels) - 1 else blue)
+        d.add(Circle(x, 61, 22, fillColor=fill, strokeColor=colors.HexColor(navy), strokeWidth=1.4))
+        d.add(String(x, 57, label, textAnchor='middle', fontName='Helvetica-Bold', fontSize=8, fillColor=colors.white))
+        if i < len(labels) - 1: d.add(Line(x + 23, 61, x + width - 23, 61, strokeColor=colors.HexColor(gold), strokeWidth=2))
+    d.add(String(240, 18, f'Mapa do capítulo {num} · {titulo[:58]}', textAnchor='middle', fontName='Helvetica', fontSize=8.5, fillColor=colors.HexColor(navy)))
+    return d
+
 def rodape(canvas, doc):
     canvas.saveState(); canvas.setFont('Helvetica', 8); canvas.setFillColor(colors.HexColor('#5B6478'))
     canvas.drawCentredString(80*mm, 10*mm, f'Musique · Villela Music · página {doc.page}')
     canvas.restoreState()
+
+def capa_arte(titulo, foco):
+    d = Drawing(480, 220)
+    navy, blue, gold, green = colors.HexColor('#17344D'), colors.HexColor('#245B78'), colors.HexColor('#D97706'), colors.HexColor('#1D7A61')
+    d.add(Rect(0, 0, 480, 220, rx=18, ry=18, fillColor=navy, strokeColor=navy))
+    d.add(Circle(395, 115, 88, fillColor=colors.Color(1,1,1,alpha=.07), strokeColor=None))
+    d.add(Circle(395, 115, 58, fillColor=colors.Color(1,1,1,alpha=.05), strokeColor=None))
+    for y in [48, 72, 96, 120, 144, 168]: d.add(Line(275, y, 470, y, strokeColor=colors.HexColor('#DCEAF0'), strokeWidth=1.3))
+    for x in [310, 350, 390, 430]: d.add(Line(x, 35, x, 181, strokeColor=colors.HexColor('#DCEAF0'), strokeWidth=1))
+    for x, y, c in [(310,96,green),(350,144,gold),(390,72,green),(430,120,gold)]: d.add(Circle(x,y,8,fillColor=c,strokeColor=navy,strokeWidth=2))
+    d.add(String(28, 181, 'MUSIQUE · VILLELA MUSIC', fontName='Helvetica-Bold', fontSize=10, fillColor=colors.HexColor('#F5DFB2'), letterSpacing=1.5))
+    d.add(String(28, 131, titulo, fontName='Helvetica-Bold', fontSize=22, fillColor=colors.white))
+    d.add(String(28, 101, 'COLEÇÃO DE INSTRUMENTOS', fontName='Helvetica-Bold', fontSize=9, fillColor=colors.HexColor('#C7E8D4'), letterSpacing=1.2))
+    d.add(String(28, 72, foco, fontName='Helvetica', fontSize=10, fillColor=colors.HexColor('#DCEAF0')))
+    d.add(String(28, 34, 'OUVIR · COMPREENDER · PRATICAR · TOCAR', fontName='Helvetica-Bold', fontSize=9, fillColor=colors.HexColor('#F5DFB2')))
+    return d
 
 def gerar(nome, titulo, foco, capitulos):
     estilos = getSampleStyleSheet()
@@ -74,14 +115,12 @@ def gerar(nome, titulo, foco, capitulos):
     body = ParagraphStyle('body', parent=estilos['BodyText'], fontSize=10.5, leading=16, textColor=colors.HexColor('#1F2933'), spaceAfter=10)
     meta = ParagraphStyle('meta', parent=body, fontSize=8, textColor=colors.HexColor('#8A4B08'))
     story = []
-    capa_box = Table([[Paragraph('MUSIQUE · VILLELA MUSIC<br/><br/>' + titulo, capa)], [Paragraph(f'Livro ilustrado · {foco}', subt)]], colWidths=[150*mm], rowHeights=[105*mm, 28*mm])
-    capa_box.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#17344D')),('BACKGROUND',(0,1),(-1,1),colors.HexColor('#245B78')),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('ALIGN',(0,0),(-1,-1),'CENTER'),('BOX',(0,0),(-1,-1),1,colors.HexColor('#17344D'))]))
-    story += [Spacer(1, 35*mm), capa_box, PageBreak(), Paragraph('Índice', h1)]
+    story += [Spacer(1, 25*mm), capa_arte(titulo, foco), Spacer(1, 6*mm), Paragraph('Livro ilustrado da coleção Musique · Villela Music', subt), PageBreak(), Paragraph('Índice', h1)]
     story += [Paragraph(f'{num} · {tit}', body) for num, tit, _ in capitulos]
     story.append(PageBreak())
     for num, tit, texto in capitulos:
         detalhes = DETALHES.get(num, [])
-        story += [Paragraph(f'Capítulo {num}', meta), Paragraph(tit, h1)]
+        story += [Paragraph(f'Capítulo {num}', meta), Paragraph(tit, h1), ilustracao(num, tit, foco), Spacer(1, 3*mm)]
         for i, paragrafo in enumerate(texto):
             rotulo = 'Visão geral' if i == 0 else ('Aprofundamento ' + str(i))
             story += [Paragraph(rotulo, ParagraphStyle('secao' + num + str(i), parent=estilos['Heading2'], fontSize=12, leading=15, textColor=colors.HexColor('#245B78'), spaceBefore=7, spaceAfter=4)), Paragraph(paragrafo, body)]
