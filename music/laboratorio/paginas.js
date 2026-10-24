@@ -424,6 +424,8 @@ function relacionados(slug) {
     'curso-guitarra': ['/music/criar/curso-guitarra-aulas', '/music/tutor-braco', '/music/criar/batidas', '/music/tocar'],
     'curso-guitarra-aulas': ['/music/criar/jornada-guitarra', '/music/criar/curso-guitarra', '/music/criar/acordes-guitarra', '/music/tutor-braco'],
     'curso-guitarra-livro': ['/music/criar/curso-guitarra-aulas', '/music/criar/jornada-guitarra', '/music/criar/acordes-guitarra', '/music/criar/laboratorio-batidas'],
+    'curso-violao-livro': ['/music/criar/curso-guitarra-livro', '/music/criar/jornada-guitarra', '/music/criar/laboratorio-batidas', '/music/tocar'],
+    'curso-guitarra-edicao': ['/music/criar/curso-guitarra-livro', '/music/criar/jornada-guitarra', '/music/criar/tecnicas-guitarra', '/music/criar/improvisacao-guitarra'],
     'acordes-guitarra': ['/music/criar/curso-guitarra-aulas', '/music/criar/troca-acordes', '/music/tutor-braco'],
     'tecnicas-guitarra': ['/music/criar/jornada-guitarra', '/music/tutor-braco', '/music/criar/rotina-ouvido-guitarra'],
     'improvisacao-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/mapa-braco-guitarra', '/music/tutor-braco'],
