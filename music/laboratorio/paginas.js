@@ -151,6 +151,19 @@ ${relacionados(f.slug)}`;
     res.set('Content-Type', 'application/pdf').set('Content-Disposition', 'inline; filename="curso-teoria-musical.pdf"').set('Cache-Control', 'no-cache').sendFile(pdf);
   });
 
+  const livrosInstrumentosPdf = {
+    'curso-violao-livro': ['curso-violao.pdf', 'curso-violao.pdf'],
+    'curso-guitarra-edicao': ['curso-guitarra.pdf', 'curso-guitarra.pdf'],
+    'curso-guitarra-livro': ['curso-violao-guitarra.pdf', 'curso-violao-guitarra.pdf'],
+  };
+  Object.entries(livrosInstrumentosPdf).forEach(([slug, [arquivo, nome]]) => {
+    app.get(`/music/criar/${slug}.pdf`, (req, res) => {
+      const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', arquivo);
+      if (!fs.existsSync(pdf)) return res.status(404).send('PDF ainda não foi gerado.');
+      res.set('Content-Type', 'application/pdf').set('Content-Disposition', `inline; filename="${nome}"`).set('Cache-Control', 'no-cache').sendFile(pdf);
+    });
+  });
+
   app.get('/music/curso-teoria', opcional, (req, res) => {
     const ctx = ctxDe(req);
     const ls = licoesComAcesso(ctx);
