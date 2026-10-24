@@ -1,0 +1,1262 @@
+{
+  "capitulos": [
+    {
+      "id": "fundamentos",
+      "nivel": "Começo",
+      "titulo": "Som, postura e mapa de estudo",
+      "resumo": "Antes da velocidade, organize o corpo, a atenção e o som.",
+      "texto": [
+        "Violão e guitarra partem da mesma linguagem: cordas, casas, notas, acordes, ritmo e escuta. A diferença está no timbre, na resposta do instrumento e nas funções que você pode assumir no arranjo.",
+        "Sente-se ou fique de pé de modo que o instrumento permaneça estável sem ser apertado. Ombros baixos, punho sem colapso e respiração livre são critérios práticos, não uma pose fixa.",
+        "O primeiro objetivo é repetir um som limpo e reconhecer quando ele está limpo. A técnica será construída em blocos curtos, com pausa e registro do que mudou.",
+        "Comece pelo corpo: apoie o instrumento sem apertar, mantenha o punho alinhado e permita que a respiração continue durante o ataque. Grave dez segundos de cordas soltas e descreva o som, o ruído e a sensação física.",
+        "O primeiro mapa do aluno é a relação entre gesto e resultado. Toque a mesma corda com polpa, unha e palheta; compare brilho, volume e duração. A escolha correta é a que produz o som pedido sem tensão desnecessária.",
+        "Estude em ciclos curtos: ouvir, repetir, pausar e registrar. Um registro útil anota andamento, número de repetições limpas, ruído percebido e a próxima mudança concreta.",
+        "Domínio: você consegue preparar o instrumento, produzir seis sons limpos e explicar o que mudou entre uma tentativa e outra."
+      ],
+      "visual": "postura",
+      "links": [
+        [
+          "Afinar e encontrar o pulso",
+          "/music/aprender/pulso-e-compasso",
+          "Estudar"
+        ],
+        [
+          "Aquecimento diário",
+          "/music/criar/aquecimento-guitarra",
+          "Praticar"
+        ],
+        [
+          "Jornada do aluno",
+          "/music/criar/jornada-guitarra",
+          "Retomar"
+        ]
+      ],
+      "pratica": "Toque cordas soltas, conte quatro tempos e registre como sua mão e seu ombro se sentem."
+    },
+    {
+      "id": "pulso",
+      "nivel": "Fundamentos",
+      "titulo": "Pulso, subdivisão e mão direita",
+      "resumo": "O ritmo continua mesmo quando você não toca.",
+      "texto": [
+        "Conte em voz alta antes de acelerar. Em 4/4, sinta quatro pulsos; entre eles, divida em “e” para colcheias. A mão pode continuar o movimento enquanto o som fica em silêncio.",
+        "No violão, a mão direita sustenta a levada. Na guitarra, ela também controla ataque, abafamento e precisão. Toque forte e fraco deliberadamente, sem transformar volume em tensão.",
+        "Uma batida só está aprendida quando sobrevive a uma troca de acorde e a uma pausa. Por isso a prática combina metrônomo, escuta e repetição musical.",
+        "O pulso é uma referência contínua, não apenas o clique do metrônomo. Caminhe ou balance a mão marcando quatro tempos e conte “1 e 2 e 3 e 4 e” sem tocar; só depois distribua ataques.",
+        "Treine três camadas: semínimas, colcheias e síncopes. Na síncope, o movimento da mão continua mesmo quando não há som. O silêncio precisa ter duração tão precisa quanto o ataque.",
+        "Use um acorde confortável e grave quatro compassos. Confira se o primeiro tempo está estável, se o contratempo não corre e se a troca de acorde não interrompe o movimento.",
+        "Domínio: você mantém o pulso por dois minutos, atravessa uma pausa sem acelerar e consegue voltar ao tempo depois de uma troca."
+      ],
+      "visual": "pulso",
+      "links": [
+        [
+          "Laboratório de batidas",
+          "/music/criar/laboratorio-batidas",
+          "Praticar"
+        ],
+        [
+          "Fazedor de batidas",
+          "/music/criar/batidas",
+          "Criar"
+        ],
+        [
+          "Laboratório Pozzoli",
+          "/music/criar/pozzoli-ritmos",
+          "Ler ritmo"
+        ],
+        [
+          "Metrônomo distorcido",
+          "/music/criar/metronomo-distorcido",
+          "Jogar"
+        ]
+      ],
+      "pratica": "Faça quatro compassos de semínimas, quatro de colcheias e quatro com pausas, sem perder o movimento da mão."
+    },
+    {
+      "id": "acordes",
+      "nivel": "Iniciante",
+      "titulo": "Acordes abertos e leitura de cifras",
+      "resumo": "Transforme símbolos em formas, sons e funções musicais.",
+      "texto": [
+        "A cifra indica o nome do acorde; o diagrama mostra onde colocar os dedos; o ouvido confirma se a forma está limpa. Aprenda C, G, D, A, E, Am, Em e Dm em pares, não como uma lista isolada.",
+        "Observe a fundamental e as notas que se repetem. Um acorde não é apenas uma posição: é uma coleção de alturas que pode ser transportada e rearranjada.",
+        "Ao tocar uma música, leia a estrutura antes de executar: introdução, verso, refrão e ponte. Assim você não fica preso a trocar acordes sem compreender a forma.",
+        "Aprenda a ler um diagrama em ordem: nome, corda mais grave, casas, dedos, cordas abertas e cordas que não devem soar. Toque cada corda isoladamente antes de raspar o acorde inteiro.",
+        "Comece com C, G, D, A, E, Am, Em e Dm. Para cada forma, diga a fundamental, identifique a terça e a quinta e observe quais notas se repetem nas cordas.",
+        "O acorde só está pronto quando três verificações passam: todas as notas soam, a mão permanece relaxada e a forma pode ser preparada antes do pulso sem interromper a música.",
+        "Domínio: você monta oito acordes abertos, identifica suas fundamentais e troca entre quatro pares sem perder quatro tempos."
+      ],
+      "visual": "acorde",
+      "links": [
+        [
+          "Acordes para violão e guitarra",
+          "/music/criar/acordes-guitarra",
+          "Consultar"
+        ],
+        [
+          "Troca limpa de dois acordes",
+          "/music/criar/troca-acordes",
+          "Praticar"
+        ],
+        [
+          "Transpositor de acordes",
+          "/music/criar/transpositor",
+          "Criar"
+        ],
+        [
+          "Desafio de acordes",
+          "/music/praticar/desafio-acordes",
+          "Jogar"
+        ]
+      ],
+      "pratica": "Escolha dois acordes. Toque quatro tempos em cada um, pare, confira cada corda e repita por cinco minutos."
+    },
+    {
+      "id": "trocas",
+      "nivel": "Iniciante",
+      "titulo": "Trocas, pestanas e acordes com cor",
+      "resumo": "Economize movimento e compreenda a direção harmônica.",
+      "texto": [
+        "Procure dedos-guia: dedos que permanecem ou percorrem pouca distância. A troca fica mais rápida quando a mão não abandona a forma inteira.",
+        "A pestana deve ser preparada em pequenas partes. Primeiro faça soar duas ou três cordas; depois aumente o conjunto. Dor, formigamento ou pressão excessiva são sinais para parar e reorganizar a posição.",
+        "Compare maior, menor, dominante, sétima maior, suspenso e diminuto. As sensações são sugestões: o contexto, o ritmo e o timbre podem transformar a cor de qualquer acorde.",
+        "Uma troca eficiente começa antes do próximo tempo. Prepare a forma durante o último movimento do acorde anterior e procure dedos-guia que permanecem ou se deslocam por apenas uma casa.",
+        "Para pestanas, reduza a tarefa: pressione duas cordas, confira a afinação, acrescente outras duas e só então forme o acorde completo. Se a mão endurecer, diminua a pressão e revise o polegar.",
+        "Compare C–Am, G–D, E–A e F–C. Conte em voz alta, faça ciclos de trinta segundos e descanse. Velocidade só entra depois de três ciclos sem ruído.",
+        "Domínio: você identifica o dedo que mais atrasa a troca, corrige o movimento e executa cinco ciclos limpos no andamento escolhido."
+      ],
+      "visual": "trocas",
+      "links": [
+        [
+          "Acordes com diagramas e sensações",
+          "/music/criar/acordes-guitarra",
+          "Estudar"
+        ],
+        [
+          "Mapa do braço",
+          "/music/criar/mapa-braco-guitarra",
+          "Explorar"
+        ],
+        [
+          "Identificador de acordes",
+          "/music/explorar/identificar-acorde",
+          "Consultar"
+        ],
+        [
+          "Tutor de braço",
+          "/music/tutor-braco",
+          "Praticar"
+        ]
+      ],
+      "pratica": "Toque C–Am–F–G lentamente, mantendo o pulso. Depois transforme uma forma maior em menor ou dominante e ouça a nota que mudou."
+    },
+    {
+      "id": "leitura",
+      "nivel": "Intermediário",
+      "titulo": "Cifras, tablatura e partitura",
+      "resumo": "Leia o que está escrito e escolha uma posição musicalmente eficiente.",
+      "texto": [
+        "Na tablatura, as linhas representam as cordas e os números representam casas. Leia da esquerda para a direita, respeitando duração, pausas e sinais de técnica.",
+        "Na partitura, a altura e o ritmo ficam explícitos. Mesmo quando você toca por cifra, reconhecer a direção melódica melhora o ouvido e ajuda a encontrar uma frase em mais de uma posição.",
+        "A melhor posição é a que prepara o próximo gesto. Compare duas digitações e escolha a que reduz saltos desnecessários, mantém o timbre desejado e deixa a mão relaxada.",
+        "Na tablatura, leia corda, casa, duração e articulação juntos. Antes de tocar, fale as casas e marque as subdivisões; isso evita transformar uma sequência visual em uma corrida automática.",
+        "Na partitura, a posição da nota e o acidente indicam altura e grafia. Encontre a mesma nota em duas regiões do braço e compare timbre, digitação e preparação para o próximo gesto.",
+        "Escolha uma frase curta, leia sem instrumento, toque em andamento lento e depois confira com o áudio. Marque onde você precisou parar: esse trecho vira o foco da próxima sessão.",
+        "Domínio: você lê quatro compassos sem interromper o pulso e consegue explicar por que escolheu aquela posição."
+      ],
+      "visual": "leitura",
+      "links": [
+        [
+          "Mapa do braço",
+          "/music/criar/mapa-braco-guitarra",
+          "Estudar"
+        ],
+        [
+          "Tutor do braço",
+          "/music/tutor-braco",
+          "Praticar"
+        ],
+        [
+          "Pauta e claves",
+          "/music/explorar/pauta",
+          "Ler"
+        ],
+        [
+          "Tocar junto",
+          "/music/tocar",
+          "Aplicar"
+        ]
+      ],
+      "pratica": "Escolha quatro compassos de uma tablatura, fale as casas, toque lentamente e depois acompanhe a gravação no modo tocar junto."
+    },
+    {
+      "id": "escalas",
+      "nivel": "Intermediário",
+      "titulo": "Escalas, pentatônicas e fraseado",
+      "resumo": "Use o braço para criar melodias que pousam nas notas certas.",
+      "texto": [
+        "Localize as tônicas antes de memorizar o desenho completo. A pentatônica menor é uma porta de entrada para blues e rock; a maior funciona bem em pop e folk.",
+        "Escala não é corrida de notas. Toque poucas notas, varie o ritmo e termine em uma nota do acorde. A pausa é parte da frase.",
+        "Relacione a escala ao campo harmônico. Quando você entende quais notas mudam de um modo para outro, o braço deixa de ser um desenho isolado e vira um mapa de escolhas.",
+        "Localize a tônica em mais de uma corda antes de iniciar o desenho. Toque a escala em grupos de três e quatro notas, depois retorne à tônica por caminhos diferentes.",
+        "A pentatônica serve para limitar escolhas e ouvir melhor. Termine frases em notas do acorde, altere o ritmo e deixe espaços; uma escala só vira música quando há direção.",
+        "Relacione cada desenho a graus, intervalos e acordes. Em vez de memorizar apenas casas, diga “tônica, terça, quarta, quinta” enquanto toca.",
+        "Domínio: você toca uma escala em duas regiões, encontra a tônica sem consultar o desenho e improvisa quatro compassos com começo, desenvolvimento e resolução."
+      ],
+      "visual": "escala",
+      "links": [
+        [
+          "Mapa do braço",
+          "/music/criar/mapa-braco-guitarra",
+          "Estudar"
+        ],
+        [
+          "Atlas visual de escalas",
+          "/music/explorar/atlas-escalas",
+          "Explorar"
+        ],
+        [
+          "Improvisação guiada",
+          "/music/criar/improvisacao-guitarra",
+          "Criar"
+        ],
+        [
+          "Rotina de ouvido",
+          "/music/criar/rotina-ouvido-guitarra",
+          "Ouvir"
+        ]
+      ],
+      "pratica": "Use cinco notas e faça uma pergunta de dois compassos e uma resposta de dois compassos, terminando na tônica."
+    },
+    {
+      "id": "tecnicas",
+      "nivel": "Intermediário",
+      "titulo": "Articulação, dinâmica e timbre",
+      "resumo": "Faça cada nota ter intenção: ataque, duração, afinação e espaço.",
+      "texto": [
+        "Hammer-on e pull-off nascem da mão esquerda; slide é uma viagem entre duas alturas; bend precisa chegar afinado; vibrato deve oscilar ao redor da nota.",
+        "Pratique uma técnica por vez em andamento lento. Compare a frase sem efeito e com efeito, observando volume, afinação e ruído.",
+        "Na guitarra elétrica, escolha o timbre depois de decidir a função. Ganho, delay e reverb devem ampliar uma ideia que já funciona limpa.",
+        "Isole uma articulação por vez. No hammer-on e pull-off, a mão direita não deve compensar a falta de energia da esquerda; no slide, a nota de chegada precisa ser afinada; no bend, compare com a nota-alvo.",
+        "Pratique sem efeitos, em andamento confortável e com gravação. Depois acrescente ganho ou delay e verifique se o efeito ampliou a intenção ou apenas escondeu ruído.",
+        "Vibrato começa depois de a nota estabilizar. Varie largura e velocidade, mas mantenha o centro da nota. A dinâmica deve ser planejada como parte da frase.",
+        "Domínio: você executa a técnica escolhida três vezes afinada, sem ruído excessivo e dentro do pulso."
+      ],
+      "visual": "tecnicas",
+      "links": [
+        [
+          "Técnicas de articulação",
+          "/music/criar/tecnicas-guitarra",
+          "Praticar"
+        ],
+        [
+          "Acordes e arpejos",
+          "/music/criar/acordes-guitarra",
+          "Ouvir"
+        ],
+        [
+          "Tocar junto",
+          "/music/tocar",
+          "Aplicar"
+        ],
+        [
+          "Desafio de acordes",
+          "/music/praticar/desafio-acordes",
+          "Treinar ouvido"
+        ]
+      ],
+      "pratica": "Grave uma frase curta sem efeitos. Repita usando apenas uma técnica e compare a afinação, o pulso e o ruído."
+    },
+    {
+      "id": "repertorio",
+      "nivel": "Avançado",
+      "titulo": "Repertório, estilos e improvisação",
+      "resumo": "Transforme técnica em música completa e decisões próprias.",
+      "texto": [
+        "Aprenda por seções: introdução, verso, refrão, ponte e final. O checkpoint não é tocar uma parte rápida; é atravessar a música sem perder pulso, forma e intenção.",
+        "Pop, rock, blues, MPB, sertanejo, reggae, folk e metal pedem escolhas diferentes de ataque, espaço, articulação e timbre. Estude o estilo pelo que a música faz, não por um rótulo fixo.",
+        "Improvisar é ouvir a harmonia, escolher um material limitado e responder a uma ideia. Repetição, variação, silêncio e resolução tornam a frase compreensível.",
+        "Desmonte cada música em entrada, verso, refrão, ponte e final. Aprenda a transição entre seções antes de tentar a execução inteira; a forma é uma habilidade própria.",
+        "Organize a semana em manutenção, aquisição e performance. Mantenha exercícios recorrentes, aprenda um trecho novo e termine com uma tomada completa sem parar.",
+        "Use checkpoints observáveis: andamento limpo, número de erros recuperados, estabilidade das trocas, dinâmica e memória da letra ou da forma.",
+        "Domínio: você toca a música inteira, recupera um erro sem interromper e consegue explicar qual habilidade ainda precisa de manutenção."
+      ],
+      "visual": "repertorio",
+      "links": [
+        [
+          "Desmontar uma música",
+          "/music/criar/desmontar-musica",
+          "Organizar"
+        ],
+        [
+          "Repertório e checkpoints",
+          "/music/criar/repertorio-checkpoints",
+          "Acompanhar"
+        ],
+        [
+          "Improvisação guiada",
+          "/music/criar/improvisacao-guitarra",
+          "Criar"
+        ],
+        [
+          "Tocar junto",
+          "/music/tocar",
+          "Tocar"
+        ],
+        [
+          "Revisão semanal",
+          "/music/criar/checkin-semanal-guitarra",
+          "Revisar"
+        ]
+      ],
+      "pratica": "Escolha uma música, divida em seções, registre o trecho mais difícil e faça uma tomada completa no fim da semana."
+    },
+    {
+      "id": "afinacao-manutencao",
+      "nivel": "Começo",
+      "titulo": "Afinação, cordas e cuidados com o instrumento",
+      "resumo": "Um instrumento regulado ajuda o ouvido a aprender a verdade do som.",
+      "texto": [
+        "Afine sempre antes de estudar. A afinação padrão é E–A–D–G–B–E, da corda mais grave à mais aguda; outras afinações são ferramentas musicais e devem ser nomeadas para que você saiba o que mudou.",
+        "Troque cordas gastas, limpe o instrumento com produtos adequados e observe trastes, tarraxas, ponte e cabo. Problemas mecânicos não devem ser compensados apertando mais a mão.",
+        "Use o afinador como referência e, depois, confira acordes e oitavas pelo ouvido. A afinação é uma habilidade auditiva, não apenas uma luz verde no aplicativo."
+      ],
+      "visual": "afinacao",
+      "links": [
+        [
+          "Afinar e encontrar o pulso",
+          "/music/aprender/pulso-e-compasso",
+          "Estudar"
+        ],
+        [
+          "Mapa do braço",
+          "/music/criar/mapa-braco-guitarra",
+          "Conferir oitavas"
+        ],
+        [
+          "Tutor de braço",
+          "/music/tutor-braco",
+          "Ouvir"
+        ]
+      ],
+      "pratica": "Afine, toque a mesma nota em duas posições e compare as batidas entre elas."
+    },
+    {
+      "id": "notas-intervalos",
+      "nivel": "Fundamentos",
+      "titulo": "Notas, semitons e intervalos",
+      "resumo": "Entenda a distância entre sons antes de empilhar acordes.",
+      "texto": [
+        "As doze classes de altura se repetem em oitavas. Um semitom é a menor distância usada no sistema temperado; dois semitons formam um tom. No braço, cada casa normalmente representa um semitom.",
+        "Intervalos têm número e qualidade: segunda, terça, quarta, quinta, sexta, sétima e oitava podem ser maiores, menores, justos, aumentados ou diminutos. O número vem das letras; a qualidade vem da distância real.",
+        "Nomear o intervalo ajuda a ouvir sua função. Terças definem maior e menor; quintas dão estabilidade; sétimas criam direção; tensões alteram a cor sem apagar a identidade do acorde."
+      ],
+      "visual": "intervalos",
+      "links": [
+        [
+          "Pauta e claves",
+          "/music/explorar/pauta",
+          "Ler"
+        ],
+        [
+          "Intervalos do acorde",
+          "/music/explorar/intervalos-do-acorde",
+          "Explorar"
+        ],
+        [
+          "Rotina de ouvido",
+          "/music/criar/rotina-ouvido-guitarra",
+          "Ouvir"
+        ]
+      ],
+      "pratica": "Escolha uma corda, toque uma nota e localize a terça, a quinta e a oitava sem olhar o diagrama."
+    },
+    {
+      "id": "campo-harmonico",
+      "nivel": "Fundamentos",
+      "titulo": "Campo harmônico e funções",
+      "resumo": "Veja por que alguns acordes parecem repousar e outros pedem continuação.",
+      "texto": [
+        "Um campo harmônico organiza acordes construídos sobre as notas de uma escala. Em maior, a sequência básica é I, ii, iii, IV, V, vi e vii°. A qualidade muda, mas os graus continuam sendo a referência.",
+        "Tônica é repouso; predominante prepara; dominante cria tensão e costuma apontar de volta para a tônica. Essas funções são tendências, não uma prisão: ritmo, melodia e contexto podem inverter a sensação.",
+        "Aprenda a ouvir progressões como caminhos. A mesma sequência em outro tom conserva os graus, mas muda as notas e as formas."
+      ],
+      "visual": "campo",
+      "links": [
+        [
+          "Círculo de quintas",
+          "/music/explorar/circulo-de-quintas",
+          "Explorar"
+        ],
+        [
+          "Campo harmônico visual",
+          "/music/criar/campo-harmonico",
+          "Consultar"
+        ],
+        [
+          "Laboratório de progressões",
+          "/music/criar/progressoes",
+          "Criar"
+        ],
+        [
+          "Mapa de harmonia",
+          "/music/criar/mapa-harmonia",
+          "Relacionar"
+        ]
+      ],
+      "pratica": "Toque I–V–vi–IV em três tons e diga em voz alta qual acorde é repouso, preparação e tensão."
+    },
+    {
+      "id": "dedilhado",
+      "nivel": "Iniciante",
+      "titulo": "Dedilhado, arpejo e fingerstyle",
+      "resumo": "Faça várias vozes caberem numa única mão direita.",
+      "texto": [
+        "No dedilhado, o polegar costuma cuidar das cordas graves e os dedos das cordas agudas. O mais importante é a regularidade do ciclo, não a força de cada dedo.",
+        "Arpejo pode significar tocar as notas de um acorde em sequência; fingerstyle acrescenta baixo, melodia e preenchimento. Comece com um baixo estável e poucas notas agudas.",
+        "O silêncio entre os padrões revela se a mão está antecipando ou atrasando. Grave o exercício e escute o pulso antes de avaliar a velocidade."
+      ],
+      "visual": "dedilhado",
+      "links": [
+        [
+          "Laboratório de batidas e dedilhados",
+          "/music/criar/laboratorio-batidas",
+          "Praticar"
+        ],
+        [
+          "Acordes e arpejos",
+          "/music/criar/acordes-guitarra",
+          "Ouvir"
+        ],
+        [
+          "Arpejador",
+          "/music/criar/arpejador",
+          "Criar"
+        ],
+        [
+          "Temporizador de estudo",
+          "/music/criar/temporizador-estudo-guitarra",
+          "Organizar"
+        ]
+      ],
+      "pratica": "Mantenha um baixo alternado e toque três notas agudas em cada compasso, primeiro sem trocar acordes."
+    },
+    {
+      "id": "estilos-violao",
+      "nivel": "Intermediário",
+      "titulo": "Acompanhamento de violão por estilo",
+      "resumo": "A mesma harmonia muda de caráter quando o ritmo e o espaço mudam.",
+      "texto": [
+        "No pop, clareza e repetição sustentam a canção. No folk, baixos alternados e dedilhados criam movimento. No reggae, o contratempo é tão importante quanto o acorde.",
+        "MPB explora síncope, inversões e voicings; sertanejo trabalha levadas e respostas; blues usa dominante, shuffle e chamada-resposta. Estude cada estilo ouvindo onde o músico não toca.",
+        "O acompanhamento não compete com a voz. Escolha registro, dinâmica e densidade conforme a seção da música."
+      ],
+      "visual": "estilos",
+      "links": [
+        [
+          "Laboratório de batidas",
+          "/music/criar/laboratorio-batidas",
+          "Praticar"
+        ],
+        [
+          "Fazedor de batidas",
+          "/music/criar/batidas",
+          "Criar"
+        ],
+        [
+          "Desmontar uma música",
+          "/music/criar/desmontar-musica",
+          "Analisar"
+        ],
+        [
+          "Tocar junto",
+          "/music/tocar",
+          "Aplicar"
+        ]
+      ],
+      "pratica": "Toque a mesma progressão com uma batida pop, um dedilhado folk e um contratempo reggae."
+    },
+    {
+      "id": "voicings",
+      "nivel": "Intermediário",
+      "titulo": "Inversões, voicings e condução de vozes",
+      "resumo": "Escolha formas que aproximam as notas e deixam o acompanhamento musical.",
+      "texto": [
+        "Um mesmo acorde pode aparecer em várias regiões. Inversões trocam a nota do baixo; voicings escolhem quais notas ficam próximas; condução de vozes procura o menor movimento entre acordes.",
+        "Na guitarra, formas compactas nas quatro cordas agudas liberam espaço para baixo e voz. No violão, baixos alternados podem definir a direção sem tornar o acorde pesado.",
+        "Ouça as notas comuns entre dois acordes. Elas funcionam como pontes e ajudam a escolher uma digitação confortável."
+      ],
+      "visual": "voicings",
+      "links": [
+        [
+          "Mapa de harmonia",
+          "/music/criar/mapa-harmonia",
+          "Explorar"
+        ],
+        [
+          "Arranjo a quatro vozes",
+          "/music/criar/arranjo-quatro-vozes",
+          "Criar"
+        ],
+        [
+          "Intervalos do acorde",
+          "/music/explorar/intervalos-do-acorde",
+          "Consultar"
+        ],
+        [
+          "Editor de braço",
+          "/music/criar/editor-de-braco",
+          "Montar"
+        ]
+      ],
+      "pratica": "Toque C, Am, F e G usando a posição mais próxima possível e identifique as notas que permanecem."
+    },
+    {
+      "id": "guitarra-eletrica",
+      "nivel": "Intermediário",
+      "titulo": "Guitarra elétrica: sinal, timbre e função",
+      "resumo": "O som elétrico começa na mão e termina numa cadeia de decisões.",
+      "texto": [
+        "Palheta, captador, volume, ganho, equalização, efeitos e amplificação formam uma cadeia. Altere uma variável por vez para saber o que realmente mudou.",
+        "Som limpo revela articulação e afinação; overdrive acrescenta compressão e harmônicos; distorção aumenta a densidade e também evidencia ruídos. O ganho não substitui uma mão precisa.",
+        "Escolha a função antes do timbre: base, riff, resposta, textura ou solo. Depois ajuste ataque, abafamento, sustentação e espaço para ocupar o arranjo."
+      ],
+      "visual": "timbre",
+      "links": [
+        [
+          "Técnicas de articulação",
+          "/music/criar/tecnicas-guitarra",
+          "Praticar"
+        ],
+        [
+          "Metrônomo distorcido",
+          "/music/criar/metronomo-distorcido",
+          "Treinar pulso"
+        ],
+        [
+          "Tocar junto",
+          "/music/tocar",
+          "Aplicar"
+        ],
+        [
+          "Laboratório integrado",
+          "/music/explorar/laboratorio",
+          "Explorar"
+        ]
+      ],
+      "pratica": "Grave a mesma frase limpa e com ganho moderado. Compare ruído, dinâmica e clareza antes de escolher o timbre."
+    },
+    {
+      "id": "palhetada-riffs",
+      "nivel": "Intermediário",
+      "titulo": "Palhetada, riffs e abafamento",
+      "resumo": "Precisão rítmica transforma poucas notas em uma assinatura sonora.",
+      "texto": [
+        "Palhetada alternada reduz esforço e mantém o pulso. Riffs podem usar cordas soltas, power chords, cromatismo e síncopes, mas todos dependem de subdivisão clara.",
+        "O palm mute controla a duração das cordas graves. Abafamento da mão esquerda elimina ressonâncias das cordas vizinhas. Treine o silêncio com a mesma atenção dada ao ataque.",
+        "Comece com duas notas e um ritmo. Aumente a complexidade apenas quando o padrão sobreviver a repetições sem acelerar."
+      ],
+      "visual": "riff",
+      "links": [
+        [
+          "Técnicas de articulação",
+          "/music/criar/tecnicas-guitarra",
+          "Praticar"
+        ],
+        [
+          "Mapa do braço",
+          "/music/criar/mapa-braco-guitarra",
+          "Localizar"
+        ],
+        [
+          "Desafio de acordes",
+          "/music/praticar/desafio-acordes",
+          "Ouvir"
+        ],
+        [
+          "Tocar junto",
+          "/music/tocar",
+          "Aplicar"
+        ]
+      ],
+      "pratica": "Toque um riff de duas notas em oito compassos, alternando palm mute, som aberto e pausa completa."
+    },
+    {
+      "id": "ouvido",
+      "nivel": "Intermediário",
+      "titulo": "Ouvido, transcrição e memória musical",
+      "resumo": "Aprenda a encontrar no instrumento o que você consegue cantar e reconhecer.",
+      "texto": [
+        "Cante uma nota antes de procurá-la. A voz cria uma intenção; a mão testa hipóteses. Comece por melodias curtas e marque onde a frase repousa.",
+        "Para transcrever acordes, ouça primeiro o baixo, depois a qualidade maior ou menor e por fim tensões e inversões. Não tente nomear tudo de uma vez.",
+        "Registre tom provável, andamento, estrutura e trechos difíceis. A transcrição é uma forma de escuta detalhada e também prepara o repertório."
+      ],
+      "visual": "ouvido",
+      "links": [
+        [
+          "Rotina de ouvido",
+          "/music/criar/rotina-ouvido-guitarra",
+          "Praticar"
+        ],
+        [
+          "Transcrever música",
+          "/music/criar/transcrever",
+          "Analisar"
+        ],
+        [
+          "Identificador de acordes",
+          "/music/explorar/identificar-acorde",
+          "Conferir"
+        ],
+        [
+          "Tocar junto",
+          "/music/tocar",
+          "Testar"
+        ]
+      ],
+      "pratica": "Cante quatro notas de uma melodia, encontre-as no braço e confira se a direção e o ritmo coincidem."
+    },
+    {
+      "id": "gravacao",
+      "nivel": "Avançado",
+      "titulo": "Gravação, arranjo e produção caseira",
+      "resumo": "Use o registro para ouvir escolhas e construir camadas.",
+      "texto": [
+        "Uma gravação começa com um pulso confiável e uma forma clara. Grave primeiro uma base simples; depois adicione baixo, segunda guitarra, melodia ou textura.",
+        "Deixe espaço entre as camadas. Duas partes que ocupam o mesmo registro podem mascarar uma à outra; inversões, oitavas e panoramas ajudam a separar funções.",
+        "Compare a tomada com a intenção original. O objetivo não é apagar toda imperfeição, mas identificar quais detalhes ajudam a música e quais distraem."
+      ],
+      "visual": "gravacao",
+      "links": [
+        [
+          "Piano roll harmônico",
+          "/music/criar/piano-roll-harmonico",
+          "Arranjar"
+        ],
+        [
+          "Sequenciador melódico",
+          "/music/criar/sequenciador",
+          "Criar"
+        ],
+        [
+          "Separar trilhas",
+          "/music/criar/separar",
+          "Explorar"
+        ],
+        [
+          "Tocar junto",
+          "/music/tocar",
+          "Revisar"
+        ]
+      ],
+      "pratica": "Grave uma base de quatro compassos, duplique-a com outra oitava e retire uma camada para comparar a clareza."
+    },
+    {
+      "id": "composicao",
+      "nivel": "Avançado",
+      "titulo": "Composição, rearmonização e forma",
+      "resumo": "Use teoria para ampliar possibilidades sem perder a canção.",
+      "texto": [
+        "Comece por uma ideia curta: ritmo, baixo, melodia, acorde ou texto. Depois defina repetição e contraste. Uma forma compreensível permite que a surpresa seja percebida.",
+        "Rearmonizar é trocar o caminho mantendo a função, a melodia ou a emoção. Acordes vizinhos, dominantes secundárias, empréstimos modais e inversões devem ser ouvidos em contexto.",
+        "A teoria serve à decisão. Se uma substituição torna a frase menos cantável ou a forma menos clara, ela talvez não seja melhor para aquela música."
+      ],
+      "visual": "composicao",
+      "links": [
+        [
+          "Compositor visual",
+          "/music/criar/compositor-visual",
+          "Criar"
+        ],
+        [
+          "Acordes vizinhos",
+          "/music/explorar/acordes-vizinhos",
+          "Explorar"
+        ],
+        [
+          "Superestruturas de acordes",
+          "/music/explorar/superestruturas-acordes",
+          "Colorir"
+        ],
+        [
+          "Harmonizador de melodia",
+          "/music/criar/harmonizador-de-melodia",
+          "Aplicar"
+        ]
+      ],
+      "pratica": "Escreva uma progressão de oito compassos, crie uma segunda versão com duas substituições e compare a melodia."
+    },
+    {
+      "id": "performance",
+      "nivel": "Avançado",
+      "titulo": "Performance, rotina e evolução",
+      "resumo": "Transforme estudo isolado em uma apresentação confiável.",
+      "texto": [
+        "Uma execução completa exige preparar entradas, transições, finais, pausas e recuperação de erros. Treine a continuidade, não apenas os trechos confortáveis.",
+        "Divida a semana entre aquecimento, técnica, repertório, ouvido, criação e revisão. Exercícios recorrentes continuam importantes em todos os níveis porque mantêm coordenação e pulso.",
+        "Use registros objetivos: BPM limpo, número de tomadas, ruídos, estabilidade, memória da forma e conforto físico. O progresso aparece na consistência, não apenas na velocidade máxima."
+      ],
+      "visual": "performance",
+      "links": [
+        [
+          "Jornada do aluno",
+          "/music/criar/jornada-guitarra",
+          "Organizar"
+        ],
+        [
+          "Temporizador de estudo",
+          "/music/criar/temporizador-estudo-guitarra",
+          "Praticar"
+        ],
+        [
+          "Revisão semanal",
+          "/music/criar/checkin-semanal-guitarra",
+          "Revisar"
+        ],
+        [
+          "Relatório de progresso",
+          "/music/criar/progresso-guitarra",
+          "Acompanhar"
+        ]
+      ],
+      "pratica": "Faça uma tomada completa, anote três evidências do que melhorou e escolha um único foco para a próxima sessão."
+    }
+  ],
+  "especificos": {
+    "violao": [
+      {
+        "id": "violao-levadas-brasileiras",
+        "nivel": "Violão · específico",
+        "titulo": "Levadas brasileiras: baião, samba e sertanejo",
+        "resumo": "Baixo, acorde, contratempo e silêncio em acompanhamentos acústicos.",
+        "texto": [
+          "Uma levada nasce da relação entre baixo, ataque de acorde e silêncio. Fale a célula rítmica antes de distribuí-la entre polegar e dedos.",
+          "No baião, o baixo alternado cria o motor; no samba, polegar e dedos formam respostas; no sertanejo, regularidade e acento organizam a condução.",
+          "Reduza a densidade nas estrofes e abra o acorde nos refrões. A levada serve à canção.",
+          "No baião, alterne baixo e acorde pensando em uma conversa entre polegar e dedos. O baixo marca o chão; o ataque agudo responde sem cobrir a voz.",
+          "No samba, pratique primeiro o contratempo isolado. Depois acrescente o baixo e, por último, a nota de ligação. O silêncio entre os ataques é parte da levada.",
+          "No sertanejo, diferencie a batida de base do preenchimento. A mão pode continuar o movimento enquanto você reduz a quantidade de cordas na estrofe.",
+          "Domínio: você executa os três padrões por quatro compassos, mantém a contagem e consegue mudar a densidade sem perder o pulso."
+        ],
+        "visual": "levadas-brasileiras",
+        "links": [
+          [
+            "Laboratório de batidas",
+            "/music/criar/laboratorio-batidas",
+            "Praticar"
+          ],
+          [
+            "Fazedor de batidas",
+            "/music/criar/batidas",
+            "Criar"
+          ],
+          [
+            "Tocar junto",
+            "/music/tocar",
+            "Aplicar"
+          ]
+        ],
+        "pratica": "Toque quatro compassos de cada levada mantendo o baixo audível."
+      },
+      {
+        "id": "violao-fingerstyle",
+        "nivel": "Violão · específico",
+        "titulo": "Fingerstyle: independência do polegar e dos dedos",
+        "resumo": "Baixo, harmonia e melodia dentro de um único arranjo.",
+        "texto": [
+          "Comece com um baixo repetido em duas notas e acrescente uma nota aguda quando o polegar estiver estável.",
+          "Distribua polegar para graves, indicador e médio para vozes internas e anelar para melodia. Pratique cada camada antes de juntá-las.",
+          "Independência vem de camadas graduais e de um pulso que continua entre os ataques.",
+          "Comece com o polegar em duas notas graves alternadas. Quando o baixo estiver automático, acrescente indicador e médio nas cordas internas.",
+          "A melodia deve ser ouvida acima do acompanhamento. Toque a nota aguda um pouco mais forte, sem aumentar a tensão da mão.",
+          "Pratique cada camada separada e depois combine baixo, harmonia e melodia em ciclos lentos. Grave para conferir se alguma voz desaparece.",
+          "Domínio: você mantém o baixo regular enquanto executa uma melodia de três notas sem interromper o compasso."
+        ],
+        "visual": "fingerstyle",
+        "links": [
+          [
+            "Laboratório de batidas",
+            "/music/criar/laboratorio-batidas",
+            "Praticar"
+          ],
+          [
+            "Arpejador",
+            "/music/criar/arpejador",
+            "Ouvir"
+          ],
+          [
+            "Piano roll harmônico",
+            "/music/criar/piano-roll-harmonico",
+            "Arranjar"
+          ]
+        ],
+        "pratica": "Mantenha um baixo alternado por oito compassos e acrescente uma melodia de três notas."
+      },
+      {
+        "id": "violao-acompanhamento-vocal",
+        "nivel": "Violão · específico",
+        "titulo": "Acompanhamento para cantar",
+        "resumo": "Toque o suficiente para sustentar voz, letra e forma.",
+        "texto": [
+          "Reduza ataques durante versos densos, deixe o refrão respirar e prepare a troca antes do tempo sem parar a mão.",
+          "Transponha a música para um tom confortável para quem canta. A melhor cifra permite cantar afinado e tocar relaxado.",
+          "Acompanhar é ouvir o outro: adapte volume, registro e densidade à seção da música.",
+          "Escolha um tom que permita cantar sem forçar. O violão deve apoiar a afinação da voz, não competir com ela em volume ou registro.",
+          "Durante frases densas, use menos cordas e menos ataques. Entre frases, acrescente uma resposta curta ou um baixo de preparação.",
+          "Pratique falando a letra enquanto toca apenas o primeiro tempo; depois acrescente a levada completa sem perder a respiração.",
+          "Domínio: você canta uma estrofe inteira, mantém o pulso e recupera uma troca sem parar a voz."
+        ],
+        "visual": "acompanhamento-vocal",
+        "links": [
+          [
+            "Transpositor de acordes",
+            "/music/criar/transpositor",
+            "Criar"
+          ],
+          [
+            "Tocar junto",
+            "/music/tocar",
+            "Aplicar"
+          ],
+          [
+            "Desmontar uma música",
+            "/music/criar/desmontar-musica",
+            "Organizar"
+          ]
+        ],
+        "pratica": "Cante uma estrofe tocando apenas os tempos essenciais; depois acrescente detalhes."
+      },
+      {
+        "id": "violao-arranjo-solo",
+        "nivel": "Violão · específico",
+        "titulo": "Arranjo solo de violão",
+        "resumo": "Melodia, baixo e acordes em uma apresentação completa.",
+        "texto": [
+          "Localize a melodia nas cordas agudas e escolha baixos que indiquem a harmonia. Não é necessário tocar todas as notas do acorde.",
+          "Use cordas soltas quando pertencerem ao acorde e conduza o baixo para a próxima fundamental.",
+          "Organize introdução, tema, variação e final para que o arranjo respire.",
+          "Separe a melodia nas cordas agudas e escolha uma nota de baixo para cada mudança harmônica. O arranjo começa com duas vozes, não com todos os acordes.",
+          "Use cordas soltas como sustentação somente quando elas pertencerem à harmonia. Em mudanças importantes, conduza o baixo por graus conjuntos.",
+          "Construa a forma em camadas: introdução, tema, pequena variação e final. Cada camada deve continuar tocável em andamento confortável.",
+          "Domínio: você toca oito compassos com melodia reconhecível, baixo audível e uma transição planejada."
+        ],
+        "visual": "caminho",
+        "links": [
+          [
+            "Compositor visual",
+            "/music/criar/compositor-visual",
+            "Criar"
+          ],
+          [
+            "Harmonizador de melodia",
+            "/music/criar/harmonizador-de-melodia",
+            "Harmonizar"
+          ],
+          [
+            "Arranjo a quatro vozes",
+            "/music/criar/arranjo-quatro-vozes",
+            "Distribuir"
+          ]
+        ],
+        "pratica": "Escreva oito compassos com melodia no topo e baixo no primeiro tempo de cada acorde."
+      },
+      {
+        "id": "violao-dinamica",
+        "nivel": "Violão · específico",
+        "titulo": "Timbre acústico, unhas e dinâmica",
+        "resumo": "Controle cor e volume sem depender de efeitos.",
+        "texto": [
+          "Perto da ponte há mais ataque e brilho; sobre a boca há mais corpo. Polegar, unha e polpa também mudam o timbre.",
+          "Dinâmica é densidade: tocar menos cordas, deixar ressonar ou interromper pode ser mais musical que tocar forte.",
+          "Escolha a técnica pela frase e pelo conforto da mão, não por uma regra única.",
+          "Toque uma progressão três vezes: com polpa, com unha e perto da ponte. Descreva ataque, corpo e sustentação antes de escolher a sonoridade.",
+          "Dinâmica não é apenas tocar mais forte. É selecionar menos cordas, encurtar o acorde, deixar uma nota respirar ou retirar o ataque de um tempo.",
+          "Marque na cifra onde a música cresce, recua ou abre. Faça uma tomada sem efeitos e outra com a mão direita planejada.",
+          "Domínio: você produz três níveis de dinâmica sem alterar o andamento nem criar tensão física."
+        ],
+        "visual": "frase",
+        "links": [
+          [
+            "Acordes para violão e guitarra",
+            "/music/criar/acordes-guitarra",
+            "Ouvir"
+          ],
+          [
+            "Tocar junto",
+            "/music/tocar",
+            "Comparar"
+          ],
+          [
+            "Relatório de progresso",
+            "/music/criar/progresso-guitarra",
+            "Registrar"
+          ]
+        ],
+        "pratica": "Toque a mesma progressão em três regiões da mão direita e descreva as diferenças."
+      },
+      {
+        "id": "violao-repertorio",
+        "nivel": "Violão · específico",
+        "titulo": "Repertório acústico e continuidade",
+        "resumo": "Construa um repertório tocável do começo ao fim.",
+        "texto": [
+          "Escolha músicas com batida, dedilhado, acompanhamento vocal e arranjo. Pratique entradas, transições e finais.",
+          "Uma execução confiável inclui recuperar um erro sem interromper. Registre tom, levada, andamento e trecho que ainda exige atenção.",
+          "Repertório é memória organizada: revise músicas antigas enquanto aprende novidades.",
+          "Monte o repertório por função: uma música para pulso, uma para troca de acordes, uma para dedilhado e uma para tocar inteira.",
+          "Mantenha uma lista de manutenção. Mesmo depois de aprender uma música, revise entrada, ponte, final e o trecho que costuma desaparecer da memória.",
+          "Faça uma apresentação sem interromper. Se errar, mantenha o pulso e volte na próxima frase; continuidade é parte do repertório.",
+          "Domínio: você toca três músicas completas e registra andamento, tom, levada e ponto de atenção de cada uma."
+        ],
+        "visual": "caminho",
+        "links": [
+          [
+            "Repertório e checkpoints",
+            "/music/criar/repertorio-checkpoints",
+            "Organizar"
+          ],
+          [
+            "Revisão semanal",
+            "/music/criar/checkin-semanal-guitarra",
+            "Revisar"
+          ],
+          [
+            "Tocar junto",
+            "/music/tocar",
+            "Tocar"
+          ]
+        ],
+        "pratica": "Faça uma apresentação de três músicas sem interromper e registre os dois pontos mais frágeis."
+      }
+    ],
+    "guitarra": [
+      {
+        "id": "guitarra-palhetada-alternada",
+        "nivel": "Guitarra · específico",
+        "titulo": "Palhetada alternada e sincronização",
+        "resumo": "Alinhe as duas mãos sem apertar o movimento.",
+        "texto": [
+          "Alterne para baixo e para cima mesmo ao mudar de corda. Comece com uma corda e marque subdivisões.",
+          "A mão esquerda cai perto do traste e relaxa depois da nota. Sincronização é ouvir o ataque simultâneo.",
+          "Aumente 5 BPM apenas após três repetições limpas.",
+          "Comece com uma nota por clique e alterne ↓↑ sem exceção. O movimento deve ser pequeno, próximo às cordas e guiado pelo pulso.",
+          "Ao cruzar cordas, mantenha a direção planejada e reduza a amplitude. Sincronize a mão esquerda colocando o dedo próximo ao traste.",
+          "Aumente o andamento apenas quando três tomadas forem uniformes. Grave o ataque para identificar notas que chegam antes ou depois.",
+          "Domínio: você toca quatro notas por clique em duas cordas, sem acentos involuntários e sem perder a subdivisão."
+        ],
+        "visual": "ritmo",
+        "links": [
+          [
+            "Técnicas de articulação",
+            "/music/criar/tecnicas-guitarra",
+            "Praticar"
+          ],
+          [
+            "Temporizador de estudo",
+            "/music/criar/temporizador-estudo-guitarra",
+            "Organizar"
+          ],
+          [
+            "Mapa do braço",
+            "/music/criar/mapa-braco-guitarra",
+            "Localizar"
+          ]
+        ],
+        "pratica": "Toque quatro notas por clique em uma corda e avance somente quando o som estiver uniforme."
+      },
+      {
+        "id": "guitarra-power-chords",
+        "nivel": "Guitarra · específico",
+        "titulo": "Power chords, riffs e palm mute",
+        "resumo": "Fundamental, quinta e oitava para bases precisas.",
+        "texto": [
+          "Power chord não define maior ou menor; a função vem do contexto. Memorize a fundamental para transportar a forma.",
+          "Palm mute encurta a duração e organiza o riff. Treine pausas e ruídos com o mesmo cuidado do ataque.",
+          "Pratique limpo antes de acrescentar ganho.",
+          "Power chord é fundamental, quinta e oitava. Como não há terça, a forma pode funcionar em contextos maiores ou menores.",
+          "Pratique a mesma forma em várias fundamentais e abafe as cordas que não participam. O silêncio entre dois ataques precisa ser limpo.",
+          "Alterne palm mute e som aberto em um riff curto. Depois toque com ganho moderado e confira se a articulação continua inteligível.",
+          "Domínio: você transporta a forma por três fundamentais e mantém pausas e acentos por oito compassos."
+        ],
+        "visual": "acorde-cor",
+        "links": [
+          [
+            "Editor de braço",
+            "/music/criar/editor-de-braco",
+            "Montar"
+          ],
+          [
+            "Técnicas de articulação",
+            "/music/criar/tecnicas-guitarra",
+            "Praticar"
+          ],
+          [
+            "Tocar junto",
+            "/music/tocar",
+            "Aplicar"
+          ]
+        ],
+        "pratica": "Crie um riff de dois compassos com duas fundamentais, pausa e três níveis de abafamento."
+      },
+      {
+        "id": "guitarra-bends-vibrato",
+        "nivel": "Guitarra · específico",
+        "titulo": "Bends, vibrato e afinação expressiva",
+        "resumo": "Chegue à nota-alvo antes de ornamentá-la.",
+        "texto": [
+          "Toque a nota-alvo, memorize sua altura e só então faça o bend. Compare a chegada com a referência.",
+          "O vibrato nasce depois da nota estabelecida e pode ser largo, estreito, rápido ou lento.",
+          "Use mais de um dedo e apoio do polegar para não sobrecarregar a mão.",
+          "Toque a nota-alvo antes do bend. O ouvido deve memorizar a altura para que a mão saiba quando parar.",
+          "Use o apoio de mais de um dedo e empurre a corda com movimento controlado. Compare meio tom e tom inteiro com a referência.",
+          "Só inicie o vibrato depois da chegada. Varie largura e velocidade, mantendo o centro afinado e a nota sustentada.",
+          "Domínio: você executa cinco bends afinados e acrescenta vibrato sem alterar a nota de chegada."
+        ],
+        "visual": "frase",
+        "links": [
+          [
+            "Técnicas de articulação",
+            "/music/criar/tecnicas-guitarra",
+            "Praticar"
+          ],
+          [
+            "Rotina de ouvido",
+            "/music/criar/rotina-ouvido-guitarra",
+            "Conferir"
+          ],
+          [
+            "Tocar junto",
+            "/music/tocar",
+            "Aplicar"
+          ]
+        ],
+        "pratica": "Faça bends de meio e um tom, conferindo cada chegada com a nota-alvo."
+      },
+      {
+        "id": "guitarra-timbres",
+        "nivel": "Guitarra · específico",
+        "titulo": "Captadores, ganho e efeitos",
+        "resumo": "Escolha timbre pela função musical.",
+        "texto": [
+          "Captadores, palheta, volume, ganho, equalização e efeitos formam uma cadeia. Mude uma variável por vez.",
+          "Som limpo revela articulação; overdrive acrescenta sustentação; distorção evidencia ruído. Ganho não substitui precisão.",
+          "Ajuste com a faixa tocando: um som bonito sozinho pode ocupar espaço demais no arranjo.",
+          "Comece com som limpo e ajuste apenas a mão. Depois altere captador, ganho e equalização um de cada vez para entender cada decisão.",
+          "Base, riff e solo pedem densidades diferentes. Um timbre bonito sozinho pode ocupar espaço demais quando a banda entra.",
+          "Crie três presets e toque a mesma frase em todos. Compare ataque, sustentação, ruído e espaço no arranjo.",
+          "Domínio: você escolhe um timbre pela função musical e consegue justificar cada controle alterado."
+        ],
+        "visual": "caminho",
+        "links": [
+          [
+            "Laboratório integrado",
+            "/music/explorar/laboratorio",
+            "Explorar"
+          ],
+          [
+            "Tocar junto",
+            "/music/tocar",
+            "Comparar"
+          ],
+          [
+            "Relatório de progresso",
+            "/music/criar/progresso-guitarra",
+            "Registrar"
+          ]
+        ],
+        "pratica": "Crie presets de base limpa, overdrive e solo usando a mesma frase."
+      },
+      {
+        "id": "guitarra-riffs",
+        "nivel": "Guitarra · específico",
+        "titulo": "Riffs, síncopes e precisão de banda",
+        "resumo": "Faça o riff encaixar no baixo, na bateria e no silêncio.",
+        "texto": [
+          "Riffs têm desenho rítmico além das notas. Conte subdivisões, marque acentos e escute o espaço.",
+          "Dobre o baixo quando fortalecer a base; em outras seções, responda à voz ou abra o registro.",
+          "Pratique com metrônomo e depois com acompanhamento para não se adiantar.",
+          "Escreva o riff como ritmo antes de escolher as notas. Marque acentos, pausas e pontos de encontro com baixo e bateria.",
+          "Toque primeiro com som limpo, depois acrescente palm mute e ganho. O riff deve continuar reconhecível mesmo sem distorção.",
+          "Pratique em ciclos longos e conte durante os silêncios. Uma pausa adiantada muda a identidade do riff tanto quanto uma nota errada.",
+          "Domínio: você repete o riff por dez ciclos, mantém as pausas e entra novamente no primeiro tempo."
+        ],
+        "visual": "ritmo",
+        "links": [
+          [
+            "Fazedor de batidas",
+            "/music/criar/batidas",
+            "Criar"
+          ],
+          [
+            "Metrônomo distorcido",
+            "/music/criar/metronomo-distorcido",
+            "Treinar"
+          ],
+          [
+            "Tocar junto",
+            "/music/tocar",
+            "Tocar"
+          ]
+        ],
+        "pratica": "Repita um riff por dez ciclos, mantendo todas as pausas audíveis."
+      },
+      {
+        "id": "guitarra-solos",
+        "nivel": "Guitarra · específico",
+        "titulo": "Solo: alvo, motivo e linguagem",
+        "resumo": "Crie solos cantáveis antes de aumentar as notas.",
+        "texto": [
+          "Escolha uma nota-alvo por acorde e conecte-as por aproximação. O ouvido deve saber para onde a frase vai.",
+          "Repita motivos e varie ritmo, registro ou articulação. Escalas são vocabulário, não obrigação de tocar tudo.",
+          "Silêncio, resolução e dinâmica tornam o solo uma conversa com a harmonia.",
+          "Escolha uma nota-alvo por acorde e cante a frase antes de procurá-la. A escala fornece caminhos, mas a resolução fornece sentido.",
+          "Crie um motivo de duas ou três notas e varie apenas o ritmo. Depois altere registro e articulação sem perder a identidade.",
+          "Grave perguntas e respostas de dois compassos. Deixe espaço para a harmonia aparecer e termine frases em notas estáveis.",
+          "Domínio: você improvisa oito compassos com alvo, motivo, pausa e resolução audíveis."
+        ],
+        "visual": "caminho",
+        "links": [
+          [
+            "Improvisação guiada",
+            "/music/criar/improvisacao-guitarra",
+            "Criar"
+          ],
+          [
+            "Atlas visual de escalas",
+            "/music/explorar/atlas-escalas",
+            "Estudar"
+          ],
+          [
+            "Compositor visual",
+            "/music/criar/compositor-visual",
+            "Escrever"
+          ]
+        ],
+        "pratica": "Faça um solo de oito compassos com três notas, duas pausas e um motivo repetido três vezes."
+      }
+    ]
+  },
+  "aulasLongas": {
+    "fundamentos": [
+      "Comece pelo corpo: apoie o instrumento sem apertar, mantenha o punho alinhado e permita que a respiração continue durante o ataque. Grave dez segundos de cordas soltas e descreva o som, o ruído e a sensação física.",
+      "O primeiro mapa do aluno é a relação entre gesto e resultado. Toque a mesma corda com polpa, unha e palheta; compare brilho, volume e duração. A escolha correta é a que produz o som pedido sem tensão desnecessária.",
+      "Estude em ciclos curtos: ouvir, repetir, pausar e registrar. Um registro útil anota andamento, número de repetições limpas, ruído percebido e a próxima mudança concreta.",
+      "Domínio: você consegue preparar o instrumento, produzir seis sons limpos e explicar o que mudou entre uma tentativa e outra."
+    ],
+    "pulso": [
+      "O pulso é uma referência contínua, não apenas o clique do metrônomo. Caminhe ou balance a mão marcando quatro tempos e conte “1 e 2 e 3 e 4 e” sem tocar; só depois distribua ataques.",
+      "Treine três camadas: semínimas, colcheias e síncopes. Na síncope, o movimento da mão continua mesmo quando não há som. O silêncio precisa ter duração tão precisa quanto o ataque.",
+      "Use um acorde confortável e grave quatro compassos. Confira se o primeiro tempo está estável, se o contratempo não corre e se a troca de acorde não interrompe o movimento.",
+      "Domínio: você mantém o pulso por dois minutos, atravessa uma pausa sem acelerar e consegue voltar ao tempo depois de uma troca."
+    ],
+    "acordes": [
+      "Aprenda a ler um diagrama em ordem: nome, corda mais grave, casas, dedos, cordas abertas e cordas que não devem soar. Toque cada corda isoladamente antes de raspar o acorde inteiro.",
+      "Comece com C, G, D, A, E, Am, Em e Dm. Para cada forma, diga a fundamental, identifique a terça e a quinta e observe quais notas se repetem nas cordas.",
+      "O acorde só está pronto quando três verificações passam: todas as notas soam, a mão permanece relaxada e a forma pode ser preparada antes do pulso sem interromper a música.",
+      "Domínio: você monta oito acordes abertos, identifica suas fundamentais e troca entre quatro pares sem perder quatro tempos."
+    ],
+    "trocas": [
+      "Uma troca eficiente começa antes do próximo tempo. Prepare a forma durante o último movimento do acorde anterior e procure dedos-guia que permanecem ou se deslocam por apenas uma casa.",
+      "Para pestanas, reduza a tarefa: pressione duas cordas, confira a afinação, acrescente outras duas e só então forme o acorde completo. Se a mão endurecer, diminua a pressão e revise o polegar.",
+      "Compare C–Am, G–D, E–A e F–C. Conte em voz alta, faça ciclos de trinta segundos e descanse. Velocidade só entra depois de três ciclos sem ruído.",
+      "Domínio: você identifica o dedo que mais atrasa a troca, corrige o movimento e executa cinco ciclos limpos no andamento escolhido."
+    ],
+    "leitura": [
+      "Na tablatura, leia corda, casa, duração e articulação juntos. Antes de tocar, fale as casas e marque as subdivisões; isso evita transformar uma sequência visual em uma corrida automática.",
+      "Na partitura, a posição da nota e o acidente indicam altura e grafia. Encontre a mesma nota em duas regiões do braço e compare timbre, digitação e preparação para o próximo gesto.",
+      "Escolha uma frase curta, leia sem instrumento, toque em andamento lento e depois confira com o áudio. Marque onde você precisou parar: esse trecho vira o foco da próxima sessão.",
+      "Domínio: você lê quatro compassos sem interromper o pulso e consegue explicar por que escolheu aquela posição."
+    ],
+    "escalas": [
+      "Localize a tônica em mais de uma corda antes de iniciar o desenho. Toque a escala em grupos de três e quatro notas, depois retorne à tônica por caminhos diferentes.",
+      "A pentatônica serve para limitar escolhas e ouvir melhor. Termine frases em notas do acorde, altere o ritmo e deixe espaços; uma escala só vira música quando há direção.",
+      "Relacione cada desenho a graus, intervalos e acordes. Em vez de memorizar apenas casas, diga “tônica, terça, quarta, quinta” enquanto toca.",
+      "Domínio: você toca uma escala em duas regiões, encontra a tônica sem consultar o desenho e improvisa quatro compassos com começo, desenvolvimento e resolução."
+    ],
+    "tecnicas": [
+      "Isole uma articulação por vez. No hammer-on e pull-off, a mão direita não deve compensar a falta de energia da esquerda; no slide, a nota de chegada precisa ser afinada; no bend, compare com a nota-alvo.",
+      "Pratique sem efeitos, em andamento confortável e com gravação. Depois acrescente ganho ou delay e verifique se o efeito ampliou a intenção ou apenas escondeu ruído.",
+      "Vibrato começa depois de a nota estabilizar. Varie largura e velocidade, mas mantenha o centro da nota. A dinâmica deve ser planejada como parte da frase.",
+      "Domínio: você executa a técnica escolhida três vezes afinada, sem ruído excessivo e dentro do pulso."
+    ],
+    "repertorio": [
+      "Desmonte cada música em entrada, verso, refrão, ponte e final. Aprenda a transição entre seções antes de tentar a execução inteira; a forma é uma habilidade própria.",
+      "Organize a semana em manutenção, aquisição e performance. Mantenha exercícios recorrentes, aprenda um trecho novo e termine com uma tomada completa sem parar.",
+      "Use checkpoints observáveis: andamento limpo, número de erros recuperados, estabilidade das trocas, dinâmica e memória da letra ou da forma.",
+      "Domínio: você toca a música inteira, recupera um erro sem interromper e consegue explicar qual habilidade ainda precisa de manutenção."
+    ],
+    "violao-levadas-brasileiras": [
+      "No baião, alterne baixo e acorde pensando em uma conversa entre polegar e dedos. O baixo marca o chão; o ataque agudo responde sem cobrir a voz.",
+      "No samba, pratique primeiro o contratempo isolado. Depois acrescente o baixo e, por último, a nota de ligação. O silêncio entre os ataques é parte da levada.",
+      "No sertanejo, diferencie a batida de base do preenchimento. A mão pode continuar o movimento enquanto você reduz a quantidade de cordas na estrofe.",
+      "Domínio: você executa os três padrões por quatro compassos, mantém a contagem e consegue mudar a densidade sem perder o pulso."
+    ],
+    "violao-fingerstyle": [
+      "Comece com o polegar em duas notas graves alternadas. Quando o baixo estiver automático, acrescente indicador e médio nas cordas internas.",
+      "A melodia deve ser ouvida acima do acompanhamento. Toque a nota aguda um pouco mais forte, sem aumentar a tensão da mão.",
+      "Pratique cada camada separada e depois combine baixo, harmonia e melodia em ciclos lentos. Grave para conferir se alguma voz desaparece.",
+      "Domínio: você mantém o baixo regular enquanto executa uma melodia de três notas sem interromper o compasso."
+    ],
+    "violao-acompanhamento-vocal": [
+      "Escolha um tom que permita cantar sem forçar. O violão deve apoiar a afinação da voz, não competir com ela em volume ou registro.",
+      "Durante frases densas, use menos cordas e menos ataques. Entre frases, acrescente uma resposta curta ou um baixo de preparação.",
+      "Pratique falando a letra enquanto toca apenas o primeiro tempo; depois acrescente a levada completa sem perder a respiração.",
+      "Domínio: você canta uma estrofe inteira, mantém o pulso e recupera uma troca sem parar a voz."
+    ],
+    "violao-arranjo-solo": [
+      "Separe a melodia nas cordas agudas e escolha uma nota de baixo para cada mudança harmônica. O arranjo começa com duas vozes, não com todos os acordes.",
+      "Use cordas soltas como sustentação somente quando elas pertencerem à harmonia. Em mudanças importantes, conduza o baixo por graus conjuntos.",
+      "Construa a forma em camadas: introdução, tema, pequena variação e final. Cada camada deve continuar tocável em andamento confortável.",
+      "Domínio: você toca oito compassos com melodia reconhecível, baixo audível e uma transição planejada."
+    ],
+    "violao-dinamica": [
+      "Toque uma progressão três vezes: com polpa, com unha e perto da ponte. Descreva ataque, corpo e sustentação antes de escolher a sonoridade.",
+      "Dinâmica não é apenas tocar mais forte. É selecionar menos cordas, encurtar o acorde, deixar uma nota respirar ou retirar o ataque de um tempo.",
+      "Marque na cifra onde a música cresce, recua ou abre. Faça uma tomada sem efeitos e outra com a mão direita planejada.",
+      "Domínio: você produz três níveis de dinâmica sem alterar o andamento nem criar tensão física."
+    ],
+    "violao-repertorio": [
+      "Monte o repertório por função: uma música para pulso, uma para troca de acordes, uma para dedilhado e uma para tocar inteira.",
+      "Mantenha uma lista de manutenção. Mesmo depois de aprender uma música, revise entrada, ponte, final e o trecho que costuma desaparecer da memória.",
+      "Faça uma apresentação sem interromper. Se errar, mantenha o pulso e volte na próxima frase; continuidade é parte do repertório.",
+      "Domínio: você toca três músicas completas e registra andamento, tom, levada e ponto de atenção de cada uma."
+    ],
+    "guitarra-palhetada-alternada": [
+      "Comece com uma nota por clique e alterne ↓↑ sem exceção. O movimento deve ser pequeno, próximo às cordas e guiado pelo pulso.",
+      "Ao cruzar cordas, mantenha a direção planejada e reduza a amplitude. Sincronize a mão esquerda colocando o dedo próximo ao traste.",
+      "Aumente o andamento apenas quando três tomadas forem uniformes. Grave o ataque para identificar notas que chegam antes ou depois.",
+      "Domínio: você toca quatro notas por clique em duas cordas, sem acentos involuntários e sem perder a subdivisão."
+    ],
+    "guitarra-power-chords": [
+      "Power chord é fundamental, quinta e oitava. Como não há terça, a forma pode funcionar em contextos maiores ou menores.",
+      "Pratique a mesma forma em várias fundamentais e abafe as cordas que não participam. O silêncio entre dois ataques precisa ser limpo.",
+      "Alterne palm mute e som aberto em um riff curto. Depois toque com ganho moderado e confira se a articulação continua inteligível.",
+      "Domínio: você transporta a forma por três fundamentais e mantém pausas e acentos por oito compassos."
+    ],
+    "guitarra-bends-vibrato": [
+      "Toque a nota-alvo antes do bend. O ouvido deve memorizar a altura para que a mão saiba quando parar.",
+      "Use o apoio de mais de um dedo e empurre a corda com movimento controlado. Compare meio tom e tom inteiro com a referência.",
+      "Só inicie o vibrato depois da chegada. Varie largura e velocidade, mantendo o centro afinado e a nota sustentada.",
+      "Domínio: você executa cinco bends afinados e acrescenta vibrato sem alterar a nota de chegada."
+    ],
+    "guitarra-timbres": [
+      "Comece com som limpo e ajuste apenas a mão. Depois altere captador, ganho e equalização um de cada vez para entender cada decisão.",
+      "Base, riff e solo pedem densidades diferentes. Um timbre bonito sozinho pode ocupar espaço demais quando a banda entra.",
+      "Crie três presets e toque a mesma frase em todos. Compare ataque, sustentação, ruído e espaço no arranjo.",
+      "Domínio: você escolhe um timbre pela função musical e consegue justificar cada controle alterado."
+    ],
+    "guitarra-riffs": [
+      "Escreva o riff como ritmo antes de escolher as notas. Marque acentos, pausas e pontos de encontro com baixo e bateria.",
+      "Toque primeiro com som limpo, depois acrescente palm mute e ganho. O riff deve continuar reconhecível mesmo sem distorção.",
+      "Pratique em ciclos longos e conte durante os silêncios. Uma pausa adiantada muda a identidade do riff tanto quanto uma nota errada.",
+      "Domínio: você repete o riff por dez ciclos, mantém as pausas e entra novamente no primeiro tempo."
+    ],
+    "guitarra-solos": [
+      "Escolha uma nota-alvo por acorde e cante a frase antes de procurá-la. A escala fornece caminhos, mas a resolução fornece sentido.",
+      "Crie um motivo de duas ou três notas e varie apenas o ritmo. Depois altere registro e articulação sem perder a identidade.",
+      "Grave perguntas e respostas de dois compassos. Deixe espaço para a harmonia aparecer e termine frases em notas estáveis.",
+      "Domínio: você improvisa oito compassos com alvo, motivo, pausa e resolução audíveis."
+    ]
+  }
+}

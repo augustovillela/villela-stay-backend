@@ -97,6 +97,7 @@
     'guitarra-solos': ['Escolha uma nota-alvo por acorde e cante a frase antes de procurá-la. A escala fornece caminhos, mas a resolução fornece sentido.', 'Crie um motivo de duas ou três notas e varie apenas o ritmo. Depois altere registro e articulação sem perder a identidade.', 'Grave perguntas e respostas de dois compassos. Deixe espaço para a harmonia aparecer e termine frases em notas estáveis.', 'Domínio: você improvisa oito compassos com alvo, motivo, pausa e resolução audíveis.']
   };
   function aprofundamento(c) { return AULAS_LONGAS[c.id] || ['Leia o capítulo em três passagens: compreender a ideia, observar o exemplo e executar a prática. Anote uma dúvida concreta antes de avançar.', 'Divida o estudo em blocos curtos e alterne execução, escuta e registro. A qualidade do som, do pulso e do conforto vale mais que a velocidade.', 'Transfira a habilidade para uma música do seu repertório e compare o resultado com a demonstração. O exercício só se torna musical quando sobrevive a um contexto real.', 'Domínio: explique o conceito com suas palavras, execute o exemplo e registre uma evidência observável de progresso.']; }
+  L.cursoLivroDados = { capitulos: CAPITULOS, especificos: L.cursoLivroEspecificos || {}, aulasLongas: AULAS_LONGAS };
   function editorial(c, i) {
     var avancado = c.nivel === 'avancado', intermediario = c.nivel === 'intermediario';
     return {

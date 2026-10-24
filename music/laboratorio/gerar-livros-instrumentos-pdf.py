@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Gera as edições PDF dos livros de violão e guitarra do Musique."""
 from pathlib import Path
+import json
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -79,14 +80,28 @@ def gerar(nome, titulo, foco, capitulos):
     story += [Paragraph(f'{num} · {tit}', body) for num, tit, _ in capitulos]
     story.append(PageBreak())
     for num, tit, texto in capitulos:
-        detalhes = DETALHES.get(num, [texto])
-        story += [Paragraph(f'Capítulo {num}', meta), Paragraph(tit, h1), Paragraph('<b>Visão geral</b>: ' + texto, body)]
-        secoes = ['Conceito', 'Escuta guiada', 'Aplicação no instrumento', 'Checkpoint']
-        for secao, paragrafo in zip(secoes, detalhes):
-            story += [Paragraph(secao, ParagraphStyle('secao' + num + secao, parent=estilos['Heading2'], fontSize=12, leading=15, textColor=colors.HexColor('#245B78'), spaceBefore=7, spaceAfter=4)), Paragraph(paragrafo, body)]
+        detalhes = DETALHES.get(num, [])
+        story += [Paragraph(f'Capítulo {num}', meta), Paragraph(tit, h1)]
+        for i, paragrafo in enumerate(texto):
+            rotulo = 'Visão geral' if i == 0 else ('Aprofundamento ' + str(i))
+            story += [Paragraph(rotulo, ParagraphStyle('secao' + num + str(i), parent=estilos['Heading2'], fontSize=12, leading=15, textColor=colors.HexColor('#245B78'), spaceBefore=7, spaceAfter=4)), Paragraph(paragrafo, body)]
+        for i, paragrafo in enumerate(detalhes):
+            story += [Paragraph(['Escuta guiada', 'Aplicação no instrumento', 'Critério de domínio', 'Revisão'][i % 4], ParagraphStyle('det' + num + str(i), parent=estilos['Heading2'], fontSize=12, leading=15, textColor=colors.HexColor('#245B78'), spaceBefore=7, spaceAfter=4)), Paragraph(paragrafo, body)]
         story += [Paragraph('<b>Ligação com o Musique</b>: abra o mapa visual e o exercício indicados no capítulo digital para ouvir, praticar e registrar o resultado.', body), Spacer(1, 6*mm), PageBreak()]
     SimpleDocTemplate(str(OUT / nome), pagesize=(160*mm,230*mm), rightMargin=18*mm, leftMargin=18*mm, topMargin=18*mm, bottomMargin=18*mm, title=titulo, author='Musique · Villela Music').build(story, onFirstPage=rodape, onLaterPages=rodape)
 
-gerar('curso-violao.pdf', 'Livro digital de violão', 'acompanhamento, levadas, dedilhados e repertório', CAPITULOS[:15])
-gerar('curso-guitarra.pdf', 'Livro digital de guitarra', 'timbre, riffs, articulação, escalas e improvisação', CAPITULOS[:9] + CAPITULOS[15:])
-gerar('curso-violao-guitarra.pdf', 'Livro digital de violão e guitarra', 'ouvir · compreender · praticar · tocar', CAPITULOS)
+dados_path = Path(__file__).with_name('livros-instrumentos-conteudo.json')
+if dados_path.exists():
+    dados = json.loads(dados_path.read_text(encoding='utf-8'))
+    base = dados['capitulos']
+    especificos = dados.get('especificos', {})
+    def colecao(edicoes):
+        itens = list(base)
+        for edicao in edicoes:
+            itens += especificos.get(edicao, [])
+        return [(f'{i + 1:02d}', c['titulo'], c.get('texto', [])) for i, c in enumerate(itens)]
+else:
+    colecao = lambda edicoes: CAPITULOS
+gerar('curso-violao.pdf', 'Livro digital de violão', 'acompanhamento, levadas, dedilhados e repertório', colecao(['violao']))
+gerar('curso-guitarra.pdf', 'Livro digital de guitarra', 'timbre, riffs, articulação, escalas e improvisação', colecao(['guitarra']))
+gerar('curso-violao-guitarra.pdf', 'Livro digital de violão e guitarra', 'ouvir · compreender · praticar · tocar', colecao(['violao', 'guitarra']))
