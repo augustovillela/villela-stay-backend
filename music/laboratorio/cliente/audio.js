@@ -151,7 +151,7 @@
     o = o || {};
     var a = audio(); var t0 = a.currentTime + 0.05;
     var ms = (midis || []).filter(function (m) { return m != null; });
-    if (o.modo === 'harmonico') { ms.forEach(function (m) { voz(FREQ(m), t0, o.dur || 1.6, { vel: 0.5 / Math.max(2, ms.length), timbre: o.timbre }); }); return (o.dur || 1.6); }
+    if (o.modo === 'harmonico') { var ganho = o.vel == null ? 0.5 : o.vel; ms.forEach(function (m) { voz(FREQ(m), t0, o.dur || 1.6, { vel: ganho / Math.max(2, ms.length), timbre: o.timbre }); }); return (o.dur || 1.6); }
     if (o.modo === 'dedilhado') { ms.forEach(function (m, i) { voz(FREQ(m), t0 + i * 0.045, (o.dur || 1.8) - i * 0.045, { vel: 0.45 / Math.max(2, ms.length), timbre: o.timbre || (C.Som.timbre && CORDAS_T[C.Som.timbre] ? C.Som.timbre : 'pluck') }); }); return o.dur || 1.8; }
     var dur = o.dur || 0.5, passo = o.passo || dur;
     ms.forEach(function (m, i) { voz(FREQ(m), t0 + i * passo, dur * 0.95, { timbre: o.timbre, vel: o.vel }); });

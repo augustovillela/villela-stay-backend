@@ -77,7 +77,7 @@
       leitura: [tabDaSequencia([64, 66, 67, 69]), 'Mi4 · Fá♯4 · Sol4 · Lá4 · leitura em duas regiões', [64, 66, 67, 69]],
       escalas: ['e|----------------5-8-|\nB|------------5-8-----|\nG|--------5-7---------|\nD|----5-7-------------|\nA|5-7-----------------|\nE|--------------------|', 'Lá3 · Dó4 · Ré4 · Mi4 · Sol4 · Lá4 · Dó5 · Ré5 · Mi5 · Sol5', [57, 60, 62, 64, 67, 69, 72, 74, 76, 79]],
       dedilhado: ['e|------0-------0-|\nB|----1---1---1---|\nG|--0-------0-----|\nD|----------------|\nA|3---------------|\nE|----------------|', 'Dó3 · Sol3 · Dó4 · Mi4 · Sol4 · Mi4 · Dó4 · Sol3', [48, 55, 60, 64, 67, 64, 60, 55]],
-      'campo-harmonico': ['e|--0-----3-----|\nB|--1-----0-----|\nG|--0-----0-----|\nD|--2-----0-----|\nA|--3-----2-----|\nE|--------3-----|', 'C · G · dois acordes do campo harmônico', [48, 52, 55, 60, 67, 71]],
+      'campo-harmonico': ['e|--0-----3-----|\nB|--1-----0-----|\nG|--0-----0-----|\nD|--2-----0-----|\nA|--3-----2-----|\nE|--------3-----|', 'C (Dó–Mi–Sol–Dó–Mi) → G (Sol–Si–Ré–Sol–Si–Ré) · dois acordes completos', [48, 52, 55, 60, 64, 43, 47, 50, 55, 59, 67]],
       ouvido: [tabDaSequencia([64, 66, 68, 66]), 'Mi4 · Fá♯4 · Sol♯4 · Fá♯4 · melodia distribuída entre cordas', [64, 66, 68, 66]],
       performance: [tabDaSequencia([52, 59, 55, 64]), 'Mi3 · Si3 · Sol3 · Mi4 · motivo de performance', [52, 59, 55, 64]],
       composicao: [tabDaSequencia([52, 55, 60, 64]), 'Mi3 · Sol3 · Dó4 · Mi4 · motivo em vozes', [52, 55, 60, 64]],
@@ -95,7 +95,7 @@
     if (c.id === 'guitarra-eletrica') ataques = [[48, 55, 60], [50, 57, 62]];
     if (c.id === 'palhetada-riffs') ataques = [[40, 47, 52], [40, 47, 52], [43, 50, 55], [43, 50, 55]];
     if (c.id === 'pulso') ataques = [[64], [55], [64], [55]];
-    function tocar() { if (!C.Som) return; if (ataques) { C.Som.parar(); ataques.forEach(function (grupo, i) { setTimeout(function () { C.Som.tocar(grupo, { modo: 'harmonico', dur: .48 }); }, i * .62); }); } else C.Som.tocar(midis, { modo: 'melodico', dur: .42, passo: .55 }); }
+    function tocar() { if (!C.Som) return; if (ataques) { C.Som.parar(); ataques.forEach(function (grupo, i) { setTimeout(function () { C.Som.tocar(grupo, { modo: 'harmonico', dur: .9, vel: .9, timbre: 'pluck' }); }, i * 1.05); }); } else C.Som.tocar(midis, { modo: 'melodico', dur: .42, passo: .55 }); }
     return el('section', { class: 'curso-livro-material' }, [el('div', { class: 'curso-livro-material-cab' }, [el('h4', { txt: 'Exemplo musical original' }), el('span', { class: 'curso-livro-material-tipo', txt: 'tablatura · notas · áudio fiel' })]), el('pre', { class: 'curso-livro-tab', 'aria-label': 'Exemplo de tablatura', txt: tab }), el('p', { class: 'curso-livro-notas', txt: 'Notas e intenção: ' + notas }), el('p', { class: 'curso-livro-material-dica', txt: 'O botão reproduz exatamente as notas escritas na tablatura, na mesma ordem e com o mesmo número de ataques. Conte o pulso para estudar a duração entre eles.' }), el('div', { class: 'lab-acoes' }, [el('button', { type: 'button', class: 'btn sec', txt: '▶ Ouvir tablatura', onclick: tocar }), el('button', { type: 'button', class: 'btn sec', txt: '■ Parar', onclick: function () { if (C.Som) C.Som.parar(); } })])]);
   }
   function render(alvo, st) {
