@@ -261,7 +261,9 @@ const CSS_TOPO = `.mq-topo{background:#1B2A4A;color:#fff}.mq-topo *{box-sizing:b
 .mq-topo nav a{border:1px solid rgba(255,255,255,.5);border-radius:999px;padding:10px 20px;font:600 15px Inter,system-ui,sans-serif;line-height:1.2}
 .mq-topo nav a:hover{background:rgba(255,255,255,.12)}
 .mq-topo nav a[aria-current="page"]{background:#fff;color:#1B2A4A;border-color:#fff}
+.mq-cursos{background:#fff;border-bottom:1px solid #e4ebf1}.mq-cursos-w{max-width:1000px;margin:0 auto;display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:6px 20px}.mq-cursos a,.mq-cursos span{white-space:nowrap;text-decoration:none;color:#26384d;font:600 14px Inter,system-ui,sans-serif;padding:8px 10px;border-radius:8px}.mq-cursos a:hover,.mq-cursos a:focus-visible{background:#eef5fb}.mq-cursos a:not(.mq-cursos-titulo){background:#e8f1fb;border:1px solid #b8d0ea}.mq-cursos-titulo{font-size:12px!important;letter-spacing:.08em;text-transform:uppercase;color:#718096!important;margin-right:4px}.mq-cursos span{opacity:.68}.mq-cursos small{font-size:10px;color:#718096}
 @media (max-width:620px){.mq-topo nav a{padding:8px 14px;font-size:14px}}`;
+const CURSOS_TOPO = `<nav class="mq-cursos" aria-label="Cursos de música"><div class="mq-cursos-w"><a class="mq-cursos-titulo" href="/music/cursos">Cursos</a><a href="/music/curso-teoria">🎓 Teoria</a><a href="/music/criar/curso-violao-livro">🪕 Violão</a><a href="/music/criar/curso-guitarra-edicao">🎸 Guitarra</a><a href="/music/curso-bateria">🥁 Bateria</a><span>🎹 Piano <small>em breve</small></span><span>🪕 Cavaquinho <small>em breve</small></span><span>🪕 Ukulele <small>em breve</small></span><span>🪕 Bandolim <small>em breve</small></span></div></nav>`;
 const LAB_SECOES = /^\/music\/(laboratorio|aprender|explorar|praticar|jogar|criar|referencia|escalas|acordes|tonalidades|intervalos|notas|ensinar|buscar|atividade)(\/|$)/;
 function secaoDe(caminho) {
   const c = String(caminho || '');
@@ -341,7 +343,7 @@ function registrarPaginas(app) {
     const p = repo.Config.get('produto', {}) || {};
     res.set('Content-Type', 'text/html; charset=utf-8').send(layout(
       'Musique · estudo, biblioteca e prática musical',
-      `<div class="wrap hero">
+      `${CURSOS_TOPO}<div class="wrap hero">
         <span class="selo">Academia · biblioteca · cifras · palco</span>
         <h1>Estude, organize e toque —<br>tudo num lugar só.</h1>
         <p class="sub">A Musique reúne o estudo de música, a sua biblioteca de cifras e partituras

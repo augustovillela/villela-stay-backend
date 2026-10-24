@@ -31,6 +31,7 @@ function ouvir(midis, { rotulo = 'Ouvir', modo = 'melodico', classe = '', dur = 
 const SUBNAV = () => `<nav class="lab-sub" aria-label="Navegação Musical">
   <div class="wrap lab-sub-cursos" aria-label="Cursos">
     <a class="lab-sub-cursos-titulo lab-sub-cursos-link" href="/music/cursos">Cursos</a>
+    <a class="lab-sub-curso" href="/music/curso-teoria"><span aria-hidden="true">🎓</span> Teoria</a>
     <a class="lab-sub-curso" href="/music/criar/curso-violao-livro"><span aria-hidden="true">🪕</span> Violão</a>
     <a class="lab-sub-curso" href="/music/criar/curso-guitarra-edicao"><span aria-hidden="true">🎸</span> Guitarra</a>
     <a class="lab-sub-curso" href="/music/curso-bateria"><span aria-hidden="true">🥁</span> Bateria</a>
