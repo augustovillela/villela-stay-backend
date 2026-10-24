@@ -13,9 +13,10 @@ from reportlab.graphics.shapes import Drawing, Rect, Circle, Ellipse, Line, Stri
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'output' / 'pdf'
 ASSET = Path(__file__).with_name('assets') / 'capa-bateria.png'
-IMG_POSTURA = Path(__file__).with_name('assets') / 'bateria-postura.png'
-IMG_KIT = Path(__file__).with_name('assets') / 'bateria-kit-groove.png'
-IMG_MAOS = Path(__file__).with_name('assets') / 'bateria-maos-caixa.png'
+IMG_PULSO = Path(__file__).with_name('assets') / 'bateria-capitulo-02-pulso.png'
+IMG_GROOVE = Path(__file__).with_name('assets') / 'bateria-capitulo-03-groove.png'
+IMG_REBOTE = Path(__file__).with_name('assets') / 'bateria-capitulo-04-rebote.png'
+IMG_VIRADAS = Path(__file__).with_name('assets') / 'bateria-capitulo-05-viradas.png'
 OUT.mkdir(parents=True, exist_ok=True)
 PAGE = (160 * mm, 230 * mm)
 NAVY = colors.HexColor('#14283D')
@@ -63,7 +64,14 @@ def imagem_editorial(path, legenda):
     return [img, Paragraph(legenda, STY['small']), Spacer(1, 2*mm)]
 
 def imagem_tema(n, titulo):
-    # As ilustrações anteriores foram retiradas até existir uma versão didática aprovada.
+    aprovadas = {
+        2: (IMG_PULSO, 'Pulso constante, subdivisão e contagem visualizada na prática.'),
+        3: (IMG_GROOVE, 'Bumbo, caixa e chimbal formando o primeiro groove em 4/4.'),
+        4: (IMG_REBOTE, 'Pegada relaxada e rebote controlado na caixa.'),
+        5: (IMG_VIRADAS, 'Virada organizada pelos tambores com retorno ao tempo 1.'),
+    }
+    if n in aprovadas:
+        return imagem_editorial(*aprovadas[n])
     return []
 
 def imagem_rudimento(n, familia, nome):
