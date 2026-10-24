@@ -20,13 +20,16 @@ const CAT = require('./catalogo');
 
 const esc = D.esc;
 function bannerCurso(caminho) {
-  const bateria = /^\/music\/curso-bateria/.test(String(caminho || ''));
-  const teoria = /^\/music\/curso-teoria/.test(String(caminho || ''));
-  if (!bateria && !teoria) return '';
-  const instrumento = bateria ? 'Bateria' : 'Teoria musical';
-  const cor = bateria ? '#a66b42' : '#5865a8';
-  const apoio = bateria ? 'pulso · groove · rudimentos' : 'ouvir · compreender · aplicar';
-  const id = bateria ? 'bateria' : 'teoria';
+  const rota = String(caminho || '');
+  const bateria = /^\/music\/curso-bateria/.test(rota);
+  const teoria = /^\/music\/curso-teoria/.test(rota);
+  const violao = /^\/music\/criar\/curso-violao-livro/.test(rota);
+  const guitarra = /^\/music\/criar\/curso-guitarra-(?:livro|edicao)/.test(rota);
+  if (!bateria && !teoria && !violao && !guitarra) return '';
+  const instrumento = bateria ? 'Bateria' : teoria ? 'Teoria musical' : violao ? 'Violão' : 'Guitarra';
+  const cor = bateria ? '#a66b42' : teoria ? '#5865a8' : violao ? '#4f7d67' : '#8a5a72';
+  const apoio = bateria ? 'pulso · groove · rudimentos' : teoria ? 'ouvir · compreender · aplicar' : violao ? 'acordes · batidas · repertório' : 'timbre · riffs · improvisação';
+  const id = bateria ? 'bateria' : teoria ? 'teoria' : violao ? 'violao' : 'guitarra';
   const imagem = `/assets/music/curso-${id}-banner.png`;
   return `<section class="curso-banner" style="--curso-banner-cor:${cor}" aria-label="${esc(instrumento)}"><div class="curso-banner-arte"><svg viewBox="0 0 900 230" role="img" aria-label="Ilustração de ${esc(instrumento)}"><defs><linearGradient id="curso-grad-${id}" x1="0" x2="1"><stop stop-color="${cor}"/><stop offset="1" stop-color="#1B2A4A"/></linearGradient></defs><rect width="900" height="230" rx="22" fill="url(#curso-grad-${id})"/><circle cx="770" cy="54" r="82" fill="#fff" opacity=".08"/><circle cx="120" cy="190" r="130" fill="#fff" opacity=".06"/><text x="64" y="92" fill="#fff" font-size="52" font-family="Georgia,serif" font-weight="600">${esc(instrumento)}</text><text x="66" y="132" fill="#e6f1f7" font-size="20" font-family="Arial,sans-serif">${esc(apoio)}</text><image class="curso-banner-imagem" href="${imagem}" x="530" y="15" width="330" height="200" preserveAspectRatio="xMidYMid meet"/><path d="M64 177h310M64 189h230M64 201h150" stroke="#fff" stroke-width="3" opacity=".45"/></svg></div><p class="curso-banner-legenda">Um percurso visual para estudar ${esc(instrumento)} dentro do Musique.</p></section>`;
 }
