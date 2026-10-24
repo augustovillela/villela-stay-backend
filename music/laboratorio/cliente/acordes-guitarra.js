@@ -11,7 +11,7 @@
   };
   function acorde(txt) { return A.ler(txt); }
   function tocar(txt) { var a = acorde(txt), ns = a && A.notas(N.comOitava(a.fundamental, 3), a.id); if (ns && C.Som) C.Som.tocar(ns.map(N.midi), { modo: 'harmonico', dur: 1.2 }); }
-  function arpejar(txt) { var a = acorde(txt), ns = a && A.notas(N.comOitava(a.fundamental, 3), a.id); if (ns && C.Som) C.Som.tocar(ns.map(N.midi), { modo: 'melodico', dur: .42, passo: .24 }); }
+  function arpejar(txt) { var a = acorde(txt), ns = a && A.notas(N.comOitava(a.fundamental, 3), a.id); if (ns && C.Som) C.Som.tocar(ns.map(N.midi), { modo: 'melodico', dur: .48, passo: .52 }); }
   // Formas de referência em afinação padrão, da 6ª para a 1ª corda.
   // -1 = corda abafada; 0 = corda solta. São as posições iniciais que o aluno
   // encontra nos primeiros estudos e podem ser transportadas no editor de braço.
