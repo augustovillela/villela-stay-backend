@@ -88,8 +88,25 @@ const RUDIMENTOS = [
   const erros = n <= 15 ? 'Acelerar o grupo final ou perder a igualdade entre as mãos.' : n <= 25 ? 'Transformar a nota de apoio em acento e endurecer o movimento.' : 'Arrastar notas sem subdivisão clara ou antecipar o próximo tempo.';
   const slug = nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const familia = n <= 3 ? 'roll' : n <= 6 ? 'bounce-double' : n <= 15 ? 'roll-grouped' : n <= 25 ? 'flam' : n <= 31 ? 'drag' : n <= 35 ? 'paradiddle' : n <= 38 ? 'ratamacue' : 'accented';
-  const gestos = padroes[i].map((token, j) => { const especial = token.charAt(0); const altura = familia === 'flam' ? (especial === 'f' ? 9 : -11) : familia === 'drag' ? (especial === 'g' ? 12 : -11) : familia === 'bounce-double' ? (j % 2 ? 5 : -14) : familia === 'paradiddle' ? ([ -12, 4, -8, 10 ][j % 4]) : familia === 'ratamacue' ? ([ 12, 4, -12, 7 ][j % 4]) : (j % 2 ? 5 : -11); return { token, mao: token.replace(/^[fg]/, '').charAt(0), altura, duracao: especial === 'g' ? 0.42 : especial === 'f' ? 0.22 : 1 }; });
-  return { id: `rudimento-${n}`, numero: n, nome, slug, sticking: stickings, padrao: padroes[i], gestos, familia, bpmStart: n <= 15 ? 50 : 45, bpmTarget: n <= 15 ? 100 : 90, kitApplication: aplicacoes, commonError: erros, practiceMinutes: 5, checkpoint: 'Grave três repetições limpas, sem tensão, e registre o BPM que permaneceu estável.', facilitadores: ['preparar', 'isolar', 'alternar', 'orquestrar', 'musicalizar', 'acelerar-com-criterio', 'diagnosticar', 'registrar'] };
+  const alturasPorRudimento = [
+    [-16, 4, -12, 4, -16, 4, -12, 4], [-17, 1, -10, 5, -15, 2, -9, 6], [-18, -3, 2, -11, -5, 3, -13],
+    [-15, 7, -15, 7, -15, 7, -15, 7], [-18, 1, 5, -15, 2, 6], [-15, -2, 6, 9, -15, -2, 6, 9],
+    [-17, 3, -10, 2, -14, 4, -8, 1], [-16, 6, -13, 3, -10, 5, -15, 2], [-19, 2, -14, 4, -10, 6, -16, 3],
+    [-16, -1, -8, 5, -13, 1, -7, 7], [-18, 4, -12, 0, -9, 6, -15, 2], [-15, 5, -11, 2, -17, 3, -8, 7],
+    [-19, 1, -15, 4, -11, 7, -16, 2], [-17, 6, -13, 1, -9, 5, -15, 3], [-20, 2, -16, 5, -12, 0, -8, 6],
+    [8, -17, -5, 3, 8, -15, -4, 2], [10, -16, 2, -8, 9, -14, 3, -7], [7, -18, -11, 2, 8, -16, -10, 3],
+    [9, 12, -15, -4, 8, 11, -14, -3], [10, -17, -7, 2, 8, -16, -6, 3], [8, -18, -9, 4, 7, -15, -8, 2],
+    [9, 13, -5, 2, 8, 12, -4, 1], [7, -17, -8, 10, 6, -15, -7, 9], [9, -16, -5, 3, 8, -15, -4, 2],
+    [10, 13, -17, -6, 8, 11, -15, -4], [13, 13, -17, 2, 12, 12, -16, 3], [14, 14, -18, 3, 13, 13, -17, 4],
+    [12, 12, -16, 4, 11, 11, -15, 5], [11, 11, -15, 5, 10, 10, -14, 6], [13, 13, -17, 1, 12, 12, -16, 2],
+    [15, 15, -18, 2, 14, 14, -17, 3], [-15, 5, -10, -6, 3, -13, 1, -8], [-17, 3, -12, -8, 2, -15, 1, -10],
+    [-14, 6, -9, -4, 5, -13, 2, -7], [-16, 4, -11, -5, 3, -14, 1, -9], [12, 12, -16, 4, 11, 11, -15, 5],
+    [13, 13, -17, 3, 12, 12, -16, 4], [14, 14, -18, 2, 13, 13, -17, 3], [-18, 5, -12, 2, -15, 6, -10, 3],
+    [-16, 4, -11, -6, 3, -14, 1, -9],
+  ];
+  const perfil = alturasPorRudimento[i];
+  const gestos = padroes[i].map((token, j) => { const especial = token.charAt(0); const altura = perfil[j % perfil.length]; return { token, mao: token.replace(/^[fg]/, '').charAt(0), altura, retorno: Math.max(4, Math.abs(altura) * 0.45), duracao: especial === 'g' ? 0.42 : especial === 'f' ? 0.22 : 1, intensidade: token === token.toUpperCase() && especial !== 'f' ? 1 : especial === 'g' ? 0.35 : especial === 'f' ? 0.75 : 0.58 }; });
+  return { id: `rudimento-${n}`, numero: n, nome, slug, sticking: stickings, padrao: padroes[i], gestos, movimentoPerfil: `perfil-${String(n).padStart(2, '0')}`, familia, bpmStart: n <= 15 ? 50 : 45, bpmTarget: n <= 15 ? 100 : 90, kitApplication: aplicacoes, commonError: erros, practiceMinutes: 5, checkpoint: 'Grave três repetições limpas, sem tensão, e registre o BPM que permaneceu estável.', facilitadores: ['preparar', 'isolar', 'alternar', 'orquestrar', 'musicalizar', 'acelerar-com-criterio', 'diagnosticar', 'registrar'] };
 });
 
 const MOVIMENTOS_RUDIMENTOS = {
