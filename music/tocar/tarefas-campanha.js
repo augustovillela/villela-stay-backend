@@ -40,4 +40,12 @@ function remover(tarefa_id) {
   return db.prepare('DELETE FROM tocar_tarefas WHERE tarefa_id = ?').run(String(tarefa_id || '')).changes;
 }
 
-module.exports = { normalizar, porTarefa, vincular, remover };
+function sessoesDaTarefa(tarefa_id) {
+  return db.prepare("SELECT id, usuario, resumo, criado_em FROM tocar_sessoes WHERE json_extract(resumo, '$.tarefaId') = ? ORDER BY criado_em DESC")
+    .all(tarefa_id).map((x) => {
+      let resumo = {}; try { resumo = JSON.parse(x.resumo || '{}'); } catch (_) {}
+      return { id: x.id, usuario: x.usuario, criado_em: x.criado_em, ...resumo };
+    });
+}
+
+module.exports = { normalizar, porTarefa, vincular, remover, sessoesDaTarefa };

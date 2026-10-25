@@ -237,7 +237,10 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
   }));
 
   app.get('/music/api/prof/tarefas/:id/submissoes', requireUsuario, requireProfessor, h(async (req, res) => {
-    res.json({ submissoes: academia.Submissoes.daTarefa(req.usuario.id, req.params.id) });
+    const submissoes = academia.Submissoes.daTarefa(req.usuario.id, req.params.id);
+    const campanha = tarefasCampanha.porTarefa(req.params.id);
+    const sessoes = campanha ? tarefasCampanha.sessoesDaTarefa(req.params.id) : [];
+    res.json({ submissoes, campanha, sessoes });
   }));
 
   app.post('/music/api/prof/submissoes/:id/feedback', requireUsuario, requireProfessor, h(async (req, res) => {

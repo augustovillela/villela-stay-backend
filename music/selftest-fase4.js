@@ -46,6 +46,12 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal(r.json.campanha.meta_tipo, 'precisao');
     assert.ok(r.json.alunos.some((x) => x.aluno === 'u-ana'));
   });
+
+  await t('professor recebe a sessão junto dos envios da tarefa', async () => {
+    const r = await req('GET', `/music/api/prof/tarefas/${tarefaId}/submissoes`, { como: 'prof' });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.ok(r.json.sessoes.some((x) => x.tarefaId === tarefaId));
+  });
 }
 
 module.exports = { rodar };

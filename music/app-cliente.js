@@ -1118,6 +1118,12 @@ const JS = `
       var c = $('#corpo'); c.innerHTML = '';
       c.appendChild(el('h2', { txt: 'Envios - ' + t.titulo }));
       if (!d.submissoes.length) c.appendChild(el('p', { class: 'vazio', txt: 'Nenhum envio ainda.' }));
+      if (d.sessoes && d.sessoes.length) {
+        c.appendChild(el('h3', { txt: 'Sessões de prática registradas' }));
+        d.sessoes.forEach(function (s) {
+          c.appendChild(el('div', { class: 'card' }, [el('p', { txt: (s.title || s.chartId || 'Estudo') + ' · ' + s.hits + '/' + s.total + ' acertos · ' + new Date(s.criado_em).toLocaleString() })]));
+        });
+      }
       d.submissoes.forEach(function (sub) {
         var box = el('div', { class: 'card' });
         box.innerHTML = '<p class="peq">' + esc((sub.enviada_em || '').slice(0, 16).replace('T', ' ')) +
