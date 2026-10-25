@@ -1033,5 +1033,7 @@
   if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', function () {
     refreshDevices().then(function () { if (!state.connected) msg('Lista de entradas atualizada. Confira o microfone ou a interface selecionada.'); });
   });
-  profile();applyChart(chart);if(previewMode)openPreview();else{refreshDevices();history();if(query.has('cifra'))openCifra();else if(query.has('riff'))openRiff();}tick();
+  var requestedInstrument = query.get('instrumento'), requestedStudy = query.get('estudo');
+  if (requestedInstrument && Array.prototype.some.call($('tj-instrument').options, function (o) { return o.value === requestedInstrument; })) { $('tj-instrument').value = requestedInstrument; state.instrument = requestedInstrument; }
+  profile();applyChart(chart);if(previewMode)openPreview();else{refreshDevices();history();if(query.has('cifra'))openCifra();else if(query.has('riff'))openRiff();else if(requestedStudy){var requested = Estudos.obter(requestedStudy);if(requested){var meta = studies.find(function(x){return x.id === requestedStudy;});chooseChart(requested,{kind:'study',instrument:state.instrument,objective:meta&&meta.objective});msg('Estudo da tarefa carregado.');}}}tick();
 })();
