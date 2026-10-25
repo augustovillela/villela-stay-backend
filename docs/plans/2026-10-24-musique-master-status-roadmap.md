@@ -244,13 +244,14 @@ A jornada atual compartilha boa parte da estrutura. Falta aprofundar trilhas pr�
 > Atualização de 25/10/2026: a máquina de estados da prática já está consolidada no núcleo de Tocar junto. A suíte `test:music-tocar` cobre preparação, contagem, execução, pausa, retomada, falha e conclusão, com 241 testes aprovados. O encerramento de sessões ao vivo continua no fluxo próprio do palco.
 
 1. Unificar a campanha com desbloqueios e objetivos por instrumento.
-2. Completar o modo repetidor de trechos com loop A/B e prática nota a nota.
-3. Melhorar feedback por nota, oitava, corda, casa, tempo e intensidade.
-4. Implementar calibração de latência e cadeia de timbres própria.
-5. Integrar charts revisados, MIDI e MusicXML.
-6. Criar metas, conquistas e recomendações mais completas.
-7. Adicionar professor/aluno e desafios compartilhados depois do modo local.
-8. Otimizar para conexões lentas e computadores fracos.
+2. Melhorar feedback por nota, oitava, corda, casa, tempo e intensidade.
+3. Implementar calibração de latência e cadeia de timbres própria.
+4. Integrar charts revisados, MIDI e MusicXML.
+5. Criar metas, conquistas e recomendações mais completas.
+6. Adicionar professor/aluno e desafios compartilhados depois do modo local.
+7. Otimizar para conexões lentas e computadores fracos.
+
+> Atualização de 25/10/2026: o repetidor de trechos e a aprendizagem nota a nota também foram verificados como implementados. O fluxo oferece seleção de trecho, loop, velocidade progressiva e modo Aprender separado do ritmo, com cobertura nos testes de cliente e núcleo.
 
 ## 9. Instrumentos adicionais
 
