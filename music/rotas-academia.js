@@ -19,6 +19,7 @@ const academia = require('./academia');
 const curriculo = require('./curriculo');
 const avaliacao = require('./avaliacao');
 const repo = require('./repo');
+const tarefasCampanha = require('./tocar/tarefas-campanha');
 
 const s = (v, max = 2000) => String(v == null ? '' : v).trim().slice(0, max);
 
@@ -26,6 +27,7 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
   // Trilha → curso da Academia (ADR-0011): complemento editorial, escolhido
   // no staff. Sem a ligação, a trilha sai igual a antes.
   const comCurso = (t) => (t && typeof cursoDaTrilha === 'function' ? { ...t, curso_academia: cursoDaTrilha(t.id) } : t);
+  const comCampanha = (t) => (t ? { ...t, campanha: tarefasCampanha.porTarefa(t.id) } : t);
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
     if (e && e.bloqueioDeDireitos) return res.status(403).json({ erro: e.message });
     res.status(400).json({ erro: e.message });
@@ -171,7 +173,7 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
   // Tarefas — lado do ALUNO
   // =================================================================
   app.get('/music/api/tarefas', requireUsuario, h(async (req, res) => {
-    res.json({ tarefas: academia.Tarefas.doAluno(req.usuario.id) });
+    res.json({ tarefas: academia.Tarefas.doAluno(req.usuario.id).map(comCampanha) });
   }));
 
   app.post('/music/api/tarefas/:id/enviar', requireUsuario, h(async (req, res) => {
@@ -208,7 +210,7 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
   // =================================================================
   app.get('/music/api/prof/tarefas', requireUsuario, requireProfessor, h(async (req, res) => {
     res.json({
-      tarefas: academia.Tarefas.doProfessor(req.usuario.id, { status: req.query.status || 'ativa' }),
+      tarefas: academia.Tarefas.doProfessor(req.usuario.id, { status: req.query.status || 'ativa' }).map(comCampanha),
       contestacoes_abertas: academia.Contestacoes.abertasDoProfessor(req.usuario.id).length,
     });
   }));
