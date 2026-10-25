@@ -55,4 +55,13 @@ function sessaoDaTarefa(usuario, tarefa_id, sessao_id) {
   return resumo.tarefaId === tarefa_id ? { id: x.id, usuario: x.usuario, criado_em: x.criado_em, ...resumo } : null;
 }
 
-module.exports = { normalizar, porTarefa, vincular, remover, sessoesDaTarefa, sessaoDaTarefa };
+function indicacaoDaTarefa(tarefa_id) {
+  const vinculo = porTarefa(tarefa_id), sessao = sessoesDaTarefa(tarefa_id)[0] || null;
+  if (!vinculo || !sessao) return { estado: 'nao_iniciada', atingida: false };
+  if (vinculo.meta_tipo === 'precisao' && Number.isFinite(Number(sessao.accuracy))) {
+    return { estado: 'em_andamento', atingida: Number(sessao.accuracy) / 100 >= vinculo.meta_valor, medida: Number(sessao.accuracy) / 100 };
+  }
+  return { estado: 'em_andamento', atingida: false };
+}
+
+module.exports = { normalizar, porTarefa, vincular, remover, sessoesDaTarefa, sessaoDaTarefa, indicacaoDaTarefa };

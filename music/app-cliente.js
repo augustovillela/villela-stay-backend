@@ -848,6 +848,7 @@ const JS = `
       '<p>' + esc(t.descricao || '') + '</p>' +
       (t.instrucoes ? '<p class="sub">' + esc(t.instrucoes) + '</p>' : '') +
       (t.ultima_sessao ? '<p class="peq">Última prática: ' + esc(String(t.ultima_sessao.hits || 0)) + '/' + esc(String(t.ultima_sessao.total || 0)) + ' acertos' + (t.ultima_sessao.accuracy != null ? ' · ' + esc(String(t.ultima_sessao.accuracy)) + '%' : '') + '</p>' : '') +
+      (t.indicacao ? '<p class="peq">Acompanhamento: <b>' + esc(t.indicacao.estado === 'nao_iniciada' ? 'não iniciada' : 'em andamento') + '</b>' + (t.indicacao.atingida ? ' · meta de precisão indicada' : '') + '</p>' : '') +
       (sub ? '<p class="peq">Estado: <b>' + esc(estados[sub.status] || sub.status) + '</b></p>' : '');
 
     if (sub && sub.status === 'avaliada') {

@@ -30,7 +30,7 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
   const comCampanha = (t) => {
     if (!t) return t;
     const campanha = tarefasCampanha.porTarefa(t.id);
-    return campanha ? { ...t, campanha, ultima_sessao: tarefasCampanha.sessoesDaTarefa(t.id)[0] || null } : { ...t, campanha: null };
+    return campanha ? { ...t, campanha, ultima_sessao: tarefasCampanha.sessoesDaTarefa(t.id)[0] || null, indicacao: tarefasCampanha.indicacaoDaTarefa(t.id) } : { ...t, campanha: null };
   };
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
     if (e && e.bloqueioDeDireitos) return res.status(403).json({ erro: e.message });
