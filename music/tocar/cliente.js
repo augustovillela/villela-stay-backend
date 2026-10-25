@@ -547,6 +547,7 @@
     if (r && !learning) {
       if (r.meanAbsTimingMs != null) detalhe += ' · tempo médio ±' + Math.round(r.meanAbsTimingMs) + ' ms';
       if (r.meanAbsCents != null) detalhe += ' · desvio médio ' + Math.round(r.meanAbsCents) + ' cents';
+      if (r.meanVelocity != null) detalhe += ' · dinâmica ' + r.dynamic + ' (' + r.meanVelocity + '/127)';
     }
     text('tj-score-label', r ? learning ? (r.hits + r.skipped) + ' de ' + r.total + ' notas · sem avaliação de ritmo' : 'Indicação de treino · ' + (r.hits + r.misses) + ' de ' + r.total + ' notas avaliadas' + (r.streak ? ' · sequência atual: ' + r.streak + ' · melhor: ' + r.bestStreak : '') + detalhe : 'As marcas aparecem quando você pratica com a entrada de áudio ativada.');
     $('tj-save').disabled = previewMode || !!saving || !r || !r.total || r.pending > 0 || state.saved || state.running || !boot.logado;

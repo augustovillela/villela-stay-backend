@@ -165,6 +165,18 @@ test('acerto exige confirmação de 40ms e retorna detalhe explicável', () => {
   assert.equal(j.resumo().trainingOnly, true);
 });
 
+test('prática MIDI resume a dinâmica dos golpes reconhecidos', () => {
+  const d = { id: 'drums-dinamica', title: 'Dinâmica', bpm: 90, duration: 3, profile: 'bateria-midi', layout: 'drums', notes: [
+    { id: 'caixa-1', time: 1, duration: 0.1, drum: 'caixa', midi: 38, velocity: 80 },
+    { id: 'caixa-2', time: 2, duration: 0.1, drum: 'caixa', midi: 38, velocity: 80 }
+  ] };
+  const j = Core.criarJulgador(d);
+  assert.equal(j.amostrar({ time: 1, midi: 38, velocity: 35 }).status, 'hit');
+  assert.equal(j.amostrar({ time: 2, midi: 38, velocity: 55 }).status, 'hit');
+  assert.equal(j.resumo().meanVelocity, 45);
+  assert.equal(j.resumo().dynamic, 'adequada');
+});
+
 test('oitava errada não acerta mesmo com a classe de altura correta', () => {
   const j = Core.criarJulgador(chart());
   feed(j, 0.95, 1.2, 52); j.avancar(2);
