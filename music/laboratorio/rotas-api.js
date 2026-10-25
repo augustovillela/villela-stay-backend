@@ -173,6 +173,7 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
       sessoes_focadas: Math.max(0, Math.min(1000000, Number(b.sessoes_focadas) || 0)),
       checkin: b.checkin && typeof b.checkin === 'object' ? b.checkin : {},
       curso_teoria: b.curso_teoria && typeof b.curso_teoria === 'object' ? b.curso_teoria : {},
+      curso_bateria: b.curso_bateria && typeof b.curso_bateria === 'object' ? b.curso_bateria : {},
     };
     const texto = JSON.stringify(dados);
     if (texto.length > 250000) throw erro(400, 'O progresso excede o limite permitido.');

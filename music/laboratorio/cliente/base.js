@@ -28,7 +28,7 @@
   var jornadaSyncTimer = null;
   C.guardar = function (k, v) {
     try { localStorage.setItem('musique-lab:' + k, JSON.stringify(v)); } catch (_) { /* sem armazenamento: tudo bem */ }
-    var sincronizaveis = { 'jornada-guitarra': 1, 'jornada-guitarra-favoritos': 1, 'curso-guitarra-perfil': 1, 'curso-guitarra-plano': 1, 'curso-guitarra-diario': 1, 'curso-guitarra-aulas-v1': 1, 'acordes-guitarra-progresso': 1, 'laboratorio-batidas-progresso': 1, 'tecnicas-guitarra-progresso': 1, 'improvisacao-guitarra-progresso': 1, 'repertorio-checkpoints': 1, 'aquecimento-guitarra-sessoes': 1, 'temporizador-estudo-sessoes': 1, 'checkin-semanal-guitarra': 1, 'painel-estudos-guitarra': 1, 'registro-sessoes-guitarra': 1 };
+    var sincronizaveis = { 'jornada-guitarra': 1, 'jornada-guitarra-favoritos': 1, 'curso-bateria-concluidas-v1': 1, 'curso-guitarra-perfil': 1, 'curso-guitarra-plano': 1, 'curso-guitarra-diario': 1, 'curso-guitarra-aulas-v1': 1, 'acordes-guitarra-progresso': 1, 'laboratorio-batidas-progresso': 1, 'tecnicas-guitarra-progresso': 1, 'improvisacao-guitarra-progresso': 1, 'repertorio-checkpoints': 1, 'aquecimento-guitarra-sessoes': 1, 'temporizador-estudo-sessoes': 1, 'checkin-semanal-guitarra': 1, 'painel-estudos-guitarra': 1, 'registro-sessoes-guitarra': 1 };
     if (sincronizaveis[k] && C.Jornada && !C.Jornada._aplicando && C.Jornada.sync) {
       clearTimeout(jornadaSyncTimer); jornadaSyncTimer = setTimeout(function () { C.Jornada.sync(false).catch(function () {}); }, 700);
     }
@@ -66,6 +66,7 @@
         sessoes_focadas: Number(C.lerLocal('temporizador-estudo-sessoes', 0)) || 0,
         checkin: C.lerLocal('checkin-semanal-guitarra', {}),
         curso_teoria: teoria,
+        curso_bateria: C.lerLocal('curso-bateria-concluidas-v1', {}),
         acordes_guitarra: C.lerLocal('acordes-guitarra-progresso', {}),
         laboratorio_batidas: C.lerLocal('laboratorio-batidas-progresso', {}),
         tecnicas_guitarra: C.lerLocal('tecnicas-guitarra-progresso', {}),
@@ -95,6 +96,7 @@
       if (p.curso_teoria && typeof p.curso_teoria === 'object') {
         try { w.localStorage.setItem('musique-curso-teoria-concluidas-v1', JSON.stringify(p.curso_teoria)); } catch (_) {}
       }
+      if (p.curso_bateria && typeof p.curso_bateria === 'object') C.guardar('curso-bateria-concluidas-v1', p.curso_bateria);
       this._aplicando = false;
     },
     sync: function (avisar) {
@@ -291,7 +293,7 @@
       var b = C.$('.curso-concluir'); if (b) { var slug = b.getAttribute('data-curso-licao'), ok = !!concluidas[slug]; b.setAttribute('aria-pressed', ok ? 'true' : 'false'); b.textContent = ok ? '✓ Lição concluída — desfazer' : 'Marcar lição como concluída'; }
     }
     var botao = C.$('.curso-concluir'); if (botao) botao.onclick = function () { var slug = botao.getAttribute('data-curso-licao'); if (concluidas[slug]) delete concluidas[slug]; else concluidas[slug] = new Date().toISOString(); salvar(); atualizar(); C.aviso(concluidas[slug] ? 'Lição concluída neste navegador.' : 'Lição reaberta.'); };
-    atualizar();
+    C.Jornada.carregar().then(function () { try { concluidas = JSON.parse(w.localStorage.getItem(chave) || '{}') || {}; } catch (_) {} atualizar(); }).catch(function () { atualizar(); });
   }
 
   function filtrosCurso() {
