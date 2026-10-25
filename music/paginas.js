@@ -275,7 +275,7 @@ function secaoDe(caminho) {
 }
 function cabecalho({ noApp = false, atual = '' } = {}) {
   const item = (id, url, txt) => `<a href="${url}"${atual === id ? ' aria-current="page"' : ''}>${txt}</a>`;
-  return `<style>${CSS_TOPO}</style><header class="mq-topo"><div class="mq-w">
+  return `<style>${CSS_TOPO}.mq-cursos a,.mq-cursos span{flex-basis:90px;width:90px;font-size:10px;padding-left:3px;padding-right:3px}.mq-cursos-titulo{font-size:10px!important}</style><header class="mq-topo"><div class="mq-w">
   <a class="mq-marca" href="/music">Musique<small>por Villela Music</small></a>
   <nav aria-label="Musique">${item('teoria', '/music/curso-teoria', 'Teoria')} ${item('laboratorio', '/music/laboratorio', 'Laboratório')} ${item('cifras', '/music/cifras-publicas', 'Cifras')} ${item('ferramentas', '/music/ferramentas', 'Ferramentas')}
        ${noApp ? '<a href="/music/app#conta">Minha conta</a>' : '<a href="/music/entrar">Entrar</a>'}</nav>
