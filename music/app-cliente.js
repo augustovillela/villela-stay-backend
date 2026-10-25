@@ -839,9 +839,12 @@ const JS = `
       devolvida: 'o professor pediu para refazer' };
     var VIS = { enviada: ['\u{23F3}', '#B45309'], avaliada: ['\u{2705}', '#15803D'], devolvida: ['\u{1F501}', '#BE123C'] };
     var vis = VIS[sub && sub.status] || ['\u{1F195}', '#0369A1'];
+    var campanha = t.campanha;
+    var estudo = campanha ? '<p class="chip">🎯 ' + esc(campanha.instrumento) + ' · ' + esc(campanha.estudo_id) + ' · meta: ' + esc(campanha.meta_tipo) + ' ' + esc(String(campanha.meta_valor)) + '</p>' : '';
     box.style.borderLeft = '4px solid ' + vis[1];
     box.innerHTML = '<h3>' + vis[0] + ' ' + esc(t.titulo) + '</h3>' +
       (t.prazo ? '<span class="chip">até ' + esc(t.prazo) + '</span>' : '') +
+      estudo +
       '<p>' + esc(t.descricao || '') + '</p>' +
       (t.instrucoes ? '<p class="sub">' + esc(t.instrucoes) + '</p>' : '') +
       (sub ? '<p class="peq">Estado: <b>' + esc(estados[sub.status] || sub.status) + '</b></p>' : '');
@@ -1014,8 +1017,11 @@ const JS = `
       }
       d.tarefas.forEach(function (t) {
         var box = el('div', { class: 'card' });
+        var campanha = t.campanha;
+        var estudo = campanha ? '<p class="chip">🎯 ' + esc(campanha.instrumento) + ' · ' + esc(campanha.estudo_id) + ' · meta: ' + esc(campanha.meta_tipo) + ' ' + esc(String(campanha.meta_valor)) + '</p>' : '';
         box.innerHTML = '<h3>' + esc(t.titulo) + '</h3>' +
           '<p class="peq">' + t.alunos + ' aluno(s) - ' + t.enviadas + ' envio(s) para corrigir</p>' +
+          estudo +
           '<p>' + esc(t.descricao || '') + '</p>';
         var linha = el('div', { class: 'linha' });
         linha.appendChild(el('button', { class: 'btn sec', txt: 'Atribuir alunos',
