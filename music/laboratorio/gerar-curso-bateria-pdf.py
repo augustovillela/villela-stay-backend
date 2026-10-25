@@ -6,6 +6,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (BaseDocTemplate, Frame, Image, PageBreak, Paragraph,
                                 PageTemplate, Spacer, Table, TableStyle, NextPageTemplate)
 from reportlab.graphics.shapes import Drawing, Rect, Circle, Ellipse, Line, String, Polygon
@@ -59,7 +60,11 @@ RUDIMENTOS = [
 'Single Stroke Roll','Single Stroke Four','Single Stroke Seven','Multiple Bounce Roll','Triple Stroke Roll','Double Stroke Open Roll','Five Stroke Roll','Six Stroke Roll','Seven Stroke Roll','Nine Stroke Roll','Ten Stroke Roll','Eleven Stroke Roll','Thirteen Stroke Roll','Fifteen Stroke Roll','Seventeen Stroke Roll','Flam','Flam Accent','Flam Tap','Flamacue','Flam Paradiddle','Single Flammed Mill','Pataflafla','Swiss Army Triplet','Inverted Flam Tap','Flam Drag','Drag / Ruff','Drag Paradiddle No. 1','Drag Paradiddle No. 2','Single Drag Tap','Double Drag Tap','Lesson 25','Single Paradiddle','Double Paradiddle','Triple Paradiddle','Paradiddle-diddle','Single Ratamacue','Double Ratamacue','Triple Ratamacue','Single Stroke Roll with accents','Inverted Paradiddle']
 
 def imagem_editorial(path, legenda):
-    img = Image(str(path), width=124*mm, height=38*mm)
+    # Preserva a proporção original; forçar 124x38 mm distorcia as artes 3:2.
+    largura = 124 * mm
+    largura_original, altura_original = ImageReader(str(path)).getSize()
+    altura = largura * altura_original / largura_original
+    img = Image(str(path), width=largura, height=altura)
     img.hAlign = 'CENTER'
     return [img, Paragraph(legenda, STY['small']), Spacer(1, 2*mm)]
 
