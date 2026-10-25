@@ -782,6 +782,11 @@ const secao = (s) => console.log('\n— ' + s + ' —');
   await require('./selftest-fase3').rodar({ t, secao, req, assert, PROFESSORES });
 
   // ===================================================================
+  // FASE 4 — tarefas vinculadas a estudos do Tocar junto
+  // ===================================================================
+  await require('./selftest-fase4').rodar({ t, secao, req, assert });
+
+  // ===================================================================
   // CIFRAS (28/09/2026) — motor puro e integração HTTP
   // ===================================================================
   await require('./cifras/selftest-motor').rodar({ t, secao, assert });
