@@ -245,14 +245,15 @@ A jornada atual compartilha boa parte da estrutura. Falta aprofundar trilhas pr�
 
 1. Unificar a campanha com desbloqueios e objetivos por instrumento.
 2. Melhorar feedback por nota, oitava, corda, casa, tempo e intensidade.
-3. Integrar charts revisados, MIDI e MusicXML.
-4. Criar metas, conquistas e recomendações mais completas.
-5. Adicionar professor/aluno e desafios compartilhados depois do modo local.
-6. Otimizar para conexões lentas e computadores fracos.
+3. Criar metas, conquistas e recomendações mais completas.
+4. Adicionar professor/aluno e desafios compartilhados depois do modo local.
+5. Otimizar para conexões lentas e computadores fracos.
 
 > Atualização de 25/10/2026: o repetidor de trechos e a aprendizagem nota a nota também foram verificados como implementados. O fluxo oferece seleção de trecho, loop, velocidade progressiva e modo Aprender separado do ritmo, com cobertura nos testes de cliente e núcleo.
 
 > Atualização de 25/10/2026: calibração por cliques, compensação de atraso, ganho de captação e cadeia de amostras por instrumento também estão implementados. Permanecem somente as validações físicas com microfone, interface, teclado MIDI, bateria eletrônica e cabo Real Tone, que não devem ser simuladas.
+
+> Atualização de 25/10/2026: a integração de charts revisados, MIDI e MusicXML/MXL também foi verificada como implementada. O fluxo preserva rascunhos, exige revisão antes de publicar, mantém versões imutáveis, trata conflitos de revisão e alimenta a prática com os charts publicados.
 
 ## 9. Instrumentos adicionais
 
