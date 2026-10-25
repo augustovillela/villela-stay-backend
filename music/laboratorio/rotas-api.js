@@ -38,6 +38,7 @@ const BIBLIOTECA = [
 
 function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPorEmail, buscarContaPorId }) {
   const academia = require('../academia');
+  const tarefasCampanha = require('../tocar/tarefas-campanha');
   const B = '/music/api/lab';
   app.use(B, (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
@@ -95,6 +96,44 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     const n = Math.max(0, Math.min(40, Math.floor(Number(b.rudimento) || 0)));
     const id = novoId(); db.prepare('INSERT INTO curso_bateria_observacoes (id,professor,aluno,rudimento,tarefa_id,texto,criado_em) VALUES (?,?,?,?,?,?,?)').run(id, req.usuario.id, aluno, n, s(b.tarefa_id, 120), texto, nowISO());
     res.json({ ok: true, observacao: db.prepare('SELECT * FROM curso_bateria_observacoes WHERE id = ?').get(id) });
+  }));
+
+  // ---- Tocar junto: tarefas ligadas a uma campanha de estudo ----
+  // Mantém a tarefa na Academia (permissões, submissões e devolutivas) e
+  // guarda apenas o vínculo específico do estudo neste módulo.
+  app.post(B + '/prof/tocar/tarefas', requireUsuario, h(async (req, res) => {
+    exigeDocente(req);
+    const b = req.body || {};
+    const vinculo = tarefasCampanha.normalizar(b);
+    const tarefa = academia.Tarefas.criar(req.usuario.id, {
+      titulo: s(b.titulo, 200) || `Tocar junto · ${vinculo.instrumento}`,
+      descricao: s(b.descricao, 2000) || `Estudo ${vinculo.estudo_id} no instrumento ${vinculo.instrumento}.`,
+      instrucoes: s(b.instrucoes, 4000), exige_audio: b.exige_audio !== false, prazo: s(b.prazo, 25),
+    });
+    tarefasCampanha.vincular(tarefa.id, vinculo);
+    const emails = (Array.isArray(b.emails) ? b.emails : String(b.emails || '').split(/[\s,;]+/))
+      .map((x) => s(x, 160)).filter(Boolean).slice(0, 200);
+    const atribuicao = emails.length ? academia.Tarefas.atribuirPorEmail(req.usuario.id, tarefa.id, emails, buscarContaPorEmail) : { atribuidos: 0, nao_encontrados: [] };
+    res.status(201).json({ ok: true, tarefa, campanha: tarefasCampanha.porTarefa(tarefa.id), ...atribuicao });
+  }));
+
+  app.get(B + '/prof/tocar/tarefas', requireUsuario, h(async (req, res) => {
+    exigeDocente(req);
+    const tarefas = academia.Tarefas.doProfessor(req.usuario.id).map((t) => ({ ...t, campanha: tarefasCampanha.porTarefa(t.id) })).filter((t) => t.campanha);
+    res.json({ tarefas });
+  }));
+
+  app.get(B + '/tocar/tarefas', requireUsuario, h(async (req, res) => {
+    const tarefas = academia.Tarefas.doAluno(req.usuario.id).map((t) => ({ ...t, campanha: tarefasCampanha.porTarefa(t.id) })).filter((t) => t.campanha);
+    res.json({ tarefas });
+  }));
+
+  app.get(B + '/prof/tocar/tarefas/:id', requireUsuario, h(async (req, res) => {
+    exigeDocente(req);
+    const tarefa = academia.Tarefas.porId(s(req.params.id, 120));
+    if (!tarefa || tarefa.professor !== req.usuario.id) throw erro(404, 'Tarefa não encontrada.');
+    if (!tarefasCampanha.porTarefa(tarefa.id)) throw erro(404, 'Vínculo de campanha não encontrado.');
+    res.json({ tarefa, campanha: tarefasCampanha.porTarefa(tarefa.id), alunos: academia.Tarefas.alunosDa(tarefa.id), submissoes: academia.Submissoes.daTarefa(req.usuario.id, tarefa.id) });
   }));
 
   /** Corrige de novo, grava e agenda a revisão. */
