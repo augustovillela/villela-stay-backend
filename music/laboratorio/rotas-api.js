@@ -73,6 +73,12 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
     res.json({ progresso: db.prepare('SELECT * FROM curso_bateria_progresso WHERE aluno = ? ORDER BY rudimento').all(s(req.params.aluno, 120)), observacoes: db.prepare('SELECT * FROM curso_bateria_observacoes WHERE aluno = ? ORDER BY criado_em DESC LIMIT 100').all(s(req.params.aluno, 120)) });
   }));
+  app.get(B + '/prof/bateria/alunos', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
+    const alunos = db.prepare(`SELECT aluno, COUNT(*) AS rudimentos_registrados, SUM(concluido) AS rudimentos_consolidados,
+      MAX(bpm) AS melhor_bpm, MAX(ultima_pratica) AS ultima_pratica FROM curso_bateria_progresso GROUP BY aluno ORDER BY ultima_pratica DESC`).all();
+    res.json({ alunos });
+  }));
   app.post(B + '/prof/bateria/observacoes', requireUsuario, h(async (req, res) => {
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem registrar observações.');
     const b = req.body || {}, aluno = s(b.aluno, 120), texto = s(b.texto, 2000);

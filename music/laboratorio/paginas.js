@@ -280,6 +280,10 @@ ${relacionados(f.slug)}`;
     const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de bateria · acompanhamento</p><h1>Meu progresso</h1><p class="lab-lead">Acompanhe capítulos, rudimentos, BPM, revisões e últimas práticas em um só lugar.</p></header><section id="bateria-dashboard" class="curso-dashboard" data-bateria-dashboard><p>Carregando seu progresso…</p></section><p><a class="btn sec" href="/music/curso-bateria">← Voltar ao curso</a></p>`;
     pagina(res, { titulo: 'Meu progresso — curso de bateria | Musique', descricao: 'Acompanhamento do curso de bateria.', caminho: '/music/curso-bateria/progresso', corpo, trilha: [['Aprender', '/music/aprender'], ['Curso de bateria', '/music/curso-bateria'], ['Meu progresso']] });
   });
+  app.get('/music/curso-bateria/professor', opcional, (req, res) => {
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de bateria · área do professor</p><h1>Acompanhamento dos alunos</h1><p class="lab-lead">Consulte a evolução dos rudimentos, registre observações e devolva orientações individuais.</p></header><section id="bateria-professor-dashboard" data-bateria-professor-dashboard><p>Carregando acompanhamento…</p></section><p><a class="btn sec" href="/music/curso-bateria">← Voltar ao curso</a></p>`;
+    pagina(res, { titulo: 'Professor — curso de bateria | Musique', descricao: 'Acompanhamento dos alunos de bateria.', caminho: '/music/curso-bateria/professor', corpo, trilha: [['Ensinar', '/music/ensinar'], ['Curso de bateria'], ['Professor']] });
+  });
 
   app.get('/music/curso-bateria/:slug', opcional, (req, res) => {
     const l = LB.POR_SLUG[req.params.slug];
