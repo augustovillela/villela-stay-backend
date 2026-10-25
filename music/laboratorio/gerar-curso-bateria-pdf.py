@@ -64,14 +64,9 @@ def imagem_editorial(path, legenda):
     return [img, Paragraph(legenda, STY['small']), Spacer(1, 2*mm)]
 
 def imagem_tema(n, titulo):
-    aprovadas = {
-        2: (IMG_PULSO, 'Pulso constante, subdivisão e contagem visualizada na prática.'),
-        3: (IMG_GROOVE, 'Bumbo, caixa e chimbal formando o primeiro groove em 4/4.'),
-        4: (IMG_REBOTE, 'Pegada relaxada e rebote controlado na caixa.'),
-        5: (IMG_VIRADAS, 'Virada organizada pelos tambores com retorno ao tempo 1.'),
-    }
-    if n in aprovadas:
-        return imagem_editorial(*aprovadas[n])
+    path = Path(__file__).with_name('assets') / f'bateria-capitulo-{n:02d}.png'
+    if path.exists():
+        return imagem_editorial(path, f'Imagem didática: {titulo.lower()}.')
     return []
 
 def imagem_rudimento(n, familia, nome):
