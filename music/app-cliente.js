@@ -1009,7 +1009,10 @@ const JS = `
           '<button class="btn peq" id="b-cont">Ver</button>' }));
         $('#b-cont').onclick = verContestacoes;
       }
-      c.appendChild(el('button', { class: 'btn', txt: '\u{2795} Nova tarefa', onclick: novaTarefa }));
+      c.appendChild(el('div', { class: 'linha' }, [
+        el('button', { class: 'btn', txt: '\u{2795} Nova tarefa', onclick: novaTarefa }),
+        el('button', { class: 'btn sec', txt: '\u{1F3AF} Nova tarefa de estudo', onclick: novaTarefaEstudo }),
+      ]));
 
       if (!d.tarefas.length) {
         c.appendChild(el('p', { class: 'vazio', txt: 'Nenhuma tarefa ativa.' }));
@@ -1055,6 +1058,31 @@ const JS = `
       api('POST', '/prof/tarefas', { titulo: tit.value, descricao: desc.value, instrucoes: inst.value,
         nota_maxima: Number(nota.value), prazo: prazo.value, exige_audio: audio.checked })
         .then(verProfessor).catch(function (e) { erro(e.message); });
+    } }));
+    c.appendChild(el('button', { class: 'btn sec', txt: 'Cancelar', onclick: verProfessor }));
+  }
+
+  function novaTarefaEstudo() {
+    var c = $('#corpo'); c.innerHTML = '';
+    c.appendChild(el('h2', { txt: '\u{1F3AF} Nova tarefa de estudo' }));
+    var tit = el('input', { type: 'text', placeholder: 'Título (ex.: Single Stroke Roll)' });
+    var instrumento = el('select');
+    [['bateria', 'Bateria'], ['violao', 'Violão'], ['guitarra', 'Guitarra'], ['baixo', 'Baixo'], ['piano', 'Piano'], ['cavaquinho', 'Cavaquinho'], ['ukulele', 'Ukulele'], ['bandolim', 'Bandolim']].forEach(function (x) {
+      instrumento.appendChild(el('option', { value: x[0], txt: x[1] }));
+    });
+    var estudo = el('input', { type: 'text', placeholder: 'ID do estudo (ex.: single-stroke-roll)' });
+    var meta = el('select');
+    [['conclusao', 'Conclusão'], ['precisao', 'Precisão'], ['sequencia', 'Sequência']].forEach(function (x) { meta.appendChild(el('option', { value: x[0], txt: x[1] })); });
+    var valor = el('input', { type: 'number', value: '1', min: '0', max: '100000', step: '0.01' });
+    var emails = el('input', { type: 'text', placeholder: 'E-mails dos alunos, separados por vírgula' });
+    var instrucoes = el('textarea', { rows: '3', placeholder: 'Instruções para o aluno' });
+    c.appendChild(campo('Título', tit)); c.appendChild(campo('Instrumento', instrumento)); c.appendChild(campo('Estudo', estudo));
+    c.appendChild(campo('Tipo de meta', meta)); c.appendChild(campo('Valor da meta', valor)); c.appendChild(campo('Alunos', emails)); c.appendChild(campo('Instruções', instrucoes));
+    c.appendChild(el('button', { class: 'btn', txt: 'Criar tarefa de estudo', onclick: function () {
+      api('POST', '/lab/prof/tocar/tarefas', { titulo: tit.value, instrumento: instrumento.value, estudo_id: estudo.value,
+        meta_tipo: meta.value, meta_valor: Number(valor.value), emails: emails.value.split(/[,;\\s]+/).filter(Boolean), instrucoes: instrucoes.value, exige_audio: false })
+        .then(function (d) { verProfessor(); if (d.nao_encontrados && d.nao_encontrados.length) setTimeout(function () { aviso('Não achei: ' + d.nao_encontrados.join(', ')); }, 60); })
+        .catch(function (e) { erro(e.message); });
     } }));
     c.appendChild(el('button', { class: 'btn sec', txt: 'Cancelar', onclick: verProfessor }));
   }
