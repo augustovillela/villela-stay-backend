@@ -62,6 +62,18 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal(r.status, 200, JSON.stringify(r.json));
     assert.equal(r.json.sessao.id, sessao.id);
   });
+
+  await t('outro professor não consulta a tarefa vinculada', async () => {
+    const r = await req('GET', `/music/api/lab/prof/tocar/tarefas/${tarefaId}`, { como: 'bruno' });
+    assert.equal(r.status, 404);
+  });
+
+  await t('arquivar a tarefa encerra a consulta de envios', async () => {
+    const a = await req('POST', `/music/api/prof/tarefas/${tarefaId}/arquivar`, { como: 'prof', corpo: {} });
+    assert.equal(a.status, 200, JSON.stringify(a.json));
+    const r = await req('GET', `/music/api/prof/tarefas/${tarefaId}/submissoes`, { como: 'prof' });
+    assert.equal(r.status, 400);
+  });
 }
 
 module.exports = { rodar };
