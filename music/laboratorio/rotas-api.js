@@ -41,6 +41,41 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
   const B = '/music/api/lab';
   app.use(B, (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
+  // ---- curso de bateria: progresso mensurável e acompanhamento ----
+  const bateriaRevisao = (dias) => new Date(Date.now() + Math.max(1, dias) * 86400000).toISOString().slice(0, 10);
+  const bateriaAluno = (req) => req.usuario.id;
+  app.get(B + '/bateria/progresso', requireUsuario, h(async (req, res) => {
+    const linhas = db.prepare('SELECT * FROM curso_bateria_progresso WHERE aluno = ? ORDER BY rudimento').all(bateriaAluno(req));
+    res.json({ progresso: linhas, revisao_hoje: linhas.filter((x) => x.proxima_revisao && x.proxima_revisao <= nowISO().slice(0, 10)) });
+  }));
+  app.put(B + '/bateria/progresso/:rudimento', requireUsuario, h(async (req, res) => {
+    const n = Math.floor(Number(req.params.rudimento));
+    if (n < 1 || n > 40) throw erro(400, 'Rudimento inválido.');
+    const b = req.body || {};
+    const bpm = Math.max(0, Math.min(300, Math.floor(Number(b.bpm) || 0)));
+    const reps = Math.max(0, Math.min(1000, Math.floor(Number(b.repeticoes_limpas) || 0)));
+    const diagnostico = s(b.diagnostico, 1000);
+    const concluido = b.concluido ? 1 : 0;
+    const dias = concluido && reps >= 3 ? 7 : 1;
+    const agora = nowISO();
+    db.prepare(`INSERT INTO curso_bateria_progresso (aluno,rudimento,bpm,repeticoes_limpas,diagnostico,concluido,ultima_pratica,proxima_revisao)
+      VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(aluno,rudimento) DO UPDATE SET bpm=excluded.bpm,repeticoes_limpas=excluded.repeticoes_limpas,diagnostico=excluded.diagnostico,concluido=excluded.concluido,ultima_pratica=excluded.ultima_pratica,proxima_revisao=excluded.proxima_revisao`)
+      .run(bateriaAluno(req), n, bpm, reps, diagnostico, concluido, agora, bateriaRevisao(dias));
+    res.json({ ok: true, progresso: db.prepare('SELECT * FROM curso_bateria_progresso WHERE aluno = ? AND rudimento = ?').get(bateriaAluno(req), n) });
+  }));
+  app.get(B + '/prof/bateria/aluno/:aluno/progresso', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
+    res.json({ progresso: db.prepare('SELECT * FROM curso_bateria_progresso WHERE aluno = ? ORDER BY rudimento').all(s(req.params.aluno, 120)), observacoes: db.prepare('SELECT * FROM curso_bateria_observacoes WHERE aluno = ? ORDER BY criado_em DESC LIMIT 100').all(s(req.params.aluno, 120)) });
+  }));
+  app.post(B + '/prof/bateria/observacoes', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem registrar observações.');
+    const b = req.body || {}, aluno = s(b.aluno, 120), texto = s(b.texto, 2000);
+    if (!aluno || !texto) throw erro(400, 'Informe aluno e observação.');
+    const n = Math.max(0, Math.min(40, Math.floor(Number(b.rudimento) || 0)));
+    const id = novoId(); db.prepare('INSERT INTO curso_bateria_observacoes (id,professor,aluno,rudimento,tarefa_id,texto,criado_em) VALUES (?,?,?,?,?,?,?)').run(id, req.usuario.id, aluno, n, s(b.tarefa_id, 120), texto, nowISO());
+    res.json({ ok: true, observacao: db.prepare('SELECT * FROM curso_bateria_observacoes WHERE id = ?').get(id) });
+  }));
+
   /** Corrige de novo, grava e agenda a revisão. */
   function gravarResposta(usuario, { tipo, nivel, semente, params = {}, resposta, ms = 0, sessao = '' }) {
     if (!X.TIPOS[tipo]) throw erro(400, 'Exercício desconhecido.');
