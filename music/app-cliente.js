@@ -847,6 +847,7 @@ const JS = `
       estudo +
       '<p>' + esc(t.descricao || '') + '</p>' +
       (t.instrucoes ? '<p class="sub">' + esc(t.instrucoes) + '</p>' : '') +
+      (t.ultima_sessao ? '<p class="peq">Última prática: ' + esc(String(t.ultima_sessao.hits || 0)) + '/' + esc(String(t.ultima_sessao.total || 0)) + ' acertos' + (t.ultima_sessao.accuracy != null ? ' · ' + esc(String(t.ultima_sessao.accuracy)) + '%' : '') + '</p>' : '') +
       (sub ? '<p class="peq">Estado: <b>' + esc(estados[sub.status] || sub.status) + '</b></p>' : '');
 
     if (sub && sub.status === 'avaliada') {
@@ -1127,7 +1128,7 @@ const JS = `
       if (d.sessoes && d.sessoes.length) {
         c.appendChild(el('h3', { txt: 'Sessões de prática registradas' }));
         d.sessoes.forEach(function (s) {
-          c.appendChild(el('div', { class: 'card' }, [el('p', { txt: (s.title || s.chartId || 'Estudo') + ' · ' + s.hits + '/' + s.total + ' acertos · ' + new Date(s.criado_em).toLocaleString() })]));
+          c.appendChild(el('div', { class: 'card' }, [el('p', { txt: (s.title || s.chartId || 'Estudo') + ' · ' + s.hits + '/' + s.total + ' acertos' + (s.accuracy != null ? ' · ' + s.accuracy + '%' : '') + (s.speed != null ? ' · velocidade ' + s.speed + 'x' : '') + ' · ' + new Date(s.criado_em).toLocaleString() })]));
         });
       }
       d.submissoes.forEach(function (sub) {
