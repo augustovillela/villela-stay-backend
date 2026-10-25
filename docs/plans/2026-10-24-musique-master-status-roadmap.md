@@ -241,15 +241,16 @@ A jornada atual compartilha boa parte da estrutura. Falta aprofundar trilhas pr�
 
 ### Próximas fases do game
 
-1. Consolidar uma máquina de estados única: preparação, contagem, execução, pausa, retomada, falha, conclusão e encerramento.
-2. Unificar a campanha com desbloqueios e objetivos por instrumento.
-3. Completar o modo repetidor de trechos com loop A/B e prática nota a nota.
-4. Melhorar feedback por nota, oitava, corda, casa, tempo e intensidade.
-5. Implementar calibração de latência e cadeia de timbres própria.
-6. Integrar charts revisados, MIDI e MusicXML.
-7. Criar metas, conquistas e recomendações mais completas.
-8. Adicionar professor/aluno e desafios compartilhados depois do modo local.
-9. Otimizar para conexões lentas e computadores fracos.
+> Atualização de 25/10/2026: a máquina de estados da prática já está consolidada no núcleo de Tocar junto. A suíte `test:music-tocar` cobre preparação, contagem, execução, pausa, retomada, falha e conclusão, com 241 testes aprovados. O encerramento de sessões ao vivo continua no fluxo próprio do palco.
+
+1. Unificar a campanha com desbloqueios e objetivos por instrumento.
+2. Completar o modo repetidor de trechos com loop A/B e prática nota a nota.
+3. Melhorar feedback por nota, oitava, corda, casa, tempo e intensidade.
+4. Implementar calibração de latência e cadeia de timbres própria.
+5. Integrar charts revisados, MIDI e MusicXML.
+6. Criar metas, conquistas e recomendações mais completas.
+7. Adicionar professor/aluno e desafios compartilhados depois do modo local.
+8. Otimizar para conexões lentas e computadores fracos.
 
 ## 9. Instrumentos adicionais
 
