@@ -1604,6 +1604,126 @@ async function rodar() {
     assert.equal(semCompliance.st, 403);
   });
 
+  // ------------------------------------------------ acervo de legislação
+  const acervo = require('./acervo-leis');
+  const COMMIT = 'a'.repeat(40);
+  const pedidos = [];
+  acervo._configurar({ fetcher: async (url) => { pedidos.push(url); return { ok: true, status: 200, text: async () => '---\ntitulo: "x"\n---\n# Lei nº 8.245\n\n**Art. 48.** Considera-se locação para temporada...' }; } });
+  let gzTeste = null;
+  function indiceDeTeste() {
+    if (gzTeste) return gzTeste;
+    const { DatabaseSync } = require('node:sqlite');
+    const arq = require('path').join(process.env.DATA_DIR, 'indice-teste.db');
+    const d = new DatabaseSync(arq);
+    d.exec(`CREATE TABLE meta (chave TEXT PRIMARY KEY, valor TEXT);
+      CREATE TABLE normas (id INTEGER PRIMARY KEY, caminho TEXT UNIQUE, esfera TEXT, uf TEXT, tipo TEXT, numero TEXT,
+        data TEXT, titulo TEXT, ementa TEXT, situacao TEXT, revogada TEXT, urn TEXT, fonte TEXT);
+      CREATE VIRTUAL TABLE busca USING fts5(titulo, ementa, tokenize='unicode61 remove_diacritics 2');
+      CREATE VIRTUAL TABLE busca_texto USING fts5(texto, content='', detail=none, tokenize='unicode61 remove_diacritics 2');`);
+    d.prepare('INSERT INTO meta VALUES (?,?)').run('commit', COMMIT);
+    d.prepare('INSERT INTO meta VALUES (?,?)').run('texto_indexado', '1');
+    // "temporada" só no CORPO da 8.245 (como na lei real: art. 48), nunca na ementa de teste dela
+    d.prepare('INSERT INTO busca_texto (rowid, texto) VALUES (?,?)').run(1, 'Art. 48. Considera-se locação para temporada aquela destinada à residência temporária');
+    const ins = d.prepare('INSERT INTO normas VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
+    const fts = d.prepare('INSERT INTO busca (rowid, titulo, ementa) VALUES (?,?,?)');
+    const linhas = [
+      [1, 'federal/leis-ordinarias/1991/lei-8245-1991-10-18.md', 'federal', '', 'Lei Ordinária', '8245', '1991-10-18',
+        'Lei nº 8.245 de 18/10/1991', 'Dispõe sobre as locações dos imóveis urbanos.', 'Em vigor', 'false', '', 'https://www.planalto.gov.br/ccivil_03/leis/l8245.htm'],
+      [2, 'federal/leis-ordinarias/1979/lei-6649-1979-05-16.md', 'federal', '', 'Lei Ordinária', '6649', '1979-05-16',
+        'Lei nº 6.649 de 16/05/1979', 'Regula a locação predial urbana.', 'Revogada', 'true', '', 'https://www.planalto.gov.br/ccivil_03/leis/l6649.htm'],
+      [3, 'estaduais/DF/leis-ordinarias/2019/lei-6334-2019.md', 'estadual', 'DF', 'Lei Ordinária', '6334', '2019-07-19',
+        'Lei nº 6334, de 19/07/2019', 'Dispõe sobre hospedagem e locação de curta temporada no Distrito Federal.', 'Sem Revogação Expressa', '', '', 'https://www.sinj.df.gov.br/sinj/Norma/x'],
+    ];
+    for (const l of linhas) { ins.run(...l); fts.run(l[0], l[7], l[8]); }
+    d.close();
+    gzTeste = require('zlib').gzipSync(require('fs').readFileSync(arq));
+    return gzTeste;
+  }
+  const enviarIndice = (corpo, headers) => fetch(BASE + '/staff/api/legal-acervo/indice', { method: 'PUT', headers, body: corpo });
+
+  await t('acervo: sem índice instalado a tela sabe e a busca recusa com motivo', async () => {
+    const st = await req('GET', P + '/pesquisa/acervo/status');
+    assert.equal(st.json.instalado, false);
+    const b = await req('GET', P + '/pesquisa/acervo/buscar?q=locacao');
+    assert.equal(b.st, 400);
+    assert.ok(/não instalado/.test(b.json.erro));
+  });
+  await t('acervo: índice só entra por chave ou admin, e lixo é recusado sem derrubar o que está no ar', async () => {
+    const gz = indiceDeTeste();
+    assert.equal((await enviarIndice(gz, { 'x-test-user': 'est' })).status, 403, 'membro não troca o índice');
+    assert.equal((await enviarIndice(Buffer.from('nada'), { 'x-publish-key': 'test-key' })).status, 400, 'não-gzip recusado');
+    const r = await enviarIndice(gz, { 'x-publish-key': 'test-key' });
+    assert.equal(r.status, 200);
+    assert.equal((await r.json()).total, 3);
+    const lixo = await enviarIndice(require('zlib').gzipSync(Buffer.from('SQLite format 3\u0000quebrado')), { 'x-publish-key': 'test-key' });
+    assert.equal(lixo.status, 400);
+    assert.equal((await req('GET', P + '/pesquisa/acervo/status')).json.total, 3, 'índice anterior continua no ar');
+  });
+  await t('acervo: assinante NÃO tem rota de troca do índice (é de todos os escritórios)', async () => {
+    const r = await fetch(BASE + '/juridico/api/legal-acervo/indice', { method: 'PUT', headers: { 'x-fake-uid': 'ac1' }, body: indiceDeTeste() });
+    assert.notEqual(r.status, 200);
+    const r2 = await fetch(BASE + '/juridico/api/legal/acervo/indice', { method: 'PUT', headers: { 'x-fake-uid': 'ac1', 'x-fake-modulos': 'pesquisa' }, body: indiceDeTeste() });
+    assert.notEqual(r2.status, 200);
+  });
+  await t('acervo: busca sem acento, filtro de vigentes e de UF', async () => {
+    const todas = await req('GET', P + '/pesquisa/acervo/buscar?q=' + encodeURIComponent('locacao'));
+    assert.equal(todas.json.resultados.length, 3);
+    const vig = await req('GET', P + '/pesquisa/acervo/buscar?q=locacao&vigentes=1');
+    assert.ok(!vig.json.resultados.some(n => n.caminho.includes('6649')), 'revogada fica de fora');
+    const df = await req('GET', P + '/pesquisa/acervo/buscar?q=locacao&uf=df');
+    assert.deepEqual(df.json.resultados.map(n => n.uf), ['DF']);
+    const sujo = await req('GET', P + '/pesquisa/acervo/buscar?q=' + encodeURIComponent('locação: "temporada" OR -x*'));
+    assert.equal(sujo.st, 200, 'operadores do FTS digitados pelo usuário não quebram a busca');
+    const plural = await req('GET', P + '/pesquisa/acervo/buscar?q=' + encodeURIComponent('locações'));
+    assert.equal(plural.json.resultados.length, 3, 'plural casa pelo radical');
+    const um = await req('GET', P + '/pesquisa/acervo/buscar?q=' + encodeURIComponent('hospedagem palavrainexistente'));
+    assert.deepEqual(um.json.resultados.map(n => n.uf), ['DF'], 'sem casamento de todos os termos, cai para qualquer um');
+    const corpo = await req('GET', P + '/pesquisa/acervo/buscar?q=' + encodeURIComponent('residência temporária') + '&esfera=federal');
+    assert.deepEqual(corpo.json.resultados.map(n => [n.numero, n.onde]), [['8245', 'texto']], 'acha pelo corpo da norma e diz que foi pelo texto');
+    const ambos = await req('GET', P + '/pesquisa/acervo/buscar?q=temporada');
+    assert.equal(ambos.json.resultados[0].onde, 'ementa', 'casamento na ementa vem antes do casamento só no texto');
+    assert.ok(ambos.json.resultados.some(n => n.numero === '8245' && n.onde === 'texto'));
+  });
+  await t('acervo: texto vem do commit fixado, sem cabeçalho, e caminho fora do índice não vira URL', async () => {
+    const r = await req('GET', P + '/pesquisa/acervo/norma?caminho=' + encodeURIComponent('federal/leis-ordinarias/1991/lei-8245-1991-10-18.md'));
+    assert.equal(r.st, 200);
+    assert.ok(r.json.norma.texto.startsWith('# Lei nº 8.245'), 'cabeçalho YAML removido');
+    assert.ok(pedidos[0].includes('/' + COMMIT + '/'), 'URL usa o commit do índice');
+    const n = pedidos.length;
+    const fora = await req('GET', P + '/pesquisa/acervo/norma?caminho=' + encodeURIComponent('../../etc/passwd'));
+    assert.equal(fora.st, 404);
+    assert.equal(pedidos.length, n, 'nenhum pedido externo para caminho fora do índice');
+  });
+  await t('acervo: trazer para a Base cria norma PENDENTE de conferência e fora do bloco "pode citar" da peça', async () => {
+    const r = await req('POST', P + '/pesquisa/acervo/importar', { corpo: { caminho: 'federal/leis-ordinarias/1991/lei-8245-1991-10-18.md', area: 'imobiliario' } });
+    assert.equal(r.st, 200);
+    const nm = r.json.norma;
+    assert.equal(nm.tipo, 'lei'); assert.equal(nm.ambito, 'federal'); assert.equal(nm.vigente, 1);
+    assert.equal(nm.conferida_em, '', 'nasce sem conferência');
+    assert.ok(nm.fonte_url.startsWith('https://www.planalto.gov.br'), 'fonte é a OFICIAL, não o GitHub');
+    const outra = await req('POST', P + '/pesquisa/acervo/importar', { corpo: { caminho: 'federal/leis-ordinarias/1991/lei-8245-1991-10-18.md' } });
+    assert.equal(outra.json.ja_existia, true, 'não duplica');
+    const df = await req('POST', P + '/pesquisa/acervo/importar', { corpo: { caminho: 'estaduais/DF/leis-ordinarias/2019/lei-6334-2019.md' } });
+    assert.equal(df.json.norma.ambito, 'distrital');
+    const { peticionar } = require('./index');
+    assert.ok(!peticionar.contextoPeticao(petId).texto.includes('8.245'), 'sem conferência não entra na peça');
+    await req('POST', `${P}/pesquisa/normas/${nm.id}/conferir`, { corpo: {} });
+    assert.ok(peticionar.contextoPeticao(petId).texto.includes('8.245'), 'conferida, entra no bloco que pode ser citado');
+  });
+  await t('acervo: assinante busca no índice comum (com o módulo pesquisa) e importa para o PRÓPRIO banco', async () => {
+    const sem = await req('GET', '/juridico/api/legal/pesquisa/acervo/buscar?q=locacao', { fake: { uid: 'ac2', modulos: 'crm' } });
+    assert.equal(sem.st, 403, 'sem o módulo pesquisa no plano');
+    const com = await req('GET', '/juridico/api/legal/pesquisa/acervo/buscar?q=locacao', { fake: { uid: 'ac2', modulos: 'pesquisa' } });
+    assert.equal(com.json.resultados.length, 3);
+    const imp = await req('POST', '/juridico/api/legal/pesquisa/acervo/importar', { fake: { uid: 'ac2', modulos: 'pesquisa' },
+      corpo: { caminho: 'estaduais/DF/leis-ordinarias/2019/lei-6334-2019.md' } });
+    assert.equal(imp.st, 200);
+    assert.ok(!imp.json.ja_existia, 'o banco do escritório é outro: não herda a importação do staff');
+    const base = await req('GET', '/juridico/api/legal/pesquisa/normas', { fake: { uid: 'ac2', modulos: 'pesquisa' } });
+    assert.ok(base.json.normas.some(n => n.identificacao.startsWith('Lei nº 6334')));
+    assert.ok(!base.json.normas.some(n => n.identificacao.startsWith('Lei nº 8.245')), 'não vê a norma do staff');
+  });
+
   srv.close();
   console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

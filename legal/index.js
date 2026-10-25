@@ -24,6 +24,7 @@ const relatorios = require('./relatorios');
 const coleta = require('./coleta');
 const peticionar = require('./peticionar');
 const tribunais = require('./tribunais');
+const acervoLeis = require('./acervo-leis');
 const { semearIA } = require('./prompts-seed');
 const { semearLivro } = require('./livro/seeds');
 const { registrarRotasStaff } = require('./rotas-staff');
@@ -56,6 +57,15 @@ function montar(app, injected = {}) {
     repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, peticionar, tribunais, jwtSecret,
     requireAuth, requireAdmin, requirePublishOrSession, lerUsuarios,
   });
+  // Troca do índice do ACERVO DE LEGISLAÇÃO (compartilhado por todos os escritórios).
+  // Registrada AQUI, e não em registrarRotasStaff, de propósito: a ponte do assinante
+  // remonta aquelas rotas com requireAdmin = passa, e um assinante trocaria o índice de todos.
+  app.put('/staff/api/legal-acervo/indice', requirePublishOrSession,
+    (req, res, next) => (req.viaChave ? next() : (requireAdmin || ((q, r) => r.status(403).json({ erro: 'apenas administrador' })))(req, res, next)),
+    express.raw({ type: () => true, limit: '400mb' }),
+    (req, res) => {
+      try { res.json({ ok: true, ...acervoLeis.instalar(req.body) }); } catch (e) { res.status(400).json({ erro: e.message }); }
+    });
   if (jwtSecret) portalCliente.registrarPortalCliente(app, { jwtSecret });
   else console.warn('[legal] jwtSecret ausente — Portal do Cliente NÃO montado.');
   coleta.iniciarRotinas(); // rotina diária server-side (LEGAL_ROTINAS=off desliga)

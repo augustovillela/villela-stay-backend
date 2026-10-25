@@ -10,6 +10,7 @@
 // (nunca PUBLISH_KEY) — é o que garante que a máquina não se autoaprova.
 // =====================================================================
 'use strict';
+const acervo = require('./acervo-leis');
 
 function registrarRotasLivro(app, ctx) {
   const { repo, L, pode, h, auditar, quemFez, requireAuth, requirePublishOrSession } = ctx;
@@ -157,6 +158,34 @@ function registrarRotasLivro(app, ctx) {
   }));
   app.post(`${P}/pesquisa/normas/:id/versoes`, requireAuth, pode('gerir_pesquisa'), h((req, res) => {
     res.json({ ok: true, id: L.Normas.addVersao(req.params.id, corpo(req)) });
+  }));
+  // acervo de legislação (33.2 — achar a norma). Índice compartilhado e só de LEITURA aqui;
+  // a troca do índice é rota de admin do staff (index.js), fora da ponte do assinante.
+  app.get(`${P}/pesquisa/acervo/status`, requireAuth, pode('gerir_pesquisa'), h((req, res) => {
+    res.json(acervo.status());
+  }));
+  app.get(`${P}/pesquisa/acervo/buscar`, requireAuth, pode('gerir_pesquisa'), h((req, res) => {
+    res.json({ resultados: acervo.buscar(req.query) });
+  }));
+  // async: o h() só pega erro síncrono, então o erro de rede é tratado aqui
+  app.get(`${P}/pesquisa/acervo/norma`, requireAuth, pode('gerir_pesquisa'), async (req, res) => {
+    try {
+      const norma = await acervo.texto(req.query.caminho);
+      if (!norma) return res.status(404).json({ erro: 'Norma não está no acervo.' });
+      res.json({ norma });
+    } catch (e) { res.status(502).json({ erro: e.message }); }
+  });
+  app.post(`${P}/pesquisa/acervo/importar`, requireAuth, pode('gerir_pesquisa'), h((req, res) => {
+    const { caminho, area } = corpo(req);
+    const n = acervo.obter(caminho);
+    if (!n) return res.status(404).json({ erro: 'Norma não está no acervo.' });
+    const dados = acervo.paraNorma(n, area);
+    const ja = L.Normas.listar({ busca: dados.identificacao, n: 50 })
+      .find(x => x.identificacao === dados.identificacao && x.ambito === dados.ambito);
+    if (ja) return res.json({ ok: true, norma: ja, ja_existia: true });
+    const norma = L.Normas.criar(dados, quemFez(req));
+    auditar(req, 'norma.importar_acervo', 'norms', norma.id, `${norma.identificacao} · ${n.caminho}`);
+    res.json({ ok: true, norma });
   }));
   // monitoramento normativo (33.7 / 31.3 / 31.4)
   app.get(`${P}/pesquisa/monitores`, requireAuth, pode('gerir_pesquisa'), h((req, res) => {
