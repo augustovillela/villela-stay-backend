@@ -70,9 +70,32 @@ def imagem_tema(n, titulo):
     return []
 
 def imagem_rudimento(n, familia, nome):
-    # Não manter imagens genéricas nos rudimentos: cada figura futura deverá explicar
-    # o sticking, os acentos e a trajetória específicos daquele rudimento.
-    return []
+    base = Path(__file__).with_name('assets')
+    if 'Single Stroke Roll with accents' in nome:
+        arquivo = 'bateria-rudimentos-accentos.png'
+    elif nome == 'Inverted Paradiddle':
+        arquivo = 'bateria-rudimentos-inverted-paradiddle.png'
+    elif familia == 'Roll' and any(x in nome for x in ('Triple Stroke', 'Multiple Bounce')):
+        arquivo = 'bateria-rudimentos-triple-bounce.png'
+    elif familia == 'Roll' and any(x in nome for x in ('Five Stroke', 'Six Stroke', 'Seven Stroke', 'Nine Stroke', 'Ten Stroke', 'Eleven Stroke', 'Thirteen Stroke', 'Fifteen Stroke', 'Seventeen Stroke')):
+        arquivo = 'bateria-rudimentos-contagem.png'
+    elif familia == 'Roll':
+        arquivo = 'bateria-rudimentos-roll.png'
+    elif familia == 'Flam' and any(x in nome for x in ('Flam Accent', 'Flam Tap', 'Flamacue', 'Flam Paradiddle', 'Pataflafla', 'Swiss Army', 'Single Flammed')):
+        arquivo = 'bateria-rudimentos-flam-variacoes.png'
+    elif familia == 'Flam':
+        arquivo = 'bateria-rudimentos-flam.png'
+    elif familia == 'Drag' and any(x in nome for x in ('Drag Tap', 'Drag Paradiddle')):
+        arquivo = 'bateria-rudimentos-drag-taps.png'
+    elif familia == 'Drag':
+        arquivo = 'bateria-rudimentos-drag.png'
+    elif familia == 'Paradiddle':
+        arquivo = 'bateria-rudimentos-paradiddle.png'
+    elif familia == 'Ratamacue':
+        arquivo = 'bateria-rudimentos-ratamacue.png'
+    else:
+        arquivo = 'bateria-rudimentos-hibridos.png'
+    return imagem_editorial(base / arquivo, f'{n:02d}. {nome} · estudo visual da família {familia.lower()}.')
 
 def figure(kind='kit', label='Mapa de estudo'):
     d = Drawing(470, 115)
