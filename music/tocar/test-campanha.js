@@ -21,6 +21,14 @@ test('concluir uma etapa desbloqueia somente a próxima', () => {
 test('campanhas de instrumentos adicionais usam seus estudos correspondentes', () => {
   for (const [instrument, id] of [['baixo', 'baixo-pulsacao-v1'], ['piano', 'piano-pulsacao-v1'], ['bateria', 'bateria-pulsacao-v1'], ['bandolim', 'bandolim-pulsacao-v1']]) { const lista = Campanha.listar(Campanha.criar({ instrument })); assert.equal(lista.length, 1); assert.equal(lista[0].id, id); assert.equal(lista[0].status, 'available'); }
 });
+test('cada instrumento recebe objetivo próprio na campanha', () => {
+  const esperados = { violao: 'batida', guitarra: 'palhetada', baixo: 'pulso grave', piano: 'teclas', bateria: 'bumbo', cavaquinho: 'levada curta', ukulele: 'trocas de acorde', bandolim: 'palhetada alternada' };
+  for (const [instrument, trecho] of Object.entries(esperados)) {
+    const item = Campanha.listar(Campanha.criar({ instrument }))[0];
+    assert.equal(item.challenge.instrument, instrument);
+    assert.match(item.challenge.objective.toLowerCase(), new RegExp(trecho));
+  }
+});
 test('dados inválidos são normalizados e estudo bloqueado não pode ser iniciado', () => {
   const estado = Campanha.criar({ instrument: 'desconhecido', progress: { 'primeiro-riff-v1': { position: -4, bestAccuracy: 130 } } });
   assert.equal(estado.instrument, 'violao'); assert.equal(estado.progress['primeiro-riff-v1'].position, 0); assert.equal(estado.progress['primeiro-riff-v1'].bestAccuracy, null); assert.throws(() => Campanha.atualizar(estado, 'cordas-soltas-v1', { position: 1 }), /bloqueado/); assert.throws(() => Campanha.atualizar(estado, 'nao-existe', {}), /não pertence/);

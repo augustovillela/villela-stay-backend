@@ -16,11 +16,25 @@
   function instrumento(valor) { return ORDEM[valor] ? valor : 'violao'; }
   function idsDa(valor) { return ORDEM[instrumento(valor)].slice(); }
   function catalogo() { return new Map(Estudos.listar().map(function (estudo) { return [estudo.id, estudo]; })); }
-  function desafio(estudo, index) {
+  function objetivoPorInstrumento(instrument) {
+    return ({
+      violao: 'Mantenha o pulso com batida ou dedilhado limpo e constante.',
+      guitarra: 'Mantenha palhetada, articulação e ruído sob controle no pulso.',
+      baixo: 'Sustente o pulso grave com ataques regulares e duração consistente.',
+      piano: 'Toque as teclas e acordes com coordenação e dinâmica controladas.',
+      bateria: 'Mantenha bumbo, caixa e chimbal encaixados no pulso.',
+      cavaquinho: 'Mantenha a levada curta, articulada e constante.',
+      ukulele: 'Mantenha a levada e as trocas de acorde sem perder o pulso.',
+      bandolim: 'Mantenha palhetada alternada e articulação clara no pulso.'
+    })[instrument] || 'Toque cada nota indicada com ataque claro.';
+  }
+  function desafio(estudo, index, instrument) {
     var layout = estudo.chart && estudo.chart.layout;
     var nivel = index + 1;
-    var acao = layout === 'piano' ? 'Toque todas as teclas e acordes do arranjo.' : layout === 'drums' ? 'Mantenha bumbo, caixa e chimbal no pulso.' : 'Toque cada nota indicada com ataque claro.';
-    return { id: estudo.id + '-desafio', level: 'Nível ' + nivel, objective: acao, target: 'Concluir o arranjo completo', metric: 'conclusao' };
+    var acao = objetivoPorInstrumento(instrument);
+    if (layout === 'piano') acao = 'Toque todas as teclas e acordes do arranjo com dinâmica controlada.';
+    if (layout === 'drums') acao = 'Mantenha bumbo, caixa e chimbal encaixados no pulso.';
+    return { id: estudo.id + '-desafio', level: 'Nível ' + nivel, instrument: instrument, objective: acao, target: 'Concluir o arranjo completo', metric: 'conclusao' };
   }
   function recompensa(estudo, index, completed) {
     return { id: 'distintivo-' + estudo.id, title: index === 0 ? 'Primeiro passo' : 'Etapa ' + (index + 1) + ' dominada', description: 'Conclua esta etapa da trilha para desbloquear o distintivo.', unlocked: !!completed };
@@ -54,7 +68,7 @@
     var base = recalcular(state || { instrument: wantedInstrument }), porId = catalogo();
     return idsDa(base.instrument).map(function (id, index) {
       var estudo = porId.get(id), item = copiar(estudo);
-      item.order = index + 1; item.status = base.progress[id].status; item.progress = copiar(base.progress[id]); item.unlocked = item.status === 'available' || item.status === 'in_progress'; item.challenge = desafio(item, index); item.reward = recompensa(item, index, item.status === 'completed'); item.adaptive = adaptacao(item.progress);
+      item.order = index + 1; item.status = base.progress[id].status; item.progress = copiar(base.progress[id]); item.unlocked = item.status === 'available' || item.status === 'in_progress'; item.challenge = desafio(item, index, base.instrument); item.reward = recompensa(item, index, item.status === 'completed'); item.adaptive = adaptacao(item.progress);
       return item;
     });
   }
