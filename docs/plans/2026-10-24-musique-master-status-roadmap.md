@@ -246,7 +246,7 @@ A jornada atual compartilha boa parte da estrutura. Falta aprofundar trilhas pr�
 1. Unificar a campanha com desbloqueios e objetivos por instrumento.
 2. Melhorar feedback por nota, oitava, corda, casa, tempo e intensidade.
 3. Expandir metas, conquistas e recomendações entre habilidades.
-4. Adicionar professor/aluno e desafios compartilhados depois do modo local.
+4. Vincular a campanha do Tocar junto às tarefas e devolutivas do professor.
 5. Otimizar para conexões lentas e computadores fracos.
 
 > Atualização de 25/10/2026: o repetidor de trechos e a aprendizagem nota a nota também foram verificados como implementados. O fluxo oferece seleção de trecho, loop, velocidade progressiva e modo Aprender separado do ritmo, com cobertura nos testes de cliente e núcleo.
@@ -256,6 +256,8 @@ A jornada atual compartilha boa parte da estrutura. Falta aprofundar trilhas pr�
 > Atualização de 25/10/2026: a integração de charts revisados, MIDI e MusicXML/MXL também foi verificada como implementada. O fluxo preserva rascunhos, exige revisão antes de publicar, mantém versões imutáveis, trata conflitos de revisão e alimenta a prática com os charts publicados.
 
 > Atualização de 25/10/2026: metas básicas de conclusão, distintivos, sequência, velocidade adaptativa e recomendação da próxima etapa já existem na campanha. A pendência foi reduzida à expansão avançada: conquistas por consistência e recomendações que cruzem habilidades, histórico e dificuldade.
+
+> Atualização de 25/10/2026: o Musique já possui tarefas, atribuição por e-mail, submissões, feedback, notas, contestações e acompanhamento professor/aluno. A pendência específica é integrar esses recursos à campanha do Tocar junto, permitindo atribuir uma etapa e receber seu resultado.
 
 ## 9. Instrumentos adicionais
 
