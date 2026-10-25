@@ -310,6 +310,17 @@
     aplicar('todos');
   }
 
+  function painelBateria() {
+    var alvo = C.$('[data-bateria-dashboard]'); if (!alvo) return;
+    C.api('GET', '/music/api/lab/bateria/painel').then(function (r) {
+      var concl = Object.keys(r.capitulos || {}).length, p = r.progresso || [], dominados = p.filter(function (x) { return x.concluido && x.repeticoes_limpas >= 3; }).length;
+      C.limpar(alvo); alvo.appendChild(C.el('div', { class: 'curso-dashboard-cards' }, [C.el('div', {}, [C.el('strong', { txt: Math.round(concl / 26 * 100) + '%' }), C.el('span', { txt: 'curso concluído' })]), C.el('div', {}, [C.el('strong', { txt: concl + '/26' }), C.el('span', { txt: 'capítulos' })]), C.el('div', {}, [C.el('strong', { txt: dominados + '/40' }), C.el('span', { txt: 'rudimentos consolidados' })]), C.el('div', {}, [C.el('strong', { txt: String((r.revisao_hoje || []).length) }), C.el('span', { txt: 'revisões hoje' })])]));
+      var t = C.el('table', { class: 'lab-tabela' }, [C.el('caption', { txt: 'Evolução por rudimento' }), C.el('thead', {}, [C.el('tr', {}, ['Rudimento', 'BPM', 'Repetições limpas', 'Diagnóstico', 'Próxima revisão'].map(function (x) { return C.el('th', { scope: 'col', txt: x }); }))]), C.el('tbody', {}, p.map(function (x) { return C.el('tr', {}, [C.el('th', { scope: 'row', txt: String(x.rudimento) }), C.el('td', { txt: String(x.bpm || 0) }), C.el('td', { txt: String(x.repeticoes_limpas || 0) }), C.el('td', { txt: x.diagnostico || '—' }), C.el('td', { txt: x.proxima_revisao || '—' })]); }))]);
+      alvo.appendChild(C.el('div', { class: 'lab-tabela-rolagem' }, [t]));
+      alvo.appendChild(C.el('p', { class: 'lab-dica', txt: 'O histórico detalhado fica salvo na sua conta. Pratique um rudimento, registre a evidência e volte quando a revisão estiver pendente.' }));
+    }).catch(function (e) { C.limpar(alvo); alvo.appendChild(C.el('p', { class: 'lab-erro', txt: e.status === 401 ? 'Entre na sua conta para ver o progresso.' : e.message })); });
+  }
+
   // ---- barra de rolagem também EM CIMA das tabelas largas (atlas) ----
   // Uma faixa fina acima da tabela, do mesmo comprimento, rola junto com a
   // de baixo: dá para ir para os lados sem descer até o fim da tabela.
@@ -371,6 +382,7 @@
     botaoAula();
     progressoCurso();
     filtrosCurso();
+    painelBateria();
     var main = C.$('#lab-main');
     if (!main) return;
     var slug = main.getAttribute('data-ferramenta');

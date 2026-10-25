@@ -21,6 +21,7 @@
 .lab-sub-curso:hover,.lab-sub-curso:focus-visible{background:#d7e8f8!important;box-shadow:0 0 0 2px rgba(39,96,153,.15)}
 .lab-sub-curso{flex-basis:90px;width:90px;font-size:10px!important;padding-left:3px;padding-right:3px}
 .rudimento-registro{display:grid;gap:8px;margin-top:14px;padding:14px;border:1px solid #d7e4ec;border-radius:12px;background:#f7fbfd}.rudimento-registro label{display:grid;gap:4px;font-size:.9rem}.rudimento-registro input[type=number],.rudimento-registro textarea{max-width:100%;padding:7px;border:1px solid #bfd2df;border-radius:7px;font:inherit}.rudimento-registro textarea{min-height:58px;resize:vertical}.rudimento-registro [data-bateria-status]{font-size:.85rem;color:#356276}
+.curso-dashboard-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.curso-dashboard-cards>div{padding:16px;border:1px solid #d7e4ec;border-radius:12px;background:#f7fbfd}.curso-dashboard-cards strong,.curso-dashboard-cards span{display:block}.curso-dashboard-cards strong{font-size:1.45rem;color:var(--navy)}.curso-dashboard-cards span{font-size:.86rem;color:#536b79}@media(max-width:700px){.curso-dashboard-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .lab-destaque-cursos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
 @media (max-width:640px){.lab-destaque-cursos{grid-template-columns:1fr}}
 .lab-jornada-lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0;list-style:none}

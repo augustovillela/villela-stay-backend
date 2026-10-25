@@ -48,6 +48,12 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     const linhas = db.prepare('SELECT * FROM curso_bateria_progresso WHERE aluno = ? ORDER BY rudimento').all(bateriaAluno(req));
     res.json({ progresso: linhas, revisao_hoje: linhas.filter((x) => x.proxima_revisao && x.proxima_revisao <= nowISO().slice(0, 10)) });
   }));
+  app.get(B + '/bateria/painel', requireUsuario, h(async (req, res) => {
+    const row = db.prepare('SELECT dados FROM lab_jornada_progresso WHERE usuario = ?').get(bateriaAluno(req));
+    let dados = {}; try { dados = row ? JSON.parse(row.dados || '{}') : {}; } catch (_) {}
+    const progresso = db.prepare('SELECT * FROM curso_bateria_progresso WHERE aluno = ? ORDER BY rudimento').all(bateriaAluno(req));
+    res.json({ capitulos: dados.curso_bateria || {}, progresso, revisao_hoje: progresso.filter((x) => x.proxima_revisao && x.proxima_revisao <= nowISO().slice(0, 10)) });
+  }));
   app.put(B + '/bateria/progresso/:rudimento', requireUsuario, h(async (req, res) => {
     const n = Math.floor(Number(req.params.rudimento));
     if (n < 1 || n > 40) throw erro(400, 'Rudimento inválido.');
