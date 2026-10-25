@@ -285,7 +285,7 @@ function contextoPeticao(petitionId, { teto = TETO_CTX } = {}) {
 }
 
 // Só entra o que FOI CONFERIDO no inteiro teor oficial (research_findings
-// verificado=1) e norma marcada como vigente. Hipótese NUNCA entra — é a
+// verificado=1) e norma vigente com a vigência CONFERIDA. Hipótese NUNCA entra — é a
 // trava 47.7 do livro: citar hipótese como precedente é o erro que destrói
 // a credibilidade da peça. Doutrina/enunciado não vinculante vem rotulado.
 function jurisprudenciaConferida(p) {
@@ -298,8 +298,10 @@ function jurisprudenciaConferida(p) {
       FROM research_findings WHERE verificado = 1
       ORDER BY CASE hierarquia WHEN 'vinculante' THEN 0 WHEN 'persuasivo' THEN 1 ELSE 2 END,
         data_julgamento DESC LIMIT 12`).all();
+    // conferida_em vazio = ninguém conferiu a vigência (33.4); o bloco diz "pode citar", então não entra
+    // (inclui o que veio do acervo de legislação, que nasce pendente de propósito)
     normas = db.prepare(`SELECT identificacao, tipo, ambito, artigos_chave, ementa, fonte_url
-      FROM norms WHERE vigente = 1 ORDER BY conferida_em DESC LIMIT 12`).all();
+      FROM norms WHERE vigente = 1 AND conferida_em <> '' ORDER BY conferida_em DESC LIMIT 12`).all();
   } catch (_) { return { texto: '', fontes: [] }; } // banco antigo sem as tabelas do livro
   if (!achados.length && !normas.length) return { texto: '', fontes: [] };
 

@@ -285,10 +285,26 @@
 
   // ================================================= 47.7/47.8 · PESQUISA
   VIEWS.pesquisa = async function () {
-    const [{ projetos }, { normas, desatualizadas }, { monitores, alertas }] = await Promise.all([
+    const [{ projetos }, { normas, desatualizadas }, { monitores, alertas }, acervo] = await Promise.all([
       LG.api('GET', '/pesquisa/projetos'), LG.api('GET', '/pesquisa/normas'), LG.api('GET', '/pesquisa/monitores'),
+      LG.api('GET', '/pesquisa/acervo/status').catch(() => ({ instalado: false })),
     ]);
     let h = LGL.livro('Protótipos 47.7 e 47.8. A regra estrutural do livro está no código: <b>“localizado e conferido”</b> só recebe achado depois que alguém abre a fonte oficial e confere o inteiro teor. O bloco <b>“hipótese a verificar”</b> não pode ser citado em peça.');
+
+    h += `<div class="vx-card"><h3>📚 Pesquisa de legislação</h3>
+      ${acervo.instalado ? `
+      <p class="vx-hint">${Number(acervo.total).toLocaleString('pt-BR')} normas: Constituição, leis federais, súmulas e temas, leis do DF e mais.
+        O texto é conversão automática — serve para <b>achar</b>. Para citar, abra a fonte oficial.</p>
+      <div class="vx-form-grid">
+        <label style="grid-column:1/-1">O que procurar <input id="lgl-ac-q" maxlength="200" placeholder="locação por temporada, função social da propriedade..."
+          onkeydown="if(event.key==='Enter')LGL.acBuscar()"></label>
+        <label>Esfera ${LGL.selPares('lgl-ac-esf', [['', 'todas'], ['constituicao', 'Constituição'], ['federal', 'federal'],
+          ['jurisprudencia', 'súmulas e temas'], ['estadual', 'estadual / DF'], ['tratados', 'tratados'], ['reguladores', 'órgãos reguladores'], ['municipal', 'municipal']], '')}</label>
+        <label>UF <input id="lgl-ac-uf" maxlength="2" placeholder="DF" style="text-transform:uppercase"></label>
+        <label><input type="checkbox" id="lgl-ac-vig" checked> só vigentes</label></div>
+      <div class="vx-btn-row" style="margin-top:12px"><button type="button" class="vx-btn" onclick="LGL.acBuscar()">Buscar</button></div>
+      <div id="lgl-ac-res" aria-live="polite"></div>`
+      : '<p class="vx-hint">O acervo de legislação ainda não foi instalado neste servidor.</p>'}</div>`;
 
     h += LGL.box('➕ Nova pesquisa (fase 1: plano de busca)', `
       <label>Título * <input id="lgl-pq-tit" maxlength="200"></label>
@@ -426,6 +442,53 @@
       identificacao: LGL.v('lgl-nm-id'), ementa: LGL.v('lgl-nm-em'), artigos_chave: LGL.v('lgl-nm-art'),
       fonte_url: LGL.v('lgl-nm-url'),
     }, 'Norma cadastrada.');
+  };
+  // ---- acervo de legislação: achar (aqui) → trazer para a Base → conferir vigência (humano)
+  const trechoAcervo = (t) => esc(t || '').replace(/\[\[/g, '<mark>').replace(/\]\]/g, '</mark>');
+  const situacaoAcervo = (n) => n.revogada ? LGL.tag('revogada', 'danger') : LGL.tag(n.situacao || 'situação não informada');
+  LGL.acBuscar = async function () {
+    const alvo = document.getElementById('lgl-ac-res');
+    if (!LGL.v('lgl-ac-q')) return LGUI.toast('Digite o que procurar.', 'ok');
+    const qs = new URLSearchParams({ q: LGL.v('lgl-ac-q'), esfera: LGL.v('lgl-ac-esf'), uf: LGL.v('lgl-ac-uf'),
+      vigentes: LGL.chk('lgl-ac-vig') ? '1' : '', n: '30' });
+    alvo.innerHTML = '<p class="vx-hint">Buscando…</p>';
+    try {
+      const { resultados } = await LG.api('GET', '/pesquisa/acervo/buscar?' + qs);
+      alvo.innerHTML = resultados.length ? resultados.map(n => `<div class="vx-card" style="padding:12px;margin:8px 0">
+        <b>${esc(n.titulo || n.caminho)}</b> ${situacaoAcervo(n)} ${n.onde === 'texto' ? LGL.tag('achado no texto da norma', 'info') : ''}
+        <span class="vx-muted">${esc(n.esfera)}${n.uf ? ' / ' + esc(n.uf) : ''}</span><br>
+        <span class="vx-muted">${esc(String(n.ementa || '').slice(0, 300))}</span>
+        ${n.trecho && n.trecho !== n.ementa ? `<br><small>${trechoAcervo(n.trecho)}</small>` : ''}<br>
+        <button type="button" class="vx-btn vx-btn--sec vx-btn--sm" onclick='LGL.acAbrir(${JSON.stringify(n.caminho).replace(/'/g, '&#39;')})'>ler</button>
+        ${n.fonte ? `<a class="vx-btn vx-btn--sec vx-btn--sm" href="${esc(n.fonte)}" target="_blank" rel="noopener">fonte oficial</a>` : ''}</div>`).join('')
+        : '<p class="vx-hint">Nada encontrado no acervo. Tente outras palavras ou a fonte oficial (Planalto, Sinj-DF).</p>';
+    } catch (e) { alvo.innerHTML = ''; LGUI.toast('Não foi possível buscar', 'erro', e.message); }
+  };
+  LGL.acAbrir = async function (caminho) {
+    LG.body().innerHTML = '<p class="vx-hint">Abrindo a norma…</p>';
+    let n;
+    try { ({ norma: n } = await LG.api('GET', '/pesquisa/acervo/norma?caminho=' + encodeURIComponent(caminho))); }
+    catch (e) { LGUI.toast('Não foi possível abrir', 'erro', e.message); return LG.ir('pesquisa'); }
+    const corpoHtml = esc(n.texto).split('\n').map(l => /^#{1,6} /.test(l) ? `<h4>${l.replace(/^#+ /, '')}</h4>` : l)
+      .join('\n').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    LG.body().innerHTML = `<p><button type="button" class="vx-btn vx-btn--sec vx-btn--sm" onclick="LG.ir('pesquisa')">← Pesquisa</button></p>
+      <div class="vx-card"><h3>${esc(n.titulo || n.caminho)} ${situacaoAcervo(n)}</h3>
+      <p class="vx-muted">${esc(n.ementa || '')}</p>
+      <div class="vx-alerta vx-alerta--info"><div><p class="vx-mb0">Texto convertido automaticamente da fonte oficial — pode ter erro de OCR
+        ou estar desatualizado. <b>Antes de citar, confira na fonte oficial.</b> Ao trazer para a Base normativa, a norma entra
+        <b>pendente de conferência</b> e só vai para as peças depois que alguém conferir a vigência.</p></div></div>
+      <div class="vx-btn-row" style="margin:12px 0">
+        ${n.fonte ? `<a class="vx-btn vx-btn--sm" href="${esc(n.fonte)}" target="_blank" rel="noopener">Abrir a fonte oficial</a>` : '<span class="vx-hint">Sem fonte oficial no acervo.</span>'}
+        <label style="display:inline-flex;gap:6px;align-items:center">Área <input id="lgl-ac-area" maxlength="60" style="width:12em"></label>
+        <button type="button" class="vx-btn vx-btn--sec vx-btn--sm" onclick='LGL.acImportar(${JSON.stringify(n.caminho).replace(/'/g, '&#39;')})'>📖 Trazer para a Base normativa</button>
+        <a class="vx-btn vx-btn--sec vx-btn--sm" href="${esc(n.acervo_url)}" target="_blank" rel="noopener">ver no acervo</a></div>
+      <div style="white-space:pre-wrap;line-height:1.55;max-height:70vh;overflow:auto">${corpoHtml}</div></div>`;
+  };
+  LGL.acImportar = async function (caminho) {
+    try {
+      const r = await LG.api('POST', '/pesquisa/acervo/importar', { caminho, area: LGL.v('lgl-ac-area') });
+      LGUI.toast(r.ja_existia ? 'Essa norma já está na Base normativa.' : 'Trazida para a Base normativa — confira a vigência lá.', 'ok');
+    } catch (e) { LGUI.toast('Não foi possível trazer', 'erro', e.message); }
   };
   LGL.nmConferir = (id) => LGL.post(`/pesquisa/normas/${id}/conferir`, {}, 'Vigência conferida (registrada com seu nome e a data).');
   LGL.moCriar = async function () {

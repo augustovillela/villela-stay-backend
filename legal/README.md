@@ -152,6 +152,26 @@ assinante remonta tudo** em `/juridico/api/legal/*` sem duplicar código. Gating
 **Regra de ouro da onda:** rota que APROVA/PUBLICA/ENVIA é `requireAuth` (sessão humana), nunca
 PUBLISH_KEY. O agente alimenta a fila; quem libera é pessoa identificada.
 
+### Acervo de legislação (Pesquisa → 📚, 33.2)
+
+`acervo-leis.js`: busca no acervo público **ctresb/leis** (MIT; CF, leis/LC/MP/decretos-lei/decretos
+federais, súmulas e temas, Lei Orgânica/leis/decretos do DF). Índice **único e compartilhado** em
+`DATA_DIR/acervo-leis/leis.db` (fora do padrão `legal-<tenant>`, que o `db.js` lê como escritório):
+metadados + ementa (FTS5 com conteúdo externo, tem trecho) e o texto integral só como índice de
+palavras (`content=''`, `detail=none` — sem posições, então achado no corpo é ordenado pela
+hierarquia da norma). O **texto** vem sob demanda do GitHub, no commit gravado em `meta.commit`.
+
+| Rota | Quem |
+|---|---|
+| `GET /pesquisa/acervo/status\|buscar\|norma`, `POST /pesquisa/acervo/importar` | `gerir_pesquisa` (assinante: módulo `pesquisa`) |
+| `PUT /staff/api/legal-acervo/indice` (gzip do SQLite) | PUBLISH_KEY ou admin do staff — registrada no `montar()`, **fora** da ponte, porque lá `requireAdmin` vira "passa" e um assinante trocaria o índice de todos |
+
+**Trava:** `importar` cria a linha em `norms` com `conferida_em` vazio e `fonte_url` = fonte
+OFICIAL (nunca o GitHub). O bloco [LEGISLAÇÃO COM VIGÊNCIA CONFERIDA] das peças (`peticionar.js`)
+exige `conferida_em` preenchido — até 24/10/2026 bastava `vigente=1`, e norma nunca conferida
+entrava como "pode citar". Gerar/enviar o índice: `stays\leis_acervo.py exportar --enviar <URL>`
+(repo da central; doc `docs\integracoes\acervo-leis.md`).
+
 ## Como testar localmente
 
 ```
