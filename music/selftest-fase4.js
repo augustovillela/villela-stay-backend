@@ -52,6 +52,16 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal(r.status, 200, JSON.stringify(r.json));
     assert.ok(r.json.sessoes.some((x) => x.tarefaId === tarefaId));
   });
+
+  await t('aluno envia a sessão vinculada como submissão', async () => {
+    const lista = await req('GET', '/music/api/tocar/sessoes', { como: 'ana' });
+    const sessao = lista.json.sessoes.find((x) => x.tarefaId === tarefaId);
+    const r = await req('POST', `/music/api/tocar/tarefas/${tarefaId}/enviar-sessao`, { como: 'ana', corpo: {
+      sessao_id: sessao.id, texto: 'Pratiquei com andamento constante.',
+    } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.sessao.id, sessao.id);
+  });
 }
 
 module.exports = { rodar };

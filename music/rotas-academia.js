@@ -184,6 +184,20 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
     res.json({ ok: true, submissao: sub });
   }));
 
+  app.post('/music/api/tocar/tarefas/:id/enviar-sessao', requireUsuario, h(async (req, res) => {
+    const tarefa = academia.Tarefas.porId(req.params.id);
+    if (!tarefa || !tarefasCampanha.porTarefa(req.params.id) || !academia.Tarefas.temAluno(req.params.id, req.usuario.id)) {
+      throw new Error('Esta tarefa não foi atribuída a você.');
+    }
+    const d = req.body || {};
+    const sessao = tarefasCampanha.sessaoDaTarefa(req.usuario.id, req.params.id, s(d.sessao_id, 120));
+    if (!sessao) throw new Error('A sessão não pertence a esta tarefa.');
+    const sub = academia.Submissoes.enviar(req.usuario.id, {
+      tarefaId: req.params.id, texto: s(d.texto, 4000), mediaId: s(d.media_id, 40),
+    });
+    res.json({ ok: true, submissao: sub, sessao });
+  }));
+
   app.get('/music/api/submissoes/:id', requireUsuario, h(async (req, res) => {
     const sub = academia.Submissoes.porId(req.params.id);
     const v = academia.Submissoes.podeVer(sub, req.usuario.id);

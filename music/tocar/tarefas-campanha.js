@@ -48,4 +48,11 @@ function sessoesDaTarefa(tarefa_id) {
     });
 }
 
-module.exports = { normalizar, porTarefa, vincular, remover, sessoesDaTarefa };
+function sessaoDaTarefa(usuario, tarefa_id, sessao_id) {
+  const x = db.prepare('SELECT id, usuario, resumo, criado_em FROM tocar_sessoes WHERE id = ? AND usuario = ?').get(sessao_id, usuario);
+  if (!x) return null;
+  let resumo = {}; try { resumo = JSON.parse(x.resumo || '{}'); } catch (_) {}
+  return resumo.tarefaId === tarefa_id ? { id: x.id, usuario: x.usuario, criado_em: x.criado_em, ...resumo } : null;
+}
+
+module.exports = { normalizar, porTarefa, vincular, remover, sessoesDaTarefa, sessaoDaTarefa };
