@@ -10,6 +10,14 @@ Na tela de prática, piano agora mostra as 88 teclas (52 brancas e 36 pretas), c
 
 O fluxo foi conferido com testes de interface, API/SQLite e navegador real. A validação com piano e bateria eletrônica físicos continua pendente por decisão do usuário. Piano e bateria MIDI usam No ritmo ou Aprender nota por nota; este último exige todas as teclas de um acorde ou todos os pads de um grupo simultâneo. Veja [escopo e pendências atuais](../../docs/plans/2026-10-16-musique-pistas-piano-bateria.md).
 
+## Tarefas de estudo com professor
+
+Uma tarefa da Academia pode apontar para um estudo do Tocar junto por meio do vínculo `tocar_tarefas`. O professor cria a tarefa em `POST /music/api/lab/prof/tocar/tarefas`, informando `instrumento`, `estudo_id`, `meta_tipo`, `meta_valor` e os e-mails dos alunos. A listagem geral preserva as tarefas antigas e acrescenta `campanha` apenas quando existe vínculo.
+
+O aluno abre o estudo pelo link da tarefa, registra a sessão com `tarefaId` e `estudoId` em `POST /music/api/tocar/sessoes`, e pode enviá-la diretamente pela rota `POST /music/api/tocar/tarefas/:id/enviar-sessao`. O servidor verifica atribuição, tarefa ativa, proprietário da sessão e correspondência do estudo. O professor consulta sessões junto dos envios em `GET /music/api/prof/tarefas/:id/submissoes`.
+
+Precisão, velocidade e demais medidas são indicações de prática; não viram nota automaticamente. A devolutiva e a nota continuam no fluxo humano de submissão da Academia.
+
 ## Escopo
 
 - Violão e guitarra de seis cordas, afinação padrão Mi2–Lá2–Ré3–Sol3–Si3–Mi4, e contrabaixo de quatro cordas, Mi1–Lá1–Ré2–Sol2; todos com casas 0–24. Violão e guitarra compartilham o perfil de seis cordas.
