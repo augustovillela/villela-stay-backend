@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Gera o livro didático ilustrado de bateria da coleção Musique."""
 from pathlib import Path
+from PIL import Image as PILImage
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
@@ -19,6 +20,8 @@ IMG_GROOVE = Path(__file__).with_name('assets') / 'bateria-capitulo-03-groove.pn
 IMG_REBOTE = Path(__file__).with_name('assets') / 'bateria-capitulo-04-rebote.png'
 IMG_VIRADAS = Path(__file__).with_name('assets') / 'bateria-capitulo-05-viradas.png'
 OUT.mkdir(parents=True, exist_ok=True)
+CACHE = OUT / '.cache-bateria'
+CACHE.mkdir(parents=True, exist_ok=True)
 PAGE = (160 * mm, 230 * mm)
 NAVY = colors.HexColor('#14283D')
 BLUE = colors.HexColor('#245B78')
@@ -61,6 +64,14 @@ RUDIMENTOS = [
 
 def imagem_editorial(path, legenda):
     # Preserva a proporção original; forçar 124x38 mm distorcia as artes 3:2.
+    # Também converte PNGs editoriais para JPEG no PDF para evitar um artefato
+    # excessivamente grande no repositório, sem reduzir a resolução didática.
+    jpeg = CACHE / f'{Path(path).stem}.jpg'
+    if not jpeg.exists() or jpeg.stat().st_mtime < Path(path).stat().st_mtime:
+        with PILImage.open(path) as original:
+            rgb = original.convert('RGB')
+            rgb.save(jpeg, 'JPEG', quality=88, optimize=True, progressive=True)
+    path = jpeg
     largura = 124 * mm
     largura_original, altura_original = ImageReader(str(path)).getSize()
     altura = largura * altura_original / largura_original
