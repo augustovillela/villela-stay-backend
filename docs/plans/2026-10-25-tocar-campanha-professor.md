@@ -53,3 +53,18 @@ Todas as rotas devem reutilizar o vínculo `tarefa_alunos`, exigir docente para 
 3. associação de sessão à tarefa;
 4. interface do professor e do aluno;
 5. suíte completa, auditoria e deploy.
+
+## Estado em 25/10/2026
+
+Concluído e publicado no `master`:
+
+- migração `tocar_tarefas` e módulo de vínculo persistente;
+- criação, listagem e detalhe de tarefas de estudo;
+- atribuição por e-mail e isolamento por `tarefa_alunos`;
+- sessão de prática vinculada e envio da sessão como submissão;
+- cartões do aluno/professor com instrumento, estudo, meta e resultado;
+- link direto que abre o estudo no Tocar junto;
+- sessões de prática visíveis ao professor junto dos envios;
+- testes de aceitação integrados à suíte Musique (`490 ok, 0 falha(s)`).
+
+Fora do escopo desta entrega: transformar a indicação automática em nota, validação física dos instrumentos e mídias profissionais de áudio/animação.

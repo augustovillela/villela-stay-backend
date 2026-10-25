@@ -257,7 +257,7 @@ A jornada atual compartilha boa parte da estrutura. Falta aprofundar trilhas pr�
 
 > Atualização de 25/10/2026: metas básicas de conclusão, distintivos, sequência, velocidade adaptativa e recomendação da próxima etapa já existem na campanha. A pendência foi reduzida à expansão avançada: conquistas por consistência e recomendações que cruzem habilidades, histórico e dificuldade.
 
-> Atualização de 25/10/2026: o Musique já possui tarefas, atribuição por e-mail, submissões, feedback, notas, contestações e acompanhamento professor/aluno. A pendência específica é integrar esses recursos à campanha do Tocar junto, permitindo atribuir uma etapa e receber seu resultado.
+> Atualização de 25/10/2026: a integração da campanha do Tocar junto com tarefas e devolutivas foi concluída e publicada. O professor cria tarefa com instrumento, estudo e meta; o aluno abre o estudo diretamente, registra sessão e pode enviá-la como submissão; o professor vê a sessão junto dos envios. A indicação automática continua separada da nota humana. Permanecem apenas melhorias futuras de análise avançada, não um bloqueio do fluxo básico.
 
 ## 9. Instrumentos adicionais
 
