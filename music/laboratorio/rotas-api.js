@@ -79,6 +79,15 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
       MAX(bpm) AS melhor_bpm, MAX(ultima_pratica) AS ultima_pratica FROM curso_bateria_progresso GROUP BY aluno ORDER BY ultima_pratica DESC`).all();
     res.json({ alunos });
   }));
+  app.post(B + '/prof/bateria/tarefas', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem criar tarefas.');
+    const b = req.body || {}, tipo = s(b.tipo, 20), alvo = Math.max(0, Math.min(40, Math.floor(Number(b.alvo) || 0)));
+    if (!['capitulo', 'rudimento'].includes(tipo) || !alvo) throw erro(400, 'Informe capítulo ou rudimento válido.');
+    const tarefa = academia.Tarefas.criar(req.usuario.id, { titulo: s(b.titulo, 200) || `Bateria · ${tipo} ${alvo}`, descricao: `Curso de bateria · ${tipo} ${alvo}. Meta de BPM: ${Math.max(0, Math.min(300, Number(b.bpm) || 0))}.`, instrucoes: s(b.instrucoes, 4000), exige_audio: b.exige_audio !== false, prazo: s(b.prazo, 25) });
+    const emails = Array.isArray(b.emails) ? b.emails.map((x) => s(x, 160)) : String(b.emails || '').split(/[,;\s]+/).filter(Boolean).map((x) => s(x, 160));
+    const r = emails.length ? academia.Tarefas.atribuirPorEmail(req.usuario.id, tarefa.id, emails, buscarContaPorEmail) : { atribuidos: 0, nao_encontrados: [] };
+    res.json({ ok: true, tarefa, ...r, curso_bateria: { tipo, alvo, bpm: Number(b.bpm) || 0 } });
+  }));
   app.post(B + '/prof/bateria/observacoes', requireUsuario, h(async (req, res) => {
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem registrar observações.');
     const b = req.body || {}, aluno = s(b.aluno, 120), texto = s(b.texto, 2000);
