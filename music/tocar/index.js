@@ -10,8 +10,8 @@ const SONS = require('./sons-manifesto');
 const Campanha = require('./campanha');
 
 const INDICACAO = 'Indicação de treino calculada no seu aparelho; não é nota nem avaliação do professor.';
-const CAMPOS_PRATICA = new Set(['chartId', 'title', 'total', 'hits', 'misses', 'accuracy', 'speed', 'offsetMs', 'duration', 'mode', 'catalogRef']);
-const CAMPOS_APRENDER = new Set(['chartId', 'title', 'total', 'hits', 'skipped', 'duration', 'mode', 'catalogRef']);
+const CAMPOS_PRATICA = new Set(['chartId', 'title', 'total', 'hits', 'misses', 'accuracy', 'speed', 'offsetMs', 'duration', 'mode', 'catalogRef', 'tarefaId', 'estudoId']);
+const CAMPOS_APRENDER = new Set(['chartId', 'title', 'total', 'hits', 'skipped', 'duration', 'mode', 'catalogRef', 'tarefaId', 'estudoId']);
 const ARQUIVOS = Object.freeze([
   'cliente.js', 'estilo.css', 'perfis.js', 'nucleo.js', 'midi.js', 'acordes.js', 'polifonico.js', 'audio.js', 'detector.js',
   'capturar-worklet.js', 'detector-worker.js', 'aprender.js', 'estudos.js', 'sessao-game.js',
@@ -48,6 +48,11 @@ function validarResumo(b) {
     chartId: b.chartId, title: b.title.trim(), total, hits,
     duration: numero(b.duration, 0.1, 7200, 'Duração'), mode: b.mode,
   };
+  if (Object.hasOwn(b, 'tarefaId') || Object.hasOwn(b, 'estudoId')) {
+    if (typeof b.tarefaId !== 'string' || !/^[A-Za-z0-9_-]{1,120}$/.test(b.tarefaId)) throw invalido('Tarefa inválida.');
+    if (typeof b.estudoId !== 'string' || !/^[A-Za-z0-9_.:-]{1,120}$/.test(b.estudoId)) throw invalido('Estudo inválido.');
+    base.tarefaId = b.tarefaId; base.estudoId = b.estudoId;
+  }
   // A referência enviada é mínima. Versão, obra e hash são resolvidos pelo
   // servidor depois de confirmar a sessão e o acesso atual à obra.
   if (Object.hasOwn(b, 'catalogRef')) {
@@ -303,6 +308,16 @@ function montar(app, { requireUsuario, opcional } = {}) {
     try { resumo = validarResumo(req.body); }
     catch (erro) { return res.status(400).json({ erro: erro.message }); }
     try {
+      if (resumo.tarefaId) {
+        const TarefasCampanha = require('./tarefas-campanha');
+        const academia = require('../academia');
+        const tarefa = academia.Tarefas.porId(resumo.tarefaId);
+        const vinculo = TarefasCampanha.porTarefa(resumo.tarefaId);
+        if (!tarefa || tarefa.status !== 'ativa' || !vinculo || !academia.Tarefas.temAluno(resumo.tarefaId, req.usuario.id)) {
+          return res.status(403).json({ erro: 'Esta tarefa não está atribuída a você ou foi encerrada.' });
+        }
+        if (vinculo.estudo_id !== resumo.estudoId) return res.status(400).json({ erro: 'A sessão não corresponde ao estudo da tarefa.' });
+      }
       if (resumo.catalogRef) {
         resumo.catalogRef = require('./catalogo').resolverReferencia(req.usuario.id, resumo.catalogRef, resumo);
       }
