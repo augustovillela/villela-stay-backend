@@ -19,6 +19,7 @@
 .lab-sub-home{font-weight:600!important;color:var(--navy)!important}
 .lab-sub-curso{display:inline-flex;align-items:center;justify-content:center;flex:0 0 102px;width:102px;height:32px;box-sizing:border-box;padding:6px 5px;border-radius:8px;font:700 11px Inter,sans-serif!important;color:var(--navy)!important;background:#e8f1fb;border:1px solid #b8d0ea}
 .lab-sub-curso:hover,.lab-sub-curso:focus-visible{background:#d7e8f8!important;box-shadow:0 0 0 2px rgba(39,96,153,.15)}
+.lab-sub-curso{flex-basis:90px;width:90px;font-size:10px!important;padding-left:3px;padding-right:3px}
 .lab-destaque-cursos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
 @media (max-width:640px){.lab-destaque-cursos{grid-template-columns:1fr}}
 .lab-jornada-lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0;list-style:none}
