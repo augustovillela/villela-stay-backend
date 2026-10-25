@@ -27,7 +27,11 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
   // Trilha → curso da Academia (ADR-0011): complemento editorial, escolhido
   // no staff. Sem a ligação, a trilha sai igual a antes.
   const comCurso = (t) => (t && typeof cursoDaTrilha === 'function' ? { ...t, curso_academia: cursoDaTrilha(t.id) } : t);
-  const comCampanha = (t) => (t ? { ...t, campanha: tarefasCampanha.porTarefa(t.id) } : t);
+  const comCampanha = (t) => {
+    if (!t) return t;
+    const campanha = tarefasCampanha.porTarefa(t.id);
+    return campanha ? { ...t, campanha, ultima_sessao: tarefasCampanha.sessoesDaTarefa(t.id)[0] || null } : { ...t, campanha: null };
+  };
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
     if (e && e.bloqueioDeDireitos) return res.status(403).json({ erro: e.message });
     res.status(400).json({ erro: e.message });

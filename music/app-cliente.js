@@ -854,6 +854,12 @@ const JS = `
         onclick: function () { verFeedback(sub.id); } }));
     }
     if (!sub || sub.status !== 'avaliada') box.appendChild(envioUI(t, sub));
+    if (t.ultima_sessao && (!sub || sub.status === 'devolvida')) {
+      box.appendChild(el('button', { class: 'btn sec', txt: 'Enviar última sessão de prática', onclick: function () {
+        api('POST', '/tocar/tarefas/' + t.id + '/enviar-sessao', { sessao_id: t.ultima_sessao.id, texto: 'Sessão de prática enviada pelo Tocar junto.' })
+          .then(verTarefas).catch(function (e) { erro(e.message); });
+      } }));
+    }
     return box;
   }
 
