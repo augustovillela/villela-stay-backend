@@ -457,6 +457,13 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal((await req('GET', '/music/curso-piano/piano-42', { cru: true })).status, 200);
     assert.equal((await req('GET', '/music/curso-piano.pdf', { cru: true })).status, 200);
   });
+  await t('PIANO: área docente e APIs permanecem protegidas', async () => {
+    const paginaProfessor = await req('GET', '/music/curso-piano/professor', { cru: true });
+    assert.equal(paginaProfessor.status, 200);
+    assert.match(paginaProfessor.texto, /data-piano-professor-dashboard/);
+    assert.equal((await req('GET', '/music/api/lab/prof/piano/alunos', { cru: true })).status, 401);
+    assert.equal((await req('POST', '/music/api/lab/prof/piano/tarefas', { cru: true, corpo: { capitulo: 1, bpm: 60 } })).status, 401);
+  });
 
   await t('ASSINATURA VENCIDA: o Laboratório pessoal fecha com 402 — mas as ferramentas e os dados (LGPD) continuam abertos', async () => {
     const contas = require('../contas');
