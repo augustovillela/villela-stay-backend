@@ -438,6 +438,17 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal((await req('POST', '/music/api/lab/contrabaixo/praticas', { como: 'bruno', corpo: { capitulo: 'contrabaixo-99', bpm: 76, foco: 'expressao' } })).status, 400);
   });
 
+  await t('CONTRABAIXO: conteúdo editorial dos 43 capítulos está íntegro e sem caracteres de substituição', async () => {
+    const livro = require('./curso-contrabaixo-conteudo.json');
+    assert.equal(livro.capitulos.length, 43);
+    livro.capitulos.forEach((c, i) => {
+      assert.equal(c.numero, i + 1, 'numeração contínua');
+      assert.ok(c.pagina_inicio > 0 && c.pagina_fim >= c.pagina_inicio, 'páginas válidas');
+      assert.ok(typeof c.texto === 'string' && c.texto.trim().length >= 500, 'texto editorial presente');
+      assert.equal((c.texto.match(/�/g) || []).length, 0, 'sem caractere de substituição');
+    });
+  });
+
   await t('ASSINATURA VENCIDA: o Laboratório pessoal fecha com 402 — mas as ferramentas e os dados (LGPD) continuam abertos', async () => {
     const contas = require('../contas');
     const cad = await req('POST', '/music/api/conta/cadastrar', { corpo: { nome: 'Lab Vencido', email: 'labvencido@t', senha: 'senha-boa-123', aceite_termos: true } });
