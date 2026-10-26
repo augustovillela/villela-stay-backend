@@ -418,6 +418,15 @@ const secao = (s) => console.log('\n— ' + s + ' —');
     assert.equal(proibido.status, 413);
   });
 
+  await t('telemetria demonstrativa é marcada e não grava métrica artificial', async () => {
+    const antes = telemetria.resumo(1).total;
+    const r = await req('GET', '/staff/api/music/telemetria?demonstracao=1', { staff: 'adm' });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.telemetria.demonstracao, true);
+    assert.ok(Array.isArray(r.json.telemetria.alertas) && r.json.telemetria.alertas.length);
+    assert.equal(telemetria.resumo(1).total, antes);
+  });
+
   // ===================================================================
   secao('ADR-0003 · mídia: o byte não passa pelo processo web');
 
