@@ -249,6 +249,11 @@ ${relacionados(f.slug)}`;
     const documento = { schema: 'musique.course.v1', id: CP.CURSO.id, titulo: CP.CURSO.titulo, subtitulo: CP.CURSO.subtitulo, versao: CP.CURSO.versao, descricao: CP.CURSO.descricao, paginas: CP.CURSO.paginas, trilhas: CP.CURSO.trilhas, partes: CP.PARTES.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-piano', pdf: '/music/curso-piano.pdf' }, capitulos: CP.CAPITULOS.map((c) => ({ ...c, url: `/music/curso-piano/${c.slug}` })) };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
   });
+  app.get('/music/curso-piano.academy.json', opcional, (req, res) => {
+    const modulos = CP.PARTES.map(([id, nome, ns]) => ({ id, titulo: nome, aulas: ns.map((n) => { const c = CP.CAPITULOS[n - 1]; return { ordem: c.numero, titulo: c.titulo, tipo: 'texto_pratica', paginas_pdf: [c.pagina_inicio, c.pagina_fim], objetivo: c.objetivo, roteiro: c.roteiro, exercicio: c.exercicio, dominio: c.dominio, meta: c.meta, ferramentas: c.ferramentas, url: `/music/curso-piano/${c.slug}` }; }) }));
+    const documento = { schema: 'villela.academy.course.v1', produto: { titulo: CP.CURSO.titulo, subtitulo: CP.CURSO.subtitulo, descricao: CP.CURSO.descricao, categoria: 'musica', status: 'rascunho' }, origem: { curso: CP.CURSO.id, pdf: '/music/curso-piano.pdf', paginas: CP.CURSO.paginas }, modulos, metadados: { total_modulos: modulos.length, total_aulas: CP.CAPITULOS.length, requer_produtor_email_antes_de_importar: true } };
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
   app.get('/music/curso-piano.pdf', (req, res) => {
     const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', 'curso-piano.pdf');
     if (!fs.existsSync(pdf)) return res.status(404).send('PDF ainda não foi gerado.');
