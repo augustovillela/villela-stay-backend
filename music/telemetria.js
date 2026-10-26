@@ -32,4 +32,25 @@ function resumo(dias = 7) {
   return { dias: n, total, eventos: agrupar('evento'), rotas: agrupar('rota'), navegadores: agrupar('navegador'), codigos: agrupar('codigo') };
 }
 
-module.exports = { EVENTOS, registrar, resumo };
+function demonstracao() {
+  return {
+    demonstracao: true, dias: 7, total: 47,
+    eventos: [
+      { chave: 'audio_decode_error', n: 14 }, { chave: 'js_error', n: 11 },
+      { chave: 'microphone_denied', n: 9 }, { chave: 'worker_error', n: 7 },
+      { chave: 'route_error', n: 6 },
+    ],
+    rotas: [
+      { chave: '/music/tocar', n: 19 }, { chave: '/music/explorar/laboratorio', n: 16 },
+      { chave: '/music/criar/curso-contrabaixo', n: 8 },
+    ],
+    navegadores: [{ chave: 'chrome', n: 29 }, { chave: 'edge', n: 10 }, { chave: 'firefox', n: 8 }],
+    codigos: [{ chave: 'UNSUPPORTED_CODEC', n: 14 }, { chave: 'PERMISSION_DENIED', n: 9 }],
+    alertas: [
+      { severidade: 'media', tipo: 'audio_decode_error', mensagem: 'Falhas de decodificação acima do limiar de demonstração.' },
+      { severidade: 'baixa', tipo: 'microphone_denied', mensagem: 'Recusas de microfone concentradas no fluxo de prática.' },
+    ],
+  };
+}
+
+module.exports = { EVENTOS, registrar, resumo, demonstracao };

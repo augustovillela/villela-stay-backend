@@ -53,7 +53,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
   }));
 
   app.get('/staff/api/music/telemetria', requireAuth, h(async (req, res) => {
-    res.json({ telemetria: telemetria.resumo(req.query.dias) });
+    res.json({ telemetria: req.query.demonstracao === '1' ? telemetria.demonstracao() : telemetria.resumo(req.query.dias) });
   }));
 
   // ---- fila: o que morreu, e por quê ----
