@@ -125,6 +125,15 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     db.prepare('INSERT INTO curso_contrabaixo_observacoes (id,professor,aluno,capitulo,texto,criado_em) VALUES (?,?,?,?,?,?)').run(id, req.usuario.id, aluno, capitulo, texto, nowISO());
     res.json({ ok: true, observacao: db.prepare('SELECT * FROM curso_contrabaixo_observacoes WHERE id = ?').get(id) });
   }));
+  app.post(B + '/prof/contrabaixo/tarefas', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem criar tarefas.');
+    const b = req.body || {}, capitulo = Math.max(1, Math.min(43, Math.floor(Number(b.capitulo) || 0))), bpm = Math.max(0, Math.min(300, Math.floor(Number(b.bpm) || 0)));
+    if (!capitulo) throw erro(400, 'Informe um capítulo válido.');
+    const tarefa = academia.Tarefas.criar(req.usuario.id, { titulo: s(b.titulo, 200) || `Contrabaixo · capítulo ${capitulo}`, descricao: `Curso de contrabaixo · capítulo ${capitulo}. Meta de BPM: ${bpm}.`, instrucoes: s(b.instrucoes, 4000), exige_audio: b.exige_audio !== false, prazo: s(b.prazo, 25) });
+    const emails = Array.isArray(b.emails) ? b.emails.map((x) => s(x, 160)) : String(b.emails || '').split(/[,;\s]+/).filter(Boolean).map((x) => s(x, 160));
+    const r = emails.length ? academia.Tarefas.atribuirPorEmail(req.usuario.id, tarefa.id, emails, buscarContaPorEmail) : { atribuidos: 0, nao_encontrados: [] };
+    res.json({ ok: true, tarefa, ...r, curso_contrabaixo: { capitulo, bpm } });
+  }));
 
   // ---- Tocar junto: tarefas ligadas a uma campanha de estudo ----
   // Mantém a tarefa na Academia (permissões, submissões e devolutivas) e
