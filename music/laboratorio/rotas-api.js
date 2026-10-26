@@ -295,7 +295,7 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
   app.put(B + '/piano/progresso/:capitulo', requireUsuario, h(async (req, res) => {
     const capitulo = s(req.params.capitulo, 40), n = Number(capitulo.slice('piano-'.length));
     if (!/^piano-\d{2}$/.test(capitulo) || n < 1 || n > 42) throw erro(400, 'Capítulo de Piano inválido.');
-    const b = req.body || {}, checklist = b.checklist && typeof b.checklist === 'object' ? b.checklist : {}, concluido = b.concluido ? 1 : 0, quando = nowISO(), revisao = new Date(Date.now() + (concluido ? 7 : 1) * 86400000).toISOString();
+    const b = req.body || {}, existente = db.prepare('SELECT checklist FROM curso_piano_progresso WHERE aluno = ? AND capitulo = ?').get(req.usuario.id, capitulo), checklist = b.checklist && typeof b.checklist === 'object' ? b.checklist : (() => { try { return JSON.parse((existente && existente.checklist) || '{}'); } catch (_) { return {}; } })(), concluido = b.concluido ? 1 : 0, quando = nowISO(), revisao = new Date(Date.now() + (concluido ? 7 : 1) * 86400000).toISOString();
     db.prepare(`INSERT INTO curso_piano_progresso (aluno,capitulo,checklist,concluido,atualizado_em,proxima_revisao) VALUES (?,?,?,?,?,?) ON CONFLICT(aluno,capitulo) DO UPDATE SET checklist=excluded.checklist, concluido=excluded.concluido, atualizado_em=excluded.atualizado_em, proxima_revisao=excluded.proxima_revisao`).run(req.usuario.id, capitulo, JSON.stringify(checklist), concluido, quando, revisao);
     res.json({ ok: true, capitulo, checklist, concluido: !!concluido, atualizado_em: quando, proxima_revisao: revisao });
   }));
