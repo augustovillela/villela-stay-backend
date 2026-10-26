@@ -285,6 +285,8 @@ Pendências:
 
 > Atualização de 26/10/2026: as trilhas de Violão e Guitarra passaram a ter percursos separados nos níveis iniciante, intermediário e avançado, com exercícios específicos e identidade visual própria por instrumento e nível no painel do aluno. Permanecem como evolução futura a ampliação contínua dos exercícios, a validação física dos equipamentos e a melhoria de timbres.
 
+> Atualização de 26/10/2026: a síntese de timbres recebeu perfil dedicado de contrabaixo, resposta dinâmica de harmônicos, filtro pós-distorção para guitarra, camadas de corpo e ataque para bumbo e caixa e propagação correta do timbre escolhido nas sequências de acordes. Áudio profissional gravado e validação em equipamentos reais continuam pendentes.
+
 ## 10. Infraestrutura e produção
 
 Implementado:
