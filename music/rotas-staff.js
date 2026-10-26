@@ -43,6 +43,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
            FROM organizacoes o ORDER BY o.criado_em DESC LIMIT 100`).all(),
       acervo_por_titularidade: porTitularidade,
       fila: fila.resumo(),
+      telemetria: telemetria.resumo(7),
       ia: {
         capacidades_disponiveis: router.disponiveis(),
         capacidades_conhecidas: router.CAPABILITIES,
