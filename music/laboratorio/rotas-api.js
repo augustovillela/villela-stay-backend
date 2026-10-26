@@ -115,7 +115,15 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
     const aluno = s(req.params.aluno, 120);
     const linha = db.prepare('SELECT usuario, dados FROM lab_jornada_progresso WHERE usuario = ?').get(aluno);
-    res.json({ curso: 'curso-contrabaixo-livro', total_capitulos: 43, progresso: linha ? baixoProgresso(linha) : { aluno, concluidas: [], total: 0, percentual: 0 } });
+    res.json({ curso: 'curso-contrabaixo-livro', total_capitulos: 43, progresso: linha ? baixoProgresso(linha) : { aluno, concluidas: [], total: 0, percentual: 0 }, observacoes: db.prepare('SELECT * FROM curso_contrabaixo_observacoes WHERE aluno = ? ORDER BY criado_em DESC LIMIT 100').all(aluno) });
+  }));
+  app.post(B + '/prof/contrabaixo/observacoes', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem registrar observações.');
+    const b = req.body || {}, aluno = s(b.aluno, 120), texto = s(b.texto, 2000), capitulo = Math.max(0, Math.min(43, Math.floor(Number(b.capitulo) || 0)));
+    if (!aluno || !texto) throw erro(400, 'Informe aluno e observação.');
+    const id = novoId();
+    db.prepare('INSERT INTO curso_contrabaixo_observacoes (id,professor,aluno,capitulo,texto,criado_em) VALUES (?,?,?,?,?,?)').run(id, req.usuario.id, aluno, capitulo, texto, nowISO());
+    res.json({ ok: true, observacao: db.prepare('SELECT * FROM curso_contrabaixo_observacoes WHERE id = ?').get(id) });
   }));
 
   // ---- Tocar junto: tarefas ligadas a uma campanha de estudo ----
