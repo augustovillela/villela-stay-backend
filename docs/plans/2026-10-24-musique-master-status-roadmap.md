@@ -312,6 +312,8 @@ Pendências operacionais:
 
 > Atualização de 26/10/2026: foi acrescentado um modo de demonstração com métricas e alertas artificiais, explicitamente marcado e sem gravação no banco. A análise de eventos reais permanece pendente.
 
+> Atualização de 26/10/2026: a análise operacional ganhou painel próprio no Portal Staff, com períodos de 1, 7, 14 e 30 dias, série diária, rankings por evento/rota/navegador/código, último evento recebido, alertas por severidade, estados de erro e acessibilidade. O modo de demonstração permanece separado dos dados reais. Fica pendente somente acompanhar volume real suficiente para calibrar os limiares e validar decisões operacionais com dados de produção.
+
 ## 11. Validação física pendente
 
 Não marcar como testado até haver equipamento disponível:
