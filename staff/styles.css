@@ -623,3 +623,76 @@ tr:last-child td { border-bottom: none; }
 .sis-nome { font-weight: 700; color: #1B2A4A; font-size: .95rem; }
 .sis-sub { color: #667180; font-size: .78rem; }
 @media (max-width: 560px) { .sis-grade { grid-template-columns: 1fr; } }
+
+
+/* ---- 🎵 Musique · 📡 Telemetria (app-music-telemetria.js) ----
+   Demonstração se distingue por TRÊS sinais além da cor: faixa com texto,
+   borda tracejada e barras hachuradas com a marca "DEMONSTRAÇÃO". */
+.mtel { margin-top: 16px; }
+.mtel-titulo { font-size: 1.25rem; color: var(--petroleo); margin: 0 0 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mtel-tag-demo { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; background: #5C4300; color: #fff; border-radius: 999px; padding: 3px 10px; }
+.mtel-controles { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; }
+.mtel-periodos { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.mtel-periodos legend { font-size: .8rem; font-weight: 700; color: var(--concreto); padding: 0; margin-bottom: 6px; }
+.mtel-per { position: relative; }
+.mtel-per input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.mtel-per span { display: inline-block; padding: 7px 14px; border: 1px solid #9AA5B1; border-radius: 999px; background: #fff; color: var(--concreto); font-size: .88rem; cursor: pointer; min-height: 20px; }
+.mtel-per input:checked + span { background: var(--lago-escuro); border-color: var(--lago-escuro); color: #fff; font-weight: 700; }
+.mtel-per input:checked + span::before { content: "✓ "; }
+.mtel-per input:focus-visible + span { outline: 3px solid #2563EB; outline-offset: 2px; }
+.mtel-per input:disabled + span { opacity: .55; cursor: not-allowed; }
+.mtel-botoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.mtel button:focus-visible, .mtel a:focus-visible, .mtel summary:focus-visible, .mtel-rolagem:focus-visible { outline: 3px solid #2563EB; outline-offset: 2px; }
+.mtel-sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.mtel-selo-real { display: inline-block; margin: 0 0 12px; font-size: .82rem; color: #1E5E2A; background: #EAF5EC; border: 1px solid #B9DCC0; border-radius: 999px; padding: 4px 12px; }
+.mtel-selo-real span { color: var(--ok); }
+.mtel-demo { border: 3px dashed #8A6A10; border-radius: 14px; padding: 14px; background: #FFFCF3; }
+.mtel-faixa-demo { margin: 0 0 14px; padding: 12px 14px; border-radius: 10px; color: #3D2D00; font-size: .9rem;
+  background: repeating-linear-gradient(135deg, #FBEFC9 0 14px, #F6E3A6 14px 28px); border: 1px solid #C9A227; }
+.mtel-demo .card .n { color: #5C4300; }
+.mtel-cards { margin-bottom: 18px; }
+.mtel-cards .card .n { font-size: 1.6rem; overflow-wrap: anywhere; }
+.mtel-graficos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; margin: 14px 0; }
+.mtel-fig { margin: 0; background: #fff; border: 1px solid var(--borda); border-radius: 14px; padding: 14px 16px; min-width: 0; }
+.mtel-fig-larga { grid-column: 1 / -1; }
+.mtel-fig h3, .mtel-bloco h3 { font-size: 1rem; color: var(--petroleo); margin: 0 0 10px; }
+.mtel-fig svg { width: 100%; height: auto; display: block; max-height: 260px; }
+.mtel-barra { fill: var(--lago); }
+.mtel-linha { stroke: #9AA5B1; stroke-width: 1; }
+.mtel-val { font-size: 12px; font-weight: 700; fill: var(--concreto); }
+.mtel-eixo { font-size: 11px; fill: #4B5563; }
+.mtel-marca { font-size: 13px; font-weight: 800; letter-spacing: .1em; fill: #5C4300; }
+.mtel-det { margin-top: 8px; font-size: .85rem; }
+.mtel-det summary { cursor: pointer; color: var(--lago-escuro); }
+.mtel-rolagem { overflow-x: auto; max-width: 100%; }
+.mtel-rank { width: 100%; }
+/* O design system (.vx) pinta todo <th> como cabeçalho (caixa-alta, fundo); aqui o th de LINHA é o rótulo do item. */
+.mtel th[scope="row"] { text-transform: none; letter-spacing: normal; background: transparent; font-size: .9rem; color: var(--concreto); }
+.mtel-rank th[scope="row"] { font-weight: 600; text-align: left; width: 70%; }
+.mtel-item { display: block; overflow-wrap: anywhere; }
+.mtel-trilho { display: block; height: 8px; background: #EEF1F4; border-radius: 4px; margin-top: 4px; }
+.mtel-fio { display: block; height: 100%; background: var(--lago); border-radius: 4px; }
+.mtel-fio-demo { background: repeating-linear-gradient(135deg, #8A6A10 0 4px, #F3E3B5 4px 8px); }
+.mtel-bloco { margin: 6px 0 14px; }
+.mtel-alertas { width: 100%; min-width: 560px; }
+.mtel-alertas th[scope="row"] { font-weight: 600; text-align: left; }
+.mtel-sev { font-weight: 700; white-space: nowrap; }
+.mtel-sev-alta .mtel-sev { color: var(--alerta); }
+.mtel-sev-media .mtel-sev { color: #8A5A00; }
+.mtel-sev-baixa .mtel-sev { color: #44515F; }
+.mtel-vazio { background: #fff; border: 1px dashed #9AA5B1; border-radius: 14px; padding: 18px; }
+.mtel-vazio h3 { margin: 0 0 6px; font-size: 1rem; color: var(--petroleo); }
+.mtel-erro { border: 1px solid var(--borda); border-left: 4px solid var(--alerta); border-radius: 10px; background: #FCEEED; padding: 14px 16px; }
+.mtel-erro-limite, .mtel-erro-indisponivel { border-left-color: #8A5A00; background: #FDF6E3; }
+.mtel-erro h3 { margin: 0 0 6px; font-size: 1rem; color: var(--concreto); }
+.mtel-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 0; }
+@media (max-width: 600px) {
+  .mtel-controles { flex-direction: column; align-items: stretch; }
+  .mtel-botoes .btn { flex: 1 1 auto; }
+  .mtel-demo { padding: 10px; }
+  .mtel-cards { grid-template-columns: 1fr 1fr; }
+  /* O SVG do gráfico diário encolhe ~45% no celular: texto maior em unidades do viewBox. */
+  .mtel-eixo { font-size: 20px; }
+  .mtel-val { font-size: 22px; }
+  .mtel-marca { font-size: 22px; }
+}

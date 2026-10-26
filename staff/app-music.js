@@ -41,8 +41,8 @@ async function renderMusic() {
        </div>
        <div id="mu-cards" class="cards"></div>
        <div class="barra" style="margin-top:12px">
-         ${['cifras', 'assinaturas', 'contas', 'fila', 'ia', 'acervo', 'auditoria'].map((v) => `<button class="btn secund mu-nav" data-v="${v}">${{
-           cifras: '🎸 Cifras', assinaturas: '💳 Assinaturas', contas: '👤 Contas e cursos', fila: '⚙️ Fila e DLQ', ia: '🤖 Fornecedores de IA', acervo: '🎼 Acervo', auditoria: '📜 Auditoria',
+         ${['cifras', 'assinaturas', 'contas', 'telemetria', 'fila', 'ia', 'acervo', 'auditoria'].map((v) => `<button class="btn secund mu-nav" data-v="${v}">${{
+           cifras: '🎸 Cifras', assinaturas: '💳 Assinaturas', contas: '👤 Contas e cursos', telemetria: '📡 Telemetria', fila: '⚙️ Fila e DLQ', ia: '🤖 Fornecedores de IA', acervo: '🎼 Acervo', auditoria: '📜 Auditoria',
          }[v]}</button>`).join('')}
        </div>
        <div id="mu-corpo"><p class="vazio">Carregando…</p></div>`;
@@ -84,6 +84,7 @@ async function muCorpo() {
     if (MU_VISAO === 'cifras') return muCifras(alvo);
     if (MU_VISAO === 'contas') return muContas(alvo);
     if (MU_VISAO === 'assinaturas') return muAssinaturas(alvo);
+    if (MU_VISAO === 'telemetria' && typeof muTelemetria === 'function') return muTelemetria(alvo);
     if (MU_VISAO === 'fila') return muFila(alvo);
     if (MU_VISAO === 'ia') return muIA(alvo);
     if (MU_VISAO === 'acervo') return muAcervo(alvo);

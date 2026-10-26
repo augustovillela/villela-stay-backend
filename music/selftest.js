@@ -414,6 +414,7 @@ const secao = (s) => console.log('\n— ' + s + ' —');
     const depois = telemetria.resumo(1);
     assert.equal(depois.total, antes + 1);
     assert.ok(depois.eventos.some((x) => x.chave === 'audio_decode_error'));
+    assert.ok(depois.ultimo_evento && Date.now() - Date.parse(depois.ultimo_evento) < 60000, 'ultimo_evento deve ser o recém-gravado');
     const proibido = await req('POST', '/music/api/telemetria', { corpo: { evento: 'audio_decode_error', email: 'nao-gravar@example.test' } });
     assert.equal(proibido.status, 413);
   });
@@ -425,6 +426,11 @@ const secao = (s) => console.log('\n— ' + s + ' —');
     assert.equal(r.json.telemetria.demonstracao, true);
     assert.ok(Array.isArray(r.json.telemetria.alertas) && r.json.telemetria.alertas.length);
     assert.equal(telemetria.resumo(1).total, antes);
+    // A tela do staff recusa resposta cujo modo não bate com o pedido: o real
+    // nunca pode vir marcado como demonstração, nem o contrário.
+    const real = await req('GET', '/staff/api/music/telemetria?dias=14', { staff: 'adm' });
+    assert.equal(real.json.telemetria.demonstracao, false);
+    assert.equal(real.json.telemetria.dias, 14);
   });
 
   // ===================================================================
