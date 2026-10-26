@@ -283,6 +283,8 @@ Pendências:
 - jornadas próprias para piano e bateria.
 - mídias profissionais do curso de contrabaixo: áudio, vídeo, animações e demonstrações sincronizadas;
 
+> Atualização de 26/10/2026: no curso de bateria, os vídeos demonstrativos dos 40 rudimentos permanecem pendentes. A tentativa de geração anterior foi descartada por não produzir movimentos e mãos confiáveis; não tratar os vídeos atuais como material pedagógico publicado.
+
 > Atualização de 26/10/2026: as trilhas de Violão e Guitarra passaram a ter percursos separados nos níveis iniciante, intermediário e avançado, com exercícios específicos e identidade visual própria por instrumento e nível no painel do aluno. Permanecem como evolução futura a ampliação contínua dos exercícios, a validação física dos equipamentos e o refinamento dos timbres além da síntese já aprimorada.
 
 > Atualização de 26/10/2026: a síntese de timbres recebeu perfil dedicado de contrabaixo, resposta dinâmica de harmônicos, filtro pós-distorção para guitarra, camadas de corpo e ataque para bumbo e caixa e propagação correta do timbre escolhido nas sequências de acordes. Áudio profissional gravado e validação em equipamentos reais continuam pendentes.
