@@ -273,6 +273,10 @@ ${relacionados(f.slug)}`;
     const documento = { schema: 'musique.course.progress.v1', curso: CP.CURSO.id, total_capitulos: CP.CAPITULOS.length, capitulos: CP.CAPITULOS.map((c) => ({ slug: c.slug, numero: c.numero, titulo: c.titulo, pagina_inicio: c.pagina_inicio, pagina_fim: c.pagina_fim, meta: c.meta, url: `/music/curso-piano/${c.slug}` })) };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
   });
+  app.get('/music/curso-piano/:slug.json', opcional, (req, res) => {
+    const c = CP.CAPITULOS.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de piano');
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify({ schema: 'musique.course.chapter.v1', curso: CP.CURSO.id, ...c, url: `/music/curso-piano/${c.slug}` }, null, 2));
+  });
   app.get('/music/curso-piano/:slug', opcional, (req, res) => {
     const indiceCapitulo = CP.CAPITULOS.findIndex((x) => x.slug === req.params.slug); const c = CP.CAPITULOS[indiceCapitulo]; if (!c) return naoAchou(res, 'este capítulo de piano');
     const ferramentas = c.ferramentas.map((u) => `<a class="btn sec" href="${u}">${u.split('/').pop().replace(/-/g, ' ')}</a>`).join(' ') + ` <a class="btn" href="/music/criar/professor-piano?curso=piano&capitulo=${encodeURIComponent(c.slug)}&alvo=${encodeURIComponent(c.meta.notas_alvo)}">🎹 Prática guiada deste capítulo</a>`;
