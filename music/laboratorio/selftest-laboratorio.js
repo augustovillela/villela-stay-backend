@@ -8,6 +8,8 @@
 // =====================================================================
 'use strict';
 const vm = require('vm');
+const fs = require('fs');
+const path = require('path');
 
 async function rodar({ t, secao, req, assert }) {
   const N = require('./nucleo/notas');
@@ -599,6 +601,14 @@ async function rodar({ t, secao, req, assert }) {
     const cli = PG.clienteJs();
     ['bandolim', 'metal', 'flauta', 'doce', 'palheta'].forEach((t) => assert.ok(cli.includes("id: '" + t + "'"), 'timbre ' + t));
     assert.match(cli, /'sopro:' \+ s\.id/); assert.match(cli, /Timbre da melodia/);
+  });
+
+  await t('TIMBRES: perfis de baixo, dinâmica, guitarra filtrada e camadas de bateria permanecem no cliente', async () => {
+    const cli = fs.readFileSync(path.join(__dirname, 'cliente', 'audio.js'), 'utf8');
+    assert.match(cli, /baixo:\s*\{[^}]*grave:\s*true/);
+    assert.match(cli, /lowpass/); assert.match(cli, /forca =/);
+    assert.match(cli, /frequency\.value = 2100/); assert.match(cli, /frequency\.value = 185/);
+    assert.match(cli, /contrabaixo elétrico \(sintetizado\)/);
   });
 
   await t('CABEÇALHO ÚNICO: o mesmo menu (Laboratório, Cifras, Ferramentas) em todas as páginas públicas, inclusive as das Cifras, com a seção atual marcada', async () => {
