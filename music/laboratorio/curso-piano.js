@@ -56,6 +56,11 @@ const GUIAS = [
   ['Montar um plano de estudo progressivo.', 'Distribuir técnica, leitura, repertório, ouvido, criação e revisão.', 'Monte um ciclo semanal com metas mensuráveis e dias de recuperação.', 'Revisar o plano com base no registro de prática.'],
 ];
 
+function META(i) {
+  const faixa = i < 7 ? [40, 70] : i < 15 ? [50, 90] : i < 23 ? [55, 100] : i < 31 ? [50, 110] : i < 37 ? [60, 120] : [40, 80];
+  return { bpm_inicial: faixa[0], bpm_alvo: faixa[1], repeticoes_limpas: 3, evidencia: 'três execuções limpas, com pulso estável e sem tensão desnecessária' };
+}
+
 const DADOS = [
   ['O teclado', 13, 24], ['O corpo ao piano', 24, 38], ['Pulso e ritmo', 38, 51], ['Leitura nas duas claves', 51, 64], ['As duas mãos', 64, 75], ['Intervalos e acordes', 75, 90], ['Escalas e repertório de entrada', 90, 108],
   ['Leitura com acidentes e linhas suplementares', 108, 124], ['Ritmo em colcheias', 124, 134], ['Escalas maiores', 134, 144], ['Tríades, inversões e cadências', 144, 157], ['Arpejos, sétimas e cifras', 157, 170], ['Padrões de acompanhamento', 170, 185], ['Expressão e repertório clássico inicial', 185, 205],
@@ -63,7 +68,7 @@ const DADOS = [
   ['Oitavas, acordes largos e saltos', 318, 328], ['Velocidade, notas duplas e arpejos', 328, 338], ['Polifonia e contraponto', 338, 347], ['Análise', 347, 357], ['Interpretação estilística', 357, 369], ['Pedais', 369, 378], ['Recital e performance', 378, 393],
   ['Improvisação avançada', 393, 406], ['Reharmonização', 406, 414], ['Arranjo para piano solo', 414, 423], ['O pianista na banda e no acompanhamento', 423, 434], ['Composição', 434, 443], ['Ouvido e estúdio', 443, 451], ['Portfólio, método próprio e carreira', 451, 465],
   ['O corpo', 466, 470], ['Os dedos', 470, 474], ['Como praticar', 474, 478], ['Prevenção de lesões', 478, 482], ['Planos de estudo', 482, 486],
-].map(([titulo, inicio, fim], i) => { const guia = GUIAS[i] || []; return { numero: i + 1, slug: `piano-${String(i + 1).padStart(2, '0')}`, titulo, pagina_inicio: inicio, pagina_fim: fim, nivel: PARTES.find((p) => p[2].includes(i + 1))[1], resumo: guia[0] || `Estude ${titulo.toLowerCase()} com leitura, escuta, prática deliberada e registro de domínio.`, objetivo: guia[0], roteiro: guia[1], exercicio: guia[2], dominio: guia[3], ferramentas: ['/music/criar/piano-virtual', '/music/criar/professor-piano', '/music/criar/metronomo-progressivo'] }; });
+].map(([titulo, inicio, fim], i) => { const guia = GUIAS[i] || []; return { numero: i + 1, slug: `piano-${String(i + 1).padStart(2, '0')}`, titulo, pagina_inicio: inicio, pagina_fim: fim, nivel: PARTES.find((p) => p[2].includes(i + 1))[1], resumo: guia[0] || `Estude ${titulo.toLowerCase()} com leitura, escuta, prática deliberada e registro de domínio.`, objetivo: guia[0], roteiro: guia[1], exercicio: guia[2], dominio: guia[3], meta: META(i), ferramentas: ['/music/criar/piano-virtual', '/music/criar/professor-piano', '/music/criar/metronomo-progressivo'] }; });
 
 const CURSO = {
   id: 'curso-piano-livro', titulo: 'Livro digital de piano', subtitulo: 'Piano do zero ao avançado', versao: '1.0', paginas: 557, capitulos: 42,
