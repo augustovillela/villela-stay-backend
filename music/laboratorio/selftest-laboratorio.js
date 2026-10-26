@@ -480,6 +480,20 @@ async function rodar({ t, secao, req, assert }) {
     assert.match(aula.texto, /Alvo no teclado/);
   });
 
+  await t('PIANO: auditoria estrutural de acessibilidade e responsividade', async () => {
+    const curso = await req('GET', '/music/curso-piano', { cru: true });
+    assert.equal(curso.status, 200);
+    assert.match(curso.texto, /name="viewport"/);
+    assert.match(curso.texto, /aria-label="Dimensão do curso"/);
+    assert.match(curso.texto, /aria-labelledby="trilhas-piano"/);
+    assert.match(curso.texto, /data-curso-slug=/);
+    const aula = await req('GET', '/music/curso-piano/piano-01', { cru: true });
+    assert.equal(aula.status, 200);
+    assert.match(aula.texto, /aria-label="Navegação dos capítulos"/);
+    assert.match(aula.texto, /data-piano-check=/);
+    assert.match(aula.texto, /data-pratica-bpm/);
+  });
+
   await t('ASSINATURA VENCIDA: o Laboratório pessoal fecha com 402 — mas as ferramentas e os dados (LGPD) continuam abertos', async () => {
     const contas = require('../contas');
     const cad = await req('POST', '/music/api/conta/cadastrar', { corpo: { nome: 'Lab Vencido', email: 'labvencido@t', senha: 'senha-boa-123', aceite_termos: true } });
