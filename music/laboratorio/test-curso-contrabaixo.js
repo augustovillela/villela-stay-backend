@@ -7,5 +7,7 @@ assert.equal(CURSO.fases.length, 10);
 assert.equal(new Set(capitulos.map((c) => c.slug)).size, 43);
 assert.equal(capitulos[0].titulo, 'Conhecendo o contrabaixo elétrico');
 assert.equal(capitulos[42].titulo, 'Plano de desenvolvimento contínuo');
+assert.equal(capitulos[0].pagina, 14);
+assert.equal(capitulos[42].pagina, 384);
 assert.ok(capitulos.every((c) => c.fase && c.faseNome && c.resumo));
 console.log(JSON.stringify({ ok: true, curso: CURSO.id, capitulos: capitulos.length, partes: CURSO.fases.length }));

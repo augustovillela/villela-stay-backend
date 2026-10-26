@@ -24,6 +24,7 @@ const titulos = [
   'Modos gregos aplicados ao baixo', 'Improvisação sobre acordes', 'Criação de riffs e linhas originais', 'Transcrição e análise',
   'Timbre e equipamento', 'Tocar em banda', 'Gravação e estudo com bases', 'Preparação para apresentações', 'Plano de desenvolvimento contínuo',
 ];
+const paginas = [14, 25, 35, 45, 61, 72, 83, 98, 108, 117, 127, 142, 150, 159, 168, 182, 190, 197, 205, 219, 225, 231, 237, 243, 255, 261, 267, 273, 280, 286, 301, 307, 312, 318, 330, 338, 345, 351, 362, 368, 374, 379, 384];
 const resumos = [
   'Conheça o instrumento, suas partes, possibilidades e cuidados.', 'Construa uma rotina confiável de afinação.', 'Toque com conforto, relaxamento e economia de movimento.', 'Produza as primeiras notas limpas e controladas.',
   'Desenvolva alternância, consistência e timbre na mão direita.', 'Organize a mão esquerda para tocar sem tensão.', 'Use cromatismos para coordenar as duas mãos.', 'Sinta e subdivida o pulso antes de preencher o compasso.',
@@ -38,6 +39,6 @@ const resumos = [
 ];
 const porNumero = Object.fromEntries(partes.flatMap(([id, nome, ns]) => ns.map((n) => [n, { id, nome }])));
 const slug = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const capitulos = titulos.map((titulo, i) => ({ id: `contrabaixo-${String(i + 1).padStart(2, '0')}-${slug(titulo)}`, numero: i + 1, titulo, resumo: resumos[i], fase: porNumero[i + 1].id, faseNome: porNumero[i + 1].nome, nivel: i < 8 ? 'iniciante' : i < 20 ? 'basico' : i < 35 ? 'intermediario' : 'avancado', slug: `contrabaixo-${String(i + 1).padStart(2, '0')}` }));
+const capitulos = titulos.map((titulo, i) => ({ id: `contrabaixo-${String(i + 1).padStart(2, '0')}-${slug(titulo)}`, numero: i + 1, titulo, resumo: resumos[i], pagina: paginas[i], fase: porNumero[i + 1].id, faseNome: porNumero[i + 1].nome, nivel: i < 8 ? 'iniciante' : i < 20 ? 'basico' : i < 35 ? 'intermediario' : 'avancado', slug: `contrabaixo-${String(i + 1).padStart(2, '0')}` }));
 const CURSO = { id: 'curso-contrabaixo-livro', titulo: 'Curso de contrabaixo elétrico', subtitulo: 'Do primeiro som ao groove, à criação e à performance', versao: '1.0.0', descricao: 'Um percurso completo de contrabaixo baseado no livro Contrabaixo elétrico.', trilhas: [{ nome: 'Ler e compreender', resumo: 'Conceitos, braço, ritmo, teoria e harmonia.' }, { nome: 'Tocar e controlar', resumo: 'Técnica, articulação, groove e expressão.' }, { nome: 'Criar e tocar com outros', resumo: 'Linhas, estilos, improvisação, banda e performance.' }], fases: partes };
 module.exports = { CURSO, capitulos, partes };
