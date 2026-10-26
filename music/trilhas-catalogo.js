@@ -51,6 +51,38 @@ const TRILHAS = [
     ],
   },
   {
+    slug: 'violao-intermediario',
+    titulo: 'Violão: repertório e condução',
+    descricao: 'Aprofunde o acompanhamento com pestanas, inversões, dedilhados independentes e condução harmônica.',
+    instrumento: 'violao',
+    nivel: 2,
+    objetivo: 'Acompanhar repertório com fluência, dinâmica e escolhas harmônicas conscientes.',
+    ordem: 7,
+    itens: [
+      { tipo: 'acorde.montar', nivel: 3, quantidade: 8, titulo: 'Pestanas e acordes com sétima' },
+      { tipo: 'harmonia.grau', nivel: 3, quantidade: 8, titulo: 'Inversões e baixos de passagem' },
+      { tipo: 'ritmo.palma', nivel: 3, quantidade: 8, titulo: 'Dedilhados com independência' },
+      { tipo: 'percepcao.acorde', nivel: 4, quantidade: 8, titulo: 'Reconhecer funções no repertório' },
+      { tipo: 'leitura.nota', nivel: 3, quantidade: 6, titulo: 'Leitura rítmica aplicada ao acompanhamento' },
+    ],
+  },
+  {
+    slug: 'guitarra-intermediaria',
+    titulo: 'Guitarra: fraseado e criação',
+    descricao: 'Desenvolva fraseado, bends, modos, articulação e construção de solos sobre progressões reais.',
+    instrumento: 'guitarra',
+    nivel: 2,
+    objetivo: 'Criar frases musicais com controle rítmico, articulação e notas-alvo.',
+    ordem: 8,
+    itens: [
+      { tipo: 'escala.montar', nivel: 3, quantidade: 8, titulo: 'Pentatônica conectada no braço' },
+      { tipo: 'melodia.tocar', nivel: 3, quantidade: 8, titulo: 'Bends, vibrato e afinação' },
+      { tipo: 'harmonia.grau', nivel: 4, quantidade: 8, titulo: 'Notas-alvo sobre a progressão' },
+      { tipo: 'percepcao.intervalo', nivel: 4, quantidade: 8, titulo: 'Ouvir e responder com fraseado' },
+      { tipo: 'ritmo.palma', nivel: 4, quantidade: 6, titulo: 'Síncopa e acentos de riff' },
+    ],
+  },
+  {
     slug: 'primeiros-passos',
     titulo: 'Primeiros passos',
     descricao: 'Para quem está começando do zero. Ouvido, pulso e as primeiras notas — '
