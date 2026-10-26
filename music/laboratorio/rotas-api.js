@@ -294,6 +294,15 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     const sessoes = db.prepare("SELECT id, trilha_id, meta, anotacao, iniciada_em FROM sessoes_pratica WHERE usuario = ? AND trilha_id LIKE 'piano:%' ORDER BY iniciada_em DESC LIMIT 100").all(aluno).map((x) => { let meta = {}; try { meta = JSON.parse(x.meta || '{}'); } catch (_) {} return { id: x.id, capitulo: x.trilha_id.slice('piano:'.length), ...meta, notas: x.anotacao, data: x.iniciada_em }; });
     res.json({ curso: 'curso-piano-livro', aluno, sessoes });
   }));
+  app.post(B + '/prof/piano/tarefas', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem criar tarefas.');
+    const b = req.body || {}, capitulo = Math.max(1, Math.min(42, Math.floor(Number(b.capitulo) || 0))), bpm = Math.max(0, Math.min(300, Math.floor(Number(b.bpm) || 0)));
+    if (!capitulo) throw erro(400, 'Informe um capítulo válido.');
+    const tarefa = academia.Tarefas.criar(req.usuario.id, { titulo: s(b.titulo, 200) || `Piano · capítulo ${capitulo}`, descricao: `Curso de Piano · capítulo ${capitulo}. Meta de BPM: ${bpm || 'conforme a aula'}.`, instrucoes: s(b.instrucoes, 4000), exige_audio: b.exige_audio !== false, prazo: s(b.prazo, 25) });
+    const emails = Array.isArray(b.emails) ? b.emails.map((x) => s(x, 160)) : String(b.emails || '').split(/[,;\s]+/).filter(Boolean).map((x) => s(x, 160));
+    const atribuicao = emails.length ? academia.Tarefas.atribuirPorEmail(req.usuario.id, tarefa.id, emails, buscarContaPorEmail) : { atribuidos: 0, nao_encontrados: [] };
+    res.json({ ok: true, tarefa, curso_piano: { capitulo, bpm }, ...atribuicao });
+  }));
 
   // ---- jornada de violão/guitarra: sincronização entre dispositivos ----
   app.get(B + '/jornada-guitarra', requireUsuario, h(async (req, res) => {
