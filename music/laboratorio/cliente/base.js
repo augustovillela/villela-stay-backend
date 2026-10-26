@@ -28,7 +28,7 @@
   var jornadaSyncTimer = null;
   C.guardar = function (k, v) {
     try { localStorage.setItem('musique-lab:' + k, JSON.stringify(v)); } catch (_) { /* sem armazenamento: tudo bem */ }
-    var sincronizaveis = { 'jornada-guitarra': 1, 'jornada-guitarra-favoritos': 1, 'curso-bateria-concluidas-v1': 1, 'curso-guitarra-perfil': 1, 'curso-guitarra-plano': 1, 'curso-guitarra-diario': 1, 'curso-guitarra-aulas-v1': 1, 'acordes-guitarra-progresso': 1, 'laboratorio-batidas-progresso': 1, 'tecnicas-guitarra-progresso': 1, 'improvisacao-guitarra-progresso': 1, 'repertorio-checkpoints': 1, 'aquecimento-guitarra-sessoes': 1, 'temporizador-estudo-sessoes': 1, 'checkin-semanal-guitarra': 1, 'painel-estudos-guitarra': 1, 'registro-sessoes-guitarra': 1 };
+    var sincronizaveis = { 'jornada-guitarra': 1, 'jornada-guitarra-favoritos': 1, 'curso-bateria-concluidas-v1': 1, 'curso-contrabaixo-concluidas-v1': 1, 'curso-guitarra-perfil': 1, 'curso-guitarra-plano': 1, 'curso-guitarra-diario': 1, 'curso-guitarra-aulas-v1': 1, 'acordes-guitarra-progresso': 1, 'laboratorio-batidas-progresso': 1, 'tecnicas-guitarra-progresso': 1, 'improvisacao-guitarra-progresso': 1, 'repertorio-checkpoints': 1, 'aquecimento-guitarra-sessoes': 1, 'temporizador-estudo-sessoes': 1, 'checkin-semanal-guitarra': 1, 'painel-estudos-guitarra': 1, 'registro-sessoes-guitarra': 1 };
     if (sincronizaveis[k] && C.Jornada && !C.Jornada._aplicando && C.Jornada.sync) {
       clearTimeout(jornadaSyncTimer); jornadaSyncTimer = setTimeout(function () { C.Jornada.sync(false).catch(function () {}); }, 700);
     }
