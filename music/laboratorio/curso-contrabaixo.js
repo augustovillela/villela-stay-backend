@@ -45,7 +45,7 @@ const capitulos = titulos.map((titulo, i) => {
   const nivel = i < 8 ? 'iniciante' : i < 20 ? 'basico' : i < 35 ? 'intermediario' : 'avancado';
   return {
     id: `contrabaixo-${String(numero).padStart(2, '0')}-${slug(titulo)}`,
-    numero, titulo, resumo: resumos[i], pagina: paginas[i], fase: fase.id, faseNome: fase.nome, nivel,
+    numero, titulo, resumo: resumos[i], pagina: paginas[i], paginaPdf: paginas[i] + 1, fase: fase.id, faseNome: fase.nome, nivel,
     slug: `contrabaixo-${String(numero).padStart(2, '0')}`,
     roteiro: {
       objetivo: resumos[i],
