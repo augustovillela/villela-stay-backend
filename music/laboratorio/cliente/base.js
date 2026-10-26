@@ -326,6 +326,16 @@
     pintar();
   }
 
+  function checklistPiano() {
+    var alvo = C.$('[data-piano-checklist]'); if (!alvo) return;
+    var slug = alvo.getAttribute('data-piano-checklist'), chave = 'musique-piano-checklist-' + slug, estado = {};
+    try { estado = JSON.parse(w.localStorage.getItem(chave) || '{}') || {}; } catch (_) { estado = {}; }
+    var caixas = C.$$('[data-piano-check]', alvo), status = alvo.querySelector('[data-piano-check-status]');
+    function pintar() { var n = 0; caixas.forEach(function (c) { c.checked = !!estado[c.getAttribute('data-piano-check')]; if (c.checked) n++; }); if (status) status.textContent = n + ' de ' + caixas.length + ' etapas concluídas.'; }
+    caixas.forEach(function (c) { c.onchange = function () { estado[c.getAttribute('data-piano-check')] = c.checked; try { w.localStorage.setItem(chave, JSON.stringify(estado)); } catch (_) {} pintar(); }; });
+    pintar();
+  }
+
   function filtrosCurso() {
     var botoes = C.$$('.curso-filtro'); if (!botoes.length) return;
     var itens = C.$$('.curso-modulo li[data-curso-trilhas]'), status = C.$('#curso-filtro-status');
@@ -441,6 +451,7 @@
     progressoCurso();
     praticaContrabaixo();
     praticaPiano();
+    checklistPiano();
     filtrosCurso();
     painelBateria();
     painelProfessorBateria();
