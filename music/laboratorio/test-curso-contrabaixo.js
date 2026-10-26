@@ -4,6 +4,8 @@ const { CURSO, capitulos } = require('./curso-contrabaixo');
 assert.equal(CURSO.id, 'curso-contrabaixo-livro');
 assert.equal(capitulos.length, 43);
 assert.equal(CURSO.fases.length, 10);
+assert.equal(CURSO.pdfPaginas, 428);
+assert.equal(CURSO.pdfComCapa, true);
 assert.equal(new Set(capitulos.map((c) => c.slug)).size, 43);
 assert.equal(capitulos[0].titulo, 'Conhecendo o contrabaixo elétrico');
 assert.equal(capitulos[42].titulo, 'Plano de desenvolvimento contínuo');

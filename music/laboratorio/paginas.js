@@ -109,7 +109,7 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
     ['bandolim', 'Bandolim', 'Palhetada, melodias e choro.'],
   ];
   app.get('/music/curso-contrabaixo.json', opcional, (req, res) => {
-    const documento = { schema: 'musique.course.v1', id: CBA.CURSO.id, titulo: CBA.CURSO.titulo, subtitulo: CBA.CURSO.subtitulo, versao: CBA.CURSO.versao, descricao: CBA.CURSO.descricao, trilhas: CBA.CURSO.trilhas, recursos: { html: '/music/curso-contrabaixo', pdf: '/music/curso-contrabaixo.pdf' }, formatosDisponiveis: ['musique-html', 'livro-pdf'], fases: CBA.CURSO.fases, capitulos: CBA.capitulos.map((c) => ({ ...c, url: `/music/curso-contrabaixo/${c.slug}` })) };
+    const documento = { schema: 'musique.course.v1', id: CBA.CURSO.id, titulo: CBA.CURSO.titulo, subtitulo: CBA.CURSO.subtitulo, versao: CBA.CURSO.versao, descricao: CBA.CURSO.descricao, trilhas: CBA.CURSO.trilhas, recursos: { html: '/music/curso-contrabaixo', pdf: '/music/curso-contrabaixo.pdf' }, pdf: { paginas: CBA.CURSO.pdfPaginas, capa: CBA.CURSO.pdfComCapa, paginaInicialDoLivro: 2 }, formatosDisponiveis: ['musique-html', 'livro-pdf'], fases: CBA.CURSO.fases, capitulos: CBA.capitulos.map((c) => ({ ...c, url: `/music/curso-contrabaixo/${c.slug}` })) };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
   });
   app.get('/music/curso-contrabaixo.pdf', opcional, (req, res) => {

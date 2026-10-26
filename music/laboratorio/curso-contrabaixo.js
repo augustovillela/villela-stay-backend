@@ -58,5 +58,5 @@ const capitulos = titulos.map((titulo, i) => {
     },
   };
 });
-const CURSO = { id: 'curso-contrabaixo-livro', titulo: 'Curso de contrabaixo elétrico', subtitulo: 'Do primeiro som ao groove, à criação e à performance', versao: '1.0.0', descricao: 'Um percurso completo de contrabaixo baseado no livro Contrabaixo elétrico.', trilhas: [{ nome: 'Ler e compreender', resumo: 'Conceitos, braço, ritmo, teoria e harmonia.' }, { nome: 'Tocar e controlar', resumo: 'Técnica, articulação, groove e expressão.' }, { nome: 'Criar e tocar com outros', resumo: 'Linhas, estilos, improvisação, banda e performance.' }], fases: partes };
+const CURSO = { id: 'curso-contrabaixo-livro', titulo: 'Curso de contrabaixo elétrico', subtitulo: 'Do primeiro som ao groove, à criação e à performance', versao: '1.0.0', descricao: 'Um percurso completo de contrabaixo baseado no livro Contrabaixo elétrico.', pdfPaginas: 428, pdfComCapa: true, trilhas: [{ nome: 'Ler e compreender', resumo: 'Conceitos, braço, ritmo, teoria e harmonia.' }, { nome: 'Tocar e controlar', resumo: 'Técnica, articulação, groove e expressão.' }, { nome: 'Criar e tocar com outros', resumo: 'Linhas, estilos, improvisação, banda e performance.' }], fases: partes };
 module.exports = { CURSO, capitulos, partes };
