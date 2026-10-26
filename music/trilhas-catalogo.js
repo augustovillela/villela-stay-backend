@@ -28,6 +28,8 @@ const TRILHAS = [
       { tipo: 'ritmo.palma', nivel: 2, quantidade: 6, titulo: 'Batidas de acompanhamento' },
       { tipo: 'acorde.montar', nivel: 2, quantidade: 6, titulo: 'Trocas sem interromper o pulso' },
       { tipo: 'ritmo.palma', nivel: 3, quantidade: 6, titulo: 'Dedilhado e dinâmica' },
+      { tipo: 'percepcao.acorde', nivel: 2, quantidade: 6, titulo: 'Ouvir a mudança de acorde' },
+      { tipo: 'harmonia.grau', nivel: 3, quantidade: 6, titulo: 'Graus para acompanhar uma canção' },
     ],
   },
   {
@@ -44,6 +46,8 @@ const TRILHAS = [
       { tipo: 'ritmo.palma', nivel: 2, quantidade: 6, titulo: 'Riffs em subdivisões' },
       { tipo: 'escala.montar', nivel: 2, quantidade: 6, titulo: 'Pentatônica em uma posição' },
       { tipo: 'melodia.tocar', nivel: 3, quantidade: 6, titulo: 'Frases, bends e vibrato' },
+      { tipo: 'teoria.intervalo', nivel: 2, quantidade: 6, titulo: 'Intervalos para localizar frases' },
+      { tipo: 'percepcao.intervalo', nivel: 3, quantidade: 6, titulo: 'Ouvir tensão e resolução' },
     ],
   },
   {
