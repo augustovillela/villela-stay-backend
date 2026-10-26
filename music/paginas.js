@@ -16,6 +16,7 @@
 // Textos jurídicos nascem com a tarja MINUTA (regra 5 do CLAUDE.md).
 // =====================================================================
 'use strict';
+const path = require('node:path');
 const repo = require('./repo');
 const router = require('./ia/router');
 
@@ -444,6 +445,7 @@ function registrarPaginas(app) {
   <div id="menu" class="menu" role="navigation" aria-label="Áreas"></div>
   <div id="corpo"><p class="vazio">Carregando…</p></div>
 </div>
+<script src="/music/telemetria-cliente.js"></script>
 <script src="/music/audio.js"></script>
 <script src="/music/app.js"></script>
 <script src="/music/biblioteca.js"></script>
@@ -528,6 +530,11 @@ function registrarPaginas(app) {
   // Biblioteca de áudio do cliente (compartilhada pelas ferramentas e
   // pelos exercícios) e o app do músico.
   require('./audio-cliente').registrar(app);
+  // Emissor de telemetria técnica anônima (app, Tocar junto e Laboratório).
+  app.get('/music/telemetria-cliente.js', (req, res) => {
+    res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'no-cache')
+      .sendFile(path.join(__dirname, 'telemetria-cliente.js'));
+  });
   require('./app-cliente').registrar(app);
   require('./biblioteca-cliente').registrar(app);
   require('./escolas-cliente').registrar(app);

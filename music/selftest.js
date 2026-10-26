@@ -419,6 +419,31 @@ const secao = (s) => console.log('\n— ' + s + ' —');
     assert.equal(proibido.status, 413);
   });
 
+  await t('emissor do cliente: o corpo que ele monta é aceito, e app, Tocar e Laboratório o carregam', async () => {
+    // O emissor de verdade, num navegador simulado, entrega o corpo que vai
+    // para o POST — se ele ganhar um campo que a borda recusa, cai aqui.
+    const Emissor = require('./telemetria-cliente');
+    assert.deepEqual([...Emissor.EVENTOS].sort(), [...telemetria.EVENTOS].sort(), 'allowlist do cliente diverge da do servidor');
+    let corpo = null;
+    const T = Emissor.criar({ janela: { location: { pathname: '/music/app' } }, navigator: { userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/130.0' }, enviar: (c) => { corpo = c; } });
+    T.emitir('microphone_denied', 'NotAllowedError');
+    const antes = telemetria.resumo(1).total;
+    const r = await req('POST', '/music/api/telemetria', { corpo });
+    assert.equal(r.status, 202, JSON.stringify(r.json));
+    assert.equal(telemetria.resumo(1).total, antes + 1);
+    const js = await req('GET', '/music/telemetria-cliente.js', { cru: true });
+    assert.equal(js.status, 200);
+    assert.match(js.headers.get('content-type') || '', /javascript/);
+    assert.match(js.texto, /MusiqueTelemetria/);
+    for (const pagina of ['/music/app', '/music/tocar']) {
+      const h = await req('GET', pagina, { cru: true });
+      assert.equal(h.status, 200, pagina);
+      assert.match(h.texto, /<script src="\/music\/telemetria-cliente\.js"/, pagina + ' não carrega o emissor');
+    }
+    const lab = await req('GET', '/music/laboratorio.js', { cru: true });
+    assert.ok(lab.texto.indexOf('root.MusiqueTelemetria = factory()') >= 0 && lab.texto.indexOf('root.MusiqueTelemetria = factory()') < lab.texto.indexOf('C.telemetria = function'), 'o bundle do Laboratório precisa do emissor antes do base.js');
+  });
+
   await t('telemetria demonstrativa é marcada e não grava métrica artificial', async () => {
     const antes = telemetria.resumo(1).total;
     const r = await req('GET', '/staff/api/music/telemetria?demonstracao=1', { staff: 'adm' });

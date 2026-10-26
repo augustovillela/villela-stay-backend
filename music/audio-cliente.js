@@ -146,6 +146,7 @@ const JS = `
   function abrirMic() {
     if (micStream) return Promise.resolve();
     if (!global.navigator || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (global.MusiqueTelemetria) global.MusiqueTelemetria.emitir('browser_unsupported', 'sem_getusermedia');
       return Promise.reject(new Error('Este navegador não dá acesso ao microfone. Tente pelo Chrome, Edge ou Firefox atualizados.'));
     }
     // Eco, ruído e ganho automático MEXEM no sinal — e medir sinal
@@ -161,6 +162,7 @@ const JS = `
       micBuf = new Float32Array(micAnalisador.fftSize);
       src.connect(micAnalisador);
     }).catch(function (e) {
+      if (global.MusiqueTelemetria) global.MusiqueTelemetria.erroDeMidia(e);
       throw new Error(e && e.name === 'NotAllowedError'
         ? 'A permissão do microfone foi negada. Libere o microfone para este site e tente de novo.'
         : 'Não consegui usar o microfone: ' + ((e && e.message) || 'erro desconhecido'));

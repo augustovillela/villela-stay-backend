@@ -31,6 +31,8 @@
     }
     function atual(s) { return sessao === s && s.geracao === geracao && !s.fechada; }
     function erro(texto, nome) { var e = new Error(texto); e.name = nome || 'AudioError'; return e; }
+    // Marca para a telemetria anônima (evento da allowlist + código curto).
+    function marcado(e, evento, codigo) { e.telemetria = { evento: evento, codigo: codigo }; return e; }
     function cancelar() { return erro('Conexão de áudio cancelada.', 'AbortError'); }
     function pararFaixas(stream) { if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); }
     function limpar(s) {
@@ -143,9 +145,9 @@
       try {
         if (g.isSecureContext === false) throw erro('O áudio precisa de uma conexão HTTPS. Abra a página pelo endereço seguro do site.');
         s.media = g.navigator && g.navigator.mediaDevices;
-        if (!s.media || !s.media.getUserMedia) throw erro('Este navegador não permite capturar áudio. Use uma versão atual do Chrome, Edge ou Firefox.');
+        if (!s.media || !s.media.getUserMedia) throw marcado(erro('Este navegador não permite capturar áudio. Use uma versão atual do Chrome, Edge ou Firefox.'), 'browser_unsupported', 'sem_getusermedia');
         var C = g.AudioContext || g.webkitAudioContext;
-        if (!C || !g.AudioWorkletNode || !g.Worker) throw erro('Este navegador não oferece o processamento de áudio necessário (AudioWorklet e Worker). Atualize o navegador para conectar o instrumento.');
+        if (!C || !g.AudioWorkletNode || !g.Worker) throw marcado(erro('Este navegador não oferece o processamento de áudio necessário (AudioWorklet e Worker). Atualize o navegador para conectar o instrumento.'), 'browser_unsupported', 'sem_audioworklet');
         var audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 1 } };
         if (deviceId) audio.deviceId = { exact: deviceId };
         var stream = await s.media.getUserMedia({ audio: audio, video: false });
@@ -158,7 +160,7 @@
         // Inicializamos o contexto depois de confirmar uma faixa ativa;
         // a permissão pendente não precisa manter um renderizador aberto.
         s.ctx = new C({ latencyHint: 'interactive' });
-        if (!s.ctx.audioWorklet || !s.ctx.audioWorklet.addModule) throw erro('AudioWorklet não está disponível neste navegador. Atualize o navegador para conectar o instrumento.');
+        if (!s.ctx.audioWorklet || !s.ctx.audioWorklet.addModule) throw marcado(erro('AudioWorklet não está disponível neste navegador. Atualize o navegador para conectar o instrumento.'), 'browser_unsupported', 'sem_audioworklet');
         await garantirContextoAtivo(s);
         if (!atual(s)) throw cancelar();
         await s.ctx.audioWorklet.addModule('/music/tocar/capturar-worklet.js');
@@ -185,6 +187,7 @@
           };
           s.worker.onerror = function (evento) {
             if (evento.preventDefault) evento.preventDefault();
+            if (g.MusiqueTelemetria) g.MusiqueTelemetria.emitir('worker_error', 'detector_worker');
             if (s.conectado) falhar(s, 'O detector de áudio foi interrompido. Recarregue a página e conecte novamente.');
             else reject(erro('Não foi possível carregar o detector de áudio. Recarregue a página e tente novamente.'));
           };
@@ -236,6 +239,7 @@
         return lista;
       } catch (e) {
         if (atual(s)) {
+          if (g.MusiqueTelemetria) g.MusiqueTelemetria.erroDeMidia(e);
           var mensagem = traduzir(e);
           falhar(s, mensagem);
           throw erro(mensagem);

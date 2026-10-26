@@ -60,6 +60,7 @@ const JS = `
         if (r.status === 401) { location.href = '/music/entrar?voltar=' + encodeURIComponent(location.pathname + location.hash); throw new Error('sessao'); }
         // 402: o teste acabou e não há assinatura. Vai para Minha conta, onde está o Assinar.
         if (r.status === 402) { estado.semAcesso = true; var fx = $('#faixa-teste'); if (fx) fx.remove(); if (estado.aba !== 'conta') ir('conta'); throw new Error('assinatura'); }
+        if (r.status >= 500 && window.MusiqueTelemetria) window.MusiqueTelemetria.emitir('route_error', 'api_' + r.status);
         if (!r.ok) { var e = new Error((d && d.erro) || ('Erro ' + r.status)); e.dados = d; throw e; }
         return d;
       });
@@ -926,7 +927,7 @@ const JS = `
             .then(function (d) {
               return fetch(d.url, { method: 'PUT', headers: { 'Content-Type': blob.type }, body: blob })
                 .then(function (r) {
-                  if (!r.ok) throw new Error('O armazenamento recusou o arquivo (' + r.status + ').');
+                  if (!r.ok) { if (window.MusiqueTelemetria) window.MusiqueTelemetria.emitir('upload_error', 'storage_' + r.status); throw new Error('O armazenamento recusou o arquivo (' + r.status + ').'); }
                   return api('POST', '/midias/' + d.midia_id + '/confirmar', {});
                 })
                 .then(function () { resolve(d.midia_id); });
@@ -935,6 +936,7 @@ const JS = `
         rec.start();
       });
     }).catch(function (e) {
+      if (window.MusiqueTelemetria) window.MusiqueTelemetria.erroDeMidia(e);
       throw new Error(e && e.name === 'NotAllowedError'
         ? 'A permissão do microfone foi negada.' : (e.message || 'Não consegui gravar.'));
     });

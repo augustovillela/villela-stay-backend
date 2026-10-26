@@ -161,8 +161,10 @@
     }
     function executar(tarefa) {
       downloads++;
+      var baixado = false;
       baixar(tarefa.file).then(function (bytes) {
         disponivel();
+        baixado = true;
         return ctx.decodeAudioData(bytes);
       }).then(function (buffer) {
         disponivel();
@@ -170,6 +172,8 @@
         buffers[tarefa.file] = buffer;
         tarefa.resolve(buffer);
       }).catch(function (erro) {
+        var T = typeof window !== 'undefined' && window.MusiqueTelemetria;
+        if (T && !encerrado) T.emitir(baixado ? 'audio_decode_error' : 'audio_load_error', 'amostra_instrumento');
         tarefa.reject(erro instanceof Error ? erro : new Error('Não foi possível preparar o som do instrumento.'));
       }).finally(function () { downloads--; despachar(); });
     }

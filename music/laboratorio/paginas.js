@@ -26,7 +26,8 @@ let _cache = {};
 function arquivo(chave, fn) { if (!_cache[chave] || process.env.NODE_ENV === 'development') _cache[chave] = fn(); return _cache[chave]; }
 const ler = (...p) => fs.readFileSync(path.join(__dirname, ...p), 'utf8');
 function nucleoJs() { return arquivo('nucleo', () => NUCLEO_ARQS.map((n) => ler('nucleo', n + '.js')).concat([ler('catalogo.js')]).join('\n;\n')); }
-function clienteJs() { return arquivo('cliente', () => CLIENTE_ARQS.map((n) => ler('cliente', n + '.js')).join('\n;\n')); }
+// O emissor de telemetria é o comum do Musique (app e Tocar usam o mesmo arquivo).
+function clienteJs() { return arquivo('cliente', () => [ler('..', 'telemetria-cliente.js')].concat(CLIENTE_ARQS.map((n) => ler('cliente', n + '.js'))).join('\n;\n')); }
 function cssLab() { return arquivo('css', () => ler('cliente', 'estilo.css')); }
 
 // Texto extraído do PDF editorial, organizado por capítulo. O PDF continua

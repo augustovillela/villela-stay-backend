@@ -602,7 +602,7 @@
   function attachAudioFile(f) {
     stop(); resetMedia(); mediaUrl = URL.createObjectURL(f); var selectedMedia = media = new window.Audio(mediaUrl);
     media.preload = 'metadata'; media.preservesPitch = true; media.mozPreservesPitch = true; media.webkitPreservesPitch = true; media.volume = 0.65;
-    media.onerror = function () { if (selectedMedia !== media) return; stop(); resetMedia(); msg('Não consegui ler este formato de áudio.', true); };
+    media.onerror = function () { if (selectedMedia !== media) return; if (window.MusiqueTelemetria) window.MusiqueTelemetria.emitir('audio_decode_error', 'faixa_local'); stop(); resetMedia(); msg('Não consegui ler este formato de áudio.', true); };
     media.onloadedmetadata = function () { if (selectedMedia !== media) return; if (!Number.isFinite(media.duration) || media.duration < mediaDurationNeeded() - 0.1) { stop(); resetMedia(); msg('O áudio é mais curto que o arranjo e seu alinhamento.', true); return; } text('tj-media-label', f.name); msg('MP3 associado ao arranjo. Clique em Ouvir demonstração para acompanhar a gravação.'); };
   }
   function chooseChart(c, origin) {
@@ -636,7 +636,7 @@
       var selected = media = new window.Audio(data.url);
       media.preload='metadata'; media.preservesPitch=true; media.mozPreservesPitch=true; media.webkitPreservesPitch=true; media.volume=0.65;media.playbackRate=state.speed;
       reference.expiresAt = performance.now() + Math.max(1, Math.min(600, Number(data.expiresIn) || 600)) * 1000;
-      media.onerror=function(){if(selected!==media)return;pause();resetMedia();reference.expiresAt=0;msg('Não consegui reproduzir a faixa. Recarregue o áudio para tentar novamente.',true);};
+      media.onerror=function(){if(selected!==media)return;if(window.MusiqueTelemetria)window.MusiqueTelemetria.emitir('audio_load_error','faixa_referencia');pause();resetMedia();reference.expiresAt=0;msg('Não consegui reproduzir a faixa. Recarregue o áudio para tentar novamente.',true);};
       media.onloadedmetadata=function(){if(selected!==media)return;if(!Number.isFinite(media.duration)||media.duration<mediaDurationNeeded()-0.1){pause();resetMedia();reference.expiresAt=0;msg('O áudio é mais curto que o arranjo e seu alinhamento. O responsável precisa revisar esta versão.',true);}};
       text('tj-media-label','Áudio associado à versão'); return true;
     } catch(e) { if(ticket===remoteTicket && remoteAudio===reference)msg('Áudio indisponível: '+e.message,true); return false; }
