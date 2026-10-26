@@ -24,4 +24,12 @@ function registrar(d = {}) {
   return { ok: true };
 }
 
-module.exports = { EVENTOS, registrar };
+function resumo(dias = 7) {
+  const n = Math.max(1, Math.min(30, Number(dias) || 7));
+  const desde = new Date(Date.now() - n * 86400000).toISOString();
+  const total = (db.prepare('SELECT COUNT(*) AS n FROM music_telemetria WHERE criado_em >= ?').get(desde) || {}).n || 0;
+  const agrupar = (campo) => db.prepare(`SELECT ${campo} AS chave, COUNT(*) AS n FROM music_telemetria WHERE criado_em >= ? GROUP BY ${campo} ORDER BY n DESC LIMIT 20`).all(desde);
+  return { dias: n, total, eventos: agrupar('evento'), rotas: agrupar('rota'), navegadores: agrupar('navegador'), codigos: agrupar('codigo') };
+}
+
+module.exports = { EVENTOS, registrar, resumo };

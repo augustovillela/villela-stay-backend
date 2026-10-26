@@ -14,6 +14,7 @@ const fila = require('./fila');
 const router = require('./ia/router');
 const storage = require('./storage');
 const { db } = require('./db');
+const telemetria = require('./telemetria');
 
 function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => res.status(400).json({ erro: e.message }));
@@ -48,6 +49,10 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
       },
       armazenamento: storage.ativo() ? { pronto: true } : { pronto: false, faltando: storage.faltando() },
     });
+  }));
+
+  app.get('/staff/api/music/telemetria', requireAuth, h(async (req, res) => {
+    res.json({ telemetria: telemetria.resumo(req.query.dias) });
   }));
 
   // ---- fila: o que morreu, e por quê ----
