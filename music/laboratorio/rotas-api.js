@@ -283,6 +283,17 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
       .run(id, req.usuario.id, 'piano:' + capitulo, JSON.stringify({ bpm, foco }), notas, quando, quando);
     res.status(201).json({ ok: true, pratica: { id, bpm, foco, notas, data: quando } });
   }));
+  app.get(B + '/piano/progresso', requireUsuario, h(async (req, res) => {
+    const linhas = db.prepare('SELECT capitulo, checklist, concluido, atualizado_em FROM curso_piano_progresso WHERE aluno = ? ORDER BY capitulo').all(req.usuario.id);
+    res.json({ curso: 'curso-piano-livro', progresso: linhas.map((x) => { let checklist = {}; try { checklist = JSON.parse(x.checklist || '{}'); } catch (_) {} return { capitulo: x.capitulo, checklist, concluido: !!x.concluido, atualizado_em: x.atualizado_em }; }) });
+  }));
+  app.put(B + '/piano/progresso/:capitulo', requireUsuario, h(async (req, res) => {
+    const capitulo = s(req.params.capitulo, 40), n = Number(capitulo.slice('piano-'.length));
+    if (!/^piano-\d{2}$/.test(capitulo) || n < 1 || n > 42) throw erro(400, 'Capítulo de Piano inválido.');
+    const b = req.body || {}, checklist = b.checklist && typeof b.checklist === 'object' ? b.checklist : {}, concluido = b.concluido ? 1 : 0, quando = nowISO();
+    db.prepare(`INSERT INTO curso_piano_progresso (aluno,capitulo,checklist,concluido,atualizado_em) VALUES (?,?,?,?,?) ON CONFLICT(aluno,capitulo) DO UPDATE SET checklist=excluded.checklist, concluido=excluded.concluido, atualizado_em=excluded.atualizado_em`).run(req.usuario.id, capitulo, JSON.stringify(checklist), concluido, quando);
+    res.json({ ok: true, capitulo, checklist, concluido: !!concluido, atualizado_em: quando });
+  }));
   app.get(B + '/prof/piano/alunos', requireUsuario, h(async (req, res) => {
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
     const alunos = db.prepare("SELECT usuario, COUNT(*) AS sessoes, MAX(iniciada_em) AS ultima_pratica FROM sessoes_pratica WHERE trilha_id LIKE 'piano:%' GROUP BY usuario ORDER BY ultima_pratica DESC").all();
