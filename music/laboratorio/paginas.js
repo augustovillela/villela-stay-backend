@@ -13,6 +13,7 @@ const L = require('./licoes');
 const CT = require('./curso-teoria');
 const CB = require('./curso-bateria');
 const CBA = require('./curso-contrabaixo');
+const CP = require('./curso-piano');
 const CBA_LIVRO = require('./curso-contrabaixo-conteudo.json');
 const LB = require('./licoes-bateria');
 const ACESSO = require('./acesso');
@@ -109,7 +110,7 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
       { nome: 'Guitarra', icone: '🎸', cor: '#8a5a72', resumo: 'Técnica, timbre, riffs, solos e linguagem de guitarra.', url: '/music/criar/curso-guitarra-edicao', ativo: true },
       { nome: 'Bateria', icone: '🥁', cor: '#a66b42', resumo: 'Groove, coordenação, leitura e trilha dos 40 rudimentos.', url: '/music/curso-bateria', ativo: true },
       { nome: 'Contrabaixo', icone: '🎸', cor: '#3f7180', resumo: 'Técnica, groove, harmonia, estilos, criação e performance.', url: '/music/curso-contrabaixo', ativo: true },
-      { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Em preparação: teclado, harmonia, acompanhamento e leitura.', url: '/music/curso-piano', ativo: false },
+      { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Teclado, leitura, harmonia, acompanhamento e performance.', url: '/music/curso-piano', ativo: true },
       { nome: 'Cavaquinho', icone: '🪕', cor: '#9a7650', resumo: 'Em preparação: levadas, acordes e repertório brasileiro.', url: '/music/curso-cavaquinho', ativo: false },
       { nome: 'Ukulele', icone: '🪕', cor: '#6d8060', resumo: 'Em preparação: acordes, batidas e primeiras canções.', url: '/music/curso-ukulele', ativo: false },
       { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Em preparação: palhetada, melodias e choro.', url: '/music/curso-bandolim', ativo: false },
@@ -123,7 +124,6 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
   // que o aluno possa conhecer a proposta, mas o conteúdo continua fechado
   // até a publicação do curso.
   const cursosEmBreve = [
-    ['piano', 'Piano', 'Teclado, harmonia, acompanhamento e leitura.'],
     ['ukulele', 'Ukulele', 'Acordes, batidas e primeiras canções.'],
     ['cavaquinho', 'Cavaquinho', 'Levadas, acordes e repertório brasileiro.'],
     ['bandolim', 'Bandolim', 'Palhetada, melodias e choro.'],
@@ -242,6 +242,28 @@ ${relacionados(f.slug)}`;
       niveis: CT.CURSO.niveis.map((n) => ({ ...n, modulos: n.modulos.map((m) => ({ ...m, licoes: m.licoes.map((slug) => { const l = porSlug[slug]; return l ? { slug, titulo: l.titulo, resumo: l.resumo, nivel: l.nivel, prereq: l.prereq, url: `/music/aprender/${slug}` } : { slug, estado: 'planejada' }; }) })) })),
     };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+
+  // ------------------------------------------------------------ curso de piano
+  app.get('/music/curso-piano.json', opcional, (req, res) => {
+    const documento = { schema: 'musique.course.v1', id: CP.CURSO.id, titulo: CP.CURSO.titulo, subtitulo: CP.CURSO.subtitulo, versao: CP.CURSO.versao, descricao: CP.CURSO.descricao, paginas: CP.CURSO.paginas, trilhas: CP.CURSO.trilhas, partes: CP.PARTES.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-piano', pdf: '/music/curso-piano.pdf' }, capitulos: CP.CAPITULOS.map((c) => ({ ...c, url: `/music/curso-piano/${c.slug}` })) };
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+  app.get('/music/curso-piano.pdf', (req, res) => {
+    const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', 'curso-piano.pdf');
+    if (!fs.existsSync(pdf)) return res.status(404).send('PDF ainda não foi gerado.');
+    res.set('Content-Type', 'application/pdf').set('Content-Disposition', 'inline; filename="curso-piano.pdf"').set('Cache-Control', 'no-cache').sendFile(pdf);
+  });
+  app.get('/music/curso-piano', opcional, (req, res) => {
+    const fases = CP.PARTES.map(([id, nome, ns]) => `<section class="curso-nivel" id="nivel-${esc(id)}"><div class="curso-nivel-cab"><div><p class="lab-cab-tipo">Trilha de piano</p><h2>${esc(nome)}</h2><p>Conteúdo correspondente às páginas do livro-base.</p></div><span>${ns.length} capítulos</span></div><div class="curso-modulos"><article class="curso-modulo"><ul>${ns.map((n) => { const c = CP.CAPITULOS[n - 1]; return `<li><a data-curso-slug="${esc(c.slug)}" href="/music/curso-piano/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.resumo)} · PDF p. ${c.pagina_inicio}–${c.pagina_fim}</span></li>`; }).join('')}</ul></article></div></section>`).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso editorial · versão ${esc(CP.CURSO.versao)}</p><h1>${esc(CP.CURSO.titulo)}</h1><p class="lab-lead">${esc(CP.CURSO.descricao)} ${esc(CP.CURSO.subtitulo)}.</p><div class="curso-numeros" aria-label="Dimensão do curso"><span><strong>7</strong> partes</span><span><strong>42</strong> capítulos</span><span><strong>557</strong> páginas</span><span><strong>3</strong> trilhas</span></div><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><p><a class="btn" href="/music/curso-piano.pdf">📄 Abrir livro em PDF</a> <a class="btn sec" href="/music/curso-piano.json">⬇ Dados estruturados</a> <a class="btn sec" href="/music/cursos">← Todos os cursos</a></p></header><section aria-labelledby="trilhas-piano"><h2 id="trilhas-piano">Três trilhas de aprendizagem</h2><div class="curso-trilhas">${CP.CURSO.trilhas.map((t) => `<div><strong>${esc(t.nome)}</strong><span>${esc(t.resumo)}</span></div>`).join('')}</div></section>${fases}`;
+    pagina(res, { titulo: 'Curso de piano — do zero ao avançado | Musique', descricao: CP.CURSO.descricao, caminho: '/music/curso-piano', corpo, trilha: [['Aprender', '/music/aprender'], ['Curso de piano']] });
+  });
+  app.get('/music/curso-piano/:slug', opcional, (req, res) => {
+    const c = CP.CAPITULOS.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de piano');
+    const ferramentas = c.ferramentas.map((u) => `<a class="btn sec" href="${u}">${u.split('/').pop().replace(/-/g, ' ')}</a>`).join(' ');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Capítulo ${c.numero} de 42 · ${esc(c.nivel)}</p><h1>${esc(c.titulo)}</h1><p class="lab-lead">${esc(c.resumo)}</p><p><a class="btn" href="/music/curso-piano.pdf#page=${c.pagina_inicio}">📄 Abrir no livro · PDF página ${c.pagina_inicio}</a> <a class="btn sec" href="/music/curso-piano">← Curso de piano</a></p></header><article class="lab-licao"><section class="curso-modulo"><h2>Objetivos e prática</h2><p>Leia as páginas ${c.pagina_inicio} a ${c.pagina_fim} do livro, toque os exercícios em andamento confortável e registre três execuções limpas antes de avançar.</p><p><strong>Trilhas:</strong> conhecer o conceito, ouvir e reconhecer o resultado, aplicar no teclado e no repertório.</p><p>${ferramentas}</p></section></article><div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(c.slug)}" aria-pressed="false">Marcar capítulo como concluído</button><span>O progresso fica no navegador e poderá ser sincronizado na conta.</span></div><nav class="lab-licao-nav"><a href="/music/curso-piano">← Voltar ao curso</a></nav>`;
+    pagina(res, { titulo: `${c.titulo} — piano | Musique`, descricao: c.resumo, caminho: `/music/curso-piano/${c.slug}`, corpo, trilha: [['Aprender', '/music/aprender'], ['Curso de piano', '/music/curso-piano'], [c.titulo]] });
   });
 
   // ------------------------------------------------------------ curso de bateria

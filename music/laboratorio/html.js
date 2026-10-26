@@ -26,15 +26,16 @@ function bannerCurso(caminho) {
   const violao = /^\/music\/criar\/curso-violao-livro/.test(rota);
   const guitarra = /^\/music\/criar\/curso-guitarra-(?:livro|edicao)/.test(rota);
   const contrabaixo = /^\/music\/curso-contrabaixo/.test(rota);
-  const futuro = /curso-(?:piano|ukulele|cavaquinho|bandolim)/.test(rota);
-  if (!bateria && !teoria && !violao && !guitarra && !contrabaixo && !futuro) return '';
+  const piano = /^\/music\/curso-piano/.test(rota);
+  const futuro = /curso-(?:ukulele|cavaquinho|bandolim)/.test(rota);
+  if (!bateria && !teoria && !violao && !guitarra && !contrabaixo && !piano && !futuro) return '';
   const futuroId = (rota.match(/curso-(contrabaixo|piano|ukulele|cavaquinho|bandolim)/) || [])[1];
   const dadosFuturos = { contrabaixo: ['Contrabaixo', '#3f7180', 'groove · linhas · fundamento'], piano: ['Piano', '#536f82', 'harmonia · acompanhamento · leitura'], ukulele: ['Ukulele', '#6d8060', 'acordes · batidas · canções'], cavaquinho: ['Cavaquinho', '#9a7650', 'levadas · acordes · repertório'], bandolim: ['Bandolim', '#7d6374', 'palhetada · melodias · choro'] };
   const futuroDados = futuro ? dadosFuturos[futuroId] : null;
-  const instrumento = bateria ? 'Bateria' : teoria ? 'Teoria musical' : violao ? 'Violão' : guitarra ? 'Guitarra' : contrabaixo ? 'Contrabaixo' : futuroDados[0];
-  const cor = bateria ? '#a66b42' : teoria ? '#5865a8' : violao ? '#4f7d67' : guitarra ? '#8a5a72' : contrabaixo ? '#3f7180' : futuroDados[1];
-  const apoio = bateria ? 'pulso · groove · rudimentos' : teoria ? 'ouvir · compreender · aplicar' : violao ? 'acordes · batidas · repertório' : guitarra ? 'timbre · riffs · improvisação' : contrabaixo ? 'groove · linhas · fundamento' : futuroDados[2];
-  const id = bateria ? 'bateria' : teoria ? 'teoria' : violao ? 'violao' : guitarra ? 'guitarra' : contrabaixo ? 'contrabaixo' : futuroId;
+  const instrumento = bateria ? 'Bateria' : teoria ? 'Teoria musical' : violao ? 'Violão' : guitarra ? 'Guitarra' : contrabaixo ? 'Contrabaixo' : piano ? 'Piano' : futuroDados[0];
+  const cor = bateria ? '#a66b42' : teoria ? '#5865a8' : violao ? '#4f7d67' : guitarra ? '#8a5a72' : contrabaixo ? '#3f7180' : piano ? '#536f82' : futuroDados[1];
+  const apoio = bateria ? 'pulso · groove · rudimentos' : teoria ? 'ouvir · compreender · aplicar' : violao ? 'acordes · batidas · repertório' : guitarra ? 'timbre · riffs · improvisação' : contrabaixo ? 'groove · linhas · fundamento' : piano ? 'harmonia · acompanhamento · leitura' : futuroDados[2];
+  const id = bateria ? 'bateria' : teoria ? 'teoria' : violao ? 'violao' : guitarra ? 'guitarra' : contrabaixo ? 'contrabaixo' : piano ? 'piano' : futuroId;
   const imagem = `/assets/music/curso-${id}-banner.png`;
   const legenda = futuro ? `Curso de ${esc(instrumento)} em breve no Musique.` : `Um percurso visual para estudar ${esc(instrumento)} dentro do Musique.`;
   return `<section class="curso-banner" style="--curso-banner-cor:${cor}" aria-label="${esc(instrumento)}"><div class="curso-banner-arte"><svg viewBox="0 0 900 230" role="img" aria-label="Ilustração de ${esc(instrumento)}"><defs><linearGradient id="curso-grad-${id}" x1="0" x2="1"><stop stop-color="${cor}"/><stop offset="1" stop-color="#1B2A4A"/></linearGradient></defs><rect width="900" height="230" rx="22" fill="url(#curso-grad-${id})"/><circle cx="770" cy="54" r="82" fill="#fff" opacity=".08"/><circle cx="120" cy="190" r="130" fill="#fff" opacity=".06"/><text x="64" y="92" fill="#fff" font-size="52" font-family="Georgia,serif" font-weight="600">${esc(instrumento)}</text><text x="66" y="132" fill="#e6f1f7" font-size="20" font-family="Arial,sans-serif">${esc(apoio)}</text><image class="curso-banner-imagem" href="${imagem}" x="530" y="15" width="330" height="200" preserveAspectRatio="xMidYMid meet"/><path d="M64 177h310M64 189h230M64 201h150" stroke="#fff" stroke-width="3" opacity=".45"/></svg></div><p class="curso-banner-legenda">${legenda}</p></section>`;
@@ -56,7 +57,7 @@ const SUBNAV = () => `<nav class="lab-sub" aria-label="Navegação Musical">
     <a class="lab-sub-curso" href="/music/criar/curso-guitarra-edicao"><span aria-hidden="true">🎸</span> Guitarra</a>
     <a class="lab-sub-curso" href="/music/curso-bateria"><span aria-hidden="true">🥁</span> Bateria</a>
     <a class="lab-sub-curso" href="/music/curso-contrabaixo"><span aria-hidden="true">🎸</span> Contrabaixo</a>
-    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🎹</span> Piano</span>
+    <a class="lab-sub-curso" href="/music/curso-piano"><span aria-hidden="true">🎹</span> Piano</a>
     <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Ukulele</span>
     <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Cavaquinho</span>
     <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Bandolim</span>

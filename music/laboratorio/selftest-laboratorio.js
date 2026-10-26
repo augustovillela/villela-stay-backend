@@ -449,6 +449,15 @@ async function rodar({ t, secao, req, assert }) {
     });
   });
 
+  await t('PIANO: curso editorial expõe 42 capítulos, PDF e trilhas do livro-base', async () => {
+    const p = await req('GET', '/music/curso-piano', { cru: true });
+    assert.equal(p.status, 200); assert.match(p.texto, /Livro digital de piano/); assert.match(p.texto, /42.*capítulos/); assert.match(p.texto, /Três trilhas de aprendizagem/);
+    const json = await req('GET', '/music/curso-piano.json', { cru: true });
+    assert.equal(json.status, 200); const dados = JSON.parse(json.texto); assert.equal(dados.capitulos.length, 42); assert.equal(dados.paginas, 557); assert.equal(dados.trilhas.length, 3);
+    assert.equal((await req('GET', '/music/curso-piano/piano-42', { cru: true })).status, 200);
+    assert.equal((await req('GET', '/music/curso-piano.pdf', { cru: true })).status, 200);
+  });
+
   await t('ASSINATURA VENCIDA: o Laboratório pessoal fecha com 402 — mas as ferramentas e os dados (LGPD) continuam abertos', async () => {
     const contas = require('../contas');
     const cad = await req('POST', '/music/api/conta/cadastrar', { corpo: { nome: 'Lab Vencido', email: 'labvencido@t', senha: 'senha-boa-123', aceite_termos: true } });

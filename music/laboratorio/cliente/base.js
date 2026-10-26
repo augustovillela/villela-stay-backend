@@ -284,7 +284,7 @@
 
   // ---- progresso local dos cursos editoriais ----
   function progressoCurso() {
-    var cursoId = /\/curso-bateria(?:\/|$)/.test(w.location.pathname) ? 'curso-bateria' : /\/curso-contrabaixo(?:\/|$)/.test(w.location.pathname) ? 'curso-contrabaixo' : /\/criar\/curso-(?:violao-livro|guitarra-edicao|guitarra-livro)(?:\/|$)/.test(w.location.pathname) ? 'curso-guitarra-livro' : 'curso-teoria';
+    var cursoId = /\/curso-bateria(?:\/|$)/.test(w.location.pathname) ? 'curso-bateria' : /\/curso-contrabaixo(?:\/|$)/.test(w.location.pathname) ? 'curso-contrabaixo' : /\/curso-piano(?:\/|$)/.test(w.location.pathname) ? 'curso-piano' : /\/criar\/curso-(?:violao-livro|guitarra-edicao|guitarra-livro)(?:\/|$)/.test(w.location.pathname) ? 'curso-guitarra-livro' : 'curso-teoria';
     var chave = cursoId === 'curso-guitarra-livro' ? 'curso-guitarra-livro-lidos' : 'musique-' + cursoId + '-concluidas-v1', concluidas = {};
     try { concluidas = JSON.parse(w.localStorage.getItem(chave) || '{}') || {}; } catch (_) { concluidas = {}; }
     function salvar() { try { w.localStorage.setItem(chave, JSON.stringify(concluidas)); } catch (_) { /* armazenamento indisponível */ } if (C.Jornada && C.Jornada.sync) C.Jornada.sync(false).catch(function () {}); }
