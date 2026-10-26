@@ -273,6 +273,10 @@ ${relacionados(f.slug)}`;
     const documento = { schema: 'musique.course.progress.v1', curso: CP.CURSO.id, total_capitulos: CP.CAPITULOS.length, capitulos: CP.CAPITULOS.map((c) => ({ slug: c.slug, numero: c.numero, titulo: c.titulo, pagina_inicio: c.pagina_inicio, pagina_fim: c.pagina_fim, meta: c.meta, url: `/music/curso-piano/${c.slug}` })) };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
   });
+  app.get('/music/curso-piano/professor', opcional, (req, res) => {
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de piano · área do professor</p><h1>Acompanhamento dos alunos</h1><p class="lab-lead">Consulte sessões sincronizadas, registre devolutivas e atribua tarefas nos 42 capítulos.</p></header><section data-piano-professor-dashboard><p>Carregando acompanhamento…</p></section><p><a class="btn sec" href="/music/curso-piano">← Voltar ao curso</a></p>`;
+    pagina(res, { titulo: 'Professor — curso de piano | Musique', descricao: 'Acompanhamento dos alunos de piano.', caminho: '/music/curso-piano/professor', corpo, trilha: [['Cursos', '/music/cursos'], ['Piano', '/music/curso-piano'], ['Professor']] });
+  });
   app.get('/music/curso-piano/:slug.json', opcional, (req, res) => {
     const c = CP.CAPITULOS.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de piano');
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify({ schema: 'musique.course.chapter.v1', curso: CP.CURSO.id, ...c, url: `/music/curso-piano/${c.slug}` }, null, 2));

@@ -390,6 +390,17 @@
     }).catch(function (e) { C.limpar(alvo); alvo.appendChild(C.el('p', { class: 'lab-erro', txt: e.status === 403 ? 'Esta área é exclusiva para professores.' : e.message })); });
   }
 
+  function painelProfessorPiano() {
+    var alvo = C.$('[data-piano-professor-dashboard]'); if (!alvo) return;
+    C.api('GET', '/music/api/lab/prof/piano/alunos').then(function (r) {
+      C.limpar(alvo); var alunos = r.alunos || [], sel = C.el('select', {}, [C.el('option', { value: '', txt: 'Selecione um aluno' })].concat(alunos.map(function (a) { return C.el('option', { value: a.usuario, txt: a.usuario + ' · ' + a.sessoes + ' sessão(ões)' }); }))), detalhe = C.el('div', {});
+      var cap = C.el('input', { type: 'number', min: 1, max: 42, value: 1 }), bpm = C.el('input', { type: 'number', min: 20, max: 300, value: 60 }), emails = C.el('input', { type: 'text', placeholder: 'E-mail do aluno' }), inst = C.el('textarea', { rows: 3, placeholder: 'Meta e instruções da prática.' });
+      function carregar() { if (!sel.value) { C.limpar(detalhe); return; } C.api('GET', '/music/api/lab/prof/piano/aluno/' + encodeURIComponent(sel.value) + '/praticas').then(function (x) { C.limpar(detalhe); detalhe.appendChild(C.el('h2', { txt: 'Sessões de ' + sel.value })); detalhe.appendChild(C.el('ul', { class: 'lab-resultados' }, (x.sessoes || []).map(function (s) { return C.el('li', {}, [C.el('strong', { txt: s.capitulo + ' · ' + s.bpm + ' BPM · ' + s.foco }), ' · ' + String(s.data || '') + (s.notas ? ' — ' + s.notas : '')]); }))); }).catch(function (e) { C.limpar(detalhe); detalhe.appendChild(C.el('p', { class: 'lab-erro', txt: e.message })); }); }
+      sel.addEventListener('change', carregar); alvo.appendChild(C.el('div', { class: 'lab-campo' }, [C.el('label', { txt: 'Aluno' }), sel])); alvo.appendChild(detalhe);
+      var texto = C.el('textarea', { rows: 3, maxlength: 2000, placeholder: 'Escreva a devolutiva.' }); alvo.appendChild(C.el('fieldset', {}, [C.el('legend', { txt: 'Registrar devolutiva' }), C.el('label', { txt: 'Capítulo' }, [cap]), C.el('label', { txt: 'Observação' }, [texto]), C.el('button', { type: 'button', class: 'btn', txt: 'Salvar devolutiva', onclick: function () { C.api('POST', '/music/api/lab/prof/piano/observacoes', { aluno: sel.value, capitulo: cap.value, texto: texto.value }).then(function () { C.aviso('Devolutiva registrada.'); texto.value = ''; }).catch(function (e) { C.aviso(e.message, 'erro'); }); } })])); alvo.appendChild(C.el('fieldset', {}, [C.el('legend', { txt: 'Atribuir tarefa' }), C.el('label', { txt: 'E-mail do aluno' }, [emails]), C.el('div', { class: 'lab-controles' }, [C.el('label', { txt: 'Capítulo' }, [cap]), C.el('label', { txt: 'Meta de BPM' }, [bpm])]), C.el('label', { txt: 'Instruções' }, [inst]), C.el('button', { type: 'button', class: 'btn sec', txt: 'Atribuir tarefa', onclick: function () { C.api('POST', '/music/api/lab/prof/piano/tarefas', { capitulo: cap.value, bpm: bpm.value, emails: emails.value, instrucoes: inst.value }).then(function (x) { C.aviso('Tarefa criada e atribuída a ' + x.atribuidos + ' aluno(s).'); }).catch(function (e) { C.aviso(e.message, 'erro'); }); } })])); if (!alunos.length) alvo.appendChild(C.el('p', { class: 'lab-dica', txt: 'Ainda não há sessões sincronizadas de alunos.' }));
+    }).catch(function (e) { C.limpar(alvo); alvo.appendChild(C.el('p', { class: 'lab-erro', txt: e.status === 403 ? 'Esta área é exclusiva para professores.' : e.message })); });
+  }
+
   // ---- barra de rolagem também EM CIMA das tabelas largas (atlas) ----
   // Uma faixa fina acima da tabela, do mesmo comprimento, rola junto com a
   // de baixo: dá para ir para os lados sem descer até o fim da tabela.
@@ -457,6 +468,7 @@
     painelBateria();
     painelProfessorBateria();
     painelProfessorContrabaixo();
+    painelProfessorPiano();
     var main = C.$('#lab-main');
     if (!main) return;
     var slug = main.getAttribute('data-ferramenta');
