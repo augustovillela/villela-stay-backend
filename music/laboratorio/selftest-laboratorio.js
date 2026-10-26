@@ -464,6 +464,21 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal((await req('GET', '/music/api/lab/prof/piano/alunos', { cru: true })).status, 401);
     assert.equal((await req('POST', '/music/api/lab/prof/piano/tarefas', { cru: true, corpo: { capitulo: 1, bpm: 60 } })).status, 401);
   });
+  await t('PIANO: os 42 capítulos exibem conteúdo editorial e prática', async () => {
+    const json = await req('GET', '/music/curso-piano.json', { cru: true });
+    assert.equal(json.status, 200);
+    const dados = JSON.parse(json.texto);
+    assert.equal(dados.capitulos.length, 42);
+    dados.capitulos.forEach((c) => {
+      assert.ok(c.conteudo && c.conteudo.length > 100, c.slug + ' sem conteúdo editorial');
+      assert.ok(c.objetivo && c.exercicio && c.dominio && c.meta, c.slug + ' sem guia pedagógico completo');
+    });
+    const aula = await req('GET', '/music/curso-piano/piano-01', { cru: true });
+    assert.equal(aula.status, 200);
+    assert.match(aula.texto, /Conteúdo editorial do livro/);
+    assert.match(aula.texto, /Checklist da aula/);
+    assert.match(aula.texto, /Alvo no teclado/);
+  });
 
   await t('ASSINATURA VENCIDA: o Laboratório pessoal fecha com 402 — mas as ferramentas e os dados (LGPD) continuam abertos', async () => {
     const contas = require('../contas');
