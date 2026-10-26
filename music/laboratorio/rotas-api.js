@@ -98,6 +98,26 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     res.json({ ok: true, observacao: db.prepare('SELECT * FROM curso_bateria_observacoes WHERE id = ?').get(id) });
   }));
 
+  // ---- curso de contrabaixo: leitura do progresso sincronizado ----
+  const baixoProgresso = (linha) => {
+    let dados = {};
+    try { dados = JSON.parse(linha.dados || '{}'); } catch (_) {}
+    const concluidas = dados['curso-contrabaixo-concluidas-v1'] || dados.curso_contrabaixo || {};
+    const itens = Object.entries(concluidas).filter(([, valor]) => !!valor).map(([slug, data]) => ({ slug, concluido_em: data }));
+    return { aluno: linha.usuario, concluidas: itens, total: itens.length, percentual: Math.round(itens.length / 43 * 100) };
+  };
+  app.get(B + '/prof/contrabaixo/alunos', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
+    const alunos = db.prepare("SELECT usuario, dados FROM lab_jornada_progresso WHERE dados LIKE '%curso-contrabaixo%'").all().map(baixoProgresso).sort((a, b) => b.total - a.total || a.aluno.localeCompare(b.aluno));
+    res.json({ curso: 'curso-contrabaixo-livro', total_capitulos: 43, alunos });
+  }));
+  app.get(B + '/prof/contrabaixo/aluno/:aluno/progresso', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
+    const aluno = s(req.params.aluno, 120);
+    const linha = db.prepare('SELECT usuario, dados FROM lab_jornada_progresso WHERE usuario = ?').get(aluno);
+    res.json({ curso: 'curso-contrabaixo-livro', total_capitulos: 43, progresso: linha ? baixoProgresso(linha) : { aluno, concluidas: [], total: 0, percentual: 0 } });
+  }));
+
   // ---- Tocar junto: tarefas ligadas a uma campanha de estudo ----
   // Mantém a tarefa na Academia (permissões, submissões e devolutivas) e
   // guarda apenas o vínculo específico do estudo neste módulo.
