@@ -46,6 +46,20 @@
       });
   };
 
+  // Telemetria técnica anônima: nunca envia áudio, texto musical, conta ou
+  // mensagem de erro. A deduplicação evita que uma falha em loop gere carga.
+  var telemetriaVistos = {};
+  C.telemetria = function (evento, codigo) {
+    evento = String(evento || '').slice(0, 60); codigo = String(codigo || '').slice(0, 80);
+    var chave = evento + '|' + codigo + '|' + w.location.pathname;
+    if (telemetriaVistos[chave]) return;
+    telemetriaVistos[chave] = true;
+    var ua = navigator.userAgent || '', navegador = /Edg\//.test(ua) ? 'edge' : /Chrome\//.test(ua) ? 'chrome' : /Firefox\//.test(ua) ? 'firefox' : /Safari\//.test(ua) ? 'safari' : 'outro';
+    fetch('/music/api/telemetria', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ evento: evento, rota: w.location.pathname, navegador: navegador, sistema: navigator.platform || 'outro', versao_app: '2026.10', codigo: codigo }) }).catch(function () {});
+  };
+  w.addEventListener('error', function () { C.telemetria('js_error', 'window_error'); });
+  w.addEventListener('unhandledrejection', function () { C.telemetria('js_error', 'unhandled_rejection'); });
+
   // Estado prático do aluno: cópia local para uso offline + snapshot na
   // conta para retomar a jornada em qualquer dispositivo autenticado.
   C.Jornada = {
