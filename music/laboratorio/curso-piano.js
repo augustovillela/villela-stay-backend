@@ -1,6 +1,8 @@
 // Musique · Curso editorial de piano baseado no livro Piano do Zero ao Avançado.
 'use strict';
 
+const CONTEUDO = require('./piano-conteudo.json');
+
 const PARTES = [
   ['nivel-1', 'Nível 1 · Iniciante absoluto', [1, 2, 3, 4, 5, 6, 7]],
   ['nivel-2', 'Nível 2 · Básico', [8, 9, 10, 11, 12, 13, 14]],
@@ -69,7 +71,7 @@ const DADOS = [
   ['Oitavas, acordes largos e saltos', 318, 328], ['Velocidade, notas duplas e arpejos', 328, 338], ['Polifonia e contraponto', 338, 347], ['Análise', 347, 357], ['Interpretação estilística', 357, 369], ['Pedais', 369, 378], ['Recital e performance', 378, 393],
   ['Improvisação avançada', 393, 406], ['Reharmonização', 406, 414], ['Arranjo para piano solo', 414, 423], ['O pianista na banda e no acompanhamento', 423, 434], ['Composição', 434, 443], ['Ouvido e estúdio', 443, 451], ['Portfólio, método próprio e carreira', 451, 465],
   ['O corpo', 466, 470], ['Os dedos', 470, 474], ['Como praticar', 474, 478], ['Prevenção de lesões', 478, 482], ['Planos de estudo', 482, 486],
-].map(([titulo, inicio, fim], i) => { const guia = GUIAS[i] || []; return { numero: i + 1, slug: `piano-${String(i + 1).padStart(2, '0')}`, titulo, pagina_inicio: inicio, pagina_fim: fim, nivel: PARTES.find((p) => p[2].includes(i + 1))[1], resumo: guia[0] || `Estude ${titulo.toLowerCase()} com leitura, escuta, prática deliberada e registro de domínio.`, objetivo: guia[0], roteiro: guia[1], exercicio: guia[2], dominio: guia[3], meta: META(i), ferramentas: ['/music/criar/piano-virtual', '/music/criar/professor-piano', '/music/criar/metronomo-progressivo'] }; });
+].map(([titulo, inicio, fim], i) => { const guia = GUIAS[i] || [], fonte = CONTEUDO[i] || {}; return { numero: i + 1, slug: `piano-${String(i + 1).padStart(2, '0')}`, titulo, pagina_inicio: inicio, pagina_fim: fim, nivel: PARTES.find((p) => p[2].includes(i + 1))[1], resumo: guia[0] || `Estude ${titulo.toLowerCase()} com leitura, escuta, prática deliberada e registro de domínio.`, objetivo: guia[0], roteiro: guia[1], exercicio: guia[2], dominio: guia[3], conteudo: fonte.texto || '', meta: META(i), ferramentas: ['/music/criar/piano-virtual', '/music/criar/professor-piano', '/music/criar/metronomo-progressivo'] }; });
 
 const CURSO = {
   id: 'curso-piano-livro', titulo: 'Livro digital de piano', subtitulo: 'Piano do zero ao avançado', versao: '1.0', paginas: 557, capitulos: 42,
