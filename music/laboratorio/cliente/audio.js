@@ -54,6 +54,7 @@
     bandolim: { perda: 0.993, brilho: 0.9, ganho: 0.8, duplo: true },   // par de cordas: duas, levemente desafinadas entre si
     aco: { perda: 0.9975, brilho: 0.75, ganho: 0.85 },
     eletrica: { perda: 0.9985, brilho: 0.6, ganho: 0.7, distorcer: true },
+    baixo: { perda: 0.9992, brilho: 0.22, ganho: 0.9, grave: true },
   };
   var cacheCorda = {};
   function bufferCorda(f, tipo, dur) {
@@ -73,6 +74,11 @@
     var g = a.createGain(); var v = (o.vel == null ? 0.5 : o.vel * 2) * cfg.ganho;
     g.gain.setValueAtTime(v, t); g.gain.setValueAtTime(v, t + Math.max(0.05, dur)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
     var saida = g;
+    if (cfg.grave) {
+      var lp = a.createBiquadFilter(); lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(900 + 1500 * Math.min(1, Math.max(0, o.vel == null ? 0.5 : o.vel)), t);
+      lp.Q.value = 0.55; g.connect(lp); saida = lp;
+    }
     if (cfg.distorcer) {
       if (!curvaDist) { curvaDist = new Float32Array(1024); for (var i = 0; i < 1024; i++) { var x = i / 512 - 1; curvaDist[i] = Math.tanh(3.5 * x) * 0.6; } }
       var ws = a.createWaveShaper(); ws.curve = curvaDist; g.connect(ws); saida = ws;
@@ -81,7 +87,7 @@
     if (cfg.duplo) { var s2 = a.createBufferSource(); s2.buffer = s.buffer; s2.playbackRate.value = 1.0018; s2.connect(g); s2.start(t + 0.004); s2.stop(t + dur + 0.3); registrar(s2); }
   }
 
-  /** Uma voz com envelope. timbre: piano | seno | orgao | pluck | malete | nylon | aco | eletrica. */
+  /** Uma voz com envelope. Timbres de cordas são sintetizados e têm perfis de ataque, brilho e decaimento próprios. */
   function voz(f, quando, dur, o) {
     o = o || {};
     if (!o.timbre && C.Som && C.Som.timbre) o.timbre = C.Som.timbre;
@@ -232,7 +238,7 @@
   }
 
   var TIMBRES = [{ id: '', nome: 'piano' }, { id: 'nylon', nome: 'violão de nylon (sintetizado)' }, { id: 'aco', nome: 'violão de aço (sintetizado)' },
-    { id: 'eletrica', nome: 'guitarra elétrica (sintetizada)' }, { id: 'bandolim', nome: 'bandolim (sintetizado)' },
+    { id: 'eletrica', nome: 'guitarra elétrica (sintetizada)' }, { id: 'baixo', nome: 'contrabaixo elétrico (sintetizado)' }, { id: 'bandolim', nome: 'bandolim (sintetizado)' },
     { id: 'metal', nome: 'trompete / trombone (sintetizado)' }, { id: 'flauta', nome: 'flauta transversal (sintetizada)' }, { id: 'doce', nome: 'flauta doce (sintetizada)' }, { id: 'palheta', nome: 'gaita / harmônica (sintetizada)' }, { id: 'orgao', nome: 'órgão' }, { id: 'malete', nome: 'xilofone' }, { id: 'seno', nome: 'onda pura' }];
   C.Som = { timbre: C.lerLocal('timbre', ''), TIMBRES: TIMBRES, audio: audio, voz: voz, tocar: tocar, tocarHz: tocarHz, sequencia: sequencia, bateria: BATERIA, agendador: agendador, ruido: ruido,
     parar: pararTudo, analisador: function () { audio(); return analisador; }, saida: function () { audio(); return mestre; }, FREQ: FREQ, registrar: registrar };

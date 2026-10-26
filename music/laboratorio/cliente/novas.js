@@ -66,7 +66,7 @@
     var inst = st.instrumento && INS.CORDAS[st.instrumento] ? st.instrumento : 'violao', afin = 'padrao';
     var mic = null, suave = [];
     var painel = el('div', { class: 'lab-afinador', 'aria-live': 'polite' });
-    var TIMBRE_CORDA = { violao: 'nylon', 'violao-7': 'nylon', guitarra: 'eletrica', bandolim: 'bandolim', cavaquinho: 'aco', ukulele: 'nylon', baixo: '' };
+    var TIMBRE_CORDA = { violao: 'nylon', 'violao-7': 'nylon', guitarra: 'eletrica', bandolim: 'bandolim', cavaquinho: 'aco', ukulele: 'nylon', baixo: 'baixo' };
     function ehSopro() { return /^sopro:/.test(inst); }
     function alvoAtual() {
       if (ehSopro()) {

@@ -19,7 +19,7 @@
 
   var INSTRUMENTOS = [
     { id: 'violao', nome: 'Violão', timbre: 'nylon' }, { id: 'guitarra', nome: 'Guitarra', timbre: 'eletrica' },
-    { id: 'baixo', nome: 'Contrabaixo', timbre: 'aco' }, { id: 'violao-7', nome: 'Violão de 7 cordas', timbre: 'nylon' },
+    { id: 'baixo', nome: 'Contrabaixo', timbre: 'baixo' }, { id: 'violao-7', nome: 'Violão de 7 cordas', timbre: 'nylon' },
     { id: 'ukulele', nome: 'Ukulele', timbre: 'nylon' }, { id: 'cavaquinho', nome: 'Cavaquinho', timbre: 'aco' },
     { id: 'bandolim', nome: 'Bandolim', timbre: 'bandolim' },
   ];
