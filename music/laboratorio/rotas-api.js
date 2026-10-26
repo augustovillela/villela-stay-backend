@@ -259,7 +259,8 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
   }));
   app.post(B + '/contrabaixo/praticas', requireUsuario, h(async (req, res) => {
     const b = req.body || {}, capitulo = s(b.capitulo, 80), foco = s(b.foco, 30), notas = s(b.notas, 500), bpm = Number(b.bpm);
-    if (!/^contrabaixo-\d{2}$/.test(capitulo) || !['som', 'tempo', 'tecnica', 'leitura', 'expressao'].includes(foco) || !(bpm >= 20 && bpm <= 300)) throw erro(400, 'Capítulo, foco ou BPM inválido.');
+    const numeroCapitulo = Number(capitulo.slice('contrabaixo-'.length));
+    if (!/^contrabaixo-\d{2}$/.test(capitulo) || numeroCapitulo < 1 || numeroCapitulo > 43 || !['som', 'tempo', 'tecnica', 'leitura', 'expressao'].includes(foco) || !(bpm >= 20 && bpm <= 300)) throw erro(400, 'Capítulo, foco ou BPM inválido.');
     const id = novoId(), quando = nowISO();
     db.prepare(`INSERT INTO sessoes_pratica (id, usuario, trilha_id, meta, anotacao, iniciada_em, encerrada_em) VALUES (?,?,?,?,?,?,?)`)
       .run(id, req.usuario.id, 'contrabaixo:' + capitulo, JSON.stringify({ bpm, foco }), notas, quando, quando);

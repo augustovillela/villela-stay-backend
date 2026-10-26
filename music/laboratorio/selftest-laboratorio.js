@@ -433,8 +433,8 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal(s1.status, 201, JSON.stringify(s1.json));
     const minhas = await req('GET', '/music/api/lab/contrabaixo/praticas?capitulo=contrabaixo-24', { como: 'bruno' });
     assert.equal(minhas.status, 200); assert.ok(minhas.json.praticas.some((x) => x.bpm === 76 && x.foco === 'expressao'));
-    const painel = await req('GET', '/music/api/lab/prof/contrabaixo/aluno/bruno/progresso', { como: 'prof' });
-    assert.equal(painel.status, 200); assert.ok(painel.json.sessoes.some((x) => x.capitulo === 'contrabaixo-24' && x.bpm === 76 && x.notas.includes('Fraseado')));
+    const painel = await req('GET', '/music/api/lab/prof/contrabaixo/aluno/u-bruno/progresso', { como: 'prof' });
+    assert.equal(painel.status, 200); assert.ok(painel.json.sessoes.some((x) => x.capitulo === 'contrabaixo-24' && x.bpm === 76 && x.notas.includes('Fraseado')), JSON.stringify(painel.json.sessoes));
     assert.equal((await req('POST', '/music/api/lab/contrabaixo/praticas', { como: 'bruno', corpo: { capitulo: 'contrabaixo-99', bpm: 76, foco: 'expressao' } })).status, 400);
   });
 
