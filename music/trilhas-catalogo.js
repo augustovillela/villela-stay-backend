@@ -83,6 +83,38 @@ const TRILHAS = [
     ],
   },
   {
+    slug: 'violao-avancado',
+    titulo: 'Violão: arranjo e interpretação',
+    descricao: 'Transforme acompanhamento em interpretação: arranjos, voicings, polirritmia, dinâmica e leitura de repertório.',
+    instrumento: 'violao',
+    nivel: 3,
+    objetivo: 'Construir arranjos completos e interpretar repertório com autonomia musical.',
+    ordem: 9,
+    itens: [
+      { tipo: 'harmonia.grau', nivel: 4, quantidade: 10, titulo: 'Voicings e condução avançada' },
+      { tipo: 'acorde.montar', nivel: 4, quantidade: 10, titulo: 'Acordes estendidos e substituições' },
+      { tipo: 'ritmo.palma', nivel: 4, quantidade: 10, titulo: 'Polirritmia e independência' },
+      { tipo: 'leitura.nota', nivel: 4, quantidade: 8, titulo: 'Leitura de arranjos' },
+      { tipo: 'percepcao.acorde', nivel: 4, quantidade: 10, titulo: 'Análise auditiva de interpretações' },
+    ],
+  },
+  {
+    slug: 'guitarra-avancada',
+    titulo: 'Guitarra: linguagem e performance',
+    descricao: 'Integre técnica, harmonia, improvisação e timbre para construir uma linguagem própria e tocar com intenção.',
+    instrumento: 'guitarra',
+    nivel: 3,
+    objetivo: 'Improvisar e performar com domínio técnico, harmônico, rítmico e expressivo.',
+    ordem: 11,
+    itens: [
+      { tipo: 'escala.montar', nivel: 4, quantidade: 10, titulo: 'Modos e arpejos no braço' },
+      { tipo: 'melodia.tocar', nivel: 4, quantidade: 10, titulo: 'Vocabulário e transcrição de solos' },
+      { tipo: 'harmonia.grau', nivel: 4, quantidade: 10, titulo: 'Improvisação sobre mudanças' },
+      { tipo: 'ritmo.palma', nivel: 4, quantidade: 10, titulo: 'Precisão, dinâmica e subdivisão' },
+      { tipo: 'percepcao.intervalo', nivel: 4, quantidade: 10, titulo: 'Ouvido interno e antecipação' },
+    ],
+  },
+  {
     slug: 'primeiros-passos',
     titulo: 'Primeiros passos',
     descricao: 'Para quem está começando do zero. Ouvido, pulso e as primeiras notas — '
