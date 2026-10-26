@@ -39,6 +39,24 @@ const resumos = [
 ];
 const porNumero = Object.fromEntries(partes.flatMap(([id, nome, ns]) => ns.map((n) => [n, { id, nome }])));
 const slug = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const capitulos = titulos.map((titulo, i) => ({ id: `contrabaixo-${String(i + 1).padStart(2, '0')}-${slug(titulo)}`, numero: i + 1, titulo, resumo: resumos[i], pagina: paginas[i], fase: porNumero[i + 1].id, faseNome: porNumero[i + 1].nome, nivel: i < 8 ? 'iniciante' : i < 20 ? 'basico' : i < 35 ? 'intermediario' : 'avancado', slug: `contrabaixo-${String(i + 1).padStart(2, '0')}` }));
+const capitulos = titulos.map((titulo, i) => {
+  const numero = i + 1;
+  const fase = porNumero[numero];
+  const nivel = i < 8 ? 'iniciante' : i < 20 ? 'basico' : i < 35 ? 'intermediario' : 'avancado';
+  return {
+    id: `contrabaixo-${String(numero).padStart(2, '0')}-${slug(titulo)}`,
+    numero, titulo, resumo: resumos[i], pagina: paginas[i], fase: fase.id, faseNome: fase.nome, nivel,
+    slug: `contrabaixo-${String(numero).padStart(2, '0')}`,
+    roteiro: {
+      objetivo: resumos[i],
+      etapas: [
+        `Leia o capítulo ${numero} no livro e destaque os conceitos essenciais.`,
+        `Pratique ${titulo.toLowerCase()} em andamento lento, buscando som limpo e movimento relaxado.`,
+        'Aplique o conteúdo em uma linha musical curta e registre dúvidas, andamento e próximos ajustes.',
+      ],
+      evidencias: ['Conceito explicado com suas próprias palavras', 'Exercício executado com estabilidade', 'Aplicação musical registrada'],
+    },
+  };
+});
 const CURSO = { id: 'curso-contrabaixo-livro', titulo: 'Curso de contrabaixo elétrico', subtitulo: 'Do primeiro som ao groove, à criação e à performance', versao: '1.0.0', descricao: 'Um percurso completo de contrabaixo baseado no livro Contrabaixo elétrico.', trilhas: [{ nome: 'Ler e compreender', resumo: 'Conceitos, braço, ritmo, teoria e harmonia.' }, { nome: 'Tocar e controlar', resumo: 'Técnica, articulação, groove e expressão.' }, { nome: 'Criar e tocar com outros', resumo: 'Linhas, estilos, improvisação, banda e performance.' }], fases: partes };
 module.exports = { CURSO, capitulos, partes };
