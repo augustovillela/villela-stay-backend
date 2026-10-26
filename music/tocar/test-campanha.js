@@ -42,6 +42,15 @@ test('resumo calcula progresso, tentativas e distintivos', () => {
   assert.equal(resumo.completed, 1); assert.equal(resumo.badges, 1); assert.equal(resumo.percent, 14); assert.equal(resumo.attempts, 1);
 });
 
+test('camada avançada recomenda pela precisão e reconhece consistência', () => {
+  let estado = Campanha.criar({ instrument: 'violao' });
+  estado = Campanha.atualizar(estado, 'primeiro-riff-v1', { bestStreak: 4, accuracy: 72 });
+  const avancado = Campanha.avancado(estado);
+  assert.equal(avancado.consistencias[0].titleBadge, 'Pulso constante');
+  assert.equal(avancado.recomendacoes[0].id, 'primeiro-riff-v1');
+  assert.match(avancado.recomendacoes[0].motivo, /precisão/);
+});
+
 test('campanha sugere velocidade adaptativa a partir do melhor aproveitamento', () => {
   let estado = Campanha.criar({ instrument: 'violao' });
   assert.equal(Campanha.adaptacao(estado, 'primeiro-riff-v1').speed, 0.5);

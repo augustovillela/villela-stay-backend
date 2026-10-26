@@ -100,6 +100,19 @@
     var proxima = proximo(base);
     return { instrument: base.instrument, total: ids.length, completed: concluidas.length, available: ids.filter(function (id) { return base.progress[id].status === 'available' || base.progress[id].status === 'in_progress'; }).length, attempts: ids.reduce(function (total, id) { return total + base.progress[id].attempts; }, 0), badges: concluidas.length, bestStreak: ids.reduce(function (best, id) { return Math.max(best, base.progress[id].bestStreak); }, 0), percent: Math.round(concluidas.length / ids.length * 100), next: proxima ? { id: proxima.id, title: proxima.title, position: proxima.position, status: proxima.status } : null };
   }
+  function avancado(state) {
+    var base = recalcular(state), ids = idsDa(base.instrument), consistencias = [], candidatos = [];
+    ids.forEach(function (id, index) {
+      var item = base.progress[id], estudo = catalogo().get(id);
+      if (item.bestStreak >= 3) consistencias.push({ id: id, title: estudo.title, streak: item.bestStreak, titleBadge: 'Pulso constante' });
+      if (item.status !== 'completed' && (item.status === 'available' || item.status === 'in_progress')) {
+        var precisao = item.bestAccuracy == null ? 0 : item.bestAccuracy, dificuldade = index + 1;
+        candidatos.push({ id: id, title: estudo.title, motivo: precisao < 85 ? 'reforçar precisão antes de acelerar' : dificuldade > 3 ? 'conectar esta habilidade à próxima etapa' : 'consolidar a base', prioridade: (100 - precisao) + dificuldade * 2, velocidade_sugerida: adaptacao(item).speed });
+      }
+    });
+    candidatos.sort(function (a, b) { return b.prioridade - a.prioridade; });
+    return { consistencias: consistencias, recomendacoes: candidatos.slice(0, 3) };
+  }
   function mesclar(left, right) {
     var a = recalcular(left), b = recalcular(right);
     if (a.instrument !== b.instrument) return a;
@@ -110,5 +123,5 @@
     });
     return recalcular(merged);
   }
-  return { VERSION: VERSION, instrumentos: function () { return Object.keys(ORDEM); }, criar: criar, listar: listar, iniciar: iniciar, atualizar: atualizar, retomar: retomar, proximo: proximo, resumo: resumo, mesclar: mesclar, adaptacao: function (state, id) { var base = recalcular(state), item = base.progress[id]; return adaptacao(item); } };
+  return { VERSION: VERSION, instrumentos: function () { return Object.keys(ORDEM); }, criar: criar, listar: listar, iniciar: iniciar, atualizar: atualizar, retomar: retomar, proximo: proximo, resumo: resumo, avancado: avancado, mesclar: mesclar, adaptacao: function (state, id) { var base = recalcular(state), item = base.progress[id]; return adaptacao(item); } };
 });
