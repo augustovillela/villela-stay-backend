@@ -264,6 +264,10 @@ ${relacionados(f.slug)}`;
     const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de piano · acompanhamento</p><h1>Meu progresso</h1><p class="lab-lead">Retome o estudo pelo ponto em que parou e acompanhe os 42 capítulos do livro.</p><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><p><a class="btn" href="/music/curso-piano.pdf">📄 Abrir livro em PDF</a> <a class="btn sec" href="/music/curso-piano">← Voltar ao curso</a></p></header><section class="curso-modulo"><h2>Trilha completa</h2><p class="lab-nota-convencao">O registro dos capítulos, checklists e sessões fica salvo no navegador.</p><ol>${itens}</ol></section>`;
     pagina(res, { titulo: 'Meu progresso — curso de piano | Musique', descricao: 'Acompanhamento dos 42 capítulos do curso de piano.', caminho: '/music/curso-piano/progresso', corpo, trilha: [['Cursos', '/music/cursos'], ['Piano', '/music/curso-piano'], ['Meu progresso']] });
   });
+  app.get('/music/curso-piano/progresso.json', opcional, (req, res) => {
+    const documento = { schema: 'musique.course.progress.v1', curso: CP.CURSO.id, total_capitulos: CP.CAPITULOS.length, capitulos: CP.CAPITULOS.map((c) => ({ slug: c.slug, numero: c.numero, titulo: c.titulo, pagina_inicio: c.pagina_inicio, pagina_fim: c.pagina_fim, meta: c.meta, url: `/music/curso-piano/${c.slug}` })) };
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
   app.get('/music/curso-piano/:slug', opcional, (req, res) => {
     const indiceCapitulo = CP.CAPITULOS.findIndex((x) => x.slug === req.params.slug); const c = CP.CAPITULOS[indiceCapitulo]; if (!c) return naoAchou(res, 'este capítulo de piano');
     const ferramentas = c.ferramentas.map((u) => `<a class="btn sec" href="${u}">${u.split('/').pop().replace(/-/g, ' ')}</a>`).join(' ');
