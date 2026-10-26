@@ -46,7 +46,7 @@ const CURSO = {
   subtitulo: 'Do primeiro acorde ao samba, choro e performance',
   versao: '1.0.0',
   descricao: 'Um percurso completo de cavaquinho baseado no livro Cavaquinho: do Zero ao Avançado.',
-  paginas: 0,
+  paginas: 747,
   trilhas: [
     { nome: 'Conhecer', resumo: 'Instrumento, postura, afinação, acordes e mapas.' },
     { nome: 'Ouvir e reconhecer', resumo: 'Pulso, subdivisão, batidas, estilos e escuta crítica.' },

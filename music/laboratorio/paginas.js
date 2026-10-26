@@ -259,6 +259,11 @@ ${relacionados(f.slug)}`;
     const documento = { schema: 'musique.course.v1', id: CC.CURSO.id, titulo: CC.CURSO.titulo, subtitulo: CC.CURSO.subtitulo, versao: CC.CURSO.versao, descricao: CC.CURSO.descricao, paginas: CC.CURSO.paginas, trilhas: CC.CURSO.trilhas, partes: CC.partes.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-cavaquinho', markdown: '/music/curso-cavaquinho.md', progresso: '/music/curso-cavaquinho/progresso' }, capitulos: CC.capitulos.map((c) => ({ ...c, conteudo: (CC_LIVRO.capitulos.find((x) => x.numero === c.numero) || {}).conteudo || '', url: `/music/curso-cavaquinho/${c.slug}` })) };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
   });
+  app.get('/music/curso-cavaquinho.pdf', opcional, (req, res) => {
+    const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', 'curso-cavaquinho.pdf');
+    if (!fs.existsSync(pdf)) return res.status(404).send('PDF ainda não foi gerado.');
+    res.set('Content-Type', 'application/pdf').set('Content-Disposition', 'inline; filename="curso-cavaquinho.pdf"').set('Cache-Control', 'no-cache').sendFile(pdf);
+  });
   app.get('/music/curso-cavaquinho.md', opcional, (req, res) => {
     const linhas = [`# ${CC.CURSO.titulo}`, '', CC.CURSO.descricao, '', '_38 capítulos · 10 partes · 3 trilhas_', ''];
     CC.capitulos.forEach((c) => { const livro = CC_LIVRO.capitulos.find((x) => x.numero === c.numero); linhas.push(`## ${c.numero}. ${c.titulo}`, '', c.resumo, '', livro ? livro.conteudo : '', ''); });
