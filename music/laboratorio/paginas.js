@@ -7,6 +7,13 @@ const fs = require('fs');
 const path = require('path');
 const H = require('./html');
 const { esc, pt, ouvir, pagina, naoAchou, visual, cartoes, portao, N, E, A, T, I, X, CAT } = { ...H, X: require('./nucleo/exercicios') };
+function blocosLivroPiano(texto) {
+  return String(texto || '').split(/\n\n+/).map((bloco) => {
+    const html = esc(bloco).replace(/\n/g, '<br>');
+    const tipo = /exercício|pratique|estudo/i.test(bloco) ? 'curso-livro-bloco-exercicio' : /tabela|acorde|escala|dedilhado|intervalo/i.test(bloco) ? 'curso-livro-bloco-conceito' : 'curso-livro-bloco-texto';
+    return `<div class="${tipo}">${html}</div>`;
+  }).join('');
+}
 const TE = require('./paginas-teoria');
 const RF = require('./paginas-referencia');
 const L = require('./licoes');
@@ -298,7 +305,7 @@ ${relacionados(f.slug)}`;
     const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Capítulo ${c.numero} de 42 · ${esc(c.nivel)}</p><h1><span aria-hidden="true">🎹</span> ${esc(c.titulo)}</h1><p class="lab-lead">${esc(c.resumo)}</p><p><a class="btn" href="/music/curso-piano.pdf#page=${c.pagina_inicio}">📄 Abrir no livro · PDF página ${c.pagina_inicio}</a> <a class="btn sec" href="/music/curso-piano">← Curso de piano</a></p></header><article class="lab-licao"><section class="curso-modulo"><h2>Objetivo da aula</h2><p>${esc(c.objetivo)}</p><h2>Roteiro de estudo</h2><p>${esc(c.roteiro)}</p><h2>Exercício aplicado</h2><p>${esc(c.exercicio)}</p><h2>Alvo no teclado</h2><p><strong>${esc(c.meta.notas_alvo)}</strong> · toque devagar, ouça cada nota e confira a sequência no piano virtual.</p><h2>Meta de prática</h2><p><strong>${c.meta.bpm_inicial}–${c.meta.bpm_alvo} BPM</strong> · ${c.meta.repeticoes_limpas} repetições limpas. ${esc(c.meta.evidencia)}.</p><h2>Critério de domínio</h2><p>${esc(c.dominio)}</p><p class="lab-nota-convencao"><strong>Livro-base:</strong> leia as páginas ${c.pagina_inicio} a ${c.pagina_fim}; use o PDF como referência integral.</p><p><strong>Trilhas:</strong> conhecer o conceito, ouvir e reconhecer o resultado, aplicar no teclado e no repertório.</p><p>${ferramentas}</p></section></article>${checklist}${pratica}<div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(c.slug)}" aria-pressed="false">Marcar capítulo como concluído</button><span>O progresso fica no navegador e poderá ser sincronizado na conta.</span></div><nav class="lab-licao-nav"><a href="/music/curso-piano">← Voltar ao curso</a></nav>`;
     const anterior = CP.CAPITULOS[indiceCapitulo - 1], proximo = CP.CAPITULOS[indiceCapitulo + 1];
     const navegacao = `<nav class="lab-licao-nav" aria-label="Navegação dos capítulos"><span>${anterior ? `<a href="/music/curso-piano/${esc(anterior.slug)}">← ${anterior.numero}. ${esc(anterior.titulo)}</a>` : 'Primeiro capítulo'}</span><a href="/music/curso-piano/progresso">Índice e progresso</a><span>${proximo ? `<a href="/music/curso-piano/${esc(proximo.slug)}">${proximo.numero}. ${esc(proximo.titulo)} →</a>` : 'Último capítulo'}</span></nav>`;
-    const corpoComLivro = c.conteudo ? corpo.replace('</article>', `<section class="curso-modulo curso-livro-texto"><h2>Conteúdo editorial do livro</h2><p class="lab-nota-convencao">Texto extraído das páginas ${c.pagina_inicio}–${c.pagina_fim}. A diagramação original permanece disponível no PDF.</p><div class="curso-livro-texto-corpo">${esc(c.conteudo).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div></section></article>`) : corpo;
+    const corpoComLivro = c.conteudo ? corpo.replace('</article>', `<section class="curso-modulo curso-livro-texto"><h2>Conteúdo editorial do livro</h2><p class="lab-nota-convencao">Texto extraído das páginas ${c.pagina_inicio}–${c.pagina_fim}. A diagramação original permanece disponível no PDF.</p><div class="curso-livro-texto-corpo">${blocosLivroPiano(c.conteudo)}</div></section></article>`) : corpo;
     pagina(res, { titulo: `${c.titulo} — piano | Musique`, descricao: c.resumo, caminho: `/music/curso-piano/${c.slug}`, corpo: corpoComLivro + navegacao, trilha: [['Aprender', '/music/aprender'], ['Curso de piano', '/music/curso-piano'], [c.titulo]] });
   });
 
