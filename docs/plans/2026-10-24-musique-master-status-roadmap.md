@@ -289,6 +289,8 @@ Pendências:
 
 > Atualização de 26/10/2026: a síntese de timbres recebeu perfil dedicado de contrabaixo, resposta dinâmica de harmônicos, filtro pós-distorção para guitarra, camadas de corpo e ataque para bumbo e caixa e propagação correta do timbre escolhido nas sequências de acordes. Áudio profissional gravado e validação em equipamentos reais continuam pendentes.
 
+> Atualização de 26/10/2026: o curso de contrabaixo passou a renderizar o conteúdo editorial dos 43 capítulos dentro das aulas, com blocos para exemplos de tablatura, metas iniciais de andamento, ficha de prática por capítulo, histórico sincronizado na conta e sessões visíveis no painel docente. Permanecem pendentes a revisão visual manual em dispositivos reais, o refinamento editorial dos caracteres extraídos e as mídias profissionais de áudio e vídeo.
+
 ## 10. Infraestrutura e produção
 
 Implementado:
