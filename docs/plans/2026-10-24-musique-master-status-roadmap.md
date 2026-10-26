@@ -283,7 +283,7 @@ Pendências:
 - jornadas próprias para piano e bateria.
 - mídias profissionais do curso de contrabaixo: áudio, vídeo, animações e demonstrações sincronizadas;
 
-> Atualização de 26/10/2026: as trilhas de Violão e Guitarra passaram a ter percursos iniciais separados, com sete exercícios específicos para cada instrumento e identidade visual própria no painel do aluno. Permanecem como evolução futura os níveis intermediário e avançado e a validação física dos equipamentos.
+> Atualização de 26/10/2026: as trilhas de Violão e Guitarra passaram a ter percursos separados nos níveis iniciante, intermediário e avançado, com exercícios específicos e identidade visual própria por instrumento e nível no painel do aluno. Permanecem como evolução futura a ampliação contínua dos exercícios, a validação física dos equipamentos e a melhoria de timbres.
 
 ## 10. Infraestrutura e produção
 
