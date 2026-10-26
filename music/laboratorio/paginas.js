@@ -246,7 +246,7 @@ ${relacionados(f.slug)}`;
 
   // ------------------------------------------------------------ curso de piano
   app.get('/music/curso-piano.json', opcional, (req, res) => {
-    const documento = { schema: 'musique.course.v1', id: CP.CURSO.id, titulo: CP.CURSO.titulo, subtitulo: CP.CURSO.subtitulo, versao: CP.CURSO.versao, descricao: CP.CURSO.descricao, paginas: CP.CURSO.paginas, trilhas: CP.CURSO.trilhas, partes: CP.PARTES.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-piano', pdf: '/music/curso-piano.pdf' }, capitulos: CP.CAPITULOS.map((c) => ({ ...c, url: `/music/curso-piano/${c.slug}` })) };
+    const documento = { schema: 'musique.course.v1', id: CP.CURSO.id, titulo: CP.CURSO.titulo, subtitulo: CP.CURSO.subtitulo, versao: CP.CURSO.versao, descricao: CP.CURSO.descricao, paginas: CP.CURSO.paginas, trilhas: CP.CURSO.trilhas, partes: CP.PARTES.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-piano', pdf: '/music/curso-piano.pdf', markdown: '/music/curso-piano.md', progresso: '/music/curso-piano/progresso', progresso_json: '/music/curso-piano/progresso.json', academy_json: '/music/curso-piano.academy.json', professor: '/music/curso-piano/professor' }, capitulos: CP.CAPITULOS.map((c) => ({ ...c, url: `/music/curso-piano/${c.slug}`, json: `/music/curso-piano/${c.slug}.json` })) };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
   });
   app.get('/music/curso-piano.academy.json', opcional, (req, res) => {
