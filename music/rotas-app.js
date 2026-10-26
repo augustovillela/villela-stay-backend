@@ -14,16 +14,28 @@ const direitos = require('./direitos');
 const storage = require('./storage');
 const fila = require('./fila');
 const router = require('./ia/router');
+const telemetria = require('./telemetria');
 
 const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
 
 function registrarRotasApp(app, { requireUsuario }) {
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
     if (e && e.bloqueioDeDireitos) return res.status(403).json({ erro: e.message });
-    res.status(400).json({ erro: e.message });
+    res.status(e && Number.isInteger(e.status) ? e.status : 400).json({ erro: e.message });
   });
 
   app.use('/music/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+
+  // Telemetria técnica anônima: não recebe sessão, áudio, conteúdo musical,
+  // IP ou identificadores. O allowlist vive no módulo para fechar a borda.
+  app.post('/music/api/telemetria', h(async (req, res) => {
+    const d = req.body || {};
+    const campos = ['evento', 'rota', 'navegador', 'sistema', 'versao_app', 'duracao_ms', 'codigo'];
+    if (JSON.stringify(d).length > 8192 || Object.keys(d).some((k) => !campos.includes(k))) {
+      return res.status(413).json({ erro: 'Evento de telemetria inválido ou grande demais.' });
+    }
+    res.status(202).json(telemetria.registrar(d));
+  }));
 
   // ---- quem sou eu aqui ----
   app.get('/music/api/me', requireUsuario, h(async (req, res) => {
