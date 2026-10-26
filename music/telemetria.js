@@ -29,7 +29,12 @@ function resumo(dias = 7) {
   const desde = new Date(Date.now() - n * 86400000).toISOString();
   const total = (db.prepare('SELECT COUNT(*) AS n FROM music_telemetria WHERE criado_em >= ?').get(desde) || {}).n || 0;
   const agrupar = (campo) => db.prepare(`SELECT ${campo} AS chave, COUNT(*) AS n FROM music_telemetria WHERE criado_em >= ? GROUP BY ${campo} ORDER BY n DESC LIMIT 20`).all(desde);
-  return { dias: n, total, eventos: agrupar('evento'), rotas: agrupar('rota'), navegadores: agrupar('navegador'), codigos: agrupar('codigo') };
+  const eventos = agrupar('evento');
+  const alertas = eventos.filter((x) => x.n >= 10).map((x) => ({
+    severidade: x.n >= 25 ? 'alta' : 'media', tipo: x.chave,
+    mensagem: `O evento ${x.chave} atingiu ${x.n} ocorrências nos últimos ${n} dias.`,
+  }));
+  return { dias: n, total, demonstracao: false, eventos, rotas: agrupar('rota'), navegadores: agrupar('navegador'), codigos: agrupar('codigo'), alertas };
 }
 
 function demonstracao() {
