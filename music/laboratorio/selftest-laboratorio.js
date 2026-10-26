@@ -463,6 +463,8 @@ async function rodar({ t, secao, req, assert }) {
     assert.match(paginaProfessor.texto, /data-piano-professor-dashboard/);
     assert.equal((await req('GET', '/music/api/lab/prof/piano/alunos', { cru: true })).status, 401);
     assert.equal((await req('POST', '/music/api/lab/prof/piano/tarefas', { cru: true, corpo: { capitulo: 1, bpm: 60 } })).status, 401);
+    assert.equal((await req('GET', '/music/api/lab/piano/progresso', { cru: true })).status, 401);
+    assert.equal((await req('GET', '/music/api/lab/piano/revisoes', { cru: true })).status, 401);
   });
   await t('PIANO: os 42 capítulos exibem conteúdo editorial e prática', async () => {
     const json = await req('GET', '/music/curso-piano.json', { cru: true });
