@@ -316,6 +316,8 @@ Pendências operacionais:
 
 > Atualização de 26/10/2026: a análise operacional ganhou painel próprio no Portal Staff, com períodos de 1, 7, 14 e 30 dias, série diária, rankings por evento/rota/navegador/código, último evento recebido, alertas por severidade, estados de erro e acessibilidade. O modo de demonstração permanece separado dos dados reais. Fica pendente somente acompanhar volume real suficiente para calibrar os limiares e validar decisões operacionais com dados de produção.
 
+> Atualização de 26/10/2026: o app (`/music/app`), o Tocar junto (`/music/tocar` e `/music/tocar/gerenciar`) e o Laboratório passam a enviar a telemetria pelo emissor comum `music/telemetria-cliente.js` — só eventos da allowlist, rota sem query (ids viram `:id`), código curto em vez de mensagem, dedupe por evento+código e teto de 20 eventos por sessão do navegador. Antes disso o total em produção era zero porque nenhuma página publicada enviava eventos.
+
 > Atualização de 26/10/2026: a configuração de armazenamento persistente de arquivos fica deliberadamente pendente até haver credenciais e bucket R2/S3 de produção disponíveis. Nenhum armazenamento local temporário será tratado como solução definitiva.
 
 ## 11. Validação física pendente
