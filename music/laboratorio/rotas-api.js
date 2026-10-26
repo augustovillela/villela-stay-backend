@@ -303,6 +303,19 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     const atribuicao = emails.length ? academia.Tarefas.atribuirPorEmail(req.usuario.id, tarefa.id, emails, buscarContaPorEmail) : { atribuidos: 0, nao_encontrados: [] };
     res.json({ ok: true, tarefa, curso_piano: { capitulo, bpm }, ...atribuicao });
   }));
+  app.post(B + '/prof/piano/observacoes', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem registrar observações.');
+    const b = req.body || {}, aluno = s(b.aluno, 120), texto = s(b.texto, 2000), capitulo = Math.max(0, Math.min(42, Math.floor(Number(b.capitulo) || 0)));
+    if (!aluno || !texto) throw erro(400, 'Informe aluno e observação.');
+    const id = novoId();
+    db.prepare('INSERT INTO curso_piano_observacoes (id,professor,aluno,capitulo,texto,criado_em) VALUES (?,?,?,?,?,?)').run(id, req.usuario.id, aluno, capitulo, texto, nowISO());
+    res.json({ ok: true, observacao: db.prepare('SELECT * FROM curso_piano_observacoes WHERE id = ?').get(id) });
+  }));
+  app.get(B + '/prof/piano/aluno/:aluno/observacoes', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar observações.');
+    const aluno = s(req.params.aluno, 120);
+    res.json({ curso: 'curso-piano-livro', aluno, observacoes: db.prepare('SELECT * FROM curso_piano_observacoes WHERE aluno = ? ORDER BY criado_em DESC LIMIT 100').all(aluno) });
+  }));
 
   // ---- jornada de violão/guitarra: sincronização entre dispositivos ----
   app.get(B + '/jornada-guitarra', requireUsuario, h(async (req, res) => {
