@@ -154,6 +154,7 @@ const direitos = require('./direitos');
 const fila = require('./fila');
 const storage = require('./storage');
 const router = require('./ia/router');
+const telemetria = require('./telemetria');
 const { db } = require('./db');
 
 // ---- harness HTTP com cookie jar por pessoa ----
@@ -404,6 +405,17 @@ const secao = (s) => console.log('\n— ' + s + ' —');
     const usados = [...fontes.matchAll(/enfileirar\(\{\s*tipo:\s*'([^']+)'/g)].map((m) => m[1]);
     assert.ok(usados.length >= 2, 'esperava achar tipos enfileirados no código');
     for (const u of usados) assert.ok(registrados.has(u), `job "${u}" é enfileirado e NÃO tem handler`);
+  });
+
+  await t('telemetria técnica aceita só eventos anônimos permitidos e resume sem dados brutos', async () => {
+    const antes = telemetria.resumo(1).total;
+    const r = await req('POST', '/music/api/telemetria', { corpo: { evento: 'audio_decode_error', rota: '/music/tocar', navegador: 'chrome', codigo: 'UNSUPPORTED_CODEC' } });
+    assert.equal(r.status, 202, JSON.stringify(r.json));
+    const depois = telemetria.resumo(1);
+    assert.equal(depois.total, antes + 1);
+    assert.ok(depois.eventos.some((x) => x.chave === 'audio_decode_error'));
+    const proibido = await req('POST', '/music/api/telemetria', { corpo: { evento: 'audio_decode_error', email: 'nao-gravar@example.test' } });
+    assert.equal(proibido.status, 413);
   });
 
   // ===================================================================
