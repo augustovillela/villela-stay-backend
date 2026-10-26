@@ -113,6 +113,10 @@ const JS = `
   var TRILHAS_VISUAL = {
     'violao-iniciante':        { ico: '\u{1F3B6}', fundo: '#E8F5E9', cor: '#2E7D32' },
     'guitarra-iniciante':      { ico: '\u{1F3B8}', fundo: '#EDE7F6', cor: '#5E35B1' },
+    'violao-intermediario':    { ico: '\u{1F3B6}', fundo: '#E0F2F1', cor: '#00695C' },
+    'guitarra-intermediaria':  { ico: '\u{1F3B8}', fundo: '#E8EAF6', cor: '#3949AB' },
+    'violao-avancado':         { ico: '\u{1F3B6}', fundo: '#FFF3E0', cor: '#E65100' },
+    'guitarra-avancada':       { ico: '\u{1F3B8}', fundo: '#FBE9E7', cor: '#C62828' },
     'primeiros-passos':       { ico: '\u{1F331}', fundo: '#DCFCE7', cor: '#15803D' },
     'ouvido-intervalos':      { ico: '\u{1F442}', fundo: '#E0F2FE', cor: '#0369A1' },
     'ritmo-e-pulso':          { ico: '\u{1F941}', fundo: '#FFEDD5', cor: '#C2410C' },
