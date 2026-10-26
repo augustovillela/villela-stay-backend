@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v24'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v36'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -34,6 +34,22 @@ let CS_PATHS = [];                      // rotas da série Conexões de Sucesso 
 let CS_LLMS = '';                       // seção da série Conexões de Sucesso no llms.txt
 let SO_PATHS = [];                      // rotas da série A Segunda Onda da IA (só PT)
 let SO_LLMS = '';                       // seção da série A Segunda Onda da IA no llms.txt
+let GA_PATHS = [];                      // rotas da série Google AI na Prática (só PT)
+let GA_LLMS = '';                       // seção da série Google AI na Prática no llms.txt
+let HO_PATHS = [];                      // rotas da série O Homem Contemporâneo (só PT)
+let HO_LLMS = '';                       // seção da série O Homem Contemporâneo no llms.txt
+let HE_PATHS = [];                      // rotas da série O Homem Essencial (só PT)
+let HE_LLMS = '';                       // seção da série O Homem Essencial no llms.txt
+let PI_PATHS = [];                      // rotas da série Piscineiro na Prática (só PT)
+let PI_LLMS = '';                       // seção da série Piscineiro na Prática no llms.txt
+let PA_PATHS = [];                      // rotas da série Paisagismo na Prática (só PT)
+let PA_LLMS = '';                       // seção da série Paisagismo na Prática no llms.txt
+let PE_PATHS = [];                      // rotas da série Pedreiro Completo na Prática (só PT)
+let PE_LLMS = '';                       // seção da série Pedreiro Completo na Prática no llms.txt
+let CT_PATHS = [];                      // rotas da série Construção com Contêineres na Prática (só PT)
+let CT_LLMS = '';
+let DC_PATHS = [];                      // rotas da série Decoração de Interiores na Prática (só PT)
+let DC_LLMS = '';                       // seção da série Decoração de Interiores na Prática no llms.txt                       // seção da série Construção com Contêineres na Prática no llms.txt
 //                       // seção da série ChatGPT no llms.txt
 // Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
@@ -89,6 +105,20 @@ if (fs.existsSync(path.join(__dirname, 'src', 'og-home.jpg'))) fs.copyFileSync(p
 // estático não serve (dava 404) e é uma prancha de manual de marca, não um cartão.
 const TEM_OG_PRODUTOS = fs.existsSync(path.join(__dirname, 'src', 'og-produtos.jpg'));
 if (TEM_OG_PRODUTOS) fs.copyFileSync(path.join(__dirname, 'src', 'og-produtos.jpg'), path.join(DIST, 'og-produtos.jpg'));
+// /eleicao (colinha das Eleições 2026) saiu do ar em 22/10/2026 — art. 57-C, § 1º, I, da Lei 9.504/97.
+// Apagar o arquivo NÃO basta: o Static Site do Render continua servindo arquivo de deploy anterior
+// (guarda os antigos para quem ainda tem a versão velha aberta). Por isso os três caminhos que
+// existiram são SOBRESCRITOS com uma página mínima, fora do Google. Não remover enquanto o Render
+// guardar os arquivos antigos.
+{
+  const retirada = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow">'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1"><title>Página retirada | Villela Stay</title></head>'
+    + '<body style="font-family:system-ui,sans-serif;max-width:560px;margin:15vh auto;padding:0 16px;text-align:center">'
+    + '<h1>Página retirada</h1><p>Este conteúdo não está mais disponível.</p><p><a href="/">Ir para a Villela Stay</a></p></body></html>';
+  fs.mkdirSync(path.join(DIST, 'eleicao'), { recursive: true });
+  fs.writeFileSync(path.join(DIST, 'eleicao', 'index.html'), retirada);
+  fs.writeFileSync(path.join(DIST, 'eleicao.html'), retirada);
+}
 // Marca oficial: lockup V-Portal (símbolo negativo sobre o topo navy) + wordmark Lora/Inter
 const MARCA = `<a class="marca" href="/"><img class="logo-v" src="/assets/brand/villela-stay/logo-negativo.svg" width="56" height="56" alt="Villela Stay — Hospedagens Inteligentes" fetchpriority="high"><span class="marca-txt">Villela<span class="marca-desc">Stay</span></span></a>`;
 // Função (não const string) para traduzir por idioma — é avaliada dentro do loop, quando t() já existe.
@@ -299,7 +329,7 @@ function fichaUnidade(l) {
 }
 
 function layout(titulo, descricao, corpo, opts = {}) {
-  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/assets/brand/villela-stay/og-image.png`, ogType = 'website', lang = HTML_LANG[LANG], semIdiomas = false } = opts;
+  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/assets/brand/villela-stay/og-image.png`, ogType = 'website', lang = HTML_LANG[LANG], semIdiomas = false, ogLargura = 1200, ogAltura = 630 } = opts;
   const ogLocale = lang === 'en' ? 'en_US' : (lang === 'es' ? 'es_ES' : 'pt_BR');
   const urlAtual = `${SITE_URL}${LANG === 'pt' ? '' : '/' + LANG}${caminho}`;
   // Organization injetada em toda página (âncora de identidade @id reutilizada nos schemas locais)
@@ -349,8 +379,8 @@ ${semIdiomas ? '' : hreflangTags(caminho)}
 <meta property="og:image:alt" content="${esc(titulo)}">
 <!-- Sem largura e altura o WhatsApp corta o cartão: ele decide o recorte antes de
      baixar a imagem. Todos os cartões do site são 1200x630 (padrão da casa). -->
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image:width" content="${ogLargura}">
+<meta property="og:image:height" content="${ogAltura}">
 <meta property="og:locale" content="${ogLocale}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(titulo)}">
@@ -443,7 +473,7 @@ ${corpo}
   <div class="creditos">${t('Fotos dos pontos turísticos', 'Landmark photos', 'Fotos de los puntos turísticos')}: krishna naudin, Cayambe, Matheusgf, Portal da Copa, Marinelson Almeida ${t('e', 'and', 'y')} Rose Ramalho, via Wikimedia Commons (${t('licenças', 'licenses', 'licencias')} CC BY / CC BY-SA). ${t('Ilustrações do blog: Villela Stay (imagens originais, geradas por IA).', 'Blog illustrations: Villela Stay (original AI-generated images).', 'Ilustraciones del blog: Villela Stay (imágenes originales, generadas por IA).')}</div>
 </footer>
 <a class="wa-flutuante" href="${waLink(t('Olá! Vim pelo site da Villela Stay.', 'Hi! I came from the Villela Stay website.', '¡Hola! Vengo del sitio de Villela Stay.'))}" aria-label="${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}">💬</a>
-<script>window.addEventListener('load', function(){ try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer) + '&q=' + encodeURIComponent(location.search) + '&l=' + encodeURIComponent(navigator.language || ''), { keepalive: true }); } catch (e) {} });
+<script>window.addEventListener('load', function(){ try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer) + '&q=' + encodeURIComponent(location.search) + '&l=' + encodeURIComponent(navigator.language || ''), { keepalive: true }).catch(function(){}); } catch (e) {} });
 /* Origem da visita guardada no início da sessão: o referrer e os utm_* só
    existem na primeira página. Sem isto, um lead preenchido na terceira página
    chegaria como "Direto" e a conta de qual canal traz cliente ficaria errada. */
@@ -765,7 +795,7 @@ window.addEventListener('load', function(){
   }, 5000);
 });
 </script>
-<a class="banner-posse" href="${L('/posse-2027.html')}">🇧🇷 ${t('<strong>Posse Presidencial 2027 + Réveillon:</strong> casas completas no Lago Sul a 10 min da Esplanada — reserve antes que esgotem', '<strong>Presidential Inauguration 2027 + New Year:</strong> whole houses in Lago Sul, 10 min from the Esplanada — book before they sell out', '<strong>Toma de Posesión 2027 + Fin de Año:</strong> casas enteras en Lago Sul a 10 min de la Explanada — reserva antes de que se agoten')} <span>${t('Saiba mais', 'Learn more', 'Saber más')} →</span></a>
+<a class="banner-posse" href="${L('/posse-2027.html')}">🇧🇷 ${t('<strong>Caravana da Posse 2027 · 03 a 06/01 · 3 dias:</strong> casas completas no Lago Sul a 10 min da Esplanada — reserve antes que esgotem', '<strong>2027 Inauguration Caravan · 3–6 Jan · 3 days:</strong> whole houses in Lago Sul, 10 min from the Esplanada — book before they sell out', '<strong>Caravana de la Toma de Posesión 2027 · 03–06/01 · 3 días:</strong> casas enteras en Lago Sul a 10 min de la Explanada — reserva antes de que se agoten')} <span>${t('Saiba mais', 'Learn more', 'Saber más')} →</span></a>
 <section class="faixa-confianca">
   <div>🏆 ${t('Superhost: anfitrião premiado', 'Superhost: award-winning host', 'Superhost: anfitrión premiado')}</div><div>🏅 ${t('Favorito dos Hóspedes: propriedades premiadas', 'Guest Favourite: award-winning properties', 'Favorito de los Huéspedes: propiedades premiadas')}</div><div>📍 ${t('10 min do Aeroporto JK e da Esplanada', '10 min from JK Airport and the Esplanada', '10 min del Aeropuerto JK y de la Explanada')}</div><div>👨‍👩‍👧‍👦 ${t('Hospedagens de grupos de até 52 pessoas', 'Stays for groups of up to 52', 'Alojamientos para grupos de hasta 52 personas')}</div><div>🎉 ${t('Eventos para até 150 pessoas', 'Events for up to 150 people', 'Eventos para hasta 150 personas')}</div>
 </section>
@@ -889,9 +919,9 @@ function blocoCombinacoes(l) {
     <ul>
       ${item(
         t('Som e silêncio.', 'Sound and quiet hours.', 'Sonido y silencio.'),
-        t('Das 22h às 8h valem a lei distrital do silêncio (nº 4.092/2008) e o regulamento do condomínio: nesse horário, sem som alto, caixas potentes, música ao vivo ou conversa em volume alto nas áreas externas. Durante o dia a casa é sua para aproveitar com música e churrasco, no volume de uma casa de família. Comemoração com convidados além dos hóspedes é bem-vinda, mas precisa ser combinada antes.',
-          'From 10 PM to 8 AM the Federal District quiet-hours law (4,092/2008) and the condominium rules apply: no loud music, powerful speakers, live bands or raised voices outdoors. During the day the house is yours, with music and barbecue at the volume of a family home. A celebration with guests beyond those staying is welcome, but it must be arranged in advance.',
-          'De 22h a 8h rigen la ley distrital del silencio (n.º 4.092/2008) y el reglamento del condominio: en ese horario, sin música alta, altavoces potentes, música en vivo ni conversaciones en voz alta en las áreas exteriores. Durante el día la casa es tuya, con música y parrilla al volumen de una casa de familia. Una celebración con invitados además de los huéspedes es bienvenida, pero debe acordarse antes.'))}
+        t('Das 22h às 8h valem a lei distrital do silêncio (nº 4.092/2008) e o regulamento do condomínio: nesse horário, sem som alto, caixas potentes ou conversa em volume alto nas áreas externas. <strong>Banda, DJ e música ao vivo não são permitidos em nenhum horário</strong> — o bairro é estritamente residencial. Durante o dia a casa é sua para aproveitar com música e churrasco, no volume de uma casa de família. Comemoração com convidados além dos hóspedes é bem-vinda, mas precisa ser combinada antes.',
+          'From 10 PM to 8 AM the Federal District quiet-hours law (4,092/2008) and the condominium rules apply: no loud music, powerful speakers or raised voices outdoors. <strong>Live bands, DJs and live music are never allowed</strong> — the neighbourhood is strictly residential. During the day the house is yours, with music and barbecue at the volume of a family home. A celebration with guests beyond those staying is welcome, but it must be arranged in advance.',
+          'De 22h a 8h rigen la ley distrital del silencio (n.º 4.092/2008) y el reglamento del condominio: en ese horario, sin música alta, altavoces potentes ni conversaciones en voz alta en las áreas exteriores. <strong>Banda, DJ y música en vivo no están permitidos en ningún horario</strong> — el barrio es estrictamente residencial. Durante el día la casa es tuya, con música y parrilla al volumen de una casa de familia. Una celebración con invitados además de los huéspedes es bienvenida, pero debe acordarse antes.'))}
       ${item(
         t('Horários.', 'Times.', 'Horarios.'),
         t('Check-in a partir das 14h, check-out até as 10h. Entrar mais cedo ou sair mais tarde depende da agenda e tem taxa equivalente a uma diária, porque a casa fica indisponível para o hóspede seguinte naquele dia. Combine com a gente com antecedência.',
@@ -1782,7 +1812,7 @@ fs.writeFileSync(path.join(od, 'eventos.html'), eventos);
 const DATAS_PACOTE = [
   { emoji: '🎄', nome: t('Natal 2026', 'Christmas 2026', 'Navidad 2026'), periodo: '23 a 27/12/2026' },
   { emoji: '🎆', nome: t('Réveillon 2026/2027', "New Year's Eve 2026/2027", 'Fin de Año 2026/2027'), periodo: '30/12/2026 a 03/01/2027' },
-  { emoji: '🇧🇷', nome: t('Caravana da Posse do Novo Presidente', "New President's Inauguration Caravan", 'Caravana de la Toma de Posesión del Nuevo Presidente'), periodo: '30/12/2026 a 3/1/2027' },
+  { emoji: '🇧🇷', nome: t('Caravana da Posse do Novo Presidente', "New President's Inauguration Caravan", 'Caravana de la Toma de Posesión del Nuevo Presidente'), periodo: t('03/01/2027 a 06/01/2027 · 3 diárias', '3–6 January 2027 · 3 nights', '03/01/2027 a 06/01/2027 · 3 noches') },
   { emoji: '🎭', nome: t('Carnaval 2027', 'Carnival 2027', 'Carnaval 2027'), periodo: '6 a 10/02/2027' },
   { emoji: '🏛️', nome: t('Marcha dos Municípios 2027', 'March of Municipalities 2027', 'Marcha de los Municipios 2027'), periodo: t('datas sob consulta', 'dates on request', 'fechas a consultar') },
   { emoji: '🏛️', nome: t('Marcha dos Prefeitos 2027', "Mayors' March 2027", 'Marcha de los Alcaldes 2027'), periodo: t('16 a 20/5/2027 (a confirmar)', '16–20 May 2027 (to be confirmed)', '16 a 20/5/2027 (a confirmar)') }
@@ -1836,14 +1866,17 @@ const CASAS_PACOTE = [
     ]
   }
 ];
-// A faixa de precos citada na /posse-2027.html sai DAQUI, nao de numeros escritos a mao: a cada
-// ajuste de pacote ou de capacidade o texto acompanha sozinho. Ja divergiu uma vez (dizia
-// 9.800 e 15.400 quando a tabela dizia 9.900 e 15.300).
-const pacoteBarato = CASAS_PACOTE.reduce((a, c) => c.pacote < a.pacote ? c : a);
-const pacoteCaro   = CASAS_PACOTE.reduce((a, c) => c.pacote > a.pacote ? c : a);
+// Caravana da Posse: 03 a 06/01/2027, 3 diarias. Mantem R$ 150 por pessoa/dia
+// e a limpeza integral; os demais pacotes continuam com 4 diarias e seus valores.
+// As duas paginas usam os mesmos totais para a Caravana.
+const CASAS_PACOTE_POSSE = CASAS_PACOTE.map(c => ({ ...c, pacote: 150 * 3 * c.hospedes + c.limpeza }));
+const pacoteBarato = CASAS_PACOTE_POSSE.reduce((a, c) => c.pacote < a.pacote ? c : a);
+const pacoteCaro   = CASAS_PACOTE_POSSE.reduce((a, c) => c.pacote > a.pacote ? c : a);
 const capMin = Math.min(...CASAS_PACOTE.map(c => c.hospedes));
 const capMax = Math.max(...CASAS_PACOTE.map(c => c.hospedes));
 const realEn = n => 'R$ ' + n.toLocaleString('en-US');
+const precosPosse = CASAS_PACOTE_POSSE.map(c => `<li><strong>${esc(c.nome)}:</strong> ${LANG === 'en' ? realEn(c.pacote) : real(c.pacote)} · ${c.hospedes} ${t('hóspedes', 'guests', 'huéspedes')}</li>`).join('\n');
+const composicaoPosse = t('Valores por casa completa para 3 diárias, com ocupação máxima: R$ 150 por pessoa/dia × 3 dias × número de hóspedes + R$ 900 de limpeza, já incluídos no total.', 'Whole-house prices for 3 nights at full capacity: R$ 150 per person/day × 3 days × number of guests + a R$ 900 cleaning fee, already included in the total.', 'Precios por casa entera para 3 noches con ocupación máxima: R$ 150 por persona/día × 3 días × número de huéspedes + R$ 900 de limpieza, ya incluidos en el total.');
 
 const chipsDatas = DATAS_PACOTE.map(d =>
   `<a class="chip-data" href="${d.emoji === '🇧🇷' ? L('/posse-2027.html') : waLink(t(`Olá! Quero reservar uma casa completa para ${d.nome} (${d.periodo}). Somos um grupo de ___ pessoas.`, `Hi! I'd like to book a whole house for ${d.nome} (${d.periodo}). We're a group of ___ people.`, `¡Hola! Quiero reservar una casa entera para ${d.nome} (${d.periodo}). Somos un grupo de ___ personas.`))}">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></a>`).join('\n');
@@ -1894,12 +1927,20 @@ const pacotes = layout(
       <div class="passo"><strong>${t('2. Cada um paga R$ 150 por dia', '2. Each person pays R$ 150 per day', '2. Cada uno paga R$ 150 por día')}</strong><br>${t('Diária por pessoa com a casa lotada + rateio da taxa de limpeza. Piscina aquecida, cozinha completa e área de lazer inclusas.', 'Per-person rate with the house at full capacity + a share of the cleaning fee. Heated pool, full kitchen and leisure area included.', 'Tarifa por persona con la casa llena + prorrateo de la tarifa de limpieza. Piscina climatizada, cocina completa y zona de ocio incluidas.')}</div>
       <div class="passo"><strong>${t('3. Reserve direto com o anfitrião', '3. Book directly with the host', '3. Reserva directo con el anfitrión')}</strong><br>${t('Sem taxas de plataforma, com atendimento personalizado de um Superhost premiado, do primeiro contato ao check-out.', 'No platform fees, with personalised service from an award-winning Superhost, from first contact to check-out.', 'Sin tarifas de plataforma, con atención personalizada de un Superhost premiado, desde el primer contacto hasta el check-out.')}</div>
     </div>
-    <p class="aviso-escassez">⚠️ ${t('Temos <strong>apenas 4 casas disponíveis</strong> para cada período. Os pacotes de <strong>Natal e Réveillon</strong>, principalmente, costumam se esgotar rapidamente. Além disso, Brasília ficará pequena para os visitantes na virada do ano porque no dia <strong>1º de janeiro de 2027</strong> será a <strong>posse do novo Presidente do Brasil</strong>.', 'We have <strong>only 4 houses available</strong> for each period. The <strong>Christmas and New Year</strong> packages in particular tend to sell out quickly. On top of that, Brasília will be packed at the turn of the year because <strong>1 January 2027</strong> is the <strong>inauguration of Brazil\'s new President</strong>.', 'Tenemos <strong>solo 4 casas disponibles</strong> para cada período. Los paquetes de <strong>Navidad y Fin de Año</strong>, sobre todo, suelen agotarse rápido. Además, Brasília quedará pequeña para los visitantes en el cambio de año porque el <strong>1 de enero de 2027</strong> será la <strong>toma de posesión del nuevo Presidente de Brasil</strong>.')}</p>
+    <p class="aviso-escassez">⚠️ ${t('Temos <strong>apenas 4 casas disponíveis</strong> para cada período. Os pacotes de <strong>Natal e Réveillon</strong>, principalmente, costumam se esgotar rapidamente. Além disso, Brasília ficará pequena para os visitantes no início de janeiro porque no dia <strong>5 de janeiro de 2027</strong> será a <strong>posse do novo Presidente do Brasil</strong>.', 'We have <strong>only 4 houses available</strong> for each period. The <strong>Christmas and New Year</strong> packages in particular tend to sell out quickly. On top of that, Brasília will be packed in early January because <strong>5 January 2027</strong> is the <strong>inauguration of Brazil\'s new President</strong>.', 'Tenemos <strong>solo 4 casas disponibles</strong> para cada período. Los paquetes de <strong>Navidad y Fin de Año</strong>, sobre todo, suelen agotarse rápido. Además, Brasília quedará pequeña para los visitantes a principios de enero porque el <strong>5 de enero de 2027</strong> será la <strong>toma de posesión del nuevo Presidente de Brasil</strong>.')}</p>
+  </section>
+
+  <section class="venda-bloco">
+    <h2 class="secao-titulo">${t('Caravana da Posse do Novo Presidente — 3 diárias', 'New President\'s Inauguration Caravan — 3 nights', 'Caravana de la Toma de Posesión del Nuevo Presidente — 3 noches')}</h2>
+    <p class="pacote-cond">${t('03/01/2027 a 06/01/2027 · check-in em 3 de janeiro às 14h · check-out em 6 de janeiro às 10h', '3–6 January 2027 · check-in on 3 January at 2 PM · check-out on 6 January at 10 AM', '03/01/2027 a 06/01/2027 · entrada el 3 de enero a las 14h · salida el 6 de enero a las 10h')}</p>
+    <p>${composicaoPosse}</p>
+    <ul>${precosPosse}</ul>
+    <a class="btn" href="${L('/posse-2027.html')}">${t('Ver o pacote da Caravana da Posse', 'View the Inauguration Caravan package', 'Ver el paquete de la Caravana de la Toma de Posesión')} →</a>
   </section>
 
   <section class="venda-bloco">
     <h2 class="secao-titulo">${t('As 4 casas — pacotes de 4 diárias', 'The 4 houses — 4-night packages', 'Las 4 casas — paquetes de 4 noches')}</h2>
-    <p class="pacote-cond">${t('Check-in às 14h do primeiro dia · check-out às 10h do último · período mínimo de 4 diárias nessas datas · convidado extra para evento ou day use: R$ 120/dia', 'Check-in at 2 PM on the first day · check-out at 10 AM on the last · minimum 4 nights on these dates · extra event or day-use guest: R$ 120/day', 'Check-in a las 14h del primer día · check-out a las 10h del último · mínimo de 4 noches en estas fechas · invitado extra para evento o day use: R$ 120/día')}</p>
+    <p class="pacote-cond">${t('Check-in às 14h do primeiro dia · check-out às 10h do último · 4 diárias nos demais pacotes; Caravana da Posse: 3 diárias (03 a 06/01/2027) · convidado extra para evento ou day use: R$ 120/dia', 'Check-in at 2 PM on the first day · check-out at 10 AM on the last · 4 nights for the other packages; Inauguration Caravan: 3 nights (3–6 January 2027) · extra event or day-use guest: R$ 120/day', 'Check-in a las 14h del primer día · check-out a las 10h del último · 4 noches en los demás paquetes; Caravana de la Toma de Posesión: 3 noches (03–06/01/2027) · invitado extra para evento o day use: R$ 120/día')}</p>
     ${cardsCasas}
   </section>
 
@@ -1918,7 +1959,7 @@ const pacotes = layout(
         item: {
           '@type': 'Product',
           name: t(`Pacote de 4 diárias — ${c.nome}`, `4-night package — ${c.nome}`, `Paquete de 4 noches — ${c.nome}`),
-          description: t(`Casa completa para até ${c.hospedes} hóspedes no Lago Sul, Brasília — Natal, Réveillon, Posse, Carnaval e Marchas.`, `Whole house for up to ${c.hospedes} guests in Lago Sul, Brasília — Christmas, New Year, Inauguration, Carnival and Marches.`, `Casa entera para hasta ${c.hospedes} huéspedes en Lago Sul, Brasília — Navidad, Fin de Año, Toma de Posesión, Carnaval y Marchas.`),
+          description: t(`Casa completa para até ${c.hospedes} hóspedes no Lago Sul, Brasília — Natal, Réveillon, Carnaval e Marchas.`, `Whole house for up to ${c.hospedes} guests in Lago Sul, Brasília — Christmas, New Year, Carnival and Marches.`, `Casa entera para hasta ${c.hospedes} huéspedes en Lago Sul, Brasília — Navidad, Fin de Año, Carnaval y Marchas.`),
           image: porId[c.id] ? porId[c.id].fotoPrincipal : undefined,
           offers: { '@type': 'Offer', price: c.pacote, priceCurrency: 'BRL', availability: 'https://schema.org/InStock', url: `${SITE_URL}${L('/pacotes.html')}` }
         }
@@ -2094,9 +2135,9 @@ const FAQ_SECOES = [
     ['Como é a cobrança de um evento?', `O modelo é: diária do espaço/hospedagem + taxa por convidado + taxa de limpeza do evento. A <strong>diária do espaço para eventos é proporcional ao número de convidados</strong>. A referência é <strong>R$ 100 por convidado</strong>, podendo ser mais ou menos dependendo das circunstâncias do ajuste. Além disso, cobramos taxa de limpeza de evento de <strong>R$ 900</strong>.`],
     ['O que conta como "convidado"?', `Convidado é toda pessoa que não está na lista de hóspedes da reserva de hospedagem — vale para evento e day use. Se você contratar apenas o aluguel do espaço para o evento (sem hospedagem), todos os participantes contam como convidados.`],
     ['Posso fazer só o evento durante o dia (day use)?', `Sim. A cobrança segue o mesmo modelo (R$ 100 por convidado + taxa de limpeza) e o período é combinado. No day use, como não há hospedagem, todos os participantes contam como convidados.`],
-    ['Pode ter som / música ao vivo / DJ?', `Pode, com respeito à vizinhança. Seguimos a Lei Distrital de Silêncio (Lei nº 4.092/2008): o som precisa ser controlado/reduzido a partir das <strong>22h e não deve ultrapassar 00h00</strong>. O horário de encerramento do evento é definido no contrato.`],
+    ['Pode ter som / música ao vivo / DJ?', `Som ambiente, sim. <strong>Banda, DJ e música ao vivo não são permitidos</strong> — as casas ficam em zona estritamente residencial, e esse tipo de evento só é autorizado em zona comercial. Vale som ambiente no volume de uma casa de família, reduzido a partir das <strong>22h e sem ultrapassar 00h00</strong> (Lei Distrital de Silêncio nº 4.092/2008). O horário de encerramento do evento é definido no contrato.`],
     ['Tem segurança / portaria?', `Não. O caseiro pode auxiliar com o portão para a entrada dos convidados mediante o pagamento de uma diária. Para os grandes eventos, sugerimos a contratação de segurança profissional, para a segurança de todos e a preservação do local.`],
-    ['Posso levar meu buffet, decoração e fornecedores?', `Sim, você pode trazer seus fornecedores próprios (buffet, decoração, som) — é só alinhar os horários de montagem e desmontagem. <strong>Prestamos serviços de buffet também</strong> — consulte-nos para conferir a disponibilidade.`]
+    ['Posso levar meu buffet, decoração e fornecedores?', `Sim, você pode trazer seus fornecedores próprios de buffet e decoração — é só alinhar os horários de montagem e desmontagem. <strong>Som profissional, banda e DJ não são permitidos</strong> (veja a pergunta sobre som). <strong>Prestamos serviços de buffet também</strong> — consulte-nos para conferir a disponibilidade.`]
   ]],
   ['Operação, limpeza e suporte', [
     ['A limpeza está inclusa?', `A casa é entregue limpa e arrumada, padrão de hotel. A taxa de limpeza <strong>não inclui a limpeza durante a hospedagem</strong> — apenas a limpeza anterior e posterior à estadia. Se precisar de limpeza ou de cozinheira durante a estadia, podemos indicar uma pessoa.`],
@@ -2176,9 +2217,9 @@ const FAQ_SECOES_EN = [
     ['How is an event priced?', `The model is: venue/accommodation rate + per-guest fee + event cleaning fee. The <strong>venue rate for events is proportional to the number of guests</strong>. The reference is <strong>R$ 100 per guest</strong>, which may be more or less depending on the circumstances. We also charge an event cleaning fee of <strong>R$ 900</strong>.`],
     ['What counts as a "guest"?', `A guest is anyone not on the accommodation booking's guest list — for both events and day use. If you rent only the venue for the event (without accommodation), all attendees count as guests.`],
     ['Can I do a daytime event only (day use)?', `Yes. Pricing follows the same model (R$ 100 per guest + cleaning fee) and the time slot is agreed. For day use, since there is no accommodation, all attendees count as guests.`],
-    ['Can I have sound / live music / a DJ?', `Yes, with respect for the neighbors. We follow the local Noise Law (Lei nº 4.092/2008): sound must be <strong>turned down from 10 PM and must not go past midnight</strong>. The event's closing time is set in the contract.`],
+    ['Can I have sound / live music / a DJ?', `Ambient music, yes. <strong>Live bands, DJs and live music are not allowed</strong> — the houses are in a strictly residential area, and that kind of event is only permitted in commercial zones. Ambient sound at family-home volume is fine, turned down from <strong>10 PM and never past midnight</strong> (Noise Law 4,092/2008). The event's closing time is set in the contract.`],
     ['Is there security / a doorman?', `No. The caretaker can help with the gate for guests' entry for a daily fee. For large events, we recommend hiring professional security, for everyone's safety and to protect the venue.`],
-    ['Can I bring my own caterer, décor and suppliers?', `Yes, you can bring your own suppliers (catering, décor, sound) — just align the setup and teardown times. <strong>We also provide catering services</strong> — ask us about availability.`]
+    ['Can I bring my own caterer, décor and suppliers?', `Yes, you can bring your own catering and décor suppliers — just align the setup and teardown times. <strong>Professional sound systems, live bands and DJs are not allowed</strong> (see the question about sound). <strong>We also provide catering services</strong> — ask us about availability.`]
   ]],
   ['Operations, cleaning & support', [
     ['Is cleaning included?', `The house is delivered clean and tidy, hotel standard. The cleaning fee <strong>does not include cleaning during the stay</strong> — only the cleaning before and after. If you need cleaning or a cook during the stay, we can recommend someone.`],
@@ -2234,9 +2275,9 @@ const FAQ_SECOES_ES = [
     ['¿Cómo se cobra un evento?', `El modelo es: diaria del espacio/alojamiento + tarifa por invitado + tarifa de limpieza del evento. La <strong>diaria del espacio para eventos es proporcional al número de invitados</strong>. La referencia es <strong>R$ 100 por invitado</strong>, pudiendo ser más o menos según las circunstancias. Además, cobramos una tarifa de limpieza de evento de <strong>R$ 900</strong>.`],
     ['¿Qué cuenta como "invitado"?', `Invitado es toda persona que no está en la lista de huéspedes de la reserva de alojamiento — vale para evento y day use. Si contratas solo el alquiler del espacio para el evento (sin alojamiento), todos los asistentes cuentan como invitados.`],
     ['¿Puedo hacer solo el evento de día (day use)?', `Sí. El cobro sigue el mismo modelo (R$ 100 por invitado + tarifa de limpieza) y el horario se acuerda. En el day use, como no hay alojamiento, todos los asistentes cuentan como invitados.`],
-    ['¿Puede haber sonido / música en vivo / DJ?', `Sí, con respeto al vecindario. Seguimos la Ley Distrital del Silencio (Ley nº 4.092/2008): el sonido debe <strong>reducirse a partir de las 22h y no debe pasar de las 00h00</strong>. El horario de cierre del evento se define en el contrato.`],
+    ['¿Puede haber sonido / música en vivo / DJ?', `Sonido ambiente, sí. <strong>Banda, DJ y música en vivo no están permitidos</strong> — las casas están en una zona estrictamente residencial, y ese tipo de evento solo se autoriza en zona comercial. Vale sonido ambiente a volumen de casa de familia, reducido a partir de las <strong>22h y sin pasar de las 00h00</strong> (Ley Distrital del Silencio nº 4.092/2008). El horario de cierre del evento se define en el contrato.`],
     ['¿Hay seguridad / portería?', `No. El casero puede ayudar con el portón para la entrada de los invitados mediante el pago de una diaria. Para los grandes eventos, sugerimos contratar seguridad profesional, para la seguridad de todos y la preservación del lugar.`],
-    ['¿Puedo llevar mi catering, decoración y proveedores?', `Sí, puedes traer tus propios proveedores (catering, decoración, sonido) — solo coordina los horarios de montaje y desmontaje. <strong>También prestamos servicios de catering</strong> — consúltanos la disponibilidad.`]
+    ['¿Puedo llevar mi catering, decoración y proveedores?', `Sí, puedes traer tus propios proveedores de catering y decoración — solo coordina los horarios de montaje y desmontaje. <strong>Equipo de sonido profesional, banda y DJ no están permitidos</strong> (ver la pregunta sobre sonido). <strong>También prestamos servicios de catering</strong> — consúltanos la disponibilidad.`]
   ]],
   ['Operación, limpieza y soporte', [
     ['¿La limpieza está incluida?', `La casa se entrega limpia y ordenada, estándar de hotel. La tarifa de limpieza <strong>no incluye la limpieza durante la estancia</strong> — solo la limpieza anterior y posterior. Si necesitas limpieza o cocinera durante la estancia, podemos recomendarte a alguien.`],
@@ -2791,12 +2832,12 @@ conferirCobertura(PRODUTOS_GRUPO);
   ].map(o => `<script type="application/ld+json">${JSON.stringify(o)}</script>`).join('\n');
 
   const paginaSistemas = layout(
-    t('Sistemas de gestão do Grupo Villela Stay — CRM, jurídico, documentos, hospedagem, projetos',
-      'Grupo Villela Stay management software — CRM, legal, documents, hospitality, projects',
-      'Sistemas de gestión del Grupo Villela Stay — CRM, jurídico, documentos, alojamiento, proyectos'),
-    t(`${SISTEMAS.length} sistemas brasileiros de gestão em nuvem — CRM, software jurídico, gestão documental com IA, gestão de hospedagem, projetos e eventos, cursos online e conteúdo visual 360°. A partir de R$ 79 por mês, 14 dias grátis sem cartão.`,
-      `${SISTEMAS.length} Brazilian cloud management systems — CRM, legal software, AI document management, hospitality management, projects and events, online courses and 360° visual content. From R$79 a month, 14 days free, no card required.`,
-      `${SISTEMAS.length} sistemas brasileños de gestión en la nube — CRM, software jurídico, gestión documental con IA, gestión de alojamiento, proyectos y eventos, cursos online y contenido visual 360°. Desde R$ 79 al mes, 14 días gratis sin tarjeta.`),
+    t('Sistemas de gestão do Grupo Villela Stay — CRM, jurídico, documentos, hospedagem, projetos, música',
+      'Grupo Villela Stay management software — CRM, legal, documents, hospitality, projects, music',
+      'Sistemas de gestión del Grupo Villela Stay — CRM, jurídico, documentos, alojamiento, proyectos, música'),
+    t(`${SISTEMAS.length} sistemas brasileiros de gestão em nuvem — CRM, software jurídico, gestão documental com IA, gestão de hospedagem, projetos e eventos, cursos online, conteúdo visual 360° e academia musical com cifras. A partir de R$ 79 por mês, 14 dias grátis sem cartão.`,
+      `${SISTEMAS.length} Brazilian cloud management systems — CRM, legal software, AI document management, hospitality management, projects and events, online courses, 360° visual content and a music academy with chord charts. From R$79 a month, 14 days free, no card required.`,
+      `${SISTEMAS.length} sistemas brasileños de gestión en la nube — CRM, software jurídico, gestión documental con IA, gestión de alojamiento, proyectos y eventos, cursos online, contenido visual 360° y academia musical con cifrados. Desde R$ 79 al mes, 14 días gratis sin tarjeta.`),
     `
 <section class="sx-hero">
   <div class="sx-wrap">
@@ -2805,9 +2846,9 @@ conferirCobertura(PRODUTOS_GRUPO);
              'Management software that already runs <em>a real business</em>.',
              'Sistemas de gestión que ya operan <em>un negocio de verdad</em>.')}</h1>
     <p class="sx-lead">${t(
-      `${SISTEMAS.length} sistemas em nuvem para CRM, jurídico, documentos, hospedagem, projetos, cursos e conteúdo visual — mais ${EM_DESENVOLVIMENTO.length} já no ar, terminando de nascer. Nenhum deles foi feito para vender: cada um resolveu primeiro um problema da nossa própria operação, e só depois virou produto.`,
-      `${SISTEMAS.length} cloud systems for CRM, legal, documents, hospitality, projects, courses and visual content — plus ${EM_DESENVOLVIMENTO.length} already live, still being born. None of them was built to be sold: each one first solved a problem in our own operation, and only then became a product.`,
-      `${SISTEMAS.length} sistemas en la nube para CRM, jurídico, documentos, alojamiento, proyectos, cursos y contenido visual — más ${EM_DESENVOLVIMENTO.length} ya en el aire, terminando de nacer. Ninguno fue hecho para vender: cada uno resolvió primero un problema de nuestra propia operación, y solo después se volvió producto.`)}</p>
+      `${SISTEMAS.length} sistemas em nuvem para CRM, jurídico, documentos, hospedagem, projetos, cursos, conteúdo visual e música — mais ${EM_DESENVOLVIMENTO.length} já no ar, terminando de nascer. Nenhum deles foi feito para vender: cada um resolveu primeiro um problema da nossa própria operação, e só depois virou produto.`,
+      `${SISTEMAS.length} cloud systems for CRM, legal, documents, hospitality, projects, courses, visual content and music — plus ${EM_DESENVOLVIMENTO.length} already live, still being born. None of them was built to be sold: each one first solved a problem in our own operation, and only then became a product.`,
+      `${SISTEMAS.length} sistemas en la nube para CRM, jurídico, documentos, alojamiento, proyectos, cursos, contenido visual y música — más ${EM_DESENVOLVIMENTO.length} ya en el aire, terminando de nacer. Ninguno fue hecho para vender: cada uno resolvió primero un problema de nuestra propia operación, y solo después se volvió producto.`)}</p>
     <div class="sx-hero-ctas">
       <a class="sx-btn sx-btn-ouro" href="#catalogo">${t('Ver os sistemas', 'See the systems', 'Ver los sistemas')}</a>
       <a class="sx-btn sx-btn-fantasma" href="#demonstracao">${t('Ver funcionando', 'See it working', 'Verlo funcionando')}</a>
@@ -3279,7 +3320,7 @@ ${blocos}
         'How to move past improvised use of ChatGPT, Claude and Gemini and get to prompts that work, knowledge organised into projects, GPTs and Skills, agents that run a task end to end, automations with Make and n8n, MCP, connectors and APIs — with token and credit economy. It is the subject of most of what we publish, because it is what reorganised our own company.',
         'Cómo salir del uso improvisado de ChatGPT, Claude y Gemini y llegar a prompts que funcionan, organización del conocimiento en proyectos, GPTs y Skills, agentes que ejecutan tareas de principio a fin, automatizaciones con Make y n8n, MCP, conectores y APIs — con ahorro de tokens y créditos. Es el tema de la mayor parte de lo que publicamos.'),
       livros: ['chatgpt-ai-na-pratica', 'chatgpt-ai-na-pratica-guia-visual', 'claude-ai-na-pratica', 'google-ai-na-pratica', 'como-ser-superprodutivo-com-ia'],
-      cursos: ['chatgpt-ai-na-pratica', 'claude-ai-na-pratica'], sistemas: [] },
+      cursos: ['chatgpt-ai-na-pratica', 'claude-ai-na-pratica', 'google-ai-na-pratica', 'a-segunda-onda-da-ia'], sistemas: [] },
 
     { id: 'ia-juridica',
       nome: t('IA para advogados e escritórios de advocacia', 'AI for lawyers and law firms', 'IA para abogados y despachos'),
@@ -3288,6 +3329,14 @@ ${blocos}
         'Prompt con contexto jurídico, control de calidad de la respuesta, búsqueda de jurisprudencia y legislación verificada en la fuente oficial, bases de conocimiento del despacho, minutas de escritos y contratos, seguimiento de publicaciones y plazos, secreto profesional y protección de datos.'),
       livros: ['claude-ai-na-pratica-juridica', 'claude-ai-para-advogados-guia-visual'],
       cursos: ['claude-ai-na-pratica-juridica'], sistemas: ['legal'] },
+
+    // Super curso para concursos (ESTUDE), no ar desde 10/2026. Próximos concursos entram aqui, no campo cursos.
+    { id: 'concursos',
+      nome: t('Concursos públicos e magistratura do trabalho', 'Public service exams and the labour judiciary', 'Oposiciones y magistratura del trabajo'),
+      texto: t('Preparação para concurso pelo programa oficial, e não por apostila genérica: uma aula para cada item do edital, teoria para leitura, questões de provas anteriores e questões autorais comentadas, cards de revisão, mapas mentais, simulados com a regra do concurso e plano de estudo no tempo de quem estuda. O primeiro curso segue o edital do concurso nacional da Magistratura do Trabalho, para quem quer ser juiz do trabalho.',
+        'Exam preparation built on the official syllabus rather than a generic handout: one lesson for each item of the public notice, reading theory, past-paper and original questions with commentary, revision cards, mind maps, mock exams under the real rules and a study plan that fits your schedule. The first course follows the national competition for Brazilian labour judges.',
+        'Preparación para oposiciones por el programa oficial, no por apuntes genéricos: una clase por cada punto de la convocatoria, teoría para lectura, preguntas de exámenes anteriores y originales comentadas, tarjetas de repaso, mapas mentales, simulacros con la regla del concurso y plan de estudio a tu ritmo. El primer curso sigue la convocatoria nacional para jueces del trabajo en Brasil.'),
+      livros: [], cursos: ['juiz-do-trabalho-trt-10a-regiao-concurso-paradigma'], sistemas: [] },
 
     { id: 'gestao',
       nome: t('Gestão da empresa: clientes, documentos, projetos e dinheiro', 'Running the company: clients, documents, projects and money', 'Gestión de la empresa: clientes, documentos, proyectos y dinero'),
@@ -3301,7 +3350,16 @@ ${blocos}
       texto: t('Como os algoritmos do Airbnb e do Booking decidem quem aparece, precificação por demanda, taxa de ocupação, avaliações, operação de limpeza e enxoval, e o sistema de gestão de hospedagem que nasceu das nossas quatro casas no Lago Sul.',
         'How the Airbnb and Booking algorithms decide who shows up, demand-based pricing, occupancy rate, reviews, cleaning and linen operations, and the hospitality management system born from our four houses in Brasília.',
         'Cómo los algoritmos de Airbnb y Booking deciden quién aparece, precios por demanda, tasa de ocupación, reseñas, operación de limpieza y ropa de cama, y el sistema de gestión de alojamiento nacido de nuestras cuatro casas.'),
-      livros: ['o-locador-inteligente'], cursos: [], sistemas: ['manager'] },
+      livros: ['o-locador-inteligente', 'o-locador-inteligente-na-era-da-ia'], cursos: ['o-locador-inteligente-na-era-da-inteligencia-artificial'], sistemas: ['manager'] },
+
+    // Coleção Viver de Chácara (Augusto, 08/10/2026): os próximos títulos (paisagismo, pedreiro, decoração,
+    // contêineres, irrigação, horta, pintura, elétrica, hidráulica, hospedagem) entram aqui, no campo cursos/livros.
+    { id: 'chacara',
+      nome: t('Chácara, casa de campo e manutenção da propriedade', 'Country house and property maintenance', 'Casa de campo y mantenimiento de la propiedad'),
+      texto: t('Como cuidar de uma chácara com método: piscina limpa e segura, jardim e paisagismo, pequenas obras de alvenaria, construção com contêineres, rotina de manutenção, o que dá para fazer com as próprias mãos, o que contratar e como conferir o serviço de quem você contrata. É a coleção Viver de Chácara, para quem mora, descansa ou recebe hóspedes em uma propriedade rural.',
+        'How to look after a country property with method: a clean and safe pool, garden and landscaping, small masonry jobs, building with shipping containers, a maintenance routine, what you can do yourself, what to hire out and how to check the work you pay for. This is the Viver de Chácara collection, for those who live, rest or host guests on a rural property.',
+        'Cómo cuidar una casa de campo con método: piscina limpia y segura, jardín y paisajismo, pequeñas obras de albañilería, construcción con contenedores, rutina de mantenimiento, qué se puede hacer con las propias manos, qué contratar y cómo revisar el servicio contratado. Es la colección Viver de Chácara, para quien vive, descansa o recibe huéspedes en una propiedad rural.'),
+      livros: [], cursos: ['piscineiro-na-pratica', 'paisagismo-na-pratica', 'pedreiro-completo-na-pratica', 'construcao-com-conteineres-na-pratica', 'decoracao-de-interiores-na-pratica'], sistemas: [] },
 
     { id: 'negocios',
       nome: t('Negócios, marketing, finanças pessoais e produtos digitais', 'Business, marketing, personal finance and digital products', 'Negocios, marketing, finanzas personales y productos digitales'),
@@ -3309,7 +3367,7 @@ ${blocos}
         'Marketing in the age of algorithms, building a network, financial education and getting out of debt, and the path for turning knowledge into an online course — from content to first sale. Includes the platforms for selling courses, products and renting items.',
         'Marketing en la era de los algoritmos, construcción de red, educación financiera y salida de las deudas, y el camino de quien quiere convertir conocimiento en curso online — del contenido a la primera venta.'),
       livros: ['suas-definicoes-de-marketing', 'de-repente-rico', 'conexoes-de-sucesso', 'faca-um-curso-online-em-15-passos'],
-      cursos: [], sistemas: ['vitrine', 'closet'] },
+      cursos: ['conexoes-de-sucesso-formacao-para-o-mundo-real'], sistemas: ['vitrine', 'closet'] },
 
     { id: 'imagem',
       nome: t('Drones, vídeo e imagem aérea', 'Drones, video and aerial imagery', 'Drones, vídeo e imagen aérea'),
@@ -3323,7 +3381,7 @@ ${blocos}
       texto: t('O que um pai reúne para os filhos sobre domínio de si, lucidez e propósito — e as plataformas de aprendizagem criativa para crianças, de estudo de música e de cozinha, que nasceram da mesma pergunta: como se aprende de verdade.',
         'What a father gathers for his children about self-mastery, clarity and purpose — and the platforms for creative learning for children, music study and cooking, born from the same question: how do people really learn.',
         'Lo que un padre reúne para sus hijos sobre dominio de sí, lucidez y propósito — y las plataformas de aprendizaje creativo para niños, estudio de música y cocina.'),
-      livros: ['o-homem-essencial'], cursos: [], sistemas: ['kids', 'music', 'cozinhe'] }
+      livros: ['o-homem-essencial'], cursos: ['o-homem-contemporaneo', 'o-homem-essencial'], sistemas: ['kids', 'music', 'cozinhe'] }
   ];
 
   // A trava: produto fora de todo assunto não some da página — some da BUSCA, que é
@@ -3382,7 +3440,7 @@ ${blocos}
        'Yes. Every book in the bookstore has a free preview on its own page, and the first lesson of each Academy course is open.',
        'Sí. Cada libro de la librería tiene una muestra para hojear en su propia página, y la primera clase de cada curso de la Academy está abierta.')],
     [t('Os cursos têm mensalidade?', 'Do the courses have a monthly fee?', '¿Los cursos tienen mensualidad?'),
-     t('Não. O curso é compra única, com acesso vitalício ao conteúdo e às atualizações da mesma edição. Quem cobra assinatura mensal são os sistemas de gestão, que é outra coisa.',
+     t('Não. O curso é compra única, com acesso de 1 ano a partir da compra, incluindo as atualizações publicadas nesse período. Quem cobra assinatura mensal são os sistemas de gestão, que é outra coisa.',
        'No. A course is a one-time purchase with lifetime access to the content and to updates of the same edition. The monthly subscription applies to the management software, which is a different thing.',
        'No. El curso es compra única, con acceso de por vida al contenido y a las actualizaciones de la misma edición. La suscripción mensual es de los sistemas de gestión, que es otra cosa.')],
     [t('Os sistemas têm teste grátis?', 'Is there a free trial for the software?', '¿Los sistemas tienen prueba gratis?'),
@@ -3516,7 +3574,7 @@ ${blocos}
              'The video courses, born from the books',
              'Los cursos en vídeo, nacidos de los libros')}</h2>
     <p class="tx-sub">${t(
-      'Cada aula tem videoaula, artigo em PDF, apresentação e um resumo visual de uma página. Compra única, acesso vitalício, sem mensalidade — e a primeira aula de cada curso é aberta para você conferir antes.',
+      'Cada aula tem videoaula, artigo em PDF, apresentação e um resumo visual de uma página. Compra única, acesso de 1 ano, sem mensalidade — e a primeira aula de cada curso é aberta para você conferir antes.',
       'Every lesson has a video, a PDF article, the slide deck and a one-page visual summary. One-time purchase, lifetime access, no subscription — and the first lesson of each course is open so you can check before buying.',
       'Cada clase tiene videoclase, artículo en PDF, presentación y un resumen visual de una página. Compra única, acceso de por vida, sin mensualidad — y la primera clase de cada curso está abierta para que la veas antes.')}</p>
     <div class="tx-grade-cursos">${blocosCursos}</div>
@@ -3621,24 +3679,26 @@ const cardsPosse = ['GD03H', 'GG04I', 'PL02I', 'GD01H', 'GI01I'].map(id => porId
 
 const posse = layout(
   t('Onde ficar em Brasília para a Posse Presidencial 2027 | Villela Stay', 'Where to stay in Brasília for the 2027 Presidential Inauguration | Villela Stay', 'Dónde alojarse en Brasília para la Toma de Posesión Presidencial 2027 | Villela Stay'),
-  t('Hospedagem para a posse do novo Presidente em 1º/01/2027: casas completas no Lago Sul para caravanas e comitivas, a 10 min da Esplanada. Reserve antes de esgotar.', "Accommodation for the new President's inauguration on 1 Jan 2027: whole houses in Lago Sul for groups and delegations, 10 min from the Esplanada. Book before they sell out.", 'Alojamiento para la toma de posesión del nuevo Presidente el 1/01/2027: casas enteras en Lago Sul para caravanas y comitivas, a 10 min de la Explanada. Reserva antes de que se agoten.'),
+  t('Caravana da Posse do Novo Presidente: pacote de 03/01/2027 a 06/01/2027, 3 dias e 3 diárias. Casas completas no Lago Sul para grupos e comitivas.', "New President's Inauguration Caravan: 3–6 January 2027, 3 days and 3 nights. Whole houses in Lago Sul for groups and delegations.", 'Caravana de la Toma de Posesión del Nuevo Presidente: del 03/01/2027 al 06/01/2027, 3 días y 3 noches. Casas enteras en Lago Sul para grupos y comitivas.'),
   `
 <section class="hero hero-menor">
   <h1>${t('Onde ficar em Brasília para a Posse Presidencial 2027', 'Where to stay in Brasília for the 2027 Presidential Inauguration', 'Dónde alojarse en Brasília para la Toma de Posesión Presidencial 2027')}</h1>
-  <p>${t('<strong>Em 1º de janeiro de 2027, o Brasil inteiro estará em Brasília.</strong> E quem deixar para depois vai pagar caro — ou ficar longe. Aqui está o guia de quem conhece a cidade.', '<strong>On 1 January 2027, all of Brazil will be in Brasília.</strong> Those who wait will pay dearly — or stay far away. Here\'s the guide from people who know the city.', '<strong>El 1 de enero de 2027, todo Brasil estará en Brasília.</strong> Quien lo deje para después pagará caro — o se quedará lejos. Aquí está la guía de quien conoce la ciudad.')}</p>
+  <p>${t('<strong>Em 5 de janeiro de 2027, o Brasil inteiro estará em Brasília.</strong> E quem deixar para depois vai pagar caro — ou ficar longe. Aqui está o guia de quem conhece a cidade.', '<strong>On 5 January 2027, all of Brazil will be in Brasília.</strong> Those who wait will pay dearly — or stay far away. Here\'s the guide from people who know the city.', '<strong>El 5 de enero de 2027, todo Brasil estará en Brasília.</strong> Quien lo deje para después pagará caro — o se quedará lejos. Aquí está la guía de quien conoce la ciudad.')}</p>
 </section>
 <div class="regras-wrap">
   <section class="regra"><h2>${t('Por que reservar agora', 'Why book now', 'Por qué reservar ahora')}</h2>
     <p>${t('A posse presidencial é o evento que mais lota Brasília — caravanas de todos os estados, comitivas políticas, delegações estrangeiras e famílias inteiras vêm assistir à cerimônia na Esplanada dos Ministérios. Nas posses anteriores, os hotéis da região central <strong>dobraram ou triplicaram as diárias</strong> e esgotaram com meses de antecedência.', 'The presidential inauguration is the event that fills Brasília the most — caravans from every state, political delegations, foreign missions and whole families come to watch the ceremony at the Esplanada dos Ministérios. At previous inaugurations, hotels in the central area <strong>doubled or tripled their rates</strong> and sold out months in advance.', 'La toma de posesión presidencial es el evento que más llena Brasília — caravanas de todos los estados, comitivas políticas, delegaciones extranjeras y familias enteras vienen a ver la ceremonia en la Esplanada dos Ministérios. En las tomas anteriores, los hoteles de la zona central <strong>duplicaron o triplicaron las tarifas</strong> y se agotaron con meses de antelación.')}</p>
-    <p>${t('E há um detalhe que torna 2027 ainda mais especial: a posse cai <strong>emendada com o Réveillon</strong>. Quem vem, vem para os dois — e fica de 4 a 5 dias.', 'And one detail makes 2027 even more special: the inauguration falls <strong>right after New Year\'s Eve</strong>. Those who come, come for both — and stay 4 to 5 days.', 'Y hay un detalle que hace 2027 aún más especial: la toma de posesión cae <strong>pegada al Fin de Año</strong>. Quien viene, viene para los dos — y se queda de 4 a 5 días.')}</p>
+    <p>${t('O pacote <strong>Caravana da Posse do Novo Presidente</strong> vai de <strong>03/01/2027 a 06/01/2027</strong>: são <strong>3 dias e 3 diárias</strong>, com entrada em 3 de janeiro e saída em 6 de janeiro. A posse acontece em 5 de janeiro, durante a estadia.', 'The <strong>New President\'s Inauguration Caravan</strong> package runs from <strong>3 to 6 January 2027</strong>: <strong>3 days and 3 nights</strong>, with check-in on 3 January and check-out on 6 January. The inauguration takes place on 5 January, during your stay.', 'El paquete <strong>Caravana de la Toma de Posesión del Nuevo Presidente</strong> va del <strong>03/01/2027 al 06/01/2027</strong>: son <strong>3 días y 3 noches</strong>, con entrada el 3 de enero y salida el 6 de enero. La toma de posesión tiene lugar el 5 de enero, durante la estadía.')}</p>
   </section>
   <section class="regra"><h2>${t('A alternativa inteligente: casa completa no Lago Sul', 'The smart alternative: a whole house in Lago Sul', 'La alternativa inteligente: casa entera en Lago Sul')}</h2>
     <p>${t('Para grupos e caravanas, hotel é a conta que não fecha: dezenas de diárias individuais, sem cozinha, sem espaço de convivência. A solução que cresce a cada posse é alugar uma <strong>casa completa</strong> — e o Lago Sul é o melhor bairro para isso: seguro, silencioso, a <strong>10 minutos do Aeroporto JK e da Esplanada</strong>.', 'For groups and caravans, a hotel just doesn\'t add up: dozens of individual rates, no kitchen, no shared living space. The solution that grows with every inauguration is renting a <strong>whole house</strong> — and Lago Sul is the best neighbourhood for it: safe, quiet, <strong>10 minutes from JK Airport and the Esplanada</strong>.', 'Para grupos y caravanas, el hotel es la cuenta que no cuadra: decenas de tarifas individuales, sin cocina, sin espacio de convivencia. La solución que crece con cada toma de posesión es alquilar una <strong>casa entera</strong> — y Lago Sul es el mejor barrio para eso: seguro, silencioso, a <strong>10 minutos del Aeropuerto JK y de la Explanada</strong>.')}</p>
-    <p>${t('Nas casas da Villela Stay, o grupo inteiro fica junto, com piscina aquecida, churrasqueira e cozinha completa — e o custo se divide: <strong>R$ 150 por pessoa por dia</strong> no pacote de 4 diárias com a casa lotada. Menos que uma diária de hotel simples em semana de posse.', 'In Villela Stay\'s houses, the whole group stays together, with a heated pool, barbecue and full kitchen — and the cost is split: <strong>R$ 150 per person per day</strong> in the 4-night package with the house at full capacity. Less than a basic hotel night during inauguration week.', 'En las casas de Villela Stay, todo el grupo se queda junto, con piscina climatizada, parrilla y cocina completa — y el costo se reparte: <strong>R$ 150 por persona por día</strong> en el paquete de 4 noches con la casa llena. Menos que una noche de hotel sencillo en semana de toma de posesión.')}</p>
+    <p>${t('Nas casas da Villela Stay, o grupo inteiro fica junto, com piscina aquecida, churrasqueira e cozinha completa — e o custo se divide: <strong>R$ 150 por pessoa por dia</strong> no pacote de 3 diárias com a casa lotada. Menos que uma diária de hotel simples em semana de posse.', 'In Villela Stay\'s houses, the whole group stays together, with a heated pool, barbecue and full kitchen — and the cost is split: <strong>R$ 150 per person per day</strong> in the 3-night package with the house at full capacity. Less than a basic hotel night during inauguration week.', 'En las casas de Villela Stay, todo el grupo se queda junto, con piscina climatizada, parrilla y cocina completa — y el costo se reparte: <strong>R$ 150 por persona por día</strong> en el paquete de 3 noches con la casa llena. Menos que una noche de hotel sencillo en semana de toma de posesión.')}</p>
   </section>
-  <section class="regra"><h2>${t('O pacote Réveillon + Posse (30/12/2026 a 03/01/2027)', 'The New Year + Inauguration package (30 Dec 2026 to 3 Jan 2027)', 'El paquete Fin de Año + Toma de Posesión (30/12/2026 a 03/01/2027)')}</h2>
-    <p>${t(`Nossas 4 casas recebem de ${capMin} a ${capMax} hóspedes cada. O pacote de 4 diárias vai de <strong>${real(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} pessoas)</strong> a <strong>${real(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} pessoas)</strong> — valores fechados, sem surpresa. Veja os detalhes e a composição das camas em <a href="${L('/pacotes.html')}"><strong>Pacotes Especiais</strong></a>.`, `Our 4 houses host ${capMin} to ${capMax} guests each. The 4-night package ranges from <strong>${realEn(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} people)</strong> to <strong>${realEn(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} people)</strong> — fixed prices, no surprises. See the details and bed layouts in <a href="${L('/pacotes.html')}"><strong>Special Packages</strong></a>.`, `Nuestras 4 casas reciben de ${capMin} a ${capMax} huéspedes cada una. El paquete de 4 noches va de <strong>${real(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} personas)</strong> a <strong>${real(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} personas)</strong> — precios cerrados, sin sorpresas. Mira los detalles y la distribución de camas en <a href="${L('/pacotes.html')}"><strong>Paquetes Especiales</strong></a>.`)}</p>
-    <p>⚠️ ${t('São apenas 4 casas por data, e Réveillon + Posse é a janela mais disputada do calendário. As reservas são confirmadas por ordem de chegada.', 'There are only 4 houses per date, and New Year + Inauguration is the most sought-after window on the calendar. Bookings are confirmed on a first-come, first-served basis.', 'Son solo 4 casas por fecha, y Fin de Año + Toma de Posesión es la ventana más disputada del calendario. Las reservas se confirman por orden de llegada.')}</p>
+  <section class="regra"><h2>${t('O pacote Caravana da Posse do Novo Presidente (03/01/2027 a 06/01/2027) — 3 dias', 'The Inauguration Caravan package (3 to 6 January 2027) — 3 days', 'El paquete Caravana de la Toma de Posesión del Nuevo Presidente (03/01/2027 a 06/01/2027) — 3 días')}</h2>
+    <p>${t(`Nossas 4 casas recebem de ${capMin} a ${capMax} hóspedes cada. O pacote de 3 diárias vai de <strong>${real(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} pessoas)</strong> a <strong>${real(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} pessoas)</strong> — valores fechados, sem surpresa. Veja a composição das camas em <a href="${L('/pacotes.html')}"><strong>Pacotes Especiais</strong></a>.`, `Our 4 houses host ${capMin} to ${capMax} guests each. The 3-night package ranges from <strong>${realEn(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} people)</strong> to <strong>${realEn(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} people)</strong> — fixed prices, no surprises. See the bed layouts in <a href="${L('/pacotes.html')}"><strong>Special Packages</strong></a>.`, `Nuestras 4 casas reciben de ${capMin} a ${capMax} huéspedes cada una. El paquete de 3 noches va de <strong>${real(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} personas)</strong> a <strong>${real(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} personas)</strong> — precios cerrados, sin sorpresas. Mira la distribución de camas en <a href="${L('/pacotes.html')}"><strong>Paquetes Especiales</strong></a>.`)}</p>
+    <p>${composicaoPosse}</p>
+    <ul>${precosPosse}</ul>
+    <p>⚠️ ${t('São apenas 4 casas para o período de 03 a 06 de janeiro de 2027. As reservas são confirmadas por ordem de chegada.', 'There are only 4 houses for 3 to 6 January 2027. Bookings are confirmed on a first-come, first-served basis.', 'Son solo 4 casas para el período del 3 al 6 de enero de 2027. Las reservas se confirman por orden de llegada.')}</p>
   </section>
   <section class="regra"><h2>${t('As casas', 'The houses', 'Las casas')}</h2>
     <div class="grade" style="margin-top:8px">${cardsPosse}</div>
@@ -3646,7 +3706,7 @@ const posse = layout(
   <section class="venda-bloco cta-final" style="margin-top:28px">
     <h2>${t('Garanta a sua casa para a Posse 2027', 'Secure your house for the 2027 Inauguration', 'Asegura tu casa para la Toma de Posesión 2027')}</h2>
     <p>${t('Diga o tamanho do grupo e devolvemos a proposta completa no WhatsApp.', 'Tell us the size of your group and we\'ll send the full proposal on WhatsApp.', 'Dinos el tamaño del grupo y te enviamos la propuesta completa por WhatsApp.')}</p>
-    <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Quero reservar uma casa para a Posse Presidencial 2027 (30/12 a 03/01). Somos um grupo de ___ pessoas.', "Hi! I'd like to book a house for the 2027 Presidential Inauguration (30 Dec to 3 Jan). We're a group of ___ people.", '¡Hola! Quiero reservar una casa para la Toma de Posesión Presidencial 2027 (30/12 a 03/01). Somos un grupo de ___ personas.'))}">${t('Reservar pelo WhatsApp', 'Book on WhatsApp', 'Reservar por WhatsApp')}</a>
+    <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Quero reservar uma casa para a Caravana da Posse do Novo Presidente (03/01/2027 a 06/01/2027, 3 dias e 3 diárias). Somos um grupo de ___ pessoas.', "Hi! I'd like to book a house for the 2027 Inauguration Caravan (3 to 6 January 2027, 3 days and 3 nights). We're a group of ___ people.", '¡Hola! Quiero reservar una casa para la Caravana de la Toma de Posesión del Nuevo Presidente (03/01/2027 a 06/01/2027, 3 días y 3 noches). Somos un grupo de ___ personas.'))}">${t('Reservar pelo WhatsApp', 'Book on WhatsApp', 'Reservar por WhatsApp')}</a>
   </section>
 </div>`,
   { caminho: '/posse-2027.html' }
@@ -3694,16 +3754,32 @@ try {
   blogCreditos = JSON.parse(fs.readFileSync(path.join(__dirname, 'src', 'blog', 'creditos.json'), 'utf8').replace(/^﻿/, ''));
 } catch (e) { console.warn('[blog] sem creditos.json — artigos usarão só a arte de marca'); }
 
-// Copia as imagens do blog (src/blog/*.jpg|png) para dist/blog-img/
+// Copia as imagens do blog (src/blog/*.jpg|png|webp) para dist/blog-img/
 const BLOG_IMG_SRC = path.join(__dirname, 'src', 'blog');
 const BLOG_IMG_DST = path.join(DIST, 'blog-img');
 if (fs.existsSync(BLOG_IMG_SRC)) {
   fs.mkdirSync(BLOG_IMG_DST, { recursive: true });
   for (const f of fs.readdirSync(BLOG_IMG_SRC)) {
-    if (/\.(jpe?g|png)$/i.test(f)) fs.copyFileSync(path.join(BLOG_IMG_SRC, f), path.join(BLOG_IMG_DST, f));
+    if (/\.(jpe?g|png|webp)$/i.test(f)) fs.copyFileSync(path.join(BLOG_IMG_SRC, f), path.join(BLOG_IMG_DST, f));
   }
 }
 fs.mkdirSync(path.join(DIST, 'blog'), { recursive: true });
+
+// Imagem de uma série do blog (src/blog/<serie>-1.jpg, a mesma do card em /blog.html), pronta
+// para espalhar em dois lugares: `.ld` no BlogPosting (o Google pede `image` para o resultado
+// de artigo) e `.og` nas opções do layout (cartão social com a medida REAL do arquivo).
+// Sem o arquivo, os dois vêm vazios e a página segue com o cartão padrão do site.
+const serieImagemCache = {};
+function serieImagem(serie) {
+  if (!serieImagemCache[serie]) {
+    const arq = `${serie}-1.jpg`;
+    const abs = path.join(BLOG_IMG_SRC, arq);
+    const d = fs.existsSync(abs) ? dimensoesArquivo(abs) : null;
+    const url = `${SITE_URL}/blog-img/${arq}`;
+    serieImagemCache[serie] = d ? { ld: { image: url }, og: { ogImage: url, ogLargura: d.w, ogAltura: d.h } } : { ld: {}, og: {} };
+  }
+  return serieImagemCache[serie];
+}
 
 // Copia os PDFs das iscas (lead magnets) para dist/iscas/
 const ISCAS_SRC = path.join(__dirname, 'src', 'iscas');
@@ -3744,7 +3820,8 @@ function blogCardImg(a) {
     const abs = path.join(BLOG_IMG_SRC, item.file);
     if (fs.existsSync(abs)) {
       const d = dimensoesArquivo(abs) || { w: 1600, h: 1067 };
-      return img('/blog-img/' + item.file, { alt: a.h1, width: d.w, height: d.h, sizes: '(max-width: 640px) 100vw, 400px' });
+      // alt no idioma da página: `a` chega em português (é o artigo-fonte), o h1 traduzido vem do i18n.
+      return img('/blog-img/' + item.file, { alt: tradArtigo(a).h1, width: d.w, height: d.h, sizes: '(max-width: 640px) 100vw, 400px' });
     }
   }
   return `<div class="blog-card-arte tema-${a.slug}" aria-hidden="true">${BLOG_HERO_SVG}</div>`;
@@ -3953,9 +4030,17 @@ let cgArtigos = [];
 let lcArtigos = [];
 let csArtigos = [];
 let soArtigos = [];
+let gaArtigos = [];
+let hoArtigos = [];
+let heArtigos = [];
+let piArtigos = [];
+let paArtigos = [];
+let peArtigos = [];
+let ctArtigos = [];
+let dcArtigos = [];
 let capCss = '';
-const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
-const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
+const CAP_LIVRO = 'https://livros.villelastay.com.br/livros/claude-ai-na-pratica?utm_source=villelastay&utm_medium=blog-claude';
+const CAP_CURSO = 'https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica?utm_source=villelastay&utm_medium=blog-claude';
 
 if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   capCss = fs.readFileSync(path.join(CAP_DIR, 'artigo.css'), 'utf8');
@@ -3966,6 +4051,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   const ENTS = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ldquo: '“', rdquo: '”', lsquo: '‘', rsquo: '’', mdash: '—', ndash: '–', hellip: '…' };
   const destexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   capArtigos = fs.readdirSync(CAP_DIR).filter(f => /\.html$/.test(f)).sort().map(f => {
@@ -4019,6 +4105,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
         <span class="cap-ad-btn">Ver na Academy →</span></a>`;
 
   const CAP_CSS_EXTRA = `
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code{overflow-wrap:anywhere;word-break:break-word}}
 .cap-trilha{font-size:14px;letter-spacing:.02em;color:#d9d2c5;margin:0 0 14px}
 .cap-trilha a{color:#f0ad8c;text-decoration:none}
 .cap-trilha a:hover{text-decoration:underline}
@@ -4119,7 +4206,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   var ads=[${JSON.stringify(capAnuncio('livro', true))},${JSON.stringify(capAnuncio('curso', true))}];
   function mostrar(k,rolar){
     i=Math.max(0,Math.min(n-1,k));
-    corpo.innerHTML='<p class="cap-secao-tit">Parte '+(i+1)+' de '+n+'</p>'+S[i].h+(i<n-1?ads[i%2]:'');
+    corpo.innerHTML='<p class="cap-secao-tit">Parte '+(i+1)+' de '+n+'</p>'+S[i].h+(i<n-1?ads[i%ads.length]:'');
     bAnt.disabled=i===0; bProx.textContent=i===n-1?'Fim do artigo':'Continuar lendo →'; bProx.disabled=i===n-1;
     Array.prototype.forEach.call(passos.children,function(b,j){b.classList.toggle('on',j===i)});
     prog.style.width=((i+1)/n*100)+'%';
@@ -4143,7 +4230,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     const ant = capArtigos[iArt - 1], prox = capArtigos[iArt + 1];
     const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
     const lds = [{
-      '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+      '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('claude-ai-na-pratica').ld,
       abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR', datePublished: '2026-09-16', dateModified: capHojeISO,
       author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
       isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog` },
@@ -4200,7 +4287,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
     const html = layout(`${a.tituloTexto} | Blog Claude AI na Prática`, a.descricao, corpo, {
-      caminho: a.caminho, semIdiomas: true, ogType: 'article',
+      caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('claude-ai-na-pratica').og,
       extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${capCss}${CAP_CSS_EXTRA}</style>`
         + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
     }).replace('</body>', `<script>${CAP_JS}</script>\n</body>`);
@@ -4228,7 +4315,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     name: 'Claude AI na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
     blogPost: capArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
   }, {
-    '@context': 'https://schema.org', '@type': 'ItemList', name: 'Claude AI na Prática — 22 artigos',
+    '@context': 'https://schema.org', '@type': 'ItemList', name: 'Claude AI na Prática — 22 artigos', numberOfItems: capArtigos.length,
     itemListElement: capArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
   }];
   fs.writeFileSync(path.join(od, 'claude', 'index.html'), layout(
@@ -4249,7 +4336,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   <div class="cap-grade">${capCards}</div>
   <div class="cap-faixa">${capAnuncio('curso')}${capAnuncio('livro')}</div>
 </div>`,
-    { caminho: '/claude/', semIdiomas: true, extraHead: `<style>${capCss}${CAP_CSS_EXTRA}</style>` + hubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    { caminho: '/claude/', semIdiomas: true, ...serieImagem('claude-ai-na-pratica').og, extraHead: `<style>${capCss}${CAP_CSS_EXTRA}</style>` + hubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
   ));
 
   // ---- Série "Claude AI na Prática Jurídica": 52 capítulos + 3 núcleos ----
@@ -4257,9 +4344,19 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   const CJ_DIR = path.join(__dirname, 'content', 'claude-ai-na-pratica-juridica');
   const CJ_LIVRO = 'https://livros.villelastay.com.br/livros/claude-ai-na-pratica-juridica?utm_source=villelastay&utm_medium=blog-claude-juridico';
   const CJ_SISTEMA = 'https://juridico.villelastay.com.br/juridico?utm_source=villelastay&utm_medium=blog-claude-juridico';
+  const CJ_CURSO = 'https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica-juridica?utm_source=villelastay&utm_medium=blog-claude-juridico';
   const cjDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  // Os 3 recursos complementares (páginas abertas em /claude-juridico/recursos/). Ficam aqui
+  // fora porque o hub, o gerador das páginas e o llms.txt leem a mesma lista.
+  const CJ_RECURSOS = [
+    ['01-central-atualizacao-normativa.html', 'Central de atualização normativa', 'Normas, fontes oficiais e datas de verificação.'],
+    ['02-diretorio-pesquisa-juridica.html', 'Diretório de pesquisa jurídica', 'Atalhos para pesquisa legislativa, jurisprudencial e institucional.'],
+    ['03-atualizacoes-tecnologicas.html', 'Atualizações tecnológicas', 'Ferramentas e recursos sujeitos a mudança, reunidos para manutenção.'],
+  ];
 
   if (fs.existsSync(CJ_DIR)) {
     cjArtigos = fs.readdirSync(CJ_DIR).filter(f => /\.html$/.test(f)).sort().map(f => {
@@ -4299,8 +4396,10 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 
     const cjAnuncio = qual => qual === 'livro'
       ? `<a class="cap-ad cap-ad-livro" href="${CJ_LIVRO}" target="_blank" rel="noopener"><span class="cap-ad-icone">⚖️</span><span class="cap-ad-txt"><strong>Livro Claude AI na Prática Jurídica</strong><span>Manual para criar agentes, automações e sistemas inteligentes para advogados e escritórios.</span></span><span class="cap-ad-btn">Ver na Livraria →</span></a>`
+      : qual === 'curso'
+      ? `<a class="cap-ad cap-ad-curso" href="${CJ_CURSO}" target="_blank" rel="noopener"><span class="cap-ad-icone">🎓</span><span class="cap-ad-txt"><strong>Curso on-line Claude AI na Prática Jurídica</strong><span>22 aulas em vídeo, com artigo e material de apoio — da engenharia de contexto aos agentes do escritório.</span></span><span class="cap-ad-btn">Ver na Academy →</span></a>`
       : `<a class="cap-ad cap-ad-curso" href="${CJ_SISTEMA}" target="_blank" rel="noopener"><span class="cap-ad-icone">🏛️</span><span class="cap-ad-txt"><strong>Villela Legal</strong><span>Os sistemas descritos no livro implementados em uma plataforma jurídica com supervisão humana.</span></span><span class="cap-ad-btn">Conhecer o sistema →</span></a>`;
-    const CJ_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(cjAnuncio('livro'))},${JSON.stringify(cjAnuncio('sistema'))}];`);
+    const CJ_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(cjAnuncio('livro'))},${JSON.stringify(cjAnuncio('curso'))},${JSON.stringify(cjAnuncio('sistema'))}];`);
     const CJ_CSS = `${capCss}${CAP_CSS_EXTRA}
 .cj-parte{max-width:1080px;margin:34px auto 12px;padding:0 20px;scroll-margin-top:90px}.cj-parte h2{font:700 25px/1.25 Lora,Georgia,serif;color:#0f1a2b;margin:0 0 5px}.cj-parte p{color:#675f56;margin:0 0 16px}
 /* Índice da série. O título fica na MESMA linha do número: o min-width zero deixa o texto
@@ -4312,7 +4411,9 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 .cj-sumario-parte:first-of-type{margin-top:4px}
 .cj-sumario-parte a{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
 .cj-sumario-parte a:hover{border-bottom-color:var(--accent)}
-.cj-sumario-parte span{font-weight:400;font-size:13px;color:#8b8378}.cj-recursos{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#eef5f3}.cj-recursos h2{margin-top:0}.cj-recursos .cap-grade{padding:0}`;
+.cj-sumario-parte span{font-weight:400;font-size:13px;color:#8b8378}.cj-recursos{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#eef5f3}.cj-recursos h2{margin-top:0}.cj-recursos .cap-grade{padding:0}
+/* Bloco de prompt para copiar (cap. 51): quebra a linha dentro do bloco, sem rolagem lateral. */
+.cap-corpo pre{white-space:pre-wrap;overflow-wrap:anywhere}`;
 
     fs.mkdirSync(path.join(od, 'claude-juridico'), { recursive: true });
     for (const [iArt, a] of cjArtigos.entries()) {
@@ -4320,7 +4421,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
       const ant = cjArtigos[iArt - 1], prox = cjArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('claude-ai-na-pratica-juridica').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR', datePublished: '2026-09-16', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
         isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/claude-juridico/#serie` },
@@ -4341,7 +4442,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/claude-juridico/">Claude AI na Prática Jurídica</a> <span aria-hidden="true">›</span> <span>Capítulo ${a.capitulo} de ${cjArtigos.length}</span></nav>
     <h1>${esc(a.tituloTexto)}</h1><p class="sub">${esc(a.subtituloTexto)}</p><div class="meta">${a.meta}</div>
   </div></header>
-  <div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('sistema')}</div>
+  <div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('curso')}${cjAnuncio('sistema')}</div>
   <section class="cap-publico">
     <div class="cap-resumo"><h2>Resumo do capítulo</h2>${a.resumo_html}</div>
     ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
@@ -4351,7 +4452,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   <noscript><div class="cap-nojs">O desenvolvimento deste artigo precisa de JavaScript. O resumo permanece disponível; o conteúdo completo também está no <a href="${CJ_LIVRO}">livro</a>.</div></noscript>
   <div class="cap-corpo" id="cap-corpo"></div>
   <nav class="cap-nav" aria-label="Partes do artigo"><button type="button" id="cap-ant">← Anterior</button><div class="cap-passos" id="cap-passos"></div><button type="button" id="cap-prox" class="prim">Continuar lendo →</button></nav>
-  <div class="cap-faixa">${cjAnuncio('sistema')}${cjAnuncio('livro')}</div>
+  <div class="cap-faixa">${cjAnuncio('curso')}${cjAnuncio('sistema')}${cjAnuncio('livro')}</div>
   <nav class="cap-irmaos" aria-label="Outros capítulos da série">
     ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Capítulo ${ant.capitulo}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
     <a class="cap-irmao cap-irmao-indice" href="/claude-juridico/"><span class="rot">☰ Índice</span><span class="tit">Os ${cjArtigos.length} capítulos</span></a>
@@ -4363,7 +4464,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 </div>`;
       fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), layout(
         `${a.tituloTexto} | Claude AI na Prática Jurídica`, a.descricao, corpo,
-        { caminho: a.caminho, semIdiomas: true, ogType: 'article', extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CJ_CSS}</style>` + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+        { caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('claude-ai-na-pratica-juridica').og, extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CJ_CSS}</style>` + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
       ).replace('</body>', `<script>${CJ_JS}</script>\n</body>`));
     }
 
@@ -4388,28 +4489,68 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
         <ol class="cap-sumario-lista">${itens.map(o => `<li><a href="${o.caminho}"><b>${o.capitulo}</b> <span class="tx">${esc(o.tituloTexto)}</span></a></li>`).join('')}</ol>`;
       }).join('')}
     </section>`;
-    const recursos = [
-      ['01-central-atualizacao-normativa.html', 'Central de atualização normativa', 'Normas, fontes oficiais e datas de verificação.'],
-      ['02-diretorio-pesquisa-juridica.html', 'Diretório de pesquisa jurídica', 'Atalhos para pesquisa legislativa, jurisprudencial e institucional.'],
-      ['03-atualizacoes-tecnologicas.html', 'Atualizações tecnológicas', 'Ferramentas e recursos sujeitos a mudança, reunidos para manutenção.'],
-    ];
+    const recursos = CJ_RECURSOS;
     const recursosOrigem = path.join(CJ_DIR, 'recursos');
     const recursosDestino = path.join(od, 'claude-juridico', 'recursos');
     fs.mkdirSync(recursosDestino, { recursive: true });
-    for (const [arq] of recursos) fs.copyFileSync(path.join(recursosOrigem, arq), path.join(recursosDestino, arq));
+    // Os recursos chegam como HTML avulso (documento inteiro, com CSS próprio). Copiados como
+    // estavam, saíam sem description, canonical, cartão social, cabeçalho do site nem caminho
+    // de volta. Aqui o miolo entra no layout do site. O CSS deles é global (body, header, a,
+    // .card…) e brigaria com o do site — o `.card` daqui é outro —, então é escopado: toda
+    // regra passa a valer só dentro de `.cj-rec` e as classes ganham o prefixo `cjr-`.
+    const cjRecEscopo = css => css
+      .replace(/\.([a-z][\w-]*)/gi, '.cjr-$1')
+      .replace(/(^|[{}])([^{}@]+)\{/g, (m, antes, sel) => antes + sel.split(',').map(x => {
+        x = x.trim().replace(/^main\b/, '.cjr-main');
+        return /^(:root|html|body)$/.test(x) ? '.cj-rec' : `.cj-rec ${x}`;
+      }).join(',') + '{');
+    for (const [i, [arq, titulo, desc]] of recursos.entries()) {
+      const raw = fs.readFileSync(path.join(recursosOrigem, arq), 'utf8');
+      const css = (raw.match(/<style>([\s\S]*?)<\/style>/) || [])[1];
+      const miolo = (raw.match(/<body>([\s\S]*?)<\/body>/) || [])[1];
+      if (!css || !miolo) throw new Error(`[claude-juridico] recurso ${arq} sem <style> ou <body>: não dá para pôr no layout do site`);
+      if (/N[úÚ]CLEO HTML/i.test(miolo)) throw new Error(`[claude-juridico] recurso ${arq} ainda mostra o rótulo interno "Núcleo HTML"`);
+      const tituloDoc = cjDestexto((raw.match(/<h1>([\s\S]*?)<\/h1>/) || [])[1] || titulo);
+      const chamada = cjDestexto((miolo.match(/<\/h1>\s*<p>([\s\S]*?)<\/p>/) || [])[1] || desc);
+      const cam = `/claude-juridico/recursos/${arq}`;
+      const corpoRec = miolo
+        .replace(/<main>/, '<div class="main">').replace(/<\/main>/, '</div>')
+        .replace(/class="([^"]+)"/g, (m, c) => `class="${c.trim().split(/\s+/).map(x => 'cjr-' + x).join(' ')}"`);
+      const volta = '<nav class="cj-rec-volta" aria-label="Voltar à série"><a href="/claude-juridico/">← Claude AI na Prática Jurídica</a></nav>';
+      const ldRec = [{
+        '@context': 'https://schema.org', '@type': 'WebPage', name: tituloDoc, description: chamada, url: `${SITE_URL}${cam}`,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/claude-juridico/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Claude AI na Prática Jurídica', item: `${SITE_URL}/claude-juridico/` },
+          { '@type': 'ListItem', position: 4, name: tituloDoc, item: `${SITE_URL}${cam}` },
+        ]
+      }];
+      fs.writeFileSync(path.join(recursosDestino, arq), layout(
+        `${tituloDoc} | Claude AI na Prática Jurídica`,
+        `${chamada} Recurso ${i + 1} da série Claude AI na Prática Jurídica, de Augusto Villela.`,
+        `${volta}<div class="cj-rec">${corpoRec}</div>${volta}`,
+        { caminho: cam, semIdiomas: true, ...serieImagem('claude-ai-na-pratica-juridica').og,
+          extraHead: `<style>.cj-rec-volta{max-width:1080px;margin:0 auto;padding:16px 24px;font:600 15px/1.4 Inter,"Segoe UI",system-ui,sans-serif}.cj-rec-volta a{color:#1f5f6b;text-decoration:none}.cj-rec-volta a:hover{text-decoration:underline}${cjRecEscopo(css)}</style>`
+            + ldRec.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      ));
+    }
     const recursosHtml = recursos.map(([arq, titulo, desc]) => `<a class="cap-card" href="/claude-juridico/recursos/${arq}"><span class="n">Núcleo complementar</span><h3>${esc(titulo)}</h3><p>${esc(desc)}</p><span class="min">Abrir recurso →</span></a>`).join('');
     const cjHubLd = [{
       '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/claude-juridico/#serie`, name: 'Claude AI na Prática Jurídica — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
       blogPost: cjArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
     }, {
-      '@context': 'https://schema.org', '@type': 'ItemList', name: 'Claude AI na Prática Jurídica — 52 artigos',
+      '@context': 'https://schema.org', '@type': 'ItemList', name: 'Claude AI na Prática Jurídica — 52 artigos', numberOfItems: cjArtigos.length,
       itemListElement: cjArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
     }];
     fs.writeFileSync(path.join(od, 'claude-juridico', 'index.html'), layout(
       'Claude AI na Prática Jurídica — 52 artigos para advogados | Villela Stay',
-      'Os 52 capítulos do livro Claude AI na Prática Jurídica, de Augusto Villela: IA aplicada à advocacia, prompts, ética, contencioso, contratos, pesquisa, gestão, compliance e sistemas.',
-      `<div class="cap"><section class="cap-hub-hero"><h1>Claude AI na Prática Jurídica</h1><p>Os 52 capítulos do livro em formato híbrido para leitura online — conteúdo jurídico, síntese editorial e aplicação prática para advogados, gestores e escritórios.</p></section><nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Claude AI na Prática Jurídica</span></nav><div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('sistema')}</div>${cjSumarioHub}${cjPartesHtml}<section class="cj-recursos"><h2>Centrais complementares</h2><p>Conteúdo vivo para atualização normativa, pesquisa jurídica e tecnologia.</p><div class="cap-grade">${recursosHtml}</div></section><div class="cap-faixa">${cjAnuncio('sistema')}${cjAnuncio('livro')}</div></div>`,
-      { caminho: '/claude-juridico/', semIdiomas: true, extraHead: `<style>${CJ_CSS}</style>` + cjHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      'Os 50 capítulos do livro Claude AI na Prática Jurídica, de Augusto Villela, e 2 extras: IA aplicada à advocacia, prompts, ética, contencioso, contratos, pesquisa, gestão, compliance e sistemas.',
+      `<div class="cap"><section class="cap-hub-hero"><h1>Claude AI na Prática Jurídica</h1><p>Os 50 capítulos do livro e 2 extras, em formato híbrido para leitura online — conteúdo jurídico, síntese editorial e aplicação prática para advogados, gestores e escritórios.</p></section><nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Claude AI na Prática Jurídica</span></nav><div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('curso')}${cjAnuncio('sistema')}</div>${cjSumarioHub}${cjPartesHtml}<section class="cj-recursos"><h2>Centrais complementares</h2><p>Conteúdo vivo para atualização normativa, pesquisa jurídica e tecnologia.</p><div class="cap-grade">${recursosHtml}</div></section><div class="cap-faixa">${cjAnuncio('curso')}${cjAnuncio('sistema')}${cjAnuncio('livro')}</div></div>`,
+      { caminho: '/claude-juridico/', semIdiomas: true, ...serieImagem('claude-ai-na-pratica-juridica').og, extraHead: `<style>${CJ_CSS}</style>` + cjHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
   }
 
@@ -4426,6 +4567,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   const CG_CURSO = 'https://academia.villelastay.com.br/academy/cursos/chatgpt-ai-na-pratica?utm_source=villelastay&utm_medium=blog-chatgpt';
   const cgDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   if (fs.existsSync(CG_DIR)) {
@@ -4487,14 +4629,21 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     const cgSemFaq = cgArtigos.filter(a => !a.faq.length).map(a => a.chave);
     if (cgSemFaq.length) console.warn(`[chatgpt] SEM perguntas frequentes: ${cgSemFaq.join(', ')} — escrever em content/chatgpt-na-pratica/faq.json`);
 
+    // A faixa do curso dizia "os outros em produção", e o leitor entendia que essas aulas não
+    // tinham vídeo nenhum. Têm: a Revisão animada está em todas; o que ainda chega aula a aula
+    // é a videoaula com o professor (`gravada`). Sem prometer data.
+    const cgGravadas = cgArtigos.filter(a => a.gravada);
+    const cgVideoProf = cgGravadas.length === cgArtigos.length ? 'em todas'
+      : cgGravadas.length > 1 && cgGravadas.every((a, i) => a.n === i + 1) ? `nas aulas 1 a ${cgGravadas.length}`
+      : cgGravadas.length === 1 ? `na aula ${cgGravadas[0].n}` : `em ${cgGravadas.length} aulas`;
     const cgAnuncio = (qual, min = false) => qual === 'livro'
       ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${CG_LIVRO}" target="_blank" rel="noopener">
           <span class="cap-ad-icone">📗</span>
-          <span class="cap-ad-txt"><strong>Livro ChatGPT AI na Prática</strong><span>O manual completo: prompts, Projetos, GPTs, Skills, Codex, agentes e automações. Digital e impresso.</span></span>
+          <span class="cap-ad-txt"><strong>Livro ChatGPT AI na Prática</strong><span>Parte I do manual: prompts, Projetos, GPTs, Skills, Codex, agentes e automações. Digital e impresso.</span></span>
           <span class="cap-ad-btn">Ver na Livraria →</span></a>`
       : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${CG_CURSO}" target="_blank" rel="noopener">
           <span class="cap-ad-icone">🎓</span>
-          <span class="cap-ad-txt"><strong>Curso ChatGPT AI na Prática</strong><span>${cgArtigos.length} dos ${cgGrade.total} módulos já no ar, com artigo e apresentação; ${cgArtigos.filter(a => a.gravada).length} deles com a videoaula publicada e os outros em produção.</span></span>
+          <span class="cap-ad-txt"><strong>Curso ChatGPT AI na Prática</strong><span>${cgArtigos.length === cgGrade.total ? `As ${cgGrade.total} aulas` : `${cgArtigos.length} das ${cgGrade.total} aulas`} já no ar, com artigo, apresentação e Revisão animada em vídeo; a videoaula com o professor está ${cgVideoProf}.</span></span>
           <span class="cap-ad-btn">Ver o curso →</span></a>`;
     const CG_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(cgAnuncio('livro', true))},${JSON.stringify(cgAnuncio('curso', true))}];`);
     const CG_CSS = `${cgCss}${CAP_CSS_EXTRA}
@@ -4551,7 +4700,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
       const ant = cgArtigos[iArt - 1], prox = cgArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('chatgpt-ai-na-pratica').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-09-20', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -4609,7 +4758,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
       const html = layout(`${a.tituloTexto} | Blog ChatGPT AI na Prática`, a.descricao, corpo, {
-        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('chatgpt-ai-na-pratica').og,
         extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CG_CSS}</style>`
           + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
       }).replace('</body>', `<script>${CG_JS}</script>\n</body>`);
@@ -4643,7 +4792,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     // hub da série: /chatgpt/
     const cgCards = cgArtigos.map(a => `
   <a class="cap-card" href="${a.caminho}">
-    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado">artigo no ar · videoaula em produção</span>'}</span>
+    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado no-ar">artigo e revisão animada no ar</span>'}</span>
     <h3>${esc(a.tituloTexto)}</h3>
     <p>${esc(a.subtituloTexto)}</p>
     <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
@@ -4675,34 +4824,34 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 <div class="cap">
   <section class="cap-hub-hero">
     <h1>ChatGPT AI na Prática</h1>
-    <p>${esc(cgGrade.subtitulo)}. A série acompanha o curso e cresce a cada material pronto: hoje ${cgNoAr === 1 ? 'há 1 artigo no ar' : `há ${cgNoAr} artigos no ar`}, dos ${cgTotal} da grade — ${cgComVideo} com a videoaula publicada e os demais com o vídeo em produção. Cada artigo abre com resumo e perguntas frequentes; o método inteiro está no livro e no curso.</p>
+    <p>${esc(cgGrade.subtitulo)}. A série acompanha o curso e cresce a cada material pronto: hoje ${cgNoAr === 1 ? 'há 1 artigo no ar' : `há ${cgNoAr} artigos no ar`}, dos ${cgTotal} da grade — todos com a Revisão animada em vídeo no curso, e ${cgComVideo} também com a videoaula do professor. Cada artigo abre com resumo e perguntas frequentes; o método inteiro está no livro e no curso.</p>
   </section>
   <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>ChatGPT AI na Prática</span></nav>
   <div class="cap-faixa">${cgAnuncio('livro')}${cgAnuncio('curso')}</div>
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
-    <p>As ${cgTotal} aulas da grade. Em preto e com link, ${cgNoAr === 1 ? 'a que já está no ar' : `as ${cgNoAr} que já estão no ar`}; o selo marca ${cgComVideo === 1 ? 'a que já tem videoaula publicada' : `as ${cgComVideo} que já têm videoaula publicada`}. Em cinza, as que ainda estão em produção.</p>
+    <p>As ${cgTotal} aulas da grade. Em preto e com link, ${cgNoAr === 1 ? 'a que já está no ar' : `as ${cgNoAr} que já estão no ar`}; o selo marca ${cgComVideo === 1 ? 'a que já tem videoaula publicada' : `as ${cgComVideo} que já têm videoaula publicada`}.${cgNoAr < cgTotal ? ' Em cinza, as que ainda estão em produção.' : ''}</p>
     <ol class="cap-sumario-lista">${cgGrade.aulas.map(g => cgLinhaGrade(g)).join('')}</ol>
   </section>
   <div class="cap-grade">${cgCards}</div>
   ${cgApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login. O mesmo material vai em PDF junto da primeira aula, para quem faz o <a href="${CG_CURSO}" target="_blank" rel="noopener">curso</a>.</p><div class="cap-grade">${cgApoioCards}</div></section>` : ''}
   <div class="cap-faixa">${cgAnuncio('curso')}${cgAnuncio('livro')}</div>
 </div>`,
-      { caminho: '/chatgpt/', semIdiomas: true, extraHead: `<style>${CG_CSS}</style>` + cgHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      { caminho: '/chatgpt/', semIdiomas: true, ...serieImagem('chatgpt-ai-na-pratica').og, extraHead: `<style>${CG_CSS}</style>` + cgHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
     CG_PATHS = ['/chatgpt/', ...cgArtigos.map(a => a.caminho), ...cgApoio.map(d => `/chatgpt/apoio/${d.chave}.html`)];
-    CG_LLMS = `## Blog: ChatGPT AI na Prática (${cgNoAr} de ${cgTotal} artigos no ar, em português)
+    CG_LLMS = `## Blog: ChatGPT AI na Prática (${cgNoAr === cgTotal ? `${cgNoAr} artigos` : `${cgNoAr} de ${cgTotal} artigos no ar`}, em português)
 
 Série do livro *ChatGPT AI na Prática*, de Augusto Villela — o ecossistema da OpenAI
 aplicado ao trabalho: os modos Chat, Work e Codex, prompts que funcionam, engenharia de
 contexto, Projetos, GPTs, Skills, MCP, Codex, agentes e automações. A série acompanha o
 curso e cresce a cada material pronto: hoje ${cgNoAr === 1 ? 'há 1 artigo publicado' : `há ${cgNoAr} artigos publicados`} dos ${cgTotal} da grade,
-${cgComVideo} deles com a videoaula já publicada e os demais com o vídeo em produção.
+todos com a Revisão animada em vídeo no curso, e ${cgComVideo} também com a videoaula do professor.
 Índice da série: ${SITE_URL}/chatgpt/
 Livro completo: ${CG_LIVRO.split('?')[0]} · Curso on-line: ${CG_CURSO.split('?')[0]}
 
-${cgArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}${a.gravada ? '' : ' (artigo no ar; videoaula em produção)'}`).join('\n')}
+${cgArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
 ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoio/${d.chave}.html): material de referência aberto da série.`).join('\n')}
 `;
     console.log(`Blog ChatGPT AI na Prática: hub + ${cgNoAr} de ${cgTotal} artigos (${cgComVideo} com vídeo) + ${cgApoio.length} material(is) de apoio`);
@@ -4721,6 +4870,7 @@ ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoi
   const LC_MANAGER = 'https://manager.villelastay.com.br/?utm_source=villelastay&utm_medium=blog-locador';
   const lcDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   if (fs.existsSync(LC_DIR)) {
@@ -4853,7 +5003,7 @@ ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoi
       const ant = lcArtigos[iArt - 1], prox = lcArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('o-locador-inteligente').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-01', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -4912,7 +5062,7 @@ ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoi
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
       const html = layout(`${a.tituloTexto} | Blog O Locador Inteligente`, a.descricao, corpo, {
-        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('o-locador-inteligente').og,
         extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${LC_CSS}</style>`
           + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
       }).replace('</body>', `<script>${LC_JS}</script>\n</body>`);
@@ -4984,7 +5134,7 @@ ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoi
   <div class="cap-faixa">${lcAnuncio('livro')}${lcAnuncio('curso')}</div>
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
-    <p>As ${lcTotal} aulas da grade. Em preto e com link, ${lcNoAr === 1 ? 'a que já está no ar' : `as ${lcNoAr} que já estão no ar`}; o selo marca ${lcComVideo === 1 ? 'a que já tem videoaula publicada' : `as ${lcComVideo} que já têm videoaula publicada`}. Em cinza, as que ainda estão em produção.</p>
+    <p>${lcNoAr === lcTotal && lcComVideo === lcTotal ? `As ${lcTotal} aulas da grade, todas já no ar e com videoaula publicada.` : `As ${lcTotal} aulas da grade. Em preto e com link, ${lcNoAr === 1 ? 'a que já está no ar' : `as ${lcNoAr} que já estão no ar`}; o selo marca ${lcComVideo === 1 ? 'a que já tem videoaula publicada' : `as ${lcComVideo} que já têm videoaula publicada`}.${lcNoAr < lcTotal ? ' Em cinza, as que ainda estão em produção.' : ''}`}</p>
     <ol class="cap-sumario-lista">${lcGrade.aulas.map(g => lcLinhaGrade(g)).join('')}</ol>
   </section>
   <div class="cap-grade">${lcCards}</div>
@@ -4992,7 +5142,7 @@ ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoi
   <div class="cap-faixa">${lcAnuncio('curso')}${lcAnuncio('livro')}</div>
   <div class="cap-faixa">${lcAnuncio('manager')}</div>
 </div>`,
-      { caminho: '/locador/', semIdiomas: true, extraHead: `<style>${LC_CSS}</style>` + lcHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      { caminho: '/locador/', semIdiomas: true, ...serieImagem('o-locador-inteligente').og, extraHead: `<style>${LC_CSS}</style>` + lcHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
     LC_PATHS = ['/locador/', ...lcArtigos.map(a => a.caminho), ...lcApoio.map(d => `/locador/apoio/${d.chave}.html`)];
@@ -5010,7 +5160,7 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     console.log(`Blog O Locador Inteligente: hub + ${lcNoAr} de ${lcTotal} artigos (${lcComVideo} com vídeo) + ${lcApoio.length} material(is) de apoio`);
   }
 
-  // ---- Série "Conexões de Sucesso — Formação para o Mundo Real" (curso para jovens de 15 a 24 anos): mesmo padrão da série O Locador Inteligente ----
+  // ---- Série "Conexões de Sucesso — Formação para o Mundo Real" (curso para jovens de 15 a 25 anos): mesmo padrão da série O Locador Inteligente ----
   // Anúncios: só o LIVRO (2ª edição, na Livraria) e o CURSO (na Academy). O Villela Stay Manager
   // fica de fora de propósito: é sistema de hospedagem e o público aqui é jovem.
   // O visual jovem (Fredoka, roxo/rosa, caixa MISSÃO) vem do artigo.css da série, todo sob .cap.
@@ -5019,6 +5169,7 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   const CS_CURSO = 'https://academia.villelastay.com.br/academy/cursos/conexoes-de-sucesso-formacao-para-o-mundo-real?utm_source=villelastay&utm_medium=blog-conexoes';
   const csDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   if (fs.existsSync(CS_DIR)) {
@@ -5122,7 +5273,7 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const ant = csArtigos[iArt - 1], prox = csArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('conexoes-de-sucesso').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-01', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -5180,7 +5331,7 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
       const html = layout(`${a.tituloTexto} | Blog Conexões de Sucesso`, a.descricao, corpo, {
-        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('conexoes-de-sucesso').og,
         extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CS_CSS}</style>`
           + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
       }).replace('</body>', `<script>${CS_JS}</script>\n</body>`);
@@ -5236,7 +5387,7 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     }];
     fs.writeFileSync(path.join(od, 'conexoes-de-sucesso', 'index.html'), layout(
       'Conexões de Sucesso — Formação para o Mundo Real: a série do curso | Villela Stay',
-      `A série Conexões de Sucesso — Formação para o Mundo Real, de Augusto Villela, para jovens de 15 a 24 anos: pensamento crítico, escrita, comunicação, inteligência artificial, vendas, dinheiro, negócio e plano de carreira. ${csNoAr} artigos no ar.`,
+      `A série Conexões de Sucesso — Formação para o Mundo Real, de Augusto Villela, para jovens de 15 a 25 anos: pensamento crítico, escrita, comunicação, inteligência artificial, vendas, dinheiro, negócio e plano de carreira. ${csNoAr} artigos no ar.`,
       `
 <div class="cap">
   <section class="cap-hub-hero">
@@ -5254,13 +5405,13 @@ ${lcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   ${csApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${csApoioCards}</div></section>` : ''}
   <div class="cap-faixa">${csAnuncio('curso')}${csAnuncio('livro')}</div>
 </div>`,
-      { caminho: '/conexoes-de-sucesso/', semIdiomas: true, extraHead: `<style>${CS_CSS}</style>` + csHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      { caminho: '/conexoes-de-sucesso/', semIdiomas: true, ...serieImagem('conexoes-de-sucesso').og, extraHead: `<style>${CS_CSS}</style>` + csHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
     CS_PATHS = ['/conexoes-de-sucesso/', ...csArtigos.map(a => a.caminho), ...csApoio.map(d => `/conexoes-de-sucesso/apoio/${d.chave}.html`)];
     CS_LLMS = `## Blog: Conexões de Sucesso — Formação para o Mundo Real (${csNoAr} artigos, em português)
 
-Série do livro *Conexões de Sucesso* (2ª edição), de Augusto Villela, para jovens de 15 a 24 anos:
+Série do livro *Conexões de Sucesso* (2ª edição), de Augusto Villela, para jovens de 15 a 25 anos:
 o que aprender agora que as máquinas já sabem as respostas — pensamento crítico e evidência,
 escrita e comunicação, leitura, idioma, atenção, inteligência artificial com verificação, vendas e
 negociação, rede de contatos, dinheiro e juros compostos, como um negócio ganha dinheiro, contrato,
@@ -5284,6 +5435,7 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   const SO_CURSO = 'https://academia.villelastay.com.br/academy/cursos/a-segunda-onda-da-ia?utm_source=villelastay&utm_medium=blog-segunda-onda';
   const soDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
 
   if (fs.existsSync(SO_DIR)) {
@@ -5388,7 +5540,7 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
       const ant = soArtigos[iArt - 1], prox = soArtigos[iArt + 1];
       const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
       const lds = [{
-        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('segunda-onda-da-ia').ld,
         abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
         datePublished: '2026-10-01', dateModified: capHojeISO,
         author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
@@ -5446,7 +5598,7 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
       const html = layout(`${a.tituloTexto} | Blog A Segunda Onda da IA`, a.descricao, corpo, {
-        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('segunda-onda-da-ia').og,
         extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${SO_CSS}</style>`
           + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
       }).replace('</body>', `<script>${SO_JS}</script>\n</body>`);
@@ -5520,7 +5672,7 @@ ${csArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
   ${soApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${soApoioCards}</div></section>` : ''}
   <div class="cap-faixa">${soAnuncio('curso')}${soAnuncio('livro')}</div>
 </div>`,
-      { caminho: '/segunda-onda-da-ia/', semIdiomas: true, extraHead: `<style>${SO_CSS}</style>` + soHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      { caminho: '/segunda-onda-da-ia/', semIdiomas: true, ...serieImagem('segunda-onda-da-ia').og, extraHead: `<style>${SO_CSS}</style>` + soHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
     SO_PATHS = ['/segunda-onda-da-ia/', ...soArtigos.map(a => a.caminho), ...soApoio.map(d => `/segunda-onda-da-ia/apoio/${d.chave}.html`)];
@@ -5539,6 +5691,2902 @@ ${soArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
 `;
     console.log(`Blog A Segunda Onda da IA: hub + ${soNoAr} de ${soTotal} artigos + ${soApoio.length} material(is) de apoio`);
   }
+
+  // ---- Série "Google AI na Prática" (curso animado de 25 aulas: Gemini e o ecossistema Google no dia a dia, no estudo e no trabalho): mesmo padrão da série Google AI na Prática ----
+  // Publicada em 03/10/2026, com o livro já na Livraria e o curso publicado na Academy (produto
+  // aurLkdbxXuyH): os dois anúncios apontam para as páginas de venda próprias. O artigo.css é o
+  // mesmo das séries anteriores, todo sob .cap.
+  const GA_DIR = path.join(__dirname, 'content', 'google-ai-na-pratica');
+  const GA_LIVRO = 'https://livros.villelastay.com.br/livros/google-ai-na-pratica?utm_source=villelastay&utm_medium=blog-google-ai';
+  const GA_CURSO = 'https://academia.villelastay.com.br/academy/cursos/google-ai-na-pratica?utm_source=villelastay&utm_medium=blog-google-ai';
+  const gaDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(GA_DIR)) {
+    const gaCss = fs.readFileSync(path.join(GA_DIR, 'artigo.css'), 'utf8');
+    const gaLe = n => JSON.parse(fs.readFileSync(path.join(GA_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const gaGrade = gaLe('grade.json');
+    let gaFaq = {}, gaApoio = [];
+    try { gaFaq = gaLe('faq.json'); } catch (e) { console.warn('[google-ai] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { gaApoio = gaLe('apoio.json'); } catch (e) { console.warn('[google-ai] sem apoio.json — hub sairá sem material de apoio'); }
+
+    gaArtigos = fs.readdirSync(GA_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(GA_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[google-ai] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpo = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? gaDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `google-ai-${chave}`;
+      return {
+        ...meta, chave, slug,
+        tituloTexto: gaDestexto(meta.titulo), subtituloTexto: gaDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => gaDestexto(t)),
+        faq: gaFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const gaComArtigo = gaGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of gaArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[google-ai] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!gaComArtigo.includes(a.n)) throw new Error(`[google-ai] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (gaArtigos.length !== gaComArtigo.length) throw new Error(`[google-ai] grade diz ${gaComArtigo.length} aulas com artigo, mas há ${gaArtigos.length} artigos exportados`);
+    const gaSemFaq = gaArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (gaSemFaq.length) console.warn(`[google-ai] SEM perguntas frequentes: ${gaSemFaq.join(', ')} — escrever em content/google-ai-na-pratica/faq.json`);
+
+    const gaAnuncio = (qual, min = false) => qual === 'livro'
+      ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${GA_LIVRO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">📘</span>
+          <span class="cap-ad-txt"><strong>Livro Google AI na Prática</strong><span>Para o dia a dia, o estudo e o trabalho: o Gemini e o ecossistema Google com método, com prompts e checklists. Digital e impresso, na Livraria Villela.</span></span>
+          <span class="cap-ad-btn">Ver na Livraria →</span></a>`
+      : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${GA_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso Google AI na Prática — 25 videoaulas animadas</strong><span>Cada aula em vídeo, com o artigo em PDF, prompts e checklists para usar no dia a dia, na Villela Academy.</span></span>
+          <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
+    const GA_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(gaAnuncio('livro', true))},${JSON.stringify(gaAnuncio('curso', true))}];`);
+    const GA_CSS = `${gaCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo de fonte (support.google.com/...) não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}`;
+
+    const gaTotal = gaGrade.total;
+    const gaLinhaGrade = (aula, atual) => {
+      const art = gaArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'google-ai'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'google-ai', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of gaArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = gaArtigos[iArt - 1], prox = gaArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('google-ai-na-pratica').ld,
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-03', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/google-ai/#serie` },
+        articleSection: 'Google AI na Prática', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'Google AI na Prática', author: { '@type': 'Person', name: 'Augusto Villela' }, url: GA_LIVRO },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Google AI na Prática', item: `${SITE_URL}/google-ai/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/google-ai/">Google AI na Prática</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${gaTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${gaAnuncio('livro', true)}${gaAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar — a aula em vídeo e o material de apoio ficam no curso, e o método completo, no livro.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o método completo está no <a href="${GA_LIVRO}">livro</a> e no <a href="${GA_CURSO}">curso Google AI na Prática</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${gaAnuncio('curso')}${gaAnuncio('livro')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/google-ai/"><span class="rot">☰ Índice</span><span class="tit">${gaArtigos.length === 1 ? 'O artigo publicado' : `Os ${gaArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${gaGrade.aulas.map(g => gaLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Google AI na Prática</strong>, de Augusto Villela.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog Google AI na Prática`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('google-ai-na-pratica').og,
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${GA_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${GA_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of gaApoio) {
+      const cam = `/google-ai/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/google-ai/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'google-ai', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — Google AI na Prática | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série Google AI na Prática, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>Google AI na Prática</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/google-ai/">Google AI na Prática</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${gaAnuncio('livro')}${gaAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${GA_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /google-ai/
+    const gaCards = gaArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado">artigo no ar · videoaula em produção</span>'}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const gaApoioCards = gaApoio.map(d => `
+  <a class="cap-card" href="/google-ai/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const gaNoAr = gaArtigos.length;
+    const gaHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/google-ai/#serie`,
+      name: 'Google AI na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: gaArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `Google AI na Prática — ${gaNoAr} ${gaNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: gaNoAr,
+      itemListElement: gaArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'google-ai', 'index.html'), layout(
+      'Google AI na Prática: a série do curso | Villela Stay',
+      `A série Google AI na Prática, de Augusto Villela: o Gemini e o ecossistema Google com método, para o dia a dia, o estudo e o trabalho — pedir bem, privacidade, escrita, pesquisa com fontes, NotebookLM, IA criativa, SynthID, agentes e um plano de trinta dias. ${gaNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>Google AI na Prática <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Gemini e o ecossistema Google, com método</span></h1>
+    <p>${esc(gaGrade.subtitulo)}. São ${gaTotal} artigos, um para cada videoaula do curso. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Google AI na Prática</span></nav>
+  <div class="cap-faixa">${gaAnuncio('livro')}${gaAnuncio('curso')}</div>
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${gaTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${gaGrade.aulas.map(g => gaLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${gaCards}</div>
+  ${gaApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${gaApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${gaAnuncio('curso')}${gaAnuncio('livro')}</div>
+</div>`,
+      { caminho: '/google-ai/', semIdiomas: true, ...serieImagem('google-ai-na-pratica').og, extraHead: `<style>${GA_CSS}</style>` + gaHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    GA_PATHS = ['/google-ai/', ...gaArtigos.map(a => a.caminho), ...gaApoio.map(d => `/google-ai/apoio/${d.chave}.html`)];
+    GA_LLMS = `## Blog: Google AI na Prática (${gaNoAr} artigos, em português)
+
+Série do livro e do curso *Google AI na Prática — para o dia a dia, o estudo e o trabalho*, de Augusto
+Villela: o Gemini e o ecossistema Google usados com método — a diferença entre a IA que responde e a
+que age, o mapa dos produtos, como o modelo erra, pedir e iterar, privacidade, conversa por voz,
+escrita, planejamento, pesquisa aprofundada, busca com IA, estudo com as próprias fontes, pesquisa
+defensável, educação, imagem, vídeo, som, SynthID e publicação, agentes e um plano de trinta dias.
+Índice da série: ${SITE_URL}/google-ai/
+Livro completo: ${GA_LIVRO.split('?')[0]} · Curso on-line (25 videoaulas): ${GA_CURSO.split('?')[0]}
+
+${gaArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog Google AI na Prática: hub + ${gaNoAr} de ${gaTotal} artigos + ${gaApoio.length} material(is) de apoio`);
+  }
+
+  // ---- Série "O Homem Contemporâneo" (curso animado de 25 aulas: mente, corpo, valores, dinheiro e trabalho): mesmo padrão da série Google AI na Prática ----
+  // Publicada em 03/10/2026 (autorização do Augusto). O livro NÃO está na Livraria: a série só anuncia o
+  // curso na Academy, e o BlogPosting cita o livro sem endereço. O artigo.css é o mesmo das séries
+  // anteriores, todo sob .cap. Saúde (aulas 10-11) e dinheiro (16-18) já saem com a ressalva no texto.
+  const HO_DIR = path.join(__dirname, 'content', 'o-homem-contemporaneo');
+  const HO_CURSO = 'https://academia.villelastay.com.br/academy/cursos/o-homem-contemporaneo?utm_source=villelastay&utm_medium=blog-homem-contemporaneo';
+  const hoDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(HO_DIR)) {
+    const hoCss = fs.readFileSync(path.join(HO_DIR, 'artigo.css'), 'utf8');
+    const hoLe = n => JSON.parse(fs.readFileSync(path.join(HO_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const hoGrade = hoLe('grade.json');
+    let hoFaq = {}, hoApoio = [];
+    try { hoFaq = hoLe('faq.json'); } catch (e) { console.warn('[homem-contemporaneo] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { hoApoio = hoLe('apoio.json'); } catch (e) { console.warn('[homem-contemporaneo] sem apoio.json — hub sairá sem material de apoio'); }
+
+    hoArtigos = fs.readdirSync(HO_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(HO_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[homem-contemporaneo] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpoBruto = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      // O "Material de apoio" desta série traz trechos longos do livro (até 55 mil caracteres na aula 25)
+      // e virava uma parte só, interminável. Aqui ele é fatiado nos <h3>, em blocos de ~7 mil caracteres,
+      // para a paginação por partes distribuir o texto como nas outras séries.
+      const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
+        const tam = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+        if (tam(dentro) <= 9000) return m0;
+        const blocos = [];
+        for (const pedaco of dentro.split(/(?=<h3>)/)) {
+          const ult = blocos[blocos.length - 1];
+          if (ult !== undefined && tam(ult) + tam(pedaco) <= 7000) blocos[blocos.length - 1] = ult + pedaco;
+          else blocos.push(pedaco);
+        }
+        return blocos.map((b, k) => `<section class="apoio"><h2>Material de apoio${k ? ' (continuação)' : ''}</h2>${b}</section>`).join(String.fromCharCode(10));
+      });
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? hoDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `homem-contemporaneo-${chave}`;
+      return {
+        ...meta, chave, slug,
+        tituloTexto: hoDestexto(meta.titulo), subtituloTexto: hoDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => hoDestexto(t)),
+        faq: hoFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const hoComArtigo = hoGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of hoArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[homem-contemporaneo] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!hoComArtigo.includes(a.n)) throw new Error(`[homem-contemporaneo] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (hoArtigos.length !== hoComArtigo.length) throw new Error(`[homem-contemporaneo] grade diz ${hoComArtigo.length} aulas com artigo, mas há ${hoArtigos.length} artigos exportados`);
+    const hoSemFaq = hoArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (hoSemFaq.length) console.warn(`[homem-contemporaneo] SEM perguntas frequentes: ${hoSemFaq.join(', ')} — escrever em content/o-homem-contemporaneo/faq.json`);
+
+    const hoAnuncio = (qual, min = false) => `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${HO_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso O Homem Contemporâneo — 25 videoaulas animadas</strong><span>Mente, corpo, valores, dinheiro e trabalho: cada aula em vídeo, com o artigo em PDF e práticas de 21 dias para aplicar na sua vida, na Villela Academy.</span></span>
+          <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
+    const HO_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(hoAnuncio('curso', true))},${JSON.stringify(hoAnuncio('curso', true))}];`);
+    const HO_CSS = `${hoCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Aviso de impressão: esta série não tem livro na Livraria, então só o curso é citado. */
+@media print{body:after{content:"Este conteúdo é exibido apenas no navegador. Leia em villelastay.com.br/blog — e encontre o texto completo no curso (academia.villelastay.com.br)."}}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}`;
+
+    const hoTotal = hoGrade.total;
+    const hoLinhaGrade = (aula, atual) => {
+      const art = hoArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'homem-contemporaneo'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'homem-contemporaneo', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of hoArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = hoArtigos[iArt - 1], prox = hoArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('o-homem-contemporaneo').ld,
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-03', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/homem-contemporaneo/#serie` },
+        articleSection: 'O Homem Contemporâneo', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'O Homem Contemporâneo — Princípios para viver no século XXI', author: { '@type': 'Person', name: 'Augusto Villela' } },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'O Homem Contemporâneo', item: `${SITE_URL}/homem-contemporaneo/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/homem-contemporaneo/">O Homem Contemporâneo</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${hoTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${hoAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar — a aula em vídeo, o artigo em PDF e as práticas ficam no curso.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; a aula completa está no <a href="${HO_CURSO}">curso O Homem Contemporâneo</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${hoAnuncio('curso')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/homem-contemporaneo/"><span class="rot">☰ Índice</span><span class="tit">${hoArtigos.length === 1 ? 'O artigo publicado' : `Os ${hoArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${hoGrade.aulas.map(g => hoLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>O Homem Contemporâneo</strong>, de Augusto Villela.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog O Homem Contemporâneo`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('o-homem-contemporaneo').og,
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${HO_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${HO_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of hoApoio) {
+      const cam = `/homem-contemporaneo/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/homem-contemporaneo/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'homem-contemporaneo', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — O Homem Contemporâneo | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série O Homem Contemporâneo, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>O Homem Contemporâneo</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/homem-contemporaneo/">O Homem Contemporâneo</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${hoAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${HO_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /homem-contemporaneo/
+    const hoCards = hoArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado">artigo no ar · videoaula em produção</span>'}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const hoApoioCards = hoApoio.map(d => `
+  <a class="cap-card" href="/homem-contemporaneo/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const hoNoAr = hoArtigos.length;
+    const hoHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/homem-contemporaneo/#serie`,
+      name: 'O Homem Contemporâneo — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: hoArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `O Homem Contemporâneo — ${hoNoAr} ${hoNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: hoNoAr,
+      itemListElement: hoArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'homem-contemporaneo', 'index.html'), layout(
+      'O Homem Contemporâneo: a série do curso | Blog O Homem Contemporâneo',
+      `A série O Homem Contemporâneo, de Augusto Villela: princípios para viver no século XXI — atenção, aprendizado, decisão, emoções, hábitos, sono e corpo, propósito, filosofias práticas, dinheiro, trabalho, comunicação, IA como ferramenta, execução e legado. ${hoNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>O Homem Contemporâneo <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Mente, corpo, valores, dinheiro e trabalho</span></h1>
+    <p>${esc(hoGrade.subtitulo)}. São ${hoTotal} artigos, um para cada videoaula do curso. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>O Homem Contemporâneo</span></nav>
+  <div class="cap-faixa">${hoAnuncio('curso')}</div>
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${hoTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${hoGrade.aulas.map(g => hoLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${hoCards}</div>
+  ${hoApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${hoApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${hoAnuncio('curso')}</div>
+</div>`,
+      { caminho: '/homem-contemporaneo/', semIdiomas: true, ...serieImagem('o-homem-contemporaneo').og, extraHead: `<style>${HO_CSS}</style>` + hoHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    HO_PATHS = ['/homem-contemporaneo/', ...hoArtigos.map(a => a.caminho), ...hoApoio.map(d => `/homem-contemporaneo/apoio/${d.chave}.html`)];
+    HO_LLMS = `## Blog: O Homem Contemporâneo (${hoNoAr} artigos, em português)
+
+Série do livro e do curso *O Homem Contemporâneo — Princípios para viver no século XXI*, de Augusto
+Villela: desenvolvimento pessoal com base em evidência — o cérebro fora do lugar, atenção, metacognição,
+como se aprende, lentes para decidir, aprender com IA sem parar de pensar, emoções, hábitos, incentivos,
+sono e recuperação, movimento e alimentação, propósito por protótipos, sabedoria antiga e filosofias
+práticas, antifragilidade, dinheiro e patrimônio (conteúdo educacional, não recomendação de
+investimento), do emprego ao ativo, vender o que se sabe, marca e comunicação, IA como estagiário culto,
+registro, concentração e prioridade, sistemas e legado. Saúde: sem dose nem número clínico; quem tem
+condição de saúde conversa com o médico.
+Índice da série: ${SITE_URL}/homem-contemporaneo/
+Curso on-line (25 videoaulas): ${HO_CURSO.split('?')[0]}
+
+${hoArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog O Homem Contemporâneo: hub + ${hoNoAr} de ${hoTotal} artigos + ${hoApoio.length} material(is) de apoio`);
+  }
+
+  // ---- Série "O Homem Essencial" (curso animado de 24 aulas: caráter, domínio de si e o que realmente importa): mesmo padrão da série O Homem Contemporâneo ----
+  // Publicada em 04/10/2026 (autorização do Augusto). Livro e curso à venda: os anúncios alternam o livro
+  // (Livraria) e o curso (Academy), como na série Google AI. As convicções do autor (política, fé, autores
+  // citados) ficam como no livro, por decisão dele. O artigo.css é o mesmo das séries anteriores, todo sob .cap.
+  const HE_DIR = path.join(__dirname, 'content', 'o-homem-essencial');
+  const HE_LIVRO = 'https://livros.villelastay.com.br/livros/o-homem-essencial?utm_source=villelastay&utm_medium=blog-homem-essencial';
+  const HE_CURSO = 'https://academia.villelastay.com.br/academy/cursos/o-homem-essencial?utm_source=villelastay&utm_medium=blog-homem-essencial';
+  const heDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(HE_DIR)) {
+    const heCss = fs.readFileSync(path.join(HE_DIR, 'artigo.css'), 'utf8');
+    const heLe = n => JSON.parse(fs.readFileSync(path.join(HE_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const heGrade = heLe('grade.json');
+    let heFaq = {}, heApoio = [];
+    try { heFaq = heLe('faq.json'); } catch (e) { console.warn('[homem-essencial] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { heApoio = heLe('apoio.json'); } catch (e) { console.warn('[homem-essencial] sem apoio.json — hub sairá sem material de apoio'); }
+
+    heArtigos = fs.readdirSync(HE_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(HE_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[homem-essencial] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpoBruto = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
+      // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
+      const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
+        const tam = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+        if (tam(dentro) <= 9000) return m0;
+        const blocos = [];
+        for (const pedaco of dentro.split(/(?=<h3>)/)) {
+          const ult = blocos[blocos.length - 1];
+          if (ult !== undefined && tam(ult) + tam(pedaco) <= 7000) blocos[blocos.length - 1] = ult + pedaco;
+          else blocos.push(pedaco);
+        }
+        return blocos.map((b, k) => `<section class="apoio"><h2>Material de apoio${k ? ' (continuação)' : ''}</h2>${b}</section>`).join(String.fromCharCode(10));
+      });
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? heDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `homem-essencial-${chave}`;
+      return {
+        ...meta, chave, slug,
+        tituloTexto: heDestexto(meta.titulo), subtituloTexto: heDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => heDestexto(t)),
+        faq: heFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const heComArtigo = heGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of heArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[homem-essencial] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!heComArtigo.includes(a.n)) throw new Error(`[homem-essencial] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (heArtigos.length !== heComArtigo.length) throw new Error(`[homem-essencial] grade diz ${heComArtigo.length} aulas com artigo, mas há ${heArtigos.length} artigos exportados`);
+    const heSemFaq = heArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (heSemFaq.length) console.warn(`[homem-essencial] SEM perguntas frequentes: ${heSemFaq.join(', ')} — escrever em content/o-homem-essencial/faq.json`);
+
+    const heAnuncio = (qual, min = false) => qual === 'livro'
+      ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${HE_LIVRO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">📘</span>
+          <span class="cap-ad-txt"><strong>Livro O Homem Essencial</strong><span>Uma carta de pai para os filhos: caráter, domínio de si e o que realmente importa, com os grandes pensadores pelo nome. Na Livraria Villela.</span></span>
+          <span class="cap-ad-btn">Ver na Livraria →</span></a>`
+      : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${HE_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso O Homem Essencial — 24 videoaulas animadas</strong><span>Caráter, domínio de si e sentido: cada aula em vídeo, com o artigo em PDF e práticas de 21 dias para aplicar na sua vida, na Villela Academy.</span></span>
+          <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
+    const HE_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(heAnuncio('livro', true))},${JSON.stringify(heAnuncio('curso', true))}];`);
+    const HE_CSS = `${heCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}`;
+
+    const heTotal = heGrade.total;
+    const heLinhaGrade = (aula, atual) => {
+      const art = heArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'homem-essencial'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'homem-essencial', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of heArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = heArtigos[iArt - 1], prox = heArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...serieImagem('o-homem-essencial').ld,
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-04', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/homem-essencial/#serie` },
+        articleSection: 'O Homem Essencial', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'O Homem Essencial — Uma carta de pai para os filhos', author: { '@type': 'Person', name: 'Augusto Villela' }, url: HE_LIVRO.split('?')[0] },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'O Homem Essencial', item: `${SITE_URL}/homem-essencial/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/homem-essencial/">O Homem Essencial</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${heTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${heAnuncio('livro', true)}${heAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar — a aula em vídeo, o artigo em PDF e as práticas ficam no curso.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o texto completo está no <a href="${HE_LIVRO}">livro</a> e a aula em vídeo, no <a href="${HE_CURSO}">curso O Homem Essencial</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${heAnuncio('curso')}${heAnuncio('livro')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/homem-essencial/"><span class="rot">☰ Índice</span><span class="tit">${heArtigos.length === 1 ? 'O artigo publicado' : `Os ${heArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${heGrade.aulas.map(g => heLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>O Homem Essencial</strong>, de Augusto Villela.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog O Homem Essencial`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('o-homem-essencial').og,
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${HE_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${HE_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of heApoio) {
+      const cam = `/homem-essencial/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/homem-essencial/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'homem-essencial', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — O Homem Essencial | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série O Homem Essencial, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>O Homem Essencial</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/homem-essencial/">O Homem Essencial</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${heAnuncio('livro')}${heAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${HE_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /homem-essencial/
+    const heCards = heArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado">artigo no ar · videoaula em produção</span>'}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const heApoioCards = heApoio.map(d => `
+  <a class="cap-card" href="/homem-essencial/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const heNoAr = heArtigos.length;
+    const heHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/homem-essencial/#serie`,
+      name: 'O Homem Essencial — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: heArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `O Homem Essencial — ${heNoAr} ${heNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: heNoAr,
+      itemListElement: heArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'homem-essencial', 'index.html'), layout(
+      'O Homem Essencial: a série do curso | Blog O Homem Essencial',
+      `A série O Homem Essencial, de Augusto Villela: caráter, domínio de si e o que realmente importa — as virtudes, a verdade, a força do bom, disciplina, corpo e mente, amizades, limites, como tratar as pessoas, família, trabalho, dinheiro, adversidade, pensamento crítico, a cidade, propósito, a morte e o legado. ${heNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>O Homem Essencial <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Caráter, domínio de si e o que realmente importa</span></h1>
+    <p>Os grandes pensadores, pelo nome, a serviço de uma vida com caráter. São ${heTotal} artigos, um para cada videoaula do curso. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>O Homem Essencial</span></nav>
+  <div class="cap-faixa">${heAnuncio('livro')}${heAnuncio('curso')}</div>
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${heTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${heGrade.aulas.map(g => heLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${heCards}</div>
+  ${heApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${heApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${heAnuncio('curso')}${heAnuncio('livro')}</div>
+</div>`,
+      { caminho: '/homem-essencial/', semIdiomas: true, ...serieImagem('o-homem-essencial').og, extraHead: `<style>${HE_CSS}</style>` + heHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    HE_PATHS = ['/homem-essencial/', ...heArtigos.map(a => a.caminho), ...heApoio.map(d => `/homem-essencial/apoio/${d.chave}.html`)];
+    HE_LLMS = `## Blog: O Homem Essencial (${heNoAr} artigos, em português)
+
+Série do livro e do curso *O Homem Essencial — Uma carta de pai para os filhos*, de Augusto Villela:
+caráter, domínio de si e o que realmente importa, com os grandes pensadores citados pelo nome —
+as quatro virtudes cardeais, viver sem mentiras, a força do bom, disciplina e rotina, a cidadela
+interior, o corpo, a mente, as amizades, o não que preserva, como tratar as pessoas, quem forma
+alguém, a aliança do casamento, competência antes da paixão, dinheiro como servo, os dois lados da
+mesa, a adversidade, pensar sem ser enganado, o homem e a cidade, o autoengano, o presente, o
+propósito, a morte como conselheira, pensadores do nosso tempo e o legado. A série expõe as
+convicções do autor (morais, políticas e religiosas) como estão no livro.
+Índice da série: ${SITE_URL}/homem-essencial/
+Livro: ${HE_LIVRO.split('?')[0]} · Curso on-line (24 videoaulas): ${HE_CURSO.split('?')[0]}
+
+${heArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog O Homem Essencial: hub + ${heNoAr} de ${heTotal} artigos + ${heApoio.length} material(is) de apoio`);
+  }
+
+  // ---- Figuras das séries da coleção Viver de Chácara (blocos PI_*, PA_*, PE_* e CT_*) ----
+  // As ilustrações do curso e do livro entram nos artigos. Cada série tem content/vdc-<curso>/figuras.json
+  // (gerado fora do build, com a posição conferida a mão): por artigo, a lista das figuras com o arquivo em
+  // src/blog/<serie>-fig-NN-NN.webp, a medida, a legenda e a âncora ("secao" = o <h2>; "apos" = começo do
+  // parágrafo depois do qual a figura entra).
+  // DUAS CAMADAS, como o texto: no máximo UMA figura por artigo vai ABERTA ("aberta": true), logo depois do
+  // resumo; as demais entram no desenvolvimento, que é montado por JavaScript. A figura aberta passa pelo
+  // veto da série (a legenda) e pela régua de vazamento do exportador (12 palavras seguidas do "Para aplicar
+  // hoje"). ⚠️ O veto lê TEXTO: o que a IMAGEM mostra (valor, traço, espessura, prazo, peso, número a validar,
+  // estrutura sem o selo "Leitura — não execute") só se confere OLHANDO a figura antes de marcá-la aberta.
+  // Legenda nova não se escreve aqui: vale a do figuras.json do livro.
+  // FOTOS (série Decoração de Interiores, bloco DC_*): além dos desenhos (-fig-NN-NN.webp, até 1200 px), a
+  // série leva fotos em JPEG de até 1400 px: -foto-fNN.jpg (imagem conceitual gerada por IA), -foto-aNN.jpg
+  // (o ambiente como estava) e -foto-parNN.jpg (antes e depois lado a lado, numa imagem só). Foto traz
+  // "rotulo" (Foto F-07, Antes A-02, Antes e depois), que entra no lugar do "Figura n", porque o texto do
+  // artigo cita as fotos por esse código; a numeração "Figura n" conta só os desenhos.
+  const VDC_FIG_CSS = `
+.cap .cap-fig{margin:26px 0;padding:0}
+.cap .cap-fig img{display:block;box-sizing:border-box;width:100%;max-width:100%;height:auto;margin:0 auto;border:1px solid var(--line);border-radius:12px;background:#fbf8f2}
+.cap .cap-fig figcaption{margin:10px 2px 0;font:400 14.5px/1.5 Inter,"Segoe UI",system-ui,sans-serif;color:#675f56;text-align:left}
+.cap .cap-fig figcaption b{color:var(--accent);font-weight:700}
+.cap .cap-publico .cap-fig{margin:0 0 22px}
+.cap .cap-figs-hub{max-width:1100px;margin:0 auto 26px;padding:0 24px}
+.cap .cap-figs-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
+.cap .cap-fig-card{display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;text-decoration:none;color:#1c1a17}
+.cap .cap-fig-card:hover{border-color:var(--accent);box-shadow:0 8px 22px rgba(15,26,43,.1)}
+.cap .cap-fig-quadro{display:flex;align-items:center;justify-content:center;height:170px;padding:10px;background:#fbf8f2;border-bottom:1px solid var(--line)}
+.cap .cap-fig-quadro img{display:block;max-width:100%;max-height:100%;width:auto;height:auto}
+.cap .cap-fig-leg{padding:12px 14px 14px;font:400 14px/1.45 Inter,"Segoe UI",system-ui,sans-serif;color:#4a4640}
+.cap .cap-fig-leg b{display:block;font:700 12px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+@media (max-width:520px){.cap .cap-figs-hub{padding:0 16px}.cap .cap-figs-grade{gap:10px}.cap .cap-fig-quadro{height:120px;padding:8px}.cap .cap-fig-leg{padding:10px 10px 12px;font-size:13px}}
+.cap .cap-amostra{box-sizing:border-box;max-width:100%;min-width:0;margin:0 0 22px;padding:0;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.cap .cap-amostra-rot{padding:11px 16px;font:600 12px/1.35 Inter,"Segoe UI",system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#675f56}
+.cap .cap-amostra-rot b{color:var(--accent);font-weight:700}
+.cap .cap-amostra video{display:block;width:100%;max-width:100%;height:auto;aspect-ratio:16/9;background:#0b1120}
+.cap .cap-amostra figcaption{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin:0;padding:14px 16px 16px;text-align:left}
+.cap .cap-amostra-cham{font:700 19px/1.3 Lora,Georgia,serif;color:var(--navy);overflow-wrap:anywhere}
+.cap .cap-amostra-ponte{font:400 15.5px/1.5 Inter,"Segoe UI",system-ui,sans-serif;color:#4a4640;overflow-wrap:anywhere}
+.cap .cap-amostra-btn{display:inline-block;margin-top:4px;padding:10px 18px;border-radius:999px;background:var(--accent);color:#fff;font:700 14.5px/1.2 Inter,"Segoe UI",system-ui,sans-serif;text-decoration:none}
+.cap .cap-amostra-btn:hover{filter:brightness(.92)}
+.cap .cap-amostra-links{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:2px;font:700 14px/1.3 Inter,"Segoe UI",system-ui,sans-serif}
+.cap .cap-amostra-links a{color:var(--accent);text-decoration:none}
+.cap .cap-amostra-links a:hover{text-decoration:underline}
+.cap .cap-amos-hub{max-width:1100px;margin:0 auto 30px;padding:0 24px}
+.cap .cap-amos-hub h2{margin:0 0 6px;font:700 24px/1.25 Lora,Georgia,serif;color:var(--navy)}
+.cap .cap-amos-hub>p{margin:0 0 16px;color:#675f56;font-size:16px;line-height:1.5}
+.cap .cap-amos-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,235px),1fr));gap:16px;align-items:start}
+.cap .cap-amos-grade .cap-amostra{margin:0}
+.cap .cap-amos-grade .cap-amostra-cham{font-size:16.5px}
+.cap .cap-amos-grade .cap-amostra-ponte{font-size:14px}
+@media (max-width:520px){.cap .cap-amos-hub{padding:0 16px}.cap .cap-amostra-cham{font-size:17.5px}}`;
+  const vdcNorm = s => String(s).toLowerCase().replace(/[^0-9a-zà-ÿ]+/g, '');
+  const vdcPalavras = s => String(s).toLowerCase().replace(/[^0-9a-zà-ÿ ]+/g, ' ').split(/\s+/).filter(Boolean);
+  // Medida real de um WebP (o dimensoesArquivo do topo só lê PNG e JPEG).
+  function vdcWebpDim(file) {
+    const b = fs.readFileSync(file);
+    if (b.length < 30 || b.toString('ascii', 0, 4) !== 'RIFF' || b.toString('ascii', 8, 12) !== 'WEBP') return null;
+    const t = b.toString('ascii', 12, 16);
+    if (t === 'VP8 ') return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+    if (t === 'VP8L') { const n = b.readUInt32LE(21); return { w: (n & 0x3fff) + 1, h: ((n >>> 14) & 0x3fff) + 1 }; }
+    if (t === 'VP8X') return { w: b.readUIntLE(24, 3) + 1, h: b.readUIntLE(27, 3) + 1 };
+    return null;
+  }
+  // Lê e confere o figuras.json de uma série. Sem o arquivo, a série segue sem figuras.
+  function vdcFiguras(dir, serie) {
+    const arq = path.join(dir, 'figuras.json');
+    if (!fs.existsSync(arq)) return { porArtigo: {}, hub: [] };
+    const bruto = JSON.parse(fs.readFileSync(arq, 'utf8').replace(/^﻿/, ''));
+    const nome = new RegExp('^' + serie + '-(fig-\\d\\d-\\d\\d\\.webp|foto-(f|a|par)\\d\\d\\.jpg)$');
+    const porArtigo = {};
+    for (const [chave, lista] of Object.entries(bruto)) {
+      if (chave.startsWith('_')) continue;
+      if (!Array.isArray(lista)) throw new Error(`[${serie}] figuras.json: "${chave}" não é uma lista`);
+      for (const f of lista) {
+        for (const campo of ['id', 'arq', 'w', 'h', 'legenda', 'secao', 'apos']) {
+          if (!f[campo]) throw new Error(`[${serie}] figuras.json: ${chave} / ${f.id || '?'} sem "${campo}"`);
+        }
+        if (!nome.test(f.arq)) throw new Error(`[${serie}] figuras.json: nome de arquivo fora do padrão em ${chave}: ${f.arq}`);
+        const abs = path.join(BLOG_IMG_SRC, f.arq);
+        if (!fs.existsSync(abs)) throw new Error(`[${serie}] figura ${f.id} de ${chave}: ${f.arq} não está em src/blog`);
+        const ehFoto = /\.jpg$/.test(f.arq);
+        if (ehFoto !== !!f.rotulo) throw new Error(`[${serie}] figura ${f.id} de ${chave}: foto (.jpg) pede "rotulo", e desenho (.webp) não leva`);
+        const d = ehFoto ? dimensoesArquivo(abs) : vdcWebpDim(abs);
+        if (!d || d.w !== f.w || d.h !== f.h) throw new Error(`[${serie}] figura ${f.id} de ${chave}: medida do figuras.json (${f.w}×${f.h}) não bate com a do arquivo (${d ? d.w + '×' + d.h : 'ilegível'})`);
+        if (d.w > (ehFoto ? 1400 : 1200)) throw new Error(`[${serie}] figura ${f.id} de ${chave}: ${d.w} px de largura — o teto é ${ehFoto ? 1400 : 1200}`);
+      }
+      if (lista.filter(f => f.aberta).length > 1) throw new Error(`[${serie}] figuras.json: ${chave} tem mais de uma figura aberta — só uma vai para a camada pública`);
+      porArtigo[chave] = lista;
+    }
+    return { porArtigo, hub: Array.isArray(bruto._hub) ? bruto._hub : [] };
+  }
+  // width:100% + height:auto reservam a altura pela proporção (sem salto de layout). Figura alta ganha um
+  // teto de largura em linha, para não passar de ~620 px de altura na coluna do artigo.
+  const VDC_FIG_ALTURA = 620;
+  const vdcFigHtml = (f, n) => `<figure class="cap-fig"><img src="/blog-img/${f.arq}" alt="${esc(f.legenda)}" width="${f.w}" height="${f.h}"${f.h * 712 > VDC_FIG_ALTURA * f.w ? ` style="max-width:${Math.round(VDC_FIG_ALTURA * f.w / f.h)}px"` : ''} loading="lazy" decoding="async"><figcaption><b>${f.rotulo ? esc(f.rotulo) : `Figura ${n}`}.</b> ${esc(f.legenda)}</figcaption></figure>`;
+  // Põe as figuras PROTEGIDAS no corpo do artigo (antes de ele ser fatiado em partes), cada uma depois do
+  // parágrafo que a âncora indica, e numera na ordem em que aparecem. A aberta, se houver, é a Figura 1.
+  // Seção que sumiu do artigo quebra o build; parágrafo que mudou manda a figura para o fim da seção, com aviso.
+  function vdcFigInserir(corpo, lista, serie, chave, destexto) {
+    const prot = lista.filter(f => !f.aberta);
+    if (!prot.length) return corpo;
+    const iApoio = corpo.indexOf('<section class="apoio">');
+    const fimPrincipal = iApoio < 0 ? corpo.length : iApoio;
+    const principal = corpo.slice(0, fimPrincipal);
+    const secs = [];
+    const reH2 = /<h2>([\s\S]*?)<\/h2>/g;
+    let m, atual = { titulo: 'Abertura', ini: 0 };
+    while ((m = reH2.exec(principal))) {
+      atual.fim = m.index;
+      secs.push(atual);
+      atual = { titulo: destexto(m[1]).trim(), ini: m.index + m[0].length };
+    }
+    atual.fim = principal.length;
+    secs.push(atual);
+    const pontos = prot.map((f, ordem) => {
+      const sec = secs.find(s => vdcNorm(s.titulo) === vdcNorm(f.secao));
+      if (!sec) throw new Error(`[${serie}] figura ${f.id} de ${chave}: a seção "${f.secao}" não existe mais no artigo — rever content/…/figuras.json`);
+      const alvo = vdcNorm(f.apos).slice(0, 40);
+      const trecho = principal.slice(sec.ini, sec.fim);
+      const reP = /<p\b[^>]*>[\s\S]*?<\/p>/g;
+      let p, pos = -1;
+      while ((p = reP.exec(trecho))) {
+        if (vdcNorm(destexto(p[0])).startsWith(alvo)) { pos = sec.ini + p.index + p[0].length; break; }
+      }
+      if (pos < 0) {
+        console.warn(`[${serie}] figura ${f.id} de ${chave}: parágrafo-âncora não encontrado em "${f.secao}" — foi para o fim da seção`);
+        pos = sec.fim;
+      }
+      return { f, pos, ordem };
+    }).sort((a, b) => a.pos - b.pos || a.ordem - b.ordem);
+    let n = lista.some(f => f.aberta && !f.rotulo) ? 1 : 0;
+    for (const p of pontos) p.n = p.f.rotulo ? 0 : ++n; // foto leva o rótulo dela; "Figura n" conta só os desenhos
+    let saida = principal;
+    for (const p of pontos.slice().reverse()) saida = saida.slice(0, p.pos) + '\n' + vdcFigHtml(p.f, p.n) + saida.slice(p.pos);
+    return saida + corpo.slice(fimPrincipal);
+  }
+  // Travas da camada ABERTA: a legenda da figura aberta passa pelo veto da série e não repete 12 palavras
+  // seguidas do "Para aplicar hoje" (a régua do exportador); o figuras.json não cita artigo que não existe;
+  // e a faixa do hub só usa figura que já é aberta no artigo dela.
+  function vdcFigTravas(serie, artigos, figs, veto, preparar) {
+    for (const a of artigos) {
+      const f = a.figAberta;
+      if (!f) continue;
+      const leg = preparar ? preparar(f.legenda + (f.curta ? ' | ' + f.curta : '')) : f.legenda + (f.curta ? ' | ' + f.curta : ''); // "curta" = legenda da faixa do hub
+      for (const [re, oQue] of veto) {
+        const m = leg.match(re);
+        if (m) throw new Error(`[${serie}] figura aberta de ${a.chave} (${f.id}) traz ${oQue} na legenda: "${m[0]}" — escolher outra figura para a camada aberta (content/…/figuras.json)`);
+      }
+      const vendido = ' ' + vdcPalavras(String(a.aplicar_html || '').replace(/<[^>]+>/g, ' ')).join(' ') + ' ';
+      const pal = vdcPalavras(f.legenda);
+      for (let i = 0; i + 12 <= pal.length; i++) {
+        const t = pal.slice(i, i + 12).join(' ');
+        if (vendido.includes(` ${t} `)) throw new Error(`[${serie}] figura aberta de ${a.chave} (${f.id}): a legenda repete o "Para aplicar hoje" ("…${t}…") — conteúdo vendido vazando para o aberto`);
+      }
+    }
+    const chaves = new Set(artigos.map(a => a.chave));
+    for (const k of Object.keys(figs.porArtigo)) {
+      if (!chaves.has(k)) throw new Error(`[${serie}] figuras.json cita o artigo "${k}", que não existe em content`);
+    }
+    for (const id of figs.hub) {
+      if (!artigos.some(a => a.figAberta && a.figAberta.id === id)) throw new Error(`[${serie}] faixa do hub pede a figura ${id}, que não é a figura aberta de nenhum artigo`);
+    }
+  }
+  // Faixa de figuras do hub: três ou quatro figuras ABERTAS, cada uma levando ao artigo dela.
+  function vdcFigHub(figs, artigos) {
+    const itens = figs.hub.map(id => artigos.find(a => a.figAberta && a.figAberta.id === id)).filter(Boolean);
+    if (itens.length < 3) return '';
+    return `<section class="cap-figs-hub" aria-label="Figuras da série"><div class="cap-figs-grade">${itens.map(a => `<a class="cap-fig-card" href="${a.caminho}"><span class="cap-fig-quadro"><img src="/blog-img/${a.figAberta.arq}" alt="${esc(a.figAberta.legenda)}" width="${a.figAberta.w}" height="${a.figAberta.h}" loading="lazy" decoding="async"></span><span class="cap-fig-leg"><b>Aula ${a.n}</b>${esc(a.figAberta.curta || a.figAberta.legenda)}</span></a>`).join('')}</div></section>`;
+  }
+  // No JSON-LD do artigo, `image` passa a ser a capa da série + a figura aberta (a og:image não muda).
+  const vdcLdImagem = (ld, f) => (f && ld.image) ? { image: [ld.image, `${SITE_URL}/blog-img/${f.arq}`] } : ld;
+  // Conferência final, sobre o HTML que SAIU: toda imagem de /blog-img/ citada (na camada aberta e dentro
+  // do desenvolvimento embutido) existe em dist; a camada aberta de um artigo leva no máximo uma figura; e
+  // nenhuma figura do desenvolvimento aparece no HTML aberto.
+  function vdcConfereImagens(serie, arquivos) {
+    let total = 0;
+    for (const arq of arquivos) {
+      const html = fs.readFileSync(arq, 'utf8');
+      const dm = html.match(/<script type="application\/json" id="cap-dados">([^<]*)<\/script>/);
+      const aberto = dm ? html.replace(dm[0], '') : html;
+      const prot = dm ? Buffer.from(dm[1], 'base64').toString('utf8') : '';
+      const refs = new Set();
+      for (const fonte of [aberto, prot]) for (const r of fonte.matchAll(/\/blog-img\/([A-Za-z0-9._-]+)/g)) refs.add(r[1]);
+      for (const r of refs) {
+        if (!fs.existsSync(path.join(BLOG_IMG_DST, r))) throw new Error(`[${serie}] ${path.basename(arq)} cita /blog-img/${r}, que não existe em dist`);
+        total++;
+      }
+      if (dm && (aberto.match(/<figure class="cap-fig"/g) || []).length > 1) throw new Error(`[${serie}] ${path.basename(arq)}: mais de uma figura na camada aberta`);
+      for (const r of prot.matchAll(/\/blog-img\/([A-Za-z0-9._-]+-(?:fig-\d\d-\d\d\.webp|foto-(?:f|a|par)\d\d\.jpg))/g)) {
+        if (aberto.includes(`/blog-img/${r[1]}`)) throw new Error(`[${serie}] ${path.basename(arq)}: a figura ${r[1]} é do desenvolvimento e aparece na camada aberta`);
+      }
+    }
+    return total;
+  }
+
+  // ---- Amostras grátis em vídeo nas séries da coleção Viver de Chácara (blocos PI_*, PA_*, PE_* e CT_*) ----
+  // Cada artigo mostra, na camada ABERTA e em HTML puro, o trecho de 30 a 60 s que a Villela Academy publica
+  // como "amostra grátis" da aula (README da Academy, seção "Amostras grátis"). O vídeo e a capa ficam na
+  // Academy; aqui só entra o endereço. O build NÃO chama a rede: lê data/amostras.json, gravado por
+  // tools/atualizar-amostras.js a partir da API pública. Série ou aula que não está no arquivo sai sem vídeo.
+  // ⚠️ QUANDO SUBIR AMOSTRA NOVA (ex.: as do curso Construção com Contêineres, que ainda renderiza) ou trocar
+  // uma existente, são dois comandos, mais o commit do data/amostras.json:
+  //     node tools/atualizar-amostras.js
+  //     node build.js
+  // Não precisa virar o PWA.cacheVersion por isso: página HTML não fica no cache de nome fixo do service
+  // worker, e o vídeo é de outro domínio. Só vira se mudar CSS, JS ou imagem do site.
+  // A chamada e a frase-ponte vêm da Academy e vão para a camada aberta: passam pelo veto da série e pela
+  // régua de vazamento (12 palavras seguidas do "Para aplicar hoje"). Chamada recusada NÃO é reescrita: o
+  // vídeo sai com o título da aula no lugar; ponte recusada sai de cena. As duas trocas são avisadas no log.
+  // ⚠️ O veto lê TEXTO: o que o VÍDEO mostra e diz foi escolhido e conferido na Academy, não aqui.
+  // Sem `og:video` de propósito (vídeo de outro domínio em prévia social costuma dar problema).
+  const VDC_AMO_ARQ = path.join(__dirname, 'data', 'amostras.json');
+  const VDC_AMO_BASE = 'https://academia.villelastay.com.br/academy/api/amostras/';
+  const VDC_AMO_URL = /^https:\/\/academia\.villelastay\.com\.br\/academy\/api\/amostras\/([A-Za-z0-9_-]+)\/(video\.mp4|capa\.jpg)\?v=\d+$/;
+  const VDC_AMO_HUB = [1, 8, 15, 22]; // aulas preferidas na faixa do hub; faltando alguma, entram as primeiras que houver
+  const VDC_AMO_DADOS = fs.existsSync(VDC_AMO_ARQ) ? JSON.parse(fs.readFileSync(VDC_AMO_ARQ, 'utf8').replace(/^﻿/, '')) : { series: {} };
+  const VDC_AMO_JS = `(function(){var v=document.querySelectorAll('.cap-amostra video');for(var i=0;i<v.length;i++)v[i].addEventListener('play',function(){for(var j=0;j<v.length;j++)if(v[j]!==this)v[j].pause()});})();`;
+  const vdcAmoDur = s => s < 60 ? `${s} s` : `${Math.floor(s / 60)} min${s % 60 ? ` ${s % 60} s` : ''}`;
+  const vdcAmoIso = s => `PT${s >= 60 ? Math.floor(s / 60) + 'M' : ''}${s % 60 || s < 60 ? (s % 60) + 'S' : ''}`;
+  const vdcAmoUtm = (curso, conteudo) => `${curso}${curso.includes('?') ? '&' : '?'}utm_content=${conteudo}`;
+  // Lê e confere as amostras de uma série, por número de aula. Endereço fora da Academy quebra o build.
+  function vdcAmostras(serie) {
+    const bruto = (VDC_AMO_DADOS.series && VDC_AMO_DADOS.series[serie] && VDC_AMO_DADOS.series[serie].amostras) || {};
+    const porAula = {};
+    for (const [k, m] of Object.entries(bruto)) {
+      const n = parseInt(k, 10);
+      if (!Number.isInteger(n) || m.aula !== n) throw new Error(`[${serie}] amostras.json: chave "${k}" não bate com a aula da amostra (${m.aula})`);
+      for (const campo of ['id', 'titulo', 'duracao_seg', 'video_url', 'capa_url', 'visto_em']) {
+        if (!m[campo]) throw new Error(`[${serie}] amostras.json: aula ${n} sem "${campo}" — rodar tools/atualizar-amostras.js`);
+      }
+      for (const u of [m.video_url, m.capa_url]) {
+        const ok = String(u).match(VDC_AMO_URL);
+        if (!ok || ok[1] !== m.id) throw new Error(`[${serie}] amostras.json: aula ${n} aponta para fora das amostras da Academy: ${u}`);
+      }
+      if (!Number.isInteger(m.duracao_seg) || m.duracao_seg < 1 || m.duracao_seg > 180) throw new Error(`[${serie}] amostras.json: aula ${n} com duração inválida (${m.duracao_seg})`);
+      if (!/^\d{4}-\d\d-\d\d$/.test(m.visto_em)) throw new Error(`[${serie}] amostras.json: aula ${n} com "visto_em" inválido (${m.visto_em})`);
+      porAula[n] = m;
+    }
+    return porAula;
+  }
+  // Liga cada artigo à amostra da aula dele (a.amostra) e passa chamada e ponte pelas travas da camada aberta.
+  function vdcAmoPreparar(serie, artigos, curso, veto, preparar) {
+    const porAula = vdcAmostras(serie);
+    const recusa = (a, texto) => {
+      const t = preparar ? preparar(texto) : texto;
+      for (const [re, oQue] of veto) { const m = t.match(re); if (m) return `${oQue}: "${m[0]}"`; }
+      const vendido = ' ' + vdcPalavras(String(a.aplicar_html || '').replace(/<[^>]+>/g, ' ')).join(' ') + ' ';
+      const pal = vdcPalavras(texto);
+      for (let i = 0; i + 12 <= pal.length; i++) {
+        if (vendido.includes(` ${pal.slice(i, i + 12).join(' ')} `)) return 'trecho do "Para aplicar hoje"';
+      }
+      return '';
+    };
+    const trocas = [];
+    for (const a of artigos) {
+      const m = porAula[a.n];
+      a.amostra = null;
+      if (!m) continue;
+      let chamada = m.titulo, ponte = m.ponte || '';
+      const rc = recusa(a, chamada);
+      if (rc) { trocas.push(`aula ${a.n}: chamada trocada pelo título da aula (${rc}) — "${m.titulo}"`); chamada = a.tituloTexto; }
+      const rp = ponte ? recusa(a, ponte) : '';
+      if (rp) { trocas.push(`aula ${a.n}: frase-ponte retirada (${rp}) — "${m.ponte}"`); ponte = ''; }
+      a.amostra = { ...m, chamada, ponte, curso };
+    }
+    for (const n of Object.keys(porAula)) {
+      if (!artigos.some(a => a.n === +n)) console.warn(`[${serie}] amostras.json tem amostra da aula ${n}, que não tem artigo no blog — ficou de fora`);
+    }
+    for (const t of trocas) console.warn(`[${serie}] amostra grátis, ${t}`);
+    return { total: artigos.filter(a => a.amostra).length, trocas };
+  }
+  // O player. `noHub` troca o botão do curso por dois links (o artigo da aula e o curso).
+  function vdcAmoHtml(a, noHub) {
+    const m = a.amostra;
+    if (!m) return '';
+    const curso = m.curso;
+    const nn = String(a.n).padStart(2, '0');
+    const botoes = noHub
+      ? `<span class="cap-amostra-links"><a href="${a.caminho}">Ler o artigo da aula ${a.n} →</a><a href="${esc(vdcAmoUtm(curso, `amostra-hub-aula-${nn}`))}" target="_blank" rel="noopener">Ver o curso →</a></span>`
+      : `<a class="cap-amostra-btn" href="${esc(vdcAmoUtm(curso, `amostra-aula-${nn}`))}" target="_blank" rel="noopener">Ver o curso completo →</a>`;
+    return `<figure class="cap-amostra"${noHub ? '' : ' id="amostra-gratis"'}><div class="cap-amostra-rot"><b>Amostra grátis</b> · Aula ${a.n} · ${vdcAmoDur(m.duracao_seg)}</div><video controls playsinline preload="none" width="1280" height="720" poster="${esc(m.capa_url)}" aria-label="${esc(`Amostra grátis da aula ${a.n}: ${m.chamada}`)}"><source src="${esc(m.video_url)}" type="video/mp4"></video><figcaption><strong class="cap-amostra-cham">${esc(m.chamada)}</strong>${m.ponte ? `<span class="cap-amostra-ponte">${esc(m.ponte)}</span>` : ''}${botoes}</figcaption></figure>`;
+  }
+  // VideoObject do artigo (só quando há amostra).
+  const vdcAmoLd = (a, url) => !a.amostra ? [] : [{
+    '@context': 'https://schema.org', '@type': 'VideoObject', '@id': `${url}#amostra`,
+    name: a.amostra.chamada, description: a.amostra.ponte || a.descricao,
+    thumbnailUrl: a.amostra.capa_url, contentUrl: a.amostra.video_url,
+    duration: vdcAmoIso(a.amostra.duracao_seg), uploadDate: `${a.amostra.visto_em}T00:00:00-03:00`,
+    inLanguage: 'pt-BR', isFamilyFriendly: true, publisher: { '@id': ORG_ID },
+  }];
+  // Faixa "Amostras grátis" do hub: três ou quatro vídeos, tocando no lugar; dar play em um pausa os outros.
+  function vdcAmoHubItens(artigos) {
+    const com = artigos.filter(a => a.amostra);
+    const itens = VDC_AMO_HUB.map(n => com.find(a => a.n === n)).filter(Boolean);
+    for (const a of com) { if (itens.length >= 4) break; if (!itens.includes(a)) itens.push(a); }
+    return itens.length < 3 ? [] : itens.sort((x, y) => x.n - y.n);
+  }
+  function vdcAmoHub(artigos) {
+    const itens = vdcAmoHubItens(artigos);
+    if (!itens.length) return '';
+    return `<section class="cap-amos-hub" aria-label="Amostras grátis"><h2>Amostras grátis</h2><p>Trechos curtos das videoaulas do curso, para assistir aqui mesmo, sem cadastro. Cada artigo da série traz a amostra da aula dele.</p><div class="cap-amos-grade">${itens.map(a => vdcAmoHtml(a, true)).join('')}</div><script>${VDC_AMO_JS}</script></section>`;
+  }
+  // Conferência final, sobre o HTML que SAIU: cada artigo leva o vídeo da aula dele e só ele (um, na camada
+  // aberta; nenhum no desenvolvimento embutido); o hub leva a faixa prevista; todo <video> e todo <source>
+  // apontam para as amostras da Academy; toda amostra citada está no amostras.json da série; nada de
+  // autoplay; e o VideoObject acompanha o vídeo, um para um.
+  function vdcConfereVideos(serie, artigos, od, arqHub) {
+    const ids = new Set(Object.values(vdcAmostras(serie)).map(m => m.id));
+    const olha = (arq, esperados, ldEsperado) => {
+      const html = fs.readFileSync(arq, 'utf8');
+      const nome = path.basename(path.dirname(arq)) + '/' + path.basename(arq);
+      const dm = html.match(/<script type="application\/json" id="cap-dados">([^<]*)<\/script>/);
+      const aberto = dm ? html.replace(dm[0], '') : html;
+      const prot = dm ? Buffer.from(dm[1], 'base64').toString('utf8') : '';
+      if (/<video\b|<source\b/i.test(prot)) throw new Error(`[${serie}] ${nome}: há vídeo dentro do desenvolvimento protegido`);
+      const videos = aberto.match(/<video\b[^>]*>/gi) || [];
+      const fontes = aberto.match(/<source\b[^>]*>/gi) || [];
+      if (videos.length !== esperados.length || fontes.length !== esperados.length) throw new Error(`[${serie}] ${nome}: ${videos.length} vídeo(s) e ${fontes.length} fonte(s) na camada aberta — o esperado era ${esperados.length}`);
+      for (const tag of [...videos, ...fontes]) {
+        if (/\sautoplay\b/i.test(tag)) throw new Error(`[${serie}] ${nome}: vídeo com autoplay`);
+        const enderecos = [...tag.matchAll(/\s(?:src|poster)="([^"]*)"/gi)].map(x => x[1].replace(/&amp;/g, '&'));
+        if (!enderecos.length) throw new Error(`[${serie}] ${nome}: <video> ou <source> sem endereço`);
+        for (const u of enderecos) {
+          const ok = u.match(VDC_AMO_URL);
+          if (!u.startsWith(VDC_AMO_BASE) || !ok) throw new Error(`[${serie}] ${nome}: vídeo ou capa apontando para fora das amostras da Academy: ${u}`);
+          if (!ids.has(ok[1])) throw new Error(`[${serie}] ${nome}: cita a amostra ${ok[1]}, que não está em data/amostras.json`);
+        }
+      }
+      for (const m of esperados) {
+        if (!aberto.includes(`<source src="${esc(m.video_url)}"`) || !aberto.includes(`poster="${esc(m.capa_url)}"`)) throw new Error(`[${serie}] ${nome}: falta o vídeo ou a capa da amostra ${m.id} (aula ${m.aula})`);
+      }
+      const ld = (aberto.match(/"@type":"VideoObject"/g) || []).length;
+      if (ld !== ldEsperado) throw new Error(`[${serie}] ${nome}: ${ld} VideoObject no JSON-LD — o esperado era ${ldEsperado}`);
+      if (/property="og:video/i.test(aberto)) throw new Error(`[${serie}] ${nome}: og:video não entra (vídeo de outro domínio)`);
+    };
+    for (const a of artigos) olha(path.join(od, 'blog', `${a.slug}.html`), a.amostra ? [a.amostra] : [], a.amostra ? 1 : 0);
+    olha(arqHub, vdcAmoHubItens(artigos).map(a => a.amostra), 0);
+    return artigos.filter(a => a.amostra).length;
+  }
+
+  // ---- Série "Piscineiro na Prática" (coleção Viver de Chácara; curso animado de 25 aulas): mesmo padrão da série O Homem Essencial ----
+  // Preparada em 08/10/2026. O livro não está na Livraria: a série anuncia só o curso (Academy), como na
+  // série O Homem Contemporâneo, e o BlogPosting cita o livro sem `url`.
+  // ⚠️ Conteúdo de risco (produto químico, eletricidade, afogamento): nos textos DESTE bloco e no faq.json não
+  // entra dose, faixa de parâmetro, tempo técnico nem modo de misturar produto; nada de "garante/certifica/
+  // habilita" — é material educacional. A trava logo abaixo confere a camada pública de cada artigo.
+  // ⚠️ O selo por aula ("vídeo no ar" / "em produção") NÃO é usado aqui: o `gravada` do curso.json está true
+  // nas 25, mas os vídeos sobem aos poucos na Academy — selo estático mentiria num sentido ou no outro.
+  const PI_DIR = path.join(__dirname, 'content', 'vdc-piscineiro');
+  const PI_CURSO = 'https://academia.villelastay.com.br/academy/cursos/piscineiro-na-pratica?utm_source=villelastay&utm_medium=blog-piscineiro-na-pratica';
+  const piDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(PI_DIR)) {
+    const piCss = fs.readFileSync(path.join(PI_DIR, 'artigo.css'), 'utf8');
+    const piLe = n => JSON.parse(fs.readFileSync(path.join(PI_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const piGrade = piLe('grade.json');
+    let piFaq = {}, piApoio = [];
+    try { piFaq = piLe('faq.json'); } catch (e) { console.warn('[piscineiro-na-pratica] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { piApoio = piLe('apoio.json'); } catch (e) { console.warn('[piscineiro-na-pratica] sem apoio.json — hub sairá sem material de apoio'); }
+
+    const piFigs = vdcFiguras(PI_DIR, 'piscineiro-na-pratica');
+    piArtigos = fs.readdirSync(PI_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(PI_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[piscineiro-na-pratica] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpoBruto = vdcFigInserir(raw.replace(/^<!--META .*? -->\r?\n?/, ''), piFigs.porArtigo[f.replace(/\.html$/, '')] || [], 'piscineiro-na-pratica', f, piDestexto);
+      // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
+      // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
+      const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
+        const tam = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+        if (tam(dentro) <= 9000) return m0;
+        const blocos = [];
+        for (const pedaco of dentro.split(/(?=<h3>)/)) {
+          const ult = blocos[blocos.length - 1];
+          if (ult !== undefined && tam(ult) + tam(pedaco) <= 7000) blocos[blocos.length - 1] = ult + pedaco;
+          else blocos.push(pedaco);
+        }
+        return blocos.map((b, k) => `<section class="apoio"><h2>Material de apoio${k ? ' (continuação)' : ''}</h2>${b}</section>`).join(String.fromCharCode(10));
+      });
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? piDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<figure[\s\S]*?<\/figure>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length; // a figura não conta no tamanho da parte
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `piscineiro-na-pratica-${chave}`;
+      return {
+        ...meta, chave, slug,
+        figAberta: (piFigs.porArtigo[chave] || []).find(x => x.aberta) || null,
+        tituloTexto: piDestexto(meta.titulo), subtituloTexto: piDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => piDestexto(t)),
+        faq: piFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const piComArtigo = piGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of piArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[piscineiro-na-pratica] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!piComArtigo.includes(a.n)) throw new Error(`[piscineiro-na-pratica] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (piArtigos.length !== piComArtigo.length) throw new Error(`[piscineiro-na-pratica] grade diz ${piComArtigo.length} aulas com artigo, mas há ${piArtigos.length} artigos exportados`);
+    const piSemFaq = piArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (piSemFaq.length) throw new Error(`[piscineiro-na-pratica] SEM perguntas frequentes: ${piSemFaq.join(', ')} — escrever em content/vdc-piscineiro/faq.json`);
+    // Trava de conteúdo: o que é ESCRITO para o blog (perguntas frequentes) não pode trazer dose, faixa de
+    // parâmetro, tempo técnico, valor em reais nem promessa de habilitação. Olha o texto que SAIU.
+    const PI_VETO = [
+      [/\d/, 'número (dose, faixa, tempo ou valor)'],
+      [/R\$|\breais\b/i, 'valor em reais'],
+      [/\b(ppm|mg\/l|mililitros?|ml)\b/i, 'unidade de dose'],
+      [/\bgarant|\bcertific|\bhabilita(?!do\b|da\b|dos\b|das\b)/i, 'promessa (garante/certifica/habilita)'],
+      [/Grupo Villela(?! Stay)/, '"Grupo Villela" isolado'],
+    ];
+    for (const a of piArtigos) for (const [q, r] of a.faq) for (const [re, oQue] of PI_VETO) {
+      const m = (q + ' ' + r).match(re);
+      if (m) throw new Error(`[piscineiro-na-pratica] faq de ${a.chave} traz ${oQue}: "${m[0]}" em "${q}"`);
+    }
+    for (const a of piArtigos) if (a.faq.length !== 3) throw new Error(`[piscineiro-na-pratica] ${a.chave} precisa de 3 perguntas frequentes; tem ${a.faq.length}`);
+
+    const piAnuncio = (qual, min = false) => `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${PI_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso Piscineiro na Prática — coleção Viver de Chácara</strong><span>Operação, limpeza e manutenção de piscinas em chácaras e hospedagens, em 25 aulas na Villela Academy. Cada aula traz o artigo em PDF; as videoaulas animadas entram no ar aula a aula. Certificado da Villela Academy ao concluir.</span></span>
+          <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
+    const PI_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(piAnuncio('curso', true))},${JSON.stringify(piAnuncio('curso', true))}];`);
+    const PI_CSS = `${piCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
+
+    vdcFigTravas('piscineiro-na-pratica', piArtigos, piFigs, PI_VETO);
+    const piAmo = vdcAmoPreparar('piscineiro-na-pratica', piArtigos, PI_CURSO, PI_VETO);
+    const piTotal = piGrade.total;
+    const piLinhaGrade = (aula, atual) => {
+      const art = piArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'piscineiro-na-pratica'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'piscineiro-na-pratica', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of piArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = piArtigos[iArt - 1], prox = piArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...vdcLdImagem(serieImagem('piscineiro-na-pratica').ld, a.figAberta),
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-08', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/piscineiro-na-pratica/#serie` },
+        articleSection: 'Piscineiro na Prática', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'Piscineiro na Prática — Viver de Chácara', author: { '@type': 'Person', name: 'Augusto Villela' } },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Piscineiro na Prática', item: `${SITE_URL}/piscineiro-na-pratica/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      lds.push(...vdcAmoLd(a, url));
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/piscineiro-na-pratica/">Piscineiro na Prática</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${piTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${piAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${vdcAmoHtml(a)}
+    ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar. Material educacional: não habilita profissionalmente, e toda quantidade de produto é a do rótulo. O artigo em PDF e as videoaulas ficam no curso.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o artigo completo em PDF está no <a href="${PI_CURSO}">curso Piscineiro na Prática</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${piAnuncio('curso')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/piscineiro-na-pratica/"><span class="rot">☰ Índice</span><span class="tit">${piArtigos.length === 1 ? 'O artigo publicado' : `Os ${piArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${piGrade.aulas.map(g => piLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Piscineiro na Prática</strong>, da coleção Viver de Chácara, de Augusto Villela. Conteúdo educacional.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog Piscineiro na Prática`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('piscineiro-na-pratica').og,
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${PI_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${PI_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of piApoio) {
+      const cam = `/piscineiro-na-pratica/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/piscineiro-na-pratica/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'piscineiro-na-pratica', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — Piscineiro na Prática | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série Piscineiro na Prática, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>Piscineiro na Prática</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/piscineiro-na-pratica/">Piscineiro na Prática</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${piAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${PI_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /piscineiro-na-pratica/
+    const piCards = piArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const piApoioCards = piApoio.map(d => `
+  <a class="cap-card" href="/piscineiro-na-pratica/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const piNoAr = piArtigos.length;
+    const piHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/piscineiro-na-pratica/#serie`,
+      name: 'Piscineiro na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: piArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `Piscineiro na Prática — ${piNoAr} ${piNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: piNoAr,
+      itemListElement: piArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'piscineiro-na-pratica', 'index.html'), layout(
+      'Piscineiro na Prática: a série do curso | Villela Stay',
+      `A série Piscineiro na Prática, da coleção Viver de Chácara: operação, limpeza e manutenção de piscinas em chácaras e hospedagens — o circuito da água, segurança, casa de máquinas, a rotina da visita, medição e equilíbrio, diagnóstico, planos, custos e liberação para hóspedes. ${piNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>Piscineiro na Prática <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Operação, limpeza e manutenção de piscinas em chácaras e hospedagens</span></h1>
+    <p>Da coleção <strong>Viver de Chácara</strong>. São ${piTotal} artigos, um para cada aula do curso: o circuito da água, a segurança, a rotina da visita, a medição, o diagnóstico e o plano escrito. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje. Conteúdo educacional: não habilita profissionalmente, e toda quantidade de produto é a do rótulo.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Piscineiro na Prática</span></nav>
+  <div class="cap-faixa">${piAnuncio('curso')}</div>
+  ${vdcAmoHub(piArtigos)}
+  ${vdcFigHub(piFigs, piArtigos)}
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${piTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${piGrade.aulas.map(g => piLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${piCards}</div>
+  ${piApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${piApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${piAnuncio('curso')}</div>
+</div>`,
+      { caminho: '/piscineiro-na-pratica/', semIdiomas: true, ...serieImagem('piscineiro-na-pratica').og, extraHead: `<style>${PI_CSS}</style>` + piHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    vdcConfereImagens('piscineiro-na-pratica', [...piArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'piscineiro-na-pratica', 'index.html')]);
+    vdcConfereVideos('piscineiro-na-pratica', piArtigos, od, path.join(od, 'piscineiro-na-pratica', 'index.html'));
+    PI_PATHS = ['/piscineiro-na-pratica/', ...piArtigos.map(a => a.caminho), ...piApoio.map(d => `/piscineiro-na-pratica/apoio/${d.chave}.html`)];
+    PI_LLMS = `## Blog: Piscineiro na Prática (${piNoAr} artigos, em português)
+
+Série do curso *Piscineiro na Prática*, da coleção Viver de Chácara, de Augusto Villela: operação,
+limpeza e manutenção de piscinas em chácaras e hospedagens — a piscina como circuito, segurança
+química e dos banhistas, volume e filtração, equilíbrio e desinfecção, casa de máquinas, acessórios
+e instrumentos de teste, produtos e armazenamento, inspeção e registro, a rotina da visita (peneirar,
+escovar, aspirar, cestos, válvula, lavagem do filtro e reposição), coleta e interpretação dos testes,
+ordem de correção, tratamento corretivo, água verde e turva, diagnóstico de campo, planos por regime
+de uso, custos e contrato, relatório, preparação para hóspedes e liberação por teste.
+Conteúdo educacional: não habilita profissionalmente. A série não publica doses nem faixas de
+parâmetro — toda quantidade de produto é a do rótulo, e as faixas são as da norma vigente.
+Índice da série: ${SITE_URL}/piscineiro-na-pratica/
+Curso on-line (25 aulas, na Villela Academy): ${PI_CURSO.split('?')[0]}
+
+${piArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog Piscineiro na Prática: hub + ${piNoAr} de ${piTotal} artigos + ${piApoio.length} material(is) de apoio + ${piAmo.total} amostra(s) grátis em vídeo`);
+  }
+
+  // ---- Série "Paisagismo na Prática" (coleção Viver de Chácara; curso animado de 25 aulas): bloco copiado do PI_* (Piscineiro na Prática) ----
+  // Preparada em 08/10/2026. O livro não está na Livraria: a série anuncia só o curso (Academy), como no
+  // PI_*, e o BlogPosting cita o livro sem `url`.
+  // ⚠️ Conteúdo de risco (adubo, corretivo e defensivo; eletricidade; árvore de grande porte): nos textos DESTE
+  // bloco e no faq.json não entra dose, distância de plantio, vazão, pressão nem tempo de rega, nem espécie que
+  // os artigos não citem; nada de "garante/certifica/habilita" — é material educacional. A trava logo abaixo
+  // confere as perguntas frequentes de cada artigo.
+  // Diferença para o PI_*: as 25 videoaulas já estão no ar na Academy, então o anúncio não diz "aula a aula".
+  // O selo por aula continua fora (o hub não precisa dele quando todas estão no ar).
+  const PA_DIR = path.join(__dirname, 'content', 'vdc-paisagismo');
+  const PA_CURSO = 'https://academia.villelastay.com.br/academy/cursos/paisagismo-na-pratica?utm_source=villelastay&utm_medium=blog-paisagismo-na-pratica';
+  const paDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(PA_DIR)) {
+    const paCss = fs.readFileSync(path.join(PA_DIR, 'artigo.css'), 'utf8');
+    const paLe = n => JSON.parse(fs.readFileSync(path.join(PA_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const paGrade = paLe('grade.json');
+    let paFaq = {}, paApoio = [];
+    try { paFaq = paLe('faq.json'); } catch (e) { console.warn('[paisagismo-na-pratica] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { paApoio = paLe('apoio.json'); } catch (e) { console.warn('[paisagismo-na-pratica] sem apoio.json — hub sairá sem material de apoio'); }
+
+    const paFigs = vdcFiguras(PA_DIR, 'paisagismo-na-pratica');
+    paArtigos = fs.readdirSync(PA_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(PA_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[paisagismo-na-pratica] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpoBruto = vdcFigInserir(raw.replace(/^<!--META .*? -->\r?\n?/, ''), paFigs.porArtigo[f.replace(/\.html$/, '')] || [], 'paisagismo-na-pratica', f, paDestexto);
+      // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
+      // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
+      const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
+        const tam = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+        if (tam(dentro) <= 9000) return m0;
+        const blocos = [];
+        for (const pedaco of dentro.split(/(?=<h3>)/)) {
+          const ult = blocos[blocos.length - 1];
+          if (ult !== undefined && tam(ult) + tam(pedaco) <= 7000) blocos[blocos.length - 1] = ult + pedaco;
+          else blocos.push(pedaco);
+        }
+        return blocos.map((b, k) => `<section class="apoio"><h2>Material de apoio${k ? ' (continuação)' : ''}</h2>${b}</section>`).join(String.fromCharCode(10));
+      });
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? paDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<figure[\s\S]*?<\/figure>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length; // a figura não conta no tamanho da parte
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `paisagismo-na-pratica-${chave}`;
+      return {
+        ...meta, chave, slug,
+        figAberta: (paFigs.porArtigo[chave] || []).find(x => x.aberta) || null,
+        tituloTexto: paDestexto(meta.titulo), subtituloTexto: paDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => paDestexto(t)),
+        faq: paFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const paComArtigo = paGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of paArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[paisagismo-na-pratica] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!paComArtigo.includes(a.n)) throw new Error(`[paisagismo-na-pratica] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (paArtigos.length !== paComArtigo.length) throw new Error(`[paisagismo-na-pratica] grade diz ${paComArtigo.length} aulas com artigo, mas há ${paArtigos.length} artigos exportados`);
+    const paSemFaq = paArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (paSemFaq.length) throw new Error(`[paisagismo-na-pratica] SEM perguntas frequentes: ${paSemFaq.join(', ')} — escrever em content/vdc-paisagismo/faq.json`);
+    // Trava de conteúdo: o que é ESCRITO para o blog (perguntas frequentes) não pode trazer dose, distância de
+    // plantio, vazão, pressão, tempo de rega, valor em reais nem promessa de habilitação. Olha o texto que SAIU.
+    // Sem algarismo nenhum, não há como passar número de dose, de distância nem de tempo. "Garantia de pega" é
+    // o assunto da aula 23 (o que combinar por escrito), e por isso é a única forma de "garant-" aceita.
+    const PA_VETO = [
+      [/\d/, 'número (dose, distância, vazão, tempo ou valor)'],
+      [/R\$|\breais\b/i, 'valor em reais'],
+      [/\b(ppm|mg\/l|mililitros?|ml|litros?|mca|bar|psi)\b/i, 'unidade de dose, de vazão ou de pressão'],
+      [/\bgarant(?!ia de pega\b)|\bcertific|\bhabilita(?!do\b|da\b|dos\b|das\b)/i, 'promessa (garante/certifica/habilita)'],
+      [/vital[ií]ci|valida[cç][aã]o p[uú]blica/i, '"vitalício" ou "validação pública"'],
+      [/Grupo Villela(?! Stay)/, '"Grupo Villela" isolado'],
+    ];
+    for (const a of paArtigos) for (const [q, r] of a.faq) for (const [re, oQue] of PA_VETO) {
+      const m = (q + ' ' + r).match(re);
+      if (m) throw new Error(`[paisagismo-na-pratica] faq de ${a.chave} traz ${oQue}: "${m[0]}" em "${q}"`);
+    }
+    for (const a of paArtigos) if (a.faq.length !== 3) throw new Error(`[paisagismo-na-pratica] ${a.chave} precisa de 3 perguntas frequentes; tem ${a.faq.length}`);
+
+    const paAnuncio = (qual, min = false) => `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${PA_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso Paisagismo na Prática — coleção Viver de Chácara</strong><span>Jardins, acessos, áreas de lazer e hospedagem em chácaras do Cerrado, em 25 videoaulas animadas na Villela Academy. Cada aula traz o artigo em PDF, com checklists e fichas. Certificado da Villela Academy ao concluir.</span></span>
+          <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
+    const PA_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(paAnuncio('curso', true))},${JSON.stringify(paAnuncio('curso', true))}];`);
+    const PA_CSS = `${paCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
+
+    vdcFigTravas('paisagismo-na-pratica', paArtigos, paFigs, PA_VETO);
+    const paAmo = vdcAmoPreparar('paisagismo-na-pratica', paArtigos, PA_CURSO, PA_VETO);
+    const paTotal = paGrade.total;
+    const paLinhaGrade = (aula, atual) => {
+      const art = paArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'paisagismo-na-pratica'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'paisagismo-na-pratica', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of paArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = paArtigos[iArt - 1], prox = paArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...vdcLdImagem(serieImagem('paisagismo-na-pratica').ld, a.figAberta),
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-08', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/paisagismo-na-pratica/#serie` },
+        articleSection: 'Paisagismo na Prática', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'Paisagismo na Prática — Viver de Chácara', author: { '@type': 'Person', name: 'Augusto Villela' } },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Paisagismo na Prática', item: `${SITE_URL}/paisagismo-na-pratica/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      lds.push(...vdcAmoLd(a, url));
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/paisagismo-na-pratica/">Paisagismo na Prática</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${paTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${paAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${vdcAmoHtml(a)}
+    ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar. Material educacional: não habilita profissionalmente; adubo, calcário e defensivo seguem a análise de solo e o rótulo. O artigo em PDF e as videoaulas ficam no curso.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o artigo completo em PDF está no <a href="${PA_CURSO}">curso Paisagismo na Prática</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${paAnuncio('curso')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/paisagismo-na-pratica/"><span class="rot">☰ Índice</span><span class="tit">${paArtigos.length === 1 ? 'O artigo publicado' : `Os ${paArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${paGrade.aulas.map(g => paLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Paisagismo na Prática</strong>, da coleção Viver de Chácara, de Augusto Villela. Conteúdo educacional.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog Paisagismo na Prática`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('paisagismo-na-pratica').og,
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${PA_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${PA_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of paApoio) {
+      const cam = `/paisagismo-na-pratica/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/paisagismo-na-pratica/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'paisagismo-na-pratica', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — Paisagismo na Prática | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série Paisagismo na Prática, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>Paisagismo na Prática</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/paisagismo-na-pratica/">Paisagismo na Prática</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${paAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${PA_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /paisagismo-na-pratica/
+    const paCards = paArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const paApoioCards = paApoio.map(d => `
+  <a class="cap-card" href="/paisagismo-na-pratica/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const paNoAr = paArtigos.length;
+    const paHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/paisagismo-na-pratica/#serie`,
+      name: 'Paisagismo na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: paArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `Paisagismo na Prática — ${paNoAr} ${paNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: paNoAr,
+      itemListElement: paArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'paisagismo-na-pratica', 'index.html'), layout(
+      'Paisagismo na Prática: a série do curso | Villela Stay',
+      `A série Paisagismo na Prática, da coleção Viver de Chácara: jardins, acessos, áreas de lazer e hospedagem em chácaras do Cerrado — ler o lugar, briefing e croqui, escolha das plantas, solo, implantação na ordem certa, gramado, irrigação, manutenção, custos e entrega. ${paNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>Paisagismo na Prática <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Jardins, acessos, áreas de lazer e hospedagem em chácaras do Cerrado</span></h1>
+    <p>Da coleção <strong>Viver de Chácara</strong>. São ${paTotal} artigos, um para cada aula do curso: a leitura do lugar, o briefing e o croqui, a escolha das plantas, o solo, a implantação na ordem certa, a manutenção e as contas. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje. Conteúdo educacional: não habilita profissionalmente; adubo, calcário e defensivo seguem a análise de solo e o rótulo, e a referência é o Cerrado.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Paisagismo na Prática</span></nav>
+  <div class="cap-faixa">${paAnuncio('curso')}</div>
+  ${vdcAmoHub(paArtigos)}
+  ${vdcFigHub(paFigs, paArtigos)}
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${paTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${paGrade.aulas.map(g => paLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${paCards}</div>
+  ${paApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${paApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${paAnuncio('curso')}</div>
+</div>`,
+      { caminho: '/paisagismo-na-pratica/', semIdiomas: true, ...serieImagem('paisagismo-na-pratica').og, extraHead: `<style>${PA_CSS}</style>` + paHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    vdcConfereImagens('paisagismo-na-pratica', [...paArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'paisagismo-na-pratica', 'index.html')]);
+    vdcConfereVideos('paisagismo-na-pratica', paArtigos, od, path.join(od, 'paisagismo-na-pratica', 'index.html'));
+    PA_PATHS = ['/paisagismo-na-pratica/', ...paArtigos.map(a => a.caminho), ...paApoio.map(d => `/paisagismo-na-pratica/apoio/${d.chave}.html`)];
+    PA_LLMS = `## Blog: Paisagismo na Prática (${paNoAr} artigos, em português)
+
+Série do curso *Paisagismo na Prática*, da coleção Viver de Chácara, de Augusto Villela: jardins,
+acessos, áreas de lazer e hospedagem em chácaras do Cerrado — as funções de um jardim e as etapas
+de um serviço, segurança e limites do profissional habilitado, princípios de composição, leitura de
+sol, vento, chuva, declive e solo, briefing, medição e croqui, critérios de escolha das espécies,
+grupos de plantas e exame da muda, análise de solo e insumos, setores e circulação, planta
+simplificada, quantidades e cronograma, limpeza e marcação, preparo do solo e canteiros, plantio e
+tutoramento, gramados, vasos e espaços compactos, irrigação, iluminação e acabamentos, entrada,
+entorno da casa e da piscina, pousadas e eventos, manutenção e diagnóstico, custos, proposta,
+contrato, entrega e o projeto integrador.
+Conteúdo educacional: não habilita profissionalmente. A referência é o Cerrado. A série não publica
+dose de adubo, corretivo ou defensivo, distância de plantio, vazão, pressão nem tempo de rega —
+valem a análise de solo, o rótulo e o manual do fabricante.
+Índice da série: ${SITE_URL}/paisagismo-na-pratica/
+Curso on-line (25 videoaulas, na Villela Academy): ${PA_CURSO.split('?')[0]}
+
+${paArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog Paisagismo na Prática: hub + ${paNoAr} de ${paTotal} artigos + ${paApoio.length} material(is) de apoio + ${paAmo.total} amostra(s) grátis em vídeo`);
+  }
+
+  // ---- Série "Pedreiro Completo na Prática" (coleção Viver de Chácara; curso animado de 25 aulas): bloco copiado do PA_* (Paisagismo na Prática) ----
+  // Preparada em 09/10/2026. O livro não está na Livraria: a série anuncia só o curso (Academy), como no
+  // PI_* e no PA_*, e o BlogPosting cita o livro sem `url`.
+  // ⚠️ Conteúdo de risco (estrutura, elétrica, hidráulica, altura, demolição; traço, espessura, caimento e
+  // cura): nos textos DESTE bloco e no faq.json não entra traço de argamassa nem de concreto, espessura,
+  // caimento, prazo de cura nem número de norma, e nenhum deles ensina serviço que o curso reserva a
+  // profissional — a resposta é "o curso mostra o que pedir e o que conferir". Nada de "garante/certifica/
+  // habilita": é material educacional. Duas travas logo abaixo: uma nas perguntas frequentes (sem algarismo
+  // nenhum) e outra na camada ABERTA que vem do artigo (título, subtítulo, resumo e índice).
+  // Como no PI_* no lançamento: o curso foi publicado em 09/10/2026 e os vídeos sobem aos poucos, então o
+  // anúncio diz "entram no ar aula a aula" e o hub não mostra selo de vídeo por aula. Quando as 25 estiverem
+  // no ar, trocar a frase do `peAnuncio` e a linha "Curso on-line" do PE_LLMS (como o PA_*).
+  // PE_CURSO é o ÚNICO endereço do curso usado pela série (anúncios, aviso sem JavaScript e llms.txt).
+  const PE_DIR = path.join(__dirname, 'content', 'vdc-pedreiro');
+  const PE_CURSO = 'https://academia.villelastay.com.br/academy/cursos/pedreiro-completo-na-pratica?utm_source=villelastay&utm_medium=blog-pedreiro-completo-na-pratica';
+  const peDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(PE_DIR)) {
+    const peCss = fs.readFileSync(path.join(PE_DIR, 'artigo.css'), 'utf8');
+    const peLe = n => JSON.parse(fs.readFileSync(path.join(PE_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const peGrade = peLe('grade.json');
+    let peFaq = {}, peApoio = [];
+    try { peFaq = peLe('faq.json'); } catch (e) { console.warn('[pedreiro-completo-na-pratica] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { peApoio = peLe('apoio.json'); } catch (e) { console.warn('[pedreiro-completo-na-pratica] sem apoio.json — hub sairá sem material de apoio'); }
+
+    const peFigs = vdcFiguras(PE_DIR, 'pedreiro-completo-na-pratica');
+    peArtigos = fs.readdirSync(PE_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(PE_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[pedreiro-completo-na-pratica] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpoBruto = vdcFigInserir(raw.replace(/^<!--META .*? -->\r?\n?/, ''), peFigs.porArtigo[f.replace(/\.html$/, '')] || [], 'pedreiro-completo-na-pratica', f, peDestexto);
+      // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
+      // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
+      const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
+        const tam = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+        if (tam(dentro) <= 9000) return m0;
+        const blocos = [];
+        for (const pedaco of dentro.split(/(?=<h3>)/)) {
+          const ult = blocos[blocos.length - 1];
+          if (ult !== undefined && tam(ult) + tam(pedaco) <= 7000) blocos[blocos.length - 1] = ult + pedaco;
+          else blocos.push(pedaco);
+        }
+        return blocos.map((b, k) => `<section class="apoio"><h2>Material de apoio${k ? ' (continuação)' : ''}</h2>${b}</section>`).join(String.fromCharCode(10));
+      });
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? peDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<figure[\s\S]*?<\/figure>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length; // a figura não conta no tamanho da parte
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `pedreiro-completo-na-pratica-${chave}`;
+      return {
+        ...meta, chave, slug,
+        figAberta: (peFigs.porArtigo[chave] || []).find(x => x.aberta) || null,
+        tituloTexto: peDestexto(meta.titulo), subtituloTexto: peDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => peDestexto(t)),
+        faq: peFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const peComArtigo = peGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of peArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[pedreiro-completo-na-pratica] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!peComArtigo.includes(a.n)) throw new Error(`[pedreiro-completo-na-pratica] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (peArtigos.length !== peComArtigo.length) throw new Error(`[pedreiro-completo-na-pratica] grade diz ${peComArtigo.length} aulas com artigo, mas há ${peArtigos.length} artigos exportados`);
+    const peSemFaq = peArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (peSemFaq.length) throw new Error(`[pedreiro-completo-na-pratica] SEM perguntas frequentes: ${peSemFaq.join(', ')} — escrever em content/vdc-pedreiro/faq.json`);
+    // Trava de conteúdo: o que é ESCRITO para o blog (perguntas frequentes) não pode trazer traço, espessura,
+    // caimento, prazo de cura, número de norma, valor em reais nem promessa de habilitação. Olha o texto que
+    // SAIU. Sem algarismo nenhum, não há como passar traço, medida, prazo nem norma; o número por extenso
+    // junto de unidade de tempo ou de medida também é recusado. "Garantia" como instituto (a garantia do
+    // serviço, assunto da aula 23) e "Certificado da Villela Academy" são as únicas formas aceitas.
+    const PE_PROMESSA = /\bgarant(?!ia\b)|\bcertific(?!ado da Villela Academy\b)|\bhabilita(?!do\b|da\b|dos\b|das\b)/i;
+    const PE_EXTENSO = /\b(um|uma|dois|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|doze|quinze|vinte|trinta|\w+enta)\s+(dias?|horas?|minutos?|semanas?|mil[ií]metros?|cent[ií]metros?|por cento)\b/i;
+    const PE_VETO = [
+      [/\d/, 'número (traço, espessura, caimento, prazo, norma ou valor)'],
+      [/R\$|\breais\b/i, 'valor em reais'],
+      [/\b(mm|cm|ml|mililitros?|litros?|kg|quilos?|mpa)\b|%/i, 'unidade de medida ou percentual'],
+      [PE_EXTENSO, 'prazo ou medida por extenso'],
+      [/\bNBR\b|\bNR\b|\bABNT\b/, 'número ou sigla de norma'],
+      [PE_PROMESSA, 'promessa (garante/certifica/habilita)'],
+      [/vital[ií]ci|valida[cç][aã]o p[uú]blica/i, '"vitalício" ou "validação pública"'],
+      [/Grupo Villela(?! Stay)/, '"Grupo Villela" isolado'],
+    ];
+    for (const a of peArtigos) for (const [q, r] of a.faq) for (const [re, oQue] of PE_VETO) {
+      const m = (q + ' ' + r).match(re);
+      if (m) throw new Error(`[pedreiro-completo-na-pratica] faq de ${a.chave} traz ${oQue}: "${m[0]}" em "${q}"`);
+    }
+    for (const a of peArtigos) if (a.faq.length !== 3) throw new Error(`[pedreiro-completo-na-pratica] ${a.chave} precisa de 3 perguntas frequentes; tem ${a.faq.length}`);
+    // Segunda trava: a camada ABERTA que vem do artigo (título, subtítulo, resumo e índice). Aqui há número
+    // legítimo (a medida do cômodo do exemplo, a quantidade de placas), então a recusa é pelo TIPO: traço
+    // (a : b), prazo em dias ou horas, percentual de caimento, espessura em milímetros, resistência e norma.
+    // As aulas 16 e 19 trazem o prazo na síntese; o exportador da série (dados\cursos\vdc-pedreiro\
+    // exportar_blog.py) o retira do resumo e do índice, e ele segue inteiro no desenvolvimento protegido.
+    const PE_VETO_ABERTA = [
+      [/\d\s*:\s*\d/, 'traço'],
+      [/\d\s*(dias?|horas?|h|min|minutos?|semanas?)\b/i, 'prazo em número'],
+      [PE_EXTENSO, 'prazo ou medida por extenso'],
+      [/\d\s*(mm|mpa)\b|\d\s*%|\bpor cento\b/i, 'espessura, caimento ou resistência em número'],
+      [/\bNBR\b|\bNR[- ]?\d|\bABNT\b/, 'número de norma'],
+      [/R\$|\breais\b/i, 'valor em reais'],
+      [PE_PROMESSA, 'promessa (garante/certifica/habilita)'],
+      [/vital[ií]ci|valida[cç][aã]o p[uú]blica/i, '"vitalício" ou "validação pública"'],
+      [/Grupo Villela(?! Stay)/, '"Grupo Villela" isolado'],
+    ];
+    for (const a of peArtigos) {
+      const aberto = [a.tituloTexto, a.subtituloTexto, a.descricao, peDestexto(a.resumo_html), a.indice.join(' | ')].join(' | ');
+      for (const [re, oQue] of PE_VETO_ABERTA) {
+        const m = aberto.match(re);
+        if (m) throw new Error(`[pedreiro-completo-na-pratica] camada aberta de ${a.chave} traz ${oQue}: "${m[0]}" em "…${aberto.slice(Math.max(0, m.index - 50), m.index + 40)}…"`);
+      }
+    }
+
+    const peAnuncio = (qual, min = false) => `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${PE_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso Pedreiro Completo na Prática — coleção Viver de Chácara</strong><span>Alvenaria, revestimentos, áreas externas e pequenos reparos em chácaras, em 25 aulas na Villela Academy. Cada aula traz o artigo em PDF, com checklists; as videoaulas animadas entram no ar aula a aula. Certificado da Villela Academy ao concluir.</span></span>
+          <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
+    const PE_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(peAnuncio('curso', true))},${JSON.stringify(peAnuncio('curso', true))}];`);
+    const PE_CSS = `${peCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
+
+    vdcFigTravas('pedreiro-completo-na-pratica', peArtigos, peFigs, PE_VETO_ABERTA);
+    const peAmo = vdcAmoPreparar('pedreiro-completo-na-pratica', peArtigos, PE_CURSO, PE_VETO_ABERTA);
+    const peTotal = peGrade.total;
+    const peLinhaGrade = (aula, atual) => {
+      const art = peArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'pedreiro-completo-na-pratica'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'pedreiro-completo-na-pratica', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of peArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = peArtigos[iArt - 1], prox = peArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...vdcLdImagem(serieImagem('pedreiro-completo-na-pratica').ld, a.figAberta),
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-09', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/pedreiro-completo-na-pratica/#serie` },
+        articleSection: 'Pedreiro Completo na Prática', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'Pedreiro Completo na Prática — Viver de Chácara', author: { '@type': 'Person', name: 'Augusto Villela' } },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Pedreiro Completo na Prática', item: `${SITE_URL}/pedreiro-completo-na-pratica/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      lds.push(...vdcAmoLd(a, url));
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/pedreiro-completo-na-pratica/">Pedreiro Completo na Prática</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${peTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${peAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${vdcAmoHtml(a)}
+    ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar. Material educacional: não habilita profissionalmente; estrutura, elétrica, hidráulica, altura e demolição ficam com profissional habilitado. O artigo em PDF e as videoaulas ficam no curso.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o artigo completo em PDF está no <a href="${PE_CURSO}">curso Pedreiro Completo na Prática</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${peAnuncio('curso')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/pedreiro-completo-na-pratica/"><span class="rot">☰ Índice</span><span class="tit">${peArtigos.length === 1 ? 'O artigo publicado' : `Os ${peArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${peGrade.aulas.map(g => peLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Pedreiro Completo na Prática</strong>, da coleção Viver de Chácara, de Augusto Villela. Conteúdo educacional.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog Pedreiro Completo na Prática`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('pedreiro-completo-na-pratica').og,
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${PE_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${PE_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of peApoio) {
+      const cam = `/pedreiro-completo-na-pratica/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/pedreiro-completo-na-pratica/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'pedreiro-completo-na-pratica', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — Pedreiro Completo na Prática | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série Pedreiro Completo na Prática, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>Pedreiro Completo na Prática</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/pedreiro-completo-na-pratica/">Pedreiro Completo na Prática</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${peAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${PE_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /pedreiro-completo-na-pratica/
+    const peCards = peArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const peApoioCards = peApoio.map(d => `
+  <a class="cap-card" href="/pedreiro-completo-na-pratica/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const peNoAr = peArtigos.length;
+    const peHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/pedreiro-completo-na-pratica/#serie`,
+      name: 'Pedreiro Completo na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: peArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `Pedreiro Completo na Prática — ${peNoAr} ${peNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: peNoAr,
+      itemListElement: peArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'pedreiro-completo-na-pratica', 'index.html'), layout(
+      'Pedreiro Completo na Prática: a série do curso | Villela Stay',
+      `A série Pedreiro Completo na Prática, da coleção Viver de Chácara: alvenaria, revestimentos, áreas externas e pequenos reparos — medir, ler a planta, separar o que é de profissional, levantar e conferir a parede, revestir, fazer o contrapiso e o piso, orçar e receber o serviço. ${peNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>Pedreiro Completo na Prática <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Alvenaria, revestimentos, áreas externas e pequenos reparos</span></h1>
+    <p>Da coleção <strong>Viver de Chácara</strong>. São ${peTotal} artigos, um para cada aula do curso: a ordem de uma obra pequena, a medida e a leitura da planta, a parede, o revestimento, o contrapiso e o piso, os reparos, o orçamento e o aceite, sempre na reforma de um depósito de chácara. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje. Conteúdo educacional: não habilita profissionalmente; estrutura, elétrica, hidráulica, altura e demolição ficam com profissional habilitado, e nesses pontos o curso mostra o que pedir e o que conferir.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Pedreiro Completo na Prática</span></nav>
+  <div class="cap-faixa">${peAnuncio('curso')}</div>
+  ${vdcAmoHub(peArtigos)}
+  ${vdcFigHub(peFigs, peArtigos)}
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${peTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${peGrade.aulas.map(g => peLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${peCards}</div>
+  ${peApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${peApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${peAnuncio('curso')}</div>
+</div>`,
+      { caminho: '/pedreiro-completo-na-pratica/', semIdiomas: true, ...serieImagem('pedreiro-completo-na-pratica').og, extraHead: `<style>${PE_CSS}</style>` + peHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    vdcConfereImagens('pedreiro-completo-na-pratica', [...peArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'pedreiro-completo-na-pratica', 'index.html')]);
+    vdcConfereVideos('pedreiro-completo-na-pratica', peArtigos, od, path.join(od, 'pedreiro-completo-na-pratica', 'index.html'));
+    PE_PATHS = ['/pedreiro-completo-na-pratica/', ...peArtigos.map(a => a.caminho), ...peApoio.map(d => `/pedreiro-completo-na-pratica/apoio/${d.chave}.html`)];
+    PE_LLMS = `## Blog: Pedreiro Completo na Prática (${peNoAr} artigos, em português)
+
+Série do curso *Pedreiro Completo na Prática*, da coleção Viver de Chácara, de Augusto Villela:
+alvenaria, revestimentos, áreas externas e pequenos reparos em uma obra pequena e não estrutural — o
+ofício e a sequência de uma reforma, segurança e limites do serviço, medição, nível, prumo,
+alinhamento e esquadro, leitura de plantas e cotas, estrutura e vedação, ferramentas, cimento,
+argamassa e concreto, blocos e revestimentos, visita e marcação, quantitativos e logística, primeira
+fiada, elevação e amarração, vãos e vergas, compatibilização com as instalações, conferência da
+alvenaria, chapisco, emboço e reboco, contrapiso e caimento, paginação e assentamento cerâmico,
+rejunte e selante, umidade e reparos, controle de qualidade, orçamento, proposta, medição, aceite e
+o projeto final.
+Conteúdo educacional: não habilita profissionalmente. Estrutura, instalação elétrica e hidráulica,
+trabalho em altura e demolição ficam com profissional habilitado: nesses pontos a série mostra o que
+pedir e o que conferir. Os resumos e as perguntas frequentes não trazem traço, espessura, caimento
+nem prazo de cura — valem o projeto, a norma técnica e a embalagem do produto.
+Índice da série: ${SITE_URL}/pedreiro-completo-na-pratica/
+Curso on-line (25 aulas na Villela Academy; as videoaulas entram no ar aula a aula): ${PE_CURSO.split('?')[0]}
+
+${peArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog Pedreiro Completo na Prática: hub + ${peNoAr} de ${peTotal} artigos + ${peApoio.length} material(is) de apoio + ${peAmo.total} amostra(s) grátis em vídeo`);
+  }
+
+  // ---- Série "Construção com Contêineres na Prática" (coleção Viver de Chácara; curso animado de 25 aulas): bloco copiado do PE_* (Pedreiro Completo na Prática) ----
+  // Preparada em 09/10/2026. O livro não está na Livraria: a série anuncia só o curso (Academy), como no
+  // PI_*, no PA_* e no PE_*, e o BlogPosting cita o livro sem `url`.
+  // ⚠️ Conteúdo de risco (fundação, apoios, corte, reforço, solda, içamento, instalações, cobertura, e o
+  // contêiner usado). Regras do Augusto para os textos DESTE bloco e para o faq.json:
+  //  - nenhum valor em reais, nenhuma promessa de economia, de resultado ou de renda, nenhuma marca
+  //    comercial (diz-se "plataformas de hospedagem");
+  //  - licenciamento só como "consultar o órgão de licenciamento do município": sem cidade, sem unidade da
+  //    federação, sem lei, decreto ou número;
+  //  - contêiner usado: "processo de higienização profissional", contratado e com comprovante, sem
+  //    descrever o processo, sem nomear produto ou substância e sem prometer resultado;
+  //  - serviço reservado nunca é instruído: "o curso mostra o que pedir e o que conferir";
+  //  - nada de "garante/certifica/habilita" ("garantia" como instituto e "Certificado da Villela Academy"
+  //    são as exceções); acesso de 1 ano, nunca "vitalício".
+  // Duas travas logo abaixo: uma nas perguntas frequentes (sem algarismo nenhum) e outra na camada ABERTA
+  // que vem do artigo (título, subtítulo, resumo e índice), onde as medidas de catálogo do contêiner (em
+  // metros) podem aparecer, mas espessura, bitola, peso, carga, percentual, prazo e norma não.
+  //
+  // ⚠️ CT_CURSO é o ÚNICO ponto a trocar quando o curso for publicado na Academy. Em 09/10/2026 o produto
+  // estava em RASCUNHO e a página .../academy/cursos/construcao-com-conteineres-na-pratica respondia 404:
+  // por isso CT_CURSO aponta para a VITRINE (/academy/marketplace) e a série diz "em preparação". Quando
+  // a página do curso responder 200, troque SÓ a linha do CT_CURSO pela que está comentada logo abaixo:
+  // o anúncio, o botão, o aviso sem JavaScript e a linha do llms.txt mudam sozinhos (`ctPublicado`).
+  // Depois disso falta a /tudo.html: slug em ASSUNTOS → chacara → cursos + `node tools/atualizar-catalogo.js`
+  // (os dois andam juntos, senão o build quebra); a miniatura src/capas/curso-construcao-com-conteineres-
+  // na-pratica.webp já está no repositório.
+  const CT_DIR = path.join(__dirname, 'content', 'vdc-conteineres');
+  // Curso publicado em 09/10/2026 (a página passou a responder 200): o endereço é o do curso.
+  const CT_CURSO = 'https://academia.villelastay.com.br/academy/cursos/construcao-com-conteineres-na-pratica?utm_source=villelastay&utm_medium=blog-construcao-com-conteineres-na-pratica';
+  const ctPublicado = CT_CURSO.includes('/academy/cursos/');
+  const ctDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(CT_DIR)) {
+    const ctCss = fs.readFileSync(path.join(CT_DIR, 'artigo.css'), 'utf8');
+    const ctLe = n => JSON.parse(fs.readFileSync(path.join(CT_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const ctGrade = ctLe('grade.json');
+    let ctFaq = {}, ctApoio = [];
+    try { ctFaq = ctLe('faq.json'); } catch (e) { console.warn('[construcao-com-conteineres-na-pratica] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { ctApoio = ctLe('apoio.json'); } catch (e) { console.warn('[construcao-com-conteineres-na-pratica] sem apoio.json — hub sairá sem material de apoio'); }
+
+    const ctFigs = vdcFiguras(CT_DIR, 'construcao-com-conteineres-na-pratica');
+    ctArtigos = fs.readdirSync(CT_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(CT_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[construcao-com-conteineres-na-pratica] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpoBruto = vdcFigInserir(raw.replace(/^<!--META .*? -->\r?\n?/, ''), ctFigs.porArtigo[f.replace(/\.html$/, '')] || [], 'construcao-com-conteineres-na-pratica', f, ctDestexto);
+      // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
+      // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
+      const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
+        const tam = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+        if (tam(dentro) <= 9000) return m0;
+        const blocos = [];
+        for (const pedaco of dentro.split(/(?=<h3>)/)) {
+          const ult = blocos[blocos.length - 1];
+          if (ult !== undefined && tam(ult) + tam(pedaco) <= 7000) blocos[blocos.length - 1] = ult + pedaco;
+          else blocos.push(pedaco);
+        }
+        return blocos.map((b, k) => `<section class="apoio"><h2>Material de apoio${k ? ' (continuação)' : ''}</h2>${b}</section>`).join(String.fromCharCode(10));
+      });
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? ctDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<figure[\s\S]*?<\/figure>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length; // a figura não conta no tamanho da parte
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `construcao-com-conteineres-na-pratica-${chave}`;
+      return {
+        ...meta, chave, slug,
+        figAberta: (ctFigs.porArtigo[chave] || []).find(x => x.aberta) || null,
+        tituloTexto: ctDestexto(meta.titulo), subtituloTexto: ctDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => ctDestexto(t)),
+        faq: ctFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const ctComArtigo = ctGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of ctArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[construcao-com-conteineres-na-pratica] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!ctComArtigo.includes(a.n)) throw new Error(`[construcao-com-conteineres-na-pratica] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (ctArtigos.length !== ctComArtigo.length) throw new Error(`[construcao-com-conteineres-na-pratica] grade diz ${ctComArtigo.length} aulas com artigo, mas há ${ctArtigos.length} artigos exportados`);
+    const ctSemFaq = ctArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (ctSemFaq.length) throw new Error(`[construcao-com-conteineres-na-pratica] SEM perguntas frequentes: ${ctSemFaq.join(', ')} — escrever em content/vdc-conteineres/faq.json`);
+    // Trava de conteúdo: o que é ESCRITO para o blog (perguntas frequentes) não pode trazer medida, peso,
+    // prazo, número de norma, valor em reais, marca comercial, lugar ou lei de licenciamento, promessa de
+    // economia ou de renda, nem descrição do processo de higienização. Olha o texto que SAIU. Sem algarismo
+    // nenhum, não há como passar espessura, bitola, vão, carga, prazo nem norma; o número por extenso junto
+    // de unidade de tempo ou de medida também é recusado. "Garantia" como instituto e "Certificado da
+    // Villela Academy" são as únicas formas aceitas de "garant-" e "certific-".
+    const CT_PROMESSA = /\bgarant(?!ia\b)|\bcertific(?!ado da Villela Academy\b)|\bhabilita(?!do\b|da\b|dos\b|das\b)/i;
+    const CT_EXTENSO = /\b(um|uma|dois|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|doze|quinze|vinte|trinta|\w+enta)\s+(dias?|horas?|minutos?|semanas?|mil[ií]metros?|cent[ií]metros?|quilos?|toneladas?|por cento)\b/i;
+    // Comuns às duas travas: valem para tudo o que vai aberto.
+    const CT_VETO_COMUM = [
+      [/R\$|\breais\b/i, 'valor em reais'],
+      [CT_EXTENSO, 'prazo, medida ou peso por extenso'],
+      [CT_PROMESSA, 'promessa (garante/certifica/habilita)'],
+      [/\beconomiz|\bmais barat|\blucr|\brentab|\bretorno (certo|garantido)|\brenda (extra|certa|garantida|passiva)/i, 'promessa de economia, de resultado ou de renda'],
+      [/airbnb|booking|vrbo|decolar|expedia|hoteis\.com|tripadvisor/i, 'marca comercial (dizer "plataformas de hospedagem")'],
+      [/Bras[ií]lia|Distrito Federal|\bDF\b|\bGDF\b|\blei\b|\bdecreto\b|\bportaria\b|c[oó]digo de obras/i, 'lugar ou norma de licenciamento (dizer "consultar o órgão de licenciamento do município")'],
+      [/lavagem|jateamento|desinfe|fumiga|pesticid|inseticid|solvente|hipoclorito|\bcloro\b|detergente|desengraxante|produto qu[ií]mico/i, 'descrição do processo de higienização (dizer só "processo de higienização profissional")'],
+      [/vital[ií]ci|valida[cç][aã]o p[uú]blica/i, '"vitalício" ou "validação pública"'],
+      [/Grupo Villela(?! Stay)/, '"Grupo Villela" isolado'],
+    ];
+    const CT_VETO = [
+      [/\d/, 'número (medida, peso, carga, prazo, norma ou valor)'],
+      [/\b(mm|cm|ml|mililitros?|litros?|kg|quilos?|toneladas?|mpa)\b|%/i, 'unidade de medida ou percentual'],
+      [/\bNBR\b|\bNR\b|\bABNT\b/, 'número ou sigla de norma'],
+      ...CT_VETO_COMUM,
+    ];
+    for (const a of ctArtigos) for (const [q, r] of a.faq) for (const [re, oQue] of CT_VETO) {
+      const m = (q + ' ' + r).match(re);
+      if (m) throw new Error(`[construcao-com-conteineres-na-pratica] faq de ${a.chave} traz ${oQue}: "${m[0]}" em "${q}"`);
+    }
+    for (const a of ctArtigos) if (a.faq.length !== 3) throw new Error(`[construcao-com-conteineres-na-pratica] ${a.chave} precisa de 3 perguntas frequentes; tem ${a.faq.length}`);
+    // Segunda trava: a camada ABERTA que vem do artigo (título, subtítulo, resumo e índice). Aqui há número
+    // legítimo: a quantidade (onze etapas, doze pontos) e as medidas de catálogo do contêiner, que o autor
+    // dá em metros. Então a recusa é pelo TIPO. Medida em metro só passa se for uma das de catálogo listadas
+    // abaixo (as do 40 pés high cube do exemplo e a soma das zonas): vão, afastamento, folga e altura de
+    // apoio são medida de projeto ou de terreno e ficam no desenvolvimento protegido. Peso de placa, carga,
+    // espessura, bitola, percentual, prazo e número de norma também. O exportador da série
+    // (dados\cursos\vdc-conteineres\exportar_blog.py) faz as trocas declaradas no resumo e no índice.
+    const CT_MEDIDAS_CATALOGO = ['12,192 m', '2,438 m', '2,896 m', '12,032 m', '2,352 m', '2,698 m', '28,30 m²', '29,72 m²'];
+    const CT_VETO_ABERTA = [
+      [/\d\s*(dias?|horas?|h|min|minutos?|semanas?|meses|m[eê]s|anos?)\b/i, 'prazo em número'],
+      [/\d[\d.,]*\s*(mm|cm|pol|polegadas?|mpa|kg|kgf|kn|t|toneladas?|quilos?)\b|\d\s*%|\bpor cento\b/i, 'espessura, bitola, peso, carga ou percentual em número'],
+      [/\d[\d.,]*\s*m(²|³|2|3)?(?![\wà-ÿ])/i, 'medida em metro que não é de catálogo do contêiner'],
+      [/\bNBR\b|\bNR[- ]?\d|\bABNT\b/, 'número de norma'],
+      ...CT_VETO_COMUM,
+    ];
+    for (const a of ctArtigos) {
+      let aberto = [a.tituloTexto, a.subtituloTexto, a.descricao, ctDestexto(a.resumo_html), a.indice.join(' | ')].join(' | ');
+      for (const med of CT_MEDIDAS_CATALOGO) aberto = aberto.split(med).join('[medida de catálogo]');
+      for (const [re, oQue] of CT_VETO_ABERTA) {
+        const m = aberto.match(re);
+        if (m) throw new Error(`[construcao-com-conteineres-na-pratica] camada aberta de ${a.chave} traz ${oQue}: "${m[0]}" em "…${aberto.slice(Math.max(0, m.index - 50), m.index + 40)}…"`);
+      }
+    }
+
+    // Anúncio. Enquanto o curso está em rascunho (ctPublicado === false), diz "em preparação" e leva à
+    // vitrine da Academy; com o curso publicado, leva à página dele e diz que os vídeos entram aula a aula.
+    const ctAnuncio = (qual, min = false) => `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${CT_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso Construção com Contêineres na Prática — coleção Viver de Chácara</strong><span>${ctPublicado
+    ? 'Planejamento, contratação e fiscalização de casas, studios e pequenas villas com contêineres, em 25 aulas na Villela Academy. Cada aula traz o artigo em PDF, com checklists; as videoaulas animadas entram no ar aula a aula. Certificado da Villela Academy ao concluir.'
+    : 'Planejamento, contratação e fiscalização de casas, studios e pequenas villas com contêineres, em 25 aulas. O curso está em preparação na Villela Academy: enquanto ele não entra no ar, conheça os outros títulos da coleção Viver de Chácara na vitrine.'}</span></span>
+          <span class="cap-ad-btn">${ctPublicado ? 'Conhecer o curso →' : 'Ver a vitrine da Academy →'}</span></a>`;
+    const CT_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(ctAnuncio('curso', true))},${JSON.stringify(ctAnuncio('curso', true))}];`);
+    const CT_CSS = `${ctCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
+
+    vdcFigTravas('construcao-com-conteineres-na-pratica', ctArtigos, ctFigs, CT_VETO_ABERTA, t => CT_MEDIDAS_CATALOGO.reduce((x, med) => x.split(med).join('[medida de catálogo]'), t));
+    const ctAmo = vdcAmoPreparar('construcao-com-conteineres-na-pratica', ctArtigos, CT_CURSO, CT_VETO_ABERTA, t => CT_MEDIDAS_CATALOGO.reduce((x, med) => x.split(med).join('[medida de catálogo]'), t));
+    const ctTotal = ctGrade.total;
+    const ctLinhaGrade = (aula, atual) => {
+      const art = ctArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'construcao-com-conteineres-na-pratica'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'construcao-com-conteineres-na-pratica', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of ctArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = ctArtigos[iArt - 1], prox = ctArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...vdcLdImagem(serieImagem('construcao-com-conteineres-na-pratica').ld, a.figAberta),
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-09', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/construcao-com-conteineres-na-pratica/#serie` },
+        articleSection: 'Construção com Contêineres na Prática', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'Construção com Contêineres na Prática — Viver de Chácara', author: { '@type': 'Person', name: 'Augusto Villela' } },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Construção com Contêineres na Prática', item: `${SITE_URL}/construcao-com-conteineres-na-pratica/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      lds.push(...vdcAmoLd(a, url));
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/construcao-com-conteineres-na-pratica/">Construção com Contêineres na Prática</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${ctTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${ctAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${vdcAmoHtml(a)}
+    ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar. Material educacional: é um guia de decisão, de contratação e de fiscalização, não é formação profissional nem substitui projeto; fundação, apoios, cortes, reforços, içamento, instalações e cobertura ficam com projeto e responsável técnico. O artigo em PDF e as videoaulas ficam no curso.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; ${ctPublicado ? `o artigo completo em PDF está no <a href="${CT_CURSO}">curso Construção com Contêineres na Prática</a>` : `o artigo completo em PDF fará parte do curso Construção com Contêineres na Prática, em preparação na <a href="${CT_CURSO}">Villela Academy</a>`}.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${ctAnuncio('curso')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/construcao-com-conteineres-na-pratica/"><span class="rot">☰ Índice</span><span class="tit">${ctArtigos.length === 1 ? 'O artigo publicado' : `Os ${ctArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${ctGrade.aulas.map(g => ctLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Construção com Contêineres na Prática</strong>, da coleção Viver de Chácara, de Augusto Villela. Conteúdo educacional.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog Construção com Contêineres na Prática`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('construcao-com-conteineres-na-pratica').og,
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CT_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${CT_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of ctApoio) {
+      const cam = `/construcao-com-conteineres-na-pratica/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/construcao-com-conteineres-na-pratica/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'construcao-com-conteineres-na-pratica', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — Construção com Contêineres na Prática | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série Construção com Contêineres na Prática, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>Construção com Contêineres na Prática</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/construcao-com-conteineres-na-pratica/">Construção com Contêineres na Prática</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${ctAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${CT_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /construcao-com-conteineres-na-pratica/
+    const ctCards = ctArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const ctApoioCards = ctApoio.map(d => `
+  <a class="cap-card" href="/construcao-com-conteineres-na-pratica/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const ctNoAr = ctArtigos.length;
+    const ctHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/construcao-com-conteineres-na-pratica/#serie`,
+      name: 'Construção com Contêineres na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: ctArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `Construção com Contêineres na Prática — ${ctNoAr} ${ctNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: ctNoAr,
+      itemListElement: ctArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'construcao-com-conteineres-na-pratica', 'index.html'), layout(
+      'Construção com Contêineres na Prática: a série do curso | Villela Stay',
+      `A série Construção com Contêineres na Prática, da coleção Viver de Chácara: planejamento, contratação e fiscalização de casas, studios e pequenas villas — escolher o uso, consultar o órgão de licenciamento do município, montar a equipe, vistoriar e comprar a caixa, acompanhar cada etapa e receber a obra. ${ctNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>Construção com Contêineres na Prática <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Planejamento, contratação e fiscalização de casas, studios e pequenas villas</span></h1>
+    <p>Da coleção <strong>Viver de Chácara</strong>. São ${ctTotal} artigos, um para cada aula do curso: o uso e o programa da unidade, a consulta ao órgão de licenciamento do município, a equipe e os documentos, o ponto e o acesso da carga, a vistoria e a compra da caixa, o orçamento e o contrato, e depois cada etapa da obra, da preparação do terreno à entrega, sempre em uma mesma obra de exemplo: um studio para duas pessoas em uma chácara. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje. Conteúdo educacional: é um guia de decisão, de contratação e de fiscalização, não é formação profissional nem substitui projeto. Fundação, apoios, cortes, reforços, içamento, instalações e cobertura ficam com projeto e responsável técnico, e nesses pontos o curso mostra o que pedir e o que conferir. O contêiner usado passa por um processo de higienização profissional, contratado e com comprovante, antes de qualquer outro serviço.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Construção com Contêineres na Prática</span></nav>
+  <div class="cap-faixa">${ctAnuncio('curso')}</div>
+  ${vdcAmoHub(ctArtigos)}
+  ${vdcFigHub(ctFigs, ctArtigos)}
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${ctTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${ctGrade.aulas.map(g => ctLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${ctCards}</div>
+  ${ctApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${ctApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${ctAnuncio('curso')}</div>
+</div>`,
+      { caminho: '/construcao-com-conteineres-na-pratica/', semIdiomas: true, ...serieImagem('construcao-com-conteineres-na-pratica').og, extraHead: `<style>${CT_CSS}</style>` + ctHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    vdcConfereImagens('construcao-com-conteineres-na-pratica', [...ctArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'construcao-com-conteineres-na-pratica', 'index.html')]);
+    vdcConfereVideos('construcao-com-conteineres-na-pratica', ctArtigos, od, path.join(od, 'construcao-com-conteineres-na-pratica', 'index.html'));
+    CT_PATHS = ['/construcao-com-conteineres-na-pratica/', ...ctArtigos.map(a => a.caminho), ...ctApoio.map(d => `/construcao-com-conteineres-na-pratica/apoio/${d.chave}.html`)];
+    CT_LLMS = `## Blog: Construção com Contêineres na Prática (${ctNoAr} artigos, em português)
+
+Série do curso *Construção com Contêineres na Prática*, da coleção Viver de Chácara, de Augusto Villela:
+planejamento, contratação e fiscalização de casas, studios e pequenas villas com contêineres — o que o
+contêiner permite e o que ele limita, os usos e o programa da unidade, a equipe técnica e os
+documentos, a estrutura da caixa e o risco das modificações, a segurança no transporte e no
+içamento, a escolha do ponto e o acesso da carga, a implantação e o sol, os tipos, a vistoria e a
+compra, o layout, o orçamento e a contratação, o terreno e a drenagem, a fundação e os apoios, a
+chegada e o nivelamento, os cortes, os reforços e a proteção contra corrosão, a cobertura e a água,
+o isolamento e a condensação, a acústica e a privacidade, a coordenação das instalações, o
+acabamento, a inspeção e a manutenção, a moradia e as quitinetes, as pequenas villas para
+hospedagem, a operação e a conta de viabilidade, e o projeto final.
+Conteúdo educacional: é um guia de decisão, de contratação e de fiscalização, não é formação
+profissional nem substitui projeto. Fundação, apoios, cortes, reforços, solda, içamento, instalações
+e cobertura ficam com projeto e responsável técnico: nesses pontos a série mostra o que pedir e o
+que conferir. Sobre licenciamento, a orientação é uma só: consultar o órgão de licenciamento do
+município, antes da compra. O contêiner usado passa por um processo de higienização profissional,
+contratado e com comprovante. Os resumos e as perguntas frequentes não trazem valor em dinheiro,
+espessura, bitola, carga nem prazo — valem o projeto e quem assina por ele.
+Índice da série: ${SITE_URL}/construcao-com-conteineres-na-pratica/
+${ctPublicado ? 'Curso on-line (25 aulas na Villela Academy; as videoaulas entram no ar aula a aula)' : 'Curso on-line: em preparação na Villela Academy (25 aulas). Vitrine dos cursos'}: ${CT_CURSO.split('?')[0]}
+
+${ctArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog Construção com Contêineres na Prática: hub + ${ctNoAr} de ${ctTotal} artigos + ${ctApoio.length} material(is) de apoio + ${ctAmo.total} amostra(s) grátis em vídeo`);
+  }
+
+  // ---- Série Decoração de Interiores na Prática (coleção Viver de Chácara; bloco DC_*) ----
+  // Mesmo desenho do bloco CT_* logo acima. O que é próprio deste título está marcado com [DC]:
+  //  - é o título mais visual da coleção: além dos desenhos do livro, a série leva as FOTOS conceituais
+  //    aprovadas pelo autor (F-nn, geradas por IA) e os pares de ANTES E DEPOIS (A-nn = o ambiente como
+  //    estava). Regra do Augusto (12/10/2026): na camada ABERTA de cada artigo entra UMA imagem (a foto ou o
+  //    par da aula), com "imagem conceitual gerada por IA" na legenda das F-nn e "o ambiente como estava" na
+  //    das A-nn; as demais ficam no desenvolvimento protegido; o hub ganha a faixa de imagens. Arquivos com
+  //    nome neutro, gerados por dados\cursos\vdc-decoracao\blog\decBL_figuras.py;
+  //  - o exemplo do curso é um núcleo de hospedagem real do autor, SEM NOME: nenhum nome de unidade, de casa
+  //    ou de empresa do autor entra em texto, legenda ou nome de arquivo (trava DC_NOMES, no HTML que saiu);
+  //  - o leitor decide, mede, compra e arruma o que é solto; fixação, elétrica, hidráulica, gás e marcenaria
+  //    fixa são de contratado ou de profissional: o curso mostra o que pedir e o que conferir;
+  //  - na camada aberta, número só o do exemplo: as medidas do quarto-modelo (DC_MEDIDAS_EXEMPLO) e as
+  //    contagens (lugares de dormir, camas, móveis). Nenhum valor em reais e nenhuma marca.
+  // ⚠️ DC_CURSO: em 12/10/2026 o produto estava em RASCUNHO na Academy (a página do curso respondia 404) e a
+  // série foi construída para subir DEPOIS da publicação do curso; por isso o endereço já é o da página do
+  // curso. Se a série tiver de ir ao ar antes, troque SÓ a linha do DC_CURSO pela da vitrine, comentada
+  // abaixo: anúncio, botão, aviso sem JavaScript e llms.txt mudam sozinhos (`dcPublicado`).
+  // Com o curso publicado falta a /tudo.html: slug em ASSUNTOS → chacara → cursos + `node tools/atualizar-
+  // catalogo.js` (os dois andam juntos, senão o build quebra; com o curso em rascunho o catálogo não o
+  // enxerga); a miniatura src/capas/curso-decoracao-de-interiores-na-pratica.webp já está no repositório.
+  // Amostras grátis: depois de cortar e enviar, `node tools/atualizar-amostras.js` + `node build.js`.
+  const DC_DIR = path.join(__dirname, 'content', 'vdc-decoracao');
+  // const DC_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-decoracao-de-interiores-na-pratica';
+  const DC_CURSO ='https://academia.villelastay.com.br/academy/cursos/decoracao-de-interiores-na-pratica?utm_source=villelastay&utm_medium=blog-decoracao-de-interiores-na-pratica';
+  const dcPublicado = DC_CURSO.includes('/academy/cursos/');
+  const dcDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(DC_DIR)) {
+    const dcCss = fs.readFileSync(path.join(DC_DIR, 'artigo.css'), 'utf8');
+    const dcLe = n => JSON.parse(fs.readFileSync(path.join(DC_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const dcGrade = dcLe('grade.json');
+    let dcFaq = {}, dcApoio = [];
+    try { dcFaq = dcLe('faq.json'); } catch (e) { console.warn('[decoracao-de-interiores-na-pratica] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { dcApoio = dcLe('apoio.json'); } catch (e) { console.warn('[decoracao-de-interiores-na-pratica] sem apoio.json — hub sairá sem material de apoio'); }
+
+    const dcFigs = vdcFiguras(DC_DIR, 'decoracao-de-interiores-na-pratica');
+    dcArtigos = fs.readdirSync(DC_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(DC_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[decoracao-de-interiores-na-pratica] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpoBruto = vdcFigInserir(raw.replace(/^<!--META .*? -->\r?\n?/, ''), dcFigs.porArtigo[f.replace(/\.html$/, '')] || [], 'decoracao-de-interiores-na-pratica', f, dcDestexto);
+      // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
+      // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
+      const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
+        const tam = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+        if (tam(dentro) <= 9000) return m0;
+        const blocos = [];
+        for (const pedaco of dentro.split(/(?=<h3>)/)) {
+          const ult = blocos[blocos.length - 1];
+          if (ult !== undefined && tam(ult) + tam(pedaco) <= 7000) blocos[blocos.length - 1] = ult + pedaco;
+          else blocos.push(pedaco);
+        }
+        return blocos.map((b, k) => `<section class="apoio"><h2>Material de apoio${k ? ' (continuação)' : ''}</h2>${b}</section>`).join(String.fromCharCode(10));
+      });
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? dcDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<figure[\s\S]*?<\/figure>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length; // a figura não conta no tamanho da parte
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `decoracao-de-interiores-na-pratica-${chave}`;
+      return {
+        ...meta, chave, slug,
+        figAberta: (dcFigs.porArtigo[chave] || []).find(x => x.aberta) || null,
+        tituloTexto: dcDestexto(meta.titulo), subtituloTexto: dcDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => dcDestexto(t)),
+        faq: dcFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const dcComArtigo = dcGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of dcArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[decoracao-de-interiores-na-pratica] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!dcComArtigo.includes(a.n)) throw new Error(`[decoracao-de-interiores-na-pratica] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (dcArtigos.length !== dcComArtigo.length) throw new Error(`[decoracao-de-interiores-na-pratica] grade diz ${dcComArtigo.length} aulas com artigo, mas há ${dcArtigos.length} artigos exportados`);
+    const dcSemFaq = dcArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (dcSemFaq.length) throw new Error(`[decoracao-de-interiores-na-pratica] SEM perguntas frequentes: ${dcSemFaq.join(', ')} — escrever em content/vdc-decoracao/faq.json`);
+    // Trava de conteúdo: o que é ESCRITO para o blog (perguntas frequentes) não pode trazer medida, peso,
+    // prazo, número de norma, valor em reais, marca comercial, lugar ou lei, nem promessa de economia ou de
+    // renda. Olha o texto que SAIU. Sem algarismo nenhum, não há como passar medida, potência, prazo nem
+    // norma; o número por extenso junto de unidade de tempo ou de medida também é recusado. "Garantia" como
+    // instituto e "Certificado da Villela Academy" são as únicas formas aceitas de "garant-" e "certific-".
+    // [DC] Saiu o veto de higienização do Contêineres (aqui "lavagem" é assunto legítimo: enxoval e tecido).
+    const DC_PROMESSA = /\bgarant(?!ia\b)|\bcertific(?!ado da Villela Academy\b)|\bhabilita(?!do\b|da\b|dos\b|das\b)/i;
+    const DC_EXTENSO = /\b(um|uma|dois|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|doze|quinze|vinte|trinta|\w+enta)\s+(dias?|horas?|minutos?|semanas?|mil[ií]metros?|cent[ií]metros?|quilos?|toneladas?|por cento)\b/i;
+    // Comuns às duas travas: valem para tudo o que vai aberto.
+    const DC_VETO_COMUM = [
+      [/R\$|\breais\b/i, 'valor em reais'],
+      [DC_EXTENSO, 'prazo, medida ou peso por extenso'],
+      [DC_PROMESSA, 'promessa (garante/certifica/habilita)'],
+      [/\beconomiz|\bmais barat|\blucr|\brentab|\bretorno (certo|garantido)|\brenda (extra|certa|garantida|passiva)/i, 'promessa de economia, de resultado ou de renda'],
+      [/airbnb|booking|vrbo|decolar|expedia|hoteis\.com|tripadvisor/i, 'marca comercial (dizer "plataformas de hospedagem")'],
+      [/Bras[ií]lia|Distrito Federal|\bDF\b|\bGDF\b|\blei\b|\bdecreto\b|\bportaria\b|c[oó]digo de obras/i, 'lugar ou norma (dizer "consultar o órgão do município")'],
+      [/vital[ií]ci|valida[cç][aã]o p[uú]blica/i, '"vitalício" ou "validação pública"'],
+      [/Grupo Villela(?! Stay)/, '"Grupo Villela" isolado'],
+    ];
+    // [DC] O exemplo é um núcleo de hospedagem real do autor, sem nome. Nome de unidade, de casa, de bairro
+    // ou da empresa de hospedagem não entra em NENHUMA camada (aberta, protegida, legenda ou perguntas).
+    const DC_NOMES = /Flat d[oa]s?\b|Gran Villela|Casa Modernista|Casa Villela|Villa Kubitschek|Villa Catetinho|Jardim dos Sentidos|Su[ií]te d[oa] (Amor|Felipe|Fam[ií]lia|Sofia|Pedro)\b|Su[ií]te Master|Lago Sul|\bSMDB\b|\bQI ?\d|Renato Russo|C[aá]ssia Eller|Burle Marx|(?<!Grupo )Villela Stay|Augusto Villela Ltda|Stays\b/i;
+    for (const a of dcArtigos) {
+      const tudo = [a.tituloTexto, a.subtituloTexto, a.descricao, a.resumo_html, a.aplicar_html || '', a.indice.join(' | '),
+        ...a.secoes.map(s => s.titulo + ' ' + s.html), ...a.faq.map(([q, r]) => q + ' ' + r),
+        ...(dcFigs.porArtigo[a.chave] || []).map(f => f.arq + ' ' + f.legenda)].join(' | ');
+      const m = dcDestexto(tudo).match(DC_NOMES) || tudo.match(/\/blog-img\/[^"]*(flat|villela|modernista|kubitschek|catetinho|russo|eller|burle|chef|amigos)[^"]*"/i);
+      if (m) throw new Error(`[decoracao-de-interiores-na-pratica] ${a.chave} traz nome real de unidade, casa ou empresa do autor: "${m[0]}"`);
+    }
+    const DC_VETO = [
+      [/\d/, 'número (medida, peso, carga, prazo, norma ou valor)'],
+      [/\b(mm|cm|ml|mililitros?|litros?|kg|quilos?|toneladas?|mpa)\b|%/i, 'unidade de medida ou percentual'],
+      [/\bNBR\b|\bNR\b|\bABNT\b/, 'número ou sigla de norma'],
+      ...DC_VETO_COMUM,
+    ];
+    for (const a of dcArtigos) for (const [q, r] of a.faq) for (const [re, oQue] of DC_VETO) {
+      const m = (q + ' ' + r).match(re);
+      if (m) throw new Error(`[decoracao-de-interiores-na-pratica] faq de ${a.chave} traz ${oQue}: "${m[0]}" em "${q}"`);
+    }
+    for (const a of dcArtigos) if (a.faq.length !== 3) throw new Error(`[decoracao-de-interiores-na-pratica] ${a.chave} precisa de 3 perguntas frequentes; tem ${a.faq.length}`);
+    // Segunda trava: a camada ABERTA que vem do artigo (título, subtítulo, resumo e índice). Aqui há número
+    // legítimo: a quantidade (oito lugares de dormir, cinco camas, nove móveis) e as medidas do EXEMPLO, que
+    // o autor dá em metros. Então a recusa é pelo TIPO. [DC] Medida em metro só passa se for uma das medidas
+    // do quarto-modelo listadas abaixo (o quarto, a faixa, a mesa e os resultados das contas de subtrair que
+    // o resumo das aulas 11 e 12 mostra); altura, potência, temperatura de cor, fluxo, peso, percentual,
+    // prazo e número de norma ficam no desenvolvimento protegido. O exportador da série
+    // (dados\cursos\vdc-decoracao\exportar_blog.py) faz as trocas declaradas no resumo e no índice.
+    const DC_MEDIDAS_EXEMPLO = ['30 m²', '6,00 m', '4,80 m', '2,40 m', '0,47 m', '3,97 m', '0,40 m', '2,12 m', '2,00 m'];
+    // "Três horas do dia" e "o vidro em três horas:" (manhã, tarde e noite, no teste da amostra de cor e na
+    // leitura do vidro) são momentos do dia, não prazo.
+    const dcPreparar = t => DC_MEDIDAS_EXEMPLO.reduce((x, med) => x.split(med).join('[medida do exemplo]'), String(t)).replace(/\btr[eê]s horas(?= do dia|:)/gi, 'três momentos');
+    const DC_VETO_ABERTA = [
+      [/\d\s*(dias?|horas?|h|min|minutos?|semanas?|meses|m[eê]s|anos?)\b/i, 'prazo em número'],
+      [/\d[\d.,]*\s*(mm|cm|pol|polegadas?|mpa|kg|kgf|kn|t|toneladas?|quilos?|w|watts?|k|kelvin|lm|l[uú]mens?|lux|btus?|v|volts?)\b|\d\s*%|\bpor cento\b/i, 'espessura, peso, potência, cor ou fluxo de luz, ou percentual em número'],
+      [/\d[\d.,]*\s*m(²|³|2|3)?(?![\wà-ÿ])/i, 'medida em metro que não é do quarto-modelo do exemplo'],
+      [/\bNBR\b|\bNR[- ]?\d|\bABNT\b/, 'número de norma'],
+      ...DC_VETO_COMUM,
+    ];
+    for (const a of dcArtigos) {
+      let aberto = [a.tituloTexto, a.subtituloTexto, a.descricao, dcDestexto(a.resumo_html), a.indice.join(' | ')].join(' | ');
+      aberto = dcPreparar(aberto);
+      for (const [re, oQue] of DC_VETO_ABERTA) {
+        const m = aberto.match(re);
+        if (m) throw new Error(`[decoracao-de-interiores-na-pratica] camada aberta de ${a.chave} traz ${oQue}: "${m[0]}" em "…${aberto.slice(Math.max(0, m.index - 50), m.index + 40)}…"`);
+      }
+    }
+
+    // Anúncio. Enquanto o curso está em rascunho (dcPublicado === false), diz "em preparação" e leva à
+    // vitrine da Academy; com o curso publicado, leva à página dele e diz que os vídeos entram aula a aula.
+    const dcAnuncio = (qual, min = false) => `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${DC_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso Decoração de Interiores na Prática — coleção Viver de Chácara</strong><span>${dcPublicado
+    ? 'Como decorar a casa, o chalé ou o estúdio da chácara que recebe hóspedes, em 25 aulas na Villela Academy: medir, planejar o layout, escolher cor, materiais, tecidos, luz e enxoval, e montar o ambiente que se explica sozinho. Cada aula traz o artigo em PDF, com checklists e as fotos de antes e depois; as videoaulas animadas entram no ar aula a aula. Certificado da Villela Academy ao concluir.'
+    : 'Como decorar a casa, o chalé ou o estúdio da chácara que recebe hóspedes, em 25 aulas. O curso está em preparação na Villela Academy: enquanto ele não entra no ar, conheça os outros títulos da coleção Viver de Chácara na vitrine.'}</span></span>
+          <span class="cap-ad-btn">${dcPublicado ? 'Conhecer o curso →' : 'Ver a vitrine da Academy →'}</span></a>`;
+    const DC_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(dcAnuncio('curso', true))},${JSON.stringify(dcAnuncio('curso', true))}];`);
+    const DC_CSS = `${dcCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}`;
+
+    vdcFigTravas('decoracao-de-interiores-na-pratica', dcArtigos, dcFigs, DC_VETO_ABERTA, dcPreparar);
+    const dcAmo = vdcAmoPreparar('decoracao-de-interiores-na-pratica', dcArtigos, DC_CURSO, DC_VETO_ABERTA, dcPreparar);
+    const dcTotal = dcGrade.total;
+    const dcLinhaGrade = (aula, atual) => {
+      const art = dcArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'decoracao-de-interiores-na-pratica'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'decoracao-de-interiores-na-pratica', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of dcArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = dcArtigos[iArt - 1], prox = dcArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...vdcLdImagem(serieImagem('decoracao-de-interiores-na-pratica').ld, a.figAberta),
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-10-12', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/decoracao-de-interiores-na-pratica/#serie` },
+        articleSection: 'Decoração de Interiores na Prática', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'Decoração de Interiores na Prática — Viver de Chácara', author: { '@type': 'Person', name: 'Augusto Villela' } },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Decoração de Interiores na Prática', item: `${SITE_URL}/decoracao-de-interiores-na-pratica/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      lds.push(...vdcAmoLd(a, url));
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/decoracao-de-interiores-na-pratica/">Decoração de Interiores na Prática</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${dcTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${dcAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${vdcAmoHtml(a)}
+    ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar. Material educacional: não é projeto de arquitetura nem de interiores. Quem decora mede, escolhe e arruma o que é solto; fixação em parede, elétrica, hidráulica, gás e marcenaria fixa ficam com contratado ou profissional. As fotos de proposta são imagens conceituais geradas por IA. O artigo em PDF e as videoaulas ficam no curso.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; ${dcPublicado ? `o artigo completo em PDF está no <a href="${DC_CURSO}">curso Decoração de Interiores na Prática</a>` : `o artigo completo em PDF fará parte do curso Decoração de Interiores na Prática, em preparação na <a href="${DC_CURSO}">Villela Academy</a>`}.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${dcAnuncio('curso')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/decoracao-de-interiores-na-pratica/"><span class="rot">☰ Índice</span><span class="tit">${dcArtigos.length === 1 ? 'O artigo publicado' : `Os ${dcArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${dcGrade.aulas.map(g => dcLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Decoração de Interiores na Prática</strong>, da coleção Viver de Chácara, de Augusto Villela. Conteúdo educacional.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog Decoração de Interiores na Prática`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('decoracao-de-interiores-na-pratica').og,
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${DC_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${DC_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of dcApoio) {
+      const cam = `/decoracao-de-interiores-na-pratica/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/decoracao-de-interiores-na-pratica/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'decoracao-de-interiores-na-pratica', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — Decoração de Interiores na Prática | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série Decoração de Interiores na Prática, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>Decoração de Interiores na Prática</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/decoracao-de-interiores-na-pratica/">Decoração de Interiores na Prática</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${dcAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${DC_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /decoracao-de-interiores-na-pratica/
+    const dcCards = dcArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const dcApoioCards = dcApoio.map(d => `
+  <a class="cap-card" href="/decoracao-de-interiores-na-pratica/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const dcNoAr = dcArtigos.length;
+    const dcHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/decoracao-de-interiores-na-pratica/#serie`,
+      name: 'Decoração de Interiores na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: dcArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `Decoração de Interiores na Prática — ${dcNoAr} ${dcNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: dcNoAr,
+      itemListElement: dcArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'decoracao-de-interiores-na-pratica', 'index.html'), layout(
+      'Decoração de Interiores na Prática: a série do curso | Villela Stay',
+      `A série Decoração de Interiores na Prática, da coleção Viver de Chácara: como decorar a casa, o chalé ou o estúdio da chácara que recebe hóspedes — medir, planejar o layout, escolher cor, materiais, tecidos, luz e enxoval, e montar o ambiente que se explica sozinho, com fotos de antes e depois. ${dcNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>Decoração de Interiores na Prática <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Como decorar a casa, o chalé ou o estúdio da chácara que recebe hóspedes</span></h1>
+    <p>Da coleção <strong>Viver de Chácara</strong>. São ${dcTotal} artigos, um para cada aula do curso: o que muda quando se decora para hóspedes, os lugares de dormir, a segurança e os limites de quem decora, proporção, escala e ponto focal, o estilo, a medição e o inventário, o quarto em planta, a paleta, os materiais e os tecidos, a suíte, a sala-quarto, o banheiro, a cozinha, a iluminação em camadas, as cortinas e os tapetes, o enxoval, o pátio com plantas, a compra por etapas, a montagem, a fotografia e a conservação, sempre em um mesmo exemplo: um núcleo de hospedagem com dois quartos gêmeos, cozinha comum e pátio com piscina. Cada artigo abre com resumo, uma imagem, índice e perguntas frequentes e fecha com o que aplicar hoje; o bloco "Decorar na prática" mostra a decisão no ambiente. As fotos de proposta são imagens conceituais geradas por IA, e as de antes mostram o ambiente como estava. Conteúdo educacional: não é projeto de arquitetura nem de interiores. Quem decora mede, escolhe e arruma o que é solto; fixação em parede, elétrica, hidráulica, gás e marcenaria fixa ficam com contratado ou profissional, e nesses pontos o curso mostra o que pedir e o que conferir.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Decoração de Interiores na Prática</span></nav>
+  <div class="cap-faixa">${dcAnuncio('curso')}</div>
+  ${vdcAmoHub(dcArtigos)}
+  ${vdcFigHub(dcFigs, dcArtigos)}
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${dcTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${dcGrade.aulas.map(g => dcLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${dcCards}</div>
+  ${dcApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${dcApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${dcAnuncio('curso')}</div>
+</div>`,
+      { caminho: '/decoracao-de-interiores-na-pratica/', semIdiomas: true, ...serieImagem('decoracao-de-interiores-na-pratica').og, extraHead: `<style>${DC_CSS}</style>` + dcHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    vdcConfereImagens('decoracao-de-interiores-na-pratica', [...dcArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'decoracao-de-interiores-na-pratica', 'index.html')]);
+    vdcConfereVideos('decoracao-de-interiores-na-pratica', dcArtigos, od, path.join(od, 'decoracao-de-interiores-na-pratica', 'index.html'));
+    DC_PATHS = ['/decoracao-de-interiores-na-pratica/', ...dcArtigos.map(a => a.caminho), ...dcApoio.map(d => `/decoracao-de-interiores-na-pratica/apoio/${d.chave}.html`)];
+    DC_LLMS = `## Blog: Decoração de Interiores na Prática (${dcNoAr} artigos, em português)
+
+Série do curso *Decoração de Interiores na Prática*, da coleção Viver de Chácara, de Augusto Villela:
+como decorar a casa, o chalé ou o estúdio da chácara que recebe hóspedes — o que muda quando se
+decora para quem não conhece o lugar, os lugares de dormir, a segurança do hóspede e os limites de
+quem decora, proporção, escala e ponto focal, estilo e conceito, a medição e o inventário, o quarto
+em planta, a paleta de cores, os materiais e os tecidos, o painel e o caderno de especificação, a
+suíte, a sala-quarto, o banheiro compacto, a cozinha comum e a cozinha equipada, a iluminação em
+camadas, as cortinas e os tapetes, o enxoval, o pátio com plantas, o ambiente que se explica
+sozinho, os quartos gêmeos, a lista de quantidades e a compra por etapas, o recebimento, a montagem
+e a fotografia, a conservação entre estadias e o exemplo inteiro.
+Cada artigo traz uma imagem aberta: uma foto de proposta de decoração (imagem conceitual gerada por
+IA) ou um par de antes e depois (o antes mostra o ambiente como estava).
+Conteúdo educacional: não é projeto de arquitetura nem de interiores. Quem decora mede, escolhe e
+arruma o que é solto; fixação em parede, elétrica, hidráulica, gás e marcenaria fixa ficam com
+contratado ou profissional: nesses pontos a série mostra o que pedir e o que conferir. Os resumos e
+as perguntas frequentes não trazem valor em dinheiro, marca nem prazo; as medidas que aparecem são
+as do quarto do exemplo.
+Índice da série: ${SITE_URL}/decoracao-de-interiores-na-pratica/
+${dcPublicado ? 'Curso on-line (25 aulas na Villela Academy; as videoaulas entram no ar aula a aula)' : 'Curso on-line: em preparação na Villela Academy (25 aulas). Vitrine dos cursos'}: ${DC_CURSO.split('?')[0]}
+
+${dcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog Decoração de Interiores na Prática: hub + ${dcNoAr} de ${dcTotal} artigos + ${dcApoio.length} material(is) de apoio + ${dcAmo.total} amostra(s) grátis em vídeo`);
+  }
+
 
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
     ...['01-central-atualizacao-normativa.html', '02-diretorio-pesquisa-juridica.html', '03-atualizacoes-tecnologicas.html'].map(f => `/claude-juridico/recursos/${f}`)];
@@ -5559,9 +8607,12 @@ Série do livro *Claude AI na Prática Jurídica*, de Augusto Villela — uso re
 inteligência artificial na advocacia, do prompt à operação completa do escritório: ética,
 sigilo, pesquisa, contencioso, contratos, gestão, compliance e sistemas. Índice da série:
 ${SITE_URL}/claude-juridico/
-Livro completo: ${CJ_LIVRO.split('?')[0]} · Sistema jurídico: ${CJ_SISTEMA.split('?')[0]}
+Livro completo: ${CJ_LIVRO.split('?')[0]} · Curso on-line: ${CJ_CURSO.split('?')[0]} · Sistema jurídico: ${CJ_SISTEMA.split('?')[0]}
 
 ${cjArtigos.map(a => `- [Capítulo ${a.capitulo}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+
+Recursos complementares da série (páginas abertas):
+${CJ_RECURSOS.map(([arq, titulo, desc]) => `- [${titulo}](${SITE_URL}/claude-juridico/recursos/${arq}): ${desc}`).join('\n')}
 `;
   console.log(`Blog Claude AI na Prática: hub + ${capArtigos.length} artigos em /blog/ (+${capArtigos.length} redirecionamentos de /claude/)`);
   console.log(`Blog Claude AI na Prática Jurídica: hub + ${cjArtigos.length} artigos + 3 núcleos`);
@@ -5618,7 +8669,7 @@ const cgCardsHub = LANG !== 'pt' || !cgArtigos.length ? '' : `
       <span class="tema-tag tema-chatgpt">💬 Série · ChatGPT</span>
       <h3>ChatGPT AI na Prática</h3>
       <p>O ecossistema da OpenAI aplicado ao trabalho: os modos Chat, Work e Codex, prompts que funcionam, engenharia de contexto, Projetos, agentes e automações — com os casos reais de uma empresa operada por IA.</p>
-      <span class="blog-card-leia">${cgArtigos.length === 1 ? 'Ver o artigo no ar' : `Ver os ${cgArtigos.length} artigos no ar`} →</span>
+      <span class="blog-card-leia">${cgArtigos.length === 1 ? 'Ver o artigo' : `Ver os ${cgArtigos.length} artigos`} →</span>
     </div>
   </a>`;
 
@@ -5634,14 +8685,14 @@ const lcCardsHub = LANG !== 'pt' || !lcArtigos.length ? '' : `
     </div>
   </a>`;
 
-// Série Conexões de Sucesso (curso para jovens de 15 a 24 anos). Card com a capa do curso.
+// Série Conexões de Sucesso (curso para jovens de 15 a 25 anos). Card com a capa do curso.
 const csCardsHub = LANG !== 'pt' || !csArtigos.length ? '' : `
   <a class="blog-card blog-card-serie" href="/conexoes-de-sucesso/">
     <div class="blog-card-img">${img('/blog-img/conexoes-de-sucesso-1.jpg', { alt: 'Capa do curso Conexões de Sucesso — Formação para o mundo real: o autor em ilustração, de punho erguido, ao lado da capa do livro, em que um jovem de mochila caminha por uma estrada rumo à cidade', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
     <div class="blog-card-info">
       <span class="tema-tag tema-chatgpt">🎮 Série · Jovens e carreira</span>
       <h3>Conexões de Sucesso — Formação para o Mundo Real</h3>
-      <p>Para jovens de 15 a 24 anos: o que aprender agora que as máquinas já sabem as respostas — pensar com evidência, escrever, falar, usar IA com responsabilidade, vender, cuidar do dinheiro e montar um plano de doze meses.</p>
+      <p>Para jovens de 15 a 25 anos: o que aprender agora que as máquinas já sabem as respostas — pensar com evidência, escrever, falar, usar IA com responsabilidade, vender, cuidar do dinheiro e montar um plano de doze meses.</p>
       <span class="blog-card-leia">Ver os ${csArtigos.length} artigos →</span>
     </div>
   </a>`;
@@ -5655,6 +8706,102 @@ const soCardsHub = LANG !== 'pt' || !soArtigos.length ? '' : `
       <h3>A Segunda Onda da IA</h3>
       <p>Do usuário ao arquiteto: como projetar, operar e governar sistemas de inteligência artificial — contexto, ferramentas, agentes, busca por sentido, aprovação humana, custo, segurança e implantação.</p>
       <span class="blog-card-leia">Ver os ${soArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
+// Série Google AI na Prática (Gemini e o ecossistema Google no dia a dia, no estudo e no trabalho). Card com a capa do curso.
+const gaCardsHub = LANG !== 'pt' || !gaArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/google-ai/">
+    <div class="blog-card-img">${img('/blog-img/google-ai-na-pratica-1.jpg', { alt: 'Capa do curso Google AI na Prática — para o dia a dia, o estudo e o trabalho: o título em letras brancas e douradas sobre fundo azul-marinho, ao lado da capa do livro, em que faixas de luz azul, vermelha, amarela e verde correm por uma estrada até um portal luminoso', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">✨ Série · Google AI</span>
+      <h3>Google AI na Prática</h3>
+      <p>Para o dia a dia, o estudo e o trabalho: o Gemini e o ecossistema Google usados com método — pedir bem, proteger os dados, pesquisar com fontes, estudar, criar imagem, vídeo e som, e delegar a agentes com limites.</p>
+      <span class="blog-card-leia">Ver os ${gaArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
+// Série O Homem Contemporâneo (desenvolvimento pessoal). Card com a capa do curso.
+const hoCardsHub = LANG !== 'pt' || !hoArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/homem-contemporaneo/">
+    <div class="blog-card-img">${img('/blog-img/o-homem-contemporaneo-1.jpg', { alt: 'Capa do curso O Homem Contemporâneo — princípios para viver no século XXI: o título em letras brancas e douradas sobre fundo azul-marinho, ao lado da capa do livro com moldura dourada', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">🧭 Série · Desenvolvimento pessoal</span>
+      <h3>O Homem Contemporâneo</h3>
+      <p>Princípios para viver no século XXI: mente, corpo, valores, dinheiro e trabalho — atenção, hábitos, sono, decisão, propósito e execução, com práticas de 21 dias para aplicar na vida.</p>
+      <span class="blog-card-leia">Ver os ${hoArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
+// Série O Homem Essencial (caráter e vida interior). Card com a capa do curso.
+const heCardsHub = LANG !== 'pt' || !heArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/homem-essencial/">
+    <div class="blog-card-img">${img('/blog-img/o-homem-essencial-1.jpg', { alt: 'Capa do curso O Homem Essencial — caráter, domínio de si e sentido: o título em letras brancas e douradas sobre fundo azul-marinho, ao lado da capa do livro com moldura dourada', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">⚖️ Série · Caráter e vida interior</span>
+      <h3>O Homem Essencial</h3>
+      <p>Caráter, domínio de si e o que realmente importa: as virtudes, a verdade, a força do bom, o corpo e a mente, as pessoas, o trabalho, o dinheiro, a cidade e a morte como conselheira — com os grandes pensadores pelo nome.</p>
+      <span class="blog-card-leia">Ver os ${heArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
+// Série Piscineiro na Prática (coleção Viver de Chácara). Card com a capa do curso.
+const piCardsHub = LANG !== 'pt' || !piArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/piscineiro-na-pratica/">
+    <div class="blog-card-img">${img('/blog-img/piscineiro-na-pratica-1.jpg', { alt: 'Capa do curso Piscineiro na Prática, da coleção Viver de Chácara: o título em letras claras sobre fundo verde-escuro, ao lado da foto de uma piscina azulejada em uma chácara, com a casa ao fundo e uma peneira apoiada na borda', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">🏊 Série · Viver de Chácara</span>
+      <h3>Piscineiro na Prática</h3>
+      <p>Operação, limpeza e manutenção de piscinas em chácaras e hospedagens: o circuito da água, a segurança, a rotina da visita, a medição, o diagnóstico e o plano escrito — com a dose sempre no rótulo.</p>
+      <span class="blog-card-leia">Ver os ${piArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
+// Série Paisagismo na Prática (coleção Viver de Chácara). Card com a capa do curso.
+const paCardsHub = LANG !== 'pt' || !paArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/paisagismo-na-pratica/">
+    <div class="blog-card-img">${img('/blog-img/paisagismo-na-pratica-1.jpg', { alt: 'Capa do curso Paisagismo na Prática, da coleção Viver de Chácara: o título em letras claras sobre fundo verde-escuro, ao lado da foto de uma casa de chácara no Cerrado, com varanda, gramado, caminho de pedra e canteiros com uma muda tutorada', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">🌿 Série · Viver de Chácara</span>
+      <h3>Paisagismo na Prática</h3>
+      <p>Jardins, acessos, áreas de lazer e hospedagem em chácaras do Cerrado: ler o lugar, escolher a planta pelo que ela será adulta, implantar na ordem certa e manter um jardim que cabe no tempo que você tem.</p>
+      <span class="blog-card-leia">Ver os ${paArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
+// Série Pedreiro Completo na Prática (coleção Viver de Chácara). Card com a capa do curso.
+const peCardsHub = LANG !== 'pt' || !peArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/pedreiro-completo-na-pratica/">
+    <div class="blog-card-img">${img('/blog-img/pedreiro-completo-na-pratica-1.jpg', { alt: 'Capa do curso Pedreiro Completo na Prática, da coleção Viver de Chácara: o título em letras claras sobre fundo verde-escuro, ao lado da foto de um depósito de chácara com telhado de barro, uma parede de blocos cerâmicos em construção à frente e um caminho de piso intertravado', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">🧱 Série · Viver de Chácara</span>
+      <h3>Pedreiro Completo na Prática</h3>
+      <p>Alvenaria, revestimentos, áreas externas e pequenos reparos: medir antes de comprar, separar o que você faz do que contrata, conferir cada etapa antes da seguinte e receber o serviço com critério.</p>
+      <span class="blog-card-leia">Ver os ${peArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
+// Série Construção com Contêineres na Prática (coleção Viver de Chácara). Card com a capa do curso.
+const ctCardsHub = LANG !== 'pt' || !ctArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/construcao-com-conteineres-na-pratica/">
+    <div class="blog-card-img">${img('/blog-img/construcao-com-conteineres-na-pratica-1.jpg', { alt: 'Capa do curso Construção com Contêineres na Prática, da coleção Viver de Chácara: o título em letras claras sobre fundo verde-escuro, ao lado da foto de um studio feito de contêiner, com cobertura metálica sobre o teto, janelas e porta de vidro, varanda de madeira com duas cadeiras e um gramado em volta, ao entardecer', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">📦 Série · Viver de Chácara</span>
+      <h3>Construção com Contêineres na Prática</h3>
+      <p>Planejamento, contratação e fiscalização de casas, studios e pequenas villas: consultar o órgão antes de comprar, separar o que é seu do que pede projeto e responsável técnico, e conferir cada etapa antes da seguinte.</p>
+      <span class="blog-card-leia">Ver os ${ctArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
+// Série Decoração de Interiores na Prática (coleção Viver de Chácara). Card com a capa do curso.
+const dcCardsHub = LANG !== 'pt' || !dcArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/decoracao-de-interiores-na-pratica/">
+    <div class="blog-card-img">${img('/blog-img/decoracao-de-interiores-na-pratica-1.jpg', { alt: 'Capa do curso Decoração de Interiores na Prática, da coleção Viver de Chácara: o título em letras claras sobre fundo verde-escuro, ao lado da foto de um quarto de hóspedes com a cama feita em camadas, manta cor de barro, almofadas listradas, cabeceira estofada, abajur aceso, tapete de fibra e um vaso de barro com planta alta', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">🛋️ Série · Viver de Chácara</span>
+      <h3>Decoração de Interiores na Prática</h3>
+      <p>Como decorar a casa, o chalé ou o estúdio da chácara que recebe hóspedes: medir antes de comprar, planejar o layout, escolher cor, tecido e luz, e montar o ambiente que se explica sozinho, com fotos de antes e depois.</p>
+      <span class="blog-card-leia">Ver os ${dcArtigos.length} artigos →</span>
     </div>
   </a>`;
 
@@ -5672,6 +8819,13 @@ const buscaItens = [
     ...lcArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🏡 O Locador Inteligente', u: a.caminho, n: `Aula ${a.n}` })),
     ...csArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🎮 Conexões de Sucesso', u: a.caminho, n: `Aula ${a.n}` })),
     ...soArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🌊 A Segunda Onda da IA', u: a.caminho, n: `Aula ${a.n}` })),
+    ...gaArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '✨ Google AI na Prática', u: a.caminho, n: `Aula ${a.n}` })),
+    ...hoArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🧭 O Homem Contemporâneo', u: a.caminho, n: `Aula ${a.n}` })),
+    ...heArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '⚖️ O Homem Essencial', u: a.caminho, n: `Aula ${a.n}` })),
+    ...piArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🏊 Piscineiro na Prática', u: a.caminho, n: `Aula ${a.n}` })),
+    ...paArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🌿 Paisagismo na Prática', u: a.caminho, n: `Aula ${a.n}` })),
+    ...peArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🧱 Pedreiro Completo na Prática', u: a.caminho, n: `Aula ${a.n}` })),
+    ...ctArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '📦 Construção com Contêineres na Prática', u: a.caminho, n: `Aula ${a.n}` })),
   ] : []),
 ];
 
@@ -5786,6 +8940,14 @@ const blogLd = {
         ...(lcArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/locador/#serie`, name: 'O Locador Inteligente na era da IA — a série', url: `${SITE_URL}/locador/` }] : []),
         ...(csArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/conexoes-de-sucesso/#serie`, name: 'Conexões de Sucesso — a série', url: `${SITE_URL}/conexoes-de-sucesso/` }] : []),
         ...(soArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/segunda-onda-da-ia/#serie`, name: 'A Segunda Onda da IA — a série', url: `${SITE_URL}/segunda-onda-da-ia/` }] : []),
+        ...(gaArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/google-ai/#serie`, name: 'Google AI na Prática — a série', url: `${SITE_URL}/google-ai/` }] : []),
+        ...(hoArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/homem-contemporaneo/#serie`, name: 'O Homem Contemporâneo — a série', url: `${SITE_URL}/homem-contemporaneo/` }] : []),
+        ...(heArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/homem-essencial/#serie`, name: 'O Homem Essencial — a série', url: `${SITE_URL}/homem-essencial/` }] : []),
+        ...(piArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/piscineiro-na-pratica/#serie`, name: 'Piscineiro na Prática — a série', url: `${SITE_URL}/piscineiro-na-pratica/` }] : []),
+        ...(paArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/paisagismo-na-pratica/#serie`, name: 'Paisagismo na Prática — a série', url: `${SITE_URL}/paisagismo-na-pratica/` }] : []),
+        ...(peArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/pedreiro-completo-na-pratica/#serie`, name: 'Pedreiro Completo na Prática — a série', url: `${SITE_URL}/pedreiro-completo-na-pratica/` }] : []),
+        ...(ctArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/construcao-com-conteineres-na-pratica/#serie`, name: 'Construção com Contêineres na Prática — a série', url: `${SITE_URL}/construcao-com-conteineres-na-pratica/` }] : []),
+        ...(dcArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/decoracao-de-interiores-na-pratica/#serie`, name: 'Decoração de Interiores na Prática — a série', url: `${SITE_URL}/decoracao-de-interiores-na-pratica/` }] : []),
       ]
     : undefined,
 };
@@ -5806,7 +8968,7 @@ const blogHub = layout(
 </section>
 ${buscaHtml}
 <section class="grade-wrap">
-  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${blogCardsHub}</div>
+  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${gaCardsHub}${hoCardsHub}${heCardsHub}${piCardsHub}${paCardsHub}${peCardsHub}${ctCardsHub}${dcCardsHub}${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
@@ -6279,7 +9441,7 @@ const SALTO = String.fromCharCode(10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
-${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
+${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${GA_PATHS.length ? SALTO : ''}${GA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/google-ai/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HO_PATHS.length ? SALTO : ''}${HO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-contemporaneo/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HE_PATHS.length ? SALTO : ''}${HE_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-essencial/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PI_PATHS.length ? SALTO : ''}${PI_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/piscineiro-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PA_PATHS.length ? SALTO : ''}${PA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/paisagismo-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PE_PATHS.length ? SALTO : ''}${PE_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/pedreiro-completo-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CT_PATHS.length ? SALTO : ''}${CT_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/construcao-com-conteineres-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${DC_PATHS.length ? SALTO : ''}${DC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/decoracao-de-interiores-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 ${GASTRO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/gastronomia-villela-table/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
@@ -6377,11 +9539,28 @@ eles é feita por API, disponível nos planos superiores.
 - [Perguntas frequentes](${SITE_URL}/faq.html)
 - [Tour virtual 360°](${SITE_URL}/tour.html)
 
+## Blog: Diário de Brasília e artigos (${BLOG.length} artigos, em português)
+
+Artigos avulsos do blog da Villela Stay — Brasília, hospedagem profissional, gestão e
+inteligência artificial aplicada ao trabalho. Página do blog, com estes artigos e as
+séries abaixo: ${SITE_URL}/blog.html (os artigos avulsos também existem em inglês,
+${SITE_URL}/en/blog.html, e em espanhol, ${SITE_URL}/es/blog.html).
+
+${BLOG.map(a => `- [${a.h1}](${SITE_URL}/blog/${a.slug}.html): ${cortar(a.dek || a.descricao, 240)}`).join('\n')}
+
 ${CAP_LLMS}
 ${CG_LLMS}
 ${LC_LLMS}
 ${CS_LLMS}
 ${SO_LLMS}
+${GA_LLMS}
+${HO_LLMS}
+${HE_LLMS}
+${PI_LLMS}
+${PA_LLMS}
+${PE_LLMS}
+${CT_LLMS}
+${DC_LLMS}
 ## Livros e cursos do autor
 
 Vitrine conjunta dos três acervos (livros, cursos e sistemas), com links diretos
@@ -6395,7 +9574,7 @@ ${CATALOGO.livros.map(b => `- [${b.titulo}](${b.url}): ${cortar(b.resumo || b.su
 
 Cursos em vídeo — ${CATALOGO.cursos.length} cursos na Villela Academy
 (https://academia.villelastay.com.br/academy/marketplace), compra única, acesso
-vitalício, com videoaula, artigo em PDF e apresentação de cada aula:
+de 1 ano, com videoaula, artigo em PDF e apresentação de cada aula:
 
 ${CATALOGO.cursos.map(c => `- [${c.titulo}](${c.url}): ${cortar(c.resumo, 260)}` +
   (c.preco ? ` R$ ${(c.preco / 100).toFixed(2).replace('.', ',')}.` : '')).join('\n')}
