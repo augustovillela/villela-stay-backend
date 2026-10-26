@@ -458,6 +458,42 @@ const secao = (s) => console.log('\n— ' + s + ' —');
     assert.equal(real.json.telemetria.dias, 14);
   });
 
+  await t('telemetria: teto por origem — o 31º evento na janela leva 429 e não grava', async () => {
+    telemetria._zerarLimite();
+    const antes = telemetria.resumo(1).total;
+    const corpo = { evento: 'route_error', rota: '/music/app', navegador: 'chrome', codigo: 'TETO' };
+    for (let i = 0; i < telemetria.LIMITE_POR_JANELA; i++) {
+      const r = await req('POST', '/music/api/telemetria', { corpo });
+      assert.equal(r.status, 202, `evento ${i + 1}: ${JSON.stringify(r.json)}`);
+    }
+    const passou = await req('POST', '/music/api/telemetria', { corpo });
+    assert.equal(passou.status, 429);
+    assert.equal(telemetria.resumo(1).total, antes + telemetria.LIMITE_POR_JANELA);
+    // Cada origem tem o seu teto, e a janela seguinte recomeça.
+    assert.equal(telemetria.permitir('outra-origem'), true);
+    assert.equal(telemetria.permitir('127.0.0.1-x', Date.now() + 11 * 60 * 1000), true);
+    telemetria._zerarLimite();
+  });
+
+  await t('limite geral do /music/api não lê o X-Forwarded-For (forjável)', async () => {
+    const src = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
+    const bloco = src.slice(src.indexOf("app.use('/music/api', (req, res, next) => {"), src.indexOf('registrarRotasStaff(app'));
+    assert.ok(bloco.includes('req.ip'), 'o limite geral precisa usar req.ip');
+    assert.ok(!/headers\['x-forwarded-for'\]/.test(bloco), 'X-Forwarded-For é escrito pelo cliente');
+  });
+
+  await t('Laboratório: todo cliente que usa C.* declara C (o C de base.js é local à IIFE dela)', async () => {
+    // Em 26/10/2026 a telemetria pegou isto em produção: o player dos 40
+    // rudimentos chamava C.api sem declarar C, o ReferenceError derrubava o
+    // iniciar() e o botão ▶ nunca era ligado.
+    const dir = path.join(__dirname, 'laboratorio', 'cliente');
+    const semDecl = fs.readdirSync(dir).filter((f) => f.endsWith('.js')).filter((f) => {
+      const src = fs.readFileSync(path.join(dir, f), 'utf8').replace(/\/\/.*$/gm, '');
+      return /(^|[^\w.$])C\.\w/.test(src) && !/(^|[\s,(])C\s*=(?!=)/m.test(src);
+    });
+    assert.deepEqual(semDecl, [], `usam C.* sem declarar C: ${semDecl.join(', ')}`);
+  });
+
   // ===================================================================
   secao('ADR-0003 · mídia: o byte não passa pelo processo web');
 

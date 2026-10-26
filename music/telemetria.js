@@ -7,6 +7,21 @@ const EVENTOS = new Set([
   'browser_unsupported', 'upload_error', 'worker_error', 'route_error',
 ]);
 
+// Teto de envio por origem: sem ele um único cliente enche a tabela e
+// inventa alertas na aba 📡 (o limiar é 10 ocorrências). A chave é o IP
+// (req.ip, atrás do proxy do Render) e vive SÓ em memória — nunca no banco.
+const LIMITE_POR_JANELA = 30;
+const JANELA_MS = 10 * 60 * 1000;
+const janelas = new Map();
+function permitir(chave, agora = Date.now()) {
+  const k = String(chave || 'sem-ip') + ':' + Math.floor(agora / JANELA_MS);
+  const n = (janelas.get(k) || 0) + 1;
+  janelas.set(k, n);
+  if (janelas.size > 20000) janelas.clear();
+  return n <= LIMITE_POR_JANELA;
+}
+function _zerarLimite() { janelas.clear(); }
+
 function texto(v, max = 160) { return String(v == null ? '' : v).slice(0, max); }
 
 function registrar(d = {}) {
@@ -64,4 +79,4 @@ function demonstracao() {
   };
 }
 
-module.exports = { EVENTOS, registrar, resumo, demonstracao };
+module.exports = { EVENTOS, LIMITE_POR_JANELA, registrar, resumo, demonstracao, permitir, _zerarLimite };

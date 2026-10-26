@@ -29,6 +29,7 @@ function registrarRotasApp(app, { requireUsuario }) {
   // Telemetria técnica anônima: não recebe sessão, áudio, conteúdo musical,
   // IP ou identificadores. O allowlist vive no módulo para fechar a borda.
   app.post('/music/api/telemetria', h(async (req, res) => {
+    if (!telemetria.permitir(req.ip)) return res.status(429).json({ erro: 'Muitos eventos de telemetria — aguarde alguns minutos.' });
     const d = req.body || {};
     const campos = ['evento', 'rota', 'navegador', 'sistema', 'versao_app', 'duracao_ms', 'codigo'];
     if (JSON.stringify(d).length > 8192 || Object.keys(d).some((k) => !campos.includes(k))) {

@@ -77,7 +77,9 @@ function montar(app, injected = {}) {
   if (process.env.NODE_ENV !== 'development') {
     const janelas = new Map();
     app.use('/music/api', (req, res, next) => {
-      const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0].trim();
+      // req.ip, não o 1º item do X-Forwarded-For: esse o cliente escreve, e
+      // trocá-lo a cada requisição escapava do limite (server.js: trust proxy 1).
+      const ip = String(req.ip || req.socket.remoteAddress || 'ip');
       const chave = ip + ':' + Math.floor(Date.now() / 60000);
       const n = (janelas.get(chave) || 0) + 1;
       janelas.set(chave, n);
