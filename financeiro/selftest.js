@@ -5245,6 +5245,9 @@ testeAsync('app do assinante: sem orçamento, a tela explica em vez de mostrar z
   const { orcamentos } = (await pedir('GET', '/finance/api/orcamentos', { cookie: cookieA })).corpo;
   const app = carregarAppCliente(cookieA);
   await app.F.iniciar();
+  // Competência fixa dentro do exercício semeado (2026): no mês corrente o
+  // teste quebraria sozinho quando o calendário saísse do exercício.
+  app.F.competencia = '2026-08';
   app.F.subRelatorio = 'orcado';
   await app.F.vRelatorios();
   const html = app.escritos['f-rel'];

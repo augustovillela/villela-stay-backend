@@ -178,7 +178,7 @@ async function coletarEvidencias(tenant, usuario, chave, { fetchImpl, agora } = 
       fonte: fonte.chave,
       status: 'sucesso',
       coletaId: coleta.id,
-      evidencias: evidencias.registrar(fonte, normalizadas),
+      evidencias: evidencias.registrar(fonte, normalizadas, inicio),
     };
   } catch (e) {
     repo.registrarColetaInvestimentos({

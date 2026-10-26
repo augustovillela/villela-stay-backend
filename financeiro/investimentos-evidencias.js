@@ -122,10 +122,13 @@ function normalizar(fonte, dados, contexto) {
   return [normalizarBcbSelic(dados, contexto)];
 }
 
-function registrar(fonte, observacoes) {
+// `agora` é o mesmo relógio da coleta: reavaliar a atualidade com a hora do
+// sistema faria a evidência recém-normalizada mudar de estado conforme o dia
+// em que o código roda.
+function registrar(fonte, observacoes, agora) {
   return observacoes.map(o => {
     const linha = repo.registrarEvidenciaInvestimentos({ ...o, fonteId: fonte.id });
-    return apresentar(linha, fonte);
+    return agora ? apresentar(linha, fonte, agora) : apresentar(linha, fonte);
   });
 }
 
