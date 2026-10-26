@@ -284,11 +284,16 @@
 
   // ---- progresso local dos cursos editoriais ----
   function progressoCurso() {
-    var cursoId = /\/curso-bateria(?:\/|$)/.test(w.location.pathname) ? 'curso-bateria' : /\/curso-contrabaixo(?:\/|$)/.test(w.location.pathname) ? 'curso-contrabaixo' : 'curso-teoria';
-    var chave = 'musique-' + cursoId + '-concluidas-v1', concluidas = {};
+    var cursoId = /\/curso-bateria(?:\/|$)/.test(w.location.pathname) ? 'curso-bateria' : /\/curso-contrabaixo(?:\/|$)/.test(w.location.pathname) ? 'curso-contrabaixo' : /\/criar\/curso-(?:violao-livro|guitarra-edicao|guitarra-livro)(?:\/|$)/.test(w.location.pathname) ? 'curso-guitarra-livro' : 'curso-teoria';
+    var chave = cursoId === 'curso-guitarra-livro' ? 'curso-guitarra-livro-lidos' : 'musique-' + cursoId + '-concluidas-v1', concluidas = {};
     try { concluidas = JSON.parse(w.localStorage.getItem(chave) || '{}') || {}; } catch (_) { concluidas = {}; }
     function salvar() { try { w.localStorage.setItem(chave, JSON.stringify(concluidas)); } catch (_) { /* armazenamento indisponível */ } if (C.Jornada && C.Jornada.sync) C.Jornada.sync(false).catch(function () {}); }
     function atualizar() {
+      if (cursoId === 'curso-guitarra-livro') {
+        var capitulosLivro = C.$$('.curso-livro-capitulo'), feitosLivro = capitulosLivro.filter(function (a) { return !!concluidas[a.id.replace('capitulo-', '')]; }).length;
+        var painelLivro = C.$('#curso-progresso'); if (painelLivro) painelLivro.textContent = 'Progresso neste navegador: ' + feitosLivro + ' de ' + capitulosLivro.length + ' lições concluídas (' + (capitulosLivro.length ? Math.round(feitosLivro / capitulosLivro.length * 100) : 0) + '%).';
+        return;
+      }
       var links = C.$$('.curso-modulo a[data-curso-slug]'), total = links.length, feitos = 0;
       links.forEach(function (a) { var ok = !!concluidas[a.getAttribute('data-curso-slug')]; a.classList.toggle('curso-feito', ok); var li = a.closest('li'); if (li) li.classList.toggle('curso-item-feito', ok); if (ok) feitos++; });
       var painel = C.$('#curso-progresso'); if (painel) painel.textContent = total ? 'Progresso neste navegador: ' + feitos + ' de ' + total + ' lições concluídas (' + Math.round(feitos / total * 100) + '%).' : 'As primeiras lições serão adicionadas em breve.';
