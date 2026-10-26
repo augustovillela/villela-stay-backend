@@ -171,7 +171,8 @@
   /** Sequência de acordes (listas de MIDI). */
   function sequencia(acordes, o) {
     var a = audio(); var t0 = a.currentTime + 0.05; var dur = (o && o.dur) || 1;
-    acordes.forEach(function (ms, i) { ms.forEach(function (m) { voz(FREQ(m), t0 + i * dur, dur * 0.92, { vel: 0.5 / Math.max(2, ms.length) }); }); });
+    var timbre = o && o.timbre ? o.timbre : C.Som.timbre;
+    acordes.forEach(function (ms, i) { ms.forEach(function (m) { voz(FREQ(m), t0 + i * dur, dur * 0.92, { timbre: timbre, vel: 0.5 / Math.max(2, ms.length) }); }); });
   }
 
   // ---- percussão sintetizada (sem amostras: nada de licença a pedir) ----
