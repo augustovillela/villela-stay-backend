@@ -13,6 +13,7 @@ const L = require('./licoes');
 const CT = require('./curso-teoria');
 const CB = require('./curso-bateria');
 const CBA = require('./curso-contrabaixo');
+const CBA_LIVRO = require('./curso-contrabaixo-conteudo.json');
 const LB = require('./licoes-bateria');
 const ACESSO = require('./acesso');
 
@@ -27,6 +28,17 @@ const ler = (...p) => fs.readFileSync(path.join(__dirname, ...p), 'utf8');
 function nucleoJs() { return arquivo('nucleo', () => NUCLEO_ARQS.map((n) => ler('nucleo', n + '.js')).concat([ler('catalogo.js')]).join('\n;\n')); }
 function clienteJs() { return arquivo('cliente', () => CLIENTE_ARQS.map((n) => ler('cliente', n + '.js')).join('\n;\n')); }
 function cssLab() { return arquivo('css', () => ler('cliente', 'estilo.css')); }
+
+// Texto extraído do PDF editorial, organizado por capítulo. O PDF continua
+// sendo a edição oficial; esta camada torna o mesmo conteúdo navegável no
+// Musique e permite acrescentar as ferramentas de prática sem duplicar a aula.
+function conteudoLivroContrabaixo(numero) {
+  const item = CBA_LIVRO.capitulos.find((x) => x.numero === numero);
+  if (!item || !item.texto) return '';
+  const linhas = item.texto.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
+    .filter((x) => !/^\d+$/.test(x) && !/^CONTRABAIXO ELÉTRICO$/.test(x));
+  return `<details class="curso-livro-conteudo" open><summary>Conteúdo editorial do livro</summary><div class="curso-livro-texto">${linhas.map((x) => `<p>${esc(x)}</p>`).join('')}</div><p class="lab-nota-convencao">Fonte: livro-base, páginas ${item.pagina_inicio}–${item.pagina_fim}. Leia o PDF quando precisar da diagramação original.</p></details>`;
+}
 
 // Sem max-age: script de app com cache longo atravessa o service worker e
 // prende o usuário em JS velho (lição da casa). no-cache + ETag.
@@ -139,7 +151,7 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
     const ferramentas = c.numero <= 2 ? [['/music/criar/afinador-cordas', '🎛️ Afinar o contrabaixo']] : c.numero <= 11 || c.numero >= 25 && c.numero <= 30 ? [['/music/criar/metronomo-progressivo', '📈 Metrônomo progressivo'], ['/music/tocar', '🎸 Tocar junto']] : c.numero <= 19 || c.numero >= 35 ? [['/music/tutor-braco', '🎼 Localizar notas no braço'], ['/music/tocar', '🎸 Tocar junto']] : [['/music/criar/metronomo-progressivo', '📈 Metrônomo progressivo'], ['/music/tocar', '🎸 Tocar junto']];
     const linksFerramentas = ferramentas.map(([href, texto]) => `<a class="btn sec" href="${href}">${texto}</a>`).join(' ');
     const navegacao = `<nav class="lab-licao-nav" aria-label="Navegação dos capítulos">${anterior ? `<a href="/music/curso-contrabaixo/${esc(anterior.slug)}">← ${anterior.numero}. ${esc(anterior.titulo)}</a>` : '<span>Primeiro capítulo</span>'}<a href="/music/curso-contrabaixo/progresso">Todos os capítulos</a>${proximo ? `<a href="/music/curso-contrabaixo/${esc(proximo.slug)}">${proximo.numero}. ${esc(proximo.titulo)} →</a>` : '<span>Último capítulo</span>'}</nav>`;
-    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">${esc(c.faseNome)} · capítulo ${c.numero} · ${esc(c.nivel)}</p><h1>${esc(c.titulo)}</h1><p class="lab-lead">${esc(c.resumo)}</p><p><a class="btn" href="/music/curso-contrabaixo.pdf#page=${c.paginaPdf}">📄 Abrir no livro · PDF página ${c.paginaPdf}</a> <a class="btn sec" href="/music/curso-contrabaixo">← Curso de contrabaixo</a></p></header><section class="curso-modulo"><h2>Objetivo do capítulo</h2><p>${esc(c.roteiro.objetivo)}</p><h2>Roteiro de estudo</h2><ol>${c.roteiro.etapas.map((x) => `<li>${esc(x)}</li>`).join('')}</ol><h2>Checklist de domínio</h2><ul>${c.roteiro.evidencias.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></section><section class="curso-modulo"><h2>Pratique no Musique</h2><p>Escolha a ferramenta adequada para transformar este capítulo em prática musical.</p><p>${linksFerramentas}</p></section><div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(c.slug)}" aria-pressed="false">Marcar capítulo como concluído</button><span>O progresso fica salvo neste navegador e poderá ser sincronizado na conta.</span></div>${navegacao}`;
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">${esc(c.faseNome)} · capítulo ${c.numero} · ${esc(c.nivel)}</p><h1>${esc(c.titulo)}</h1><p class="lab-lead">${esc(c.resumo)}</p><p><a class="btn" href="/music/curso-contrabaixo.pdf#page=${c.paginaPdf}">📄 Abrir no livro · PDF página ${c.paginaPdf}</a> <a class="btn sec" href="/music/curso-contrabaixo">← Curso de contrabaixo</a></p></header><section class="curso-modulo"><h2>Objetivo do capítulo</h2><p>${esc(c.roteiro.objetivo)}</p><h2>Roteiro de estudo</h2><ol>${c.roteiro.etapas.map((x) => `<li>${esc(x)}</li>`).join('')}</ol><h2>Checklist de domínio</h2><ul>${c.roteiro.evidencias.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></section>${conteudoLivroContrabaixo(c.numero)}<section class="curso-modulo"><h2>Pratique no Musique</h2><p>Escolha a ferramenta adequada para transformar este capítulo em prática musical.</p><p>${linksFerramentas}</p></section><div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(c.slug)}" aria-pressed="false">Marcar capítulo como concluído</button><span>O progresso fica salvo neste navegador e poderá ser sincronizado na conta.</span></div>${navegacao}`;
     pagina(res, { titulo: `${c.titulo} — curso de contrabaixo | Musique`, descricao: c.resumo, caminho: '/music/curso-contrabaixo/' + c.slug, corpo, trilha: [['Cursos', '/music/cursos'], ['Contrabaixo', '/music/curso-contrabaixo'], [c.titulo]] });
   });
   cursosEmBreve.forEach(([slug, nome, proposta]) => {
