@@ -21,7 +21,9 @@ const CT = require('./curso-teoria');
 const CB = require('./curso-bateria');
 const CBA = require('./curso-contrabaixo');
 const CP = require('./curso-piano');
+const CC = require('./curso-cavaquinho');
 const CBA_LIVRO = require('./curso-contrabaixo-conteudo.json');
+const CC_LIVRO = require('./curso-cavaquinho-conteudo.json');
 const LB = require('./licoes-bateria');
 const ACESSO = require('./acesso');
 
@@ -118,6 +120,7 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
       { nome: 'Bateria', icone: '🥁', cor: '#a66b42', resumo: 'Groove, coordenação, leitura e trilha dos 40 rudimentos.', url: '/music/curso-bateria', ativo: true },
       { nome: 'Contrabaixo', icone: '🎸', cor: '#3f7180', resumo: 'Técnica, groove, harmonia, estilos, criação e performance.', url: '/music/curso-contrabaixo', ativo: true },
       { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Teclado, leitura, harmonia, acompanhamento e performance.', url: '/music/curso-piano', ativo: true },
+      { nome: 'Cavaquinho', icone: '🪕', cor: '#8b6b48', resumo: 'Acordes, batidas, samba, pagode, choro e performance.', url: '/music/curso-cavaquinho', ativo: true },
       { nome: 'Cavaquinho', icone: '🪕', cor: '#9a7650', resumo: 'Em preparação: levadas, acordes e repertório brasileiro.', url: '/music/curso-cavaquinho', ativo: false },
       { nome: 'Ukulele', icone: '🪕', cor: '#6d8060', resumo: 'Em preparação: acordes, batidas e primeiras canções.', url: '/music/curso-ukulele', ativo: false },
       { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Em preparação: palhetada, melodias e choro.', url: '/music/curso-bandolim', ativo: false },
@@ -249,6 +252,35 @@ ${relacionados(f.slug)}`;
       niveis: CT.CURSO.niveis.map((n) => ({ ...n, modulos: n.modulos.map((m) => ({ ...m, licoes: m.licoes.map((slug) => { const l = porSlug[slug]; return l ? { slug, titulo: l.titulo, resumo: l.resumo, nivel: l.nivel, prereq: l.prereq, url: `/music/aprender/${slug}` } : { slug, estado: 'planejada' }; }) })) })),
     };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+
+  // ------------------------------------------------------------ curso de cavaquinho
+  app.get('/music/curso-cavaquinho.json', opcional, (req, res) => {
+    const documento = { schema: 'musique.course.v1', id: CC.CURSO.id, titulo: CC.CURSO.titulo, subtitulo: CC.CURSO.subtitulo, versao: CC.CURSO.versao, descricao: CC.CURSO.descricao, paginas: CC.CURSO.paginas, trilhas: CC.CURSO.trilhas, partes: CC.partes.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-cavaquinho', markdown: '/music/curso-cavaquinho.md', progresso: '/music/curso-cavaquinho/progresso' }, capitulos: CC.capitulos.map((c) => ({ ...c, conteudo: (CC_LIVRO.capitulos.find((x) => x.numero === c.numero) || {}).conteudo || '', url: `/music/curso-cavaquinho/${c.slug}` })) };
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+  app.get('/music/curso-cavaquinho.md', opcional, (req, res) => {
+    const linhas = [`# ${CC.CURSO.titulo}`, '', CC.CURSO.descricao, '', '_38 capítulos · 10 partes · 3 trilhas_', ''];
+    CC.capitulos.forEach((c) => { const livro = CC_LIVRO.capitulos.find((x) => x.numero === c.numero); linhas.push(`## ${c.numero}. ${c.titulo}`, '', c.resumo, '', livro ? livro.conteudo : '', ''); });
+    res.set('Content-Type', 'text/markdown; charset=utf-8').set('Content-Disposition', 'attachment; filename="curso-cavaquinho.md"').set('Cache-Control', 'no-cache').send(linhas.join('\n'));
+  });
+  app.get('/music/curso-cavaquinho', opcional, (req, res) => {
+    const fases = CC.partes.map(([id, nome, ns]) => { const numeros = ns.length ? ns : (id === 'repertorio' ? [30, 31, 32, 33] : []); return `<section class="curso-nivel" id="nivel-${esc(id)}"><div class="curso-nivel-cab"><div><p class="lab-cab-tipo">Trilha de cavaquinho</p><h2>${esc(nome)}</h2><p>Conteúdo correspondente ao livro-base.</p></div><span>${numeros.length} capítulos</span></div><div class="curso-modulos"><article class="curso-modulo"><ul>${numeros.map((n) => { const c = CC.capitulos[n - 1]; return `<li><a data-curso-slug="${esc(c.slug)}" href="/music/curso-cavaquinho/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.resumo)}</span></li>`; }).join('')}</ul></article></div></section>`; }).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso editorial · versão ${esc(CC.CURSO.versao)}</p><h1>${esc(CC.CURSO.titulo)}</h1><p class="lab-lead">${esc(CC.CURSO.descricao)} ${esc(CC.CURSO.subtitulo)}.</p><div class="curso-numeros" aria-label="Dimensão do curso"><span><strong>10</strong> partes</span><span><strong>38</strong> capítulos</span><span><strong>3</strong> trilhas</span></div><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><p><a class="btn sec" href="/music/curso-cavaquinho.md">⬇ Edição Markdown</a> <a class="btn sec" href="/music/curso-cavaquinho/progresso">📈 Meu progresso</a> <a class="btn sec" href="/music/cursos">← Todos os cursos</a></p></header><section aria-labelledby="trilhas-cavaquinho"><h2 id="trilhas-cavaquinho">Três trilhas de aprendizagem</h2><div class="curso-trilhas">${CC.CURSO.trilhas.map((t) => `<div><strong>${esc(t.nome)}</strong><span>${esc(t.resumo)}</span></div>`).join('')}</div></section>${fases}`;
+    pagina(res, { titulo: 'Curso de cavaquinho — Musique', descricao: CC.CURSO.descricao, caminho: '/music/curso-cavaquinho', corpo, trilha: [['Cursos', '/music/cursos'], ['Cavaquinho']] });
+  });
+  app.get('/music/curso-cavaquinho/progresso', opcional, (req, res) => {
+    const itens = CC.capitulos.map((c) => `<li><a data-curso-slug="${esc(c.slug)}" href="/music/curso-cavaquinho/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.faseNome)}</span></li>`).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de cavaquinho · acompanhamento</p><h1>Meu progresso</h1><p class="lab-lead">Acompanhe os 38 capítulos do livro.</p><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div></header><section class="curso-modulo"><h2>Trilha completa</h2><ol>${itens}</ol></section>`;
+    pagina(res, { titulo: 'Meu progresso — curso de cavaquinho | Musique', descricao: 'Acompanhamento dos 38 capítulos do curso de cavaquinho.', caminho: '/music/curso-cavaquinho/progresso', corpo, trilha: [['Cursos', '/music/cursos'], ['Cavaquinho', '/music/curso-cavaquinho'], ['Meu progresso']] });
+  });
+  app.get('/music/curso-cavaquinho/:slug', opcional, (req, res) => {
+    const c = CC.capitulos.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de cavaquinho');
+    const livro = CC_LIVRO.capitulos.find((x) => x.numero === c.numero); const anterior = CC.capitulos[c.numero - 2]; const proximo = CC.capitulos[c.numero];
+    const conteudo = blocosLivroPiano(livro ? livro.conteudo : 'Conteúdo editorial ainda não localizado.');
+    const navegacao = `<nav class="lab-licao-nav" aria-label="Navegação dos capítulos">${anterior ? `<a href="/music/curso-cavaquinho/${anterior.slug}">← ${anterior.numero}. ${esc(anterior.titulo)}</a>` : '<span>Primeiro capítulo</span>'}<a href="/music/curso-cavaquinho/progresso">Índice e progresso</a>${proximo ? `<a href="/music/curso-cavaquinho/${proximo.slug}">${proximo.numero}. ${esc(proximo.titulo)} →</a>` : '<span>Último capítulo</span>'}</nav>`;
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Capítulo ${c.numero} de 38 · ${esc(c.faseNome)}</p><h1><span aria-hidden="true">🪕</span> ${esc(c.titulo)}</h1><p class="lab-lead">${esc(c.resumo)}</p><p><a class="btn sec" href="/music/curso-cavaquinho">← Curso de cavaquinho</a></p></header><section class="curso-livro-conteudo"><h2>Conteúdo editorial do livro</h2><div class="curso-livro-texto">${conteudo}</div></section><section class="curso-modulo curso-checklist"><h2>Checklist da aula</h2><label><input type="checkbox" data-curso-check="leitura"> Li o capítulo</label><label><input type="checkbox" data-curso-check="compreensao"> Consigo explicar o conteúdo</label><label><input type="checkbox" data-curso-check="pratica"> Fiz o exercício no instrumento</label><p class="lab-dica">O progresso é salvo no navegador e sincronizado quando a conta está conectada.</p></section>${navegacao}`;
+    pagina(res, { titulo: `${c.titulo} — curso de cavaquinho | Musique`, descricao: c.resumo, caminho: `/music/curso-cavaquinho/${c.slug}`, corpo, trilha: [['Cursos', '/music/cursos'], ['Cavaquinho', '/music/curso-cavaquinho'], [c.titulo]] });
   });
 
   // ------------------------------------------------------------ curso de piano

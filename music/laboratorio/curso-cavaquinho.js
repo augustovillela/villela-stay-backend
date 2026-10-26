@@ -8,13 +8,10 @@ const partes = [
   ['samba', 'Samba, pagode e roda', [17, 18, 19, 20]],
   ['choro', 'Choro, seresta e ritmos tradicionais', [21, 22, 23, 24]],
   ['recursos', 'Harmonia avançada e arranjos', [25, 26, 27, 28, 29]],
-  ['criacao', 'Escalas, frases e improvisação', [30, 31, 32, 33]],
-  ['repertorio', 'Repertório e aplicação musical', [],],
+  ['criacao', 'Escalas, frases e improvisação', []],
+  ['repertorio', 'Repertório e aplicação musical', [30, 31, 32, 33]],
   ['performance', 'Performance e plano de evolução', [34, 35, 36, 37, 38]],
 ];
-
-// O livro-base organiza a aplicação musical entre as partes 8 e 10.
-partes[8][2] = [];
 
 const titulos = [
   'História e função do cavaquinho', 'Anatomia e tipos', 'Acessórios e manutenção', 'Afinação',
