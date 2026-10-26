@@ -239,9 +239,11 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
     assert.equal(e.json.academia.resultado, 'revogada');
   });
 
-  await t('as telas: Minha conta e Cursos mostram a assinatura; o app compila', async () => {
+  await t('as telas: Minha conta mostra a assinatura e Cursos mostra os cursos do Musique', async () => {
     const js = (await req('GET', '/music/app.js', { cru: true })).texto;
-    assert.ok(js.includes('cartaoAssinatura') && js.includes('/assinatura/assinar') && js.includes('incluído na sua assinatura'));
+    assert.ok(js.includes('cartaoAssinatura') && js.includes('/assinatura/assinar'));
+    assert.ok(js.includes('Cursos do Musique') && js.includes('/music/curso-contrabaixo'));
+    assert.ok(js.includes('Cursos vinculados à Villela Academy'));
     new Function('window', 'document', js);
     const land = (await req('GET', '/music', { cru: true })).texto;
     assert.ok(land.includes('id="planos"') && land.includes('R$ 250,00'), 'a landing mostra os planos com o preço da config');

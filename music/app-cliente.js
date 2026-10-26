@@ -378,34 +378,30 @@ const JS = `
   }
 
   function verCursos() {
-    Promise.all([api('GET', '/cursos'), api('GET', '/estudo').catch(function () { return { trilhas: [] }; }),
-      api('GET', '/assinatura').catch(function () { return null; })]).then(function (rs) {
+    Promise.all([api('GET', '/cursos').catch(function () { return { cursos: [] }; }), api('GET', '/estudo').catch(function () { return { trilhas: [] }; })]).then(function (rs) {
       var c = $('#corpo'); c.innerHTML = '';
-      c.appendChild(el('h2', { txt: '\u{1F393} Cursos de música' }));
-      c.appendChild(el('p', { class: 'sub', txt: 'Cursos em vídeo da Academia Villela, escolhidos para quem estuda no Musique. ' +
-        'As aulas acontecem na Academia, que tem conta própria; os links abrem em outra aba.' }));
-      if (rs[2]) c.appendChild(cartaoAssinatura(rs[2], 'cursos'));
-      var incluido = !!(rs[2] && rs[2].acesso);
+      c.appendChild(el('h2', { txt: '\u{1F393} Cursos do Musique' }));
+      c.appendChild(el('p', { class: 'sub', txt: 'Cursos criados e estudados dentro do Musique. Abra um percurso para ler as aulas, praticar e acompanhar o progresso.' }));
+      var locais = [
+        ['🎓', 'Teoria musical', 'Conceitos, ouvido, harmonia e aplicação.', '/music/curso-teoria', '#5865a8'],
+        ['🪕', 'Violão', 'Acordes, batidas, dedilhados e repertório.', '/music/criar/curso-violao-livro', '#4f7d67'],
+        ['🎸', 'Guitarra', 'Timbre, riffs, técnica e improvisação.', '/music/criar/curso-guitarra-edicao', '#8a5a72'],
+        ['🥁', 'Bateria', 'Pulso, groove, técnica e 40 rudimentos.', '/music/curso-bateria', '#a66b42'],
+        ['🎸', 'Contrabaixo', 'Técnica, groove, harmonia e performance.', '/music/curso-contrabaixo', '#3f7180']
+      ];
+      var gl = el('div', { class: 'grade' });
+      locais.forEach(function (k) { gl.appendChild(el('a', { class: 'item com-ico', href: k[3], style: 'border-left:4px solid ' + k[4], html: '<div class="topo-item">' + icone({ ico: k[0], fundo: '#F3F7FA', cor: k[4] }) + '<b>' + esc(k[1]) + '</b></div><span>' + esc(k[2]) + '</span><span class="peq">Abrir curso no Musique →</span>' })); });
+      c.appendChild(gl);
       var ligados = {};
       (rs[1].trilhas || []).forEach(function (t) { if (t.curso_academia) ligados[t.curso_academia.slug] = t.titulo; });
       var cursos = rs[0].cursos || [];
-      if (!cursos.length) {
-        c.appendChild(el('div', { class: 'card vazio-card', html:
-          '<div class="vazio-ico">\u{1F393}</div><h3>Nenhum curso de música publicado ainda</h3>' +
-          '<p class="sub">Assim que a Academia publicar um curso na categoria Música, ele aparece aqui, com a trilha do Musique que ele complementa.</p>' +
-          '<a class="btn sec" href="https://academia.villelastay.com.br/academy" target="_blank" rel="noopener">Conhecer a Academia Villela</a>' }));
-        return;
+      if (cursos.length) {
+        c.appendChild(el('h2', { txt: '\u{1F393} Cursos vinculados à Villela Academy' }));
+        c.appendChild(el('p', { class: 'sub', txt: 'Esta seção é separada dos cursos nativos do Musique. Os links abaixo abrem a Academy em outra aba.' }));
+        var g = el('div', { class: 'grade' });
+        cursos.forEach(function (k) { g.appendChild(el('a', { class: 'item com-ico', href: k.url, target: '_blank', rel: 'noopener', style: 'border-left:4px solid #C9A227', html: '<div class="topo-item">' + icone({ ico: '\u{1F393}', fundo: '#FDF6E3', cor: '#8A6D12' }) + '<b>' + esc(k.titulo) + '</b></div>' + (k.subtitulo ? '<span>' + esc(k.subtitulo) + '</span>' : '') + (ligados[k.slug] ? '<span class="chip">\u{1F9ED} complementa a trilha ' + esc(ligados[k.slug]) + '</span>' : '') + '<span class="peq">Abrir na Villela Academy ↗</span>' })); });
+        c.appendChild(g);
       }
-      var g = el('div', { class: 'grade' });
-      cursos.forEach(function (k) {
-        var preco = k.preco_centavos ? 'R$ ' + (k.preco_centavos / 100).toFixed(2).replace('.', ',') : '';
-        g.appendChild(el('a', { class: 'item com-ico', href: k.url, target: '_blank', rel: 'noopener', style: 'border-left:4px solid #C9A227',
-          html: '<div class="topo-item">' + icone({ ico: '\u{1F393}', fundo: '#FDF6E3', cor: '#8A6D12' }) + '<b>' + esc(k.titulo) + '</b></div>' +
-            (k.subtitulo ? '<span>' + esc(k.subtitulo) + '</span>' : '') +
-            (ligados[k.slug] ? '<span class="chip">\u{1F9ED} complementa a trilha ' + esc(ligados[k.slug]) + '</span>' : '') +
-            '<span class="peq">' + [k.produtor ? 'com ' + esc(k.produtor) : '', incluido ? '\u{2705} incluído na sua assinatura' : preco].filter(Boolean).join(' · ') + '</span>' }));
-      });
-      c.appendChild(g);
     }).catch(function (e) { $('#corpo').innerHTML = ''; erro(e.message); });
   }
 
