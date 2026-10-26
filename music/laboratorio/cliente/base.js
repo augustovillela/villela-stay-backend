@@ -280,7 +280,7 @@
 
   // ---- progresso local dos cursos editoriais ----
   function progressoCurso() {
-    var cursoId = /\/curso-bateria(?:\/|$)/.test(w.location.pathname) ? 'curso-bateria' : 'curso-teoria';
+    var cursoId = /\/curso-bateria(?:\/|$)/.test(w.location.pathname) ? 'curso-bateria' : /\/curso-contrabaixo(?:\/|$)/.test(w.location.pathname) ? 'curso-contrabaixo' : 'curso-teoria';
     var chave = 'musique-' + cursoId + '-concluidas-v1', concluidas = {};
     try { concluidas = JSON.parse(w.localStorage.getItem(chave) || '{}') || {}; } catch (_) { concluidas = {}; }
     function salvar() { try { w.localStorage.setItem(chave, JSON.stringify(concluidas)); } catch (_) { /* armazenamento indisponível */ } if (C.Jornada && C.Jornada.sync) C.Jornada.sync(false).catch(function () {}); }
