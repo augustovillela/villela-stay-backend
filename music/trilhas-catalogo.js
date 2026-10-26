@@ -15,6 +15,38 @@
 
 const TRILHAS = [
   {
+    slug: 'violao-iniciante',
+    titulo: 'Violão: acompanhamento',
+    descricao: 'Trilha específica para o violão: postura, acordes abertos, batidas, dedilhados e acompanhamento de canções.',
+    instrumento: 'violao',
+    nivel: 1,
+    objetivo: 'Acompanhar canções com acordes abertos e pulso estável.',
+    ordem: 5,
+    itens: [
+      { tipo: 'ritmo.palma', nivel: 1, quantidade: 4, titulo: 'Pulso e movimento da mão direita' },
+      { tipo: 'acorde.montar', nivel: 1, quantidade: 6, titulo: 'Acordes abertos essenciais' },
+      { tipo: 'ritmo.palma', nivel: 2, quantidade: 6, titulo: 'Batidas de acompanhamento' },
+      { tipo: 'acorde.montar', nivel: 2, quantidade: 6, titulo: 'Trocas sem interromper o pulso' },
+      { tipo: 'ritmo.palma', nivel: 3, quantidade: 6, titulo: 'Dedilhado e dinâmica' },
+    ],
+  },
+  {
+    slug: 'guitarra-iniciante',
+    titulo: 'Guitarra: técnica e riffs',
+    descricao: 'Trilha específica para a guitarra: palhetada, riffs, power chords, articulação e primeiros fraseados.',
+    instrumento: 'guitarra',
+    nivel: 1,
+    objetivo: 'Executar riffs e bases com palhetada consistente e articulação clara.',
+    ordem: 6,
+    itens: [
+      { tipo: 'ritmo.palma', nivel: 1, quantidade: 4, titulo: 'Pulso e palhetada alternada' },
+      { tipo: 'acorde.montar', nivel: 1, quantidade: 6, titulo: 'Power chords e formas móveis' },
+      { tipo: 'ritmo.palma', nivel: 2, quantidade: 6, titulo: 'Riffs em subdivisões' },
+      { tipo: 'escala.montar', nivel: 2, quantidade: 6, titulo: 'Pentatônica em uma posição' },
+      { tipo: 'melodia.tocar', nivel: 3, quantidade: 6, titulo: 'Frases, bends e vibrato' },
+    ],
+  },
+  {
     slug: 'primeiros-passos',
     titulo: 'Primeiros passos',
     descricao: 'Para quem está começando do zero. Ouvido, pulso e as primeiras notas — '
