@@ -306,7 +306,9 @@ Pendências operacionais:
 - monitorar tempo de build e custo do Render;
 - conferir Chrome, Firefox e Edge em desktop e dispositivos móveis;
 - criar página de manutenção amigável para deploys, evitando erro 502 sem contexto;
-- configurar telemetria mínima e não invasiva para erros técnicos.
+- evoluir telemetria com gráficos, alertas e análise histórica — a coleta mínima anônima já está publicada.
+
+> Atualização de 26/10/2026: a telemetria técnica mínima foi publicada com allowlist de eventos, sem áudio, conteúdo musical, sessão ou IP persistido, retenção de 30 dias e resumo agregado no painel do staff.
 
 ## 11. Validação física pendente
 
