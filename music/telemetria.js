@@ -30,16 +30,18 @@ function resumo(dias = 7) {
   const total = (db.prepare('SELECT COUNT(*) AS n FROM music_telemetria WHERE criado_em >= ?').get(desde) || {}).n || 0;
   const agrupar = (campo) => db.prepare(`SELECT ${campo} AS chave, COUNT(*) AS n FROM music_telemetria WHERE criado_em >= ? GROUP BY ${campo} ORDER BY n DESC LIMIT 20`).all(desde);
   const eventos = agrupar('evento');
+  const porDia = db.prepare("SELECT substr(criado_em, 1, 10) AS dia, COUNT(*) AS n FROM music_telemetria WHERE criado_em >= ? GROUP BY dia ORDER BY dia").all(desde);
   const alertas = eventos.filter((x) => x.n >= 10).map((x) => ({
     severidade: x.n >= 25 ? 'alta' : 'media', tipo: x.chave,
     mensagem: `O evento ${x.chave} atingiu ${x.n} ocorrências nos últimos ${n} dias.`,
   }));
-  return { dias: n, total, demonstracao: false, eventos, rotas: agrupar('rota'), navegadores: agrupar('navegador'), codigos: agrupar('codigo'), alertas };
+  return { dias: n, total, demonstracao: false, por_dia: porDia, eventos, rotas: agrupar('rota'), navegadores: agrupar('navegador'), codigos: agrupar('codigo'), alertas };
 }
 
 function demonstracao() {
   return {
     demonstracao: true, dias: 7, total: 47,
+    por_dia: [{ dia: '2026-10-20', n: 4 }, { dia: '2026-10-21', n: 7 }, { dia: '2026-10-22', n: 5 }, { dia: '2026-10-23', n: 9 }, { dia: '2026-10-24', n: 6 }, { dia: '2026-10-25', n: 8 }, { dia: '2026-10-26', n: 8 }],
     eventos: [
       { chave: 'audio_decode_error', n: 14 }, { chave: 'js_error', n: 11 },
       { chave: 'microphone_denied', n: 9 }, { chave: 'worker_error', n: 7 },
