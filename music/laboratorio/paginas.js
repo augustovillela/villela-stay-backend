@@ -127,6 +127,10 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
     const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de contrabaixo · acompanhamento</p><h1>Meu progresso</h1><p class="lab-lead">Retome o estudo pelo ponto em que parou e acompanhe os 43 capítulos do livro.</p><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><p><a class="btn" href="/music/curso-contrabaixo.pdf">📄 Abrir livro em PDF</a> <a class="btn sec" href="/music/curso-contrabaixo">← Voltar ao curso</a></p></header><section class="curso-modulo"><h2>Trilha completa</h2><p class="lab-nota-convencao">O registro é salvo no navegador e sincronizado na conta quando você está logado.</p><ol>${itens}</ol></section>`;
     pagina(res, { titulo: 'Meu progresso — curso de contrabaixo | Musique', descricao: 'Acompanhamento dos 43 capítulos do curso de contrabaixo.', caminho: '/music/curso-contrabaixo/progresso', corpo, trilha: [['Cursos', '/music/cursos'], ['Contrabaixo', '/music/curso-contrabaixo'], ['Meu progresso']] });
   });
+  app.get('/music/curso-contrabaixo/professor', opcional, (req, res) => {
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de contrabaixo · área do professor</p><h1>Acompanhamento dos alunos</h1><p class="lab-lead">Consulte quantos capítulos cada aluno concluiu no percurso de 43 capítulos.</p></header><section data-contrabaixo-professor-dashboard><p>Carregando acompanhamento…</p></section><p><a class="btn sec" href="/music/curso-contrabaixo">← Voltar ao curso</a></p>`;
+    pagina(res, { titulo: 'Professor — curso de contrabaixo | Musique', descricao: 'Acompanhamento dos alunos de contrabaixo.', caminho: '/music/curso-contrabaixo/professor', corpo, trilha: [['Cursos', '/music/cursos'], ['Contrabaixo', '/music/curso-contrabaixo'], ['Professor']] });
+  });
   app.get('/music/curso-contrabaixo/:slug', opcional, (req, res) => {
     const c = CBA.capitulos.find((x) => x.slug === req.params.slug);
     if (!c) return naoAchou(res, 'este capítulo');

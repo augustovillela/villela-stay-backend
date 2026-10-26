@@ -332,6 +332,16 @@
     }).catch(function (e) { C.limpar(alvo); alvo.appendChild(C.el('p', { class: 'lab-erro', txt: e.status === 403 ? 'Esta área é exclusiva para professores.' : e.message })); });
   }
 
+  function painelProfessorContrabaixo() {
+    var alvo = C.$('[data-contrabaixo-professor-dashboard]'); if (!alvo) return;
+    C.api('GET', '/music/api/lab/prof/contrabaixo/alunos').then(function (r) {
+      C.limpar(alvo);
+      var alunos = r.alunos || [], tabela = C.el('table', { class: 'lab-tabela' }, [C.el('caption', { txt: 'Progresso dos alunos de contrabaixo' }), C.el('thead', {}, [C.el('tr', {}, ['Aluno', 'Capítulos', 'Percentual'].map(function (x) { return C.el('th', { scope: 'col', txt: x }); }))]), C.el('tbody', {}, alunos.map(function (a) { return C.el('tr', {}, [C.el('th', { scope: 'row', txt: a.aluno }), C.el('td', { txt: a.total + '/43' }), C.el('td', { txt: a.percentual + '%' })]); }))]);
+      alvo.appendChild(C.el('div', { class: 'lab-tabela-rolagem' }, [tabela]));
+      if (!alunos.length) alvo.appendChild(C.el('p', { class: 'lab-dica', txt: 'Ainda não há progresso de alunos sincronizado.' }));
+    }).catch(function (e) { C.limpar(alvo); alvo.appendChild(C.el('p', { class: 'lab-erro', txt: e.status === 403 ? 'Esta área é exclusiva para professores.' : e.message })); });
+  }
+
   // ---- barra de rolagem também EM CIMA das tabelas largas (atlas) ----
   // Uma faixa fina acima da tabela, do mesmo comprimento, rola junto com a
   // de baixo: dá para ir para os lados sem descer até o fim da tabela.
@@ -395,6 +405,7 @@
     filtrosCurso();
     painelBateria();
     painelProfessorBateria();
+    painelProfessorContrabaixo();
     var main = C.$('#lab-main');
     if (!main) return;
     var slug = main.getAttribute('data-ferramenta');
