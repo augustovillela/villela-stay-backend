@@ -259,6 +259,8 @@ A jornada atual compartilha boa parte da estrutura. Falta aprofundar trilhas pr�
 
 > Atualização de 25/10/2026: a integração da campanha do Tocar junto com tarefas e devolutivas foi concluída e publicada. O professor cria tarefa com instrumento, estudo e meta; o aluno abre o estudo diretamente, registra sessão e pode enviá-la como submissão; o professor vê a sessão junto dos envios. A indicação automática continua separada da nota humana. Permanecem apenas melhorias futuras de análise avançada, não um bloqueio do fluxo básico.
 
+> Atualização de 25/10/2026: o curso editorial de contrabaixo foi publicado a partir do livro de 427 páginas, com capa nova no PDF final de 428 páginas, 43 capítulos, progresso, navegação, ferramentas de prática, tarefas, painel docente, observações e devolutivas. Áudio profissional, vídeo, animações e demonstrações sincronizadas permanecem explicitamente como pendência futura.
+
 ## 9. Instrumentos adicionais
 
 Implementado em diferentes graus:
@@ -279,6 +281,7 @@ Pendências:
 - mais exercícios específicos por instrumento;
 - timbres e articulações mais realistas;
 - jornadas próprias para piano e bateria.
+- mídias profissionais do curso de contrabaixo: áudio, vídeo, animações e demonstrações sincronizadas;
 
 ## 10. Infraestrutura e produção
 
