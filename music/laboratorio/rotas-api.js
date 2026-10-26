@@ -284,15 +284,20 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     res.status(201).json({ ok: true, pratica: { id, bpm, foco, notas, data: quando } });
   }));
   app.get(B + '/piano/progresso', requireUsuario, h(async (req, res) => {
-    const linhas = db.prepare('SELECT capitulo, checklist, concluido, atualizado_em FROM curso_piano_progresso WHERE aluno = ? ORDER BY capitulo').all(req.usuario.id);
-    res.json({ curso: 'curso-piano-livro', progresso: linhas.map((x) => { let checklist = {}; try { checklist = JSON.parse(x.checklist || '{}'); } catch (_) {} return { capitulo: x.capitulo, checklist, concluido: !!x.concluido, atualizado_em: x.atualizado_em }; }) });
+    const linhas = db.prepare('SELECT capitulo, checklist, concluido, atualizado_em, proxima_revisao FROM curso_piano_progresso WHERE aluno = ? ORDER BY capitulo').all(req.usuario.id);
+    res.json({ curso: 'curso-piano-livro', progresso: linhas.map((x) => { let checklist = {}; try { checklist = JSON.parse(x.checklist || '{}'); } catch (_) {} return { capitulo: x.capitulo, checklist, concluido: !!x.concluido, atualizado_em: x.atualizado_em, proxima_revisao: x.proxima_revisao }; }) });
+  }));
+  app.get(B + '/piano/revisoes', requireUsuario, h(async (req, res) => {
+    const agora = nowISO();
+    const linhas = db.prepare('SELECT capitulo, proxima_revisao, concluido FROM curso_piano_progresso WHERE aluno = ? AND proxima_revisao <> ? AND proxima_revisao <= ? ORDER BY proxima_revisao').all(req.usuario.id, '', agora);
+    res.json({ curso: 'curso-piano-livro', revisoes: linhas });
   }));
   app.put(B + '/piano/progresso/:capitulo', requireUsuario, h(async (req, res) => {
     const capitulo = s(req.params.capitulo, 40), n = Number(capitulo.slice('piano-'.length));
     if (!/^piano-\d{2}$/.test(capitulo) || n < 1 || n > 42) throw erro(400, 'Capítulo de Piano inválido.');
-    const b = req.body || {}, checklist = b.checklist && typeof b.checklist === 'object' ? b.checklist : {}, concluido = b.concluido ? 1 : 0, quando = nowISO();
-    db.prepare(`INSERT INTO curso_piano_progresso (aluno,capitulo,checklist,concluido,atualizado_em) VALUES (?,?,?,?,?) ON CONFLICT(aluno,capitulo) DO UPDATE SET checklist=excluded.checklist, concluido=excluded.concluido, atualizado_em=excluded.atualizado_em`).run(req.usuario.id, capitulo, JSON.stringify(checklist), concluido, quando);
-    res.json({ ok: true, capitulo, checklist, concluido: !!concluido, atualizado_em: quando });
+    const b = req.body || {}, checklist = b.checklist && typeof b.checklist === 'object' ? b.checklist : {}, concluido = b.concluido ? 1 : 0, quando = nowISO(), revisao = new Date(Date.now() + (concluido ? 7 : 1) * 86400000).toISOString();
+    db.prepare(`INSERT INTO curso_piano_progresso (aluno,capitulo,checklist,concluido,atualizado_em,proxima_revisao) VALUES (?,?,?,?,?,?) ON CONFLICT(aluno,capitulo) DO UPDATE SET checklist=excluded.checklist, concluido=excluded.concluido, atualizado_em=excluded.atualizado_em, proxima_revisao=excluded.proxima_revisao`).run(req.usuario.id, capitulo, JSON.stringify(checklist), concluido, quando, revisao);
+    res.json({ ok: true, capitulo, checklist, concluido: !!concluido, atualizado_em: quando, proxima_revisao: revisao });
   }));
   app.get(B + '/prof/piano/alunos', requireUsuario, h(async (req, res) => {
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
