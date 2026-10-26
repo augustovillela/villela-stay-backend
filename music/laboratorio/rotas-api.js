@@ -115,7 +115,8 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
     const aluno = s(req.params.aluno, 120);
     const linha = db.prepare('SELECT usuario, dados FROM lab_jornada_progresso WHERE usuario = ?').get(aluno);
-    res.json({ curso: 'curso-contrabaixo-livro', total_capitulos: 43, progresso: linha ? baixoProgresso(linha) : { aluno, concluidas: [], total: 0, percentual: 0 }, observacoes: db.prepare('SELECT * FROM curso_contrabaixo_observacoes WHERE aluno = ? ORDER BY criado_em DESC LIMIT 100').all(aluno) });
+    const sessoes = db.prepare(`SELECT id, trilha_id, meta, anotacao, iniciada_em FROM sessoes_pratica WHERE usuario = ? AND trilha_id LIKE 'contrabaixo:%' ORDER BY iniciada_em DESC LIMIT 50`).all(aluno).map((x) => { let meta = {}; try { meta = JSON.parse(x.meta || '{}'); } catch (_) {} return { id: x.id, capitulo: x.trilha_id.slice('contrabaixo:'.length), ...meta, notas: x.anotacao, data: x.iniciada_em }; });
+    res.json({ curso: 'curso-contrabaixo-livro', total_capitulos: 43, progresso: linha ? baixoProgresso(linha) : { aluno, concluidas: [], total: 0, percentual: 0 }, sessoes, observacoes: db.prepare('SELECT * FROM curso_contrabaixo_observacoes WHERE aluno = ? ORDER BY criado_em DESC LIMIT 100').all(aluno) });
   }));
   app.post(B + '/prof/contrabaixo/observacoes', requireUsuario, h(async (req, res) => {
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem registrar observações.');
