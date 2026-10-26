@@ -25,7 +25,7 @@ function bannerCurso(caminho) {
   const teoria = /^\/music\/curso-teoria/.test(rota);
   const violao = /^\/music\/criar\/curso-violao-livro/.test(rota);
   const guitarra = /^\/music\/criar\/curso-guitarra-(?:livro|edicao)/.test(rota);
-  const futuro = /curso-(?:contrabaixo|piano|ukulele|cavaquinho|bandolim)/.test(rota);
+  const futuro = /curso-(?:piano|ukulele|cavaquinho|bandolim)/.test(rota);
   if (!bateria && !teoria && !violao && !guitarra && !futuro) return '';
   const futuroId = (rota.match(/curso-(contrabaixo|piano|ukulele|cavaquinho|bandolim)/) || [])[1];
   const dadosFuturos = { contrabaixo: ['Contrabaixo', '#3f7180', 'groove · linhas · fundamento'], piano: ['Piano', '#536f82', 'harmonia · acompanhamento · leitura'], ukulele: ['Ukulele', '#6d8060', 'acordes · batidas · canções'], cavaquinho: ['Cavaquinho', '#9a7650', 'levadas · acordes · repertório'], bandolim: ['Bandolim', '#7d6374', 'palhetada · melodias · choro'] };
@@ -54,7 +54,7 @@ const SUBNAV = () => `<nav class="lab-sub" aria-label="Navegação Musical">
     <a class="lab-sub-curso" href="/music/criar/curso-violao-livro"><span aria-hidden="true">🪕</span> Violão</a>
     <a class="lab-sub-curso" href="/music/criar/curso-guitarra-edicao"><span aria-hidden="true">🎸</span> Guitarra</a>
     <a class="lab-sub-curso" href="/music/curso-bateria"><span aria-hidden="true">🥁</span> Bateria</a>
-    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🎸</span> Contrabaixo</span>
+    <a class="lab-sub-curso" href="/music/curso-contrabaixo"><span aria-hidden="true">🎸</span> Contrabaixo</a>
     <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🎹</span> Piano</span>
     <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Ukulele</span>
     <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Cavaquinho</span>
