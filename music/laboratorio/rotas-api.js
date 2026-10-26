@@ -267,6 +267,23 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     res.status(201).json({ ok: true, pratica: { id, bpm, foco, notas, data: quando } });
   }));
 
+  // ---- diário de prática do curso de piano -----------------------------
+  app.get(B + '/piano/praticas', requireUsuario, h(async (req, res) => {
+    const slug = s(req.query.capitulo, 80);
+    const linhas = db.prepare(`SELECT id, meta, anotacao, iniciada_em FROM sessoes_pratica
+      WHERE usuario = ? AND trilha_id = ? ORDER BY iniciada_em DESC LIMIT 20`).all(req.usuario.id, 'piano:' + slug);
+    res.json({ praticas: linhas.map((x) => { let meta = {}; try { meta = JSON.parse(x.meta || '{}'); } catch (_) {} return { id: x.id, ...meta, notas: x.anotacao, data: x.iniciada_em }; }) });
+  }));
+  app.post(B + '/piano/praticas', requireUsuario, h(async (req, res) => {
+    const b = req.body || {}, capitulo = s(b.capitulo, 80), foco = s(b.foco, 30), notas = s(b.notas, 500), bpm = Number(b.bpm);
+    const numeroCapitulo = Number(capitulo.slice('piano-'.length));
+    if (!/^piano-\d{2}$/.test(capitulo) || numeroCapitulo < 1 || numeroCapitulo > 42 || !['som', 'tempo', 'tecnica', 'leitura', 'expressao', 'criacao'].includes(foco) || !(bpm >= 20 && bpm <= 300)) throw erro(400, 'Capítulo, foco ou BPM inválido.');
+    const id = novoId(), quando = nowISO();
+    db.prepare(`INSERT INTO sessoes_pratica (id, usuario, trilha_id, meta, anotacao, iniciada_em, encerrada_em) VALUES (?,?,?,?,?,?,?)`)
+      .run(id, req.usuario.id, 'piano:' + capitulo, JSON.stringify({ bpm, foco }), notas, quando, quando);
+    res.status(201).json({ ok: true, pratica: { id, bpm, foco, notas, data: quando } });
+  }));
+
   // ---- jornada de violão/guitarra: sincronização entre dispositivos ----
   app.get(B + '/jornada-guitarra', requireUsuario, h(async (req, res) => {
     const row = db.prepare('SELECT dados, atualizado_em FROM lab_jornada_progresso WHERE usuario = ?').get(req.usuario.id);
