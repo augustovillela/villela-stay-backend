@@ -664,7 +664,8 @@ tr:last-child td { border-bottom: none; }
 .mtel-marca { font-size: 13px; font-weight: 800; letter-spacing: .1em; fill: #5C4300; }
 .mtel-det { margin-top: 8px; font-size: .85rem; }
 .mtel-det summary { cursor: pointer; color: var(--lago-escuro); }
-.mtel-rolagem { overflow-x: auto; max-width: 100%; }
+/* contain: sem ele, a largura mínima da tabela (560px) sobe até o <main> flex e a PÁGINA rola no tablet. */
+.mtel-rolagem { overflow-x: auto; max-width: 100%; contain: inline-size; }
 .mtel-rank { width: 100%; }
 /* O design system (.vx) pinta todo <th> como cabeçalho (caixa-alta, fundo); aqui o th de LINHA é o rótulo do item. */
 .mtel th[scope="row"] { text-transform: none; letter-spacing: normal; background: transparent; font-size: .9rem; color: var(--concreto); }
