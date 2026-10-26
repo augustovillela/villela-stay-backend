@@ -428,6 +428,16 @@ async function rodar({ t, secao, req, assert }) {
     assert.deepEqual(de_novo.json.questoes.map((q) => q.semente), qa.json.questoes.map((q) => q.semente));
   });
 
+  await t('CONTRABAIXO: diário sincronizado aparece ao professor com capítulo, BPM e foco', async () => {
+    const s1 = await req('POST', '/music/api/lab/contrabaixo/praticas', { como: 'ana', corpo: { capitulo: 'contrabaixo-24', bpm: 76, foco: 'expressao', notas: 'Fraseado mais claro no segundo compasso.' } });
+    assert.equal(s1.status, 201, JSON.stringify(s1.json));
+    const minhas = await req('GET', '/music/api/lab/contrabaixo/praticas?capitulo=contrabaixo-24', { como: 'ana' });
+    assert.equal(minhas.status, 200); assert.ok(minhas.json.praticas.some((x) => x.bpm === 76 && x.foco === 'expressao'));
+    const painel = await req('GET', '/music/api/lab/prof/contrabaixo/aluno/ana/progresso', { como: 'prof' });
+    assert.equal(painel.status, 200); assert.ok(painel.json.sessoes.some((x) => x.capitulo === 'contrabaixo-24' && x.bpm === 76 && x.notas.includes('Fraseado')));
+    assert.equal((await req('POST', '/music/api/lab/contrabaixo/praticas', { como: 'ana', corpo: { capitulo: 'contrabaixo-99', bpm: 76, foco: 'expressao' } })).status, 400);
+  });
+
   await t('ASSINATURA VENCIDA: o Laboratório pessoal fecha com 402 — mas as ferramentas e os dados (LGPD) continuam abertos', async () => {
     const contas = require('../contas');
     const cad = await req('POST', '/music/api/conta/cadastrar', { corpo: { nome: 'Lab Vencido', email: 'labvencido@t', senha: 'senha-boa-123', aceite_termos: true } });

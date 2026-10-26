@@ -41,7 +41,7 @@ function conteudoLivroContrabaixo(numero) {
   const blocos = []; let texto = []; let tab = [];
   const flushTexto = () => { if (texto.length) { blocos.push(`<div class="curso-livro-texto">${texto.map((x) => `<p>${esc(x)}</p>`).join('')}</div>`); texto = []; } };
   const flushTab = () => { if (tab.length) { blocos.push(`<pre class="curso-livro-tab" aria-label="Exemplo musical do livro">${esc(tab.join('\n'))}</pre>`); tab = []; } };
-  linhas.forEach((x) => { if (/^[GDAE]\|/.test(x) || /^[1e&i a4 ]{5,}$/.test(x)) { flushTexto(); tab.push(x); } else { flushTab(); texto.push(x); } });
+  linhas.forEach((x) => { if (/^[GDAE]\|/.test(x) || /^[1e&i a4 ]{5,}$/.test(x)) { flushTexto(); tab.push(x); } else if (/^(Exercício \d+|\d+\.\d+\s*[—-])/.test(x)) { flushTab(); flushTexto(); blocos.push(`<aside class="curso-livro-exercicio"><h3>${esc(x)}</h3><p>Execute lentamente, registre o andamento e compare com o critério de domínio do capítulo.</p></aside>`); } else { flushTab(); texto.push(x); } });
   flushTab(); flushTexto();
   const bpm = numero < 5 ? 60 : numero < 12 ? 70 : numero < 25 ? 80 : numero < 35 ? 76 : 84;
   const foco = numero <= 7 ? 'som, postura e coordenação' : numero <= 19 ? 'tempo, leitura e harmonia' : numero <= 30 ? 'expressão, groove e estilos' : numero <= 34 ? 'slap e técnicas expandidas' : 'criação, banda e performance';
