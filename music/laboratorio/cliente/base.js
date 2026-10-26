@@ -339,6 +339,11 @@
     pintar(); sincronizar();
   }
 
+  function revisoesPiano() {
+    var alvo = C.$('[data-piano-revisoes]'); if (!alvo) return;
+    C.api('GET', '/music/api/lab/piano/revisoes').then(function (r) { C.limpar(alvo); var itens = r.revisoes || []; alvo.appendChild(C.el('p', { class: 'lab-dica', txt: itens.length ? itens.length + ' revisão(ões) pendente(s).' : 'Nenhuma revisão pendente no momento.' })); if (itens.length) alvo.appendChild(C.el('ul', { class: 'lab-resultados' }, itens.map(function (x) { return C.el('li', {}, [C.el('a', { href: '/music/curso-piano/' + x.capitulo, txt: x.capitulo }), ' · prevista para ' + String(x.proxima_revisao || '')]); }))); }).catch(function (e) { C.limpar(alvo); alvo.appendChild(C.el('p', { class: 'lab-erro', txt: e.status === 401 || e.status === 402 ? 'Entre na conta para ver suas revisões.' : e.message })); });
+  }
+
   function filtrosCurso() {
     var botoes = C.$$('.curso-filtro'); if (!botoes.length) return;
     var itens = C.$$('.curso-modulo li[data-curso-trilhas]'), status = C.$('#curso-filtro-status');
@@ -466,6 +471,7 @@
     praticaContrabaixo();
     praticaPiano();
     checklistPiano();
+    revisoesPiano();
     filtrosCurso();
     painelBateria();
     painelProfessorBateria();
