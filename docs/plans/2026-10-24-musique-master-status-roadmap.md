@@ -310,6 +310,8 @@ Pendências operacionais:
 
 > Atualização de 26/10/2026: a telemetria técnica mínima foi publicada com allowlist de eventos, sem áudio, conteúdo musical, sessão ou IP persistido, retenção de 30 dias e resumo agregado no painel do staff.
 
+> Atualização de 26/10/2026: foi acrescentado um modo de demonstração com métricas e alertas artificiais, explicitamente marcado e sem gravação no banco. A análise de eventos reais permanece pendente.
+
 ## 11. Validação física pendente
 
 Não marcar como testado até haver equipamento disponível:
