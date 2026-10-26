@@ -466,6 +466,29 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal((await req('GET', '/music/api/lab/piano/progresso', { cru: true })).status, 401);
     assert.equal((await req('GET', '/music/api/lab/piano/revisoes', { cru: true })).status, 401);
   });
+  await t('PIANO: fluxo autenticado de progresso, prática e revisão', async () => {
+    const contas = require('../contas');
+    const cad = await req('POST', '/music/api/conta/cadastrar', { corpo: { nome: 'Piano Aluno Teste', email: 'piano.aluno.teste@t', senha: 'senha-boa-123', aceite_termos: true } });
+    assert.ok([200, 201].includes(cad.status), 'cadastro aceito');
+    const cookie = (cad.setCookie || []).find((x) => x.startsWith(contas.COOKIE + '='));
+    assert.ok(cookie, 'cookie de aluno');
+    const headers = { Cookie: cookie.split(';')[0] };
+    const conclusao = await req('PUT', '/music/api/lab/piano/progresso/piano-01', { headers, corpo: { concluido: true, checklist: { leitura: true, compreensao: true, pratica: true, registro: true } } });
+    assert.equal(conclusao.status, 200);
+    assert.equal(conclusao.json.concluido, true);
+    assert.ok(conclusao.json.proxima_revisao);
+    const pratica = await req('POST', '/music/api/lab/piano/praticas', { headers, corpo: { capitulo: 'piano-01', foco: 'tecnica', bpm: 60, notas: 'Sessão de teste local.' } });
+    assert.equal(pratica.status, 201);
+    const praticas = await req('GET', '/music/api/lab/piano/praticas?capitulo=piano-01', { headers });
+    assert.equal(praticas.status, 200);
+    assert.equal(praticas.json.praticas.length, 1);
+    const progresso = await req('GET', '/music/api/lab/piano/progresso', { headers });
+    assert.equal(progresso.status, 200);
+    assert.equal(progresso.json.progresso.find((x) => x.capitulo === 'piano-01').concluido, true);
+    const revisoes = await req('GET', '/music/api/lab/piano/revisoes', { headers });
+    assert.equal(revisoes.status, 200);
+    assert.ok(Array.isArray(revisoes.json.revisoes));
+  });
   await t('PIANO: os 42 capítulos exibem conteúdo editorial e prática', async () => {
     const json = await req('GET', '/music/curso-piano.json', { cru: true });
     assert.equal(json.status, 200);
