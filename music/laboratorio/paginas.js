@@ -35,9 +35,16 @@ function cssLab() { return arquivo('css', () => ler('cliente', 'estilo.css')); }
 function conteudoLivroContrabaixo(numero) {
   const item = CBA_LIVRO.capitulos.find((x) => x.numero === numero);
   if (!item || !item.texto) return '';
-  const linhas = item.texto.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
-    .filter((x) => !/^\d+$/.test(x) && !/^CONTRABAIXO ELÉTRICO$/.test(x));
-  return `<details class="curso-livro-conteudo" open><summary>Conteúdo editorial do livro</summary><div class="curso-livro-texto">${linhas.map((x) => `<p>${esc(x)}</p>`).join('')}</div><p class="lab-nota-convencao">Fonte: livro-base, páginas ${item.pagina_inicio}–${item.pagina_fim}. Leia o PDF quando precisar da diagramação original.</p></details>`;
+  const linhas = item.texto.replace(/\\n/g, '\n').split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
+    .filter((x) => !/^\d+$/.test(x) && !/^(MUSIQUE|CONTRABAIXO EL.T.RICO|PARTE |Cap.tulo )/i.test(x));
+  const blocos = []; let texto = []; let tab = [];
+  const flushTexto = () => { if (texto.length) { blocos.push(`<div class="curso-livro-texto">${texto.map((x) => `<p>${esc(x)}</p>`).join('')}</div>`); texto = []; } };
+  const flushTab = () => { if (tab.length) { blocos.push(`<pre class="curso-livro-tab" aria-label="Exemplo musical do livro">${esc(tab.join('\n'))}</pre>`); tab = []; } };
+  linhas.forEach((x) => { if (/^[GDAE]\|/.test(x) || /^[1e&i a4 ]{5,}$/.test(x)) { flushTexto(); tab.push(x); } else { flushTab(); texto.push(x); } });
+  flushTab(); flushTexto();
+  const bpm = numero < 5 ? 60 : numero < 12 ? 70 : numero < 25 ? 80 : numero < 35 ? 76 : 84;
+  const foco = numero <= 7 ? 'som, postura e coordenação' : numero <= 19 ? 'tempo, leitura e harmonia' : numero <= 30 ? 'expressão, groove e estilos' : numero <= 34 ? 'slap e técnicas expandidas' : 'criação, banda e performance';
+  return `<details class="curso-livro-conteudo" open><summary>Conteúdo editorial do livro</summary><div class="curso-livro-meta"><span>Meta inicial: ♩ = ${bpm}</span><span>Foco: ${esc(foco)}</span><span>Domínio: explicar, tocar e registrar</span></div>${blocos.join('')}<p class="lab-nota-convencao">Fonte: livro-base, páginas ${item.pagina_inicio}–${item.pagina_fim}. Leia o PDF quando precisar da diagramação original.</p></details>`;
 }
 
 // Sem max-age: script de app com cache longo atravessa o service worker e
