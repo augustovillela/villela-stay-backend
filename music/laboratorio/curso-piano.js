@@ -58,7 +58,8 @@ const GUIAS = [
 
 function META(i) {
   const faixa = i < 7 ? [40, 70] : i < 15 ? [50, 90] : i < 23 ? [55, 100] : i < 31 ? [50, 110] : i < 37 ? [60, 120] : [40, 80];
-  return { bpm_inicial: faixa[0], bpm_alvo: faixa[1], repeticoes_limpas: 3, evidencia: 'três execuções limpas, com pulso estável e sem tensão desnecessária' };
+  const alvos = ['Dó–Ré–Mi–Fá–Sol', 'Dó–Ré–Mi–Fá–Sol–Lá–Si', 'Dó maior: I–IV–V–I', 'Sol maior: Sol–Lá–Si–Dó–Ré–Mi–Fá♯', 'ii–V–I em Dó', 'Lá menor pentatônica', 'Dó–Mi–Sol–Si'];
+  return { bpm_inicial: faixa[0], bpm_alvo: faixa[1], repeticoes_limpas: 3, notas_alvo: alvos[i % alvos.length], evidencia: 'três execuções limpas, com pulso estável e sem tensão desnecessária' };
 }
 
 const DADOS = [
