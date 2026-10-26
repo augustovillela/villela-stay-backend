@@ -12,6 +12,7 @@ const RF = require('./paginas-referencia');
 const L = require('./licoes');
 const CT = require('./curso-teoria');
 const CB = require('./curso-bateria');
+const CBA = require('./curso-contrabaixo');
 const LB = require('./licoes-bateria');
 const ACESSO = require('./acesso');
 
@@ -87,7 +88,7 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
       { nome: 'Violão', icone: '🎸', cor: '#4f7d67', resumo: 'Postura, acordes, batidas, repertório e prática guiada.', url: '/music/criar/curso-violao-livro', ativo: true },
       { nome: 'Guitarra', icone: '🎸', cor: '#8a5a72', resumo: 'Técnica, timbre, riffs, solos e linguagem de guitarra.', url: '/music/criar/curso-guitarra-edicao', ativo: true },
       { nome: 'Bateria', icone: '🥁', cor: '#a66b42', resumo: 'Groove, coordenação, leitura e trilha dos 40 rudimentos.', url: '/music/curso-bateria', ativo: true },
-      { nome: 'Contrabaixo', icone: '🎸', cor: '#3f7180', resumo: 'Em preparação: groove, linhas, técnica e fundamento.', url: '/music/curso-contrabaixo', ativo: false },
+      { nome: 'Contrabaixo', icone: '🎸', cor: '#3f7180', resumo: 'Técnica, groove, harmonia, estilos, criação e performance.', url: '/music/curso-contrabaixo', ativo: true },
       { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Em preparação: teclado, harmonia, acompanhamento e leitura.', url: '/music/curso-piano', ativo: false },
       { nome: 'Cavaquinho', icone: '🪕', cor: '#9a7650', resumo: 'Em preparação: levadas, acordes e repertório brasileiro.', url: '/music/curso-cavaquinho', ativo: false },
       { nome: 'Ukulele', icone: '🪕', cor: '#6d8060', resumo: 'Em preparação: acordes, batidas e primeiras canções.', url: '/music/curso-ukulele', ativo: false },
@@ -102,12 +103,31 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
   // que o aluno possa conhecer a proposta, mas o conteúdo continua fechado
   // até a publicação do curso.
   const cursosEmBreve = [
-    ['contrabaixo', 'Contrabaixo', 'Groove, linhas, técnica e fundamento.'],
     ['piano', 'Piano', 'Teclado, harmonia, acompanhamento e leitura.'],
     ['ukulele', 'Ukulele', 'Acordes, batidas e primeiras canções.'],
     ['cavaquinho', 'Cavaquinho', 'Levadas, acordes e repertório brasileiro.'],
     ['bandolim', 'Bandolim', 'Palhetada, melodias e choro.'],
   ];
+  app.get('/music/curso-contrabaixo.json', opcional, (req, res) => {
+    const documento = { schema: 'musique.course.v1', id: CBA.CURSO.id, titulo: CBA.CURSO.titulo, subtitulo: CBA.CURSO.subtitulo, versao: CBA.CURSO.versao, descricao: CBA.CURSO.descricao, trilhas: CBA.CURSO.trilhas, recursos: { html: '/music/curso-contrabaixo', pdf: '/music/curso-contrabaixo.pdf' }, formatosDisponiveis: ['musique-html', 'livro-pdf'], fases: CBA.CURSO.fases, capitulos: CBA.capitulos.map((c) => ({ ...c, url: `/music/curso-contrabaixo/${c.slug}` })) };
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+  app.get('/music/curso-contrabaixo.pdf', opcional, (req, res) => {
+    const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', 'curso-contrabaixo.pdf');
+    if (!fs.existsSync(pdf)) return res.status(404).send('PDF ainda não foi publicado.');
+    res.set('Content-Type', 'application/pdf').set('Content-Disposition', 'inline; filename="curso-contrabaixo.pdf"').set('Cache-Control', 'no-cache').sendFile(pdf);
+  });
+  app.get('/music/curso-contrabaixo', opcional, (req, res) => {
+    const fases = CBA.CURSO.fases.map(([id, nome, ns]) => `<section class="curso-nivel" id="nivel-${esc(id)}"><div class="curso-nivel-cab"><div><p class="lab-cab-tipo">Trilha de contrabaixo</p><h2>${esc(nome)}</h2><p>Progressão baseada no livro de contrabaixo elétrico.</p></div><span>${ns.length} capítulos</span></div><div class="curso-modulos"><article class="curso-modulo"><ul>${ns.map((n) => { const c = CBA.capitulos[n - 1]; return `<li><a href="/music/curso-contrabaixo/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.resumo)}</span></li>`; }).join('')}</ul></article></div></section>`).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso editorial · baseado no livro</p><h1>${esc(CBA.CURSO.titulo)}</h1><p class="lab-lead">${esc(CBA.CURSO.descricao)} ${esc(CBA.CURSO.subtitulo)}.</p><div class="curso-numeros" aria-label="Dimensão do curso"><span><strong>10</strong> partes</span><span><strong>43</strong> capítulos</span><span><strong>427</strong> páginas</span></div><p><a class="btn" href="/music/curso-contrabaixo.pdf">📄 Abrir livro em PDF</a> <a class="btn sec" href="/music/curso-contrabaixo.json">⬇ Dados estruturados</a> <a class="btn sec" href="/music/cursos">← Todos os cursos</a></p></header><section><h2>Três trilhas de aprendizagem</h2><div class="curso-trilhas">${CBA.CURSO.trilhas.map((t) => `<div><strong>${esc(t.nome)}</strong><span>${esc(t.resumo)}</span></div>`).join('')}</div></section>${fases}`;
+    pagina(res, { titulo: 'Curso de contrabaixo elétrico — Musique', descricao: CBA.CURSO.descricao, caminho: '/music/curso-contrabaixo', corpo, trilha: [['Cursos', '/music/cursos'], ['Contrabaixo']] });
+  });
+  app.get('/music/curso-contrabaixo/:slug', opcional, (req, res) => {
+    const c = CBA.capitulos.find((x) => x.slug === req.params.slug);
+    if (!c) return naoAchou(res, 'este capítulo');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">${esc(c.faseNome)} · capítulo ${c.numero}</p><h1>${esc(c.titulo)}</h1><p class="lab-lead">${esc(c.resumo)}</p><p><a class="btn" href="/music/curso-contrabaixo.pdf#page=${Math.max(1, c.numero * 8)}">📄 Abrir no livro</a> <a class="btn sec" href="/music/curso-contrabaixo">← Curso de contrabaixo</a></p></header><section class="curso-modulo"><h2>Estudo orientado</h2><p>Leia o capítulo correspondente no livro, pratique lentamente, registre dúvidas e volte a esta página para retomar o percurso.</p><p class="lab-nota-convencao">Este capítulo será ampliado com exercícios interativos, progresso e práticas específicas nas próximas etapas.</p></section>`;
+    pagina(res, { titulo: `${c.titulo} — curso de contrabaixo | Musique`, descricao: c.resumo, caminho: '/music/curso-contrabaixo/' + c.slug, corpo, trilha: [['Cursos', '/music/cursos'], ['Contrabaixo', '/music/curso-contrabaixo'], [c.titulo]] });
+  });
   cursosEmBreve.forEach(([slug, nome, proposta]) => {
     app.get(`/music/curso-${slug}`, (req, res) => pagina(res, {
       titulo: `Curso de ${nome} em breve — Musique`,

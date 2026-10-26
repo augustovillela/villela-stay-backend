@@ -1,0 +1,11 @@
+'use strict';
+const assert = require('assert');
+const { CURSO, capitulos } = require('./curso-contrabaixo');
+assert.equal(CURSO.id, 'curso-contrabaixo-livro');
+assert.equal(capitulos.length, 43);
+assert.equal(CURSO.fases.length, 10);
+assert.equal(new Set(capitulos.map((c) => c.slug)).size, 43);
+assert.equal(capitulos[0].titulo, 'Conhecendo o contrabaixo elétrico');
+assert.equal(capitulos[42].titulo, 'Plano de desenvolvimento contínuo');
+assert.ok(capitulos.every((c) => c.fase && c.faseNome && c.resumo));
+console.log(JSON.stringify({ ok: true, curso: CURSO.id, capitulos: capitulos.length, partes: CURSO.fases.length }));
