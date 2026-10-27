@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v37'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v38'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -239,6 +239,95 @@ const SECOES = [
 const porId = Object.fromEntries(listings.map(l => [l.id, l]));
 
 const waLink = txt => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
+
+// ---- Ícones das datas especiais (SVG desenhado aqui, nítido em qualquer tamanho) ----
+// Substituem os emojis 🎄 🎆 🎭 🇧🇷 🏛️, que mudam de cara em cada aparelho.
+const ICONES_DATA = {
+  natal: `<polygon points="32,3 34.6,9.2 41.2,9.6 36.1,13.8 37.8,20.3 32,16.7 26.2,20.3 27.9,13.8 22.8,9.6 29.4,9.2" fill="#E8C14A"/>
+    <path d="M32 18 L21 31 h5 L15 43 h6 L10 55 h44 L43 43 h6 L38 31 h5 Z" fill="#1F7A4D"/>
+    <path d="M24 31 Q32 35 40 31 M19 43 Q32 48 45 43" fill="none" stroke="#E8C14A" stroke-width="1.6" stroke-linecap="round"/>
+    <rect x="28.5" y="55" width="7" height="6" rx="1" fill="#8B5A2B"/>
+    <circle cx="27" cy="38" r="2.2" fill="#D64545"/><circle cx="38" cy="39" r="2.2" fill="#E8C14A"/>
+    <circle cx="22" cy="50" r="2.2" fill="#E8C14A"/><circle cx="33" cy="51" r="2.2" fill="#D64545"/><circle cx="43" cy="50" r="2.2" fill="#F8F9FA"/>
+    <circle cx="32" cy="27" r="1.8" fill="#F8F9FA"/>`,
+  reveillon: `<g stroke="#E8C14A" stroke-width="2.2" stroke-linecap="round">
+      <path d="M22 18v-8M22 26v8M14 22H6M30 22h8M16.3 16.3l-5.6-5.6M27.7 27.7l5.6 5.6M16.3 27.7l-5.6 5.6M27.7 16.3l5.6-5.6"/></g>
+    <g stroke="#5FD3E8" stroke-width="2" stroke-linecap="round">
+      <path d="M47 12v-6M47 24v6M41 18h-6M53 18h6M42.8 13.8l-4.2-4.2M51.2 22.2l4.2 4.2M42.8 22.2l-4.2 4.2M51.2 13.8l4.2-4.2"/></g>
+    <circle cx="22" cy="22" r="2.4" fill="#F8F9FA"/><circle cx="47" cy="18" r="2" fill="#F8F9FA"/>
+    <g fill="none" stroke="#F8F9FA" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M22 38 l8 -1 -1 9 q-.5 4 -4 4.4 q-3.5-.6-3.4-4.4z" transform="rotate(-12 26 44)"/>
+      <path d="M34 37 l8 1 -.6 9 q-.8 4-4.3 4 q-3.3-.8-3.1-4.6z" transform="rotate(12 38 44)"/>
+      <path d="M24.8 50.5 L23 60 M20 60h6 M39.6 50.5 L41 60 M38 60h6"/></g>
+    <path d="M23.5 41.5 l6.5-.8 -.6 4.6 q-.4 3-3 3.2 q-2.6-.3-2.9-3.2z" fill="#E8C14A" transform="rotate(-12 26 44)"/>
+    <path d="M35 40.6 l6.4.8 -.5 4.6 q-.6 3-3.2 3 q-2.4-.6-2.4-3.5z" fill="#E8C14A" transform="rotate(12 38 44)"/>
+    <circle cx="32" cy="33" r="1.2" fill="#E8C14A"/><circle cx="29" cy="30" r="1" fill="#5FD3E8"/><circle cx="35.5" cy="29.5" r="1" fill="#F8F9FA"/>`,
+  carnaval: `<path d="M18 22 C14 12 16 6 20 4 C20 10 22 15 25 20Z" fill="#2BB673"/>
+    <path d="M25 19 C24 9 28 4 32 3 C30 9 30 14 31 19Z" fill="#E8C14A"/>
+    <path d="M38 19 C40 10 45 6 50 6 C46 11 44 15 42 21Z" fill="#D64545"/>
+    <path d="M8 30 C8 22 20 19 32 25 C44 19 56 22 56 30 C56 42 46 46 39.5 41.5 C36 39 34 37.5 32 37.5 C30 37.5 28 39 24.5 41.5 C18 46 8 42 8 30Z" fill="#7B3FC4"/>
+    <ellipse cx="21" cy="31" rx="6" ry="3.6" fill="#1B2A4A"/><ellipse cx="43" cy="31" rx="6" ry="3.6" fill="#1B2A4A"/>
+    <path d="M10 28 C14 24 22 24 27 27 M37 27 C42 24 50 24 54 28" fill="none" stroke="#E8C14A" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M56 32 L60 48" stroke="#E8C14A" stroke-width="2.4" stroke-linecap="round"/>
+    <rect x="12" y="50" width="4" height="4" rx="1" fill="#E8C14A" transform="rotate(20 14 52)"/>
+    <rect x="26" y="54" width="4" height="4" rx="1" fill="#5FD3E8" transform="rotate(-25 28 56)"/>
+    <rect x="40" y="52" width="4" height="4" rx="1" fill="#D64545" transform="rotate(35 42 54)"/>
+    <circle cx="20" cy="58" r="1.8" fill="#2BB673"/><circle cx="34" cy="49" r="1.6" fill="#F8F9FA"/><circle cx="50" cy="57" r="1.8" fill="#E8C14A"/>`,
+  posse: `<rect x="28" y="8" width="3.6" height="34" fill="#F8F9FA"/><rect x="32.4" y="8" width="3.6" height="34" fill="#F8F9FA"/>
+    <rect x="27" y="22" width="10" height="2.4" fill="#F8F9FA"/>
+    <path d="M6 34 Q16 46 26 34 Z" fill="#F8F9FA"/>
+    <path d="M40 42 Q48 30 58 42 Z" fill="#F8F9FA"/>
+    <rect x="4" y="42" width="56" height="4" rx="1" fill="#E8C14A"/>
+    <path d="M4 50 h56 v4 h-56z" fill="#2BB673"/><path d="M4 54 h56 v3 h-56z" fill="#E8C14A"/>
+    <circle cx="32" cy="55" r="3" fill="#1E4FA3"/>`,
+  marcha: `<path d="M8 20 L32 8 L56 20 Z" fill="#E8C14A"/>
+    <rect x="8" y="20" width="48" height="4" fill="#F8F9FA"/>
+    <g fill="#F8F9FA"><rect x="12" y="26" width="5" height="22" rx="1"/><rect x="23" y="26" width="5" height="22" rx="1"/><rect x="36" y="26" width="5" height="22" rx="1"/><rect x="47" y="26" width="5" height="22" rx="1"/></g>
+    <rect x="6" y="48" width="52" height="4" rx="1" fill="#E8C14A"/><rect x="4" y="53" width="56" height="4" rx="1" fill="#F8F9FA"/>`
+};
+const CHAVE_DATA = { '🎄': 'natal', '🎆': 'reveillon', '🎭': 'carnaval', '🇧🇷': 'posse', '🏛️': 'marcha' };
+// Ícone com fundo azul-petróleo arredondado: o desenho foi pensado para fundo escuro.
+const iconeData = (chave, tam = 40, comFundo = true) => {
+  const k = CHAVE_DATA[chave] || chave;
+  if (!ICONES_DATA[k]) return '';
+  return `<svg class="icone-data icone-${k}" style="vertical-align:middle" width="${tam}" height="${tam}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">${comFundo ? '<rect width="64" height="64" rx="14" fill="#1B2A4A"/>' : ''}${ICONES_DATA[k]}</svg>`;
+};
+// Foto real de cada data (casas que entram no pacote) — o fundo do topo das landings.
+const FOTO_DATA = {
+  natal: '/fotos/villa-kubitschek/lounge-pergolado.jpg',
+  reveillon: '/fotos/villa-kubitschek/coqueiros-fachada.jpg',
+  carnaval: '/fotos/casa-villela/piscina.jpg',
+  posse: '/fotos/casa-villela/gramado-vista-casa.jpg'
+};
+const ICONES_CSS = `
+.icone-data { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+.tp-hero { position: relative; overflow: hidden; background-color: var(--petroleo); background-size: cover; background-position: center; }
+.tp-hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14,22,40,.82) 0%, rgba(27,42,74,.74) 55%, rgba(14,116,144,.78) 100%); }
+.tp-hero > * { position: relative; }
+.tp-hero .tp-ilustra { display: block; margin: 0 auto 6px; filter: drop-shadow(0 6px 18px rgba(0,0,0,.35)); }
+.tp-hero h1, .tp-hero p { text-shadow: 0 2px 10px rgba(0,0,0,.35); }
+.tp-brilho { position: absolute; inset: 0; pointer-events: none; }
+.tp-brilho i { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #E8C14A; opacity: .0; animation: tp-pisca 3.2s ease-in-out infinite; }
+@keyframes tp-pisca { 0%, 100% { opacity: 0; transform: scale(.6); } 50% { opacity: .9; transform: scale(1.3); } }
+@keyframes tp-flutua { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.tp-hero .tp-ilustra { animation: tp-flutua 5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .tp-brilho i, .tp-hero .tp-ilustra { animation: none; } .tp-brilho i { opacity: .6; } }
+.chips-datas .chip-data { flex-direction: row; align-items: center; gap: 14px; }
+.tp-icones-hero { display: flex; justify-content: center; gap: 14px; margin-top: 22px; flex-wrap: wrap; }
+.tp-icones-hero .icone-data { box-shadow: 0 6px 16px rgba(27,42,74,.25); border-radius: 14px; }
+.chip-data .chip-texto { display: flex; flex-direction: column; gap: 2px; }
+.chip-data .icone-data { box-shadow: 0 0 0 2px rgba(232,193,74,.45); border-radius: 14px; }
+.tp-acoes .btn .icone-data, .tp-outras .icone-data, .tp-esgotado .icone-data { margin-right: 6px; border-radius: 6px; }
+.tp-outras a { display: inline-flex; align-items: center; }`;
+// Pontinhos de brilho no topo, em posições fixas (o HTML é estático, sem aleatório no build).
+const BRILHOS = [[8, 18, 0], [16, 70, .8], [24, 36, 1.6], [12, 88, 2.2], [38, 10, .4], [46, 92, 1.2], [62, 6, 2], [70, 84, .6], [82, 24, 1.8], [88, 64, 1]]
+  .map(([top, left, d]) => `<i style="top:${top}%;left:${left}%;animation-delay:${d}s"></i>`).join('');
+const heroData = (chave, conteudo) => `<section class="tp-hero" style="background-image:url('${FOTO_DATA[chave]}')">
+  <div class="tp-brilho" aria-hidden="true">${BRILHOS}</div>
+  ${iconeData(chave, 132, false).replace('class="icone-data', 'class="tp-ilustra icone-data')}
+  ${conteudo}
+</section>`;
+
 
 // ----------------------------------------------------------------- i18n (PT/EN/ES)
 // O site é gerado 3x (um loop por idioma). LANG controla as escolhas de texto/links/saída.
@@ -795,7 +884,7 @@ window.addEventListener('load', function(){
   }, 5000);
 });
 </script>
-<a class="banner-posse" href="${L('/posse-2027.html')}">🇧🇷 ${t('<strong>Caravana da Posse 2027 · 03 a 06/01 · 3 dias:</strong> casas completas no Lago Sul a 10 min da Esplanada — reserve antes que esgotem', '<strong>2027 Inauguration Caravan · 3–6 Jan · 3 days:</strong> whole houses in Lago Sul, 10 min from the Esplanada — book before they sell out', '<strong>Caravana de la Toma de Posesión 2027 · 03–06/01 · 3 días:</strong> casas enteras en Lago Sul a 10 min de la Explanada — reserva antes de que se agoten')} <span>${t('Saiba mais', 'Learn more', 'Saber más')} →</span></a>
+<a class="banner-posse" href="${L('/posse-2027.html')}">${iconeData('posse', 30)} ${t('<strong>Caravana da Posse 2027 · 03 a 06/01 · 3 dias:</strong> casas completas no Lago Sul a 10 min da Esplanada — reserve antes que esgotem', '<strong>2027 Inauguration Caravan · 3–6 Jan · 3 days:</strong> whole houses in Lago Sul, 10 min from the Esplanada — book before they sell out', '<strong>Caravana de la Toma de Posesión 2027 · 03–06/01 · 3 días:</strong> casas enteras en Lago Sul a 10 min de la Explanada — reserva antes de que se agoten')} <span>${t('Saiba mais', 'Learn more', 'Saber más')} →</span></a>
 <section class="faixa-confianca">
   <div>🏆 ${t('Superhost: anfitrião premiado', 'Superhost: award-winning host', 'Superhost: anfitrión premiado')}</div><div>🏅 ${t('Favorito dos Hóspedes: propriedades premiadas', 'Guest Favourite: award-winning properties', 'Favorito de los Huéspedes: propiedades premiadas')}</div><div>📍 ${t('10 min do Aeroporto JK e da Esplanada', '10 min from JK Airport and the Esplanada', '10 min del Aeropuerto JK y de la Explanada')}</div><div>👨‍👩‍👧‍👦 ${t('Hospedagens de grupos de até 52 pessoas', 'Stays for groups of up to 52', 'Alojamientos para grupos de hasta 52 personas')}</div><div>🎉 ${t('Eventos para até 150 pessoas', 'Events for up to 150 people', 'Eventos para hasta 150 personas')}</div>
 </section>
@@ -1944,9 +2033,8 @@ const PACOTES_TEMPORADA = [
   }
 ];
 const precoTemporada = n => (LANG === 'en' ? realEn(n) : real(n));
-const TEMPORADA_CSS = `
+const TEMPORADA_CSS = ICONES_CSS + `
 .tp-hero { background: linear-gradient(135deg, var(--petroleo), var(--lago)); color: var(--creme); padding: 56px 5vw 44px; text-align: center; }
-.tp-hero .tp-emoji { font-size: 2.6rem; }
 .tp-hero h1 { color: #fff; font-size: clamp(1.7rem, 4.4vw, 2.6rem); max-width: 820px; margin: 8px auto 12px; }
 .tp-hero p { max-width: 680px; margin: 0 auto; font-size: 1.08rem; line-height: 1.55; }
 .tp-periodo { display: inline-block; margin-top: 18px; background: var(--cerrado); color: #fff; font-weight: 700; border-radius: 999px; padding: 8px 18px; }
@@ -2065,22 +2153,21 @@ for (const p of PACOTES_TEMPORADA) {
       }
     }))
   };
-  const outras = [...PACOTES_TEMPORADA.filter(o => o !== p).map(o => `<a href="${L(`/${o.slug}.html`)}">${o.emoji} ${esc(o.nome)}</a>`),
-    `<a href="${L('/posse-2027.html')}">🇧🇷 ${t('Caravana da Posse 2027', '2027 Inauguration Caravan', 'Caravana de la Toma de Posesión 2027')}</a>`].join('');
+  const outras = [...PACOTES_TEMPORADA.filter(o => o !== p).map(o => `<a href="${L(`/${o.slug}.html`)}">${iconeData(o.emoji, 24)}${esc(o.nome)}</a>`),
+    `<a href="${L('/posse-2027.html')}">${iconeData('posse', 24)}${t('Caravana da Posse 2027', '2027 Inauguration Caravan', 'Caravana de la Toma de Posesión 2027')}</a>`].join('');
 
   const pagina = layout(
     t(`Pacote ${p.nome} em Brasília — casas completas no Lago Sul | Villela Stay`, `${p.nome} package in Brasília — whole houses in Lago Sul | Villela Stay`, `Paquete ${p.nome} en Brasília — casas enteras en Lago Sul | Villela Stay`),
     t(`${p.nome}: ${p.entrada} a ${p.saida}, 4 diárias. Casas completas no Lago Sul para 15 a 24 pessoas, a partir de ${real(barato.pacote)} com limpeza incluída.`, `${p.nome}: ${p.entrada} to ${p.saida}, 4 nights. Whole houses in Lago Sul for 15 to 24 people, from ${realEn(barato.pacote)} with cleaning included.`, `${p.nome}: del ${p.entrada} al ${p.saida}, 4 noches. Casas enteras en Lago Sul para 15 a 24 personas, desde ${real(barato.pacote)} con limpieza incluida.`),
     `
-<section class="tp-hero">
-  <div class="tp-emoji">${p.emoji}</div>
+${heroData(CHAVE_DATA[p.emoji], `
   <h1>${p.titulo}</h1>
   <p>${p.chamada}</p>
   <div class="tp-periodo">${esc(p.nome)} · ${p.periodo}</div>
   <p class="tp-a-partir">${nLivres < CASAS_TEMPORADA.length
     ? t(`Restam <strong>${nLivres} de ${CASAS_TEMPORADA.length} casas</strong> para esta data · a partir de <strong>${real(barato.pacote)}</strong> com limpeza incluída`, `<strong>${nLivres} of ${CASAS_TEMPORADA.length} houses</strong> left for this date · from <strong>${realEn(barato.pacote)}</strong> with cleaning included`, `Quedan <strong>${nLivres} de ${CASAS_TEMPORADA.length} casas</strong> para esta fecha · desde <strong>${real(barato.pacote)}</strong> con limpieza incluida`)
     : t(`4 casas completas para 15 a 24 pessoas · a partir de <strong>${real(barato.pacote)}</strong> com limpeza incluída`, `4 whole houses for 15 to 24 people · from <strong>${realEn(barato.pacote)}</strong> with cleaning included`, `4 casas enteras para 15 a 24 personas · desde <strong>${real(barato.pacote)}</strong> con limpieza incluida`)}</p>
-</section>
+`)}
 <div class="pacotes-wrap">
   <section class="uni-confianca">
     <div>🏆 ${t('Superhost premiado', 'Award-winning Superhost', 'Superhost premiado')}</div><div>🏅 ${t('Favorito dos Hóspedes', 'Guest Favourite', 'Favorito de los Huéspedes')}</div><div>📍 ${t('Lago Sul · 10 min da Esplanada', 'Lago Sul · 10 min from the Esplanada', 'Lago Sul · 10 min de la Explanada')}</div><div>💰 ${t('Reserva direta, sem taxa de plataforma', 'Direct booking, no platform fee', 'Reserva directa, sin tarifa de plataforma')}</div>
@@ -2127,9 +2214,9 @@ const LANDING_TEMPORADA = Object.fromEntries(PACOTES_TEMPORADA.map(p => [p.emoji
 
 const chipsDatas = DATAS_PACOTE.map(d =>
   (d.emoji === '🇧🇷' || LANDING_TEMPORADA[d.emoji])
-    ? `<a class="chip-data" href="${L(d.emoji === '🇧🇷' ? '/posse-2027.html' : LANDING_TEMPORADA[d.emoji])}">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span><span>${t('Ver o pacote', 'See the package', 'Ver el paquete')} →</span></a>`
+    ? `<a class="chip-data" href="${L(d.emoji === '🇧🇷' ? '/posse-2027.html' : LANDING_TEMPORADA[d.emoji])}">${iconeData(d.emoji, 52)}<span class="chip-texto"><strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span><span>${t('Ver o pacote', 'See the package', 'Ver el paquete')} →</span></span></a>`
     // Marchas ainda sem landing: cartão informativo, sem link direto para o WhatsApp.
-    : `<div class="chip-data">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></div>`).join('\n');
+    : `<div class="chip-data">${iconeData(d.emoji, 52)}<span class="chip-texto"><strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></span></div>`).join('\n');
 
 const cardsCasas = CASAS_TEMPORADA.map(c => {
   const l = porId[c.id];
@@ -2151,8 +2238,8 @@ const cardsCasas = CASAS_TEMPORADA.map(c => {
       <ul>${c.quartos.map(q => `<li><strong>${esc(nPessoas(q[0]))}</strong><br>${esc(tCamas(q[1]))}</li>`).join('\n')}</ul>
     </details>
     <div class="tp-acoes">${PACOTES_TEMPORADA.map(p => reservadaEm(p, c.id)
-      ? `<span class="tp-esgotado">${p.emoji} ${esc(p.nome)} · ${seloReservada}</span>`
-      : `<a class="btn" href="${L(`/${p.slug}.html`)}#${c.id}">${p.emoji} ${esc(p.nome)}</a>`).join('')}</div>
+      ? `<span class="tp-esgotado">${iconeData(p.emoji, 22)}${esc(p.nome)} · ${seloReservada}</span>`
+      : `<a class="btn" href="${L(`/${p.slug}.html`)}#${c.id}">${iconeData(p.emoji, 22)}${esc(p.nome)}</a>`).join('')}</div>
   </div>
 </article>`;
 }).join('\n');
@@ -2164,6 +2251,7 @@ const pacotes = layout(
 <section class="hero hero-menor">
   <h1>${t('As datas mais disputadas de Brasília.<br>As melhores casas do Lago Sul.', "Brasília's most sought-after dates.<br>The best houses in Lago Sul.", 'Las fechas más solicitadas de Brasília.<br>Las mejores casas de Lago Sul.')}</h1>
   <p>${t('<strong>Natal, Réveillon, Posse Presidencial, Carnaval e as Marchas dos Prefeitos e dos Municípios:</strong> quando Brasília lota e os hotéis dobram de preço, grupos inteligentes reservam uma casa completa — e cada pessoa paga menos que uma diária de hotel.', '<strong>Christmas, New Year, the Presidential Inauguration, Carnival and the Mayors\' and Municipalities\' Marches:</strong> when Brasília fills up and hotels double their prices, smart groups book a whole house — and each person pays less than a hotel night.', '<strong>Navidad, Fin de Año, la Toma de Posesión Presidencial, el Carnaval y las Marchas de Alcaldes y Municipios:</strong> cuando Brasília se llena y los hoteles duplican sus precios, los grupos inteligentes reservan una casa entera — y cada persona paga menos que una noche de hotel.')}</p>
+  <div class="tp-icones-hero">${['natal', 'reveillon', 'posse', 'carnaval'].map(k => iconeData(k, 64)).join('')}</div>
 </section>
 <div class="pacotes-wrap">
 
@@ -2199,7 +2287,7 @@ const pacotes = layout(
   <section class="venda-bloco cta-final">
     <h2>${t('Garanta a sua data antes que feche', 'Secure your date before it\'s gone', 'Asegura tu fecha antes de que se agote')}</h2>
     <p>${t('Escolha a data, veja as casas e os valores do pacote e reserve direto com o anfitrião.', 'Choose your date, see the houses and package prices, and book directly with the host.', 'Elige la fecha, mira las casas y los precios del paquete y reserva directo con el anfitrión.')}</p>
-    <div class="tp-outras">${PACOTES_TEMPORADA.map(p => `<a href="${L(`/${p.slug}.html`)}">${p.emoji} ${esc(p.nome)}</a>`).join('')}<a href="${L('/posse-2027.html')}">🇧🇷 ${t('Caravana da Posse 2027', '2027 Inauguration Caravan', 'Caravana de la Toma de Posesión 2027')}</a></div>
+    <div class="tp-outras">${PACOTES_TEMPORADA.map(p => `<a href="${L(`/${p.slug}.html`)}">${iconeData(p.emoji, 24)}${esc(p.nome)}</a>`).join('')}<a href="${L('/posse-2027.html')}">${iconeData('posse', 24)}${t('Caravana da Posse 2027', '2027 Inauguration Caravan', 'Caravana de la Toma de Posesión 2027')}</a></div>
   </section>
 </div>`,
   {
@@ -3934,10 +4022,11 @@ const posse = layout(
   t('Onde ficar em Brasília para a Posse Presidencial 2027 | Villela Stay', 'Where to stay in Brasília for the 2027 Presidential Inauguration | Villela Stay', 'Dónde alojarse en Brasília para la Toma de Posesión Presidencial 2027 | Villela Stay'),
   t('Caravana da Posse do Novo Presidente: pacote de 03/01/2027 a 06/01/2027, 3 dias e 3 diárias. Casas completas no Lago Sul para grupos e comitivas.', "New President's Inauguration Caravan: 3–6 January 2027, 3 days and 3 nights. Whole houses in Lago Sul for groups and delegations.", 'Caravana de la Toma de Posesión del Nuevo Presidente: del 03/01/2027 al 06/01/2027, 3 días y 3 noches. Casas enteras en Lago Sul para grupos y comitivas.'),
   `
-<section class="hero hero-menor">
+${heroData('posse', `
   <h1>${t('Onde ficar em Brasília para a Posse Presidencial 2027', 'Where to stay in Brasília for the 2027 Presidential Inauguration', 'Dónde alojarse en Brasília para la Toma de Posesión Presidencial 2027')}</h1>
   <p>${t('<strong>Em 5 de janeiro de 2027, o Brasil inteiro estará em Brasília.</strong> E quem deixar para depois vai pagar caro — ou ficar longe. Aqui está o guia de quem conhece a cidade.', '<strong>On 5 January 2027, all of Brazil will be in Brasília.</strong> Those who wait will pay dearly — or stay far away. Here\'s the guide from people who know the city.', '<strong>El 5 de enero de 2027, todo Brasil estará en Brasília.</strong> Quien lo deje para después pagará caro — o se quedará lejos. Aquí está la guía de quien conoce la ciudad.')}</p>
-</section>
+  <div class="tp-periodo">${t('Caravana da Posse · 03/01/2027 a 06/01/2027 · 3 diárias', 'Inauguration Caravan · 3–6 January 2027 · 3 nights', 'Caravana de la Toma de Posesión · 03/01/2027 al 06/01/2027 · 3 noches')}</div>
+`)}
 <div class="regras-wrap">
   <section class="regra"><h2>${t('Por que reservar agora', 'Why book now', 'Por qué reservar ahora')}</h2>
     <p>${t('A posse presidencial é o evento que mais lota Brasília — caravanas de todos os estados, comitivas políticas, delegações estrangeiras e famílias inteiras vêm assistir à cerimônia na Esplanada dos Ministérios. Nas posses anteriores, os hotéis da região central <strong>dobraram ou triplicaram as diárias</strong> e esgotaram com meses de antecedência.', 'The presidential inauguration is the event that fills Brasília the most — caravans from every state, political delegations, foreign missions and whole families come to watch the ceremony at the Esplanada dos Ministérios. At previous inaugurations, hotels in the central area <strong>doubled or tripled their rates</strong> and sold out months in advance.', 'La toma de posesión presidencial es el evento que más llena Brasília — caravanas de todos los estados, comitivas políticas, delegaciones extranjeras y familias enteras vienen a ver la ceremonia en la Esplanada dos Ministérios. En las tomas anteriores, los hoteles de la zona central <strong>duplicaron o triplicaron las tarifas</strong> y se agotaron con meses de antelación.')}</p>
@@ -3962,7 +4051,7 @@ const posse = layout(
     <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Quero reservar uma casa para a Caravana da Posse do Novo Presidente (03/01/2027 a 06/01/2027, 3 dias e 3 diárias). Somos um grupo de ___ pessoas.', "Hi! I'd like to book a house for the 2027 Inauguration Caravan (3 to 6 January 2027, 3 days and 3 nights). We're a group of ___ people.", '¡Hola! Quiero reservar una casa para la Caravana de la Toma de Posesión del Nuevo Presidente (03/01/2027 a 06/01/2027, 3 días y 3 noches). Somos un grupo de ___ personas.'))}">${t('Reservar pelo WhatsApp', 'Book on WhatsApp', 'Reservar por WhatsApp')}</a>
   </section>
 </div>`,
-  { caminho: '/posse-2027.html' }
+  { caminho: '/posse-2027.html', extraHead: `<style>${TEMPORADA_CSS}</style>` }
 );
 fs.writeFileSync(path.join(od, 'posse-2027.html'), posse);
 
