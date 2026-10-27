@@ -274,6 +274,17 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
       WHERE usuario = ? AND trilha_id = ? ORDER BY iniciada_em DESC LIMIT 20`).all(req.usuario.id, 'cavaquinho:' + slug);
     res.json({ praticas: linhas.map((x) => { let meta = {}; try { meta = JSON.parse(x.meta || '{}'); } catch (_) {} return { id: x.id, ...meta, notas: x.anotacao, data: x.iniciada_em }; }) });
   }));
+  app.get(B + '/cavaquinho/progresso', requireUsuario, h(async (req, res) => {
+    const linhas = db.prepare('SELECT capitulo, concluido, atualizado_em FROM curso_cavaquinho_progresso WHERE aluno = ? ORDER BY capitulo').all(req.usuario.id);
+    res.json({ curso: 'curso-cavaquinho', total_capitulos: 38, progresso: linhas });
+  }));
+  app.put(B + '/cavaquinho/progresso/:capitulo', requireUsuario, h(async (req, res) => {
+    const capitulo = s(req.params.capitulo, 80), n = Number(capitulo.slice('cavaquinho-'.length));
+    if (!/^cavaquinho-\d{2}$/.test(capitulo) || n < 1 || n > 38) throw erro(400, 'Capítulo de cavaquinho inválido.');
+    const concluido = req.body && req.body.concluido ? 1 : 0, quando = nowISO();
+    db.prepare(`INSERT INTO curso_cavaquinho_progresso (aluno,capitulo,concluido,atualizado_em) VALUES (?,?,?,?) ON CONFLICT(aluno,capitulo) DO UPDATE SET concluido=excluded.concluido, atualizado_em=excluded.atualizado_em`).run(req.usuario.id, capitulo, concluido, quando);
+    res.json({ ok: true, capitulo, concluido: !!concluido, atualizado_em: quando });
+  }));
   app.post(B + '/cavaquinho/praticas', requireUsuario, h(async (req, res) => {
     const b = req.body || {}, capitulo = s(b.capitulo, 80), foco = s(b.foco, 30), notas = s(b.notas, 500), bpm = Number(b.bpm);
     const numeroCapitulo = Number(capitulo.slice('cavaquinho-'.length));
