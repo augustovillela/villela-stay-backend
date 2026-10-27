@@ -256,7 +256,12 @@ async function rodar({ t, req, base, emailProdutor }) {
     db.prepare("UPDATE products SET status = 'publicado' WHERE id = ?").run(RASCUNHO.id);
     assert.equal((await fetch(`${base()}/academy/api/cursos/${RASCUNHO.slug}/amostras`)).status, 200);
     assert.equal((await fetch(`${base()}/academy/api/amostras/${idR}/video.mp4`)).status, 200);
-    for (const st of ['pausado', 'suspenso', 'removido', 'em_revisao']) {
+    // 'pausado' = EM BREVE (27/10/2026): a página fica de pé e a amostra CONTINUA aberta — é
+    // justamente o que mostra o curso a quem ainda não pode comprar. Quem recolhe é o resto.
+    db.prepare("UPDATE products SET status = 'pausado' WHERE id = ?").run(RASCUNHO.id);
+    assert.equal((await fetch(`${base()}/academy/api/amostras/${idR}/video.mp4`)).status, 200, 'curso em breve mantém a amostra');
+    assert.equal((await fetch(`${base()}/academy/api/cursos/${RASCUNHO.slug}/amostras`)).status, 200);
+    for (const st of ['suspenso', 'removido', 'em_revisao']) {
       db.prepare('UPDATE products SET status = ? WHERE id = ?').run(st, RASCUNHO.id);
       assert.equal((await fetch(`${base()}/academy/api/amostras/${idR}/video.mp4`)).status, 404, `curso ${st} recolhe a amostra`);
       assert.equal((await fetch(`${base()}/academy/api/cursos/${RASCUNHO.slug}/amostras`)).status, 404);

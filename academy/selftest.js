@@ -405,6 +405,32 @@ async function main() {
     assert.ok(r.texto.includes('og:title')); assert.ok(r.texto.includes('degustação'));
     assert.equal((await req('GET', '/academy/cursos/rascunho-secreto-da-ana')).st, 404);
   });
+  await t('EM BREVE: curso pausado aparece na vitrine e na página, mas a compra é recusada no servidor', async () => {
+    const R = require('./repo-conteudo');
+    const prod = R.Marketplace.porSlug('gestao-de-temporada-na-pratica');
+    const antes = R.Produtos.obter(prod.id).status;
+    R.Produtos.transicionar(prod.id, 'pausado', { comoPapel: 'produtor', producerId: prod.producer_id });
+    try {
+      const vitrine = await req('GET', '/academy/marketplace');
+      assert.ok(vitrine.texto.includes('Gestão de Temporada'), 'pausado continua na vitrine (é "em breve", não sumiço)');
+      assert.ok(/em breve/i.test(vitrine.texto), 'com o selo de em breve');
+      const pag = await req('GET', '/academy/cursos/gestao-de-temporada-na-pratica');
+      assert.equal(pag.st, 200, 'a página fica de pé');
+      assert.ok(/Em breve/.test(pag.texto) && pag.texto.includes('ainda não está à venda'), 'diz que não está à venda');
+      assert.ok(!pag.texto.includes('/academy/checkout/gestao-de-temporada-na-pratica'), 'sem nenhum caminho para o checkout');
+      assert.ok(pag.texto.includes('PreOrder'), 'e o buscador recebe PreOrder, não InStock');
+      // a trava de verdade: chamar a API direto também não passa
+      const compra = await req('POST', `/academy/api/checkout/${prod.id}`, { jar: 'bruno' });
+      assert.equal(compra.st, 400, compra.texto);
+      assert.ok(/ainda não está à venda/.test(compra.json.erro || ''), compra.texto);
+      // quem já tem matrícula continua entrando (é o caso da cortesia): a pausa não mexe em acesso
+      const matriculados = R.Matriculas.doProduto(prod.id).filter((m) => m.status === 'ativa');
+      for (const m of matriculados) assert.ok(R.temAcesso(m.user_id, prod.id), 'quem já tinha acesso continua com ele');
+    } finally {
+      R.Produtos.transicionar(prod.id, 'publicado', { comoPapel: 'produtor', producerId: prod.producer_id });
+      assert.equal(R.Produtos.obter(prod.id).status, antes, 'o teste devolve o curso ao estado anterior');
+    }
+  });
   await t('página do produtor por slug', async () => {
     const r = await req('GET', '/academy/produtores/cursos-da-maria');
     assert.equal(r.st, 200); assert.ok(r.texto.includes('Gestão de Temporada'));

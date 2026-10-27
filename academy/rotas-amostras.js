@@ -93,7 +93,8 @@ function registrarRotasAmostras(app) {
     const a = am.linha(s(req.params.id, 40));
     if (!a) return nao(res);
     const p = ct.Produtos.obter(a.product_id);
-    if (!p || p.status !== 'publicado') return nao(res);        // curso fora do ar leva as amostras junto
+    // curso fora do ar leva as amostras junto; 'pausado' (em breve) as mantém — é a vitrine do que vem
+    if (!p || !['publicado', 'pausado'].includes(p.status)) return nao(res);
     const rel = qual === 'video' ? a.video_path : a.capa_path;
     const mime = qual === 'video' ? a.video_mime : a.capa_mime;
     const onde = qual === 'video' ? a.video_storage : a.capa_storage;
@@ -183,7 +184,7 @@ function registrarRotasAmostrasStaff(app, { requirePublishOrAdmin, requireAuth, 
   const resposta = (produto) => ({
     produto: { id: produto.id, titulo: produto.titulo, slug: produto.slug, status: produto.status },
     // amostra de curso que não está publicado fica guardada, mas não aparece para ninguém
-    visivel_ao_publico: produto.status === 'publicado',
+    visivel_ao_publico: ['publicado', 'pausado'].includes(produto.status),   // 'pausado' = em breve
     amostras: am.listarAdmin(produto.id, BASE_URL()), // URLs absolutas: prontas para colar no artigo do blog
   });
 

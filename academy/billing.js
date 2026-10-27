@@ -65,6 +65,9 @@ function _comissaoCfg() {
 // refCodigo = cookie de atribuição de afiliado (?ref=), validado server-side.
 async function criarCheckout(usuario, productId, baseUrl, refCodigo) {
   const p = ct.Produtos.obter(productId);
+  // 'pausado' = em breve: a página existe e o preço aparece, mas a compra é recusada AQUI — é esta a
+  // trava, não o botão escondido na tela (quem chamar a API direto também não passa).
+  if (p && p.status === 'pausado') throw new Error('Este curso ainda não está à venda. Ele aparece como "em breve" e abre assim que ficar pronto.');
   if (!p || p.status !== 'publicado') throw new Error('Produto não disponível para compra.');
   if (p.tipo === 'clube') throw new Error('Clube é assinatura recorrente — use /academy/api/assinar.');
   if (ct.temAcesso(usuario.id, p.id)) throw new Error('Você já tem acesso a este produto.');

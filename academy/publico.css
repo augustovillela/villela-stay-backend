@@ -277,3 +277,8 @@
     scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;margin:0 -22px;padding:2px 22px 12px;scroll-padding:0 22px}
   .pv-am{scroll-snap-align:start}
 }
+
+/* EM BREVE (produto pausado): card da vitrine e aviso no lugar do botão de compra */
+.tag.embreve{background:#1B2A4A;color:#F7F3EA;font-weight:700}
+.pv-embreve{margin:4px 0 10px;background:var(--pv-ambar-luz);border-radius:12px;padding:14px 16px;font-size:.92rem;color:#6B4416;line-height:1.5}
+.pv-embreve b{color:#1B2A4A}

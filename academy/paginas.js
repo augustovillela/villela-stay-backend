@@ -244,8 +244,10 @@ function cardProduto(p) {
     .map(c => `<span class="tag area">${esc(ct.catRotulo(c))}</span>`).join('');
   // selo discreto: só quando o curso TEM trecho público para assistir antes de comprar
   const selo = amostras.tem(p.id) ? '<span class="tag amostra">▶ amostras grátis</span>' : '';
+  // curso pausado aparece na vitrine como EM BREVE: quem clica vê a página, mas não compra
+  const seloEmBreve = p.em_breve ? '<span class="tag embreve">em breve</span>' : '';
   return `<a class="cardp" href="/academy/cursos/${esc(p.slug)}">${capa || '<span class="capa-vazia"></span>'}
-    <span class="tags"><span class="tag">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span>${cat}${selo}</span>
+    <span class="tags"><span class="tag">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span>${cat}${seloEmBreve}${selo}</span>
     <b>${esc(p.titulo)}</b>
     <span class="sub">${esc(p.descricao_curta || p.subtitulo)}</span>
     <span class="autor">por ${esc(p.produtor_nome || '')}</span>${preco}</a>`;
@@ -487,8 +489,12 @@ function cursoHTML(slug) {
   // a promessa da página, mentira. Sai do config do produto, não à mão.
   const gote = lib.normalizar(p.config);
   const goteDias = lib.diasAteOFim(resumo.total_aulas, gote);
-  const cta = ehClube ? 'Assinar agora' : (gratis ? 'Matricular grátis' : 'Comprar agora');
-  const destino = (billing.ativo() || gratis) ? `/academy/checkout/${esc(p.slug)}` : '#comprar';
+  // EM BREVE (produto pausado): a página fica de pé para quem quiser ver o que vem, mas não há
+  // caminho para a compra — nem botão, nem link de checkout. Quem já tem matrícula entra pelo "Já sou
+  // aluno". O servidor também recusa (billing.js), então o aviso aqui não é a trava, é a honestidade.
+  const emBreve = !!p.em_breve;
+  const cta = emBreve ? 'Em breve' : (ehClube ? 'Assinar agora' : (gratis ? 'Matricular grátis' : 'Comprar agora'));
+  const destino = emBreve ? '#em-breve' : ((billing.ativo() || gratis) ? `/academy/checkout/${esc(p.slug)}` : '#comprar');
   const inicial = esc((p.produtor_nome || 'V').trim().charAt(0).toUpperCase());
 
   // "o que você leva" sai do conteúdo REAL do curso, não de promessa escrita à mão
@@ -540,7 +546,9 @@ function cursoHTML(slug) {
     <div class="in">
       ${precoHtml}
       ${avisoIA(p)}
-      <a class="pv-bt" href="${destino}">${svgI('play', 19)} ${cta}</a>
+      ${emBreve
+        ? `<p class="pv-embreve" id="em-breve"><b>Em breve.</b> Este curso ainda está sendo montado e ainda não está à venda. A página já mostra o que ele vai ter; quando abrir, o preço é o que está aqui.</p>`
+        : `<a class="pv-bt" href="${destino}">${svgI('play', 19)} ${cta}</a>`}
       <a class="pv-bt fan" href="/academy/app">Já sou aluno — entrar</a>
       <ul class="pv-inclui">${inclui.map(([i, txt]) => `<li>${svgI(i, 18)}<span>${txt}</span></li>`).join('')}</ul>
       ${sp.garantia_texto || p.garantia_dias
@@ -616,7 +624,7 @@ function cursoHTML(slug) {
   <div class="pv-fim"><div class="pv">
     <h2>${gratis ? 'Comece agora, sem custo' : 'Garanta o seu acesso'}</h2>
     <p>${esc(p.descricao_curta || sp.subheadline || '')}</p>
-    <a class="pv-bt" href="${destino}">${cta}${gratis ? '' : ' — ' + brl(valor)}</a>
+    ${emBreve ? `<p class="pv-embreve"><b>Em breve.</b> Ainda não está à venda.</p>` : `<a class="pv-bt" href="${destino}">${cta}${gratis ? '' : ' — ' + brl(valor)}</a>`}
     ${p.garantia_dias ? `<p class="pv-fino" style="color:#9FB0CB;margin-top:16px">Garantia de ${p.garantia_dias} dias · pagamento pelo Mercado Pago</p>` : ''}
   </div></div>
 
@@ -642,7 +650,7 @@ function cursoHTML(slug) {
        ÚLTIMO elemento do corpo: o CSS abre espaço no <footer> que vem logo depois, para a barra não cobri-lo. */''}
   <div class="pv-barra" role="region" aria-label="Preço e compra">
     <div class="pv-barra-preco">${gratis ? '<b>Grátis</b>' : `${p.preco_promo_centavos ? `<s>${brl(p.preco_centavos)}</s>` : ''}<b>${brl(valor)}</b>${ehClube ? '<span class="mes">/mês</span>' : ''}`}</div>
-    <a class="pv-bt" href="${destino}">${cta}</a>
+    ${emBreve ? `<p class="pv-embreve"><b>Em breve.</b> Ainda não está à venda.</p>` : `<a class="pv-bt" href="${destino}">${cta}</a>`}
   </div>`;
 
   // Course é o schema que faz o curso aparecer com provedor, preço e nota nos
@@ -674,7 +682,7 @@ function cursoHTML(slug) {
     ...(valor ? {
       offers: {
         '@type': 'Offer', price: (valor / 100).toFixed(2), priceCurrency: 'BRL',
-        availability: 'https://schema.org/InStock', url: `${BASE_URL()}/academy/cursos/${p.slug}`,
+        availability: p.em_breve ? 'https://schema.org/PreOrder' : 'https://schema.org/InStock', url: `${BASE_URL()}/academy/cursos/${p.slug}`,
         category: ehClube ? 'Assinatura' : 'Compra única',
       },
     } : { offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL', availability: 'https://schema.org/InStock' } }),
@@ -1075,7 +1083,8 @@ function registrarPaginas(app, { notificar }) {
   // capa pública: SÓ de produto publicado (sem sessão; único arquivo exposto sem login)
   app.get('/academy/capa/:productId', async (req, res) => {
     const p = ct.Produtos.obter(s(req.params.productId, 40));
-    if (!p || p.status !== 'publicado' || !p.capa_media_id) return res.sendStatus(404);
+    // 'pausado' = em breve: o card e a página existem, logo a capa também precisa existir
+    if (!p || !['publicado', 'pausado'].includes(p.status) || !p.capa_media_id) return res.sendStatus(404);
     const m = ct.Midia.obter(p.capa_media_id);
     if (!m || !m.mime.startsWith('image/')) return res.sendStatus(404);
     // Cache-Control SÓ quando os bytes existem. Setado antes, ele grudava no 404 do

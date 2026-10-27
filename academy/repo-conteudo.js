@@ -886,8 +886,11 @@ const Matriculas = {
     const u = db.prepare('SELECT cortesia FROM users WHERE id = ?').get(userId);
     if (!u || u.cortesia !== 1) return matriculas;
     const ja = new Set(matriculas.map(e => e.product_id));
+    // 'pausado' (em breve) entra aqui também: quem tem cortesia total é justamente quem precisa
+    // ABRIR o curso que ainda não está à venda para acompanhar como ele está ficando. Sem isso o
+    // dono não achava na biblioteca o curso que ele mesmo acabara de pausar.
     const extras = db.prepare(`SELECT id AS product_id, titulo, tipo, slug, capa_media_id, status AS product_status
-      FROM products WHERE status = 'publicado' ORDER BY criado_em DESC`).all()
+      FROM products WHERE status IN ('publicado', 'pausado') ORDER BY criado_em DESC`).all()
       .filter(p => !ja.has(p.product_id))
       .map(p => ({ ...p, id: '', user_id: userId, status: 'ativa', origem: 'cortesia', criado_em: '' }));
     return matriculas.concat(extras);
@@ -1088,13 +1091,21 @@ function comCategorias(rows) {
   });
 }
 
-// vitrine: SÓ produtos publicados; nunca vaza rascunho/suspenso
+// vitrine: produtos PUBLICADOS e PAUSADOS; nunca vaza rascunho, em revisão, suspenso ou removido.
+// ⚠️ PAUSADO = "EM BREVE" (pedido do Augusto, 27/10/2026): o curso aparece, com a página inteira
+// para quem quiser ver o que vem, mas NÃO se compra — quem já tem matrícula (inclusive de cortesia)
+// entra normalmente. É o estado de quem está terminando o curso e já quer mostrá-lo.
+// A trava da compra não está aqui: `billing.js` recusa qualquer produto que não esteja publicado.
+const EM_BREVE = 'pausado';
+const marcarEmBreve = (p) => (p ? { ...p, em_breve: p.status === EM_BREVE } : p);
 const Marketplace = {
   listar({ q, categoria, n } = {}) {
     let rows = db.prepare(`SELECT p.id, p.tipo, p.titulo, p.subtitulo, p.slug, p.categoria, p.descricao_curta,
-      p.capa_media_id, p.preco_centavos, p.preco_promo_centavos, pr.nome_publico AS produtor_nome, pr.slug AS produtor_slug
+      p.capa_media_id, p.preco_centavos, p.preco_promo_centavos, p.status, pr.nome_publico AS produtor_nome, pr.slug AS produtor_slug
       FROM products p JOIN producer_profiles pr ON pr.user_id = p.producer_id
-      WHERE p.status = 'publicado' ORDER BY p.atualizado_em DESC LIMIT ?`).all(Math.min(parseInt(n, 10) || 60, 200));
+      WHERE p.status IN ('publicado', ?) ORDER BY (p.status = ?) ASC, p.atualizado_em DESC LIMIT ?`)
+      .all(EM_BREVE, EM_BREVE, Math.min(parseInt(n, 10) || 60, 200));
+    rows = rows.map(marcarEmBreve);
     if (categoria) {
       const naCat = new Set(db.prepare('SELECT product_id FROM product_categories WHERE slug = ?').all(categoria).map(r => r.product_id));
       rows = rows.filter(r => r.categoria === categoria || naCat.has(r.id));
@@ -1108,8 +1119,8 @@ const Marketplace = {
   porSlug(slug) {
     const p = db.prepare(`SELECT p.*, pr.nome_publico AS produtor_nome, pr.slug AS produtor_slug, pr.bio AS produtor_bio
       FROM products p JOIN producer_profiles pr ON pr.user_id = p.producer_id
-      WHERE p.slug = ? AND p.status = 'publicado'`).get(String(slug || ''));
-    const n = normProduto(p);
+      WHERE p.slug = ? AND p.status IN ('publicado', ?)`).get(String(slug || ''), EM_BREVE);
+    const n = marcarEmBreve(normProduto(p));
     return n ? { ...n, categorias: Produtos.categoriasDe(n.id, n.categoria) } : null;
   },
   produtorPorSlug(slug) {
