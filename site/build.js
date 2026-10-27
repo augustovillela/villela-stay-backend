@@ -1870,12 +1870,17 @@ const CASAS_PACOTE = [
 // e a limpeza integral; os demais pacotes continuam com 4 diarias e seus valores.
 // As duas paginas usam os mesmos totais para a Caravana.
 const CASAS_PACOTE_POSSE = CASAS_PACOTE.map(c => ({ ...c, pacote: 150 * 3 * c.hospedes + c.limpeza }));
-const pacoteBarato = CASAS_PACOTE_POSSE.reduce((a, c) => c.pacote < a.pacote ? c : a);
-const pacoteCaro   = CASAS_PACOTE_POSSE.reduce((a, c) => c.pacote > a.pacote ? c : a);
+// Casas já alugadas para a Caravana: Casa Modernista (reserva SZ01J, 04 a 11/01/2027; Augusto, 26/10/2026).
+const POSSE_RESERVADAS = ['GD01H'];
+const POSSE_LIVRES = CASAS_PACOTE_POSSE.filter(c => !POSSE_RESERVADAS.includes(c.id));
+const pacoteBarato = POSSE_LIVRES.reduce((a, c) => c.pacote < a.pacote ? c : a);
+const pacoteCaro   = POSSE_LIVRES.reduce((a, c) => c.pacote > a.pacote ? c : a);
 const capMin = Math.min(...CASAS_PACOTE.map(c => c.hospedes));
 const capMax = Math.max(...CASAS_PACOTE.map(c => c.hospedes));
 const realEn = n => 'R$ ' + n.toLocaleString('en-US');
-const precosPosse = CASAS_PACOTE_POSSE.map(c => `<li><strong>${esc(c.nome)}:</strong> ${LANG === 'en' ? realEn(c.pacote) : real(c.pacote)} · ${c.hospedes} ${t('hóspedes', 'guests', 'huéspedes')}</li>`).join('\n');
+const precosPosse = [...POSSE_LIVRES, ...CASAS_PACOTE_POSSE.filter(c => POSSE_RESERVADAS.includes(c.id))].map(c => POSSE_RESERVADAS.includes(c.id)
+  ? `<li><strong>${esc(c.nome)}:</strong> <strong style="color:#b4432f">${t('já reservada para a Caravana', 'already booked for the Caravan', 'ya reservada para la Caravana')}</strong></li>`
+  : `<li><strong>${esc(c.nome)}:</strong> ${LANG === 'en' ? realEn(c.pacote) : real(c.pacote)} · ${c.hospedes} ${t('hóspedes', 'guests', 'huéspedes')}</li>`).join('\n');
 const composicaoPosse = t('Valores por casa completa para 3 diárias, com ocupação máxima: R$ 150 por pessoa/dia × 3 dias × número de hóspedes + R$ 900 de limpeza, já incluídos no total.', 'Whole-house prices for 3 nights at full capacity: R$ 150 per person/day × 3 days × number of guests + a R$ 900 cleaning fee, already included in the total.', 'Precios por casa entera para 3 noches con ocupación máxima: R$ 150 por persona/día × 3 días × número de huéspedes + R$ 900 de limpieza, ya incluidos en el total.');
 
 // ---- Landing de cada pacote de temporada (Natal, Réveillon, Carnaval) ----
@@ -3922,7 +3927,7 @@ ${blocos}
 const cardsPosse = ['GD03H', 'GG04I', 'PL02I', 'GD01H', 'GI01I'].map(id => porId[id]).filter(Boolean).map(l => `
   <a class="card" href="${L(`/hospedagem/${l.id}.html`)}">
     ${img(l.fotoPrincipal, { alt: l.titulo, width: 400, height: 210, sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px' })}
-    <div class="card-info"><h3>${esc(tituloImovel(l))}</h3><p>${l.hospedes} ${t('hóspedes', 'guests', 'huéspedes')} · ${l.quartos} ${t('quartos', 'rooms', 'habitaciones')}</p></div>
+    <div class="card-info"><h3>${esc(tituloImovel(l))}</h3><p>${l.hospedes} ${t('hóspedes', 'guests', 'huéspedes')} · ${l.quartos} ${t('quartos', 'rooms', 'habitaciones')}</p>${POSSE_RESERVADAS.includes(l.id) ? `<p><strong style="color:#b4432f">${t('Já reservada para a Caravana da Posse', 'Already booked for the Inauguration Caravan', 'Ya reservada para la Caravana de la Toma de Posesión')}</strong></p>` : ''}</div>
   </a>`).join('\n');
 
 const posse = layout(
@@ -3946,7 +3951,7 @@ const posse = layout(
     <p>${t(`Nossas 4 casas recebem de ${capMin} a ${capMax} hóspedes cada. O pacote de 3 diárias vai de <strong>${real(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} pessoas)</strong> a <strong>${real(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} pessoas)</strong> — valores fechados, sem surpresa. Veja a composição das camas em <a href="${L('/pacotes.html')}"><strong>Pacotes Especiais</strong></a>.`, `Our 4 houses host ${capMin} to ${capMax} guests each. The 3-night package ranges from <strong>${realEn(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} people)</strong> to <strong>${realEn(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} people)</strong> — fixed prices, no surprises. See the bed layouts in <a href="${L('/pacotes.html')}"><strong>Special Packages</strong></a>.`, `Nuestras 4 casas reciben de ${capMin} a ${capMax} huéspedes cada una. El paquete de 3 noches va de <strong>${real(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} personas)</strong> a <strong>${real(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} personas)</strong> — precios cerrados, sin sorpresas. Mira la distribución de camas en <a href="${L('/pacotes.html')}"><strong>Paquetes Especiales</strong></a>.`)}</p>
     <p>${composicaoPosse}</p>
     <ul>${precosPosse}</ul>
-    <p>⚠️ ${t('São apenas 4 casas para o período de 03 a 06 de janeiro de 2027. As reservas são confirmadas por ordem de chegada.', 'There are only 4 houses for 3 to 6 January 2027. Bookings are confirmed on a first-come, first-served basis.', 'Son solo 4 casas para el período del 3 al 6 de enero de 2027. Las reservas se confirman por orden de llegada.')}</p>
+    <p>⚠️ ${t(`A Casa Modernista já foi alugada: restam só ${POSSE_LIVRES.length} casas para o período de 03 a 06 de janeiro de 2027. As reservas são confirmadas por ordem de chegada.`, `Casa Modernista is already booked: only ${POSSE_LIVRES.length} houses are left for 3 to 6 January 2027. Bookings are confirmed on a first-come, first-served basis.`, `La Casa Modernista ya fue alquilada: quedan solo ${POSSE_LIVRES.length} casas para el período del 3 al 6 de enero de 2027. Las reservas se confirman por orden de llegada.`)}</p>
   </section>
   <section class="regra"><h2>${t('As casas', 'The houses', 'Las casas')}</h2>
     <div class="grade" style="margin-top:8px">${cardsPosse}</div>
