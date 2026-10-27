@@ -1609,14 +1609,15 @@
       estiloDosMapas();
       alvo.innerHTML = '<p class="al-sub">Carregando os mapas…</p>';
       api('GET', base() + '/mapas').then(function (r) {
-        var foco = E.focoMapa || 'objetiva', comMapa = 0, aulas = 0;
+        var fs = focosDoPercurso(), foco = fs.indexOf(E.focoMapa) >= 0 ? E.focoMapa : fs[0], comMapa = 0, aulas = 0;
         r.disciplinas.forEach(function (d) { comMapa += d.com_mapa; aulas += d.aulas; });
         alvo.innerHTML = '<div class="jr-caixa"><h3>Mapas mentais</h3>' +
           '<p class="al-sub">Todos os mapas do percurso, por disciplina e ponto do edital. <b>' + comMapa + '</b> de ' + aulas + ' aulas já têm mapa' +
-          (comMapa < aulas ? '; os que faltam aparecem aqui assim que ficam prontos' : '') + '. Cada aula tem três versões, uma por tipo de prova.</p>' +
-          '<div class="es-linha"><span class="al-fino">Ver os mapas para: </span>' + ['objetiva', 'escrita', 'oral'].map(function (f) {
+          (comMapa < aulas ? '; os que faltam aparecem aqui assim que ficam prontos' : '') +
+          (focosDoPercurso().length > 1 ? '. Cada aula tem uma versão por tipo de prova deste edital.' : '.') + '</p>' +
+          (focosDoPercurso().length < 2 ? '' : '<div class="es-linha"><span class="al-fino">Ver os mapas para: </span>' + focosDoPercurso().map(function (f) {
             return '<button class="al-bt peq' + (f === foco ? '' : ' fan') + '" data-foco="' + f + '">' + FOCO[f] + '</button>';
-          }).join('') + '</div></div>' +
+          }).join('') + '</div>') + '</div>' +
           r.disciplinas.map(function (d) {
             return '<details class="es-acervo" data-disc="' + esc(d.codigo || '_metodo') + '"><summary><b>' + esc((d.codigo ? d.codigo + ' ' : '') + d.nome) + '</b><span class="al-fino"> · ' +
               (d.com_mapa ? d.com_mapa + ' mapa(s)' + (d.com_mapa < d.aulas ? ' de ' + d.aulas + ' aulas' : '') : 'mapas em preparação') + '</span></summary>' +
@@ -1662,6 +1663,12 @@
 
     // ================= AULA ATIVA =================
     var FOCO = { objetiva: 'Prova objetiva', escrita: 'Provas escritas', oral: 'Prova oral' };
+    // Só as provas que ESTE edital tem (servidor: painel.escopo.focos, lido de perfil.etapas). Oferecer mapa de
+    // prova oral a quem faz concurso sem oral manda o aluno estudar para uma etapa que não existe.
+    function focosDoPercurso() {
+      var f = E.painel && E.painel.escopo && E.painel.escopo.focos;
+      return (f && f.length) ? f : ['objetiva', 'escrita', 'oral'];
+    }
     function vespera(u) {
       var focos = Object.keys(u.vespera || {});
       if (!focos.length) return '';

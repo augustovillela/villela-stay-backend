@@ -251,7 +251,7 @@ function painelInteiro(usuario, produto, slugEscopo) {
     // PROVA EM ANDAMENTO (treino ou simulado): a aba Prova e a aba Hoje mostram "continuar", com o tempo que resta —
     // trocar de aba ou recarregar a página não pode esconder uma prova com o relógio correndo
     prova_aberta: provaAberta(usuario, escopo),
-    escopo: { slug: escopo.slug, tipo: escopo.tipo, titulo: escopo.titulo, nivel: escopo.nivel, extensao: escopo.extensao, data_alvo: escopo.data_alvo, versao: escopo.versao, status: escopo.status, perfil: escopo.perfil, particular: !!c.particular },
+    escopo: { slug: escopo.slug, tipo: escopo.tipo, titulo: escopo.titulo, nivel: escopo.nivel, extensao: escopo.extensao, data_alvo: escopo.data_alvo, versao: escopo.versao, status: escopo.status, perfil: escopo.perfil, focos: focosDoEscopo(escopo), particular: !!c.particular },
     revisor: c.revisor,
     // três eixos, cada um com o seu denominador — nunca somados num percentual só
     cobertura: {
@@ -1070,10 +1070,29 @@ function pesosDaBanca(escopo, c, itens) {
   if (!Object.values(of).some(Boolean)) return null; // sem prova oficial vinculada a ponto, não há padrão a seguir
   return itens.map(i => ({ ...i, peso: (Number(i.peso) || 0) + (of[i.codigo] || 0) }));
 }
+// FORMATOS DE PROVA DESTE CONCURSO (Augusto, 27/10/2026: "se no edital não tiver provas escritas e orais, é
+// melhor que não apareça"). Saem de `perfil.etapas`, que é o edital lido; o percurso que não as declara continua
+// com os três, como sempre foi — a tela não inventa etapa, mas também não esconde a de quem nunca declarou nada.
+const FOCOS = ['objetiva', 'escrita', 'oral'];
+function focosDoEscopo(escopo) {
+  const perfil = (escopo.perfil && typeof escopo.perfil === 'object') ? escopo.perfil : {};
+  const etapas = Array.isArray(perfil.etapas) ? perfil.etapas : [];
+  if (!etapas.length) return FOCOS.slice();
+  const vistos = new Set();
+  for (const e of etapas) {
+    const txt = String((e && (e.foco || e.tipo || e.natureza || e.nome)) || e || '').toLowerCase();
+    if (/oral|argui/.test(txt)) vistos.add('oral');
+    else if (/escrit|discursiv|sentenç|senten|peça|peca|prátic|pratic|redaç|redac|estudo de caso|dissertat/.test(txt)) vistos.add('escrita');
+    else if (/objetiv|preliminar|múltipla|multipla/.test(txt)) vistos.add('objetiva');
+  }
+// etapa que não é prova (títulos, sindicância, exame médico) não vira foco; sem nenhuma reconhecida, a objetiva fica
+  return vistos.size ? FOCOS.filter(f => vistos.has(f)) : ['objetiva'];
+}
+
 // A RETA FINAL do percurso: foco da véspera e quantos dias de véspera e de revisão geral. Um lugar só — o Plano
 // e o cronograma das Ferramentas (que é uma visão de calendário do mesmo plano) pedem daqui.
 function retaFinalDoEscopo(escopo) {
-  // ADR-0005: a véspera segue a 1ª etapa do concurso (perfil.etapas, ordem do edital); sem perfil, objetiva
+// ADR-0005: a véspera segue a 1ª etapa do concurso (perfil.etapas, ordem do edital); sem perfil, objetiva
   const perfil = (escopo.perfil && typeof escopo.perfil === 'object') ? escopo.perfil : {};
   const etapa1 = Array.isArray(perfil.etapas) && perfil.etapas[0] ? String(perfil.etapas[0].foco || perfil.etapas[0].tipo || perfil.etapas[0].nome || perfil.etapas[0]) : '';
   const foco = /oral/i.test(etapa1) ? 'oral' : /discurs|escrit|senten|peça|peca/i.test(etapa1) ? 'escrita' : 'objetiva';
@@ -1406,7 +1425,7 @@ function progressoDoCurso_(userId, productId) {
 module.exports = {
   guardarTentativa, anotarAula, caderno, quizDaAula, registrarVideo, registrarLeitura, conclusao, progressoDoCurso, aulaEstudada, reguaDeEstudo, MODOS_DE_AFERICAO,
   QUIZ_DA_AULA, VIDEO_ASSISTIDO_PCT, PROVA_TOLERANCIA_SEG, SIMULADO_PCT_RESERVADAS, SEPARADOR_DE_ABAS, questoesEmProvaAberta, CERT_PCT_AULAS_ESTUDADAS, CERT_PROVAS_ENVIADAS, CERT_MODOS_DE_PROVA, CERT_SIMULADO_PCT_RESPONDIDAS, CERT_SIMULADO_QUESTOES_MIN, MODOS_DE_ESTUDO,
-  CARDS_NOVOS_DIA, ERROS_POR_PAGINA, simuladoQueConta, provaAberta, formatoDoPercurso, vereditoDe, vistasDe, corrigirTentativa,
+  CARDS_NOVOS_DIA, ERROS_POR_PAGINA, simuladoQueConta, provaAberta, formatoDoPercurso, vereditoDe, vistasDe, corrigirTentativa, focosDoEscopo,
   contexto, abrir, escopos, painel, unidade, animacoes, leitura, mapas, marcacoes, marcar, editarMarcacao, removerMarcacao, solucaoDoBloco, praticar, bancoDeQuestoes, oQueMudou, pedirPista, responder, erros, anotar,
   cardsDoDia, todosOsCards, revelarCard, avaliarCard, iniciarTentativa, obterTentativa, salvarRespostas, enviarTentativa,
   definirPlano, obterPlano, estadosDoAluno, proximaTarefa, hojeBR,

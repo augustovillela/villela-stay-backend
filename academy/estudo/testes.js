@@ -460,6 +460,23 @@ async function rodar({ t, req, EST, impId }) {
     assert.equal((await req('GET', `${esc}/leitura?disciplina=9.9`, { jar: 'olga' })).st, 404);
   });
 
+  await t('focos de prova: só aparecem as provas que o edital TEM (sem oral, sem aba de oral)', async () => {
+    // Augusto, 27/10/2026: "se no edital não tiver provas escritas e orais, é melhor que não apareça nas ferramentas".
+    const f = require('./aluno').focosDoEscopo;
+    // concurso sem oral (TRF-3: objetiva + estudo de caso)
+    assert.deepEqual(f({ perfil: { etapas: [{ nome: 'Prova objetiva' }, { nome: 'Prova discursiva — estudo de caso' }] } }), ['objetiva', 'escrita']);
+    // magistratura: os três, e na ordem fixa, não na ordem do edital
+    assert.deepEqual(f({ perfil: { etapas: [{ nome: 'Prova oral' }, { nome: 'Prova objetiva seletiva' }, { nome: 'Prova prática de sentenças' }] } }), ['objetiva', 'escrita', 'oral']);
+    // etapa que não é prova não vira foco; sobrando nenhuma, fica a objetiva
+    assert.deepEqual(f({ perfil: { etapas: [{ nome: 'Avaliação de títulos' }, { nome: 'Sindicância da vida pregressa' }] } }), ['objetiva']);
+    // quem não declara etapa nenhuma continua com os três — a tela não esconde o que sempre mostrou
+    assert.deepEqual(f({ perfil: {} }), ['objetiva', 'escrita', 'oral']);
+    assert.deepEqual(f({ perfil: null }), ['objetiva', 'escrita', 'oral']);
+    // e o painel do aluno leva a lista para a tela
+    const pn = (await req('GET', `${esc}/painel`, { jar: 'olga' })).json;
+    assert.ok(Array.isArray(pn.escopo.focos) && pn.escopo.focos.length, 'o painel não trouxe os focos');
+  });
+
   await t('estudo: mapa mental — o painel diz quais aulas têm mapa, e a tela sabe desenhá-lo', async () => {
     const p = (await req('GET', `${esc}/painel`, { jar: 'olga' })).json;
     assert.ok(p.unidades.every(u => typeof u.mapa === 'boolean'), 'cada aula diz se tem mapa mental');
