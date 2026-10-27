@@ -239,24 +239,26 @@ const FONTES = [
       return linhas(dbDe('academy').prepare(q[seg] || q.todos).all());
     },
     sessao: sessaoAcademy,
-    // Dica pode ser de UM curso: estes são os cursos publicados, e estes são
-    // os cursos de cada aluno (matrícula ativa).
+    // Dica pode ser de UM curso: estes são os cursos no ar, e estes são
+    // os cursos de cada aluno (matrícula ativa). 'pausado' = EM BREVE: o curso já tem
+    // página, amostra e aluno de cortesia, então precisa das dicas ANTES de abrir a venda —
+    // sem isto o curso novo nem aparecia na lista para receber a primeira dica (27/10/2026).
     cursos: () => dbDe('academy').prepare(
-      "SELECT id, titulo FROM products WHERE tipo = 'curso' AND status IN ('publicado','aprovado') ORDER BY titulo").all(),
+      "SELECT id, titulo FROM products WHERE tipo = 'curso' AND status IN ('publicado','aprovado','pausado') ORDER BY titulo").all(),
     // Quem TEM o curso: aluno com matrícula ativa OU o produtor dono dele. Sem o dono,
     // as dicas de um curso não apareciam para o próprio autor (01/10/2026: o Augusto abriu
     // "O Locador Inteligente" e não viu nenhuma — ele é produtor, não aluno).
     cursosDoUsuario: (ref) => dbDe('academy').prepare(
       `SELECT product_id id FROM enrollments WHERE user_id = ? AND status = 'ativa'
-       UNION SELECT id FROM products WHERE producer_id = ? AND status IN ('publicado', 'aprovado')`).all(String(ref), String(ref)).map((r) => r.id),
+       UNION SELECT id FROM products WHERE producer_id = ? AND status IN ('publicado', 'aprovado', 'pausado')`).all(String(ref), String(ref)).map((r) => r.id),
     // TEM o curso, pela MESMA regra de acesso da Academy (repo-conteudo.temAcesso) + o produtor dono: matrícula
     // ativa, CORTESIA total (o sinalizador da conta, sem linha de matrícula), assinatura ativa do produto ou de um
     // clube que o inclui. Antes só matrícula e produtor valiam: quem entrava por cortesia, assinatura ou clube
     // nunca recebia dica do curso (segunda revisão do Estude, 11/10/2026, D2).
     temCurso: (ref, curso) => !!dbDe('academy').prepare(
       `SELECT 1 WHERE EXISTS (SELECT 1 FROM enrollments WHERE user_id = ?1 AND product_id = ?2 AND status = 'ativa')
-          OR EXISTS (SELECT 1 FROM products WHERE id = ?2 AND producer_id = ?1 AND status IN ('publicado', 'aprovado'))
-          OR EXISTS (SELECT 1 FROM users u JOIN products p ON p.id = ?2 WHERE u.id = ?1 AND u.cortesia = 1 AND u.status = 'ativo' AND p.status IN ('publicado', 'aprovado'))
+          OR EXISTS (SELECT 1 FROM products WHERE id = ?2 AND producer_id = ?1 AND status IN ('publicado', 'aprovado', 'pausado'))
+          OR EXISTS (SELECT 1 FROM users u JOIN products p ON p.id = ?2 WHERE u.id = ?1 AND u.cortesia = 1 AND u.status = 'ativo' AND p.status IN ('publicado', 'aprovado', 'pausado'))
           OR EXISTS (SELECT 1 FROM subscriptions WHERE user_id = ?1 AND product_id = ?2 AND status = 'ativa')
           OR EXISTS (SELECT 1 FROM subscriptions s JOIN club_items ci ON ci.club_product_id = s.product_id WHERE s.user_id = ?1 AND s.status = 'ativa' AND ci.product_id = ?2)`)
       .get(String(ref), String(curso)),

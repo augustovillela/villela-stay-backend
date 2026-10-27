@@ -861,6 +861,25 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     assert.ok(sorteadas.includes('Dica do Curso da Cortesia'));
   });
 
+  await t('dicas · curso EM BREVE (pausado) recebe dica: aparece na lista do painel e o aluno de cortesia a vê', async () => {
+    // O curso "em breve" tem página, amostra e aluno de cortesia ANTES de abrir a venda — é
+    // justamente quando as dicas precisam estar escritas. Enquanto o filtro era só
+    // publicado/aprovado, o curso novo nem aparecia na lista para receber a primeira dica.
+    acad.prepare("INSERT INTO products (id, producer_id, tipo, titulo, slug, status, criado_em) VALUES ('pbreve', 'a2', 'curso', 'Curso Em Breve', 'curso-em-breve', 'pausado', ?)").run(agora);
+    com.dicas.criar({ produto: 'academy', curso_id: 'pbreve', titulo: 'Dica do Curso Em Breve', corpo: 'x', passos: ['passo'] });
+    assert.ok(fontes.cursosDe('academy').some((c) => c.id === 'pbreve'), 'curso em breve sumiu da lista do painel de dicas');
+    insU.run('c6', 'Filha com Cortesia', 'c6@t.com', '', 'ativo', '{}', agora);
+    acad.prepare("UPDATE users SET cortesia = 1 WHERE id = 'c6'").run();
+    assert.equal(fontes.temCurso('academy', 'c6', 'pbreve'), true, 'cortesia em curso em breve não foi reconhecida');
+    assert.ok(com.dicas.doUsuario('academy', 'c6', 'pbreve').itens.some((d) => d.titulo === 'Dica do Curso Em Breve'));
+    // e o produtor dono continua vendo o curso dele na lista pessoal
+    assert.ok(fontes.cursosDoUsuario('academy', 'a2').includes('pbreve'));
+    // curso em RASCUNHO segue fora: não tem página nem aluno
+    acad.prepare("INSERT INTO products (id, producer_id, tipo, titulo, slug, status, criado_em) VALUES ('prasc', 'a2', 'curso', 'Curso Rascunho', 'curso-rascunho', 'rascunho', ?)").run(agora);
+    assert.ok(!fontes.cursosDe('academy').some((c) => c.id === 'prasc'), 'rascunho não entra na lista de dicas');
+    assert.equal(fontes.temCurso('academy', 'c6', 'prasc'), false);
+  });
+
   await t('dicas · D1: curso que hospeda o Estude só recebe as dicas DELE — quem decide é o servidor, com ou sem a marca da página (rede lenta não gasta dica geral dentro do Estude)', async () => {
     // o curso p9 (do teste do Estude, acima) passa a hospedar um percurso PUBLICADO
     insU.run('a10', 'Aluna da Rede Lenta', 'a10@t.com', '', 'ativo', '{}', agora);
