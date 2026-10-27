@@ -283,6 +283,17 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
       .run(id, req.usuario.id, 'cavaquinho:' + capitulo, JSON.stringify({ bpm, foco }), notas, quando, quando);
     res.status(201).json({ ok: true, pratica: { id, bpm, foco, notas, data: quando } });
   }));
+  app.get(B + '/prof/cavaquinho/alunos', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
+    const alunos = db.prepare("SELECT usuario, COUNT(*) AS sessoes, MAX(iniciada_em) AS ultima_pratica FROM sessoes_pratica WHERE trilha_id LIKE 'cavaquinho:%' GROUP BY usuario ORDER BY ultima_pratica DESC").all();
+    res.json({ curso: 'curso-cavaquinho', total_capitulos: 38, alunos });
+  }));
+  app.get(B + '/prof/cavaquinho/aluno/:aluno/praticas', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
+    const aluno = s(req.params.aluno, 120);
+    const sessoes = db.prepare("SELECT id, trilha_id, meta, anotacao, iniciada_em FROM sessoes_pratica WHERE usuario = ? AND trilha_id LIKE 'cavaquinho:%' ORDER BY iniciada_em DESC LIMIT 100").all(aluno).map((x) => { let meta = {}; try { meta = JSON.parse(x.meta || '{}'); } catch (_) {} return { id: x.id, capitulo: x.trilha_id.slice('cavaquinho:'.length), ...meta, notas: x.anotacao, data: x.iniciada_em }; });
+    res.json({ curso: 'curso-cavaquinho', aluno, sessoes });
+  }));
 
   // ---- diário de prática do curso de piano -----------------------------
   app.get(B + '/piano/praticas', requireUsuario, h(async (req, res) => {

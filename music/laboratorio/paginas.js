@@ -301,6 +301,10 @@ ${relacionados(f.slug)}`;
     const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de cavaquinho · acompanhamento</p><h1>Meu progresso</h1><p class="lab-lead">Acompanhe os 38 capítulos do livro.</p><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div></header><section class="curso-modulo"><h2>Trilha completa</h2><ol>${itens}</ol></section>`;
     pagina(res, { titulo: 'Meu progresso — curso de cavaquinho | Musique', descricao: 'Acompanhamento dos 38 capítulos do curso de cavaquinho.', caminho: '/music/curso-cavaquinho/progresso', corpo, trilha: [['Cursos', '/music/cursos'], ['Cavaquinho', '/music/curso-cavaquinho'], ['Meu progresso']] });
   });
+  app.get('/music/curso-cavaquinho/professor', opcional, (req, res) => {
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de cavaquinho · área do professor</p><h1>Acompanhamento dos alunos</h1><p class="lab-lead">Consulte sessões sincronizadas, BPM e foco de estudo nos 38 capítulos.</p></header><section data-cavaquinho-professor-dashboard><p>Carregando acompanhamento…</p></section><p><a class="btn sec" href="/music/curso-cavaquinho">← Voltar ao curso</a></p>`;
+    pagina(res, { titulo: 'Professor — curso de cavaquinho | Musique', descricao: 'Acompanhamento dos alunos de cavaquinho.', caminho: '/music/curso-cavaquinho/professor', corpo, trilha: [['Cursos', '/music/cursos'], ['Cavaquinho', '/music/curso-cavaquinho'], ['Professor']] });
+  });
   app.get('/music/curso-cavaquinho/:slug', opcional, (req, res) => {
     const c = CC.capitulos.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de cavaquinho');
     const livro = CC_LIVRO.capitulos.find((x) => x.numero === c.numero); const anterior = CC.capitulos[c.numero - 2]; const proximo = CC.capitulos[c.numero];
