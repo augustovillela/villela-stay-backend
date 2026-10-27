@@ -138,6 +138,12 @@ async function rodar({ t, req }) {
     const tela = ler('app-estudo.js'), proc = tela.slice(tela.indexOf('function procedencia(q) {'), tela.indexOf('function notaDeVigencia('));
     assert.ok(!/partes\.push\(q\.vigencia\)/.test(proc), 'o cabeçalho da questão não imprime a vigência');
     assert.ok(tela.includes('notaDeVigencia(x.vigencia)') && tela.includes('notaDeVigencia(it.vigencia)'), 'ela aparece na resposta (Praticar/quiz) e na correção comentada (prova)');
+    // ORDEM DA FICHA (Augusto, 27/10/2026): órgão — cargo — banca — ano, como "TJDFT · Juiz de Direito · Cebraspe · 2022".
+    // O cargo já existia no dado e NÃO aparecia na tela; quem estudava não sabia se a questão era do cargo dele.
+    const ordem = ['p.orgao', 'p.cargo', 'p.banca', 'p.ano'].map(c => proc.indexOf(c));
+    assert.ok(ordem.every(i => i >= 0), 'a ficha da questão oficial traz órgão, cargo, banca e ano');
+    assert.deepEqual(ordem, [...ordem].sort((a, b) => a - b), 'e nessa ordem: órgão, cargo, banca, ano');
+    assert.ok(proc.indexOf('p.concurso') > ordem[3], 'concurso, caderno e número vêm depois, como detalhe');
   });
 
   // ================= C. SIMULADO × FORMATO DO EDITAL =================

@@ -2419,7 +2419,14 @@
     // ================= PRATICAR =================
     function procedencia(q) {
       var p = q.procedencia || {}, partes = [ORIGEM[q.origem] || q.origem];
-      if (q.origem === 'oficial' || q.origem === 'adaptada') partes.push([p.banca, p.orgao, p.concurso, p.ano || '', p.caderno, p.numero_original ? 'nº ' + p.numero_original : ''].filter(Boolean).join(' · '));
+      // ORDEM PEDIDA PELO AUGUSTO (27/10/2026): órgão — cargo — banca — ano, como "TJDFT - Juiz de
+      // Direito - Cebraspe - 2022". O CARGO faltava: a ficha antiga mostrava banca, órgão, concurso e
+      // ano, e quem estudava não sabia se a questão tinha sido feita para o cargo dele.
+      if (q.origem === 'oficial' || q.origem === 'adaptada') {
+        partes.push([p.orgao, p.cargo, p.banca, p.ano || ''].filter(Boolean).join(' · '));
+        var detalhe = [p.concurso, p.caderno, p.numero_original ? 'nº ' + p.numero_original : ''].filter(Boolean).join(' · ');
+        if (detalhe) partes.push(detalhe);
+      }
       if (q.origem === 'autoral' && q.gerada_por_ia) partes.push('escrita com IA');
       if (p.inspirada_em) partes.push('inspirada em ' + p.inspirada_em);
       // a nota de VIGÊNCIA não entra aqui: em parte das questões ela cita a norma da alternativa certa. Ela aparece
