@@ -27,7 +27,7 @@ function bannerCurso(caminho) {
   const guitarra = /^\/music\/criar\/curso-guitarra-(?:livro|edicao)/.test(rota);
   const contrabaixo = /^\/music\/curso-contrabaixo/.test(rota);
   const piano = /^\/music\/curso-piano/.test(rota);
-  const futuro = /curso-(?:ukulele|cavaquinho|bandolim)/.test(rota);
+  const futuro = /curso-(?:ukulele|bandolim)/.test(rota);
   if (!bateria && !teoria && !violao && !guitarra && !contrabaixo && !piano && !futuro) return '';
   const futuroId = (rota.match(/curso-(contrabaixo|piano|ukulele|cavaquinho|bandolim)/) || [])[1];
   const dadosFuturos = { contrabaixo: ['Contrabaixo', '#3f7180', 'groove · linhas · fundamento'], piano: ['Piano', '#536f82', 'harmonia · acompanhamento · leitura'], ukulele: ['Ukulele', '#6d8060', 'acordes · batidas · canções'], cavaquinho: ['Cavaquinho', '#9a7650', 'levadas · acordes · repertório'], bandolim: ['Bandolim', '#7d6374', 'palhetada · melodias · choro'] };

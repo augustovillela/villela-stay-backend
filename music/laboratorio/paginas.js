@@ -139,7 +139,6 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
       { nome: 'Contrabaixo', icone: '🎸', cor: '#3f7180', resumo: 'Técnica, groove, harmonia, estilos, criação e performance.', url: '/music/curso-contrabaixo', ativo: true },
       { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Teclado, leitura, harmonia, acompanhamento e performance.', url: '/music/curso-piano', ativo: true },
       { nome: 'Cavaquinho', icone: '🪕', cor: '#8b6b48', resumo: 'Acordes, batidas, samba, pagode, choro e performance.', url: '/music/curso-cavaquinho', ativo: true },
-      { nome: 'Cavaquinho', icone: '🪕', cor: '#9a7650', resumo: 'Em preparação: levadas, acordes e repertório brasileiro.', url: '/music/curso-cavaquinho', ativo: false },
       { nome: 'Ukulele', icone: '🪕', cor: '#6d8060', resumo: 'Em preparação: acordes, batidas e primeiras canções.', url: '/music/curso-ukulele', ativo: false },
       { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Em preparação: palhetada, melodias e choro.', url: '/music/curso-bandolim', ativo: false },
     ];
@@ -153,7 +152,6 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
   // até a publicação do curso.
   const cursosEmBreve = [
     ['ukulele', 'Ukulele', 'Acordes, batidas e primeiras canções.'],
-    ['cavaquinho', 'Cavaquinho', 'Levadas, acordes e repertório brasileiro.'],
     ['bandolim', 'Bandolim', 'Palhetada, melodias e choro.'],
   ];
   app.get('/music/curso-contrabaixo.json', opcional, (req, res) => {
