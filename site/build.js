@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v36'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v37'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -1810,10 +1810,10 @@ fs.writeFileSync(path.join(od, 'eventos.html'), eventos);
 
 // ------------------------- pacotes (página de vendas) -------------------------
 const DATAS_PACOTE = [
-  { emoji: '🎄', nome: t('Natal 2026', 'Christmas 2026', 'Navidad 2026'), periodo: '23 a 27/12/2026' },
-  { emoji: '🎆', nome: t('Réveillon 2026/2027', "New Year's Eve 2026/2027", 'Fin de Año 2026/2027'), periodo: '30/12/2026 a 03/01/2027' },
+  { emoji: '🎄', nome: t('Natal 2026', 'Christmas 2026', 'Navidad 2026'), periodo: t('22 a 26/12/2026 · 4 diárias', '22–26 December 2026 · 4 nights', '22 al 26/12/2026 · 4 noches') },
+  { emoji: '🎆', nome: t('Réveillon 2026/2027', "New Year's Eve 2026/2027", 'Fin de Año 2026/2027'), periodo: t('29/12/2026 a 02/01/2027 · 4 diárias', '29 Dec 2026 – 2 Jan 2027 · 4 nights', '29/12/2026 al 02/01/2027 · 4 noches') },
   { emoji: '🇧🇷', nome: t('Caravana da Posse do Novo Presidente', "New President's Inauguration Caravan", 'Caravana de la Toma de Posesión del Nuevo Presidente'), periodo: t('03/01/2027 a 06/01/2027 · 3 diárias', '3–6 January 2027 · 3 nights', '03/01/2027 a 06/01/2027 · 3 noches') },
-  { emoji: '🎭', nome: t('Carnaval 2027', 'Carnival 2027', 'Carnaval 2027'), periodo: '6 a 10/02/2027' },
+  { emoji: '🎭', nome: t('Carnaval 2027', 'Carnival 2027', 'Carnaval 2027'), periodo: t('06 a 10/02/2027 · 4 diárias', '6–10 February 2027 · 4 nights', '06 al 10/02/2027 · 4 noches') },
   { emoji: '🏛️', nome: t('Marcha dos Municípios 2027', 'March of Municipalities 2027', 'Marcha de los Municipios 2027'), periodo: t('datas sob consulta', 'dates on request', 'fechas a consultar') },
   { emoji: '🏛️', nome: t('Marcha dos Prefeitos 2027', "Mayors' March 2027", 'Marcha de los Alcaldes 2027'), periodo: t('16 a 20/5/2027 (a confirmar)', '16–20 May 2027 (to be confirmed)', '16 a 20/5/2027 (a confirmar)') }
 ];
@@ -1878,10 +1878,240 @@ const realEn = n => 'R$ ' + n.toLocaleString('en-US');
 const precosPosse = CASAS_PACOTE_POSSE.map(c => `<li><strong>${esc(c.nome)}:</strong> ${LANG === 'en' ? realEn(c.pacote) : real(c.pacote)} · ${c.hospedes} ${t('hóspedes', 'guests', 'huéspedes')}</li>`).join('\n');
 const composicaoPosse = t('Valores por casa completa para 3 diárias, com ocupação máxima: R$ 150 por pessoa/dia × 3 dias × número de hóspedes + R$ 900 de limpeza, já incluídos no total.', 'Whole-house prices for 3 nights at full capacity: R$ 150 per person/day × 3 days × number of guests + a R$ 900 cleaning fee, already included in the total.', 'Precios por casa entera para 3 noches con ocupación máxima: R$ 150 por persona/día × 3 días × número de huéspedes + R$ 900 de limpieza, ya incluidos en el total.');
 
-const chipsDatas = DATAS_PACOTE.map(d =>
-  `<a class="chip-data" href="${d.emoji === '🇧🇷' ? L('/posse-2027.html') : waLink(t(`Olá! Quero reservar uma casa completa para ${d.nome} (${d.periodo}). Somos um grupo de ___ pessoas.`, `Hi! I'd like to book a whole house for ${d.nome} (${d.periodo}). We're a group of ___ people.`, `¡Hola! Quiero reservar una casa entera para ${d.nome} (${d.periodo}). Somos un grupo de ___ personas.`))}">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></a>`).join('\n');
+// ---- Landing de cada pacote de temporada (Natal, Réveillon, Carnaval) ----
+// Decisão do Augusto (26/10/2026): 4 diárias, preço = capacidade máxima × R$ 150 × 4 + R$ 980
+// de limpeza, convidado R$ 100/pessoa/dia. Os cards de /pacotes levam a estas páginas; o
+// WhatsApp só aparece aqui (e na /posse-2027). Catetinho entra com 18 pessoas neste pacote.
+const TEMPORADA_DIARIA = 150, TEMPORADA_LIMPEZA = 980, TEMPORADA_CONVIDADO = 100, TEMPORADA_DIAS = 4;
+const TEMPORADA_HOSPEDES = { GI01I: 15, PL02I: 18, GD01H: 22, GG04I: 24 };
+const CASAS_TEMPORADA = ['GI01I', 'PL02I', 'GD01H', 'GG04I']
+  .map(id => CASAS_PACOTE.find(c => c.id === id))
+  .map(c => {
+    const hospedes = TEMPORADA_HOSPEDES[c.id];
+    return { ...c, hospedes, limpeza: TEMPORADA_LIMPEZA, pacote: TEMPORADA_DIARIA * TEMPORADA_DIAS * hospedes + TEMPORADA_LIMPEZA };
+  });
+const PACOTES_TEMPORADA = [
+  {
+    slug: 'natal-2026', emoji: '🎄',
+    nome: t('Natal 2026', 'Christmas 2026', 'Navidad 2026'),
+    entrada: '22/12/2026', saida: '26/12/2026',
+    periodo: t('22 a 26/12/2026 · 4 diárias', '22–26 December 2026 · 4 nights', '22 al 26/12/2026 · 4 noches'),
+    datas: t('check-in em 22 de dezembro às 14h · check-out em 26 de dezembro às 10h', 'check-in on 22 December at 2 PM · check-out on 26 December at 10 AM', 'entrada el 22 de diciembre a las 14h · salida el 26 de diciembre a las 10h'),
+    titulo: t('Natal em família numa casa inteira no Lago Sul', 'Christmas with the whole family in a private house in Lago Sul', 'Navidad en familia en una casa entera en Lago Sul'),
+    chamada: t('A ceia com todo mundo na mesma mesa, as crianças na piscina e ninguém dormindo em hotel. De 22 a 26 de dezembro, a casa é só da sua família.', 'Christmas dinner with everyone at one table, the kids in the pool and nobody sleeping in a hotel. From 22 to 26 December, the house is your family\'s alone.', 'La cena con todos en la misma mesa, los niños en la piscina y nadie durmiendo en hotel. Del 22 al 26 de diciembre, la casa es solo de tu familia.'),
+    porque: [
+      ['🎄', t('A ceia na sua casa', 'Dinner in your own home', 'La cena en tu propia casa'), t('Cozinha completa e churrasqueira para a ceia do dia 24 e o almoço do dia 25, sem reserva de restaurante e sem pressa para ir embora.', 'A full kitchen and barbecue for Christmas Eve dinner and Christmas lunch, with no restaurant booking and no rush to leave.', 'Cocina completa y parrilla para la cena del 24 y el almuerzo del 25, sin reserva de restaurante y sin prisa por irse.')],
+      ['👨‍👩‍👧‍👦', t('A família inteira junta', 'The whole family together', 'Toda la familia junta'), t('Avós, tios, primos e crianças sob o mesmo teto, cada núcleo com o seu quarto.', 'Grandparents, uncles, cousins and kids under one roof, each household with its own room.', 'Abuelos, tíos, primos y niños bajo el mismo techo, cada familia con su habitación.')],
+      ['🏊', t('Dezembro com piscina', 'December by the pool', 'Diciembre con piscina'), t('É verão em Brasília: os dias de folga são na água, e não num quarto de hotel.', 'It\'s summer in Brasília: the days off are spent in the water, not in a hotel room.', 'Es verano en Brasília: los días libres son en el agua, no en una habitación de hotel.')]
+    ],
+    escassez: t('O Natal é a primeira data a esgotar: são só 4 casas, e quem reserva primeiro escolhe.', 'Christmas is the first date to sell out: there are only 4 houses, and whoever books first chooses.', 'La Navidad es la primera fecha en agotarse: son solo 4 casas, y quien reserva primero elige.')
+  },
+  {
+    slug: 'reveillon-2027', emoji: '🎆',
+    nome: t('Réveillon 2026/2027', "New Year's Eve 2026/2027", 'Fin de Año 2026/2027'),
+    entrada: '29/12/2026', saida: '02/01/2027',
+    periodo: t('29/12/2026 a 02/01/2027 · 4 diárias', '29 December 2026 – 2 January 2027 · 4 nights', '29/12/2026 al 02/01/2027 · 4 noches'),
+    datas: t('check-in em 29 de dezembro às 14h · check-out em 2 de janeiro às 10h', 'check-in on 29 December at 2 PM · check-out on 2 January at 10 AM', 'entrada el 29 de diciembre a las 14h · salida el 2 de enero a las 10h'),
+    titulo: t('Réveillon com a sua turma, numa casa só de vocês', "New Year's Eve with your crowd, in a house that's yours alone", 'Fin de Año con tu grupo, en una casa solo para ustedes'),
+    chamada: t('A virada com piscina, churrasco e as pessoas que você escolheu. Sem fila, sem ingresso de festa lotada e sem dividir o espaço com estranhos.', 'Ring in the new year with a pool, a barbecue and the people you chose. No queues, no tickets to a packed party and no sharing the space with strangers.', 'El Año Nuevo con piscina, parrilla y la gente que elegiste. Sin filas, sin entradas a fiestas llenas y sin compartir el espacio con desconocidos.'),
+    porque: [
+      ['🥂', t('A virada do seu jeito', 'The countdown your way', 'La medianoche a tu manera'), t('Ceia, brinde e piscina na mesma casa. Ninguém precisa dirigir de volta depois da meia-noite.', 'Dinner, a toast and the pool in the same house. Nobody has to drive home after midnight.', 'Cena, brindis y piscina en la misma casa. Nadie tiene que manejar de vuelta después de medianoche.')],
+      ['🏡', t('Quatro dias de casa cheia', 'Four days with the house full', 'Cuatro días con la casa llena'), t('Chega antes da correria do dia 31 e vai embora com calma no dia 2.', 'Arrive before the 31st rush and leave calmly on the 2nd.', 'Llega antes del ajetreo del 31 y vete con calma el día 2.')],
+      ['💸', t('Menos que um hotel no Réveillon', "Less than a New Year's hotel", 'Menos que un hotel en Año Nuevo'), t('O valor da casa dividido pelo grupo sai por menos do que um quarto de hotel nessa semana.', 'The house price split across the group costs less than a hotel room that week.', 'El precio de la casa dividido por el grupo sale por menos que una habitación de hotel esa semana.')]
+    ],
+    escassez: t('O Réveillon esgota cedo: são só 4 casas para o período, confirmadas por ordem de reserva.', "New Year's Eve sells out early: only 4 houses for the period, confirmed in booking order.", 'Fin de Año se agota pronto: solo 4 casas para el período, confirmadas por orden de reserva.')
+  },
+  {
+    slug: 'carnaval-2027', emoji: '🎭',
+    nome: t('Carnaval 2027', 'Carnival 2027', 'Carnaval 2027'),
+    entrada: '06/02/2027', saida: '10/02/2027',
+    periodo: t('06 a 10/02/2027 · 4 diárias', '6–10 February 2027 · 4 nights', '06 al 10/02/2027 · 4 noches'),
+    datas: t('check-in em 6 de fevereiro às 14h · check-out em 10 de fevereiro às 10h', 'check-in on 6 February at 2 PM · check-out on 10 February at 10 AM', 'entrada el 6 de febrero a las 14h · salida el 10 de febrero a las 10h'),
+    titulo: t('Carnaval em Brasília com base no Lago Sul', 'Carnival in Brasília, based in Lago Sul', 'Carnaval en Brasília con base en Lago Sul'),
+    chamada: t('Bloco de dia, piscina à tarde e a casa inteira para o grupo descansar. Quatro dias de feriado com a turma toda junta.', 'Street parties by day, the pool in the afternoon and the whole house for the group to rest. Four days of holiday with everyone together.', 'Bloques de día, piscina por la tarde y la casa entera para que el grupo descanse. Cuatro días de feriado con todos juntos.'),
+    porque: [
+      ['🎉', t('Perto dos blocos, longe do barulho', 'Close to the parties, away from the noise', 'Cerca de los bloques, lejos del ruido'), t('O Lago Sul fica a cerca de 10 minutos do centro e é tranquilo para dormir depois da festa.', 'Lago Sul is about 10 minutes from the centre and quiet enough to sleep after the party.', 'Lago Sul está a unos 10 minutos del centro y es tranquilo para dormir después de la fiesta.')],
+      ['🏊', t('Ressaca na piscina', 'Recover by the pool', 'Recuperarse en la piscina'), t('Os dias de descanso são na água e na churrasqueira, com a casa só para o grupo.', 'The rest days are spent in the water and at the barbecue, with the house to yourselves.', 'Los días de descanso son en el agua y en la parrilla, con la casa solo para el grupo.')],
+      ['👥', t('Cada um paga a sua parte', 'Everyone pays their share', 'Cada uno paga su parte'), t('R$ 150 por pessoa por dia com a casa cheia, já com a limpeza incluída no pacote.', 'R$ 150 per person per day with the house full, cleaning already included in the package.', 'R$ 150 por persona por día con la casa llena, con la limpieza ya incluida en el paquete.')]
+    ],
+    escassez: t('No Carnaval as casas saem para grupos que fecham cedo: são só 4 casas para o feriado.', 'At Carnival the houses go to groups who book early: there are only 4 houses for the holiday.', 'En Carnaval las casas son para los grupos que reservan pronto: solo hay 4 casas para el feriado.')
+  }
+];
+const precoTemporada = n => (LANG === 'en' ? realEn(n) : real(n));
+const TEMPORADA_CSS = `
+.tp-hero { background: linear-gradient(135deg, var(--petroleo), var(--lago)); color: var(--creme); padding: 56px 5vw 44px; text-align: center; }
+.tp-hero .tp-emoji { font-size: 2.6rem; }
+.tp-hero h1 { color: #fff; font-size: clamp(1.7rem, 4.4vw, 2.6rem); max-width: 820px; margin: 8px auto 12px; }
+.tp-hero p { max-width: 680px; margin: 0 auto; font-size: 1.08rem; line-height: 1.55; }
+.tp-periodo { display: inline-block; margin-top: 18px; background: var(--cerrado); color: #fff; font-weight: 700; border-radius: 999px; padding: 8px 18px; }
+.tp-a-partir { margin-top: 12px; font-size: .98rem; opacity: .9; }
+.tp-porque { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.tp-porque div { background: var(--areia); border-radius: 12px; padding: 18px 20px; line-height: 1.5; font-size: .95rem; }
+.tp-porque span { font-size: 1.6rem; display: block; margin-bottom: 4px; }
+.tp-tabela { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.tp-tabela th, .tp-tabela td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #f0ece3; font-size: .95rem; }
+.tp-tabela th { background: var(--petroleo); color: var(--creme); font-weight: 600; }
+.tp-tabela td:last-child, .tp-tabela th:last-child { text-align: right; white-space: nowrap; }
+.tp-tabela a { color: var(--lago); font-weight: 600; }
+.casa-pacote .tp-midia { display: flex; flex-direction: column; gap: 6px; background: var(--areia); }
+.casa-pacote .tp-midia > img { flex: 1; height: auto; min-height: 240px; }
+.tp-fotos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0 6px 6px; }
+.casa-pacote .tp-fotos img { width: 100%; height: 86px; min-height: 0; object-fit: cover; border-radius: 8px; }
+.tp-destaques { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: .92rem; }
+.tp-destaques li strong { color: var(--petroleo); }
+.tp-comod { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.tp-comod li { background: var(--areia); border-radius: 999px; padding: 4px 10px; font-size: .82rem; }
+.tp-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tp-acoes .tp-ver { color: var(--lago); font-weight: 600; font-size: .92rem; }
+.tp-faq details { background: var(--areia); border-radius: 10px; padding: 14px 18px; margin-top: 10px; }
+.tp-faq summary { cursor: pointer; font-weight: 700; color: var(--petroleo); }
+.tp-faq p { margin-top: 8px; line-height: 1.55; font-size: .95rem; }
+.tp-outras { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.tp-outras a { background: var(--areia); border-radius: 999px; padding: 8px 16px; color: var(--petroleo); font-weight: 600; }
+@media (max-width: 760px) {
+  .casa-pacote { grid-template-columns: 1fr; }
+  .casa-pacote .tp-fotos img { height: 64px; }
+  .tp-tabela th, .tp-tabela td { padding: 10px 8px; font-size: .86rem; }
+}`;
 
-const cardsCasas = CASAS_PACOTE.map(c => {
+for (const p of PACOTES_TEMPORADA) {
+  const caminho = `/${p.slug}.html`;
+  const barato = CASAS_TEMPORADA.reduce((a, c) => c.pacote < a.pacote ? c : a);
+  const msgWa = casa => casa
+    ? t(`Olá! Quero reservar a ${casa} para o pacote de ${p.nome} (${p.entrada} a ${p.saida}, 4 diárias). Somos um grupo de ___ pessoas.`, `Hi! I'd like to book ${casa} for the ${p.nome} package (${p.entrada} to ${p.saida}, 4 nights). We're a group of ___ people.`, `¡Hola! Quiero reservar la ${casa} para el paquete de ${p.nome} (${p.entrada} al ${p.saida}, 4 noches). Somos un grupo de ___ personas.`)
+    : t(`Olá! Quero reservar uma casa para o pacote de ${p.nome} (${p.entrada} a ${p.saida}, 4 diárias). Somos um grupo de ___ pessoas.`, `Hi! I'd like to book a house for the ${p.nome} package (${p.entrada} to ${p.saida}, 4 nights). We're a group of ___ people.`, `¡Hola! Quiero reservar una casa para el paquete de ${p.nome} (${p.entrada} al ${p.saida}, 4 noches). Somos un grupo de ___ personas.`);
+
+  const tabela = `<table class="tp-tabela">
+    <thead><tr><th>${t('Casa', 'House', 'Casa')}</th><th>${t('Pessoas', 'Guests', 'Personas')}</th><th>${t('Por pessoa/dia', 'Per person/day', 'Por persona/día')}</th><th>${t('Pacote', 'Package', 'Paquete')}</th></tr></thead>
+    <tbody>${CASAS_TEMPORADA.map(c => `<tr><td><a href="#${c.id}">${esc(c.nome)}</a></td><td>${t('até', 'up to', 'hasta')} ${c.hospedes}</td><td>${precoTemporada(Math.ceil(c.pacote / c.hospedes / TEMPORADA_DIAS))}</td><td><strong>${precoTemporada(c.pacote)}</strong></td></tr>`).join('')}</tbody>
+  </table>`;
+
+  const casas = CASAS_TEMPORADA.map(c => {
+    const l = porId[c.id];
+    const copy = COPY_SOBRE[c.id];
+    const fotos = l ? fotosDaStays(l).slice(1, 5) : [];
+    const destaques = copy && copy.destaques ? copy.destaques.slice(0, 4).map(d => `<li>${d.icone} <strong>${esc(tr(d.titulo))}:</strong> ${esc(tr(d.texto))}</li>`).join('') : '';
+    const comods = l ? comodidadesDe(l).incluidos.slice(0, 12).map(x => `<li>${x.icon} ${esc(x.label)}</li>`).join('') : '';
+    const porPessoa = Math.ceil(c.pacote / c.hospedes);
+    return `
+<article class="casa-pacote" id="${c.id}">
+  <div class="tp-midia">
+    ${l ? img(l.fotoPrincipal, { alt: c.nome, width: 340, height: 280, sizes: '(max-width: 760px) 100vw, 340px' }) : ''}
+    ${fotos.length ? `<div class="tp-fotos">${fotos.map(f => img(f.url, { alt: f.nome || c.nome, width: 120, height: 86, sizes: '120px' })).join('')}</div>` : ''}
+  </div>
+  <div class="casa-pacote-corpo">
+    <h3>${esc(c.nome)}</h3>
+    <p class="casa-meta">🛌 ${t('até', 'up to', 'hasta')} ${c.hospedes} ${t('hóspedes', 'guests', 'huéspedes')}${l ? ` · 🚪 ${l.quartos} ${t('quartos', 'rooms', 'habitaciones')} · 🚿 ${l.banheiros} ${t('banheiros', 'bathrooms', 'baños')}` : ''} · 📍 ${esc(c.local)}</p>
+    ${destaques ? `<ul class="tp-destaques">${destaques}</ul>` : ''}
+    ${comods ? `<ul class="tp-comod">${comods}</ul>` : ''}
+    <div class="preco-bloco">
+      <div class="preco-principal">${precoTemporada(c.pacote)} <span>· ${t(`casa completa, 4 diárias (${p.entrada} a ${p.saida})`, `whole house, 4 nights (${p.entrada} to ${p.saida})`, `casa entera, 4 noches (${p.entrada} al ${p.saida})`)}</span></div>
+      <div class="preco-detalhe">${t(`Com a casa cheia, sai por <strong>${precoTemporada(porPessoa)}</strong> por pessoa no período inteiro, com a limpeza incluída.`, `With the house full, it comes to <strong>${precoTemporada(porPessoa)}</strong> per person for the whole stay, cleaning included.`, `Con la casa llena, sale por <strong>${precoTemporada(porPessoa)}</strong> por persona en todo el período, con la limpieza incluida.`)}</div>
+      <div class="preco-composicao">${t(`R$ 150 por pessoa/dia × 4 dias × ${c.hospedes} hóspedes + ${real(TEMPORADA_LIMPEZA)} de limpeza`, `R$ 150 per person/day × 4 days × ${c.hospedes} guests + ${realEn(TEMPORADA_LIMPEZA)} cleaning fee`, `R$ 150 por persona/día × 4 días × ${c.hospedes} huéspedes + ${real(TEMPORADA_LIMPEZA)} de limpieza`)}</div>
+    </div>
+    <details class="quartos">
+      <summary>${t(`Ver a distribuição das camas (${c.quartos.length} acomodações)`, `See the bed layout (${c.quartos.length} rooms)`, `Ver la distribución de las camas (${c.quartos.length} habitaciones)`)}</summary>
+      <ul>${c.quartos.map(q => `<li><strong>${esc(nPessoas(q[0]))}</strong><br>${esc(tCamas(q[1]))}</li>`).join('\n')}</ul>
+    </details>
+    <div class="tp-acoes">
+      <a class="btn btn-wa" href="${waLink(msgWa(c.nome))}">${t('Reservar a', 'Book', 'Reservar la')} ${esc(c.nome)} →</a>
+      ${l ? `<a class="tp-ver" href="${L(`/hospedagem/${l.id}.html`)}">${t('Ver todas as fotos e detalhes', 'See all photos and details', 'Ver todas las fotos y detalles')}</a>` : ''}
+    </div>
+  </div>
+</article>`;
+  }).join('\n');
+
+  const faq = [
+    [t('O que está incluído no pacote?', "What's included in the package?", '¿Qué incluye el paquete?'),
+     t(`A casa inteira só para o seu grupo por 4 diárias (${p.entrada} a ${p.saida}), com piscina, churrasqueira, cozinha completa, roupa de cama e banho, Wi-Fi e a taxa de limpeza de ${real(TEMPORADA_LIMPEZA)} já somada ao valor.`, `The whole house for your group alone for 4 nights (${p.entrada} to ${p.saida}), with pool, barbecue, full kitchen, bed and bath linen, Wi-Fi and the ${realEn(TEMPORADA_LIMPEZA)} cleaning fee already added to the price.`, `La casa entera solo para tu grupo por 4 noches (${p.entrada} al ${p.saida}), con piscina, parrilla, cocina completa, ropa de cama y baño, Wi-Fi y la tarifa de limpieza de ${real(TEMPORADA_LIMPEZA)} ya sumada al precio.`)],
+    [t('Como o valor é calculado?', 'How is the price calculated?', '¿Cómo se calcula el precio?'),
+     t(`R$ 150 por pessoa por dia × 4 dias × a capacidade máxima da casa, mais ${real(TEMPORADA_LIMPEZA)} de limpeza. É o valor fechado da casa completa: com menos pessoas, o valor da casa é o mesmo.`, `R$ 150 per person per day × 4 days × the house's maximum capacity, plus a ${realEn(TEMPORADA_LIMPEZA)} cleaning fee. It is the fixed price for the whole house: with fewer people, the house price stays the same.`, `R$ 150 por persona por día × 4 días × la capacidad máxima de la casa, más ${real(TEMPORADA_LIMPEZA)} de limpieza. Es el precio cerrado de la casa entera: con menos personas, el precio de la casa es el mismo.`)],
+    [t('Posso receber convidados que não vão dormir na casa?', 'Can I have guests who are not staying overnight?', '¿Puedo recibir invitados que no duermen en la casa?'),
+     t(`Pode. Cada convidado custa R$ ${TEMPORADA_CONVIDADO} por pessoa por dia. A casa é residencial: som ambiente em volume moderado, controlado a partir das 22h e encerrado até meia-noite. Banda, DJ e som profissional não são permitidos.`, `Yes. Each guest costs R$ ${TEMPORADA_CONVIDADO} per person per day. The house is residential: background music at a moderate volume, turned down from 10 PM and off by midnight. Live bands, DJs and professional sound systems are not allowed.`, `Sí. Cada invitado cuesta R$ ${TEMPORADA_CONVIDADO} por persona por día. La casa es residencial: música ambiente a volumen moderado, controlada desde las 22h y apagada hasta la medianoche. No se permiten bandas, DJ ni sonido profesional.`)],
+    [t('Quais os horários de entrada e saída?', 'What are the check-in and check-out times?', '¿Cuáles son los horarios de entrada y salida?'),
+     t(`Check-in a partir das 14h do dia ${p.entrada} e check-out até as 10h do dia ${p.saida}.`, `Check-in from 2 PM on ${p.entrada} and check-out by 10 AM on ${p.saida}.`, `Entrada desde las 14h del ${p.entrada} y salida hasta las 10h del ${p.saida}.`)],
+    [t('Como faço a reserva?', 'How do I book?', '¿Cómo reservo?'),
+     t('Pelo WhatsApp, direto com o anfitrião: diga a casa e o tamanho do grupo e enviamos a proposta e o contrato. As casas são confirmadas por ordem de reserva.', 'On WhatsApp, directly with the host: tell us the house and the size of your group and we send the proposal and contract. Houses are confirmed in booking order.', 'Por WhatsApp, directo con el anfitrión: dinos la casa y el tamaño del grupo y te enviamos la propuesta y el contrato. Las casas se confirman por orden de reserva.')]
+  ];
+  const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
+  const produtosLd = {
+    '@context': 'https://schema.org', '@type': 'ItemList',
+    itemListElement: CASAS_TEMPORADA.map((c, i) => ({
+      '@type': 'ListItem', position: i + 1,
+      item: {
+        '@type': 'Product',
+        name: t(`${p.nome} — ${c.nome} (4 diárias)`, `${p.nome} — ${c.nome} (4 nights)`, `${p.nome} — ${c.nome} (4 noches)`),
+        description: t(`Casa completa para até ${c.hospedes} hóspedes no Lago Sul, Brasília, de ${p.entrada} a ${p.saida}.`, `Whole house for up to ${c.hospedes} guests in Lago Sul, Brasília, from ${p.entrada} to ${p.saida}.`, `Casa entera para hasta ${c.hospedes} huéspedes en Lago Sul, Brasília, del ${p.entrada} al ${p.saida}.`),
+        image: porId[c.id] ? porId[c.id].fotoPrincipal : undefined,
+        offers: { '@type': 'Offer', price: c.pacote, priceCurrency: 'BRL', availability: 'https://schema.org/InStock', url: `${SITE_URL}${L(caminho)}` }
+      }
+    }))
+  };
+  const outras = [...PACOTES_TEMPORADA.filter(o => o !== p).map(o => `<a href="${L(`/${o.slug}.html`)}">${o.emoji} ${esc(o.nome)}</a>`),
+    `<a href="${L('/posse-2027.html')}">🇧🇷 ${t('Caravana da Posse 2027', '2027 Inauguration Caravan', 'Caravana de la Toma de Posesión 2027')}</a>`].join('');
+
+  const pagina = layout(
+    t(`Pacote ${p.nome} em Brasília — casas completas no Lago Sul | Villela Stay`, `${p.nome} package in Brasília — whole houses in Lago Sul | Villela Stay`, `Paquete ${p.nome} en Brasília — casas enteras en Lago Sul | Villela Stay`),
+    t(`${p.nome}: ${p.entrada} a ${p.saida}, 4 diárias. Casas completas no Lago Sul para 15 a 24 pessoas, a partir de ${real(barato.pacote)} com limpeza incluída.`, `${p.nome}: ${p.entrada} to ${p.saida}, 4 nights. Whole houses in Lago Sul for 15 to 24 people, from ${realEn(barato.pacote)} with cleaning included.`, `${p.nome}: del ${p.entrada} al ${p.saida}, 4 noches. Casas enteras en Lago Sul para 15 a 24 personas, desde ${real(barato.pacote)} con limpieza incluida.`),
+    `
+<section class="tp-hero">
+  <div class="tp-emoji">${p.emoji}</div>
+  <h1>${p.titulo}</h1>
+  <p>${p.chamada}</p>
+  <div class="tp-periodo">${esc(p.nome)} · ${p.periodo}</div>
+  <p class="tp-a-partir">${t(`4 casas completas para 15 a 24 pessoas · a partir de <strong>${real(barato.pacote)}</strong> com limpeza incluída`, `4 whole houses for 15 to 24 people · from <strong>${realEn(barato.pacote)}</strong> with cleaning included`, `4 casas enteras para 15 a 24 personas · desde <strong>${real(barato.pacote)}</strong> con limpieza incluida`)}</p>
+</section>
+<div class="pacotes-wrap">
+  <section class="uni-confianca">
+    <div>🏆 ${t('Superhost premiado', 'Award-winning Superhost', 'Superhost premiado')}</div><div>🏅 ${t('Favorito dos Hóspedes', 'Guest Favourite', 'Favorito de los Huéspedes')}</div><div>📍 ${t('Lago Sul · 10 min da Esplanada', 'Lago Sul · 10 min from the Esplanada', 'Lago Sul · 10 min de la Explanada')}</div><div>💰 ${t('Reserva direta, sem taxa de plataforma', 'Direct booking, no platform fee', 'Reserva directa, sin tarifa de plataforma')}</div>
+  </section>
+
+  <section class="venda-bloco">
+    <h2 class="secao-titulo">${t(`Por que passar o ${p.nome} numa casa inteira`, `Why spend ${p.nome} in a whole house`, `Por qué pasar ${p.nome} en una casa entera`)}</h2>
+    <div class="tp-porque">${p.porque.map(([i, tit, txt]) => `<div><span>${i}</span><strong>${tit}</strong><br>${txt}</div>`).join('')}</div>
+  </section>
+
+  <section class="venda-bloco">
+    <h2 class="secao-titulo">${t('O pacote', 'The package', 'El paquete')}</h2>
+    <p class="pacote-cond">${p.datas} · ${t('4 diárias', '4 nights', '4 noches')} · ${t(`convidado que não dorme na casa: R$ ${TEMPORADA_CONVIDADO} por pessoa/dia`, `guest not staying overnight: R$ ${TEMPORADA_CONVIDADO} per person/day`, `invitado que no duerme en la casa: R$ ${TEMPORADA_CONVIDADO} por persona/día`)}</p>
+    ${tabela}
+    <p class="aviso-escassez">⚠️ ${p.escassez}</p>
+  </section>
+
+  <section class="venda-bloco">
+    <h2 class="secao-titulo">${t('Escolha a sua casa', 'Choose your house', 'Elige tu casa')}</h2>
+    ${casas}
+  </section>
+
+  <section class="venda-bloco tp-faq">
+    <h2 class="secao-titulo">${t('Perguntas frequentes', 'Frequently asked questions', 'Preguntas frecuentes')}</h2>
+    ${faq.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('\n')}
+  </section>
+
+  <section class="venda-bloco cta-final">
+    <h2>${t(`Garanta a sua casa para o ${p.nome}`, `Secure your house for ${p.nome}`, `Asegura tu casa para ${p.nome}`)}</h2>
+    <p>${t('Diga o tamanho do grupo e a casa que prefere. Respondemos no WhatsApp com a proposta completa.', 'Tell us the size of your group and the house you prefer. We reply on WhatsApp with the full proposal.', 'Dinos el tamaño del grupo y la casa que prefieres. Respondemos por WhatsApp con la propuesta completa.')}</p>
+    <a class="btn btn-wa btn-grande" href="${waLink(msgWa())}">${t('Reservar pelo WhatsApp', 'Book on WhatsApp', 'Reservar por WhatsApp')}</a>
+  </section>
+
+  <section class="venda-bloco" style="text-align:center">
+    <h2 class="secao-titulo">${t('Outras datas especiais', 'Other special dates', 'Otras fechas especiales')}</h2>
+    <div class="tp-outras">${outras}</div>
+  </section>
+</div>`,
+    { caminho, extraHead: `<style>${TEMPORADA_CSS}</style>\n<script type="application/ld+json">${JSON.stringify(produtosLd)}</script>\n<script type="application/ld+json">${JSON.stringify(faqLd)}</script>` }
+  );
+  fs.writeFileSync(path.join(od, `${p.slug}.html`), pagina);
+}
+const LANDING_TEMPORADA = Object.fromEntries(PACOTES_TEMPORADA.map(p => [p.emoji, `/${p.slug}.html`]));
+
+const chipsDatas = DATAS_PACOTE.map(d =>
+  (d.emoji === '🇧🇷' || LANDING_TEMPORADA[d.emoji])
+    ? `<a class="chip-data" href="${L(d.emoji === '🇧🇷' ? '/posse-2027.html' : LANDING_TEMPORADA[d.emoji])}">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span><span>${t('Ver o pacote', 'See the package', 'Ver el paquete')} →</span></a>`
+    // Marchas ainda sem landing: cartão informativo, sem link direto para o WhatsApp.
+    : `<div class="chip-data">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></div>`).join('\n');
+
+const cardsCasas = CASAS_TEMPORADA.map(c => {
   const l = porId[c.id];
   const porPessoa = Math.ceil(c.pacote / c.hospedes);
   const porDia = Math.ceil(porPessoa / 4);
@@ -1892,7 +2122,7 @@ const cardsCasas = CASAS_PACOTE.map(c => {
     <h3>${esc(c.nome)}</h3>
     <p class="casa-meta">🛌 ${t('até', 'up to', 'hasta')} ${c.hospedes} ${t('hóspedes', 'guests', 'huéspedes')} · 🕺 ${t('eventos para até', 'events for up to', 'eventos para hasta')} ${c.convidados} ${t('convidados', 'guests', 'invitados')} · 📍 ${esc(c.local)}</p>
     <div class="preco-bloco">
-      <div class="preco-principal">${real(c.pacote)} <span>· ${t('pacote de 4 diárias com a casa completa', '4-night package with the whole house', 'paquete de 4 noches con la casa entera')}</span></div>
+      <div class="preco-principal">${precoTemporada(c.pacote)} <span>· ${t('pacote de 4 diárias com a casa completa', '4-night package with the whole house', 'paquete de 4 noches con la casa entera')}</span></div>
       <div class="preco-detalhe">${t(`Sai por ~<strong>${real(porPessoa)}</strong> por pessoa no total — cerca de <strong>${real(porDia)}/dia</strong>. Menos que uma diária de hotel simples nessas datas, com casa, piscina e cozinha inteiras para o seu grupo.`, `Comes to ~<strong>${real(porPessoa)}</strong> per person in total — about <strong>${real(porDia)}/day</strong>. Less than a basic hotel night on these dates, with a whole house, pool and kitchen for your group.`, `Sale por ~<strong>${real(porPessoa)}</strong> por persona en total — cerca de <strong>${real(porDia)}/día</strong>. Menos que una noche de hotel sencillo en estas fechas, con casa, piscina y cocina enteras para tu grupo.`)}</div>
       <div class="preco-composicao">${t(`Composição: R$ 150/dia por pessoa × 4 dias × ${c.hospedes} hóspedes + ${real(c.limpeza)} de taxa de limpeza`, `Breakdown: R$ 150/day per person × 4 days × ${c.hospedes} guests + ${real(c.limpeza)} cleaning fee`, `Composición: R$ 150/día por persona × 4 días × ${c.hospedes} huéspedes + ${real(c.limpeza)} de tarifa de limpieza`)}</div>
     </div>
@@ -1900,7 +2130,7 @@ const cardsCasas = CASAS_PACOTE.map(c => {
       <summary>${t(`Ver a distribuição das camas (${c.quartos.length} acomodações)`, `See the bed layout (${c.quartos.length} rooms)`, `Ver la distribución de las camas (${c.quartos.length} habitaciones)`)}</summary>
       <ul>${c.quartos.map(q => `<li><strong>${esc(nPessoas(q[0]))}</strong><br>${esc(tCamas(q[1]))}</li>`).join('\n')}</ul>
     </details>
-    <a class="btn btn-wa" href="${waLink(t(`Olá! Quero reservar a ${c.nome} completa em uma das datas especiais. Somos um grupo de ___ pessoas para a data: ___.`, `Hi! I'd like to book the whole ${c.nome} on one of the special dates. We're a group of ___ people for the date: ___.`, `¡Hola! Quiero reservar la ${c.nome} entera en una de las fechas especiales. Somos un grupo de ___ personas para la fecha: ___.`))}">${t('Reservar a', 'Book', 'Reservar la')} ${esc(c.nome)} →</a>
+    <div class="tp-acoes">${PACOTES_TEMPORADA.map(p => `<a class="btn" href="${L(`/${p.slug}.html`)}#${c.id}">${p.emoji} ${esc(p.nome)}</a>`).join('')}</div>
   </div>
 </article>`;
 }).join('\n');
@@ -1940,21 +2170,22 @@ const pacotes = layout(
 
   <section class="venda-bloco">
     <h2 class="secao-titulo">${t('As 4 casas — pacotes de 4 diárias', 'The 4 houses — 4-night packages', 'Las 4 casas — paquetes de 4 noches')}</h2>
-    <p class="pacote-cond">${t('Check-in às 14h do primeiro dia · check-out às 10h do último · 4 diárias nos demais pacotes; Caravana da Posse: 3 diárias (03 a 06/01/2027) · convidado extra para evento ou day use: R$ 120/dia', 'Check-in at 2 PM on the first day · check-out at 10 AM on the last · 4 nights for the other packages; Inauguration Caravan: 3 nights (3–6 January 2027) · extra event or day-use guest: R$ 120/day', 'Check-in a las 14h del primer día · check-out a las 10h del último · 4 noches en los demás paquetes; Caravana de la Toma de Posesión: 3 noches (03–06/01/2027) · invitado extra para evento o day use: R$ 120/día')}</p>
+    <p class="pacote-cond">${t('Natal (22 a 26/12/2026), Réveillon (29/12/2026 a 02/01/2027) e Carnaval (06 a 10/02/2027): 4 diárias, check-in às 14h e check-out às 10h, limpeza incluída. Escolha a data para ver os detalhes e reservar.', 'Christmas (22–26 Dec 2026), New Year (29 Dec 2026 – 2 Jan 2027) and Carnival (6–10 Feb 2027): 4 nights, check-in at 2 PM and check-out at 10 AM, cleaning included. Choose a date to see the details and book.', 'Navidad (22–26/12/2026), Fin de Año (29/12/2026 – 02/01/2027) y Carnaval (06–10/02/2027): 4 noches, entrada a las 14h y salida a las 10h, limpieza incluida. Elige la fecha para ver los detalles y reservar.')}</p>
     ${cardsCasas}
   </section>
 
   <section class="venda-bloco cta-final">
     <h2>${t('Garanta a sua data antes que feche', 'Secure your date before it\'s gone', 'Asegura tu fecha antes de que se agote')}</h2>
-    <p>${t('Conte para a gente a data, o tamanho do grupo e a ocasião — respondemos com a proposta completa no WhatsApp.', 'Tell us the date, the size of your group and the occasion — we\'ll reply with a full proposal on WhatsApp.', 'Cuéntanos la fecha, el tamaño del grupo y la ocasión — respondemos con la propuesta completa por WhatsApp.')}</p>
-    <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Quero garantir um pacote de data especial. Data: ___ | Nº de pessoas: ___ | Ocasião: ___', 'Hi! I\'d like to secure a special-date package. Date: ___ | Number of people: ___ | Occasion: ___', '¡Hola! Quiero asegurar un paquete de fecha especial. Fecha: ___ | Nº de personas: ___ | Ocasión: ___'))}">${t('Falar com o anfitrião agora', 'Talk to the host now', 'Hablar con el anfitrión ahora')}</a>
+    <p>${t('Escolha a data, veja as casas e os valores do pacote e reserve direto com o anfitrião.', 'Choose your date, see the houses and package prices, and book directly with the host.', 'Elige la fecha, mira las casas y los precios del paquete y reserva directo con el anfitrión.')}</p>
+    <div class="tp-outras">${PACOTES_TEMPORADA.map(p => `<a href="${L(`/${p.slug}.html`)}">${p.emoji} ${esc(p.nome)}</a>`).join('')}<a href="${L('/posse-2027.html')}">🇧🇷 ${t('Caravana da Posse 2027', '2027 Inauguration Caravan', 'Caravana de la Toma de Posesión 2027')}</a></div>
   </section>
 </div>`,
   {
     caminho: '/pacotes.html',
-    extraHead: `<script type="application/ld+json">${JSON.stringify({
+    extraHead: `<style>${TEMPORADA_CSS}</style>
+<script type="application/ld+json">${JSON.stringify({
       '@context': 'https://schema.org', '@type': 'ItemList',
-      itemListElement: CASAS_PACOTE.map((c, i) => ({
+      itemListElement: CASAS_TEMPORADA.map((c, i) => ({
         '@type': 'ListItem', position: i + 1,
         item: {
           '@type': 'Product',
@@ -9424,6 +9655,9 @@ const rotas = [
   { loc: '/tudo.html', changefreq: 'weekly', priority: '0.8' },
   ...LANDINGS.map(lp => ({ loc: `/${lp.arquivo}`, changefreq: 'weekly', priority: '0.8' })),
   { loc: '/posse-2027.html', changefreq: 'weekly', priority: '0.7' },
+  { loc: '/natal-2026.html', changefreq: 'weekly', priority: '0.8' },
+  { loc: '/reveillon-2027.html', changefreq: 'weekly', priority: '0.8' },
+  { loc: '/carnaval-2027.html', changefreq: 'weekly', priority: '0.8' },
   { loc: '/blog.html', changefreq: 'weekly', priority: '0.7' },
   ...BLOG.map(a => ({ loc: `/blog/${a.slug}.html`, changefreq: 'monthly', priority: '0.6' })),
   { loc: '/nossa-historia.html', changefreq: 'monthly', priority: '0.5' },
