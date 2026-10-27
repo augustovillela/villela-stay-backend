@@ -50,18 +50,6 @@ function ouvir(midis, { rotulo = 'Ouvir', modo = 'melodico', classe = '', dur = 
 }
 
 const SUBNAV = () => `<nav class="lab-sub" aria-label="Navegação Musical">
-  <div class="wrap lab-sub-cursos" aria-label="Cursos">
-    <a class="lab-sub-cursos-titulo lab-sub-cursos-link lab-sub-curso" href="/music/cursos">Cursos</a>
-    <a class="lab-sub-curso" href="/music/curso-teoria"><span aria-hidden="true">🎓</span> Teoria</a>
-    <a class="lab-sub-curso" href="/music/criar/curso-violao-livro"><span aria-hidden="true">🪕</span> Violão</a>
-    <a class="lab-sub-curso" href="/music/criar/curso-guitarra-edicao"><span aria-hidden="true">🎸</span> Guitarra</a>
-    <a class="lab-sub-curso" href="/music/curso-bateria"><span aria-hidden="true">🥁</span> Bateria</a>
-    <a class="lab-sub-curso" href="/music/curso-contrabaixo"><span aria-hidden="true">🎸</span> Contrabaixo</a>
-    <a class="lab-sub-curso" href="/music/curso-piano"><span aria-hidden="true">🎹</span> Piano</a>
-    <a class="lab-sub-curso" href="/music/curso-cavaquinho"><span aria-hidden="true">🪕</span> Cavaquinho</a>
-    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Ukulele</span>
-    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Bandolim</span>
-  </div>
   <div class="wrap lab-sub-ferramentas">
     <a class="lab-sub-home" href="/music/laboratorio"><span aria-hidden="true">🧪</span> Laboratório</a>
     ${CAT.AMBIENTES.map((a) => `<a href="${a.url}"><span aria-hidden="true">${a.icone}</span> ${esc(a.nome)}</a>`).join('')}
