@@ -296,7 +296,7 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
   }));
   app.get(B + '/prof/cavaquinho/alunos', requireUsuario, h(async (req, res) => {
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
-    const alunos = db.prepare("SELECT usuario, COUNT(*) AS sessoes, MAX(iniciada_em) AS ultima_pratica FROM sessoes_pratica WHERE trilha_id LIKE 'cavaquinho:%' GROUP BY usuario ORDER BY ultima_pratica DESC").all();
+    const alunos = db.prepare("SELECT s.usuario, COUNT(DISTINCT s.id) AS sessoes, MAX(s.iniciada_em) AS ultima_pratica, COALESCE(p.concluidos, 0) AS concluidos FROM sessoes_pratica s LEFT JOIN (SELECT aluno, COUNT(*) AS concluidos FROM curso_cavaquinho_progresso WHERE concluido = 1 GROUP BY aluno) p ON p.aluno = s.usuario WHERE s.trilha_id LIKE 'cavaquinho:%' GROUP BY s.usuario, p.concluidos ORDER BY ultima_pratica DESC").all().map((a) => ({ ...a, percentual: Math.round(a.concluidos / 38 * 100) }));
     res.json({ curso: 'curso-cavaquinho', total_capitulos: 38, alunos });
   }));
   app.get(B + '/prof/cavaquinho/aluno/:aluno/praticas', requireUsuario, h(async (req, res) => {
