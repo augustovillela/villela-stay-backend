@@ -58,8 +58,8 @@ const SUBNAV = () => `<nav class="lab-sub" aria-label="Navegação Musical">
     <a class="lab-sub-curso" href="/music/curso-bateria"><span aria-hidden="true">🥁</span> Bateria</a>
     <a class="lab-sub-curso" href="/music/curso-contrabaixo"><span aria-hidden="true">🎸</span> Contrabaixo</a>
     <a class="lab-sub-curso" href="/music/curso-piano"><span aria-hidden="true">🎹</span> Piano</a>
+    <a class="lab-sub-curso" href="/music/curso-cavaquinho"><span aria-hidden="true">🪕</span> Cavaquinho</a>
     <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Ukulele</span>
-    <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Cavaquinho</span>
     <span class="lab-sub-curso lab-sub-curso-futuro" title="Curso em preparação"><span aria-hidden="true">🪕</span> Bandolim</span>
   </div>
   <div class="wrap lab-sub-ferramentas">
