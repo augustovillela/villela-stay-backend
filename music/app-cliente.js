@@ -389,7 +389,8 @@ const JS = `
         ['🎸', 'Guitarra', 'Timbre, riffs, técnica e improvisação.', '/music/criar/curso-guitarra-edicao', '#8a5a72'],
         ['🥁', 'Bateria', 'Pulso, groove, técnica e 40 rudimentos.', '/music/curso-bateria', '#a66b42'],
         ['🎹', 'Piano', 'Teclado, leitura, harmonia, acompanhamento e performance.', '/music/curso-piano', '#536f82'],
-        ['🎸', 'Contrabaixo', 'Técnica, groove, harmonia e performance.', '/music/curso-contrabaixo', '#3f7180']
+        ['🎸', 'Contrabaixo', 'Técnica, groove, harmonia e performance.', '/music/curso-contrabaixo', '#3f7180'],
+        ['🪕', 'Cavaquinho', 'Acordes, batidas, samba, pagode, choro e performance.', '/music/curso-cavaquinho', '#8b6b48']
       ];
       var gl = el('div', { class: 'grade' });
       locais.forEach(function (k) { gl.appendChild(el('a', { class: 'item com-ico', href: k[3], style: 'border-left:4px solid ' + k[4], html: '<div class="topo-item">' + icone({ ico: k[0], fundo: '#F3F7FA', cor: k[4] }) + '<b>' + esc(k[1]) + '</b></div><span>' + esc(k[2]) + '</span><span class="peq">Abrir curso no Musique →</span>' })); });
