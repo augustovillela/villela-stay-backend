@@ -90,7 +90,7 @@ function registrar(app, { opcional, contextoDe }) {
     if (acesso.ok) return next();
     const status = req.usuario ? 402 : 401;
     const acao = acesso.acao || { rotulo: 'Entrar', url: '/music/entrar' };
-    return res.status(status).send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conteúdo exclusivo · Musique</title><style>body{font:16px system-ui,sans-serif;max-width:720px;margin:10vh auto;padding:24px;color:#17344d}a{display:inline-block;margin-top:18px;padding:12px 18px;border-radius:999px;background:#17344d;color:#fff;text-decoration:none;font-weight:700}</style></head><body><p>Musique · Villela Music</p><h1>Conteúdo exclusivo para assinantes</h1><p>${esc(acesso.motivo)}</p><a href="${esc(acao.url)}">${esc(acao.rotulo)}</a></body></html>`);
+    return res.status(status).set('Cache-Control', 'no-store, private').set('Vary', 'Cookie').send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Conteúdo exclusivo · Musique</title><style>body{font:16px system-ui,sans-serif;max-width:720px;margin:10vh auto;padding:24px;color:#17344d}a{display:inline-block;margin-top:18px;padding:12px 18px;border-radius:999px;background:#17344d;color:#fff;text-decoration:none;font-weight:700}</style></head><body><p>Musique · Villela Music</p><h1>Conteúdo exclusivo para assinantes</h1><p>${esc(acesso.motivo)}</p><a href="${esc(acao.url)}">${esc(acao.rotulo)}</a></body></html>`);
   });
 
   app.get('/music/laboratorio-nucleo.js', (req, res) => enviarArquivo(res, 'application/javascript', nucleoJs()));
