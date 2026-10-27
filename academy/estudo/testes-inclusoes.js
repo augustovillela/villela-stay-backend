@@ -245,6 +245,47 @@ async function rodar({ t, req }) {
     assert.deepEqual(R.questoesDoEscopo(eA()).filter(q => q.situacao === 'disponivel').length, 4);
   });
 
+  await t('inclusões/questões: dentro do MESMO curso o dono publica a compartilhada com pedido explícito — e nem assim o lote atravessa para outro curso', async () => {
+    // O TRF-3 descobriu o buraco (27/10/2026): Analista e Oficial são dois percursos do MESMO produto, com 140
+    // folhas em comum, e a mesma questão oficial serve aos dois — sem isto ela ficaria em rascunho para sempre,
+    // porque nenhum dos dois lotes podia decidir.
+    const SB2 = 'incl-mpt-2';
+    const ALTS = (i) => [{ texto: `certa ${i}`, correta: true, explicacao: 'Certa: é a regra.' }, { texto: `errada ${i}a`, correta: false, explicacao: 'Errada: é a exceção.' }, { texto: `errada ${i}b`, correta: false, explicacao: 'Errada: é outro instituto.' }];
+    const Q = (nome, comp, item) => ({ tipo: 'objetiva', origem: 'autoral', enunciado: `Mesmo curso, questão ${nome}: qual é a regra aplicável ao ponto?`, alternativas: ALTS(nome), competencias: [comp],
+      itens: [{ codigo: item, justificativa: 'A questão trata do item.' }] });
+    const id = (nome) => db.prepare('SELECT id FROM est_questoes WHERE dados LIKE ?').get(`%Mesmo curso, questão ${nome}:%`).id;
+    const sit = (nome) => db.prepare('SELECT situacao FROM est_questoes WHERE id = ?').get(id(nome)).situacao;
+
+    // segundo percurso DO MESMO produto B, com o mesmo programa do primeiro
+    let r = await importar(pidB, { escopo: { slug: SB2, tipo: 'edital', titulo: 'Segundo percurso do mesmo curso' },
+      programa: { documento: { nome: 'Edital B (2º percurso)', tipo: 'edital' }, itens: [{ codigo: '2', texto: 'Programa B' }, { codigo: '2.1', texto: 'Disciplina' }, { codigo: '2.1.1', texto: 'Ponto um' }] },
+      competencias: [COMP('cb2-1')],
+      vinculos: [{ item: '2.1.1', competencia: 'cb2-1', justificativa: 'O item é a própria regra.' }] });
+    assert.equal(r.st, 200, r.texto);
+    // a MESMA questão nos dois percursos do produto B, e uma só do segundo
+    r = await importar(pidB, { escopo: { slug: SB }, questoes: [Q('m1', 'cb-1', '2.1.9')] });
+    assert.equal(r.json.importado.questoes.novas, 1, r.texto);
+    r = await importar(pidB, { escopo: { slug: SB2 }, questoes: [Q('m1', 'cb2-1', '2.1.1'), Q('m2', 'cb2-1', '2.1.1')] });
+    assert.deepEqual([r.json.importado.questoes.novas, r.json.importado.questoes.duplicadas], [1, 1], r.texto);
+
+    // sem o pedido: a compartilhada fica, e o motivo ENSINA o caminho
+    r = await status(pidB, { escopo: SB2, questoes: 'disponivel' });
+    assert.equal(r.json.alterados.questoes, 1, 'só a m2, que é só deste percurso');
+    assert.equal(sit('m1'), 'rascunho');
+    assert.ok(/questoes_compartilhadas/.test(r.json.alterados.questoes_puladas.motivo), r.texto);
+
+    // com o pedido: alcança a do outro percurso DO MESMO CURSO, e diz onde mais mexeu
+    r = await status(pidB, { escopo: SB2, questoes: 'disponivel', questoes_compartilhadas: true });
+    assert.equal(sit('m1'), 'disponivel', 'o dono não conseguiu publicar a questão compartilhada do próprio curso');
+    assert.deepEqual(r.json.alterados.questoes_compartilhadas_aplicadas.tambem_em, [{ escopo: SB, questoes: 1 }]);
+
+    // a fronteira do CURSO continua de pé: a questão que o produto A também usa não se move, nem com o pedido
+    r = await status(pidB, { escopo: SB, questoes: 'suspensa', questoes_compartilhadas: true });
+    assert.equal(r.json.alterados.questoes_puladas.n, 2, 'as duas de A continuam protegidas');
+    assert.ok(/outro curso/i.test(r.json.alterados.questoes_puladas.motivo), JSON.stringify(r.json.alterados));
+    assert.deepEqual([sit('m1'), sit('m2')], ['suspensa', 'disponivel'], 'm1 é do mesmo curso e acompanhou; m2 é de outro percurso e não');
+  });
+
   // ================= vídeo, venda e Tutor =================
   await t('inclusões: o VÍDEO da aula incluída é liberado a quem tem B (ou A) — não a quem não tem nenhum, nem com B em rascunho', async () => {
     const maria = uid(PROD), agora = new Date().toISOString();

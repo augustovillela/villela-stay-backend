@@ -786,18 +786,34 @@ function definirStatus_(produto, dados = {}) {
   // ligada SÓ a este escopo; a que tem vínculo com QUALQUER outro escopo fica como está, nos dois sentidos (lote de A
   // não mexe na que B usa), e a resposta diz quantas foram puladas, por quê e onde mais estão.
   if (banco.SITUACOES.includes(dados.questoes)) {
+    // `questoes_compartilhadas: true` alcança também a questão que outro percurso DO MESMO CURSO usa (27/10/2026).
+    // O TRF-3 mostrou o buraco: Analista e Oficial são dois percursos do mesmo produto, com 140 folhas em comum, e
+    // a mesma questão oficial serve aos dois — pela regra de cima ela ficava em rascunho PARA SEMPRE, porque nenhum
+    // dos dois lotes podia decidir. Dentro do mesmo curso quem decide é o mesmo dono, e a decisão é explícita;
+    // para FORA do curso (o Procurador que usa questão do Juiz) a proteção continua inteira, e nada a desliga.
+    const mesmoCurso = dados.questoes_compartilhadas === true;
     const doLote = `SELECT DISTINCT v.questao_id FROM est_questao_vinculos v JOIN est_questoes q ON q.id = v.questao_id
       WHERE v.escopo_id = ? AND q.producer_id = ? AND q.situacao != 'arquivada'`;
     const outros = db.prepare(`SELECT e.slug, e.product_id, COUNT(DISTINCT o.questao_id) n FROM est_questao_vinculos o JOIN est_escopos e ON e.id = o.escopo_id
       WHERE o.escopo_id != ? AND o.questao_id IN (${doLote}) GROUP BY e.id ORDER BY n DESC, e.slug`).all(escopo.id, escopo.id, produto.producer_id);
-    const puladas = outros.length ? db.prepare(`SELECT COUNT(*) n FROM (${doLote}) x
-      WHERE EXISTS (SELECT 1 FROM est_questao_vinculos o WHERE o.questao_id = x.questao_id AND o.escopo_id != ?)`).get(escopo.id, produto.producer_id, escopo.id).n : 0;
+    // de fora do curso: estas nunca entram no lote, com ou sem o pedido explícito
+    const foraDoCurso = `EXISTS (SELECT 1 FROM est_questao_vinculos o JOIN est_escopos e ON e.id = o.escopo_id
+      WHERE o.questao_id = %s AND o.escopo_id != ? AND e.product_id != ?)`;
+    const barreira = mesmoCurso ? foraDoCurso : 'EXISTS (SELECT 1 FROM est_questao_vinculos o WHERE o.questao_id = %s AND o.escopo_id != ?)';
+    const args = (id) => mesmoCurso ? [escopo.id, produto.id] : [escopo.id];
+    const puladas = outros.length ? db.prepare(`SELECT COUNT(*) n FROM (${doLote}) x WHERE ${barreira.replace('%s', 'x.questao_id')}`)
+      .get(escopo.id, produto.producer_id, ...args()).n : 0;
     r.questoes = db.prepare(`UPDATE est_questoes SET situacao = ?, atualizado_em = ? WHERE producer_id = ? AND situacao != 'arquivada'
         AND id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?)
-        AND NOT EXISTS (SELECT 1 FROM est_questao_vinculos o WHERE o.questao_id = est_questoes.id AND o.escopo_id != ?)`)
-      .run(dados.questoes, nowISO(), produto.producer_id, escopo.id, escopo.id).changes;
+        AND NOT ${barreira.replace('%s', 'est_questoes.id')}`)
+      .run(dados.questoes, nowISO(), produto.producer_id, escopo.id, ...args()).changes;
+    // o que o pedido explícito alcançou em OUTRO percurso do mesmo curso: dito na resposta, nunca em silêncio
+    if (mesmoCurso) {
+      const dentro = outros.filter(o => o.product_id === produto.id);
+      if (dentro.length) r.questoes_compartilhadas_aplicadas = { tambem_em: dentro.map(o => ({ escopo: o.slug, questoes: o.n })) };
+    }
     if (puladas) r.questoes_puladas = { n: puladas,
-      motivo: 'questão compartilhada com outro percurso (vínculo M:N): a situação é uma só para todos, e o lote de um percurso não decide pelo outro. Ficou como estava.',
+      motivo: mesmoCurso ? 'questão compartilhada com percurso de OUTRO curso (vínculo M:N): nem o pedido explícito atravessa a fronteira do curso. Ficou como estava.' : 'questão compartilhada com outro percurso (vínculo M:N): a situação é uma só para todos, e o lote de um percurso não decide pelo outro. Ficou como estava. Para alcançar os percursos do MESMO curso, envie "questoes_compartilhadas": true.',
       tambem_em: outros.map(o => ({ escopo: o.slug, produto_id: o.product_id, questoes: o.n })) };
   }
   if (REVISAO.includes(dados.vinculos)) {
