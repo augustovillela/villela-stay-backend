@@ -292,7 +292,25 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
     const aluno = s(req.params.aluno, 120);
     const sessoes = db.prepare("SELECT id, trilha_id, meta, anotacao, iniciada_em FROM sessoes_pratica WHERE usuario = ? AND trilha_id LIKE 'cavaquinho:%' ORDER BY iniciada_em DESC LIMIT 100").all(aluno).map((x) => { let meta = {}; try { meta = JSON.parse(x.meta || '{}'); } catch (_) {} return { id: x.id, capitulo: x.trilha_id.slice('cavaquinho:'.length), ...meta, notas: x.anotacao, data: x.iniciada_em }; });
-    res.json({ curso: 'curso-cavaquinho', aluno, sessoes });
+    const observacoes = db.prepare('SELECT * FROM curso_cavaquinho_observacoes WHERE aluno = ? ORDER BY criado_em DESC LIMIT 100').all(aluno);
+    res.json({ curso: 'curso-cavaquinho', aluno, sessoes, observacoes });
+  }));
+  app.post(B + '/prof/cavaquinho/observacoes', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem registrar observações.');
+    const b = req.body || {}, aluno = s(b.aluno, 120), texto = s(b.texto, 2000), capitulo = Math.max(0, Math.min(38, Math.floor(Number(b.capitulo) || 0)));
+    if (!aluno || !texto) throw erro(400, 'Informe aluno e observação.');
+    const id = novoId();
+    db.prepare('INSERT INTO curso_cavaquinho_observacoes (id,professor,aluno,capitulo,texto,criado_em) VALUES (?,?,?,?,?,?)').run(id, req.usuario.id, aluno, capitulo, texto, nowISO());
+    res.json({ ok: true, observacao: db.prepare('SELECT * FROM curso_cavaquinho_observacoes WHERE id = ?').get(id) });
+  }));
+  app.post(B + '/prof/cavaquinho/tarefas', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem criar tarefas.');
+    const b = req.body || {}, capitulo = Math.max(1, Math.min(38, Math.floor(Number(b.capitulo) || 0))), bpm = Math.max(0, Math.min(300, Math.floor(Number(b.bpm) || 0)));
+    if (!capitulo) throw erro(400, 'Informe um capítulo válido.');
+    const tarefa = academia.Tarefas.criar(req.usuario.id, { titulo: s(b.titulo, 200) || `Cavaquinho · capítulo ${capitulo}`, descricao: `Curso de cavaquinho · capítulo ${capitulo}. Meta de BPM: ${bpm}.`, instrucoes: s(b.instrucoes, 4000), exige_audio: b.exige_audio !== false, prazo: s(b.prazo, 25) });
+    const emails = String(b.emails || '').split(/[,;\s]+/).filter(Boolean).map((x) => s(x, 160));
+    const atribuicao = emails.length ? academia.Tarefas.atribuirPorEmail(req.usuario.id, tarefa.id, emails, buscarContaPorEmail) : { atribuidos: 0, nao_encontrados: [] };
+    res.json({ ok: true, tarefa, ...atribuicao, curso_cavaquinho: { capitulo, bpm } });
   }));
 
   // ---- diário de prática do curso de piano -----------------------------
