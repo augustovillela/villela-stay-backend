@@ -307,6 +307,11 @@
     C.Jornada.carregar().then(function () { try { concluidas = JSON.parse(w.localStorage.getItem(chave) || '{}') || {}; } catch (_) {} var carregarServidor = cursoId === 'curso-cavaquinho' && C.api ? C.api('GET', '/music/api/lab/cavaquinho/progresso').then(function (r) { (r.progresso || []).forEach(function (x) { if (x.concluido) concluidas[x.capitulo] = x.atualizado_em || new Date().toISOString(); else delete concluidas[x.capitulo]; }); try { w.localStorage.setItem(chave, JSON.stringify(concluidas)); } catch (_) {} }).catch(function () {}) : Promise.resolve(); return carregarServidor.then(atualizar); }).catch(function () { atualizar(); });
   }
 
+  function progressoCavaquinhoServidor() {
+    var alvo = C.$('[data-cavaquinho-progresso-servidor]'); if (!alvo || !C.api) return;
+    C.api('GET', '/music/api/lab/cavaquinho/progresso').then(function (r) { var feitos = (r.progresso || []).filter(function (x) { return x.concluido; }).length; alvo.textContent = 'Progresso na conta: ' + feitos + ' de ' + (r.total_capitulos || 38) + ' capítulos concluídos (' + Math.round(feitos / (r.total_capitulos || 38) * 100) + '%).'; }).catch(function (e) { alvo.textContent = e.status === 401 || e.status === 402 ? 'Progresso na conta: entre para sincronizar.' : 'Progresso na conta indisponível no momento.'; });
+  }
+
   function praticaContrabaixo() {
     var alvo = C.$('[data-contrabaixo-pratica]'); if (!alvo) return;
     var slug = alvo.getAttribute('data-contrabaixo-pratica'), chave = 'musique-contrabaixo-praticas-' + slug, historico = [];
@@ -495,6 +500,7 @@
     progressoCurso();
     praticaContrabaixo();
     praticaCavaquinho();
+    progressoCavaquinhoServidor();
     praticaPiano();
     checklistPiano();
     revisoesPiano();

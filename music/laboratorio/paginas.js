@@ -298,7 +298,7 @@ ${relacionados(f.slug)}`;
   });
   app.get('/music/curso-cavaquinho/progresso', opcional, (req, res) => {
     const itens = CC.capitulos.map((c) => `<li><a data-curso-slug="${esc(c.slug)}" href="/music/curso-cavaquinho/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.faseNome)}</span></li>`).join('');
-    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de cavaquinho · acompanhamento</p><h1>Meu progresso</h1><p class="lab-lead">Acompanhe os 38 capítulos do livro.</p><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div></header><section class="curso-modulo"><h2>Trilha completa</h2><ol>${itens}</ol></section>`;
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de cavaquinho · acompanhamento</p><h1>Meu progresso</h1><p class="lab-lead">Acompanhe os 38 capítulos do livro.</p><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><div class="curso-progresso" data-cavaquinho-progresso-servidor aria-live="polite">Progresso na conta: entre para carregar.</div></header><section class="curso-modulo"><h2>Trilha completa</h2><ol>${itens}</ol></section>`;
     pagina(res, { titulo: 'Meu progresso — curso de cavaquinho | Musique', descricao: 'Acompanhamento dos 38 capítulos do curso de cavaquinho.', caminho: '/music/curso-cavaquinho/progresso', corpo, trilha: [['Cursos', '/music/cursos'], ['Cavaquinho', '/music/curso-cavaquinho'], ['Meu progresso']] });
   });
   app.get('/music/curso-cavaquinho/professor', opcional, (req, res) => {
