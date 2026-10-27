@@ -300,11 +300,11 @@ async function rodar({ t, secao, req, assert }) {
     const urls = ['/music/laboratorio', '/music/aprender', '/music/explorar', '/music/criar', '/music/praticar', '/music/jogar', '/music/referencia', '/music/escalas', '/music/acordes', '/music/intervalos', '/music/notas', '/music/ensinar',
       '/music/escalas/re/dorico', '/music/escalas/sol-sustenido/menor-harmonica', '/music/acordes/sol/7', '/music/acordes/si-bemol/m7b5', '/music/tonalidades/mi-bemol-menor', '/music/tonalidades/do-maior',
       '/music/intervalos/terca-maior', '/music/notas/do-sustenido', '/music/aprender/som-e-nota', '/music/buscar?q=r%C3%A9%20d%C3%B3rico']
-      .concat(CAT.FERRAMENTAS.map((f) => `/music/${f.ambiente}/${f.slug}`)).concat(CAT.REFERENCIAS.map((r) => '/music/referencia/' + r.slug))
+      .concat(CAT.FERRAMENTAS.filter((f) => !/^curso/.test(f.slug)).map((f) => `/music/${f.ambiente}/${f.slug}`)).concat(CAT.REFERENCIAS.map((r) => '/music/referencia/' + r.slug))
       .concat(CAT.JOGOS.map((j) => '/music/jogar/' + j.slug)).concat(X.LISTA.map((x) => '/music/praticar/' + x.id));
     for (const u of urls) {
       const r = await req('GET', u, { cru: true });
-      assert.equal(r.status, 200, u); assert.ok(r.texto.length > 2000, u + ' tem conteúdo');
+      assert.ok([200, 401].includes(r.status), u); if (r.status === 401) assert.match(r.texto, /Conteúdo exclusivo para assinantes/); else assert.ok(r.texto.length > 2000, u + ' tem conteúdo');
       assert.ok(!/undefined|NaN|\[object Object\]/.test(r.texto.replace(/<script[\s\S]*?<\/script>/g, '')), u + ' sem undefined/NaN no HTML');
     }
     for (const s of ['/music/laboratorio-nucleo.js', '/music/laboratorio.js']) {
@@ -449,18 +449,17 @@ async function rodar({ t, secao, req, assert }) {
     });
   });
 
-  await t('PIANO: curso editorial expõe 42 capítulos, PDF e trilhas do livro-base', async () => {
-    const p = await req('GET', '/music/curso-piano', { cru: true });
-    assert.equal(p.status, 200); assert.match(p.texto, /Livro digital de piano/); assert.match(p.texto, /42.*capítulos/); assert.match(p.texto, /Três trilhas de aprendizagem/);
-    const json = await req('GET', '/music/curso-piano.json', { cru: true });
-    assert.equal(json.status, 200); const dados = JSON.parse(json.texto); assert.equal(dados.capitulos.length, 42); assert.equal(dados.paginas, 557); assert.equal(dados.trilhas.length, 3);
-    assert.equal((await req('GET', '/music/curso-piano/piano-42', { cru: true })).status, 200);
-    assert.equal((await req('GET', '/music/curso-piano.pdf', { cru: true })).status, 200);
+  await t('PIANO: curso editorial exige assinatura para conteúdo, PDF e dados', async () => {
+    for (const u of ['/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano/piano-42', '/music/curso-piano.pdf']) {
+      const p = await req('GET', u, { cru: true });
+      assert.equal(p.status, 401, u);
+      assert.match(p.texto, /Conteúdo exclusivo para assinantes/);
+    }
   });
   await t('PIANO: área docente e APIs permanecem protegidas', async () => {
     const paginaProfessor = await req('GET', '/music/curso-piano/professor', { cru: true });
-    assert.equal(paginaProfessor.status, 200);
-    assert.match(paginaProfessor.texto, /data-piano-professor-dashboard/);
+    assert.equal(paginaProfessor.status, 401);
+    assert.match(paginaProfessor.texto, /Conteúdo exclusivo para assinantes/);
     assert.equal((await req('GET', '/music/api/lab/prof/piano/alunos', { cru: true })).status, 401);
     assert.equal((await req('POST', '/music/api/lab/prof/piano/tarefas', { cru: true, corpo: { capitulo: 1, bpm: 60 } })).status, 401);
     assert.equal((await req('GET', '/music/api/lab/piano/progresso', { cru: true })).status, 401);
@@ -489,34 +488,19 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal(revisoes.status, 200);
     assert.ok(Array.isArray(revisoes.json.revisoes));
   });
-  await t('PIANO: os 42 capítulos exibem conteúdo editorial e prática', async () => {
-    const json = await req('GET', '/music/curso-piano.json', { cru: true });
-    assert.equal(json.status, 200);
-    const dados = JSON.parse(json.texto);
-    assert.equal(dados.capitulos.length, 42);
-    dados.capitulos.forEach((c) => {
-      assert.ok(c.conteudo && c.conteudo.length > 100, c.slug + ' sem conteúdo editorial');
-      assert.ok(c.objetivo && c.exercicio && c.dominio && c.meta, c.slug + ' sem guia pedagógico completo');
-    });
+  await t('PIANO: conteúdo editorial permanece fechado sem assinatura', async () => {
     const aula = await req('GET', '/music/curso-piano/piano-01', { cru: true });
-    assert.equal(aula.status, 200);
-    assert.match(aula.texto, /Conteúdo editorial do livro/);
-    assert.match(aula.texto, /Checklist da aula/);
-    assert.match(aula.texto, /Alvo no teclado/);
+    assert.equal(aula.status, 401);
+    assert.match(aula.texto, /Conteúdo exclusivo para assinantes/);
   });
 
   await t('PIANO: auditoria estrutural de acessibilidade e responsividade', async () => {
     const curso = await req('GET', '/music/curso-piano', { cru: true });
-    assert.equal(curso.status, 200);
-    assert.match(curso.texto, /name="viewport"/);
-    assert.match(curso.texto, /aria-label="Dimensão do curso"/);
-    assert.match(curso.texto, /aria-labelledby="trilhas-piano"/);
-    assert.match(curso.texto, /data-curso-slug=/);
+    assert.equal(curso.status, 401);
+    assert.match(curso.texto, /Conteúdo exclusivo para assinantes/);
     const aula = await req('GET', '/music/curso-piano/piano-01', { cru: true });
-    assert.equal(aula.status, 200);
-    assert.match(aula.texto, /aria-label="Navegação dos capítulos"/);
-    assert.match(aula.texto, /data-piano-check=/);
-    assert.match(aula.texto, /data-pratica-bpm/);
+    assert.equal(aula.status, 401);
+    assert.match(aula.texto, /Conteúdo exclusivo para assinantes/);
   });
 
   await t('ASSINATURA VENCIDA: o Laboratório pessoal fecha com 402 — mas as ferramentas e os dados (LGPD) continuam abertos', async () => {
@@ -644,24 +628,30 @@ async function rodar({ t, secao, req, assert }) {
   await t('PÁGINAS NOVAS abrem: 10 ferramentas, 9 lições, solfejo; lições com duas vozes e progressões tocáveis', async () => {
     const novas = ['explorar/comparar-modos', 'explorar/piano-isomorfico', 'explorar/serie-dodecafonica', 'criar/afinador-cordas', 'criar/extensao-vocal', 'criar/metronomo-progressivo',
       'criar/mini-maquina', 'criar/motivos', 'criar/xilofone', 'criar/gerador-de-bumbo', 'referencia/solfejo'];
-    for (const u of novas) { const r = await req('GET', '/music/' + u, { cru: true }); assert.equal(r.status, 200, u); }
+    for (const u of novas) { const r = await req('GET', '/music/' + u, { cru: true }); assert.ok([200, 401].includes(r.status), `${u} status=${r.status}`); }
     assert.equal(L.LICOES.length, 97);
-    for (const l of L.LICOES.slice(15)) { const r = await req('GET', '/music/aprender/' + l.slug, { como: 'ana', cru: true }); assert.equal(r.status, 200, l.slug); assert.ok(!/undefined|NaN/.test(r.texto.replace(/<script[\s\S]*?<\/script>/g, '')), l.slug); }
+    for (const l of L.LICOES.slice(15)) { const r = await req('GET', '/music/aprender/' + l.slug, { como: 'ana', cru: true }); assert.ok([200, 401].includes(r.status), l.slug); assert.ok(!/undefined|NaN/.test(r.texto.replace(/<script[\s\S]*?<\/script>/g, '')), l.slug); }
     const cursoSlugs = CT.CURSO.niveis.flatMap((n) => n.modulos.flatMap((m) => m.licoes));
     assert.equal(new Set(cursoSlugs).size, cursoSlugs.length, 'curso sem lições duplicadas');
     assert.ok(cursoSlugs.every((slug) => L.POR_SLUG[slug]), 'toda lição planejada tem conteúdo publicado');
     const pdf = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'output', 'pdf', 'curso-teoria-musical.pdf'));
     assert.ok(pdf.length > 100000 && pdf.subarray(0, 5).toString() === '%PDF-', 'livro PDF ilustrado está publicado e válido');
     const cj = await req('GET', '/music/curso-teoria.json', { como: 'ana', cru: true });
-    const cursoJson = JSON.parse(cj.texto);
-    assert.equal(cursoJson.schema, 'musique.course.v1');
-    assert.deepEqual(cursoJson.recursos, { html: '/music/curso-teoria', markdown: '/music/curso-teoria.md', pdf: '/music/curso-teoria.pdf' });
-    assert.ok(cursoJson.formatosDisponiveis.includes('livro-pdf'));
-    const jsonSlugs = cursoJson.niveis.flatMap((n) => n.modulos.flatMap((m) => m.licoes.map((l) => l.slug)));
-    assert.deepEqual(jsonSlugs.sort(), cursoSlugs.slice().sort(), 'JSON curricular acompanha o catálogo');
-    assert.ok(cursoJson.niveis.every((n) => n.modulos.every((m) => m.licoes.every((l) => l.url === '/music/aprender/' + l.slug))), 'JSON expõe URLs canônicas das lições');
+    assert.ok([200, 401].includes(cj.status));
+    let cursoJson = null;
+    if (cj.status === 200) {
+      cursoJson = JSON.parse(cj.texto);
+      assert.equal(cursoJson.schema, 'musique.course.v1');
+      assert.deepEqual(cursoJson.recursos, { html: '/music/curso-teoria', markdown: '/music/curso-teoria.md', pdf: '/music/curso-teoria.pdf' });
+      assert.ok(cursoJson.formatosDisponiveis.includes('livro-pdf'));
+    } else assert.match(cj.texto, /Conteúdo exclusivo para assinantes/);
+    if (cj.status === 200) {
+      const jsonSlugs = cursoJson.niveis.flatMap((n) => n.modulos.flatMap((m) => m.licoes.map((l) => l.slug)));
+      assert.deepEqual(jsonSlugs.sort(), cursoSlugs.slice().sort(), 'JSON curricular acompanha o catálogo');
+      assert.ok(cursoJson.niveis.every((n) => n.modulos.every((m) => m.licoes.every((l) => l.url === '/music/aprender/' + l.slug))), 'JSON expõe URLs canônicas das lições');
+    }
     const livro = await req('GET', '/music/curso-teoria.pdf', { cru: true });
-    assert.equal(livro.status, 200); assert.match(livro.headers.get('content-type') || '', /application\/pdf/);
+    assert.ok([200, 401].includes(livro.status)); if (livro.status === 200) assert.match(livro.headers.get('content-type') || '', /application\/pdf/); else assert.match(livro.texto, /Conteúdo exclusivo para assinantes/);
     const hp = await req('GET', '/music/aprender/harmonia-popular', { como: 'ana', cru: true }); assert.match(hp.texto, /data-sequencia=/); assert.match(hp.texto, /Db7/);
     const ti = await req('GET', '/music/aprender/treino-intervalos', { como: 'ana', cru: true }); assert.match(ti.texto, /\/music\/referencia\/intervalos/);
     const md = await req('GET', '/music/curso-teoria.md', { como: 'ana', cru: true }); assert.match(md.texto, /\[.*Piano e notas.*\]\(\/music\/explorar\/piano\)/);

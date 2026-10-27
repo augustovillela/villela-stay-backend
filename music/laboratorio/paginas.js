@@ -69,6 +69,24 @@ function licoesComAcesso(ctx) {
 function registrar(app, { opcional, contextoDe }) {
   const ctxDe = (req) => contextoDe(req);
 
+  // Catálogo permanece público; aulas, livros, progresso e dados dos cursos
+  // são conteúdo editorial da assinatura do Musique.
+  app.use([
+    '/music/curso-teoria', '/music/curso-bateria', '/music/curso-contrabaixo',
+    '/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano.pdf', '/music/curso-piano.md', '/music/curso-piano.academy.json',
+    '/music/curso-cavaquinho', '/music/curso-cavaquinho.json', '/music/curso-cavaquinho.pdf', '/music/curso-cavaquinho.md',
+    '/music/curso-teoria.json', '/music/curso-teoria.pdf', '/music/curso-teoria.md',
+    '/music/curso-bateria.json', '/music/curso-bateria.pdf', '/music/curso-bateria.md', '/music/curso-bateria.academy.json',
+    '/music/curso-contrabaixo.json', '/music/curso-contrabaixo.pdf',
+    '/music/criar/curso-violao-livro', '/music/criar/curso-guitarra-edicao',
+  ], opcional, (req, res, next) => {
+    const acesso = ACESSO.pode('licoes-completas', ctxDe(req));
+    if (acesso.ok) return next();
+    const status = req.usuario ? 402 : 401;
+    const acao = acesso.acao || { rotulo: 'Entrar', url: '/music/entrar' };
+    return res.status(status).send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conteúdo exclusivo · Musique</title><style>body{font:16px system-ui,sans-serif;max-width:720px;margin:10vh auto;padding:24px;color:#17344d}a{display:inline-block;margin-top:18px;padding:12px 18px;border-radius:999px;background:#17344d;color:#fff;text-decoration:none;font-weight:700}</style></head><body><p>Musique · Villela Music</p><h1>Conteúdo exclusivo para assinantes</h1><p>${esc(acesso.motivo)}</p><a href="${esc(acao.url)}">${esc(acao.rotulo)}</a></body></html>`);
+  });
+
   app.get('/music/laboratorio-nucleo.js', (req, res) => enviarArquivo(res, 'application/javascript', nucleoJs()));
   app.get('/music/laboratorio.js', (req, res) => enviarArquivo(res, 'application/javascript', clienteJs()));
   app.get('/music/laboratorio.css', (req, res) => enviarArquivo(res, 'text/css', cssLab()));
