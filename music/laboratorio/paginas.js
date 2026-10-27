@@ -14,6 +14,12 @@ function blocosLivroPiano(texto) {
     return `<div class="${tipo}">${html}</div>`;
   }).join('');
 }
+// A extração do livro agrupa cada abertura de parte com o primeiro capítulo.
+// A parte já aparece na trilha do curso; removê-la aqui evita um título
+// editorial deslocado no início das aulas 1, 5, 9 etc., preservando o capítulo.
+function conteudoLivroCavaquinho(texto) {
+  return String(texto || '').replace(/^\s*#\s*PARTE\s+[^\n]+\n+/i, '');
+}
 const TE = require('./paginas-teoria');
 const RF = require('./paginas-referencia');
 const L = require('./licoes');
@@ -298,7 +304,7 @@ ${relacionados(f.slug)}`;
   app.get('/music/curso-cavaquinho/:slug', opcional, (req, res) => {
     const c = CC.capitulos.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de cavaquinho');
     const livro = CC_LIVRO.capitulos.find((x) => x.numero === c.numero); const anterior = CC.capitulos[c.numero - 2]; const proximo = CC.capitulos[c.numero];
-    const conteudo = blocosLivroPiano(livro ? livro.conteudo : 'Conteúdo editorial ainda não localizado.');
+    const conteudo = blocosLivroPiano(conteudoLivroCavaquinho(livro ? livro.conteudo : 'Conteúdo editorial ainda não localizado.'));
     const navegacao = `<nav class="lab-licao-nav" aria-label="Navegação dos capítulos">${anterior ? `<a href="/music/curso-cavaquinho/${anterior.slug}">← ${anterior.numero}. ${esc(anterior.titulo)}</a>` : '<span>Primeiro capítulo</span>'}<a href="/music/curso-cavaquinho/progresso">Índice e progresso</a>${proximo ? `<a href="/music/curso-cavaquinho/${proximo.slug}">${proximo.numero}. ${esc(proximo.titulo)} →</a>` : '<span>Último capítulo</span>'}</nav>`;
     const pratica = `<section class="curso-modulo"><h2>Pratique no Musique</h2><p>Leve o exercício do livro para uma sessão prática, registrando primeiro o pulso e depois a execução no cavaquinho.</p><p><a class="btn sec" href="/music/criar/metronomo-progressivo">📈 Metrônomo progressivo</a> <a class="btn sec" href="/music/tutor-braco">🎼 Tutor do braço</a> <a class="btn sec" href="/music/tocar">🎧 Tocar junto</a></p></section>`;
     const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Capítulo ${c.numero} de 38 · ${esc(c.faseNome)}</p><h1><span aria-hidden="true">🪕</span> ${esc(c.titulo)}</h1><p class="lab-lead">${esc(c.resumo)}</p><p><a class="btn" href="/music/curso-cavaquinho.pdf">📄 Abrir livro em PDF</a> <a class="btn sec" href="/music/curso-cavaquinho">← Curso de cavaquinho</a></p></header><section class="curso-livro-conteudo"><h2>Conteúdo editorial do livro</h2><div class="curso-livro-texto">${conteudo}</div></section>${pratica}<section class="curso-modulo curso-checklist"><h2>Checklist da aula</h2><label><input type="checkbox" data-curso-check="leitura"> Li o capítulo</label><label><input type="checkbox" data-curso-check="compreensao"> Consigo explicar o conteúdo</label><label><input type="checkbox" data-curso-check="pratica"> Fiz o exercício no instrumento</label><p class="lab-dica">O progresso é salvo no navegador e sincronizado quando a conta está conectada.</p></section>${navegacao}`;
