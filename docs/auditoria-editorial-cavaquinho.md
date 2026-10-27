@@ -27,3 +27,10 @@ As marcações não foram removidas nem convertidas em aprovação automática.
 3. Fazer leitura final por um cavaquinista.
 
 Essas validações não devem ser simuladas como aprovação musical. As mídias profissionais de áudio e vídeo permanecem em uma pendência separada.
+
+## Pendências oficiais do curso de cavaquinho
+
+- [ ] Validar ao instrumento as levadas de samba e pagode.
+- [ ] Conferir ao instrumento as trocas de acordes das cantigas do Capítulo 8.
+- [ ] Obter leitura final de um cavaquinista.
+- [ ] Produzir mídias profissionais de áudio, vídeo e exercícios sincronizados.
