@@ -28,7 +28,7 @@
   var jornadaSyncTimer = null;
   C.guardar = function (k, v) {
     try { localStorage.setItem('musique-lab:' + k, JSON.stringify(v)); } catch (_) { /* sem armazenamento: tudo bem */ }
-    var sincronizaveis = { 'jornada-guitarra': 1, 'jornada-guitarra-favoritos': 1, 'curso-bateria-concluidas-v1': 1, 'curso-contrabaixo-concluidas-v1': 1, 'curso-guitarra-perfil': 1, 'curso-guitarra-plano': 1, 'curso-guitarra-diario': 1, 'curso-guitarra-aulas-v1': 1, 'acordes-guitarra-progresso': 1, 'laboratorio-batidas-progresso': 1, 'tecnicas-guitarra-progresso': 1, 'improvisacao-guitarra-progresso': 1, 'repertorio-checkpoints': 1, 'aquecimento-guitarra-sessoes': 1, 'temporizador-estudo-sessoes': 1, 'checkin-semanal-guitarra': 1, 'painel-estudos-guitarra': 1, 'registro-sessoes-guitarra': 1 };
+    var sincronizaveis = { 'jornada-guitarra': 1, 'jornada-guitarra-favoritos': 1, 'curso-bateria-concluidas-v1': 1, 'curso-contrabaixo-concluidas-v1': 1, 'curso-cavaquinho-concluidas-v1': 1, 'curso-guitarra-perfil': 1, 'curso-guitarra-plano': 1, 'curso-guitarra-diario': 1, 'curso-guitarra-aulas-v1': 1, 'acordes-guitarra-progresso': 1, 'laboratorio-batidas-progresso': 1, 'tecnicas-guitarra-progresso': 1, 'improvisacao-guitarra-progresso': 1, 'repertorio-checkpoints': 1, 'aquecimento-guitarra-sessoes': 1, 'temporizador-estudo-sessoes': 1, 'checkin-semanal-guitarra': 1, 'painel-estudos-guitarra': 1, 'registro-sessoes-guitarra': 1 };
     if (sincronizaveis[k] && C.Jornada && !C.Jornada._aplicando && C.Jornada.sync) {
       clearTimeout(jornadaSyncTimer); jornadaSyncTimer = setTimeout(function () { C.Jornada.sync(false).catch(function () {}); }, 700);
     }
@@ -284,7 +284,7 @@
 
   // ---- progresso local dos cursos editoriais ----
   function progressoCurso() {
-    var cursoId = /\/curso-bateria(?:\/|$)/.test(w.location.pathname) ? 'curso-bateria' : /\/curso-contrabaixo(?:\/|$)/.test(w.location.pathname) ? 'curso-contrabaixo' : /\/curso-piano(?:\/|$)/.test(w.location.pathname) ? 'curso-piano' : /\/criar\/curso-(?:violao-livro|guitarra-edicao|guitarra-livro)(?:\/|$)/.test(w.location.pathname) ? 'curso-guitarra-livro' : 'curso-teoria';
+    var cursoId = /\/curso-bateria(?:\/|$)/.test(w.location.pathname) ? 'curso-bateria' : /\/curso-contrabaixo(?:\/|$)/.test(w.location.pathname) ? 'curso-contrabaixo' : /\/curso-cavaquinho(?:\/|$)/.test(w.location.pathname) ? 'curso-cavaquinho' : /\/curso-piano(?:\/|$)/.test(w.location.pathname) ? 'curso-piano' : /\/criar\/curso-(?:violao-livro|guitarra-edicao|guitarra-livro)(?:\/|$)/.test(w.location.pathname) ? 'curso-guitarra-livro' : 'curso-teoria';
     var chave = cursoId === 'curso-guitarra-livro' ? 'curso-guitarra-livro-lidos' : 'musique-' + cursoId + '-concluidas-v1', concluidas = {};
     try { concluidas = JSON.parse(w.localStorage.getItem(chave) || '{}') || {}; } catch (_) { concluidas = {}; }
     function salvar() { try { w.localStorage.setItem(chave, JSON.stringify(concluidas)); } catch (_) { /* armazenamento indisponível */ } if (C.Jornada && C.Jornada.sync) C.Jornada.sync(false).catch(function () {}); }
