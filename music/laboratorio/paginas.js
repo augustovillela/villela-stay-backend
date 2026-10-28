@@ -352,7 +352,7 @@ ${relacionados(f.slug)}`;
   });
   app.get('/music/curso-bandolim/progresso', opcional, (req, res) => {
     const itens = BM.capitulos.map((c) => `<li><a data-curso-slug="${esc(c.slug)}" href="/music/curso-bandolim/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.faseNome)} · PDF páginas ${c.pagina_inicio}–${c.pagina_fim}</span></li>`).join('');
-    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de bandolim · acompanhamento</p><h1>Meu progresso</h1><p class="lab-lead">Acompanhe os 43 capítulos do livro.</p><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div></header><section class="curso-modulo"><h2>Trilha completa</h2><ol>${itens}</ol></section>`;
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de bandolim · acompanhamento</p><h1>Meu progresso</h1><p class="lab-lead">Acompanhe os 43 capítulos do livro.</p><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><div class="curso-progresso" data-bandolim-progresso-servidor aria-live="polite">Progresso na conta: carregando…</div></header><section class="curso-modulo"><h2>Trilha completa</h2><ol>${itens}</ol></section>`;
     pagina(res, { titulo: 'Meu progresso — curso de bandolim | Musique', descricao: 'Acompanhamento dos 43 capítulos do curso de bandolim.', caminho: '/music/curso-bandolim/progresso', corpo, trilha: [['Cursos', '/music/cursos'], ['Bandolim', '/music/curso-bandolim'], ['Meu progresso']] });
   });
   app.get('/music/curso-bandolim/progresso.json', opcional, (req, res) => {

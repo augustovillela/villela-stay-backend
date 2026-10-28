@@ -535,6 +535,11 @@ async function rodar({ t, secao, req, assert }) {
       assert.ok(aula.json.pdf.includes(`#page=${item.pagina_inicio}`), item.slug);
     }
   });
+  await t('BANDOLIM: página de progresso mostra o estado da conta', async () => {
+    const pagina = await req('GET', '/music/curso-bandolim/progresso', { como: 'aluno', cru: true });
+    assert.equal(pagina.status, 200);
+    assert.match(pagina.texto, /data-bandolim-progresso-servidor/);
+  });
 
   await t('PIANO: curso editorial exige assinatura para conteúdo, PDF e dados', async () => {
     for (const u of ['/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano/piano-42', '/music/curso-piano.pdf']) {
