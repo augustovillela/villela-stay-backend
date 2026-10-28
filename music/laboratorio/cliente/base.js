@@ -345,6 +345,16 @@
     pintar(); sincronizar();
   }
 
+  function praticaBandolim() {
+    var alvo = C.$('[data-bandolim-pratica]'); if (!alvo) return;
+    var slug = alvo.getAttribute('data-bandolim-pratica'), chave = 'musique-bandolim-praticas-' + slug, historico = [];
+    try { historico = JSON.parse(w.localStorage.getItem(chave) || '[]') || []; } catch (_) { historico = []; }
+    var bpm = alvo.querySelector('[data-pratica-bpm]'), foco = alvo.querySelector('[data-pratica-foco]'), notas = alvo.querySelector('[data-pratica-notas]'), status = alvo.querySelector('[data-pratica-status]'), lista = alvo.querySelector('[data-pratica-historico]');
+    function pintar() { if (!lista) return; lista.innerHTML = historico.length ? '<h3>Últimas sessões</h3><ul class="lab-resultados">' + historico.slice(0, 5).map(function (x) { return '<li><strong>' + esc(x.bpm + ' BPM · ' + x.foco) + '</strong> · ' + esc(x.data) + (x.notas ? ' — ' + esc(x.notas) : ''); }).join('') + '</ul>' : '<p class="lab-dica">Nenhuma sessão registrada neste capítulo.</p>'; }
+    var salvar = alvo.querySelector('[data-pratica-salvar]'); if (salvar) salvar.onclick = function () { var n = Number(bpm && bpm.value), registro = { bpm: n, foco: foco.value, notas: (notas.value || '').trim(), data: new Date().toLocaleString('pt-BR') }; if (!(n >= 20 && n <= 300)) { if (status) status.textContent = 'Informe um BPM entre 20 e 300.'; return; } historico.unshift(registro); historico = historico.slice(0, 20); try { w.localStorage.setItem(chave, JSON.stringify(historico)); } catch (_) {} if (status) status.textContent = 'Sessão registrada neste navegador.'; notas.value = ''; pintar(); };
+    pintar();
+  }
+
   function checklistPiano() {
     var alvo = C.$('[data-piano-checklist]'); if (!alvo) return;
     var slug = alvo.getAttribute('data-piano-checklist'), chave = 'musique-piano-checklist-' + slug, estado = {};
@@ -500,6 +510,7 @@
     progressoCurso();
     praticaContrabaixo();
     praticaCavaquinho();
+    praticaBandolim();
     progressoCavaquinhoServidor();
     praticaPiano();
     checklistPiano();
