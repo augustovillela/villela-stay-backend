@@ -32,9 +32,10 @@ const objetivoDo = (texto, titulo) => {
   const m = limpo.match(/Ao fim deste capítulo,?\s+(.+?)(?=\s+(?:Objetivos de aprendizagem|Pré-requisitos|Conceitos fundamentais)\b|$)/i);
   return m ? m[1].trim() : `Compreender e aplicar ${titulo.toLowerCase()} no bandolim.`;
 };
+const limparConteudo = (texto) => String(texto || '').replace(/^\s*\d+\s*\n/, '').replace(/^Capítulo\s+\d+\s+—\s+[\s\S]*?\n(?=Ao fim deste capítulo)/, '').trim();
 const capitulos = LIVRO.capitulos.map((x) => {
   const fase = porNumero[x.numero];
-  return { ...x, id: `bandolim-${String(x.numero).padStart(2, '0')}-${slug(x.titulo)}`, slug: `bandolim-${String(x.numero).padStart(2, '0')}`, fase: fase.id, faseNome: fase.nome, nivel: x.numero <= 8 ? 'iniciante' : x.numero <= 16 ? 'basico' : x.numero <= 31 ? 'intermediario' : 'avancado', objetivo: objetivoDo(x.conteudo, x.titulo), roteiro: roteiros[fase.id], resumo: `Estude ${x.titulo.toLowerCase()} com leitura, técnica, escuta e aplicação no bandolim.`, arquivo: `cap-${String(x.numero).padStart(2, '0')}-${slug(x.titulo)}.md` };
+  return { ...x, conteudo_limpo: limparConteudo(x.conteudo), id: `bandolim-${String(x.numero).padStart(2, '0')}-${slug(x.titulo)}`, slug: `bandolim-${String(x.numero).padStart(2, '0')}`, fase: fase.id, faseNome: fase.nome, nivel: x.numero <= 8 ? 'iniciante' : x.numero <= 16 ? 'basico' : x.numero <= 31 ? 'intermediario' : 'avancado', objetivo: objetivoDo(x.conteudo, x.titulo), roteiro: roteiros[fase.id], resumo: `Estude ${x.titulo.toLowerCase()} com leitura, técnica, escuta e aplicação no bandolim.`, arquivo: `cap-${String(x.numero).padStart(2, '0')}-${slug(x.titulo)}.md` };
 });
 const CURSO = {
   id: 'curso-bandolim-livro', titulo: 'Curso de bandolim', subtitulo: 'Do primeiro som ao choro, tremolo e performance', versao: '1.0.0',
