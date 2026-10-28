@@ -540,6 +540,13 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal(pagina.status, 200);
     assert.match(pagina.texto, /data-bandolim-progresso-servidor/);
   });
+  await t('BANDOLIM: área docente publica os controles de acompanhamento', async () => {
+    const pagina = await req('GET', '/music/curso-bandolim/professor', { como: 'prof', cru: true });
+    assert.equal(pagina.status, 200);
+    assert.match(pagina.texto, /data-bandolim-professor-dashboard/);
+    assert.match(pagina.texto, /Acompanhamento dos alunos/);
+    assert.match(pagina.texto, /Carregando acompanhamento/);
+  });
 
   await t('PIANO: curso editorial exige assinatura para conteúdo, PDF e dados', async () => {
     for (const u of ['/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano/piano-42', '/music/curso-piano.pdf']) {
