@@ -317,7 +317,7 @@ ${relacionados(f.slug)}`;
 
   // ------------------------------------------------------------ curso de bandolim
   app.get('/music/curso-bandolim.json', opcional, (req, res) => {
-    const documento = { schema: 'musique.course.v1', id: BM.CURSO.id, titulo: BM.CURSO.titulo, subtitulo: BM.CURSO.subtitulo, versao: BM.CURSO.versao, descricao: BM.CURSO.descricao, paginas: BM.CURSO.paginas, trilhas: BM.CURSO.trilhas, partes: BM.partes.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-bandolim', pdf: '/music/curso-bandolim.pdf', progresso: '/music/curso-bandolim/progresso' }, capitulos: BM.capitulos.map((c) => ({ numero: c.numero, slug: c.slug, titulo: c.titulo, pagina_inicio: c.pagina_inicio, pagina_fim: c.pagina_fim, url: `/music/curso-bandolim/${c.slug}` })) };
+    const documento = { schema: 'musique.course.v1', id: BM.CURSO.id, titulo: BM.CURSO.titulo, subtitulo: BM.CURSO.subtitulo, versao: BM.CURSO.versao, descricao: BM.CURSO.descricao, paginas: BM.CURSO.paginas, trilhas: BM.CURSO.trilhas, partes: BM.partes.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-bandolim', pdf: '/music/curso-bandolim.pdf', progresso: '/music/curso-bandolim/progresso' }, capitulos: BM.capitulos.map((c) => ({ numero: c.numero, slug: c.slug, titulo: c.titulo, fase: c.faseNome, nivel: c.nivel, objetivo: c.objetivo, roteiro: c.roteiro, pagina_inicio: c.pagina_inicio, pagina_fim: c.pagina_fim, url: `/music/curso-bandolim/${c.slug}` })) };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
   });
   app.get('/music/curso-bandolim.pdf', opcional, (req, res) => {
@@ -341,7 +341,7 @@ ${relacionados(f.slug)}`;
     pagina(res, { titulo: 'Meu progresso — curso de bandolim | Musique', descricao: 'Acompanhamento dos 43 capítulos do curso de bandolim.', caminho: '/music/curso-bandolim/progresso', corpo, trilha: [['Cursos', '/music/cursos'], ['Bandolim', '/music/curso-bandolim'], ['Meu progresso']] });
   });
   app.get('/music/curso-bandolim/progresso.json', opcional, (req, res) => {
-    const documento = { schema: 'musique.course.progress.v1', curso: BM.CURSO.id, total_capitulos: BM.capitulos.length, paginas: BM.CURSO.paginas, capitulos: BM.capitulos.map((c) => ({ slug: c.slug, numero: c.numero, titulo: c.titulo, fase: c.faseNome, pagina_inicio: c.pagina_inicio, pagina_fim: c.pagina_fim, url: `/music/curso-bandolim/${c.slug}` })) };
+    const documento = { schema: 'musique.course.progress.v1', curso: BM.CURSO.id, total_capitulos: BM.capitulos.length, paginas: BM.CURSO.paginas, capitulos: BM.capitulos.map((c) => ({ slug: c.slug, numero: c.numero, titulo: c.titulo, fase: c.faseNome, nivel: c.nivel, objetivo: c.objetivo, pagina_inicio: c.pagina_inicio, pagina_fim: c.pagina_fim, url: `/music/curso-bandolim/${c.slug}` })) };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
   });
   app.get('/music/curso-bandolim/:slug.json', opcional, (req, res) => {
