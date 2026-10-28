@@ -330,7 +330,16 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     const aluno = s(req.params.aluno, 120);
     const sessoes = db.prepare("SELECT id, trilha_id, meta, anotacao, iniciada_em FROM sessoes_pratica WHERE usuario = ? AND trilha_id LIKE 'bandolim:%' ORDER BY iniciada_em DESC LIMIT 100").all(aluno).map((x) => { let meta = {}; try { meta = JSON.parse(x.meta || '{}'); } catch (_) {} return { id: x.id, capitulo: x.trilha_id.slice('bandolim:'.length), ...meta, notas: x.anotacao, data: x.iniciada_em }; });
     const progresso = db.prepare('SELECT capitulo, concluido, atualizado_em FROM curso_bandolim_progresso WHERE aluno = ? ORDER BY capitulo').all(aluno);
-    res.json({ aluno, sessoes, progresso });
+    const observacoes = db.prepare('SELECT id, professor, capitulo, texto, criado_em FROM curso_bandolim_observacoes WHERE aluno = ? ORDER BY criado_em DESC LIMIT 100').all(aluno);
+    res.json({ aluno, sessoes, progresso, observacoes });
+  }));
+  app.post(B + '/prof/bandolim/observacoes', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem registrar devolutivas.');
+    const b = req.body || {}, aluno = s(b.aluno, 120), capitulo = s(b.capitulo, 80), texto = s(b.texto, 2000), n = Number(capitulo.slice('bandolim-'.length));
+    if (!aluno || !/^bandolim-\d{2}$/.test(capitulo) || n < 1 || n > 43 || !texto) throw erro(400, 'Aluno, capítulo ou texto inválido.');
+    const id = novoId(), quando = nowISO();
+    db.prepare('INSERT INTO curso_bandolim_observacoes (id,professor,aluno,capitulo,texto,criado_em) VALUES (?,?,?,?,?,?)').run(id, req.usuario.id, aluno, capitulo, texto, quando);
+    res.status(201).json({ ok: true, observacao: db.prepare('SELECT id, professor, aluno, capitulo, texto, criado_em FROM curso_bandolim_observacoes WHERE id = ?').get(id) });
   }));
   app.get(B + '/prof/cavaquinho/alunos', requireUsuario, h(async (req, res) => {
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
