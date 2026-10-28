@@ -475,6 +475,16 @@ async function rodar({ t, secao, req, assert }) {
     const progresso = await req('GET', '/music/api/lab/bandolim/progresso', { headers });
     assert.equal(progresso.status, 200); assert.equal(progresso.json.progresso.find((x) => x.capitulo === 'bandolim-01').concluido, true);
   });
+  await t('BANDOLIM: professor consulta prática, registra devolutiva e cria tarefa', async () => {
+    const s1 = await req('POST', '/music/api/lab/bandolim/praticas', { como: 'bruno', corpo: { capitulo: 'bandolim-02', bpm: 72, foco: 'tecnica', notas: 'Alternância mais uniforme.' } });
+    assert.equal(s1.status, 201, JSON.stringify(s1.json));
+    const painel = await req('GET', '/music/api/lab/prof/bandolim/aluno/u-bruno/praticas', { como: 'prof' });
+    assert.equal(painel.status, 200); assert.ok(painel.json.sessoes.some((x) => x.capitulo === 'bandolim-02' && x.bpm === 72));
+    const obs = await req('POST', '/music/api/lab/prof/bandolim/observacoes', { como: 'prof', corpo: { aluno: 'u-bruno', capitulo: 'bandolim-02', texto: 'Mantenha o pulso antes de acelerar.' } });
+    assert.equal(obs.status, 201);
+    const tarefa = await req('POST', '/music/api/lab/prof/bandolim/tarefas', { como: 'prof', corpo: { capitulo: 2, bpm: 80, emails: 'bruno@t', instrucoes: 'Praticar por cinco minutos.' } });
+    assert.equal(tarefa.status, 200, JSON.stringify(tarefa.json)); assert.equal(tarefa.json.curso_bandolim.capitulo, 2);
+  });
 
   await t('PIANO: curso editorial exige assinatura para conteúdo, PDF e dados', async () => {
     for (const u of ['/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano/piano-42', '/music/curso-piano.pdf']) {
