@@ -485,6 +485,16 @@ async function rodar({ t, secao, req, assert }) {
     const tarefa = await req('POST', '/music/api/lab/prof/bandolim/tarefas', { como: 'prof', corpo: { capitulo: 2, bpm: 80, emails: 'bruno@t', instrucoes: 'Praticar por cinco minutos.' } });
     assert.equal(tarefa.status, 200, JSON.stringify(tarefa.json)); assert.equal(tarefa.json.curso_bandolim.capitulo, 2);
   });
+  await t('BANDOLIM: conteúdo editorial limpo e objetivos presentes nos 43 capítulos', async () => {
+    const curso = require('./curso-bandolim');
+    assert.equal(curso.capitulos.length, 43);
+    curso.capitulos.forEach((c, i) => {
+      assert.equal(c.numero, i + 1, 'numeração contínua');
+      assert.ok(c.conteudo_limpo.startsWith('Ao fim deste capítulo'), 'cabeçalho limpo');
+      assert.ok(!/^\d+\s*\n/.test(c.conteudo_limpo), 'número de página removido');
+      assert.ok(c.objetivo && c.roteiro && c.roteiro.length === 3, 'objetivo e roteiro presentes');
+    });
+  });
 
   await t('PIANO: curso editorial exige assinatura para conteúdo, PDF e dados', async () => {
     for (const u of ['/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano/piano-42', '/music/curso-piano.pdf']) {
