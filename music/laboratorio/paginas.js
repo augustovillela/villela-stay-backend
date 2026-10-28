@@ -81,7 +81,7 @@ function registrar(app, { opcional, contextoDe }) {
   app.use([
     '/music/curso-teoria', '/music/curso-bateria', '/music/curso-contrabaixo',
     '/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano.pdf', '/music/curso-piano.md', '/music/curso-piano.academy.json',
-    '/music/curso-cavaquinho', '/music/curso-cavaquinho.json', '/music/curso-cavaquinho.pdf', '/music/curso-cavaquinho.md', '/music/curso-bandolim', '/music/curso-bandolim.json', '/music/curso-bandolim.pdf', '/music/curso-bandolim.md', '/music/curso-bandolim/progresso.json',
+    '/music/curso-cavaquinho', '/music/curso-cavaquinho.json', '/music/curso-cavaquinho.pdf', '/music/curso-cavaquinho.md', '/music/curso-bandolim', '/music/curso-bandolim.json', '/music/curso-bandolim.pdf', '/music/curso-bandolim.md', '/music/curso-bandolim/progresso.json', '/music/curso-bandolim/professor',
     '/music/curso-teoria.json', '/music/curso-teoria.pdf', '/music/curso-teoria.md',
     '/music/curso-bateria.json', '/music/curso-bateria.pdf', '/music/curso-bateria.md', '/music/curso-bateria.academy.json',
     '/music/curso-contrabaixo.json', '/music/curso-contrabaixo.pdf',
@@ -343,6 +343,10 @@ ${relacionados(f.slug)}`;
   app.get('/music/curso-bandolim/progresso.json', opcional, (req, res) => {
     const documento = { schema: 'musique.course.progress.v1', curso: BM.CURSO.id, total_capitulos: BM.capitulos.length, paginas: BM.CURSO.paginas, capitulos: BM.capitulos.map((c) => ({ slug: c.slug, numero: c.numero, titulo: c.titulo, fase: c.faseNome, nivel: c.nivel, objetivo: c.objetivo, pagina_inicio: c.pagina_inicio, pagina_fim: c.pagina_fim, url: `/music/curso-bandolim/${c.slug}` })) };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+  app.get('/music/curso-bandolim/professor', opcional, (req, res) => {
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de bandolim · área do professor</p><h1>Acompanhamento dos alunos</h1><p class="lab-lead">Consulte sessões sincronizadas, BPM e capítulos concluídos.</p></header><section data-bandolim-professor-dashboard><p>Carregando acompanhamento…</p></section><p><a class="btn sec" href="/music/curso-bandolim">← Voltar ao curso</a></p>`;
+    pagina(res, { titulo: 'Professor — curso de bandolim | Musique', descricao: 'Acompanhamento dos alunos de bandolim.', caminho: '/music/curso-bandolim/professor', corpo, trilha: [['Cursos', '/music/cursos'], ['Bandolim', '/music/curso-bandolim'], ['Professor']] });
   });
   app.get('/music/curso-bandolim/:slug.json', opcional, (req, res) => {
     const c = BM.capitulos.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de bandolim');
