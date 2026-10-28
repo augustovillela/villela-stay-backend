@@ -516,6 +516,18 @@ async function rodar({ t, secao, req, assert }) {
     assert.match(aula.texto, /type="checkbox"[^>]*data-bandolim-check/);
     assert.match(aula.texto, /aria-pressed="false"/);
   });
+  await t('BANDOLIM: os 43 capítulos têm rotas e dados coerentes', async () => {
+    const curso = await req('GET', '/music/curso-bandolim.json', { como: 'aluno' });
+    assert.equal(curso.status, 200);
+    assert.equal(curso.json.capitulos.length, 43);
+    for (const item of curso.json.capitulos) {
+      const aula = await req('GET', `/music/curso-bandolim/${item.slug}.json`, { como: 'aluno' });
+      assert.equal(aula.status, 200, item.slug);
+      assert.equal(aula.json.numero, item.numero, item.slug);
+      assert.equal(aula.json.url, `/music/curso-bandolim/${item.slug}`, item.slug);
+      assert.ok(aula.json.pdf.includes(`#page=${item.pagina_inicio}`), item.slug);
+    }
+  });
 
   await t('PIANO: curso editorial exige assinatura para conteúdo, PDF e dados', async () => {
     for (const u of ['/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano/piano-42', '/music/curso-piano.pdf']) {
