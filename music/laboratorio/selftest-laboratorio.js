@@ -496,7 +496,7 @@ async function rodar({ t, secao, req, assert }) {
     });
   });
   await t('BANDOLIM: aula expõe blocos editoriais e navegação do curso', async () => {
-    const aula = await req('GET', '/music/curso-bandolim/bandolim-01', { como: 'aluno' });
+    const aula = await req('GET', '/music/curso-bandolim/bandolim-01', { como: 'aluno', cru: true });
     assert.equal(aula.status, 200);
     assert.match(aula.texto, /curso-livro-conteudo/);
     assert.match(aula.texto, /curso-livro-bloco-(texto|exercicio|conceito)/);
@@ -504,6 +504,17 @@ async function rodar({ t, secao, req, assert }) {
     assert.match(aula.texto, /Índice e progresso/);
     assert.match(aula.texto, /data-bandolim-pratica/);
     assert.match(aula.texto, /data-bandolim-checklist/);
+  });
+  await t('BANDOLIM: controles essenciais têm semântica acessível', async () => {
+    const aula = await req('GET', '/music/curso-bandolim/bandolim-01', { como: 'aluno', cru: true });
+    assert.equal(aula.status, 200);
+    assert.match(aula.texto, /<h1[^>]*>/);
+    assert.match(aula.texto, /aria-label="Navegação dos capítulos"/);
+    assert.match(aula.texto, /aria-live="polite"/);
+    assert.match(aula.texto, /<label[^>]*>\s*<span>BPM<\/span>/);
+    assert.match(aula.texto, /data-pratica-status[^>]*aria-live="polite"/);
+    assert.match(aula.texto, /type="checkbox"[^>]*data-bandolim-check/);
+    assert.match(aula.texto, /aria-pressed="false"/);
   });
 
   await t('PIANO: curso editorial exige assinatura para conteúdo, PDF e dados', async () => {
