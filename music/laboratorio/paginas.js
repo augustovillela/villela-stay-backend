@@ -28,6 +28,7 @@ const CB = require('./curso-bateria');
 const CBA = require('./curso-contrabaixo');
 const CP = require('./curso-piano');
 const CC = require('./curso-cavaquinho');
+const BM = require('./curso-bandolim');
 const CBA_LIVRO = require('./curso-contrabaixo-conteudo.json');
 const CC_LIVRO = require('./curso-cavaquinho-conteudo.json');
 const LB = require('./licoes-bateria');
@@ -80,7 +81,7 @@ function registrar(app, { opcional, contextoDe }) {
   app.use([
     '/music/curso-teoria', '/music/curso-bateria', '/music/curso-contrabaixo',
     '/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano.pdf', '/music/curso-piano.md', '/music/curso-piano.academy.json',
-    '/music/curso-cavaquinho', '/music/curso-cavaquinho.json', '/music/curso-cavaquinho.pdf', '/music/curso-cavaquinho.md',
+    '/music/curso-cavaquinho', '/music/curso-cavaquinho.json', '/music/curso-cavaquinho.pdf', '/music/curso-cavaquinho.md', '/music/curso-bandolim', '/music/curso-bandolim.json', '/music/curso-bandolim.pdf', '/music/curso-bandolim.md',
     '/music/curso-teoria.json', '/music/curso-teoria.pdf', '/music/curso-teoria.md',
     '/music/curso-bateria.json', '/music/curso-bateria.pdf', '/music/curso-bateria.md', '/music/curso-bateria.academy.json',
     '/music/curso-contrabaixo.json', '/music/curso-contrabaixo.pdf',
@@ -146,7 +147,7 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
       { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Teclado, leitura, harmonia, acompanhamento e performance.', url: '/music/curso-piano', ativo: true },
       { nome: 'Cavaquinho', icone: '🪕', cor: '#8b6b48', resumo: 'Acordes, batidas, samba, pagode, choro e performance.', url: '/music/curso-cavaquinho', ativo: true },
       { nome: 'Ukulele', icone: '🪕', cor: '#6d8060', resumo: 'Em preparação: acordes, batidas e primeiras canções.', url: '/music/curso-ukulele', ativo: false },
-      { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Em preparação: palhetada, melodias e choro.', url: '/music/curso-bandolim', ativo: false },
+      { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Palhetada, tremolo, melodias, choro e improvisação.', url: '/music/curso-bandolim', ativo: true },
     ];
     const cards = cursos.map((c) => { const tag = c.url ? 'a href="' + c.url + '"' : 'div'; return `<${tag} class="curso-card ${c.ativo ? 'curso-card-ativo' : 'curso-card-futuro'}" style="--curso-cor:${c.cor}"><span class="curso-card-icone" aria-hidden="true">${c.icone}</span><span class="curso-card-corpo"><strong>${esc(c.nome)}</strong><span>${esc(c.resumo)}</span></span><small>${c.ativo ? 'Abrir curso →' : 'Em breve →'}</small></${c.url ? 'a' : 'div'}>`; }).join('');
     const corpo = `<header class="lab-cab cursos-hero"><p class="lab-cab-tipo">Formação musical</p><h1>Cursos</h1><p class="lab-lead">Escolha um instrumento ou comece pela teoria. Cada curso tem seu próprio percurso, materiais e práticas.</p></header><section class="cursos-grid" aria-label="Catálogo de cursos">${cards}</section><p class="lab-dica cursos-nota">Novos cursos serão publicados nesta mesma página conforme o conteúdo ficar pronto.</p>`;
@@ -158,7 +159,6 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
   // até a publicação do curso.
   const cursosEmBreve = [
     ['ukulele', 'Ukulele', 'Acordes, batidas e primeiras canções.'],
-    ['bandolim', 'Bandolim', 'Palhetada, melodias e choro.'],
   ];
   app.get('/music/curso-contrabaixo.json', opcional, (req, res) => {
     const documento = { schema: 'musique.course.v1', id: CBA.CURSO.id, titulo: CBA.CURSO.titulo, subtitulo: CBA.CURSO.subtitulo, versao: CBA.CURSO.versao, descricao: CBA.CURSO.descricao, trilhas: CBA.CURSO.trilhas, recursos: { html: '/music/curso-contrabaixo', pdf: '/music/curso-contrabaixo.pdf' }, pdf: { paginas: CBA.CURSO.pdfPaginas, capa: CBA.CURSO.pdfComCapa, paginaInicialDoLivro: 2 }, formatosDisponiveis: ['musique-html', 'livro-pdf'], fases: CBA.CURSO.fases, capitulos: CBA.capitulos.map((c) => ({ ...c, url: `/music/curso-contrabaixo/${c.slug}` })) };
@@ -313,6 +313,40 @@ ${relacionados(f.slug)}`;
     const pratica = `<section class="curso-pratica-interativa" data-cavaquinho-pratica="${esc(c.slug)}"><h2>Registrar prática deste capítulo</h2><p>Registre o andamento, o foco técnico e uma observação para acompanhar a evolução no cavaquinho.</p><div class="curso-pratica-form"><label>BPM praticado <input type="number" min="20" max="300" step="1" data-pratica-bpm placeholder="ex.: 70"></label><label>Foco <select data-pratica-foco><option value="som">Som e dinâmica</option><option value="tempo">Tempo e subdivisão</option><option value="tecnica">Técnica e coordenação</option><option value="leitura">Leitura e harmonia</option><option value="expressao">Expressão e fraseado</option></select></label><label class="curso-pratica-notas">Observação <textarea rows="3" maxlength="500" data-pratica-notas placeholder="O que funcionou? O que precisa voltar na próxima sessão?"></textarea></label></div><button type="button" class="btn sec" data-pratica-salvar>Salvar sessão</button> <a class="btn sec" href="/music/criar/metronomo-progressivo">📈 Abrir metrônomo</a> <span class="curso-pratica-status" data-pratica-status role="status"></span><div data-pratica-historico></div></section><section class="curso-modulo"><h2>Pratique no Musique</h2><p>Use as ferramentas integradas para transformar o exercício do livro em prática musical.</p><p><a class="btn sec" href="/music/tutor-braco">🎼 Tutor do braço</a> <a class="btn sec" href="/music/tocar">🎧 Tocar junto</a></p></section>`;
     const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Capítulo ${c.numero} de 38 · ${esc(c.faseNome)}</p><h1><span aria-hidden="true">🪕</span> ${esc(c.titulo)}</h1><p class="lab-lead">${esc(c.resumo)}</p><p><a class="btn" href="/music/curso-cavaquinho.pdf">📄 Abrir livro em PDF</a> <a class="btn sec" href="/music/curso-cavaquinho">← Curso de cavaquinho</a></p></header><section class="curso-livro-conteudo"><h2>Conteúdo editorial do livro</h2><div class="curso-livro-texto">${conteudo}</div></section>${pratica}<section class="curso-modulo curso-checklist"><h2>Checklist da aula</h2><label><input type="checkbox" data-curso-check="leitura"> Li o capítulo</label><label><input type="checkbox" data-curso-check="compreensao"> Consigo explicar o conteúdo</label><label><input type="checkbox" data-curso-check="pratica"> Fiz o exercício no instrumento</label><p class="lab-dica">O progresso é salvo no navegador e sincronizado quando a conta está conectada.</p></section>${navegacao}`;
     pagina(res, { titulo: `${c.titulo} — curso de cavaquinho | Musique`, descricao: c.resumo, caminho: `/music/curso-cavaquinho/${c.slug}`, corpo, trilha: [['Cursos', '/music/cursos'], ['Cavaquinho', '/music/curso-cavaquinho'], [c.titulo]] });
+  });
+
+  // ------------------------------------------------------------ curso de bandolim
+  app.get('/music/curso-bandolim.json', opcional, (req, res) => {
+    const documento = { schema: 'musique.course.v1', id: BM.CURSO.id, titulo: BM.CURSO.titulo, subtitulo: BM.CURSO.subtitulo, versao: BM.CURSO.versao, descricao: BM.CURSO.descricao, paginas: BM.CURSO.paginas, trilhas: BM.CURSO.trilhas, partes: BM.partes.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-bandolim', pdf: '/music/curso-bandolim.pdf', progresso: '/music/curso-bandolim/progresso' }, capitulos: BM.capitulos.map((c) => ({ numero: c.numero, slug: c.slug, titulo: c.titulo, pagina_inicio: c.pagina_inicio, pagina_fim: c.pagina_fim, url: `/music/curso-bandolim/${c.slug}` })) };
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+  app.get('/music/curso-bandolim.pdf', opcional, (req, res) => {
+    const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', 'curso-bandolim.pdf');
+    if (!fs.existsSync(pdf)) return res.status(404).send('PDF ainda não foi publicado.');
+    res.set('Content-Type', 'application/pdf').set('Content-Disposition', 'inline; filename="curso-bandolim.pdf"').set('Cache-Control', 'no-cache').sendFile(pdf);
+  });
+  app.get('/music/curso-bandolim.md', opcional, (req, res) => {
+    const linhas = [`# ${BM.CURSO.titulo}`, '', BM.CURSO.descricao, '', `**${BM.CURSO.paginas} páginas · 43 capítulos · 10 partes · 3 trilhas**`, ''];
+    BM.partes.forEach(([id, nome, ns]) => { linhas.push(`## ${nome}`, ''); ns.forEach((n) => { const c = BM.capitulos[n - 1]; linhas.push(`### ${c.numero}. ${c.titulo}`, '', `Páginas ${c.pagina_inicio}–${c.pagina_fim}.`, '', c.conteudo, ''); }); });
+    res.set('Content-Type', 'text/markdown; charset=utf-8').set('Content-Disposition', 'attachment; filename="curso-bandolim.md"').send(linhas.join('\n'));
+  });
+  app.get('/music/curso-bandolim', opcional, (req, res) => {
+    const fases = BM.partes.map(([id, nome, numeros]) => `<section class="curso-nivel" id="nivel-${esc(id)}"><div class="curso-nivel-cab"><div><p class="lab-cab-tipo">Trilha de bandolim</p><h2>${esc(nome)}</h2><p>Conteúdo correspondente ao livro Bandolim Brasileiro: do Zero ao Avançado.</p></div><span>${numeros.length} capítulos</span></div><div class="curso-modulos"><article class="curso-modulo"><ul>${numeros.map((n) => { const c = BM.capitulos[n - 1]; return `<li><a data-curso-slug="${esc(c.slug)}" href="/music/curso-bandolim/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.resumo)}</span></li>`; }).join('')}</ul></article></div></section>`).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso editorial · versão ${esc(BM.CURSO.versao)}</p><h1>${esc(BM.CURSO.titulo)}</h1><p class="lab-lead">${esc(BM.CURSO.descricao)} ${esc(BM.CURSO.subtitulo)}.</p><div class="curso-numeros" aria-label="Dimensão do curso"><span><strong>10</strong> partes</span><span><strong>43</strong> capítulos</span><span><strong>${BM.CURSO.paginas}</strong> páginas</span><span><strong>3</strong> trilhas</span></div><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><p><a class="btn" href="/music/curso-bandolim.pdf">📄 Abrir livro em PDF</a> <a class="btn sec" href="/music/curso-bandolim.json">⬇ Dados estruturados</a> <a class="btn sec" href="/music/curso-bandolim.md">⬇ Edição Markdown</a> <a class="btn sec" href="/music/curso-bandolim/progresso">📈 Meu progresso</a> <a class="btn sec" href="/music/cursos">← Todos os cursos</a></p></header><section aria-labelledby="trilhas-bandolim"><h2 id="trilhas-bandolim">Três trilhas de aprendizagem</h2><div class="curso-trilhas">${BM.CURSO.trilhas.map((t) => `<div><strong>${esc(t.nome)}</strong><span>${esc(t.resumo)}</span></div>`).join('')}</div></section>${fases}`;
+    pagina(res, { titulo: 'Curso de bandolim — Musique', descricao: BM.CURSO.descricao, caminho: '/music/curso-bandolim', corpo: `<div class="curso-banner-instrumento"><img src="/assets/music/curso-bandolim-capa.png" alt="Bandolim brasileiro em destaque"><p>Um percurso visual para estudar bandolim dentro do Musique.</p></div>` + corpo, trilha: [['Cursos', '/music/cursos'], ['Bandolim']] });
+  });
+  app.get('/music/curso-bandolim/progresso', opcional, (req, res) => {
+    const itens = BM.capitulos.map((c) => `<li><a data-curso-slug="${esc(c.slug)}" href="/music/curso-bandolim/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.faseNome)} · PDF páginas ${c.pagina_inicio}–${c.pagina_fim}</span></li>`).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de bandolim · acompanhamento</p><h1>Meu progresso</h1><p class="lab-lead">Acompanhe os 43 capítulos do livro.</p><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div></header><section class="curso-modulo"><h2>Trilha completa</h2><ol>${itens}</ol></section>`;
+    pagina(res, { titulo: 'Meu progresso — curso de bandolim | Musique', descricao: 'Acompanhamento dos 43 capítulos do curso de bandolim.', caminho: '/music/curso-bandolim/progresso', corpo, trilha: [['Cursos', '/music/cursos'], ['Bandolim', '/music/curso-bandolim'], ['Meu progresso']] });
+  });
+  app.get('/music/curso-bandolim/:slug', opcional, (req, res) => {
+    const c = BM.capitulos.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de bandolim');
+    const anterior = BM.capitulos[c.numero - 2], proximo = BM.capitulos[c.numero];
+    const conteudo = esc(c.conteudo).replace(/\n/g, '<br>');
+    const navegacao = `<nav class="lab-licao-nav" aria-label="Navegação dos capítulos">${anterior ? `<a href="/music/curso-bandolim/${anterior.slug}">← ${anterior.numero}. ${esc(anterior.titulo)}</a>` : '<span>Primeiro capítulo</span>'}<a href="/music/curso-bandolim/progresso">Índice e progresso</a>${proximo ? `<a href="/music/curso-bandolim/${proximo.slug}">${proximo.numero}. ${esc(proximo.titulo)} →</a>` : '<span>Último capítulo</span>'}</nav>`;
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Capítulo ${c.numero} de 43 · ${esc(c.faseNome)}</p><h1><span aria-hidden="true">🪕</span> ${esc(c.titulo)}</h1><p class="lab-lead">${esc(c.resumo)}</p><p><a class="btn" href="/music/curso-bandolim.pdf#page=${c.pagina_inicio}">📄 Abrir no livro · PDF página ${c.pagina_inicio}</a> <a class="btn sec" href="/music/curso-bandolim">← Curso de bandolim</a></p></header><section class="curso-livro-conteudo"><h2>Conteúdo editorial do livro</h2><div class="curso-livro-texto">${conteudo}</div></section><section class="curso-modulo curso-checklist"><h2>Checklist da aula</h2><label><input type="checkbox" data-curso-check="leitura"> Li o capítulo</label><label><input type="checkbox" data-curso-check="compreensao"> Consigo explicar o conteúdo</label><label><input type="checkbox" data-curso-check="pratica"> Fiz o exercício no instrumento</label><p class="lab-dica">O progresso é salvo no navegador e sincronizado quando a conta está conectada.</p></section><div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(c.slug)}" aria-pressed="false">Marcar capítulo como concluído</button></div>${navegacao}`;
+    pagina(res, { titulo: `${c.titulo} — curso de bandolim | Musique`, descricao: c.resumo, caminho: `/music/curso-bandolim/${c.slug}`, corpo, trilha: [['Cursos', '/music/cursos'], ['Bandolim', '/music/curso-bandolim'], [c.titulo]] });
   });
 
   // ------------------------------------------------------------ curso de piano
