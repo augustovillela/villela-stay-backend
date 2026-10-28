@@ -341,6 +341,15 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     db.prepare('INSERT INTO curso_bandolim_observacoes (id,professor,aluno,capitulo,texto,criado_em) VALUES (?,?,?,?,?,?)').run(id, req.usuario.id, aluno, capitulo, texto, quando);
     res.status(201).json({ ok: true, observacao: db.prepare('SELECT id, professor, aluno, capitulo, texto, criado_em FROM curso_bandolim_observacoes WHERE id = ?').get(id) });
   }));
+  app.post(B + '/prof/bandolim/tarefas', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem criar tarefas.');
+    const b = req.body || {}, capitulo = Math.max(1, Math.min(43, Math.floor(Number(String(b.capitulo || '').replace('bandolim-', '')) || 0))), bpm = Math.max(0, Math.min(300, Math.floor(Number(b.bpm) || 0)));
+    if (!capitulo) throw erro(400, 'Informe um capítulo válido.');
+    const tarefa = academia.Tarefas.criar(req.usuario.id, { titulo: s(b.titulo, 200) || `Bandolim · capítulo ${capitulo}`, descricao: `Curso de bandolim · capítulo ${capitulo}. Meta de BPM: ${bpm}.`, instrucoes: s(b.instrucoes, 4000), exige_audio: b.exige_audio !== false, prazo: s(b.prazo, 25) });
+    const emails = String(b.emails || '').split(/[,;\s]+/).filter(Boolean).map((x) => s(x, 160));
+    const atribuicao = emails.length ? academia.Tarefas.atribuirPorEmail(req.usuario.id, tarefa.id, emails, buscarContaPorEmail) : { atribuidos: 0, nao_encontrados: [] };
+    res.json({ ok: true, tarefa, ...atribuicao, curso_bandolim: { capitulo, bpm } });
+  }));
   app.get(B + '/prof/cavaquinho/alunos', requireUsuario, h(async (req, res) => {
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
     const alunos = db.prepare("SELECT s.usuario, COUNT(DISTINCT s.id) AS sessoes, MAX(s.iniciada_em) AS ultima_pratica, COALESCE(p.concluidos, 0) AS concluidos FROM sessoes_pratica s LEFT JOIN (SELECT aluno, COUNT(*) AS concluidos FROM curso_cavaquinho_progresso WHERE concluido = 1 GROUP BY aluno) p ON p.aluno = s.usuario WHERE s.trilha_id LIKE 'cavaquinho:%' GROUP BY s.usuario, p.concluidos ORDER BY ultima_pratica DESC").all().map((a) => ({ ...a, percentual: Math.round(a.concluidos / 38 * 100) }));
