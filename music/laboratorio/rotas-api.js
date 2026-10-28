@@ -320,6 +320,18 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     db.prepare(`INSERT INTO sessoes_pratica (id, usuario, trilha_id, meta, anotacao, iniciada_em, encerrada_em) VALUES (?,?,?,?,?,?,?)`).run(id, req.usuario.id, 'bandolim:' + capitulo, JSON.stringify({ bpm, foco }), notas, quando, quando);
     res.status(201).json({ ok: true, pratica: { id, bpm, foco, notas, data: quando } });
   }));
+  app.get(B + '/prof/bandolim/alunos', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
+    const alunos = db.prepare("SELECT s.usuario, COUNT(DISTINCT s.id) AS sessoes, MAX(s.iniciada_em) AS ultima_pratica, COALESCE(p.concluidos, 0) AS concluidos FROM sessoes_pratica s LEFT JOIN (SELECT aluno, COUNT(*) AS concluidos FROM curso_bandolim_progresso WHERE concluido = 1 GROUP BY aluno) p ON p.aluno = s.usuario WHERE s.trilha_id LIKE 'bandolim:%' GROUP BY s.usuario, p.concluidos ORDER BY ultima_pratica DESC").all().map((a) => ({ ...a, percentual: Math.round(a.concluidos / 43 * 100) }));
+    res.json({ curso: 'curso-bandolim', total_capitulos: 43, alunos });
+  }));
+  app.get(B + '/prof/bandolim/aluno/:aluno/praticas', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
+    const aluno = s(req.params.aluno, 120);
+    const sessoes = db.prepare("SELECT id, trilha_id, meta, anotacao, iniciada_em FROM sessoes_pratica WHERE usuario = ? AND trilha_id LIKE 'bandolim:%' ORDER BY iniciada_em DESC LIMIT 100").all(aluno).map((x) => { let meta = {}; try { meta = JSON.parse(x.meta || '{}'); } catch (_) {} return { id: x.id, capitulo: x.trilha_id.slice('bandolim:'.length), ...meta, notas: x.anotacao, data: x.iniciada_em }; });
+    const progresso = db.prepare('SELECT capitulo, concluido, atualizado_em FROM curso_bandolim_progresso WHERE aluno = ? ORDER BY capitulo').all(aluno);
+    res.json({ aluno, sessoes, progresso });
+  }));
   app.get(B + '/prof/cavaquinho/alunos', requireUsuario, h(async (req, res) => {
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
     const alunos = db.prepare("SELECT s.usuario, COUNT(DISTINCT s.id) AS sessoes, MAX(s.iniciada_em) AS ultima_pratica, COALESCE(p.concluidos, 0) AS concluidos FROM sessoes_pratica s LEFT JOIN (SELECT aluno, COUNT(*) AS concluidos FROM curso_cavaquinho_progresso WHERE concluido = 1 GROUP BY aluno) p ON p.aluno = s.usuario WHERE s.trilha_id LIKE 'cavaquinho:%' GROUP BY s.usuario, p.concluidos ORDER BY ultima_pratica DESC").all().map((a) => ({ ...a, percentual: Math.round(a.concluidos / 38 * 100) }));
