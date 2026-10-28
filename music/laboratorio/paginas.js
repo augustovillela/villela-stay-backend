@@ -25,6 +25,11 @@ function blocosLivroBandolim(texto) {
     const linhas = bloco.split('\n').map((x) => x.trim()).filter(Boolean);
     if (!linhas.length) return '';
     const html = linhas.map((x) => esc(x));
+    if (linhas.length >= 2 && linhas.every((x) => x.includes('|'))) {
+      const linhasTabela = linhas.filter((x) => !/^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(x));
+      const celulas = (linha, tag = 'td') => linha.replace(/^\||\|$/g, '').split('|').map((x) => `<${tag}>${esc(x.trim())}</${tag}>`).join('');
+      if (linhasTabela.length >= 2) return `<div class="curso-livro-tabela-wrap"><table class="curso-livro-tabela"><thead><tr>${celulas(linhasTabela[0], 'th')}</tr></thead><tbody>${linhasTabela.slice(1).map((x) => `<tr>${celulas(x)}</tr>`).join('')}</tbody></table></div>`;
+    }
     if (linhas.every((x) => /^[•·*-]\s+/.test(x))) return `<ul class="curso-livro-lista">${html.map((x) => `<li>${x.replace(/^[•·*-]\s+/, '')}</li>`).join('')}</ul>`;
     if (/^(Objetivos de aprendizagem|Conceitos fundamentais|Exercícios|Prática|Estudo|Repertório|Checklist)\b/i.test(linhas[0])) return `<section class="curso-livro-bloco curso-livro-bloco-exercicio"><h3>${html[0]}</h3>${html.slice(1).map((x) => `<p>${x}</p>`).join('')}</section>`;
     return `<p class="curso-livro-bloco-texto">${html.join('<br>')}</p>`;
