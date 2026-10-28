@@ -244,6 +244,13 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Página estática de apoio para a camada de manutenção do Render/CDN.
+// Não é ativada automaticamente: durante um restart do processo, a requisição
+// pode nem chegar ao Express; por isso a camada externa deve apontá-la quando necessário.
+app.get('/maintenance', (req, res) => {
+  res.status(503).set('Retry-After', '120').type('html').send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Voltamos em instantes · Villela</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f3f7fa;color:#18374d;font:16px system-ui,-apple-system,Segoe UI,sans-serif}.card{max-width:560px;margin:24px;padding:36px;border:1px solid #d5e1e8;border-radius:20px;background:#fff;box-shadow:0 12px 36px #18374d18;text-align:center}h1{margin:0 0 12px;font-size:clamp(1.7rem,5vw,2.5rem)}p{line-height:1.6;color:#526176}.marca{font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#a66b42;font-size:.78rem}</style></head><body><main class="card" role="status"><div class="marca">Villela</div><h1>Voltamos em instantes</h1><p>Estamos atualizando o sistema com cuidado. Tente novamente em alguns minutos.</p><p>Se o problema persistir, aguarde a conclusão da manutenção.</p></main></body></html>`);
+});
+
 // Disponibilidade e preços de um anúncio (o site consome este endpoint)
 app.get('/api/disponibilidade/:listingId', async (req, res) => {
   // cada chamada gasta a quota da Stays com a credencial da casa
