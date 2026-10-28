@@ -344,6 +344,11 @@ ${relacionados(f.slug)}`;
     const documento = { schema: 'musique.course.progress.v1', curso: BM.CURSO.id, total_capitulos: BM.capitulos.length, paginas: BM.CURSO.paginas, capitulos: BM.capitulos.map((c) => ({ slug: c.slug, numero: c.numero, titulo: c.titulo, fase: c.faseNome, pagina_inicio: c.pagina_inicio, pagina_fim: c.pagina_fim, url: `/music/curso-bandolim/${c.slug}` })) };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
   });
+  app.get('/music/curso-bandolim/:slug.json', opcional, (req, res) => {
+    const c = BM.capitulos.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de bandolim');
+    const documento = { schema: 'musique.course.lesson.v1', curso: BM.CURSO.id, numero: c.numero, slug: c.slug, titulo: c.titulo, fase: c.faseNome, nivel: c.nivel, resumo: c.resumo, pagina_inicio: c.pagina_inicio, pagina_fim: c.pagina_fim, pdf: `/music/curso-bandolim.pdf#page=${c.pagina_inicio}`, conteudo: c.conteudo, url: `/music/curso-bandolim/${c.slug}` };
+    res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
   app.get('/music/curso-bandolim/:slug', opcional, (req, res) => {
     const c = BM.capitulos.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de bandolim');
     const anterior = BM.capitulos[c.numero - 2], proximo = BM.capitulos[c.numero];
