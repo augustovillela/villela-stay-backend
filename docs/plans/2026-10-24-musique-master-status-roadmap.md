@@ -322,6 +322,8 @@ Pendências operacionais:
 
 > Atualização de 26/10/2026: a configuração de armazenamento persistente de arquivos fica deliberadamente pendente até haver credenciais e bucket R2/S3 de produção disponíveis. Nenhum armazenamento local temporário será tratado como solução definitiva.
 
+> Atualização de 28/10/2026: o curso de Bandolim está tecnicamente publicado, mas ficam registradas pendências específicas do instrumento: confirmar ao instrumento a afinação real; resolver a divergência entre o perfil técnico provisório de cinco cordas `[55,62,69,76,83]` e o bandolim padrão de quatro ordens; ampliar exercícios específicos; refinar timbres e articulações além da síntese; e validar fisicamente MIDI, áudio e captação quando houver equipamento disponível. Essas pendências não bloqueiam o conteúdo editorial do curso.
+
 ## 11. Validação física pendente
 
 Não marcar como testado até haver equipamento disponível:
