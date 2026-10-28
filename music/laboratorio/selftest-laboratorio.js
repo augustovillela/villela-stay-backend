@@ -449,6 +449,30 @@ async function rodar({ t, secao, req, assert }) {
     });
   });
 
+  await t('BANDOLIM: conteúdo, progresso e prática exigem autenticação', async () => {
+    for (const u of ['/music/curso-bandolim', '/music/curso-bandolim.json', '/music/curso-bandolim/bandolim-01', '/music/curso-bandolim/progresso.json']) {
+      const p = await req('GET', u, { cru: true });
+      assert.equal(p.status, 401, u);
+      assert.match(p.texto, /Conteúdo exclusivo para assinantes/);
+    }
+  });
+  await t('BANDOLIM: fluxo autenticado de progresso e prática', async () => {
+    const contas = require('../contas');
+    const cad = await req('POST', '/music/api/conta/cadastrar', { corpo: { nome: 'Bandolim Aluno Teste', email: 'bandolim.aluno.teste@t', senha: 'senha-boa-123', aceite_termos: true } });
+    assert.ok([200, 201].includes(cad.status), 'cadastro aceito');
+    const cookie = (cad.setCookie || []).find((x) => x.startsWith(contas.COOKIE + '='));
+    assert.ok(cookie, 'cookie de aluno');
+    const headers = { Cookie: cookie.split(';')[0] };
+    const conclusao = await req('PUT', '/music/api/lab/bandolim/progresso/bandolim-01', { headers, corpo: { concluido: true } });
+    assert.equal(conclusao.status, 200); assert.equal(conclusao.json.concluido, true);
+    const pratica = await req('POST', '/music/api/lab/bandolim/praticas', { headers, corpo: { capitulo: 'bandolim-01', foco: 'tecnica', bpm: 60, notas: 'Sessão de teste local.' } });
+    assert.equal(pratica.status, 201);
+    const praticas = await req('GET', '/music/api/lab/bandolim/praticas?capitulo=bandolim-01', { headers });
+    assert.equal(praticas.status, 200); assert.equal(praticas.json.praticas.length, 1);
+    const progresso = await req('GET', '/music/api/lab/bandolim/progresso', { headers });
+    assert.equal(progresso.status, 200); assert.equal(progresso.json.progresso.find((x) => x.capitulo === 'bandolim-01').concluido, true);
+  });
+
   await t('PIANO: curso editorial exige assinatura para conteúdo, PDF e dados', async () => {
     for (const u of ['/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano/piano-42', '/music/curso-piano.pdf']) {
       const p = await req('GET', u, { cru: true });
