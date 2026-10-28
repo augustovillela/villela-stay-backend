@@ -294,6 +294,32 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
       .run(id, req.usuario.id, 'cavaquinho:' + capitulo, JSON.stringify({ bpm, foco }), notas, quando, quando);
     res.status(201).json({ ok: true, pratica: { id, bpm, foco, notas, data: quando } });
   }));
+  // ---- diário e progresso do curso de bandolim -------------------------
+  app.get(B + '/bandolim/praticas', requireUsuario, h(async (req, res) => {
+    const slug = s(req.query.capitulo, 80);
+    const linhas = db.prepare(`SELECT id, meta, anotacao, iniciada_em FROM sessoes_pratica
+      WHERE usuario = ? AND trilha_id = ? ORDER BY iniciada_em DESC LIMIT 20`).all(req.usuario.id, 'bandolim:' + slug);
+    res.json({ praticas: linhas.map((x) => { let meta = {}; try { meta = JSON.parse(x.meta || '{}'); } catch (_) {} return { id: x.id, ...meta, notas: x.anotacao, data: x.iniciada_em }; }) });
+  }));
+  app.get(B + '/bandolim/progresso', requireUsuario, h(async (req, res) => {
+    const linhas = db.prepare('SELECT capitulo, concluido, atualizado_em FROM curso_bandolim_progresso WHERE aluno = ? ORDER BY capitulo').all(req.usuario.id);
+    res.json({ curso: 'curso-bandolim', total_capitulos: 43, progresso: linhas });
+  }));
+  app.put(B + '/bandolim/progresso/:capitulo', requireUsuario, h(async (req, res) => {
+    const capitulo = s(req.params.capitulo, 80), n = Number(capitulo.slice('bandolim-'.length));
+    if (!/^bandolim-\d{2}$/.test(capitulo) || n < 1 || n > 43) throw erro(400, 'Capítulo de bandolim inválido.');
+    const concluido = req.body && req.body.concluido ? 1 : 0, quando = nowISO();
+    db.prepare(`INSERT INTO curso_bandolim_progresso (aluno,capitulo,concluido,atualizado_em) VALUES (?,?,?,?) ON CONFLICT(aluno,capitulo) DO UPDATE SET concluido=excluded.concluido, atualizado_em=excluded.atualizado_em`).run(req.usuario.id, capitulo, concluido, quando);
+    res.json({ ok: true, capitulo, concluido: !!concluido, atualizado_em: quando });
+  }));
+  app.post(B + '/bandolim/praticas', requireUsuario, h(async (req, res) => {
+    const b = req.body || {}, capitulo = s(b.capitulo, 80), foco = s(b.foco, 30), notas = s(b.notas, 500), bpm = Number(b.bpm);
+    const numeroCapitulo = Number(capitulo.slice('bandolim-'.length));
+    if (!/^bandolim-\d{2}$/.test(capitulo) || numeroCapitulo < 1 || numeroCapitulo > 43 || !['som', 'tempo', 'tecnica', 'leitura', 'expressao'].includes(foco) || !(bpm >= 20 && bpm <= 300)) throw erro(400, 'Capítulo, foco ou BPM inválido.');
+    const id = novoId(), quando = nowISO();
+    db.prepare(`INSERT INTO sessoes_pratica (id, usuario, trilha_id, meta, anotacao, iniciada_em, encerrada_em) VALUES (?,?,?,?,?,?,?)`).run(id, req.usuario.id, 'bandolim:' + capitulo, JSON.stringify({ bpm, foco }), notas, quando, quando);
+    res.status(201).json({ ok: true, pratica: { id, bpm, foco, notas, data: quando } });
+  }));
   app.get(B + '/prof/cavaquinho/alunos', requireUsuario, h(async (req, res) => {
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
     const alunos = db.prepare("SELECT s.usuario, COUNT(DISTINCT s.id) AS sessoes, MAX(s.iniciada_em) AS ultima_pratica, COALESCE(p.concluidos, 0) AS concluidos FROM sessoes_pratica s LEFT JOIN (SELECT aluno, COUNT(*) AS concluidos FROM curso_cavaquinho_progresso WHERE concluido = 1 GROUP BY aluno) p ON p.aluno = s.usuario WHERE s.trilha_id LIKE 'cavaquinho:%' GROUP BY s.usuario, p.concluidos ORDER BY ultima_pratica DESC").all().map((a) => ({ ...a, percentual: Math.round(a.concluidos / 38 * 100) }));
