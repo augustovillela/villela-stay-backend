@@ -312,6 +312,11 @@
     C.api('GET', '/music/api/lab/cavaquinho/progresso').then(function (r) { var feitos = (r.progresso || []).filter(function (x) { return x.concluido; }).length; alvo.textContent = 'Progresso na conta: ' + feitos + ' de ' + (r.total_capitulos || 38) + ' capítulos concluídos (' + Math.round(feitos / (r.total_capitulos || 38) * 100) + '%).'; }).catch(function (e) { alvo.textContent = e.status === 401 || e.status === 402 ? 'Progresso na conta: entre para sincronizar.' : 'Progresso na conta indisponível no momento.'; });
   }
 
+  function progressoBandolimServidor() {
+    var alvo = C.$('[data-bandolim-progresso-servidor]'); if (!alvo || !C.api) return;
+    C.api('GET', '/music/api/lab/bandolim/progresso').then(function (r) { var feitos = (r.progresso || []).filter(function (x) { return x.concluido; }).length; alvo.textContent = 'Progresso na conta: ' + feitos + ' de ' + (r.total_capitulos || 43) + ' capítulos concluídos (' + Math.round(feitos / (r.total_capitulos || 43) * 100) + '%).'; }).catch(function (e) { alvo.textContent = e.status === 401 || e.status === 402 ? 'Progresso na conta: entre para sincronizar.' : 'Progresso na conta indisponível no momento.'; });
+  }
+
   function praticaContrabaixo() {
     var alvo = C.$('[data-contrabaixo-pratica]'); if (!alvo) return;
     var slug = alvo.getAttribute('data-contrabaixo-pratica'), chave = 'musique-contrabaixo-praticas-' + slug, historico = [];
@@ -533,6 +538,7 @@
     praticaBandolim();
     checklistBandolim();
     progressoCavaquinhoServidor();
+    progressoBandolimServidor();
     praticaPiano();
     checklistPiano();
     revisoesPiano();
