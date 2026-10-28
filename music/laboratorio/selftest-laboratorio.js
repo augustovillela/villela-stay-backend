@@ -505,6 +505,12 @@ async function rodar({ t, secao, req, assert }) {
     assert.match(aula.texto, /data-bandolim-pratica/);
     assert.match(aula.texto, /data-bandolim-checklist/);
   });
+  await t('BANDOLIM: curso oferece acesso às tarefas do aluno', async () => {
+    const pagina = await req('GET', '/music/curso-bandolim', { como: 'aluno', cru: true });
+    assert.equal(pagina.status, 200);
+    assert.match(pagina.texto, /href="\/music\/app#tarefas"/);
+    assert.match(pagina.texto, /Minhas tarefas/);
+  });
   await t('BANDOLIM: controles essenciais têm semântica acessível', async () => {
     const aula = await req('GET', '/music/curso-bandolim/bandolim-01', { como: 'aluno', cru: true });
     assert.equal(aula.status, 200);
