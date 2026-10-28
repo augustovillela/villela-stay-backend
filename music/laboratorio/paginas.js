@@ -20,6 +20,16 @@ function blocosLivroPiano(texto) {
 function conteudoLivroCavaquinho(texto) {
   return String(texto || '').replace(/^\s*#\s*PARTE\s+[^\n]+\n+/i, '');
 }
+function blocosLivroBandolim(texto) {
+  return String(texto || '').split(/\n\s*\n+/).map((bloco) => {
+    const linhas = bloco.split('\n').map((x) => x.trim()).filter(Boolean);
+    if (!linhas.length) return '';
+    const html = linhas.map((x) => esc(x));
+    if (linhas.every((x) => /^[•·*-]\s+/.test(x))) return `<ul class="curso-livro-lista">${html.map((x) => `<li>${x.replace(/^[•·*-]\s+/, '')}</li>`).join('')}</ul>`;
+    if (/^(Objetivos de aprendizagem|Conceitos fundamentais|Exercícios|Prática|Estudo|Repertório|Checklist)\b/i.test(linhas[0])) return `<section class="curso-livro-bloco curso-livro-bloco-exercicio"><h3>${html[0]}</h3>${html.slice(1).map((x) => `<p>${x}</p>`).join('')}</section>`;
+    return `<p class="curso-livro-bloco-texto">${html.join('<br>')}</p>`;
+  }).join('');
+}
 const TE = require('./paginas-teoria');
 const RF = require('./paginas-referencia');
 const L = require('./licoes');
@@ -356,7 +366,7 @@ ${relacionados(f.slug)}`;
   app.get('/music/curso-bandolim/:slug', opcional, (req, res) => {
     const c = BM.capitulos.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de bandolim');
     const anterior = BM.capitulos[c.numero - 2], proximo = BM.capitulos[c.numero];
-    const conteudo = esc(c.conteudo_limpo).replace(/\n/g, '<br>');
+    const conteudo = blocosLivroBandolim(c.conteudo_limpo);
     const navegacao = `<nav class="lab-licao-nav" aria-label="Navegação dos capítulos">${anterior ? `<a href="/music/curso-bandolim/${anterior.slug}">← ${anterior.numero}. ${esc(anterior.titulo)}</a>` : '<span>Primeiro capítulo</span>'}<a href="/music/curso-bandolim/progresso">Índice e progresso</a>${proximo ? `<a href="/music/curso-bandolim/${proximo.slug}">${proximo.numero}. ${esc(proximo.titulo)} →</a>` : '<span>Último capítulo</span>'}</nav>`;
     const pratica = `<section class="curso-modulo curso-pratica" data-bandolim-pratica="${esc(c.slug)}"><h2>Registrar prática</h2><p class="lab-dica">Anote uma sessão curta para acompanhar consistência, andamento e foco técnico.</p><div class="lab-controles"><label class="lab-campo"><span>BPM</span><input type="number" min="20" max="300" value="60" data-pratica-bpm></label><label class="lab-campo"><span>Foco</span><select data-pratica-foco><option>som e afinação</option><option>palhetada</option><option>tremolo</option><option>melodia</option><option>ritmo</option><option>memória</option></select></label><label class="lab-campo"><span>Observação</span><input type="text" maxlength="240" placeholder="O que você percebeu?" data-pratica-notas></label></div><p><button type="button" class="btn" data-pratica-salvar>Registrar sessão</button> <span class="lab-dica" data-pratica-status aria-live="polite"></span></p><div data-pratica-historico></div></section>`;
     const checklist = `<section class="curso-modulo curso-checklist" data-bandolim-checklist="${esc(c.slug)}"><h2>Checklist da aula</h2><label><input type="checkbox" data-bandolim-check="leitura"> Li o capítulo</label><label><input type="checkbox" data-bandolim-check="compreensao"> Consigo explicar o conteúdo</label><label><input type="checkbox" data-bandolim-check="pratica"> Fiz o exercício no instrumento</label><p class="lab-dica" data-bandolim-check-status>0 de 3 etapas concluídas.</p></section>`;
