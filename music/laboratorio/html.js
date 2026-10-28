@@ -28,6 +28,7 @@ function bannerCurso(caminho) {
   const contrabaixo = /^\/music\/curso-contrabaixo/.test(rota);
   const piano = /^\/music\/curso-piano/.test(rota);
   const cavaquinho = /^\/music\/curso-cavaquinho/.test(rota);
+  if (cavaquinho) return '';
   const futuro = /curso-ukulele/.test(rota);
   if (!bateria && !teoria && !violao && !guitarra && !contrabaixo && !piano && !cavaquinho && !futuro) return '';
   const futuroId = (rota.match(/curso-(contrabaixo|piano|ukulele|cavaquinho|bandolim)/) || [])[1];
