@@ -455,6 +455,9 @@ async function rodar({ t, secao, req, assert }) {
       assert.equal(p.status, 401, u);
       assert.match(p.texto, /Conteúdo exclusivo para assinantes/);
     }
+    assert.equal((await req('GET', '/music/api/lab/prof/bandolim/alunos', { cru: true })).status, 401);
+    assert.equal((await req('POST', '/music/api/lab/prof/bandolim/observacoes', { cru: true, corpo: { aluno: 'aluno@t', capitulo: 'bandolim-01', texto: 'teste' } })).status, 401);
+    assert.equal((await req('POST', '/music/api/lab/prof/bandolim/tarefas', { cru: true, corpo: { capitulo: 1, bpm: 60 } })).status, 401);
   });
   await t('BANDOLIM: fluxo autenticado de progresso e prática', async () => {
     const contas = require('../contas');
