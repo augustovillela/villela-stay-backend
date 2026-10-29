@@ -195,7 +195,7 @@
     alvo.appendChild(el('header', { class: 'lab-cab curso-livro-cab' }, [el('h2', { txt: titulo }), el('p', { class: 'lab-lead', txt: 'Texto, mapas visuais e caminhos diretos para estudar, praticar, criar, jogar e tocar no Musique.' }), el('p', { class: 'lab-dica', txt: 'Edição: ' + foco + ' · ' + lidos + ' de ' + colecao.length + ' capítulos lidos.' }), el('nav', { class: 'curso-livro-edicoes', 'aria-label': 'Edições do livro' }, [el('a', { class: edicao === 'completo' ? 'ativo' : '', href: '/music/criar/curso-guitarra-livro', txt: 'Base comum' }), el('a', { class: edicao === 'violao' ? 'ativo' : '', href: '/music/criar/curso-violao-livro', txt: 'Edição violão' }), el('a', { class: edicao === 'guitarra' ? 'ativo' : '', href: '/music/criar/curso-guitarra-edicao', txt: 'Edição guitarra' })])]));
     var cabecalhoCurso = alvo.querySelector('.curso-livro-cab');
     var tituloVisual = cabecalhoCurso && cabecalhoCurso.querySelector('h2');
-    var tituloIcone = edicao === 'violao' ? '🪕' : '🎸';
+    var tituloIcone = '🎸';
     if (tituloVisual) {
       tituloVisual.textContent = '';
       tituloVisual.appendChild(el('span', { 'aria-hidden': 'true', txt: tituloIcone }));

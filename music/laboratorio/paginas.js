@@ -273,7 +273,9 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
     if (!f) return naoAchou(res, 'esta ferramenta');
     const ctx = ctxDe(req);
     const estado = { ...estadoInicial(req.query), exportar: ACESSO.pode('exportar', ctx).ok };
-    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">${esc(req.params.amb === 'criar' ? 'Criar' : (req.params.amb === 'praticar' ? 'Praticar' : 'Explorar'))}</p><h1><span aria-hidden="true">${esc(f.icone)}</span> ${esc(f.nome)}</h1><p class="lab-lead">${esc(f.resumo)}</p></header>
+    const ehCursoLivro = ['curso-guitarra-livro', 'curso-violao-livro', 'curso-guitarra-edicao'].includes(f.slug);
+    const cabecalhoFerramenta = ehCursoLivro ? '' : `<header class="lab-cab"><p class="lab-cab-tipo">${esc(req.params.amb === 'criar' ? 'Criar' : (req.params.amb === 'praticar' ? 'Praticar' : 'Explorar'))}</p><h1><span aria-hidden="true">${esc(f.icone)}</span> ${esc(f.nome)}</h1><p class="lab-lead">${esc(f.resumo)}</p></header>`;
+    const corpo = `${cabecalhoFerramenta}
 <div id="lab-ferramenta" class="lab-ferramenta" aria-live="polite">${ssrFerramenta(f.slug, estado)}</div>
 <noscript><p class="lab-nota-convencao">Esta ferramenta precisa de JavaScript para tocar e mudar. As páginas de <a href="/music/escalas">escalas</a>, <a href="/music/acordes">acordes</a> e <a href="/music/referencia">referências</a> funcionam sem ele.</p></noscript>
 ${relacionados(f.slug)}`;
