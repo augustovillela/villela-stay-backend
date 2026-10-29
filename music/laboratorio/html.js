@@ -23,7 +23,7 @@ function bannerCurso(caminho) {
   const rota = String(caminho || '');
   const bateria = /^\/music\/curso-bateria/.test(rota);
   const teoria = /^\/music\/curso-teoria/.test(rota);
-  const violao = /^\/music\/criar\/curso-violao-livro/.test(rota);
+  const violao = /^\/music\/criar\/curso-violao-(?:livro|v2)/.test(rota);
   const guitarra = /^\/music\/criar\/curso-guitarra-(?:livro|edicao)/.test(rota);
   const contrabaixo = /^\/music\/curso-contrabaixo/.test(rota);
   const piano = /^\/music\/curso-piano/.test(rota);
