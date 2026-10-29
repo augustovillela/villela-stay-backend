@@ -201,7 +201,8 @@
       tituloVisual.appendChild(el('span', { 'aria-hidden': 'true', txt: tituloIcone }));
       tituloVisual.appendChild(el('span', { txt: ' ' + titulo }));
     }
-    var indicadoresCurso = el('div', { class: 'curso-numeros', 'aria-label': 'Dimensão do curso' }, [el('span', {}, [el('strong', { txt: '2' }), ' edições']), el('span', {}, [el('strong', { txt: '26' }), ' capítulos']), el('span', {}, [el('strong', { txt: '3' }), ' trilhas'])]);
+    var paginasCurso = edicao === 'completo' ? 76 : 63;
+    var indicadoresCurso = el('div', { class: 'curso-numeros', 'aria-label': 'Dimensão do curso' }, [el('span', {}, [el('strong', { txt: '2' }), ' partes']), el('span', {}, [el('strong', { txt: '26' }), ' capítulos']), el('span', {}, [el('strong', { txt: String(paginasCurso) }), ' páginas']), el('span', {}, [el('strong', { txt: '3' }), ' trilhas'])]);
     var progressoCurso = el('div', { id: 'curso-progresso', class: 'curso-progresso', 'aria-live': 'polite' }, ['Progresso neste navegador: ' + lidos + ' de ' + colecao.length + ' lições concluídas (' + (colecao.length ? Math.round(lidos / colecao.length * 100) : 0) + '%).']);
     cabecalhoCurso.insertBefore(indicadoresCurso, cabecalhoCurso.children[2]); cabecalhoCurso.insertBefore(progressoCurso, cabecalhoCurso.children[3]);
     alvo.appendChild(el('section', { class: 'curso-trilhas', 'aria-labelledby': 'trilhas-curso-instrumento' }, [el('h2', { id: 'trilhas-curso-instrumento', txt: 'Três trilhas de aprendizagem' }), el('div', { class: 'curso-trilhas' }, [el('div', {}, [el('strong', { txt: 'Conhecer' }), el('span', { txt: 'Conceitos, postura, leitura e mapas do instrumento.' })]), el('div', {}, [el('strong', { txt: 'Ouvir e reconhecer' }), el('span', { txt: 'Pulso, dinâmica, subdivisão e escuta crítica.' })]), el('div', {}, [el('strong', { txt: 'Aplicar' }), el('span', { txt: 'Grooves, repertório, técnica e performance.' })])]) ]));
