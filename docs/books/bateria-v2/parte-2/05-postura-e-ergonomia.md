@@ -1,5 +1,7 @@
 # Capítulo 5 — Postura e ergonomia
 
+![Postura e zonas de alcance](../fig/bateria-v2-postura-e-alcance.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:

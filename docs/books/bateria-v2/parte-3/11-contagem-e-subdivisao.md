@@ -1,5 +1,7 @@
 # Capítulo 11 — Contagem e subdivisão
 
+![Pulso e subdivisão](../fig/bateria-v2-pulso-e-subdivisao.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:

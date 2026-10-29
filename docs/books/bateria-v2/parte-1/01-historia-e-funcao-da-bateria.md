@@ -1,5 +1,7 @@
 # Capítulo 1 — História e função da bateria
 
+![Mapa didático da bateria](../fig/bateria-v2-mapa-bateria.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:

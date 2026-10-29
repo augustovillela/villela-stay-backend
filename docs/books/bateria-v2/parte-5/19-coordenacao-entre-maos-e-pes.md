@@ -1,5 +1,7 @@
 # Capítulo 19 — Coordenação entre mãos e pés
 
+![Groove básico com mãos e pés](../fig/bateria-v2-maos-e-pes.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:
