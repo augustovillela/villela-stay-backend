@@ -714,7 +714,18 @@ def story():
             FIG / "violao-v2-foto-ritmos-brasileiros.png",
             FIG / "violao-v2-foto-expressao.png",
         ]
-        legacy_photo = editorial_photos[(chapter_index - 1) % len(editorial_photos)]
+        photo_by_chapter = {
+            1: 0, 2: 8, 3: 8, 4: 3,
+            5: 6, 6: 1, 7: 1, 8: 1,
+            9: 6, 10: 6, 11: 6, 12: 11, 13: 11,
+            14: 9, 15: 9, 16: 9, 17: 10, 18: 10,
+            19: 10, 20: 10, 21: 10, 22: 1, 23: 4, 24: 1,
+            25: 4, 26: 4, 27: 4, 28: 12, 29: 7, 30: 7,
+            31: 7, 32: 11, 33: 11, 34: 10, 35: 10, 36: 10,
+            37: 9, 38: 7, 39: 7, 40: 7, 41: 7, 42: 5,
+            43: 3, 44: 7, 45: 7,
+        }
+        legacy_photo = editorial_photos[photo_by_chapter.get(chapter_index, 0)]
 
         def flush():
             if buffer:
