@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Avaliar o que realmente foi aprendido
+
+Avaliação deve observar compreensão, execução, escuta, autonomia e musicalidade. Velocidade isolada não comprova domínio.
+
+**Recurso visual — rubrica:** use cinco colunas: ainda não, com ajuda, estável lento, estável no andamento e musical. Marque evidências, não impressões.
+
 ## Conceitos fundamentais
 
 O estudo de técnica, acordes, ritmo, leitura, ouvido e criação precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando técnica, acordes, ritmo, leitura, ouvido e criaç
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Portfólio
+
+Guarde uma gravação inicial, uma intermediária e uma final. Compare postura, pulso, som, escolhas e capacidade de corrigir erros.
 
 ## Percepção auditiva e metrônomo
 

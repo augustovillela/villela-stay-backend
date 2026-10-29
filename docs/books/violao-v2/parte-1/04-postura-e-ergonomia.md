@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Ajuste do corpo e do instrumento
+
+Sente-se com os pés apoiados e deixe o corpo do violão repousar sem ser apertado. O braço deve chegar à primeira posição sem colapsar o punho; a mão direita deve alcançar as cordas sem levantar o ombro.
+
+**Recurso visual — pontos de verificação:** observe de lado cabeça, ombro, cotovelo, punho e polegar. Uma linha de tensão entre esses pontos indica que o apoio precisa ser corrigido antes da técnica.
+
 ## Conceitos fundamentais
 
 O estudo de posição sentado e em pé, relaxamento e prevenção precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -28,7 +34,11 @@ Crie uma célula curta usando posição sentado e em pé, relaxamento e prevenç
 
 ## Recurso visual
 
-**Diagrama do capítulo:** mapa do braço, cifra, tablatura, pauta, tabela ou sequência de movimentos conforme o assunto. A legenda deve explicar o que observar e não apenas repetir o título.
+**Diagrama do capítulo:** compare a posição neutra do punho com uma posição colapsada. Marque onde o movimento deve ser menor e onde a tensão aparece primeiro.
+
+## Rotina de cinco minutos
+
+Faça um minuto de respiração e ajuste, dois minutos de cordas soltas, um minuto de troca entre dois acordes e um minuto de escuta. Pare diante de dor persistente, formigamento ou perda de força.
 
 ## Exercícios graduais
 

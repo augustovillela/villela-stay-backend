@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Escutar para ocupar espaço
+
+Em grupo, o violão não precisa tocar o tempo todo. Observe baixo, voz, percussão e outros instrumentos; escolha registro, dinâmica e densidade que não cubram o conjunto.
+
+**Recurso visual — mapa de entradas:** indique quem conduz, quem sustenta e quem responde em cada seção. Marque sinais de corte, retomada e final.
+
 ## Conceitos fundamentais
 
 O estudo de escuta, dinâmica, comunicação e espaço musical precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando escuta, dinâmica, comunicação e espaço musical
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Ensaio eficiente
+
+Combine contagem, andamento, forma e sinais antes de tocar. Faça uma passagem inteira e anote somente os pontos que afetaram o conjunto.
 
 ## Percepção auditiva e metrônomo
 

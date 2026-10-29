@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Preparar antes de trocar
+
+Trocar acordes não é levantar todos os dedos e procurar a forma novamente. Observe quais dedos permanecem, quais se deslocam juntos e qual dedo chega primeiro.
+
+**Recurso visual — caminho dos dedos:** desenhe C–G, G–Am e Am–Em lado a lado. Circule dedos comuns e use setas nos dedos que se movem.
+
 ## Conceitos fundamentais
 
 O estudo de dedos-guia, antecipação, metrônomo e continuidade precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando dedos-guia, antecipação, metrônomo e continuida
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Método do relógio
+
+Marque 60 BPM. Faça uma troca a cada quatro pulsos, depois a cada dois e finalmente a cada pulso. Se a forma quebrar, volte ao estágio anterior.
 
 ## Percepção auditiva e metrônomo
 

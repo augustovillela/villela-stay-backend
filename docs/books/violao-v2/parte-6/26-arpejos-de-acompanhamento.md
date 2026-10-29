@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Acompanhamento com baixo e vozes
+
+O arpejo de acompanhamento precisa sustentar a harmonia e deixar espaço para voz ou melodia. Escolha o baixo no início do compasso e distribua as vozes superiores sem acelerar entre os ataques.
+
+**Recurso visual — quatro tempos:** marque baixo no tempo 1, duas vozes internas nos tempos 2 e 3 e resolução no tempo 4. O desenho deve indicar quais cordas soam juntas.
+
 ## Conceitos fundamentais
 
 O estudo de padrões ascendentes, descendentes e baixos independentes precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando padrões ascendentes, descendentes e baixos indepe
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Progressão de acompanhamento
+
+Use Am–F–C–G, dois compassos por acorde. Toque a primeira passagem com uma nota por tempo e a segunda com o arpejo completo.
 
 ## Percepção auditiva e metrônomo
 

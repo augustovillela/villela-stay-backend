@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Menor movimento entre acordes
+
+Conduzir vozes é escolher formas que façam as notas se moverem pouco. Uma nota comum pode permanecer; as demais caminham para o tom mais próximo. Isso cria continuidade e evita saltos desnecessários.
+
+**Recurso visual — vozes superiores:** escreva três notas de um acorde, ligue cada uma à nota mais próxima do acorde seguinte e marque as notas que permanecem.
+
 ## Conceitos fundamentais
 
 O estudo de notas comuns, cromatismos, linhas internas e baixos precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando notas comuns, cromatismos, linhas internas e baixo
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Aplicação
+
+Toque C, Am, F e G usando formas que preservem o máximo de notas comuns. Ouça a linha superior como uma melodia independente.
 
 ## Percepção auditiva e metrônomo
 

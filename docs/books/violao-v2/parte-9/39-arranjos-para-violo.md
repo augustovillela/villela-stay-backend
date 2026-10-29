@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Arranjar é escolher o que fica
+
+Um arranjo para violão organiza baixo, harmonia, melodia, ritmo e silêncio. Comece pela melodia ou pela voz e acrescente apenas o que melhora a clareza.
+
+**Recurso visual — camadas do arranjo:** escreva baixo, acorde, melodia e dinâmica em linhas separadas. Depois marque quais camadas aparecem em cada seção.
+
 ## Conceitos fundamentais
 
 O estudo de voz e violão, solo, duas vozes e melodia acompanhada precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando voz e violão, solo, duas vozes e melodia acompanh
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Redução e expansão
+
+Faça uma versão mínima com baixo e acorde e outra com arpejo e resposta melódica. Compare qual serve melhor à canção.
 
 ## Percepção auditiva e metrônomo
 

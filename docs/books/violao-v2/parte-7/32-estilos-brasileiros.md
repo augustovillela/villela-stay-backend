@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Ritmo como identidade
+
+Choro, samba, bossa nova, baião e moda de viola usam relações diferentes entre baixo, acorde, silêncio e acento. Comece pela escuta de uma célula curta.
+
+**Recurso visual — célula de estilo:** escreva baixo, ataque e silêncio em uma grade de oito subdivisões e compare a célula dentro de uma progressão.
+
 ## Conceitos fundamentais
 
 O estudo de samba, bossa, choro, baião, forró e sertanejo precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando samba, bossa, choro, baião, forró e sertanejo. T
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Adaptação
+
+Toque uma levada com menos notas, depois acrescente antecipações. Se perder balanço, remova notas antes de aumentar a velocidade.
 
 ## Percepção auditiva e metrônomo
 

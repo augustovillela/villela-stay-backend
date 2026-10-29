@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Movimento contínuo
+
+Uma batida estável nasce de um movimento que continua para baixo e para cima. Nem todo movimento precisa produzir som. Marque `↓  ↓↑  ↑↓↑` e deixe os ataques coincidirem com o padrão escolhido.
+
+**Recurso visual — setas de batida:** escreva a contagem acima das setas e circule somente os ataques. O silêncio também deve ter lugar definido.
+
 ## Conceitos fundamentais
 
 O estudo de colcheias, semicolcheias, acentos e abafamentos precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando colcheias, semicolcheias, acentos e abafamentos. T
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Aplicação em quatro acordes
+
+Use C–G–Am–Em. Faça quatro compassos com ataques para baixo e quatro com alternância. Compare qual padrão deixa a troca de acordes mais clara.
 
 ## Percepção auditiva e metrônomo
 

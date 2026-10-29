@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Mapa dos dedos da mão direita
+
+Use p para polegar, i para indicador, m para médio e a para anelar. O polegar cuida principalmente dos baixos; os demais dedos organizam as vozes superiores. O dedilhado deve ser consistente antes de ser rápido.
+
+**Recurso visual — sequência:** represente p–i–m–a sobre as cordas 5–3–2–1. Depois inverta a direção sem perder o pulso.
+
 ## Conceitos fundamentais
 
 O estudo de polegar, dedos, padrões e coordenação precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando polegar, dedos, padrões e coordenação. Toque-a 
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Rotação de padrões
+
+Pratique p–i–m–a, p–m–i–a e p–i–a–m. O baixo deve continuar regular enquanto os dedos mudam de ordem.
 
 ## Percepção auditiva e metrônomo
 

@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Ataque e alternância
+
+O som nasce do contato entre dedo ou palheta e corda. Comece com indicador e médio alternados em uma única corda, mantendo o movimento curto. Depois alterne polegar nas cordas graves e indicador nas agudas.
+
+**Recurso visual — dedilhado:** use p para polegar, i para indicador, m para médio e a para anelar. O padrão p–i–m–a deve ser praticado lentamente antes de qualquer acorde.
+
 ## Conceitos fundamentais
 
 O estudo de dedilhado, palheta, ataques e dinâmica precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando dedilhado, palheta, ataques e dinâmica. Toque-a e
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Padrão aplicado
+
+Em um compasso 4/4, toque p–i–m–i quatro vezes. O polegar deve manter o baixo estável e os dedos devem retornar à posição inicial sem abrir a mão.
 
 ## Percepção auditiva e metrônomo
 

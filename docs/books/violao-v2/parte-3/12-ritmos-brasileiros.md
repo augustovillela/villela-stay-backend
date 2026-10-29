@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Balanço e acentuação
+
+Samba, bossa, baião e choro não são apenas sequências de setas: cada estilo organiza baixo, acorde, silêncio e acento de maneira própria. Comece ouvindo o padrão antes de tentar reproduzi-lo.
+
+**Recurso visual — célula brasileira:** marque baixo no tempo, acorde no contratempo e os espaços de silêncio. Compare uma célula reta com uma célula sincopada.
+
 ## Conceitos fundamentais
 
 O estudo de samba, bossa nova, baião, forró, xote, choro e valsa precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando samba, bossa nova, baião, forró, xote, choro e v
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Levadas por camadas
+
+Toque apenas o baixo, depois apenas os acordes e finalmente combine os dois. Grave cada camada para perceber se o conjunto mantém balanço ou fica pesado.
 
 ## Percepção auditiva e metrônomo
 

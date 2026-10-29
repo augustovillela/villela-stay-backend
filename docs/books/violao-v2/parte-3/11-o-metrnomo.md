@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## O metrônomo como referência
+
+O metrônomo não deve ser perseguido. Primeiro encaixe o pulso, depois observe se as notas caem antes, exatamente sobre ou depois do clique. Pratique em 60 BPM e suba apenas quando o som e a postura permanecerem estáveis.
+
+**Recurso visual — mapa de cliques:** represente quatro cliques por compasso e escreva os ataques entre eles. Isso torna visível o contratempo e evita tocar apenas quando o clique aparece.
+
 ## Conceitos fundamentais
 
 O estudo de estudo lento, subdivisões, 2 e 4 e estabilidade precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando estudo lento, subdivisões, 2 e 4 e estabilidade. 
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Redução progressiva
+
+Toque com clique em todos os tempos, depois apenas nos tempos 2 e 4. Por fim, use um clique por compasso e mantenha internamente a subdivisão.
 
 ## Percepção auditiva e metrônomo
 

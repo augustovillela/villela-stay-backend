@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## O caminho do som
+
+Quando uma corda vibra, o movimento chega ao cavalete e ao tampo. O corpo amplia e colore a vibração; a boca projeta o ar; a escala e os trastes determinam a altura. A mão direita controla ataque, duração e dinâmica, enquanto a mão esquerda escolhe as notas.
+
+**Recurso visual — anatomia:** identifique cabeça, braço, corpo, cavalete, rastilho, boca, escala, trastes, pestana, tarraxas e cordas diretamente no instrumento. O objetivo é relacionar cada parte à ação musical que ela permite.
+
 ## Conceitos fundamentais
 
 O estudo de história, tipos de instrumento, partes e escolha precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -28,7 +34,15 @@ Crie uma célula curta usando história, tipos de instrumento, partes e escolha.
 
 ## Recurso visual
 
-**Diagrama do capítulo:** mapa do braço, cifra, tablatura, pauta, tabela ou sequência de movimentos conforme o assunto. A legenda deve explicar o que observar e não apenas repetir o título.
+**Diagrama do capítulo:** desenhe o instrumento de frente e marque as partes na ordem cabeça, braço, corpo e ponte. Depois indique o caminho da vibração da corda até o ar. A legenda deve explicar o que observar, não apenas repetir o título.
+
+## Tipos de violão e escolha
+
+O violão de nylon favorece repertório clássico, bossa nova e acompanhamento suave. O de aço oferece mais projeção para folk, pop e rock. O eletroacústico acrescenta captação, mas não substitui uma boa regulagem. Escolha considerando conforto, largura do braço, tensão das cordas e repertório.
+
+## Exercício de escuta
+
+Toque cada corda solta com o polegar e depois com a ponta do dedo. Compare ataque, volume, duração e ruído. Registre três palavras para cada resultado e use esse vocabulário nos capítulos de timbre e gravação.
 
 ## Exercícios graduais
 

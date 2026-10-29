@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Altura e duração
+
+A pauta organiza alturas; figuras rítmicas organizam durações. No violão, a mesma nota pode aparecer em lugares diferentes. Comece lendo uma corda e uma região, antes de misturar posições.
+
+**Recurso visual — pauta e corda:** associe quatro notas da primeira posição a uma linha simples de semínimas. Bata o pulso com o pé e toque somente quando a leitura indicar.
+
 ## Conceitos fundamentais
 
 O estudo de pentagrama, clave de sol, notas e valores precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando pentagrama, clave de sol, notas e valores. Toque-a
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Leitura cantada
+
+Fale `ta-ta-ta-ta` enquanto aponta as notas, depois toque sem falar. Se a duração mudar, volte à leitura falada para separar altura de coordenação.
 
 ## Percepção auditiva e metrônomo
 

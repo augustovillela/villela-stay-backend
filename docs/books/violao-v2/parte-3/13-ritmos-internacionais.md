@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Vocabulário rítmico de acompanhamento
+
+Rock, reggae, blues, folk e pop usam padrões diferentes de ataque, duração e acentuação. A mesma progressão harmônica muda de caráter quando o espaço entre os ataques muda.
+
+**Recurso visual — comparação de padrões:** escreva uma grade para rock reto, outra para reggae com contratempo e outra para blues com antecipação. Toque a mesma sequência de acordes em cada uma.
+
 ## Conceitos fundamentais
 
 O estudo de rock, pop, blues, reggae, folk, soul, funk e balada precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando rock, pop, blues, reggae, folk, soul, funk e balad
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Escolha consciente
+
+Toque um padrão por dois minutos e responda: ele sustenta a canção, ocupa espaço demais ou deixa a voz sem apoio? A melhor levada é a que serve à forma e ao conjunto.
 
 ## Percepção auditiva e metrônomo
 

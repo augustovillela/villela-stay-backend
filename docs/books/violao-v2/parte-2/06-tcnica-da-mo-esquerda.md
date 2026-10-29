@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Pressão mínima e preparação
+
+O dedo deve pressionar perto do traste, não no meio do espaço. Prepare a forma antes do ataque, mas não aperte a corda durante o silêncio. Essa economia evita fadiga e melhora a troca de acordes.
+
+**Recurso visual — mapa de dedos:** numere indicador 1, médio 2, anelar 3 e mínimo 4. Marque qual dedo permanece como referência e qual se desloca.
+
 ## Conceitos fundamentais
 
 O estudo de pressão mínima, trocas, abafamento e economia precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando pressão mínima, trocas, abafamento e economia. T
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Independência
+
+Toque 1–2–3–4 em uma corda e volte 4–3–2–1. Levante apenas o dedo que precisa sair e mantenha os demais próximos da escala.
 
 ## Percepção auditiva e metrônomo
 

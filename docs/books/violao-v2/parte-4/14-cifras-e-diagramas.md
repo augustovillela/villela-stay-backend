@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Ler uma cifra e conferir o desenho
+
+Uma cifra informa a harmonia, mas não mostra sozinha a posição. O diagrama mostra cordas, casas, dedos, cordas soltas e cordas que não devem soar. Leia os dois juntos e depois confira o acorde pelo ouvido.
+
+**Recurso visual — acorde C:** marque a 5ª corda como baixo, a 1ª e a 3ª cordas soltas e os dedos nas casas correspondentes. O aluno deve conseguir montar a forma olhando apenas a cifra.
+
 ## Conceitos fundamentais
 
 O estudo de pestanas, inversões, baixos alternativos e extensões precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando pestanas, inversões, baixos alternativos e extens
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Cifra em contexto
+
+Escreva a sequência | C | Am | F | G | e toque quatro tempos por acorde. Depois substitua F por Fmaj7 e observe o que muda no som e no desenho.
 
 ## Percepção auditiva e metrônomo
 

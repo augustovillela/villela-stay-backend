@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Distâncias que produzem música
+
+Semitom é a menor distância entre casas vizinhas; tom reúne dois semitons. Intervalos ajudam a entender escalas, acordes, melodias e transposição. Conte casas e ouça a diferença, não memorize apenas a definição.
+
+**Recurso visual — braço cromático:** desenhe uma linha de casas vizinhas e marque tônica, segunda, terça, quarta e quinta. Toque cada par e descreva se a distância soa mais fechada ou aberta.
+
 ## Conceitos fundamentais
 
 O estudo de distâncias, melodias e aplicação harmônica precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando distâncias, melodias e aplicação harmônica. To
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Aplicação
+
+Toque uma nota, suba um semitom, volte e depois salte uma terça. Crie duas frases curtas e compare a tensão de cada intervalo.
 
 ## Percepção auditiva e metrônomo
 

@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## C, G, Am e Em
+
+Comece com quatro acordes abertos que permitem acompanhar muitas canções. No C, mantenha a 5ª corda como baixo; no G, escolha uma forma confortável; no Am e Em, observe a proximidade dos dedos.
+
+**Recurso visual — cifra e forma:** leia o nome, conte as cordas da sexta para a primeira e identifique cordas abafadas, soltas e pressionadas.
+
 ## Conceitos fundamentais
 
 O estudo de C, G, D, A, E, Em, Am e acordes relacionados precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando C, G, D, A, E, Em, Am e acordes relacionados. Toqu
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Progressão inicial
+
+Toque | C | G | Am | Em | por quatro compassos cada. Faça primeiro um ataque por tempo, depois dois ataques por tempo.
 
 ## Percepção auditiva e metrônomo
 

@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Uma apresentação que reúne o método
+
+O projeto final deve reunir técnica, repertório, leitura, criação e reflexão. Escolha uma peça que permita demonstrar o que foi aprendido sem esconder as decisões musicais.
+
+**Recurso visual — roteiro do projeto:** abertura, apresentação do tema, desenvolvimento, contraste, retomada, final e comentário pós-execução.
+
 ## Conceitos fundamentais
 
 O estudo de composição ou arranjo, forma, gravação e reflexão precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando composição ou arranjo, forma, gravação e refle
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Entrega
+
+Envie partitura ou cifra, tablatura quando necessário, gravação, andamento, breve justificativa das escolhas e uma autoavaliação com próximo passo.
 
 ## Percepção auditiva e metrônomo
 

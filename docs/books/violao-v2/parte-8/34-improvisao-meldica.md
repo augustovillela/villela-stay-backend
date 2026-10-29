@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Frase, respiração e alvo
+
+Improvisar não é tocar muitas notas. É criar uma frase com começo, direção, pausa e chegada. Comece com três notas da tonalidade e deixe o silêncio organizar a resposta.
+
+**Recurso visual — desenho da frase:** marque subida, tensão, pausa e resolução em uma linha melódica de quatro compassos.
+
 ## Conceitos fundamentais
 
 O estudo de notas-alvo, arpejos, motivos, silêncio e resolução precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando notas-alvo, arpejos, motivos, silêncio e resoluç
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Restrição criativa
+
+Improvise usando apenas três notas, depois acrescente uma quarta como passagem. A restrição ajuda a ouvir intenção em vez de depender de velocidade.
 
 ## Percepção auditiva e metrônomo
 

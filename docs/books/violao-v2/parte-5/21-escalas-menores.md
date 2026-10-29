@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Menor natural, harmônica e melódica
+
+A escala menor natural preserva o campo da tonalidade relativa; a harmônica eleva o sétimo grau; a melódica altera graus conforme a direção. Estude as diferenças ouvindo a nota que muda.
+
+**Recurso visual — comparação:** escreva as três escalas lado a lado, circule os graus alterados e toque somente os pontos de diferença antes da escala completa.
+
 ## Conceitos fundamentais
 
 O estudo de menor natural, harmônica, melódica e pentatônicas precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando menor natural, harmônica, melódica e pentatônic
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Cor menor
+
+Use uma tônica menor, a terça menor e a sexta menor para criar uma frase de quatro compassos. Depois eleve o sétimo grau e perceba a tensão criada.
 
 ## Percepção auditiva e metrônomo
 

@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## A escala que vira acordes
+
+Empilhando terças sobre cada grau da escala maior, obtemos o campo harmônico. Em Dó maior: C, Dm, Em, F, G, Am e Bdim. A qualidade muda conforme a distância entre as notas.
+
+**Recurso visual — mapa harmônico:** disponha os sete graus em uma linha e escreva a qualidade do acorde abaixo de cada grau. Depois marque I, IV e V como pontos de repouso, preparação e tensão.
+
 ## Conceitos fundamentais
 
 O estudo de acordes diatônicos, funções e progressões precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando acordes diatônicos, funções e progressões. Toq
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Progressões
+
+Toque I–V–vi–IV em Dó maior e depois em Sol maior. Diga o grau antes de tocar o acorde para separar função harmônica de forma mecânica.
 
 ## Percepção auditiva e metrônomo
 

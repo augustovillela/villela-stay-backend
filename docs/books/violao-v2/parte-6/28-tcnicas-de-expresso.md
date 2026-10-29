@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Fazer a nota falar
+
+Ligado, slide, bend, vibrato, palm mute e harmônico são recursos de articulação. Cada um muda ataque, altura, sustentação ou ruído. Use um recurso por vez e compare com a nota normal.
+
+**Recurso visual — gesto e resultado:** associe cada símbolo da tablatura ao gesto: `h` hammer-on, `p` pull-off, `/` slide, `b` bend e `~` vibrato. A notação só é útil quando prevê o movimento da mão.
+
 ## Conceitos fundamentais
 
 O estudo de hammer-on, pull-off, slides, vibrato, bends e harmônicos precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando hammer-on, pull-off, slides, vibrato, bends e harm
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Controle de expressão
+
+Toque uma frase sem articulação, depois com slide e por fim com vibrato na nota final. Grave as três versões e escolha a que melhor serve à direção da frase.
 
 ## Percepção auditiva e metrônomo
 

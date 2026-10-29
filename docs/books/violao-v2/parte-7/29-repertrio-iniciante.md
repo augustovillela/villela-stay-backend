@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Escolher uma primeira peça
+
+Uma peça inicial deve permitir manter o pulso, trocar poucos acordes e ouvir o resultado. Comece pela forma: introdução, estrofe, refrão e final. Só depois escolha a batida.
+
+**Recurso visual — mapa da forma:** desenhe caixas para cada seção e escreva acordes, compassos e dinâmica.
+
 ## Conceitos fundamentais
 
 O estudo de progressões simples, batidas e melodias autorais precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando progressões simples, batidas e melodias autorais.
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Estudo em etapas
+
+Toque com um ataque por tempo, depois com a batida completa e finalmente com a dinâmica de cada seção. Grave a passagem inteira sem parar.
 
 ## Percepção auditiva e metrônomo
 

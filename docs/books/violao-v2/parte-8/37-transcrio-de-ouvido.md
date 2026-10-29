@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Ouvir antes de procurar
+
+Transcrever começa com a memória auditiva. Cante um fragmento, descubra se ele sobe ou desce e só então procure a primeira nota no instrumento. Trabalhe em trechos de dois ou quatro tempos.
+
+**Recurso visual — processo de transcrição:** ouvir, cantar, localizar, conferir, escrever e tocar novamente.
+
 ## Conceitos fundamentais
 
 O estudo de tonalidade, notas, ritmo, escrita e transformação em exercício precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando tonalidade, notas, ritmo, escrita e transformaçã
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Conferência
+
+Grave sua transcrição junto da referência e compare início, ritmo, finais e articulação. Corrija uma diferença por vez.
 
 ## Percepção auditiva e metrônomo
 

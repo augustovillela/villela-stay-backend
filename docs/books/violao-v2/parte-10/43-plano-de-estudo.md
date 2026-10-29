@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Organizar prática real
+
+Um plano eficaz distribui técnica, leitura, repertório, escuta e criação. Defina uma meta observável para a semana e preserve um espaço para tocar sem roteiro.
+
+**Recurso visual — calendário de estudo:** distribua blocos curtos por dia e marque o que será medido: BPM, repetições limpas, trecho memorizado ou gravação concluída.
+
 ## Conceitos fundamentais
 
 O estudo de rotinas de 15, 30, 45, 60 e 90 minutos precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando rotinas de 15, 30, 45, 60 e 90 minutos. Toque-a em
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Revisão espaçada
+
+Revise o conteúdo depois de um dia, três dias, sete dias e quatorze dias. Em cada retorno, toque antes de consultar a explicação.
 
 ## Percepção auditiva e metrônomo
 

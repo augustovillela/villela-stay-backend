@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## A escala como mapa de tons e semitons
+
+A escala maior segue a sequência tom–tom–semitom–tom–tom–tom–semitom. No violão, o desenho só ganha sentido quando você sabe onde estão as tônicas e consegue cantar a sequência antes de tocar.
+
+**Recurso visual — mapa da escala:** marque uma escala maior em uma única corda, indique os semitons e depois distribua as mesmas notas em duas cordas vizinhas.
+
 ## Conceitos fundamentais
 
 O estudo de fórmula, graus, digitações e transposição precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando fórmula, graus, digitações e transposição. To
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Frase curta
+
+Toque cinco notas ascendentes, volte três e termine na tônica. Faça o mesmo desenho começando em outra nota e observe o que precisa ser alterado para preservar os semitons.
 
 ## Percepção auditiva e metrônomo
 

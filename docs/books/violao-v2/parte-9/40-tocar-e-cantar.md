@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Coordenação entre voz e violão
+
+A voz conduz a frase e o violão sustenta o pulso. Estude falando o texto, tocando apenas o baixo e depois acrescentando a batida. Não acelere para compensar uma entrada vocal insegura.
+
+**Recurso visual — mapa de respirações:** marque onde a voz respira, onde o acorde muda e onde a mão direita mantém o movimento.
+
 ## Conceitos fundamentais
 
 O estudo de forma, atenção dividida, simplificação e pulso precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando forma, atenção dividida, simplificação e pulso
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Divisão de atenção
+
+Toque a progressão sem cantar, cante sem tocar e depois combine apenas a primeira frase. Expanda uma frase por vez.
 
 ## Percepção auditiva e metrônomo
 

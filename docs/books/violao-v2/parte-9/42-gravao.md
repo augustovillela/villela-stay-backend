@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Captar uma ideia com clareza
+
+Gravar não começa no botão vermelho. Defina o andamento, afine, teste distância do microfone ou celular e faça uma tomada curta. Ouça com atenção antes de decidir o que corrigir.
+
+**Recurso visual — cadeia de gravação:** instrumento, ambiente, microfone, entrada, monitoramento e arquivo. Cada etapa deve ser conferida antes da tomada final.
+
 ## Conceitos fundamentais
 
 O estudo de captação, microfonação, interface, mixagem e autoavaliação precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando captação, microfonação, interface, mixagem e a
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Registro de takes
+
+Nomeie cada gravação com data, andamento e versão. Compare duas tomadas sem editar e escolha pela musicalidade, não apenas pela quantidade de erros.
 
 ## Percepção auditiva e metrônomo
 

@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Arpejar é revelar o acorde
+
+Um arpejo distribui as notas do acorde no tempo. Comece com baixo–agudo–médio–agudo e preserve a duração de cada nota. O padrão deve soar como uma frase, não como uma lista automática.
+
+**Recurso visual — padrão de dedos:** escreva p–i–m–a sobre as cordas e indique qual nota é a tônica. Depois altere apenas o baixo e mantenha o desenho dos dedos.
+
 ## Conceitos fundamentais
 
 O estudo de maiores, menores, dominantes, diminutos e inversões precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando maiores, menores, dominantes, diminutos e inversõ
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Arpejo em progressão
+
+Use C–Am–F–G, um compasso por acorde. Antecipe mentalmente o baixo do próximo acorde durante a última nota do compasso atual.
 
 ## Percepção auditiva e metrônomo
 

@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Linhas, números e duração
+
+Na tablatura, cada linha representa uma corda e cada número representa uma casa. Números alinhados soam juntos; números em sequência formam uma linha melódica. A tablatura precisa de contagem para registrar duração e pulso.
+
+**Recurso visual — leitura:** comece por `e|--0--1--3--|`, toque devagar e diga corda, casa e dedo. Depois acrescente uma linha de baixo para coordenar duas vozes.
+
 ## Conceitos fundamentais
 
 O estudo de casas, ligados, slides, bends, vibrato e ritmo precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando casas, ligados, slides, bends, vibrato e ritmo. To
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Tablatura com ritmo
+
+Acrescente `1 & 2 & 3 & 4 &` acima da linha. O objetivo é não tocar os números como uma lista: cada nota ocupa uma posição no tempo.
 
 ## Percepção auditiva e metrônomo
 

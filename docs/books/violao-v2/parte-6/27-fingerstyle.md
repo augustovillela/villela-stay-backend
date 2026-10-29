@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Independência de vozes
+
+Fingerstyle combina baixo, acompanhamento e melodia. Estude cada camada isolada: polegar sozinho, acordes internos sozinhos e melodia sozinha. Só depois combine, mantendo a melodia audível.
+
+**Recurso visual — três camadas:** use cores ou símbolos diferentes para baixo, voz interna e melodia na tablatura. O aluno deve saber qual linha escutar em cada momento.
+
 ## Conceitos fundamentais
 
 O estudo de melodia, acompanhamento, baixo alternado e arranjos solo precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando melodia, acompanhamento, baixo alternado e arranjo
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Arranjo mínimo
+
+Escolha uma melodia de quatro compassos. Toque o baixo nos tempos 1 e 3, uma nota de acorde nos tempos 2 e 4 e a melodia entre eles. Reduza notas sempre que a textura ficar confusa.
 
 ## Percepção auditiva e metrônomo
 

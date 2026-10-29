@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Pulso, tempo e subdivisão
+
+Pulso é a regularidade que sustenta a música; tempo é a velocidade desse pulso; subdivisão é a maneira de repartir cada tempo. Conte 1–2–3–4, depois 1-&-2-&-3-&-4-& sem interromper o movimento da mão.
+
+**Recurso visual — grade de pulso:** marque os tempos com círculos maiores e as subdivisões com traços menores. O braço pode continuar se movendo mesmo quando a mão não ataca a corda.
+
 ## Conceitos fundamentais
 
 O estudo de pulso, compasso, subdivisão, pausas e síncopa precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando pulso, compasso, subdivisão, pausas e síncopa. T
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Voz, mão e som
+
+Fale a contagem, mova a mão e toque apenas no tempo 1. Depois toque nos quatro tempos e, por fim, nos contratempos. Se a voz e a mão se perderem, reduza o andamento.
 
 ## Percepção auditiva e metrônomo
 

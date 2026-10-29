@@ -160,6 +160,26 @@ def visual_resources(chapter_index):
             style=TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]),
         ),
     ]
+
+
+def contextual_visual(chapter_index, heading_text):
+    """Escolhe um recurso visual ligado ao trecho que acabou de ser explicado."""
+    h = heading_text.lower()
+    if "acorde" in h or "aplicação no violão" in h:
+        choices = [("chord", "Cifra, forma do acorde e dedilhado"), ("fretboard", "Voicing no braço e notas comuns"), ("tab", "Acorde arpejado em tablatura")]
+        kind, label = choices[chapter_index % len(choices)]
+    elif "exercício" in h or "passo a passo" in h:
+        choices = [("tab", "Tablatura do exercício"), ("rhythm", "Exercício com subdivisão"), ("staff", "Exercício em leitura")]
+        kind, label = choices[chapter_index % len(choices)]
+    elif "metrônomo" in h or "auditiva" in h or "ritmo" in h:
+        choices = [("rhythm", "Grade rítmica e subdivisão"), ("staff", "Pulso e duração na pauta"), ("tab", "Ritmo anotado na tablatura")]
+        kind, label = choices[chapter_index % len(choices)]
+    elif "braço" in h or "mapa" in h or "conceito" in h:
+        choices = [("fretboard", "Mapa do braço aplicado"), ("chord", "Forma e localização no braço"), ("staff", "Nota, altura e posição")]
+        kind, label = choices[chapter_index % len(choices)]
+    else:
+        kind, label = ("staff", "Leitura na pauta e duração") if chapter_index % 2 else ("tab", "Exemplo em tablatura")
+    return [VisualPanel(kind, label), Spacer(1, 3 * mm)]
 styles.add(
     ParagraphStyle(
         name="GuitarSubtitle",
@@ -583,7 +603,10 @@ def story():
                 continue
             if stripped.startswith("## ") or stripped.startswith("### "):
                 flush()
-                result.append(Paragraph(inline(re.sub(r"^###? ", "", stripped)), styles["GuitarH2"]))
+                section_title = re.sub(r"^###? ", "", stripped)
+                result.append(Paragraph(inline(section_title), styles["GuitarH2"]))
+                if any(word in section_title.lower() for word in ("recurso visual", "explicação", "exercícios", "percepção", "aplicação no violão", "aplicação em repertório")):
+                    result.extend(contextual_visual(chapter_index, section_title))
                 continue
             if stripped.startswith("- ") or re.match(r"^\d+\. ", stripped):
                 flush()
@@ -605,7 +628,6 @@ def story():
         flush()
         flush_code()
         result.extend(chapter_deep_dive(heading(path), chapter_index))
-        result.extend(visual_resources(chapter_index))
 
     result.extend(
         [

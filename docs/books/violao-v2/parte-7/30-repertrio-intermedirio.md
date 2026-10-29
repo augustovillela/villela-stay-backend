@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Forma, transições e arranjo
+
+No nível intermediário, a dificuldade está em sustentar a música enquanto aparecem pestanas, antecipações, arpejos ou mudanças de textura. Marque os pontos de transição antes de praticar a peça inteira.
+
+**Recurso visual — roteiro de arranjo:** indique onde entram baixo, batida, arpejo, pausa e retomada.
+
 ## Conceitos fundamentais
 
 O estudo de pestanas, síncopas, sétimas e ritmos brasileiros precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando pestanas, síncopas, sétimas e ritmos brasileiros
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Ciclo de quatro compassos
+
+Isole cada transição em um ciclo curto. Faça três repetições limpas, conecte ao ciclo seguinte e só depois volte ao início.
 
 ## Percepção auditiva e metrônomo
 

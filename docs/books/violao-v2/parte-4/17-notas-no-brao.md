@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Encontrar notas sem decorar ao acaso
+
+Use as cordas soltas, o quinto traste e as marcações do braço como pontos de referência. A nota não é apenas um nome: é uma posição, uma altura e um possível baixo ou início de melodia.
+
+**Recurso visual — mapa de notas:** marque as notas naturais até o quinto traste e destaque os pontos de oitava. Diga o nome antes de tocar e toque novamente sem olhar para a mão.
+
 ## Conceitos fundamentais
 
 O estudo de naturais, acidentes, oitavas e memorização precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando naturais, acidentes, oitavas e memorização. Toqu
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Jogo de localização
+
+Escolha uma nota, encontre-a em duas cordas e crie uma frase de quatro notas. Repita com outra nota. Isso transforma o mapa em vocabulário musical.
 
 ## Percepção auditiva e metrônomo
 

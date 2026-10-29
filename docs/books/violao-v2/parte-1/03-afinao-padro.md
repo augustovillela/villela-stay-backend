@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## As seis cordas
+
+Da mais grave para a mais aguda: Mi, Lá, Ré, Sol, Si, Mi. Memorize a sequência como um mapa de referência para acordes, baixos, escalas e leitura. A repetição do Mi nas extremidades não significa que as cordas tenham o mesmo registro.
+
+**Recurso visual — mapa de afinação:** desenhe as seis cordas em uma coluna, associe cada nota e destaque a direção grave–agudo. Depois aponte a corda solicitada sem contar desde a sexta.
+
 ## Conceitos fundamentais
 
 O estudo de Mi–Lá–Ré–Sol–Si–Mi, afinação relativa e alternativas precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -28,7 +34,11 @@ Crie uma célula curta usando Mi–Lá–Ré–Sol–Si–Mi, afinação relativ
 
 ## Recurso visual
 
-**Diagrama do capítulo:** mapa do braço, cifra, tablatura, pauta, tabela ou sequência de movimentos conforme o assunto. A legenda deve explicar o que observar e não apenas repetir o título.
+**Diagrama do capítulo:** mostre as relações entre 6ª–5ª, 5ª–4ª, 4ª–3ª, 3ª–2ª e 2ª–1ª. Marque a exceção do quarto traste entre Sol e Si.
+
+## Exercício auditivo
+
+Toque a corda de referência, cante a nota de chegada e só então ajuste. Faça isso em pares e compare a batida entre frequências próximas. O afinador confirma a decisão, mas a escuta constrói autonomia.
 
 ## Exercícios graduais
 

@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Kit de estudo e função de cada acessório
+
+Um afinador ajuda a estabelecer a referência; o capotraste transpõe a música mantendo formas conhecidas; palhetas de espessuras diferentes mudam o ataque; cordas adequadas determinam tensão e resposta. Escolha o acessório pela tarefa musical, não por quantidade.
+
+**Recurso visual — bancada:** organize afinador, palhetas, cordas, enrolador e pano em uma sequência de uso. O aluno deve conseguir explicar quando cada item entra no estudo.
+
 ## Conceitos fundamentais
 
 O estudo de afinador, palhetas, cordas, limpeza e armazenamento precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -28,7 +34,11 @@ Crie uma célula curta usando afinador, palhetas, cordas, limpeza e armazenament
 
 ## Recurso visual
 
-**Diagrama do capítulo:** mapa do braço, cifra, tablatura, pauta, tabela ou sequência de movimentos conforme o assunto. A legenda deve explicar o que observar e não apenas repetir o título.
+**Diagrama do capítulo:** represente o ciclo afrouxar, remover, limpar, instalar, enrolar e estabilizar. Cada etapa deve ter uma ação observável e um cuidado associado.
+
+## Troca e manutenção sem improviso
+
+Afrouxe a corda gradualmente, proteja o tampo e não force o pino. Depois de instalar, afine várias vezes porque a corda nova se acomoda. Registre data, calibre e comportamento do instrumento.
 
 ## Exercícios graduais
 

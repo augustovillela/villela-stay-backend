@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Tônica, terça e quinta
+
+A tríade nasce de uma tônica, uma terça e uma quinta. A terça define maior ou menor; a quinta estabiliza. No violão, algumas notas se repetem em oitavas, mas a função permanece.
+
+**Recurso visual — empilhamento:** mostre a escala em degraus 1–3–5 e depois localize essas notas em um acorde aberto. Compare a mesma tríade em outra região.
+
 ## Conceitos fundamentais
 
 O estudo de tríades, sétimas, diminutos e tensões precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando tríades, sétimas, diminutos e tensões. Toque-a 
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Construção prática
+
+Escolha C, monte C–E–G e depois altere a terça para obter Cm. Toque a mudança lentamente e descreva o que muda no som.
 
 ## Percepção auditiva e metrônomo
 

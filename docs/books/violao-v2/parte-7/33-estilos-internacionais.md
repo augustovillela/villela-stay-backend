@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## Vocabulário de acompanhamento
+
+Blues, folk, rock, reggae e pop diferem na acentuação e no espaço. A mesma cifra pode sustentar, empurrar, responder ou criar uma textura repetitiva.
+
+**Recurso visual — comparação de grooves:** coloque três padrões de oito tempos em paralelo e marque onde cada um acentua.
+
 ## Conceitos fundamentais
 
 O estudo de rock, pop, blues, folk, reggae, jazz e música instrumental precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando rock, pop, blues, folk, reggae, jazz e música ins
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Arranjo por estilo
+
+Faça três versões da mesma progressão: folk com baixo alternado, rock com ataque definido e reggae com contratempo. Compare espaço, dinâmica e função.
 
 ## Percepção auditiva e metrônomo
 

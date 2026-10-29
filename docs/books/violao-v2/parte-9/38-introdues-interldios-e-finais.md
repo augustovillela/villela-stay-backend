@@ -10,6 +10,12 @@ Ao concluir este capítulo, o aluno será capaz de explicar os princípios de **
 
 Nível progressivo: iniciante a avançado conforme a parte. Revise os capítulos anteriores relacionados antes de aumentar o andamento ou a complexidade.
 
+## A arquitetura da canção
+
+Introdução prepara a entrada; interlúdio cria passagem; final encerra a energia. Cada seção precisa ter duração, dinâmica e gesto reconhecíveis.
+
+**Recurso visual — linha do tempo:** desenhe a música do início ao fim e marque onde o violão entra, reduz, cresce, pausa e conclui.
+
 ## Conceitos fundamentais
 
 O estudo de chamadas, respostas, paradas e modulações precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
@@ -36,6 +42,10 @@ Crie uma célula curta usando chamadas, respostas, paradas e modulações. Toque
 - Exercício 2 — continuidade: repita a célula por oito compassos sem interromper o pulso.
 - Exercício 3 — transferência: aplique o mesmo princípio em uma segunda tonalidade ou textura.
 - Exercício 4 — musicalização: use o conteúdo em uma progressão autoral e grave uma tomada curta.
+
+### Três finais
+
+Crie um final por corte, um acorde sustentado e uma frase descendente. Escolha o que combina com o caráter da música.
 
 ## Percepção auditiva e metrônomo
 
