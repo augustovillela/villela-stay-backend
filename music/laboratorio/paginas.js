@@ -66,6 +66,7 @@ const ACESSO = require('./acesso');
 // ------------------------------------------------------------------
 const NUCLEO_ARQS = ['notas', 'intervalos', 'escalas', 'acordes', 'tonalidades', 'ritmo', 'pauta', 'instrumentos', 'acustica', 'motivos', 'batidas', 'desenho', 'exercicios', 'digitacoes', 'tutor', 'transcricao', 'separacao'];
 const CLIENTE_ARQS = ['base', 'audio', 'ferramentas', 'curso-violao-v2', 'curso-guitarra-aulas', 'curso-guitarra-especificos', 'curso-guitarra-livro', 'painel-estudos-guitarra', 'diagnostico-habilidades-guitarra', 'plano-estudo-guitarra', 'registro-sessao-guitarra', 'historico-sessoes-guitarra', 'acordes-guitarra', 'tecnicas-guitarra', 'improvisacao-guitarra', 'curso-bateria-rudimentos', 'criar', 'novas', 'praticar', 'ensinar', 'tutor', 'transcrever', 'separar'];
+CLIENTE_ARQS.push('curso-guitarra-v2');
 let _cache = {};
 function arquivo(chave, fn) { if (!_cache[chave] || process.env.NODE_ENV === 'development') _cache[chave] = fn(); return _cache[chave]; }
 const ler = (...p) => fs.readFileSync(path.join(__dirname, ...p), 'utf8');
@@ -251,12 +252,18 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
   app.get('/music/criar', (req, res) => indiceFerramentas(res, 'criar', 'Criar', 'Instrumentos e ferramentas de estúdio de bolso, tocados no navegador. Sem gravação, sem envio: o som fica no seu aparelho.'));
   const livrosInstrumentosPdf = {
     'curso-violao-v2': ['livro-violao-v2.pdf', 'curso-violao-v2.pdf'],
+    'curso-guitarra-v2': ['livro-guitarra-v2.pdf', 'curso-guitarra-v2.pdf'],
     'curso-violao-livro': ['curso-violao.pdf', 'curso-violao.pdf'],
     'curso-guitarra-edicao': ['curso-guitarra.pdf', 'curso-guitarra.pdf'],
     'curso-guitarra-livro': ['curso-violao-guitarra.pdf', 'curso-violao-guitarra.pdf'],
   };
   app.get('/music/criar/curso-violao-v2.json', (req, res) => {
     const arquivo = path.join(__dirname, 'curso-violao-v2.json');
+    if (!fs.existsSync(arquivo)) return res.status(404).json({ erro: 'Curso ainda não foi gerado.' });
+    res.type('application/json').set('Cache-Control', 'no-cache').sendFile(arquivo);
+  });
+  app.get('/music/criar/curso-guitarra-v2.json', (req, res) => {
+    const arquivo = path.join(__dirname, 'curso-guitarra-v2.json');
     if (!fs.existsSync(arquivo)) return res.status(404).json({ erro: 'Curso ainda não foi gerado.' });
     res.type('application/json').set('Cache-Control', 'no-cache').sendFile(arquivo);
   });

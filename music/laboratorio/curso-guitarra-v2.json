@@ -1,0 +1,2696 @@
+{
+  "schema": "musique.course.book.v2",
+  "id": "curso-guitarra-v2",
+  "titulo": "Guitarra: do zero ao avançado",
+  "partes": 10,
+  "capitulos": [
+    {
+      "id": "01-historia-e-funcao",
+      "parte": 1,
+      "titulo": "Capítulo 1 — História e função da guitarra",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Ao terminar este capítulo, você deverá reconhecer o papel da guitarra elétrica, distinguir suas funções em um arranjo e escolher uma função musical antes de tocar.",
+            "**Nível:** iniciante.  **Pré-requisitos:** nenhum."
+          ]
+        },
+        {
+          "titulo": "A guitarra como instrumento de linguagem",
+          "conteudo": [
+            "A guitarra nasceu de uma família de instrumentos de cordas dedilhadas, mas sua identidade moderna foi construída quando captadores, amplificação e técnicas de controle de ruído permitiram que o instrumento ocupasse um espaço próprio na banda. A guitarra pode sustentar harmonia, marcar ritmo, responder à voz, criar um riff ou conduzir uma melodia.",
+            "O ponto de partida não é a distorção nem a velocidade. É a intenção: saber se a parte deve preencher, responder, sustentar ou conduzir."
+          ]
+        },
+        {
+          "titulo": "Quatro funções práticas",
+          "conteudo": [
+            "| Função | O que faz | Exemplo de decisão |",
+            "|---|---|---|",
+            "| Rítmica | mantém pulsação e acentos | tocar uma base curta e consistente |",
+            "| Harmônica | apresenta acordes e movimento | escolher voicings que não cubram a voz |",
+            "| Melódica | executa uma linha reconhecível | deixar espaços entre as frases |",
+            "| Solista | comenta e desenvolve motivos | destacar notas-alvo, não apenas correr pela escala |",
+            "Uma mesma guitarra pode mudar de função dentro da música. O arranjo fica mais claro quando essa mudança é planejada."
+          ]
+        },
+        {
+          "titulo": "Riff autoral de identificação",
+          "conteudo": [
+            "Toque o estudo abaixo com som limpo, uma nota por pulso. A linha usa as cordas 6 e 5 para demonstrar como um pequeno motivo pode funcionar como identidade rítmica.",
+            "```text",
+            "1 e & a  2 e & a  3 e & a  4 e & a",
+            "e|------------------------------------|",
+            "B|------------------------------------|",
+            "G|------------------------------------|",
+            "D|------------------------------------|",
+            "A|---------2-2-----5-2----------------|",
+            "E|-0-0-3-0-----3-0-----3-0------------|",
+            "```",
+            "Primeiro conte em voz alta. Depois toque com metrônomo a 60 bpm. A prioridade é que os dois “0-0” tenham o mesmo comprimento e que a última nota não adiante o tempo."
+          ]
+        },
+        {
+          "titulo": "Escuta orientada",
+          "conteudo": [
+            "Escolha uma gravação que você conheça e identifique: onde a guitarra sustenta acordes, onde marca ataques curtos, onde dobra a voz e onde assume uma melodia. Não procure copiar o timbre ainda; descreva a função."
+          ]
+        },
+        {
+          "titulo": "Erros comuns e correções",
+          "conteudo": [
+            "- **Tocar o tempo todo:** deixe espaços e observe a função da voz e do baixo.",
+            "- **Confundir volume com presença:** presença vem de ataque, registro e escolha de notas.",
+            "- **Usar distorção para esconder imprecisão:** repita o estudo limpo antes de conectar efeitos."
+          ]
+        },
+        {
+          "titulo": "Desafio",
+          "conteudo": [
+            "Crie duas versões do riff: uma com notas curtas e abafadas e outra com notas sustentadas. Explique qual versão funcionaria melhor como introdução e por quê."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Diferencio violão, guitarra elétrica e guitarra semiacústica.",
+            "- [ ] Identifico as quatro funções da guitarra.",
+            "- [ ] Toco o riff a 60 bpm sem perder o pulso.",
+            "- [ ] Consigo explicar a função da guitarra em uma gravação."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-1/01-historia-e-funcao.md"
+    },
+    {
+      "id": "02-anatomia-da-guitarra",
+      "parte": 1,
+      "titulo": "Capítulo 2 — Anatomia da guitarra",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Reconhecer as partes da guitarra, entender quais influenciam a execução e relacionar controles físicos às mudanças de som.",
+            "**Nível:** iniciante.  **Pré-requisitos:** capítulo 1."
+          ]
+        },
+        {
+          "titulo": "Mapa do instrumento",
+          "conteudo": [
+            "```text",
+            "tarraxas       pestana       braço / escala       corpo",
+            "o  o  o  o  o  o      |===========================|   _________",
+            "[cabeça]---------------| trastes                     / captador \\",
+            "|============================| ponte  o o |",
+            "\\_________/",
+            "```",
+            "As tarraxas alteram a tensão das cordas; a pestana guia as cordas na saída da cabeça; os trastes dividem a escala em semitons; a ponte ancora as cordas e, em alguns modelos, permite regulagens de entonação e alavanca."
+          ]
+        },
+        {
+          "titulo": "Captadores e controles",
+          "conteudo": [
+            "Captadores single-coil tendem a oferecer ataque definido e brilho; humbuckers combinam bobinas para reduzir ruído e geralmente entregam mais corpo. Essas são tendências, não regras: construção, regulagem, cordas, amplificador e técnica também participam do resultado.",
+            "```text",
+            "[captador braço] -- chave 3/5 posições -- [captador ponte]",
+            "|                         |",
+            "volume geral              tonalidade / filtro",
+            "```",
+            "Mude apenas um controle por vez. Toque a mesma nota em posição do braço e da ponte, depois compare volume, ataque e quantidade de agudos."
+          ]
+        },
+        {
+          "titulo": "Ponte fixa e ponte móvel",
+          "conteudo": [
+            "Uma ponte fixa costuma facilitar a estabilidade de afinação e a troca de cordas. Sistemas móveis adicionam possibilidades expressivas, mas exigem equilíbrio de tensão e regulagem cuidadosa. Não force a alavanca nem tente regular oitavas sem compreender o sistema."
+          ]
+        },
+        {
+          "titulo": "Aplicação prática",
+          "conteudo": [
+            "Com o amplificador em som limpo, selecione cada posição do captador e registre três palavras para cada uma: ataque, corpo e ruído. Repita com o controle de tonalidade fechado pela metade. O objetivo é aprender a ouvir causa e efeito."
+          ]
+        },
+        {
+          "titulo": "Erros comuns",
+          "conteudo": [
+            "- confundir captador com ponte;",
+            "- girar todos os controles sem comparar a mesma frase;",
+            "- tentar compensar uma guitarra desafinada usando a tonalidade;",
+            "- regular a ponte sem ferramenta ou diagnóstico."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Localizo as partes principais.",
+            "- [ ] Sei selecionar os captadores.",
+            "- [ ] Diferencio volume de tonalidade.",
+            "- [ ] Explico a diferença prática entre ponte fixa e móvel."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-1/02-anatomia-da-guitarra.md"
+    },
+    {
+      "id": "03-equipamentos-e-acessorios",
+      "parte": 1,
+      "titulo": "Capítulo 3 — Equipamentos e acessórios",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Montar uma cadeia segura e funcional para estudar, escolher acessórios e entender o que cada componente realmente acrescenta.",
+            "**Nível:** iniciante.  **Pré-requisitos:** capítulo 2."
+          ]
+        },
+        {
+          "titulo": "O caminho do sinal",
+          "conteudo": [
+            "```text",
+            "guitarra → cabo → afinador → efeitos → amplificador / interface → alto-falante",
+            "```",
+            "O cabo transporta o sinal; o afinador mede a frequência; os pedais processam; o amplificador aumenta e molda o sinal; o alto-falante transforma o sinal elétrico em som. Uma fonte inadequada pode danificar pedais, portanto confira tensão, polaridade e corrente antes de conectar."
+          ]
+        },
+        {
+          "titulo": "Kit essencial",
+          "conteudo": [
+            "| Item | Função | Critério inicial |",
+            "|---|---|---|",
+            "| Palheta | controla ataque e articulação | escolha espessura confortável |",
+            "| Correia | estabiliza o instrumento em pé | ajuste sem elevar o ombro |",
+            "| Cabo | conecta guitarra e sistema | use conectores firmes e sem ruído |",
+            "| Afinador | mede a afinação | prefira leitura estável |",
+            "| Amplificador ou interface | produz/encaminha o som | deve permitir estudar em volume seguro |",
+            "| Estojo ou bag | protege no transporte | acolchoamento e fechamento confiável |"
+          ]
+        },
+        {
+          "titulo": "Pedaleira não é requisito para começar",
+          "conteudo": [
+            "Um som limpo bem regulado revela a execução. Comece com guitarra, cabo, afinador e amplificação confiável. Depois adicione um único efeito para descobrir o que ele muda. Comprar vários pedais antes de saber descrever o timbre desejado cria complexidade sem direção."
+          ]
+        },
+        {
+          "titulo": "Segurança e organização",
+          "conteudo": [
+            "Conecte e desconecte com o volume baixo, enrole cabos sem apertá-los e mantenha fontes longe de líquidos. Em ensaio, identifique seus cabos e leve pelo menos uma palheta, um cabo reserva e uma solução de afinação."
+          ]
+        },
+        {
+          "titulo": "Desafio",
+          "conteudo": [
+            "Monte uma cadeia mínima e faça três gravações curtas do mesmo riff: direto na guitarra, com um overdrive leve e com um efeito de ambiência. Escreva o que mudou no ataque e no espaço, não apenas “ficou melhor”."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Sei montar o caminho básico do sinal.",
+            "- [ ] Escolho uma palheta e ajusto a correia.",
+            "- [ ] Reconheço a função do afinador, amplificador e interface.",
+            "- [ ] Consigo organizar o equipamento com segurança."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-1/03-equipamentos-e-acessorios.md"
+    },
+    {
+      "id": "04-afinacao-e-manutencao",
+      "parte": 1,
+      "titulo": "Capítulo 4 — Afinação e manutenção",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Afinar em E–A–D–G–B–E, verificar a estabilidade e criar uma rotina de manutenção sem substituir uma regulagem profissional.",
+            "**Nível:** iniciante.  **Pré-requisitos:** capítulo 3."
+          ]
+        },
+        {
+          "titulo": "Afinação padrão",
+          "conteudo": [
+            "Da sexta para a primeira corda: **E – A – D – G – B – E**. O afinador deve mostrar a nota e a direção do ajuste. Aperte a corda gradualmente para subir; solte com cuidado para descer. Sempre finalize aproximando a nota por baixo, reduzindo folga na tarraxa."
+          ]
+        },
+        {
+          "titulo": "Afinação relativa",
+          "conteudo": [
+            "Na afinação relativa, a quinta casa da sexta corda corresponde à quinta corda solta; a quinta casa da quinta corresponde à quarta; a quinta da quarta corresponde à terceira; a quarta casa da terceira corresponde à segunda; a quinta da segunda corresponde à primeira. Use esse método para perceber relações, mas confirme com afinador quando precisão for necessária."
+          ]
+        },
+        {
+          "titulo": "Afinações alternativas",
+          "conteudo": [
+            "| Nome | Da sexta à primeira | Uso comum |",
+            "|---|---|---|",
+            "| Padrão | E–A–D–G–B–E | base geral |",
+            "| Drop D | D–A–D–G–B–E | riffs graves e power chords |",
+            "| Meio tom abaixo | Eb–Ab–Db–Gb–Bb–Eb | conforto e cor mais grave |",
+            "| Aberta em D | D–A–D–F#–A–D | acordes abertos e slide |",
+            "Depois de mudar a afinação, confira todas as cordas de novo e não reutilize digitações sem verificar as notas."
+          ]
+        },
+        {
+          "titulo": "Troca de cordas e limpeza",
+          "conteudo": [
+            "Troque uma corda por vez quando ainda estiver aprendendo, limpe suor das cordas após tocar e use produto apropriado para a escala. Não aplique óleo ou solvente desconhecido em captadores, acabamento ou ponte."
+          ]
+        },
+        {
+          "titulo": "Diagnóstico simples",
+          "conteudo": [
+            "| Sintoma | Primeira verificação |",
+            "|---|---|",
+            "| desafina rapidamente | corda mal assentada, tarraxa ou ponte |",
+            "| trasteja | altura, alívio do braço ou técnica |",
+            "| nota fica aguda em casas altas | entonação e regulagem |",
+            "| ruído ao tocar | cabo, aterramento, ganho e interferência |",
+            "Se o problema persistir, encaminhe a guitarra a um profissional. A manutenção responsável começa por observar, não por girar parafusos aleatoriamente."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Afino as seis cordas com afinador.",
+            "- [ ] Conheço a relação entre as cordas na afinação relativa.",
+            "- [ ] Sei o que muda em Drop D.",
+            "- [ ] Limpo e guardo a guitarra adequadamente."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-1/04-afinacao-e-manutencao.md"
+    },
+    {
+      "id": "47-tocar-em-banda",
+      "parte": 10,
+      "titulo": "Capítulo 47 — Tocar em banda",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Escutar o conjunto, comunicar mudanças, dividir funções e tocar a serviço da música.",
+            "**Nível:** todos. **Pré-requisitos:** capítulos 12, 32 e 42."
+          ]
+        },
+        {
+          "titulo": "Escuta de conjunto",
+          "conteudo": [
+            "O guitarrista não deve ouvir apenas a própria caixa. Observe baixo, bateria, voz e outra guitarra. Se o baixo já ocupa o registro grave, suba o voicing; se a voz começa, reduza ataques e densidade."
+          ]
+        },
+        {
+          "titulo": "Comunicação",
+          "conteudo": [
+            "Combine contagem, sinais de entrada, finais e repetições antes do ensaio. Durante a execução, olhe para quem conduz e evite criar mudanças não combinadas."
+          ]
+        },
+        {
+          "titulo": "Volume e função",
+          "conteudo": [
+            "Mais volume não corrige uma parte mal definida. Use equalização, registro e dinâmica. Em duas guitarras, defina quem sustenta, quem responde e onde cada uma sai."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Escuto além da minha guitarra.",
+            "- [ ] Sei sinalizar entradas e finais.",
+            "- [ ] Divido registros entre guitarras.",
+            "- [ ] Ajusto volume em favor do conjunto."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-10/47-tocar-em-banda.md"
+    },
+    {
+      "id": "48-preparacao-para-apresentacoes",
+      "parte": 10,
+      "titulo": "Capítulo 48 — Preparação para apresentações",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Organizar repertório, passagem de som, equipamento reserva, afinação, presença de palco e conduta profissional."
+          ]
+        },
+        {
+          "titulo": "Antes de sair",
+          "conteudo": [
+            "Confira guitarra, correia, cabos, fonte, palhetas, afinador, bateria da pedaleira, adaptadores e solução de transporte. Leve um plano simples para falhas previsíveis."
+          ]
+        },
+        {
+          "titulo": "Passagem de som",
+          "conteudo": [
+            "Toque primeiro no volume necessário para o ambiente. Confira afinação, ruído, retorno, entradas e equilíbrio com voz e baixo. Não altere todos os presets no último minuto."
+          ]
+        },
+        {
+          "titulo": "Ansiedade e palco",
+          "conteudo": [
+            "Respire antes da entrada, conte internamente e concentre-se no primeiro compasso. Presença não exige movimentos exagerados; exige estabilidade, comunicação visual e atenção à música."
+          ]
+        },
+        {
+          "titulo": "Checklist de show",
+          "conteudo": [
+            "- [ ] Repertório e tons conferidos.",
+            "- [ ] Cabos e fonte reserva separados.",
+            "- [ ] Presets nomeados.",
+            "- [ ] Passagem de som realizada.",
+            "- [ ] Afinador acessível."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-10/48-preparacao-para-apresentacoes.md"
+    },
+    {
+      "id": "49-planos-de-estudo",
+      "parte": 10,
+      "titulo": "Capítulo 49 — Planos de estudo",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Organizar prática em diferentes disponibilidades de tempo, equilibrando aquecimento, técnica, ritmo, repertório, criação e revisão."
+          ]
+        },
+        {
+          "titulo": "Plano de 15 minutos",
+          "conteudo": [
+            "2 minutos de aquecimento; 4 de técnica; 4 de acordes ou riff; 3 de repertório; 2 de revisão."
+          ]
+        },
+        {
+          "titulo": "Plano de 30 minutos",
+          "conteudo": [
+            "5 minutos de aquecimento; 7 de palhetada ou ligados; 6 de acordes e ritmo; 7 de repertório; 5 de improvisação."
+          ]
+        },
+        {
+          "titulo": "Plano de 45 minutos",
+          "conteudo": [
+            "5 minutos de aquecimento; 10 de técnica; 8 de leitura; 8 de escalas e arpejos; 9 de repertório; 5 de criação."
+          ]
+        },
+        {
+          "titulo": "Plano de 60 minutos",
+          "conteudo": [
+            "8 minutos de aquecimento; 12 de técnica; 10 de acordes e ritmo; 10 de teoria aplicada; 12 de repertório; 8 de improvisação."
+          ]
+        },
+        {
+          "titulo": "Plano de 90 minutos",
+          "conteudo": [
+            "10 minutos de aquecimento; 20 de técnica; 15 de leitura; 15 de harmonia; 15 de repertório; 10 de criação; 5 de revisão."
+          ]
+        },
+        {
+          "titulo": "Plano de 2 horas",
+          "conteudo": [
+            "15 minutos de aquecimento; 25 de técnica; 20 de leitura e teoria; 20 de acordes e ritmo; 25 de repertório; 10 de improvisação; 5 de registro."
+          ]
+        },
+        {
+          "titulo": "Regra de progressão",
+          "conteudo": [
+            "Registre andamento, qualidade do som e tensão percebida. Aumente dificuldade apenas quando conseguir repetir com pulso, afinação e relaxamento. Distribua os conteúdos pela semana em vez de tentar resolver tudo em uma sessão."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Escolho um plano realista.",
+            "- [ ] Incluo técnica e música.",
+            "- [ ] Registro andamento e observações.",
+            "- [ ] Reviso conteúdos anteriores."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-10/49-planos-de-estudo.md"
+    },
+    {
+      "id": "05-postura-e-ergonomia",
+      "parte": 2,
+      "titulo": "Capítulo 5 — Postura e ergonomia",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Organizar a guitarra no corpo, reduzir tensão desnecessária e estabelecer uma rotina segura de aquecimento e pausas.",
+            "**Nível:** iniciante.  **Pré-requisitos:** capítulos 1–4."
+          ]
+        },
+        {
+          "titulo": "A postura serve ao movimento",
+          "conteudo": [
+            "A postura não é uma pose fixa. Ela cria condições para que as mãos se movam sem compensações. Sente-se com os pés apoiados, mantenha a coluna confortável e ajuste a correia para que a guitarra fique em altura semelhante sentado e em pé.",
+            "```text",
+            "vista lateral — objetivo: punho neutro e ombro solto",
+            "cabeça alinhada",
+            "O",
+            "/|\\       ombros baixos",
+            "/ | \\____  guitarra apoiada pela correia",
+            "/  |     \\",
+            "/  / \\      \\  pés apoiados",
+            "```",
+            "Não existe uma única altura correta. Existe uma altura em que a mão esquerda alcança as casas sem dobrar excessivamente o punho e a mão direita consegue atacar as cordas sem elevar o ombro."
+          ]
+        },
+        {
+          "titulo": "Teste de tensão",
+          "conteudo": [
+            "Toque seis notas cromáticas lentamente. Pare a cada quatro notas e observe mandíbula, ombros, polegar e antebraço. Se algum deles endurecer, reduza a força e o andamento. A sensação de esforço deve vir da atenção, não de apertar a guitarra."
+          ]
+        },
+        {
+          "titulo": "Aquecimento de quatro minutos",
+          "conteudo": [
+            "1. abra e feche as mãos sem força por 30 segundos;",
+            "2. faça círculos pequenos com os ombros;",
+            "3. toque cordas soltas alternando a palheta a 50 bpm;",
+            "4. execute 1-2-3-4 em cada corda, sem acelerar;",
+            "5. faça uma pausa e avalie o corpo antes de continuar."
+          ]
+        },
+        {
+          "titulo": "Em pé e sentado",
+          "conteudo": [
+            "Em pé, a correia deve sustentar o instrumento sem que a mão esquerda precise segurá-lo. Sentado, não apoie a guitarra em posição que faça o corpo inclinar constantemente. Grave dez segundos de cada posição e escolha a que deixa o movimento mais silencioso e equilibrado."
+          ]
+        },
+        {
+          "titulo": "Erros comuns",
+          "conteudo": [
+            "- levantar o ombro direito para alcançar a ponte;",
+            "- deixar o punho esquerdo colapsar atrás do braço;",
+            "- apertar o polegar como uma pinça;",
+            "- ignorar dor persistente.",
+            "Dor não é um sinal para insistir. Interrompa, descanse e procure orientação especializada se o desconforto persistir."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Ajusto a correia sem elevar os ombros.",
+            "- [ ] Mantenho os pés apoiados.",
+            "- [ ] Reconheço tensão antes que ela aumente.",
+            "- [ ] Faço pausas curtas durante o estudo."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-2/05-postura-e-ergonomia.md"
+    },
+    {
+      "id": "06-tecnica-da-mao-direita",
+      "parte": 2,
+      "titulo": "Capítulo 6 — Técnica da mão direita",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Controlar a palheta, produzir ataques para baixo e para cima, iniciar a palhetada alternada e usar dinâmica e abafamento.",
+            "**Nível:** iniciante.  **Pré-requisitos:** capítulo 5."
+          ]
+        },
+        {
+          "titulo": "Como segurar a palheta",
+          "conteudo": [
+            "Prenda a palheta entre a lateral do polegar e a lateral do indicador. Deixe apenas uma pequena ponta exposta. A pressão precisa ser suficiente para a palheta não escapar, mas não tão grande que bloqueie o movimento do punho.",
+            "```text",
+            "polegar  ───────●  ponta curta da palheta",
+            "indicador ──────┘",
+            "↓ ataque atravessa a corda, não a empurra profundamente",
+            "```"
+          ]
+        },
+        {
+          "titulo": "Ataques e direção",
+          "conteudo": [
+            "Comece em uma corda solta, alternando quatro ataques para baixo e quatro para cima. Depois faça movimentos contínuos de baixo e cima, mesmo quando o som sair apenas em uma direção. Esse movimento pendular prepara a subdivisão.",
+            "```text",
+            "contagem:  1   e   2   e   3   e   4   e",
+            "palheta:   ↓   ↑   ↓   ↑   ↓   ↑   ↓   ↑",
+            "```"
+          ]
+        },
+        {
+          "titulo": "Primeiro estudo de palhetada alternada",
+          "conteudo": [
+            "```text",
+            "e|-----------------------------------------|",
+            "B|-----------------------------------------|",
+            "G|-----------------------------------------|",
+            "D|-------------------------0-0-0-0---------|",
+            "A|-------------0-0-0-0---------------------|",
+            "E|-0-0-0-0-----------------------------0---|",
+            "↓ ↑ ↓ ↑     ↓ ↑ ↓ ↑     ↓ ↑ ↓ ↑     ↓",
+            "```",
+            "Use 60 bpm e toque quatro notas por corda. O objetivo é manter a distância da palheta em relação à corda e não produzir ruído nas cordas vizinhas."
+          ]
+        },
+        {
+          "titulo": "Dinâmica e acentos",
+          "conteudo": [
+            "Toque oito colcheias iguais e acentue somente a primeira de cada grupo. Depois desloque o acento para a segunda, terceira e quarta colcheias. A mão deve continuar regular enquanto a intensidade muda."
+          ]
+        },
+        {
+          "titulo": "Palm mute",
+          "conteudo": [
+            "Encoste levemente a lateral da mão na região próxima à ponte. O abafamento deve encurtar o som, não eliminá-lo. Compare três níveis: leve, médio e forte. O efeito musical está na escolha, não no máximo de abafamento."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Seguro a palheta sem excesso de pressão.",
+            "- [ ] Mantenho o movimento alternado.",
+            "- [ ] Consigo deslocar acentos sem perder o pulso.",
+            "- [ ] Diferencio som aberto de palm mute."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-2/06-tecnica-da-mao-direita.md"
+    },
+    {
+      "id": "07-tecnica-da-mao-esquerda",
+      "parte": 2,
+      "titulo": "Capítulo 7 — Técnica da mão esquerda",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Posicionar o polegar, curvar os dedos, usar a menor pressão necessária e mudar de posição sem ruídos excessivos.",
+            "**Nível:** iniciante.  **Pré-requisitos:** capítulos 5 e 6."
+          ]
+        },
+        {
+          "titulo": "Posição e pressão",
+          "conteudo": [
+            "O polegar oferece referência atrás do braço; ele não precisa esmagar a escala. Coloque o dedo próximo ao traste, pressione até a nota soar e reduza lentamente a força até encontrar o ponto mínimo de clareza.",
+            "```text",
+            "vista superior simplificada",
+            "dedo 1      dedo 2       dedo 3       dedo 4",
+            "|           |            |            |",
+            "--●-----------●------------●------------●--  escala",
+            "polegar apoiado atrás, sem apertar",
+            "```"
+          ]
+        },
+        {
+          "titulo": "Cromatismo 1-2-3-4",
+          "conteudo": [
+            "```text",
+            "e|--------------------------------1-2-3-4-|",
+            "B|------------------------1-2-3-4---------|",
+            "G|----------------1-2-3-4-----------------|",
+            "D|--------1-2-3-4-------------------------|",
+            "A|1-2-3-4---------------------------------|",
+            "E|-----------------------------------------|",
+            "```",
+            "Toque uma nota por clique a 50 bpm. Mantenha dedos que não estão tocando próximos à escala, mas não os prenda contra ela. Suba e desça antes de aumentar o andamento."
+          ]
+        },
+        {
+          "titulo": "Mudança de posição",
+          "conteudo": [
+            "Para mudar de casa, libere parte da pressão sem retirar completamente o dedo-guia. Faça um deslocamento silencioso e pressione novamente no destino. Treine uma única corda com os pares 3–5, 5–7 e 7–9."
+          ]
+        },
+        {
+          "titulo": "Abafamento",
+          "conteudo": [
+            "A mão esquerda pode encostar levemente em cordas que não devem soar. Teste o exercício tocando uma corda por vez e verifique se o ruído desaparece quando você interrompe a nota."
+          ]
+        },
+        {
+          "titulo": "Correção de erros",
+          "conteudo": [
+            "- nota trastejando: aproxime o dedo do traste e revise a pressão;",
+            "- nota abafada: verifique se outro dedo encosta na corda;",
+            "- mudança barulhenta: diminua a pressão antes de deslocar;",
+            "- fadiga: reduza o tempo e faça uma pausa."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Uso o polegar como apoio, não como prensa.",
+            "- [ ] Encontro o ponto mínimo de pressão.",
+            "- [ ] Faço o cromatismo com som uniforme.",
+            "- [ ] Mudo de posição sem arrastar força pela escala."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-2/07-tecnica-da-mao-esquerda.md"
+    },
+    {
+      "id": "08-primeiras-notas-e-melodias",
+      "parte": 2,
+      "titulo": "Capítulo 8 — Primeiras notas e melodias",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Relacionar cordas soltas, primeira posição, coordenação entre as mãos e leitura de uma melodia curta.",
+            "**Nível:** iniciante.  **Pré-requisitos:** capítulos 6 e 7."
+          ]
+        },
+        {
+          "titulo": "Cordas soltas",
+          "conteudo": [
+            "Da sexta para a primeira, as cordas soltas são E, A, D, G, B e E. Toque cada uma com ataque alternado e conte quatro pulsos antes de passar à próxima. Ouça a diferença de registro e duração."
+          ]
+        },
+        {
+          "titulo": "Melodia autoral em primeira posição",
+          "conteudo": [
+            "```text",
+            "1   e   2   e   3   e   4   e",
+            "e|---------0-1-3-1-0---------------------|",
+            "B|-0-1-3-------------3-1-0---------------|",
+            "G|---------------------------2-0---------|",
+            "D|-------------------------------2-------|",
+            "A|---------------------------------------|",
+            "E|---------------------------------------|",
+            "```",
+            "Use palhetada alternada começando para baixo. Quando uma frase atravessar duas cordas, mantenha o movimento da palheta regular e deixe a mão esquerda preparar o próximo dedo."
+          ]
+        },
+        {
+          "titulo": "Relação com a partitura",
+          "conteudo": [
+            "O primeiro compasso usa notas da primeira e segunda cordas em posição aberta. A tablatura mostra onde tocar; a partitura mostra altura e duração. O guitarrista completo aprende a usar as duas informações, não apenas a sequência de casas."
+          ]
+        },
+        {
+          "titulo": "Metrônomo e memória",
+          "conteudo": [
+            "Estude em 50 bpm. Toque lendo, depois esconda a tablatura e tente lembrar a direção da frase. Em seguida, toque começando no segundo compasso. Inverter o ponto de início ajuda a transformar o exercício em música memorizada."
+          ]
+        },
+        {
+          "titulo": "Ouvido",
+          "conteudo": [
+            "Toque a primeira frase e cante-a antes de repetir. Depois encontre a primeira nota sem olhar para a tablatura. O objetivo é criar ligação entre ouvido, mão e leitura."
+          ]
+        },
+        {
+          "titulo": "Desafio",
+          "conteudo": [
+            "Componha uma resposta de dois compassos usando apenas as notas da primeira posição. Termine em uma nota longa e deixe um espaço antes de repetir a pergunta."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Reconheço as cordas soltas.",
+            "- [ ] Toco a melodia com pulso constante.",
+            "- [ ] Entendo a função conjunta de partitura e tablatura.",
+            "- [ ] Consigo criar uma resposta curta para a frase."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-2/08-primeiras-notas-e-melodias.md"
+    },
+    {
+      "id": "09-acordes-abertos",
+      "parte": 3,
+      "titulo": "Capítulo 9 — Acordes abertos",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Montar acordes essenciais, ouvir cada nota e trocar entre formas sem interromper o pulso.",
+            "**Nível:** iniciante. **Pré-requisitos:** Parte 2."
+          ]
+        },
+        {
+          "titulo": "Como ler um diagrama",
+          "conteudo": [
+            "As linhas verticais representam as cordas, da sexta à primeira; as horizontais representam trastes. Um ponto indica a casa e o dedo; `O` é corda solta; `X` é corda abafada.",
+            "```text",
+            "E     A     D     G     B     e",
+            "C       X     3     2     0     1     0",
+            "G       3     2     0     0     0     3",
+            "D       X     X     0     2     3     2",
+            "A       X     0     2     2     2     0",
+            "E       0     2     2     1     0     0",
+            "Em      0     2     2     0     0     0",
+            "Am      X     0     2     2     1     0",
+            "Dm      X     X     0     2     3     1",
+            "```",
+            "Os números acima são as casas, não necessariamente os dedos. Monte a forma, toque corda por corda e corrija qualquer nota abafada antes de fazer a batida completa."
+          ]
+        },
+        {
+          "titulo": "Progressões de entrada",
+          "conteudo": [
+            "```text",
+            "| C  | G  | Am | F  |",
+            "| D  | A  | E  | E  |",
+            "| Am | Dm | G  | C  |",
+            "```",
+            "Toque quatro pulsos por acorde a 50 bpm. Depois troque a cada dois pulsos. O desafio é preparar o próximo formato antes do primeiro pulso do novo compasso."
+          ]
+        },
+        {
+          "titulo": "Sétimas e cor",
+          "conteudo": [
+            "E7, A7 e B7 introduzem tensão dominante. Compare `E` e `E7`: a pequena mudança de uma nota já altera a direção harmônica. Use a audição para perceber a necessidade de resolução, não apenas a forma visual."
+          ]
+        },
+        {
+          "titulo": "Erros comuns",
+          "conteudo": [
+            "- tocar sem conferir todas as cordas;",
+            "- levantar todos os dedos entre acordes;",
+            "- apertar demais a pestana inexistente;",
+            "- acelerar a troca e perder o compasso."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Leio X, O e números no diagrama.",
+            "- [ ] Monto C, G, D, A, E, Em, Am e Dm.",
+            "- [ ] Troco acordes com metrônomo.",
+            "- [ ] Ouço a diferença entre acorde maior, menor e dominante."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-3/09-acordes-abertos.md"
+    },
+    {
+      "id": "10-pestanas-e-acordes-moveis",
+      "parte": 3,
+      "titulo": "Capítulo 10 — Pestanas e acordes móveis",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Construir pestanas progressivamente, usar formas derivadas de E e A e deslocar acordes com afinação estável.",
+            "**Nível:** iniciante avançado. **Pré-requisitos:** capítulos 7 e 9."
+          ]
+        },
+        {
+          "titulo": "A pestana é distribuição de pressão",
+          "conteudo": [
+            "O indicador não precisa esmagar todas as cordas o tempo todo. Posicione-o próximo ao traste, curve a lateral do dedo quando necessário e deixe a mão completar apenas a pressão indispensável.",
+            "```text",
+            "forma maior derivada de E — exemplo F",
+            "e|-1-| indicador: pestana",
+            "B|-1-|",
+            "G|-2-| dedo 2",
+            "D|-3-| dedo 4",
+            "A|-3-| dedo 3",
+            "E|-1-| indicador",
+            "```",
+            "Comece com duas cordas, depois três e só então tente a forma completa. Toque cada corda isoladamente para descobrir onde a nota falha."
+          ]
+        },
+        {
+          "titulo": "Forma derivada de A",
+          "conteudo": [
+            "```text",
+            "forma móvel de A — exemplo B maior",
+            "e|-2-| pestana",
+            "B|-4-| dedo 3",
+            "G|-4-| dedo 3",
+            "D|-4-| dedo 3",
+            "A|-2-| pestana",
+            "E|-X|",
+            "```",
+            "A forma pode ser reorganizada conforme a mão. O princípio é manter a tônica e a relação entre as vozes, não decorar uma única posição rígida."
+          ]
+        },
+        {
+          "titulo": "Exercício de resistência musical",
+          "conteudo": [
+            "```text",
+            "| F  | G  | A  | G  |",
+            "```",
+            "Toque sem parar a 45 bpm, com quatro pulsos por acorde. Se a mão cansar, pare, relaxe e retome mais lento. Resistência vem de economia, não de suportar dor."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Faço pestana parcial sem tensão excessiva.",
+            "- [ ] Reconheço formas derivadas de E e A.",
+            "- [ ] Desloco o mesmo formato para outras tônicas.",
+            "- [ ] Mantenho afinação e clareza ao trocar."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-3/10-pestanas-e-acordes-moveis.md"
+    },
+    {
+      "id": "11-power-chords",
+      "parte": 3,
+      "titulo": "Capítulo 11 — Power chords",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Entender tônica e quinta, movimentar formas pelo braço e integrar power chords com palm mute e dinâmica.",
+            "**Nível:** iniciante avançado. **Pré-requisitos:** capítulos 6, 7 e 10."
+          ]
+        },
+        {
+          "titulo": "Estrutura",
+          "conteudo": [
+            "Um power chord básico contém tônica e quinta. Ele não define maior ou menor, por isso funciona bem em bases com distorção e em riffs que precisam de clareza.",
+            "```text",
+            "E5 — duas notas",
+            "e|---|",
+            "B|---|",
+            "G|---|",
+            "D|-2-| quinta",
+            "A|-2-| tônica",
+            "E|-0-| tônica",
+            "A5 — três notas",
+            "e|---|",
+            "B|---|",
+            "G|---|",
+            "D|-2-|",
+            "A|-0-|",
+            "E|---|",
+            "```"
+          ]
+        },
+        {
+          "titulo": "Riff autoral com deslocamento",
+          "conteudo": [
+            "```text",
+            "PM---      PM---",
+            "e|--------------------------|",
+            "B|--------------------------|",
+            "G|--------------------------|",
+            "D|-2-2-2-5-5-5-7-7-5-5------|",
+            "A|-2-2-2-5-5-5-7-7-5-5------|",
+            "E|-0-0-0-3-3-3-5-5-3-3------|",
+            "↓ ↑ ↓  ↓ ↑ ↓  ↓ ↑ ↓ ↑",
+            "```",
+            "O abafamento deve manter as notas audíveis, mas curtas. Toque primeiro sem distorção; depois acrescente ganho apenas até perceber se o ataque continua definido."
+          ]
+        },
+        {
+          "titulo": "Duas e três notas",
+          "conteudo": [
+            "A forma de duas notas é eficiente para linhas rápidas. A terceira nota dobra a tônica uma oitava acima e dá mais corpo. Compare as duas em uma gravação e escolha conforme o registro ocupado pelo baixo."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Identifico tônica e quinta.",
+            "- [ ] Movo uma forma de power chord sem alterar a relação interna.",
+            "- [ ] Uso palm mute com controle.",
+            "- [ ] Sei quando duas notas são suficientes."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-3/11-power-chords.md"
+    },
+    {
+      "id": "12-ritmos-e-bases",
+      "parte": 3,
+      "titulo": "Capítulo 12 — Ritmos e bases",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Executar colcheias, semicolcheias, síncopas, contratempos e bases de diferentes estilos com estabilidade."
+          ]
+        },
+        {
+          "titulo": "Grade rítmica",
+          "conteudo": [
+            "```text",
+            "contagem: 1 e & a 2 e & a 3 e & a 4 e & a",
+            "ataque:   ↓   ↑ ↓   ↓   ↑   ↓   ↑ ↓   ↓ ↑",
+            "```",
+            "Não transforme toda subdivisão em ataque. A mão pode continuar em movimento enquanto o som aparece apenas nos pontos escolhidos."
+          ]
+        },
+        {
+          "titulo": "Base de rock",
+          "conteudo": [
+            "Use power chords com colcheias e acentos no primeiro pulso. Depois remova ataques alternados para criar espaço. A base deve continuar reconhecível mesmo quando simplificada."
+          ]
+        },
+        {
+          "titulo": "Funk e semicolcheias",
+          "conteudo": [
+            "Pense em `1 e & a`. Toque ataques curtos, abafe as cordas e deixe apenas alguns acentos soarem. O silêncio é parte do ritmo."
+          ]
+        },
+        {
+          "titulo": "Contratempo e reggae",
+          "conteudo": [
+            "Marque o ataque nos espaços entre os tempos, com som curto e limpo. Toque devagar, ouvindo a relação com um pulso imaginário de baixo e bateria."
+          ]
+        },
+        {
+          "titulo": "Música brasileira",
+          "conteudo": [
+            "Adapte acentos, não apenas desenhos de mão. Para samba, baião, choro e frevo, estude primeiro o padrão de acentuação e depois escolha voicings que não ocupem o espaço do instrumento grave."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Conto colcheias e semicolcheias.",
+            "- [ ] Mantenho movimento sem atacar tudo.",
+            "- [ ] Diferencio base de rock, funk e contratempo.",
+            "- [ ] Consigo tocar uma base curta com espaço."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-3/12-ritmos-e-bases.md"
+    },
+    {
+      "id": "13-o-metronomo",
+      "parte": 3,
+      "titulo": "Capítulo 13 — O metrônomo",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Usar o metrônomo para desenvolver precisão, subdivisão, estabilidade e controle de andamento."
+          ]
+        },
+        {
+          "titulo": "Progressão segura",
+          "conteudo": [
+            "Escolha um andamento em que o exercício fique limpo três vezes seguidas. Aumente 5 bpm. Se a execução perder relaxamento ou clareza, volte 10 bpm e permaneça ali.",
+            "```text",
+            "50 → 55 → 60 → 65 bpm",
+            "↑ só avança depois de três repetições estáveis",
+            "```"
+          ]
+        },
+        {
+          "titulo": "Metrônomo nos tempos 2 e 4",
+          "conteudo": [
+            "Configure ou imagine o clique apenas nos tempos 2 e 4. Isso transforma o clique em referência de backbeat e revela se o guitarrista está adiantando ou atrasando."
+          ]
+        },
+        {
+          "titulo": "Espaços sem tocar",
+          "conteudo": [
+            "Toque um compasso e descanse outro mantendo a contagem. A música continua durante o silêncio. Grave o exercício e confira se o retorno acontece no mesmo pulso."
+          ]
+        },
+        {
+          "titulo": "Critério de domínio",
+          "conteudo": [
+            "Considere o estudo dominado quando você consegue:",
+            "- começar depois de dois cliques;",
+            "- manter o andamento por dois minutos;",
+            "- tocar com volume uniforme;",
+            "- parar no fim do compasso;",
+            "- retomar depois de um compasso de silêncio."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Uso aumentos pequenos de andamento.",
+            "- [ ] Consigo tocar com clique nos tempos 2 e 4.",
+            "- [ ] Mantenho o pulso durante pausas.",
+            "- [ ] Registro o andamento real, sem confundir velocidade com domínio."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-3/13-o-metronomo.md"
+    },
+    {
+      "id": "14-cifras-e-diagramas",
+      "parte": 4,
+      "titulo": "Capítulo 14 — Cifras e diagramas",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Ler cifras maiores, menores, dominantes, suspensas, com sexta e com extensões, relacionando o símbolo às notas e ao braço.",
+            "**Nível:** iniciante avançado. **Pré-requisitos:** capítulos 9 e 10."
+          ]
+        },
+        {
+          "titulo": "A cifra é uma instrução harmônica",
+          "conteudo": [
+            "`C` indica dó maior; `Cm` acrescenta a terça menor; `C7` acrescenta a sétima menor; `Csus4` substitui a terça pela quarta; `C6` acrescenta a sexta. A cifra não determina uma única forma: escolha a voicing conforme registro, função e conforto.",
+            "```text",
+            "símbolo      estrutura básica        pergunta musical",
+            "C            1–3–5                   qual registro ocupa?",
+            "Cm           1–b3–5                  onde está a terça menor?",
+            "C7           1–3–5–b7                resolve para onde?",
+            "Csus4        1–4–5                   quando liberar a suspensão?",
+            "Cadd9        1–3–5–9                há espaço para a extensão?",
+            "```"
+          ]
+        },
+        {
+          "titulo": "Baixos alternativos e inversões",
+          "conteudo": [
+            "`C/E` significa dó com mi no baixo. O acorde continua sendo C, mas a linha grave muda. Toque `C`, depois `C/E`, e ouça como o movimento do baixo cria direção sem trocar totalmente a harmonia."
+          ]
+        },
+        {
+          "titulo": "Exercício de voicings",
+          "conteudo": [
+            "Toque a progressão em duas regiões:",
+            "```text",
+            "| C | G/B | Am | F |",
+            "```",
+            "Na primeira volta use acordes abertos. Na segunda, procure formas próximas no braço. O objetivo é reduzir saltos e construir condução de vozes."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Leio maior, menor, dominante e suspenso.",
+            "- [ ] Entendo baixo alternativo.",
+            "- [ ] Distingo símbolo de forma.",
+            "- [ ] Escolho voicings considerando registro e movimento."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-4/14-cifras-e-diagramas.md"
+    },
+    {
+      "id": "15-tablatura",
+      "parte": 4,
+      "titulo": "Capítulo 15 — Tablatura",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Ler casas, cordas, articulações e ritmo associado à tablatura sem depender apenas da memória visual."
+          ]
+        },
+        {
+          "titulo": "Linhas e direção",
+          "conteudo": [
+            "Na tablatura, a linha superior representa a primeira corda, mais aguda. O número indica a casa; `0` indica corda solta. O ritmo precisa vir escrito acima, abaixo ou em uma partitura complementar.",
+            "```text",
+            "ritmo:    1   e   &   a   2   e   &   a",
+            "e|--------0---1---3---1---0---------------|",
+            "B|----------------------------3---1---0---|",
+            "G|----------------------------------------|",
+            "D|----------------------------------------|",
+            "A|----------------------------------------|",
+            "E|----------------------------------------|",
+            "```"
+          ]
+        },
+        {
+          "titulo": "Articulações",
+          "conteudo": [
+            "```text",
+            "e|-5h7-7p5-5/9-9b(11)~~-|",
+            "h   p   /    b     vibrato",
+            "```",
+            "`h` é hammer-on; `p`, pull-off; `/`, slide ascendente; `b`, bend; `~`, vibrato. Leia a articulação como parte da frase: a mesma sequência de notas com ataques diferentes produz outra música."
+          ]
+        },
+        {
+          "titulo": "Palm mute e harmônicos",
+          "conteudo": [
+            "```text",
+            "PM----|       harmônico natural",
+            "e|----------------|--<12>--|",
+            "B|----------------|---------|",
+            "E|-0-0-0-0--------|---------|",
+            "```",
+            "O sinal `PM` deve ser acompanhado de uma indicação de intensidade quando necessário. Harmônicos precisam de toque leve no ponto indicado, não de pressão normal."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Sei localizar cordas e casas.",
+            "- [ ] Leio articulações básicas.",
+            "- [ ] Procuro a informação rítmica.",
+            "- [ ] Executo uma tablatura sem perder o pulso."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-4/15-tablatura.md"
+    },
+    {
+      "id": "16-introducao-a-partitura",
+      "parte": 4,
+      "titulo": "Capítulo 16 — Introdução à partitura",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Reconhecer pentagrama, clave de sol, notas naturais, valores rítmicos e a relação entre partitura, tablatura e braço.",
+            "**Nível:** iniciante. **Pré-requisitos:** capítulo 8."
+          ]
+        },
+        {
+          "titulo": "Altura e duração",
+          "conteudo": [
+            "A partitura informa altura e duração. A tablatura informa a localização física. Para guitarra, usar as duas reduz ambiguidades e amplia a leitura.",
+            "```text",
+            "semínimas:  | ♩  ♩  ♩  ♩ |",
+            "colcheias:  | ♪ ♪ ♪ ♪ ♪ ♪ ♪ ♪ |",
+            "pausas:     | 𝄽       𝄽     |",
+            "```",
+            "Em um material impresso, confirme a duração pela fórmula de compasso e pela disposição rítmica. Não trate números da tablatura como se fossem ritmo."
+          ]
+        },
+        {
+          "titulo": "Primeira posição",
+          "conteudo": [
+            "Comece com notas naturais nas três primeiras casas. Toque uma nota, diga seu nome e encontre a mesma altura em outra corda quando possível. Esse exercício liga leitura, ouvido e braço."
+          ]
+        },
+        {
+          "titulo": "Leitura curta",
+          "conteudo": [
+            "Toque quatro compassos de semínimas em 60 bpm. Leia o ritmo falando “um, dois, três, quatro” antes de tocar. Depois alterne duas notas e mantenha o mesmo valor. A primeira meta é não interromper o pulso."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Reconheço pentagrama e clave de sol.",
+            "- [ ] Diferencio altura de duração.",
+            "- [ ] Entendo a função complementar da tablatura.",
+            "- [ ] Leio uma frase simples em primeira posição."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-4/16-introducao-a-partitura.md"
+    },
+    {
+      "id": "17-notas-no-braco",
+      "parte": 4,
+      "titulo": "Capítulo 17 — Notas no braço",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Localizar notas naturais, usar oitavas e construir um método de memorização por regiões."
+          ]
+        },
+        {
+          "titulo": "Referências fixas",
+          "conteudo": [
+            "Na sexta e na primeira corda, as notas se repetem: E, F na casa 1, G na casa 3, A na 5, B na 7, C na 8, D na 10 e E na 12. Use essas casas como âncoras.",
+            "```text",
+            "6ª / 1ª corda: E  F  G  A  B  C  D  E",
+            "casas:          0  1  3  5  7  8 10 12",
+            "```"
+          ]
+        },
+        {
+          "titulo": "Oitavas",
+          "conteudo": [
+            "Uma oitava mantém o mesmo nome em registro diferente. Encontre o E da sexta corda solta e o E na segunda casa da quarta corda. Toque os dois e compare a relação."
+          ]
+        },
+        {
+          "titulo": "Plano de sete dias",
+          "conteudo": [
+            "1. memorize E, A e D nas seis primeiras casas;",
+            "2. acrescente G, B e C;",
+            "3. encontre todas as notas de uma mesma letra;",
+            "4. pratique apenas uma corda;",
+            "5. pratique apenas uma região;",
+            "6. combine regiões;",
+            "7. teste sem olhar."
+          ]
+        },
+        {
+          "titulo": "Aplicação",
+          "conteudo": [
+            "Escolha uma nota-alvo para terminar um riff. Toque o riff em três regiões diferentes, mantendo a mesma nota final. O exercício transforma memorização em escolha musical."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Uso as notas da sexta e primeira cordas como referência.",
+            "- [ ] Localizo oitavas.",
+            "- [ ] Encontro uma nota em mais de uma região.",
+            "- [ ] Consigo nomear notas sem contar todas as casas."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-4/17-notas-no-braco.md"
+    },
+    {
+      "id": "18-tons-semitons-e-intervalos",
+      "parte": 4,
+      "titulo": "Capítulo 18 — Tons, semitons e intervalos",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Entender a distância entre notas e usar intervalos para formar acordes, riffs e melodias."
+          ]
+        },
+        {
+          "titulo": "Distâncias",
+          "conteudo": [
+            "Um semitom é a distância de uma casa; dois semitons formam um tom. Uníssono é a mesma nota; oitava é a repetição do nome em outro registro.",
+            "```text",
+            "E — F — F# — G — G# — A",
+            "0   1    2    3    4    5   casas na mesma corda",
+            "```"
+          ]
+        },
+        {
+          "titulo": "Intervalos essenciais",
+          "conteudo": [
+            "| Intervalo | Exemplo a partir de C | Uso frequente |",
+            "|---|---|---|",
+            "| terça maior | E | define acorde maior |",
+            "| terça menor | Eb | define acorde menor |",
+            "| quarta justa | F | suspensão e movimento |",
+            "| quinta justa | G | power chord |",
+            "| sexta | A | extensão e melodia |",
+            "| sétima menor | Bb | dominante e blues |",
+            "| oitava | C | reforço de registro |"
+          ]
+        },
+        {
+          "titulo": "Ouvido e braço",
+          "conteudo": [
+            "Toque C–G e cante a distância. Depois toque C–E e compare. Não memorize apenas nomes: associe cada intervalo a uma cor sonora e a um movimento no braço."
+          ]
+        },
+        {
+          "titulo": "Aplicação em riff",
+          "conteudo": [
+            "Crie uma linha usando tônica, quinta e oitava. Depois acrescente a terça e perceba como ela define maior ou menor. Esse é o caminho mais curto entre teoria e criação."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Diferencio tom e semitom.",
+            "- [ ] Reconheço terça, quinta, sétima e oitava.",
+            "- [ ] Uso quinta e oitava em um riff.",
+            "- [ ] Ouço a função da terça."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-4/18-tons-semitons-e-intervalos.md"
+    },
+    {
+      "id": "19-escala-maior",
+      "parte": 5,
+      "titulo": "Capítulo 19 — Escala maior",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Compreender a fórmula da escala maior, organizar digitações e aplicar graus em frases simples.",
+            "**Nível:** intermediário inicial. **Pré-requisitos:** Parte 4."
+          ]
+        },
+        {
+          "titulo": "Fórmula",
+          "conteudo": [
+            "A escala maior segue: tom, tom, semitom, tom, tom, tom, semitom. Em C: C–D–E–F–G–A–B–C.",
+            "```text",
+            "grau:  1   2   3   4   5   6   7   8",
+            "nota:  C   D   E   F   G   A   B   C",
+            "dist.: T   T   S   T   T   T   S",
+            "```"
+          ]
+        },
+        {
+          "titulo": "Uma posição em C maior",
+          "conteudo": [
+            "```text",
+            "e|----------------0-1-3-|",
+            "B|------------0-1-3-----|",
+            "G|--------0-2-----------|",
+            "D|----0-2-3-------------|",
+            "A|-0-2-3----------------|",
+            "E|----------------------|",
+            "```",
+            "Toque subindo e descendo, nomeando os graus. Depois comece no grau 3 e termine no grau 1. Mudar o ponto de início ensina a ouvir a escala como material melódico, não como exercício mecânico."
+          ]
+        },
+        {
+          "titulo": "Três notas por corda",
+          "conteudo": [
+            "Esse sistema facilita deslocamentos e sequências, mas não é obrigatório. Use-o quando o objetivo for conectar regiões. A digitação deve ser adaptada à mão e ao andamento."
+          ]
+        },
+        {
+          "titulo": "Aplicação",
+          "conteudo": [
+            "Crie uma frase de quatro notas que termine no grau 1. Repita começando no grau 3 e no grau 5. Observe como o mesmo material muda de direção conforme a nota final."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Sei a fórmula da escala maior.",
+            "- [ ] Nomeio os graus.",
+            "- [ ] Toco uma posição com pulso estável.",
+            "- [ ] Crio uma frase com nota de repouso."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-5/19-escala-maior.md"
+    },
+    {
+      "id": "20-campo-harmonico-maior",
+      "parte": 5,
+      "titulo": "Capítulo 20 — Campo harmônico maior",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Formar acordes por empilhamento de terças, reconhecer funções harmônicas e identificar progressões comuns."
+          ]
+        },
+        {
+          "titulo": "Acordes diatônicos",
+          "conteudo": [
+            "Em C maior:",
+            "```text",
+            "I    C       ii   Dm      iii  Em      IV   F",
+            "V    G       vi   Am      vii° Bdim",
+            "```",
+            "Maiúsculas indicam maior; minúsculas, menor; o círculo indica diminuto. A qualidade nasce das notas da escala, não de uma lista isolada."
+          ]
+        },
+        {
+          "titulo": "Funções",
+          "conteudo": [
+            "I e vi tendem a oferecer repouso; ii e IV preparam movimento; V cria tensão que costuma resolver em I. A música pode contrariar essa tendência, mas conhecê-la permite fazer escolhas conscientes."
+          ]
+        },
+        {
+          "titulo": "Progressões autorais",
+          "conteudo": [
+            "```text",
+            "| I | V | vi | IV |",
+            "| ii | V | I | I |",
+            "| vi | IV | I | V |",
+            "```",
+            "Transponha para G e A usando a mesma função. Toque uma base com acordes abertos e depois crie uma melodia com notas da escala correspondente."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Formo o campo harmônico maior.",
+            "- [ ] Reconheço repouso, preparação e tensão.",
+            "- [ ] Transponho uma progressão.",
+            "- [ ] Relaciono acordes e escala."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-5/20-campo-harmonico-maior.md"
+    },
+    {
+      "id": "21-escalas-menores",
+      "parte": 5,
+      "titulo": "Capítulo 21 — Escalas menores",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Diferenciar menor natural, harmônica e melódica e usar pentatônicas e escala blues em frases autorais."
+          ]
+        },
+        {
+          "titulo": "Três formas",
+          "conteudo": [
+            "```text",
+            "menor natural: 1  2  b3  4  5  b6  b7",
+            "menor harmônica:1  2  b3  4  5  b6   7",
+            "menor melódica: 1  2  b3  4  5   6   7",
+            "```",
+            "A sétima elevada da menor harmônica cria uma atração forte para a tônica. A menor melódica amplia possibilidades de cor, mas deve ser ouvida em contexto harmônico."
+          ]
+        },
+        {
+          "titulo": "Pentatônica menor",
+          "conteudo": [
+            "```text",
+            "e|----------------5-8-|",
+            "B|------------5-8-----|",
+            "G|--------5-7---------|",
+            "D|----5-7-------------|",
+            "A|-5-7----------------|",
+            "E|-5-8----------------|",
+            "```",
+            "Use a posição em A menor sobre uma base autoral Am–F–G. Comece com três notas, repita um motivo e deixe silêncio. A escala é um vocabulário; o fraseado é a fala."
+          ]
+        },
+        {
+          "titulo": "Escala blues",
+          "conteudo": [
+            "Acrescente a quinta diminuta à pentatônica menor. Use-a como passagem expressiva, não como nota de repouso automático."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Distingo as três escalas menores.",
+            "- [ ] Toco a pentatônica menor em uma posição.",
+            "- [ ] Uso a blue note como passagem.",
+            "- [ ] Construo frase com repetição e silêncio."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-5/21-escalas-menores.md"
+    },
+    {
+      "id": "22-modos-gregos",
+      "parte": 5,
+      "titulo": "Capítulo 22 — Modos gregos",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Reconhecer o caráter dos sete modos, relacioná-los a acordes e improvisar destacando a nota característica."
+          ]
+        },
+        {
+          "titulo": "Mapa funcional",
+          "conteudo": [
+            "| Modo | Fórmula relativa | Cor principal |",
+            "|---|---|---|",
+            "| Jônio | 1 2 3 4 5 6 7 | maior estável |",
+            "| Dórico | 1 2 b3 4 5 6 b7 | menor com sexta maior |",
+            "| Frígio | 1 b2 b3 4 5 b6 b7 | menor com segunda menor |",
+            "| Lídio | 1 2 3 #4 5 6 7 | maior suspenso |",
+            "| Mixolídio | 1 2 3 4 5 6 b7 | dominante |",
+            "| Eólio | 1 2 b3 4 5 b6 b7 | menor natural |",
+            "| Lócrio | 1 b2 b3 4 b5 b6 b7 | instável |"
+          ]
+        },
+        {
+          "titulo": "Como ouvir um modo",
+          "conteudo": [
+            "Sustente um acorde ou drone e toque a escala. Destaque a nota que diferencia o modo da escala maior ou menor de referência. Sem esse centro sonoro, o exercício vira apenas uma sequência de notas."
+          ]
+        },
+        {
+          "titulo": "Estudo dórico",
+          "conteudo": [
+            "Use Dm7 e destaque B natural. Toque uma frase curta, descanse, repita com variação rítmica e resolva em D. Depois compare com D eólio, que contém Bb."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Sei a fórmula de cada modo.",
+            "- [ ] Identifico a nota característica.",
+            "- [ ] Uso uma base sustentada.",
+            "- [ ] Resolvo frases no centro tonal."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-5/22-modos-gregos.md"
+    },
+    {
+      "id": "23-arpejos",
+      "parte": 5,
+      "titulo": "Capítulo 23 — Arpejos",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Construir arpejos maiores, menores, dominantes, diminutos e aumentados e aplicá-los em solos."
+          ]
+        },
+        {
+          "titulo": "Acorde transformado em linha",
+          "conteudo": [
+            "Um arpejo toca as notas do acorde separadamente. C maior é C–E–G; Cm é C–Eb–G; C7 acrescenta Bb. A qualidade aparece imediatamente quando a terça muda.",
+            "```text",
+            "arpejo de A menor — estudo de três notas",
+            "e|----------------5-8-|",
+            "B|------------5-6-----|",
+            "G|--------5-7---------|",
+            "D|----5-7-------------|",
+            "A|-7------------------|",
+            "E|--------------------|",
+            "```",
+            "Não corra pelo desenho. Toque cada nota, cante a tônica e observe onde o arpejo encontra o acorde."
+          ]
+        },
+        {
+          "titulo": "Dominantes e resolução",
+          "conteudo": [
+            "Sobre E7, destaque G# e D. Resolva G# em A e D em C# ou C, conforme a condução desejada. Esse movimento é mais musical que executar um padrão sem ouvir a harmonia."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Formo arpejos maior e menor.",
+            "- [ ] Reconheço a terça.",
+            "- [ ] Identifico a sétima dominante.",
+            "- [ ] Resolvo notas do acorde em uma base."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-5/23-arpejos.md"
+    },
+    {
+      "id": "24-conducao-de-vozes-e-notas-alvo",
+      "parte": 5,
+      "titulo": "Capítulo 24 — Condução de vozes e notas-alvo",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Escolher notas-alvo, usar aproximações cromáticas e construir linhas que acompanhem o movimento dos acordes."
+          ]
+        },
+        {
+          "titulo": "Notas do acorde primeiro",
+          "conteudo": [
+            "Em cada mudança, escolha uma nota do novo acorde e chegue nela por grau conjunto ou cromatismo. A linha deixa de soar como escala aleatória quando o destino é claro.",
+            "```text",
+            "acorde: | C       | G       | Am      | F       |",
+            "alvo:   | E-------| D-------| C-------| C-------|",
+            "```",
+            "Sustente a nota-alvo e preencha os espaços com poucas notas. O silêncio preserva a direção."
+          ]
+        },
+        {
+          "titulo": "Enclosure simples",
+          "conteudo": [
+            "Aproxime a nota-alvo por cima e por baixo: D–F–E para chegar em E. Toque lentamente e confira se o cromatismo é uma passagem, não um repouso."
+          ]
+        },
+        {
+          "titulo": "Fraseado harmônico",
+          "conteudo": [
+            "Grave quatro compassos de uma progressão e escreva uma linha com uma nota-alvo por acorde. Depois acrescente ritmo, repetição e uma variação. A harmonia deve ser audível mesmo sem distorção."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Identifico notas do acorde.",
+            "- [ ] Escolho destinos claros.",
+            "- [ ] Uso aproximação cromática com intenção.",
+            "- [ ] Construo uma frase que acompanha a progressão."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-5/24-conducao-de-vozes-e-notas-alvo.md"
+    },
+    {
+      "id": "25-hammer-on-e-pull-off",
+      "parte": 6,
+      "titulo": "Capítulo 25 — Hammer-on e pull-off",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Executar ligados ascendentes e descendentes com volume equilibrado e combiná-los com palhetada.",
+            "**Nível:** intermediário. **Pré-requisitos:** capítulos 7 e 19."
+          ]
+        },
+        {
+          "titulo": "O gesto",
+          "conteudo": [
+            "No hammer-on, a segunda nota é produzida ao colocar o dedo com firmeza controlada, sem nova palhetada. No pull-off, retire o dedo fazendo uma pequena tração lateral para que a corda continue vibrando.",
+            "```text",
+            "e|--5h7-7p5--|",
+            "h    p",
+            "```",
+            "Compare o volume da nota palhetada com a nota ligada e ajuste o movimento até que a frase não afunde."
+          ]
+        },
+        {
+          "titulo": "Exercício gradual",
+          "conteudo": [
+            "Faça 5h7 em cada corda, depois 7p5. Toque quatro repetições por corda a 50 bpm. Só avance quando a segunda nota tiver clareza semelhante à primeira."
+          ]
+        },
+        {
+          "titulo": "Combinação",
+          "conteudo": [
+            "```text",
+            "e|----------------5h7p5----------------|",
+            "B|----------5h7-----------7p5----------|",
+            "G|----4h5-----------------------5p4----|",
+            "```",
+            "Palhete apenas a primeira nota de cada grupo. Mantenha a mão esquerda próxima à escala e evite movimentos excessivos."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Executo hammer-on sem nova palhetada.",
+            "- [ ] Faço pull-off sem perder volume.",
+            "- [ ] Combino ligados em uma frase.",
+            "- [ ] Mantenho relaxamento."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-6/25-hammer-on-e-pull-off.md"
+    },
+    {
+      "id": "26-slides-bends-e-vibrato",
+      "parte": 6,
+      "titulo": "Capítulo 26 — Slides, bends e vibrato",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Controlar altura, afinação e duração das principais técnicas de expressão."
+          ]
+        },
+        {
+          "titulo": "Slides",
+          "conteudo": [
+            "Pressione a primeira nota, ataque e deslize mantendo contato até a casa de destino. Pratique 5/7 e 7/5 lentamente. O som deve chegar ao destino no tempo correto."
+          ]
+        },
+        {
+          "titulo": "Bends",
+          "conteudo": [
+            "Um bend de meio tom alcança a altura da casa seguinte; um bend de um tom, duas casas. Toque a nota-alvo antes, memorize sua altura e então faça o bend até igualá-la.",
+            "```text",
+            "e|-------------------------|",
+            "B|--8b(10)----10r8--------|",
+            "G|-------------------------|",
+            "```",
+            "`b(10)` indica alcançar a altura da casa 10; `r` indica release. Use mais de um dedo para sustentar a corda quando necessário."
+          ]
+        },
+        {
+          "titulo": "Vibrato",
+          "conteudo": [
+            "O vibrato de pulso altera levemente a altura em torno da nota. Comece lento, com amplitude pequena. A nota deve continuar tendo um centro claro."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Afino bends de meio tom e um tom.",
+            "- [ ] Faço release controlado.",
+            "- [ ] Executo slide no tempo.",
+            "- [ ] Uso vibrato com centro estável."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-6/26-slides-bends-e-vibrato.md"
+    },
+    {
+      "id": "27-palm-mute-e-abafamentos",
+      "parte": 6,
+      "titulo": "Capítulo 27 — Palm mute e abafamentos",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Controlar duração, ruído e intensidade com as duas mãos.",
+            "**Nível:** intermediário. **Pré-requisitos:** capítulos 6, 7 e 11."
+          ]
+        },
+        {
+          "titulo": "Três níveis",
+          "conteudo": [
+            "```text",
+            "aberto:       TA  TA  TA  TA",
+            "leve:         ta  ta  ta  ta",
+            "forte:        tuk tuk tuk tuk",
+            "```",
+            "O palm mute acontece perto da ponte; a mão esquerda pode interromper a vibração levantando a pressão. Combine os dois para riffs definidos."
+          ]
+        },
+        {
+          "titulo": "Riff de controle",
+          "conteudo": [
+            "```text",
+            "PM----| PM----| aberto | PM--|",
+            "e|-----------------------------|",
+            "B|-----------------------------|",
+            "G|-----------------------------|",
+            "D|-----------------2-2---------|",
+            "A|-2-2-2-2---------2-2-2-2-----|",
+            "E|-0-0-0-0---------------------|",
+            "```",
+            "Toque sem distorção. O som deve diferenciar cada região. Só depois adicione ganho e confira se o ruído não ficou maior que o riff."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Faço três intensidades de abafamento.",
+            "- [ ] Abafei ruídos das cordas vizinhas.",
+            "- [ ] Mantenho clareza com ganho.",
+            "- [ ] Controlo duração com as duas mãos."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-6/27-palm-mute-e-abafamentos.md"
+    },
+    {
+      "id": "28-palhetada-avancada",
+      "parte": 6,
+      "titulo": "Capítulo 28 — Palhetada avançada",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Desenvolver palhetada alternada, econômica, sweep, string skipping e crosspicking com eficiência."
+          ]
+        },
+        {
+          "titulo": "Alternada e econômica",
+          "conteudo": [
+            "A palhetada alternada mantém baixo e cima independentemente da mudança de corda. A econômica aproveita a direção natural quando a frase muda de corda. Nenhuma é universalmente superior; escolha pela frase e pela sensação de controle.",
+            "```text",
+            "alternada:  ↓ ↑ ↓ ↑ | ↓ ↑ ↓ ↑",
+            "econômica:  ↓ ↑ ↓ ↓ | ↑ ↓ ↑ ↑",
+            "```"
+          ]
+        },
+        {
+          "titulo": "String skipping",
+          "conteudo": [
+            "```text",
+            "e|------5-7-8-|",
+            "B|------------|",
+            "G|--4-5-7-----|",
+            "```",
+            "Toque devagar para impedir que a palheta encoste na corda intermediária."
+          ]
+        },
+        {
+          "titulo": "Sweep",
+          "conteudo": [
+            "Use uma direção contínua para atravessar cordas, mas sincronize cada nota com a mão esquerda. Comece com três notas e pare. Velocidade sem separação vira acorde borrado."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Diferencio alternada e econômica.",
+            "- [ ] Faço string skipping sem ruído.",
+            "- [ ] Entendo o princípio do sweep.",
+            "- [ ] Aumento velocidade só depois de sincronizar."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-6/28-palhetada-avancada.md"
+    },
+    {
+      "id": "29-legato-avancado",
+      "parte": 6,
+      "titulo": "Capítulo 29 — Legato avançado",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Conectar três notas por corda, manter volume e criar frases longas com articulação controlada."
+          ]
+        },
+        {
+          "titulo": "Três notas por corda",
+          "conteudo": [
+            "```text",
+            "e|----------------5-7-8-|",
+            "B|------------5-6-8-----|",
+            "G|--------4-5-7---------|",
+            "```",
+            "Palhete a primeira nota e ligue as demais. Depois inverta a direção. O polegar acompanha a mudança sem pressionar o braço."
+          ]
+        },
+        {
+          "titulo": "Frase longa",
+          "conteudo": [
+            "Construa quatro grupos de três notas e respire entre eles. O legato precisa ter frases, acentos e destinos; não é uma forma de tocar continuamente sem estrutura."
+          ]
+        },
+        {
+          "titulo": "Aplicação",
+          "conteudo": [
+            "Use o legato sobre uma base de Am7. Termine cada frase em A, C ou E. Depois repita uma oitava acima e compare o impacto do registro."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Mantenho volume entre notas ligadas.",
+            "- [ ] Executo três notas por corda.",
+            "- [ ] Organizo legato em frases.",
+            "- [ ] Resolvo em notas do acorde."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-6/29-legato-avancado.md"
+    },
+    {
+      "id": "30-tapping-e-tecnicas-especiais",
+      "parte": 6,
+      "titulo": "Capítulo 30 — Tapping e técnicas especiais",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Usar tapping, harmônicos, alavanca e técnicas percussivas com intenção musical e segurança."
+          ]
+        },
+        {
+          "titulo": "Tapping de uma mão",
+          "conteudo": [
+            "```text",
+            "e|--5h8t12p8p5--|",
+            "```",
+            "O dedo da mão direita toca a casa 12 e sai em pequeno movimento lateral. Comece com três notas e mantenha o pulso lento."
+          ]
+        },
+        {
+          "titulo": "Harmônicos",
+          "conteudo": [
+            "Harmônicos naturais surgem ao tocar levemente pontos específicos, como a 12ª casa. Harmônicos artificiais dependem de ataque e posição da mão direita. Pratique um por vez antes de inserir em frases."
+          ]
+        },
+        {
+          "titulo": "Alavanca e efeitos extremos",
+          "conteudo": [
+            "A alavanca altera tensão e altura. Use movimentos pequenos, confira a estabilidade da ponte e nunca force o sistema. Whammy bar e efeitos de pitch devem servir a transições planejadas."
+          ]
+        },
+        {
+          "titulo": "Limitação musical",
+          "conteudo": [
+            "Uma técnica especial só acrescenta algo se alterar articulação, tensão, registro ou textura. Grave a mesma frase sem e com técnica; mantenha a versão que comunica melhor."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Executo tapping em andamento lento.",
+            "- [ ] Distingo harmônico natural e artificial.",
+            "- [ ] Uso alavanca sem forçar o instrumento.",
+            "- [ ] Escolho técnica pelo efeito musical."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-6/30-tapping-e-tecnicas-especiais.md"
+    },
+    {
+      "id": "31-blues",
+      "parte": 7,
+      "titulo": "Capítulo 31 — Blues",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Tocar blues de 12 compassos, usar pentatônica, shuffle, bends, vibrato, call and response e turnarounds.",
+            "**Nível:** intermediário. **Pré-requisitos:** Partes 3–6."
+          ]
+        },
+        {
+          "titulo": "Forma de 12 compassos",
+          "conteudo": [
+            "```text",
+            "| I7 | I7 | I7 | I7 |",
+            "| IV7| IV7| I7 | I7 |",
+            "| V7 | IV7| I7 | V7 |",
+            "```",
+            "Em A: A7, D7 e E7. Conte quatro pulsos por compasso e identifique a mudança antes de tocar a escala."
+          ]
+        },
+        {
+          "titulo": "Shuffle autoral",
+          "conteudo": [
+            "Toque a primeira e a terceira subdivisão de cada tercina, deixando a segunda implícita. A sensação vem da relação entre ataque e espaço, não de acelerar."
+          ]
+        },
+        {
+          "titulo": "Frase e resposta",
+          "conteudo": [
+            "Faça uma pergunta de dois compassos na região grave e responda na região aguda. Repita o ritmo da pergunta com notas diferentes. Bends devem chegar afinados; vibrato entra depois que a nota está estável."
+          ]
+        },
+        {
+          "titulo": "Turnaround",
+          "conteudo": [
+            "Crie uma frase que conduza o último compasso de volta ao primeiro. Use notas descendentes e termine na dominante, deixando a resolução para o novo ciclo."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Conheço a forma de 12 compassos.",
+            "- [ ] Toco shuffle sem perder o pulso.",
+            "- [ ] Faço call and response.",
+            "- [ ] Uso bend afinado e vibrato controlado."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-7/31-blues.md"
+    },
+    {
+      "id": "32-rock-e-pop",
+      "parte": 7,
+      "titulo": "Capítulo 32 — Rock e pop",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Construir riffs, bases de colcheias, power chords e arranjos com contraste entre verso e refrão."
+          ]
+        },
+        {
+          "titulo": "Contraste de arranjo",
+          "conteudo": [
+            "Um verso pode usar acordes limpos e ataques menores; o refrão pode ampliar registro, duração e ganho. O efeito não depende apenas de tocar mais alto."
+          ]
+        },
+        {
+          "titulo": "Riff autoral",
+          "conteudo": [
+            "```text",
+            "e|---------------------------|",
+            "B|---------------------------|",
+            "G|---------------------------|",
+            "D|-2-2---5-5---7-7---5-5-----|",
+            "A|-2-2---5-5---7-7---5-5-----|",
+            "E|-0-0---3-3---5-5---3-3-----|",
+            "```",
+            "Toque com palm mute no verso e aberto no refrão. Observe como a mesma harmonia muda de função pela articulação."
+          ]
+        },
+        {
+          "titulo": "Introduções e finais",
+          "conteudo": [
+            "Uma introdução apresenta o motivo principal. Um final pode repetir o riff, sustentar o acorde ou cortar no primeiro pulso. Planeje o último compasso para não parecer acidente."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Toco power chords com clareza.",
+            "- [ ] Crio contraste entre seções.",
+            "- [ ] Construo uma introdução.",
+            "- [ ] Finalizo no tempo combinado."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-7/32-rock-e-pop.md"
+    },
+    {
+      "id": "33-funk-soul-e-rnb",
+      "parte": 7,
+      "titulo": "Capítulo 33 — Funk, soul e R&B",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Controlar semicolcheias, espaço, ghost notes, muting e ataques percussivos.",
+            "**Nível:** intermediário. **Pré-requisitos:** capítulos 12 e 27."
+          ]
+        },
+        {
+          "titulo": "A grade antes das notas",
+          "conteudo": [
+            "```text",
+            "contagem: 1 e & a 2 e & a 3 e & a 4 e & a",
+            "mão:      ↓ ↑ ↓ ↑ ↓ ↑ ↓ ↑ ↓ ↑ ↓ ↑ ↓ ↑ ↓ ↑",
+            "som:      X   . X   .   X X   . X   .   X",
+            "```",
+            "Mantenha a mão em movimento e escolha quais ataques soam. `X` é ataque abafado; ponto é silêncio."
+          ]
+        },
+        {
+          "titulo": "Relação com baixo e bateria",
+          "conteudo": [
+            "A guitarra deve conversar com o bumbo e o baixo. Remova notas quando o arranjo ficar cheio. Toque uma figura curta, escute a resposta e só então acrescente variação."
+          ]
+        },
+        {
+          "titulo": "Ghost notes",
+          "conteudo": [
+            "Use pressão insuficiente para produzir altura definida, mas suficiente para um ruído rítmico controlado. O objetivo é textura, não volume."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Conto semicolcheias.",
+            "- [ ] Diferencio nota definida e ghost note.",
+            "- [ ] Uso espaço como parte do groove.",
+            "- [ ] Escuto a relação com baixo e bateria."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-7/33-funk-soul-e-rnb.md"
+    },
+    {
+      "id": "34-metal",
+      "parte": 7,
+      "titulo": "Capítulo 34 — Metal",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Executar riffs sincopados, galope, palm mute, tremolo picking e afinações baixas com precisão."
+          ]
+        },
+        {
+          "titulo": "Afinação e registro",
+          "conteudo": [
+            "Drop D reduz a sexta corda um tom. Confira todas as cordas antes de tocar e reescreva as tônicas na tablatura para não aplicar formas da afinação padrão sem perceber."
+          ]
+        },
+        {
+          "titulo": "Galope autoral",
+          "conteudo": [
+            "```text",
+            "PM-----------------------",
+            "e|-----------------------|",
+            "B|-----------------------|",
+            "G|-----------------------|",
+            "D|-----------------------|",
+            "A|-----------------------|",
+            "D|-0-00-0-00-0-0-3-2-----|",
+            "↓ ↓↓ ↓ ↓↓ ↓ ↓ ↓ ↑",
+            "```",
+            "Comece a 60 bpm. O grupo deve ser regular e o acento final não pode adiantar a próxima batida."
+          ]
+        },
+        {
+          "titulo": "Tremolo picking",
+          "conteudo": [
+            "Escolha uma nota, alterne a palheta em semicolcheias e mantenha o antebraço relaxado. A clareza depende da sincronização com a bateria imaginada."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Sei conferir uma afinação baixa.",
+            "- [ ] Toco galope com subdivisão constante.",
+            "- [ ] Faço tremolo sem tensão.",
+            "- [ ] Mantenho precisão antes de buscar velocidade."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-7/34-metal.md"
+    },
+    {
+      "id": "35-jazz-e-fusion",
+      "parte": 7,
+      "titulo": "Capítulo 35 — Jazz e fusion",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Usar acordes com sétima e extensões, II–V–I, arpejos, modos e comping com espaço."
+          ]
+        },
+        {
+          "titulo": "II–V–I",
+          "conteudo": [
+            "Em C maior:",
+            "```text",
+            "| Dm7 | G7 | Cmaj7 | Cmaj7 |",
+            "```",
+            "Toque voicings próximos e observe a resolução de notas comuns. O comping deve deixar espaço para baixo, bateria e solista."
+          ]
+        },
+        {
+          "titulo": "Arpejos e guia harmônica",
+          "conteudo": [
+            "Comece pelas terças e sétimas de cada acorde. Elas revelam a qualidade e conduzem a mudança com poucas notas. Depois acrescente nonas e cromatismos."
+          ]
+        },
+        {
+          "titulo": "Improvisação",
+          "conteudo": [
+            "Alterne uma frase de arpejo e uma frase escalar. Termine em notas do acorde e varie o ritmo antes de aumentar o número de notas."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Toco II–V–I em andamento lento.",
+            "- [ ] Reconheço terças e sétimas.",
+            "- [ ] Uso voicings próximos.",
+            "- [ ] Improviso respeitando a harmonia."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-7/35-jazz-e-fusion.md"
+    },
+    {
+      "id": "36-musica-brasileira",
+      "parte": 7,
+      "titulo": "Capítulo 36 — Música brasileira",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Adaptar guitarra a samba, bossa nova, choro, baião, forró, frevo, maracatu, sertanejo e MPB."
+          ]
+        },
+        {
+          "titulo": "Acentuação antes da digitação",
+          "conteudo": [
+            "Escute a célula rítmica, cante os acentos e só depois escolha as cordas. O mesmo acorde pode funcionar em vários estilos quando a articulação muda."
+          ]
+        },
+        {
+          "titulo": "Bossa e samba",
+          "conteudo": [
+            "Use voicings com extensões e ataques curtos, deixando espaço para baixo e percussão. Em samba, pratique antecipações e respostas; não transforme o padrão em batida mecânica."
+          ]
+        },
+        {
+          "titulo": "Baião, forró e frevo",
+          "conteudo": [
+            "Trabalhe a relação entre baixo e acorde. Em forró, ataques regulares e acentos ajudam a sustentar a dança; no frevo, precisão e articulação rápida precisam permanecer leves."
+          ]
+        },
+        {
+          "titulo": "Arranjo autoral",
+          "conteudo": [
+            "Escolha uma progressão I–vi–IV–V e faça três versões: bossa, baião e pop brasileiro. Mantenha os acordes, mas mude ritmo, registro e duração."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Identifico acentos antes de tocar.",
+            "- [ ] Adapto voicings ao espaço do conjunto.",
+            "- [ ] Crio três versões rítmicas.",
+            "- [ ] Evito tratar estilos como simples desenhos."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-7/36-musica-brasileira.md"
+    },
+    {
+      "id": "37-country-folk-reggae-e-outros",
+      "parte": 7,
+      "titulo": "Capítulo 37 — Country, folk, reggae e outros estilos",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Explorar chicken picking, double stops, hybrid picking, dedilhados folk e contratempos de reggae."
+          ]
+        },
+        {
+          "titulo": "Country e chicken picking",
+          "conteudo": [
+            "Alterne palheta e dedos para responder entre cordas. Use double stops em terças ou sextas e acrescente slides curtos. O ataque deve ser elástico, não agressivo."
+          ]
+        },
+        {
+          "titulo": "Folk",
+          "conteudo": [
+            "Escolha um baixo alternado e mantenha a melodia nas cordas agudas. Comece com polegar regular e acrescente uma nota por vez."
+          ]
+        },
+        {
+          "titulo": "Reggae",
+          "conteudo": [
+            "Toque acordes curtos nos contratempos, com mão direita em movimento contínuo. O corte imediato do som é tão importante quanto o ataque."
+          ]
+        },
+        {
+          "titulo": "Comparação",
+          "conteudo": [
+            "Grave o mesmo acorde em três estilos. Nomeie a diferença de acento, duração, registro e articulação. Essa análise constrói vocabulário transferível."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Uso palheta e dedos em uma frase.",
+            "- [ ] Executo double stops limpos.",
+            "- [ ] Mantenho baixo alternado no folk.",
+            "- [ ] Toco contratempo reggae sem adiantar."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-7/37-country-folk-reggae-e-outros.md"
+    },
+    {
+      "id": "38-improvisacao",
+      "parte": 8,
+      "titulo": "Capítulo 38 — Improvisação",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Escolher material, desenvolver motivos, usar silêncio e construir solos com direção.",
+            "**Nível:** intermediário. **Pré-requisitos:** Partes 5–7."
+          ]
+        },
+        {
+          "titulo": "Improvisar é escolher",
+          "conteudo": [
+            "Comece pela tonalidade, pelo acorde e pelo caráter da base. Uma escala oferece possibilidades, mas não determina fraseado. Restrinja o material: três notas, um ritmo e um registro."
+          ]
+        },
+        {
+          "titulo": "Motivo e variação",
+          "conteudo": [
+            "Crie uma célula de três ou quatro notas. Repita exatamente uma vez; depois altere final, registro ou ritmo. O ouvinte reconhece a ideia e acompanha sua transformação.",
+            "```text",
+            "motivo:    5 - 7 - 8 - 7",
+            "variação:  5 - 7 - 8 - 10",
+            "resposta:  8 - 7 - 5",
+            "```"
+          ]
+        },
+        {
+          "titulo": "Pergunta e resposta",
+          "conteudo": [
+            "Use dois compassos para perguntar e dois para responder. Termine a resposta em nota do acorde. Deixe um espaço real entre as frases para que a forma respire."
+          ]
+        },
+        {
+          "titulo": "Arco do solo",
+          "conteudo": [
+            "Comece com poucas notas, aumente densidade no meio e reduza antes do final. O clímax pode vir de registro, dinâmica, duração ou articulação, não apenas de velocidade."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Escolho material de acordo com a base.",
+            "- [ ] Crio e vario um motivo.",
+            "- [ ] Uso pergunta e resposta.",
+            "- [ ] Construo um solo com direção."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-8/38-improvisacao.md"
+    },
+    {
+      "id": "39-improvisacao-sobre-progressoes",
+      "parte": 8,
+      "titulo": "Capítulo 39 — Improvisação sobre progressões",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Improvisar sobre I–IV–V, II–V–I, blues, progressões menores e modulações simples."
+          ]
+        },
+        {
+          "titulo": "Um centro, vários acordes",
+          "conteudo": [
+            "Em progressões diatônicas, uma escala pode cobrir a base, mas notas-alvo devem acompanhar as mudanças. Toque a escala inteira apenas como exercício; na música, destaque terças, sétimas e tensões escolhidas."
+          ]
+        },
+        {
+          "titulo": "I–IV–V",
+          "conteudo": [
+            "Em A: A, D e E. Crie uma frase em A pentatônica, mas termine cada compasso em uma nota do acorde vigente. Compare com uma frase que ignora a mudança."
+          ]
+        },
+        {
+          "titulo": "II–V–I",
+          "conteudo": [
+            "Em C: Dm7–G7–Cmaj7. Comece pelas terças e sétimas, ligando a nota mais próxima entre cada acorde. Depois acrescente cromatismos de aproximação."
+          ]
+        },
+        {
+          "titulo": "Progressão menor e modulação",
+          "conteudo": [
+            "Quando o centro mudar, marque a nova tônica com uma frase curta e uma nota longa. Não tente esconder a modulação com excesso de notas."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Identifico a tonalidade.",
+            "- [ ] Alcanço notas do acorde.",
+            "- [ ] Improviso em blues e II–V–I.",
+            "- [ ] Sinalizo uma modulação claramente."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-8/39-improvisacao-sobre-progressoes.md"
+    },
+    {
+      "id": "40-criacao-de-riffs",
+      "parte": 8,
+      "titulo": "Capítulo 40 — Criação de riffs",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Criar riffs a partir de ritmo, repetição, registro, palm mute e relação com bateria."
+          ]
+        },
+        {
+          "titulo": "Ritmo antes das notas",
+          "conteudo": [
+            "Bata o padrão na mesa e grave. Depois aplique uma única nota. Se o ritmo não funcionar sem alturas, as notas não resolverão o problema."
+          ]
+        },
+        {
+          "titulo": "Riff autoral",
+          "conteudo": [
+            "```text",
+            "PM---       aberto      PM---",
+            "e|-------------------------------|",
+            "B|-------------------------------|",
+            "G|-------------------------------|",
+            "D|-----2---5-2-------2-----------|",
+            "A|-----2---5-2-------2-----------|",
+            "E|-0-0---0-----3-0-0---0-3-2-----|",
+            "```",
+            "Repita quatro vezes sem variar. Na quinta, altere apenas o final. A identidade nasce da repetição; a forma nasce da variação controlada."
+          ]
+        },
+        {
+          "titulo": "Riff e bateria",
+          "conteudo": [
+            "Escolha quais ataques dobram o bumbo e quais deixam espaço para a caixa. Grave com um pulso simples e avalie se a guitarra impulsiona ou pesa no groove."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Crio ritmo antes das notas.",
+            "- [ ] Uso repetição intencional.",
+            "- [ ] Escolho registro e abafamento.",
+            "- [ ] Relaciono o riff à bateria."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-8/40-criacao-de-riffs.md"
+    },
+    {
+      "id": "41-criacao-de-solos",
+      "parte": 8,
+      "titulo": "Capítulo 41 — Criação de solos",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Construir solos temáticos, controlar dinâmica e escolher registros e técnicas com intenção."
+          ]
+        },
+        {
+          "titulo": "Quatro etapas",
+          "conteudo": [
+            "1. apresente um motivo;",
+            "2. repita e varie;",
+            "3. aumente tensão com registro, ritmo ou bend;",
+            "4. conclua em uma nota-alvo com espaço."
+          ]
+        },
+        {
+          "titulo": "Técnicas a serviço da frase",
+          "conteudo": [
+            "Use bend para chegar a uma nota, vibrato para sustentá-la, slide para mudar registro e legato para conectar. Não acrescente técnica apenas para demonstrar que ela existe."
+          ]
+        },
+        {
+          "titulo": "Evitar excesso",
+          "conteudo": [
+            "Limite o primeiro estudo a cinco notas. Depois crie uma versão com o dobro de notas sem perder a mesma ideia rítmica. Se a identidade desaparecer, a variação foi grande demais."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Apresento um tema.",
+            "- [ ] Crio clímax sem acelerar obrigatoriamente.",
+            "- [ ] Escolho técnicas pela expressão.",
+            "- [ ] Concluo o solo com clareza."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-8/41-criacao-de-solos.md"
+    },
+    {
+      "id": "42-arranjos-de-guitarra",
+      "parte": 8,
+      "titulo": "Capítulo 42 — Arranjos de guitarra",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Distribuir funções entre guitarras, criar introduções, contracantos, harmonizações e camadas."
+          ]
+        },
+        {
+          "titulo": "Uma guitarra e duas",
+          "conteudo": [
+            "Uma guitarra pode alternar base e melodia. Com duas, defina funções: uma sustenta a harmonia; a outra responde ou dobra. Evite que ambas ocupem o mesmo registro o tempo todo."
+          ]
+        },
+        {
+          "titulo": "Terças e sextas",
+          "conteudo": [
+            "Harmonize uma melodia em terças e depois em sextas dentro da tonalidade. Confira cada nota contra o acorde; nem toda distância paralela permanece diatônica."
+          ]
+        },
+        {
+          "titulo": "Estrutura de arranjo",
+          "conteudo": [
+            "```text",
+            "intro → verso → pré-refrão → refrão → interlúdio → solo → final",
+            "```",
+            "Escolha entrada, retirada e retomada de camadas. Um arranjo interessante também é feito do que não toca."
+          ]
+        },
+        {
+          "titulo": "Guitarra e voz",
+          "conteudo": [
+            "Deixe espaço para a pronúncia e para as respirações. Use voicings médios, riffs nos intervalos e respostas instrumentais após frases vocais."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Distribuo funções entre guitarras.",
+            "- [ ] Harmonizo sem perder a tonalidade.",
+            "- [ ] Planejo introdução, interlúdio e final.",
+            "- [ ] Respeito o espaço da voz."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-8/42-arranjos-de-guitarra.md"
+    },
+    {
+      "id": "43-amplificadores",
+      "parte": 9,
+      "titulo": "Capítulo 43 — Amplificadores",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Entender pré-amplificação, ganho, volume, equalização, presença, reverb e diferenças entre sons limpos e saturados.",
+            "**Nível:** intermediário. **Pré-requisitos:** capítulos 3 e 11."
+          ]
+        },
+        {
+          "titulo": "Caminho do amplificador",
+          "conteudo": [
+            "```text",
+            "entrada → pré-amplificador → ganho → equalização → potência → alto-falante",
+            "```",
+            "O ganho determina quanto o sinal é empurrado no pré; o volume determina o nível de saída. Aumentar volume não é o mesmo que aumentar distorção."
+          ]
+        },
+        {
+          "titulo": "Tipos",
+          "conteudo": [
+            "Valvulados, transistorizados e modeladores têm comportamentos e custos diferentes. Nenhum tipo substitui regulagem, técnica e escuta. Escolha pelo uso, volume disponível, manutenção e variedade de sons necessária."
+          ]
+        },
+        {
+          "titulo": "Método de regulagem",
+          "conteudo": [
+            "Comece com equalização no meio, ganho baixo e reverb mínimo. Ajuste um parâmetro por vez. Grave o mesmo acorde antes e depois de cada alteração para aprender a causa do resultado."
+          ]
+        },
+        {
+          "titulo": "Limpo e saturado",
+          "conteudo": [
+            "Um som limpo revela dinâmica e ruído. Um som saturado comprime e amplia harmônicos, mas também aumenta falhas. Regule primeiro limpo e adicione ganho gradualmente."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Diferencio ganho e volume.",
+            "- [ ] Sei a função dos controles básicos.",
+            "- [ ] Comparo limpo e saturado.",
+            "- [ ] Regulo um parâmetro por vez."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-9/43-amplificadores.md"
+    },
+    {
+      "id": "44-pedais-e-efeitos",
+      "parte": 9,
+      "titulo": "Capítulo 44 — Pedais e efeitos",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Reconhecer os efeitos principais, organizar uma cadeia de sinal e escolher efeitos pelo papel musical."
+          ]
+        },
+        {
+          "titulo": "Famílias de efeitos",
+          "conteudo": [
+            "```text",
+            "afinador → compressor → overdrive/distortion/fuzz → modulação → delay → reverb",
+            "```",
+            "Essa é uma referência comum, não uma lei. Noise gate pode entrar depois de fontes ruidosas; wah pode ser colocado antes ou depois do ganho conforme o resultado desejado; equalizador pode corrigir ou criar uma voz."
+          ]
+        },
+        {
+          "titulo": "Ganho",
+          "conteudo": [
+            "Overdrive preserva mais dinâmica; distortion oferece saturação mais intensa; fuzz altera a forma do sinal de modo mais radical. Compare os três com o mesmo riff e o mesmo volume percebido."
+          ]
+        },
+        {
+          "titulo": "Modulação e ambiência",
+          "conteudo": [
+            "Chorus, flanger e phaser alteram movimento e textura. Delay repete; reverb cria espaço. Ajuste tempo, feedback e mistura ouvindo a frase inteira, não apenas uma nota isolada."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Reconheço as famílias de efeitos.",
+            "- [ ] Monto uma cadeia inicial coerente.",
+            "- [ ] Comparo overdrive, distortion e fuzz.",
+            "- [ ] Sei diferenciar repetição de espaço."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-9/44-pedais-e-efeitos.md"
+    },
+    {
+      "id": "45-construcao-de-timbres",
+      "parte": 9,
+      "titulo": "Capítulo 45 — Construção de timbres",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Criar sons limpo, crunch, overdrive, distortion e high gain para diferentes contextos sem depender de equipamentos caros."
+          ]
+        },
+        {
+          "titulo": "Receita de seis decisões",
+          "conteudo": [
+            "1. escolha captador e volume da guitarra;",
+            "2. defina ganho antes da equalização;",
+            "3. ajuste graves, médios e agudos ouvindo a banda;",
+            "4. escolha ataque e abafamento;",
+            "5. adicione ambiência com moderação;",
+            "6. compare em volume realista."
+          ]
+        },
+        {
+          "titulo": "Pontos de partida",
+          "conteudo": [
+            "| Timbre | Ganho | Médios | Uso |",
+            "|---|---:|---:|---|",
+            "| limpo | baixo | presentes | jazz, pop, funk |",
+            "| crunch | médio | presentes | blues, rock |",
+            "| overdrive | médio-alto | definidos | solos e bases |",
+            "| high gain | alto | não retire todos | metal e riffs |",
+            "Os números de um amplificador não são universais. Use as posições como ponto de partida e confie no contexto."
+          ]
+        },
+        {
+          "titulo": "Timbre sem equipamento caro",
+          "conteudo": [
+            "Ajuste a mão antes do pedal: palheta, posição perto da ponte, força e palm mute mudam o som imediatamente. Grave uma comparação com o mesmo equipamento e três ataques diferentes."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Construo um som limpo.",
+            "- [ ] Crio crunch sem perder dinâmica.",
+            "- [ ] Ajusto ganho sem mascarar notas.",
+            "- [ ] Comparo timbre isolado e dentro do arranjo."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-9/45-construcao-de-timbres.md"
+    },
+    {
+      "id": "46-gravacao-da-guitarra",
+      "parte": 9,
+      "titulo": "Capítulo 46 — Gravação da guitarra",
+      "secoes": [
+        {
+          "titulo": "Objetivos",
+          "conteudo": [
+            "Escolher gravação por microfone ou direta, organizar takes, usar DI, reamping, equalização, compressão e panorâmica."
+          ]
+        },
+        {
+          "titulo": "Duas rotas",
+          "conteudo": [
+            "```text",
+            "amplificador → microfone → pré/interface → DAW",
+            "guitarra → DI/interface → simulador ou reamping → DAW",
+            "```",
+            "Grave uma DI limpa sempre que possível. Ela permite reprocessar o timbre depois sem repetir a execução."
+          ]
+        },
+        {
+          "titulo": "Microfonação",
+          "conteudo": [
+            "Perto do centro do alto-falante tende a oferecer mais ataque; perto da borda, mais suavidade. Mova o microfone poucos centímetros por vez e registre posição, ganho e distância."
+          ]
+        },
+        {
+          "titulo": "Bases duplas",
+          "conteudo": [
+            "Grave duas execuções reais, uma para cada lado do panorama. Não duplique mecanicamente a mesma faixa esperando largura natural; pequenas diferenças de execução criam movimento, mas precisam permanecer rítmicas."
+          ]
+        },
+        {
+          "titulo": "Organização",
+          "conteudo": [
+            "Nomeie takes, marque trechos bons e preserve a versão original. Equalização e compressão devem resolver problemas identificados, não virar etapas automáticas."
+          ]
+        },
+        {
+          "titulo": "Checklist",
+          "conteudo": [
+            "- [ ] Sei diferenciar DI e sinal processado.",
+            "- [ ] Registro posições e ajustes.",
+            "- [ ] Organizo takes sem apagar originais.",
+            "- [ ] Uso panorâmica para servir ao arranjo."
+          ]
+        }
+      ],
+      "markdown": "docs/books/guitarra-v2/parte-9/46-gravacao-da-guitarra.md"
+    }
+  ],
+  "paginas_pdf": 310,
+  "pdf": "/music/criar/curso-guitarra-v2.pdf"
+}
