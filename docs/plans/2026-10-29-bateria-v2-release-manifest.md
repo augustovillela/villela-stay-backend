@@ -5,10 +5,10 @@
 - edição: nova edição textual Villela Music;
 - capítulos: 48;
 - partes: 10;
-- PDF: A4, 385 páginas;
+- PDF: A4, 376 páginas;
 - arquivo: `output/pdf/livro-bateria-v2.pdf`;
-- SHA-256: `39B69CFD5FBBFDAD8B36BF6C48272523198A20763822165FD0F8446BC6D48207`;
-- tamanho: 41.000.806 bytes.
+- SHA-256: `DEBC456399687DC3E45AFD3E9AE923D26B0D1F12BA0BF196173520E5EB8A95A5`;
+- tamanho: 40.995.972 bytes.
 
 ## Incluído
 
@@ -22,6 +22,7 @@
 - fotografias editoriais realistas de kit, pegada, postura, gravação e performance;
 - fotografias recuperadas da edição anterior, reposicionadas após o título dos capítulos correspondentes;
 - cada parte e cada capítulo iniciam em página própria;
+- índice geral com páginas de partes e capítulos;
 - auditoria estrutural e auditoria Markdown;
 - revisão visual da capa, índice, páginas internas e encerramento.
 

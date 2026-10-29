@@ -25,6 +25,7 @@ from reportlab.platypus import (
     Paragraph,
     Spacer,
 )
+from reportlab.platypus.tableofcontents import TableOfContents
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,6 +77,32 @@ styles.add(
         textColor=colors.HexColor("#7A2E3A"),
         spaceBefore=10,
         spaceAfter=5,
+    )
+)
+styles.add(
+    ParagraphStyle(
+        name="BatteryTOCPart",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=11,
+        leading=16,
+        textColor=colors.HexColor("#1B2A4A"),
+        leftIndent=0,
+        firstLineIndent=0,
+        spaceAfter=3,
+    )
+)
+styles.add(
+    ParagraphStyle(
+        name="BatteryTOCChapter",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor("#333333"),
+        leftIndent=12,
+        firstLineIndent=0,
+        spaceAfter=2,
     )
 )
 styles.add(
@@ -194,6 +221,17 @@ def chapter_fichas(title):
     return result
 
 
+class BatteryDocTemplate(BaseDocTemplate):
+    def afterFlowable(self, flowable):
+        if not isinstance(flowable, Paragraph) or flowable.style.name != "BatteryH1":
+            return
+        text = flowable.getPlainText()
+        if text == "Índice geral" or text.startswith("Ficha de prática") or text.startswith("Registro e revisão"):
+            return
+        level = 0 if text.startswith("Parte ") else 1
+        self.notify("TOCEntry", (level, text, self.page))
+
+
 def story():
     chapters = chapter_files()
     result = [
@@ -204,14 +242,17 @@ def story():
             "Bateria: do Zero ao Avançado · 48 capítulos em 10 partes",
             styles["BatteryBody"],
         ),
+        Spacer(1, 6 * mm),
     ]
-    for path in chapters:
-        result.append(Paragraph(inline(heading(path)), styles["BatteryBody"]))
+    toc = TableOfContents()
+    toc.levelStyles = [styles["BatteryTOCPart"], styles["BatteryTOCChapter"]]
+    result.append(toc)
     result.append(PageBreak())
 
     current_part = None
     for chapter_index, path in enumerate(chapters, start=1):
         part = path.parent.name
+        first_chapter_in_part = part != current_part
         if part != current_part:
             if current_part is not None:
                 result.append(PageBreak())
@@ -253,7 +294,8 @@ def story():
                 continue
             if stripped.startswith("# "):
                 flush()
-                result.append(PageBreak())
+                if not first_chapter_in_part:
+                    result.append(PageBreak())
                 result.append(Paragraph(inline(stripped[2:]), styles["BatteryH1"]))
                 if legacy_photo.exists():
                     result.extend(image_block(legacy_photo))
@@ -343,7 +385,7 @@ def footer(canvas, doc):
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
 frame = Frame(18 * mm, 20 * mm, 174 * mm, 257 * mm, id="normal")
-doc = BaseDocTemplate(
+doc = BatteryDocTemplate(
     str(OUT),
     pagesize=A4,
     leftMargin=18 * mm,
@@ -359,5 +401,5 @@ doc.addPageTemplates(
         PageTemplate(id="book", frames=[frame], onPage=footer),
     ]
 )
-doc.build(story())
+doc.multiBuild(story())
 print(OUT)
