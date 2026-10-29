@@ -135,6 +135,8 @@ for (const c of Object.values(CONTAS)) {
   contas.Contas.criar({ nome: c.nome, email: c.email }, { id: c.id, senhaHash: HASH_TESTE, vinculo: 'acad-' + c.id, verificado: true });
   if (c.status !== 'ativo') contas.Contas.mudarStatus(c.id, c.status);
 }
+// Alias semântico usado pelos cenários editoriais de cursos.
+CONTAS.aluno = CONTAS.ana;
 const jtis = {};
 const tokenDe = (chave) => {
   const id = CONTAS[chave].id;
