@@ -6,7 +6,7 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, PageBreak, Image
+from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, PageBreak, Image, NextPageTemplate
 
 ROOT = Path(__file__).resolve().parents[1]
 BOOK = ROOT / "docs" / "books" / "ukulele"
@@ -54,11 +54,7 @@ def fitted_size(path, max_width, max_height):
     return width * scale, height * scale
 
 def story():
-    cover_path = BOOK / "fig" / "capa-ukulele-villela-music.png"
-    cover_width, cover_height = fitted_size(cover_path, 165*mm, 210*mm)
-    cover = Image(str(cover_path), width=cover_width, height=cover_height)
-    cover.hAlign = "CENTER"
-    result = [Paragraph("Livro completo de ukulele", styles["BookTitle"]), Paragraph("Villela Music · edição didática e ilustrada", styles["Subtitle"]), cover, Spacer(1, 3*mm), Paragraph("Do primeiro som à criação de arranjos, repertório e performance.", styles["Subtitle"]), PageBreak(), Paragraph("Sumário", styles["H1Book"]), Paragraph("Partes, capítulos e anexos da edição", styles["BodyBook"])]
+    result = [NextPageTemplate("book"), PageBreak(), Paragraph("Sumário", styles["H1Book"]), Paragraph("Partes, capítulos e anexos da edição", styles["BodyBook"])]
     for path in files():
         heading = next((line[2:].strip() for line in path.read_text(encoding="utf-8").splitlines() if line.startswith("# ")), path.stem.replace("-", " ").title())
         result.append(Paragraph(inline(heading), styles["BodyBook"]))
@@ -134,6 +130,23 @@ def story():
         result.extend([Paragraph(title, styles["H1Book"]), Paragraph(body, styles["BodyBook"]), Spacer(1, 8*mm), Paragraph("Plano pessoal", styles["H2Book"]), Paragraph("________________________________________________________________________________", styles["BodyBook"]), Paragraph("________________________________________________________________________________", styles["BodyBook"]), Paragraph("________________________________________________________________________________", styles["BodyBook"]), Spacer(1, 8*mm), Paragraph("Evidência que vou registrar", styles["H2Book"]), Paragraph("________________________________________________________________________________", styles["BodyBook"]), Paragraph("________________________________________________________________________________", styles["BodyBook"]), Paragraph("________________________________________________________________________________", styles["BodyBook"])])
     return result
 
+def cover_page(canvas, doc):
+    cover_path = BOOK / "fig" / "capa-ukulele-villela-music-v2.png"
+    canvas.saveState()
+    canvas.drawImage(str(cover_path), 0, 0, width=A4[0], height=A4[1], preserveAspectRatio=False, mask='auto')
+    canvas.setFillColor(colors.Color(0.03, 0.08, 0.13, alpha=0.78))
+    canvas.roundRect(18*mm, 218*mm, 174*mm, 52*mm, 5*mm, fill=1, stroke=0)
+    canvas.setFillColor(colors.white)
+    canvas.setFont("Helvetica-Bold", 10)
+    canvas.drawString(28*mm, 257*mm, "VILLELA MUSIC")
+    canvas.setFont("Helvetica-Bold", 27)
+    canvas.drawString(28*mm, 242*mm, "Livro completo de ukulele")
+    canvas.setFont("Helvetica", 12)
+    canvas.drawString(28*mm, 231*mm, "Do primeiro som à criação, repertório e performance")
+    canvas.setStrokeColor(colors.HexColor("#D6A84A")); canvas.setLineWidth(1)
+    canvas.line(28*mm, 225*mm, 92*mm, 225*mm)
+    canvas.restoreState()
+
 def footer(canvas, doc):
     canvas.saveState(); canvas.setStrokeColor(colors.HexColor("#C79A3B")); canvas.setLineWidth(0.5)
     canvas.line(18*mm, 14*mm, 192*mm, 14*mm); canvas.setFont("Helvetica", 7); canvas.setFillColor(colors.HexColor("#6A6A6A"))
@@ -142,6 +155,9 @@ def footer(canvas, doc):
 OUT.parent.mkdir(parents=True, exist_ok=True)
 frame = Frame(18*mm, 20*mm, 174*mm, 257*mm, id="normal")
 doc = BaseDocTemplate(str(OUT), pagesize=A4, leftMargin=18*mm, rightMargin=18*mm, topMargin=18*mm, bottomMargin=20*mm, title="Livro completo de ukulele", author="Villela Music")
-doc.addPageTemplates([PageTemplate(id="book", frames=frame, onPage=footer)])
+doc.addPageTemplates([
+    PageTemplate(id="cover", frames=[Frame(0, 0, A4[0], A4[1], id="cover")], onPage=cover_page),
+    PageTemplate(id="book", frames=[frame], onPage=footer),
+])
 doc.build(story())
 print(OUT)
