@@ -35,6 +35,17 @@ function blocosLivroBandolim(texto) {
     return `<p class="curso-livro-bloco-texto">${html.join('<br>')}</p>`;
   }).join('');
 }
+function blocosLivroUkulele(texto) {
+  return String(texto || '').split(/\n\s*\n+/).map((bloco) => {
+    const linhas = bloco.split('\n').map((x) => x.trim()).filter(Boolean);
+    if (!linhas.length) return '';
+    const first = linhas[0];
+    if (/^#{1,3}\s+/.test(first)) return `<h3>${esc(first.replace(/^#{1,3}\s+/, ''))}</h3>`;
+    if (linhas.every((x) => /^[-*]\s+/.test(x))) return `<ul class="curso-livro-lista">${linhas.map((x) => `<li>${esc(x.replace(/^[-*]\s+/, ''))}</li>`).join('')}</ul>`;
+    if (/^(Objetivos|Exercício|Prática|Checklist|Diagnóstico|Aplicação|Estudo|Repertório)/i.test(first)) return `<section class="curso-livro-bloco curso-livro-bloco-exercicio"><h3>${esc(first)}</h3>${linhas.slice(1).map((x) => `<p>${esc(x)}</p>`).join('')}</section>`;
+    return `<p class="curso-livro-bloco-texto">${linhas.map((x) => esc(x)).join('<br>')}</p>`;
+  }).join('');
+}
 const TE = require('./paginas-teoria');
 const RF = require('./paginas-referencia');
 const L = require('./licoes');
@@ -44,6 +55,7 @@ const CBA = require('./curso-contrabaixo');
 const CP = require('./curso-piano');
 const CC = require('./curso-cavaquinho');
 const BM = require('./curso-bandolim');
+const UK = require('./curso-ukulele');
 const CBA_LIVRO = require('./curso-contrabaixo-conteudo.json');
 const CC_LIVRO = require('./curso-cavaquinho-conteudo.json');
 const LB = require('./licoes-bateria');
@@ -96,7 +108,7 @@ function registrar(app, { opcional, contextoDe }) {
   app.use([
     '/music/curso-teoria', '/music/curso-bateria', '/music/curso-contrabaixo',
     '/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano.pdf', '/music/curso-piano.md', '/music/curso-piano.academy.json',
-    '/music/curso-cavaquinho', '/music/curso-cavaquinho.json', '/music/curso-cavaquinho.pdf', '/music/curso-cavaquinho.md', '/music/curso-bandolim', '/music/curso-bandolim.json', '/music/curso-bandolim.pdf', '/music/curso-bandolim.md', '/music/curso-bandolim/progresso.json', '/music/curso-bandolim/professor',
+    '/music/curso-cavaquinho', '/music/curso-cavaquinho.json', '/music/curso-cavaquinho.pdf', '/music/curso-cavaquinho.md', '/music/curso-bandolim', '/music/curso-bandolim.json', '/music/curso-bandolim.pdf', '/music/curso-bandolim.md', '/music/curso-bandolim/progresso.json', '/music/curso-bandolim/professor', '/music/curso-ukulele', '/music/curso-ukulele.json', '/music/curso-ukulele.pdf', '/music/curso-ukulele.md', '/music/curso-ukulele/progresso.json', '/music/curso-ukulele/professor',
     '/music/curso-teoria.json', '/music/curso-teoria.pdf', '/music/curso-teoria.md',
     '/music/curso-bateria.json', '/music/curso-bateria.pdf', '/music/curso-bateria.md', '/music/curso-bateria.academy.json',
     '/music/curso-contrabaixo.json', '/music/curso-contrabaixo.pdf',
@@ -163,6 +175,7 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
       { nome: 'Cavaquinho', icone: '🪕', cor: '#8b6b48', resumo: 'Acordes, batidas, samba, pagode, choro e performance.', url: '/music/curso-cavaquinho', ativo: true },
       { nome: 'Ukulele', icone: '🪕', cor: '#6d8060', resumo: 'Em preparação: acordes, batidas e primeiras canções.', url: '/music/curso-ukulele', ativo: false },
       { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Palhetada, tremolo, melodias, choro e improvisação.', url: '/music/curso-bandolim', ativo: true },
+      { nome: 'Ukulelê', icone: '🎵', cor: '#4f7f73', resumo: 'Acordes, ritmos, dedilhados, arranjos e performance.', url: '/music/curso-ukulele', ativo: true },
     ];
     const cards = cursos.map((c) => { const tag = c.url ? 'a href="' + c.url + '"' : 'div'; return `<${tag} class="curso-card ${c.ativo ? 'curso-card-ativo' : 'curso-card-futuro'}" style="--curso-cor:${c.cor}"><span class="curso-card-icone" aria-hidden="true">${c.icone}</span><span class="curso-card-corpo"><strong>${esc(c.nome)}</strong><span>${esc(c.resumo)}</span></span><small>${c.ativo ? 'Abrir curso →' : 'Em breve →'}</small></${c.url ? 'a' : 'div'}>`; }).join('');
     const corpo = `<header class="lab-cab cursos-hero"><p class="lab-cab-tipo">Formação musical</p><h1>Cursos</h1><p class="lab-lead">Escolha um instrumento ou comece pela teoria. Cada curso tem seu próprio percurso, materiais e práticas.</p></header><section class="cursos-grid" aria-label="Catálogo de cursos">${cards}</section><p class="lab-dica cursos-nota">Novos cursos serão publicados nesta mesma página conforme o conteúdo ficar pronto.</p>`;
@@ -378,6 +391,43 @@ ${relacionados(f.slug)}`;
     const roteiro = `<section class="curso-modulo"><h2>Roteiro de estudo</h2><ol>${c.roteiro.map((etapa) => `<li>${esc(etapa)}</li>`).join('')}</ol></section>`;
     const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Capítulo ${c.numero} de 43 · ${esc(c.faseNome)}</p><h1><span aria-hidden="true">🪕</span> ${esc(c.titulo)}</h1><p class="lab-lead">${esc(c.resumo)}</p><div class="curso-objetivo"><strong>Objetivo da aula</strong><span>${esc(c.objetivo)}</span></div><p><a class="btn" href="/music/curso-bandolim.pdf#page=${c.pagina_inicio}">📄 Abrir no livro · PDF página ${c.pagina_inicio}</a> <a class="btn sec" href="/music/curso-bandolim/${c.slug}.json">⬇ Dados desta aula</a> <a class="btn sec" href="/music/curso-bandolim">← Curso de bandolim</a></p></header>${roteiro}<section class="curso-livro-conteudo"><h2>Conteúdo editorial do livro</h2><div class="curso-livro-texto">${conteudo}</div></section>${pratica}${checklist}<div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(c.slug)}" aria-pressed="false">Marcar capítulo como concluído</button></div>${navegacao}`;
     pagina(res, { titulo: `${c.titulo} — curso de bandolim | Musique`, descricao: c.resumo, caminho: `/music/curso-bandolim/${c.slug}`, corpo, trilha: [['Cursos', '/music/cursos'], ['Bandolim', '/music/curso-bandolim'], [c.titulo]] });
+  });
+
+  // ------------------------------------------------------------ curso de ukulele
+  app.get('/music/curso-ukulele.json', opcional, (req, res) => {
+    const documento = { schema: 'musique.course.v1', id: UK.CURSO.id, titulo: UK.CURSO.titulo, subtitulo: UK.CURSO.subtitulo, versao: UK.CURSO.versao, descricao: UK.CURSO.descricao, paginas: UK.CURSO.paginas, trilhas: UK.CURSO.trilhas, partes: UK.partes.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-ukulele', pdf: '/music/curso-ukulele.pdf', markdown: '/music/curso-ukulele.md', progresso: '/music/curso-ukulele/progresso' }, capitulos: UK.capitulos.map((c) => ({ numero: c.numero, slug: c.slug, titulo: c.titulo, parte: c.parte, resumo: c.resumo, objetivo: c.objetivo, url: `/music/curso-ukulele/${c.slug}` })) };
+    res.type('application/json').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
+  });
+  app.get('/music/curso-ukulele.pdf', opcional, (req, res) => {
+    const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', 'livro-ukulele-v0.1.pdf');
+    if (!fs.existsSync(pdf)) return res.status(404).send('PDF ainda não foi publicado.');
+    res.set('Content-Type', 'application/pdf').set('Content-Disposition', 'inline; filename="curso-ukulele.pdf"').set('Cache-Control', 'no-cache').sendFile(pdf);
+  });
+  app.get('/music/curso-ukulele.md', opcional, (req, res) => {
+    const linhas = [`# ${UK.CURSO.titulo}`, '', UK.CURSO.descricao, '', `**${UK.CURSO.paginas} páginas · ${UK.CURSO.capitulos} capítulos · ${UK.CURSO.anexos} anexos · 3 trilhas**`, ''];
+    UK.capitulos.forEach((c) => linhas.push(`## ${c.numero}. ${c.titulo}`, '', c.resumo, '', c.conteudo, ''));
+    res.type('text/markdown').set('Content-Disposition', 'attachment; filename="curso-ukulele.md"').send(linhas.join('\n'));
+  });
+  app.get('/music/curso-ukulele', opcional, (req, res) => {
+    const fases = UK.partes.map(([id, nome, numeros]) => `<section class="curso-nivel" id="nivel-${esc(id)}"><div class="curso-nivel-cab"><div><p class="lab-cab-tipo">Trilha de ukulele</p><h2>${esc(nome)}</h2><p>Conteúdo correspondente ao livro-base.</p></div><span>${numeros.length} capítulos</span></div><div class="curso-modulos"><article class="curso-modulo"><ul>${numeros.map((n) => { const c = UK.capitulos[n - 1]; return `<li><a data-curso-slug="${esc(c.slug)}" href="/music/curso-ukulele/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.resumo)}</span></li>`; }).join('')}</ul></article></div></section>`).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso editorial · versão ${esc(UK.CURSO.versao)}</p><h1>🎵 ${esc(UK.CURSO.titulo)}</h1><p class="lab-lead">${esc(UK.CURSO.descricao)} ${esc(UK.CURSO.subtitulo)}.</p><div class="curso-numeros" aria-label="Dimensão do curso"><span><strong>2</strong> partes</span><span><strong>${UK.CURSO.capitulos}</strong> capítulos</span><span><strong>${UK.CURSO.paginas}</strong> páginas</span><span><strong>3</strong> trilhas</span></div><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div><p><a class="btn" href="/music/curso-ukulele.pdf">📄 Abrir livro em PDF</a> <a class="btn sec" href="/music/curso-ukulele.json">⬇ Dados estruturados</a> <a class="btn sec" href="/music/curso-ukulele.md">⬇ Edição Markdown</a> <a class="btn sec" href="/music/curso-ukulele/progresso">📈 Meu progresso</a> <a class="btn sec" href="/music/cursos">← Todos os cursos</a></p></header><section aria-labelledby="trilhas-ukulele"><h2 id="trilhas-ukulele">Três trilhas de aprendizagem</h2><div class="curso-trilhas">${UK.CURSO.trilhas.map((t) => `<div><strong>${esc(t.nome)}</strong><span>${esc(t.resumo)}</span></div>`).join('')}</div></section>${fases}`;
+    pagina(res, { titulo: 'Curso de ukulele — Musique', descricao: UK.CURSO.descricao, caminho: '/music/curso-ukulele', corpo, trilha: [['Cursos', '/music/cursos'], ['Ukulelê']] });
+  });
+  app.get('/music/curso-ukulele/progresso', opcional, (req, res) => {
+    const itens = UK.capitulos.map((c) => `<li><a data-curso-slug="${esc(c.slug)}" href="/music/curso-ukulele/${esc(c.slug)}">${c.numero}. ${esc(c.titulo)}</a><span>${esc(c.parte)}</span></li>`).join('');
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Curso de ukulele · acompanhamento</p><h1>Meu progresso</h1><p class="lab-lead">Acompanhe os ${UK.CURSO.capitulos} capítulos do livro.</p><div id="curso-progresso" class="curso-progresso" aria-live="polite">Progresso local: carregando…</div></header><section class="curso-modulo"><h2>Trilha completa</h2><ol>${itens}</ol></section>`;
+    pagina(res, { titulo: 'Meu progresso — curso de ukulele | Musique', descricao: 'Acompanhamento do curso de ukulele.', caminho: '/music/curso-ukulele/progresso', corpo, trilha: [['Cursos', '/music/cursos'], ['Ukulelê', '/music/curso-ukulele'], ['Meu progresso']] });
+  });
+  app.get('/music/curso-ukulele/:slug.json', opcional, (req, res) => {
+    const c = UK.capitulos.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de ukulele');
+    res.type('application/json').set('Cache-Control', 'no-cache').send(JSON.stringify({ schema: 'musique.course.lesson.v1', curso: UK.CURSO.id, ...c, url: `/music/curso-ukulele/${c.slug}`, pdf: '/music/curso-ukulele.pdf' }, null, 2));
+  });
+  app.get('/music/curso-ukulele/:slug', opcional, (req, res) => {
+    const c = UK.capitulos.find((x) => x.slug === req.params.slug); if (!c) return naoAchou(res, 'este capítulo de ukulele');
+    const anterior = UK.capitulos[c.numero - 2], proximo = UK.capitulos[c.numero];
+    const navegacao = `<nav class="lab-licao-nav" aria-label="Navegação dos capítulos">${anterior ? `<a href="/music/curso-ukulele/${anterior.slug}">← ${anterior.numero}. ${esc(anterior.titulo)}</a>` : '<span>Primeiro capítulo</span>'}<a href="/music/curso-ukulele/progresso">Índice e progresso</a>${proximo ? `<a href="/music/curso-ukulele/${proximo.slug}">${proximo.numero}. ${esc(proximo.titulo)} →</a>` : '<span>Último capítulo</span>'}</nav>`;
+    const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Capítulo ${c.numero} de ${UK.CURSO.capitulos} · ${esc(c.parte)}</p><h1><span aria-hidden="true">🎵</span> ${esc(c.titulo)}</h1><p class="lab-lead">${esc(c.resumo)}</p><div class="curso-objetivo"><strong>Objetivo da aula</strong><span>${esc(c.objetivo)}</span></div><p><a class="btn" href="/music/curso-ukulele.pdf">📄 Abrir no livro em PDF</a> <a class="btn sec" href="/music/curso-ukulele/${c.slug}.json">⬇ Dados desta aula</a> <a class="btn sec" href="/music/curso-ukulele">← Curso de ukulele</a></p></header><section class="curso-livro-conteudo"><h2>Conteúdo editorial do livro</h2><div class="curso-livro-texto">${blocosLivroUkulele(c.conteudo)}</div></section><section class="curso-modulo curso-checklist"><h2>Checklist da aula</h2><label><input type="checkbox" data-curso-check="leitura"> Li o capítulo</label><label><input type="checkbox" data-curso-check="compreensao"> Consigo explicar o conteúdo</label><label><input type="checkbox" data-curso-check="pratica"> Fiz o exercício no instrumento</label><p class="lab-dica">O progresso é salvo no navegador. As aulas animadas serão adicionadas posteriormente.</p></section><div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(c.slug)}" aria-pressed="false">Marcar capítulo como concluído</button></div>${navegacao}`;
+    pagina(res, { titulo: `${c.titulo} — curso de ukulele | Musique`, descricao: c.resumo, caminho: `/music/curso-ukulele/${c.slug}`, corpo, trilha: [['Cursos', '/music/cursos'], ['Ukulelê', '/music/curso-ukulele'], [c.titulo]] });
   });
 
   // ------------------------------------------------------------ curso de piano
