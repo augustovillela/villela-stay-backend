@@ -704,6 +704,7 @@ def story():
             FIG / "violao-v2-foto-maos-acordes.png",
             FIG / "violao-v2-foto-batida-palheta.png",
             FIG / "violao-v2-foto-postura.png",
+            FIG / "violao-v2-foto-dedilhado.png",
         ]
         legacy_photo = editorial_photos[(chapter_index - 1) % len(editorial_photos)]
 
