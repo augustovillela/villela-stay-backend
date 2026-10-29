@@ -27,12 +27,7 @@ test('ukulele: páginas, links e acompanhamento docente permanecem conectados', 
   const paginas = fs.readFileSync(require.resolve('./paginas'), 'utf8');
   const api = fs.readFileSync(require.resolve('./rotas-api'), 'utf8');
   const cliente = fs.readFileSync(require.resolve('./cliente/base'), 'utf8');
-  for (const trecho of [
-    "'/music/curso-ukulele/professor'",
-    "'/music/api/lab/ukulele/progresso'",
-    "'/music/api/lab/ukulele/praticas'",
-    'data-ukulele-professor-dashboard',
-    'Área do professor',
-  ]) assert.ok(paginas.includes(trecho) || api.includes(trecho), trecho);
+  for (const trecho of ["'/music/curso-ukulele/professor'", 'data-ukulele-professor-dashboard', 'Área do professor']) assert.ok(paginas.includes(trecho), trecho);
+  for (const trecho of ["B + '/ukulele/progresso'", "B + '/ukulele/praticas'", "B + '/prof/ukulele/alunos'", "B + '/prof/ukulele/observacoes'", "B + '/prof/ukulele/tarefas'"]) assert.ok(api.includes(trecho), trecho);
   assert.ok(cliente.includes('painelProfessorUkulele'));
 });
