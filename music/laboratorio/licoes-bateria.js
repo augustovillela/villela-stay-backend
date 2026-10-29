@@ -12,19 +12,22 @@ function readChapter(c) {
   const blocks = [];
   let paragraph = [];
   let list = [];
+  let table = [];
   let inCode = false;
   const flushParagraph = () => { if (paragraph.length) { blocks.push({ t: 'p', html: inline(paragraph.join(' ')) }); paragraph = []; } };
   const flushList = () => { if (list.length) { blocks.push({ t: 'lista', itens: list.splice(0).map(inline) }); } };
+  const flushTable = () => { if (table.length) { blocks.push({ t: 'tabela', linhas: table.splice(0).map((row) => row.split('|').slice(1, -1).map((cell) => inline(cell.trim()))) }); } };
   fs.readFileSync(file, 'utf8').split(/\r?\n/).forEach((raw) => {
     const line = raw.trim();
     if (line.startsWith('```')) { flushParagraph(); flushList(); inCode = !inCode; return; }
     if (inCode || line.startsWith('![') || line === '---') return;
-    if (!line) { flushParagraph(); flushList(); return; }
+    if (line.startsWith('|')) { flushParagraph(); flushList(); if (!/^\|\s*:?-+/.test(line)) table.push(line); return; }
+    if (!line) { flushParagraph(); flushList(); flushTable(); return; }
     if (line.startsWith('#')) { flushParagraph(); flushList(); return; }
-    if (/^[-*]\s+/.test(line) || /^\d+[.)]\s+/.test(line)) { flushParagraph(); list.push(line.replace(/^([-*]|\d+[.)])\s+/, '')); return; }
+    if (/^[-*]\s+/.test(line) || /^\d+[.)]\s+/.test(line)) { flushParagraph(); flushTable(); list.push(line.replace(/^([-*]|\d+[.)])\s+/, '')); return; }
     paragraph.push(line);
   });
-  flushParagraph(); flushList();
+  flushParagraph(); flushList(); flushTable();
   const rudimento = RUDIMENTOS[(c.numero - 1) % RUDIMENTOS.length];
   blocks.push({ t: 'visual', v: { tipo: 'mapa-bateria', titulo: `Mapa do capítulo ${c.numero}`, resumo: `${c.faseNome} · ${c.nivel}` } });
   blocks.push({ t: 'ouvir', rotulo: `Ouvir e reconhecer — capítulo ${c.numero}`, midis: [] });

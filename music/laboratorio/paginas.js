@@ -588,12 +588,24 @@ ${relacionados(f.slug)}`;
     pagina(res, { titulo: 'Professor — curso de bateria | Musique', descricao: 'Acompanhamento dos alunos de bateria.', caminho: '/music/curso-bateria/professor', corpo, trilha: [['Ensinar', '/music/ensinar'], ['Curso de bateria'], ['Professor']] });
   });
 
+  const renderBateriaBloco = (b) => {
+    if (b.t === 'p') return `<p>${b.html}</p>`;
+    if (b.t === 'lista') return `<ul>${b.itens.map((x) => `<li>${x}</li>`).join('')}</ul>`;
+    if (b.t === 'tabela') return `<div class="curso-tabela-wrap"><table class="curso-tabela"><tbody>${b.linhas.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    if (b.t === 'visual') return `<section class="curso-bloco-visual"><h2>${esc(b.v.titulo)}</h2><p>${esc(b.v.resumo)}</p><div class="curso-visual-mapa" data-curso-visual="${esc(b.v.tipo)}">Mapa interativo do capítulo</div></section>`;
+    if (b.t === 'ouvir') return `<aside class="curso-bloco-ouvir"><strong>${esc(b.rotulo)}</strong><span>Observe pulso, dinâmica, subdivisão e função de cada camada antes de tocar.</span></aside>`;
+    if (b.t === 'aprofundar') return `<details class="lab-det lab-aprofundar"><summary>Aprofundar</summary><p>${esc(b.html)}</p></details>`;
+    if (b.t === 'praticar') return `<section class="lab-pratica"><h2>Prática orientada</h2><p>Comece em ${b.bpmInicial} BPM e avance até ${b.bpmMeta} BPM após três repetições limpas. Rudimento de apoio: ${esc(b.rudimento.nome)}.</p></section>`;
+    if (b.t === 'ferramenta') return `<p class="lab-ferr-link"><a href="/music/criar/${esc(b.slug)}">🎛️ Experimente no Musique: ${esc(b.slug.replace(/-/g, ' '))}</a></p>`;
+    return '';
+  };
+
   app.get('/music/curso-bateria/:slug', opcional, (req, res) => {
     const l = LB.POR_SLUG[req.params.slug];
     if (!l) return naoAchou(res, 'esta lição de bateria');
     const c = CB.capitulos.find((x) => x.slug === l.slug);
-    const conteudo = l.blocos.map((b) => b.t === 'p' ? `<p>${b.html}</p>` : b.t === 'lista' ? `<ul>${b.itens.map((x) => `<li>${x}</li>`).join('')}</ul>` : b.t === 'aprofundar' ? `<details class="lab-det lab-aprofundar"><summary>Aprofundar</summary><p>${esc(b.html)}</p></details>` : b.t === 'praticar' ? `<section class="lab-pratica"><h2>Prática orientada</h2><p>Comece em ${b.bpmInicial} BPM e avance até ${b.bpmMeta} BPM somente após três repetições limpas. Rudimento de apoio: ${esc(b.rudimento.nome)}.</p></section>` : b.t === 'ferramenta' ? `<p class="lab-ferr-link"><a href="/music/criar/${esc(b.slug)}">🎛️ Experimente no Musique: ${esc(b.slug.replace(/-/g, ' '))}</a></p>` : '').join('');
-      const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Capítulo ${c.numero} de ${CB.capitulos.length} · ${esc(c.nivel)}</p><h1>${esc(l.titulo)}</h1><p class="lab-lead">${esc(l.resumo)}</p><aside class="curso-contexto"><p>Curso de bateria · ${esc(c.faseNome)}</p><p>O progresso, a prática e os facilitadores fazem parte da mesma trilha.</p></aside></header><article class="lab-licao">${conteudo}</article><div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(l.slug)}" aria-pressed="false">Marcar capítulo como concluído</button><span>O progresso fica no navegador e é sincronizado na conta quando você está logado.</span></div><nav class="lab-licao-nav"><a href="/music/curso-bateria">← Voltar ao curso</a></nav>`;
+    const conteudo = l.blocos.map(renderBateriaBloco).join('');
+      const corpo = `<header class="lab-cab"><p class="lab-cab-tipo">Capítulo ${c.numero} de ${CB.capitulos.length} · ${esc(c.nivel)}</p><h1>${esc(l.titulo)}</h1><p class="lab-lead">${esc(l.resumo)}</p><aside class="curso-contexto"><p>Curso de bateria · ${esc(c.faseNome)}</p><p>O progresso, a prática e os facilitadores fazem parte da mesma trilha.</p></aside></header><p><a class="btn sec" href="/music/curso-bateria.pdf#page=${c.paginaLivro}">📄 Abrir no livro · PDF página ${c.paginaLivro}</a></p><article class="lab-licao">${conteudo}</article><div class="curso-concluir-wrap"><button type="button" class="curso-concluir" data-curso-licao="${esc(l.slug)}" aria-pressed="false">Marcar capítulo como concluído</button><span>O progresso fica no navegador e é sincronizado na conta quando você está logado.</span></div><nav class="lab-licao-nav"><a href="/music/curso-bateria">← Voltar ao curso</a></nav>`;
     pagina(res, { titulo: `${l.titulo} — bateria | Musique`, descricao: l.resumo, caminho: '/music/curso-bateria/' + l.slug, corpo, trilha: [['Aprender', '/music/aprender'], ['Curso de bateria', '/music/curso-bateria'], [l.titulo]] });
   });
 

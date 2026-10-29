@@ -24,12 +24,13 @@ const summaryFromMarkdown = (file, title) => {
   return text || `Estudo guiado de ${title.toLowerCase()}, com conceitos, exercícios e aplicação musical.`;
 };
 const chapterNumbers = chapterFiles.map((x, i) => i + 1);
+const LIVRO_PAGINAS = [4, 11, 19, 26, 33, 40, 48, 54, 61, 68, 75, 82, 89, 96, 103, 110, 117, 124, 131, 138, 145, 152, 159, 166, 173, 181, 188, 195, 202, 209, 216, 223, 231, 239, 247, 256, 264, 273, 281, 290, 300, 309, 318, 327, 337, 347, 359, 367];
 const fases = Object.entries(PART_NAMES).map(([part, nome]) => [slugify(nome), nome, chapterFiles.map((x, i) => ({ x, i })).filter(({ x }) => x.part === part).map(({ i }) => i + 1)]);
 const fasesPorNumero = Object.fromEntries(fases.flatMap(([id, nome, ns]) => ns.map((n) => [n, { id, nome }])));
 const capitulos = chapterFiles.map(({ part, file }, i) => {
   const numero = i + 1;
   const titulo = titleFromMarkdown(file);
-  return { id: `bateria-${String(numero).padStart(2, '0')}-${slugify(titulo)}`, numero, titulo, resumo: summaryFromMarkdown(file, titulo), fase: fasesPorNumero[numero].id, faseNome: fasesPorNumero[numero].nome, nivel: numero <= 8 ? 'iniciante' : numero <= 24 ? 'basico' : 'intermediario', slug: `bateria-${String(numero).padStart(2, '0')}`, livroArquivo: path.relative(BOOK_ROOT, file).replace(/\\/g, '/') };
+  return { id: `bateria-${String(numero).padStart(2, '0')}-${slugify(titulo)}`, numero, titulo, resumo: summaryFromMarkdown(file, titulo), fase: fasesPorNumero[numero].id, faseNome: fasesPorNumero[numero].nome, nivel: numero <= 8 ? 'iniciante' : numero <= 24 ? 'basico' : 'intermediario', slug: `bateria-${String(numero).padStart(2, '0')}`, paginaLivro: LIVRO_PAGINAS[numero - 1], livroArquivo: path.relative(BOOK_ROOT, file).replace(/\\/g, '/') };
 });
 
 const RUDIMENTOS = [
