@@ -68,30 +68,30 @@ O livro atenderá iniciantes absolutos, alunos intuitivos, intermediários e bat
 31. Jazz e swing  
 32. Reggae e ska  
 33. Música brasileira  
-34. Metal, gospel e estilos avançados
+34. Latin, afro-cubano e fusões
 
-### Parte 8 — Independência, técnicas avançadas e improvisação
+### Parte 8 — Leitura, coordenação, criação e produção
 
-35. Independência dos quatro membros  
-36. Polirritmia e subdivisões  
-37. Frases lineares  
-38. Técnicas de bumbo  
-39. Improvisação na bateria
+35. Leitura aplicada e interpretação de partituras  
+36. Independência e coordenação avançada  
+37. Velocidade, resistência e controle  
+38. Improvisação, composição e criação de grooves  
+39. Performance, repertório e preparação para tocar  
+40. Gravação, produção e trabalho em estúdio
 
-### Parte 9 — Repertório, arranjo e prática musical
+### Parte 9 — Equipamento, prática e avaliação
 
-40. Tocar com músicas  
-41. Transcrição  
-42. Criação de grooves  
-43. Criação de viradas e arranjos
+41. Equipamentos, manutenção e segurança  
+42. Prática eficiente e planejamento de estudos  
+43. Avaliação, certificação e projeto final
 
-### Parte 10 — Performance, gravação e profissionalização
+### Parte 10 — Anexos, aplicações e continuidade
 
-44. Tocar em banda  
-45. Gravação de bateria acústica  
-46. Bateria eletrônica  
-47. Preparação para apresentações  
-48. Plano de desenvolvimento contínuo
+44. Anexos práticos, glossário e repertório de estudos  
+45. Exercícios progressivos e planos de repertório  
+46. Dicionário de rudimentos e aplicações  
+47. Arranjos, bandas e interação musical  
+48. Conclusão, glossário expandido e próximos caminhos
 
 ## Padrão de cada capítulo
 
