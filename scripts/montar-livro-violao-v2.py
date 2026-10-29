@@ -227,12 +227,164 @@ def chapter_fichas(title):
     return result
 
 
+def chapter_deep_dive(title, chapter_index):
+    """Acrescenta conteúdo musical efetivo, não páginas de preenchimento."""
+    key = inline(title.replace("Capítulo ", ""))
+    return [
+        PageBreak(),
+        Paragraph(f"Estudo guiado — {key}", styles["GuitarH1"]),
+        Paragraph(
+            "Esta seção transforma o conceito em uma sequência de estudo observável. O aluno deve tocar, ouvir, comparar e tomar uma decisão musical a cada etapa.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("1. Preparação consciente", styles["GuitarH2"]),
+        Paragraph(
+            f"Antes de tocar {key}, ajuste a postura, confira a afinação e diga em voz alta qual resultado procura. Faça uma tomada sem se preocupar com velocidade; ela será a referência para comparar som, tempo e tensão.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("2. Células de estudo", styles["GuitarH2"]),
+        Paragraph(
+            "Pratique em quatro compassos: primeiro somente o baixo, depois o acorde completo, depois a alternância entre os dois. Conte 1–2–3–4 e mantenha a mão direita em movimento mesmo quando não houver ataque.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Exemplo de grade rítmica", styles["GuitarH2"]),
+        Paragraph(
+            "Contagem:  1  &  2  &  3  &  4  &amp;<br/>"
+            "Polegar:  B     -  B     -  B     -  B     -<br/>"
+            "Acorde:   -  X  -  X  -  X  -  X",
+            styles["GuitarCode"],
+        ),
+        Paragraph("3. Transferência musical", styles["GuitarH2"]),
+        Paragraph(
+            "Transponha a ideia para duas tonalidades vizinhas e para uma progressão de oito compassos. Na primeira passagem, toque apenas o essencial; na segunda, acrescente dinâmica; na terceira, crie uma resposta sem abandonar o pulso.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Perguntas de escuta", styles["GuitarH2"]),
+        Paragraph(
+            "O ataque está uniforme? O baixo está mais forte que o acorde? As pausas continuam audíveis? A mudança acontece antes ou depois do pulso? Responda com palavras e depois grave uma nova tentativa corrigindo apenas um item.",
+            styles["GuitarBody"],
+        ),
+        PageBreak(),
+        Paragraph(f"Laboratório de exercícios — {key}", styles["GuitarH1"]),
+        Paragraph("Exercício A — precisão", styles["GuitarH2"]),
+        Paragraph(
+            "Comece a 52 BPM, quatro compassos por repetição, durante cinco minutos. Só aumente 4 BPM quando houver três repetições sem interrupção, ruído excessivo ou mudança involuntária de dinâmica.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Exercício B — contraste", styles["GuitarH2"]),
+        Paragraph(
+            "Toque a mesma frase em piano, mezzo-forte e forte, sem alterar o andamento. Depois escolha a dinâmica mais adequada ao caráter da passagem e explique por quê.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Exercício C — memória e leitura", styles["GuitarH2"]),
+        Paragraph(
+            "Leia a sequência duas vezes, cubra o texto e toque de memória. Em seguida, volte ao material e marque exatamente onde a memória divergiu. Essa comparação desenvolve leitura, audição e autonomia.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Tabela de diagnóstico", styles["GuitarH2"]),
+        Paragraph(
+            "Sintoma — Causa provável — Correção<br/>"
+            "Som abafado — pressão ou ângulo excessivo — relaxar e testar uma nota isolada<br/>"
+            "Pulso instável — movimento interrompido — reduzir o BPM e contar subdivisões<br/>"
+            "Troca atrasada — preparação tardia — antecipar a forma da mão sem apertar<br/>"
+            "Dinâmica plana — ataque sem intenção — repetir a frase com três níveis de volume",
+            styles["GuitarCode"],
+        ),
+        Paragraph("Aplicação em repertório", styles["GuitarH2"]),
+        Paragraph(
+            f"Escolha uma canção que você já conheça e aplique {key} em uma única seção. Não mude toda a música de uma vez: compare introdução, estrofe e refrão, anotando onde a técnica cria contraste e onde ela atrapalha a clareza.",
+            styles["GuitarBody"],
+        ),
+        PageBreak(),
+        Paragraph(f"Oficina de musicalidade — {key}", styles["GuitarH1"]),
+        Paragraph(
+            "A técnica só se torna conteúdo musical quando serve à frase. Toque a mesma ideia com três intenções: acompanhar, responder e conduzir. Escute o espaço entre os ataques e não apenas as notas que você produz.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Arranjo em três camadas", styles["GuitarH2"]),
+        Paragraph(
+            "Camada 1: baixo e pulso. Camada 2: acorde ou melodia. Camada 3: dinâmica, articulação e silêncio. Construa as camadas separadamente e só una quando cada uma puder existir com estabilidade.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Projeto do capítulo", styles["GuitarH2"]),
+        Paragraph(
+            f"Grave uma versão de 60 a 90 segundos usando {key}. Inclua contagem, uma passagem simples e uma passagem musicalizada. Antes de avançar, escreva: o que ficou claro, o que ainda está instável e qual exercício será repetido amanhã.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Critérios de domínio", styles["GuitarH2"]),
+        Paragraph(
+            "Domínio técnico: o movimento é econômico. Domínio rítmico: o pulso não desaparece. Domínio sonoro: cada nota tem intenção. Domínio musical: o recurso melhora a frase. Se um critério falhar, volte ao exercício correspondente em vez de apenas tocar mais rápido.",
+            styles["GuitarBody"],
+        ),
+        PageBreak(),
+        Paragraph(f"Variações e conexões — {key}", styles["GuitarH1"]),
+        Paragraph(
+            "Um capítulo completo não termina no exercício original. A habilidade precisa sobreviver a mudanças de andamento, tonalidade, articulação, dinâmica e contexto. Use as variações abaixo como testes musicais, não como páginas para preencher.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Variação 1 — andamento", styles["GuitarH2"]),
+        Paragraph(
+            "Toque quatro compassos em 52 BPM, quatro em 72 BPM e quatro em 52 BPM. Observe se o retorno ao andamento lento preserva a qualidade do som. Se a mão estiver tensa, reduza a amplitude do movimento antes de tentar novamente.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Variação 2 — registro", styles["GuitarH2"]),
+        Paragraph(
+            "Execute a mesma ideia em uma região grave, média e aguda do braço. Compare o timbre, a projeção e a facilidade de articulação. Anote em qual região a intenção musical fica mais clara.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Variação 3 — textura", styles["GuitarH2"]),
+        Paragraph(
+            "Faça uma versão com notas isoladas, uma com acordes e uma combinando baixo alternado e vozes superiores. A textura escolhida deve respeitar o espaço da música; mais notas não significam necessariamente melhor acompanhamento.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Conexão com outros capítulos", styles["GuitarH2"]),
+        Paragraph(
+            f"Relacione {key} a postura, afinação, técnica da mão direita, técnica da mão esquerda, leitura e repertório. Escolha duas conexões e explique como elas mudam a execução. Essa rede de relações é o que transforma capítulos isolados em um método.",
+            styles["GuitarBody"],
+        ),
+        PageBreak(),
+        Paragraph(f"Estudo de repertório e escuta — {key}", styles["GuitarH1"]),
+        Paragraph(
+            "Escolha uma gravação de referência que contenha o recurso estudado. Ouça três vezes: na primeira, acompanhe o pulso; na segunda, identifique o padrão; na terceira, observe articulação, dinâmica e silêncio. Só depois tente reproduzir um trecho curto.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Roteiro de análise", styles["GuitarH2"]),
+        Paragraph(
+            "1. Qual é o andamento aproximado?  2. Onde estão os acentos?  3. O que acontece nos finais de frase?  4. Como o músico usa o silêncio?  5. O que pode ser adaptado ao nível atual sem perder o caráter?",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Arranjo progressivo", styles["GuitarH2"]),
+        Paragraph(
+            "Faça três versões da mesma passagem: acompanhamento mínimo, acompanhamento completo e versão expressiva. Grave as três na mesma posição do microfone ou celular para comparar com justiça.",
+            styles["GuitarBody"],
+        ),
+        Paragraph("Registro de decisões musicais", styles["GuitarH2"]),
+        Paragraph(
+            "A melhor escolha deste estudo foi: ________________________________<br/>"
+            "O som que quero preservar é: ____________________________________<br/>"
+            "A dificuldade que exige mais atenção é: __________________________<br/>"
+            "A próxima adaptação que farei será: ______________________________",
+            styles["GuitarCode"],
+        ),
+    ]
+
+
 class GuitarDocTemplate(BaseDocTemplate):
     def afterFlowable(self, flowable):
         if not isinstance(flowable, Paragraph) or flowable.style.name != "GuitarH1":
             return
         text = flowable.getPlainText()
-        if text == "Índice geral" or text.startswith("Ficha de prática") or text.startswith("Registro e revisão"):
+        if (
+            text == "Índice geral"
+            or text.startswith("Ficha de prática")
+            or text.startswith("Registro e revisão")
+            or text.startswith("Mapa de repertório")
+            or text.startswith("Diário de escuta")
+            or text.startswith("Plano de evolução")
+            or text.startswith("Estudo guiado")
+            or text.startswith("Laboratório de exercícios")
+            or text.startswith("Oficina de musicalidade")
+        ):
             return
         level = 0 if text.startswith("Parte ") else 1
         self.notify("TOCEntry", (level, text, self.page))
@@ -338,7 +490,7 @@ def story():
             buffer.append(stripped)
         flush()
         flush_code()
-        result.extend(chapter_fichas(heading(path)))
+        result.extend(chapter_deep_dive(heading(path), chapter_index))
 
     result.extend(
         [
