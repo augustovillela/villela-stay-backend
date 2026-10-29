@@ -31,3 +31,9 @@ test('ukulele: páginas, links e acompanhamento docente permanecem conectados', 
   for (const trecho of ["B + '/ukulele/progresso'", "B + '/ukulele/praticas'", "B + '/prof/ukulele/alunos'", "B + '/prof/ukulele/observacoes'", "B + '/prof/ukulele/tarefas'"]) assert.ok(api.includes(trecho), trecho);
   assert.ok(cliente.includes('painelProfessorUkulele'));
 });
+
+test('ukulele: títulos do livro não exibem ícone decorativo', () => {
+  const paginas = fs.readFileSync(require.resolve('./paginas'), 'utf8');
+  assert.ok(paginas.includes('<h1>${esc(UK.CURSO.titulo)}</h1>'));
+  assert.ok(paginas.includes('<h1>${esc(c.titulo)}</h1>'));
+});
