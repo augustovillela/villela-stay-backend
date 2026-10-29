@@ -210,7 +210,7 @@ def story():
     result.append(PageBreak())
 
     current_part = None
-    for path in chapters:
+    for chapter_index, path in enumerate(chapters, start=1):
         part = path.parent.name
         if part != current_part:
             current_part = part
@@ -218,16 +218,10 @@ def story():
             result.append(Paragraph(f"Parte {number}", styles["BatteryH1"]))
 
         text = path.read_text(encoding="utf-8")
-        image_paths = []
-        for match in re.finditer(r"!\[[^\]]*\]\(([^)]+)\)", text):
-            candidate = (path.parent / match.group(1)).resolve()
-            if candidate.exists():
-                image_paths.append(candidate)
-        for image_path in image_paths:
-            result.extend(image_block(image_path))
-
         buffer = []
         code = []
+        # photo-01 é a antiga capa; as fotos editoriais começam no arquivo 02.
+        legacy_photo = FIG / f"bateria-v2-foto-capitulo-{chapter_index + 1:02d}.jpg"
 
         def flush():
             if buffer:
@@ -258,6 +252,8 @@ def story():
             if stripped.startswith("# "):
                 flush()
                 result.append(Paragraph(inline(stripped[2:]), styles["BatteryH1"]))
+                if legacy_photo.exists():
+                    result.extend(image_block(legacy_photo))
                 continue
             if stripped.startswith("## ") or stripped.startswith("### "):
                 flush()
@@ -273,6 +269,11 @@ def story():
                 continue
             if stripped.startswith("!"):
                 flush()
+                match = re.search(r"!\[[^\]]*\]\(([^)]+)\)", stripped)
+                if match:
+                    candidate = (path.parent / match.group(1)).resolve()
+                    if candidate.exists():
+                        result.extend(image_block(candidate))
                 continue
             buffer.append(stripped)
         flush()
