@@ -19,6 +19,7 @@ from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
     Image,
+    NextPageTemplate,
     PageBreak,
     PageTemplate,
     Paragraph,
@@ -125,11 +126,12 @@ def inline(text):
 
 
 def chapter_files():
-    return sorted(
+    paths = [
         path
         for path in BOOK.glob("parte-*/[0-9][0-9]-*.md")
         if path.name != "00-indice.md"
-    )
+    ]
+    return sorted(paths, key=lambda path: int(path.name[:2]))
 
 
 def heading(path):
