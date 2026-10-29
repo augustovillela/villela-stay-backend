@@ -382,6 +382,16 @@
     pintar();
   }
 
+  function painelProfessorUkulele() {
+    var alvo = C.$('[data-ukulele-professor-dashboard]'); if (!alvo || !C.api) return;
+    C.api('GET', '/music/api/lab/prof/ukulele/alunos').then(function (r) {
+      var alunos = r.alunos || [], sel = C.el('select', {}), detalhe = C.el('div', {});
+      sel.appendChild(C.el('option', { value: '', txt: 'Selecione um aluno' })); alunos.forEach(function (a) { sel.appendChild(C.el('option', { value: a.usuario, txt: a.usuario + ' · ' + a.concluidos + '/43 capítulos' })); });
+      function carregar() { if (!sel.value) { C.limpar(detalhe); return; } C.api('GET', '/music/api/lab/prof/ukulele/aluno/' + encodeURIComponent(sel.value) + '/praticas').then(function (x) { C.limpar(detalhe); detalhe.appendChild(C.el('h2', { txt: 'Acompanhamento de ' + sel.value })); detalhe.appendChild(C.el('p', { class: 'lab-dica', txt: (x.progresso || []).filter(function (p) { return p.concluido; }).length + '/43 capítulos concluídos.' })); detalhe.appendChild(C.el('ul', { class: 'lab-resultados' }, (x.sessoes || []).map(function (s) { return C.el('li', {}, [C.el('strong', { txt: s.capitulo + ' · ' + s.bpm + ' BPM · ' + s.foco }), ' · ' + String(s.data || '') + (s.notas ? ' — ' + s.notas : '')]); }))); if (!(x.sessoes || []).length) detalhe.appendChild(C.el('p', { class: 'lab-dica', txt: 'Ainda não há sessões sincronizadas para este aluno.' })); if ((x.observacoes || []).length) detalhe.appendChild(C.el('ul', { class: 'lab-resultados' }, x.observacoes.map(function (o) { return C.el('li', {}, [C.el('strong', { txt: o.capitulo + ' · ' + o.criado_em }), ' — ' + o.texto]); }))); }).catch(function (e) { C.limpar(detalhe); detalhe.appendChild(C.el('p', { class: 'lab-erro', txt: e.message })); }); }
+      sel.addEventListener('change', carregar); C.limpar(alvo); alvo.appendChild(C.el('div', { class: 'lab-campo' }, [C.el('label', { txt: 'Aluno' }), sel])); alvo.appendChild(detalhe); if (!alunos.length) alvo.appendChild(C.el('p', { class: 'lab-dica', txt: 'Ainda não há sessões sincronizadas de alunos.' }));
+    }).catch(function (e) { C.limpar(alvo); alvo.appendChild(C.el('p', { class: 'lab-erro', txt: e.status === 401 || e.status === 402 || e.status === 403 ? 'Entre com uma conta docente para acessar este acompanhamento.' : e.message })); });
+  }
+
   function checklistPiano() {
     var alvo = C.$('[data-piano-checklist]'); if (!alvo) return;
     var slug = alvo.getAttribute('data-piano-checklist'), chave = 'musique-piano-checklist-' + slug, estado = {};
@@ -560,6 +570,7 @@
     painelProfessorContrabaixo();
     painelProfessorPiano();
     painelProfessorBandolim();
+    painelProfessorUkulele();
     painelProfessorCavaquinho();
     var main = C.$('#lab-main');
     if (!main) return;
