@@ -21,7 +21,7 @@
 
 - revisão de títulos e referências cruzadas;
 - produção das ilustrações didáticas;
-- aprovação visual da capa;
+- capa tipográfica aprovada e inserida no PDF;
 - revisão musical externa;
 - paginação e sumário clicável;
 - exportação da prévia em PDF.
@@ -31,7 +31,7 @@
 - mídias profissionais de áudio;
 - demonstrações em vídeo;
 - exercícios sincronizados;
-- criação do curso de ukulele no Musique;
+- criação do curso de ukulele no Musique (núcleo editorial e acompanhamento já integrados);
 - publicação na Villela Academy.
 
 ## Critério para versão 1.0

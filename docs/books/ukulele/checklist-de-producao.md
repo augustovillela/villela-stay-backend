@@ -28,7 +28,7 @@
 - [ ] Revisar exercícios e checklists para impressão.
 - [ ] Inserir legendas e textos alternativos.
 - [ ] Criar páginas de abertura das 10 partes.
-- [ ] Criar capa e folha de rosto da série Villela Music.
+- [x] Criar capa tipográfica e folha de rosto da série Villela Music.
 
 ## Fase 4 — Paginação
 
@@ -37,7 +37,7 @@
 - [ ] Distribuir ilustrações sem distorção ou repetição.
 - [ ] Gerar índice e numeração.
 - [ ] Conferir meta de 200–300 páginas.
-- [ ] Exportar PDF de prévia.
+- [x] Exportar PDF de 203 páginas com capa aprovada.
 
 ## Fase 5 — Auditoria
 
@@ -47,7 +47,7 @@
 - [ ] Verificar links, caracteres e acentuação.
 - [ ] Conferir acessibilidade e texto alternativo.
 - [ ] Fazer leitura final musical.
-- [ ] Aprovar PDF definitivo.
+- [ ] Aprovar PDF definitivo após revisão musical, acessibilidade e leitura final.
 
 ## Fora do escopo atual
 

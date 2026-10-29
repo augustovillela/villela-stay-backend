@@ -45,4 +45,4 @@ Usar madeira natural, azul profundo, creme e um acento dourado discreto. O contr
 
 ## Fora do escopo
 
-A capa não será inserida no PDF até que a arte final seja aprovada visualmente. Nenhuma imagem provisória deve ser publicada como capa definitiva.
+A capa aprovada é tipográfica, sem imagem ou banner: fundo branco, título centralizado, subtítulo, descrição editorial e identificação Villela Music. Essa versão já foi inserida no PDF de 203 páginas.
