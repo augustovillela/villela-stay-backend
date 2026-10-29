@@ -725,7 +725,8 @@ def story():
             37: 9, 38: 7, 39: 7, 40: 7, 41: 7, 42: 5,
             43: 3, 44: 7, 45: 7,
         }
-        legacy_photo = editorial_photos[photo_by_chapter.get(chapter_index, 0)]
+        photo_by_chapter = {k: v for k, v in photo_by_chapter.items() if k in {1, 2, 3, 4, 5, 6, 12, 14, 17, 23, 28, 32, 38, 42}}
+        legacy_photo = editorial_photos[photo_by_chapter[chapter_index]] if chapter_index in photo_by_chapter else None
 
         def flush():
             if buffer:
@@ -762,7 +763,7 @@ def story():
                 if not first_chapter_in_part:
                     result.append(PageBreak())
                 result.append(Paragraph(inline(stripped[2:]), styles["GuitarH1"]))
-                if legacy_photo.exists():
+                if legacy_photo and legacy_photo.exists():
                     result.extend(image_block(legacy_photo))
                 continue
             if stripped.startswith("## ") or stripped.startswith("### "):
