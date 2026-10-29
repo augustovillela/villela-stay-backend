@@ -72,25 +72,25 @@ O livro atenderá iniciantes absolutos, alunos intuitivos, intermediários e bat
 
 ### Parte 8 — Leitura, coordenação, criação e produção
 
-35. Leitura aplicada e interpretação de partituras  
-36. Independência e coordenação avançada  
-37. Velocidade, resistência e controle  
-38. Improvisação, composição e criação de grooves  
-39. Performance, repertório e preparação para tocar  
+35. Leitura aplicada e interpretação de partituras
+36. Independência e coordenação avançada
+37. Velocidade, resistência e controle
+38. Improvisação, composição e criação de grooves
+39. Performance, repertório e preparação para tocar
 40. Gravação, produção e trabalho em estúdio
 
 ### Parte 9 — Equipamento, prática e avaliação
 
-41. Equipamentos, manutenção e segurança  
-42. Prática eficiente e planejamento de estudos  
+41. Equipamentos, manutenção e segurança
+42. Prática eficiente e planejamento de estudos
 43. Avaliação, certificação e projeto final
 
 ### Parte 10 — Anexos, aplicações e continuidade
 
-44. Anexos práticos, glossário e repertório de estudos  
-45. Exercícios progressivos e planos de repertório  
-46. Dicionário de rudimentos e aplicações  
-47. Arranjos, bandas e interação musical  
+44. Anexos práticos, glossário e repertório de estudos
+45. Exercícios progressivos e planos de repertório
+46. Dicionário de rudimentos e aplicações
+47. Arranjos, bandas e interação musical
 48. Conclusão, glossário expandido e próximos caminhos
 
 ## Padrão de cada capítulo
