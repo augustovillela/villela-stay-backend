@@ -346,6 +346,36 @@ function registrarApi(app, { requireUsuario, opcional, ehDocente, buscarContaPor
     db.prepare(`INSERT INTO sessoes_pratica (id, usuario, trilha_id, meta, anotacao, iniciada_em, encerrada_em) VALUES (?,?,?,?,?,?,?)`).run(id, req.usuario.id, 'ukulele:' + capitulo, JSON.stringify({ bpm, foco }), notas, quando, quando);
     res.status(201).json({ ok: true, pratica: { id, bpm, foco, notas, data: quando } });
   }));
+  app.get(B + '/prof/ukulele/alunos', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
+    const alunos = db.prepare("SELECT s.usuario, COUNT(DISTINCT s.id) AS sessoes, MAX(s.iniciada_em) AS ultima_pratica, COALESCE(p.concluidos, 0) AS concluidos FROM sessoes_pratica s LEFT JOIN (SELECT aluno, COUNT(*) AS concluidos FROM curso_ukulele_progresso WHERE concluido = 1 GROUP BY aluno) p ON p.aluno = s.usuario WHERE s.trilha_id LIKE 'ukulele:%' GROUP BY s.usuario, p.concluidos ORDER BY ultima_pratica DESC").all().map((a) => ({ ...a, percentual: Math.round(a.concluidos / 43 * 100) }));
+    res.json({ curso: 'curso-ukulele-livro', total_capitulos: 43, alunos });
+  }));
+  app.get(B + '/prof/ukulele/aluno/:aluno/praticas', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
+    const aluno = s(req.params.aluno, 120);
+    const sessoes = db.prepare("SELECT id, trilha_id, meta, anotacao, iniciada_em FROM sessoes_pratica WHERE usuario = ? AND trilha_id LIKE 'ukulele:%' ORDER BY iniciada_em DESC LIMIT 100").all(aluno).map((x) => { let meta = {}; try { meta = JSON.parse(x.meta || '{}'); } catch (_) {} return { id: x.id, capitulo: x.trilha_id.slice('ukulele:'.length), ...meta, notas: x.anotacao, data: x.iniciada_em }; });
+    const progresso = db.prepare('SELECT capitulo, concluido, atualizado_em FROM curso_ukulele_progresso WHERE aluno = ? ORDER BY capitulo').all(aluno);
+    const observacoes = db.prepare('SELECT id, professor, capitulo, texto, criado_em FROM curso_ukulele_observacoes WHERE aluno = ? ORDER BY criado_em DESC LIMIT 100').all(aluno);
+    res.json({ curso: 'curso-ukulele-livro', aluno, sessoes, progresso, observacoes });
+  }));
+  app.post(B + '/prof/ukulele/observacoes', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem registrar devolutivas.');
+    const b = req.body || {}, aluno = s(b.aluno, 120), capitulo = s(b.capitulo, 80), texto = s(b.texto, 2000), n = Number(capitulo.slice('ukulele-'.length));
+    if (!aluno || !/^ukulele-\d{2}$/.test(capitulo) || n < 1 || n > 43 || !texto) throw erro(400, 'Aluno, capítulo ou texto inválido.');
+    const id = novoId(), quando = nowISO();
+    db.prepare('INSERT INTO curso_ukulele_observacoes (id,professor,aluno,capitulo,texto,criado_em) VALUES (?,?,?,?,?,?)').run(id, req.usuario.id, aluno, capitulo, texto, quando);
+    res.status(201).json({ ok: true, observacao: db.prepare('SELECT id, professor, aluno, capitulo, texto, criado_em FROM curso_ukulele_observacoes WHERE id = ?').get(id) });
+  }));
+  app.post(B + '/prof/ukulele/tarefas', requireUsuario, h(async (req, res) => {
+    if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem criar tarefas.');
+    const b = req.body || {}, capitulo = Math.max(1, Math.min(43, Math.floor(Number(String(b.capitulo || '').replace('ukulele-', '')) || 0))), bpm = Math.max(0, Math.min(300, Math.floor(Number(b.bpm) || 0)));
+    if (!capitulo) throw erro(400, 'Informe um capítulo válido.');
+    const tarefa = academia.Tarefas.criar(req.usuario.id, { titulo: s(b.titulo, 200) || `Ukulele · capítulo ${capitulo}`, descricao: `Curso de ukulele · capítulo ${capitulo}. Meta de BPM: ${bpm}.`, instrucoes: s(b.instrucoes, 4000), exige_audio: b.exige_audio !== false, prazo: s(b.prazo, 25) });
+    const emails = String(b.emails || '').split(/[,;\s]+/).filter(Boolean).map((x) => s(x, 160));
+    const atribuicao = emails.length ? academia.Tarefas.atribuirPorEmail(req.usuario.id, tarefa.id, emails, buscarContaPorEmail) : { atribuidos: 0, nao_encontrados: [] };
+    res.json({ ok: true, tarefa, ...atribuicao, curso_ukulele: { capitulo, bpm } });
+  }));
   app.get(B + '/prof/bandolim/alunos', requireUsuario, h(async (req, res) => {
     if (!ehDocente || !ehDocente(req.usuario)) throw erro(403, 'Apenas professores podem consultar este acompanhamento.');
     const alunos = db.prepare("SELECT s.usuario, COUNT(DISTINCT s.id) AS sessoes, MAX(s.iniciada_em) AS ultima_pratica, COALESCE(p.concluidos, 0) AS concluidos FROM sessoes_pratica s LEFT JOIN (SELECT aluno, COUNT(*) AS concluidos FROM curso_bandolim_progresso WHERE concluido = 1 GROUP BY aluno) p ON p.aluno = s.usuario WHERE s.trilha_id LIKE 'bandolim:%' GROUP BY s.usuario, p.concluidos ORDER BY ultima_pratica DESC").all().map((a) => ({ ...a, percentual: Math.round(a.concluidos / 43 * 100) }));
