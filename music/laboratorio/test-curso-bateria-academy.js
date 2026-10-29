@@ -17,15 +17,15 @@ const server = app.listen(0, () => {
       try {
         assert.equal(res.statusCode, 200);
         const payload = JSON.parse(body);
-        assert.equal(payload.produto.titulo, 'Livro digital de bateria');
+        assert.equal(payload.produto.titulo, 'Bateria: do Zero ao Avançado');
         assert.equal(payload.produto.tipo, 'curso');
         assert.equal(payload.metadados.status, 'rascunho');
         assert.equal(payload.produtor_email, null);
-        assert.equal(payload.modulos.length, 5);
-        assert.equal(payload.modulos.slice(0, 4).reduce((n, m) => n + m.aulas.length, 0), 26);
+        assert.equal(payload.modulos.length, 11);
+        assert.equal(payload.modulos.slice(0, 4).reduce((n, m) => n + m.aulas.length, 0), 48);
         assert.equal(payload.modulos[4].aulas.length, 40);
         assert(payload.modulos[0].aulas.every((a) => a.tipo === 'texto' && typeof a.conteudo === 'string'));
-        console.log(JSON.stringify({ ok: true, status: payload.metadados.status, modulos: payload.modulos.length, capitulos: 26, rudimentos: payload.modulos[4].aulas.length }));
+        console.log(JSON.stringify({ ok: true, status: payload.metadados.status, modulos: payload.modulos.length, capitulos: 48, rudimentos: payload.modulos[4].aulas.length }));
         server.close(() => process.exit(0));
       } catch (error) {
         console.error(error.stack);

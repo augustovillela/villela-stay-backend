@@ -1,57 +1,35 @@
 'use strict';
 
-const fases = [
-  ['fundamentos', 'Fundamentos', [1, 2, 3, 4, 5, 6]],
-  ['controle-coordenacao', 'Controle e coordenação', [7, 8, 9, 10, 11, 12]],
-  ['linguagem-musical', 'Linguagem musical', [13, 14, 15, 16, 17, 18, 19]],
-  ['repertorio-performance', 'Repertório e performance', [20, 21, 22, 23, 24, 25, 26]],
-];
+const fs = require('fs');
+const path = require('path');
 
-const titulos = [
-  'Som, postura e mapa da bateria', 'Pulso, subdivisão e contagem', 'Bumbo, caixa e chimbal',
-  'Técnica de baquetas e rebote', 'Viradas de um compasso', 'Grooves essenciais de rock',
-  'Dinâmica e articulação', 'Independência dos quatro membros', 'Leitura rítmica aplicada',
-  '6/8 e compassos compostos', 'Shuffle e swing', 'Funk introdutório',
-  'Pop e acompanhamento de canções', 'Blues e linguagem de resposta', 'Coordenação com pedal',
-  'Rudimentos aplicados ao kit', 'Viradas melódicas', 'Improvisação com limites',
-  'Tocar com metrônomo', 'Gravação caseira', 'Ritmos brasileiros',
-  'Reggae e ritmos latino-americanos', 'Arranjo de uma música', 'Performance sem interrupção',
-  'Plano de estudo de 20 minutos', 'Projeto final: tocar uma música completa',
-];
-
-const resumos = [
-  'Organize corpo, banco, baquetas e elementos do kit antes de buscar velocidade.',
-  'O ritmo continua mesmo quando você não toca.',
-  'Construa o primeiro groove em 4/4.',
-  'Produza ataques consistentes com o mínimo de tensão.',
-  'Entre e saia de uma virada sem perder o pulso.',
-  'Varie o bumbo sem perder a função da caixa.',
-  'Controle acentos, ghost notes e níveis de volume.',
-  'Adicione uma camada por vez até coordenar os quatro membros.',
-  'Transforme uma grade rítmica em movimento musical.',
-  'Sinta agrupamentos ternários sem confundir o pulso.',
-  'Toque tercinas com espaço e consistência.',
-  'Use síncope, espaço e ghost notes para criar movimento.',
-  'Toque para a forma da música.',
-  'Responda à frase musical sem sobrecarregar o groove.',
-  'Desenvolva controle e resistência do bumbo.',
-  'Leve os rudimentos da caixa para a música.',
-  'Pense na virada como uma frase com direção.',
-  'Improvise sem abandonar o pulso.',
-  'Desenvolva estabilidade interna.',
-  'Use a gravação como ferramenta de estudo.',
-  'Estude padrões brasileiros de coordenação e acento.',
-  'Trabalhe espaço, contratempo e consistência.',
-  'Planeje intro, verso, refrão, ponte, viradas e final.',
-  'Recupere erros mantendo o pulso.',
-  'Crie uma rotina de estudo sustentável.',
-  'Consolide técnica, musicalidade e autonomia.',
-];
-
+const BOOK_ROOT = path.resolve(__dirname, '..', '..', 'docs', 'books', 'bateria-v2');
+const PART_NAMES = {
+  'parte-1': 'Fundamentos e instrumento', 'parte-2': 'Técnica, postura e coordenação',
+  'parte-3': 'Pulso, leitura e subdivisão', 'parte-4': 'Rudimentos e controle',
+  'parte-5': 'Grooves e coordenação', 'parte-6': 'Viradas, dinâmica e forma',
+  'parte-7': 'Estilos e linguagem', 'parte-8': 'Leitura, performance e estúdio',
+  'parte-9': 'Prática, avaliação e projeto', 'parte-10': 'Anexos e continuidade',
+};
+const slugify = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const chapterFiles = fs.readdirSync(BOOK_ROOT, { withFileTypes: true }).flatMap((part) => {
+  if (!part.isDirectory() || !/^parte-\d+$/.test(part.name)) return [];
+  return fs.readdirSync(path.join(BOOK_ROOT, part.name)).filter((f) => /^\d+-.*\.md$/.test(f)).map((f) => ({ part: part.name, file: path.join(BOOK_ROOT, part.name, f) }));
+}).sort((a, b) => a.file.localeCompare(b.file, 'en', { numeric: true }));
+const titleFromMarkdown = (file) => (fs.readFileSync(file, 'utf8').match(/^#\s+(.+)$/m) || ['', path.basename(file, '.md')])[1].replace(/^Capítulo\s+\d+\s+[—-]\s*/, '').trim();
+const summaryFromMarkdown = (file, title) => {
+  const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  const start = lines.findIndex((x) => x.startsWith('# '));
+  const text = lines.slice(start + 1).find((x) => !x.startsWith('![') && !x.startsWith('#') && !x.startsWith('-') && !x.startsWith('|') && !x.startsWith('```'));
+  return text || `Estudo guiado de ${title.toLowerCase()}, com conceitos, exercícios e aplicação musical.`;
+};
+const chapterNumbers = chapterFiles.map((x, i) => i + 1);
+const fases = Object.entries(PART_NAMES).map(([part, nome]) => [slugify(nome), nome, chapterFiles.map((x, i) => ({ x, i })).filter(({ x }) => x.part === part).map(({ i }) => i + 1)]);
 const fasesPorNumero = Object.fromEntries(fases.flatMap(([id, nome, ns]) => ns.map((n) => [n, { id, nome }])));
-const capitulos = titulos.map((titulo, i) => {
+const capitulos = chapterFiles.map(({ part, file }, i) => {
   const numero = i + 1;
-  return { id: `bateria-${String(numero).padStart(2, '0')}-${titulo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`, numero, titulo, resumo: resumos[i], fase: fasesPorNumero[numero].id, faseNome: fasesPorNumero[numero].nome, nivel: numero <= 5 ? 'iniciante' : numero <= 15 ? 'basico' : 'intermediario', slug: `bateria-${String(numero).padStart(2, '0')}` };
+  const titulo = titleFromMarkdown(file);
+  return { id: `bateria-${String(numero).padStart(2, '0')}-${slugify(titulo)}`, numero, titulo, resumo: summaryFromMarkdown(file, titulo), fase: fasesPorNumero[numero].id, faseNome: fasesPorNumero[numero].nome, nivel: numero <= 8 ? 'iniciante' : numero <= 24 ? 'basico' : 'intermediario', slug: `bateria-${String(numero).padStart(2, '0')}`, livroArquivo: path.relative(BOOK_ROOT, file).replace(/\\/g, '/') };
 });
 
 const RUDIMENTOS = [
@@ -128,7 +106,7 @@ RUDIMENTOS.forEach((r) => {
 });
 
 const CURSO = {
-  id: 'curso-bateria-livro', titulo: 'Livro digital de bateria', subtitulo: 'Do primeiro pulso à performance completa', versao: '1.0',
+  id: 'curso-bateria-livro', titulo: 'Bateria: do Zero ao Avançado', subtitulo: 'Formação progressiva em técnica, ritmo, coordenação, grooves, leitura e performance', versao: '1.0',
   descricao: 'Formação progressiva de bateria, do primeiro som ao nível intermediário, com grooves, leitura, rudimentos, repertório e performance.',
   trilhas: [
     { id: 'conhecer', nome: 'Conhecer', resumo: 'Conceitos, postura, leitura e mapas do instrumento.' },
