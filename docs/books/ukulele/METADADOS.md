@@ -7,11 +7,13 @@
 **Afinação principal:** G–C–E–A  
 **Nível:** iniciante ao avançado  
 **Tipo:** livro didático ilustrado  
-**Versão editorial:** 0.1 — manuscrito em expansão  
+**Versão editorial:** 0.1 — PDF preliminar validado  
 **Meta de extensão:** 200–300 páginas  
 **Capítulos:** 43  
 **Partes:** 10  
 **Anexos:** 6  
+**Páginas do PDF preliminar:** 203  
+**Artes PNG:** 42  
 
 ## Escopo desta fase
 
@@ -19,15 +21,15 @@ Produzir e revisar o livro. Não criar ainda o curso de ukulele no Musique, não
 
 ## Estado
 
-- manuscrito-base: em produção;
+- manuscrito-base: concluído para revisão musical;
 - estrutura editorial: definida;
 - índice: definido;
-- anexos: iniciados;
+- anexos: concluídos;
 - sistema visual: especificado;
-- capa: briefing aprovado para produção futura;
-- ilustrações finais: pendentes;
-- paginação: pendente;
-- PDF definitivo: pendente;
+- capa: criada e incorporada ao PDF preliminar;
+- ilustrações finais: incorporadas à versão preliminar;
+- paginação: concluída na versão preliminar;
+- PDF preliminar: 203 páginas, renderizado e auditado;
 - revisão musical externa: pendente.
 
 ## Regra de versão
