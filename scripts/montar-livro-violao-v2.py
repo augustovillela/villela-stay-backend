@@ -774,21 +774,6 @@ def story():
         # do próprio capítulo e dos recursos visuais contextuais.
 
     result.extend(appendices())
-    result.extend(
-        [
-            PageBreak(),
-            Paragraph("Próximos caminhos", styles["GuitarH1"]),
-            Paragraph(
-                "Escolha uma habilidade técnica, uma peça de repertório e uma prática de escuta para manter o estudo vivo depois da leitura do livro.",
-                styles["GuitarBody"],
-            ),
-            Spacer(1, 8 * mm),
-            Paragraph("Plano pessoal", styles["GuitarH2"]),
-            Paragraph("_" * 80, styles["GuitarBody"]),
-            Paragraph("_" * 80, styles["GuitarBody"]),
-            Paragraph("_" * 80, styles["GuitarBody"]),
-        ]
-    )
     return result
 
 
