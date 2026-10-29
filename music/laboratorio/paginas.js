@@ -255,6 +255,11 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
     'curso-guitarra-edicao': ['curso-guitarra.pdf', 'curso-guitarra.pdf'],
     'curso-guitarra-livro': ['curso-violao-guitarra.pdf', 'curso-violao-guitarra.pdf'],
   };
+  app.get('/music/criar/curso-violao-v2.json', (req, res) => {
+    const arquivo = path.join(__dirname, 'curso-violao-v2.json');
+    if (!fs.existsSync(arquivo)) return res.status(404).json({ erro: 'Curso ainda não foi gerado.' });
+    res.type('application/json').set('Cache-Control', 'no-cache').sendFile(arquivo);
+  });
   Object.entries(livrosInstrumentosPdf).forEach(([slug, [arquivo, nome]]) => {
     app.get(`/music/criar/${slug}.pdf`, (req, res) => {
       const pdf = path.join(__dirname, '..', '..', 'output', 'pdf', arquivo);
