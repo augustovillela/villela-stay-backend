@@ -18,6 +18,17 @@ Fingerstyle combina baixo, acompanhamento e melodia. Estude cada camada isolada:
 
 ## Conceitos fundamentais
 
+### Melodia sobre acompanhamento
+
+```text
+e|--0-----3-----0-----1--|
+B|----1-----1-----1------|
+G|------0-----0-----0----|
+C|--3-----------3--------|
+```
+
+Toque a primeira linha mais cantada que as demais, sem acelerar o acompanhamento.
+
 O estudo de melodia, acompanhamento, baixo alternado e arranjos solo precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

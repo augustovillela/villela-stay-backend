@@ -18,6 +18,15 @@ Um riff combina ritmo, registro e repetição. Comece com duas ou três notas, e
 
 ## Conceitos fundamentais
 
+### Riff de duas cordas
+
+```text
+e|----------------0-3-0--|
+B|--1-1---3-1---1--------|
+```
+
+Repita três vezes e altere somente o último ataque na quarta repetição.
+
 O estudo de ritmo, repetição, variação, registro e espaço precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

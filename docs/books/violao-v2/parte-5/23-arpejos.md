@@ -18,6 +18,17 @@ Um arpejo distribui as notas do acorde no tempo. Comece com baixo–agudo–méd
 
 ## Conceitos fundamentais
 
+### Arpejo de C
+
+```text
+e|-------0-------0-|
+B|-----1---1---1---|
+G|---0-------0-----|
+C|-3---------------|
+```
+
+Use `p-i-m-i` e deixe cada nota durar até o próximo ataque.
+
 O estudo de maiores, menores, dominantes, diminutos e inversões precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

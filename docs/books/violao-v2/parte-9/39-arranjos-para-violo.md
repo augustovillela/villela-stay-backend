@@ -18,6 +18,17 @@ Um arranjo para violão organiza baixo, harmonia, melodia, ritmo e silêncio. Co
 
 ## Conceitos fundamentais
 
+### Arranjo em duas camadas
+
+```text
+e|------0-------1---|
+B|----1---1---1---1-|
+G|--0-------0-------|
+C|3-----------3-----|
+```
+
+O baixo sustenta a harmonia; a primeira corda funciona como resposta melódica.
+
 O estudo de voz e violão, solo, duas vozes e melodia acompanhada precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

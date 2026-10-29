@@ -18,6 +18,15 @@ Improvisar não é tocar muitas notas. É criar uma frase com começo, direção
 
 ## Conceitos fundamentais
 
+### Frase de três notas
+
+```text
+e|--0---3-0-------0---------|
+B|----------3-1-----3-1-0--|
+```
+
+Use a pausa como parte da frase e termine na nota escolhida como alvo.
+
 O estudo de notas-alvo, arpejos, motivos, silêncio e resolução precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

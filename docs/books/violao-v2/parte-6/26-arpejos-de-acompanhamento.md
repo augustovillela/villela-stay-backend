@@ -18,6 +18,17 @@ O arpejo de acompanhamento precisa sustentar a harmonia e deixar espaço para vo
 
 ## Conceitos fundamentais
 
+### Baixo alternado
+
+```text
+e|-------0-------0-|
+B|-----1---1---1---|
+G|---0-------0-----|
+C|-3-----------3---|
+```
+
+Mantenha o baixo regular mesmo quando a troca de acorde acontecer no meio do compasso.
+
 O estudo de padrões ascendentes, descendentes e baixos independentes precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

@@ -18,6 +18,15 @@ Transcrever começa com a memória auditiva. Cante um fragmento, descubra se ele
 
 ## Conceitos fundamentais
 
+### Fragmento para transcrever
+
+```text
+e|--0-1-3-1-0----------|
+B|------------3-1-0----|
+```
+
+Primeiro cante o fragmento, depois localize a primeira nota e só então escreva a tablatura.
+
 O estudo de tonalidade, notas, ritmo, escrita e transformação em exercício precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

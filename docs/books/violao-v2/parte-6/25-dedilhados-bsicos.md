@@ -18,6 +18,17 @@ Use p para polegar, i para indicador, m para médio e a para anelar. O polegar c
 
 ## Conceitos fundamentais
 
+### Dedilhado p–i–m–a
+
+```text
+e|---------0---------|
+B|-------1---1-------|
+G|-----0-------0-----|
+C|---2-----------2---|
+```
+
+O polegar inicia o baixo; indicador, médio e anelar completam as vozes superiores.
+
 O estudo de polegar, dedos, padrões e coordenação precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

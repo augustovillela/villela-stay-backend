@@ -18,6 +18,16 @@ Na tablatura, cada linha representa uma corda e cada número representa uma casa
 
 ## Conceitos fundamentais
 
+### Exemplo de leitura
+
+```text
+e|--0-----1-----3-----1--|
+B|----1-----0-----0------|
+G|------0-----0-----0----|
+```
+
+Toque cada linha respeitando a contagem `1 & 2 & 3 & 4 &`. Os números alinhados verticalmente devem soar juntos.
+
 O estudo de casas, ligados, slides, bends, vibrato e ritmo precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

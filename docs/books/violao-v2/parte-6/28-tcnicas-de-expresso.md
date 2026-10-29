@@ -18,6 +18,14 @@ Ligado, slide, bend, vibrato, palm mute e harmônico são recursos de articulaç
 
 ## Conceitos fundamentais
 
+### Articulações
+
+```text
+e|--0h1p0---3/5---5b7---5~--|
+```
+
+Pratique cada gesto isoladamente: ligado, slide, bend e vibrato. Só depois una a frase.
+
 O estudo de hammer-on, pull-off, slides, vibrato, bends e harmônicos precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo
