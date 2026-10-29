@@ -299,13 +299,11 @@ def story():
 
 def cover_page(canvas, doc):
     canvas.saveState()
-    cover = FIG / "bateria-v2-foto-capa.png"
+    cover = FIG / "bateria-v2-capa-serie.png"
     if cover.exists():
         canvas.drawImage(str(cover), 0, 0, width=A4[0], height=A4[1], preserveAspectRatio=False, mask="auto")
-        canvas.setFillColor(colors.Color(0.03, 0.08, 0.16, alpha=0.58))
-        canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
-        canvas.setFillColor(colors.Color(0.03, 0.08, 0.16, alpha=0.35))
-        canvas.rect(0, 0, A4[0], 92 * mm, fill=1, stroke=0)
+        canvas.restoreState()
+        return
     else:
         canvas.setFillColor(colors.HexColor("#1B2A4A"))
         canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
