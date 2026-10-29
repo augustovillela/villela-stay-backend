@@ -250,6 +250,7 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
   app.get('/music/explorar', (req, res) => indiceFerramentas(res, 'explorar', 'Explorar', 'Visualizações que conversam entre si: mude a tônica e tudo acompanha.'));
   app.get('/music/criar', (req, res) => indiceFerramentas(res, 'criar', 'Criar', 'Instrumentos e ferramentas de estúdio de bolso, tocados no navegador. Sem gravação, sem envio: o som fica no seu aparelho.'));
   const livrosInstrumentosPdf = {
+    'curso-violao-v2': ['livro-violao-v2.pdf', 'curso-violao-v2.pdf'],
     'curso-violao-livro': ['curso-violao.pdf', 'curso-violao.pdf'],
     'curso-guitarra-edicao': ['curso-guitarra.pdf', 'curso-guitarra.pdf'],
     'curso-guitarra-livro': ['curso-violao-guitarra.pdf', 'curso-violao-guitarra.pdf'],
