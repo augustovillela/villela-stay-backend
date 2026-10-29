@@ -162,6 +162,149 @@ def visual_resources(chapter_index):
     ]
 
 
+def appendices():
+    result = [PageBreak(), Paragraph("Anexos musicais", styles["GuitarH1"]), Paragraph("Material de consulta e prática para continuar o estudo depois dos capítulos.", styles["GuitarBody"])]
+    result.append(Paragraph("Anexo A — Dicionário de acordes", styles["GuitarH1"]))
+    chord_rows = [["Acorde", "Baixo", "Forma resumida", "Função / uso"]]
+    for row in [
+        ("C", "5ª", "x-3-2-0-1-0", "tônica maior"), ("G", "6ª", "3-2-0-0-0-3", "tônica / dominante"),
+        ("Am", "5ª", "x-0-2-2-1-0", "relativa menor"), ("Em", "6ª", "0-2-2-0-0-0", "menor aberta"),
+        ("Fmaj7", "4ª", "x-x-3-2-1-0", "subdominante leve"), ("Dm", "4ª", "x-x-0-2-3-1", "menor / preparação"),
+        ("E7", "6ª", "0-2-0-1-0-0", "dominante"), ("A7", "5ª", "x-0-2-0-2-0", "dominante"),
+        ("B7", "5ª", "x-2-1-2-0-2", "dominante com tensão"), ("Am7", "5ª", "x-0-2-0-1-0", "menor com sétima"),
+        ("C7M", "5ª", "x-3-2-0-0-0", "tônica com sétima maior"), ("G7", "6ª", "3-2-0-0-0-1", "dominante"),
+    ]: chord_rows.append(list(row))
+    result.append(Table(chord_rows, colWidths=[22*mm, 22*mm, 52*mm, 75*mm], repeatRows=1, style=TableStyle([("GRID",(0,0),(-1,-1),0.35,colors.HexColor("#B8C4D2")),("BACKGROUND",(0,0),(-1,0),colors.HexColor("#E8EEF4")),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),8),("VALIGN",(0,0),(-1,-1),"TOP")])))
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo A.1 — Aplicação dos acordes", styles["GuitarH1"]))
+    for title, progression, task in [
+        ("Tônica e dominante", "C — G7 — C", "toque quatro compassos e faça a resolução sem acelerar"),
+        ("Relativa menor", "C — Am — F — G", "mantenha a mesma batida e mude somente a dinâmica"),
+        ("Ciclo popular", "G — D — Em — C", "toque com baixo destacado e depois com arpejo"),
+        ("Cadência menor", "Am — Dm — E7 — Am", "ouça a tensão de E7 antes de voltar a Am"),
+    ]:
+        result.extend([Paragraph(title, styles["GuitarH2"]), Paragraph(f"Progressão: {progression}<br/>Tarefa: {task}.<br/>Escreva quais dedos permanecem entre cada mudança e qual nota funciona como baixo.", styles["GuitarBody"]), VisualPanel("chord", f"Mapa de {title.lower()}"), Spacer(1, 3*mm)])
+    result.append(Paragraph("Anexo B — Catálogo de levadas", styles["GuitarH1"]))
+    for name, pattern, use in [
+        ("Balada", "↓  -  ↓↑  -  ↑↓↑", "estrofes e acompanhamento suave"),
+        ("Pop reto", "↓  ↓  ↓  ↓", "pulso regular e voz em destaque"),
+        ("Rock", "↓  -  ↓↑  ↓  ↓↑", "ataque forte e backbeat"),
+        ("Reggae", "-  ↑  -  ↑  -  ↑  -  ↑", "contratempo"),
+        ("Bossa", "baixo · acorde · baixo · acorde", "baixo independente e síncope"),
+        ("Baião", "baixo  acorde  baixo-accorde", "alternância e acento"),
+        ("Valsa", "baixo  acorde  acorde", "três tempos"),
+        ("Blues", "baixo  -  acorde  resposta", "chamada e resposta"),
+    ]:
+        result.extend([Paragraph(name, styles["GuitarH2"]), Paragraph(f"Padrão: {pattern}<br/>Aplicação: {use}<br/>Estudo: toque 8 compassos em 60 BPM, depois varie apenas a dinâmica.", styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo B.1 — Rotinas de levada", styles["GuitarH1"]))
+    for name, sequence in [("Rotina 1", "cordas soltas → C → G → Am → Em"), ("Rotina 2", "baixo isolado → acorde isolado → combinação"), ("Rotina 3", "piano → mezzo-forte → forte → retorno ao piano"), ("Rotina 4", "quatro compassos tocando → quatro compassos em silêncio")]:
+        result.extend([Paragraph(name, styles["GuitarH2"]), Paragraph(f"Sequência: {sequence}.<br/>Faça três ciclos sem interromper o pulso e grave o último. Ouça procurando regularidade, ruído e espaço.", styles["GuitarBody"]), VisualPanel("rhythm", f"Grade da {name.lower()}"), Spacer(1, 3*mm)])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo C — Estudos de tablatura", styles["GuitarH1"]))
+    studies = [
+        ("Alternância", "e|--0-1-2-3-2-1-0--|\nB|----------------|"),
+        ("Baixo e acorde", "e|------0-------0-|\nB|----1---1---1---|\nE|--0-------0-----|"),
+        ("Arpejo C", "e|-------0-------|\nB|-----1---1-----|\nG|---0-------0---|\nC|-3-------------|"),
+        ("Ligados", "e|--0h1p0--------|\nB|--------1------|"),
+        ("Slide", "e|--3/5--5\\3--0-|\nB|---------------|"),
+        ("Frase pentatônica", "e|--0-3-0---0-3-5-|\nB|--------3-------|"),
+    ]
+    for name, tab in studies:
+        result.extend([Paragraph(name, styles["GuitarH2"]), Paragraph(inline(tab.replace("\n", "<br/>")), styles["GuitarCode"]), Paragraph("Toque lentamente, conte em voz alta e repita três vezes antes de transpor.", styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo C.1 — Estudos graduados de tablatura", styles["GuitarH1"]))
+    for n, (title, tab, focus) in enumerate([
+        ("Estudo 1 — cordas alternadas", "e|--------0-1-2-3-|\nB|--0-1-3---------|", "alternância e precisão"),
+        ("Estudo 2 — baixo constante", "e|------0-------0-|\nB|----1---1---1---|\nE|--0-------0-----|", "independência do polegar"),
+        ("Estudo 3 — mudança de corda", "B|--0-1-3-1-0-----|\nG|------------2-0-|", "continuidade do pulso"),
+        ("Estudo 4 — frase em pergunta", "e|--0-3-5-3-0-----|\nB|------------3-1-|", "direção e resposta"),
+        ("Estudo 5 — resolução", "e|--5-3-1-0-------|\nB|----------3-1-0-|", "tensão e repouso"),
+        ("Estudo 6 — duas vozes", "e|--0-----0-----0-|\nB|----1-----1-----|\nG|------0-----0---|", "melodia sobre acorde"),
+    ]):
+        result.extend([PageBreak(), Paragraph(title, styles["GuitarH1"]), Paragraph(f"Foco: {focus}. Conte em 4/4, comece a 52 BPM e aumente somente depois de três repetições limpas.", styles["GuitarBody"]), Paragraph(inline(tab.replace("\n", "<br/>")), styles["GuitarCode"]), Paragraph("Aplicação: transponha o padrão para uma corda vizinha e depois use-o em uma progressão de quatro compassos.", styles["GuitarBody"]), VisualPanel("tab", f"Leitura visual — {focus}"), Paragraph("Anotação: qual dedo inicia cada corda? Onde a frase respira? Que nota você quer destacar?", styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo D — Mapas de escalas", styles["GuitarH1"]))
+    for title, text in [("Pentatônica menor de Am", "A–C–D–E–G"), ("Pentatônica maior de C", "C–D–E–G–A"), ("Escala de C maior", "C–D–E–F–G–A–B"), ("Escala de A menor natural", "A–B–C–D–E–F–G")]:
+        result.extend([Paragraph(title, styles["GuitarH2"]), Paragraph(f"Notas: {text}<br/>Tarefa: localizar a tônica em duas cordas, tocar ascendente e descendente e criar uma frase de quatro compassos.", styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo D.1 — Arpejos de acompanhamento", styles["GuitarH1"]))
+    for title, pattern in [("Padrão alternado", "p–i–m–i"), ("Padrão contínuo", "p–i–m–a–m–i"), ("Baixo e resposta", "p–i–p–m"), ("Arpejo em três vozes", "p–m–i–a–i–m")]:
+        result.extend([Paragraph(title, styles["GuitarH2"]), Paragraph(f"Dedilhado: {pattern}. Comece em C, passe para Am e mantenha o mesmo pulso. Escute o baixo como uma linha independente.", styles["GuitarBody"]), VisualPanel("tab", f"Mapa do {title.lower()}"), Paragraph("Critério: nenhuma corda deve soar por acidente e nenhuma troca deve interromper a duração da nota anterior.", styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo E — Modelos de arranjo", styles["GuitarH1"]))
+    for title, body in [("Acompanhamento de voz", "baixo nos tempos 1 e 3, acorde nos tempos 2 e 4; reduza a densidade durante a frase"), ("Solo com baixo", "polegar mantém a fundamental enquanto indicador e médio respondem na região aguda"), ("Introdução", "apresente a progressão uma vez, crie uma pausa e conduza à entrada da canção"), ("Final", "repita o acorde, diminua a dinâmica e encerre com nota ou acorde sustentado")]:
+        result.extend([Paragraph(title, styles["GuitarH2"]), Paragraph(body, styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo F — Leitura integrada", styles["GuitarH1"]))
+    for title, notation, task in [
+        ("Leitura 1 — quatro tempos", "| C  -  -  - | G  -  -  - |", "toque um ataque por tempo e mantenha o pé marcando"),
+        ("Leitura 2 — contratempos", "| C  -  C  - | G  -  G  - |", "toque apenas no & e mantenha o braço em movimento"),
+        ("Leitura 3 — baixo e acorde", "| C/B  -  C  - | Am  -  G  - |", "destaque a linha descendente do baixo"),
+        ("Leitura 4 — arpejo", "p i m i | p i m i |", "mantenha cada nota até o próximo ataque"),
+        ("Leitura 5 — forma", "A: C–G | B: Am–F | A: C–G | Coda: C", "mude a dinâmica conforme a seção"),
+    ]:
+        result.extend([PageBreak(), Paragraph(title, styles["GuitarH1"]), Paragraph(f"Material: {notation}<br/>Tarefa: {task}.", styles["GuitarBody"]), VisualPanel("staff", f"Mapa de leitura — {title.lower()}"), Paragraph("Depois de tocar, escreva onde você perdeu o pulso e qual decisão corrigirá na próxima tentativa.", styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo G — Estudos de repertório", styles["GuitarH1"]))
+    for title, form, focus in [
+        ("Estudo popular", "intro–A–A–B–A–final", "trocas de acordes e dinâmica"),
+        ("Estudo de balada", "intro–verso–refrão–verso–refrão", "arpejo e sustentação"),
+        ("Estudo brasileiro", "A–A'–B–A", "levada, síncope e silêncio"),
+        ("Estudo instrumental", "tema–variação–tema", "melodia e acompanhamento"),
+        ("Estudo de performance", "entrada–desenvolvimento–clímax–final", "forma e comunicação"),
+    ]:
+        result.extend([PageBreak(), Paragraph(title, styles["GuitarH1"]), Paragraph(f"Forma: {form}. Foco: {focus}.", styles["GuitarBody"]), Paragraph("Roteiro: toque a harmonia simples, acrescente o padrão rítmico, escolha uma dinâmica por seção e grave uma tomada inteira.", styles["GuitarBody"]), VisualPanel("chord", f"Forma e harmonia — {title.lower()}"), Paragraph("Pergunta de revisão: o violão está apoiando a música ou apenas preenchendo espaço? Explique sua escolha.", styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo H — Laboratório de improvisação", styles["GuitarH1"]))
+    for title, constraint, goal in [
+        ("Uma corda", "use somente a segunda corda", "desenvolver fraseado horizontal"),
+        ("Três notas", "use apenas tônica, terça e quinta", "ouvir função harmônica"),
+        ("Ritmo fixo", "repita o mesmo ritmo com notas diferentes", "criar coerência"),
+        ("Silêncio", "faça uma pausa depois de cada frase", "respirar e responder"),
+        ("Alvo", "termine cada compasso na terça do acorde", "conectar melodia e harmonia"),
+        ("Registro", "toque a mesma ideia grave, média e aguda", "controlar timbre e direção"),
+    ]:
+        result.extend([PageBreak(), Paragraph(title, styles["GuitarH1"]), Paragraph(f"Restrição: {constraint}. Objetivo: {goal}.", styles["GuitarBody"]), VisualPanel("fretboard", f"Mapa do laboratório — {title.lower()}"), Paragraph("Procedimento: improvise por quatro compassos, repita a frase alterando apenas uma decisão e grave as duas versões. Escolha a que comunica melhor.", styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo I — Oficina de arranjo", styles["GuitarH1"]))
+    for title, layers in [
+        ("Canção para voz", "baixo simples → acordes leves → resposta entre frases"),
+        ("Melodia acompanhada", "melodia → baixo alternado → notas internas"),
+        ("Dueto de violões", "violão 1 sustenta → violão 2 responde → uníssono no final"),
+        ("Versão instrumental", "tema → variação rítmica → clímax → retomada"),
+        ("Versão minimalista", "uma nota de baixo → silêncio → acorde final"),
+    ]:
+        result.extend([PageBreak(), Paragraph(title, styles["GuitarH1"]), Paragraph(f"Camadas: {layers}.", styles["GuitarBody"]), VisualPanel("chord", f"Arquitetura — {title.lower()}"), Paragraph("Escreva o que cada camada acrescenta e remova uma camada para conferir se o arranjo continua compreensível.", styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.extend([Paragraph("Anexo J — Projeto final guiado", styles["GuitarH1"]), Paragraph("O projeto final deve demonstrar técnica, leitura, escuta, repertório e autoria.", styles["GuitarBody"])])
+    for step in ["Escolha uma peça e justifique a escolha.", "Escreva a forma com acordes, compassos e dinâmica.", "Prepare uma introdução e um final.", "Escolha dedilhado ou batida e registre a mão direita.", "Faça uma gravação de ensaio e corrija um problema.", "Grave a versão final sem interromper.", "Escreva uma autoavaliação e o próximo objetivo."]:
+        result.extend([Paragraph(step, styles["GuitarH2"]), Paragraph("Evidência: ________________________________________________", styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo K — Programa de 12 semanas", styles["GuitarH1"]))
+    weeks = [
+        ("Semana 1", "afinação, postura e cordas soltas", "gravação de seis cordas"),
+        ("Semana 2", "mão direita e alternância", "padrão p–i–m–a"),
+        ("Semana 3", "acordes C, G, Am e Em", "progressão de quatro acordes"),
+        ("Semana 4", "trocas com metrônomo", "60 BPM sem interromper"),
+        ("Semana 5", "batidas e subdivisão", "duas levadas contrastantes"),
+        ("Semana 6", "cifras e tablatura", "ler e tocar um estudo"),
+        ("Semana 7", "escala e mapa do braço", "frase de quatro compassos"),
+        ("Semana 8", "arpejos e condução", "baixo e vozes superiores"),
+        ("Semana 9", "repertório", "forma completa sem parar"),
+        ("Semana 10", "improvisação", "pergunta e resposta"),
+        ("Semana 11", "arranjo e gravação", "duas versões da mesma peça"),
+        ("Semana 12", "projeto final", "gravação e autoavaliação"),
+    ]
+    for week, focus, evidence in weeks:
+        result.extend([PageBreak(), Paragraph(week, styles["GuitarH1"]), Paragraph(f"Foco: {focus}. Evidência: {evidence}.", styles["GuitarBody"]), Paragraph("Rotina: 5 minutos de aquecimento, 10 minutos de técnica, 10 minutos de repertório, 5 minutos de escuta e 5 minutos de criação.", styles["GuitarBody"]), VisualPanel("rhythm" if int(week.split()[1]) % 2 else "fretboard", f"Mapa de estudo — {week.lower()}"), Paragraph("Revisão: o que ficou mais claro? Onde o pulso ou o som perdeu qualidade? Qual é a menor correção que produzirá avanço amanhã?", styles["GuitarBody"])])
+    result.append(PageBreak())
+    result.append(Paragraph("Anexo L — Sessões de repertório", styles["GuitarH1"]))
+    for n in range(1, 13):
+        result.extend([PageBreak(), Paragraph(f"Sessão de repertório {n}", styles["GuitarH1"]), Paragraph("Escolha uma peça em andamento confortável. Toque a forma inteira, isole a transição mais difícil e repita a seção com uma única correção técnica.", styles["GuitarBody"]), Paragraph("Forma: ____________________   Tom: __________   BPM: ________<br/>Trecho isolado: ______________________________<br/>Decisão de dinâmica: _________________________<br/>Evidência gravada: ___________________________", styles["GuitarCode"]), VisualPanel("chord" if n % 2 else "tab", f"Roteiro musical — sessão {n}"), Paragraph("Critério de encerramento: uma tomada completa, uma observação auditiva e uma ação definida para a próxima sessão.", styles["GuitarBody"])])
+    return result
+
+
 def contextual_visual(chapter_index, heading_text):
     """Escolhe um recurso visual ligado ao trecho que acabou de ser explicado."""
     h = heading_text.lower()
@@ -627,8 +770,10 @@ def story():
             buffer.append(stripped)
         flush()
         flush_code()
-        result.extend(chapter_deep_dive(heading(path), chapter_index))
+        # Não inserir blocos genéricos de preenchimento. O conteúdo deve vir
+        # do próprio capítulo e dos recursos visuais contextuais.
 
+    result.extend(appendices())
     result.extend(
         [
             PageBreak(),
