@@ -1,5 +1,7 @@
 # Capítulo 13 — Single strokes
 
+![Sticking e acentos dos rudimentos](../fig/bateria-v2-rudimentos-sticking.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:

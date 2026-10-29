@@ -1,5 +1,7 @@
 # Capítulo 26 — Forma musical
 
+![Mapa de forma musical](../fig/bateria-v2-forma-musical.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:

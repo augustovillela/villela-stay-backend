@@ -1,5 +1,7 @@
 # Capítulo 34 — Latin, afro-cubano e fusões
 
+![Clave afro-cubana em 3–2 e 2–3](../fig/bateria-v2-clave-afro-cubana.png)
+
 Os ritmos latino-americanos e afro-cubanos são organizados por relações entre camadas. A bateria precisa entender a clave, sustentar o movimento e conversar com congas, bongôs, timbales, piano e baixo. O objetivo não é imitar todos os instrumentos, mas assumir uma função clara dentro do conjunto.
 
 ## Objetivos

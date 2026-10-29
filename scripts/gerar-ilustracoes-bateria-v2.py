@@ -105,8 +105,76 @@ def limbs():
     save(image, "bateria-v2-maos-e-pes.png")
 
 
+def rudiments():
+    image, draw = canvas("Rudimentos: sticking e acentos")
+    rows = [(235, "Singles", "R  L  R  L  R  L  R  L", [0, 2, 4, 6]), (455, "Doubles", "R R  L L  R R  L L", [0, 2, 4, 6]), (675, "Paradiddle", "R L R R  L R L L", [0, 4])]
+    for y, name, text, accents in rows:
+        draw.text((110, y), name, fill=NAVY, font=LABEL)
+        start = 570
+        parts = text.split()
+        for i, part in enumerate(parts):
+            x = start + i * 125
+            color = GOLD if i in accents else LIGHT
+            draw.rounded_rectangle((x - 38, y - 38, x + 38, y + 38), radius=12, fill=color, outline=NAVY, width=3)
+            label(draw, (x, y), part, NAVY)
+    draw.text((70, 970), "Acentos são relativos: as notas de apoio permanecem baixas e regulares.", fill=SLATE, font=SMALL)
+    save(image, "bateria-v2-rudimentos-sticking.png")
+
+
+def dynamics():
+    image, draw = canvas("Dinâmica e curva de energia")
+    base_y = 790
+    draw.line((180, base_y, 1600, base_y), fill=NAVY, width=4)
+    draw.line((180, 240, 180, base_y), fill=NAVY, width=4)
+    points = [(230, 690), (470, 620), (710, 470), (950, 300), (1190, 420), (1430, 590), (1570, 480)]
+    draw.line(points, fill=GOLD, width=10, joint="curve")
+    for x, y in points:
+        draw.ellipse((x - 18, y - 18, x + 18, y + 18), fill=GOLD, outline=NAVY, width=3)
+    label(draw, (230, 850), "intro", SLATE)
+    label(draw, (650, 850), "verso", SLATE)
+    label(draw, (970, 850), "refrão", SLATE)
+    label(draw, (1280, 850), "ponte", SLATE)
+    label(draw, (1510, 850), "final", SLATE)
+    draw.text((95, 210), "energia", fill=WINE, font=SMALL)
+    draw.text((70, 970), "A dinâmica cria direção: uma seção forte funciona melhor quando existe espaço para crescer.", fill=SLATE, font=SMALL)
+    save(image, "bateria-v2-dinamica-curva.png")
+
+
+def musical_form():
+    image, draw = canvas("Mapa de forma musical")
+    sections = [(120, 420, "Intro", NAVY), (430, 720, "Verso", SLATE), (730, 1020, "Refrão", GOLD), (1030, 1320, "Ponte", WINE), (1330, 1660, "Final", NAVY)]
+    for left, right, name, color in sections:
+        draw.rounded_rectangle((left, 380, right, 610), radius=18, fill=LIGHT, outline=color, width=6)
+        label(draw, ((left + right) // 2, 495), name, color)
+        draw.line((right, 495, right + 35, 495), fill=SLATE, width=4)
+    draw.polygon([(1660, 480), (1720, 495), (1660, 510)], fill=SLATE)
+    for x, text in [(270, "4 compassos"), (575, "8 compassos"), (875, "8 compassos"), (1175, "8 compassos"), (1495, "4 compassos")]:
+        label(draw, (x, 690), text, SLATE)
+    draw.text((70, 970), "Um mapa de forma reduz a carga de memória e orienta entradas, transições, viradas e finais.", fill=SLATE, font=SMALL)
+    save(image, "bateria-v2-forma-musical.png")
+
+
+def clave():
+    image, draw = canvas("Clave afro-cubana: 3–2 e 2–3")
+    for row, (name, hits) in enumerate((("3–2", [0, 3, 6, 9, 11]), ("2–3", [2, 4, 6, 9, 11]))):
+        y = 350 + row * 300
+        draw.text((120, y), name, fill=NAVY, font=LABEL)
+        for i in range(12):
+            x = 500 + i * 90
+            active = i in hits
+            draw.ellipse((x - 22, y - 22, x + 22, y + 22), fill=GOLD if active else WHITE, outline=NAVY, width=3)
+            label(draw, (x, y), str(i + 1), NAVY)
+        draw.line((500, y + 55, 1490, y + 55), fill=SLATE, width=3)
+    draw.text((70, 970), "A clave organiza as relações entre camadas; a bateria deve respeitar o ciclo mesmo quando cria variações.", fill=SLATE, font=SMALL)
+    save(image, "bateria-v2-clave-afro-cubana.png")
+
+
 drum_map()
 posture()
 subdivision()
 limbs()
+rudiments()
+dynamics()
+musical_form()
+clave()
 print(OUT)

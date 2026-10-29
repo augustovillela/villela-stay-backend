@@ -1,5 +1,7 @@
 # Capítulo 25 — Dinâmica
 
+![Curva de energia musical](../fig/bateria-v2-dinamica-curva.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:
