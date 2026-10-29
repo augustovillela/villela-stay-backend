@@ -1,5 +1,7 @@
 # Capítulo 43 — Avaliação, certificação e projeto final
 
+![Progresso por evidências de domínio](../fig/bateria-v2-progresso-evidencias.png)
+
 Avaliar bateria não é apenas contar erros. É observar pulso, som, coordenação, forma, escuta, dinâmica, preparação e capacidade de aplicar conhecimentos em uma situação musical. O projeto final reúne o caminho percorrido e oferece uma referência concreta para a próxima etapa.
 
 ## Objetivos

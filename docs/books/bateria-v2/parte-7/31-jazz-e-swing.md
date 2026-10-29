@@ -1,5 +1,7 @@
 # Capítulo 31 — Jazz e swing
 
+![Camadas de estilo: espaço, condução e acento](../fig/bateria-v2-estilos-camadas.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:

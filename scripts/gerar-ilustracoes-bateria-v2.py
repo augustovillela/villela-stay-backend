@@ -230,6 +230,50 @@ def maintenance():
     save(image, "bateria-v2-manutencao-checklist.png")
 
 
+def style_layers():
+    image, draw = canvas("Estilos: espaço, condução e acento")
+    rows = [(250, "Jazz / swing", "ride + hi-hat 2 e 4", GOLD), (460, "Reggae", "espaço + acento no 3", WINE), (670, "Baião", "grave + resposta", NAVY), (880, "Samba", "fluxo + camadas", SLATE)]
+    for y, name, detail, color in rows:
+        draw.rounded_rectangle((150, y - 48, 680, y + 48), radius=18, fill=LIGHT, outline=color, width=4)
+        draw.text((190, y), name, fill=color, font=LABEL, anchor="lm")
+        draw.line((760, y, 1010, y), fill=color, width=8)
+        draw.polygon([(1010, y - 16), (1050, y), (1010, y + 16)], fill=color)
+        draw.text((1100, y), detail, fill=NAVY, font=LABEL, anchor="lm")
+    draw.text((70, 970), "A identidade de cada estilo vem da relação entre espaço, condução, grave e acentos.", fill=SLATE, font=SMALL)
+    save(image, "bateria-v2-estilos-camadas.png")
+
+
+def performance_map():
+    image, draw = canvas("Performance: preparar, tocar e avaliar")
+    stages = [(180, "Mapa", NAVY), (570, "Ensaio", GOLD), (960, "Performance", WINE), (1350, "Revisão", SLATE)]
+    for i, (x, name, color) in enumerate(stages):
+        draw.ellipse((x - 85, 410 - 85, x + 85, 410 + 85), fill=LIGHT, outline=color, width=7)
+        label(draw, (x, 410), name, color)
+        if i < len(stages) - 1:
+            draw.line((x + 95, 410, stages[i + 1][0] - 105, 410), fill=GOLD, width=6)
+            draw.polygon([(stages[i + 1][0] - 105, 394), (stages[i + 1][0] - 70, 410), (stages[i + 1][0] - 105, 426)], fill=GOLD)
+    for x, text in [(180, "forma e sinais"), (570, "entradas e finais"), (960, "escuta e continuidade"), (1350, "evidências e próximo passo")]:
+        label(draw, (x, 590), text, SLATE)
+    draw.text((70, 970), "Uma performance segura é preparada antes da contagem e avaliada depois da última nota.", fill=SLATE, font=SMALL)
+    save(image, "bateria-v2-performance-ciclo.png")
+
+
+def progress_radar():
+    image, draw = canvas("Progresso: evidências de domínio")
+    center = (900, 520)
+    axes = [(900, 230, "Pulso"), (1280, 380, "Som"), (1200, 770, "Forma"), (600, 770, "Criação"), (520, 380, "Técnica")]
+    for x, y, text in axes:
+        draw.line([center, (x, y)], fill=SLATE, width=3)
+        draw.ellipse((x - 18, y - 18, x + 18, y + 18), fill=GOLD, outline=NAVY, width=3)
+        label(draw, (x, y - 42 if y < center[1] else y + 42), text, NAVY)
+    polygon = [(900, 315), (1160, 420), (1110, 680), (680, 680), (640, 420)]
+    draw.line(polygon + [polygon[0]], fill=WINE, width=7, joint="curve")
+    for x, y in polygon:
+        draw.ellipse((x - 12, y - 12, x + 12, y + 12), fill=WINE)
+    draw.text((70, 970), "O progresso é multidimensional: registre pulso, som, técnica, criação e forma, não apenas BPM.", fill=SLATE, font=SMALL)
+    save(image, "bateria-v2-progresso-evidencias.png")
+
+
 drum_map()
 posture()
 subdivision()
@@ -242,4 +286,7 @@ groove_rock()
 funk_pocket()
 recording_setup()
 maintenance()
+style_layers()
+performance_map()
+progress_radar()
 print(OUT)
