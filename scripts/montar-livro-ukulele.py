@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+from PIL import Image as PILImage
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
@@ -46,8 +47,16 @@ def caption(path):
     label = label.replace("capa-ukulele-villela-music", "Capa da série Villela Music")
     return "Ilustração editorial — " + label.replace("-", " ").capitalize()
 
+def fitted_size(path, max_width, max_height):
+    with PILImage.open(path) as source:
+        width, height = source.size
+    scale = min(max_width / width, max_height / height)
+    return width * scale, height * scale
+
 def story():
-    cover = Image(str(BOOK / "fig" / "capa-ukulele-villela-music.png"), width=165*mm, height=184*mm)
+    cover_path = BOOK / "fig" / "capa-ukulele-villela-music.png"
+    cover_width, cover_height = fitted_size(cover_path, 165*mm, 210*mm)
+    cover = Image(str(cover_path), width=cover_width, height=cover_height)
     cover.hAlign = "CENTER"
     result = [Paragraph("Livro completo de ukulele", styles["BookTitle"]), Paragraph("Villela Music · edição didática e ilustrada", styles["Subtitle"]), cover, Spacer(1, 3*mm), Paragraph("Do primeiro som à criação de arranjos, repertório e performance.", styles["Subtitle"]), PageBreak(), Paragraph("Sumário", styles["H1Book"]), Paragraph("Partes, capítulos e anexos da edição", styles["BodyBook"])]
     for path in files():
@@ -61,12 +70,14 @@ def story():
         if match and match.group(1) not in part_seen:
             part_seen.add(match.group(1))
             for image in sorted((BOOK / "fig").glob(f"uke-p{match.group(1)}-*.png")):
-                picture = Image(str(image), width=165*mm, height=92*mm)
+                image_width, image_height = fitted_size(image, 165*mm, 92*mm)
+                picture = Image(str(image), width=image_width, height=image_height)
                 picture.hAlign = "CENTER"
                 result.extend([picture, Paragraph(caption(image), styles["BodyBook"]), Spacer(1, 3*mm)])
         image = image_for(text)
         if image:
-            picture = Image(str(image), width=165*mm, height=92*mm)
+            image_width, image_height = fitted_size(image, 165*mm, 92*mm)
+            picture = Image(str(image), width=image_width, height=image_height)
             picture.hAlign = "CENTER"
             result.extend([picture, Paragraph(caption(image), styles["BodyBook"]), Spacer(1, 3*mm)])
         buffer = []
