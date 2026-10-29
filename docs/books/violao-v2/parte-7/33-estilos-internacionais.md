@@ -18,6 +18,17 @@ Blues, folk, rock, reggae e pop diferem na acentuação e no espaço. A mesma ci
 
 ## Conceitos fundamentais
 
+### Comparação de acentos
+
+```text
+folk:   ↓   -   ↓↑  -
+rock:   ↓   ↓   ↓   ↓
+reggae: -   ↑   -   ↑
+blues:  ↓   -   ↓↑  ↑
+```
+
+Toque a mesma progressão nos quatro padrões e anote como muda a função do violão.
+
 O estudo de rock, pop, blues, folk, reggae, jazz e música instrumental precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

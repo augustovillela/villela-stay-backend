@@ -18,6 +18,16 @@ Conduzir vozes é escolher formas que façam as notas se moverem pouco. Uma nota
 
 ## Conceitos fundamentais
 
+### Linha superior
+
+```text
+C       Am      F       G
+E  →    E  →    F  →    G
+G  →    A  →    A  →    B
+```
+
+Procure formas em que pelo menos uma voz permaneça ou se mova por grau conjunto.
+
 O estudo de notas comuns, cromatismos, linhas internas e baixos precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

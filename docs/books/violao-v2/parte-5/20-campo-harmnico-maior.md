@@ -18,6 +18,16 @@ Empilhando terças sobre cada grau da escala maior, obtemos o campo harmônico. 
 
 ## Conceitos fundamentais
 
+### Campo de C maior
+
+```text
+grau:    I    ii   iii  IV   V    vi   vii°
+acorde:  C    Dm   Em   F    G    Am   Bdim
+função:  casa preparação passagem apoio tensão retorno tensão
+```
+
+Toque I–V–vi–IV e identifique a função antes de pensar na forma do acorde.
+
 O estudo de acordes diatônicos, funções e progressões precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

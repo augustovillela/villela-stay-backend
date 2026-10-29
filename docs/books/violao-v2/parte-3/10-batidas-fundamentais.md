@@ -18,6 +18,17 @@ Uma batida estável nasce de um movimento que continua para baixo e para cima. N
 
 ## Conceitos fundamentais
 
+### Três células de batida
+
+```text
+Reta:       ↓   ↓   ↓   ↓
+Alternada:  ↓   ↓↑  ↓   ↓↑
+Contratempo:-   ↑   -   ↑
+Contagem:   1   &   2   &   3   &   4   &
+```
+
+Pratique sem acorde, depois com um único acorde e só então com a troca de progressão.
+
 O estudo de colcheias, semicolcheias, acentos e abafamentos precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

@@ -18,6 +18,17 @@ Uma cifra informa a harmonia, mas não mostra sozinha a posição. O diagrama mo
 
 ## Conceitos fundamentais
 
+### Leitura de um diagrama
+
+```text
+corda 6   corda 1
+   |  |  |  |  |
+   o  o  |  |  x
+   |  ●  |  ●  |
+```
+
+Antes de tocar, diga o nome do acorde, identifique o baixo e separe cordas soltas, pressionadas e abafadas.
+
 O estudo de pestanas, inversões, baixos alternativos e extensões precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

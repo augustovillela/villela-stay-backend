@@ -18,6 +18,16 @@ Trocar acordes não é levantar todos os dedos e procurar a forma novamente. Obs
 
 ## Conceitos fundamentais
 
+### Caminhos de troca
+
+```text
+C  →  G     mantenha o dedo 3 como referência quando possível
+G  →  Am    prepare o dedo 1 antes do ataque
+Am →  Em    mova o conjunto sem apertar durante o silêncio
+```
+
+Pratique cada par isoladamente antes de tocar a progressão inteira.
+
 O estudo de dedos-guia, antecipação, metrônomo e continuidade precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

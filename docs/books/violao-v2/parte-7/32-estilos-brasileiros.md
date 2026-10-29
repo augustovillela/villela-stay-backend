@@ -18,6 +18,16 @@ Choro, samba, bossa nova, baião e moda de viola usam relações diferentes entr
 
 ## Conceitos fundamentais
 
+### Grade de acentos
+
+```text
+contagem: 1 e & a 2 e & a 3 e & a 4 e & a
+baixo:    X       -   X       -   X       -
+acorde:     - X -       - X -       - X -
+```
+
+O padrão deve ser ouvido como balanço, não como uma sequência rígida de setas.
+
 O estudo de samba, bossa, choro, baião, forró e sertanejo precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo

@@ -18,6 +18,17 @@ Comece com quatro acordes abertos que permitem acompanhar muitas canções. No C
 
 ## Conceitos fundamentais
 
+### Cifras de referência
+
+```text
+C      x 3 2 0 1 0
+G      3 2 0 0 0 3
+Am     x 0 2 2 1 0
+Em     0 2 2 0 0 0
+```
+
+Leia da sexta para a primeira corda. `x` significa não tocar; `0` significa corda solta.
+
 O estudo de C, G, D, A, E, Em, Am e acordes relacionados precisa começar pela escuta, passar por um movimento pequeno e controlado e chegar a uma aplicação musical. O objetivo não é apenas reproduzir uma forma, mas compreender por que ela funciona, onde ela se encaixa no pulso e como pode ser adaptada ao instrumento.
 
 ## Explicação passo a passo
