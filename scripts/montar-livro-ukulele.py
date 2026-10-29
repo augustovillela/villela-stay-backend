@@ -42,7 +42,9 @@ def image_for(text):
     return path if path.exists() else None
 
 def story():
-    result = [Spacer(1, 24*mm), Paragraph("Livro completo de ukulele", styles["BookTitle"]), Paragraph("Villela Music · edição didática e ilustrada", styles["Subtitle"]), Paragraph("Do primeiro som à criação de arranjos, repertório e performance.", styles["Subtitle"]), PageBreak()]
+    cover = Image(str(BOOK / "fig" / "capa-ukulele-villela-music.png"), width=165*mm, height=184*mm)
+    cover.hAlign = "CENTER"
+    result = [Paragraph("Livro completo de ukulele", styles["BookTitle"]), Paragraph("Villela Music · edição didática e ilustrada", styles["Subtitle"]), cover, Spacer(1, 3*mm), Paragraph("Do primeiro som à criação de arranjos, repertório e performance.", styles["Subtitle"]), PageBreak()]
     part_seen = set()
     for path in files():
         text = path.read_text(encoding="utf-8")
