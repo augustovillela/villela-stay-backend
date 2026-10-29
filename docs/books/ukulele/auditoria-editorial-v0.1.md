@@ -9,7 +9,9 @@
 - Todos os capítulos e anexos possuem título de primeiro nível.
 - Nenhum caractere de substituição `�` foi encontrado.
 - Nenhum nome de imagem duplicado foi encontrado.
-- PDF preliminar renderizado com 201 páginas.
+- As 42 artes estão em PNG válido, sem arquivos corrompidos ou dimensões vazias.
+- As proporções foram preservadas por tipo: capa vertical, ilustrações horizontais e painéis didáticos panorâmicos.
+- PDF preliminar renderizado com 203 páginas.
 
 ## Verificação visual amostral
 
