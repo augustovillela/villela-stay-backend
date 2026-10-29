@@ -1,5 +1,7 @@
 # Capítulo 6 — Pegadas de baqueta
 
+![Pegada e contato das baquetas com a caixa](../fig/bateria-v2-foto-caixa-baquetas.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:
@@ -188,3 +190,5 @@ Para uma sessão de 20 minutos:
 - 3 minutos de gravação e registro.
 
 Durante as próximas semanas, não transforme a escolha da pegada em disputa. O objetivo é ampliar seus recursos sem perder o princípio principal: controle, som, relaxamento e musicalidade.
+![Pegada e contato das baquetas com a caixa](../fig/bateria-v2-foto-caixa-baquetas.png)
+

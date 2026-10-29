@@ -1,5 +1,7 @@
 # Capítulo 2 — Componentes da bateria
 
+![Kit acústico completo visto de cima](../fig/bateria-v2-foto-kit.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:
@@ -185,3 +187,5 @@ Para uma sessão de 20 minutos:
 - 2 minutos registrando o que mudou entre os instrumentos.
 
 O objetivo é terminar sabendo não apenas onde cada peça está, mas por que ela está sendo usada.
+![Kit acústico completo visto de cima](../fig/bateria-v2-foto-kit.png)
+

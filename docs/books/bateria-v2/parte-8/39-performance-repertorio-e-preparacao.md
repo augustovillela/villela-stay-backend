@@ -1,6 +1,7 @@
 # Capítulo 39 — Performance, repertório e preparação para tocar
 
 ![Ciclo de preparação e performance](../fig/bateria-v2-performance-ciclo.png)
+![Bateria em situação de palco](../fig/bateria-v2-foto-performance.png)
 
 Uma boa performance começa antes da contagem. O baterista prepara o repertório, entende a forma, testa o equipamento, combina sinais e cria estratégias para continuar quando algo sai diferente do ensaio. Técnica e musicalidade precisam aparecer juntas.
 

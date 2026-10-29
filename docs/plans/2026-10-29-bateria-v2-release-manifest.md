@@ -5,20 +5,21 @@
 - edição: nova edição textual Villela Music;
 - capítulos: 48;
 - partes: 10;
-- PDF: A4, 334 páginas;
+- PDF: A4, 338 páginas;
 - arquivo: `output/pdf/livro-bateria-v2.pdf`;
-- SHA-256: `D89FA912E7A81872BABFE082759E844A2848607DE34A0B3DC25AE8B12A7E11F6`;
-- tamanho: 1.263.611 bytes.
+- SHA-256: `833D16B11F255033F6B1EA0ECC7B7AC6D6F1235C9F39D16DE7A970EE1B68B35F`;
+- tamanho: 22.535.024 bytes.
 
 ## Incluído
 
 - manuscrito completo em Markdown;
 - índice geral;
-- capa tipográfica da série Villela Music;
+- capa fotográfica de página inteira no padrão da série Villela Music;
 - fichas de prática e revisão;
 - diagramas didáticos de bateria, postura, subdivisão, mãos e pés;
 - diagramas de rudimentos, dinâmica, forma e clave;
 - diagramas de grooves, funk, estilos, gravação, manutenção, performance e progresso;
+- fotografias editoriais realistas de kit, pegada, postura, gravação e performance;
 - auditoria estrutural e auditoria Markdown;
 - revisão visual da capa, índice, páginas internas e encerramento.
 

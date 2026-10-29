@@ -1,6 +1,7 @@
 # Capítulo 5 — Postura e ergonomia
 
 ![Postura e zonas de alcance](../fig/bateria-v2-postura-e-alcance.png)
+![Postura diante da bateria e posição dos pés](../fig/bateria-v2-foto-postura.png)
 
 ## Objetivos de aprendizagem
 
