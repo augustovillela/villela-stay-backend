@@ -168,13 +168,13 @@ def chapter_fichas(title):
                 ),
                 Spacer(1, 8 * mm),
                 Paragraph("Objetivo da sessão", styles["BatteryH2"]),
-                Paragraph("_" * 105, styles["BatteryBody"]),
-                Paragraph("_" * 105, styles["BatteryBody"]),
+                Paragraph("_" * 80, styles["BatteryBody"]),
+                Paragraph("_" * 80, styles["BatteryBody"]),
                 Spacer(1, 5 * mm),
                 Paragraph("O que consegui tocar, ouvir ou explicar?", styles["BatteryH2"]),
-                Paragraph("_" * 105, styles["BatteryBody"]),
-                Paragraph("_" * 105, styles["BatteryBody"]),
-                Paragraph("_" * 105, styles["BatteryBody"]),
+                Paragraph("_" * 80, styles["BatteryBody"]),
+                Paragraph("_" * 80, styles["BatteryBody"]),
+                Paragraph("_" * 80, styles["BatteryBody"]),
                 Spacer(1, 5 * mm),
                 Paragraph("Próxima revisão", styles["BatteryH2"]),
                 Paragraph(
@@ -242,7 +242,7 @@ def story():
 
         for line in text.splitlines():
             stripped = line.strip()
-            if stripped == "```" or stripped.startswith("```mermaid"):
+            if stripped.startswith("```"):
                 flush()
                 if code:
                     flush_code()
@@ -289,9 +289,9 @@ def story():
             ),
             Spacer(1, 8 * mm),
             Paragraph("Plano pessoal", styles["BatteryH2"]),
-            Paragraph("_" * 105, styles["BatteryBody"]),
-            Paragraph("_" * 105, styles["BatteryBody"]),
-            Paragraph("_" * 105, styles["BatteryBody"]),
+            Paragraph("_" * 80, styles["BatteryBody"]),
+            Paragraph("_" * 80, styles["BatteryBody"]),
+            Paragraph("_" * 80, styles["BatteryBody"]),
         ]
     )
     return result
