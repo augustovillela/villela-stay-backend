@@ -37,3 +37,14 @@ test('ukulele: títulos do livro não exibem ícone decorativo', () => {
   assert.ok(paginas.includes('<h1>${esc(UK.CURSO.titulo)}</h1>'));
   assert.ok(paginas.includes('<h1>${esc(c.titulo)}</h1>'));
 });
+
+test('ukulele: estrutura editorial e PDF estão completos', () => {
+  assert.equal(curso.CURSO.paginas, 203);
+  assert.equal(curso.partes.reduce((total, parte) => total + parte[2].length, 0), curso.capitulos.length);
+  for (const capitulo of curso.capitulos) {
+    assert.ok(fs.existsSync(require('path').join(__dirname, '..', '..', 'docs', 'books', 'ukulele', capitulo.arquivo)), capitulo.arquivo);
+  }
+  const pdf = require('path').join(__dirname, '..', '..', 'output', 'pdf', 'livro-ukulele-v0.1.pdf');
+  assert.ok(fs.existsSync(pdf));
+  assert.ok(fs.statSync(pdf).size > 1000000);
+});
