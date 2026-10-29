@@ -213,6 +213,8 @@ def story():
     for chapter_index, path in enumerate(chapters, start=1):
         part = path.parent.name
         if part != current_part:
+            if current_part is not None:
+                result.append(PageBreak())
             current_part = part
             number = re.search(r"parte-(\d+)", part).group(1)
             result.append(Paragraph(f"Parte {number}", styles["BatteryH1"]))
@@ -251,6 +253,7 @@ def story():
                 continue
             if stripped.startswith("# "):
                 flush()
+                result.append(PageBreak())
                 result.append(Paragraph(inline(stripped[2:]), styles["BatteryH1"]))
                 if legacy_photo.exists():
                     result.extend(image_block(legacy_photo))
