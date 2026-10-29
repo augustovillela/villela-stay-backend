@@ -44,7 +44,11 @@ def image_for(text):
 def story():
     cover = Image(str(BOOK / "fig" / "capa-ukulele-villela-music.png"), width=165*mm, height=184*mm)
     cover.hAlign = "CENTER"
-    result = [Paragraph("Livro completo de ukulele", styles["BookTitle"]), Paragraph("Villela Music · edição didática e ilustrada", styles["Subtitle"]), cover, Spacer(1, 3*mm), Paragraph("Do primeiro som à criação de arranjos, repertório e performance.", styles["Subtitle"]), PageBreak()]
+    result = [Paragraph("Livro completo de ukulele", styles["BookTitle"]), Paragraph("Villela Music · edição didática e ilustrada", styles["Subtitle"]), cover, Spacer(1, 3*mm), Paragraph("Do primeiro som à criação de arranjos, repertório e performance.", styles["Subtitle"]), PageBreak(), Paragraph("Sumário", styles["H1Book"]), Paragraph("Partes, capítulos e anexos da edição", styles["BodyBook"])]
+    for path in files():
+        heading = next((line[2:].strip() for line in path.read_text(encoding="utf-8").splitlines() if line.startswith("# ")), path.stem.replace("-", " ").title())
+        result.append(Paragraph(inline(heading), styles["BodyBook"]))
+    result.append(PageBreak())
     part_seen = set()
     for path in files():
         text = path.read_text(encoding="utf-8")
