@@ -303,6 +303,10 @@ def story():
             if not stripped:
                 flush()
                 continue
+            if stripped.startswith(">"):
+                # A nota editorial de fotografia orienta a produção e não deve
+                # aparecer no livro entregue ao leitor.
+                continue
             if stripped.startswith("# "):
                 flush()
                 if not first_chapter_in_part:
