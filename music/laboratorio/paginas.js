@@ -173,9 +173,8 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
       { nome: 'Contrabaixo', icone: '🎸', cor: '#3f7180', resumo: 'Técnica, groove, harmonia, estilos, criação e performance.', url: '/music/curso-contrabaixo', ativo: true },
       { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Teclado, leitura, harmonia, acompanhamento e performance.', url: '/music/curso-piano', ativo: true },
       { nome: 'Cavaquinho', icone: '🪕', cor: '#8b6b48', resumo: 'Acordes, batidas, samba, pagode, choro e performance.', url: '/music/curso-cavaquinho', ativo: true },
-      { nome: 'Ukulele', icone: '🪕', cor: '#6d8060', resumo: 'Em preparação: acordes, batidas e primeiras canções.', url: '/music/curso-ukulele', ativo: false },
       { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Palhetada, tremolo, melodias, choro e improvisação.', url: '/music/curso-bandolim', ativo: true },
-      { nome: 'Ukulelê', icone: '🎵', cor: '#4f7f73', resumo: 'Acordes, ritmos, dedilhados, arranjos e performance.', url: '/music/curso-ukulele', ativo: true },
+      { nome: 'Ukulele', icone: '🎵', cor: '#4f7f73', resumo: 'Acordes, ritmos, dedilhados, arranjos e performance.', url: '/music/curso-ukulele', ativo: true },
     ];
     const cards = cursos.map((c) => { const tag = c.url ? 'a href="' + c.url + '"' : 'div'; return `<${tag} class="curso-card ${c.ativo ? 'curso-card-ativo' : 'curso-card-futuro'}" style="--curso-cor:${c.cor}"><span class="curso-card-icone" aria-hidden="true">${c.icone}</span><span class="curso-card-corpo"><strong>${esc(c.nome)}</strong><span>${esc(c.resumo)}</span></span><small>${c.ativo ? 'Abrir curso →' : 'Em breve →'}</small></${c.url ? 'a' : 'div'}>`; }).join('');
     const corpo = `<header class="lab-cab cursos-hero"><p class="lab-cab-tipo">Formação musical</p><h1>Cursos</h1><p class="lab-lead">Escolha um instrumento ou comece pela teoria. Cada curso tem seu próprio percurso, materiais e práticas.</p></header><section class="cursos-grid" aria-label="Catálogo de cursos">${cards}</section><p class="lab-dica cursos-nota">Novos cursos serão publicados nesta mesma página conforme o conteúdo ficar pronto.</p>`;
@@ -185,9 +184,7 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
   // Páginas de apresentação dos próximos instrumentos: a rota existe para
   // que o aluno possa conhecer a proposta, mas o conteúdo continua fechado
   // até a publicação do curso.
-  const cursosEmBreve = [
-    ['ukulele', 'Ukulele', 'Acordes, batidas e primeiras canções.'],
-  ];
+  const cursosEmBreve = [];
   app.get('/music/curso-contrabaixo.json', opcional, (req, res) => {
     const documento = { schema: 'musique.course.v1', id: CBA.CURSO.id, titulo: CBA.CURSO.titulo, subtitulo: CBA.CURSO.subtitulo, versao: CBA.CURSO.versao, descricao: CBA.CURSO.descricao, trilhas: CBA.CURSO.trilhas, recursos: { html: '/music/curso-contrabaixo', pdf: '/music/curso-contrabaixo.pdf' }, pdf: { paginas: CBA.CURSO.pdfPaginas, capa: CBA.CURSO.pdfComCapa, paginaInicialDoLivro: 2 }, formatosDisponiveis: ['musique-html', 'livro-pdf'], fases: CBA.CURSO.fases, capitulos: CBA.capitulos.map((c) => ({ ...c, url: `/music/curso-contrabaixo/${c.slug}` })) };
     res.set('Content-Type', 'application/json; charset=utf-8').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));
