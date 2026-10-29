@@ -41,6 +41,11 @@ def image_for(text):
     path = (BOOK / match.group(1)).resolve()
     return path if path.exists() else None
 
+def caption(path):
+    label = re.sub(r"^uke-p\d+-", "", path.stem)
+    label = label.replace("capa-ukulele-villela-music", "Capa da série Villela Music")
+    return "Ilustração editorial — " + label.replace("-", " ").capitalize()
+
 def story():
     cover = Image(str(BOOK / "fig" / "capa-ukulele-villela-music.png"), width=165*mm, height=184*mm)
     cover.hAlign = "CENTER"
@@ -58,12 +63,12 @@ def story():
             for image in sorted((BOOK / "fig").glob(f"uke-p{match.group(1)}-*.png")):
                 picture = Image(str(image), width=165*mm, height=92*mm)
                 picture.hAlign = "CENTER"
-                result.extend([picture, Spacer(1, 3*mm)])
+                result.extend([picture, Paragraph(caption(image), styles["BodyBook"]), Spacer(1, 3*mm)])
         image = image_for(text)
         if image:
             picture = Image(str(image), width=165*mm, height=92*mm)
             picture.hAlign = "CENTER"
-            result.extend([picture, Spacer(1, 3*mm)])
+            result.extend([picture, Paragraph(caption(image), styles["BodyBook"]), Spacer(1, 3*mm)])
         buffer = []
         def flush():
             if buffer:
