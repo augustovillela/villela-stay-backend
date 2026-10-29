@@ -1,5 +1,7 @@
 # Capítulo 41 — Equipamentos, manutenção e segurança
 
+![Checklist visual de manutenção](../fig/bateria-v2-manutencao-checklist.png)
+
 Conhecer o equipamento amplia as possibilidades musicais e evita interrupções. Uma bateria bem montada, regulada e transportada responde melhor, dura mais e permite que o músico concentre atenção no som. Segurança vem antes de velocidade, volume ou aparência.
 
 ## Objetivos

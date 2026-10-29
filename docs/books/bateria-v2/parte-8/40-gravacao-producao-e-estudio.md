@@ -1,5 +1,7 @@
 # Capítulo 40 — Gravação, produção e trabalho em estúdio
 
+![Ataque, corpo e ambiente na gravação](../fig/bateria-v2-gravacao-ataque-corpo-ambiente.png)
+
 Gravar bateria é transformar uma performance em material que poderá ser ouvido muitas vezes. O estúdio revela estabilidade, dinâmica, ruídos, escolhas de timbre e relação com o clique. Uma boa sessão depende de preparação musical, técnica e comunicação.
 
 ## Objetivos

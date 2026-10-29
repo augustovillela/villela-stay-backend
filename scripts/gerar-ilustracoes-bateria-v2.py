@@ -169,6 +169,67 @@ def clave():
     save(image, "bateria-v2-clave-afro-cubana.png")
 
 
+def groove_rock():
+    image, draw = canvas("Groove de rock: quatro camadas")
+    rows = [(245, "Chimbal", [0, 1, 2, 3, 4, 5, 6, 7], GOLD), (425, "Caixa", [2, 6], WINE), (605, "Bumbo", [0, 4], NAVY), (785, "Hi-hat pé", [2, 6], SLATE)]
+    for y, name, hits, color in rows:
+        draw.text((120, y), name, fill=color, font=LABEL)
+        for i in range(8):
+            x = 650 + i * 115
+            active = i in hits
+            draw.ellipse((x - 24, y - 24, x + 24, y + 24), fill=color if active else WHITE, outline=color, width=3)
+            label(draw, (x, y), "x" if active else ".", WHITE if active else color)
+        draw.line((650, y + 58, 1455, y + 58), fill=SLATE, width=3)
+    draw.text((70, 970), "Comece pela condução, acrescente a caixa e só então organize o bumbo e o hi-hat do pé.", fill=SLATE, font=SMALL)
+    save(image, "bateria-v2-groove-rock-camadas.png")
+
+
+def funk_pocket():
+    image, draw = canvas("Funk: pocket, ghost notes e espaço")
+    start, gap = 470, 105
+    for i, value in enumerate(["1", "e", "&", "a"] * 2):
+        x = start + i * gap
+        draw.ellipse((x - 21, 430 - 21, x + 21, 430 + 21), fill=LIGHT, outline=NAVY, width=3)
+        label(draw, (x, 430), value, NAVY)
+    for i, (text, y, color) in enumerate((("Caixa", 600, WINE), ("Ghost note", 735, SLATE))):
+        draw.text((140, y), text, fill=color, font=LABEL)
+        for j in range(8):
+            x = start + j * gap * 2
+            active = (j in (1, 3, 5, 7)) if i == 0 else (j in (0, 2, 4, 6))
+            draw.ellipse((x - 19, y - 19, x + 19, y + 19), fill=color if active else WHITE, outline=color, width=3)
+    draw.text((70, 970), "O pocket depende da relação entre acentos e notas baixas; mais notas não significa mais groove.", fill=SLATE, font=SMALL)
+    save(image, "bateria-v2-funk-pocket.png")
+
+
+def recording_setup():
+    image, draw = canvas("Gravação: ataque, corpo e ambiente")
+    draw.ellipse((420, 430, 830, 660), fill=LIGHT, outline=NAVY, width=5)
+    draw.ellipse((980, 420, 1350, 690), fill=LIGHT, outline=NAVY, width=5)
+    label(draw, (625, 545), "caixa", NAVY)
+    label(draw, (1165, 555), "bumbo", NAVY)
+    for x, y, name, color in [(340, 300, "ataque", GOLD), (890, 310, "corpo", WINE), (1510, 440, "ambiente", SLATE)]:
+        draw.ellipse((x - 45, y - 45, x + 45, y + 45), fill=color, outline=NAVY, width=3)
+        label(draw, (x, y), "mic", WHITE)
+        target = (530, 435) if name == "ataque" else ((1165, 420) if name == "corpo" else (850, 380))
+        draw.line((x, y + 45, target[0], target[1]), fill=color, width=5)
+        label(draw, (x, y + 85), name, color)
+    draw.text((70, 970), "A posição do microfone altera ataque, corpo e ambiente. Mude uma variável por vez e escute.", fill=SLATE, font=SMALL)
+    save(image, "bateria-v2-gravacao-ataque-corpo-ambiente.png")
+
+
+def maintenance():
+    image, draw = canvas("Manutenção: inspeção antes de tocar")
+    items = [(260, 300, "Peles", "afinação"), (730, 300, "Pedais", "retorno"), (1200, 300, "Estantes", "travas"), (495, 670, "Pratos", "proteção"), (965, 670, "Cabos", "segurança")]
+    for x, y, name, detail in items:
+        draw.rounded_rectangle((x - 170, y - 85, x + 170, y + 85), radius=18, fill=LIGHT, outline=NAVY, width=4)
+        label(draw, (x, y - 18), name, NAVY)
+        label(draw, (x, y + 32), detail, WINE)
+    for x, y, nx, ny in [(430, 300, 560, 300), (900, 300, 1030, 300), (730, 385, 730, 585), (585, 670, 875, 670)]:
+        draw.line((x, y, nx, ny), fill=GOLD, width=4)
+    draw.text((70, 970), "Inspecione antes da sessão: segurança e manutenção evitam ruídos, acidentes e interrupções.", fill=SLATE, font=SMALL)
+    save(image, "bateria-v2-manutencao-checklist.png")
+
+
 drum_map()
 posture()
 subdivision()
@@ -177,4 +238,8 @@ rudiments()
 dynamics()
 musical_form()
 clave()
+groove_rock()
+funk_pocket()
+recording_setup()
+maintenance()
 print(OUT)

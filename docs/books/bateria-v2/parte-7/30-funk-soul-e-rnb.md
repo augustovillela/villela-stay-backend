@@ -1,5 +1,7 @@
 # Capítulo 30 — Funk, soul e R&B
 
+![Pocket de funk com ghost notes](../fig/bateria-v2-funk-pocket.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:

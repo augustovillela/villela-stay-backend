@@ -1,5 +1,7 @@
 # Capítulo 18 — Groove básico de rock
 
+![Groove de rock em quatro camadas](../fig/bateria-v2-groove-rock-camadas.png)
+
 ## Objetivos de aprendizagem
 
 Ao concluir este capítulo, você será capaz de:
