@@ -24,6 +24,9 @@ from reportlab.platypus import (
     PageTemplate,
     Paragraph,
     Spacer,
+    Table,
+    TableStyle,
+    Flowable,
 )
 from reportlab.platypus.tableofcontents import TableOfContents
 
@@ -46,6 +49,117 @@ styles.add(
         spaceAfter=12,
     )
 )
+
+
+class VisualPanel(Flowable):
+    """Painel didático desenhado em vetor para o livro."""
+
+    def __init__(self, kind, label):
+        super().__init__()
+        self.kind = kind
+        self.label = label
+        self.width = 174 * mm
+        self.height = 61 * mm
+
+    def draw(self):
+        c = self.canv
+        x, y, w, h = 0, 0, self.width, self.height
+        c.setStrokeColor(colors.HexColor("#C9D2DE"))
+        c.setFillColor(colors.HexColor("#F7F9FB"))
+        c.roundRect(x, y, w, h, 4 * mm, fill=1, stroke=1)
+        c.setFillColor(colors.HexColor("#1B2A4A"))
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(8 * mm, h - 10 * mm, self.label)
+        ox, oy = 16 * mm, 14 * mm
+        if self.kind == "chord":
+            c.setStrokeColor(colors.HexColor("#28384F"))
+            for i in range(6):
+                c.line(ox + i * 8 * mm, oy, ox + i * 8 * mm, oy + 28 * mm)
+            for j in range(5):
+                c.line(ox, oy + j * 7 * mm, ox + 40 * mm, oy + j * 7 * mm)
+            c.setFillColor(colors.HexColor("#9B3E4A"))
+            for sx, sy in ((0, 2), (1, 1), (2, 0), (3, 2), (4, 1)):
+                c.circle(ox + sx * 8 * mm, oy + sy * 7 * mm, 2.2 * mm, fill=1, stroke=0)
+            c.setFillColor(colors.HexColor("#455468"))
+            c.setFont("Helvetica", 8)
+            c.drawString(66 * mm, oy + 17 * mm, "Cifra: C   |   1ª posição")
+            c.drawString(66 * mm, oy + 8 * mm, "Dedilhado sugerido: 1–2–3–1")
+        elif self.kind == "tab":
+            c.setStrokeColor(colors.HexColor("#455468"))
+            for i in range(6):
+                yy = oy + i * 6 * mm
+                c.line(ox, yy, ox + 105 * mm, yy)
+            c.setFillColor(colors.HexColor("#1B2A4A"))
+            c.setFont("Courier-Bold", 11)
+            c.drawString(ox + 12 * mm, oy + 26 * mm, "e|--0-----1-----3--|")
+            c.drawString(ox + 12 * mm, oy + 20 * mm, "B|----1-----0--------|")
+            c.drawString(ox + 12 * mm, oy + 14 * mm, "G|------0-----0------|")
+            c.drawString(ox + 12 * mm, oy + 8 * mm, "D|--2-----------2----|")
+            c.drawString(ox + 12 * mm, oy + 2 * mm, "A|------------------|")
+            c.drawString(ox + 12 * mm, oy - 4 * mm, "E|------------------|")
+        elif self.kind == "rhythm":
+            c.setStrokeColor(colors.HexColor("#455468"))
+            for i in range(9):
+                xx = ox + i * 12 * mm
+                c.line(xx, oy + 9 * mm, xx, oy + 27 * mm)
+            c.setFillColor(colors.HexColor("#9B3E4A"))
+            for i in (0, 2, 4, 6, 8):
+                c.circle(ox + i * 12 * mm, oy + 18 * mm, 2.2 * mm, fill=1, stroke=0)
+            c.setFillColor(colors.HexColor("#455468"))
+            c.setFont("Helvetica", 9)
+            c.drawString(ox, oy + 2 * mm, "1   &   2   &   3   &   4   &")
+            c.drawString(118 * mm, oy + 18 * mm, "↓  ↓  ↑  ↑  ↓  ↑")
+        elif self.kind == "fretboard":
+            c.setStrokeColor(colors.HexColor("#455468"))
+            for i in range(13):
+                xx = ox + i * 8 * mm
+                c.line(xx, oy, xx, oy + 25 * mm)
+            for j in range(6):
+                yy = oy + j * 5 * mm
+                c.line(ox, yy, ox + 96 * mm, yy)
+            c.setFillColor(colors.HexColor("#9B3E4A"))
+            for xx, yy in ((2, 3), (4, 1), (6, 4), (8, 2), (10, 5)):
+                c.circle(ox + xx * 8 * mm, oy + yy * 5 * mm, 2 * mm, fill=1, stroke=0)
+            c.setFillColor(colors.HexColor("#455468"))
+            c.setFont("Helvetica", 8)
+            c.drawString(111 * mm, oy + 14 * mm, "Mapa de notas")
+            c.drawString(111 * mm, oy + 6 * mm, "Tônica · terça · quinta")
+        elif self.kind == "staff":
+            c.setStrokeColor(colors.HexColor("#455468"))
+            for i in range(5):
+                c.line(ox, oy + i * 5 * mm, ox + 105 * mm, oy + i * 5 * mm)
+            c.setFillColor(colors.HexColor("#1B2A4A"))
+            c.setFont("Times-Roman", 25)
+            c.drawString(ox + 5 * mm, oy + 4 * mm, "𝄞")
+            c.setFont("Helvetica", 8)
+            for i, xx in enumerate((35, 52, 69, 86)):
+                c.circle(ox + xx * mm, oy + (8 + (i % 3) * 5) * mm, 2 * mm, fill=1, stroke=0)
+            c.setFillColor(colors.HexColor("#455468"))
+            c.drawString(120 * mm, oy + 12 * mm, "Pulso e duração")
+
+
+def visual_resources(chapter_index):
+    kinds = [
+        ("chord", "Cifra e diagrama de acorde"),
+        ("tab", "Tablatura e direção dos dedos"),
+        ("rhythm", "Ritmo, subdivisão e batida"),
+        ("fretboard", "Mapa do braço e localização das notas"),
+        ("staff", "Pauta, pulso e leitura"),
+    ]
+    selected = [kinds[(chapter_index - 1 + offset) % len(kinds)] for offset in range(3)]
+    return [
+        PageBreak(),
+        Paragraph("Recursos visuais do capítulo", styles["GuitarH1"]),
+        Paragraph(
+            "Leia cada representação antes de tocar. A cifra resume a harmonia; a tablatura mostra a localização; a grade rítmica organiza o tempo; o mapa relaciona a ideia ao braço; a pauta registra duração e altura.",
+            styles["GuitarBody"],
+        ),
+        Table(
+            [[VisualPanel(kind, label)] for kind, label in selected],
+            colWidths=[174 * mm],
+            style=TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]),
+        ),
+    ]
 styles.add(
     ParagraphStyle(
         name="GuitarSubtitle",
@@ -491,6 +605,7 @@ def story():
         flush()
         flush_code()
         result.extend(chapter_deep_dive(heading(path), chapter_index))
+        result.extend(visual_resources(chapter_index))
 
     result.extend(
         [
