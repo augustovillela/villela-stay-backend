@@ -13,6 +13,12 @@
     add('/music/criar/registro-sessao-guitarra?curso=curso-guitarra-v2&capitulo=' + encodeURIComponent(c.id), 'Registrar prática');
     return links;
   }
+  function metaDoCapitulo(c) {
+    var texto = JSON.stringify(c.secoes || []).toLowerCase();
+    var foco = /timbre|amplificador|pedal|distor/.test(texto) ? 'timbre e controle de ruído' : /escala|arpejo|improvisa|solo/.test(texto) ? 'vocabulário melódico e fraseado' : /acorde|harmoni|power chord/.test(texto) ? 'clareza harmônica e troca de formas' : /riff|ritmo|pulso|groove/.test(texto) ? 'pulso, ataque e consistência' : 'postura, escuta e clareza do som';
+    var bpm = /semicolcheia|velocidade|palhetada alternada|tremolo/.test(texto) ? 100 : /riff|ritmo|pulso|groove/.test(texto) ? 80 : 60;
+    return { foco: foco, bpm: bpm, evidencia: '3 repetições limpas, sem tensão, com o pulso estável' };
+  }
   F['curso-guitarra-v2'] = function (alvo, st) {
     C.limpar(alvo);
     var concluidas = C.lerLocal('curso-guitarra-v2-concluidas', {});
@@ -33,9 +39,10 @@
       livro.capitulos.forEach(function (c, i) {
         var secoes = c.secoes.map(function (s) { return el('section', { class: 'curso-livro-secao' }, [el('h4', { txt: s.titulo }), el('div', {}, s.conteudo.map(function (p) { return el('p', { txt: p }); }))]); });
         var links = ferramentasPara(c);
+        var meta = metaDoCapitulo(c);
         var pratica = el('section', { class: 'curso-pratica-guitarra', 'aria-labelledby': 'pratica-' + c.id }, [
           el('h4', { id: 'pratica-' + c.id, txt: 'Prática orientada deste capítulo' }),
-          el('p', { class: 'lab-dica', txt: 'Use uma ferramenta, registre o BPM ou a observação e volte ao capítulo para marcar o domínio.' }),
+          el('p', { class: 'lab-dica', txt: 'Meta: ' + meta.foco + ' · começar em ' + meta.bpm + ' BPM · evidência: ' + meta.evidencia + '.' }),
           el('div', { class: 'lab-acoes' }, links.map(function (x) { return el('a', { class: 'btn sec', href: x.url, txt: x.label }); }))
         ]);
         var marcar = el('button', { type: 'button', class: 'btn sec', txt: concluidas[c.id] ? '✓ Capítulo concluído — desfazer' : 'Marcar capítulo como concluído' });
