@@ -32,7 +32,7 @@
       var feitos = livro.capitulos.filter(function (c) { return concluidas[c.id]; }).length;
       estado.textContent = feitos + ' de ' + livro.capitulos.length + ' capítulos concluídos (' + Math.round(feitos / livro.capitulos.length * 100) + '%).';
       alvo.appendChild(el('div', { class: 'curso-numeros' }, [el('span', {}, [el('strong', { txt: String(livro.partes) }), ' partes']), el('span', {}, [el('strong', { txt: String(livro.capitulos.length) }), ' capítulos']), el('span', {}, [el('strong', { txt: String(livro.paginas_pdf) }), ' páginas'])]));
-      alvo.appendChild(el('div', { class: 'lab-acoes' }, [el('a', { class: 'btn', href: livro.pdf, target: '_blank', rel: 'noopener', txt: '📄 Abrir livro em PDF' })]));
+      alvo.appendChild(el('div', { class: 'lab-acoes' }, [el('a', { class: 'btn', href: livro.pdf, target: '_blank', rel: 'noopener', txt: '📄 Abrir livro em PDF' }), el('a', { class: 'btn sec', href: '/music/ensinar?curso=curso-guitarra-v2', txt: '👨‍🏫 Acompanhamento docente' })]));
       var indice = el('nav', { class: 'curso-livro-indice', 'aria-label': 'Índice do livro' });
       livro.capitulos.forEach(function (c, i) { indice.appendChild(el('a', { href: '#guitarra-v2-' + c.id, txt: String(i + 1).padStart(2, '0') + ' · ' + c.titulo })); });
       alvo.appendChild(indice);
