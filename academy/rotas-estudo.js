@@ -155,6 +155,12 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
     const { produto } = imp.produtorDono(b);
     const r = est.importar(produto, b);
     aud(req, 'estudo.importar', produto.id, JSON.stringify(r));
+    // a trilha ampla corta em 500 caracteres: a escrita que atravessou a fronteira do curso tem linha própria (ADR-0018)
+    const reescritas = r.questoes && r.questoes.reescritas_outro_curso;
+    if (reescritas) aud(req, 'estudo.importar.reescrita-compartilhada', produto.id, `${r.escopo}: ${reescritas.n} questões; ${reescritas.hashes.join(',')}`);
+    if (r.arquivadas_outro_curso) aud(req, 'estudo.importar.arquivada-compartilhada', produto.id, `${r.escopo}: ${r.arquivadas_outro_curso.n} questões; ${r.arquivadas_outro_curso.hashes.join(',')}`);
+    const volta = r.questoes_desarquivadas;
+    if (volta && volta.n) aud(req, 'estudo.importar.desarquivar', produto.id, `${r.escopo}: ${volta.n} para ${volta.situacao}; de outro curso também: ${volta.reescritas_outro_curso.length}; ${volta.hashes.join(',')}`);
     res.json({ ok: true, importado: r, resumo: est.resumo(produto.id).find(e => e.slug === r.escopo) });
   }));
   // vídeo da aula: o arquivo vai do PC direto ao bucket; o servidor só recebe o id
@@ -179,12 +185,20 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
     const { produto } = imp.produtorDono(req.query || {});
     res.json({ resumo: est.resumo(produto.id) });
   }));
-  // as questões do escopo com o hash de cada uma — para achar a versão antiga que ficou órfã depois de uma correção
+  // as questões do escopo com o hash de cada uma — para achar a versão antiga que ficou órfã depois de uma correção.
+  // `com_dados=1` (ADR-0018) traz o conteúdo gravado de cada uma, gabarito inclusive, para auditar o que está no ar.
   app.get('/staff/api/academy/estudo/questoes', ...PA, h((req, res) => {
     const { produto } = imp.produtorDono(req.query || {});
     const escopo = est.Escopos.doCursoPorSlug(produto.id, est.slug(req.query.escopo));
     if (!escopo) return res.status(404).json({ erro: 'Escopo não encontrado.' });
-    res.json({ questoes: est.questoesDoEscopo(escopo) });
+    res.json({ questoes: est.questoesDoEscopo(escopo, { comDados: req.query.com_dados === '1' }) });
+  }));
+  // as aulas próprias do escopo; `com_blocos=1` traz o texto delas (ADR-0018). Só leitura, sem dado de aluno.
+  app.get('/staff/api/academy/estudo/unidades', ...PA, h((req, res) => {
+    const { produto } = imp.produtorDono(req.query || {});
+    const escopo = est.Escopos.doCursoPorSlug(produto.id, est.slug(req.query.escopo));
+    if (!escopo) return res.status(404).json({ erro: 'Escopo não encontrado.' });
+    res.json(est.unidadesDoEscopo(escopo, { comBlocos: req.query.com_blocos === '1' }));
   }));
   // PEDIDOS PAGOS (ADR-0010): volume por tipo e estado, total cobrado e as contestações abertas. A listagem
   // não leva o texto das respostas dos alunos; abrir um pedido (aí sim, com a resposta) e responder a uma
@@ -241,7 +255,8 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
     const { produto } = imp.produtorDono(req.query || {});
     const escopo = est.Escopos.doCursoPorSlug(produto.id, est.slug(req.query.escopo));
     if (!escopo || !escopo.versao) return res.status(404).json({ erro: 'Escopo sem programa.' });
-    res.json({ cobertura: est.cobertura(escopo, { vis: est.STATUS, situacoes: require('./estudo/banco').SITUACOES }) });
+    // ADR-0018: as aulas em qualquer estado (o autor acompanha a produção), mas só questão DISPONÍVEL é avaliação
+    res.json({ cobertura: est.cobertura(escopo, { vis: est.STATUS }) });
   }));
 }
 

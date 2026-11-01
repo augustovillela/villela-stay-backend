@@ -217,7 +217,7 @@ function painelInteiro(usuario, produto, slugEscopo) {
   const { escopo } = c;
   const est = estadosDoAluno(usuario, escopo);
   const por = Object.fromEntries(est.map(e => [e.codigo, e]));
-  const cob = R.cobertura(escopo, c);
+  const cob = R.cobertura(escopo, { vis: c.vis }); // ADR-0018: também para o revisor, só questão disponível é avaliação
   // "estudado" (itens do programa e aulas) sai da régua única — a resposta dada no diagnóstico não entra nela
   const regua = reguaDeEstudo(usuario.id, escopo.id);
   const ordem = Object.fromEntries(ev.ESTADOS.map((e, i) => [e, i]));

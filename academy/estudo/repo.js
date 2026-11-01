@@ -673,8 +673,14 @@ function importar_(produto, dados = {}, opcoes = {}) {
       }
     }
 
+    // TRAVA ENTRE CURSOS (ADR-0018): a questão é UMA linha por produtor + hash, então reescrevê-la daqui reescreveria
+    // também o curso que já a usa. Só o pedido explícito atravessa essa fronteira.
+    const reescrever = dados.reescrever_compartilhada === true;
+    const emOutroCurso = db.prepare(`SELECT 1 FROM est_questao_vinculos v JOIN est_escopos e ON e.id = v.escopo_id WHERE v.questao_id = ? AND e.product_id != ? LIMIT 1`);
+
     if (dados.questoes) {
       rel.questoes = { novas: 0, duplicadas: 0, atualizadas: 0, sem_vinculo: 0, fora_da_correcao: 0 };
+      const anotar = (campo, hash) => { const a = rel.questoes[campo] = rel.questoes[campo] || { n: 0, hashes: [] }; a.n++; a.hashes.push(hash); };
       for (const [i, cru] of (Array.isArray(dados.questoes) ? dados.questoes : []).entries()) {
         const q = banco.validarQuestao(cru, i);
         const comps = lista(cru.competencias, 12, 60).map(slug);
@@ -685,7 +691,7 @@ function importar_(produto, dados = {}, opcoes = {}) {
           if (!x.justificativa) throw erro(`questão ${i + 1}: justifique o vínculo com o item ${x.codigo}.`);
         });
         const { hash, uso, corrigivel, tipo, origem, ...resto } = q;
-        let atual = db.prepare('SELECT id, dados FROM est_questoes WHERE producer_id = ? AND hash = ?').get(autor, hash);
+        let atual = db.prepare('SELECT id, dados, corrigivel FROM est_questoes WHERE producer_id = ? AND hash = ?').get(autor, hash);
         if (atual) {
           // A mesma questão vinda de outro caderno traz as alternativas em outra
           // ordem. A letra de cada alternativa é a da PRIMEIRA importação e não
@@ -695,6 +701,7 @@ function importar_(produto, dados = {}, opcoes = {}) {
         }
         const dadosQ = j.str({ ...resto, tipo, origem });
         let ja = false; // (só no caminho do pedido) a questão já existia e foi mantida como estava
+        let preservada = false; // a linha é de outro curso também e o conteúdo enviado foi descartado
         if (!atual) {
           const id = novoId();
           db.prepare(`INSERT INTO est_questoes (id, producer_id, hash, tipo, origem, uso, corrigivel, situacao, dados, criado_em, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
@@ -709,12 +716,17 @@ function importar_(produto, dados = {}, opcoes = {}) {
           // sobrescrevia, ao vivo, a questão curada e publicada. Reescrever questão é só pela importação do curso.
           ja = true;
           rel.questoes.duplicadas++;
+        } else if (atual.dados !== dadosQ && !reescrever && emOutroCurso.get(atual.id, produto.id)) {
+          // dados, uso, corrigível e versão ficam como estão; o vínculo com este escopo entra logo abaixo
+          preservada = true;
+          anotar('preservadas_outro_curso', hash);
         } else if (atual.dados !== dadosQ) {
           // gabarito ou comentário mudou: versão nova; a tentativa já feita guarda a versão que usou
+          if (emOutroCurso.get(atual.id, produto.id)) anotar('reescritas_outro_curso', hash);
           db.prepare('UPDATE est_questoes SET dados = ?, uso = ?, corrigivel = ?, versao = versao + 1, atualizado_em = ? WHERE id = ?').run(dadosQ, uso, corrigivel ? 1 : 0, agora, atual.id);
           rel.questoes.atualizadas++;
         } else rel.questoes.duplicadas++;
-        if (!corrigivel) rel.questoes.fora_da_correcao++;
+        if (!(preservada ? atual.corrigivel : corrigivel)) rel.questoes.fora_da_correcao++;
         if (!comps.length && !its.length) rel.questoes.sem_vinculo++; // fica no banco geral, sem contar cobertura
         // A questão que já existia e veio por pedido só ganha vínculo com percurso PARTICULAR (o de quem importou):
         // ligá-la a um escopo do curso poria ali, já "disponível", o que deveria entrar em rascunho.
@@ -733,9 +745,74 @@ function importar_(produto, dados = {}, opcoes = {}) {
     if (dados.arquivar_questoes) {
       const hashes = lista(dados.arquivar_questoes, 500, 40);
       rel.questoes_arquivadas = 0;
-      const arq = db.prepare(`UPDATE est_questoes SET situacao = 'arquivada', atualizado_em = ? WHERE producer_id = ? AND hash = ? AND situacao != 'arquivada'
+      const alvo = db.prepare(`SELECT id FROM est_questoes WHERE producer_id = ? AND hash = ? AND situacao != 'arquivada'
         AND id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?)`);
-      for (const h of hashes) rel.questoes_arquivadas += arq.run(agora, autor, h, escopo.id).changes;
+      const arq = db.prepare(`UPDATE est_questoes SET situacao = 'arquivada', atualizado_em = ? WHERE id = ?`);
+      // ADR-0018: a linha é única, e arquivar daqui tiraria a questão também do curso que a usa. Sem o pedido explícito, fica.
+      const anotar = (campo, h) => { const a = rel[campo] = rel[campo] || { n: 0, hashes: [] }; a.n++; a.hashes.push(h); };
+      for (const h of hashes) {
+        const q = alvo.get(autor, h, escopo.id);
+        if (!q) continue;
+        const compartilhada = !!emOutroCurso.get(q.id, produto.id);
+        if (compartilhada && !reescrever) { anotar('arquivar_pulou_outro_curso', h); continue; }
+        rel.questoes_arquivadas += arq.run(agora, q.id).changes;
+        if (compartilhada) anotar('arquivadas_outro_curso', h);
+      }
+    }
+
+    // DESARQUIVAR (ADR-0018): reverte arquivamento indevido, por hash, só para questão ligada a este escopo. A situação
+    // anterior não fica guardada, então a volta é para `desarquivar_situacao` e, sem ela, para rascunho: voltar ao aluno
+    // é decisão explícita. A linha é única: a que outro curso também usa só muda com `reescrever_compartilhada: true`.
+    if (dados.desarquivar_questoes != null) {
+      const hashes = dados.desarquivar_questoes;
+      if (!Array.isArray(hashes) || hashes.some(h => typeof h !== 'string' || !h.trim())) throw erro('desarquivar_questoes deve ser uma lista de hashes.');
+      if (hashes.length > 5000) throw erro('desarquivar_questoes: no máximo 5000 hashes por envio.');
+      const situacao = dados.desarquivar_situacao == null ? 'rascunho' : dados.desarquivar_situacao;
+      if (situacao === 'arquivada' || !banco.SITUACOES.includes(situacao)) throw erro(`desarquivar_situacao deve ser ${banco.SITUACOES.filter(x => x !== 'arquivada').join('|')}.`);
+      const des = rel.questoes_desarquivadas = { n: 0, situacao, hashes: [], nao_encontradas: [], nao_arquivadas: [], preservadas_outro_curso: [], reescritas_outro_curso: [] };
+      const achar = db.prepare(`SELECT id, situacao FROM est_questoes WHERE producer_id = ? AND hash = ? AND id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?)`);
+      const voltar = db.prepare('UPDATE est_questoes SET situacao = ?, atualizado_em = ? WHERE id = ?');
+      for (const hash of new Set(hashes.map(h => h.trim()))) {
+        const q = achar.get(autor, hash, escopo.id);
+        if (!q) { des.nao_encontradas.push(hash); continue; }
+        if (q.situacao !== 'arquivada') { des.nao_arquivadas.push(hash); continue; }
+        const compartilhada = !!emOutroCurso.get(q.id, produto.id);
+        if (compartilhada && !reescrever) { des.preservadas_outro_curso.push(hash); continue; }
+        voltar.run(situacao, agora, q.id);
+        des.n++; des.hashes.push(hash);
+        if (compartilhada) des.reescritas_outro_curso.push(hash);
+      }
+    }
+
+    // RETIRAR VÍNCULO (ADR-0018): importar só soma vínculo, e um vínculo errado contava como cobertura para sempre.
+    // Tira só o vínculo questão ↔ item DESTE escopo; a questão e os vínculos dos outros escopos ficam. Item que já não
+    // está ligado não é erro (refazer a correção é seguro) e volta em `ausentes`; hash desconhecido é erro, e desfaz tudo.
+    if (dados.desvincular_questoes != null) {
+      const pedidos = dados.desvincular_questoes;
+      if (!Array.isArray(pedidos)) throw erro('desvincular_questoes deve ser uma lista de { hash, itens: [...] }.');
+      if (pedidos.length > 2000) throw erro('desvincular_questoes: no máximo 2000 questões por envio.');
+      const des = rel.questoes_desvinculadas = { questoes: 0, removidos: 0, ausentes: [], sem_item_no_escopo: [] };
+      const achar = db.prepare('SELECT id FROM est_questoes WHERE producer_id = ? AND hash = ?');
+      const tirar = db.prepare(`DELETE FROM est_questao_vinculos WHERE questao_id = ? AND escopo_id = ? AND alvo = 'item' AND codigo = ?`);
+      const resta = db.prepare(`SELECT 1 FROM est_questao_vinculos WHERE questao_id = ? AND escopo_id = ? AND alvo = 'item' LIMIT 1`);
+      for (const [i, p] of pedidos.entries()) {
+        const hash = typeof (p && p.hash) === 'string' ? p.hash.trim() : '';
+        const its = Array.isArray(p && p.itens) ? p.itens.map(x => (typeof x === 'string' ? x.trim() : '')) : [];
+        if (!hash) throw erro(`desvincular_questoes ${i + 1}: informe o "hash".`);
+        if (!its.length || its.some(x => !x)) throw erro(`desvincular_questoes ${i + 1}: informe "itens" como lista de códigos.`);
+        const q = achar.get(autor, hash);
+        if (!q) throw erro(`desvincular_questoes ${i + 1}: a questão ${hash} não existe no banco deste produtor.`);
+        let tirados = 0;
+        for (const item of new Set(its)) {
+          if (tirar.run(q.id, escopo.id, item).changes) tirados++;
+          else des.ausentes.push({ hash, item });
+        }
+        if (tirados) {
+          des.questoes++; des.removidos += tirados;
+          // aviso, não erro: a questão pode estar à espera do vínculo certo, mas sem ele não aponta ponto nenhum do programa
+          if (!resta.get(q.id, escopo.id)) des.sem_item_no_escopo.push(hash);
+        }
+      }
     }
 
     if (dados.cards) {
@@ -893,17 +970,33 @@ function cobertura(escopo, { vis = ['publicado'], situacoes = ['disponivel'] } =
 // O que existe no banco para este escopo, questão a questão — para quem importa conferir se sobrou órfã.
 // `ordem_fixa` sai junto (auditoria de 11/10/2026, B9): é o que impede o embaralhamento das alternativas, e sem
 // ele a conferência produção × local só se fazia por indício (a versão que subiu). Mora dentro de `dados`.
-function questoesDoEscopo(escopo) {
-  return db.prepare(`SELECT q.id, q.hash, q.origem, q.situacao, q.uso, q.versao, q.atualizado_em,
+// `comDados` (ADR-0018) acrescenta o conteúdo gravado: é o que permite auditar o que está NO AR, e não o arquivo local.
+function questoesDoEscopo(escopo, { comDados = false } = {}) {
+  return db.prepare(`SELECT q.id, q.hash, q.origem, q.situacao, q.uso, q.versao, q.atualizado_em,${comDados ? ` q.corrigivel, q.dados,
+      (SELECT group_concat(v.codigo, ',') FROM est_questao_vinculos v WHERE v.questao_id = q.id AND v.escopo_id = ? AND v.alvo = 'competencia') AS competencias,` : ''}
       COALESCE(json_extract(q.dados, '$.ordem_fixa'), 0) AS ordem_fixa,
       (SELECT group_concat(v.codigo, ',') FROM est_questao_vinculos v WHERE v.questao_id = q.id AND v.escopo_id = ? AND v.alvo = 'item') AS itens
-    FROM est_questoes q WHERE q.id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?) ORDER BY q.criado_em, q.id`).all(escopo.id, escopo.id)
-    .map(q => ({ ...q, ordem_fixa: !!q.ordem_fixa }));
+    FROM est_questoes q WHERE q.id IN (SELECT questao_id FROM est_questao_vinculos WHERE escopo_id = ?) ORDER BY q.criado_em, q.id`).all(...(comDados ? [escopo.id] : []), escopo.id, escopo.id)
+    .map(q => ({ ...q, ordem_fixa: !!q.ordem_fixa, ...(comDados ? { corrigivel: !!q.corrigivel, dados: j.parse(q.dados, {}) } : {}) }));
+}
+
+// As aulas que MORAM no escopo, para auditoria (ADR-0018). As incluídas de outro percurso vêm só como referência:
+// o texto delas se lê no escopo de origem. `comBlocos` traz o que o aluno lê; nunca há dado de aluno aqui.
+function unidadesDoEscopo(escopo, { comBlocos = false } = {}) {
+  return {
+    unidades: unidadesProprias(escopo.id, STATUS).map(u => ({
+      codigo: u.codigo, ordem: u.ordem, titulo: u.titulo, status: u.status, versao: u.versao, tempo_min: u.tempo_min, atualizado_em: u.atualizado_em,
+      competencias: u.competencias, itens: u.itens,
+      ...(comBlocos ? { blocos: u.blocos, fontes: u.fontes, niveis: u.niveis, vespera: u.vespera, destaques: u.destaques } : {}),
+    })),
+    incluidas: inclusoes(escopo.id).map(i => ({ codigo: i.unidade_codigo, origem_escopo: i.origem_slug, ordem: i.ordem })),
+  };
 }
 
 function resumo(productId) {
   return Escopos.doProduto(productId, STATUS).map(e => {
-    const c = e.versao ? cobertura(e, { vis: STATUS, situacoes: banco.SITUACOES }) : null;
+    // ADR-0018: cobertura de avaliação é só a questão DISPONÍVEL; arquivada contada aqui escondia folha descoberta
+    const c = e.versao ? cobertura(e, { vis: STATUS }) : null;
     const n = (sql) => db.prepare(sql).all(e.id);
     return {
       slug: e.slug, tipo: e.tipo, titulo: e.titulo, status: e.status, versao: e.versao, data_alvo: e.data_alvo,
@@ -928,5 +1021,5 @@ function resumo(productId) {
 
 module.exports = {
   Escopos, Questoes, itens, competencias, vinculos, unidades, unidadePorCodigo, cards, inclusoes, unidadesProprias, unidadesLeves, competenciasDaQuestao, competenciasDasQuestoes, comCache, memo, limparCache, esquecer,
-  importar, criarParticular, PARTICULARES_MAX, validarUnidade, definirStatus, cobertura, resumo, competenciasComPratica, questoesDoEscopo, slug, erro, STATUS, TIPOS, EXTENSOES, BLOCOS,
+  importar, criarParticular, PARTICULARES_MAX, validarUnidade, definirStatus, cobertura, resumo, competenciasComPratica, questoesDoEscopo, unidadesDoEscopo, slug, erro, STATUS, TIPOS, EXTENSOES, BLOCOS,
 };

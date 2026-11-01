@@ -2871,6 +2871,8 @@ async function main() {
   await require('./estudo/testes-regra-por-raiz').rodar({ t, req });
   // ================= QUESTÃO SUPERADA (ADR-0017): gabarito da época para estudo ("O que mudou"), fora de toda correção =================
   await require('./estudo/testes-questao-superada').rodar({ t, req });
+  // ================= TRAVA ENTRE CURSOS (ADR-0018): importar não reescreve questão de outro curso, retirar vínculo, leitura para auditoria =================
+  await require('./estudo/testes-trava-entre-cursos').rodar({ t, req });
   // ================= PÁGINA DE VENDA (frente P): números do percurso do Estude, descrição com lista, og:image com a medida real, compra à vista no celular =================
   await require('./testes-pagina-venda').rodar({ t, req });
 

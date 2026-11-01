@@ -31,6 +31,7 @@ const ROTAS = [
   ['GET', '/ferramentas', 'leitura'],
   ['GET', '/estudo/resumo', 'leitura'],
   ['GET', '/estudo/questoes', 'leitura'],
+  ['GET', '/estudo/unidades', 'leitura'],
   ['GET', '/estudo/lei-juris/resumo', 'leitura'],
   ['GET', '/estudo/cobertura', 'leitura'],
   ['GET', '/amostras', 'leitura'],
