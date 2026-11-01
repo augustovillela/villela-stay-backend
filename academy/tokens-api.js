@@ -54,6 +54,7 @@ const ROTAS = [
   ['POST', '/estudo/lei-juris/jurisprudencia', 'conteudo'],
   ['POST', '/estudo/lei-juris/vinculos', 'conteudo'],
   ['POST', '/estudo/lei-juris/textos-do-escopo', 'conteudo'],
+  ['POST', '/estudo/lei-juris/ligar', 'conteudo'],
   ['POST', '/amostras/importar', 'conteudo'],
   ['POST', '/trilhas/importar', 'conteudo'],
 

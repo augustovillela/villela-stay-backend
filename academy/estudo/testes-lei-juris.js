@@ -524,6 +524,29 @@ async function rodar({ t, req }) {
     assert.deepEqual([r.st, r.json.apagados_do_acervo], [200, 1]);
   });
 
+  await t('lei-juris: programa com prefixo de letras — vínculos por disciplina "AJ.1", e LIGAR ao percurso o que já está no acervo sem tocar no conteúdo', async () => {
+    const SL2 = 'lj-prefixo';
+    let r = await chave('POST', '/staff/api/academy/estudo/importar', { produtor_email: PROD, produto_id: pid, escopo: { slug: SL2, tipo: 'edital', titulo: 'Programa com prefixo' },
+      programa: { documento: { nome: 'Edital', data: '2026-10-26' }, itens: [{ codigo: 'AJ', texto: 'Cargo' }, { codigo: 'AJ.1', texto: 'Disciplina' }, { codigo: 'AJ.1.1', texto: 'Folha' }] } });
+    assert.equal(r.st, 200, r.texto);
+    const s2 = (c, b) => chave('POST', '/staff/api/academy/estudo/lei-juris/' + c, { produtor_email: PROD, produto_id: pid, escopo: SL2, ...b });
+    const antes = db.prepare("SELECT hash, importado_em FROM est_lj_diplomas WHERE id = 'clt-teste'").get();
+    r = await s2('ligar', { diplomas: ['clt-teste', 'nao-existe'], verbetes: ['tst-sum-130'] });
+    assert.equal(r.st, 200, r.texto);
+    assert.deepEqual([r.json.diplomas_ligados, r.json.verbetes_ligados, r.json.nao_encontrados], [1, 1, ['nao-existe']]);
+    assert.deepEqual(db.prepare("SELECT hash, importado_em FROM est_lj_diplomas WHERE id = 'clt-teste'").get(), antes, 'ligar não toca no diploma');
+    r = await s2('ligar', { diplomas: ['clt-teste'] });
+    assert.deepEqual([r.json.diplomas_ligados, r.json.ja_ligados], [0, 1], 'idempotente');
+    assert.equal((await s2('ligar', {})).st, 400);
+    r = await s2('vinculos', { disciplina: 'AJ.1', itens: [{ codigo: 'AJ.1.1', legislacao: [{ diploma: 'clt-teste', dispositivo: 'art-2', origem: 'leitura', confianca: 'conferida' }], jurisprudencia: [{ id: 'tst-sum-130', origem: 'aula', confianca: 'conferida' }] }] });
+    assert.equal(r.st, 200, r.texto);
+    assert.deepEqual([r.json.legislacao, r.json.jurisprudencia, r.json.ignorados], [1, 1, 0]);
+    assert.equal((await s2('vinculos', { disciplina: 'AJ.1!', itens: [{ codigo: 'AJ.1.1' }] })).st, 400, 'código fora do formato continua recusado');
+    assert.equal((await s2('vinculos', { disciplina: 'AJ.9', itens: [{ codigo: 'AJ.9.1' }] })).st, 400, 'disciplina fora do programa continua recusada');
+    await s2('remover', { diplomas: ['clt-teste'], verbetes: ['tst-sum-130'] });
+    assert.ok(db.prepare("SELECT 1 FROM est_lj_diplomas WHERE id = 'clt-teste'").get(), 'tirar do 2º percurso não apaga do acervo enquanto o 1º usa');
+  });
+
   await t('lei-juris: marcação de leitura — lido e grifo em duas cores, por dispositivo e por verbete; de quem marcou e de mais ninguém; desmarcar tudo apaga', async () => {
     let r = await ana.put('/lei-juris/marcas', { tipo: 'dispositivo', ref: 'clt-teste|art-2', lido: true, cor: 'amarelo' });
     assert.equal(r.st, 200, r.texto);

@@ -60,7 +60,8 @@ const ID_PARTE = /^[a-z0-9][a-z0-9.-]{0,159}$/;
 const ID_VERBETE = /^[a-z0-9][a-z0-9._-]{0,159}$/i;
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
 const DATA_NORMA = /^\d{4}(-\d{2}(-\d{2})?)?$/;
-const DISCIPLINA = /^\d{1,3}(\.\d{1,3}){0,6}$/;
+// código da disciplina no programa: "1.1" ou, nos programas com prefixo por bloco ou cargo, "AJ.1" e "HUM.V". Vai só como parâmetro de consulta e tem de existir no programa.
+const DISCIPLINA = /^[A-Za-z0-9]{1,8}(\.[A-Za-z0-9]{1,8}){0,6}$/;
 const DATA_EDITAL_PADRAO = '2023-01-05';
 // O maior diploma da coleta (Decreto 10.088/2019, as convenções da OIT consolidadas) tem 2,6 MB de JSON; o CC, 1,9 MB;
 // o maior dispositivo, 147 mil caracteres (um anexo de tratado). O corpo da requisição já é limitado a 15 MB pelo
@@ -562,6 +563,30 @@ function remover(produto, dados = {}) {
         if (r && FTS) db.prepare('DELETE FROM est_lj_fts_juris WHERE rowid = ?').run(r.rid);
         out.apagados_do_acervo += db.prepare('DELETE FROM est_lj_verbetes WHERE id = ?').run(id).changes;
       }
+    }
+    return out;
+  });
+}
+// LIGAR ao percurso o que JÁ está no acervo, sem enviar texto: o acervo é um só, e reenviar o arquivo de outro curso para
+// ligar substituiria o conteúdo se o arquivo local tivesse divergido (o hash decide só depois). Aqui, por construção, nada muda.
+function ligar(produto, dados = {}) {
+  const escopo = escopoDoCurso(produto, dados.escopo);
+  const dips = (Array.isArray(dados.diplomas) ? dados.diplomas : []).map(x => s(x, 80)).filter(Boolean).slice(0, 2000);
+  const vers = (Array.isArray(dados.verbetes) ? dados.verbetes : []).map(x => s(x, 160)).filter(Boolean).slice(0, 10000);
+  if (!dips.length && !vers.length) throw erro('Informe "diplomas" e/ou "verbetes" (ids) a ligar ao percurso.');
+  return transacao(() => {
+    garantirEstado(escopo.id);
+    const out = { escopo: escopo.slug, diplomas_ligados: 0, verbetes_ligados: 0, ja_ligados: 0, nao_encontrados: [] };
+    const agora = nowISO();
+    for (const id of dips) {
+      if (!db.prepare('SELECT 1 FROM est_lj_diplomas WHERE id = ?').get(id)) { out.nao_encontrados.push(id); continue; }
+      const n = db.prepare('INSERT OR IGNORE INTO est_lj_escopo_diplomas (escopo_id, diploma_id, ligado_em) VALUES (?, ?, ?)').run(escopo.id, id, agora).changes;
+      if (n) out.diplomas_ligados++; else out.ja_ligados++;
+    }
+    for (const id of vers) {
+      if (!db.prepare('SELECT 1 FROM est_lj_verbetes WHERE id = ?').get(id)) { out.nao_encontrados.push(id); continue; }
+      const n = db.prepare('INSERT OR IGNORE INTO est_lj_escopo_verbetes (escopo_id, verbete_id, ligado_em) VALUES (?, ?, ?)').run(escopo.id, id, agora).changes;
+      if (n) out.verbetes_ligados++; else out.ja_ligados++;
     }
     return out;
   });
@@ -1342,7 +1367,7 @@ function marcas(usuario, produto, slugEscopo, { tipo = '' } = {}) {
 
 module.exports = {
   // staff
-  importarDiploma, importarJurisprudencia, importarVinculos, definirEstado, remover, resumoStaff, importarTextosDoEscopo,
+  importarDiploma, importarJurisprudencia, importarVinculos, definirEstado, remover, ligar, resumoStaff, importarTextosDoEscopo,
   // aluno
   abrirAcervo, resumoParaPainel, legislacaoVinculada, jurisprudenciaVinculada, acervoLegislacao, diplomaInteiro, acervoJurisprudencia, verbete, busca, marcar, marcas,
   // para os testes
