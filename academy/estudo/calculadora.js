@@ -113,7 +113,7 @@ function calcular(regra, blocosCrus) {
   // são ditos à parte, acima). Erradas primeiro — onde houver desconto, é a troca que mais rende.
   var faltamGeral = null, possivelGeral = true;
   var ap = r.regra.aprovacao;
-  function atinge(x) { return (ap.min_pct == null || x.pct_liquido >= ap.min_pct) && (ap.min_pontos == null || x.nota_liquida >= ap.min_pontos); }
+  function atinge(x) { return (ap.min_pct == null || x.pct_liquido >= ap.min_pct) && (ap.min_pontos == null || x.nota_liquida >= ap.min_pontos) && (ap.min_nota == null || x.nota_liquida >= ap.min_nota); }
   if (ap) {
     var atuais = blocos, x = r;
     for (faltamGeral = 0; !atinge(x);) {
@@ -131,7 +131,8 @@ function calcular(regra, blocosCrus) {
   return { nota_bruta: r.nota_bruta, descontados: r.descontados, nota_liquida: r.nota_liquida, maximo: r.maximo, pct_liquido: r.pct_liquido,
     certas: r.certas, erradas: r.erradas, em_branco: r.em_branco, erros_contados: r.erros_contados,
     blocos: porBloco, minimos_sem_bloco: semBloco, aprovado: aprovado,
-    geral: ap ? { min_pct: ap.min_pct, min_pontos: ap.min_pontos, faltam_acertos: possivelGeral ? faltamGeral : null, possivel: possivelGeral, atingido: atingiuGeral } : null,
+    cortes: semBloco.length ? undefined : r.cortes, media_ponderada: r.media_ponderada,
+    geral: ap ? { min_pct: ap.min_pct, min_pontos: ap.min_pontos, min_nota: ap.min_nota, faltam_acertos: possivelGeral ? faltamGeral : null, possivel: possivelGeral, atingido: atingiuGeral } : null,
     regra: r.regra };
 }
 

@@ -397,7 +397,7 @@ async function rodar({ t, req }) {
     assert.equal((await req('POST', `/academy/api/aluno/cursos/${pid}/certificado`, { jar: 'caio' })).st, 403);
     // a tela: nota com vírgula, aviso de janela bloqueada, uma camada só, "em prova" limpo ao sair
     const tela = ler('app-estudo.js');
-    assert.ok(tela.includes("'<div class=\"es-nota\"><b>' + num(r.nota_liquida) + '</b><span> de ' + num(r.maximo)"), 'nota do resultado com vírgula');
+    assert.ok(tela.includes("(mp ? nota2(r.nota_liquida) : num(r.nota_liquida)) + '</b><span> de ' + num(r.maximo)"), 'nota do resultado com vírgula');
     assert.ok(tela.includes('O navegador bloqueou a nova janela.') && (tela.match(/window\.open\('', '_blank'\)/g) || []).length <= 2, 'toda janela nova passa pelo aviso de bloqueio (sobram a de abrirJanela e a do certificado, que cai no próprio endereço)');
     assert.ok(tela.includes("if (E.abrindoAnimada || document.querySelector('.es-an')) return;"), 'duplo clique não abre duas camadas');
     assert.ok(tela.includes('window.AcademyEstudeSair = sairDoEstude;') && ler('app-cliente.js').includes('window.AcademyEstudeSair()') && ler('app-aluno.js').includes('if (ES && ES.sair) ES.sair();'), 'sair do Estude por qualquer porta limpa a marca "em prova", o relógio e o microfone');

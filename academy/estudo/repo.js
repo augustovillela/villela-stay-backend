@@ -573,6 +573,17 @@ function importar_(produto, dados = {}, opcoes = {}) {
       for (const raiz of normalizarRegra(e.regra_pontuacao).raizes) {
         if (!raizes.has(raiz)) throw erro(`escopo.regra_pontuacao.regras_por_raiz: "${raiz}" não é raiz do programa deste percurso${raizes.size ? ` (raízes: ${[...raizes].join(', ')})` : ' (o percurso não tem programa)'}.`);
       }
+      // ADR-0019: o bloco por percurso só anda dentro do MESMO curso (a fronteira do ADR-0018), e o percurso que importa tem de
+      // ser um dos blocos: é dele que sai o treino. Slug torto não vira bloco que nunca tem questão.
+      const be = normalizarRegra(e.regra_pontuacao).blocos_escopos;
+      if (be) {
+        const slugs = Object.values(be);
+        if (!slugs.includes(escopo.slug)) throw erro(`escopo.regra_pontuacao.blocos_escopos: o percurso "${escopo.slug}" tem de ser um dos blocos.`);
+        for (const outro of slugs) {
+          const irmao = Escopos.porSlug(produto.id, outro);
+          if (!irmao || irmao.dono_user_id) throw erro(`escopo.regra_pontuacao.blocos_escopos: "${outro}" não é percurso deste curso.`);
+        }
+      }
     }
 
     // ORDEM em importação por partes (uma disciplina por envio): o índice dentro do

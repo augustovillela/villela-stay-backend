@@ -2077,6 +2077,14 @@
     var TIPO_AVAL = { diagnostico: 'Diagnóstico de entrada', teste_final: 'Teste final' };
     function ehAvaliacao(t) { return !!t && (t.modo === 'diagnostico' || t.modo === 'teste_final'); }
     function num(x) { return String(Math.round(Number(x) * 1000) / 1000).replace('.', ','); }
+    // nota de média ponderada, sempre com duas casas, como o edital escreve: 5,00 · 4,17 (só para ler: o corte compara a nota inteira)
+    function nota2(x) { return (Math.round(Number(x) * 100) / 100).toFixed(2).replace('.', ','); }
+    // uma linha de corte (ADR-0016): a nota, o percentual e, se ela tem, os mínimos próprios por bloco
+    function corteTxt(c) {
+      return [c.min_nota != null ? 'nota ' + nota2(c.min_nota) : '', c.min_pontos != null ? num(c.min_pontos) + ' pontos' : '', c.min_pct != null ? num(c.min_pct) + '%' : '']
+        .concat((c.minimos || []).map(function (m) { return num(m.min_pontos) + ' em ' + m.bloco; })).filter(Boolean).join(' e ');
+    }
+    function linhaDeCorte(c) { return '<li>' + esc(maiuscula(c.rotulo)) + ' (' + esc(corteTxt(c)) + '): <b>' + (c.atingido == null ? 'sem veredito' : c.atingido ? 'atingiu' : 'não atingiu') + '</b></li>'; }
     // frase que vem do servidor em minúscula e entra DEPOIS de um ponto ("…sem veredito. O bloco I vale…")
     function maiuscula(t) { t = String(t || ''); return t.charAt(0).toUpperCase() + t.slice(1); }
     function voltarDaPorta() { voltarPara(E.antesDaPorta); }
@@ -2256,8 +2264,13 @@
         Object.keys(fmtBlocos).forEach(function (nome) { if (!blocos.some(function (b) { return b.bloco === nome; })) blocos.push({ bloco: nome, fixo: true, questoes: fmtBlocos[nome] }); });
       }
       // regra com mínimo só em ALGUNS blocos: a nota era calculada só sobre eles. As demais questões da prova entram por aqui.
+      if (temRegra && norm.pesos) {
+        // na média ponderada, "prova inteira" não existe: cada bloco tem o seu peso
+        Object.keys(norm.pesos).forEach(function (nome) { if (!blocos.some(function (b) { return b.bloco === nome; })) blocos.push({ bloco: nome, fixo: true }); });
+        blocos = blocos.filter(function (b) { return b.bloco; });
+      }
       var podeOutras = temRegra && norm.minimos.length > 0 && !fmtBlocos;
-      function minimoTxt(m) { return !m ? '' : [m.min_pontos != null ? num(m.min_pontos) + ' ponto(s)' : '', m.min_pct != null ? num(m.min_pct) + ' %' : ''].filter(Boolean).join(' e '); }
+      function minimoTxt(m) { return !m ? '' : [m.min_nota != null ? 'nota ' + nota2(m.min_nota) : '', m.min_pontos != null ? num(m.min_pontos) + ' ponto(s)' : '', m.min_pct != null ? num(m.min_pct) + ' %' : ''].filter(Boolean).join(' e '); }
       function linhas() {
         return blocos.map(function (b, i) {
           return '<div class="es-form es-fer-bloco" data-bl="' + i + '">' +
@@ -2306,14 +2319,16 @@
           if (!x.possivel) return '<span class="es-selo verm">inalcançável com este número de questões (nem acertando ' + onde + ')</span>';
           return '<span class="es-selo ambar">' + (x.faltam_acertos > 1 ? 'faltam ' + x.faltam_acertos + ' acertos' : 'falta 1 acerto') + '</span>';
         };
-        out.innerHTML = '<div class="es-nota"><b>' + num(r.nota_liquida) + '</b><span> de ' + num(r.maximo) + ' · ' + num(r.pct_liquido) + ' %</span></div>' +
+        out.innerHTML = '<div class="es-nota"><b>' + (r.media_ponderada ? nota2(r.nota_liquida) : num(r.nota_liquida)) + '</b><span> de ' + num(r.maximo) + ' · ' + num(r.pct_liquido) + ' %</span></div>' +
           // (a tabela mora numa faixa que rola de lado: no celular ela tinha 408 px num cartão de 297, e a "Situação" saía cortada)
           '<div class="es-tab-rola"><table class="es-tab es-jr-tab es-fer-tab"><tr><th>Bloco</th><th class="n">Acertos</th><th class="n">Pontos</th><th class="n">Mínimo</th><th class="n">Situação</th></tr>' + r.blocos.map(function (b) {
             return '<tr><td>' + (b.bloco === 'outras questões' ? 'Outras questões' : b.bloco ? 'Bloco ' + esc(b.bloco) : 'Prova inteira') + '</td><td class="n">' + b.acertos + ' de ' + b.questoes + '</td><td class="n">' + num(b.pontos) + ' de ' + num(b.maximo) + '</td><td class="n">' + (b.minimo ? minimoTxt(b.minimo) : '—') + '</td><td class="n">' + (falta(b, 'o bloco inteiro') || '<span class="es-fer-nada">—</span>') + '</td></tr>';
           }).join('') + '</table></div>' +
           '<table class="es-tab">' + (r.descontados ? '<tr><td>Pontos brutos</td><td class="n">' + num(r.nota_bruta) + '</td></tr><tr><td>Desconto: ' + r.erros_contados + ' erro(s) pela regra</td><td class="n">− ' + num(r.descontados) + '</td></tr>' : '') +
-          '<tr><td><b>Nota líquida</b></td><td class="n"><b>' + num(r.nota_liquida) + '</b></td></tr>' +
+          (r.media_ponderada ? r.media_ponderada.blocos.map(function (b) { return '<tr><td>Nota em ' + esc(b.bloco) + ' (peso ' + num(b.peso) + ')</td><td class="n">' + (b.nota == null ? '—' : nota2(b.nota)) + '</td></tr>'; }).join('') : '') +
+          '<tr><td><b>' + (r.media_ponderada ? 'Média ponderada' : 'Nota líquida') + '</b></td><td class="n"><b>' + (r.media_ponderada ? nota2(r.nota_liquida) : num(r.nota_liquida)) + '</b></td></tr>' +
           (r.geral ? '<tr><td>Mínimo geral: ' + minimoTxt(r.geral) + '</td><td class="n">' + falta(r.geral, 'tudo o que falta') + '</td></tr>' : '') + '</table>' +
+          ((r.cortes || []).length > 1 ? '<p><b>Linhas de corte</b> (vale a da sua forma de concorrer):</p><ul class="es-cortes">' + r.cortes.map(linhaDeCorte).join('') + '</ul>' : '') +
           (r.minimos_sem_bloco.length ? '<p class="es-aviso">A regra tem mínimo para o(s) bloco(s) ' + r.minimos_sem_bloco.map(esc).join(', ') + ', que você não preencheu.</p>' : '') +
           '<p><b>' + (r.minimos_sem_bloco.length ? 'Preencha todos os blocos da regra para saber se atinge os mínimos.' : r.aprovado === null ? 'Sem mínimo geral informado: não há critério para dizer se atinge ou não.' : r.aprovado ? 'Com estes números, você atinge os mínimos ' + (temRegra ? 'cadastrados' : 'que informou') + '.' : 'Com estes números, você não atinge os mínimos ' + (temRegra ? 'cadastrados' : 'que informou') + '.') + '</b></p>' +
           '<p class="al-fino">"Faltam N acertos" troca primeiro questões erradas por certas e, depois, as em branco. ' + (temRegra ? 'Regra aplicada: ' + esc(regraTxt(r.regra)) + '.' : 'São os números que você informou, não os do edital.') + ' É uma conta, não um resultado oficial nem uma previsão.</p>';
@@ -2711,6 +2726,7 @@
       // (antes, uma regra de 0,1 por acerto com mínimos por bloco era lida como "1 ponto por acerto, sem desconto")
       var r = regra || {}, t = [], v = r.valor_certa == null ? 1 : Number(r.valor_certa), desconta = !!(r.desconto && r.desconto.a_cada);
       var pts = function (n) { return num(n) + (Math.abs(Number(n)) < 2 ? ' ponto' : ' pontos'); }; // 0,9 ponto · 1,2 ponto · 6 pontos
+      if (r.modo === 'media_ponderada') t.push('cada bloco vira nota de 0 a ' + num(r.escala == null ? 10 : r.escala) + ' e só então entra na média ponderada (' + Object.keys(r.pesos || {}).map(function (b) { return b + ', peso ' + num(r.pesos[b]); }).join('; ') + ')');
       if (v !== 1) t.push(pts(v) + ' por acerto');
       if (desconta) t.push('cada ' + r.desconto.a_cada + ' erradas descontam 1 certa');
       if (r.em_branco_conta_erro) t.push('questão em branco conta como erro');
@@ -2720,14 +2736,16 @@
       });
       if (r.aprovacao && r.aprovacao.min_pct != null) t.push('mínimo de ' + r.aprovacao.min_pct + '%');
       if (r.aprovacao && r.aprovacao.min_pontos != null) t.push('mínimo geral de ' + pts(r.aprovacao.min_pontos));
+      if (r.aprovacao && r.aprovacao.min_nota != null) t.push('média mínima de ' + nota2(r.aprovacao.min_nota));
       // linhas de corte a mais (ADR-0016): mostradas lado a lado, sem perguntar ao aluno em qual delas ele concorre
       var rotG = (r.aprovacao && r.aprovacao.rotulo) || r.rotulo_geral; // a regra crua traz `aprovacao.rotulo`; a normalizada, `rotulo_geral`
       if (r.aprovacao && rotG && (r.cortes_adicionais || []).length) t[t.length - 1] += ' (' + rotG + ')';
       (r.cortes_adicionais || []).forEach(function (c) {
-        var x = [c.min_pontos != null ? pts(c.min_pontos) : '', c.min_pct != null ? num(c.min_pct) + '%' : ''].filter(Boolean).join(' e ');
+        var x = corteTxt(c);
         if (x && c.rotulo) t.push('para ' + c.rotulo + ': ' + x);
       });
       if (r.bloco_por === 'disciplina') t.push('questões repartidas por disciplina');
+      if (r.bloco_por === 'escopo') t.push('no simulado, cada bloco sai do seu percurso neste curso, e a resposta conta no percurso de onde a questão veio');
       if (!t.length) t.push('1 ponto por acerto, sem desconto');
       else if (!desconta) t.splice(v !== 1 ? 1 : 0, 0, 'sem desconto por erro');
       return t.join('; ') + (r.fonte ? ' (fonte: ' + r.fonte + ')' : '');
@@ -2962,7 +2980,7 @@
       pararRelogio();
       // diagnóstico e teste final: o resultado é por disciplina e mora em Minha jornada (com a ordem sugerida e o antes × depois)
       if (ehAvaliacao(t)) { carregar(function () { botoesDaBarra(); ir('jornada', 'avaliacao'); }); return; }
-      var r = t.resultado, k = 0;
+      var r = t.resultado, k = 0, mp = !!r.media_ponderada;
       var linha = function (a, b) { return '<tr><td>' + a + '</td><td class="n">' + b + '</td></tr>'; };
       // O VEREDITO vem do servidor (`r.veredito`): "atingiu / não atingiu" só para simulado no formato da regra do
       // percurso. Treino e prova curta mostram acertos e nota, com a frase "prova fora do formato do edital: sem veredito".
@@ -2975,20 +2993,17 @@
       // DUAS LINHAS DE CORTE (ADR-0016; ENAM: 70 % na ampla concorrência, 50 % para pessoas autodeclaradas negras,
       // indígenas, quilombolas ou com deficiência): o Estude não pergunta em qual o aluno concorre — mostra as duas
       if ((r.veredito === 'atingiu' || r.veredito === 'nao_atingiu') && (r.cortes || []).length > 1) {
-        veredito = '<p><b>Linhas de corte desta prova</b> (a regra tem mais de uma; vale a da sua forma de concorrer):</p><ul class="es-cortes">' + r.cortes.map(function (c) {
-          var x = [c.min_pontos != null ? num(c.min_pontos) + ' pontos' : '', c.min_pct != null ? num(c.min_pct) + '%' : ''].filter(Boolean).join(' e ');
-          return '<li>' + esc(maiuscula(c.rotulo)) + ' (' + x + '): <b>' + (c.atingido ? 'atingiu' : 'não atingiu') + '</b></li>';
-        }).join('') + '</ul>';
+        veredito = '<p><b>Linhas de corte desta prova</b> (a regra tem mais de uma; vale a da sua forma de concorrer):</p><ul class="es-cortes">' + r.cortes.map(linhaDeCorte).join('') + '</ul>';
       }
       var acertos = r.certas + ' de ' + (r.total || (r.certas + r.erradas + r.em_branco + (r.abstencoes || 0) + (r.anuladas || 0))) + (r.certas === 1 ? ' acerto' : ' acertos');
       alvo.innerHTML = '<div class="jr-caixa"><h3>Resultado' + (r.expirada ? ' — o prazo terminou' : '') + '</h3>' +
         (r.expirada ? '<p class="es-aviso">O tempo acabou antes do envio. Valeram as respostas que já estavam salvas no servidor.</p>' : '') +
         // números sempre com vírgula decimal (antes: "0.3 de 1 · 30%")
-        '<div class="es-nota"><b>' + num(r.nota_liquida) + '</b><span> de ' + num(r.maximo) + ' · ' + num(r.pct_liquido) + ' % · ' + acertos + '</span></div>' +
+        '<div class="es-nota"><b>' + (mp ? nota2(r.nota_liquida) : num(r.nota_liquida)) + '</b><span> de ' + num(r.maximo) + ' · ' + num(r.pct_liquido) + ' % · ' + acertos + '</span></div>' +
         '<table class="es-tab">' + linha('Certas', r.certas) + linha('Erradas', r.erradas) + linha('Em branco', r.em_branco) + (r.abstencoes ? linha('Marcadas como não respondidas', r.abstencoes) : '') +
-        (r.anuladas ? linha('Anuladas', r.anuladas) : '') + linha('Pontos brutos', num(r.nota_bruta)) + (r.descontados ? linha('Desconto: ' + r.erros_contados + ' erro(s) pela regra' + (r.erros_contados > r.erradas ? ' (erradas + em branco)' : ''), '− ' + num(r.descontados)) : '') + linha('<b>Nota líquida</b>', '<b>' + num(r.nota_liquida) + '</b>') + '</table>' +
-        ((r.por_bloco || []).length > 1 ? '<table class="es-tab es-jr-tab"><tr><th>Bloco</th><th class="n">Acertos</th><th class="n">Pontos</th></tr>' + r.por_bloco.map(function (b) {
-          return '<tr><td>' + (b.bloco ? esc(b.bloco) : 'Sem bloco') + '</td><td class="n">' + b.certas + '</td><td class="n">' + num(b.pontos_brutos) + ' de ' + num(b.maximo) + '</td></tr>';
+        (r.anuladas ? linha('Anuladas', r.anuladas) : '') + (mp ? '' : linha('Pontos brutos', num(r.nota_bruta))) + (r.descontados ? linha('Desconto: ' + r.erros_contados + ' erro(s) pela regra' + (r.erros_contados > r.erradas ? ' (erradas + em branco)' : ''), '− ' + num(r.descontados)) : '') + linha(mp ? '<b>Média ponderada</b>' : '<b>Nota líquida</b>', '<b>' + (mp ? nota2(r.nota_liquida) : num(r.nota_liquida)) + '</b>') + '</table>' +
+        ((r.por_bloco || []).length > 1 ? '<table class="es-tab es-jr-tab"><tr><th>Bloco</th><th class="n">Acertos</th><th class="n">' + (mp ? 'Nota (peso)' : 'Pontos') + '</th></tr>' + r.por_bloco.map(function (b) {
+          return '<tr><td>' + (b.bloco ? esc(b.bloco) : 'Sem bloco') + '</td><td class="n">' + b.certas + '</td><td class="n">' + (mp ? (b.nota == null ? '—' : nota2(b.nota) + ' (' + num(b.peso) + ')') : num(b.pontos_brutos) + ' de ' + num(b.maximo)) + '</td></tr>';
         }).join('') + '</table>' : '') +
         '<p class="al-fino"><b>Regra aplicada:</b> ' + esc(regraTxt(r.regra)) + '</p>' + veredito +
         '<p class="al-fino">Um resultado em poucas questões mostra como você foi nestas questões, não o domínio do programa inteiro.</p>' +

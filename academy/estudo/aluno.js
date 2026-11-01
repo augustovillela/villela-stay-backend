@@ -631,9 +631,12 @@ function praticar(usuario, produto, slugEscopo, { competencia = '', n = 5, errad
 // teste final EM ANDAMENTO (e dentro do prazo), as questões daquela prova não saem no Praticar nem no quiz da aula,
 // e `responder` as recusa (409). Antes, com o id de uma questão da prova, a rota devolvia gabarito, explicações e
 // comentário na hora — e o teste final deixava de medir. Prova vencida ou encerrada não segura nada.
-function questoesEmProvaAberta(userId, escopoId) {
+// Olha o CURSO inteiro, não só o percurso (ADR-0019): o simulado do Analista leva questões de Gerais, e sem isto o Praticar
+// de Gerais entregava o gabarito delas com a prova aberta. `soOutrosPercursos`: só as provas abertas em outro percurso.
+function questoesEmProvaAberta(userId, escopoId, soOutrosPercursos = false) {
   return new Set(db.prepare(`SELECT DISTINCT json_extract(i.value, '$.id') AS id FROM est_tentativas t, json_each(t.congelado, '$.itens') i
-    WHERE t.user_id = ? AND t.escopo_id = ? AND t.estado = 'em_andamento' AND t.prazo_em > ?`).all(userId, escopoId, nowISO()).map(r => r.id));
+    WHERE t.user_id = ? AND t.escopo_id IN (SELECT id FROM est_escopos WHERE product_id = (SELECT product_id FROM est_escopos WHERE id = ?))${soOutrosPercursos ? ' AND t.escopo_id != ?' : ''}
+      AND t.estado = 'em_andamento' AND t.prazo_em > ?`).all(userId, escopoId, ...(soOutrosPercursos ? [escopoId] : []), nowISO()).map(r => r.id));
 }
 function questaoDoEscopo(c, questaoId) {
   const q = R.Questoes.obter(s(questaoId, 40));
@@ -809,6 +812,25 @@ function provasPorRaiz(escopo, lista) {
     return { raiz, titulo: texto.get(raiz) || raiz, regra, formato: formatoDaRegra(regra), questoes: lista.filter(q => daRaiz(rq, q.id, raiz)).length };
   });
 }
+// BLOCO POR PERCURSO (ADR-0019): a regra diz de que percurso do MESMO curso sai cada bloco (`blocos_escopos`). O bloco não
+// mora na questão: a questão é uma linha só, compartilhada com outros cursos (ADR-0018), e não dá para gravar nela o nome
+// do bloco de um edital. Devolve as questões dos OUTROS percursos da regra que este aluno enxerga.
+function questoesDosOutrosBlocos(c, regraNormal, eixo) {
+  const be = regraNormal.blocos_escopos, lista = [];
+  for (const bloco of Object.keys(be)) {
+    if (be[bloco] === c.escopo.slug) continue;
+    const irmao = R.Escopos.porSlug(c.escopo.product_id, be[bloco]);
+    if (!irmao || irmao.dono_user_id || !c.vis.includes(irmao.status)) continue; // percurso fora do ar: o bloco fica sem questão, e a falta é dita
+    const compsDe = R.competenciasDasQuestoes(irmao.id), comItem = new Set(R.vinculos(irmao.id).map(v => v.competencia_codigo));
+    for (const q of R.Questoes.doEscopo(irmao.id, { situacoes: c.situacoes })) {
+      const comps = compsDe.get(q.id) || [];
+      if (!q.corrigivel || !banco.casaEixos(q, eixo)) continue;
+      if (comItem.size && comps.length && !comps.some(k => comItem.has(k))) continue; // a mesma guarda do transversal
+      lista.push({ q, comps, bloco, escopo: irmao });
+    }
+  }
+  return lista;
+}
 const SIMULADO_QUESTOES_PADRAO = 100; // o tamanho que a tela sugere para o simulado quando a regra não cadastra o total
 const SIMULADO_PCT_RESERVADAS = 50;   // % das vagas de cada bloco do simulado que vão para questões reservadas inéditas (ver `iniciarTentativa`)
 // a prova (treino ou simulado) que está aberta, sem carregar as questões: só o que o cartão "continuar" mostra
@@ -858,6 +880,17 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
     const comItem = new Set(R.vinculos(c.escopo.id).map(v => v.competencia_codigo));
     if (comItem.size) elegiveis = elegiveis.filter(x => !x.comps.length || x.comps.some(k => comItem.has(k)));
   }
+  // o bloco de cada questão, na regra com bloco por percurso: a do próprio percurso é do bloco dele; as dos outros só entram
+  // no simulado sem matéria escolhida (treino de Gerais é no percurso de Gerais). Questão nos dois percursos vale pelo próprio.
+  // O que outra prova aberta deste curso ainda vai cobrar fica de fora: a correção daqui entregaria o gabarito de lá.
+  const regraNormal = regraNormalSegura(regraProva) || {}, porPercurso = regraNormal.bloco_por === 'escopo';
+  if (porPercurso) {
+    const proprio = Object.keys(regraNormal.blocos_escopos).find(b => regraNormal.blocos_escopos[b] === c.escopo.slug) || '';
+    const proprias = new Set(elegiveis.map(x => x.q.id)), fora = questoesEmProvaAberta(usuario.id, c.escopo.id, true);
+    elegiveis = elegiveis.map(x => ({ ...x, bloco: proprio }));
+    if (modo === 'simulado' && !filtro.size) elegiveis = elegiveis.concat(questoesDosOutrosBlocos(c, regraNormal, eixo).filter(x => !proprias.has(x.q.id)));
+    elegiveis = elegiveis.filter(x => !fora.has(x.q.id));
+  }
   const pedido = Math.min(200, Math.max(1, Math.round(Number(n) || 10)));
   const opcoes = ['reduzir a prova (aceitar_menos)', 'ampliar as competências'].concat(banco.temFiltroDeEixos(eixo) ? ['tirar o filtro de banca, órgão ou período'] : []);
   // SIMULADO NO FORMATO DO EDITAL (auditoria de 11/10/2026): sem matéria escolhida, o simulado segue a proporção dos
@@ -867,10 +900,10 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   // (banco sem o campo `bloco` nas questões — nenhuma cai em bloco da regra — não tem como repartir: sai o sorteio
   // geral, e o resultado dirá "fora do formato do edital")
   // (na regra da raiz com `bloco_por: 'disciplina'`, o bloco é a disciplina da questão — o quadro do ENAM)
-  const pd = porDisc(regraProva), blocoNaProva = (q) => pd ? q.disciplina || '' : q.bloco || '';
+  const pd = porDisc(regraProva), blocoNaProva = (x) => porPercurso ? x.bloco : pd ? x.q.disciplina || '' : x.q.bloco || '';
   let fmt = modo === 'simulado' && !filtro.size ? blocosSeguros(regraProva) : null;
-  if (fmt && !elegiveis.some(x => fmt.blocos.some(b => b.bloco === blocoNaProva(x.q)))) fmt = null;
-  const partes = fmt ? pontuacao.repartirPorBloco(pedido, fmt.blocos).map(p => ({ ...p, lista: elegiveis.filter(x => blocoNaProva(x.q) === p.bloco) })) : null;
+  if (fmt && !elegiveis.some(x => fmt.blocos.some(b => b.bloco === blocoNaProva(x)))) fmt = null;
+  const partes = fmt ? pontuacao.repartirPorBloco(pedido, fmt.blocos).map(p => ({ ...p, lista: elegiveis.filter(x => blocoNaProva(x) === p.bloco) })) : null;
   const faltas = partes ? partes.filter(p => p.lista.length < p.questoes).map(p => ({ bloco: p.bloco, pedidas: p.questoes, elegiveis: p.lista.length })) : [];
   // faltou questão: a lacuna é dita, nunca preenchida com repetição ou filtro afrouxado em silêncio
   if (partes && faltas.length && !aceitar_menos) {
@@ -912,7 +945,7 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
   if (!escolhidas.length) throw erro('Não há questões disponíveis para esta prova.', 409);
   // a prova por blocos sai na ordem dos blocos do edital; dentro disso, questões do mesmo texto-base ficam juntas
   const ordemBloco = partes ? new Map(partes.map((p, i) => [p.bloco, i])) : null;
-  const ordem = [...escolhidas].sort((a, b) => (ordemBloco ? ordemBloco.get(blocoNaProva(a.q)) - ordemBloco.get(blocoNaProva(b.q)) : 0) || (a.q.grupo || '~').localeCompare(b.q.grupo || '~'));
+  const ordem = [...escolhidas].sort((a, b) => (ordemBloco ? ordemBloco.get(blocoNaProva(a)) - ordemBloco.get(blocoNaProva(b)) : 0) || (a.q.grupo || '~').localeCompare(b.q.grupo || '~'));
   // sem raiz pedida: prova que saiu SÓ com questões de uma raiz com regra própria (o aluno escolheu uma matéria do
   // ENAM, por exemplo) é corrigida pela regra dessa raiz — a do percurso cobraria blocos que ela não tem
   let raizDaProva = raizPedida;
@@ -920,14 +953,15 @@ function iniciarTentativa(usuario, produto, slugEscopo, { modo = 'treino', compe
     const cabe = raizesComRegra(c.escopo).filter(rz => ordem.length && ordem.every(x => daRaiz(rq, x.q.id, rz))), unica = cabe.length === 1 ? cabe[0] : '';
     if (unica) { raizDaProva = unica; regraProva = pontuacao.regraDaRaiz(c.escopo.regra_pontuacao, unica); }
   }
-  const pdFinal = porDisc(regraProva);
+  const pdFinal = porDisc(regraProva), percursoFinal = (regraNormalSegura(regraProva) || {}).bloco_por === 'escopo';
   const duracao = Math.round(Number(duracao_min) || 0) || Math.max(5, Math.ceil(ordem.reduce((t, x) => t + (x.q.tempo_estimado_seg || 180), 0) / 60));
   const inicio = new Date();
   const congelado = {
     modo, duracao_min: duracao, regra: regraProva || {}, escopo_versao: c.escopo.versao, filtro: eixo, ...(raizDaProva ? { raiz: raizDaProva } : {}),
     por_bloco: partes ? partes.map(p => ({ bloco: p.bloco, pedidas: p.questoes, questoes: Math.min(p.questoes, p.lista.length) })) : null,
     // o bloco da pontuação é o campo `bloco` da questão; sem ele, a disciplina serve de bloco
-    itens: ordem.map(x => ({ id: x.q.id, versao: x.q.versao, gabarito: banco.gabaritoDe(x.q), bloco: blocoDe(x.q, pdFinal), competencias: x.comps, publico: banco.paraAluno(x.q, id) })),
+    // (`escopo_id` só na questão de outro percurso: a evidência dela é de lá, onde as competências dela moram)
+    itens: ordem.map(x => ({ id: x.q.id, versao: x.q.versao, gabarito: banco.gabaritoDe(x.q), bloco: percursoFinal ? x.bloco : blocoDe(x.q, pdFinal), ...(x.escopo ? { escopo_id: x.escopo.id } : {}), competencias: x.comps, publico: banco.paraAluno(x.q, id) })),
   };
   db.prepare(`INSERT INTO est_tentativas (id, user_id, escopo_id, modo, congelado, inicio_em, prazo_em) VALUES (?, ?, ?, ?, ?, ?, ?)`)
     .run(id, usuario.id, c.escopo.id, modo, j.str(congelado), inicio.toISOString(), new Date(inicio.getTime() + duracao * 60e3).toISOString());
@@ -1002,7 +1036,7 @@ function corrigirTentativa(usuario, escopo, t, estado) {
     for (const i of t.congelado.itens) {
       const sit = porId[i.id].situacao;
       // o erro do DIAGNÓSTICO não vira retomada com vencimento (matéria ainda não estudada): `agendar: false`
-      if (sit === 'certa' || sit === 'errada') registrar(usuario, escopo, { origem: 'questao', refId: i.id, refVersao: i.versao, comps: i.competencias, modo: 'avaliacao', acerto: sit === 'certa', tentativaId: t.id, agendar: t.modo !== 'diagnostico' });
+      if (sit === 'certa' || sit === 'errada') registrar(usuario, (i.escopo_id && R.Escopos.obter(i.escopo_id)) || escopo, { origem: 'questao', refId: i.id, refVersao: i.versao, comps: i.competencias, modo: 'avaliacao', acerto: sit === 'certa', tentativaId: t.id, agendar: t.modo !== 'diagnostico' });
     }
     db.prepare('UPDATE est_tentativas SET estado = ?, enviado_em = ?, resultado = ? WHERE id = ?').run(estado, nowISO(), j.str(resultado), t.id);
   });
