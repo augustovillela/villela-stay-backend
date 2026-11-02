@@ -376,6 +376,17 @@ async function confirmarVideoEstudo(mediaId, dados = {}) {
   return { media: { id: m.id, nome: m.nome, tamanho: m.tamanho, storage: m.storage }, unidade: { codigo: un.codigo, titulo: un.titulo } };
 }
 
+// Tira o vídeo da aula (aula fica com texto, cards e questões): só desliga o vínculo; o arquivo fica no
+// armazenamento, para voltar sem novo upload. Quem inclui a aula deixa de vê-lo junto (linha única).
+function desligarVideoEstudo(dados = {}) {
+  const { produto } = produtorDono(dados);
+  const { un } = unidadeDoEstudo(produto, dados);
+  const antes = db.prepare('SELECT video_media_id FROM est_unidades WHERE id = ?').get(un.id).video_media_id || '';
+  if (antes) db.prepare("UPDATE est_unidades SET video_media_id = '', video_duracao_seg = 0, atualizado_em = ? WHERE id = ?")
+    .run(new Date().toISOString(), un.id);
+  return { unidade: { codigo: un.codigo, titulo: un.titulo }, media_desligada: antes };
+}
+
 // ---- material do CURSO grande (mesmo caminho do vídeo: direto ao bucket) ----
 // O anexo de aula viaja em base64 dentro da requisição e por isso para em 10 MB.
 // Um caderno de 58 MB não passa por ali — e comprimir para caber estragaria o
@@ -399,6 +410,6 @@ async function confirmarMaterialCurso(mediaId, dados = {}) {
 
 module.exports = {
   validarModulos, aplicarEstrutura, anexarMateriais, anexarMateriaisCurso, importarCurso, estruturaDoCurso,
-  iniciarVideo, confirmarVideo, iniciarVideoEstudo, confirmarVideoEstudo, iniciarMaterialCurso, confirmarMaterialCurso,
+  iniciarVideo, confirmarVideo, iniciarVideoEstudo, confirmarVideoEstudo, desligarVideoEstudo, iniciarMaterialCurso, confirmarMaterialCurso,
   iniciarAudio, confirmarAudio, editarCapitulo, produtorDono, aulaPorTitulo,
 };

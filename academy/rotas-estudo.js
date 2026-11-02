@@ -174,6 +174,11 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
     aud(req, 'estudo.video.confirmar', r.media.id, `${r.unidade.codigo} (${r.media.tamanho}b)`);
     res.json({ ok: true, ...r });
   }));
+  app.post('/staff/api/academy/estudo/video/desligar', ...PA, h((req, res) => {
+    const r = imp.desligarVideoEstudo(req.body || {});
+    aud(req, 'estudo.video.desligar', r.media_desligada || '-', r.unidade.codigo);
+    res.json({ ok: true, ...r });
+  }));
   app.post('/staff/api/academy/estudo/status', ...PA, h((req, res) => {
     const b = req.body || {};
     const { produto } = imp.produtorDono(b);

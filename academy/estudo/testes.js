@@ -607,7 +607,15 @@ async function rodar({ t, req, EST, impId }) {
       const iB = tela.indexOf('class="es-un-barra"', iV), iS = tela.indexOf('+ sel +', iV);
       assert.ok(iV > 0 && iB > iV && iS > iB, 'a aula é uma página só: vídeo, depois a barra do que a aula tem (interativa, mapa, prática), depois o texto');
       assert.ok(!/Abrir a aula \(com v[ií]deo\)|▶ Aula animada/.test(tela), 'a lista tem um botão só por aula: tudo abre de dentro dela');
-      db.prepare("UPDATE est_unidades SET video_media_id = '', video_duracao_seg = 0 WHERE codigo = ?").run(cod);
+      // tirar do ar: só com a chave; desliga o vínculo e a aula deixa de anunciar vídeo; repetir não quebra
+      assert.equal((await req('POST', '/staff/api/academy/estudo/video/desligar', { semUser: true, corpo: EST({ escopo: SLUG, unidade: cod }) })).st, 401, 'sem chave não desliga');
+      const des = await req('POST', '/staff/api/academy/estudo/video/desligar', V({}));
+      assert.equal(des.st, 200, des.texto);
+      assert.equal(des.json.media_desligada, ini.json.media_id);
+      assert.equal((await req('GET', `${esc}/unidades/${encodeURIComponent(cod)}`, { jar: 'olga' })).json.video, null, 'desligado, a aula não anuncia vídeo');
+      assert.equal((await req('GET', `${esc}/painel`, { jar: 'olga' })).json.unidades.find(x => x.codigo === cod).video, false);
+      assert.equal((await req('POST', '/staff/api/academy/estudo/video/desligar', V({}))).json.media_desligada, '', 'repetir não quebra');
+      assert.equal((await req('POST', '/staff/api/academy/estudo/video/desligar', V({ unidade: 'aula-que-nao-ha' }))).st, 400);
     } finally { Object.assign(storage, real); }
   });
 
