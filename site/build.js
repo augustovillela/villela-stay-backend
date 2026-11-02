@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v38'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v39'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -239,6 +239,11 @@ const SECOES = [
 const porId = Object.fromEntries(listings.map(l => [l.id, l]));
 
 const waLink = txt => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
+// Casas já alugadas para a Caravana da Posse (03 a 06/01/2027). Augusto, 02/11/2026: TODAS —
+// Gran Villela SY15J (= Kubitschek + Catetinho), Casa Villela SZ19J, Casa Modernista SZ01J.
+const POSSE_RESERVADAS = ['GD01H', 'GI01I', 'GG04I', 'PL02I'];
+const POSSE_ESGOTADA = ['GD01H', 'GI01I', 'GG04I', 'PL02I'].every(id => POSSE_RESERVADAS.includes(id));
+const seloEsgotada = () => t('ESGOTADA', 'SOLD OUT', 'AGOTADA');
 
 // ---- Ícones das datas especiais (SVG desenhado aqui, nítido em qualquer tamanho) ----
 // Substituem os emojis 🎄 🎆 🎭 🇧🇷 🏛️, que mudam de cara em cada aparelho.
@@ -884,7 +889,9 @@ window.addEventListener('load', function(){
   }, 5000);
 });
 </script>
-<a class="banner-posse" href="${L('/posse-2027.html')}">${iconeData('posse', 30)} ${t('<strong>Caravana da Posse 2027 · 03 a 06/01 · 3 dias:</strong> casas completas no Lago Sul a 10 min da Esplanada — reserve antes que esgotem', '<strong>2027 Inauguration Caravan · 3–6 Jan · 3 days:</strong> whole houses in Lago Sul, 10 min from the Esplanada — book before they sell out', '<strong>Caravana de la Toma de Posesión 2027 · 03–06/01 · 3 días:</strong> casas enteras en Lago Sul a 10 min de la Explanada — reserva antes de que se agoten')} <span>${t('Saiba mais', 'Learn more', 'Saber más')} →</span></a>
+${POSSE_ESGOTADA
+  ? `<a class="banner-posse" href="${L('/pacotes.html')}">${iconeData('posse', 30)} ${t('<strong>Caravana da Posse 2027 esgotada:</strong> as 4 casas já estão reservadas. Ainda há casas para o Natal, o Réveillon e o Carnaval', '<strong>2027 Inauguration Caravan sold out:</strong> all 4 houses are booked. There are still houses for Christmas, New Year and Carnival', '<strong>Caravana de la Toma de Posesión 2027 agotada:</strong> las 4 casas ya están reservadas. Aún hay casas para Navidad, Fin de Año y Carnaval')} <span>${t('Ver pacotes', 'See packages', 'Ver paquetes')} →</span></a>`
+  : `<a class="banner-posse" href="${L('/posse-2027.html')}">${iconeData('posse', 30)} ${t('<strong>Caravana da Posse 2027 · 03 a 06/01 · 3 dias:</strong> casas completas no Lago Sul a 10 min da Esplanada — reserve antes que esgotem', '<strong>2027 Inauguration Caravan · 3–6 Jan · 3 days:</strong> whole houses in Lago Sul, 10 min from the Esplanada — book before they sell out', '<strong>Caravana de la Toma de Posesión 2027 · 03–06/01 · 3 días:</strong> casas enteras en Lago Sul a 10 min de la Explanada — reserva antes de que se agoten')} <span>${t('Saiba mais', 'Learn more', 'Saber más')} →</span></a>`}
 <section class="faixa-confianca">
   <div>🏆 ${t('Superhost: anfitrião premiado', 'Superhost: award-winning host', 'Superhost: anfitrión premiado')}</div><div>🏅 ${t('Favorito dos Hóspedes: propriedades premiadas', 'Guest Favourite: award-winning properties', 'Favorito de los Huéspedes: propiedades premiadas')}</div><div>📍 ${t('10 min do Aeroporto JK e da Esplanada', '10 min from JK Airport and the Esplanada', '10 min del Aeropuerto JK y de la Explanada')}</div><div>👨‍👩‍👧‍👦 ${t('Hospedagens de grupos de até 52 pessoas', 'Stays for groups of up to 52', 'Alojamientos para grupos de hasta 52 personas')}</div><div>🎉 ${t('Eventos para até 150 pessoas', 'Events for up to 150 people', 'Eventos para hasta 150 personas')}</div>
 </section>
@@ -1959,11 +1966,11 @@ const CASAS_PACOTE = [
 // e a limpeza integral; os demais pacotes continuam com 4 diarias e seus valores.
 // As duas paginas usam os mesmos totais para a Caravana.
 const CASAS_PACOTE_POSSE = CASAS_PACOTE.map(c => ({ ...c, pacote: 150 * 3 * c.hospedes + c.limpeza }));
-// Casas já alugadas para a Caravana: Casa Modernista (reserva SZ01J, 04 a 11/01/2027; Augusto, 26/10/2026).
-const POSSE_RESERVADAS = ['GD01H'];
 const POSSE_LIVRES = CASAS_PACOTE_POSSE.filter(c => !POSSE_RESERVADAS.includes(c.id));
-const pacoteBarato = POSSE_LIVRES.reduce((a, c) => c.pacote < a.pacote ? c : a);
-const pacoteCaro   = POSSE_LIVRES.reduce((a, c) => c.pacote > a.pacote ? c : a);
+// Com a Caravana esgotada a faixa de preço segue calculada sobre as 4 casas (não é exibida).
+const basePosse = POSSE_LIVRES.length ? POSSE_LIVRES : CASAS_PACOTE_POSSE;
+const pacoteBarato = basePosse.reduce((a, c) => c.pacote < a.pacote ? c : a);
+const pacoteCaro   = basePosse.reduce((a, c) => c.pacote > a.pacote ? c : a);
 const capMin = Math.min(...CASAS_PACOTE.map(c => c.hospedes));
 const capMax = Math.max(...CASAS_PACOTE.map(c => c.hospedes));
 const realEn = n => 'R$ ' + n.toLocaleString('en-US');
@@ -2214,7 +2221,7 @@ const LANDING_TEMPORADA = Object.fromEntries(PACOTES_TEMPORADA.map(p => [p.emoji
 
 const chipsDatas = DATAS_PACOTE.map(d =>
   (d.emoji === '🇧🇷' || LANDING_TEMPORADA[d.emoji])
-    ? `<a class="chip-data" href="${L(d.emoji === '🇧🇷' ? '/posse-2027.html' : LANDING_TEMPORADA[d.emoji])}">${iconeData(d.emoji, 52)}<span class="chip-texto"><strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span><span>${t('Ver o pacote', 'See the package', 'Ver el paquete')} →</span></span></a>`
+    ? `<a class="chip-data" href="${L(d.emoji === '🇧🇷' ? '/posse-2027.html' : LANDING_TEMPORADA[d.emoji])}">${iconeData(d.emoji, 52)}<span class="chip-texto"><strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span>${d.emoji === '🇧🇷' && POSSE_ESGOTADA ? `<span class="tp-selo" style="align-self:flex-start">${seloEsgotada()}</span>` : `<span>${t('Ver o pacote', 'See the package', 'Ver el paquete')} →</span>`}</span></a>`
     // Marchas ainda sem landing: cartão informativo, sem link direto para o WhatsApp.
     : `<div class="chip-data">${iconeData(d.emoji, 52)}<span class="chip-texto"><strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></span></div>`).join('\n');
 
@@ -2271,7 +2278,8 @@ const pacotes = layout(
   </section>
 
   <section class="venda-bloco">
-    <h2 class="secao-titulo">${t('Caravana da Posse do Novo Presidente — 3 diárias', 'New President\'s Inauguration Caravan — 3 nights', 'Caravana de la Toma de Posesión del Nuevo Presidente — 3 noches')}</h2>
+    <h2 class="secao-titulo">${t('Caravana da Posse do Novo Presidente — 3 diárias', 'New President\'s Inauguration Caravan — 3 nights', 'Caravana de la Toma de Posesión del Nuevo Presidente — 3 noches')}${POSSE_ESGOTADA ? ` <span class="tp-selo">${seloEsgotada()}</span>` : ''}</h2>
+    ${POSSE_ESGOTADA ? `<p class="tp-aviso-reservada">${t('As 4 casas já estão reservadas para a Caravana da Posse (03 a 06/01/2027). Ainda há casas para o Natal, o Réveillon e o Carnaval.', 'All 4 houses are already booked for the Inauguration Caravan (3–6 January 2027). There are still houses for Christmas, New Year and Carnival.', 'Las 4 casas ya están reservadas para la Caravana de la Toma de Posesión (03–06/01/2027). Aún hay casas para Navidad, Fin de Año y Carnaval.')}</p>` : ''}
     <p class="pacote-cond">${t('03/01/2027 a 06/01/2027 · check-in em 3 de janeiro às 14h · check-out em 6 de janeiro às 10h', '3–6 January 2027 · check-in on 3 January at 2 PM · check-out on 6 January at 10 AM', '03/01/2027 a 06/01/2027 · entrada el 3 de enero a las 14h · salida el 6 de enero a las 10h')}</p>
     <p>${composicaoPosse}</p>
     <ul>${precosPosse}</ul>
@@ -4015,7 +4023,7 @@ ${blocos}
 const cardsPosse = ['GD03H', 'GG04I', 'PL02I', 'GD01H', 'GI01I'].map(id => porId[id]).filter(Boolean).map(l => `
   <a class="card" href="${L(`/hospedagem/${l.id}.html`)}">
     ${img(l.fotoPrincipal, { alt: l.titulo, width: 400, height: 210, sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px' })}
-    <div class="card-info"><h3>${esc(tituloImovel(l))}</h3><p>${l.hospedes} ${t('hóspedes', 'guests', 'huéspedes')} · ${l.quartos} ${t('quartos', 'rooms', 'habitaciones')}</p>${POSSE_RESERVADAS.includes(l.id) ? `<p><strong style="color:#b4432f">${t('Já reservada para a Caravana da Posse', 'Already booked for the Inauguration Caravan', 'Ya reservada para la Caravana de la Toma de Posesión')}</strong></p>` : ''}</div>
+    <div class="card-info"><h3>${esc(tituloImovel(l))}</h3><p>${l.hospedes} ${t('hóspedes', 'guests', 'huéspedes')} · ${l.quartos} ${t('quartos', 'rooms', 'habitaciones')}</p>${(POSSE_ESGOTADA || POSSE_RESERVADAS.includes(l.id)) ? `<p><strong style="color:#b4432f">${t('Já reservada para a Caravana da Posse', 'Already booked for the Inauguration Caravan', 'Ya reservada para la Caravana de la Toma de Posesión')}</strong></p>` : ''}</div>
   </a>`).join('\n');
 
 const posse = layout(
@@ -4025,7 +4033,8 @@ const posse = layout(
 ${heroData('posse', `
   <h1>${t('Onde ficar em Brasília para a Posse Presidencial 2027', 'Where to stay in Brasília for the 2027 Presidential Inauguration', 'Dónde alojarse en Brasília para la Toma de Posesión Presidencial 2027')}</h1>
   <p>${t('<strong>Em 5 de janeiro de 2027, o Brasil inteiro estará em Brasília.</strong> E quem deixar para depois vai pagar caro — ou ficar longe. Aqui está o guia de quem conhece a cidade.', '<strong>On 5 January 2027, all of Brazil will be in Brasília.</strong> Those who wait will pay dearly — or stay far away. Here\'s the guide from people who know the city.', '<strong>El 5 de enero de 2027, todo Brasil estará en Brasília.</strong> Quien lo deje para después pagará caro — o se quedará lejos. Aquí está la guía de quien conoce la ciudad.')}</p>
-  <div class="tp-periodo">${t('Caravana da Posse · 03/01/2027 a 06/01/2027 · 3 diárias', 'Inauguration Caravan · 3–6 January 2027 · 3 nights', 'Caravana de la Toma de Posesión · 03/01/2027 al 06/01/2027 · 3 noches')}</div>
+  <div class="tp-periodo">${t('Caravana da Posse · 03/01/2027 a 06/01/2027 · 3 diárias', 'Inauguration Caravan · 3–6 January 2027 · 3 nights', 'Caravana de la Toma de Posesión · 03/01/2027 al 06/01/2027 · 3 noches')}${POSSE_ESGOTADA ? ` · ${seloEsgotada()}` : ''}</div>
+  ${POSSE_ESGOTADA ? `<p class="tp-a-partir"><strong>${t('As 4 casas já estão reservadas para a Caravana da Posse.', 'All 4 houses are already booked for the Inauguration Caravan.', 'Las 4 casas ya están reservadas para la Caravana de la Toma de Posesión.')}</strong></p>` : ''}
 `)}
 <div class="regras-wrap">
   <section class="regra"><h2>${t('Por que reservar agora', 'Why book now', 'Por qué reservar ahora')}</h2>
@@ -4037,19 +4046,30 @@ ${heroData('posse', `
     <p>${t('Nas casas da Villela Stay, o grupo inteiro fica junto, com piscina aquecida, churrasqueira e cozinha completa — e o custo se divide: <strong>R$ 150 por pessoa por dia</strong> no pacote de 3 diárias com a casa lotada. Menos que uma diária de hotel simples em semana de posse.', 'In Villela Stay\'s houses, the whole group stays together, with a heated pool, barbecue and full kitchen — and the cost is split: <strong>R$ 150 per person per day</strong> in the 3-night package with the house at full capacity. Less than a basic hotel night during inauguration week.', 'En las casas de Villela Stay, todo el grupo se queda junto, con piscina climatizada, parrilla y cocina completa — y el costo se reparte: <strong>R$ 150 por persona por día</strong> en el paquete de 3 noches con la casa llena. Menos que una noche de hotel sencillo en semana de toma de posesión.')}</p>
   </section>
   <section class="regra"><h2>${t('O pacote Caravana da Posse do Novo Presidente (03/01/2027 a 06/01/2027) — 3 dias', 'The Inauguration Caravan package (3 to 6 January 2027) — 3 days', 'El paquete Caravana de la Toma de Posesión del Nuevo Presidente (03/01/2027 a 06/01/2027) — 3 días')}</h2>
+    ${POSSE_ESGOTADA ? '' : `
     <p>${t(`Nossas 4 casas recebem de ${capMin} a ${capMax} hóspedes cada. O pacote de 3 diárias vai de <strong>${real(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} pessoas)</strong> a <strong>${real(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} pessoas)</strong> — valores fechados, sem surpresa. Veja a composição das camas em <a href="${L('/pacotes.html')}"><strong>Pacotes Especiais</strong></a>.`, `Our 4 houses host ${capMin} to ${capMax} guests each. The 3-night package ranges from <strong>${realEn(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} people)</strong> to <strong>${realEn(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} people)</strong> — fixed prices, no surprises. See the bed layouts in <a href="${L('/pacotes.html')}"><strong>Special Packages</strong></a>.`, `Nuestras 4 casas reciben de ${capMin} a ${capMax} huéspedes cada una. El paquete de 3 noches va de <strong>${real(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} personas)</strong> a <strong>${real(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} personas)</strong> — precios cerrados, sin sorpresas. Mira la distribución de camas en <a href="${L('/pacotes.html')}"><strong>Paquetes Especiales</strong></a>.`)}</p>
+    `}
     <p>${composicaoPosse}</p>
     <ul>${precosPosse}</ul>
-    <p>⚠️ ${t(`A Casa Modernista já foi alugada: restam só ${POSSE_LIVRES.length} casas para o período de 03 a 06 de janeiro de 2027. As reservas são confirmadas por ordem de chegada.`, `Casa Modernista is already booked: only ${POSSE_LIVRES.length} houses are left for 3 to 6 January 2027. Bookings are confirmed on a first-come, first-served basis.`, `La Casa Modernista ya fue alquilada: quedan solo ${POSSE_LIVRES.length} casas para el período del 3 al 6 de enero de 2027. Las reservas se confirman por orden de llegada.`)}</p>
+    <p>⚠️ ${POSSE_ESGOTADA
+      ? t('<strong>Caravana da Posse esgotada:</strong> as 4 casas já estão reservadas de 03 a 06 de janeiro de 2027.', '<strong>Inauguration Caravan sold out:</strong> all 4 houses are booked from 3 to 6 January 2027.', '<strong>Caravana de la Toma de Posesión agotada:</strong> las 4 casas ya están reservadas del 3 al 6 de enero de 2027.')
+      : t(`Restam só ${POSSE_LIVRES.length} casas para o período de 03 a 06 de janeiro de 2027. As reservas são confirmadas por ordem de chegada.`, `Only ${POSSE_LIVRES.length} houses are left for 3 to 6 January 2027. Bookings are confirmed on a first-come, first-served basis.`, `Quedan solo ${POSSE_LIVRES.length} casas para el período del 3 al 6 de enero de 2027. Las reservas se confirman por orden de llegada.`)}</p>
   </section>
   <section class="regra"><h2>${t('As casas', 'The houses', 'Las casas')}</h2>
     <div class="grade" style="margin-top:8px">${cardsPosse}</div>
   </section>
+  ${POSSE_ESGOTADA ? `<section class="venda-bloco cta-final" style="margin-top:28px">
+    <h2>${t('A Caravana da Posse esgotou', 'The Inauguration Caravan is sold out', 'La Caravana de la Toma de Posesión se agotó')}</h2>
+    <p>${t('Se alguma reserva for cancelada, avisamos primeiro quem estiver na lista de espera. E ainda há casas para outras datas especiais.', 'If a booking is cancelled, we tell the waiting list first. And there are still houses for other special dates.', 'Si se cancela alguna reserva, avisamos primero a quien esté en la lista de espera. Y aún hay casas para otras fechas especiales.')}</p>
+    <div class="tp-outras" style="margin:16px 0">${PACOTES_TEMPORADA.map(p => `<a href="${L(`/${p.slug}.html`)}">${iconeData(p.emoji, 24)}${esc(p.nome)}</a>`).join('')}</div>
+    <a class="btn btn-wa" href="${waLink(t('Olá! Quero entrar na lista de espera da Caravana da Posse (03/01/2027 a 06/01/2027). Somos um grupo de ___ pessoas.', "Hi! I'd like to join the waiting list for the Inauguration Caravan (3 to 6 January 2027). We're a group of ___ people.", '¡Hola! Quiero entrar en la lista de espera de la Caravana de la Toma de Posesión (03/01/2027 al 06/01/2027). Somos un grupo de ___ personas.'))}">${t('Entrar na lista de espera', 'Join the waiting list', 'Entrar en la lista de espera')}</a>
+  </section>` : `
   <section class="venda-bloco cta-final" style="margin-top:28px">
     <h2>${t('Garanta a sua casa para a Posse 2027', 'Secure your house for the 2027 Inauguration', 'Asegura tu casa para la Toma de Posesión 2027')}</h2>
     <p>${t('Diga o tamanho do grupo e devolvemos a proposta completa no WhatsApp.', 'Tell us the size of your group and we\'ll send the full proposal on WhatsApp.', 'Dinos el tamaño del grupo y te enviamos la propuesta completa por WhatsApp.')}</p>
     <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Quero reservar uma casa para a Caravana da Posse do Novo Presidente (03/01/2027 a 06/01/2027, 3 dias e 3 diárias). Somos um grupo de ___ pessoas.', "Hi! I'd like to book a house for the 2027 Inauguration Caravan (3 to 6 January 2027, 3 days and 3 nights). We're a group of ___ people.", '¡Hola! Quiero reservar una casa para la Caravana de la Toma de Posesión del Nuevo Presidente (03/01/2027 a 06/01/2027, 3 días y 3 noches). Somos un grupo de ___ personas.'))}">${t('Reservar pelo WhatsApp', 'Book on WhatsApp', 'Reservar por WhatsApp')}</a>
   </section>
+  `}
 </div>`,
   { caminho: '/posse-2027.html', extraHead: `<style>${TEMPORADA_CSS}</style>` }
 );
