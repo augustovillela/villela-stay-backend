@@ -1243,6 +1243,22 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal((await req('GET', '/hospede/api/me', { cookie: novoCookie })).status, 200, 'quem trocou segue dentro');
   });
 
+  await t('aviso de problema aberto: avisa ao aparecer, cala na repetição, lembra 1×/dia e volta se mudar', async () => {
+    const aviso = require('./nucleo/aviso');
+    const arquivo = path.join(DATA_DIR, 'avisos-repeticao-teste.json');
+    aviso._usarArquivoDeEstado(arquivo);
+    const t0 = Date.parse('2026-11-02T10:00:00Z'), H = 3600000;
+    assert.equal(aviso.deveAvisar('x', 'a,b', { agora: t0 }), true, 'primeira vez avisa');
+    assert.equal(aviso.deveAvisar('x', 'a,b', { agora: t0 + 5 * 60000 }), false, '5 min depois, o mesmo problema não avisa');
+    assert.equal(aviso.deveAvisar('x', 'a,b', { agora: t0 + 23 * H }), false, '23 h depois ainda não');
+    assert.equal(aviso.deveAvisar('x', 'a,b,c', { agora: t0 + 23 * H }), true, 'problema novo na lista avisa na hora');
+    assert.equal(aviso.deveAvisar('x', 'a,b,c', { agora: t0 + 48 * H }), true, 'um dia depois lembra');
+    aviso._usarArquivoDeEstado(arquivo);
+    assert.equal(aviso.deveAvisar('x', 'a,b,c', { agora: t0 + 49 * H }), false, 'o estado sobrevive a um reinício (deploy)');
+    assert.equal(aviso.deveAvisar('x', '', { agora: t0 + 50 * H }), false, 'problema resolvido não avisa');
+    assert.equal(aviso.deveAvisar('x', 'a,b,c', { agora: t0 + 50 * H + 1 }), true, 'e se voltar, avisa de novo na hora');
+  });
+
   console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);
   try { fs.rmSync(DATA_DIR, { recursive: true, force: true }); } catch {}
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

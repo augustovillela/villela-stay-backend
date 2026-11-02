@@ -47,4 +47,53 @@ function paraModelo(texto, limite = LIMITE_AVISO) {
     .replace(/[.\s]+$/, '');
 }
 
-module.exports = { LIMITE_AVISO, montarAviso, paraModelo, pessoa, reais };
+// Problema que continua aberto não pode virar um aviso a cada conferência. Esta
+// é a porta: avisa quando o problema aparece ou MUDA (outra assinatura), e depois
+// só lembra uma vez por dia enquanto ele seguir aberto. Assinatura vazia = o
+// problema saiu, e a próxima ocorrência volta a avisar na hora. O estado fica
+// em disco para que um deploy não reenvie tudo o que já foi avisado.
+const DIA_MS = 24 * 60 * 60 * 1000;
+let _arquivo = null;
+let _estado = null;
+
+function arquivoDeEstado() {
+  if (_arquivo) return _arquivo;
+  const path = require('path');
+  return path.join(process.env.DATA_DIR || path.join(__dirname, '..', 'data'), 'avisos-repeticao.json');
+}
+
+function carregar() {
+  if (_estado) return _estado;
+  try { _estado = JSON.parse(require('fs').readFileSync(arquivoDeEstado(), 'utf8')) || {}; } catch (_) { _estado = {}; }
+  return _estado;
+}
+
+function gravar() {
+  const fs = require('fs');
+  const path = require('path');
+  try {
+    const f = arquivoDeEstado();
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify(_estado));
+  } catch (_) { /* sem disco, vale a memória até o próximo reinício */ }
+}
+
+// chave: 'growth:criticos'; assinatura: o que identifica o problema (ids, lista).
+function deveAvisar(chave, assinatura, { agora = Date.now(), intervaloMs = DIA_MS } = {}) {
+  const estado = carregar();
+  const ass = String(assinatura || '');
+  const antes = estado[chave];
+  if (!ass) {
+    if (antes) { delete estado[chave]; gravar(); }
+    return false;
+  }
+  if (antes && antes.assinatura === ass && agora - antes.em < intervaloMs) return false;
+  estado[chave] = { assinatura: ass, em: agora };
+  gravar();
+  return true;
+}
+
+// Só para testes: estado isolado num arquivo próprio.
+function _usarArquivoDeEstado(arquivo) { _arquivo = arquivo; _estado = null; }
+
+module.exports = { LIMITE_AVISO, montarAviso, paraModelo, pessoa, reais, deveAvisar, _usarArquivoDeEstado };

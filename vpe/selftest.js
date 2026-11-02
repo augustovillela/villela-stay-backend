@@ -648,6 +648,9 @@ function teste(nome, cond) {
   teste('webhook preapproval processado (200)', r.status === 200);
   r = await req('GET', '/vpe/api/me', { jar: 'bobB' });
   teste('tenant B fica ativo após autorização', r.dados.tenant.status === 'ativa');
+  // o MP reenvia o mesmo authorized: a assinatura segue ativa e o aviso não se repete
+  r = await req('POST', '/vpe/api/billing/webhook', { body: { type: 'subscription_preapproval', data: { id: preId } } });
+  teste('authorized reenviado não repete o aviso de assinatura ativada', r.status === 200 && alertas.filter(m => m.includes('assinatura ATIVADA')).length === 1);
   r = await req('GET', '/vpe/api/billing', { jar: 'bobB' });
   teste('assinatura marcada como recorrência MP', r.dados.plano && r.dados.plano.recorrencia_mp === true && r.dados.plano.status === 'ativa');
   // webhook de pagamento aprovado (idempotente por mp_payment_id)

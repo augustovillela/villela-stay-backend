@@ -180,7 +180,7 @@ function processarCicloDeVida() {
   // trial vencido → inadimplente (bloqueia entrega; ainda recuperável assinando)
   for (const t of db.prepare("SELECT id, nome, email_contato FROM tenants WHERE status = 'trial' AND trial_expira_em != '' AND trial_expira_em < ?").all(agora)) {
     repo.Tenants.mudarStatus(t.id, 'inadimplente', 'sistema', 'trial expirado');
-    _notificar(avisos.trialExpirado(t.id));
+    // sem aviso por conta: o resumo do ciclo diário lista todas de uma vez
     trialsVencidos++;
     trialsLista.push({ nome: t.nome, email: t.email_contato });
   }

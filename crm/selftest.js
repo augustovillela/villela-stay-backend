@@ -348,10 +348,9 @@ async function rodar() {
     require('./db').db.prepare("UPDATE tenants SET trial_expira_em = '2020-01-01T00:00:00Z' WHERE id = ?").run(nova.json.tenant.id);
     const r = await req('POST', '/staff/api/vcrm/ciclo-diario');
     assert.ok(r.json.trials_vencidos >= 1);
-    const av = alertas.find(m => m.includes('trial expirou') && m.includes('Gama Vendas'));
-    assert.ok(av && av.includes('gama@t.br') && av.includes('O QUE FAZER'), 'aviso de trial sem nome/contato/o que fazer: ' + av);
+    assert.ok(!alertas.some(m => m.includes('trial expirou') && m.includes('Gama Vendas')), 'trial vencido não manda aviso por conta: vai no resumo do ciclo');
     const resumo = require('./avisos').resumoDoCiclo(r.json);
-    assert.ok(resumo.includes('Gama Vendas') && resumo.includes('O QUE FAZER'), 'resumo do ciclo não diz quem: ' + resumo);
+    assert.ok(resumo.includes('Gama Vendas') && resumo.includes('gama@t.br') && resumo.includes('O QUE FAZER'), 'resumo do ciclo não diz quem: ' + resumo);
     // suspende a Alfa e o app dela responde 403
     await req('POST', `/staff/api/vcrm/tenants/${tid}/status`, { corpo: { status: 'suspensa' } });
     await req('POST', '/crm/api/login', { corpo: { email: 'alfa@emp.br', senha: 'SenhaForte4' }, cookies: true });

@@ -154,7 +154,8 @@ function iniciarWorker(alertaAugusto) {
           const travados = fila.recuperarTravados();
           const expirados = aprovacoes.expirarVencidos();
           const criticos = incidentes.abertos(50).filter(i => i.severidade === 'critica');
-          if (criticos.length && typeof alertaAugusto === 'function') {
+          const assinatura = criticos.map(i => i.id).sort().join(',');
+          if (require('../nucleo/aviso').deveAvisar('growth:criticos', assinatura) && typeof alertaAugusto === 'function') {
             alertaAugusto(incidentes.avisoCriticos(criticos));
           }
           void travados; void expirados;

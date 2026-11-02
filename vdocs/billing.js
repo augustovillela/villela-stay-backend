@@ -106,7 +106,8 @@ function aplicarPreapproval(tenantId, preapprovalId, statusMP) {
     db.prepare("UPDATE subscriptions SET status = 'ativa', atualizado_em = ? WHERE id = ?").run(agora, sub.id);
     db.prepare("UPDATE tenants SET status = 'ativa', atualizado_em = ? WHERE id = ?").run(agora, String(tenantId));
     repo.auditar(tenantId, { id: 'mercadopago', nome: 'Mercado Pago' }, 'billing.assinatura_ativa', 'subscriptions', sub.id, {}, 'webhook');
-    _notificar(avisos.assinaturaAtivada(tenantId, sub));
+    // o MP reenvia o authorized: só avisa na primeira vez que a assinatura vira ativa
+    if (sub.status !== 'ativa') _notificar(avisos.assinaturaAtivada(tenantId, sub));
   } else if (statusMP === 'cancelled' || statusMP === 'paused') {
     db.prepare("UPDATE subscriptions SET status = 'cancelada', fim = ?, atualizado_em = ? WHERE id = ?").run(agora, agora, sub.id);
     if (sub.status === 'ativa') { // só suspende quem dependia dessa assinatura

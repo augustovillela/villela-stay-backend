@@ -308,11 +308,12 @@ function iniciarWorker(alertaAugusto) {
             if (!cadeia.ok) quebrados.push(`${t.nome}: auditoria adulterada no seq ${cadeia.quebra.seq}`);
           });
         }
-        if (quebrados.length && typeof alertaAugusto === 'function') {
-          alertaAugusto(require('../nucleo/aviso').montarAviso({
+        const aviso = require('../nucleo/aviso');
+        if (aviso.deveAvisar('finance:integridade', [...quebrados].sort().join('\n')) && typeof alertaAugusto === 'function') {
+          alertaAugusto(aviso.montarAviso({
             titulo: '🚨 Villela Finance: integridade comprometida',
             campos: [['Onde', quebrados.slice(0, 5).join('; ') + (quebrados.length > 5 ? `; e mais ${quebrados.length - 5}` : '')]],
-            fazer: 'Abrir a saúde das contas no Portal Staff, Villela Finance, e investigar antes de confiar nos números: nada foi corrigido automaticamente, e este aviso se repete a cada conferência até a causa sair.',
+            fazer: 'Abrir a saúde das contas no Portal Staff, Villela Finance, e investigar antes de confiar nos números: nada foi corrigido automaticamente, e enquanto a causa não sair este aviso volta uma vez por dia.',
           }));
         }
       } catch (e) { console.error('[finance] conferência de integridade:', e.message); }

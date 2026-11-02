@@ -24,10 +24,6 @@ function camposDoCliente(tenantId, { risco = false } = {}) {
   } catch (_) { return [['Cliente', tenantId]]; }
 }
 
-function trialAte(tenantId) {
-  try { return dataBR((repo.Tenants.obter(tenantId) || {}).trial_expira_em); } catch (_) { return ''; }
-}
-
 const assinaturaAtivada = (tenantId) => montarAviso({
   titulo: `💚 ${SISTEMA}: novo assinante pagante`,
   campos: camposDoCliente(tenantId),
@@ -44,12 +40,6 @@ function assinaturaEncerrada(tenantId, statusMP, sub) {
       : 'Contatar o cliente pelo contato acima para entender o motivo do cancelamento.',
   });
 }
-
-const trialExpirado = (tenantId) => montarAviso({
-  titulo: `⏰ ${SISTEMA}: trial expirou`,
-  campos: [...camposDoCliente(tenantId), ['Trial até', trialAte(tenantId)]],
-  fazer: 'Contatar o cliente pelo contato acima e oferecer a assinatura: o acesso fica bloqueado até assinar, e a conta é suspensa automaticamente em 7 dias.',
-});
 
 const listaCurta = (itens) => (itens || []).slice(0, 5).map(x => pessoa(x.nome, x.email)).join('; ')
   + ((itens || []).length > 5 ? `; e mais ${itens.length - 5}` : '');
@@ -78,4 +68,4 @@ const novaOperacao = (t) => {
   });
 };
 
-module.exports = { assinaturaAtivada, assinaturaEncerrada, trialExpirado, resumoDoCiclo, novoLead, novaOperacao };
+module.exports = { assinaturaAtivada, assinaturaEncerrada, resumoDoCiclo, novoLead, novaOperacao };

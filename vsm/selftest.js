@@ -356,10 +356,9 @@ async function rodar() {
     require('./db').db.prepare("UPDATE tenants SET trial_expira_em = '2020-01-01T00:00:00Z' WHERE id = ?").run(nova.json.tenant.id);
     const r = await req('POST', '/staff/api/vsm/ciclo-diario');
     assert.ok(r.json.trials_vencidos >= 1);
-    const av = alertas.find(m => m.includes('trial expirou') && m.includes('Gama Stays'));
-    assert.ok(av && av.includes('gama@t.br') && av.includes('O QUE FAZER'), 'aviso de trial sem nome/contato/o que fazer: ' + av);
+    assert.ok(!alertas.some(m => m.includes('trial expirou') && m.includes('Gama Stays')), 'trial vencido não manda aviso por conta: vai no resumo do ciclo');
     const resumo = require('./avisos').resumoDoCiclo(r.json);
-    assert.ok(resumo.includes('Gama Stays') && resumo.includes('O QUE FAZER'), 'resumo do ciclo não diz quem: ' + resumo);
+    assert.ok(resumo.includes('Gama Stays') && resumo.includes('gama@t.br') && resumo.includes('O QUE FAZER'), 'resumo do ciclo não diz quem: ' + resumo);
     assert.equal(saas.repo.Tenants.obter(nova.json.tenant.id).status, 'inadimplente');
   });
   await t('login assinante errado 5x → 429', async () => {
