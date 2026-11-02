@@ -102,7 +102,11 @@ async function atualizarPTAX() {
     const c = repo.Config.obter('ia_cobranca', {}) || {};
     if (c.ativa && c.cambio_modo !== 'fixo' && diasDesde(p.buscado_em) > PTAX_ALERTA_DIAS && diasDesde(p.alertado_em) > 1 && _notificar) {
       repo.Config.salvar('ia_ptax', { ...p, erro: s(e.message, 200), erro_em: agora, alertado_em: agora });
-      Promise.resolve(_notificar(`⚠️ Villela Academy: o câmbio da cobrança de IA (PTAX) não atualiza desde ${s(p.buscado_em, 10) || 'nunca'} — ${s(e.message, 120)}. ${cambio(c).aviso}`)).catch(() => {});
+      Promise.resolve(_notificar(require('../nucleo/aviso').montarAviso({
+        titulo: '⚠️ Villela Academy: o câmbio da cobrança de IA (PTAX) não atualiza',
+        campos: [['Última atualização', s(p.buscado_em, 10) || 'nunca'], ['Erro', s(e.message, 120)], ['Situação', cambio(c).aviso]],
+        fazer: 'Conferir se o Banco Central voltou. Se demorar, definir o câmbio fixo em Portal Staff > Villela Academy (cobrança de IA).',
+      }))).catch(() => {});
     }
     return { ok: false, erro: e.message };
   }

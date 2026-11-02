@@ -223,7 +223,7 @@ const Pedidos = {
       Pedidos.cancelarInterno(o, { quem: 'plataforma', papel: 'sistema', detalhe: `Pagamento não realizado em ${horas}h` });
       Notificacoes.criar(o.buyer_id, { titulo: 'Pedido expirado', texto: `O pedido ${o.codigo} expirou sem pagamento.`, url: '/vitrine/app#pedidos' });
     }
-    return velhos.length;
+    return velhos.map((o) => o.codigo);
   },
 
   // ---- fluxo do vendedor ----
@@ -303,9 +303,9 @@ const Pedidos = {
   concluirVencidos() {
     const dias = Config.num('janela_devolucao_dias', 7);
     const corte = new Date(Date.now() - dias * 86400000).toISOString();
-    const prontos = db.prepare("SELECT id FROM orders WHERE status = 'entregue' AND entregue_em != '' AND entregue_em < ?").all(corte);
+    const prontos = db.prepare("SELECT id, codigo FROM orders WHERE status = 'entregue' AND entregue_em != '' AND entregue_em < ?").all(corte);
     for (const p of prontos) Pedidos.concluir(p.id);
-    return prontos.length;
+    return prontos.map((p) => p.codigo);
   },
 
   // ---- devolução e disputa ----
@@ -426,7 +426,7 @@ const Pedidos = {
       if (sh) Pedidos.aoRastreioAvancar(sh.order_id, a.status);
     }
     const concluidos = Pedidos.concluirVencidos();
-    return { expirados, rastreios_avancados: avancos.length, concluidos };
+    return { expirados: expirados.length, rastreios_avancados: avancos.length, concluidos: concluidos.length, codigos_expirados: expirados, codigos_concluidos: concluidos };
   },
 };
 

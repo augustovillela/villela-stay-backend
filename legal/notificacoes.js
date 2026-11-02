@@ -10,6 +10,7 @@
 // =====================================================================
 'use strict';
 const { db, nowISO, novoId, j, tenantAtual, TENANT_PADRAO } = require('./db');
+const { montarAviso, pessoa } = require('../nucleo/aviso');
 
 let _canais = { enviarEmail: async () => false, enviarWhatsApp: async () => false, alertaAugusto: async () => {} };
 function configurar(canais) { _canais = { ..._canais, ...canais }; }
@@ -52,12 +53,36 @@ async function notificarCliente(clientId, { titulo, corpo, ref_tipo, ref_id }) {
   return { ok: true, resultados };
 }
 
+// O que o Augusto faz com cada alerta, pelo tipo do que o gerou.
+const FAZER_POR_REF = {
+  publication: 'Fazer a triagem na aba Publicações do painel jurídico e conferir os prazos no sistema do tribunal.',
+  rotina: 'Conferir os andamentos e as publicações novos no painel jurídico.',
+  client: 'Responder pelo painel jurídico ou pelo contato acima.',
+  document: 'Conferir o documento no painel jurídico.',
+};
+
+// Só roda no escritório interno (a guarda do tenant está em quem chama). Falha na consulta: o campo some.
+function contatoDoAlerta(ref_tipo, ref_id) {
+  try {
+    if (!['client', 'document'].includes(ref_tipo) || !ref_id) return '';
+    const clientId = ref_tipo === 'client' ? ref_id : (db.prepare('SELECT client_id FROM documents WHERE id = ?').get(String(ref_id)) || {}).client_id;
+    const c = clientId ? db.prepare('SELECT nome, email, whatsapp FROM clients WHERE id = ?').get(String(clientId)) : null;
+    return c ? pessoa(c.nome, c.email, c.whatsapp) : '';
+  } catch (_) { return ''; }
+}
+
 // Notificação interna para a equipe (aparece nos alertas) + WhatsApp do Augusto
 async function notificarEquipe({ titulo, corpo, ref_tipo, ref_id, whatsapp = true }) {
   gravar({ destinatario_tipo: 'user', destinatario: 'equipe', canal: 'interna', titulo, corpo, ref_tipo, ref_id, status: 'pendente' });
   // SIGILO: o WhatsApp é o do Augusto, então só o escritório INTERNO o aciona. Alerta de
   // escritório assinante (nome de cliente, trecho de mensagem) fica no sino do próprio escritório.
-  if (whatsapp && tenantAtual() === TENANT_PADRAO) await _canais.alertaAugusto(`⚖️ ${s(titulo, 150)} — ${s(corpo, 300)}`).catch(() => {});
+  if (whatsapp && tenantAtual() === TENANT_PADRAO) {
+    await _canais.alertaAugusto(montarAviso({
+      titulo: `⚖️ Villela Legal: ${s(titulo, 150)}`,
+      campos: [['Detalhe', s(corpo, 300)], ['Cliente', contatoDoAlerta(ref_tipo, ref_id)]],
+      fazer: FAZER_POR_REF[ref_tipo] || '',
+    })).catch(() => {});
+  }
 }
 
 const Notificacoes = {

@@ -11,6 +11,7 @@ const arquivos = require('./arquivos');
 const { db } = require('./db');
 const { SITE } = require('./paginas');
 const { Clientes, Imoveis, Projetos, Mensagens, Propostas, STATUS_PROJETO, s, n } = repo;
+const avisos = require('./avisos');
 
 // dono da versão/entrega = dono do projeto — TODO acesso passa por aqui
 const versaoDoCliente = (clienteId, versaoId) => db.prepare(`SELECT v.* FROM entrega_versoes v
@@ -84,7 +85,7 @@ function registrarRotasApp(app, { requireCliente, notificar = async () => {} }) 
   }));
   app.put('/alta-vista/api/app/projetos/:id/briefing', requireCliente, h((req, res) => {
     const p = Projetos.salvarBriefing(req.cliente.id, req.params.id, req.body || {});
-    notificar(`📝 Alta Vista 360 — briefing preenchido por ${req.cliente.nome} no projeto "${p.titulo}".`).catch(() => {});
+    notificar(avisos.briefingPreenchido(req.cliente, p)).catch(() => {});
     res.json({ ok: true, projeto: p });
   }));
   app.post('/alta-vista/api/app/projetos/:id/imovel', requireCliente, h((req, res) => {
@@ -101,7 +102,7 @@ function registrarRotasApp(app, { requireCliente, notificar = async () => {} }) 
     const p = Projetos.doCliente(req.cliente.id, req.params.id);
     if (!p) return res.status(404).json({ erro: 'Projeto não encontrado.' });
     const m = Mensagens.enviar(p.id, { autor: 'cliente', autor_nome: req.cliente.nome, texto: (req.body || {}).texto });
-    notificar(`💬 Alta Vista 360 — mensagem de ${req.cliente.nome} no projeto "${p.titulo}":\n${m.texto.slice(0, 300)}`).catch(() => {});
+    notificar(avisos.mensagemDoCliente(req.cliente, p, m.texto)).catch(() => {});
     res.json({ ok: true, mensagens: Mensagens.doProjeto(p.id) });
   }));
 
@@ -138,12 +139,12 @@ function registrarRotasApp(app, { requireCliente, notificar = async () => {} }) 
     if (!v) return res.status(404).json({ erro: 'Versão não encontrada.' });
     const d = req.body || {};
     const c = arquivos.Comentarios.criar(v.id, { autor: 'cliente', autor_nome: req.cliente.nome, texto: d.texto, ancora: d.ancora });
-    notificar(`💬 Alta Vista 360 — comentário de revisão de ${req.cliente.nome}${c.ancora && c.ancora.t != null ? ` (aos ${Math.round(c.ancora.t)}s)` : ''}:\n${c.texto.slice(0, 300)}`).catch(() => {});
+    notificar(avisos.comentarioDeRevisao(req.cliente, v, c)).catch(() => {});
     res.json({ ok: true, comentarios: arquivos.Comentarios.daVersao(v.id) });
   }));
   app.post('/alta-vista/api/app/entregas/:id/aprovar', requireCliente, h((req, res) => {
     const e = arquivos.Entregas.aprovar(req.cliente.id, req.params.id, { nome: req.cliente.nome });
-    notificar(`✅ Alta Vista 360 — ${req.cliente.nome} APROVOU a entrega "${e.titulo}".`).catch(() => {});
+    notificar(avisos.entregaAprovada(req.cliente, e)).catch(() => {});
     res.json({ ok: true, entrega: e });
   }));
   app.get('/alta-vista/api/app/versoes/:id/download', requireCliente, h((req, res) => {
@@ -190,7 +191,7 @@ function registrarRotasApp(app, { requireCliente, notificar = async () => {} }) 
       const r = await billing.criarCheckout(parcela.id, { baseUrl: SITE });
       init_point = r.init_point;
     }
-    notificar(`🔁 Alta Vista 360 — ${req.cliente.nome} pediu renovação ${plano} do tour "${t.titulo}"${init_point ? ' (checkout aberto)' : ' — cobrar manualmente'}.`).catch(() => {});
+    notificar(avisos.pedidoDeRenovacao(req.cliente, t, plano, sv.preco_centavos, !!init_point)).catch(() => {});
     res.json({ ok: true, parcela, init_point, aviso: init_point ? null : 'Pagamento on-line indisponível — a equipe combina a cobrança com você.' });
   }));
 

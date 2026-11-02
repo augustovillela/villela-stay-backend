@@ -302,14 +302,18 @@ function iniciarWorker(alertaAugusto) {
           tenancy.comTenant({ tenantId: t.id, userId: 'worker' }, () => {
             for (const e of repo.listarEntidades()) {
               const b = ledger.conferirBalanceamento(e.id);
-              if (!b.ok) quebrados.push(`${t.slug}/${e.nome}: ${dinheiro.formatar(b.diferencaCents)}`);
+              if (!b.ok) quebrados.push(`${t.nome}/${e.nome}: razão desbalanceado em ${dinheiro.formatar(b.diferencaCents)}`);
             }
             const cadeia = auditoria.verificarCadeia(t.id);
-            if (!cadeia.ok) quebrados.push(`${t.slug}: auditoria adulterada no seq ${cadeia.quebra.seq}`);
+            if (!cadeia.ok) quebrados.push(`${t.nome}: auditoria adulterada no seq ${cadeia.quebra.seq}`);
           });
         }
         if (quebrados.length && typeof alertaAugusto === 'function') {
-          alertaAugusto(`🚨 Villela Finance: integridade comprometida — ${quebrados.join(' · ')}`);
+          alertaAugusto(require('../nucleo/aviso').montarAviso({
+            titulo: '🚨 Villela Finance: integridade comprometida',
+            campos: [['Onde', quebrados.slice(0, 5).join('; ') + (quebrados.length > 5 ? `; e mais ${quebrados.length - 5}` : '')]],
+            fazer: 'Abrir a saúde das contas no Portal Staff, Villela Finance, e investigar antes de confiar nos números: nada foi corrigido automaticamente, e este aviso se repete a cada conferência até a causa sair.',
+          }));
         }
       } catch (e) { console.error('[finance] conferência de integridade:', e.message); }
     }

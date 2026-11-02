@@ -841,6 +841,10 @@ teste('incidentes: abrir duas vezes a mesma referência não vira enxurrada', ()
     assert.strictEqual(repo.contar('gx_incidentes', { onde: "ref_id = 'con-1'" }), 1);
   });
 });
+teste('incidentes: aviso ao dono diz qual incidente e o que fazer', () => {
+  const aviso = incidentes.avisoCriticos([{ titulo: 'Token vencido', natureza: 'integracao', tenant_id: '', criado_em: '2026-11-01T10:00:00Z' }]);
+  assert.ok(aviso.includes('Token vencido') && aviso.includes('plataforma') && aviso.includes('01/11/2026') && aviso.includes('O QUE FAZER'), aviso);
+});
 lanca('incidentes: panorama de todas as contas exige plataforma',
   () => comoA(() => incidentes.abertos()), /plataforma/i);
 

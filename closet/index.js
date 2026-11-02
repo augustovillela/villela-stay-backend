@@ -101,7 +101,7 @@ function iniciarRotinas(notificar) {
       if (hb === hora && !jaRodouHoje()) {
         const r = billing.cicloDiario();
         if (r.nao_confirmadas || r.expiradas) {
-          notificar(`👗 Closet Club: ${r.expiradas} reserva(s) expirada(s), ${r.nao_confirmadas} não confirmada(s) e estornada(s), ${r.concluidas} concluída(s).`);
+          notificar(require('./avisos').loteDaRotina(r));
         }
       } else if (hb !== ultimaHora) {
         ultimaHora = hb;

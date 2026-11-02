@@ -20,7 +20,8 @@ function requireAuth(req, res, next) { const u = USUARIOS.find(x => x.id === (re
 const requireAdmin = (req, res, next) => (req.user && req.user.papel === 'admin') ? next() : res.status(403).json({ erro: 'admin' });
 const enviados = [];
 const enviarEmail = async (to, ass, html) => { enviados.push({ to, ass, html }); return true; };
-const alertaAugusto = async () => {};
+const alertas = [];
+const alertaAugusto = async (m) => { alertas.push(m); };
 
 // MP mock
 const mpChamadas = [], mpPrefs = [];
@@ -166,6 +167,10 @@ async function rodar() {
     require('./db').db.prepare("UPDATE tenants SET trial_expira_em = '2020-01-01T00:00:00Z' WHERE id = ?").run(nova.json.tenant.id);
     const r = await req('POST', '/staff/api/legal-saas/ciclo-diario');
     assert.ok(r.json.trials_vencidos >= 1);
+    const av = alertas.find(m => m.includes('trial expirou') && m.includes('Gama'));
+    assert.ok(av && av.includes('gama@t.br') && av.includes('O QUE FAZER'), 'aviso de trial sem nome/contato/o que fazer: ' + av);
+    const resumo = require('./avisos').resumoDoCiclo(r.json);
+    assert.ok(resumo.includes('Gama') && resumo.includes('O QUE FAZER'), 'resumo do ciclo não diz quem: ' + resumo);
     assert.equal(saas.repo.Tenants.obter(nova.json.tenant.id).status, 'inadimplente');
   });
   await t('equipe do escritório pela API: só admin gerencia; link de senha funciona', async () => {

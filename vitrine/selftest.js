@@ -505,6 +505,8 @@ async function rodar() {
     db.prepare('UPDATE orders SET criado_em = ? WHERE id = ?').run('2020-01-01T00:00:00.000Z', r.json.pedido.id);
     const rot = (await req('POST', '/staff/api/vitrine/rodar-rotina')).json;
     assert.ok(rot.expirados >= 1, 'não expirou');
+    const aviso = mod.avisoDaRotina(rot);
+    assert.ok(aviso.includes(r.json.pedido.codigo) && aviso.includes('O QUE FAZER: Nada a fazer'), 'o aviso diz quais pedidos e o que fazer: ' + aviso);
     assert.equal(db.prepare('SELECT status FROM orders WHERE id = ?').get(r.json.pedido.id).status, 'cancelado');
     assert.equal(repo.Products.obter(anuncio.id).quantidade, antes + 1);
   });

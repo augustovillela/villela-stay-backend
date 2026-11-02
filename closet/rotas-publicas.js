@@ -10,6 +10,7 @@ const billing = require('./billing');
 const { Bookings, Reviews, Favoritos, Chat } = require('./bookings');
 const { db, hojeISO, nowISO, novoId } = require('./db');
 const { Items, Looks, Users, Agenda, Config, OCASIOES, CATEGORIAS, ESTILOS, TAMANHOS, s, n } = repo;
+const avisos = require('./avisos');
 
 function registrarRotasPublicas(app, { requireUsuario, talvezUsuario, notificar }) {
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => res.status(400).json({ erro: e.message }));
@@ -129,7 +130,7 @@ function registrarRotasPublicas(app, { requireUsuario, talvezUsuario, notificar 
         Chat.enviar(t, 'sistema', `Reserva ${b.codigo} criada: ${b.data_retirada} a ${b.data_devolucao}.`, { sistema: true });
       } catch (_) {}
     }
-    if (notificar) notificar(`👗 Closet Club: nova reserva ${b.codigo} — R$ ${(b.total_centavos / 100).toFixed(2)}.`).catch(() => {});
+    if (notificar) notificar(avisos.novaReserva(b, billing.ativo())).catch(() => {});
     res.json({ ok: true, reserva: b });
   }));
 
@@ -193,7 +194,7 @@ function registrarRotasPublicas(app, { requireUsuario, talvezUsuario, notificar 
   // ---- candidatura de parceiro (lavanderia, fotógrafo, stylist…) ----
   app.post('/closet/api/parceiros/candidatar', talvezUsuario, h(async (req, res) => {
     const p = require('./parceiros').Parceiros.candidatar(req.body || {}, { userId: req.usuario ? req.usuario.id : '' });
-    if (notificar) notificar(`🤝 Closet Club: nova candidatura de parceiro — ${s((req.body || {}).nome, 60)} (${s((req.body || {}).tipo, 30)}).`).catch(() => {});
+    if (notificar) notificar(avisos.candidaturaParceiro(req.body || {})).catch(() => {});
     res.json({ ok: true, id: p.id, status: p.status });
   }));
 
@@ -211,7 +212,7 @@ function registrarRotasPublicas(app, { requireUsuario, talvezUsuario, notificar 
     db.prepare('INSERT INTO leads (id, nome, email, telefone, cidade, perfil, mensagem, origem, status, criado_em) VALUES (?,?,?,?,?,?,?,?,?,?)')
       .run(id, s(d.nome, 120), s(d.email, 120), s(d.telefone, 30), s(d.cidade, 80), s(d.perfil, 30) || 'quero_alugar',
         s(d.mensagem, 2000), s(d.origem, 120), 'novo', nowISO());
-    if (notificar) notificar(`📩 Closet Club: novo lead — ${s(d.nome, 60)} (${s(d.perfil, 30) || 'quero_alugar'}).`).catch(() => {});
+    if (notificar) notificar(avisos.novoLead(d)).catch(() => {});
     res.json({ ok: true, id });
   }));
 

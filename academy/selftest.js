@@ -487,7 +487,9 @@ async function main() {
     const antes = alertas.length;
     const r = await req('POST', `/academy/api/cursos/${prodId}/interesse`, { corpo: { nome: 'Comprador X', email: 'x@y.com' } });
     assert.equal(r.st, 200);
-    assert.ok(alertas.length > antes && alertas[alertas.length - 1].includes('interesse de compra'));
+    const aviso = alertas[alertas.length - 1];
+    assert.ok(alertas.length > antes && aviso.includes('interesse de compra'));
+    assert.ok(aviso.includes('Comprador X') && aviso.includes('x@y.com') && aviso.includes('O QUE FAZER: Responder'), 'o aviso diz quem e o que fazer: ' + aviso);
   });
 
   console.log('\n— FASE 3: avaliações e denúncias —');
@@ -551,7 +553,9 @@ async function main() {
     assert.equal(o.comissao_plataforma_centavos, 1871);   // 8,9% de 199,00 (17,71) + R$1,00
     assert.equal(o.liquido_produtor_centavos, 18029);
     assert.equal((await req('GET', '/academy/api/aluno/biblioteca', { jar: 'bruno' })).json.cursos.length, 1);
-    assert.ok(alertas.length > antes && alertas[alertas.length - 1].includes('venda paga'));
+    const aviso = alertas[alertas.length - 1];
+    assert.ok(alertas.length > antes && aviso.includes('venda paga'));
+    assert.ok(aviso.includes(BRUNO.nome) && aviso.includes(BRUNO.email) && aviso.includes('O QUE FAZER: Nada: acesso liberado'), 'o aviso diz quem comprou e o que fazer: ' + aviso);
   });
   await t('webhook duplicado é idempotente', async () => {
     await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '901' } } });

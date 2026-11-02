@@ -16,6 +16,7 @@ const { db, nowISO, novoId, j } = require('./db');
 const repo = require('./repo');
 const { Bookings, Payouts } = require('./bookings');
 const { Config, Users, Planos, lancar, evento, s, n, cent } = repo;
+const avisos = require('./avisos');
 
 let _mpFetch = null, _notificar = async () => {};
 function configurar({ mpFetch, notificar } = {}) {
@@ -74,7 +75,7 @@ async function gerarPix(bookingId, { email = '', nome = '', cpf = '' } = {}) {
 async function reembolsar(mpPaymentId, valorCentavos, referencia = '') {
   if (!ativo() || !mpPaymentId) {
     evento('', 'reembolso.manual', s(referencia, 60), { valor: cent(valorCentavos) });
-    _notificar(`↩️ Closet Club: reembolso MANUAL pendente de R$ ${(cent(valorCentavos) / 100).toFixed(2)} (${referencia}). Sem PSP configurado.`);
+    _notificar(avisos.reembolsoManual(referencia, cent(valorCentavos), mpPaymentId));
     return { ok: false, manual: true };
   }
   try {
@@ -86,7 +87,7 @@ async function reembolsar(mpPaymentId, valorCentavos, referencia = '') {
     evento('', 'reembolso.enviado', s(referencia, 60), { valor: cent(valorCentavos), refund_id: String(r.id || '') });
     return { ok: true, refund_id: String(r.id || '') };
   } catch (e) {
-    _notificar(`⚠️ Closet Club: falha ao reembolsar ${referencia} — ${e.message}. Trate manualmente no Mercado Pago.`);
+    _notificar(avisos.reembolsoFalhou(referencia, cent(valorCentavos), mpPaymentId, e.message));
     return { ok: false, erro: e.message };
   }
 }
@@ -222,7 +223,7 @@ function aplicarPreapproval(userId, preapprovalId, statusMP) {
     db.prepare("UPDATE subscriptions SET status='ativa', proximo_venc=?, atualizado_em=? WHERE id=?")
       .run(new Date(Date.now() + 30 * 86400000).toISOString(), agora, sub.id);
     ativarPremium(sub.user_id, { dias: 30 });
-    _notificar(`💚 Closet Club: novo assinante Premium — usuário ${sub.user_id}.`);
+    _notificar(avisos.novoPremium(sub.user_id, (Planos.porSlug('premium') || {}).preco_centavos || 3900));
   } else if (statusMP === 'paused' || statusMP === 'cancelled') {
     db.prepare('UPDATE subscriptions SET status=?, atualizado_em=? WHERE id=?').run(statusMP === 'paused' ? 'inadimplente' : 'cancelada', agora, sub.id);
   }

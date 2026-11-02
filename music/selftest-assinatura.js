@@ -57,7 +57,7 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
     assert.equal(r.json.resultado, 'registrado');
     assert.equal(assinatura.vigente('u-ana').status, 'ativa');
     assert.ok(CORTESIA.concedidas.includes('ana@t'));
-    assert.ok(AVISOS.some((m) => /novo assinante/.test(m)));
+    assert.ok(AVISOS.some((m) => /novo assinante/.test(m) && m.includes('ana@t') && m.includes('O QUE FAZER: Nada')), 'o aviso diz quem assinou e o que fazer');
     const r2 = await hook({ type: 'subscription_preapproval', data: { id: preId } });
     assert.equal(r2.json.resultado, 'ja-registrado', 'o MP reenvia a notificação: não pode virar dois pagamentos');
     const st = await req('GET', '/music/api/assinatura', { como: 'ana' });

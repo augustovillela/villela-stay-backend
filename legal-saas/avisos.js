@@ -1,0 +1,93 @@
+// =====================================================================
+// Villela Legal SaaS — avisos ao dono: quem é o escritório, quanto está em
+// jogo e o que fazer. Montar o aviso nunca pode derrubar o webhook ou a rotina.
+// =====================================================================
+'use strict';
+const repo = require('./repo');
+const { montarAviso, pessoa, reais } = require('../nucleo/aviso');
+
+const SISTEMA = 'Villela Legal SaaS';
+const dataBR = (iso) => (/^\d{4}-\d{2}-\d{2}/.test(String(iso || '')) ? String(iso).slice(0, 10).split('-').reverse().join('/') : '');
+const hojeBR = () => new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+const planoDe = (t) => (t.plano ? t.plano.nome + (t.plano.preco_centavos ? ` (${reais(t.plano.preco_centavos)}/mês)` : '') : '');
+
+function camposDoCliente(tenantId, { risco = false } = {}) {
+  try {
+    const t = repo.Tenants.obter(tenantId);
+    if (!t) return [['Escritório', tenantId]];
+    const resp = (t.usuarios || [])[0] || {};
+    return [
+      ['Escritório', t.nome],
+      ['Responsável', pessoa(resp.nome, resp.email || t.email_contato, t.telefone)],
+      [risco ? 'Plano em risco' : 'Plano', planoDe(t)],
+    ];
+  } catch (_) { return [['Escritório', tenantId]]; }
+}
+
+function trialAte(tenantId) {
+  try { return dataBR((repo.Tenants.obter(tenantId) || {}).trial_expira_em); } catch (_) { return ''; }
+}
+
+const assinaturaAtivada = (tenantId) => montarAviso({
+  titulo: `💚 ${SISTEMA}: novo assinante pagante`,
+  campos: camposDoCliente(tenantId),
+  fazer: 'Nada: acesso liberado automaticamente.',
+});
+
+function assinaturaEncerrada(tenantId, statusMP, sub) {
+  const pausada = statusMP === 'paused';
+  return montarAviso({
+    titulo: `⚠️ ${SISTEMA}: assinatura ${pausada ? 'PAUSADA' : 'CANCELADA'}`,
+    campos: [...camposDoCliente(tenantId, { risco: true }), ['Desde', hojeBR()], ['Assinava desde', dataBR(sub && sub.inicio)]],
+    fazer: pausada
+      ? 'Contatar o escritório pelo contato acima para regularizar o pagamento: a pausa pode ser inadimplência, e a conta é suspensa automaticamente em 7 dias.'
+      : 'Contatar o escritório pelo contato acima para entender o motivo do cancelamento.',
+  });
+}
+
+const trialExpirado = (tenantId) => montarAviso({
+  titulo: `⏰ ${SISTEMA}: trial expirou`,
+  campos: [...camposDoCliente(tenantId), ['Trial até', trialAte(tenantId)]],
+  fazer: 'Contatar o escritório pelo contato acima e oferecer a assinatura: o acesso fica bloqueado até assinar, e a conta é suspensa automaticamente em 7 dias.',
+});
+
+const listaCurta = (itens) => (itens || []).slice(0, 5).map(x => pessoa(x.nome, x.email)).join('; ')
+  + ((itens || []).length > 5 ? `; e mais ${itens.length - 5}` : '');
+
+const resumoDoCiclo = (r) => montarAviso({
+  titulo: `⏰ ${SISTEMA}: ${r.trials_vencidos} trial(s) vencido(s), ${r.suspensos} suspenso(s)`,
+  campos: [['Trials vencidos', listaCurta(r.trials_vencidos_lista)], ['Suspensos', listaCurta(r.suspensos_lista)]],
+  fazer: 'Contatar os escritórios listados e oferecer a assinatura. Trial vencido fica bloqueado até assinar; suspenso passou de 7 dias inadimplente.',
+});
+
+function novoLead(d = {}) {
+  const contato = pessoa(d.email, d.telefone);
+  return montarAviso({
+    titulo: `📩 ${SISTEMA}: novo lead`,
+    campos: [['Nome', d.nome], ['Escritório', d.escritorio], ['Contato', contato], ['Plano de interesse', d.plano], ['Mensagem', String(d.mensagem || '').slice(0, 300)]],
+    fazer: contato ? 'Responder o lead em até 24h pelo contato acima.' : 'O formulário veio sem e-mail e sem telefone: não há como responder este lead.',
+  });
+}
+
+const leadDoGuia = (nome, email) => montarAviso({
+  titulo: `📘 ${SISTEMA}: lead do guia visual`,
+  campos: [['Nome', nome], ['E-mail', email], ['Interesse', 'baixou o guia gratuito Claude AI para Advogados']],
+  fazer: 'Responder o lead em até 24h pelo e-mail acima e oferecer o teste grátis de 14 dias: o guia já foi entregue automaticamente.',
+});
+
+const novoEscritorio = (t) => {
+  const resp = (t.usuarios || [])[0] || {};
+  return montarAviso({
+    titulo: `🎉 ${SISTEMA}: novo escritório`,
+    campos: [['Escritório', t.nome], ['Responsável', pessoa(resp.nome, resp.email || t.email_contato, t.telefone)], ['Plano', planoDe(t)], ['Trial até', dataBR(t.trial_expira_em)]],
+    fazer: 'Dar as boas-vindas em até 24h pelo contato acima e ajudar o escritório a começar.',
+  });
+};
+
+const recargaConfirmada = (tenantId, centavos, mpPaymentId) => montarAviso({
+  titulo: '💳 Villela Legal: recarga de IA confirmada',
+  campos: [...camposDoCliente(tenantId), ['Valor', reais(centavos)], ['Pagamento MP', mpPaymentId]],
+  fazer: 'Nada: créditos lançados automaticamente na carteira do escritório.',
+});
+
+module.exports = { assinaturaAtivada, assinaturaEncerrada, trialExpirado, resumoDoCiclo, novoLead, leadDoGuia, novoEscritorio, recargaConfirmada };

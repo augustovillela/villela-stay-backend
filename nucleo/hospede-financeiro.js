@@ -10,6 +10,7 @@
 // =====================================================================
 'use strict';
 const webhookMP = require('./webhook-mp');
+const { montarAviso, pessoa, reais } = require('./aviso');
 
 module.exports.montar = function montar(app, deps) {
   const { requireHospede, requireAuth, requirePublishOrAdmin, resumoConta, mpFetch, AREA_HOSPEDE_URL,
@@ -85,7 +86,15 @@ module.exports.montar = function montar(app, deps) {
         { id: novoId(), hospedeId, staysClientId: h.staysClientId || '', tipo: 'pagamento', descricao: 'Pagamento online (Mercado Pago)', valor: Math.abs(Number(pay.transaction_amount) || 0), reservaId: '', validade: '', criadoEm: new Date().toISOString(), criadoPor: 'mercadopago', pagamentoRef: String(payId) },
       ]), []);
       console.log('[mp webhook] pagamento baixado p/ hospede', hospedeId, 'R$', pay.transaction_amount);
-      alertaAugusto(`Pagamento recebido (Mercado Pago) de ${h.nome || 'hospede'}: R$ ${Number(pay.transaction_amount || 0).toFixed(2)}.`).catch(() => { });
+      alertaAugusto(montarAviso({
+        titulo: '💰 Hóspede: pagamento recebido no Mercado Pago',
+        campos: [
+          ['Valor', reais(Math.round(Math.abs(Number(pay.transaction_amount) || 0) * 100))],
+          ['Hóspede', pessoa(h.nome, h.telefone, h.email)],
+          ['Pagamento MP', payId],
+        ],
+        fazer: 'Nada: o valor já foi baixado na conta do hóspede.',
+      })).catch(() => { });
     } catch (e) { console.error('[mp webhook]', e.message); }
   });
 };

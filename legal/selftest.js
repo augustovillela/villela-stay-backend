@@ -799,7 +799,8 @@ async function rodar() {
     const det = await req('GET', `/cliente-juridico/api/processos/${procs.json.processos[0].id}`, { cookies: true });
     assert.ok(!('estrategia' in det.json.processo) && !('risco' in det.json.processo));
     await req('POST', '/cliente-juridico/api/mensagens', { corpo: { texto: 'Olá!' }, cookies: true });
-    assert.ok(enviados.alertas.some(a => a.includes('Mensagem de cliente')));
+    const alertaMsg = enviados.alertas.find(a => a.includes('Mensagem de cliente'));
+    assert.ok(alertaMsg && alertaMsg.includes('O QUE FAZER: Responder'), 'o aviso diz o que fazer: ' + alertaMsg);
   });
   await t('portal do cliente: processo sigiloso some', async () => {
     await req('PATCH', `/staff/api/legal/processos/${caseId}`, { corpo: { sigiloso: true } });

@@ -13,6 +13,7 @@
 const { db, transacao, nowISO, novoId, j } = require('./db');
 const repo = require('./repo');
 const { Projetos, Clientes, Auditoria, s, n, cent } = repo;
+const avisos = require('./avisos');
 
 let _mpFetch = null;
 let _notificar = async () => {};
@@ -154,8 +155,7 @@ function aplicarPagamento(parc, { payId = '', via = 'mercadopago', quem = 'merca
     try { require('./tours').Tours.estenderPorParcela(parc); } catch (_) {}
   });
   const resto = saldo(parc.projeto_id);
-  _notificar(`💰 Alta Vista 360 — parcela paga: ${parc.rotulo} (R$ ${(parc.valor_centavos / 100).toLocaleString('pt-BR')})`
-    + `${resto ? ` · saldo em aberto R$ ${(resto / 100).toLocaleString('pt-BR')}` : ' · projeto QUITADO ✅'}`).catch(() => {});
+  _notificar(avisos.parcelaPaga(parc, { payId, via, resto })).catch(() => {});
   _emailCliente(parc, 'aprovado').catch(() => {});
 }
 
@@ -186,7 +186,7 @@ async function processarWebhook(body = {}, query = {}) {
     const moedaOk = (pay.currency_id || 'BRL') === 'BRL';
     if (!valorOk || !moedaOk) {
       evento(parc.id, payId, 'divergente', `esperado ${parc.valor_centavos}, veio ${pay.transaction_amount} ${pay.currency_id}`);
-      _notificar(`⚠️ Alta Vista 360 — pagamento com VALOR DIVERGENTE ignorado (MP ${payId}): esperado R$ ${(parc.valor_centavos / 100).toLocaleString('pt-BR')}, veio ${pay.transaction_amount} ${pay.currency_id}. Conferir no painel do MP.`).catch(() => {});
+      _notificar(avisos.valorDivergente(parc, pay, payId)).catch(() => {});
       return { ignorado: 'valor divergente' };
     }
     aplicarPagamento(parc, { payId, via: 'mercadopago', quem: 'mercadopago' });
@@ -203,7 +203,7 @@ async function processarWebhook(body = {}, query = {}) {
     db.prepare("UPDATE parcelas SET status = ?, atualizado_em = ? WHERE id = ?")
       .run(pay.status === 'refunded' ? 'reembolsado' : 'contestado', nowISO(), parc.id);
     evento(parc.id, payId, pay.status === 'refunded' ? 'reembolsado' : 'contestado', '');
-    _notificar(`🔁 Alta Vista 360 — pagamento ${pay.status === 'refunded' ? 'REEMBOLSADO' : 'CONTESTADO (chargeback)'} na parcela "${parc.rotulo}" (MP ${payId}). Conferir o projeto.`).catch(() => {});
+    _notificar(avisos.estornoNoMP(parc, pay.status, payId)).catch(() => {});
     return { ok: true, aplicado: pay.status };
   }
   evento(parc.id, payId, String(pay.status || 'desconhecido'), 'sem efeito');
@@ -239,7 +239,7 @@ async function reembolsar(parcelaId, { quem, confirmar = false }) {
   db.prepare("UPDATE parcelas SET status = 'reembolsado', atualizado_em = ? WHERE id = ?").run(nowISO(), parc.id);
   evento(parc.id, parc.mp_payment_id, 'reembolsado', 'por ' + quem);
   Auditoria.registrar({ quem, acao: 'parcela.reembolso', entidade: 'parcelas', entidade_id: parc.id, detalhe: `${parc.valor_centavos} centavos` });
-  _notificar(`↩️ Alta Vista 360 — reembolso executado na parcela "${parc.rotulo}" por ${quem}.`).catch(() => {});
+  _notificar(avisos.reembolsoExecutado(parc, quem)).catch(() => {});
   return Parcelas.obter(parc.id);
 }
 

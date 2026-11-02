@@ -27,6 +27,7 @@ const { db, nowISO } = require('./db');
 const repo = require('./repo');
 const contas = require('./contas');
 const webhookMP = require('../nucleo/webhook-mp');
+const { montarAviso, pessoa, reais } = require('../nucleo/aviso');
 
 // O Musique é PAGO (Augusto, 28/09/2026): R$ 250/mês, com teste grátis de
 // 14 dias para conta nova — e para as contas que já existiam no lançamento
@@ -38,6 +39,17 @@ const PLANO_PADRAO = { preco_cents: 25000, carencia_dias: 5, teste_dias: 14, nom
 const precoBanda = (p = plano()) => Math.round(p.preco_cents * p.banda_vagas * (1 - p.banda_desconto_pct / 100));
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const novoId = () => crypto.randomBytes(9).toString('base64url');
+
+// Aviso ao dono: consulta que falha não derruba o webhook, sai o id da conta.
+function contatoDaConta(contaId) {
+  try { const c = contas.Contas.porId(contaId); return (c && pessoa(c.nome, c.email, c.telefone)) || contaId; } catch (_) { return contaId; }
+}
+const camposDaAssinatura = (a) => [
+  ['Assinante', contatoDaConta(a.conta_id)],
+  ['Plano', a.plano === 'banda' ? `banda (${a.vagas} vagas)` : 'individual'],
+  ['Valor', reais(a.preco_cents) + '/mês'],
+  ['Preapproval MP', a.preapproval_id],
+];
 
 let _mp = null;                         // (caminho, opts) => json   (mpFetch do server.js)
 let _academia = {};                     // { conceder({email,nome}) , revogar({email}) }
@@ -263,7 +275,14 @@ async function cancelar(contaId, motivo = 'cancelada pelo assinante') {
   let mpOk = true;
   if (a.preapproval_id && _mp) {
     try { await _mp(`/preapproval/${a.preapproval_id}`, { method: 'PUT', body: JSON.stringify({ status: 'cancelled' }) }); }
-    catch (e) { mpOk = false; _avisar(`⚠️ Musique: cancelamento local feito, mas o Mercado Pago recusou (${a.preapproval_id}): ${e.message}. Cancele no painel do MP.`); }
+    catch (e) {
+      mpOk = false;
+      _avisar(montarAviso({
+        titulo: '⚠️ Musique: cancelamento local feito, mas o Mercado Pago recusou',
+        campos: [...camposDaAssinatura(a), ['Erro', s(e.message, 160)]],
+        fazer: `Cancelar no painel do Mercado Pago (preapproval ${a.preapproval_id}): aqui já está cancelada, mas a cobrança pode continuar.`,
+      }));
+    }
   }
   atualizar(a.id, { status: 'cancelada', encerrada_em: nowISO(), motivo: s(motivo, 200) });
   evento(a, 'assinatura.cancelada', { motivo, mp: mpOk });
@@ -279,8 +298,11 @@ function registrarPagamento(a, ref, valorCents) {
   atualizar(a.id, { status: 'ativa', inadimplente_desde: '', ultimo_pagamento_em: nowISO() });
   evento(a, 'pagamento.recebido', { ref });
   if (!eraAtiva) {
-    const c = contas.Contas.porId(a.conta_id);
-    _avisar(`💚 Musique: novo assinante — ${c ? c.nome : a.conta_id} (R$ ${(a.preco_cents / 100).toFixed(2).replace('.', ',')}/mês).`);
+    _avisar(montarAviso({
+      titulo: a.status === 'inadimplente' ? '💚 Musique: assinante voltou a pagar' : '💚 Musique: novo assinante',
+      campos: camposDaAssinatura(a),
+      fazer: 'Nada: acesso e cortesia dos cursos de música liberados automaticamente.',
+    }));
   }
   return { resultado: 'registrado' };
 }
@@ -311,8 +333,11 @@ async function processarWebhook(body = {}, query = {}) {
     } else if (pre.status === 'cancelled') {
       atualizar(a.id, { status: 'cancelada', encerrada_em: nowISO(), motivo: 'cancelada no Mercado Pago' });
       evento(a, 'assinatura.cancelada', { motivo: 'mp' }); r = { resultado: 'cancelada' };
-      const c = contas.Contas.porId(a.conta_id);
-      _avisar(`⚠️ Musique: assinatura cancelada — ${c ? c.nome : a.conta_id}.`);
+      _avisar(montarAviso({
+        titulo: '⚠️ Musique: assinatura cancelada no Mercado Pago',
+        campos: camposDaAssinatura(a),
+        fazer: 'Nada a fazer: acesso e cortesia dos cursos de música encerram sozinhos ao fim do período já pago. Para tentar recuperar o assinante, use o contato acima.',
+      }));
     } else r = { resultado: 'ignorado', status: pre.status };
     await sincronizarDaAssinatura(porId(a.id));
     return { ok: true, ...r };

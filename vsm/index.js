@@ -56,7 +56,7 @@ function iniciarRotinas(notificar) {
   _timer = setInterval(() => {
     const hb = (new Date().getUTCHours() + 24 - 3) % 24; // Brasília UTC-3
     if (hb === hora && !jaRodou()) {
-      try { const r = billing.processarCicloDeVida(); if (r.trials_vencidos || r.suspensos) notificar(`⏰ Villela Stay Manager: ${r.trials_vencidos} trial(s) vencido(s), ${r.suspensos} suspenso(s).`); } catch (_) {}
+      try { const r = billing.processarCicloDeVida(); if (r.trials_vencidos || r.suspensos) notificar(require('./avisos').resumoDoCiclo(r)); } catch (_) {}
     }
   }, 15 * 60 * 1000);
   if (_timer.unref) _timer.unref();

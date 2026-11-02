@@ -29,6 +29,7 @@ const webhookMP = require('../nucleo/webhook-mp');
 const auditoria = require('./auditoria');
 const entitlements = require('./entitlements');
 const dinheiro = require('./dinheiro');
+const { montarAviso, pessoa, reais } = require('../nucleo/aviso');
 
 class ErroDeCobranca extends Error {
   constructor(msg, status = 400) { super(msg); this.name = 'ErroDeCobranca'; this.status = status; }
@@ -198,6 +199,35 @@ function mudarStatusDaConta(tenantId, status, motivo) {
   return { de: t.status, para: status };
 }
 
+// ------------------------------------------------------- aviso ao dono
+
+const dataBR = (iso) => (/^\d{4}-\d{2}-\d{2}/.test(String(iso || '')) ? String(iso).slice(0, 10).split('-').reverse().join('/') : '');
+const hojeBR = () => new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+/** Contato da conta: o do cadastro, ou o primeiro proprietário. Nunca lança. */
+function contatoDaConta(t) {
+  if (t.contato_email) return pessoa(t.contato_nome, t.contato_email);
+  try {
+    const dono = repo.listarUsuarios().find(u => u.perfil === 'proprietario');
+    return dono ? pessoa(dono.nome, dono.email) : '';
+  } catch (_) { return ''; }
+}
+
+function camposDaConta(tenantId, { risco = false } = {}) {
+  try {
+    const t = repo.tenantPorId(tenantId);
+    if (!t) return [['Cliente', tenantId]];
+    const plano = t.plano_id ? repo.planoPorId(t.plano_id) : null;
+    return [
+      ['Cliente', t.nome],
+      ['Responsável', contatoDaConta(t)],
+      [risco ? 'Plano em risco' : 'Plano', plano ? plano.nome + (plano.preco_cents ? ` (${reais(plano.preco_cents)}/mês)` : '') : ''],
+    ];
+  } catch (_) { return [['Cliente', tenantId]]; }
+}
+
+const listaCurta = (itens) => itens.slice(0, 5).join('; ') + (itens.length > 5 ? `; e mais ${itens.length - 5}` : '');
+
 // ------------------------------------------------------------- webhook
 
 /**
@@ -222,8 +252,11 @@ function aplicarPreapproval(tenantId, ref, statusMP) {
     mudarStatusDaConta(tenantId, 'ativa', 'assinatura autorizada no Mercado Pago');
     if (!jaAtiva) {
       gerarFatura(tenantId, { status: 'paga', externoRef: `preapproval:${ref}` });
-      const t = repo.tenantPorId(tenantId);
-      _notificar(`💚 Villela Finance: novo assinante pagante — ${t ? t.nome : tenantId}.`);
+      _notificar(montarAviso({
+        titulo: '💚 Villela Finance: novo assinante pagante',
+        campos: camposDaConta(tenantId),
+        fazer: 'Nada: acesso liberado automaticamente.',
+      }));
     }
     return { resultado: jaAtiva ? 'ja-ativa' : 'ativada' };
   }
@@ -232,8 +265,13 @@ function aplicarPreapproval(tenantId, ref, statusMP) {
     const novo = statusMP === 'paused' ? 'inadimplente' : 'cancelada';
     repo.atualizarAssinatura(sub.id, { status: novo, fim: novo === 'cancelada' ? nowISO() : '' });
     mudarStatusDaConta(tenantId, novo, `preapproval ${statusMP} no Mercado Pago`);
-    const t = repo.tenantPorId(tenantId);
-    _notificar(`⚠️ Villela Finance: assinatura ${statusMP === 'paused' ? 'PAUSADA' : 'CANCELADA'} — ${t ? t.nome : tenantId}.`);
+    _notificar(montarAviso({
+      titulo: `⚠️ Villela Finance: assinatura ${statusMP === 'paused' ? 'PAUSADA' : 'CANCELADA'}`,
+      campos: [...camposDaConta(tenantId, { risco: true }), ['Desde', hojeBR()], ['Assinava desde', dataBR(sub.inicio)]],
+      fazer: statusMP === 'paused'
+        ? `Contatar o cliente pelo contato acima para regularizar o pagamento: ele ainda lança, e a conta é suspensa automaticamente em ${DIAS_ATE_SUSPENDER} dias.`
+        : 'Contatar o cliente pelo contato acima para entender o motivo do cancelamento.',
+    }));
     return { resultado: novo };
   }
   return { resultado: 'ignorado', statusMP };
@@ -387,6 +425,7 @@ function marcarPago(tenantId, { competencia = '', valorCents = null, motivo = ''
  */
 function cicloDeVida({ agora = nowISO() } = {}) {
   const trialsVencidos = [], suspensas = [];
+  const trialsLista = [], suspensasLista = [];
   const corte = new Date(Date.parse(agora) - DIAS_ATE_SUSPENDER * 86400000).toISOString();
   // `trial_ate` é DIA (YYYY-MM-DD). Comparar dia com timestamp encerraria a
   // avaliação na manhã do último dia — o assinante perderia o dia que lhe
@@ -399,19 +438,23 @@ function cicloDeVida({ agora = nowISO() } = {}) {
       if (t.status === 'trial' && t.trial_ate && String(t.trial_ate).slice(0, 10) < hoje) {
         mudarStatusDaConta(t.id, 'inadimplente', 'período de avaliação encerrado');
         trialsVencidos.push(t.slug);
+        trialsLista.push(pessoa(t.nome, contatoDaConta(t)));
         return;
       }
       if (t.status === 'inadimplente' && (t.atualizado_em || t.criado_em) < corte) {
         mudarStatusDaConta(t.id, 'suspensa', `inadimplente há mais de ${DIAS_ATE_SUSPENDER} dias`);
         suspensas.push(t.slug);
+        suspensasLista.push(pessoa(t.nome, contatoDaConta(t)));
       }
     });
   }
 
   if (trialsVencidos.length || suspensas.length) {
-    _notificar(
-      `💰 Villela Finance — cobrança: ${trialsVencidos.length} avaliação(ões) encerrada(s), ` +
-      `${suspensas.length} conta(s) suspensa(s). Leitura e exportação seguem liberadas.`);
+    _notificar(montarAviso({
+      titulo: `💰 Villela Finance: cobrança, ${trialsVencidos.length} avaliação(ões) encerrada(s), ${suspensas.length} conta(s) suspensa(s)`,
+      campos: [['Avaliações encerradas', listaCurta(trialsLista)], ['Contas suspensas', listaCurta(suspensasLista)]],
+      fazer: `Contatar os clientes listados e oferecer a assinatura. Avaliação encerrada ainda lança por ${DIAS_ATE_SUSPENDER} dias; suspensa não lança. Leitura e exportação seguem liberadas.`,
+    }));
   }
   return { quando: agora, trialsVencidos, suspensas, diasAteSuspender: DIAS_ATE_SUSPENDER };
 }

@@ -14,6 +14,7 @@
 'use strict';
 const { db, nowISO, novoId } = require('./db');
 const repo = require('./repo');
+const avisos = require('./avisos');
 
 let _mpFetch = null, _notificar = async () => {};
 function configurar({ mpFetch, notificar } = {}) {
@@ -101,13 +102,13 @@ function aplicarPreapproval(tenantId, preapprovalId, statusMP) {
     repo.Tenants.mudarStatus(sub.tenant_id, 'ativa', 'mercadopago', 'assinatura autorizada');
     if (!jaAtiva) {
       gerarFatura(sub.tenant_id, 'paga');
-      _notificar(`💚 Villela Stay Manager: novo assinante pagante — tenant ${sub.tenant_id}.`);
+      _notificar(avisos.assinaturaAtivada(sub.tenant_id));
     }
   } else if (statusMP === 'paused' || statusMP === 'cancelled') {
     db.prepare('UPDATE subscriptions SET status = ?, atualizado_em = ? WHERE id = ?').run(statusMP === 'paused' ? 'inadimplente' : 'cancelada', agora, sub.id);
     if (sub.status === 'ativa' || sub.status === 'pendente') {
       repo.Tenants.mudarStatus(sub.tenant_id, statusMP === 'paused' ? 'inadimplente' : 'cancelada', 'mercadopago', 'preapproval ' + statusMP);
-      _notificar(`⚠️ Villela Stay Manager: assinatura ${statusMP === 'paused' ? 'PAUSADA (inadimplência?)' : 'CANCELADA'} — tenant ${sub.tenant_id}.`);
+      _notificar(avisos.assinaturaEncerrada(sub.tenant_id, statusMP, sub));
     }
   }
 }
@@ -175,20 +176,23 @@ async function processarWebhook(body, query) {
 function processarCicloDeVida() {
   const agora = nowISO();
   let trialsVencidos = 0, suspensos = 0;
+  const trialsLista = [], suspensosLista = [];
   // trial vencido → inadimplente (bloqueia entrega; ainda recuperável assinando)
-  for (const t of db.prepare("SELECT id FROM tenants WHERE status = 'trial' AND trial_expira_em != '' AND trial_expira_em < ?").all(agora)) {
+  for (const t of db.prepare("SELECT id, nome, email_contato FROM tenants WHERE status = 'trial' AND trial_expira_em != '' AND trial_expira_em < ?").all(agora)) {
     repo.Tenants.mudarStatus(t.id, 'inadimplente', 'sistema', 'trial expirado');
-    _notificar(`⏰ Villela Stay Manager: trial expirou — tenant ${t.id} bloqueado até assinar.`);
+    _notificar(avisos.trialExpirado(t.id));
     trialsVencidos++;
+    trialsLista.push({ nome: t.nome, email: t.email_contato });
   }
   // inadimplente há +7 dias → suspensa
   const limite = new Date(Date.now() - 7 * 86400000).toISOString();
-  for (const t of db.prepare("SELECT id FROM tenants WHERE status = 'inadimplente' AND atualizado_em < ?").all(limite)) {
+  for (const t of db.prepare("SELECT id, nome, email_contato FROM tenants WHERE status = 'inadimplente' AND atualizado_em < ?").all(limite)) {
     repo.Tenants.mudarStatus(t.id, 'suspensa', 'sistema', 'inadimplente há +7 dias');
     suspensos++;
+    suspensosLista.push({ nome: t.nome, email: t.email_contato });
   }
   repo.evento('', 'ciclo.diario', '', { trialsVencidos, suspensos });
-  return { trials_vencidos: trialsVencidos, suspensos };
+  return { trials_vencidos: trialsVencidos, suspensos, trials_vencidos_lista: trialsLista, suspensos_lista: suspensosLista };
 }
 
 module.exports = {

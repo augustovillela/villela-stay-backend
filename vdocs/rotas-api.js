@@ -40,7 +40,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
     catch (e) { auth.registraFalha(ip); throw e; }
     auth.limpaFalhas(ip);
     auth.emitirSessao(res, criado.user.id, criado.tenant.id);
-    notificar(`🗂️ Villela Docs: novo trial — ${criado.tenant.nome} (${criado.user.email}).`);
+    notificar(require('./avisos').novoTrial(criado.tenant));
     res.json({ ok: true, tenant: { id: criado.tenant.id, nome: criado.tenant.nome, slug: criado.tenant.slug } });
   }));
 
@@ -98,7 +98,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
     const b = req.body || {};
     if (!repo.emailOK(repo.emailNorm(b.email))) throw new Error('Informe um e-mail válido.');
     repo.criarLead(b);
-    notificar(`🗂️ Villela Docs: novo lead — ${repo.s(b.nome, 80) || 'sem nome'} <${repo.emailNorm(b.email)}> ${repo.s(b.empresa, 80)}`.trim());
+    notificar(require('./avisos').novoLead(b));
     res.json({ ok: true });
   }));
 

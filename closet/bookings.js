@@ -17,6 +17,7 @@ const {
 } = require('./db');
 const repo = require('./repo');
 const { Config, Users, Items, Looks, Agenda, Precos, Cupons, Notificacoes, evento, lancar, s, n, cent } = repo;
+const avisos = require('./avisos');
 
 // ganchos injetados pelo index.js (reembolso via PSP, alerta, push, e-mail)
 let _hooks = {
@@ -461,7 +462,7 @@ const Bookings = {
       db.prepare("UPDATE bookings SET status='em_disputa', motivo_status=?, atualizado_em=? WHERE id=?").run('disputa aberta: ' + (s(d.motivo, 30) || 'dano'), agora, b.id);
       db.prepare("UPDATE payouts SET status='retido', motivo='disputa aberta' WHERE booking_id=?").run(b.id);
     });
-    Promise.resolve(_hooks.notificar(`⚠️ Closet Club: disputa aberta na reserva ${b.codigo} (${s(d.motivo, 30) || 'dano'}).`)).catch(() => {});
+    Promise.resolve(_hooks.notificar(avisos.disputaAberta(b, mapa.donos, d, s(userId, 40), ehDono))).catch(() => {});
     for (const alvo of [b.cliente_id, ...mapa.donos]) {
       if (alvo !== s(userId, 40)) avisar(alvo, '⚠️ Disputa aberta', `Reserva ${b.codigo}: a plataforma vai mediar. O valor segue bloqueado.`, '/closet/app');
     }
@@ -520,6 +521,7 @@ const Bookings = {
   rotina() {
     const agora = nowISO();
     let expiradas = 0, naoConfirmadas = 0, concluidas = 0, devolucoesPorPrazo = 0;
+    const codigosExpiradas = [], codigosNaoConfirmadas = [];
 
     for (const b of db.prepare("SELECT * FROM bookings WHERE status = 'aguardando_pagamento' AND pix_expira_em != '' AND pix_expira_em < ?").all(agora)) {
       transacao(() => {
@@ -528,9 +530,10 @@ const Bookings = {
       });
       avisar(b.cliente_id, 'Reserva expirada', `Reserva ${b.codigo}: o Pix não foi pago a tempo e as datas foram liberadas.`, '/closet');
       expiradas++;
+      codigosExpiradas.push(b.codigo);
     }
     for (const b of db.prepare("SELECT * FROM bookings WHERE status = 'pago_bloqueado' AND prazo_confirmacao != '' AND prazo_confirmacao < ?").all(agora)) {
-      try { Bookings._encerrarComReembolso(b, 'recusado', b.total_centavos, 'proprietário não confirmou no prazo — reembolso integral', 'sistema'); naoConfirmadas++; } catch (_) {}
+      try { Bookings._encerrarComReembolso(b, 'recusado', b.total_centavos, 'proprietário não confirmou no prazo — reembolso integral', 'sistema'); naoConfirmadas++; codigosNaoConfirmadas.push(b.codigo); } catch (_) {}
     }
     for (const b of db.prepare("SELECT * FROM bookings WHERE status = 'devolvido' AND janela_vistoria != '' AND janela_vistoria < ?").all(agora)) {
       try { Bookings.concluir(b.id, { quem: 'sistema' }); concluidas++; } catch (_) {}
@@ -549,7 +552,7 @@ const Bookings = {
       } catch (_) {}
     }
     evento('', 'rotina.reservas', '', { expiradas, naoConfirmadas, concluidas, devolucoesPorPrazo });
-    return { expiradas, nao_confirmadas: naoConfirmadas, concluidas, devolucoes_por_prazo: devolucoesPorPrazo };
+    return { expiradas, nao_confirmadas: naoConfirmadas, concluidas, devolucoes_por_prazo: devolucoesPorPrazo, codigos_expiradas: codigosExpiradas, codigos_nao_confirmadas: codigosNaoConfirmadas };
   },
 };
 

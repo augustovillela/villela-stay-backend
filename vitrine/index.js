@@ -15,6 +15,7 @@
 'use strict';
 const repo = require('./repo');
 const pedidos = require('./pedidos');
+const { montarAviso } = require('../nucleo/aviso');
 const pagamentos = require('./pagamentos');
 const frete = require('./frete');
 const emails = require('./emails');
@@ -73,6 +74,19 @@ function montar(app, injected = {}) {
   return { repo, pedidos, pagamentos, frete, emails, seed };
 }
 
+function avisoDaRotina(r = {}) {
+  const lista = (codigos = []) => (codigos.length ? `${codigos.length}: ${codigos.slice(0, 5).join(', ')}${codigos.length > 5 ? ` e mais ${codigos.length - 5}` : ''}` : '');
+  return montarAviso({
+    titulo: '🛒 Vitrine: pedidos encerrados pela rotina',
+    campos: [
+      ['Expirados sem pagamento', lista(r.codigos_expirados)],
+      ['Concluídos automaticamente', lista(r.codigos_concluidos)],
+      ['Rastreios avançados', r.rastreios_avancados ? String(r.rastreios_avancados) : ''],
+    ],
+    fazer: 'Nada a fazer: expirados cancelados, com estoque devolvido e comprador avisado; concluídos fecharam ao vencer a janela de devolução.',
+  });
+}
+
 // Rotina horária: expira pedido não pago, avança rastreio simulado e conclui
 // pedidos entregues com a janela de devolução vencida.
 function iniciarRotinas(alertaAugusto) {
@@ -82,7 +96,7 @@ function iniciarRotinas(alertaAugusto) {
     try {
       const r = pedidos.Pedidos.rotina();
       if (r.expirados || r.concluidos) {
-        notificar(`🛒 Vitrine: ${r.expirados} pedido(s) expirado(s), ${r.concluidos} concluído(s) automaticamente, ${r.rastreios_avancados} rastreio(s) avançado(s).`);
+        notificar(avisoDaRotina(r));
       }
     } catch (e) { console.error('[vitrine] rotina:', e.message); }
   }, 60 * 60 * 1000);
@@ -90,4 +104,4 @@ function iniciarRotinas(alertaAugusto) {
   console.log('[vitrine] rotina horária ligada (expirar não pagos · rastreio simulado · concluir vencidos)');
 }
 
-module.exports = { montar, repo, pedidos, pagamentos, frete, emails, seed };
+module.exports = { montar, repo, pedidos, pagamentos, frete, emails, seed, avisoDaRotina };

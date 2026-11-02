@@ -452,9 +452,30 @@ app.post('/api/precheckin', async (req, res) => {
           criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
         };
         pedidos.unshift(pedido); salvarPedidosHosp(pedidos);
-        alertaAugusto(`Check-in on-line (site) de ${pedido.hospedeNome} tem itens com custo (${itens.resumo}) - reserva ${r.id}${r.imovel ? ' (' + r.imovel + ')' : ''}. Veja em Pedidos de hospedes.`).catch(() => { });
+        alertaAugusto(montarAviso({
+          titulo: '🧾 Hóspede: check-in do site com itens a cobrar',
+          campos: [
+            ['Itens', itens.resumo],
+            ['Hóspede', pessoa(pedido.hospedeNome, d.contato, d.email)],
+            ['Imóvel', r.imovelTitulo || r.imovel],
+            ['Estadia', `${r.checkin} a ${r.checkout}`],
+            ['Chegada', d.horario],
+            ['Reserva', r.id],
+          ],
+          fazer: 'Orçar os itens e responder em Portal Staff > Pedidos de hóspedes.',
+        })).catch(() => { });
       } else {
-        alertaAugusto(`Check-in on-line (site) de ${d.nome} tem itens com custo (${itens.resumo}) mas nao foi possivel vincular a conta/reserva automaticamente - confira em Pre-check-ins.`).catch(() => { });
+        alertaAugusto(montarAviso({
+          titulo: '🧾 Hóspede: check-in do site com itens a cobrar, SEM reserva vinculada',
+          campos: [
+            ['Itens', itens.resumo],
+            ['Hóspede', pessoa(d.nome, d.contato, d.email)],
+            ['Imóvel', d.hospedagem],
+            ['Estadia', d.chegada ? `${d.chegada} a ${d.saida}` : ''],
+            ['Reserva informada', d.reserva],
+          ],
+          fazer: 'Achar a reserva na Stays e cobrar os itens: o sistema não conseguiu ligar este check-in a uma conta. Ficha em Portal Staff > Pré-check-ins.',
+        })).catch(() => { });
       }
     }
   } catch (e) { console.error('[precheckin billable]', e.message); }
@@ -800,6 +821,7 @@ function requirePublishOrAdmin(req, res, next) {
 // rota da PUBLISH_KEY que não está aqui recusa token. O código e as páginas do site NÃO passam por
 // API — vão ao ar por commit no master; para isso o acesso é pelo GitHub, não por este token.
 const tokensApi = require('./nucleo/tokens-api');
+const { montarAviso, paraModelo, pessoa } = require('./nucleo/aviso');
 tokensApi.registrarSistema('portal', {
   rotulo: '📋 Portal Staff — relatórios', base: '/staff/api/relatorios',
   escopos: { leitura: 'Listar os relatórios da área.', publicar: 'Publicar (upsert) relatório na área.' },
@@ -4018,7 +4040,7 @@ async function alertaAugusto(resumo) {
   // sanitizaParam(undefined) devolve string VAZIA, e variável de template vazia é recusada pela
   // Meta: o bundle fica preso na fila do Make e derruba o cenário 6128257 a cada religada
   // (episódios de 08 e 11/08/2026). Alerta sem texto não tem serventia — melhor não enviar.
-  const p2 = sanitizaParam(resumo);
+  const p2 = paraModelo(resumo);
   if (!p2 || !AUGUSTO_WA) { console.error('[alerta augusto] envio recusado: resumo ou destino vazio'); return false; }
   try {
     await fetch(process.env.MAKE_WA_WEBHOOK, {

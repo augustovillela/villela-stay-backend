@@ -8,6 +8,7 @@
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const repo = require('./repo');
+const avisos = require('./avisos');
 const appRepo = require('./app-repo');
 
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -274,7 +275,7 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
   // lead da landing
   app.post('/crm/api/lead', h(async (req, res) => {
     const id = repo.SaasLeads.criar(req.body || {});
-    if (notificar) notificar(`📩 Villela CRM: novo lead — ${s((req.body || {}).nome, 60)} (${s((req.body || {}).empresa, 60)}).`).catch(() => {});
+    if (notificar) notificar(avisos.novoLead(req.body || {})).catch(() => {});
     res.json({ ok: true, id });
   }));
 
@@ -293,7 +294,7 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
     if (enviarEmail) {
       enviarEmail(email, 'Villela CRM — acesse sua conta', `<p>Olá! Sua conta <b>${esc(t.nome)}</b> foi criada.</p><p>Defina sua senha e acesse: <a href="${link}">${link}</a></p><p>Você está no plano <b>${esc(t.plano ? t.plano.nome : '')}</b>.</p>`).catch(() => {});
     }
-    if (notificar) notificar(`🎉 Villela CRM: nova empresa — ${t.nome} (${email}).`).catch(() => {});
+    if (notificar) notificar(avisos.novaEmpresa(t)).catch(() => {});
     res.json({ ok: true, tenant_id: t.id, email, link_setup: process.env.NODE_ENV === 'development' ? link : undefined });
   }));
 }

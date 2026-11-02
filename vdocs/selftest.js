@@ -891,6 +891,8 @@ function teste(nome, cond) {
   r = await req('GET', '/staff/api/vdocs/leads', { staff: 'adm' });
   teste('staff lista leads', r.status === 200 && r.dados.leads.some(l => l.email === 'lead@x.com'));
   teste('alerta de novo trial/lead disparado', alertas.length >= 2);
+  teste('aviso de lead traz nome, contato e o que fazer', alertas.some(m => m.includes('novo lead') && m.includes('lead@x.com') && m.includes('X SA') && m.includes('O QUE FAZER')));
+  teste('aviso de novo trial traz cliente e o que fazer', alertas.some(m => m.includes('novo trial') && m.includes('Empresa A') && m.includes('ana@a.com') && m.includes('O QUE FAZER')));
 
   // ---------- resultado ----------
   srv.close();

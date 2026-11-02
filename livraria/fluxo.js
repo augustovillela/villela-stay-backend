@@ -6,6 +6,8 @@
 // =====================================================================
 'use strict';
 
+const { montarAviso, pessoa } = require('../nucleo/aviso');
+
 function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alertaAugusto, urls, crm = null }) {
   const TOKEN_HORAS = Number(process.env.LIVRARIA_TOKEN_HORAS || 72);
   const TOKEN_MAX = Number(process.env.LIVRARIA_TOKEN_MAX || 5);
@@ -130,7 +132,49 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
       await notificar(order, tmpl);
       await emitir(eventos.EVENTOS.IMPRESSO_CRIADO, repo.Orders.obter(order.id), { book_id: it.book_id });
     }
-    if (impressos.length) alerta(order, `📦 Novo pedido impresso na Livraria: ${(order.cliente || {}).nome || 'cliente'} — ${impressos.map(i => i.titulo_snapshot).join(', ')}.`);
+  }
+
+  // Rótulo de cada formato como o Augusto fala dele no aviso.
+  const FORMATO = { pdf: 'PDF', impresso: 'impresso', combo: 'impresso + PDF' };
+
+  // Endereço de remessa numa linha. Cidade e UF moram no cadastro do comprador.
+  function enderecoDeEntrega(order) {
+    const e = order.endereco_entrega || {};
+    const c = order.cliente || {};
+    if (!e.logradouro) return '';
+    return [
+      [e.logradouro, e.numero].filter(Boolean).join(', '),
+      e.complemento, e.bairro,
+      [c.cidade, c.estado].filter(Boolean).join('/'),
+      e.cep ? 'CEP ' + e.cep : '',
+    ].filter(Boolean).join(' - ');
+  }
+
+  // Um aviso só por venda, com tudo para agir sem abrir o Portal.
+  function avisoDeVenda(order, pag) {
+    const itens = order.itens || [];
+    const c = order.cliente || {};
+    const qtd = (it) => (Number(it.quantidade) > 1 ? it.quantidade + 'x ' : '');
+    const impressos = itens.filter(it => it.tipo === 'impresso' || it.tipo === 'combo');
+    const endereco = impressos.length ? enderecoDeEntrega(order) : '';
+    let fazer = 'Nada: o PDF já foi entregue ao comprador por e-mail.';
+    if (impressos.length) {
+      const livros = impressos.map(it => '"' + qtd(it) + it.titulo_snapshot + '"').join(' e ');
+      fazer = endereco
+        ? `Enviar ${livros} para o endereço acima e registrar o rastreio em Portal Staff > Livraria > Impressos.`
+        : `Pedir o endereço ao comprador e enviar ${livros}: o pedido veio sem endereço de entrega.`;
+    }
+    return montarAviso({
+      titulo: impressos.length ? '📦 Livraria: venda com livro IMPRESSO para enviar' : '💰 Livraria: venda de PDF',
+      campos: [
+        ['Livro', itens.map(it => `${qtd(it)}${it.titulo_snapshot} (${FORMATO[it.tipo] || it.tipo})`).join('; ').slice(0, 260)],
+        ['Valor', repo.brl(order.valor_total) + (pag && pag.metodo ? ' (' + pag.metodo + ')' : '') + (order.cupom_codigo ? ', cupom ' + order.cupom_codigo : '')],
+        ['Entregar em', endereco],
+        ['Comprador', pessoa(c.nome, c.whatsapp, c.email)],
+        ['Pedido', order.id],
+      ],
+      fazer,
+    });
   }
 
   return {
@@ -152,6 +196,17 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
       if (cobrado > 0 && pago > 0 && pago !== cobrado) {
         console.error('[livraria] pagamento com VALOR DIVERGENTE ignorado — pedido ' + orderId
           + ': cobrado ' + cobrado + ' centavos, veio ' + pago);
+        const c = order.cliente || {};
+        await alerta(order, montarAviso({
+          titulo: '⚠️ Livraria: pagamento com VALOR DIVERGENTE, livro NÃO entregue',
+          campos: [
+            ['Livro', (order.itens || []).map(i => i.titulo_snapshot).join('; ').slice(0, 260)],
+            ['Cobrado', repo.brl(cobrado)], ['Pago', repo.brl(pago)],
+            ['Comprador', pessoa(c.nome, c.whatsapp, c.email)],
+            ['Pedido', order.id], ['Pagamento MP', pag.provider_payment_id],
+          ],
+          fazer: 'Conferir no Mercado Pago e falar com o comprador: entregar a diferença ou estornar.',
+        }));
         return null;
       }
       repo.Payments.atualizarPorOrder(orderId, { status: 'aprovado', provider_payment_id: pag.provider_payment_id || '', metodo: pag.metodo || '', raw: JSON.stringify(pag.raw || {}) });
@@ -171,7 +226,7 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
       if (order.tem_impresso) await abrirImpressos(order);
       await entregarBonus(order);
       registrarNoCRM(order);
-      await alerta(order, `💰 Venda na Livraria: ${(order.cliente || {}).nome || 'cliente'} — ${repo.brl(order.valor_total)} (${(order.itens || []).map(i => i.titulo_snapshot + '/' + i.tipo).join(', ')}).`);
+      await alerta(order, avisoDeVenda(order, pag));
       return repo.Orders.obter(orderId);
     },
 

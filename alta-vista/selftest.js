@@ -200,7 +200,7 @@ async function rodar() {
     assert.equal(leads.json.leads.length, 1);
     assert.equal(leads.json.leads[0].nome, 'Helena Prado');
     assert.equal(leads.json.leads[0].utm.utm_source, 'teste');
-    assert.ok(alertas.some((a) => a.includes('Helena Prado')), 'alerta ao dono não saiu');
+    assert.ok(alertas.some((a) => a.includes('Helena Prado') && a.includes('helena@t.br') && a.includes('O QUE FAZER: Responder')), 'alerta ao dono não saiu');
   });
 
   await t('sem consentimento LGPD ou sem contato o pedido é recusado', async () => {
@@ -709,7 +709,7 @@ async function rodar() {
     await new Promise((x) => setTimeout(x, 50));
     const parc2 = db.prepare('SELECT * FROM parcelas WHERE id = ?').get(parcelas[1].id);
     assert.ok(parc2.status !== 'aprovado', 'valor divergente aprovou parcela');
-    assert.ok(alertas.some((a) => a.includes('DIVERGENTE')), 'divergência sem alerta ao dono');
+    assert.ok(alertas.some((a) => a.includes('DIVERGENTE') && a.includes('O QUE FAZER: Conferir')), 'divergência sem alerta ao dono');
   });
 
   await t('conciliação manual exige justificativa e quita o projeto (saldo zero)', async () => {

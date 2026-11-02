@@ -10,6 +10,23 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { montarAviso, pessoa } = require('./aviso');
+
+// O que o hóspede pediu, em uma linha, para o Augusto decidir sem abrir o Portal.
+function descreverPedidoHosp(p) {
+  const a = p.alteracao, e = p.evento, s = p.servico, m = p.manutencao;
+  if (a) return [a.novoCheckin && 'novo check-in ' + a.novoCheckin, a.novoCheckout && 'novo check-out ' + a.novoCheckout, a.novoImovel && 'novo imóvel ' + a.novoImovel, a.novoHospedes != null && a.novoHospedes + ' hóspedes'].filter(Boolean).join(', ');
+  if (e) return [e.data, e.convidados != null && e.convidados + ' convidados', e.descricao && e.descricao.slice(0, 200)].filter(Boolean).join(', ');
+  if (s) return [s.nome, s.data, s.horario, s.pessoas != null && s.pessoas + ' pessoas', s.observacoes && s.observacoes.slice(0, 200)].filter(Boolean).join(', ');
+  if (m) return [m.urgencia && 'urgência ' + m.urgencia, m.local, m.descricao && m.descricao.slice(0, 250)].filter(Boolean).join(', ');
+  return '';
+}
+const FAZER_PEDIDO_HOSP = {
+  alteracao: 'Conferir a disponibilidade na Stays e responder ao hóspede em Portal Staff > Pedidos de hóspedes.',
+  evento: 'Avaliar o evento e enviar o orçamento em Portal Staff > Pedidos de hóspedes.',
+  servico: 'Confirmar o serviço e o orçamento em Portal Staff > Pedidos de hóspedes.',
+  manutencao: 'Acionar o técnico e combinar o horário com o hóspede.',
+};
 
 module.exports.montar = function montar(app, deps) {
   const { loginBloqueado, registraFalha, limpaFalhas, normFone, lerHospedes, salvarHospedes, setCookieHospede, semSenhaHosp, HOSP_COOKIE, requireHospede, stays, semAcento, novoId, getStaysClientes, JWT_SECRET, AREA_HOSPEDE_URL, enviarEmail, escHtml, reservasDoHospede, lerPropInfo, resumoConta, lerConteudo, lerEvaKB, EVA_KB_BUDGET, registrarUsoEva, lerPedidosHosp, salvarPedidosHosp, lerServicos, lerFidConfig, SECOES_CONTEUDO, lerJSON, salvarJSON, alertaAugusto, appendJsonl, itensBillaveis, reciboHtml, lerAvaliacoes, salvarAvaliacoes, hojeISO, codigoDoHospede, lerIndicacoes, salvarIndicacoes, infoPropriedade, RAIZ } = deps;
@@ -432,7 +449,18 @@ app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
     // Unificação: pedido de manutenção do hóspede também abre um CHAMADO no hub de manutenção.
     if (tipo === 'manutencao') { const ch = criarChamadoDePedidoHosp(pedido, r); if (ch) { pedido.chamadoId = ch.id; salvarPedidosHosp(pedidos); } }
     const rotuloTipo = tipo === 'evento' ? 'EVENTO' : tipo === 'servico' ? 'SERVICO (' + servico.nome + ')' : tipo === 'manutencao' ? 'MANUTENCAO' : 'alteracao de reserva';
-    alertaAugusto(`Novo pedido de ${rotuloTipo} de ${pedido.hospedeNome || 'hospede'}${reservaId ? ' - reserva ' + reservaId : ''}${r && r.imovel ? ' (' + r.imovel + ')' : ''}. Veja no Portal Staff > Pedidos de hospedes.`).catch(() => { });
+    alertaAugusto(montarAviso({
+      titulo: `🛎️ Hóspede: pedido de ${rotuloTipo}`,
+      campos: [
+        ['Pedido', descreverPedidoHosp(pedido)],
+        ['Mensagem', pedido.mensagem.slice(0, 250)],
+        ['Hóspede', pessoa(pedido.hospedeNome, req.hospede.telefone, req.hospede.email)],
+        ['Imóvel', r && (r.imovelTitulo || r.imovel)],
+        ['Estadia', r && r.checkin ? `${r.checkin} a ${r.checkout}` : ''],
+        ['Reserva', reservaId],
+      ],
+      fazer: FAZER_PEDIDO_HOSP[tipo],
+    })).catch(() => { });
     res.json({ ok: true, pedido });
   } catch (e) { console.error('[hospede pedido]', e.message); res.status(502).json({ erro: 'Falha ao registrar o pedido. Tente novamente.' }); }
 });
@@ -475,7 +503,18 @@ app.post('/hospede/api/precheckin', requireHospede, async (req, res) => {
         criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
       };
       pedidos.unshift(pedido); salvarPedidosHosp(pedidos);
-      alertaAugusto(`Check-in online de ${pedido.hospedeNome} tem itens com custo (${itens.resumo}) - reserva ${r.id}${r.imovel ? ' (' + r.imovel + ')' : ''}. Veja em Pedidos de hospedes.`).catch(() => { });
+      alertaAugusto(montarAviso({
+        titulo: '🧾 Hóspede: check-in online com itens a cobrar',
+        campos: [
+          ['Itens', itens.resumo],
+          ['Hóspede', pessoa(pedido.hospedeNome, req.hospede.telefone, req.hospede.email)],
+          ['Imóvel', r.imovelTitulo || r.imovel],
+          ['Estadia', `${r.checkin} a ${r.checkout}`],
+          ['Chegada', horario],
+          ['Reserva', r.id],
+        ],
+        fazer: 'Orçar os itens e responder em Portal Staff > Pedidos de hóspedes.',
+      })).catch(() => { });
     }
     res.json({ ok: true, temItemCobravel: !!itens.resumo });
   } catch (e) { console.error('[hospede precheckin]', e.message); res.status(502).json({ erro: 'Falha ao registrar o check-in. Tente novamente.' }); }
@@ -511,7 +550,16 @@ app.post('/hospede/api/avaliacao', requireHospede, async (req, res) => {
     const av = { id: novoId(), hospedeId: req.hospede.id, hospedeNome: req.hospede.nome || '', staysClientId: req.hospede.staysClientId || '', reservaId, imovel: r.imovel, imovelTitulo: r.imovelTitulo, nota, comentario: String(d.comentario || '').slice(0, 1500), criadoEm: new Date().toISOString() };
     avaliacoes.unshift(av);
     salvarAvaliacoes(avaliacoes);
-    alertaAugusto(`Nova AVALIACAO de ${av.hospedeNome || 'hospede'}: ${nota}/5${r.imovel ? ' (' + r.imovel + ')' : ''}${av.comentario ? ' - "' + av.comentario.slice(0, 120) + '"' : ''}.`).catch(() => { });
+    alertaAugusto(montarAviso({
+      titulo: `${nota <= 3 ? '⚠️' : '⭐'} Hóspede: avaliação ${nota}/5`,
+      campos: [
+        ['Comentário', av.comentario.slice(0, 400)],
+        ['Hóspede', pessoa(av.hospedeNome, req.hospede.telefone, req.hospede.email)],
+        ['Imóvel', r.imovelTitulo || r.imovel],
+        ['Estadia', r.checkin ? `${r.checkin} a ${r.checkout}` : ''],
+      ],
+      fazer: nota <= 3 ? 'Falar com o hóspede e tratar o problema relatado.' : 'Nada: avaliação registrada.',
+    })).catch(() => { });
     res.json({ ok: true, avaliacao: av });
   } catch (e) { console.error('[hospede avaliacao]', e.message); res.status(502).json({ erro: 'Falha ao registrar a avaliação.' }); }
 });
@@ -546,7 +594,15 @@ app.post('/hospede/api/indicacao', requireHospede, (req, res) => {
   const ind = { id: novoId(), hospedeId: req.hospede.id, hospedeNome: req.hospede.nome || '', indicadoNome: nome, indicadoContato: contato.slice(0, 200), mensagem: String(d.mensagem || '').slice(0, 1000), criadoEm: new Date().toISOString() };
   indicacoes.unshift(ind);
   salvarIndicacoes(indicacoes);
-  alertaAugusto(`Nova INDICACAO de ${ind.hospedeNome || 'hospede'}: ${nome} (${ind.indicadoContato}). Combinar o credito de indicacao.`).catch(() => { });
+  alertaAugusto(montarAviso({
+    titulo: '🤝 Hóspede: nova indicação',
+    campos: [
+      ['Indicado', pessoa(nome, ind.indicadoContato)],
+      ['Mensagem', ind.mensagem.slice(0, 250)],
+      ['Quem indicou', pessoa(ind.hospedeNome, req.hospede.telefone, req.hospede.email)],
+    ],
+    fazer: 'Falar com o indicado e combinar o crédito de indicação com quem indicou.',
+  })).catch(() => { });
   res.json({ ok: true });
 });
 

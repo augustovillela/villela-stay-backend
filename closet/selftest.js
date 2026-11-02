@@ -328,6 +328,8 @@ async function rodar() {
     reserva = r.json.reserva;
     assert.equal(reserva.status, 'aguardando_pagamento');
     assert.ok(/^CC-/.test(reserva.codigo), 'código ilegível: ' + reserva.codigo);
+    const aviso = alertas.find((a) => a.includes(reserva.codigo));
+    assert.ok(aviso && aviso.includes('Júlia Reis') && aviso.includes('julia@t.br') && aviso.includes('O QUE FAZER:'), 'o aviso diz quem reservou e o que fazer: ' + aviso);
     const d = await req('GET', `/closet/api/pecas/${vestido}/disponibilidade?de=${dias(10)}&ate=${dias(12)}`);
     assert.equal(d.json.periodo.disponivel, false, 'agenda não foi segurada na criação');
   });
@@ -634,6 +636,8 @@ async function rodar() {
     const d = await req('POST', '/closet/api/app/reservas/' + nova.id + '/disputa', { como: 'dona', corpo: { motivo: 'dano', descricao: 'mancha de vinho na barra', valor_pedido_centavos: 15000 } });
     assert.equal(d.st, 200, d.texto.slice(0, 160));
     assert.equal(db.prepare('SELECT status FROM bookings WHERE id = ?').get(nova.id).status, 'em_disputa');
+    const avisoDisputa = alertas.find((a) => a.includes('disputa aberta') && a.includes(nova.codigo));
+    assert.ok(avisoDisputa && avisoDisputa.includes('Júlia Reis') && avisoDisputa.includes('mancha de vinho') && avisoDisputa.includes('O QUE FAZER:'), 'o aviso da disputa traz as partes e o conserto: ' + avisoDisputa);
 
     const lista = await req('GET', '/staff/api/closet/disputas');
     assert.ok(lista.json.disputas.length >= 1);

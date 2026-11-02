@@ -135,7 +135,7 @@ async function executarAcao(tenantId, autom, disparo, deps) {
   const empresa = (() => { try { return repo.obterTenant(tenantId).nome; } catch { return ''; } })();
   const cabecalho = `🤖 Automação "${autom.nome}" (${empresa}): ${disparo.resumo}.`;
   if (autom.acao === 'notificar_augusto') {
-    if (deps.notificar) await Promise.resolve(deps.notificar(`${cabecalho}\n${linha}`)).catch(() => {});
+    if (deps.notificar) await Promise.resolve(deps.notificar(require('./avisos').automacaoDisparou(autom.nome, empresa, disparo))).catch(() => {});
     return 'notificado';
   }
   if (autom.acao === 'alerta_email') {

@@ -12,6 +12,7 @@ const repo = require('./repo');
 const ct = require('./repo-conteudo');
 const af = require('./repo-afiliados');
 const com = require('./emails'); // F8: e-mails, notificações internas, webhook de saída
+const { montarAviso, pessoa, reais } = require('../nucleo/aviso');
 
 let _mpFetch = null;
 let _notificar = async () => {};
@@ -21,6 +22,65 @@ function configurar({ mpFetch, notificar }) {
 }
 const ativo = () => !!_mpFetch;
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
+
+// ---- avisos ao dono: consulta que falha não derruba o webhook, o campo some da mensagem ----
+const _usuario = (id) => { try { return repo.Usuarios.porId(id) || {}; } catch (_) { return {}; } };
+const _contato = (u, id = '') => pessoa(u.nome, u.email, u.telefone) || id;
+const _ehDono = (u) => s(u.email).toLowerCase() === (process.env.MUSIC_DONO_EMAIL || 'villelastay@gmail.com').toLowerCase();
+
+function _avisoVenda(order, pay) {
+  const comprador = _usuario(order.user_id);
+  const produtor = _usuario(order.producer_id);
+  const afiliado = order.affiliate_user_id ? _usuario(order.affiliate_user_id) : null;
+  return montarAviso({
+    titulo: '💰 Villela Academy: venda paga',
+    campos: [
+      ['Produto', order.produto_titulo],
+      ['Valor', reais(order.valor_centavos) + (pay && pay.payment_method_id ? ` (${s(pay.payment_method_id, 30)})` : '')],
+      ['Comissão da plataforma', reais(order.comissao_plataforma_centavos)],
+      ['Líquido do produtor', reais(order.liquido_produtor_centavos)],
+      ['Comprador', _contato(comprador, order.user_id)],
+      ['Produtor', _ehDono(produtor) ? '' : _contato(produtor, order.producer_id)],
+      ['Afiliado', afiliado ? `${_contato(afiliado, order.affiliate_user_id)} (comissão ${reais(order.comissao_afiliado_centavos)})` : ''],
+      ['Id MP', pay && pay.id],
+      ['Pedido', order.id],
+    ],
+    fazer: comprador.email ? 'Nada: acesso liberado automaticamente.' : 'Conferir o pedido em Portal Staff > Villela Academy: o comprador não foi encontrado e o acesso não foi liberado.',
+  });
+}
+
+function _avisoReembolso(order, { motivo, quem, mp_refund_id } = {}) {
+  const chargeback = /chargeback/i.test(s(motivo));
+  const automatico = 'Acesso, certificado e comissão de afiliado já foram revogados automaticamente.';
+  return montarAviso({
+    titulo: chargeback ? '↩️ Villela Academy: reembolso por CHARGEBACK' : '↩️ Villela Academy: reembolso',
+    campos: [
+      ['Produto', order.produto_titulo],
+      ['Valor', reais(order.valor_centavos)],
+      ['Comprador', _contato(_usuario(order.user_id), order.user_id)],
+      ['Motivo', s(motivo, 200)],
+      ['Feito por', s(quem, 80)],
+      ['Id MP', order.mp_payment_id],
+      ['Estorno MP', mp_refund_id],
+      ['Pedido', order.id],
+    ],
+    fazer: chargeback
+      ? `Conferir a contestação no Mercado Pago e responder lá, se for o caso. ${automatico}`
+      : `Conferir o estorno no Mercado Pago. ${automatico}`,
+  });
+}
+
+const _avisoAssinatura = (sub, titulo, fazer, extras = []) => montarAviso({
+  titulo,
+  campos: [
+    ['Assinante', _contato(_usuario(sub.user_id), sub.user_id)],
+    ['Produto', sub.produto_titulo],
+    ['Valor', reais(sub.valor_centavos) + '/mês'],
+    ...extras,
+    ['Preapproval MP', sub.mp_preapproval_id],
+  ],
+  fazer,
+});
 
 const Pedidos = {
   obter(id) { return db.prepare('SELECT * FROM orders WHERE id = ?').get(id) || null; },
@@ -150,7 +210,7 @@ function aplicarPagamento(pay) {
       af.Comissoes.criarDoPedido(order); // comissão do afiliado (se houver atribuição)
     });
     repo.Auditoria.registrar({ quem: 'mercadopago', acao: 'pedido.pago', entidade: 'orders', entidade_id: order.id, detalhe: `R$ ${(order.valor_centavos / 100).toFixed(2)}` });
-    _notificar(`💰 Villela Academy: venda paga — "${order.produto_titulo}" (R$ ${(order.valor_centavos / 100).toFixed(2)}). Comissão da plataforma: R$ ${(order.comissao_plataforma_centavos / 100).toFixed(2)}.`).catch(() => {});
+    _notificar(_avisoVenda(order, pay)).catch(() => {});
     // F8: comprador + produtor (e-mail e sininho) + webhook de saída
     const comprador = repo.Usuarios.porId(order.user_id);
     const produtor = repo.Usuarios.porId(order.producer_id);
@@ -189,7 +249,7 @@ function aplicarReembolso(order, { motivo, quem, mp_refund_id } = {}) {
     af.Comissoes.cancelarDoPedido(order.id); // reembolso/chargeback bloqueia a comissão
   });
   repo.Auditoria.registrar({ quem: s(quem, 80), acao: 'pedido.reembolsar', entidade: 'orders', entidade_id: order.id, detalhe: s(motivo, 200) });
-  _notificar(`↩️ Villela Academy: reembolso — "${order.produto_titulo}" (R$ ${(order.valor_centavos / 100).toFixed(2)}). Acesso revogado.`).catch(() => {});
+  _notificar(_avisoReembolso(order, { motivo, quem, mp_refund_id })).catch(() => {});
   const comprador = repo.Usuarios.porId(order.user_id);
   if (comprador) {
     com.Emails.reembolso(comprador, order);
@@ -277,8 +337,8 @@ function aplicarPreapproval(pre) {
   if (!novo || sub.status === novo) return { resultado: 'sem-acao' };
   Assinaturas.mudarStatus(sub, novo);
   repo.Auditoria.registrar({ quem: 'mercadopago', acao: 'assinatura.' + novo, entidade: 'subscriptions', entidade_id: sub.id, detalhe: sub.produto_titulo });
-  if (novo === 'ativa') _notificar(`🔁 Villela Academy: assinatura ATIVA — "${sub.produto_titulo}" (R$ ${(sub.valor_centavos / 100).toFixed(2)}/mês).`).catch(() => {});
-  if (novo === 'pausada') _notificar(`⚠️ Villela Academy: assinatura PAUSADA (inadimplência?) — "${sub.produto_titulo}".`).catch(() => {});
+  if (novo === 'ativa') _notificar(_avisoAssinatura(sub, '🔁 Villela Academy: assinatura ATIVA', 'Nada: acesso liberado automaticamente.')).catch(() => {});
+  if (novo === 'pausada') _notificar(_avisoAssinatura(sub, '⚠️ Villela Academy: assinatura PAUSADA (inadimplência?)', 'Conferir o motivo no Mercado Pago e falar com o assinante pelo contato acima. O acesso fica suspenso e volta sozinho quando uma cobrança for aprovada.')).catch(() => {});
   const assinante = repo.Usuarios.porId(sub.user_id);
   if (assinante) {
     com.Emails.assinatura(assinante, sub, novo, com.base());
@@ -320,7 +380,11 @@ async function cancelarAssinatura(subId, quem, { exigirProvedor = false } = {}) 
   }
   Assinaturas.mudarStatus(sub, 'cancelada');
   repo.Auditoria.registrar({ quem: s(quem, 80), acao: 'assinatura.cancelar', entidade: 'subscriptions', entidade_id: sub.id, detalhe: sub.produto_titulo });
-  _notificar(`🔕 Villela Academy: assinatura cancelada — "${sub.produto_titulo}".`).catch(() => {});
+  _notificar(_avisoAssinatura(sub, '🔕 Villela Academy: assinatura cancelada',
+    sub.mp_preapproval_id && !ativo()
+      ? `Cancelar também no Mercado Pago (preapproval ${sub.mp_preapproval_id}): o pagamento online está desligado aqui e a cobrança pode continuar.`
+      : 'Nada a fazer: acesso encerrado automaticamente. Para tentar recuperar o assinante, use o contato acima.',
+    [['Cancelada por', s(quem, 80)]])).catch(() => {});
   const assinante = repo.Usuarios.porId(sub.user_id);
   if (assinante) {
     com.Emails.assinatura(assinante, sub, 'cancelada', com.base());

@@ -13,6 +13,7 @@ const com = require('./emails'); // F8
 // mudou é o escopo do cookie (path /academy → /), com limpeza do escopo
 // antigo em toda emissão. Detalhe e armadilha: nucleo/sessao-academy.js.
 const sessaoAcademy = require('../nucleo/sessao-academy');
+const { montarAviso, pessoa } = require('../nucleo/aviso');
 
 const COOKIE = sessaoAcademy.COOKIE;
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -206,7 +207,16 @@ function registrarRotasCliente(app, { jwtSecret }) {
     const canc = await billing.cancelarAssinaturasDoTitular(uid, 'lgpd:' + uid);
     if (canc.falhas.length) {
       aud(req, 'lgpd.excluir.falha', 'users', uid, s('assinatura não cancelada no provedor: ' + canc.falhas.map(f => `${f.id} (${f.erro})`).join('; '), 780));
-      billing.avisarDono(`🚨 Villela Academy: EXCLUSÃO DE CONTA NÃO CONCLUÍDA — ${email} pediu a exclusão, mas ${canc.falhas.length} assinatura(s) não puderam ser canceladas no Mercado Pago (${canc.falhas.map(f => `"${f.produto}"`).join(', ')}). A conta continua ativa. Cancele a assinatura no painel e refaça a exclusão.`);
+      billing.avisarDono(montarAviso({
+        titulo: '🚨 Villela Academy: EXCLUSÃO DE CONTA NÃO CONCLUÍDA',
+        campos: [
+          ['Titular', pessoa(req.usuario.nome, email, req.usuario.telefone)],
+          ['Assinaturas não canceladas no Mercado Pago', canc.falhas.map(f => `"${f.produto}"`).join(', ')],
+          ['Erro', s(canc.falhas[0].erro, 160)],
+          ['Situação', 'a conta continua ativa'],
+        ],
+        fazer: 'Cancelar a assinatura no painel do Mercado Pago e pedir ao titular que refaça a exclusão: ela exige a senha dele.',
+      }));
       return res.status(502).json({ erro: 'Não foi possível cancelar a sua assinatura no Mercado Pago agora, e por isso a conta NÃO foi excluída (para a cobrança não continuar numa conta sem acesso). Tente de novo em alguns minutos; a equipe já foi avisada.',
         assinaturas_pendentes: canc.falhas.length });
     }
@@ -216,7 +226,15 @@ function registrarRotasCliente(app, { jwtSecret }) {
       // a transação foi desfeita: nada saiu pela metade. Fica o registro para o dono, e o titular sabe que não concluiu.
       try { console.error('[academy] LGPD: exclusão da conta %s não concluída (%s)', uid, (e && (e.code || e.message)) || 'erro'); } catch (_) { /* nem o log */ }
       aud(req, 'lgpd.excluir.falha', 'users', uid, s('anonimização não concluída: ' + ((e && e.message) || 'erro'), 780));
-      billing.avisarDono(`🚨 Villela Academy: EXCLUSÃO DE CONTA NÃO CONCLUÍDA — ${email} pediu a exclusão e a anonimização falhou (${s((e && e.message) || 'erro', 160)}). Nada foi apagado.${canc.canceladas.length ? ' As assinaturas dele JÁ foram canceladas.' : ''}`);
+      billing.avisarDono(montarAviso({
+        titulo: '🚨 Villela Academy: EXCLUSÃO DE CONTA NÃO CONCLUÍDA',
+        campos: [
+          ['Titular', pessoa(req.usuario.nome, email, req.usuario.telefone)],
+          ['Erro na anonimização', s((e && e.message) || 'erro', 160)],
+          ['Situação', 'nada foi apagado' + (canc.canceladas.length ? '; as assinaturas dele JÁ foram canceladas' : '')],
+        ],
+        fazer: 'Ver o erro nos logs do servidor e pedir ao titular que refaça a exclusão: ela exige a senha dele.',
+      }));
       return res.status(500).json({ erro: 'Não foi possível concluir a exclusão agora. Nada foi apagado' + (canc.canceladas.length ? ' (a sua assinatura já foi cancelada)' : '') + '. Tente de novo em alguns minutos; a equipe já foi avisada.' });
     }
     sessaoAcademy.limpar(res);

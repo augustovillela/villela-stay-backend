@@ -231,7 +231,7 @@ const Recargas = {
     const c = Carteira.creditar(r.tenant_id, r.valor_centavos, { ref: 'mp:' + String(pay.id), detalhe: { recarga_id: r.id, mp_payment_id: String(pay.id) }, por: 'mercadopago' });
     if (!c.duplicado) {
       db.prepare("UPDATE ia_recargas SET status = 'paga', mp_payment_id = ?, pago_em = ? WHERE id = ?").run(String(pay.id), nowISO(), r.id);
-      Promise.resolve(_dep.notificar(`💳 Villela Legal: recarga de IA de ${brl(r.valor_centavos)} confirmada (escritório ${r.tenant_id}).`)).catch(() => {});
+      Promise.resolve(_dep.notificar(require('./avisos').recargaConfirmada(r.tenant_id, r.valor_centavos, String(pay.id)))).catch(() => {});
     }
     return { ok: true, duplicado: c.duplicado, tenant_id: r.tenant_id, valor_centavos: r.valor_centavos };
   },

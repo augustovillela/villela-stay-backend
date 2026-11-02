@@ -14,6 +14,7 @@
 'use strict';
 const { db, nowISO, novoId, j } = require('./db');
 const repo = require('./repo');
+const avisos = require('./avisos');
 
 const s = repo.s;
 let _mpFetch = null;
@@ -100,12 +101,12 @@ function aplicarPreapproval(tenantId, preapprovalId, statusMP) {
     db.prepare("UPDATE subscriptions SET status = 'ativa', atualizado_em = ? WHERE id = ?").run(agora, sub.id);
     db.prepare("UPDATE tenants SET status = 'ativa', atualizado_em = ? WHERE id = ?").run(agora, String(tenantId));
     repo.auditar(tenantId, { id: 'mercadopago', nome: 'Mercado Pago' }, 'billing.assinatura_ativa', 'subscriptions', sub.id, {}, 'webhook');
-    _notificar(`💰 Villela Projects: assinatura ATIVADA — tenant ${tenantId}.`);
+    _notificar(avisos.assinaturaAtivada(tenantId, sub));
   } else if (statusMP === 'cancelled' || statusMP === 'paused') {
     db.prepare("UPDATE subscriptions SET status = 'cancelada', fim = ?, atualizado_em = ? WHERE id = ?").run(agora, agora, sub.id);
     if (sub.status === 'ativa') {
       db.prepare("UPDATE tenants SET status = 'suspensa', atualizado_em = ? WHERE id = ?").run(agora, String(tenantId));
-      _notificar(`⚠️ Villela Projects: assinatura ${statusMP === 'paused' ? 'PAUSADA (inadimplência?)' : 'CANCELADA'} — tenant ${tenantId} suspenso.`);
+      _notificar(avisos.assinaturaEncerrada(tenantId, statusMP, sub));
     }
     repo.auditar(tenantId, { id: 'mercadopago', nome: 'Mercado Pago' }, 'billing.assinatura_encerrada', 'subscriptions', sub.id, { statusMP }, 'webhook');
   }
@@ -141,7 +142,7 @@ async function processarWebhook(body, query) {
       db.prepare(`INSERT INTO payments (id, tenant_id, mp_payment_id, valor_centavos, status, detalhe, criado_em) VALUES (?,?,?,?,?,?,?)
         ON CONFLICT (mp_payment_id) DO UPDATE SET status = excluded.status, detalhe = excluded.detalhe`)
         .run(novoId(), tenantId, String(id), Math.round(Number(pag.transaction_amount || 0) * 100), status, s(pag.status_detail, 120), nowISO());
-      if (status === 'aprovado') _notificar(`💰 Villela Projects: pagamento aprovado R$ ${Number(pag.transaction_amount || 0).toFixed(2)} — tenant ${tenantId}.`);
+      if (status === 'aprovado') _notificar(avisos.pagamentoAprovado(tenantId, pag.transaction_amount, id));
       return { ok: true };
     }
     return { ok: true, ignorado: tipo || 'tipo desconhecido' };
@@ -160,7 +161,7 @@ function receitaPlataforma() {
   // passado. Sem o piso, trial vencido ha semanas continuava entrando na lista e o Augusto
   // recebia o mesmo alerta todo dia (Smoke VPE, vencido em 22/07, avisando ate 13/08/2026).
   // Aqui nao ha rotina que aposente trial vencido, entao ele fica 'trial' para sempre.
-  const trials7 = db.prepare("SELECT id, nome, trial_expira_em FROM tenants WHERE status = 'trial' AND trial_expira_em >= ? AND trial_expira_em <= ? ORDER BY trial_expira_em")
+  const trials7 = db.prepare("SELECT id, nome, email_contato, trial_expira_em FROM tenants WHERE status = 'trial' AND trial_expira_em >= ? AND trial_expira_em <= ? ORDER BY trial_expira_em")
     .all(nowISO(), new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString());
   const assinaturas = db.prepare(`SELECT sb.tenant_id, sb.status, sb.mp_preapproval_id, p.nome plano, p.preco_centavos FROM subscriptions sb
     JOIN plans p ON p.id = sb.plan_id WHERE sb.status IN ('ativa','pendente') ORDER BY sb.criado_em DESC LIMIT 100`).all()
@@ -172,8 +173,7 @@ function receitaPlataforma() {
 async function rotinaBilling() {
   const r = receitaPlataforma();
   if (r.trials_expirando_7d.length) {
-    await _notificar(`🗂️ Villela Projects: ${r.trials_expirando_7d.length} trial(s) expirando em ≤7 dias: ` +
-      r.trials_expirando_7d.slice(0, 8).map(t => `${t.nome} (${String(t.trial_expira_em).slice(0, 10)})`).join(' · '));
+    await _notificar(avisos.trialsExpirando(r.trials_expirando_7d));
   }
   return r.trials_expirando_7d.length;
 }

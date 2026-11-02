@@ -39,6 +39,7 @@ const requireAdmin = (req, res, next) =>
   (req.user && req.user.papel === 'admin') ? next() : res.status(403).json({ erro: 'admin' });
 
 const emailsEnviados = [];
+const avisosDono = [];
 const app = express();
 app.use(express.json({ limit: '4mb' }));
 require('./index').montar(app, {
@@ -63,7 +64,7 @@ const fluxo = require('./fluxo').criarFluxo({
   emails: require('./emails'),
   enviarEmail: async (to, ass) => { emailsEnviados.push({ to, ass }); return true; },
   enviarWhatsApp: async () => true,
-  alertaAugusto: async () => {},
+  alertaAugusto: async (m) => { avisosDono.push(m); },
   urls,
 });
 const { PDF_DIR } = require('./db');
@@ -142,6 +143,62 @@ const pedidoNovo = (book) => repo.Orders.criar({
     assert.ok(r, 'devia ter confirmado');
     assert.strictEqual(r.status, 'pago');
     assert.strictEqual(r.entrega_digital, 'liberado');
+  });
+
+  console.log('aviso ao dono');
+
+  await testeAsync('venda de impresso avisa UMA vez: livro, valor, comprador, endereço e o que fazer', async () => {
+    const b = semearLivro();
+    repo.Books.atualizar(b.id, { preco_impresso: 8990 });
+    const o = repo.Orders.criar({
+      customer: { ...CLIENTE, whatsapp: '5561999990000' },
+      items: [{ book_id: b.id, tipo: 'impresso', quantidade: 2 }],
+      origem: 'teste',
+      endereco_entrega: { cep: '71680-000', logradouro: 'SMDB 29', numero: '1', complemento: 'Casa 2', bairro: 'Lago Sul' },
+    });
+    avisosDono.length = 0;
+    await fluxo.confirmarPagamento(o.id, { provider_payment_id: 'mp-imp', valor: o.valor_total, metodo: 'pix', raw: {} });
+    assert.strictEqual(avisosDono.length, 1, 'uma venda, um aviso: cada mensagem gasta cota do Make');
+    const m = avisosDono[0];
+    for (const trecho of [b.titulo, '(impresso)', '2x', 'R$', '(pix)', 'Comprador Um', '5561999990000',
+      'comprador@exemplo.test', 'SMDB 29, 1', 'Casa 2', 'Lago Sul', 'Brasília/DF', 'CEP 71680-000', 'O QUE FAZER: Enviar']) {
+      assert.ok(m.includes(trecho), 'faltou "' + trecho + '" em: ' + m);
+    }
+    assert.ok(!/undefined|null/.test(m), 'campo vazio vazou: ' + m);
+    assert.ok(m.length <= 880, 'não cabe no modelo: ' + m.length);
+  });
+
+  await testeAsync('venda de PDF diz que não há nada a fazer e não fala em envio', async () => {
+    const b = semearLivro();
+    const o = pedidoNovo(b);
+    avisosDono.length = 0;
+    await fluxo.confirmarPagamento(o.id, { provider_payment_id: 'mp-pdf-aviso', valor: PRECO_PDF, raw: {} });
+    assert.ok(/O QUE FAZER: Nada/.test(avisosDono[0]), avisosDono[0]);
+    assert.ok(!avisosDono[0].includes('Entregar em'), 'PDF não tem remessa: ' + avisosDono[0]);
+  });
+
+  await testeAsync('impresso sem endereço manda pedir o endereço em vez de inventar', async () => {
+    const b = semearLivro();
+    repo.Books.atualizar(b.id, { preco_impresso: 8990 });
+    const o = repo.Orders.criar({ customer: CLIENTE, items: [{ book_id: b.id, tipo: 'impresso', quantidade: 1 }], origem: 'teste', endereco_entrega: {} });
+    avisosDono.length = 0;
+    await fluxo.confirmarPagamento(o.id, { provider_payment_id: 'mp-sem-end', valor: o.valor_total, raw: {} });
+    assert.ok(avisosDono[0].includes('Pedir o endereço'), avisosDono[0]);
+  });
+
+  await testeAsync('título enorme não corta o que fazer nem passa do limite do modelo', async () => {
+    const { montarAviso, paraModelo } = require('../nucleo/aviso');
+    const m = montarAviso({ titulo: 'T', campos: [['Livro', 'x'.repeat(2000)]], fazer: 'Enviar o livro' });
+    assert.ok(m.length <= 880 && m.endsWith('O QUE FAZER: Enviar o livro'), m.slice(-40));
+    assert.strictEqual(paraModelo('linha um\nlinha dois.'), 'linha um | linha dois');
+  });
+
+  await testeAsync('pagamento divergente avisa o dono: pagaram e o livro não foi entregue', async () => {
+    const b = semearLivro();
+    const o = pedidoNovo(b);
+    avisosDono.length = 0;
+    await fluxo.confirmarPagamento(o.id, { provider_payment_id: 'mp-div', valor: 100, raw: {} });
+    assert.ok(avisosDono[0] && avisosDono[0].includes('DIVERGENTE') && avisosDono[0].includes('mp-div'), String(avisosDono[0]));
   });
 
   await testeAsync('pagamento com valor MENOR é recusado e nada é liberado', async () => {

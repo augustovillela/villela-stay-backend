@@ -12,6 +12,7 @@ const ct = require('./repo-conteudo');
 const billing = require('./billing');
 const lib = require('./liberacao'); // gotejamento: a promessa dita na compra
 const amostras = require('./amostras'); // amostras grátis: trechos públicos de vídeo
+const nucleoAviso = require('../nucleo/aviso');
 
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -1122,14 +1123,36 @@ function registrarPaginas(app, { notificar }) {
     if (!p || p.status !== 'publicado') return res.status(404).json({ erro: 'Produto não encontrado.' });
     const d = req.body || {};
     const id = repo.Leads.criar({ nome: d.nome, email: d.email, telefone: d.telefone, interesse: 'compra', mensagem: `Interesse no produto: ${p.titulo} (${p.id})` });
-    if (notificar) notificar(`🛒 Villela Academy: interesse de compra — ${s(d.nome, 60)} quer "${p.titulo}".`).catch(() => {});
+    const contatoInteresse = nucleoAviso.pessoa(s(d.email, 120), s(d.telefone, 40));
+    if (notificar) notificar(nucleoAviso.montarAviso({
+      titulo: '🛒 Villela Academy: interesse de compra',
+      campos: [
+        ['Produto', p.titulo],
+        ['Preço', nucleoAviso.reais(p.preco_promo_centavos || p.preco_centavos)],
+        ['Nome', s(d.nome, 120)],
+        ['Contato', contatoInteresse],
+        ['Mensagem', s(d.mensagem, 300)],
+      ],
+      fazer: contatoInteresse ? 'Responder em até 24h pelo contato acima.' : 'Veio sem contato: nada a responder. O lead fica em Portal Staff > Villela Academy.',
+    })).catch(() => {});
     res.json({ ok: true, id });
   }));
 
   // lead da landing
   app.post('/academy/api/lead', h(async (req, res) => {
     const id = repo.Leads.criar(req.body || {});
-    if (notificar) notificar(`📩 Villela Academy: novo lead — ${s((req.body || {}).nome, 60)} (${s((req.body || {}).interesse, 20)}).`).catch(() => {});
+    const dl = req.body || {};
+    const contatoLead = nucleoAviso.pessoa(s(dl.email, 120), s(dl.telefone, 40));
+    if (notificar) notificar(nucleoAviso.montarAviso({
+      titulo: '📩 Villela Academy: novo lead',
+      campos: [
+        ['Nome', s(dl.nome, 120)],
+        ['Contato', contatoLead],
+        ['Interesse', s(dl.interesse, 30)],
+        ['Mensagem', s(dl.mensagem, 300)],
+      ],
+      fazer: contatoLead ? 'Responder em até 24h pelo contato acima.' : 'Veio sem contato: nada a responder. O lead fica em Portal Staff > Villela Academy.',
+    })).catch(() => {});
     require('./emails').webhookSaida('lead.novo', { id, nome: s((req.body || {}).nome, 80), interesse: s((req.body || {}).interesse, 30) }).catch(() => {});
     res.json({ ok: true, id });
   }));

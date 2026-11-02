@@ -7,6 +7,7 @@
 const repo = require('./repo');
 const { recomendar } = require('./recomendador');
 const { Servicos, Combos, Leads, Propostas, s } = repo;
+const avisos = require('./avisos');
 
 // rate limit em memória: N pedidos por IP na janela (mesma política dos irmãos)
 const _janela = new Map();
@@ -50,10 +51,7 @@ function registrarRotasPublicas(app, { notificar = async () => {} } = {}) {
     try {
       const lead = Leads.criar(d);
       if (!lead.duplicado) {
-        const canais = [lead.whatsapp && 'WhatsApp ' + lead.whatsapp, lead.email].filter(Boolean).join(' · ');
-        notificar(`📐 Alta Vista 360 — novo pedido de orçamento\n${lead.nome} (${canais})\n` +
-          `${[lead.tipo_imovel, lead.finalidade, lead.cidade].filter(Boolean).join(' · ') || 'sem detalhes do imóvel'}` +
-          (lead.mensagem ? `\n"${lead.mensagem.slice(0, 300)}"` : '')).catch(() => {});
+        notificar(avisos.pedidoDeOrcamento(lead)).catch(() => {});
       }
       res.json({ ok: true });
     } catch (e) { res.status(400).json({ erro: e.message }); }
@@ -83,9 +81,7 @@ function registrarRotasPublicas(app, { notificar = async () => {} } = {}) {
         recomendacao: rec, pontuacao: rec.pontuacao,
       });
       if (!lead.duplicado) {
-        notificar(`📐 Alta Vista 360 — recomendador concluído\n${lead.nome} (${[lead.whatsapp, lead.email].filter(Boolean).join(' · ')})\n` +
-          `Recomendado: ${rec.pacote.nome} · estimado R$ ${(rec.preco_estimado_centavos / 100).toLocaleString('pt-BR')}` +
-          `${rec.analise_manual ? ' · ⚠️ análise manual' : ''} · pontuação ${rec.pontuacao}/10`).catch(() => {});
+        notificar(avisos.recomendadorConcluido(lead, rec)).catch(() => {});
       }
       res.json({ ok: true, recomendacao: rec });
     } catch (e) { res.status(400).json({ erro: e.message }); }
@@ -97,7 +93,7 @@ function registrarRotasPublicas(app, { notificar = async () => {} } = {}) {
     if (estourou(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Aguarde alguns minutos.' });
     try {
       const p = Propostas.aceitar(req.params.token, { nome: (req.body || {}).nome, ip });
-      notificar(`✅ Alta Vista 360 — proposta ACEITA por ${p.aceite.nome}: R$ ${(p.total_centavos / 100).toLocaleString('pt-BR')} (${p.itens.map((i) => i.nome).join(' + ')})`).catch(() => {});
+      notificar(avisos.propostaAceita(p)).catch(() => {});
       res.json({ ok: true, status: p.status, aceite_em: p.aceite.em });
     } catch (e) { res.status(400).json({ erro: e.message }); }
   });

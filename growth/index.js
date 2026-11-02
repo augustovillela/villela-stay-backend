@@ -155,7 +155,7 @@ function iniciarWorker(alertaAugusto) {
           const expirados = aprovacoes.expirarVencidos();
           const criticos = incidentes.abertos(50).filter(i => i.severidade === 'critica');
           if (criticos.length && typeof alertaAugusto === 'function') {
-            alertaAugusto(`🚨 Growth OS: ${criticos.length} incidente(s) crítico(s) aberto(s).`);
+            alertaAugusto(incidentes.avisoCriticos(criticos));
           }
           void travados; void expirados;
         } catch (_) { /* higiene é melhor esforço */ }

@@ -4230,8 +4230,13 @@ testeAsync('cobrança: trial vence no dia SEGUINTE ao prometido, não no própri
   assert.strictEqual(repo.tenantPorId(contaD.id).status, 'trial',
     'a avaliação foi encerrada no último dia prometido');
   repo.atualizarTenant(contaD.id, { trial_ate: '2020-01-01' });
+  const avisos = [];
+  billing.configurar({ notificar: (m) => { avisos.push(m); } });
   const r = billing.cicloDeVida();
+  billing.configurar({ notificar: async () => {} });
   assert.ok(r.trialsVencidos.includes(contaD.slug), 'trial vencido não foi encerrado');
+  assert.ok(avisos.some(m => m.includes(repo.tenantPorId(contaD.id).nome) && m.includes('O QUE FAZER')),
+    'o aviso de cobrança não diz quem nem o que fazer: ' + avisos.join(' / '));
   assert.strictEqual(repo.tenantPorId(contaD.id).status, 'inadimplente');
 });
 

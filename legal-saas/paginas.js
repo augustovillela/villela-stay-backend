@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
 const repo = require('./repo');
+const avisos = require('./avisos');
 
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 });
@@ -534,7 +535,7 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
   // lead da landing
   app.post('/juridico/api/lead', h(async (req, res) => {
     const id = repo.Leads.criar(req.body || {});
-    if (notificar) notificar(`📩 Villela Legal SaaS: novo lead — ${s((req.body || {}).nome, 60)} (${s((req.body || {}).escritorio, 60)}).`).catch(() => {});
+    if (notificar) notificar(avisos.novoLead(req.body || {})).catch(() => {});
     res.json({ ok: true, id });
   }));
 
@@ -553,7 +554,7 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
          <p><a href="${url}">Baixar o guia (PDF)</a> — o link vale por 7 dias.</p>
          <p>Quando quiser ver o método funcionando de verdade, teste o Villela Legal grátis por 14 dias: <a href="${proto}://${req.get('host')}/juridico">${req.get('host')}/juridico</a>.</p>`).catch(() => {});
     }
-    if (notificar) notificar(`📘 Villela Legal SaaS: lead do guia visual — ${s(d.nome, 60)} (${email}).`).catch(() => {});
+    if (notificar) notificar(avisos.leadDoGuia(s(d.nome, 60), email)).catch(() => {});
     res.json({ ok: true, url });
   }));
 
@@ -589,7 +590,7 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
     if (enviarEmail) {
       enviarEmail(email, 'Villela Legal — acesse sua conta', `<p>Olá! Sua conta <b>${esc(t.nome)}</b> foi criada.</p><p>Defina sua senha e acesse: <a href="${link}">${link}</a></p><p>Você está no plano <b>${esc(t.plano ? t.plano.nome : '')}</b>.</p>`).catch(() => {});
     }
-    if (notificar) notificar(`🎉 Villela Legal SaaS: novo escritório — ${esc(t.nome)} (${email}).`).catch(() => {});
+    if (notificar) notificar(avisos.novoEscritorio(t)).catch(() => {});
     // em produção o link vai só por e-mail; em dev devolvemos p/ facilitar teste
     res.json({ ok: true, tenant_id: t.id, email, link_setup: process.env.NODE_ENV === 'development' ? link : undefined });
   }));

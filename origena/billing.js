@@ -36,6 +36,7 @@ const creditos = require('./creditos');
 const tenancy = require('./tenancy');
 const { erro } = require('./erros');
 const { auditar } = require('./repo');
+const { montarAviso, pessoa, reais: brl } = require('../nucleo/aviso');
 
 let _mpFetch = null;
 let _alerta = async () => {};
@@ -248,6 +249,27 @@ async function renovarCiclo(t, familyId) {
   return linha;
 }
 
+/**
+ * Família e dono para o aviso ao Augusto. Roda dentro da transação do pagamento:
+ * erro no Postgres abortaria a transação inteira, daí o savepoint. O aviso nunca
+ * pode custar o pagamento.
+ */
+async function camposDaFamilia(t, familyId) {
+  try {
+    await t.q('SAVEPOINT aviso_familia');
+    const f = await t.uma(
+      `SELECT f.nome AS familia, u.nome, u.email FROM families f
+         LEFT JOIN family_memberships m ON m.family_id = f.id AND m.papel = 'OWNER' AND m.status = 'ativo'
+         LEFT JOIN users u ON u.id = m.user_id
+        WHERE f.id = $1 ORDER BY m.created_at LIMIT 1`, [familyId]);
+    await t.q('RELEASE SAVEPOINT aviso_familia');
+    return f ? [['Família', f.familia], ['Responsável', pessoa(f.nome, f.email)]] : [['Família', familyId]];
+  } catch (_) {
+    try { await t.q('ROLLBACK TO SAVEPOINT aviso_familia'); } catch (_e) { /* já fora da transação */ }
+    return [['Família', familyId]];
+  }
+}
+
 /** Cancelar vale até o FIM do ciclo pago — ninguém perde o que já pagou (§122). */
 async function cancelarAssinatura(t, { familyId, userId }) {
   const sub = await t.uma(
@@ -263,7 +285,11 @@ async function cancelarAssinatura(t, { familyId, userId }) {
         body: JSON.stringify({ status: 'cancelled' }) });
     } catch (e) {
       console.error('[origena/billing] MP recusou o cancelamento:', e.message);
-      await _alerta(`⚠️ Origena: cancelar a assinatura ${sub.id} no Mercado Pago falhou — ${e.message}`);
+      await _alerta(montarAviso({
+        titulo: '⚠️ Origena: cancelar a assinatura no Mercado Pago falhou',
+        campos: [...await camposDaFamilia(t, familyId), ['Assinatura', sub.id], ['Preapproval MP', sub.gateway_ref], ['Erro', e.message]],
+        fazer: 'Cancelar este preapproval direto no painel do Mercado Pago para o cliente não ser cobrado de novo: aqui a assinatura já consta cancelada.',
+      }));
     }
   }
   await auditar({ familyId, atorUserId: userId, acao: 'assinatura.cancelada',
@@ -295,7 +321,11 @@ async function webhook(body = {}, query = {}) {
     return { ok: true, ignorado: 'tipo ' + tipo };
   } catch (e) {
     console.error('[origena/billing] webhook falhou:', e.message);
-    await _alerta(`⚠️ Origena: webhook do Mercado Pago falhou (${tipo} ${id}) — ${e.message}`);
+    await _alerta(montarAviso({
+      titulo: '⚠️ Origena: webhook do Mercado Pago falhou',
+      campos: [['Tipo', tipo], ['Id no MP', id], ['Erro', e.message]],
+      fazer: 'Consultar este id no painel do Mercado Pago. Se o pagamento estiver aprovado e o pedido seguir aguardando, destravar o pedido no Portal Staff, Origena.',
+    }));
     return { ok: false, erro: e.message };
   }
 }
@@ -319,12 +349,20 @@ async function webhookPagamento(id) {
     }
     // Pagamento de R$ 1 não libera pedido de R$ 200.
     if (centavos < o.total_centavos) {
-      await _alerta(`⚠️ Origena: pagamento ${id} de R$ ${reais(centavos).toFixed(2)} não cobre o pedido ${o.codigo}.`);
+      await _alerta(montarAviso({
+        titulo: '⚠️ Origena: pagamento não cobre o pedido',
+        campos: [...await camposDaFamilia(t, r.familyId), ['Pedido', o.codigo], ['Compra', o.descricao], ['Pago', brl(centavos)], ['Valor do pedido', brl(o.total_centavos)], ['Pagamento MP', id]],
+        fazer: 'Contatar o responsável para cobrar a diferença ou devolver o pagamento no Mercado Pago: o pedido NÃO foi liberado.',
+      }));
       return { ok: false, erro: 'valor menor que o pedido' };
     }
     const res = await aplicarPagamento(t, { orderId: o.id, gatewayRef: String(pago.id) });
     if (res.pedido) {
-      await _alerta(`💚 Origena: pedido ${res.pedido.codigo} pago — R$ ${reais(res.pedido.total_centavos).toFixed(2)}.`);
+      await _alerta(montarAviso({
+        titulo: '💚 Origena: pedido pago',
+        campos: [...await camposDaFamilia(t, r.familyId), ['Pedido', res.pedido.codigo], ['Compra', res.pedido.descricao], ['Valor', brl(res.pedido.total_centavos)]],
+        fazer: `Nada: ${res.pedido.tipo === 'creditos' ? 'créditos lançados' : 'assinatura ativada'} automaticamente.`,
+      }));
     }
     return { ok: true, ...res };
   });
@@ -342,7 +380,13 @@ async function webhookAssinatura(id) {
   return tenancy.comEscopo(r.familyId, async (t) => {
     if (novo === 'ativa') {
       const res = await aplicarPagamento(t, { orderId: r.orderId, gatewayRef: id });
-      if (res.pedido) await _alerta(`💚 Origena: assinatura ${res.pedido.descricao} ativada.`);
+      if (res.pedido) {
+        await _alerta(montarAviso({
+          titulo: '💚 Origena: assinatura ativada',
+          campos: [...await camposDaFamilia(t, r.familyId), ['Plano', res.pedido.descricao], ['Valor', `${brl(res.pedido.total_centavos)}/${res.pedido.ciclo === 'anual' ? 'ano' : 'mês'}`], ['Pedido', res.pedido.codigo]],
+          fazer: 'Nada: assinatura ativada automaticamente.',
+        }));
+      }
       return { ok: true, ...res };
     }
     const sub = await t.uma(

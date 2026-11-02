@@ -717,6 +717,8 @@ function teste(nome, cond) {
   r = await req('GET', '/staff/api/vpe/leads', { staff: 'adm' });
   teste('staff lista leads', r.status === 200 && r.dados.leads.some(l => l.email === 'lead@x.com'));
   teste('alertas de trial/lead disparados', alertas.length >= 3);
+  teste('aviso de lead traz nome, contato e o que fazer', alertas.some(m => m.includes('novo lead') && m.includes('lead@x.com') && m.includes('X Eventos') && m.includes('O QUE FAZER')));
+  teste('aviso de novo trial traz cliente e o que fazer', alertas.some(m => m.includes('novo trial') && m.includes('Responsável') && m.includes('O QUE FAZER')));
 
   srv.close();
   console.log(`\nVillela Projects selftest: ${ok} ok, ${falhas.length} falha(s).`);

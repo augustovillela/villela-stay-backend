@@ -178,6 +178,7 @@ async function mpFake(caminho, opts = {}) {
   throw new Error('mpFake: rota não simulada ' + metodo + ' ' + caminho);
 }
 mpFake.__mock = true;
+const AVISOS = [];
 
 /** Cria um pagamento aprovado no MP de mentira e devolve o id dele. */
 function mpPagar(externalRef, reais, status = 'approved') {
@@ -217,7 +218,7 @@ async function principal() {
   app.use(express.json({ limit: '15mb' }));
   app.use(cookieParser());
   const montado = await origena.montar(app, {
-    express, requireAuth, requireAdmin, enviarEmail, mpFetch: mpFake,
+    express, requireAuth, requireAdmin, enviarEmail, mpFetch: mpFake, alertaAugusto: (m) => { AVISOS.push(m); },
     jwtSecret: 'segredo-de-teste-origena' });
   if (!montado || !Array.isArray(montado.ROTAS_ESCOPADAS)) {
     console.error('\nO modulo subiu sem a tabela de rotas escopadas — normalmente e o banco.');
@@ -3891,6 +3892,8 @@ async function principal() {
     assert.strictEqual(r.status, 200, r.texto);
     assert(r.json.pedido, 'o webhook não aplicou o pedido: ' + JSON.stringify(r.json));
     assert.strictEqual(await saldoDe(), pedidoCred.antes + pedidoCred.creditos);
+    const av = AVISOS.find((m) => m.includes('pedido pago') && m.includes(r.json.pedido.codigo));
+    assert(av && av.includes('Família') && av.includes('O QUE FAZER'), 'aviso do pedido sem família/o que fazer: ' + av);
     // o valor veio da consulta ao MP, não do corpo da requisição
     assert(MP.chamadas.some((c) => c.caminho === '/v1/payments/' + id),
       'confiou no corpo do webhook em vez de consultar o provedor');

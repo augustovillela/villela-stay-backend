@@ -9,6 +9,7 @@
 const repo = require('./repo');
 const tenancy = require('./tenancy');
 const { db, nowISO } = require('./db');
+const { montarAviso } = require('../nucleo/aviso');
 
 const SEVERIDADES = ['baixa', 'media', 'alta', 'critica'];
 
@@ -72,4 +73,19 @@ function abertos(limite = 100) {
 const doTenant = (limite = 100) =>
   repo.listar('gx_incidentes', { onde: "status != 'fechado'", ordem: 'criado_em DESC', limite });
 
-module.exports = { SEVERIDADES, abrir, fechar, abertos, doTenant };
+/** Aviso ao dono: quais incidentes críticos estão abertos, de quem, e o que fazer. */
+function avisoCriticos(criticos) {
+  const nomeDaConta = (id) => {
+    if (!id) return 'plataforma';
+    try { return (db.prepare('SELECT nome FROM tenants WHERE id = ?').get(id) || {}).nome || id; } catch (_) { return id; }
+  };
+  const dia = (iso) => String(iso || '').slice(0, 10).split('-').reverse().join('/');
+  return montarAviso({
+    titulo: `🚨 Growth OS: ${criticos.length} incidente(s) crítico(s) aberto(s)`,
+    campos: [['Incidentes', criticos.slice(0, 5).map(i => `${i.titulo} (${nomeDaConta(i.tenant_id)}, ${i.natureza}, desde ${dia(i.criado_em)})`).join('; ')
+      + (criticos.length > 5 ? `; e mais ${criticos.length - 5}` : '')]],
+    fazer: 'Abrir os incidentes no Portal Staff, Growth OS, tratar a causa e fechar cada um: este aviso se repete enquanto houver crítico aberto.',
+  });
+}
+
+module.exports = { SEVERIDADES, abrir, fechar, abertos, doTenant, avisoCriticos };
