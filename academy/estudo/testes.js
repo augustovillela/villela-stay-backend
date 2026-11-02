@@ -607,11 +607,36 @@ async function rodar({ t, req, EST, impId }) {
       const iB = tela.indexOf('class="es-un-barra"', iV), iS = tela.indexOf('+ sel +', iV);
       assert.ok(iV > 0 && iB > iV && iS > iB, 'a aula é uma página só: vídeo, depois a barra do que a aula tem (interativa, mapa, prática), depois o texto');
       assert.ok(!/Abrir a aula \(com v[ií]deo\)|▶ Aula animada/.test(tela), 'a lista tem um botão só por aula: tudo abre de dentro dela');
+      // VÍDEO × VERSÃO DA AULA (02/11/2026): o resumo do staff acusa vídeo que narra uma versão antiga da aula
+      assert.equal(cod, 'prescricao-base', 'o teste muda os blocos desta aula');
+      const vid = async () => {
+        const r = await req('GET', `/staff/api/academy/estudo/resumo?${new URLSearchParams(EST())}`, { semUser: true, chave: true });
+        assert.equal(r.st, 200, r.texto);
+        return r.json.resumo.find(e => e.slug === SLUG).videos.find(v => v.codigo === cod);
+      };
+      let v = await vid();
+      assert.equal(v.desatualizado, false, 'vídeo recém-confirmado está em dia: ' + JSON.stringify(v));
+      assert.equal(v.video_aula_versao, v.aula_versao);
+      const b = UNIDADE().blocos; b[0] = { ...b[0], texto: b[0].texto + ' A contagem começa na lesão do direito.' };
+      assert.equal((await importar({ escopo: ESC(), unidades: [UNIDADE({ blocos: b })] })).st, 200);
+      v = await vid();
+      assert.deepEqual([v.desatualizado, v.aula_versao > v.video_aula_versao], [true, true], 'a aula mudou depois do vídeo: ' + JSON.stringify(v));
+      assert.equal((await importar({ escopo: ESC(), unidades: [UNIDADE({ blocos: b })] })).st, 200);
+      assert.equal((await vid()).desatualizado, true, 'reenviar os mesmos blocos não sobe a versão nem limpa o aviso');
+      const ini2 = await req('POST', '/staff/api/academy/estudo/video', V({ nome: 'aula-v2.mp4', mime: 'video/mp4', tamanho: 4096 }));
+      bucket.set(ini2.json.media_id + '.mp4', 4096);
+      assert.equal((await req('POST', `/staff/api/academy/estudo/video/${ini2.json.media_id}/confirmar`, V({ duracao_seg: 470 }))).st, 200);
+      v = await vid();
+      assert.deepEqual([v.media_id, v.desatualizado, v.video_aula_versao], [ini2.json.media_id, false, v.aula_versao], 'vídeo novo zera o aviso');
+      db.prepare('UPDATE est_unidades SET video_aula_versao = 0 WHERE codigo = ?').run(cod); // vídeo de antes do registro
+      assert.equal((await vid()).desatualizado, null, 'sem registro é "não sei", não "desatualizado"');
+      assert.equal((await importar({ escopo: ESC(), unidades: [UNIDADE()] })).st, 200, 'volta a aula ao original');
       // tirar do ar: só com a chave; desliga o vínculo e a aula deixa de anunciar vídeo; repetir não quebra
       assert.equal((await req('POST', '/staff/api/academy/estudo/video/desligar', { semUser: true, corpo: EST({ escopo: SLUG, unidade: cod }) })).st, 401, 'sem chave não desliga');
       const des = await req('POST', '/staff/api/academy/estudo/video/desligar', V({}));
       assert.equal(des.st, 200, des.texto);
-      assert.equal(des.json.media_desligada, ini.json.media_id);
+      assert.equal(des.json.media_desligada, ini2.json.media_id);
+      assert.equal(db.prepare('SELECT video_aula_versao FROM est_unidades WHERE codigo = ?').get(cod).video_aula_versao, 0, 'desligar zera a versão registrada');
       assert.equal((await req('GET', `${esc}/unidades/${encodeURIComponent(cod)}`, { jar: 'olga' })).json.video, null, 'desligado, a aula não anuncia vídeo');
       assert.equal((await req('GET', `${esc}/painel`, { jar: 'olga' })).json.unidades.find(x => x.codigo === cod).video, false);
       assert.equal((await req('POST', '/staff/api/academy/estudo/video/desligar', V({}))).json.media_desligada, '', 'repetir não quebra');

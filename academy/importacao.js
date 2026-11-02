@@ -371,7 +371,8 @@ async function confirmarVideoEstudo(mediaId, dados = {}) {
   const { u, produto } = produtorDono(dados);
   const { un } = unidadeDoEstudo(produto, dados);
   const m = await ct.Midia.confirmarUploadGrande(s(mediaId, 40), u.id);
-  db.prepare('UPDATE est_unidades SET video_media_id = ?, video_duracao_seg = ?, atualizado_em = ? WHERE id = ?')
+  // grava a versão da aula que o vídeo narra: quando a aula mudar depois, o resumo do staff acusa o vídeo desatualizado
+  db.prepare('UPDATE est_unidades SET video_media_id = ?, video_duracao_seg = ?, video_aula_versao = versao, atualizado_em = ? WHERE id = ?')
     .run(m.id, Math.max(0, parseInt(dados.duracao_seg, 10) || 0), new Date().toISOString(), un.id);
   return { media: { id: m.id, nome: m.nome, tamanho: m.tamanho, storage: m.storage }, unidade: { codigo: un.codigo, titulo: un.titulo } };
 }
@@ -382,7 +383,7 @@ function desligarVideoEstudo(dados = {}) {
   const { produto } = produtorDono(dados);
   const { un } = unidadeDoEstudo(produto, dados);
   const antes = db.prepare('SELECT video_media_id FROM est_unidades WHERE id = ?').get(un.id).video_media_id || '';
-  if (antes) db.prepare("UPDATE est_unidades SET video_media_id = '', video_duracao_seg = 0, atualizado_em = ? WHERE id = ?")
+  if (antes) db.prepare("UPDATE est_unidades SET video_media_id = '', video_duracao_seg = 0, video_aula_versao = 0, atualizado_em = ? WHERE id = ?")
     .run(new Date().toISOString(), un.id);
   return { unidade: { codigo: un.codigo, titulo: un.titulo }, media_desligada: antes };
 }

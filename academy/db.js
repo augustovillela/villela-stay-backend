@@ -1042,6 +1042,13 @@ const MIGRACOES = [
     nome: 'estudo-trilha-inicial-2026-11-01',
     sql: `ALTER TABLE est_escopos ADD COLUMN trilha_inicial TEXT DEFAULT '[]';`,
   },
+  {
+    // VÍDEO × VERSÃO DA AULA (02/11/2026: 42 vídeos do TJDFT no ar narrando uma versão antiga da aula). Ao confirmar o
+    // vídeo, grava-se a `versao` da aula naquele momento; o resumo do staff compara com a atual. 0 = sem registro
+    // (vídeo anterior a esta coluna, ou desligado) — "não sei", nunca "está em dia".
+    nome: 'estudo-video-versao-da-aula-2026-11-02',
+    sql: `ALTER TABLE est_unidades ADD COLUMN video_aula_versao INTEGER DEFAULT 0;`,
+  },
 ];
 
 // Cada migração é ATÔMICA: os comandos dela e o registro em `migrations` entram na mesma transação. Antes, um
