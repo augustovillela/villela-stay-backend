@@ -123,6 +123,20 @@ function registrarRotasStaff(app, deps) {
     repo.Audit.log(req.user, 'pedido.marcar-pago', { entidade: 'order', entidade_id: req.params.id, ip: ipDe(req) });
     res.json({ ok: true, pedido: upd });
   });
+  // reconsultar no Mercado Pago (pedido pendente que foi pago mas o aviso se perdeu).
+  // Diferente do marcar-pago: só libera se o MP disser "aprovado" para ESTE pedido.
+  app.post('/staff/api/livraria/pedidos/:id/reconsultar-mp', requireAuth, pode('pedidos'), async (req, res) => {
+    const o = repo.Orders.obter(req.params.id); if (!o) return res.status(404).json({ erro: 'Pedido não encontrado.' });
+    const payId = String((req.body && req.body.payment_id) || '').replace(/\D/g, '');
+    if (!payId) return res.status(400).json({ erro: 'Informe o número da transação do Mercado Pago (payment_id).' });
+    const pag = await deps.pagamentos.provedor('mercadopago').consultarPagamento(payId);
+    if (!pag) return res.status(404).json({ erro: 'Pagamento não encontrado no Mercado Pago.' });
+    if (pag.externalRef !== 'livro:' + o.id) return res.status(400).json({ erro: 'Este pagamento não é deste pedido (' + (pag.externalRef || 'sem referência') + ').' });
+    let pedido = o;
+    if (pag.status === 'aprovado') pedido = await fluxo.confirmarPagamento(o.id, pag);
+    repo.Audit.log(req.user, 'pedido.reconsultar-mp', { entidade: 'order', entidade_id: o.id, detalhe: payId + ' → ' + pag.status, ip: ipDe(req) });
+    res.json({ ok: true, status_mp: pag.status, valor: pag.valor, pedido });
+  });
 
   // ------------------------------------------------------- PEDIDO DE TESTE
   // Valida a entrega de ponta a ponta sem efeito colateral nenhum: cria o pedido

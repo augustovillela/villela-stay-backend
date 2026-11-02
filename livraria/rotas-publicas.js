@@ -226,8 +226,12 @@ function registrarRotasPublicas(app, deps) {
       if (!pag) return;
       if (!pag.externalRef.startsWith('livro:')) return; // não é da livraria (conta do hóspede usa outro webhook)
       const orderId = pag.externalRef.slice('livro:'.length);
-      // idempotência por (provider,payment_id)
-      const ev = repo.Webhooks.registrar('mercadopago', pag.provider_payment_id, pag.status, pag.raw);
+      // Idempotência por (pagamento, STATUS). Pix avisa duas vezes com o mesmo id:
+      // "pending" ao gerar o QR e "approved" ao pagar. Chavear só pelo id fazia o
+      // aviso de aprovação parecer duplicata e o pedido ficava pendente para sempre
+      // (pedidos IIz85C0666N8 e mfInl13sqViE, out/2026). confirmarPagamento já é
+      // idempotente, então reprocessar o mesmo status não duplica entrega.
+      const ev = repo.Webhooks.registrar('mercadopago', pag.provider_payment_id + ':' + pag.status, pag.status, pag.raw);
       if (!ev.novo) return; // já processado
       if (pag.status === 'aprovado') { await fluxo.confirmarPagamento(orderId, pag); repo.Webhooks.marcar(ev.id, 'confirmado'); }
       else if (pag.status === 'recusado') { await fluxo.registrarRecusa(orderId, pag); repo.Webhooks.marcar(ev.id, 'recusado'); }
