@@ -1036,6 +1036,12 @@ const MIGRACOES = [
     nome: 'estudo-lei-juris-decisao-stf-2026-10-18',
     sql: `ALTER TABLE est_lj_dispositivos ADD COLUMN decisao_stf TEXT DEFAULT '';`,
   },
+  {
+    // TRILHA INICIAL (ADR-0020): as aulas por onde o aluno novo DESTE percurso começa, em ordem (lista JSON de códigos).
+    // Coluna própria, e não `perfil`: reenviar o perfil do edital não pode apagá-la. Vazia = o caminho de sempre.
+    nome: 'estudo-trilha-inicial-2026-11-01',
+    sql: `ALTER TABLE est_escopos ADD COLUMN trilha_inicial TEXT DEFAULT '[]';`,
+  },
 ];
 
 // Cada migração é ATÔMICA: os comandos dela e o registro em `migrations` entram na mesma transação. Antes, um

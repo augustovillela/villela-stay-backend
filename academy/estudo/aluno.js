@@ -148,6 +148,22 @@ function filaDeRevisao(usuario, escopo, limite = LIMITE_REVISOES_DIA) {
   return agenda.fila(linhas, { hoje: hojeBR(), limite });
 }
 
+// TRILHA INICIAL (ADR-0020): a aula da trilha por onde o aluno NOVO deste percurso segue, ou null. Só vale no percurso que a
+// declarou, e só para quem não tem estudo fora dela: evidência de prática ou prova (o diagnóstico de entrada é ponto de
+// partida, não estudo) ou aula de matéria aberta devolvem o aluno ao caminho que ele já tinha. A aula conta como feita pela
+// régua única, então a leitura basta: a trilha não depende de questão e não prende ninguém.
+function aulaDaTrilhaInicial(usuario, escopo, uns, est) {
+  const lista = escopo.trilha_inicial || [];
+  if (!lista.length) return null;
+  const naTrilha = new Set(lista);
+  const trilha = lista.map(cod => uns.find(u => u.codigo === cod)).filter(Boolean);
+  const compsDaTrilha = new Set(trilha.flatMap(u => u.competencias));
+  if (est.some(e => !compsDaTrilha.has(e.codigo) && e.estado !== 'nao_avaliada' && !e.so_diagnostico)) return null;
+  const regua = reguaDeEstudo(usuario.id, escopo.id);
+  for (const [cod, st] of regua.aulas) if (st.aberta_em && !naTrilha.has(cod)) return null;
+  return trilha.find(u => !aulaEstudada(u, regua)) || null;
+}
+
 // A recomendação vem sempre com o MOTIVO — o aluno pode discordar dela.
 function proximaTarefa(usuario, escopo, c, est = estadosDoAluno(usuario, escopo)) {
   const uns = R.unidades(escopo.id, c.vis);
@@ -168,6 +184,8 @@ function proximaTarefa(usuario, escopo, c, est = estadosDoAluno(usuario, escopo)
   }
   const comApoio = est.find(e => e.estado === 'demonstrada_com_apoio' && !e.so_diagnostico);
   if (comApoio) return { tipo: 'pratica_sem_apoio', competencia: comApoio.codigo, motivo: comApoio.so_cards ? 'Você recordou o card desta matéria — card é recordação, não demonstração. Falta acertar uma questão nova, sem apoio.' : 'Você acertou com pista ou em questão já vista. Falta acertar uma questão nova, sem apoio.' };
+  const daTrilha = aulaDaTrilhaInicial(usuario, escopo, uns, est);
+  if (daTrilha) return { tipo: 'aprender', competencia: daTrilha.competencias[0] || '', unidade: daTrilha.codigo, motivo: 'Comece pelo método: esta trilha mostra como estudar para este concurso antes de entrar na matéria.' };
   // só entra na fila quem o aluno consegue demonstrar hoje; competência sem questão praticável vai para o fim
   const praticavel = R.competenciasComPratica(escopo.id, c.situacoes);
   // "por começar": nunca avaliada — ou só vista no diagnóstico de entrada, sem demonstração (o erro de lá é ponto de partida)

@@ -2875,6 +2875,8 @@ async function main() {
   await require('./estudo/testes-trava-entre-cursos').rodar({ t, req });
   // ================= MÉDIA PONDERADA E BLOCO POR PERCURSO (ADR-0019): o simulado do TRF-3 no formato do edital ===============
   await require('./estudo/testes-media-ponderada').rodar({ t, req });
+  // ================= TRILHA INICIAL (ADR-0020): o aluno novo começa pelo método declarado no percurso; quem já estudou não muda de caminho ===============
+  await require('./estudo/testes-trilha-inicial').rodar({ t, req });
   // ================= PÁGINA DE VENDA (frente P): números do percurso do Estude, descrição com lista, og:image com a medida real, compra à vista no celular =================
   await require('./testes-pagina-venda').rodar({ t, req });
 

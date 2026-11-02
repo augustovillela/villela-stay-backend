@@ -90,7 +90,7 @@ function porDigital(tabela, leves, abrirLinha) {
 // ---------------------------------------------------------------------
 // leitura
 // ---------------------------------------------------------------------
-const abrir = (r) => r && { ...r, perfil: j.parse(r.perfil, {}), regra_pontuacao: j.parse(r.regra_pontuacao, {}) };
+const abrir = (r) => r && { ...r, perfil: j.parse(r.perfil, {}), regra_pontuacao: j.parse(r.regra_pontuacao, {}), trilha_inicial: j.parse(r.trilha_inicial, []) };
 const Escopos = {
   obter: (id) => abrir(db.prepare('SELECT * FROM est_escopos WHERE id = ?').get(id)),
   porSlug: (productId, sl) => abrir(db.prepare('SELECT * FROM est_escopos WHERE product_id = ? AND slug = ?').get(productId, sl)),
@@ -847,6 +847,17 @@ function importar_(produto, dados = {}, opcoes = {}) {
           rel.cards.atualizados++;
         }
       }
+    }
+    // TRILHA INICIAL (ADR-0020): conferida no fim, porque as aulas dela podem ter chegado neste mesmo envio.
+    // Quem não manda não apaga; `[]` desfaz. Aula que o percurso não tem é recusada: trilha que nunca anda não serve a ninguém.
+    if (e.trilha_inicial != null) {
+      if (!Array.isArray(e.trilha_inicial)) throw erro('escopo.trilha_inicial: envie a lista de códigos das aulas, em ordem.');
+      const lista = [...new Set(e.trilha_inicial.map(slug))];
+      const temAula = (c) => db.prepare('SELECT 1 FROM est_unidades WHERE escopo_id = ? AND codigo = ?').get(escopo.id, c) || db.prepare('SELECT 1 FROM est_escopo_inclusoes WHERE escopo_id = ? AND unidade_codigo = ?').get(escopo.id, c);
+      const fora = lista.filter(c => !temAula(c));
+      if (fora.length) throw erro(`escopo.trilha_inicial: este percurso não tem a aula ${fora.join(', ')}.`);
+      set('trilha_inicial', j.str(lista));
+      rel.trilha_inicial = lista;
     }
     rel.escopo_id = escopo.id;
   }); } finally { limparCache(); }
