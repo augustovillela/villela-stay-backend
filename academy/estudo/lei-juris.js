@@ -66,7 +66,7 @@ const DATA_EDITAL_PADRAO = '2023-01-05';
 // O maior diploma da coleta (Decreto 10.088/2019, as convenções da OIT consolidadas) tem 2,6 MB de JSON; o CC, 1,9 MB;
 // o maior dispositivo, 147 mil caracteres (um anexo de tratado). O corpo da requisição já é limitado a 15 MB pelo
 // servidor (server.js › express.json); o teto do diploma fica abaixo dele, com folga de 4× sobre o maior medido.
-const LIMITE = { bytesDiploma: 12 * 1024 * 1024, dispositivos: 12000, partes: 1000, texto: 400000, textoParte: 100000, estrutura: 8000,
+const LIMITE = { bytesDiploma: 12 * 1024 * 1024, dispositivos: 12000, partes: 1000, texto: 400000, textoParte: 100000, estrutura: 8000, notaDiploma: 4000,
   lote: 500, textoVerbete: 400000, itensVinculo: 3000, refsPorItem: 3000, marcasPorEscopo: 30000, erros: 40 };
 const POR_PAGINA = 30;
 const ORDEM_TRIBUNAL = ['TST', 'TRT-10', 'STF', 'STJ'];
@@ -167,6 +167,11 @@ function validarDiploma(d) {
     fonte_url: url(d.fonte_url, 'fonte_url', k), consultado_em: data(d.consultado_em, 'consultado_em', k, { obrigatorio: true }),
     data_edital: data(d.data_referencia_edital, 'data_referencia_edital', k) || DATA_EDITAL_PADRAO,
   };
+  // NOTA DO DIPLOMA (03/11/2026): aviso editorial sobre o diploma inteiro (ex.: regime mudado por lei posterior sem
+  // revogação expressa). Opcional e SEM a chave quando vazia — como `decisao_stf` —, para o hash dos diplomas sem nota
+  // não mudar. Não é a `nota` de dispositivo (essa é a nota literal da fonte oficial).
+  const notaDip = texto(d.nota, LIMITE.notaDiploma, 'nota', k);
+  if (notaDip) out.nota = notaDip;
   if (out.tipo && !TIPOS_DIPLOMA.includes(out.tipo)) k.e(`tipo "${out.tipo}": deve ser ${TIPOS_DIPLOMA.join('|')}.`);
   if (out.abrangencia && !ABRANGENCIAS.includes(out.abrangencia)) k.e(`abrangencia "${out.abrangencia}": deve ser ${ABRANGENCIAS.join('|')}.`);
   if (!out.fonte_url) k.e('fonte_url: obrigatório (fonte oficial lida na fonte).');
@@ -278,12 +283,12 @@ function importarDiploma(produto, dados = {}) {
       if (FTS) db.prepare('DELETE FROM est_lj_fts_lei WHERE rowid IN (SELECT rowid FROM est_lj_dispositivos WHERE diploma_id = ?)').run(d.id);
       db.prepare('DELETE FROM est_lj_dispositivos WHERE diploma_id = ?').run(d.id);
     }
-    db.prepare(`INSERT INTO est_lj_diplomas (id, nome, norma, sigla, tipo, abrangencia, fonte_url, consultado_em, data_edital, estrutura, artigos, alterados, hash, importado_em)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    db.prepare(`INSERT INTO est_lj_diplomas (id, nome, norma, sigla, tipo, abrangencia, fonte_url, consultado_em, data_edital, estrutura, artigos, alterados, hash, importado_em, nota)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (id) DO UPDATE SET nome = excluded.nome, norma = excluded.norma, sigla = excluded.sigla, tipo = excluded.tipo, abrangencia = excluded.abrangencia,
         fonte_url = excluded.fonte_url, consultado_em = excluded.consultado_em, data_edital = excluded.data_edital, estrutura = excluded.estrutura,
-        artigos = excluded.artigos, alterados = excluded.alterados, hash = excluded.hash, importado_em = excluded.importado_em`)
-      .run(d.id, d.nome, d.norma, d.sigla, d.tipo, d.abrangencia, d.fonte_url, d.consultado_em, d.data_edital, j.str(d.estrutura), artigos, alterados, hash, nowISO());
+        artigos = excluded.artigos, alterados = excluded.alterados, hash = excluded.hash, importado_em = excluded.importado_em, nota = excluded.nota`)
+      .run(d.id, d.nome, d.norma, d.sigla, d.tipo, d.abrangencia, d.fonte_url, d.consultado_em, d.data_edital, j.str(d.estrutura), artigos, alterados, hash, nowISO(), d.nota || '');
     const ins = db.prepare(`INSERT INTO est_lj_dispositivos (diploma_id, id, ordem, rotulo, estrutura, epigrafe, texto, partes, situacao, nota, alterado_por, texto_edital, edital_indisponivel, decisao_stf)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     const fts = FTS ? db.prepare('INSERT INTO est_lj_fts_lei (rowid, titulo, texto) VALUES (?, ?, ?)') : null;
@@ -655,9 +660,10 @@ function importarTextosDoEscopo(produto, dados = {}) {
 function resumoStaff(produto, slugEscopo) {
   const escopo = escopoDoCurso(produto, slugEscopo);
   const e = escopo.id;
-  const diplomas = db.prepare(`SELECT d.id, d.nome, d.sigla, d.tipo, d.abrangencia, d.artigos, d.alterados, d.consultado_em, d.importado_em,
+  const diplomas = db.prepare(`SELECT d.id, d.nome, d.sigla, d.tipo, d.abrangencia, d.artigos, d.alterados, d.consultado_em, d.importado_em, d.nota,
       (SELECT COUNT(DISTINCT v.dispositivo_id) FROM est_lj_vinculos v WHERE v.escopo_id = ed.escopo_id AND v.tipo = 'lei' AND v.diploma_id = d.id) AS cobrados
-    FROM est_lj_escopo_diplomas ed JOIN est_lj_diplomas d ON d.id = ed.diploma_id WHERE ed.escopo_id = ? ORDER BY d.nome`).all(e);
+    FROM est_lj_escopo_diplomas ed JOIN est_lj_diplomas d ON d.id = ed.diploma_id WHERE ed.escopo_id = ? ORDER BY d.nome`).all(e)
+    .map(({ nota, ...x }) => (nota ? { ...x, nota } : x)); // sem nota: a linha do resumo fica como antes
   const colecoes = db.prepare(`SELECT c.id, c.nome, c.tribunal, COUNT(*) AS itens, SUM(v.situacao = 'vigente') AS vigentes FROM est_lj_escopo_verbetes ev
     JOIN est_lj_verbetes v ON v.id = ev.verbete_id JOIN est_lj_colecoes c ON c.id = v.colecao WHERE ev.escopo_id = ? GROUP BY c.id ORDER BY c.tribunal, c.nome`).all(e);
   const vinc = db.prepare("SELECT tipo, COUNT(*) AS n, COUNT(DISTINCT item) AS itens FROM est_lj_vinculos WHERE escopo_id = ? GROUP BY tipo").all(e);
@@ -790,7 +796,9 @@ const diplomaPublico = (d, c = null) => {
   return { id: d.id, nome: d.nome, norma: d.norma, sigla: d.sigla, tipo: d.tipo, abrangencia: d.abrangencia, fonte_url: d.fonte_url,
     consultado_em: d.consultado_em, data_referencia_edital: mesma ? d.data_edital : ref.data, rotulo_data_referencia: ref ? ref.rotuloProprio : '', artigos: d.artigos,
     // a contagem do acervo é da data DELE: com outra data, não é mostrada (seria o número de outra data)
-    alterados_apos_edital: mesma ? d.alterados : null };
+    alterados_apos_edital: mesma ? d.alterados : null,
+    // nota do diploma: só com conteúdo (diploma sem nota responde como antes, sem a chave)
+    ...(d.nota ? { nota: d.nota } : {}) };
 };
 // A PARTE DO DIPLOMA que tem numeração própria (auditoria AL, AL-05): o ADCT dentro da CF ("adct-art-10"), um anexo
 // de tratado ("anexo-i-art-15"). O rótulo da fonte é só "Art. 10" — igual ao do corpo permanente —, então o que o

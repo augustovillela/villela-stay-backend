@@ -1049,6 +1049,12 @@ const MIGRACOES = [
     nome: 'estudo-video-versao-da-aula-2026-11-02',
     sql: `ALTER TABLE est_unidades ADD COLUMN video_aula_versao INTEGER DEFAULT 0;`,
   },
+  {
+    // NOTA DO DIPLOMA (03/11/2026, autorizada pelo Augusto): aviso editorial sobre o diploma inteiro no acervo lei-juris
+    // (1º uso: Res. CONAMA 1/1986 e 237/1997 × Lei 15.190/2025). Vazia = diploma como sempre foi.
+    nome: 'estudo-lei-juris-nota-diploma-2026-11-03',
+    sql: `ALTER TABLE est_lj_diplomas ADD COLUMN nota TEXT DEFAULT '';`,
+  },
 ];
 
 // Cada migração é ATÔMICA: os comandos dela e o registro em `migrations` entram na mesma transação. Antes, um

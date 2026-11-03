@@ -292,6 +292,51 @@ async function rodar({ t, req }) {
     assert.equal((await ana.get('/legislacao/cp-nao-existe')).st, 404);
   });
 
+  await t('lei-juris: NOTA DO DIPLOMA (03/11/2026) — opcional; gravada pela chave, devolvida no diploma, na lista, na aba da aula e no resumo do staff; reenvio idempotente; sem nota o diploma fica exatamente como antes (sem a chave, mesmo hash)', async () => {
+    const resumo = () => chave('GET', `/staff/api/academy/estudo/lei-juris/resumo?produtor_email=${encodeURIComponent(PROD)}&produto_id=${pid}&escopo=${SLUG}`);
+    const semNota = db.prepare('SELECT hash FROM est_lj_diplomas WHERE id = ?').get('clt-teste').hash;
+    // antes: nenhuma rota traz a chave `nota` no diploma
+    let g = await ana.get('/legislacao/clt-teste');
+    assert.ok(!('nota' in g.json.diploma), 'diploma sem nota: sem a chave');
+    assert.ok(!('nota' in (await ana.get('/legislacao')).json.diplomas[0]));
+    assert.ok(!('nota' in (await resumo()).json.diplomas[0]), 'resumo do staff sem nota: a linha fica como antes');
+    // nota vazia ou só espaços = sem nota: o MESMO hash (o diploma não é regravado)
+    for (const vazio of ['', '   ', null]) {
+      const r = await staff('diploma', { diploma: DIP({ nota: vazio }) });
+      assert.equal(r.st, 200, r.texto);
+      assert.equal(r.json.inalterado, true, 'nota vazia não muda o hash: ' + JSON.stringify(vazio));
+    }
+    // grava
+    const NOTA = 'Lei nº 15.190/2025 <b>mudou</b> o regime & "a tela" escapa.\nSegunda linha.';
+    let r = await staff('diploma', { diploma: DIP({ nota: NOTA }) });
+    assert.equal(r.st, 200, r.texto);
+    assert.deepEqual([r.json.inalterado, r.json.substituiu, r.json.dispositivos], [false, true, 4]);
+    assert.equal(db.prepare('SELECT nota FROM est_lj_diplomas WHERE id = ?').get('clt-teste').nota, NOTA);
+    assert.notEqual(db.prepare('SELECT hash FROM est_lj_diplomas WHERE id = ?').get('clt-teste').hash, semNota);
+    // lê: diploma inteiro, lista do acervo, aba da aula e resumo do staff
+    g = await ana.get('/legislacao/clt-teste');
+    assert.equal(g.json.diploma.nota, NOTA);
+    assert.deepEqual(g.json.dispositivos.map(x => x.id), ['art-1', 'art-2', 'art-3', 'art-4a'], 'os dispositivos não mudam');
+    assert.equal((await ana.get('/legislacao')).json.diplomas[0].nota, NOTA);
+    assert.equal((await ana.get('/legislacao/vinculada?unidade=aula-a')).json.diplomas[0].nota, NOTA);
+    assert.equal((await resumo()).json.diplomas[0].nota, NOTA);
+    // reenvio idêntico: inalterado
+    r = await staff('diploma', { diploma: DIP({ nota: NOTA }) });
+    assert.equal(r.json.inalterado, true);
+    // formato: texto de mais é recusado e nada muda
+    r = await staff('diploma', { diploma: DIP({ nota: 'x'.repeat(4001) }) });
+    assert.equal(r.st, 400, r.texto);
+    assert.equal(db.prepare('SELECT nota FROM est_lj_diplomas WHERE id = ?').get('clt-teste').nota, NOTA, 'recusado: a nota anterior fica');
+    // reenviar SEM a nota tira a nota (o diploma é substituído inteiro) e volta ao hash de antes
+    r = await staff('diploma', { diploma: DIP() });
+    assert.equal(r.json.substituiu, true);
+    assert.equal(db.prepare('SELECT hash FROM est_lj_diplomas WHERE id = ?').get('clt-teste').hash, semNota, 'sem nota = exatamente o hash de antes');
+    assert.equal(db.prepare('SELECT nota FROM est_lj_diplomas WHERE id = ?').get('clt-teste').nota, '');
+    assert.ok(!('nota' in (await ana.get('/legislacao/clt-teste')).json.diploma));
+    assert.ok(!('nota' in (await ana.get('/legislacao/vinculada?unidade=aula-a')).json.diplomas[0]));
+    assert.ok(!('nota' in (await resumo()).json.diplomas[0]));
+  });
+
   await t('lei-juris: acervo de jurisprudência — filtros (tribunal, coleção, situação, disciplina, texto), páginas de 30 e as opções com quantos há em cada', async () => {
     let r = await ana.get('/jurisprudencia');
     assert.equal(r.st, 200, r.texto);
@@ -767,7 +812,21 @@ async function rodar({ t, req }) {
     assert.ok(/\.es-lj-resultados\{display:grid;grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,300px\),1fr\)\)/.test(CSS));
     assert.ok(/@media \(max-width:640px\)\{\n\s+\.es-lj-parte\.n1/.test(CSS), 'o recuo das partes encolhe no celular');
     const pg = ler('paginas.js');
-    assert.ok(/estude: 14,/.test(pg) && /V_FOLHAS = \{ aluno: 5, estude: 6 \}/.test(pg), 'estude.js?v=14 e estude.css?v=6');
+    assert.ok(/estude: 15,/.test(pg) && /V_FOLHAS = \{ aluno: 5, estude: 7 \}/.test(pg), 'estude.js?v=15 e estude.css?v=7 (03/11/2026: nota do diploma)');
+  });
+
+  await t('lei-juris · tela: NOTA DO DIPLOMA — aviso discreto logo abaixo do cabeçalho, no acervo e na aba da aula; texto escapado com as quebras de linha; diploma sem nota não desenha nada', async () => {
+    const ctx = { esc: (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') };
+    vm.createContext(ctx);
+    vm.runInContext(funcaoDoFonte(TELA, 'notaDoDiploma'), ctx);
+    assert.equal(ctx.notaDoDiploma({ nome: 'X' }), '', 'sem nota: nada');
+    assert.equal(ctx.notaDoDiploma({ nota: '' }), '');
+    const h = ctx.notaDoDiploma({ nota: 'A <script>x</script> & "b"\nc' });
+    assert.ok(/^<div class="es-lj-dnota" role="note"><b>Nota sobre este diploma<\/b><p>/.test(h), h);
+    assert.ok(h.includes('A &lt;script&gt;x&lt;/script&gt; &amp; &quot;b&quot;\nc') && !h.includes('<script>'), 'texto escapado: ' + h);
+    assert.equal((funcaoDoFonte(TELA, 'diplomaNaTela').match(/notaDoDiploma\(d\)/g) || []).length, 1, 'no acervo (diploma inteiro)');
+    assert.equal((funcaoDoFonte(TELA, 'leiDaAula').match(/notaDoDiploma\(d\)/g) || []).length, 1, 'na aba da aula');
+    assert.ok(/\.es-lj-dnota p\{margin:0;white-space:pre-line/.test(CSS), 'as quebras de linha da nota aparecem');
   });
 }
 

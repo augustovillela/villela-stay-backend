@@ -4400,7 +4400,7 @@
         } else {
           cx.innerHTML = '<div class="es-ler es-lj"><p class="es-lj-intro">A lei seca que este item do edital cobra, no texto da fonte oficial, sem comentário. O que o item cita fica destacado; o que mudou depois do edital traz a redação da data do edital ao lado.</p>' + itensDoTopo(r) + citadosDoItem(r) +
             r.diplomas.map(function (d) {
-              return '<section class="es-lj-dip"><h3>' + esc(d.nome) + '</h3><p class="es-ler-sub">' + esc(d.norma) + (d.fonte_url ? ' · <a href="' + esc(d.fonte_url) + '" target="_blank" rel="noopener">fonte oficial</a>' : '') + (d.consultado_em ? ' — consultada em ' + dataBR(d.consultado_em) : '') + '</p>' +
+              return '<section class="es-lj-dip"><h3>' + esc(d.nome) + '</h3><p class="es-ler-sub">' + esc(d.norma) + (d.fonte_url ? ' · <a href="' + esc(d.fonte_url) + '" target="_blank" rel="noopener">fonte oficial</a>' : '') + (d.consultado_em ? ' — consultada em ' + dataBR(d.consultado_em) : '') + '</p>' + notaDoDiploma(d) +
                 d.dispositivos.map(function (x) { return htmlDispositivo(d, x, r.marcas, { doItem: true }); }).join('') + '</section>';
             }).join('') + '</div>';
         }
@@ -4428,6 +4428,9 @@
       }).catch(function (e) { cx.removeAttribute('data-carregado'); falha(cx, e); });
     }
     // ---- os ACERVOS ----
+    // NOTA DO DIPLOMA (03/11/2026): aviso editorial sobre o diploma inteiro, discreto, logo abaixo do cabeçalho.
+    // Texto puro escapado (quebras de linha preservadas pelo CSS). Diploma sem nota: nada.
+    function notaDoDiploma(d) { return d && d.nota ? '<div class="es-lj-dnota" role="note"><b>Nota sobre este diploma</b><p>' + esc(d.nota) + '</p></div>' : ''; }
     function voltarAAula() { return E.antesDoAcervo ? '<button type="button" class="al-bt peq fan" id="es-lj-volta-aula">← Voltar à aula</button>' : ''; }
     function ligarVoltarAAula() { if (el('es-lj-volta-aula')) el('es-lj-volta-aula').onclick = function () { voltarPara(E.antesDoAcervo); }; }
     function caixaDeBusca() {
@@ -4572,7 +4575,7 @@
         lista.forEach(function (x, i) { indice[x.id] = i; if (x.estrutura && x.estrutura !== ult) { secoes.push({ est: x.estrutura, id: x.id }); } ult = x.estrutura; });
         alvo.innerHTML = '<div class="jr-caixa es-lj-topo"><div class="es-linha">' + voltarAAula() + '<button type="button" class="al-bt peq fan" id="es-lj-todos">← Todos os diplomas</button></div>' +
           '<h3>' + esc(d.nome) + '</h3><p class="es-ler-sub">' + esc(d.norma) + (d.fonte_url ? ' · <a href="' + esc(d.fonte_url) + '" target="_blank" rel="noopener">fonte oficial (texto compilado)</a>' : '') + (d.consultado_em ? ' — consultada em ' + dataBR(d.consultado_em) : '') +
-          (d.rotulo_data_referencia ? ' · versão de referência (' + esc(d.rotulo_data_referencia) + '): ' : ' · versão de referência do edital: ') + dataBR(d.data_referencia_edital) + '</p>' +
+          (d.rotulo_data_referencia ? ' · versão de referência (' + esc(d.rotulo_data_referencia) + '): ' : ' · versão de referência do edital: ') + dataBR(d.data_referencia_edital) + '</p>' + notaDoDiploma(d) +
           '<p class="al-fino">' + lista.length + ' dispositivo(s)' + (d.abrangencia === 'trechos' ? ' — só os trechos que o curso usa' : '') + ' · <b>' + r.cobrados + ' cobrado(s) pelo edital</b> (destacados)' + (d.alterados_apos_edital ? ' · ' + d.alterados_apos_edital + ' alterado(s) depois do edital' : '') + '</p>' +
           '<div class="es-lj-ferr">' + (secoes.length > 1 ? '<select id="es-lj-ir" aria-label="Ir para o título ou capítulo"><option value="">Ir para…</option>' + secoes.map(function (s2) {
             var seg = s2.est.split(' > '); return '<option value="' + esc(s2.id) + '">' + new Array(seg.length).join('  ') + esc(seg[seg.length - 1].slice(0, 90)) + '</option>';

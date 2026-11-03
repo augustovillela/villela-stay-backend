@@ -115,7 +115,7 @@ async function rodar({ t, req }) {
   await t('questão superada (ADR-0017): a tela — aviso no Praticar com o número, a lista "O que mudou" mostra o gabarito comentado (o desenho do caderno de erros) com a nota de vigência, e estude.js sobe para v=13', async () => {
     const tela = ler('app-estudo.js');
     for (const pedaco of ["'/o-que-mudou'", "competencia === '__mudou__'", 'b.superadas', 'function gabaritoComentado(', "gabaritoComentado(q, 'Ver o gabarito da época e o que mudou', ' · gabarito da época')", 'notaDeVigencia(q.vigencia)', 'não valem ponto']) assert.ok(tela.includes(pedaco), 'falta na tela: ' + pedaco);
-    assert.ok(/estude: 14,/.test(ler('paginas.js')), 'estude.js?v=14');
+    assert.ok(/estude: 15,/.test(ler('paginas.js')), 'estude.js?v=15');
   });
 }
 

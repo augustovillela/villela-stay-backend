@@ -242,7 +242,7 @@ async function rodar({ t, req }) {
   await t('média ponderada (ADR-0019): a tela escreve a regra, a média com as notas por bloco e as linhas de corte com os mínimos de cada uma', async () => {
     const tela = ler('app-estudo.js');
     for (const pedaco of ["r.modo === 'media_ponderada'", 'média mínima de', 'function nota2', 'function corteTxt', 'Média ponderada', 'Nota (peso)', "r.bloco_por === 'escopo'", 'r.cortes.map(linhaDeCorte)']) assert.ok(tela.includes(pedaco), 'falta na tela: ' + pedaco);
-    assert.ok(/estude: 14,/.test(ler('paginas.js')), 'estude.js?v=14');
+    assert.ok(/estude: 15,/.test(ler('paginas.js')), 'estude.js?v=15');
   });
 }
 
