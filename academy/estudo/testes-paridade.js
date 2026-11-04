@@ -100,7 +100,8 @@ async function rodar({ t, req }) {
     assert.equal(r.st, 200, r.texto);
     const h = barra({ d: { ...d, audiobook: [{ id: 'f1' }], materiais_curso: [{ nome: 'Edital.pdf', media_id: 'm1' }] }, jr: await painel() });
     assert.deepEqual(portas(h), ['desafio', 'recursos', 'material', 'avaliar'], 'só o que o curso tem: ' + h);
-    assert.ok(h.includes('id="al-ab"') && h.includes('Largada de 7 dias') && h.includes('Material do curso · 1'));
+    assert.ok(h.includes('id="al-ab"') && h.includes('🔥 Desafio de 7 dias de revisão') && h.includes('📄 Folhas de revisão e modelos') && h.includes('Material do curso · 1'), h);
+    assert.ok(!/Cheat sheets|Largada de 7 dias/.test(h), 'no Estude o desafio e os recursos têm o nome de revisão: ' + h);
     assert.ok(!/visao|ferramentas|avaliacao|Minha jornada/.test(h), 'o cartão de XP, o diagnóstico da jornada comum e as Ferramentas não entram');
     // a tela da jornada aberta daqui só mostra as abas das portas, e o Voltar devolve ao Estude
     assert.ok(/var PORTAS_DA_JORNADA = \['desafio', 'simulacoes', 'lab', 'recursos'\]/.test(tela) && /\{ so: PORTAS_DA_JORNADA, rotuloVoltar: 'Voltar ao Estude' \}/.test(tela));
@@ -110,6 +111,55 @@ async function rodar({ t, req }) {
     // o servidor da jornada serve o produto que hospeda o Estude
     assert.equal((await req('GET', `/academy/api/aluno/cursos/${pid}/desafio`, { jar: 'nara' })).st, 200);
     assert.equal((await req('GET', `/academy/api/aluno/cursos/${pid}/lab`, { jar: 'nara' })).st, 404, 'seção que o curso não tem não existe');
+  });
+
+  await t('paridade/material: produto com escopo e 2 materiais abre a porta `material` e a tela agrupa pelo prefixo, com o peso do arquivo; curso comum fica como era', async () => {
+    const tela = ler('app-aluno.js');
+    const fatia = (de, ate) => { const i = tela.indexOf(de), f = tela.indexOf(ate); assert.ok(i > 0 && f > i, 'trecho do app do aluno: ' + de); return tela.slice(i, f); };
+    const esc = (x) => String(x);
+    const barra = (C) => new Function('C', 'esc', 'botaoAudiobook', fatia('var PORTAS_DA_JORNADA', 'function ligarBarraDoEstude') + ';return barraDoEstude();')(C, esc, () => '');
+    // o cartão de verdade (tam + icoMaterial + cartaoMaterial), com o ícone de mentira
+    const corpo = new Function('esc', 'ico', fatia('function tam(b)', 'function barra(pct') + fatia('function icoMaterial', '// preferência local') +
+      fatia('function cartaoMaterial', 'function materiaisDoCurso') + fatia('var GRUPOS_DE_MATERIAL', 'function telaMaterialDoCurso') + ';return corpoMaterialDoCurso;')(esc, () => '');
+    const portas = (h) => (h.match(/data-porta="([a-z]+)"/g) || []).map(x => x.slice(12, -1));
+    // dois materiais do curso pelo caminho do produtor, com bytes de verdade (o peso sai de media_files)
+    for (const [nome, bytes] of [['Jurisprudência · Súmulas do STJ (PDF)', 3000], ['Legislação · Lei seca anotada (PDF)', 2 * 1048576 + 200000]]) {
+      const up = await req('POST', '/academy/api/produtor/upload', { jar: 'maria', corpo: { nome: 'm.pdf', mime: 'application/pdf', conteudo_base64: Buffer.alloc(bytes, 'a').toString('base64') } });
+      assert.equal(up.st, 200, up.texto);
+      const add = await req('POST', `/academy/api/produtor/produtos/${pid}/material-curso`, { jar: 'maria', corpo: { nome, media_id: up.json.id } });
+      assert.equal(add.st, 200, add.texto);
+    }
+    const d = (await req('GET', `/academy/api/aluno/cursos/${pid}`, { jar: 'nara' })).json;
+    const es = (await req('GET', `/academy/api/aluno/cursos/${pid}/estudo`, { jar: 'nara' })).json;
+    assert.ok(es.acesso && es.escopos.length, 'o produto tem escopo do Estude');
+    assert.equal(d.materiais_curso.length, 2);
+    assert.ok(d.materiais_curso.every(m => m.tamanho > 0), 'a rota devolve o tamanho do arquivo');
+    const jr = (await req('GET', `/academy/api/aluno/cursos/${pid}/jornada`, { jar: 'nara' })).json;
+    const h = barra({ d, jr });
+    assert.ok(portas(h).includes('material') && h.includes('Material do curso · 2'), h);
+    const html = corpo(d.materiais_curso);
+    assert.equal((html.match(/class="mat"/g) || []).length, 2, 'os 2 arquivos na tela');
+    const iJ = html.indexOf('>Jurisprudência <'), iL = html.indexOf('>Legislação <');
+    assert.ok(iJ >= 0 && iL > iJ, 'um grupo por prefixo, na ordem Jurisprudência → Legislação: ' + html);
+    assert.ok(html.includes('<b>Súmulas do STJ (PDF)</b>') && html.includes('<b>Lei seca anotada (PDF)</b>'), 'o prefixo vira título do grupo e sai do cartão');
+    assert.ok(/PDF · 3 KB/.test(html) && /PDF · 2,2 MB/.test(html), 'o peso de cada arquivo aparece: ' + html);
+    assert.ok(!/Véspera|Outros materiais/.test(html), 'grupo vazio não aparece');
+    // sem prefixo conhecido: a lista corrida de sempre, sem título de grupo
+    const corrida = corpo([{ nome: 'Edital.pdf', media_id: 'x', mime: 'application/pdf', tamanho: 0 }]);
+    assert.ok(!/mats-grupo/.test(corrida) && (corrida.match(/class="mat"/g) || []).length === 1);
+    // CURSO COMUM (sem escopo): o Estude não abre — sem barra do Estude — e a jornada comum mantém os rótulos antigos
+    let r = await chave('POST', '/staff/api/academy/importar-curso', { produtor_email: PROD,
+      produto: { titulo: 'Curso Comum Sem Estude', tipo: 'curso', categoria: 'desenvolvimento-pessoal', descricao_curta: 'Curso comum' },
+      modulos: [{ titulo: 'Módulo', aulas: [{ titulo: 'Aula comum', tipo: 'texto', conteudo: 'Conteúdo comum.' }] }] });
+    assert.equal(r.st, 200, r.texto);
+    const comum = r.json.produto.id;
+    assert.equal((await req('POST', `/academy/api/produtor/produtos/${comum}/matricular`, { jar: 'maria', corpo: { email: NARA.email } })).st, 200);
+    const esComum = (await req('GET', `/academy/api/aluno/cursos/${comum}/estudo`, { jar: 'nara' })).json || {};
+    assert.ok(!(esComum.acesso && (esComum.escopos || []).length), 'curso sem escopo não tem percurso — o cartão do Estude fica vazio e a barra do Estude não nasce');
+    assert.ok(/if \(!r \|\| !r\.acesso \|\| !\(r\.escopos \|\| \[\]\)\.length\) \{ alvo\.innerHTML = ''; return; \}/.test(ler('app-estudo.js')), 'sem escopo, nada do Estude é desenhado');
+    assert.equal((tela.match(/barraDoEstude\(\)/g) || []).length, 2, 'a barra do Estude só é chamada de dentro do ES.abrir');
+    const jrTela = ler('app-jornada.js');
+    assert.ok(jrTela.includes("botoes.push(['recursos', '📄 Cheat sheets e templates'])") && jrTela.includes("botoes.push(['desafio', '🔥 ' + (p.desafio ? p.desafio.titulo : 'Desafio')])"), 'o curso comum mantém os rótulos antigos');
   });
 
   // ================= B. QUIZ DENTRO DA AULA =================

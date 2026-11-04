@@ -746,10 +746,11 @@
       var d = C.d, jr = C.jr || {}, s = (jr.acesso && jr.secoes) || {}, mats = d.materiais_curso || [];
       var bt = function (id, txt) { return '<button class="al-bt peq fan" data-porta="' + id + '">' + txt + '</button>'; };
       return botaoAudiobook(d.audiobook) +
-        (s.desafio ? bt('desafio', '🔥 ' + esc(jr.desafio && jr.desafio.titulo ? jr.desafio.titulo : 'Desafio')) : '') +
+        // no Estude, o nome diz o que é (revisão) e quantos dias são — o número vem do desafio publicado, 21 por padrão
+        (s.desafio ? bt('desafio', '🔥 Desafio de ' + esc((jr.desafio && jr.desafio.total) || 21) + ' dias de revisão') : '') +
         (s.simulacoes ? bt('simulacoes', '🎯 Simulações') : '') +
         (s.lab ? bt('lab', '🧪 Villela Lab') : '') +
-        (s.recursos ? bt('recursos', '📄 Cheat sheets e templates') : '') +
+        (s.recursos ? bt('recursos', '📄 Folhas de revisão e modelos') : '') +
         (mats.length ? bt('material', '📚 Material do curso · ' + mats.length) : '') +
         (d.matriculado ? bt('avaliar', '★ Avaliar o curso') : '');
     }
@@ -775,11 +776,32 @@
       el('pe-volta').onclick = function (e) { e.preventDefault(); voltarAoEstude(pid); };
       window.scrollTo(0, 0);
     }
+    // A prateleira do Estude agrupada pelo PREFIXO do nome ("Jurisprudência · Súmulas do STJ"): o prefixo vira o
+    // título do grupo e sai do cartão. Sem nenhum prefixo conhecido, a lista fica corrida, como sempre foi.
+    // O peso do arquivo vem da rota (media_files.tamanho) e o cartaoMaterial já o mostra.
+    var GRUPOS_DE_MATERIAL = ['Jurisprudência', 'Legislação', 'Véspera'];
+    function corpoMaterialDoCurso(mats) {
+      var grupos = GRUPOS_DE_MATERIAL.map(function (g) { return { titulo: g, itens: [] }; }), outros = [];
+      mats.forEach(function (m) {
+        var nome = String(m.nome || ''), achou = null;
+        grupos.forEach(function (g) { if (!achou && nome.indexOf(g.titulo + ' ·') === 0) achou = g; });
+        if (!achou) return outros.push(m);
+        var resto = nome.slice(achou.titulo.length + 2).replace(/^\s+/, '');
+        achou.itens.push({ nome: resto || nome, media_id: m.media_id, mime: m.mime, tamanho: m.tamanho });
+      });
+      var cheios = grupos.filter(function (g) { return g.itens.length; });
+      var lista = function (xs) { return '<div class="mats">' + xs.map(function (m) { return cartaoMaterial(m); }).join('') + '</div>'; };
+      if (!cheios.length) return lista(outros);
+      if (outros.length) cheios.push({ titulo: 'Outros materiais', itens: outros });
+      return cheios.map(function (g) {
+        return '<h3 class="mats-grupo" style="font-size:1.02rem;margin:22px 0 10px">' + esc(g.titulo) + ' <span class="al-fino">· ' + g.itens.length + '</span></h3>' + lista(g.itens);
+      }).join('');
+    }
     function telaMaterialDoCurso(pid) {
       var mats = (C.d.materiais_curso || []).map(function (m) { return { nome: m.nome, media_id: m.media_id, mime: m.mime, tamanho: m.tamanho }; });
       telaDoEstude(pid, 'Material do curso', C.d.produto.titulo,
         '<p class="al-sub" style="margin:14px 0">' + mats.length + ' arquivo' + (mats.length > 1 ? 's' : '') + ' que vale' + (mats.length > 1 ? 'm' : '') + ' para o curso inteiro. Abra aqui ou baixe para estudar.</p>' +
-        '<div class="mats">' + mats.map(function (m) { return cartaoMaterial(m); }).join('') + '</div>');
+        corpoMaterialDoCurso(mats));
     }
     function telaAvaliarCurso(pid) {
       telaDoEstude(pid, 'Avaliar o curso', C.d.produto.titulo,
