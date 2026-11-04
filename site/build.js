@@ -1925,8 +1925,16 @@ const DATAS_PACOTE = [
   { emoji: '🎆', nome: t('Réveillon 2026/2027', "New Year's Eve 2026/2027", 'Fin de Año 2026/2027'), periodo: t('29/12/2026 a 02/01/2027 · 4 diárias', '29 Dec 2026 – 2 Jan 2027 · 4 nights', '29/12/2026 al 02/01/2027 · 4 noches') },
   { emoji: '🇧🇷', nome: t('Posse do Parlamento 2027', '2027 Congressional Inauguration', 'Toma de Posesión del Parlamento 2027'), periodo: t('1º de fevereiro de 2027 · 3 diárias', '1 February 2027 · 3 nights', '1º de febrero de 2027 · 3 noches') },
   { emoji: '🎭', nome: t('Carnaval 2027', 'Carnival 2027', 'Carnaval 2027'), periodo: t('06 a 10/02/2027 · 4 diárias', '6–10 February 2027 · 4 nights', '06 al 10/02/2027 · 4 noches') },
-  { emoji: '🏛️', nome: t('Marcha dos Municípios 2027', 'March of Municipalities 2027', 'Marcha de los Municipios 2027'), periodo: t('datas sob consulta', 'dates on request', 'fechas a consultar') },
-  { emoji: '🏛️', nome: t('Marcha dos Prefeitos 2027', "Mayors' March 2027", 'Marcha de los Alcaldes 2027'), periodo: t('16 a 20/5/2027 (a confirmar)', '16–20 May 2027 (to be confirmed)', '16 a 20/5/2027 (a confirmar)') }
+  // São DUAS marchas de organizadores diferentes, não duas formas de chamar a mesma:
+  //  · UVB (vereadores e gestores) — XXVI Marcha dos Gestores e Legislativos Municipais.
+  //    27 a 30/04/2027, CONFIRMADA: lido em uvbbrasil.com.br em 03/11/2026
+  //    ("Brasília nos espera: XXVI Marcha já tem data confirmada para 2027").
+  //  · CNM (prefeitos) — Marcha a Brasília em Defesa dos Municípios, no CICB.
+  //    A CNM ainda NÃO publicou 2027. A data abaixo é PROVÁVEL, pelo padrão das últimas
+  //    edições: 3ª segunda-feira de maio, de segunda a quinta (2025: 19 a 22/05;
+  //    2026: 18 a 21/05). Em 2027 a 3ª segunda é 17/05. Trocar assim que a CNM anunciar.
+  { emoji: '🏛️', nome: t('Marcha dos Vereadores 2027 (UVB)', "2027 City Councillors' March (UVB)", 'Marcha de los Concejales 2027 (UVB)'), periodo: t('27 a 30/04/2027 · data confirmada', '27–30 April 2027 · confirmed date', '27 al 30/04/2027 · fecha confirmada') },
+  { emoji: '🏛️', nome: t('Marcha dos Prefeitos 2027 (CNM)', "2027 Mayors' March (CNM)", 'Marcha de los Alcaldes 2027 (CNM)'), periodo: t('17 a 20/05/2027 · data provável', '17–20 May 2027 · likely dates', '17 al 20/05/2027 · fecha probable') }
 ];
 // Tradutor de termos de cama (acordeão de quartos dos pacotes) e de "N pessoas".
 const CAMAS_MAP = {
