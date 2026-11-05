@@ -178,6 +178,17 @@ function iniciar() {
       require('./enterprise').purgarLixeiras().then(n => n && console.log(`[vdocs jobs] retenção: ${n} documento(s) purgado(s) da lixeira`)).catch(e => console.error('[vdocs jobs]', e.message));
     }
   }, 5 * 60 * 1000));
+  // nomes automáticos por IA: a cada 10 min (só empresas com a chave ligada; teto diário por empresa)
+  _timers.push(setInterval(() => {
+    const entrada = require('./entrada');
+    (async () => {
+      for (const t of db.prepare("SELECT id FROM tenants WHERE status IN ('trial','ativa','cortesia')").all()) {
+        if (!entrada.nomearAutoAtivo(t.id)) continue;
+        const n = await entrada.rotinaNomesAuto(t.id);
+        if (n) console.log(`[vdocs jobs] nome automático: ${n} documento(s) nomeado(s)`);
+      }
+    })().catch(e => console.error('[vdocs jobs]', e.message));
+  }, 10 * 60 * 1000));
   // triagem: 1x/dia ~09h Brasília (12h UTC) — hora em que ele costuma estar com o celular na mão
   let ultimaTriagem = '';
   _timers.push(setInterval(() => {

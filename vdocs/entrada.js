@@ -427,6 +427,30 @@ Formato do nome: "Tipo – Emissor ou parte – Data" (data dd/mm/aaaa; para fat
 Exemplos: "Nota fiscal – Zara – 03/11/2026", "Fatura – Claro – 10/2026", "Extrato bancário – C6 PJ – 10/2026", "Comprovante de Pix – João Silva – 05/11/2026", "Contrato de locação – Maria Souza – 01/2027".
 Regras: use SOMENTE o que está no texto; se um elemento (emissor, data) não aparecer, OMITA-O — nunca invente; nunca ponha CPF, CNPJ, número de conta, código de barras ou chave de acesso no nome; se não der para saber o que é o documento, devolva nome vazio. tipo_documental deve ser um destes ou vazio: `;
 function sanitizaNome(n) { return s(String(n || '').replace(/[\\*?"<>|\r\n]+/g, ' ').replace(/\s+/g, ' '), 120).trim(); }
+/** Núcleo: pede à IA o nome de cada item { id, nome, texto }. Devolve [{ id, nome, tipo_documental }]. 1 consulta do plano por chamada. */
+async function sugerirNomes(tenantId, itens) {
+  const ia = require('./ia');
+  const { TIPOS_DOCUMENTAIS } = require('./docs');
+  repo.checarLimite(tenantId, 'ia_consultas', 1);
+  const prompt = itens.map((r, i) => `[D${i + 1}] (arquivo: ${r.nome})\n${String(r.texto).replace(/\s+/g, ' ').trim().slice(0, 1800)}`).join('\n\n---\n\n')
+    + `\n\nDevolva um item por documento, com ref igual a D1, D2...`;
+  const r = await ia.executar(tenantId, { prompt, schema: SCHEMA_NOMES, systemExtra: INSTRUCAO_NOMEAR + TIPOS_DOCUMENTAIS.join(', ') + '.' });
+  repo.registrarUso(tenantId, 'ia_consultas', 1);
+  const out = [];
+  for (const it of ((r.json && r.json.nomes) || [])) {
+    const m = /^D(\d+)$/.exec(String(it.ref || '').trim());
+    const item = m && itens[Number(m[1]) - 1];
+    const nome = sanitizaNome(it.nome);
+    if (!item || !nome) continue;
+    out.push({ id: item.id, nome, tipo_documental: TIPOS_DOCUMENTAIS.includes(it.tipo_documental) ? it.tipo_documental : '' });
+  }
+  return out;
+}
+// Nome que não diz nada: timestamp/hash na frente ou o arquivo se chama só "documento-1", "scan", "img".
+const nomeRuim = (n) => /^[0-9]{8,}[-_ ]/.test(String(n || '')) || /[0-9a-f]{20,}/i.test(String(n || '')) || /^(documento|doc|scan|img|image|file|arquivo)[-_ ]?[0-9]*[.]/i.test(String(n || ''));
+const temTexto = (t) => String(t || '').replace(/\s+/g, ' ').trim().length >= 40;
+
+/** A pedido (botão na triagem): sugere, não aplica — o nome vale quando a pessoa processa. */
 async function nomearComIA(tenantId, user, logIds, ip) {
   const ia = require('./ia');
   if (!ia.ativo()) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY.');
@@ -437,24 +461,68 @@ async function nomearComIA(tenantId, user, logIds, ip) {
       JOIN documents d ON d.id = l.document_id AND d.tenant_id = l.tenant_id
       LEFT JOIN document_texts tx ON tx.document_id = d.id AND tx.tenant_id = l.tenant_id
       WHERE l.tenant_id = ? AND l.triagem = 'pendente' AND l.id IN (${marcas})`).all(String(tenantId), ...ids);
-  const comTexto = linhas.filter(r => String(r.texto || '').replace(/\s+/g, ' ').trim().length >= 40);
+  const comTexto = linhas.filter(r => temTexto(r.texto));
   const semTexto = linhas.filter(r => !comTexto.includes(r)).map(r => r.log_id);
   if (!comTexto.length) return { sugestoes: [], sem_texto: semTexto };
-  repo.checarLimite(tenantId, 'ia_consultas', 1);
-  const prompt = comTexto.map((r, i) => `[D${i + 1}] (arquivo: ${r.nome})\n${String(r.texto).replace(/\s+/g, ' ').trim().slice(0, 1800)}`).join('\n\n---\n\n')
-    + `\n\nDevolva um item por documento, com ref igual a D1, D2...`;
-  const r = await ia.executar(tenantId, { prompt, schema: SCHEMA_NOMES, systemExtra: INSTRUCAO_NOMEAR + require('./docs').TIPOS_DOCUMENTAIS.join(', ') + '.' });
-  repo.registrarUso(tenantId, 'ia_consultas', 1);
-  const sugestoes = [];
-  for (const it of ((r.json && r.json.nomes) || [])) {
-    const m = /^D(\d+)$/.exec(String(it.ref || '').trim());
-    const linha = m && comTexto[Number(m[1]) - 1];
-    const nome = sanitizaNome(it.nome);
-    if (!linha || !nome) continue;
-    sugestoes.push({ log_id: linha.log_id, nome, tipo_documental: require('./docs').TIPOS_DOCUMENTAIS.includes(it.tipo_documental) ? it.tipo_documental : '' });
+  const sug = await sugerirNomes(tenantId, comTexto.map(r => ({ id: r.log_id, nome: r.nome, texto: r.texto })));
+  repo.auditar(tenantId, user, 'entrada.nomear_ia', 'entradas_log', '', { documentos: comTexto.length, sugeridos: sug.length }, ip);
+  return { sugestoes: sug.map(x => ({ log_id: x.id, nome: x.nome, tipo_documental: x.tipo_documental })), sem_texto: semTexto, sem_sugestao: comTexto.length - sug.length };
+}
+
+// ---- nome AUTOMÁTICO: todo documento que chega (e o acervo que veio por aqui) ganha um nome bom ----
+// Aplica direto: o arquivo original fica guardado (versão e "Arquivo original:" na descrição) e a pessoa pode
+// editar. Tag `nome-ia` = já nomeado (não repete); `nome-ia-sem` = a IA não soube (não insiste). Propaganda não
+// gasta IA. Teto diário por empresa (VDOCS_NOME_IA_MAX_DIA, padrão 100). Imagem/escaneado sem texto não tem o que ler.
+const MAX_AUTO_DIA = () => parseInt(process.env.VDOCS_NOME_IA_MAX_DIA, 10) || 100;
+function nomearAutoAtivo(tenantId) {
+  const v = repo.lerSettings(tenantId).nomear_automatico;
+  if (v === 'on') return true;
+  if (v === 'off') return false;
+  return avisoTriagemDisponivel(tenantId); // sem escolha: ligado nas contas internas (cortesia), desligado nas demais
+}
+function definirNomearAuto(tenantId, ativo, ator, ip) {
+  repo.gravarSetting(tenantId, 'nomear_automatico', ativo ? 'on' : 'off', ator, ip);
+}
+async function rotinaNomesAuto(tenantId) {
+  const ia = require('./ia');
+  if (!ia.ativo() || !nomearAutoAtivo(tenantId)) return 0;
+  const t = String(tenantId);
+  const hoje = new Date().toISOString().slice(0, 10);
+  let usado = db.prepare("SELECT detalhes FROM audit_logs WHERE tenant_id = ? AND acao = 'entrada.nomear_auto' AND criado_em >= ?").all(t, hoje)
+    .reduce((n, a) => n + (Number((j.parse(a.detalhes, {}) || {}).documentos) || 0), 0);
+  const candidatos = db.prepare(`SELECT d.id, d.nome, d.descricao, d.tags, tx.texto FROM entradas_log l
+      JOIN documents d ON d.id = l.document_id AND d.tenant_id = l.tenant_id
+      JOIN document_texts tx ON tx.document_id = d.id AND tx.tenant_id = l.tenant_id
+      WHERE l.tenant_id = ? AND l.status = 'recebido' AND l.triagem IN ('pendente', 'processado') AND l.grupo != 'propaganda'
+        AND d.status = 'ativo' AND d.tags NOT LIKE '%"nome-ia%' AND length(tx.texto) >= 40
+      ORDER BY l.criado_em DESC LIMIT 200`).all(t)
+    // só o que importa gasta IA: categoria reconhecida (nota, fatura, extrato, contrato, recibo, comprovante) ou nome ruim
+    .filter(c => temTexto(c.texto) && (sugerirTipo(c.nome, c.texto) || nomeRuim(c.nome))).slice(0, 60);
+  const ator = { id: 'sistema', nome: 'Nome automático (IA)' };
+  let nomeados = 0;
+  for (let i = 0; i < candidatos.length && usado < MAX_AUTO_DIA(); i += MAX_NOMEAR) {
+    const lote = candidatos.slice(i, i + MAX_NOMEAR);
+    let sug;
+    try { sug = await sugerirNomes(tenantId, lote.map(c => ({ id: c.id, nome: c.nome, texto: c.texto }))); }
+    catch (e) { console.error('[vdocs nome-ia]', e.message); break; } // sem cota/IA fora: tenta no próximo ciclo
+    usado += lote.length;
+    const porId = new Map(sug.map(x => [x.id, x]));
+    for (const c of lote) {
+      const tags = j.parse(c.tags, []);
+      const x = porId.get(c.id);
+      if (x) {
+        docs.atualizarDocumento(tenantId, c.id, {
+          nome: x.nome, tags: tags.concat('nome-ia'),
+          descricao: `Arquivo original: ${c.nome}` + (c.descricao ? ' · ' + c.descricao : ''),
+        }, ator, 'rotina');
+        nomeados++;
+      } else {
+        docs.atualizarDocumento(tenantId, c.id, { tags: tags.concat('nome-ia-sem') }, ator, 'rotina');
+      }
+    }
+    repo.auditar(tenantId, ator, 'entrada.nomear_auto', 'documents', '', { documentos: lote.length, nomeados: lote.filter(c => porId.has(c.id)).length }, 'rotina');
   }
-  repo.auditar(tenantId, user, 'entrada.nomear_ia', 'entradas_log', '', { documentos: comTexto.length, sugeridos: sugestoes.length }, ip);
-  return { sugestoes, sem_texto: semTexto, sem_sugestao: comTexto.length - sugestoes.length };
+  return nomeados;
 }
 
 function resumo(tenantId) {
@@ -476,6 +544,6 @@ module.exports = {
   PASTA_PADRAO, PASTA_PROPAGANDA, TAG_BAIXA_STAYS, classificarGrupo, EXT_ACEITAS, canonFone, normalizar, sugerirTipo,
   listarCanais, criarCanal, atualizarCanal, excluirCanal, canaisAtivos, receber,
   pendentesTriagem, decidirTriagem, resumo, recentes,
-  nomearComIA, listarRemetentesPropaganda, adicionarRemetentesPropaganda, removerRemetentePropaganda, nomeDoRemetente,
+  nomearComIA, nomearAutoAtivo, definirNomearAuto, rotinaNomesAuto, listarRemetentesPropaganda, adicionarRemetentesPropaganda, removerRemetentePropaganda, nomeDoRemetente,
   avisoTriagemDisponivel, avisoTriagemAtivo, definirAvisoTriagem, dadosAvisoTriagem,
 };

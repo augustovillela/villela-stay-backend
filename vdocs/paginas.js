@@ -947,6 +947,7 @@ async function vEntrada(){
    '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><select id="ent-tipo" style="max-width:140px"><option value="whatsapp">WhatsApp</option><option value="gmail">Gmail</option></select>'+
    '<input id="ent-ident" placeholder="5561999999999 ou voce@gmail.com" style="max-width:280px"><input id="ent-rot" placeholder="Rótulo (ex.: Pessoal)" style="max-width:180px">'+
    '<button class="btn peq" onclick="entAdd()">Cadastrar conta</button></div><div id="ent-out" style="margin-top:8px;font-size:13px"></div></div>'+
+   '<div class="card" style="margin-top:12px"><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:0"><input type="checkbox" style="width:auto" '+(d.nomear_auto.ativo?'checked ':'')+'onchange="entNomearAuto(this.checked)"> ✨ Dar nome automático aos documentos que chegam (a IA lê o texto e nomeia, ex.: <i>Nota fiscal – Zara – 03/11/2026</i>; o nome do arquivo original fica na descrição). Usa consultas de IA do plano.</label></div>'+
    (d.aviso_triagem.disponivel?'<div class="card" style="margin-top:12px"><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:0"><input type="checkbox" style="width:auto" '+(d.aviso_triagem.ativo?'checked ':'')+'onchange="entAviso(this.checked)"> 📲 Avisar no WhatsApp, todo dia por volta das 9h, quando houver documentos esperando triagem (com link para abrir no celular)</label></div>':'')+
    remetentesHtml(d.remetentes_propaganda)+
    '<div class="card" style="margin-top:12px"><b>🕘 Chegadas recentes</b><table><tr><th>Quando</th><th>Arquivo</th><th>De</th><th>Desfecho</th></tr>'+
@@ -963,6 +964,7 @@ function remetentesHtml(lista){
 const recarregaRem=()=>S.tela==='triagem'?vTriagem('remetentes'):vEntrada();
 async function entAddRem(){try{await api('POST','/entrada/remetentes',{texto:$('ent-rem').value});recarregaRem();}catch(e){$('ent-rem-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
 async function entDelRem(id){await api('DELETE','/entrada/remetentes/'+id);recarregaRem();return false;}
+async function entNomearAuto(ativo){try{await api('POST','/entrada/nomear-auto',{ativo});}catch(e){alert(e.message);vEntrada();}}
 async function entAviso(ativo){try{await api('POST','/entrada/aviso',{ativo});}catch(e){alert(e.message);vEntrada();}}
 async function entAdd(){try{
   await api('POST','/entrada/canais',{tipo:$('ent-tipo').value,identificador:$('ent-ident').value,rotulo:$('ent-rot').value});vEntrada();

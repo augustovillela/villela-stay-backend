@@ -968,6 +968,36 @@ function teste(nome, cond) {
         r = await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: [{ log_id: lz, acao: 'processar', tipo_documental: 'nota_fiscal', folder_id: '__auto', nome: 'Nota fiscal – Zara – 03/11/2026' }, { log_id: lv, acao: 'eliminar' }] }, jar: 'anaA' });
         teste('Processar aplica o nome sugerido/editado', r.dados.resultado.every(x => x.ok) && (await req('GET', '/vdocs/api/documentos/' + tz.dados.document_id, { jar: 'anaA' })).dados.documento.nome === 'Nota fiscal – Zara – 03/11/2026');
       }
+      // nome automático por IA (mock): só o que importa, só uma vez, propaganda fora
+      {
+        const iaMod = require('./ia');
+        const jobsM = require('./jobs');
+        const mk = async (id, nome, texto, extra = {}) => (await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'A-' + id, arquivo_nome: nome, conteudo_base64: B64(texto), ...extra }))).dados.document_id;
+        const dNF = await mk('nf', '1793745936224-ticket-8a2cd6b21f324a6999341f1cead87bac.txt', 'Bilhete eletronico da compra na Zara Brasil, emitido em 03/11/2026, valor total R$ 599,90');
+        const dOK = await mk('ok', 'Relatorio semanal da equipe.txt', 'Resumo da semana: reunioes, entregas e pendencias do time de operacoes da empresa');
+        const dPr = await mk('pr', 'catalogo_loja.txt', 'Aproveite ofertas imperdiveis com desconto em toda a loja somente hoje', { remetente: 'Loja X <news@lojax.com>', em_lista: true });
+        for (let k = 0; k < 20; k++) { if (!(await jobsM.processarPendentes())) break; }
+        let chamadas = 0;
+        iaMod.__mockParaTeste(async ({ prompt }) => { chamadas++; const n = (prompt.match(/\[D(\d+)\]/g) || []).length; return { json: { nomes: Array.from({ length: n }, (_, i) => ({ ref: 'D' + (i + 1), nome: 'Recibo de compra – Zara – 03/11/2026', tipo_documental: 'recibo' })) }, modelo: 'mock', usage: { input_tokens: 5, output_tokens: 5 } }; });
+        await req('POST', '/vdocs/api/entrada/nomear-auto', { body: { ativo: true }, jar: 'anaA' });
+        teste('tela mostra o nome automático ligado', (await req('GET', '/vdocs/api/entrada', { jar: 'anaA' })).dados.nomear_auto.ativo === true);
+        const n1 = await require('./entrada').rotinaNomesAuto(tenantA.id);
+        const docInfo = async (id) => (await req('GET', '/vdocs/api/documentos/' + id, { jar: 'anaA' })).dados.documento;
+        const nf = await docInfo(dNF);
+        teste('documento de nome ruim/importante é nomeado e guarda o original na descrição', n1 >= 1 && nf.nome === 'Recibo de compra – Zara – 03/11/2026' && /Arquivo original: 1793745936224-ticket/.test(nf.descricao) && nf.tags.includes('nome-ia'));
+        teste('documento comum e propaganda NÃO gastam IA nem mudam de nome', (await docInfo(dOK)).nome === 'Relatorio semanal da equipe.txt' && (await docInfo(dPr)).nome === 'catalogo_loja.txt');
+        const antes = chamadas;
+        await require('./entrada').rotinaNomesAuto(tenantA.id);
+        teste('não repete: segunda rodada não chama a IA de novo para o mesmo documento', chamadas === antes);
+        await req('POST', '/vdocs/api/entrada/nomear-auto', { body: { ativo: false }, jar: 'anaA' });
+        const dNF2 = await mk('nf2', '1793745999999-ticket-ffffffffffffffffffffffffffffffff.txt', 'Bilhete eletronico da compra na Zara Brasil, emitido em 04/11/2026, valor total R$ 100,00');
+        for (let k = 0; k < 20; k++) { if (!(await jobsM.processarPendentes())) break; }
+        const antes2 = chamadas;
+        teste('desligado não nomeia nem gasta IA', (await require('./entrada').rotinaNomesAuto(tenantA.id)) === 0 && chamadas === antes2);
+        iaMod.__mockParaTeste(null);
+        const resto = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens.filter(i => [dNF, dOK, dPr, dNF2].includes(i.document_id));
+        await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: resto.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
+      }
       const sobra = fl.filter(i => i.grupo === 'propaganda' && ['tabela-a.pdf', 'tabela-b.pdf', 'informativo-semana.pdf'].includes(i.nome));
       await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: sobra.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
       const ids = {};
