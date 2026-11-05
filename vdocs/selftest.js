@@ -1126,6 +1126,58 @@ function teste(nome, cond) {
     teste('visualizar exige login', resp.status === 401);
     r = await req('GET', '/vdocs/api/documentos/' + idImg, { jar: 'anaA' });
     teste('visualização fica registrada nos acessos', r.dados.acessos.some(x => x.acao === 'visualizar' && x.versao === 1));
+
+    // ---- visualizador de planilha: xlsx montado à mão (ZIP "stored") e csv ----
+    const zlib = require('zlib');
+    const zipar = (arquivos) => {
+      const locais = [], centrais = []; let off = 0;
+      for (const [nome, txt] of Object.entries(arquivos)) {
+        const n = Buffer.from(nome), d = Buffer.from(txt), crc = zlib.crc32(d);
+        const lh = Buffer.alloc(30); lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt32LE(crc, 14); lh.writeUInt32LE(d.length, 18); lh.writeUInt32LE(d.length, 22); lh.writeUInt16LE(n.length, 26);
+        const ch = Buffer.alloc(46); ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt32LE(crc, 16); ch.writeUInt32LE(d.length, 20); ch.writeUInt32LE(d.length, 24); ch.writeUInt16LE(n.length, 28); ch.writeUInt32LE(off, 42);
+        locais.push(lh, n, d); centrais.push(ch, n); off += 30 + n.length + d.length;
+      }
+      const cd = Buffer.concat(centrais), eo = Buffer.alloc(22);
+      eo.writeUInt32LE(0x06054b50, 0); eo.writeUInt16LE(Object.keys(arquivos).length, 8); eo.writeUInt16LE(Object.keys(arquivos).length, 10); eo.writeUInt32LE(cd.length, 12); eo.writeUInt32LE(off, 16);
+      return Buffer.concat([...locais, cd, eo]);
+    };
+    const xlsx = zipar({
+      'xl/workbook.xml': '<workbook xmlns:r="x"><sheets><sheet name="Resumo" sheetId="1" r:id="rId1"/><sheet name="Escondida" sheetId="2" state="hidden" r:id="rId2"/><sheet name="Detalhe &amp; Cia" sheetId="3" r:id="rId3"/></sheets></workbook>',
+      'xl/_rels/workbook.xml.rels': '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Target="worksheets/sheet3.xml"/></Relationships>',
+      'xl/sharedStrings.xml': '<sst><si><t>Cliente</t></si><si><r><t>Valor </t></r><r><t>total</t></r></si><si><t>Zé &amp; Filhos</t></si></sst>',
+      'xl/styles.xml': '<styleSheet><cellXfs><xf numFmtId="0"/><xf numFmtId="14"/></cellXfs></styleSheet>',
+      'xl/worksheets/sheet1.xml': '<worksheet><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="C1" t="s"><v>1</v></c></row><row r="3"><c r="A3" t="s"><v>2</v></c><c r="B3" s="1"><v>46327</v></c><c r="C3"><v>1234.5</v></c></row></sheetData></worksheet>',
+      'xl/worksheets/sheet2.xml': '<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>oculta</t></is></c></row></sheetData></worksheet>',
+      'xl/worksheets/sheet3.xml': '<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>linha</t></is></c><c r="B1" t="b"><v>1</v></c></row></sheetData></worksheet>',
+    });
+    r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'vendas.xlsx', nome: 'Vendas', conteudo_base64: xlsx.toString('base64') }, jar: 'anaA' });
+    const idPl = r.dados.documento.id;
+    r = await req('GET', '/vdocs/api/documentos/' + idPl + '/planilha', { jar: 'anaA' });
+    const ab = (r.dados.abas || []);
+    teste('planilha xlsx: abas visíveis na ordem, com nome decodificado, sem a escondida', r.status === 200 && ab.length === 2 && ab[0].nome === 'Resumo' && ab[1].nome === 'Detalhe & Cia');
+    teste('planilha xlsx: texto compartilhado (inclusive rich text), célula vazia e linha pulada', ab[0].linhas[0][0] === 'Cliente' && ab[0].linhas[0][2] === 'Valor total' && ab[0].linhas[0][1] === '' && ab[0].linhas[1].every(c => c === '') && ab[0].linhas[2][0] === 'Zé & Filhos');
+    teste('planilha xlsx: data vira dd/mm/aaaa, número usa vírgula, booleano em português', ab[0].linhas[2][1] === '01/11/2026' && ab[0].linhas[2][2] === '1234,5' && ab[1].linhas[0][1] === 'VERDADEIRO');
+    r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'lista.csv', nome: 'Lista', conteudo_base64: B64('nome;valor\n"Silva; Jr";10,5\nAna;"3"') }, jar: 'anaA' });
+    const idCsv = r.dados.documento.id;
+    r = await req('GET', '/vdocs/api/documentos/' + idCsv + '/planilha', { jar: 'anaA' });
+    teste('planilha csv: separador ; detectado, aspas respeitadas', r.status === 200 && r.dados.abas[0].linhas.length === 3 && r.dados.abas[0].linhas[1][0] === 'Silva; Jr' && r.dados.abas[0].linhas[2][1] === '3');
+    r = await req('GET', '/vdocs/api/documentos/' + idXls + '/planilha', { jar: 'anaA' });
+    teste('planilha corrompida/falsa não derruba: responde erro claro', r.status === 400 || r.status === 415);
+    r = await req('GET', '/vdocs/api/documentos/' + idImg + '/planilha', { jar: 'anaA' });
+    teste('planilha: formato que não é planilha dá 415', r.status === 415);
+    resp = await fetch(BASE + '/vdocs/api/documentos/' + idPl + '/planilha');
+    teste('planilha exige login', resp.status === 401);
+    r = await req('GET', '/vdocs/api/documentos/' + idPl + '/planilha', { jar: 'bobB' });
+    teste('B não lê planilha de A (isolamento)', r.status === 400);
+
+    // ---- busca por palavras (qualquer ordem, sem acento, em nome/descrição/tags) ----
+    await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'x1.txt', nome: 'Contrato Casa Villela - João Paulo', descricao: 'locação de temporada', conteudo_base64: B64('a') }, jar: 'anaA' });
+    await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'x2.txt', nome: 'Contrato Villa Kubitschek', conteudo_base64: B64('b') }, jar: 'anaA' });
+    const busca = async (q) => (await req('GET', '/vdocs/api/documentos?todos=1&limite=500&busca=' + encodeURIComponent(q), { jar: 'anaA' })).dados.documentos.map(d => d.nome);
+    teste('busca: "contrato casa villela" acha o documento que tem as três palavras', (await busca('contrato casa villela')).join('|') === 'Contrato Casa Villela - João Paulo');
+    teste('busca: palavras em outra ordem, maiúscula e sem acento ("VILLELA joao contrato")', (await busca('VILLELA joao contrato')).length === 1);
+    { const c = await busca('contrato'); teste('busca: uma palavra só acha todos que a têm ("contrato" e "kubitschek")', c.includes('Contrato Casa Villela - João Paulo') && c.includes('Contrato Villa Kubitschek') && (await busca('kubitschek')).length === 1); }
+    teste('busca: acha pela descrição ("temporada") e palavra que falta zera', (await busca('temporada')).length === 1 && (await busca('contrato inexistente')).length === 0);
   }
 
   // ================== FASE 10: enterprise (2FA, retenção legal, takeout, saúde) ==================

@@ -474,6 +474,20 @@ body{background:var(--fundo)}
 .vw-c img{max-width:100%;max-height:100%;object-fit:contain;align-self:center}
 .vw-c audio,.vw-c video{align-self:center;max-width:100%}
 .vw-pre{margin:0;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;width:100%;background:#fff}
+.pl{width:100%;display:flex;flex-direction:column;min-height:0;background:#fff}
+.pl-abas{display:flex;gap:2px;flex-wrap:wrap;padding:8px 10px 0;border-bottom:1px solid var(--borda);background:var(--fundo)}
+.pl-ab{border:1px solid var(--borda);border-bottom:0;background:#eef1f5;padding:6px 14px;border-radius:8px 8px 0 0;font-size:13px;cursor:pointer;color:inherit}
+.pl-ab.on{background:#fff;font-weight:700}
+.pl-sc{flex:1;min-height:0;overflow:auto}
+.pl-t{border-collapse:separate;border-spacing:0;font-size:13px}
+.pl-t th{position:sticky;top:0;z-index:2;background:#eef1f5;font-weight:600;color:#556;border-right:1px solid var(--borda);border-bottom:1px solid var(--borda);padding:4px 10px;text-align:center}
+.pl-t th.pl-n{left:0;z-index:3;min-width:42px;font-weight:500}
+.pl-t tbody th.pl-n{top:auto;z-index:1}
+.pl-t td{border-right:1px solid #e6e9ee;border-bottom:1px solid #e6e9ee;padding:4px 10px;white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis}
+.pl-t td.num{text-align:right;font-variant-numeric:tabular-nums}
+body .pl-t td,body .pl-t th{padding:3px 10px;line-height:1.35;height:auto}
+.pl-t tbody tr:hover td{background:#f5f8ff}
+.pl-rod{padding:6px 12px;font-size:12px;color:var(--suave);border-top:1px solid var(--borda)}
 .barra{height:8px;background:var(--borda);border-radius:99px;overflow:hidden}.barra i{display:block;height:100%;background:var(--azul)}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
 </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=9"></head><body class="vx" data-vertical="docs">
@@ -744,7 +758,7 @@ async function vDocs(){
    '<div class="card" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
    (S.pasta||S.lixeira?'<button class="btn peq" title="Voltar à página inicial dos documentos (todas as pastas)" onclick="S.lixeira=false;irPasta(\\'\\')">'+ic('home')+' Início</button>':'')+
    '<div style="flex:1;min-width:220px;font-size:14px">'+(S.lixeira?'Documentos excluídos (restaure ou exclua definitivamente)':trilha())+'</div>'+
-   '<input id="dq" placeholder="Buscar por nome…" value="'+esc(filtro)+'" style="max-width:200px" oninput="clearTimeout(S._t);S._t=setTimeout(vDocs,400)">'+
+   '<input id="dq" placeholder="Buscar: contrato casa villela…" value="'+esc(filtro)+'" style="max-width:200px" oninput="clearTimeout(S._t);S._t=setTimeout(vDocs,400)">'+
    (P.criar_pasta&&!S.lixeira?'<button class="btn btn-ghost peq" onclick="novaPasta()">'+ic('folder')+' Nova pasta</button>':'')+
    (P.criar_documento&&!S.lixeira?'<button class="btn peq" onclick="$(\\'up-file\\').click()">'+ic('upload')+' Enviar arquivos</button><input id="up-file" type="file" multiple style="display:none" onchange="enviarArquivos(this.files)">':'')+
    (P.excluir_documento||P.restaurar_documento?'<button class="btn btn-ghost peq" onclick="S.lixeira=!S.lixeira;vDocs()">'+(S.lixeira?'← Voltar aos documentos':ic('trash')+' Lixeira')+'</button>':'')+
@@ -806,7 +820,8 @@ async function visualizarDoc(id,versao){
   else if(['mp4','mov'].includes(ext))c.innerHTML='<video controls src="'+url+'"></video>';
   else{
     try{
-      if(['txt','csv','md'].includes(ext)){const r=await fetch(url,{credentials:'same-origin'});c.innerHTML='<pre class="vw-pre">'+esc(await r.text())+'</pre>';}
+      if(['xlsx','csv'].includes(ext)){await mostrarPlanilha(c,id,q);}
+      else if(['txt','md'].includes(ext)){const r=await fetch(url,{credentials:'same-origin'});c.innerHTML='<pre class="vw-pre">'+esc(await r.text())+'</pre>';}
       else{
         const t=await api('GET','/documentos/'+id+'/texto');
         c.innerHTML=t.texto
@@ -816,6 +831,23 @@ async function visualizarDoc(id,versao){
     }catch(e){c.innerHTML='<p style="padding:20px;color:var(--alerta)">'+esc(e.message)+'</p>';}
   }
   return false;
+}
+// ---- visualizador de planilha (xlsx/csv): abas + tabela com A B C e número de linha, sem baixar ----
+async function mostrarPlanilha(c,id,q){
+  S._pl=await api('GET','/documentos/'+id+'/planilha'+q);
+  c.innerHTML='<div class="pl"><div class="pl-abas" id="pl-abas"></div><div class="pl-sc" id="pl-sc"></div><div class="pl-rod" id="pl-rod"></div></div>';
+  planilhaAba(0);
+}
+function planilhaCol(n){let t='';n++;while(n>0){const r=(n-1)%26;t=String.fromCharCode(65+r)+t;n=Math.floor((n-1)/26);}return t;}
+function planilhaAba(i){
+  const a=S._pl.abas[i];
+  $('pl-abas').innerHTML=S._pl.abas.map((x,k)=>'<button class="pl-ab'+(k===i?' on':'')+'" onclick="planilhaAba('+k+')">'+esc(x.nome)+'</button>').join('');
+  let h='<table class="pl-t"><thead><tr><th class="pl-n"></th>';
+  for(let k=0;k<a.colunas;k++)h+='<th>'+planilhaCol(k)+'</th>';
+  h+='</tr></thead><tbody>';
+  a.linhas.forEach((l,r)=>{h+='<tr><th class="pl-n">'+(r+1)+'</th>'+l.map(v=>'<td'+(v!==''&&!isNaN(Number(String(v).replace(',','.')))?' class="num"':'')+' title="'+esc(v)+'">'+esc(v)+'</td>').join('')+'</tr>';});
+  $('pl-sc').innerHTML=h+'</tbody></table>';
+  $('pl-rod').textContent=a.linhas.length+' linhas · '+a.colunas+' colunas'+(a.truncado?' — mostrando só as primeiras '+a.linhas.length+' de '+a.totalLinhas+' (baixe para ver tudo)':'')+' · somente leitura';
 }
 function fecharVisualizador(){const o=$('vw-ov');if(o)o.remove();}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharVisualizador();});

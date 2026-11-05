@@ -160,14 +160,28 @@ function obterDocumento(tenantId, id, { comVersoes = false } = {}) {
   return d;
 }
 
+const semAcento = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 function listarDocumentos(tenantId, { folder_id = '', status = 'ativo', busca = '', tipo = '', tag = '', limite = 200, todos = false } = {}) {
   let sql = 'SELECT id, folder_id, nome, tipo_documental, tags, status, versao_atual, validade, criado_em, atualizado_em FROM documents WHERE tenant_id = ? AND status = ?';
   const args = [String(tenantId), status === 'lixeira' ? 'lixeira' : 'ativo'];
   if (status !== 'lixeira' && !todos) { sql += ' AND folder_id = ?'; args.push(s(folder_id, 40)); } // todos = visão geral, de todas as pastas
-  if (busca) { sql += ' AND (nome LIKE ? OR descricao LIKE ?)'; const t = `%${s(busca, 80)}%`; args.push(t, t); }
+  // Busca por PALAVRAS: "contrato casa villela" acha todo documento que tenha as três, em qualquer ordem e em
+  // qualquer lugar (nome, descrição, tags, tipo, nome do arquivo), sem ligar para maiúscula ou acento.
+  // Feita em JS (o LIKE do SQLite não ignora acento), então sem busca o SQL já limita; com busca varre o tenant.
+  const palavras = semAcento(s(busca, 200)).split(/\s+/).filter(Boolean).slice(0, 12);
   if (tipo) { sql += ' AND tipo_documental = ?'; args.push(s(tipo, 40)); }
-  sql += ' ORDER BY nome LIMIT ?'; args.push(Math.min(Math.max(1, Number(limite) || 200), 500));
+  const lim = Math.min(Math.max(1, Number(limite) || 200), 500);
+  if (palavras.length) {
+    sql = sql.replace('SELECT id,', 'SELECT descricao, (SELECT nome_arquivo FROM document_versions v WHERE v.document_id = documents.id AND v.numero = documents.versao_atual) AS arq, id,');
+    sql += ' ORDER BY nome LIMIT 20000';
+  } else { sql += ' ORDER BY nome LIMIT ?'; args.push(lim); }
   let docs = db.prepare(sql).all(...args).map(d => ({ ...d, tags: j.parse(d.tags, []) }));
+  if (palavras.length) {
+    docs = docs.filter(d => {
+      const alvo = semAcento([d.nome, d.descricao, d.arq, d.tipo_documental, d.tags.join(' ')].join(' '));
+      return palavras.every(p => alvo.includes(p));
+    }).slice(0, lim).map(({ descricao, arq, ...resto }) => resto);
+  }
   if (tag) docs = docs.filter(d => d.tags.includes(tag));
   return docs;
 }
@@ -323,6 +337,18 @@ function visualizar(tenantId, id, numero, ator, ip) {
     .run(String(tenantId), d.id, s(ator && ator.id, 40), 'visualizar', num, s(ip, 60), nowISO());
   return { buffer, nome: v.nome_arquivo, mime, ext };
 }
+/** Planilha (xlsx/csv) lida em abas e células, para o visualizador de tabela. Conta como visualização. */
+function planilha(tenantId, id, numero, ator, ip) {
+  const d = obterDocumento(tenantId, id);
+  const num = Math.trunc(Number(numero)) || d.versao_atual;
+  const v = db.prepare('SELECT * FROM document_versions WHERE tenant_id = ? AND document_id = ? AND numero = ?')
+    .get(String(tenantId), d.id, num);
+  if (!v) throw new Error('Versão não encontrada.');
+  const dados = require('./planilha').lerPlanilha(v.nome_arquivo, lerArquivo(v.file_path)); // lança semPrevia se não for xlsx/csv
+  db.prepare('INSERT INTO document_access_logs (tenant_id, document_id, user_id, acao, versao, ip, criado_em) VALUES (?,?,?,?,?,?,?)')
+    .run(String(tenantId), d.id, s(ator && ator.id, 40), 'visualizar', num, s(ip, 60), nowISO());
+  return dados;
+}
 /** Texto extraído (para documentos sem visualizador nativo). */
 function textoExtraido(tenantId, id) {
   obterDocumento(tenantId, id);
@@ -352,6 +378,6 @@ module.exports = {
   listarPastas, criarPasta, renomearPasta, moverPasta, excluirPasta,
   criarDocumento, obterDocumento, listarDocumentos, atualizarDocumento, moverDocumento,
   novaVersao, restaurarVersao, paraLixeira, restaurarDaLixeira, excluirDefinitivo, alternarLegalHold,
-  baixar, visualizar, textoExtraido, logVisualizacao, acessosDoDocumento, usoVivo,
+  baixar, visualizar, planilha, textoExtraido, logVisualizacao, acessosDoDocumento, usoVivo,
   lerArquivoInterno: lerArquivo, // uso interno do worker de extração (jobs.js)
 };

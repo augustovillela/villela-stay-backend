@@ -263,6 +263,11 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
       res.send(buffer);
     } catch (e) { res.status(e.semPrevia ? 415 : 400).json({ erro: e.message }); }
   });
+  // Visualizador de planilha: devolve abas e células em JSON (a tela monta a tabela; nada de arquivo inline).
+  r.get('/documentos/:id/planilha', requireTenant, requirePerm('ver_documentos'), (req, res) => {
+    try { res.json(docs.planilha(req.vd.tenant.id, req.params.id, req.query.versao, req.vd.user, req.vd.ip)); }
+    catch (e) { res.status(e.semPrevia ? 415 : 400).json({ erro: e.message }); }
+  });
   r.get('/documentos/:id/texto', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     res.json(docs.textoExtraido(req.vd.tenant.id, req.params.id));
   }));
