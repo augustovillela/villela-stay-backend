@@ -12,15 +12,21 @@ async function renderVcrm() {
     + `<div class="barra">
         <a class="btn secund" href="/crm" target="_blank" rel="noopener">🌐 Landing /crm</a>
         <a class="btn secund" href="/crm/app" target="_blank" rel="noopener">🖥️ Painel do assinante</a>
+        <button class="btn secund" id="vc-simular">🔍 Simular importação do CRM legado</button>
         <button class="btn secund" id="vc-importar">⬆ Importar CRM legado → tenant villela-stay</button>
        </div>
        <div id="vc-cards" class="cards"></div>
        <details class="cr-box" id="vc-cortesia-box"><summary class="cr-sum">🎟️ Assinaturas de cortesia</summary><div id="vc-cortesia" style="margin-top:12px"></div></details>
        <div id="vc-corpo"><p class="vazio">Carregando…</p></div>`;
-  $('#vc-importar').onclick = async () => {
-    if (!confirm('Importar contatos.json (CRM legado do staff) para o tenant "villela-stay"? Duplicados são mesclados.')) return;
-    try { const r = await api('POST', '/vcrm/importar-legado', { tenant_slug: 'villela-stay' }); alert(`✅ ${r.criados} criados, ${r.existentes} mesclados, ${r.oportunidades} oportunidade(s).`); vcrmCarregar(); }
+  const resumoImport = (r) => `${r.criados} contatos novos, ${r.existentes} já existiam (mesclados)\n${r.oportunidades} oportunidades abertas, ${r.perdidas} perdidas\n${r.atividades} registros de histórico\n${r.tarefas} tarefas (${r.tarefas_atrasadas} já atrasadas)`;
+  const importarLegado = async (simular) => {
+    try { const r = await api('POST', '/vcrm/importar-legado', { tenant_slug: 'villela-stay', simular }); alert((simular ? '🔍 SIMULAÇÃO — nada foi gravado:\n\n' : '✅ Importado:\n\n') + resumoImport(r)); if (!simular) vcrmCarregar(); }
     catch (e) { alert(e.message + (/(não existe)/.test(e.message) ? '\n\nCrie primeiro a empresa com slug villela-stay no formulário abaixo.' : '')); }
+  };
+  $('#vc-simular').onclick = () => importarLegado(true);
+  $('#vc-importar').onclick = () => {
+    if (!confirm('Importar o CRM legado (contatos, oportunidades, histórico e próximas ações como tarefas) para o tenant "villela-stay"? Pode repetir: só acrescenta o que falta, nada é duplicado. Dica: rode a simulação antes.')) return;
+    importarLegado(false);
   };
   // componente comum (app-cortesia.js); ao criar/revogar, a lista de empresas abaixo se atualiza
   cortesiaPainel($('#vc-cortesia'), 'crm', vcrmCarregar);

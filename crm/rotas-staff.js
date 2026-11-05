@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken');
 const repo = require('./repo');
 const appRepo = require('./app-repo');
 const billing = require('./billing');
+const importarLegado = require('./importar-legado');
 const { DATA_DIR, db } = require('./db');
 
 function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret }) {
@@ -142,44 +143,18 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret }) {
   }));
 
   // ---- IMPORTAÇÃO DO CRM LEGADO (contatos.json + atividades.jsonl do staff → tenant) ----
-  // Dedupe por telefone/e-mail; estágios legados viram oportunidade no funil 'hospedagem'.
+  // Completa e idempotente (ver crm/importar-legado.js). `simular: true` faz tudo e desfaz:
+  // devolve os números exatos de uma importação real, sem gravar nada.
   app.post('/staff/api/vcrm/importar-legado', ...A, h((req, res) => {
     const tenantSlug = (req.body || {}).tenant_slug || 'villela-stay';
     const t = repo.Tenants.porSlug(tenantSlug);
     if (!t) return res.status(404).json({ erro: `Tenant "${tenantSlug}" não existe — crie-o primeiro.` });
-    const arq = path.join(DATA_DIR, 'contatos.json');
-    if (!fs.existsSync(arq)) return res.status(404).json({ erro: 'contatos.json não encontrado em DATA_DIR.' });
-    let legado = [];
-    try { legado = JSON.parse(fs.readFileSync(arq, 'utf8')); } catch (e) { return res.status(400).json({ erro: 'contatos.json inválido: ' + e.message }); }
-    const mapaOrigem = { 'whatsapp-business': 'whatsapp', 'whatsapp-pessoal': 'whatsapp', manual: 'importacao' };
-    const funil = appRepo.Funis.listar(t.id).find(f => f.slug === 'hospedagem') || appRepo.Funis.padrao(t.id);
-    const estagiosAbertos = funil.estagios.filter(e => e.tipo === 'aberto');
-    const mapaEstagio = { novo: 0, contato: 1, orcamento: 3, negociacao: 4, reserva: 5 };
-    let criados = 0, existentes = 0, oportunidades = 0;
-    for (const l of legado) {
-      const r = appRepo.Contatos.criar(t.id, {
-        nome: l.nome, telefone: l.telefone, email: l.email,
-        tipo: ['hospedado', 'posvenda'].includes(l.estagio) ? 'hospede' : 'lead-hospedagem',
-        origem: mapaOrigem[l.origem] || (appRepo.ORIGENS.includes(l.origem) ? l.origem : 'outro'),
-        produto_interesse: l.imovelInteresse, ticket_centavos: Math.round((Number(l.valorEstimado) || 0) * 100),
-        obs: l.preferencias || '', proxima_acao: (l.proximaAcao || {}).descricao || '', proxima_acao_em: (l.proximaAcao || {}).data || '',
-        motivo_perda: l.motivoPerda || '', consentimento: l.consentimento || {},
-      }, 'importacao-legado');
-      if (r.existente) existentes++; else criados++;
-      // estágio aberto do legado vira oportunidade no funil de hospedagem
-      if (mapaEstagio[l.estagio] != null && !r.existente) {
-        const idx = Math.min(mapaEstagio[l.estagio], estagiosAbertos.length - 1);
-        appRepo.Oportunidades.criar(t.id, {
-          contato_id: r.contato.id, funil_id: funil.id, estagio_id: estagiosAbertos[idx].id,
-          titulo: `Hospedagem — ${l.nome || l.telefone || 'lead'}`,
-          produto: l.imovelInteresse || '', valor_centavos: Math.round((Number(l.valorEstimado) || 0) * 100),
-          previsao: ((l.periodo || {}).checkin) || '',
-        }, 'importacao-legado');
-        oportunidades++;
-      }
-    }
-    aud(req, 'importar-legado', 'crm_contatos', t.id, `${criados} criados, ${existentes} já existiam`);
-    res.json({ ok: true, tenant: t.slug, criados, existentes, oportunidades, total_legado: legado.length });
+    const simular = (req.body || {}).simular === true;
+    let r;
+    try { r = importarLegado.importar(t, { simular }); } catch (e) { return res.status(400).json({ erro: e.message }); }
+    aud(req, simular ? 'importar-legado.simular' : 'importar-legado', 'crm_contatos', t.id,
+      `${r.criados} criados, ${r.existentes} já existiam, ${r.oportunidades + r.perdidas} oportunidades, ${r.atividades} atividades, ${r.tarefas} tarefas`);
+    res.json({ ok: true, tenant: t.slug, ...r });
   }));
 
   // consulta rápida a um tenant pelo slug (para o painel staff)

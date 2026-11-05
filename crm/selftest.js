@@ -418,6 +418,48 @@ async function rodar() {
     const cs = saas.appRepo.Contatos.listar(tV.id, {});
     assert.ok(cs.find(c => c.nome === 'Legado Dois').tipo === 'hospede');
   });
+  await t('importar-legado completo: histórico, tarefas, perdidos, datas originais, simulação e idempotência', async () => {
+    const dir = process.env.DATA_DIR;
+    fs.writeFileSync(path.join(dir, 'contatos.json'), JSON.stringify([
+      { id: 'l1', nome: 'Legado Um', telefone: '5561981112222', origem: 'whatsapp-business', estagio: 'negociacao', valorEstimado: 3500, imovelInteresse: 'GD01H', proximaAcao: { descricao: 'responder', data: '2026-07-10' } },
+      { id: 'l2', nome: 'Legado Dois', telefone: '5561982223333', origem: 'airbnb', estagio: 'posvenda' },
+      { id: 'l3', nome: 'Legado Tres', telefone: '5561983334444', origem: 'stays', estagio: 'perdido', motivoPerda: 'Preço', criadoEm: '2026-06-16T15:30:00.000Z', staysReservationId: 'RES9', proximaAcao: { descricao: 'nao deve virar tarefa', data: '2026-07-01' } },
+      { id: 'l4', nome: 'Legado Quatro', telefone: '5561984445555', origem: 'whatsapp-business', estagio: 'novo', criadoEm: '2026-06-20T10:00:00.000Z', proximaAcao: { descricao: 'Responder primeiro contato', data: '2026-06-21' } },
+    ]));
+    fs.writeFileSync(path.join(dir, 'atividades.jsonl'), [
+      { id: 'a1', contatoId: 'l4', tipo: 'mensagem-recebida', texto: 'Oi, tem vaga?', canal: 'whatsapp', autor: 'cliente', data: '2026-06-20T10:00:05.000Z' },
+      { id: 'a2', contatoId: 'l4', tipo: 'tipo-inventado', texto: 'algo', canal: 'xyz', autor: 'sistema', data: '2026-06-20T10:01:00.000Z' },
+    ].map(x => JSON.stringify(x)).join('\n') + '\n');
+    const tV = saas.repo.Tenants.porSlug('villela-stay');
+    const antes = saas.appRepo.Contatos.contar(tV.id);
+    const sim = await req('POST', '/staff/api/vcrm/importar-legado', { corpo: { tenant_slug: 'villela-stay', simular: true } });
+    assert.equal(sim.st, 200); assert.equal(sim.json.simulacao, true);
+    assert.equal(sim.json.criados, 2, 'l3 e l4 são novos (l1/l2 já foram importados)');
+    assert.equal(saas.appRepo.Contatos.contar(tV.id), antes, 'a simulação gravou contato');
+    assert.equal(require("./db").db.prepare('SELECT COUNT(*) n FROM crm_atividades WHERE tenant_id = ? AND texto = ?').get(tV.id, 'Oi, tem vaga?').n, 0, 'a simulação gravou histórico');
+    const real = await req('POST', '/staff/api/vcrm/importar-legado', { corpo: { tenant_slug: 'villela-stay' } });
+    assert.equal(real.st, 200); assert.equal(real.json.simulacao, false);
+    assert.equal(real.json.criados, 2); assert.equal(real.json.existentes, 2);
+    assert.equal(real.json.perdidas, 1); assert.equal(real.json.atividades, 2);
+    assert.equal(real.json.tarefas, 1, 'só a do l4 (a do l1 já nasceu no teste anterior); o perdido não gera tarefa');
+    assert.deepEqual({ ...sim.json, simulacao: false }, { ...real.json }, 'simulação e importação real divergiram');
+    const c4 = saas.appRepo.Contatos.listar(tV.id, {}).find(c => c.nome === 'Legado Quatro');
+    assert.equal(c4.criado_em, '2026-06-20T10:00:00.000Z', 'perdeu a data original');
+    assert.equal(c4.ultima_interacao, '2026-06-20T10:00:05.000Z', 'ultima_interacao virou "agora" por causa do import');
+    assert.ok(c4.tags.includes('legado'));
+    const c3 = saas.appRepo.Contatos.listar(tV.id, {}).find(c => c.nome === 'Legado Tres');
+    assert.ok(c3.obs.includes('RES9'), 'vínculo com a Stays sumiu');
+    assert.equal(require("./db").db.prepare("SELECT status FROM crm_oportunidades WHERE tenant_id = ? AND contato_id = ?").get(tV.id, c3.id).status, 'perdida');
+    const tarefas = saas.appRepo.Tarefas.listar(tV.id, { status: 'aberta' });
+    assert.ok(tarefas.some(x => x.titulo === 'Responder primeiro contato' && x.vence_em === '2026-06-21'));
+    assert.ok(!tarefas.some(x => x.titulo === 'nao deve virar tarefa'));
+    const ativ = require("./db").db.prepare('SELECT tipo, canal FROM crm_atividades WHERE tenant_id = ? AND contato_id = ? AND autor IN (?, ?)').all(tV.id, c4.id, 'cliente', 'sistema');
+    assert.ok(ativ.some(a => a.tipo === 'nota' && a.canal === ''), 'tipo/canal desconhecidos deviam cair em nota/vazio');
+    // idempotência: repetir não duplica nada
+    const de_novo = await req('POST', '/staff/api/vcrm/importar-legado', { corpo: { tenant_slug: 'villela-stay' } });
+    assert.equal(de_novo.json.criados, 0); assert.equal(de_novo.json.atividades, 0);
+    assert.equal(de_novo.json.tarefas, 0); assert.equal(de_novo.json.oportunidades + de_novo.json.perdidas, 0);
+  });
 
   await t('LGPD: exclusão definitiva remove contato + timeline', async () => {
     await req('POST', '/crm/api/login', { corpo: { email: 'bia@beta.br', senha: 'SenhaForte1' }, cookies: true });
