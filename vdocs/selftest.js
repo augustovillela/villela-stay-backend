@@ -968,6 +968,22 @@ function teste(nome, cond) {
         r = await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: [{ log_id: lz, acao: 'processar', tipo_documental: 'nota_fiscal', folder_id: '__auto', nome: 'Nota fiscal – Zara – 03/11/2026' }, { log_id: lv, acao: 'eliminar' }] }, jar: 'anaA' });
         teste('Processar aplica o nome sugerido/editado', r.dados.resultado.every(x => x.ok) && (await req('GET', '/vdocs/api/documentos/' + tz.dados.document_id, { jar: 'anaA' })).dados.documento.nome === 'Nota fiscal – Zara – 03/11/2026');
       }
+      // pontes que montam o JSON por texto (Make): nome/legenda/remetente em base64 e arquivo sem nome (imagem do WhatsApp)
+      {
+        const pngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+        const b64 = (t) => Buffer.from(t, 'utf8').toString('base64');
+        const rm = await v1('POST', '/entrada', { tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'wamid.HBgM123456#0', remetente_b64: b64('Maria "Silva" (556199990000)'), legenda_b64: b64('Comprovante "Pix" João' + String.fromCharCode(10) + 'valor 100'), mime: 'image/png', conteudo_base64: pngB64, data: '2026-11-05T17:47:54.000Z' });
+        teste('mídia sem nome (Make): aceita, nome nasce da legenda e do mime, texto em base64 sobrevive a aspas e quebra de linha', rm.status === 201 && rm.dados.status === 'recebido');
+        const dm = (await req('GET', '/vdocs/api/documentos/' + rm.dados.document_id, { jar: 'anaA' })).dados.documento;
+        teste('...nome limpo com extensão e remetente decodificado na descrição', /^Comprovante Pix João valor 100 [A-Za-z0-9]{0,6}\.png$/.test(dm.nome) && /Maria "Silva"/.test(dm.descricao));
+        const rs = await v1('POST', '/entrada', { tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'wamid.HBgM777#0', mime: 'image/jpeg', conteudo_base64: b64('JFIF imagem diferente do comprovante'), data: '2026-11-05T17:48:00.000Z' });
+        const ds = (await req('GET', '/vdocs/api/documentos/' + rs.dados.document_id, { jar: 'anaA' })).dados.documento;
+        teste('mídia sem legenda: "Imagem WhatsApp dd-mm-aaaa HHhMM" + .jpg', /^Imagem WhatsApp 05-11-2026 14h48 [A-Za-z0-9]{0,6}\.jpg$/.test(ds.nome));
+        const rx = await v1('POST', '/entrada', { tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'wamid.HBgM888#0', mime: 'video/mp4', conteudo_base64: pngB64 });
+        teste('mime que não é documento nem imagem é rejeitado', rx.dados.status === 'rejeitado');
+        const filaM = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens.filter(i => [rm.dados.document_id, rs.dados.document_id].includes(i.document_id));
+        await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: filaM.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
+      }
       // nome automático por IA (mock): só o que importa, só uma vez, propaganda fora
       {
         const iaMod = require('./ia');

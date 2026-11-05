@@ -110,7 +110,28 @@ function registrar(tenantId, canal, origem, remetente, nome, tamanho, status, mo
  * desfecho "normal" (duplicado, rejeitado, já processado); lança só para o que vale
  * tentar de novo (limite do plano, disco, banco), para a ponte manter na fila.
  */
-function receber(tenantId, { tipo, identificador, origem_id, remetente, assunto, arquivo_nome, conteudo_base64, data, em_lista }, ator, ip) {
+// Pontes que não controlam o JSON (o Make monta o corpo por texto): mandam nome, remetente e legenda em base64
+// (`*_b64`) para aspas, quebras de linha e emojis nunca quebrarem o envio; e `mime` + `legenda` quando o arquivo
+// não tem nome (imagem do WhatsApp) — o nome nasce aqui.
+const dec64 = (v) => { try { return Buffer.from(String(v || ''), 'base64').toString('utf8'); } catch (_) { return ''; } };
+const EXT_DE_MIME = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
+function nomeDeMidia({ legenda, mime, data, origem }) {
+  const ext = EXT_DE_MIME[String(mime || '').toLowerCase().split(';')[0].trim()];
+  if (!ext) return '';
+  const quando = new Date(data || Date.now());
+  const base = s(String(legenda || '').replace(/[\\/:*?"<>|\r\n]+/g, ' ').replace(/\s+/g, ' '), 80)
+    || 'Imagem WhatsApp ' + (isNaN(quando) ? '' : quando.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(/[/]/g, '-').replace(', ', ' ').replace(':', 'h'));
+  return `${base.trim()} ${s(origem, 200).replace(/[^A-Za-z0-9]/g, '').slice(-6)}.${ext}`.replace(/\s+/g, ' ');
+}
+function receber(tenantId, corpo, ator, ip) {
+  const c = corpo || {};
+  const legenda = s(c.legenda || dec64(c.legenda_b64), 300);
+  const nomeIn = s(c.arquivo_nome || dec64(c.arquivo_nome_b64), 200) || nomeDeMidia({ legenda, mime: c.mime, data: c.data, origem: c.origem_id });
+  return receberBruto(tenantId, {
+    ...c, arquivo_nome: nomeIn, remetente: c.remetente || dec64(c.remetente_b64), assunto: c.assunto || dec64(c.assunto_b64) || legenda,
+  }, ator, ip);
+}
+function receberBruto(tenantId, { tipo, identificador, origem_id, remetente, assunto, arquivo_nome, conteudo_base64, data, em_lista }, ator, ip) {
   const ident = normalizar(tipo, identificador);
   const canal = db.prepare('SELECT * FROM canais_entrada WHERE tenant_id = ? AND tipo = ? AND identificador = ?').get(String(tenantId), tipo, ident);
   if (!canal) return { status: 'ignorado', motivo: 'conta não cadastrada' };
