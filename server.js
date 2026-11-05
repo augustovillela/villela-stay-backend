@@ -2065,6 +2065,12 @@ function requireAdminOuChave(req, res, next) {
   return requireAuth(req, res, () => requireAdmin(req, res, next));
 }
 
+// Onde o disco está sendo gasto (somente leitura). Alimenta a decisão de limpar antes de encher.
+app.get('/staff/api/disco', requireAdminOuChave, (req, res) => {
+  try { res.json(require('./manutencao').detalharDisco(DATA_DIR)); }
+  catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
 // Backup do DATA_DIR (lista + arquivo) → extraído para nucleo/backup.js (montado no fim).
 
 // ============================ ONDA 3: Concierge, Contas a pagar, Prazos jurídicos, Push equipe ============================

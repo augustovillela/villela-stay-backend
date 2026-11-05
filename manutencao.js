@@ -91,4 +91,37 @@ function capacidadeDisco(dir) {
   } catch { return 0; }
 }
 
-module.exports = { purgarEventosAntigos, tamanhoDir, capacidadeDisco, encontrarDbs, PURGAS };
+// Detalhamento do uso do disco (somente leitura): tamanho de cada pasta/arquivo do
+// primeiro nível, os subitens maiores de cada pasta grande e os maiores arquivos do volume.
+// Serve ao /staff/api/disco para achar o que limpar antes de encher.
+function detalharDisco(dir, { topo = 25, subitens = 8 } = {}) {
+  const arquivos = [];
+  const medir = (cam, prof) => {
+    let st; try { st = fs.lstatSync(cam); } catch { return { bytes: 0, itens: [] }; }
+    if (!st.isDirectory()) { arquivos.push({ caminho: path.relative(dir, cam).split(path.sep).join('/'), bytes: st.size, mtime: st.mtime.toISOString().slice(0, 10) }); return { bytes: st.size, itens: [] }; }
+    let bytes = 0; const itens = [];
+    let nomes; try { nomes = fs.readdirSync(cam); } catch { return { bytes: 0, itens: [] }; }
+    for (const n of nomes) {
+      const r = medir(path.join(cam, n), prof + 1);
+      bytes += r.bytes;
+      if (prof < 2) itens.push({ nome: n, bytes: r.bytes, itens: r.itens });
+    }
+    itens.sort((a, b) => b.bytes - a.bytes);
+    return { bytes, itens };
+  };
+  const raiz = medir(dir, 0);
+  const mb = (b) => Math.round(b / 1048576 * 10) / 10;
+  const dados = (lista, n) => lista.slice(0, n).map((i) => ({
+    nome: i.nome, mb: mb(i.bytes),
+    ...(i.itens && i.itens.length ? { maiores: i.itens.slice(0, subitens).map((j) => ({ nome: j.nome, mb: mb(j.bytes) })) } : {}),
+  }));
+  arquivos.sort((a, b) => b.bytes - a.bytes);
+  return {
+    totalMB: mb(raiz.bytes),
+    capacidadeMB: mb(capacidadeDisco(dir)),
+    pastas: dados(raiz.itens, topo),
+    maioresArquivos: arquivos.slice(0, 20).map((a) => ({ caminho: a.caminho, mb: mb(a.bytes), modificado: a.mtime })),
+  };
+}
+
+module.exports = { purgarEventosAntigos, tamanhoDir, capacidadeDisco, detalharDisco, encontrarDbs, PURGAS };
