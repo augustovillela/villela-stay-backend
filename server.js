@@ -2071,6 +2071,21 @@ app.get('/staff/api/disco', requireAdminOuChave, (req, res) => {
   catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
+// Apaga SÓ os snapshots antigos do índice de leis (recriável a partir do D:\leis; deixaram de ser
+// gerados). A regex é fechada de propósito: nenhum outro arquivo do volume pode ser removido por aqui.
+app.delete('/staff/api/disco/snapshots-leis', requireAdminOuChave, (req, res) => {
+  try {
+    const dir = path.join(DATA_DIR, '_snapshots');
+    const apagados = []; let bytes = 0;
+    for (const nome of fs.readdirSync(dir)) {
+      if (!/^acervo-leis__leis-\d{4}-\d{2}-\d{2}\.db$/.test(nome)) continue;
+      const cam = path.join(dir, nome);
+      bytes += fs.statSync(cam).size; fs.unlinkSync(cam); apagados.push(nome);
+    }
+    res.json({ apagados, liberadoMB: Math.round(bytes / 1048576) });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
 // Backup do DATA_DIR (lista + arquivo) → extraído para nucleo/backup.js (montado no fim).
 
 // ============================ ONDA 3: Concierge, Contas a pagar, Prazos jurídicos, Push equipe ============================
