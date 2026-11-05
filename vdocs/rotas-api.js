@@ -16,6 +16,7 @@ const wf = require('./workflows');
 const comp = require('./compartilhar');
 const billing = require('./billing');
 const apiPub = require('./api-publica');
+const entrada = require('./entrada');
 const ent = require('./enterprise');
 const push = require('./push');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
@@ -338,6 +339,39 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
   r.delete('/integracoes/webhooks/:id', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
     apiPub.excluirWebhook(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip);
     res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ entrada automática + triagem
+  r.get('/entrada', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    const plano = repo.planoDoTenant(req.vd.tenant.id);
+    res.json({
+      api_disponivel: !!(plano && plano.limites.api), // a ponte local usa a chave de API
+      canais: entrada.listarCanais(req.vd.tenant.id),
+      recentes: entrada.recentes(req.vd.tenant.id),
+      resumo: entrada.resumo(req.vd.tenant.id),
+      pasta_padrao: entrada.PASTA_PADRAO,
+    });
+  }));
+  r.post('/entrada/canais', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    res.json({ ok: true, canal: entrada.criarCanal(req.vd.tenant.id, req.body || {}, req.vd.user, req.vd.ip) });
+  }));
+  r.patch('/entrada/canais/:id', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    res.json({ ok: true, canal: entrada.atualizarCanal(req.vd.tenant.id, req.params.id, req.body || {}, req.vd.user, req.vd.ip) });
+  }));
+  r.delete('/entrada/canais/:id', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    entrada.excluirCanal(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip);
+    res.json({ ok: true });
+  }));
+  // Triagem: quem vê documentos vê a fila; cada decisão exige a permissão do que faz.
+  r.get('/entrada/triagem', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
+    res.json({ itens: entrada.pendentesTriagem(req.vd.tenant.id), pastas: docs.listarPastas(req.vd.tenant.id), tipos: docs.TIPOS_DOCUMENTAIS });
+  }));
+  r.post('/entrada/triagem', requireTenant, h(async (req, res) => {
+    const P = req.vd.permissoes;
+    const itens = Array.isArray((req.body || {}).itens) ? req.body.itens : [];
+    const negado = itens.find(i => (i.acao === 'eliminar' && !P.excluir_documento) || (i.acao === 'processar' && !(P.editar_metadados && P.mover_documento)));
+    if (negado) return res.status(403).json({ erro: `Sem permissão: ${negado.acao === 'eliminar' ? 'excluir_documento' : 'editar_metadados/mover_documento'}` });
+    res.json({ ok: true, resultado: entrada.decidirTriagem(req.vd.tenant.id, itens, req.vd.user, req.vd.ip) });
   }));
 
   // ------------------------------------------------ billing (Fase 8)

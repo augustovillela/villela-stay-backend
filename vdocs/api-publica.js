@@ -99,6 +99,14 @@ function registrarApiPublica(app, { express }) {
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(nome)}`);
     res.send(buffer);
   }));
+  // Entrada automática: a ponte local (WhatsApp/Gmail) lê as contas ligadas e empurra os anexos.
+  // Vai para a TRIAGEM (pendente), nunca direto para o acervo.
+  const entradaMod = require('./entrada');
+  v1.get('/entrada/canais', h(async (req, res) => res.json({ canais: entradaMod.canaisAtivos(t(req)) })));
+  v1.post('/entrada', h(async (req, res) => {
+    const r = entradaMod.receber(t(req), req.body || {}, req.apiAtor, 'api');
+    res.status(r.status === 'recebido' ? 201 : 200).json({ ok: true, ...r });
+  }));
   v1.get('/uso', h(async (req, res) => res.json({ uso: repo.usoDoMes(t(req)), plano: (repo.planoDoTenant(t(req)) || {}).slug })));
   app.use('/vdocs/api/v1', v1);
 }

@@ -432,11 +432,13 @@ async function alternarPush(){
 const TELAS=[
  ['dashboard','Dashboard',()=>true,'Visão geral','📊'],
  ['documentos','Documentos',m=>m.permissoes.ver_documentos,'Documentos','📁'],
+ ['triagem','Triagem',m=>m.permissoes.ver_documentos,'Documentos','🧹'],
  ['busca','Busca',m=>m.permissoes.ver_documentos,'Documentos','🔎'],
  ['ia','IA documental',m=>m.permissoes.usar_ia,'Documentos','🤖'],
  ['redigir','Redigir com IA',m=>m.permissoes.usar_ia,'Documentos','✍️'],
  ['workflows','Aprovações',m=>m.permissoes.ver_documentos,'Fluxos','✅'],
  ['compartilhar','Compartilhamentos',m=>m.permissoes.compartilhar_documento,'Fluxos','🔗'],
+ ['entrada','Entrada automática',m=>m.permissoes.configurar_integracoes,'Fluxos','📥'],
  ['integracoes','Integrações',m=>m.permissoes.configurar_integracoes,'Fluxos','🔌'],
  ['usuarios','Usuários e permissões',m=>m.permissoes.gerir_usuarios,'Administração','👥'],
  ['auditoria','Auditoria',m=>m.permissoes.ver_auditoria,'Administração','📜'],
@@ -479,7 +481,7 @@ function erroTela(e){
 function ir(t){
   S.tela=t;SEQ++;menu();pintarCabecalho();
   $('corpo').innerHTML=esqueleto();
-  ({dashboard:vDash,documentos:vDocs,busca:vBusca,ia:vIA,redigir:vRedigir,workflows:vWorkflows,compartilhar:vShares,integracoes:vInteg,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(erroTela);}
+  ({dashboard:vDash,documentos:vDocs,triagem:vTriagem,entrada:vEntrada,busca:vBusca,ia:vIA,redigir:vRedigir,workflows:vWorkflows,compartilhar:vShares,integracoes:vInteg,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(erroTela);}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -780,6 +782,81 @@ async function criarWebhook(){try{
  }catch(e){$('wh-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
 async function delWebhook(id){if(!confirm('Excluir este webhook?'))return;await api('DELETE','/integracoes/webhooks/'+id);vInteg();}
 
+// ---------------- Triagem + Entrada automática ----------------
+const ROT_TIPO={nota_fiscal:'Nota fiscal',contrato:'Contrato',recibo:'Recibo',proposta:'Proposta',politica_interna:'Política interna',rh:'RH',juridico:'Jurídico',financeiro:'Financeiro',administrativo:'Administrativo',projeto:'Projeto',outro:'Outro'};
+const tamH=n=>n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
+async function vTriagem(){
+  const d=await api('GET','/entrada/triagem');
+  S.tri=d;
+  if(!d.itens.length){$('corpo').innerHTML='<div class="card"><b>✅ Nada esperando triagem.</b><p class="sub">Documentos que chegarem pelo WhatsApp ou Gmail cadastrados aparecem aqui para você decidir: <b>eliminar</b> ou <b>processar e categorizar</b>.</p></div>';return;}
+  const imp=d.itens.filter(i=>i.sugestao).length;
+  $('corpo').innerHTML=
+   '<div class="card"><b>🧹 '+d.itens.length+' documento(s) esperando decisão</b>'+
+   (imp?' <span class="sub">· '+imp+' parece(m) nota fiscal, contrato, recibo ou comprovante (no topo)</span>':'')+
+   '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
+   (imp?'<button class="btn peq" onclick="triAceitarSugestoes()">✨ Aceitar sugestões ('+imp+')</button>':'')+
+   '<button class="btn btn-ghost peq" onclick="triMarcar(true)">Marcar todos</button>'+
+   '<button class="btn btn-ghost peq" onclick="triMarcar(false)">Desmarcar</button>'+
+   '<button class="btn peq" onclick="triLote(\\'processar\\')">✅ Processar marcados</button>'+
+   '<button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\')">🗑️ Eliminar marcados</button></div>'+
+   '<div id="tri-out" style="margin-top:8px;font-size:13px"></div></div>'+
+   '<div class="card" style="margin-top:12px;overflow-x:auto"><table><tr><th></th><th>Documento</th><th>Origem</th><th>Categoria</th><th>Pasta</th><th></th></tr>'+
+   d.itens.map((i,n)=>{
+     const sug=i.sugestao;
+     const tipoSel=sug?sug.tipo:i.tipo_documental;
+     return '<tr id="tri-l'+n+'"><td><input type="checkbox" class="tri-ck" value="'+n+'" style="width:auto"></td>'+
+      '<td><a href="/vdocs/api/documentos/'+i.document_id+'/baixar" target="_blank" rel="noopener"><b>'+esc(i.nome)+'</b></a><br><span class="sub" style="font-size:12px">'+tamH(i.tamanho)+' · '+dt(i.recebido_em)+'</span>'+
+      (i.trecho?'<br><span class="sub" style="font-size:12px">'+esc(i.trecho.slice(0,160))+'…</span>':'')+'</td>'+
+      '<td>'+(i.canal.tipo==='gmail'?'✉️':'💬')+' '+esc(i.canal.rotulo||i.canal.identificador||'')+(i.remetente?'<br><span class="sub" style="font-size:12px">de '+esc(i.remetente)+'</span>':'')+'</td>'+
+      '<td>'+(sug?'<span class="chip" title="Sugerido '+esc(sug.motivo)+'">✨ '+esc(sug.rotulo||ROT_TIPO[sug.tipo]||sug.tipo)+(sug.confianca==='alta'?'':' ?')+'</span><br>':'')+
+       '<select id="tri-tipo'+n+'">'+d.tipos.map(t=>'<option value="'+t+'"'+(t===tipoSel?' selected':'')+'>'+esc(ROT_TIPO[t]||t)+'</option>').join('')+'</select>'+
+       '<label style="display:flex;gap:4px;align-items:center;font-size:12px;font-weight:400;margin-top:4px" title="Marca para dar baixa na Stays com a data do check-in"><input type="checkbox" id="tri-baixa'+n+'" style="width:auto"'+(sug&&sug.rotulo==='Comprovante'?' checked':'')+'> 🏠 pagamento de hospedagem (baixa na Stays)</label></td>'+
+      '<td><select id="tri-pasta'+n+'"><option value="'+(i.pasta_atual||'')+'">(manter em Entrada automática)</option><option value="">Raiz</option>'+d.pastas.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></td>'+
+      '<td style="white-space:nowrap"><button class="btn peq" onclick="triLote(\\'processar\\','+n+')">Processar</button> <button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\','+n+')">Eliminar</button></td></tr>';}).join('')+
+   '</table></div>';
+}
+function triMarcar(v){document.querySelectorAll('.tri-ck').forEach(c=>c.checked=v);}
+function triAceitarSugestoes(){
+  document.querySelectorAll('.tri-ck').forEach(c=>{c.checked=!!S.tri.itens[+c.value].sugestao;});
+  triLote('processar');}
+async function triLote(acao,so){
+  const idx=so!=null?[so]:[...document.querySelectorAll('.tri-ck:checked')].map(c=>+c.value);
+  if(!idx.length){$('tri-out').innerHTML='<span style="color:var(--alerta)">Marque ao menos um documento.</span>';return;}
+  if(acao==='eliminar'&&!confirm('Eliminar '+idx.length+' documento(s)? Vão para a lixeira (dá para restaurar).'))return;
+  const itens=idx.map(n=>{const i=S.tri.itens[n];
+    return acao==='eliminar'?{log_id:i.log_id,acao}:{log_id:i.log_id,acao,tipo_documental:$('tri-tipo'+n).value,folder_id:$('tri-pasta'+n).value,baixa_stays:$('tri-baixa'+n).checked};});
+  try{
+    const r=await api('POST','/entrada/triagem',{itens});
+    const falhas=r.resultado.filter(x=>!x.ok);
+    await vTriagem();
+    if(falhas.length&&$('tri-out'))$('tri-out').innerHTML='<span style="color:var(--alerta)">'+falhas.length+' item(ns) não aplicado(s): '+esc(falhas[0].erro)+'</span>';
+  }catch(e){$('tri-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
+
+async function vEntrada(){
+  const d=await api('GET','/entrada');
+  const r24=d.resumo.ultimas_24h||{};
+  $('corpo').innerHTML=
+   (!d.api_disponivel?'<div class="aviso">⚠️ A entrada automática usa a <b>chave de API</b>, que só existe nos planos <b>Business</b> e <b>Enterprise</b>.</div>':'')+
+   '<div class="card"><b>📥 Contas que alimentam o Villela Docs</b> <span class="sub" style="font-size:12px">(todo documento recebido nelas cai na pasta “'+esc(d.pasta_padrao)+'” e espera a sua triagem)</span>'+
+   '<p class="sub" style="font-size:13px">Últimas 24 h: <b>'+(r24.recebido||0)+'</b> recebido(s) · '+(r24.duplicado||0)+' repetido(s) · '+(r24.rejeitado||0)+' ignorado(s) · <a href="#" onclick="ir(\\'triagem\\');return false">'+d.resumo.pendentes_triagem+' esperando triagem</a></p>'+
+   '<table><tr><th>Canal</th><th>Conta</th><th>Recebidos</th><th>Último</th><th>Status</th><th></th></tr>'+
+   (d.canais.length?d.canais.map(c=>'<tr><td>'+(c.tipo==='gmail'?'✉️ Gmail':'💬 WhatsApp')+'</td><td>'+esc(c.rotulo||'')+' <code>'+esc(c.identificador)+'</code></td><td>'+c.total_recebidos+'</td><td>'+dt(c.ultimo_recebimento)+'</td>'+
+    '<td>'+(c.ativo?'🟢 ligado':'⚪ desligado')+'</td><td style="white-space:nowrap"><button class="btn btn-ghost peq" onclick="entToggle(\\''+c.id+'\\','+(c.ativo?'false':'true')+')">'+(c.ativo?'Desligar':'Ligar')+'</button> <button class="btn btn-ghost peq" onclick="entExcluir(\\''+c.id+'\\')">Remover</button></td></tr>').join('')
+    :'<tr><td colspan="6" style="color:var(--suave)">Nenhuma conta cadastrada.</td></tr>')+'</table>'+
+   '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><select id="ent-tipo" style="max-width:140px"><option value="whatsapp">WhatsApp</option><option value="gmail">Gmail</option></select>'+
+   '<input id="ent-ident" placeholder="5561999999999 ou voce@gmail.com" style="max-width:280px"><input id="ent-rot" placeholder="Rótulo (ex.: Pessoal)" style="max-width:180px">'+
+   '<button class="btn peq" onclick="entAdd()">Cadastrar conta</button></div><div id="ent-out" style="margin-top:8px;font-size:13px"></div></div>'+
+   '<div class="card" style="margin-top:12px"><b>🕘 Chegadas recentes</b><table><tr><th>Quando</th><th>Arquivo</th><th>De</th><th>Desfecho</th></tr>'+
+   (d.recentes.length?d.recentes.map(e=>'<tr><td>'+dt(e.criado_em)+'</td><td>'+esc(e.arquivo_nome)+'</td><td>'+esc(e.remetente||'')+'</td><td>'+
+     (e.status==='recebido'?'✅ recebido'+(e.triagem==='pendente'?' · aguarda triagem':e.triagem==='processado'?' · processado':e.triagem==='eliminado'?' · eliminado':''):e.status==='duplicado'?'♻️ repetido':'🚫 '+esc(e.motivo||e.status))+'</td></tr>').join('')
+    :'<tr><td colspan="4" style="color:var(--suave)">Nada recebido ainda.</td></tr>')+'</table></div>';
+}
+async function entAdd(){try{
+  await api('POST','/entrada/canais',{tipo:$('ent-tipo').value,identificador:$('ent-ident').value,rotulo:$('ent-rot').value});vEntrada();
+ }catch(e){$('ent-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
+async function entToggle(id,ativo){await api('PATCH','/entrada/canais/'+id,{ativo});vEntrada();}
+async function entExcluir(id){if(!confirm('Remover esta conta? Os documentos já recebidos continuam aqui.'))return;await api('DELETE','/entrada/canais/'+id);vEntrada();}
+
 // ---------------- Aprovações (Fase 6) ----------------
 async function vWorkflows(){
   const P=S.me.permissoes;
@@ -898,7 +975,7 @@ async function vRedigir(){
    (rascunhos.length?'<div class="card" style="margin-top:10px"><b>Rascunhos</b>'+
      '<table style="width:100%;margin-top:6px"><thead><tr><th>Título</th><th>Tipo</th><th>Quando</th><th></th></tr></thead><tbody>'+
      rascunhos.map(x=>'<tr><td>'+esc(x.titulo)+(x.truncado?' <span class="chip" title="algum documento não coube inteiro no contexto">⚠️ truncado</span>':'')+'</td><td>'+esc(x.tipo||'—')+'</td><td>'+(x.criado_em||'').slice(0,10).split('-').reverse().join('/')+'</td>'+
-     '<td><button class="btn btn-ghost peq" onclick="verRascunho(\''+x.id+'\')">Ler</button> <a href="#" onclick="return delRascunho(\''+x.id+'\')" title="excluir">✕</a></td></tr>').join('')+
+     '<td><button class="btn btn-ghost peq" onclick="verRascunho(\\''+x.id+'\\')">Ler</button> <a href="#" onclick="return delRascunho(\\''+x.id+'\\')" title="excluir">✕</a></td></tr>').join('')+
      '</tbody></table></div>':'');
 }
 async function redigirIA(){

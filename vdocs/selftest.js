@@ -811,6 +811,85 @@ function teste(nome, cond) {
     teste('chave revogada → 401', resp.status === 401);
   }
 
+  // ================== ENTRADA AUTOMÁTICA + TRIAGEM ==================
+  {
+    const entrada = require('./entrada');
+    teste('canon do fone: com e sem o 9 casam', entrada.canonFone('5561992113000') === entrada.canonFone('556192113000'));
+    const sug = (n, t) => (entrada.sugerirTipo(n, t) || {}).tipo;
+    teste('sugestão: NF-e pelo nome', sug('NFe_123.pdf', '') === 'nota_fiscal');
+    teste('sugestão: contrato pelo conteúdo, mesmo citando "recibo"', sug('scan.pdf', 'CONTRATO DE LOCAÇÃO cláusula primeira, contratante e contratada, recibo') === 'contrato');
+    teste('sugestão: comprovante de Pix', sug('comprovante_pix.png', '') === 'financeiro' && sug('x.pdf', 'Comprovante Pix realizado id da transação favorecido') === 'financeiro');
+    teste('sugestão: recibo', sug('recibo aluguel.pdf', '') === 'recibo');
+    teste('sugestão: documento comum não ganha palpite', sug('foto.pdf', 'bom dia') === undefined);
+
+    r = await req('POST', '/vdocs/api/integracoes/chaves', { body: { nome: 'Ponte' }, jar: 'anaA' });
+    const chaveE = r.dados.chave;
+    const v1 = (m, c, b) => fetch(BASE + '/vdocs/api/v1' + c, { method: m, headers: { Authorization: 'Bearer ' + chaveE, 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }).then(async x => ({ status: x.status, dados: await x.json() }));
+    const corpo = (o) => ({ tipo: 'whatsapp', identificador: '5561992113000', origem_id: 'M1#0', remetente: 'Renata', arquivo_nome: 'NFe_900.pdf', conteudo_base64: B64('%PDF-1.4 nota fiscal 900'), ...o });
+
+    let e = await v1('POST', '/entrada', corpo());
+    teste('conta não cadastrada → ignorada, nada entra', e.status === 200 && e.dados.status === 'ignorado');
+    r = await req('POST', '/vdocs/api/entrada/canais', { body: { tipo: 'whatsapp', identificador: '5561992113000', rotulo: 'Pessoal' }, jar: 'anaA' });
+    teste('cadastra WhatsApp', r.status === 200 && r.dados.canal.identificador === '556192113000');
+    r = await req('POST', '/vdocs/api/entrada/canais', { body: { tipo: 'whatsapp', identificador: '556192113000' }, jar: 'anaA' });
+    teste('conta repetida (com/sem 9) é recusada', r.status === 400);
+    r = await req('POST', '/vdocs/api/entrada/canais', { body: { tipo: 'gmail', identificador: 'nao-e-email' }, jar: 'anaA' });
+    teste('e-mail inválido recusado', r.status === 400);
+    r = await req('POST', '/vdocs/api/entrada/canais', { body: { tipo: 'whatsapp', identificador: '5561992113000' }, jar: 'carlaA' });
+    teste('quem não tem configurar_integracoes não cadastra', r.status === 403);
+    r = await req('POST', '/vdocs/api/entrada/canais', { body: { tipo: 'gmail', identificador: 'Augusto@Gmail.com', rotulo: 'Gmail' }, jar: 'anaA' });
+    teste('cadastra Gmail (minúsculo)', r.status === 200 && r.dados.canal.identificador === 'augusto@gmail.com');
+
+    r = await v1('GET', '/entrada/canais');
+    teste('ponte enxerga as contas ligadas', r.status === 200 && r.dados.canais.length === 2);
+    e = await v1('POST', '/entrada', corpo({ identificador: '556192113000' }));
+    teste('recebe documento (201) mesmo com a conta escrita com/sem 9', e.status === 201 && e.dados.status === 'recebido' && e.dados.document_id);
+    const docNF = e.dados.document_id;
+    e = await v1('POST', '/entrada', corpo({ identificador: '556192113000' }));
+    teste('reenvio da mesma mensagem é idempotente', e.dados.status === 'ja_processado' && e.dados.document_id === docNF);
+    e = await v1('POST', '/entrada', corpo({ origem_id: 'M2#0' }));
+    teste('mesmo arquivo em outra mensagem vira "duplicado"', e.dados.status === 'duplicado');
+    e = await v1('POST', '/entrada', corpo({ origem_id: 'M3#0', arquivo_nome: 'virus.exe', conteudo_base64: B64('MZ') }));
+    teste('executável é rejeitado', e.dados.status === 'rejeitado');
+    e = await v1('POST', '/entrada', corpo({ origem_id: 'M4#0', arquivo_nome: 'contrato_aluguel.pdf', conteudo_base64: B64('%PDF-1.4 contrato de aluguel') }));
+    const docCT = e.dados.document_id;
+    e = await v1('POST', '/entrada', corpo({ origem_id: 'M5#0', arquivo_nome: 'cardapio.pdf', conteudo_base64: B64('%PDF-1.4 cardapio do restaurante') }));
+    const docCard = e.dados.document_id;
+    e = await v1('POST', '/entrada', { ...corpo({ origem_id: 'G1#0', arquivo_nome: 'boleto.pdf', conteudo_base64: B64('%PDF-1.4 boleto gmail') }), tipo: 'gmail', identificador: 'augusto@gmail.com', assunto: 'Boleto' });
+    const docGm = e.dados.document_id;
+    teste('Gmail entra pelo mesmo caminho', e.dados.status === 'recebido');
+
+    r = await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' });
+    teste('triagem lista os 4 pendentes, importantes primeiro', r.status === 200 && r.dados.itens.length === 4 && r.dados.itens[0].sugestao && r.dados.itens[1].sugestao && !r.dados.itens[3].sugestao);
+    teste('NF e contrato chegam com a categoria sugerida', r.dados.itens.some(i => i.document_id === docNF && i.sugestao.tipo === 'nota_fiscal') && r.dados.itens.some(i => i.document_id === docCT && i.sugestao.tipo === 'contrato'));
+    teste('documento recebido nasce na pasta Entrada automática', (await req('GET', '/vdocs/api/pastas', { jar: 'anaA' })).dados.pastas.some(p => p.nome === entrada.PASTA_PADRAO));
+    r = await req('GET', '/vdocs/api/entrada/triagem', { jar: 'bobB' });
+    teste('triagem de B não vê a fila de A (isolamento)', r.status === 200 && r.dados.itens.length === 0);
+
+    const itens = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens;
+    const logDe = (id) => itens.find(i => i.document_id === id).log_id;
+    r = await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: [{ log_id: logDe(docNF), acao: 'processar', tipo_documental: 'nota_fiscal', folder_id: '' }, { log_id: logDe(docCard), acao: 'eliminar' }] }, jar: 'bobB' });
+    teste('B não decide itens de A', r.status === 200 && r.dados.resultado.every(x => !x.ok));
+    r = await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: [{ log_id: logDe(docNF), acao: 'processar', tipo_documental: 'nota_fiscal', folder_id: '' }, { log_id: logDe(docCT), acao: 'processar', tipo_documental: 'contrato', folder_id: pastaContratos, baixa_stays: true }, { log_id: logDe(docCard), acao: 'eliminar' }, { log_id: 'inexistente', acao: 'eliminar' }] }, jar: 'anaA' });
+    teste('decisão em lote: 3 aplicadas, a inválida não derruba as outras', r.dados.resultado.filter(x => x.ok).length === 3 && r.dados.resultado.filter(x => !x.ok).length === 1);
+    r = await req('GET', '/vdocs/api/documentos/' + docNF, { jar: 'anaA' });
+    teste('processar categoriza, move e tira a tag de entrada', r.dados.documento.tipo_documental === 'nota_fiscal' && !r.dados.documento.tags.includes('entrada-automatica'));
+    r = await req('GET', '/vdocs/api/documentos/' + docCT, { jar: 'anaA' });
+    teste('processar move para a pasta escolhida', r.dados.documento.folder_id === pastaContratos);
+    r = await req('GET', '/vdocs/api/documentos/' + docCT, { jar: 'anaA' });
+    teste('pagamento de hospedagem fica etiquetado para a baixa na Stays', r.dados.documento.tags.includes(entrada.TAG_BAIXA_STAYS));
+    r = await req('GET', '/vdocs/api/documentos/' + docCard, { jar: 'anaA' });
+    teste('eliminar manda para a lixeira (restaurável)', r.dados.documento.status === 'lixeira');
+    r = await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' });
+    teste('fila fica só com o que não foi decidido', r.dados.itens.length === 1 && r.dados.itens[0].document_id === docGm);
+
+    r = await req('PATCH', '/vdocs/api/entrada/canais/' + (await req('GET', '/vdocs/api/entrada', { jar: 'anaA' })).dados.canais.find(c => c.tipo === 'whatsapp').id, { body: { ativo: false }, jar: 'anaA' });
+    e = await v1('POST', '/entrada', corpo({ origem_id: 'M9#0', arquivo_nome: 'novo.pdf', conteudo_base64: B64('%PDF-1.4 novo') }));
+    teste('conta desligada não recebe', r.status === 200 && e.dados.status === 'ignorado');
+    r = await req('GET', '/vdocs/api/entrada', { jar: 'anaA' });
+    teste('tela de entrada resume o dia', r.dados.resumo.ultimas_24h.recebido === 4 && r.dados.resumo.pendentes_triagem === 1 && r.dados.recentes.length >= 6);
+  }
+
   // ================== FASE 10: enterprise (2FA, retenção legal, takeout, saúde) ==================
   const ent = require('./enterprise');
 

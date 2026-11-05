@@ -542,3 +542,45 @@ CREATE TABLE IF NOT EXISTS ai_drafts (
   criado_em  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_ai_drafts_tenant ON ai_drafts(tenant_id, criado_em);
+
+-- =====================================================================
+-- ENTRADA AUTOMÁTICA: contas de WhatsApp e Gmail cadastradas pelo cliente
+-- cujos documentos recebidos viram documentos aqui, sozinhos, e esperam
+-- TRIAGEM (eliminar | processar e categorizar). O cliente cadastra a CONTA
+-- (número/e-mail); quem lê a caixa é uma ponte local que empurra pela API v1.
+-- entradas_log guarda só desfechos TERMINAIS (recebido/duplicado/rejeitado):
+-- é ele que torna o reenvio da ponte idempotente (origem_id = id da
+-- mensagem + índice do anexo).
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS canais_entrada (
+  id                 TEXT PRIMARY KEY,
+  tenant_id          TEXT NOT NULL,
+  tipo               TEXT NOT NULL,            -- whatsapp|gmail
+  identificador      TEXT NOT NULL,            -- só dígitos (whatsapp) | e-mail minúsculo (gmail)
+  rotulo             TEXT DEFAULT '',
+  folder_id          TEXT DEFAULT '',          -- '' = pasta "Entrada automática"
+  ativo              INTEGER NOT NULL DEFAULT 1,
+  ultimo_recebimento TEXT DEFAULT '',
+  total_recebidos    INTEGER NOT NULL DEFAULT 0,
+  criado_em          TEXT NOT NULL,
+  criado_por         TEXT DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_canais_entrada ON canais_entrada (tenant_id, tipo, identificador);
+
+CREATE TABLE IF NOT EXISTS entradas_log (
+  id           TEXT PRIMARY KEY,
+  tenant_id    TEXT NOT NULL,
+  canal_id     TEXT NOT NULL,
+  origem_id    TEXT NOT NULL,
+  remetente    TEXT DEFAULT '',
+  arquivo_nome TEXT DEFAULT '',
+  tamanho      INTEGER DEFAULT 0,
+  status       TEXT NOT NULL,                  -- recebido|duplicado|rejeitado
+  motivo       TEXT DEFAULT '',
+  document_id  TEXT DEFAULT '',
+  triagem      TEXT DEFAULT '',                -- ''|pendente|processado|eliminado (só p/ status recebido)
+  criado_em    TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_entradas_log ON entradas_log (tenant_id, canal_id, origem_id);
+CREATE INDEX IF NOT EXISTS idx_entradas_log_data ON entradas_log (tenant_id, criado_em);
+CREATE INDEX IF NOT EXISTS idx_entradas_log_triagem ON entradas_log (tenant_id, triagem);
