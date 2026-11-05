@@ -12,6 +12,47 @@ const $ = (q) => document.querySelector(q);
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const dataBr = (iso) => iso ? `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)}/${String(iso).slice(0, 4)}` : '—';
+// Ícones SVG (sprite inline da página, crm/icones.js) no lugar dos emojis. O Growth OS ainda manda emoji no menu:
+// a tabela abaixo traduz; emoji desconhecido continua aparecendo como veio.
+const ICO_EMOJI = { '📊': 'grid', '📋': 'kanban', '👥': 'users', '📄': 'file', '⏰': 'clock', '💬': 'message', '📣': 'megaphone', '🤖': 'bot', '⚙': 'sliders', '🧭': 'compass', '📅': 'calendar', '💸': 'coins', '📈': 'trending', '⭐': 'star', '🧠': 'sparkles', '✋': 'checkcircle', '🔌': 'plug', '🔒': 'lock', '💳': 'card' };
+const svgIco = (n) => `<svg class="cp-i" aria-hidden="true" focusable="false"><use href="#i-${n}"/></svg>`;
+const icoDe = (e) => { const n = ICO_EMOJI[String(e == null ? '' : e).replace(/\uFE0F/g, '')]; return n ? svgIco(n) : esc(e); };
+// Tradutor automático: qualquer emoji conhecido que uma tela desenhar (inclusive as do Growth OS) vira ícone SVG.
+// Observa o painel, troca só nós de TEXTO (nunca <option>, <textarea>, <script>) e para sozinho quando não há mais emoji.
+const EMOJI_ICO = { '✅': 'checkcircle', '🚫': 'ban', '✉': 'mail', '📞': 'phone', '📋': 'copy', '📤': 'send', '🔗': 'link', '🔁': 'refresh', '♻': 'refresh', '📉': 'trendingdown', '💡': 'bulb', '🎉': 'sparkles', '🔑': 'key', '🎫': 'ticket', '🤖': 'bot', '💬': 'message', '📄': 'file', '⚙': 'sliders', '👥': 'users', '🔔': 'bell', '📲': 'download', '⚠': 'alert', '🎁': 'gift', '📅': 'calendar', '⭐': 'star', '📣': 'megaphone', '📈': 'trending', '💳': 'card', '🔒': 'lock', '🧠': 'sparkles', '✋': 'checkcircle', '🔌': 'plug', '💸': 'coins', '🧭': 'compass', '📊': 'grid', '⏰': 'clock', '💰': 'coins', '🔥': 'flame', '🛡': 'shield', '📎': 'link', '📧': 'mail', '📝': 'file', '🎯': 'target', '🚀': 'zap', '✨': 'sparkles' };
+const EMOJI_BOLA = { '🔴': 'red', '🟡': 'amber', '🧊': 'blue', '🟢': 'green' };
+const RE_EMOJI_G = new RegExp('(' + Object.keys(EMOJI_ICO).concat(Object.keys(EMOJI_BOLA)).join('|') + ')\uFE0F?', 'g');
+const RE_EMOJI_T = new RegExp('(' + Object.keys(EMOJI_ICO).concat(Object.keys(EMOJI_BOLA)).join('|') + ')');
+function iconizar(raiz) {
+  const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => {
+      const p = n.parentElement;
+      if (!p || /^(SCRIPT|STYLE|TEXTAREA|OPTION|TITLE)$/.test(p.tagName)) return NodeFilter.FILTER_REJECT;
+      return RE_EMOJI_T.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    },
+  });
+  const nos = []; let n; while ((n = w.nextNode())) nos.push(n);
+  for (const no of nos) {
+    const txt = no.nodeValue, frag = document.createDocumentFragment(); let ult = 0, m;
+    RE_EMOJI_G.lastIndex = 0;
+    while ((m = RE_EMOJI_G.exec(txt))) {
+      if (m.index > ult) frag.appendChild(document.createTextNode(txt.slice(ult, m.index)));
+      const el = document.createElement('span');
+      const e = m[1];
+      if (EMOJI_BOLA[e]) { el.className = 'cp-dot cp-dot--' + EMOJI_BOLA[e]; }
+      else { el.className = 'cp-ei'; el.innerHTML = svgIco(EMOJI_ICO[e]); }
+      frag.appendChild(el); ult = m.index + m[0].length;
+    }
+    if (ult < txt.length) frag.appendChild(document.createTextNode(txt.slice(ult)));
+    no.replaceWith(frag);
+  }
+}
+let _iconizarAgendado = false;
+new MutationObserver(() => {
+  if (_iconizarAgendado) return;
+  _iconizarAgendado = true;
+  requestAnimationFrame(() => { _iconizarAgendado = false; iconizar(document.body); });
+}).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 const waLink = (tel, txt) => 'https://wa.me/' + String(tel || '').replace(/\D/g, '') + (txt ? '?text=' + encodeURIComponent(txt) : '');
 
 // SEQ cresce a cada troca de tela: leitura que volta depois de o usuário já
@@ -39,7 +80,7 @@ async function bootCRM() {
 }
 
 function telaLogin() {
-  $('#app').innerHTML = `<div class="card" style="max-width:420px;margin:30px auto">
+  $('#app').innerHTML = `<div class="card crm-auth"><div class="cp-auth-marca"><img src="/assets/brand/villela-crm/simbolo-v.svg" alt=""><span class="vx-hint" style="margin:0">Villela CRM</span></div>
     <h3 style="margin-bottom:14px">Entrar no Villela CRM</h3>
     <div class="vx-campo"><label for="lg-email">E-mail</label>
       <input id="lg-email" type="email" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
@@ -63,7 +104,7 @@ function telaLogin() {
 
 /** Segunda etapa do login quando a conta tem MFA (Villela Growth OS). */
 function telaSegundoFator(desafio) {
-  $('#app').innerHTML = `<div class="card" style="max-width:420px;margin:30px auto">
+  $('#app').innerHTML = `<div class="card crm-auth"><div class="cp-auth-marca"><img src="/assets/brand/villela-crm/simbolo-v.svg" alt=""><span class="vx-hint" style="margin:0">Villela CRM</span></div>
     <h3 style="margin-bottom:6px">Código de verificação</h3>
     <p class="sub" style="text-align:left;margin:0 0 14px">Abra seu aplicativo autenticador e digite o código de 6 dígitos. Sem o celular, use um código de recuperação.</p>
     <div class="vx-campo"><label for="mfa-cod">Código</label>
@@ -126,7 +167,7 @@ function montarNav() {
     html += `<div class="vx-nav-grupo">${esc(g)}</div>`;
     for (const [id, , , ico, rot] of doGrupo) {
       html += `<button type="button" class="vx-nav-item" data-v="${id}" title="${esc(rot)}"${ABA === id ? ' aria-current="page"' : ''}>` +
-        `<span class="vx-nav-ico" aria-hidden="true">${ico}</span><span class="vx-nav-rot">${esc(rot)}</span></button>`;
+        `<span class="vx-nav-ico" aria-hidden="true">${icoDe(ico)}</span><span class="vx-nav-rot">${esc(rot)}</span></button>`;
     }
   }
   html += `<hr class="vx-sep" style="margin:8px 4px">
@@ -153,16 +194,16 @@ function pintarCabecalho() {
   const c = ctxDaAba(); const h = $('#crm-head');
   if (!h) return;
   h.innerHTML = `<div class="vx-crumb"><span>${esc(ME.empresa.nome)}</span><span aria-hidden="true">›</span><span>${esc(c[2])}</span></div>
-    <h1>${c[3]} ${esc(c[4])}</h1>`;
+    <h1><span class="cp-h1ico">${icoDe(c[3])}</span>${esc(c[4])}</h1>`;
 }
 
 function telaApp() {
   const bloq = ME.entitlements && !ME.entitlements.acesso_liberado;
   ABA = bloq ? 'conta' : 'dash';
   const alerta = bloq
-    ? `<div class="vx-alerta vx-alerta--danger"><span class="vx-alerta-ico" aria-hidden="true">⚠️</span><div><b>Acesso bloqueado (${esc(ME.empresa.status)}).</b><p class="vx-mb0">Regularize o plano em Conta e plano.</p></div></div>`
+    ? `<div class="vx-alerta vx-alerta--danger"><span class="vx-alerta-ico" aria-hidden="true">${svgIco('alert')}</span><div><b>Acesso bloqueado (${esc(ME.empresa.status)}).</b><p class="vx-mb0">Regularize o plano em Conta e plano.</p></div></div>`
     : (ME.empresa.status === 'trial' && ME.entitlements.trial_expira_em
-      ? `<div class="vx-alerta vx-alerta--warn"><span class="vx-alerta-ico" aria-hidden="true">🎁</span><div><b>Período de teste até ${dataBr(ME.entitlements.trial_expira_em)}.</b><p class="vx-mb0">Assine em Conta e plano para não perder o acesso.</p></div></div>`
+      ? `<div class="vx-alerta vx-alerta--warn"><span class="vx-alerta-ico" aria-hidden="true">${svgIco('gift')}</span><div><b>Período de teste até ${dataBr(ME.entitlements.trial_expira_em)}.</b><p class="vx-mb0">Assine em Conta e plano para não perder o acesso.</p></div></div>`
       : '');
   $('#app').innerHTML = `
     <div class="vx-app" id="crm-app" data-nav="${NAV_COLAPSADA ? 'colapsada' : 'aberta'}">
@@ -172,8 +213,8 @@ function telaApp() {
           <div id="crm-head"></div>
           <div class="vx-acoes">
             <span class="vx-badge vx-badge--accent">${esc(ME.entitlements.plano || '—')}</span>
-            <button class="vx-btn vx-btn--sec vx-btn--sm" id="pwa-btn" style="display:none" title="Instalar o Villela CRM como app no celular">📲 Instalar app</button>
-            <button class="vx-btn vx-btn--sec vx-btn--sm" id="push-btn" style="display:none" title="Receber avisos de leads e propostas no celular">🔔 Avisos</button>
+            <button class="vx-btn vx-btn--sec vx-btn--sm" id="pwa-btn" style="display:none" title="Instalar o Villela CRM como app no celular">${svgIco('download')} Instalar app</button>
+            <button class="vx-btn vx-btn--sec vx-btn--sm" id="push-btn" style="display:none" title="Receber avisos de leads e propostas no celular">${svgIco('bell')} Avisos</button>
             <button class="vx-btn vx-btn--ghost vx-btn--sm" id="sair">Sair</button>
           </div>
         </div>
@@ -228,7 +269,7 @@ async function pintarBotaoPush() {
   if (!btn || !pushOk()) return;
   const sub = await pushAssinado();
   btn.style.display = '';
-  btn.textContent = sub ? '🔔 Avisos ✓' : '🔔 Avisos';
+  btn.innerHTML = svgIco('bell') + (sub ? ' Avisos ✓' : ' Avisos');
   btn.title = sub ? 'Notificações ativadas — toque para desativar' : 'Receber avisos de leads e propostas no celular';
   btn.onclick = () => alternarPush(btn);
 }
@@ -267,7 +308,7 @@ const carregando = () => {
 };
 const erroTela = (e) => {
   $('#tela').innerHTML = `<div class="vx-alerta vx-alerta--danger" role="alert">
-    <span class="vx-alerta-ico" aria-hidden="true">⚠️</span>
+    <span class="vx-alerta-ico" aria-hidden="true">${svgIco('alert')}</span>
     <div><b>Não foi possível carregar esta tela</b>
       <p class="vx-mb0">${esc(e && e.message ? e.message : 'Erro inesperado.')}</p>
       <button class="vx-btn vx-btn--sec vx-btn--sm" id="crm-retry" style="margin-top:8px">Tentar novamente</button></div></div>`;
@@ -281,8 +322,8 @@ async function vDash() {
   try {
     const [{ dashboard: d }, caixa] = await Promise.all([api('GET', '/app/dashboard'), api('GET', '/app/tarefas/caixa').catch(() => null)]);
     // KPI acionável: número + o que fazer com ele; data-ir leva à tela certa
-    const kpi = (n, rot, ctx, ir, tom) => {
-      const corpo = `<span class="vx-kpi-rot">${esc(rot)}</span><span class="vx-kpi-val">${n}</span>` +
+    const kpi = (n, rot, ctx, ir, tom, icone) => {
+      const corpo = `<span class="vx-kpi-top"><span class="vx-kpi-rot">${esc(rot)}</span>${icone ? `<span class="cp-kico">${svgIco(icone)}</span>` : ''}</span><span class="vx-kpi-val">${n}</span>` +
         (ctx ? `<span class="vx-kpi-ctx">${esc(ctx)}</span>` : '');
       return ir
         ? `<button type="button" class="vx-kpi" data-tom="${tom || ''}" data-ir="${ir}">${corpo}</button>`
@@ -294,28 +335,33 @@ async function vDash() {
       ? `<div class="vx-card"><h3>${esc(titulo)}</h3><div class="vx-tabela-wrap"><table>${linhas}</table></div></div>` : '';
 
     const exige = [
-      d.tarefas_atrasadas ? kpi(d.tarefas_atrasadas, 'Tarefas atrasadas', 'passaram do prazo', 'tarefas', 'critico') : '',
-      d.tarefas_hoje ? kpi(d.tarefas_hoje, 'Tarefas de hoje', 'para fechar hoje', 'tarefas', 'atencao') : '',
-      d.leads_sem_acao ? kpi(d.leads_sem_acao, 'Leads sem ação', 'ninguém retomou', 'contatos', 'atencao') : '',
-      d.propostas_vencidas ? kpi(d.propostas_vencidas, 'Propostas vencidas', 'passaram da validade', 'propostas', 'critico') : '',
+      d.tarefas_atrasadas ? kpi(d.tarefas_atrasadas, 'Tarefas atrasadas', 'passaram do prazo', 'tarefas', 'critico', 'clock') : '',
+      d.tarefas_hoje ? kpi(d.tarefas_hoje, 'Tarefas de hoje', 'para fechar hoje', 'tarefas', 'atencao', 'calendar') : '',
+      d.leads_sem_acao ? kpi(d.leads_sem_acao, 'Leads sem ação', 'ninguém retomou', 'contatos', 'atencao', 'target') : '',
+      d.propostas_vencidas ? kpi(d.propostas_vencidas, 'Propostas vencidas', 'passaram da validade', 'propostas', 'critico', 'file') : '',
     ].filter(Boolean).join('');
 
-    $('#tela').innerHTML =
+    const hora = new Date().getHours(), saud = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+    const boasVindas = `<div class="cp-welcome"><div><h2>${saud}, ${esc(String(ME.usuario.nome || '').split(' ')[0] || 'time')}</h2>
+      <p>${esc(ME.empresa.nome)} · veja o que pede ação hoje e como está a carteira.</p></div>
+      <div class="acoes"><button type="button" class="btn secund" id="w-contatos">${svgIco('users')} Contatos</button>
+      <button type="button" class="btn" id="w-opp">${svgIco('plus')} Nova oportunidade</button></div></div>`;
+    $('#tela').innerHTML = boasVindas +
       secao('Exige ação', 'O que está esperando por você agora.',
-        (exige ? `<div class="vx-kpis">${exige}</div>` : '<p class="vx-vazio">Nada atrasado. Dia limpo. 👌</p>') +
+        (exige ? `<div class="vx-kpis">${exige}</div>` : `<p class="vx-vazio">${svgIco('checkcircle')} Nada atrasado. Dia limpo.</p>`) +
         (caixa ? caixaHTML(caixa) : '')) +
       secao('Funil', 'Como está a carteira hoje.', `<div class="vx-kpis">
-        ${kpi(d.oportunidades_abertas, 'Negócios abertos', 'no funil', 'kanban')}
-        ${kpi(brl(d.valor_em_negociacao_centavos), 'Em negociação', 'valor em aberto', 'kanban')}
-        ${kpi(d.propostas_enviadas, 'Propostas em aberto', 'aguardando resposta', 'propostas')}
-        ${kpi(d.taxa_conversao_pct + '%', 'Conversão', 'do total trabalhado', null)}
+        ${kpi(d.oportunidades_abertas, 'Negócios abertos', 'no funil', 'kanban', '', 'kanban')}
+        ${kpi(brl(d.valor_em_negociacao_centavos), 'Em negociação', 'valor em aberto', 'kanban', '', 'coins')}
+        ${kpi(d.propostas_enviadas, 'Propostas em aberto', 'aguardando resposta', 'propostas', '', 'file')}
+        ${kpi(d.taxa_conversao_pct + '%', 'Conversão', 'do total trabalhado', null, '', 'trending')}
       </div>`) +
       secao('Carteira', 'Entrada de gente nova e temperatura.', `<div class="vx-kpis">
-        ${kpi(d.leads_novos_7d, 'Leads novos (7d)', 'entraram na semana', 'contatos')}
-        ${kpi(d.contatos_total, 'Contatos ativos', 'na base', 'contatos')}
-        ${kpi(d.leads_quentes, 'Leads quentes', 'prontos para abordar', 'contatos')}
-        ${kpi(brl(d.valor_ganho_centavos), 'Ganho (total)', 'negócios fechados', null)}
-        ${d.tempo_medio_fechamento_dias != null ? kpi(d.tempo_medio_fechamento_dias + 'd', 'Tempo médio de fechamento', 'do 1º contato ao ganho', null) : ''}
+        ${kpi(d.leads_novos_7d, 'Leads novos (7d)', 'entraram na semana', 'contatos', '', 'target')}
+        ${kpi(d.contatos_total, 'Contatos ativos', 'na base', 'contatos', '', 'users')}
+        ${kpi(d.leads_quentes, 'Leads quentes', 'prontos para abordar', 'contatos', '', 'flame')}
+        ${kpi(brl(d.valor_ganho_centavos), 'Ganho (total)', 'negócios fechados', null, 'ok', 'checkcircle')}
+        ${d.tempo_medio_fechamento_dias != null ? kpi(d.tempo_medio_fechamento_dias + 'd', 'Tempo médio de fechamento', 'do 1º contato ao ganho', null, '', 'clock') : ''}
       </div>`) +
       `<div class="duas">
         ${tab('Leads e conversão por origem', d.por_origem.map(o => `<tr><td>${esc(o.origem || '—')}</td><td style="text-align:right">${o.leads} leads</td><td style="text-align:right">${o.convertidos} conv.</td></tr>`).join(''))}
@@ -332,11 +378,11 @@ async function vDash() {
 function caixaHTML(cx) {
   const chip = (t, cls) => t.map(x => `<button class="btn peq secund cx-item" data-id="${esc(x.contato_id || x.id)}" style="margin:2px">${cls} ${esc(x.titulo || x.nome || x.contato_nome || '')}${x.vence_em ? ' · ' + dataBr(x.vence_em) : ''}</button>`).join('');
   if (!cx.atrasadas.length && !cx.hoje.length && !cx.leads_parados.length && !cx.propostas_sem_resposta.length) return '';
-  return `<div class="vx-card" style="margin-top:14px;border-left:4px solid var(--vx-accent)"><b>🔔 Retomar agora</b><br>
-    ${cx.atrasadas.length ? '<p style="margin:6px 0 2px"><b>Atrasadas:</b><br>' + chip(cx.atrasadas, '🔴') + '</p>' : ''}
-    ${cx.hoje.length ? '<p style="margin:6px 0 2px"><b>Hoje:</b><br>' + chip(cx.hoje, '🟡') + '</p>' : ''}
-    ${cx.leads_parados.length ? '<p style="margin:6px 0 2px"><b>Leads parados:</b><br>' + chip(cx.leads_parados, '🧊') + '</p>' : ''}
-    ${cx.propostas_sem_resposta.length ? '<p style="margin:6px 0 2px"><b>Propostas sem resposta:</b><br>' + chip(cx.propostas_sem_resposta, '📄') + '</p>' : ''}
+  return `<div class="vx-card" style="margin-top:14px;border-left:4px solid var(--vx-accent)"><b>${svgIco('bell')} Retomar agora</b><br>
+    ${cx.atrasadas.length ? '<p style="margin:6px 0 2px"><b>Atrasadas:</b><br>' + chip(cx.atrasadas, '<i class="cp-dot cp-dot--red"></i>') + '</p>' : ''}
+    ${cx.hoje.length ? '<p style="margin:6px 0 2px"><b>Hoje:</b><br>' + chip(cx.hoje, '<i class="cp-dot cp-dot--amber"></i>') + '</p>' : ''}
+    ${cx.leads_parados.length ? '<p style="margin:6px 0 2px"><b>Leads parados:</b><br>' + chip(cx.leads_parados, '<i class="cp-dot cp-dot--blue"></i>') + '</p>' : ''}
+    ${cx.propostas_sem_resposta.length ? '<p style="margin:6px 0 2px"><b>Propostas sem resposta:</b><br>' + chip(cx.propostas_sem_resposta, '<i class="cp-dot cp-dot--pink"></i>') + '</p>' : ''}
   </div>`;
 }
 function ligaCaixa() { document.querySelectorAll('.cx-item').forEach(b => b.onclick = () => abrirContato(b.dataset.id)); }
@@ -351,6 +397,8 @@ async function vKanban() {
     const sel = funis.map(f => `<option value="${f.id}" ${f.id === KANBAN_FUNIL ? 'selected' : ''}>${esc(f.nome)}</option>`).join('');
     $('#tela').innerHTML = `
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+    $('#w-opp').onclick = () => dlgOportunidade();
+    $('#w-contatos').onclick = () => navegar('contatos');
         <label style="display:flex;align-items:center;gap:6px">Funil <select id="k-funil" style="width:auto;margin:0">${sel}</select></label>
         <button class="btn peq" id="k-novo">+ Nova oportunidade</button>
         <button class="btn peq secund" id="k-novo-funil">+ Novo funil</button>
@@ -372,8 +420,8 @@ function colunaHTML(c) {
       <div class="meta">${esc(o.titulo)}${o.valor_centavos ? ' · ' + brl(o.valor_centavos) : ''}</div>
       <div class="meta"><span class="chip ${esc(faixa(o.contato_score))}">${o.contato_score}</span>
         ${o.contato_origem ? '<span class="chip">' + esc(o.contato_origem) + '</span>' : ''}
-        ${o.previsao ? '📅 ' + dataBr(o.previsao) : ''}
-        ${o.contato_telefone ? `<a href="${waLink(o.contato_telefone)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬</a>` : ''}</div>
+        ${o.previsao ? svgIco('calendar') + ' ' + dataBr(o.previsao) : ''}
+        ${o.contato_telefone ? `<a href="${waLink(o.contato_telefone)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="WhatsApp">${svgIco('message')}</a>` : ''}</div>
     </div>`).join('');
   return `<div class="kcol" data-est="${c.id}"><h4><span>${esc(c.nome)}</span><span>${c.oportunidades.length}${c.total_centavos ? ' · ' + brl(c.total_centavos) : ''}</span></h4>${cards || '<div class="sub" style="margin:6px">—</div>'}</div>`;
 }
