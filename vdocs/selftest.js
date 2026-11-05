@@ -945,6 +945,7 @@ function teste(nome, cond) {
       teste('"sempre propaganda": o remetente entra na lista e os dois documentos vão para Propaganda', r.dados.resultado[0].ok && ['P-s1', 'P-s2'].length === 2 && [e1, e2].every(x => (fl.find(i => i.document_id === x.dados.document_id) || {}).grupo === 'propaganda'));
       const rl = (await req('GET', '/vdocs/api/entrada', { jar: 'anaA' })).dados.remetentes_propaganda;
       teste('tela mostra a lista; remover funciona', rl.length === 9 && (await req('DELETE', '/vdocs/api/entrada/remetentes/' + rl.find(x => x.exibicao === 'Loja Nova').id, { jar: 'anaA' })).status === 200);
+      teste('a Triagem também entrega a lista de remetentes (aba ao lado de Propaganda)', Array.isArray(fl.remetentes) || (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.remetentes_propaganda.length === 8);
       const sobra = fl.filter(i => i.grupo === 'propaganda' && ['tabela-a.pdf', 'tabela-b.pdf', 'informativo-semana.pdf'].includes(i.nome));
       await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: sobra.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
       const ids = {};

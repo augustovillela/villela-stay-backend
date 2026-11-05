@@ -794,7 +794,9 @@ async function vTriagem(aba){
   S.triLista=S.triAba==='propaganda'?prop:dec;
   const abas='<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
     '<button class="btn peq'+(S.triAba==='decidir'?'':' btn-ghost')+'" onclick="vTriagem(\\'decidir\\')">🧹 Para decidir ('+dec.length+')</button>'+
-    '<button class="btn peq'+(S.triAba==='propaganda'?'':' btn-ghost')+'" onclick="vTriagem(\\'propaganda\\')">📢 Propaganda ('+prop.length+')</button></div>';
+    '<button class="btn peq'+(S.triAba==='propaganda'?'':' btn-ghost')+'" onclick="vTriagem(\\'propaganda\\')">📢 Propaganda ('+prop.length+')</button>'+
+    '<button class="btn peq'+(S.triAba==='remetentes'?'':' btn-ghost')+'" onclick="vTriagem(\\'remetentes\\')">📢 Remetentes que só mandam propaganda ('+d.remetentes_propaganda.length+')</button></div>';
+  if(S.triAba==='remetentes'){$('corpo').innerHTML=abas+remetentesHtml(d.remetentes_propaganda);return;}
   const L=S.triLista;
   if(!L.length){$('corpo').innerHTML=abas+'<div class="card"><b>✅ '+(S.triAba==='propaganda'?'Nenhuma propaganda para conferir.':'Nada esperando triagem.')+'</b><p class="sub">'+(S.triAba==='propaganda'?'Catálogos, ofertas e newsletters que chegarem pelo WhatsApp ou Gmail aparecem aqui, separados dos documentos de verdade. Nada é apagado sozinho.':'Documentos que chegarem pelo WhatsApp ou Gmail cadastrados aparecem aqui para você decidir: <b>eliminar</b> ou <b>processar e categorizar</b>.')+'</p></div>';return;}
   const ehProp=S.triAba==='propaganda';
@@ -859,16 +861,21 @@ async function vEntrada(){
    '<input id="ent-ident" placeholder="5561999999999 ou voce@gmail.com" style="max-width:280px"><input id="ent-rot" placeholder="Rótulo (ex.: Pessoal)" style="max-width:180px">'+
    '<button class="btn peq" onclick="entAdd()">Cadastrar conta</button></div><div id="ent-out" style="margin-top:8px;font-size:13px"></div></div>'+
    (d.aviso_triagem.disponivel?'<div class="card" style="margin-top:12px"><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:0"><input type="checkbox" style="width:auto" '+(d.aviso_triagem.ativo?'checked ':'')+'onchange="entAviso(this.checked)"> 📲 Avisar no WhatsApp, todo dia por volta das 9h, quando houver documentos esperando triagem (com link para abrir no celular)</label></div>':'')+
-   '<div class="card" style="margin-top:12px"><b>📢 Remetentes que só mandam propaganda</b> <span class="sub" style="font-size:12px">(o que vier deles vai direto para a aba Propaganda da triagem; nada é apagado sozinho)</span>'+
-   '<div style="margin:8px 0">'+(d.remetentes_propaganda.length?d.remetentes_propaganda.map(x=>'<span class="chip" style="margin:2px">'+esc(x.exibicao)+' <a href="#" title="Remover" onclick="return entDelRem(\\''+x.id+'\\')">✕</a></span>').join(' '):'<span class="sub">Nenhum cadastrado.</span>')+'</div>'+
-   '<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="ent-rem" placeholder="Nomes separados por vírgula (ex.: Leroy Merlin, Sebrae)" style="max-width:420px"><button class="btn peq" onclick="entAddRem()">Adicionar</button></div><div id="ent-rem-out" style="margin-top:6px;font-size:13px"></div></div>'+
+   remetentesHtml(d.remetentes_propaganda)+
    '<div class="card" style="margin-top:12px"><b>🕘 Chegadas recentes</b><table><tr><th>Quando</th><th>Arquivo</th><th>De</th><th>Desfecho</th></tr>'+
    (d.recentes.length?d.recentes.map(e=>'<tr><td>'+dt(e.criado_em)+'</td><td>'+esc(e.arquivo_nome)+'</td><td>'+esc(e.remetente||'')+'</td><td>'+
      (e.status==='recebido'?'✅ recebido'+(e.triagem==='pendente'?' · aguarda triagem':e.triagem==='processado'?' · processado':e.triagem==='eliminado'?' · eliminado':''):e.status==='duplicado'?'♻️ repetido':'🚫 '+esc(e.motivo||e.status))+'</td></tr>').join('')
     :'<tr><td colspan="4" style="color:var(--suave)">Nada recebido ainda.</td></tr>')+'</table></div>';
 }
-async function entAddRem(){try{await api('POST','/entrada/remetentes',{texto:$('ent-rem').value});vEntrada();}catch(e){$('ent-rem-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
-async function entDelRem(id){await api('DELETE','/entrada/remetentes/'+id);vEntrada();return false;}
+function remetentesHtml(lista){
+  const pode=S.me.permissoes.configurar_integracoes;
+  return '<div class="card" style="margin-top:12px"><b>📢 Remetentes que só mandam propaganda</b> <span class="sub" style="font-size:12px">(o que vier deles vai direto para a aba Propaganda; nada é apagado sozinho)</span>'+
+   '<div style="margin:8px 0">'+(lista.length?lista.map(x=>'<span class="chip" style="margin:2px">'+esc(x.exibicao)+(pode?' <a href="#" title="Remover" onclick="return entDelRem(\\''+x.id+'\\')">✕</a>':'')+'</span>').join(' '):'<span class="sub">Nenhum cadastrado.</span>')+'</div>'+
+   (pode?'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="ent-rem" placeholder="Nomes separados por vírgula (ex.: Leroy Merlin, Sebrae)" style="max-width:420px"><button class="btn peq" onclick="entAddRem()">Adicionar</button></div><div id="ent-rem-out" style="margin-top:6px;font-size:13px"></div>'
+        :'<p class="sub" style="font-size:12px">Só quem tem a permissão de integrações cadastra remetentes; na lista de documentos, o botão "Só propaganda" também depende dela.</p>')+'</div>';}
+const recarregaRem=()=>S.tela==='triagem'?vTriagem('remetentes'):vEntrada();
+async function entAddRem(){try{await api('POST','/entrada/remetentes',{texto:$('ent-rem').value});recarregaRem();}catch(e){$('ent-rem-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
+async function entDelRem(id){await api('DELETE','/entrada/remetentes/'+id);recarregaRem();return false;}
 async function entAviso(ativo){try{await api('POST','/entrada/aviso',{ativo});}catch(e){alert(e.message);vEntrada();}}
 async function entAdd(){try{
   await api('POST','/entrada/canais',{tipo:$('ent-tipo').value,identificador:$('ent-ident').value,rotulo:$('ent-rot').value});vEntrada();

@@ -378,7 +378,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
   }));
   // Triagem: quem vê documentos vê a fila; cada decisão exige a permissão do que faz.
   r.get('/entrada/triagem', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
-    res.json({ itens: entrada.pendentesTriagem(req.vd.tenant.id), pastas: docs.listarPastas(req.vd.tenant.id), tipos: docs.TIPOS_DOCUMENTAIS });
+    res.json({ itens: entrada.pendentesTriagem(req.vd.tenant.id), remetentes_propaganda: entrada.listarRemetentesPropaganda(req.vd.tenant.id), pastas: docs.listarPastas(req.vd.tenant.id), tipos: docs.TIPOS_DOCUMENTAIS });
   }));
   r.post('/entrada/triagem', requireTenant, h(async (req, res) => {
     const P = req.vd.permissoes;
