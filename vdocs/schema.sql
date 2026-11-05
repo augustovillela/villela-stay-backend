@@ -584,3 +584,14 @@ CREATE TABLE IF NOT EXISTS entradas_log (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_entradas_log ON entradas_log (tenant_id, canal_id, origem_id);
 CREATE INDEX IF NOT EXISTS idx_entradas_log_data ON entradas_log (tenant_id, criado_em);
 CREATE INDEX IF NOT EXISTS idx_entradas_log_triagem ON entradas_log (tenant_id, triagem);
+
+-- Remetentes que só mandam propaganda/oferta (lista do dono). O que vem deles vai direto para a aba
+-- Propaganda da triagem — nunca é apagado sozinho. Casamento por trecho do nome/e-mail do remetente.
+CREATE TABLE IF NOT EXISTS remetentes_propaganda (
+  id        TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  padrao    TEXT NOT NULL,             -- minúsculo, sem acento
+  exibicao  TEXT NOT NULL DEFAULT '',  -- como o dono digitou
+  criado_em TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_remetentes_propaganda ON remetentes_propaganda (tenant_id, padrao);

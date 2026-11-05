@@ -919,6 +919,34 @@ function teste(nome, cond) {
         const lx = fila0.filter(i => i.document_id === e3.dados.document_id);
         await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: lx.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
       }
+      // lista do dono: remetentes que só mandam propaganda
+      r = await req('POST', '/vdocs/api/entrada/remetentes', { body: { texto: 'Pegue Promo, Silmara Pires Garage; Clube Kotas' + String.fromCharCode(10) + 'Pro Leroy, La Maison Garage, Leroy Merlin, Gran, Sebrae, ab' }, jar: 'anaA' });
+      teste('lista do dono: 8 nomes entram, "ab" (curto) é ignorado', r.status === 200 && r.dados.novos === 8);
+      r = await req('POST', '/vdocs/api/entrada/remetentes', { body: { texto: 'leroy merlin' }, jar: 'anaA' });
+      teste('lista do dono: repetido (sem acento/caixa) não duplica', r.dados.novos === 0);
+      r = await req('POST', '/vdocs/api/entrada/remetentes', { body: { texto: 'Outro' }, jar: 'carlaA' });
+      teste('lista do dono exige configurar_integracoes', r.status === 403);
+      const dono = ['Pegue Promo <oi@pegue.com>', 'Silmara Pires Garage <news@x.com>', 'Clube Kotas', 'Pro Leroy <a@b.com>', 'La Maison Garage <a@b.com>', 'Leroy Merlin <ofertas@leroymerlin.com.br>', 'Gran <a@gran.com.br>', 'Sebrae <a@sebrae.com.br>'];
+      const lista = ['pegue promo', 'silmara pires garage', 'clube kotas', 'pro leroy', 'la maison garage', 'leroy merlin', 'gran', 'sebrae'];
+      teste('os 8 remetentes citados caem em propaganda', dono.every(rem => g({ nome: 'informativo.pdf', assunto: 'Novidades', remetente: rem, emLista: false, listaDoDono: lista }) === 'propaganda'));
+      teste('...mas fatura/boleto desses remetentes continua normal', g({ nome: 'Boleto Sebrae.pdf', assunto: '', remetente: 'Sebrae <a@sebrae.com.br>', emLista: false, listaDoDono: lista }) === 'normal');
+      teste('remetente fora da lista não é afetado', g({ nome: 'contrato.pdf', assunto: '', remetente: 'Ana <ana@a.com>', emLista: false, listaDoDono: lista }) === 'normal');
+      // chega pelo canal e vai para a propaganda
+      const ep = await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'P-lista', remetente: 'Clube Kotas <oi@kotas.com>', arquivo_nome: 'informativo-semana.pdf', conteudo_base64: B64('%PDF-1.4 informativo kotas') }));
+      const filaL = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens;
+      teste('documento de remetente da lista cai em propaganda na fila', (filaL.find(i => i.document_id === ep.dados.document_id) || {}).grupo === 'propaganda');
+      // "Sempre propaganda deste remetente" a partir da triagem: reclassifica também o que já estava na fila
+      const e1 = await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'P-s1', remetente: 'Loja Nova <oi@nova.com>', arquivo_nome: 'tabela-a.pdf', conteudo_base64: B64('%PDF-1.4 tabela a') }));
+      const e2 = await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'P-s2', remetente: 'Loja Nova <oi@nova.com>', arquivo_nome: 'tabela-b.pdf', conteudo_base64: B64('%PDF-1.4 tabela b') }));
+      let fl = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens;
+      teste('antes: remetente novo está na fila normal', ['normal'].includes((fl.find(i => i.document_id === e1.dados.document_id) || {}).grupo));
+      r = await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: [{ log_id: fl.find(i => i.document_id === e1.dados.document_id).log_id, acao: 'remetente_propaganda' }] }, jar: 'anaA' });
+      fl = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens;
+      teste('"sempre propaganda": o remetente entra na lista e os dois documentos vão para Propaganda', r.dados.resultado[0].ok && ['P-s1', 'P-s2'].length === 2 && [e1, e2].every(x => (fl.find(i => i.document_id === x.dados.document_id) || {}).grupo === 'propaganda'));
+      const rl = (await req('GET', '/vdocs/api/entrada', { jar: 'anaA' })).dados.remetentes_propaganda;
+      teste('tela mostra a lista; remover funciona', rl.length === 9 && (await req('DELETE', '/vdocs/api/entrada/remetentes/' + rl.find(x => x.exibicao === 'Loja Nova').id, { jar: 'anaA' })).status === 200);
+      const sobra = fl.filter(i => i.grupo === 'propaganda' && ['tabela-a.pdf', 'tabela-b.pdf', 'informativo-semana.pdf'].includes(i.nome));
+      await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: sobra.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
       const ids = {};
       for (const [k, nome, extra] of [['promo', 'catalogo_outono.pdf', { assunto: 'Ofertas imperdíveis', remetente: 'news@loja.com', em_lista: true }], ['fat', 'Fatura Vivo.pdf', {}], ['ext', 'Extrato C6.pdf', {}]]) {
         const e2 = await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'P-' + k, arquivo_nome: nome, conteudo_base64: B64('%PDF-1.4 ' + nome), ...extra }));

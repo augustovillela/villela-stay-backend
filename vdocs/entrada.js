@@ -133,7 +133,7 @@ function receber(tenantId, { tipo, identificador, origem_id, remetente, assunto,
 
   const desc = `Entrada automática · ${tipo === 'whatsapp' ? 'WhatsApp' : 'Gmail'} (${canal.rotulo || canal.identificador})`
     + (remetente ? ` · de ${s(remetente, 80)}` : '') + (assunto ? ` · "${s(assunto, 100)}"` : '') + (data ? ` · ${s(data, 40)}` : '');
-  const grupo = classificarGrupo({ nome, assunto, remetente, emLista: !!em_lista });
+  const grupo = classificarGrupo({ nome, assunto, remetente, emLista: !!em_lista, listaDoDono: listaDoDono(tenantId) });
   try {
     const doc = docs.criarDocumento(tenantId, {
       nome, arquivo_nome: nome, conteudo_base64, descricao: desc,
@@ -211,8 +211,11 @@ const RE_NOME_PROMO = /(banner|promo|oferta|catalogo|folheto|encarte|tabela de p
 // legenda de grupo de achadinhos: "De R$ 449 por R$ 269 no Pix", "cupom", "no pix", "com frete gratis"
 const RE_PRECO_PROMO = /(de r\$ ?\d[0-9.,]* por r\$|\bpor r\$ ?\d[0-9.,]* no pix|\bno pix\b|\bcupom\b|\d+% ?off|\d+% de desconto)/;
 /** 'propaganda' ou 'normal'. `emLista` = cabeçalhos de lista/bulk do e-mail (List-Unsubscribe, Precedence: bulk). */
-function classificarGrupo({ nome, assunto, remetente, emLista }) {
+function classificarGrupo({ nome, assunto, remetente, emLista, listaDoDono = [] }) {
   if (sugerirTipo(nome, '')) return 'normal';
+  // lista do dono: remetente que ele disse que SÓ manda propaganda decide sozinho
+  const rem = sem(remetente);
+  if (listaDoDono.some(p => p && rem.includes(p))) return 'propaganda';
   let pontos = 0;
   if (emLista) pontos += 2;
   if (RE_PROMO.test(sem(assunto))) pontos += 2;
@@ -225,6 +228,31 @@ function classificarGrupo({ nome, assunto, remetente, emLista }) {
   if (RE_REMETENTE_MKT.test(sem(remetente))) pontos += /promo|achadinho|ofertas|cupom/.test(sem(remetente)) ? 2 : 1;
   return pontos >= 3 || (pontos >= 2 && !emLista) ? 'propaganda' : 'normal';
 }
+
+// ------------------------------------------------------------ lista do dono
+const listaDoDono = (tenantId) => db.prepare('SELECT padrao FROM remetentes_propaganda WHERE tenant_id = ?').all(String(tenantId)).map(r => r.padrao);
+const listarRemetentesPropaganda = (tenantId) =>
+  db.prepare('SELECT id, exibicao, criado_em FROM remetentes_propaganda WHERE tenant_id = ? ORDER BY exibicao').all(String(tenantId));
+/** Aceita vários de uma vez, separados por vírgula, ponto e vírgula ou linha. Ignora o que tem menos de 3 letras. */
+function adicionarRemetentesPropaganda(tenantId, texto, ator, ip) {
+  const nomes = String(texto || '').split(/[,;\n]+/).map(x => s(x, 80)).filter(x => sem(x).trim().length >= 3);
+  if (!nomes.length) throw new Error('Informe o nome do remetente (3 letras ou mais). Para vários, separe por vírgula.');
+  let novos = 0;
+  for (const n of nomes.slice(0, 100)) {
+    const r = db.prepare('INSERT OR IGNORE INTO remetentes_propaganda (id, tenant_id, padrao, exibicao, criado_em) VALUES (?,?,?,?,?)')
+      .run(novoId(), String(tenantId), sem(n).trim(), n, nowISO());
+    novos += Number(r.changes) || 0;
+  }
+  repo.auditar(tenantId, ator, 'entrada.remetente_propaganda_add', 'remetentes_propaganda', '', { novos }, ip);
+  return novos;
+}
+function removerRemetentePropaganda(tenantId, id, ator, ip) {
+  const r = db.prepare('DELETE FROM remetentes_propaganda WHERE id = ? AND tenant_id = ?').run(String(id), String(tenantId));
+  if (!r.changes) throw new Error('Remetente não encontrado.');
+  repo.auditar(tenantId, ator, 'entrada.remetente_propaganda_del', 'remetentes_propaganda', String(id), {}, ip);
+}
+/** "Leroy Merlin <news@x.com>" -> "Leroy Merlin"; "Promos (5585…)" -> "Promos". */
+const nomeDoRemetente = (r) => s(String(r || '').split(/[<(]/)[0].replace(/["']/g, ''), 80);
 
 // Pasta por categoria: processar sem escolher pasta arruma o documento no lugar certo.
 const PASTA_PROPAGANDA = '📢 Propaganda (conferir)';
@@ -246,9 +274,10 @@ function reclassificarFila(t) {
   const linhas = db.prepare(`SELECT l.id, l.remetente, l.document_id, d.nome, d.descricao, d.tags, d.folder_id
     FROM entradas_log l JOIN documents d ON d.id = l.document_id AND d.tenant_id = l.tenant_id
     WHERE l.tenant_id = ? AND l.triagem = 'pendente' AND l.grupo IN ('', 'normal') AND d.status = 'ativo'`).all(t);
+  const lista = listaDoDono(t);
   for (const r of linhas) {
     const assunto = ((String(r.descricao || '').match(/"([^"]*)"/) || [])[1]) || '';
-    if (classificarGrupo({ nome: r.nome, assunto, remetente: r.remetente, emLista: false }) !== 'propaganda') {
+    if (classificarGrupo({ nome: r.nome, assunto, remetente: r.remetente, emLista: false, listaDoDono: lista }) !== 'propaganda') {
       db.prepare("UPDATE entradas_log SET grupo = 'normal' WHERE id = ? AND grupo = ''").run(r.id);
       continue;
     }
@@ -308,6 +337,7 @@ function decidirTriagem(tenantId, itens, ator, ip) {
     try {
       const l = db.prepare("SELECT * FROM entradas_log WHERE id = ? AND tenant_id = ? AND triagem = 'pendente'").get(logId, String(tenantId));
       if (!l) throw new Error('Item não está mais na fila de triagem.');
+      if (it.acao === 'remetente_propaganda') { /* não exige estar pendente de decisão de arquivo */ }
       if (it.acao === 'eliminar') {
         docs.paraLixeira(tenantId, l.document_id, ator, ip);
         db.prepare("UPDATE entradas_log SET triagem = 'eliminado' WHERE id = ?").run(l.id);
@@ -329,6 +359,9 @@ function decidirTriagem(tenantId, itens, ator, ip) {
         }
         if (destino !== '__manter' && s(destino, 40) !== d.folder_id) docs.moverDocumento(tenantId, l.document_id, s(destino, 40), ator, ip);
         db.prepare("UPDATE entradas_log SET triagem = 'processado' WHERE id = ?").run(l.id);
+      } else if (it.acao === 'remetente_propaganda') { // "sempre propaganda deste remetente": entra na lista e a fila é reavaliada
+        adicionarRemetentesPropaganda(tenantId, nomeDoRemetente(l.remetente), ator, ip);
+        reclassificarFila(String(tenantId));
       } else if (it.acao === 'nao_propaganda') { // volta para a fila normal e para a pasta de entrada
         const d = docs.obterDocumento(tenantId, l.document_id);
         const canal = db.prepare('SELECT * FROM canais_entrada WHERE id = ?').get(l.canal_id) || {};
@@ -395,5 +428,6 @@ module.exports = {
   PASTA_PADRAO, PASTA_PROPAGANDA, TAG_BAIXA_STAYS, classificarGrupo, EXT_ACEITAS, canonFone, normalizar, sugerirTipo,
   listarCanais, criarCanal, atualizarCanal, excluirCanal, canaisAtivos, receber,
   pendentesTriagem, decidirTriagem, resumo, recentes,
+  listarRemetentesPropaganda, adicionarRemetentesPropaganda, removerRemetentePropaganda, nomeDoRemetente,
   avisoTriagemDisponivel, avisoTriagemAtivo, definirAvisoTriagem, dadosAvisoTriagem,
 };

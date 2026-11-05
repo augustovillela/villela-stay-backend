@@ -350,8 +350,17 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
       recentes: entrada.recentes(req.vd.tenant.id),
       resumo: entrada.resumo(req.vd.tenant.id),
       pasta_padrao: entrada.PASTA_PADRAO,
+      remetentes_propaganda: entrada.listarRemetentesPropaganda(req.vd.tenant.id),
       aviso_triagem: { disponivel: entrada.avisoTriagemDisponivel(req.vd.tenant.id), ativo: entrada.avisoTriagemAtivo(req.vd.tenant.id) },
     });
+  }));
+  r.post('/entrada/remetentes', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    const novos = entrada.adicionarRemetentesPropaganda(req.vd.tenant.id, (req.body || {}).texto, req.vd.user, req.vd.ip);
+    res.json({ ok: true, novos });
+  }));
+  r.delete('/entrada/remetentes/:id', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    entrada.removerRemetentePropaganda(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip);
+    res.json({ ok: true });
   }));
   r.post('/entrada/aviso', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
     entrada.definirAvisoTriagem(req.vd.tenant.id, !!(req.body || {}).ativo, req.vd.user, req.vd.ip);
@@ -374,7 +383,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
   r.post('/entrada/triagem', requireTenant, h(async (req, res) => {
     const P = req.vd.permissoes;
     const itens = Array.isArray((req.body || {}).itens) ? req.body.itens : [];
-    const negado = itens.find(i => (i.acao === 'eliminar' && !P.excluir_documento) || (i.acao === 'processar' && !(P.editar_metadados && P.mover_documento)));
+    const negado = itens.find(i => (i.acao === 'eliminar' && !P.excluir_documento) || (i.acao === 'processar' && !(P.editar_metadados && P.mover_documento)) || (i.acao === 'remetente_propaganda' && !P.configurar_integracoes));
     if (negado) return res.status(403).json({ erro: `Sem permissão: ${negado.acao === 'eliminar' ? 'excluir_documento' : 'editar_metadados/mover_documento'}` });
     res.json({ ok: true, resultado: entrada.decidirTriagem(req.vd.tenant.id, itens, req.vd.user, req.vd.ip) });
   }));

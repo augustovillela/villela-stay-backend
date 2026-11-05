@@ -822,8 +822,8 @@ async function vTriagem(aba){
        '<select id="tri-tipo'+n+'">'+d.tipos.map(t=>'<option value="'+t+'"'+(t===tipoSel?' selected':'')+'>'+esc(ROT_TIPO[t]||t)+'</option>').join('')+'</select>'+
        '<label style="display:flex;gap:4px;align-items:center;font-size:12px;font-weight:400;margin-top:4px" title="Marca para dar baixa na Stays com a data do check-in"><input type="checkbox" id="tri-baixa'+n+'" style="width:auto"'+(sug&&sug.rotulo==='Comprovante'?' checked':'')+'> 🏠 pagamento de hospedagem (baixa na Stays)</label></td>'+
       '<td><select id="tri-pasta'+n+'"><option value="__auto">(pasta da categoria)</option><option value="__manter">(deixar em Entrada automática)</option><option value="">Raiz</option>'+d.pastas.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></td>')+
-      '<td style="white-space:nowrap">'+(ehProp?'<button class="btn peq" onclick="triLote(\\'eliminar\\','+n+')">Eliminar</button> <button class="btn btn-ghost peq" onclick="triLote(\\'nao_propaganda\\','+n+')">Não é propaganda</button>'
-        :'<button class="btn peq" onclick="triLote(\\'processar\\','+n+')">Processar</button> <button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\','+n+')">Eliminar</button>')+'</td></tr>';}).join('')+
+      '<td style="white-space:nowrap">'+(ehProp?'<button class="btn peq" onclick="triLote(\\'eliminar\\','+n+')">Eliminar</button> <button class="btn btn-ghost peq" onclick="triLote(\\'nao_propaganda\\','+n+')">Não é propaganda</button> <button class="btn btn-ghost peq" title="Tudo que vier deste remetente vai direto para Propaganda" onclick="triLote(\\'remetente_propaganda\\','+n+')">📢 Sempre propaganda</button>'
+        :'<button class="btn peq" onclick="triLote(\\'processar\\','+n+')">Processar</button> <button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\','+n+')">Eliminar</button> <button class="btn btn-ghost peq" title="Este remetente só manda propaganda: tudo dele vai direto para a aba Propaganda" onclick="triLote(\\'remetente_propaganda\\','+n+')">📢 Só propaganda</button>')+'</td></tr>';}).join('')+
    '</table></div>';
 }
 function triMarcar(v){document.querySelectorAll('.tri-ck').forEach(c=>c.checked=v);}
@@ -835,7 +835,7 @@ async function triLote(acao,so){
   if(!idx.length){$('tri-out').innerHTML='<span style="color:var(--alerta)">Marque ao menos um documento.</span>';return;}
   if(acao==='eliminar'&&!confirm('Eliminar '+idx.length+' documento(s)? Vão para a lixeira (dá para restaurar).'))return;
   const itens=idx.map(n=>{const i=S.triLista[n];
-    if(acao==='eliminar'||acao==='nao_propaganda')return{log_id:i.log_id,acao};
+    if(acao==='eliminar'||acao==='nao_propaganda'||acao==='remetente_propaganda')return{log_id:i.log_id,acao};
     return{log_id:i.log_id,acao,tipo_documental:$('tri-tipo'+n).value,folder_id:$('tri-pasta'+n).value,baixa_stays:$('tri-baixa'+n).checked};});
   try{
     const r=await api('POST','/entrada/triagem',{itens});
@@ -859,11 +859,16 @@ async function vEntrada(){
    '<input id="ent-ident" placeholder="5561999999999 ou voce@gmail.com" style="max-width:280px"><input id="ent-rot" placeholder="Rótulo (ex.: Pessoal)" style="max-width:180px">'+
    '<button class="btn peq" onclick="entAdd()">Cadastrar conta</button></div><div id="ent-out" style="margin-top:8px;font-size:13px"></div></div>'+
    (d.aviso_triagem.disponivel?'<div class="card" style="margin-top:12px"><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:0"><input type="checkbox" style="width:auto" '+(d.aviso_triagem.ativo?'checked ':'')+'onchange="entAviso(this.checked)"> 📲 Avisar no WhatsApp, todo dia por volta das 9h, quando houver documentos esperando triagem (com link para abrir no celular)</label></div>':'')+
+   '<div class="card" style="margin-top:12px"><b>📢 Remetentes que só mandam propaganda</b> <span class="sub" style="font-size:12px">(o que vier deles vai direto para a aba Propaganda da triagem; nada é apagado sozinho)</span>'+
+   '<div style="margin:8px 0">'+(d.remetentes_propaganda.length?d.remetentes_propaganda.map(x=>'<span class="chip" style="margin:2px">'+esc(x.exibicao)+' <a href="#" title="Remover" onclick="return entDelRem(\\''+x.id+'\\')">✕</a></span>').join(' '):'<span class="sub">Nenhum cadastrado.</span>')+'</div>'+
+   '<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="ent-rem" placeholder="Nomes separados por vírgula (ex.: Leroy Merlin, Sebrae)" style="max-width:420px"><button class="btn peq" onclick="entAddRem()">Adicionar</button></div><div id="ent-rem-out" style="margin-top:6px;font-size:13px"></div></div>'+
    '<div class="card" style="margin-top:12px"><b>🕘 Chegadas recentes</b><table><tr><th>Quando</th><th>Arquivo</th><th>De</th><th>Desfecho</th></tr>'+
    (d.recentes.length?d.recentes.map(e=>'<tr><td>'+dt(e.criado_em)+'</td><td>'+esc(e.arquivo_nome)+'</td><td>'+esc(e.remetente||'')+'</td><td>'+
      (e.status==='recebido'?'✅ recebido'+(e.triagem==='pendente'?' · aguarda triagem':e.triagem==='processado'?' · processado':e.triagem==='eliminado'?' · eliminado':''):e.status==='duplicado'?'♻️ repetido':'🚫 '+esc(e.motivo||e.status))+'</td></tr>').join('')
     :'<tr><td colspan="4" style="color:var(--suave)">Nada recebido ainda.</td></tr>')+'</table></div>';
 }
+async function entAddRem(){try{await api('POST','/entrada/remetentes',{texto:$('ent-rem').value});vEntrada();}catch(e){$('ent-rem-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
+async function entDelRem(id){await api('DELETE','/entrada/remetentes/'+id);vEntrada();return false;}
 async function entAviso(ativo){try{await api('POST','/entrada/aviso',{ativo});}catch(e){alert(e.message);vEntrada();}}
 async function entAdd(){try{
   await api('POST','/entrada/canais',{tipo:$('ent-tipo').value,identificador:$('ent-ident').value,rotulo:$('ent-rot').value});vEntrada();
