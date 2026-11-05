@@ -179,7 +179,7 @@ function iniciar() {
     }
   }, 5 * 60 * 1000));
   // nomes automáticos por IA: a cada 10 min (só empresas com a chave ligada; teto diário por empresa)
-  _timers.push(setInterval(() => {
+  const rodarNomes = () => {
     const entrada = require('./entrada');
     (async () => {
       for (const t of db.prepare("SELECT id FROM tenants WHERE status IN ('trial','ativa','cortesia')").all()) {
@@ -188,7 +188,10 @@ function iniciar() {
         if (n) console.log(`[vdocs jobs] nome automático: ${n} documento(s) nomeado(s)`);
       }
     })().catch(e => console.error('[vdocs jobs]', e.message));
-  }, 10 * 60 * 1000));
+  };
+  _timers.push(setInterval(rodarNomes, 10 * 60 * 1000));
+  // 1ª rodada 90 s depois de subir: cada deploy reinicia o relógio, e sem isso um deploy a cada poucos minutos adiava para sempre
+  _timers.push(setTimeout(rodarNomes, 90 * 1000));
   // triagem: 1x/dia ~09h Brasília (12h UTC) — hora em que ele costuma estar com o celular na mão
   let ultimaTriagem = '';
   _timers.push(setInterval(() => {

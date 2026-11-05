@@ -102,6 +102,12 @@ function registrarApiPublica(app, { express }) {
   // Entrada automática: a ponte local (WhatsApp/Gmail) lê as contas ligadas e empurra os anexos.
   // Vai para a TRIAGEM (pendente), nunca direto para o acervo.
   const entradaMod = require('./entrada');
+  v1.get('/entrada/nomes', h(async (req, res) => res.json(entradaMod.diagnosticoNomes(t(req)))));
+  v1.post('/entrada/nomes/agora', h(async (req, res) => {
+    if (!require('./ia').ativo()) return res.status(503).json({ erro: 'IA indisponível: o servidor está sem ANTHROPIC_API_KEY.' });
+    const nomeados = await entradaMod.rotinaNomesAuto(t(req));
+    res.json({ ok: true, nomeados, estado: entradaMod.diagnosticoNomes(t(req)) });
+  }));
   v1.get('/entrada/canais', h(async (req, res) => res.json({ canais: entradaMod.canaisAtivos(t(req)) })));
   v1.post('/entrada', h(async (req, res) => {
     const r = entradaMod.receber(t(req), req.body || {}, req.apiAtor, 'api');

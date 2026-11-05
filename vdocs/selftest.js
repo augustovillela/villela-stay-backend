@@ -980,12 +980,21 @@ function teste(nome, cond) {
         let chamadas = 0;
         iaMod.__mockParaTeste(async ({ prompt }) => { chamadas++; const n = (prompt.match(/\[D(\d+)\]/g) || []).length; return { json: { nomes: Array.from({ length: n }, (_, i) => ({ ref: 'D' + (i + 1), nome: 'Recibo de compra – Zara – 03/11/2026', tipo_documental: 'recibo' })) }, modelo: 'mock', usage: { input_tokens: 5, output_tokens: 5 } }; });
         await req('POST', '/vdocs/api/entrada/nomear-auto', { body: { ativo: true }, jar: 'anaA' });
-        teste('tela mostra o nome automático ligado', (await req('GET', '/vdocs/api/entrada', { jar: 'anaA' })).dados.nomear_auto.ativo === true);
+        teste('tela mostra o nome automático ligado', (await req('GET', '/vdocs/api/entrada', { jar: 'anaA' })).dados.nomear_auto.ligado === true && typeof (await req('GET', '/vdocs/api/entrada', { jar: 'anaA' })).dados.nomear_auto.aguardando === 'number');
         const n1 = await require('./entrada').rotinaNomesAuto(tenantA.id);
         const docInfo = async (id) => (await req('GET', '/vdocs/api/documentos/' + id, { jar: 'anaA' })).dados.documento;
         const nf = await docInfo(dNF);
         teste('documento de nome ruim/importante é nomeado e guarda o original na descrição', n1 >= 1 && nf.nome === 'Recibo de compra – Zara – 03/11/2026' && /Arquivo original: 1793745936224-ticket/.test(nf.descricao) && nf.tags.includes('nome-ia'));
         teste('documento comum e propaganda NÃO gastam IA nem mudam de nome', (await docInfo(dOK)).nome === 'Relatorio semanal da equipe.txt' && (await docInfo(dPr)).nome === 'catalogo_loja.txt');
+        // PDF sem texto (escaneado): a IA nomeia pelo contexto do e-mail (remetente, assunto, data)
+        const dSem = await mk('sem', '1793746193815-ticket-a84194b861014664b6ce47f19686fe6b.txt', 'oi', { remetente: 'Zara <noreply@zara.com>', assunto: 'Anexamos seu bilhete eletronico.', data: 'Tue, 3 Nov 2026 22:49:59 +0000' });
+        for (let k = 0; k < 20; k++) { if (!(await jobsM.processarPendentes())) break; }
+        const dg0 = await v1('GET', '/entrada/nomes');
+        teste('diagnóstico (API v1) conta o que aguarda nome, inclusive sem texto', dg0.status === 200 && dg0.dados.ligado === true && dg0.dados.aguardando >= 1 && dg0.dados.aguardando_sem_texto >= 1 && dg0.dados.ia_ativa === true);
+        const ag = await v1('POST', '/entrada/nomes/agora');
+        const semTxt = await docInfo(dSem);
+        teste('"nomear agora" nomeia pelo contexto do e-mail quando não há texto', ag.status === 200 && ag.dados.nomeados >= 1 && semTxt.nome === 'Recibo de compra – Zara – 03/11/2026' && /Arquivo original: 1793746193815-ticket/.test(semTxt.descricao));
+        teste('diagnóstico registra a última rodada', (await v1('GET', '/entrada/nomes')).dados.ultima_rodada !== null);
         const antes = chamadas;
         await require('./entrada').rotinaNomesAuto(tenantA.id);
         teste('não repete: segunda rodada não chama a IA de novo para o mesmo documento', chamadas === antes);
@@ -995,7 +1004,7 @@ function teste(nome, cond) {
         const antes2 = chamadas;
         teste('desligado não nomeia nem gasta IA', (await require('./entrada').rotinaNomesAuto(tenantA.id)) === 0 && chamadas === antes2);
         iaMod.__mockParaTeste(null);
-        const resto = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens.filter(i => [dNF, dOK, dPr, dNF2].includes(i.document_id));
+        const resto = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens.filter(i => [dNF, dOK, dPr, dNF2, dSem].includes(i.document_id));
         await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: resto.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
       }
       const sobra = fl.filter(i => i.grupo === 'propaganda' && ['tabela-a.pdf', 'tabela-b.pdf', 'informativo-semana.pdf'].includes(i.nome));

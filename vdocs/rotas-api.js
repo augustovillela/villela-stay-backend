@@ -369,7 +369,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
       resumo: entrada.resumo(req.vd.tenant.id),
       pasta_padrao: entrada.PASTA_PADRAO,
       remetentes_propaganda: entrada.listarRemetentesPropaganda(req.vd.tenant.id),
-      nomear_auto: { ativo: entrada.nomearAutoAtivo(req.vd.tenant.id) },
+      nomear_auto: entrada.diagnosticoNomes(req.vd.tenant.id),
       aviso_triagem: { disponivel: entrada.avisoTriagemDisponivel(req.vd.tenant.id), ativo: entrada.avisoTriagemAtivo(req.vd.tenant.id) },
     });
   }));
@@ -380,6 +380,11 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
   r.delete('/entrada/remetentes/:id', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
     entrada.removerRemetentePropaganda(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip);
     res.json({ ok: true });
+  }));
+  r.post('/entrada/nomear-agora', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    if (!require('./ia').ativo()) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY.');
+    const nomeados = await entrada.rotinaNomesAuto(req.vd.tenant.id);
+    res.json({ ok: true, nomeados, estado: entrada.diagnosticoNomes(req.vd.tenant.id) });
   }));
   r.post('/entrada/nomear-auto', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
     entrada.definirNomearAuto(req.vd.tenant.id, !!(req.body || {}).ativo, req.vd.user, req.vd.ip);

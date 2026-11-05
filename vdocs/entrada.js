@@ -425,14 +425,14 @@ const SCHEMA_NOMES = {
 const INSTRUCAO_NOMEAR = `TAREFA ATUAL: dar NOME a documentos recém-recebidos. Ignore as regras de citação e de pergunta/resposta.
 Formato do nome: "Tipo – Emissor ou parte – Data" (data dd/mm/aaaa; para fatura ou extrato de período, mm/aaaa), no máximo 90 caracteres.
 Exemplos: "Nota fiscal – Zara – 03/11/2026", "Fatura – Claro – 10/2026", "Extrato bancário – C6 PJ – 10/2026", "Comprovante de Pix – João Silva – 05/11/2026", "Contrato de locação – Maria Souza – 01/2027".
-Regras: use SOMENTE o que está no texto; se um elemento (emissor, data) não aparecer, OMITA-O — nunca invente; nunca ponha CPF, CNPJ, número de conta, código de barras ou chave de acesso no nome; se não der para saber o que é o documento, devolva nome vazio. tipo_documental deve ser um destes ou vazio: `;
+Regras: use SOMENTE o que está no texto ou no contexto do recebimento (remetente, assunto e data do e-mail); se um elemento (emissor, data) não aparecer, OMITA-O — nunca invente; nunca ponha CPF, CNPJ, número de conta, código de barras ou chave de acesso no nome; se não der para saber o que é o documento, devolva nome vazio. tipo_documental deve ser um destes ou vazio: `;
 function sanitizaNome(n) { return s(String(n || '').replace(/[\\*?"<>|\r\n]+/g, ' ').replace(/\s+/g, ' '), 120).trim(); }
 /** Núcleo: pede à IA o nome de cada item { id, nome, texto }. Devolve [{ id, nome, tipo_documental }]. 1 consulta do plano por chamada. */
 async function sugerirNomes(tenantId, itens) {
   const ia = require('./ia');
   const { TIPOS_DOCUMENTAIS } = require('./docs');
   repo.checarLimite(tenantId, 'ia_consultas', 1);
-  const prompt = itens.map((r, i) => `[D${i + 1}] (arquivo: ${r.nome})\n${String(r.texto).replace(/\s+/g, ' ').trim().slice(0, 1800)}`).join('\n\n---\n\n')
+  const prompt = itens.map((r, i) => `[D${i + 1}] (arquivo: ${r.nome})\n` + (r.contexto ? `Contexto do recebimento: ${r.contexto}\n` : '') + (temTexto(r.texto) ? String(r.texto).replace(/\s+/g, ' ').trim().slice(0, 1800) : '(sem texto extraído do arquivo — use o contexto do recebimento)')).join('\n\n---\n\n')
     + `\n\nDevolva um item por documento, com ref igual a D1, D2...`;
   const r = await ia.executar(tenantId, { prompt, schema: SCHEMA_NOMES, systemExtra: INSTRUCAO_NOMEAR + TIPOS_DOCUMENTAIS.join(', ') + '.' });
   repo.registrarUso(tenantId, 'ia_consultas', 1);
@@ -483,6 +483,33 @@ function nomearAutoAtivo(tenantId) {
 function definirNomearAuto(tenantId, ativo, ator, ip) {
   repo.gravarSetting(tenantId, 'nomear_automatico', ativo ? 'on' : 'off', ator, ip);
 }
+// Quem entra na fila de nomes: veio pela Entrada automática, não é propaganda, ainda não foi nomeado, é importante
+// (categoria reconhecida) ou tem nome ruim — e há o que a IA ler: o texto extraído OU o contexto do e-mail
+// (remetente, assunto e data), que cobre o PDF escaneado/sem texto.
+function elegiveisNomeAuto(t) {
+  return db.prepare(`SELECT d.id, d.nome, d.descricao, d.tags, tx.texto FROM entradas_log l
+      JOIN documents d ON d.id = l.document_id AND d.tenant_id = l.tenant_id
+      LEFT JOIN document_texts tx ON tx.document_id = d.id AND tx.tenant_id = l.tenant_id
+      WHERE l.tenant_id = ? AND l.status = 'recebido' AND l.triagem IN ('pendente', 'processado') AND l.grupo != 'propaganda'
+        AND d.status = 'ativo' AND d.tags NOT LIKE '%"nome-ia%'
+      ORDER BY l.criado_em DESC LIMIT 300`).all(String(t))
+    .map(c => ({ ...c, contexto: /"/.test(c.descricao || '') ? String(c.descricao).replace(/^Entrada automática · /, '').replace(/^Arquivo original: [^·]*· /, '') : '' }))
+    .filter(c => (temTexto(c.texto) || c.contexto) && (sugerirTipo(c.nome, String(c.texto || '') + ' ' + c.contexto) || nomeRuim(c.nome)));
+}
+/** Estado do nome automático, para a tela e para diagnóstico: por que um documento ainda não foi nomeado. */
+function diagnosticoNomes(tenantId) {
+  const t = String(tenantId);
+  const ult = db.prepare("SELECT detalhes, criado_em FROM audit_logs WHERE tenant_id = ? AND acao = 'entrada.nomear_auto' ORDER BY criado_em DESC LIMIT 1").get(t);
+  const el = elegiveisNomeAuto(t);
+  const total = (tag) => db.prepare("SELECT COUNT(*) n FROM documents WHERE tenant_id = ? AND status = 'ativo' AND tags LIKE ?").get(t, '%"' + tag + '"%').n;
+  return {
+    ligado: nomearAutoAtivo(t), ia_ativa: require('./ia').ativo(),
+    aguardando: el.length, aguardando_sem_texto: el.filter(c => !temTexto(c.texto)).length,
+    nomeados: total('nome-ia'), sem_sugestao: total('nome-ia-sem'),
+    ultima_rodada: ult ? { em: ult.criado_em, ...(j.parse(ult.detalhes, {}) || {}) } : null,
+    teto_dia: MAX_AUTO_DIA(),
+  };
+}
 async function rotinaNomesAuto(tenantId) {
   const ia = require('./ia');
   if (!ia.ativo() || !nomearAutoAtivo(tenantId)) return 0;
@@ -490,20 +517,13 @@ async function rotinaNomesAuto(tenantId) {
   const hoje = new Date().toISOString().slice(0, 10);
   let usado = db.prepare("SELECT detalhes FROM audit_logs WHERE tenant_id = ? AND acao = 'entrada.nomear_auto' AND criado_em >= ?").all(t, hoje)
     .reduce((n, a) => n + (Number((j.parse(a.detalhes, {}) || {}).documentos) || 0), 0);
-  const candidatos = db.prepare(`SELECT d.id, d.nome, d.descricao, d.tags, tx.texto FROM entradas_log l
-      JOIN documents d ON d.id = l.document_id AND d.tenant_id = l.tenant_id
-      JOIN document_texts tx ON tx.document_id = d.id AND tx.tenant_id = l.tenant_id
-      WHERE l.tenant_id = ? AND l.status = 'recebido' AND l.triagem IN ('pendente', 'processado') AND l.grupo != 'propaganda'
-        AND d.status = 'ativo' AND d.tags NOT LIKE '%"nome-ia%' AND length(tx.texto) >= 40
-      ORDER BY l.criado_em DESC LIMIT 200`).all(t)
-    // só o que importa gasta IA: categoria reconhecida (nota, fatura, extrato, contrato, recibo, comprovante) ou nome ruim
-    .filter(c => temTexto(c.texto) && (sugerirTipo(c.nome, c.texto) || nomeRuim(c.nome))).slice(0, 60);
+  const candidatos = elegiveisNomeAuto(t).slice(0, 60);
   const ator = { id: 'sistema', nome: 'Nome automático (IA)' };
   let nomeados = 0;
   for (let i = 0; i < candidatos.length && usado < MAX_AUTO_DIA(); i += MAX_NOMEAR) {
     const lote = candidatos.slice(i, i + MAX_NOMEAR);
     let sug;
-    try { sug = await sugerirNomes(tenantId, lote.map(c => ({ id: c.id, nome: c.nome, texto: c.texto }))); }
+    try { sug = await sugerirNomes(tenantId, lote.map(c => ({ id: c.id, nome: c.nome, texto: c.texto, contexto: c.contexto }))); }
     catch (e) { console.error('[vdocs nome-ia]', e.message); break; } // sem cota/IA fora: tenta no próximo ciclo
     usado += lote.length;
     const porId = new Map(sug.map(x => [x.id, x]));
@@ -544,6 +564,6 @@ module.exports = {
   PASTA_PADRAO, PASTA_PROPAGANDA, TAG_BAIXA_STAYS, classificarGrupo, EXT_ACEITAS, canonFone, normalizar, sugerirTipo,
   listarCanais, criarCanal, atualizarCanal, excluirCanal, canaisAtivos, receber,
   pendentesTriagem, decidirTriagem, resumo, recentes,
-  nomearComIA, nomearAutoAtivo, definirNomearAuto, rotinaNomesAuto, listarRemetentesPropaganda, adicionarRemetentesPropaganda, removerRemetentePropaganda, nomeDoRemetente,
+  nomearComIA, nomearAutoAtivo, definirNomearAuto, rotinaNomesAuto, diagnosticoNomes, listarRemetentesPropaganda, adicionarRemetentesPropaganda, removerRemetentePropaganda, nomeDoRemetente,
   avisoTriagemDisponivel, avisoTriagemAtivo, definirAvisoTriagem, dadosAvisoTriagem,
 };
