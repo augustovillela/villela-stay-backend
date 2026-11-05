@@ -56,4 +56,16 @@ function atividade(l, a) {
   try { espelhar(t, l, [{ ...a, contatoId: l.id }]); return true; } catch (e) { console.error('[ponte crm] atividade', l.id, e.message); return false; }
 }
 
-module.exports = { depois, atividade, impressao };
+/** Follow-ups vencidos no CRM novo: contatos ativos com tarefa aberta vencida/hoje, sem os perdidos
+ *  (perdido = tem oportunidade perdida e nenhuma aberta). null = a empresa interna não existe. */
+function followupsVencidos() {
+  const t = tenant(); if (!t) return null;
+  const { db, hojeISO } = require('./db');
+  return db.prepare(`SELECT COUNT(DISTINCT tk.contato_id) n
+    FROM crm_tarefas tk JOIN crm_contatos c ON c.id = tk.contato_id
+    WHERE tk.tenant_id = ? AND tk.status = 'aberta' AND tk.vence_em != '' AND tk.vence_em <= ? AND c.status = 'ativo'
+      AND NOT (EXISTS (SELECT 1 FROM crm_oportunidades o WHERE o.contato_id = c.id AND o.status = 'perdida')
+               AND NOT EXISTS (SELECT 1 FROM crm_oportunidades o WHERE o.contato_id = c.id AND o.status = 'aberta'))`).get(t.id, hojeISO()).n;
+}
+
+module.exports = { depois, atividade, impressao, followupsVencidos };

@@ -538,6 +538,7 @@ async function rodar() {
     assert.ok(tk.some(x => x.titulo === 'Responder primeiro contato' && x.status === 'concluida'), 'a tarefa antiga devia ficar CONCLUÍDA (não apagada)');
     assert.ok(tk.some(x => x.titulo === 'Follow-up adiado' && x.vence_em === futuro && x.status === 'aberta'));
     assert.ok(!(await req('GET', '/staff/api/vcrm/agente/followups', { headers: K })).json.followups.some(f => f.id === q.id), 'adiado continua na lista de hoje');
+    assert.equal(require('./ponte-legado').followupsVencidos(), (await req('GET', '/staff/api/vcrm/agente/followups', { headers: K })).json.followups.length, 'card do staff e rota de follow-ups divergem');
     assert.equal((await req('PATCH', '/staff/api/vcrm/agente/contatos/' + q.id, { headers: K, corpo: { nome: 'x' } })).st, 400, 'PATCH só aceita proximaAcao');
     // atividade
     assert.equal((await req('POST', `/staff/api/vcrm/agente/contatos/${q.id}/atividade`, { headers: K, corpo: { tipo: 'mensagem-enviada', texto: '[follow-up] teste', canal: 'whatsapp-business' } })).st, 200);

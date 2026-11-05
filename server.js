@@ -1694,9 +1694,12 @@ app.get('/staff/api/cockpit', requireAuth, async (req, res) => {
       out.listas.notas = lerJSON('bloco-notas.json', []).length;
     }
     out.chamadosAbertos = lerJSON('manutencao-chamados.json', []).filter(c => c.status !== 'concluido').length;
-    if (podeArea(req.user, 'vendas'))
-      out.followupsVencidos = lerContatos().filter(c =>
+    if (podeArea(req.user, 'vendas')) {
+      // CRM novo é a fonte (o legado só vira o plano B se a empresa interna não existir)
+      let n = null; try { n = require('./crm/ponte-legado').followupsVencidos(); } catch (_) { /* cai no legado */ }
+      out.followupsVencidos = n != null ? n : lerContatos().filter(c =>
         c.estagio !== 'perdido' && c.proximaAcao && c.proximaAcao.data && c.proximaAcao.data <= dia).length;
+    }
     const conf = (lerJSON('limpezas-confirmadas.json', {})[dia]) || {};
     out.limpezasConfirmadas = Object.keys(conf).length;
     out.muralFixadas = lerJSON('mural.json', []).filter(m => m.fixado).slice(-3).reverse()
