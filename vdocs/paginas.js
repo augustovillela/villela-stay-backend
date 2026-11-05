@@ -10,6 +10,45 @@ const repo = require('./repo');
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const brl = (c) => Number(c || 0) === 0 ? 'Sob consulta' : 'R$ ' + (Number(c) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 }) + '/mês';
 
+
+// ---- ícones: traço único em sprite inline (substituem os emojis; leem melhor em produto corporativo) ----
+const ICONES = {
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  spark: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15v4M17 17h4"/>',
+  check: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>',
+  'x-circle': '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  layers: '<path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/>',
+  shield: '<path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3z"/><path d="m9 12 2 2 4-4"/>',
+  scroll: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+  file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z"/><path d="M14 3v5h5"/>',
+  building: '<path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16"/><path d="M15 9h4a1 1 0 0 1 1 1v11M2 21h20M8 8h3M8 12h3M8 16h3"/>',
+  paperclip: '<path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  db: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+  card: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5a5 5 0 0 1 4.5 5"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  approve: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/>',
+  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  inbox: '<path d="M3 13l3-8h12l3 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 3h5l1.5-3h5"/>',
+  dashboard: '<path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/>',
+  pen: '<path d="M4 20l4-1 11-11a2.1 2.1 0 0 0-3-3L5 16z"/><path d="m13.5 6.5 3 3"/>',
+  plug: '<path d="M9 2v5M15 2v5M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v6"/>',
+  clip: '<path d="M9 3h6v4H9z"/><path d="M7 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-1M9 12h6M9 16h4"/>',
+  package: '<path d="m3 8 9-5 9 5v8l-9 5-9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
+  sliders: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+  upload: '<path d="M12 20V9M7.5 13.5 12 9l4.5 4.5M4 4h16"/>',
+  home: '<path d="M3 11 12 4l9 7M5 10v10h14V10"/>',
+  eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M4 20h16"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+};
+const SPRITE = '<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0" aria-hidden="true">' +
+  Object.entries(ICONES).map(([k, v]) => '<symbol id="i-' + k + '" viewBox="0 0 24 24">' + v + '</symbol>').join('') + '</svg>';
+const ic = (n, cls = '') => '<svg class="dx-i ' + cls + '" aria-hidden="true"><use href="#i-' + n + '"/></svg>';
+
 const CSS = `
 :root{--ink:#1F2933;--indigo:#1B2A4A;--indigo2:#24365C;--azul:#2563EB;--ciano:#C9A227;--fundo:#F8F9FA;--borda:#E2E6EC;--suave:#5b6478;--ok:#0f9d58;--alerta:#d93025}
 *{box-sizing:border-box}body{margin:0;font-family:'Inter',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.6}
@@ -75,18 +114,22 @@ ${canonical ? `<link rel="canonical" href="${esc(canonical)}">` : ''}
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
 <meta property="og:image" content="${BASE_URL}${BRAND_DIR}/og-image.png">
 ${HEAD_MARCA}${GA}
-<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="docs">
-<header class="top xl"><div class="wrap">
-  <a class="brand" href="/vdocs">${MARCA_XL}</a>
-  <nav class="nav"><a class="esconde" href="/vdocs#recursos">Recursos</a><a class="esconde" href="/vdocs/precos">Planos</a><a href="/vdocs/login">Entrar</a> <a class="btn btn-ciano" style="padding:9px 16px" href="/vdocs/cadastro">Teste grátis</a></nav>
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=1"></head><body class="vx dx-pub" data-vertical="docs">
+${SPRITE}
+<header class="dx-top"><div class="dx-wrap">
+  <a class="dx-brand" href="/vdocs"><img src="${BRAND_DIR}/logo-horizontal-claro.svg" alt="Villela Docs"></a>
+  <nav class="dx-nav" aria-label="Principal"><a href="/vdocs#recursos">Recursos</a><a href="/vdocs#seguranca">Segurança</a><a href="/vdocs#planos">Planos</a><a href="/vdocs#faq">Perguntas</a></nav>
+  <div class="dx-cta"><a class="dx-link" href="/vdocs/login">Entrar</a><a class="btn" href="/vdocs/cadastro">Teste grátis</a></div>
 </div></header>
 ${corpo}
-<footer><div class="wrap">
-  <b style="color:#fff">Villela Docs</b> · Inteligência documental para empresas<br>
-  <span style="opacity:.9">📲 Disponível como app para o seu celular — <a href="/vdocs/ajuda/manual" style="color:var(--ciano)">abra o painel e instale</a></span><br>
-  Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
-  <a href="/vdocs/precos">Planos</a> · <a href="/vdocs/login">Entrar</a> · <a href="/vdocs/cadastro">Criar conta</a> · <a href="/vdocs/ajuda">Ajuda</a>
-  <div style="margin-top:8px;font-size:12px">Seus documentos são privados: armazenamento isolado por empresa, criptografia em trânsito e trilha de auditoria completa (LGPD).</div>
+<footer class="dx-foot"><div class="dx-wrap">
+  <div class="dx-foot-grid">
+    <div><img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Docs"><div style="color:#fff;font-weight:600">Villela Docs</div><div>Inteligência documental para empresas.</div></div>
+    <div><h4>Produto</h4><ul><li><a href="/vdocs#recursos">Recursos</a></li><li><a href="/vdocs#seguranca">Segurança</a></li><li><a href="/vdocs/precos">Planos</a></li></ul></div>
+    <div><h4>Acesso</h4><ul><li><a href="/vdocs/login">Entrar</a></li><li><a href="/vdocs/cadastro">Criar conta</a></li><li><a href="/vdocs#demo">Pedir demonstração</a></li></ul></div>
+    <div><h4>Ajuda</h4><ul><li><a href="/vdocs/ajuda">Central de ajuda</a></li><li><a href="/vdocs/ajuda/manual">Instalar como app</a></li></ul></div>
+  </div>
+  <div class="dx-foot-bottom">Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12 · Brasília-DF<br>Seus documentos são privados: armazenamento isolado por empresa, criptografia em trânsito e trilha de auditoria completa (LGPD).</div>
 </div></footer>
 </body></html>`;
 }
@@ -95,95 +138,144 @@ ${corpo}
 function landing() {
   const planos = repo.listarPlanos();
   const corpo = `
-<div class="hero"><div class="wrap">
-  <div class="eyebrow">Inteligência documental para empresas</div>
-  <h1>Todos os documentos da sua empresa organizados, seguros e com respostas em segundos.</h1>
-  <p class="sub">O Villela Docs — Document Intelligence centraliza contratos, notas, políticas e processos em um só lugar — com busca inteligente, aprovações, controle de versão, trilha de auditoria e uma IA que responde citando os documentos.</p>
-  <p style="margin-top:22px"><a class="btn btn-ciano" href="/vdocs/cadastro">Começar teste grátis de 14 dias</a>
-  <a class="btn btn-ghost" style="margin-left:8px" href="#demo">Pedir demonstração</a></p>
-  <p style="font-size:13px;color:#9fb0cc">Sem cartão de crédito · Cancele quando quiser · Dados no Brasil, adequado à LGPD</p>
+<section class="dx-hero"><div class="dx-wrap dx-hero-grid">
+  <div>
+    <span class="dx-eyebrow">Inteligência documental para empresas</span>
+    <h1>Todos os documentos da sua empresa organizados, seguros e com respostas em segundos.</h1>
+    <p class="dx-lead">O Villela Docs centraliza contratos, notas, políticas e processos em um só lugar, com busca inteligente, aprovações, controle de versão, trilha de auditoria e uma IA que responde citando os documentos.</p>
+    <div class="dx-hero-cta">
+      <a class="btn lg" href="/vdocs/cadastro">Começar teste grátis de 14 dias ${ic('arrow')}</a>
+      <a class="btn btn-ghost lg" href="#demo">Pedir demonstração</a>
+    </div>
+    <div class="dx-micro"><span>${ic('check')} Sem cartão de crédito</span><span>${ic('check')} Cancele quando quiser</span><span>${ic('check')} Dados no Brasil, adequado à LGPD</span></div>
+  </div>
+  <div aria-hidden="true">
+    <div class="dx-win">
+      <div class="dx-win-bar"><i></i><i></i><i></i><b>Villela Docs · Documentos</b></div>
+      <div class="dx-win-body">
+        <div class="dx-win-chips"><span class="on">Todos (128)</span><span>Notas fiscais (42)</span><span>Contratos (18)</span><span>Faturas (31)</span><span>Extratos (12)</span></div>
+        <div class="dx-win-row">${ic('file')}<div><b>Nota fiscal – Distribuidora Alfa – 03/11/2026</b><small>Notas fiscais · v1 · recebida por e-mail</small></div><span class="dx-win-tag">Nota fiscal</span></div>
+        <div class="dx-win-row">${ic('file')}<div><b>Contrato de locação – Empresa Beta – 01/2027</b><small>Contratos · v3 · vence em 31/01/2028</small></div><span class="dx-win-tag">Contrato</span></div>
+        <div class="dx-win-row">${ic('file')}<div><b>Fatura – Telefonia – 11/2026</b><small>Faturas · v1 · vence em 10/11/2026</small></div><span class="dx-win-tag">Fatura</span></div>
+        <div class="dx-win-row">${ic('file')}<div><b>Extrato bancário – Conta PJ – 10/2026</b><small>Extratos · v1</small></div><span class="dx-win-tag">Extrato</span></div>
+        <div class="dx-win-ia"><strong>${ic('spark')} IA documental</strong>Quando vence o contrato de locação? <em>Em 31/01/2028</em>, conforme a cláusula 4 do contrato (Contrato de locação – Empresa Beta).</div>
+      </div>
+    </div>
+    <div class="dx-win-note">Exemplo ilustrativo da interface</div>
+  </div>
+</div></section>
+
+<div class="dx-trust"><div class="dx-wrap">
+  <div>${ic('db')}<span><b>Dados no Brasil</b>adequado à LGPD</span></div>
+  <div>${ic('building')}<span><b>Isolamento por empresa</b>cada empresa só vê o que é dela</span></div>
+  <div>${ic('lock')}<span><b>Conexão segura (HTTPS)</b>armazenamento privado</span></div>
+  <div>${ic('scroll')}<span><b>Trilha de auditoria</b>cada acesso registrado</span></div>
 </div></div>
 
-<section><div class="wrap">
-  <div class="eyebrow">O problema</div>
-  <h2>Pastas soltas custam caro</h2>
-  <div class="grid g2">
-    <div class="card"><h3>😩 Sem gestão documental</h3><ul style="color:var(--suave)">
-      <li>Contrato importante “sumido” no e-mail ou no drive de alguém</li>
-      <li>Versões duplicadas — ninguém sabe qual vale</li>
-      <li>Vencimentos e renovações descobertos tarde demais</li>
-      <li>Zero controle de quem viu, baixou ou apagou o quê</li>
-      <li>Colaborador sai da empresa e leva o acesso junto</li></ul></div>
-    <div class="card" style="border-color:var(--azul)"><h3>✅ Com o Villela Docs</h3><ul style="color:var(--suave)">
-      <li><span class="check">✔</span> Um repositório central por empresa, com pastas e permissões</li>
-      <li><span class="check">✔</span> Versão vigente sempre identificada, histórico completo</li>
-      <li><span class="check">✔</span> Alertas de validade e políticas de retenção</li>
-      <li><span class="check">✔</span> Auditoria de cada visualização, download e alteração</li>
-      <li><span class="check">✔</span> Acesso revogado em um clique</li></ul></div>
+<section class="dx-sec"><div class="dx-wrap">
+  <div class="dx-sec-head"><div class="dx-sec-eyebrow">O problema</div><h2>Pastas soltas custam caro</h2><p>Documento importante perdido, versão errada em uso e prazo descoberto tarde demais não são falhas de pessoas: são falta de processo.</p></div>
+  <div class="dx-versus">
+    <div class="dx-vs bad"><h3>${ic('x-circle')} Sem gestão documental</h3><ul>
+      <li>${ic('x')} Contrato importante “sumido” no e-mail ou no drive de alguém</li>
+      <li>${ic('x')} Versões duplicadas — ninguém sabe qual vale</li>
+      <li>${ic('x')} Vencimentos e renovações descobertos tarde demais</li>
+      <li>${ic('x')} Zero controle de quem viu, baixou ou apagou o quê</li>
+      <li>${ic('x')} Colaborador sai da empresa e leva o acesso junto</li></ul></div>
+    <div class="dx-vs good"><h3>${ic('check')} Com o Villela Docs</h3><ul>
+      <li>${ic('check')} Um repositório central por empresa, com pastas e permissões</li>
+      <li>${ic('check')} Versão vigente sempre identificada, histórico completo</li>
+      <li>${ic('check')} Alertas de validade e políticas de retenção</li>
+      <li>${ic('check')} Auditoria de cada visualização, download e alteração</li>
+      <li>${ic('check')} Acesso revogado em um clique</li></ul></div>
   </div>
 </div></section>
 
-<section class="alt" id="recursos"><div class="wrap">
-  <div class="eyebrow">Recursos</div>
-  <h2>Feito para o dia a dia de quem gerencia documentos</h2>
-  <div class="grid g3">
-    <div class="card"><h3>🔎 Busca inteligente</h3>Encontre por nome, conteúdo, metadados ou pergunta em linguagem natural. OCR lê até documento escaneado.</div>
-    <div class="card"><h3>🤖 IA que cita as fontes</h3>Converse com seus documentos: resumos, cláusulas, prazos e riscos — sempre apontando documento e página. Sem inventar.</div>
-    <div class="card"><h3>✅ Workflows de aprovação</h3>Contratos e políticas passam por etapas, prazos e aprovadores definidos por você, com histórico de cada decisão.</div>
-    <div class="card"><h3>🗂️ Versionamento</h3>Toda alteração vira versão. Compare, restaure e saiba sempre qual é o documento vigente.</div>
-    <div class="card"><h3>🔐 Segurança corporativa</h3>Permissões por papel, pasta e documento. Links de compartilhamento com senha e validade. Nada exposto em URL pública.</div>
-    <div class="card"><h3>📜 LGPD e auditoria</h3>Trilha completa de acessos, retenção e descarte controlados, exportação de dados e relatórios de conformidade.</div>
+<section class="dx-sec alt" id="recursos"><div class="dx-wrap">
+  <div class="dx-sec-head"><div class="dx-sec-eyebrow">Recursos</div><h2>Feito para o dia a dia de quem gerencia documentos</h2><p>Do arquivo recebido à decisão tomada, tudo fica no mesmo lugar e deixa rastro.</p></div>
+  <div class="dx-grid dx-g3">
+    <div class="dx-feat"><span class="dx-ico">${ic('search')}</span><h3>Busca inteligente</h3><p>Encontre por nome, conteúdo, metadados ou pergunta em linguagem natural. OCR lê até documento escaneado.</p></div>
+    <div class="dx-feat"><span class="dx-ico">${ic('spark')}</span><h3>IA que cita as fontes</h3><p>Converse com seus documentos: resumos, cláusulas, prazos e riscos — sempre apontando documento e página. Sem inventar.</p></div>
+    <div class="dx-feat"><span class="dx-ico">${ic('approve')}</span><h3>Workflows de aprovação</h3><p>Contratos e políticas passam por etapas, prazos e aprovadores definidos por você, com histórico de cada decisão.</p></div>
+    <div class="dx-feat"><span class="dx-ico">${ic('layers')}</span><h3>Versionamento</h3><p>Toda alteração vira versão. Compare, restaure e saiba sempre qual é o documento vigente.</p></div>
+    <div class="dx-feat"><span class="dx-ico">${ic('shield')}</span><h3>Segurança corporativa</h3><p>Permissões por papel, pasta e documento. Links de compartilhamento com senha e validade. Nada exposto em URL pública.</p></div>
+    <div class="dx-feat"><span class="dx-ico">${ic('scroll')}</span><h3>LGPD e auditoria</h3><p>Trilha completa de acessos, retenção e descarte controlados, exportação de dados e relatórios de conformidade.</p></div>
   </div>
 </div></section>
 
-<section><div class="wrap">
-  <div class="eyebrow">Para quem é</div>
-  <h2>Pequenas, médias e grandes empresas</h2>
-  <div class="grid g3">
-    <div class="card"><h3>Jurídico e contratos</h3>Contratos com vencimento monitorado, cláusulas extraídas por IA e aprovação formal antes da assinatura.</div>
-    <div class="card"><h3>Financeiro e contábil</h3>Notas, recibos e comprovantes organizados por competência, com busca por valor, fornecedor ou CNPJ.</div>
-    <div class="card"><h3>RH e operações</h3>Políticas internas versionadas, documentos de colaboradores com acesso restrito e retenção conforme a lei.</div>
+<section class="dx-sec"><div class="dx-wrap">
+  <div class="dx-sec-head"><div class="dx-sec-eyebrow">Como funciona</div><h2>Do arquivo solto à resposta, em três passos</h2></div>
+  <div class="dx-steps">
+    <div class="dx-step"><h3>Centralize</h3><p>Envie os documentos pelo painel ou pela API. Cada empresa tem o seu repositório, isolado e privado.</p></div>
+    <div class="dx-step"><h3>Organize</h3><p>Pastas, categorias, versões e permissões por papel. Alertas de validade avisam antes do vencimento.</p></div>
+    <div class="dx-step"><h3>Encontre e decida</h3><p>Busca pelo conteúdo, IA que responde citando a fonte e aprovações com prazo e histórico.</p></div>
   </div>
 </div></section>
 
-<section id="confianca"><div class="wrap">
-  <div class="eyebrow">Por que confiar</div>
-  <h2>Tecnologia testada na vida real</h2>
-  <p class="sub" style="max-width:640px">Nossa missão é transformar o arquivo morto da sua empresa em respostas — busca que entende o conteúdo e IA que responde <b>citando a fonte</b>. O Villela Docs nasceu dentro do Grupo Villela Stay, para organizar os contratos, notas e políticas de uma operação real.</p>
-  <div class="grid g3">
-    <div class="card"><h3>🏢 Nascido numa operação real</h3>Construído pelo Grupo Villela Stay com os mesmos padrões de segurança, auditoria e isolamento que usamos nos nossos próprios sistemas em produção.</div>
-    <div class="card"><h3>📎 IA que cita a fonte</h3>Cada resposta aponta o documento e o trecho de origem — você confere em um clique, nada de resposta solta.</div>
-    <div class="card"><h3>✅ 222 verificações automatizadas</h3>Cada atualização passa por 222 testes antes de chegar a você.</div>
+<section class="dx-sec alt"><div class="dx-wrap">
+  <div class="dx-sec-head"><div class="dx-sec-eyebrow">Para quem é</div><h2>Pequenas, médias e grandes empresas</h2></div>
+  <div class="dx-grid dx-g3">
+    <div class="dx-feat"><span class="dx-ico">${ic('scroll')}</span><h3>Jurídico e contratos</h3><p>Contratos com vencimento monitorado, cláusulas extraídas por IA e aprovação formal antes da assinatura.</p></div>
+    <div class="dx-feat"><span class="dx-ico">${ic('card')}</span><h3>Financeiro e contábil</h3><p>Notas, recibos e comprovantes organizados por competência, com busca por valor, fornecedor ou CNPJ.</p></div>
+    <div class="dx-feat"><span class="dx-ico">${ic('users')}</span><h3>RH e operações</h3><p>Políticas internas versionadas, documentos de colaboradores com acesso restrito e retenção conforme a lei.</p></div>
   </div>
-  <p class="sub" style="margin-top:24px">🔒 Conexão segura (HTTPS) &nbsp;·&nbsp; 🛡️ Dados tratados conforme a LGPD &nbsp;·&nbsp; 💳 Pagamentos pelo Mercado Pago</p>
 </div></section>
 
-<section class="alt"><div class="wrap">
-  <div class="eyebrow">Planos</div>
-  <h2>Comece pequeno, cresça sem trocar de ferramenta</h2>
-  <div class="grid g3">
-    ${planos.map(p => `<div class="card plano">${p.slug === 'professional' ? '<div><span class="badge">Mais escolhido</span></div>' : ''}
-      <h3>${esc(p.nome)}</h3><div class="preco">${brl(p.preco_centavos)}</div>
+<section class="dx-sec dx-secure" id="seguranca"><div class="dx-wrap">
+  <div class="dx-sec-head"><div class="dx-sec-eyebrow">Segurança e conformidade</div><h2>Documento é coisa séria. O controle também.</h2><p>Os mesmos padrões de segurança, auditoria e isolamento que usamos nos nossos próprios sistemas em produção.</p></div>
+  <div class="dx-secure-grid">
+    <div class="dx-secure-item">${ic('building')}<div><b>Isolamento por empresa</b><span>Os dados de uma empresa nunca aparecem para outra, e isso é verificado por testes automáticos.</span></div></div>
+    <div class="dx-secure-item">${ic('lock')}<div><b>Armazenamento privado</b><span>Arquivos nunca ficam em URL pública; todo download passa por autenticação e fica registrado.</span></div></div>
+    <div class="dx-secure-item">${ic('shield')}<div><b>Controle de acesso</b><span>Permissões por papel, pasta e documento, e verificação em duas etapas (2FA) para os usuários.</span></div></div>
+    <div class="dx-secure-item">${ic('scroll')}<div><b>Trilha de auditoria</b><span>Quem viu, baixou, alterou ou apagou — cada ação com usuário, data e origem.</span></div></div>
+    <div class="dx-secure-item">${ic('link')}<div><b>Compartilhamento controlado</b><span>Links com senha e validade, que você revoga quando quiser.</span></div></div>
+    <div class="dx-secure-item">${ic('db')}<div><b>LGPD</b><span>Retenção e descarte controlados, retenção legal, exportação e exclusão de dados.</span></div></div>
+  </div>
+</div></section>
+
+<section class="dx-sec" id="confianca"><div class="dx-wrap">
+  <div class="dx-sec-head"><div class="dx-sec-eyebrow">Por que confiar</div><h2>Tecnologia testada na vida real</h2><p>Nossa missão é transformar o arquivo morto da sua empresa em respostas — busca que entende o conteúdo e IA que responde <b>citando a fonte</b>. O Villela Docs nasceu dentro do Grupo Villela Stay, para organizar os contratos, notas e políticas de uma operação real.</p></div>
+  <div class="dx-grid dx-g3">
+    <div class="dx-feat"><span class="dx-ico">${ic('building')}</span><h3>Nascido numa operação real</h3><p>Construído pelo Grupo Villela Stay com os mesmos padrões de segurança, auditoria e isolamento que usamos nos nossos próprios sistemas em produção.</p></div>
+    <div class="dx-feat"><span class="dx-ico">${ic('paperclip')}</span><h3>IA que cita a fonte</h3><p>Cada resposta aponta o documento e o trecho de origem — você confere em um clique, nada de resposta solta.</p></div>
+    <div class="dx-feat"><span class="dx-ico">${ic('check')}</span><h3>Mais de 300 verificações automatizadas</h3><p>Cada atualização passa por mais de 300 testes antes de chegar a você.</p></div>
+  </div>
+  <p class="sub" style="margin-top:26px;display:flex;flex-wrap:wrap;gap:8px 26px;color:var(--dx-ink-3);font-size:14px"><span>${ic('lock')} Conexão segura (HTTPS)</span><span>${ic('shield')} Dados tratados conforme a LGPD</span><span>${ic('card')} Pagamentos pelo Mercado Pago</span></p>
+</div></section>
+
+<section class="dx-sec alt" id="planos"><div class="dx-wrap">
+  <div class="dx-sec-head"><div class="dx-sec-eyebrow">Planos</div><h2>Comece pequeno, cresça sem trocar de ferramenta</h2><p>Todos os planos começam com 14 dias grátis no nível Professional, sem cartão de crédito.</p></div>
+  <div class="dx-plans">
+    ${planos.map(p => `<div class="dx-plan${p.slug === 'professional' ? ' dest' : ''}">${p.slug === 'professional' ? '<span class="dx-badge">Mais escolhido</span>' : ''}
+      <h3>${esc(p.nome)}</h3><div class="dx-preco">${brl(p.preco_centavos)}${Number(p.preco_centavos) ? ' <small>/mês</small>' : ''}</div>
       <ul>${planoBullets(p)}</ul>
       <a class="btn${p.slug === 'professional' ? '' : ' btn-ghost'}" href="/vdocs/cadastro">Testar grátis</a></div>`).join('')}
   </div>
-  <p style="text-align:center"><a href="/vdocs/precos">Ver comparação completa de planos →</a></p>
+  <p style="text-align:center;margin-top:22px"><a href="/vdocs/precos">Ver comparação completa de planos →</a></p>
 </div></section>
 
-<section id="demo"><div class="wrap-sm">
-  <div class="eyebrow">Fale com a gente</div>
-  <h2>Peça uma demonstração</h2>
-  <p style="color:var(--suave)">Deixe seus dados e retornamos em até 1 dia útil.</p>
-  <div id="lead-erro"></div>
-  <form onsubmit="return enviarLead(event)">
-    <label>Seu nome</label><input id="ld-nome" required>
-    <label>E-mail corporativo</label><input id="ld-email" type="email" required>
-    <label>Empresa</label><input id="ld-empresa">
-    <label>Telefone/WhatsApp</label><input id="ld-tel">
-    <label>O que você precisa organizar?</label><textarea id="ld-msg" rows="3"></textarea>
-    <p><button class="btn" type="submit">Quero uma demonstração</button></p>
-  </form>
-  <div id="lead-ok" style="display:none" class="aviso">✅ Recebido! Vamos entrar em contato em breve.</div>
+<section class="dx-sec" id="demo"><div class="dx-wrap dx-demo">
+  <div>
+    <div class="dx-sec-eyebrow">Fale com a gente</div>
+    <h2>Peça uma demonstração</h2>
+    <p class="dx-lead" style="font-size:17px">Mostramos o Villela Docs com os seus tipos de documento e tiramos as dúvidas sobre segurança, LGPD e integração.</p>
+    <ul class="dx-bullets">
+      <li>${ic('check')} Retornamos em até 1 dia útil</li>
+      <li>${ic('check')} Sem compromisso e sem cartão de crédito</li>
+      <li>${ic('check')} Conversa com quem construiu o sistema</li>
+    </ul>
+  </div>
+  <div class="dx-demo-form">
+    <div id="lead-erro"></div>
+    <form onsubmit="return enviarLead(event)">
+      <label>Seu nome</label><input id="ld-nome" required>
+      <label>E-mail corporativo</label><input id="ld-email" type="email" required>
+      <label>Empresa</label><input id="ld-empresa">
+      <label>Telefone/WhatsApp</label><input id="ld-tel">
+      <label>O que você precisa organizar?</label><textarea id="ld-msg" rows="3"></textarea>
+      <p style="margin:14px 0 0"><button class="btn lg" style="width:100%" type="submit">Quero uma demonstração</button></p>
+    </form>
+    <div id="lead-ok" style="display:none" class="aviso">Recebido! Vamos entrar em contato em breve.</div>
+  </div>
   <script>
   async function enviarLead(ev){ev.preventDefault();
     const r=await fetch('/vdocs/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome:ld('ld-nome'),email:ld('ld-email'),empresa:ld('ld-empresa'),telefone:ld('ld-tel'),mensagem:ld('ld-msg'),origem:'landing'})});
@@ -195,13 +287,18 @@ function landing() {
   </script>
 </div></section>
 
-<section class="alt faq"><div class="wrap-sm">
-  <h2>Perguntas frequentes</h2>
-  <details><summary>Meus documentos ficam seguros?</summary>Cada empresa tem seus dados isolados das demais, com criptografia em trânsito, armazenamento privado (nunca em URL pública) e trilha de auditoria de cada acesso.</details>
-  <details><summary>A IA pode inventar informações?</summary>Não. A IA responde apenas com base nos seus documentos e sempre cita documento e trecho usados. Quando não encontra a resposta, ela diz que não encontrou.</details>
-  <details><summary>Preciso instalar algo?</summary>Não — é 100% na nuvem, funciona no navegador do computador e do celular.</details>
-  <details><summary>E se eu cancelar?</summary>Você exporta todos os seus documentos e dados antes de sair. Sem fidelidade, sem multa.</details>
-  <details><summary>Atende à LGPD?</summary>Sim: controle de acesso, registro de tratamento, retenção e descarte controlados, exportação e exclusão de dados quando aplicável.</details>
+<section class="dx-sec alt" id="faq"><div class="dx-wrap dx-faq">
+  <div class="dx-sec-head" style="text-align:center;margin-left:auto;margin-right:auto"><div class="dx-sec-eyebrow">Perguntas frequentes</div><h2>Tire suas dúvidas</h2></div>
+  <details><summary>Meus documentos ficam seguros?</summary><div>Cada empresa tem seus dados isolados das demais, com criptografia em trânsito, armazenamento privado (nunca em URL pública) e trilha de auditoria de cada acesso.</div></details>
+  <details><summary>A IA pode inventar informações?</summary><div>Não. A IA responde apenas com base nos seus documentos e sempre cita documento e trecho usados. Quando não encontra a resposta, ela diz que não encontrou.</div></details>
+  <details><summary>Preciso instalar algo?</summary><div>Não — é 100% na nuvem, funciona no navegador do computador e do celular.</div></details>
+  <details><summary>E se eu cancelar?</summary><div>Você exporta todos os seus documentos e dados antes de sair. Sem fidelidade, sem multa.</div></details>
+  <details><summary>Atende à LGPD?</summary><div>Sim: controle de acesso, registro de tratamento, retenção e descarte controlados, exportação e exclusão de dados quando aplicável.</div></details>
+</div></section>
+
+<section class="dx-sec"><div class="dx-wrap">
+  <div class="dx-final"><h2>Organize os documentos da sua empresa ainda hoje</h2><p>Crie a conta em minutos e use todos os recursos por 14 dias, sem cartão de crédito.</p>
+    <a class="btn btn-ciano lg" href="/vdocs/cadastro">Começar teste grátis</a> <a class="btn btn-ghost lg" href="#demo">Pedir demonstração</a></div>
 </div></section>`;
   return pagina({
     titulo: 'Villela Docs — Document Intelligence: gestão de documentos com IA para empresas',
@@ -237,8 +334,8 @@ function precos() {
     ['API e integrações', p => p.limites.api ? '✔' : '—'],
     ['SSO corporativo', p => p.limites.sso ? '✔' : '—'],
   ];
-  const corpo = `<section><div class="wrap">
-  <div class="eyebrow">Planos e preços</div>
+  const corpo = `<section class="dx-sec"><div class="dx-wrap">
+  <div class="dx-sec-eyebrow">Planos e preços</div>
   <h2>Escolha o tamanho da sua operação</h2>
   <p style="color:var(--suave)">Todos os planos começam com <b>14 dias grátis</b> no nível Professional — sem cartão de crédito.</p>
   <div style="overflow-x:auto"><table>
@@ -254,7 +351,7 @@ function precos() {
 // ------------------------------------------------------------ cadastro / login / convite
 const formPagina = (titulo, inner) => pagina({
   titulo: `${titulo} — Villela Docs`, descricao: 'Inteligência documental para empresas.',
-  corpo: `<section class="alt" style="min-height:60vh"><div class="wrap-sm"><div class="card" style="padding:28px"><h2 style="margin-top:0">${esc(titulo)}</h2>${inner}</div></div></section>`,
+  corpo: `<section class="dx-form-wrap"><div class="wrap-sm"><div class="card"><h2 style="margin-top:0">${esc(titulo)}</h2>${inner}</div></div></section>`,
 });
 
 const cadastro = () => formPagina('Criar conta — teste grátis 14 dias', `
@@ -363,9 +460,10 @@ body{background:var(--fundo)}
 .vw-pre{margin:0;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;width:100%;background:#fff}
 .barra{height:8px;background:var(--borda);border-radius:99px;overflow:hidden}.barra i{display:block;height:100%;background:var(--azul)}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
-</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="docs">
+</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=1"></head><body class="vx" data-vertical="docs">
+${SPRITE}
 <header class="top"><div class="wrap" style="max-width:none">
-  <a class="brand" href="/vdocs/app">${MARCA}</a>
+  <a class="brand" href="/vdocs/app"><img src="${BRAND_DIR}/logo-horizontal-claro.svg" alt="Villela Docs"></a>
   <nav class="nav"><span id="quem" style="font-size:13.5px;color:#c6d0e2"></span> <button id="pwa-btn" style="display:none;margin-left:14px;background:none;border:1px solid #3a4a66;color:#c6d0e2;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:inherit" title="Instalar o Villela Docs como app no celular">📲 Instalar app</button> <button id="push-btn" style="display:none;margin-left:14px;background:none;border:1px solid #3a4a66;color:#c6d0e2;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:inherit" title="Notificações no celular">🔔 Avisos</button> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
 </div></header>
 <div class="vx-app" id="vd-app"><nav class="vx-nav" id="menu" aria-label="Secoes do painel"></nav>
@@ -374,6 +472,7 @@ body{background:var(--fundo)}
 'use strict';
 const S={me:null,tela:'dashboard'};
 const $=id=>document.getElementById(id);
+const ic=(n)=>'<svg class="dx-i" aria-hidden="true"><use href="#i-'+n+'"/></svg>';
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g, '&#39;');
 const dt=s=>s?new Date(s).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
 let SEQ=0; // cresce a cada troca de tela: leitura atrasada nao pinta a tela nova
@@ -439,20 +538,20 @@ async function alternarPush(){
 
 // [id, rotulo, quem ve, grupo, icone]
 const TELAS=[
- ['dashboard','Dashboard',()=>true,'Visão geral','📊'],
- ['documentos','Documentos',m=>m.permissoes.ver_documentos,'Documentos','📁'],
- ['triagem','Triagem',m=>m.permissoes.ver_documentos,'Documentos','🧹'],
- ['busca','Busca',m=>m.permissoes.ver_documentos,'Documentos','🔎'],
- ['ia','IA documental',m=>m.permissoes.usar_ia,'Documentos','🤖'],
- ['redigir','Redigir com IA',m=>m.permissoes.usar_ia,'Documentos','✍️'],
- ['workflows','Aprovações',m=>m.permissoes.ver_documentos,'Fluxos','✅'],
- ['compartilhar','Compartilhamentos',m=>m.permissoes.compartilhar_documento,'Fluxos','🔗'],
- ['entrada','Entrada automática',m=>m.permissoes.configurar_integracoes,'Fluxos','📥'],
- ['integracoes','Integrações',m=>m.permissoes.configurar_integracoes,'Fluxos','🔌'],
- ['usuarios','Usuários e permissões',m=>m.permissoes.gerir_usuarios,'Administração','👥'],
- ['auditoria','Auditoria',m=>m.permissoes.ver_auditoria,'Administração','📜'],
- ['plano','Plano e uso',m=>m.permissoes.ver_uso||m.permissoes.administrar_cobranca,'Administração','📦'],
- ['config','Configurações',m=>m.permissoes.gerir_configuracoes,'Administração','⚙️'],
+ ['dashboard','Dashboard',()=>true,'Visão geral','dashboard'],
+ ['documentos','Documentos',m=>m.permissoes.ver_documentos,'Documentos','folder'],
+ ['triagem','Triagem',m=>m.permissoes.ver_documentos,'Documentos','inbox'],
+ ['busca','Busca',m=>m.permissoes.ver_documentos,'Documentos','search'],
+ ['ia','IA documental',m=>m.permissoes.usar_ia,'Documentos','spark'],
+ ['redigir','Redigir com IA',m=>m.permissoes.usar_ia,'Documentos','pen'],
+ ['workflows','Aprovações',m=>m.permissoes.ver_documentos,'Fluxos','approve'],
+ ['compartilhar','Compartilhamentos',m=>m.permissoes.compartilhar_documento,'Fluxos','link'],
+ ['entrada','Entrada automática',m=>m.permissoes.configurar_integracoes,'Fluxos','inbox'],
+ ['integracoes','Integrações',m=>m.permissoes.configurar_integracoes,'Fluxos','plug'],
+ ['usuarios','Usuários e permissões',m=>m.permissoes.gerir_usuarios,'Administração','users'],
+ ['auditoria','Auditoria',m=>m.permissoes.ver_auditoria,'Administração','clip'],
+ ['plano','Plano e uso',m=>m.permissoes.ver_uso||m.permissoes.administrar_cobranca,'Administração','package'],
+ ['config','Configurações',m=>m.permissoes.gerir_configuracoes,'Administração','sliders'],
 ];
 const ORDEM_GRUPOS=['Visão geral','Documentos','Fluxos','Administração'];
 let NAV_COLAPSADA=(()=>{try{return localStorage.getItem('vx-nav')==='colapsada'}catch(e){return false}})();
@@ -465,7 +564,7 @@ function menu(){
     html+='<div class="vx-nav-grupo">'+esc(g)+'</div>';
     for(const t of doGrupo)
       html+='<button type="button" class="vx-nav-item" onclick="ir(\\''+t[0]+'\\')" title="'+esc(t[1])+'"'+(S.tela===t[0]?' aria-current="page"':'')+'>'+
-        '<span class="vx-nav-ico" aria-hidden="true">'+t[4]+'</span><span class="vx-nav-rot">'+esc(t[1])+'</span></button>';
+        '<span class="vx-nav-ico" aria-hidden="true">'+ic(t[4])+'</span><span class="vx-nav-rot">'+esc(t[1])+'</span></button>';
   }
   html+='<hr class="vx-sep" style="margin:8px 4px">'+
     '<button type="button" class="vx-nav-item vx-nav-toggle" onclick="return alternarNav()" aria-label="'+(NAV_COLAPSADA?'Expandir menu':'Recolher menu')+'">'+
@@ -476,12 +575,12 @@ function alternarNav(){
   try{localStorage.setItem('vx-nav',NAV_COLAPSADA?'colapsada':'aberta')}catch(e){}
   const a=$('vd-app');if(a)a.setAttribute('data-nav',NAV_COLAPSADA?'colapsada':'aberta');
   menu();return false;}
-function ctxDaTela(){return visiveis().find(t=>t[0]===S.tela)||['dashboard','Dashboard',()=>true,'Visão geral','📊'];}
+function ctxDaTela(){return visiveis().find(t=>t[0]===S.tela)||['dashboard','Dashboard',()=>true,'Visão geral','dashboard'];}
 function pintarCabecalho(){
   const c=ctxDaTela(),h=$('vd-head');
   if(!h)return;
   h.innerHTML='<div class="vx-crumb"><span>'+esc(S.me.tenant.nome)+'</span><span aria-hidden="true">›</span><span>'+esc(c[3])+'</span></div>'+
-    '<h1>'+c[4]+' '+esc(c[1])+'</h1>';}
+    '<h1>'+ic(c[4])+esc(c[1])+'</h1>';}
 function esqueleto(){return '<div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--bloco"></div>';}
 function erroTela(e){
   $('corpo').innerHTML='<div class="vx-alerta vx-alerta--danger" role="alert"><span class="vx-alerta-ico" aria-hidden="true">⚠️</span>'+
@@ -585,20 +684,20 @@ async function vDocs(){
   const porTipo={};base.forEach(d=>{porTipo[d.tipo_documental]=(porTipo[d.tipo_documental]||0)+1;});
   const docsL=S.tipoF&&!S.lixeira?base.filter(d=>d.tipo_documental===S.tipoF):base;
   const nPasta=id=>{const ids=desc(id);return ds.documentos.filter(d=>ids.includes(d.folder_id)).length;};
-  const nomePastaDoc=id=>{const p=S.pastas.find(x=>x.id===id);return p?'<span class="chip">📁 '+esc(p.nome)+'</span>':'<span class="sub" style="font-size:12px">sem pasta</span>';};
+  const nomePastaDoc=id=>{const p=S.pastas.find(x=>x.id===id);return p?'<span class="chip">'+ic('folder')+' '+esc(p.nome)+'</span>':'<span class="sub" style="font-size:12px">sem pasta</span>';};
   const chipsTipo=S.lixeira?'':'<div class="card" style="margin-top:12px"><div class="sub" style="font-size:12px;margin-bottom:6px">Categorias — clique para filtrar · mostrando <b>'+docsL.length+'</b> de '+base.length+' documento(s)'+(S.pasta?' desta pasta':'')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+
     '<button class="btn peq'+(S.tipoF?' btn-ghost':'')+'" onclick="irTipo(\\'\\')">Todos ('+base.length+')</button>'+
     Object.keys(porTipo).sort((a,b)=>porTipo[b]-porTipo[a]).map(t=>'<button class="btn peq'+(S.tipoF===t?'':' btn-ghost')+'" onclick="irTipo(\\''+t+'\\')">'+esc(ROT_TIPO[t]||t)+' ('+porTipo[t]+')</button>').join('')+'</div></div>';
-  $('corpo').innerHTML='<h2>'+(S.lixeira?'🗑️ Lixeira':'Documentos')+'</h2>'+
+  $('corpo').innerHTML=(S.lixeira?'<h2>Lixeira</h2>':'')+
    '<div class="card" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
-   (S.pasta||S.lixeira?'<button class="btn peq" title="Voltar à página inicial dos documentos (todas as pastas)" onclick="S.lixeira=false;irPasta(\\'\\')">🏠 Início</button>':'')+
+   (S.pasta||S.lixeira?'<button class="btn peq" title="Voltar à página inicial dos documentos (todas as pastas)" onclick="S.lixeira=false;irPasta(\\'\\')">'+ic('home')+' Início</button>':'')+
    '<div style="flex:1;min-width:220px;font-size:14px">'+(S.lixeira?'Documentos excluídos (restaure ou exclua definitivamente)':trilha())+'</div>'+
    '<input id="dq" placeholder="Buscar por nome…" value="'+esc(filtro)+'" style="max-width:200px" oninput="clearTimeout(S._t);S._t=setTimeout(vDocs,400)">'+
-   (P.criar_pasta&&!S.lixeira?'<button class="btn btn-ghost peq" onclick="novaPasta()">📁 Nova pasta</button>':'')+
-   (P.criar_documento&&!S.lixeira?'<button class="btn peq" onclick="$(\\'up-file\\').click()">⬆️ Enviar arquivos</button><input id="up-file" type="file" multiple style="display:none" onchange="enviarArquivos(this.files)">':'')+
-   (P.excluir_documento||P.restaurar_documento?'<button class="btn btn-ghost peq" onclick="S.lixeira=!S.lixeira;vDocs()">'+(S.lixeira?'← Voltar aos documentos':'🗑️ Lixeira')+'</button>':'')+
+   (P.criar_pasta&&!S.lixeira?'<button class="btn btn-ghost peq" onclick="novaPasta()">'+ic('folder')+' Nova pasta</button>':'')+
+   (P.criar_documento&&!S.lixeira?'<button class="btn peq" onclick="$(\\'up-file\\').click()">'+ic('upload')+' Enviar arquivos</button><input id="up-file" type="file" multiple style="display:none" onchange="enviarArquivos(this.files)">':'')+
+   (P.excluir_documento||P.restaurar_documento?'<button class="btn btn-ghost peq" onclick="S.lixeira=!S.lixeira;vDocs()">'+(S.lixeira?'← Voltar aos documentos':ic('trash')+' Lixeira')+'</button>':'')+
    '</div><div id="up-out"></div>'+chipsTipo+
-   (sub.length?'<div class="card" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">'+sub.map(p=>'<button class="btn btn-ghost peq" onclick="irPasta(\\''+p.id+'\\')">📁 '+esc(p.nome)+' ('+nPasta(p.id)+')</button>'+(P.excluir_documento?'<button class="btn btn-ghost peq" title="Excluir pasta vazia" onclick="excluirPasta(\\''+p.id+'\\')">✕</button>':'')).join(''):'')+ (sub.length?'</div>':'')+
+   (sub.length?'<div class="card" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">'+sub.map(p=>'<button class="btn btn-ghost peq" onclick="irPasta(\\''+p.id+'\\')">'+ic('folder')+' '+esc(p.nome)+' ('+nPasta(p.id)+')</button>'+(P.excluir_documento?'<button class="dx-ib perigo" title="Excluir pasta vazia" aria-label="Excluir pasta" onclick="excluirPasta(\\''+p.id+'\\')">'+ic('trash')+'</button>':'')).join(''):'')+ (sub.length?'</div>':'')+
    '<div class="card" style="margin-top:12px"><table><tr><th>Documento</th><th>Categoria</th><th>Pasta</th><th>Tags</th><th>Versão</th><th>Atualizado</th><th></th></tr>'+
    (docsL.length?docsL.map(d=>{
      return '<tr><td><a href="#" onclick="return abrirDoc(\\''+d.id+'\\')">'+esc(d.nome)+'</a>'+
@@ -607,7 +706,7 @@ async function vDocs(){
      '<td>'+esc(ROT_TIPO[d.tipo_documental]||d.tipo_documental)+'</td><td>'+nomePastaDoc(d.folder_id)+'</td><td>'+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</td>'+
      '<td>v'+d.versao_atual+'</td><td>'+dt(d.atualizado_em||d.criado_em)+'</td><td>'+
      (S.lixeira?((P.restaurar_documento?'<button class="btn peq" onclick="docAcao(\\''+d.id+'\\',\\'restaurar\\')">Restaurar</button> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="excluirDefinitivo(\\''+d.id+'\\')">Excluir de vez</button>':''))
-      :('<button class="btn btn-ghost peq" title="Visualizar sem baixar" onclick="visualizarDoc(\\''+d.id+'\\')">👁️</button> '+(P.baixar_documento?'<a class="btn btn-ghost peq" href="/vdocs/api/documentos/'+d.id+'/baixar">⬇️</a> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="docAcao(\\''+d.id+'\\',\\'lixeira\\')">🗑️</button>':'')))+'</td></tr>';
+      :('<button class="dx-ib" title="Visualizar sem baixar" aria-label="Visualizar" onclick="visualizarDoc(\\''+d.id+'\\')">'+ic('eye')+'</button> '+(P.baixar_documento?'<a class="dx-ib" title="Baixar" aria-label="Baixar" href="/vdocs/api/documentos/'+d.id+'/baixar">'+ic('download')+'</a> ':'')+(P.excluir_documento?'<button class="dx-ib perigo" title="Mover para a lixeira" aria-label="Mover para a lixeira" onclick="docAcao(\\''+d.id+'\\',\\'lixeira\\')">'+ic('trash')+'</button>':'')))+'</td></tr>';
    }).join(''):'<tr><td colspan="7" style="color:var(--suave)">'+(S.lixeira?'Lixeira vazia.':(S.tipoF||S.pasta?'Nenhum documento com este filtro.':'Nenhum documento ainda.'))+'</td></tr>')+'</table></div>';
 }
 async function novaPasta(){const n=prompt('Nome da nova pasta:');if(!n)return;
@@ -898,12 +997,12 @@ async function vTriagem(aba){
    '<div class="card"><b>'+(ehProp?'📢 '+L.length+' propaganda(s) para conferir':'🧹 '+L.length+' documento(s) esperando decisão')+'</b>'+
    (!ehProp&&imp?' <span class="sub">· '+imp+' parece(m) nota fiscal, fatura, extrato, contrato, recibo ou comprovante (no topo)</span>':'')+
    '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
-   (!ehProp&&S.me.permissoes.usar_ia?'<button class="btn btn-ghost peq" title="A IA lê o texto e propõe um nome (ex.: Nota fiscal – Zara – 03/11/2026). Usa 1 consulta de IA do plano por lote de até 15." onclick="triNomear()">✨ Nomear marcados com IA</button>':'')+
-   (!ehProp&&imp?'<button class="btn peq" onclick="triAceitarSugestoes()">✨ Aceitar sugestões ('+imp+')</button>':'')+
+   (!ehProp&&S.me.permissoes.usar_ia?'<button class="btn btn-ghost peq" title="A IA lê o texto e propõe um nome (ex.: Nota fiscal – Zara – 03/11/2026). Usa 1 consulta de IA do plano por lote de até 15." onclick="triNomear()">'+ic('spark')+' Nomear marcados com IA</button>':'')+
+   (!ehProp&&imp?'<button class="btn peq" onclick="triAceitarSugestoes()">'+ic('spark')+' Aceitar sugestões ('+imp+')</button>':'')+
    '<button class="btn btn-ghost peq" onclick="triMarcar(true)">Marcar todos</button>'+
    '<button class="btn btn-ghost peq" onclick="triMarcar(false)">Desmarcar</button>'+
-   (ehProp?'<button class="btn peq" onclick="triLote(\\'eliminar\\')">🗑️ Eliminar marcadas</button><button class="btn btn-ghost peq" onclick="triLote(\\'nao_propaganda\\')">↩️ Não é propaganda</button>'
-          :'<button class="btn peq" onclick="triLote(\\'processar\\')">✅ Processar marcados</button><button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\')">🗑️ Eliminar marcados</button>')+
+   (ehProp?'<button class="btn peq" onclick="triLote(\\'eliminar\\')">'+ic('trash')+' Eliminar marcadas</button><button class="btn btn-ghost peq" onclick="triLote(\\'nao_propaganda\\')">↩️ Não é propaganda</button>'
+          :'<button class="btn peq" onclick="triLote(\\'processar\\')">'+ic('check')+' Processar marcados</button><button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\')">'+ic('trash')+' Eliminar marcados</button>')+
    '</div><div id="tri-out" style="margin-top:8px;font-size:13px"></div></div>'+
    '<div class="card" style="margin-top:12px;overflow-x:auto"><table><tr><th></th><th>Documento</th><th>Origem</th>'+(ehProp?'':'<th>Categoria</th><th>Pasta</th>')+'<th></th></tr>'+
    L.map((i,n)=>{
