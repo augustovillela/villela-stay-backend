@@ -28,7 +28,9 @@ const TAG_BAIXA_STAYS = 'baixa-stays-pendente';
 // Imagens entram porque comprovante de Pix e nota fiscal chegam muito como foto/print; quem decide
 // QUAIS imagens sobem é a ponte (só as que o nome/legenda apontam como comprovante, nota, contrato...).
 const EXT_ACEITAS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'rtf', 'csv', 'txt', 'png', 'jpg', 'jpeg', 'webp']);
-const MAX_DIA = () => parseInt(process.env.VDOCS_ENTRADA_MAX_DIA, 10) || 200;
+// Teto de proteção contra enxurrada (bug/loop). Propaganda NÃO conta (grupo de promoção manda centenas) e o
+// padrão é folgado: um teto apertado já barrou contratos de verdade em 05/11/2026.
+const MAX_DIA = () => parseInt(process.env.VDOCS_ENTRADA_MAX_DIA, 10) || 1000;
 
 // WhatsApp BR: o servidor às vezes registra o número sem o 9 depois do DDD.
 // Guardamos e comparamos sempre na forma de 12 dígitos para casar nos dois.
@@ -148,7 +150,7 @@ function receberBruto(tenantId, { tipo, identificador, origem_id, remetente, ass
     registrar(tenantId, canal, origem, remetente, nome, bytes, 'rejeitado', `tipo .${ext || '?'} não é documento`);
     return { status: 'rejeitado', motivo: 'tipo de arquivo não aceito na entrada automática' };
   }
-  const hoje = db.prepare("SELECT COUNT(*) n FROM entradas_log WHERE tenant_id = ? AND status = 'recebido' AND criado_em >= ?")
+  const hoje = db.prepare("SELECT COUNT(*) n FROM entradas_log WHERE tenant_id = ? AND status = 'recebido' AND grupo != 'propaganda' AND criado_em >= ?")
     .get(String(tenantId), new Date().toISOString().slice(0, 10)).n;
   if (hoje >= MAX_DIA()) throw new Error(`Teto diário da entrada automática atingido (${MAX_DIA()} documentos). Tenta de novo amanhã.`);
 
