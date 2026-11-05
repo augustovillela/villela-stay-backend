@@ -348,14 +348,16 @@ function registrarConta(app, deps) {
   });
 
   // ---------- entrar: e-mail → código ----------
+  // QUALQUER e-mail válido recebe o código, tenha ou não compra. Entrar com um e-mail novo CRIA a conta
+  // (a tela avisa que continuar vale como aceite dos Termos). Assim a resposta é igual para todos — não
+  // revela quem é cliente — e o leitor que nunca comprou não fica sem saída.
   app.post(BASE + '/codigo', async (req, res) => {
     if (freio(req, res, 'cod')) return;
     const d = req.body || {};
     const email = normEmail(d.email);
     if (!emailValido(email)) return res.status(400).json({ erro: 'Informe um e-mail válido.' });
     const c = cruPorEmail(email);
-    // Só envia se o e-mail já existe como cliente; a resposta é a mesma de qualquer forma.
-    if (c && !c.excluido_em) await mandarCodigo({ email, finalidade: 'entrar', nome: c.nome, customerId: c.id });
+    await mandarCodigo({ email, finalidade: 'entrar', nome: c && !c.excluido_em ? c.nome : '', customerId: c ? c.id : null });
     res.json({ ok: true, mensagem: MSG_CODIGO });
   });
 
@@ -363,9 +365,17 @@ function registrarConta(app, deps) {
     if (freio(req, res, 'entc')) return;
     const d = req.body || {};
     const x = Codigos.conferir({ email: d.email, finalidade: 'entrar', codigo: d.codigo });
-    const c = x ? cruPorEmail(d.email) : null;
-    if (!x || !c || c.excluido_em) return res.status(400).json({ erro: 'Código inválido ou expirado. Peça um novo.' });
-    db.prepare('UPDATE customers SET email_verificado = 1, conta_criada_em = COALESCE(conta_criada_em, ?), updated_at = ? WHERE id = ?').run(nowISO(), nowISO(), c.id);
+    if (!x) return res.status(400).json({ erro: 'Código inválido ou expirado. Peça um novo.' });
+    const email = normEmail(d.email);
+    const agora = nowISO();
+    let c = cruPorEmail(email);
+    if (c && c.excluido_em) c = null;
+    if (!c) {
+      // e-mail novo: o código provou o e-mail, então nasce a conta (nome vazio; o leitor completa em "Meus dados")
+      const novo = repo.Customers.upsert({ nome: '', email, consentimentos: { termos: true, termos_em: agora } });
+      c = cruCliente(novo.id);
+    }
+    db.prepare('UPDATE customers SET email_verificado = 1, conta_criada_em = COALESCE(conta_criada_em, ?), updated_at = ? WHERE id = ?').run(agora, agora, c.id);
     abrirSessao(req, res, c.id);
     res.json({ ok: true, perfil: perfil(cruCliente(c.id)) });
   });

@@ -36,8 +36,9 @@
       aviso('erro', msg && msg.erro) + aviso('ok', msg && msg.ok) +
       '<form id="f-entrar" novalidate>' + campo('e-email', 'E-mail', 'email', estado.email, 'autocomplete="email" required') +
       '<button class="btn btn-ouro" type="submit">Enviar o código</button></form>' +
-      '<hr class="mc-hr"><p>Primeira vez aqui? <a href="#" id="l-criar"><strong>Criar conta</strong></a></p>' +
-      '<p class="muted mc-peq">Já comprou como visitante? Use o <strong>mesmo e-mail</strong> da compra — seus pedidos aparecem aqui depois de confirmar o código.</p>' +
+      '<p class="muted mc-peq">Primeira vez aqui? É o mesmo caminho: se o e-mail ainda não tiver conta, ela é criada ao confirmar o código. Ao continuar você aceita os <a href="/termos-de-uso" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="/politica-de-privacidade" target="_blank" rel="noopener">Política de Privacidade</a>.</p>' +
+      '<hr class="mc-hr"><p class="muted mc-peq">Já comprou como visitante? Use o <strong>mesmo e-mail</strong> da compra — seus pedidos aparecem aqui depois de confirmar o código.</p>' +
+      '<p class="mc-links"><a href="#" id="l-criar">Quero informar meu nome e receber novidades (opcional)</a></p>' +
       '</div>';
     $('#f-entrar').addEventListener('submit', function (ev) {
       ev.preventDefault(); estado.email = val('e-email');
@@ -109,9 +110,10 @@
   function painel(msg) {
     var p = estado.perfil;
     var abas = [['pedidos', 'Meus pedidos'], ['dados', 'Meus dados'], ['seguranca', 'Segurança'], ['privacidade', 'Privacidade']];
-    raiz.innerHTML = '<div class="mc-topo"><div><h1>Olá, ' + esc((p.nome || '').split(' ')[0]) + '</h1><p class="muted">' + esc(p.email) + '</p></div>' +
+    raiz.innerHTML = '<div class="mc-topo"><div><h1>Olá' + ((p.nome || '').trim() ? ', ' + esc(p.nome.trim().split(' ')[0]) : '!') + '</h1><p class="muted">' + esc(p.email) + '</p></div>' +
       '<button class="btn btn-ghost" id="b-sair" type="button">Sair</button></div>' +
       (estado.aviso ? aviso('ok', estado.aviso) : '') + aviso(msg && msg.tipo, msg && msg.texto) +
+      (!(p.nome || '').trim() ? aviso('ok', 'Conta criada! Em "Meus dados" você pode informar o seu nome e o endereço de entrega.') : '') +
       '<nav class="mc-abas" role="tablist">' + abas.map(function (a) {
         return '<button type="button" role="tab" data-aba="' + a[0] + '" class="' + (estado.aba === a[0] ? 'on' : '') + '" aria-selected="' + (estado.aba === a[0]) + '">' + a[1] + '</button>';
       }).join('') + '</nav><div id="mc-aba" class="mc-aba"></div>';

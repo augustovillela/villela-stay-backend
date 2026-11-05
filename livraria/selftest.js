@@ -408,17 +408,31 @@ const pedidoNovo = (book) => repo.Orders.criar({
     assert.strictEqual((await navegador()('POST', C + '/cadastro/confirmar', { email: emailA, codigo: ultimoCodigo(emailA) })).status, 400);
   });
 
-  await testeAsync('entrar: pedir o código não revela quem tem conta; com o código entra', async () => {
+  await testeAsync('entrar: todo e-mail válido recebe código (não revela quem é cliente); com o código entra', async () => {
     const n = navegador();
     const antes = emailsEnviados.length;
-    const fantasma = await n('POST', C + '/codigo', { email: 'fantasma@exemplo.test' });
-    assert.strictEqual(fantasma.status, 200);
-    assert.strictEqual(emailsEnviados.length, antes, 'e-mail desconhecido não recebe nada');
+    const novo = await n('POST', C + '/codigo', { email: 'fantasma@exemplo.test' });
+    assert.strictEqual(novo.status, 200);
+    assert.strictEqual(emailsEnviados.length, antes + 1, 'e-mail sem compra também recebe o código');
     zerarIntervalo();
     const real = await n('POST', C + '/codigo', { email: emailA });
-    assert.strictEqual(real.json.mensagem, fantasma.json.mensagem, 'mesma resposta nos dois casos');
+    assert.strictEqual(real.json.mensagem, novo.json.mensagem, 'mesma resposta nos dois casos');
     const r = await n('POST', C + '/entrar-codigo', { email: emailA.toUpperCase(), codigo: ultimoCodigo(emailA) });
     assert.strictEqual(r.status, 200); assert.ok(r.temCookie);
+  });
+
+  await testeAsync('e-mail NOVO que só entra com o código ganha a conta (sem compra, nome vazio)', async () => {
+    const email = 'primeira.vez@exemplo.test';
+    assert.strictEqual(dbTeste.prepare('SELECT COUNT(*) n FROM customers WHERE email = ?').get(email).n, 0);
+    const n = await entrar(email);
+    const eu = await n('GET', C + '/eu');
+    assert.strictEqual(eu.status, 200);
+    assert.strictEqual(eu.json.perfil.email, email);
+    assert.strictEqual(eu.json.pedidos.length, 0);
+    const c = dbTeste.prepare('SELECT * FROM customers WHERE email = ?').get(email);
+    assert.strictEqual(c.email_verificado, 1);
+    assert.ok(JSON.parse(c.consentimentos).termos, 'registra o aceite dos termos');
+    assert.strictEqual((await n('PATCH', C + '/eu', { nome: 'Primeira Vez' })).json.perfil.nome, 'Primeira Vez');
   });
 
   await testeAsync('comprador que nunca criou conta entra só com o código do e-mail da compra', async () => {
@@ -546,10 +560,11 @@ const pedidoNovo = (book) => repo.Orders.criar({
     assert.strictEqual(ok.status, 200, ok.texto);
     assert.strictEqual((await X('GET', C + '/eu')).status, 401, 'sessão encerrada');
     zerarIntervalo();
-    const depois = navegador();
-    const antes = emailsEnviados.length;
-    await depois('POST', C + '/codigo', { email: novoEmail });
-    assert.strictEqual(emailsEnviados.length, antes, 'e-mail de conta excluída não recebe mais código');
+    // o e-mail da conta excluída fica livre: quem entrar de novo ganha uma conta NOVA, sem os pedidos antigos
+    const recomeco = await entrar(novoEmail);
+    const eu2 = await recomeco('GET', C + '/eu');
+    assert.strictEqual(eu2.json.pedidos.length, 0, 'a conta nova não herda os pedidos da excluída');
+    assert.notStrictEqual(dbTeste.prepare('SELECT id FROM customers WHERE email = ?').get(novoEmail).id, oImp.customer_id);
     const cli = dbTeste.prepare('SELECT * FROM customers WHERE id = ?').get(oImp.customer_id);
     assert.ok(cli.excluido_em); assert.strictEqual(cli.nome, 'Conta excluída');
     assert.ok(!cli.email.includes('exemplo') && cli.whatsapp === '' && cli.doc === '' && cli.senha_hash === null);
