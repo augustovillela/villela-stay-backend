@@ -42,6 +42,7 @@ const MIGRACOES = [
   { nome: '003-users-totp-ativo', sql: 'ALTER TABLE users ADD COLUMN totp_ativo INTEGER DEFAULT 0' },
   { nome: '004-users-recovery-codes', sql: "ALTER TABLE users ADD COLUMN recovery_codes TEXT DEFAULT '[]'" },
   { nome: '005-documents-legal-hold', sql: 'ALTER TABLE documents ADD COLUMN legal_hold INTEGER DEFAULT 0' },
+  { nome: '006-entradas-log-grupo', sql: "ALTER TABLE entradas_log ADD COLUMN grupo TEXT DEFAULT ''" },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

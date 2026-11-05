@@ -98,11 +98,11 @@ function pastaDeEntrada(tenantId, canal, ator) {
 }
 
 // ------------------------------------------------------------ recebimento
-function registrar(tenantId, canal, origem, remetente, nome, tamanho, status, motivo, documentId) {
-  db.prepare(`INSERT INTO entradas_log (id, tenant_id, canal_id, origem_id, remetente, arquivo_nome, tamanho, status, motivo, document_id, triagem, criado_em)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+function registrar(tenantId, canal, origem, remetente, nome, tamanho, status, motivo, documentId, grupo = '') {
+  db.prepare(`INSERT INTO entradas_log (id, tenant_id, canal_id, origem_id, remetente, arquivo_nome, tamanho, status, motivo, document_id, triagem, grupo, criado_em)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(novoId(), String(tenantId), canal.id, origem, s(remetente, 160), s(nome, 200), tamanho || 0, status, s(motivo, 300), s(documentId, 40),
-      status === 'recebido' ? 'pendente' : '', nowISO());
+      status === 'recebido' ? 'pendente' : '', grupo, nowISO());
 }
 
 /**
@@ -110,7 +110,7 @@ function registrar(tenantId, canal, origem, remetente, nome, tamanho, status, mo
  * desfecho "normal" (duplicado, rejeitado, já processado); lança só para o que vale
  * tentar de novo (limite do plano, disco, banco), para a ponte manter na fila.
  */
-function receber(tenantId, { tipo, identificador, origem_id, remetente, assunto, arquivo_nome, conteudo_base64, data }, ator, ip) {
+function receber(tenantId, { tipo, identificador, origem_id, remetente, assunto, arquivo_nome, conteudo_base64, data, em_lista }, ator, ip) {
   const ident = normalizar(tipo, identificador);
   const canal = db.prepare('SELECT * FROM canais_entrada WHERE tenant_id = ? AND tipo = ? AND identificador = ?').get(String(tenantId), tipo, ident);
   if (!canal) return { status: 'ignorado', motivo: 'conta não cadastrada' };
@@ -133,13 +133,16 @@ function receber(tenantId, { tipo, identificador, origem_id, remetente, assunto,
 
   const desc = `Entrada automática · ${tipo === 'whatsapp' ? 'WhatsApp' : 'Gmail'} (${canal.rotulo || canal.identificador})`
     + (remetente ? ` · de ${s(remetente, 80)}` : '') + (assunto ? ` · "${s(assunto, 100)}"` : '') + (data ? ` · ${s(data, 40)}` : '');
+  const grupo = classificarGrupo({ nome, assunto, remetente, emLista: !!em_lista });
   try {
     const doc = docs.criarDocumento(tenantId, {
       nome, arquivo_nome: nome, conteudo_base64, descricao: desc,
-      folder_id: pastaDeEntrada(tenantId, canal, ator), tags: ['entrada-automatica', tipo],
+      // propaganda fica em pasta própria, longe do que provavelmente será processado
+      folder_id: grupo === 'propaganda' ? pastaPorNome(tenantId, PASTA_PROPAGANDA, ator) : pastaDeEntrada(tenantId, canal, ator),
+      tags: ['entrada-automatica', tipo].concat(grupo === 'propaganda' ? ['propaganda'] : []),
     }, ator, ip);
     db.prepare('UPDATE canais_entrada SET ultimo_recebimento = ?, total_recebidos = total_recebidos + 1 WHERE id = ?').run(nowISO(), canal.id);
-    registrar(tenantId, canal, origem, remetente, nome, bytes, 'recebido', '', doc.id);
+    registrar(tenantId, canal, origem, remetente, nome, bytes, 'recebido', '', doc.id, grupo);
     return { status: 'recebido', document_id: doc.id };
   } catch (e) {
     if (e.duplicado) {
@@ -160,11 +163,17 @@ function receber(tenantId, { tipo, identificador, origem_id, remetente, assunto,
 // arquivo e pelo texto extraído, sobem para o topo da fila já com a categoria sugerida.
 // É SUGESTÃO — quem confirma é a triagem. Texto ainda não extraído = só o nome decide.
 const SINAIS = [
+  { tipo: 'extrato_bancario', rotulo: 'Extrato bancário',
+    forte: /\b(extrato|extratos)\b/i,
+    fraco: /\b(saldo anterior|saldo final|saldo do dia|lancamentos|movimentacao|movimentacoes|agencia|conta corrente|periodo do extrato)\b/i },
   { tipo: 'nota_fiscal', forte: /\b(nf ?e|nfs ?e|danfe|nota fiscal|chave de acesso)\b|\bnf ?\d|\bnf e\b|\bnfe\b/i,
     fraco: /\b(nota fiscal eletr[oô]nica|documento auxiliar|valor total da nota|cnpj emitente|s[eé]rie)\b/i },
   { tipo: 'financeiro', rotulo: 'Comprovante',
     forte: /\bcomprovante\b|\bcomp (pix|ted|doc)\b|\bpix (enviado|realizado|recebido)\b|\b(ted|doc) (enviad|realizad)|\bdep[oó]sito\b|\btransfer[eê]ncia\b/i,
     fraco: /\b(pix|chave pix|id da transa[cç][aã]o|c[oó]digo de autentica[cç][aã]o|favorecido|pagador|benefici[aá]rio|banco de destino|valor transferido)\b/i },
+  { tipo: 'fatura', rotulo: 'Fatura',
+    forte: /\b(fatura|faturas|boleto|boletos|cobranca|2a via|segunda via)\b|\bconta de (luz|agua|energia|telefone|internet|gas)\b/i,
+    fraco: /\b(vencimento|linha digitavel|codigo de barras|valor do documento|pague ate|total a pagar|data de vencimento|beneficiario)\b/i },
   { tipo: 'recibo', forte: /\brecibo\b/i,
     fraco: /\b(recebi de|recebemos de|referente a|quita[cç][aã]o|valor pago)\b/i },
   { tipo: 'contrato', forte: /\bcontrato|\baditivo\b|\bdistrato\b|\btermo de (ades[aã]o|cess[aã]o|loca[cç][aã]o)\b/i,
@@ -172,7 +181,8 @@ const SINAIS = [
 ];
 function sugerirTipo(nome, texto) {
   // "_", "." e "-" viram espaço: \b não separa "NFe_123" nem "comprovante_pix.png"
-  const n = String(nome || '').replace(/[_.\-]+/g, ' '), t = String(texto || '').slice(0, 6000).replace(/[_.-]+/g, ' ');
+  const sem = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, ''); // "cobrança" casa com "cobranca"
+  const n = sem(nome).replace(/[_.\-]+/g, ' '), t = sem(String(texto || '').slice(0, 6000)).replace(/[_.-]+/g, ' ');
   // Em passes, do mais para o menos confiável: o nome do arquivo vale mais que o texto, e uma
   // palavra solta no texto ("recibo" dentro de um contrato) não pode vencer o tipo real.
   for (const sn of SINAIS) if (sn.forte.test(n)) return { tipo: sn.tipo, rotulo: sn.rotulo || '', confianca: 'alta', motivo: 'pelo nome do arquivo' };
@@ -186,11 +196,41 @@ function sugerirTipo(nome, texto) {
   return melhor ? { tipo: melhor.tipo, rotulo: melhor.rotulo, confianca: melhor.confianca, motivo: 'pelo conteúdo' } : null;
 }
 
+// ------------------------------------------------------------ propaganda
+// Material promocional (catálogo, oferta, newsletter) sobe junto com os documentos de verdade e
+// atrapalha a triagem. Vai para uma aba/pasta SEPARADA — nunca é apagado sozinho: o Augusto confere
+// e elimina em lote. Regra de ouro: o que parece nota fiscal, fatura, contrato, recibo ou
+// comprovante PELO NOME nunca vira propaganda (fatura chega por e-mail em massa também).
+const sem = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const RE_PROMO = /\b(promocao|promocoes|oferta|ofertas|desconto|descontos|cupom|black ?friday|liquidacao|imperdivel|ultimas unidades|frete gratis|newsletter|aproveite|compre agora|outlet|catalogo|lancamento|novidades?|parabens|voce ganhou|ganhe|sorteio)\b|% ?off|\d+% ?de desconto/;
+const RE_REMETENTE_MKT = /(no-?reply|noreply|newsletter|marketing|promo|ofertas|mkt|campanha|comunicacao|novidades|news@)/;
+const RE_NOME_PROMO = /(banner|promo|oferta|catalogo|folheto|encarte|tabela de precos|flyer|lamina)/;
+/** 'propaganda' ou 'normal'. `emLista` = cabeçalhos de lista/bulk do e-mail (List-Unsubscribe, Precedence: bulk). */
+function classificarGrupo({ nome, assunto, remetente, emLista }) {
+  if (sugerirTipo(nome, '')) return 'normal';
+  let pontos = 0;
+  if (emLista) pontos += 2;
+  if (RE_PROMO.test(sem(assunto))) pontos += 2;
+  if (RE_NOME_PROMO.test(sem(nome))) pontos += 2; else if (RE_PROMO.test(sem(nome))) pontos += 1;
+  if (RE_REMETENTE_MKT.test(sem(remetente))) pontos += 1;
+  return pontos >= 3 || (pontos >= 2 && !emLista) ? 'propaganda' : 'normal';
+}
+
+// Pasta por categoria: processar sem escolher pasta arruma o documento no lugar certo.
+const PASTA_PROPAGANDA = '📢 Propaganda (conferir)';
+const PASTA_POR_TIPO = {
+  nota_fiscal: 'Notas fiscais', fatura: 'Faturas', extrato_bancario: 'Extratos bancários', contrato: 'Contratos', recibo: 'Recibos', financeiro: 'Comprovantes e financeiro',
+};
+function pastaPorNome(tenantId, nome, ator) {
+  const ja = db.prepare("SELECT id FROM folders WHERE tenant_id = ? AND parent_id = '' AND nome = ?").get(String(tenantId), nome);
+  return ja ? ja.id : docs.criarPasta(tenantId, { nome, parent_id: '' }, ator, 'entrada');
+}
+
 // ------------------------------------------------------------ triagem
 /** Documentos recebidos que ainda esperam decisão. Quem já saiu do ar por outro caminho some da fila. */
 function pendentesTriagem(tenantId, limite = 200) {
   const t = String(tenantId);
-  const linhas = db.prepare(`SELECT l.id AS log_id, l.document_id, l.remetente, l.criado_em AS recebido_em, l.canal_id,
+  const linhas = db.prepare(`SELECT l.id AS log_id, l.document_id, l.remetente, l.grupo, l.criado_em AS recebido_em, l.canal_id,
       c.tipo AS canal_tipo, c.identificador AS canal_ident, c.rotulo AS canal_rotulo,
       d.nome, d.descricao, d.tipo_documental, d.tags, d.status AS doc_status,
       v.tamanho, v.mime, tx.texto
@@ -213,9 +253,10 @@ function pendentesTriagem(tenantId, limite = 200) {
       canal: { tipo: r.canal_tipo, identificador: r.canal_ident, rotulo: r.canal_rotulo },
       trecho: s(String(r.texto || '').replace(/\s+/g, ' '), 400), // ajuda a decidir sem abrir o arquivo
       sugestao: sugerirTipo(r.nome, r.texto),
+      grupo: r.grupo || 'normal',
     });
   }
-  // importantes (nota fiscal/contrato) primeiro; dentro de cada grupo, o mais novo antes
+  // importantes (nota fiscal/contrato/fatura...) primeiro; dentro de cada grupo, o mais novo antes
   return itens.sort((a, b) => (b.sugestao ? 1 : 0) - (a.sugestao ? 1 : 0));
 }
 
@@ -245,10 +286,22 @@ function decidirTriagem(tenantId, itens, ator, ip) {
         docs.atualizarDocumento(tenantId, l.document_id, {
           nome: it.nome || d.nome, tipo_documental: it.tipo_documental, tags, validade: it.validade,
         }, ator, ip);
-        if (it.folder_id != null && s(it.folder_id, 40) !== d.folder_id) docs.moverDocumento(tenantId, l.document_id, s(it.folder_id, 40), ator, ip);
+        // '__manter' = não mexe; '__auto' = pasta da categoria (cria se faltar); '' = raiz; id = a pasta escolhida
+        let destino = it.folder_id == null ? '__auto' : String(it.folder_id);
+        if (destino === '__auto') {
+          const tipoFinal = it.tipo_documental || d.tipo_documental;
+          destino = PASTA_POR_TIPO[tipoFinal] ? pastaPorNome(tenantId, PASTA_POR_TIPO[tipoFinal], ator) : '__manter';
+        }
+        if (destino !== '__manter' && s(destino, 40) !== d.folder_id) docs.moverDocumento(tenantId, l.document_id, s(destino, 40), ator, ip);
         db.prepare("UPDATE entradas_log SET triagem = 'processado' WHERE id = ?").run(l.id);
+      } else if (it.acao === 'nao_propaganda') { // volta para a fila normal e para a pasta de entrada
+        const d = docs.obterDocumento(tenantId, l.document_id);
+        const canal = db.prepare('SELECT * FROM canais_entrada WHERE id = ?').get(l.canal_id) || {};
+        docs.atualizarDocumento(tenantId, l.document_id, { tags: d.tags.filter(t => t !== 'propaganda') }, ator, ip);
+        docs.moverDocumento(tenantId, l.document_id, pastaDeEntrada(tenantId, canal, ator), ator, ip);
+        db.prepare("UPDATE entradas_log SET grupo = 'normal' WHERE id = ?").run(l.id);
       } else {
-        throw new Error('Ação inválida (use eliminar ou processar).');
+        throw new Error('Ação inválida (use eliminar, processar ou nao_propaganda).');
       }
       repo.auditar(tenantId, ator, 'entrada.triagem_' + it.acao, 'entradas_log', l.id, { document_id: l.document_id }, ip);
       resultado.push({ log_id: logId, ok: true });
@@ -276,9 +329,11 @@ function definirAvisoTriagem(tenantId, ativo, ator, ip) {
 }
 /** Dados do aviso diário, ou null quando não há nada esperando (não se avisa "zero"). */
 function dadosAvisoTriagem(tenantId) {
-  const itens = pendentesTriagem(tenantId, 500);
+  const todos = pendentesTriagem(tenantId, 500);
+  const itens = todos.filter(i => i.grupo !== 'propaganda'); // propaganda não acorda ninguém
   if (!itens.length) return null;
   return {
+    propaganda: todos.length - itens.length,
     total: itens.length,
     importantes: itens.filter(i => i.sugestao).length,
     maisAntigo: itens.reduce((m, i) => (i.recebido_em < m ? i.recebido_em : m), itens[0].recebido_em),
@@ -302,7 +357,7 @@ const recentes = (tenantId, limite = 50) =>
     WHERE l.tenant_id = ? ORDER BY l.criado_em DESC LIMIT ?`).all(String(tenantId), Math.min(Math.max(1, Number(limite) || 50), 200));
 
 module.exports = {
-  PASTA_PADRAO, TAG_BAIXA_STAYS, EXT_ACEITAS, canonFone, normalizar, sugerirTipo,
+  PASTA_PADRAO, PASTA_PROPAGANDA, TAG_BAIXA_STAYS, classificarGrupo, EXT_ACEITAS, canonFone, normalizar, sugerirTipo,
   listarCanais, criarCanal, atualizarCanal, excluirCanal, canaisAtivos, receber,
   pendentesTriagem, decidirTriagem, resumo, recentes,
   avisoTriagemDisponivel, avisoTriagemAtivo, definirAvisoTriagem, dadosAvisoTriagem,

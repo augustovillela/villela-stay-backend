@@ -77,6 +77,7 @@ const triagemPendente = (d) => montarAviso({
   campos: [
     ['Importantes', d.importantes ? `${d.importantes} (nota fiscal, contrato, recibo ou comprovante)` : ''],
     ['Mais antigo', dataBR(d.maisAntigo)],
+    ['Propaganda a conferir', d.propaganda ? String(d.propaganda) : ''],
     ['Exemplos', d.nomes.join('; ')],
     ['Link', LINK_TRIAGEM],
   ],

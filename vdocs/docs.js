@@ -33,7 +33,7 @@ const EXTENSOES = {
 // Estes tipos podem executar script se abertos inline — força download octet-stream.
 const SEM_INLINE = new Set(['svg', 'html', 'htm', 'xml', 'json', 'zip']);
 
-const TIPOS_DOCUMENTAIS = ['contrato', 'nota_fiscal', 'recibo', 'proposta', 'politica_interna', 'rh', 'juridico', 'financeiro', 'administrativo', 'projeto', 'outro'];
+const TIPOS_DOCUMENTAIS = ['contrato', 'nota_fiscal', 'fatura', 'extrato_bancario', 'recibo', 'proposta', 'politica_interna', 'rh', 'juridico', 'financeiro', 'administrativo', 'projeto', 'outro'];
 
 function extDe(nome) {
   const m = String(nome || '').toLowerCase().match(/\.([a-z0-9]{1,8})$/);

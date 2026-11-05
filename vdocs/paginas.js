@@ -785,48 +785,58 @@ async function criarWebhook(){try{
 async function delWebhook(id){if(!confirm('Excluir este webhook?'))return;await api('DELETE','/integracoes/webhooks/'+id);vInteg();}
 
 // ---------------- Triagem + Entrada automática ----------------
-const ROT_TIPO={nota_fiscal:'Nota fiscal',contrato:'Contrato',recibo:'Recibo',proposta:'Proposta',politica_interna:'Política interna',rh:'RH',juridico:'Jurídico',financeiro:'Financeiro',administrativo:'Administrativo',projeto:'Projeto',outro:'Outro'};
+const ROT_TIPO={nota_fiscal:'Nota fiscal',fatura:'Fatura',extrato_bancario:'Extrato bancário',contrato:'Contrato',recibo:'Recibo',proposta:'Proposta',politica_interna:'Política interna',rh:'RH',juridico:'Jurídico',financeiro:'Financeiro',administrativo:'Administrativo',projeto:'Projeto',outro:'Outro'};
 const tamH=n=>n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
-async function vTriagem(){
+async function vTriagem(aba){
   const d=await api('GET','/entrada/triagem');
-  S.tri=d;
-  if(!d.itens.length){$('corpo').innerHTML='<div class="card"><b>✅ Nada esperando triagem.</b><p class="sub">Documentos que chegarem pelo WhatsApp ou Gmail cadastrados aparecem aqui para você decidir: <b>eliminar</b> ou <b>processar e categorizar</b>.</p></div>';return;}
-  const imp=d.itens.filter(i=>i.sugestao).length;
-  $('corpo').innerHTML=
-   '<div class="card"><b>🧹 '+d.itens.length+' documento(s) esperando decisão</b>'+
-   (imp?' <span class="sub">· '+imp+' parece(m) nota fiscal, contrato, recibo ou comprovante (no topo)</span>':'')+
+  S.tri=d;S.triAba=aba||S.triAba||'decidir';
+  const prop=d.itens.filter(i=>i.grupo==='propaganda'),dec=d.itens.filter(i=>i.grupo!=='propaganda');
+  S.triLista=S.triAba==='propaganda'?prop:dec;
+  const abas='<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
+    '<button class="btn peq'+(S.triAba==='decidir'?'':' btn-ghost')+'" onclick="vTriagem(\\'decidir\\')">🧹 Para decidir ('+dec.length+')</button>'+
+    '<button class="btn peq'+(S.triAba==='propaganda'?'':' btn-ghost')+'" onclick="vTriagem(\\'propaganda\\')">📢 Propaganda ('+prop.length+')</button></div>';
+  const L=S.triLista;
+  if(!L.length){$('corpo').innerHTML=abas+'<div class="card"><b>✅ '+(S.triAba==='propaganda'?'Nenhuma propaganda para conferir.':'Nada esperando triagem.')+'</b><p class="sub">'+(S.triAba==='propaganda'?'Catálogos, ofertas e newsletters que chegarem pelo WhatsApp ou Gmail aparecem aqui, separados dos documentos de verdade. Nada é apagado sozinho.':'Documentos que chegarem pelo WhatsApp ou Gmail cadastrados aparecem aqui para você decidir: <b>eliminar</b> ou <b>processar e categorizar</b>.')+'</p></div>';return;}
+  const ehProp=S.triAba==='propaganda';
+  const imp=L.filter(i=>i.sugestao).length;
+  $('corpo').innerHTML=abas+
+   '<div class="card"><b>'+(ehProp?'📢 '+L.length+' propaganda(s) para conferir':'🧹 '+L.length+' documento(s) esperando decisão')+'</b>'+
+   (!ehProp&&imp?' <span class="sub">· '+imp+' parece(m) nota fiscal, fatura, extrato, contrato, recibo ou comprovante (no topo)</span>':'')+
    '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
-   (imp?'<button class="btn peq" onclick="triAceitarSugestoes()">✨ Aceitar sugestões ('+imp+')</button>':'')+
+   (!ehProp&&imp?'<button class="btn peq" onclick="triAceitarSugestoes()">✨ Aceitar sugestões ('+imp+')</button>':'')+
    '<button class="btn btn-ghost peq" onclick="triMarcar(true)">Marcar todos</button>'+
    '<button class="btn btn-ghost peq" onclick="triMarcar(false)">Desmarcar</button>'+
-   '<button class="btn peq" onclick="triLote(\\'processar\\')">✅ Processar marcados</button>'+
-   '<button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\')">🗑️ Eliminar marcados</button></div>'+
-   '<div id="tri-out" style="margin-top:8px;font-size:13px"></div></div>'+
-   '<div class="card" style="margin-top:12px;overflow-x:auto"><table><tr><th></th><th>Documento</th><th>Origem</th><th>Categoria</th><th>Pasta</th><th></th></tr>'+
-   d.itens.map((i,n)=>{
+   (ehProp?'<button class="btn peq" onclick="triLote(\\'eliminar\\')">🗑️ Eliminar marcadas</button><button class="btn btn-ghost peq" onclick="triLote(\\'nao_propaganda\\')">↩️ Não é propaganda</button>'
+          :'<button class="btn peq" onclick="triLote(\\'processar\\')">✅ Processar marcados</button><button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\')">🗑️ Eliminar marcados</button>')+
+   '</div><div id="tri-out" style="margin-top:8px;font-size:13px"></div></div>'+
+   '<div class="card" style="margin-top:12px;overflow-x:auto"><table><tr><th></th><th>Documento</th><th>Origem</th>'+(ehProp?'':'<th>Categoria</th><th>Pasta</th>')+'<th></th></tr>'+
+   L.map((i,n)=>{
      const sug=i.sugestao;
      const tipoSel=sug?sug.tipo:i.tipo_documental;
      return '<tr id="tri-l'+n+'"><td><input type="checkbox" class="tri-ck" value="'+n+'" style="width:auto"></td>'+
       '<td><a href="/vdocs/api/documentos/'+i.document_id+'/baixar" target="_blank" rel="noopener"><b>'+esc(i.nome)+'</b></a><br><span class="sub" style="font-size:12px">'+tamH(i.tamanho)+' · '+dt(i.recebido_em)+'</span>'+
       (i.trecho?'<br><span class="sub" style="font-size:12px">'+esc(i.trecho.slice(0,160))+'…</span>':'')+'</td>'+
       '<td>'+(i.canal.tipo==='gmail'?'✉️':'💬')+' '+esc(i.canal.rotulo||i.canal.identificador||'')+(i.remetente?'<br><span class="sub" style="font-size:12px">de '+esc(i.remetente)+'</span>':'')+'</td>'+
+      (ehProp?'':
       '<td>'+(sug?'<span class="chip" title="Sugerido '+esc(sug.motivo)+'">✨ '+esc(sug.rotulo||ROT_TIPO[sug.tipo]||sug.tipo)+(sug.confianca==='alta'?'':' ?')+'</span><br>':'')+
        '<select id="tri-tipo'+n+'">'+d.tipos.map(t=>'<option value="'+t+'"'+(t===tipoSel?' selected':'')+'>'+esc(ROT_TIPO[t]||t)+'</option>').join('')+'</select>'+
        '<label style="display:flex;gap:4px;align-items:center;font-size:12px;font-weight:400;margin-top:4px" title="Marca para dar baixa na Stays com a data do check-in"><input type="checkbox" id="tri-baixa'+n+'" style="width:auto"'+(sug&&sug.rotulo==='Comprovante'?' checked':'')+'> 🏠 pagamento de hospedagem (baixa na Stays)</label></td>'+
-      '<td><select id="tri-pasta'+n+'"><option value="'+(i.pasta_atual||'')+'">(manter em Entrada automática)</option><option value="">Raiz</option>'+d.pastas.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></td>'+
-      '<td style="white-space:nowrap"><button class="btn peq" onclick="triLote(\\'processar\\','+n+')">Processar</button> <button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\','+n+')">Eliminar</button></td></tr>';}).join('')+
+      '<td><select id="tri-pasta'+n+'"><option value="__auto">(pasta da categoria)</option><option value="__manter">(deixar em Entrada automática)</option><option value="">Raiz</option>'+d.pastas.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></td>')+
+      '<td style="white-space:nowrap">'+(ehProp?'<button class="btn peq" onclick="triLote(\\'eliminar\\','+n+')">Eliminar</button> <button class="btn btn-ghost peq" onclick="triLote(\\'nao_propaganda\\','+n+')">Não é propaganda</button>'
+        :'<button class="btn peq" onclick="triLote(\\'processar\\','+n+')">Processar</button> <button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\','+n+')">Eliminar</button>')+'</td></tr>';}).join('')+
    '</table></div>';
 }
 function triMarcar(v){document.querySelectorAll('.tri-ck').forEach(c=>c.checked=v);}
 function triAceitarSugestoes(){
-  document.querySelectorAll('.tri-ck').forEach(c=>{c.checked=!!S.tri.itens[+c.value].sugestao;});
+  document.querySelectorAll('.tri-ck').forEach(c=>{c.checked=!!S.triLista[+c.value].sugestao;});
   triLote('processar');}
 async function triLote(acao,so){
   const idx=so!=null?[so]:[...document.querySelectorAll('.tri-ck:checked')].map(c=>+c.value);
   if(!idx.length){$('tri-out').innerHTML='<span style="color:var(--alerta)">Marque ao menos um documento.</span>';return;}
   if(acao==='eliminar'&&!confirm('Eliminar '+idx.length+' documento(s)? Vão para a lixeira (dá para restaurar).'))return;
-  const itens=idx.map(n=>{const i=S.tri.itens[n];
-    return acao==='eliminar'?{log_id:i.log_id,acao}:{log_id:i.log_id,acao,tipo_documental:$('tri-tipo'+n).value,folder_id:$('tri-pasta'+n).value,baixa_stays:$('tri-baixa'+n).checked};});
+  const itens=idx.map(n=>{const i=S.triLista[n];
+    if(acao==='eliminar'||acao==='nao_propaganda')return{log_id:i.log_id,acao};
+    return{log_id:i.log_id,acao,tipo_documental:$('tri-tipo'+n).value,folder_id:$('tri-pasta'+n).value,baixa_stays:$('tri-baixa'+n).checked};});
   try{
     const r=await api('POST','/entrada/triagem',{itens});
     const falhas=r.resultado.filter(x=>!x.ok);

@@ -889,6 +889,39 @@ function teste(nome, cond) {
     r = await req('GET', '/vdocs/api/entrada', { jar: 'anaA' });
     teste('tela de entrada resume o dia', r.dados.resumo.ultimas_24h.recebido === 4 && r.dados.resumo.pendentes_triagem === 1 && r.dados.recentes.length >= 6);
 
+    // propaganda, fatura, extrato e pasta por categoria
+    {
+      const g = (o) => entrada.classificarGrupo(o);
+      teste('propaganda: catálogo de lista de mala-direta', g({ nome: 'catalogo_verao.pdf', assunto: 'Aproveite 30% off', remetente: 'ofertas@loja.com', emLista: true }) === 'propaganda');
+      teste('fatura chegando por mala-direta NÃO é propaganda', g({ nome: 'Fatura Claro.pdf', assunto: 'Sua fatura', remetente: 'noreply@claro.com.br', emLista: true }) === 'normal');
+      teste('documento comum de pessoa não é propaganda', g({ nome: 'relatorio.pdf', assunto: 'Reunião', remetente: 'ana@a.com', emLista: false }) === 'normal');
+      teste('sugestão: fatura, boleto e conta de luz', ['Fatura Claro.pdf', 'boleto_marco.pdf', 'conta de luz.pdf', '2a via cobrança.pdf'].every(n => entrada.sugerirTipo(n, '').tipo === 'fatura'));
+      teste('sugestão: extrato bancário', entrada.sugerirTipo('Extrato C6 outubro.pdf', '').tipo === 'extrato_bancario');
+      const ids = {};
+      for (const [k, nome, extra] of [['promo', 'catalogo_outono.pdf', { assunto: 'Ofertas imperdíveis', remetente: 'news@loja.com', em_lista: true }], ['fat', 'Fatura Vivo.pdf', {}], ['ext', 'Extrato C6.pdf', {}]]) {
+        const e2 = await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'P-' + k, arquivo_nome: nome, conteudo_base64: B64('%PDF-1.4 ' + nome), ...extra }));
+        ids[k] = e2.dados.document_id;
+      }
+      r = await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' });
+      const por = (id) => r.dados.itens.find(i => i.document_id === id);
+      teste('propaganda cai no grupo propaganda; fatura e extrato no normal', por(ids.promo).grupo === 'propaganda' && por(ids.fat).grupo === 'normal' && por(ids.ext).grupo === 'normal');
+      const pastas = (await req('GET', '/vdocs/api/pastas', { jar: 'anaA' })).dados.pastas;
+      teste('propaganda foi para a pasta própria', (await req('GET', '/vdocs/api/documentos/' + ids.promo, { jar: 'anaA' })).dados.documento.folder_id === (pastas.find(p => p.nome === entrada.PASTA_PROPAGANDA) || {}).id);
+      r = await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: [
+        { log_id: por(ids.fat).log_id, acao: 'processar', tipo_documental: 'fatura', folder_id: '__auto' },
+        { log_id: por(ids.ext).log_id, acao: 'processar', tipo_documental: 'extrato_bancario', folder_id: '__auto' },
+        { log_id: por(ids.promo).log_id, acao: 'nao_propaganda' }] }, jar: 'anaA' });
+      teste('processar com pasta automática + "não é propaganda" aplicados', r.dados.resultado.every(x => x.ok));
+      const pastas2 = (await req('GET', '/vdocs/api/pastas', { jar: 'anaA' })).dados.pastas;
+      const pasta = (nome) => (pastas2.find(p => p.nome === nome) || {}).id;
+      const pastaDe = async (id) => (await req('GET', '/vdocs/api/documentos/' + id, { jar: 'anaA' })).dados.documento.folder_id;
+      teste('fatura foi para "Faturas" e extrato para "Extratos bancários"', await pastaDe(ids.fat) === pasta('Faturas') && await pastaDe(ids.ext) === pasta('Extratos bancários'));
+      teste('"não é propaganda" volta para a Entrada automática, tag removida', await pastaDe(ids.promo) === pasta(entrada.PASTA_PADRAO) && !(await req('GET', '/vdocs/api/documentos/' + ids.promo, { jar: 'anaA' })).dados.documento.tags.includes('propaganda'));
+      // limpa a fila para os testes de aviso abaixo (a propaganda devolvida segue pendente: elimina)
+      const resto = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens.filter(i => i.document_id === ids.promo);
+      await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: resto.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
+    }
+
     // aviso diário da triagem: só conta interna (cortesia), só com fila, nunca "zero"
     {
       const jobsMod = require('./jobs');
