@@ -566,7 +566,7 @@ const kb=n=>{n=Number(n||0);return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=10
 function trilha(){
   const partes=[];let id=S.pasta;
   while(id){const p=S.pastas.find(x=>x.id===id);if(!p)break;partes.unshift(p);id=p.parent_id;}
-  return '<a href="#" onclick="return irPasta(\\'\\')">🏠 Início</a>'+partes.map(p=>' / <a href="#" onclick="return irPasta(\\''+p.id+'\\')">'+esc(p.nome)+'</a>').join('');
+  return '<a href="#" onclick="return irPasta(\\'\\')">📁 Documentos</a>'+partes.map(p=>' / <a href="#" onclick="return irPasta(\\''+p.id+'\\')">'+esc(p.nome)+'</a>').join('');
 }
 function irPasta(id){S.pasta=id;S.lixeira=false;vDocs();return false;}
 async function vDocs(){
@@ -580,6 +580,7 @@ async function vDocs(){
   const docsL=ds.documentos;
   $('corpo').innerHTML='<h2>'+(S.lixeira?'🗑️ Lixeira':'Documentos')+'</h2>'+
    '<div class="card" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
+   (S.pasta||S.lixeira?'<button class="btn peq" title="Voltar à página inicial dos documentos (todas as pastas)" onclick="S.lixeira=false;irPasta(\\'\\')">🏠 Início</button>':'')+
    '<div style="flex:1;min-width:220px;font-size:14px">'+(S.lixeira?'Documentos excluídos (restaure ou exclua definitivamente)':trilha())+'</div>'+
    '<input id="dq" placeholder="Buscar por nome…" value="'+esc(filtro)+'" style="max-width:200px" oninput="clearTimeout(S._t);S._t=setTimeout(vDocs,400)">'+
    (P.criar_pasta&&!S.lixeira?'<button class="btn btn-ghost peq" onclick="novaPasta()">📁 Nova pasta</button>':'')+
@@ -668,7 +669,7 @@ async function abrirDoc(id){
     :st==='ocr_pendente'?'🟡 Sem texto extraível (imagem/escaneado) — OCR chega em fase futura.'
     :st==='erro'?'🔴 Falha na extração: '+esc((pr.job&&pr.job.erro)||'')
     :st?'⏳ Extração de texto em processamento…':'';
-  const selPasta='<select id="dd-pasta"><option value="">🏠 Início</option>'+S.pastas.map(p=>'<option value="'+p.id+'"'+(p.id===d.folder_id?' selected':'')+'>📁 '+esc(p.nome)+'</option>').join('')+'</select>';
+  const selPasta='<select id="dd-pasta"><option value="">🏠 Início dos documentos (sem pasta)</option>'+S.pastas.map(p=>'<option value="'+p.id+'"'+(p.id===d.folder_id?' selected':'')+'>📁 '+esc(p.nome)+'</option>').join('')+'</select>';
   $('corpo').innerHTML='<p><a href="#" onclick="return irPasta(S.pasta)">← voltar</a></p><h2>'+esc(d.nome)+'</h2>'+
    '<p><button class="btn peq" onclick="visualizarDoc(\\''+d.id+'\\')">👁️ Visualizar</button> '+(P.baixar_documento?'<a class="btn btn-ghost peq" href="/vdocs/api/documentos/'+d.id+'/baixar">⬇️ Baixar</a> ':'')+(P.usar_ia?'<button class="btn btn-ghost peq" onclick="S.iaEscopo={tipo:\\'documento\\',ref:\\''+d.id+'\\'};S.iaConv=\\'\\';ir(\\'ia\\')">🤖 Perguntar à IA</button> ':'')+
    (P.compartilhar_documento?'<button class="btn btn-ghost peq" onclick="compartilharDoc(\\''+d.id+'\\')">🔗 Compartilhar por link</button> ':'')+
@@ -800,7 +801,7 @@ async function vShares(){
     '<td>'+(x.ativa?'🟢 ativa':'⚪ encerrada')+'</td><td>'+(x.ativa?'<button class="btn btn-ghost peq" onclick="revogarReq(\\''+x.id+'\\')">Encerrar</button>':'')+'</td></tr>').join(''):'<tr><td colspan="6" style="color:var(--suave)">Nenhuma solicitação.</td></tr>')+'</table>'+
    '<p><b>Nova solicitação:</b></p><div style="display:flex;gap:8px;flex-wrap:wrap">'+
    '<input id="rq-titulo" placeholder="Ex.: Documentos do contrato X" style="flex:1;min-width:200px">'+
-   '<select id="rq-pasta" style="max-width:200px"><option value="">🏠 Início</option>'+(S.pastas||[]).map(p=>'<option value="'+p.id+'">📁 '+esc(p.nome)+'</option>').join('')+'</select>'+
+   '<select id="rq-pasta" style="max-width:260px"><option value="">🏠 Início dos documentos (sem pasta)</option>'+(S.pastas||[]).map(p=>'<option value="'+p.id+'">📁 '+esc(p.nome)+'</option>').join('')+'</select>'+
    '<input id="rq-dias" type="number" value="14" title="validade em dias" style="max-width:80px">'+
    '<button class="btn peq" onclick="criarReq()">Criar link</button></div>'+
    '<input id="rq-instr" placeholder="Instruções para quem vai enviar (opcional)" style="margin-top:8px"><div id="rq-out" style="margin-top:8px;font-size:13px"></div></div>';
