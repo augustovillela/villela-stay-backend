@@ -602,7 +602,14 @@ function areasDoUsuario(user) { return user.papel === 'admin' || (user.areas || 
 // ============================================================
 const ESTAGIOS = ['novo', 'contato', 'orcamento', 'negociacao', 'reserva', 'hospedado', 'posvenda', 'perdido'];
 const lerContatos = () => lerJSON('contatos.json', []);
-const salvarContatos = (c) => salvarJSON('contatos.json', c);
+// Ponte para o CRM novo (crm/ponte-legado.js): depois de gravar, espelha o que mudou. Aditiva —
+// o legado grava exatamente como antes e qualquer falha da ponte é engolida.
+const salvarContatos = (c) => {
+  let antes = null;
+  try { antes = lerContatos(); } catch (_) { /* sem baseline: espelha tudo que vier */ }
+  salvarJSON('contatos.json', c);
+  try { require('./crm/ponte-legado').depois(antes, c); } catch (e) { console.error('[ponte crm]', e.message); }
+};
 const hojeISO = () => new Date().toISOString().slice(0, 10);
 
 // Normaliza telefone para dígitos com DDI (chave de dedupe). Best-effort p/ Brasil.
@@ -623,10 +630,12 @@ function lerAtividades(contatoId) {
     .sort((a, b) => String(b.data).localeCompare(String(a.data))); // mais recente primeiro
 }
 function addAtividade(contatoId, tipo, texto, canal, autor) {
-  appendJsonl('atividades.jsonl', {
+  const ativ = {
     id: novoId(), contatoId, tipo, texto: String(texto || ''),
     canal: canal || '', autor: autor || 'sistema', data: new Date().toISOString(),
-  });
+  };
+  appendJsonl('atividades.jsonl', ativ);
+  try { require('./crm/ponte-legado').atividade(lerContatos().find(x => x.id === contatoId), ativ); } catch (e) { console.error('[ponte crm]', e.message); }
 }
 
 // Cria ou enriquece um contato (dedupe por telefone, depois e-mail). Retorna { contato, novo }.

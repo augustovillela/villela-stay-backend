@@ -460,6 +460,59 @@ async function rodar() {
     assert.equal(de_novo.json.criados, 0); assert.equal(de_novo.json.atividades, 0);
     assert.equal(de_novo.json.tarefas, 0); assert.equal(de_novo.json.oportunidades + de_novo.json.perdidas, 0);
   });
+  await t('ponte do legado: contato, mensagem, estágio e próxima ação chegam ao CRM novo — sem duplicar depois', async () => {
+    const ponte = require('./ponte-legado'); const D = require('./db').db;
+    const tV = saas.repo.Tenants.porSlug('villela-stay');
+    const hoje = new Date().toISOString().slice(0, 10);
+    const l = { id: 'p1', nome: 'Ponte Um', telefone: '5561970001111', origem: 'whatsapp-business', estagio: 'novo', dono: 'Augusto', criadoEm: '2026-11-05T12:00:00.000Z', proximaAcao: { descricao: 'Responder primeiro contato', data: hoje } };
+    assert.equal(ponte.depois([], [l]), 1, 'contato novo não foi espelhado');
+    const achar = () => saas.appRepo.Contatos.listar(tV.id, {}).find(c => c.nome === 'Ponte Um');
+    let c = achar(); assert.ok(c, 'contato não chegou'); assert.equal(c.criado_em, '2026-11-05T12:00:00.000Z');
+    const abre = () => saas.appRepo.Tarefas.listar(tV.id, { status: 'aberta', contato_id: c.id });
+    assert.equal(abre().length, 1); assert.equal(abre()[0].titulo, 'Responder primeiro contato');
+    // mensagem recebida: mesma data do legado, e vira a última interação
+    const msg = { id: 'am', contatoId: 'p1', tipo: 'mensagem-recebida', texto: 'Quero reservar', canal: 'whatsapp', autor: 'sistema', data: '2026-11-05T12:00:03.000Z' };
+    assert.equal(ponte.atividade(l, msg), true); ponte.atividade(l, msg); // repetida: não duplica
+    assert.equal(D.prepare("SELECT COUNT(*) n FROM crm_atividades WHERE tenant_id = ? AND contato_id = ? AND texto = 'Quero reservar'").get(tV.id, c.id).n, 1);
+    assert.equal(achar().ultima_interacao, '2026-11-05T12:00:03.000Z');
+    assert.equal(ponte.atividade(l, { tipo: 'nota', texto: 'Contato criado (origem: x)', data: '2026-11-05T12:00:00.000Z' }), false, 'nota de criação duplicaria a do CRM novo');
+    // próxima ação trocada no legado: conclui a espelhada e cria a nova
+    const l2 = { ...l, proximaAcao: { descricao: 'Aguardando resposta', data: '2099-01-01' } };
+    ponte.depois([l], [l2]);
+    assert.equal(abre().length, 1); assert.equal(abre()[0].titulo, 'Aguardando resposta');
+    // estágio só avança por evento automático; 'perdido' sempre vale
+    const estagioDe = () => D.prepare('SELECT e.nome, o.status FROM crm_oportunidades o JOIN crm_estagios e ON e.id = o.estagio_id WHERE o.tenant_id = ? AND o.contato_id = ?').get(tV.id, c.id);
+    const antesNome = estagioDe().nome;
+    const l3 = { ...l2, estagio: 'orcamento' }; ponte.depois([l2], [l3]);
+    assert.notEqual(estagioDe().nome, antesNome, 'estágio não avançou');
+    const l4 = { ...l3, estagio: 'novo' }; ponte.depois([l3], [l4]);
+    assert.equal(estagioDe().nome, estagioDe().nome); assert.notEqual(estagioDe().nome, antesNome, 'o legado fez o funil regredir');
+    ponte.depois([l4], [{ ...l4, estagio: 'perdido', motivoPerda: 'Preço' }]);
+    assert.equal(estagioDe().status, 'perdida');
+    // sem mudança relevante: nada a espelhar
+    assert.equal(ponte.depois([l], [{ ...l, atualizadoEm: 'x' }]), 0, 'espelhou sem mudança relevante');
+    // importar depois NÃO duplica o que a ponte já levou (mesma data+texto)
+    fs.writeFileSync(path.join(process.env.DATA_DIR, 'contatos.json'), JSON.stringify([l]));
+    fs.writeFileSync(path.join(process.env.DATA_DIR, 'atividades.jsonl'), JSON.stringify(msg) + '\n');
+    const imp = await req('POST', '/staff/api/vcrm/importar-legado', { corpo: { tenant_slug: 'villela-stay' } });
+    assert.equal(imp.json.atividades, 0, 'a importação duplicou a mensagem que a ponte levou');
+    assert.equal(imp.json.criados, 0, 'a importação recriou o contato que a ponte já levou');
+    // contato sem telefone/e-mail: a ponte e a importação não duplicam
+    const sem = { id: 'sk', nome: 'Só Nome', origem: 'manual', estagio: 'novo' };
+    ponte.depois([], [sem]); ponte.depois([], [sem]);
+    fs.writeFileSync(path.join(process.env.DATA_DIR, 'contatos.json'), JSON.stringify([sem]));
+    await req('POST', '/staff/api/vcrm/importar-legado', { corpo: { tenant_slug: 'villela-stay' } });
+    assert.equal(saas.appRepo.Contatos.listar(tV.id, {}).filter(x => x.nome === 'Só Nome').length, 1, 'contato sem chave duplicou');
+    // desligável
+    process.env.CRM_PONTE = 'off';
+    assert.equal(ponte.depois([], [{ ...l, id: 'p9', nome: 'Desligada', telefone: '5561970009999' }]), 0, 'ponte ligada com CRM_PONTE=off');
+    delete process.env.CRM_PONTE;
+    assert.ok(!saas.appRepo.Contatos.listar(tV.id, {}).find(x => x.nome === 'Desligada'));
+    // sem a empresa interna a ponte não faz nada nem quebra
+    process.env.CRM_PONTE_SLUG = 'nao-existe';
+    assert.equal(ponte.depois([], [{ ...l, id: 'p8', nome: 'Sem tenant' }]), 0, 'espelhou sem a empresa interna');
+    delete process.env.CRM_PONTE_SLUG;
+  });
 
   await t('LGPD: exclusão definitiva remove contato + timeline', async () => {
     await req('POST', '/crm/api/login', { corpo: { email: 'bia@beta.br', senha: 'SenhaForte1' }, cookies: true });
