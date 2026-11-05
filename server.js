@@ -5534,7 +5534,7 @@ if (process.env.MANUTENCAO_OFF !== '1') {
   const rodarManutencao = async () => {
     try {
       if (process.env.SNAPSHOTS_OFF !== '1') {
-        const feitos = snapshotTodos(DATA_DIR, { manter: Number(process.env.SNAPSHOTS_MANTER) || 7 });
+        const feitos = snapshotTodos(DATA_DIR, { manter: Number(process.env.SNAPSHOTS_MANTER) || 3 });
         if (feitos.length) console.log('[manutencao] snapshots:', feitos.length, 'banco(s) SQLite');
       }
       const purga = purgarEventosAntigos(DATA_DIR, { dias: Number(process.env.PURGA_DIAS) || 90 });
