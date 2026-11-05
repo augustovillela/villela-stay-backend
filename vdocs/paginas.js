@@ -114,12 +114,12 @@ ${canonical ? `<link rel="canonical" href="${esc(canonical)}">` : ''}
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
 <meta property="og:image" content="${BASE_URL}${BRAND_DIR}/og-image.png">
 ${HEAD_MARCA}${GA}
-<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=1"></head><body class="vx dx-pub" data-vertical="docs">
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=3"></head><body class="vx dx-pub" data-vertical="docs">
 ${SPRITE}
 <header class="dx-top"><div class="dx-wrap">
-  <a class="dx-brand" href="/vdocs"><img src="${BRAND_DIR}/logo-horizontal-claro.svg" alt="Villela Docs"></a>
+  <a class="dx-brand" href="/vdocs"><img src="${BRAND_DIR}/logo-horizontal.svg" alt="Villela Docs"></a>
   <nav class="dx-nav" aria-label="Principal"><a href="/vdocs#recursos">Recursos</a><a href="/vdocs#seguranca">Segurança</a><a href="/vdocs#planos">Planos</a><a href="/vdocs#faq">Perguntas</a></nav>
-  <div class="dx-cta"><a class="dx-link" href="/vdocs/login">Entrar</a><a class="btn" href="/vdocs/cadastro">Teste grátis</a></div>
+  <div class="dx-cta"><a class="dx-link" href="/vdocs/login">Entrar</a><a class="btn btn-ciano" href="/vdocs/cadastro">Teste grátis</a></div>
 </div></header>
 ${corpo}
 <footer class="dx-foot"><div class="dx-wrap">
@@ -144,7 +144,7 @@ function landing() {
     <h1>Todos os documentos da sua empresa organizados, seguros e com respostas em segundos.</h1>
     <p class="dx-lead">O Villela Docs centraliza contratos, notas, políticas e processos em um só lugar, com busca inteligente, aprovações, controle de versão, trilha de auditoria e uma IA que responde citando os documentos.</p>
     <div class="dx-hero-cta">
-      <a class="btn lg" href="/vdocs/cadastro">Começar teste grátis de 14 dias ${ic('arrow')}</a>
+      <a class="btn btn-ciano lg" href="/vdocs/cadastro">Começar teste grátis de 14 dias ${ic('arrow')}</a>
       <a class="btn btn-ghost lg" href="#demo">Pedir demonstração</a>
     </div>
     <div class="dx-micro"><span>${ic('check')} Sem cartão de crédito</span><span>${ic('check')} Cancele quando quiser</span><span>${ic('check')} Dados no Brasil, adequado à LGPD</span></div>
@@ -460,7 +460,7 @@ body{background:var(--fundo)}
 .vw-pre{margin:0;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;width:100%;background:#fff}
 .barra{height:8px;background:var(--borda);border-radius:99px;overflow:hidden}.barra i{display:block;height:100%;background:var(--azul)}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
-</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=1"></head><body class="vx" data-vertical="docs">
+</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=3"></head><body class="vx" data-vertical="docs">
 ${SPRITE}
 <header class="top"><div class="wrap" style="max-width:none">
   <a class="brand" href="/vdocs/app"><img src="${BRAND_DIR}/logo-horizontal-claro.svg" alt="Villela Docs"></a>
@@ -686,8 +686,8 @@ async function vDocs(){
   const nPasta=id=>{const ids=desc(id);return ds.documentos.filter(d=>ids.includes(d.folder_id)).length;};
   const nomePastaDoc=id=>{const p=S.pastas.find(x=>x.id===id);return p?'<span class="chip">'+ic('folder')+' '+esc(p.nome)+'</span>':'<span class="sub" style="font-size:12px">sem pasta</span>';};
   const chipsTipo=S.lixeira?'':'<div class="card" style="margin-top:12px"><div class="sub" style="font-size:12px;margin-bottom:6px">Categorias — clique para filtrar · mostrando <b>'+docsL.length+'</b> de '+base.length+' documento(s)'+(S.pasta?' desta pasta':'')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+
-    '<button class="btn peq'+(S.tipoF?' btn-ghost':'')+'" onclick="irTipo(\\'\\')">Todos ('+base.length+')</button>'+
-    Object.keys(porTipo).sort((a,b)=>porTipo[b]-porTipo[a]).map(t=>'<button class="btn peq'+(S.tipoF===t?'':' btn-ghost')+'" onclick="irTipo(\\''+t+'\\')">'+esc(ROT_TIPO[t]||t)+' ('+porTipo[t]+')</button>').join('')+'</div></div>';
+    '<button class="btn peq dx-catbtn todos'+(S.tipoF?' btn-ghost':'')+'" onclick="irTipo(\\'\\')">Todos ('+base.length+')</button>'+
+    Object.keys(porTipo).sort((a,b)=>porTipo[b]-porTipo[a]).map(t=>'<button class="btn peq dx-catbtn dx-cat-'+t+(S.tipoF===t?'':' btn-ghost')+'" onclick="irTipo(\\''+t+'\\')">'+esc(ROT_TIPO[t]||t)+' ('+porTipo[t]+')</button>').join('')+'</div></div>';
   $('corpo').innerHTML=(S.lixeira?'<h2>Lixeira</h2>':'')+
    '<div class="card" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
    (S.pasta||S.lixeira?'<button class="btn peq" title="Voltar à página inicial dos documentos (todas as pastas)" onclick="S.lixeira=false;irPasta(\\'\\')">'+ic('home')+' Início</button>':'')+
@@ -703,7 +703,7 @@ async function vDocs(){
      return '<tr><td><a href="#" onclick="return abrirDoc(\\''+d.id+'\\')">'+esc(d.nome)+'</a>'+
      (d.fora_da_pasta?' <span class="chip" title="Encontrado pelo conteúdo em outra pasta">em outra pasta</span>':'')+
      (d.trecho?'<br><span style="font-size:12px;color:var(--suave)">…'+esc(d.trecho)+'…</span>':'')+'</td>'+
-     '<td>'+esc(ROT_TIPO[d.tipo_documental]||d.tipo_documental)+'</td><td>'+nomePastaDoc(d.folder_id)+'</td><td>'+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</td>'+
+     '<td><span class="dx-cat dx-cat-'+esc(d.tipo_documental)+'">'+esc(ROT_TIPO[d.tipo_documental]||d.tipo_documental)+'</span></td><td>'+nomePastaDoc(d.folder_id)+'</td><td>'+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</td>'+
      '<td>v'+d.versao_atual+'</td><td>'+dt(d.atualizado_em||d.criado_em)+'</td><td>'+
      (S.lixeira?((P.restaurar_documento?'<button class="btn peq" onclick="docAcao(\\''+d.id+'\\',\\'restaurar\\')">Restaurar</button> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="excluirDefinitivo(\\''+d.id+'\\')">Excluir de vez</button>':''))
       :('<button class="dx-ib" title="Visualizar sem baixar" aria-label="Visualizar" onclick="visualizarDoc(\\''+d.id+'\\')">'+ic('eye')+'</button> '+(P.baixar_documento?'<a class="dx-ib" title="Baixar" aria-label="Baixar" href="/vdocs/api/documentos/'+d.id+'/baixar">'+ic('download')+'</a> ':'')+(P.excluir_documento?'<button class="dx-ib perigo" title="Mover para a lixeira" aria-label="Mover para a lixeira" onclick="docAcao(\\''+d.id+'\\',\\'lixeira\\')">'+ic('trash')+'</button>':'')))+'</td></tr>';
@@ -1014,7 +1014,7 @@ async function vTriagem(aba){
       (ehProp?'':'<br><input id="tri-nome'+n+'" value="'+esc(i.nome)+'" style="width:100%;margin-top:4px" title="Nome do documento — editável; vale ao Processar">')+'</td>'+
       '<td>'+(i.canal.tipo==='gmail'?'✉️':'💬')+' '+esc(i.canal.rotulo||i.canal.identificador||'')+(i.remetente?'<br><span class="sub" style="font-size:12px">de '+esc(i.remetente)+'</span>':'')+'</td>'+
       (ehProp?'':
-      '<td>'+(sug?'<span class="chip" title="Sugerido '+esc(sug.motivo)+'">✨ '+esc(sug.rotulo||ROT_TIPO[sug.tipo]||sug.tipo)+(sug.confianca==='alta'?'':' ?')+'</span><br>':'')+
+      '<td>'+(sug?'<span class="dx-cat dx-cat-'+esc(sug.tipo)+'" title="Sugerido '+esc(sug.motivo)+'">'+esc(sug.rotulo||ROT_TIPO[sug.tipo]||sug.tipo)+(sug.confianca==='alta'?'':' ?')+'</span><br>':'')+
        '<select id="tri-tipo'+n+'">'+d.tipos.map(t=>'<option value="'+t+'"'+(t===tipoSel?' selected':'')+'>'+esc(ROT_TIPO[t]||t)+'</option>').join('')+'</select>'+
        '<label style="display:flex;gap:4px;align-items:center;font-size:12px;font-weight:400;margin-top:4px" title="Marca para dar baixa na Stays com a data do check-in"><input type="checkbox" id="tri-baixa'+n+'" style="width:auto"'+(sug&&sug.rotulo==='Comprovante'?' checked':'')+'> 🏠 pagamento de hospedagem (baixa na Stays)</label></td>'+
       '<td><select id="tri-pasta'+n+'"><option value="__auto">(pasta da categoria)</option><option value="__manter">(deixar em Entrada automática)</option><option value="">Raiz</option>'+d.pastas.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></td>')+

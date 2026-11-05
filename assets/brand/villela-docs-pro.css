@@ -281,3 +281,184 @@ body[data-vertical="docs"] .vw-h{background:#fff}
   body[data-vertical="docs"] .vx-nav-item[aria-current="page"]::before{display:none}
   body[data-vertical="docs"] header.top #quem{display:none}
 }
+
+/* =====================================================================
+   PALETA "MARINHO PROFUNDO + OURO + MARFIM" (v2) — sobrepõe a base acima.
+   Marinho = autoridade; ouro = só em destaques (CTA, selo, indicador); marfim = calor
+   no lugar do branco chapado; azul-acinzentado alterna as seções. Cartões continuam brancos.
+   Para ajustar o tom do site inteiro, mude SÓ as variáveis desta seção.
+   ===================================================================== */
+body[data-vertical="docs"]{
+  --dx-navy-900:#0A1530; --dx-navy:#0F1F3D; --dx-navy-2:#1B2A4A; --dx-navy-3:#26396A;
+  --dx-gold:#C9A227; --dx-gold-2:#A8841A; --dx-gold-3:#E4C65A; --dx-gold-soft:#F7F0D8;
+  --dx-ivory:#FBF8F1; --dx-ivory-2:#F4EEDF; --dx-mist:#EAEFF7;
+  --dx-bg:#EDF0F6;
+}
+
+/* ---------- botões: ouro para a ação principal sobre fundo escuro ---------- */
+body[data-vertical="docs"] .btn.btn-ciano{background:linear-gradient(180deg,#D8B440,#C9A227);border-color:#B8921F;color:#0A1530!important;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 8px 20px -8px rgba(201,162,39,.55)}
+body[data-vertical="docs"] .btn.btn-ciano:hover{background:linear-gradient(180deg,#E4C65A,#D2AC32);border-color:#A8841A}
+
+/* ---------- landing: cabeçalho e hero escuros ---------- */
+.dx-top{background:rgba(10,21,48,.94);border-bottom:1px solid rgba(201,162,39,.28)}
+.dx-nav a{color:#C9D4E8}.dx-nav a:hover{color:#fff}
+body[data-vertical="docs"] .dx-link{color:#fff!important}
+body[data-vertical="docs"] .dx-top .btn{background:linear-gradient(180deg,#D8B440,#C9A227);border-color:#B8921F;color:#0A1530!important}
+body[data-vertical="docs"] .dx-top .btn:hover{background:linear-gradient(180deg,#E4C65A,#D2AC32)}
+
+.dx-hero{background:
+  radial-gradient(760px 420px at 86% 8%,rgba(201,162,39,.20),transparent 62%),
+  radial-gradient(900px 520px at 6% 0%,rgba(38,57,106,.85),transparent 60%),
+  linear-gradient(160deg,#0A1530 0%,#0F1F3D 48%,#1B2A4A 100%);color:#E6ECF7}
+.dx-hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,transparent,#C9A227 18%,#E4C65A 50%,#C9A227 82%,transparent);opacity:.85}
+body[data-vertical="docs"] .dx-hero h1{color:#fff}
+body[data-vertical="docs"] .dx-hero .dx-lead{color:#C3CFE6}
+.dx-hero .dx-eyebrow{background:rgba(201,162,39,.14);border-color:rgba(201,162,39,.45);color:#E4C65A}
+.dx-hero .dx-eyebrow::before{background:#E4C65A}
+.dx-hero .dx-micro{color:#9FB0CF}.dx-hero .dx-micro .dx-i{color:#E4C65A}
+body[data-vertical="docs"] .dx-hero .btn.btn-ghost{background:transparent;color:#fff!important;border-color:rgba(255,255,255,.38)}
+body[data-vertical="docs"] .dx-hero .btn.btn-ghost:hover{background:rgba(255,255,255,.10);border-color:#fff}
+.dx-win{box-shadow:0 40px 80px -30px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.06)}
+.dx-win-note{color:#8FA0C4}
+
+/* ---------- faixas e seções: marfim ↔ azul-acinzentado ---------- */
+.dx-trust{background:var(--dx-ivory);border-top:0;border-bottom:1px solid #EADFC0}
+.dx-trust .dx-i{color:var(--dx-gold-2)}
+.dx-sec{background:var(--dx-ivory)}
+.dx-sec.alt{background:var(--dx-mist);border-top:1px solid #DCE3EF;border-bottom:1px solid #DCE3EF}
+.dx-sec-eyebrow{color:var(--dx-gold-2);display:flex;align-items:center;gap:10px}
+.dx-sec-eyebrow::before{content:"";width:28px;height:2px;background:var(--dx-gold);border-radius:2px}
+.dx-secure .dx-sec-eyebrow{color:#E4C65A}
+body[data-vertical="docs"] .dx-secure .dx-sec-eyebrow{color:#E4C65A}
+.dx-feat,.dx-step,.dx-vs,.dx-plan,.dx-demo-form,.dx-faq details{background:#fff;border-color:#E3E7EF}
+.dx-ico{background:var(--dx-gold-soft);border-color:#EADFB4;color:var(--dx-navy-2)}
+.dx-feat:hover{border-color:var(--dx-gold);box-shadow:0 18px 40px -22px rgba(15,31,61,.45)}
+.dx-step::before{background:var(--dx-navy-2);box-shadow:0 0 0 4px var(--dx-gold-soft),0 0 0 5px #EADFB4}
+.dx-vs.good{border-color:#EADFB4;background:linear-gradient(180deg,#fff,#FFFBEF)}
+.dx-vs.good li .dx-i{color:var(--dx-gold-2)}
+.dx-plan.dest{border:2px solid var(--dx-gold);box-shadow:0 24px 50px -26px rgba(168,132,26,.55)}
+.dx-plan .dx-badge{background:var(--dx-gold);color:#0A1530}
+.dx-plan .dx-preco{color:var(--dx-navy)}
+.dx-bullets .dx-i{color:var(--dx-gold-2)}
+.dx-faq summary{color:var(--dx-navy)}
+.dx-faq details[open]{border-color:var(--dx-gold)}
+
+/* faixa de segurança e CTA final: marinho com brilho dourado */
+.dx-secure{background:radial-gradient(520px 320px at 88% 0%,rgba(201,162,39,.16),transparent 65%),linear-gradient(160deg,#0A1530,#13264A 70%)}
+.dx-secure::after{background:radial-gradient(circle,rgba(201,162,39,.10),transparent 65%)}
+.dx-secure-item{border-color:rgba(201,162,39,.22);background:rgba(255,255,255,.035)}
+.dx-secure-item .dx-i{color:#E4C65A}
+.dx-final{background:radial-gradient(460px 260px at 85% 0%,rgba(201,162,39,.22),transparent 65%),linear-gradient(160deg,#13264A,#0A1530)}
+.dx-foot{background:#070F24;border-top:3px solid #C9A227}
+.dx-foot h4{color:#E4C65A}
+
+/* ---------- formulários e planos (páginas internas) ---------- */
+.dx-form-wrap{background:linear-gradient(180deg,var(--dx-mist),var(--dx-ivory))}
+.dx-pub section.alt{background:var(--dx-mist)}
+
+/* =====================================================================
+   PAINEL — menu lateral marinho, fundo azul-acinzentado, detalhes dourados
+   ===================================================================== */
+body[data-vertical="docs"]:not(.dx-pub){background:var(--dx-bg)}
+body[data-vertical="docs"] header.top{border-bottom:0;box-shadow:0 1px 0 #DCE3EF,0 2px 0 var(--dx-gold)}
+body[data-vertical="docs"] .vx-nav{background:linear-gradient(180deg,#0F1F3D,#0A1530);border:0;box-shadow:0 18px 40px -22px rgba(10,21,48,.7)}
+body[data-vertical="docs"] .vx-nav-grupo{color:#8FA0C4}
+body[data-vertical="docs"] .vx-nav-item{color:#CBD5E8}
+body[data-vertical="docs"] .vx-nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+body[data-vertical="docs"] .vx-nav-item[aria-current="page"]{background:rgba(201,162,39,.16);color:#fff}
+body[data-vertical="docs"] .vx-nav-item[aria-current="page"]::before{background:var(--dx-gold-3);left:-10px}
+body[data-vertical="docs"] .vx-nav-ico{color:#8FA0C4}
+body[data-vertical="docs"] .vx-nav-item[aria-current="page"] .vx-nav-ico{color:#E4C65A}
+body[data-vertical="docs"] .vx-nav-toggle{color:#8FA0C4}
+body[data-vertical="docs"] .vx-nav hr,body[data-vertical="docs"] .vx-nav .vx-sep{border-color:rgba(255,255,255,.1)}
+
+body[data-vertical="docs"] .vx-page-head h1{color:var(--dx-navy)}
+body[data-vertical="docs"] .vx-page-head h1 .dx-i{color:var(--dx-gold-2)}
+body[data-vertical="docs"] .vx-page-head h1::after{content:"";display:block}
+body[data-vertical="docs"] .kpi{border-top:3px solid var(--dx-gold);padding-top:14px}
+body[data-vertical="docs"] #corpo .card{border-color:#E1E6EF}
+body[data-vertical="docs"] th{background:#F3F6FB;color:#51607E}
+body[data-vertical="docs"] tr:hover td{background:#FBFCFE}
+body[data-vertical="docs"] .btn.peq:not(.btn-ghost){background:var(--dx-navy-2)}
+body[data-vertical="docs"] .chip{background:#F3F6FB}
+
+@media(max-width:860px){
+  body[data-vertical="docs"] .vx-nav{background:#0F1F3D}
+}
+
+/* =====================================================================
+   CORES (v3): estrutura marinho + ouro, e COR POR CATEGORIA de documento.
+   Cada categoria tem uma cor fixa em todo o produto (filtro, tabela, Triagem, maquete da landing),
+   então o olho aprende: verde = nota fiscal, azul = contrato, âmbar = fatura, violeta = extrato...
+   ===================================================================== */
+body[data-vertical="docs"]{
+  --cat-nota_fiscal:#0F7B5F;      --cat-nota_fiscal-s:#E2F5EE;
+  --cat-contrato:#2563EB;         --cat-contrato-s:#E6EEFF;
+  --cat-fatura:#C2570C;           --cat-fatura-s:#FDEBDD;
+  --cat-extrato_bancario:#6D3AD6; --cat-extrato_bancario-s:#EEE8FD;
+  --cat-recibo:#0E7490;           --cat-recibo-s:#DDF3F8;
+  --cat-financeiro:#B4235F;       --cat-financeiro-s:#FCE4EE;
+  --cat-outro:#475569;            --cat-outro-s:#EEF2F7;
+}
+/* corrige o menu da landing: link azul vencia a cor clara */
+body[data-vertical="docs"] .dx-nav a{color:#C9D4E8}
+body[data-vertical="docs"] .dx-nav a:hover{color:#fff;text-decoration:none}
+body[data-vertical="docs"] .dx-link{color:#fff!important}
+
+/* ---------- pílula de categoria (usada no painel) ---------- */
+.dx-cat{--c:var(--cat-outro);--s:var(--cat-outro-s);display:inline-flex;align-items:center;gap:6px;padding:2px 10px 2px 8px;border-radius:99px;background:var(--s);color:var(--c);font-size:12px;font-weight:600;border:1px solid color-mix(in srgb,var(--c) 22%,transparent);white-space:nowrap}
+.dx-cat::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+.dx-cat-nota_fiscal{--c:var(--cat-nota_fiscal);--s:var(--cat-nota_fiscal-s)}
+.dx-cat-contrato{--c:var(--cat-contrato);--s:var(--cat-contrato-s)}
+.dx-cat-fatura{--c:var(--cat-fatura);--s:var(--cat-fatura-s)}
+.dx-cat-extrato_bancario{--c:var(--cat-extrato_bancario);--s:var(--cat-extrato_bancario-s)}
+.dx-cat-recibo{--c:var(--cat-recibo);--s:var(--cat-recibo-s)}
+.dx-cat-financeiro{--c:var(--cat-financeiro);--s:var(--cat-financeiro-s)}
+/* botão de filtro por categoria: ponto colorido e, quando ativo, fundo na cor */
+body[data-vertical="docs"] .btn.dx-catbtn{--c:var(--cat-outro);--s:var(--cat-outro-s);gap:7px}
+body[data-vertical="docs"] .btn.dx-catbtn::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c);flex:0 0 auto}
+body[data-vertical="docs"] .btn.dx-catbtn.btn-ghost{background:var(--s);border-color:color-mix(in srgb,var(--c) 28%,transparent);color:var(--c)!important}
+body[data-vertical="docs"] .btn.dx-catbtn.btn-ghost:hover{background:#fff;border-color:var(--c)}
+body[data-vertical="docs"] .btn.dx-catbtn:not(.btn-ghost){background:var(--c);border-color:var(--c);color:#fff!important}
+body[data-vertical="docs"] .btn.dx-catbtn:not(.btn-ghost)::before{background:#fff}
+body[data-vertical="docs"] .btn.dx-catbtn.todos{--c:var(--dx-navy-2);--s:#fff}
+
+/* ---------- landing: ícones coloridos, um tom por cartão ---------- */
+.dx-grid>.dx-feat:nth-child(6n+1) .dx-ico{background:#E6EEFF;border-color:#C9DAFB;color:#2563EB}
+.dx-grid>.dx-feat:nth-child(6n+2) .dx-ico{background:#EEE8FD;border-color:#D9CCF8;color:#6D3AD6}
+.dx-grid>.dx-feat:nth-child(6n+3) .dx-ico{background:#E2F5EE;border-color:#BFE6D7;color:#0F7B5F}
+.dx-grid>.dx-feat:nth-child(6n+4) .dx-ico{background:#FDEBDD;border-color:#F6D2B5;color:#C2570C}
+.dx-grid>.dx-feat:nth-child(6n+5) .dx-ico{background:#DDF3F8;border-color:#B8E3EE;color:#0E7490}
+.dx-grid>.dx-feat:nth-child(6n+6) .dx-ico{background:#FCE4EE;border-color:#F6C5D8;color:#B4235F}
+.dx-grid>.dx-feat:nth-child(6n+1):hover{border-color:#2563EB}.dx-grid>.dx-feat:nth-child(6n+2):hover{border-color:#6D3AD6}
+.dx-grid>.dx-feat:nth-child(6n+3):hover{border-color:#0F7B5F}.dx-grid>.dx-feat:nth-child(6n+4):hover{border-color:#C2570C}
+.dx-grid>.dx-feat:nth-child(6n+5):hover{border-color:#0E7490}.dx-grid>.dx-feat:nth-child(6n+6):hover{border-color:#B4235F}
+/* faixa de confiança: um tom por item */
+.dx-trust .dx-wrap>div:nth-child(1) .dx-i{color:#0F7B5F}.dx-trust .dx-wrap>div:nth-child(2) .dx-i{color:#2563EB}
+.dx-trust .dx-wrap>div:nth-child(3) .dx-i{color:#C2570C}.dx-trust .dx-wrap>div:nth-child(4) .dx-i{color:#6D3AD6}
+/* maquete do produto: cada documento na cor da sua categoria */
+.dx-win-row:nth-of-type(1) .dx-i,.dx-win-row:nth-of-type(1) .dx-win-tag{color:#0F7B5F}.dx-win-row:nth-of-type(1) .dx-win-tag{background:#E2F5EE}
+.dx-win-row:nth-of-type(2) .dx-i,.dx-win-row:nth-of-type(2) .dx-win-tag{color:#2563EB}.dx-win-row:nth-of-type(2) .dx-win-tag{background:#E6EEFF}
+.dx-win-row:nth-of-type(3) .dx-i,.dx-win-row:nth-of-type(3) .dx-win-tag{color:#C2570C}.dx-win-row:nth-of-type(3) .dx-win-tag{background:#FDEBDD}
+.dx-win-row:nth-of-type(4) .dx-i,.dx-win-row:nth-of-type(4) .dx-win-tag{color:#6D3AD6}.dx-win-row:nth-of-type(4) .dx-win-tag{background:#EEE8FD}
+.dx-win-chips span:nth-child(2){color:#0F7B5F;border-color:#BFE6D7;background:#E2F5EE}
+.dx-win-chips span:nth-child(3){color:#2563EB;border-color:#C9DAFB;background:#E6EEFF}
+.dx-win-chips span:nth-child(4){color:#C2570C;border-color:#F6D2B5;background:#FDEBDD}
+.dx-win-chips span:nth-child(5){color:#6D3AD6;border-color:#D9CCF8;background:#EEE8FD}
+/* passos e blocos de problema/solução ganham faixa de cor no topo */
+.dx-step:nth-child(1){border-top:3px solid #2563EB}.dx-step:nth-child(2){border-top:3px solid #C9A227}.dx-step:nth-child(3){border-top:3px solid #0F7B5F}
+.dx-vs.bad{border-top:3px solid #CBD5E1}.dx-vs.good{border-top:3px solid #0F7B5F}
+
+/* ---------- painel: KPIs e cartões com cor ---------- */
+body[data-vertical="docs"] .kpis .kpi:nth-child(1){border-top-color:#2563EB}
+body[data-vertical="docs"] .kpis .kpi:nth-child(2){border-top-color:#0F7B5F}
+body[data-vertical="docs"] .kpis .kpi:nth-child(3){border-top-color:#6D3AD6}
+body[data-vertical="docs"] .kpis .kpi:nth-child(4){border-top-color:#C2570C}
+body[data-vertical="docs"] .kpis .kpi:nth-child(5){border-top-color:#0E7490}
+body[data-vertical="docs"] .kpis .kpi:nth-child(6){border-top-color:#B4235F}
+body[data-vertical="docs"] .btn.dx-catbtn.dx-cat-nota_fiscal{--c:var(--cat-nota_fiscal);--s:var(--cat-nota_fiscal-s)}
+body[data-vertical="docs"] .btn.dx-catbtn.dx-cat-contrato{--c:var(--cat-contrato);--s:var(--cat-contrato-s)}
+body[data-vertical="docs"] .btn.dx-catbtn.dx-cat-fatura{--c:var(--cat-fatura);--s:var(--cat-fatura-s)}
+body[data-vertical="docs"] .btn.dx-catbtn.dx-cat-extrato_bancario{--c:var(--cat-extrato_bancario);--s:var(--cat-extrato_bancario-s)}
+body[data-vertical="docs"] .btn.dx-catbtn.dx-cat-recibo{--c:var(--cat-recibo);--s:var(--cat-recibo-s)}
+body[data-vertical="docs"] .btn.dx-catbtn.dx-cat-financeiro{--c:var(--cat-financeiro);--s:var(--cat-financeiro-s)}
