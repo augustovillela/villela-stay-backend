@@ -40,15 +40,26 @@ function montar(app, injected = {}) {
   const { publishKeyOk } = injected;
   if (typeof publishKeyOk === 'function') {
     const entrada = require('./entrada');
-    app.post('/staff/api/vdocs-entrada/whatsapp', express.json({ limit: '30mb' }), (req, res) => {
-      if (!publishKeyOk(req)) return res.status(401).json({ erro: 'chave inválida' });
+    // Anel das últimas chamadas (só metadados: o Make ignora o erro desta rota de propósito, e sem isto uma falha
+    // aqui seria invisível). Lido por GET /vdocs/api/v1/entrada/make.
+    const ring = [];
+    const marca = (o) => { ring.unshift({ em: new Date().toISOString(), ...o }); ring.length = Math.min(ring.length, 30); };
+    entrada.__ringMake = ring;
+    const jsonMake = express.json({ limit: '30mb' });
+    app.post('/staff/api/vdocs-entrada/whatsapp', (req, res, next) => jsonMake(req, res, (err) => {
+      if (err) { marca({ resultado: 'corpo inválido', erro: err.message, bytes: Number(req.headers['content-length']) || 0 }); return res.status(400).json({ erro: 'corpo inválido' }); }
+      next();
+    }), (req, res) => {
+      if (!publishKeyOk(req)) { marca({ resultado: 'chave inválida' }); return res.status(401).json({ erro: 'chave inválida' }); }
+      const corpo = req.body || {};
+      const meta = { origem: String(corpo.origem_id || '').slice(0, 40), mime: String(corpo.mime || '').slice(0, 40), b64: String(corpo.conteudo_base64 || '').length, telefone: String(corpo.telefone || '').slice(0, 20) };
       try {
-        const corpo = req.body || {};
         const tenantId = entrada.tenantDoCanal('whatsapp', corpo.identificador);
-        if (!tenantId) return res.json({ ok: true, status: 'ignorado', motivo: 'número não cadastrado (ou cadastrado em mais de uma empresa)' });
+        if (!tenantId) { marca({ ...meta, resultado: 'ignorado: número não cadastrado/ambíguo', identificador: String(corpo.identificador || '').slice(0, 20) }); return res.json({ ok: true, status: 'ignorado', motivo: 'número não cadastrado (ou cadastrado em mais de uma empresa)' }); }
         const r = entrada.receber(tenantId, { ...corpo, tipo: 'whatsapp' }, { id: 'make', nome: 'WhatsApp Business (Make)' }, 'make');
+        marca({ ...meta, tenant: tenantId, resultado: r.status, motivo: r.motivo || '' });
         res.json({ ok: true, ...r });
-      } catch (e) { res.status(400).json({ erro: e.message }); }
+      } catch (e) { marca({ ...meta, resultado: 'erro', erro: e.message }); res.status(400).json({ erro: e.message }); }
     });
   }
   console.log('[vdocs] Villela Docs Intelligence montado (Fases 1-6: fundação, documentos, processamento, busca, IA e workflows).');
