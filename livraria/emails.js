@@ -136,6 +136,18 @@ const T = {
     const corpo = `<p>Olá, <strong>${esc(primeiroNome(nome))}</strong>!</p><p>${esc(mensagem)}</p>`;
     return { assunto: 'Villela Stay — Suporte', html: wrap('Suporte', corpo), texto: `Olá, ${primeiroNome(nome)}! ${mensagem} — Villela Stay` };
   },
+  // 9) Código de acesso da conta do leitor (cadastro, entrar, senha, troca de e-mail)
+  codigoAcesso({ nome, codigo, finalidade, minutos }) {
+    const motivo = { cadastro: 'confirmar o seu cadastro', entrar: 'entrar na sua conta', senha: 'criar uma nova senha', email: 'confirmar o novo e-mail da conta', excluir: 'confirmar a exclusão da conta' }[finalidade] || 'continuar';
+    const corpo = `<p>Olá, <strong>${esc(primeiroNome(nome))}</strong>! Use este código para ${motivo}:</p>
+      <p style="font-size:34px;letter-spacing:8px;font-weight:bold;color:#1B2A4A;margin:18px 0;font-family:'Courier New',monospace">${esc(codigo)}</p>
+      <p style="font-size:13px;color:#5a6b72">O código vale por ${minutos} minutos e só pode ser usado uma vez. Se não foi você quem pediu, ignore este e-mail — a sua conta continua segura e ninguém entra sem o código.</p>`;
+    return {
+      assunto: `${codigo} é o seu código — Livraria Villela`,
+      html: wrap('Código de acesso', corpo),
+      texto: `Seu código da Livraria Villela: ${codigo} (vale ${minutos} min).`,
+    };
+  },
 };
 
 module.exports = T;

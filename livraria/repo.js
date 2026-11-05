@@ -153,9 +153,13 @@ const Assets = {
 };
 
 // ============================================================ CUSTOMERS
+// A conta do leitor guarda o hash da senha em customers.senha_hash. Este módulo
+// é o que o Portal Staff e os e-mails consomem, então NUNCA devolve a coluna:
+// só livraria/conta.js lê o hash, por consulta própria.
+const CUSTOMER_COLS = 'id,nome,email,whatsapp,doc,pais,estado,cidade,endereco,observacoes,consentimentos,created_at,updated_at,email_verificado,conta_criada_em,ultimo_login,excluido_em';
 const Customers = {
-  obter(id) { return db.prepare('SELECT * FROM customers WHERE id = ?').get(id); },
-  porEmail(email) { return db.prepare('SELECT * FROM customers WHERE email = ? ORDER BY created_at LIMIT 1').get(String(email || '').toLowerCase()); },
+  obter(id) { return db.prepare(`SELECT ${CUSTOMER_COLS} FROM customers WHERE id = ?`).get(id); },
+  porEmail(email) { return db.prepare(`SELECT ${CUSTOMER_COLS} FROM customers WHERE email = ? ORDER BY created_at LIMIT 1`).get(String(email || '').toLowerCase()); },
   // Upsert por e-mail (comprador volta com mesmo e-mail = mesmo cadastro).
   upsert(d) {
     const email = String(d.email || '').toLowerCase().trim();
@@ -163,8 +167,13 @@ const Customers = {
     const t = nowISO();
     if (existe) {
       const set = { updated_at: t };
-      for (const c of ['nome', 'whatsapp', 'doc', 'pais', 'estado', 'cidade', 'observacoes']) if (d[c] != null && d[c] !== '') set[c] = String(d[c]);
-      if (d.endereco) set.endereco = j.str(d.endereco);
+      // Conta com e-mail verificado: quem compra como visitante com esse e-mail NÃO sobrescreve
+      // o perfil do dono (qualquer um pode digitar o e-mail de outra pessoa no checkout). O
+      // pedido já leva o endereço de entrega próprio; o perfil só muda por "Minha conta".
+      if (!existe.email_verificado) {
+        for (const c of ['nome', 'whatsapp', 'doc', 'pais', 'estado', 'cidade', 'observacoes']) if (d[c] != null && d[c] !== '') set[c] = String(d[c]);
+        if (d.endereco) set.endereco = j.str(d.endereco);
+      }
       if (d.consentimentos) set.consentimentos = j.str(Object.assign(j.parse(existe.consentimentos, {}), d.consentimentos));
       const cols = Object.keys(set);
       db.prepare(`UPDATE customers SET ${cols.map(c => `${c}=@${c}`).join(', ')} WHERE id=@id`).run({ ...set, id: existe.id });
@@ -190,9 +199,9 @@ const Customers = {
   listar(q) {
     if (q && q.trim()) {
       const like = '%' + q.trim().toLowerCase() + '%';
-      return db.prepare('SELECT * FROM customers WHERE lower(nome) LIKE ? OR lower(email) LIKE ? OR whatsapp LIKE ? ORDER BY created_at DESC LIMIT 200').all(like, like, like);
+      return db.prepare(`SELECT ${CUSTOMER_COLS} FROM customers WHERE lower(nome) LIKE ? OR lower(email) LIKE ? OR whatsapp LIKE ? ORDER BY created_at DESC LIMIT 200`).all(like, like, like);
     }
-    return db.prepare('SELECT * FROM customers ORDER BY created_at DESC LIMIT 200').all();
+    return db.prepare(`SELECT ${CUSTOMER_COLS} FROM customers ORDER BY created_at DESC LIMIT 200`).all();
   },
   comprasDe(customerId) {
     return db.prepare('SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC').all(customerId);

@@ -45,7 +45,7 @@ app.use(express.json({ limit: '4mb' }));
 require('./index').montar(app, {
   express, requireAuth, requireAdmin,
   lerUsuarios: () => [], salvarUsuarios: () => {},
-  enviarEmail: async (to, ass) => { emailsEnviados.push({ to, ass }); return true; },
+  enviarEmail: async (to, ass, html) => { emailsEnviados.push({ to, ass, html }); return true; },
   alertaAugusto: async () => {},
 });
 
@@ -315,6 +315,254 @@ const pedidoNovo = (book) => repo.Orders.criar({
     for (const p of ['/livros', '/termos-de-uso', '/politica-de-privacidade', '/politica-de-compra-e-entrega']) {
       assert.strictEqual((await req('GET', p)).status, 200, p + ' não respondeu');
     }
+  });
+
+  // =====================================================================
+  // CONTA DO LEITOR — só código por e-mail (sem senha), painel, LGPD
+  // =====================================================================
+  console.log('\nconta do leitor');
+  const { db: dbTeste } = require('./db');
+  // cliente HTTP com jar de cookie (cada "navegador" é um jar)
+  function navegador() {
+    const jar = {};
+    return async function (metodo, caminho, corpo) {
+      const headers = { 'Content-Type': 'application/json' };
+      const ck = Object.entries(jar).map(([k, v]) => k + '=' + v).join('; ');
+      if (ck) headers.Cookie = ck;
+      const r = await fetch(BASE + caminho, { method: metodo, headers, body: corpo ? JSON.stringify(corpo) : undefined, redirect: 'manual' });
+      for (const c of (r.headers.getSetCookie ? r.headers.getSetCookie() : [])) {
+        const [par] = c.split(';'); const i = par.indexOf('=');
+        const nome = par.slice(0, i), valor = par.slice(i + 1);
+        if (!valor || /expires=Thu, 01 Jan 1970/i.test(c)) delete jar[nome]; else jar[nome] = valor;
+      }
+      const texto = await r.text(); let json = null; try { json = JSON.parse(texto); } catch (_) {}
+      return { status: r.status, json, texto, headers: r.headers, temCookie: Object.keys(jar).length > 0 };
+    };
+  }
+  const ultimoCodigo = (email) => {
+    const m = [...emailsEnviados].reverse().find((e) => e.to === email && /Código de acesso/.test(e.html || ''));
+    const k = m && /letter-spacing:8px[^>]*>(\d{6})</.exec(m.html);
+    return k ? k[1] : null;
+  };
+  const zerarIntervalo = () => dbTeste.prepare("UPDATE conta_codigos SET criado_em = '2020-01-01T00:00:00.000Z'").run();
+  // entra com código (pede → confere) e devolve o "navegador" já logado
+  async function entrar(email) {
+    zerarIntervalo();
+    const n = navegador();
+    await n('POST', C + '/codigo', { email });
+    const r = await n('POST', C + '/entrar-codigo', { email, codigo: ultimoCodigo(email) });
+    assert.strictEqual(r.status, 200, 'entrar: ' + r.texto);
+    return n;
+  }
+  const C = '/livraria/api/conta';
+
+  // comprador que JÁ existe como visitante (sem conta), com um pedido pago
+  const livroC = semearLivro('Livro da Conta');
+  const emailA = 'leitora.a@exemplo.test';
+  const pedA = repo.Orders.criar({ customer: { ...CLIENTE, nome: 'Leitora A', email: emailA }, items: [{ book_id: livroC.id, tipo: 'pdf', quantidade: 1 }], origem: 'teste', endereco_entrega: CLIENTE.endereco });
+  await fluxo.confirmarPagamento(pedA.id, { provider_payment_id: 'mp-conta-a', valor: PRECO_PDF, raw: { payer: 'dado-pessoal' } });
+
+  await testeAsync('criar conta recusa nome curto, e-mail inválido e falta de aceite', async () => {
+    const n = navegador();
+    assert.strictEqual((await n('POST', C + '/cadastro', { nome: 'A', email: emailA, aceite: true })).status, 400);
+    assert.strictEqual((await n('POST', C + '/cadastro', { nome: 'Leitora A', email: 'sem-arroba', aceite: true })).status, 400);
+    assert.strictEqual((await n('POST', C + '/cadastro', { nome: 'Leitora A', email: emailA, aceite: false })).status, 400);
+  });
+
+  await testeAsync('SEM o código nada se abre: nem sessão, nem pedidos (e-mail alheio)', async () => {
+    const n = navegador();
+    assert.strictEqual((await n('POST', C + '/cadastro', { nome: 'Intrusa', email: emailA, aceite: true })).status, 200);
+    assert.ok(ultimoCodigo(emailA), 'o código tem de ir para o e-mail');
+    assert.strictEqual((await n('GET', C + '/eu')).status, 401);
+    assert.strictEqual((await n('POST', C + '/entrar-codigo', { email: emailA, codigo: '123456' })).status, 400);
+    assert.strictEqual(dbTeste.prepare('SELECT email_verificado v FROM customers WHERE email = ?').get(emailA).v, 0, 'e-mail só fica verificado com o código');
+  });
+
+  await testeAsync('código errado é recusado e, após 5 erros, o código se perde', async () => {
+    const n = navegador();
+    const certo = ultimoCodigo(emailA);
+    const errado = certo === '000000' ? '111111' : '000000';
+    for (let i = 0; i < 5; i++) assert.strictEqual((await n('POST', C + '/cadastro/confirmar', { email: emailA, codigo: errado })).status, 400);
+    assert.strictEqual((await n('POST', C + '/cadastro/confirmar', { email: emailA, codigo: certo })).status, 400, 'após 5 erros nem o código certo vale');
+  });
+
+  const A = navegador();
+  await testeAsync('criar conta → código → sessão aberta, e o pedido do visitante aparece', async () => {
+    zerarIntervalo();
+    assert.strictEqual((await A('POST', C + '/cadastro', { nome: 'Leitora A', email: emailA, aceite: true, marketing: true })).status, 200);
+    const r = await A('POST', C + '/cadastro/confirmar', { email: emailA, codigo: ultimoCodigo(emailA) });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert.ok(r.temCookie, 'tem de abrir sessão');
+    assert.ok(/HttpOnly/i.test((r.headers.getSetCookie() || []).join(';')), 'cookie de sessão precisa ser HttpOnly');
+    const eu = await A('GET', C + '/eu');
+    assert.strictEqual(eu.status, 200);
+    assert.strictEqual(eu.json.perfil.email, emailA);
+    assert.strictEqual(eu.json.perfil.nome, 'Leitora A', 'quem já era cliente mantém o nome');
+    assert.strictEqual(eu.json.perfil.marketing, true);
+    assert.strictEqual(eu.json.pedidos.length, 1, 'o pedido feito como visitante aparece na conta');
+    assert.ok(eu.json.pedidos[0].itens[0].download, 'pedido pago mostra o link de download');
+    assert.ok(!/senha|\$2[aby]\$/i.test(eu.texto), 'nada de senha ou hash na resposta');
+  });
+
+  await testeAsync('o mesmo código não serve duas vezes', async () => {
+    assert.strictEqual((await navegador()('POST', C + '/cadastro/confirmar', { email: emailA, codigo: ultimoCodigo(emailA) })).status, 400);
+  });
+
+  await testeAsync('entrar: pedir o código não revela quem tem conta; com o código entra', async () => {
+    const n = navegador();
+    const antes = emailsEnviados.length;
+    const fantasma = await n('POST', C + '/codigo', { email: 'fantasma@exemplo.test' });
+    assert.strictEqual(fantasma.status, 200);
+    assert.strictEqual(emailsEnviados.length, antes, 'e-mail desconhecido não recebe nada');
+    zerarIntervalo();
+    const real = await n('POST', C + '/codigo', { email: emailA });
+    assert.strictEqual(real.json.mensagem, fantasma.json.mensagem, 'mesma resposta nos dois casos');
+    const r = await n('POST', C + '/entrar-codigo', { email: emailA.toUpperCase(), codigo: ultimoCodigo(emailA) });
+    assert.strictEqual(r.status, 200); assert.ok(r.temCookie);
+  });
+
+  await testeAsync('comprador que nunca criou conta entra só com o código do e-mail da compra', async () => {
+    const emailB = 'leitor.b@exemplo.test';
+    const livro = semearLivro('Livro B');
+    repo.Orders.criar({ customer: { ...CLIENTE, nome: 'Leitor B', email: emailB }, items: [{ book_id: livro.id, tipo: 'pdf', quantidade: 1 }], origem: 'teste', endereco_entrega: CLIENTE.endereco });
+    const n = await entrar(emailB);
+    const eu = await n('GET', C + '/eu');
+    assert.strictEqual(eu.json.perfil.email, emailB);
+    assert.strictEqual(eu.json.pedidos.length, 1);
+  });
+
+  await testeAsync('não existe rota de senha: o caminho antigo responde 404', async () => {
+    const n = navegador();
+    for (const rota of ['/entrar', '/senha/trocar', '/senha/redefinir']) {
+      assert.strictEqual((await n('POST', C + rota, { email: emailA, senha: 'x' })).status, 404, rota + ' não deveria existir');
+    }
+  });
+
+  const L = await entrar(emailA);
+
+  await testeAsync('sair de todos os aparelhos derruba as outras sessões e esta', async () => {
+    const outro = await entrar(emailA);
+    const L2 = await entrar(emailA);
+    assert.strictEqual((await outro('GET', C + '/eu')).status, 200);
+    assert.strictEqual((await L2('POST', C + '/sair-todos')).status, 200);
+    assert.strictEqual((await outro('GET', C + '/eu')).status, 401);
+    assert.strictEqual((await L2('GET', C + '/eu')).status, 401);
+    assert.strictEqual((await L('GET', C + '/eu')).status, 401, 'a sessão L também caiu');
+  });
+
+  const L3 = await entrar(emailA);
+
+  await testeAsync('editar dados: nome, endereço e consentimento; CPF inválido recusado', async () => {
+    assert.strictEqual((await L3('PATCH', C + '/eu', { doc: '123' })).status, 400);
+    assert.strictEqual((await L3('PATCH', C + '/eu', { nome: 'A' })).status, 400);
+    const r = await L3('PATCH', C + '/eu', { nome: 'Leitora Atualizada', whatsapp: '61999990000', cidade: 'Brasília', endereco: { cep: '70000-000', logradouro: 'Rua X', numero: '5', bairro: 'Centro', lixo: 'ignorado' }, marketing: false });
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.json.perfil.nome, 'Leitora Atualizada');
+    assert.strictEqual(r.json.perfil.marketing, false);
+    assert.strictEqual(r.json.perfil.endereco.logradouro, 'Rua X');
+    assert.strictEqual(r.json.perfil.endereco.lixo, undefined, 'só os campos conhecidos do endereço');
+  });
+
+  await testeAsync('compra como visitante com o e-mail de uma conta NÃO sobrescreve o perfil', async () => {
+    repo.Customers.upsert({ nome: 'Vândalo', email: emailA, whatsapp: '000', cidade: 'Outra' });
+    const eu = await L3('GET', C + '/eu');
+    assert.strictEqual(eu.json.perfil.nome, 'Leitora Atualizada');
+    assert.strictEqual(eu.json.perfil.cidade, 'Brasília');
+  });
+
+  await testeAsync('trocar o e-mail: código no e-mail NOVO, aviso no ANTIGO, outros aparelhos saem', async () => {
+    const novo = 'leitora.a.nova@exemplo.test';
+    const outro = await entrar(emailA);
+    zerarIntervalo();
+    assert.strictEqual((await L3('POST', C + '/email/pedir', { novo_email: 'sem-arroba' })).status, 400);
+    assert.strictEqual((await L3('POST', C + '/email/pedir', { novo_email: novo })).status, 200);
+    const cod = ultimoCodigo(novo);
+    assert.ok(cod, 'código enviado ao e-mail NOVO');
+    assert.strictEqual((await navegador()('POST', C + '/email/confirmar', { novo_email: novo, codigo: cod })).status, 401, 'outra pessoa não confirma');
+    assert.strictEqual((await L3('POST', C + '/email/confirmar', { novo_email: novo, codigo: cod })).status, 200);
+    assert.strictEqual((await L3('GET', C + '/eu')).json.perfil.email, novo);
+    assert.strictEqual((await outro('GET', C + '/eu')).status, 401, 'outros aparelhos saem');
+    assert.ok(emailsEnviados.some((e) => e.to === emailA && /foi alterado/.test(e.ass)), 'o e-mail antigo é avisado');
+    assert.ok(await entrar(novo), 'entra com o e-mail novo');
+  });
+
+  await testeAsync('novo link: gera se venceu; não gera de pedido alheio, de pedido bloqueado, nem se já há um válido', async () => {
+    const eu0 = await L3('GET', C + '/eu');
+    const pid = eu0.json.pedidos[0].id;
+    assert.strictEqual((await L3('POST', C + '/pedidos/' + pid + '/novo-link')).json.gerados, 0, 'já existe link válido');
+    dbTeste.prepare("UPDATE download_tokens SET expires_at = '2020-01-01T00:00:00.000Z' WHERE order_id = ?").run(pid);
+    const eu1 = await L3('GET', C + '/eu');
+    assert.ok(eu1.json.pedidos[0].itens[0].novo_link, 'painel oferece gerar novo link');
+    const r = await L3('POST', C + '/pedidos/' + pid + '/novo-link');
+    assert.strictEqual(r.json.gerados, 1);
+    assert.ok(r.json.pedidos[0].itens[0].download, 'volta com link válido');
+    const livro = semearLivro('Alheio');
+    const alheio = repo.Orders.criar({ customer: { ...CLIENTE, nome: 'Outro', email: 'outro@exemplo.test' }, items: [{ book_id: livro.id, tipo: 'pdf', quantidade: 1 }], origem: 'teste', endereco_entrega: CLIENTE.endereco });
+    assert.strictEqual((await L3('POST', C + '/pedidos/' + alheio.id + '/novo-link')).status, 404);
+    repo.Tokens.bloquearOrder(pid, false);
+    dbTeste.prepare("UPDATE download_tokens SET expires_at = '2020-01-01T00:00:00.000Z' WHERE order_id = ?").run(pid);
+    assert.strictEqual((await L3('POST', C + '/pedidos/' + pid + '/novo-link')).status, 409);
+    repo.Tokens.bloquearOrder(pid, true);
+  });
+
+  await testeAsync('LGPD: exportação traz os dados e nunca segredo', async () => {
+    const r = await L3('GET', C + '/dados');
+    assert.strictEqual(r.status, 200);
+    assert.ok(/attachment/.test(r.headers.get('content-disposition')));
+    assert.ok(r.json.cadastro.email && r.json.pedidos.length === 1);
+    assert.ok(!/senha_hash|\$2[aby]\$/.test(r.texto));
+  });
+
+  await testeAsync('o Portal Staff não recebe a coluna de senha', async () => {
+    const r = await req('GET', '/staff/api/livraria/clientes');
+    assert.strictEqual(r.status, 200);
+    assert.ok(r.json.clientes.length > 0);
+    assert.ok(!/senha_hash/.test(r.texto), 'lista de clientes vazou a coluna');
+  });
+
+  await testeAsync('escrita só aceita JSON da própria origem (defesa de CSRF)', async () => {
+    const r1 = await fetch(BASE + C + '/sair', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: '{}' });
+    assert.strictEqual(r1.status, 415);
+    const r2 = await fetch(BASE + C + '/sair', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://site-malicioso.test' }, body: '{}' });
+    assert.strictEqual(r2.status, 403);
+  });
+
+  await testeAsync('excluir: exige código + EXCLUIR; recusa com impresso em produção; depois anonimiza', async () => {
+    const novoEmail = 'leitora.a.nova@exemplo.test';
+    const X = await entrar(novoEmail);
+    const livroI = semearLivro('Impresso da Conta');
+    dbTeste.prepare('UPDATE books SET preco_impresso = 5000 WHERE id = ?').run(livroI.id);
+    const oImp = repo.Orders.criar({ customer: { ...CLIENTE, nome: 'x', email: novoEmail }, items: [{ book_id: livroI.id, tipo: 'impresso', quantidade: 1 }], origem: 'teste', endereco_entrega: CLIENTE.endereco });
+    await fluxo.confirmarPagamento(oImp.id, { provider_payment_id: 'mp-imp-conta', valor: oImp.valor_total, raw: {} });
+    zerarIntervalo();
+    assert.strictEqual((await X('POST', C + '/excluir/pedir')).status, 200);
+    assert.strictEqual((await X('POST', C + '/excluir', { codigo: ultimoCodigo(novoEmail), confirmacao: 'talvez' })).status, 400, 'exige digitar EXCLUIR');
+    const bloqueio = await X('POST', C + '/excluir', { codigo: ultimoCodigo(novoEmail), confirmacao: 'EXCLUIR' });
+    assert.strictEqual(bloqueio.status, 409, 'impresso em produção impede: ' + bloqueio.texto);
+    assert.strictEqual((await X('GET', C + '/eu')).status, 200, 'a conta continua');
+    // impresso entregue → pode excluir (o código do pedido anterior ainda vale: o impedimento é conferido antes dele)
+    dbTeste.prepare("UPDATE print_jobs SET status = 'entregue'").run();
+    const ok = await X('POST', C + '/excluir', { codigo: ultimoCodigo(novoEmail), confirmacao: 'excluir' });
+    assert.strictEqual(ok.status, 200, ok.texto);
+    assert.strictEqual((await X('GET', C + '/eu')).status, 401, 'sessão encerrada');
+    zerarIntervalo();
+    const depois = navegador();
+    const antes = emailsEnviados.length;
+    await depois('POST', C + '/codigo', { email: novoEmail });
+    assert.strictEqual(emailsEnviados.length, antes, 'e-mail de conta excluída não recebe mais código');
+    const cli = dbTeste.prepare('SELECT * FROM customers WHERE id = ?').get(oImp.customer_id);
+    assert.ok(cli.excluido_em); assert.strictEqual(cli.nome, 'Conta excluída');
+    assert.ok(!cli.email.includes('exemplo') && cli.whatsapp === '' && cli.doc === '' && cli.senha_hash === null);
+    assert.strictEqual(dbTeste.prepare('SELECT COUNT(*) n FROM orders WHERE customer_id = ?').get(cli.id).n >= 2, true, 'os pedidos pagos permanecem');
+    assert.strictEqual(dbTeste.prepare('SELECT endereco_entrega FROM orders WHERE id = ?').get(oImp.id).endereco_entrega, '{}', 'endereço de entrega apagado');
+    assert.strictEqual(dbTeste.prepare('SELECT COUNT(*) n FROM download_tokens WHERE ativo = 1 AND order_id IN (SELECT id FROM orders WHERE customer_id = ?)').get(cli.id).n, 0, 'links desativados');
+  });
+
+  await testeAsync('/minha-conta responde, é noindex e a conta aparece no menu da loja', async () => {
+    const p = await fetch(BASE + '/minha-conta'); const t = await p.text();
+    assert.strictEqual(p.status, 200); assert.ok(/noindex/.test(t));
+    assert.strictEqual((await fetch(BASE + '/minha-conta/app.js')).status, 200);
+    assert.ok(/href="\/minha-conta"/.test(await (await fetch(BASE + '/livros')).text()));
   });
 
   console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);

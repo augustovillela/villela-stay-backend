@@ -244,7 +244,7 @@ ${schema ? `<script type="application/ld+json">${jsonEmScript(schema)}</script>`
 </head><body class="vx" data-vertical="livraria">
 <header class="top"><div class="wrap">
   <a class="brand" href="/livros"><img src="/assets/brand/livraria-villela/logo-negativo.svg" alt="Livraria Villela" style="height:150px"><span><span class="lv">Livraria</span> <b>Villela</b></span></a>
-  <nav class="nav"><a href="/livros">Livros</a><a href="/livros/atualizacoes">Atualizações</a><a href="/minha-biblioteca">Minha biblioteca</a><a href="${SITE_PRINCIPAL}">Villela Stay</a></nav>
+  <nav class="nav"><a href="/livros">Livros</a><a href="/livros/atualizacoes">Atualizações</a><a href="/minha-biblioteca">Minha biblioteca</a><a href="/minha-conta">Minha conta</a><a href="${SITE_PRINCIPAL}">Villela Stay</a></nav>
 </div></header>
 ${body}
 <div class="wrap" style="text-align:center;padding:26px 20px 6px;color:var(--suave);font-size:14px">
@@ -257,6 +257,7 @@ ${body}
     <a href="/politica-de-compra-e-entrega">Compra e entrega</a> · <a href="/politica-de-reembolso">Reembolso</a><br>
     <a href="/politica-de-livro-impresso">Livro impresso</a> · <a href="/suporte-livros">Suporte</a><br>
     <a href="/livros/ajuda">Manual e perguntas frequentes</a><br>
+    <a href="/minha-conta">Minha conta</a><br>
     <a href="/livros/atualizacoes">Atualizações dos livros</a></div>
   <div><a class="btn-wa btn" href="${waLink()}">Falar no WhatsApp</a></div>
 </div></div></footer>
@@ -681,7 +682,8 @@ function biblioteca(order, tokensPorLivro) {
   if (!order) {
     body = `<section><div class="wrap-sm">
       <h1>Minha biblioteca</h1>
-      <p class="muted">Informe o e-mail da compra para receber o acesso aos seus livros por e-mail.</p>
+      <p style="margin:0 0 14px">Tem uma conta? <a href="/minha-conta"><strong>Entre em Minha conta</strong></a> para ver todos os seus pedidos e gerar novos links de download.</p>
+      <p class="muted">Ou informe o e-mail da compra para receber o acesso aos seus livros por e-mail.</p>
       <form onsubmit="return pedir(event)">
         <div class="campo"><label>E-mail da compra</label><input id="email" type="email" required></div>
         <button class="btn btn-ouro" type="submit">Receber meus livros por e-mail</button>

@@ -248,3 +248,33 @@ CREATE TABLE IF NOT EXISTS notification_logs (
   created_at  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_notif_order ON notification_logs(order_id);
+
+-- ------------------------------------------------------ conta do leitor (05/11/2026)
+-- Sessão opaca: o cookie leva o token, o banco guarda só o SHA-256 dele.
+CREATE TABLE IF NOT EXISTS conta_sessoes (
+  id           TEXT PRIMARY KEY,            -- sha256 do token do cookie
+  customer_id  TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  criada_em    TEXT NOT NULL,
+  expira_em    TEXT NOT NULL,
+  revogada     INTEGER NOT NULL DEFAULT 0,
+  ip           TEXT DEFAULT '',
+  user_agent   TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_conta_sess_cli ON conta_sessoes(customer_id);
+
+-- Código de 6 dígitos enviado por e-mail (cadastro, entrada, senha, troca de e-mail).
+-- Guarda só o hash; `dados` leva o que espera confirmação (ex.: hash da senha nova).
+CREATE TABLE IF NOT EXISTS conta_codigos (
+  id           TEXT PRIMARY KEY,
+  email        TEXT NOT NULL,
+  finalidade   TEXT NOT NULL,               -- cadastro|entrar|senha|email
+  customer_id  TEXT,
+  codigo_hash  TEXT NOT NULL,
+  dados        TEXT DEFAULT '{}',
+  tentativas   INTEGER NOT NULL DEFAULT 0,
+  usado        INTEGER NOT NULL DEFAULT 0,
+  expira_em    TEXT NOT NULL,
+  criado_em    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_conta_cod_email ON conta_codigos(email, finalidade);
+

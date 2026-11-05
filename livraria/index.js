@@ -80,6 +80,7 @@ function montar(app, injected = {}) {
   };
 
   registrarRotasPublicas(app, deps);
+  require('./conta').registrarConta(app, deps);
   registrarRotasStaff(app, deps);
   console.log('[livraria] módulo montado (loja pública + Portal Staff). Loja:', SITE);
   return { repo, fluxo, pagamentos };

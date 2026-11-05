@@ -39,7 +39,7 @@ const paginas = {
     <h3>3. Base legal</h3><p>Execução de contrato (art. 7º, V), cumprimento de obrigação legal e, para marketing, consentimento (art. 7º, I).</p>
     <h3>4. Compartilhamento</h3><p>Compartilhamos o mínimo necessário com o provedor de pagamento (Mercado Pago) e serviços de envio/e-mail. Não vendemos dados.</p>
     <h3>5. Segurança</h3><p>Dados sensíveis (CPF) ficam em servidor com acesso restrito; PDFs nunca são públicos; acessos são auditados.</p>
-    <h3>6. Direitos do titular</h3><p>Você pode acessar, corrigir, portar ou excluir seus dados, e revogar consentimento, escrevendo para <a href="mailto:${CONTATO}">${CONTATO}</a>.</p>
+    <h3>6. Direitos do titular</h3><p>Com uma conta em <a href="/minha-conta">Minha conta</a> você mesmo corrige seus dados, baixa uma cópia deles, revoga o consentimento de marketing e exclui a conta (excluímos nome, e-mail, telefone, CPF e endereço; guardamos apenas os registros fiscais dos pedidos, sem identificar você, pelo prazo legal). Para qualquer outro pedido, escreva para <a href="mailto:${CONTATO}">${CONTATO}</a>.</p>
     <h3>7. Retenção</h3><p>[⚠ REVISAR] Mantemos os dados pelo prazo legal (fiscal/contábil) e enquanto necessário à relação de consumo.</p>`),
 
   compraEntrega: () => doc('Política de Compra e Entrega Digital', '/politica-de-compra-e-entrega', `

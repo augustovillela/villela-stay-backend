@@ -46,6 +46,17 @@ function coluna(tabela, nome, definicao) {
 // Marca do follow-up pós-compra (pedido de avaliação) — ver livraria/followup.js.
 coluna('orders', 'followup_enviado_em', 'TEXT');
 
+// CONTA DO LEITOR (05/11/2026). O cadastro de `customers` nasceu no checkout, sem
+// senha. Estas colunas só passam a valer quando o dono do e-mail PROVA o e-mail
+// com um código — quem digitou o e-mail de outra pessoa numa compra não herda a conta.
+// Ver livraria/conta.js. `excluido_em` marca a conta anonimizada (LGPD): o cadastro
+// fica como casca porque o pedido pago precisa continuar existindo (obrigação fiscal).
+coluna('customers', 'senha_hash', 'TEXT');
+coluna('customers', 'email_verificado', 'INTEGER NOT NULL DEFAULT 0');
+coluna('customers', 'conta_criada_em', 'TEXT');
+coluna('customers', 'ultimo_login', 'TEXT');
+coluna('customers', 'excluido_em', 'TEXT');
+
 // MODO TESTE (24/08/2026). Pedido com teste=1 percorre o caminho REAL de entrega
 // (gera token, libera o download, serve o PDF, abre print job) mas não notifica
 // ninguém e não conta como venda. A marca fica no PEDIDO, e não na rota que
