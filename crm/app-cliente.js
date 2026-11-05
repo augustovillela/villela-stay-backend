@@ -397,6 +397,8 @@ async function vDash() {
         ${tab('Temperatura dos leads', d.score_faixas.map(f => `<tr><td><span class="chip ${esc(f.faixa)}">${esc(f.faixa)}</span></td><td style="text-align:right">${f.n}</td></tr>`).join(''))}
       </div>`;
     document.querySelectorAll('#tela [data-ir]').forEach(b => { b.onclick = () => navegar(b.dataset.ir); });
+    $('#w-opp').onclick = () => dlgOportunidade();
+    $('#w-contatos').onclick = () => navegar('contatos');
     ligaCaixa();
   } catch (e) { erroTela(e); }
 }
@@ -422,8 +424,6 @@ async function vKanban() {
     const sel = funis.map(f => `<option value="${f.id}" ${f.id === KANBAN_FUNIL ? 'selected' : ''}>${esc(f.nome)}</option>`).join('');
     $('#tela').innerHTML = `
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-    $('#w-opp').onclick = () => dlgOportunidade();
-    $('#w-contatos').onclick = () => navegar('contatos');
         <label style="display:flex;align-items:center;gap:6px">Funil <select id="k-funil" style="width:auto;margin:0">${sel}</select></label>
         <button class="btn peq" id="k-novo">+ Nova oportunidade</button>
         <button class="btn peq secund" id="k-novo-funil">+ Novo funil</button>
