@@ -42,7 +42,10 @@ const app = express();
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 const saas = require('./index');
-saas.montar(app, { express, requireAuth, requireAdmin, enviarEmail, alertaAugusto, mpFetch, jwtSecret: 'seg-teste' });
+// mesma regra do server.js: x-publish-key OU sessão; podeCRM = chave ou admin/vendas
+const requirePublishOrSession = (req, res, next) => { if (req.headers['x-publish-key'] === 'k-teste') { req.viaChave = true; return next(); } return requireAuth(req, res, next); };
+const podeCRM = (req, res, next) => (req.viaChave || (req.user && req.user.papel === 'admin')) ? next() : res.status(403).json({ erro: 'Sem acesso ao CRM (área vendas).' });
+saas.montar(app, { express, requireAuth, requireAdmin, enviarEmail, alertaAugusto, mpFetch, jwtSecret: 'seg-teste', requirePublishOrSession, podeCRM });
 
 let BASE = '', ok = 0, falhas = [];
 const jar = {};
@@ -512,6 +515,45 @@ async function rodar() {
     process.env.CRM_PONTE_SLUG = 'nao-existe';
     assert.equal(ponte.depois([], [{ ...l, id: 'p8', nome: 'Sem tenant' }]), 0, 'espelhou sem a empresa interna');
     delete process.env.CRM_PONTE_SLUG;
+  });
+  await t('rotas das automações (/vcrm/agente): follow-ups, pular, atividade e inbox no formato do legado', async () => {
+    const K = { 'x-publish-key': 'k-teste' }; const D = require('./db').db;
+    const tV = saas.repo.Tenants.porSlug('villela-stay');
+    assert.equal((await req('GET', '/staff/api/vcrm/agente/resumo', { user: 'op' })).st, 403, 'operador sem área vendas entrou');
+    const rs = await req('GET', '/staff/api/vcrm/agente/resumo', { headers: K, user: 'nenhum' });
+    assert.equal(rs.st, 200, 'chave de publicação não passou'); assert.ok(rs.json.tarefas_atrasadas >= 1); assert.ok(rs.json.contatos_legado >= 1);
+    // follow-ups: contato com tarefa vencida, no vocabulário do legado
+    const fu = (await req('GET', '/staff/api/vcrm/agente/followups', { headers: K })).json.followups;
+    const q = fu.find(f => f.nome === 'Legado Quatro');
+    assert.ok(q, 'follow-up vencido não apareceu'); assert.equal(q.estagio, 'novo'); assert.equal(q.proximaAcao.descricao, 'Responder primeiro contato');
+    assert.ok(!fu.some(f => f.estagio === 'perdido'), 'perdido não pode virar follow-up');
+    // detalhe no formato do legado + 404
+    const det = (await req('GET', '/staff/api/vcrm/agente/contatos/' + q.id, { headers: K })).json;
+    assert.equal(det.contato.nome, 'Legado Quatro'); assert.ok(Array.isArray(det.atividades) && det.atividades.length >= 1);
+    assert.equal((await req('GET', '/staff/api/vcrm/agente/contatos/nao-existe', { headers: K })).st, 404);
+    // pular: conclui (não apaga) e cria a nova no futuro
+    const futuro = '2099-02-02';
+    assert.equal((await req('PATCH', '/staff/api/vcrm/agente/contatos/' + q.id, { headers: K, corpo: { proximaAcao: { descricao: 'Follow-up adiado', data: futuro } } })).st, 200);
+    const tk = D.prepare('SELECT titulo, status, vence_em FROM crm_tarefas WHERE tenant_id = ? AND contato_id = ? ORDER BY criado_em').all(tV.id, q.id);
+    assert.ok(tk.some(x => x.titulo === 'Responder primeiro contato' && x.status === 'concluida'), 'a tarefa antiga devia ficar CONCLUÍDA (não apagada)');
+    assert.ok(tk.some(x => x.titulo === 'Follow-up adiado' && x.vence_em === futuro && x.status === 'aberta'));
+    assert.ok(!(await req('GET', '/staff/api/vcrm/agente/followups', { headers: K })).json.followups.some(f => f.id === q.id), 'adiado continua na lista de hoje');
+    assert.equal((await req('PATCH', '/staff/api/vcrm/agente/contatos/' + q.id, { headers: K, corpo: { nome: 'x' } })).st, 400, 'PATCH só aceita proximaAcao');
+    // atividade
+    assert.equal((await req('POST', `/staff/api/vcrm/agente/contatos/${q.id}/atividade`, { headers: K, corpo: { tipo: 'mensagem-enviada', texto: '[follow-up] teste', canal: 'whatsapp-business' } })).st, 200);
+    assert.ok(D.prepare("SELECT 1 FROM crm_atividades WHERE tenant_id = ? AND contato_id = ? AND texto = '[follow-up] teste' AND tipo = 'mensagem-enviada'").get(tV.id, q.id));
+    // inbox: mensagem recebida sem resposta aparece; atendida some (e volta com todas=1)
+    const nova = saas.appRepo.Contatos.criar(tV.id, { nome: 'Inbox Teste', telefone: '5561977770000' }, 't').contato;
+    saas.appRepo.Atividades.registrar(tV.id, { contato_id: nova.id, tipo: 'mensagem-recebida', texto: 'Tem vaga?', canal: 'whatsapp', autor: 'cliente', data: new Date(Date.now() - 5000).toISOString() });
+    const caixa = async (todas) => (await req('GET', '/staff/api/vcrm/agente/inbox?horas=48' + (todas ? '&todas=1' : ''), { headers: K })).json.mensagens;
+    assert.ok((await caixa()).some(m => m.contatoId === nova.id && m.texto === 'Tem vaga?'), 'mensagem não atendida não apareceu');
+    assert.equal((await req('POST', `/staff/api/vcrm/agente/inbox/${nova.id}/atendida`, { headers: K, corpo: { resposta: 'Temos sim!' } })).st, 200);
+    assert.ok(!(await caixa()).some(m => m.contatoId === nova.id), 'continuou na fila depois de atendida');
+    assert.equal((await caixa(true)).find(m => m.contatoId === nova.id).atendida, true);
+    // mensagem NOVA depois da resposta volta para a fila (a velha continua atendida)
+    saas.appRepo.Atividades.registrar(tV.id, { contato_id: nova.id, tipo: 'mensagem-recebida', texto: 'E o preço?', canal: 'whatsapp', autor: 'cliente', data: new Date(Date.now() + 5000).toISOString() });
+    const fila = await caixa();
+    assert.ok(fila.some(m => m.texto === 'E o preço?') && !fila.some(m => m.texto === 'Tem vaga?'));
   });
 
   await t('LGPD: exclusão definitiva remove contato + timeline', async () => {

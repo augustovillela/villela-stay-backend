@@ -18,12 +18,13 @@ const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasCliente } = require('./rotas-cliente');
 const { registrarRotasApp, registrarRotasPublicas } = require('./rotas-app');
 const { registrarPaginas } = require('./paginas');
+const { registrarRotasAgente } = require('./rotas-agente');
 const webhookMP = require('../nucleo/webhook-mp');
 
 let _timer = null;
 
 function montar(app, injected = {}) {
-  const { express, requireAuth, requireAdmin, enviarEmail, alertaAugusto, mpFetch, jwtSecret } = injected;
+  const { express, requireAuth, requireAdmin, enviarEmail, alertaAugusto, mpFetch, jwtSecret, requirePublishOrSession, podeCRM } = injected;
   if (!express || !requireAuth || !requireAdmin || !jwtSecret) {
     throw new Error('crm.montar: faltam deps (express, requireAuth, requireAdmin, jwtSecret).');
   }
@@ -31,6 +32,8 @@ function montar(app, injected = {}) {
   const notificar = (m) => Promise.resolve((alertaAugusto || (async () => {}))(m)).catch(() => {});
   billing.configurar({ mpFetch, notificar });
 
+  // automações (scripts/agentes) sobre a empresa interna — substituto das rotas do CRM legado
+  if (requirePublishOrSession && podeCRM) registrarRotasAgente(app, { requirePublishOrSession, podeCRM });
   registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviarEmail });
   const cliente = registrarRotasCliente(app, { jwtSecret, enviarEmail });
   registrarRotasApp(app, { requireAssinante: cliente.requireAssinante, requirePapel: cliente.requirePapel });
