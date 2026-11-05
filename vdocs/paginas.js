@@ -496,13 +496,13 @@ function marcaHash(t,sub,empurra){
   if(location.hash===novo)return;
   try{history[empurra?'pushState':'replaceState'](null,'',novo);}catch(e){}}
 function subDaTela(t){
-  if(t==='documentos')return S.lixeira?'lixeira':(S.pasta||'');
+  if(t==='documentos')return S.lixeira?'lixeira':((S.pasta||'')+(S.tipoF?'~'+S.tipoF:''));
   if(t==='triagem')return S.triAba&&S.triAba!=='decidir'?S.triAba:'';
   return '';}
 function aplicaSub(t,sub){
   if(t==='documentos'){
     S.docAberto=sub.startsWith('doc:')?sub.slice(4):null; // #documentos/doc:<id> reabre o documento
-    if(!S.docAberto){S.lixeira=sub==='lixeira';S.pasta=sub==='lixeira'?'':sub;}
+    if(!S.docAberto){const [pf,tf]=sub.split('~');S.lixeira=pf==='lixeira';S.pasta=pf==='lixeira'?'':(pf||'');S.tipoF=tf||'';}
   }
   if(t==='triagem'&&['decidir','propaganda','remetentes'].includes(sub))S.triAba=sub;}
 function ir(t,naoMarcar){
@@ -568,16 +568,27 @@ function trilha(){
   while(id){const p=S.pastas.find(x=>x.id===id);if(!p)break;partes.unshift(p);id=p.parent_id;}
   return '<a href="#" onclick="return irPasta(\\'\\')">📁 Documentos</a>'+partes.map(p=>' / <a href="#" onclick="return irPasta(\\''+p.id+'\\')">'+esc(p.nome)+'</a>').join('');
 }
-function irPasta(id){S.pasta=id;S.lixeira=false;vDocs();return false;}
+function irPasta(id){S.pasta=id;S.tipoF='';S.lixeira=false;vDocs();return false;}
+function irTipo(t){S.tipoF=S.tipoF===t?'':t;vDocs();return false;} // clicar na categoria ativa volta a mostrar todas
 async function vDocs(){
   const P=S.me.permissoes;
   if(S.docAberto){const id=S.docAberto;S.docAberto=null;return abrirDoc(id);} // F5 dentro de um documento
   marcaHash('documentos',subDaTela('documentos')); // pasta/lixeira entram na URL
   const filtro=($('dq')&&$('dq').value)||'';
-  const [ps,ds]=await Promise.all([api('GET','/pastas'),api('GET','/documentos?busca='+encodeURIComponent(filtro)+'&'+(S.lixeira?'status=lixeira':'pasta='+encodeURIComponent(S.pasta)))]);
+  const [ps,ds]=await Promise.all([api('GET','/pastas'),api('GET','/documentos?busca='+encodeURIComponent(filtro)+'&'+(S.lixeira?'status=lixeira':'todos=1&limite=500'))]);
   S.pastas=ps.pastas;S.tiposDoc=ds.tipos;
+  // Início = TODOS os documentos (de todas as pastas); pasta e categoria só ESTREITAM a lista
   const sub=S.lixeira?[]:S.pastas.filter(p=>p.parent_id===S.pasta);
-  const docsL=ds.documentos;
+  const desc=id=>[id].concat(S.pastas.filter(p=>p.parent_id===id).flatMap(p=>desc(p.id))); // a pasta e as de dentro dela
+  const idsPasta=new Set(S.pasta?desc(S.pasta):[]);
+  const base=S.lixeira||!S.pasta?ds.documentos:ds.documentos.filter(d=>idsPasta.has(d.folder_id));
+  const porTipo={};base.forEach(d=>{porTipo[d.tipo_documental]=(porTipo[d.tipo_documental]||0)+1;});
+  const docsL=S.tipoF&&!S.lixeira?base.filter(d=>d.tipo_documental===S.tipoF):base;
+  const nPasta=id=>{const ids=desc(id);return ds.documentos.filter(d=>ids.includes(d.folder_id)).length;};
+  const nomePastaDoc=id=>{const p=S.pastas.find(x=>x.id===id);return p?'<span class="chip">📁 '+esc(p.nome)+'</span>':'<span class="sub" style="font-size:12px">sem pasta</span>';};
+  const chipsTipo=S.lixeira?'':'<div class="card" style="margin-top:12px"><div class="sub" style="font-size:12px;margin-bottom:6px">Categorias — clique para filtrar · mostrando <b>'+docsL.length+'</b> de '+base.length+' documento(s)'+(S.pasta?' desta pasta':'')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+
+    '<button class="btn peq'+(S.tipoF?' btn-ghost':'')+'" onclick="irTipo(\\'\\')">Todos ('+base.length+')</button>'+
+    Object.keys(porTipo).sort((a,b)=>porTipo[b]-porTipo[a]).map(t=>'<button class="btn peq'+(S.tipoF===t?'':' btn-ghost')+'" onclick="irTipo(\\''+t+'\\')">'+esc(ROT_TIPO[t]||t)+' ('+porTipo[t]+')</button>').join('')+'</div></div>';
   $('corpo').innerHTML='<h2>'+(S.lixeira?'🗑️ Lixeira':'Documentos')+'</h2>'+
    '<div class="card" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
    (S.pasta||S.lixeira?'<button class="btn peq" title="Voltar à página inicial dos documentos (todas as pastas)" onclick="S.lixeira=false;irPasta(\\'\\')">🏠 Início</button>':'')+
@@ -586,18 +597,18 @@ async function vDocs(){
    (P.criar_pasta&&!S.lixeira?'<button class="btn btn-ghost peq" onclick="novaPasta()">📁 Nova pasta</button>':'')+
    (P.criar_documento&&!S.lixeira?'<button class="btn peq" onclick="$(\\'up-file\\').click()">⬆️ Enviar arquivos</button><input id="up-file" type="file" multiple style="display:none" onchange="enviarArquivos(this.files)">':'')+
    (P.excluir_documento||P.restaurar_documento?'<button class="btn btn-ghost peq" onclick="S.lixeira=!S.lixeira;vDocs()">'+(S.lixeira?'← Voltar aos documentos':'🗑️ Lixeira')+'</button>':'')+
-   '</div><div id="up-out"></div>'+
-   (sub.length?'<div class="card" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">'+sub.map(p=>'<button class="btn btn-ghost peq" onclick="irPasta(\\''+p.id+'\\')">📁 '+esc(p.nome)+'</button>'+(P.excluir_documento?'<button class="btn btn-ghost peq" title="Excluir pasta vazia" onclick="excluirPasta(\\''+p.id+'\\')">✕</button>':'')).join(''):'')+ (sub.length?'</div>':'')+
-   '<div class="card" style="margin-top:12px"><table><tr><th>Documento</th><th>Tipo</th><th>Tags</th><th>Versão</th><th>Atualizado</th><th></th></tr>'+
+   '</div><div id="up-out"></div>'+chipsTipo+
+   (sub.length?'<div class="card" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">'+sub.map(p=>'<button class="btn btn-ghost peq" onclick="irPasta(\\''+p.id+'\\')">📁 '+esc(p.nome)+' ('+nPasta(p.id)+')</button>'+(P.excluir_documento?'<button class="btn btn-ghost peq" title="Excluir pasta vazia" onclick="excluirPasta(\\''+p.id+'\\')">✕</button>':'')).join(''):'')+ (sub.length?'</div>':'')+
+   '<div class="card" style="margin-top:12px"><table><tr><th>Documento</th><th>Categoria</th><th>Pasta</th><th>Tags</th><th>Versão</th><th>Atualizado</th><th></th></tr>'+
    (docsL.length?docsL.map(d=>{
      return '<tr><td><a href="#" onclick="return abrirDoc(\\''+d.id+'\\')">'+esc(d.nome)+'</a>'+
      (d.fora_da_pasta?' <span class="chip" title="Encontrado pelo conteúdo em outra pasta">em outra pasta</span>':'')+
      (d.trecho?'<br><span style="font-size:12px;color:var(--suave)">…'+esc(d.trecho)+'…</span>':'')+'</td>'+
-     '<td>'+esc(d.tipo_documental)+'</td><td>'+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</td>'+
+     '<td>'+esc(ROT_TIPO[d.tipo_documental]||d.tipo_documental)+'</td><td>'+nomePastaDoc(d.folder_id)+'</td><td>'+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</td>'+
      '<td>v'+d.versao_atual+'</td><td>'+dt(d.atualizado_em||d.criado_em)+'</td><td>'+
      (S.lixeira?((P.restaurar_documento?'<button class="btn peq" onclick="docAcao(\\''+d.id+'\\',\\'restaurar\\')">Restaurar</button> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="excluirDefinitivo(\\''+d.id+'\\')">Excluir de vez</button>':''))
       :('<button class="btn btn-ghost peq" title="Visualizar sem baixar" onclick="visualizarDoc(\\''+d.id+'\\')">👁️</button> '+(P.baixar_documento?'<a class="btn btn-ghost peq" href="/vdocs/api/documentos/'+d.id+'/baixar">⬇️</a> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="docAcao(\\''+d.id+'\\',\\'lixeira\\')">🗑️</button>':'')))+'</td></tr>';
-   }).join(''):'<tr><td colspan="6" style="color:var(--suave)">'+(S.lixeira?'Lixeira vazia.':'Nenhum documento nesta pasta ainda.')+'</td></tr>')+'</table></div>';
+   }).join(''):'<tr><td colspan="7" style="color:var(--suave)">'+(S.lixeira?'Lixeira vazia.':(S.tipoF||S.pasta?'Nenhum documento com este filtro.':'Nenhum documento ainda.'))+'</td></tr>')+'</table></div>';
 }
 async function novaPasta(){const n=prompt('Nome da nova pasta:');if(!n)return;
   try{await api('POST','/pastas',{nome:n,parent_id:S.pasta});vDocs();}catch(e){alert(e.message);}}

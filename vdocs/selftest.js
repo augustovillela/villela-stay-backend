@@ -1090,6 +1090,18 @@ function teste(nome, cond) {
     }
   }
 
+  // ================== DOCUMENTOS: visão geral (todos) ==================
+  {
+    r = await req('GET', '/vdocs/api/documentos?todos=1&limite=500', { jar: 'anaA' });
+    const raiz = (await req('GET', '/vdocs/api/documentos?pasta=', { jar: 'anaA' })).dados.documentos;
+    teste('todos=1 traz documentos de TODAS as pastas (mais que só a raiz)', r.status === 200 && r.dados.documentos.length > raiz.length && r.dados.documentos.some(d => d.folder_id));
+    teste('sem todos, continua listando só a pasta pedida', raiz.every(d => !d.folder_id));
+    r = await req('GET', '/vdocs/api/documentos?todos=1&tipo=contrato', { jar: 'anaA' });
+    teste('todos + categoria filtra por tipo', r.dados.documentos.length > 0 && r.dados.documentos.every(d => d.tipo_documental === 'contrato'));
+    r = await req('GET', '/vdocs/api/documentos?todos=1', { jar: 'bobB' });
+    teste('visão geral de B não vê documentos de A', r.status === 200 && !r.dados.documentos.some(d => /Contrato Fornecedor X/.test(d.nome)));
+  }
+
   // ================== PRÉ-VISUALIZAÇÃO SEM BAIXAR ==================
   {
     const get = (id, c, jar) => { const h = { Cookie: jars[jar] }; return fetch(BASE + '/vdocs/api/documentos/' + id + c, { headers: h }); };

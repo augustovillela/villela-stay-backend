@@ -198,7 +198,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
   // ------------------------------------------------ documentos (Fase 2)
   r.get('/documentos', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     const q = req.query || {};
-    const lista = docs.listarDocumentos(req.vd.tenant.id, { folder_id: q.pasta, status: q.status, busca: q.busca, tipo: q.tipo, tag: q.tag });
+    const lista = docs.listarDocumentos(req.vd.tenant.id, { folder_id: q.pasta, status: q.status, busca: q.busca, tipo: q.tipo, tag: q.tag, todos: q.todos === '1', limite: q.limite });
     // busca também no CONTEÚDO extraído (FTS) — resultados fora da pasta atual entram marcados
     let porConteudo = [];
     if (q.busca && q.status !== 'lixeira') {

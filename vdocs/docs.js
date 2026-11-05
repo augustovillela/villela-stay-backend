@@ -160,10 +160,10 @@ function obterDocumento(tenantId, id, { comVersoes = false } = {}) {
   return d;
 }
 
-function listarDocumentos(tenantId, { folder_id = '', status = 'ativo', busca = '', tipo = '', tag = '', limite = 200 } = {}) {
+function listarDocumentos(tenantId, { folder_id = '', status = 'ativo', busca = '', tipo = '', tag = '', limite = 200, todos = false } = {}) {
   let sql = 'SELECT id, folder_id, nome, tipo_documental, tags, status, versao_atual, validade, criado_em, atualizado_em FROM documents WHERE tenant_id = ? AND status = ?';
   const args = [String(tenantId), status === 'lixeira' ? 'lixeira' : 'ativo'];
-  if (status !== 'lixeira') { sql += ' AND folder_id = ?'; args.push(s(folder_id, 40)); }
+  if (status !== 'lixeira' && !todos) { sql += ' AND folder_id = ?'; args.push(s(folder_id, 40)); } // todos = visão geral, de todas as pastas
   if (busca) { sql += ' AND (nome LIKE ? OR descricao LIKE ?)'; const t = `%${s(busca, 80)}%`; args.push(t, t); }
   if (tipo) { sql += ' AND tipo_documental = ?'; args.push(s(tipo, 40)); }
   sql += ' ORDER BY nome LIMIT ?'; args.push(Math.min(Math.max(1, Number(limite) || 200), 500));
