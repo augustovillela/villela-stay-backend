@@ -11,6 +11,7 @@ const docs = require('./docs');
 const jobs = require('./jobs');
 const busca = require('./busca');
 const ia = require('./ia');
+const iaFonte = require('./ia-fonte');
 const redigir = require('./redigir');
 const wf = require('./workflows');
 const comp = require('./compartilhar');
@@ -138,6 +139,22 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
     if (b.tenant) repo.atualizarTenant(req.vd.tenant.id, b.tenant, req.vd.user, req.vd.ip);
     for (const [k, v] of Object.entries(b.settings || {})) repo.gravarSetting(req.vd.tenant.id, k, v, req.vd.user, req.vd.ip);
     res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ de quem é a IA (plataforma × chave própria)
+  // A chave é validada com uma chamada mínima, cifrada e NUNCA devolvida: a tela só vê os 4 últimos caracteres.
+  r.get('/ia/fonte', requireTenant, requirePerm('gerir_configuracoes'), h(async (req, res) => {
+    res.json(iaFonte.estado(req.vd.tenant.id));
+  }));
+  r.put('/ia/fonte', requireTenant, requirePerm('gerir_configuracoes'), h(async (req, res) => {
+    const b = req.body || {};
+    const chave = String(b.chave || '').trim();
+    if (chave && !iaFonte.FORMATO_CHAVE.test(chave)) throw new Error('Essa não parece uma chave de API da Anthropic (ela começa com sk-ant-…).');
+    if (chave) await ia.testarChave(chave); // recusada pela Anthropic = não grava
+    res.json({ ok: true, estado: iaFonte.salvar(req.vd.tenant.id, { fonte: b.fonte, chave, validada: !!chave }, req.vd.user, req.vd.ip) });
+  }));
+  r.delete('/ia/chave', requireTenant, requirePerm('gerir_configuracoes'), h(async (req, res) => {
+    res.json({ ok: true, estado: iaFonte.removerChave(req.vd.tenant.id, req.vd.user, req.vd.ip) });
   }));
 
   // ------------------------------------------------ usuários / convites / papéis
@@ -387,7 +404,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
     res.json({ ok: true });
   }));
   r.post('/entrada/nomear-agora', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
-    if (!require('./ia').ativo()) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY.');
+    if (!require('./ia').ativo(req.vd.tenant.id)) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY. Cadastre a sua chave em Configurações → IA.');
     const nomeados = await entrada.rotinaNomesAuto(req.vd.tenant.id);
     res.json({ ok: true, nomeados, estado: entrada.diagnosticoNomes(req.vd.tenant.id) });
   }));
@@ -494,7 +511,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
 
   // ------------------------------------------------ IA documental (Fase 5)
   r.get('/ia/conversas', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
-    res.json({ ativo: ia.ativo(), conversas: ia.listarConversas(req.vd.tenant.id, req.vd.user.id) });
+    res.json({ ativo: ia.ativo(req.vd.tenant.id), conversas: ia.listarConversas(req.vd.tenant.id, req.vd.user.id) });
   }));
   r.get('/ia/conversas/:id', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
     res.json({ conversa: ia.obterConversa(req.vd.tenant.id, req.vd.user.id, req.params.id) });
@@ -511,7 +528,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
   }));
   // ---- REDIGIR: documentos escolhidos (texto INTEGRAL) -> IA redige o rascunho ----
   r.get('/ia/redacoes', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
-    res.json({ ativo: ia.ativo(), tipos: redigir.TIPOS, rascunhos: redigir.listar(req.vd.tenant.id, req.query) });
+    res.json({ ativo: ia.ativo(req.vd.tenant.id), tipos: redigir.TIPOS, rascunhos: redigir.listar(req.vd.tenant.id, req.query) });
   }));
   r.get('/ia/redacoes/:id', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
     res.json({ rascunho: redigir.obter(req.vd.tenant.id, req.params.id) });

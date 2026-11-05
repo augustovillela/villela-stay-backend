@@ -25,6 +25,7 @@ function montar(app, injected = {}) {
   repo.semearPlanos(); // Starter/Professional/Business/Enterprise (upsert idempotente)
   const auth = criarAuth({ jwtSecret });
   const notificar = (msg) => Promise.resolve((alertaAugusto || (async () => {}))(msg)).catch(() => {});
+  require('./ia-fonte').iniciar(jwtSecret); // segredo do cofre das chaves de IA dos assinantes
   registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecret });
   registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecret });
   registrarPaginas(app, { express });

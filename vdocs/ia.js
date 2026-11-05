@@ -53,8 +53,36 @@ const SCHEMA_RESPOSTA = {
 // ---- cliente Anthropic (com gancho de mock p/ o selftest) ----
 let _client = null;
 let _mock = null;
+const fonte = require('./ia-fonte');
 const __mockParaTeste = (fn) => { _mock = fn; };
-const ativo = () => !!(_mock || process.env.ANTHROPIC_API_KEY);
+// Com tenantId: vale a chave PRÓPRIA da empresa (se escolheu) ou a da plataforma. Sem tenantId: só a da plataforma.
+const ativo = (tenantId) => !!(_mock || (tenantId && fonte.usaChavePropria(tenantId)) || process.env.ANTHROPIC_API_KEY);
+// Modelos da chave PRÓPRIA: a conta do assinante pode não ter acesso ao modelo topo — começa pelo que toda conta tem.
+const MODELOS_PROPRIA = (process.env.VDOCS_LLM_MODELS_PROPRIA || 'claude-sonnet-4-6,claude-haiku-4-5').split(',').map(x => x.trim()).filter(Boolean);
+const _clientesPropria = new Map(); // tenant:finalDaChave -> cliente (a chave nunca sai daqui)
+function clienteDe(tenantId, chavePropria) {
+  const Anthropic = require('@anthropic-ai/sdk');
+  if (!chavePropria) return _client || (_client = new Anthropic());
+  const k = tenantId + ':' + chavePropria.slice(-8);
+  if (!_clientesPropria.has(k)) _clientesPropria.set(k, new Anthropic({ apiKey: chavePropria }));
+  return _clientesPropria.get(k);
+}
+// Cota do plano (ia_consultas_mes) só vale para a IA DA PLATAFORMA; quem usa a própria chave paga o provedor e não gasta cota.
+const checarCota = (tenantId) => { if (!fonte.usaChavePropria(tenantId)) repo.checarLimite(tenantId, 'ia_consultas', 1); };
+const registrarCota = (tenantId) => { if (!fonte.usaChavePropria(tenantId)) repo.registrarUso(tenantId, 'ia_consultas', 1); };
+const traduzirErroPropria = (e) => {
+  const st = e.status || (e.error && e.error.status);
+  if (st === 401 || st === 403) return new Error('A Anthropic recusou a sua chave de API (inválida, revogada ou sem permissão). Confira em Configurações → IA.');
+  return new Error('Erro na sua conta de IA (Anthropic): ' + String(e.message || e).slice(0, 200) + ' Confira saldo e limites em console.anthropic.com.');
+};
+/** Testa uma chave colada pelo assinante com uma chamada mínima (a conta dele paga centavos). */
+async function testarChave(chave) {
+  if (_mock) return { ok: true };
+  try {
+    await clienteDe('teste', String(chave)).messages.create({ model: MODELOS_PROPRIA[MODELOS_PROPRIA.length - 1], max_tokens: 8, messages: [{ role: 'user', content: 'ok' }] });
+    return { ok: true };
+  } catch (e) { throw traduzirErroPropria(e); }
+}
 
 function logRun(tenantId, { modelo, usage, duracao_ms, status, detalhe }) {
   try {
@@ -68,13 +96,14 @@ function logRun(tenantId, { modelo, usage, duracao_ms, status, detalhe }) {
 
 async function executar(tenantId, { prompt, schema = SCHEMA_RESPOSTA, systemExtra = '' }) {
   if (_mock) return _mock({ prompt, schema, systemExtra });
-  if (!ativo()) throw new Error('IA indisponível: ANTHROPIC_API_KEY não configurada no servidor.');
-  if (!_client) { const Anthropic = require('@anthropic-ai/sdk'); _client = new Anthropic(); }
+  const chavePropria = fonte.chaveDoTenant(tenantId); // '' = IA da plataforma
+  if (!chavePropria && !process.env.ANTHROPIC_API_KEY) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY e a empresa não cadastrou chave própria.');
+  const cliente = clienteDe(tenantId, chavePropria);
   let ultimoErro = null;
-  for (const modelo of MODELOS) {
+  for (const modelo of (chavePropria ? MODELOS_PROPRIA : MODELOS)) {
     const t0 = Date.now();
     try {
-      const msg = await _client.messages.create({
+      const msg = await cliente.messages.create({
         model: modelo,
         max_tokens: MAX_TOKENS,
         system: [
@@ -90,16 +119,16 @@ async function executar(tenantId, { prompt, schema = SCHEMA_RESPOSTA, systemExtr
         throw new Error('O modelo recusou a solicitação.');
       }
       const texto = (msg.content.find(b => b.type === 'text') || {}).text || (schema ? '{}' : '');
-      logRun(tenantId, { modelo, usage: msg.usage, duracao_ms: Date.now() - t0, status: 'ok' });
+      logRun(tenantId, { modelo, usage: msg.usage, duracao_ms: Date.now() - t0, status: 'ok', detalhe: chavePropria ? 'fonte=propria' : '' });
       return { json: schema ? JSON.parse(texto) : null, texto, modelo, usage: msg.usage };
     } catch (e) {
       ultimoErro = e;
-      logRun(tenantId, { modelo, duracao_ms: Date.now() - t0, status: 'erro', detalhe: e.message });
+      logRun(tenantId, { modelo, duracao_ms: Date.now() - t0, status: 'erro', detalhe: (chavePropria ? 'fonte=propria ' : '') + e.message });
       const st = e.status || (e.error && e.error.status);
       if (st && st >= 400 && st < 500 && st !== 404 && st !== 429) break; // erro de request: não adianta trocar de modelo
     }
   }
-  throw ultimoErro || new Error('Falha na chamada de IA.');
+  throw chavePropria && ultimoErro && ultimoErro.status ? traduzirErroPropria(ultimoErro) : (ultimoErro || new Error('Falha na chamada de IA.'));
 }
 
 // ---- RAG: recuperar trechos relevantes DENTRO do escopo ----
@@ -172,8 +201,8 @@ function excluirConversa(tenantId, userId, id) {
 async function perguntar(tenantId, user, { conversation_id, escopo_tipo, escopo_ref, pergunta }, ip) {
   const q = s(pergunta, 2000);
   if (!q) throw new Error('Escreva a pergunta.');
-  if (!ativo()) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY. Fale com o suporte da Villela Docs.');
-  repo.checarLimite(tenantId, 'ia_consultas', 1); // limite mensal do plano (ia_consultas_mes)
+  if (!ativo(tenantId)) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY. Cadastre a sua chave em Configurações → IA ou fale com o suporte da Villela Docs.');
+  checarCota(tenantId); // limite mensal do plano (ia_consultas_mes) — só vale para a IA da plataforma
   const agora = nowISO();
   let conv = conversation_id
     ? db.prepare('SELECT * FROM ai_conversations WHERE id = ? AND tenant_id = ? AND user_id = ?').get(String(conversation_id), String(tenantId), String(user.id))
@@ -209,7 +238,7 @@ async function perguntar(tenantId, user, { conversation_id, escopo_tipo, escopo_
     .run(msgId, String(tenantId), conv.id, 'assistente', s(jr.resposta, 20000), j.str(fontesUsadas.length ? fontesUsadas : fontes),
       jr.nao_encontrado ? 1 : 0, s(jr.nivel_confianca, 10), r.modelo || '', (r.usage && r.usage.input_tokens) || 0, (r.usage && r.usage.output_tokens) || 0, nowISO());
   db.prepare('UPDATE ai_conversations SET atualizado_em = ? WHERE id = ?').run(nowISO(), conv.id);
-  repo.registrarUso(tenantId, 'ia_consultas', 1);
+  registrarCota(tenantId);
   repo.auditar(tenantId, user, 'ia.perguntar', 'ai_conversations', conv.id, { chars: q.length, fontes: fontesUsadas.length, nao_encontrado: !!jr.nao_encontrado }, ip);
   return { conversation_id: conv.id, mensagem: { id: msgId, papel: 'assistente', conteudo: jr.resposta, fontes: fontesUsadas.length ? fontesUsadas : fontes, nao_encontrado: !!jr.nao_encontrado, nivel_confianca: jr.nivel_confianca, modelo: r.modelo } };
 }
@@ -222,4 +251,4 @@ function darFeedback(tenantId, userId, messageId, tipo, comentario) {
     .run(String(tenantId), mm.id, String(userId), tipo, s(comentario, 500), nowISO());
 }
 
-module.exports = { ativo, MODELOS, GUARDRAILS, SCHEMA_RESPOSTA, executar, __mockParaTeste, montarContexto, listarConversas, obterConversa, excluirConversa, perguntar, darFeedback };
+module.exports = { ativo, checarCota, registrarCota, testarChave, MODELOS, GUARDRAILS, SCHEMA_RESPOSTA, executar, __mockParaTeste, montarContexto, listarConversas, obterConversa, excluirConversa, perguntar, darFeedback };

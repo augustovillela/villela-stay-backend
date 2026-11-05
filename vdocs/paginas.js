@@ -1410,10 +1410,34 @@ async function vConfig(){
    '<div id="tfa-area">'+(S.me.totp_ativo
      ?'<label>Código atual (ou de recuperação) p/ desativar</label><div style="display:flex;gap:8px"><input id="tfa-cod" style="max-width:160px"><button class="btn btn-ghost peq" onclick="desativar2fa()">Desativar 2FA</button></div>'
      :'<button class="btn peq" onclick="iniciar2fa()">Ativar 2FA</button>')+'</div></div>'+
+   '<div class="card" style="margin-top:14px"><b>🤖 IA da empresa</b> <span id="ia-chip" class="chip"></span><div id="ia-fonte"><p class="sub">Carregando…</p></div></div>'+
    (S.me.permissoes.exportar_dados?'<div class="card" style="margin-top:14px"><b>📦 Exportar todos os dados (LGPD)</b>'+
     '<p class="sub" style="font-size:13px">Baixa um ZIP com todos os dados da empresa (cadastros, documentos, auditoria) e os arquivos vigentes.</p>'+
     '<a class="btn btn-ghost peq" href="/vdocs/api/exportacao">⬇️ Baixar exportação completa</a></div>':'')+
    '<div class="card" style="margin-top:14px"><b>Identificador (slug):</b> <code>'+esc(t.slug)+'</code> · criado em '+dt(t.criado_em)+'</div>';
+  iaFonteDesenhar();
+}
+// ---- de quem é a IA: da plataforma (cota do plano) ou chave de API PRÓPRIA do assinante (cifrada, nunca reexibida) ----
+async function iaFonteDesenhar(msg){
+  let e;try{e=await api('GET','/ia/fonte');}catch(x){return;}
+  const c=$('ia-fonte');if(!c)return;
+  $('ia-chip').textContent=e.fonte==='propria'?'chave própria':'IA da plataforma';
+  c.innerHTML='<p class="sub" style="font-size:13px">De quem é a IA que dá nome aos documentos, responde perguntas e redige textos?</p>'+
+   '<label style="display:block;font-weight:400;margin:6px 0"><input type="radio" name="ia-f" style="width:auto;display:inline-block;vertical-align:middle;margin:0 8px 0 0;min-height:0;height:auto" value="plataforma"'+(e.fonte==='plataforma'?' checked':'')+'> <b>IA da Villela Docs</b> — dentro da cota de consultas do seu plano.</label>'+
+   '<label style="display:block;font-weight:400;margin:6px 0"><input type="radio" name="ia-f" style="width:auto;display:inline-block;vertical-align:middle;margin:0 8px 0 0;min-height:0;height:auto" value="propria"'+(e.fonte==='propria'?' checked':'')+'> <b>Minha chave de API (Anthropic)</b> — roda e é cobrada na SUA conta da Anthropic; não gasta a cota do plano.</label>'+
+   '<div style="margin:8px 0 0 22px">'+(e.tem_chave?'<p class="sub" style="font-size:13px;margin:0 0 6px">Chave guardada, terminada em <code>…'+esc(e.chave_final)+'</code>'+(e.validada_em?' · testada em '+dt(e.validada_em):'')+'. Cole outra para trocar.</p>':'')+
+   '<input id="ia-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" style="max-width:420px"></div>'+
+   '<p><button class="btn" onclick="iaFonteSalvar()">Salvar</button> '+(e.tem_chave?'<button class="btn btn-ghost peq" onclick="iaChaveRemover()">Remover chave</button> ':'')+'<span id="ia-out">'+esc(msg||'')+'</span></p>'+
+   '<p class="sub" style="font-size:12px">A chave é testada ao salvar, guardada cifrada e nunca é mostrada de novo. Crie uma em console.anthropic.com → API Keys, de preferência exclusiva para o Villela Docs e com limite de gasto. Créditos pré-pagos da própria plataforma, para quem não quer lidar com chave: em breve.</p>';
+}
+async function iaFonteSalvar(){
+  const f=(document.querySelector('input[name=ia-f]:checked')||{}).value,k=$('ia-key').value.trim();
+  $('ia-out').textContent=k?'Testando a chave…':'Salvando…';
+  try{await api('PUT','/ia/fonte',{fonte:f,chave:k});iaFonteDesenhar('✅ salvo');}catch(x){$('ia-out').textContent='⚠️ '+x.message;}
+}
+async function iaChaveRemover(){
+  if(!confirm('Remover a sua chave? A empresa volta a usar a IA da plataforma, dentro da cota do plano.'))return;
+  try{await api('DELETE','/ia/chave');iaFonteDesenhar('✅ chave removida');}catch(x){$('ia-out').textContent='⚠️ '+x.message;}
 }
 async function salvarCfg(){try{
   await api('PATCH','/config',{tenant:{nome:$('cf-nome').value,cnpj:$('cf-cnpj').value,email_contato:$('cf-email').value,telefone:$('cf-tel').value},settings:{retencao_padrao_dias:$('cf-ret').value,retencao_lixeira_dias:$('cf-lix').value}});

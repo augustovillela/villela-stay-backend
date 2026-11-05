@@ -47,7 +47,7 @@ function fontesDe(tenantId, ids) {
 }
 
 async function redigir(tenantId, user, d, ip) {
-  if (!ia.ativo()) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY. Fale com o suporte da Villela Docs.');
+  if (!ia.ativo(tenantId)) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY. Cadastre a sua chave em Configurações → IA ou fale com o suporte da Villela Docs.');
   const instrucao = s(d.instrucao, 4000);
   if (!instrucao) throw new Error('Diga o que a IA deve redigir.');
   const tipo = TIPOS.includes(d.tipo) ? d.tipo : 'outro';
@@ -58,7 +58,7 @@ async function redigir(tenantId, user, d, ip) {
       ? 'Os documentos escolhidos ainda não têm texto extraído (podem estar em processamento ou serem digitalizações sem OCR).'
       : 'Escolha ao menos um documento da base para servir de contexto.');
   }
-  repo.checarLimite(tenantId, 'ia_consultas', 1); // mesma cota do chat: é chamada de IA
+  ia.checarCota(tenantId); // mesma cota do chat (só IA da plataforma; chave própria não gasta cota)
 
   const mont = ctxIntegral.montar({ fontes: comTexto, teto: TETO, rotulo: 'DOCUMENTO DA EMPRESA' });
   const semTexto = escolhidos.filter(x => x.semTexto);
@@ -91,7 +91,7 @@ Termine com a seção "LACUNAS E PONTOS DE ATENÇÃO" listando o que precisa de 
     VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
     .run(id, String(tenantId), s(d.titulo, 200) || instrucao.slice(0, 80), tipo, instrucao, conteudo,
       j.str(fontes), r.modelo || '', truncado, String(user.id || ''), nowISO());
-  repo.registrarUso(tenantId, 'ia_consultas', 1);
+  ia.registrarCota(tenantId);
   repo.auditar(tenantId, user, 'ia.redigir', 'ai_drafts', id,
     { tipo, documentos: comTexto.length, truncado: !!truncado, chars: conteudo.length }, ip);
   return { rascunho: obter(tenantId, id) };

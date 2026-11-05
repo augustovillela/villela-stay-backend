@@ -1180,6 +1180,56 @@ function teste(nome, cond) {
     teste('busca: acha pela descrição ("temporada") e palavra que falta zera', (await busca('temporada')).length === 1 && (await busca('contrato inexistente')).length === 0);
   }
 
+  // ================== IA PRÓPRIA DO ASSINANTE (chave cifrada, fora da cota do plano) ==================
+  {
+    const iaMod = require('./ia'), fonteMod = require('./ia-fonte');
+    const KEY = 'sk-ant-api03-' + 'x'.repeat(40) + 'WXYZ';
+    r = await req('GET', '/vdocs/api/ia/fonte', { jar: 'anaA' });
+    teste('fonte da IA começa na plataforma, sem chave', r.status === 200 && r.dados.fonte === 'plataforma' && r.dados.tem_chave === false);
+    r = await req('PUT', '/vdocs/api/ia/fonte', { body: { fonte: 'propria' }, jar: 'anaA' });
+    teste('escolher chave própria sem colar a chave é recusado', r.status === 400 && /Cole a sua chave/.test(r.dados.erro));
+    r = await req('PUT', '/vdocs/api/ia/fonte', { body: { fonte: 'propria', chave: 'qualquer-coisa' }, jar: 'anaA' });
+    teste('chave fora do formato da Anthropic é recusada antes de qualquer teste', r.status === 400 && /sk-ant/.test(r.dados.erro));
+
+    // servidor Anthropic de mentira: prova QUAL chave sai na chamada (a do assinante, nunca a da plataforma)
+    const http = require('http'); const vistas = [];
+    const falso = http.createServer((q, s2) => { vistas.push(q.headers['x-api-key']); q.resume(); q.on('end', () => { s2.setHeader('Content-Type', 'application/json'); s2.end(JSON.stringify({ id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-sonnet-4-6', content: [{ type: 'text', text: 'resposta de teste' }], stop_reason: 'end_turn', usage: { input_tokens: 5, output_tokens: 5 } })); }); });
+    await new Promise(ok => falso.listen(0, '127.0.0.1', ok));
+    const envAntes = { u: process.env.ANTHROPIC_BASE_URL, k: process.env.ANTHROPIC_API_KEY };
+    process.env.ANTHROPIC_BASE_URL = 'http://127.0.0.1:' + falso.address().port; process.env.ANTHROPIC_API_KEY = 'sk-plataforma-de-teste';
+    try {
+      r = await req('PUT', '/vdocs/api/ia/fonte', { body: { fonte: 'propria', chave: KEY }, jar: 'anaA' });
+      teste('chave própria válida é testada e salva; tela só recebe os 4 últimos', r.status === 200 && r.dados.estado.fonte === 'propria' && r.dados.estado.chave_final === 'WXYZ' && !!r.dados.estado.validada_em && !JSON.stringify(r.dados).includes(KEY));
+      teste('o teste da chave usou a chave do assinante', vistas[vistas.length - 1] === KEY);
+      const linhaDb = require('./db').db.prepare('SELECT chave_cifrada FROM tenant_ia WHERE tenant_id = ?').get(tenantA.id);
+      teste('no banco a chave está CIFRADA (não aparece em texto) e volta ao decifrar', linhaDb.chave_cifrada.startsWith('v1:') && !linhaDb.chave_cifrada.includes('xxxx') && fonteMod.chaveDoTenant(tenantA.id) === KEY);
+      r = await req('GET', '/vdocs/api/config', { jar: 'anaA' });
+      teste('a chave não vaza por /config nem por tenant_settings', r.status === 200 && !JSON.stringify(r.dados).includes(KEY) && !JSON.stringify(r.dados).includes('chave_cifrada'));
+      vistas.length = 0;
+      const out = await iaMod.executar(tenantA.id, { prompt: 'oi', schema: null });
+      teste('com chave própria a chamada sai com a chave do assinante e nunca com a da plataforma', out.texto === 'resposta de teste' && vistas.length === 1 && vistas[0] === KEY);
+      const rodada = require('./db').db.prepare("SELECT detalhe FROM ai_runs WHERE tenant_id = ? ORDER BY criado_em DESC LIMIT 1").get(tenantA.id);
+      teste('a rodada fica marcada como fonte=propria no log de IA', /fonte=propria/.test(rodada.detalhe));
+      const antes = Number(repo.usoDoMes(tenantA.id).ia_consultas || 0);
+      iaMod.checarCota(tenantA.id); iaMod.registrarCota(tenantA.id);
+      teste('chave própria não gasta a cota de consultas do plano', Number(repo.usoDoMes(tenantA.id).ia_consultas || 0) === antes);
+      r = await req('GET', '/vdocs/api/ia/fonte', { jar: 'bobB' });
+      teste('outra empresa continua na plataforma (isolamento)', r.dados.fonte === 'plataforma' && r.dados.tem_chave === false && fonteMod.chaveDoTenant(tenantB.id) === '');
+      vistas.length = 0;
+      await iaMod.executar(tenantB.id, { prompt: 'oi', schema: null });
+      teste('empresa sem chave própria usa a chave da plataforma', vistas.length === 1 && vistas[0] === 'sk-plataforma-de-teste');
+      r = await req('DELETE', '/vdocs/api/ia/chave', { jar: 'anaA' });
+      teste('remover a chave volta para a plataforma e apaga o segredo', r.status === 200 && r.dados.estado.fonte === 'plataforma' && r.dados.estado.tem_chave === false && fonteMod.chaveDoTenant(tenantA.id) === '');
+      const antes2 = Number(repo.usoDoMes(tenantA.id).ia_consultas || 0);
+      iaMod.registrarCota(tenantA.id);
+      teste('de volta à plataforma a cota do plano volta a contar', Number(repo.usoDoMes(tenantA.id).ia_consultas || 0) === antes2 + 1);
+    } finally {
+      falso.close();
+      if (envAntes.u === undefined) delete process.env.ANTHROPIC_BASE_URL; else process.env.ANTHROPIC_BASE_URL = envAntes.u;
+      if (envAntes.k === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = envAntes.k;
+    }
+  }
+
   // ================== FASE 10: enterprise (2FA, retenção legal, takeout, saúde) ==================
   const ent = require('./enterprise');
 

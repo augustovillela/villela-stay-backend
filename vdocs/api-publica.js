@@ -108,7 +108,7 @@ function registrarApiPublica(app, { express }) {
   }));
   v1.get('/entrada/nomes', h(async (req, res) => res.json(entradaMod.diagnosticoNomes(t(req)))));
   v1.post('/entrada/nomes/agora', h(async (req, res) => {
-    if (!require('./ia').ativo()) return res.status(503).json({ erro: 'IA indisponível: o servidor está sem ANTHROPIC_API_KEY.' });
+    if (!require('./ia').ativo(t(req))) return res.status(503).json({ erro: 'IA indisponível: o servidor está sem ANTHROPIC_API_KEY.' });
     const nomeados = await entradaMod.rotinaNomesAuto(t(req));
     res.json({ ok: true, nomeados, estado: entradaMod.diagnosticoNomes(t(req)) });
   }));

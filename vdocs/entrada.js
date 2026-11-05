@@ -454,11 +454,11 @@ function sanitizaNome(n) { return s(String(n || '').replace(/[\\*?"<>|\r\n]+/g, 
 async function sugerirNomes(tenantId, itens) {
   const ia = require('./ia');
   const { TIPOS_DOCUMENTAIS } = require('./docs');
-  repo.checarLimite(tenantId, 'ia_consultas', 1);
+  ia.checarCota(tenantId); // plataforma: gasta a cota do plano; chave própria: não
   const prompt = itens.map((r, i) => `[D${i + 1}] (arquivo: ${r.nome})\n` + (r.contexto ? `Contexto do recebimento: ${r.contexto}\n` : '') + (temTexto(r.texto) ? String(r.texto).replace(/\s+/g, ' ').trim().slice(0, 1800) : '(sem texto extraído do arquivo — use o contexto do recebimento)')).join('\n\n---\n\n')
     + `\n\nDevolva um item por documento, com ref igual a D1, D2...`;
   const r = await ia.executar(tenantId, { prompt, schema: SCHEMA_NOMES, systemExtra: INSTRUCAO_NOMEAR + TIPOS_DOCUMENTAIS.join(', ') + '.' });
-  repo.registrarUso(tenantId, 'ia_consultas', 1);
+  ia.registrarCota(tenantId);
   const out = [];
   for (const it of ((r.json && r.json.nomes) || [])) {
     const m = /^D(\d+)$/.exec(String(it.ref || '').trim());
@@ -476,7 +476,7 @@ const temTexto = (t) => String(t || '').replace(/\s+/g, ' ').trim().length >= 40
 /** A pedido (botão na triagem): sugere, não aplica — o nome vale quando a pessoa processa. */
 async function nomearComIA(tenantId, user, logIds, ip) {
   const ia = require('./ia');
-  if (!ia.ativo()) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY.');
+  if (!ia.ativo(tenantId)) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY. Cadastre a sua chave em Configurações → IA.');
   const ids = [...new Set((Array.isArray(logIds) ? logIds : []).map(x => s(x, 40)).filter(Boolean))].slice(0, MAX_NOMEAR);
   if (!ids.length) throw new Error('Marque ao menos um documento.');
   const marcas = ids.map(() => '?').join(',');
@@ -501,7 +501,8 @@ function nomearAutoAtivo(tenantId) {
   const v = repo.lerSettings(tenantId).nomear_automatico;
   if (v === 'on') return true;
   if (v === 'off') return false;
-  return avisoTriagemDisponivel(tenantId); // sem escolha: ligado nas contas internas (cortesia), desligado nas demais
+  // sem escolha: ligado nas contas internas (cortesia) e em quem usa a PRÓPRIA chave de IA (paga o próprio custo); desligado nas demais
+  return avisoTriagemDisponivel(tenantId) || require('./ia-fonte').usaChavePropria(tenantId);
 }
 function definirNomearAuto(tenantId, ativo, ator, ip) {
   repo.gravarSetting(tenantId, 'nomear_automatico', ativo ? 'on' : 'off', ator, ip);
@@ -526,7 +527,7 @@ function diagnosticoNomes(tenantId) {
   const el = elegiveisNomeAuto(t);
   const total = (tag) => db.prepare("SELECT COUNT(*) n FROM documents WHERE tenant_id = ? AND status = 'ativo' AND tags LIKE ?").get(t, '%"' + tag + '"%').n;
   return {
-    ligado: nomearAutoAtivo(t), ia_ativa: require('./ia').ativo(),
+    ligado: nomearAutoAtivo(t), ia_ativa: require('./ia').ativo(t),
     aguardando: el.length, aguardando_sem_texto: el.filter(c => !temTexto(c.texto)).length,
     nomeados: total('nome-ia'), sem_sugestao: total('nome-ia-sem'),
     ultima_rodada: ult ? { em: ult.criado_em, ...(j.parse(ult.detalhes, {}) || {}) } : null,
@@ -535,7 +536,7 @@ function diagnosticoNomes(tenantId) {
 }
 async function rotinaNomesAuto(tenantId) {
   const ia = require('./ia');
-  if (!ia.ativo() || !nomearAutoAtivo(tenantId)) return 0;
+  if (!ia.ativo(tenantId) || !nomearAutoAtivo(tenantId)) return 0;
   const t = String(tenantId);
   const hoje = new Date().toISOString().slice(0, 10);
   let usado = db.prepare("SELECT detalhes FROM audit_logs WHERE tenant_id = ? AND acao = 'entrada.nomear_auto' AND criado_em >= ?").all(t, hoje)
