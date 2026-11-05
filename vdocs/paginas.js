@@ -352,6 +352,15 @@ body{background:var(--fundo)}
 .kpi{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:14px}.kpi .n{font-size:26px;font-weight:800;color:var(--indigo2)}.kpi .r{font-size:12.5px;color:var(--suave)}
 .chip{display:inline-block;background:var(--fundo);border:1px solid var(--borda);border-radius:99px;padding:2px 10px;font-size:12px}
 .btn.peq{padding:7px 13px;font-size:13px}
+.vw-ov{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:60;display:flex;align-items:center;justify-content:center;padding:12px}
+.vw{background:#fff;border-radius:12px;width:min(1100px,100%);height:min(92vh,100%);display:flex;flex-direction:column;overflow:hidden}
+.vw-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--borda)}
+.vw-t{overflow-wrap:anywhere}
+.vw-c{flex:1;min-height:0;overflow:auto;display:flex;align-items:stretch;justify-content:center;background:var(--fundo)}
+.vw-c iframe{border:0;width:100%;height:100%}
+.vw-c img{max-width:100%;max-height:100%;object-fit:contain;align-self:center}
+.vw-c audio,.vw-c video{align-self:center;max-width:100%}
+.vw-pre{margin:0;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;width:100%;background:#fff}
 .barra{height:8px;background:var(--borda);border-radius:99px;overflow:hidden}.barra i{display:block;height:100%;background:var(--azul)}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
 </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="docs">
@@ -578,7 +587,7 @@ async function vDocs(){
      '<td>'+esc(d.tipo_documental)+'</td><td>'+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</td>'+
      '<td>v'+d.versao_atual+'</td><td>'+dt(d.atualizado_em||d.criado_em)+'</td><td>'+
      (S.lixeira?((P.restaurar_documento?'<button class="btn peq" onclick="docAcao(\\''+d.id+'\\',\\'restaurar\\')">Restaurar</button> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="excluirDefinitivo(\\''+d.id+'\\')">Excluir de vez</button>':''))
-      :((P.baixar_documento?'<a class="btn btn-ghost peq" href="/vdocs/api/documentos/'+d.id+'/baixar">⬇️</a> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="docAcao(\\''+d.id+'\\',\\'lixeira\\')">🗑️</button>':'')))+'</td></tr>';
+      :('<button class="btn btn-ghost peq" title="Visualizar sem baixar" onclick="visualizarDoc(\\''+d.id+'\\')">👁️</button> '+(P.baixar_documento?'<a class="btn btn-ghost peq" href="/vdocs/api/documentos/'+d.id+'/baixar">⬇️</a> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="docAcao(\\''+d.id+'\\',\\'lixeira\\')">🗑️</button>':'')))+'</td></tr>';
    }).join(''):'<tr><td colspan="6" style="color:var(--suave)">'+(S.lixeira?'Lixeira vazia.':'Nenhum documento nesta pasta ainda.')+'</td></tr>')+'</table></div>';
 }
 async function novaPasta(){const n=prompt('Nome da nova pasta:');if(!n)return;
@@ -605,6 +614,39 @@ async function enviarArquivos(files){
 async function docAcao(id,acao){try{await api('POST','/documentos/'+id+'/'+acao);vDocs();}catch(e){alert(e.message);}}
 async function excluirDefinitivo(id){if(!confirm('Excluir DEFINITIVAMENTE? Todas as versões serão apagadas do servidor. Não dá para desfazer.'))return;
   try{await api('DELETE','/documentos/'+id);vDocs();}catch(e){alert(e.message);}}
+// ---- pré-visualização sem baixar (PDF, imagem, texto, áudio/vídeo; Office mostra o texto extraído) ----
+async function visualizarDoc(id,versao){
+  let d;try{d=(await api('GET','/documentos/'+id)).documento;}catch(e){alert(e.message);return false;}
+  const v=d.versoes.find(x=>x.numero===(versao||d.versao_atual))||d.versoes[0];
+  const ext=((v.nome_arquivo.match(/\.([a-z0-9]+)$/i)||[])[1]||'').toLowerCase();
+  const q=versao?'?versao='+versao:'';
+  const url='/vdocs/api/documentos/'+id+'/visualizar'+q;
+  fecharVisualizador();
+  const ov=document.createElement('div');ov.className='vw-ov';ov.id='vw-ov';
+  ov.onclick=e=>{if(e.target===ov)fecharVisualizador();};
+  const baixar=S.me.permissoes.baixar_documento?'<a class="btn peq" href="/vdocs/api/documentos/'+id+'/baixar'+q+'">⬇️ Baixar</a>':'';
+  ov.innerHTML='<div class="vw" role="dialog" aria-label="Pré-visualização"><div class="vw-h"><b class="vw-t">'+esc(d.nome)+'</b><span class="sub" style="font-size:12px">v'+v.numero+' · '+esc(v.nome_arquivo)+'</span><span style="flex:1"></span>'+baixar+' <button class="btn btn-ghost peq" onclick="fecharVisualizador()">✕ Fechar</button></div><div class="vw-c" id="vw-c"><p style="padding:20px">Carregando…</p></div></div>';
+  document.body.appendChild(ov);
+  const c=$('vw-c');
+  if(ext==='pdf')c.innerHTML='<iframe title="Pré-visualização do PDF" src="'+url+'"></iframe>';
+  else if(['png','jpg','jpeg','gif','webp'].includes(ext))c.innerHTML='<img alt="'+esc(d.nome)+'" src="'+url+'">';
+  else if(['mp3','wav'].includes(ext))c.innerHTML='<audio controls src="'+url+'"></audio>';
+  else if(['mp4','mov'].includes(ext))c.innerHTML='<video controls src="'+url+'"></video>';
+  else{
+    try{
+      if(['txt','csv','md'].includes(ext)){const r=await fetch(url,{credentials:'same-origin'});c.innerHTML='<pre class="vw-pre">'+esc(await r.text())+'</pre>';}
+      else{
+        const t=await api('GET','/documentos/'+id+'/texto');
+        c.innerHTML=t.texto
+          ?'<div style="width:100%"><p class="sub" style="padding:10px 14px;margin:0;font-size:12px">Texto extraído do arquivo (sem a formatação original)'+(baixar?' — use Baixar para ver o original':'')+'.</p><pre class="vw-pre">'+esc(t.texto)+'</pre>'+(t.truncado?'<p class="sub" style="padding:0 14px 14px">[…texto cortado…]</p>':'')+'</div>'
+          :'<p style="padding:20px">Este tipo de arquivo não tem pré-visualização e ainda não há texto extraído.'+(baixar?' Use <b>Baixar</b>.':'')+'</p>';
+      }
+    }catch(e){c.innerHTML='<p style="padding:20px;color:var(--alerta)">'+esc(e.message)+'</p>';}
+  }
+  return false;
+}
+function fecharVisualizador(){const o=$('vw-ov');if(o)o.remove();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharVisualizador();});
 async function abrirDoc(id){
   const P=S.me.permissoes;
   const {documento:d,acessos,processamento:pr,aprovacoes:aps}=await api('GET','/documentos/'+id);
@@ -615,7 +657,7 @@ async function abrirDoc(id){
     :st?'⏳ Extração de texto em processamento…':'';
   const selPasta='<select id="dd-pasta"><option value="">🏠 Início</option>'+S.pastas.map(p=>'<option value="'+p.id+'"'+(p.id===d.folder_id?' selected':'')+'>📁 '+esc(p.nome)+'</option>').join('')+'</select>';
   $('corpo').innerHTML='<p><a href="#" onclick="return irPasta(S.pasta)">← voltar</a></p><h2>'+esc(d.nome)+'</h2>'+
-   '<p>'+(P.usar_ia?'<button class="btn btn-ghost peq" onclick="S.iaEscopo={tipo:\\'documento\\',ref:\\''+d.id+'\\'};S.iaConv=\\'\\';ir(\\'ia\\')">🤖 Perguntar à IA</button> ':'')+
+   '<p><button class="btn peq" onclick="visualizarDoc(\\''+d.id+'\\')">👁️ Visualizar</button> '+(P.baixar_documento?'<a class="btn btn-ghost peq" href="/vdocs/api/documentos/'+d.id+'/baixar">⬇️ Baixar</a> ':'')+(P.usar_ia?'<button class="btn btn-ghost peq" onclick="S.iaEscopo={tipo:\\'documento\\',ref:\\''+d.id+'\\'};S.iaConv=\\'\\';ir(\\'ia\\')">🤖 Perguntar à IA</button> ':'')+
    (P.compartilhar_documento?'<button class="btn btn-ghost peq" onclick="compartilharDoc(\\''+d.id+'\\')">🔗 Compartilhar por link</button> ':'')+
    (d.legal_hold?'<span class="chip" style="background:#fde8e8">⚖️ retenção legal</span> ':'')+
    (P.gerir_configuracoes?'<button class="btn btn-ghost peq" onclick="alternarHold(\\''+d.id+'\\','+(d.legal_hold?'false':'true')+')">'+(d.legal_hold?'Remover retenção legal':'⚖️ Marcar retenção legal')+'</button>':'')+'</p>'+
@@ -640,6 +682,7 @@ async function abrirDoc(id){
    (P.criar_documento?'<button class="btn btn-ghost peq" onclick="$(\\'dd-file\\').click()">⬆️ Nova versão</button><input id="dd-file" type="file" style="display:none" onchange="novaVersaoDoc(\\''+d.id+'\\',this.files[0])">':'')+
    '<table><tr><th>Versão</th><th>Arquivo</th><th>Tamanho</th><th>Enviada em</th><th>Comentário</th><th></th></tr>'+
    d.versoes.map(v=>'<tr'+(v.numero===d.versao_atual?' style="font-weight:700"':'')+'><td>v'+v.numero+(v.numero===d.versao_atual?' <span class="chip">vigente</span>':'')+'</td><td>'+esc(v.nome_arquivo)+'</td><td>'+kb(v.tamanho)+'</td><td>'+dt(v.criado_em)+'</td><td>'+esc(v.comentario)+'</td><td>'+
+    '<button class="btn btn-ghost peq" title="Visualizar esta versão" onclick="visualizarDoc(\\''+d.id+'\\','+v.numero+')">👁️</button> '+
     (P.baixar_documento?'<a class="btn btn-ghost peq" href="/vdocs/api/documentos/'+d.id+'/baixar?versao='+v.numero+'">⬇️</a> ':'')+
     (P.criar_documento&&v.numero!==d.versao_atual?'<button class="btn btn-ghost peq" onclick="restaurarVersaoDoc(\\''+d.id+'\\','+v.numero+')">↩️ Tornar vigente</button>':'')+'</td></tr>').join('')+'</table></div>'+
    (acessos.length?'<div class="card" style="margin-top:12px"><b>Acessos recentes</b><table><tr><th>Quando</th><th>Ação</th><th>Versão</th><th>IP</th></tr>'+
@@ -842,7 +885,7 @@ async function vTriagem(aba){
      const sug=i.sugestao;
      const tipoSel=sug?sug.tipo:i.tipo_documental;
      return '<tr id="tri-l'+n+'"><td><input type="checkbox" class="tri-ck" value="'+n+'" style="width:auto"></td>'+
-      '<td><a href="/vdocs/api/documentos/'+i.document_id+'/baixar" target="_blank" rel="noopener"><b>'+esc(i.nome)+'</b></a><br><span class="sub" style="font-size:12px">'+tamH(i.tamanho)+' · '+dt(i.recebido_em)+'</span>'+
+      '<td><a href="#" title="Visualizar sem baixar" onclick="return visualizarDoc(\\''+i.document_id+'\\')"><b>'+esc(i.nome)+'</b></a>'+(S.me.permissoes.baixar_documento?' <a href="/vdocs/api/documentos/'+i.document_id+'/baixar" title="Baixar" style="text-decoration:none">⬇️</a>':'')+'<br><span class="sub" style="font-size:12px">'+tamH(i.tamanho)+' · '+dt(i.recebido_em)+'</span>'+
       (i.trecho?'<br><span class="sub" style="font-size:12px">'+esc(i.trecho.slice(0,160))+'…</span>':'')+
       (ehProp?'':'<br><input id="tri-nome'+n+'" value="'+esc(i.nome)+'" style="width:100%;margin-top:4px" title="Nome do documento — editável; vale ao Processar">')+'</td>'+
       '<td>'+(i.canal.tipo==='gmail'?'✉️':'💬')+' '+esc(i.canal.rotulo||i.canal.identificador||'')+(i.remetente?'<br><span class="sub" style="font-size:12px">de '+esc(i.remetente)+'</span>':'')+'</td>'+

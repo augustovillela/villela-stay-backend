@@ -248,6 +248,24 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
   r.post('/documentos/:id/versoes/:numero/restaurar', requireTenant, requirePerm('criar_documento'), h(async (req, res) => {
     res.json({ ok: true, versao: docs.restaurarVersao(req.vd.tenant.id, req.params.id, req.params.numero, req.vd.user, req.vd.ip) });
   }));
+  // Pré-visualização inline (sem download). Cabeçalhos próprios: o CSP global tem object-src 'none', que
+  // impede o visualizador de PDF do navegador; aqui cada tipo recebe a política mínima que ele precisa.
+  r.get('/documentos/:id/visualizar', requireTenant, requirePerm('ver_documentos'), (req, res) => {
+    try {
+      const { buffer, nome, mime, ext } = docs.visualizar(req.vd.tenant.id, req.params.id, req.query.versao, req.vd.user, req.vd.ip);
+      res.setHeader('Content-Type', mime);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'private, no-store');
+      res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(nome)}`);
+      res.setHeader('Content-Security-Policy', ext === 'pdf'
+        ? "frame-ancestors 'self'"
+        : "default-src 'none'; img-src 'self'; media-src 'self'; frame-ancestors 'self'; sandbox");
+      res.send(buffer);
+    } catch (e) { res.status(e.semPrevia ? 415 : 400).json({ erro: e.message }); }
+  });
+  r.get('/documentos/:id/texto', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
+    res.json(docs.textoExtraido(req.vd.tenant.id, req.params.id));
+  }));
   r.get('/documentos/:id/baixar', requireTenant, requirePerm('baixar_documento'), h(async (req, res) => {
     const { buffer, nome, mime } = docs.baixar(req.vd.tenant.id, req.params.id, req.query.versao, req.vd.user, req.vd.ip);
     res.setHeader('Content-Type', mime);

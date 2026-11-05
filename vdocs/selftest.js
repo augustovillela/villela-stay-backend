@@ -1020,6 +1020,32 @@ function teste(nome, cond) {
     }
   }
 
+  // ================== PRÉ-VISUALIZAÇÃO SEM BAIXAR ==================
+  {
+    const get = (id, c, jar) => { const h = { Cookie: jars[jar] }; return fetch(BASE + '/vdocs/api/documentos/' + id + c, { headers: h }); };
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64').toString('base64');
+    r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'foto.png', nome: 'Foto', conteudo_base64: png }, jar: 'anaA' });
+    const idImg = r.dados.documento.id;
+    r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'nota.txt', nome: 'Nota texto', conteudo_base64: B64('olá, texto puro') }, jar: 'anaA' });
+    const idTxt = r.dados.documento.id;
+    r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'planilha.xlsx', nome: 'Planilha', conteudo_base64: B64('PK conteudo falso de xlsx') }, jar: 'anaA' });
+    const idXls = r.dados.documento.id;
+    let resp = await get(idImg, '/visualizar', 'anaA');
+    teste('visualizar imagem: inline, tipo certo, sem baixar, nosniff, sandbox', resp.status === 200 && resp.headers.get('content-type') === 'image/png' && /^inline/.test(resp.headers.get('content-disposition')) && resp.headers.get('x-content-type-options') === 'nosniff' && /sandbox/.test(resp.headers.get('content-security-policy')));
+    resp = await get(idTxt, '/visualizar', 'anaA');
+    teste('visualizar texto: text/plain inline com o conteúdo', resp.status === 200 && /^text\/plain/.test(resp.headers.get('content-type')) && (await resp.text()) === 'olá, texto puro');
+    resp = await get(idXls, '/visualizar', 'anaA');
+    teste('Office não tem visualizador nativo: 415 com explicação', resp.status === 415 && /pré-visualização/.test((await resp.json()).erro));
+    r = await req('GET', '/vdocs/api/documentos/' + idXls + '/texto', { jar: 'anaA' });
+    teste('texto extraído disponível para o Office (rota /texto)', r.status === 200 && typeof r.dados.texto === 'string');
+    resp = await get(idImg, '/visualizar', 'bobB');
+    teste('B não visualiza documento de A (isolamento)', resp.status === 400);
+    resp = await fetch(BASE + '/vdocs/api/documentos/' + idImg + '/visualizar');
+    teste('visualizar exige login', resp.status === 401);
+    r = await req('GET', '/vdocs/api/documentos/' + idImg, { jar: 'anaA' });
+    teste('visualização fica registrada nos acessos', r.dados.acessos.some(x => x.acao === 'visualizar' && x.versao === 1));
+  }
+
   // ================== FASE 10: enterprise (2FA, retenção legal, takeout, saúde) ==================
   const ent = require('./enterprise');
 

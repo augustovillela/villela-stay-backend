@@ -302,6 +302,35 @@ function baixar(tenantId, id, numero, ator, ip) {
   const mime = SEM_INLINE.has(ext) ? 'application/octet-stream' : (v.mime || 'application/octet-stream');
   return { buffer, nome: v.nome_arquivo, mime };
 }
+// Pré-visualização SEM baixar: só tipos que o navegador mostra com segurança (sem script próprio).
+// html/svg/xml/json/zip ficam de fora (SEM_INLINE). Office não tem visualizador nativo: a tela mostra o texto extraído.
+const INLINE_MIME = {
+  pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+  txt: 'text/plain; charset=utf-8', csv: 'text/plain; charset=utf-8', md: 'text/plain; charset=utf-8',
+  mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', mov: 'video/quicktime',
+};
+function visualizar(tenantId, id, numero, ator, ip) {
+  const d = obterDocumento(tenantId, id);
+  const num = Math.trunc(Number(numero)) || d.versao_atual;
+  const v = db.prepare('SELECT * FROM document_versions WHERE tenant_id = ? AND document_id = ? AND numero = ?')
+    .get(String(tenantId), d.id, num);
+  if (!v) throw new Error('Versão não encontrada.');
+  const ext = extDe(v.nome_arquivo);
+  const mime = INLINE_MIME[ext];
+  if (!mime) { const e = new Error('Este tipo de arquivo não tem pré-visualização — veja o texto extraído ou baixe.'); e.semPrevia = true; throw e; }
+  const buffer = lerArquivo(v.file_path);
+  db.prepare('INSERT INTO document_access_logs (tenant_id, document_id, user_id, acao, versao, ip, criado_em) VALUES (?,?,?,?,?,?,?)')
+    .run(String(tenantId), d.id, s(ator && ator.id, 40), 'visualizar', num, s(ip, 60), nowISO());
+  return { buffer, nome: v.nome_arquivo, mime, ext };
+}
+/** Texto extraído (para documentos sem visualizador nativo). */
+function textoExtraido(tenantId, id) {
+  obterDocumento(tenantId, id);
+  const t = db.prepare('SELECT texto, metodo, paginas, chars FROM document_texts WHERE tenant_id = ? AND document_id = ?').get(String(tenantId), String(id));
+  if (!t) return { texto: '', chars: 0, truncado: false };
+  const MAX = 200000;
+  return { texto: String(t.texto || '').slice(0, MAX), metodo: t.metodo, paginas: t.paginas, chars: t.chars, truncado: String(t.texto || '').length > MAX };
+}
 function logVisualizacao(tenantId, id, ator, ip) {
   db.prepare('INSERT INTO document_access_logs (tenant_id, document_id, user_id, acao, versao, ip, criado_em) VALUES (?,?,?,?,0,?,?)')
     .run(String(tenantId), String(id), s(ator && ator.id, 40), 'visualizar', s(ip, 60), nowISO());
@@ -323,6 +352,6 @@ module.exports = {
   listarPastas, criarPasta, renomearPasta, moverPasta, excluirPasta,
   criarDocumento, obterDocumento, listarDocumentos, atualizarDocumento, moverDocumento,
   novaVersao, restaurarVersao, paraLixeira, restaurarDaLixeira, excluirDefinitivo, alternarLegalHold,
-  baixar, logVisualizacao, acessosDoDocumento, usoVivo,
+  baixar, visualizar, textoExtraido, logVisualizacao, acessosDoDocumento, usoVivo,
   lerArquivoInterno: lerArquivo, // uso interno do worker de extração (jobs.js)
 };
