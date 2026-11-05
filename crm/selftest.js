@@ -114,6 +114,51 @@ async function rodar() {
     assert.ok(me.json.entitlements.modulos.includes('contatos'));
   });
 
+  // ---- esqueci / redefinir / trocar senha ----
+  const tokenDoEmail = () => { const e = enviados.filter(x => x.ass.includes('redefinir')).pop(); const m = e && /token=([^"&\s<]+)/.exec(e.html); return m && m[1]; };
+  await t('esqueci-senha: e-mail desconhecido responde igual e não envia nada', async () => {
+    const antes = enviados.length;
+    const conhecido = await req('POST', '/crm/api/esqueci-senha', { corpo: { email: 'ninguem@nada.br' } });
+    assert.equal(conhecido.st, 200); assert.equal(conhecido.json.ok, true);
+    assert.equal(enviados.length, antes, 'enviou e-mail para conta inexistente');
+  });
+  let linkReset;
+  await t('esqueci-senha: conta existente recebe link e a resposta é a mesma', async () => {
+    const desconhecido = await req('POST', '/crm/api/esqueci-senha', { corpo: { email: 'ninguem@nada.br' } });
+    const r = await req('POST', '/crm/api/esqueci-senha', { corpo: { email: 'BIA@beta.br' } });
+    assert.equal(r.st, 200); assert.deepEqual(r.json, desconhecido.json, 'resposta revela se a conta existe');
+    linkReset = tokenDoEmail(); assert.ok(linkReset, 'não saiu e-mail com link');
+  });
+  await t('redefinir-senha: senha curta recusada; link troca a senha; reuso do link falha', async () => {
+    assert.equal((await req('POST', '/crm/api/redefinir-senha', { corpo: { token: linkReset, senha: 'curta' } })).st, 400);
+    assert.equal((await req('POST', '/crm/api/redefinir-senha', { corpo: { token: linkReset, senha: 'ResetNova9x' } })).st, 200);
+    assert.equal((await req('POST', '/crm/api/redefinir-senha', { corpo: { token: linkReset, senha: 'OutraSenha9' } })).st, 400, 'link foi usado duas vezes');
+    assert.equal((await req('POST', '/crm/api/login', { corpo: { email: 'bia@beta.br', senha: 'SenhaForte1' } })).st, 401, 'senha antiga ainda entra');
+    assert.equal((await req('POST', '/crm/api/login', { corpo: { email: 'bia@beta.br', senha: 'ResetNova9x' }, cookies: true })).st, 200);
+  });
+  await t('redefinir-senha: token de outro tipo (definir-senha) é recusado', async () => {
+    const setup = new URL(linkSetup).searchParams.get('token');
+    assert.equal((await req('POST', '/crm/api/redefinir-senha', { corpo: { token: setup, senha: 'QualquerUma9' } })).st, 400);
+  });
+  await t('trocar-senha: exige login, senha atual certa e nova diferente', async () => {
+    assert.equal((await req('POST', '/crm/api/trocar-senha', { corpo: { senha_atual: 'ResetNova9x', nova_senha: 'SenhaForte1' } })).st, 401, 'trocou sem sessão');
+    const errada = await req('POST', '/crm/api/trocar-senha', { cookies: true, corpo: { senha_atual: 'errada', nova_senha: 'SenhaForte1' } });
+    assert.equal(errada.st, 400, 'senha atual errada não pode virar 401 (o painel acharia que a sessão expirou)');
+    assert.equal((await req('POST', '/crm/api/trocar-senha', { cookies: true, corpo: { senha_atual: 'ResetNova9x', nova_senha: 'curta' } })).st, 400);
+    assert.equal((await req('POST', '/crm/api/trocar-senha', { cookies: true, corpo: { senha_atual: 'ResetNova9x', nova_senha: 'ResetNova9x' } })).st, 400);
+  });
+  await t('trocar-senha: troca, mantém esta sessão e derruba a outra', async () => {
+    const cookieAntigo = 'crm_sess=' + jar.crm_sess;
+    assert.equal((await req('POST', '/crm/api/trocar-senha', { cookies: true, corpo: { senha_atual: 'ResetNova9x', nova_senha: 'SenhaForte1' } })).st, 200);
+    assert.equal((await req('GET', '/crm/api/me', { cookies: true })).st, 200, 'a sessão de quem trocou caiu');
+    assert.equal((await req('GET', '/crm/api/me', { headers: { Cookie: cookieAntigo } })).st, 401, 'sessão aberta com a senha antiga continua valendo');
+    assert.equal((await req('POST', '/crm/api/login', { corpo: { email: 'bia@beta.br', senha: 'SenhaForte1' }, cookies: true })).st, 200);
+  });
+  await t('páginas: login tem "Esqueci minha senha"; /crm/redefinir-senha existe', async () => {
+    assert.ok((await req('GET', '/crm/app.js')).texto.includes('Esqueci minha senha'));
+    assert.equal((await req('GET', '/crm/redefinir-senha?token=x')).st, 200);
+  });
+
   // ---- contatos: criação, procedência, dedupe, scoring ----
   let leadId;
   await t('cria lead com origem/UTM/consentimento; score calculado', async () => {

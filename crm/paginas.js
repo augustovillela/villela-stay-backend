@@ -347,6 +347,14 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
       const r=await fetch('/crm/api/definir-senha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:new URLSearchParams(location.search).get('token'),senha:s1.value})});
       const d=await r.json();if(!r.ok){m.textContent=d.erro;return}location.href='/crm/app';}`)));
 
+  // link do e-mail "esqueci minha senha" (uso único, 1h) -> /crm/api/redefinir-senha
+  app.get('/crm/redefinir-senha', (req, res) => res.send(shell(
+    `<div class="card"><h3>Criar nova senha</h3><input id="s1" type="password" autocomplete="new-password" placeholder="Nova senha (8+)"><input id="s2" type="password" autocomplete="new-password" placeholder="Confirme"><button class="btn" onclick="salvar()">Salvar nova senha</button><p id="m" class="erro" role="alert"></p><p class="sub"><a href="/crm/app">Voltar ao login</a></p></div>`,
+    `async function salvar(){const m=document.getElementById('m');m.textContent='';if(s1.value!==s2.value){m.textContent='As senhas não conferem.';return}
+      const r=await fetch('/crm/api/redefinir-senha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:new URLSearchParams(location.search).get('token'),senha:s1.value})});
+      const d=await r.json().catch(()=>({}));if(!r.ok){m.textContent=d.erro||'Erro ao salvar.';return}
+      document.querySelector('.card').innerHTML='<h3>✅ Senha alterada</h3><p>Agora é só entrar com a nova senha.</p><a class="btn" href="/crm/app">Ir para o login</a>';}`)));
+
   // lead da landing
   app.post('/crm/api/lead', h(async (req, res) => {
     const id = repo.SaasLeads.criar(req.body || {});

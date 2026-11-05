@@ -32,7 +32,7 @@ function montar(app, injected = {}) {
   billing.configurar({ mpFetch, notificar });
 
   registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviarEmail });
-  const cliente = registrarRotasCliente(app, { jwtSecret });
+  const cliente = registrarRotasCliente(app, { jwtSecret, enviarEmail });
   registrarRotasApp(app, { requireAssinante: cliente.requireAssinante, requirePapel: cliente.requirePapel });
   registrarRotasPublicas(app);
   registrarPaginas(app, { jwtSecret, enviarEmail, notificar });

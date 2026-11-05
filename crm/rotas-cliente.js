@@ -5,6 +5,7 @@
 // (contatos/funis/etc.) vive em rotas-app.js.
 // =====================================================================
 'use strict';
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { db, nowISO } = require('./db');
@@ -14,7 +15,12 @@ const billing = require('./billing');
 const COOKIE = 'crm_sess';
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
-function registrarRotasCliente(app, { jwtSecret }) {
+// Impressão da senha atual: entra no link de redefinição e na sessão. Trocar a
+// senha muda a impressão, então o link vira de uso único e as demais sessões caem.
+const impressao = (hash) => crypto.createHash('sha256').update(String(hash || '')).digest('hex').slice(0, 16);
+const SENHA_MIN = 8;
+
+function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
   const seguro = process.env.NODE_ENV !== 'development';
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0].trim();
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
@@ -26,9 +32,11 @@ function registrarRotasCliente(app, { jwtSecret }) {
 
   function requireAssinante(req, res, next) {
     try {
-      const { uid } = jwt.verify(req.cookies && req.cookies[COOKIE], jwtSecret);
+      const { uid, fp } = jwt.verify(req.cookies && req.cookies[COOKIE], jwtSecret);
       const u = db.prepare('SELECT u.*, t.nome AS tenant_nome, t.status AS tenant_status, t.slug AS tenant_slug FROM tenant_users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = ? AND u.ativo = 1').get(uid);
       if (!u) throw new Error('x');
+      // sessão aberta com outra senha não vale mais (sessões antigas, sem `fp`, seguem até expirar)
+      if (fp && fp !== impressao(u.senha_hash)) throw new Error('x');
       req.assinante = u;
       next();
     } catch (_) { res.status(401).json({ erro: 'não autenticado' }); }
@@ -40,9 +48,9 @@ function registrarRotasCliente(app, { jwtSecret }) {
   app.use('/crm/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
   // Abre a sessão de verdade. Um só lugar cria o cookie — com ou sem MFA.
-  const abrirSessao = (res, u) => {
-    db.prepare('UPDATE tenant_users SET ultimo_login = ? WHERE id = ?').run(nowISO(), u.id);
-    const token = jwt.sign({ uid: u.id }, jwtSecret, { expiresIn: '30d' });
+  const abrirSessao = (res, u, { contaLogin = true } = {}) => {
+    if (contaLogin) db.prepare('UPDATE tenant_users SET ultimo_login = ? WHERE id = ?').run(nowISO(), u.id);
+    const token = jwt.sign({ uid: u.id, fp: impressao(u.senha_hash) }, jwtSecret, { expiresIn: '30d' });
     res.cookie(COOKIE, token, { httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/crm' });
     res.json({ ok: true });
   };
@@ -109,6 +117,61 @@ function registrarRotasCliente(app, { jwtSecret }) {
     if (String((req.body || {}).senha || '').length < 8) return res.status(400).json({ erro: 'A senha precisa de 8+ caracteres.' });
     db.prepare('UPDATE tenant_users SET senha_hash = ? WHERE id = ?').run(bcrypt.hashSync(String(req.body.senha), 10), dec.uid);
     res.json({ ok: true });
+  }));
+
+  // ---- esqueci minha senha: link por e-mail, 1h, uso único ----
+  // Resposta é SEMPRE a mesma, exista a conta ou não (não revela quem é cliente).
+  const pedidos = new Map(); // chave (ip ou e-mail) -> { n, desde }
+  const pedidoDemais = (chave) => {
+    const agora = Date.now(); const p = pedidos.get(chave);
+    if (!p || agora - p.desde > 15 * 60 * 1000) { pedidos.set(chave, { n: 1, desde: agora }); return false; }
+    return ++p.n > 5;
+  };
+  // Em produção o link NUNCA nasce do cabeçalho Host (envenenaria o e-mail de reset).
+  const baseDoLink = (req) => process.env.CRM_BASE_URL
+    || (process.env.NODE_ENV === 'development' ? `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}` : 'https://crm.villelastay.com.br');
+  const RESPOSTA_ESQUECI = { ok: true, mensagem: 'Se este e-mail tiver conta, enviamos um link para criar uma nova senha. Ele vale por 1 hora.' };
+
+  app.post('/crm/api/esqueci-senha', h(async (req, res) => {
+    const email = s((req.body || {}).email, 120).toLowerCase();
+    if (pedidoDemais('ip:' + ipDe(req)) || (email && pedidoDemais('em:' + email))) return res.status(429).json({ erro: 'Muitos pedidos. Tente em 15 minutos.' });
+    const u = email ? db.prepare('SELECT * FROM tenant_users WHERE lower(email) = ? AND ativo = 1').get(email) : null;
+    if (u && enviarEmail) {
+      const token = jwt.sign({ tipo: 'crm-reset', uid: u.id, fp: impressao(u.senha_hash) }, jwtSecret, { expiresIn: '1h' });
+      const link = `${baseDoLink(req)}/crm/redefinir-senha?token=${token}`;
+      enviarEmail(u.email, 'Villela CRM — redefinir sua senha',
+        `<p>Recebemos um pedido para redefinir a senha da sua conta no Villela CRM.</p><p><a href="${link}">Criar uma nova senha</a> (o link vale por 1 hora e só pode ser usado uma vez).</p><p>Se não foi você, ignore este e-mail: sua senha continua a mesma.</p>`).catch(() => {});
+    }
+    res.json(RESPOSTA_ESQUECI);
+  }));
+
+  app.post('/crm/api/redefinir-senha', h(async (req, res) => {
+    const ip = ipDe(req);
+    if (bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente em 15 minutos.' });
+    let dec; try { dec = jwt.verify(s((req.body || {}).token, 4000), jwtSecret); } catch (_) { falha(ip); return res.status(400).json({ erro: 'Link inválido ou expirado. Peça um novo em "Esqueci minha senha".' }); }
+    if (dec.tipo !== 'crm-reset') { falha(ip); return res.status(400).json({ erro: 'Link inválido.' }); }
+    const u = db.prepare('SELECT * FROM tenant_users WHERE id = ? AND ativo = 1').get(dec.uid);
+    if (!u || dec.fp !== impressao(u.senha_hash)) return res.status(400).json({ erro: 'Este link já foi usado ou perdeu a validade. Peça um novo em "Esqueci minha senha".' });
+    const nova = String((req.body || {}).senha || '');
+    if (nova.length < SENHA_MIN) return res.status(400).json({ erro: `A senha precisa de ${SENHA_MIN}+ caracteres.` });
+    db.prepare('UPDATE tenant_users SET senha_hash = ? WHERE id = ?').run(bcrypt.hashSync(nova, 10), u.id);
+    res.json({ ok: true }); // não abre sessão: a pessoa entra com a senha nova (e o 2º fator, se tiver)
+  }));
+
+  // ---- trocar senha (logado): exige a senha atual ----
+  app.post('/crm/api/trocar-senha', requireAssinante, h(async (req, res) => {
+    const ip = ipDe(req);
+    if (bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente em 15 minutos.' });
+    const atual = String((req.body || {}).senha_atual || '');
+    const nova = String((req.body || {}).nova_senha || '');
+    const u = db.prepare('SELECT * FROM tenant_users WHERE id = ? AND ativo = 1').get(req.assinante.id);
+    if (!u || !u.senha_hash || !bcrypt.compareSync(atual, u.senha_hash)) { falha(ip); return res.status(400).json({ erro: 'A senha atual está incorreta.' }); } // 400, não 401: o painel trata 401 como sessão expirada
+    if (nova.length < SENHA_MIN) return res.status(400).json({ erro: `A nova senha precisa de ${SENHA_MIN}+ caracteres.` });
+    if (nova === atual) return res.status(400).json({ erro: 'A nova senha precisa ser diferente da atual.' });
+    tentativas.delete(ip);
+    db.prepare('UPDATE tenant_users SET senha_hash = ? WHERE id = ?').run(bcrypt.hashSync(nova, 10), u.id);
+    // derruba as outras sessões (mudou a impressão) e mantém esta aberta
+    abrirSessao(res, db.prepare('SELECT * FROM tenant_users WHERE id = ?').get(u.id), { contaLogin: false });
   }));
 
   app.get('/crm/api/me', requireAssinante, h(async (req, res) => {

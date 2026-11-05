@@ -88,6 +88,7 @@ function telaLogin() {
       <input id="lg-senha" type="password" autocomplete="current-password"></div>
     <button class="vx-btn" id="lg-btn" style="margin-top:8px">Entrar</button>
     <p id="lg-msg" class="erro" role="alert"></p>
+    <p class="sub" style="margin-top:10px;text-align:left"><a href="#" id="lg-esqueci">Esqueci minha senha</a></p>
     <p class="sub" style="margin-top:14px;text-align:left">Ainda não tem conta? <a href="/crm/assinar?plano=trial">Teste grátis por 14 dias</a>.</p></div>`;
   const entrar = async () => {
     $('#lg-msg').textContent = '';
@@ -100,6 +101,30 @@ function telaLogin() {
   };
   $('#lg-btn').onclick = entrar;
   $('#lg-senha').onkeydown = (ev) => { if (ev.key === 'Enter') entrar(); };
+  $('#lg-esqueci').onclick = (ev) => { ev.preventDefault(); telaEsqueci($('#lg-email').value.trim()); };
+}
+
+/** "Esqueci minha senha": pede o e-mail e manda o link (a resposta é igual exista a conta ou não). */
+function telaEsqueci(emailInicial) {
+  $('#app').innerHTML = `<div class="card crm-auth"><div class="cp-auth-marca"><img src="/assets/brand/villela-crm/simbolo-v.svg" alt=""><span class="vx-hint" style="margin:0">Villela CRM</span></div>
+    <h3 style="margin-bottom:6px">Esqueci minha senha</h3>
+    <p class="sub" style="text-align:left;margin:0 0 14px">Digite o e-mail da sua conta. Enviamos um link para criar uma nova senha.</p>
+    <div class="vx-campo"><label for="es-email">E-mail</label>
+      <input id="es-email" type="email" autocomplete="username" autocapitalize="off" spellcheck="false" value="${esc(emailInicial || '')}"></div>
+    <button class="vx-btn" id="es-btn">Enviar link</button>
+    <p id="es-msg" class="erro" role="alert"></p>
+    <p class="sub" style="margin-top:14px;text-align:left"><a href="#" id="es-voltar">Voltar ao login</a></p></div>`;
+  const enviar = async () => {
+    const msg = $('#es-msg'); msg.textContent = ''; msg.classList.add('erro');
+    try {
+      const r = await api('POST', '/esqueci-senha', { email: $('#es-email').value.trim() });
+      msg.classList.remove('erro'); msg.textContent = '✅ ' + r.mensagem;
+    } catch (e) { msg.textContent = e.message; }
+  };
+  $('#es-btn').onclick = enviar;
+  $('#es-email').onkeydown = (ev) => { if (ev.key === 'Enter') enviar(); };
+  $('#es-voltar').onclick = (ev) => { ev.preventDefault(); telaLogin(); };
+  $('#es-email').focus();
 }
 
 /** Segunda etapa do login quando a conta tem MFA (Villela Growth OS). */
@@ -935,6 +960,13 @@ async function vConta() {
           <div class="lin sub" style="text-align:left">Envie JSON com nome, telefone, email, origem, utm, primeira_mensagem… O lead entra deduplicado e com procedência.</div>
           <div class="lin"><b>Chaves de API</b> <button class="btn peq secund" id="ak-nova">+ Gerar chave</button><div id="ak-lista"></div></div>
         </div>` : ''}
+        <div class="card"><b>🔑 Minha senha</b>
+          <p class="sub" style="text-align:left;margin:4px 0 8px">${esc(ME.usuario.email)} · as outras sessões abertas serão encerradas ao trocar.</p>
+          <label>Senha atual <input id="pw-atual" type="password" autocomplete="current-password"></label>
+          <label>Nova senha (8+ caracteres) <input id="pw-nova" type="password" autocomplete="new-password"></label>
+          <label>Confirmar nova senha <input id="pw-conf" type="password" autocomplete="new-password"></label>
+          <button class="btn peq" id="pw-salvar">Alterar senha</button><p id="pw-msg" class="sub" style="text-align:left" role="alert"></p>
+        </div>
         <div class="card"><b>🎫 Suporte</b><div id="tk-lista"></div>
           <label>Assunto <input id="tk-ass"></label><label>Mensagem <textarea id="tk-txt" rows="2"></textarea></label>
           <button class="btn peq" id="tk-abrir">Abrir ticket</button>
@@ -950,6 +982,15 @@ async function vConta() {
         const r = await api('POST', '/equipe', { nome: $('#eq-nome').value.trim(), email: $('#eq-email').value.trim(), papel: $('#eq-papel').value });
         $('#eq-msg').innerHTML = `✅ Criado. Link p/ definir senha: <a href="${esc(r.link_setup)}">${esc(r.link_setup)}</a>`;
       } catch (e) { $('#eq-msg').textContent = e.message; }
+    };
+    $('#pw-salvar').onclick = async () => {
+      const msg = $('#pw-msg'); msg.textContent = '';
+      if ($('#pw-nova').value !== $('#pw-conf').value) { msg.textContent = 'A confirmação não confere com a nova senha.'; return; }
+      try {
+        await api('POST', '/trocar-senha', { senha_atual: $('#pw-atual').value, nova_senha: $('#pw-nova').value });
+        ['#pw-atual', '#pw-nova', '#pw-conf'].forEach(q => { $(q).value = ''; });
+        msg.textContent = '✅ Senha alterada.';
+      } catch (e) { msg.textContent = e.message; }
     };
     const carregarChaves = async () => {
       const { chaves } = await api('GET', '/app/chaves').catch(() => ({ chaves: [] }));
