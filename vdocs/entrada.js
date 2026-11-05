@@ -17,7 +17,7 @@
 // (6) NADA é apagado de vez aqui: eliminar = lixeira.
 // =====================================================================
 'use strict';
-const { db, nowISO, novoId } = require('./db');
+const { db, nowISO, novoId, j } = require('./db');
 const repo = require('./repo');
 const docs = require('./docs');
 
@@ -163,6 +163,9 @@ function receber(tenantId, { tipo, identificador, origem_id, remetente, assunto,
 // arquivo e pelo texto extraído, sobem para o topo da fila já com a categoria sugerida.
 // É SUGESTÃO — quem confirma é a triagem. Texto ainda não extraído = só o nome decide.
 const SINAIS = [
+  { tipo: 'financeiro', rotulo: 'Financeiro',
+    forte: /\b(recebiveis|resumo diario|conciliacao|repasse|payout)\b/i,
+    fraco: /\b(liquidacao|antecipacao|taxa de administracao|valor liquido|adquirente)\b/i },
   { tipo: 'extrato_bancario', rotulo: 'Extrato bancário',
     forte: /\b(extrato|extratos)\b/i,
     fraco: /\b(saldo anterior|saldo final|saldo do dia|lancamentos|movimentacao|movimentacoes|agencia|conta corrente|periodo do extrato)\b/i },
@@ -174,7 +177,7 @@ const SINAIS = [
   { tipo: 'fatura', rotulo: 'Fatura',
     forte: /\b(fatura|faturas|boleto|boletos|cobranca|2a via|segunda via)\b|\bconta de (luz|agua|energia|telefone|internet|gas)\b/i,
     fraco: /\b(vencimento|linha digitavel|codigo de barras|valor do documento|pague ate|total a pagar|data de vencimento|beneficiario)\b/i },
-  { tipo: 'recibo', forte: /\brecibo\b/i,
+  { tipo: 'recibo', forte: /\b(recibo|ticket|bilhete eletronico)\b/i,
     fraco: /\b(recebi de|recebemos de|referente a|quita[cç][aã]o|valor pago)\b/i },
   { tipo: 'contrato', forte: /\bcontrato|\baditivo\b|\bdistrato\b|\btermo de (ades[aã]o|cess[aã]o|loca[cç][aã]o)\b/i,
     fraco: /\b(contratante|contratada|locador|locat[aá]rio|cl[aá]usula|foro da comarca|partes? contratantes?)\b/i },
@@ -205,14 +208,16 @@ const sem = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLo
 const RE_PROMO = /\b(promocao|promocoes|oferta|ofertas|desconto|descontos|cupom|black ?friday|liquidacao|imperdivel|ultimas unidades|frete gratis|newsletter|aproveite|compre agora|outlet|catalogo|lancamento|novidades?|parabens|voce ganhou|ganhe|sorteio)\b|% ?off|\d+% ?de desconto/;
 const RE_REMETENTE_MKT = /(no-?reply|noreply|newsletter|marketing|promo|ofertas|mkt|campanha|comunicacao|novidades|news@)/;
 const RE_NOME_PROMO = /(banner|promo|oferta|catalogo|folheto|encarte|tabela de precos|flyer|lamina)/;
+// legenda de grupo de achadinhos: "De R$ 449 por R$ 269 no Pix", "cupom", "no pix", "com frete gratis"
+const RE_PRECO_PROMO = /(de r\$ ?\d[0-9.,]* por r\$|\bpor r\$ ?\d[0-9.,]* no pix|\bno pix\b|\bcupom\b|\d+% ?off|\d+% de desconto)/;
 /** 'propaganda' ou 'normal'. `emLista` = cabeçalhos de lista/bulk do e-mail (List-Unsubscribe, Precedence: bulk). */
 function classificarGrupo({ nome, assunto, remetente, emLista }) {
   if (sugerirTipo(nome, '')) return 'normal';
   let pontos = 0;
   if (emLista) pontos += 2;
   if (RE_PROMO.test(sem(assunto))) pontos += 2;
-  if (RE_NOME_PROMO.test(sem(nome))) pontos += 2; else if (RE_PROMO.test(sem(nome))) pontos += 1;
-  if (RE_REMETENTE_MKT.test(sem(remetente))) pontos += 1;
+  if (RE_NOME_PROMO.test(sem(nome)) || RE_PRECO_PROMO.test(sem(nome))) pontos += 2; else if (RE_PROMO.test(sem(nome))) pontos += 1;
+  if (RE_REMETENTE_MKT.test(sem(remetente))) pontos += /promo|achadinho|ofertas|cupom/.test(sem(remetente)) ? 2 : 1;
   return pontos >= 3 || (pontos >= 2 && !emLista) ? 'propaganda' : 'normal';
 }
 
@@ -226,10 +231,35 @@ function pastaPorNome(tenantId, nome, ator) {
   return ja ? ja.id : docs.criarPasta(tenantId, { nome, parent_id: '' }, ator, 'entrada');
 }
 
+/**
+ * Reavalia o que ainda está na fila e foi classificado automaticamente como 'normal' (ou nunca foi):
+ * a régua melhora com o tempo e a fila antiga não deve ficar presa à régua velha. Só mexe em item
+ * cuja decisão foi da máquina — 'confirmado' (o Augusto disse "não é propaganda") nunca é reaberto.
+ * Sem cabeçalho de lista (não guardado), usa nome, remetente e assunto lido da descrição.
+ */
+function reclassificarFila(t) {
+  const linhas = db.prepare(`SELECT l.id, l.remetente, l.document_id, d.nome, d.descricao, d.tags, d.folder_id
+    FROM entradas_log l JOIN documents d ON d.id = l.document_id AND d.tenant_id = l.tenant_id
+    WHERE l.tenant_id = ? AND l.triagem = 'pendente' AND l.grupo IN ('', 'normal') AND d.status = 'ativo'`).all(t);
+  for (const r of linhas) {
+    const assunto = ((String(r.descricao || '').match(/"([^"]*)"/) || [])[1]) || '';
+    if (classificarGrupo({ nome: r.nome, assunto, remetente: r.remetente, emLista: false }) !== 'propaganda') {
+      db.prepare("UPDATE entradas_log SET grupo = 'normal' WHERE id = ? AND grupo = ''").run(r.id);
+      continue;
+    }
+    const ator = { id: 'sistema', nome: 'Triagem automática' };
+    const tags = j.parse(r.tags, []);
+    if (!tags.includes('propaganda')) docs.atualizarDocumento(t, r.document_id, { tags: tags.concat('propaganda') }, ator, 'rotina');
+    docs.moverDocumento(t, r.document_id, pastaPorNome(t, PASTA_PROPAGANDA, ator), ator, 'rotina');
+    db.prepare("UPDATE entradas_log SET grupo = 'propaganda' WHERE id = ?").run(r.id);
+  }
+}
+
 // ------------------------------------------------------------ triagem
 /** Documentos recebidos que ainda esperam decisão. Quem já saiu do ar por outro caminho some da fila. */
 function pendentesTriagem(tenantId, limite = 200) {
   const t = String(tenantId);
+  reclassificarFila(t);
   const linhas = db.prepare(`SELECT l.id AS log_id, l.document_id, l.remetente, l.grupo, l.criado_em AS recebido_em, l.canal_id,
       c.tipo AS canal_tipo, c.identificador AS canal_ident, c.rotulo AS canal_rotulo,
       d.nome, d.descricao, d.tipo_documental, d.tags, d.status AS doc_status,
@@ -253,7 +283,7 @@ function pendentesTriagem(tenantId, limite = 200) {
       canal: { tipo: r.canal_tipo, identificador: r.canal_ident, rotulo: r.canal_rotulo },
       trecho: s(String(r.texto || '').replace(/\s+/g, ' '), 400), // ajuda a decidir sem abrir o arquivo
       sugestao: sugerirTipo(r.nome, r.texto),
-      grupo: r.grupo || 'normal',
+      grupo: r.grupo === 'propaganda' ? 'propaganda' : 'normal',
     });
   }
   // importantes (nota fiscal/contrato/fatura...) primeiro; dentro de cada grupo, o mais novo antes
@@ -299,7 +329,7 @@ function decidirTriagem(tenantId, itens, ator, ip) {
         const canal = db.prepare('SELECT * FROM canais_entrada WHERE id = ?').get(l.canal_id) || {};
         docs.atualizarDocumento(tenantId, l.document_id, { tags: d.tags.filter(t => t !== 'propaganda') }, ator, ip);
         docs.moverDocumento(tenantId, l.document_id, pastaDeEntrada(tenantId, canal, ator), ator, ip);
-        db.prepare("UPDATE entradas_log SET grupo = 'normal' WHERE id = ?").run(l.id);
+        db.prepare("UPDATE entradas_log SET grupo = 'confirmado' WHERE id = ?").run(l.id);
       } else {
         throw new Error('Ação inválida (use eliminar, processar ou nao_propaganda).');
       }

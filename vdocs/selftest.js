@@ -897,6 +897,26 @@ function teste(nome, cond) {
       teste('documento comum de pessoa não é propaganda', g({ nome: 'relatorio.pdf', assunto: 'Reunião', remetente: 'ana@a.com', emLista: false }) === 'normal');
       teste('sugestão: fatura, boleto e conta de luz', ['Fatura Claro.pdf', 'boleto_marco.pdf', 'conta de luz.pdf', '2a via cobrança.pdf'].every(n => entrada.sugerirTipo(n, '').tipo === 'fatura'));
       teste('sugestão: extrato bancário', entrada.sugerirTipo('Extrato C6 outubro.pdf', '').tipo === 'extrato_bancario');
+      const promoReal = [
+        ['ÓTIMA OPÇÃO PRA CORRER E TREINAR 🏃 Lite Flow U adidas 🔥 R$ 199,46 no Pix ⚠️ Cu-ECB1BC.jpg', 'PromosP (558586836667-1609985246)'],
+        ['O BRABO SB FORCE Tênis Nike SB Force 58 (37 ao 44) De R$ 449 por R$ 269 no Pix U-91C1A0.jpg', 'Lorrane (120363351515748877)'],
+        ['HMM ME DA UM GOLE Copo Stanley Quencher Cream 1.18L 🔥 DE 359 POR 121,12 no Pix -B6D1EB.jpg', 'Lorrane (120363351515748877)'],
+        ['EGEO DOCINHO PRA MULHERADA 🥰 Egeo Choc Desodorante Colônia 90ml O Boticário 🔥 -95C337.jpg', 'PromosP (558586836667-1609985246)'],
+        ['PRA VC DEIXAR NO QUARTO OU ESCRITÓRIO Geladeira frigobar Philco PFG85 con capaci-0DF011.jpg', 'PromosP (558586836667-1609985246)'],
+        ['IDEAL PRO SEU HOME OFFICE OU ESTUDOS 🫡 Mesa Industrial Premium 150cm Para Escri-5E3FDA.jpg', 'Promos P (558586836667-1609985246)'],
+        ['COM ESSA ATÉ O FILME RUIM FICA BOM 🤩 Smart Tv Philco 50 P50vik 4k Uhd Led Roku -6620C3.jpg', 'Promos (558586836667-1609985246)'],
+      ];
+      teste('as 7 imagens de grupo de promoção reais são propaganda', promoReal.every(([n, rem]) => g({ nome: n, assunto: '', remetente: rem, emLista: false }) === 'propaganda'));
+      teste('ticket da Zara não é propaganda e sugere recibo; relatório C6Pay sugere financeiro', g({ nome: '1793745936224-ticket-8a2cd6b21f324a6999341f1cead87bac.pdf', assunto: 'Anexamos seu bilhete eletrônico.', remetente: 'Zara <noreply@zara.com>', emLista: false }) === 'normal' && entrada.sugerirTipo('ticket-8a2cd.pdf', '').tipo === 'recibo' && entrada.sugerirTipo('Recebiveis-Detalhado-C6Pay-2026-11-04.xlsx', '').tipo === 'financeiro');
+      // fila antiga classificada 'normal' é reavaliada ao abrir a triagem e vai para a pasta de propaganda
+      {
+        const e3 = await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'P-antiga', arquivo_nome: promoReal[1][0].replace('.jpg', '.pdf'), remetente: promoReal[1][1], conteudo_base64: B64('%PDF-1.4 antiga') }));
+        require('./db').db.prepare("UPDATE entradas_log SET grupo = '' WHERE document_id = ?").run(e3.dados.document_id); // simula registro da régua velha
+        const fila0 = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens;
+        teste('fila antiga é reclassificada como propaganda ao abrir a triagem', (fila0.find(i => i.document_id === e3.dados.document_id) || {}).grupo === 'propaganda');
+        const lx = fila0.filter(i => i.document_id === e3.dados.document_id);
+        await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: lx.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
+      }
       const ids = {};
       for (const [k, nome, extra] of [['promo', 'catalogo_outono.pdf', { assunto: 'Ofertas imperdíveis', remetente: 'news@loja.com', em_lista: true }], ['fat', 'Fatura Vivo.pdf', {}], ['ext', 'Extrato C6.pdf', {}]]) {
         const e2 = await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'P-' + k, arquivo_nome: nome, conteudo_base64: B64('%PDF-1.4 ' + nome), ...extra }));
