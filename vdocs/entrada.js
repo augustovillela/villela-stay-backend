@@ -259,6 +259,33 @@ function decidirTriagem(tenantId, itens, ator, ip) {
   return resultado;
 }
 
+// ------------------------------------------------------------ aviso diário da triagem
+// O aviso sai pelo WhatsApp do Augusto (alertaAugusto). Por isso só vale para conta de CORTESIA
+// (interna, da plataforma): cliente pagante não pode ter a fila dele despachada para o número do
+// dono da plataforma. Ligado por padrão nessas contas; o dono desliga na aba Entrada automática.
+function avisoTriagemDisponivel(tenantId) {
+  const t = repo.obterTenant(tenantId);
+  return !!(t && t.status === 'cortesia');
+}
+function avisoTriagemAtivo(tenantId) {
+  return avisoTriagemDisponivel(tenantId) && (repo.lerSettings(tenantId).aviso_triagem_whatsapp || 'on') !== 'off';
+}
+function definirAvisoTriagem(tenantId, ativo, ator, ip) {
+  if (!avisoTriagemDisponivel(tenantId)) throw new Error('O aviso por WhatsApp só existe nas contas internas da plataforma.');
+  repo.gravarSetting(tenantId, 'aviso_triagem_whatsapp', ativo ? 'on' : 'off', ator, ip);
+}
+/** Dados do aviso diário, ou null quando não há nada esperando (não se avisa "zero"). */
+function dadosAvisoTriagem(tenantId) {
+  const itens = pendentesTriagem(tenantId, 500);
+  if (!itens.length) return null;
+  return {
+    total: itens.length,
+    importantes: itens.filter(i => i.sugestao).length,
+    maisAntigo: itens.reduce((m, i) => (i.recebido_em < m ? i.recebido_em : m), itens[0].recebido_em),
+    nomes: itens.slice(0, 3).map(i => i.nome),
+  };
+}
+
 function resumo(tenantId) {
   const t = String(tenantId);
   const porStatus = db.prepare('SELECT status, COUNT(*) n FROM entradas_log WHERE tenant_id = ? AND criado_em >= ? GROUP BY status')
@@ -278,4 +305,5 @@ module.exports = {
   PASTA_PADRAO, TAG_BAIXA_STAYS, EXT_ACEITAS, canonFone, normalizar, sugerirTipo,
   listarCanais, criarCanal, atualizarCanal, excluirCanal, canaisAtivos, receber,
   pendentesTriagem, decidirTriagem, resumo, recentes,
+  avisoTriagemDisponivel, avisoTriagemAtivo, definirAvisoTriagem, dadosAvisoTriagem,
 };

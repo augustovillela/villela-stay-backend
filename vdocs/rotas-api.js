@@ -350,7 +350,12 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
       recentes: entrada.recentes(req.vd.tenant.id),
       resumo: entrada.resumo(req.vd.tenant.id),
       pasta_padrao: entrada.PASTA_PADRAO,
+      aviso_triagem: { disponivel: entrada.avisoTriagemDisponivel(req.vd.tenant.id), ativo: entrada.avisoTriagemAtivo(req.vd.tenant.id) },
     });
+  }));
+  r.post('/entrada/aviso', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    entrada.definirAvisoTriagem(req.vd.tenant.id, !!(req.body || {}).ativo, req.vd.user, req.vd.ip);
+    res.json({ ok: true });
   }));
   r.post('/entrada/canais', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
     res.json({ ok: true, canal: entrada.criarCanal(req.vd.tenant.id, req.body || {}, req.vd.user, req.vd.ip) });

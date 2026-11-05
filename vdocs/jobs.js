@@ -143,6 +143,22 @@ async function rotinaVencimentos() {
   return alertas;
 }
 
+// Aviso diário da triagem (WhatsApp do Augusto): só contas internas com documento esperando.
+async function rotinaTriagem() {
+  const entrada = require('./entrada');
+  const avisos = require('./avisos');
+  let enviados = 0;
+  for (const t of db.prepare("SELECT id FROM tenants WHERE status = 'cortesia'").all()) {
+    if (!entrada.avisoTriagemAtivo(t.id)) continue;
+    const d = entrada.dadosAvisoTriagem(t.id);
+    if (!d) continue;
+    await Promise.resolve(_canais.notificar(avisos.triagemPendente(d))).catch(() => {});
+    repo.auditar(t.id, { id: 'sistema', nome: 'Aviso da triagem' }, 'rotina.triagem_aviso', 'entradas_log', '', { total: d.total }, 'rotina');
+    enviados++;
+  }
+  return enviados;
+}
+
 // ------------------------------------------------------------ timers
 let _timers = [];
 function iniciar() {
@@ -162,6 +178,16 @@ function iniciar() {
       require('./enterprise').purgarLixeiras().then(n => n && console.log(`[vdocs jobs] retenção: ${n} documento(s) purgado(s) da lixeira`)).catch(e => console.error('[vdocs jobs]', e.message));
     }
   }, 5 * 60 * 1000));
+  // triagem: 1x/dia ~09h Brasília (12h UTC) — hora em que ele costuma estar com o celular na mão
+  let ultimaTriagem = '';
+  _timers.push(setInterval(() => {
+    const agora = new Date();
+    const hojeUTC = agora.toISOString().slice(0, 10);
+    if (agora.getUTCHours() === 12 && ultimaTriagem !== hojeUTC) {
+      ultimaTriagem = hojeUTC;
+      rotinaTriagem().then(n => n && console.log(`[vdocs jobs] aviso da triagem: ${n} conta(s) avisada(s)`)).catch(e => console.error('[vdocs jobs]', e.message));
+    }
+  }, 5 * 60 * 1000));
   for (const t of _timers) t.unref && t.unref();
   console.log('[vdocs jobs] worker de extração + rotina de vencimentos ativos');
 }
@@ -170,5 +196,5 @@ module.exports = {
   configurar, iniciar,
   enfileirarExtracao, processarPendentes, statusProcessamento, reprocessar,
   indexar, removerDoIndice, buscarPorConteudo,
-  documentosVencendo, rotinaVencimentos,
+  documentosVencendo, rotinaVencimentos, rotinaTriagem,
 };

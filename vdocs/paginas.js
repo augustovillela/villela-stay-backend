@@ -490,7 +490,9 @@ async function boot(){
   pintarBotaoInstalar();
   pintarBotaoPush().catch(()=>{});
   if(S.me.bloqueado){pintarCabecalho();$('corpo').innerHTML='<div class="vx-alerta vx-alerta--danger" role="alert"><span class="vx-alerta-ico" aria-hidden="true">⚠️</span><div><b>Conta bloqueada.</b><p class="vx-mb0">'+(S.me.tenant.status==='suspensa'?'Sua conta está suspensa — fale com a Villela Docs.':'Seu período de teste terminou — escolha um plano para continuar (fale com a gente pelo formulário da página inicial).')+'</p></div></div>';return;}
-  ir('dashboard');
+  // link do aviso do WhatsApp: /vdocs/app#triagem abre direto na fila
+  const alvo=(location.hash||'').replace('#','');
+  ir(visiveis().some(t=>t[0]===alvo)?alvo:'dashboard');
 }
 async function vDash(){
   const d=await api('GET','/dashboard');
@@ -846,11 +848,13 @@ async function vEntrada(){
    '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><select id="ent-tipo" style="max-width:140px"><option value="whatsapp">WhatsApp</option><option value="gmail">Gmail</option></select>'+
    '<input id="ent-ident" placeholder="5561999999999 ou voce@gmail.com" style="max-width:280px"><input id="ent-rot" placeholder="Rótulo (ex.: Pessoal)" style="max-width:180px">'+
    '<button class="btn peq" onclick="entAdd()">Cadastrar conta</button></div><div id="ent-out" style="margin-top:8px;font-size:13px"></div></div>'+
+   (d.aviso_triagem.disponivel?'<div class="card" style="margin-top:12px"><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:0"><input type="checkbox" style="width:auto" '+(d.aviso_triagem.ativo?'checked ':'')+'onchange="entAviso(this.checked)"> 📲 Avisar no WhatsApp, todo dia por volta das 9h, quando houver documentos esperando triagem (com link para abrir no celular)</label></div>':'')+
    '<div class="card" style="margin-top:12px"><b>🕘 Chegadas recentes</b><table><tr><th>Quando</th><th>Arquivo</th><th>De</th><th>Desfecho</th></tr>'+
    (d.recentes.length?d.recentes.map(e=>'<tr><td>'+dt(e.criado_em)+'</td><td>'+esc(e.arquivo_nome)+'</td><td>'+esc(e.remetente||'')+'</td><td>'+
      (e.status==='recebido'?'✅ recebido'+(e.triagem==='pendente'?' · aguarda triagem':e.triagem==='processado'?' · processado':e.triagem==='eliminado'?' · eliminado':''):e.status==='duplicado'?'♻️ repetido':'🚫 '+esc(e.motivo||e.status))+'</td></tr>').join('')
     :'<tr><td colspan="4" style="color:var(--suave)">Nada recebido ainda.</td></tr>')+'</table></div>';
 }
+async function entAviso(ativo){try{await api('POST','/entrada/aviso',{ativo});}catch(e){alert(e.message);vEntrada();}}
 async function entAdd(){try{
   await api('POST','/entrada/canais',{tipo:$('ent-tipo').value,identificador:$('ent-ident').value,rotulo:$('ent-rot').value});vEntrada();
  }catch(e){$('ent-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}

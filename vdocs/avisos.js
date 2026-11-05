@@ -71,4 +71,16 @@ const novoLead = (b = {}) => montarAviso({
   fazer: 'Responder o lead em até 24h pelo contato acima.',
 });
 
-module.exports = { assinaturaAtivada, assinaturaEncerrada, pagamentoAprovado, trialsExpirando, novoTrial, novoLead };
+const LINK_TRIAGEM = (process.env.VDOCS_BASE_URL || 'https://docs.villelastay.com.br').replace(/\/+$/, '') + '/vdocs/app#triagem';
+const triagemPendente = (d) => montarAviso({
+  titulo: `🧹 ${SISTEMA}: ${d.total} documento(s) esperando triagem`,
+  campos: [
+    ['Importantes', d.importantes ? `${d.importantes} (nota fiscal, contrato, recibo ou comprovante)` : ''],
+    ['Mais antigo', dataBR(d.maisAntigo)],
+    ['Exemplos', d.nomes.join('; ')],
+    ['Link', LINK_TRIAGEM],
+  ],
+  fazer: 'Abrir o link no celular e decidir cada documento: eliminar ou processar.',
+});
+
+module.exports = { triagemPendente, assinaturaAtivada, assinaturaEncerrada, pagamentoAprovado, trialsExpirando, novoTrial, novoLead };

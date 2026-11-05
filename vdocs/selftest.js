@@ -888,6 +888,30 @@ function teste(nome, cond) {
     teste('conta desligada não recebe', r.status === 200 && e.dados.status === 'ignorado');
     r = await req('GET', '/vdocs/api/entrada', { jar: 'anaA' });
     teste('tela de entrada resume o dia', r.dados.resumo.ultimas_24h.recebido === 4 && r.dados.resumo.pendentes_triagem === 1 && r.dados.recentes.length >= 6);
+
+    // aviso diário da triagem: só conta interna (cortesia), só com fila, nunca "zero"
+    {
+      const jobsMod = require('./jobs');
+      const statusAntes = repo.obterTenant(tenantA.id).status;
+      let marca = alertas.length; const novos = () => alertas.slice(marca);
+      teste('conta pagante não recebe o aviso da triagem', (await jobsMod.rotinaTriagem()) === 0 && !novos().length);
+      r = await req('POST', '/vdocs/api/entrada/aviso', { body: { ativo: false }, jar: 'anaA' });
+      teste('só conta interna liga/desliga o aviso', r.status === 400);
+      repo.administrarTenant(tenantA.id, { status: 'cortesia' }, staff, 'teste');
+      r = await req('GET', '/vdocs/api/entrada', { jar: 'anaA' });
+      teste('tela mostra o aviso ligado por padrão na conta interna', r.dados.aviso_triagem.disponivel && r.dados.aviso_triagem.ativo);
+      teste('rotina avisa a conta interna com fila (1 aviso)', (await jobsMod.rotinaTriagem()) === 1 && novos().length === 1);
+      const av = novos()[0] || '';
+      teste('aviso traz total, link para o celular e o que fazer', av.includes('1 documento(s) esperando triagem') && av.includes('/vdocs/app#triagem') && av.includes('O QUE FAZER') && av.length <= 880 && !av.includes(String.fromCharCode(10)));
+      await req('POST', '/vdocs/api/entrada/aviso', { body: { ativo: false }, jar: 'anaA' });
+      marca = alertas.length;
+      teste('aviso desligado não sai', (await jobsMod.rotinaTriagem()) === 0 && !novos().length);
+      await req('POST', '/vdocs/api/entrada/aviso', { body: { ativo: true }, jar: 'anaA' });
+      const fila = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens;
+      await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: fila.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
+      teste('fila vazia não gera aviso', (await jobsMod.rotinaTriagem()) === 0 && !novos().length);
+      repo.administrarTenant(tenantA.id, { status: statusAntes }, staff, 'teste');
+    }
   }
 
   // ================== FASE 10: enterprise (2FA, retenção legal, takeout, saúde) ==================
