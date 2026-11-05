@@ -989,10 +989,11 @@ function teste(nome, cond) {
         const mk = (body, chave) => fetch(BASE + '/staff/api/vdocs-entrada/whatsapp', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(chave ? { 'x-publish-key': chave } : {}) }, body: JSON.stringify(body) }).then(async x => ({ status: x.status, dados: await x.json() }));
         await req('POST', '/vdocs/api/entrada/canais', { body: { tipo: 'whatsapp', identificador: '5561991935013', rotulo: 'Business' }, jar: 'anaA' });
         const pngB64 = Buffer.from('JFIF comprovante do business').toString('base64');
-        const corpoMk = { identificador: '556191935013', origem_id: 'wamid.BIZ001#0', remetente_b64: Buffer.from('Cliente Teste (556133334444)').toString('base64'), legenda_b64: Buffer.from('comprovante pix').toString('base64'), mime: 'image/png', conteudo_base64: pngB64, data: '2026-11-05T18:00:00.000Z' };
+        const corpoMk = { identificador: '556191935013', origem_id: 'wamid.BIZ001#0', remetente_b64: Buffer.from('Cliente Teste').toString('base64'), telefone: '556133334444', legenda_b64: Buffer.from('comprovante pix').toString('base64'), mime: 'image/png', conteudo_base64: pngB64, data: '2026-11-05T18:00:00.000Z' };
         teste('rota do Make exige a chave', (await mk(corpoMk, '')).status === 401 && (await mk(corpoMk, 'errada')).status === 401);
         const rb = await mk(corpoMk, 'chave-de-teste');
         teste('rota do Make: acha a empresa pelo número e recebe a mídia', rb.status === 200 && rb.dados.status === 'recebido');
+        teste('remetente = nome + telefone na descrição', /Cliente Teste \(556133334444\)/.test((await req('GET', '/vdocs/api/documentos/' + rb.dados.document_id, { jar: 'anaA' })).dados.documento.descricao));
         teste('reenvio do Make é idempotente', (await mk(corpoMk, 'chave-de-teste')).dados.status === 'ja_processado');
         teste('número que ninguém cadastrou é ignorado', (await mk({ ...corpoMk, identificador: '5561900000000', origem_id: 'x#0' }, 'chave-de-teste')).dados.status === 'ignorado');
         const filaB = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens.filter(i => i.document_id === rb.dados.document_id);

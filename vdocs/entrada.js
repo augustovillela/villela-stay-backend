@@ -128,7 +128,7 @@ function receber(tenantId, corpo, ator, ip) {
   const legenda = s(c.legenda || dec64(c.legenda_b64), 300);
   const nomeIn = s(c.arquivo_nome || dec64(c.arquivo_nome_b64), 200) || nomeDeMidia({ legenda, mime: c.mime, data: c.data, origem: c.origem_id });
   return receberBruto(tenantId, {
-    ...c, arquivo_nome: nomeIn, remetente: c.remetente || dec64(c.remetente_b64), assunto: c.assunto || dec64(c.assunto_b64) || legenda,
+    ...c, arquivo_nome: nomeIn, remetente: (c.remetente || (dec64(c.remetente_b64).trim() + (c.telefone ? ' (' + s(c.telefone, 20) + ')' : '')).trim()), assunto: c.assunto || dec64(c.assunto_b64) || legenda,
   }, ator, ip);
 }
 function receberBruto(tenantId, { tipo, identificador, origem_id, remetente, assunto, arquivo_nome, conteudo_base64, data, em_lista }, ator, ip) {
