@@ -20,6 +20,9 @@ function encontrarDbs(dir, out = []) {
     let st; try { st = fs.statSync(cheio); } catch { continue; }
     if (st.isDirectory()) {
       if (nome === '_snapshots') continue; // não snapshotar os próprios snapshots
+      // Índice derivado do clone D:\leis, reenviado toda semana (stays\leis-acervo-semanal.ps1):
+      // recriável, então não vale 7 cópias de 157 MB no disco compartilhado.
+      if (nome === 'acervo-leis') continue;
       encontrarDbs(cheio, out);
     } else if (nome.endsWith('.db')) {
       out.push(cheio);
