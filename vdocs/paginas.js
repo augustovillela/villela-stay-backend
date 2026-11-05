@@ -724,6 +724,8 @@ async function vDocs(){
   const filtro=($('dq')&&$('dq').value)||'';
   const [ps,ds]=await Promise.all([api('GET','/pastas'),api('GET','/documentos?busca='+encodeURIComponent(filtro)+'&'+(S.lixeira?'status=lixeira':'todos=1&limite=500'))]);
   S.pastas=ps.pastas;S.tiposDoc=ds.tipos;
+  // se a pessoa continuou digitando enquanto a lista carregava, refaz com o texto atual (senão sumiriam letras)
+  if(((($('dq')&&$('dq').value)||''))!==filtro)return vDocs();
   // Início = TODOS os documentos (de todas as pastas); pasta e categoria só ESTREITAM a lista
   const sub=S.lixeira?[]:S.pastas.filter(p=>p.parent_id===S.pasta);
   const desc=id=>[id].concat(S.pastas.filter(p=>p.parent_id===id).flatMap(p=>desc(p.id))); // a pasta e as de dentro dela
@@ -736,6 +738,8 @@ async function vDocs(){
   const chipsTipo=S.lixeira?'':'<div class="card" style="margin-top:12px"><div class="sub" style="font-size:12px;margin-bottom:6px">Categorias — clique para filtrar · mostrando <b>'+docsL.length+'</b> de '+base.length+' documento(s)'+(S.pasta?' desta pasta':'')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+
     '<button class="btn peq dx-catbtn todos'+(S.tipoF?' btn-ghost':'')+'" onclick="irTipo(\\'\\')">Todos ('+base.length+')</button>'+
     Object.keys(porTipo).sort((a,b)=>porTipo[b]-porTipo[a]).map(t=>'<button class="btn peq dx-catbtn dx-cat-'+t+(S.tipoF===t?'':' btn-ghost')+'" onclick="irTipo(\\''+t+'\\')">'+esc(ROT_TIPO[t]||t)+' ('+porTipo[t]+')</button>').join('')+'</div></div>';
+  // A tela é redesenhada inteira, o que destrói o campo de busca: guarda o foco e a posição do cursor para devolvê-los
+  const vivo=$('dq'),temFoco=!!vivo&&document.activeElement===vivo,selIni=temFoco?vivo.selectionStart:0,selFim=temFoco?vivo.selectionEnd:0;
   $('corpo').innerHTML=(S.lixeira?'<h2>Lixeira</h2>':'')+
    '<div class="card" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
    (S.pasta||S.lixeira?'<button class="btn peq" title="Voltar à página inicial dos documentos (todas as pastas)" onclick="S.lixeira=false;irPasta(\\'\\')">'+ic('home')+' Início</button>':'')+
@@ -756,6 +760,7 @@ async function vDocs(){
      (S.lixeira?((P.restaurar_documento?'<button class="btn peq" onclick="docAcao(\\''+d.id+'\\',\\'restaurar\\')">Restaurar</button> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="excluirDefinitivo(\\''+d.id+'\\')">Excluir de vez</button>':''))
       :('<button class="dx-ib" title="Visualizar sem baixar" aria-label="Visualizar" onclick="visualizarDoc(\\''+d.id+'\\')">'+ic('eye')+'</button> '+(P.baixar_documento?'<a class="dx-ib" title="Baixar" aria-label="Baixar" href="/vdocs/api/documentos/'+d.id+'/baixar">'+ic('download')+'</a> ':'')+(P.excluir_documento?'<button class="dx-ib perigo" title="Mover para a lixeira" aria-label="Mover para a lixeira" onclick="docAcao(\\''+d.id+'\\',\\'lixeira\\')">'+ic('trash')+'</button>':'')))+'</td></tr>';
    }).join(''):'<tr><td colspan="7" style="color:var(--suave)">'+(S.lixeira?'Lixeira vazia.':(S.tipoF||S.pasta?'Nenhum documento com este filtro.':'Nenhum documento ainda.'))+'</td></tr>')+'</table></div>';
+  if(temFoco){const el=$('dq');if(el){el.focus();try{el.setSelectionRange(selIni,selFim);}catch(e){}}}
 }
 async function novaPasta(){const n=prompt('Nome da nova pasta:');if(!n)return;
   try{await api('POST','/pastas',{nome:n,parent_id:S.pasta});vDocs();}catch(e){alert(e.message);}}
