@@ -41,6 +41,7 @@ const ICONES = {
   sliders: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
   upload: '<path d="M12 20V9M7.5 13.5 12 9l4.5 4.5M4 4h16"/>',
   home: '<path d="M3 11 12 4l9 7M5 10v10h14V10"/>',
+  megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 9a4 4 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/>',
   eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M4 20h16"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
@@ -114,7 +115,7 @@ ${canonical ? `<link rel="canonical" href="${esc(canonical)}">` : ''}
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
 <meta property="og:image" content="${BASE_URL}${BRAND_DIR}/og-image.png">
 ${HEAD_MARCA}${GA}
-<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=6"></head><body class="vx dx-pub" data-vertical="docs">
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=9"></head><body class="vx dx-pub" data-vertical="docs">
 ${SPRITE}
 <header class="dx-top"><div class="dx-wrap">
   <a class="dx-brand" href="/vdocs"><img src="${BRAND_DIR}/logo-horizontal.svg" alt="Villela Docs"></a>
@@ -357,7 +358,16 @@ function precos() {
 // ------------------------------------------------------------ cadastro / login / convite
 const formPagina = (titulo, inner) => pagina({
   titulo: `${titulo} — Villela Docs`, descricao: 'Inteligência documental para empresas.',
-  corpo: `<section class="dx-form-wrap"><div class="wrap-sm"><div class="card"><h2 style="margin-top:0">${esc(titulo)}</h2>${inner}</div></div></section>`,
+  corpo: `<section class="au"><div class="au-grid">
+  <aside class="au-brand"><div class="hx-aurora" aria-hidden="true"></div>
+    <span class="hx-pill"><i></i> Inteligência documental para empresas</span>
+    <h2>Seus documentos, organizados e com respostas em segundos.</h2>
+    <p>Centralize contratos, notas e processos num só lugar, com busca inteligente e uma IA que cita a fonte.</p>
+    <ul><li>${ic('check')} 14 dias grátis, sem cartão de crédito</li><li>${ic('lock')} Dados no Brasil, isolados por empresa, adequado à LGPD</li><li>${ic('spark')} IA que responde citando o documento</li></ul>
+    <div class="au-mini"><span class="dx-cat dx-cat-nota_fiscal">Nota fiscal</span><span class="dx-cat dx-cat-contrato">Contrato</span><span class="dx-cat dx-cat-fatura">Fatura</span><span class="dx-cat dx-cat-extrato_bancario">Extrato</span></div>
+  </aside>
+  <div class="au-form"><div class="au-card"><h2>${esc(titulo)}</h2>${inner}</div></div>
+</div></section>`,
 });
 
 const cadastro = () => formPagina('Criar conta — teste grátis 14 dias', `
@@ -466,7 +476,7 @@ body{background:var(--fundo)}
 .vw-pre{margin:0;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;width:100%;background:#fff}
 .barra{height:8px;background:var(--borda);border-radius:99px;overflow:hidden}.barra i{display:block;height:100%;background:var(--azul)}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
-</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=6"></head><body class="vx" data-vertical="docs">
+</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=9"></head><body class="vx" data-vertical="docs">
 ${SPRITE}
 <header class="top"><div class="wrap" style="max-width:none">
   <a class="brand" href="/vdocs/app"><img src="${BRAND_DIR}/logo-horizontal-claro.svg" alt="Villela Docs"></a>
@@ -639,31 +649,63 @@ async function boot(){
     aplicaSub(t,s2);ir(t,true);});
 }
 async function vDash(){
-  const d=await api('GET','/dashboard');
+  const P=S.me.permissoes;
+  const [d,dd,tr]=await Promise.all([
+    api('GET','/dashboard'),
+    P.ver_documentos?api('GET','/documentos?todos=1&limite=500').catch(()=>({documentos:[]})):Promise.resolve({documentos:[]}),
+    P.ver_documentos?api('GET','/entrada/triagem').catch(()=>({itens:[]})):Promise.resolve({itens:[]}),
+  ]);
   const L=(d.plano&&d.plano.limites)||{};
   const pct=(v,l)=>l?Math.min(100,Math.round(100*v/l)):0;
-  const trial=d.empresa.status==='trial'?'<div class="vx-alerta vx-alerta--warn"><span class="vx-alerta-ico" aria-hidden="true">🎁</span><div><b>Período de teste até '+new Date(d.empresa.trial_expira_em).toLocaleDateString('pt-BR')+'.</b><p class="vx-mb0">Plano '+esc(d.plano?d.plano.nome:'')+'. Assine para continuar sem interrupção.</p></div></div>':'';
-  const venc=d.vencendo_30dias?'<div class="vx-alerta vx-alerta--warn"><span class="vx-alerta-ico" aria-hidden="true">📅</span><div><b>'+d.vencendo_30dias+' documento(s) com validade nos próximos 30 dias'+(d.vencidos?' ('+d.vencidos+' já vencido(s))':'')+'</b><p class="vx-mb0">'+d.docs_vencendo.map(x=>(x.vencido?'🔴 ':'🟡 ')+esc(x.nome)+' ('+x.validade.split('-').reverse().join('/')+')').join(' · ')+'</p></div></div>':'';
-  const kpi=(rot,n,ctx,tom,tela)=>{
-    const corpo='<span class="vx-kpi-rot">'+esc(rot)+'</span><span class="vx-kpi-val">'+n+'</span>'+(ctx?'<span class="vx-kpi-ctx">'+esc(ctx)+'</span>':'');
-    return tela?'<button type="button" class="vx-kpi" data-tom="'+(tom||'')+'" onclick="ir(\\''+tela+'\\')">'+corpo+'</button>'
-               :'<div class="vx-kpi" data-tom="'+(tom||'')+'">'+corpo+'</div>';};
-  const secao=(tit,sub,html)=>'<section class="vx-card"><div class="vx-card-head"><div><h2>'+esc(tit)+'</h2>'+(sub?'<p class="vx-hint vx-mb0">'+esc(sub)+'</p>':'')+'</div></div>'+html+'</section>';
+  const docs=dd.documentos||[];
+  const naTriagem=(tr.itens||[]).filter(i=>i.grupo!=='propaganda').length;
+  const hora=new Date().getHours();
+  const saud=hora<12?'Bom dia':hora<18?'Boa tarde':'Boa noite';
+  const primeiro=String(S.me.user.nome||'').split(' ')[0]||'';
+  const trial=d.empresa.status==='trial'?'<div class="vx-alerta vx-alerta--warn"><span class="vx-alerta-ico" aria-hidden="true">'+ic('spark')+'</span><div><b>Período de teste até '+new Date(d.empresa.trial_expira_em).toLocaleDateString('pt-BR')+'.</b><p class="vx-mb0">Plano '+esc(d.plano?d.plano.nome:'')+'. Assine para continuar sem interrupção.</p></div></div>':'';
+  const venc=d.vencendo_30dias?'<div class="vx-alerta vx-alerta--warn"><span class="vx-alerta-ico" aria-hidden="true">'+ic('clip')+'</span><div><b>'+d.vencendo_30dias+' documento(s) com validade nos próximos 30 dias'+(d.vencidos?' ('+d.vencidos+' já vencido(s))':'')+'</b><p class="vx-mb0">'+d.docs_vencendo.map(x=>(x.vencido?'<span class="dx-cat dx-cat-financeiro">vencido</span> ':'<span class="dx-cat dx-cat-fatura">vence</span> ')+esc(x.nome)+' ('+x.validade.split('-').reverse().join('/')+')').join(' &nbsp; ')+'</p></div></div>':'';
+
+  // distribuição por categoria (barra empilhada na cor de cada categoria)
+  const porTipo={};docs.forEach(x=>{porTipo[x.tipo_documental]=(porTipo[x.tipo_documental]||0)+1;});
+  const tipos=Object.keys(porTipo).sort((a,b)=>porTipo[b]-porTipo[a]);
+  const barra=docs.length?'<div class="pd-stack" role="img" aria-label="Documentos por categoria">'+tipos.map(t=>'<i class="dx-cat-'+esc(t)+'" style="flex:'+porTipo[t]+'" title="'+esc(ROT_TIPO[t]||t)+': '+porTipo[t]+'"></i>').join('')+'</div>'+
+    '<div class="pd-legend">'+tipos.map(t=>'<button type="button" class="pd-leg dx-cat-'+esc(t)+'" onclick="S.pasta=\\'\\';S.tipoF=\\''+esc(t)+'\\';ir(\\'documentos\\')"><i></i>'+esc(ROT_TIPO[t]||t)+' <b>'+porTipo[t]+'</b></button>').join('')+'</div>'
+    :'<p class="vx-vazio">Ainda não há documentos. Envie o primeiro e ele aparece aqui, por categoria.</p>';
+  const recentes=docs.slice().sort((a,b)=>String(b.atualizado_em||b.criado_em).localeCompare(String(a.atualizado_em||a.criado_em))).slice(0,5);
+  const lista=recentes.length?'<div class="pd-list">'+recentes.map(x=>'<a class="pd-item" href="#" onclick="S.docAberto=\\''+x.id+'\\';ir(\\'documentos\\');return false"><span class="dx-cat dx-cat-'+esc(x.tipo_documental)+'">'+esc(ROT_TIPO[x.tipo_documental]||x.tipo_documental)+'</span><b>'+esc(x.nome)+'</b><small>'+dt(x.atualizado_em||x.criado_em)+'</small></a>').join('')+'</div>':'<p class="vx-vazio">Nada por aqui ainda.</p>';
+
+  const card=(cor,icone,rot,n,ctx,tela,extra)=>'<button type="button" class="pd-stat pd-'+cor+'"'+(tela?' onclick="ir(\\''+tela+'\\')"':'')+'><span class="pd-ico">'+ic(icone)+'</span><span class="pd-rot">'+esc(rot)+'</span><span class="pd-n">'+n+'</span><span class="pd-ctx">'+esc(ctx)+'</span>'+(extra||'')+'</button>';
+  const stats='<div class="pd-stats">'+
+    card('blue','folder','Documentos',docs.length||d.documentos,'no acervo','documentos')+
+    (P.ver_documentos?card('amber','inbox','Aguardando triagem',naTriagem,naTriagem?'decida: eliminar ou processar':'tudo decidido','triagem'):'')+
+    card('violet','users','Usuários ativos',d.usuarios_ativos,L.usuarios?'de '+L.usuarios+' do plano':'na equipe','usuarios')+
+    card('teal','db','Armazenamento',(d.armazenamento_mb||0)+' MB','usado no plano','plano',(L.armazenamento_mb?'<span class="pd-bar"><i style="width:'+pct(d.armazenamento_mb||0,L.armazenamento_mb)+'%"></i></span>':''))+
+  '</div>';
+
   const pend=[];
+  const kpi=(rot,n,ctx,tom,tela)=>'<button type="button" class="vx-kpi" data-tom="'+(tom||'')+'" onclick="ir(\\''+tela+'\\')"><span class="vx-kpi-rot">'+esc(rot)+'</span><span class="vx-kpi-val">'+n+'</span><span class="vx-kpi-ctx">'+esc(ctx)+'</span></button>';
   if(d.aprovacoes_pendentes)pend.push(kpi('Aprovações para você',d.aprovacoes_pendentes,'esperando seu aval','critico','workflows'));
   if(d.vencendo_30dias)pend.push(kpi('Documentos vencendo',d.vencendo_30dias,(d.vencidos?d.vencidos+' já vencido(s)':'nos próximos 30 dias'),'atencao','documentos'));
   if(d.convites_pendentes)pend.push(kpi('Convites pendentes',d.convites_pendentes,'ninguém aceitou ainda','atencao','usuarios'));
-  $('corpo').innerHTML=trial+venc+
-   secao('Exige ação','O que está esperando por você agora.',
-     pend.length?'<div class="vx-kpis">'+pend.join('')+'</div>':'<p class="vx-vazio">Nada pendente. Tudo em dia. 👌</p>')+
-   secao('A empresa','Como está a conta hoje.','<div class="vx-kpis">'+
-     kpi('Documentos',d.documentos,'no acervo',null,'documentos')+
-     kpi('Usuários ativos',d.usuarios_ativos,(L.usuarios?'de '+L.usuarios+' do plano':'na equipe'),null,'usuarios')+
-     kpi('Armazenamento',(d.armazenamento_mb||0)+' MB','usado no plano',null,'plano')+
-    '</div>')+
-   (L.usuarios?'<div class="card"><b>Uso de usuários</b><div class="barra" style="margin-top:6px"><i style="width:'+pct(d.usuarios_ativos,L.usuarios)+'%"></i></div><span class="r" style="font-size:12px;color:var(--suave)">'+d.usuarios_ativos+' de '+L.usuarios+'</span></div>':'')+
-   '<div class="card" style="margin-top:14px"><b>Atividade recente</b><table><tr><th>Quando</th><th>Quem</th><th>Ação</th></tr>'+
-   d.auditoria_recente.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.usuario_nome)+'</td><td>'+esc(a.acao)+'</td></tr>').join('')+'</table></div>';
+
+  $('corpo').innerHTML=
+   '<section class="pd-hero"><div class="pd-aurora" aria-hidden="true"></div><div class="pd-hero-in">'+
+     '<div><div class="pd-hi">'+esc(saud)+(primeiro?', '+esc(primeiro):'')+'</div><h2>'+esc(S.me.tenant.nome)+'</h2>'+
+     '<p>'+(naTriagem?'<b>'+naTriagem+'</b> documento(s) esperam a sua decisão na Triagem.':'Seus documentos estão em dia.')+'</p></div>'+
+     '<div class="pd-acoes">'+
+       (P.ver_documentos?'<button class="btn btn-ciano" onclick="ir('+"\\'triagem\\'"+')">'+ic('inbox')+' Triagem'+(naTriagem?' ('+naTriagem+')':'')+'</button>':'')+
+       (P.criar_documento?'<button class="pd-glass" onclick="ir('+"\\'documentos\\'"+')">'+ic('upload')+' Enviar documentos</button>':'')+
+       (P.usar_ia?'<button class="pd-glass" onclick="ir('+"\\'ia\\'"+')">'+ic('spark')+' Perguntar à IA</button>':'')+
+     '</div></div></section>'+
+   trial+venc+
+   stats+
+   (pend.length?'<section class="vx-card pd-sec"><div class="vx-card-head"><div><h2>Exige ação</h2><p class="vx-hint vx-mb0">O que está esperando por você agora.</p></div></div><div class="vx-kpis">'+pend.join('')+'</div></section>':'')+
+   '<div class="pd-duo">'+
+     '<section class="vx-card pd-sec"><div class="vx-card-head"><div><h2>Documentos por categoria</h2><p class="vx-hint vx-mb0">Clique numa categoria para filtrar.</p></div></div>'+barra+'</section>'+
+     '<section class="vx-card pd-sec"><div class="vx-card-head"><div><h2>Atualizados recentemente</h2></div></div>'+lista+'</section>'+
+   '</div>'+
+   '<section class="vx-card pd-sec"><div class="vx-card-head"><div><h2>Atividade recente</h2></div></div><table><tr><th>Quando</th><th>Quem</th><th>Ação</th></tr>'+
+   d.auditoria_recente.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.usuario_nome)+'</td><td>'+esc(a.acao)+'</td></tr>').join('')+'</table></section>';
 }
 // ---------------- Documentos (Fase 2) ----------------
 S.pasta='';S.lixeira=false;S.pastas=[];
@@ -990,43 +1032,47 @@ async function vTriagem(aba){
   marcaHash('triagem',subDaTela('triagem'));
   const prop=d.itens.filter(i=>i.grupo==='propaganda'),dec=d.itens.filter(i=>i.grupo!=='propaganda');
   S.triLista=S.triAba==='propaganda'?prop:dec;
-  const abas='<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
-    '<button class="btn peq'+(S.triAba==='decidir'?'':' btn-ghost')+'" onclick="vTriagem(\\'decidir\\')">🧹 Para decidir ('+dec.length+')</button>'+
-    '<button class="btn peq'+(S.triAba==='propaganda'?'':' btn-ghost')+'" onclick="vTriagem(\\'propaganda\\')">📢 Propaganda ('+prop.length+')</button>'+
-    '<button class="btn peq'+(S.triAba==='remetentes'?'':' btn-ghost')+'" onclick="vTriagem(\\'remetentes\\')">📢 Remetentes que só mandam propaganda ('+d.remetentes_propaganda.length+')</button></div>';
+  const aba1=(k,icone,rot,n)=>'<button type="button" class="'+(S.triAba===k?'on':'')+'" onclick="vTriagem(\\''+k+'\\')">'+ic(icone)+' '+rot+' <b>'+n+'</b></button>';
+  const abas='<div class="tg-tabs" role="tablist">'+aba1('decidir','inbox','Para decidir',dec.length)+aba1('propaganda','megaphone','Propaganda',prop.length)+aba1('remetentes','users','Remetentes de propaganda',d.remetentes_propaganda.length)+'</div>';
   if(S.triAba==='remetentes'){$('corpo').innerHTML=abas+remetentesHtml(d.remetentes_propaganda);return;}
   const L=S.triLista;
-  if(!L.length){$('corpo').innerHTML=abas+'<div class="card"><b>✅ '+(S.triAba==='propaganda'?'Nenhuma propaganda para conferir.':'Nada esperando triagem.')+'</b><p class="sub">'+(S.triAba==='propaganda'?'Catálogos, ofertas e newsletters que chegarem pelo WhatsApp ou Gmail aparecem aqui, separados dos documentos de verdade. Nada é apagado sozinho.':'Documentos que chegarem pelo WhatsApp ou Gmail cadastrados aparecem aqui para você decidir: <b>eliminar</b> ou <b>processar e categorizar</b>.')+'</p></div>';return;}
   const ehProp=S.triAba==='propaganda';
+  if(!L.length){$('corpo').innerHTML=abas+'<div class="tg-vazio"><span class="tg-vazio-ico">'+ic('check')+'</span><h3>'+(ehProp?'Nenhuma propaganda para conferir':'Tudo decidido por aqui')+'</h3><p>'+(ehProp?'Catálogos, ofertas e newsletters que chegarem pelo WhatsApp ou Gmail aparecem aqui, separados dos documentos de verdade. Nada é apagado sozinho.':'Documentos que chegarem pelo WhatsApp ou Gmail cadastrados aparecem aqui para você decidir: <b>eliminar</b> ou <b>processar e categorizar</b>.')+'</p></div>';return;}
   const imp=L.filter(i=>i.sugestao).length;
-  $('corpo').innerHTML=abas+
-   '<div class="card"><b>'+(ehProp?'📢 '+L.length+' propaganda(s) para conferir':'🧹 '+L.length+' documento(s) esperando decisão')+'</b>'+
-   (!ehProp&&imp?' <span class="sub">· '+imp+' parece(m) nota fiscal, fatura, extrato, contrato, recibo ou comprovante (no topo)</span>':'')+
-   '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
-   (!ehProp&&S.me.permissoes.usar_ia?'<button class="btn btn-ghost peq" title="A IA lê o texto e propõe um nome (ex.: Nota fiscal – Zara – 03/11/2026). Usa 1 consulta de IA do plano por lote de até 15." onclick="triNomear()">'+ic('spark')+' Nomear marcados com IA</button>':'')+
-   (!ehProp&&imp?'<button class="btn peq" onclick="triAceitarSugestoes()">'+ic('spark')+' Aceitar sugestões ('+imp+')</button>':'')+
+  const P=S.me.permissoes;
+  const barra='<div class="tg-bar"><div class="tg-bar-txt"><b>'+L.length+'</b> '+(ehProp?'propaganda(s) para conferir':'documento(s) esperando decisão')+(!ehProp&&imp?' <span>· '+imp+' reconhecido(s) como nota, fatura, extrato, contrato, recibo ou comprovante (no topo)</span>':'')+'</div>'+
+   '<div class="tg-bar-acoes">'+
+   (!ehProp&&P.usar_ia?'<button class="btn btn-ghost peq" title="A IA lê o texto e propõe um nome (ex.: Nota fiscal – Zara – 03/11/2026). Usa 1 consulta de IA do plano por lote de até 15." onclick="triNomear()">'+ic('spark')+' Nomear com IA</button>':'')+
+   (!ehProp&&imp?'<button class="btn btn-ciano peq" onclick="triAceitarSugestoes()">'+ic('spark')+' Aceitar sugestões ('+imp+')</button>':'')+
    '<button class="btn btn-ghost peq" onclick="triMarcar(true)">Marcar todos</button>'+
    '<button class="btn btn-ghost peq" onclick="triMarcar(false)">Desmarcar</button>'+
-   (ehProp?'<button class="btn peq" onclick="triLote(\\'eliminar\\')">'+ic('trash')+' Eliminar marcadas</button><button class="btn btn-ghost peq" onclick="triLote(\\'nao_propaganda\\')">↩️ Não é propaganda</button>'
+   (ehProp?'<button class="btn peq" onclick="triLote(\\'eliminar\\')">'+ic('trash')+' Eliminar marcadas</button><button class="btn btn-ghost peq" onclick="triLote(\\'nao_propaganda\\')">Não é propaganda</button>'
           :'<button class="btn peq" onclick="triLote(\\'processar\\')">'+ic('check')+' Processar marcados</button><button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\')">'+ic('trash')+' Eliminar marcados</button>')+
-   '</div><div id="tri-out" style="margin-top:8px;font-size:13px"></div></div>'+
-   '<div class="card" style="margin-top:12px;overflow-x:auto"><table><tr><th></th><th>Documento</th><th>Origem</th>'+(ehProp?'':'<th>Categoria</th><th>Pasta</th>')+'<th></th></tr>'+
-   L.map((i,n)=>{
-     const sug=i.sugestao;
-     const tipoSel=sug?sug.tipo:i.tipo_documental;
-     return '<tr id="tri-l'+n+'"><td><input type="checkbox" class="tri-ck" value="'+n+'" style="width:auto"></td>'+
-      '<td><a href="#" title="Visualizar sem baixar" onclick="return visualizarDoc(\\''+i.document_id+'\\')"><b>'+esc(i.nome)+'</b></a>'+(S.me.permissoes.baixar_documento?' <a href="/vdocs/api/documentos/'+i.document_id+'/baixar" title="Baixar" style="text-decoration:none">⬇️</a>':'')+'<br><span class="sub" style="font-size:12px">'+tamH(i.tamanho)+' · '+dt(i.recebido_em)+'</span>'+
-      (i.trecho?'<br><span class="sub" style="font-size:12px">'+esc(i.trecho.slice(0,160))+'…</span>':'')+
-      (ehProp?'':'<br><input id="tri-nome'+n+'" value="'+esc(i.nome)+'" style="width:100%;margin-top:4px" title="Nome do documento — editável; vale ao Processar">')+'</td>'+
-      '<td>'+(i.canal.tipo==='gmail'?'✉️':'💬')+' '+esc(i.canal.rotulo||i.canal.identificador||'')+(i.remetente?'<br><span class="sub" style="font-size:12px">de '+esc(i.remetente)+'</span>':'')+'</td>'+
-      (ehProp?'':
-      '<td>'+(sug?'<span class="dx-cat dx-cat-'+esc(sug.tipo)+'" title="Sugerido '+esc(sug.motivo)+'">'+esc(sug.rotulo||ROT_TIPO[sug.tipo]||sug.tipo)+(sug.confianca==='alta'?'':' ?')+'</span><br>':'')+
-       '<select id="tri-tipo'+n+'">'+d.tipos.map(t=>'<option value="'+t+'"'+(t===tipoSel?' selected':'')+'>'+esc(ROT_TIPO[t]||t)+'</option>').join('')+'</select>'+
-       '<label style="display:flex;gap:4px;align-items:center;font-size:12px;font-weight:400;margin-top:4px" title="Marca para dar baixa na Stays com a data do check-in"><input type="checkbox" id="tri-baixa'+n+'" style="width:auto"'+(sug&&sug.rotulo==='Comprovante'?' checked':'')+'> 🏠 pagamento de hospedagem (baixa na Stays)</label></td>'+
-      '<td><select id="tri-pasta'+n+'"><option value="__auto">(pasta da categoria)</option><option value="__manter">(deixar em Entrada automática)</option><option value="">Raiz</option>'+d.pastas.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></td>')+
-      '<td style="white-space:nowrap">'+(ehProp?'<button class="btn peq" onclick="triLote(\\'eliminar\\','+n+')">Eliminar</button> <button class="btn btn-ghost peq" onclick="triLote(\\'nao_propaganda\\','+n+')">Não é propaganda</button> <button class="btn btn-ghost peq" title="Tudo que vier deste remetente vai direto para Propaganda" onclick="triLote(\\'remetente_propaganda\\','+n+')">📢 Sempre propaganda</button>'
-        :'<button class="btn peq" onclick="triLote(\\'processar\\','+n+')">Processar</button> <button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\','+n+')">Eliminar</button> <button class="btn btn-ghost peq" title="Este remetente só manda propaganda: tudo dele vai direto para a aba Propaganda" onclick="triLote(\\'remetente_propaganda\\','+n+')">📢 Só propaganda</button>')+'</td></tr>';}).join('')+
-   '</table></div>';
+   '</div><div id="tri-out" class="tg-out"></div></div>';
+  const cards=L.map((i,n)=>{
+    const sug=i.sugestao;
+    const tipoSel=sug?sug.tipo:i.tipo_documental;
+    const corClasse=sug?' dx-cat-'+esc(sug.tipo):(i.tipo_documental&&i.tipo_documental!=='outro'?' dx-cat-'+esc(i.tipo_documental):'');
+    const canal=i.canal.tipo==='gmail'?'E-mail':'WhatsApp';
+    const pill=sug?'<span class="dx-cat dx-cat-'+esc(sug.tipo)+'" title="Sugerido '+esc(sug.motivo)+'">'+ic('spark')+esc(sug.rotulo||ROT_TIPO[sug.tipo]||sug.tipo)+(sug.confianca==='alta'?'':' ?')+'</span>':'<span class="dx-cat">Sem sugestão</span>';
+    const form=ehProp?'':'<div class="tg-form">'+
+      '<label>Nome<input id="tri-nome'+n+'" value="'+esc(i.nome)+'" title="Nome do documento — editável; vale ao Processar"></label>'+
+      '<label>Categoria<select id="tri-tipo'+n+'">'+d.tipos.map(t=>'<option value="'+t+'"'+(t===tipoSel?' selected':'')+'>'+esc(ROT_TIPO[t]||t)+'</option>').join('')+'</select></label>'+
+      '<label>Pasta<select id="tri-pasta'+n+'"><option value="__auto">(pasta da categoria)</option><option value="__manter">(deixar em Entrada automática)</option><option value="">Raiz</option>'+d.pastas.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></label>'+
+      '<label class="tg-chk" title="Marca para dar baixa na Stays com a data do check-in"><input type="checkbox" id="tri-baixa'+n+'"'+(sug&&sug.rotulo==='Comprovante'?' checked':'')+'> Pagamento de hospedagem (baixa na Stays)</label></div>';
+    const acoes=ehProp
+      ?'<button class="btn peq" onclick="triLote(\\'eliminar\\','+n+')">'+ic('trash')+' Eliminar</button><button class="btn btn-ghost peq" onclick="triLote(\\'nao_propaganda\\','+n+')">Não é propaganda</button><button class="btn btn-ghost peq" title="Tudo que vier deste remetente vai direto para Propaganda" onclick="triLote(\\'remetente_propaganda\\','+n+')">Sempre propaganda</button>'
+      :'<button class="btn peq" onclick="triLote(\\'processar\\','+n+')">'+ic('check')+' Processar</button><button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\','+n+')">'+ic('trash')+' Eliminar</button><button class="btn btn-ghost peq" title="Este remetente só manda propaganda: tudo dele vai direto para a aba Propaganda" onclick="triLote(\\'remetente_propaganda\\','+n+')">Só propaganda</button>';
+    return '<article class="tg-card'+corClasse+'" id="tri-l'+n+'">'+
+      '<label class="tg-sel"><input type="checkbox" class="tri-ck" value="'+n+'" aria-label="Marcar"></label>'+
+      '<div class="tg-main">'+
+        '<div class="tg-top">'+pill+'<span class="tg-meta">'+canal+' · '+tamH(i.tamanho)+' · '+dt(i.recebido_em)+'</span></div>'+
+        '<div class="tg-nomeln"><a class="tg-nome" href="#" title="Visualizar sem baixar" onclick="return visualizarDoc(\\''+i.document_id+'\\')">'+esc(i.nome)+'</a>'+(P.baixar_documento?'<a class="dx-ib" href="/vdocs/api/documentos/'+i.document_id+'/baixar" title="Baixar" aria-label="Baixar">'+ic('download')+'</a>':'')+'</div>'+
+        '<div class="tg-de">'+esc(i.canal.rotulo||i.canal.identificador||'')+(i.remetente?' · de '+esc(i.remetente):'')+'</div>'+
+        (i.trecho?'<p class="tg-trecho">'+esc(i.trecho.slice(0,200))+'…</p>':'')+
+        form+
+      '</div><div class="tg-acoes">'+acoes+'</div></article>';}).join('');
+  $('corpo').innerHTML=abas+barra+'<div class="tg-grid">'+cards+'</div>';
 }
 async function triNomear(){
   const idx=[...document.querySelectorAll('.tri-ck:checked')].map(c=>+c.value);
