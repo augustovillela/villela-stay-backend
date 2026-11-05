@@ -35,6 +35,22 @@ function montar(app, injected = {}) {
   require('./compartilhar').configurar({ enviarEmail, notificar });
   require('./billing').configurar({ mpFetch, notificar });
   require('./api-publica').registrarApiPublica(app, { express }); // API v1 por chave (Fase 9)
+  // Make -> WhatsApp Business: o cenário já guarda a PUBLISH_KEY (rotas do CRM e da voz), então a entrada de
+  // mídia usa a MESMA chave em vez de pôr uma credencial nova no Make. A empresa vem do número cadastrado.
+  const { publishKeyOk } = injected;
+  if (typeof publishKeyOk === 'function') {
+    const entrada = require('./entrada');
+    app.post('/staff/api/vdocs-entrada/whatsapp', express.json({ limit: '30mb' }), (req, res) => {
+      if (!publishKeyOk(req)) return res.status(401).json({ erro: 'chave inválida' });
+      try {
+        const corpo = req.body || {};
+        const tenantId = entrada.tenantDoCanal('whatsapp', corpo.identificador);
+        if (!tenantId) return res.json({ ok: true, status: 'ignorado', motivo: 'número não cadastrado (ou cadastrado em mais de uma empresa)' });
+        const r = entrada.receber(tenantId, { ...corpo, tipo: 'whatsapp' }, { id: 'make', nome: 'WhatsApp Business (Make)' }, 'make');
+        res.json({ ok: true, ...r });
+      } catch (e) { res.status(400).json({ erro: e.message }); }
+    });
+  }
   console.log('[vdocs] Villela Docs Intelligence montado (Fases 1-6: fundação, documentos, processamento, busca, IA e workflows).');
   return { repo, permissoes, auth, jobs };
 }

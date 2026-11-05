@@ -566,6 +566,14 @@ async function rotinaNomesAuto(tenantId) {
   return nomeados;
 }
 
+/** Quem cadastrou esta conta? Só vale se for UMA empresa ativa (conta repetida em duas empresas é ambígua e não entra). */
+function tenantDoCanal(tipo, identificador) {
+  const ident = normalizar(tipo, identificador);
+  const linhas = db.prepare(`SELECT DISTINCT c.tenant_id FROM canais_entrada c JOIN tenants t ON t.id = c.tenant_id
+    WHERE c.tipo = ? AND c.identificador = ? AND c.ativo = 1 AND t.status IN ('trial', 'ativa', 'cortesia')`).all(tipo, ident);
+  return linhas.length === 1 ? linhas[0].tenant_id : null;
+}
+
 function resumo(tenantId) {
   const t = String(tenantId);
   const porStatus = db.prepare('SELECT status, COUNT(*) n FROM entradas_log WHERE tenant_id = ? AND criado_em >= ? GROUP BY status')
@@ -585,6 +593,6 @@ module.exports = {
   PASTA_PADRAO, PASTA_PROPAGANDA, TAG_BAIXA_STAYS, classificarGrupo, EXT_ACEITAS, canonFone, normalizar, sugerirTipo,
   listarCanais, criarCanal, atualizarCanal, excluirCanal, canaisAtivos, receber,
   pendentesTriagem, decidirTriagem, resumo, recentes,
-  nomearComIA, nomearAutoAtivo, definirNomearAuto, rotinaNomesAuto, diagnosticoNomes, listarRemetentesPropaganda, adicionarRemetentesPropaganda, removerRemetentePropaganda, nomeDoRemetente,
+  tenantDoCanal, nomearComIA, nomearAutoAtivo, definirNomearAuto, rotinaNomesAuto, diagnosticoNomes, listarRemetentesPropaganda, adicionarRemetentesPropaganda, removerRemetentePropaganda, nomeDoRemetente,
   avisoTriagemDisponivel, avisoTriagemAtivo, definirAvisoTriagem, dadosAvisoTriagem,
 };

@@ -4851,6 +4851,7 @@ try {
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
     mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
     jwtSecret: JWT_SECRET,
+    publishKeyOk: (req) => !!(process.env.PUBLISH_KEY && req.headers['x-publish-key'] && tokensIguais(req.headers['x-publish-key'], process.env.PUBLISH_KEY)),
   });
 } catch (e) { console.error('[vdocs] falha ao montar módulo:', e.message); }
 
