@@ -114,7 +114,7 @@ ${canonical ? `<link rel="canonical" href="${esc(canonical)}">` : ''}
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
 <meta property="og:image" content="${BASE_URL}${BRAND_DIR}/og-image.png">
 ${HEAD_MARCA}${GA}
-<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=3"></head><body class="vx dx-pub" data-vertical="docs">
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=6"></head><body class="vx dx-pub" data-vertical="docs">
 ${SPRITE}
 <header class="dx-top"><div class="dx-wrap">
   <a class="dx-brand" href="/vdocs"><img src="${BRAND_DIR}/logo-horizontal.svg" alt="Villela Docs"></a>
@@ -138,81 +138,87 @@ ${corpo}
 function landing() {
   const planos = repo.listarPlanos();
   const corpo = `
-<section class="dx-hero"><div class="dx-wrap dx-hero-grid">
-  <div>
-    <span class="dx-eyebrow">Inteligência documental para empresas</span>
-    <h1>Todos os documentos da sua empresa organizados, seguros e com respostas em segundos.</h1>
-    <p class="dx-lead">O Villela Docs centraliza contratos, notas, políticas e processos em um só lugar, com busca inteligente, aprovações, controle de versão, trilha de auditoria e uma IA que responde citando os documentos.</p>
-    <div class="dx-hero-cta">
-      <a class="btn btn-ciano lg" href="/vdocs/cadastro">Começar teste grátis de 14 dias ${ic('arrow')}</a>
-      <a class="btn btn-ghost lg" href="#demo">Pedir demonstração</a>
-    </div>
-    <div class="dx-micro"><span>${ic('check')} Sem cartão de crédito</span><span>${ic('check')} Cancele quando quiser</span><span>${ic('check')} Dados no Brasil, adequado à LGPD</span></div>
-  </div>
-  <div aria-hidden="true">
-    <div class="dx-win">
-      <div class="dx-win-bar"><i></i><i></i><i></i><b>Villela Docs · Documentos</b></div>
-      <div class="dx-win-body">
-        <div class="dx-win-chips"><span class="on">Todos (128)</span><span>Notas fiscais (42)</span><span>Contratos (18)</span><span>Faturas (31)</span><span>Extratos (12)</span></div>
-        <div class="dx-win-row">${ic('file')}<div><b>Nota fiscal – Distribuidora Alfa – 03/11/2026</b><small>Notas fiscais · v1 · recebida por e-mail</small></div><span class="dx-win-tag">Nota fiscal</span></div>
-        <div class="dx-win-row">${ic('file')}<div><b>Contrato de locação – Empresa Beta – 01/2027</b><small>Contratos · v3 · vence em 31/01/2028</small></div><span class="dx-win-tag">Contrato</span></div>
-        <div class="dx-win-row">${ic('file')}<div><b>Fatura – Telefonia – 11/2026</b><small>Faturas · v1 · vence em 10/11/2026</small></div><span class="dx-win-tag">Fatura</span></div>
-        <div class="dx-win-row">${ic('file')}<div><b>Extrato bancário – Conta PJ – 10/2026</b><small>Extratos · v1</small></div><span class="dx-win-tag">Extrato</span></div>
-        <div class="dx-win-ia"><strong>${ic('spark')} IA documental</strong>Quando vence o contrato de locação? <em>Em 31/01/2028</em>, conforme a cláusula 4 do contrato (Contrato de locação – Empresa Beta).</div>
+<section class="hx-hero">
+  <div class="hx-aurora" aria-hidden="true"></div><div class="hx-grid" aria-hidden="true"></div>
+  <div class="dx-wrap hx-hero-grid">
+    <div class="hx-copy">
+      <span class="hx-pill"><i></i> Nomeia, classifica e organiza sozinho com IA</span>
+      <h1>Todos os documentos da sua empresa <span class="hx-grad">organizados, seguros e com respostas em segundos.</span></h1>
+      <p class="hx-lead">O Villela Docs centraliza contratos, notas, faturas e processos num só lugar, com busca inteligente, aprovações, controle de versão, trilha de auditoria e uma IA que responde citando o documento.</p>
+      <div class="hx-cta">
+        <a class="btn btn-ciano lg" href="/vdocs/cadastro">Começar teste grátis de 14 dias ${ic('arrow')}</a>
+        <a class="hx-ghost" href="#demo">Pedir demonstração</a>
       </div>
+      <div class="hx-micro"><span>${ic('check')} Sem cartão de crédito</span><span>${ic('check')} Cancele quando quiser</span><span>${ic('check')} Dados no Brasil, adequado à LGPD</span></div>
     </div>
-    <div class="dx-win-note">Exemplo ilustrativo da interface</div>
+    <div class="hx-stage" aria-hidden="true">
+      <div class="hx-flow">
+        <div class="hx-flow-bar"><i></i><i></i><i></i><b>Entrada de documentos</b><em><span class="hx-live"></span>IA organizando</em></div>
+        <div class="hx-rows">
+          <div class="hx-row" style="--i:0"><div class="hx-raw">${ic('file')}<code>IMG_20261103_094512.pdf</code></div>
+            <div class="hx-done"><span class="dx-cat dx-cat-nota_fiscal">Nota fiscal</span><b>Nota fiscal – Distribuidora Alfa – 03/11/2026</b><small>Notas fiscais · v1</small></div></div>
+          <div class="hx-row" style="--i:1"><div class="hx-raw">${ic('file')}<code>scan0007_final_v2.pdf</code></div>
+            <div class="hx-done"><span class="dx-cat dx-cat-contrato">Contrato</span><b>Contrato de locação – Empresa Beta – 01/2027</b><small>Contratos · vence em 31/01/2028</small></div></div>
+          <div class="hx-row" style="--i:2"><div class="hx-raw">${ic('file')}<code>1793745936224-ticket-8a2cd6b2.pdf</code></div>
+            <div class="hx-done"><span class="dx-cat dx-cat-fatura">Fatura</span><b>Fatura – Telefonia – 11/2026</b><small>Faturas · vence em 10/11/2026</small></div></div>
+          <div class="hx-row" style="--i:3"><div class="hx-raw">${ic('file')}<code>documento (3).pdf</code></div>
+            <div class="hx-done"><span class="dx-cat dx-cat-extrato_bancario">Extrato</span><b>Extrato bancário – Conta PJ – 10/2026</b><small>Extratos · v1</small></div></div>
+        </div>
+      </div>
+      <div class="hx-float hx-f1">${ic('spark')}<div><b>IA documental</b><span>O contrato de locação vence em <em>31/01/2028</em> — cláusula 4.</span></div></div>
+      <div class="hx-float hx-f2"><span class="hx-dot"></span><div><b>Alerta de validade</b><span>1 contrato vence em 30 dias</span></div></div>
+      <div class="hx-note">Exemplo ilustrativo da interface</div>
+    </div>
   </div>
-</div></section>
+</section>
 
-<div class="dx-trust"><div class="dx-wrap">
+<div class="hx-trust"><div class="dx-wrap">
   <div>${ic('db')}<span><b>Dados no Brasil</b>adequado à LGPD</span></div>
   <div>${ic('building')}<span><b>Isolamento por empresa</b>cada empresa só vê o que é dela</span></div>
   <div>${ic('lock')}<span><b>Conexão segura (HTTPS)</b>armazenamento privado</span></div>
   <div>${ic('scroll')}<span><b>Trilha de auditoria</b>cada acesso registrado</span></div>
 </div></div>
 
-<section class="dx-sec"><div class="dx-wrap">
-  <div class="dx-sec-head"><div class="dx-sec-eyebrow">O problema</div><h2>Pastas soltas custam caro</h2><p>Documento importante perdido, versão errada em uso e prazo descoberto tarde demais não são falhas de pessoas: são falta de processo.</p></div>
-  <div class="dx-versus">
-    <div class="dx-vs bad"><h3>${ic('x-circle')} Sem gestão documental</h3><ul>
-      <li>${ic('x')} Contrato importante “sumido” no e-mail ou no drive de alguém</li>
-      <li>${ic('x')} Versões duplicadas — ninguém sabe qual vale</li>
-      <li>${ic('x')} Vencimentos e renovações descobertos tarde demais</li>
-      <li>${ic('x')} Zero controle de quem viu, baixou ou apagou o quê</li>
-      <li>${ic('x')} Colaborador sai da empresa e leva o acesso junto</li></ul></div>
-    <div class="dx-vs good"><h3>${ic('check')} Com o Villela Docs</h3><ul>
-      <li>${ic('check')} Um repositório central por empresa, com pastas e permissões</li>
-      <li>${ic('check')} Versão vigente sempre identificada, histórico completo</li>
-      <li>${ic('check')} Alertas de validade e políticas de retenção</li>
-      <li>${ic('check')} Auditoria de cada visualização, download e alteração</li>
-      <li>${ic('check')} Acesso revogado em um clique</li></ul></div>
+<section class="hx-sec hx-sec-light" id="recursos"><div class="dx-wrap">
+  <div class="hx-head"><div class="hx-eyebrow">Recursos</div><h2>Do arquivo solto à decisão tomada, tudo no mesmo lugar</h2><p>Cada documento entra, é entendido, fica rastreável e pode ser consultado em linguagem natural.</p></div>
+  <div class="hx-bento">
+    <article class="hx-tile t-busca"><header><span class="hx-ico c-blue">${ic('search')}</span><h3>Busca inteligente</h3></header>
+      <p>Encontre por nome, conteúdo, metadados ou pergunta em linguagem natural. OCR lê até documento escaneado.</p>
+      <div class="hx-mini"><div class="hx-search">${ic('search')}<span>Qual contrato vence em janeiro?</span></div>
+        <div class="hx-hit"><span class="dx-cat dx-cat-contrato">Contrato</span><b>Contrato de locação – Empresa Beta</b><small>…vigência até <mark>31/01/2028</mark>…</small></div>
+        <div class="hx-hit"><span class="dx-cat dx-cat-contrato">Contrato</span><b>Contrato de prestação – Empresa Gama</b><small>…renovação em <mark>janeiro</mark>…</small></div></div></article>
+    <article class="hx-tile t-ia"><header><span class="hx-ico c-violet">${ic('spark')}</span><h3>IA que cita as fontes</h3></header>
+      <p>Converse com seus documentos: resumos, cláusulas, prazos e riscos, sempre apontando documento e página. Sem inventar.</p>
+      <div class="hx-mini hx-chat"><div class="q">Qual a multa por rescisão antecipada?</div><div class="a">A multa é de <b>3 aluguéis</b>, proporcional ao prazo restante. <span class="src">${ic('paperclip')} Contrato de locação – Empresa Beta · cláusula 9</span></div></div></article>
+    <article class="hx-tile t-aprov"><header><span class="hx-ico c-green">${ic('approve')}</span><h3>Workflows de aprovação</h3></header>
+      <p>Etapas, prazos e aprovadores definidos por você, com histórico de cada decisão.</p>
+      <div class="hx-mini hx-steps"><div class="s ok"><i></i>Jurídico</div><div class="s ok"><i></i>Financeiro</div><div class="s on"><i></i>Diretoria</div></div></article>
+    <article class="hx-tile t-vers"><header><span class="hx-ico c-amber">${ic('layers')}</span><h3>Versionamento</h3></header>
+      <p>Toda alteração vira versão. Compare, restaure e saiba qual é o documento vigente.</p>
+      <div class="hx-mini hx-time"><span>v1</span><span>v2</span><span class="cur">v3 vigente</span></div></article>
+    <article class="hx-tile t-audit"><header><span class="hx-ico c-rose">${ic('scroll')}</span><h3>LGPD e auditoria</h3></header>
+      <p>Trilha completa de acessos, retenção e descarte controlados, exportação de dados.</p>
+      <div class="hx-mini hx-log"><div><i></i>baixou <b>Contrato Beta</b><small>10:42</small></div><div><i></i>visualizou <b>Fatura 11/2026</b><small>10:15</small></div><div><i></i>aprovou <b>Política interna</b><small>09:58</small></div></div></article>
+    <article class="hx-tile t-nome"><header><span class="hx-ico c-teal">${ic('inbox')}</span><h3>Nome e categoria automáticos</h3></header>
+      <p>A IA lê o documento e dá um nome claro, com categoria e pasta certas, para ninguém perder tempo arrumando.</p>
+      <div class="hx-mini hx-ba"><div class="b"><s>IMG_20261103_094512.pdf</s></div><div class="arrow">${ic('arrow')}</div><div class="n"><span class="dx-cat dx-cat-nota_fiscal">Nota fiscal</span> Nota fiscal – Distribuidora Alfa – 03/11/2026</div></div></article>
+    <article class="hx-tile t-seg"><header><span class="hx-ico c-navy">${ic('shield')}</span><h3>Segurança corporativa</h3></header>
+      <p>Permissões por papel, pasta e documento. Links de compartilhamento com senha e validade. Nada exposto em URL pública.</p>
+      <div class="hx-mini hx-chips"><span>${ic('lock')} Verificação em duas etapas</span><span>${ic('link')} Links com senha e validade</span><span>${ic('users')} Permissões por papel</span><span>${ic('db')} Dados no Brasil</span></div></article>
   </div>
 </div></section>
 
-<section class="dx-sec alt" id="recursos"><div class="dx-wrap">
-  <div class="dx-sec-head"><div class="dx-sec-eyebrow">Recursos</div><h2>Feito para o dia a dia de quem gerencia documentos</h2><p>Do arquivo recebido à decisão tomada, tudo fica no mesmo lugar e deixa rastro.</p></div>
-  <div class="dx-grid dx-g3">
-    <div class="dx-feat"><span class="dx-ico">${ic('search')}</span><h3>Busca inteligente</h3><p>Encontre por nome, conteúdo, metadados ou pergunta em linguagem natural. OCR lê até documento escaneado.</p></div>
-    <div class="dx-feat"><span class="dx-ico">${ic('spark')}</span><h3>IA que cita as fontes</h3><p>Converse com seus documentos: resumos, cláusulas, prazos e riscos — sempre apontando documento e página. Sem inventar.</p></div>
-    <div class="dx-feat"><span class="dx-ico">${ic('approve')}</span><h3>Workflows de aprovação</h3><p>Contratos e políticas passam por etapas, prazos e aprovadores definidos por você, com histórico de cada decisão.</p></div>
-    <div class="dx-feat"><span class="dx-ico">${ic('layers')}</span><h3>Versionamento</h3><p>Toda alteração vira versão. Compare, restaure e saiba sempre qual é o documento vigente.</p></div>
-    <div class="dx-feat"><span class="dx-ico">${ic('shield')}</span><h3>Segurança corporativa</h3><p>Permissões por papel, pasta e documento. Links de compartilhamento com senha e validade. Nada exposto em URL pública.</p></div>
-    <div class="dx-feat"><span class="dx-ico">${ic('scroll')}</span><h3>LGPD e auditoria</h3><p>Trilha completa de acessos, retenção e descarte controlados, exportação de dados e relatórios de conformidade.</p></div>
+<section class="hx-sec hx-sec-mist"><div class="dx-wrap">
+  <div class="hx-head"><div class="hx-eyebrow">Como funciona</div><h2>Três passos, sem planilha e sem pasta perdida</h2></div>
+  <div class="hx-path">
+    <div class="hx-node"><span>1</span><h3>Centralize</h3><p>Envie os documentos pelo painel ou pela API. Cada empresa tem o seu repositório, isolado e privado.</p></div>
+    <div class="hx-node"><span>2</span><h3>Organize</h3><p>Pastas, categorias, versões e permissões por papel. Alertas de validade avisam antes do vencimento.</p></div>
+    <div class="hx-node"><span>3</span><h3>Encontre e decida</h3><p>Busca pelo conteúdo, IA que responde citando a fonte e aprovações com prazo e histórico.</p></div>
   </div>
 </div></section>
 
-<section class="dx-sec"><div class="dx-wrap">
-  <div class="dx-sec-head"><div class="dx-sec-eyebrow">Como funciona</div><h2>Do arquivo solto à resposta, em três passos</h2></div>
-  <div class="dx-steps">
-    <div class="dx-step"><h3>Centralize</h3><p>Envie os documentos pelo painel ou pela API. Cada empresa tem o seu repositório, isolado e privado.</p></div>
-    <div class="dx-step"><h3>Organize</h3><p>Pastas, categorias, versões e permissões por papel. Alertas de validade avisam antes do vencimento.</p></div>
-    <div class="dx-step"><h3>Encontre e decida</h3><p>Busca pelo conteúdo, IA que responde citando a fonte e aprovações com prazo e histórico.</p></div>
-  </div>
-</div></section>
-
-<section class="dx-sec alt"><div class="dx-wrap">
-  <div class="dx-sec-head"><div class="dx-sec-eyebrow">Para quem é</div><h2>Pequenas, médias e grandes empresas</h2></div>
+<section class="hx-sec hx-sec-light"><div class="dx-wrap">
+  <div class="hx-head"><div class="hx-eyebrow">Para quem é</div><h2>Pequenas, médias e grandes empresas</h2></div>
   <div class="dx-grid dx-g3">
     <div class="dx-feat"><span class="dx-ico">${ic('scroll')}</span><h3>Jurídico e contratos</h3><p>Contratos com vencimento monitorado, cláusulas extraídas por IA e aprovação formal antes da assinatura.</p></div>
     <div class="dx-feat"><span class="dx-ico">${ic('card')}</span><h3>Financeiro e contábil</h3><p>Notas, recibos e comprovantes organizados por competência, com busca por valor, fornecedor ou CNPJ.</p></div>
@@ -232,8 +238,8 @@ function landing() {
   </div>
 </div></section>
 
-<section class="dx-sec" id="confianca"><div class="dx-wrap">
-  <div class="dx-sec-head"><div class="dx-sec-eyebrow">Por que confiar</div><h2>Tecnologia testada na vida real</h2><p>Nossa missão é transformar o arquivo morto da sua empresa em respostas — busca que entende o conteúdo e IA que responde <b>citando a fonte</b>. O Villela Docs nasceu dentro do Grupo Villela Stay, para organizar os contratos, notas e políticas de uma operação real.</p></div>
+<section class="hx-sec hx-sec-light" id="confianca"><div class="dx-wrap">
+  <div class="hx-head"><div class="hx-eyebrow">Por que confiar</div><h2>Tecnologia testada na vida real</h2><p>Nossa missão é transformar o arquivo morto da sua empresa em respostas — busca que entende o conteúdo e IA que responde <b>citando a fonte</b>. O Villela Docs nasceu dentro do Grupo Villela Stay, para organizar os contratos, notas e políticas de uma operação real.</p></div>
   <div class="dx-grid dx-g3">
     <div class="dx-feat"><span class="dx-ico">${ic('building')}</span><h3>Nascido numa operação real</h3><p>Construído pelo Grupo Villela Stay com os mesmos padrões de segurança, auditoria e isolamento que usamos nos nossos próprios sistemas em produção.</p></div>
     <div class="dx-feat"><span class="dx-ico">${ic('paperclip')}</span><h3>IA que cita a fonte</h3><p>Cada resposta aponta o documento e o trecho de origem — você confere em um clique, nada de resposta solta.</p></div>
@@ -242,8 +248,8 @@ function landing() {
   <p class="sub" style="margin-top:26px;display:flex;flex-wrap:wrap;gap:8px 26px;color:var(--dx-ink-3);font-size:14px"><span>${ic('lock')} Conexão segura (HTTPS)</span><span>${ic('shield')} Dados tratados conforme a LGPD</span><span>${ic('card')} Pagamentos pelo Mercado Pago</span></p>
 </div></section>
 
-<section class="dx-sec alt" id="planos"><div class="dx-wrap">
-  <div class="dx-sec-head"><div class="dx-sec-eyebrow">Planos</div><h2>Comece pequeno, cresça sem trocar de ferramenta</h2><p>Todos os planos começam com 14 dias grátis no nível Professional, sem cartão de crédito.</p></div>
+<section class="hx-sec hx-sec-mist" id="planos"><div class="dx-wrap">
+  <div class="hx-head"><div class="hx-eyebrow">Planos</div><h2>Comece pequeno, cresça sem trocar de ferramenta</h2><p>Todos os planos começam com 14 dias grátis no nível Professional, sem cartão de crédito.</p></div>
   <div class="dx-plans">
     ${planos.map(p => `<div class="dx-plan${p.slug === 'professional' ? ' dest' : ''}">${p.slug === 'professional' ? '<span class="dx-badge">Mais escolhido</span>' : ''}
       <h3>${esc(p.nome)}</h3><div class="dx-preco">${brl(p.preco_centavos)}${Number(p.preco_centavos) ? ' <small>/mês</small>' : ''}</div>
@@ -253,10 +259,10 @@ function landing() {
   <p style="text-align:center;margin-top:22px"><a href="/vdocs/precos">Ver comparação completa de planos →</a></p>
 </div></section>
 
-<section class="dx-sec" id="demo"><div class="dx-wrap dx-demo">
+<section class="hx-sec hx-sec-light" id="demo"><div class="dx-wrap dx-demo">
   <div>
-    <div class="dx-sec-eyebrow">Fale com a gente</div>
-    <h2>Peça uma demonstração</h2>
+    <div class="hx-eyebrow">Fale com a gente</div>
+    <h2 style="font-family:'Lora',Georgia,serif;font-size:clamp(28px,3.2vw,38px);line-height:1.15;margin:8px 0 14px">Peça uma demonstração</h2>
     <p class="dx-lead" style="font-size:17px">Mostramos o Villela Docs com os seus tipos de documento e tiramos as dúvidas sobre segurança, LGPD e integração.</p>
     <ul class="dx-bullets">
       <li>${ic('check')} Retornamos em até 1 dia útil</li>
@@ -287,8 +293,8 @@ function landing() {
   </script>
 </div></section>
 
-<section class="dx-sec alt" id="faq"><div class="dx-wrap dx-faq">
-  <div class="dx-sec-head" style="text-align:center;margin-left:auto;margin-right:auto"><div class="dx-sec-eyebrow">Perguntas frequentes</div><h2>Tire suas dúvidas</h2></div>
+<section class="hx-sec hx-sec-mist" id="faq"><div class="dx-wrap dx-faq">
+  <div class="hx-head" style="text-align:center;margin-left:auto;margin-right:auto"><div class="hx-eyebrow" style="justify-content:center">Perguntas frequentes</div><h2>Tire suas dúvidas</h2></div>
   <details><summary>Meus documentos ficam seguros?</summary><div>Cada empresa tem seus dados isolados das demais, com criptografia em trânsito, armazenamento privado (nunca em URL pública) e trilha de auditoria de cada acesso.</div></details>
   <details><summary>A IA pode inventar informações?</summary><div>Não. A IA responde apenas com base nos seus documentos e sempre cita documento e trecho usados. Quando não encontra a resposta, ela diz que não encontrou.</div></details>
   <details><summary>Preciso instalar algo?</summary><div>Não — é 100% na nuvem, funciona no navegador do computador e do celular.</div></details>
@@ -296,9 +302,9 @@ function landing() {
   <details><summary>Atende à LGPD?</summary><div>Sim: controle de acesso, registro de tratamento, retenção e descarte controlados, exportação e exclusão de dados quando aplicável.</div></details>
 </div></section>
 
-<section class="dx-sec"><div class="dx-wrap">
-  <div class="dx-final"><h2>Organize os documentos da sua empresa ainda hoje</h2><p>Crie a conta em minutos e use todos os recursos por 14 dias, sem cartão de crédito.</p>
-    <a class="btn btn-ciano lg" href="/vdocs/cadastro">Começar teste grátis</a> <a class="btn btn-ghost lg" href="#demo">Pedir demonstração</a></div>
+<section class="hx-sec hx-sec-light"><div class="dx-wrap">
+  <div class="hx-final"><div class="hx-aurora" aria-hidden="true"></div><div style="position:relative"><h2>Organize os documentos da sua empresa ainda hoje</h2><p>Crie a conta em minutos e use todos os recursos por 14 dias, sem cartão de crédito.</p>
+    <a class="btn btn-ciano lg" href="/vdocs/cadastro">Começar teste grátis</a> <a class="hx-ghost" href="#demo">Pedir demonstração</a></div></div>
 </div></section>`;
   return pagina({
     titulo: 'Villela Docs — Document Intelligence: gestão de documentos com IA para empresas',
@@ -460,7 +466,7 @@ body{background:var(--fundo)}
 .vw-pre{margin:0;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;width:100%;background:#fff}
 .barra{height:8px;background:var(--borda);border-radius:99px;overflow:hidden}.barra i{display:block;height:100%;background:var(--azul)}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
-</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=3"></head><body class="vx" data-vertical="docs">
+</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=6"></head><body class="vx" data-vertical="docs">
 ${SPRITE}
 <header class="top"><div class="wrap" style="max-width:none">
   <a class="brand" href="/vdocs/app"><img src="${BRAND_DIR}/logo-horizontal-claro.svg" alt="Villela Docs"></a>
