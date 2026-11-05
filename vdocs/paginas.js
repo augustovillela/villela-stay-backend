@@ -805,6 +805,7 @@ async function vTriagem(aba){
    '<div class="card"><b>'+(ehProp?'📢 '+L.length+' propaganda(s) para conferir':'🧹 '+L.length+' documento(s) esperando decisão')+'</b>'+
    (!ehProp&&imp?' <span class="sub">· '+imp+' parece(m) nota fiscal, fatura, extrato, contrato, recibo ou comprovante (no topo)</span>':'')+
    '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
+   (!ehProp&&S.me.permissoes.usar_ia?'<button class="btn btn-ghost peq" title="A IA lê o texto e propõe um nome (ex.: Nota fiscal – Zara – 03/11/2026). Usa 1 consulta de IA do plano por lote de até 15." onclick="triNomear()">✨ Nomear marcados com IA</button>':'')+
    (!ehProp&&imp?'<button class="btn peq" onclick="triAceitarSugestoes()">✨ Aceitar sugestões ('+imp+')</button>':'')+
    '<button class="btn btn-ghost peq" onclick="triMarcar(true)">Marcar todos</button>'+
    '<button class="btn btn-ghost peq" onclick="triMarcar(false)">Desmarcar</button>'+
@@ -817,7 +818,8 @@ async function vTriagem(aba){
      const tipoSel=sug?sug.tipo:i.tipo_documental;
      return '<tr id="tri-l'+n+'"><td><input type="checkbox" class="tri-ck" value="'+n+'" style="width:auto"></td>'+
       '<td><a href="/vdocs/api/documentos/'+i.document_id+'/baixar" target="_blank" rel="noopener"><b>'+esc(i.nome)+'</b></a><br><span class="sub" style="font-size:12px">'+tamH(i.tamanho)+' · '+dt(i.recebido_em)+'</span>'+
-      (i.trecho?'<br><span class="sub" style="font-size:12px">'+esc(i.trecho.slice(0,160))+'…</span>':'')+'</td>'+
+      (i.trecho?'<br><span class="sub" style="font-size:12px">'+esc(i.trecho.slice(0,160))+'…</span>':'')+
+      (ehProp?'':'<br><input id="tri-nome'+n+'" value="'+esc(i.nome)+'" style="width:100%;margin-top:4px" title="Nome do documento — editável; vale ao Processar">')+'</td>'+
       '<td>'+(i.canal.tipo==='gmail'?'✉️':'💬')+' '+esc(i.canal.rotulo||i.canal.identificador||'')+(i.remetente?'<br><span class="sub" style="font-size:12px">de '+esc(i.remetente)+'</span>':'')+'</td>'+
       (ehProp?'':
       '<td>'+(sug?'<span class="chip" title="Sugerido '+esc(sug.motivo)+'">✨ '+esc(sug.rotulo||ROT_TIPO[sug.tipo]||sug.tipo)+(sug.confianca==='alta'?'':' ?')+'</span><br>':'')+
@@ -828,6 +830,23 @@ async function vTriagem(aba){
         :'<button class="btn peq" onclick="triLote(\\'processar\\','+n+')">Processar</button> <button class="btn btn-ghost peq" onclick="triLote(\\'eliminar\\','+n+')">Eliminar</button> <button class="btn btn-ghost peq" title="Este remetente só manda propaganda: tudo dele vai direto para a aba Propaganda" onclick="triLote(\\'remetente_propaganda\\','+n+')">📢 Só propaganda</button>')+'</td></tr>';}).join('')+
    '</table></div>';
 }
+async function triNomear(){
+  const idx=[...document.querySelectorAll('.tri-ck:checked')].map(c=>+c.value);
+  if(!idx.length){$('tri-out').innerHTML='<span style="color:var(--alerta)">Marque os documentos que a IA deve nomear.</span>';return;}
+  if(idx.length>15){$('tri-out').innerHTML='<span style="color:var(--alerta)">Marque no máximo 15 por vez.</span>';return;}
+  $('tri-out').textContent='✨ A IA está lendo os documentos…';
+  try{
+    const r=await api('POST','/entrada/triagem/nomear',{log_ids:idx.map(n=>S.triLista[n].log_id)});
+    for(const sg of r.sugestoes){
+      const n=S.triLista.findIndex(i=>i.log_id===sg.log_id);if(n<0)continue;
+      $('tri-nome'+n).value=sg.nome;
+      if(sg.tipo_documental&&!(S.triLista[n].sugestao))$('tri-tipo'+n).value=sg.tipo_documental;
+    }
+    const partes=[r.sugestoes.length+' nome(s) sugerido(s) — confira e clique em Processar'];
+    if(r.sem_texto.length)partes.push(r.sem_texto.length+' sem texto legível (imagem ou PDF escaneado: a IA não lê)');
+    if(r.sem_sugestao)partes.push(r.sem_sugestao+' que a IA não soube identificar');
+    $('tri-out').innerHTML='✅ '+esc(partes.join(' · '));
+  }catch(e){$('tri-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
 function triMarcar(v){document.querySelectorAll('.tri-ck').forEach(c=>c.checked=v);}
 function triAceitarSugestoes(){
   document.querySelectorAll('.tri-ck').forEach(c=>{c.checked=!!S.triLista[+c.value].sugestao;});
@@ -838,7 +857,7 @@ async function triLote(acao,so){
   if(acao==='eliminar'&&!confirm('Eliminar '+idx.length+' documento(s)? Vão para a lixeira (dá para restaurar).'))return;
   const itens=idx.map(n=>{const i=S.triLista[n];
     if(acao==='eliminar'||acao==='nao_propaganda'||acao==='remetente_propaganda')return{log_id:i.log_id,acao};
-    return{log_id:i.log_id,acao,tipo_documental:$('tri-tipo'+n).value,folder_id:$('tri-pasta'+n).value,baixa_stays:$('tri-baixa'+n).checked};});
+    return{log_id:i.log_id,acao,tipo_documental:$('tri-tipo'+n).value,folder_id:$('tri-pasta'+n).value,baixa_stays:$('tri-baixa'+n).checked,nome:$('tri-nome'+n).value};});
   try{
     const r=await api('POST','/entrada/triagem',{itens});
     const falhas=r.resultado.filter(x=>!x.ok);

@@ -380,6 +380,9 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
   r.get('/entrada/triagem', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     res.json({ itens: entrada.pendentesTriagem(req.vd.tenant.id), remetentes_propaganda: entrada.listarRemetentesPropaganda(req.vd.tenant.id), pastas: docs.listarPastas(req.vd.tenant.id), tipos: docs.TIPOS_DOCUMENTAIS });
   }));
+  r.post('/entrada/triagem/nomear', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
+    res.json({ ok: true, ...(await entrada.nomearComIA(req.vd.tenant.id, req.vd.user, (req.body || {}).log_ids, req.vd.ip)) });
+  }));
   r.post('/entrada/triagem', requireTenant, h(async (req, res) => {
     const P = req.vd.permissoes;
     const itens = Array.isArray((req.body || {}).itens) ? req.body.itens : [];

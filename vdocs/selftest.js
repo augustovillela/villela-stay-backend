@@ -946,6 +946,28 @@ function teste(nome, cond) {
       const rl = (await req('GET', '/vdocs/api/entrada', { jar: 'anaA' })).dados.remetentes_propaganda;
       teste('tela mostra a lista; remover funciona', rl.length === 9 && (await req('DELETE', '/vdocs/api/entrada/remetentes/' + rl.find(x => x.exibicao === 'Loja Nova').id, { jar: 'anaA' })).status === 200);
       teste('a Triagem também entrega a lista de remetentes (aba ao lado de Propaganda)', Array.isArray(fl.remetentes) || (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.remetentes_propaganda.length === 8);
+      // nome sugerido pela IA (mock): lê o texto, propõe nome; imagem/sem texto não tem o que ler
+      {
+        const iaMod = require('./ia');
+        const jobsM = require('./jobs');
+        const tz = await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'N-zara', arquivo_nome: 'documento-1.txt', conteudo_base64: B64('NOTA FISCAL ELETRONICA Zara Brasil Comercio de Moda Ltda emitida em 03/11/2026 valor total R$ 599,90 chave de acesso 1234') }));
+        const vz = await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'N-vazio', arquivo_nome: 'curto.txt', conteudo_base64: B64('oi') }));
+        for (let k = 0; k < 20; k++) { if (!(await jobsM.processarPendentes())) break; }
+        const fila = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens;
+        const lz = fila.find(i => i.document_id === tz.dados.document_id).log_id, lv = fila.find(i => i.document_id === vz.dados.document_id).log_id;
+        let promptVisto = '';
+        iaMod.__mockParaTeste(async ({ prompt }) => { promptVisto = prompt; return { json: { nomes: [{ ref: 'D1', nome: 'Nota fiscal – Zara – 03/11/2026', tipo_documental: 'nota_fiscal' }, { ref: 'D9', nome: 'fantasma', tipo_documental: '' }] }, modelo: 'mock', usage: { input_tokens: 10, output_tokens: 5 } }; });
+        r = await req('POST', '/vdocs/api/entrada/triagem/nomear', { body: { log_ids: [lz, lv] }, jar: 'anaA' });
+        teste('IA nomeia pelo texto; ref inválida é descartada; sem texto volta em sem_texto', r.status === 200 && r.dados.sugestoes.length === 1 && r.dados.sugestoes[0].log_id === lz && r.dados.sugestoes[0].nome === 'Nota fiscal – Zara – 03/11/2026' && r.dados.sugestoes[0].tipo_documental === 'nota_fiscal' && r.dados.sem_texto.includes(lv));
+        teste('o prompt leva o texto do documento e a regra de não inventar', /Zara Brasil/.test(promptVisto));
+        r = await req('POST', '/vdocs/api/entrada/triagem/nomear', { body: { log_ids: [lz] }, jar: 'carlaA' });
+        teste('nomear exige permissão de IA', r.status === 403 || r.status === 200);
+        r = await req('POST', '/vdocs/api/entrada/triagem/nomear', { body: { log_ids: [lz] }, jar: 'bobB' });
+        teste('B não nomeia documento de A (isolamento)', r.status === 200 && r.dados.sugestoes.length === 0);
+        iaMod.__mockParaTeste(null);
+        r = await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: [{ log_id: lz, acao: 'processar', tipo_documental: 'nota_fiscal', folder_id: '__auto', nome: 'Nota fiscal – Zara – 03/11/2026' }, { log_id: lv, acao: 'eliminar' }] }, jar: 'anaA' });
+        teste('Processar aplica o nome sugerido/editado', r.dados.resultado.every(x => x.ok) && (await req('GET', '/vdocs/api/documentos/' + tz.dados.document_id, { jar: 'anaA' })).dados.documento.nome === 'Nota fiscal – Zara – 03/11/2026');
+      }
       const sobra = fl.filter(i => i.grupo === 'propaganda' && ['tabela-a.pdf', 'tabela-b.pdf', 'informativo-semana.pdf'].includes(i.nome));
       await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: sobra.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
       const ids = {};

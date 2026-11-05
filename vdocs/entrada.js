@@ -409,6 +409,54 @@ function dadosAvisoTriagem(tenantId) {
   };
 }
 
+// ------------------------------------------------------------ nome sugerido pela IA
+// A pedido (botão na triagem): a IA lê o começo do texto extraído e propõe um nome legível, ex.:
+// "Nota fiscal – Zara – 03/11/2026". Vários documentos por chamada (1 consulta do plano por lote).
+// Só sugere — o nome vale quando a pessoa processa. Imagem/PDF escaneado sem texto não tem o que ler
+// (não há OCR): volta em `sem_texto`. Gasto explícito: só roda quando alguém clica.
+const MAX_NOMEAR = 15;
+const SCHEMA_NOMES = {
+  type: 'object',
+  properties: { nomes: { type: 'array', items: { type: 'object', properties: {
+    ref: { type: 'string' }, nome: { type: 'string' }, tipo_documental: { type: 'string' } },
+    required: ['ref', 'nome', 'tipo_documental'], additionalProperties: false } } },
+  required: ['nomes'], additionalProperties: false,
+};
+const INSTRUCAO_NOMEAR = `TAREFA ATUAL: dar NOME a documentos recém-recebidos. Ignore as regras de citação e de pergunta/resposta.
+Formato do nome: "Tipo – Emissor ou parte – Data" (data dd/mm/aaaa; para fatura ou extrato de período, mm/aaaa), no máximo 90 caracteres.
+Exemplos: "Nota fiscal – Zara – 03/11/2026", "Fatura – Claro – 10/2026", "Extrato bancário – C6 PJ – 10/2026", "Comprovante de Pix – João Silva – 05/11/2026", "Contrato de locação – Maria Souza – 01/2027".
+Regras: use SOMENTE o que está no texto; se um elemento (emissor, data) não aparecer, OMITA-O — nunca invente; nunca ponha CPF, CNPJ, número de conta, código de barras ou chave de acesso no nome; se não der para saber o que é o documento, devolva nome vazio. tipo_documental deve ser um destes ou vazio: `;
+function sanitizaNome(n) { return s(String(n || '').replace(/[\\*?"<>|\r\n]+/g, ' ').replace(/\s+/g, ' '), 120).trim(); }
+async function nomearComIA(tenantId, user, logIds, ip) {
+  const ia = require('./ia');
+  if (!ia.ativo()) throw new Error('IA indisponível: o servidor está sem ANTHROPIC_API_KEY.');
+  const ids = [...new Set((Array.isArray(logIds) ? logIds : []).map(x => s(x, 40)).filter(Boolean))].slice(0, MAX_NOMEAR);
+  if (!ids.length) throw new Error('Marque ao menos um documento.');
+  const marcas = ids.map(() => '?').join(',');
+  const linhas = db.prepare(`SELECT l.id AS log_id, d.nome, tx.texto FROM entradas_log l
+      JOIN documents d ON d.id = l.document_id AND d.tenant_id = l.tenant_id
+      LEFT JOIN document_texts tx ON tx.document_id = d.id AND tx.tenant_id = l.tenant_id
+      WHERE l.tenant_id = ? AND l.triagem = 'pendente' AND l.id IN (${marcas})`).all(String(tenantId), ...ids);
+  const comTexto = linhas.filter(r => String(r.texto || '').replace(/\s+/g, ' ').trim().length >= 40);
+  const semTexto = linhas.filter(r => !comTexto.includes(r)).map(r => r.log_id);
+  if (!comTexto.length) return { sugestoes: [], sem_texto: semTexto };
+  repo.checarLimite(tenantId, 'ia_consultas', 1);
+  const prompt = comTexto.map((r, i) => `[D${i + 1}] (arquivo: ${r.nome})\n${String(r.texto).replace(/\s+/g, ' ').trim().slice(0, 1800)}`).join('\n\n---\n\n')
+    + `\n\nDevolva um item por documento, com ref igual a D1, D2...`;
+  const r = await ia.executar(tenantId, { prompt, schema: SCHEMA_NOMES, systemExtra: INSTRUCAO_NOMEAR + require('./docs').TIPOS_DOCUMENTAIS.join(', ') + '.' });
+  repo.registrarUso(tenantId, 'ia_consultas', 1);
+  const sugestoes = [];
+  for (const it of ((r.json && r.json.nomes) || [])) {
+    const m = /^D(\d+)$/.exec(String(it.ref || '').trim());
+    const linha = m && comTexto[Number(m[1]) - 1];
+    const nome = sanitizaNome(it.nome);
+    if (!linha || !nome) continue;
+    sugestoes.push({ log_id: linha.log_id, nome, tipo_documental: require('./docs').TIPOS_DOCUMENTAIS.includes(it.tipo_documental) ? it.tipo_documental : '' });
+  }
+  repo.auditar(tenantId, user, 'entrada.nomear_ia', 'entradas_log', '', { documentos: comTexto.length, sugeridos: sugestoes.length }, ip);
+  return { sugestoes, sem_texto: semTexto, sem_sugestao: comTexto.length - sugestoes.length };
+}
+
 function resumo(tenantId) {
   const t = String(tenantId);
   const porStatus = db.prepare('SELECT status, COUNT(*) n FROM entradas_log WHERE tenant_id = ? AND criado_em >= ? GROUP BY status')
@@ -428,6 +476,6 @@ module.exports = {
   PASTA_PADRAO, PASTA_PROPAGANDA, TAG_BAIXA_STAYS, classificarGrupo, EXT_ACEITAS, canonFone, normalizar, sugerirTipo,
   listarCanais, criarCanal, atualizarCanal, excluirCanal, canaisAtivos, receber,
   pendentesTriagem, decidirTriagem, resumo, recentes,
-  listarRemetentesPropaganda, adicionarRemetentesPropaganda, removerRemetentePropaganda, nomeDoRemetente,
+  nomearComIA, listarRemetentesPropaganda, adicionarRemetentesPropaganda, removerRemetentePropaganda, nomeDoRemetente,
   avisoTriagemDisponivel, avisoTriagemAtivo, definirAvisoTriagem, dadosAvisoTriagem,
 };
