@@ -1170,6 +1170,63 @@ function teste(nome, cond) {
     r = await req('GET', '/vdocs/api/documentos/' + idPl + '/planilha', { jar: 'bobB' });
     teste('B não lê planilha de A (isolamento)', r.status === 400);
 
+    // ---- .xls antigo (Excel 97-2003) gerado pelo Excel de verdade; e a extensão ".xlsx" mentirosa do C6 Pay ----
+    {
+      const xlsAntigo = require('fs').readFileSync(require('path').join(__dirname, 'fixtures', 'excel97.xls'));
+      r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'recebiveis.xlsx', nome: 'Recebíveis (xls com extensão xlsx)', conteudo_base64: xlsAntigo.toString('base64') }, jar: 'anaA' });
+      r = await req('GET', '/vdocs/api/documentos/' + r.dados.documento.id + '/planilha', { jar: 'anaA' });
+      const a0 = (r.dados.abas || [])[0] || { linhas: [] };
+      teste('.xls antigo com extensão .xlsx abre pelo CONTEÚDO: abas, texto com acento, data, inteiro e número grande', r.status === 200 && r.dados.abas.length === 2 && r.dados.abas[1].nome === 'Resumo' && a0.linhas[1][0] === 'Hóspede 2 – ação' && a0.linhas[1][1] === '07/10/2026' && a0.linhas[1][4] === '14' && a0.linhas[1][5] === '2000000');
+      teste('.xls antigo: fórmula (valor guardado), soma e texto de fórmula corretos', a0.linhas[1][2] === '3001' && a0.linhas[2][2] === '4501,5' && a0.linhas[41][2] === '1228909,5' && a0.linhas[42][0] === 'Texto-formula' && r.dados.abas[1].linhas[0][1] === '12345,678');
+    }
+
+    // ---- planilha PROTEGIDA POR SENHA (Standard Encryption do Office 2007: AES-128 + SHA-1) ----
+    {
+      const cr = require('crypto'), pm = require('./planilha');
+      const sha1 = (...x) => cr.createHash('sha1').update(Buffer.concat(x)).digest();
+      const u32 = (n) => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
+      const cifra = (zip, senha, minor = 2) => {
+        const salt = Buffer.alloc(16, 7); let h = sha1(salt, Buffer.from(senha, 'utf16le'));
+        for (let i = 0; i < 50000; i++) h = sha1(u32(i), h);
+        const hf = sha1(h, u32(0)); const dv = (b) => { const x = Buffer.alloc(64, b); for (let i = 0; i < 20; i++) x[i] ^= hf[i]; return sha1(x); };
+        const chave = Buffer.concat([dv(0x36), dv(0x5C)]).subarray(0, 16);
+        const enc = (d) => { const c = cr.createCipheriv('aes-128-ecb', chave, null); c.setAutoPadding(false); return Buffer.concat([c.update(d), c.final()]); };
+        const verif = Buffer.alloc(16, 3);
+        const hdr = Buffer.concat([u32(0x24), u32(0), u32(0x660E), u32(0x8004), u32(128), u32(0x18), u32(0), u32(0), Buffer.from('Microsoft Enhanced RSA and AES Cryptographic Provider\0', 'utf16le')]);
+        const ver = Buffer.alloc(4); ver.writeUInt16LE(4, 0); ver.writeUInt16LE(minor, 2);
+        const info = Buffer.concat([ver, u32(0x24), u32(hdr.length), hdr, u32(16), salt, enc(verif), u32(20), enc(Buffer.concat([sha1(verif), Buffer.alloc(12)]))]);
+        const pad = Buffer.concat([zip, Buffer.alloc((16 - zip.length % 16) % 16)]); const tam = Buffer.alloc(8); tam.writeBigUInt64LE(BigInt(zip.length));
+        return { info, pacote: Buffer.concat([tam, enc(pad)]) };
+      };
+      const { info, pacote } = cifra(xlsx, 'Segredo@2026');
+      teste('protegida: cabeçalho lido (AES-128, SHA-1) e a senha certa devolve o xlsx idêntico', pm.cabecalhoStandard(info).bits === 128 && pm.abrirPacoteStandard(info, pacote, 'Segredo@2026').equals(xlsx));
+      let erro = null; try { pm.abrirPacoteStandard(info, pacote, 'errada'); } catch (e) { erro = e; }
+      teste('protegida: senha errada é recusada com aviso e sem decifrar nada', !!erro && erro.precisaSenha === true && erro.senhaIncorreta === true && /incorreta/i.test(erro.message));
+      erro = null; try { pm.cabecalhoStandard(cifra(xlsx, 'x', 4).info); } catch (e) { erro = e; }
+      teste('protegida: criptografia "agile" (4.4) avisa que ainda não abre, sem inventar', !!erro && erro.semPrevia === true && /agile/i.test(erro.message));
+      // a rota: sem senha 422 pedindo; senha errada 422 marcando incorreta (lerPlanilha trocada só aqui)
+      const orig = pm.lerPlanilha; let respostas = [];
+      pm.lerPlanilha = (nome, buf, o = {}) => { const e = new Error(o.senha ? 'Senha incorreta.' : 'Esta planilha é protegida por senha. Digite a senha para abrir.'); e.precisaSenha = true; e.senhaIncorreta = !!o.senha; throw e; };
+      try {
+        const rs1 = await req('POST', '/vdocs/api/documentos/' + idPl + '/planilha', { body: {}, jar: 'anaA' });
+        const rs2 = await req('POST', '/vdocs/api/documentos/' + idPl + '/planilha', { body: { senha: 'x' }, jar: 'anaA' });
+        respostas = [rs1, rs2];
+      } finally { pm.lerPlanilha = orig; }
+      teste('rota da planilha protegida: 422 pede a senha; com senha errada 422 marca senha_incorreta (e nunca devolve a senha)', respostas[0].status === 422 && respostas[0].dados.precisa_senha === true && !respostas[0].dados.senha_incorreta && respostas[1].status === 422 && respostas[1].dados.senha_incorreta === true && !JSON.stringify(respostas[1].dados).includes('"x"'));
+      // sem senha digitada: tenta os 6 primeiros dígitos do CNPJ da própria empresa (padrão dos bancos)
+      repo.atualizarTenant(tenantA.id, { cnpj: '56.776.526/0001-12' }, { id: 'teste' }, 'teste');
+      const tentadas = [];
+      pm.lerPlanilha = (nome, buf, o = {}) => { tentadas.push(o.senha || ''); if (o.senha === '567765') return { abas: [{ nome: 'ok', linhas: [['a']], colunas: 1, totalLinhas: 1, truncado: false }] }; const e = new Error('Esta planilha é protegida por senha.'); e.precisaSenha = true; e.senhaIncorreta = !!o.senha; throw e; };
+      try { r = await req('POST', '/vdocs/api/documentos/' + idPl + '/planilha', { body: {}, jar: 'anaA' }); } finally { pm.lerPlanilha = orig; }
+      teste('planilha protegida abre sozinha com os 6 primeiros dígitos do CNPJ da empresa (sem pedir senha)', r.status === 200 && r.dados.abas[0].nome === 'ok' && tentadas.join('|') === '|567765');
+      repo.atualizarTenant(tenantA.id, { cnpj: '' }, { id: 'teste' }, 'teste');
+      pm.lerPlanilha = (nome, buf, o = {}) => { const e = new Error('protegida'); e.precisaSenha = true; e.senhaIncorreta = !!o.senha; throw e; };
+      try { r = await req('POST', '/vdocs/api/documentos/' + idPl + '/planilha', { body: {}, jar: 'anaA' }); } finally { pm.lerPlanilha = orig; }
+      teste('sem CNPJ cadastrado a tela pede a senha (não chuta)', r.status === 422 && r.dados.precisa_senha === true);
+      r = await req('POST', '/vdocs/api/documentos/' + idPl + '/planilha', { body: {}, jar: 'anaA' });
+      teste('POST da planilha comum continua abrindo (senha vazia)', r.status === 200 && r.dados.abas.length === 2);
+    }
+
     // ---- busca por palavras (qualquer ordem, sem acento, em nome/descrição/tags) ----
     await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'x1.txt', nome: 'Contrato Casa Villela - João Paulo', descricao: 'locação de temporada', conteudo_base64: B64('a') }, jar: 'anaA' });
     await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'x2.txt', nome: 'Contrato Villa Kubitschek', conteudo_base64: B64('b') }, jar: 'anaA' });

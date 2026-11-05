@@ -281,10 +281,17 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
     } catch (e) { res.status(e.semPrevia ? 415 : 400).json({ erro: e.message }); }
   });
   // Visualizador de planilha: devolve abas e células em JSON (a tela monta a tabela; nada de arquivo inline).
-  r.get('/documentos/:id/planilha', requireTenant, requirePerm('ver_documentos'), (req, res) => {
-    try { res.json(docs.planilha(req.vd.tenant.id, req.params.id, req.query.versao, req.vd.user, req.vd.ip)); }
-    catch (e) { res.status(e.semPrevia ? 415 : 400).json({ erro: e.message }); }
-  });
+  // Planilha protegida por senha (ex.: relatório do C6 Pay): a senha vem no CORPO do POST, é usada só em memória
+  // para decifrar e não é gravada nem registrada. 422 + precisa_senha = a tela pede (ou pede de novo) a senha.
+  const planilhaRota = (req, res) => {
+    try { res.json(docs.planilha(req.vd.tenant.id, req.params.id, req.query.versao || (req.body || {}).versao, req.vd.user, req.vd.ip, (req.body || {}).senha)); }
+    catch (e) {
+      if (e.precisaSenha) return res.status(422).json({ erro: e.message, precisa_senha: true, senha_incorreta: !!e.senhaIncorreta });
+      res.status(e.semPrevia ? 415 : 400).json({ erro: e.message });
+    }
+  };
+  r.get('/documentos/:id/planilha', requireTenant, requirePerm('ver_documentos'), planilhaRota);
+  r.post('/documentos/:id/planilha', requireTenant, requirePerm('ver_documentos'), planilhaRota);
   r.get('/documentos/:id/texto', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     res.json(docs.textoExtraido(req.vd.tenant.id, req.params.id));
   }));

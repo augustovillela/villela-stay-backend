@@ -338,13 +338,22 @@ function visualizar(tenantId, id, numero, ator, ip) {
   return { buffer, nome: v.nome_arquivo, mime, ext };
 }
 /** Planilha (xlsx/csv) lida em abas e células, para o visualizador de tabela. Conta como visualização. */
-function planilha(tenantId, id, numero, ator, ip) {
+function planilha(tenantId, id, numero, ator, ip, senha = '') {
   const d = obterDocumento(tenantId, id);
   const num = Math.trunc(Number(numero)) || d.versao_atual;
   const v = db.prepare('SELECT * FROM document_versions WHERE tenant_id = ? AND document_id = ? AND numero = ?')
     .get(String(tenantId), d.id, num);
   if (!v) throw new Error('Versão não encontrada.');
-  const dados = require('./planilha').lerPlanilha(v.nome_arquivo, lerArquivo(v.file_path)); // lança semPrevia se não for xlsx/csv
+  const pl = require('./planilha'), arq = lerArquivo(v.file_path), nome = v.nome_arquivo;
+  let dados;
+  try { dados = pl.lerPlanilha(nome, arq, { senha: String(senha || '').slice(0, 200) }); } // lança semPrevia se não for planilha
+  catch (e) {
+    // Bancos e adquirentes (ex.: C6 Pay) protegem o relatório com os 6 primeiros dígitos do CNPJ: sem senha digitada,
+    // tenta esse padrão com o CNPJ da PRÓPRIA empresa antes de pedir a senha à pessoa.
+    const cnpj6 = String((repo.obterTenant(tenantId) || {}).cnpj || '').replace(/\D/g, '').slice(0, 6);
+    if (!(e.precisaSenha && !senha && cnpj6.length === 6)) throw e;
+    try { dados = pl.lerPlanilha(nome, arq, { senha: cnpj6 }); } catch (e2) { throw e2.precisaSenha ? e : e2; }
+  }
   db.prepare('INSERT INTO document_access_logs (tenant_id, document_id, user_id, acao, versao, ip, criado_em) VALUES (?,?,?,?,?,?,?)')
     .run(String(tenantId), d.id, s(ator && ator.id, 40), 'visualizar', num, s(ip, 60), nowISO());
   return dados;

@@ -474,6 +474,20 @@ body{background:var(--fundo)}
 .vw-c img{max-width:100%;max-height:100%;object-fit:contain;align-self:center}
 .vw-c audio,.vw-c video{align-self:center;max-width:100%}
 .vw-pre{margin:0;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;width:100%;background:#fff}
+.dx-lista{table-layout:fixed}
+body[data-vertical="docs"] .dx-lista th{padding:7px 10px}
+body[data-vertical="docs"] .dx-lista td{padding:4px 10px;line-height:1.25}
+.dx-lista td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dx-lista td a{font-weight:600}
+.dx-lista .c-cat{width:148px}
+.dx-lista .c-pasta{width:132px}
+.dx-lista .c-data{width:92px}
+.dx-lista .c-acoes{width:124px;text-align:right;overflow:visible}
+.dx-lista th{white-space:nowrap}
+.dx-lista.lix .c-acoes{width:250px}
+.dx-lista td .chip,.dx-lista td .dx-cat{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;box-sizing:border-box}
+@media(max-width:1180px){.dx-lista .c-pasta{display:none}}
+@media(max-width:640px){.dx-lista .c-cat,.dx-lista .c-data{display:none}.dx-lista .c-acoes{width:104px}}
 .pl{width:100%;display:flex;flex-direction:column;min-height:0;background:#fff}
 .pl-abas{display:flex;gap:2px;flex-wrap:wrap;padding:8px 10px 0;border-bottom:1px solid var(--borda);background:var(--fundo)}
 .pl-ab{border:1px solid var(--borda);border-bottom:0;background:#eef1f5;padding:6px 14px;border-radius:8px 8px 0 0;font-size:13px;cursor:pointer;color:inherit}
@@ -764,16 +778,18 @@ async function vDocs(){
    (P.excluir_documento||P.restaurar_documento?'<button class="btn btn-ghost peq" onclick="S.lixeira=!S.lixeira;vDocs()">'+(S.lixeira?'← Voltar aos documentos':ic('trash')+' Lixeira')+'</button>':'')+
    '</div><div id="up-out"></div>'+chipsTipo+
    (sub.length?'<div class="card" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">'+sub.map(p=>'<button class="btn btn-ghost peq" onclick="irPasta(\\''+p.id+'\\')">'+ic('folder')+' '+esc(p.nome)+' ('+nPasta(p.id)+')</button>'+(P.excluir_documento?'<button class="dx-ib perigo" title="Excluir pasta vazia" aria-label="Excluir pasta" onclick="excluirPasta(\\''+p.id+'\\')">'+ic('trash')+'</button>':'')).join(''):'')+ (sub.length?'</div>':'')+
-   '<div class="card" style="margin-top:12px"><table><tr><th>Documento</th><th>Categoria</th><th>Pasta</th><th>Tags</th><th>Versão</th><th>Atualizado</th><th></th></tr>'+
+   '<div class="card" style="margin-top:12px;padding:6px 8px"><table class="dx-lista'+(S.lixeira?' lix':'')+'"><tr><th>Documento</th><th class="c-cat">Categoria</th><th class="c-pasta">Pasta</th><th class="c-data">Atualizado</th><th class="c-acoes"></th></tr>'+
    (docsL.length?docsL.map(d=>{
-     return '<tr><td><a href="#" onclick="return abrirDoc(\\''+d.id+'\\')">'+esc(d.nome)+'</a>'+
+     const tg=(d.tags||[]).filter(t=>t!=='entrada-automatica');
+     return '<tr><td title="'+esc(d.nome+(tg.length?'  ·  tags: '+tg.join(', '):''))+'"><a href="#" onclick="return abrirDoc(\\''+d.id+'\\')">'+esc(d.nome)+'</a>'+
+     (d.versao_atual>1?' <span class="sub" style="font-size:11px">v'+d.versao_atual+'</span>':'')+
      (d.fora_da_pasta?' <span class="chip" title="Encontrado pelo conteúdo em outra pasta">em outra pasta</span>':'')+
      (d.trecho?'<br><span style="font-size:12px;color:var(--suave)">…'+esc(d.trecho)+'…</span>':'')+'</td>'+
-     '<td><span class="dx-cat dx-cat-'+esc(d.tipo_documental)+'">'+esc(ROT_TIPO[d.tipo_documental]||d.tipo_documental)+'</span></td><td>'+nomePastaDoc(d.folder_id)+'</td><td>'+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</td>'+
-     '<td>v'+d.versao_atual+'</td><td>'+dt(d.atualizado_em||d.criado_em)+'</td><td>'+
+     '<td class="c-cat"><span class="dx-cat dx-cat-'+esc(d.tipo_documental)+'">'+esc(ROT_TIPO[d.tipo_documental]||d.tipo_documental)+'</span></td><td class="c-pasta">'+nomePastaDoc(d.folder_id)+'</td>'+
+     '<td class="c-data" title="'+esc(dt(d.atualizado_em||d.criado_em))+'">'+(d.atualizado_em||d.criado_em?new Date(d.atualizado_em||d.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—')+'</td><td class="c-acoes">'+
      (S.lixeira?((P.restaurar_documento?'<button class="btn peq" onclick="docAcao(\\''+d.id+'\\',\\'restaurar\\')">Restaurar</button> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="excluirDefinitivo(\\''+d.id+'\\')">Excluir de vez</button>':''))
       :('<button class="dx-ib" title="Visualizar sem baixar" aria-label="Visualizar" onclick="visualizarDoc(\\''+d.id+'\\')">'+ic('eye')+'</button> '+(P.baixar_documento?'<a class="dx-ib" title="Baixar" aria-label="Baixar" href="/vdocs/api/documentos/'+d.id+'/baixar">'+ic('download')+'</a> ':'')+(P.excluir_documento?'<button class="dx-ib perigo" title="Mover para a lixeira" aria-label="Mover para a lixeira" onclick="docAcao(\\''+d.id+'\\',\\'lixeira\\')">'+ic('trash')+'</button>':'')))+'</td></tr>';
-   }).join(''):'<tr><td colspan="7" style="color:var(--suave)">'+(S.lixeira?'Lixeira vazia.':(S.tipoF||S.pasta?'Nenhum documento com este filtro.':'Nenhum documento ainda.'))+'</td></tr>')+'</table></div>';
+   }).join(''):'<tr><td colspan="5" style="color:var(--suave)">'+(S.lixeira?'Lixeira vazia.':(S.tipoF||S.pasta?'Nenhum documento com este filtro.':'Nenhum documento ainda.'))+'</td></tr>')+'</table></div>';
   if(temFoco){const el=$('dq');if(el){el.focus();try{el.setSelectionRange(selIni,selFim);}catch(e){}}}
 }
 async function novaPasta(){const n=prompt('Nome da nova pasta:');if(!n)return;
@@ -820,7 +836,7 @@ async function visualizarDoc(id,versao){
   else if(['mp4','mov'].includes(ext))c.innerHTML='<video controls src="'+url+'"></video>';
   else{
     try{
-      if(['xlsx','csv'].includes(ext)){await mostrarPlanilha(c,id,q);}
+      if(['xlsx','xlsm','xls','csv'].includes(ext)){await mostrarPlanilha(c,id,q);}
       else if(['txt','md'].includes(ext)){const r=await fetch(url,{credentials:'same-origin'});c.innerHTML='<pre class="vw-pre">'+esc(await r.text())+'</pre>';}
       else{
         const t=await api('GET','/documentos/'+id+'/texto');
@@ -833,11 +849,23 @@ async function visualizarDoc(id,versao){
   return false;
 }
 // ---- visualizador de planilha (xlsx/csv): abas + tabela com A B C e número de linha, sem baixar ----
-async function mostrarPlanilha(c,id,q){
-  S._pl=await api('GET','/documentos/'+id+'/planilha'+q);
+async function mostrarPlanilha(c,id,q,senha,aviso){
+  // POST (a senha vai no corpo, nunca na URL). 422 = planilha protegida: pede a senha aqui mesmo, sem baixar.
+  const r=await fetch('/vdocs/api/documentos/'+id+'/planilha'+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({senha:senha||''})});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===422&&j.precisa_senha){
+    c.innerHTML='<div style="margin:auto;max-width:420px;padding:24px;text-align:center"><p style="font-size:15px"><b>Planilha protegida por senha</b></p>'+
+     '<p class="sub" style="font-size:13px">'+(j.senha_incorreta?'⚠️ Senha incorreta. Tente de novo.':'Digite a senha do arquivo para ver o conteúdo aqui, sem baixar. A senha não é guardada.')+'</p>'+
+     '<input id="pl-senha" type="password" autocomplete="off" placeholder="Senha da planilha" style="max-width:260px" onkeydown="if(event.key===\\'Enter\\')planilhaAbrirComSenha(\\''+id+'\\',\\''+q+'\\')"> '+
+     '<button class="btn" onclick="planilhaAbrirComSenha(\\''+id+'\\',\\''+q+'\\')">Abrir</button></div>';
+    const i=$('pl-senha');if(i)i.focus();return;
+  }
+  if(!r.ok)throw new Error(j.erro||('Erro '+r.status));
+  S._pl=j;
   c.innerHTML='<div class="pl"><div class="pl-abas" id="pl-abas"></div><div class="pl-sc" id="pl-sc"></div><div class="pl-rod" id="pl-rod"></div></div>';
   planilhaAba(0);
 }
+function planilhaAbrirComSenha(id,q){const c=$('vw-c'),i=$('pl-senha');if(!c||!i)return;const s=i.value;c.innerHTML='<p style="padding:20px">Abrindo…</p>';mostrarPlanilha(c,id,q,s).catch(e=>{c.innerHTML='<p style="padding:20px;color:var(--alerta)">'+esc(e.message)+'</p>';});}
 function planilhaCol(n){let t='';n++;while(n>0){const r=(n-1)%26;t=String.fromCharCode(65+r)+t;n=Math.floor((n-1)/26);}return t;}
 function planilhaAba(i){
   const a=S._pl.abas[i];
