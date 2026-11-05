@@ -478,8 +478,24 @@ function erroTela(e){
   $('corpo').innerHTML='<div class="vx-alerta vx-alerta--danger" role="alert"><span class="vx-alerta-ico" aria-hidden="true">⚠️</span>'+
     '<div><b>Não foi possível carregar esta tela</b><p class="vx-mb0">'+esc(e&&e.message?e.message:'Erro inesperado.')+'</p>'+
     '<button class="vx-btn vx-btn--sec vx-btn--sm" style="margin-top:8px" onclick="ir(S.tela)">Tentar novamente</button></div></div>';}
-function ir(t){
+// ---- URL = estado: F5 continua na mesma tela (e na mesma pasta/aba); Voltar/Avançar do navegador funcionam ----
+// formato: #tela  ou  #tela/sub   (documentos/<id da pasta>|lixeira · triagem/propaganda|remetentes)
+function lerHash(){const h=(location.hash||'').replace(/^#/,'');const i=h.indexOf('/');
+  try{return i<0?[h,'']:[h.slice(0,i),decodeURIComponent(h.slice(i+1))];}catch(e){return [h.slice(0,i),''];}}
+function marcaHash(t,sub,empurra){
+  const novo='#'+t+(sub?'/'+encodeURIComponent(sub):'');
+  if(location.hash===novo)return;
+  try{history[empurra?'pushState':'replaceState'](null,'',novo);}catch(e){}}
+function subDaTela(t){
+  if(t==='documentos')return S.lixeira?'lixeira':(S.pasta||'');
+  if(t==='triagem')return S.triAba&&S.triAba!=='decidir'?S.triAba:'';
+  return '';}
+function aplicaSub(t,sub){
+  if(t==='documentos'){S.lixeira=sub==='lixeira';S.pasta=sub==='lixeira'?'':sub;}
+  if(t==='triagem'&&['decidir','propaganda','remetentes'].includes(sub))S.triAba=sub;}
+function ir(t,naoMarcar){
   S.tela=t;SEQ++;menu();pintarCabecalho();
+  if(!naoMarcar)marcaHash(t,subDaTela(t),true);
   $('corpo').innerHTML=esqueleto();
   ({dashboard:vDash,documentos:vDocs,triagem:vTriagem,entrada:vEntrada,busca:vBusca,ia:vIA,redigir:vRedigir,workflows:vWorkflows,compartilhar:vShares,integracoes:vInteg,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(erroTela);}
 
@@ -490,9 +506,16 @@ async function boot(){
   pintarBotaoInstalar();
   pintarBotaoPush().catch(()=>{});
   if(S.me.bloqueado){pintarCabecalho();$('corpo').innerHTML='<div class="vx-alerta vx-alerta--danger" role="alert"><span class="vx-alerta-ico" aria-hidden="true">⚠️</span><div><b>Conta bloqueada.</b><p class="vx-mb0">'+(S.me.tenant.status==='suspensa'?'Sua conta está suspensa — fale com a Villela Docs.':'Seu período de teste terminou — escolha um plano para continuar (fale com a gente pelo formulário da página inicial).')+'</p></div></div>';return;}
-  // link do aviso do WhatsApp: /vdocs/app#triagem abre direto na fila
-  const alvo=(location.hash||'').replace('#','');
-  ir(visiveis().some(t=>t[0]===alvo)?alvo:'dashboard');
+  // F5, favorito e link do aviso do WhatsApp (/vdocs/app#triagem) reabrem a mesma tela
+  const [alvo,sub]=lerHash();
+  const tela=visiveis().some(t=>t[0]===alvo)?alvo:'dashboard';
+  aplicaSub(tela,sub);
+  ir(tela,tela!==alvo); // hash inválido/sem permissão: troca pelo da tela que abriu
+  if(tela!==alvo)marcaHash(tela,subDaTela(tela));
+  window.addEventListener('popstate',()=>{
+    if(!S.me||S.me.bloqueado)return;
+    const [a,s2]=lerHash();const t=visiveis().some(x=>x[0]===a)?a:'dashboard';
+    aplicaSub(t,s2);ir(t,true);});
 }
 async function vDash(){
   const d=await api('GET','/dashboard');
@@ -532,6 +555,7 @@ function trilha(){
 function irPasta(id){S.pasta=id;S.lixeira=false;vDocs();return false;}
 async function vDocs(){
   const P=S.me.permissoes;
+  marcaHash('documentos',subDaTela('documentos')); // pasta/lixeira entram na URL
   const filtro=($('dq')&&$('dq').value)||'';
   const [ps,ds]=await Promise.all([api('GET','/pastas'),api('GET','/documentos?busca='+encodeURIComponent(filtro)+'&'+(S.lixeira?'status=lixeira':'pasta='+encodeURIComponent(S.pasta)))]);
   S.pastas=ps.pastas;S.tiposDoc=ds.tipos;
@@ -790,6 +814,7 @@ const tamH=n=>n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/10
 async function vTriagem(aba){
   const d=await api('GET','/entrada/triagem');
   S.tri=d;S.triAba=aba||S.triAba||'decidir';
+  marcaHash('triagem',subDaTela('triagem'));
   const prop=d.itens.filter(i=>i.grupo==='propaganda'),dec=d.itens.filter(i=>i.grupo!=='propaganda');
   S.triLista=S.triAba==='propaganda'?prop:dec;
   const abas='<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
