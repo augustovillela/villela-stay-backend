@@ -904,9 +904,11 @@ function teste(nome, cond) {
         ['EGEO DOCINHO PRA MULHERADA 🥰 Egeo Choc Desodorante Colônia 90ml O Boticário 🔥 -95C337.jpg', 'PromosP (558586836667-1609985246)'],
         ['PRA VC DEIXAR NO QUARTO OU ESCRITÓRIO Geladeira frigobar Philco PFG85 con capaci-0DF011.jpg', 'PromosP (558586836667-1609985246)'],
         ['IDEAL PRO SEU HOME OFFICE OU ESTUDOS 🫡 Mesa Industrial Premium 150cm Para Escri-5E3FDA.jpg', 'Promos P (558586836667-1609985246)'],
+        ['FALANDO EM SUPER CAFÉS Caffeine Army Supercoffee Classic Size 380g 😵 De 249 🤑 -D3537C.jpg', 'Lorrane (120363351515748877)'],
         ['COM ESSA ATÉ O FILME RUIM FICA BOM 🤩 Smart Tv Philco 50 P50vik 4k Uhd Led Roku -6620C3.jpg', 'Promos (558586836667-1609985246)'],
       ];
-      teste('as 7 imagens de grupo de promoção reais são propaganda', promoReal.every(([n, rem]) => g({ nome: n, assunto: '', remetente: rem, emLista: false }) === 'propaganda'));
+      teste('as 8 imagens de grupo de promoção reais são propaganda', promoReal.every(([n, rem]) => g({ nome: n, assunto: '', remetente: rem, emLista: false }) === 'propaganda'));
+      teste('foto de comprovante numa conversa direta NÃO é propaganda', g({ nome: 'comprovante pix joao.jpg', assunto: '', remetente: 'Joao (556199998888)', emLista: false }) === 'normal');
       teste('ticket da Zara não é propaganda e sugere recibo; relatório C6Pay sugere financeiro', g({ nome: '1793745936224-ticket-8a2cd6b21f324a6999341f1cead87bac.pdf', assunto: 'Anexamos seu bilhete eletrônico.', remetente: 'Zara <noreply@zara.com>', emLista: false }) === 'normal' && entrada.sugerirTipo('ticket-8a2cd.pdf', '').tipo === 'recibo' && entrada.sugerirTipo('Recebiveis-Detalhado-C6Pay-2026-11-04.xlsx', '').tipo === 'financeiro');
       // fila antiga classificada 'normal' é reavaliada ao abrir a triagem e vai para a pasta de propaganda
       {

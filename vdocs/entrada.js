@@ -217,6 +217,11 @@ function classificarGrupo({ nome, assunto, remetente, emLista }) {
   if (emLista) pontos += 2;
   if (RE_PROMO.test(sem(assunto))) pontos += 2;
   if (RE_NOME_PROMO.test(sem(nome)) || RE_PRECO_PROMO.test(sem(nome))) pontos += 2; else if (RE_PROMO.test(sem(nome))) pontos += 1;
+  // Imagem vinda de GRUPO de WhatsApp (remetente "Nome (id-do-grupo)") quase nunca é documento; e legenda
+  // comprida com emoji virando nome de arquivo é a assinatura de post de achadinho.
+  const imagem = /\.(jpe?g|png|webp)$/i.test(String(nome || ''));
+  if (imagem && /\((?:\d+-\d+|120363\d+)\)\s*$/.test(String(remetente || ''))) pontos += 3;
+  if (imagem && String(nome || '').length > 30 && /\p{Extended_Pictographic}/u.test(String(nome || ''))) pontos += 2;
   if (RE_REMETENTE_MKT.test(sem(remetente))) pontos += /promo|achadinho|ofertas|cupom/.test(sem(remetente)) ? 2 : 1;
   return pontos >= 3 || (pontos >= 2 && !emLista) ? 'propaganda' : 'normal';
 }
