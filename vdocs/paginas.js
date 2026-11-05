@@ -500,7 +500,10 @@ function subDaTela(t){
   if(t==='triagem')return S.triAba&&S.triAba!=='decidir'?S.triAba:'';
   return '';}
 function aplicaSub(t,sub){
-  if(t==='documentos'){S.lixeira=sub==='lixeira';S.pasta=sub==='lixeira'?'':sub;}
+  if(t==='documentos'){
+    S.docAberto=sub.startsWith('doc:')?sub.slice(4):null; // #documentos/doc:<id> reabre o documento
+    if(!S.docAberto){S.lixeira=sub==='lixeira';S.pasta=sub==='lixeira'?'':sub;}
+  }
   if(t==='triagem'&&['decidir','propaganda','remetentes'].includes(sub))S.triAba=sub;}
 function ir(t,naoMarcar){
   S.tela=t;SEQ++;menu();pintarCabecalho();
@@ -521,9 +524,13 @@ async function boot(){
   aplicaSub(tela,sub);
   ir(tela,tela!==alvo); // hash inválido/sem permissão: troca pelo da tela que abriu
   if(tela!==alvo)marcaHash(tela,subDaTela(tela));
+  // links "#" que só disparam uma ação (abrir documento etc.) não podem navegar nem voltar ao início
+  document.addEventListener('click',e=>{const l=e.target.closest&&e.target.closest('a[href="#"]');if(l)e.preventDefault();});
   window.addEventListener('popstate',()=>{
     if(!S.me||S.me.bloqueado)return;
-    const [a,s2]=lerHash();const t=visiveis().some(x=>x[0]===a)?a:'dashboard';
+    const [a,s2]=lerHash();
+    if(!a)return; // hash vazio = clique em link "#", não navegação: fica onde está
+    const t=visiveis().some(x=>x[0]===a)?a:'dashboard';
     aplicaSub(t,s2);ir(t,true);});
 }
 async function vDash(){
@@ -564,6 +571,7 @@ function trilha(){
 function irPasta(id){S.pasta=id;S.lixeira=false;vDocs();return false;}
 async function vDocs(){
   const P=S.me.permissoes;
+  if(S.docAberto){const id=S.docAberto;S.docAberto=null;return abrirDoc(id);} // F5 dentro de um documento
   marcaHash('documentos',subDaTela('documentos')); // pasta/lixeira entram na URL
   const filtro=($('dq')&&$('dq').value)||'';
   const [ps,ds]=await Promise.all([api('GET','/pastas'),api('GET','/documentos?busca='+encodeURIComponent(filtro)+'&'+(S.lixeira?'status=lixeira':'pasta='+encodeURIComponent(S.pasta)))]);
@@ -649,6 +657,11 @@ function fecharVisualizador(){const o=$('vw-ov');if(o)o.remove();}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharVisualizador();});
 async function abrirDoc(id){
   const P=S.me.permissoes;
+  marcaHash('documentos','doc:'+id,true); // o documento entra na URL; Voltar retorna à lista
+  if(!S.tiposDoc||!S.pastas.length){ // F5 direto no documento: a lista ainda não carregou pastas e tipos
+    const [ps,ds]=await Promise.all([api('GET','/pastas'),api('GET','/documentos?pasta=')]);
+    S.pastas=ps.pastas;S.tiposDoc=ds.tipos;
+  }
   const {documento:d,acessos,processamento:pr,aprovacoes:aps}=await api('GET','/documentos/'+id);
   const st=(pr&&pr.job&&pr.job.status)||'';
   const proc=pr&&pr.texto?'✅ Texto extraído ('+esc(pr.texto.metodo)+', '+pr.texto.chars.toLocaleString('pt-BR')+' caracteres'+(pr.texto.paginas?', '+pr.texto.paginas+' pág.':'')+') — este documento já aparece na busca por conteúdo.'
