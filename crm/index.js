@@ -31,6 +31,7 @@ function montar(app, injected = {}) {
   repo.semear(); // planos + flags (upsert idempotente; preserva preços editados)
   const notificar = (m) => Promise.resolve((alertaAugusto || (async () => {}))(m)).catch(() => {});
   billing.configurar({ mpFetch, notificar });
+  require('./carteira').configurar({ mpFetch, notificar }); // créditos pré-pagos (recarga avulsa pelo MP)
 
   // automações (scripts/agentes) sobre a empresa interna — substituto das rotas do CRM legado
   if (requirePublishOrSession && podeCRM) registrarRotasAgente(app, { requirePublishOrSession, podeCRM });
@@ -82,6 +83,11 @@ function iniciarRotinas(notificar) {
     for (const x of r.rodadas || []) if (x.erro && !x.lugares) notificar(`⚠️ Busca ativa do CRM falhou: ${x.erro}`);
   }).catch(() => {}); }, 30 * 60 * 1000);
   if (tb.unref) tb.unref();
+  // PTAX do dia (câmbio da carteira): na subida e a cada 6h; sem o Banco Central vale o último valor por 7 dias
+  const carteira = require('./carteira');
+  carteira.atualizarPTAX().catch(() => {});
+  const tp = setInterval(() => { carteira.atualizarPTAX().catch(() => {}); }, 6 * 3600 * 1000);
+  if (tp.unref) tp.unref();
   console.log(`[crm] ciclo de vida + automações agendados p/ ~${hora}h de Brasília`);
 }
 

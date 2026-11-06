@@ -30,9 +30,11 @@ const alertaAugusto = async (m) => { alertas.push(m); };
 
 // MP mock
 const mpCorpos = []; // corpos dos POST /preapproval (plano anual: frequency e valor)
+const mpPrefs = []; // corpos dos POST /checkout/preferences (recarga de créditos)
 let _payResp = {}; // resposta de /v1/payments/* controlada por teste (idempotência)
 const mpFetch = async (p, opts) => {
   if (p === '/preapproval' && opts && opts.method === 'POST') mpCorpos.push(JSON.parse(opts.body)); if (p === '/preapproval' && opts && opts.method === 'POST') return { id: 'PRE777', init_point: 'https://mp/PRE777', status: 'pending', external_reference: 'crm' };
+  if (p === '/checkout/preferences') { mpPrefs.push(JSON.parse(opts.body)); return { id: 'PREF-' + mpPrefs.length, init_point: 'https://mp/pref' }; } // recarga de créditos
   if (p.startsWith('/preapproval/')) return { id: 'PRE777', status: 'authorized' };
   if (p.startsWith('/v1/payments/')) return _payResp;
   return {};
@@ -621,6 +623,353 @@ async function rodar() {
       assert.ok(alvos.length && alvos.every(a => a.status === 'pendente' && a.destino === 'rh@advlago.com.br'), 'o RH é o destino');
     } finally { saas.repo.salvarSettings(tid, { limites_over: {} }); }
   });
+
+  // =====================================================================
+  // CAPTURA DE LEADS PARA ASSINANTES: cofre, carteira pré-paga, IA (chave própria/créditos), busca externa paga,
+  // importação de exports. Provedores SIMULADOS: nenhuma chamada real ao Apify, à Anthropic ou à OpenAI.
+  // =====================================================================
+  const CapturaMod = require('./captura'); const CofreMod = require('./cofre'); const CarteiraMod = require('./carteira'); const IAMod = require('./ia-provedor');
+  const dbm = require('./db').db;
+  const CHAVE_ANT = 'sk-ant-api03-' + 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4'; // chave FALSA de teste
+  const TOKEN_APIFY = 'apify_api_' + 'Zx9Yw8Vu7Ts6Rq5Po4Nm3';
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const saldoDe = async () => CarteiraMod.saldo(await tidDoTenant());
+  const logs = []; const _log = console.log, _warn = console.warn, _err = console.error;
+  const gravaLog = (...a) => { logs.push(a.map(String).join(' ')); };
+  process.env.ANTHROPIC_API_KEY = 'sk-ant-PLATAFORMA-' + 'Qq1Ww2Ee3Rr4Tt5Yy6Uu7Ii8Oo9';
+  let chamadasIA = [];
+  IAMod.trocarTransporte(async (url, init) => {
+    chamadasIA.push({ url, headers: init.headers, body: init.body });
+    if (/\/models/.test(url)) return { ok: true, status: 200, json: async () => ({ data: [] }) };
+    if (chamadasIA.falhar) return { ok: false, status: chamadasIA.falhar, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: '{"termos":["clínica odontológica","dentista"],"locais":["Lago Sul"],"observacao":"ok"}' }], usage: { input_tokens: 500, output_tokens: 100 } }) };
+  });
+
+  await t('cofre: chave malformada é recusada; válida é cifrada, nunca volta e some do log/erro', async () => {
+    assert.equal((await req('PUT', '/crm/api/app/captura/chaves/ia_anthropic', { corpo: { valor: 'minha senha é 123' }, cookies: true })).st, 400);
+    assert.equal((await req('PUT', '/crm/api/app/captura/chaves/qualquer', { corpo: { valor: CHAVE_ANT }, cookies: true })).st, 400, 'tipo desconhecido');
+    const r = await req('PUT', '/crm/api/app/captura/chaves/ia_anthropic', { corpo: { valor: CHAVE_ANT }, cookies: true });
+    assert.equal(r.st, 200, r.texto); assert.ok(!r.texto.includes(CHAVE_ANT), 'a resposta não devolve a chave');
+    const v = await req('GET', '/crm/api/app/captura', { cookies: true });
+    assert.equal(v.st, 200); assert.ok(!v.texto.includes(CHAVE_ANT), 'a tela não recebe a chave');
+    const meta = v.json.cofre.chaves.find((c) => c.nome === 'ia_anthropic');
+    assert.equal(meta.final, '••••' + CHAVE_ANT.slice(-4));
+    const linha = dbm.prepare('SELECT * FROM crm_segredos WHERE nome = ?').get('ia_anthropic');
+    assert.ok(!JSON.stringify(linha).includes(CHAVE_ANT) && !linha.cifra.includes('sk-ant'), 'no banco só há cifra');
+    const tid = await tidDoTenant();
+    assert.equal(CofreMod.revelar(tid, 'ia_anthropic'), CHAVE_ANT);
+    assert.ok(!CofreMod.limpar('falhou com ' + CHAVE_ANT + ' e Bearer abcdefghijklmnop12345', tid).includes(CHAVE_ANT));
+    // a linha copiada para OUTRO tenant não decifra (tenant+nome entram na autenticação do GCM)
+    dbm.prepare('INSERT INTO crm_segredos (id, tenant_id, nome, cifra, iv, tag, ultimos4, criado_em) VALUES (?,?,?,?,?,?,?,?)').run('copia1', 'outro-tenant', 'ia_anthropic', linha.cifra, linha.iv, linha.tag, 'x', 'agora');
+    assert.throws(() => CofreMod.revelar('outro-tenant', 'ia_anthropic'), /ler a chave/);
+    dbm.prepare("DELETE FROM crm_segredos WHERE id = 'copia1'").run();
+  });
+
+  await t('cofre: sem GROWTH_SECRET_KEY nada é gravado (sem modo silencioso)', async () => {
+    const k = process.env.GROWTH_SECRET_KEY; delete process.env.GROWTH_SECRET_KEY;
+    const tid0 = await tidDoTenant();
+    try { assert.throws(() => CofreMod.guardar(tid0, 'apify', TOKEN_APIFY), /GROWTH_SECRET_KEY/); } finally { process.env.GROWTH_SECRET_KEY = k; }
+  });
+
+  await t('cofre: testar a chave não gasta token e marca a data; chave recusada é dita sem expor nada', async () => {
+    chamadasIA = [];
+    const ok = await req('POST', '/crm/api/app/captura/chaves/ia_anthropic/testar', { cookies: true });
+    assert.equal(ok.json.ok, true); assert.ok(chamadasIA.every((c) => /\/models/.test(c.url)), 'só lista modelos');
+    assert.equal(chamadasIA[0].headers['x-api-key'], CHAVE_ANT);
+    assert.ok((await req('GET', '/crm/api/app/captura', { cookies: true })).json.cofre.chaves[0].testada_em);
+  });
+
+  await t('IA com chave PRÓPRIA: usa a chave do assinante, não cobra, registra só metadado', async () => {
+    chamadasIA = []; const antes = await saldoDe();
+    console.log = gravaLog; console.warn = gravaLog; console.error = gravaLog;
+    let r; try { r = await req('POST', '/crm/api/app/captura/ia/executar', { corpo: { tarefa: 'sugerir_busca', entrada: { descricao: 'Sou dentista no Lago Sul e quero atender famílias do bairro' }, modo: 'propria' }, cookies: true }); }
+    finally { console.log = _log; console.warn = _warn; console.error = _err; }
+    assert.equal(r.st, 200, r.texto);
+    assert.deepEqual(r.json.resultado.termos, ['clínica odontológica', 'dentista']);
+    assert.equal(chamadasIA[0].headers['x-api-key'], CHAVE_ANT, 'a chamada saiu com a chave DELE');
+    assert.equal(await saldoDe(), antes, 'chave própria não mexe no saldo'); assert.equal(r.json.uso.cobrado_milesimos, 0);
+    assert.ok(!r.texto.includes(CHAVE_ANT) && !logs.join('\n').includes(CHAVE_ANT), 'chave fora da resposta e dos logs');
+    const u = dbm.prepare("SELECT * FROM crm_ia_uso WHERE modo = 'propria'").get();
+    assert.ok(u && u.tokens_in === 500 && u.milesimos === 0); assert.ok(!JSON.stringify(u).includes('dentista'), 'nem prompt nem resposta ficam gravados');
+    // o prompt tem a moldura anti-injeção e não leva a chave
+    assert.ok(!chamadasIA[0].body.includes(CHAVE_ANT)); assert.match(chamadasIA[0].body, /nao instrucao|não instrução/);
+  });
+
+  await t('IA com chave própria: provedor recusa → erro claro, sem eco da chave; sem chave cadastrada → pede para cadastrar', async () => {
+    chamadasIA = []; chamadasIA.falhar = 401;
+    const r = await req('POST', '/crm/api/app/captura/ia/executar', { corpo: { tarefa: 'sugerir_busca', entrada: { descricao: 'Sou dentista no Lago Sul e quero atender famílias' }, modo: 'propria' }, cookies: true });
+    chamadasIA.falhar = 0;
+    assert.equal(r.st, 502); assert.match(r.json.erro, /recusada/); assert.ok(!r.texto.includes(CHAVE_ANT));
+    const t2 = await req('POST', '/crm/api/app/captura/ia/executar', { corpo: { tarefa: 'sugerir_busca', entrada: { descricao: 'Sou dentista no Lago Sul e quero atender famílias' }, modo: 'propria', provedor: 'openai' }, cookies: true });
+    assert.equal(t2.st, 400); assert.match(t2.json.erro, /Cadastre/);
+    assert.equal((await req('POST', '/crm/api/app/captura/ia/executar', { corpo: { tarefa: 'sugerir_busca', entrada: { descricao: 'curto' }, modo: 'propria' }, cookies: true })).st, 400, 'entrada curta');
+    assert.equal((await req('POST', '/crm/api/app/captura/ia/executar', { corpo: { tarefa: 'apagar_tudo', entrada: {}, modo: 'propria' }, cookies: true })).st, 400, 'tarefa desconhecida');
+  });
+
+  await t('créditos DESLIGADOS: a plataforma não absorve custo — IA e recarga recusadas', async () => {
+    const e = { tarefa: 'sugerir_busca', entrada: { descricao: 'Sou dentista no Lago Sul e quero atender famílias' }, modo: 'creditos', aceite_milesimos: 999999 };
+    const r = await req('POST', '/crm/api/app/captura/ia/executar', { corpo: e, cookies: true });
+    assert.equal(r.st, 403); assert.match(r.json.erro, /créditos ainda não/i);
+    assert.equal((await req('POST', '/crm/api/app/carteira/recarga', { corpo: { valor_centavos: 2000 }, cookies: true })).st, 403);
+    assert.equal(await saldoDe(), 0);
+    // ligar sem câmbio é recusado (não liga pela metade)
+    assert.equal((await req('POST', '/staff/api/vcrm/carteira/config', { corpo: { ativa: true, cambio_modo: 'ptax' } })).st, 400);
+    assert.equal((await req('POST', '/staff/api/vcrm/carteira/config', { corpo: { margem_pct: 900 } })).st, 400);
+  });
+
+  await t('staff liga a carteira (câmbio fixo, margem 30%); recarga por pacote → webhook credita UMA vez', async () => {
+    const c = await req('POST', '/staff/api/vcrm/carteira/config', { corpo: { ativa: true, cambio_modo: 'fixo', cambio_fixo: 5.5, folga_pct: 0, margem_pct: 30 } });
+    assert.equal(c.st, 200, c.texto); assert.equal(c.json.config.ativa, true);
+    assert.equal((await req('POST', '/crm/api/app/carteira/recarga', { corpo: { valor_centavos: 1234 }, cookies: true })).st, 400, 'só pacotes');
+    const r = await req('POST', '/crm/api/app/carteira/recarga', { corpo: { valor_centavos: 2000 }, cookies: true });
+    assert.equal(r.st, 200, r.texto); assert.ok(r.json.init_point.includes('mp/pref'));
+    const pref = mpPrefs[mpPrefs.length - 1];
+    assert.equal(pref.external_reference, 'crmrec:' + r.json.recarga_id); assert.equal(pref.items[0].unit_price, 20);
+    // valor diferente do que criamos: não credita
+    _payResp = { id: 7001, status: 'approved', external_reference: 'crmrec:' + r.json.recarga_id, transaction_amount: 1 };
+    await req('POST', '/crm/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: 7001 } } }); await sleep(120);
+    assert.equal(await saldoDe(), 0, 'valor pago diferente do pedido não credita');
+    _payResp = { id: 7001, status: 'approved', external_reference: 'crmrec:' + r.json.recarga_id, transaction_amount: 20 };
+    for (let i = 0; i < 3; i++) { await req('POST', '/crm/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: 7001 } } }); await sleep(100); }
+    assert.equal(await saldoDe(), 20000, 'R$ 20,00 = 20.000 milésimos, uma vez só');
+    const est = (await req('GET', '/crm/api/app/carteira', { cookies: true })).json;
+    assert.equal(est.saldo_milesimos, 20000); assert.ok(est.extrato.some((x) => x.tipo === 'recarga'));
+    // reembolso tira o crédito
+    _payResp = { id: 7001, status: 'refunded', external_reference: 'crmrec:' + r.json.recarga_id, transaction_amount: 20 };
+    await req('POST', '/crm/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: 7001 } } }); await sleep(120);
+    assert.equal(await saldoDe(), 0, 'reembolso devolve o crédito ao MP');
+    // cortesia só pelo staff, com motivo
+    assert.equal((await req('POST', '/staff/api/vcrm/carteira/cortesia', { corpo: { tenant_id: await tidDoTenant(), valor_centavos: 2000 } })).st, 400, 'sem motivo');
+    const co = await req('POST', '/staff/api/vcrm/carteira/cortesia', { corpo: { tenant_id: await tidDoTenant(), valor_centavos: 2000, motivo: 'teste' } });
+    assert.equal(co.st, 200); assert.equal(await saldoDe(), 20000);
+    assert.equal((await req('POST', '/staff/api/vcrm/carteira/cortesia', { corpo: { tenant_id: await tidDoTenant(), valor_centavos: 2000, motivo: 'x' }, user: 'op' })).st, 403, 'não-admin não dá crédito');
+  });
+
+  await t('IA com CRÉDITOS: orçamento → sem aceite 409 (nada gasto) → com aceite reserva, cobra o REAL e devolve a diferença', async () => {
+    const corpo = { tarefa: 'sugerir_busca', entrada: { descricao: 'Sou dentista no Lago Sul e quero atender famílias do bairro' }, modo: 'creditos', provedor: 'anthropic' };
+    const orc = await req('POST', '/crm/api/app/captura/ia/orcar', { corpo, cookies: true });
+    assert.equal(orc.st, 200, orc.texto); assert.ok(orc.json.orcamento.teto_milesimos > 0); assert.ok(!orc.texto.includes('sk-ant'));
+    const antes = await saldoDe(); chamadasIA = [];
+    const sem = await req('POST', '/crm/api/app/captura/ia/executar', { corpo, cookies: true });
+    assert.equal(sem.st, 409); assert.equal(sem.json.orcamento_milesimos, orc.json.orcamento.teto_milesimos);
+    assert.equal(chamadasIA.length, 0, 'sem aceite o provedor nem é chamado'); assert.equal(await saldoDe(), antes);
+    const ok = await req('POST', '/crm/api/app/captura/ia/executar', { corpo: { ...corpo, aceite_milesimos: orc.json.orcamento.teto_milesimos }, cookies: true });
+    assert.equal(ok.st, 200, ok.texto); assert.equal(ok.json.uso.modo, 'creditos');
+    assert.match(chamadasIA[0].headers['x-api-key'], /^sk-ant-PLATAFORMA/, 'créditos usam a chave da plataforma, não a do assinante');
+    const cobrado = ok.json.uso.cobrado_milesimos;
+    // real: 500 tokens × US$0,10/M + 100 × US$0,50/M = US$ 0,0001 → × 5,5 × 1,3 → arredonda para cima
+    assert.equal(cobrado, Math.ceil(0.0001 * 5.5 * 1.3 * 1000 - 1e-9)); assert.ok(cobrado < orc.json.orcamento.teto_milesimos, 'cobrou o real, não o teto');
+    assert.equal(await saldoDe(), antes - cobrado, 'o saldo caiu só o custo real');
+    assert.equal(dbm.prepare("SELECT COUNT(*) n FROM crm_carteira_mov WHERE tipo = 'reserva' AND ref NOT IN (SELECT ref FROM crm_carteira_mov WHERE tipo IN ('acerto','estorno'))").get().n, 0, 'nenhuma reserva em aberto');
+    const uso = (await req('GET', '/crm/api/app/carteira', { cookies: true })).json.extrato.find((x) => x.tipo === 'uso');
+    assert.ok(uso && /Sugerir busca/.test(uso.descricao));
+  });
+
+  await t('IA com créditos: falha do provedor estorna TUDO; saldo insuficiente é 402 sem chamar o provedor', async () => {
+    const corpo = { tarefa: 'sugerir_busca', entrada: { descricao: 'Sou dentista no Lago Sul e quero atender famílias do bairro' }, modo: 'creditos' };
+    const teto = (await req('POST', '/crm/api/app/captura/ia/orcar', { corpo, cookies: true })).json.orcamento.teto_milesimos;
+    const antes = await saldoDe(); chamadasIA = []; chamadasIA.falhar = 500;
+    const r = await req('POST', '/crm/api/app/captura/ia/executar', { corpo: { ...corpo, aceite_milesimos: teto }, cookies: true });
+    chamadasIA.falhar = 0;
+    assert.equal(r.st, 502); assert.equal(await saldoDe(), antes, 'estorno integral');
+    // segura TODO o saldo numa reserva (o staff só ajusta em centavos; a reserva zera na unidade) e tenta de novo
+    const tidZ = await tidDoTenant(); const tudo = CarteiraMod.saldo(tidZ); CarteiraMod.reservar(tidZ, tudo, { ref: 'seguro-teste' });
+    chamadasIA = [];
+    const baixo = await req('POST', '/crm/api/app/captura/ia/executar', { corpo: { ...corpo, aceite_milesimos: teto }, cookies: true });
+    assert.equal(baixo.st, 402); assert.match(baixo.json.erro, /Saldo insuficiente/); assert.equal(chamadasIA.length, 0);
+    CarteiraMod.estornar(tidZ, 'seguro-teste', tudo);
+    await req('POST', '/staff/api/vcrm/carteira/cortesia', { corpo: { tenant_id: tidZ, valor_centavos: 3000, motivo: 'recompõe' } });
+  });
+
+  await t('isolamento: o saldo, o cofre e as reservas de um assinante não aparecem para outro', async () => {
+    await req('POST', '/crm/api/signup', { corpo: { nome: 'Outra Empresa', nome_responsavel: 'Z', email: 'z@outra.br', plano: 'trial' } });
+    const outro = dbm.prepare("SELECT id FROM tenants WHERE email_contato = 'z@outra.br'").get().id;
+    assert.equal(CarteiraMod.saldo(outro), 0); assert.deepEqual(CofreMod.meta(outro), []); assert.equal(CofreMod.revelar(outro, 'ia_anthropic'), null);
+    assert.deepEqual(CarteiraMod.extrato(outro), []);
+    assert.throws(() => CarteiraMod.reservar(outro, 1000), /Saldo insuficiente/);
+  });
+
+  await t('conta interna: isenta de cobrança, usa a chave do servidor e não recarrega', async () => {
+    const c = await req('POST', '/staff/api/vcrm/tenants', { corpo: { nome: 'Interno X', slug: 'interno-x', email: 'x@interno.br', plano: 'enterprise', status_inicial: 'ativa', origem: 'interno' } });
+    assert.equal(c.st, 200, c.texto);
+    const id = dbm.prepare("SELECT id FROM tenants WHERE slug = 'interno-x'").get().id;
+    assert.equal(CarteiraMod.interno(id), true);
+    chamadasIA = [];
+    const r = await IAMod.executar(id, { tarefa: 'sugerir_busca', entrada: { descricao: 'Hospedagem por temporada em Brasília para famílias' }, modo: 'creditos' });
+    assert.equal(r.uso.modo, 'interno'); assert.equal(r.uso.cobrado_milesimos, 0); assert.equal(CarteiraMod.saldo(id), 0);
+    await assert.rejects(() => CarteiraMod.criarRecarga(id, 2000, 'https://x'), /interna/);
+  });
+
+  // ---- busca externa paga ----
+  const itensApify = [
+    { placeId: 'AP1', title: 'Clínica Odonto Sul', categoryName: 'Dentista', address: 'SHIS QI 9', city: 'Brasília', state: 'DF', phoneUnformatted: '61999990001', website: '' },
+    { placeId: 'AP2', title: 'Sorriso Norte', categoryName: 'Dentista', address: 'SHIN', city: 'Brasília', state: 'DF', phoneUnformatted: '6133331000', website: '' },
+  ];
+  const apifyHttp = { chamadas: [], falhar: false };
+  fontesMod.trocarTransporte(async (url, init) => {
+    apifyHttp.chamadas.push({ url, auth: init.headers.Authorization });
+    if (apifyHttp.falhar) return { ok: false, status: 402, text: async () => 'sem credito ' + init.headers.Authorization, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => itensApify, text: async () => '' };
+  });
+  let extId = '';
+  await t('busca externa por ÁREA: planeja, mostra o teto e NÃO roda enquanto a plataforma não libera', async () => {
+    process.env.APIFY_TOKEN = 'apify_api_PLATAFORMA' + 'x'.repeat(12);
+    assert.equal((await req('POST', '/crm/api/app/captura/externa/planejar', { corpo: { area: 'telepatia', termos: ['dentista'], locais: ['Lago Sul'] }, cookies: true })).st, 400, 'área desconhecida');
+    const p = await req('POST', '/crm/api/app/captura/externa/planejar', { corpo: { area: 'whatsapp', termos: ['dentista'], locais: ['Lago Sul, Brasília - DF'], max_resultados: 20, nome: 'Dentistas WhatsApp' }, cookies: true });
+    assert.equal(p.st, 200, p.texto); extId = p.json.busca.id;
+    assert.equal(p.json.busca.canal_alvo, 'whatsapp'); assert.equal(p.json.busca.status, 'aguardando_aprovacao');
+    assert.equal(p.json.situacao.pode, false); assert.match(p.json.situacao.motivo, /ainda não foi liberada/);
+    await req('POST', `/crm/api/app/buscas/${extId}/aprovar`, { corpo: { aceite: true }, cookies: true });
+    const r = await req('POST', `/crm/api/app/buscas/${extId}/rodar`, { cookies: true });
+    assert.equal(r.st, 400); assert.match(r.json.erro, /liberada/);
+    await assert.rejects(async () => buscasMod.executar(await tidDoTenant(), extId), /liberada/);
+    assert.equal(apifyHttp.chamadas.length, 0, 'nenhuma chamada paga'); assert.equal(buscasMod.execucoes(await tidDoTenant(), extId).length, 0);
+  });
+
+  await t('busca externa com CRÉDITOS: pede aceite do teto, reserva, cobra só os lugares devolvidos e acerta', async () => {
+    await req('POST', '/staff/api/vcrm/captura/config', { corpo: { externa_ativa: true } });
+    const tid = await tidDoTenant();
+    const orc = (await req('GET', `/crm/api/app/captura/externa/${extId}/orcamento`, { cookies: true })).json.orcamento;
+    assert.equal(orc.modo, 'creditos'); assert.equal(orc.lugares_max, 20); assert.ok(orc.cobre);
+    assert.equal(orc.teto_milesimos, Math.ceil(20 * 0.0015 * 5.5 * 1.3 * 1000 - 1e-9));
+    const sem = await req('POST', `/crm/api/app/buscas/${extId}/rodar`, { cookies: true });
+    assert.equal(sem.st, 409); assert.equal(sem.json.orcamento_milesimos, orc.teto_milesimos); assert.equal(apifyHttp.chamadas.length, 0);
+    const antes = CarteiraMod.saldo(tid);
+    const r = await buscasMod.executar(tid, extId, { gatilho: 'manual', obter: obterFake });
+    assert.equal(r.lugares, 2); assert.equal(apifyHttp.chamadas.length, 1);
+    assert.match(apifyHttp.chamadas[0].auth, /PLATAFORMA/, 'créditos usam o token do servidor');
+    const real = Math.ceil(2 * 0.0015 * 5.5 * 1.3 * 1000 - 1e-9);
+    assert.equal(CarteiraMod.saldo(tid), antes - real, 'cobrou 2 lugares, não o teto de 20');
+    const ex = buscasMod.execucoes(tid, extId)[0]; assert.equal(ex.modo_cobranca, 'creditos'); assert.equal(ex.cobrado_milesimos, real);
+    const lista = buscasMod.listar(tid).find((b) => b.id === extId);
+    assert.equal(lista.resumo.aproveitaveis, 1, 'só o lead com celular conta para a área WhatsApp (o outro tem telefone fixo)');
+    assert.equal(lista.custo_total_cobrado_milesimos, real);
+  });
+
+  await t('busca externa: fonte falha → estorno total e erro sem eco do token; saldo curto → 402 sem chamar a fonte', async () => {
+    const tid = await tidDoTenant(); const antes = CarteiraMod.saldo(tid);
+    apifyHttp.falhar = true; apifyHttp.chamadas.length = 0;
+    await assert.rejects(() => buscasMod.executar(tid, extId, { gatilho: 'manual', obter: obterFake }), (e) => { assert.ok(!e.message.includes('PLATAFORMA'), 'sem token na mensagem'); return /Apify respondeu 402/.test(e.message); });
+    apifyHttp.falhar = false;
+    assert.equal(CarteiraMod.saldo(tid), antes, 'nada devolvido pela fonte = nada cobrado');
+    assert.equal(dbm.prepare("SELECT COUNT(*) n FROM crm_carteira_mov WHERE tenant_id = ? AND tipo = 'reserva' AND ref NOT IN (SELECT ref FROM crm_carteira_mov WHERE tipo IN ('acerto','estorno'))").get(tid).n, 0);
+    const ex = buscasMod.execucoes(tid, extId)[0]; assert.equal(ex.status, 'erro'); assert.ok(!String(ex.erro).includes('PLATAFORMA'));
+    const tudo = CarteiraMod.saldo(tid); CarteiraMod.reservar(tid, tudo, { ref: 'seguro-teste-2' });
+    apifyHttp.chamadas.length = 0;
+    await assert.rejects(() => buscasMod.executar(tid, extId, { gatilho: 'manual', obter: obterFake }), /Saldo insuficiente/);
+    assert.equal(apifyHttp.chamadas.length, 0);
+    const r = await req('POST', `/crm/api/app/buscas/${extId}/rodar`, { corpo: { aceite_milesimos: 9999999 }, cookies: true });
+    assert.equal(r.st, 402);
+    CarteiraMod.estornar(tid, 'seguro-teste-2', tudo);
+    await req('POST', '/staff/api/vcrm/carteira/cortesia', { corpo: { tenant_id: tid, valor_centavos: 3000, motivo: 'recompõe' } });
+  });
+
+  await t('busca externa com TOKEN DO ASSINANTE: usa o token dele, não cobra créditos', async () => {
+    const tid = await tidDoTenant();
+    assert.equal((await req('PUT', '/crm/api/app/captura/chaves/apify', { corpo: { valor: 'apify_api_curto' }, cookies: true })).st, 400, 'token malformado');
+    assert.equal((await req('PUT', '/crm/api/app/captura/chaves/apify', { corpo: { valor: TOKEN_APIFY }, cookies: true })).st, 200);
+    const antes = CarteiraMod.saldo(tid); apifyHttp.chamadas.length = 0;
+    const o = (await req('GET', `/crm/api/app/captura/externa/${extId}/orcamento`, { cookies: true })).json.orcamento;
+    assert.equal(o.modo, 'propria'); assert.equal(o.teto_milesimos, 0);
+    // rodar pela rota não pede aceite (não há cobrança de créditos)
+    const r = await buscasMod.executar(tid, extId, { gatilho: 'manual', obter: obterFake });
+    assert.equal(r.lugares, 2); assert.equal(apifyHttp.chamadas[0].auth, 'Bearer ' + TOKEN_APIFY);
+    assert.equal(CarteiraMod.saldo(tid), antes, 'créditos intactos');
+    assert.equal(buscasMod.execucoes(tid, extId)[0].modo_cobranca, 'propria');
+    await req('DELETE', '/crm/api/app/captura/chaves/apify', { cookies: true });
+    assert.equal(CofreMod.tem(tid, 'apify'), false);
+    delete process.env.APIFY_TOKEN;
+  });
+
+  // ---- DENTRO: importação de exports ----
+  const conversasTotal = async () => dbm.prepare('SELECT COUNT(*) n FROM crm_conversas WHERE tenant_id = ?').get(await tidDoTenant()).n;
+  const WA = [
+    '12/10/2026 14:03 - Maria Souza: Oi, queria saber o preço do plano',
+    '12/10/2026 14:05 - Beta Dono: Claro! Posso mandar a proposta?',
+    '12/10/2026 14:06 - Maria Souza: Pode mandar a proposta, quanto custa o plano mensal?',
+    'segunda linha da mensagem dela',
+  ].join('\n');
+  await t('importar WhatsApp (.txt): pergunta quem é você, não chuta; texto não é guardado; assunto GERAL', async () => {
+    const antes = await conversasTotal();
+    const sem = await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'whatsapp', arquivos: [{ nome: 'Conversa com Maria Souza.txt', conteudo: WA }] }, cookies: true });
+    assert.equal(sem.st, 200, sem.texto); assert.equal(sem.json.precisa_eu, true); assert.ok(sem.json.candidatos.includes('Maria Souza'));
+    assert.equal(await conversasTotal(), antes, 'nada gravado enquanto a tela pergunta');
+    const r = await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'whatsapp', eu: 'Beta Dono', arquivos: [{ nome: 'c.txt', conteudo: WA }] }, cookies: true });
+    assert.equal(r.st, 200, r.texto); assert.equal(r.json.ingestao.novas, 1);
+    const c = dbm.prepare("SELECT * FROM crm_conversas WHERE canal = 'whatsapp' AND tenant_id = ?").get(await tidDoTenant());
+    assert.equal(c.assunto, 'geral'); assert.equal(c.status, 'sugerido', 'nada vira contato sozinho'); assert.equal(c.identificador, 'nome:maria souza');
+    const bruto = JSON.stringify(c).toLowerCase();
+    for (const frase of ['queria saber', 'posso mandar', 'segunda linha', 'quanto custa o plano mensal']) assert.ok(!bruto.includes(frase), 'texto de conversa não é gravado: ' + frase);
+    assert.ok(!r.texto.includes('segunda linha'), 'nem devolvido');
+    // grupo (3 autores) e "eu" errado não geram lead
+    const g = await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'whatsapp', eu: 'Beta Dono', arquivos: [{ nome: 'g.txt', conteudo: WA + '\n12/10/2026 14:09 - Joao: tambem quero o preço' }] }, cookies: true });
+    assert.equal(g.json.ingestao.novas, 0); assert.equal(g.json.ignoradas_grupo, 1);
+  });
+
+  await t('assuntos do assinante: palavras dele viram assunto próprio; vazio/errado é recusado', async () => {
+    assert.equal((await req('PUT', '/crm/api/app/captura/assuntos', { corpo: { assuntos: [{ rotulo: 'Reforma', palavras: 'ab' }] }, cookies: true })).st, 400);
+    const p = await req('PUT', '/crm/api/app/captura/assuntos', { corpo: { assuntos: [{ rotulo: 'Reforma de casa', palavras: 'reforma, pintura, piso' }] }, cookies: true });
+    assert.equal(p.st, 200, p.texto); assert.equal(p.json.assuntos[0].id, 'c-reforma-de-casa');
+    const txt = ['13/10/2026 09:00 - Carlos Lima: Bom dia, preciso de orçamento para reforma da casa', '13/10/2026 09:10 - Beta Dono: Bom dia! Qual o tamanho?', '13/10/2026 09:12 - Carlos Lima: Reforma completa e pintura, uns 200m2'].join('\n');
+    const r = await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'whatsapp', eu: 'Beta Dono', arquivos: [{ nome: 'c.txt', conteudo: txt }] }, cookies: true });
+    assert.equal(r.json.ingestao.novas, 1, r.texto);
+    const l = (await req('GET', '/crm/api/app/conversas?status=sugerido', { cookies: true })).json.conversas.find((x) => x.nome === 'Carlos Lima');
+    assert.equal(l.assunto, 'c-reforma-de-casa'); assert.equal(l.assunto_rotulo, 'Reforma de casa');
+    const rs = (await req('GET', '/crm/api/app/conversas/resumo', { cookies: true })).json.assuntos;
+    assert.ok(rs.some((a) => a.rotulo === 'Reforma de casa'));
+    // aprovar vira contato só aí
+    const d = await req('POST', `/crm/api/app/conversas/${l.id}/decidir`, { corpo: { acao: 'lead' }, cookies: true });
+    assert.equal(d.st, 200, d.texto);
+    await req('PUT', '/crm/api/app/captura/assuntos', { corpo: { assuntos: [] }, cookies: true });
+  });
+
+  await t('importar e-mail (.mbox): só conversa com resposta, automático ignorado, texto não guardado', async () => {
+    const mbox = [
+      'From a@b Mon Oct 13 10:00:00 2026', 'From: Ana Prado <ana@cliente.com>', 'To: dono@beta.br', 'Subject: Orçamento do plano', 'Date: Tue, 13 Oct 2026 10:00:00 -0300', '', 'Olá, quanto custa o plano anual? Segredo-do-texto-123', '',
+      'From a@b Mon Oct 13 10:30:00 2026', 'From: Beta <dono@beta.br>', 'To: ana@cliente.com', 'Subject: Re: Orçamento do plano', 'Date: Tue, 13 Oct 2026 10:30:00 -0300', '', 'Claro, segue a proposta.', '',
+      'From a@b Mon Oct 13 11:00:00 2026', 'From: Ana Prado <ana@cliente.com>', 'To: dono@beta.br', 'Subject: Re: Orçamento do plano', 'Date: Tue, 13 Oct 2026 11:00:00 -0300', '', 'Pode mandar a proposta, tenho interesse e quero contratar.', '',
+      'From a@b Mon Oct 13 12:00:00 2026', 'From: Promo <no-reply@loja.com>', 'To: dono@beta.br', 'Subject: Cupom oferta imperdível', 'Date: Tue, 13 Oct 2026 12:00:00 -0300', '', 'compre agora com desconto de 50%', '',
+    ].join('\n');
+    const sem = await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'email', arquivos: [{ nome: 'Todos.mbox', conteudo: mbox }] }, cookies: true });
+    assert.equal(sem.json.precisa_eu, true);
+    const r = await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'email', eu: 'dono@beta.br', arquivos: [{ nome: 'Todos.mbox', conteudo: mbox }] }, cookies: true });
+    assert.equal(r.st, 200, r.texto); assert.equal(r.json.ingestao.novas, 1); assert.equal(r.json.ignoradas_automaticos, 1);
+    const c = dbm.prepare("SELECT * FROM crm_conversas WHERE canal = 'email'").get();
+    assert.equal(c.identificador, 'ana@cliente.com'); assert.ok(!JSON.stringify(c).includes('Segredo-do-texto-123'));
+    assert.equal((await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'email', eu: 'dono@beta.br', arquivos: [{ nome: 'x.mbox', conteudo: 'isto não é e-mail' }] }, cookies: true })).st, 400);
+  });
+
+  await t('importar Instagram/Facebook (JSON), LinkedIn (CSV) e TikTok: formatos lidos; estrutura desconhecida é recusada sem gravar', async () => {
+    const meta = JSON.stringify({ participants: [{ name: 'Beta Dono' }, { name: 'Paula Reis' }], messages: [
+      { sender_name: 'Paula Reis', timestamp_ms: Date.parse('2026-10-14T10:00:00Z'), content: 'Oi! Quanto custa o plano? Quero um orçamento' },
+      { sender_name: 'Beta Dono', timestamp_ms: Date.parse('2026-10-14T10:05:00Z'), content: 'Te mando a proposta' },
+      { sender_name: 'Paula Reis', timestamp_ms: Date.parse('2026-10-14T10:09:00Z'), content: 'Pode mandar a proposta, tenho interesse' }] });
+    const ig = await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'instagram', eu: 'Beta Dono', arquivos: [{ nome: 'messages/inbox/paula_123/message_1.json', conteudo: meta }] }, cookies: true });
+    assert.equal(ig.st, 200, ig.texto); assert.equal(ig.json.ingestao.novas, 1);
+    assert.ok(dbm.prepare("SELECT 1 FROM crm_conversas WHERE canal = 'instagram' AND identificador = 'nome:paula reis'").get());
+    assert.equal((await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'instagram', arquivos: [{ nome: 'x.json', conteudo: '{}' }] }, cookies: true })).st, 400);
+    const csvTxt = 'CONVERSATION ID,CONVERSATION TITLE,FROM,SENDER PROFILE URL,TO,RECIPIENT PROFILE URLS,DATE,SUBJECT,CONTENT,FOLDER\n' +
+      'c1,,Rui Alves,https://www.linkedin.com/in/rui-alves,Beta Dono,https://www.linkedin.com/in/beta,2026-10-15 09:00:00 UTC,,Quanto custa o plano? Preciso de orçamento,INBOX\n' +
+      'c1,,Beta Dono,https://www.linkedin.com/in/beta,Rui Alves,https://www.linkedin.com/in/rui-alves,2026-10-15 09:10:00 UTC,,Mando a proposta,SENT\n' +
+      'c1,,Rui Alves,https://www.linkedin.com/in/rui-alves,Beta Dono,https://www.linkedin.com/in/beta,2026-10-15 09:20:00 UTC,,Pode mandar a proposta tenho interesse,INBOX\n';
+    const li = await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'linkedin', eu: 'Beta Dono', arquivos: [{ nome: 'messages.csv', conteudo: csvTxt }] }, cookies: true });
+    assert.equal(li.st, 200, li.texto); assert.equal(li.json.ingestao.novas, 1);
+    const tk = await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'tiktok', arquivos: [{ nome: 'u.json', conteudo: '{"Profile":{}}' }] }, cookies: true });
+    assert.equal(tk.st, 400); assert.match(tk.json.erro, /não reconhecida/);
+    assert.equal((await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'telegram', arquivos: [{ nome: 'x', conteudo: 'x' }] }, cookies: true })).st, 400);
+    assert.equal((await req('POST', '/crm/api/app/captura/interna/importar', { corpo: { area: 'whatsapp', arquivos: [] }, cookies: true })).st, 400);
+  });
+
+  await t('tela "Aumentar leads": 6 áreas, cada uma diz o que é automático, assistido e inviável', async () => {
+    const v = (await req('GET', '/crm/api/app/captura', { cookies: true })).json;
+    assert.deepEqual(v.areas.map((a) => a.id), ['whatsapp', 'email', 'instagram', 'facebook', 'tiktok', 'linkedin']);
+    for (const a of v.areas) { assert.ok(a.fora.automatico && a.fora.inviavel && a.dentro.automatico && a.dentro.inviavel, a.id); }
+    assert.match(v.areas.find((a) => a.id === 'instagram').dentro.inviavel, /ao vivo/);
+    assert.match(v.areas.find((a) => a.id === 'whatsapp').fora.inviavel, /banir/);
+    assert.ok(v.carteira && v.cofre && v.externa && v.ia);
+    assert.ok(!JSON.stringify(v).includes(CHAVE_ANT) && !JSON.stringify(v).includes('PLATAFORMA'));
+  });
+  delete process.env.ANTHROPIC_API_KEY;
 
   await t('enriquecimento: extrai e-mail/wa.me/perfis, filtra lixo e bloqueia rede interna', async () => {
     const x = enriqMod.extrair('<a href="mailto:vendas@loja.com.br?subject=oi">x</a> teste@sentry.io foto@2x.png ana&#64;loja.com.br <a href="https://api.whatsapp.com/send?phone=5561999991111&text=oi">w</a> <a href="https://facebook.com/sharer/sharer.php?u=1">s</a> <a href="https://facebook.com/lojinha.oficial">f</a>', 'loja.com.br');

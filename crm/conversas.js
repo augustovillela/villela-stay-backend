@@ -21,8 +21,21 @@ const ORIGEM_DO_CANAL = { whatsapp: 'whatsapp', email: 'email', instagram: 'inst
 function identificar(canal, valor, nome) {
   const ident = Canais.normalizar(canal, valor);
   if (ident) return ident;
-  if (['instagram', 'facebook', 'tiktok', 'linkedin'].includes(canal) && s(nome)) return 'nome:' + s(nome, 80).toLowerCase();
+  // WhatsApp também: o "Exportar conversa" de contato salvo traz só o nome, sem telefone
+  if (['whatsapp', 'instagram', 'facebook', 'tiktok', 'linkedin'].includes(canal) && s(nome)) return 'nome:' + s(nome, 80).toLowerCase();
   return '';
+}
+
+// assuntos de assinante (captura.js): ids "c-…" definidos por ele em crm_config, mais o assunto GERAL
+function assuntosValidos(tid) {
+  const ok = new Set([...ASSUNTOS_LISTA, 'geral']);
+  try { for (const a of require('./captura').assuntosDoTenant(T(tid))) ok.add(a.id); } catch (_) { /* sem config */ }
+  return ok;
+}
+function rotulos(tid) {
+  const m = {};
+  try { for (const a of require('./captura').assuntosDoTenant(T(tid))) m[a.id] = a.rotulo; } catch (_) { /* sem config */ }
+  return (id) => m[id] || rotuloAssunto(id);
 }
 
 const Conversas = {
@@ -33,12 +46,13 @@ const Conversas = {
     if (!Array.isArray(itens)) throw new Error('Envie uma lista de conversas em "itens".');
     if (itens.length > 2000) throw new Error('Máximo de 2000 conversas por envio — divida o arquivo.');
     let novas = 0, atualizadas = 0, ignoradas = 0, vinculadas = 0;
+    const validos = assuntosValidos(tid);
     transacao(() => {
       for (const it of itens) {
         const canal = s(it.canal, 20);
         const ident = Canais.CANAIS[canal] ? identificar(canal, it.identificador, it.nome) : '';
         if (!ident || !it.ultima_em) { ignoradas++; continue; }
-        const assunto = ASSUNTOS_LISTA.includes(it.assunto) ? it.assunto : '';
+        const assunto = validos.has(it.assunto) ? it.assunto : '';
         if (!assunto) { ignoradas++; continue; } // só vira lista o que tem assunto comercial
         const dono = ident.startsWith('nome:') ? null : Canais.contatoPorCanal(tid, canal, ident);
         const vals = {
@@ -79,8 +93,9 @@ const Conversas = {
     if (q.dias_max) { sql += ' AND v.ultima_em >= ?'; args.push(new Date(Date.now() - Number(q.dias_max) * 86400000).toISOString()); }
     if (q.busca) { sql += ' AND (v.nome LIKE ? OR v.identificador LIKE ?)'; const b = `%${s(q.busca, 80)}%`; args.push(b, b); }
     sql += ' ORDER BY v.ultima_em DESC LIMIT ?'; args.push(Math.min(Number(q.limite) || 300, 1000));
+    const rot = rotulos(tid);
     return db.prepare(sql).all(...args).map(r => ({
-      ...r, assuntos: j.parse(r.assuntos, []), evidencias: j.parse(r.evidencias, []), assunto_rotulo: rotuloAssunto(r.assunto),
+      ...r, assuntos: j.parse(r.assuntos, []), evidencias: j.parse(r.evidencias, []), assunto_rotulo: rot(r.assunto),
       dias_parado: r.ultima_em ? Math.max(0, Math.floor((Date.now() - Date.parse(r.ultima_em)) / 86400000)) : null,
     }));
   },
@@ -88,9 +103,9 @@ const Conversas = {
   /** contagem por assunto × qualificação (conversas não descartadas) — base para decidir o que entra em campanha */
   resumo(tid) {
     const rows = db.prepare(`SELECT assunto, qualificacao, status, COUNT(*) n FROM crm_conversas WHERE tenant_id = ? AND status != 'descartado' GROUP BY assunto, qualificacao, status`).all(T(tid));
-    const por = {};
+    const por = {}; const rot = rotulos(tid);
     for (const r of rows) {
-      const a = por[r.assunto] || (por[r.assunto] = { assunto: r.assunto, rotulo: rotuloAssunto(r.assunto), total: 0, sugeridas: 0, leads: 0, por_qualificacao: {} });
+      const a = por[r.assunto] || (por[r.assunto] = { assunto: r.assunto, rotulo: rot(r.assunto), total: 0, sugeridas: 0, leads: 0, por_qualificacao: {} });
       a.total += r.n; if (r.status === 'sugerido') a.sugeridas += r.n; else a.leads += r.n;
       a.por_qualificacao[r.qualificacao] = (a.por_qualificacao[r.qualificacao] || 0) + r.n;
     }
@@ -108,14 +123,15 @@ const Conversas = {
     let contatoId = v.contato_id;
     if (!contatoId) {
       const base = { nome: v.nome || (v.identificador.startsWith('nome:') ? v.identificador.slice(5) : v.identificador), origem: ORIGEM_DO_CANAL[v.canal] || 'outro',
-        tags: ['conversa-' + v.assunto], interesse: rotuloAssunto(v.assunto), primeira_mensagem: v.razao_rotulo, fonte_canal: 'conversa' };
-      if (v.canal === 'whatsapp') base.telefone = v.identificador;
+        tags: ['conversa-' + v.assunto], interesse: rotulos(tid)(v.assunto), primeira_mensagem: v.razao_rotulo, fonte_canal: 'conversa' };
+      if (v.identificador.startsWith('nome:')) { /* sem número/perfil: o lead entra só pelo nome */ }
+      else if (v.canal === 'whatsapp') base.telefone = v.identificador;
       else if (v.canal === 'email') base.email = v.identificador;
-      else if (!v.identificador.startsWith('nome:')) base[v.canal] = v.identificador;
+      else base[v.canal] = v.identificador;
       contatoId = app.Contatos.criar(T(tid), base, autor || 'conversas').contato.id;
     }
     db.prepare("UPDATE crm_conversas SET status = 'lead', contato_id = ?, atualizado_em = ? WHERE id = ?").run(contatoId, nowISO(), v.id);
-    app.Atividades.registrar(T(tid), { contato_id: contatoId, tipo: 'nota', canal: v.canal, texto: `Conversa classificada: ${rotuloAssunto(v.assunto)} · ${v.razao_rotulo} (${v.qualificacao}) · última em ${String(v.ultima_em).slice(0, 10)}`, autor: autor || 'conversas' });
+    app.Atividades.registrar(T(tid), { contato_id: contatoId, tipo: 'nota', canal: v.canal, texto: `Conversa classificada: ${rotulos(tid)(v.assunto)} · ${v.razao_rotulo} (${v.qualificacao}) · última em ${String(v.ultima_em).slice(0, 10)}`, autor: autor || 'conversas' });
     return { ok: true, status: 'lead', contato_id: contatoId };
   },
 };

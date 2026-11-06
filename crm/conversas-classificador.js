@@ -26,6 +26,24 @@ const ASSUNTOS = {
   obra: ['Obra / manutenção', [/\bobra\w*/, /reforma\w*/, /piscina/, /ar condicionado/, /pintura/, /eletricista/, /encanador/, /jardim/, /manutencao/, /vazamento/]],
 };
 
+// ---- assuntos de ASSINANTE (06/11/2026) ----
+// A tabela acima é do negócio do Augusto. Quem assina define os seus: [{id, rotulo, palavras[]}] — as palavras
+// viram padrões (início de palavra, sem acento), todas "fortes". Sem lista, vale o assunto GERAL: intenção de
+// compra genérica (preço, orçamento, proposta, contratar), que serve a qualquer negócio.
+const GERAL = ['Interesse comercial', [/orcamento/, /\bpreco\w*/, /\bvalor(es)?\b/, /quanto (custa|fica|sai)/, /proposta/, /cotacao/, /contratar/, /\bcomprar\b/, /\bplanos?\b/, /demonstracao/, /tenho interesse/], [/interessad\w*/, /disponivel/]];
+const escapar = (t) => norm(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function montarAssuntos(lista) {
+  const tab = {};
+  for (const a of Array.isArray(lista) ? lista : []) {
+    const id = String(a && a.id || '').trim();
+    const palavras = (Array.isArray(a && a.palavras) ? a.palavras : []).map((x) => escapar(String(x).trim())).filter((x) => x.length >= 3).slice(0, 30);
+    if (!/^c-[a-z0-9-]{1,24}$/.test(id) || !palavras.length) continue;
+    tab[id] = [String(a.rotulo || id).slice(0, 60), palavras.map((x) => new RegExp('\\b' + x))];
+  }
+  if (!Object.keys(tab).length) tab.geral = GERAL;
+  return tab;
+}
+
 // razão da ÚLTIMA conversa: ordem = prioridade (a primeira que casar vence)
 const RAZOES = [
   ['cancelou', 'Cancelou ou pediu reembolso', [/cancel\w*/, /desisti\w*/, /reembols\w*/, /estorn\w*/]],
@@ -53,11 +71,12 @@ const conta = (padroes, texto, evid) => {
 };
 
 /**
- * @param {{canal?:string, mensagens:Array<{t:(string|number), deMim:boolean, texto?:string}>, agora?:number}} c
+ * @param {{canal?:string, mensagens:Array<{t:(string|number), deMim:boolean, texto?:string}>, agora?:number, assuntos?:object}} c  (assuntos = tabela de montarAssuntos; sem ela vale a do Augusto)
  * @returns {null|object} null quando não há mensagem válida
  */
 function classificarConversa(c) {
   const agora = c && c.agora ? c.agora : Date.now();
+  const TAB = (c && c.assuntos) || ASSUNTOS;
   const msgs = ((c && c.mensagens) || [])
     .map(m => ({ t: ts(m.t), deMim: !!m.deMim, tx: norm(m.texto) }))
     .filter(m => Number.isFinite(m.t))
@@ -78,7 +97,7 @@ function classificarConversa(c) {
   const janela = msgs.slice(-80);
   // palavra forte vale 2, palavra ambígua ("casa", "quarto", "disponível") vale 1
   const pontos = {}; const evid = new Set();
-  for (const [id, [, fortes, fracos = []]] of Object.entries(ASSUNTOS)) {
+  for (const [id, [, fortes, fracos = []]] of Object.entries(TAB)) {
     let p = 0;
     for (const m of janela) p += (conta(fortes, m.tx, evid) * 2 + conta(fracos, m.tx, evid)) * (rajada.includes(m) ? 2 : 1);
     if (p) pontos[id] = p;
@@ -125,7 +144,7 @@ function classificarConversa(c) {
 
   return {
     assunto: comercial ? assunto : '',
-    assunto_rotulo: comercial ? ASSUNTOS[assunto][0] : '',
+    assunto_rotulo: comercial ? TAB[assunto][0] : '',
     assuntos: ordem.slice(0, 3).map(([id, p]) => ({ assunto: id, pontos: p })),
     razao, razao_rotulo: razaoRotulo,
     situacao, qualificacao, comercial, ruido, confianca,
@@ -139,6 +158,6 @@ function classificarConversa(c) {
 }
 
 const ASSUNTOS_LISTA = Object.keys(ASSUNTOS);
-const rotuloAssunto = (id) => (ASSUNTOS[id] ? ASSUNTOS[id][0] : id || '');
+const rotuloAssunto = (id) => (ASSUNTOS[id] ? ASSUNTOS[id][0] : id === 'geral' ? GERAL[0] : id || '');
 
-module.exports = { classificarConversa, ASSUNTOS_LISTA, rotuloAssunto, RAZOES: RAZOES.map(([id, r]) => [id, r]) };
+module.exports = { classificarConversa, montarAssuntos, ASSUNTOS_LISTA, rotuloAssunto, RAZOES: RAZOES.map(([id, r]) => [id, r]) };

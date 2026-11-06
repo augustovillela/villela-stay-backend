@@ -43,6 +43,10 @@ for (const m of MIGRACOES) {
 for (const [tab, col, ddl] of [
   ['crm_buscas', 'termos', "TEXT DEFAULT '[]'"], ['crm_buscas', 'locais', "TEXT DEFAULT '[]'"], ['crm_buscas', 'tags_extra', "TEXT DEFAULT '[]'"],
   ['crm_busca_lugares', 'bairro', "TEXT DEFAULT ''"],
+  // captura para assinantes (06/11/2026): área alvo da busca e como foi paga cada varredura
+  ['crm_buscas', 'canal_alvo', "TEXT DEFAULT ''"],
+  ['crm_busca_execucoes', 'modo_cobranca', "TEXT DEFAULT ''"],
+  ['crm_busca_execucoes', 'cobrado_milesimos', 'INTEGER DEFAULT 0'],
 ]) {
   if (!db.prepare(`PRAGMA table_info(${tab})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${tab} ADD COLUMN ${col} ${ddl};`);
 }

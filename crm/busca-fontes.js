@@ -28,6 +28,7 @@ function estimarCusto(busca) {
   return {
     lugares_max: n,
     usd: Math.round(usd * 100) / 100,
+    usd_exato: usd, // sem arredondar: é o que a COBRANÇA usa (arredondar para centavos subestimaria o teto de buscas pequenas)
     brl_centavos: Math.ceil(usd * USD_BRL * 100),
     por_mes_centavos: Math.ceil(usd * USD_BRL * 100 * (30 / Math.max(1, Number(busca.frequencia_dias) || 7))),
     observacao: `US$ ${USD_POR_LUGAR * 1000}/mil lugares (preço público do actor), câmbio ${USD_BRL}. Cada varredura paga os lugares de novo, mesmo os já conhecidos.`,
@@ -82,9 +83,10 @@ let _http = (...a) => fetch(...a);
 function trocarTransporte(fn) { _http = fn || ((...a) => fetch(...a)); }
 
 const apify = {
-  async buscar(busca) {
-    const token = process.env.APIFY_TOKEN;
-    if (!token) throw new Error('APIFY_TOKEN não configurado no servidor.');
+  // `opcoes.token`: token do próprio assinante (cofre); sem ele vale o do servidor (conta interna / créditos)
+  async buscar(busca, opcoes = {}) {
+    const token = opcoes.token || process.env.APIFY_TOKEN;
+    if (!token) throw new Error('Token do Apify não configurado.');
     const url = `https://api.apify.com/v2/acts/${ACTOR}/run-sync-get-dataset-items?timeout=240&clean=true&format=json&limit=${busca.max_resultados * Math.max(1, (busca.termos || []).length || 1)}`;
     const r = await _http(url, {
       method: 'POST',

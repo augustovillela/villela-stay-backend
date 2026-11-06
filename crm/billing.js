@@ -166,6 +166,12 @@ async function processarWebhook(body, query) {
     } else if (tipo === 'payment') {
       const pay = await mp(`/v1/payments/${id}`);
       const ref = String(pay.external_reference || '');
+      // recarga de créditos (pagamento avulso): idempotente, o crédito é o valor que NÓS criamos
+      if (ref.startsWith('crmrec:')) {
+        const r = require('./carteira').aplicarPagamento(pay);
+        if (r.tenant_id) repo.evento(r.tenant_id, 'webhook.mp.recarga', id, { resultado: r.resultado });
+        return { ok: true };
+      }
       const tenantId = ref.startsWith('crm:') ? ref.split(':')[1] : '';
       if (tenantId && pay.status === 'approved') { const r = registrarPagamento(tenantId, String(pay.id)); repo.evento(tenantId, 'webhook.mp.payment', id, { status: pay.status, resultado: r && r.resultado }); }
     }

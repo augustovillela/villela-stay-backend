@@ -97,7 +97,15 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
     if (!b) return res.status(404).json({ erro: 'Busca não encontrada.' });
     if (!b.aprovada_em) return res.status(400).json({ erro: 'Aprove a busca (estimativa de custo) antes de rodar.' });
     if (b.status !== 'ativa') return res.status(400).json({ erro: 'A busca está pausada.' });
-    if (!b.fonte_configurada) return res.status(400).json({ erro: 'A fonte ainda não está configurada no servidor (falta a credencial). Nada foi cobrado.' });
+    // quem paga: conta interna, token do assinante ou créditos — decidido ANTES de gastar (captura.js)
+    const Captura = require('./captura');
+    const sit = Captura.situacaoExterna(tid(req));
+    if (!sit.pode) return res.status(400).json({ erro: sit.motivo || 'Sem forma de pagamento para esta busca. Nada foi cobrado.' });
+    if (sit.modo === 'creditos') {
+      const orc = Captura.orcamentoExterno(tid(req), b.custo);
+      if ((Number((req.body || {}).aceite_milesimos) || 0) < orc.teto_milesimos) return res.status(409).json({ erro: `Esta busca custa no máximo ${orc.teto}. Confirme o valor para rodar.`, orcamento_milesimos: orc.teto_milesimos, orcamento: orc.teto });
+      if (!orc.cobre) return res.status(402).json({ erro: `Saldo insuficiente: o teto é ${orc.teto} e você tem ${orc.saldo}. Recarregue para continuar.`, orcamento_milesimos: orc.teto_milesimos });
+    }
     // roda em segundo plano (pode levar minutos); a tela acompanha pelas execuções
     buscas.executar(tid(req), req.params.id, { gatilho: 'manual' }).catch((e) => console.warn('[crm] busca manual falhou:', e.message));
     res.json({ ok: true, iniciada: true });
@@ -168,6 +176,7 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   server.post('/crm/api/app/propostas/:id/status', ...GE('propostas', 'propostas'), h((req, res) => res.json({ ok: true, proposta: app.Propostas.mudarStatus(tid(req), req.params.id, (req.body || {}).status, quem(req)) })));
 
   require('./rotas-conversas').registrarRotasConversas(server, { G, GE, h, tid, quem });
+  require('./rotas-captura').registrarRotasCaptura(server, { G, GE, B, tid, quem });
 
   // ---- campanhas ----
   server.get('/crm/api/app/campanhas', ...G('campanhas'), h((req, res) => res.json({ campanhas: app.Campanhas.listar(tid(req)) })));

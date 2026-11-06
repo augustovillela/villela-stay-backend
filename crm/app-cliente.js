@@ -14,7 +14,7 @@ const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { mini
 const dataBr = (iso) => iso ? `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)}/${String(iso).slice(0, 4)}` : '—';
 // Ícones SVG (sprite inline da página, crm/icones.js) no lugar dos emojis. O Growth OS ainda manda emoji no menu:
 // a tabela abaixo traduz; emoji desconhecido continua aparecendo como veio.
-const ICO_EMOJI = { '📊': 'grid', '📋': 'kanban', '👥': 'users', '📄': 'file', '⏰': 'clock', '💬': 'message', '📣': 'megaphone', '🤖': 'bot', '⚙': 'sliders', '🧭': 'compass', '🎯': 'target', '📅': 'calendar', '💸': 'coins', '📈': 'trending', '⭐': 'star', '🧠': 'sparkles', '✋': 'checkcircle', '🔌': 'plug', '🔒': 'lock', '💳': 'card' };
+const ICO_EMOJI = { '📊': 'grid', '📋': 'kanban', '👥': 'users', '📄': 'file', '⏰': 'clock', '💬': 'message', '📣': 'megaphone', '🤖': 'bot', '⚙': 'sliders', '🧭': 'compass', '🎯': 'target', '📅': 'calendar', '💸': 'coins', '📈': 'trending', '⭐': 'star', '🧠': 'sparkles', '✋': 'checkcircle', '🔌': 'plug', '🔒': 'lock', '💳': 'card', '🚀': 'zap' };
 const svgIco = (n) => `<svg class="cp-i" aria-hidden="true" focusable="false"><use href="#i-${n}"/></svg>`;
 const icoDe = (e) => { const n = ICO_EMOJI[String(e == null ? '' : e).replace(/\uFE0F/g, '')]; return n ? svgIco(n) : esc(e); };
 // Tradutor automático: qualquer emoji conhecido que uma tela desenhar (inclusive as do Growth OS) vira ícone SVG.
@@ -159,6 +159,7 @@ const MENU = [
   ['kanban', 'funis', 'Comercial', '📋', 'Kanban'],
   ['contatos', 'contatos', 'Comercial', '👥', 'Contatos'],
   ['propostas', 'propostas', 'Comercial', '📄', 'Propostas'],
+  ['captura', 'importacao', 'Comercial', '🚀', 'Aumentar leads'],
   ['buscas', 'importacao', 'Comercial', '🎯', 'Busca ativa'],
   ['tarefas', 'tarefas', 'Relacionamento', '⏰', 'Tarefas'],
   ['templates', 'templates', 'Relacionamento', '💬', 'Templates'],
@@ -358,7 +359,7 @@ async function alternarPush() {
 }
 function mapaDeTelas() {
   return Object.assign(
-    { dash: vDash, kanban: vKanban, contatos: vContatos, tarefas: vTarefas, templates: vTemplates, propostas: vPropostas, buscas: vBuscas, campanhas: vCampanhas, conversas: vConversas, ia: vIA, conta: vConta },
+    { dash: vDash, kanban: vKanban, contatos: vContatos, tarefas: vTarefas, templates: vTemplates, propostas: vPropostas, captura: vCaptura, buscas: vBuscas, campanhas: vCampanhas, conversas: vConversas, ia: vIA, conta: vConta },
     (window.GX_EXT && GX_EXT.vistas) || {}   // abas do Villela Growth OS
   );
 }
@@ -964,7 +965,7 @@ async function vBuscas() {
         <p class="sub" style="text-align:left;margin:6px 0">“${esc(b.termos.join(' / '))}” · ${b.lat != null ? 'raio ' + b.raio_m + ' m' : esc(b.locais.map(x => x.split(',')[0]).join(', '))} · a cada ${b.frequencia_dias} dia(s) · até ${b.max_resultados} lugares · tag <code>${esc(b.tag)}</code></p>
         <p class="sub" style="text-align:left;margin:6px 0">Custo estimado: ~${reais(b.custo.brl_centavos)} por varredura (≈ ${reais(b.custo.por_mes_centavos)}/mês). ${b.resumo.lugares || 0} lugar(es) · ${b.resumo.contatos || 0} contato(s).
         ${b.ultima_execucao ? `Última: ${esc(b.ultima_execucao.status)}${b.ultima_execucao.status === 'ok' ? ` — ${b.ultima_execucao.novos} novos, ${b.ultima_execucao.existentes} já conhecidos, ${b.ultima_execucao.enriquecidos} sites com contato` : ''}${b.ultima_execucao.erro ? ' · ' + esc(b.ultima_execucao.erro) : ''}.` : 'Ainda não rodou.'}
-        ${b.rodando_desde ? '<b>⏳ Rodando agora…</b>' : ''}${b.fonte_configurada ? '' : ' <b>Fonte sem credencial no servidor — nada roda.</b>'}</p>
+        ${b.rodando_desde ? '<b>⏳ Rodando agora…</b>' : ''}${b.fonte_configurada ? '' : ' <b>Sem credencial do servidor: só roda com o seu token do Apify ou créditos (veja “Aumentar leads”).</b>'}</p>
         ${b.status === 'aguardando_aprovacao' ? `<button class="btn peq bu-aprovar" data-id="${b.id}">✅ Aprovar custo e ativar</button>` : ''}
         ${b.status === 'ativa' ? `<button class="btn peq bu-rodar" data-id="${b.id}" data-custo="${b.custo.brl_centavos}">▶ Rodar agora</button> <button class="btn peq secund bu-st" data-id="${b.id}" data-st="pausada">⏸ Pausar</button>` : ''}
         ${b.status === 'pausada' ? `<button class="btn peq secund bu-st" data-id="${b.id}" data-st="ativa">▶ Retomar</button>` : ''}
@@ -979,8 +980,7 @@ async function vBuscas() {
       api('POST', `/app/buscas/${b.id}/aprovar`, { aceite: true }).then(vBuscas).catch(e => alert(e.message));
     });
     document.querySelectorAll('.bu-rodar').forEach(x => x.onclick = () => {
-      if (!confirm(`Rodar agora? Vai consumir até ~${reais(x.dataset.custo)} de crédito da fonte.`)) return;
-      api('POST', `/app/buscas/${x.dataset.id}/rodar`).then(vBuscas).catch(e => alert(e.message));
+      rodarBuscaPaga(x.dataset.id, x.dataset.custo).then(vBuscas).catch(e => alert(e.message));
     });
     document.querySelectorAll('.bu-st').forEach(x => x.onclick = () => {
       if (x.dataset.st === 'arquivada' && !confirm('Arquivar esta busca? Os contatos já capturados continuam no CRM.')) return;
@@ -993,6 +993,14 @@ async function vBuscas() {
     });
     if (rodando) { const meu = SEQ; BUSCA_POLL = setInterval(() => { if (meu !== SEQ || ABA !== 'buscas') return clearInterval(BUSCA_POLL); vBuscas(); }, 8000); }
   } catch (e) { erroTela(e); }
+}
+// roda uma busca aprovada: em créditos mostra o teto do CRM e só segue com o aceite; com token próprio/conta interna não há cobrança aqui
+async function rodarBuscaPaga(id, custoFonte) {
+  const o = await api('GET', `/app/captura/externa/${id}/orcamento`);
+  const orc = o.orcamento; let aceite = 0;
+  if (orc.cobrado_de === 'créditos') { if (!confirm(`Rodar agora? Custo MÁXIMO ${orc.teto} dos seus créditos (saldo ${orc.saldo}). O CRM cobra só os lugares que vierem e devolve o resto.`)) return; aceite = orc.teto_milesimos; }
+  else if (!confirm(`Rodar agora? ${orc.cobrado_de ? 'Cobrado de: ' + orc.cobrado_de + '.' : (orc.motivo || '')}`)) return;
+  return api('POST', `/app/buscas/${id}/rodar`, { aceite_milesimos: aceite });
 }
 async function verLugaresBusca(id) {
   const box = $('#bu-lugares'); box.innerHTML = '<p class="sub">Carregando…</p>';
@@ -1049,6 +1057,245 @@ function dlgBusca(d) {
       dlg.remove(); vBuscas();
     } catch (e) { $('#bu-msg').textContent = e.message; }
   };
+}
+
+// ---------------- AUMENTAR LEADS (captura por área; chaves e créditos) ----------------
+// O assinante escolhe a ÁREA e a ORIGEM (fora = Google Maps + site público; dentro = export das conversas dele).
+// A tela diz, para cada combinação, o que é automático, o que é assistido e o que é inviável — sem maquiar.
+let CAP = null, CAP_AREA = '', CAP_ORIGEM = '';
+const milR = (m) => 'R$ ' + (Number(m || 0) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+const COMO_EXPORTAR = {
+  whatsapp: 'No WhatsApp: abra a conversa → ⋮ → Mais → Exportar conversa → <b>Sem mídia</b>. Envie um arquivo .txt por conversa (se enviar vários, o seu nome é reconhecido sozinho).',
+  email: 'No Google Takeout (takeout.google.com) marque só o <b>Gmail</b> (formato .mbox) e envie o arquivo. Mensagens automáticas e promoções são ignoradas.',
+  instagram: 'Instagram → Configurações → Central de Contas → Suas informações → Baixar suas informações → <b>Mensagens</b>, formato <b>JSON</b>. Envie os arquivos <code>message_1.json</code> (pode escolher a pasta inteira).',
+  facebook: 'Facebook → Configurações → Suas informações → Baixar suas informações → <b>Mensagens</b>, formato <b>JSON</b>. Envie os arquivos <code>message_1.json</code> (pode escolher a pasta inteira).',
+  tiktok: 'TikTok → Configurações → Conta → Baixar seus dados → formato <b>JSON</b>. ⚠️ A estrutura desse arquivo ainda não foi verificada com um export real: se não for reconhecida, nada é gravado.',
+  linkedin: 'LinkedIn → Configurações → Privacidade dos dados → Obter uma cópia dos seus dados → <b>Mensagens</b>. Envie o arquivo <code>messages.csv</code>.',
+};
+async function vCaptura() {
+  carregando();
+  try {
+    CAP = await api('GET', '/app/captura');
+    pintarCaptura();
+  } catch (e) { erroTela(e); }
+}
+function pintarCaptura() {
+  const d = CAP; const ex = d.externa; const ca = d.carteira;
+  const area = d.areas.find((a) => a.id === CAP_AREA);
+  const chaves = Object.fromEntries(d.cofre.chaves.map((c) => [c.nome, c]));
+  const linhaChave = (t) => { const c = chaves[t.id]; return `<div class="lin" style="padding:8px 0;border-bottom:1px solid #eef1f3"><b>${esc(t.rotulo)}</b>
+      ${c ? `<span class="chip">${esc(c.final)}</span> <span class="sub">cadastrada ${esc(dataBr(c.cadastrada_em))}${c.testada_em ? ' · testada ✓' : ''}</span>` : '<span class="sub">não cadastrada</span>'}<br>
+      <input type="password" autocomplete="off" spellcheck="false" class="cp-chave" data-n="${t.id}" placeholder="${c ? 'colar uma nova chave para trocar' : 'colar a chave aqui'}" style="min-width:260px">
+      <button class="btn peq cp-ch-salvar" data-n="${t.id}">Guardar</button>
+      ${c && t.id !== 'apify' ? `<button class="btn peq secund cp-ch-testar" data-n="${t.id}">Testar</button>` : ''}
+      ${c ? `<button class="btn peq secund cp-ch-remover" data-n="${t.id}">Remover</button>` : ''}</div>`; };
+  $('#tela').innerHTML = `
+    <p class="sub" style="text-align:left">Quer mais leads? Escolha a <b>área</b> (por onde você vai falar com eles) e <b>de onde</b> buscar: das redes públicas (Google Maps e sites das empresas) ou das <b>suas próprias conversas</b>. Nada vira contato nem entra em campanha sem a sua aprovação, e <b>nenhuma mensagem é enviada sozinha</b>.</p>
+
+    <div class="card" id="cp-cofre"><b>Chaves e créditos</b>
+      <p class="sub" style="text-align:left;margin:6px 0">A IA (sugerir busca, pontuar leads, rascunhar mensagens) e a busca no Maps têm custo. Você escolhe como pagar: <b>sua própria chave</b> (você paga o provedor direto, a plataforma não cobra nada) ou <b>créditos pré-pagos</b> aqui no CRM. Antes de cada operação o CRM mostra o <b>valor máximo</b> e só cobra o que foi usado de verdade.</p>
+      <p style="margin:6px 0"><b>Saldo de créditos: ${ca.isento ? 'conta interna (sem cobrança)' : esc(ca.saldo)}</b>
+        ${ca.isento ? '' : ca.ativa ? ca.pacotes_centavos.map((p) => `<button class="btn peq cp-recarga" data-v="${p}">Recarregar ${brl(p)}</button>`).join(' ') : '<span class="sub">Créditos ainda não liberados: use a sua chave.</span>'}</p>
+      ${ca.recargas_pendentes.length ? `<p class="sub" style="text-align:left">Recarga em andamento? <a href="#" class="cp-conferir" data-id="${esc(ca.recargas_pendentes[0].id)}">Já paguei — conferir</a></p>` : ''}
+      ${d.cofre.disponivel ? `<details open><summary class="sub">Minhas chaves (ficam criptografadas; nunca são mostradas de novo, nem para nós)</summary>${d.cofre.tipos.map(linhaChave).join('')}</details>` : '<p class="erro">Cofre indisponível no servidor.</p>'}
+      ${ca.extrato.length ? `<details><summary class="sub">Extrato (${ca.extrato.length})</summary>${ca.extrato.map((x) => `<div class="lin"><span class="sub">${esc(dataBr(x.quando))}</span> ${esc(x.descricao)} <b>${x.milesimos < 0 ? '−' : '+'}${esc(x.valor)}</b></div>`).join('')}</details>` : ''}
+      <p class="sub" style="text-align:left;margin:6px 0">Uso de IA no mês: ${d.uso_ia_mes.chamadas} chamada(s) · ${d.uso_ia_mes.tokens_in + d.uso_ia_mes.tokens_out} tokens${d.uso_ia_mes.milesimos ? ' · ' + milR(d.uso_ia_mes.milesimos) + ' em créditos' : ''}.</p>
+      <p id="cp-msg-cofre" class="erro"></p></div>
+
+    <h3 style="margin:16px 0 6px">1. De qual área?</h3>
+    <div id="cp-areas">${d.areas.map((a) => `<button class="btn peq ${CAP_AREA === a.id ? '' : 'secund'} cp-area" data-a="${a.id}">${CANAL_ICO[a.id] || ''} ${esc(a.rotulo)}</button>`).join(' ')}</div>
+
+    ${area ? `<h3 style="margin:16px 0 6px">2. De onde?</h3>
+      <div><button class="btn peq ${CAP_ORIGEM === 'fora' ? '' : 'secund'} cp-orig" data-o="fora">🌐 Redes públicas (fora)</button>
+        <button class="btn peq ${CAP_ORIGEM === 'dentro' ? '' : 'secund'} cp-orig" data-o="dentro">📥 Minhas conversas (dentro)</button></div>
+      ${CAP_ORIGEM ? matrizHonesta(area, CAP_ORIGEM) : ''}` : ''}
+    ${area && CAP_ORIGEM === 'fora' ? blocoFora(area) : ''}
+    ${area && CAP_ORIGEM === 'dentro' ? blocoDentro(area) : ''}
+    <div id="cp-resultado"></div>`;
+  ligarCaptura();
+}
+function matrizHonesta(a, o) {
+  const m = a[o];
+  return `<div class="card" style="margin-top:8px">
+    <p style="margin:4px 0"><b>✅ Automático:</b> ${esc(m.automatico)}</p>
+    ${m.assistido ? `<p style="margin:4px 0"><b>🤝 Assistido (você faz o último passo):</b> ${esc(m.assistido)}</p>` : ''}
+    <p style="margin:4px 0"><b>⛔ Não dá (e por isso não oferecemos):</b> ${esc(m.inviavel)}</p></div>`;
+}
+function blocoFora(a) {
+  const e = CAP.externa;
+  const pag = e.modo === 'interno' ? 'conta interna' : e.modo === 'propria' ? 'seu token do Apify' : e.modo === 'creditos' ? 'seus créditos' : '';
+  return `<h3 style="margin:16px 0 6px">3. O que buscar</h3>
+    ${e.pode ? `<p class="sub" style="text-align:left">A busca será paga com: <b>${pag}</b>.</p>` : `<div class="vx-alerta vx-alerta--danger" role="alert"><span>${esc(e.motivo)}</span></div>`}
+    <div class="card">
+      <label>Descreva seu negócio e quem você quer atingir (a IA sugere categorias e regiões) <textarea id="cp-desc" rows="2" placeholder="ex.: faço reforma residencial de alto padrão no Lago Sul"></textarea></label>
+      <button class="btn peq secund" id="cp-ia-sugerir">✨ Sugerir com IA</button>
+      <label>Categorias (uma por linha) <textarea id="cp-termos" rows="3" placeholder="ex.: clínica odontológica"></textarea></label>
+      <label>Regiões / bairros (um por linha) <textarea id="cp-locais" rows="3" placeholder="ex.: Lago Sul, Brasília - DF"></textarea></label>
+      <label>Máx. de lugares por categoria e região <input id="cp-max" type="number" min="1" max="${500}" value="20"></label>
+      <p class="sub" id="cp-conta" style="text-align:left"></p>
+      <p class="sub" style="text-align:left">Só entram na lista de <b>${esc(a.rotulo)}</b> as empresas em que o CRM achar esse canal. O rendimento varia: nem toda empresa publica ${a.id === 'email' ? 'e-mail' : a.id === 'whatsapp' ? 'um celular' : 'perfil nessa rede'}; depois da primeira varredura o CRM mostra quantas renderam.</p>
+      <button class="btn" id="cp-planejar" ${e.pode ? '' : 'disabled'}>Ver o custo máximo</button> <span id="cp-msg-fora" class="erro"></span>
+      <div id="cp-plano"></div></div>
+    <div id="cp-buscas-area"></div>`;
+}
+function blocoDentro(a) {
+  const assuntos = CAP.assuntos || [];
+  return `<h3 style="margin:16px 0 6px">3. Envie o arquivo</h3>
+    <div class="card">
+      <p class="sub" style="text-align:left">${COMO_EXPORTAR[a.id]}</p>
+      <p class="sub" style="text-align:left"><b>O que acontece com o arquivo:</b> é lido na hora, classificado por palavras-chave e <b>descartado</b>. Só ficam: quem é, o assunto, a temperatura da conversa e as contagens. <b>O texto das mensagens não é guardado.</b> A classificação pode errar, por isso tudo entra como <b>sugerido</b> para você aprovar.</p>
+      <label>Seu nome/e-mail como aparece no arquivo (para saber quem é “você”) <input id="cp-eu" placeholder="${a.id === 'email' ? 'ex.: voce@empresa.com.br' : 'ex.: Maria Silva'}"></label>
+      <input type="file" id="cp-arq" multiple ${['instagram', 'facebook'].includes(a.id) ? 'webkitdirectory' : ''} accept="${['whatsapp'].includes(a.id) ? '.txt' : a.id === 'email' ? '.mbox,.txt' : a.id === 'linkedin' ? '.csv' : '.json'}">
+      <button class="btn" id="cp-importar">Importar e classificar</button> <span id="cp-msg-dentro" class="erro"></span>
+      <details style="margin-top:10px" ${assuntos.length ? 'open' : ''}><summary class="sub">Assuntos que quero detectar (opcional — sem isso o CRM detecta “interesse comercial”: preço, orçamento, proposta, contratar)</summary>
+        <p class="sub" style="text-align:left">Um por linha: <code>Nome do assunto: palavra, palavra, palavra</code> (até 8 assuntos).</p>
+        <textarea id="cp-assuntos" rows="4" placeholder="Reforma: reforma, pintura, piso">${esc(assuntos.map((x) => x.rotulo + ': ' + x.palavras.join(', ')).join('\n'))}</textarea>
+        <button class="btn peq secund" id="cp-assuntos-salvar">Salvar assuntos</button></details></div>`;
+}
+function ligarCaptura() {
+  document.querySelectorAll('.cp-area').forEach((b) => b.onclick = () => { CAP_AREA = b.dataset.a; CAP_ORIGEM = ''; pintarCaptura(); });
+  document.querySelectorAll('.cp-orig').forEach((b) => b.onclick = () => { CAP_ORIGEM = b.dataset.o; pintarCaptura(); if (CAP_ORIGEM === 'fora') carregarBuscasArea(); });
+  const msg = (t) => { const m = $('#cp-msg-cofre'); if (m) m.textContent = t || ''; };
+  document.querySelectorAll('.cp-ch-salvar').forEach((b) => b.onclick = async () => {
+    const campo = document.querySelector(`.cp-chave[data-n="${b.dataset.n}"]`); const v = campo.value.trim();
+    if (!v) return msg('Cole a chave no campo antes de guardar.');
+    try { await api('PUT', `/app/captura/chaves/${b.dataset.n}`, { valor: v }); campo.value = ''; await vCapturaMantem(); } catch (e) { msg(e.message); }
+  });
+  document.querySelectorAll('.cp-ch-testar').forEach((b) => b.onclick = async () => {
+    try { const r = await api('POST', `/app/captura/chaves/${b.dataset.n}/testar`); if (r.ok) { await vCapturaMantem(); } else msg(r.motivo); } catch (e) { msg(e.message); }
+  });
+  document.querySelectorAll('.cp-ch-remover').forEach((b) => b.onclick = async () => {
+    if (!confirm('Remover esta chave do cofre? Você pode cadastrar de novo quando quiser.')) return;
+    try { await api('DELETE', `/app/captura/chaves/${b.dataset.n}`); await vCapturaMantem(); } catch (e) { msg(e.message); }
+  });
+  document.querySelectorAll('.cp-recarga').forEach((b) => b.onclick = async () => {
+    if (!confirm(`Recarregar ${brl(b.dataset.v)} em créditos pelo Mercado Pago? Você será levado ao pagamento; o crédito entra quando o pagamento for aprovado.`)) return;
+    try { const r = await api('POST', '/app/carteira/recarga', { valor_centavos: Number(b.dataset.v) }); if (r.init_point) location.href = r.init_point; else msg('Não recebi o link de pagamento.'); } catch (e) { msg(e.message); }
+  });
+  document.querySelectorAll('.cp-conferir').forEach((a) => a.onclick = async (ev) => {
+    ev.preventDefault();
+    try { const r = await api('POST', `/app/carteira/recarga/${a.dataset.id}/conferir`); msg(r.status === 'paga' ? 'Pagamento confirmado: créditos adicionados.' : 'Ainda não consta pagamento aprovado (' + r.status + ').'); await vCapturaMantem(r.status === 'paga' ? '' : null); } catch (e) { msg(e.message); }
+  });
+  // FORA
+  const linhas = (id) => ($(id).value || '').split(/\n/).map((x) => x.trim()).filter(Boolean);
+  const contar = () => { const c = $('#cp-conta'); if (!c) return; const nt = Math.max(1, linhas('#cp-termos').length), nl = Math.max(1, linhas('#cp-locais').length), mx = Number($('#cp-max').value) || 0; c.textContent = `${nt} categoria(s) × ${nl} região(ões) × até ${mx} = no máximo ${nt * nl * mx} lugares por varredura.`; };
+  ['#cp-termos', '#cp-locais', '#cp-max'].forEach((id) => { const e = $(id); if (e) e.oninput = contar; }); contar();
+  if ($('#cp-ia-sugerir')) $('#cp-ia-sugerir').onclick = async () => {
+    try {
+      const r = await rodarIA('sugerir_busca', { descricao: $('#cp-desc').value });
+      if (!r) return;
+      if (r.resultado.termos.length) $('#cp-termos').value = r.resultado.termos.join('\n');
+      if (r.resultado.locais.length) $('#cp-locais').value = r.resultado.locais.join('\n');
+      $('#cp-msg-fora').textContent = ''; $('#cp-plano').innerHTML = `<p class="sub" style="text-align:left">✨ Sugestão da IA (confira e ajuste antes de seguir)${r.resultado.observacao ? ': ' + esc(r.resultado.observacao) : ''}. ${esc(r.uso.cobrado)}</p>`; contar();
+    } catch (e) { $('#cp-msg-fora').textContent = e.message; }
+  };
+  if ($('#cp-planejar')) $('#cp-planejar').onclick = async () => {
+    try {
+      const r = await api('POST', '/app/captura/externa/planejar', { area: CAP_AREA, termos: linhas('#cp-termos'), locais: linhas('#cp-locais'), max_resultados: $('#cp-max').value });
+      mostrarPlano(r);
+    } catch (e) { $('#cp-msg-fora').textContent = e.message; }
+  };
+  // DENTRO
+  if ($('#cp-assuntos-salvar')) $('#cp-assuntos-salvar').onclick = async () => {
+    const lista = ($('#cp-assuntos').value || '').split(/\n/).map((l) => l.trim()).filter(Boolean).map((l) => { const i = l.indexOf(':'); return i < 0 ? { rotulo: l, palavras: l } : { rotulo: l.slice(0, i).trim(), palavras: l.slice(i + 1) }; });
+    try { const r = await api('PUT', '/app/captura/assuntos', { assuntos: lista }); CAP.assuntos = r.assuntos; $('#cp-msg-dentro').textContent = ''; alert(r.assuntos.length ? 'Assuntos salvos. Valem para as próximas importações.' : 'Assuntos removidos: volta a detecção de interesse comercial.'); } catch (e) { $('#cp-msg-dentro').textContent = e.message; }
+  };
+  if ($('#cp-importar')) $('#cp-importar').onclick = importarArquivos;
+}
+async function vCapturaMantem() { CAP = await api('GET', '/app/captura'); pintarCaptura(); if (CAP_ORIGEM === 'fora') carregarBuscasArea(); }
+function lerArquivo(f) {
+  return new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok({ nome: f.webkitRelativePath || f.name, conteudo: String(r.result || '') }); r.onerror = () => no(new Error('Não consegui ler ' + f.name)); r.readAsText(f); });
+}
+async function importarArquivos(ev, eu) {
+  const m = $('#cp-msg-dentro'); m.textContent = '';
+  const fs = Array.from($('#cp-arq').files || []);
+  if (!fs.length) { m.textContent = 'Escolha o arquivo (ou a pasta) do export.'; return; }
+  if (fs.reduce((s, f) => s + f.size, 0) > 35 * 1024 * 1024) { m.textContent = 'Arquivos grandes demais (limite de 35 MB por envio): envie em partes.'; return; }
+  $('#cp-importar').disabled = true; m.textContent = 'Lendo e classificando…';
+  try {
+    const arquivos = await Promise.all(fs.map(lerArquivo));
+    const r = await api('POST', '/app/captura/interna/importar', { area: CAP_AREA, arquivos, eu: (eu != null ? eu : $('#cp-eu').value.trim()) || undefined });
+    if (r.precisa_eu) {
+      m.textContent = '';
+      $('#cp-resultado').innerHTML = `<div class="card"><b>Quem é você nesse arquivo?</b><p class="sub" style="text-align:left">Não dá para adivinhar com segurança. Escolha o seu nome${CAP_AREA === 'email' ? ' (endereço)' : ''} para o CRM saber quem é o cliente:</p>
+        ${r.candidatos.map((c) => `<button class="btn peq secund cp-eu-op" data-eu="${esc(c)}">${esc(c)}</button>`).join(' ')}</div>`;
+      document.querySelectorAll('.cp-eu-op').forEach((b) => b.onclick = () => { $('#cp-eu').value = b.dataset.eu; importarArquivos(null, b.dataset.eu); });
+      return;
+    }
+    const ing = r.ingestao;
+    $('#cp-resultado').innerHTML = `<div class="card"><b>Pronto.</b> ${r.lidas || 0} conversa(s)/mensagem(ns) lidas · <b>${r.conversas_com_assunto}</b> com sinal comercial · ${ing.novas} nova(s), ${ing.atualizadas} atualizada(s).
+      ${r.ignoradas_grupo ? `<br><span class="sub">${r.ignoradas_grupo} grupo(s) ignorado(s).</span>` : ''}${r.ignoradas_automaticos ? `<br><span class="sub">${r.ignoradas_automaticos} mensagem(ns) automática(s) ignorada(s).</span>` : ''}
+      ${r.aviso ? `<br><span class="sub">⚠️ ${esc(r.aviso)}</span>` : ''}
+      <p class="sub" style="text-align:left">Tudo entrou como <b>sugerido</b>: nada virou contato ainda. O arquivo foi descartado.</p>
+      <button class="btn peq" id="cp-ir-conversas">Revisar em “Conversas”</button></div>`;
+    $('#cp-ir-conversas').onclick = () => navegar('conversas');
+    m.textContent = '';
+  } catch (e) { m.textContent = e.message; } finally { const b = $('#cp-importar'); if (b) b.disabled = false; }
+}
+// IA: escolhe como pagar, mostra o teto e só segue com o aceite do valor
+async function rodarIA(tarefa, entrada) {
+  const modos = CAP.ia;
+  const opcoes = [];
+  if (modos.propria.length) opcoes.push('1 = minha chave (' + modos.propria.map((p) => (p === 'anthropic' ? 'Claude' : 'OpenAI')).join('/') + ', sem custo na plataforma)');
+  if (modos.creditos) opcoes.push((modos.interno ? '2 = conta interna' : '2 = créditos do CRM'));
+  if (!opcoes.length) throw new Error('Para usar a IA, cadastre a sua chave de API (Claude ou OpenAI) em “Chaves e créditos”' + (CAP.carteira.ativa ? ' ou recarregue créditos.' : '.'));
+  let modo = '';
+  if (modos.propria.length && modos.creditos) { const x = prompt('Como pagar a IA?\n' + opcoes.join('\n'), '1'); if (x == null) return null; modo = x.trim() === '2' ? 'creditos' : 'propria'; }
+  else modo = modos.propria.length ? 'propria' : 'creditos';
+  let aceite = 0;
+  if (modo === 'creditos' && !modos.interno) {
+    const o = await api('POST', '/app/captura/ia/orcar', { tarefa, entrada, modo });
+    if (!confirm(`${o.orcamento.rotulo}\n\nCusto MÁXIMO: ${o.orcamento.texto}.\nO CRM reserva esse valor, cobra só o que a IA realmente usar e devolve a diferença.\n\nContinuar?`)) return null;
+    aceite = o.orcamento.teto_milesimos;
+  }
+  const r = await api('POST', '/app/captura/ia/executar', { tarefa, entrada, modo, aceite_milesimos: aceite });
+  CAP.carteira = await api('GET', '/app/carteira');
+  return r;
+}
+function mostrarPlano(r) {
+  const b = r.busca, o = r.orcamento, s = r.situacao;
+  const custo = o.cobrado_de === 'créditos' ? `custo máximo <b>${esc(o.teto)}</b> (seu saldo: ${esc(o.saldo)})` : o.cobrado_de ? `cobrado de: ${esc(o.cobrado_de)}` : '';
+  $('#cp-plano').innerHTML = `<div class="card" style="margin-top:8px"><b>${esc(b.nome)}</b>
+    <p class="sub" style="text-align:left;margin:6px 0">Até ${b.custo.lugares_max} lugares por varredura · ${custo || esc(s.motivo)}.${o.cobrado_de === 'créditos' ? ' Você paga só pelos lugares que realmente vierem; o resto volta ao saldo.' : ''}</p>
+    ${s.pode ? `<p class="sub" style="text-align:left"><label><input type="checkbox" id="cp-aceite"> Entendo que a busca lê o Google Maps por um serviço de terceiros (que pode contrariar os termos do Google) e que os leads entram <b>sem consentimento</b>, apenas como dado empresarial público, com opt-out por canal.</label></p>
+      <button class="btn" id="cp-rodar" data-id="${b.id}" data-teto="${o.teto_milesimos || 0}" data-txt="${esc(o.teto || '')}" ${o.cobre === false ? 'disabled' : ''}>Aprovar e buscar agora</button>
+      ${o.cobre === false ? '<span class="erro">Saldo insuficiente — recarregue.</span>' : ''}` : ''}
+    <button class="btn peq secund" id="cp-descartar" data-id="${b.id}">Descartar</button> <span id="cp-msg-plano" class="erro"></span></div>`;
+  if ($('#cp-rodar')) $('#cp-rodar').onclick = async () => {
+    const m = $('#cp-msg-plano'); m.textContent = '';
+    if (!$('#cp-aceite').checked) { m.textContent = 'Marque o aceite para continuar.'; return; }
+    const teto = Number($('#cp-rodar').dataset.teto);
+    if (teto && !confirm(`Reservar até ${$('#cp-rodar').dataset.txt} dos seus créditos e buscar agora?`)) return;
+    try {
+      await api('POST', `/app/buscas/${b.id}/aprovar`, { aceite: true });
+      await api('POST', `/app/buscas/${b.id}/rodar`, { aceite_milesimos: teto });
+      $('#cp-plano').innerHTML = '<p class="sub">⏳ Buscando… isso leva alguns minutos. Pode sair desta tela; o resultado aparece abaixo.</p>';
+      carregarBuscasArea(true);
+    } catch (e) { m.textContent = e.message; }
+  };
+  $('#cp-descartar').onclick = async () => { try { await api('POST', `/app/buscas/${b.id}/status`, { status: 'arquivada' }); $('#cp-plano').innerHTML = ''; carregarBuscasArea(); } catch (e) { $('#cp-msg-plano').textContent = e.message; } };
+}
+let CAP_POLL = null;
+async function carregarBuscasArea(acompanhar) {
+  clearInterval(CAP_POLL);
+  const box = $('#cp-buscas-area'); if (!box) return;
+  try {
+    const d = await api('GET', '/app/buscas');
+    const minhas = d.buscas.filter((b) => b.canal_alvo === CAP_AREA);
+    const rodando = minhas.some((b) => b.rodando_desde);
+    box.innerHTML = minhas.length ? `<h3 style="margin:16px 0 6px">Suas buscas de ${esc(CANAIS_UI[CAP_AREA])}</h3>` + minhas.map((b) => `<div class="card"><b>${esc(b.nome)}</b> <span class="chip">${BUSCA_ST[b.status] || esc(b.status)}</span>
+      <p class="sub" style="text-align:left;margin:6px 0">${b.resumo.lugares || 0} lugar(es) · ${b.resumo.contatos || 0} contato(s) · <b>${b.resumo.aproveitaveis != null ? b.resumo.aproveitaveis : 0} com ${esc(CANAIS_UI[CAP_AREA])}</b> (aproveitáveis)${b.custo_total_cobrado_milesimos ? ' · cobrado: ' + milR(b.custo_total_cobrado_milesimos) : ''}
+      ${b.ultima_execucao ? '<br>Última: ' + esc(b.ultima_execucao.status) + (b.ultima_execucao.erro ? ' — ' + esc(b.ultima_execucao.erro) : '') : ''}${b.rodando_desde ? '<br><b>⏳ Rodando agora…</b>' : ''}</p>
+      <button class="btn peq secund cp-ver" data-id="${b.id}">O que entrou</button>
+      ${b.tags_extra.length || b.tag ? `<button class="btn peq secund cp-camp" data-tag="${esc(b.tag)}">📋 Preparar campanha (rascunho)</button>` : ''}</div>`).join('') + '<div id="bu-lugares"></div>' : '';
+    document.querySelectorAll('.cp-ver').forEach((x) => x.onclick = () => verLugaresBusca(x.dataset.id));
+    document.querySelectorAll('.cp-camp').forEach((x) => x.onclick = async () => {
+      if (!confirm('Montar a campanha dos contatos desta busca? Ela nasce em RASCUNHO e NADA é enviado: você aprova a lista e cada envio é manual (redes sociais são assistidas).')) return;
+      try { const r = await api('POST', '/app/buscas/preparar-campanha', { tag: x.dataset.tag, canais: [CAP_AREA], modo: 'todos', nome: 'Leads de ' + CANAIS_UI[CAP_AREA], mensagem: 'Olá, {{nome}}! Aqui é {{nome_responsavel}}, da {{nome_empresa}}. Podemos conversar sobre como ajudar a sua empresa? Se preferir não receber mais contato, é só avisar.' }); alert(`${r.aviso}\n\n${r.alvos} alvo(s) em ${r.contatos} contato(s). Edite a mensagem na campanha antes de usar.`); navegar('campanhas'); } catch (e) { alert(e.message); }
+    });
+    if (rodando || acompanhar) { const meu = SEQ; CAP_POLL = setInterval(() => { if (meu !== SEQ || ABA !== 'captura') return clearInterval(CAP_POLL); carregarBuscasArea(); }, 8000); }
+    if (!rodando && acompanhar) { clearInterval(CAP_POLL); }
+  } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 // ---------------- CAMPANHAS ----------------

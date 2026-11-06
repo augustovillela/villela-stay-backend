@@ -566,3 +566,67 @@ CREATE TABLE IF NOT EXISTS crm_busca_lugares (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_crm_busca_lugar_unico ON crm_busca_lugares(tenant_id, place_id);
 CREATE INDEX IF NOT EXISTS idx_crm_busca_lugar_busca ON crm_busca_lugares(busca_id, criado_em);
+
+-- ---- CAPTURA DE LEADS PARA ASSINANTES (06/11/2026): cofre, carteira pré-paga e uso de IA ----
+-- config da PLATAFORMA (não do tenant): chave de captura externa, carteira (margem/câmbio/pacotes), PTAX
+CREATE TABLE IF NOT EXISTS crm_plataforma (
+  chave         TEXT PRIMARY KEY,
+  valor         TEXT NOT NULL DEFAULT '{}',
+  atualizado_em TEXT DEFAULT ''
+);
+-- cofre do assinante: chave de API de IA / token Apify. AES-256-GCM; o valor em claro NUNCA volta para a tela.
+CREATE TABLE IF NOT EXISTS crm_segredos (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  nome          TEXT NOT NULL,             -- ia_anthropic | ia_openai | apify
+  cifra         TEXT NOT NULL,
+  iv            TEXT NOT NULL,
+  tag           TEXT NOT NULL,
+  ultimos4      TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL,
+  rotacionado_em TEXT DEFAULT '',
+  testado_em    TEXT DEFAULT '',
+  criado_por    TEXT DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_crm_segredos_unico ON crm_segredos(tenant_id, nome);
+-- carteira: o saldo é a SOMA do razão, em MILÉSIMOS de real (1 centavo = 10). Nunca há coluna de saldo.
+CREATE TABLE IF NOT EXISTS crm_carteira_mov (
+  id        TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  tipo      TEXT NOT NULL,                 -- recarga|cortesia|ajuste|reserva|acerto|estorno|estorno_recarga
+  milesimos INTEGER NOT NULL,              -- +crédito / -débito
+  ref       TEXT DEFAULT '',
+  detalhe   TEXT DEFAULT '',
+  quem      TEXT DEFAULT '',
+  criado_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_crm_carteira_tenant ON crm_carteira_mov(tenant_id, criado_em);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_crm_carteira_ref ON crm_carteira_mov(tenant_id, tipo, ref) WHERE ref != '';
+CREATE TABLE IF NOT EXISTS crm_recargas (
+  id               TEXT PRIMARY KEY,
+  tenant_id        TEXT NOT NULL,
+  valor_centavos   INTEGER NOT NULL,
+  status           TEXT DEFAULT 'pendente', -- pendente|paga|recusada|cancelada|reembolsada
+  mp_preference_id TEXT DEFAULT '',
+  mp_payment_id    TEXT DEFAULT '',
+  criado_em        TEXT NOT NULL,
+  pago_em          TEXT DEFAULT '',
+  criado_por       TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_crm_recargas_tenant ON crm_recargas(tenant_id, criado_em);
+-- uso de IA: só metadado (tarefa, modelo, tokens, custo). NUNCA prompt nem resposta.
+CREATE TABLE IF NOT EXISTS crm_ia_uso (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL,
+  tarefa     TEXT NOT NULL,
+  provedor   TEXT NOT NULL,
+  modelo     TEXT DEFAULT '',
+  modo       TEXT NOT NULL,                -- propria|creditos|interno
+  tokens_in  INTEGER DEFAULT 0,
+  tokens_out INTEGER DEFAULT 0,
+  milesimos  INTEGER DEFAULT 0,            -- cobrado (0 em chave própria)
+  status     TEXT DEFAULT 'ok',            -- ok|erro
+  erro       TEXT DEFAULT '',
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_crm_ia_uso_tenant ON crm_ia_uso(tenant_id, criado_em);

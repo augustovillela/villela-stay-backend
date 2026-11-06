@@ -77,9 +77,11 @@ function validar(d, atual = {}) {
   if (!FREQ_OK.includes(freq)) throw new Error('Frequência inválida (use 1, 3, 7, 14 ou 30 dias).');
   const max = Math.max(1, Math.min(MAX_POR_BUSCA, parseInt(d.max_resultados != null ? d.max_resultados : (atual.max_resultados || 60), 10) || 60));
   const fonte = s(d.fonte || atual.fonte || 'apify', 20);
+  const canalAlvo = d.canal_alvo != null ? s(d.canal_alvo, 20) : s(atual.canal_alvo, 20);
+  if (canalAlvo && !Canais.CANAIS[canalAlvo]) throw new Error('Área desconhecida.');
   if (!fontes.FONTES[fonte]) throw new Error('Fonte desconhecida.');
   const tagsExtra = d.tags != null ? limparLista(d.tags, 40, 6).map((t) => slug(t)).filter(Boolean) : lista(atual.tags_extra);
-  return { termo, termos: termos.length > 1 || locais.length ? termos : [], locais: locais.length > 1 ? locais : [], tags_extra: tagsExtra, local_texto: comCirculo ? '' : local, lat: comCirculo ? lat : null, lng: comCirculo ? lng : null, raio_m: comCirculo ? raio : 0, frequencia_dias: freq, max_resultados: max, fonte };
+  return { termo, termos: termos.length > 1 || locais.length ? termos : [], locais: locais.length > 1 ? locais : [], tags_extra: tagsExtra, local_texto: comCirculo ? '' : local, lat: comCirculo ? lat : null, lng: comCirculo ? lng : null, raio_m: comCirculo ? raio : 0, frequencia_dias: freq, max_resultados: max, fonte, canal_alvo: canalAlvo };
 }
 
 const Buscas = {
@@ -90,6 +92,9 @@ const Buscas = {
     return db.prepare("SELECT * FROM crm_buscas WHERE tenant_id = ? AND status != 'arquivada' ORDER BY criado_em DESC").all(T(tid)).map((b) => {
       const o = hidratar(b);
       o.resumo = db.prepare('SELECT COUNT(*) lugares, SUM(CASE WHEN contato_id != \'\' THEN 1 ELSE 0 END) contatos FROM crm_busca_lugares WHERE tenant_id = ? AND busca_id = ?').get(T(tid), b.id);
+      // leads APROVEITÁVEIS = contatos desta busca que têm o canal da área escolhida (o que a pessoa pediu)
+      if (b.canal_alvo) o.resumo.aproveitaveis = db.prepare('SELECT COUNT(DISTINCT l.contato_id) n FROM crm_busca_lugares l JOIN crm_contato_canais k ON k.contato_id = l.contato_id AND k.tenant_id = l.tenant_id WHERE l.tenant_id = ? AND l.busca_id = ? AND k.canal = ? AND k.opt_out = 0').get(T(tid), b.id, b.canal_alvo).n;
+      o.custo_total_cobrado_milesimos = db.prepare('SELECT COALESCE(SUM(cobrado_milesimos),0) n FROM crm_busca_execucoes WHERE tenant_id = ? AND busca_id = ?').get(T(tid), b.id).n;
       o.ultima_execucao = db.prepare('SELECT * FROM crm_busca_execucoes WHERE tenant_id = ? AND busca_id = ? ORDER BY iniciada_em DESC LIMIT 1').get(T(tid), b.id) || null;
       return o;
     });
@@ -100,9 +105,9 @@ const Buscas = {
     const v = validar(d);
     const nome = s(d.nome, 100) || `${v.termo} — ${v.local_texto || 'raio ' + v.raio_m + ' m'}`;
     const id = novoId(); const agora = nowISO();
-    db.prepare(`INSERT INTO crm_buscas (id, tenant_id, nome, termo, termos, locais, tags_extra, local_texto, lat, lng, raio_m, frequencia_dias, max_resultados, fonte, tag, status, criado_em, atualizado_em)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'aguardando_aprovacao',?,?)`)
-      .run(id, T(tid), nome, v.termo, JSON.stringify(v.termos), JSON.stringify(v.locais), JSON.stringify(v.tags_extra), v.local_texto, v.lat, v.lng, v.raio_m, v.frequencia_dias, v.max_resultados, v.fonte, 'busca:' + (slug(d.tag || nome) || id.slice(0, 6)), agora, agora);
+    db.prepare(`INSERT INTO crm_buscas (id, tenant_id, nome, termo, termos, locais, tags_extra, local_texto, lat, lng, raio_m, frequencia_dias, max_resultados, fonte, tag, status, criado_em, atualizado_em, canal_alvo)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'aguardando_aprovacao',?,?,?)`)
+      .run(id, T(tid), nome, v.termo, JSON.stringify(v.termos), JSON.stringify(v.locais), JSON.stringify(v.tags_extra), v.local_texto, v.lat, v.lng, v.raio_m, v.frequencia_dias, v.max_resultados, v.fonte, 'busca:' + (slug(d.tag || nome) || id.slice(0, 6)), agora, agora, v.canal_alvo);
     return Buscas.obter(tid, id);
   },
 
@@ -114,9 +119,9 @@ const Buscas = {
     const mudou = ['termo', 'local_texto', 'lat', 'lng', 'raio_m', 'max_resultados', 'fonte', 'frequencia_dias'].some((k) => String(v[k]) !== String(b[k]))
       || JSON.stringify(v.termos) !== JSON.stringify(lista(b.termos)) || JSON.stringify(v.locais) !== JSON.stringify(lista(b.locais));
     const reprovar = mudou && b.aprovada_em;
-    db.prepare(`UPDATE crm_buscas SET nome=?, termo=?, termos=?, locais=?, tags_extra=?, local_texto=?, lat=?, lng=?, raio_m=?, frequencia_dias=?, max_resultados=?, fonte=?,
+    db.prepare(`UPDATE crm_buscas SET nome=?, termo=?, termos=?, locais=?, tags_extra=?, local_texto=?, lat=?, lng=?, raio_m=?, frequencia_dias=?, max_resultados=?, fonte=?, canal_alvo=?,
       status=?, aprovada_em=?, aprovada_por=?, aprovada_custo_centavos=?, proxima_em=?, atualizado_em=? WHERE id=?`)
-      .run(s(d.nome, 100) || b.nome, v.termo, JSON.stringify(v.termos), JSON.stringify(v.locais), JSON.stringify(v.tags_extra), v.local_texto, v.lat, v.lng, v.raio_m, v.frequencia_dias, v.max_resultados, v.fonte,
+      .run(s(d.nome, 100) || b.nome, v.termo, JSON.stringify(v.termos), JSON.stringify(v.locais), JSON.stringify(v.tags_extra), v.local_texto, v.lat, v.lng, v.raio_m, v.frequencia_dias, v.max_resultados, v.fonte, v.canal_alvo,
         reprovar ? 'aguardando_aprovacao' : b.status, reprovar ? '' : b.aprovada_em, reprovar ? '' : b.aprovada_por,
         reprovar ? 0 : b.aprovada_custo_centavos, reprovar ? '' : b.proxima_em, nowISO(), b.id);
     return { busca: Buscas.obter(tid, id), reaprovar: !!reprovar };
@@ -166,7 +171,7 @@ const Buscas = {
     const ruim = texto.match(PROIBIDAS_RE);
     if (ruim) throw new Error(`O texto usa "${ruim[0]}", que a casa não usa: é uma casa residencial (nada de salão, banda, DJ ou som ao vivo).`);
     if (/R\$\s*\d/.test(texto)) throw new Error('Não coloque preço no texto da campanha: os valores saem da proposta (regras\\regras-negocio.md).');
-    const t = slug(tag);
+    const t = /^busca:[a-z0-9-]{1,60}$/.test(String(tag)) ? String(tag) : slug(tag); // tag de busca ("busca:nome") já vem pronta
     if (!t) throw new Error('Informe a tag dos contatos.');
     const r = app.Campanhas.criar(tid, { nome: s(nome, 200) || `Confraternização de fim de ano — ${t}`, canais, modo, segmento: { tag: t }, mensagem: texto }, autor || 'busca-ativa');
     app.Campanhas.mudarStatus(tid, r.id, 'rascunho');
@@ -190,11 +195,19 @@ const Buscas = {
     if (b.status !== 'ativa') throw new Error('A busca está pausada.');
     const f = provedor || fontes.fonte(b.fonte);
     if (!f) throw new Error('Fonte desconhecida.');
-    if (!provedor && !(fontes.FONTES[b.fonte] && fontes.FONTES[b.fonte].configurada())) throw new Error('A fonte ainda não está configurada no servidor (falta a credencial). Nada foi cobrado.');
+    // credencial: a do servidor (conta interna/créditos) ou o token do próprio assinante (cofre)
+    if (!provedor && !(fontes.FONTES[b.fonte] && fontes.FONTES[b.fonte].configurada()) && !require('./cofre').tem(T(tid), 'apify')) throw new Error('A fonte ainda não está configurada no servidor (falta a credencial). Nada foi cobrado.');
     const restante = tetoMes() - Buscas.lugaresNoMes(tid);
     if (restante <= 0) throw new Error(`Teto mensal de ${tetoMes()} lugares atingido. Nada foi executado.`);
     // trava de concorrência (some sozinha após 20 min caso o processo tenha caído)
     if (b.rodando_desde && Date.parse(b.rodando_desde) > Date.now() - 20 * 60000) throw new Error('Esta busca já está rodando.');
+    // QUEM PAGA, decidido ANTES de gastar (captura.js): conta interna, token do assinante ou créditos (reserva o teto).
+    // Só código de teste injeta `provedor`; nenhuma rota HTTP chega aqui com ele.
+    let cob = null;
+    if (!provedor) {
+      const pre = fontes.estimarCusto({ ...b, n_termos: termosDe(b).length, n_locais: locaisDe(b).length, max_resultados: b.max_resultados });
+      cob = require('./captura').abrirCobranca(T(tid), b, Math.min(pre.usd_exato, restante * fontes.USD_POR_LUGAR));
+    }
     db.prepare('UPDATE crm_buscas SET rodando_desde = ? WHERE id = ?').run(nowISO(), b.id);
     const exId = novoId();
     const est = fontes.estimarCusto({ ...b, n_termos: termosDe(b).length, n_locais: locaisDe(b).length, max_resultados: b.max_resultados });
@@ -211,7 +224,7 @@ const Buscas = {
         const sobra = restante - r.lugares;
         if (sobra <= 0) { erro = erro || `Teto mensal de ${tetoMes()} lugares atingido no meio da varredura.`; break; }
         const porTermo = Math.max(1, Math.min(b.max_resultados, Math.floor(sobra / termos.length)));
-        const achados = await f.buscar({ ...b, termos, local_texto: regiao || b.local_texto, max_resultados: porTermo });
+        const achados = await f.buscar({ ...b, termos, local_texto: regiao || b.local_texto, max_resultados: porTermo }, { token: cob && cob.token });
         r.lugares += achados.length;
         db.prepare('UPDATE crm_busca_execucoes SET lugares = ? WHERE id = ?').run(r.lugares, exId); // o que a fonte cobrou fica gravado mesmo se algo falhar depois
         for (const l of achados) {
@@ -229,10 +242,13 @@ const Buscas = {
         if (e.achou) r.enriquecidos++;
         r.canais_novos += e.canais_novos;
       }
-    } catch (e) { erro = e.message; }
+    } catch (e) { erro = require('./cofre').limpar(e.message, T(tid)); }
+    // fecha a conta: cobra só o que a fonte devolveu (0 lugares = estorno total)
+    let cobrado = 0;
+    if (cob) { try { cobrado = cob.fechar(r.lugares).cobrado_milesimos || 0; } catch (_) { /* a reserva órfã volta sozinha */ } }
     const fim = nowISO();
-    db.prepare('UPDATE crm_busca_execucoes SET concluida_em = ?, status = ?, novos = ?, existentes = ?, enriquecidos = ?, canais_novos = ?, erro = ? WHERE id = ?')
-      .run(fim, erro && !r.lugares ? 'erro' : 'ok', r.novos, r.existentes, r.enriquecidos, r.canais_novos, s(erro, 400), exId);
+    db.prepare('UPDATE crm_busca_execucoes SET concluida_em = ?, status = ?, novos = ?, existentes = ?, enriquecidos = ?, canais_novos = ?, erro = ?, modo_cobranca = ?, cobrado_milesimos = ? WHERE id = ?')
+      .run(fim, erro && !r.lugares ? 'erro' : 'ok', r.novos, r.existentes, r.enriquecidos, r.canais_novos, s(erro, 400), cob ? cob.modo : '', cobrado, exId);
     db.prepare("UPDATE crm_buscas SET rodando_desde = '', ultima_em = ?, proxima_em = ?, atualizado_em = ? WHERE id = ?")
       .run(fim, somaDias(fim, b.frequencia_dias), fim, b.id);
     if (erro && !r.lugares) throw new Error(erro);

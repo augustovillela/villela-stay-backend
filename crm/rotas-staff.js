@@ -25,6 +25,9 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret }) {
 
   app.use('/staff/api/vcrm', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
+  // carteira de créditos + captura externa (cortesia, margem, câmbio, chave geral)
+  require('./rotas-captura').registrarRotasCapturaStaff(app, { A, h, aud, quem });
+
   // painel da plataforma
   app.get('/staff/api/vcrm/dashboard', ...A, h((req, res) => {
     res.json({ resumo: repo.Dashboard.plataforma(), catalogo: { modulos: repo.MODULOS, limites: repo.LIMITES, flags: repo.Flags.listar(), papeis: repo.PAPEIS } });
