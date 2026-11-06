@@ -528,6 +528,17 @@ const FONTES = [
     push: (ref, payload) => (_hospedes && _hospedes.push) ? _hospedes.push(ref, payload) : 0,
   },
   {
+    // Origena: PostgreSQL próprio (não SQLite), então NÃO entra nos comunicados em massa
+    // (`listar` recusa, como o Cozinhe). Entra só pelo que a central faz por usuário logado:
+    // o post-it de dicas, a caixa e o suporte. A sessão é a do próprio Origena (`origena_sess`).
+    chave: 'origena', nome: 'Origena', emoji: '🌳', cor: '#234238',
+    url: 'https://origena.villelastay.com.br/origena/app', caminhoApp: '/origena',
+    indisponivel: 'A Origena usa banco PostgreSQL próprio e ainda não entrega a lista de usuários para a central. Hoje ela só recebe as dicas (post-it) e o suporte dentro do app.',
+    segmentos: [{ id: 'todos', rotulo: 'Todos os usuários' }],
+    listar() { throw Object.assign(new Error('Origena ainda não conectada aos comunicados em massa.'), { status: 501 }); },
+    sessao: async (req) => { const u = await require('../origena/sessao').carregarUsuario(req); return u ? u.id : null; },
+  },
+  {
     chave: 'cozinhe', nome: 'Cozinhe', emoji: '🍲', cor: '#8A3B12',
     url: 'https://cozinhe.villelastay.com.br',
     indisponivel: 'O Cozinhe roda em serviço separado e ainda não entrega a lista de usuários para a central (o painel só recebe e-mail mascarado). Falta uma rota no próprio Cozinhe — ver docs/integracoes/comunicados.md.',

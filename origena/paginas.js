@@ -147,6 +147,7 @@ ${pwa ? '<link rel="manifest" href="/origena/manifest.webmanifest">'
 <style>${CSS}${css}</style>
 ${publica && jsonld ? `<script type="application/ld+json">${jsonld}</script>` : ''}
 </head><body>${corpo}
+${pwa ? '<script src="/origena/comunicados.js" data-cor="#234238" defer></script>' : ''}
 ${pwa ? `<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/origena/sw.js',{scope:'/origena/'}).catch(()=>{});</script>` : ''}
 </body></html>`;
 }
