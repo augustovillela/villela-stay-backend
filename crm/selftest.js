@@ -1195,6 +1195,14 @@ async function rodar() {
     const ex = buscasMod.execucoes(tid, b.id)[0]; assert.equal(ex.status, 'ok'); assert.match(ex.erro, /Asa Norte/);
   });
 
+  await t('busca: lista colada com marcadores e comentários vira categorias limpas', async () => {
+    const tid = await tidDoTenant();
+    const colado = 'escritório de advocacia\n\n* escritório de contabilidade\n* escritório de arquitetura\n- consultoria empresarial\n1) corretora de seguros\n• agência de publicidade\n* clínica (se quiser profissional liberal de saúde)\nescritório de advocacia';
+    const b = buscasMod.criar(tid, { termos: colado, locais: 'Lago Sul, Brasília - DF', max_resultados: 20, frequencia_dias: 30, nome: 'Lista colada' });
+    assert.deepEqual(b.termos, ['escritório de advocacia', 'escritório de contabilidade', 'escritório de arquitetura', 'consultoria empresarial', 'corretora de seguros', 'agência de publicidade', 'clínica']);
+    assert.equal(b.custo.lugares_max, 7 * 20, 'cada categoria × região × máximo');
+  });
+
   await t('enriquecimento: extrai e-mail/wa.me/perfis, filtra lixo e bloqueia rede interna', async () => {
     const x = enriqMod.extrair('<a href="mailto:vendas@loja.com.br?subject=oi">x</a> teste@sentry.io foto@2x.png ana&#64;loja.com.br <a href="https://api.whatsapp.com/send?phone=5561999991111&text=oi">w</a> <a href="https://facebook.com/sharer/sharer.php?u=1">s</a> <a href="https://facebook.com/lojinha.oficial">f</a>', 'loja.com.br');
     assert.deepEqual(x.emails, ['vendas@loja.com.br', 'ana@loja.com.br']);

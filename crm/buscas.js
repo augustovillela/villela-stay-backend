@@ -36,7 +36,9 @@ const lista = (v) => { try { const x = typeof v === 'string' ? JSON.parse(v || '
 // categorias e regiões efetivas de uma busca (compatível com buscas antigas, de 1 termo e 1 região)
 const termosDe = (b) => { const t = lista(b.termos); return t.length ? t : [b.termo]; };
 const locaisDe = (b) => { const l = lista(b.locais); return l.length ? l : [b.local_texto || '']; };
-const limparLista = (v, max, n) => [...new Set((Array.isArray(v) ? v : String(v || '').split(/[\n;]/)).map((x) => s(x, max)).filter(Boolean))].slice(0, n);
+// tira marcadores de lista colados ("* ", "- ", "• ", "1) ") e comentários entre parênteses ("clínica (se quiser…)"): o termo vai ao Google Maps como está
+const tiraMarcas = (x) => String(x == null ? '' : x).replace(/\([^)]*\)/g, ' ').replace(/^[\s*\-•·]+/, '').replace(/^\d+\s*[.)]\s+/, '').replace(/\s+/g, ' ').trim();
+const limparLista = (v, max, n) => [...new Set((Array.isArray(v) ? v : String(v || '').split(/[\n;]/)).map((x) => s(tiraMarcas(x), max)).filter(Boolean))].slice(0, n);
 
 // palavras que a casa NÃO usa em abordagem (regras-negocio.md → Eventos): é casa residencial, não salão; sem banda/DJ
 const PROIBIDAS_RE = /sal[aã]o|balada|boate|\bbanda\b|\bdj\b|pared[aã]o|pista\s+de\s+dan[cç]a|(m[uú]sica|som)\s+(ao\s+vivo|profissional)/i;
