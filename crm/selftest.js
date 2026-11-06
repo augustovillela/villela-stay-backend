@@ -1250,6 +1250,27 @@ async function rodar() {
     assert.equal(ex.status, 'ok'); assert.match(ex.erro, /Asa Sul, Brasília/, 'o card mostra o que tentar');
   });
 
+  await t('busca: andamento por região visível e reinício do servidor libera a busca presa', async () => {
+    const tid = await tidDoTenant();
+    const b = buscasMod.criar(tid, { termos: ['escola'], locais: ['Asa Sul, Brasília - DF', 'Asa Norte, Brasília - DF'], max_resultados: 5, frequencia_dias: 30, nome: 'Andamento' });
+    buscasMod.aprovar(tid, b.id, { aceite: true, por: 'teste' });
+    const vistos = [];
+    const prov = { async buscar(q) { vistos.push(buscasMod.execucoes(tid, b.id)[0].fase); return [{ place_id: 'AND-' + q.local_texto.slice(0, 4), nome: 'Escola ' + q.local_texto.slice(0, 4), categoria: 'Escola', endereco: 'x', cidade: 'Brasília', estado: 'DF', telefone: '', site: '' }]; } };
+    await buscasMod.executar(tid, b.id, { provedor: prov, obter: obterFake });
+    assert.match(vistos[0], /buscando no Maps: Asa Sul/); assert.match(vistos[1], /Asa Norte/, 'a fase muda a cada região');
+    const ex = buscasMod.execucoes(tid, b.id)[0]; assert.equal(ex.regioes_total, 2); assert.equal(ex.regioes_feitas, 2);
+    // simula o servidor caindo no meio: execução aberta + bloqueio ligado → ao subir, tudo é liberado com o motivo
+    const d = require('./db').db;
+    d.prepare("INSERT INTO crm_busca_execucoes (id, tenant_id, busca_id, iniciada_em, gatilho, status) VALUES ('ex-presa', ?, ?, ?, 'manual', 'rodando')").run(tid, b.id, new Date().toISOString());
+    d.prepare('UPDATE crm_buscas SET rodando_desde = ? WHERE id = ?').run(new Date().toISOString(), b.id);
+    await assert.rejects(() => buscasMod.executar(tid, b.id, { provedor: prov, obter: obterFake }), /já está rodando/);
+    const lib = buscasMod.liberarInterrompidas();
+    assert.ok(lib.execucoes >= 1 && lib.buscas >= 1);
+    const presa = d.prepare("SELECT * FROM crm_busca_execucoes WHERE id = 'ex-presa'").get();
+    assert.equal(presa.status, 'erro'); assert.match(presa.erro, /servidor reiniciou/);
+    await buscasMod.executar(tid, b.id, { provedor: prov, obter: obterFake }); // agora pode rodar de novo
+  });
+
   await t('enriquecimento: extrai e-mail/wa.me/perfis, filtra lixo e bloqueia rede interna', async () => {
     const x = enriqMod.extrair('<a href="mailto:vendas@loja.com.br?subject=oi">x</a> teste@sentry.io foto@2x.png ana&#64;loja.com.br <a href="https://api.whatsapp.com/send?phone=5561999991111&text=oi">w</a> <a href="https://facebook.com/sharer/sharer.php?u=1">s</a> <a href="https://facebook.com/lojinha.oficial">f</a>', 'loja.com.br');
     assert.deepEqual(x.emails, ['vendas@loja.com.br', 'ana@loja.com.br']);

@@ -54,6 +54,13 @@ function montar(app, injected = {}) {
     try { await billing.processarWebhook(req.body || {}, req.query || {}); } catch (_) {}
   });
 
+  // Ao subir, NENHUMA varredura está rodando (reiniciar o servidor — atualização, queda — mata a que estava em andamento).
+  // Sem isto o card ficava "rodando" por até 20 min e a busca não podia ser repetida.
+  try {
+    const r = require('./buscas').liberarInterrompidas();
+    if (r.execucoes || r.buscas) console.log(`[crm] varreduras interrompidas por reinício: ${r.execucoes} execução(ões), ${r.buscas} busca(s) liberada(s)`);
+  } catch (_) { /* tabela ainda não existe em banco novo */ }
+
   iniciarRotinas(notificar);
   console.log(`[crm] Villela CRM montado. Landing: /crm · painel: /crm/app · MP: ${billing.ativo() ? 'ativo' : 'manual'}`);
   // requireAssinante sai daqui porque o Villela Growth OS estende ESTE painel

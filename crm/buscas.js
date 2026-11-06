@@ -183,6 +183,16 @@ const Buscas = {
     return { ...r, status: 'rascunho', aviso: 'Campanha em RASCUNHO. Nada foi enviado: revise a lista e a mensagem; cada envio é manual (e o Augusto aprova a lista antes).' };
   },
 
+  // Ao SUBIR o servidor nenhuma varredura está rodando (reinício/atualização mata a que estava em andamento):
+  // fecha as execuções abertas com o motivo e libera o bloqueio das buscas.
+  liberarInterrompidas() {
+    const agora = nowISO();
+    const execucoes = db.prepare("UPDATE crm_busca_execucoes SET concluida_em = ?, status = 'erro', erro = ? WHERE (concluida_em IS NULL OR concluida_em = '')")
+      .run(agora, 'Interrompida: o servidor reiniciou durante a varredura (atualização do sistema). Os lugares já gravados ficaram; rode de novo para completar.').changes;
+    const buscas = db.prepare("UPDATE crm_buscas SET rodando_desde = '' WHERE rodando_desde != ''").run().changes;
+    return { execucoes, buscas };
+  },
+
   // falha que acontece ANTES de a varredura começar (credencial, teto, saldo): vira uma execução com erro, visível no card
   registrarFalha(tid, id, mensagem) {
     const b = db.prepare('SELECT id FROM crm_buscas WHERE tenant_id = ? AND id = ?').get(T(tid), T(id)); if (!b) return;
@@ -229,11 +239,15 @@ const Buscas = {
       .run(exId, T(tid), b.id, nowISO(), gatilho, est.brl_centavos);
     const r = { lugares: 0, novos: 0, existentes: 0, enriquecidos: 0, canais_novos: 0 };
     let erro = ''; const falhas = [];
+    // andamento visível no card + batimento do bloqueio (o bloqueio só vence se ficar 20 min SEM progresso, não 20 min no total)
+    const andamento = (campos) => { const k = Object.keys(campos); db.prepare(`UPDATE crm_busca_execucoes SET ${k.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).run(...k.map((c) => campos[c]), exId); db.prepare('UPDATE crm_buscas SET rodando_desde = ? WHERE id = ?').run(nowISO(), b.id); };
+    let feitas = 0;
     try {
       // uma chamada à fonte por região (bairro); as categorias vão juntas na mesma chamada
       const termos = termosDe(b);
       const bh = hidratar(b);
       parar: for (const regiao of bh.locais) {
+        andamento({ fase: 'buscando no Maps: ' + String(regiao || '').split(',')[0], regioes_total: bh.locais.length, regioes_feitas: feitas });
         const sobra = restante - r.lugares;
         if (sobra <= 0) { erro = erro || `Teto mensal de ${tetoMes()} lugares atingido no meio da varredura.`; break; }
         const porTermo = Math.max(1, Math.min(b.max_resultados, Math.floor(sobra / termos.length)));
@@ -247,6 +261,7 @@ const Buscas = {
           continue;
         }
         if (achados.parcial) falhas.push(`${String(regiao || '').split(',')[0]}: tempo esgotado — vieram ${achados.length} lugares (parcial). Use menos lugares por região para completar.`);
+        feitas++;
         r.lugares += achados.length;
         db.prepare('UPDATE crm_busca_execucoes SET lugares = ? WHERE id = ?').run(r.lugares, exId); // o que a fonte cobrou fica gravado mesmo se algo falhar depois
         for (const l of achados) {
@@ -255,11 +270,14 @@ const Buscas = {
           if (p.novo) r.novos++; else r.existentes++;
         }
       }
+      andamento({ regioes_feitas: feitas });
       // enriquecimento: lugares com site ainda não lidos (ou lidos há muito tempo)
       const corte = new Date(Date.now() - ENRIQUECER_REPETE_DIAS * 86400000).toISOString();
       const pend = db.prepare("SELECT * FROM crm_busca_lugares WHERE tenant_id = ? AND busca_id = ? AND site != '' AND contato_id != '' AND (enriquecido_em = '' OR enriquecido_em < ?) ORDER BY enriquecido_em LIMIT ?")
         .all(T(tid), b.id, corte, ENRIQUECER_POR_VARREDURA);
+      let lidos = 0;
       for (const l of pend) {
+        andamento({ fase: `lendo sites das empresas (${++lidos} de ${pend.length})`, regioes_feitas: bh.locais.length, regioes_total: bh.locais.length });
         const e = await enriquecerLugar(tid, l, { obter });
         if (e.achou) r.enriquecidos++;
         r.canais_novos += e.canais_novos;

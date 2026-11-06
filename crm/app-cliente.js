@@ -1024,7 +1024,7 @@ async function renderBuscas(silencioso) {
         <p class="sub" style="text-align:left;margin:6px 0">“${esc(b.termos.join(' / '))}” · ${b.lat != null ? 'raio ' + b.raio_m + ' m' : esc(b.locais.map(x => x.split(',')[0]).join(', '))} · a cada ${b.frequencia_dias} dia(s) · até ${b.max_resultados} lugares · tag <code>${esc(b.tag)}</code></p>
         <p class="sub" style="text-align:left;margin:6px 0">Custo estimado: ~${reais(b.custo.brl_centavos)} por varredura (≈ ${reais(b.custo.por_mes_centavos)}/mês). ${b.resumo.lugares || 0} lugar(es) · ${b.resumo.contatos || 0} contato(s).
         ${b.ultima_execucao ? `Última: ${esc(b.ultima_execucao.status)}${b.ultima_execucao.status === 'ok' ? ` — ${b.ultima_execucao.novos} novos, ${b.ultima_execucao.existentes} já conhecidos, ${b.ultima_execucao.enriquecidos} sites com contato` : ''}${b.ultima_execucao.erro ? ' · ' + esc(b.ultima_execucao.erro) : ''}.` : 'Ainda não rodou.'}
-        ${b.rodando_desde ? '<b>⏳ Rodando agora…</b>' : ''}${b.fonte_configurada ? '' : ' <b>Sem credencial do servidor: só roda com o seu token do Apify ou créditos (veja “Aumentar leads”).</b>'}</p>
+        ${b.rodando_desde ? andamentoBusca(b) : ''}${b.fonte_configurada ? '' : ' <b>Sem credencial do servidor: só roda com o seu token do Apify ou créditos (veja “Aumentar leads”).</b>'}</p>
         ${b.status === 'aguardando_aprovacao' ? `<button class="btn peq bu-aprovar" data-id="${b.id}">✅ Aprovar custo e ativar</button>` : ''}
         ${b.status === 'ativa' ? `<button class="btn peq bu-rodar" data-id="${b.id}" data-custo="${b.custo.brl_centavos}">▶ Rodar agora</button> <button class="btn peq secund bu-st" data-id="${b.id}" data-st="pausada">⏸ Pausar</button>` : ''}
         ${b.status === 'pausada' ? `<button class="btn peq secund bu-st" data-id="${b.id}" data-st="ativa">▶ Retomar</button>` : ''}
@@ -1061,6 +1061,15 @@ function agendarPollBuscas(rodando) {
   if (!rodando) return;
   const meu = SEQ;
   BUSCA_POLL = setInterval(() => { if (meu !== SEQ || ABA !== 'buscas') return clearInterval(BUSCA_POLL); renderBuscas(true); }, 10000);
+}
+// andamento de uma varredura em curso: há quanto tempo, região k de N, lugares até agora e a fase
+function andamentoBusca(b) {
+  const e = b.ultima_execucao || {};
+  const ini = Date.parse(e.iniciada_em || b.rodando_desde);
+  const min = Math.max(0, Math.round((Date.now() - ini) / 60000));
+  const reg = e.regioes_total ? ` · região ${Math.min(e.regioes_feitas + 1, e.regioes_total)} de ${e.regioes_total}` : '';
+  const parado = b.rodando_desde && Date.now() - Date.parse(b.rodando_desde) > 12 * 60000;
+  return `<br><b>⏳ Rodando há ${min} min${reg} · ${e.lugares || 0} lugares até agora</b>${e.fase ? '<br><span class="sub" style="margin:0">' + esc(e.fase) + '</span>' : ''}${parado ? '<br><b>⚠️ Sem progresso há mais de 12 minutos — pode ter travado. Depois de 20 minutos você poderá rodar de novo.</b>' : ''}`;
 }
 // roda uma busca aprovada: em créditos mostra o teto do CRM e só segue com o aceite; com token próprio/conta interna não há cobrança aqui
 async function rodarBuscaPaga(id, custoFonte) {

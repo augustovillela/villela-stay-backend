@@ -47,6 +47,8 @@ for (const [tab, col, ddl] of [
   ['crm_buscas', 'canal_alvo', "TEXT DEFAULT ''"],
   ['crm_busca_execucoes', 'modo_cobranca', "TEXT DEFAULT ''"],
   ['crm_busca_execucoes', 'cobrado_milesimos', 'INTEGER DEFAULT 0'],
+  // andamento da varredura (a tela mostra "região 3 de 27" em vez de só "rodando")
+  ['crm_busca_execucoes', 'regioes_feitas', 'INTEGER DEFAULT 0'], ['crm_busca_execucoes', 'regioes_total', 'INTEGER DEFAULT 0'], ['crm_busca_execucoes', 'fase', "TEXT DEFAULT ''"],
 ]) {
   if (!db.prepare(`PRAGMA table_info(${tab})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${tab} ADD COLUMN ${col} ${ddl};`);
 }
