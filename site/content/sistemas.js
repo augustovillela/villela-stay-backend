@@ -344,14 +344,14 @@ const SISTEMAS = [
         T('Toda alteração vira versão. Compare, restaure e saiba sempre qual documento está valendo agora. Planilhas .xlsx e .csv abrem no navegador, com abas e linhas, sem baixar.',
           'Every change becomes a version. Compare, restore and always know which document is in force. .xlsx and .csv spreadsheets open in the browser, with tabs and rows, no download.',
           'Todo cambio se vuelve versión. Compara, restaura y sabe siempre qué documento está vigente. Las hojas .xlsx y .csv se abren en el navegador, con pestañas y filas, sin descargar.')],
-      ['🔐', T('Segurança corporativa', 'Corporate security', 'Seguridad corporativa'),
-        T('Permissão por papel, pasta e documento. Link de compartilhamento com senha e validade. Nada exposto em URL pública.',
-          'Permissions by role, folder and document. Share links with password and expiry. Nothing exposed on a public URL.',
-          'Permiso por rol, carpeta y documento. Enlace para compartir con contraseña y caducidad. Nada expuesto en URL pública.')],
-      ['📜', T('LGPD e auditoria', 'Data protection and audit trail', 'Protección de datos y auditoría'),
-        T('Trilha completa de acesso, retenção e descarte controlados, exportação e relatório de conformidade.',
-          'A full access trail, controlled retention and disposal, export and compliance reporting.',
-          'Rastro completo de acceso, retención y descarte controlados, exportación e informe de conformidad.')]
+      ['🔐', T('Segurança, LGPD e auditoria', 'Security, data protection and audit', 'Seguridad, protección de datos y auditoría'),
+        T('Permissão por papel, pasta e documento; link com senha e validade; nada em URL pública. Trilha completa de acesso, retenção e descarte controlados, exportação e relatório de conformidade.',
+          'Permissions by role, folder and document; share links with password and expiry; nothing on a public URL. A full access trail, controlled retention and disposal, export and compliance reporting.',
+          'Permiso por rol, carpeta y documento; enlace con contraseña y caducidad; nada en URL pública. Rastro completo de acceso, retención y descarte controlados, exportación e informe de conformidad.')],
+      ['📜', T('Entrada automática e triagem', 'Automatic intake and triage', 'Entrada automática y triaje'),
+        T('Conecte o WhatsApp Business ou o Gmail da empresa (pede uma configuração inicial): nota, contrato, recibo e comprovante que chegarem esperam numa triagem, com sugestão de categoria. Você descarta ou arruma na pasta certa; propaganda fica separada e a IA dá nome ao documento.',
+          'Connect the company’s WhatsApp Business or Gmail (needs an initial setup): invoices, contracts, receipts and payment slips that arrive wait in a triage queue with a suggested category. You discard them or file them in the right folder; advertising is kept apart and AI names the document.',
+          'Conecta el WhatsApp Business o el Gmail de la empresa (requiere una configuración inicial): factura, contrato, recibo y comprobante que lleguen esperan en un triaje con categoría sugerida. Lo descartas o lo archivas en la carpeta correcta; la publicidad queda aparte y la IA da nombre al documento.')]
     ],
     paraQuem: [
       T('Jurídico e contratos', 'Legal and contracts', 'Jurídico y contratos'),
