@@ -141,13 +141,13 @@ function naVez(host, fn) {
 // ---------------------------------------------------------------------
 // GET
 // ---------------------------------------------------------------------
-function getUmaVez(u, { tempoMs = TEMPO_MS, maxBytes = MAX_BYTES, aceitar = TIPOS_OK } = {}) {
+function getUmaVez(u, { tempoMs = TEMPO_MS, maxBytes = MAX_BYTES, aceitar = TIPOS_OK, ua: opcoesUa } = {}) {
   return new Promise((resolve, reject) => {
     const mod = u.protocol === 'https:' ? https : http;
     const req = mod.request({
       protocol: u.protocol, hostname: u.hostname.replace(/^\[|\]$/g, ''), port: u.port || undefined,
       path: u.pathname + u.search, method: 'GET', lookup: lookupSeguro,
-      headers: { 'User-Agent': UA, Accept: 'text/html,text/plain;q=0.9,*/*;q=0.1', 'Accept-Language': 'pt-BR,pt;q=0.9' },
+      headers: { 'User-Agent': (opcoesUa || UA), Accept: 'text/html,text/plain;q=0.9,*/*;q=0.1', 'Accept-Language': 'pt-BR,pt;q=0.9' },
       timeout: tempoMs,
     }, (res) => {
       const st = res.statusCode;
