@@ -54,10 +54,13 @@ function catalogo() {
     const base = { chave: f.chave, nome: f.nome, emoji: f.emoji || '' };
     if (LEITORES[f.chave]) return { ...base, ler: LEITORES[f.chave] };
     if (FORA[f.chave]) return { ...base, ...FORA[f.chave] };
+    const extra = EXTRAS.find((e) => e.chave === f.chave);   // produto que já entrou na central (ex.: Origena, p/ o post-it) mas tem leitor próprio aqui
+    if (extra) return { ...base, ...extra };
     return { ...base, estado: 'nao_integrada', sem_classificacao: true,
       motivo: 'Sistema novo na central de comunicados, ainda sem leitor de clientes (falta classificar em clientes/motor.js).' };
   });
-  return doGrupo.concat(EXTRAS);
+  const jaNaCentral = new Set(fontes.todas().map((f) => f.chave));
+  return doGrupo.concat(EXTRAS.filter((e) => !jaNaCentral.has(e.chave)));
 }
 
 let _dep = { emailsInternos: () => [], origena: undefined, log: (m) => console.error(m) };
