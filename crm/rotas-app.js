@@ -250,6 +250,23 @@ function registrarRotasPublicas(server) {
     res.json({ ok: true, contato_id: r.contato.id, existente: r.existente });
   }));
 
+  // WhatsApp Business OFICIAL do assinante (Fase C, só recebimento): verificação da Meta + mensagens assinadas
+  const WA = require('./whatsapp-business');
+  server.get('/crm/webhook/whatsapp/:token', (req, res) => {
+    const desafio = WA.verificar(req.params.token, req.query);
+    if (desafio == null) return res.sendStatus(403);
+    res.type('text/plain').send(desafio);
+  });
+  server.post('/crm/webhook/whatsapp/:token', (req, res) => {
+    if (!req.rawBody) { console.warn('[crm] webhook WhatsApp sem corpo bruto: o servidor precisa capturar req.rawBody (verify do express.json).'); return res.sendStatus(500); }
+    try {
+      const tid = WA.tenantPorToken(req.params.token);
+      const ent = tid ? repo.entitlements(tid) : null;
+      if (tid && (!ent || !ent.acesso_liberado)) return res.sendStatus(200); // conta inativa: aceita e ignora (a Meta não reentrega)
+      res.sendStatus(WA.receber(req.params.token, req.rawBody, req.get('x-hub-signature-256'), req.body).status);
+    } catch (e) { console.warn('[crm] webhook WhatsApp falhou:', String(e.message).slice(0, 120)); res.sendStatus(500); }
+  });
+
   // proposta pública (visualização + aceite)
   server.get('/crm/api/p/:token', h((req, res) => {
     const p = app.Propostas.publica(req.params.token);

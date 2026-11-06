@@ -42,7 +42,7 @@ const mpFetch = async (p, opts) => {
 mpFetch.__mock = true;
 
 const app = express();
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '5mb', verify: (req, res, buf) => { if (req.url.startsWith('/crm/webhook/whatsapp/')) req.rawBody = buf; } })); // igual ao server.js
 app.use(cookieParser());
 const saas = require('./index');
 // mesma regra do server.js: x-publish-key OU sessão; podeCRM = chave ou admin/vendas
@@ -610,6 +610,8 @@ async function rodar() {
     assert.equal(em.find(k => k.identificador === 'contato@advlago.com.br').rotulo, '');
     // campanha: rascunho, sem envio, só quem tem canal; texto sem salão/banda/DJ e sem preço
     saas.repo.salvarSettings(tid, { limites_over: { campanhas_mes: 999 } });
+    // as regras de texto (salão/banda/DJ, preço) e a mensagem padrão são do negócio do Augusto: valem para a conta INTERNA
+    require('./db').db.prepare("UPDATE tenants SET origem = 'interno' WHERE id = ?").run(tid);
     try {
       assert.equal((await req('POST', '/crm/api/app/buscas/preparar-campanha', { corpo: { tag: 'confraternizacao-2026', mensagem: 'Nosso salão de festas!' }, cookies: true })).st, 400, 'salão proibido');
       assert.equal((await req('POST', '/crm/api/app/buscas/preparar-campanha', { corpo: { tag: 'confraternizacao-2026', mensagem: 'Temos DJ e banda' }, cookies: true })).st, 400);
@@ -621,7 +623,12 @@ async function rodar() {
       assert.ok(!/sal[aã]o|banda|\bdj\b|R\$/i.test(camp.mensagem), 'texto padrão respeita as regras da casa');
       const alvos = (await req('GET', `/crm/api/app/campanhas/${c.json.id}/alvos`, { cookies: true })).json.alvos;
       assert.ok(alvos.length && alvos.every(a => a.status === 'pendente' && a.destino === 'rh@advlago.com.br'), 'o RH é o destino');
-    } finally { saas.repo.salvarSettings(tid, { limites_over: {} }); }
+      // assinante comum: as palavras e o preço são DELE; só a mensagem é obrigatória (a padrão é do Augusto)
+      require('./db').db.prepare("UPDATE tenants SET origem = 'landing' WHERE id = ?").run(tid);
+      assert.equal((await req('POST', '/crm/api/app/buscas/preparar-campanha', { corpo: { tag: 'confraternizacao-2026' }, cookies: true })).st, 400, 'sem mensagem própria não usa o texto do Augusto');
+      const livre = await req('POST', '/crm/api/app/buscas/preparar-campanha', { corpo: { tag: 'confraternizacao-2026', mensagem: 'Olá, {{nome}}! Temos banda e DJ por R$ 900.' }, cookies: true });
+      assert.equal(livre.st, 200, JSON.stringify(livre.json));
+    } finally { require('./db').db.prepare("UPDATE tenants SET origem = 'landing' WHERE id = ?").run(tid); saas.repo.salvarSettings(tid, { limites_over: {} }); }
   });
 
   // =====================================================================
@@ -970,6 +977,196 @@ async function rodar() {
     assert.ok(!JSON.stringify(v).includes(CHAVE_ANT) && !JSON.stringify(v).includes('PLATAFORMA'));
   });
   delete process.env.ANTHROPIC_API_KEY;
+
+  // =====================================================================
+  // FASES B e C: IMAP (somente leitura), CNPJ aberto, WhatsApp Business oficial (só recebimento).
+  // Servidor IMAP, BrasilAPI e Meta SIMULADOS: nenhuma conexão externa.
+  // =====================================================================
+  const CaixaImap = require('./captura-imap'); const CnpjMod = require('./cnpj'); const WAMod = require('./whatsapp-business');
+  const { EventEmitter } = require('events'); const cripto = require('crypto');
+  const SENHA_APP = 'abcdwxyzefghijkl'; const USUARIO_IMAP = 'dono@gmail.com';
+  const comandosImap = [];
+  const conectarFalso = () => {
+    const sock = new EventEmitter(); sock.setTimeout = () => {}; sock.end = () => {};
+    const emite = (txt) => setImmediate(() => sock.emit('data', Buffer.from(txt, 'latin1')));
+    const MSGS = {
+      1: [['From: Ana Prado <ana@cliente.com>', 'To: ' + USUARIO_IMAP, 'Subject: Orcamento do plano', 'Date: Tue, 13 Oct 2026 10:00:00 -0300'].join('\r\n') + '\r\n\r\n', '1', 'Ola, quanto custa o plano anual? SEGREDO-DO-CORPO-777\r\n'],
+      2: [['From: Dono <' + USUARIO_IMAP + '>', 'To: ana@cliente.com', 'Subject: Re: Orcamento do plano', 'Date: Tue, 13 Oct 2026 10:30:00 -0300'].join('\r\n') + '\r\n\r\n', '2', 'Segue a proposta.\r\n'],
+      3: [['From: Ana Prado <ana@cliente.com>', 'To: ' + USUARIO_IMAP, 'Subject: Re: Orcamento do plano', 'Date: Tue, 13 Oct 2026 11:00:00 -0300'].join('\r\n') + '\r\n\r\n', '3', 'Pode mandar a proposta, tenho interesse e quero contratar.\r\n'],
+      4: [['From: Loja <promo@loja.com>', 'To: ' + USUARIO_IMAP, 'Subject: Cupom oferta', 'List-Unsubscribe: <mailto:sair@loja.com>', 'Date: Tue, 13 Oct 2026 12:00:00 -0300'].join('\r\n') + '\r\n\r\n', '4', 'compre agora com desconto de 50%\r\n'],
+    };
+    emite('* OK ready\r\n');
+    sock.write = (linha) => {
+      const m = String(linha).trim().match(/^(a\d+) (.*)$/); const tag = m[1], c = m[2]; comandosImap.push(c);
+      if (/^LOGIN/.test(c)) return emite(c.includes(SENHA_APP) ? `${tag} OK logado\r\n` : `${tag} NO [AUTHENTICATIONFAILED] invalido\r\n`);
+      if (/^LIST/.test(c)) return emite(`* LIST (\\HasNoChildren \\All) "/" "[Gmail]/All Mail"\r\n${tag} OK\r\n`);
+      if (/^EXAMINE/.test(c)) return emite(`* 4 EXISTS\r\n${tag} OK [READ-ONLY] ok\r\n`);
+      if (/^UID SEARCH/.test(c)) return emite(`* SEARCH 1 2 3 4\r\n${tag} OK\r\n`);
+      if (/^UID FETCH/.test(c)) { const n = Number(c.match(/^UID FETCH (\d+)/)[1]); const [h, , t] = MSGS[n]; return emite(`* ${n} FETCH (UID ${n} BODY[HEADER.FIELDS (FROM)] {${h.length}}\r\n${h} BODY[TEXT]<0> {${t.length}}\r\n${t})\r\n${tag} OK\r\n`); }
+      if (/^LOGOUT/.test(c)) return emite(`* BYE\r\n${tag} OK\r\n`);
+      emite(`${tag} BAD comando inesperado\r\n`);
+    };
+    return sock;
+  };
+
+  await t('IMAP: senha de app vai ao cofre sem eco; validações; chave genérica não aceita a credencial', async () => {
+    assert.equal((await req('PUT', '/crm/api/app/captura/imap', { corpo: { provedor: 'servidor-do-vizinho', usuario: USUARIO_IMAP, senha: SENHA_APP }, cookies: true })).st, 400, 'provedor fora da lista fechada');
+    assert.equal((await req('PUT', '/crm/api/app/captura/imap', { corpo: { provedor: 'gmail', usuario: 'nao-e-email', senha: SENHA_APP }, cookies: true })).st, 400);
+    assert.equal((await req('PUT', '/crm/api/app/captura/imap', { corpo: { provedor: 'gmail', usuario: USUARIO_IMAP, senha: 'curta' }, cookies: true })).st, 400);
+    const r = await req('PUT', '/crm/api/app/captura/imap', { corpo: { provedor: 'gmail', usuario: USUARIO_IMAP, senha: 'abcd wxyz efgh ijkl' }, cookies: true });
+    assert.equal(r.st, 200, r.texto); assert.equal(r.json.cadastrada, true); assert.ok(!r.texto.includes(SENHA_APP));
+    const v = await req('GET', '/crm/api/app/captura', { cookies: true });
+    assert.ok(!v.texto.includes(SENHA_APP) && !v.texto.includes(Buffer.from(SENHA_APP).toString('base64').slice(0, 12)), 'a tela não recebe a senha');
+    assert.equal(v.json.cofre.chaves.find((c) => c.nome === 'imap').final, '••••••••', 'nem os 4 últimos caracteres');
+    assert.equal(v.json.cofre.tipos.some((x) => ['imap', 'wa_secret'].includes(x.id)), false, 'esta credencial tem tela própria');
+    assert.equal((await req('PUT', '/crm/api/app/captura/chaves/imap', { corpo: { valor: Buffer.from('x'.repeat(40)).toString('base64') }, cookies: true })).st, 400);
+    const bruto = dbm.prepare("SELECT * FROM crm_segredos WHERE nome = 'imap'").get();
+    assert.ok(!JSON.stringify(bruto).includes(SENHA_APP));
+  });
+
+  await t('IMAP: testar login (senha errada recusada sem eco) e leitura SOMENTE LEITURA classifica e descarta o texto', async () => {
+    const tid = await tidDoTenant();
+    assert.deepEqual(await CaixaImap.testar(tid, { conectar: conectarFalso }), { ok: true });
+    comandosImap.length = 0;
+    CaixaImap.guardar(tid, { provedor: 'gmail', usuario: USUARIO_IMAP, senha: 'senhaerrada1234' });
+    const ruim = await CaixaImap.testar(tid, { conectar: conectarFalso });
+    assert.equal(ruim.ok, false); assert.match(ruim.motivo, /SENHA DE APLICATIVO/); assert.ok(!ruim.motivo.includes('senhaerrada1234'));
+    CaixaImap.guardar(tid, { provedor: 'gmail', usuario: USUARIO_IMAP, senha: SENHA_APP });
+    comandosImap.length = 0;
+    CaixaImap.iniciar(tid, { dias: 30 }, { conectar: conectarFalso });
+    await assert.rejects(async () => CaixaImap.iniciar(tid, {}, { conectar: conectarFalso }), /em andamento/);
+    await CaixaImap.aguardar(tid);
+    const st = CaixaImap.estado(tid).trabalho;
+    assert.equal(st.estado, 'pronto', JSON.stringify(st)); assert.equal(st.resultado.lidas, 4); assert.equal(st.resultado.conversas_com_assunto, 1);
+    assert.equal(st.resultado.ignoradas_automaticos, 1, 'newsletter (List-Unsubscribe) ignorada');
+    // SOMENTE LEITURA: examina, espia, nunca altera
+    const todos = comandosImap.join('\n');
+    assert.match(todos, /EXAMINE/); assert.ok(!/SELECT|STORE|EXPUNGE|DELETE|COPY|APPEND|MOVE/i.test(todos.replace(/UID SEARCH/g, '')), 'nenhum comando que altere a caixa');
+    assert.ok(comandosImap.filter((c) => /^UID FETCH/.test(c)).every((c) => /BODY\.PEEK/.test(c) && !/BODY\[/.test(c.replace(/BODY\.PEEK\[/g, ''))), 'só PEEK (não marca como lido)');
+    const c = dbm.prepare("SELECT * FROM crm_conversas WHERE canal = 'email' AND identificador = 'ana@cliente.com'").get();
+    assert.ok(c && c.status === 'sugerido' && c.fonte === 'imap:email');
+    assert.ok(!JSON.stringify(c).includes('SEGREDO-DO-CORPO-777'), 'texto do e-mail não é guardado');
+    assert.ok(!JSON.stringify(CaixaImap.estado(tid)).includes('SEGREDO-DO-CORPO-777') && !JSON.stringify(CaixaImap.estado(tid)).includes(SENHA_APP), 'nem no estado do trabalho');
+  });
+
+  // ---- CNPJ aberto ----
+  const CNPJ_A = '11222333000181';
+  const gerarCnpj = (n) => { const dv = (b) => { let p = b.length - 7, soma = 0; for (let i = 0; i < b.length; i++) { soma += Number(b[i]) * p--; if (p < 2) p = 9; } const r = soma % 11; return r < 2 ? 0 : 11 - r; }; const b = String(10000000 + n).padStart(8, '0') + '0001'; const d1 = dv(b); return b + d1 + dv(b + d1); };
+  const BASE_CNPJ = (c, o) => ({ cnpj: c, razao_social: 'EMPRESA ' + c + ' LTDA', nome_fantasia: 'Fantasia ' + c, descricao_situacao_cadastral: 'ATIVA', cnae_fiscal: 8630503, cnae_fiscal_descricao: 'Atividade médica ambulatorial', municipio: 'BRASILIA', uf: 'DF', ddd_telefone_1: '61999990002', email: 'contato' + c + '@empresa.com.br', opcao_pelo_mei: false, natureza_juridica: 'Sociedade Empresária Limitada', codigo_natureza_juridica: 2062, ...o });
+  const gerados = [CNPJ_A, gerarCnpj(2), gerarCnpj(3), gerarCnpj(4)];
+  const chamadasBrasil = [];
+  CnpjMod.trocarTransporte(async (url) => {
+    const c = url.split('/').pop(); chamadasBrasil.push(c);
+    const resp = (st, corpo) => ({ ok: st === 200, status: st, json: async () => corpo });
+    if (c === gerados[0]) return resp(200, BASE_CNPJ(c));
+    if (c === gerados[1]) return resp(200, BASE_CNPJ(c, { opcao_pelo_mei: true, natureza_juridica: 'Empresário (Individual)', codigo_natureza_juridica: 2135, email: 'dono.pessoal@gmail.com', ddd_telefone_1: '61988887777' }));
+    if (c === gerados[2]) return resp(200, BASE_CNPJ(c, { descricao_situacao_cadastral: 'BAIXADA' }));
+    if (c === gerados[3]) return resp(404, {});
+    return resp(200, BASE_CNPJ(c));
+  }, async () => {});
+  await t('CNPJ aberto: lista com dígito verificador, limite por lista, MEI sem dado pessoal, baixada/inexistente fora, não duplica', async () => {
+    assert.equal(CnpjMod.cnpjValido(CNPJ_A), true); assert.equal(CnpjMod.cnpjValido('11222333000182'), false, 'dígito errado'); assert.equal(CnpjMod.cnpjValido('00000000000000'), false);
+    const l = CnpjMod.lerLista('11.222.333/0001-81\n11222333000181\n11.222.333/0001-82\nlixo');
+    assert.deepEqual(l.validos, [CNPJ_A]); assert.equal(l.invalidos.length, 1);
+    assert.equal((await req('POST', '/crm/api/app/captura/cnpj/importar', { corpo: { texto: 'nada aqui' }, cookies: true })).st, 400);
+    const muitos = Array.from({ length: 151 }, (_, i) => gerarCnpj(100 + i)).join('\n');
+    assert.equal((await req('POST', '/crm/api/app/captura/cnpj/importar', { corpo: { texto: muitos }, cookies: true })).st, 400, 'passa do máximo');
+    assert.equal(chamadasBrasil.length, 0, 'recusar a lista não consulta a fonte');
+    const r = await req('POST', '/crm/api/app/captura/cnpj/importar', { corpo: { texto: gerados.join('\n') }, cookies: true });
+    assert.equal(r.st, 200, r.texto); assert.equal(r.json.total, 4);
+    const tid = await tidDoTenant(); await CnpjMod.aguardar(tid);
+    const st = CnpjMod.estado(tid).trabalho;
+    assert.equal(st.estado, 'pronto', JSON.stringify(st)); assert.deepEqual({ n: st.resumo.novos, i: st.resumo.inativas, x: st.resumo.nao_encontradas, p: st.resumo.sem_dado_pessoal }, { n: 2, i: 1, x: 1, p: 1 });
+    const ca = dbm.prepare("SELECT * FROM crm_contatos WHERE tenant_id = ? AND canal_entrada = 'cnpj-aberto' AND nome = ?").get(tid, 'Fantasia ' + CNPJ_A);
+    assert.ok(ca && ca.origem === 'importacao' && /legitimo-interesse-b2b/.test(ca.consentimento) && !/"optIn":true/.test(ca.consentimento), 'sem consentimento, base legal registrada');
+    const canaisA = require('./canais').doContato(tid, ca.id); assert.ok(canaisA.some((k) => k.canal === 'email' && k.fonte === 'cnpj-aberto'));
+    const cb = dbm.prepare("SELECT * FROM crm_contatos WHERE tenant_id = ? AND canal_entrada = 'cnpj-aberto' AND nome = ?").get(tid, 'Fantasia ' + gerados[1]);
+    assert.ok(cb, 'a empresa do MEI entra'); assert.equal(cb.email || '', ''); assert.equal(cb.telefone || '', ''); assert.equal(require('./canais').doContato(tid, cb.id).length, 0, 'sem e-mail/telefone do dono (dado pessoal)');
+    assert.ok(!dbm.prepare("SELECT 1 FROM crm_contatos WHERE tenant_id = ? AND nome = ?").get(tid, 'Fantasia ' + gerados[2]), 'baixada não entra');
+    // de novo: nada duplica
+    const antes = dbm.prepare("SELECT COUNT(*) n FROM crm_contatos WHERE tenant_id = ?").get(tid).n;
+    await req('POST', '/crm/api/app/captura/cnpj/importar', { corpo: { texto: gerados.join('\n') }, cookies: true }); await CnpjMod.aguardar(tid);
+    assert.equal(dbm.prepare("SELECT COUNT(*) n FROM crm_contatos WHERE tenant_id = ?").get(tid).n, antes, 'repetir a lista não duplica contato');
+    assert.equal(CnpjMod.estado(tid).trabalho.resumo.existentes, 2);
+  });
+
+  // ---- WhatsApp Business oficial ----
+  const SEGREDO_META = 'a1b2c3d4e5f60718293a4b5c6d7e8f90'; const PHONE_ID = '109876543210987';
+  let wa = null;
+  const msgWA = (id, de, texto, nome = 'Maria Cliente', phone = PHONE_ID) => ({ object: 'whatsapp_business_account', entry: [{ id: 'WABA1', changes: [{ field: 'messages', value: { messaging_product: 'whatsapp', metadata: { display_phone_number: '5561999990000', phone_number_id: phone }, contacts: [{ wa_id: de, profile: { name: nome } }], messages: [{ from: de, id, timestamp: String(Math.floor(Date.now() / 1000)), type: 'text', text: { body: texto } }] } }] }] });
+  const postWA = async (corpo, { segredo = SEGREDO_META, token = wa && wa.token, assinar = true } = {}) => {
+    const texto = JSON.stringify(corpo);
+    const headers = assinar ? { 'x-hub-signature-256': 'sha256=' + cripto.createHmac('sha256', segredo).update(texto).digest('hex') } : {};
+    return req('POST', `/crm/webhook/whatsapp/${token}`, { corpo, headers });
+  };
+  await t('WhatsApp Business: segredo no cofre, endereço do webhook, handshake da Meta só com o token certo', async () => {
+    assert.equal((await req('PUT', '/crm/api/app/captura/whatsapp', { corpo: { phone_number_id: '', app_secret: SEGREDO_META }, cookies: true })).st, 400);
+    assert.equal((await req('PUT', '/crm/api/app/captura/whatsapp', { corpo: { phone_number_id: PHONE_ID, app_secret: 'curto' }, cookies: true })).st, 400);
+    const r = await req('PUT', '/crm/api/app/captura/whatsapp', { corpo: { phone_number_id: PHONE_ID, app_secret: SEGREDO_META }, cookies: true });
+    assert.equal(r.st, 200, r.texto); assert.ok(!r.texto.includes(SEGREDO_META), 'o segredo não volta');
+    assert.match(r.json.webhook_caminho, /^\/crm\/webhook\/whatsapp\/[0-9a-f]{32}$/);
+    wa = { token: r.json.webhook_caminho.split('/').pop(), verify: r.json.verify_token };
+    const v = await req('GET', '/crm/api/app/captura', { cookies: true });
+    assert.ok(!v.texto.includes(SEGREDO_META)); assert.equal(v.json.whatsapp.configurada, true);
+    // trocar o segredo mantém endereço e token (o assinante não reconfigura a Meta à toa)
+    const r2 = await req('PUT', '/crm/api/app/captura/whatsapp', { corpo: { phone_number_id: PHONE_ID, app_secret: SEGREDO_META }, cookies: true });
+    assert.equal(r2.json.webhook_caminho, r.json.webhook_caminho);
+    const ok = await req('GET', `/crm/webhook/whatsapp/${wa.token}?hub.mode=subscribe&hub.verify_token=${wa.verify}&hub.challenge=DESAFIO123`);
+    assert.equal(ok.st, 200); assert.equal(ok.texto, 'DESAFIO123');
+    assert.equal((await req('GET', `/crm/webhook/whatsapp/${wa.token}?hub.mode=subscribe&hub.verify_token=errado&hub.challenge=X`)).st, 403);
+    assert.equal((await req('GET', `/crm/webhook/whatsapp/${'0'.repeat(32)}?hub.mode=subscribe&hub.verify_token=${wa.verify}&hub.challenge=X`)).st, 403, 'token de outro endereço');
+  });
+
+  await t('WhatsApp Business: só mensagem ASSINADA vale; texto não é guardado; vira sinal de lead só com intenção; reentrega não duplica', async () => {
+    const tid = await tidDoTenant(); const NUM = '5561944443210';
+    assert.equal((await postWA(msgWA('wamid.A1', NUM, 'Quanto custa o plano? Quero orçamento'), { assinar: false })).st, 401, 'sem assinatura');
+    assert.equal((await postWA(msgWA('wamid.A1', NUM, 'Quanto custa o plano? Quero orçamento'), { segredo: 'segredo-errado-0123456789abcdef' })).st, 401, 'assinatura de outro segredo');
+    assert.equal((await postWA(msgWA('wamid.A1', NUM, 'oi'), { token: '1'.repeat(32) })).st, 404, 'endereço desconhecido');
+    assert.equal(dbm.prepare('SELECT COUNT(*) n FROM crm_wa_estado WHERE tenant_id = ?').get(tid).n, 0, 'nada gravado sem assinatura válida');
+    // saudação sozinha: contador, mas ainda não é lead
+    assert.equal((await postWA(msgWA('wamid.A0', NUM, 'Oi, bom dia!'))).st, 200);
+    assert.equal(dbm.prepare("SELECT COUNT(*) n FROM crm_conversas WHERE canal = 'whatsapp' AND identificador = ?").get(NUM).n, 0, 'saudação não é lead');
+    // intenção comercial: vira conversa sugerida
+    assert.equal((await postWA(msgWA('wamid.A1', NUM, 'Quanto custa o plano? Preciso de um orçamento e proposta'))).st, 200);
+    const c = dbm.prepare("SELECT * FROM crm_conversas WHERE canal = 'whatsapp' AND identificador = ?").get(NUM);
+    assert.ok(c && c.status === 'sugerido' && c.assunto === 'geral' && c.fonte === 'whatsapp-business' && c.nome === 'Maria Cliente', JSON.stringify(c));
+    const est = dbm.prepare('SELECT * FROM crm_wa_estado WHERE tenant_id = ? AND ident = ?').get(tid, NUM);
+    assert.equal(est.deles, 2);
+    for (const frase of ['Quanto custa o plano', 'Preciso de um', 'bom dia']) assert.ok(!(JSON.stringify(est) + JSON.stringify(c)).toLowerCase().includes(frase.toLowerCase()), 'texto não é guardado: ' + frase);
+    // a Meta reentrega o mesmo wamid: não conta de novo
+    await postWA(msgWA('wamid.A1', NUM, 'Quanto custa o plano? Preciso de um orçamento e proposta'));
+    assert.equal(dbm.prepare('SELECT deles FROM crm_wa_estado WHERE tenant_id = ? AND ident = ?').get(tid, NUM).deles, 2);
+    // número que não é deste assinante é ignorado
+    await postWA(msgWA('wamid.B1', '5561911112222', 'Quanto custa o plano? orçamento proposta', 'X', '999000111222'));
+    assert.equal(dbm.prepare('SELECT COUNT(*) n FROM crm_wa_estado WHERE tenant_id = ? AND ident = ?').get(tid, '5561911112222').n, 0);
+  });
+
+  await t('WhatsApp Business: "SAIR" marca o opt-out do canal; remover a credencial fecha a porta', async () => {
+    const tid = await tidDoTenant();
+    const ct = saas.appRepo.Contatos.criar(tid, { nome: 'Zé Opt', telefone: '61977776666', origem: 'manual' }, 'teste').contato;
+    assert.ok(require('./canais').doContato(tid, ct.id).some((k) => k.canal === 'whatsapp' && !k.opt_out));
+    assert.equal((await postWA(msgWA('wamid.S1', '5561977776666', 'SAIR', 'Zé Opt'))).st, 200);
+    assert.ok(require('./canais').doContato(tid, ct.id).find((k) => k.canal === 'whatsapp').opt_out, 'opt-out gravado');
+    assert.equal((await req('DELETE', '/crm/api/app/captura/whatsapp', { cookies: true })).st, 200);
+    assert.equal((await postWA(msgWA('wamid.S2', '5561977776666', 'oi'))).st, 404, 'endereço desativado');
+    assert.equal(CofreMod.tem(tid, 'wa_secret'), false);
+  });
+
+  await t('IA: pontuar lead e rascunhar mensagem — só dado público vai ao provedor; nota limitada; id inventado descartado', async () => {
+    const tid = await tidDoTenant(); let corpoVisto = '';
+    IAMod.trocarTransporte(async (url, init) => {
+      corpoVisto = init.body;
+      const tx = /Leads:/.test(init.body) ? '{"itens":[{"id":"L1","nota":250,"motivo":"ótimo encaixe"},{"id":"INVENTADO","nota":10,"motivo":"x"}]}' : '{"assunto":"Olá","texto":"Olá, {{nome}}! Podemos conversar? Se preferir não receber mais contato, é só avisar."}';
+      return { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: tx }], usage: { input_tokens: 300, output_tokens: 60 } }) };
+    });
+    const p = await IAMod.executar(tid, { tarefa: 'pontuar_lead', modo: 'propria', entrada: { perfil_ideal: 'Clínicas odontológicas de médio porte no Lago Sul', leads: [{ id: 'L1', nome: 'Clínica Sorriso', categoria: 'Dentista', cidade: 'Brasília', resumo: '', email: 'segredo@clinica.com', telefone: '61999990001' }] } });
+    assert.deepEqual(p.resultado.itens, [{ id: 'L1', nota: 100, motivo: 'ótimo encaixe' }]);
+    assert.ok(!corpoVisto.includes('segredo@clinica.com') && !corpoVisto.includes('61999990001'), 'nenhum e-mail/telefone vai ao provedor');
+    assert.ok(corpoVisto.includes('Clínica Sorriso'));
+    const m = await IAMod.executar(tid, { tarefa: 'rascunhar_mensagem', modo: 'propria', entrada: { oferta: 'Reformas residenciais com projeto e execução', canal: 'email' } });
+    assert.match(m.resultado.texto, /\{\{nome\}\}/); assert.match(m.resultado.texto, /não receber/);
+    assert.equal(m.uso.cobrado_milesimos, 0);
+  });
 
   await t('enriquecimento: extrai e-mail/wa.me/perfis, filtra lixo e bloqueia rede interna', async () => {
     const x = enriqMod.extrair('<a href="mailto:vendas@loja.com.br?subject=oi">x</a> teste@sentry.io foto@2x.png ana&#64;loja.com.br <a href="https://api.whatsapp.com/send?phone=5561999991111&text=oi">w</a> <a href="https://facebook.com/sharer/sharer.php?u=1">s</a> <a href="https://facebook.com/lojinha.oficial">f</a>', 'loja.com.br');

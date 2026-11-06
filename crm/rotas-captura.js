@@ -10,6 +10,9 @@ const Cofre = require('./cofre');
 const Carteira = require('./carteira');
 const IA = require('./ia-provedor');
 const buscas = require('./buscas');
+const CaixaImap = require('./captura-imap');
+const Cnpj = require('./cnpj');
+const WA = require('./whatsapp-business');
 
 // resposta de erro com o status e os campos úteis (nunca o texto cru de provedor: já vem limpo de quem lançou)
 function responderErro(res, e) {
@@ -45,6 +48,7 @@ function registrarRotasCaptura(server, { G, GE, B, tid, quem }) {
 
   // ---- COFRE ----
   server.put('/crm/api/app/captura/chaves/:nome', ...GE('importacao', 'gerir_conta'), hs((req, res) => {
+    if (['imap', 'wa_secret'].includes(req.params.nome)) throw new Error('Esta credencial tem tela própria (e-mail por IMAP / WhatsApp Business).');
     const meta = Cofre.guardar(tid(req), req.params.nome, (req.body || {}).valor, quem(req));
     require('./repo').Auditoria.registrar({ quem: quem(req), acao: 'cofre.guardar', entidade: 'crm_segredos', entidade_id: req.params.nome, detalhe: req.assinante.tenant_id });
     res.json({ ok: true, chave: meta }); // nunca o valor
@@ -64,6 +68,30 @@ function registrarRotasCaptura(server, { G, GE, B, tid, quem }) {
     res.json({ orcamento: { ...publico(o), teto_usd: undefined, texto: interno ? 'conta interna (sem cobrança)' : Carteira.brl(o.teto_milesimos) } });
   }));
   server.post('/crm/api/app/captura/ia/executar', ...GE('importacao', 'editar'), hs(async (req, res) => res.json({ ok: true, ...(await IA.executar(tid(req), { ...(req.body || {}), quem: quem(req) })) })));
+
+  // ---- FASE B: e-mail por IMAP (somente leitura, senha de aplicativo no cofre) ----
+  server.get('/crm/api/app/captura/imap', ...G('importacao'), hs((req, res) => res.json(CaixaImap.estado(tid(req)))));
+  server.put('/crm/api/app/captura/imap', ...GE('importacao', 'gerir_conta'), hs((req, res) => {
+    const r = CaixaImap.guardar(tid(req), req.body || {}, quem(req));
+    require('./repo').Auditoria.registrar({ quem: quem(req), acao: 'cofre.guardar', entidade: 'crm_segredos', entidade_id: 'imap', detalhe: req.assinante.tenant_id });
+    res.json({ ok: true, ...r });
+  }));
+  server.delete('/crm/api/app/captura/imap', ...GE('importacao', 'gerir_conta'), hs((req, res) => res.json({ ok: true, ...Cofre.remover(tid(req), 'imap') })));
+  server.post('/crm/api/app/captura/imap/testar', ...GE('importacao', 'gerir_conta'), hs(async (req, res) => res.json(await CaixaImap.testar(tid(req)))));
+  server.post('/crm/api/app/captura/imap/importar', ...GE('importacao', 'editar'), hs((req, res) => res.json(CaixaImap.iniciar(tid(req), req.body || {}))));
+
+  // ---- FASE B: CNPJ aberto (a pessoa traz os CNPJs; a Receita/BrasilAPI completa o cadastro) ----
+  server.get('/crm/api/app/captura/cnpj', ...G('importacao'), hs((req, res) => res.json(Cnpj.estado(tid(req)))));
+  server.post('/crm/api/app/captura/cnpj/importar', ...GE('importacao', 'editar'), hs((req, res) => res.json(Cnpj.iniciar(tid(req), (req.body || {}).texto))));
+
+  // ---- FASE C: WhatsApp Business oficial do assinante (só recebimento) ----
+  server.get('/crm/api/app/captura/whatsapp', ...G('importacao'), hs((req, res) => res.json(WA.estado(tid(req)))));
+  server.put('/crm/api/app/captura/whatsapp', ...GE('importacao', 'gerir_conta'), hs((req, res) => {
+    const r = WA.configurar(tid(req), req.body || {}, quem(req));
+    require('./repo').Auditoria.registrar({ quem: quem(req), acao: 'cofre.guardar', entidade: 'crm_segredos', entidade_id: 'wa_secret', detalhe: req.assinante.tenant_id });
+    res.json({ ok: true, ...r });
+  }));
+  server.delete('/crm/api/app/captura/whatsapp', ...GE('importacao', 'gerir_conta'), hs((req, res) => res.json({ ok: true, ...WA.remover(tid(req)) })));
 
   // ---- CARTEIRA ----
   server.get('/crm/api/app/carteira', ...B, hs((req, res) => res.json(Carteira.estado(tid(req)))));

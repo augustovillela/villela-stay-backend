@@ -1007,11 +1007,13 @@ async function verLugaresBusca(id) {
   try {
     const [{ lugares }, { execucoes }] = await Promise.all([api('GET', `/app/buscas/${id}/lugares`), api('GET', `/app/buscas/${id}/execucoes`)]);
     box.innerHTML = `<h3 style="margin-top:14px">O que entrou (${lugares.length})</h3>
+      <button class="btn peq secund" id="cp-pontuar-bt">✨ Pontuar com IA</button> <span id="cp-pontos" class="sub"></span>
       <p class="sub" style="text-align:left">Varreduras: ${execucoes.slice(0, 5).map(x => `${esc((x.iniciada_em || '').slice(0, 16).replace('T', ' '))} · ${esc(x.status)} · ${x.lugares} lugares · ${x.novos} novos${x.erro ? ' · ' + esc(x.erro) : ''}`).join(' | ') || 'nenhuma'}</p>
       ${lugares.map(l => `<div class="lin"><b>${esc(l.nome)}</b> <span class="sub">${esc(l.bairro ? l.bairro.split(',')[0] + ' · ' : '')}${esc(l.categoria)} · ${esc(l.endereco)}</span><br>
         ${l.site ? `<a href="${esc(l.site)}" target="_blank" rel="noopener noreferrer">site</a> ` : '<span class="sub">sem site</span> '}
         ${l.canais.map(k => `<span class="chip" title="Fonte: ${esc(k.fonte)}">${CANAL_ICO[k.canal] || ''} ${esc(k.identificador)}${k.rotulo ? ' (' + esc(k.rotulo) + ')' : ''} · ${esc(k.fonte)}</span>`).join(' ') || '<span class="sub">nenhum canal ainda</span>'}
         ${l.contato_id ? `<a href="#" class="bu-contato" data-id="${l.contato_id}">abrir contato</a>` : ''}</div>`).join('') || '<div class="card">Nada ainda — rode a busca.</div>'}`;
+    $('#cp-pontuar-bt').onclick = () => pontuarLeads(id);
     document.querySelectorAll('.bu-contato').forEach(x => x.onclick = (ev) => { ev.preventDefault(); navegar('contatos'); setTimeout(() => abrirContato(x.dataset.id), 300); });
   } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
@@ -1112,7 +1114,7 @@ function pintarCaptura() {
     ${area && CAP_ORIGEM === 'fora' ? blocoFora(area) : ''}
     ${area && CAP_ORIGEM === 'dentro' ? blocoDentro(area) : ''}
     <div id="cp-resultado"></div>`;
-  ligarCaptura();
+  ligarCaptura(); ligarExtrasCaptura();
 }
 function matrizHonesta(a, o) {
   const m = a[o];
@@ -1134,8 +1136,10 @@ function blocoFora(a) {
       <label>Máx. de lugares por categoria e região <input id="cp-max" type="number" min="1" max="${500}" value="20"></label>
       <p class="sub" id="cp-conta" style="text-align:left"></p>
       <p class="sub" style="text-align:left">Só entram na lista de <b>${esc(a.rotulo)}</b> as empresas em que o CRM achar esse canal. O rendimento varia: nem toda empresa publica ${a.id === 'email' ? 'e-mail' : a.id === 'whatsapp' ? 'um celular' : 'perfil nessa rede'}; depois da primeira varredura o CRM mostra quantas renderam.</p>
+      <details><summary class="sub">Mensagem da campanha (opcional)</summary><label>Oferta (o que você vai propor) <textarea id="cp-oferta" rows="2"></textarea></label><button class="btn peq secund" id="cp-ia-msg" type="button">✨ Rascunhar com IA</button><label>Mensagem <textarea id="cp-msgtxt" rows="4" placeholder="Use {{nome}} para o nome do contato. Vazio = mensagem padrão simples."></textarea></label><p class="sub" id="cp-msg-aviso" style="text-align:left"></p></details>
       <button class="btn" id="cp-planejar" ${e.pode ? '' : 'disabled'}>Ver o custo máximo</button> <span id="cp-msg-fora" class="erro"></span>
       <div id="cp-plano"></div></div>
+    ${blocoCnpj()}
     <div id="cp-buscas-area"></div>`;
 }
 function blocoDentro(a) {
@@ -1150,7 +1154,7 @@ function blocoDentro(a) {
       <details style="margin-top:10px" ${assuntos.length ? 'open' : ''}><summary class="sub">Assuntos que quero detectar (opcional — sem isso o CRM detecta “interesse comercial”: preço, orçamento, proposta, contratar)</summary>
         <p class="sub" style="text-align:left">Um por linha: <code>Nome do assunto: palavra, palavra, palavra</code> (até 8 assuntos).</p>
         <textarea id="cp-assuntos" rows="4" placeholder="Reforma: reforma, pintura, piso">${esc(assuntos.map((x) => x.rotulo + ': ' + x.palavras.join(', ')).join('\n'))}</textarea>
-        <button class="btn peq secund" id="cp-assuntos-salvar">Salvar assuntos</button></details></div>`;
+        <button class="btn peq secund" id="cp-assuntos-salvar">Salvar assuntos</button></details></div>${a.id === 'email' ? blocoImap() : ''}${a.id === 'whatsapp' ? blocoWaba() : ''}`;
 }
 function ligarCaptura() {
   document.querySelectorAll('.cp-area').forEach((b) => b.onclick = () => { CAP_AREA = b.dataset.a; CAP_ORIGEM = ''; pintarCaptura(); });
@@ -1275,6 +1279,90 @@ function mostrarPlano(r) {
   };
   $('#cp-descartar').onclick = async () => { try { await api('POST', `/app/buscas/${b.id}/status`, { status: 'arquivada' }); $('#cp-plano').innerHTML = ''; carregarBuscasArea(); } catch (e) { $('#cp-msg-plano').textContent = e.message; } };
 }
+// ---- Fase B/C e IA: caixa de e-mail (IMAP), WhatsApp Business oficial, lista de CNPJs, pontuar lead, rascunhar mensagem ----
+function blocoImap() {
+  const i = CAP.imap;
+  return `<div class="card" style="margin-top:10px"><b>✉️ Ler a minha caixa de e-mail (somente leitura)</b>
+    <p class="sub" style="text-align:left;margin:6px 0">O CRM entra na sua caixa só para <b>olhar</b>: não apaga, não move, não marca como lido e não envia nada. Use uma <b>senha de aplicativo</b> (não a senha normal): no Gmail, ative a verificação em duas etapas e crie uma em <i>Conta Google → Segurança → Senhas de app</i>. A senha fica criptografada no cofre e nunca é mostrada de novo. O texto dos e-mails é lido na hora e descartado — só ficam quem é, o assunto e a temperatura.</p>
+    ${i.cadastrada ? `<p class="sub" style="text-align:left">Caixa cadastrada: <b>${esc(i.usuario)}</b> (${esc((i.provedores.find((p) => p.id === i.provedor) || {}).rotulo || i.provedor)})</p>` : ''}
+    <div class="hi-grid"><label>Provedor <select id="cp-imap-prov">${i.provedores.map((p) => `<option value="${p.id}"${p.id === i.provedor ? ' selected' : ''}>${esc(p.rotulo)}</option>`).join('')}</select></label>
+      <label>Seu e-mail <input id="cp-imap-user" type="email" autocomplete="off" value="${esc(i.usuario)}"></label></div>
+    <label>Senha de aplicativo <input id="cp-imap-senha" type="password" autocomplete="off" spellcheck="false" placeholder="${i.cadastrada ? 'colar uma nova para trocar' : 'abcd efgh ijkl mnop'}"></label>
+    <button class="btn peq" id="cp-imap-salvar">Guardar</button>
+    ${i.cadastrada ? `<button class="btn peq secund" id="cp-imap-testar">Testar login</button>
+      <label style="display:inline-block">Ler os últimos <select id="cp-imap-dias"><option value="30">30 dias</option><option value="90" selected>90 dias</option><option value="180">180 dias</option></select></label>
+      <button class="btn" id="cp-imap-ler">Ler agora e classificar</button> <button class="btn peq secund" id="cp-imap-rem">Remover</button>` : ''}
+    <p id="cp-imap-msg" class="sub" style="text-align:left"></p></div>`;
+}
+function blocoWaba() {
+  const w = CAP.whatsapp;
+  return `<div class="card" style="margin-top:10px"><b>💬 WhatsApp Business oficial (só recebimento)</b>
+    <p class="sub" style="text-align:left;margin:6px 0">Se você tem o número na <b>WhatsApp Business Platform</b> (Cloud API da Meta), cada mensagem que um cliente manda vira sinal de lead em “Conversas” — sem guardar o texto. <b>Esta etapa não envia mensagem</b>: fora das 24 h só vale modelo aprovado pela Meta com consentimento, e o envio continua assistido pelas campanhas. Se o cliente responder “SAIR”, o canal dele é marcado como opt-out.</p>
+    <label>ID do número de telefone (Phone number ID) <input id="cp-wa-pid" value="${esc(w.phone_number_id)}" placeholder="no painel da Meta: WhatsApp → Configuração da API"></label>
+    <label>Segredo do app da Meta (App secret) <input id="cp-wa-seg" type="password" autocomplete="off" spellcheck="false" placeholder="${w.configurada ? 'colar um novo para trocar' : 'Configurações do app → Básico → Chave secreta do app'}"></label>
+    <button class="btn peq" id="cp-wa-salvar">${w.configurada ? 'Atualizar' : 'Ativar'}</button> ${w.configurada ? '<button class="btn peq secund" id="cp-wa-rem">Desativar</button>' : ''}
+    ${w.configurada ? `<div style="margin-top:8px"><p class="sub" style="text-align:left;margin:4px 0">No app da Meta, em <b>WhatsApp → Configuração → Webhook</b>, cole:</p>
+      <p style="margin:4px 0"><b>URL de callback:</b> <code id="cp-wa-url">${esc(location.origin + w.webhook_caminho)}</code> <button class="btn peq secund" id="cp-wa-copiar-url">Copiar</button></p>
+      <p style="margin:4px 0"><b>Token de verificação:</b> <code>${esc(w.verify_token)}</code> <button class="btn peq secund" id="cp-wa-copiar-tok">Copiar</button></p>
+      <p class="sub" style="text-align:left;margin:4px 0">Depois assine o campo <b>messages</b>. ${w.ultimo_evento_em ? `Último evento recebido: ${esc(dataBr(w.ultimo_evento_em))} · ${w.conversas_vistas} conversa(s) vista(s).` : 'Nenhum evento recebido ainda.'}</p></div>` : ''}
+    <p id="cp-wa-msg" class="erro"></p></div>`;
+}
+function blocoCnpj() {
+  return `<details class="card" style="margin-top:10px"><summary><b>🏢 Tenho uma lista de CNPJs (dados abertos da Receita)</b></summary>
+    <p class="sub" style="text-align:left;margin:6px 0">Cole os CNPJs (um por linha, até ${CAP.cnpj.maximo}). O CRM completa o cadastro com os <b>dados abertos da Receita</b> (razão social, atividade, cidade, telefone e e-mail da empresa). <b>Não existe busca oficial por atividade e cidade</b> — por isso a lista é sua. Só empresas <b>ativas</b>; para MEI e empresário individual entra só a empresa, <b>sem telefone nem e-mail do dono</b> (dado pessoal). Sem custo. Os leads entram sem consentimento, com opt-out por canal.</p>
+    <textarea id="cp-cnpj-txt" rows="5" placeholder="11.222.333/0001-81"></textarea>
+    <button class="btn" id="cp-cnpj-ir">Importar CNPJs</button> <span id="cp-cnpj-msg" class="sub"></span></details>`;
+}
+function acompanhar(url, alvo, fmt) {
+  const meu = SEQ; let n = 0;
+  const lim = setInterval(async () => {
+    if (meu !== SEQ || ABA !== 'captura' || ++n > 200) return clearInterval(lim);
+    try { const d = await api('GET', url); const t = d.trabalho; if (!t) return; $(alvo).textContent = fmt(t); if (t.estado !== 'lendo' && t.estado !== 'classificando') { clearInterval(lim); await vCapturaMantem(); const m = $(alvo); if (m) m.textContent = fmt(t); } } catch (_) { clearInterval(lim); }
+  }, 3000);
+}
+const fmtImap = (t) => t.estado === 'erro' ? '⚠️ ' + t.erro : t.estado === 'pronto' ? `✅ Pronto: ${t.resultado.lidas} mensagem(ns) lidas, ${t.resultado.conversas_com_assunto} com sinal comercial (${t.resultado.ingestao.novas} novas). Revise em “Conversas”. Nada foi alterado na sua caixa.` : '⏳ Lendo a caixa… pode levar alguns minutos.';
+const fmtCnpj = (t) => t.estado === 'erro' ? '⚠️ ' + t.erro : t.estado === 'pronto' ? `✅ ${t.resumo.novos} novo(s), ${t.resumo.existentes} já existiam, ${t.resumo.inativas} inativa(s), ${t.resumo.nao_encontradas} não encontrada(s)${t.resumo.sem_dado_pessoal ? `, ${t.resumo.sem_dado_pessoal} MEI/individual sem dado pessoal` : ''}.` : `⏳ ${t.feitos}/${t.total}…`;
+function ligarExtrasCaptura() {
+  const tela = $('#tela'); if (!tela) return;
+  const on = (id, fn) => { const e = $(id); if (e) e.onclick = fn; };
+  const imsg = (t) => { const m = $('#cp-imap-msg'); if (m) m.textContent = t || ''; };
+  on('#cp-imap-salvar', async () => { try { await api('PUT', '/app/captura/imap', { provedor: $('#cp-imap-prov').value, usuario: $('#cp-imap-user').value.trim(), senha: $('#cp-imap-senha').value }); await vCapturaMantem(); const m = $('#cp-imap-msg'); if (m) m.textContent = 'Caixa guardada com segurança.'; } catch (e) { imsg(e.message); } });
+  on('#cp-imap-testar', async () => { imsg('Testando…'); try { const r = await api('POST', '/app/captura/imap/testar'); imsg(r.ok ? '✅ Login ok.' : '⚠️ ' + r.motivo); } catch (e) { imsg(e.message); } });
+  on('#cp-imap-ler', async () => { if (!confirm('Ler a sua caixa agora? É somente leitura (nada é alterado) e o texto dos e-mails é descartado depois de classificado.')) return; try { await api('POST', '/app/captura/imap/importar', { dias: Number($('#cp-imap-dias').value) }); imsg('⏳ Lendo a caixa…'); acompanhar('/app/captura/imap', '#cp-imap-msg', fmtImap); } catch (e) { imsg(e.message); } });
+  on('#cp-imap-rem', async () => { if (!confirm('Remover a caixa de e-mail do cofre?')) return; try { await api('DELETE', '/app/captura/imap'); await vCapturaMantem(); } catch (e) { imsg(e.message); } });
+  const wmsg = (t) => { const m = $('#cp-wa-msg'); if (m) m.textContent = t || ''; };
+  on('#cp-wa-salvar', async () => { try { await api('PUT', '/app/captura/whatsapp', { phone_number_id: $('#cp-wa-pid').value.trim(), app_secret: $('#cp-wa-seg').value.trim() }); await vCapturaMantem(); } catch (e) { wmsg(e.message); } });
+  on('#cp-wa-rem', async () => { if (!confirm('Desativar o recebimento do WhatsApp Business? O endereço do webhook deixa de funcionar.')) return; try { await api('DELETE', '/app/captura/whatsapp'); await vCapturaMantem(); } catch (e) { wmsg(e.message); } });
+  const copiar = (txt) => { try { navigator.clipboard.writeText(txt); wmsg('Copiado.'); } catch (_) { wmsg('Selecione e copie manualmente.'); } };
+  on('#cp-wa-copiar-url', () => copiar($('#cp-wa-url').textContent));
+  on('#cp-wa-copiar-tok', () => copiar(CAP.whatsapp.verify_token));
+  on('#cp-cnpj-ir', async () => { const m = $('#cp-cnpj-msg'); m.textContent = ''; try { const r = await api('POST', '/app/captura/cnpj/importar', { texto: $('#cp-cnpj-txt').value }); m.textContent = `⏳ ${r.total} CNPJ(s) na fila${r.invalidos ? ` (${r.invalidos} inválido(s) ignorado(s))` : ''}…`; acompanhar('/app/captura/cnpj', '#cp-cnpj-msg', fmtCnpj); } catch (e) { m.textContent = e.message; } });
+  on('#cp-ia-msg', async () => {
+    const m = $('#cp-msg-fora'); m.textContent = '';
+    try {
+      const r = await rodarIA('rascunhar_mensagem', { oferta: $('#cp-oferta').value, canal: CAP_AREA, publico: $('#cp-termos').value });
+      if (!r) return;
+      $('#cp-msgtxt').value = r.resultado.texto; $('#cp-msg-aviso').textContent = '✨ Rascunho da IA — leia e ajuste antes de usar. Nada é enviado sozinho. ' + r.uso.cobrado;
+    } catch (e) { m.textContent = e.message; }
+  });
+  // retoma o acompanhamento se uma leitura/importação já estava rodando
+  if (CAP.imap && CAP.imap.trabalho && CAP.imap.trabalho.estado === 'lendo') acompanhar('/app/captura/imap', '#cp-imap-msg', fmtImap);
+}
+// pontuar leads de uma busca com IA (descrição do cliente ideal + nome/categoria/cidade; nenhum contato vai ao provedor)
+async function pontuarLeads(id) {
+  if (!CAP) CAP = await api('GET', '/app/captura');
+  const box = $('#cp-pontos'); if (box) box.textContent = '';
+  const perfil = prompt('Descreva o cliente ideal em uma ou duas frases (a IA dá uma nota de 0 a 100 para cada lead):');
+  if (!perfil) return;
+  try {
+    const { lugares } = await api('GET', `/app/buscas/${id}/lugares`);
+    const r = await rodarIA('pontuar_lead', { perfil_ideal: perfil, leads: lugares.slice(0, 25).map((l) => ({ id: l.id, nome: l.nome, categoria: l.categoria, cidade: (l.endereco || '').split(',').slice(-2, -1)[0] || '', resumo: '' })) });
+    if (!r) return;
+    const porId = Object.fromEntries(r.resultado.itens.map((i) => [i.id, i]));
+    document.querySelectorAll('#bu-lugares .lin').forEach((el, k) => { const l = lugares[k]; const n = l && porId[l.id]; if (n) { const tag = el.querySelector('.cp-nota') || el.appendChild(document.createElement('span')); tag.className = 'cp-nota chip'; tag.textContent = `★ ${n.nota} — ${n.motivo}`; } });
+    if (box) box.textContent = `✨ ${r.resultado.itens.length} lead(s) pontuado(s) (só os 25 primeiros por vez). É uma sugestão: a decisão é sua. ${r.uso.cobrado}`;
+  } catch (e) { if (box) box.textContent = e.message; else alert(e.message); }
+}
 let CAP_POLL = null;
 async function carregarBuscasArea(acompanhar) {
   clearInterval(CAP_POLL);
@@ -1291,7 +1379,7 @@ async function carregarBuscasArea(acompanhar) {
     document.querySelectorAll('.cp-ver').forEach((x) => x.onclick = () => verLugaresBusca(x.dataset.id));
     document.querySelectorAll('.cp-camp').forEach((x) => x.onclick = async () => {
       if (!confirm('Montar a campanha dos contatos desta busca? Ela nasce em RASCUNHO e NADA é enviado: você aprova a lista e cada envio é manual (redes sociais são assistidas).')) return;
-      try { const r = await api('POST', '/app/buscas/preparar-campanha', { tag: x.dataset.tag, canais: [CAP_AREA], modo: 'todos', nome: 'Leads de ' + CANAIS_UI[CAP_AREA], mensagem: 'Olá, {{nome}}! Aqui é {{nome_responsavel}}, da {{nome_empresa}}. Podemos conversar sobre como ajudar a sua empresa? Se preferir não receber mais contato, é só avisar.' }); alert(`${r.aviso}\n\n${r.alvos} alvo(s) em ${r.contatos} contato(s). Edite a mensagem na campanha antes de usar.`); navegar('campanhas'); } catch (e) { alert(e.message); }
+      try { const r = await api('POST', '/app/buscas/preparar-campanha', { tag: x.dataset.tag, canais: [CAP_AREA], modo: 'todos', nome: 'Leads de ' + CANAIS_UI[CAP_AREA], mensagem: ($('#cp-msgtxt') && $('#cp-msgtxt').value.trim()) || 'Olá, {{nome}}! Aqui é {{nome_responsavel}}, da {{nome_empresa}}. Podemos conversar sobre como ajudar a sua empresa? Se preferir não receber mais contato, é só avisar.' }); alert(`${r.aviso}\n\n${r.alvos} alvo(s) em ${r.contatos} contato(s). Edite a mensagem na campanha antes de usar.`); navegar('campanhas'); } catch (e) { alert(e.message); }
     });
     if (rodando || acompanhar) { const meu = SEQ; CAP_POLL = setInterval(() => { if (meu !== SEQ || ABA !== 'captura') return clearInterval(CAP_POLL); carregarBuscasArea(); }, 8000); }
     if (!rodando && acompanhar) { clearInterval(CAP_POLL); }

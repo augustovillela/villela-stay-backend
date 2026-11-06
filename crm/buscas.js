@@ -167,10 +167,13 @@ const Buscas = {
   MENSAGEM_CONFRATERNIZACAO: 'Olá, {{nome}}! Aqui é {{nome_responsavel}}, da {{nome_empresa}}. Estamos recebendo reservas de confraternização de fim de ano para equipes (novembro, dezembro e janeiro) em casas residenciais amplas e reservadas no Lago Sul, com som ambiente moderado. Posso enviar uma proposta com as datas disponíveis e os valores para o tamanho da sua equipe? Se preferir não receber mais contato, é só avisar.',
   prepararCampanha(tid, { tag = 'confraternizacao-2026', nome, canais = ['email', 'whatsapp'], modo = 'melhor', mensagem } = {}, autor) {
     const app = require('./app-repo');
+    // as regras de texto (casa residencial, sem preço) e a mensagem padrão são do NEGÓCIO DO AUGUSTO: só valem para a conta interna
+    const interno = require('./carteira').interno(T(tid));
+    if (!interno && !s(mensagem, 4000)) throw new Error('Escreva a mensagem da campanha (use {{nome}} para o nome do contato).');
     const texto = s(mensagem, 4000) || Buscas.MENSAGEM_CONFRATERNIZACAO;
-    const ruim = texto.match(PROIBIDAS_RE);
+    const ruim = interno ? texto.match(PROIBIDAS_RE) : null;
     if (ruim) throw new Error(`O texto usa "${ruim[0]}", que a casa não usa: é uma casa residencial (nada de salão, banda, DJ ou som ao vivo).`);
-    if (/R\$\s*\d/.test(texto)) throw new Error('Não coloque preço no texto da campanha: os valores saem da proposta (regras\\regras-negocio.md).');
+    if (interno && /R\$\s*\d/.test(texto)) throw new Error('Não coloque preço no texto da campanha: os valores saem da proposta (regras\\regras-negocio.md).');
     const t = /^busca:[a-z0-9-]{1,60}$/.test(String(tag)) ? String(tag) : slug(tag); // tag de busca ("busca:nome") já vem pronta
     if (!t) throw new Error('Informe a tag dos contatos.');
     const r = app.Campanhas.criar(tid, { nome: s(nome, 200) || `Confraternização de fim de ano — ${t}`, canais, modo, segmento: { tag: t }, mensagem: texto }, autor || 'busca-ativa');

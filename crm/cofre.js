@@ -19,7 +19,13 @@ const NOMES = {
   ia_anthropic: { rotulo: 'Chave de API da Anthropic (Claude)', prefixo: /^sk-ant-[A-Za-z0-9_\-]{20,}$/ },
   ia_openai: { rotulo: 'Chave de API da OpenAI', prefixo: /^sk-[A-Za-z0-9_\-]{20,}$/ },
   apify: { rotulo: 'Token do Apify (busca no Google Maps)', prefixo: /^apify_api_[A-Za-z0-9]{10,}$/ },
+  // e-mail por IMAP: o servidor monta {provedor, usuario, senha} em base64 (a senha de aplicativo nunca aparece em texto)
+  imap: { rotulo: 'Caixa de e-mail (IMAP, senha de aplicativo)', prefixo: /^[A-Za-z0-9+/=]{20,2000}$/ },
+  // segredo do app da Meta: serve para conferir a assinatura do webhook do WhatsApp Business
+  wa_secret: { rotulo: 'Segredo do app da Meta (WhatsApp Business)', prefixo: /^[A-Za-z0-9]{16,64}$/ },
 };
+// nestes, nem os 4 últimos caracteres aparecem na tela (poderiam ser parte da senha)
+const SEM_FINAL = ['imap', 'wa_secret'];
 const s = (v, max = 300) => String(v == null ? '' : v).trim().slice(0, max);
 const erro = (msg, status = 400, extra) => { const e = new Error(msg); e.status = status; if (extra) Object.assign(e, extra); return e; };
 
@@ -65,7 +71,7 @@ function decifrar(tid, nome, l) {
 
 // formato mínimo — recusa colar o que claramente não é a chave (ex.: uma frase) sem validar com o provedor
 function formatoOk(nome, valor) {
-  const v = s(valor, 400);
+  const v = s(valor, 2000);
   if (!NOMES[nome]) return false;
   if (/\s/.test(v)) return false;
   if (nome === 'ia_openai') return NOMES.ia_openai.prefixo.test(v) && !v.startsWith('sk-ant-');
@@ -77,12 +83,12 @@ const Cofre = {
 
   guardar(tid, nome, valor, quem = '') {
     if (!NOMES[nome]) throw erro('Tipo de chave desconhecido.');
-    const v = s(valor, 400);
+    const v = s(valor, 2000);
     if (!formatoOk(nome, v)) throw erro(`Isso não parece ${NOMES[nome].rotulo.toLowerCase()}. Confira se copiou a chave inteira, sem espaços.`);
     const { cifra, iv, tag } = cifrar(tid, nome, v);
     const ex = db.prepare('SELECT id FROM crm_segredos WHERE tenant_id = ? AND nome = ?').get(tid, nome);
-    if (ex) db.prepare("UPDATE crm_segredos SET cifra=?, iv=?, tag=?, ultimos4=?, rotacionado_em=?, testado_em='', criado_por=? WHERE id=?").run(cifra, iv, tag, v.slice(-4), nowISO(), s(quem, 120), ex.id);
-    else db.prepare('INSERT INTO crm_segredos (id, tenant_id, nome, cifra, iv, tag, ultimos4, criado_em, criado_por) VALUES (?,?,?,?,?,?,?,?,?)').run(novoId(), tid, nome, cifra, iv, tag, v.slice(-4), nowISO(), s(quem, 120));
+    if (ex) db.prepare("UPDATE crm_segredos SET cifra=?, iv=?, tag=?, ultimos4=?, rotacionado_em=?, testado_em='', criado_por=? WHERE id=?").run(cifra, iv, tag, (SEM_FINAL.includes(nome) ? '' : v.slice(-4)), nowISO(), s(quem, 120), ex.id);
+    else db.prepare('INSERT INTO crm_segredos (id, tenant_id, nome, cifra, iv, tag, ultimos4, criado_em, criado_por) VALUES (?,?,?,?,?,?,?,?,?)').run(novoId(), tid, nome, cifra, iv, tag, (SEM_FINAL.includes(nome) ? '' : v.slice(-4)), nowISO(), s(quem, 120));
     return Cofre.meta(tid).find((m) => m.nome === nome);
   },
 
@@ -97,7 +103,7 @@ const Cofre = {
   /** Só metadado: é o que pode ir para a tela. */
   meta(tid) {
     const linhas = db.prepare('SELECT nome, ultimos4, criado_em, rotacionado_em, testado_em FROM crm_segredos WHERE tenant_id = ?').all(tid);
-    return linhas.map((l) => ({ nome: l.nome, rotulo: (NOMES[l.nome] || {}).rotulo || l.nome, final: '••••' + l.ultimos4, cadastrada_em: l.rotacionado_em || l.criado_em, testada_em: l.testado_em }));
+    return linhas.map((l) => ({ nome: l.nome, rotulo: (NOMES[l.nome] || {}).rotulo || l.nome, final: l.ultimos4 ? '••••' + l.ultimos4 : '••••••••', cadastrada_em: l.rotacionado_em || l.criado_em, testada_em: l.testado_em }));
   },
 
   marcarTestada(tid, nome) { db.prepare('UPDATE crm_segredos SET testado_em = ? WHERE tenant_id = ? AND nome = ?').run(nowISO(), tid, nome); },

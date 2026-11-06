@@ -28,13 +28,13 @@ const OPCOES = {
   email: {
     rotulo: 'E-mail',
     fora: { automatico: 'Busca empresas no Google Maps e lê o site público delas; só viram lead as que publicam um e-mail.', assistido: '', inviavel: 'Comprar ou raspar listas de e-mail de pessoas.' },
-    dentro: { automatico: 'Você envia o arquivo de e-mails (.mbox, do Google Takeout); o sistema acha quem já conversou com você sobre compra.', assistido: '', inviavel: 'Ler a sua caixa de entrada ao vivo: ainda não — exige verificação de segurança do Google ou senha de aplicativo (próxima fase).' },
+    dentro: { automatico: 'Duas vias: (1) o CRM lê a sua caixa por IMAP, SOMENTE LEITURA, com uma senha de aplicativo (Gmail, Outlook, Yahoo, iCloud, UOL); (2) você envia o arquivo .mbox do Google Takeout. Em ambas acha quem já conversou com você sobre compra e descarta o texto.', assistido: '', inviavel: 'Entrar na caixa com o login do Google (OAuth): exige verificação de segurança do Google; por isso usamos senha de aplicativo.' },
     formatos: ['mbox'],
   },
   whatsapp: {
     rotulo: 'WhatsApp',
     fora: { automatico: 'Busca empresas no Google Maps e no site público; só viram lead as que publicam um celular/WhatsApp.', assistido: 'O envio é por você, ou pelo WhatsApp Business oficial com modelo aprovado e consentimento — a plataforma não dispara mensagem sozinha.', inviavel: 'Disparo em massa por WhatsApp pessoal: viola os termos do WhatsApp e arrisca banir o seu número.' },
-    dentro: { automatico: 'Você envia as conversas exportadas ("Exportar conversa", .txt); o sistema acha quem demonstrou interesse.', assistido: 'O export de contato salvo não traz o telefone — o lead entra pelo nome e você vincula o número.', inviavel: 'Ler o seu WhatsApp pessoal pelo servidor: não oficial, risco de banimento.' },
+    dentro: { automatico: 'Duas vias: (1) WhatsApp Business oficial do seu número — cada mensagem recebida vira sinal de lead, sem guardar o texto; (2) você envia as conversas exportadas ("Exportar conversa", .txt).', assistido: 'O export de contato salvo não traz o telefone — o lead entra pelo nome e você vincula o número. A Business oficial só RECEBE; o envio é assistido.', inviavel: 'Ler o seu WhatsApp pessoal pelo servidor: não oficial, risco de banimento.' },
     formatos: ['txt'],
   },
   instagram: {
@@ -88,9 +88,12 @@ function visao(tid) {
     areas: AREAS.map((a) => ({ id: a, ...OPCOES[a] })),
     externa: situacaoExterna(tid),
     ia: IA.modos(tid), uso_ia_mes: IA.usoDoMes(tid),
-    cofre: { disponivel: Cofre.configurado(), chaves: Cofre.meta(tid), tipos: Object.entries(Cofre.NOMES).map(([id, v]) => ({ id, rotulo: v.rotulo })) },
+    cofre: { disponivel: Cofre.configurado(), chaves: Cofre.meta(tid), tipos: Object.entries(Cofre.NOMES).filter(([id]) => ['ia_anthropic', 'ia_openai', 'apify'].includes(id)).map(([id, v]) => ({ id, rotulo: v.rotulo })) },
     carteira: Carteira.estado(tid),
     assuntos: assuntosDoTenant(tid),
+    imap: require('./captura-imap').estado(tid),
+    whatsapp: require('./whatsapp-business').estado(tid),
+    cnpj: require('./cnpj').estado(tid),
   };
 }
 
@@ -249,6 +252,10 @@ function lerMbox(conteudo) {
 function importarEmail(arquivos, { eu, tab }) {
   const todas = arquivos.flatMap((a) => lerMbox(a.conteudo));
   if (!todas.length) throw erro('Nenhum e-mail reconhecido. Envie o arquivo .mbox do Google Takeout (Gmail).');
+  return classificarEmails(todas, eu, tab);
+}
+// núcleo comum ao .mbox e ao IMAP: agrupa por interlocutor, ignora automáticos, classifica
+function classificarEmails(todas, eu, tab) {
   const meus = new Set(String(eu || '').toLowerCase().split(/[\s,;]+/).filter((x) => x.includes('@')));
   if (!meus.size) {
     const dono = maisFrequente(todas.map((m) => m.de));
@@ -370,5 +377,5 @@ function importarExport(tid, { area, arquivos, eu } = {}, fonte = 'upload') {
 
 module.exports = {
   AREAS, OPCOES, visao, situacaoExterna, orcamentoExterno, abrirCobranca, ligadoExterna, configurarPlataforma,
-  assuntosDoTenant, salvarAssuntos, importarExport, lerWhatsApp, lerMbox, csv,
+  assuntosDoTenant, salvarAssuntos, importarExport, classificarEmails, lerWhatsApp, lerMbox, csv,
 };

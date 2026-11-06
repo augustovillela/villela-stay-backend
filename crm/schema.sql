@@ -630,3 +630,19 @@ CREATE TABLE IF NOT EXISTS crm_ia_uso (
   criado_em  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_crm_ia_uso_tenant ON crm_ia_uso(tenant_id, criado_em);
+
+-- ---- WHATSAPP BUSINESS (Fase C): só CONTADORES por conversa; o texto da mensagem não é guardado ----
+CREATE TABLE IF NOT EXISTS crm_wa_estado (
+  tenant_id    TEXT NOT NULL,
+  ident        TEXT NOT NULL,             -- telefone E.164 do cliente
+  nome         TEXT DEFAULT '',
+  pontos       TEXT DEFAULT '{}',         -- {assunto: pontos acumulados}
+  deles        INTEGER DEFAULT 0,
+  primeira_em  TEXT DEFAULT '',
+  ultima_em    TEXT DEFAULT '',
+  razao        TEXT DEFAULT '',
+  razao_rotulo TEXT DEFAULT '',
+  evidencias   TEXT DEFAULT '[]',         -- palavras que pesaram (não é trecho de mensagem)
+  ids          TEXT DEFAULT '[]',         -- últimos wamid (idempotência da reentrega da Meta)
+  PRIMARY KEY (tenant_id, ident)
+);

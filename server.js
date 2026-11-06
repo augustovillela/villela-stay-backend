@@ -36,7 +36,8 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 const app = express();
 app.disable('x-powered-by'); // não anunciar o framework (auditoria de 11/10/2026, M5)
 app.set('trust proxy', 1); // Render põe 1 proxy na frente → req.ip = IP real do cliente (não o X-Forwarded-For forjável)
-app.use(express.json({ limit: '15mb' })); // 15mb p/ aceitar PDFs em base64 no upload de relatórios
+// rawBody só do webhook do WhatsApp Business do CRM: a assinatura X-Hub-Signature-256 é do corpo EXATO
+app.use(express.json({ limit: '15mb', verify: (req, res, buf) => { if (req.url && req.url.startsWith('/crm/webhook/whatsapp/')) req.rawBody = buf; } })); // 15mb p/ aceitar PDFs em base64 no upload de relatórios
 app.use(express.urlencoded({ extended: true, limit: '1mb' })); // form-urlencoded (ex.: ingestão do Make → CRM)
 app.use(cookieParser());
 
